@@ -110,5 +110,5 @@ test("opening a pre-v4 DB migrates: adds host column and backfills 'unknown'", (
 
   assert.ok(cols.includes("host"), "host column added by migration");
   assert.equal(row.host, "unknown", "legacy rows backfilled to 'unknown'");
-  assert.equal(ver.version, 4);
+  assert.equal(ver.version, 5); // migrates through the latest schema version
 });
