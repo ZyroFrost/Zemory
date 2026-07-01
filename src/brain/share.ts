@@ -26,7 +26,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { BRAIN_DB, BRAIN_DIR, openBrain } from "./db.js";
 import { scan } from "./ingest.js";
-import { vectorRemaining } from "./vectors.js";
+import { embedPending, vectorRemaining } from "./vectors.js";
 
 const MAGIC = "ZEMORY-BRAIN-ENC v1\n";
 const TAG_BYTES = 16;
@@ -357,6 +357,8 @@ export interface DriveSyncResult {
   exported: string;
   exportedBytes: number;
   merged: { file: string; sessionsAdded?: number; messagesAdded?: number; error?: string }[];
+  /** New vectors built at the end of sync (this machine's + merged messages). */
+  embedded: number;
   vectorRemaining: number;
 }
 
@@ -391,12 +393,23 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
       merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
     }
   }
+  // Build the semantic vector index for messages that still lack one — this
+  // machine's freshly scanned lines AND the ones just merged from other machines.
+  // Vectors are per-machine (keyed by local ids) so they never travel in a bundle;
+  // embedding here keeps recall on THIS machine complete right after sync.
+  // ONE bounded batch so the sync call stays responsive — a steady-state sync
+  // (a handful of new messages) is fully covered; a large one-time backlog is
+  // finished by `zemory brain embed --all` (vectorRemaining reports the rest).
+  // Fail-open: if the model is unavailable, embedPending embeds 0 (FTS fallback).
+  const embedded = (await embedPending({ dbPath: opts.dbPath })).embedded;
+
   return {
     driveDir: dir,
     scanned: { newMessages: scanReport.totals.newMessages, changedFiles: scanReport.changedFiles },
     exported: myName,
     exportedBytes: exported.bundleBytes,
     merged,
+    embedded,
     vectorRemaining: vectorRemaining(opts.dbPath),
   };
 }
