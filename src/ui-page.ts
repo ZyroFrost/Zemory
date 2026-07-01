@@ -1343,9 +1343,9 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       // local write + merge is done here; the Google Drive CLOUD upload is NOT —
       // it happens in the background and is what actually carries the bundle to
       // other machines. Report the phases honestly instead of claiming "done".
-      let msg = '✓ Scanned this machine (+' + fmtN(captured) + ' new msg captured) → wrote bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg).';
+      let msg = '✓ Scanned this machine (+' + fmtN(captured) + ' new msg captured) → wrote bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg) + embedded ' + fmtN(r.embedded || 0) + ' new vector(s).';
       msg += ' ⏳ Google Drive is still UPLOADING it to the cloud — not fully synced yet. Other machines receive it only after Drive finishes (watch the Drive tray icon).';
-      if(r.vectorRemaining) msg += ' · ' + fmtN(r.vectorRemaining) + ' to embed (run brain embed --all)';
+      if(r.vectorRemaining) msg += ' · ⚠ ' + fmtN(r.vectorRemaining) + ' still to embed (model unavailable? run brain embed --all)';
       el('syncMsg').textContent = msg;
       await brainTick();
     } catch(e){ ds.className = 'drive-state bad'; ds.textContent = '✗ error'; el('syncMsg').textContent = '✗ ' + e; }

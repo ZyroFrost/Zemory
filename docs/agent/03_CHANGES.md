@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-01] — Sync tự embed vector sau merge (recall đủ ngay, khỏi chạy embed tay)
+
+> Nối tiếp scan-first: sau khi merge, sync tự build vector cho tin mới — khỏi chạy `brain embed` tay.
+
+- **`syncDrive` embed sau merge** (`src/brain/share.ts`): trước phải chạy `zemory brain embed` riêng để phủ vector cho tin mới scan/merge. Nay sync tự embed **1 batch (≤500)** ở cuối → recall semantic (hybrid) đủ ngay sau sync cho increment thường ngày (vài chục–vài trăm tin/lần). Vector là **per-máy** (keyed theo message id cục bộ) nên KHÔNG đi trong bundle — mỗi máy tự embed phần của mình; đây là chỗ làm việc đó tự động.
+- **Có trần để nút Sync không treo**: chỉ 1 batch/lần. Backlog lớn (một lần, ví dụ vừa import cả DB máy khác) thì `DriveSyncResult.embedded` + `vectorRemaining` báo còn lại + gợi ý `brain embed --all`. Cockpit/CLI hiện số vector vừa build.
+- **Fail-open**: model không nạp được → embed 0, sync vẫn xong (recall rơi về FTS).
+- Nghiệm thu: backlog tồn (2.706 tin, gồm dữ liệu merge từ PC nhà) đã embed dần về ~0 bằng `brain embed --all`; sync sau đó chỉ embed phần tăng thêm.
+
 ## [2026-07-01] — Sync scan-first: bấm Sync tự scan máy này trước khi export (không hụt tin khi chuyển máy)
 
 > Nối tiếp entry Cockpit: đảm bảo chuyển máy không mất tin nhắn.

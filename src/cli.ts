@@ -419,7 +419,8 @@ async function cmdBrain(args: string[]): Promise<void> {
       for (const m of r.merged) {
         console.log(m.error ? `  ⚠ ${m.file}: ${m.error}` : `  ↓ merged ${m.file}: +${m.sessionsAdded} session(s) · +${m.messagesAdded} message(s)`);
       }
-      if (r.vectorRemaining) console.log(`  ${r.vectorRemaining} message(s) need embedding → \`zemory brain embed --all\``);
+      console.log(`  ⚙ embedded ${r.embedded} new vector(s) (semantic index)`);
+      if (r.vectorRemaining) console.log(`  ${r.vectorRemaining} message(s) still need embedding → \`zemory brain embed --all\` (model unavailable?)`);
     } catch (error) {
       console.log(`  error: ${error instanceof Error ? error.message : "sync failed"}`);
       process.exitCode = 1;
