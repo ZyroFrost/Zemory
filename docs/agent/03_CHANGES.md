@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-07-01] — Sync scan-first: bấm Sync tự scan máy này trước khi export (không hụt tin khi chuyển máy)
+
+> Nối tiếp entry Cockpit: đảm bảo chuyển máy không mất tin nhắn.
+
+- **`syncDrive` scan TRƯỚC khi export** (`src/brain/share.ts`): trước đây bấm Sync chỉ export DB hiện tại → nếu chat mới nhất chưa ingest thì up thiếu. Nay `syncDrive` chạy `scan()` (ingest transcript máy này) ngay trước `exportBrainBundle`, rồi mới export + merge. Áp dụng cho cả nút Sync (cockpit) lẫn CLI `zemory brain sync`.
+- **Báo số tin đã bắt**: `DriveSyncResult` thêm `scanned {newMessages, changedFiles}`; cockpit hiện *"✓ Scanned this machine (+N new msg captured) → wrote bundle …"*, CLI in *"↻ scanned … +N new message(s) captured before export"*. Nghiệm thu: sync thật bắt **+6 tin mới** trước khi export.
+- **Giới hạn còn lại (đã dặn owner)**: câu đang gõ dở / turn chưa ghi ra file transcript thì scan chưa thấy → đợi turn xong rồi Sync; và đợi Google Drive upload xong (icon tray) mới mở ở máy kia.
+
 ## [2026-07-01] — Cockpit: fix cửa sổ không mở + thông báo Drive sync 2 pha + đổi tên/logo Zemory Cockpit
 
 > Gộp các fix/UX của cockpit sau khi test trên laptop `SS01-IT-10`.

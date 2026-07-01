@@ -25,6 +25,7 @@ import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { BRAIN_DB, BRAIN_DIR, openBrain } from "./db.js";
+import { scan } from "./ingest.js";
 import { vectorRemaining } from "./vectors.js";
 
 const MAGIC = "ZEMORY-BRAIN-ENC v1\n";
@@ -351,6 +352,8 @@ export function resolveShareKey(projectRoot: string, explicit?: string): string 
 
 export interface DriveSyncResult {
   driveDir: string;
+  /** Fresh ingest of THIS machine's transcripts done right before export. */
+  scanned: { newMessages: number; changedFiles: number };
   exported: string;
   exportedBytes: number;
   merged: { file: string; sessionsAdded?: number; messagesAdded?: number; error?: string }[];
@@ -368,6 +371,9 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`Drive folder not found: ${dir}`);
+  // Capture THIS machine's latest transcripts into the DB FIRST, so the bundle
+  // we upload can never miss the newest chat lines when switching machines.
+  const scanReport = scan({ dbPath: opts.dbPath });
   const host = (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
   const myName = `global_memory.${host}.zemory.enc`;
   const exported = await exportBrainBundle({
@@ -385,7 +391,14 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
       merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
     }
   }
-  return { driveDir: dir, exported: myName, exportedBytes: exported.bundleBytes, merged, vectorRemaining: vectorRemaining(opts.dbPath) };
+  return {
+    driveDir: dir,
+    scanned: { newMessages: scanReport.totals.newMessages, changedFiles: scanReport.changedFiles },
+    exported: myName,
+    exportedBytes: exported.bundleBytes,
+    merged,
+    vectorRemaining: vectorRemaining(opts.dbPath),
+  };
 }
 
 export function writeBrainShareKey(path: string, opts: { force?: boolean } = {}): string {

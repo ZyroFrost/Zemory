@@ -413,6 +413,7 @@ async function cmdBrain(args: string[]): Promise<void> {
     console.log(`zemory brain sync — ${driveDir}`);
     try {
       const r = await syncDrive({ driveDir, keyFile });
+      console.log(`  ↻ scanned this machine — +${r.scanned.newMessages} new message(s) captured before export`);
       console.log(`  ↑ exported ${r.exported} (${r.exportedBytes} bytes)`);
       if (!r.merged.length) console.log("  · no other machines' bundles in the folder yet.");
       for (const m of r.merged) {

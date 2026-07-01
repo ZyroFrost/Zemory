@@ -1332,16 +1332,18 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   async function driveSync(){
     const ds = el('driveState'), sb = el('syncBtn');
     ds.className = 'drive-state'; ds.textContent = 'syncing...'; ds.title = ''; if(sb) sb.disabled = true;
-    el('syncMsg').textContent = 'Syncing... exporting bundle (this can take a moment).';
+    el('syncMsg').textContent = 'Syncing... scanning this machine + exporting bundle (this can take a moment).';
     try {
       const r = await (await fetch('/drive-sync', { method: 'POST' })).json();
       if(!r.ok){ ds.className = 'drive-state bad'; ds.textContent = '✗ sync failed'; ds.title = r.error || ''; el('syncMsg').textContent = '✗ ' + (r.error || 'sync failed'); return; }
       const ms = r.merged || [];
       const added = ms.reduce((a, m) => a + (m.messagesAdded || 0), 0);
-      // Local write + merge is done here; the Google Drive CLOUD upload is NOT —
+      const captured = (r.scanned && r.scanned.newMessages) || 0;
+      // Sync scans THIS machine first (so no fresh chat line is missed), then the
+      // local write + merge is done here; the Google Drive CLOUD upload is NOT —
       // it happens in the background and is what actually carries the bundle to
-      // other machines. Report the two phases honestly instead of claiming "done".
-      let msg = '✓ Wrote this machine\'s bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') to the Drive folder + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg).';
+      // other machines. Report the phases honestly instead of claiming "done".
+      let msg = '✓ Scanned this machine (+' + fmtN(captured) + ' new msg captured) → wrote bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg).';
       msg += ' ⏳ Google Drive is still UPLOADING it to the cloud — not fully synced yet. Other machines receive it only after Drive finishes (watch the Drive tray icon).';
       if(r.vectorRemaining) msg += ' · ' + fmtN(r.vectorRemaining) + ' to embed (run brain embed --all)';
       el('syncMsg').textContent = msg;
