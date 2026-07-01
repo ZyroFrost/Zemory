@@ -9,6 +9,7 @@ import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
 import type { TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
+import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
 
 const PARSER_VERSION = 2;
@@ -115,6 +116,17 @@ export function scan(opts: ScanOptions = {}): ScanReport {
     // Sweep any legacy zero-message sessions (e.g. ingested before this rule).
     db.prepare("DELETE FROM sessions WHERE message_count = 0").run();
     const live = [...touched.values()].filter((s) => s.messages > 0);
+
+    // Refresh the per-session digest lens for every session that changed this
+    // scan (hash-guarded inside buildDigest → unchanged sessions are a no-op).
+    // Fail-open: a digest error must never break ingest.
+    for (const s of live) {
+      try {
+        buildDigest(db, s.id);
+      } catch {
+        /* ignore — digest is a derived, rebuildable lens */
+      }
+    }
 
     return buildReport(db, dbPath, found, changedFiles, live);
   } finally {

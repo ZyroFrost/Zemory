@@ -54,13 +54,13 @@
 **Khác (chưa làm):**
 - [ ] (Nếu cần quên tuyệt đối) Source-transcript privacy/tombstone: xóa/redact transcript gốc của agent host hoặc ghi tombstone chống whole-file adapter re-ingest lại dữ liệu đã quên.
 - [ ] (Sau) code map AST + adapter host mới (Gemini/Cursor/…) khi có fixture thật.
-## 🧩 Session digest (plan 06) — CHỐT 2026-07-02, chưa build
+## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 03_CHANGES)
 > Lớp tóm tắt cấp phiên (DẪN XUẤT) để recall đọc rẻ token; đào xuống `messages` qua anchor khi cần. Spec: `docs/plan/06_digest.md`. Cụ thể hoá "memory promotion" (Phase 2) nhưng dạng lăng kính dẫn xuất, KHÔNG phải nguồn.
-- [ ] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).
-- [ ] Generator A (extractive, KHÔNG LLM): `tasks[]` (nhiều việc, mỗi việc 1 anchor) · `paths_touched[]` · `decisions[]` · `errors[]` · `outcome` · `meta` (source/host/project/#msg/time) · `source_sig` hash. Dùng vector sẵn có để *chọn* câu đắt (không sinh chữ), fail-open về heuristic.
-- [ ] Regen theo nhịp `brain scan`/ingest cho phiên có tin mới (guard hash — không cần biết phiên kết thúc) + `zemory brain digest --all` backfill phiên cũ.
-- [ ] Recall R3: lane digest cấp phiên trong `brain search` + lệnh `brain digest <session>`; progressive disclosure digest → anchor → messages.
-- [ ] Test: backfill, regen idempotent, anchor mở đúng tin, KHÔNG lộn phiên (scope theo `session_id`), fail-open.
+- [x] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).
+- [x] Generator A (extractive, KHÔNG LLM): `tasks[]` (nhiều việc, mỗi việc 1 anchor) · `paths_touched[]` · `decisions[]` · `errors[]` · `outcome` · `meta` (source/host/project/#msg/time) · `source_sig` hash. Dùng vector sẵn có để *chọn* câu đắt (không sinh chữ), fail-open về heuristic.
+- [x] Regen theo nhịp `brain scan`/ingest cho phiên có tin mới (guard hash — không cần biết phiên kết thúc) + `zemory brain digest --all` backfill phiên cũ.
+- [x] Recall R3: lane digest cấp phiên trong `brain search` + lệnh `brain digest <session>`; progressive disclosure digest → anchor → messages.
+- [x] Test: backfill, regen idempotent, anchor mở đúng tin, KHÔNG lộn phiên (scope theo `session_id`), fail-open.
 - [ ] (TẦM NHÌN, tuỳ chọn — không bắt buộc v1) B agent-authored: khi recall chạm phiên, agent hiện tại đọc transcript viết đè `kind=agent` (có anchor). Bỏ B1 "agent tự viết lúc kết thúc". KHÔNG để zemory tự gọi LLM API.
 
 ## Quyết định mở / cần chốt

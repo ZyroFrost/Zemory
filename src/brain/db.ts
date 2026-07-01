@@ -17,7 +17,7 @@ const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
 export const BRAIN_DIR = ENV_DB ? dirname(ENV_DB) : join(homedir(), ".zemory");
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -161,6 +161,26 @@ CREATE TABLE IF NOT EXISTS artifact_index (
 );
 CREATE INDEX IF NOT EXISTS idx_artifact_index ON artifact_index(artifact_id, ordinal);
 
+-- SESSION DIGEST (plan 06). A DERIVED, per-session summary lens for cheap-token
+-- recall: read the digest first, drill down to real messages via anchors only
+-- when needed. Rebuildable (safe to delete); keyed 1:1 to a session so it can
+-- never mix sessions; NO LLM in this layer (extractive, deterministic).
+CREATE TABLE IF NOT EXISTS session_digest (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id   TEXT NOT NULL UNIQUE,
+  kind         TEXT NOT NULL DEFAULT 'extractive', -- 'extractive' | 'agent'
+  tasks        TEXT,        -- JSON [{text, id}] — things done, each anchored to a message id
+  paths        TEXT,        -- JSON [string] — folders/repos the session touched
+  decisions    TEXT,        -- JSON [{text, id}]
+  errors       TEXT,        -- JSON [{text, id}]
+  outcome      TEXT,        -- last non-tool lines
+  meta         TEXT,        -- JSON {source, host, project_root, messages, from, to}
+  source_sig   TEXT,        -- staleness signature (count:maxId:lastTs) → regen on change
+  digest_text  TEXT,        -- flattened text, indexed by FTS for the recall digest lane
+  updated_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_session_digest_sid ON session_digest(session_id);
+
 CREATE TABLE IF NOT EXISTS compression_event (
   id                      INTEGER PRIMARY KEY AUTOINCREMENT,
   artifact_id             TEXT,
@@ -222,6 +242,26 @@ CREATE TRIGGER IF NOT EXISTS section_au AFTER UPDATE ON section BEGIN
   INSERT INTO section_fts_tri(rowid, heading, body) VALUES (new.id, COALESCE(new.heading,''), COALESCE(new.body,''));
 END;
 
+-- Session-digest FTS: the "digest lane" for recall (word + Vietnamese trigram).
+-- rowid = session_digest.id; triggers keep both in sync on insert/delete/update.
+CREATE VIRTUAL TABLE IF NOT EXISTS session_digest_fts USING fts5(digest_text);
+CREATE VIRTUAL TABLE IF NOT EXISTS session_digest_fts_tri USING fts5(digest_text, tokenize='trigram');
+
+CREATE TRIGGER IF NOT EXISTS session_digest_ai AFTER INSERT ON session_digest BEGIN
+  INSERT INTO session_digest_fts(rowid, digest_text)     VALUES (new.id, COALESCE(new.digest_text, ''));
+  INSERT INTO session_digest_fts_tri(rowid, digest_text) VALUES (new.id, COALESCE(new.digest_text, ''));
+END;
+CREATE TRIGGER IF NOT EXISTS session_digest_ad AFTER DELETE ON session_digest BEGIN
+  DELETE FROM session_digest_fts     WHERE rowid = old.id;
+  DELETE FROM session_digest_fts_tri WHERE rowid = old.id;
+END;
+CREATE TRIGGER IF NOT EXISTS session_digest_au AFTER UPDATE ON session_digest BEGIN
+  DELETE FROM session_digest_fts     WHERE rowid = old.id;
+  DELETE FROM session_digest_fts_tri WHERE rowid = old.id;
+  INSERT INTO session_digest_fts(rowid, digest_text)     VALUES (new.id, COALESCE(new.digest_text, ''));
+  INSERT INTO session_digest_fts_tri(rowid, digest_text) VALUES (new.id, COALESCE(new.digest_text, ''));
+END;
+
 CREATE VIRTUAL TABLE IF NOT EXISTS changelog_fts USING fts5(title, body);
 CREATE TRIGGER IF NOT EXISTS changelog_ai AFTER INSERT ON changelog BEGIN
   INSERT INTO changelog_fts(rowid, title, body) VALUES (new.id, COALESCE(new.title,''), COALESCE(new.body,''));
@@ -266,6 +306,12 @@ function migrate(db: BrainDB, fromVersion: number): void {
     }
     db.exec("UPDATE sessions SET host = 'unknown' WHERE host IS NULL");
     version = 4;
+  }
+  if (version < 5) {
+    // v5 adds the session_digest table + its FTS lane. Both are created by the
+    // SCHEMA/FTS exec above (CREATE ... IF NOT EXISTS); digests are built lazily
+    // by scan + `brain digest --all`, so there is nothing to backfill here.
+    version = 5;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

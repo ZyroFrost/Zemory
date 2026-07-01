@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-02] — Session digest (plan 06) — lớp tóm tắt dẫn xuất extractive cho recall rẻ token
+
+> Build v1 tính năng plan 06 (session digest) sau grill 2026-07-02.
+
+- **Schema v5** (`src/brain/db.ts`): bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word + trigram) + triggers; migration v4→v5 chỉ tạo bảng (additive, không đụng data cũ).
+- **Generator extractive** (`src/brain/digest.ts`, KHÔNG LLM): trích `tasks[]` (câu user thật, mỗi việc 1 anchor `#id`) · `decisions[]` (câu ngôn-ngữ-tự-nhiên có dấu chốt, loại bỏ tool dump) · `errors[]` (chỉ `[tool_result]` có tín hiệu lỗi cấu trúc: exit code / not recognized / command not found / Traceback / ✗ — không match bare "error/lỗi") · `paths_touched[]` · `outcome` · `meta` (source/host/project/#msg/time). `source_sig = v<DIGEST_VERSION>:count:lastId:lastTs` → bump version (đổi logic) hoặc phiên mọc tin thì tự regen. Scope cứng theo `session_id` → KHÔNG lộn phiên; không sinh chữ → không bịa.
+- **Tự regen** trong `brain scan`/ingest cho phiên có tin mới (hash-guarded, fail-open) + `zemory brain digest --all` backfill phiên cũ.
+- **Recall R3**: `zemory brain search <q> --digest` (lane cấp phiên) + `zemory brain digest <session>` (mở 1 digest, drill xuống messages qua `#id`).
+- **Test**: +5 test (build/anchor/idempotent/change-detect · không lộn phiên · backfill+search · empty no-op · migration v5). `npm run check` xanh — 46 test.
+- **Nghiệm thu DB thật**: backup `.bak-20260702-premigrate-v5`; backfill **241/241** phiên; digest phiên PC (620 msg) và phiên lmstudio (cross-source) sạch, anchor mở đúng tin, `search --digest` trả đúng phiên, không lẫn.
+- **Chưa làm (tầm nhìn)**: B agent-authored digest phủ lên khi recall (`kind=agent`); KHÔNG để zemory tự gọi LLM API.
+
 ## [2026-07-01] — Sync tự embed vector sau merge (recall đủ ngay, khỏi chạy embed tay)
 
 > Nối tiếp scan-first: sau khi merge, sync tự build vector cho tin mới — khỏi chạy `brain embed` tay.
