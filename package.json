@@ -1,0 +1,43 @@
+{
+  "name": "zemory",
+  "version": "0.0.1",
+  "description": "Context & memory governance layer for AI agents — one shared core for every project.",
+  "type": "module",
+  "bin": {
+    "zemory": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs-template"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test scripts eslint.config.js",
+    "test": "npm run build && node --test \"test/*.test.mjs\"",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "prepack": "npm run check",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.0.0",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.61.1"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "better-sqlite3": "^12.11.1",
+    "sqlite-vec": "^0.1.9"
+  }
+}
