@@ -2,13 +2,13 @@
 // local data layer so new captured messages appear while the user keeps chatting.
 
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { ServerResponse } from "node:http";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { ensureHarness, freshHarness } from "./adopt.js";
 import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
-import { openBrain } from "./brain/db.js";
+import { BRAIN_DIR, openBrain } from "./brain/db.js";
 import { getMessageContext, getSessionThread, recall } from "./brain/search.js";
 import { resolveShareKey, syncDrive } from "./brain/share.js";
 import { vectorCount, vectorRemaining } from "./brain/vectors.js";
@@ -250,10 +250,26 @@ function openWindow(url: string): void {
     console.log(`  (no Chrome/Edge found - open ${url} manually)`);
     return;
   }
-  const child = spawn(browser, [`--app=${url}`, "--window-size=1320,920"], {
-    detached: true,
-    stdio: "ignore",
-  });
+  // A dedicated profile dir forces a SEPARATE browser instance so the --app
+  // window actually opens even when Edge/Chrome is already running. Without it,
+  // `msedge --app=URL` is swallowed by the existing browser and no window shows.
+  const profileDir = join(BRAIN_DIR, "cockpit", "browser");
+  try {
+    mkdirSync(profileDir, { recursive: true });
+  } catch {
+    /* ignore */
+  }
+  const child = spawn(
+    browser,
+    [
+      `--app=${url}`,
+      `--user-data-dir=${profileDir}`,
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--window-size=1320,920",
+    ],
+    { detached: true, stdio: "ignore" },
+  );
   child.on("error", () => console.log(`  (couldn't launch window - open ${url} manually)`));
   child.unref();
 }
