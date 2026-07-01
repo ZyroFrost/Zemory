@@ -1,6 +1,7 @@
 export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>zemory live memory cockpit</title>
+<title>Zemory Cockpit</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJ6ZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzc4ZGY5YiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2I1ZWZjOCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHg9IjIiIHk9IjIiIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgcng9IjgiIGZpbGw9InVybCgjemcpIi8+PGcgc3Ryb2tlPSIjMDgxMDBlIiBzdHJva2Utd2lkdGg9IjEuNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSIjMDgxMDBlIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMTYgMTYgTDEwLjUgMTAgTTE2IDE2IEwyMS41IDkuNSBNMTYgMTYgTDIyIDIxLjUgTTE2IDE2IEwxMCAyMS41Ii8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMi43Ii8+PGNpcmNsZSBjeD0iMTAuNSIgY3k9IjEwIiByPSIyIi8+PGNpcmNsZSBjeD0iMjEuNSIgY3k9IjkuNSIgcj0iMiIvPjxjaXJjbGUgY3g9IjIyIiBjeT0iMjEuNSIgcj0iMiIvPjxjaXJjbGUgY3g9IjEwIiBjeT0iMjEuNSIgcj0iMiIvPjwvZz48L3N2Zz4=">
 <style>
   :root {
     color-scheme: dark;
@@ -149,14 +150,18 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     overflow: hidden;
   }
   .brand {
-    display: grid;
-    gap: 4px;
-    padding: 10px 12px 15px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 12px 15px;
     border: 1px solid var(--line);
     border-radius: 5px;
     background: linear-gradient(180deg, rgba(120, 223, 155, .06), rgba(255, 255, 255, .02));
   }
-  .brand h1 { margin: 0; color: var(--green); font-size: 33px; letter-spacing: -.075em; line-height: 1; }
+  .brand-logo { flex: none; width: 38px; height: 38px; display: block; filter: drop-shadow(0 2px 7px rgba(120, 223, 155, .28)); }
+  .brand-logo svg { width: 100%; height: 100%; display: block; }
+  .brand-text { display: grid; gap: 3px; min-width: 0; }
+  .brand h1 { margin: 0; color: var(--green); font-size: 30px; letter-spacing: -.075em; line-height: 1; }
   .brand p { margin: 0; color: var(--muted); font-size: 12px; }
   .proj-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
   .proj-pick select { width: 100%; }
@@ -726,8 +731,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   <div class="shell">
     <aside class="rail">
       <div class="brand">
-        <h1>zemory</h1>
-        <p>Local memory cockpit</p>
+        <span class="brand-logo"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zbrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#78df9b"/><stop offset="1" stop-color="#b5efc8"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#zbrand)"/><g stroke="#08100e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="#08100e"><path fill="none" d="M16 16 L10.5 10 M16 16 L21.5 9.5 M16 16 L22 21.5 M16 16 L10 21.5"/><circle cx="16" cy="16" r="2.7"/><circle cx="10.5" cy="10" r="2"/><circle cx="21.5" cy="9.5" r="2"/><circle cx="22" cy="21.5" r="2"/><circle cx="10" cy="21.5" r="2"/></g></svg></span>
+        <div class="brand-text">
+          <h1>zemory</h1>
+          <p>Local memory cockpit</p>
+        </div>
       </div>
       <div class="rail-scroll">
         <section class="panel" id="project" data-grow="rail0" data-grow-default="1.6" style="flex-grow:1.6">
@@ -1330,7 +1338,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       if(!r.ok){ ds.className = 'drive-state bad'; ds.textContent = '✗ sync failed'; ds.title = r.error || ''; el('syncMsg').textContent = '✗ ' + (r.error || 'sync failed'); return; }
       const ms = r.merged || [];
       const added = ms.reduce((a, m) => a + (m.messagesAdded || 0), 0);
-      let msg = '✓ exported ' + r.exported + ' · merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg)';
+      // Local write + merge is done here; the Google Drive CLOUD upload is NOT —
+      // it happens in the background and is what actually carries the bundle to
+      // other machines. Report the two phases honestly instead of claiming "done".
+      let msg = '✓ Wrote this machine\'s bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') to the Drive folder + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg).';
+      msg += ' ⏳ Google Drive is still UPLOADING it to the cloud — not fully synced yet. Other machines receive it only after Drive finishes (watch the Drive tray icon).';
       if(r.vectorRemaining) msg += ' · ' + fmtN(r.vectorRemaining) + ' to embed (run brain embed --all)';
       el('syncMsg').textContent = msg;
       await brainTick();

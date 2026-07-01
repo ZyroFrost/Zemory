@@ -5,7 +5,17 @@
 
 ---
 
+## [2026-07-01] — Cockpit: fix cửa sổ không mở + thông báo Drive sync 2 pha + đổi tên/logo Zemory Cockpit
+
+> Gộp các fix/UX của cockpit sau khi test trên laptop `SS01-IT-10`.
+
+- **Fix cockpit UI không mở** (`src/ui.ts` `openWindow`): khi Edge/Chrome đã mở sẵn, `msedge --app=URL` bị gộp vào instance hiện có → **không bung cửa sổ app** (bấm shortcut không thấy gì, để lại nhiều server `dist/cli.js ui` treo). Thêm `--user-data-dir=~/.zemory/cockpit/browser` + `--no-first-run` + `--no-default-browser-check` → luôn mở instance riêng, cửa sổ hiện dù browser đang chạy.
+- **Fix thông báo Drive sync sai ngữ nghĩa** (`src/ui-page.ts` `driveSync`): trước báo `✓ exported` ngay khi mới **ghi bundle xong ở local** — trong khi **Google Drive còn phải upload lên cloud** mới thật sự tới máy khác. Nay tách 2 pha rõ: *"đã ghi bundle (XXX) + merge N cái"* (xong) vs *"⏳ Google Drive đang upload lên cloud — chưa xong hẳn, xem icon Drive tray"*. (Tự động phát hiện Drive upload xong cần Google Drive API/OAuth — chủ đích không dùng, nên báo trung thực thay vì claim done.)
+- **Đổi tên + logo app** (`src/ui-page.ts`): tiêu đề `zemory live memory cockpit` → **"Zemory Cockpit"** (khớp shortcut). Thêm logo SVG inline (node trung tâm nối 4 node ký ức trên tile gradient green brand — biểu trưng *global brain ← các mảnh session*) đặt ngay trước wordmark `zemory`, canh giữa, 38px; dùng chung làm favicon (tab/taskbar). Wordmark hạ 33→30px cho cân.
+- **Vận hành — chạy `zemory` từ terminal**: repo chưa cài global nên gõ `zemory ui` báo "not recognized". Đã `npm link` (global shim trỏ vào repo, rebuild tự cập nhật) + thêm hàm `zemory` vào PowerShell profile (`Documents\WindowsPowerShell\profile.ps1` và `Documents\PowerShell\profile.ps1`) gọi `node.exe dist\cli.js` bằng đường dẫn tuyệt đối → mọi terminal mới gõ `zemory ...` chạy được, không phụ thuộc PATH cũ của terminal tích hợp VS Code.
+
 ## [2026-07-01] — Đồng bộ memory xuyên máy qua Drive folder (brain sync)
+
 
 Đồng bộ memory xuyên máy qua **Drive folder** (không sync DB sống), nối tiếp merge-import (#163).
 
@@ -16,6 +26,7 @@
 - Endpoint UI mới: `/set-scope`, `/set-drive`, `/doc`, `/brain-session`, `/drive-sync`. `npm run check` 41 test pass (gồm test merge additive + idempotent NULL-uuid).
 
 ## [2026-07-01] — Đại tu UI live cockpit: tối giản 3 cột + filter/sort/full-session + ? help + resize
+
 
 Đại tu UI live cockpit theo phản hồi owner: tối giản, hết trùng lặp, mọi thứ bấm được.
 
@@ -30,6 +41,7 @@
 
 ## [2026-06-30] — Merge-import bundle cộng dồn (sync xuyên máy an toàn)
 
+
 - Thêm `zemory brain import --merge`: gộp một bundle vào brain local theo kiểu **cộng dồn, không phá** — thay cho việc sync thẳng file `global_memory.db` sống qua Drive (WAL + 453MB + whole-file = dễ corrupt/mất ghi).
 - `src/brain/share.ts` thêm `mergeBrainBundle()`: giải mã bundle ra DB tạm → `ATTACH` → `INSERT OR IGNORE` sessions (theo id) + messages + known_stores, rồi tính lại message_count/started_at/ended_at. KHÔNG đụng DB gốc (không replace), không máy nào đè session máy nào, `host` từng session giữ nguyên máy gốc.
 - Dedup message 2 lớp: có `uuid` → `UNIQUE(session_id,uuid)` + OR IGNORE; `uuid` NULL (≈18% corpus — codex/lmstudio/tool) → anti-join theo (session_id, role, timestamp, content) để re-merge cùng bundle **idempotent** (lần 2 thêm 0).
@@ -38,6 +50,7 @@
 - Test: thêm 2 ca trong `brain-share.test.mjs` (additive + dedup uuid/NULL-uuid + giữ host + FTS sync; merge vào máy mới). Smoke trên brain thật 453MB: merge #1 = +230 session/+57,216 msg, merge #2 = +0/+0 (idempotent). `npm run check` PASS 41 test.
 
 ## [2026-06-30] — RAG Giai đoạn E — cross-encoder rerank (opt-in)
+
 
 - Thêm `src/brain/rerank.ts`: cross-encoder reranker (mặc định `Xenova/bge-reranker-base` ONNX qua Transformers.js) — engine opt-in cho slot `search` hợp nhất, **dùng chung weight cache + inference brick** với embedder (plan 05 §2). Fail-open: model lỗi/thiếu → giữ nguyên thứ tự RRF.
 - `search.ts`: thêm `rerankEnabled()` + stage `maybeRerank()` rescore top-40 ứng viên RRF rồi reorder; refactor `recall`/`searchHybrid` qua `fusedSearch` chung. `search()` FTS sync giữ nguyên làm baseline. Thêm `SearchOptions.rerank` để override per-call.
@@ -48,6 +61,7 @@
 
 ## [2026-06-30] — Memory retention/privacy core
 
+
 - Thêm `src/brain/privacy.ts` với raw local `backup/restore`, `forget` và `redact` cho global brain.
 - CLI mới: `zemory brain backup`, `restore`, `forget`, `redact`; destructive path dry-run mặc định hoặc yêu cầu `--force`, auto backup trước khi sửa/xóa.
 - `forget` hỗ trợ selector `--session`, `--project`, `--source/--agent`, `--before`, `--message`; xóa kèm vector rows để RAG không giữ bóng dữ liệu đã quên.
@@ -56,11 +70,13 @@
 
 ## [2026-06-30] — Dọn backlog sau kiểm tra app
 
+
 - Kiểm tra lại trạng thái app sau UI resize và push Git.
 - Dọn backlog: bỏ các mục `Initial commit / remote Git` đã hoàn tất khỏi TODO.
 - Xác nhận còn lại là roadmap/việc cần nghiệm thu thực tế, không phải blocker cơ học của v0.1.
 
 ## [2026-06-30] — Thêm resize handles cho live UI
+
 
 - Thêm draggable resize handles cho live UI: sidebar, inspector, split Recall, và bottom deck.
 - Layout resize được lưu vào localStorage, reload vẫn giữ; double-click trên handle để reset vùng tương ứng.
@@ -69,6 +85,7 @@
 
 ## [2026-06-30] — Khóa live UI trong một viewport
 
+
 - Khóa live UI vào một viewport cố định: html/body/shell không còn page-level scroll.
 - Workspace, inspector, Recall, bottom deck được chia bằng grid height 100vh; nội dung dài chỉ scroll trong panel cụ thể như result list, thread preview, coverage và live activity.
 - Mobile cũng không tạo page scroll; status deck chuyển thành strip ngang scroll nội bộ và chỉ giữ core Recall trong viewport.
@@ -76,12 +93,14 @@
 
 ## [2026-06-30] — Hiển thị coverage agent và folder quét trong UI
 
+
 - Thêm backend coverage cho live UI: transcript stores từ known_stores và project folders từ sessions.project_root.
 - UI giờ hiển thị rõ số agent/source, số transcript store, số project folder và path đầy đủ trong panel Capture coverage.
 - Scan & capture report giờ liệt kê Stores scanned ngay sau khi bấm Scan known/Deep scan, kể cả khi không có nhiều session mới.
 - QA bằng Playwright/Edge: desktop + mobile đều render coverage paths; search vẫn trả kết quả; không console/page errors; npm run check pass 29 tests.
 
 ## [2026-06-30] — Tinh chỉnh live cockpit UI sát concept
+
 
 - Siết lại layout live memory cockpit theo concept: sidebar trái, command bar, status deck, Recall split list/preview, right rail và bottom deck trong first viewport.
 - Recall search giờ render dạng result rows + thread preview, không bung inline từng card như bản trước.
@@ -91,6 +110,7 @@
 
 ## [2026-06-30] — Live memory cockpit UI redesign
 
+
 - Redesign `zemory ui` thành live memory cockpit 3 cột: rail điều hướng, vùng recall chính và inspector cho brain/vector/share/activity.
 - Thêm `src/ui-page.ts` để tách template UI khỏi server; `src/ui.ts` giờ tập trung endpoint và dashboard data helpers.
 - `/brain-status` trả thêm table inventory, vector count/remaining/coverage, share bundle/key/LFS status và recent activity để UI hiển thị đầy đủ thông tin.
@@ -99,11 +119,13 @@
 
 ## [2026-06-30] — Document repo-contained memory share key
 
+
 - Theo yêu cầu owner, đưa `share/share.key` vào private repo để máy khác clone về có thể giải mã memory bundle trực tiếp.
 - Cập nhật README và `share/README.md` với flow clone → `git lfs pull` → build → `brain import` bằng key trong repo.
 - Giữ cảnh báo rõ: ai có quyền đọc repo private này thì có quyền giải mã toàn bộ memory bundle.
 
 ## [2026-06-30] — Encrypted global brain sharing bundle
+
 
 - Thêm `zemory brain keygen` để tạo share key local nằm ngoài repo.
 - Thêm `zemory brain export <out.zemory.enc>` dùng AES-256-GCM + scrypt, snapshot SQLite bằng online backup trước khi mã hóa.
@@ -113,6 +135,7 @@
 
 ## [2026-06-30] — Clean RAG backlog state and fix generated docs heading separators
 
+
 - Updated TODO / Plan 05 / roadmap so full vector backfill is recorded as completed historical work, not an open next step.
 - Reworded backfill notes to avoid freezing a live corpus count; new transcript messages are handled by incremental `zemory brain embed`.
 - Fixed generated docs rendering so a section edited via `plan set` without a trailing newline cannot glue the next heading onto the previous line.
@@ -121,12 +144,14 @@
 
 ## [2026-06-30] — Complete full vector backfill for global_memory.db
 
+
 - Finished zemory brain embed --all on the global brain; vec_chunks now matches messages 1:1 at the verification point.
 - Fixed a real vec0 insert failure by switching the backfill writer to explicit insert + update-on-duplicate, so a preexisting row no longer crashes the pass.
 - Switched backfill to batched embeddings, then tuned the pass order to group similar-length messages so batch padding waste stays low on long transcripts.
 - npm run check passes after the change set.
 
 ## [2026-06-29] — MCP global recall server
+
 
 Thêm MCP recall server local:
 
@@ -141,12 +166,14 @@ Thêm MCP recall server local:
 
 ## [2026-06-29] — Polish RAG backfill UX: embed progress + remaining count
 
+
 - `zemory brain embed` thêm progress callback theo batch: CLI in tiến độ `done/total` trong lúc embed, tránh cảm giác treo trên DB thật.
 - `zemory brain info` hiển thị thêm số message còn thiếu embedding (`remaining`) cạnh `vec_chunks`.
 - Help của `zemory brain` mô tả rõ `embed [--limit N] [--all]`, default one-batch 500 message và `--all` để catch up toàn corpus.
 - Test thêm assertion cho progress callback và `vectorRemaining`; `npm run check` PASS.
 
 ## [2026-06-29] — Nghiệm thu v0.1 + RAG core A-D PASS
+
 
 Nghiệm thu v0.1 và RAG core trên repo thật:
 
@@ -160,6 +187,7 @@ Nghiệm thu v0.1 và RAG core trên repo thật:
 
 ## [2026-06-26] — Đồng bộ toàn bộ docs về trạng thái hiện tại + RAG Giai đoạn F (data chính)
 
+
 Thêm **RAG Giai đoạn F** (ý tưởng user 2026-06-26): sau core RAG, mở RAG sang **toàn bộ data chính** (ngoài memory agent) — CHUNG model + embed service + retriever + RRF; DB tách được nhưng dùng chung 1 model; retriever build **đa-store + `kind`** để mở rộng không phá code. Ghi vào plan 05 §4.F + §5 + TODO.
 
 **Đồng bộ toàn bộ docs về trạng thái hiện tại** (bỏ tàn dư compression, governance→harness, hướng tiếp = RAG):
@@ -170,6 +198,7 @@ Thêm **RAG Giai đoạn F** (ý tưởng user 2026-06-26): sau core RAG, mở R
 - Changelog cũ (03_CHANGES) giữ nguyên = lịch sử.
 
 ## [2026-06-25] — RAG semantic: chốt stack (EmbeddingGemma + Transformers.js + sqlite-vec) + plan 05 + TODO
+
 
 Chốt làm **RAG semantic** cho zemory (nâng recall từ FTS-only lên hybrid). Tạo `docs/plan/05_rag.md` + TODO phân kỳ A–E.
 
@@ -185,11 +214,13 @@ Dọn TODO cũ thời nén: quyết định LeanCTX (moot), semantic-provider (c
 
 ## [2026-06-25] — Đổi tên governance → harness; dọn docs về trạng thái hiện tại
 
+
 - Capability `governance` → **`harness`** (rõ nghĩa hơn: nó quản đúng cái *docs harness* — rules/TODO/changelog/plan + validate). Provider của `memory` đổi `harness` → **`global`** để tránh trùng tên. Code: types/runtime/modules; file `governance-docs.ts`→`harness-docs.ts`, `memory-harness.ts`→`memory-global.ts`. Doctor giờ: `memory → global · search → keyword · harness → docs · health → core`.
 - Dọn docs về trạng thái hiện tại: `00_build_plan` §0/§3/§4/§8 + modules bỏ compression khỏi kiến trúc + đổi governance→harness; plan 04 §1/§8 + `02_TODO` đồng bộ. zemory = **global memory + harness** (4 capability: memory/search/harness/health).
 - `.harness.json` adapters: `memory: global`. 13 test, build + doctor xanh.
 
 ## [2026-06-25] — Bỏ compression khỏi scope — zemory = global memory + governance
+
 
 > 🔄 **Supersede:** đảo quyết định "compression quota-safe là ưu tiên số 1 (2026-06-21)" + toàn bộ hướng nén tool-output. User chốt: trên Claude subscription (không trả theo token) compression không cho net saving hợp lý — đúng lý do Headroom thất bại.
 
