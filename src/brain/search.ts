@@ -7,6 +7,7 @@
 import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
 import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
+import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting } from "../settings.js";
 
 export interface SearchHit {
@@ -40,6 +41,8 @@ export interface SearchOptions {
   role?: string;
   /** Filter: only messages at/after this epoch-ms timestamp. */
   sinceMs?: number;
+  /** Recency blend override: true/false force on/off, undefined = default (on). */
+  recency?: boolean;
 }
 
 const RRF_K = 60;
@@ -112,6 +115,39 @@ function rrf(streams: WeightedStream[]): { rowid: number; s: number }[] {
   return [...score.entries()].sort((a, b) => b[1] - a[1]).map(([rowid, s]) => ({ rowid, s }));
 }
 
+/** Batch-fetch message timestamps for candidate rowids (for the recency blend). */
+function timestampsFor(db: BrainDB, rowids: number[]): Map<number, string | null> {
+  const map = new Map<number, string | null>();
+  const CHUNK = 400;
+  for (let i = 0; i < rowids.length; i += CHUNK) {
+    const chunk = rowids.slice(i, i + CHUNK);
+    const rows = db
+      .prepare(`SELECT id, timestamp FROM messages WHERE id IN (${chunk.map(() => "?").join(",")})`)
+      .all(...chunk) as { id: number; timestamp: string | null }[];
+    for (const r of rows) map.set(r.id, r.timestamp);
+  }
+  return map;
+}
+
+/**
+ * Blend recency into an already relevance-ranked candidate list so the freshest
+ * relevant hit wins (agents stop pulling stale memory). Applied AFTER RRF/rerank
+ * so it modulates the final relevance order rather than replacing it; fail-open
+ * (returns the input unchanged when disabled).
+ */
+function rankWithRecency(
+  db: BrainDB,
+  ranked: { rowid: number; s: number }[],
+  opts: SearchOptions,
+): { rowid: number; s: number }[] {
+  if (!recencyEnabled(opts.recency) || ranked.length < 2) return ranked;
+  const ts = timestampsFor(
+    db,
+    ranked.map((r) => r.rowid),
+  );
+  return blendRecency(ranked, (r) => ts.get(r.rowid) ?? null, true);
+}
+
 /** Hydrate fused rowids → hits: scope filter + per-session cap + snippet. */
 function hydrate(
   db: BrainDB,
@@ -166,7 +202,7 @@ export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
     const scopedProject = !opts.all ? opts.project : undefined;
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
     if (!ranked.length) return [];
-    return hydrate(db, ranked, terms, opts);
+    return hydrate(db, rankWithRecency(db, ranked, opts), terms, opts);
   } finally {
     db.close();
   }
@@ -240,6 +276,7 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
     let ranked = rrf(streams);
     if (!ranked.length) return [];
     ranked = await maybeRerank(db, ranked, query, opts.rerank);
+    ranked = rankWithRecency(db, ranked, opts);
     return hydrate(db, ranked, terms, opts);
   } finally {
     db.close();

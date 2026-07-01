@@ -322,15 +322,16 @@ async function cmdBrain(args: string[]): Promise<void> {
     const query = rest.filter((a) => !a.startsWith("--")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory brain search <query> [--all] [--digest] [--hybrid|--fts] [--rerank|--no-rerank]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK)",
+        "usage: zemory brain search <query> [--all] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
+    const recencyOpt = rest.includes("--no-recency") ? false : undefined;
     if (rest.includes("--digest")) {
       // Recall "digest lane": session-level hits (read the thin digest first,
       // drill into messages via `brain digest <session>` / `brain show <#id>`).
       const proj = all ? undefined : (findProjectRoot() ?? process.cwd());
-      const dhits = searchDigests(query, { project: proj });
+      const dhits = searchDigests(query, { project: proj, recency: recencyOpt });
       console.log(`zemory brain search — "${query}" · digest lane (${all ? "whole brain" : "this project"})`);
       if (!dhits.length) {
         console.log("  no session digests match. (Run `zemory brain digest --all` if you haven't built them.)");
@@ -349,13 +350,14 @@ async function cmdBrain(args: string[]): Promise<void> {
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
     const hits = useHybrid
-      ? await searchHybrid(query, { project, all, log: true, rerank: rerankOpt })
-      : search(query, { project, all, log: true });
+      ? await searchHybrid(query, { project, all, log: true, rerank: rerankOpt, recency: recencyOpt })
+      : search(query, { project, all, log: true, recency: recencyOpt });
     printHits(
       query,
       (all ? "whole brain" : `project: ${project}`) +
         (useHybrid ? " · hybrid (FTS+vector)" : " · FTS") +
-        (useRerank ? " · rerank (cross-encoder)" : ""),
+        (useRerank ? " · rerank (cross-encoder)" : "") +
+        (recencyOpt === false ? "" : " · recency"),
       hits,
     );
     return;

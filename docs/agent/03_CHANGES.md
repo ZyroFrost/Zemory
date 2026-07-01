@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-02] — Recency-aware recall — blend time-decay để ưu tiên tin mới+liên quan, khỏi lôi info cũ
+
+> Fix chất lượng recall: agent hay lấy info CŨ vì xếp hạng thuần theo độ liên quan, bỏ qua thời gian.
+
+- **Recency blend** (`src/brain/recency.ts` mới): điểm cuối = `(1/(1+vị_trí_liên_quan)) × hệ_số_tuổi`; hệ số = `0.5^(tuổi/half-life)` có **SÀN 0.15**. Áp SAU rrf/rerank nên chỉ *điều biến* thứ hạng liên quan (không phá điểm cross-encoder); đường cong `1/(1+i)` chặn item đuôi liên-quan-thấp nhảy top chỉ vì mới. → tin mới+liên quan lên đầu, tin cũ vẫn ra (xếp thấp hơn) — KHÔNG bỏ sót.
+- Áp cho `search()` + `searchHybrid()`/`recall()` (dùng bởi CLI/MCP/UI) và **lane digest** (`searchDigests`, theo `meta.to` của phiên).
+- Mặc định **BẬT**. Tắt: `--no-recency` (CLI) hoặc `ZEMORY_RECENCY=0`. Half-life chỉnh qua `ZEMORY_RECALL_HALFLIFE_DAYS` (mặc định 30 ngày).
+- **Test**: +4 (recencyFactor mốc 1 / ~0.5 / floor / neutral / future-clamp · blendRecency đảo đúng + chặn đuôi · `search` recent-first · `--no-recency` giữ nguyên). `npm run check` xanh — 50 test.
+
 ## [2026-07-02] — Session digest (plan 06) — lớp tóm tắt dẫn xuất extractive cho recall rẻ token
 
 > Build v1 tính năng plan 06 (session digest) sau grill 2026-07-02.
