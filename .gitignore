@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.zemory/
+.claude/*.local.json
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.zemory.enc
+*.zemory.key
+share/*.key
+!share/share.key
+.zemory-share.key
+*.log
+*.tgz
+coverage/

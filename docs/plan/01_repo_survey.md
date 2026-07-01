@@ -1,0 +1,82 @@
+<!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
+# zemory — Khảo sát repo tiết kiệm token (bản đồ Model B)
+
+> Mục đích: bản đồ các repo cùng mục tiêu "tiết kiệm token cho AI agent" → chắt ý đáng học (Model B: mượn ý, viết code của mình), và định vị zemory.
+> Khảo sát 2026-06-18. Nguồn: README/source thật của từng repo.
+
+---
+
+## 0. Kết luận định vị (đọc cái này trước)
+
+> ⚠️ **Cập nhật 2026-06-26:** khảo sát này từ thời định vị "3 lane". **`compress` đã BỎ** (code ở `attic/`). Định vị hiện tại: zemory = **memory/recall + harness**, đang nâng recall lên **RAG semantic** (hybrid FTS+vector, plan 05). Phần "compress lane" bên dưới là khảo sát cũ — giữ làm tham chiếu.
+
+**Định vị hiện tại (2 lane thật + 1 nâng cấp):**
+- 🧠 **Recall / memory** — nhớ + tìm lại xuyên phiên/agent/project (lõi). Đang nâng lên **RAG semantic** (FTS + vector, plan 05).
+- 🧱 **Harness** — khung docs/quy-tắc/plan/changelog cho mọi project + validate.
+- 📂 Code/repo index — để sau (tùy chọn).
+
+**Phát hiện then chốt (vẫn đúng):** ngoài **agentmemory**, KHÔNG repo nào làm "recall thụ động, toàn-máy, xuyên-project xuyên-agent từ file transcript có sẵn" — niche cốt lõi của zemory gần như trống, agentmemory là đối thủ thật duy nhất ở lane recall.
+
+**Định vị zemory = INTEGRATOR sở hữu memory + harness + (đang xây) RAG** + móng cho A.I Center — KHÔNG phải "thêm một memory DB". Khoảng trống là **gom + sở hữu + điều phối**.
+
+> 🗄️ Bảng khảo sát chi tiết bên dưới (gồm "compress lane") giữ nguyên làm hồ sơ — đọc với lưu ý compress đã bỏ.
+## 1. Bảng tổng hợp
+
+| Repo | Lane | URL | Đáng học | Trùng/Bổ sung |
+|---|---|---|---|---|
+| **agentmemory** (rohitg00) | 🧠 | github.com/rohitg00/agentmemory | hybrid RRF, progressive disclosure, redaction secret, 4-tầng memory | **đối thủ thật** |
+| **LeanCTX** (yvgude, Rust) | 🧠+🗜️ | github.com/yvgude/lean-ctx | **ledger tiết kiệm token ký số Ed25519**, read-mode/density, map-mode (~13 token re-read) | bổ sung |
+| **Context Mode** (mksglu) | 🗜️ | github.com/mksglu/context-mode | **sandbox tool-output**, FTS5 recipe: porter+trigram+RRF+proximity+Levenshtein typo | trùng *kỹ thuật FTS5*, khác mục đích |
+| **RTK** (rtk-ai, Rust) | 🗜️ | github.com/rtk-ai/rtk | **auto-rewrite hook** (phủ 100%), nén theo từng loại lệnh | bổ sung |
+| **squeez** (claudioemmanuel) | 🗜️ | github.com/claudioemmanuel/squeez | **adaptive intensity** (nén mạnh khi >80% budget), **benign-aware** (không lỗi thì giữ) | bổ sung |
+| **Claude Context** (Zilliz) | 📂 | github.com/zilliztech/claude-context | **AST chunking**, **Merkle-tree incremental index** | bổ sung (index code) |
+| **CodeSight** (Houseofmvps) | 📂 | github.com/Houseofmvps/codesight | **per-agent output profile**, "blast radius" qua import-graph (không LLM) | bổ sung |
+| **Caveman** (JuliusBrussee) | 🗜️ output | github.com/JuliusBrussee/caveman | nén lossy **giữ nguyên code/URL/path** | bổ sung (persona) |
+| **Agent Skills CE** (muratcankoylan) | 📚 docs | github.com/muratcankoylan/Agent-Skills-for-Context-Engineering | "chọn tầng memory nông nhất đủ dùng"; match retrieval theo query | chỉ docs |
+
+---
+
+## 2. Đáng học → áp vào zemory
+
+### Cho `search`/recall (brain hiện có)
+- **Context Mode FTS5 recipe**: porter stemming + trigram + **RRF fusion** + proximity rerank + sửa typo Levenshtein. Đè lên FTS5+trigram đã có.
+- **agentmemory**: progressive disclosure (trả metadata trước, bung text sau), session-diversification cap (max N/session), token-budgeted injection (~2000), relevance = bm25 × salience(type) × recency.
+- **redaction secret lúc ingest** (agentmemory pattern: sk-ant-, token AWS/GCP/GitHub, JWT) — an toàn, làm sớm.
+
+### Cho `compress` (lane mới — token-saver lớn nhất, đã có trong build plan §3)
+- **squeez**: adaptive intensity + benign-aware (2 heuristic vàng).
+- **RTK**: handler nén theo từng loại lệnh (git/pytest/docker) + auto-rewrite hook (PreToolUse).
+- **Context Mode**: sandbox tool-output → chỉ summary vào context (PostToolUse compress-on-read).
+- **Caveman**: nén lossy nhưng byte-preserve code/URL/path.
+
+### Cho code-map (lane tuỳ chọn — Phase sau)
+- **Claude Context**: AST chunking + Merkle incremental.
+- **CodeSight**: per-agent output profile (hợp A.I Center dispatch) + blast-radius qua import-graph (không LLM).
+
+### Cho A.I Center (orchestrator)
+- **LeanCTX**: ledger tiết kiệm token ký số (trust/observability) + read-modes.
+- **CodeSight**: per-agent profile output.
+
+---
+
+## 3. Token: zemory-đủ vs agentmemory (mô hình, chưa benchmark)
+
+Chia input/phiên: tool-output 40% · file-read 30% · re-explain 20% · explore code 10%.
+
+| Nguồn | agentmemory giảm | zemory-đủ giảm |
+|---|--:|--:|
+| Output tool | ~0% | ~70% |
+| Đọc file | ~0% | ~50% |
+| Recall | ~60% | ~60% |
+| Explore | ~15% | ~50% |
+| **Tổng input** | **~14%** | **~60%** |
+
+→ zemory-đủ tiết kiệm **~3–4x** — **nhờ lane compress** (agentmemory không có), KHÔNG phải nhớ giỏi hơn.
+Trung thực: trên riêng recall, agentmemory ≥ zemory v1 (hybrid vs lexical) đến khi zemory có semantic; và stack agentmemory+RTK+squeez có thể đạt mức nén tương tự → lợi thế thật = **tích hợp + sở hữu + móng A.I Center**, không phải con số.
+
+---
+
+## 4. Quyết định
+- **KHÔNG** dùng/fork bất kỳ repo nào làm lõi (Model B). Khai thác ý.
+- zemory build tiếp theo **3 lane**: hoàn thiện recall → thêm compress → (sau) code-map.
+- Mỗi capability vẫn theo registry "1 capability = 1 provider".

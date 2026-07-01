@@ -1,0 +1,11 @@
+{
+  "docs": "docs/agent",
+  "adapters": {
+    "memory": "global",
+    "search": "keyword"
+  },
+  "thresholds": {
+    "changes_lines": 400,
+    "changes_keep": 240
+  }
+}

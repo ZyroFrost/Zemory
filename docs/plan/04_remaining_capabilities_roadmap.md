@@ -1,0 +1,92 @@
+<!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
+# Roadmap năng lực còn lại của zemory
+
+> ⛔ **Lưu ý (2026-06-25):** phần **§5 compress** đã BỎ khỏi scope (xem changelog) — code dời sang `attic/`. Các phần memory/search/MCP/code-map dưới đây vẫn còn giá trị cho zemory (global memory + harness).
+
+> Spec này bổ sung cho `03_subscription_quota_safe_compression.md`. Mục tiêu là hoàn thiện các capability còn thiếu mà không tạo thêm nguồn sự thật, không đưa model proxy trở lại và không để nhiều provider cùng chiếm một slot.
+## 1. Mục tiêu kiến trúc
+- Agent gọi capability ổn định; runtime chọn đúng một provider từ `docs/.harness.json`.
+- Session, docs và changelog cùng nằm trong global brain; index là dữ liệu dẫn xuất, dựng lại được từ transcript.
+- Recall hoạt động on-demand tại tool boundary, không sửa prefix hội thoại đã cache và không đi qua model API proxy.
+- Mọi provider mới phải có health check, benchmark cùng corpus và fallback rõ ràng.
+
+Zemory được xây bottom-up như phân hệ **memory + harness (governance/docs) + RAG** nền của **A.I Center**. Vision và roadmap cấp hệ thống nằm tại `D:\Work_Study\IT\Data\Tools\a.i_center\docs\plan\`; Zemory không tự nhân bản nội dung đó. Quyết định A.I Center gọi package Zemory hay hợp nhất repo chỉ được chốt khi lớp brain và localhost API ổn định.
+## 2. Slot `memory`: global brain hoàn chỉnh
+Provider mặc định `memory` tiếp tục sở hữu ingest và episodic recall. Trạng thái hiện tại:
+
+- [x] encrypted export/import để share `global_memory.db` qua bundle `.zemory.enc`;
+- [x] raw local backup/restore bằng SQLite online backup, restore có rollback DB cũ sang `.bak-*`;
+- [x] forget trong brain DB theo session/project/source/before/message, có dry-run trước khi xóa và auto backup khi `--force`;
+- [x] re-redact dữ liệu đã ingest cho messages/artifact index, đồng bộ lại FTS khi message update;
+- [ ] source-transcript privacy/tombstone nếu cần bảo đảm dữ liệu đã forget không bị whole-file adapter re-ingest từ transcript gốc;
+- [ ] retention theo dung lượng/quota đĩa nếu brain/artifact store phình quá lớn;
+- [ ] provenance cho mỗi message, adapter version và trạng thái ingest chi tiết hơn;
+- [ ] promotion có chủ đích từ session sang quyết định curated, không tự sinh kho ghi chú thứ hai.
+## 3. Slot `search`: keyword, semantic và hợp nhất kết quả
+
+`keyword` vẫn là baseline bắt buộc vì nhanh, local và giải thích được. Provider semantic là lựa chọn thay thế hoặc engine nội bộ của một provider hợp nhất, không đăng ký song song cùng slot.
+
+Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding local để rerank khi corpus đủ lớn, rồi RRF và giới hạn kết quả theo session/project. Model embedding nằm trong `deps/` hoặc được tải ngoài package; `src/` chỉ chứa adapter và policy.
+
+## 4. MCP progressive disclosure
+Zemory cung cấp một MCP server local qua `zemory mcp` (stdio). Server này thuộc **tool cài toàn máy**, không thuộc riêng project nào:
+
+- **Global brain là cấp máy** (`~/.zemory/global_memory.db` hoặc `GLOBAL_MEMORY_DB`). Project nào cũng gọi được recall, kể cả khi project đó chưa có `docs/.harness.json`.
+- **Harness theo project là tùy chọn**: chỉ dùng cho rules/plan/TODO/changelog curated của project. Không có harness thì `brain_search` vẫn hoạt động và rơi về global scope; `plan_search` chỉ có kết quả nếu docs đã từng sync vào DB.
+- MCP không tự inject memory. Agent tự quyết định gọi khi prompt liên quan việc cũ, lỗi cũ, hoặc cần mở plan/spec.
+
+Tool đã code/test (2026-06-29):
+
+- `brain_search`: trả ID, nguồn, project, thời gian và snippet từ global brain;
+- `brain_show`: mở đúng một message, tùy chọn kèm context lân cận;
+- `plan_search`: tìm specs DB-source;
+- `plan_show`: mở một section DB-source.
+
+Tool để sau nếu cần:
+
+- `changelog_search`: tìm quyết định bền;
+- `artifact_get`: mở một phần artifact theo range hoặc query.
+
+Claude, Codex và host khác dùng cùng server, tránh mỗi host có một memory implementation riêng.
+## 5. Slot ~~compress~~ — ĐÃ BỎ (giữ làm hồ sơ, xem changelog 2026-06-25)
+
+Thiết kế chi tiết nằm trong plan 03. Provider đích `quota-safe` sở hữu policy, artifact store, metrics và engine routing:
+
+- code/file/search có cấu trúc dùng LeanCTX map, signatures hoặc line range;
+- log và output tự do dùng handler deterministic trước, semantic engine chỉ khi benchmark chứng minh có lợi;
+- output gốc được lưu thành artifact có TTL và redaction;
+- bounce detector hạ mức nén hoặc passthrough khi agent phải đọc lại;
+- không dùng `ANTHROPIC_BASE_URL`, không proxy Messages API và không rewrite history.
+
+## 6. Code map tùy chọn
+
+Code map là provider phụ trợ cho search, không phải nguồn sự thật. Nó dùng parser/AST theo ngôn ngữ, hash nội dung để cập nhật incremental và import graph để trả symbol, dependency và blast radius. Nếu parser không hỗ trợ ngôn ngữ, hệ thống rơi về keyword/file range thay vì đoán.
+
+## 7. Adapter ingest và host
+
+Mỗi adapter phải khai báo signature store, format version, chiến lược append/whole và fixture ẩn danh. Thứ tự hỗ trợ sau Claude/Codex/Continue/LM Studio là Gemini/Antigravity, Cursor và Hermes khi có dữ liệu thật để kiểm chứng.
+
+Host integration tách hai chiều:
+
+- capture: Stop hook hoặc lifecycle tương đương chỉ chạy incremental ingest;
+- recall/tooling: AGENTS/CLAUDE instruction hoặc MCP, gọi on-demand.
+
+Không dùng hook auto-allow để rewrite command hoặc bỏ qua permission của host.
+
+## 8. Harness và UI
+Doctor là cổng kiểm định chung: validate config/provider, DB migration, hook wiring, adapter freshness, vector index status và docs mirrors. UI chỉ hiển thị dữ liệu từ status API, không xây một hệ thống trạng thái riêng.
+
+Dashboard live đã triển khai 2026-06-30: recall search, global brain metrics, agent mix, DB path/size, table counts, vector/RAG coverage, encrypted share bundle, recent activity, project harness, setup actions, scan known/deep scan và capability checks cùng auto-refresh. Các UI mở rộng sau vẫn đọc cùng status/data API: VS Code status bar và toggle provider/adapter có validation conflict + rollback config.
+## 9. Gate nghiệm thu
+
+Một capability chỉ được bật mặc định khi:
+
+- integration tests chạy trên Windows, Linux và các Node LTS được hỗ trợ;
+- migration có backup/rollback và không làm mất ID hoặc metadata curated;
+- cùng task corpus không giảm tỷ lệ hoàn thành;
+- compression không tăng tool-call count hoặc cache churn vượt ngưỡng;
+- provider lỗi luôn có fallback rõ ràng và doctor báo đỏ;
+- package không chứa model, binary hoặc code third-party ngoài license đã khai báo.
+
+## 10. Trình tự triển khai
+Nền tảng integrity, provider runtime, Claude/Codex capture, RAG semantic core, **full vector backfill**, **MCP global recall** và **memory retention/privacy core** đã ổn định. **Compression đã BỎ khỏi scope (2026-06-25).** Ưu tiên tiếp theo: xác minh Stop hook trên phiên Claude/Codex mới, cân nhắc source-transcript privacy/tombstone nếu cần mức “quên tuyệt đối”, rồi code map và UI nâng cao. Mỗi lớp mới phải qua gate (test / migration / health check / fallback) trước khi bật mặc định.
