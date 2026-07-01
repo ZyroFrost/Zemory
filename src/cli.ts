@@ -13,6 +13,7 @@ import { runCheck } from "./checks.js";
 import { gatherStatus } from "./status.js";
 import { startUi } from "./ui.js";
 import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.js";
+import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
 import { embedPending, vectorCount, vectorRemaining } from "./brain/vectors.js";
 import { runRagBench } from "./brain/ragbench.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
@@ -210,6 +211,24 @@ function fmtDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
 }
 
+function printDigest(d: Digest): void {
+  const n = (v: number) => v.toLocaleString();
+  console.log(`session ${d.session_id}  [${d.meta.source} · ${d.meta.host}] · ${d.kind}`);
+  console.log(
+    `  project: ${d.meta.project_root ?? "(unknown)"} · ${n(d.meta.messages)} msg · ${fmtDate(d.meta.from)} → ${fmtDate(d.meta.to)}`,
+  );
+  const block = (label: string, items: { text: string; id: number }[]) => {
+    if (!items.length) return;
+    console.log(`  ${label}:`);
+    for (const it of items) console.log(`    · ${it.text}  (#${it.id})`);
+  };
+  block("tasks", d.tasks);
+  block("decisions", d.decisions);
+  block("errors", d.errors);
+  if (d.paths.length) console.log(`  paths touched: ${d.paths.join(" · ")}`);
+  if (d.outcome) console.log(`  outcome: ${d.outcome}`);
+}
+
 function printScanReport(r: ScanReport): void {
   console.log(`zemory brain scan — global brain at ${r.dbPath}`);
   console.log(
@@ -303,8 +322,25 @@ async function cmdBrain(args: string[]): Promise<void> {
     const query = rest.filter((a) => !a.startsWith("--")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory brain search <query> [--all] [--hybrid|--fts] [--rerank|--no-rerank]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK)",
+        "usage: zemory brain search <query> [--all] [--digest] [--hybrid|--fts] [--rerank|--no-rerank]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK)",
       );
+      return;
+    }
+    if (rest.includes("--digest")) {
+      // Recall "digest lane": session-level hits (read the thin digest first,
+      // drill into messages via `brain digest <session>` / `brain show <#id>`).
+      const proj = all ? undefined : (findProjectRoot() ?? process.cwd());
+      const dhits = searchDigests(query, { project: proj });
+      console.log(`zemory brain search — "${query}" · digest lane (${all ? "whole brain" : "this project"})`);
+      if (!dhits.length) {
+        console.log("  no session digests match. (Run `zemory brain digest --all` if you haven't built them.)");
+        return;
+      }
+      for (const h of dhits) {
+        console.log(`  ▪ ${h.session_id}  [${h.meta.source} · ${h.meta.host}]  ${fmtDate(h.meta.to)}`);
+        console.log(`     ${h.snippet}`);
+      }
+      console.log("  → open one: `zemory brain digest <session_id>`");
       return;
     }
     const project = findProjectRoot() ?? process.cwd();
@@ -583,6 +619,23 @@ async function cmdBrain(args: string[]): Promise<void> {
     }
     return;
   }
+  if (sub === "digest") {
+    const rest = args.slice(1);
+    const sid = rest.find((a) => !a.startsWith("--"));
+    if (sid) {
+      const d = getDigest(undefined, sid);
+      if (!d) {
+        console.log(`zemory brain digest: no digest for session "${sid}". Build with \`zemory brain digest --all\`.`);
+        return;
+      }
+      printDigest(d);
+      return;
+    }
+    // No session id → (re)build digests (hash-guarded; unchanged are skipped).
+    const r = digestBackfill();
+    console.log(`zemory brain digest — built/updated ${r.built} of ${r.scanned} session(s) [extractive]`);
+    return;
+  }
   if (sub === "info") {
     const info = brainInfo();
     console.log(`zemory brain — ${info.dbPath} (${info.sizeKB} KB)`);
@@ -640,6 +693,9 @@ async function cmdBrain(args: string[]): Promise<void> {
       "  show <#id>        print the full message for a search hit.",
       "  info              table row-counts of global_memory.db.",
       "  hosts             sessions by PC → source → project (per-machine provenance).",
+      "  digest [--all]     (re)build per-session summary digests (cheap-token recall lens).",
+      "  digest <session>   show one session's digest (drill to messages via #id).",
+      "  search <q> --digest  recall the DIGEST lane (session-level hits) instead of messages.",
       "  savings           token benchmark: baseline (no-zemory) vs actual.",
       "",
       "  Local-only: transcripts are read and stored locally, never transmitted.",
