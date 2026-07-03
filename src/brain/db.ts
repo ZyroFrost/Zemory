@@ -17,7 +17,7 @@ const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
 export const BRAIN_DIR = ENV_DB ? dirname(ENV_DB) : join(homedir(), ".zemory");
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   cwd           TEXT,
   title         TEXT,
   host          TEXT,               -- machine that ingested it (os.hostname()); null/'unknown' = pre-v4
+  origin        TEXT NOT NULL DEFAULT 'local', -- 'local' = agent transcript on disk; 'web' = web-chat (chatgpt-web/…)
   started_at    TEXT,               -- ISO timestamp of first message
   ended_at      TEXT,               -- ISO timestamp of last message
   message_count INTEGER NOT NULL DEFAULT 0
@@ -313,6 +314,15 @@ function migrate(db: BrainDB, fromVersion: number): void {
     // by scan + `brain digest --all`, so there is nothing to backfill here.
     version = 5;
   }
+  if (version < 6) {
+    // v6 adds sessions.origin ('local' | 'web') so recall can separate local
+    // agent transcripts from captured web-chat. Every existing row is a local
+    // agent session → the NOT NULL DEFAULT 'local' backfills them automatically.
+    if (!hasColumn(db, "sessions", "origin")) {
+      db.exec("ALTER TABLE sessions ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'");
+    }
+    version = 6;
+  }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
 
@@ -335,5 +345,7 @@ export function openBrain(dbPath: string = BRAIN_DB): BrainDB {
   // The host index lives here, not in SCHEMA, because on a pre-v4 DB the column
   // does not exist yet when SCHEMA runs; by now it does (CREATE TABLE or migrate).
   db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_host ON sessions(host)");
+  // origin (v6) may be added by migrate on a pre-v6 DB → build its index once the column exists.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_origin ON sessions(origin)");
   return db;
 }

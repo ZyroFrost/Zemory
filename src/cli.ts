@@ -16,6 +16,7 @@ import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.
 import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
 import { embedPending, vectorCount, vectorRemaining } from "./brain/vectors.js";
 import { runRagBench } from "./brain/ragbench.js";
+import { scanWeb } from "./brain/scanweb.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
 import { exportBrainBundle, importBrainBundle, mergeBrainBundle, resolveShareKey, syncDrive, writeBrainShareKey } from "./brain/share.js";
 import { getDriveDir } from "./settings.js";
@@ -312,6 +313,35 @@ async function cmdBrain(args: string[]): Promise<void> {
     printScanReport(scan({ deep }));
     return;
   }
+  if (sub === "scan-web") {
+    const platform = flagValue(args, "--platform") ?? "chatgpt";
+    const refresh = args.includes("--refresh");
+    console.log(`zemory brain scan-web — ${platform} (web-chat capture, origin=web)`);
+    const r = await scanWeb({ platform, refresh }, (m) => console.log("  " + m));
+    if (r.status === "no-browser") {
+      console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
+      process.exitCode = 1;
+      return;
+    }
+    if (r.status === "no-tab") {
+      console.log(`  ✗ window opened but no ${platform} tab reachable on the debug port yet — wait for it to load, then re-run.`);
+      process.exitCode = 1;
+      return;
+    }
+    if (r.status === "need-login") {
+      console.log(`  → A dedicated browser window is open at ${r.url}. Log in to YOUR account there (one time — password stays in the browser, never touches zemory), then re-run \`zemory brain scan-web\`.`);
+      return;
+    }
+    console.log(`  ✓ signed in as ${r.email ?? "?"} · ${r.total} conversation(s) on the account`);
+    console.log(`  ↓ pulled ${r.pulled} new · skipped ${r.skipped} (already ingested) · failed ${r.failed}`);
+    if (r.scan) {
+      const web = r.scan.agents.find((a) => a.source.endsWith("-web"));
+      if (web) console.log(`  ⤷ brain now holds ${web.source}: ${web.sessions} session(s), ${web.messages} message(s)`);
+      console.log("  → vectorize the new ones: `zemory brain embed --all`");
+    }
+    if (r.failed) console.log("  note: some failed (rate-limit?) — just re-run to resume; it skips what's already in.");
+    return;
+  }
   if (sub === "search") {
     const rest = args.slice(1);
     const all = rest.includes("--all");
@@ -319,10 +349,12 @@ async function cmdBrain(args: string[]): Promise<void> {
     const forceHybrid = rest.includes("--hybrid");
     const forceRerank = rest.includes("--rerank");
     const forceNoRerank = rest.includes("--no-rerank");
-    const query = rest.filter((a) => !a.startsWith("--")).join(" ");
+    const originOpt = flagValue(rest, "--origin"); // 'local' | 'web' | undefined
+    // Drop --flags AND the value token that follows --origin so it never leaks into the query.
+    const query = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--origin").join(" ");
     if (!query) {
       console.log(
-        "usage: zemory brain search <query> [--all] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory brain search <query> [--all] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
@@ -350,11 +382,12 @@ async function cmdBrain(args: string[]): Promise<void> {
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
     const hits = useHybrid
-      ? await searchHybrid(query, { project, all, log: true, rerank: rerankOpt, recency: recencyOpt })
-      : search(query, { project, all, log: true, recency: recencyOpt });
+      ? await searchHybrid(query, { project, all, origin: originOpt, log: true, rerank: rerankOpt, recency: recencyOpt })
+      : search(query, { project, all, origin: originOpt, log: true, recency: recencyOpt });
     printHits(
       query,
       (all ? "whole brain" : `project: ${project}`) +
+        (originOpt ? ` · origin=${originOpt}` : "") +
         (useHybrid ? " · hybrid (FTS+vector)" : " · FTS") +
         (useRerank ? " · rerank (cross-encoder)" : "") +
         (recencyOpt === false ? "" : " · recency"),

@@ -100,16 +100,17 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       if (!adapter) continue;
       const r = ingestFile(db, adapter, file);
       if (r.changed) changedFiles++;
-      if (!r.changed || !r.session) continue;
-      // Dedupe by session id (a resumed session can appear under two files).
-      const ex = touched.get(r.session.id);
-      if (ex) {
-        ex.newMessages += r.session.newMessages;
-        ex.messages = r.session.messages;
-        ex.from = minDate(ex.from, r.session.from);
-        ex.to = maxDate(ex.to, r.session.to);
-      } else {
-        touched.set(r.session.id, r.session);
+      for (const rs of r.sessions) {
+        // Dedupe by session id (a resumed session can appear under two files).
+        const ex = touched.get(rs.id);
+        if (ex) {
+          ex.newMessages += rs.newMessages;
+          ex.messages = rs.messages;
+          ex.from = minDate(ex.from, rs.from);
+          ex.to = maxDate(ex.to, rs.to);
+        } else {
+          touched.set(rs.id, rs);
+        }
       }
     }
 
@@ -287,7 +288,7 @@ export function brainHostTree(dbPath: string = BRAIN_DB): HostTreeNode[] {
 
 interface FileResult {
   changed: boolean;
-  session: SessionReport | null;
+  sessions: SessionReport[];
 }
 
 interface PendingMsg {
@@ -296,6 +297,57 @@ interface PendingMsg {
   content: string;
   tool: string | null;
   ts: string | null;
+}
+
+interface WriteSessionArgs {
+  sessionId: string;
+  source: string;
+  origin: string;
+  cwd?: string;
+  title?: string;
+  msgs: PendingMsg[];
+  wholeReplace: boolean;
+}
+
+/**
+ * Upsert one session, (re)insert its messages, refresh counts, drop-if-empty.
+ * Returns net new messages. Shared by the single- and multi-session ingest
+ * paths. Content is redacted here so both paths are covered identically.
+ */
+function writeSession(db: BrainDB, a: WriteSessionArgs): number {
+  db.prepare(
+    `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host)
+     VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
+     ON CONFLICT(id) DO UPDATE SET
+       origin       = excluded.origin,
+       project_root = COALESCE(excluded.project_root, sessions.project_root),
+       cwd          = COALESCE(excluded.cwd, sessions.cwd),
+       title        = COALESCE(excluded.title, sessions.title),
+       host         = excluded.host`,
+  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: a.cwd ?? null, cwd: a.cwd ?? null, title: a.title ?? null, host: HOST });
+
+  const before = a.wholeReplace
+    ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(a.sessionId) as { c: number }).c
+    : 0;
+  if (a.wholeReplace) db.prepare("DELETE FROM messages WHERE session_id = ?").run(a.sessionId);
+
+  const ins = db.prepare(
+    `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  let inserted = 0;
+  for (const m of a.msgs) inserted += ins.run(a.sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
+
+  db.prepare(
+    `UPDATE sessions SET
+       message_count = (SELECT COUNT(*) FROM messages WHERE session_id = @id),
+       started_at    = (SELECT MIN(timestamp) FROM messages WHERE session_id = @id),
+       ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = @id)
+     WHERE id = @id`,
+  ).run({ id: a.sessionId });
+
+  db.prepare("DELETE FROM sessions WHERE id = @id AND message_count = 0").run({ id: a.sessionId });
+  return a.wholeReplace ? Math.max(0, inserted - before) : inserted;
 }
 
 function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileResult {
@@ -313,7 +365,45 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
     prev.size === file.size &&
     prev.mtime_ms === file.mtimeMs
   ) {
-    return { changed: false, session: sessionSnapshot(db, sessionId) };
+    return { changed: false, sessions: [] };
+  }
+
+  // WHOLE-MULTI: one file holds MANY conversations (e.g. a web-chat export).
+  // Fan out to N sessions, each whole-replaced, keyed by its own sessionId.
+  if (adapter.mode === "whole" && adapter.parseFileMulti) {
+    const parsed = adapter.parseFileMulti(file.path);
+    if (!parsed || !parsed.length) return { changed: false, sessions: [] };
+    const origin = adapter.origin ?? "local";
+    const reports: SessionReport[] = [];
+    let total = 0;
+    const tx = db.transaction(() => {
+      for (const conv of parsed) {
+        const pending: PendingMsg[] = conv.messages.map((m) => ({
+          uuid: m.uuid, role: m.role, content: m.content, tool: m.toolName, ts: m.timestamp,
+        }));
+        const added = writeSession(db, {
+          sessionId: conv.sessionId, source: file.source, origin,
+          cwd: conv.cwd, title: conv.title, msgs: pending, wholeReplace: true,
+        });
+        total += added;
+        const snap = sessionSnapshot(db, conv.sessionId);
+        if (snap) {
+          snap.newMessages = added;
+          reports.push(snap);
+        }
+      }
+      // One ingest_state row per FILE (drives the size/mtime short-circuit); the
+      // session_id column is a sentinel since the file maps to many sessions.
+      db.prepare(
+        `INSERT INTO ingest_state (file_path, source, session_id, size, mtime_ms, last_line, updated_at, parser_version)
+         VALUES (@path, @source, @sid, @size, @mtime, 0, @now, @pv)
+         ON CONFLICT(file_path) DO UPDATE SET
+           source = @source, session_id = @sid, size = @size, mtime_ms = @mtime,
+           last_line = 0, updated_at = @now, parser_version = @pv`,
+      ).run({ path: file.path, source: file.source, sid: `multi:${parsed.length}`, size: file.size, mtime: file.mtimeMs, now: new Date().toISOString(), pv: PARSER_VERSION });
+    });
+    tx();
+    return { changed: total > 0, sessions: reports };
   }
 
   let cwd: string | undefined;
@@ -329,7 +419,7 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
       text = readFileSync(file.path, "utf8");
       lines = text.split("\n");
     } catch {
-      return { changed: false, session: sessionSnapshot(db, sessionId) };
+      return { changed: false, sessions: [] };
     }
 
     // Do not consume a partial trailing JSON record. A valid final record is
@@ -359,7 +449,7 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
     nextLine = completeLines;
   } else if (adapter.mode === "whole" && adapter.parseFile) {
     const parsed = adapter.parseFile(file.path);
-    if (!parsed) return { changed: false, session: sessionSnapshot(db, sessionId) };
+    if (!parsed) return { changed: false, sessions: [] };
     cwd = parsed.cwd;
     title = parsed.title;
     for (const m of parsed.messages) {
@@ -367,19 +457,20 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
     }
     wholeReplace = true; // file is rewritten wholesale → replace this session's rows
   } else {
-    return { changed: false, session: sessionSnapshot(db, sessionId) };
+    return { changed: false, sessions: [] };
   }
 
   const tx = db.transaction(() => {
     db.prepare(
-      `INSERT INTO sessions (id, source, project_root, cwd, title, host)
-       VALUES (@id, @source, @project, @cwd, @title, @host)
+      `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host)
+       VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
        ON CONFLICT(id) DO UPDATE SET
+         origin       = excluded.origin,
          project_root = COALESCE(excluded.project_root, sessions.project_root),
          cwd          = COALESCE(excluded.cwd, sessions.cwd),
          title        = COALESCE(excluded.title, sessions.title),
          host         = excluded.host`,
-    ).run({ id: sessionId, source: file.source, project: cwd ?? null, cwd: cwd ?? null, title: title ?? null, host: HOST });
+    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: cwd ?? null, cwd: cwd ?? null, title: title ?? null, host: HOST });
 
     const before = wholeReplace
       ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(sessionId) as { c: number }).c
@@ -428,7 +519,7 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
   const added = tx();
   const snap = sessionSnapshot(db, sessionId);
   if (snap) snap.newMessages = added;
-  return { changed: added > 0, session: snap };
+  return { changed: added > 0, sessions: snap ? [snap] : [] };
 }
 
 function sessionSnapshot(db: BrainDB, sessionId: string): SessionReport | null {

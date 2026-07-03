@@ -14,6 +14,7 @@ export interface SearchHit {
   id: number;
   sessionId: string;
   source: string;
+  origin: string;
   project: string;
   role: string;
   timestamp: string | null;
@@ -37,6 +38,8 @@ export interface SearchOptions {
   rerank?: boolean;
   /** Filter: only hits from this source/agent (e.g. 'codex'). */
   source?: string;
+  /** Filter: only this origin bucket ('local' agent transcripts | 'web' chat). */
+  origin?: string;
   /** Filter: only this message role (e.g. 'user', 'assistant'). */
   role?: string;
   /** Filter: only messages at/after this epoch-ms timestamp. */
@@ -158,7 +161,7 @@ function hydrate(
   const limit = opts.limit ?? 12;
   const perSession = opts.perSession ?? 2;
   const getRow = db.prepare(
-    `SELECT m.id, m.session_id, m.role, m.content, m.timestamp, s.source, s.project_root
+    `SELECT m.id, m.session_id, m.role, m.content, m.timestamp, s.source, s.origin, s.project_root
      FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id = ?`,
   );
   const wantProject = !opts.all && opts.project ? norm(opts.project) : null;
@@ -166,11 +169,12 @@ function hydrate(
   const hits: SearchHit[] = [];
   for (const { rowid, s } of ranked) {
     const row = getRow.get(rowid) as
-      | { id: number; session_id: string; role: string; content: string; timestamp: string | null; source: string; project_root: string | null }
+      | { id: number; session_id: string; role: string; content: string; timestamp: string | null; source: string; origin: string | null; project_root: string | null }
       | undefined;
     if (!row) continue;
     if (wantProject && norm(row.project_root ?? "") !== wantProject) continue;
     if (opts.source && row.source !== opts.source) continue;
+    if (opts.origin && (row.origin ?? "local") !== opts.origin) continue;
     if (opts.role && row.role !== opts.role) continue;
     if (opts.sinceMs && !(Date.parse(row.timestamp ?? "") >= opts.sinceMs)) continue;
     const used = perSessionCount.get(row.session_id) ?? 0;
@@ -180,6 +184,7 @@ function hydrate(
       id: row.id,
       sessionId: row.session_id,
       source: row.source,
+      origin: row.origin ?? "local",
       project: row.project_root ?? "(unknown)",
       role: row.role,
       timestamp: row.timestamp,

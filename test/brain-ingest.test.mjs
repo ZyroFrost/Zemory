@@ -104,11 +104,13 @@ test("opening a pre-v4 DB migrates: adds host column and backfills 'unknown'", (
 
   const db = openBrain(dbPath);
   const cols = db.prepare("PRAGMA table_info(sessions)").all().map((c) => c.name);
-  const row = db.prepare("SELECT host FROM sessions WHERE id='legacy'").get();
+  const row = db.prepare("SELECT host, origin FROM sessions WHERE id='legacy'").get();
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
   db.close();
 
   assert.ok(cols.includes("host"), "host column added by migration");
   assert.equal(row.host, "unknown", "legacy rows backfilled to 'unknown'");
-  assert.equal(ver.version, 5); // migrates through the latest schema version
+  assert.ok(cols.includes("origin"), "origin column added by migration (v6)");
+  assert.equal(row.origin, "local", "legacy rows backfilled to origin 'local'");
+  assert.equal(ver.version, 6); // migrates through the latest schema version
 });
