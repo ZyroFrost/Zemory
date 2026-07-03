@@ -11,11 +11,11 @@ function seedBrain(dbPath, sessions) {
   const db = openBrain(dbPath);
   try {
     const insS = db.prepare(
-      `INSERT INTO sessions (id, source, project_root, host, message_count) VALUES (?, ?, ?, ?, 0)`,
+      `INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?, ?, ?, ?, ?, 0)`,
     );
     const insM = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?, ?, ?, ?, ?)");
     for (const s of sessions) {
-      insS.run(s.id, s.source ?? "claude-code", s.project ?? "C:\\p", s.host);
+      insS.run(s.id, s.source ?? "claude-code", s.origin ?? "local", s.project ?? "C:\\p", s.host);
       for (const m of s.messages) insM.run(s.id, m.uuid ?? null, m.role ?? "user", m.content, m.ts ?? "2026-01-01T00:00:00Z");
     }
   } finally {
@@ -106,7 +106,7 @@ test("merge import is additive: keeps local data, adds new sessions/messages, pr
         { uuid: null, content: "tool log Y" },
       ],
     },
-    { id: "onlyB", host: "PC-B", messages: [{ uuid: "ub", content: "only on B" }] },
+    { id: "onlyB", host: "PC-B", origin: "web", source: "chatgpt-web", messages: [{ uuid: "ub", content: "only on B" }] },
   ]);
 
   writeBrainShareKey(keyPath);
@@ -120,12 +120,14 @@ test("merge import is additive: keeps local data, adds new sessions/messages, pr
   const db = openBrain(dbA);
   try {
     const sessions = Object.fromEntries(
-      db.prepare("SELECT id, host, message_count FROM sessions").all().map((s) => [s.id, s]),
+      db.prepare("SELECT id, host, origin, message_count FROM sessions").all().map((s) => [s.id, s]),
     );
     assert.ok(sessions.onlyA, "onlyA preserved (nothing lost)");
     assert.equal(sessions.onlyA.host, "PC-A");
+    assert.equal(sessions.onlyA.origin, "local", "local-origin session stays local");
     assert.ok(sessions.onlyB, "onlyB merged in");
     assert.equal(sessions.onlyB.host, "PC-B", "onlyB keeps producing-machine host");
+    assert.equal(sessions.onlyB.origin, "web", "web-origin session keeps its 'web' lane across the merge");
     assert.equal(sessions.shared.host, "PC-A", "shared host stays local (INSERT OR IGNORE)");
     assert.equal(sessions.shared.message_count, 4, "shared = uA1 + uB2 + tool-log-X + tool-log-Y");
     // No duplicate of the uuid'd or the NULL-uuid shared message.
