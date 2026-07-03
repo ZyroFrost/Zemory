@@ -282,8 +282,12 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
       try {
         db.transaction(() => {
           db.exec(
-            `INSERT OR IGNORE INTO sessions (id, source, project_root, cwd, title, host, started_at, ended_at, message_count)
-             SELECT id, source, project_root, cwd, title, host, started_at, ended_at, message_count FROM src.sessions`,
+            // Carry `origin` across machines (v6) so captured web-chat keeps its
+            // 'web' lane on the receiving PC. COALESCE guards a pre-v6 bundle
+            // (openBrain above migrates the incoming DB, so src.sessions.origin
+            // exists; the COALESCE is belt-and-braces for a null).
+            `INSERT OR IGNORE INTO sessions (id, source, origin, project_root, cwd, title, host, started_at, ended_at, message_count)
+             SELECT id, source, COALESCE(origin, 'local'), project_root, cwd, title, host, started_at, ended_at, message_count FROM src.sessions`,
           );
           // id is AUTOINCREMENT and differs across DBs — omit it (FTS triggers
           // fire on real inserts). Dedup in two passes:
