@@ -323,6 +323,7 @@ export async function startUi(): Promise<void> {
           project: target,
           all: u.searchParams.get("all") === "1",
           source: u.searchParams.get("agent") || undefined,
+          origin: u.searchParams.get("origin") || undefined,
           role: u.searchParams.get("role") || undefined,
           sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
           log: true,

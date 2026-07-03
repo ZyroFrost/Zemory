@@ -796,6 +796,9 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <select id="fType" class="filter-sel" onchange="brainSearch()" title="Filter by message role">
             <option value="">Type: any</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
           </select>
+          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = agent transcripts on disk; Web = captured web-chat (ChatGPT/…)">
+            <option value="">Origin: any</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
+          </select>
           <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Filter by agent/source">
             <option value="">Agent: any</option>
           </select>
@@ -1311,7 +1314,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ el('docBody').textContent = 'error: ' + e; }
   }
   function closeDoc(){ el('docOverlay').style.display = 'none'; }
-  function clearFilters(){ el('fTime').value = '0'; el('fType').value = ''; el('fAgent').value = ''; brainSearch(); }
+  function clearFilters(){ el('fTime').value = '0'; el('fType').value = ''; el('fOrigin').value = ''; el('fAgent').value = ''; brainSearch(); }
   async function openSession(sid){
     el('sessName').textContent = 'Full session';
     el('sessMeta').textContent = '';
@@ -1384,7 +1387,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('resultCount').textContent = 'Searching...';
     el('brainhits').innerHTML = '<div class="empty">searching...</div>';
     try {
-      const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value}))).json();
+      const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value}))).json();
       if(!hits.length){
         el('resultCount').textContent = '0 results';
         el('brainhits').innerHTML = '<div class="empty">No matches' + (all ? '.' : ' in this project. Try all projects.') + '</div>';

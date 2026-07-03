@@ -129,5 +129,5 @@ test("opening a pre-v5 DB migrates: adds session_digest table and sets version 5
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
   db.close();
   assert.equal(tbl.length, 1, "session_digest table created by migration");
-  assert.equal(ver.version, 5);
+  assert.equal(ver.version, 6); // migrates through to the latest schema version
 });

@@ -24,6 +24,13 @@ export interface ParsedSession {
   messages: ParsedMessage[];
 }
 
+/** One conversation inside a whole-file transcript that holds MANY (e.g. a
+ *  web-chat export = an array of conversations). Each carries its own stable
+ *  session id so the engine can fan one file out to N sessions. */
+export interface ParsedSessionMulti extends ParsedSession {
+  sessionId: string;
+}
+
 export interface TranscriptFile {
   source: string;
   path: string;
@@ -34,6 +41,12 @@ export interface TranscriptFile {
 export interface Adapter {
   /** Agent name recorded as `source` on every session. */
   source: string;
+  /**
+   * Provenance bucket stamped on every session: 'local' = an agent transcript
+   * that lives on disk (default); 'web' = a captured web-chat (chatgpt-web/…).
+   * Lets recall separate the two lanes. Absent → treated as 'local'.
+   */
+  origin?: "local" | "web";
   /**
    * append: jsonl, grown by appending lines → ingest resumes from a line offset.
    * whole:  one JSON file rewritten on change → re-parsed wholesale on change.
@@ -52,6 +65,12 @@ export interface Adapter {
   sessionId(filePath: string): string;
   /** append mode: parse a single jsonl line. */
   parseLine?(line: string): ParsedLine;
-  /** whole mode: parse the whole file. */
+  /** whole mode: parse the whole file into ONE session. */
   parseFile?(filePath: string): ParsedSession | null;
+  /**
+   * whole mode: parse a file that holds MANY conversations into N sessions (e.g.
+   * a web-chat export). Takes precedence over parseFile when present. Each entry
+   * is whole-replaced (re-parse on change), keyed by its own sessionId.
+   */
+  parseFileMulti?(filePath: string): ParsedSessionMulti[] | null;
 }
