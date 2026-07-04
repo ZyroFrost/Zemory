@@ -8,11 +8,25 @@ import { BRAIN_DIR } from "./brain/db.js";
 
 const CONFIG_PATH = join(BRAIN_DIR, "config.json");
 
+/** A provenance lane selector. Fields left undefined act as wildcards, so
+ *  `{origin:'web'}` matches every web session and `{origin:'local',host:'X',
+ *  source:'codex'}` matches exactly one agent on one machine. Used to EXCLUDE
+ *  "shared" lanes from sync/recall without deleting anything. */
+export interface ScopeLane {
+  origin?: string;
+  host?: string;
+  source?: string;
+}
+
 interface ZConfig {
   hybrid?: boolean;
   rerank?: boolean;
   scope?: boolean;
   drive?: string;
+  scopeExclude?: ScopeLane[];
+  /** UI cockpit layout (panel sizes / resize positions) — persisted so a reopen
+   *  restores exactly what the user dragged (localStorage resets per random port). */
+  ui?: Record<string, unknown>;
 }
 
 function read(): ZConfig {
@@ -69,5 +83,29 @@ export function getDriveDir(): string {
 export function setDriveDir(path: string): void {
   const c = read();
   c.drive = path;
+  write(c);
+}
+
+/** Lanes EXCLUDED from sync + recall (default none). A filter, never a delete. */
+export function getScopeExclude(): ScopeLane[] {
+  const v = read().scopeExclude;
+  return Array.isArray(v) ? v : [];
+}
+
+export function setScopeExclude(lanes: ScopeLane[]): void {
+  const c = read();
+  c.scopeExclude = lanes;
+  write(c);
+}
+
+/** UI cockpit layout blob (opaque to the server; the page defines its shape). */
+export function getUiState(): Record<string, unknown> {
+  const v = read().ui;
+  return v && typeof v === "object" ? v : {};
+}
+
+export function setUiState(state: Record<string, unknown>): void {
+  const c = read();
+  c.ui = state;
   write(c);
 }

@@ -88,19 +88,45 @@ function launchBrowser(exe: string, profileDir: string, port: number, url: strin
   child.unref();
 }
 
+/** Which browser tabs count as a supported web-chat surface. */
+const TAB_RE = /chatgpt\.com|openai\.com|gemini\.google|claude\.ai/;
+
 /** Minimal CDP client over the DevTools WebSocket (Runtime.evaluate only). */
 class Cdp {
   private id = 0;
-  private pending = new Map<number, (m: any) => void>();
+  private pending = new Map<number, { resolve: (m: any) => void; reject: (e: Error) => void }>();
+  private _dead = false;
   private constructor(private ws: any) {
     ws.addEventListener("message", (ev: any) => {
-      const m = JSON.parse(ev.data);
+      let m: any;
+      try {
+        m = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
       const cb = m.id ? this.pending.get(m.id) : undefined;
       if (cb) {
         this.pending.delete(m.id);
-        cb(m);
+        cb.resolve(m);
       }
     });
+    // If the socket drops mid-run, every in-flight evaluate() would otherwise
+    // await forever → Node exits 13 on the unsettled top-level await (B1).
+    // Reject all pending on close/error and mark the client dead so the caller
+    // can reconnect instead of hanging.
+    const die = (why: string) => {
+      if (this._dead) return;
+      this._dead = true;
+      const err = new Error(`CDP socket ${why}`);
+      for (const cb of this.pending.values()) cb.reject(err);
+      this.pending.clear();
+    };
+    ws.addEventListener("close", () => die("closed"));
+    ws.addEventListener("error", () => die("error"));
+  }
+
+  get dead(): boolean {
+    return this._dead;
   }
 
   static async connect(port: number, urlRe: RegExp): Promise<Cdp | null> {
@@ -112,21 +138,37 @@ class Cdp {
     }
     const page = targets.find((t) => t.type === "page" && urlRe.test(t.url || ""));
     if (!page?.webSocketDebuggerUrl) return null;
-    const ws = new g.WebSocket(page.webSocketDebuggerUrl);
-    await new Promise<void>((res, rej) => {
-      ws.addEventListener("open", () => res());
-      ws.addEventListener("error", () => rej(new Error("CDP socket error")));
-    });
+    let ws: any;
+    try {
+      ws = new g.WebSocket(page.webSocketDebuggerUrl);
+      await new Promise<void>((res, rej) => {
+        ws.addEventListener("open", () => res());
+        ws.addEventListener("error", () => rej(new Error("CDP socket error")));
+      });
+    } catch {
+      return null;
+    }
     const cdp = new Cdp(ws);
-    await cdp.send("Runtime.enable");
+    try {
+      await cdp.send("Runtime.enable");
+    } catch {
+      cdp.close();
+      return null;
+    }
     return cdp;
   }
 
   private send(method: string, params: Record<string, unknown> = {}): Promise<any> {
+    if (this._dead) return Promise.reject(new Error("CDP socket dead"));
     const id = ++this.id;
-    return new Promise((res) => {
-      this.pending.set(id, res);
-      this.ws.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      try {
+        this.ws.send(JSON.stringify({ id, method, params }));
+      } catch (e) {
+        this.pending.delete(id);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      }
     });
   }
 
@@ -154,6 +196,10 @@ export interface ScanWebOptions {
   delayMs?: number;
   /** Re-pull conversations already in the brain (default false = resume/skip). */
   refresh?: boolean;
+  /** Pull at most N new conversations (newest first) — for quick verify. */
+  limit?: number;
+  /** Ingest every N pulled conversations so a mid-run crash keeps progress. */
+  batchSize?: number;
   dbPath?: string;
 }
 
@@ -166,17 +212,37 @@ export interface ScanWebResult {
   pulled?: number;
   skipped?: number;
   failed?: number;
+  /** True if the CDP link dropped and could not be recovered — re-run to resume. */
+  interrupted?: boolean;
   scan?: ScanReport;
   onProgress?: never;
 }
 
-/** Fetch one conversation with a small backoff on transient failures (429/5xx). */
+/** Fetch one conversation with a small backoff on transient failures (429/5xx).
+ *  Short-circuits when the CDP socket has died so the caller can reconnect
+ *  instead of wasting the full backoff on a dead connection. */
 async function fetchConv(cdp: Cdp, p: Platform, id: string): Promise<any | null> {
   for (let attempt = 0; attempt < 4; attempt++) {
+    if (cdp.dead) return null;
     try {
       return await cdp.evaluate(p.convExpr(id));
     } catch {
+      if (cdp.dead) return null;
       await sleep(1500 * (attempt + 1)); // 1.5s, 3s, 4.5s, 6s
+    }
+  }
+  return null;
+}
+
+/** Reconnect to the (still-alive, detached) browser after a CDP drop (B1). */
+async function reconnect(port: number, log: (m: string) => void): Promise<Cdp | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await sleep(2000 * (attempt + 1)); // 2s, 4s, 6s
+    log(`  CDP dropped — reconnecting (attempt ${attempt + 1}/3)…`);
+    const c = await Cdp.connect(port, TAB_RE);
+    if (c) {
+      log("  reconnected.");
+      return c;
     }
   }
   return null;
@@ -194,7 +260,9 @@ export async function scanWeb(
   const p = PLATFORMS[opts.platform ?? "chatgpt"];
   if (!p) return { status: "no-browser", platform: opts.platform ?? "?" };
   const port = opts.port ?? 9222;
-  const delayMs = opts.delayMs ?? 1200;
+  const delayMs = opts.delayMs ?? 1500; // ~1 req / 1.5s eases the ~200-req 429 wall
+  const limit = opts.limit && opts.limit > 0 ? opts.limit : Infinity;
+  const batchSize = opts.batchSize && opts.batchSize > 0 ? opts.batchSize : 25;
   const dbPath = opts.dbPath ?? BRAIN_DB;
   const profileDir = join(BRAIN_DIR, "browser", p.key);
   const importDir = join(BRAIN_DIR, "imports", p.key);
@@ -209,7 +277,7 @@ export async function scanWeb(
     await sleep(6000);
   }
 
-  const cdp = await Cdp.connect(port, /chatgpt\.com|openai\.com|gemini\.google|claude\.ai/);
+  let cdp = await Cdp.connect(port, TAB_RE);
   if (!cdp) return { status: "no-tab", platform: p.key, url: p.url };
 
   try {
@@ -229,30 +297,62 @@ export async function scanWeb(
 
     const ids = await cdp.evaluate<string[]>(p.listExpr);
     log(`enumerated ${ids.length} conversation(s)`);
-    const out: unknown[] = [];
+
+    // B2: ingest in batches so a mid-run crash never loses what was pulled. Each
+    // batch (current batch only) is written to one reused file and ingested via
+    // the normal scan() → chatgptAdapter (origin=web). Resume skips by brain
+    // content, not by file, so a leftover file is harmless.
+    const partFile = join(importDir, "scan-web-part.json");
+    let batch: unknown[] = [];
+    let pulled = 0;
     let skipped = 0;
     let failed = 0;
+    let ingested = 0;
+    let lastScan: ScanReport | undefined;
+
+    const flush = () => {
+      if (!batch.length) return;
+      writeFileSync(partFile, JSON.stringify(batch), "utf8");
+      lastScan = scan({ dbPath });
+      ingested += batch.length;
+      log(`  ingested ${ingested} conversation(s) so far (batch of ${batch.length})`);
+      batch = [];
+    };
+
+    let interrupted = false;
     for (let i = 0; i < ids.length; i++) {
+      if (pulled >= limit) break;
       if (have.has(`chatgpt-${ids[i]}`)) {
         skipped++;
         continue;
       }
-      const c = await fetchConv(cdp, p, ids[i]);
-      if (c) out.push(c);
-      else failed++;
-      if ((i + 1) % 20 === 0 || i === ids.length - 1) log(`  pulled ${out.length} · skipped ${skipped} · failed ${failed} (${i + 1}/${ids.length})`);
+      let c = await fetchConv(cdp, p, ids[i]);
+      if (!c && cdp.dead) {
+        // Persist progress, then try to recover the (still-alive) browser.
+        flush();
+        const fresh = await reconnect(port, log);
+        if (fresh) {
+          cdp = fresh;
+          c = await fetchConv(cdp, p, ids[i]);
+        }
+      }
+      if (c) {
+        batch.push(c);
+        pulled++;
+      } else {
+        failed++;
+      }
+      if (batch.length >= batchSize) flush();
+      if (cdp.dead) {
+        interrupted = true; // couldn't recover — bail; re-run resumes
+        break;
+      }
+      if ((i + 1) % 20 === 0 || i === ids.length - 1) log(`  pulled ${pulled} · skipped ${skipped} · failed ${failed} (${i + 1}/${ids.length})`);
       await sleep(delayMs);
     }
+    flush();
 
-    if (!out.length) {
-      return { status: "done", platform: p.key, email: auth.email, total: ids.length, pulled: 0, skipped, failed };
-    }
-    // Write this batch and let the normal scan() ingest it (chatgptAdapter, origin=web).
-    const file = join(importDir, "scan-web-latest.json");
-    writeFileSync(file, JSON.stringify(out), "utf8");
-    log(`ingesting ${out.length} new conversation(s)…`);
-    const report = scan({ dbPath });
-    return { status: "done", platform: p.key, email: auth.email, total: ids.length, pulled: out.length, skipped, failed, scan: report };
+    return { status: "done", platform: p.key, email: auth.email, total: ids.length, pulled, skipped, failed, interrupted, scan: lastScan };
   } finally {
     cdp.close();
   }

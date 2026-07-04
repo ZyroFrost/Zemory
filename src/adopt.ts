@@ -21,7 +21,9 @@ import type { HarnessConfig } from "./core/types.js";
 import { rememberProject } from "./registry.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_DIR = join(HERE, "..", "docs-template");
+/** The shared harness STANDARD, shipped with zemory (separate from any project's
+ *  docs/). This is what `init`/`sync` scaffold and the UI loads for reference. */
+export const TEMPLATE_DIR = join(HERE, "..", "docs-template");
 
 export interface AdoptResult {
   createdConfig: boolean;

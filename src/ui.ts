@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { createServer } from "node:http";
 import type { ServerResponse } from "node:http";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { ensureHarness, freshHarness } from "./adopt.js";
+import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./adopt.js";
 import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
 import { BRAIN_DIR, openBrain } from "./brain/db.js";
 import { getMessageContext, getSessionThread, recall } from "./brain/search.js";
@@ -20,12 +20,17 @@ import {
   getDriveDir,
   getHybridSetting,
   getRerankSetting,
+  getScopeExclude,
   getScopeSetting,
+  getUiState,
   setDriveDir,
   setHybridSetting,
   setRerankSetting,
+  setScopeExclude,
   setScopeSetting,
+  setUiState,
 } from "./settings.js";
+import { type ScopeLane, scopeTree, toggleLane } from "./brain/scope.js";
 import { PAGE } from "./ui-page.js";
 import { onPath } from "./util.js";
 
@@ -110,6 +115,19 @@ function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string;
     return { ok: true, file: rel, content: readFileSync(target, "utf8") };
   } catch {
     return { ok: false, file: rel, content: "(file not found — run zemory init/sync to create it)" };
+  }
+}
+
+/** Read a file from the SHARED STANDARD (docs-template/) — path-guarded. This is
+ *  the canonical harness, not any project's docs; the UI loads it read-only. */
+function readStandardDoc(rel: string): { ok: boolean; file: string; content: string } {
+  const target = resolve(TEMPLATE_DIR, rel);
+  const rl = relative(TEMPLATE_DIR, target);
+  if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
+  try {
+    return { ok: true, file: rel, content: readFileSync(target, "utf8") };
+  } catch {
+    return { ok: false, file: rel, content: "(standard template file not found)" };
   }
 }
 
@@ -224,9 +242,21 @@ function dashboardBrain(projectRoot: string): unknown {
     hybrid: getHybridSetting(),
     rerank: getRerankSetting(),
     scope: getScopeSetting(),
+    scopeTree: safeScopeTree(),
+    scopeExcluded: getScopeExclude().length,
+    scopeRules: getScopeExclude(),
     drive: driveSummary(),
     generatedAt: new Date().toISOString(),
   };
+}
+
+/** Provenance tree for the Global-memory panel; fail-open to empty on any error. */
+function safeScopeTree(): unknown {
+  try {
+    return scopeTree();
+  } catch {
+    return [];
+  }
 }
 
 function resolveBrowser(): string | null {
@@ -304,6 +334,36 @@ export async function startUi(): Promise<void> {
       setScopeSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, scope: getScopeSetting() });
     }
+    if (p === "/ui-state") {
+      return json(res, { layout: getUiState() });
+    }
+    if (p === "/set-ui-state") {
+      // Persist the cockpit layout the user dragged, so a reopen restores it
+      // (localStorage is keyed by origin and the UI binds a random port each run).
+      const raw = u.searchParams.get("state") ?? "{}";
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") setUiState(parsed as Record<string, unknown>);
+      } catch {
+        /* ignore malformed layout */
+      }
+      return json(res, { ok: true });
+    }
+    if (p === "/set-scope-exclude") {
+      // Toggle one provenance lane in/out of the exclude list (sync + recall).
+      const lane: ScopeLane = {};
+      const o = u.searchParams.get("origin");
+      const h = u.searchParams.get("host");
+      const s = u.searchParams.get("source");
+      if (o) lane.origin = o;
+      if (h) lane.host = h;
+      if (s) lane.source = s;
+      const exclude = u.searchParams.get("on") === "1";
+      if (lane.origin || lane.host || lane.source) {
+        setScopeExclude(toggleLane(getScopeExclude(), lane, exclude));
+      }
+      return json(res, { ok: true, scopeExcluded: getScopeExclude().length });
+    }
     if (p === "/set-drive") {
       const path = (u.searchParams.get("path") ?? "").trim();
       setDriveDir(path);
@@ -311,6 +371,9 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/doc") {
       return json(res, readDoc(target, u.searchParams.get("file") ?? ""));
+    }
+    if (p === "/standard-doc") {
+      return json(res, readStandardDoc(u.searchParams.get("file") ?? ""));
     }
     if (req.method === "POST" && p === "/brain-scan") {
       return json(res, scan({ deep: u.searchParams.get("deep") === "1" }));

@@ -163,8 +163,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .brand-text { display: grid; gap: 3px; min-width: 0; }
   .brand h1 { margin: 0; color: var(--green); font-size: 30px; letter-spacing: -.075em; line-height: 1; }
   .brand p { margin: 0; color: var(--muted); font-size: 12px; }
-  .proj-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+  .proj-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
   .proj-pick select { width: 100%; }
+  .proj-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; margin-top: 6px; }
+  .proj-add input { width: 100%; background: var(--panel-3); border: 1px solid rgba(255, 255, 255, .1); color: #dce7df; border-radius: 6px; padding: 4px 7px; font-size: 12px; min-width: 0; }
   .rail-scroll { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
   .rail .panel { box-shadow: none; display: grid; grid-template-rows: auto minmax(0, 1fr); flex: 1 1 0; min-height: 80px; }
   .rail .panel > .panel-pad { overflow: auto; }
@@ -585,6 +587,17 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   }
   .mini-row:last-child { border-bottom: 0; }
   .mini-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 720; }
+  .scope-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .scope-tick { flex: 0 0 auto; accent-color: var(--green); cursor: pointer; margin: 0; }
+  .scope-tick:disabled { cursor: not-allowed; opacity: .5; }
+  .scope-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #dce7df; }
+  .scope-label.ex { color: var(--faint); text-decoration: line-through; }
+  .scope-count { flex: 0 0 auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .scope-add { display: flex; gap: 6px; margin: 8px 0 5px; flex-wrap: wrap; align-items: center; }
+  .scope-in { background: var(--panel-3); border: 1px solid rgba(255, 255, 255, .1); color: #dce7df; border-radius: 6px; padding: 3px 6px; font-size: 11px; min-width: 0; flex: 1 1 84px; }
+  .scope-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+  .scope-chip { font-size: 11px; background: rgba(240, 180, 90, .14); color: var(--amber); border-radius: 10px; padding: 2px 8px; cursor: pointer; }
+  .scope-chip:hover { background: rgba(240, 180, 90, .24); }
   .path { font-family: var(--mono); font-size: 10px; word-break: break-all; color: var(--faint); }
   .activity { display: grid; gap: 8px; align-content: start; }
   .event {
@@ -741,7 +754,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <section class="panel" id="project" data-grow="rail0" data-grow-default="1.6" style="flex-grow:1.6">
           <div class="panel-head"><div><h3>Project harness<span class="q" title="A per-project docs harness: rules + TODO + changelog (docs/.harness.json + docs/agent/*.md) that zemory reads and keeps in sync. The brain is GLOBAL; this only chooses which project's harness files to view/apply. Pick a project below; click a doc to read it.">?</span></h3><p>Docs &amp; rules for the selected project.</p></div></div>
           <div class="panel-pad">
-            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Setup / fresh" onclick="openMenu()">⚙</button></div>
+            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Run harness: restructure this project's docs to the standard (scaffold missing, number plan, never overwrite the DB source)" onclick="runHarness()">Run</button><button class="ghost" title="Setup / fresh" onclick="openMenu()">⚙</button></div>
+            <div class="proj-add"><input id="newProj" placeholder="Add project by folder path…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()">+ Add</button></div>
             <div id="app" style="margin-top:8px"></div>
           </div>
         </section>
@@ -883,14 +897,34 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   const layoutDefaults = { railW: '244px', inspectorW: '366px', bottomH: '210px', recallLeft: '64%' };
 
   function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+  // Layout is persisted SERVER-SIDE (~/.zemory/config.json) so a reopen restores
+  // it exactly — localStorage is keyed by origin and the cockpit binds a random
+  // port every launch, which is why drags used to reset. localStorage is kept as
+  // a same-port fast cache; the server is the durable source of truth.
+  let layoutCache = null;
   function readLayout(){
-    try { return JSON.parse(localStorage.getItem(layoutKey) || '{}') || {}; }
-    catch(e){ return {}; }
+    if(layoutCache) return layoutCache;
+    try { layoutCache = JSON.parse(localStorage.getItem(layoutKey) || '{}') || {}; }
+    catch(e){ layoutCache = {}; }
+    return layoutCache;
   }
   function writeLayout(patch){
     const next = readLayout();
     Object.keys(patch).forEach(k => patch[k] == null ? delete next[k] : next[k] = patch[k]);
+    layoutCache = next;
     try { localStorage.setItem(layoutKey, JSON.stringify(next)); } catch(e){}
+    try { fetch('/set-ui-state?state=' + encodeURIComponent(JSON.stringify(next)), { method: 'POST' }); } catch(e){}
+  }
+  async function loadLayoutFromServer(){
+    try {
+      const s = await (await fetch('/ui-state')).json();
+      if(s && s.layout && Object.keys(s.layout).length){
+        layoutCache = s.layout;
+        try { localStorage.setItem(layoutKey, JSON.stringify(s.layout)); } catch(e){}
+        applyStoredLayout();
+        applyStoredGrows();
+      }
+    } catch(e){}
   }
   function setLayoutVar(name, value){
     document.documentElement.style.setProperty(name, value);
@@ -1147,6 +1181,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     return o || '<option value="">(none)</option>';
   }
   function pick(){ curRoot = el('proj').value; checks = {}; tick(); brainTick(); runChecks(); }
+  // Run harness = restructure the selected project's docs to the standard
+  // (scaffold missing, register it). The agent then adapts content per AGENTS.md.
+  function runHarness(){ act('/sync'); }
+  // Add a project by path: target it (shows as "not set up"), then user hits Run.
+  function addProject(){ const p = el('newProj').value.trim(); if(!p) return; el('newProj').value = ''; applyRoot(p); }
   function applyRoot(path){ if(!path || !path.trim()) return; curRoot = path.trim(); checks = {}; el('msg').textContent = 'Target project: ' + curRoot; tick(); brainTick(); runChecks(); }
   function goRoot(){ applyRoot(el('rootpath').value); }
   function rootKey(e){ if(e.key === 'Enter') goRoot(); }
@@ -1157,8 +1196,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('proj').innerHTML = projOpts();
     const docsOk = last.docs.filter(d => d.ok).length;
     let h = '';
+    // Shared standard (docs-template/) — the canonical harness applied to EVERY
+    // project. Read-only reference; NOT this or any project's own docs.
+    const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_TODO.md', 'agent/02_TODO.md'], ['03_CHANGES.md', 'agent/03_CHANGES.md']];
+    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">Shared standard <span class="q" title="The canonical harness in docs-template/ — ships with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts into a project. Read-only reference (edit the standard in docs-template/).">?</span></div>';
+    h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="Open standard ' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
     h += row(last.project.name || 'No project', last.project.connected ? 'on' : 'off', last.project.root || 'run zemory init', 'Whether the selected folder has docs/.harness.json.');
-    h += '<div class="tiny" style="margin:8px 0 4px">Docs (click to read)</div>';
+    h += '<div class="tiny" style="margin:8px 0 4px">Project docs (this instance — click to read)</div>';
     h += '<div class="chips" style="margin-bottom:10px">' + (last.docs || []).map(d => '<span class="chip doc-link ' + (d.ok ? 'on' : 'off') + '" onclick="openDoc(\'' + esc(d.file) + '\')" title="Open ' + esc(d.file) + '">' + esc(d.file) + '</span>').join('') + '</div>';
     if(last.setup) h += row('Setup / onboarding', last.setup.complete ? 'on' : 'warn', last.setup.detail, 'Required docs plus plan are present.');
     if(last.plan) h += row('Plan mirror', last.plan.needsReconcile ? 'warn' : (last.plan.exists ? 'on' : 'planned'), last.plan.detail, 'docs/plan mirrors come from global_memory.db.');
@@ -1229,8 +1273,6 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(document.activeElement !== el('driveLink')) el('driveLink').value = drive.path || '';
     renderDriveState(drive);
     const vectorCoverage = vectors.coverage == null ? '-' : vectors.coverage + '%';
-    const agents = brain.agents || [];
-    const hosts = brain.hosts || [];
     el('memSub').textContent = (t.sessions ? 'Healthy' : 'Empty') + ' · updated ' + fmtTime(brain.generatedAt);
     el('memoryPanel').innerHTML =
       '<div class="coverage-stats">' +
@@ -1242,10 +1284,9 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       miniRow('Search', (brain.hybrid ? 'BM25 + Vector' : 'FTS only') + (brain.rerank ? ' + rerank' : '')) +
       miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' pending') : '') + (vectors.error ? ' · error' : '')) +
       '</div>' +
-      sectionTitle('By machine') +
-      (hosts.length ? hosts.map(h => miniRow(h.host, fmtN(h.sessions) + ' sess · ' + fmtN(h.messages) + ' msg')).join('') : '<div class="muted">none</div>') +
-      sectionTitle('By agent') +
-      (agents.length ? agents.map(a => miniRow(a.source, fmtN(a.sessions) + ' sess · ' + fmtN(a.messages) + ' msg')).join('') : '<div class="muted">none</div>') +
+      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">Sources' + (brain.scopeExcluded ? ' · ' + brain.scopeExcluded + ' excluded' : '') + ' — untick to leave out of sync + recall<span class="q" title="Which provenance lanes (Local machine/agent, Web platform) feed sync + recall. Untick a shared or noisy lane to keep it out — this serves BOTH the harness (clean provenance, no cross-project mixing) AND token optimization (less irrelevant memory pulled into recall = fewer tokens). A filter, not a delete: data stays in the local DB.">?</span></div>' +
+      renderScopeTree(brain.scopeTree || []) +
+      renderScopeAdd(brain.scopeRules || []) +
       sectionTitle('Tables') +
       ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">none</div>') +
       '<div class="path" style="margin-top:8px">' + esc(brain.dbPath || '') + '</div>';
@@ -1263,6 +1304,75 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       (stores.length ? stores.map(s => folderLine(s.source, s.root, 'found ' + fmtDay(s.foundAt))).join('') : '<div class="muted">No transcript stores recorded yet. Run Deep scan once.</div>') +
       sectionTitle('Project folders') +
       (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' sess / ' + fmtN(p.messages) + ' msg / ' + fmtN(p.agents) + ' agents')).join('') : '<div class="muted">No project folders captured yet.</div>');
+  }
+  // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is
+  // INCLUDED; untick to exclude it from sync + recall (a filter, never a delete).
+  function renderScopeTree(nodes){
+    if(!nodes || !nodes.length) return '<div class="muted">none</div>';
+    const walk = (n, depth) => {
+      const checked = !n.effectiveExcluded;
+      const disabled = n.effectiveExcluded && !n.excluded; // an ancestor lane excludes it
+      const cls = 'scope-label' + (n.effectiveExcluded ? ' ex' : '');
+      let h = '<div class="scope-row" style="padding-left:' + (depth * 14) + 'px">'
+        + '<input type="checkbox" class="scope-tick"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '')
+        + ' title="Untick = leave this lane out of sync + recall"'
+        + ' data-lane="' + esc(JSON.stringify(n.lane || {})) + '" onchange="scopeExcludeEl(this)">'
+        + '<span class="' + cls + '">' + esc(n.label) + '</span>'
+        + '<span class="scope-count">' + fmtN(n.sessions) + ' · ' + fmtN(n.messages) + ' msg</span>'
+        + '</div>';
+      for(const c of (n.children || [])) h += walk(c, depth + 1);
+      return h;
+    };
+    return nodes.map(n => walk(n, 0)).join('');
+  }
+  async function scopeExcludeEl(elm){
+    let lane = {};
+    try { lane = JSON.parse(elm.getAttribute('data-lane') || '{}'); } catch(e){}
+    await setScopeLane(lane, !elm.checked); // ticked = included = not excluded
+  }
+  async function setScopeLane(lane, exclude){
+    const q = new URLSearchParams();
+    if(lane.origin) q.set('origin', lane.origin);
+    if(lane.host) q.set('host', lane.host);
+    if(lane.source) q.set('source', lane.source);
+    q.set('on', exclude ? '1' : '0');
+    try {
+      await fetch('/set-scope-exclude?' + q.toString(), { method: 'POST' });
+      await brainTick();
+      if(el('bq').value.trim().length >= 2) brainSearch();
+    } catch(e){}
+  }
+  // "+ Add rule": preset a blocklist lane even for a source not captured yet
+  // (blank field = wildcard). Pairs with scan-level exclude so it can keep a
+  // shared space out of the brain entirely (V2); today it hides from sync+recall.
+  function renderScopeAdd(rules){
+    const chips = (rules || []).map(r => {
+      const parts = [r.origin || 'any', r.host || 'any', r.source || 'any'].join(' · ');
+      return '<span class="scope-chip" title="Remove this exclude rule" data-lane="' + esc(JSON.stringify(r)) + '" onclick="scopeRemoveRule(this)">' + esc(parts) + ' ✕</span>';
+    }).join('');
+    return '<div class="scope-add">'
+      + '<select id="scOrigin" class="scope-in"><option value="">origin: any</option><option value="local">local</option><option value="web">web</option></select>'
+      + '<input id="scHost" class="scope-in" placeholder="machine (blank=any)">'
+      + '<input id="scSource" class="scope-in" placeholder="agent/platform (blank=any)">'
+      + '<button class="ghost" title="Add a blocklist rule (excluded from sync + recall)" onclick="scopeAddRule()">+ Add</button>'
+      + '</div>'
+      + (rules && rules.length ? '<div class="scope-chips">' + chips + '</div>' : '');
+  }
+  async function scopeAddRule(){
+    const lane = {};
+    const o = el('scOrigin').value.trim();
+    const h = el('scHost').value.trim();
+    const s = el('scSource').value.trim();
+    if(o) lane.origin = o;
+    if(h) lane.host = h;
+    if(s) lane.source = s;
+    if(!lane.origin && !lane.host && !lane.source){ el('scSource').focus(); return; }
+    await setScopeLane(lane, true);
+  }
+  async function scopeRemoveRule(elm){
+    let lane = {};
+    try { lane = JSON.parse(elm.getAttribute('data-lane') || '{}'); } catch(e){}
+    await setScopeLane(lane, false);
   }
   async function brainTick(){
     try { renderBrainSummary(await (await fetch('/brain-status' + ru())).json()); }
@@ -1310,6 +1420,15 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('docOverlay').style.display = 'flex';
     try {
       const r = await (await fetch('/doc' + ru({file: file}))).json();
+      el('docBody').textContent = r.content || '(empty)';
+    } catch(e){ el('docBody').textContent = 'error: ' + e; }
+  }
+  async function openStandardDoc(file){
+    el('docName').textContent = 'STANDARD · ' + file;
+    el('docBody').textContent = 'loading...';
+    el('docOverlay').style.display = 'flex';
+    try {
+      const r = await (await fetch('/standard-doc?file=' + encodeURIComponent(file))).json();
       el('docBody').textContent = r.content || '(empty)';
     } catch(e){ el('docBody').textContent = 'error: ' + e; }
   }
@@ -1470,6 +1589,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function actConfirm(ep, q){ if(confirm(q)) act(ep); }
 
   (async () => {
+    await loadLayoutFromServer();
     initResizers();
     initPanelSplits();
     await tick();

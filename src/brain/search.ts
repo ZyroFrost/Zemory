@@ -8,7 +8,8 @@ import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
 import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
-import { getHybridSetting, getRerankSetting } from "../settings.js";
+import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../settings.js";
+import { isExcluded } from "./scope.js";
 
 export interface SearchHit {
   id: number;
@@ -46,6 +47,8 @@ export interface SearchOptions {
   sinceMs?: number;
   /** Recency blend override: true/false force on/off, undefined = default (on). */
   recency?: boolean;
+  /** Provenance lanes to EXCLUDE from results; undefined = the saved scope list. */
+  excludeLanes?: ScopeLane[];
 }
 
 const RRF_K = 60;
@@ -161,21 +164,24 @@ function hydrate(
   const limit = opts.limit ?? 12;
   const perSession = opts.perSession ?? 2;
   const getRow = db.prepare(
-    `SELECT m.id, m.session_id, m.role, m.content, m.timestamp, s.source, s.origin, s.project_root
+    `SELECT m.id, m.session_id, m.role, m.content, m.timestamp, s.source, s.origin, s.host, s.project_root
      FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id = ?`,
   );
   const wantProject = !opts.all && opts.project ? norm(opts.project) : null;
+  const excludeLanes = opts.excludeLanes ?? getScopeExclude();
   const perSessionCount = new Map<string, number>();
   const hits: SearchHit[] = [];
   for (const { rowid, s } of ranked) {
     const row = getRow.get(rowid) as
-      | { id: number; session_id: string; role: string; content: string; timestamp: string | null; source: string; origin: string | null; project_root: string | null }
+      | { id: number; session_id: string; role: string; content: string; timestamp: string | null; source: string; origin: string | null; host: string | null; project_root: string | null }
       | undefined;
     if (!row) continue;
     if (wantProject && norm(row.project_root ?? "") !== wantProject) continue;
     if (opts.source && row.source !== opts.source) continue;
     if (opts.origin && (row.origin ?? "local") !== opts.origin) continue;
     if (opts.role && row.role !== opts.role) continue;
+    // Scoped recall: drop lanes the user excluded (still in the DB, just hidden).
+    if (excludeLanes.length && isExcluded({ origin: row.origin ?? "local", host: row.host, source: row.source }, excludeLanes)) continue;
     if (opts.sinceMs && !(Date.parse(row.timestamp ?? "") >= opts.sinceMs)) continue;
     const used = perSessionCount.get(row.session_id) ?? 0;
     if (used >= perSession) continue;

@@ -19,7 +19,8 @@ import { runRagBench } from "./brain/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
 import { exportBrainBundle, importBrainBundle, mergeBrainBundle, resolveShareKey, syncDrive, writeBrainShareKey } from "./brain/share.js";
-import { getDriveDir } from "./settings.js";
+import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
+import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
 import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "./brain/privacy.js";
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { ledgerSummary } from "./brain/ledger.js";
@@ -316,8 +317,15 @@ async function cmdBrain(args: string[]): Promise<void> {
   if (sub === "scan-web") {
     const platform = flagValue(args, "--platform") ?? "chatgpt";
     const refresh = args.includes("--refresh");
+    const limitRaw = flagValue(args, "--limit");
+    const limit = limitRaw !== undefined ? Number(limitRaw) : undefined;
+    if (limitRaw !== undefined && (!Number.isFinite(limit) || (limit as number) <= 0)) {
+      console.log("  ✗ --limit expects a positive number.");
+      process.exitCode = 1;
+      return;
+    }
     console.log(`zemory brain scan-web — ${platform} (web-chat capture, origin=web)`);
-    const r = await scanWeb({ platform, refresh }, (m) => console.log("  " + m));
+    const r = await scanWeb({ platform, refresh, limit }, (m) => console.log("  " + m));
     if (r.status === "no-browser") {
       console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
       process.exitCode = 1;
@@ -339,7 +347,54 @@ async function cmdBrain(args: string[]): Promise<void> {
       if (web) console.log(`  ⤷ brain now holds ${web.source}: ${web.sessions} session(s), ${web.messages} message(s)`);
       console.log("  → vectorize the new ones: `zemory brain embed --all`");
     }
+    if (r.interrupted) console.log("  ⚠ connection dropped mid-run — pulled batches are saved. Re-run `zemory brain scan-web` to resume the rest.");
     if (r.failed) console.log("  note: some failed (rate-limit?) — just re-run to resume; it skips what's already in.");
+    return;
+  }
+  if (sub === "scope") {
+    // Provenance tree + exclude lanes from sync/recall (spec: plan 08). A filter,
+    // never a delete — excluded lanes stay in the local DB, just hidden/unsynced.
+    const action = args[1];
+    const laneFromFlags = (): ScopeLane => {
+      const l: ScopeLane = {};
+      const o = flagValue(args, "--origin");
+      const h = flagValue(args, "--host");
+      const s = flagValue(args, "--source");
+      if (o !== undefined) l.origin = o;
+      if (h !== undefined) l.host = h;
+      if (s !== undefined) l.source = s;
+      return l;
+    };
+    if (action === "exclude" || action === "include") {
+      const lane = laneFromFlags();
+      if (lane.origin === undefined && lane.host === undefined && lane.source === undefined) {
+        console.log("usage: zemory brain scope exclude|include [--origin local|web] [--host <machine>] [--source <agent>]");
+        process.exitCode = 1;
+        return;
+      }
+      setScopeExclude(toggleLane(getScopeExclude(), lane, action === "exclude"));
+      console.log(`zemory brain scope — ${action}d ${JSON.stringify(lane)}`);
+      // fall through to print the tree
+    } else if (action === "clear") {
+      setScopeExclude([]);
+      console.log("zemory brain scope — cleared all exclusions");
+    } else if (action && action !== "ls") {
+      console.log("usage: zemory brain scope [ls] | exclude <sel> | include <sel> | clear");
+      console.log("  selector flags: --origin local|web  --host <machine>  --source <agent>");
+      return;
+    }
+    const tree = scopeTree();
+    const excluded = getScopeExclude();
+    console.log(`zemory brain scope — Local/Web × machine × agent (${excluded.length} lane(s) excluded)`);
+    const printNode = (n: ScopeNode, depth: number) => {
+      const pad = "  ".repeat(depth + 1);
+      const mark = n.excluded ? " ✗ EXCLUDED" : n.effectiveExcluded ? " ✗ excluded (covered by a broader rule)" : "";
+      console.log(`${pad}${n.label} — ${n.sessions} session(s), ${n.messages} msg${mark}`);
+      for (const c of n.children ?? []) printNode(c, depth + 1);
+    };
+    for (const n of tree) printNode(n, 0);
+    if (!tree.length) console.log("  (brain empty — run `zemory brain scan` first)");
+    console.log("  toggle: `zemory brain scope exclude --source codex` · `… include …` · `… clear`");
     return;
   }
   if (sub === "search") {
@@ -709,6 +764,10 @@ async function cmdBrain(args: string[]): Promise<void> {
       "  scan              ingest agent transcripts from known locations into the",
       "                    global brain (~/.zemory/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
+      "  scan-web [--platform chatgpt] [--limit N] [--refresh]",
+      "                    capture web-chat (ChatGPT) via a login-once browser window",
+      "                    (origin=web). Ingests in batches + resumes; --limit N pulls",
+      "                    the N newest for a quick verify.",
       "  search <q> [--all] recall across the brain (scope: current project; --all = everywhere).",
       "  embed [--limit N] [--all]",
       "                    build the semantic vector index (RAG, local EmbeddingGemma).",
@@ -728,6 +787,10 @@ async function cmdBrain(args: string[]): Promise<void> {
       "  show <#id>        print the full message for a search hit.",
       "  info              table row-counts of global_memory.db.",
       "  hosts             sessions by PC → source → project (per-machine provenance).",
+      "  scope [ls|exclude|include|clear]",
+      "                    provenance tree (Local/Web × machine × agent); exclude a lane",
+      "                    from sync + recall (a filter, never a delete). Flags: --origin",
+      "                    local|web  --host <machine>  --source <agent>.",
       "  digest [--all]     (re)build per-session summary digests (cheap-token recall lens).",
       "  digest <session>   show one session's digest (drill to messages via #id).",
       "  search <q> --digest  recall the DIGEST lane (session-level hits) instead of messages.",
