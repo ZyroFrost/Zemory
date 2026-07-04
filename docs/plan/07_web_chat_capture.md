@@ -4,7 +4,7 @@
 > Spec cho năng lực MỚI: nuốt hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào global brain.
 > Khác hẳn adapter agent CLI/IDE (`claude-code`, `codex`, `continue`, `lmstudio`): web chat nằm ở **server**, KHÔNG ghi file ra đĩa → `brain scan` quét đĩa không với tới. Phải lấy qua **export chính chủ** hoặc **browser** (đăng nhập).
 > Ưu tiên: **GPT trước**, rồi Gemini, rồi Claude.ai. Specs thuần — task ở `02_TODO`.
-> Trạng thái: **đã PROTOTYPE + test thật thành công (2026-07-02/03)** — xem §5. Chưa tích hợp vào `src/`.
+> Trạng thái: **ĐÃ TÍCH HỢP vào `src/` + nghiệm thu recall thật (2026-07-04)** — xem §5, §16. `scan-web` pull nhỏ OK; 3 bug chặn backfill cả tài khoản (756) **đã fix trong `src/` + test xanh (2026-07-05)**, chờ re-run backfill 756 thật — chi tiết §16.
 
 ## 1. Mục tiêu & nguyên tắc
 - Tái dùng brain hiện có: `sessions`/`messages`, dedup `UNIQUE(session_id,uuid)`, redact, digest, recall, sync — KHÔNG tạo store thứ 2 (RULES §3). Web chat chỉ là thêm `source` + nhánh `origin`.
@@ -94,3 +94,17 @@ Lệnh mới (không thuộc `brain scan` quét đĩa):
 - Gemini: Takeout là log lossy (§ nghiên cứu) → fidelity cao phải qua browser-connector/extension; làm sau GPT.
 - Claude.ai: export `chat_messages` phẳng (dễ nhất) hoặc browser-connector; làm sau.
 - Cân nhắc gói browser-connector chung cho cả 3 nền (một lệnh `scan-web --platform`).
+
+## 16. Tích hợp `src/` + bugs phát hiện khi chạy thật (2026-07-04)
+Đã vào `src/` (commit `fa7d479`/`29c6478`): schema **v6** (`sessions.origin`), `parseFileMulti`, `chatgptAdapter` (`origin=web`), lệnh `brain scan-web` (CDP browser-connector), facet `--origin`, và fix merge giữ `origin` xuyên máy (`share.ts`).
+
+**Nghiệm thu thật (desktop `DESKTOP-PFB157K`):** merge bundle laptop `SS01-IT-10` mang **219 chat ChatGPT** sang, giữ đúng `origin=web`; kéo mới **5 chat** trên desktop (login-once trong profile `~/.zemory/browser/chatgpt`), ingest + recall/flatten nội dung đúng (vd chat "Đánh giá tuần đầu tiên"). Cookie do **Edge** giữ trong profile (DPAPI), token/cookie KHÔNG qua zemory.
+
+**3 bug chặn backfill toàn tài khoản (756 chat) — ✅ ĐÃ FIX trong `src/scanweb.ts`+`cli.ts`, test xanh (2026-07-05); chờ re-run 756 thật:**
+- **B1 — CDP WebSocket rớt giữa chừng → crash `exit 13`.** Sau ~12–32 pull (tại ~220/756) kết nối CDP tới tab rớt; `Cdp.evaluate` await promise không bao giờ resolve (class `Cdp` không xử `ws 'close'`/`'error'` để reject pending), event loop cạn → Node "unsettled top-level await", thoát 13. **Đã fix:** trên `ws` close/error, reject mọi promise trong `pending` map.
+- **B2 — ingest gom hết ở cuối → crash = mất sạch.** `scanWeb` chỉ ghi `scan-web-latest.json` + gọi `scan()` SAU khi kéo xong toàn bộ; crash giữa chừng (B1) mất toàn bộ cái đã kéo (2 lần chạy full đều chết ~220/756, +0 vào brain). **Đã fix:** ingest theo batch (vd mỗi 20–50 hội thoại ghi + scan tăng dần) để resume không mất tiến độ.
+- **B3 — không có `--limit N`.** Không kéo ít được (vd chỉ top-N mới nhất để verify nhanh). **Đã fix:** thêm `--limit N` (+ cân nhắc `--newer-than`).
+
+Workaround đã dùng để verify (trước khi fix): script kéo **top-5 mới nhất** (có reject-on-WS-close + ingest ngay) → bắt được chat mới, recall OK.
+
+**Cập nhật 2026-07-05 — đã fix trong `src/` (test xanh):** B1 = `Cdp` reject mọi pending khi `ws` close/error + cờ `dead` + **reconnect-on-death** (Cdp.connect lại 3 lần backoff); B2 = ingest theo **batch** (mặc định 25 chat: ghi `scan-web-part.json` + `scan()` tăng dần, resume theo nội dung brain); B3 = cờ **`--limit N`** + default delay 1500ms giảm 429. Còn lại: **re-run backfill toàn 756 trên tài khoản live** để nghiệm thu thật (cần login ChatGPT).

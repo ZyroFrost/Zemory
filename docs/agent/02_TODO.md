@@ -88,20 +88,26 @@
 ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
 > Thu hội thoại web (ChatGPT/Gemini/Claude.ai) vào brain. Spec chi tiết + kết quả test: `docs/plan/07_web_chat_capture.md`. Prototype đã chạy thật: `prototype/web-capture/`.
 
-**✅ ĐÃ TEST (2026-07-02/03) — feasibility CONFIRMED (chưa vào `src/`):**
+**✅ ĐÃ TÍCH HỢP vào `src/` + NGHIỆM THU THẬT (2026-07-04, commit `fa7d479`/`29c6478`):**
 - [x] Chứng minh lấy được data thật qua **browser-connector** (login-once + CDP pull): tài khoản test enumerate **752** hội thoại, kéo **219** (6.636 msg), search nội dung OK.
 - [x] Xác nhận format ChatGPT bằng file thật (cây `mapping`, `content.parts[]`, float `create_time`, `gizmo_id` → Project không sót). Khớp spec.
 - [x] Loại 3 ngõ cụt: OAuth đọc lịch sử (không có), copy cookie (guard chặn), fetch Node thuần (Cloudflare 403).
 - [x] Rào cản đã biết: **rate-limit 429** sau ~200 req → cần pace/backoff/resume.
 
-**Engine (chưa cần thêm data):**
-- [ ] T-v6. Schema **v6**: `sessions.origin TEXT NOT NULL DEFAULT 'local'` + `idx_sessions_origin`; migration backfill phiên cũ = `local`. (`db.ts`)
-- [ ] T2. `parseFileMulti?` vào Adapter contract + nhánh multi-session trong `ingestFile` (lặp upsert+DELETE+INSERT+refresh/hội thoại, 1 transaction; `ingest_state` sentinel; `FileResult`→`SessionReport[]`). `lmstudio` KHÔNG đụng.
-- [ ] Recall + UI: facet **Local / Web** (lọc theo `origin`), như filter source/project/time sẵn có.
+**Engine — ✅ XONG (trong `src/`):**
+- [x] T-v6. Schema **v6**: `sessions.origin TEXT NOT NULL DEFAULT 'local'` + `idx_sessions_origin`; migration backfill phiên cũ = `local`. (`db.ts`)
+- [x] T2. `parseFileMulti` vào Adapter contract + nhánh multi-session; `chatgptAdapter` flatten cây `mapping` theo `current_node`. `lmstudio` KHÔNG đụng.
+- [x] Recall + UI: facet **Local / Web** (`--origin local|web`, `search.ts` + cli + ui).
 
-**ChatGPT (`chatgpt-web`, origin=web) — ƯU TIÊN 1:**
-- [ ] T-web. Lệnh **`brain scan-web`** (browser-connector, spec plan 07 §10): mở Edge profile `~/.zemory/browser/chatgpt` + debug port → (lần đầu user login) → CDP pull `/backend-api/conversations` + `/conversation/{id}` → flatten `mapping` → upsert `origin='web'`. Kèm **pace + backoff + resume** (§11) để lấy trọn 752. Chạy ngoài sandbox (browser phải sống); password KHÔNG qua zemory.
-- [ ] T3. (fallback v1) `chatgptAdapter` `whole` + `parseFileMulti` đọc file export ở `~/.zemory/imports/chatgpt/` → dùng để **nuốt bộ data test đã kéo** vào brain, verify end-to-end (scan → recall lọc origin=web → cockpit).
+**ChatGPT (`chatgpt-web`, origin=web) — ✅ CÓ TRONG `src/`, nghiệm thu 2026-07-04:**
+- [x] T-web. Lệnh **`brain scan-web`** (browser-connector §10): Edge profile `~/.zemory/browser/chatgpt` + debug port → login-once → CDP pull → flatten → upsert `origin='web'`. Nghiệm thu: kéo 5 chat mới desktop, recall OK.
+- [x] T3. `chatgptAdapter` (`whole` + `parseFileMulti`) đọc `~/.zemory/imports/chatgpt/` — merge 219 chat laptop + pull desktop đều vào brain; recall lọc `origin=web` đúng.
+
+**🐞 scan-web — 3 bug backfill (756 chat) — ✅ ĐÃ FIX code + test xanh (chi tiết plan 07 §16):**
+- [x] **B1** CDP WebSocket rớt → reject mọi pending khi `ws` close/error + **reconnect-on-death** (hết treo/exit 13).
+- [x] **B2** ingest theo **batch** (25 chat/lần, ghi + scan tăng dần) → crash không mất tiến độ, resume-safe.
+- [x] **B3** thêm **`--limit N`** (kéo N chat mới nhất verify nhanh) + delay 1500ms giảm 429.
+- [ ] Nghiệm thu thật: re-run backfill toàn 756 trên tài khoản live (cần login ChatGPT).
 
 **Gemini (`gemini-web`) / Claude.ai (`claude-web`) — sau GPT:**
 - [ ] Gemini: Takeout lossy → ưu tiên browser-connector; adapter file là phụ.
@@ -109,3 +115,11 @@
 - [ ] Gộp `brain scan-web --platform <chatgpt|gemini|claude>` dùng chung khung.
 
 **Quyết định đã chốt (plan 07 §14):** origin = 1 cột (không table) · cơ chế = v2b browser-connector (v1 file fallback, v2a extension sau) · re-pull = full replace idempotent · GPT trước · password không nhập vào zemory · **KHÔNG commit file data thật (PII)**.
+
+## 🧭 Scoped sync — chọn nguồn để đồng bộ/recall (spec: docs/plan/08_scoped_sync.md)
+> Bộ chọn phạm vi dạng cây: **Local → máy → agent** · **Web → nền (chatgpt/gemini/claude)**. Tick lane nào được sync/merge/recall; loại "chỗ xài chung không nên lấy". Provenance KHÔNG lẫn. Nền dữ liệu (`origin`/`source`/`host`/`project`) đã có — chỉ thêm lớp chọn+lọc, KHÔNG thêm table. Chi tiết + quyết định mở: plan 08.
+- [x] Rollup cây `sessions` → `scopeTree()` (Local → máy → agent; Web → nền).
+- [x] Bộ lọc áp vào **export + merge + recall** (V1 = Sync + Recall) qua `laneSqlClause`/`isExcluded`.
+- [x] Exclude bền ở settings (`~/.zemory/config.json`); mặc định include tất, exclude opt-in + hiện rõ cái bị bỏ.
+- [x] UI: cây tick trong panel Global memory + nút "+ Add rule" (blocklist, wildcard) + CLI `brain scope`.
+- [ ] (V2) scan/scan-web exclude — chặn ingest ngay từ cổng (chưa làm; dùng chung `laneSqlClause`).
