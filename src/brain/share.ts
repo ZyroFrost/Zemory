@@ -27,6 +27,8 @@ import { pipeline } from "node:stream/promises";
 import { BRAIN_DB, BRAIN_DIR, openBrain } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, vectorRemaining } from "./vectors.js";
+import { type ScopeLane, laneSqlClause } from "./scope.js";
+import { getScopeExclude } from "../settings.js";
 
 const MAGIC = "ZEMORY-BRAIN-ENC v1\n";
 const TAG_BYTES = 16;
@@ -41,6 +43,8 @@ export interface ExportBrainBundleOptions extends BrainShareKeyOptions {
   dbPath?: string;
   outPath: string;
   force?: boolean;
+  /** Provenance lanes to leave OUT of the bundle (scoped sync). */
+  excludeLanes?: ScopeLane[];
 }
 
 export interface ExportBrainBundleResult {
@@ -99,6 +103,35 @@ async function snapshotSqlite(dbPath: string): Promise<{ path: string; cleanup: 
   return { path: snapshot, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
+/**
+ * Drop excluded lanes from a throwaway snapshot BEFORE it is encrypted, so a
+ * scoped export never ships "shared" sessions. Deletes their messages first (FTS
+ * delete triggers fire), then the sessions and any now-orphan vectors, and drops
+ * the WAL so the file streams as a plain SQLite DB.
+ */
+function filterSnapshot(path: string, lanes: ScopeLane[]): void {
+  const { match, params } = laneSqlClause("sessions", lanes);
+  if (!match) return;
+  const db = openBrain(path);
+  try {
+    db.transaction(() => {
+      db.prepare(`DELETE FROM messages WHERE session_id IN (SELECT id FROM sessions WHERE ${match})`).run(...params);
+      db.prepare(`DELETE FROM sessions WHERE ${match}`).run(...params);
+    })();
+    // vec_chunks are keyed by local message ids; orphans are harmless (importer
+    // re-embeds) but drop them so the bundle stays clean. Ignore if no vec table.
+    try {
+      db.prepare("DELETE FROM vec_chunks WHERE message_id NOT IN (SELECT id FROM messages)").run();
+    } catch {
+      /* no vector table in this DB */
+    }
+    db.pragma("wal_checkpoint(TRUNCATE)");
+    db.pragma("journal_mode = DELETE");
+  } finally {
+    db.close();
+  }
+}
+
 function writeHeader(outPath: string, header: BundleHeader, force: boolean | undefined): Buffer {
   mkdirSync(dirname(resolve(outPath)), { recursive: true });
   const aad = Buffer.from(MAGIC + JSON.stringify(header) + "\n", "utf8");
@@ -112,6 +145,7 @@ export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise
   const secret = readShareSecret(opts);
   const snapshot = await snapshotSqlite(sourcePath);
   try {
+    if (opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
     const sourceBytes = statSync(snapshot.path).size;
     const salt = randomBytes(16);
     const iv = randomBytes(12);
@@ -231,6 +265,8 @@ export async function importBrainBundle(opts: ImportBrainBundleOptions): Promise
 export interface MergeBrainBundleOptions extends BrainShareKeyOptions {
   bundlePath: string;
   dbPath?: string;
+  /** Provenance lanes to NOT pull from the incoming bundle (scoped sync). */
+  excludeLanes?: ScopeLane[];
 }
 
 export interface MergeBrainBundleResult {
@@ -280,26 +316,32 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
       const messagesBefore = count("SELECT COUNT(*) c FROM messages");
       db.prepare("ATTACH DATABASE ? AS src").run(srcPath);
       try {
+        // Scoped sync: don't pull "shared" lanes the user excluded. Skip the
+        // incoming sessions that match, and any messages under them.
+        const excl = opts.excludeLanes?.length ? laneSqlClause("x", opts.excludeLanes) : { match: "", params: [] as unknown[] };
+        const sessionsWhere = excl.match ? ` WHERE id NOT IN (SELECT id FROM src.sessions x WHERE ${excl.match})` : "";
+        const notExcluded = (col: string) =>
+          excl.match ? ` AND ${col} NOT IN (SELECT id FROM src.sessions x WHERE ${excl.match})` : "";
         db.transaction(() => {
-          db.exec(
-            // Carry `origin` across machines (v6) so captured web-chat keeps its
-            // 'web' lane on the receiving PC. COALESCE guards a pre-v6 bundle
-            // (openBrain above migrates the incoming DB, so src.sessions.origin
-            // exists; the COALESCE is belt-and-braces for a null).
+          // Carry `origin` across machines (v6) so captured web-chat keeps its
+          // 'web' lane on the receiving PC. COALESCE guards a pre-v6 bundle
+          // (openBrain above migrates the incoming DB, so src.sessions.origin
+          // exists; the COALESCE is belt-and-braces for a null).
+          db.prepare(
             `INSERT OR IGNORE INTO sessions (id, source, origin, project_root, cwd, title, host, started_at, ended_at, message_count)
-             SELECT id, source, COALESCE(origin, 'local'), project_root, cwd, title, host, started_at, ended_at, message_count FROM src.sessions`,
-          );
+             SELECT id, source, COALESCE(origin, 'local'), project_root, cwd, title, host, started_at, ended_at, message_count FROM src.sessions${sessionsWhere}`,
+          ).run(...excl.params);
           // id is AUTOINCREMENT and differs across DBs — omit it (FTS triggers
           // fire on real inserts). Dedup in two passes:
           //  • uuid present → UNIQUE(session_id, uuid) + OR IGNORE handles it.
           //  • uuid NULL (≈ tool/codex/lmstudio lines) → UNIQUE treats NULLs as
           //    distinct, so OR IGNORE would re-insert on every merge. Match on
           //    content identity instead so a re-merge of the same bundle adds 0.
-          db.exec(
+          db.prepare(
             `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
-             SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages WHERE uuid IS NOT NULL`,
-          );
-          db.exec(
+             SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages WHERE uuid IS NOT NULL${notExcluded("session_id")}`,
+          ).run(...excl.params);
+          db.prepare(
             `INSERT INTO messages (session_id, uuid, role, content, tool_name, timestamp)
              SELECT s.session_id, s.uuid, s.role, s.content, s.tool_name, s.timestamp
              FROM src.messages s
@@ -308,8 +350,8 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
                  SELECT 1 FROM messages m
                  WHERE m.session_id = s.session_id AND m.uuid IS NULL
                    AND m.role IS s.role AND m.timestamp IS s.timestamp AND m.content IS s.content
-               )`,
-          );
+               )${notExcluded("s.session_id")}`,
+          ).run(...excl.params);
           db.exec(
             `INSERT OR IGNORE INTO known_stores (store_root, source, found_at)
              SELECT store_root, source, found_at FROM src.known_stores`,
@@ -380,6 +422,7 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
   // Capture THIS machine's latest transcripts into the DB FIRST, so the bundle
   // we upload can never miss the newest chat lines when switching machines.
   const scanReport = scan({ dbPath: opts.dbPath });
+  const excludeLanes = getScopeExclude(); // scoped sync: same list both directions
   const host = (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
   const myName = `global_memory.${host}.zemory.enc`;
   const exported = await exportBrainBundle({
@@ -387,11 +430,12 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
     dbPath: opts.dbPath,
     keyFile: opts.keyFile,
     force: true,
+    excludeLanes,
   });
   const merged: DriveSyncResult["merged"] = [];
   for (const f of readdirSync(dir).filter((f) => f.endsWith(".zemory.enc") && f !== myName)) {
     try {
-      const r = await mergeBrainBundle({ bundlePath: join(dir, f), dbPath: opts.dbPath, keyFile: opts.keyFile });
+      const r = await mergeBrainBundle({ bundlePath: join(dir, f), dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
       merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
     } catch (error) {
       merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
