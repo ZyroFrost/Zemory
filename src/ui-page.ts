@@ -211,9 +211,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   }
   .commandbar {
     display: grid;
-    grid-template-columns: 116px 124px minmax(220px, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     gap: 8px;
     align-items: center;
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 7px;
     background: rgba(8, 15, 14, .74);
@@ -222,6 +223,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   }
   .commandbar .field, .commandbar .search-command {
     min-height: 32px;
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 6px;
     background: rgba(255, 255, 255, .035);
@@ -232,13 +234,16 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     color: var(--muted);
     white-space: nowrap;
   }
+  .commandbar .field { flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; }
   .commandbar select, .commandbar input {
     min-height: 32px;
     border-radius: 6px;
     padding: 0 9px;
     background: rgba(5, 10, 9, .5);
   }
-  .commandbar .search-command input { border: 0; box-shadow: none; background: transparent; padding: 0; }
+  .commandbar .search-command { overflow: hidden; }
+  .commandbar .search-command input { flex: 1 1 auto; min-width: 0; border: 0; box-shadow: none; background: transparent; padding: 0; }
+  .commandbar .drive-state { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .icon-btns { display: flex; gap: 6px; justify-content: flex-end; }
   .icon-btns button { min-width: 32px; height: 32px; padding: 0; border-radius: 6px; }
   .status-deck {
@@ -504,6 +509,12 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .bar > i { display: block; height: 100%; border-radius: 99px; transition: width .32s ease; }
   .bar > i.ind { width: 45%; animation: slide .8s infinite linear; }
   @keyframes slide { 0% { margin-left: -45%; } 100% { margin-left: 100%; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.14); border-top-color: var(--green); animation: spin .8s linear infinite; margin: 4px auto 12px; }
+  .sync-box { min-height: 90px; }
+  .sync-step { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; color: var(--muted); }
+  .sync-step b { color: #dce7df; font-weight: 700; }
+  .sync-done { color: var(--green); }
   .q {
     display: inline-block;
     width: 17px; height: 17px; border-radius: 50%;
@@ -627,7 +638,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     white-space: pre-wrap;
     font-size: 12px;
   }
-  #overlay, #docOverlay, #sessionOverlay {
+  #overlay, #docOverlay, #sessionOverlay, #syncOverlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -747,7 +758,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <span class="brand-logo"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zbrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#78df9b"/><stop offset="1" stop-color="#b5efc8"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#zbrand)"/><g stroke="#08100e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="#08100e"><path fill="none" d="M16 16 L10.5 10 M16 16 L21.5 9.5 M16 16 L22 21.5 M16 16 L10 21.5"/><circle cx="16" cy="16" r="2.7"/><circle cx="10.5" cy="10" r="2"/><circle cx="21.5" cy="9.5" r="2"/><circle cx="22" cy="21.5" r="2"/><circle cx="10" cy="21.5" r="2"/></g></svg></span>
         <div class="brand-text">
           <h1>zemory</h1>
-          <p>Local memory cockpit</p>
+          <p>Memory, docs harness & token savings for coding agents · v0.0.1</p>
         </div>
       </div>
       <div class="rail-scroll">
@@ -764,10 +775,6 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <div class="panel-head"><div><h3>Capability checks<span class="q" title="Live probes that zemory's core capabilities actually run on this machine: full-text + Vietnamese search, cross-session recall, docs-harness validation, and the grill workflow. Green bar = working. NOT about compression (dropped).">?</span></h3><p>Do the core features actually run?</p></div><button class="ghost" onclick="runChecks()">Re-test</button></div>
           <div class="panel-pad" id="checksBody"></div>
         </section>
-      </div>
-      <div class="rail-foot">
-        <div class="foot-row"><span>CLI</span><b><span class="live-dot"></span> Connected</b></div>
-        <div class="foot-row"><span>Version</span><b>0.0.1</b></div>
       </div>
     </aside>
     <div class="resize-handle vertical" data-resize="rail" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize sidebar. Double-click to reset."></div>
@@ -854,13 +861,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       <section class="panel" id="coverage" data-grow="insp2" data-grow-default="1.1" style="flex-grow:1.1">
-        <div class="panel-head"><div><h3>Capture coverage<span class="q" title="Where the brain pulls from: the transcript stores it found (Claude/Codex/Continue/LM Studio folders) and the project folders those sessions ran in.">?</span></h3><p>Transcript stores &amp; project folders.</p></div></div>
+        <div class="panel-head"><div><h3>Projects<span class="q" title="Project folders that have captured sessions, with per-project session / message / agent counts.">?</span></h3><p>Project folders with captured sessions.</p></div></div>
         <div class="panel-pad" id="coveragePanel"></div>
-      </section>
-      <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
-      <section class="panel" id="share" data-grow="insp3" data-grow-default=".75" style="flex-grow:.75">
-        <div class="panel-head"><div><h3>Share / sync<span class="q" title="Encrypted bundle (.zemory.enc) to move memory between machines. 'Sync now' = export THIS machine's bundle into the linked Drive folder + merge every other machine's bundle there. Then run 'zemory brain embed --all' to vectorize new rows. The live DB is never synced.">?</span></h3><p>Encrypted bundle for cross-machine merge.</p></div><button class="ghost" onclick="driveSync()" title="Export my bundle to the Drive folder + merge others">Sync now</button></div>
-        <div class="panel-pad"><div id="syncMsg" class="tiny" style="margin-bottom:8px;white-space:normal"></div><div id="sharePanel"></div></div>
       </section>
     </aside>
   </div>
@@ -871,6 +873,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       <button class="opt" onclick="act('/sync')"><b>Sync</b><span>Add missing docs, never overwrite DB source.</span></button>
       <button class="opt warn" onclick="actConfirm('/init-fresh','Rename current docs aside (docs.old-...) and create a fresh set?')"><b>Fresh start</b><span>Keep old docs aside, create clean set.</span></button>
       <button class="opt cancel" onclick="closeMenu()">Cancel</button>
+    </div>
+  </div>
+
+  <div id="syncOverlay" onclick="if(event.target===this && !window.__syncing)closeSyncBox()">
+    <div class="modal">
+      <div class="mtitle">Cross-machine sync</div>
+      <div id="syncBox" class="sync-box"></div>
     </div>
   </div>
 
@@ -1258,10 +1267,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     const t = brain.totals || {};
     const vectors = brain.vectors || {};
     const info = brain.info || {};
-    const share = brain.share || {};
     const capture = brain.coverage || {};
-    const captureTotals = capture.totals || {};
-    const stores = capture.stores || [];
     const projects = capture.projects || [];
     el('hybrid').checked = !!brain.hybrid;
     el('rerank').checked = !!brain.rerank;
@@ -1290,19 +1296,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       sectionTitle('Tables') +
       ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">none</div>') +
       '<div class="path" style="margin-top:8px">' + esc(brain.dbPath || '') + '</div>';
-    el('sharePanel').innerHTML =
-      '<div class="chips">' + chip('bundle ' + (share.bundle && share.bundle.exists ? 'ready' : 'missing'), share.bundle && share.bundle.exists ? 'on' : 'off') +
-      chip('key ' + (share.key && share.key.exists ? 'in repo' : 'missing'), share.key && share.key.exists ? 'warn' : 'off') +
-      chip('Git LFS', share.lfs ? 'on' : 'warn') + '</div>' +
-      '<div class="mini-list" style="margin-top:8px">' +
-      miniRow('bundle size', share.bundle && share.bundle.exists ? fmtBytes(share.bundle.sizeKB) : '-') +
-      miniRow('bundle mtime', share.bundle && share.bundle.mtime ? fmtDay(share.bundle.mtime) : '-') +
-      '<div class="path">' + esc(share.bundle ? share.bundle.path : '') + '</div>' +
-      '</div>';
     el('coveragePanel').innerHTML =
-      sectionTitle('Transcript stores') +
-      (stores.length ? stores.map(s => folderLine(s.source, s.root, 'found ' + fmtDay(s.foundAt))).join('') : '<div class="muted">No transcript stores recorded yet. Run Deep scan once.</div>') +
-      sectionTitle('Project folders') +
       (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' sess / ' + fmtN(p.messages) + ' msg / ' + fmtN(p.agents) + ' agents')).join('') : '<div class="muted">No project folders captured yet.</div>');
   }
   // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is
@@ -1451,28 +1445,53 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ el('sessBody').innerHTML = '<div class="muted">session error: ' + esc(e) + '</div>'; }
   }
   function closeSession(){ el('sessionOverlay').style.display = 'none'; }
+  function closeSyncBox(){ if(!window.__syncing) el('syncOverlay').style.display = 'none'; }
   async function driveSync(){
     const ds = el('driveState'), sb = el('syncBtn');
     ds.className = 'drive-state'; ds.textContent = 'syncing...'; ds.title = ''; if(sb) sb.disabled = true;
-    el('syncMsg').textContent = 'Syncing... scanning this machine + exporting bundle (this can take a moment).';
+    window.__syncing = true;
+    const syncStart = Date.now();
+    el('syncBox').innerHTML =
+      '<div class="spinner"></div>' +
+      '<div class="sync-step"><b>Syncing…</b><span id="syncElapsed" style="margin-left:auto;font-variant-numeric:tabular-nums;color:#dce7df">0:00</span></div>' +
+      '<div class="sync-step">1 · scanning this machine for new sessions</div>' +
+      '<div class="sync-step">2 · exporting your whole brain as an encrypted bundle</div>' +
+      '<div class="sync-step">3 · merging every other machine\'s bundle</div>' +
+      '<div class="sync-step">4 · embedding new vectors</div>' +
+      '<div class="sync-step tiny" style="margin-top:6px">Exports the FULL encrypted brain — on a large brain (hundreds of MB) this runs a few minutes. It is working; leave it open.</div>';
+    el('syncOverlay').style.display = 'flex';
+    const syncTimer = setInterval(function(){ var s = Math.floor((Date.now() - syncStart) / 1000), e = document.getElementById('syncElapsed'); if(e) e.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
     try {
       const r = await (await fetch('/drive-sync', { method: 'POST' })).json();
-      if(!r.ok){ ds.className = 'drive-state bad'; ds.textContent = '✗ sync failed'; ds.title = r.error || ''; el('syncMsg').textContent = '✗ ' + (r.error || 'sync failed'); return; }
+      window.__syncing = false;
+      if(!r.ok){
+        ds.className = 'drive-state bad'; ds.textContent = '✗ sync failed'; ds.title = r.error || '';
+        el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>✗ Sync failed</b></div><div class="sync-step">' + esc(r.error || 'unknown error') + '</div>' + syncCloseBtn();
+        return;
+      }
       const ms = r.merged || [];
       const added = ms.reduce((a, m) => a + (m.messagesAdded || 0), 0);
       const captured = (r.scanned && r.scanned.newMessages) || 0;
-      // Sync scans THIS machine first (so no fresh chat line is missed), then the
-      // local write + merge is done here; the Google Drive CLOUD upload is NOT —
-      // it happens in the background and is what actually carries the bundle to
-      // other machines. Report the phases honestly instead of claiming "done".
-      let msg = '✓ Scanned this machine (+' + fmtN(captured) + ' new msg captured) → wrote bundle (' + fmtBytes((r.exportedBytes || 0) / 1024) + ') + merged ' + ms.length + ' bundle(s) (+' + fmtN(added) + ' msg) + embedded ' + fmtN(r.embedded || 0) + ' new vector(s).';
-      msg += ' ⏳ Google Drive is still UPLOADING it to the cloud — not fully synced yet. Other machines receive it only after Drive finishes (watch the Drive tray icon).';
-      if(r.vectorRemaining) msg += ' · ⚠ ' + fmtN(r.vectorRemaining) + ' still to embed (model unavailable? run brain embed --all)';
-      el('syncMsg').textContent = msg;
+      ds.className = 'drive-state ok'; ds.textContent = '✓ synced';
+      // Local write + merge are done here; the Google Drive CLOUD upload happens
+      // in the background (that is what carries the bundle to other machines).
+      el('syncBox').innerHTML =
+        '<div class="sync-step sync-done"><b>✓ Local sync complete</b></div>' +
+        '<div class="sync-step">Scanned this machine · <b>+' + fmtN(captured) + '</b> new msg captured</div>' +
+        '<div class="sync-step">Exported bundle · <b>' + fmtBytes((r.exportedBytes || 0) / 1024) + '</b></div>' +
+        '<div class="sync-step">Merged <b>' + ms.length + '</b> other bundle(s) · <b>+' + fmtN(added) + '</b> msg</div>' +
+        '<div class="sync-step">Embedded <b>' + fmtN(r.embedded || 0) + '</b> new vector(s)' + (r.vectorRemaining ? ' · ⚠ ' + fmtN(r.vectorRemaining) + ' pending (run brain embed --all)' : '') + '</div>' +
+        '<div class="sync-step tiny" style="margin-top:6px">⏳ Google Drive is still uploading to the cloud in the background — other machines receive it once Drive finishes (watch the Drive tray icon).</div>' +
+        syncCloseBtn();
       await brainTick();
-    } catch(e){ ds.className = 'drive-state bad'; ds.textContent = '✗ error'; el('syncMsg').textContent = '✗ ' + e; }
-    finally { if(sb) sb.disabled = false; }
+    } catch(e){
+      window.__syncing = false;
+      ds.className = 'drive-state bad'; ds.textContent = '✗ error';
+      el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>✗ Sync error</b></div><div class="sync-step">' + esc(String(e)) + '</div>' + syncCloseBtn();
+    }
+    finally { clearInterval(syncTimer); if(sb) sb.disabled = false; window.__syncing = false; }
   }
+  function syncCloseBtn(){ return '<button class="ghost" style="margin-top:12px;width:100%" onclick="closeSyncBox()">Close</button>'; }
   async function brainScan(deep){
     el('brainmsg').textContent = deep ? 'Deep scanning the whole machine...' : 'Scanning known locations...';
     el('brainreport').innerHTML = '';
