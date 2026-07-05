@@ -34,34 +34,6 @@ import { type ScopeLane, scopeTree, toggleLane } from "./brain/scope.js";
 import { PAGE } from "./ui-page.js";
 import { onPath } from "./util.js";
 
-interface FileSummary {
-  exists: boolean;
-  path: string;
-  sizeKB: number;
-  mtime: string | null;
-}
-
-function fileSummary(path: string): FileSummary {
-  try {
-    const s = statSync(path);
-    return { exists: true, path, sizeKB: Math.round(s.size / 1024), mtime: s.mtime.toISOString() };
-  } catch {
-    return { exists: false, path, sizeKB: 0, mtime: null };
-  }
-}
-
-function shareSummary(projectRoot: string): {
-  bundle: FileSummary;
-  key: FileSummary;
-  lfs: boolean;
-} {
-  return {
-    bundle: fileSummary(join(projectRoot, "share", "global_memory.zemory.enc")),
-    key: fileSummary(join(projectRoot, "share", "share.key")),
-    lfs: existsSync(join(projectRoot, ".gitattributes")),
-  };
-}
-
 interface DriveSummary {
   path: string;
   linked: boolean;
@@ -207,7 +179,7 @@ function captureCoverage(limit = 10): {
   }
 }
 
-function dashboardBrain(projectRoot: string): unknown {
+function dashboardBrain(): unknown {
   const summary = brainSummary();
   const info = brainInfo();
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
@@ -237,7 +209,6 @@ function dashboardBrain(projectRoot: string): unknown {
     sizeKB: info.sizeKB,
     vectors,
     coverage: captureCoverage(),
-    share: shareSummary(projectRoot),
     activity: recentActivity(),
     hybrid: getHybridSetting(),
     rerank: getRerankSetting(),
@@ -321,7 +292,7 @@ export async function startUi(): Promise<void> {
     if (p === "/migrate") return json(res, analyzeMigration(target) ?? { error: "no docs dir" });
     if (p === "/check") return json(res, await runCheck(u.searchParams.get("feature") ?? "", rootP));
     if (p === "/status") return json(res, await gatherStatus(rootP));
-    if (p === "/brain-status") return json(res, dashboardBrain(target));
+    if (p === "/brain-status") return json(res, dashboardBrain());
     if (p === "/set-hybrid") {
       setHybridSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, hybrid: getHybridSetting() });
