@@ -29,13 +29,28 @@ interface Platform {
   convExpr: (id: string) => string;
 }
 
+// Enumerate every conversation id via the account API. Defensive by design:
+// always resolves to an ARRAY (never undefined/throws) so a transient blip —
+// page still warming up, a 429, an error body without `items` — degrades to a
+// short/empty list the caller can retry, instead of crashing on `.length`.
 const CHATGPT_LIST = `(async()=>{
-  const t=(await (await fetch('/api/auth/session')).json()).accessToken, H={Authorization:'Bearer '+t};
-  const ids=[]; let off=0,total=Infinity;
-  while(off<total){ const j=await (await fetch('/backend-api/conversations?offset='+off+'&limit=100&order=updated',{headers:H})).json();
-    total=j.total??j.items.length; (j.items||[]).forEach(i=>ids.push(i.id)); off+=(j.items||[]).length; if(!(j.items||[]).length)break;
-    await new Promise(r=>setTimeout(r,300)); }
-  return ids;
+  try{
+    const s=await (await fetch('/api/auth/session')).json(); const t=s&&s.accessToken;
+    if(!t) return [];
+    const H={Authorization:'Bearer '+t};
+    const ids=[]; let off=0,total=Infinity;
+    while(off<total){
+      const r=await fetch('/backend-api/conversations?offset='+off+'&limit=100&order=updated',{headers:H});
+      if(!r.ok) break;
+      const j=await r.json(); const items=(j&&j.items)||[];
+      total=(j&&typeof j.total==='number')?j.total:off+items.length;
+      for(const i of items) ids.push(i.id);
+      off+=items.length;
+      if(!items.length) break;
+      await new Promise(res=>setTimeout(res,300));
+    }
+    return ids;
+  }catch(e){ return []; }
 })()`;
 
 const PLATFORMS: Record<string, Platform> = {
@@ -295,7 +310,31 @@ export async function scanWeb(
       }
     }
 
-    const ids = await cdp.evaluate<string[]>(p.listExpr);
+    // The list eval can return empty/undefined (or throw) if the page is still
+    // warming up right after launch, or if the socket blips — retry with backoff
+    // (reconnecting a dead socket) before giving up, so a slow first paint no
+    // longer crashes the run. A logged-in account always has ≥1 conversation, so
+    // an empty result means "not ready yet", not "nothing to do".
+    let ids: string[] | undefined;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (cdp.dead) {
+        const rc = await reconnect(port, log);
+        if (!rc) return { status: "no-tab", platform: p.key, url: p.url, interrupted: true };
+        cdp = rc;
+      }
+      try {
+        const raw = await cdp.evaluate<unknown>(p.listExpr);
+        if (Array.isArray(raw) && raw.length) {
+          ids = raw as string[];
+          break;
+        }
+      } catch {
+        /* transient (execution context destroyed / socket blip) — retry */
+      }
+      log(`  conversation list not ready — retrying (${attempt + 1}/5)…`);
+      await sleep(2500 * (attempt + 1));
+    }
+    if (!ids) return { status: "no-tab", platform: p.key, url: p.url };
     log(`enumerated ${ids.length} conversation(s)`);
 
     // B2: ingest in batches so a mid-run crash never loses what was pulled. Each
