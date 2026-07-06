@@ -33,8 +33,6 @@ export interface SearchOptions {
   limit?: number;
   /** Max hits per session (diversification — stops one chat flooding recall). */
   perSession?: number;
-  /** Record a savings-ledger event (skip for internal probes). */
-  log?: boolean;
   /** Cross-encoder rerank override: true/false force on/off, undefined = setting. */
   rerank?: boolean;
   /** Filter: only hits from this source/agent (e.g. 'codex'). */
