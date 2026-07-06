@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-07] — feat(ui): honest token panel — ~tokens captured + free-capture (no fake saved)
+
+Panel token TRUNG THỰC (số thật, KHÔNG claim "saved") — đúng hướng "tương đối thật".
+
+- Panel **Global memory** (UI): thêm tile **`~N tokens captured`** (≈chars/4 — đo brain giữ bao nhiêu context) + row **`Capture cost: 0 extra tokens · free`** (hook đọc file, không gọi model) + tooltip nói rõ KHÔNG có metric "saved" phịa (ledger đã bỏ, xem plan 10).
+- `dashboardBrain().tokensEst = SUM(len(content))/4` (best-effort).
+- Verify: `/brain-status` trả `tokensEst=22,997,560` (110k message); panel render đúng tile + row.
+- plan 10 §3 cập nhật: đây là bản "tương đối thật" thay dashboard "saved %" (số phịa đã bỏ). Tùy chọn sau: retrieval ratio per-recall (ghi nhãn "retrieved", không "saved").
+
 ## [2026-07-07] — feat(harness): zemory structure in repo standard + routing; AGENTS §8 recipe refactor app về chuẩn
 
 Gói flow "agent app-session đọc zemory → refactor app về chuẩn" thành mô tả chuẩn.

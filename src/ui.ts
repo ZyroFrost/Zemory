@@ -203,11 +203,26 @@ function dashboardBrain(): unknown {
     };
   }
 
+  // Honest token stat: total captured content ≈ chars/4. A REAL number (how much
+  // context the brain holds), NOT a "saved" claim — capture itself costs 0 extra
+  // tokens (hooks read transcript files, no model call).
+  let tokensEst = 0;
+  try {
+    const db = openBrain();
+    tokensEst = Math.round(
+      Number((db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get() as { c: number }).c) / 4,
+    );
+    db.close();
+  } catch {
+    /* best-effort */
+  }
+
   return {
     ...summary,
     info,
     sizeKB: info.sizeKB,
     vectors,
+    tokensEst,
     coverage: captureCoverage(),
     activity: recentActivity(),
     hybrid: getHybridSetting(),

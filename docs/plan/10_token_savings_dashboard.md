@@ -21,8 +21,9 @@
 
 ## 3. Framing TRUNG THỰC thay thế
 - Capture = **"0 token phụ trội"** (hooks đọc file transcript, KHÔNG gọi model) → *free capture*, KHÔNG phải "measured bill reduction".
+- **Panel "Global memory" (UI) hiện SỐ THẬT** (2026-07-07): tile `~N tokens captured` (≈chars/4 — đo brain giữ bao nhiêu context) + row `Capture cost: 0 extra tokens · free` + tooltip nói rõ KHÔNG có metric "saved" phịa. Nguồn: `dashboardBrain().tokensEst = SUM(len(content))/4`.
 - Giá trị zemory = recall đúng lúc · index điều hướng (structure) · docs gọn → **định tính** (đỡ mò code, đỡ lặp), KHÔNG bán bằng con số token giả.
-
+- (Tùy chọn sau) retrieval ratio per-recall: "kéo X / tổng Y token" — số thật nếu ghi rõ nhãn *retrieved*, KHÔNG phải *saved*.
 ## 4. Điều kiện để CÓ metric thật (nếu sau này muốn)
 - Phải có **caller THẬT** ghi before/after đo được (vd compress sống lại + log thật), HOẶC đọc được **usage/cost thật** từ provider.
 - TUYỆT ĐỐI không trưng số counterfactual như "đã tiết kiệm N token".

@@ -1294,9 +1294,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       '<div class="coverage-stats">' +
       '<div class="coverage-stat"><b>' + fmtN(t.messages) + '</b><span>messages</span></div>' +
       '<div class="coverage-stat"><b>' + fmtN(t.sessions) + '</b><span>sessions</span></div>' +
+      '<div class="coverage-stat"><b>~' + fmtN(brain.tokensEst) + '</b><span>tokens captured</span></div>' +
       '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>DB size</span></div>' +
       '</div>' +
       '<div class="mini-list" style="margin-top:8px">' +
+      miniRow('Capture cost', '0 extra tokens · free<span class="q" title="Capture is free: hooks read agent transcript FILES on session end — no model call, no API cost. This is the honest number. zemory does NOT show a fake \'tokens saved\' metric — recall/index benefits are counterfactual and were removed (see docs/plan/10). ~tokens captured = SUM(len)/4, a real measure of how much context the brain holds, not a bill reduction.">?</span>') +
       miniRow('Search', (brain.hybrid ? 'BM25 + Vector' : 'FTS only') + (brain.rerank ? ' + rerank' : '')) +
       miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' pending') : '') + (vectors.error ? ' · error' : '')) +
       '</div>' +
