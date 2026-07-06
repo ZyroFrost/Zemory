@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-07-07] — feat(harness): zemory structure in repo standard + routing; AGENTS §8 recipe refactor app về chuẩn
+
+Gói flow "agent app-session đọc zemory → refactor app về chuẩn" thành mô tả chuẩn.
+
+- **`zemory structure`**: giờ in **repo layout chuẩn + bảng routing** (target để conform: UI→frontend, logic/auth→backend, infra→backend/infra, code ngoài→external, output→root+gitignore) + required + tên co theo stack + con trỏ reconcile. Trước chỉ in layout docs harness (giờ vẫn giữ phần đó bên dưới).
+- **`AGENTS.md §8`** — recipe end-to-end khi user kêu "đọc zemory, refactor theo chuẩn": (1) `zemory init` nếu chưa có harness → (2) `zemory structure` + `zemory validate` → (3) đọc RULES §Cấu trúc repo → (4) reconcile theo §7 (git mv giữ history, sửa import/entry, verify) → (5) hỏi trước khi đập lớn.
+- Verify: `zemory init` project mới đã scaffold §8 + rule cấu trúc; `zemory structure` in đúng repo standard.
+
 ## [2026-07-07] — reconcile: align với việc bỏ ledger (session kia) — revise plan 10, gỡ ledger khỏi data-model
 
 > 🔄 **Supersede:** chốt lại "dashboard token-savings (#528, 2026-07-06)" — sau khi merge session kia bỏ ledger: **KHÔNG làm dashboard**.

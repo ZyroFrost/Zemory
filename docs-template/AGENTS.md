@@ -61,3 +61,11 @@ Khi `zemory validate` báo folder lệch, hoặc repo chưa theo khung `backend/
 3. Sau khi move: **sửa import / entry point / path** cho khớp — đây là việc cần **judgment**, làm cẩn thận rồi **chạy test/verify**.
 4. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC.** zemory chỉ *chỉ ra* chỗ lệch; **agent tự nắn**, không auto-move.
 5. Xong → cập nhật `README` + `zemory changelog add` (sau khi OK).
+
+## 8. "Đọc zemory, refactor app này theo chuẩn" — recipe end-to-end
+Khi user mở 1 app và kêu bạn *đọc zemory + nắn app về chuẩn* (không tự chạy UI):
+1. **Chưa có harness** (`docs/.harness.json`)? → `zemory init` (kéo chuẩn + `AGENTS`/`RULES` vào). Đã có → bỏ qua.
+2. `zemory structure` — xem **ĐÍCH** (repo layout + bảng routing) cần conform. `zemory validate` — xem đang **lệch** đâu.
+3. Đọc `docs/agent/01_RULES.md §Cấu trúc repo` (bảng routing = index điều hướng: sửa gì → folder nào).
+4. **Reconcile theo §7:** `git mv` (giữ history) → gom code mình vào `backend/` (Python `backend/<pkg>/`, Node `backend/src/`|`src/`), UI → `frontend/`, code ngoài → `external/`, infra/config → `backend/infra/`, output (`dist/`,`build/`) → root + `.gitignore`. Sửa import/entry/path → `zemory run` / test **verify**.
+5. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC.** Xong → cập nhật `README` + `zemory changelog add` (sau OK).
