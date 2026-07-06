@@ -46,7 +46,35 @@ export function validate(ctx: Context): ValidateReport {
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
   }
 
+  // 3. Repo structure vs the standard (01_RULES §Cấu trúc repo). ADVISORY only —
+  //    reconciling is agent-assisted (AGENTS.md §7); zemory never moves files.
+  for (const i of checkStructure(projectRoot)) issues.push(i);
+
   return { issues, ok: !issues.some((i) => i.level === "error") };
+}
+
+/**
+ * Report how the repo lines up with the standard layout: own code under
+ * `backend/` (or `src/`), optional `frontend/` `infra/` `vendor/` `.venv/`, and
+ * the `docs/` + `AGENTS.md` harness. Only backend + docs are required; the rest
+ * exist only when they have content. Warn on drift, never fix (agent does that).
+ */
+function checkStructure(root: string): ValidateIssue[] {
+  const out: ValidateIssue[] = [];
+  const has = (p: string) => existsSync(join(root, p));
+  const ownCode = has("backend") ? "backend/" : has("src") ? "src/" : null;
+  if (!ownCode) {
+    out.push({
+      level: "warn",
+      msg: "structure: own code not under `backend/` (or `src/`) — see 01_RULES §Cấu trúc repo; reconcile via AGENTS.md §7",
+    });
+  }
+  if (!has("AGENTS.md")) {
+    out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
+  }
+  const present = [ownCode, has("frontend") && "frontend/", has("infra") && "infra/", has("vendor") && "vendor/", has("docs") && "docs/", has(".venv") && ".venv/"].filter(Boolean);
+  out.push({ level: "info", msg: `structure: layers present — ${present.join(" · ") || "(none)"}` });
+  return out;
 }
 
 function walkMd(dir: string, depth = 5): string[] {

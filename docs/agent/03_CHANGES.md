@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-06] — feat(harness): chuẩn cấu trúc repo (backend/frontend/infra) — rule + routing + validate + AGENTS §7
+
+Chuẩn **cấu trúc repo** dùng chung cho mọi app (quyết định: tầng khái niệm map theo stack; zemory **ship chuẩn + check lệch + hướng dẫn agent**, KHÔNG tự move file).
+
+- **`docs-template/agent/01_RULES.md`** — section đầu "Cấu trúc repo — chuẩn & routing": bảng **sửa-gì-vào-đâu** để agent tự định tuyến (UI→`frontend/`, logic/API/**bảo mật-auth**→`backend/`, code ngoài tham chiếu→`vendor/`, config hạ tầng→`infra/`, tài liệu→`docs/`). Bắt buộc luôn có `backend/`+`docs/`+`AGENTS.md`; còn lại tạo **khi có nội dung** (không xài code ngoài → không `vendor/`). Bảo mật = code trong `backend/`, KHÔNG phải folder. Tên co theo stack (Python `backend/<pkg>`, Node `backend/src` hay `src/`).
+- **`docs-template/AGENTS.md` §7** — reconcile cấu trúc: `git mv` giữ history, sửa import/entry rồi verify, **hỏi trước khi đập lớn**; zemory chỉ chỉ chỗ lệch, agent tự nắn.
+- **`src/validate.ts`** — check advisory: liệt kê tầng có/thiếu, warn nếu code không ở `backend/`(`src/`) hoặc thiếu `AGENTS.md`. Chạy trên zemory: `structure: layers present — src/ · docs/`.
+
+Bảo mật KHÔNG phải folder — làm rõ vì SasinInfra (repo khuôn mẫu) có vault là code trong backend + doc `06_security.md`, không phải thư mục.
+
 ## [2026-07-06] — feat(scan-web): kéo chat trong ChatGPT Project + nhãn project_root + Export-import + --delay/self-heal
 
 Kéo được chat nằm trong **ChatGPT Project (gizmo)** + gắn nhãn `project_root`, và nhận cả bản **Export data**.
