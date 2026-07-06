@@ -27,7 +27,6 @@ doc 1──N section ── self parent_id + FTS5 heading/body
 changelog ── FTS5 title/body
  └─ project_root, date, supersedes_id, archived, created_at
 
-ledger             baseline/actual token estimates
 known_stores       adapter store locations discovered by scan
 schema_version     ordered DB migrations
 ```

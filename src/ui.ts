@@ -360,7 +360,6 @@ export async function startUi(): Promise<void> {
           origin: u.searchParams.get("origin") || undefined,
           role: u.searchParams.get("role") || undefined,
           sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
-          log: true,
         }),
       );
     }

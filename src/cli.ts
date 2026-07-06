@@ -23,7 +23,6 @@ import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
 import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "./brain/privacy.js";
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
-import { ledgerSummary } from "./brain/ledger.js";
 import { validate } from "./validate.js";
 import { runMcpStdio } from "./mcp.js";
 import { createDoc, importAll, importDoc, listDocs, listToc, removeDoc, renderAll, renderDoc, resolveDocPath, searchSections, setBody, setHeading, showSection } from "./docs/plan.js";
@@ -447,8 +446,8 @@ async function cmdBrain(args: string[]): Promise<void> {
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
     const hits = useHybrid
-      ? await searchHybrid(query, { project, all, origin: originOpt, log: true, rerank: rerankOpt, recency: recencyOpt })
-      : search(query, { project, all, origin: originOpt, log: true, recency: recencyOpt });
+      ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt })
+      : search(query, { project, all, origin: originOpt, recency: recencyOpt });
     printHits(
       query,
       (all ? "whole brain" : `project: ${project}`) +
@@ -458,20 +457,6 @@ async function cmdBrain(args: string[]): Promise<void> {
         (recencyOpt === false ? "" : " · recency"),
       hits,
     );
-    return;
-  }
-  if (sub === "savings") {
-    const s = ledgerSummary();
-    console.log("zemory brain savings — token benchmark (≈ chars/4)");
-    console.log(`  ${"".padEnd(10)} ${"baseline".padStart(10)} ${"actual".padStart(10)} ${"saved".padStart(10)}`);
-    for (const r of [...s.byKind, s.total]) {
-      const tag = r.kind === "total" ? "TOTAL" : r.kind;
-      console.log(
-        `  ${tag.padEnd(10)} ${String(r.baseline).padStart(10)} ${String(r.actual).padStart(10)} ${(String(r.saved) + ` (-${r.pct}%)`).padStart(10)}`,
-      );
-    }
-    if (!s.total.events) console.log("  (no events yet — use `zemory run` / `compress` on real output)");
-    else console.log("  note: only compress counts (real before/after). Recall is not a measurable saving.");
     return;
   }
   if (sub === "keygen") {
@@ -804,7 +789,6 @@ async function cmdBrain(args: string[]): Promise<void> {
       "  digest [--all]     (re)build per-session summary digests (cheap-token recall lens).",
       "  digest <session>   show one session's digest (drill to messages via #id).",
       "  search <q> --digest  recall the DIGEST lane (session-level hits) instead of messages.",
-      "  savings           token benchmark: baseline (no-zemory) vs actual.",
       "",
       "  Local-only: transcripts are read and stored locally, never transmitted.",
     ].join("\n"),
