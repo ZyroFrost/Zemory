@@ -4,6 +4,22 @@
 > AI đọc file này trước khi làm. Tuân thủ tuyệt đối.
 > Mở phiên + mọi hướng dẫn quy trình: xem `AGENTS.md` ở root. Backlog: `02_TODO.md`. Changelog: `03_CHANGES.md`.
 
+## Cấu trúc repo — chuẩn & routing (đọc TRƯỚC khi sửa)
+Mọi app theo cùng bộ khung. **Cần sửa gì → vào đúng folder** (tự định tuyến, khỏi hỏi):
+
+| Cần làm | Vào folder | Ghi chú |
+|---|---|---|
+| Sửa **UI / giao diện** | `frontend/` | html/css/js + asset; font offline nếu cần |
+| Sửa **logic / API / xử lý / bảo mật-auth** | `backend/` | code CỦA MÌNH + entry point. **Bảo mật là code ở đây, KHÔNG phải folder riêng** |
+| **Dùng / tham chiếu code ngoài** | `vendor/` | repo ngoài clone/build về để tham chiếu — **gọi, KHÔNG dán vào `backend/`** |
+| **Config hạ tầng** (deploy / docker / monitoring) | `infra/` | chỉ app nào có hạ tầng riêng |
+| **Tài liệu / rule / plan / changelog** | `docs/` | sửa qua lệnh `zemory`, không gõ tay bản mirror |
+| Môi trường (app Python) | `.venv/` | ở root |
+
+- **Bắt buộc luôn có:** `backend/` (code mình) + `docs/` (harness) + `AGENTS.md`. Còn lại **tạo khi có nội dung** — `frontend/` khi có UI, `infra/`/`vendor/` khi thật sự cần, `.venv/` cho app Python. App build từ đầu, không xài code ngoài → **không có `vendor/`**.
+- **Ranh giới của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `vendor/` = gạch public bên ngoài — **gọi/extend**, không trộn vào `backend/`. Luôn rạch ròi "của mình vs người ta".
+- **Tên co theo stack, giữ đúng TẦNG:** code-của-mình trong `backend/` = Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Không cứng nhắc tên, giữ đúng vai từng tầng.
+
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
 - **UI · CLI output · code · comment công khai**: **TIẾNG ANH** — TUYỆT ĐỐI không nhét tiếng Việt vào giao diện / output lệnh hiển thị cho người dùng.
