@@ -20,6 +20,9 @@ export type ParsedLine =
 /** A whole-file (json) transcript, normalized. */
 export interface ParsedSession {
   cwd?: string;
+  /** Grouping folder recorded as `project_root` (falls back to cwd). For web
+   *  chats this is the ChatGPT Project name; for agents it's usually the cwd. */
+  project?: string;
   title?: string;
   messages: ParsedMessage[];
 }

@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-06] — feat(scan-web): kéo chat trong ChatGPT Project + nhãn project_root + Export-import + --delay/self-heal
+
+Kéo được chat nằm trong **ChatGPT Project (gizmo)** + gắn nhãn `project_root`, và nhận cả bản **Export data**.
+
+- **Bug gốc:** chat trong Project KHÔNG có ở `/backend-api/conversations` (list chỉ metadata, `mapping:null`) → scan-web bỏ sót (vd "Tạo ảnh động titan"). `total` của list còn bập bênh (6/101/760) làm dừng phân trang sớm.
+- **Enumerate lại (`scanweb.ts`):** loose (`/conversations`, phân trang tới khi trang ngắn — bỏ `total`) **+ mọi Project** (`/gizmos/snorlax/sidebar` cursor → id project → `/gizmos/{id}/conversations` cursor). Node điều phối **từng eval ngắn** (không gộp 1 eval khổng lồ dễ vỡ context). Merge + dedupe.
+- **Nhãn Project → `project_root`:** thêm `ParsedSession.project`; ingest set `project_root = project ?? cwd`. Adapter chatgpt đọc `gizmo_id`/`conversation_template_id` + map `_projects.json` (gizmo→tên); scan-web tự ghi map này mỗi lần chạy. Enumerate bỏ qua file `_*.json`.
+- **Export data:** file bulk chỉ có `gizmo_id` (không tên) → adapter resolve tên qua `_projects.json` → import vẫn có nhãn đẹp. (Đường không đụng rate-limit; ChatGPT không có API trả toàn bộ nội dung 1 lần.)
+- **Bền cho backfill lớn:** self-heal reconnect (mở lại browser khi tab đơ / port tắt), cờ `--delay <giây>` (`cli.ts`) giãn nhịp tránh 429.
+- **Nghiệm thu:** enumerate 859 (760 loose + 99 project across 43 projects); titan + 18 project vào brain kèm `project_root`; 500/859 đã kéo, đang loop kéo nốt phần còn lại.
+
 ## [2026-07-06] — fix(scan-web): guard bước enumerate — retry + list-script phòng thủ, hết crash undefined.length
 
 **Bug:** `zemory brain scan-web` crash `TypeError: Cannot read properties of undefined (reading 'length')` tại bước enumerate (`ids.length`, [scanweb.ts]) khi list-eval trả `undefined` — page vừa mở chưa sẵn sàng / 429 / execution context reload. B1 (reconnect) trước đó chỉ bọc fetch từng conversation, KHÔNG bọc bước enumerate → crash cả run (rất có thể là lỗi máy kia gặp lặp lại).

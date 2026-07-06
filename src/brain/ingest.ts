@@ -304,6 +304,8 @@ interface WriteSessionArgs {
   source: string;
   origin: string;
   cwd?: string;
+  /** Grouping folder → project_root (falls back to cwd when absent). */
+  project?: string;
   title?: string;
   msgs: PendingMsg[];
   wholeReplace: boolean;
@@ -324,7 +326,7 @@ function writeSession(db: BrainDB, a: WriteSessionArgs): number {
        cwd          = COALESCE(excluded.cwd, sessions.cwd),
        title        = COALESCE(excluded.title, sessions.title),
        host         = excluded.host`,
-  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: a.cwd ?? null, cwd: a.cwd ?? null, title: a.title ?? null, host: HOST });
+  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: a.project ?? a.cwd ?? null, cwd: a.cwd ?? null, title: a.title ?? null, host: HOST });
 
   const before = a.wholeReplace
     ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(a.sessionId) as { c: number }).c
@@ -383,7 +385,7 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
         }));
         const added = writeSession(db, {
           sessionId: conv.sessionId, source: file.source, origin,
-          cwd: conv.cwd, title: conv.title, msgs: pending, wholeReplace: true,
+          cwd: conv.cwd, project: conv.project, title: conv.title, msgs: pending, wholeReplace: true,
         });
         total += added;
         const snap = sessionSnapshot(db, conv.sessionId);

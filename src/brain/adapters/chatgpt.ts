@@ -7,7 +7,7 @@
 // it) and `brain scan` picks it up. Flatten = walk current_node → parent → root
 // then reverse, so only the active branch (not abandoned edits/regens) is kept.
 
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
 import { clip, safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
@@ -22,6 +22,7 @@ export const chatgptAdapter: Adapter = {
     const out: TranscriptFile[] = [];
     for (const f of safeReaddir(storeRoot)) {
       if (!f.endsWith(".json")) continue;
+      if (f.startsWith("_")) continue; // sidecar maps (e.g. _projects.json), not transcripts
       const t = toTranscript("chatgpt-web", join(storeRoot, f));
       if (t) out.push(t);
     }
@@ -40,6 +41,11 @@ export const chatgptAdapter: Adapter = {
     } catch {
       return null;
     }
+    // Project ("folder") id → name map, dropped alongside the transcript as
+    // `_projects.json` (written by scan-web, or seeded by hand). Lets a bulk
+    // "Export data" dump — which carries only gizmo ids — still get friendly
+    // project_root labels. Missing map → fall back to the raw gizmo id.
+    const projectNames = readProjectMap(dirname(filePath));
     const convs = Array.isArray(data)
       ? data
       : Array.isArray((data as any)?.conversations)
@@ -52,9 +58,21 @@ export const chatgptAdapter: Adapter = {
       if (!messages.length) continue;
       const c = conv as any;
       const cid = c.conversation_id ?? c.id ?? c.uuid ?? String(c.create_time ?? out.length);
+      // Project ("folder") grouping → project_root. Prefer the name scan-web
+      // stamped on __zemory_project; else resolve the gizmo id via the map;
+      // else use the raw gizmo id so it still groups, just with a plain label.
+      const gizmo =
+        (typeof c.gizmo_id === "string" && c.gizmo_id.trim() && c.gizmo_id) ||
+        (typeof c.conversation_template_id === "string" && c.conversation_template_id.trim() && c.conversation_template_id) ||
+        null;
+      const project =
+        (typeof c.__zemory_project === "string" && c.__zemory_project.trim() && c.__zemory_project) ||
+        (gizmo && (projectNames[gizmo] || gizmo)) ||
+        undefined;
       out.push({
         sessionId: "chatgpt-" + cid,
         cwd: undefined,
+        project,
         title: typeof c.title === "string" && c.title.trim() ? c.title : undefined,
         messages,
       });
@@ -62,6 +80,17 @@ export const chatgptAdapter: Adapter = {
     return out.length ? out : null;
   },
 };
+
+/** Load the gizmo-id → project-name map dropped next to the transcript as
+ *  `_projects.json` ({"g-p-…":"Video-Music Maker", …}). Absent/bad → {}. */
+function readProjectMap(dir: string): Record<string, string> {
+  try {
+    const m = JSON.parse(readFileSync(join(dir, "_projects.json"), "utf8"));
+    return m && typeof m === "object" ? (m as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
 
 /** Walk the active branch (current_node → parent → root), reverse to
  *  chronological, and emit user/assistant messages with real text. */

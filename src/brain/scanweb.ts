@@ -25,32 +25,80 @@ interface Platform {
   authExpr: string;
   /** JS (run in-page) returning [{id}] for ALL conversations (paged). */
   listExpr: string;
+  /** JS (run in-page) returning {gizmoId: projectName} so pulled conversations
+   *  can be labelled with their Project ("folder"), and to drive per-project
+   *  enumeration. Optional per platform. */
+  projectsExpr?: string;
+  /** JS template (run in-page) returning {ids, cursor} for ONE page of a
+   *  Project's conversations. Node drives cursor paging. Optional per platform. */
+  projectConvsExpr?: (gizmoId: string, cursor: string | null) => string;
   /** JS template (run in-page) returning one full conversation by id. */
   convExpr: (id: string) => string;
 }
 
-// Enumerate every conversation id via the account API. Defensive by design:
-// always resolves to an ARRAY (never undefined/throws) so a transient blip —
-// page still warming up, a 429, an error body without `items` — degrades to a
-// short/empty list the caller can retry, instead of crashing on `.length`.
+// Enumerate LOOSE conversation ids (chats not filed under a Project). Defensive:
+// always resolves to an ARRAY (never undefined/throws) so a transient blip
+// degrades to a short list the caller retries, instead of crashing on `.length`.
+// Pages until a short/empty page — the `total` field is unreliable and can
+// under-report, stopping enumeration early (the old cause of missing chats).
+// Project chats are NOT in this list; they come from a separate, Node-driven
+// pass (projectsExpr + projectConvsExpr) so each in-page eval stays short.
 const CHATGPT_LIST = `(async()=>{
   try{
     const s=await (await fetch('/api/auth/session')).json(); const t=s&&s.accessToken;
     if(!t) return [];
     const H={Authorization:'Bearer '+t};
-    const ids=[]; let off=0,total=Infinity;
-    while(off<total){
+    const ids=[]; let off=0;
+    for(let p=0;p<300;p++){
       const r=await fetch('/backend-api/conversations?offset='+off+'&limit=100&order=updated',{headers:H});
       if(!r.ok) break;
       const j=await r.json(); const items=(j&&j.items)||[];
-      total=(j&&typeof j.total==='number')?j.total:off+items.length;
-      for(const i of items) ids.push(i.id);
+      for(const c of items){ if(c&&c.id) ids.push(c.id); }
       off+=items.length;
-      if(!items.length) break;
-      await new Promise(res=>setTimeout(res,300));
+      if(items.length<100) break;
+      await new Promise(res=>setTimeout(res,200));
     }
     return ids;
   }catch(e){ return []; }
+})()`;
+
+// One page of a Project's conversation ids, cursor-paged (a `limit` param 422s).
+// Node drives the paging (see scanWeb) so each eval is short — a socket blip
+// costs one page (reconnect + retry), not the whole enumeration. Always resolves
+// to {ids:[], cursor:string|null}.
+const chatgptProjectConvs = (gizmoId: string, cursor: string | null): string => {
+  const path =
+    "/backend-api/gizmos/" + gizmoId + "/conversations" + (cursor ? "?cursor=" + encodeURIComponent(cursor) : "");
+  return (
+    "(async()=>{try{" +
+    "var t=(await (await fetch('/api/auth/session')).json()).accessToken; var H={Authorization:'Bearer '+t};" +
+    "var r=await fetch(" + JSON.stringify(path) + ",{headers:H}); if(!r.ok) return {ids:[],cursor:null};" +
+    "var j=await r.json(); var items=(j&&j.items)||[];" +
+    "return {ids:items.map(function(i){return i&&i.id;}).filter(Boolean), cursor:(j&&j.cursor)||null};" +
+    "}catch(e){return {ids:[],cursor:null};}})()"
+  );
+};
+
+// Map every Project (gizmo) id → its display name, so pulled conversations can be
+// labelled with the Project ("folder") they live in. Same cursor paging as the
+// enumeration; always resolves to an object (empty on any blip = no labels).
+const CHATGPT_PROJECTS = `(async()=>{
+  try{
+    const s=await (await fetch('/api/auth/session')).json(); const t=s&&s.accessToken;
+    if(!t) return {};
+    const H={Authorization:'Bearer '+t};
+    const map={}; let cur=null;
+    for(let p=0;p<100;p++){
+      const url='/backend-api/gizmos/snorlax/sidebar?conversations_per_gizmo=1'+(cur?('&cursor='+encodeURIComponent(cur)):'');
+      const r=await fetch(url,{headers:H});
+      if(!r.ok) break;
+      const j=await r.json();
+      for(const it of ((j&&j.items)||[])){ const g=it&&it.gizmo&&it.gizmo.gizmo; if(g&&g.id) map[g.id]=(g.display&&g.display.name)||g.id; }
+      cur=j&&j.cursor; if(!cur) break;
+      await new Promise(res=>setTimeout(res,200));
+    }
+    return map;
+  }catch(e){ return {}; }
 })()`;
 
 const PLATFORMS: Record<string, Platform> = {
@@ -60,6 +108,8 @@ const PLATFORMS: Record<string, Platform> = {
     source: "chatgpt-web",
     authExpr: `fetch('/api/auth/session').then(r=>r.json()).then(j=>({token:!!j.accessToken,email:j.user?.email||null})).catch(e=>({token:false,err:String(e)}))`,
     listExpr: CHATGPT_LIST,
+    projectsExpr: CHATGPT_PROJECTS,
+    projectConvsExpr: chatgptProjectConvs,
     convExpr: (id: string) =>
       `(async()=>{const t=(await (await fetch('/api/auth/session')).json()).accessToken;` +
       `const r=await fetch('/backend-api/conversation/${id}',{headers:{Authorization:'Bearer '+t}});` +
@@ -249,11 +299,19 @@ async function fetchConv(cdp: Cdp, p: Platform, id: string): Promise<any | null>
   return null;
 }
 
-/** Reconnect to the (still-alive, detached) browser after a CDP drop (B1). */
-async function reconnect(port: number, log: (m: string) => void): Promise<Cdp | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await sleep(2000 * (attempt + 1)); // 2s, 4s, 6s
-    log(`  CDP dropped — reconnecting (attempt ${attempt + 1}/3)…`);
+/** Reconnect after a CDP drop (B1). If the browser PROCESS is gone (port down,
+ *  not just a socket blip), relaunch it — the persistent profile stays logged in
+ *  — so a long backfill survives a browser crash/close, not only a dropped
+ *  socket. `relaunch` reopens the window; omit it to only re-attach. */
+async function reconnect(port: number, log: (m: string) => void, relaunch?: () => void): Promise<Cdp | null> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await sleep(2000 * (attempt + 1)); // 2s, 4s, 6s, 8s
+    log(`  CDP dropped — reconnecting (attempt ${attempt + 1}/4)…`);
+    if (relaunch && !(await portUp(port))) {
+      log("  browser gone — relaunching window…");
+      relaunch();
+      await sleep(6000);
+    }
     const c = await Cdp.connect(port, TAB_RE);
     if (c) {
       log("  reconnected.");
@@ -284,11 +342,17 @@ export async function scanWeb(
   mkdirSync(profileDir, { recursive: true });
   mkdirSync(importDir, { recursive: true });
 
-  if (!(await portUp(port))) {
+  // Reopen the window on a browser crash/close mid-run (persistent profile stays
+  // logged in) so a long backfill self-heals instead of aborting at the socket.
+  const relaunch = () => {
     const exe = findBrowser(opts.browser);
-    if (!exe) return { status: "no-browser", platform: p.key, url: p.url };
+    if (exe) launchBrowser(exe, profileDir, port, p.url);
+  };
+
+  if (!(await portUp(port))) {
+    if (!findBrowser(opts.browser)) return { status: "no-browser", platform: p.key, url: p.url };
     log(`opening ${p.key} window (log in there once)…`);
-    launchBrowser(exe, profileDir, port, p.url);
+    relaunch();
     await sleep(6000);
   }
 
@@ -318,7 +382,7 @@ export async function scanWeb(
     let ids: string[] | undefined;
     for (let attempt = 0; attempt < 5; attempt++) {
       if (cdp.dead) {
-        const rc = await reconnect(port, log);
+        const rc = await reconnect(port, log, relaunch);
         if (!rc) return { status: "no-tab", platform: p.key, url: p.url, interrupted: true };
         cdp = rc;
       }
@@ -335,7 +399,78 @@ export async function scanWeb(
       await sleep(2500 * (attempt + 1));
     }
     if (!ids) return { status: "no-tab", platform: p.key, url: p.url };
-    log(`enumerated ${ids.length} conversation(s)`);
+    log(`enumerated ${ids.length} loose conversation(s)`);
+
+    // Project ("folder") map: gizmo id → name. Used both to LABEL pulled chats
+    // (→ project_root) and to enumerate each project's chats below. Non-fatal —
+    // if it can't be fetched, loose chats still ingest, just without labels.
+    let projects: Record<string, string> = {};
+    if (p.projectsExpr) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (cdp.dead) {
+          const rc = await reconnect(port, log, relaunch);
+          if (!rc) break;
+          cdp = rc;
+        }
+        try {
+          const m = await cdp.evaluate<Record<string, string>>(p.projectsExpr);
+          if (m && typeof m === "object") {
+            projects = m;
+            break;
+          }
+        } catch {
+          /* transient — retry */
+        }
+        await sleep(1500 * (attempt + 1));
+      }
+      log(`  mapped ${Object.keys(projects).length} project(s)`);
+      // Persist the id→name map next to the transcripts so a later bulk "Export
+      // data" import (which carries only gizmo ids) can still resolve names.
+      if (Object.keys(projects).length) {
+        try {
+          writeFileSync(join(importDir, "_projects.json"), JSON.stringify(projects), "utf8");
+        } catch {
+          /* non-fatal */
+        }
+      }
+    }
+
+    // A Project's chats are NOT in the loose list — enumerate each project's
+    // conversations here, ONE short eval per page (Node drives the cursor). A
+    // socket blip only costs the current page (reconnect + retry the project),
+    // never the whole run. Merge + dedupe into ids so the pull loop covers all.
+    if (p.projectConvsExpr && Object.keys(projects).length) {
+      const seen = new Set(ids);
+      let added = 0;
+      for (const gid of Object.keys(projects)) {
+        let cursor: string | null = null;
+        for (let pg = 0; pg < 300; pg++) {
+          if (cdp.dead) {
+            const rc = await reconnect(port, log, relaunch);
+            if (!rc) break;
+            cdp = rc;
+          }
+          let res: { ids?: unknown; cursor?: unknown } | undefined;
+          try {
+            res = await cdp.evaluate<{ ids?: unknown; cursor?: unknown }>(p.projectConvsExpr(gid, cursor));
+          } catch {
+            break; // give up on this project; others still run
+          }
+          const pageIds = Array.isArray(res?.ids) ? (res!.ids as unknown[]).filter((x): x is string => typeof x === "string") : [];
+          for (const cid of pageIds) {
+            if (!seen.has(cid)) {
+              seen.add(cid);
+              ids.push(cid);
+              added++;
+            }
+          }
+          cursor = typeof res?.cursor === "string" ? res!.cursor : null;
+          if (!cursor) break;
+          await sleep(200);
+        }
+      }
+      log(`  + ${added} conversation(s) across ${Object.keys(projects).length} project(s) → ${ids.length} total`);
+    }
 
     // B2: ingest in batches so a mid-run crash never loses what was pulled. Each
     // batch (current batch only) is written to one reused file and ingested via
@@ -369,13 +504,15 @@ export async function scanWeb(
       if (!c && cdp.dead) {
         // Persist progress, then try to recover the (still-alive) browser.
         flush();
-        const fresh = await reconnect(port, log);
+        const fresh = await reconnect(port, log, relaunch);
         if (fresh) {
           cdp = fresh;
           c = await fetchConv(cdp, p, ids[i]);
         }
       }
       if (c) {
+        const gid = (c as { gizmo_id?: unknown }).gizmo_id;
+        if (typeof gid === "string" && projects[gid]) (c as { __zemory_project?: string }).__zemory_project = projects[gid];
         batch.push(c);
         pulled++;
       } else {
