@@ -5,20 +5,28 @@
 > Mở phiên + mọi hướng dẫn quy trình: xem `AGENTS.md` ở root. Backlog: `02_TODO.md`. Changelog: `03_CHANGES.md`.
 
 ## Cấu trúc repo — chuẩn & routing (đọc TRƯỚC khi sửa)
-Mọi app theo cùng bộ khung. **Cần sửa gì → vào đúng folder** (tự định tuyến, khỏi hỏi):
+Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên tắc: **folder nguồn = ĐẦU VÀO (git tracked); build/output = ĐẦU RA (ở root, GITIGNORE).**
 
-| Cần làm | Vào folder | Ghi chú |
-|---|---|---|
-| Sửa **UI / giao diện** | `frontend/` | html/css/js + asset; font offline nếu cần |
-| Sửa **logic / API / xử lý / bảo mật-auth** | `backend/` | code CỦA MÌNH + entry point. **Bảo mật là code ở đây, KHÔNG phải folder riêng** |
-| **Dùng / tham chiếu code ngoài** | `vendor/` | repo ngoài clone/build về để tham chiếu — **gọi, KHÔNG dán vào `backend/`** |
-| **Config hạ tầng** (deploy / docker / monitoring) | `infra/` | chỉ app nào có hạ tầng riêng |
-| **Tài liệu / rule / plan / changelog** | `docs/` | sửa qua lệnh `zemory`, không gõ tay bản mirror |
-| Môi trường (app Python) | `.venv/` | ở root |
+> **Mục đích KÉP:** vừa cấu trúc gọn, vừa là **INDEX điều hướng cho agent.** Cần sửa gì → theo bảng dưới **mở THẲNG folder đó**, **KHÔNG grep/đọc cả repo để dò** → nhanh + tiết kiệm token (bất biến #1). Chuẩn này chính là bản đồ để agent tự định vị mà không cần quét toàn bộ code.
 
-- **Bắt buộc luôn có:** `backend/` (code mình) + `docs/` (harness) + `AGENTS.md`. Còn lại **tạo khi có nội dung** — `frontend/` khi có UI, `infra/`/`vendor/` khi thật sự cần, `.venv/` cho app Python. App build từ đầu, không xài code ngoài → **không có `vendor/`**.
-- **Ranh giới của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `vendor/` = gạch public bên ngoài — **gọi/extend**, không trộn vào `backend/`. Luôn rạch ròi "của mình vs người ta".
-- **Tên co theo stack, giữ đúng TẦNG:** code-của-mình trong `backend/` = Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Không cứng nhắc tên, giữ đúng vai từng tầng.
+**Sửa gì → vào đâu** (tự định tuyến, khỏi hỏi):
+| Cần làm | Vào đâu |
+|---|---|
+| UI / giao diện (icon, logo, font offline) | `frontend/` |
+| logic / API / xử lý / **bảo mật-auth** | `backend/` — bảo mật = code, KHÔNG phải folder |
+| **config app tự quản** (monitoring, prometheus.yml…) | `backend/infra/` — server-side = 1 nhánh backend |
+| dùng / tham chiếu **code ngoài** | `external/` — repo ngoài clone về; **gọi, KHÔNG dán vào `backend/`** |
+| tài liệu / rule / plan | `docs/` — qua lệnh `zemory`, không gõ tay mirror |
+
+**Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/)` — chỉ có:
+- **Manifest/entry tool BẮT để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · `.venv/` (Python).
+- **ĐẦU RA — gitignore hết:** `dist/` · `build/` · `node_modules/` · `__pycache__/` · `.venv/`. Ở root nhưng KHÔNG commit → **repo tracked luôn sạch** (chỉ 3–4 folder nguồn + vài manifest).
+
+Bất biến:
+- **Bắt buộc:** `backend/` + `frontend/` + `docs/` + `AGENTS.md`. `external/` **optional** (chỉ khi dùng code ngoài).
+- **Deploy config tool ÉP để root** (Docker/compose, `.spec`) → để root; **config app TỰ quản** → `backend/infra/`.
+- **Của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `external/` = gạch public bên ngoài — chỉ **gọi/extend**, không trộn vào `backend/`.
+- **Tên co theo stack:** Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Giữ đúng TẦNG, không cứng nhắc tên.
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
