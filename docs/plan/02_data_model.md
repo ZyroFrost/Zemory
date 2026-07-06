@@ -12,7 +12,7 @@
 - Sửa curated content qua `plan set`, `docs add`, `changelog add`; routine `docs sync` chỉ seed hand-source và không re-import generated mirror đã có trong DB.
 - Mọi mutation section phải scope theo `project_root`; mọi path render/delete phải nằm trong `docs/`.
 - Schema có version và migration; trước migration global phải backup bằng SQLite online backup.
-- **Đồng bộ xuyên máy (CHỐT 2026-07-01):** mỗi máy giữ `global_memory.db` LOCAL; KHÔNG sync file DB sống qua cloud (WAL + ~453MB → corrupt/mất ghi). Chia sẻ bằng **bundle mã hoá `.enc` đặt trong Drive folder** + gộp bằng `brain import --merge` (additive: dedup session theo id, message theo `UNIQUE(session_id,uuid)`, NULL-uuid dedup theo `(session_id,role,timestamp,content)`; mỗi session giữ `host` máy gốc). Cột `sessions.host` phân biệt máy. `brain sync` tự export bundle máy này + merge bundle máy khác trong folder đã link. KHÔNG copy `vec_chunks`/`ingest_state` khi merge — vector backfill lại bằng `brain embed`.
+
 ## 1. ERD (toàn cảnh global_memory.db — TẤT CẢ ĐÃ BUILD)
 ```text
 sessions 1──N messages ── FTS5 word + trigram

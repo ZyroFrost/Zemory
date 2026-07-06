@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-07] — refine(harness): cấu trúc chuẩn — external/ + backend/infra + index-purpose; plan 09/10
+
+> 🔄 **Supersede:** tinh chỉnh "chuẩn cấu trúc repo (#468, 2026-07-06)" — chốt tên folder + gom infra sau khi bàn kỹ.
+
+- **`external/`** thay `vendor/` (tránh nhầm "nhà cung cấp dịch vụ"), cũng bỏ `deps/`. = folder repo ngoài clone về để **tham chiếu**.
+- **infra KHÔNG top-level** → `backend/infra/` (hạ tầng = server-side = 1 nhánh backend). Root gọn còn `backend/ frontend/ docs/`.
+- **Docker/compose/`.spec` để ROOT** (tool ép vị trí); **build output** (`dist/`,`build/`,`node_modules/`,`.venv/`) → root + `.gitignore`. Nguồn = ĐẦU VÀO (tracked), output = ĐẦU RA (gitignore) → repo tracked sạch, không "đẻ mớ folder".
+- **Mục đích KÉP nói toạc trong rule:** bảng routing = INDEX điều hướng — agent trỏ THẲNG vào folder cần sửa, KHỎI grep/đọc cả repo (tiết kiệm token, bất biến #1).
+- **validate**: structure check dùng `external/`, bỏ infra top-level.
+- **Ghi plan:** `docs/plan/09_repo_structure.md` (spec cấu trúc đầy đủ) + `docs/plan/10_token_savings_dashboard.md` (ý tưởng dashboard đo token tiết kiệm — tái dùng `ledger`; 3 tầng đo-thật/ước-tính/không-quy-được; P1 surface UI, P2 instrument per-feature; KHÔNG phịa 1 con số giả-chính-xác).
+
 ## [2026-07-06] — feat(harness): chuẩn cấu trúc repo (backend/frontend/infra) — rule + routing + validate + AGENTS §7
 
 Chuẩn **cấu trúc repo** dùng chung cho mọi app (quyết định: tầng khái niệm map theo stack; zemory **ship chuẩn + check lệch + hướng dẫn agent**, KHÔNG tự move file).

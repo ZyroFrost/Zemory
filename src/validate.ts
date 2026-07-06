@@ -54,10 +54,12 @@ export function validate(ctx: Context): ValidateReport {
 }
 
 /**
- * Report how the repo lines up with the standard layout: own code under
- * `backend/` (or `src/`), optional `frontend/` `infra/` `vendor/` `.venv/`, and
- * the `docs/` + `AGENTS.md` harness. Only backend + docs are required; the rest
- * exist only when they have content. Warn on drift, never fix (agent does that).
+ * Report how the repo lines up with the standard layout: two surfaces —
+ * `backend/` (own code; server-side infra lives under `backend/infra/`, not
+ * top-level) and `frontend/` (apps always ship a UI) — plus the `docs/` +
+ * `AGENTS.md` harness and an optional `external/` (external reference code).
+ * Build output (`dist/`, `build/`, `node_modules/`, `.venv/`) is gitignored, so
+ * it's ignored here. Warn on drift, never fix (agent-assisted, AGENTS.md §7).
  */
 function checkStructure(root: string): ValidateIssue[] {
   const out: ValidateIssue[] = [];
@@ -72,7 +74,7 @@ function checkStructure(root: string): ValidateIssue[] {
   if (!has("AGENTS.md")) {
     out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
   }
-  const present = [ownCode, has("frontend") && "frontend/", has("infra") && "infra/", has("vendor") && "vendor/", has("docs") && "docs/", has(".venv") && ".venv/"].filter(Boolean);
+  const present = [ownCode, has("frontend") && "frontend/", has("external") && "external/", has("docs") && "docs/"].filter(Boolean);
   out.push({ level: "info", msg: `structure: layers present — ${present.join(" · ") || "(none)"}` });
   return out;
 }

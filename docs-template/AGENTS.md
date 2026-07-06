@@ -57,7 +57,7 @@ Khi `zemory validate` báo folder lệch, hoặc repo chưa theo khung `backend/
 1. `zemory validate` — xem tầng nào thiếu / đặt sai (advisory, không tự sửa).
 2. Nắn về chuẩn, **GIỮ git history — dùng `git mv`, KHÔNG copy rồi xoá**:
    - code CỦA MÌNH rải ở root/lộn xộn → gom vào `backend/` (Python: `backend/<pkg>/`; Node: `backend/src/` hoặc `src/`).
-   - UI/asset → `frontend/`. Repo ngoài clone về (chỉ để tham chiếu) → `vendor/`. Config hạ tầng → `infra/`.
+   - UI/asset → `frontend/`. Repo ngoài clone về (chỉ để tham chiếu) → `external/`. Config app tự quản → `backend/infra/`. Build output (`dist/`,`build/`) → root + `.gitignore`.
 3. Sau khi move: **sửa import / entry point / path** cho khớp — đây là việc cần **judgment**, làm cẩn thận rồi **chạy test/verify**.
 4. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC.** zemory chỉ *chỉ ra* chỗ lệch; **agent tự nắn**, không auto-move.
 5. Xong → cập nhật `README` + `zemory changelog add` (sau khi OK).
