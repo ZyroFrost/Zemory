@@ -93,20 +93,6 @@ CREATE TABLE IF NOT EXISTS changelog (
 );
 CREATE INDEX IF NOT EXISTS idx_changelog_proj ON changelog(project_root, date DESC);
 
--- Token-savings ledger: one row per saving event, two comparable figures —
--- baseline_tokens (what it WOULD cost without zemory) vs actual_tokens (what it
--- cost with zemory). saved = baseline - actual. Honest benchmark.
-CREATE TABLE IF NOT EXISTS ledger (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts              TEXT,
-  kind            TEXT,            -- 'compress' | 'recall'
-  project_root    TEXT,
-  baseline_tokens INTEGER,         -- cost WITHOUT zemory (raw / full unit)
-  actual_tokens   INTEGER,         -- cost WITH zemory (compressed / snippet)
-  detail          TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_ledger_ts ON ledger(ts DESC);
-
 -- Store locations a deep scan has discovered (agent transcript dirs found
 -- ANYWHERE on the machine). A normal scan re-enumerates these directly so it
 -- never has to walk the whole disk again.
