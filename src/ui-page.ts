@@ -511,7 +511,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   @keyframes slide { 0% { margin-left: -45%; } 100% { margin-left: 100%; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(255,255,255,.14); border-top-color: var(--green); animation: spin .8s linear infinite; margin: 4px auto 12px; }
-  .sync-box { min-height: 90px; }
+  .sync-box { flex: 1 1 auto; min-height: 90px; overflow: auto; }
   .sync-step { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; color: var(--muted); }
   .sync-step b { color: #dce7df; font-weight: 700; }
   .sync-done { color: var(--green); }
@@ -537,9 +537,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .drive-state.bad { color: var(--amber); }
   .doc-link { cursor: pointer; }
   .doc-link:hover { border-color: var(--line-strong); color: #dff7e7; }
-  .modal.big { width: min(920px, calc(100vw - 40px)); }
-  .doc-body { max-height: 72vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 var(--mono); color: #cbe8d5; background: rgba(0, 0, 0, .28); border-radius: 10px; padding: 12px; margin: 0; }
-  .session-body { max-height: 72vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .doc-body { flex: 1 1 auto; min-height: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 var(--mono); color: #cbe8d5; background: rgba(0, 0, 0, .28); border-radius: 10px; padding: 12px; margin: 0; }
+  .session-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
   .smsg { padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, .03); border-left: 2px solid var(--line); }
   .smsg.user { border-left-color: var(--blue); }
   .smsg.assistant { border-left-color: var(--green); }
@@ -648,14 +647,25 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     justify-content: center;
     z-index: 10;
   }
+  /* Dialog harness — pick ONE fixed size at open time (see 01_RULES §Thiết kế UI).
+     No dynamic resize; overflowing content scrolls INSIDE the dialog, never grows it. */
   .modal {
-    width: min(380px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    width: min(94vw, max(380px, 30vw)); /* fallback = S if no size class */
+    max-width: 94vw;
+    max-height: 90vh;
+    overflow: hidden;
     border: 1px solid var(--line-strong);
     border-radius: 16px;
     background: #101713;
     box-shadow: var(--shadow);
     padding: 18px;
   }
+  .modal.s { width: min(94vw, max(380px, 30vw)); max-height: 45vh; }
+  .modal.m { width: min(94vw, max(560px, 50vw)); max-height: 70vh; }
+  .modal.l { width: min(94vw, max(820px, 72vw)); max-height: 85vh; }
+  .modal > .mtitle { flex: 0 0 auto; }
   .mtitle { color: var(--muted); margin-bottom: 12px; }
   .opt {
     width: 100%;
@@ -868,7 +878,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   </div>
 
   <div id="overlay" onclick="if(event.target===this)closeMenu()">
-    <div class="modal">
+    <div class="modal s">
       <div class="mtitle">Setup actions - <span id="mproj"></span></div>
       <button class="opt" onclick="act('/sync')"><b>Sync</b><span>Add missing docs, never overwrite DB source.</span></button>
       <button class="opt warn" onclick="actConfirm('/init-fresh','Rename current docs aside (docs.old-...) and create a fresh set?')"><b>Fresh start</b><span>Keep old docs aside, create clean set.</span></button>
@@ -877,21 +887,21 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   </div>
 
   <div id="syncOverlay" onclick="if(event.target===this && !window.__syncing)closeSyncBox()">
-    <div class="modal">
+    <div class="modal m">
       <div class="mtitle">Cross-machine sync</div>
       <div id="syncBox" class="sync-box"></div>
     </div>
   </div>
 
   <div id="docOverlay" onclick="if(event.target===this)closeDoc()">
-    <div class="modal big doc-modal">
+    <div class="modal l doc-modal">
       <div class="mtitle"><b id="docName" style="color:var(--text)"></b> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeDoc()">✕</button></div>
       <pre id="docBody" class="doc-body">loading...</pre>
     </div>
   </div>
 
   <div id="sessionOverlay" onclick="if(event.target===this)closeSession()">
-    <div class="modal big session-modal">
+    <div class="modal l session-modal">
       <div class="mtitle"><b id="sessName" style="color:var(--text)"></b> <span id="sessMeta" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSession()">✕</button></div>
       <div id="sessBody" class="session-body">loading...</div>
     </div>
