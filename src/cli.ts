@@ -324,8 +324,18 @@ async function cmdBrain(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
+    // --delay <seconds> between per-conversation fetches. Higher = stays under
+    // ChatGPT's 429 window (default 1.5s is fine for small pulls; use 30–60s for
+    // a big unattended backfill so it never trips the rate limit).
+    const delayRaw = flagValue(args, "--delay");
+    const delayMs = delayRaw !== undefined ? Math.round(Number(delayRaw) * 1000) : undefined;
+    if (delayRaw !== undefined && (!Number.isFinite(delayMs) || (delayMs as number) < 0)) {
+      console.log("  ✗ --delay expects a non-negative number of seconds.");
+      process.exitCode = 1;
+      return;
+    }
     console.log(`zemory brain scan-web — ${platform} (web-chat capture, origin=web)`);
-    const r = await scanWeb({ platform, refresh, limit }, (m) => console.log("  " + m));
+    const r = await scanWeb({ platform, refresh, limit, delayMs }, (m) => console.log("  " + m));
     if (r.status === "no-browser") {
       console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
       process.exitCode = 1;
