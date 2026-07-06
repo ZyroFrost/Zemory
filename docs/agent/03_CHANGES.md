@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-07] — reconcile: align với việc bỏ ledger (session kia) — revise plan 10, gỡ ledger khỏi data-model
+
+> 🔄 **Supersede:** chốt lại "dashboard token-savings (#528, 2026-07-06)" — sau khi merge session kia bỏ ledger: **KHÔNG làm dashboard**.
+
+- **Merge `a72d83e`** (session kia): ledger → `attic/`, gỡ khỏi `db.ts`/`cli.ts`/`search.ts`/`ui`. Rebuild sau merge: typecheck + build sạch, **không còn tham chiếu ledger đứt gãy**.
+- **plan 10 viết lại** = "vì sao KHÔNG có dashboard": ledger rỗng (no caller, luôn 0), `compress` out-of-scope, `recall` counterfactual = số phịa, không đọc được usage/cost. Framing thật: **free capture (0 token phụ trội)**, không marketing "measured savings". Kèm điều kiện để có metric thật nếu sau này cần.
+- Gỡ dòng `ledger` khỏi ERD `02_data_model` (doc project hiện tại) cho khớp code.
+- Lý do gốc giữ ở `attic/savings-removed.md`.
+
 ## [2026-07-07] — refine(harness): cấu trúc chuẩn — external/ + backend/infra + index-purpose; plan 09/10
 
 > 🔄 **Supersede:** tinh chỉnh "chuẩn cấu trúc repo (#468, 2026-07-06)" — chốt tên folder + gom infra sau khi bàn kỹ.
