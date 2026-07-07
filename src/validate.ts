@@ -54,12 +54,13 @@ export function validate(ctx: Context): ValidateReport {
 }
 
 /**
- * Report how the repo lines up with the standard layout: two surfaces —
- * `backend/` (own code; server-side infra lives under `backend/infra/`, not
- * top-level) and `frontend/` (apps always ship a UI) — plus the `docs/` +
- * `AGENTS.md` harness and an optional `external/` (external reference code).
- * Build output (`dist/`, `build/`, `node_modules/`, `.venv/`) is gitignored, so
- * it's ignored here. Warn on drift, never fix (agent-assisted, AGENTS.md §7).
+ * Report how the repo lines up with the standard layout. Only FOUR things are
+ * required — `backend/` (own code; infra under `backend/infra/`), `frontend/`
+ * (apps ship a UI), `docs/` + `AGENTS.md` (harness). Everything else is optional
+ * and created only when the app has it: `test/` (tests usually = running the app
+ * itself), `scripts/`, `backend/infra/`, `backend/migrations/`, `external/`,
+ * `attic/` (backup / pre-deploy snapshot), `data/`. Build output + secret + .env
+ * are gitignored, so not checked. Warn on drift, never fix (AGENTS.md §7).
  */
 function checkStructure(root: string): ValidateIssue[] {
   const out: ValidateIssue[] = [];
@@ -71,10 +72,23 @@ function checkStructure(root: string): ValidateIssue[] {
       msg: "structure: own code not under `backend/` (or `src/`) — see 01_RULES §Cấu trúc repo; reconcile via AGENTS.md §7",
     });
   }
+  if (!has("frontend")) {
+    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see 01_RULES §Cấu trúc repo" });
+  }
+  if (!has("docs")) {
+    out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
+  }
   if (!has("AGENTS.md")) {
     out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
   }
-  const present = [ownCode, has("frontend") && "frontend/", has("external") && "external/", has("data") && "data/", has("docs") && "docs/"].filter(Boolean);
+  const present = [
+    ownCode,
+    has("frontend") && "frontend/",
+    has("docs") && "docs/",
+    has("external") && "external/",
+    has("attic") && "attic/",
+    has("data") && "data/",
+  ].filter(Boolean);
   out.push({ level: "info", msg: `structure: layers present — ${present.join(" · ") || "(none)"}` });
   return out;
 }

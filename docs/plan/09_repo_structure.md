@@ -14,44 +14,55 @@
 ## 2. Cây thư mục chuẩn
 ```
 App/
-├── backend/          [BẮT BUỘC] code mình + entry + test + scripts (server-side gom hết)
+├── backend/          [BẮT BUỘC] server-side gom hết: code mình + entry (test/scripts optional)
 │   ├── <pkg>/ | src/  code mình (Python backend/<package>/ · Node backend/src/ hoặc src/)
-│   ├── test/          test (own code)
+│   │   └── types/     type/contract DÙNG CHUNG BE↔FE (nguồn; FE import — KHÔNG đẻ shared/)
+│   ├── test/          [optional] test tự động (chỉ khi có; TEST thường = chạy chính app)
 │   ├── scripts/       [optional] script dev/build của mình
 │   ├── infra/         [optional] config app tự quản (monitoring/deploy)
+│   ├── migrations/    [optional] schema/DB migration (app log/db)
 │   └── run.* · pyproject.toml / package.json
 ├── frontend/         [BẮT BUỘC] UI — HTML/React/Vue… ; asset → frontend/assets/
+│   └── test/          [optional] test frontend / E2E (khi có)
 ├── docs/             [BẮT BUỘC] harness zemory (agent/ · plan/ · .harness.json)
 ├── AGENTS.md · README.md · LICENSE · .gitignore · config (tsconfig/eslint…)   [manifest root]
 ├── external/         [optional] repo ngoài clone về tham chiếu (gọi, không dán vào backend)
-├── attic/            [optional] backup nguồn cũ / code đã gỡ — tracked, giữ tham chiếu
-├── Dockerfile · docker-compose.yml · *.spec · build.ps1   [tool ÉP để root]
+├── attic/            [optional] backup: nguồn cũ/code gỡ + SNAPSHOT bản tốt trước khi up server (rollback)
+├── Dockerfile · docker-compose.yml · *.spec · build.ps1 · .github/workflows/ · .vscode/  [tool ÉP root]
+├── .env.example      [tracked] template config
 │   ───── gitignore, KHÔNG commit ─────
+├── .env              secret runtime (buộc root — dotenv đọc ./.env)
 ├── data/             [optional] runtime .db log/cache/state + secret/.key/bundle
 ├── dist/ · build/    [optional] output đóng gói ĐỂ CHẠY/MỞ app (chỉ khi build)
 └── .venv/ · node_modules/ · __pycache__/   [optional] env/deps generated
 ```
-→ Root tracked: **`backend/ frontend/ docs/`** (+ optional `external/ attic/`) + manifest. Bắt buộc = `backend/ frontend/ docs/ AGENTS.md`.
+→ Root tracked: **`backend/ frontend/ docs/`** (+ optional `external/ attic/`) + manifest. **Bắt buộc = 4: `backend/(code) frontend/ docs/ AGENTS.md`** — test/scripts/infra/migrations đều optional.
 ## 3. Routing — sửa gì vào đâu
 | Cần làm | Vào đâu |
 |---|---|
 | UI / asset (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
-| logic / API / auth · test · script dev/build | `backend/` (+ `backend/test/` + `backend/scripts/`) — bảo mật = code |
+| logic / API / auth | `backend/` — code + entry; **bảo mật = code**, không phải folder |
+| type/contract dùng chung BE↔FE | `backend/src/types/` — FE **import** từ backend (KHÔNG đẻ `shared/`) |
 | config app tự quản (monitoring…) | `backend/infra/` — nhánh backend |
 | dùng / tham chiếu code ngoài | `external/` |
-| data/log runtime + secret/key | `data/` — root + `.gitignore` (phình/bí mật; app đóng gói: OS app-data) |
-| backup nguồn cũ / code đã gỡ | `attic/` — tracked, optional |
+| data/log runtime + secret/key | `data/` — root + `.gitignore` |
+| **backup nguồn cũ + snapshot TRƯỚC KHI up server** | `attic/` — tracked, rollback khi deploy hỏng |
+| **test tự động (khi có)** · script dev/build | `backend/test/` (+ `frontend/test/`) · `backend/scripts/` — **[optional]**; TEST thường = **chạy app** |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory` |
-| deploy config tool ép root (Docker/.spec) | root |
+| **CI/CD · editor · Docker/.spec** (tool ép) | root — `.github/` `.vscode/` `Dockerfile` `docker-compose.yml` `.spec` |
+| **env config** | root — `.env.example` (tracked) + `.env` (secret, gitignore) |
 | build output (`dist/`,`build/`) | root + `.gitignore` [optional] |
 ## 4. Quyết định đã chốt
-- **backend + frontend luôn có** — không tách theo "số mặt" nữa (user luôn build UI, kể cả tool ít UI như zemory).
-- **infra KHÔNG là folder top-level** → gom vào `backend/infra/` (hạ tầng là nhánh server-side của backend).
-- **Tên folder code ngoài = `external/`** — bỏ `vendor/` (dễ nhầm "nhà cung cấp dịch vụ") và `deps/` (dễ nhầm package-manager). external/ tự giải thích.
-- **Docker/compose/`.spec` để ROOT** (tool ép vị trí — tôn trọng), khác với config app tự quản (`backend/infra/`).
-- **Output + env gitignore** (`dist/ build/ node_modules/ .venv/ __pycache__/`) → up git chỉ tracked folder nguồn + manifest → repo sạch, không "đẻ mớ folder".
+- **backend + frontend luôn có** — user luôn build UI, kể cả tool ít UI như zemory.
+- **infra KHÔNG top-level** → `backend/infra/` (hạ tầng = nhánh server-side của backend).
+- **code ngoài = `external/`** — bỏ `vendor/`/`deps/` (external/ tự giải thích).
+- **Docker/compose/`.spec` + `.github/` (CI/CD) + `.vscode/` (editor) để ROOT** — tool ép vị trí, tôn trọng; khác config app tự quản (`backend/infra/`).
+- **`.env` buộc root + GITIGNORE** (dotenv/vite đọc `./.env`); **`.env.example` = TRACKED** template. Secret khác (`.key`, bundle, `.db`) → `data/`.
+- **type dùng chung BE↔FE** → `backend/src/types/`, FE import từ backend — KHÔNG đẻ folder `shared/`.
+- **TEST không bắt buộc** — thực tế **chạy chính app = bàn test** (build tới đâu coi tới đó). Folder `test/` (backend + frontend) CHỈ optional cho **lõi logic dễ sai ngầm** (search/dedup/migration/privacy — như zemory 15 test). App UI/luồng thẳng → bỏ. **Bắt buộc chỉ 4:** `backend(code)/ frontend/ docs/ AGENTS.md`.
+- **`attic/` = lưới an toàn backup** — nguồn cũ/code đã gỡ + **snapshot bản chạy tốt TRƯỚC KHI up server** (rollback khi deploy hỏng).
+- **Output + env + data gitignore** (`dist/ build/ node_modules/ .venv/ __pycache__/ .env data/`) → repo tracked chỉ folder nguồn + manifest → sạch.
 - **Tên co theo stack**, giữ đúng TẦNG.
-
 ## 5. Phạm vi áp dụng
 - **Hầu hết mọi app** của estate (UI + server-side): desktop WebView2 (SasinInfra), web app, tool có cockpit (zemory)… ✅
 - **KHÔNG ép** cho: thư viện/SDK thuần (không UI), mobile native (Gradle/Xcode có convention riêng), notebook / nghịch data rời.

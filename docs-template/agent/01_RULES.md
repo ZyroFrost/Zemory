@@ -13,21 +13,26 @@ Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên
 | Cần làm | Vào đâu |
 |---|---|
 | UI / giao diện / **asset** (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
-| logic / API / xử lý / **bảo mật-auth** · **test** · **script dev/build** | `backend/` — code + `backend/test/` + `backend/scripts/`; bảo mật = code, KHÔNG phải folder |
+| logic / API / xử lý / **bảo mật-auth** | `backend/` — code + entry (`backend/<pkg>/` \| `src/`); **bảo mật = code, KHÔNG phải folder** |
+| **type/contract dùng chung BE↔FE** | `backend/src/types/` — backend là nguồn, FE **import** từ đó (KHÔNG đẻ folder `shared/`) |
 | **config app tự quản** (monitoring, prometheus.yml…) | `backend/infra/` — server-side = 1 nhánh backend |
 | dùng / tham chiếu **code ngoài** | `external/` — repo ngoài clone về; **gọi, KHÔNG dán vào `backend/`** |
 | **data/log runtime + secret/key** (.db log, cache, `.key`, bundle) | `data/` — root, **GITIGNORE** (phình / theo máy / bí mật) |
-| **backup nguồn cũ / code đã gỡ** (giữ tham chiếu) | `attic/` — tracked, optional |
+| **backup: nguồn cũ/code gỡ + SNAPSHOT bản tốt TRƯỚC KHI up server** | `attic/` — tracked; lưới an toàn để rollback khi deploy hỏng |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory`, không gõ tay mirror |
+| **test tự động** (chỉ khi CÓ) · **script dev/build** | `backend/test/` (+ `frontend/test/`) · `backend/scripts/` — **[OPTIONAL]**; TEST thường = **chạy chính app** |
 
-**Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/)` — chỉ có:
-- **Manifest/entry tool BẮT để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · `.venv/` (Python).
-- **Runtime DATA + SECRET — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state · **key/secret `.key`, bundle `.enc`** — phình / theo máy / bí mật). Data sống + bí mật, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay.
-- **ĐẦU RA build — [OPTIONAL] gitignore, KHÔNG commit:** `dist/` · `build/` = output **đóng gói để CHẠY/MỞ app** (chỉ có khi app có bước build/package; app chạy thẳng thì không có) · `node_modules/` · `__pycache__/` · `.venv/`. Do build sinh ra, xóa build lại được → repo tracked vẫn sạch (chỉ 3–4 folder nguồn + vài manifest).
+**Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/ attic/)` — chỉ có:
+- **Manifest/entry + tool ÉP để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · **`.github/workflows/` (CI/CD)** · **`.vscode/`·`.idea/` (editor)** · `.venv/` (Python).
+- **Env config ở root** (tool đọc `./.env`): **`.env.example` = TRACKED** (template) · **`.env` = SECRET → GITIGNORE** (không commit). Secret khác (`.key`, bundle, `.db`) vẫn vào `data/`.
+- **Runtime DATA + SECRET — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state · **key/secret `.key`, bundle `.enc`**). Data sống + bí mật, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay.
+- **ĐẦU RA build — [OPTIONAL] gitignore, KHÔNG commit:** `dist/` · `build/` = output **đóng gói để CHẠY/MỞ app** (chỉ có khi app có bước build/package) · `node_modules/` · `__pycache__/` · `.venv/`. Do build sinh ra → repo tracked vẫn sạch.
 
 Bất biến:
-- **Bắt buộc:** `backend/` (gồm code + `test/` + `scripts/`) + `frontend/` + `docs/` + `AGENTS.md`. **Optional:** `external/` · `data/` · `attic/` (backup nguồn cũ) · `backend/infra/` · `dist/`,`build/`,`.venv/` (build output).
-- **Deploy config tool ÉP để root** (Docker/compose, `.spec`) → để root; **config app TỰ quản** → `backend/infra/`.
+- **Bắt buộc (chỉ 4):** `backend/` (code) + `frontend/` + `docs/` + `AGENTS.md`.
+- **Optional (có mới tạo):** `backend/test/` · `frontend/test/` · `backend/scripts/` · `backend/infra/` · `backend/migrations/` · `external/` · `attic/` · `data/` · `dist/`,`build/`,`.venv/`.
+- **TEST không bắt buộc:** thực tế **chạy chính app = bàn test** (build tới đâu coi tới đó). Folder `test/` CHỈ khi có test tự động cho **lõi logic dễ sai ngầm** (search/dedup/migration/privacy — như zemory 15 test). App UI/luồng thẳng → bỏ, không sao.
+- **Deploy config tool ÉP để root** (Docker/compose, `.spec`, `.github/`) → để root; **config app TỰ quản** → `backend/infra/`.
 - **Của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `external/` = gạch public bên ngoài — chỉ **gọi/extend**, không trộn vào `backend/`.
 - **Tên co theo stack:** Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Giữ đúng TẦNG, không cứng nhắc tên.
 

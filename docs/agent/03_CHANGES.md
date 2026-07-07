@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-07] — feat(structure): audit standard — patch 5 gaps (.github/.env/shared-types/fe-test/migrations), demote test to optional
+
+Chuẩn cấu trúc repo — vá 5 chỗ lọt + hạ test xuống optional (audit toàn diện).
+
+- **Bắt buộc rút còn 4:** backend/(code) · frontend/ · docs/ · AGENTS.md. test/scripts/infra/migrations = OPTIONAL (trước ghi sai là bắt buộc).
+- **TEST không ép:** thực tế chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (như zemory 15 test). App UI thường → bỏ.
+- **5 chỗ vá (app thật có nhưng chuẩn chưa xếp):**
+  1. `.github/` (CI/CD) + `.vscode/`/`.idea/` (editor) → ROOT (tool ép, như Docker).
+  2. `.env` = secret buộc root + gitignore (dotenv đọc ./.env); `.env.example` = tracked. Secret khác (.key/bundle/.db) → data/.
+  3. type/contract dùng chung BE↔FE → backend/src/types/, FE import (KHÔNG đẻ shared/).
+  4. test frontend/E2E → frontend/test/ (đối xứng backend/test/).
+  5. backend/migrations/ (schema/DB migration — app log/db).
+- **attic/ reframe:** backup nguồn cũ + SNAPSHOT bản tốt trước khi up server (rollback khi deploy hỏng).
+- Ghi vào: plan doc 09 (§2 cây/§3 routing/§4 quyết định) + docs-template RULES §Cấu trúc + `zemory structure` + `zemory validate` (required = 4, test không ép, present[] thêm attic).
+
 ## [2026-07-07] — feat(ui): savings dashboard = % per feature column + TỔNG %; merge recall, add digest
 
 Savings dashboard = bảng %: mỗi feature 1 CỘT, ô = **% token tiết kiệm**, cột CUỐI = TỔNG %.
