@@ -1471,7 +1471,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     try { renderSavings(await (await fetch('/savings')).json()); }
     catch(e){ el('savingsBody').innerHTML = '<div class="muted">savings error: ' + esc(e) + '</div>'; }
   }
-  function savingsPct(d){ return d.baseline ? Math.round(d.avoided / d.baseline * 100) : 0; }
+  function savingsPct(d){ return (d.baseline ? d.avoided / d.baseline * 100 : 0).toFixed(2); }
   function savingsRow(d, isTot){
     return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;align-items:center;font-size:12px">'
       + '<b>' + esc(isTot ? 'TỔNG' : d.date) + '</b>'
@@ -1500,11 +1500,12 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function recentList(recent){
     if(!recent.length) return '';
     var rows = recent.map(function(e){
-      return '<div class="smsg" style="display:grid;grid-template-columns:1.1fr 2fr .6fr .9fr;gap:8px;align-items:center;font-size:11px">'
+      return '<div class="smsg" style="display:grid;grid-template-columns:1.05fr 1.6fr .55fr .9fr .55fr;gap:8px;align-items:center;font-size:11px">'
         + '<span class="muted">' + esc((e.ts || '').slice(0,16).replace('T',' ')) + '</span>'
         + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.query || '(no query)') + '</span>'
         + '<span class="muted">' + fmtN(e.hits || 0) + ' hit</span>'
         + '<b style="color:var(--green)">≈ ' + fmtN(e.avoided) + '</b>'
+        + '<b style="color:var(--green)">' + savingsPct(e) + '%</b>'
         + '</div>';
     }).join('');
     return '<div class="tiny muted" style="text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px">Recall gần đây — mỗi message (' + recent.length + ')</div>' + rows;

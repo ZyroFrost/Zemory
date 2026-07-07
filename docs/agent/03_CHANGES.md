@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-07] — tweak(ui): savings % per message row + 2-decimal % (99.xx% thay vì 100% phẳng)
+
+Mỗi dòng "Recall gần đây — mỗi message" giờ có cột **%** (≈tránh/nguồn). Toàn bộ % làm tròn **2 số lẻ** (`toFixed(2)`) → lộ variation thật (vd 99.98% / 99.83%) thay vì luôn hiện 100% phẳng. Số tuyệt đối (token tránh) vẫn là chỉ số chính.
+
 ## [2026-07-07] — feat(ui): savings counts per message — MCP logging + per-recall list (query/hits) + %
 
 Savings tính THEO TỪNG MESSAGE + đếm đủ mọi đường recall.
