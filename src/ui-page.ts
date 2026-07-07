@@ -1471,13 +1471,15 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     try { renderSavings(await (await fetch('/savings')).json()); }
     catch(e){ el('savingsBody').innerHTML = '<div class="muted">savings error: ' + esc(e) + '</div>'; }
   }
+  function savingsPct(d){ return d.baseline ? Math.round(d.avoided / d.baseline * 100) : 0; }
   function savingsRow(d, isTot){
-    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;grid-template-columns:1.5fr .9fr 1fr 1fr 1.1fr;gap:8px;align-items:center;font-size:12px">'
+    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;align-items:center;font-size:12px">'
       + '<b>' + esc(isTot ? 'TỔNG' : d.date) + '</b>'
       + '<span>' + fmtN(d.recalls) + ' recall</span>'
       + '<span class="muted">nạp ~' + fmtN(d.actual) + '</span>'
       + '<span class="muted">nguồn ~' + fmtN(d.baseline) + '</span>'
       + '<b style="color:var(--green)">≈ ' + fmtN(d.avoided) + '</b>'
+      + '<b style="color:var(--green)">' + savingsPct(d) + '%</b>'
       + '</div>';
   }
   function renderSavings(r){
@@ -1489,7 +1491,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     }
     el('savingsBody').innerHTML =
       '<div class="tiny muted" style="margin-bottom:10px;line-height:1.5">≈ token TRÁNH phải nạp lại nhờ recall: recall trả phần liên quan (<b>nạp X</b>) thay vì nạp cả session nguồn (<b>nguồn Y</b>) → ≈ tránh = Y − X. Token ≈ chars/4. Đây là <b>ước tính hiệu suất recall</b> (cận trên, giả định không-recall thì nạp cả nguồn) — KHÔNG phải hoá đơn token thật.</div>'
-      + '<div class="smsg" style="display:grid;grid-template-columns:1.5fr .9fr 1fr 1fr 1.1fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span><span>Nạp (X)</span><span>Nguồn (Y)</span><b>≈ Tránh</b></div>'
+      + '<div class="smsg" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span><span>Nạp (X)</span><span>Nguồn (Y)</span><b>≈ Tránh</b><b>%</b></div>'
       + days.map(function(d){ return savingsRow(d, false); }).join('')
       + '<div style="height:8px"></div>'
       + savingsRow(tot, true);

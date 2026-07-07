@@ -5,6 +5,13 @@
 
 ---
 
+## [2026-07-07] — feat: data/ runtime-data slot in structure standard + % column in savings dialog
+
+Thêm `data/` vào chuẩn cấu trúc + cột % vào dialog token-saved.
+
+- **Chuẩn: `data/`** (root, GITIGNORE) = chỗ app ghi **runtime data/log** (.db log, cache, state lúc chạy). **OPTIONAL** (chỉ khi app có ghi data); app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay. Cập nhật: `docs-template/agent/01_RULES.md` §Cấu trúc repo, `zemory structure`, plan 09 (tree + routing), validate inventory.
+- **Dialog "Token saved": thêm cột `%`** = ≈tránh / nguồn (hiệu suất recall, ước tính cận trên) — mỗi ngày + dòng tổng.
+
 ## [2026-07-07] — feat(ui): 'Token saved by recall' dialog — per-day, forward-only, honest estimate
 
 Dialog "📊 Token saved by recall" — báo cáo THEO NGÀY, forward-only, ước tính trung thực (đúng ý user: đo trên recall thật).

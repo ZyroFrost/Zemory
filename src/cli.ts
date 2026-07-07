@@ -192,6 +192,7 @@ function cmdStructure(): void {
       "  logic / API / auth → backend/          own code + entry; security = code, NOT a folder",
       "  infra / config     → backend/infra/    server-side = a branch of backend",
       "  external code      → external/         cloned repos for reference; call, don't inline",
+      "  runtime data / log → data/             app's .db log/cache/state — root + .gitignore",
       "  docs / rules / plan → docs/            via `zemory` commands (don't hand-edit mirrors)",
       "  Docker / manifests → root              tool-mandated: Dockerfile, pyproject/package.json, .spec",
       "  build output       → root + .gitignore dist/, build/, node_modules/, .venv/",

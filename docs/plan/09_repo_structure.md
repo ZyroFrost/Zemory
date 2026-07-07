@@ -25,11 +25,11 @@ App/
 ├── Dockerfile · docker-compose.yml    ← tool ÉP để root
 ├── App.spec · build.ps1               ← build tooling ở root
 │   ── dưới đây gitignore, KHÔNG commit ──
+├── data/             runtime .db log / cache / state (app đóng gói: OS app-data)
 ├── dist/ · build/    ĐẦU RA đóng gói
 └── .venv/ · node_modules/             env/deps generated
 ```
 → Root tracked chỉ thấy **`backend/ frontend/ docs/ (external/)`** + vài manifest.
-
 ## 3. Routing — sửa gì vào đâu
 | Cần làm | Vào đâu |
 |---|---|
@@ -37,10 +37,10 @@ App/
 | logic / API / xử lý / bảo mật-auth | `backend/` — bảo mật = code, KHÔNG phải folder |
 | config app tự quản (monitoring…) | `backend/infra/` — server-side = 1 nhánh backend |
 | dùng / tham chiếu code ngoài | `external/` |
+| ghi data/log runtime (.db, cache, state) | `data/` — root + `.gitignore` (data sống, phình/theo máy; app đóng gói: OS app-data) |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory` |
 | deploy config tool ép root (Docker) | root |
 | build output (`dist/`, `build/`) | root + `.gitignore` |
-
 ## 4. Quyết định đã chốt
 - **backend + frontend luôn có** — không tách theo "số mặt" nữa (user luôn build UI, kể cả tool ít UI như zemory).
 - **infra KHÔNG là folder top-level** → gom vào `backend/infra/` (hạ tầng là nhánh server-side của backend).
