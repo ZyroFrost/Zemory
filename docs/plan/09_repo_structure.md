@@ -16,7 +16,7 @@
 App/
 ├── backend/          code mình + entry (server-side gom hết ở đây)
 │   ├── <pkg>/ | src/  code mình (Python backend/<package>/ · Node backend/src/ hoặc src/)
-│   ├── infra/         config app TỰ quản (prometheus.yml, monitoring…)
+│   ├── infra/         [optional] config app TỰ quản (prometheus.yml, monitoring…)
 │   └── run.* · pyproject.toml / package.json
 ├── frontend/         UI — bất kể tech (HTML thuần / React / Vue…) đều nằm trong đây
 ├── external/         [optional] repo ngoài clone về để tham chiếu (gọi, không dán vào backend)
@@ -25,11 +25,11 @@ App/
 ├── Dockerfile · docker-compose.yml    ← tool ÉP để root
 ├── App.spec · build.ps1               ← build tooling ở root
 │   ── dưới đây gitignore, KHÔNG commit ──
-├── data/             runtime .db log / cache / state (app đóng gói: OS app-data)
-├── dist/ · build/    ĐẦU RA đóng gói
-└── .venv/ · node_modules/             env/deps generated
+├── data/             [optional] runtime .db log/cache/state (app đóng gói: OS app-data)
+├── dist/ · build/    [optional] output đóng gói ĐỂ CHẠY/MỞ app (chỉ có khi build)
+└── .venv/ · node_modules/  [optional] env/deps generated
 ```
-→ Root tracked chỉ thấy **`backend/ frontend/ docs/ (external/)`** + vài manifest.
+→ Root tracked chỉ thấy **`backend/ frontend/ docs/ (external/)`** + vài manifest. Bắt buộc = `backend/ frontend/ docs/ AGENTS.md`; còn lại **optional** (chỉ khi có nội dung / khi build).
 ## 3. Routing — sửa gì vào đâu
 | Cần làm | Vào đâu |
 |---|---|

@@ -195,7 +195,7 @@ function cmdStructure(): void {
       "  runtime data / log → data/             app's .db log/cache/state — root + .gitignore",
       "  docs / rules / plan → docs/            via `zemory` commands (don't hand-edit mirrors)",
       "  Docker / manifests → root              tool-mandated: Dockerfile, pyproject/package.json, .spec",
-      "  build output       → root + .gitignore dist/, build/, node_modules/, .venv/",
+      "  build output       → root + .gitignore [optional] dist/, build/ = package to RUN the app (only if built); + node_modules/, .venv/",
       "",
       "  Required: backend/ + frontend/ + docs/ + AGENTS.md.  external/ only when used.",
       "  Names flex per stack: Python backend/<pkg>/ · Node backend/src/ (or src/).",

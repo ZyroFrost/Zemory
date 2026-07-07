@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-07-07] — docs(harness): mark dist/build (+env/data) OPTIONAL — build output to run the app, only when built
+
+Ghi rõ `dist/`+`build/` (và `.venv/`,`node_modules/`,`data/`) là **OPTIONAL** — output/generated, KHÔNG bắt buộc.
+
+- `dist/`+`build/` = output **đóng gói để CHẠY/MỞ app**, CHỈ có khi app có bước build/package (app chạy thẳng thì không có). Do build sinh ra, gitignore, không commit.
+- Bắt buộc chỉ là NGUỒN: `backend/ frontend/ docs/ AGENTS.md`. Optional: `external/ data/ backend/infra/ dist/ build/ .venv/`.
+- Cập nhật: RULES §Cấu trúc repo, `zemory structure`, plan 09 (tree đánh dấu [optional] từng folder).
+
 ## [2026-07-07] — feat: data/ runtime-data slot in structure standard + % column in savings dialog
 
 Thêm `data/` vào chuẩn cấu trúc + cột % vào dialog token-saved.

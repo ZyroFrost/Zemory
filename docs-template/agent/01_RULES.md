@@ -22,7 +22,7 @@ Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên
 **Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/)` — chỉ có:
 - **Manifest/entry tool BẮT để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · `.venv/` (Python).
 - **Runtime DATA — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state app ghi lúc chạy — phình + theo máy). Đây là **data sống**, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay `data/`.
-- **ĐẦU RA build — gitignore hết:** `dist/` · `build/` · `node_modules/` · `__pycache__/` · `.venv/`. Ở root nhưng KHÔNG commit → **repo tracked luôn sạch** (chỉ 3–4 folder nguồn + vài manifest).
+- **ĐẦU RA build — [OPTIONAL] gitignore, KHÔNG commit:** `dist/` · `build/` = output **đóng gói để CHẠY/MỞ app** (chỉ có khi app có bước build/package; app chạy thẳng thì không có) · `node_modules/` · `__pycache__/` · `.venv/`. Do build sinh ra, xóa build lại được → repo tracked vẫn sạch (chỉ 3–4 folder nguồn + vài manifest).
 
 Bất biến:
 - **Bắt buộc:** `backend/` + `frontend/` + `docs/` + `AGENTS.md`. `external/` **optional** (chỉ khi dùng code ngoài).
