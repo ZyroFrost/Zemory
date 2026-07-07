@@ -1494,7 +1494,20 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       + '<div class="smsg" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span><span>Nạp (X)</span><span>Nguồn (Y)</span><b>≈ Tránh</b><b>%</b></div>'
       + days.map(function(d){ return savingsRow(d, false); }).join('')
       + '<div style="height:8px"></div>'
-      + savingsRow(tot, true);
+      + savingsRow(tot, true)
+      + recentList(r.recent || []);
+  }
+  function recentList(recent){
+    if(!recent.length) return '';
+    var rows = recent.map(function(e){
+      return '<div class="smsg" style="display:grid;grid-template-columns:1.1fr 2fr .6fr .9fr;gap:8px;align-items:center;font-size:11px">'
+        + '<span class="muted">' + esc((e.ts || '').slice(0,16).replace('T',' ')) + '</span>'
+        + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.query || '(no query)') + '</span>'
+        + '<span class="muted">' + fmtN(e.hits || 0) + ' hit</span>'
+        + '<b style="color:var(--green)">≈ ' + fmtN(e.avoided) + '</b>'
+        + '</div>';
+    }).join('');
+    return '<div class="tiny muted" style="text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px">Recall gần đây — mỗi message (' + recent.length + ')</div>' + rows;
   }
   function closeSyncBox(){ if(!window.__syncing) el('syncOverlay').style.display = 'none'; }
   async function driveSync(){

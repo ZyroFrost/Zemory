@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-07] — feat(ui): savings counts per message — MCP logging + per-recall list (query/hits) + %
+
+Savings tính THEO TỪNG MESSAGE + đếm đủ mọi đường recall.
+
+- **Log ở CẢ 3 đường recall chủ động:** CLI `brain search`, **MCP `brain_search`** (agent — TRƯỚC THIẾU nên agent recall không đếm), UI Search/Enter (commit=1). Type-ahead không log (tránh thổi phồng).
+- **Per-message:** `recall_savings` thêm `query`+`hits` (schema v7 + ALTER an toàn cho DB cũ). `savingsByDay()` trả `recent[]` (25 recall gần nhất).
+- **Dialog:** mục "Recall gần đây — mỗi message" (giờ · query · hits · ≈tránh) + cột **%** ở bảng ngày + tổng.
+- **Verify:** 3 recall CLI → tổng 1→5, mỗi cái có query/hits/avoided đúng.
+- Lưu ý: % ~100% vì baseline = cả session nguồn (cận trên); số có ý nghĩa là token tránh tuyệt đối.
+
 ## [2026-07-07] — feat(harness): complete slots — backend/test, backend/scripts, frontend/assets, attic/, data+secret
 
 Bổ sung slot còn thiếu vào chuẩn cấu trúc (lộ ra khi audit zemory để refactor strict):

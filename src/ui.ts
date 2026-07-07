@@ -377,7 +377,7 @@ export async function startUi(): Promise<void> {
       });
       // Log a savings estimate ONLY on a committed recall (Enter/submit), never on
       // incremental type-ahead — otherwise every keystroke would inflate the count.
-      if (u.searchParams.get("commit") === "1") logRecall(hits);
+      if (u.searchParams.get("commit") === "1") logRecall(hits, u.searchParams.get("q") ?? "");
       return json(res, hits);
     }
     if (p === "/savings") return json(res, savingsByDay());

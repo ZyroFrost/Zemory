@@ -17,7 +17,7 @@ const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
 export const BRAIN_DIR = ENV_DB ? dirname(ENV_DB) : join(homedir(), ".zemory");
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -103,7 +103,9 @@ CREATE TABLE IF NOT EXISTS recall_savings (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   ts              TEXT NOT NULL,
   baseline_tokens INTEGER NOT NULL,
-  actual_tokens   INTEGER NOT NULL
+  actual_tokens   INTEGER NOT NULL,
+  query           TEXT,
+  hits            INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_recall_savings_ts ON recall_savings(ts);
 
@@ -322,6 +324,17 @@ function migrate(db: BrainDB, fromVersion: number): void {
       db.exec("ALTER TABLE sessions ADD COLUMN origin TEXT NOT NULL DEFAULT 'local'");
     }
     version = 6;
+  }
+  if (version < 7) {
+    // v7 adds query + hits to recall_savings (per-recall detail for the savings
+    // report). Old rows keep NULL — daily totals are unaffected.
+    if (!hasColumn(db, "recall_savings", "query")) {
+      db.exec("ALTER TABLE recall_savings ADD COLUMN query TEXT");
+    }
+    if (!hasColumn(db, "recall_savings", "hits")) {
+      db.exec("ALTER TABLE recall_savings ADD COLUMN hits INTEGER");
+    }
+    version = 7;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

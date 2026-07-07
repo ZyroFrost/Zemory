@@ -471,7 +471,7 @@ async function cmdBrain(args: string[]): Promise<void> {
     const hits = useHybrid
       ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt })
       : search(query, { project, all, origin: originOpt, recency: recencyOpt });
-    logRecall(hits); // deliberate recall → log token-savings estimate (forward-only)
+    logRecall(hits, query); // deliberate recall → log token-savings estimate (forward-only)
     printHits(
       query,
       (all ? "whole brain" : `project: ${project}`) +
