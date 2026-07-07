@@ -24,7 +24,7 @@ import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from ".
 import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "./brain/privacy.js";
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { validate } from "./validate.js";
-import { logRecall } from "./brain/savings.js";
+import { logDigestRecall, logRecall } from "./brain/savings.js";
 import { runMcpStdio } from "./mcp.js";
 import { createDoc, importAll, importDoc, listDocs, listToc, removeDoc, renderAll, renderDoc, resolveDocPath, searchSections, setBody, setHeading, showSection } from "./docs/plan.js";
 import { addEntry, importChangelog, listEntries, renderChangelog, searchChangelog, setEntryDate } from "./docs/changelog.js";
@@ -460,6 +460,8 @@ async function cmdBrain(args: string[]): Promise<void> {
         console.log(`  ▪ ${h.session_id}  [${h.meta.source} · ${h.meta.host}]  ${fmtDate(h.meta.to)}`);
         console.log(`     ${h.snippet}`);
       }
+      // Digest feature saving: read the thin digest vs the whole session.
+      logDigestRecall(dhits.map((h) => h.session_id), query);
       console.log("  → open one: `zemory brain digest <session_id>`");
       return;
     }
