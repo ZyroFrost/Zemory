@@ -1471,37 +1471,40 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     try { renderSavings(await (await fetch('/savings')).json()); }
     catch(e){ el('savingsBody').innerHTML = '<div class="muted">savings error: ' + esc(e) + '</div>'; }
   }
-  function savingsPct(d){ return (d.baseline ? d.avoided / d.baseline * 100 : 0).toFixed(2); }
-  function savingsRow(d, isTot){
-    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;align-items:center;font-size:12px">'
-      + '<b>' + esc(isTot ? 'TỔNG' : d.date) + '</b>'
-      + '<span>' + fmtN(d.recalls) + ' recall</span>'
-      + '<span class="muted">nạp ~' + fmtN(d.actual) + '</span>'
-      + '<span class="muted">nguồn ~' + fmtN(d.baseline) + '</span>'
-      + '<b style="color:var(--green)">≈ ' + fmtN(d.avoided) + '</b>'
-      + '<b style="color:var(--green)">' + savingsPct(d) + '%</b>'
+  function savingsPct(e){ return (e.baseline ? e.avoided / e.baseline * 100 : 0).toFixed(2); }
+  var FEATURE_LABEL = { search: 'Recall', show: 'Show', plan: 'Plan', scoped: 'Scoped' };
+  function featLabel(f){ return FEATURE_LABEL[f] || f; }
+  function pivotGrid(features){ return 'grid-template-columns:1.1fr .7fr ' + features.map(function(){ return '.9fr'; }).join(' ') + ' 1fr;'; }
+  function pivotRow(row, features, grid, isTot){
+    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;' + grid + 'gap:8px;align-items:center;font-size:12px">'
+      + '<b>' + esc(isTot ? 'TỔNG' : row.date) + '</b>'
+      + '<span class="muted">' + fmtN(row.recalls) + '</span>'
+      + features.map(function(f){ var v = (row.byFeature && row.byFeature[f]) || 0; return v ? '<span style="color:var(--green)">≈' + fmtN(v) + '</span>' : '<span class="muted">–</span>'; }).join('')
+      + '<b style="color:var(--green)">≈ ' + fmtN(row.avoided) + '</b>'
       + '</div>';
   }
   function renderSavings(r){
-    const days = (r && r.days) || []; const tot = (r && r.total) || {avoided:0,recalls:0,baseline:0,actual:0};
+    var days = (r && r.days) || []; var tot = (r && r.total) || {avoided:0,recalls:0,byFeature:{}}; var features = (r && r.features) || [];
     el('savingsSince').textContent = r && r.since ? ('từ ' + r.since) : '';
     if(!days.length){
-      el('savingsBody').innerHTML = '<div class="empty">Chưa có recall nào được ghi. Số tính từ giờ trở đi — mỗi recall chủ động (nút Search ở đây, hoặc <code>zemory brain search</code>) cộng vào.</div>';
+      el('savingsBody').innerHTML = '<div class="empty">Chưa có retrieval nào được ghi. Số tính từ giờ trở đi — mỗi recall chủ động (Search/Enter ở đây, agent qua MCP, hoặc <code>zemory brain search</code>) cộng vào cột feature tương ứng.</div>';
       return;
     }
+    var grid = pivotGrid(features);
     el('savingsBody').innerHTML =
-      '<div class="tiny muted" style="margin-bottom:10px;line-height:1.5">≈ token TRÁNH phải nạp lại nhờ recall: recall trả phần liên quan (<b>nạp X</b>) thay vì nạp cả session nguồn (<b>nguồn Y</b>) → ≈ tránh = Y − X. Token ≈ chars/4. Đây là <b>ước tính hiệu suất recall</b> (cận trên, giả định không-recall thì nạp cả nguồn) — KHÔNG phải hoá đơn token thật.</div>'
-      + '<div class="smsg" style="display:grid;grid-template-columns:1.3fr .8fr .9fr .9fr 1fr .6fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span><span>Nạp (X)</span><span>Nguồn (Y)</span><b>≈ Tránh</b><b>%</b></div>'
-      + days.map(function(d){ return savingsRow(d, false); }).join('')
+      '<div class="tiny muted" style="margin-bottom:10px;line-height:1.5">≈ token TRÁNH phải nạp lại nhờ mỗi feature (retrieval trả phần liên quan thay vì nạp cả nguồn). Mỗi cột = 1 feature · <b>cột cuối = TỔNG</b>. Token ≈ chars/4 — <b>ước tính hiệu suất</b> (cận trên), KHÔNG phải hoá đơn token thật. Feature không phát sinh event đo được (index/capture) KHÔNG có ở đây.</div>'
+      + '<div class="smsg" style="display:grid;' + grid + 'gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span>' + features.map(function(f){ return '<b>' + esc(featLabel(f)) + '</b>'; }).join('') + '<b>TỔNG</b></div>'
+      + days.map(function(d){ return pivotRow(d, features, grid, false); }).join('')
       + '<div style="height:8px"></div>'
-      + savingsRow(tot, true)
+      + pivotRow(tot, features, grid, true)
       + recentList(r.recent || []);
   }
   function recentList(recent){
     if(!recent.length) return '';
     var rows = recent.map(function(e){
-      return '<div class="smsg" style="display:grid;grid-template-columns:1.05fr 1.6fr .55fr .9fr .55fr;gap:8px;align-items:center;font-size:11px">'
+      return '<div class="smsg" style="display:grid;grid-template-columns:1fr .55fr 1.4fr .5fr .85fr .55fr;gap:8px;align-items:center;font-size:11px">'
         + '<span class="muted">' + esc((e.ts || '').slice(0,16).replace('T',' ')) + '</span>'
+        + '<span>' + esc(featLabel(e.feature || 'search')) + '</span>'
         + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.query || '(no query)') + '</span>'
         + '<span class="muted">' + fmtN(e.hits || 0) + ' hit</span>'
         + '<b style="color:var(--green)">≈ ' + fmtN(e.avoided) + '</b>'

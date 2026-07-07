@@ -381,7 +381,12 @@ export async function startUi(): Promise<void> {
       return json(res, hits);
     }
     if (p === "/savings") return json(res, savingsByDay());
-    if (p === "/brain-context") return json(res, getMessageContext(Number(u.searchParams.get("id")), 3) ?? {});
+    if (p === "/brain-context") {
+      const ctx = getMessageContext(Number(u.searchParams.get("id")), 3);
+      // 'show' feature: drilled into one message + context instead of the whole session.
+      if (ctx && ctx.messages) logRecall([{ sessionId: ctx.sessionId, snippet: ctx.messages.map((m) => m.content).join("\n") }], "", undefined, "show");
+      return json(res, ctx ?? {});
+    }
     if (p === "/brain-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
     if (req.method === "POST" && p === "/drive-sync") {
       const dir = getDriveDir();
