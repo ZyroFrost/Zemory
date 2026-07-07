@@ -814,8 +814,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           </div>
         </div>
         <div class="searchline">
-          <input type="text" id="bq" placeholder="how we implemented streaming tool output for agents" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch()">
-          <button onclick="brainSearch()">Search ⌘↵</button>
+          <input type="text" id="bq" placeholder="how we implemented streaming tool output for agents" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
+          <button onclick="brainSearch(true)">Search ⌘↵</button>
         </div>
         <div class="filterline">
           <label class="toggle" title="Search every project's sessions (the brain is global). Off = only the selected project."><input type="checkbox" id="ball" checked onchange="setScope()"> Scope: all projects</label>
@@ -857,7 +857,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
     <aside class="inspector">
       <section class="panel" id="brain" data-grow="insp0" data-grow-default="2.1" style="flex-grow:2.1">
-        <div class="panel-head"><div><h3>Global memory<span class="q" title="The whole brain in one local SQLite DB (~/.zemory/global_memory.db): totals, then sessions/messages broken down by machine and by agent, plus raw table sizes. 'Search' = current recall mode. Local + rebuildable from transcripts.">?</span></h3><p id="memSub">One SQLite brain.</p></div></div>
+        <div class="panel-head"><div><h3>Global memory<span class="q" title="The whole brain in one local SQLite DB (~/.zemory/global_memory.db): totals, then sessions/messages broken down by machine and by agent, plus raw table sizes. 'Search' = current recall mode. Local + rebuildable from transcripts.">?</span></h3><p id="memSub">One SQLite brain.</p></div><button class="ghost" style="align-self:start;padding:4px 9px;font-size:11px;white-space:nowrap" onclick="openSavings()" title="Token saved by recall, per day (honest estimate)">📊 Saved</button></div>
         <div class="panel-pad" id="memoryPanel"></div>
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
@@ -904,6 +904,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     <div class="modal l session-modal">
       <div class="mtitle"><b id="sessName" style="color:var(--text)"></b> <span id="sessMeta" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSession()">✕</button></div>
       <div id="sessBody" class="session-body">loading...</div>
+    </div>
+  </div>
+
+  <div id="savingsOverlay" onclick="if(event.target===this)closeSavings()">
+    <div class="modal l">
+      <div class="mtitle"><b style="color:var(--text)">📊 Token saved by recall — ước tính</b> <span id="savingsSince" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSavings()">✕</button></div>
+      <div id="savingsBody" class="session-body">loading...</div>
     </div>
   </div>
 
@@ -1457,6 +1464,36 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ el('sessBody').innerHTML = '<div class="muted">session error: ' + esc(e) + '</div>'; }
   }
   function closeSession(){ el('sessionOverlay').style.display = 'none'; }
+  function closeSavings(){ el('savingsOverlay').style.display = 'none'; }
+  async function openSavings(){
+    el('savingsOverlay').style.display = 'flex';
+    el('savingsBody').innerHTML = '<div class="empty">loading...</div>';
+    try { renderSavings(await (await fetch('/savings')).json()); }
+    catch(e){ el('savingsBody').innerHTML = '<div class="muted">savings error: ' + esc(e) + '</div>'; }
+  }
+  function savingsRow(d, isTot){
+    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;grid-template-columns:1.5fr .9fr 1fr 1fr 1.1fr;gap:8px;align-items:center;font-size:12px">'
+      + '<b>' + esc(isTot ? 'TỔNG' : d.date) + '</b>'
+      + '<span>' + fmtN(d.recalls) + ' recall</span>'
+      + '<span class="muted">nạp ~' + fmtN(d.actual) + '</span>'
+      + '<span class="muted">nguồn ~' + fmtN(d.baseline) + '</span>'
+      + '<b style="color:var(--green)">≈ ' + fmtN(d.avoided) + '</b>'
+      + '</div>';
+  }
+  function renderSavings(r){
+    const days = (r && r.days) || []; const tot = (r && r.total) || {avoided:0,recalls:0,baseline:0,actual:0};
+    el('savingsSince').textContent = r && r.since ? ('từ ' + r.since) : '';
+    if(!days.length){
+      el('savingsBody').innerHTML = '<div class="empty">Chưa có recall nào được ghi. Số tính từ giờ trở đi — mỗi recall chủ động (nút Search ở đây, hoặc <code>zemory brain search</code>) cộng vào.</div>';
+      return;
+    }
+    el('savingsBody').innerHTML =
+      '<div class="tiny muted" style="margin-bottom:10px;line-height:1.5">≈ token TRÁNH phải nạp lại nhờ recall: recall trả phần liên quan (<b>nạp X</b>) thay vì nạp cả session nguồn (<b>nguồn Y</b>) → ≈ tránh = Y − X. Token ≈ chars/4. Đây là <b>ước tính hiệu suất recall</b> (cận trên, giả định không-recall thì nạp cả nguồn) — KHÔNG phải hoá đơn token thật.</div>'
+      + '<div class="smsg" style="display:grid;grid-template-columns:1.5fr .9fr 1fr 1fr 1.1fr;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span><span>Nạp (X)</span><span>Nguồn (Y)</span><b>≈ Tránh</b></div>'
+      + days.map(function(d){ return savingsRow(d, false); }).join('')
+      + '<div style="height:8px"></div>'
+      + savingsRow(tot, true);
+  }
   function closeSyncBox(){ if(!window.__syncing) el('syncOverlay').style.display = 'none'; }
   async function driveSync(){
     const ds = el('driveState'), sb = el('syncBtn');
@@ -1523,8 +1560,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       await tick();
     } catch(e){ el('brainmsg').textContent = 'scan error: ' + e; }
   }
-  function onType(){ clearTimeout(typer); typer = setTimeout(brainSearch, 220); }
-  async function brainSearch(){
+  function onType(){ clearTimeout(typer); typer = setTimeout(function(){ brainSearch(false); }, 220); }
+  async function brainSearch(commit){
     const q = el('bq').value.trim();
     if(q.length < 2){
       el('resultCount').textContent = 'Type at least 2 characters to search.';
@@ -1537,7 +1574,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('resultCount').textContent = 'Searching...';
     el('brainhits').innerHTML = '<div class="empty">searching...</div>';
     try {
-      const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value}))).json();
+      const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value, commit: commit ? '1' : '0'}))).json();
       if(!hits.length){
         el('resultCount').textContent = '0 results';
         el('brainhits').innerHTML = '<div class="empty">No matches' + (all ? '.' : ' in this project. Try all projects.') + '</div>';

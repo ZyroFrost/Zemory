@@ -21,9 +21,9 @@
 
 ## 3. Framing TRUNG THỰC thay thế
 - Capture = **"0 token phụ trội"** (hooks đọc file transcript, KHÔNG gọi model) → *free capture*, KHÔNG phải "measured bill reduction".
-- **Panel "Global memory" (UI) hiện SỐ THẬT** (2026-07-07): tile `~N tokens captured` (≈chars/4 — đo brain giữ bao nhiêu context) + row `Capture cost: 0 extra tokens · free` + tooltip nói rõ KHÔNG có metric "saved" phịa. Nguồn: `dashboardBrain().tokensEst = SUM(len(content))/4`.
-- Giá trị zemory = recall đúng lúc · index điều hướng (structure) · docs gọn → **định tính** (đỡ mò code, đỡ lặp), KHÔNG bán bằng con số token giả.
-- (Tùy chọn sau) retrieval ratio per-recall: "kéo X / tổng Y token" — số thật nếu ghi rõ nhãn *retrieved*, KHÔNG phải *saved*.
+- **Panel "Global memory"**: tile `~N tokens captured` (≈chars/4) + row `Capture cost: 0 extra tokens · free`.
+- **ĐÃ BUILD — dialog "📊 Token saved by recall"** (nút ở panel Global memory): bảng **THEO NGÀY** (recalls · nạp X · nguồn Y · ≈ tránh) + dòng TỔNG. Log mỗi **recall CHỦ ĐỘNG** (CLI `brain search` + UI Search/Enter, KHÔNG type-ahead) vào bảng `recall_savings`; **forward-only** từ hôm bật. `≈ tránh = nguồn − nạp` (cận trên: giả định không-recall thì nạp cả session nguồn). Endpoint `/savings` = `savingsByDay()`; module `src/brain/savings.ts`.
+- Nhãn khắp nơi: **ước tính hiệu suất recall**, KHÔNG phải "saved $" / hoá đơn thật.
 ## 4. Điều kiện để CÓ metric thật (nếu sau này muốn)
 - Phải có **caller THẬT** ghi before/after đo được (vd compress sống lại + log thật), HOẶC đọc được **usage/cost thật** từ provider.
 - TUYỆT ĐỐI không trưng số counterfactual như "đã tiết kiệm N token".

@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-07] — feat(ui): 'Token saved by recall' dialog — per-day, forward-only, honest estimate
+
+Dialog "📊 Token saved by recall" — báo cáo THEO NGÀY, forward-only, ước tính trung thực (đúng ý user: đo trên recall thật).
+
+- **UI**: nút 📊 Saved ở panel Global memory → dialog (size L) bảng theo ngày: `Ngày · Recalls · Nạp (X) · Nguồn (Y) · ≈ Tránh` + dòng TỔNG.
+- **Data**: bảng `recall_savings` (db.ts) + `src/brain/savings.ts` (`logRecall`, `savingsByDay`). Endpoint `/savings`.
+- **Log CHỦ ĐỘNG**: CLI `brain search` (mọi lần) + UI Search/Enter (`commit=1`). **KHÔNG log type-ahead** (onType → commit=0) để không thổi phồng. Forward-only (từ hôm bật; recall cũ không log lại).
+- **Ước tính**: `actual` = token snippet trả về; `baseline` = full token của session(s) nguồn chứa hit; `≈ tránh = baseline − actual` (cận trên: giả định không-recall thì nạp cả nguồn). Token ≈ chars/4. Nhãn khắp nơi: hiệu suất recall, KHÔNG phải "saved $"/hoá đơn.
+- **Nghiệm thu**: commit=1 → log 1 recall (nạp~519 / nguồn~731k / tránh~730k); commit=0 → không log; dialog + nút render đúng.
+
 ## [2026-07-07] — feat(ui): honest token panel — ~tokens captured + free-capture (no fake saved)
 
 Panel token TRUNG THỰC (số thật, KHÔNG claim "saved") — đúng hướng "tương đối thật".
