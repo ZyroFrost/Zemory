@@ -13,7 +13,7 @@ import type { SearchHit } from "./search.js";
 export const estTokens = (chars: number): number => Math.round(chars / 4);
 
 /** Log one deliberate recall's savings estimate. Best-effort; never throws. */
-export function logRecall(hits: SearchHit[], dbPath: string = BRAIN_DB): void {
+export function logRecall(hits: SearchHit[], query = "", dbPath: string = BRAIN_DB): void {
   try {
     if (!hits || !hits.length) return;
     const actualChars = hits.reduce((s, h) => s + (h.snippet ? h.snippet.length : 0), 0);
@@ -29,11 +29,9 @@ export function logRecall(hits: SearchHit[], dbPath: string = BRAIN_DB): void {
             .get(...sessions) as { c: number }
         ).c,
       );
-      db.prepare("INSERT INTO recall_savings (ts, baseline_tokens, actual_tokens) VALUES (?,?,?)").run(
-        new Date().toISOString(),
-        estTokens(baseChars),
-        estTokens(actualChars),
-      );
+      db.prepare(
+        "INSERT INTO recall_savings (ts, baseline_tokens, actual_tokens, query, hits) VALUES (?,?,?,?,?)",
+      ).run(new Date().toISOString(), estTokens(baseChars), estTokens(actualChars), query.slice(0, 200), hits.length);
     } finally {
       db.close();
     }
@@ -49,10 +47,19 @@ export interface SavingsDay {
   actual: number;
   avoided: number;
 }
+export interface RecallEvent {
+  ts: string;
+  query: string | null;
+  hits: number | null;
+  baseline: number;
+  actual: number;
+  avoided: number;
+}
 export interface SavingsReport {
   days: SavingsDay[];
   total: SavingsDay;
   since: string | null;
+  recent: RecallEvent[];
 }
 
 /** Per-day aggregation of recall savings, newest day first, plus the grand total. */
@@ -82,7 +89,14 @@ export function savingsByDay(dbPath: string = BRAIN_DB): SavingsReport {
       avoided: days.reduce((s, d) => s + d.avoided, 0),
     };
     const since = (db.prepare("SELECT substr(MIN(ts),1,10) AS d FROM recall_savings").get() as { d: string | null }).d;
-    return { days, total, since };
+    const recent: RecallEvent[] = (
+      db
+        .prepare(
+          "SELECT ts, query, hits, baseline_tokens AS baseline, actual_tokens AS actual FROM recall_savings ORDER BY id DESC LIMIT 25",
+        )
+        .all() as { ts: string; query: string | null; hits: number | null; baseline: number; actual: number }[]
+    ).map((r) => ({ ...r, avoided: Math.max(0, r.baseline - r.actual) }));
+    return { days, total, since, recent };
   } finally {
     db.close();
   }
