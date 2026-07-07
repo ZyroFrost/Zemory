@@ -93,6 +93,20 @@ CREATE TABLE IF NOT EXISTS changelog (
 );
 CREATE INDEX IF NOT EXISTS idx_changelog_proj ON changelog(project_root, date DESC);
 
+-- RECALL SAVINGS — forward-only (logged from when instrumented). One row per
+-- deliberate recall: baseline_tokens = full tokens of the source session(s) the
+-- hits came from (what you'd re-load WITHOUT recall — a STATED assumption, an
+-- upper bound); actual_tokens = what recall surfaced. avoided ≈ baseline-actual.
+-- Tokens are ESTIMATES (≈ chars/4). This is a targeted-recall efficiency estimate,
+-- NOT a verified bill saving (no provider usage/cost is read).
+CREATE TABLE IF NOT EXISTS recall_savings (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts              TEXT NOT NULL,
+  baseline_tokens INTEGER NOT NULL,
+  actual_tokens   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_recall_savings_ts ON recall_savings(ts);
+
 -- Store locations a deep scan has discovered (agent transcript dirs found
 -- ANYWHERE on the machine). A normal scan re-enumerates these directly so it
 -- never has to walk the whole disk again.

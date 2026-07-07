@@ -10,6 +10,7 @@ import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./adopt.js";
 import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
 import { BRAIN_DIR, openBrain } from "./brain/db.js";
 import { getMessageContext, getSessionThread, recall } from "./brain/search.js";
+import { logRecall, savingsByDay } from "./brain/savings.js";
 import { resolveShareKey, syncDrive } from "./brain/share.js";
 import { vectorCount, vectorRemaining } from "./brain/vectors.js";
 import { runCheck } from "./checks.js";
@@ -366,18 +367,20 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/brain-search") {
       const days = Number(u.searchParams.get("days") || 0);
-      return json(
-        res,
-        await recall(u.searchParams.get("q") ?? "", {
-          project: target,
-          all: u.searchParams.get("all") === "1",
-          source: u.searchParams.get("agent") || undefined,
-          origin: u.searchParams.get("origin") || undefined,
-          role: u.searchParams.get("role") || undefined,
-          sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
-        }),
-      );
+      const hits = await recall(u.searchParams.get("q") ?? "", {
+        project: target,
+        all: u.searchParams.get("all") === "1",
+        source: u.searchParams.get("agent") || undefined,
+        origin: u.searchParams.get("origin") || undefined,
+        role: u.searchParams.get("role") || undefined,
+        sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
+      });
+      // Log a savings estimate ONLY on a committed recall (Enter/submit), never on
+      // incremental type-ahead — otherwise every keystroke would inflate the count.
+      if (u.searchParams.get("commit") === "1") logRecall(hits);
+      return json(res, hits);
     }
+    if (p === "/savings") return json(res, savingsByDay());
     if (p === "/brain-context") return json(res, getMessageContext(Number(u.searchParams.get("id")), 3) ?? {});
     if (p === "/brain-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
     if (req.method === "POST" && p === "/drive-sync") {
