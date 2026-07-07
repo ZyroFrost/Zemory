@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-07] — feat(ui): savings dashboard = % per feature column + TỔNG %; merge recall, add digest
+
+Savings dashboard = bảng %: mỗi feature 1 CỘT, ô = **% token tiết kiệm**, cột CUỐI = TỔNG %.
+
+- Ô = % = token tránh ÷ token nguồn (hover xem token thô). Trước đây để token thô — sai; giờ đúng là %.
+- Gộp `search`+`show` → 1 feature **`recall`** (show là drill-down TRONG recall, bỏ log riêng, hết double-count). Migration v9 UPDATE các dòng cũ về 'recall'.
+- Thêm feature **`digest`** đo thật: đọc digest gọn vs full session (logDigestRecall — baseline=messages, actual=digest_text).
+- savingsByDay trả thêm baseByFeature + baseline mỗi dòng để UI tính %.
+- Bảng "tất cả tính năng": liệt kê đủ 11 feature — đo được (Recall/Digest) có số; scoped/index/harness/capture/sync/webcap/rerank/ui = n/a (chất lượng / counterfactual / enabler), KHÔNG phịa.
+- Verify: recall 99.88% · digest 99.23% · TỔNG 99.75%.
+
 ## [2026-07-07] — feat(ui): per-feature savings pivot — 1 column per feature (search/show) + TỔNG cột cuối
 
 Savings đa-feature: mỗi feature 1 CỘT, cột CUỐI = TỔNG.

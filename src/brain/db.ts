@@ -17,7 +17,7 @@ const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
 export const BRAIN_DIR = ENV_DB ? dirname(ENV_DB) : join(homedir(), ".zemory");
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS recall_savings (
   actual_tokens   INTEGER NOT NULL,
   query           TEXT,
   hits            INTEGER,
-  feature         TEXT NOT NULL DEFAULT 'search'
+  feature         TEXT NOT NULL DEFAULT 'recall'
 );
 CREATE INDEX IF NOT EXISTS idx_recall_savings_ts ON recall_savings(ts);
 
@@ -338,12 +338,19 @@ function migrate(db: BrainDB, fromVersion: number): void {
     version = 7;
   }
   if (version < 8) {
-    // v8 adds recall_savings.feature (search | show | plan | scoped …) so the
-    // savings report can break tokens down per feature. Old rows = 'search'.
+    // v8 adds recall_savings.feature so the savings report can break tokens
+    // down per feature. Old rows = 'search'.
     if (!hasColumn(db, "recall_savings", "feature")) {
-      db.exec("ALTER TABLE recall_savings ADD COLUMN feature TEXT NOT NULL DEFAULT 'search'");
+      db.exec("ALTER TABLE recall_savings ADD COLUMN feature TEXT NOT NULL DEFAULT 'recall'");
     }
     version = 8;
+  }
+  if (version < 9) {
+    // v9: 'search' + 'show' were the same feature (Recall) split by call type —
+    // consolidate to a single 'recall' column. brain_show is a drill-down WITHIN
+    // a recall, no longer logged separately (was double-counting).
+    db.exec("UPDATE recall_savings SET feature='recall' WHERE feature IN ('search','show')");
+    version = 9;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

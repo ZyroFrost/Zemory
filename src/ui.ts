@@ -382,9 +382,9 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/savings") return json(res, savingsByDay());
     if (p === "/brain-context") {
+      // Drill-down WITHIN a recall already counted by /brain-search; not logged
+      // separately (same 'recall' feature) to avoid double-counting.
       const ctx = getMessageContext(Number(u.searchParams.get("id")), 3);
-      // 'show' feature: drilled into one message + context instead of the whole session.
-      if (ctx && ctx.messages) logRecall([{ sessionId: ctx.sessionId, snippet: ctx.messages.map((m) => m.content).join("\n") }], "", undefined, "show");
       return json(res, ctx ?? {});
     }
     if (p === "/brain-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
