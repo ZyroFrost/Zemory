@@ -132,6 +132,11 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     if (!Number.isFinite(id) || id <= 0) return errorResult("brain_show requires a positive numeric id.");
     const window = clampWindow(args.window);
     const value = window > 0 ? getMessageContext(id, window, env.dbPath) : getMessage(id, env.dbPath);
+    // 'show' feature: agent drilled into one message + context vs the whole session.
+    const ctx = value as { sessionId?: string; messages?: { content: string }[] } | null;
+    if (ctx && ctx.sessionId && Array.isArray(ctx.messages)) {
+      logRecall([{ sessionId: ctx.sessionId, snippet: ctx.messages.map((m) => m.content).join("\n") }], "", env.dbPath, "show");
+    }
     return value ? toolResult(value) : errorResult(`No brain message #${id}.`);
   }
 

@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-07] — feat(ui): per-feature savings pivot — 1 column per feature (search/show) + TỔNG cột cuối
+
+Savings đa-feature: mỗi feature 1 CỘT, cột CUỐI = TỔNG.
+
+- `recall_savings` + cột **`feature`** (schema v8 + ALTER an toàn). Log per-feature: **`search`** (brain_search recall), **`show`** (brain_show / UI brain-context — drill 1 message vs cả session). Sẵn khung cho `plan`/`scoped`.
+- `savingsByDay()` → **pivot**: `features[]` = các cột, mỗi ngày `byFeature{feature:avoided}`, cột cuối `avoided` = TỔNG; + grand total + recent (kèm feature).
+- Dialog render **cột động theo features** + TỔNG cuối; recent list hiện feature mỗi dòng.
+- TRUNG THỰC: chỉ feature phát sinh event đo được mới có cột (search/show). index/capture/UI **không đo được → KHÔNG có cột** (không phịa).
+- Verify: 2 cột search+show, TỔNG = sum (search 3.9M + show 289k = 4.196.427).
+
 ## [2026-07-07] — tweak(ui): savings % per message row + 2-decimal % (99.xx% thay vì 100% phẳng)
 
 Mỗi dòng "Recall gần đây — mỗi message" giờ có cột **%** (≈tránh/nguồn). Toàn bộ % làm tròn **2 số lẻ** (`toFixed(2)`) → lộ variation thật (vd 99.98% / 99.83%) thay vì luôn hiện 100% phẳng. Số tuyệt đối (token tránh) vẫn là chỉ số chính.
