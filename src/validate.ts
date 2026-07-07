@@ -74,7 +74,7 @@ function checkStructure(root: string): ValidateIssue[] {
   if (!has("AGENTS.md")) {
     out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
   }
-  const present = [ownCode, has("frontend") && "frontend/", has("external") && "external/", has("docs") && "docs/"].filter(Boolean);
+  const present = [ownCode, has("frontend") && "frontend/", has("external") && "external/", has("data") && "data/", has("docs") && "docs/"].filter(Boolean);
   out.push({ level: "info", msg: `structure: layers present — ${present.join(" · ") || "(none)"}` });
   return out;
 }

@@ -16,11 +16,13 @@ Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên
 | logic / API / xử lý / **bảo mật-auth** | `backend/` — bảo mật = code, KHÔNG phải folder |
 | **config app tự quản** (monitoring, prometheus.yml…) | `backend/infra/` — server-side = 1 nhánh backend |
 | dùng / tham chiếu **code ngoài** | `external/` — repo ngoài clone về; **gọi, KHÔNG dán vào `backend/`** |
+| **ghi data/log runtime** (.db log, cache, state app tạo lúc chạy) | `data/` — ở root, **GITIGNORE** (data phình, theo máy) |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory`, không gõ tay mirror |
 
 **Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/)` — chỉ có:
 - **Manifest/entry tool BẮT để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · `.venv/` (Python).
-- **ĐẦU RA — gitignore hết:** `dist/` · `build/` · `node_modules/` · `__pycache__/` · `.venv/`. Ở root nhưng KHÔNG commit → **repo tracked luôn sạch** (chỉ 3–4 folder nguồn + vài manifest).
+- **Runtime DATA — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state app ghi lúc chạy — phình + theo máy). Đây là **data sống**, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay `data/`.
+- **ĐẦU RA build — gitignore hết:** `dist/` · `build/` · `node_modules/` · `__pycache__/` · `.venv/`. Ở root nhưng KHÔNG commit → **repo tracked luôn sạch** (chỉ 3–4 folder nguồn + vài manifest).
 
 Bất biến:
 - **Bắt buộc:** `backend/` + `frontend/` + `docs/` + `AGENTS.md`. `external/` **optional** (chỉ khi dùng code ngoài).
