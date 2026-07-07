@@ -12,20 +12,21 @@ Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên
 **Sửa gì → vào đâu** (tự định tuyến, khỏi hỏi):
 | Cần làm | Vào đâu |
 |---|---|
-| UI / giao diện (icon, logo, font offline) | `frontend/` |
-| logic / API / xử lý / **bảo mật-auth** | `backend/` — bảo mật = code, KHÔNG phải folder |
+| UI / giao diện / **asset** (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
+| logic / API / xử lý / **bảo mật-auth** · **test** · **script dev/build** | `backend/` — code + `backend/test/` + `backend/scripts/`; bảo mật = code, KHÔNG phải folder |
 | **config app tự quản** (monitoring, prometheus.yml…) | `backend/infra/` — server-side = 1 nhánh backend |
 | dùng / tham chiếu **code ngoài** | `external/` — repo ngoài clone về; **gọi, KHÔNG dán vào `backend/`** |
-| **ghi data/log runtime** (.db log, cache, state app tạo lúc chạy) | `data/` — ở root, **GITIGNORE** (data phình, theo máy) |
+| **data/log runtime + secret/key** (.db log, cache, `.key`, bundle) | `data/` — root, **GITIGNORE** (phình / theo máy / bí mật) |
+| **backup nguồn cũ / code đã gỡ** (giữ tham chiếu) | `attic/` — tracked, optional |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory`, không gõ tay mirror |
 
 **Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/)` — chỉ có:
 - **Manifest/entry tool BẮT để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · `.venv/` (Python).
-- **Runtime DATA — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state app ghi lúc chạy — phình + theo máy). Đây là **data sống**, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay `data/`.
+- **Runtime DATA + SECRET — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state · **key/secret `.key`, bundle `.enc`** — phình / theo máy / bí mật). Data sống + bí mật, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay.
 - **ĐẦU RA build — [OPTIONAL] gitignore, KHÔNG commit:** `dist/` · `build/` = output **đóng gói để CHẠY/MỞ app** (chỉ có khi app có bước build/package; app chạy thẳng thì không có) · `node_modules/` · `__pycache__/` · `.venv/`. Do build sinh ra, xóa build lại được → repo tracked vẫn sạch (chỉ 3–4 folder nguồn + vài manifest).
 
 Bất biến:
-- **Bắt buộc:** `backend/` + `frontend/` + `docs/` + `AGENTS.md`. `external/` **optional** (chỉ khi dùng code ngoài).
+- **Bắt buộc:** `backend/` (gồm code + `test/` + `scripts/`) + `frontend/` + `docs/` + `AGENTS.md`. **Optional:** `external/` · `data/` · `attic/` (backup nguồn cũ) · `backend/infra/` · `dist/`,`build/`,`.venv/` (build output).
 - **Deploy config tool ÉP để root** (Docker/compose, `.spec`) → để root; **config app TỰ quản** → `backend/infra/`.
 - **Của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `external/` = gạch public bên ngoài — chỉ **gọi/extend**, không trộn vào `backend/`.
 - **Tên co theo stack:** Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Giữ đúng TẦNG, không cứng nhắc tên.

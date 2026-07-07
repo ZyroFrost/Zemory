@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-07] — feat(harness): complete slots — backend/test, backend/scripts, frontend/assets, attic/, data+secret
+
+Bổ sung slot còn thiếu vào chuẩn cấu trúc (lộ ra khi audit zemory để refactor strict):
+
+- **`backend/test/`** — test (own code). Slot BẮT BUỘC (mọi app có test) — trước thiếu hẳn.
+- **`backend/scripts/`** — script dev/build của mình.
+- **`frontend/assets/`** — asset (icon/logo/font/ảnh) thuộc frontend.
+- **`attic/`** — backup nguồn cũ / code đã gỡ, tracked, giữ tham chiếu (optional).
+- **`data/`** — thêm secret/key (`.key`, bundle `.enc`) cạnh log/cache; gitignore (bí mật).
+- Cập nhật RULES §Cấu trúc repo (routing + bắt buộc/optional), `zemory structure`, plan 09 (tree + routing).
+- Bắt buộc = `backend/` (code+test+scripts) + `frontend/` + `docs/` + `AGENTS.md`. Optional: external/ · data/ · attic/ · backend/infra/ · dist,build,.venv.
+
 ## [2026-07-07] — docs(harness): mark dist/build (+env/data) OPTIONAL — build output to run the app, only when built
 
 Ghi rõ `dist/`+`build/` (và `.venv/`,`node_modules/`,`data/`) là **OPTIONAL** — output/generated, KHÔNG bắt buộc.

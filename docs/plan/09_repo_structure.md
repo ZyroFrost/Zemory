@@ -14,33 +14,36 @@
 ## 2. Cây thư mục chuẩn
 ```
 App/
-├── backend/          code mình + entry (server-side gom hết ở đây)
+├── backend/          [BẮT BUỘC] code mình + entry + test + scripts (server-side gom hết)
 │   ├── <pkg>/ | src/  code mình (Python backend/<package>/ · Node backend/src/ hoặc src/)
-│   ├── infra/         [optional] config app TỰ quản (prometheus.yml, monitoring…)
+│   ├── test/          test (own code)
+│   ├── scripts/       [optional] script dev/build của mình
+│   ├── infra/         [optional] config app tự quản (monitoring/deploy)
 │   └── run.* · pyproject.toml / package.json
-├── frontend/         UI — bất kể tech (HTML thuần / React / Vue…) đều nằm trong đây
-├── external/         [optional] repo ngoài clone về để tham chiếu (gọi, không dán vào backend)
-├── docs/             harness zemory (agent/ · plan/ · .harness.json)
-├── AGENTS.md · README.md · .gitignore
-├── Dockerfile · docker-compose.yml    ← tool ÉP để root
-├── App.spec · build.ps1               ← build tooling ở root
-│   ── dưới đây gitignore, KHÔNG commit ──
-├── data/             [optional] runtime .db log/cache/state (app đóng gói: OS app-data)
-├── dist/ · build/    [optional] output đóng gói ĐỂ CHẠY/MỞ app (chỉ có khi build)
-└── .venv/ · node_modules/  [optional] env/deps generated
+├── frontend/         [BẮT BUỘC] UI — HTML/React/Vue… ; asset → frontend/assets/
+├── docs/             [BẮT BUỘC] harness zemory (agent/ · plan/ · .harness.json)
+├── AGENTS.md · README.md · LICENSE · .gitignore · config (tsconfig/eslint…)   [manifest root]
+├── external/         [optional] repo ngoài clone về tham chiếu (gọi, không dán vào backend)
+├── attic/            [optional] backup nguồn cũ / code đã gỡ — tracked, giữ tham chiếu
+├── Dockerfile · docker-compose.yml · *.spec · build.ps1   [tool ÉP để root]
+│   ───── gitignore, KHÔNG commit ─────
+├── data/             [optional] runtime .db log/cache/state + secret/.key/bundle
+├── dist/ · build/    [optional] output đóng gói ĐỂ CHẠY/MỞ app (chỉ khi build)
+└── .venv/ · node_modules/ · __pycache__/   [optional] env/deps generated
 ```
-→ Root tracked chỉ thấy **`backend/ frontend/ docs/ (external/)`** + vài manifest. Bắt buộc = `backend/ frontend/ docs/ AGENTS.md`; còn lại **optional** (chỉ khi có nội dung / khi build).
+→ Root tracked: **`backend/ frontend/ docs/`** (+ optional `external/ attic/`) + manifest. Bắt buộc = `backend/ frontend/ docs/ AGENTS.md`.
 ## 3. Routing — sửa gì vào đâu
 | Cần làm | Vào đâu |
 |---|---|
-| UI / giao diện (icon, logo, font offline) | `frontend/` (ruột theo framework: React → `frontend/src/`…) |
-| logic / API / xử lý / bảo mật-auth | `backend/` — bảo mật = code, KHÔNG phải folder |
-| config app tự quản (monitoring…) | `backend/infra/` — server-side = 1 nhánh backend |
+| UI / asset (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
+| logic / API / auth · test · script dev/build | `backend/` (+ `backend/test/` + `backend/scripts/`) — bảo mật = code |
+| config app tự quản (monitoring…) | `backend/infra/` — nhánh backend |
 | dùng / tham chiếu code ngoài | `external/` |
-| ghi data/log runtime (.db, cache, state) | `data/` — root + `.gitignore` (data sống, phình/theo máy; app đóng gói: OS app-data) |
+| data/log runtime + secret/key | `data/` — root + `.gitignore` (phình/bí mật; app đóng gói: OS app-data) |
+| backup nguồn cũ / code đã gỡ | `attic/` — tracked, optional |
 | tài liệu / rule / plan | `docs/` — qua lệnh `zemory` |
-| deploy config tool ép root (Docker) | root |
-| build output (`dist/`, `build/`) | root + `.gitignore` |
+| deploy config tool ép root (Docker/.spec) | root |
+| build output (`dist/`,`build/`) | root + `.gitignore` [optional] |
 ## 4. Quyết định đã chốt
 - **backend + frontend luôn có** — không tách theo "số mặt" nữa (user luôn build UI, kể cả tool ít UI như zemory).
 - **infra KHÔNG là folder top-level** → gom vào `backend/infra/` (hạ tầng là nhánh server-side của backend).
