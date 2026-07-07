@@ -637,7 +637,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     white-space: pre-wrap;
     font-size: 12px;
   }
-  #overlay, #docOverlay, #sessionOverlay, #syncOverlay {
+  #overlay, #docOverlay, #sessionOverlay, #syncOverlay, #savingsOverlay {
     display: none;
     position: fixed;
     inset: 0;
