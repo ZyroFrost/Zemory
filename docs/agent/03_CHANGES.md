@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-08] — docs(structure): make encryption a first-class concern in 04 (place + type + rule) — was buried in vault/
+
+Đưa MÃ HÓA thành concern rõ ràng trong 04_STRUCTURE (trước chỉ lấp ló trong vault/).
+
+Gap phát hiện: user hỏi "sao refactor không lòi ra DB chưa mã hóa" — vì 04 không có place+type riêng cho encryption → audit/refactor không bắt được. Vá:
+- §2 tree: `store/` ghi rõ "MÃ HÓA at-rest (SQLCipher) apply ở đây nếu data nhạy cảm"; `vault/` đổi thành "MÃ HÓA + KEY: derive key, encrypt/decrypt, credential vault".
+- §3 routing: thêm dòng "mã hóa/encryption (at-rest DB · key · bundle) → vault/ + store/ + data/secrets/".
+- §4 convention: thêm luật "Mã hóa/Encryption" — concern riêng, có place; **app có DATA NHẠY CẢM (chat/PII/log) NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ 'chấp nhận plaintext' để audit thấy, khỏi lọt**.
+
+zemory hiện: DB `~/.zemory/global_memory.db` (935MB, PII chat) = PLAINTEXT, chưa có vault/store cipher → theo luật mới phải quyết: mã hóa hoặc ghi-rõ-chấp-nhận. (Slot vault/ + data/secrets/ đã định sẵn cho khi làm.)
+
 ## [2026-07-08] — docs: sync harness with built features — web-capture ChatGPT SHIPPED, savings per-feature, RULES backend/src+external
 
 Đồng bộ docs với chức năng đã build (sau refactor + web-capture + savings per-feature).
