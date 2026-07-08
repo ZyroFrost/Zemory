@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../dist/brain/db.js";
-import { createDoc } from "../dist/docs/plan.js";
-import { callMcpTool, handleMcpRequest } from "../dist/mcp.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { createDoc } from "../../dist/docs/plan.js";
+import { callMcpTool, handleMcpRequest } from "../../dist/mcp.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedMcpDb(t) {

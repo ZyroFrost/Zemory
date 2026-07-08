@@ -3,9 +3,9 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../dist/brain/db.js";
-import { rerank, rerankConfig, resetRerank } from "../dist/brain/rerank.js";
-import { rerankEnabled, searchHybrid } from "../dist/brain/search.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { rerank, rerankConfig, resetRerank } from "../../dist/brain/rerank.js";
+import { rerankEnabled, searchHybrid } from "../../dist/brain/search.js";
 
 test("rerankConfig defaults to a cross-encoder · q8 · ~/.zemory/models", () => {
   const c = rerankConfig();

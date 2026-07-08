@@ -14,6 +14,7 @@ share/*.key
 *.log
 *.tgz
 coverage/
-# web-capture prototype: NEVER commit pulled chat data (PII) or dumps — code only
-prototype/web-capture/*.json
-prototype/web-capture/*.txt
+data/
+# web-capture (now in attic/): NEVER commit pulled chat data (PII) or dumps — code only
+attic/web-capture/*.json
+attic/web-capture/*.txt

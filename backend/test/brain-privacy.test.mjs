@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../dist/brain/db.js";
-import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "../dist/brain/privacy.js";
-import { search } from "../dist/brain/search.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "../../dist/brain/privacy.js";
+import { search } from "../../dist/brain/search.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, { id, project, source = "codex", messages }) {

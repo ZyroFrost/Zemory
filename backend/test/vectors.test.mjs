@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import * as sqliteVec from "sqlite-vec";
-import { openBrain } from "../dist/brain/db.js";
-import { embed } from "../dist/brain/embed.js";
-import { embedPending, vectorCount, vectorRanks, vectorRemaining } from "../dist/brain/vectors.js";
-import { hybridEnabled, search, searchHybrid } from "../dist/brain/search.js";
-import { runRagBench } from "../dist/brain/ragbench.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { embed } from "../../dist/brain/embed.js";
+import { embedPending, vectorCount, vectorRanks, vectorRemaining } from "../../dist/brain/vectors.js";
+import { hybridEnabled, search, searchHybrid } from "../../dist/brain/search.js";
+import { runRagBench } from "../../dist/brain/ragbench.js";
 
 test("hybrid setting: default ON; ZEMORY_HYBRID=0 disables", () => {
   delete process.env.ZEMORY_HYBRID;

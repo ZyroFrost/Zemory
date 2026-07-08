@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createRuntime } from "../dist/core/runtime.js";
+import { createRuntime } from "../../dist/core/runtime.js";
 
 const context = (adapters) => ({
   projectRoot: "C:\\demo",

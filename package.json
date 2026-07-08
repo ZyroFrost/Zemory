@@ -11,14 +11,14 @@
     "docs-template"
   ],
   "scripts": {
-    "clean": "node scripts/clean.mjs",
+    "clean": "node backend/scripts/clean.mjs",
     "build": "npm run clean && tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src test scripts eslint.config.js",
-    "test": "npm run build && node --test \"test/*.test.mjs\"",
+    "lint": "eslint backend/src backend/test backend/scripts eslint.config.js",
+    "test": "npm run build && node --test \"backend/test/*.test.mjs\"",
     "check": "npm run typecheck && npm run lint && npm test",
     "prepack": "npm run check",
-    "dev": "tsx src/cli.ts",
+    "dev": "tsx backend/src/cli.ts",
     "start": "node dist/cli.js"
   },
   "engines": {
