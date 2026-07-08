@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-08] — docs: sync harness with built features — web-capture ChatGPT SHIPPED, savings per-feature, RULES backend/src+external
+
+Đồng bộ docs với chức năng đã build (sau refactor + web-capture + savings per-feature).
+
+- **02_TODO §Web-chat**: đánh dấu ChatGPT ĐÃ SHIP (scan-web `backend/src/brain/scanweb.ts`, schema origin v9, 859 hội thoại + Project chats); Gemini/Claude.ai + facet Local/Web = còn lại. Prototype → attic/web-capture.
+- **plan 07** (§title/§5/§10/§15): trạng thái "prototype, chưa vào src" → "v1 SHIPPED ChatGPT"; prototype/ → attic/.
+- **plan 10**: title + §3 → dashboard TRUNG THỰC per-FEATURE (% Recall/Digest + catalogue 11 feature n/a), path `backend/src/brain/savings.ts`.
+- **01_RULES bất biến #2**: `src/` vs `deps/` → `backend/src/` vs `external/` + trỏ `04_STRUCTURE.md` (deps/ là khái niệm đã bỏ).
+- GIỮ nguyên: `03_CHANGES` refs `src/` (lịch sử, đúng thời điểm — không viết lại); plan 00/04 dòng nguyên-tắc cũ (giá trị thấp).
+
 ## [2026-07-08] — docs(structure): add .claude/ + catch-all rule for .<tool>/ config folders (tool-forced root, leave alone)
 
 

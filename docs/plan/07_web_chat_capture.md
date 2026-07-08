@@ -1,11 +1,9 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
 # Web-chat capture — thu session từ ChatGPT / Gemini / Claude.ai
-
-> Spec cho năng lực MỚI: nuốt hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào global brain.
-> Khác hẳn adapter agent CLI/IDE (`claude-code`, `codex`, `continue`, `lmstudio`): web chat nằm ở **server**, KHÔNG ghi file ra đĩa → `brain scan` quét đĩa không với tới. Phải lấy qua **export chính chủ** hoặc **browser** (đăng nhập).
-> Ưu tiên: **GPT trước**, rồi Gemini, rồi Claude.ai. Specs thuần — task ở `02_TODO`.
-> Trạng thái: **đã PROTOTYPE + test thật thành công (2026-07-02/03)** — xem §5. Chưa tích hợp vào `src/`.
-
+> Spec cho năng lực: nuốt hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào global brain.
+> Khác adapter agent CLI/IDE (`claude-code`, `codex`, `continue`, `lmstudio`): web chat nằm ở **server**, KHÔNG ghi file ra đĩa → `brain scan` quét đĩa không với tới. Phải lấy qua **export chính chủ** hoặc **browser** (đăng nhập).
+> Ưu tiên: **GPT trước**, rồi Gemini, rồi Claude.ai.
+> **Trạng thái (cập nhật 2026-07-08): ✅ v1 ĐÃ SHIP cho ChatGPT** — `backend/src/brain/scanweb.ts` (browser-connector), schema **v9 có cột `origin`**, **859 hội thoại ChatGPT** (~30.9k msg, cả Project chats) đã vào brain. Gemini/Claude.ai chưa làm. Scripts prototype cũ dời `attic/web-capture/`.
 ## 1. Mục tiêu & nguyên tắc
 - Tái dùng brain hiện có: `sessions`/`messages`, dedup `UNIQUE(session_id,uuid)`, redact, digest, recall, sync — KHÔNG tạo store thứ 2 (RULES §3). Web chat chỉ là thêm `source` + nhánh `origin`.
 - Tiết kiệm token/công: EXTEND engine, không viết lại (RULES §1).
@@ -31,11 +29,12 @@
   - Chạy trong browser thật nên **qua được Cloudflare** (điều mà fetch từ Node thuần bị chặn).
 
 ## 5. KẾT QUẢ TEST (2026-07-02/03) — feasibility CONFIRMED
-Prototype (scripts ở `prototype/web-capture/`): mở Edge debug + login-once + CDP pull.
-- Tài khoản test `zyrofrost@gmail.com`: **enumerate đủ 752 hội thoại**; **kéo thành công 219** (6.636 message) với đúng nội dung; **533 fail = rate-limit 429** (sau ~200 request liên tục, không backoff).
-- Search thử nội dung (không chỉ title): tìm chủ đề "chính trị" → 38 hội thoại khớp, có trích đoạn thật ⇒ **lấy được + tìm được + đọc được content thật**.
-- Điều KHÔNG làm được (đã xác minh, để khỏi thử lại): (a) **OAuth đọc lịch sử** — OpenAI không có; "Sign in with ChatGPT" chỉ là định danh + gọi model, không có scope lịch sử. (b) **Copy cookie/DPAPI** từ profile Edge sẵn — guard chặn (credential extraction) + Edge có App-Bound Encryption. (c) **fetch backend-api từ Node thuần** — Cloudflare chặn 403.
+> **✅ ĐÃ SHIP (2026-07-08):** cơ chế này giờ là `backend/src/brain/scanweb.ts` — **859 hội thoại ChatGPT** đã bắt (kể cả Project chats qua gizmo endpoints, có pace/backoff/resume). Phần dưới là kết quả TEST prototype ban đầu (giữ làm lịch sử).
 
+Prototype (scripts giờ ở `attic/web-capture/`): mở Edge debug + login-once + CDP pull.
+- Tài khoản test `zyrofrost@gmail.com`: **enumerate đủ 752 hội thoại**; **kéo thành công 219** (6.636 message) với đúng nội dung; **533 fail = rate-limit 429** (sau ~200 request liên tục, không backoff) — đã fix bằng pace/backoff/resume ở bản ship.
+- Search thử nội dung (không chỉ title): tìm chủ đề "chính trị" → 38 hội thoại khớp, có trích đoạn thật ⇒ **lấy được + tìm được + đọc được content thật**.
+- Điều KHÔNG làm được (đã xác minh, để khỏi thử lại): (a) **OAuth đọc lịch sử** — OpenAI không có. (b) **Copy cookie/DPAPI** từ profile Edge sẵn — guard chặn + App-Bound Encryption. (c) **fetch backend-api từ Node thuần** — Cloudflare chặn 403.
 ## 6. Format ChatGPT — đã verify bằng file thật (chatgpt-web)
 - Export/pull ra **MẢNG** hội thoại. Mỗi hội thoại keys thật: `title`, `create_time`, `update_time`, `conversation_id`, **`gizmo_id`/`gizmo_type`** (thuộc Project nào), `is_archived`, `default_model_slug`, **`mapping`**, **`current_node`**...
 - `mapping` = OBJECT `nodeId → { message:{ author.role, content:{content_type, parts[]}, create_time }, parent, children[] }` → **cây** (edit/regen tạo nhánh).
@@ -59,13 +58,14 @@ Một file export = NHIỀU hội thoại → phá bất biến "1 file = 1 sess
 - `ingestFile`: nhánh mới lặp phần per-session (upsert · DELETE whole-replace · INSERT OR IGNORE · refresh) cho từng hội thoại trong một transaction; `ingest_state` giữ short-circuit size/mtime per-file với `session_id` sentinel; `FileResult` trả `SessionReport[]`; `scan()` merge.
 
 ## 10. `brain scan-web` — browser-connector (cơ chế v2b)
-Lệnh mới (không thuộc `brain scan` quét đĩa):
-1. Mở Edge/Chrome profile `~/.zemory/browser/chatgpt` kèm `--remote-debugging-port`. Lần đầu: user login (dừng chờ xác thực). Profile lưu phiên cho lần sau.
-2. CDP `Runtime.evaluate` trong tab: `/api/auth/session` (check login) → page `/backend-api/conversations` lấy hết id → fetch từng `/conversation/{id}`.
-3. Flatten mapping → upsert `sessions(origin='web', source='chatgpt-web')` + messages (§8).
-4. **Pacing + backoff + resume** (§11). Kết thúc: `brain embed` phần mới.
-- Chạy độc lập với sandbox (browser phải sống); password không qua zemory.
+> **✅ ĐÃ BUILD: `backend/src/brain/scanweb.ts`** — lệnh `zemory brain scan-web --platform chatgpt [--limit N] [--refresh] [--delay <s>]`. Node-orchestrate short evals (loose list + projects sidebar + per-project cursor pagination), pace/backoff/resume, dedupe theo id. Phần dưới là spec gốc.
 
+Lệnh (không thuộc `brain scan` quét đĩa):
+1. Mở Edge/Chrome profile kèm `--remote-debugging-port`. Lần đầu: user login (dừng chờ). Profile lưu phiên.
+2. CDP `Runtime.evaluate`: check login → `/backend-api/conversations` lấy id → fetch từng `/conversation/{id}` (+ gizmo endpoints cho Project chats).
+3. Flatten mapping → upsert `sessions(origin='web', source='chatgpt-web', project_root=<project>)` + messages.
+4. **Pacing + backoff + resume**. Kết thúc: `brain embed` phần mới.
+- Chạy độc lập sandbox (browser phải sống); password không qua zemory.
 ## 11. Rate-limit & resume
 - Test: ~3 req/s liên tục → 429 sau ~200 cái. Fix: **giãn ~1 req/1.5–2s**, **retry backoff** khi 429/5xx, **resume** (bỏ qua conversation_id đã có trong brain / đã pull) → gom trọn 752 qua nhiều vòng. Ghi tiến độ incremental (không dồn 1 file cuối).
 
@@ -91,6 +91,7 @@ Lệnh mới (không thuộc `brain scan` quét đĩa):
 - Password KHÔNG bao giờ nhập vào zemory (chỉ login trên trang thật của nền).
 
 ## 15. Còn lại
-- Gemini: Takeout là log lossy (§ nghiên cứu) → fidelity cao phải qua browser-connector/extension; làm sau GPT.
-- Claude.ai: export `chat_messages` phẳng (dễ nhất) hoặc browser-connector; làm sau.
-- Cân nhắc gói browser-connector chung cho cả 3 nền (một lệnh `scan-web --platform`).
+- ✅ **ChatGPT: XONG** — `brain scan-web --platform chatgpt` đã ship, 859 hội thoại (cả Project chats) trong brain.
+- Gemini: Takeout là log lossy → fidelity cao phải qua browser-connector/extension; **CHƯA làm**.
+- Claude.ai: export `chat_messages` phẳng (dễ nhất) hoặc browser-connector; **CHƯA làm**.
+- Khung `scan-web --platform` đã có sẵn (ChatGPT) → thêm Gemini/Claude.ai dùng chung khung.

@@ -86,26 +86,18 @@
 - [ ] VS Code status bar chỉ đọc status API chung.
 - [ ] Toggle provider/adapter có validation conflict và rollback config.
 ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
-> Thu hội thoại web (ChatGPT/Gemini/Claude.ai) vào brain. Spec chi tiết + kết quả test: `docs/plan/07_web_chat_capture.md`. Prototype đã chạy thật: `prototype/web-capture/`.
+> Thu hội thoại web (ChatGPT/Gemini/Claude.ai) vào brain. Spec: `docs/plan/07_web_chat_capture.md`. Prototype cũ ở `attic/web-capture/`.
 
-**✅ ĐÃ TEST (2026-07-02/03) — feasibility CONFIRMED (chưa vào `src/`):**
-- [x] Chứng minh lấy được data thật qua **browser-connector** (login-once + CDP pull): tài khoản test enumerate **752** hội thoại, kéo **219** (6.636 msg), search nội dung OK.
-- [x] Xác nhận format ChatGPT bằng file thật (cây `mapping`, `content.parts[]`, float `create_time`, `gizmo_id` → Project không sót). Khớp spec.
-- [x] Loại 3 ngõ cụt: OAuth đọc lịch sử (không có), copy cookie (guard chặn), fetch Node thuần (Cloudflare 403).
-- [x] Rào cản đã biết: **rate-limit 429** sau ~200 req → cần pace/backoff/resume.
+**✅ ĐÃ SHIP — ChatGPT (cập nhật 2026-07-08):**
+- [x] Feasibility test (2026-07-02/03): login-once + CDP pull, enumerate 752 hội thoại, format ChatGPT verify.
+- [x] **Schema `origin`** (thêm ở v6, hiện v9) + `idx_sessions_origin` + migration backfill `'local'`. (`db.ts`)
+- [x] **`brain scan-web --platform chatgpt`** (`backend/src/brain/scanweb.ts`): browser-connector + pace/backoff/resume + dedupe theo id. **859 hội thoại ChatGPT (~30.9k msg)** đã vào brain, **cả Project chats** (gizmo endpoints, gắn `project_root`).
+- [x] parseFileMulti + fallback file-export (`~/.zemory/imports/chatgpt/`) — dùng nuốt bộ Export lớn.
 
-**Engine (chưa cần thêm data):**
-- [ ] T-v6. Schema **v6**: `sessions.origin TEXT NOT NULL DEFAULT 'local'` + `idx_sessions_origin`; migration backfill phiên cũ = `local`. (`db.ts`)
-- [ ] T2. `parseFileMulti?` vào Adapter contract + nhánh multi-session trong `ingestFile` (lặp upsert+DELETE+INSERT+refresh/hội thoại, 1 transaction; `ingest_state` sentinel; `FileResult`→`SessionReport[]`). `lmstudio` KHÔNG đụng.
-- [ ] Recall + UI: facet **Local / Web** (lọc theo `origin`), như filter source/project/time sẵn có.
+**Còn lại (chưa làm):**
+- [ ] Recall + UI: facet **Local / Web** (lọc theo `origin`) — xác minh đã có chưa; thiếu thì thêm.
+- [ ] **Gemini** (`gemini-web`): Takeout lossy → browser-connector; sau GPT.
+- [ ] **Claude.ai** (`claude-web`): export `chat_messages` phẳng hoặc browser-connector; sau GPT.
+- [ ] Gộp khung `scan-web --platform <gemini|claude>` (khung ChatGPT đã có sẵn).
 
-**ChatGPT (`chatgpt-web`, origin=web) — ƯU TIÊN 1:**
-- [ ] T-web. Lệnh **`brain scan-web`** (browser-connector, spec plan 07 §10): mở Edge profile `~/.zemory/browser/chatgpt` + debug port → (lần đầu user login) → CDP pull `/backend-api/conversations` + `/conversation/{id}` → flatten `mapping` → upsert `origin='web'`. Kèm **pace + backoff + resume** (§11) để lấy trọn 752. Chạy ngoài sandbox (browser phải sống); password KHÔNG qua zemory.
-- [ ] T3. (fallback v1) `chatgptAdapter` `whole` + `parseFileMulti` đọc file export ở `~/.zemory/imports/chatgpt/` → dùng để **nuốt bộ data test đã kéo** vào brain, verify end-to-end (scan → recall lọc origin=web → cockpit).
-
-**Gemini (`gemini-web`) / Claude.ai (`claude-web`) — sau GPT:**
-- [ ] Gemini: Takeout lossy → ưu tiên browser-connector; adapter file là phụ.
-- [ ] Claude.ai: export `chat_messages` phẳng (dễ) hoặc browser-connector.
-- [ ] Gộp `brain scan-web --platform <chatgpt|gemini|claude>` dùng chung khung.
-
-**Quyết định đã chốt (plan 07 §14):** origin = 1 cột (không table) · cơ chế = v2b browser-connector (v1 file fallback, v2a extension sau) · re-pull = full replace idempotent · GPT trước · password không nhập vào zemory · **KHÔNG commit file data thật (PII)**.
+**Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
