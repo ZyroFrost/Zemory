@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-07-08] — docs(structure): add authorization/phân quyền as first-class concern; record zemory's accept-plaintext + no-authz decisions
+
+Thêm PHÂN QUYỀN/Authorization thành concern rõ ràng trong 04 (giống encryption — trước lấp ló trong auth/).
+
+- §2 tree `auth/`: tách rõ AUTHENTICATION (là ai: login/jwt/oauth) vs AUTHORIZATION/PHÂN QUYỀN (được gì: role/permission/policy); enforce → middleware/.
+- §3 routing: tách "authentication/login → auth/" và thêm "phân quyền/authorization (role·permission·policy) → auth/(định nghĩa) + middleware/(enforce) + store/(role-data) + config/(policy operator)".
+- §4 convention: luật "Phân quyền/Authz" — app đa-user/đa-role PHẢI có; single-user/local ghi rõ "không phân quyền".
+
+QUYẾT ĐỊNH zemory (ghi rõ theo luật mới):
+- **Mã hóa at-rest: KHÔNG làm — chấp nhận plaintext.** Lý do: DB `~/.zemory/` local cá nhân, không share; redaction + OS file-perm đủ. SQLCipher để dành khi share/đóng gói phát hành.
+- **Phân quyền: KHÔNG có — single-user/local.** zemory là tool cá nhân 1 người dùng, không đa-user → không cần role/permission.
+- (Nên dọn 5 file .bak plaintext 400-935MB ở ~/.zemory/ — việc vận hành, không phải code.)
+
 ## [2026-07-08] — docs(structure): make encryption a first-class concern in 04 (place + type + rule) — was buried in vault/
 
 Đưa MÃ HÓA thành concern rõ ràng trong 04_STRUCTURE (trước chỉ lấp ló trong vault/).
