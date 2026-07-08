@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-08] — docs(structure): add .claude/ + catch-all rule for .<tool>/ config folders (tool-forced root, leave alone)
+
+
+
 ## [2026-07-08] — refactor(structure): dogfood — move zemory itself to the 04_STRUCTURE standard (backend/ frontend/ attic/)
 
 Dogfood: nắn CHÍNH zemory về chuẩn 04_STRUCTURE (git mv giữ history).
