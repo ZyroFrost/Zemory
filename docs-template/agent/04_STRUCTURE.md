@@ -93,9 +93,11 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── requirements.txt                [opt]   deps Python (nếu Python)
 ├── .github/workflows/              [opt]   CI/CD GitHub Actions — tool ép root
 ├── .gitlab-ci.yml                  [opt]   CI/CD GitLab — tool ép root
+├── .claude/                        [opt]   config Claude Code (settings/commands/agents) — tool ép root (*.local.json → gitignore)
 ├── .vscode/                        [opt]   config VS Code — tool ép root
 ├── .idea/                          [opt]   config JetBrains — tool ép root
 ├── .serena/                        [opt]   config agent-tool Serena — tool ép root
+│                                            ⤷ mọi folder .<tool>/ config (editor/agent) = ĐỂ YÊN ở root, KHÔNG dời/dọn
 ├── Dockerfile                      [opt]   image build — tool ép root
 ├── docker-compose.yml              [opt]   compose services — tool ép root
 ├── *.spec                          [opt]   PyInstaller spec (đóng exe) — tool ép root
