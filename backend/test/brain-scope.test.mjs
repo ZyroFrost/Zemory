@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../dist/brain/db.js";
-import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../dist/brain/scope.js";
-import { search } from "../dist/brain/search.js";
-import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../dist/brain/share.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../../dist/brain/scope.js";
+import { search } from "../../dist/brain/search.js";
+import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../../dist/brain/share.js";
 import { tempDir } from "./helpers.mjs";
 
 // Seed a brain; message_count is set to the real count so scopeTree rolls up.

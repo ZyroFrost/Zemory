@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { archiveChanges } from "../dist/archive.js";
-import { addEntry, listEntries, renderChangelog, setEntryDate } from "../dist/docs/changelog.js";
-import { renderSections } from "../dist/docs/markdown.js";
+import { archiveChanges } from "../../dist/archive.js";
+import { addEntry, listEntries, renderChangelog, setEntryDate } from "../../dist/docs/changelog.js";
+import { renderSections } from "../../dist/docs/markdown.js";
 import {
   createDoc,
   importAll,
@@ -13,7 +13,7 @@ import {
   renderDoc,
   setBody,
   showSection,
-} from "../dist/docs/plan.js";
+} from "../../dist/docs/plan.js";
 import { tempDir } from "./helpers.mjs";
 
 test("renderSections separates headings after edited bodies without trailing newlines", () => {

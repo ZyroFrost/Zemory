@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../dist/brain/db.js";
-import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../dist/brain/share.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../../dist/brain/share.js";
 import { tempDir } from "./helpers.mjs";
 
 // Seed a brain with sessions/messages; each session carries an explicit host.

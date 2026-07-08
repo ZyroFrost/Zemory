@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { embed, embedConfig, resetEmbed } from "../dist/brain/embed.js";
+import { embed, embedConfig, resetEmbed } from "../../dist/brain/embed.js";
 
 test("embedConfig defaults to EmbeddingGemma · q8 · ~/.zemory/models", () => {
   const c = embedConfig();

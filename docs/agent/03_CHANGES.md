@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-08] — refactor(structure): dogfood — move zemory itself to the 04_STRUCTURE standard (backend/ frontend/ attic/)
+
+Dogfood: nắn CHÍNH zemory về chuẩn 04_STRUCTURE (git mv giữ history).
+
+- `src/` → `backend/src/` · `test/` → `backend/test/` · `scripts/` → `backend/scripts/`.
+- `prototype/web-capture/` → `attic/web-capture/` (nguồn cũ, đã bị brain/scanweb.ts thay).
+- `assets/cockpit.png` → `frontend/assets/` (frontend = chỉ asset; UI code-gen vẫn ở backend/src/ui-page.ts).
+- `share/` GIỮ root (bundle sync brain qua LFS — tracked cố ý; dồn data/ sẽ hỏng sync).
+- Fix path: tsconfig rootDir/include → backend/src; package scripts (clean/lint/test/dev); eslint files; clean.mjs ../../dist; 15 test ../dist→../../dist.
+- Fix 2 test migration cũ (hardcode version 6) → so với DB fresh (robust, khỏi vỡ lần bump schema sau).
+- .gitignore: prototype→attic path + thêm data/. README + 04 trỏ đúng.
+- dist/ + docs-template/ GIỮ root → bin, TEMPLATE_DIR không đổi.
+- Verify: npm run check (typecheck+lint+57 test PASS) · zemory structure/validate (backend/frontend/docs/attic — hết cảnh báo thiếu frontend) · UI Cockpit + /savings chạy.
+
 ## [2026-07-08] — feat(harness): add 04_STRUCTURE.md — structure standard as its own agent doc; RULES/structure/validate/AGENTS point to it
 
 Tách chuẩn cấu trúc ra file harness thứ 4: docs/agent/04_STRUCTURE.md.

@@ -7,7 +7,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.ts"],
+    files: ["backend/src/**/*.ts"],
     languageOptions: { globals: globals.node },
     rules: {
       "no-undef": "off",
@@ -16,7 +16,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["test/**/*.mjs", "scripts/**/*.mjs", "eslint.config.js"],
+    files: ["backend/test/**/*.mjs", "backend/scripts/**/*.mjs", "eslint.config.js"],
     languageOptions: { globals: globals.node },
   },
 );

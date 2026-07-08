@@ -4,9 +4,9 @@ import { hostname } from "node:os";
 import test from "node:test";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { claudeAdapter } from "../dist/brain/adapters/claude.js";
-import { brainHostTree, brainSummary, scan } from "../dist/brain/ingest.js";
-import { openBrain } from "../dist/brain/db.js";
+import { claudeAdapter } from "../../dist/brain/adapters/claude.js";
+import { brainHostTree, brainSummary, scan } from "../../dist/brain/ingest.js";
+import { openBrain } from "../../dist/brain/db.js";
 import { tempDir } from "./helpers.mjs";
 
 test("append scans ingest the first line written after a trailing newline", (t) => {
@@ -112,5 +112,10 @@ test("opening a pre-v4 DB migrates: adds host column and backfills 'unknown'", (
   assert.equal(row.host, "unknown", "legacy rows backfilled to 'unknown'");
   assert.ok(cols.includes("origin"), "origin column added by migration (v6)");
   assert.equal(row.origin, "local", "legacy rows backfilled to origin 'local'");
-  assert.equal(ver.version, 6); // migrates through the latest schema version
+  // migrates through to the LATEST schema version — compare against a fresh DB
+  // (not a hardcoded number) so this survives future schema bumps.
+  const fresh = openBrain(join(root, "fresh.db"));
+  const latest = fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version;
+  fresh.close();
+  assert.equal(ver.version, latest, "migrates to latest schema version");
 });

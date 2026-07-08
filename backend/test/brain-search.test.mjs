@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { openBrain } from "../dist/brain/db.js";
-import { search } from "../dist/brain/search.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { search } from "../../dist/brain/search.js";
 import { tempDir } from "./helpers.mjs";
 
 test("project search applies scope before the global candidate limit", (t) => {

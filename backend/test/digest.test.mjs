@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { openBrain } from "../dist/brain/db.js";
-import { buildDigest, digestBackfill, getDigest, searchDigests } from "../dist/brain/digest.js";
+import { openBrain } from "../../dist/brain/db.js";
+import { buildDigest, digestBackfill, getDigest, searchDigests } from "../../dist/brain/digest.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, id, opts, msgs) {
@@ -129,5 +129,10 @@ test("opening a pre-v5 DB migrates: adds session_digest table and sets version 5
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
   db.close();
   assert.equal(tbl.length, 1, "session_digest table created by migration");
-  assert.equal(ver.version, 6); // migrates through to the latest schema version
+  // migrates through to the LATEST schema version — compare against a fresh DB
+  // instead of a hardcoded number, so this survives future schema bumps.
+  const fresh = openBrain(join(root, "fresh.db"));
+  const latest = fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version;
+  fresh.close();
+  assert.equal(ver.version, latest, "migrates to latest schema version");
 });
