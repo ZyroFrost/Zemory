@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-08] — feat(harness): add 04_STRUCTURE.md — structure standard as its own agent doc; RULES/structure/validate/AGENTS point to it
+
+Tách chuẩn cấu trúc ra file harness thứ 4: docs/agent/04_STRUCTURE.md.
+
+- **04_STRUCTURE.md** (markdown source, như 01_RULES) = chuẩn cấu trúc ĐẦY ĐỦ: §1 nguyên tắc · §2 cây từng-dòng (marker ★BẮT BUỘC/[opt], 3 nhóm tracked/root/gitignore) · §3 routing "sửa gì→đâu" · §4 convention (gộp review GPT 9.8) · §5 phạm vi. Ship cho MỌI app.
+- Wire vào STANDARD_AGENT (adopt.ts) → mọi `zemory init` scaffold kèm; không bị coi là non-standard.
+- 01_RULES §Cấu trúc → rút còn CON TRỎ tới 04 (bất biến 4 + link).
+- `zemory structure` → tóm tắt + trỏ 04. `zemory validate` + AGENTS §7/§8 → tham chiếu 04.
+- plan 09 → rationale/quyết định + trỏ 04 (không lặp cây, tránh 2 bản lệch).
+- Nội dung chuẩn (chốt qua nhiều vòng + 2 app mẫu SasinFlow/zemory): 1 tên/concern · store/=data-access(remote/cloud/nội-bộ DB) · store/queries gom SQL · config/=file operator (password_env) · vault · resources(prompts/sql/seed/packaging) · ai/+data/models · frontend Dialog 3-size · data/ chia con · version/packaging dùng slot cũ.
+
 ## [2026-07-07] — docs(harness): update refactor recipe (AGENTS §7/§8) to new standard — attic/data/.env/CI + test optional
 
 

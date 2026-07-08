@@ -6,67 +6,36 @@
 > Trạng thái (2026-07-06): **CHỐT thiết kế**, đang chuẩn bị rollout (áp lên các app).
 
 ## 1. Nguyên tắc
-- **Luôn 2 mặt: `backend/` + `frontend/`** (mọi app trong estate đều dựng UI).
-- **Folder nguồn = ĐẦU VÀO (git tracked); build/output = ĐẦU RA (ở root, GITIGNORE).**
-- **Rạch ròi của-mình vs ngoài:** `backend/` = 100% code mình; `external/` = code ngoài, chỉ gọi/extend.
-- **Mục đích KÉP:** vừa cấu trúc GỌN, vừa là **INDEX điều hướng** — agent đọc rule là trỏ thẳng vào folder cần sửa, KHỎI grep/đọc cả repo để dò (nhanh + tiết kiệm token, đúng bất biến #1).
-- Rule phục vụ mục tiêu (dễ xem / rạch ròi / định vị nhanh), KHÔNG ép cho đủ folder — thiếu mặt nào thì bỏ mặt đó.
-## 2. Cây thư mục chuẩn
-```
-App/
-├── backend/          [BẮT BUỘC] server-side gom hết: code mình + entry (test/scripts optional)
-│   ├── <pkg>/ | src/  code mình (Python backend/<package>/ · Node backend/src/ hoặc src/)
-│   │   └── types/     type/contract DÙNG CHUNG BE↔FE (nguồn; FE import — KHÔNG đẻ shared/)
-│   ├── test/          [optional] test tự động (chỉ khi có; TEST thường = chạy chính app)
-│   ├── scripts/       [optional] script dev/build của mình
-│   ├── infra/         [optional] config app tự quản (monitoring/deploy)
-│   ├── migrations/    [optional] schema/DB migration (app log/db)
-│   └── run.* · pyproject.toml / package.json
-├── frontend/         [BẮT BUỘC] UI — HTML/React/Vue… ; asset → frontend/assets/
-│   └── test/          [optional] test frontend / E2E (khi có)
-├── docs/             [BẮT BUỘC] harness zemory (agent/ · plan/ · .harness.json)
-├── AGENTS.md · README.md · LICENSE · .gitignore · config (tsconfig/eslint…)   [manifest root]
-├── external/         [optional] repo ngoài clone về tham chiếu (gọi, không dán vào backend)
-├── attic/            [optional] backup: nguồn cũ/code gỡ + SNAPSHOT bản tốt trước khi up server (rollback)
-├── Dockerfile · docker-compose.yml · *.spec · build.ps1 · .github/workflows/ · .vscode/  [tool ÉP root]
-├── .env.example      [tracked] template config
-│   ───── gitignore, KHÔNG commit ─────
-├── .env              secret runtime (buộc root — dotenv đọc ./.env)
-├── data/             [optional] runtime .db log/cache/state + secret/.key/bundle
-├── dist/ · build/    [optional] output đóng gói ĐỂ CHẠY/MỞ app (chỉ khi build)
-└── .venv/ · node_modules/ · __pycache__/   [optional] env/deps generated
-```
-→ Root tracked: **`backend/ frontend/ docs/`** (+ optional `external/ attic/`) + manifest. **Bắt buộc = 4: `backend/(code) frontend/ docs/ AGENTS.md`** — test/scripts/infra/migrations đều optional.
-## 3. Routing — sửa gì vào đâu
-| Cần làm | Vào đâu |
-|---|---|
-| UI / asset (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
-| logic / API / auth | `backend/` — code + entry; **bảo mật = code**, không phải folder |
-| type/contract dùng chung BE↔FE | `backend/src/types/` — FE **import** từ backend (KHÔNG đẻ `shared/`) |
-| config app tự quản (monitoring…) | `backend/infra/` — nhánh backend |
-| dùng / tham chiếu code ngoài | `external/` |
-| data/log runtime + secret/key | `data/` — root + `.gitignore` |
-| **backup nguồn cũ + snapshot TRƯỚC KHI up server** | `attic/` — tracked, rollback khi deploy hỏng |
-| **test tự động (khi có)** · script dev/build | `backend/test/` (+ `frontend/test/`) · `backend/scripts/` — **[optional]**; TEST thường = **chạy app** |
-| tài liệu / rule / plan | `docs/` — qua lệnh `zemory` |
-| **CI/CD · editor · Docker/.spec** (tool ép) | root — `.github/` `.vscode/` `Dockerfile` `docker-compose.yml` `.spec` |
-| **env config** | root — `.env.example` (tracked) + `.env` (secret, gitignore) |
-| build output (`dist/`,`build/`) | root + `.gitignore` [optional] |
-## 4. Quyết định đã chốt
-- **backend + frontend luôn có** — user luôn build UI, kể cả tool ít UI như zemory.
-- **infra KHÔNG top-level** → `backend/infra/` (hạ tầng = nhánh server-side của backend).
-- **code ngoài = `external/`** — bỏ `vendor/`/`deps/` (external/ tự giải thích).
-- **Docker/compose/`.spec` + `.github/` (CI/CD) + `.vscode/` (editor) để ROOT** — tool ép vị trí, tôn trọng; khác config app tự quản (`backend/infra/`).
-- **`.env` buộc root + GITIGNORE** (dotenv/vite đọc `./.env`); **`.env.example` = TRACKED** template. Secret khác (`.key`, bundle, `.db`) → `data/`.
-- **type dùng chung BE↔FE** → `backend/src/types/`, FE import từ backend — KHÔNG đẻ folder `shared/`.
-- **TEST không bắt buộc** — thực tế **chạy chính app = bàn test** (build tới đâu coi tới đó). Folder `test/` (backend + frontend) CHỈ optional cho **lõi logic dễ sai ngầm** (search/dedup/migration/privacy — như zemory 15 test). App UI/luồng thẳng → bỏ. **Bắt buộc chỉ 4:** `backend(code)/ frontend/ docs/ AGENTS.md`.
-- **`attic/` = lưới an toàn backup** — nguồn cũ/code đã gỡ + **snapshot bản chạy tốt TRƯỚC KHI up server** (rollback khi deploy hỏng).
-- **Output + env + data gitignore** (`dist/ build/ node_modules/ .venv/ __pycache__/ .env data/`) → repo tracked chỉ folder nguồn + manifest → sạch.
-- **Tên co theo stack**, giữ đúng TẦNG.
-## 5. Phạm vi áp dụng
-- **Hầu hết mọi app** của estate (UI + server-side): desktop WebView2 (SasinInfra), web app, tool có cockpit (zemory)… ✅
-- **KHÔNG ép** cho: thư viện/SDK thuần (không UI), mobile native (Gradle/Xcode có convention riêng), notebook / nghịch data rời.
+> **Spec CHÍNH THỨC (cây từng-dòng + routing + convention) = harness file `docs/agent/04_STRUCTURE.md`** — ship cho MỌI app, agent đọc trực tiếp. Doc plan này = **nguyên tắc + quyết định thiết kế + rollout** (KHÔNG lặp cây, tránh 2 bản lệch).
 
+- Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
+- **Chuẩn RIÊNG của mình:** mỗi concern **1 TÊN duy nhất**; chỉ khi framework ÉP CỨNG (Next `pages/`, Django `models/`,`migrations/`, Rails `app/models`) mới theo tên nó — như Docker ép `Dockerfile` ở root.
+- **Mục đích KÉP:** cấu trúc gọn + **INDEX điều hướng** — agent đọc rule là trỏ THẲNG folder cần sửa, KHỎI grep cả repo (nhanh + tiết kiệm token, đúng bất biến #1).
+- **Nguồn = ĐẦU VÀO (git tracked); output/runtime/secret = ĐẦU RA (GITIGNORE).**
+- Rule phục vụ mục tiêu (gọn / rạch ròi / định vị nhanh), KHÔNG ép cho đủ folder — **thiếu concern nào bỏ folder đó**.
+- **BẮT BUỘC = 4:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ folder khác `[opt]` — tạo KHI CÓ concern.
+## 2. Cây thư mục chuẩn
+**Cây thư mục ĐẦY ĐỦ (ghi chú từng dòng) + 3 nhóm ①TRACKED / ②ROOT-tool-ép / ③GITIGNORE → xem [`04_STRUCTURE.md §2`](../agent/04_STRUCTURE.md).**
+
+Chỉ nhắc mốc: **BẮT BUỘC = 4** (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`); mọi folder con (api…util, frontend/*, data/*, ROOT tool) đều `[opt]` — tạo KHI CÓ concern. Không lặp cây ở đây để tránh 2 bản lệch.
+## 3. Routing — sửa gì vào đâu
+**Bảng routing "sửa gì / có gì → vào đâu" (1 tên chuẩn mỗi slot) → xem [`04_STRUCTURE.md §3`](../agent/04_STRUCTURE.md).**
+
+Cốt lõi: cần thêm concern nào → mở THẲNG slot tương ứng, KHÔNG grep cả repo (INDEX điều hướng = tiết kiệm token).
+## 4. Quyết định đã chốt
+Quyết định thiết kế đã chốt (convention đầy đủ ở [`04_STRUCTURE.md §4`](../agent/04_STRUCTURE.md)):
+- **Tách file harness thứ 4:** cấu trúc → `docs/agent/04_STRUCTURE.md` (markdown source), `01_RULES` chỉ còn con trỏ. Wire vào `STANDARD_AGENT` → mọi `zemory init` ship kèm.
+- **1 TÊN / concern** (chuẩn riêng): `store/` (KHÔNG db|models), `pages/` (KHÔNG views|screens). Framework ép cứng mới đổi (Next `pages/`, Django `models/`).
+- **BẮT BUỘC = 4**; tất cả còn lại `[opt]` — INDEX là TỪ ĐIỂN tên, tạo khi có.
+- **6 loại non-code** rạch ròi: assets(media) · resources(đóng-gói) · config(operator) · data(runtime) · external(code-ngoài) · attic(backup).
+- **3 loại kết nối:** `api/`(mình mở) · `integrations/`(SaaS ngoài) · `store/`(DATABASE remote/cloud/nội-bộ). external/=code-họ.
+- **SQL 1 cách:** gom `store/queries.*` đặt tên, không rải inline. **Secret:** trỏ tên env (`password_env`), pass thật `.env`/vault→`data/`.
+- **Dialog 3-size** (token `frontend/styles/`). **Setting UI:** default `frontend/config/`, user-chỉnh `data/settings/`.
+- **Version/Packaging KHÔNG nhóm mới** — dùng git/Releases/data/migrations + `.spec`+scripts+resources/packaging+dist.
+- **Đã gộp review GPT (9.8):** util=helper-thuần · auth-scope · events-scope · frontend/config-guardrail · data/-chia-con · types-escape-hatch (FE tách → packages/contracts).
+## 5. Phạm vi áp dụng
+- **ÁP:** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI/data project, monorepo. Áp gần như không đổi cấu trúc.
+- **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · notebook / data rời · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
 ## 6. zemory thực thi thế nào — ship + check + guide (KHÔNG auto-move)
 - **Ship chuẩn:** rule §"Cấu trúc repo — chuẩn & routing" trong `docs-template/agent/01_RULES.md` → mọi project nhận qua harness.
 - **Check lệch:** `zemory validate` báo advisory (liệt kê tầng có/thiếu; warn nếu code không ở `backend/`(`src/`) hoặc thiếu `AGENTS.md`).
