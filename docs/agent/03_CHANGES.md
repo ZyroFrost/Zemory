@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-08] — docs(structure): sweep buried cross-cutting concerns — add errors/ logging/ audit/ + meta rule 'every concern must be explicit'
+
+Quét + vá các concern cross-cutting còn NGẦM trong 04 (giống encryption/authz).
+
+Audit 04 → phát hiện 0 lần nhắc: logging, logger, observability, metrics, error, feature-flag, health. Vá:
+- §2 index: thêm **errors/** (error types + central handler) · **logging/** (logger + observability, log→data/logs, service→integrations) · **audit/** (audit-trail bảo mật, bảng→store).
+- §3 routing: thêm lỗi/handler · logging/observability · audit-trail · feature-flag(→config) · health-check(→api).
+- §4 luật: Logging/Observability · Audit trail (KHÁC log debug) · Error handling (không rải try/catch) · **META "Cross-cutting = RÕ": mọi concern xuyên suốt phải có place+type → audit không lọt; thiếu → BÁO thêm vào chuẩn.**
+
+→ Chuẩn giờ liệt kê ĐỦ concern cross-cutting: authn/authz/encryption/secret/validation/error/logging/audit/rate-limit/cors/cache/i18n/feature-flag/health. Concern-không-trong-chuẩn = lọt (bài học từ encryption).
+
 ## [2026-07-08] — docs(structure): add authorization/phân quyền as first-class concern; record zemory's accept-plaintext + no-authz decisions
 
 Thêm PHÂN QUYỀN/Authorization thành concern rõ ràng trong 04 (giống encryption — trước lấp ló trong auth/).
