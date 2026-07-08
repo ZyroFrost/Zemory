@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-08] — docs(structure): root config files = open catch-all (tool-forced, leave alone) — not an exhaustive list
+
+
+
 ## [2026-07-08] — docs(structure): sweep buried cross-cutting concerns — add errors/ logging/ audit/ + meta rule 'every concern must be explicit'
 
 Quét + vá các concern cross-cutting còn NGẦM trong 04 (giống encryption/authz).
