@@ -46,7 +46,7 @@ export function validate(ctx: Context): ValidateReport {
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
   }
 
-  // 3. Repo structure vs the standard (01_RULES §Cấu trúc repo). ADVISORY only —
+  // 3. Repo structure vs the standard (docs/agent/04_STRUCTURE.md). ADVISORY only —
   //    reconciling is agent-assisted (AGENTS.md §7); zemory never moves files.
   for (const i of checkStructure(projectRoot)) issues.push(i);
 
@@ -69,11 +69,11 @@ function checkStructure(root: string): ValidateIssue[] {
   if (!ownCode) {
     out.push({
       level: "warn",
-      msg: "structure: own code not under `backend/` (or `src/`) — see 01_RULES §Cấu trúc repo; reconcile via AGENTS.md §7",
+      msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/04_STRUCTURE.md; reconcile via AGENTS.md §7",
     });
   }
   if (!has("frontend")) {
-    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see 01_RULES §Cấu trúc repo" });
+    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/04_STRUCTURE.md" });
   }
   if (!has("docs")) {
     out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });

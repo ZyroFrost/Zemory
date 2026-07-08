@@ -37,7 +37,7 @@ export interface AdoptResult {
 // The canonical agent docs (DB-source mirrors). Anything else in docs/agent =
 // non-standard → flag for agent reconciliation rather than gap-filling (which
 // would create duplicates).
-const STANDARD_AGENT = ["01_RULES.md", "02_TODO.md", "03_CHANGES.md"];
+const STANDARD_AGENT = ["01_RULES.md", "02_TODO.md", "03_CHANGES.md", "04_STRUCTURE.md"];
 
 const DEFAULT_CONFIG: HarnessConfig = {
   docs: "docs/agent",

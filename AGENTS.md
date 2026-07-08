@@ -52,7 +52,7 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - Hỏi **TỪNG câu một** (kèm đề xuất), chờ trả lời rồi hỏi tiếp; đi hết các nhánh.
 - Cái nào đọc code/docs ra được → đọc, ĐỪNG hỏi. Chốt xong **mới build**. Quyết định bền → `zemory changelog add`.
 
-## 7. Reconcile CẤU TRÚC repo — nắn về chuẩn (xem `01_RULES` §Cấu trúc repo)
+## 7. Reconcile CẤU TRÚC repo — nắn về chuẩn (xem `04_STRUCTURE.md`)
 Khi `zemory validate` báo folder lệch, hoặc repo chưa theo khung `backend/` `frontend/` `docs/`:
 1. `zemory validate` — xem tầng nào thiếu / đặt sai (advisory, không tự sửa).
 2. Nắn về chuẩn, **GIỮ git history — dùng `git mv`, KHÔNG copy rồi xoá**:
@@ -66,6 +66,6 @@ Khi `zemory validate` báo folder lệch, hoặc repo chưa theo khung `backend/
 Khi user mở 1 app và kêu bạn *đọc zemory + nắn app về chuẩn* (không tự chạy UI):
 1. **Chưa có harness** (`docs/.harness.json`)? → `zemory init` (kéo chuẩn + `AGENTS`/`RULES` vào). Đã có → bỏ qua.
 2. `zemory structure` — xem **ĐÍCH** (repo layout + bảng routing) cần conform. `zemory validate` — xem đang **lệch** đâu.
-3. Đọc `docs/agent/01_RULES.md §Cấu trúc repo` (bảng routing = index điều hướng: sửa gì → folder nào).
+3. Đọc `docs/agent/04_STRUCTURE.md` (cây từng-dòng + bảng routing = index điều hướng: sửa gì → folder nào).
 4. **Reconcile theo §7:** `git mv` (giữ history) → gom code mình vào `backend/` (Python `backend/<pkg>/`, Node `backend/src/`|`src/`), UI → `frontend/`, code ngoài → `external/`, infra/config → `backend/infra/`, output (`dist/`,`build/`) → root + `.gitignore`. Sửa import/entry/path → `zemory run` / test **verify**.
 5. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC.** Xong → cập nhật `README` + `zemory changelog add` (sau OK).

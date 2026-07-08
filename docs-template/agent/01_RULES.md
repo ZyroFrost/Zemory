@@ -4,37 +4,15 @@
 > AI đọc file này trước khi làm. Tuân thủ tuyệt đối.
 > Mở phiên + mọi hướng dẫn quy trình: xem `AGENTS.md` ở root. Backlog: `02_TODO.md`. Changelog: `03_CHANGES.md`.
 
-## Cấu trúc repo — chuẩn & routing (đọc TRƯỚC khi sửa)
-Mọi app cùng bộ khung, **luôn 2 mặt: `backend/` + `frontend/`**. Nguyên tắc: **folder nguồn = ĐẦU VÀO (git tracked); build/output = ĐẦU RA (ở root, GITIGNORE).**
+## Cấu trúc repo — xem [`04_STRUCTURE.md`](04_STRUCTURE.md)
+**Chuẩn cấu trúc folder ĐẦY ĐỦ** (cây từng-dòng + routing "sửa gì → vào đâu" + convention) nằm ở **[`04_STRUCTURE.md`](04_STRUCTURE.md)** — **đọc file đó TRƯỚC khi sửa/tạo folder**.
 
-> **Mục đích KÉP:** vừa cấu trúc gọn, vừa là **INDEX điều hướng cho agent.** Cần sửa gì → theo bảng dưới **mở THẲNG folder đó**, **KHÔNG grep/đọc cả repo để dò** → nhanh + tiết kiệm token (bất biến #1). Chuẩn này chính là bản đồ để agent tự định vị mà không cần quét toàn bộ code.
-
-**Sửa gì → vào đâu** (tự định tuyến, khỏi hỏi):
-| Cần làm | Vào đâu |
-|---|---|
-| UI / giao diện / **asset** (icon, logo, font, ảnh) | `frontend/` — asset → `frontend/assets/` |
-| logic / API / xử lý / **bảo mật-auth** | `backend/` — code + entry (`backend/<pkg>/` \| `src/`); **bảo mật = code, KHÔNG phải folder** |
-| **type/contract dùng chung BE↔FE** | `backend/src/types/` — backend là nguồn, FE **import** từ đó (KHÔNG đẻ folder `shared/`) |
-| **config app tự quản** (monitoring, prometheus.yml…) | `backend/infra/` — server-side = 1 nhánh backend |
-| dùng / tham chiếu **code ngoài** | `external/` — repo ngoài clone về; **gọi, KHÔNG dán vào `backend/`** |
-| **data/log runtime + secret/key** (.db log, cache, `.key`, bundle) | `data/` — root, **GITIGNORE** (phình / theo máy / bí mật) |
-| **backup: nguồn cũ/code gỡ + SNAPSHOT bản tốt TRƯỚC KHI up server** | `attic/` — tracked; lưới an toàn để rollback khi deploy hỏng |
-| tài liệu / rule / plan | `docs/` — qua lệnh `zemory`, không gõ tay mirror |
-| **test tự động** (chỉ khi CÓ) · **script dev/build** | `backend/test/` (+ `frontend/test/`) · `backend/scripts/` — **[OPTIONAL]**; TEST thường = **chạy chính app** |
-
-**Ở ROOT** — ngoài `backend/ frontend/ docs/ (external/ attic/)` — chỉ có:
-- **Manifest/entry + tool ÉP để root** (KHÔNG phải clutter): `AGENTS.md` · `README.md` · `.gitignore` · `pyproject.toml`/`package.json` · `Dockerfile`/`docker-compose.yml` · `.spec` + script build · **`.github/workflows/` (CI/CD)** · **`.vscode/`·`.idea/` (editor)** · `.venv/` (Python).
-- **Env config ở root** (tool đọc `./.env`): **`.env.example` = TRACKED** (template) · **`.env` = SECRET → GITIGNORE** (không commit). Secret khác (`.key`, bundle, `.db`) vẫn vào `data/`.
-- **Runtime DATA + SECRET — gitignore, KHÔNG commit:** `data/` (log `.db`, cache, state · **key/secret `.key`, bundle `.enc`**). Data sống + bí mật, khác source; app đóng gói có thể dùng OS app-data (`%LOCALAPPDATA%/<App>`) thay.
-- **ĐẦU RA build — [OPTIONAL] gitignore, KHÔNG commit:** `dist/` · `build/` = output **đóng gói để CHẠY/MỞ app** (chỉ có khi app có bước build/package) · `node_modules/` · `__pycache__/` · `.venv/`. Do build sinh ra → repo tracked vẫn sạch.
-
-Bất biến:
-- **Bắt buộc (chỉ 4):** `backend/` (code) + `frontend/` + `docs/` + `AGENTS.md`.
-- **Optional (có mới tạo):** `backend/test/` · `frontend/test/` · `backend/scripts/` · `backend/infra/` · `backend/migrations/` · `external/` · `attic/` · `data/` · `dist/`,`build/`,`.venv/`.
-- **TEST không bắt buộc:** thực tế **chạy chính app = bàn test** (build tới đâu coi tới đó). Folder `test/` CHỈ khi có test tự động cho **lõi logic dễ sai ngầm** (search/dedup/migration/privacy — như zemory 15 test). App UI/luồng thẳng → bỏ, không sao.
-- **Deploy config tool ÉP để root** (Docker/compose, `.spec`, `.github/`) → để root; **config app TỰ quản** → `backend/infra/`.
-- **Của-mình vs ngoài (BẤT BIẾN):** `backend/` = 100% code mình, một giọng. `external/` = gạch public bên ngoài — chỉ **gọi/extend**, không trộn vào `backend/`.
-- **Tên co theo stack:** Python `backend/<package>/`; Node `backend/src/` (hoặc `src/`). Giữ đúng TẦNG, không cứng nhắc tên.
+Tóm tắt bất biến (chi tiết ở 04):
+- **BẮT BUỘC = 4:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ folder khác `[opt]` — tạo KHI CÓ concern.
+- **INDEX điều hướng:** cần sửa gì → `04 §3` trỏ THẲNG slot → **KHÔNG grep cả repo** (nhanh + tiết kiệm token, bất biến #1).
+- **1 TÊN / concern** (chuẩn RIÊNG); chỉ framework ép cứng mới đổi (Next `pages/`, Django `models/`).
+- **Nguồn = git tracked; output / runtime / secret = GITIGNORE.**
+- Nắn app về chuẩn → `AGENTS.md` (recipe reconcile).
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
@@ -64,7 +42,7 @@ Bất biến:
 - **Không biết thì hỏi, không đoán.**
 
 ## Thiết kế UI
-- **Dialog / modal: CHỈ 3 size cố định** — chọn 1 lần lúc mở theo lượng nội dung, **không đổi size động, không nhảy/reflow loạn**:
+- **Dialog / modal: CHỈ 3 size cố định (S/M/L)** — chọn 1 lần lúc mở theo **lượng nội dung + mục đích** (xác nhận / form / log-bảng), **KHÔNG random size, không đổi size động, không nhảy/reflow loạn**:
   | Size | Rộng | Cao (trần) | Dùng khi |
   |---|---|---|---|
   | **Nhỏ (S)** | ~30vw (tối thiểu 380px) | ≤ 45vh | xác nhận, 1–5 dòng, ít log |
