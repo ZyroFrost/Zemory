@@ -70,7 +70,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   └── public/                     [opt]   file tĩnh serve thẳng (favicon, robots.txt)
 │
 ├── docs/                           ★BẮT BUỘC  harness zemory (nguồn = DB, .md là mirror):
-│   ├── agent/                      ★BẮT BUỘC    01_RULES (luật) · 02_TODO (backlog) · 03_CHANGES (changelog)
+│   ├── agent/                      ★BẮT BUỘC    01_RULES (luật) · 02_STRUCTURE (chuẩn folder) · 03_TODO (backlog) · 04_CHANGES (changelog)
 │   ├── plan/                       ★BẮT BUỘC    spec / plan theo section
 │   └── .harness.json               ★BẮT BUỘC    marker: project đã wire harness
 │
@@ -111,7 +111,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── vite/webpack/next/tailwind/postcss/babel · jest/vitest/playwright.config.*   [opt]   config build/test/CSS — tool ép root
 ├── .editorconfig · .prettierrc · .npmrc | .yarnrc · .dockerignore   [opt]   config editor/format/pkg-mgr/docker — tool ép root
 ├── .nvmrc · .python-version · .tool-versions   [opt]   pin phiên bản runtime — tool ép root
-├── CONTRIBUTING.md · SECURITY.md · CODE_OF_CONDUCT.md · CHANGELOG.md   [opt]   community/health — root (hoặc .github/); harness dùng docs/agent/03_CHANGES
+├── CONTRIBUTING.md · SECURITY.md · CODE_OF_CONDUCT.md · CHANGELOG.md   [opt]   community/health — root (hoặc .github/); harness dùng docs/agent/04_CHANGES
 │                                            ⤷ MỌI file config tool đọc từ root (build/test/format/lint/pkg-mgr/docker) = tool ép → ĐỂ YÊN, KHÔNG dời/dọn (như folder .<tool>/)
 │
 │ ═════════ ③ GITIGNORE — KHÔNG commit (sinh ra / bí mật / theo máy) ═════════
@@ -199,7 +199,7 @@ Cross-cutting = RÕ   MỌI concern xuyên suốt (mã hóa/authz/logging/audit/
 Setting UI kéo-thả   default ship → frontend/config/ (tracked); bản user chỉnh runtime → data/settings/ (gitignore)
 Dialog / modal       CHỈ 3 size cố định S/M/L, chọn theo nội-dung + mục-đích, KHÔNG random/động/reflow. Token size ở frontend/styles/
 Test                 KHÔNG bắt buộc — chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy)
-Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 03_CHANGES=log. KHÔNG folder versions/ chép tay
+Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 04_CHANGES=log. KHÔNG folder versions/ chép tay
 Packaging            .spec(root) + backend/scripts + backend/resources/packaging + dist(output) + OS app-data(cài) — DÙNG SLOT CŨ, KHÔNG nhóm mới
 util/  (GPT)         CHỈ helper thuần — KHÔNG business-logic / repository / framework-adapter (chống "misc dump")
 auth/  (GPT)         authentication · authorization · jwt · oauth · permission — phân biệt rõ với middleware

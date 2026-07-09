@@ -58,7 +58,7 @@ function cmdMigrate(): void {
   console.log("  1. zemory docs sync        — import HẾT .md vào brain (không đụng file)");
   console.log("  2. zemory docs ls          — xem cái nào trùng/thừa");
   console.log("  3. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
-  console.log("  4. gộp todo → 02_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
+  console.log("  4. gộp todo → 03_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
   console.log("  5. zemory docs render → zemory doctor (xanh = xong)");
 }
 
@@ -141,11 +141,11 @@ function cmdArchive(): void {
   const r = archiveChanges(ctx);
   if (r.moved === 0) {
     console.log(
-      `zemory archive: nothing to do (03_CHANGES.md = ${r.activeLines} lines, under threshold).`,
+      `zemory archive: nothing to do (04_CHANGES.md = ${r.activeLines} lines, under threshold).`,
     );
   } else {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
-    console.log(`  active 03_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
+    console.log(`  active 04_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
   }
 }
 
@@ -181,7 +181,7 @@ function cmdSetup(): void {
 function cmdStructure(): void {
   console.log(
     [
-      "zemory — repo structure standard. FULL spec (per-line tree + routing + convention): docs/agent/04_STRUCTURE.md",
+      "zemory — repo structure standard. FULL spec (per-line tree + routing + convention): docs/agent/02_STRUCTURE.md",
       "",
       "  Required (4): backend/(code) · frontend/ · docs/ · AGENTS.md.  Everything else is [opt] — create when the concern exists.",
       "  6 non-code kinds (never mix): assets=media · resources=bundled-tracked · config=operator-files · data=runtime-gitignored · external=cloned-code · attic=backup.",
@@ -189,14 +189,14 @@ function cmdStructure(): void {
       "  1 NAME per concern (own standard: store/ not db|models); only a framework may force a name (Next pages/, Django models/).",
       "  Source = git tracked; output / runtime / secret = GITIGNORED.",
       "",
-      "  Full per-line tree + routing table + all conventions → docs/agent/04_STRUCTURE.md",
+      "  Full per-line tree + routing table + all conventions → docs/agent/02_STRUCTURE.md",
       "  Refactor an app to this → AGENTS.md   ·   drift check → `zemory validate`",
       "",
       "docs harness (.md; some are DB-render mirrors):",
       "  docs/agent/01_RULES.md      — work rules (markdown source)",
-      "  docs/agent/04_STRUCTURE.md  — repo structure standard (markdown source)",
-      "  docs/agent/02_TODO.md       — backlog (mirror)",
-      "  docs/agent/03_CHANGES.md    — changelog (mirror, source = changelog table)",
+      "  docs/agent/02_STRUCTURE.md  — repo structure standard (markdown source)",
+      "  docs/agent/03_TODO.md       — backlog (mirror)",
+      "  docs/agent/04_CHANGES.md    — changelog (mirror, source = changelog table)",
       "  docs/plan/*.md              — specs (mirror, source = doc/section tables)",
       "  ~/.zemory/global_memory.db          — SOURCE: sessions · doc/section · changelog",
       "",
@@ -1049,7 +1049,7 @@ async function cmdDocs(args: string[]): Promise<void> {
   }
   if (sub === "render") {
     const written = renderAll(root);
-    const ch = renderChangelog(root, join(root, "docs", "agent", "03_CHANGES.md"));
+    const ch = renderChangelog(root, join(root, "docs", "agent", "04_CHANGES.md"));
     console.log(`zemory docs render — wrote ${written.length} doc mirror(s) + changelog (${ch} entries) [db → md]`);
     console.log("  ⚠ .md are now GENERATED mirrors — edit via `zemory plan set` / `changelog add`.");
     return;
@@ -1070,11 +1070,11 @@ async function cmdDocs(args: string[]): Promise<void> {
 async function cmdChangelog(args: string[]): Promise<void> {
   const sub = args[0];
   const root = findProjectRoot() ?? process.cwd();
-  const mdPath = join(root, "docs", "agent", "03_CHANGES.md");
+  const mdPath = join(root, "docs", "agent", "04_CHANGES.md");
 
   if (sub === "import") {
     const n = importChangelog(mdPath, root);
-    console.log(`zemory changelog import — ${n} entr(ies) from 03_CHANGES.md into global_memory.db`);
+    console.log(`zemory changelog import — ${n} entr(ies) from 04_CHANGES.md into global_memory.db`);
     return;
   }
   if (sub === "ls") {
@@ -1150,7 +1150,7 @@ async function cmdChangelog(args: string[]): Promise<void> {
     [
       "zemory changelog <subcommand>   (changelog lives in global_memory.db; .md is a render)",
       "",
-      "  import           seed global_memory.db from docs/agent/03_CHANGES.md",
+      "  import           seed global_memory.db from docs/agent/04_CHANGES.md",
       "  ls               list entries (newest first)",
       "  search <q> [--all] FTS over entries",
       "  add <title>      add an entry (body from stdin)",
@@ -1170,7 +1170,7 @@ function cmdHelp(): void {
       "  migrate   analyze existing docs for brownfield adopt (no changes)",
       "  doctor    quick check (text): wired? docs? features?",
       "  ui        open a small status window (app-mode, on-demand)",
-      "  archive   move old 03_CHANGES blocks to archive/ when over threshold",
+      "  archive   move old 04_CHANGES blocks to archive/ when over threshold",
       "  validate  check docs mirrors, links, changelog retention, and supersede",
       "  docs      ALL docs in global_memory.db: sync (import) · ls · render mirrors (db→md)",
       "  plan      doc sections in global_memory.db: ls · show · search · set · render (db→md)",

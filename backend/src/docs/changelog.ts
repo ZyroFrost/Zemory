@@ -1,6 +1,6 @@
 // Changelog in the DB (log shape). Entries are dated rows; archive becomes a
 // query (full history stays queryable, render shows active ones). Source = DB;
-// .md (03_CHANGES) is a render. import = one-time seed from existing markdown.
+// .md (04_CHANGES) is a render. import = one-time seed from existing markdown.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { BRAIN_DB, openBrain } from "../brain/db.js";
