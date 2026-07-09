@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-09] — docs(structure): add server-side i18n (backend/resources/locales) — was frontend-only
+
+
+
 ## [2026-07-09] — chore(harness): renumber docs — 02_STRUCTURE after RULES; TODO→03, CHANGES→04
 
 Đổi số file harness: cấu trúc lên #2 (đọc ngay sau RULES).
