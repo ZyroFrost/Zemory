@@ -52,7 +52,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   │   ├── prompts/                [opt]     prompt/template AI ship kèm
 │   │   ├── sql/                    [opt]     câu SQL tách FILE .sql (chỉ khi cố ý; mặc định store/queries.*)
 │   │   ├── seed/                   [opt]     seed data / default config ship kèm (vd recon_defaults.json)
-│   │   └── packaging/              [opt]     icon/logo/manifest cho .exe/installer (.ico) — icon đóng gói ≠ media UI
+│   │   ├── packaging/              [opt]     icon/logo/manifest cho .exe/installer (.ico) — icon đóng gói ≠ media UI
+│   │   └── locales/                [opt]     bản dịch SERVER-SIDE i18n (email/notification/API message theo ngôn ngữ)
 │   ├── run.*                       ★BẮT BUỘC  entry chạy app
 │   └── package.json | pyproject.toml   ★BẮT BUỘC  manifest package
 │
@@ -170,6 +171,7 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | media ảnh/icon UI | `frontend/assets/` |
 | gọi backend từ FE | `frontend/api/` |
 | setting UI mặc định | `frontend/config/` · user chỉnh → `data/settings/` |
+| **đa ngôn ngữ / i18n** | UI strings → `frontend/locales/` · server (email/notification/API msg) → files `backend/resources/locales/` + code `backend/src/` · detect locale (header/user-pref) → `middleware/` |
 | file config operator (server/node) | `config/` (`.example` tracked · real gitignore) |
 | profile kết nối remote server | `config/servers.yaml` + `.env` (`password_env`) |
 | code ngoài clone tham chiếu | `external/` |
