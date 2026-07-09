@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-07-09] — chore(harness): renumber docs — 02_STRUCTURE after RULES; TODO→03, CHANGES→04
+
+Đổi số file harness: cấu trúc lên #2 (đọc ngay sau RULES).
+
+Thứ tự cũ 01_RULES/02_TODO/03_CHANGES/04_STRUCTURE → MỚI: 01_RULES · 02_STRUCTURE · 03_TODO · 04_CHANGES.
+Lý do: STRUCTURE là nền tảng "how" (như RULES) → đọc trước; TODO/CHANGES là backlog/history → xuống dưới.
+
+- Rename 6 file (git mv, docs/agent + docs-template/agent, giữ history).
+- Code: STANDARD_AGENT (adopt) + STANDARD/mapping (migrate, +structure) + archive/cli/changelog paths (03_CHANGES→04_CHANGES) + structure cmd (→02_STRUCTURE).
+- DB: doc.path của TODO (doc 111) → 03_TODO; refs trong RULES(#1058) + plan 09(§1-4) + TODO header(#1089) cập nhật.
+- AGENTS §7/§8 + 02_STRUCTURE nội bộ (docs/ tree line thêm 02_STRUCTURE) cập nhật.
+- Verify: build + 57 test PASS · docs render KHÔNG orphan · structure→02_STRUCTURE · validate 0 broken link · changelog add ghi đúng 04_CHANGES.
+
 ## [2026-07-08] — docs(structure): root config files = open catch-all (tool-forced, leave alone) — not an exhaustive list
 
 

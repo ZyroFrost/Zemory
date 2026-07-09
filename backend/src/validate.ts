@@ -35,18 +35,18 @@ export function validate(ctx: Context): ValidateReport {
   }
 
   // 2. Changelog length (suggest archive).
-  const chFile = join(agentDir, "03_CHANGES.md");
+  const chFile = join(agentDir, "04_CHANGES.md");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
   if (existsSync(chFile)) {
     const n = lineCount(chFile);
     if (n > chMax) {
-      issues.push({ level: "info", msg: `03_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
+      issues.push({ level: "info", msg: `04_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
     }
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
   }
 
-  // 3. Repo structure vs the standard (docs/agent/04_STRUCTURE.md). ADVISORY only —
+  // 3. Repo structure vs the standard (docs/agent/02_STRUCTURE.md). ADVISORY only —
   //    reconciling is agent-assisted (AGENTS.md §7); zemory never moves files.
   for (const i of checkStructure(projectRoot)) issues.push(i);
 
@@ -69,11 +69,11 @@ function checkStructure(root: string): ValidateIssue[] {
   if (!ownCode) {
     out.push({
       level: "warn",
-      msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/04_STRUCTURE.md; reconcile via AGENTS.md §7",
+      msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/02_STRUCTURE.md; reconcile via AGENTS.md §7",
     });
   }
   if (!has("frontend")) {
-    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/04_STRUCTURE.md" });
+    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/02_STRUCTURE.md" });
   }
   if (!has("docs")) {
     out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });

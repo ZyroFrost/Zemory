@@ -6,7 +6,7 @@
 > Trạng thái (2026-07-06): **CHỐT thiết kế**, đang chuẩn bị rollout (áp lên các app).
 
 ## 1. Nguyên tắc
-> **Spec CHÍNH THỨC (cây từng-dòng + routing + convention) = harness file `docs/agent/04_STRUCTURE.md`** — ship cho MỌI app, agent đọc trực tiếp. Doc plan này = **nguyên tắc + quyết định thiết kế + rollout** (KHÔNG lặp cây, tránh 2 bản lệch).
+> **Spec CHÍNH THỨC (cây từng-dòng + routing + convention) = harness file `docs/agent/02_STRUCTURE.md`** — ship cho MỌI app, agent đọc trực tiếp. Doc plan này = **nguyên tắc + quyết định thiết kế + rollout** (KHÔNG lặp cây, tránh 2 bản lệch).
 
 - Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
 - **Chuẩn RIÊNG của mình:** mỗi concern **1 TÊN duy nhất**; chỉ khi framework ÉP CỨNG (Next `pages/`, Django `models/`,`migrations/`, Rails `app/models`) mới theo tên nó — như Docker ép `Dockerfile` ở root.
@@ -15,16 +15,16 @@
 - Rule phục vụ mục tiêu (gọn / rạch ròi / định vị nhanh), KHÔNG ép cho đủ folder — **thiếu concern nào bỏ folder đó**.
 - **BẮT BUỘC = 4:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ folder khác `[opt]` — tạo KHI CÓ concern.
 ## 2. Cây thư mục chuẩn
-**Cây thư mục ĐẦY ĐỦ (ghi chú từng dòng) + 3 nhóm ①TRACKED / ②ROOT-tool-ép / ③GITIGNORE → xem [`04_STRUCTURE.md §2`](../agent/04_STRUCTURE.md).**
+**Cây thư mục ĐẦY ĐỦ (ghi chú từng dòng) + 3 nhóm ①TRACKED / ②ROOT-tool-ép / ③GITIGNORE → xem [`02_STRUCTURE.md §2`](../agent/02_STRUCTURE.md).**
 
 Chỉ nhắc mốc: **BẮT BUỘC = 4** (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`); mọi folder con (api…util, frontend/*, data/*, ROOT tool) đều `[opt]` — tạo KHI CÓ concern. Không lặp cây ở đây để tránh 2 bản lệch.
 ## 3. Routing — sửa gì vào đâu
-**Bảng routing "sửa gì / có gì → vào đâu" (1 tên chuẩn mỗi slot) → xem [`04_STRUCTURE.md §3`](../agent/04_STRUCTURE.md).**
+**Bảng routing "sửa gì / có gì → vào đâu" (1 tên chuẩn mỗi slot) → xem [`02_STRUCTURE.md §3`](../agent/02_STRUCTURE.md).**
 
 Cốt lõi: cần thêm concern nào → mở THẲNG slot tương ứng, KHÔNG grep cả repo (INDEX điều hướng = tiết kiệm token).
 ## 4. Quyết định đã chốt
-Quyết định thiết kế đã chốt (convention đầy đủ ở [`04_STRUCTURE.md §4`](../agent/04_STRUCTURE.md)):
-- **Tách file harness thứ 4:** cấu trúc → `docs/agent/04_STRUCTURE.md` (markdown source), `01_RULES` chỉ còn con trỏ. Wire vào `STANDARD_AGENT` → mọi `zemory init` ship kèm.
+Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUCTURE.md §4`](../agent/02_STRUCTURE.md)):
+- **Tách file harness thứ 4:** cấu trúc → `docs/agent/02_STRUCTURE.md` (markdown source), `01_RULES` chỉ còn con trỏ. Wire vào `STANDARD_AGENT` → mọi `zemory init` ship kèm.
 - **1 TÊN / concern** (chuẩn riêng): `store/` (KHÔNG db|models), `pages/` (KHÔNG views|screens). Framework ép cứng mới đổi (Next `pages/`, Django `models/`).
 - **BẮT BUỘC = 4**; tất cả còn lại `[opt]` — INDEX là TỪ ĐIỂN tên, tạo khi có.
 - **6 loại non-code** rạch ròi: assets(media) · resources(đóng-gói) · config(operator) · data(runtime) · external(code-ngoài) · attic(backup).
