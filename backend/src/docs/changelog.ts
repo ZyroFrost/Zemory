@@ -2,8 +2,8 @@
 // query (full history stays queryable, render shows active ones). Source = DB;
 // .md (04_CHANGES) is a render. import = one-time seed from existing markdown.
 
-import { readFileSync, writeFileSync } from "node:fs";
-import { BRAIN_DB, openBrain } from "../brain/db.js";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { currentBrainDb, openBrain } from "../brain/db.js";
 
 const FENCE = /^[ \t]*(```|~~~)/;
 const H2 = /^## (.*?)[ \t]*$/;
@@ -53,18 +53,35 @@ export function parseChangelog(text: string): ChEntry[] {
   return entries;
 }
 
-export function importChangelog(absPath: string, projectRoot: string, dbPath = BRAIN_DB): number {
+export function importChangelog(
+  absPath: string,
+  projectRoot: string,
+  dbPath = currentBrainDb(),
+  opts: { replace?: boolean } = {},
+): number {
   const entries = parseChangelog(readFileSync(absPath, "utf8"));
   const db = openBrain(dbPath);
   try {
     const tx = db.transaction(() => {
-      db.prepare("DELETE FROM changelog WHERE project_root=?").run(projectRoot);
+      // Default = MERGE: only add entries the DB doesn't have yet (matched on
+      // date+title). A re-import must never renumber ids or wipe archived/
+      // supersedes state — those exist only in the DB, not in the rendered .md.
+      // `replace` keeps the old wipe-and-reseed for a deliberate one-time seed.
+      if (opts.replace) db.prepare("DELETE FROM changelog WHERE project_root=?").run(projectRoot);
+      const exists = db.prepare(
+        "SELECT 1 AS ok FROM changelog WHERE project_root=? AND date IS ? AND title=?",
+      );
       const ins = db.prepare(
         "INSERT INTO changelog (project_root, date, title, body, created_at) VALUES (?,?,?,?,?)",
       );
       const now = new Date().toISOString();
-      for (const e of entries) ins.run(projectRoot, e.date, e.title, e.body, now);
-      return entries.length;
+      let added = 0;
+      for (const e of entries) {
+        if (!opts.replace && exists.get(projectRoot, e.date, e.title)) continue;
+        ins.run(projectRoot, e.date, e.title, e.body, now);
+        added++;
+      }
+      return added;
     });
     return tx();
   } finally {
@@ -77,7 +94,7 @@ export function addEntry(
   title: string,
   body: string,
   date?: string,
-  dbPath = BRAIN_DB,
+  dbPath = currentBrainDb(),
   supersedesId?: number,
 ): number {
   const db = openBrain(dbPath);
@@ -106,7 +123,7 @@ export function setEntryDate(
   projectRoot: string,
   id: number,
   date: string,
-  dbPath = BRAIN_DB,
+  dbPath = currentBrainDb(),
 ): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
   const db = openBrain(dbPath);
@@ -128,7 +145,7 @@ export interface ChRow {
   supersedes_id: number | null;
 }
 
-export function listEntries(projectRoot: string, dbPath = BRAIN_DB): ChRow[] {
+export function listEntries(projectRoot: string, dbPath = currentBrainDb()): ChRow[] {
   const db = openBrain(dbPath);
   try {
     return db
@@ -144,7 +161,7 @@ export function listEntries(projectRoot: string, dbPath = BRAIN_DB): ChRow[] {
 export function searchChangelog(query: string, opts: { project?: string; limit?: number; dbPath?: string } = {}): { id: number; date: string | null; title: string; snippet: string }[] {
   const q = query.trim();
   if (!q) return [];
-  const db = openBrain(opts.dbPath ?? BRAIN_DB);
+  const db = openBrain(opts.dbPath ?? currentBrainDb());
   try {
     const terms = q.toLowerCase().split(/\s+/).map((t) => t.replace(/["()*:^]/g, "")).filter(Boolean);
     if (!terms.length) return [];
@@ -170,7 +187,7 @@ const CH_HEADER =
   "<!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory changelog add` -->\n# Change Log\n\n> Mới nhất ở trên. Đảo/thay quyết định cũ → `> 🔄 Supersede:`.\n\n---\n\n";
 
 /** Render the active changelog (archived=0) back to a .md file (db → md). */
-export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath = BRAIN_DB): number {
+export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath = currentBrainDb()): number {
   const db = openBrain(dbPath);
   try {
     const rows = db
@@ -189,6 +206,17 @@ export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath 
       return `${head}\n\n${relation}${r.body}\n`;
     });
     const md = CH_HEADER + parts.join("\n");
+    // A mirror we rendered always starts with the GENERATED header. A file
+    // without it is hand-authored → salvage it before overwriting (then
+    // `changelog import` merges it back into the DB non-destructively).
+    if (existsSync(outAbsPath)) {
+      const current = readFileSync(outAbsPath, "utf8");
+      if (current !== md && !current.startsWith("<!-- GENERATED")) {
+        const bak = `${outAbsPath}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
+        copyFileSync(outAbsPath, bak);
+        console.error(`zemory: 04_CHANGES.md was not a generated mirror — saved it to ${bak} before rendering over it.`);
+      }
+    }
     writeFileSync(outAbsPath, md);
     return rows.length;
   } finally {

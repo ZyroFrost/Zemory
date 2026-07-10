@@ -11,8 +11,9 @@
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { createServer as createNetServer } from "node:net";
 import { join } from "node:path";
-import { BRAIN_DB, BRAIN_DIR, openBrain } from "./db.js";
+import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
 import { type ScanReport, scan } from "./ingest.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
@@ -142,6 +143,28 @@ async function portUp(port: number): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Is the TCP port taken (by anything, CDP or not)? */
+function tcpBusy(port: number): Promise<boolean> {
+  return new Promise((res) => {
+    const srv = createNetServer();
+    srv.once("error", () => res(true));
+    srv.listen(port, "127.0.0.1", () => srv.close(() => res(false)));
+  });
+}
+
+/** Ask the OS for a free ephemeral port. */
+function freePort(): Promise<number> {
+  return new Promise((res, rej) => {
+    const srv = createNetServer();
+    srv.once("error", rej);
+    srv.listen(0, "127.0.0.1", () => {
+      const a = srv.address();
+      const p = typeof a === "object" && a ? a.port : 0;
+      srv.close(() => res(p));
+    });
+  });
 }
 
 function launchBrowser(exe: string, profileDir: string, port: number, url: string): void {
@@ -332,13 +355,20 @@ export async function scanWeb(
 ): Promise<ScanWebResult> {
   const p = PLATFORMS[opts.platform ?? "chatgpt"];
   if (!p) return { status: "no-browser", platform: opts.platform ?? "?" };
-  const port = opts.port ?? 9222;
+  // Default 9222 so a rerun reuses the browser we already launched. But when no
+  // CDP answers there AND something else holds the TCP port, launching a browser
+  // on it would silently fail to bind — pick a free ephemeral port instead.
+  let port = opts.port ?? 9222;
+  if (opts.port == null && !(await portUp(port)) && (await tcpBusy(port))) {
+    port = await freePort();
+    log(`port 9222 is taken by another process — using ${port} for this run`);
+  }
   const delayMs = opts.delayMs ?? 1500; // ~1 req / 1.5s eases the ~200-req 429 wall
   const limit = opts.limit && opts.limit > 0 ? opts.limit : Infinity;
   const batchSize = opts.batchSize && opts.batchSize > 0 ? opts.batchSize : 25;
-  const dbPath = opts.dbPath ?? BRAIN_DB;
-  const profileDir = join(BRAIN_DIR, "browser", p.key);
-  const importDir = join(BRAIN_DIR, "imports", p.key);
+  const dbPath = opts.dbPath ?? currentBrainDb();
+  const profileDir = join(currentBrainDir(), "browser", p.key);
+  const importDir = join(currentBrainDir(), "imports", p.key);
   mkdirSync(profileDir, { recursive: true });
   mkdirSync(importDir, { recursive: true });
 

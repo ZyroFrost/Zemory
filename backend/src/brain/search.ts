@@ -4,7 +4,7 @@
 // disclosure: id + snippet first, full text on demand via getMessage). Default
 // scope = the current project; pass all=true for cross-project recall.
 
-import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
+import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
 import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
@@ -206,7 +206,7 @@ function hydrate(
 export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
   const terms = ftsTerms(query);
   if (!terms.length) return [];
-  const db = openBrain(opts.dbPath ?? BRAIN_DB);
+  const db = openBrain(opts.dbPath ?? currentBrainDb());
   try {
     const scopedProject = !opts.all ? opts.project : undefined;
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
@@ -277,7 +277,7 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
   const terms = ftsTerms(query);
   const vec = useVector ? await vectorRanks(query, { dbPath: opts.dbPath, pool: POOL }) : [];
   if (!terms.length && !vec.length) return [];
-  const db = openBrain(opts.dbPath ?? BRAIN_DB);
+  const db = openBrain(opts.dbPath ?? currentBrainDb());
   try {
     const scopedProject = !opts.all ? opts.project : undefined;
     const streams = terms.length ? ftsStreams(db, terms, scopedProject) : [];
@@ -308,7 +308,7 @@ export async function searchHybrid(query: string, opts: SearchOptions = {}): Pro
 }
 
 /** Progressive disclosure: fetch one message's full content + context. */
-export function getMessage(id: number, dbPath: string = BRAIN_DB) {
+export function getMessage(id: number, dbPath: string = currentBrainDb()) {
   const db = openBrain(dbPath);
   try {
     return db
@@ -336,13 +336,15 @@ export interface MessageContext {
   project: string;
   title: string | null;
   messages: ContextMessage[];
+  /** Set when a giant session got cut at the thread cap (not the full transcript). */
+  truncated?: boolean;
 }
 
 /** A hit in its conversation: the message plus `window` neighbours each side. */
 export function getMessageContext(
   id: number,
   window = 3,
-  dbPath: string = BRAIN_DB,
+  dbPath: string = currentBrainDb(),
 ): MessageContext | null {
   const db = openBrain(dbPath);
   try {
@@ -390,8 +392,12 @@ export function getMessageContext(
   }
 }
 
+/** Safety cap for the full-thread dialog — a UI answer, not a hard truth; the
+ *  result says `truncated` when it kicked in so callers can show that. */
+const THREAD_CAP = 5000;
+
 /** The ENTIRE session transcript (all messages, ordered) for the full-thread dialog. */
-export function getSessionThread(sessionId: string, dbPath: string = BRAIN_DB): MessageContext | null {
+export function getSessionThread(sessionId: string, dbPath: string = currentBrainDb()): MessageContext | null {
   if (!sessionId) return null;
   const db = openBrain(dbPath);
   try {
@@ -400,14 +406,17 @@ export function getSessionThread(sessionId: string, dbPath: string = BRAIN_DB): 
       | undefined;
     if (!s) return null;
     const rows = db
-      .prepare("SELECT id, role, content, timestamp FROM messages WHERE session_id = ? ORDER BY id ASC LIMIT 5000")
-      .all(sessionId) as { id: number; role: string; content: string; timestamp: string | null }[];
+      .prepare("SELECT id, role, content, timestamp FROM messages WHERE session_id = ? ORDER BY id ASC LIMIT ?")
+      .all(sessionId, THREAD_CAP + 1) as { id: number; role: string; content: string; timestamp: string | null }[];
+    const truncated = rows.length > THREAD_CAP;
+    if (truncated) rows.length = THREAD_CAP;
     return {
       sessionId,
       source: s.source,
       project: s.project_root ?? "(unknown)",
       title: s.title,
       messages: rows.map((m) => ({ ...m, isHit: false })),
+      truncated,
     };
   } finally {
     db.close();

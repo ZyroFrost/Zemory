@@ -7,6 +7,9 @@ dist/
 *.sqlite
 *.sqlite3
 *.zemory.enc
+# ...EXCEPT the repo's own share bundle — share/README documents it as the
+# LFS-tracked sync artifact; without this exception it silently never commits.
+!share/global_memory.zemory.enc
 *.zemory.key
 share/*.key
 !share/share.key

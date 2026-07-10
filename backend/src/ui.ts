@@ -4,14 +4,15 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import type { ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./adopt.js";
 import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
-import { BRAIN_DIR, openBrain } from "./brain/db.js";
+import { currentBrainDir, openBrain } from "./brain/db.js";
 import { getMessageContext, getSessionThread, recall } from "./brain/search.js";
 import { logRecall, savingsByDay } from "./brain/savings.js";
 import { resolveShareKey, syncDrive } from "./brain/share.js";
+import { relocateBrain, storageInfo } from "./brain/relocate.js";
 import { vectorCount, vectorRemaining } from "./brain/vectors.js";
 import { runCheck } from "./checks.js";
 import { findProjectRoot } from "./core/config.js";
@@ -233,6 +234,7 @@ function dashboardBrain(): unknown {
     scopeExcluded: getScopeExclude().length,
     scopeRules: getScopeExclude(),
     drive: driveSummary(),
+    storage: safeStorage(),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -243,6 +245,15 @@ function safeScopeTree(): unknown {
     return scopeTree();
   } catch {
     return [];
+  }
+}
+
+/** Where the brain DB lives (for the cockpit's "storage folder" control). */
+function safeStorage(): unknown {
+  try {
+    return storageInfo();
+  } catch {
+    return null;
   }
 }
 
@@ -270,7 +281,7 @@ function openWindow(url: string): void {
   // A dedicated profile dir forces a SEPARATE browser instance so the --app
   // window actually opens even when Edge/Chrome is already running. Without it,
   // `msedge --app=URL` is swallowed by the existing browser and no window shows.
-  const profileDir = join(BRAIN_DIR, "cockpit", "browser");
+  const profileDir = join(currentBrainDir(), "cockpit", "browser");
   try {
     mkdirSync(profileDir, { recursive: true });
   } catch {
@@ -298,7 +309,24 @@ export async function startUi(): Promise<void> {
     res.end(JSON.stringify(obj));
   };
 
+  // Loopback-only guard. (a) Host must be a loopback name — a DNS-rebinding page
+  // (evil.com resolving to 127.0.0.1) sends its own hostname and is rejected.
+  // (b) State-changing cross-site requests carry an Origin header; anything not
+  // our own loopback origin is rejected (the cockpit page itself is same-origin,
+  // so its fetches either omit Origin or match).
+  const LOOPBACK = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i;
+  const guard = (req: IncomingMessage, res: ServerResponse): boolean => {
+    const host = req.headers.host ?? "";
+    const origin = req.headers.origin ?? "";
+    const originHost = origin.replace(/^https?:\/\//i, "");
+    if (LOOPBACK.test(host) && (!origin || LOOPBACK.test(originHost))) return true;
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("forbidden (zemory ui only serves the local cockpit page)");
+    return false;
+  };
+
   const server = createServer(async (req, res) => {
+    if (!guard(req, res)) return;
     const u = new URL(req.url ?? "/", "http://x");
     const p = u.pathname;
     const rootP = u.searchParams.get("root") || undefined;
@@ -388,6 +416,18 @@ export async function startUi(): Promise<void> {
       return json(res, ctx ?? {});
     }
     if (p === "/brain-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
+    if (req.method === "POST" && p === "/relocate") {
+      // Move the brain DB off the system drive to a plain local folder. Safe:
+      // relocateBrain verifies the copy and keeps the old DB as a .bak.
+      const path = (u.searchParams.get("path") ?? "").trim();
+      const force = u.searchParams.get("force") === "1";
+      try {
+        const r = relocateBrain(path, { force });
+        return json(res, { ok: true, ...r });
+      } catch (error) {
+        return json(res, { ok: false, error: error instanceof Error ? error.message : "relocate failed" });
+      }
+    }
     if (req.method === "POST" && p === "/drive-sync") {
       const dir = getDriveDir();
       try {

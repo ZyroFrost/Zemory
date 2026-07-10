@@ -24,7 +24,7 @@ import {
 import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { BRAIN_DB, BRAIN_DIR, openBrain } from "./db.js";
+import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
@@ -140,7 +140,7 @@ function writeHeader(outPath: string, header: BundleHeader, force: boolean | und
 }
 
 export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise<ExportBrainBundleResult> {
-  const sourcePath = opts.dbPath ?? BRAIN_DB;
+  const sourcePath = opts.dbPath ?? currentBrainDb();
   if (!existsSync(sourcePath)) throw new Error(`Brain DB not found: ${sourcePath}`);
   const secret = readShareSecret(opts);
   const snapshot = await snapshotSqlite(sourcePath);
@@ -240,7 +240,7 @@ async function decryptBundleToFile(
 }
 
 export async function importBrainBundle(opts: ImportBrainBundleOptions): Promise<ImportBrainBundleResult> {
-  const targetPath = opts.dbPath ?? BRAIN_DB;
+  const targetPath = opts.dbPath ?? currentBrainDb();
   if (existsSync(targetPath) && !opts.force) {
     throw new Error(`Refusing to overwrite existing brain DB: ${targetPath}. Re-run with --force to replace it.`);
   }
@@ -294,7 +294,7 @@ export interface MergeBrainBundleResult {
  * changelog (those travel via git, not the brain bundle).
  */
 export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<MergeBrainBundleResult> {
-  const targetPath = opts.dbPath ?? BRAIN_DB;
+  const targetPath = opts.dbPath ?? currentBrainDb();
   const dir = mkdtempSync(join(tmpdir(), "zemory-brain-merge-"));
   const srcPath = join(dir, "incoming.db");
   try {
@@ -390,7 +390,7 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
 
 /** Find the share key: explicit path → ~/.zemory/share.key → <root>/share/share.key. */
 export function resolveShareKey(projectRoot: string, explicit?: string): string | undefined {
-  for (const c of [explicit, join(BRAIN_DIR, "share.key"), join(projectRoot, "share", "share.key")]) {
+  for (const c of [explicit, join(currentBrainDir(), "share.key"), join(projectRoot, "share", "share.key")]) {
     if (c && existsSync(c)) return c;
   }
   return undefined; // fall back to ZEMORY_SHARE_KEY env (export/import read it)
