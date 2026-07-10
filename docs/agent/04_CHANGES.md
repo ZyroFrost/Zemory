@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-10] — docs(structure): document zemory's own share/ sync-bundle exception in 02_STRUCTURE — was undocumented
+
+
+
 ## [2026-07-10] — fix(harness): status.ts REQUIRED_DOCS + ui-page.ts STD chip list were still on old doc names
 
 
