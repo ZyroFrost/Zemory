@@ -1224,7 +1224,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     let h = '';
     // Shared standard (docs-template/) — the canonical harness applied to EVERY
     // project. Read-only reference; NOT this or any project's own docs.
-    const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_TODO.md', 'agent/02_TODO.md'], ['03_CHANGES.md', 'agent/03_CHANGES.md']];
+    const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_STRUCTURE.md', 'agent/02_STRUCTURE.md'], ['03_TODO.md', 'agent/03_TODO.md'], ['04_CHANGES.md', 'agent/04_CHANGES.md']];
     h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">Shared standard <span class="q" title="The canonical harness in docs-template/ — ships with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts into a project. Read-only reference (edit the standard in docs-template/).">?</span></div>';
     h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="Open standard ' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
     h += row(last.project.name || 'No project', last.project.connected ? 'on' : 'off', last.project.root || 'run zemory init', 'Whether the selected folder has docs/.harness.json.');
