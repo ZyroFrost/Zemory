@@ -798,9 +798,15 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <input type="text" id="driveLink" placeholder="Drive sync folder, e.g. G:\My Drive\zemory ..." onkeydown="if(event.key==='Enter')testDrive()">
           <span id="driveState" class="drive-state"></span>
         </div>
+        <div class="search-command" title="Nơi lưu DB brain trên máy (mặc định ~/.zemory ở ổ C). Đổi sang ổ khác để ổ C không phình. KHÔNG chọn folder Google Drive/OneDrive đang sync (DB đang mở sẽ hỏng).">
+          <span>🗄</span>
+          <input type="text" id="storageLink" placeholder="Nơi lưu brain (máy), vd D:\Zyro\Tool\Zemory\data ..." onkeydown="if(event.key==='Enter')relocateStorage()">
+          <span id="storageState" class="drive-state"></span>
+        </div>
         <div class="icon-btns">
           <button class="ghost" id="driveBtn" title="Test connection & link this Drive folder" onclick="testDrive()">Link</button>
           <button class="ghost" id="syncBtn" title="Sync now: export this machine's bundle to the Drive folder + merge every other machine's bundle there" onclick="driveSync()">⟳ Sync</button>
+          <button class="ghost" id="relocateBtn" title="Dời DB brain sang folder ở ô 'Nơi lưu' (verify + giữ .bak bản cũ; không dời được vào folder Drive-sync)" onclick="relocateStorage()">⇄ Dời</button>
           <button class="ghost" title="Setup" onclick="openMenu()">⚙</button>
           <button class="ghost" title="Refresh" onclick="manualRefresh()">↻</button>
         </div>
@@ -1295,6 +1301,9 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     const drive = brain.drive || {};
     if(document.activeElement !== el('driveLink')) el('driveLink').value = drive.path || '';
     renderDriveState(drive);
+    const storage = brain.storage || null;
+    if(storage && document.activeElement !== el('storageLink')) el('storageLink').value = storage.dir || '';
+    renderStorageState(storage);
     const vectorCoverage = vectors.coverage == null ? '-' : vectors.coverage + '%';
     el('memSub').textContent = (t.sessions ? 'Healthy' : 'Empty') + ' · updated ' + fmtTime(brain.generatedAt);
     el('memoryPanel').innerHTML =
@@ -1419,6 +1428,29 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(!d.writable){ s.className = 'drive-state bad'; s.textContent = '⚠ read-only'; return; }
     s.className = 'drive-state ok'; s.textContent = '✓ linked · ' + fmtN(d.bundles) + ' bundle(s)';
   }
+  function renderStorageState(s){
+    const el0 = el('storageState');
+    if(!s){ el0.className = 'drive-state'; el0.textContent = ''; return; }
+    const mb = s.exists ? (s.sizeKB/1024).toFixed(0) + ' MB' : 'empty';
+    if(s.pinnedByEnv){ el0.className = 'drive-state'; el0.textContent = 'env-pinned'; el0.title = 'GLOBAL_MEMORY_DB đang ghim vị trí — bỏ env để đổi được.'; return; }
+    if(s.onCloud){ el0.className = 'drive-state bad'; el0.textContent = '⚠ trên Drive (rủi ro)'; el0.title = s.dir; return; }
+    el0.className = 'drive-state ok'; el0.textContent = '✓ ' + (s.source === 'default' ? 'ổ C (mặc định)' : 'đã dời') + ' · ' + mb; el0.title = s.dbPath;
+  }
+  async function relocateStorage(){
+    const path = el('storageLink').value.trim();
+    if(!path){ alert('Nhập folder muốn lưu brain, vd D:\\Zyro\\Tool\\Zemory\\data'); return; }
+    if(!confirm('Dời DB brain sang:\n' + path + '\n\nApp sẽ checkpoint + copy + verify rồi đổi con trỏ. Bản cũ được GIỮ lại dạng .bak (không mất gì). Tiếp tục?')) return;
+    const ss = el('storageState'), rb = el('relocateBtn');
+    ss.className = 'drive-state'; ss.textContent = 'đang dời...'; if(rb) rb.disabled = true;
+    try {
+      const r = await (await fetch('/relocate?path=' + encodeURIComponent(path), { method: 'POST' })).json();
+      if(!r.ok){ ss.className = 'drive-state bad'; ss.textContent = '✗ ' + (r.error||'lỗi'); ss.title = r.error||''; if(rb) rb.disabled = false; return; }
+      if(r.pointerOnly){ ss.className = 'drive-state ok'; ss.textContent = '✓ đã đặt nơi lưu'; }
+      else { ss.className = 'drive-state ok'; ss.textContent = '✓ đã dời · ' + (r.movedBytes/1048576).toFixed(0) + ' MB · ' + r.messages + ' msg'; ss.title = 'Bản cũ giữ ở: ' + (r.backup||'') + ' (xoá tay khi chắc chắn OK)'; }
+      if(rb) rb.disabled = false;
+      brainTick();
+    } catch(e){ ss.className = 'drive-state bad'; ss.textContent = '✗ lỗi'; if(rb) rb.disabled = false; }
+  }
   async function testDrive(){
     const path = el('driveLink').value.trim();
     el('driveState').className = 'drive-state'; el('driveState').textContent = 'testing...';
@@ -1456,7 +1488,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       const s = await (await fetch('/brain-session' + ru({id: sid}))).json();
       if(!s || !s.messages){ el('sessBody').innerHTML = '<div class="muted">(session not found)</div>'; return; }
       el('sessName').textContent = s.title || projName(s.project);
-      el('sessMeta').textContent = esc(s.source) + ' · ' + esc(projName(s.project)) + ' · ' + s.messages.length + ' messages';
+      el('sessMeta').textContent = esc(s.source) + ' · ' + esc(projName(s.project)) + ' · ' + s.messages.length + ' messages' + (s.truncated ? ' (hiển thị ' + s.messages.length + ' đầu — phiên còn dài hơn)' : '');
       el('sessBody').innerHTML = s.messages.map(m =>
         '<div class="smsg ' + esc(m.role || '') + '"><div class="role">' + esc(m.role || 'message') + ' · ' + fmtDay(m.timestamp) + ' · #' + m.id + '</div><div class="txt">' + esc(m.content || '') + '</div></div>'
       ).join('');

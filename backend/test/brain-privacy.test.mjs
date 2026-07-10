@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
+import { digestBackfill, searchDigests } from "../../dist/brain/digest.js";
 import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "../../dist/brain/privacy.js";
 import { search } from "../../dist/brain/search.js";
 import { tempDir } from "./helpers.mjs";
@@ -129,4 +130,59 @@ test("brain redact re-applies secret scrubbing to existing messages and FTS", as
     check.close();
   }
   assert.equal(search(token, { dbPath, all: true }).length, 0);
+});
+
+test("brain forget also drops the session digest (forgotten text must leave the digest lane)", async (t) => {
+  const root = tempDir(t, "zemory-forget-digest-");
+  const dbPath = join(root, "brain.db");
+  const db = openBrain(dbPath);
+  seedSession(db, {
+    id: "d1",
+    project: root,
+    messages: [{ content: "quarklet mission briefing", timestamp: "2026-01-01T00:00:00Z" }],
+  });
+  db.close();
+  digestBackfill(dbPath);
+  assert.equal(searchDigests("quarklet", { dbPath }).length, 1);
+
+  const r = await forgetBrain({ dbPath, session: "d1", force: true, skipBackup: true });
+  assert.equal(r.digests, 1);
+  assert.equal(searchDigests("quarklet", { dbPath }).length, 0);
+  const check = openBrain(dbPath);
+  try {
+    assert.equal(check.prepare("SELECT COUNT(*) c FROM session_digest").get().c, 0);
+    assert.equal(check.prepare("SELECT COUNT(*) c FROM session_digest_fts").get().c, 0);
+  } finally {
+    check.close();
+  }
+});
+
+test("brain redact scrubs secrets quoted inside session digests too", async (t) => {
+  const root = tempDir(t, "zemory-redact-digest-");
+  const dbPath = join(root, "brain.db");
+  const token = `ghp_${"b".repeat(24)}`;
+  const db = openBrain(dbPath);
+  seedSession(db, {
+    id: "d1",
+    project: root,
+    messages: [{ content: `leaked ${token} in chat`, timestamp: "2026-01-01T00:00:00Z" }],
+  });
+  db.close();
+  digestBackfill(dbPath);
+  // The digest quotes the message, so the secret is now in the digest lane.
+  assert.equal(searchDigests(token, { dbPath }).length, 1);
+
+  const r = await reRedactBrain({ dbPath, force: true, skipBackup: true });
+  assert.equal(r.changed.sessionDigests, 1);
+  assert.equal(searchDigests(token, { dbPath }).length, 0);
+  const check = openBrain(dbPath);
+  try {
+    const row = check.prepare("SELECT tasks, digest_text FROM session_digest").get();
+    assert.equal(row.digest_text.includes(token), false);
+    assert.equal(row.digest_text.includes("[REDACTED]"), true);
+    // JSON columns must stay valid JSON after in-place redaction.
+    assert.doesNotThrow(() => JSON.parse(row.tasks));
+  } finally {
+    check.close();
+  }
 });

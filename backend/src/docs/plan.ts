@@ -3,9 +3,10 @@
 // round-trip fidelity check). After that, edit via set/add/rm (DB) and render
 // back to .md (db → md). Search is FTS over sections (heading-weighted).
 
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
-import { type BrainDB, BRAIN_DB, openBrain } from "../brain/db.js";
+import { type BrainDB, currentBrainDb, openBrain } from "../brain/db.js";
 import { parseMarkdown, renderSections, roundTripOk, slug } from "./markdown.js";
 import { importChangelog } from "./changelog.js";
 
@@ -53,7 +54,7 @@ function replaceSections(db: BrainDB, docId: number, text: string): number {
 }
 
 /** Seed the DB from a markdown file (DB becomes the source thereafter). */
-export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = BRAIN_DB): ImportResult {
+export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = currentBrainDb()): ImportResult {
   // Strip a prior render's GENERATED header so re-import → re-render doesn't double it.
   const text = readFileSync(absPath, "utf8").replace(/^<!-- GENERATED[^\n]*-->\r?\n/, "");
   const roundTrip = roundTripOk(text);
@@ -77,7 +78,7 @@ export function createDoc(
   text: string,
   projectRoot: string,
   kind = "plan",
-  dbPath = BRAIN_DB,
+  dbPath = currentBrainDb(),
 ): ImportResult {
   const canonicalPath = normalize(relPath);
   resolveDocPath(projectRoot, canonicalPath);
@@ -165,7 +166,7 @@ export function resolveDocPath(projectRoot: string, docPath: string): string {
 }
 
 /** Remove a doc (and its sections) from the DB. Returns true if it existed. */
-export function removeDoc(projectRoot: string, relPath: string, dbPath = BRAIN_DB): boolean {
+export function removeDoc(projectRoot: string, relPath: string, dbPath = currentBrainDb()): boolean {
   const db = openBrain(dbPath);
   try {
     const want = normPath(relPath);
@@ -195,7 +196,7 @@ function safeList(dir: string): string[] {
  * everything else to doc/section. Imports all of it (no loss); the user then
  * prunes duplicates/obsolete with `docs rm` and regenerates with `docs render`.
  */
-export function importAll(projectRoot: string, dbPath = BRAIN_DB): (ImportResult & { kind: string })[] {
+export function importAll(projectRoot: string, dbPath = currentBrainDb()): (ImportResult & { kind: string })[] {
   const out: (ImportResult & { kind: string })[] = [];
   const handle = (dir: string, relDir: string, fallback: string) => {
     for (const f of safeList(dir)) {
@@ -231,7 +232,7 @@ export interface DocRow {
   sections: number;
 }
 
-export function listDocs(projectRoot: string, dbPath = BRAIN_DB): DocRow[] {
+export function listDocs(projectRoot: string, dbPath = currentBrainDb()): DocRow[] {
   const db = openBrain(dbPath);
   try {
     return db
@@ -247,7 +248,7 @@ export function listDocs(projectRoot: string, dbPath = BRAIN_DB): DocRow[] {
 }
 
 /** Render EVERY doc back to its .md mirror (db → md). Overwrites files. */
-export function renderAll(projectRoot: string, dbPath = BRAIN_DB): string[] {
+export function renderAll(projectRoot: string, dbPath = currentBrainDb()): string[] {
   const written: string[] = [];
   for (const d of listDocs(projectRoot, dbPath)) {
     const r = renderDoc(d.path, projectRoot, dbPath);
@@ -264,7 +265,7 @@ export interface TocRow {
 }
 
 /** Table of contents (derived) for a doc — query, not a stored index file. */
-export function listToc(docPath: string, projectRoot: string, dbPath = BRAIN_DB): TocRow[] {
+export function listToc(docPath: string, projectRoot: string, dbPath = currentBrainDb()): TocRow[] {
   const db = openBrain(dbPath);
   try {
     const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as { id: number } | undefined;
@@ -277,7 +278,7 @@ export function listToc(docPath: string, projectRoot: string, dbPath = BRAIN_DB)
   }
 }
 
-export function showSection(id: number, dbPath = BRAIN_DB) {
+export function showSection(id: number, dbPath = currentBrainDb()) {
   const db = openBrain(dbPath);
   try {
     return db
@@ -302,7 +303,7 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
   const q = query.trim();
   if (!q) return [];
   const limit = opts.limit ?? 10;
-  const db = openBrain(opts.dbPath ?? BRAIN_DB);
+  const db = openBrain(opts.dbPath ?? currentBrainDb());
   try {
     const run = (table: string, match: string): PlanHit[] => {
       try {
@@ -328,11 +329,22 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
   }
 }
 
-/** Render a doc from the DB back to its .md file (db → md). */
-export function renderDoc(docPath: string, projectRoot: string, dbPath = BRAIN_DB): { path: string; bytes: number } | null {
+const sha1 = (text: string): string => createHash("sha1").update(text).digest("hex");
+
+/** Render a doc from the DB back to its .md file (db → md). If the on-disk
+ *  mirror was HAND-EDITED since the last render (hash mismatch vs rendered_hash),
+ *  the edited file is salvaged to a `.hand-edited-*.bak` next to it before the
+ *  overwrite — the DB stays the source, but nothing is lost silently. */
+export function renderDoc(
+  docPath: string,
+  projectRoot: string,
+  dbPath = currentBrainDb(),
+): { path: string; bytes: number; salvaged: string | null } | null {
   const db = openBrain(dbPath);
   try {
-    const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as { id: number } | undefined;
+    const doc = db
+      .prepare("SELECT id, rendered_hash FROM doc WHERE project_root=? AND path=?")
+      .get(projectRoot, docPath) as { id: number; rendered_hash: string | null } | undefined;
     if (!doc) return null;
     const sections = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
       level: number;
@@ -342,16 +354,28 @@ export function renderDoc(docPath: string, projectRoot: string, dbPath = BRAIN_D
     const md = RENDER_HEADER + renderSections(sections);
     const abs = resolveDocPath(projectRoot, docPath);
     mkdirSync(dirname(abs), { recursive: true });
+    let salvaged: string | null = null;
+    if (doc.rendered_hash && existsSync(abs)) {
+      const current = readFileSync(abs, "utf8");
+      if (current !== md && sha1(current) !== doc.rendered_hash) {
+        salvaged = `${abs}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
+        copyFileSync(abs, salvaged);
+        console.error(
+          `zemory: ${docPath} was hand-edited since the last render — your edits are saved at ${salvaged}. ` +
+            "The .md is a GENERATED mirror; fold edits back via `zemory plan set` (or `zemory docs import`).",
+        );
+      }
+    }
     writeFileSync(abs, md);
-    db.prepare("UPDATE doc SET rendered_at=? WHERE id=?").run(new Date().toISOString(), doc.id);
-    return { path: abs, bytes: md.length };
+    db.prepare("UPDATE doc SET rendered_at=?, rendered_hash=? WHERE id=?").run(new Date().toISOString(), sha1(md), doc.id);
+    return { path: abs, bytes: md.length, salvaged };
   } finally {
     db.close();
   }
 }
 
 /** Replace a section's body (edit-on-DB), then re-render its .md. */
-export function setBody(id: number, body: string, projectRoot: string, dbPath = BRAIN_DB): boolean {
+export function setBody(id: number, body: string, projectRoot: string, dbPath = currentBrainDb()): boolean {
   const db = openBrain(dbPath);
   let docPath: string | undefined;
   try {
@@ -374,7 +398,7 @@ export function setBody(id: number, body: string, projectRoot: string, dbPath = 
 
 /** Rename a section's heading (and re-derive its anchor), then re-render its .md.
  *  Body is untouched. Headings are single-line; any newline is rejected. */
-export function setHeading(id: number, heading: string, projectRoot: string, dbPath = BRAIN_DB): boolean {
+export function setHeading(id: number, heading: string, projectRoot: string, dbPath = currentBrainDb()): boolean {
   const clean = heading.replace(/^#+\s*/, "").trim();
   if (!clean || /\n/.test(heading)) return false;
   const db = openBrain(dbPath);

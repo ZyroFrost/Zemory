@@ -17,6 +17,7 @@ import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/d
 import { embedPending, vectorCount, vectorRemaining } from "./brain/vectors.js";
 import { runRagBench } from "./brain/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
+import { relocateBrain, storageInfo } from "./brain/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
 import { exportBrainBundle, importBrainBundle, mergeBrainBundle, resolveShareKey, syncDrive, writeBrainShareKey } from "./brain/share.js";
 import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
@@ -613,7 +614,9 @@ async function cmdBrain(args: string[]): Promise<void> {
       skipBackup: args.includes("--no-backup"),
       backupPath: flagValue(args, "--backup"),
     });
-    console.log(`zemory brain forget — ${r.dryRun ? "dry-run" : "deleted"} ${r.messages} message(s), ${r.sessions} session(s), ${r.vectors} vector row(s)`);
+    console.log(
+      `zemory brain forget — ${r.dryRun ? "dry-run" : "deleted"} ${r.messages} message(s), ${r.sessions} session(s), ${r.vectors} vector row(s), ${r.digests} session digest(s)`,
+    );
     console.log(`  selectors: ${r.selectors.join(" · ")}`);
     if (r.sampleSessions.length) console.log(`  sessions: ${r.sampleSessions.join(", ")}${r.sessions > r.sampleSessions.length ? " ..." : ""}`);
     if (r.backupPath) console.log(`  backup: ${r.backupPath}`);
@@ -630,10 +633,10 @@ async function cmdBrain(args: string[]): Promise<void> {
     });
     console.log(
       `zemory brain redact — ${r.dryRun ? "dry-run" : "updated"} ` +
-        `${r.changed.messages} message(s), ${r.changed.artifactCommands} artifact command(s), ${r.changed.artifactIndex} artifact index row(s)`,
+        `${r.changed.messages} message(s), ${r.changed.artifactCommands} artifact command(s), ${r.changed.artifactIndex} artifact index row(s), ${r.changed.sessionDigests} session digest(s)`,
     );
     console.log(
-      `  scanned: ${r.scanned.messages} message(s), ${r.scanned.artifactCommands} artifact command(s), ${r.scanned.artifactIndex} artifact index row(s)`,
+      `  scanned: ${r.scanned.messages} message(s), ${r.scanned.artifactCommands} artifact command(s), ${r.scanned.artifactIndex} artifact index row(s), ${r.scanned.sessionDigests} session digest(s)`,
     );
     if (r.backupPath) console.log(`  backup: ${r.backupPath}`);
     if (r.dryRun) console.log("  re-run with --force to apply redactions.");
@@ -767,6 +770,42 @@ async function cmdBrain(args: string[]): Promise<void> {
     console.log(m.content);
     return;
   }
+  if (sub === "where") {
+    const s = storageInfo();
+    console.log(`zemory brain where — ${s.dbPath}`);
+    console.log(
+      `  folder: ${s.dir}  (${s.source === "env" ? "GLOBAL_MEMORY_DB env" : s.source === "pointer" ? "saved pointer" : "default ~/.zemory"})`,
+    );
+    console.log(`  size: ${s.exists ? `${(s.sizeKB / 1024).toFixed(1)} MB` : "(no DB yet)"}  ·  pointer: ${s.pointer}`);
+    if (s.onCloud) console.log("  ⚠ this folder looks cloud-synced — a live DB here can corrupt. Prefer a plain local folder.");
+    if (s.pinnedByEnv) console.log("  note: GLOBAL_MEMORY_DB pins the location; `brain relocate` is disabled until you unset it.");
+    return;
+  }
+  if (sub === "relocate") {
+    const dir = positionalArgs(args.slice(1))[0];
+    if (!dir) {
+      console.log("usage: zemory brain relocate <folder> [--force]");
+      console.log("  Move the brain DB (+ settings) to <folder>, off the system drive. Keeps a .bak of the old DB.");
+      console.log("  --force: allow a cloud-synced / already-occupied target (risky).");
+      return;
+    }
+    try {
+      const r = relocateBrain(dir, { force: args.includes("--force") });
+      if (r.pointerOnly) {
+        console.log(`zemory brain relocate — storage folder set → ${r.to} (no DB to move yet; it will be created there).`);
+        return;
+      }
+      console.log(`zemory brain relocate — moved brain → ${r.dbPath}`);
+      console.log(
+        `  ${(r.movedBytes / 1048576).toFixed(1)} MB · ${r.messages} message(s) verified · settings ${r.configMoved ? "moved" : "not found"}`,
+      );
+      if (r.backup) console.log(`  old DB kept as backup: ${r.backup}\n  (delete it once you've confirmed everything works — frees the old drive)`);
+    } catch (error) {
+      console.log(`zemory brain relocate: ${error instanceof Error ? error.message : "failed"}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   console.log(
     [
       "zemory brain <subcommand>",
@@ -796,6 +835,8 @@ async function cmdBrain(args: string[]): Promise<void> {
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",
       "  info              table row-counts of global_memory.db.",
+      "  where             show where the brain DB lives (folder + size + pointer).",
+      "  relocate <dir>    move the brain DB off C:\\ into <dir> (verified; keeps a .bak).",
       "  hosts             sessions by PC → source → project (per-machine provenance).",
       "  scope [ls|exclude|include|clear]",
       "                    provenance tree (Local/Web × machine × agent); exclude a lane",
@@ -1073,8 +1114,12 @@ async function cmdChangelog(args: string[]): Promise<void> {
   const mdPath = join(root, "docs", "agent", "04_CHANGES.md");
 
   if (sub === "import") {
-    const n = importChangelog(mdPath, root);
-    console.log(`zemory changelog import — ${n} entr(ies) from 04_CHANGES.md into global_memory.db`);
+    const replace = args.includes("--replace");
+    const n = importChangelog(mdPath, root, undefined, { replace });
+    console.log(
+      `zemory changelog import — ${replace ? `replaced with ${n}` : `merged ${n} new`} entr(ies) from 04_CHANGES.md into global_memory.db`,
+    );
+    if (!replace) console.log("  (merge mode: existing entries + archived/supersede flags untouched; --replace to wipe-and-reseed)");
     return;
   }
   if (sub === "ls") {
@@ -1187,6 +1232,16 @@ function cmdHelp(): void {
 }
 
 const [cmd, ...args] = process.argv.slice(2);
+try {
+  await main();
+} catch (error) {
+  // One catch for every command: a thrown Error prints as a clean one-liner and
+  // exit 1, never a raw UnhandledRejection stack (e.g. export with a bad path).
+  console.error(`zemory ${cmd ?? ""}: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+}
+
+async function main(): Promise<void> {
 switch (cmd) {
   case "init":
     cmdInit(args);
@@ -1242,4 +1297,5 @@ switch (cmd) {
     break;
   default:
     cmdHelp();
+}
 }

@@ -5,6 +5,78 @@
 
 ---
 
+## [2026-07-10] — fix(app): quét sạch mọi finding P2/P3 — UI guard, import merge, render salvage, CDP port, WAL race, con trỏ treo, CLI error, thread cap
+
+Dọn nốt toàn bộ finding P2/P3 còn treo của đợt audit — app không còn finding mở.
+
+- **UI chống DNS-rebinding/CSRF** ([ui.ts](../../backend/src/ui.ts)): mọi request phải có `Host` loopback và (nếu có) `Origin` loopback, sai → 403. Verify sống bằng curl: Host `evil.com` → 403, Origin lạ POST `/relocate` → 403, trang cockpit → 200.
+- **`changelog import` hết phá dữ liệu** ([changelog.ts](../../backend/src/docs/changelog.ts)): mặc định MERGE — chỉ thêm entry chưa có (khớp date+title), giữ nguyên id/`archived`/`supersedes`; wipe-reseed phải gọi `--replace` tường minh.
+- **Render mirror không nuốt hand-edit** ([plan.ts](../../backend/src/docs/plan.ts), schema v10 `doc.rendered_hash`): render lưu sha1; lần render sau nếu file trên đĩa lệch hash (bị sửa tay) → cứu nguyên bản ra `.hand-edited-<ts>.bak` + cảnh báo, rồi mới ghi đè. `renderChangelog` cũng cứu file không có header GENERATED.
+- **scan-web hết kẹt port 9222** ([scanweb.ts](../../backend/src/brain/scanweb.ts)): nếu 9222 không có CDP mà TCP lại bận (process khác chiếm) → tự lấy port rảnh cho phiên đó thay vì launch browser fail câm.
+- **relocate hết WAL-race** ([relocate.ts](../../backend/src/brain/relocate.ts)): checkpoint → `BEGIN IMMEDIATE` (chặn mọi writer) → xác nhận WAL rỗng → count + copy trong lock; writer chen ngang → retry, 3 lần fail → báo "close other zemory processes".
+- **Con trỏ treo hết tạo brain rỗng âm thầm** ([db.ts](../../backend/src/brain/db.ts)): `location.json` trỏ folder không có DB trong khi `~/.zemory` vẫn còn DB cũ → cảnh báo to 1 lần kèm cách sửa.
+- **CLI hết nổ UnhandledRejection** ([cli.ts](../../backend/src/cli.ts)): bọc toàn bộ dispatch — mọi lỗi in 1 dòng `zemory <cmd>: <message>` + exit 1 (verify: `brain export` path không tồn tại).
+- **Thread 5000-msg hết cắt âm thầm** ([search.ts](../../backend/src/brain/search.ts)): `getSessionThread` trả cờ `truncated`, dialog UI hiện "(hiển thị 5000 đầu — phiên còn dài hơn)".
+
+**Verify:** 66/66 test (thêm docs-guard.test.mjs: merge-giữ-archived + salvage hand-edit); DB thật migrate v10 sạch; guard UI test sống 4/4.
+
+## [2026-07-10] — fix(privacy+storage): bịt lỗ digest lane của forget/redact + path DB động toàn hệ thống + mở gitignore cho share bundle
+
+Fix 3 finding của đợt audit sau khi dời DB sang D:.
+
+- **P1 privacy — forget/redact bỏ sót `session_digest`** ([privacy.ts](../../backend/src/brain/privacy.ts)): digest TRÍCH NGUYÊN VĂN message (tasks/errors/digest_text) và được index FTS riêng → nội dung đã `forget` vẫn tìm được qua `search --digest`, secret đã `redact` vẫn nằm trong digest. Nay: `forget --force` xóa luôn digest của các session bị đụng (trigger dọn 2 bảng FTS; digest rebuild từ message còn lại), `redact` scrub cả 5 cột text của digest (redact chuỗi JSON an toàn vì mọi pattern chỉ khớp `[A-Za-z0-9_.-]`). CLI in thêm số digest. +2 test.
+- **P1 git — bundle share không bao giờ vào git**: `.gitignore` có `*.zemory.enc` chặn chính `share/global_memory.zemory.enc` mà share/README mô tả là "tracked by Git LFS" → máy khác clone không restore được. Thêm exception `!share/global_memory.zemory.enc`.
+- **P2 — path DB đóng băng lúc load module**: 15 file dùng const `BRAIN_DB`/`BRAIN_DIR` (docs/plan, changelog, digest, search, scope, savings, settings, scanweb, ui, archive, recall, share, vectors, embed, relocate) → server `zemory ui` đang chạy vẫn đọc/ghi vị trí CŨ sau khi relocate. Nay mọi default resolve qua `currentBrainDb()`/`currentBrainDir()` (đọc con trỏ mỗi lần gọi); `settings.ts` đổi `CONFIG_PATH` const thành hàm để config.json cũng đi theo.
+
+**Verify:** 64/64 test xanh; trên DB thật `brain redact` dry-run quét 112.400 msg + 1.131 digest (0 secret); `brain where` vẫn trỏ D:.
+
+## [2026-07-10] — fix(brain): model cache + openBrain theo vị trí đã dời; relocate mang model theo
+
+Hoàn thiện tính năng dời-nơi-lưu để **thật sự đưa dữ liệu nặng khỏi ổ hệ thống**, phát hiện khi dời DB thật (938MB) mà ổ C vẫn còn ~6GB.
+
+- **embed model cache theo BRAIN_DIR** ([embed.ts](../../backend/src/brain/embed.ts)): trước dùng `homedir()` cố định → 598MB model kẹt ở C sau relocate và phình thêm nếu đổi model. Nay `cacheDir = <brain-dir>/models` (env `ZEMORY_MODEL_DIR` vẫn override) → model đi theo DB.
+- **openBrain đọc con trỏ ĐỘNG** ([db.ts](../../backend/src/brain/db.ts) `currentBrainDb()`): default resolve lại `location.json` mỗi lần mở → tiến trình dài (server `zemory ui`) nhận relocate mà không cần restart cho mọi thao tác đi qua `openBrain`.
+- **relocate mang model theo** ([relocate.ts](../../backend/src/brain/relocate.ts)): sau khi dời DB, best-effort `cpSync` `models/` sang chỗ mới (non-critical; re-cache nếu lỗi).
+
+**Đã thực thi trên máy này:** dời DB `C:\…\.zemory` → `D:\Zyro\Tool\Zemory\data` (937.8MB, 112.400 msg verified) + move model (598MB). `brain where` xác nhận trỏ D.
+
+**Còn lại (chưa tự động):** một số hàm (`vectors`/`share`/`privacy`) vẫn lấy default `BRAIN_DB` const → trong 1 tiến trình đang chạy chỉ đọc đúng vị trí mới sau khi khởi động lại (CLI mới thì luôn đúng). Backup DB cũ + browser profile cũ ở C là rác lịch sử, xoá tay để giải phóng.
+
+**Verify:** `npm run check` xanh (62 test).
+
+## [2026-07-10] — feat(brain): dời nơi lưu DB off ổ C — con trỏ location.json + brain relocate + UI 'Nơi lưu'
+
+Cho phép **dời DB brain KHỎI ổ hệ thống** (ổ C phình không kiểm soát — hiện đã ~938 MB) sang folder local bất kỳ, vd `data/` trong repo (gitignore). Đặt được ngay chỗ Drive-sync trong cockpit, kèm tự-dời an toàn.
+
+**Vì sao:** `global_memory.db` lớn dần vô hạn theo số session; nằm ở `~/.zemory` trên ổ C làm đầy ổ. Trước đây chỉ đổi được qua env `GLOBAL_MEMORY_DB` (ẩn, không persist tiện). Nay có setting + script dời.
+
+**Cơ chế (an toàn, khó-đảo nên làm kỹ):**
+- **Con trỏ bootstrap** `~/.zemory/location.json` `{dataDir}` — CỐ ĐỊNH ở home (không thể để cạnh DB: gà–trứng). Thứ tự: env `GLOBAL_MEMORY_DB` > pointer > `~/.zemory` default. Mọi phụ trợ (`config.json`/`browser`/`imports`/`backups`) bám `BRAIN_DIR` nên dời theo cụm. Default GIỮ nguyên `~/.zemory` (không phá máy đang chạy).
+- **`brain/relocate.ts`** — `relocateBrain()`: checkpoint WAL → copy `.db`(+`config.json`) → **verify** (`PRAGMA integrity_check` + đếm message khớp) → chỉ khi OK mới đổi con trỏ → GIỮ bản cũ đổi tên `.relocated-*.bak` (không xoá, rollback được). Chặn folder cloud-sync (Google Drive/OneDrive/Dropbox…) trừ `--force` (WAL sống trên Drive = corrupt).
+- **CLI**: `zemory brain where` (xem DB ở đâu + size + con trỏ) · `zemory brain relocate <dir> [--force]`.
+- **UI cockpit**: ô **"Nơi lưu (máy)"** ngay cạnh "Drive folder" + nút **⇄ Dời**; xác nhận → "đang dời…" → báo bản cũ giữ ở đâu.
+
+**Chuẩn:** cơ chế thuộc data-access domain brain → `backend/src/brain/relocate.ts` (KHÔNG dùng slot `storage/`=blob để tránh lẫn tên). `02_STRUCTURE` thêm routing "nơi lưu DB local + dời off ổ hệ thống" + convention "Nơi lưu DB (di dời)".
+
+**Verify:** `npm run check` xanh (**62 test**, +5 relocate: move+verify+giữ-bak, chặn cloud, pointer-only khi chưa có DB, env-pin chặn, storageInfo). Embedded UI JS parse OK. `brain where` trên máy thật đọc đúng (C:\…\.zemory, 937.8 MB). Chưa tự dời DB thật — user tự bấm khi muốn.
+
+## [2026-07-10] — feat(structure): chuẩn v2 — 2 trục layer/domain-first + phủ đủ slot + luật không-folder-rỗng
+
+Nâng chuẩn cấu trúc (`docs/agent/02_STRUCTURE.md` + `docs-template/`) lên **v2** để phủ đủ mọi project — cái gì cũng có slot gắn vào, không lệch/lẫn, và **KHÔNG đẻ folder rỗng**.
+
+**Vì sao:** audit chuẩn cũ thấy 1 lỗ hổng gốc + 4 vùng hở — chuẩn chỉ mô tả *layer-first* nhưng chính zemory tổ chức *domain-first* (`brain/`/`docs/`/`core/`), nên mọi app nhiều-domain sẽ tự lệch; thiếu nhà cho code dùng chung BE↔FE (chỉ có `types/` type-only), thiếu tên slot cho cache/blob/notifications/search/pipeline/contracts/plugins/codegen; frontend thiếu `util/`/`types/`; và ★ bắt buộc `backend/run.*` khiến chính zemory (Node-CLI, bin ở root) non-conformant.
+
+**Đã làm:**
+- **§2 mới — 2 trục sắp xếp:** LAYER-FIRST (slot phẳng dưới `src/`) vs DOMAIN-FIRST (`src/<domain>/` lồng lại slot); cross-cutting luôn ở `src/` gốc. Công nhận cách zemory đang tổ chức → không cần đập cấu trúc.
+- **Cây gom theo 6 dải vai trò** (biên-vào · biên-ra · xử-lý · nền-tảng · chia-sẻ · domain) — dễ quét.
+- **+10 slot:** `cache/` `storage/` `notifications/` `search/` `pipelines/` `core/` `shared/`(nâng từ `types/`, thêm runtime dùng chung) `contracts/` `plugins/` `generated/`; frontend `+util/ +types/`.
+- **Luật KHÔNG folder rỗng** nêu nổi bật: INDEX = từ điển tên để TRA, tạo folder chỉ khi có concern thật (app điển hình 4–10 slot).
+- **Sửa ★:** entry = `run.*` HOẶC manifest `bin`/`main`; manifest ở root HOẶC `backend/` → zemory (bin root) nay ĐẠT ★. Thêm convention **UI-embed single-binary** (giữ `ui-page.ts` ở backend, ghi rõ).
+- **plan 09** cập nhật quyết định "Chuẩn v2" + sửa cross-ref số mục (§2→§3 cây, §3→§4 routing, §4→§5 convention).
+- **README** sửa 2 ref sai: ảnh `assets/`→`frontend/assets/cockpit.png`, `docs/agent/04_STRUCTURE.md`→`02_STRUCTURE.md`.
+
+**Conformance zemory:** domain-first hợp lệ → `brain/`/`docs/`/`core/` GIỮ NGUYÊN, không di chuyển file, không tạo folder mới. `npm run check` xanh (57 test), `zemory validate`/`doctor` xanh.
+
 ## [2026-07-10] — docs: update every idea/plan doc — fix 01/00 stale refs, expand plan 09 with all later structure decisions, plan 04 status
 
 
