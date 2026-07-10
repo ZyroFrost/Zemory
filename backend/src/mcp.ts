@@ -1,7 +1,6 @@
 import { stdin, stdout } from "node:process";
 import { findProjectRoot } from "./core/config.js";
 import { getMessage, getMessageContext, recall } from "./brain/search.js";
-import { logRecall } from "./brain/savings.js";
 import { searchSections, showSection } from "./docs/plan.js";
 
 type JsonObject = Record<string, unknown>;
@@ -123,7 +122,6 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
       limit: clampLimit(args.limit, 12, 50),
       dbPath: env.dbPath,
     });
-    logRecall(hits, query, env.dbPath); // agent recall via MCP → log token-savings estimate
     return toolResult(hits);
   }
 
