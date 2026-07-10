@@ -84,6 +84,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── external/                       [opt]   repo NGOÀI clone THAM CHIẾU — code HỌ, chỉ gọi/extend, KHÔNG dán vào backend
 ├── attic/                          [opt]   backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC KHI up server (rollback). Tracked
 ├── docs-template/                  [opt]   bộ docs MẪU TRẮNG app PHÁT cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
+├── share/                          [opt]   bundle SYNC MÃ HÓA xuyên máy (git-lfs *.enc + key + README) — TRACKED dù chứa key,
+│                                            vì phải đi qua git để đồng bộ (khác data/gitignore). Chỉ app CÓ tính năng sync-qua-git
 │
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, không dời) ═════════
 │
@@ -194,6 +196,7 @@ Index = TỪ ĐIỂN      ~20 folder backend + ~11 frontend KHÔNG bắt tạo h
 SQL — 1 CÁCH         mặc định store/queries.* (gom, đặt tên, gọi theo tên); resources/sql/ CHỈ khi cố ý tách file .sql. KHÔNG rải inline
 Secret               config/ + .env.example chỉ trỏ TÊN env (password_env); pass THẬT ở .env/vault → data/secrets/. KHÔNG commit
 Mã hóa / Encryption  concern RIÊNG: key+encrypt/decrypt → vault/ · at-rest DB (SQLCipher) apply ở store/ · key/salt/bundle → data/secrets/ · in-transit bundle → vault/. App có DATA NHẠY CẢM (chat/PII/log) → NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ "chấp nhận plaintext" (để audit thấy, khỏi lọt)
+Sync bundle qua git   ngoại lệ CÓ CHỦ ĐÍCH của luật data/=gitignore: bundle MÃ HÓA cần đi qua git để đồng bộ xuyên máy (git-lfs) → TRACKED ở root share/ (đã mã hóa, không phải plaintext secret) — không nhét vào data/ (data/ không sync qua git)
 Phân quyền / Authz   concern RIÊNG: authentication (LÀ AI) = auth/ · authorization/PHÂN QUYỀN (ĐƯỢC GÌ) = định nghĩa role/permission ở auth/ + ENFORCE (guard) ở middleware/ + role-data (user→role) ở store/ + policy file operator-sửa ở config/. App ĐA-USER / ĐA-ROLE → PHẢI có; single-user/local → ghi rõ "không phân quyền" (khỏi lọt)
 Logging / Observab.  code logger (level/format/sink) + metrics/trace → logging/ · log FILE → data/logs/ · APM/Sentry/Datadog → integrations/. Là DEBUG/vận hành — KHÁC audit-trail
 Audit trail          nhật ký BẢO MẬT "ai làm gì / lúc nào" (đổi quyền, xoá, đăng nhập) → ghi ở audit/ + bảng ở store/. KHÁC log debug (data/logs). App đa-user / có hành động nhạy cảm → NÊN có; không thì ghi rõ
