@@ -7,7 +7,7 @@
 // on deliberate retrievals (CLI/MCP/UI-submit), never type-ahead. Per-feature so
 // the report can show one column per feature + a total column.
 
-import { BRAIN_DB, openBrain } from "./db.js";
+import { currentBrainDb, openBrain } from "./db.js";
 
 export const estTokens = (chars: number): number => Math.round(chars / 4);
 
@@ -23,7 +23,7 @@ const FEATURE_ORDER = ["recall", "digest", "compress"];
  * never throws. `hits` carry a sessionId + the served text (snippet) — baseline
  * is the full token count of the source session(s) those hits came from.
  */
-export function logRecall(hits: SavedSlice[], query = "", dbPath: string = BRAIN_DB, feature = "recall"): void {
+export function logRecall(hits: SavedSlice[], query = "", dbPath: string = currentBrainDb(), feature = "recall"): void {
   try {
     if (!hits || !hits.length) return;
     const actualChars = hits.reduce((s, h) => s + (h.snippet ? h.snippet.length : 0), 0);
@@ -55,7 +55,7 @@ export function logRecall(hits: SavedSlice[], query = "", dbPath: string = BRAIN
  * instead of loading the whole session. baseline = full session messages,
  * actual = the digest_text actually surfaced. One event per digest recall.
  */
-export function logDigestRecall(sessionIds: string[], query = "", dbPath: string = BRAIN_DB): void {
+export function logDigestRecall(sessionIds: string[], query = "", dbPath: string = currentBrainDb()): void {
   try {
     const sessions = [...new Set((sessionIds || []).filter(Boolean))];
     if (!sessions.length) return;
@@ -122,7 +122,7 @@ const orderFeatures = (fs: string[]): string[] => {
 };
 
 /** Per-day × per-feature pivot of savings, newest day first, plus a grand total. */
-export function savingsByDay(dbPath: string = BRAIN_DB): SavingsReport {
+export function savingsByDay(dbPath: string = currentBrainDb()): SavingsReport {
   const db = openBrain(dbPath);
   try {
     const rows = db

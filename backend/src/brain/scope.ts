@@ -5,7 +5,7 @@
 // exclude list drives three surfaces: recall (search.ts), and both directions of
 // sync (share.ts export + merge). Data stays in the local DB either way.
 
-import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
+import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
 import { getScopeExclude, type ScopeLane } from "../settings.js";
 
 export type { ScopeLane };
@@ -106,7 +106,7 @@ interface LaneRow {
  * node carrying session/message counts and its current exclude state. Purely
  * derived — GROUP BY over `sessions`, then assembled in JS.
  */
-export function scopeTree(dbPath: string = BRAIN_DB, lanes: ScopeLane[] = getScopeExclude()): ScopeNode[] {
+export function scopeTree(dbPath: string = currentBrainDb(), lanes: ScopeLane[] = getScopeExclude()): ScopeNode[] {
   const db: BrainDB = openBrain(dbPath);
   let rows: LaneRow[];
   try {
