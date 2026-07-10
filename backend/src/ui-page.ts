@@ -637,7 +637,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     white-space: pre-wrap;
     font-size: 12px;
   }
-  #overlay, #docOverlay, #sessionOverlay, #syncOverlay, #savingsOverlay {
+  #overlay, #docOverlay, #sessionOverlay, #syncOverlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -863,7 +863,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
     <aside class="inspector">
       <section class="panel" id="brain" data-grow="insp0" data-grow-default="2.1" style="flex-grow:2.1">
-        <div class="panel-head"><div><h3>Global memory<span class="q" title="The whole brain in one local SQLite DB (~/.zemory/global_memory.db): totals, then sessions/messages broken down by machine and by agent, plus raw table sizes. 'Search' = current recall mode. Local + rebuildable from transcripts.">?</span></h3><p id="memSub">One SQLite brain.</p></div><button class="ghost" style="align-self:start;padding:4px 9px;font-size:11px;white-space:nowrap" onclick="openSavings()" title="Token saved by recall, per day (honest estimate)">📊 Saved</button></div>
+        <div class="panel-head"><div><h3>Global memory<span class="q" title="The whole brain in one local SQLite DB (~/.zemory/global_memory.db): totals, then sessions/messages broken down by machine and by agent, plus raw table sizes. 'Search' = current recall mode. Local + rebuildable from transcripts.">?</span></h3><p id="memSub">One SQLite brain.</p></div></div>
         <div class="panel-pad" id="memoryPanel"></div>
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
@@ -910,13 +910,6 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     <div class="modal l session-modal">
       <div class="mtitle"><b id="sessName" style="color:var(--text)"></b> <span id="sessMeta" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSession()">✕</button></div>
       <div id="sessBody" class="session-body">loading...</div>
-    </div>
-  </div>
-
-  <div id="savingsOverlay" onclick="if(event.target===this)closeSavings()">
-    <div class="modal l">
-      <div class="mtitle"><b style="color:var(--text)">📊 Token saved by recall — ước tính</b> <span id="savingsSince" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSavings()">✕</button></div>
-      <div id="savingsBody" class="session-body">loading...</div>
     </div>
   </div>
 
@@ -1496,95 +1489,6 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ el('sessBody').innerHTML = '<div class="muted">session error: ' + esc(e) + '</div>'; }
   }
   function closeSession(){ el('sessionOverlay').style.display = 'none'; }
-  function closeSavings(){ el('savingsOverlay').style.display = 'none'; }
-  async function openSavings(){
-    el('savingsOverlay').style.display = 'flex';
-    el('savingsBody').innerHTML = '<div class="empty">loading...</div>';
-    try { renderSavings(await (await fetch('/savings')).json()); }
-    catch(e){ el('savingsBody').innerHTML = '<div class="muted">savings error: ' + esc(e) + '</div>'; }
-  }
-  function savingsPct(e){ return (e.baseline ? e.avoided / e.baseline * 100 : 0).toFixed(2); }
-  var FEATURE_LABEL = { recall: 'Recall', digest: 'Digest', compress: 'Compress', search: 'Recall', show: 'Recall' };
-  function featLabel(f){ return FEATURE_LABEL[f] || f; }
-  // Full catalogue of zemory features — measurable ones accrue a number; the rest
-  // are listed honestly as n/a (counterfactual / quality / enabler), never faked.
-  var FEATURES = [
-    { key:'recall',  name:'Recall (semantic search)', cat:'meas', note:'trả slice liên quan thay vì nạp cả session' },
-    { key:'digest',  name:'Digest (lane nén session)', cat:'meas', note:'đọc digest gọn thay vì full session' },
-    { key:'compress',name:'Compress (nén output)',     cat:'off',  note:'đã gỡ (attic) — hồi sinh mới đo được' },
-    { key:'scoped',  name:'Scoped (loại lane)',        cat:'na',   note:'tăng CHẤT LƯỢNG, không giảm token trả về' },
-    { key:'index',   name:'Structure index (routing)', cat:'na',   note:'counterfactual — xảy ra trong đầu agent, zemory ko thấy event' },
-    { key:'harness', name:'Docs harness (RULES/plan)', cat:'na',   note:'counterfactual — đọc gọn thay vì suy lại' },
-    { key:'capture', name:'Capture (hooks)',           cat:'na',   note:'0 token phụ trội — enabler' },
-    { key:'sync',    name:'Sync (Drive xuyên máy)',    cat:'na',   note:'enabler — chỉ chuyển dữ liệu' },
-    { key:'webcap',  name:'Web capture (scan-web)',    cat:'na',   note:'enabler — nạp dữ liệu vào brain' },
-    { key:'rerank',  name:'Rerank',                    cat:'na',   note:'sắp xếp lại, không giảm token' },
-    { key:'ui',      name:'UI cockpit',                cat:'na',   note:'enabler — mặt điều khiển' }
-  ];
-  function featureList(tot){
-    var by = (tot && tot.byFeature) || {};
-    var rows = FEATURES.map(function(f){
-      var right, cls;
-      if(f.cat === 'meas'){ var v = by[f.key] || 0; right = v ? '≈ ' + fmtN(v) : '0 · chưa có event'; cls = v ? 'color:var(--green)' : 'color:var(--muted)'; }
-      else if(f.cat === 'off'){ right = 'đã gỡ'; cls = 'color:var(--muted)'; }
-      else { right = 'n/a'; cls = 'color:var(--muted)'; }
-      return '<div class="smsg" style="display:grid;grid-template-columns:1.3fr 1.7fr .9fr;gap:8px;align-items:center;font-size:11px">'
-        + '<b>' + esc(f.name) + '</b>'
-        + '<span class="muted">' + esc(f.note) + '</span>'
-        + '<b style="' + cls + ';text-align:right">' + right + '</b>'
-        + '</div>';
-    }).join('');
-    return '<div class="tiny muted" style="text-transform:uppercase;letter-spacing:.06em;margin:16px 0 4px">Tất cả tính năng — ĐO ĐƯỢC vs n/a</div>'
-      + '<div class="tiny muted" style="margin-bottom:6px;line-height:1.5">Chỉ tính năng phát sinh event đo được (Recall, Digest) mới có số. n/a = không đo được: <b>counterfactual</b> (index/harness — xảy ra ở agent), <b>chất lượng</b> (scoped), hoặc <b>enabler</b> (capture/sync/UI/rerank).</div>'
-      + rows;
-  }
-  function pivotGrid(features){ return 'grid-template-columns:1.1fr .7fr ' + features.map(function(){ return '.9fr'; }).join(' ') + ' 1fr;'; }
-  function pct(av, base){ return base ? (av / base * 100) : 0; }
-  function pivotRow(row, features, grid, isTot){
-    return '<div class="smsg' + (isTot ? ' user' : '') + '" style="display:grid;' + grid + 'gap:8px;align-items:center;font-size:12px">'
-      + '<b>' + esc(isTot ? 'TỔNG' : row.date) + '</b>'
-      + '<span class="muted">' + fmtN(row.recalls) + '</span>'
-      + features.map(function(f){
-          var av = (row.byFeature && row.byFeature[f]) || 0, base = (row.baseByFeature && row.baseByFeature[f]) || 0;
-          return base
-            ? '<span style="color:var(--green)" title="≈' + fmtN(av) + ' / ' + fmtN(base) + ' token">' + pct(av, base).toFixed(2) + '%</span>'
-            : '<span class="muted">–</span>';
-        }).join('')
-      + '<b style="color:var(--green)" title="≈' + fmtN(row.avoided) + ' / ' + fmtN(row.baseline) + ' token">' + pct(row.avoided, row.baseline).toFixed(2) + '%</b>'
-      + '</div>';
-  }
-  function renderSavings(r){
-    var days = (r && r.days) || []; var tot = (r && r.total) || {avoided:0,baseline:0,recalls:0,byFeature:{},baseByFeature:{}}; var features = (r && r.features) || [];
-    el('savingsSince').textContent = r && r.since ? ('từ ' + r.since) : '';
-    if(!days.length){
-      el('savingsBody').innerHTML = '<div class="empty" style="margin-bottom:10px">Chưa có retrieval nào được ghi. Số tính từ giờ trở đi — mỗi recall chủ động (Search/Enter ở đây, agent qua MCP, hoặc <code>zemory brain search</code>) cộng vào cột feature tương ứng.</div>'
-        + featureList(tot);
-      return;
-    }
-    var grid = pivotGrid(features);
-    el('savingsBody').innerHTML =
-      '<div class="tiny muted" style="margin-bottom:10px;line-height:1.5"><b>Mỗi cột = 1 feature, ô = % token tiết kiệm</b> (tránh nạp / nếu phải nạp cả nguồn) · <b>cột cuối = TỔNG %</b>. % = token tránh ÷ token nguồn (hover xem token thô). Token ≈ chars/4 — <b>ước tính hiệu suất</b>, KHÔNG phải hoá đơn thật. Tính năng không đo được (index/capture/scoped…) liệt kê ở bảng dưới, KHÔNG lên cột.</div>'
-      + '<div class="smsg" style="display:grid;' + grid + 'gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em"><b>Ngày</b><span>Recalls</span>' + features.map(function(f){ return '<b>' + esc(featLabel(f)) + '</b>'; }).join('') + '<b>TỔNG</b></div>'
-      + days.map(function(d){ return pivotRow(d, features, grid, false); }).join('')
-      + '<div style="height:8px"></div>'
-      + pivotRow(tot, features, grid, true)
-      + recentList(r.recent || [])
-      + featureList(tot);
-  }
-  function recentList(recent){
-    if(!recent.length) return '';
-    var rows = recent.map(function(e){
-      return '<div class="smsg" style="display:grid;grid-template-columns:1fr .55fr 1.4fr .5fr .85fr .55fr;gap:8px;align-items:center;font-size:11px">'
-        + '<span class="muted">' + esc((e.ts || '').slice(0,16).replace('T',' ')) + '</span>'
-        + '<span>' + esc(featLabel(e.feature || 'recall')) + '</span>'
-        + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.query || '(no query)') + '</span>'
-        + '<span class="muted">' + fmtN(e.hits || 0) + ' hit</span>'
-        + '<b style="color:var(--green)">≈ ' + fmtN(e.avoided) + '</b>'
-        + '<b style="color:var(--green)">' + savingsPct(e) + '%</b>'
-        + '</div>';
-    }).join('');
-    return '<div class="tiny muted" style="text-transform:uppercase;letter-spacing:.06em;margin:14px 0 4px">Recall gần đây — mỗi message (' + recent.length + ')</div>' + rows;
-  }
   function closeSyncBox(){ if(!window.__syncing) el('syncOverlay').style.display = 'none'; }
   async function driveSync(){
     const ds = el('driveState'), sb = el('syncBtn');

@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-11] — chore(savings): gỡ hẳn dashboard/ledger 'token saved' (counterfactual ảo) — giữ Recall/Digest/harness
+
+Gỡ hẳn lớp "đo token tiết kiệm" — số nó khoe là counterfactual ảo, luôn ~99.99%.
+
+Kiểm tra thật trên DB: cơ chế CHẠY (11 event ghi, report + dialog render), nhưng con số vô nghĩa — baseline = tổng token của CẢ session mà hit chạm tới (test: 1,953,137 → 241 token = "tiết kiệm 99.99%"), một thứ không ai nạp thay cho 1 search. Feature đo được thật duy nhất (compress) đã out-of-scope từ trước. Chính plan/10 §2 đã tự kết luận "counterfactual → dashboard trưng số giả → KHÔNG làm" rồi §3 lại build.
+
+Đã gỡ:
+- `backend/src/brain/savings.ts` (cả module) + bảng `recall_savings` (schema v11 DROP TABLE).
+- Mọi call `logRecall`/`logDigestRecall` (cli.ts recall + digest, mcp.ts, ui.ts commit).
+- Endpoint `/savings` + dialog "📊 Saved" trong UI (nút + `openSavings`/`renderSavings`/`featureList`/`pivot*`/`recentList`).
+- Migration v7–v9 (chỉ reshape recall_savings) nay bọc `hasTable` → no-op nếu bảng đã biến mất.
+
+GIỮ nguyên (feature THẬT, không đụng): Recall (semantic search), Digest, docs harness, Global memory. GIỮ tile trung thực `~N token đã thu` (≈chars/4) + `Capture cost: 0 · free`.
+
+Verify: 66/66 test; DB thật migrate v10→v11, recall_savings đã drop; embedded UI JS compile sạch, 0 dấu vết savings.
+
 ## [2026-07-10] — fix(app): quét sạch mọi finding P2/P3 — UI guard, import merge, render salvage, CDP port, WAL race, con trỏ treo, CLI error, thread cap
 
 Dọn nốt toàn bộ finding P2/P3 còn treo của đợt audit — app không còn finding mở.

@@ -10,7 +10,6 @@ import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./adopt.js";
 import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
 import { currentBrainDir, openBrain } from "./brain/db.js";
 import { getMessageContext, getSessionThread, recall } from "./brain/search.js";
-import { logRecall, savingsByDay } from "./brain/savings.js";
 import { resolveShareKey, syncDrive } from "./brain/share.js";
 import { relocateBrain, storageInfo } from "./brain/relocate.js";
 import { vectorCount, vectorRemaining } from "./brain/vectors.js";
@@ -403,12 +402,8 @@ export async function startUi(): Promise<void> {
         role: u.searchParams.get("role") || undefined,
         sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
       });
-      // Log a savings estimate ONLY on a committed recall (Enter/submit), never on
-      // incremental type-ahead — otherwise every keystroke would inflate the count.
-      if (u.searchParams.get("commit") === "1") logRecall(hits, u.searchParams.get("q") ?? "");
       return json(res, hits);
     }
-    if (p === "/savings") return json(res, savingsByDay());
     if (p === "/brain-context") {
       // Drill-down WITHIN a recall already counted by /brain-search; not logged
       // separately (same 'recall' feature) to avoid double-counting.

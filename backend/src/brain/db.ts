@@ -60,7 +60,7 @@ export const BRAIN_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const BRAIN_DIR = resolveBrainDir();
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -136,23 +136,6 @@ CREATE TABLE IF NOT EXISTS changelog (
   created_at    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_changelog_proj ON changelog(project_root, date DESC);
-
--- RECALL SAVINGS — forward-only (logged from when instrumented). One row per
--- deliberate recall: baseline_tokens = full tokens of the source session(s) the
--- hits came from (what you'd re-load WITHOUT recall — a STATED assumption, an
--- upper bound); actual_tokens = what recall surfaced. avoided ≈ baseline-actual.
--- Tokens are ESTIMATES (≈ chars/4). This is a targeted-recall efficiency estimate,
--- NOT a verified bill saving (no provider usage/cost is read).
-CREATE TABLE IF NOT EXISTS recall_savings (
-  id              INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts              TEXT NOT NULL,
-  baseline_tokens INTEGER NOT NULL,
-  actual_tokens   INTEGER NOT NULL,
-  query           TEXT,
-  hits            INTEGER,
-  feature         TEXT NOT NULL DEFAULT 'recall'
-);
-CREATE INDEX IF NOT EXISTS idx_recall_savings_ts ON recall_savings(ts);
 
 -- Store locations a deep scan has discovered (agent transcript dirs found
 -- ANYWHERE on the machine). A normal scan re-enumerates these directly so it
@@ -330,6 +313,10 @@ function hasColumn(db: BrainDB, table: string, column: string): boolean {
   return rows.some((row) => row.name === column);
 }
 
+function hasTable(db: BrainDB, table: string): boolean {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table);
+}
+
 function migrate(db: BrainDB, fromVersion: number): void {
   let version = fromVersion;
   if (version < 2) {
@@ -370,30 +357,26 @@ function migrate(db: BrainDB, fromVersion: number): void {
     }
     version = 6;
   }
+  // v7–v9 only reshaped recall_savings, a table v11 removes entirely. They now
+  // no-op unless a real old DB still carries the table (guarded), since v11 drops
+  // it anyway — a fresh/synthetic DB never had it (it's no longer in SCHEMA).
   if (version < 7) {
-    // v7 adds query + hits to recall_savings (per-recall detail for the savings
-    // report). Old rows keep NULL — daily totals are unaffected.
-    if (!hasColumn(db, "recall_savings", "query")) {
-      db.exec("ALTER TABLE recall_savings ADD COLUMN query TEXT");
-    }
-    if (!hasColumn(db, "recall_savings", "hits")) {
-      db.exec("ALTER TABLE recall_savings ADD COLUMN hits INTEGER");
+    if (hasTable(db, "recall_savings")) {
+      if (!hasColumn(db, "recall_savings", "query")) db.exec("ALTER TABLE recall_savings ADD COLUMN query TEXT");
+      if (!hasColumn(db, "recall_savings", "hits")) db.exec("ALTER TABLE recall_savings ADD COLUMN hits INTEGER");
     }
     version = 7;
   }
   if (version < 8) {
-    // v8 adds recall_savings.feature so the savings report can break tokens
-    // down per feature. Old rows = 'search'.
-    if (!hasColumn(db, "recall_savings", "feature")) {
+    if (hasTable(db, "recall_savings") && !hasColumn(db, "recall_savings", "feature")) {
       db.exec("ALTER TABLE recall_savings ADD COLUMN feature TEXT NOT NULL DEFAULT 'recall'");
     }
     version = 8;
   }
   if (version < 9) {
-    // v9: 'search' + 'show' were the same feature (Recall) split by call type —
-    // consolidate to a single 'recall' column. brain_show is a drill-down WITHIN
-    // a recall, no longer logged separately (was double-counting).
-    db.exec("UPDATE recall_savings SET feature='recall' WHERE feature IN ('search','show')");
+    if (hasTable(db, "recall_savings")) {
+      db.exec("UPDATE recall_savings SET feature='recall' WHERE feature IN ('search','show')");
+    }
     version = 9;
   }
   if (version < 10) {
@@ -404,6 +387,13 @@ function migrate(db: BrainDB, fromVersion: number): void {
       db.exec("ALTER TABLE doc ADD COLUMN rendered_hash TEXT");
     }
     version = 10;
+  }
+  if (version < 11) {
+    // v11 drops the recall_savings ledger — the "% token saved" it fed was a
+    // counterfactual (baseline = whole matched sessions) that always read ~99.99%,
+    // never a real saving. Recall/Digest themselves stay; only the fake meter goes.
+    db.exec("DROP TABLE IF EXISTS recall_savings");
+    version = 11;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

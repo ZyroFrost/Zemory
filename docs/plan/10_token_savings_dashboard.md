@@ -1,14 +1,15 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
-# Token savings — dashboard TRUNG THỰC per-feature (%)
-> Lịch sử: ledger cũ (fake, caller rỗng, luôn in 0) đã BỎ → `attic/` (2026-07-07). **SAU ĐÓ đã build lại 1 dashboard TRUNG THỰC** (2026-07-08).
-> **Hiện tại: dialog "📊 Saved" — bảng per-FEATURE, ô = % token tiết kiệm (avoided/baseline), cột cuối = TỔNG %.** Chỉ feature phát sinh event ĐO ĐƯỢC mới có cột (**Recall**, **Digest**); index/capture/scoped = **n/a** (counterfactual/quality/enabler — KHÔNG phịa). Doc này giữ lý do + thiết kế + điều kiện có metric thật.
-## 1. Đã bỏ ledger — bằng chứng
-- `logSavings()` **không có caller** → bảng `ledger` **luôn RỖNG** → `brain savings` luôn in 0.
-- `compress` (before/after THẬT duy nhất) đã **out-of-scope** (`attic/src/compress/`).
-- `recall` = **counterfactual** → "% saved" là số **PHỊA**.
+# Token savings dashboard — ĐÃ GỠ HẲN (schema v11)
+> Lịch sử: ledger fake cũ → `attic/` (2026-07-07) → rebuild dashboard % per-feature (2026-07-08) → **GỠ HẲN 2026-07-11 (schema v11).**
+> **Đã gỡ:** module `savings.ts`, bảng `recall_savings`, dialog "📊 Saved", endpoint `/savings`, mọi call `logRecall`/`logDigestRecall` (cli/mcp/ui).
+> **Lý do:** con số "% token tiết kiệm" là **counterfactual** — baseline = nạp CẢ session nguồn, thứ không ai làm → luôn dính ~99.99%, KHÔNG phản ánh tiết kiệm thật. Feature đo được thật duy nhất (`compress`) đã out-of-scope từ trước. Recall/Digest (feature THẬT, có ích) **giữ nguyên** — chỉ bỏ lớp đo phịa bám lên trên.
+> **Giữ lại (trung thực):** tile `~N token đã thu` (≈ chars/4) + `Capture cost: 0 · free` trong panel Global memory. §2 giữ lại phân tích "vì sao đo token tiết kiệm là KHÓ".
+## 1. Đã gỡ ledger + dashboard — bằng chứng
+**GỠ HẲN (2026-07-11, schema v11).** Bằng chứng vì sao nó vô nghĩa:
+- `recall` = **counterfactual**: baseline = tổng token của TẤT CẢ session mà hit chạm tới; actual = mấy dòng snippet trả về → "% saved" luôn ~99.99% (test thật: 1,953,137 → 241 token). Không ai nạp cả chục session đầy đủ thay cho 1 search → số này là **PHỊA**.
+- `compress` — feature DUY NHẤT có before/after đo được thật — đã out-of-scope (`attic/src/compress/`).
 - zemory **không đọc được** usage/cost từ provider → không có số thật để trưng.
-→ Dead surface. Đã gỡ khỏi live (`db.ts`/`cli.ts`/`search.ts`/`ui`), giữ ở `attic/` (`attic/savings-removed.md`).
-
+→ Dead surface. Đã gỡ khỏi live (`savings.ts`, bảng `recall_savings`, `/savings`, dialog, mọi caller). **Giá trị lõi = Global memory (recall) + docs harness** — không cần meter phịa bám lên.
 ## 2. Vì sao đo token tiết kiệm là KHÓ (giữ lại phân tích)
 | Tầng | Ví dụ | Đo được |
 |---|---|---|
