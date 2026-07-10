@@ -16,6 +16,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openBrain } from "./brain/db.js";
 import { CONFIG_FILE, loadContext } from "./core/config.js";
 import type { HarnessConfig } from "./core/types.js";
 import { rememberProject } from "./registry.js";
@@ -38,6 +39,16 @@ export interface AdoptResult {
 // non-standard → flag for agent reconciliation rather than gap-filling (which
 // would create duplicates).
 const STANDARD_AGENT = ["01_RULES.md", "02_STRUCTURE.md", "03_TODO.md", "04_CHANGES.md"];
+
+// Older projects adopted the harness back when the numbering was
+// 01_RULES/02_TODO/03_CHANGES (no STRUCTURE doc). Renumbering shipped a new
+// 02_STRUCTURE.md and shifted TODO/CHANGES to 03/04. A rename is purely
+// mechanical (same content, same role) — do it automatically so those projects
+// still gap-fill cleanly instead of being permanently flagged non-standard.
+const LEGACY_RENAME: Record<string, string> = {
+  "02_TODO.md": "03_TODO.md",
+  "03_CHANGES.md": "04_CHANGES.md",
+};
 
 const DEFAULT_CONFIG: HarnessConfig = {
   docs: "docs/agent",
@@ -103,6 +114,33 @@ export function ensureHarness(projectRoot: string): AdoptResult {
       added.push(prefix + file);
     }
   };
+
+  // Normalize legacy filenames first (mechanical rename, same content) so an
+  // old-numbered project doesn't get permanently flagged non-standard below.
+  // These docs are DB-source (rendered from global_memory.db by project_root +
+  // path) — renaming the file alone would leave the DB row pointing at a path
+  // that no longer exists, so the doc.path row moves too, in the same step.
+  if (existsSync(docsDir)) {
+    const renamed: Array<[string, string]> = [];
+    for (const [oldName, newName] of Object.entries(LEGACY_RENAME)) {
+      const oldPath = join(docsDir, oldName);
+      const newPath = join(docsDir, newName);
+      if (existsSync(oldPath) && !existsSync(newPath)) {
+        renameSync(oldPath, newPath);
+        renamed.push([oldName, newName]);
+      }
+    }
+    if (renamed.length > 0) {
+      const db = openBrain();
+      for (const [oldName, newName] of renamed) {
+        db.prepare(
+          `UPDATE doc SET path=? WHERE project_root=? AND path=?
+             AND NOT EXISTS (SELECT 1 FROM doc WHERE project_root=? AND path=?)`,
+        ).run(join(docsRel, newName), projectRoot, join(docsRel, oldName), projectRoot, join(docsRel, newName));
+      }
+      db.close();
+    }
+  }
 
   // App = mechanical only. Decide scaffold vs flag-for-agent:
   //   • empty docs           → scaffold the standard template (fresh).
