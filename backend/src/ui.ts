@@ -21,11 +21,13 @@ import {
   getDriveDir,
   getHybridSetting,
   getRerankSetting,
+  getLang,
   getScopeExclude,
   getScopeSetting,
   getUiState,
   setDriveDir,
   setHybridSetting,
+  setLang,
   setRerankSetting,
   setScopeExclude,
   setScopeSetting,
@@ -234,6 +236,7 @@ function dashboardBrain(): unknown {
     scopeRules: getScopeExclude(),
     drive: driveSummary(),
     storage: safeStorage(),
+    lang: getLang(),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -336,6 +339,10 @@ export async function startUi(): Promise<void> {
     if (p === "/check") return json(res, await runCheck(u.searchParams.get("feature") ?? "", rootP));
     if (p === "/status") return json(res, await gatherStatus(rootP));
     if (p === "/brain-status") return json(res, dashboardBrain());
+    if (p === "/set-lang") {
+      setLang(u.searchParams.get("lang") ?? "vi");
+      return json(res, { ok: true, lang: getLang() });
+    }
     if (p === "/set-hybrid") {
       setHybridSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, hybrid: getHybridSetting() });

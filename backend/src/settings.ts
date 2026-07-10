@@ -27,6 +27,8 @@ interface ZConfig {
   rerank?: boolean;
   scope?: boolean;
   drive?: string;
+  /** UI language: 'vi' (default) | 'en'. */
+  lang?: string;
   scopeExclude?: ScopeLane[];
   /** UI cockpit layout (panel sizes / resize positions) — persisted so a reopen
    *  restores exactly what the user dragged (localStorage resets per random port). */
@@ -88,6 +90,17 @@ export function getDriveDir(): string {
 export function setDriveDir(path: string): void {
   const c = read();
   c.drive = path;
+  write(c);
+}
+
+/** UI language. Default Vietnamese (the tool's primary audience); 'en' available. */
+export function getLang(): string {
+  return read().lang === "en" ? "en" : "vi";
+}
+
+export function setLang(lang: string): void {
+  const c = read();
+  c.lang = lang === "en" ? "en" : "vi";
   write(c);
 }
 
