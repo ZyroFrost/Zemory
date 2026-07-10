@@ -16,15 +16,15 @@
 - Rule phục vụ mục tiêu (gọn / rạch ròi / định vị nhanh), KHÔNG ép cho đủ folder — **thiếu concern nào bỏ folder đó**.
 - **BẮT BUỘC = 4:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ folder khác `[opt]` — tạo KHI CÓ concern.
 ## 2. Cây thư mục chuẩn
-**Cây thư mục ĐẦY ĐỦ (ghi chú từng dòng) + 3 nhóm ①TRACKED / ②ROOT-tool-ép / ③GITIGNORE → xem [`02_STRUCTURE.md §2`](../agent/02_STRUCTURE.md).**
+**Cây thư mục ĐẦY ĐỦ (ghi chú từng dòng, gom 6 dải vai trò) + 3 nhóm ①TRACKED / ②ROOT-tool-ép / ③GITIGNORE → xem [`02_STRUCTURE.md §3`](../agent/02_STRUCTURE.md).**
 
-Chỉ nhắc mốc: **BẮT BUỘC = 4** (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`); mọi folder con (api…util, frontend/*, data/*, ROOT tool) đều `[opt]` — tạo KHI CÓ concern. Không lặp cây ở đây để tránh 2 bản lệch.
+Chỉ nhắc mốc: **BẮT BUỘC = 4** (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`); mọi folder con (api…util, frontend/*, data/*, ROOT tool) đều `[opt]` — tạo KHI CÓ concern (INDEX = từ điển tên, **KHÔNG đẻ folder rỗng**). Không lặp cây ở đây để tránh 2 bản lệch.
 ## 3. Routing — sửa gì vào đâu
-**Bảng routing "sửa gì / có gì → vào đâu" (1 tên chuẩn mỗi slot) → xem [`02_STRUCTURE.md §3`](../agent/02_STRUCTURE.md).**
+**Bảng routing "sửa gì / có gì → vào đâu" (1 tên chuẩn mỗi slot) → xem [`02_STRUCTURE.md §4`](../agent/02_STRUCTURE.md).** Chọn layer-first hay domain-first: [`02_STRUCTURE.md §2`](../agent/02_STRUCTURE.md).
 
 Cốt lõi: cần thêm concern nào → mở THẲNG slot tương ứng, KHÔNG grep cả repo (INDEX điều hướng = tiết kiệm token).
 ## 4. Quyết định đã chốt
-Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUCTURE.md §4`](../agent/02_STRUCTURE.md)):
+Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUCTURE.md §5`](../agent/02_STRUCTURE.md)):
 - **Tách file harness thứ 4:** cấu trúc → `docs/agent/02_STRUCTURE.md` (markdown source), `01_RULES` chỉ còn con trỏ. Wire vào `STANDARD_AGENT` → mọi `zemory init` ship kèm.
 - **1 TÊN / concern** (chuẩn riêng): `store/` (KHÔNG db|models), `pages/` (KHÔNG views|screens). Framework ép cứng mới đổi (Next `pages/`, Django `models/`).
 - **BẮT BUỘC = 4**; tất cả còn lại `[opt]` — INDEX là TỪ ĐIỂN tên, tạo khi có.
@@ -38,7 +38,13 @@ Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUC
 - **Version-up (2026-07-10) — concern tách khỏi "Version" (lưu-ở-đâu):** 2 kiểu — ① TỰ ĐỘNG (`backend/src/update/`, app tự check+tải+apply, PHẢI phối hợp attic/+dist/+migrations/) và ② THỦ CÔNG (git tag chốt version → dist/ build → `scripts/deploy.*` đẩy máy đích/VM → backup 2 CHIỀU: verify backup-trên-VM khớp attic/ local TRƯỚC khi đè, resync SAU khi deploy — không phải push 1 chiều).
 - **`share/` (root, LFS bundle mã hóa xuyên máy)** — ngoại lệ có chủ đích của luật `data/=gitignore`, vì cần đi qua git để sync; giờ đã ghi rõ trong 02_STRUCTURE (trước đó là gap ẩn ngay trong chính zemory).
 - **Renumber harness (2026-07-09):** `01_RULES→02_STRUCTURE→03_TODO→04_CHANGES` (STRUCTURE đọc ngay sau RULES, không nằm cuối). Kèm fix quan trọng: `adopt.ts` tự rename file cũ (`02_TODO`/`03_CHANGES`) sang tên mới khi `sync`, để project đã có harness từ trước không bị kẹt "non-standard" vĩnh viễn.
-
+- **Chuẩn v2 (2026-07-10) — mở rộng phủ đủ mọi project + 2 trục sắp xếp:**
+  - **2 trục tổ chức code** ([`02_STRUCTURE §2`](../agent/02_STRUCTURE.md)): LAYER-FIRST (slot phẳng dưới `src/`, mặc định app nhỏ/CRUD) vs DOMAIN-FIRST (`src/<domain>/` lồng lại slot, app nhiều domain). Cross-cutting (core/auth/vault/config/logging/audit/errors/i18n/update/migrations/shared/util) LUÔN ở `src/` gốc. **zemory chính LÀ domain-first** (`brain/`, `docs/`, `core/`) → chuẩn giờ CÔNG NHẬN, KHÔNG cần đập cấu trúc.
+  - **Cây gom theo 6 dải** (biên-vào · biên-ra · xử-lý · nền-tảng · chia-sẻ · domain) — dễ quét mắt, biết slot mới thuộc nhóm nào.
+  - **+10 slot phủ tác vụ phổ biến & mở rộng:** `cache/` (Redis/memcached app-level, KHÁC data/cache file) · `storage/` (object/blob + upload) · `notifications/` (email/SMS/push) · `search/` (index & retrieval FTS/vector/Elastic) · `pipelines/` (ETL/ingest/batch nhiều-bước) · `core/` (composition root: DI/registry/router/lifecycle) · `shared/` (**nâng từ `types/`**: type + RUNTIME dùng chung BE↔FE — zod/hằng/pure-logic) · `contracts/` (file spec API OpenAPI/proto/GraphQL-SDL) · `plugins/` (điểm mở rộng bên-thứ-3, KHÁC modules/=của-mình) · `generated/` (codegen output, gitignore). Frontend thêm `util/`+`types/` (đối xứng backend).
+  - **Luật KHÔNG folder rỗng (nhấn mạnh):** INDEX = TỪ ĐIỂN TÊN để TRA, KHÔNG phải checklist phải tạo. Tạo folder CHỈ khi có concern/file thật; app điển hình chỉ 4–10 slot hiện diện. Áp chuẩn vào project = tùy concern mà tạo, tuyệt đối không đẻ một đống folder rỗng.
+  - **Sửa ★ cho Node-CLI:** entry = file `run.*` HOẶC manifest khai `bin`/`main`; manifest ở root HOẶC `backend/`. zemory (bin ở root `package.json` → `dist/cli.js`) giờ ĐẠT ★, KHÔNG cần `backend/run.*` (trước đây tự-lệch chuẩn của chính mình — audit bắt được).
+  - **UI embed (single-binary):** app CLI ship 1-file được phép embed trang UI như resource TS ở backend (vd zemory `ui-page.ts`) — GHI RÕ trong convention, KHÔNG ép tách sang `frontend/` nếu tách làm vỡ build 1-file.
 ## 5. Phạm vi áp dụng
 - **ÁP:** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI/data project, monorepo. Áp gần như không đổi cấu trúc.
 - **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · notebook / data rời · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
