@@ -14,7 +14,7 @@ Zemory là lớp **memory + governance (harness)** local dùng chung cho coding 
 
 **Mục tiêu**
 - Một hệ **dùng vĩnh viễn cho mọi project**, cấu trúc ổn định, **mở rộng được** (cắm ý tưởng mới không phải mổ lõi).
-- **Tự chứa, tự sở hữu**: không phụ thuộc/đụng repo người khác; `src/` 100% của mình.
+- **Tự chứa, tự sở hữu**: không phụ thuộc/đụng repo người khác; `backend/src/` 100% của mình.
 - **Tiết kiệm token** thật (search trúng + nén đọc + recall xuyên session).
 - **Sạch sở hữu**: lúc nào cũng biết "của mình (src) vs gạch public (deps)".
 
@@ -27,7 +27,7 @@ Zemory là lớp **memory + governance (harness)** local dùng chung cho coding 
 
 ## 2. Nguyên tắc cốt lõi (đã chốt qua thảo luận)
 1. **Tiết kiệm token thật, đo trung thực.** Giá trị = recall trúng (đỡ re-explain) + harness gọn + (sau) RAG semantic; không claim % ảo. (Lane "compress-on-read" đã bỏ — xem changelog.)
-2. **Ranh giới `src/` và dependency.** Code điều phối/policy của Zemory nằm trong `src/`; engine/model public (vd embed model, sqlite-vec) gọi qua dependency hoặc binary optional, không dán source vào lõi.
+2. **Ranh giới `backend/src/` và dependency.** Code điều phối/policy của Zemory nằm trong `backend/src/`; engine/model public (vd embed model, sqlite-vec) gọi qua dependency hoặc binary optional, không dán source vào lõi.
 3. **Mỗi lớp dữ liệu có đúng một nguồn.** Curated docs/changelog lấy DB làm nguồn và markdown là mirror; transcript gốc của host là nguồn episodic và bảng messages là index dẫn xuất.
 4. **Một capability, một slot, một provider.** Config chọn provider; runtime từ chối provider thiếu hoặc conflict.
 5. **Không proxy model API.** Zemory chỉ ở tầng tool/CLI/MCP + lưu local; không `ANTHROPIC_BASE_URL`, không rewrite history/cache.
@@ -54,20 +54,20 @@ Claude / Codex / host khác
 ```
 
 External engine (embedding model cho semantic) chỉ được gọi qua adapter — không sở hữu policy, DB, host permission hay capability slot của Zemory. (Compression đã bỏ; xem plan 03 DROPPED.)
-### Core (`src/core/`)
+### Core (`backend/src/core/`)
 - **registry** ánh xạ capability sang đúng một provider đã chọn.
 - **runtime** resolve provider từ `docs/.harness.json`, áp default và fail rõ khi tên provider không tồn tại.
 - **router** là cửa gọi on-demand; CLI/MCP không gọi engine trực tiếp khi project đã connected.
 - **hooks** phát lifecycle cho provider nhưng không bypass permission của host.
 - **config** validate path nằm trong `docs/` và không chấp nhận JSON/config lỗi.
 
-### Modules (`src/modules/`) — mỗi module = manifest + logic + (check)
+### Modules (`backend/src/modules/`) — mỗi module = manifest + logic + (check)
 - `memory:global` — ingest đa-agent, global recall, backup/migration và retention.
 - `search:keyword` — FTS5 word/trigram, scope trước candidate limit; semantic có thể là engine nội bộ sau benchmark.
 - `harness:docs` — validate, DB-backed archive, mirror discipline và reconcile (khung docs/quy-tắc của project).
 - `health:core` — kiểm tra config, provider, DB, hook, adapter và feature thực.
 
-Provider built-in sống trong `src/modules/`. (Capability `governance` đã đổi tên → `harness`; provider memory `harness` → `global`; `compress` đã bỏ.)
+Provider built-in sống trong `backend/src/modules/`. (Capability `governance` đã đổi tên → `harness`; provider memory `harness` → `global`; `compress` đã bỏ.)
 ### Deps (`deps/`) — gạch public, gọi không dán
 - `model/` — `all-MiniLM-L6-v2` (HuggingFace, public; agentmemory cũng chỉ *dùng* model này, nó không thuộc agentmemory).
 - `lib/` — onnxruntime / md-parser... (package thường).
@@ -104,7 +104,7 @@ Claude và Codex dùng Stop hook để capture. Recall dùng instruction hoặc 
 ## 7. Bản quyền (đã rà — Apache-2.0)
 Zemory phát hành theo Apache-2.0 và package phải chứa `LICENSE`. Dependency, model hoặc binary ngoài chỉ được thêm sau khi xác minh license, attribution và điều kiện phân phối của đúng artifact được chọn.
 
-Code third-party không được dán vào `src/`. Nếu bắt buộc vendor một phần, nó phải nằm ở vùng tách biệt, giữ notice/license và có hồ sơ provenance. Engine/model ngoài cho RAG (EmbeddingGemma — **kiểm license Gemma trước khi phân phối**; Transformers.js; sqlite-vec) gọi qua dependency/adapter; weight model **tải/cache lúc runtime, KHÔNG commit vào repo**. (LeanCTX/compression: đã bỏ, code ở `attic/`.)
+Code third-party không được dán vào `backend/src/`. Nếu bắt buộc vendor một phần, nó phải nằm ở vùng tách biệt, giữ notice/license và có hồ sơ provenance. Engine/model ngoài cho RAG (EmbeddingGemma — **kiểm license Gemma trước khi phân phối**; Transformers.js; sqlite-vec) gọi qua dependency/adapter; weight model **tải/cache lúc runtime, KHÔNG commit vào repo**. (LeanCTX/compression: đã bỏ, code ở `attic/`.)
 ## 8. Phân kỳ (trạng thái)
 - **Nền tảng v0.1 (đã có):** DB-source docs/changelog, global ingest/recall, FTS5, provider runtime, Claude/Codex capture, tests/CI và package hygiene.
 - **Năng lực đã hoàn tất sau v0.1:** MCP progressive disclosure cho recall (`brain_search`/`brain_show`/`plan_search`), RAG semantic core + full vector backfill, memory retention/privacy core (encrypted export/import, raw backup/restore, forget dry-run/force, re-redact).

@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-07-10] — docs(structure): add version-up (self-update) as a first-class concern — backend/src/update/
+
+
+
+## [2026-07-10] — docs: sweep stale backend/src paths in TODO+plan (00/02/05); fix plan 08 status (scope was already built, doc said 'idea only')
+
+
+
 ## [2026-07-10] — docs(structure): document zemory's own share/ sync-bundle exception in 02_STRUCTURE — was undocumented
 
 

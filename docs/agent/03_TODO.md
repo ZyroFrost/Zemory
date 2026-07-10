@@ -38,7 +38,7 @@
 - [x] C. Hybrid retrieve: vector stream đã fuse vào RRF cùng FTS; `brain search` mặc định chạy hybrid khi enabled và fallback FTS khi vector lỗi/thiếu.
 - [x] D. Benchmark gate: `brain bench` PASS; test suite xác nhận hybrid recall@3 >= FTS trên paraphrase corpus.
 - [x] Full corpus backfill: `zemory brain embed --all` đã chạy xong trên corpus lịch sử của `global_memory.db`; mốc nghiệm thu 2026-06-30 xác nhận `vec_chunks` khớp `messages` 1:1. Vì brain ingest transcript sống, message mới sau mốc này xử lý bằng `zemory brain embed` incremental.
-- [x] E. Rerank cross-encoder (opt-in) — `src/brain/rerank.ts` rescore top-40 ứng viên RRF rồi reorder; fail-open giữ thứ tự RRF; default OFF, bật qua UI toggle / `ZEMORY_RERANK=1` / `--rerank`. `brain bench --rerank` đo lane riêng; spot check brain thật xác nhận reorder tốt hơn hybrid thuần. Chi tiết plan 05 §4.E.
+- [x] E. Rerank cross-encoder (opt-in) — `backend/src/brain/rerank.ts` rescore top-40 ứng viên RRF rồi reorder; fail-open giữ thứ tự RRF; default OFF, bật qua UI toggle / `ZEMORY_RERANK=1` / `--rerank`. `brain bench --rerank` đo lane riêng; spot check brain thật xác nhận reorder tốt hơn hybrid thuần. Chi tiết plan 05 §4.E.
 - [ ] F. (TẦM NHÌN, sau core) Mở RAG sang **data chính** (ngoài memory agent): retriever **đa-store + `kind`**, chung model + retriever, DB tách được. Ý tưởng user — plan 05 §4.F.
 
 **✅ MCP global recall — đã code/test 2026-06-29:**
@@ -55,6 +55,7 @@
 **Khác (chưa làm):**
 - [ ] (Nếu cần quên tuyệt đối) Source-transcript privacy/tombstone: xóa/redact transcript gốc của agent host hoặc ghi tombstone chống whole-file adapter re-ingest lại dữ liệu đã quên.
 - [ ] (Sau) code map AST + adapter host mới (Gemini/Cursor/…) khi có fixture thật.
+
 ## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 03_CHANGES)
 > Lớp tóm tắt cấp phiên (DẪN XUẤT) để recall đọc rẻ token; đào xuống `messages` qua anchor khi cần. Spec: `docs/plan/06_digest.md`. Cụ thể hoá "memory promotion" (Phase 2) nhưng dạng lăng kính dẫn xuất, KHÔNG phải nguồn.
 - [x] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).

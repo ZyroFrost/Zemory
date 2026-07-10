@@ -33,8 +33,8 @@ schema_version     ordered DB migrations
 
 SQLite bật WAL, foreign keys, busy timeout và synchronous NORMAL để nhiều reader cùng dùng local brain.
 
-## 2. Schema và migration — nguồn thực thi ở src/brain/db.ts
-Schema thực thi duy nhất nằm trong `src/brain/db.ts`; plan không lặp một bản DDL dài dễ trôi lệch. Các invariant bắt buộc:
+## 2. Schema và migration — nguồn thực thi ở backend/src/brain/db.ts
+Schema thực thi duy nhất nằm trong `backend/src/brain/db.ts`; plan không lặp một bản DDL dài dễ trôi lệch. Các invariant bắt buộc:
 
 - `sessions.id` và `messages(session_id, uuid)` hỗ trợ ingest idempotent;
 - FTS tables đồng bộ bằng trigger insert/delete/update phù hợp;
@@ -68,3 +68,4 @@ Harness chuẩn gồm:
 - global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
+
