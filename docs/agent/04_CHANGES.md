@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-10] — fix(harness): auto-rename legacy doc filenames (02_TODO/03_CHANGES) on sync — old projects were permanently blocked from gaining 02_STRUCTURE.md
+
+Fix regression: renumber (02_TODO/03_CHANGES → 03_TODO/04_CHANGES) khoá mọi project cũ khỏi nhận 02_STRUCTURE.md.
+
+Phát hiện: user hỏi "đã áp chuẩn cho project khác chưa" → test `zemory sync` trên SasinFlow thật → nó KHÔNG kéo 02_STRUCTURE.md, báo "existing docs non-standard". Nguyên nhân: STANDARD_AGENT đổi tên nhưng project cũ vẫn giữ tên cũ (02_TODO.md/03_CHANGES.md) — filename không khớp danh sách mới → bị coi non-standard → nhánh gap-fill (fill()) không bao giờ chạy → mọi project có harness TRƯỚC lần renumber này vĩnh viễn không nhận được 02_STRUCTURE.md qua sync.
+
+Fix (backend/src/adopt.ts):
+- Thêm LEGACY_RENAME map (02_TODO.md→03_TODO.md, 03_CHANGES.md→04_CHANGES.md).
+- Trước khi tính agentMd/nonStandard: tự rename file cũ→mới (cơ học, an toàn, không đụng nội dung).
+- Vì TODO là DB-source doc (project_root+path), rename file phải kèm UPDATE doc.path trong global_memory.db (openBrain) — nếu không, project đó vĩnh viễn không match doc row, và render sau này sẽ ghi đè/tạo trùng. CHANGES không cần (nó render từ bảng changelog riêng, không phải doc table).
+- Verify: chạy `zemory sync` thật trên SasinFlow → rename đúng, 02_STRUCTURE.md (bản mới nhất, có i18n/audit/logging) gap-fill thành công, doc.path (id 136) cập nhật đúng KHÔNG tạo doc trùng. npm run check 57/57 PASS.
+
 ## [2026-07-09] — docs(structure): add server-side i18n (backend/resources/locales) — was frontend-only
 
 
