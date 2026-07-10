@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { embed, embedConfig, resetEmbed } from "../../dist/brain/embed.js";
 
-test("embedConfig defaults to EmbeddingGemma · q8 · ~/.zemory/models", () => {
+test("embedConfig defaults to EmbeddingGemma · q8 · <brain-dir>/models", () => {
   const c = embedConfig();
   assert.match(c.model, /embeddinggemma/i);
   assert.equal(c.dtype, "q8");
-  assert.match(c.cacheDir, /[\\/]\.zemory[\\/]models/);
+  // cacheDir follows the brain data dir (so it relocates off C:\ with the DB),
+  // not a fixed home path — just assert it lives in a `models` folder.
+  assert.match(c.cacheDir, /[\\/]models$/);
 });
 
 test("embed returns a unit-normalized vector when model available, else null (never throws)", async () => {

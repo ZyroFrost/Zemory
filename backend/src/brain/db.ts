@@ -7,17 +7,60 @@
 // transmitted anywhere — local-only by construction.
 
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-// Brain DB location. GLOBAL_MEMORY_DB supports an explicitly shared A.I Center
-// location; otherwise zemory owns ~/.zemory/global_memory.db.
+// Brain DB location — resolved in priority order so the DB can live OFF C:\
+// (it grows without bound) while a tiny FIXED pointer stays in the home dir:
+//   1. GLOBAL_MEMORY_DB env — explicit override (A.I Center / tests), wins always.
+//   2. ~/.zemory/location.json { dataDir } — the "move my storage" pointer.
+//   3. ~/.zemory — the historical default.
+// The pointer MUST live at a fixed home path (not next to the DB) or moving the
+// DB would move the very file that says where the DB is (chicken-and-egg).
+// Everything else (config.json, browser/, imports/, backups/) hangs off BRAIN_DIR,
+// so relocating the data dir moves the whole cluster in one step.
 const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
-export const BRAIN_DIR = ENV_DB ? dirname(ENV_DB) : join(homedir(), ".zemory");
+export const HOME_ZEMORY_DIR = join(homedir(), ".zemory");
+export const LOCATION_POINTER = join(HOME_ZEMORY_DIR, "location.json");
+
+let warnedDanglingPointer = false;
+
+function resolveBrainDir(): string {
+  if (ENV_DB) return dirname(ENV_DB);
+  try {
+    const parsed = JSON.parse(readFileSync(LOCATION_POINTER, "utf8")) as { dataDir?: unknown };
+    if (typeof parsed.dataDir === "string" && parsed.dataDir.trim()) {
+      const dir = parsed.dataDir.trim();
+      // Dangling pointer (target folder wiped, e.g. repo re-cloned without data/)
+      // would silently spawn a fresh EMPTY brain there while an old DB still sits
+      // in the home dir — warn loudly ONCE instead of "losing" the memory.
+      if (
+        !warnedDanglingPointer &&
+        !existsSync(join(dir, "global_memory.db")) &&
+        existsSync(join(HOME_ZEMORY_DIR, "global_memory.db"))
+      ) {
+        warnedDanglingPointer = true;
+        console.error(
+          `zemory: WARNING — ${LOCATION_POINTER} points to ${dir} but no brain DB is there, ` +
+            `while ${join(HOME_ZEMORY_DIR, "global_memory.db")} exists. A new EMPTY brain will be created at the pointer target. ` +
+            `If this is wrong: delete location.json (falls back to the home DB) or run \`zemory brain relocate\` again.`,
+        );
+      }
+      return dir;
+    }
+  } catch {
+    /* no pointer (or unreadable) → fall back to the home default */
+  }
+  return HOME_ZEMORY_DIR;
+}
+
+/** True while an env override is pinning the DB location (pointer is ignored). */
+export const BRAIN_DB_PINNED_BY_ENV = Boolean(ENV_DB);
+export const BRAIN_DIR = resolveBrainDir();
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -62,6 +105,7 @@ CREATE TABLE IF NOT EXISTS doc (
   path          TEXT NOT NULL,        -- e.g. "docs/plan/00_build_plan.md"
   kind          TEXT NOT NULL DEFAULT 'plan',
   rendered_at   TEXT,
+  rendered_hash TEXT,                  -- sha1 of the last render → detect hand-edits before overwriting
   UNIQUE(project_root, path)
 );
 
@@ -352,11 +396,33 @@ function migrate(db: BrainDB, fromVersion: number): void {
     db.exec("UPDATE recall_savings SET feature='recall' WHERE feature IN ('search','show')");
     version = 9;
   }
+  if (version < 10) {
+    // v10 adds doc.rendered_hash (sha1 of the last render) so renderDoc can spot
+    // a hand-edited mirror and salvage it instead of silently overwriting. NULL
+    // on old rows = "unknown" → first render treats the file as trusted.
+    if (!hasColumn(db, "doc", "rendered_hash")) {
+      db.exec("ALTER TABLE doc ADD COLUMN rendered_hash TEXT");
+    }
+    version = 10;
+  }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
 
-/** Open (creating if needed) the global brain DB with schema applied. */
-export function openBrain(dbPath: string = BRAIN_DB): BrainDB {
+/** Re-resolve the data dir NOW (reads the pointer fresh) so a long-lived process
+ *  — e.g. the `zemory ui` server — picks up a `brain relocate` without a restart. */
+export function currentBrainDir(): string {
+  return ENV_DB ? dirname(ENV_DB) : resolveBrainDir();
+}
+
+/** Same, for the DB file itself. Prefer this over the `BRAIN_DB` const as a
+ *  default everywhere — the const freezes the location at process start. */
+export function currentBrainDb(): string {
+  return ENV_DB || join(resolveBrainDir(), "global_memory.db");
+}
+
+/** Open (creating if needed) the global brain DB with schema applied. Defaults to
+ *  the freshly-resolved path so relocation is honoured mid-process. */
+export function openBrain(dbPath: string = currentBrainDb()): BrainDB {
   const dbDir = dirname(dbPath);
   if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
   const db = new Database(dbPath);

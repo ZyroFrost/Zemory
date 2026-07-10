@@ -12,7 +12,7 @@
 
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
-import { BRAIN_DB } from "./db.js";
+import { currentBrainDb } from "./db.js";
 import { embed, embedBatch } from "./embed.js";
 
 type Conn = Database.Database;
@@ -82,7 +82,7 @@ export interface EmbedProgress {
 export async function embedPending(
   opts: { dbPath?: string; limit?: number; batchSize?: number; onProgress?: (progress: EmbedProgress) => void } = {},
 ): Promise<EmbedPendingResult> {
-  const dbPath = opts.dbPath ?? BRAIN_DB;
+  const dbPath = opts.dbPath ?? currentBrainDb();
   const limit = opts.limit ?? 500;
   const batchSize = Math.max(1, opts.batchSize ?? 4);
   const db = vecConnect(dbPath);
@@ -151,7 +151,7 @@ export interface VecRank {
 export async function vectorRanks(query: string, opts: { dbPath?: string; pool?: number } = {}): Promise<VecRank[]> {
   // Fully fail-open: embed failure, missing sqlite-vec, or no table → [] (FTS-only).
   try {
-    const dbPath = opts.dbPath ?? BRAIN_DB;
+    const dbPath = opts.dbPath ?? currentBrainDb();
     const probe = vecConnect(dbPath);
     try {
       if (!tableExists(probe)) return [];
@@ -176,7 +176,7 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
 }
 
 /** How many message vectors are stored. */
-export function vectorCount(dbPath: string = BRAIN_DB): number {
+export function vectorCount(dbPath: string = currentBrainDb()): number {
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) return 0;
@@ -187,7 +187,7 @@ export function vectorCount(dbPath: string = BRAIN_DB): number {
 }
 
 /** How many non-empty messages still need an embedding. */
-export function vectorRemaining(dbPath: string = BRAIN_DB): number {
+export function vectorRemaining(dbPath: string = currentBrainDb()): number {
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) {

@@ -3,12 +3,12 @@
 // small (a few lines) to stay within a tight token budget. Returns "" when the
 // project has no prior brain history (nothing to inject).
 
-import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
+import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
 
 const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
-export function recallCard(project: string, dbPath: string = BRAIN_DB): string {
+export function recallCard(project: string, dbPath: string = currentBrainDb()): string {
   const db: BrainDB = openBrain(dbPath);
   try {
     const want = norm(project);

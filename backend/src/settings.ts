@@ -4,9 +4,13 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { BRAIN_DIR } from "./brain/db.js";
+import { currentBrainDir } from "./brain/db.js";
 
-const CONFIG_PATH = join(BRAIN_DIR, "config.json");
+// Resolved per call (not a module const) so a `brain relocate` mid-process makes
+// every subsequent read/write hit the config.json that moved with the data dir.
+function configPath(): string {
+  return join(currentBrainDir(), "config.json");
+}
 
 /** A provenance lane selector. Fields left undefined act as wildcards, so
  *  `{origin:'web'}` matches every web session and `{origin:'local',host:'X',
@@ -31,15 +35,16 @@ interface ZConfig {
 
 function read(): ZConfig {
   try {
-    return JSON.parse(readFileSync(CONFIG_PATH, "utf8")) as ZConfig;
+    return JSON.parse(readFileSync(configPath(), "utf8")) as ZConfig;
   } catch {
     return {};
   }
 }
 
 function write(c: ZConfig): void {
-  mkdirSync(dirname(CONFIG_PATH), { recursive: true });
-  writeFileSync(CONFIG_PATH, `${JSON.stringify(c, null, 2)}\n`);
+  const path = configPath();
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(c, null, 2)}\n`);
 }
 
 /** Hybrid recall on? Default true (benchmark gate passed). */

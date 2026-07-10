@@ -8,11 +8,11 @@
 // Config-driven so swapping the model is config, not a rewrite:
 //   ZEMORY_EMBED_MODEL  (default EmbeddingGemma-300M, multilingual incl Vietnamese)
 //   ZEMORY_EMBED_DTYPE  (default q8 — quantized, ~light)
-//   ZEMORY_MODEL_DIR    (weight cache; default ~/.zemory/models — never committed)
+//   ZEMORY_MODEL_DIR    (weight cache; default <brain-dir>/models — never committed)
 
-import { homedir } from "node:os";
 import { join } from "node:path";
 import type { FeatureExtractionPipeline } from "@huggingface/transformers";
+import { currentBrainDir } from "./db.js";
 
 const DTYPES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"] as const;
 type Dtype = (typeof DTYPES)[number];
@@ -32,7 +32,7 @@ export function embedConfig(): EmbedConfig {
   return {
     model: process.env.ZEMORY_EMBED_MODEL?.trim() || DEFAULT_MODEL,
     dtype: d && DTYPES.includes(d) ? d : "q8",
-    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(homedir(), ".zemory", "models"),
+    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentBrainDir(), "models"),
   };
 }
 

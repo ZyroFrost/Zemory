@@ -3,7 +3,7 @@
 // is regenerated with active rows only. No second archive file is created.
 
 import { join } from "node:path";
-import { BRAIN_DB, openBrain } from "./brain/db.js";
+import { currentBrainDb, openBrain } from "./brain/db.js";
 import type { Context } from "./core/types.js";
 import { renderChangelog } from "./docs/changelog.js";
 
@@ -32,7 +32,7 @@ function totalLines(entries: ActiveEntry[]): number {
 }
 
 /** Mark oldest active changelog rows archived until the mirror is under keep. */
-export function archiveChanges(ctx: Context, dbPath: string = BRAIN_DB): ArchiveResult {
+export function archiveChanges(ctx: Context, dbPath: string = currentBrainDb()): ArchiveResult {
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;
   const keep = ctx.config.thresholds?.changes_keep ?? Math.round(threshold * 0.6);
   const db = openBrain(dbPath);
