@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-10] — docs(structure): split version-up into AUTO (update/) vs MANUAL deploy-to-VM (git tag+dist+deploy-script+attic backup)
+
+
+
 ## [2026-07-10] — docs(structure): wire update/ to attic/(backup)+dist/(build)+migrations/(schema) — was floating alone
 
 
