@@ -210,8 +210,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     overflow: hidden;
   }
   .commandbar {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     min-width: 0;
@@ -245,7 +245,42 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .commandbar .search-command input { flex: 1 1 auto; min-width: 0; border: 0; box-shadow: none; background: transparent; padding: 0; }
   .commandbar .drive-state { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .icon-btns { display: flex; gap: 6px; justify-content: flex-end; }
-  .icon-btns button { min-width: 32px; height: 32px; padding: 0; border-radius: 6px; }
+  .icon-btns button { min-width: 32px; height: 32px; padding: 0 12px; border-radius: 6px; }
+  .field.pill-btn { cursor: pointer; }
+  .field.pill-btn:hover { border-color: var(--line-strong); color: var(--text); }
+  .field.pill-btn b { color: var(--text); font-weight: 600; }
+  button.set-open { color: var(--green2, #b5efc8); border-color: var(--green-dim, #2f6b48) !important; background: rgba(120,223,155,.09); font-weight: 600; white-space: nowrap; }
+  button.set-open:hover { background: rgba(120,223,155,.16); }
+  /* Settings modal — tabbed, one fixed size (see 01_RULES §Thiết kế UI). */
+  .settings-modal { display: grid; grid-template-columns: 190px 1fr; width: min(96vw, 780px); max-height: 88vh;
+    border: 1px solid var(--line-strong); border-radius: 16px; background: #101713; box-shadow: var(--shadow); overflow: hidden; }
+  .set-side { background: rgba(0,0,0,.28); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .set-title { font-size: 14px; font-weight: 700; color: var(--text); padding: 2px 8px 12px; }
+  .set-tab { text-align: left; background: transparent; color: var(--muted); border: 0; border-radius: 8px; padding: 9px 11px; cursor: pointer; font-size: 12.5px; }
+  .set-tab:hover { color: var(--text); background: rgba(255,255,255,.05); }
+  .set-tab.on { color: var(--green2, #b5efc8); background: rgba(120,223,155,.1); }
+  .set-body { position: relative; padding: 22px 24px; overflow: auto; }
+  .set-close { position: absolute; top: 14px; right: 16px; background: none; border: 0; color: var(--faint); font-size: 18px; cursor: pointer; }
+  .set-pane { display: none; }
+  .set-pane.on { display: block; }
+  .set-pane h2 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+  .set-desc { color: var(--muted); font-size: 12px; margin: 0 0 18px; line-height: 1.5; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .set-row:first-of-type { border-top: 0; }
+  .set-lab { font-size: 12.5px; color: var(--text); }
+  .set-lab small { display: block; color: var(--faint); font-size: 11px; margin-top: 3px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 14px; cursor: pointer; font-size: 12px; }
+  .seg button.on { background: var(--green); color: #07110e; font-weight: 700; }
+  .path-box { display: flex; gap: 8px; }
+  .path-box input { flex: 1; min-width: 0; background: rgba(5,10,9,.5); border: 1px solid var(--line); color: var(--text); border-radius: 7px; padding: 8px 10px; font: 11px var(--mono); }
+  .mini-btn { border: 1px solid var(--green-dim, #2f6b48); background: rgba(120,223,155,.09); color: var(--green2, #b5efc8); border-radius: 7px; padding: 0 13px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .mini-btn.ghost { border-color: var(--line); background: rgba(255,255,255,.05); color: var(--muted); }
+  .set-warn { margin-top: 12px; font-size: 11.5px; color: var(--amber); background: rgba(230,180,90,.08); border: 1px solid rgba(230,180,90,.28); border-radius: 8px; padding: 9px 11px; }
+  .sw { width: 38px; height: 21px; border-radius: 999px; background: rgba(255,255,255,.1); border: 1px solid var(--line); position: relative; cursor: pointer; flex: 0 0 auto; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--faint); transition: left .15s, background .15s; }
+  .sw.on { background: var(--green-dim, #2f6b48); border-color: var(--green-dim, #2f6b48); }
+  .sw.on::after { left: 19px; background: var(--green2, #b5efc8); }
   .status-deck {
     display: grid;
     grid-template-columns: 1.35fr .78fr .78fr 1.18fr 1.18fr 1.05fr;
@@ -637,7 +672,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     white-space: pre-wrap;
     font-size: 12px;
   }
-  #overlay, #docOverlay, #sessionOverlay, #syncOverlay {
+  #settingsOverlay, #docOverlay, #sessionOverlay, #syncOverlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -768,22 +803,17 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <span class="brand-logo"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zbrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#78df9b"/><stop offset="1" stop-color="#b5efc8"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#zbrand)"/><g stroke="#08100e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="#08100e"><path fill="none" d="M16 16 L10.5 10 M16 16 L21.5 9.5 M16 16 L22 21.5 M16 16 L10 21.5"/><circle cx="16" cy="16" r="2.7"/><circle cx="10.5" cy="10" r="2"/><circle cx="21.5" cy="9.5" r="2"/><circle cx="22" cy="21.5" r="2"/><circle cx="10" cy="21.5" r="2"/></g></svg></span>
         <div class="brand-text">
           <h1>zemory</h1>
-          <p>Memory & docs harness for coding agents · v0.0.1</p>
+          <p>Bộ nhớ &amp; harness docs cho agent lập trình · v0.0.1</p>
         </div>
       </div>
       <div class="rail-scroll">
-        <section class="panel" id="project" data-grow="rail0" data-grow-default="1.6" style="flex-grow:1.6">
-          <div class="panel-head"><div><h3>Project harness<span class="q" title="A per-project docs harness: rules + TODO + changelog (docs/.harness.json + docs/agent/*.md) that zemory reads and keeps in sync. The brain is GLOBAL; this only chooses which project's harness files to view/apply. Pick a project below; click a doc to read it.">?</span></h3><p>Docs &amp; rules for the selected project.</p></div></div>
+        <section class="panel" id="project" data-grow="rail0" data-grow-default="1" style="flex-grow:1">
+          <div class="panel-head"><div><h3 data-i18n="proj.title">Dự án</h3><p data-i18n="proj.sub">Docs &amp; quy tắc của dự án đang chọn.</p></div></div>
           <div class="panel-pad">
-            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Run harness: restructure this project's docs to the standard (scaffold missing, number plan, never overwrite the DB source)" onclick="runHarness()">Run</button><button class="ghost" title="Setup / fresh" onclick="openMenu()">⚙</button></div>
-            <div class="proj-add"><input id="newProj" placeholder="Add project by folder path…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()">+ Add</button></div>
+            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)" onclick="runHarness()" data-i18n="proj.run">Chạy</button><button class="ghost" title="Cài đặt" onclick="openSettings()">⚙</button></div>
+            <div class="proj-add"><input id="newProj" placeholder="Thêm dự án bằng đường dẫn folder…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()" data-i18n="proj.add">+ Thêm</button></div>
             <div id="app" style="margin-top:8px"></div>
           </div>
-        </section>
-        <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
-        <section class="panel" id="checks" data-grow="rail1" data-grow-default="1" style="flex-grow:1">
-          <div class="panel-head"><div><h3>Capability checks<span class="q" title="Live probes that zemory's core capabilities actually run on this machine: full-text + Vietnamese search, cross-session recall, docs-harness validation, and the grill workflow. Green bar = working. NOT about compression (dropped).">?</span></h3><p>Do the core features actually run?</p></div><button class="ghost" onclick="runChecks()">Re-test</button></div>
-          <div class="panel-pad" id="checksBody"></div>
         </section>
       </div>
     </aside>
@@ -791,24 +821,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
     <main class="workspace">
       <header class="commandbar">
-        <div class="field"><span class="live-dot"></span> Env local</div>
-        <div class="field">↗ CLI connected</div>
-        <div class="search-command" title="Folder where encrypted memory bundles are synced (Google Drive / OneDrive). Each machine exports its bundle here; the others merge it. The live DB is NOT synced.">
-          <span>☁</span>
-          <input type="text" id="driveLink" placeholder="Drive sync folder, e.g. G:\My Drive\zemory ..." onkeydown="if(event.key==='Enter')testDrive()">
-          <span id="driveState" class="drive-state"></span>
-        </div>
-        <div class="search-command" title="Nơi lưu DB brain trên máy (mặc định ~/.zemory ở ổ C). Đổi sang ổ khác để ổ C không phình. KHÔNG chọn folder Google Drive/OneDrive đang sync (DB đang mở sẽ hỏng).">
-          <span>🗄</span>
-          <input type="text" id="storageLink" placeholder="Nơi lưu brain (máy), vd D:\Zyro\Tool\Zemory\data ..." onkeydown="if(event.key==='Enter')relocateStorage()">
-          <span id="storageState" class="drive-state"></span>
-        </div>
-        <div class="icon-btns">
-          <button class="ghost" id="driveBtn" title="Test connection & link this Drive folder" onclick="testDrive()">Link</button>
-          <button class="ghost" id="syncBtn" title="Sync now: export this machine's bundle to the Drive folder + merge every other machine's bundle there" onclick="driveSync()">⟳ Sync</button>
-          <button class="ghost" id="relocateBtn" title="Dời DB brain sang folder ở ô 'Nơi lưu' (verify + giữ .bak bản cũ; không dời được vào folder Drive-sync)" onclick="relocateStorage()">⇄ Dời</button>
-          <button class="ghost" title="Setup" onclick="openMenu()">⚙</button>
-          <button class="ghost" title="Refresh" onclick="manualRefresh()">↻</button>
+        <div class="field"><span class="live-dot"></span> <span data-i18n="bar.env">Máy: local</span></div>
+        <div class="field">↗ CLI</div>
+        <div class="field pill-btn" id="storagePill" title="Nơi lưu DB brain — bấm để mở Cài đặt" onclick="openSettings('storage')">🗄 <span id="storagePillTxt">—</span></div>
+        <div class="field pill-btn" id="drivePill" title="Đồng bộ Drive — bấm để mở Cài đặt" onclick="openSettings('drive')">☁ <span id="drivePillTxt">—</span></div>
+        <div class="icon-btns" style="margin-left:auto">
+          <button class="ghost set-open" title="Cài đặt" onclick="openSettings()">⚙ <span data-i18n="bar.settings">Cài đặt</span></button>
+          <button class="ghost" title="Làm mới" onclick="manualRefresh()">↻</button>
         </div>
       </header>
 
@@ -816,43 +835,43 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <div class="recall-head">
           <div class="recall-title">
             <h2>Recall</h2>
-            <p>Search past Codex, Claude, Continue, and LM Studio sessions.</p>
+            <p data-i18n="recall.sub">Tìm trong các phiên Codex, Claude, Continue, LM Studio đã lưu.</p>
           </div>
         </div>
         <div class="searchline">
-          <input type="text" id="bq" placeholder="how we implemented streaming tool output for agents" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
-          <button onclick="brainSearch(true)">Search ⌘↵</button>
+          <input type="text" id="bq" placeholder="ví dụ: cách stream tool output cho agent" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
+          <button onclick="brainSearch(true)"><span data-i18n="recall.search">Tìm</span> ⌘↵</button>
         </div>
         <div class="filterline">
-          <label class="toggle" title="Search every project's sessions (the brain is global). Off = only the selected project."><input type="checkbox" id="ball" checked onchange="setScope()"> Scope: all projects</label>
-          <label class="toggle" title="Semantic recall: FTS + vector. Off = keyword FTS only."><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
-          <label class="toggle" title="Cross-encoder rerank: rescore the top hybrid candidates for sharper order. Needs the reranker model."><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
-          <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Filter by recency">
-            <option value="0">Time: any</option><option value="1">Last 24h</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option>
+          <label class="toggle" title="Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn."><input type="checkbox" id="ball" checked onchange="setScope()"> <span data-i18n="recall.scope">Mọi dự án</span></label>
+          <label class="toggle" title="Recall semantic: FTS + vector. Tắt = chỉ keyword FTS."><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
+          <label class="toggle" title="Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker."><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
+          <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Lọc theo thời gian">
+            <option value="0">Thời gian: mọi lúc</option><option value="1">24h qua</option><option value="7">7 ngày</option><option value="30">30 ngày</option><option value="90">90 ngày</option>
           </select>
-          <select id="fType" class="filter-sel" onchange="brainSearch()" title="Filter by message role">
-            <option value="">Type: any</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
+          <select id="fType" class="filter-sel" onchange="brainSearch()" title="Lọc theo vai trò message">
+            <option value="">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
           </select>
-          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = agent transcripts on disk; Web = captured web-chat (ChatGPT/…)">
-            <option value="">Origin: any</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
+          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)">
+            <option value="">Nguồn: mọi</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
           </select>
-          <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Filter by agent/source">
-            <option value="">Agent: any</option>
+          <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Lọc theo agent/nguồn">
+            <option value="">Agent: mọi</option>
           </select>
-          <span class="tiny" style="margin-left:auto;cursor:pointer" id="queryHint" onclick="clearFilters()">Clear</span>
+          <span class="tiny" style="margin-left:auto;cursor:pointer" id="queryHint" onclick="clearFilters()" data-i18n="recall.clear">Xoá lọc</span>
         </div>
         <div class="result-meta">
-          <span id="resultCount">Type at least 2 characters to search.</span>
-          <span id="sortState" onclick="cycleSort()" title="Click to change sort (relevance / newest / oldest)">Sorted by relevance ⇅</span>
+          <span id="resultCount" data-i18n="recall.hint">Gõ ít nhất 2 ký tự để tìm.</span>
+          <span id="sortState" onclick="cycleSort()" title="Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)">Sắp theo liên quan ⇅</span>
         </div>
         <div class="recall-workbench">
           <div id="brainhits" class="result-list">
-            <div class="empty">Search opens a ranked result list here.</div>
+            <div class="empty" data-i18n="recall.empty">Kết quả tìm sẽ hiện ở đây.</div>
           </div>
-          <div class="resize-handle vertical" data-resize="recall" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize results and preview. Double-click to reset."></div>
+          <div class="resize-handle vertical" data-resize="recall" role="separator" aria-orientation="vertical" tabindex="0" title="Kéo để chỉnh cỡ. Bấm đúp để reset."></div>
           <div id="threadPreview" class="preview">
-            <div class="preview-title"><b>Thread preview</b><span>waiting</span></div>
-            <div class="empty">Select a result to preview nearby messages without leaving the cockpit.</div>
+            <div class="preview-title"><b data-i18n="recall.preview">Xem trước phiên</b><span data-i18n="recall.waiting">chờ</span></div>
+            <div class="empty" data-i18n="recall.previewEmpty">Chọn một kết quả để xem các message lân cận ngay tại đây.</div>
           </div>
         </div>
       </section>
@@ -863,32 +882,91 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
     <aside class="inspector">
       <section class="panel" id="brain" data-grow="insp0" data-grow-default="2.1" style="flex-grow:2.1">
-        <div class="panel-head"><div><h3>Global memory<span class="q" title="The whole brain in one local SQLite DB (~/.zemory/global_memory.db): totals, then sessions/messages broken down by machine and by agent, plus raw table sizes. 'Search' = current recall mode. Local + rebuildable from transcripts.">?</span></h3><p id="memSub">One SQLite brain.</p></div></div>
+        <div class="panel-head"><div><h3 data-i18n="mem.title">Bộ nhớ toàn cục</h3><p id="memSub">One SQLite brain.</p></div></div>
         <div class="panel-pad" id="memoryPanel"></div>
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       <section class="panel" id="capture" data-grow="insp1" data-grow-default=".85" style="flex-grow:.85">
-        <div class="panel-head"><div><h3>Scan &amp; capture<span class="q" title="Read agent transcripts on THIS machine into the brain. 'Scan known' re-reads known stores (fast); 'Deep scan' walks the whole disk to find new agent folders.">?</span></h3><p>Pull new context from this machine.</p></div></div>
+        <div class="panel-head"><div><h3><span data-i18n="scan.title">Quét &amp; thu thập</span><span class="q" title="Đọc transcript agent trên MÁY NÀY vào brain. 'Quét nhanh' đọc lại store đã biết (nhanh); 'Quét sâu' rà cả ổ đĩa tìm folder agent mới.">?</span></h3><p data-i18n="scan.sub">Kéo ngữ cảnh mới từ máy này.</p></div></div>
         <div class="panel-pad">
-          <div class="action-stack"><button onclick="brainScan(false)">Scan known</button><button class="ghost warn" onclick="brainScan(true)">Deep scan</button></div>
+          <div class="action-stack"><button onclick="brainScan(false)" data-i18n="scan.known">Quét nhanh</button><button class="ghost warn" onclick="brainScan(true)" data-i18n="scan.deep">Quét sâu</button></div>
           <div id="brainmsg" style="margin-top:10px"></div>
           <div id="brainreport" class="mini-list" style="margin-top:8px"></div>
         </div>
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       <section class="panel" id="coverage" data-grow="insp2" data-grow-default="1.1" style="flex-grow:1.1">
-        <div class="panel-head"><div><h3>Projects<span class="q" title="Project folders that have captured sessions, with per-project session / message / agent counts.">?</span></h3><p>Project folders with captured sessions.</p></div></div>
+        <div class="panel-head"><div><h3><span data-i18n="proj2.title">Dự án</span><span class="q" title="Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án.">?</span></h3><p data-i18n="proj2.sub">Folder dự án đã có phiên được thu.</p></div></div>
         <div class="panel-pad" id="coveragePanel"></div>
       </section>
     </aside>
   </div>
 
-  <div id="overlay" onclick="if(event.target===this)closeMenu()">
-    <div class="modal s">
-      <div class="mtitle">Setup actions - <span id="mproj"></span></div>
-      <button class="opt" onclick="act('/sync')"><b>Sync</b><span>Add missing docs, never overwrite DB source.</span></button>
-      <button class="opt warn" onclick="actConfirm('/init-fresh','Rename current docs aside (docs.old-...) and create a fresh set?')"><b>Fresh start</b><span>Keep old docs aside, create clean set.</span></button>
-      <button class="opt cancel" onclick="closeMenu()">Cancel</button>
+  <div id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-modal">
+      <div class="set-side">
+        <div class="set-title">⚙ <span data-i18n="set.title">Cài đặt</span></div>
+        <button class="set-tab on" data-pane="lang" onclick="setSettingsTab(this)">🌐 <span data-i18n="set.lang">Ngôn ngữ</span></button>
+        <button class="set-tab" data-pane="storage" onclick="setSettingsTab(this)">🗄 <span data-i18n="set.storage">Nơi lưu</span></button>
+        <button class="set-tab" data-pane="drive" onclick="setSettingsTab(this)">☁ Drive</button>
+        <button class="set-tab" data-pane="search" onclick="setSettingsTab(this)">🔍 <span data-i18n="set.search">Tìm kiếm</span></button>
+        <button class="set-tab" data-pane="health" onclick="setSettingsTab(this)">🩺 <span data-i18n="set.health">Kiểm tra</span></button>
+        <button class="set-tab" data-pane="docs" onclick="setSettingsTab(this)">📄 Docs harness</button>
+      </div>
+      <div class="set-body">
+        <button class="set-close" onclick="closeSettings()" title="Đóng">✕</button>
+
+        <div class="set-pane on" data-pane="lang">
+          <h2 data-i18n="lang.h">Ngôn ngữ giao diện</h2>
+          <p class="set-desc" data-i18n="lang.d">Chọn một ngôn ngữ cho toàn bộ giao diện. Thuật ngữ kỹ thuật (Recall, Hybrid, FTS5…) giữ nguyên.</p>
+          <div class="set-row"><div class="set-lab"><span data-i18n="lang.row">Ngôn ngữ</span><small data-i18n="lang.note">Áp dụng ngay, lưu vào config.json.</small></div>
+            <div class="seg"><button id="langVi" class="on" onclick="setLangUI('vi')">Tiếng Việt</button><button id="langEn" onclick="setLangUI('en')">English</button></div></div>
+        </div>
+
+        <div class="set-pane" data-pane="storage">
+          <h2 data-i18n="storage.h">Nơi lưu dữ liệu</h2>
+          <p class="set-desc" data-i18n="storage.d">DB brain nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.</p>
+          <div class="set-lab" data-i18n="storage.folder">Thư mục lưu brain</div>
+          <div class="path-box">
+            <input type="text" id="storageLink" placeholder="vd D:\Zyro\Tool\Zemory\data" onkeydown="if(event.key==='Enter')relocateStorage()">
+            <button class="mini-btn" id="relocateBtn" onclick="relocateStorage()">⇄ <span data-i18n="storage.move">Dời</span></button>
+          </div>
+          <div id="storageState" class="drive-state" style="margin-top:8px"></div>
+          <div class="set-warn" data-i18n="storage.warn">⚠ Không chọn folder Google Drive / OneDrive đang sync — DB đang mở sẽ hỏng.</div>
+        </div>
+
+        <div class="set-pane" data-pane="drive">
+          <h2 data-i18n="drive.h">Đồng bộ qua Drive</h2>
+          <p class="set-desc" data-i18n="drive.d">Mỗi máy xuất một bundle mã hoá vào folder Drive; máy khác merge vào. DB sống KHÔNG bị sync trực tiếp.</p>
+          <div class="set-lab" data-i18n="drive.folder">Folder Drive</div>
+          <div class="path-box">
+            <input type="text" id="driveLink" placeholder="vd G:\My Drive\zemory" onkeydown="if(event.key==='Enter')testDrive()">
+            <button class="mini-btn ghost" id="driveBtn" onclick="testDrive()">Link</button>
+            <button class="mini-btn" id="syncBtn" onclick="driveSync()">⟳ Sync</button>
+          </div>
+          <div id="driveState" class="drive-state" style="margin-top:8px"></div>
+        </div>
+
+        <div class="set-pane" data-pane="search">
+          <h2 data-i18n="search.h">Mặc định tìm kiếm</h2>
+          <p class="set-desc" data-i18n="search.d">Bật/tắt cũng đổi ngay trên thanh Recall. Lưu vào config.json.</p>
+          <div id="searchPrefs"></div>
+        </div>
+
+        <div class="set-pane" data-pane="health">
+          <h2 data-i18n="health.h">Kiểm tra hệ thống</h2>
+          <p class="set-desc" data-i18n="health.d">Các tính năng lõi có chạy được trên máy này không (FTS5, recall, harness).</p>
+          <div style="margin-bottom:10px"><button class="mini-btn ghost" onclick="runChecks()" data-i18n="health.retest">Kiểm tra lại</button></div>
+          <div id="checksBody"></div>
+        </div>
+
+        <div class="set-pane" data-pane="docs">
+          <h2>Docs harness</h2>
+          <p class="set-desc" data-i18n="docs.d">Đồng bộ / dựng lại bộ docs chuẩn cho dự án. Không bao giờ ghi đè nguồn trong DB.</p>
+          <button class="opt" onclick="act('/sync')"><b>Sync</b><span data-i18n="docs.sync">Thêm docs còn thiếu, giữ nguyên nguồn DB.</span></button>
+          <button class="opt warn" onclick="actConfirm('/init-fresh','Dời docs hiện tại sang bên (docs.old-…) và tạo bộ mới?')"><b data-i18n="docs.fresh">Dựng mới</b><span data-i18n="docs.freshD">Giữ docs cũ sang bên, tạo bộ sạch.</span></button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1224,14 +1302,14 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     // Shared standard (docs-template/) — the canonical harness applied to EVERY
     // project. Read-only reference; NOT this or any project's own docs.
     const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_STRUCTURE.md', 'agent/02_STRUCTURE.md'], ['03_TODO.md', 'agent/03_TODO.md'], ['04_CHANGES.md', 'agent/04_CHANGES.md']];
-    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">Shared standard <span class="q" title="The canonical harness in docs-template/ — ships with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts into a project. Read-only reference (edit the standard in docs-template/).">?</span></div>';
-    h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="Open standard ' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
-    h += row(last.project.name || 'No project', last.project.connected ? 'on' : 'off', last.project.root || 'run zemory init', 'Whether the selected folder has docs/.harness.json.');
-    h += '<div class="tiny" style="margin:8px 0 4px">Project docs (this instance — click to read)</div>';
-    h += '<div class="chips" style="margin-bottom:10px">' + (last.docs || []).map(d => '<span class="chip doc-link ' + (d.ok ? 'on' : 'off') + '" onclick="openDoc(\'' + esc(d.file) + '\')" title="Open ' + esc(d.file) + '">' + esc(d.file) + '</span>').join('') + '</div>';
-    if(last.setup) h += row('Setup / onboarding', last.setup.complete ? 'on' : 'warn', last.setup.detail, 'Required docs plus plan are present.');
-    if(last.plan) h += row('Plan mirror', last.plan.needsReconcile ? 'warn' : (last.plan.exists ? 'on' : 'planned'), last.plan.detail, 'docs/plan mirrors come from global_memory.db.');
-    h += '<div class="chips" style="margin-top:10px">' + chip(docsOk + '/' + (last.docs || []).length + ' docs', docsOk === (last.docs || []).length ? 'on' : 'off') + chip((last.knownProjects || []).length + ' known projects', 'on') + '</div>';
+    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">Chuẩn dùng chung <span class="q" title="Harness chuẩn trong docs-template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs-template/).">?</span></div>';
+    h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="Mở chuẩn ' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
+    h += row(last.project.name || 'Chưa có dự án', last.project.connected ? 'on' : 'off', last.project.root || 'chạy zemory init', 'Folder đang chọn có docs/.harness.json hay không.');
+    h += '<div class="tiny" style="margin:8px 0 4px">Docs dự án này (bấm để đọc)</div>';
+    h += '<div class="chips" style="margin-bottom:10px">' + (last.docs || []).map(d => '<span class="chip doc-link ' + (d.ok ? 'on' : 'off') + '" onclick="openDoc(\'' + esc(d.file) + '\')" title="Mở ' + esc(d.file) + '">' + esc(d.file) + '</span>').join('') + '</div>';
+    if(last.setup) h += row('Cài đặt / onboarding', last.setup.complete ? 'on' : 'warn', last.setup.detail, 'Đủ docs bắt buộc + plan chưa.');
+    if(last.plan) h += row('Bản sao plan', last.plan.needsReconcile ? 'warn' : (last.plan.exists ? 'on' : 'planned'), last.plan.detail, 'docs/plan là bản render từ global_memory.db.');
+    h += '<div class="chips" style="margin-top:10px">' + chip(docsOk + '/' + (last.docs || []).length + ' docs', docsOk === (last.docs || []).length ? 'on' : 'off') + chip((last.knownProjects || []).length + ' dự án đã biết', 'on') + '</div>';
     el('app').innerHTML = h;
     renderChecks();
   }
@@ -1288,8 +1366,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('hybrid').checked = !!brain.hybrid;
     el('rerank').checked = !!brain.rerank;
     el('ball').checked = brain.scope !== false;
+    if(!window.__langApplied){ window.__langApplied = true; applyLang(brain.lang || 'vi'); }
+    if(el('settingsOverlay').style.display === 'flex') renderSettingsSearch();
     const fa = el('fAgent'); const faCur = fa.value;
-    fa.innerHTML = '<option value="">Agent: any</option>' + (brain.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
+    fa.innerHTML = '<option value="">Agent: mọi</option>' + (brain.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
     fa.value = faCur;
     const drive = brain.drive || {};
     if(document.activeElement !== el('driveLink')) el('driveLink').value = drive.path || '';
@@ -1298,27 +1378,27 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(storage && document.activeElement !== el('storageLink')) el('storageLink').value = storage.dir || '';
     renderStorageState(storage);
     const vectorCoverage = vectors.coverage == null ? '-' : vectors.coverage + '%';
-    el('memSub').textContent = (t.sessions ? 'Healthy' : 'Empty') + ' · updated ' + fmtTime(brain.generatedAt);
+    el('memSub').textContent = (t.sessions ? 'Khoẻ' : 'Trống') + ' · cập nhật ' + fmtTime(brain.generatedAt);
     el('memoryPanel').innerHTML =
       '<div class="coverage-stats">' +
-      '<div class="coverage-stat"><b>' + fmtN(t.messages) + '</b><span>messages</span></div>' +
-      '<div class="coverage-stat"><b>' + fmtN(t.sessions) + '</b><span>sessions</span></div>' +
-      '<div class="coverage-stat"><b>~' + fmtN(brain.tokensEst) + '</b><span>tokens captured</span></div>' +
-      '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>DB size</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtN(t.messages) + '</b><span>tin nhắn</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtN(t.sessions) + '</b><span>phiên</span></div>' +
+      '<div class="coverage-stat"><b>~' + fmtN(brain.tokensEst) + '</b><span>token đã thu</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>dung lượng DB</span></div>' +
       '</div>' +
       '<div class="mini-list" style="margin-top:8px">' +
-      miniRow('Capture cost', '0 extra tokens · free<span class="q" title="Capture is free: hooks read agent transcript FILES on session end — no model call, no API cost. This is the honest number. zemory does NOT show a fake \'tokens saved\' metric — recall/index benefits are counterfactual and were removed (see docs/plan/10). ~tokens captured = SUM(len)/4, a real measure of how much context the brain holds, not a bill reduction.">?</span>') +
-      miniRow('Search', (brain.hybrid ? 'BM25 + Vector' : 'FTS only') + (brain.rerank ? ' + rerank' : '')) +
-      miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' pending') : '') + (vectors.error ? ' · error' : '')) +
+      miniRow('Chi phí thu', '0 token phụ trội · free<span class="q" title="Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. Đây là con số thật. zemory KHÔNG hiện chỉ số \'token saved\' phịa — lợi ích recall/index là counterfactual và đã gỡ (xem docs/plan/10). ~token đã thu = SUM(len)/4, đo lượng ngữ cảnh brain đang giữ, không phải giảm hoá đơn.">?</span>') +
+      miniRow('Tìm kiếm', (brain.hybrid ? 'BM25 + Vector' : 'chỉ FTS') + (brain.rerank ? ' + rerank' : '')) +
+      miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' chờ') : '') + (vectors.error ? ' · lỗi' : '')) +
       '</div>' +
-      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">Sources' + (brain.scopeExcluded ? ' · ' + brain.scopeExcluded + ' excluded' : '') + ' — untick to leave out of sync + recall<span class="q" title="Which provenance lanes (Local machine/agent, Web platform) feed sync + recall. Untick a shared or noisy lane to keep it out — this serves BOTH the harness (clean provenance, no cross-project mixing) AND token optimization (less irrelevant memory pulled into recall = fewer tokens). A filter, not a delete: data stays in the local DB.">?</span></div>' +
+      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">Nguồn' + (brain.scopeExcluded ? ' · loại ' + brain.scopeExcluded : '') + ' — bỏ tick để loại khỏi sync + recall<span class="q" title="Những lane nguồn (máy/agent Local, nền tảng Web) nào feed vào sync + recall. Bỏ tick một lane chung hoặc nhiễu để loại — vừa giúp harness (nguồn sạch, không lẫn dự án) vừa tối ưu token (ít memory rác kéo vào recall = ít token hơn). Là bộ lọc, không xoá: dữ liệu vẫn nằm trong DB local.">?</span></div>' +
       renderScopeTree(brain.scopeTree || []) +
       renderScopeAdd(brain.scopeRules || []) +
-      sectionTitle('Tables') +
-      ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">none</div>') +
+      sectionTitle('Bảng') +
+      ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">không có</div>') +
       '<div class="path" style="margin-top:8px">' + esc(brain.dbPath || '') + '</div>';
     el('coveragePanel').innerHTML =
-      (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' sess / ' + fmtN(p.messages) + ' msg / ' + fmtN(p.agents) + ' agents')).join('') : '<div class="muted">No project folders captured yet.</div>');
+      (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' phiên / ' + fmtN(p.messages) + ' msg / ' + fmtN(p.agents) + ' agent')).join('') : '<div class="muted">Chưa có folder dự án nào được thu.</div>');
   }
   // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is
   // INCLUDED; untick to exclude it from sync + recall (a filter, never a delete).
@@ -1363,13 +1443,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function renderScopeAdd(rules){
     const chips = (rules || []).map(r => {
       const parts = [r.origin || 'any', r.host || 'any', r.source || 'any'].join(' · ');
-      return '<span class="scope-chip" title="Remove this exclude rule" data-lane="' + esc(JSON.stringify(r)) + '" onclick="scopeRemoveRule(this)">' + esc(parts) + ' ✕</span>';
+      return '<span class="scope-chip" title="Bỏ luật loại này" data-lane="' + esc(JSON.stringify(r)) + '" onclick="scopeRemoveRule(this)">' + esc(parts) + ' ✕</span>';
     }).join('');
     return '<div class="scope-add">'
-      + '<select id="scOrigin" class="scope-in"><option value="">origin: any</option><option value="local">local</option><option value="web">web</option></select>'
-      + '<input id="scHost" class="scope-in" placeholder="machine (blank=any)">'
-      + '<input id="scSource" class="scope-in" placeholder="agent/platform (blank=any)">'
-      + '<button class="ghost" title="Add a blocklist rule (excluded from sync + recall)" onclick="scopeAddRule()">+ Add</button>'
+      + '<select id="scOrigin" class="scope-in"><option value="">nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>'
+      + '<input id="scHost" class="scope-in" placeholder="máy (trống=mọi)">'
+      + '<input id="scSource" class="scope-in" placeholder="agent/nền tảng (trống=mọi)">'
+      + '<button class="ghost" title="Thêm luật loại (khỏi sync + recall)" onclick="scopeAddRule()">+ Thêm</button>'
       + '</div>'
       + (rules && rules.length ? '<div class="scope-chips">' + chips + '</div>' : '');
   }
@@ -1413,21 +1493,24 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       if(el('bq').value.trim().length >= 2) brainSearch();
     } catch(e){}
   }
+  function setPill(id, txt){ const p = el(id); if(p) p.textContent = txt; }
   function renderDriveState(d){
     const s = el('driveState');
     s.title = (d && d.error) ? d.error : '';
-    if(!d || !d.linked){ s.className = 'drive-state'; s.textContent = 'not linked'; return; }
-    if(!d.exists){ s.className = 'drive-state bad'; s.textContent = '✗ ' + (/^https?:/i.test(d.path) ? 'paste a local folder' : 'folder not found'); return; }
-    if(!d.writable){ s.className = 'drive-state bad'; s.textContent = '⚠ read-only'; return; }
-    s.className = 'drive-state ok'; s.textContent = '✓ linked · ' + fmtN(d.bundles) + ' bundle(s)';
+    if(!d || !d.linked){ s.className = 'drive-state'; s.textContent = 'chưa liên kết'; setPill('drivePillTxt','chưa liên kết'); return; }
+    if(!d.exists){ s.className = 'drive-state bad'; s.textContent = '✗ ' + (/^https?:/i.test(d.path) ? 'dán folder local' : 'không thấy folder'); setPill('drivePillTxt','✗ lỗi'); return; }
+    if(!d.writable){ s.className = 'drive-state bad'; s.textContent = '⚠ chỉ đọc'; setPill('drivePillTxt','⚠ chỉ đọc'); return; }
+    s.className = 'drive-state ok'; s.textContent = '✓ đã liên kết · ' + fmtN(d.bundles) + ' bundle'; setPill('drivePillTxt','✓ ' + fmtN(d.bundles) + ' bundle');
   }
   function renderStorageState(s){
     const el0 = el('storageState');
-    if(!s){ el0.className = 'drive-state'; el0.textContent = ''; return; }
-    const mb = s.exists ? (s.sizeKB/1024).toFixed(0) + ' MB' : 'empty';
-    if(s.pinnedByEnv){ el0.className = 'drive-state'; el0.textContent = 'env-pinned'; el0.title = 'GLOBAL_MEMORY_DB đang ghim vị trí — bỏ env để đổi được.'; return; }
-    if(s.onCloud){ el0.className = 'drive-state bad'; el0.textContent = '⚠ trên Drive (rủi ro)'; el0.title = s.dir; return; }
-    el0.className = 'drive-state ok'; el0.textContent = '✓ ' + (s.source === 'default' ? 'ổ C (mặc định)' : 'đã dời') + ' · ' + mb; el0.title = s.dbPath;
+    if(!s){ el0.className = 'drive-state'; el0.textContent = ''; setPill('storagePillTxt','—'); return; }
+    const mb = s.exists ? (s.sizeKB/1024).toFixed(0) + ' MB' : 'trống';
+    if(s.pinnedByEnv){ el0.className = 'drive-state'; el0.textContent = 'ghim bởi env'; el0.title = 'GLOBAL_MEMORY_DB đang ghim vị trí — bỏ env để đổi được.'; setPill('storagePillTxt','env'); return; }
+    if(s.onCloud){ el0.className = 'drive-state bad'; el0.textContent = '⚠ trên Drive (rủi ro)'; el0.title = s.dir; setPill('storagePillTxt','⚠ Drive'); return; }
+    const where = s.source === 'default' ? 'ổ C (mặc định)' : 'đã dời';
+    el0.className = 'drive-state ok'; el0.textContent = '✓ ' + where + ' · ' + mb; el0.title = s.dbPath;
+    setPill('storagePillTxt', (s.source === 'default' ? 'ổ C' : 'đã dời') + ' · ' + mb);
   }
   async function relocateStorage(){
     const path = el('storageLink').value.trim();
@@ -1537,15 +1620,15 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   }
   function syncCloseBtn(){ return '<button class="ghost" style="margin-top:12px;width:100%" onclick="closeSyncBox()">Close</button>'; }
   async function brainScan(deep){
-    el('brainmsg').textContent = deep ? 'Deep scanning the whole machine...' : 'Scanning known locations...';
+    el('brainmsg').textContent = deep ? 'Đang quét sâu cả máy...' : 'Đang quét các vị trí đã biết...';
     el('brainreport').innerHTML = '';
     try {
       const r = await (await fetch('/brain-scan' + (deep ? '?deep=1' : ''), { method: 'POST' })).json();
-      el('brainmsg').textContent = 'Loaded +' + fmtN(r.totals.newMessages) + ' message(s) · ' + r.changedFiles + ' session(s) changed · scanned ' + r.scannedFiles + ' file(s).';
+      el('brainmsg').textContent = 'Nạp thêm +' + fmtN(r.totals.newMessages) + ' message · ' + r.changedFiles + ' phiên đổi · quét ' + r.scannedFiles + ' file.';
       let h = '';
-      if(r.unknown && r.unknown.length) h += '<div class="chip warn">' + r.unknown.length + ' unrecognized stores</div>';
+      if(r.unknown && r.unknown.length) h += '<div class="chip warn">' + r.unknown.length + ' store lạ</div>';
       if(r.stores && r.stores.length) {
-        h += sectionTitle('Stores scanned');
+        h += sectionTitle('Store đã quét');
         h += r.stores.slice(0, 6).map(s => folderLine(s.source, s.root, 'transcripts')).join('');
       }
       if(r.sessions && r.sessions.length) h += sectionTitle('Changed sessions');
@@ -1632,15 +1715,89 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     }
   }
   function expandHit(id){ selectHit(id); }
-  function openMenu(){ el('mproj').textContent = (last && last.project && last.project.name) || 'this folder'; el('overlay').style.display = 'flex'; }
-  function closeMenu(){ el('overlay').style.display = 'none'; }
+  // ---- Settings modal + i18n ----------------------------------------------
+  var T = {
+    vi: {
+      'bar.env':'Máy: local','bar.settings':'Cài đặt',
+      'proj.title':'Dự án','proj.sub':'Docs & quy tắc của dự án đang chọn.','proj.run':'Chạy','proj.add':'+ Thêm',
+      'recall.sub':'Tìm trong các phiên Codex, Claude, Continue, LM Studio đã lưu.','recall.search':'Tìm','recall.scope':'Mọi dự án','recall.clear':'Xoá lọc','recall.hint':'Gõ ít nhất 2 ký tự để tìm.','recall.empty':'Kết quả tìm sẽ hiện ở đây.','recall.preview':'Xem trước phiên','recall.waiting':'chờ','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.',
+      'mem.title':'Bộ nhớ toàn cục','scan.title':'Quét & thu thập','scan.sub':'Kéo ngữ cảnh mới từ máy này.','scan.known':'Quét nhanh','scan.deep':'Quét sâu','proj2.title':'Dự án','proj2.sub':'Folder dự án đã có phiên được thu.',
+      'set.title':'Cài đặt','set.lang':'Ngôn ngữ','set.storage':'Nơi lưu','set.search':'Tìm kiếm','set.health':'Kiểm tra',
+      'lang.h':'Ngôn ngữ giao diện','lang.d':'Chọn một ngôn ngữ cho toàn bộ giao diện. Thuật ngữ kỹ thuật (Recall, Hybrid, FTS5…) giữ nguyên.','lang.row':'Ngôn ngữ','lang.note':'Áp dụng ngay, lưu vào config.json.',
+      'storage.h':'Nơi lưu dữ liệu','storage.d':'DB brain nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.','storage.folder':'Thư mục lưu brain','storage.move':'Dời','storage.warn':'⚠ Không chọn folder Google Drive / OneDrive đang sync — DB đang mở sẽ hỏng.',
+      'drive.h':'Đồng bộ qua Drive','drive.d':'Mỗi máy xuất một bundle mã hoá vào folder Drive; máy khác merge vào. DB sống KHÔNG bị sync trực tiếp.','drive.folder':'Folder Drive',
+      'search.h':'Mặc định tìm kiếm','search.d':'Bật/tắt cũng đổi ngay trên thanh Recall. Lưu vào config.json.',
+      'health.h':'Kiểm tra hệ thống','health.d':'Các tính năng lõi có chạy được trên máy này không (FTS5, recall, harness).','health.retest':'Kiểm tra lại',
+      'docs.d':'Đồng bộ / dựng lại bộ docs chuẩn cho dự án. Không bao giờ ghi đè nguồn trong DB.','docs.sync':'Thêm docs còn thiếu, giữ nguyên nguồn DB.','docs.fresh':'Dựng mới','docs.freshD':'Giữ docs cũ sang bên, tạo bộ sạch.'
+    },
+    en: {
+      'bar.env':'Env: local','bar.settings':'Settings',
+      'proj.title':'Project','proj.sub':'Docs & rules for the selected project.','proj.run':'Run','proj.add':'+ Add',
+      'recall.sub':'Search saved Codex, Claude, Continue, LM Studio sessions.','recall.search':'Search','recall.scope':'All projects','recall.clear':'Clear','recall.hint':'Type at least 2 characters to search.','recall.empty':'Search results appear here.','recall.preview':'Thread preview','recall.waiting':'waiting','recall.previewEmpty':'Select a result to preview nearby messages without leaving the cockpit.',
+      'mem.title':'Global memory','scan.title':'Scan & capture','scan.sub':'Pull new context from this machine.','scan.known':'Scan known','scan.deep':'Deep scan','proj2.title':'Projects','proj2.sub':'Project folders with captured sessions.',
+      'set.title':'Settings','set.lang':'Language','set.storage':'Storage','set.search':'Search','set.health':'Health',
+      'lang.h':'Interface language','lang.d':'Pick one language for the whole UI. Technical terms (Recall, Hybrid, FTS5…) stay as-is.','lang.row':'Language','lang.note':'Applies instantly, saved to config.json.',
+      'storage.h':'Data storage','storage.d':'Keep the brain DB off C: so it never bloats. The pointer at ~/.zemory/location.json remembers it.','storage.folder':'Brain folder','storage.move':'Move','storage.warn':'⚠ Do not pick a synced Google Drive / OneDrive folder — a live DB corrupts.',
+      'drive.h':'Drive sync','drive.d':'Each machine exports an encrypted bundle to a Drive folder; others merge it. The live DB is NOT synced directly.','drive.folder':'Drive folder',
+      'search.h':'Search defaults','search.d':'Toggling also flips it on the Recall bar. Saved to config.json.',
+      'health.h':'Health checks','health.d':'Do the core features actually run on this machine (FTS5, recall, harness).','health.retest':'Re-test',
+      'docs.d':'Sync / rebuild the standard docs set for the project. Never overwrites the DB source.','docs.sync':'Add missing docs, keep the DB source.','docs.fresh':'Fresh start','docs.freshD':'Keep old docs aside, create a clean set.'
+    }
+  };
+  function applyLang(lang){
+    if(lang !== 'en') lang = 'vi';
+    window.__lang = lang;
+    var dict = T[lang] || {};
+    document.querySelectorAll('[data-i18n]').forEach(function(e){
+      var v = dict[e.getAttribute('data-i18n')];
+      if(v != null) e.textContent = v;
+    });
+    var vi = el('langVi'), en = el('langEn');
+    if(vi && en){ vi.classList.toggle('on', lang !== 'en'); en.classList.toggle('on', lang === 'en'); }
+  }
+  async function setLangUI(lang){
+    try { await fetch('/set-lang?lang=' + lang, { method: 'POST' }); } catch(e){}
+    applyLang(lang);
+  }
+  function openSettings(pane){
+    el('settingsOverlay').style.display = 'flex';
+    renderSettingsSearch();
+    if(pane){ var b = document.querySelector('.set-tab[data-pane="' + pane + '"]'); if(b) setSettingsTab(b); }
+  }
+  function closeSettings(){ el('settingsOverlay').style.display = 'none'; }
+  function setSettingsTab(btn){
+    document.querySelectorAll('.set-tab').forEach(function(t){ t.classList.remove('on'); });
+    document.querySelectorAll('.set-pane').forEach(function(p){ p.classList.remove('on'); });
+    btn.classList.add('on');
+    var pane = document.querySelector('.set-pane[data-pane="' + btn.getAttribute('data-pane') + '"]');
+    if(pane) pane.classList.add('on');
+  }
+  function swRow(id, key, label, note){
+    var on = el(id) && el(id).checked;
+    return '<div class="set-row"><div class="set-lab">' + label + '<small>' + note + '</small></div>'
+      + '<div class="sw' + (on ? ' on' : '') + '" onclick="flipPref(\'' + id + '\',\'' + key + '\')"></div></div>';
+  }
+  function renderSettingsSearch(){
+    var box = el('searchPrefs'); if(!box) return;
+    var lang = window.__lang === 'en' ? 'en' : 'vi';
+    var L = lang === 'en'
+      ? { hy:['Hybrid','FTS + vector (semantic). Off = keyword only.'], re:['Rerank','Cross-encoder rescoring. Needs the reranker model.'], sc:['Scope: all projects','The brain is global. Off = current project only.'] }
+      : { hy:['Hybrid','FTS + vector (semantic). Tắt = chỉ keyword.'], re:['Rerank','Cross-encoder xếp lại top. Cần model reranker.'], sc:['Phạm vi: mọi dự án','Brain là toàn cục. Tắt = chỉ dự án đang chọn.'] };
+    box.innerHTML = swRow('hybrid','hybrid',L.hy[0],L.hy[1]) + swRow('rerank','rerank',L.re[0],L.re[1]) + swRow('ball','scope',L.sc[0],L.sc[1]);
+  }
+  function flipPref(id, key){
+    var c = el(id); if(!c) return;
+    c.checked = !c.checked;
+    if(key === 'hybrid') setHybrid(); else if(key === 'rerank') setRerank(); else setScope();
+    renderSettingsSearch();
+  }
   function summarize(r){
     if(r.needsReconcile) return 'Docs non-standard - run zemory migrate, docs sync/rm/render.';
     const a = r.added && r.added.length ? 'added ' + r.added.join(', ') : 'nothing missing';
     return (r.renamedTo ? 'renamed old -> ' + r.renamedTo + '\n' : '') + (r.createdConfig ? 'created .harness.json - ' : '') + a;
   }
   async function act(ep){
-    closeMenu();
+    closeSettings();
     el('msg').textContent = 'working...';
     try {
       const r = await (await fetch(ep + ru(), { method: 'POST' })).json();

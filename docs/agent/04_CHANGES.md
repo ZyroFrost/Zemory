@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-11] — feat(ui): cockpit gọn lại — nút Cài đặt tập trung + i18n VI/EN + Việt hoá nhất quán
+
+Làm lại cockpit theo 3 điểm user nêu: chưa có nút Cài đặt thật, ngôn ngữ Anh–Việt lẫn lộn, bố cục quá tải.
+
+- **Nút Cài đặt thật** ([ui-page.ts](../../backend/src/ui-page.ts)): một modal 6 tab (Ngôn ngữ · Nơi lưu · Drive · Tìm kiếm · Kiểm tra · Docs harness) gom mọi cấu hình vốn rải khắp nơi. Di chuyển (không viết lại) các control đã chạy: ô Drive + Link/Sync, ô Nơi lưu + Dời, Capability checks + Re-test, menu Sync/Fresh docs — giữ nguyên id + hàm nên wiring không đứt.
+- **Dọn top-bar**: bỏ 2 ô nhập đường dẫn + Link/Sync/Dời; còn lại pill trạng thái (Máy/CLI/🗄 nơi lưu/☁ drive) + một nút ⚙ Cài đặt + làm mới. Bỏ panel Capability checks khỏi rail trái (đưa vào Cài đặt → Kiểm tra).
+- **Thống nhất tiếng Việt + nút VI/EN**: i18n nhẹ (`T` dict vi/en + `applyLang` quét `[data-i18n]`), mặc định tiếng Việt, giữ thuật ngữ kỹ thuật (Recall/Hybrid/Rerank/FTS5/vector/BM25). Toggle trong Cài đặt → Ngôn ngữ, lưu vào config.json qua `/set-lang`. Việt hoá cả chrome JS-render (rail harness, panel bộ nhớ, nguồn, quét).
+- **Backend** ([settings.ts](../../backend/src/settings.ts), [ui.ts](../../backend/src/ui.ts)): thêm `getLang/setLang` (mặc định 'vi'), endpoint `POST /set-lang`, field `lang` trong `dashboardBrain()`.
+- Sửa bug sẵn: `<\div>` → `</div>` ở khối scope-chips.
+
+Verify: 66/66 test; build sạch; UI thật chụp lại (top-bar gọn, modal Cài đặt 6 tab, panel bộ nhớ + rail tiếng Việt, pill 'đã dời · 938 MB' / '✓ 2 bundle').
+
 ## [2026-07-11] — chore(savings): gỡ hẳn dashboard/ledger 'token saved' (counterfactual ảo) — giữ Recall/Digest/harness
 
 Gỡ hẳn lớp "đo token tiết kiệm" — số nó khoe là counterfactual ảo, luôn ~99.99%.
