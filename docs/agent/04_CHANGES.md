@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-10] — docs(structure): wire update/ to attic/(backup)+dist/(build)+migrations/(schema) — was floating alone
+
+
+
 ## [2026-07-10] — docs(structure): add version-up (self-update) as a first-class concern — backend/src/update/
 
 

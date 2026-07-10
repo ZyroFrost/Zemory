@@ -41,7 +41,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   │   ├── logging/                [opt]   LOGGER setup (level/format/sink) + observability (metrics/traces). Log file → data/logs/ ; gửi Sentry/Datadog → integrations/
 │   │   ├── audit/                  [opt]   AUDIT TRAIL bảo mật (ai làm gì / lúc nào) — ghi khi hành động nhạy cảm; data → store/ (bảng audit). KHÁC log debug
 │   │   ├── i18n/                   [opt]   ĐA NGÔN NGỮ: load locale + lookup + AUTO-DỊCH (sửa 1 ngôn ngữ → tự sinh còn lại). File dịch → locales/
-│   │   ├── update/                 [opt]   VERSION-UP: check bản mới nhất (Releases/registry) + tải + apply/restart. Desktop/CLI cài đặt NÊN có; web-app deploy=update thì bỏ
+│   │   ├── update/                 [opt]   VERSION-UP: check bản mới nhất (Releases/registry) + tải + apply/restart. PHẢI phối hợp: backup bản CŨ → attic/ (rollback nếu update hỏng) · bản MỚI tải về = dạng dist/ (build/installer) · nếu đổi schema → chạy migrations/ sau khi thay code. KHÔNG tự đứng riêng
 │   │   ├── types/                  [opt]   type/contract DÙNG CHUNG BE↔FE — FE import (escape-hatch §4 khi FE tách)
 │   │   ├── modules/                [opt]   module/plugin gói theo tính năng (feature)
 │   │   ├── commands/               [opt]   lệnh CLI (nếu app là CLI, vd zemory)
@@ -83,7 +83,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   └── *.local.*                   [opt]     override theo máy → GITIGNORE
 │
 ├── external/                       [opt]   repo NGOÀI clone THAM CHIẾU — code HỌ, chỉ gọi/extend, KHÔNG dán vào backend
-├── attic/                          [opt]   backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC KHI up server (rollback). Tracked
+├── attic/                          [opt]   backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC KHI up server HOẶC trước self-update (rollback). Tracked
 ├── docs-template/                  [opt]   bộ docs MẪU TRẮNG app PHÁT cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
 ├── share/                          [opt]   bundle SYNC MÃ HÓA xuyên máy (git-lfs *.enc + key + README) — TRACKED dù chứa key,
 │                                            vì phải đi qua git để đồng bộ (khác data/gitignore). Chỉ app CÓ tính năng sync-qua-git
@@ -209,6 +209,7 @@ Dialog / modal       CHỈ 3 size cố định S/M/L, chọn theo nội-dung + m
 Test                 KHÔNG bắt buộc — chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy)
 Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 04_CHANGES=log. KHÔNG folder versions/ chép tay
 Version-UP (concern) check-bản-mới/tự-update = concern RIÊNG (khác "lưu version ở đâu" phía trên) → backend/src/update/. App phát hành cho user CÀI (desktop/installer, CLI global) NÊN có; app qua package-manager (npm/pip, tự `pull` bản mới) hoặc web-app (deploy=update tức thì) → KHÔNG bắt buộc, nhưng phải GHI RÕ lý do không làm (khỏi lọt)
+Update ⇄ Backup      update/ KHÔNG đứng riêng — PHẢI đồng bộ 3 chỗ: (1) backup bản cũ → attic/ TRƯỚC KHI apply (rollback nếu update hỏng — cùng cơ chế "snapshot trước up server"), (2) bản mới tải về = build/installer đúng dạng dist/, (3) đổi schema kèm update → chạy migrations/ SAU KHI thay code, không tự ý ALTER ngoài luồng migration
 Packaging            .spec(root) + backend/scripts + backend/resources/packaging + dist(output) + OS app-data(cài) — DÙNG SLOT CŨ, KHÔNG nhóm mới
 util/  (GPT)         CHỈ helper thuần — KHÔNG business-logic / repository / framework-adapter (chống "misc dump")
 auth/  (GPT)         authentication · authorization · jwt · oauth · permission — phân biệt rõ với middleware
