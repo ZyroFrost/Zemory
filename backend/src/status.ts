@@ -6,6 +6,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
 import { listKnownProjects, rememberProject } from "./registry.js";
+import { tr } from "./settings.js";
 
 export type FeatureState = "on" | "planned" | "off" | "idle";
 
@@ -43,9 +44,9 @@ export interface StatusReport {
  */
 function planSignal(docsDir: string): StatusReport["plan"] {
   const planDir = join(dirname(docsDir), "plan");
-  if (!existsSync(planDir)) return { exists: false, needsReconcile: false, detail: "no plan/ yet" };
+  if (!existsSync(planDir)) return { exists: false, needsReconcile: false, detail: tr("chưa có plan/", "no plan/ yet") };
   const files = readdirSync(planDir).filter((f) => f.endsWith(".md"));
-  return { exists: files.length > 0, needsReconcile: false, detail: `${files.length} file(s)` };
+  return { exists: files.length > 0, needsReconcile: false, detail: tr(`${files.length} file`, `${files.length} file(s)`) };
 }
 
 // Canonical markdown docs the harness expects (the rest — plan/changelog — live
@@ -59,14 +60,14 @@ const REQUIRED_DOCS = ["01_RULES.md", "02_STRUCTURE.md", "03_TODO.md", "04_CHANG
 function listFeatures(): FeatureStatus[] {
   // state "idle" = not yet tested; the real state comes from running checks.
   return [
-    { key: "search", group: "token", label: "Find in brain (FTS5)", state: "idle", detail: "—",
-      help: "Full-text search (word + Vietnamese trigram) across all stored sessions so the agent finds the exact bit instead of re-reading. `zemory brain search`." },
-    { key: "memory", group: "token", label: "Remember across sessions", state: "idle", detail: "—",
-      help: "Global brain: recall decisions/gotchas from past sessions of every agent & project, so you don't re-explain. Agent calls recall on demand." },
-    { key: "validate", group: "workflow", label: "Validate docs harness", state: "idle", detail: "—",
-      help: "Check generated docs, internal links, changelog retention, and supersede bookkeeping. `zemory validate`." },
-    { key: "grill", group: "workflow", label: "Grill before build", state: "idle", detail: "—",
-      help: "Make the agent interrogate the plan with you (one question at a time) BEFORE building, so it builds the right thing." },
+    { key: "search", group: "token", label: tr("Tìm trong brain (FTS5)", "Find in brain (FTS5)"), state: "idle", detail: "—",
+      help: tr("Full-text (word + trigram tiếng Việt) trên mọi phiên đã lưu để agent tìm đúng đoạn thay vì đọc lại. `zemory brain search`.", "Full-text search (word + Vietnamese trigram) across all stored sessions so the agent finds the exact bit instead of re-reading. `zemory brain search`.") },
+    { key: "memory", group: "token", label: tr("Nhớ xuyên phiên", "Remember across sessions"), state: "idle", detail: "—",
+      help: tr("Brain toàn cục: nhớ quyết định/gotcha từ các phiên trước của mọi agent & dự án, khỏi giải thích lại. Agent gọi recall khi cần.", "Global brain: recall decisions/gotchas from past sessions of every agent & project, so you don't re-explain. Agent calls recall on demand.") },
+    { key: "validate", group: "workflow", label: tr("Kiểm tra docs harness", "Validate docs harness"), state: "idle", detail: "—",
+      help: tr("Kiểm docs đã render, link nội bộ, giữ changelog, và sổ supersede. `zemory validate`.", "Check generated docs, internal links, changelog retention, and supersede bookkeeping. `zemory validate`.") },
+    { key: "grill", group: "workflow", label: tr("Grill trước khi build", "Grill before build"), state: "idle", detail: "—",
+      help: tr("Bắt agent tra hỏi plan cùng bạn (từng câu một) TRƯỚC khi build, để build đúng thứ cần.", "Make the agent interrogate the plan with you (one question at a time) BEFORE building, so it builds the right thing.") },
   ];
 }
 
@@ -85,7 +86,7 @@ export async function gatherStatus(rootArg?: string): Promise<StatusReport> {
     features: listFeatures(),
     knownProjects: [],
     plan: { exists: false, needsReconcile: false, detail: "—" },
-    setup: { complete: false, detail: "not set up" },
+    setup: { complete: false, detail: tr("chưa cài đặt", "not set up") },
   };
 
   if (connected) {
@@ -103,7 +104,7 @@ export async function gatherStatus(rootArg?: string): Promise<StatusReport> {
     const complete = docsOk && report.plan.exists;
     report.setup = {
       complete,
-      detail: complete ? "done" : !docsOk ? "docs missing → zemory sync" : "no plan yet",
+      detail: complete ? tr("xong", "done") : !docsOk ? tr("thiếu docs → zemory sync", "docs missing → zemory sync") : tr("chưa có plan", "no plan yet"),
     };
   } else {
     // Not set up yet — show the standard docs as missing so the UI invites Setup.

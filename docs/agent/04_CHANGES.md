@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-11] — feat(ui): i18n hoàn chỉnh VI/EN — t() + dict đầy đủ + backend localize, không sót chuỗi
+
+i18n hoàn chỉnh cả 2 ngôn ngữ — không sót chuỗi nào trong VI lẫn EN.
+
+- **`t(key)` + từ điển đầy đủ** ([ui-page.ts](../../backend/src/ui-page.ts)): ~150 key vi/en phủ mọi chuỗi JS-render (rail harness, panel bộ nhớ, nguồn/scope, quét, Drive sync, kết quả tìm, xem trước, session viewer, doc viewer, sort, act). Trước đây chỉ chrome tĩnh (data-i18n) flip; nay toàn bộ JS cũng flip.
+- **applyLang re-render**: đổi ngôn ngữ re-render các view đã cache (renderStatus/renderBrainSummary/renderHits/sort) + hỗ trợ `data-i18n-ph` cho placeholder + option select; `setLangUI` refetch `/status` + `/brain-status` để lấy chuỗi backend đã localize.
+- **Backend localize theo `getLang()`** ([settings.ts](../../backend/src/settings.ts) `tr()`, [status.ts](../../backend/src/status.ts), [checks.ts](../../backend/src/checks.ts)): feature label/help, setup/plan detail, mọi detail của health-check giờ ra đúng ngôn ngữ (áp cho cả doctor CLI).
+- **Sửa bug**: biến local `const t = brain.totals` trong `renderBrainSummary` che mất hàm `t()` → panel bộ nhớ báo "t is not a function"; đổi tên local thành `tot`.
+
+Verify: 66/66 test; chụp cả VI lẫn EN — panel bộ nhớ, placeholder, mọi filter/select, rail, Drive/sync, kết quả tìm đều flip sạch, không còn chữ lẫn ngôn ngữ ở cả hai chiều.
+
 ## [2026-07-11] — feat(ui): cockpit gọn lại — nút Cài đặt tập trung + i18n VI/EN + Việt hoá nhất quán
 
 Làm lại cockpit theo 3 điểm user nêu: chưa có nút Cài đặt thật, ngôn ngữ Anh–Việt lẫn lộn, bố cục quá tải.

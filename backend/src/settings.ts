@@ -104,6 +104,12 @@ export function setLang(lang: string): void {
   write(c);
 }
 
+/** Pick a string by the current UI language. Server-side i18n for the few
+ *  human-facing strings that originate in the backend (status/checks/doctor). */
+export function tr(vi: string, en: string): string {
+  return getLang() === "en" ? en : vi;
+}
+
 /** Lanes EXCLUDED from sync + recall (default none). A filter, never a delete. */
 export function getScopeExclude(): ScopeLane[] {
   const v = read().scopeExclude;

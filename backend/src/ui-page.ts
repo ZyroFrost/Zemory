@@ -803,7 +803,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <span class="brand-logo"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zbrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#78df9b"/><stop offset="1" stop-color="#b5efc8"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#zbrand)"/><g stroke="#08100e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="#08100e"><path fill="none" d="M16 16 L10.5 10 M16 16 L21.5 9.5 M16 16 L22 21.5 M16 16 L10 21.5"/><circle cx="16" cy="16" r="2.7"/><circle cx="10.5" cy="10" r="2"/><circle cx="21.5" cy="9.5" r="2"/><circle cx="22" cy="21.5" r="2"/><circle cx="10" cy="21.5" r="2"/></g></svg></span>
         <div class="brand-text">
           <h1>zemory</h1>
-          <p>Bộ nhớ &amp; harness docs cho agent lập trình · v0.0.1</p>
+          <p data-i18n="brand.tag">Bộ nhớ &amp; harness docs cho agent lập trình · v0.0.1</p>
         </div>
       </div>
       <div class="rail-scroll">
@@ -811,7 +811,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <div class="panel-head"><div><h3 data-i18n="proj.title">Dự án</h3><p data-i18n="proj.sub">Docs &amp; quy tắc của dự án đang chọn.</p></div></div>
           <div class="panel-pad">
             <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)" onclick="runHarness()" data-i18n="proj.run">Chạy</button><button class="ghost" title="Cài đặt" onclick="openSettings()">⚙</button></div>
-            <div class="proj-add"><input id="newProj" placeholder="Thêm dự án bằng đường dẫn folder…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()" data-i18n="proj.add">+ Thêm</button></div>
+            <div class="proj-add"><input id="newProj" data-i18n-ph="ph.addproj" placeholder="Thêm dự án bằng đường dẫn folder…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()" data-i18n="proj.add">+ Thêm</button></div>
             <div id="app" style="margin-top:8px"></div>
           </div>
         </section>
@@ -839,7 +839,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           </div>
         </div>
         <div class="searchline">
-          <input type="text" id="bq" placeholder="ví dụ: cách stream tool output cho agent" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
+          <input type="text" id="bq" data-i18n-ph="ph.search" placeholder="ví dụ: cách stream tool output cho agent" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
           <button onclick="brainSearch(true)"><span data-i18n="recall.search">Tìm</span> ⌘↵</button>
         </div>
         <div class="filterline">
@@ -847,13 +847,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <label class="toggle" title="Recall semantic: FTS + vector. Tắt = chỉ keyword FTS."><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
           <label class="toggle" title="Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker."><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
           <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Lọc theo thời gian">
-            <option value="0">Thời gian: mọi lúc</option><option value="1">24h qua</option><option value="7">7 ngày</option><option value="30">30 ngày</option><option value="90">90 ngày</option>
+            <option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time24">24h qua</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option>
           </select>
           <select id="fType" class="filter-sel" onchange="brainSearch()" title="Lọc theo vai trò message">
-            <option value="">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
+            <option value="" data-i18n="f.typeAny">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
           </select>
           <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)">
-            <option value="">Nguồn: mọi</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
+            <option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
           </select>
           <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Lọc theo agent/nguồn">
             <option value="">Agent: mọi</option>
@@ -1302,14 +1302,14 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     // Shared standard (docs-template/) — the canonical harness applied to EVERY
     // project. Read-only reference; NOT this or any project's own docs.
     const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_STRUCTURE.md', 'agent/02_STRUCTURE.md'], ['03_TODO.md', 'agent/03_TODO.md'], ['04_CHANGES.md', 'agent/04_CHANGES.md']];
-    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">Chuẩn dùng chung <span class="q" title="Harness chuẩn trong docs-template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs-template/).">?</span></div>';
-    h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="Mở chuẩn ' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
-    h += row(last.project.name || 'Chưa có dự án', last.project.connected ? 'on' : 'off', last.project.root || 'chạy zemory init', 'Folder đang chọn có docs/.harness.json hay không.');
-    h += '<div class="tiny" style="margin:8px 0 4px">Docs dự án này (bấm để đọc)</div>';
-    h += '<div class="chips" style="margin-bottom:10px">' + (last.docs || []).map(d => '<span class="chip doc-link ' + (d.ok ? 'on' : 'off') + '" onclick="openDoc(\'' + esc(d.file) + '\')" title="Mở ' + esc(d.file) + '">' + esc(d.file) + '</span>').join('') + '</div>';
-    if(last.setup) h += row('Cài đặt / onboarding', last.setup.complete ? 'on' : 'warn', last.setup.detail, 'Đủ docs bắt buộc + plan chưa.');
-    if(last.plan) h += row('Bản sao plan', last.plan.needsReconcile ? 'warn' : (last.plan.exists ? 'on' : 'planned'), last.plan.detail, 'docs/plan là bản render từ global_memory.db.');
-    h += '<div class="chips" style="margin-top:10px">' + chip(docsOk + '/' + (last.docs || []).length + ' docs', docsOk === (last.docs || []).length ? 'on' : 'off') + chip((last.knownProjects || []).length + ' dự án đã biết', 'on') + '</div>';
+    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">' + t('r.std') + ' <span class="q" title="Harness chuẩn trong docs-template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs-template/).">?</span></div>';
+    h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
+    h += row(last.project.name || t('r.noproj'), last.project.connected ? 'on' : 'off', last.project.root || t('r.runinit'), 'docs/.harness.json?');
+    h += '<div class="tiny" style="margin:8px 0 4px">' + t('r.projdocs') + '</div>';
+    h += '<div class="chips" style="margin-bottom:10px">' + (last.docs || []).map(d => '<span class="chip doc-link ' + (d.ok ? 'on' : 'off') + '" onclick="openDoc(\'' + esc(d.file) + '\')" title="' + esc(d.file) + '">' + esc(d.file) + '</span>').join('') + '</div>';
+    if(last.setup) h += row(t('r.setup'), last.setup.complete ? 'on' : 'warn', last.setup.detail, '');
+    if(last.plan) h += row(t('r.plan'), last.plan.needsReconcile ? 'warn' : (last.plan.exists ? 'on' : 'planned'), last.plan.detail, 'docs/plan ⟵ global_memory.db');
+    h += '<div class="chips" style="margin-top:10px">' + chip(docsOk + '/' + (last.docs || []).length + ' ' + t('r.docs'), docsOk === (last.docs || []).length ? 'on' : 'off') + chip((last.knownProjects || []).length + ' ' + t('r.known'), 'on') + '</div>';
     el('app').innerHTML = h;
     renderChecks();
   }
@@ -1358,7 +1358,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
   function renderBrainSummary(s){
     brain = s || {};
-    const t = brain.totals || {};
+    const tot = brain.totals || {};
     const vectors = brain.vectors || {};
     const info = brain.info || {};
     const capture = brain.coverage || {};
@@ -1369,7 +1369,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(!window.__langApplied){ window.__langApplied = true; applyLang(brain.lang || 'vi'); }
     if(el('settingsOverlay').style.display === 'flex') renderSettingsSearch();
     const fa = el('fAgent'); const faCur = fa.value;
-    fa.innerHTML = '<option value="">Agent: mọi</option>' + (brain.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
+    fa.innerHTML = '<option value="">' + t('f.agentAny') + '</option>' + (brain.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
     fa.value = faCur;
     const drive = brain.drive || {};
     if(document.activeElement !== el('driveLink')) el('driveLink').value = drive.path || '';
@@ -1378,27 +1378,27 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(storage && document.activeElement !== el('storageLink')) el('storageLink').value = storage.dir || '';
     renderStorageState(storage);
     const vectorCoverage = vectors.coverage == null ? '-' : vectors.coverage + '%';
-    el('memSub').textContent = (t.sessions ? 'Khoẻ' : 'Trống') + ' · cập nhật ' + fmtTime(brain.generatedAt);
+    el('memSub').textContent = (tot.sessions ? t('m.healthy') : t('m.empty')) + ' · ' + t('m.updated') + ' ' + fmtTime(brain.generatedAt);
     el('memoryPanel').innerHTML =
       '<div class="coverage-stats">' +
-      '<div class="coverage-stat"><b>' + fmtN(t.messages) + '</b><span>tin nhắn</span></div>' +
-      '<div class="coverage-stat"><b>' + fmtN(t.sessions) + '</b><span>phiên</span></div>' +
-      '<div class="coverage-stat"><b>~' + fmtN(brain.tokensEst) + '</b><span>token đã thu</span></div>' +
-      '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>dung lượng DB</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtN(tot.messages) + '</b><span>' + t('m.msgs') + '</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtN(tot.sessions) + '</b><span>' + t('m.sess') + '</span></div>' +
+      '<div class="coverage-stat"><b>~' + fmtN(brain.tokensEst) + '</b><span>' + t('m.tok') + '</span></div>' +
+      '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>' + t('m.size') + '</span></div>' +
       '</div>' +
       '<div class="mini-list" style="margin-top:8px">' +
-      miniRow('Chi phí thu', '0 token phụ trội · free<span class="q" title="Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. Đây là con số thật. zemory KHÔNG hiện chỉ số \'token saved\' phịa — lợi ích recall/index là counterfactual và đã gỡ (xem docs/plan/10). ~token đã thu = SUM(len)/4, đo lượng ngữ cảnh brain đang giữ, không phải giảm hoá đơn.">?</span>') +
-      miniRow('Tìm kiếm', (brain.hybrid ? 'BM25 + Vector' : 'chỉ FTS') + (brain.rerank ? ' + rerank' : '')) +
-      miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' chờ') : '') + (vectors.error ? ' · lỗi' : '')) +
+      miniRow(t('m.capcost'), t('m.capval') + '<span class="q" title="Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. ~token đã thu = SUM(len)/4, đo lượng ngữ cảnh brain đang giữ, không phải giảm hoá đơn.">?</span>') +
+      miniRow(t('m.search'), (brain.hybrid ? 'BM25 + Vector' : t('m.ftsonly')) + (brain.rerank ? ' + rerank' : '')) +
+      miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' ' + t('m.pending')) : '') + (vectors.error ? ' · ' + t('m.err') : '')) +
       '</div>' +
-      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">Nguồn' + (brain.scopeExcluded ? ' · loại ' + brain.scopeExcluded : '') + ' — bỏ tick để loại khỏi sync + recall<span class="q" title="Những lane nguồn (máy/agent Local, nền tảng Web) nào feed vào sync + recall. Bỏ tick một lane chung hoặc nhiễu để loại — vừa giúp harness (nguồn sạch, không lẫn dự án) vừa tối ưu token (ít memory rác kéo vào recall = ít token hơn). Là bộ lọc, không xoá: dữ liệu vẫn nằm trong DB local.">?</span></div>' +
+      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">' + t('m.sources') + (brain.scopeExcluded ? ' · ' + t('m.excl') + ' ' + brain.scopeExcluded : '') + t('m.untick') + '<span class="q" title="Lane nguồn (máy/agent Local, nền tảng Web) nào feed vào sync + recall. Bỏ tick lane chung/nhiễu để loại — vừa sạch nguồn cho harness vừa ít token rác cho recall. Là bộ lọc, không xoá: dữ liệu vẫn trong DB local.">?</span></div>' +
       renderScopeTree(brain.scopeTree || []) +
       renderScopeAdd(brain.scopeRules || []) +
-      sectionTitle('Bảng') +
-      ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">không có</div>') +
+      sectionTitle(t('m.tables')) +
+      ((info.tables || []).map(r => miniRow(r.name, fmtN(r.rows) + (r.detail ? ' · ' + esc(r.detail) : ''))).join('') || '<div class="muted">' + t('m.none') + '</div>') +
       '<div class="path" style="margin-top:8px">' + esc(brain.dbPath || '') + '</div>';
     el('coveragePanel').innerHTML =
-      (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' phiên / ' + fmtN(p.messages) + ' msg / ' + fmtN(p.agents) + ' agent')).join('') : '<div class="muted">Chưa có folder dự án nào được thu.</div>');
+      (projects.length ? projects.map(p => folderLine(projName(p.path), p.path, fmtN(p.sessions) + ' ' + t('cov.sess') + ' / ' + fmtN(p.messages) + ' ' + t('cov.msg') + ' / ' + fmtN(p.agents) + ' ' + t('cov.agent'))).join('') : '<div class="muted">' + t('cov.none') + '</div>');
   }
   // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is
   // INCLUDED; untick to exclude it from sync + recall (a filter, never a delete).
@@ -1443,13 +1443,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function renderScopeAdd(rules){
     const chips = (rules || []).map(r => {
       const parts = [r.origin || 'any', r.host || 'any', r.source || 'any'].join(' · ');
-      return '<span class="scope-chip" title="Bỏ luật loại này" data-lane="' + esc(JSON.stringify(r)) + '" onclick="scopeRemoveRule(this)">' + esc(parts) + ' ✕</span>';
+      return '<span class="scope-chip" title="' + t('sc.rm') + '" data-lane="' + esc(JSON.stringify(r)) + '" onclick="scopeRemoveRule(this)">' + esc(parts) + ' ✕</span>';
     }).join('');
     return '<div class="scope-add">'
-      + '<select id="scOrigin" class="scope-in"><option value="">nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>'
-      + '<input id="scHost" class="scope-in" placeholder="máy (trống=mọi)">'
-      + '<input id="scSource" class="scope-in" placeholder="agent/nền tảng (trống=mọi)">'
-      + '<button class="ghost" title="Thêm luật loại (khỏi sync + recall)" onclick="scopeAddRule()">+ Thêm</button>'
+      + '<select id="scOrigin" class="scope-in"><option value="">' + t('sc.origin') + '</option><option value="local">local</option><option value="web">web</option></select>'
+      + '<input id="scHost" class="scope-in" placeholder="' + t('sc.host') + '">'
+      + '<input id="scSource" class="scope-in" placeholder="' + t('sc.source') + '">'
+      + '<button class="ghost" onclick="scopeAddRule()">' + t('sc.add') + '</button>'
       + '</div>'
       + (rules && rules.length ? '<div class="scope-chips">' + chips + '</div>' : '');
   }
@@ -1497,176 +1497,173 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function renderDriveState(d){
     const s = el('driveState');
     s.title = (d && d.error) ? d.error : '';
-    if(!d || !d.linked){ s.className = 'drive-state'; s.textContent = 'chưa liên kết'; setPill('drivePillTxt','chưa liên kết'); return; }
-    if(!d.exists){ s.className = 'drive-state bad'; s.textContent = '✗ ' + (/^https?:/i.test(d.path) ? 'dán folder local' : 'không thấy folder'); setPill('drivePillTxt','✗ lỗi'); return; }
-    if(!d.writable){ s.className = 'drive-state bad'; s.textContent = '⚠ chỉ đọc'; setPill('drivePillTxt','⚠ chỉ đọc'); return; }
-    s.className = 'drive-state ok'; s.textContent = '✓ đã liên kết · ' + fmtN(d.bundles) + ' bundle'; setPill('drivePillTxt','✓ ' + fmtN(d.bundles) + ' bundle');
+    if(!d || !d.linked){ s.className = 'drive-state'; s.textContent = t('d.notlinked'); setPill('drivePillTxt', t('d.notlinked')); return; }
+    if(!d.exists){ s.className = 'drive-state bad'; s.textContent = '✗ ' + (/^https?:/i.test(d.path) ? t('d.pastelocal') : t('d.nofolder')); setPill('drivePillTxt', t('d.err')); return; }
+    if(!d.writable){ s.className = 'drive-state bad'; s.textContent = t('d.readonly'); setPill('drivePillTxt', t('d.readonly')); return; }
+    s.className = 'drive-state ok'; s.textContent = t('d.linked') + ' · ' + fmtN(d.bundles) + ' ' + t('d.bundle'); setPill('drivePillTxt','✓ ' + fmtN(d.bundles) + ' ' + t('d.bundle'));
   }
   function renderStorageState(s){
     const el0 = el('storageState');
     if(!s){ el0.className = 'drive-state'; el0.textContent = ''; setPill('storagePillTxt','—'); return; }
-    const mb = s.exists ? (s.sizeKB/1024).toFixed(0) + ' MB' : 'trống';
-    if(s.pinnedByEnv){ el0.className = 'drive-state'; el0.textContent = 'ghim bởi env'; el0.title = 'GLOBAL_MEMORY_DB đang ghim vị trí — bỏ env để đổi được.'; setPill('storagePillTxt','env'); return; }
-    if(s.onCloud){ el0.className = 'drive-state bad'; el0.textContent = '⚠ trên Drive (rủi ro)'; el0.title = s.dir; setPill('storagePillTxt','⚠ Drive'); return; }
-    const where = s.source === 'default' ? 'ổ C (mặc định)' : 'đã dời';
-    el0.className = 'drive-state ok'; el0.textContent = '✓ ' + where + ' · ' + mb; el0.title = s.dbPath;
-    setPill('storagePillTxt', (s.source === 'default' ? 'ổ C' : 'đã dời') + ' · ' + mb);
+    const mb = s.exists ? (s.sizeKB/1024).toFixed(0) + ' MB' : t('s.empty');
+    if(s.pinnedByEnv){ el0.className = 'drive-state'; el0.textContent = t('s.envpin'); el0.title = 'GLOBAL_MEMORY_DB'; setPill('storagePillTxt', t('s.envpin')); return; }
+    if(s.onCloud){ el0.className = 'drive-state bad'; el0.textContent = t('s.oncloud'); el0.title = s.dir; setPill('storagePillTxt','⚠ Drive'); return; }
+    el0.className = 'drive-state ok'; el0.textContent = '✓ ' + (s.source === 'default' ? t('s.defaultC') : t('s.moved')) + ' · ' + mb; el0.title = s.dbPath;
+    setPill('storagePillTxt', (s.source === 'default' ? t('s.shortC') : t('s.moved')) + ' · ' + mb);
   }
   async function relocateStorage(){
     const path = el('storageLink').value.trim();
-    if(!path){ alert('Nhập folder muốn lưu brain, vd D:\\Zyro\\Tool\\Zemory\\data'); return; }
-    if(!confirm('Dời DB brain sang:\n' + path + '\n\nApp sẽ checkpoint + copy + verify rồi đổi con trỏ. Bản cũ được GIỮ lại dạng .bak (không mất gì). Tiếp tục?')) return;
+    if(!path){ alert(t('rel.needpath')); return; }
+    if(!confirm(t('rel.confirm') + '\n' + path + '\n\n' + t('rel.confirm2'))) return;
     const ss = el('storageState'), rb = el('relocateBtn');
-    ss.className = 'drive-state'; ss.textContent = 'đang dời...'; if(rb) rb.disabled = true;
+    ss.className = 'drive-state'; ss.textContent = t('s.moving'); if(rb) rb.disabled = true;
     try {
       const r = await (await fetch('/relocate?path=' + encodeURIComponent(path), { method: 'POST' })).json();
-      if(!r.ok){ ss.className = 'drive-state bad'; ss.textContent = '✗ ' + (r.error||'lỗi'); ss.title = r.error||''; if(rb) rb.disabled = false; return; }
-      if(r.pointerOnly){ ss.className = 'drive-state ok'; ss.textContent = '✓ đã đặt nơi lưu'; }
-      else { ss.className = 'drive-state ok'; ss.textContent = '✓ đã dời · ' + (r.movedBytes/1048576).toFixed(0) + ' MB · ' + r.messages + ' msg'; ss.title = 'Bản cũ giữ ở: ' + (r.backup||'') + ' (xoá tay khi chắc chắn OK)'; }
+      if(!r.ok){ ss.className = 'drive-state bad'; ss.textContent = t('s.err') + ' ' + (r.error||''); ss.title = r.error||''; if(rb) rb.disabled = false; return; }
+      if(r.pointerOnly){ ss.className = 'drive-state ok'; ss.textContent = t('s.setptr'); }
+      else { ss.className = 'drive-state ok'; ss.textContent = t('s.movedOk') + ' · ' + (r.movedBytes/1048576).toFixed(0) + ' MB · ' + r.messages + ' msg'; ss.title = t('rel.bak') + (r.backup||'') + t('rel.bakhint'); }
       if(rb) rb.disabled = false;
       brainTick();
-    } catch(e){ ss.className = 'drive-state bad'; ss.textContent = '✗ lỗi'; if(rb) rb.disabled = false; }
+    } catch(e){ ss.className = 'drive-state bad'; ss.textContent = t('s.err'); if(rb) rb.disabled = false; }
   }
   async function testDrive(){
     const path = el('driveLink').value.trim();
-    el('driveState').className = 'drive-state'; el('driveState').textContent = 'testing...';
+    el('driveState').className = 'drive-state'; el('driveState').textContent = '…';
     try {
       const d = await (await fetch('/set-drive?path=' + encodeURIComponent(path), { method: 'POST' })).json();
       renderDriveState(d);
-    } catch(e){ el('driveState').className = 'drive-state bad'; el('driveState').textContent = '✗ error'; }
+    } catch(e){ el('driveState').className = 'drive-state bad'; el('driveState').textContent = t('d.err'); }
   }
   async function openDoc(file){
     el('docName').textContent = file;
-    el('docBody').textContent = 'loading...';
+    el('docBody').textContent = t('dv.loading');
     el('docOverlay').style.display = 'flex';
     try {
       const r = await (await fetch('/doc' + ru({file: file}))).json();
-      el('docBody').textContent = r.content || '(empty)';
-    } catch(e){ el('docBody').textContent = 'error: ' + e; }
+      el('docBody').textContent = r.content || t('dv.empty');
+    } catch(e){ el('docBody').textContent = t('dv.err') + e; }
   }
   async function openStandardDoc(file){
     el('docName').textContent = 'STANDARD · ' + file;
-    el('docBody').textContent = 'loading...';
+    el('docBody').textContent = t('dv.loading');
     el('docOverlay').style.display = 'flex';
     try {
       const r = await (await fetch('/standard-doc?file=' + encodeURIComponent(file))).json();
-      el('docBody').textContent = r.content || '(empty)';
-    } catch(e){ el('docBody').textContent = 'error: ' + e; }
+      el('docBody').textContent = r.content || t('dv.empty');
+    } catch(e){ el('docBody').textContent = t('dv.err') + e; }
   }
   function closeDoc(){ el('docOverlay').style.display = 'none'; }
   function clearFilters(){ el('fTime').value = '0'; el('fType').value = ''; el('fOrigin').value = ''; el('fAgent').value = ''; brainSearch(); }
   async function openSession(sid){
     el('sessName').textContent = 'Full session';
     el('sessMeta').textContent = '';
-    el('sessBody').innerHTML = '<div class="muted">loading full session...</div>';
+    el('sessBody').innerHTML = '<div class="muted">' + t('ss.loading') + '</div>';
     el('sessionOverlay').style.display = 'flex';
     try {
       const s = await (await fetch('/brain-session' + ru({id: sid}))).json();
-      if(!s || !s.messages){ el('sessBody').innerHTML = '<div class="muted">(session not found)</div>'; return; }
+      if(!s || !s.messages){ el('sessBody').innerHTML = '<div class="muted">' + t('ss.notfound') + '</div>'; return; }
       el('sessName').textContent = s.title || projName(s.project);
-      el('sessMeta').textContent = esc(s.source) + ' · ' + esc(projName(s.project)) + ' · ' + s.messages.length + ' messages' + (s.truncated ? ' (hiển thị ' + s.messages.length + ' đầu — phiên còn dài hơn)' : '');
+      el('sessMeta').textContent = esc(s.source) + ' · ' + esc(projName(s.project)) + ' · ' + s.messages.length + t('ss.msgs') + (s.truncated ? t('ss.trunc1') + s.messages.length + t('ss.trunc2') : '');
       el('sessBody').innerHTML = s.messages.map(m =>
         '<div class="smsg ' + esc(m.role || '') + '"><div class="role">' + esc(m.role || 'message') + ' · ' + fmtDay(m.timestamp) + ' · #' + m.id + '</div><div class="txt">' + esc(m.content || '') + '</div></div>'
       ).join('');
       el('sessBody').scrollTop = 0;
-    } catch(e){ el('sessBody').innerHTML = '<div class="muted">session error: ' + esc(e) + '</div>'; }
+    } catch(e){ el('sessBody').innerHTML = '<div class="muted">' + t('ss.err') + esc(e) + '</div>'; }
   }
   function closeSession(){ el('sessionOverlay').style.display = 'none'; }
   function closeSyncBox(){ if(!window.__syncing) el('syncOverlay').style.display = 'none'; }
   async function driveSync(){
     const ds = el('driveState'), sb = el('syncBtn');
-    ds.className = 'drive-state'; ds.textContent = 'syncing...'; ds.title = ''; if(sb) sb.disabled = true;
+    ds.className = 'drive-state'; ds.textContent = t('sy.syncingShort'); ds.title = ''; if(sb) sb.disabled = true;
     window.__syncing = true;
     const syncStart = Date.now();
     el('syncBox').innerHTML =
       '<div class="spinner"></div>' +
-      '<div class="sync-step"><b>Syncing…</b><span id="syncElapsed" style="margin-left:auto;font-variant-numeric:tabular-nums;color:#dce7df">0:00</span></div>' +
-      '<div class="sync-step">1 · scanning this machine for new sessions</div>' +
-      '<div class="sync-step">2 · exporting your whole brain as an encrypted bundle</div>' +
-      '<div class="sync-step">3 · merging every other machine\'s bundle</div>' +
-      '<div class="sync-step">4 · embedding new vectors</div>' +
-      '<div class="sync-step tiny" style="margin-top:6px">Exports the FULL encrypted brain — on a large brain (hundreds of MB) this runs a few minutes. It is working; leave it open.</div>';
+      '<div class="sync-step"><b>' + t('sy.syncing') + '</b><span id="syncElapsed" style="margin-left:auto;font-variant-numeric:tabular-nums;color:#dce7df">0:00</span></div>' +
+      '<div class="sync-step">' + t('sy.s1') + '</div>' +
+      '<div class="sync-step">' + t('sy.s2') + '</div>' +
+      '<div class="sync-step">' + t('sy.s3') + '</div>' +
+      '<div class="sync-step">' + t('sy.s4') + '</div>' +
+      '<div class="sync-step tiny" style="margin-top:6px">' + t('sy.note') + '</div>';
     el('syncOverlay').style.display = 'flex';
     const syncTimer = setInterval(function(){ var s = Math.floor((Date.now() - syncStart) / 1000), e = document.getElementById('syncElapsed'); if(e) e.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
     try {
       const r = await (await fetch('/drive-sync', { method: 'POST' })).json();
       window.__syncing = false;
       if(!r.ok){
-        ds.className = 'drive-state bad'; ds.textContent = '✗ sync failed'; ds.title = r.error || '';
-        el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>✗ Sync failed</b></div><div class="sync-step">' + esc(r.error || 'unknown error') + '</div>' + syncCloseBtn();
+        ds.className = 'drive-state bad'; ds.textContent = t('sy.failShort'); ds.title = r.error || '';
+        el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>' + t('sy.failed') + '</b></div><div class="sync-step">' + esc(r.error || t('sy.unknown')) + '</div>' + syncCloseBtn();
         return;
       }
       const ms = r.merged || [];
       const added = ms.reduce((a, m) => a + (m.messagesAdded || 0), 0);
       const captured = (r.scanned && r.scanned.newMessages) || 0;
-      ds.className = 'drive-state ok'; ds.textContent = '✓ synced';
-      // Local write + merge are done here; the Google Drive CLOUD upload happens
-      // in the background (that is what carries the bundle to other machines).
+      ds.className = 'drive-state ok'; ds.textContent = t('sy.okShort');
       el('syncBox').innerHTML =
-        '<div class="sync-step sync-done"><b>✓ Local sync complete</b></div>' +
-        '<div class="sync-step">Scanned this machine · <b>+' + fmtN(captured) + '</b> new msg captured</div>' +
-        '<div class="sync-step">Exported bundle · <b>' + fmtBytes((r.exportedBytes || 0) / 1024) + '</b></div>' +
-        '<div class="sync-step">Merged <b>' + ms.length + '</b> other bundle(s) · <b>+' + fmtN(added) + '</b> msg</div>' +
-        '<div class="sync-step">Embedded <b>' + fmtN(r.embedded || 0) + '</b> new vector(s)' + (r.vectorRemaining ? ' · ⚠ ' + fmtN(r.vectorRemaining) + ' pending (run brain embed --all)' : '') + '</div>' +
-        '<div class="sync-step tiny" style="margin-top:6px">⏳ Google Drive is still uploading to the cloud in the background — other machines receive it once Drive finishes (watch the Drive tray icon).</div>' +
+        '<div class="sync-step sync-done"><b>' + t('sy.done') + '</b></div>' +
+        '<div class="sync-step">' + t('sy.scanned') + '<b>+' + fmtN(captured) + '</b>' + t('sy.newmsg') + '</div>' +
+        '<div class="sync-step">' + t('sy.exported') + '<b>' + fmtBytes((r.exportedBytes || 0) / 1024) + '</b></div>' +
+        '<div class="sync-step">' + t('sy.merged1') + '<b>' + ms.length + '</b>' + t('sy.merged2') + '<b>+' + fmtN(added) + '</b> msg</div>' +
+        '<div class="sync-step">' + t('sy.embedded1') + '<b>' + fmtN(r.embedded || 0) + '</b>' + t('sy.embedded2') + (r.vectorRemaining ? ' · ⚠ ' + fmtN(r.vectorRemaining) + t('sy.pending') : '') + '</div>' +
+        '<div class="sync-step tiny" style="margin-top:6px">' + t('sy.cloudnote') + '</div>' +
         syncCloseBtn();
       await brainTick();
     } catch(e){
       window.__syncing = false;
-      ds.className = 'drive-state bad'; ds.textContent = '✗ error';
-      el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>✗ Sync error</b></div><div class="sync-step">' + esc(String(e)) + '</div>' + syncCloseBtn();
+      ds.className = 'drive-state bad'; ds.textContent = t('sy.errShort');
+      el('syncBox').innerHTML = '<div class="sync-step" style="color:var(--amber)"><b>' + t('sy.errorT') + '</b></div><div class="sync-step">' + esc(String(e)) + '</div>' + syncCloseBtn();
     }
     finally { clearInterval(syncTimer); if(sb) sb.disabled = false; window.__syncing = false; }
   }
-  function syncCloseBtn(){ return '<button class="ghost" style="margin-top:12px;width:100%" onclick="closeSyncBox()">Close</button>'; }
+  function syncCloseBtn(){ return '<button class="ghost" style="margin-top:12px;width:100%" onclick="closeSyncBox()">' + t('sy.close') + '</button>'; }
   async function brainScan(deep){
-    el('brainmsg').textContent = deep ? 'Đang quét sâu cả máy...' : 'Đang quét các vị trí đã biết...';
+    el('brainmsg').textContent = deep ? t('sn.deep') : t('sn.known');
     el('brainreport').innerHTML = '';
     try {
       const r = await (await fetch('/brain-scan' + (deep ? '?deep=1' : ''), { method: 'POST' })).json();
-      el('brainmsg').textContent = 'Nạp thêm +' + fmtN(r.totals.newMessages) + ' message · ' + r.changedFiles + ' phiên đổi · quét ' + r.scannedFiles + ' file.';
+      el('brainmsg').textContent = t('sn.loaded') + fmtN(r.totals.newMessages) + t('sn.msg') + r.changedFiles + t('sn.changed') + r.scannedFiles + t('sn.file');
       let h = '';
-      if(r.unknown && r.unknown.length) h += '<div class="chip warn">' + r.unknown.length + ' store lạ</div>';
+      if(r.unknown && r.unknown.length) h += '<div class="chip warn">' + r.unknown.length + t('sn.strange') + '</div>';
       if(r.stores && r.stores.length) {
-        h += sectionTitle('Store đã quét');
+        h += sectionTitle(t('sn.stores'));
         h += r.stores.slice(0, 6).map(s => folderLine(s.source, s.root, 'transcripts')).join('');
       }
-      if(r.sessions && r.sessions.length) h += sectionTitle('Changed sessions');
+      if(r.sessions && r.sessions.length) h += sectionTitle(t('sn.changedS'));
       h += (r.sessions || []).slice(0, 8).map(s => miniRow(s.source + ' / ' + projName(s.project), '+' + fmtN(s.newMessages) + ' msg')).join('');
       el('brainreport').innerHTML = h;
       await brainTick();
       await tick();
-    } catch(e){ el('brainmsg').textContent = 'scan error: ' + e; }
+    } catch(e){ el('brainmsg').textContent = t('sn.err') + e; }
   }
   function onType(){ clearTimeout(typer); typer = setTimeout(function(){ brainSearch(false); }, 220); }
   async function brainSearch(commit){
     const q = el('bq').value.trim();
     if(q.length < 2){
-      el('resultCount').textContent = 'Type at least 2 characters to search.';
-      el('brainhits').innerHTML = '<div class="empty">Search opens a ranked result list here.</div>';
-      el('threadPreview').innerHTML = '<div class="preview-title"><b>Thread preview</b><span>waiting</span></div><div class="empty">Select a result to preview nearby messages without leaving the cockpit.</div>';
+      el('resultCount').textContent = t('recall.hint');
+      el('brainhits').innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
+      el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('recall.waiting') + '</span></div><div class="empty">' + t('recall.previewEmpty') + '</div>';
       return;
     }
     const all = el('ball').checked;
     const terms = queryTerms();
-    el('resultCount').textContent = 'Searching...';
-    el('brainhits').innerHTML = '<div class="empty">searching...</div>';
+    el('resultCount').textContent = t('q.searching');
+    el('brainhits').innerHTML = '<div class="empty">' + t('q.searching') + '</div>';
     try {
       const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value, commit: commit ? '1' : '0'}))).json();
       if(!hits.length){
-        el('resultCount').textContent = '0 results';
-        el('brainhits').innerHTML = '<div class="empty">No matches' + (all ? '.' : ' in this project. Try all projects.') + '</div>';
-        el('threadPreview').innerHTML = '<div class="preview-title"><b>Thread preview</b><span>empty</span></div><div class="empty">No result selected.</div>';
+        el('resultCount').textContent = t('q.0');
+        el('brainhits').innerHTML = '<div class="empty">' + t('q.nomatch') + (all ? t('q.nomatchdot') : t('q.nomatchproj')) + '</div>';
+        el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.emptyState') + '</span></div><div class="empty">' + t('q.noSel') + '</div>';
         return;
       }
-      el('resultCount').textContent = hits.length + ' results';
+      el('resultCount').textContent = hits.length + t('q.results');
       lastHits = hits;
       selectedHit = hits[0].id;
       renderHits();
       await selectHit(selectedHit);
     } catch(e){
-      el('resultCount').textContent = 'Search error';
-      el('brainhits').innerHTML = '<div class="empty">search error: ' + esc(e) + '</div>';
+      el('resultCount').textContent = t('q.err');
+      el('brainhits').innerHTML = '<div class="empty">' + t('q.errbody') + esc(e) + '</div>';
     }
   }
   function renderHitRow(h, i, terms){
@@ -1676,7 +1673,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       '<div><div class="result-title"><span>' + esc(title) + '</span>' + badge(h.source || 'session', 'on') + badge(projName(h.project), '') + '</div>' +
       '<div class="result-snip">' + highlight(clip(h.snippet, 170), terms) + '</div>' +
       '<div class="result-foot"><span>' + fmtDay(h.timestamp) + '</span><span>#' + h.id + '</span><span>' + esc(h.role || 'message') + '</span></div></div>' +
-      '<div class="open-arrow" onclick="event.stopPropagation();openSession(\'' + esc(h.sessionId) + '\')" title="Open full session">⤢</div></div>';
+      '<div class="open-arrow" onclick="event.stopPropagation();openSession(\'' + esc(h.sessionId) + '\')" title="' + t('q.openfull') + '">⤢</div></div>';
   }
   function renderHits(){
     const terms = queryTerms();
@@ -1685,19 +1682,23 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     else if(sortMode === 'old') hits.sort((a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')));
     el('brainhits').innerHTML = hits.map((h, i) => renderHitRow(h, i, terms)).join('');
   }
+  function updateSortLabel(){
+    var s = el('sortState'); if(!s) return;
+    s.textContent = t(sortMode === 'rel' ? 'so.rel' : sortMode === 'new' ? 'so.new' : 'so.old') + ' ⇅';
+  }
   function cycleSort(){
     sortMode = sortMode === 'rel' ? 'new' : sortMode === 'new' ? 'old' : 'rel';
-    el('sortState').textContent = (sortMode === 'rel' ? 'Sorted by relevance' : sortMode === 'new' ? 'Newest first' : 'Oldest first') + ' ⇅';
+    updateSortLabel();
     if(lastHits.length) renderHits();
   }
   async function selectHit(id){
     selectedHit = id;
     document.querySelectorAll('.result-row').forEach(n => n.classList.toggle('selected', n.id === 'hit' + id));
-    el('threadPreview').innerHTML = '<div class="preview-title"><b>Thread preview</b><span>loading</span></div><div class="empty">loading context...</div>';
+    el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.loadingS') + '</span></div><div class="empty">' + t('q.loadingctx') + '</div>';
     try {
       const ctx = await (await fetch('/brain-context' + ru({id: id}))).json();
       if(!ctx || !ctx.messages){
-        el('threadPreview').innerHTML = '<div class="preview-title"><b>Thread preview</b><span>empty</span></div><div class="empty">(no context)</div>';
+        el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.emptyState') + '</span></div><div class="empty">' + t('q.nocontext') + '</div>';
         return;
       }
       const terms = queryTerms();
@@ -1706,19 +1707,19 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         (m.isHit ? highlight(clip(m.content, 1200), terms) : esc(clip(m.content, 390))) + '</div>'
       ).join('');
       el('threadPreview').innerHTML =
-        '<div class="preview-title"><b>Thread preview</b><span>' + ctx.messages.length + ' nearby</span>' +
-        '<button class="ghost" style="padding:4px 9px;margin-left:auto" onclick="openSession(\'' + esc(ctx.sessionId) + '\')">Full session ⤢</button></div>' +
-        '<div class="preview-meta">Selected message #' + id + '</div>' +
+        '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + ctx.messages.length + t('q.nearby') + '</span>' +
+        '<button class="ghost" style="padding:4px 9px;margin-left:auto" onclick="openSession(\'' + esc(ctx.sessionId) + '\')">' + t('q.fullsession') + '</button></div>' +
+        '<div class="preview-meta">' + t('q.selmsg') + id + '</div>' +
         '<div class="thread">' + thread + '</div>';
     } catch(e){
-      el('threadPreview').innerHTML = '<div class="preview-title"><b>Thread preview</b><span>error</span></div><div class="empty">context error: ' + esc(e) + '</div>';
+      el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('ctx.error') + '</span></div><div class="empty">' + t('ctx.err') + esc(e) + '</div>';
     }
   }
   function expandHit(id){ selectHit(id); }
   // ---- Settings modal + i18n ----------------------------------------------
   var T = {
     vi: {
-      'bar.env':'Máy: local','bar.settings':'Cài đặt',
+      'bar.env':'Máy: local','bar.settings':'Cài đặt','brand.tag':'Bộ nhớ & harness docs cho agent lập trình · v0.0.1',
       'proj.title':'Dự án','proj.sub':'Docs & quy tắc của dự án đang chọn.','proj.run':'Chạy','proj.add':'+ Thêm',
       'recall.sub':'Tìm trong các phiên Codex, Claude, Continue, LM Studio đã lưu.','recall.search':'Tìm','recall.scope':'Mọi dự án','recall.clear':'Xoá lọc','recall.hint':'Gõ ít nhất 2 ký tự để tìm.','recall.empty':'Kết quả tìm sẽ hiện ở đây.','recall.preview':'Xem trước phiên','recall.waiting':'chờ','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.',
       'mem.title':'Bộ nhớ toàn cục','scan.title':'Quét & thu thập','scan.sub':'Kéo ngữ cảnh mới từ máy này.','scan.known':'Quét nhanh','scan.deep':'Quét sâu','proj2.title':'Dự án','proj2.sub':'Folder dự án đã có phiên được thu.',
@@ -1728,10 +1729,25 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'drive.h':'Đồng bộ qua Drive','drive.d':'Mỗi máy xuất một bundle mã hoá vào folder Drive; máy khác merge vào. DB sống KHÔNG bị sync trực tiếp.','drive.folder':'Folder Drive',
       'search.h':'Mặc định tìm kiếm','search.d':'Bật/tắt cũng đổi ngay trên thanh Recall. Lưu vào config.json.',
       'health.h':'Kiểm tra hệ thống','health.d':'Các tính năng lõi có chạy được trên máy này không (FTS5, recall, harness).','health.retest':'Kiểm tra lại',
-      'docs.d':'Đồng bộ / dựng lại bộ docs chuẩn cho dự án. Không bao giờ ghi đè nguồn trong DB.','docs.sync':'Thêm docs còn thiếu, giữ nguyên nguồn DB.','docs.fresh':'Dựng mới','docs.freshD':'Giữ docs cũ sang bên, tạo bộ sạch.'
+      'docs.d':'Đồng bộ / dựng lại bộ docs chuẩn cho dự án. Không bao giờ ghi đè nguồn trong DB.','docs.sync':'Thêm docs còn thiếu, giữ nguyên nguồn DB.','docs.fresh':'Dựng mới','docs.freshD':'Giữ docs cũ sang bên, tạo bộ sạch.',
+      'r.std':'Chuẩn dùng chung','r.noproj':'Chưa có dự án','r.runinit':'chạy zemory init','r.projdocs':'Docs dự án này (bấm để đọc)','r.setup':'Cài đặt / onboarding','r.plan':'Bản sao plan','r.docs':'docs','r.known':'dự án đã biết',
+      'm.msgs':'tin nhắn','m.sess':'phiên','m.tok':'token đã thu','m.size':'dung lượng DB','m.healthy':'Khoẻ','m.empty':'Trống','m.updated':'cập nhật','m.capcost':'Chi phí thu','m.capval':'0 token phụ trội · free','m.search':'Tìm kiếm','m.ftsonly':'chỉ FTS','m.pending':'chờ','m.err':'lỗi','m.sources':'Nguồn','m.excl':'loại','m.untick':' — bỏ tick để loại khỏi sync + recall','m.tables':'Bảng','m.none':'không có',
+      'sc.origin':'nguồn: mọi','sc.host':'máy (trống=mọi)','sc.source':'agent/nền tảng (trống=mọi)','sc.add':'+ Thêm','sc.rm':'Bỏ luật loại này',
+      'cov.none':'Chưa có folder dự án nào được thu.','cov.sess':'phiên','cov.msg':'msg','cov.agent':'agent',
+      'd.notlinked':'chưa liên kết','d.linked':'✓ đã liên kết','d.bundle':'bundle','d.readonly':'⚠ chỉ đọc','d.pastelocal':'dán folder local','d.nofolder':'không thấy folder','d.err':'✗ lỗi',
+      's.defaultC':'ổ C (mặc định)','s.shortC':'ổ C','s.moved':'đã dời','s.empty':'trống','s.envpin':'ghim bởi env','s.oncloud':'⚠ trên Drive (rủi ro)','s.moving':'đang dời...','s.setptr':'✓ đã đặt nơi lưu','s.movedOk':'✓ đã dời','s.err':'✗ lỗi',
+      'rel.needpath':'Nhập folder muốn lưu brain, vd D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Dời DB brain sang:','rel.confirm2':'App sẽ checkpoint + copy + verify rồi đổi con trỏ. Bản cũ được GIỮ lại dạng .bak (không mất gì). Tiếp tục?','rel.bak':'Bản cũ giữ ở: ','rel.bakhint':' (xoá tay khi chắc chắn OK)',
+      'sy.syncing':'Đang đồng bộ…','sy.s1':'1 · quét máy này tìm phiên mới','sy.s2':'2 · xuất toàn bộ brain thành bundle mã hoá','sy.s3':'3 · merge bundle của mọi máy khác','sy.s4':'4 · nhúng vector mới','sy.note':'Xuất TOÀN BỘ brain mã hoá — brain lớn (vài trăm MB) sẽ chạy vài phút. Đang chạy; cứ để mở.','sy.failed':'✗ Đồng bộ thất bại','sy.unknown':'lỗi không rõ','sy.done':'✓ Đồng bộ local xong','sy.scanned':'Đã quét máy này · ','sy.newmsg':' msg mới thu','sy.exported':'Đã xuất bundle · ','sy.merged1':'Merge ','sy.merged2':' bundle khác · ','sy.embedded1':'Đã nhúng ','sy.embedded2':' vector mới','sy.pending':' chờ (chạy brain embed --all)','sy.cloudnote':'⏳ Google Drive vẫn đang tải lên cloud ở nền — máy khác nhận được khi Drive xong (xem icon khay Drive).','sy.errorT':'✗ Lỗi đồng bộ','sy.close':'Đóng','sy.syncingShort':'đang đồng bộ...','sy.okShort':'✓ đã đồng bộ','sy.failShort':'✗ đồng bộ lỗi','sy.errShort':'✗ lỗi',
+      'sn.deep':'Đang quét sâu cả máy...','sn.known':'Đang quét các vị trí đã biết...','sn.loaded':'Nạp thêm +','sn.msg':' message · ','sn.changed':' phiên đổi · quét ','sn.file':' file.','sn.strange':' store lạ','sn.stores':'Store đã quét','sn.changedS':'Phiên đã đổi','sn.err':'lỗi quét: ',
+      'q.searching':'Đang tìm...','q.0':'0 kết quả','q.nomatch':'Không khớp','q.nomatchdot':'.','q.nomatchproj':' trong dự án này. Thử mọi dự án.','q.results':' kết quả','q.err':'Lỗi tìm','q.errbody':'lỗi tìm: ','q.noSel':'Chưa chọn kết quả.','q.emptyState':'trống','q.loadingctx':'đang tải ngữ cảnh...','q.loadingS':'đang tải','q.nocontext':'(không có ngữ cảnh)','q.nearby':' lân cận','q.fullsession':'Phiên đầy đủ ⤢','q.selmsg':'Message đã chọn #','q.openfull':'Mở phiên đầy đủ',
+      'ss.loading':'đang tải phiên...','ss.notfound':'(không thấy phiên)','ss.msgs':' messages','ss.trunc1':' (hiển thị ','ss.trunc2':' đầu — phiên còn dài hơn)','ss.err':'lỗi phiên: ',
+      'so.rel':'Sắp theo liên quan','so.new':'Sắp mới nhất','so.old':'Sắp cũ nhất',
+      'ph.search':'ví dụ: cách stream tool output cho agent','ph.addproj':'Thêm dự án bằng đường dẫn folder…','f.agentAny':'Agent: mọi','f.timeAny':'Thời gian: mọi lúc','f.time24':'24h qua','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi',
+      'dv.loading':'đang tải...','dv.empty':'(trống)','dv.err':'lỗi: ','ctx.err':'lỗi ngữ cảnh: ','ctx.error':'lỗi',
+      'act.working':'đang xử lý...','act.nonstd':'Docs chưa chuẩn — chạy zemory migrate, docs sync/rm/render.','act.added':'đã thêm ','act.nomiss':'không thiếu gì','act.renamed':'đã đổi tên cũ → ','act.created':'đã tạo .harness.json — '
     },
     en: {
-      'bar.env':'Env: local','bar.settings':'Settings',
+      'bar.env':'Env: local','bar.settings':'Settings','brand.tag':'Memory & docs harness for coding agents · v0.0.1',
       'proj.title':'Project','proj.sub':'Docs & rules for the selected project.','proj.run':'Run','proj.add':'+ Add',
       'recall.sub':'Search saved Codex, Claude, Continue, LM Studio sessions.','recall.search':'Search','recall.scope':'All projects','recall.clear':'Clear','recall.hint':'Type at least 2 characters to search.','recall.empty':'Search results appear here.','recall.preview':'Thread preview','recall.waiting':'waiting','recall.previewEmpty':'Select a result to preview nearby messages without leaving the cockpit.',
       'mem.title':'Global memory','scan.title':'Scan & capture','scan.sub':'Pull new context from this machine.','scan.known':'Scan known','scan.deep':'Deep scan','proj2.title':'Projects','proj2.sub':'Project folders with captured sessions.',
@@ -1741,9 +1757,25 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'drive.h':'Drive sync','drive.d':'Each machine exports an encrypted bundle to a Drive folder; others merge it. The live DB is NOT synced directly.','drive.folder':'Drive folder',
       'search.h':'Search defaults','search.d':'Toggling also flips it on the Recall bar. Saved to config.json.',
       'health.h':'Health checks','health.d':'Do the core features actually run on this machine (FTS5, recall, harness).','health.retest':'Re-test',
-      'docs.d':'Sync / rebuild the standard docs set for the project. Never overwrites the DB source.','docs.sync':'Add missing docs, keep the DB source.','docs.fresh':'Fresh start','docs.freshD':'Keep old docs aside, create a clean set.'
+      'docs.d':'Sync / rebuild the standard docs set for the project. Never overwrites the DB source.','docs.sync':'Add missing docs, keep the DB source.','docs.fresh':'Fresh start','docs.freshD':'Keep old docs aside, create a clean set.',
+      'r.std':'Shared standard','r.noproj':'No project','r.runinit':'run zemory init','r.projdocs':"This project's docs (click to read)",'r.setup':'Setup / onboarding','r.plan':'Plan mirror','r.docs':'docs','r.known':'known projects',
+      'm.msgs':'messages','m.sess':'sessions','m.tok':'tokens captured','m.size':'DB size','m.healthy':'Healthy','m.empty':'Empty','m.updated':'updated','m.capcost':'Capture cost','m.capval':'0 extra tokens · free','m.search':'Search','m.ftsonly':'FTS only','m.pending':'pending','m.err':'error','m.sources':'Sources','m.excl':'excluded','m.untick':' — untick to leave out of sync + recall','m.tables':'Tables','m.none':'none',
+      'sc.origin':'origin: any','sc.host':'machine (blank=any)','sc.source':'agent/platform (blank=any)','sc.add':'+ Add','sc.rm':'Remove this exclude rule',
+      'cov.none':'No project folders captured yet.','cov.sess':'sess','cov.msg':'msg','cov.agent':'agent',
+      'd.notlinked':'not linked','d.linked':'✓ linked','d.bundle':'bundle','d.readonly':'⚠ read-only','d.pastelocal':'paste a local folder','d.nofolder':'folder not found','d.err':'✗ error',
+      's.defaultC':'C: (default)','s.shortC':'C:','s.moved':'moved','s.empty':'empty','s.envpin':'env-pinned','s.oncloud':'⚠ on Drive (risky)','s.moving':'moving...','s.setptr':'✓ storage location set','s.movedOk':'✓ moved','s.err':'✗ error',
+      'rel.needpath':'Enter a folder for the brain, e.g. D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Move the brain DB to:','rel.confirm2':'It will checkpoint + copy + verify, then flip the pointer. The old DB is KEPT as a .bak (nothing lost). Continue?','rel.bak':'Old kept at: ','rel.bakhint':' (delete manually once confirmed OK)',
+      'sy.syncing':'Syncing…','sy.s1':'1 · scanning this machine for new sessions','sy.s2':'2 · exporting your whole brain as an encrypted bundle','sy.s3':"3 · merging every other machine's bundle",'sy.s4':'4 · embedding new vectors','sy.note':'Exports the FULL encrypted brain — on a large brain (hundreds of MB) this runs a few minutes. It is working; leave it open.','sy.failed':'✗ Sync failed','sy.unknown':'unknown error','sy.done':'✓ Local sync complete','sy.scanned':'Scanned this machine · ','sy.newmsg':' new msg captured','sy.exported':'Exported bundle · ','sy.merged1':'Merged ','sy.merged2':' other bundle(s) · ','sy.embedded1':'Embedded ','sy.embedded2':' new vector(s)','sy.pending':' pending (run brain embed --all)','sy.cloudnote':'⏳ Google Drive is still uploading to the cloud in the background — other machines receive it once Drive finishes (watch the Drive tray icon).','sy.errorT':'✗ Sync error','sy.close':'Close','sy.syncingShort':'syncing...','sy.okShort':'✓ synced','sy.failShort':'✗ sync failed','sy.errShort':'✗ error',
+      'sn.deep':'Deep scanning the whole machine...','sn.known':'Scanning known locations...','sn.loaded':'Loaded +','sn.msg':' message(s) · ','sn.changed':' session(s) changed · scanned ','sn.file':' file(s).','sn.strange':' unrecognized stores','sn.stores':'Stores scanned','sn.changedS':'Changed sessions','sn.err':'scan error: ',
+      'q.searching':'Searching...','q.0':'0 results','q.nomatch':'No matches','q.nomatchdot':'.','q.nomatchproj':' in this project. Try all projects.','q.results':' results','q.err':'Search error','q.errbody':'search error: ','q.noSel':'No result selected.','q.emptyState':'empty','q.loadingctx':'loading context...','q.loadingS':'loading','q.nocontext':'(no context)','q.nearby':' nearby','q.fullsession':'Full session ⤢','q.selmsg':'Selected message #','q.openfull':'Open full session',
+      'ss.loading':'loading full session...','ss.notfound':'(session not found)','ss.msgs':' messages','ss.trunc1':' (showing first ','ss.trunc2':' — session is longer)','ss.err':'session error: ',
+      'so.rel':'Sorted by relevance','so.new':'Sorted newest','so.old':'Sorted oldest',
+      'ph.search':'e.g. how we stream tool output for agents','ph.addproj':'Add a project by folder path…','f.agentAny':'Agent: any','f.timeAny':'Time: any','f.time24':'Last 24h','f.time7':'Last 7 days','f.time30':'Last 30 days','f.time90':'Last 90 days','f.typeAny':'Type: any','f.originAny':'Origin: any',
+      'dv.loading':'loading...','dv.empty':'(empty)','dv.err':'error: ','ctx.err':'context error: ','ctx.error':'error',
+      'act.working':'working...','act.nonstd':'Docs non-standard — run zemory migrate, docs sync/rm/render.','act.added':'added ','act.nomiss':'nothing missing','act.renamed':'renamed old → ','act.created':'created .harness.json — '
     }
   };
+  function t(k){ var d = T[window.__lang === 'en' ? 'en' : 'vi']; return (d && d[k] != null) ? d[k] : (T.vi[k] != null ? T.vi[k] : k); }
   function applyLang(lang){
     if(lang !== 'en') lang = 'vi';
     window.__lang = lang;
@@ -1752,12 +1784,29 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       var v = dict[e.getAttribute('data-i18n')];
       if(v != null) e.textContent = v;
     });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function(e){
+      var v = dict[e.getAttribute('data-i18n-ph')];
+      if(v != null) e.setAttribute('placeholder', v);
+    });
     var vi = el('langVi'), en = el('langEn');
     if(vi && en){ vi.classList.toggle('on', lang !== 'en'); en.classList.toggle('on', lang === 'en'); }
+    // Re-render JS-built views so their strings flip too (they cache last data).
+    try { if(last) renderStatus(); } catch(e){}
+    try { if(brain && Object.keys(brain).length) renderBrainSummary(brain); } catch(e){}
+    try { renderSettingsSearch(); } catch(e){}
+    try { updateSortLabel(); } catch(e){}
+    // Idle recall panels (no active query) → refresh their empty/hint text.
+    if(!(lastHits && lastHits.length)){
+      var rc = el('resultCount'); if(rc && (el('bq').value.trim().length < 2)) rc.textContent = t('recall.hint');
+      var bh = el('brainhits'); if(bh && el('bq').value.trim().length < 2) bh.innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
+    } else { try { renderHits(); } catch(e){} }
   }
   async function setLangUI(lang){
     try { await fetch('/set-lang?lang=' + lang, { method: 'POST' }); } catch(e){}
     applyLang(lang);
+    // Backend strings (status/checks details) are localized server-side → refetch.
+    try { await tick(); } catch(e){}
+    try { await brainTick(); } catch(e){}
   }
   function openSettings(pane){
     el('settingsOverlay').style.display = 'flex';
@@ -1792,19 +1841,19 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     renderSettingsSearch();
   }
   function summarize(r){
-    if(r.needsReconcile) return 'Docs non-standard - run zemory migrate, docs sync/rm/render.';
-    const a = r.added && r.added.length ? 'added ' + r.added.join(', ') : 'nothing missing';
-    return (r.renamedTo ? 'renamed old -> ' + r.renamedTo + '\n' : '') + (r.createdConfig ? 'created .harness.json - ' : '') + a;
+    if(r.needsReconcile) return t('act.nonstd');
+    const a = r.added && r.added.length ? t('act.added') + r.added.join(', ') : t('act.nomiss');
+    return (r.renamedTo ? t('act.renamed') + r.renamedTo + '\n' : '') + (r.createdConfig ? t('act.created') : '') + a;
   }
   async function act(ep){
     closeSettings();
-    el('msg').textContent = 'working...';
+    el('msg').textContent = t('act.working');
     try {
       const r = await (await fetch(ep + ru(), { method: 'POST' })).json();
-      el('msg').textContent = 'OK - ' + summarize(r);
+      el('msg').textContent = 'OK · ' + summarize(r);
       await tick();
       await runChecks();
-    } catch(e){ el('msg').textContent = 'error: ' + e; }
+    } catch(e){ el('msg').textContent = t('dv.err') + e; }
   }
   function actConfirm(ep, q){ if(confirm(q)) act(ep); }
 

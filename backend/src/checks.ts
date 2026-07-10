@@ -9,6 +9,7 @@ import type { Capability } from "./core/types.js";
 import { brainSummary } from "./brain/ingest.js";
 import { search } from "./brain/search.js";
 import { validate } from "./validate.js";
+import { tr } from "./settings.js";
 
 export interface CheckResult {
   feature: string;
@@ -21,7 +22,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
   // --- Tool/brain-level features (no project needed) ---
   if (feature === "grill") {
     // Workflow concept (no per-project file). Guide lives in AGENTS.md §6.
-    return { feature, ok: true, state: "on", detail: "ready (AGENTS.md §6)" };
+    return { feature, ok: true, state: "on", detail: tr("sẵn sàng (AGENTS.md §6)", "ready (AGENTS.md §6)") };
   }
 
   const configuredRoot =
@@ -31,7 +32,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     try {
       const provider = createRuntime(loadContext(configuredRoot)).registry.resolve(capability);
       if (!provider?.check) {
-        return { feature, ok: false, state: "off", detail: "provider has no health check" };
+        return { feature, ok: false, state: "off", detail: tr("provider không có health check", "provider has no health check") };
       }
       const report = await provider.check(loadContext(configuredRoot));
       return {
@@ -45,7 +46,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
         feature,
         ok: false,
         state: "off",
-        detail: error instanceof Error ? error.message : "provider error",
+        detail: error instanceof Error ? error.message : tr("lỗi provider", "provider error"),
       };
     }
   }
@@ -55,29 +56,32 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     try {
       const t = brainSummary().totals;
       if (t.sessions === 0) {
-        return { feature, ok: true, state: "on", detail: "ready · brain empty (run a scan)" };
+        return { feature, ok: true, state: "on", detail: tr("sẵn sàng · brain trống (chạy quét)", "ready · brain empty (run a scan)") };
       }
       let probe = 0;
       try {
         probe = search("the", { all: true, limit: 3 }).length; // exercise FTS5
       } catch {
-        return { feature, ok: false, state: "off", detail: "FTS query failed" };
+        return { feature, ok: false, state: "off", detail: tr("query FTS lỗi", "FTS query failed") };
       }
       return {
         feature,
         ok: true,
         state: "on",
-        detail: `${t.sessions} sessions · ${t.messages.toLocaleString()} msg · query ok (${probe} hit)`,
+        detail: tr(
+          `${t.sessions} phiên · ${t.messages.toLocaleString()} msg · query ok (${probe} hit)`,
+          `${t.sessions} sessions · ${t.messages.toLocaleString()} msg · query ok (${probe} hit)`,
+        ),
       };
     } catch {
-      return { feature, ok: false, state: "off", detail: "brain error" };
+      return { feature, ok: false, state: "off", detail: tr("lỗi brain", "brain error") };
     }
   }
 
   // --- Project-level features ---
   const root = configuredRoot;
   if (!root) {
-    return { feature, ok: false, state: "off", detail: "no project (run init)" };
+    return { feature, ok: false, state: "off", detail: tr("chưa có dự án (chạy init)", "no project (run init)") };
   }
   const ctx = loadContext(root);
 
@@ -89,10 +93,10 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
         feature,
         ok: rep.ok,
         state: "on",
-        detail: warns === 0 ? "ready · no issues" : `${warns} issue(s) to fix`,
+        detail: warns === 0 ? tr("sẵn sàng · không lỗi", "ready · no issues") : tr(`${warns} lỗi cần sửa`, `${warns} issue(s) to fix`),
       };
     }
     default:
-      return { feature, ok: false, state: "off", detail: "unknown feature" };
+      return { feature, ok: false, state: "off", detail: tr("feature lạ", "unknown feature") };
   }
 }
