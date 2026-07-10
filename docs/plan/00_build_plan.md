@@ -68,9 +68,10 @@ External engine (embedding model cho semantic) chỉ được gọi qua adapter 
 - `health:core` — kiểm tra config, provider, DB, hook, adapter và feature thực.
 
 Provider built-in sống trong `backend/src/modules/`. (Capability `governance` đã đổi tên → `harness`; provider memory `harness` → `global`; `compress` đã bỏ.)
-### Deps (`deps/`) — gạch public, gọi không dán
-- `model/` — `all-MiniLM-L6-v2` (HuggingFace, public; agentmemory cũng chỉ *dùng* model này, nó không thuộc agentmemory).
-- `lib/` — onnxruntime / md-parser... (package thường).
+### Model/lib ngoài — gạch public, gọi không dán (⚠️ cập nhật 2026-07-10: `deps/` là khái niệm cũ, KHÔNG dùng)
+- `model/` ban đầu dự tính `all-MiniLM-L6-v2`; thực tế build ra dùng **EmbeddingGemma-300M** (HuggingFace, public) qua Transformers.js — **tải/cache lúc runtime, KHÔNG commit vào repo**, KHÔNG có folder `deps/` vật lý.
+- `lib/` — onnxruntime, sqlite-vec, better-sqlite3... là package npm thường (`package.json` deps), không cần folder riêng.
+- Repo ngoài clone về (không phải package) → `external/` (đúng chuẩn `02_STRUCTURE.md`).
 
 ---
 
@@ -111,7 +112,7 @@ Code third-party không được dán vào `backend/src/`. Nếu bắt buộc ve
 - **Năng lực kế:** source-transcript privacy/tombstone nếu cần quên tuyệt đối; sau đó semantic rerank, code map và adapter host mới — chỉ bật sau benchmark/fixture.
 - **Bề mặt:** dashboard metrics và VS Code status bar dùng chung status API.
 
-Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/02_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
+Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/03_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
 ## 9. Quyết định (đã chốt — trước là "mở")
 - TypeScript/Node là runtime của lõi; SQLite/WAL là global brain local.
 - DB là nguồn curated; generated markdown không được routine sync ghi ngược trở lại.
@@ -124,3 +125,4 @@ Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (
 - Fresh backup cả agent docs lẫn plan.
 ## 10. Bước kế tiếp
 Trình tự đã hoàn tất qua 2026-06-30: **RAG semantic** (plan 05 — embed EmbeddingGemma + sqlite-vec + hybrid trên RRF), **MCP recall** (`brain_search`/`brain_show`/`plan_search`/`plan_show`) và **retention/privacy core** (`brain backup/restore/forget/redact`, export/import encrypted đã có). Compression đã BỎ khỏi scope (2026-06-25). Bước kế tiếp hợp lý: xác minh Stop hook runtime thật, source-transcript tombstone nếu cần quên tuyệt đối, rồi code map / adapter host mới. Mọi lớp mới phải có migration, regression test, health check và fallback trước khi bật mặc định.
+

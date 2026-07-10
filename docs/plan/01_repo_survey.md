@@ -78,5 +78,6 @@ Trung thực: trên riêng recall, agentmemory ≥ zemory v1 (hybrid vs lexical)
 
 ## 4. Quyết định
 - **KHÔNG** dùng/fork bất kỳ repo nào làm lõi (Model B). Khai thác ý.
-- zemory build tiếp theo **3 lane**: hoàn thiện recall → thêm compress → (sau) code-map.
+- ⚠️ Cập nhật 2026-07-10: kế hoạch gốc "3 lane" đã đổi — **compress BỎ khỏi scope** (2026-06-25, xem changelog). zemory build theo **2 lane thật + 1 nâng cấp**: hoàn thiện recall (đã lên RAG semantic — plan 05) · harness · code-map để sau (tùy chọn, chưa làm).
 - Mỗi capability vẫn theo registry "1 capability = 1 provider".
+

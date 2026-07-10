@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-10] — docs: update every idea/plan doc — fix 01/00 stale refs, expand plan 09 with all later structure decisions, plan 04 status
+
+
+
 ## [2026-07-10] — docs(structure): deploy backup is BIDIRECTIONAL — verify VM backup vs local attic/ before overwrite, resync after
 
 

@@ -3,7 +3,8 @@
 
 > Spec bộ khung thư mục chuẩn zemory **ship + thực thi** cho mọi app (UI + server-side).
 > Mục tiêu: **ít folder, dễ quét mắt**, rạch ròi của-mình vs ngoài, một chuẩn cho nhiều stack.
-> Trạng thái (2026-07-06): **CHỐT thiết kế**, đang chuẩn bị rollout (áp lên các app).
+> Trạng thái (cập nhật 2026-07-10): **CHỐT thiết kế + đã kín cross-cutting** (mã hóa/phân quyền/logging/audit/i18n/version-up). zemory **tự nó đã dogfood xong**; SasinFlow docs đã sync, folder thật chưa nắn; project khác tự refactor khi được yêu cầu.
+
 
 ## 1. Nguyên tắc
 > **Spec CHÍNH THỨC (cây từng-dòng + routing + convention) = harness file `docs/agent/02_STRUCTURE.md`** — ship cho MỌI app, agent đọc trực tiếp. Doc plan này = **nguyên tắc + quyết định thiết kế + rollout** (KHÔNG lặp cây, tránh 2 bản lệch).
@@ -33,15 +34,22 @@ Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUC
 - **Dialog 3-size** (token `frontend/styles/`). **Setting UI:** default `frontend/config/`, user-chỉnh `data/settings/`.
 - **Version/Packaging KHÔNG nhóm mới** — dùng git/Releases/data/migrations + `.spec`+scripts+resources/packaging+dist.
 - **Đã gộp review GPT (9.8):** util=helper-thuần · auth-scope · events-scope · frontend/config-guardrail · data/-chia-con · types-escape-hatch (FE tách → packages/contracts).
+- **Cross-cutting concern (2026-07-08/10) — bổ sung SAU review GPT:** mã hóa/encryption (vault/+store/+data/secrets) · phân quyền/authorization (auth/+middleware/+store/+config/) · logging/observability + audit-trail + error-handling (3 folder mới: `logging/` `audit/` `errors/`) · i18n 2 tầng (UI+server, gồm auto-dịch, 1 home `backend/src/i18n/`) · **meta-rule:** mọi concern xuyên suốt PHẢI có place+type rõ trong 02_STRUCTURE — thiếu thì BÁO + thêm (khỏi lọt, bài học từ vụ DB zemory plaintext không ai bắt được).
+- **Version-up (2026-07-10) — concern tách khỏi "Version" (lưu-ở-đâu):** 2 kiểu — ① TỰ ĐỘNG (`backend/src/update/`, app tự check+tải+apply, PHẢI phối hợp attic/+dist/+migrations/) và ② THỦ CÔNG (git tag chốt version → dist/ build → `scripts/deploy.*` đẩy máy đích/VM → backup 2 CHIỀU: verify backup-trên-VM khớp attic/ local TRƯỚC khi đè, resync SAU khi deploy — không phải push 1 chiều).
+- **`share/` (root, LFS bundle mã hóa xuyên máy)** — ngoại lệ có chủ đích của luật `data/=gitignore`, vì cần đi qua git để sync; giờ đã ghi rõ trong 02_STRUCTURE (trước đó là gap ẩn ngay trong chính zemory).
+- **Renumber harness (2026-07-09):** `01_RULES→02_STRUCTURE→03_TODO→04_CHANGES` (STRUCTURE đọc ngay sau RULES, không nằm cuối). Kèm fix quan trọng: `adopt.ts` tự rename file cũ (`02_TODO`/`03_CHANGES`) sang tên mới khi `sync`, để project đã có harness từ trước không bị kẹt "non-standard" vĩnh viễn.
+
 ## 5. Phạm vi áp dụng
 - **ÁP:** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI/data project, monorepo. Áp gần như không đổi cấu trúc.
 - **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · notebook / data rời · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
 ## 6. zemory thực thi thế nào — ship + check + guide (KHÔNG auto-move)
-- **Ship chuẩn:** rule §"Cấu trúc repo — chuẩn & routing" trong `docs-template/agent/01_RULES.md` → mọi project nhận qua harness.
+- **Ship chuẩn:** `docs-template/agent/02_STRUCTURE.md` (markdown source) → mọi project nhận qua `zemory init`/`sync`. `01_RULES.md` chỉ còn con trỏ tới file này.
 - **Check lệch:** `zemory validate` báo advisory (liệt kê tầng có/thiếu; warn nếu code không ở `backend/`(`src/`) hoặc thiếu `AGENTS.md`).
-- **Hướng dẫn reconcile:** `AGENTS.md §7` — agent nắn từng app: `git mv` (giữ history) → sửa import/entry → verify; **hỏi trước khi đập lớn**. zemory chỉ chỉ ra chỗ lệch, KHÔNG tự move file.
-
+- **Hướng dẫn reconcile:** `AGENTS.md §7/§8` — agent nắn từng app: `git mv` (giữ history) → sửa import/entry → verify; **hỏi trước khi đập lớn**. zemory chỉ chỉ ra chỗ lệch, KHÔNG tự move file.
+- **Sync tự động cho project cũ:** `adopt.ts` có `LEGACY_RENAME` — project đã có harness cũ (`02_TODO.md`/`03_CHANGES.md`) tự rename sang tên mới (+ update `doc.path` trong DB) khi chạy `sync`, để không bị kẹt "non-standard" vĩnh viễn (bug tìm ra + vá 2026-07-10).
 ## 7. Rollout (chuẩn bị)
-- Áp lên app hiện có (agent-assisted, từng app, hỏi trước):
-  - SasinInfra: gần chuẩn (đã có backend/frontend/config+vendor) → đổi `config/`→`backend/infra/`, `vendor/`→`external/`.
-  - zemory: gom `src/`→`backend/`, `deps/`→`external/`, cân nhắc tách UI-generated (`ui-page.ts`) sang `frontend/` (hay giữ code-gen trong backend).
+- **zemory: ✅ XONG (2026-07-08, dogfood).** `src/`→`backend/src/` · `test/`→`backend/test/` · `scripts/`→`backend/scripts/` · `prototype/web-capture/`→`attic/web-capture/` · `assets/`→`frontend/assets/`. Verify: `npm run check` (build+lint+57 test) PASS, `zemory validate`/`doctor` xanh, UI Cockpit chạy đúng. Tag backup: `pre-zemory-refactor`.
+- **SasinFlow: docs ĐÃ sync (2026-07-10)** — `zemory sync` tự rename + gap-fill `02_STRUCTURE.md` (nhờ fix `LEGACY_RENAME`). **Cấu trúc folder THẬT chưa nắn** (`src/`, `web/`, `config/` chưa gom `backend/`/`frontend/`) — việc còn lại nếu cần.
+- **SasinInfra: chưa đụng** — có `config/`+`vendor/` gần chuẩn, cần đổi `config/`→`backend/infra/`, `vendor/`→`external/` khi làm.
+- **Nguyên tắc rollout (nhắc lại):** mỗi project tự refactor khi được yêu cầu — KHÔNG chủ động đụng project khác chỉ vì đang sửa chuẩn ở zemory. Project khác chỉ cần trỏ agent vào `AGENTS.md` (đọc + tự làm theo), không cần thao tác tay từ zemory.
+

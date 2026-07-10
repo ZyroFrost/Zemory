@@ -26,7 +26,7 @@ Provider mặc định `memory` tiếp tục sở hữu ingest và episodic reca
 
 `keyword` vẫn là baseline bắt buộc vì nhanh, local và giải thích được. Provider semantic là lựa chọn thay thế hoặc engine nội bộ của một provider hợp nhất, không đăng ký song song cùng slot.
 
-Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding local để rerank khi corpus đủ lớn, rồi RRF và giới hạn kết quả theo session/project. Model embedding nằm trong `deps/` hoặc được tải ngoài package; `src/` chỉ chứa adapter và policy.
+Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding local để rerank khi corpus đủ lớn, rồi RRF và giới hạn kết quả theo session/project. Model embedding tải/cache lúc runtime (KHÔNG commit vào repo, dùng chung inference brick với rerank — plan 05 §2); `backend/src/` chỉ chứa adapter và policy.
 
 ## 4. MCP progressive disclosure
 Zemory cung cấp một MCP server local qua `zemory mcp` (stdio). Server này thuộc **tool cài toàn máy**, không thuộc riêng project nào:
@@ -89,4 +89,4 @@ Một capability chỉ được bật mặc định khi:
 - package không chứa model, binary hoặc code third-party ngoài license đã khai báo.
 
 ## 10. Trình tự triển khai
-Nền tảng integrity, provider runtime, Claude/Codex capture, RAG semantic core, **full vector backfill**, **MCP global recall** và **memory retention/privacy core** đã ổn định. **Compression đã BỎ khỏi scope (2026-06-25).** Ưu tiên tiếp theo: xác minh Stop hook trên phiên Claude/Codex mới, cân nhắc source-transcript privacy/tombstone nếu cần mức “quên tuyệt đối”, rồi code map và UI nâng cao. Mỗi lớp mới phải qua gate (test / migration / health check / fallback) trước khi bật mặc định.
+Nền tảng integrity, provider runtime, Claude/Codex capture, RAG semantic core, **full vector backfill**, **MCP global recall**, **memory retention/privacy core**, **session digest** (plan 06, XONG 2026-07-02), **scoped sync** (plan 08, XONG — `brain scope`) và **web-chat capture ChatGPT** (plan 07, XONG — 859 hội thoại) đã ổn định. **Compression đã BỎ khỏi scope (2026-06-25).** Ưu tiên tiếp theo (cập nhật 2026-07-10): xác minh Stop hook + sync Drive trên máy thật, scope áp lúc **ingest** (còn thiếu — xem plan 08), web-capture Gemini/Claude.ai, rồi source-transcript privacy/tombstone, code map và UI nâng cao. Mỗi lớp mới phải qua gate (test / migration / health check / fallback) trước khi bật mặc định.
