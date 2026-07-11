@@ -88,6 +88,8 @@
 - [ ] VS Code status bar chỉ đọc status API chung.
 - [ ] Toggle provider/adapter có validation conflict và rollback config.
 ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
+#1100 docs\agent\03_TODO.md — ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
+---
 > Thu hội thoại web (ChatGPT/Gemini/Claude.ai) vào brain. Spec: `docs/plan/07_web_chat_capture.md`. Prototype cũ ở `attic/web-capture/`.
 
 **✅ ĐÃ SHIP — ChatGPT (cập nhật 2026-07-08):**
@@ -97,9 +99,10 @@
 - [x] parseFileMulti + fallback file-export (`~/.zemory/imports/chatgpt/`) — dùng nuốt bộ Export lớn.
 
 **Còn lại (chưa làm):**
-- [ ] Recall + UI: facet **Local / Web** (lọc theo `origin`) — xác minh đã có chưa; thiếu thì thêm.
+- [x] Recall + UI: facet **Local / Web** — ĐÃ CÓ (xác minh 2026-07-11): UI filter "Nguồn: Local/Web" (fOrigin) + cây Nguồn scope-tree + CLI `brain search --origin local|web`.
 - [ ] **Gemini** (`gemini-web`): Takeout lossy → browser-connector; sau GPT.
 - [ ] **Claude.ai** (`claude-web`): export `chat_messages` phẳng hoặc browser-connector; sau GPT.
 - [ ] Gộp khung `scan-web --platform <gemini|claude>` (khung ChatGPT đã có sẵn).
 
 **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
+
