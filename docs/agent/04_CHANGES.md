@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-11] — docs(structure): §7 chuẩn phụ NON-APP (BI/data/docs/design) + note 2-chuẩn đầu doc
+
+Thêm chuẩn cấu trúc THỨ HAI cho project NON-APP — lấp vùng trắng "ngoài phạm vi" cho các repo kiểu `powerbi_sasinflow`.
+
+- **§7 mới trong [02_STRUCTURE](../agent/02_STRUCTURE.md)** (cả docs-template lẫn docs của zemory): chuẩn phụ cho project là SẢN PHẨM/TÀI SẢN (BI/report Power BI·Tableau, data/analytics dbt, docs-only, design). Bắt buộc = **3 vai trò**: `docs/` · `AGENTS.md` · ≥1 deliverable (`reports/`|`models/`|`content/`|`design/`) — không backend/frontend. Từ điển slot phụ: sources/ measures/ queries/ pipelines/ notebooks/ fixtures/ assets/ scripts/ config/ attic/ (+ data/ exports/ .env gitignore). Kèm ví dụ áp powerbi_sasinflow + bảng convention (LFS cho .pbix/.fig, data-thật vs fixtures, dictionary.md).
+- **Note "CÓ 2 CHUẨN" ngay đầu doc** để agent khác đọc là biết: ① APP (code chạy) → §1–6 · ② NON-APP (deliverable) → §7; xác định loại project trước, áp đúng chuẩn. §6 phạm-vi cập nhật tương ứng (non-app hết bị "ngoài phạm vi").
+- **Harness giữ Y HỆT app** — docs/agent/* + plan/ + .harness.json, cùng engine + lệnh zemory; chỉ thêm `docs/dictionary.md` [opt] cho BI/data. Nghĩa là zemory không cần biết project là app hay non-app.
+- Ghi quyết định vào [plan/09 §4](../plan/09_repo_structure.md); DB đã sync (doc 8 section).
+
 ## [2026-07-11] — feat(ui): i18n hoàn chỉnh VI/EN — t() + dict đầy đủ + backend localize, không sót chuỗi
 
 i18n hoàn chỉnh cả 2 ngôn ngữ — không sót chuỗi nào trong VI lẫn EN.

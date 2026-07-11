@@ -1,7 +1,9 @@
-# Cấu trúc repo chuẩn — bộ khung dùng chung cho mọi app
+# Cấu trúc repo chuẩn — bộ khung dùng chung cho mọi project
 
-> Chuẩn folder zemory **ship + thực thi** cho MỌI app (UI + server-side). Mô tả theo **VAI TRÒ**, không khóa framework.
-> Đọc TRƯỚC khi sửa: cần gì → §4 trỏ thẳng slot. Nắn app về chuẩn: xem `AGENTS.md §Reconcile`.
+> Chuẩn folder zemory **ship + thực thi** cho MỌI project. Mô tả theo **VAI TRÒ**, không khóa framework.
+> **CÓ 2 CHUẨN — xác định loại project TRƯỚC rồi áp đúng chuẩn:**
+> ① **APP** (có code chạy: UI/server/CLI) → **§1–6**. ② **NON-APP** (sản phẩm/tài sản: BI/report, data, docs-only, design — vd `powerbi_sasinflow`) → **§7**. Cả hai dùng CHUNG harness `docs/` + `AGENTS.md`.
+> Đọc TRƯỚC khi sửa: cần gì → §4 (app) / §7 (non-app) trỏ thẳng slot. Nắn project về chuẩn: xem `AGENTS.md §Reconcile`.
 
 ## 1. Nguyên tắc
 - Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
@@ -258,5 +260,66 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 ```
 
 ## 6. Phạm vi áp dụng
-- **ÁP:** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI/data project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
-- **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · notebook / data rời · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
+- **ÁP §1–6 (chuẩn APP):** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
+- **ÁP §7 (chuẩn NON-APP):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau, vd `powerbi_sasinflow`), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
+- **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
+
+## 7. Chuẩn phụ NON-APP — BI / data / docs / design
+> Dùng khi repo **không phải app chạy được** mà là **sản phẩm/tài sản** (deliverable). Cùng triết lý §1: vai-trò · 1-tên/concern · từ-điển-KHÔNG-checklist · KHÔNG folder rỗng · tracked=đầu-vào / gitignore=đầu-ra. **Harness `docs/` + `AGENTS.md` GIỮ Y HỆT app** (cùng engine zemory, agent điều hướng như nhau).
+
+**BẮT BUỘC = 3 vai trò** (thay cho 4 của app): `docs/` · `AGENTS.md` · **≥1 folder DELIVERABLE** (`reports/`|`models/`|`content/`|`design/` — chọn theo loại). KHÔNG có `backend/`+`frontend/` vì không có code-app.
+
+```
+<project>/                         # vd powerbi_sasinflow — 1 sản phẩm = 1 cây
+│ ═══ TRACKED (đầu vào / nguồn) ═══
+├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/
+├── docs/                ★  harness Y HỆT app: agent/(01_RULES·02_STRUCTURE·03_TODO·04_CHANGES) · plan/ · .harness.json
+│   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
+│ ┄┄ DELIVERABLE — chọn theo loại (≥1) ┄┄
+├── reports/             ◆  BI: file báo cáo .pbix/.pbip/.twb (bản chính giao đi)      [LFS]
+├── models/              ◆  data: semantic/transform layer — dbt model · tabular .bim · DAX model
+├── content/             ◆  docs-only: nội dung .md/.mdx là sản phẩm chính
+├── design/              ◆  design: .fig/.sketch/.psd nguồn thiết kế                    [LFS]
+│ ┄┄ ĐẦU VÀO / XỬ LÝ ┄┄
+├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn
+├── measures/       [opt]  thư viện DAX/tính toán đặt tên + chú thích (trích ra để review/tái dùng)
+├── queries/        [opt]  SQL/DAX/M đặt tên, gọi theo tên — KHÔNG rải inline (đối xứng store/queries.* của app)
+├── pipelines/      [opt]  ETL/transform nhiều bước (code-driven: dbt/python)
+├── notebooks/      [opt]  phân tích thăm dò .ipynb (research/analytics)
+├── fixtures/       [opt]  DATA MẪU NHỎ (tracked) để mở report/model KHỎI cần nguồn thật
+├── assets/         [opt]  theme .json · logo · icon · bảng màu cho report/design
+├── scripts/        [opt]  refresh / publish / deploy (pbi-tools · PowerShell · dbt)
+├── config/         [opt]  profile workspace/connection (operator): *.example.* tracked · real→gitignore
+├── attic/          [opt]  bản cũ deliverable / snapshot TRƯỚC publish (rollback)
+├── share/          [opt]  bundle sync mã hóa xuyên máy (chỉ khi cần) — như app
+│ ═══ GITIGNORE (đầu ra / thật / theo máy) ═══
+├── data/           [opt]  extract/cache/dataset THẬT kéo về (nặng, theo máy)
+├── exports/        [opt]  bản render/publish sinh ra (PDF/PNG/build) — build lại được
+└── .env            [opt]  connection string / token / workspace-id THẬT
+```
+
+**Ví dụ áp `powerbi_sasinflow`** — chỉ hiện slot CÓ THẬT (không đẻ rỗng):
+```
+powerbi_sasinflow/
+├── AGENTS.md
+├── docs/{agent/, plan/, dictionary.md}          # định nghĩa metric doanh thu/đơn/khách…
+├── reports/SasinFlow.pbix                        # [LFS] báo cáo chính
+├── sources/{orders.m, connection.example.json}   # Power Query + spec (trỏ env)
+├── measures/revenue.dax                          # DAX tách ra để review
+├── assets/sasinflow-theme.json                   # theme màu
+├── scripts/refresh.ps1                           # refresh + publish workspace
+├── fixtures/sample_orders.csv                    # mở .pbix khỏi cần DB thật
+└── .env                                          # connection thật (gitignore)
+```
+
+**Convention NON-APP** (bổ sung; phần còn lại kế thừa §5):
+```
+3 vai trò bắt buộc   docs/ · AGENTS.md · ≥1 deliverable (reports/|models/|content/|design/). KHÔNG backend/frontend
+Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (như share/*.enc): track file, LFS lo dung lượng
+Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
+Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore)
+Từ điển dữ liệu      BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu
+SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries app)
+Publish/refresh      tự động hóa → scripts/ · bản render ra → exports/ (gitignore, build lại được)
+Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, agent điều hướng non-app đúng như app
+```

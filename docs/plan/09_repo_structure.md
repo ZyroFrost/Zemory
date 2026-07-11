@@ -24,6 +24,8 @@ Chỉ nhắc mốc: **BẮT BUỘC = 4** (`backend/(code)` · `frontend/` · `do
 
 Cốt lõi: cần thêm concern nào → mở THẲNG slot tương ứng, KHÔNG grep cả repo (INDEX điều hướng = tiết kiệm token).
 ## 4. Quyết định đã chốt
+#2442 docs\plan\09_repo_structure.md — ## 4. Quyết định đã chốt
+---
 Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUCTURE.md §5`](../agent/02_STRUCTURE.md)):
 - **Tách file harness thứ 4:** cấu trúc → `docs/agent/02_STRUCTURE.md` (markdown source), `01_RULES` chỉ còn con trỏ. Wire vào `STANDARD_AGENT` → mọi `zemory init` ship kèm.
 - **1 TÊN / concern** (chuẩn riêng): `store/` (KHÔNG db|models), `pages/` (KHÔNG views|screens). Framework ép cứng mới đổi (Next `pages/`, Django `models/`).
@@ -45,6 +47,12 @@ Quyết định thiết kế đã chốt (convention đầy đủ ở [`02_STRUC
   - **Luật KHÔNG folder rỗng (nhấn mạnh):** INDEX = TỪ ĐIỂN TÊN để TRA, KHÔNG phải checklist phải tạo. Tạo folder CHỈ khi có concern/file thật; app điển hình chỉ 4–10 slot hiện diện. Áp chuẩn vào project = tùy concern mà tạo, tuyệt đối không đẻ một đống folder rỗng.
   - **Sửa ★ cho Node-CLI:** entry = file `run.*` HOẶC manifest khai `bin`/`main`; manifest ở root HOẶC `backend/`. zemory (bin ở root `package.json` → `dist/cli.js`) giờ ĐẠT ★, KHÔNG cần `backend/run.*` (trước đây tự-lệch chuẩn của chính mình — audit bắt được).
   - **UI embed (single-binary):** app CLI ship 1-file được phép embed trang UI như resource TS ở backend (vd zemory `ui-page.ts`) — GHI RÕ trong convention, KHÔNG ép tách sang `frontend/` nếu tách làm vỡ build 1-file.
+
+- **Chuẩn NON-APP §7 (2026-07-11) — chuẩn phụ thứ 2, hết vùng trắng "ngoài phạm vi":**
+  - **CÓ 2 CHUẨN, note ngay đầu doc** ([`02_STRUCTURE`](../agent/02_STRUCTURE.md)): §1–6 = APP (có code chạy) · §7 = NON-APP (sản phẩm/tài sản: BI/report, data, docs-only, design — vd `powerbi_sasinflow`). Agent xác định loại project TRƯỚC rồi áp đúng chuẩn.
+  - **NON-APP bắt buộc = 3 vai trò:** `docs/` · `AGENTS.md` · ≥1 DELIVERABLE (`reports/`|`models/`|`content/`|`design/`) — KHÔNG `backend/frontend/`. Slot phụ: sources/ measures/ queries/ pipelines/ notebooks/ fixtures/ assets/ scripts/ config/ attic/; gitignore: data/ exports/ .env.
+  - **Harness GIỮ Y HỆT app** (docs/agent/* + plan/ + .harness.json, cùng lệnh zemory) — chỉ thêm `docs/dictionary.md` [opt] cho BI/data (từ điển metric/cột, chống mỗi report tính 1 kiểu).
+  - Nhị phân nặng (.pbix/.fig/.psd) → Git LFS; data thật → `data/` gitignore, mẫu nhỏ mở được file → `fixtures/` tracked; DAX/SQL/M gom `measures/`/`queries/` đặt tên (đối xứng `store/queries.*` app).
 ## 5. Phạm vi áp dụng
 - **ÁP:** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI/data project, monorepo. Áp gần như không đổi cấu trúc.
 - **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · notebook / data rời · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
