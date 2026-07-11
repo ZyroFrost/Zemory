@@ -10,6 +10,7 @@
 // Embedding is a SEPARATE incremental pass (`embedPending` / `zemory brain
 // embed`), NOT part of the Stop-hook capture — capture stays fast and offline.
 
+import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentBrainDb } from "./db.js";
@@ -38,6 +39,30 @@ function embedToolCalls(): boolean {
 }
 const EMBEDDABLE = (): string => (embedToolCalls() ? "" : " AND tool_name IS NULL");
 
+// DEDUP at the DERIVED layer (~21% of daily messages are exact repeats — injected
+// rules/recall cards, re-read files). Identical content ⇒ the model would produce
+// the IDENTICAL vector, so instead of re-running the model we COPY the vector from
+// the first occurrence. Zero quality change; source messages are never touched.
+// `vec_hash` (content-sha1 → canonical rowid) is derived + rebuildable: it fills
+// lazily from now on (no heavy backfill), converging within days.
+function ensureHashTable(db: Conn): void {
+  db.exec("CREATE TABLE IF NOT EXISTS vec_hash (hash TEXT PRIMARY KEY, rowid INTEGER NOT NULL)");
+}
+
+const contentKey = (text: string): string => createHash("sha1").update(text).digest("hex");
+
+/** The stored vector for a message id, or null (e.g. canonical row was forgotten). */
+function vectorOf(db: Conn, id: number): Buffer | null {
+  try {
+    const row = db.prepare("SELECT embedding FROM vec_chunks WHERE rowid = ?").get(BigInt(id)) as
+      | { embedding: Buffer }
+      | undefined;
+    return row?.embedding ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Create the vec0 table sized to `dims` (once). Records dims for mismatch checks. */
 function ensureVecTable(db: Conn, dims: number): void {
   db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${dims}])`);
@@ -57,9 +82,8 @@ function isVecPrimaryKeyConflict(error: unknown): boolean {
   );
 }
 
-function writeVector(db: Conn, id: number, vec: number[]): void {
+function writeVectorRaw(db: Conn, id: number, embedding: Buffer): void {
   const rowid = BigInt(id);
-  const embedding = toBlob(vec);
   try {
     db.prepare("INSERT INTO vec_chunks(rowid, embedding) VALUES (?, ?)").run(rowid, embedding);
   } catch (error) {
@@ -70,8 +94,14 @@ function writeVector(db: Conn, id: number, vec: number[]): void {
   }
 }
 
+function writeVector(db: Conn, id: number, vec: number[]): void {
+  writeVectorRaw(db, id, toBlob(vec));
+}
+
 export interface EmbedPendingResult {
   embedded: number; // vectors written this pass
+  /** Of `embedded`, how many were COPIED from an identical earlier message (no model call). */
+  deduped: number;
   remaining: number; // messages still without a vector
   dims: number | null;
 }
@@ -108,6 +138,7 @@ export async function embedPending(
 
     let dims: number | null = null;
     let embedded = 0;
+    let deduped = 0;
     const ins = (id: number, vec: number[]): void => {
       if (dims === null) {
         dims = vec.length;
@@ -117,16 +148,62 @@ export async function embedPending(
       embedded++;
     };
     let done = 0;
-    for (let i = 0; i < rows.length; i += batchSize) {
-      const batch = rows.slice(i, i + batchSize);
-      const vectors = await embedBatch(batch.map((r) => r.content.slice(0, 6000))); // cap long tool output
+    const tick = (id: number): void => {
+      done++;
+      opts.onProgress?.({ done, total: rows.length, embedded, currentId: id });
+    };
+
+    // Split candidates: content already embedded before (or earlier in this run)
+    // gets its vector COPIED (identical text ⇒ identical vector, no model call);
+    // only genuinely novel content goes through the model.
+    ensureHashTable(db);
+    const hashGet = db.prepare("SELECT rowid FROM vec_hash WHERE hash = ?");
+    const hashPut = db.prepare("INSERT OR REPLACE INTO vec_hash(hash, rowid) VALUES (?, ?)");
+    const seenThisRun = new Map<string, number>(); // hash → canonical id embedded this run
+    const queued = new Set<string>();
+    const pending: { id: number; text: string; key: string }[] = [];
+    const dupsOfQueued: { id: number; key: string }[] = [];
+    for (const r of rows) {
+      const text = r.content.slice(0, 6000); // cap long content (hash the SAME slice)
+      const key = contentKey(text);
+      const canonical = (hashGet.get(key) as { rowid: number } | undefined)?.rowid;
+      const blob = canonical != null && tableExists(db) ? vectorOf(db, canonical) : null;
+      if (blob) {
+        writeVectorRaw(db, r.id, blob);
+        embedded++;
+        deduped++;
+        tick(r.id);
+      } else if (queued.has(key)) {
+        dupsOfQueued.push({ id: r.id, key }); // twin is in this run's model queue
+      } else {
+        queued.add(key);
+        pending.push({ id: r.id, text, key });
+      }
+    }
+    for (let i = 0; i < pending.length; i += batchSize) {
+      const batch = pending.slice(i, i + batchSize);
+      const vectors = await embedBatch(batch.map((r) => r.text));
       for (let j = 0; j < batch.length; j++) {
         const r = batch[j];
         const v = vectors[j];
-        if (v) ins(r.id, v);
-        done++;
-        opts.onProgress?.({ done, total: rows.length, embedded, currentId: r.id });
+        if (v) {
+          ins(r.id, v);
+          hashPut.run(r.key, r.id);
+          seenThisRun.set(r.key, r.id);
+        }
+        tick(r.id);
       }
+    }
+    // In-run twins of the rows above: copy now that their canonical is embedded.
+    for (const d of dupsOfQueued) {
+      const cid = seenThisRun.get(d.key);
+      const blob = cid != null ? vectorOf(db, cid) : null;
+      if (blob) {
+        writeVectorRaw(db, d.id, blob);
+        embedded++;
+        deduped++;
+      } // else: canonical failed (fail-open) — the twin stays pending for the next pass
+      tick(d.id);
     }
 
     let remaining = 0;
@@ -141,7 +218,7 @@ export async function embedPending(
     } else {
       remaining = (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`).get() as { c: number }).c;
     }
-    return { embedded, remaining, dims };
+    return { embedded, deduped, remaining, dims };
   } finally {
     db.close();
   }

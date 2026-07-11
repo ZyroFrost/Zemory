@@ -5,6 +5,18 @@
 
 ---
 
+## [2026-07-12] — perf(embed): dedup nội dung trùng — copy vector từ lần đầu, 0% mất chất lượng (vec_hash)
+
+Lọc trùng lặp khi embed — ý user: "cho agent lọc lại message, nhưng CHỈ cái bị trùng lặp/ghi lặp lại". Đo thật: **20,9% message mới mỗi ngày là trùng exact** (rules/recall card inject lại mỗi phiên, file đọc lặp).
+
+Thiết kế theo đúng luật "không mất sess gốc" ([memory](zemory-optimize-preserve-source)): dedup ở TẦNG DẪN XUẤT, message gốc không đụng một dòng.
+
+- **`vec_hash`** (sha1(content-slice) → rowid chuẩn, bảng dẫn xuất rebuild được) trong [vectors.ts](../../backend/src/brain/vectors.ts): gặp nội dung đã embed → **COPY vector** từ lần đầu thay vì gọi model. Nội dung giống hệt ⇒ model cho ra vector giống hệt ⇒ copy = **0% mất chất lượng** (test chứng minh bit-for-bit). Xử cả trùng trong-cùng-run (twin chờ canonical xong rồi copy) lẫn xuyên-run (tra vec_hash).
+- Bảng hash fill lazy từ giờ (không backfill nặng) — hội tụ trong vài ngày; canonical bị `forget` → fallback embed lại bình thường (fail-open).
+- `EmbedPendingResult.deduped` báo số vector copy mỗi pass.
+
+Cộng dồn 3 tối ưu embed (skip tool-call −32% · dedup −21% phần còn lại · batch 16): khối lượng model-call hằng ngày ~2.800 → **~1.170 msg/ngày**, kỳ vọng ~10–15 phút chạy nền. +1 test (70/70 xanh).
+
 ## [2026-07-11] — perf(embed): bỏ embed tool-call (FTS đã phủ) + batch 16 — cắt ~1/3 khối lượng embed/ngày
 
 Cắt thời gian embed hằng ngày — user chỉ đúng: brain nhận ~2.800 msg/ngày, tốc độ cũ ~60 msg/phút ⇒ ~46 phút embed/ngày là KHÔNG chấp nhận được cho công cụ dùng hằng ngày.
