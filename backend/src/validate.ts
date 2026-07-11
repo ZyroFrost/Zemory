@@ -46,40 +46,76 @@ export function validate(ctx: Context): ValidateReport {
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
   }
 
-  // 3. Repo structure vs the standard (docs/agent/02_STRUCTURE.md). ADVISORY only —
-  //    reconciling is agent-assisted (AGENTS.md §7); zemory never moves files.
-  for (const i of checkStructure(projectRoot)) issues.push(i);
+  // 3. Repo structure vs the standard (docs/agent/02_STRUCTURE.md). TWO standards:
+  //    profile "app" (§1–6, default) vs "non-app" (§7 — BI/data/docs/design),
+  //    chosen by `profile` in docs/.harness.json. ADVISORY only — reconciling is
+  //    agent-assisted (AGENTS.md §7); zemory never moves files.
+  for (const i of checkStructure(projectRoot, ctx.config.profile ?? "app")) issues.push(i);
 
   return { issues, ok: !issues.some((i) => i.level === "error") };
 }
 
+/** The deliverable folders that satisfy the non-app standard (02_STRUCTURE §7). */
+const DELIVERABLES = ["reports", "models", "content", "design"];
+
 /**
- * Report how the repo lines up with the standard layout. Only FOUR things are
- * required — `backend/` (own code; infra under `backend/infra/`), `frontend/`
- * (apps ship a UI), `docs/` + `AGENTS.md` (harness). Everything else is optional
- * and created only when the app has it: `test/` (tests usually = running the app
- * itself), `scripts/`, `backend/infra/`, `backend/migrations/`, `external/`,
- * `attic/` (backup / pre-deploy snapshot), `data/`. Build output + secret + .env
- * are gitignored, so not checked. Warn on drift, never fix (AGENTS.md §7).
+ * Report how the repo lines up with the standard layout for its profile.
+ * APP (§1–6): required = backend/(code) · frontend/ · docs/ · AGENTS.md.
+ * NON-APP (§7): required = docs/ · AGENTS.md · ≥1 deliverable (reports/models/
+ * content/design) — no backend/frontend expected. Everything else optional.
+ * Build output + secret + .env are gitignored, so not checked. Warn on drift,
+ * never fix (AGENTS.md §7).
  */
-function checkStructure(root: string): ValidateIssue[] {
+function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue[] {
   const out: ValidateIssue[] = [];
   const has = (p: string) => existsSync(join(root, p));
+  const deliverables = DELIVERABLES.filter((d) => has(d)).map((d) => `${d}/`);
+
+  if (!has("docs")) out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
+  if (!has("AGENTS.md")) out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
+
+  if (profile === "non-app") {
+    // §7: a deliverable-asset project (BI/data/docs/design) — no app code expected.
+    if (!deliverables.length) {
+      out.push({
+        level: "warn",
+        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/02_STRUCTURE.md §7",
+      });
+    }
+    const present = [
+      ...deliverables,
+      has("sources") && "sources/",
+      has("measures") && "measures/",
+      has("queries") && "queries/",
+      has("fixtures") && "fixtures/",
+      has("scripts") && "scripts/",
+      has("docs") && "docs/",
+      has("attic") && "attic/",
+      has("data") && "data/",
+    ].filter(Boolean);
+    out.push({ level: "info", msg: `structure[non-app §7]: slots present — ${present.join(" · ") || "(none)"}` });
+    return out;
+  }
+
+  // Default: APP standard (§1–6).
   const ownCode = has("backend") ? "backend/" : has("src") ? "src/" : null;
   if (!ownCode) {
-    out.push({
-      level: "warn",
-      msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/02_STRUCTURE.md; reconcile via AGENTS.md §7",
-    });
+    // No app code but deliverable folders exist → this is probably a §7 project
+    // validated under the wrong profile; point at the switch instead of nagging.
+    if (deliverables.length) {
+      out.push({
+        level: "info",
+        msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (02_STRUCTURE §7)`,
+      });
+    } else {
+      out.push({
+        level: "warn",
+        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/02_STRUCTURE.md; reconcile via AGENTS.md §7",
+      });
+    }
   }
-  if (!has("frontend")) {
+  if (!has("frontend") && ownCode) {
     out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/02_STRUCTURE.md" });
-  }
-  if (!has("docs")) {
-    out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
-  }
-  if (!has("AGENTS.md")) {
-    out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
   }
   const present = [
     ownCode,

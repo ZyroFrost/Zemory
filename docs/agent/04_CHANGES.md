@@ -5,6 +5,17 @@
 
 ---
 
+## [2026-07-11] — feat(cli): profile app/non-app trong .harness.json — validate/structure/init nhận chuẩn §7
+
+Nối tầng CLI vào chuẩn 2-profile — trước đó chỉ sửa tầng markdown (§7), còn `validate`/`structure` vẫn hardcode chuẩn app (bắt backend/+frontend/, cảnh báo thiếu với repo BI/data).
+
+- **Field mới `profile` trong docs/.harness.json** ([types.ts](../../backend/src/core/types.ts), [config.ts](../../backend/src/core/config.ts)): `"app"` (mặc định, §1–6) | `"non-app"` (§7). Normalize lúc load, project cũ không cần đổi gì.
+- **`zemory validate` theo profile** ([validate.ts](../../backend/src/validate.ts)): non-app → check docs/ + AGENTS.md + ≥1 deliverable (reports/|models/|content/|design/), KHÔNG đòi backend/frontend; app → như cũ + thông minh hơn: repo không có code nhưng CÓ deliverable → gợi ý set `"profile": "non-app"` thay vì cằn nhằn sai; thiếu frontend chỉ cảnh báo khi CÓ code (là app thật).
+- **`zemory structure`** in cả 2 chuẩn ngay đầu (① APP §1–6 · ② NON-APP §7 + required của từng cái) — agent đọc CLI cũng thấy như đọc .md.
+- **`zemory init --non-app`**: scaffold harness + ghi luôn `"profile": "non-app"` — dùng cho powerbi_sasinflow và các repo deliverable.
+
++3 test (app-default cảnh báo đúng · non-app check deliverable & im về backend/frontend · hint đổi profile). 69/69 xanh; validate repo này vẫn sạch.
+
 ## [2026-07-11] — docs(structure): §7 chuẩn phụ NON-APP (BI/data/docs/design) + note 2-chuẩn đầu doc
 
 Thêm chuẩn cấu trúc THỨ HAI cho project NON-APP — lấp vùng trắng "ngoài phạm vi" cho các repo kiểu `powerbi_sasinflow`.

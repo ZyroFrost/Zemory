@@ -2,7 +2,7 @@
 // zemory CLI — Phase 1: init, sync, doctor, ui, archive, --version.
 // init/sync are NON-DESTRUCTIVE (never overwrite existing docs).
 
-import { readFileSync, readdirSync, unlinkSync } from "node:fs";
+import { readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findProjectRoot, loadContext } from "./core/config.js";
@@ -43,6 +43,21 @@ function cmdInit(args: string[]): void {
     return;
   }
   const r = ensureHarness(process.cwd());
+  // --non-app: this project follows the §7 standard (BI/data/docs/design) —
+  // record it so validate/structure check the right requirements.
+  if (args.includes("--non-app")) {
+    const cfgPath = join(process.cwd(), "docs", ".harness.json");
+    try {
+      const cfg = JSON.parse(readFileSync(cfgPath, "utf8")) as Record<string, unknown>;
+      if (cfg.profile !== "non-app") {
+        cfg.profile = "non-app";
+        writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + "\n");
+      }
+      console.log('  profile: "non-app" (02_STRUCTURE §7 — BI/data/docs/design)');
+    } catch {
+      console.log("  ⚠ could not set profile in docs/.harness.json — add `\"profile\": \"non-app\"` by hand");
+    }
+  }
   const parts: string[] = [];
   if (r.createdConfig) parts.push("created .harness.json");
   parts.push(`added ${r.added.length} doc(s)`);
@@ -183,7 +198,11 @@ function cmdStructure(): void {
     [
       "zemory — repo structure standard. FULL spec (per-line tree + routing + convention): docs/agent/02_STRUCTURE.md",
       "",
-      "  Required (4): backend/(code) · frontend/ · docs/ · AGENTS.md.  Everything else is [opt] — create when the concern exists.",
+      "  TWO standards — pick by project type (set `\"profile\"` in docs/.harness.json):",
+      "  ① APP (runnable code, default) — §1–6. Required (4): backend/(code) · frontend/ · docs/ · AGENTS.md.",
+      "  ② NON-APP (deliverable assets: BI/report · data · docs-only · design, e.g. powerbi_*) — §7.",
+      "     Required (3): docs/ · AGENTS.md · ≥1 deliverable (reports/|models/|content/|design/). No backend/frontend.",
+      "  Everything else is [opt] — create when the concern exists (never a pile of empty folders).",
       "  6 non-code kinds (never mix): assets=media · resources=bundled-tracked · config=operator-files · data=runtime-gitignored · external=cloned-code · attic=backup.",
       "  3 'connections': api/=you expose · integrations/=external SaaS · store/=DATABASE (remote/cloud/internal). external/=cloned code.",
       "  1 NAME per concern (own standard: store/ not db|models); only a framework may force a name (Next pages/, Django models/).",

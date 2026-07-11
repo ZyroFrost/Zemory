@@ -17,6 +17,11 @@ export type HookEvent =
   | "threshold"
   | "on_demand";
 
+/** Which of the TWO structure standards applies (02_STRUCTURE):
+ *  "app" (§1–6, default — runnable code) | "non-app" (§7 — deliverable assets:
+ *  BI/report, data, docs-only, design; e.g. powerbi_sasinflow). */
+export type StructureProfile = "app" | "non-app";
+
 /** Per-project config, loaded from `.harness.json` at the project root. */
 export interface HarnessConfig {
   /** Path to the project's docs harness, relative to project root. */
@@ -25,6 +30,8 @@ export interface HarnessConfig {
   adapters: Partial<Record<Capability, string>>;
   /** Numeric thresholds (e.g. archive trigger line counts). */
   thresholds: Record<string, number>;
+  /** Structure standard to validate against (default "app"). */
+  profile?: StructureProfile;
   /** Brownfield role mapping: role -> existing file (optional). */
   roles?: Record<string, string>;
 }
