@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-07-11] — perf(embed): bỏ embed tool-call (FTS đã phủ) + batch 16 — cắt ~1/3 khối lượng embed/ngày
+
+Cắt thời gian embed hằng ngày — user chỉ đúng: brain nhận ~2.800 msg/ngày, tốc độ cũ ~60 msg/phút ⇒ ~46 phút embed/ngày là KHÔNG chấp nhận được cho công cụ dùng hằng ngày.
+
+Đo cơ cấu 14 ngày: 32% message là TOOL-CALL (lệnh + args, dài, semantic ~0) — FTS keyword đã phủ đầy đủ. Fix trong [vectors.ts](../../backend/src/brain/vectors.ts):
+- **Mặc định KHÔNG embed tool-call** (`tool_name IS NOT NULL`): embedPending + vectorRemaining cùng filter; env `ZEMORY_EMBED_TOOLS=1` bật lại nếu cần. Backlog còn lại giảm ngay 8.953 → 7.626; khối lượng hằng ngày giảm ~1/3.
+- **batchSize mặc định 4 → 16**: batching ONNX tận dụng CPU tốt hơn.
+- Vector tool-call ĐÃ embed từ trước giữ nguyên (vô hại, vẫn giúp).
+
+Ước tính sau fix: embed hằng ngày ~10–20 phút chạy NỀN (thay vì 46) và sẽ đo lại thực tế; recall không mất gì — tool-output vẫn tìm được qua FTS + digest. Nếu cần nhanh hơn nữa: `ZEMORY_EMBED_DTYPE=q4` (~30-50%) hoặc Matryoshka 256d (việc sau, TODO plan 05).
+
+69/69 test xanh.
+
 ## [2026-07-11] — feat(cli): profile app/non-app trong .harness.json — validate/structure/init nhận chuẩn §7
 
 Nối tầng CLI vào chuẩn 2-profile — trước đó chỉ sửa tầng markdown (§7), còn `validate`/`structure` vẫn hardcode chuẩn app (bắt backend/+frontend/, cảnh báo thiếu với repo BI/data).

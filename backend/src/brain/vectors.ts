@@ -29,6 +29,15 @@ function tableExists(db: Conn): boolean {
   return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks'").get();
 }
 
+// Tool CALLS (tool_name set — a command + its args) carry almost no semantic
+// value but are long and numerous (~1/3 of daily volume), so by default they are
+// NOT embedded — FTS keyword search still covers them fully, and skipping them
+// cuts the daily embed workload by a third. ZEMORY_EMBED_TOOLS=1 re-includes.
+function embedToolCalls(): boolean {
+  return process.env.ZEMORY_EMBED_TOOLS === "1";
+}
+const EMBEDDABLE = (): string => (embedToolCalls() ? "" : " AND tool_name IS NULL");
+
 /** Create the vec0 table sized to `dims` (once). Records dims for mismatch checks. */
 function ensureVecTable(db: Conn, dims: number): void {
   db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${dims}])`);
@@ -84,14 +93,14 @@ export async function embedPending(
 ): Promise<EmbedPendingResult> {
   const dbPath = opts.dbPath ?? currentBrainDb();
   const limit = opts.limit ?? 500;
-  const batchSize = Math.max(1, opts.batchSize ?? 4);
+  const batchSize = Math.max(1, opts.batchSize ?? 16);
   const db = vecConnect(dbPath);
   try {
     const has = tableExists(db);
     const rows = db
       .prepare(
         `SELECT id, content FROM messages
-         WHERE content IS NOT NULL AND content != ''
+         WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}
            ${has ? "AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)" : ""}
          ORDER BY length(content) ASC, id ASC LIMIT ?`,
       )
@@ -125,12 +134,12 @@ export async function embedPending(
       remaining = (
         db
           .prepare(
-            "SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!='' AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)",
+            `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()} AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)`,
           )
           .get() as { c: number }
       ).c;
     } else {
-      remaining = (db.prepare("SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''").get() as { c: number }).c;
+      remaining = (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`).get() as { c: number }).c;
     }
     return { embedded, remaining, dims };
   } finally {
@@ -186,16 +195,16 @@ export function vectorCount(dbPath: string = currentBrainDb()): number {
   }
 }
 
-/** How many non-empty messages still need an embedding. */
+/** How many non-empty EMBEDDABLE messages still need an embedding. */
 export function vectorRemaining(dbPath: string = currentBrainDb()): number {
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) {
-      return (db.prepare("SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''").get() as { c: number }).c;
+      return (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`).get() as { c: number }).c;
     }
     return (
       db
-        .prepare("SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!='' AND id NOT IN (SELECT rowid FROM vec_chunks)")
+        .prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()} AND id NOT IN (SELECT rowid FROM vec_chunks)`)
         .get() as { c: number }
     ).c;
   } finally {
