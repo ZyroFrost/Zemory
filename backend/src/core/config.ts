@@ -20,6 +20,8 @@ function assertConfig(value: unknown, projectRoot: string): HarnessConfig {
   }
   if (!config.adapters || typeof config.adapters !== "object") config.adapters = {};
   if (!config.thresholds || typeof config.thresholds !== "object") config.thresholds = {};
+  // Structure profile: which standard validate/structure enforce (02_STRUCTURE).
+  config.profile = config.profile === "non-app" ? "non-app" : "app";
   return config as HarnessConfig;
 }
 
