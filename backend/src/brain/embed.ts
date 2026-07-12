@@ -51,6 +51,28 @@ export function currentEmbedProfile(): EmbedProfile {
 const promptFor = (kind: "query" | "document", text: string, profile: EmbedProfile): string =>
   profile === "gemma-prompt-v1" ? (kind === "query" ? `task: search result | query: ${text}` : `title: none | text: ${text}`) : text;
 
+// ---------------------------------------------------------------------------
+// Matryoshka dims. EmbeddingGemma is MRL-trained: the FIRST N dims of the 768d
+// output are themselves a valid (slightly coarser) embedding — slice + renorm,
+// no re-embed. Like the prompt profile, the dims an index was BUILT with live
+// in vec_config and are authoritative afterwards; ZEMORY_EMBED_DIMS only
+// applies when a NEW index is created (default 768 = unchanged behavior).
+// ---------------------------------------------------------------------------
+const VALID_DIMS = [128, 256, 512, 768];
+
+export function targetEmbedDims(): number {
+  const n = Number(process.env.ZEMORY_EMBED_DIMS?.trim());
+  return VALID_DIMS.includes(n) ? n : 768;
+}
+
+/** First `dims` components, re-normalized to unit length. Longer→shorter only. */
+export function sliceNormalize(v: number[], dims: number): number[] {
+  if (v.length <= dims) return v;
+  const s = v.slice(0, dims);
+  const norm = Math.sqrt(s.reduce((a, x) => a + x * x, 0));
+  return norm > 0 ? s.map((x) => x / norm) : s;
+}
+
 /** Embed a SEARCH QUERY under the given profile (must match the index's stored profile). */
 export async function embedQuery(text: string, profile: EmbedProfile): Promise<number[] | null> {
   return embed(promptFor("query", text, profile));

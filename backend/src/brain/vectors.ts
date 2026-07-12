@@ -26,7 +26,7 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentBrainDb } from "./db.js";
-import { currentEmbedProfile, embedDocBatch, embedQuery, type EmbedProfile } from "./embed.js";
+import { currentEmbedProfile, embedDocBatch, embedQuery, sliceNormalize, targetEmbedDims, type EmbedProfile } from "./embed.js";
 
 type Conn = Database.Database;
 
@@ -107,11 +107,31 @@ function storedProfile(db: Conn): EmbedProfile {
   }
 }
 
+/** Dims the existing index was built with (Matryoshka-sliced); else the configured target. */
+function storedDims(db: Conn): number {
+  try {
+    const row = db.prepare("SELECT dims FROM vec_config LIMIT 1").get() as { dims: number } | undefined;
+    return row?.dims ?? targetEmbedDims();
+  } catch {
+    return targetEmbedDims(); // no vec_config yet — a new index gets the current target
+  }
+}
+
 /** The profile of the vector index at dbPath (observability + tests). */
 export function vectorIndexProfile(dbPath: string = currentBrainDb()): EmbedProfile {
   const db = vecConnect(dbPath);
   try {
     return storedProfile(db);
+  } finally {
+    db.close();
+  }
+}
+
+/** Profile + dims of the vector index at dbPath (observability + tests). */
+export function vectorIndexInfo(dbPath: string = currentBrainDb()): { profile: EmbedProfile; dims: number } {
+  const db = vecConnect(dbPath);
+  try {
+    return { profile: storedProfile(db), dims: storedDims(db) };
   } finally {
     db.close();
   }
@@ -197,9 +217,10 @@ export async function embedPending(
       )
       .all(limit) as { id: number; content: string }[];
 
-    // Documents are embedded under the profile the index was BUILT with — never
-    // mix spaces. A brand-new index adopts the current profile.
+    // Documents are embedded under the profile AND dims the index was BUILT
+    // with — never mix spaces. A brand-new index adopts the current config.
     const profile = has ? storedProfile(db) : currentEmbedProfile();
+    const dimsTarget = has ? storedDims(db) : targetEmbedDims();
 
     let dims: number | null = null;
     let embedded = 0;
@@ -283,7 +304,7 @@ export async function embedPending(
       );
       for (let j = 0; j < batch.length; j++) {
         const r = batch[j];
-        const v = vectors[j];
+        const v = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
         if (v) {
           const rowid = ins(r.messageId, r.seq, v);
           hashPut.run(r.key, rowid);
@@ -338,17 +359,21 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
   try {
     const dbPath = opts.dbPath ?? currentBrainDb();
     let profile: EmbedProfile;
+    let dims: number;
     {
       const probe = vecConnect(dbPath);
       try {
         if (!tableExists(probe)) return [];
-        profile = storedProfile(probe); // the query MUST live in the index's space
+        // The query MUST live in the index's space: same prompt profile, same dims.
+        profile = storedProfile(probe);
+        dims = storedDims(probe);
       } finally {
         probe.close();
       }
     }
-    const qv = await embedQuery(query, profile);
-    if (!qv) return [];
+    const raw = await embedQuery(query, profile);
+    if (!raw) return [];
+    const qv = sliceNormalize(raw, dims);
     const db = vecConnect(dbPath);
     try {
       if (!tableExists(db)) return [];

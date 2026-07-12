@@ -13,6 +13,7 @@ import {
   forgetVectors,
   pruneOrphanVectors,
   vectorCount,
+  vectorIndexInfo,
   vectorIndexProfile,
   vectorRanks,
   vectorRemaining,
@@ -228,6 +229,27 @@ test("vec_config records the embed profile; a raw-built index stays raw for late
   const dbPath2 = seedDb();
   const r2 = await embedPending({ dbPath: dbPath2 });
   if (r2.embedded > 0) assert.equal(vectorIndexProfile(dbPath2), "gemma-prompt-v1");
+});
+
+test("ZEMORY_EMBED_DIMS=256 builds a Matryoshka-sliced index; stored dims stay authoritative for queries", async () => {
+  process.env.ZEMORY_EMBED_DIMS = "256";
+  let dbPath;
+  try {
+    dbPath = seedDb();
+    const r = await embedPending({ dbPath });
+    if (r.embedded === 0) {
+      console.log("  skipped (model unavailable)");
+      return;
+    }
+    assert.equal(r.dims, 256, "vectors stored sliced");
+    assert.equal(vectorIndexInfo(dbPath).dims, 256, "vec_config records 256");
+  } finally {
+    delete process.env.ZEMORY_EMBED_DIMS;
+  }
+  // env is gone, but the 768d query vector must be sliced to the index's 256
+  const ranks = await vectorRanks("change the credentials for the postgres server", { dbPath });
+  assert.ok(ranks.length >= 1, "sliced index still answers");
+  assert.equal(ranks[0].rowid, 1, `256d top hit should be the db-password message, got #${ranks[0].rowid}`);
 });
 
 test("dropVectorIndex clears the derived index so --rebuild can re-embed under a new profile", async () => {
