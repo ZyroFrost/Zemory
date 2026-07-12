@@ -60,7 +60,7 @@ export const BRAIN_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const BRAIN_DIR = resolveBrainDir();
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -231,28 +231,38 @@ CREATE TABLE IF NOT EXISTS compression_event (
 CREATE INDEX IF NOT EXISTS idx_compression_event_art ON compression_event(artifact_id);
 `;
 
-// FTS5 indexes are a derived view over messages.content. The default
+// FTS5 index over messages.content. EXTERNAL CONTENT (content='messages',
+// content_rowid='id'): the index stores only the inverted-index postings, not
+// a second copy of the text — messages.content (already on disk) is read on
+// demand for snippet()/highlight(). This is what plan 12 buoc 4 trades a
+// second (and third) verbatim copy of every message for. The default
 // (unicode61) table powers word search; the trigram table powers substring /
-// CJK / Vietnamese-with-diacritics matching. Triggers keep both in sync.
-const FTS = `
-CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content);
-CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_tri USING fts5(content, tokenize='trigram');
+// CJK / Vietnamese-with-diacritics matching. External-content triggers differ
+// from a standalone FTS table: DELETE/UPDATE must pass the OLD content back in
+// via the special 'delete' command (the index has no copy of its own to look
+// up) — see https://sqlite.org/fts5.html#external_content_tables.
+const MESSAGES_FTS_SQL = `
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content, content='messages', content_rowid='id');
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_tri USING fts5(content, content='messages', content_rowid='id', tokenize='trigram');
 
 CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
-  DELETE FROM messages_fts     WHERE rowid = old.id;
-  DELETE FROM messages_fts_tri WHERE rowid = old.id;
+  INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
+  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
-  DELETE FROM messages_fts     WHERE rowid = old.id;
-  DELETE FROM messages_fts_tri WHERE rowid = old.id;
+  INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
+  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
+`;
 
+const FTS = `
+${MESSAGES_FTS_SQL}
 -- Section FTS: heading + body, two tokenizers (word + trigram for Vietnamese).
 -- bm25 can weight heading above body at query time.
 CREATE VIRTUAL TABLE IF NOT EXISTS section_fts     USING fts5(heading, body);
@@ -394,6 +404,25 @@ function migrate(db: BrainDB, fromVersion: number): void {
     // never a real saving. Recall/Digest themselves stay; only the fake meter goes.
     db.exec("DROP TABLE IF EXISTS recall_savings");
     version = 11;
+  }
+  if (version < 12) {
+    // v12 (plan 12 buoc 4): messages_fts/_tri were STANDALONE fts5 tables, so
+    // each kept its own verbatim copy of messages.content — two extra copies of
+    // every message's text (~246MB measured, see plan 11 §1/plan 12 §0). Convert
+    // to EXTERNAL CONTENT (content='messages', content_rowid='id'): the index
+    // reads content from `messages` on demand instead of duplicating it. Drop +
+    // recreate is required — `db.exec(FTS)` above already ran with the OLD
+    // tables present (IF NOT EXISTS skipped it), so this migration explicitly
+    // replaces them, then 'rebuild' repopulates the postings from `messages`.
+    db.exec("DROP TRIGGER IF EXISTS messages_ai");
+    db.exec("DROP TRIGGER IF EXISTS messages_ad");
+    db.exec("DROP TRIGGER IF EXISTS messages_au");
+    db.exec("DROP TABLE IF EXISTS messages_fts");
+    db.exec("DROP TABLE IF EXISTS messages_fts_tri");
+    db.exec(MESSAGES_FTS_SQL);
+    db.exec("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')");
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('rebuild')");
+    version = 12;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
