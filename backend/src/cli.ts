@@ -673,18 +673,36 @@ async function cmdBrain(args: string[]): Promise<void> {
     const idx = vectorIndexInfo();
     console.log(`zemory brain embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d)…`);
     let total = 0;
+    // A long `--all` run shares the DB with other zemory processes (Stop-hook
+    // auto-capture, `zemory ui`, another shell). Each vector write auto-commits
+    // individually (no long-held transaction), so a SQLITE_BUSY mid-pass costs
+    // at most the in-flight message, not the run — but left uncaught it kills
+    // an unattended multi-hour job. Retry the pass with backoff instead of dying.
+    const isBusy = (e: unknown): boolean => e instanceof Error && /database is locked|SQLITE_BUSY/i.test(e.message);
+    const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
     for (let pass = 0; pass < 100000; pass++) {
       let lastProgress = 0;
-      const r = await embedPending({
-        limit,
-        onProgress: (p) => {
-          if (p.done === p.total || p.done - lastProgress >= 25) {
-            lastProgress = p.done;
-            process.stdout.write(`  pass ${pass + 1}: ${p.done}/${p.total} scanned · ${p.embedded} embedded\r`);
-            if (p.done === p.total) process.stdout.write("\n");
-          }
-        },
-      });
+      let r: Awaited<ReturnType<typeof embedPending>> | undefined;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          r = await embedPending({
+            limit,
+            onProgress: (p) => {
+              if (p.done === p.total || p.done - lastProgress >= 25) {
+                lastProgress = p.done;
+                process.stdout.write(`  pass ${pass + 1}: ${p.done}/${p.total} scanned · ${p.embedded} embedded\r`);
+                if (p.done === p.total) process.stdout.write("\n");
+              }
+            },
+          });
+          break;
+        } catch (error) {
+          if (!isBusy(error) || attempt >= 8) throw error;
+          const backoffMs = Math.min(2000 * 2 ** attempt, 60000);
+          process.stdout.write(`\n  ⚠ database busy (another zemory process is writing) — retry ${attempt + 1}/8 in ${Math.round(backoffMs / 1000)}s…\n`);
+          await sleep(backoffMs);
+        }
+      }
       total += r.embedded;
       process.stdout.write(`  +${r.embedded} embedded · remaining ${r.remaining}${r.dims ? ` · ${r.dims}d` : ""}\n`);
       if (!all || r.embedded === 0 || r.remaining === 0) break;
