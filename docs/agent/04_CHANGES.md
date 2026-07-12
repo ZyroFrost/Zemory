@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-12] — chore(session): chốt sổ 07-10→07-12 — chuẩn 2-profile, relocate, audit sạch, UI+i18n, embed tối ưu, 115k vector, Drive 1.1GB; bàn giao plan/11 chờ duyệt
+
+Chốt sổ phiên 2026-07-10 → 07-12 — tổng kết MỌI THỨ đã làm (chi tiết từng mục ở changelog #950–#994) + bàn giao cho session sau.
+
+**Đã hoàn thành trong phiên:**
+- **Chuẩn cấu trúc**: Chuẩn v2 (2 trục layer/domain-first, +10 slot, luật KHÔNG-folder-rỗng) → **§7 chuẩn phụ NON-APP** (BI/data/docs/design, vd powerbi_sasinflow) + note 2-CHUẨN đầu doc → CLI nhận profile `app|non-app` trong `.harness.json` (validate/structure/init --non-app). Audit zemory vs chuẩn: ĐẠT.
+- **Storage**: dời brain khỏi ổ C (con trỏ `~/.zemory/location.json`, verify + giữ .bak) · path DB động toàn hệ thống (15 file) · model cache theo brain-dir · dọn ổ C 5.78GB → 0.01MB · xóa bundle share cũ 424MB.
+- **Audit fix sạch**: 2×P1 (digest lane lộ nội dung forget/redact · gitignore chặn bundle) + 8×P2/P3 (UI Host/Origin guard · changelog import merge · render salvage hand-edit schema v10 · CDP port động · WAL race relocate · con trỏ treo · CLI error sạch · thread truncated).
+- **Gỡ savings dashboard** (counterfactual ~99.99% ảo, schema v11 DROP recall_savings) — giữ Recall/Digest/harness (giá trị lõi).
+- **UI redesign**: modal ⚙ Cài đặt 6 tab · top-bar pill gọn · i18n VI/EN đầy đủ 2 chiều (~150 key + backend tr()) · Việt hóa nhất quán.
+- **Embed tối ưu 3 nấc, 0% mất chất lượng**: skip tool-call (−32%) · dedup `vec_hash` copy-vector bit-for-bit (−21% phần còn lại; 20.9% msg/ngày là trùng exact) · batch 16. Backlog 42k XONG: **115.047 vector, remaining 0, bench hybrid recall@3 = 100% (8/8)**.
+- **Sync**: bundle SS01-IT-10 **1.1GB đã lên Drive** (scan +9.767 msg mới trước export); GitHub push đủ (tới `ee278f5`).
+- **Memory rules mới**: preserve-source (tối ưu chỉ đụng lớp dẫn xuất) · design authority.
+
+**Bàn giao session sau (đã ghi 03_TODO ⭐):** ① đề xuất giảm ~50% DB **CHỜ DUYỆT** — đọc `docs/plan/11_db_size_optimization.md` (có luôn câu trả lời "giảm cái gì mà nhiều vậy": 87% DB là INDEX dẫn xuất, text gốc chỉ 13%) ② đo tốc độ embed/ngày thật (`brain embed --all` + bấm giờ) ③ tooltip i18n (nhỏ).
+
 ## [2026-07-12] — perf(embed): dedup nội dung trùng — copy vector từ lần đầu, 0% mất chất lượng (vec_hash)
 
 Lọc trùng lặp khi embed — ý user: "cho agent lọc lại message, nhưng CHỈ cái bị trùng lặp/ghi lặp lại". Đo thật: **20,9% message mới mỗi ngày là trùng exact** (rules/recall card inject lại mỗi phiên, file đọc lặp).
