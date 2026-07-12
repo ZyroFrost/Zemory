@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { currentBrainDb, openBrain, type BrainDB } from "./db.js";
 import { redact } from "./redact.js";
+import { forgetVectors } from "./vectors.js";
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -212,9 +213,6 @@ export async function forgetBrain(opts: ForgetBrainOptions = {}): Promise<Forget
       db.exec("CREATE TEMP TABLE zemory_forget_message_ids(id INTEGER PRIMARY KEY)");
       const insert = db.prepare("INSERT INTO zemory_forget_message_ids(id) VALUES (?)");
       for (const id of messageIds) insert.run(id);
-      if (hasTable(db, "vec_chunks")) {
-        vectors = db.prepare("DELETE FROM vec_chunks WHERE rowid IN (SELECT id FROM zemory_forget_message_ids)").run().changes;
-      }
       db.prepare("DELETE FROM messages WHERE id IN (SELECT id FROM zemory_forget_message_ids)").run();
       if (hasTable(db, "session_digest")) {
         // AFTER DELETE trigger clears both digest FTS tables; the digest builder
@@ -235,6 +233,9 @@ export async function forgetBrain(opts: ForgetBrainOptions = {}): Promise<Forget
       db.exec("DROP TABLE IF EXISTS temp.zemory_forget_message_ids");
     });
     tx();
+    // Vector rows (incl. long-message chunks) need a sqlite-vec-loaded
+    // connection — this plain one cannot even prepare a vec0 statement.
+    vectors = forgetVectors(dbPath, messageIds);
     return {
       dbPath,
       dryRun: false,

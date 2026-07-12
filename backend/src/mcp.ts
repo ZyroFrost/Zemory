@@ -57,7 +57,10 @@ function errorResult(message: string) {
 const TOOLS = [
   {
     name: "brain_search",
-    description: "Search the local cross-agent global brain. Returns lightweight hits; call brain_show for full text.",
+    description:
+      "Search the local cross-agent global brain (hybrid keyword+semantic). Returns lightweight hits; call brain_show for full text. " +
+      "Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a different phrasing, " +
+      "or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the memory has nothing.",
     inputSchema: {
       type: "object",
       properties: {

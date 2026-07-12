@@ -14,7 +14,7 @@ import { gatherStatus } from "./status.js";
 import { startUi } from "./ui.js";
 import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
-import { embedPending, vectorCount, vectorRemaining } from "./brain/vectors.js";
+import { dropVectorIndex, embedPending, vectorCount, vectorIndexProfile, vectorRemaining } from "./brain/vectors.js";
 import { runRagBench } from "./brain/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
 import { relocateBrain, storageInfo } from "./brain/relocate.js";
@@ -660,10 +660,17 @@ async function cmdBrain(args: string[]): Promise<void> {
   if (sub === "embed") {
     // Incremental semantic backfill: embed messages with no vector yet.
     // Plain `embed` does one batch; `--all` loops until the corpus is caught up.
+    // `--rebuild` drops the whole derived index first — the only way to switch
+    // embed profile (e.g. adopting the EmbeddingGemma query/document prompts).
     const li = args.indexOf("--limit");
     const limit = li >= 0 ? Number(args[li + 1]) : undefined;
-    const all = args.includes("--all");
-    console.log("zemory brain embed — building the vector index (EmbeddingGemma, local)…");
+    const rebuild = args.includes("--rebuild");
+    const all = args.includes("--all") || rebuild;
+    if (rebuild) {
+      dropVectorIndex();
+      console.log("zemory brain embed --rebuild — vector index dropped; re-embedding the whole corpus…");
+    }
+    console.log(`zemory brain embed — building the vector index (EmbeddingGemma, local, profile ${vectorIndexProfile()})…`);
     let total = 0;
     for (let pass = 0; pass < 100000; pass++) {
       let lastProgress = 0;
@@ -833,9 +840,11 @@ async function cmdBrain(args: string[]): Promise<void> {
       "                    (origin=web). Ingests in batches + resumes; --limit N pulls",
       "                    the N newest for a quick verify.",
       "  search <q> [--all] recall across the brain (scope: current project; --all = everywhere).",
-      "  embed [--limit N] [--all]",
+      "  embed [--limit N] [--all] [--rebuild]",
       "                    build the semantic vector index (RAG, local EmbeddingGemma).",
       "                    Default: one 500-message batch with progress; --all catches up the corpus.",
+      "                    --rebuild drops + re-embeds everything under the current embed profile",
+      "                    (asymmetric Gemma query/document prompts; long messages chunked).",
       "  keygen <key-file> create a local share key (keep OUT of git).",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
       "  restore <backup.db> [--force]",

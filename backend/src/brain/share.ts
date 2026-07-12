@@ -26,7 +26,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
 import { scan } from "./ingest.js";
-import { embedPending, vectorRemaining } from "./vectors.js";
+import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { getScopeExclude } from "../settings.js";
 
@@ -118,13 +118,10 @@ function filterSnapshot(path: string, lanes: ScopeLane[]): void {
       db.prepare(`DELETE FROM messages WHERE session_id IN (SELECT id FROM sessions WHERE ${match})`).run(...params);
       db.prepare(`DELETE FROM sessions WHERE ${match}`).run(...params);
     })();
-    // vec_chunks are keyed by local message ids; orphans are harmless (importer
-    // re-embeds) but drop them so the bundle stays clean. Ignore if no vec table.
-    try {
-      db.prepare("DELETE FROM vec_chunks WHERE message_id NOT IN (SELECT id FROM messages)").run();
-    } catch {
-      /* no vector table in this DB */
-    }
+    // Vectors of the dropped messages are keyed by local message ids; orphans are
+    // harmless (importer re-embeds) but drop them so the bundle stays clean.
+    // Needs its own sqlite-vec-loaded connection (vec0 table).
+    pruneOrphanVectors(path);
     db.pragma("wal_checkpoint(TRUNCATE)");
     db.pragma("journal_mode = DELETE");
   } finally {
