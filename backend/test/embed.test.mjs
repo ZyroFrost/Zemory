@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { embed, embedConfig, resetEmbed } from "../../dist/brain/embed.js";
+import { currentEmbedProfile, embed, embedConfig, resetEmbed } from "../../dist/brain/embed.js";
+
+test("embed profile: Gemma model → asymmetric prompts; ZEMORY_EMBED_PROMPTS overrides both ways", () => {
+  delete process.env.ZEMORY_EMBED_PROMPTS;
+  delete process.env.ZEMORY_EMBED_MODEL;
+  assert.equal(currentEmbedProfile(), "gemma-prompt-v1", "default model is EmbeddingGemma → prompts on");
+  process.env.ZEMORY_EMBED_PROMPTS = "0";
+  assert.equal(currentEmbedProfile(), "raw", "=0 forces raw");
+  process.env.ZEMORY_EMBED_PROMPTS = "1";
+  assert.equal(currentEmbedProfile(), "gemma-prompt-v1", "=1 forces prompts");
+  delete process.env.ZEMORY_EMBED_PROMPTS;
+  process.env.ZEMORY_EMBED_MODEL = "vendor/some-other-model";
+  assert.equal(currentEmbedProfile(), "raw", "non-Gemma model defaults to raw");
+  delete process.env.ZEMORY_EMBED_MODEL;
+});
 
 test("embedConfig defaults to EmbeddingGemma · q8 · <brain-dir>/models", () => {
   const c = embedConfig();

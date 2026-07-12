@@ -27,6 +27,40 @@ export interface EmbedConfig {
 // Matryoshka. Hosted ungated by onnx-community for Transformers.js.
 const DEFAULT_MODEL = "onnx-community/embeddinggemma-300m-ONNX";
 
+// ---------------------------------------------------------------------------
+// Prompt profiles (asymmetric query/document encoding).
+//
+// EmbeddingGemma is PROMPT-TRAINED: its model card requires a task prefix —
+// queries as `task: search result | query: {text}`, documents as
+// `title: none | text: {text}`. Embedding bare text (the pre-profile behavior)
+// leaves accuracy on the table. Prefixed and bare vectors live in DIFFERENT
+// spaces, so the profile an index was BUILT with is recorded in vec_config and
+// is authoritative for both sides (vectors.ts passes it in); switching profiles
+// requires `zemory brain embed --rebuild`. New indexes use currentEmbedProfile().
+// ZEMORY_EMBED_PROMPTS=0 forces raw; =1 forces prompts for a non-Gemma model.
+// ---------------------------------------------------------------------------
+export type EmbedProfile = "raw" | "gemma-prompt-v1";
+
+export function currentEmbedProfile(): EmbedProfile {
+  const v = process.env.ZEMORY_EMBED_PROMPTS?.trim();
+  if (v === "0") return "raw";
+  if (v === "1") return "gemma-prompt-v1";
+  return /embeddinggemma/i.test(embedConfig().model) ? "gemma-prompt-v1" : "raw";
+}
+
+const promptFor = (kind: "query" | "document", text: string, profile: EmbedProfile): string =>
+  profile === "gemma-prompt-v1" ? (kind === "query" ? `task: search result | query: ${text}` : `title: none | text: ${text}`) : text;
+
+/** Embed a SEARCH QUERY under the given profile (must match the index's stored profile). */
+export async function embedQuery(text: string, profile: EmbedProfile): Promise<number[] | null> {
+  return embed(promptFor("query", text, profile));
+}
+
+/** Embed DOCUMENTS under the given profile (must match the index's stored profile). */
+export async function embedDocBatch(texts: string[], profile: EmbedProfile): Promise<(number[] | null)[]> {
+  return embedBatch(texts.map((t) => promptFor("document", t, profile)));
+}
+
 export function embedConfig(): EmbedConfig {
   const d = process.env.ZEMORY_EMBED_DTYPE?.trim() as Dtype | undefined;
   return {
