@@ -32,6 +32,8 @@
 ## ⭐ Ưu tiên kế tiếp
 #1094 docs\agent\03_TODO.md — ## ⭐ Ưu tiên kế tiếp
 ---
+#1094 docs\agent\03_TODO.md — ## ⭐ Ưu tiên kế tiếp
+---
 > Compression đã **BỎ khỏi scope** (changelog 2026-06-25). zemory tập trung **global memory + harness**. Source nén ở `attic/`.
 
 **✅ RAG semantic core — đã code/test tới gate A-D + E (rerank, opt-in) + full backfill (2026-06-30):**
@@ -62,8 +64,9 @@
 
 **🔥 VIỆC KẾ TIẾP (ghi 2026-07-12, cho session sau):**
 - [ ] **CHỜ USER DUYỆT: giảm ~50% DB (938MB → ~450-500MB)** — đề xuất + số đo + lý-do-giảm-được-nhiều đầy đủ ở `docs/plan/11_db_size_optimization.md`. 3 bước: FTS external-content (−246MB, 0 mất) → vector 256d Matryoshka (−218MB, bench gate) → VACUUM. KHÔNG xóa message gốc. Đọc plan 11 rồi hỏi user chốt mới làm.
-- [ ] **Đo tốc độ embed hằng ngày thực tế**: chạy `zemory brain embed --all` + bấm giờ (backlog mới ~vài nghìn msg tự sinh mỗi ngày). Mục tiêu ~10–15 phút/ngày sau 3 tối ưu (skip tool-call · dedup vec_hash · batch 16). Session 2026-07-12 đo dở (task nền bị ngắt khi đổi session).
+- [~] **Đo tốc độ embed/ngày — CÓ SỐ THÔ, cần đo lại ngày thường**: mẫu 5.813 msg (phiên 07-12) = 140 phút → 41 msg/phút. CAVEAT: mẫu LỆCH nặng — phiên này là mega-session (9.7k msg/2 ngày, message dài bất thường), KHÔNG đại diện ngày thường. Việc session sau: sau 1 ngày dùng bình thường, chạy `zemory brain embed --all` + bấm giờ để có số phút/ngày thật; nếu vẫn >20 phút → cân nhắc nấc q4 (ZEMORY_EMBED_DTYPE=q4, ~1.5×, đổi chất lượng nhẹ — hỏi user).
 - [ ] (nhỏ) Tooltip `title="…"` trong UI chưa theo i18n — chữ hiện là tiếng Việt ở cả mode EN. Chỉ hover-help, không lộ trên màn.
+
 ## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 03_CHANGES)
 > Lớp tóm tắt cấp phiên (DẪN XUẤT) để recall đọc rẻ token; đào xuống `messages` qua anchor khi cần. Spec: `docs/plan/06_digest.md`. Cụ thể hoá "memory promotion" (Phase 2) nhưng dạng lăng kính dẫn xuất, KHÔNG phải nguồn.
 - [x] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).
