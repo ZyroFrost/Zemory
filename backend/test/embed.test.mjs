@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentEmbedProfile, embed, embedConfig, resetEmbed } from "../../dist/brain/embed.js";
+import { currentEmbedProfile, embed, embedConfig, resetEmbed, sliceNormalize, targetEmbedDims } from "../../dist/brain/embed.js";
+
+test("targetEmbedDims: default 768; ZEMORY_EMBED_DIMS picks a valid Matryoshka size; junk ignored", () => {
+  delete process.env.ZEMORY_EMBED_DIMS;
+  assert.equal(targetEmbedDims(), 768);
+  process.env.ZEMORY_EMBED_DIMS = "256";
+  assert.equal(targetEmbedDims(), 256);
+  process.env.ZEMORY_EMBED_DIMS = "300"; // not an MRL size
+  assert.equal(targetEmbedDims(), 768);
+  delete process.env.ZEMORY_EMBED_DIMS;
+});
+
+test("sliceNormalize: keeps the first N dims, unit norm, preserves component ratios", () => {
+  const v = [3, 4, 100, -100]; // slicing to 2 must ignore the tail entirely
+  const s = sliceNormalize(v, 2);
+  assert.equal(s.length, 2);
+  const norm = Math.sqrt(s.reduce((a, x) => a + x * x, 0));
+  assert.ok(Math.abs(norm - 1) < 1e-9, `unit norm (got ${norm})`);
+  assert.ok(Math.abs(s[0] / s[1] - 3 / 4) < 1e-9, "ratios preserved");
+  // already short enough → untouched
+  assert.deepEqual(sliceNormalize([0.6, 0.8], 4), [0.6, 0.8]);
+});
 
 test("embed profile: Gemma model → asymmetric prompts; ZEMORY_EMBED_PROMPTS overrides both ways", () => {
   delete process.env.ZEMORY_EMBED_PROMPTS;

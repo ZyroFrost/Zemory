@@ -14,7 +14,7 @@ import { gatherStatus } from "./status.js";
 import { startUi } from "./ui.js";
 import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
-import { dropVectorIndex, embedPending, vectorCount, vectorIndexProfile, vectorRemaining } from "./brain/vectors.js";
+import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "./brain/vectors.js";
 import { runRagBench } from "./brain/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
 import { relocateBrain, storageInfo } from "./brain/relocate.js";
@@ -670,7 +670,8 @@ async function cmdBrain(args: string[]): Promise<void> {
       dropVectorIndex();
       console.log("zemory brain embed --rebuild — vector index dropped; re-embedding the whole corpus…");
     }
-    console.log(`zemory brain embed — building the vector index (EmbeddingGemma, local, profile ${vectorIndexProfile()})…`);
+    const idx = vectorIndexInfo();
+    console.log(`zemory brain embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d)…`);
     let total = 0;
     for (let pass = 0; pass < 100000; pass++) {
       let lastProgress = 0;
