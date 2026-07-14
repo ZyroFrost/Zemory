@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-14] — Plan 12: rebuild vector 256d Gemma-prompt + FTS external-content + VACUUM (DB 1141MB->595MB)
+
+Plan 12 thi cong xong: rebuild vector index (EmbeddingGemma asymmetric query/document prompts + Matryoshka 256d) + FTS external-content migration (v12) + VACUUM.
+
+Ket qua do that:
+- DB: 1141.4MB -> 595.1MB (giai phong 546.3MB, ~48%).
+- vec_chunks: 94384 vector (0 remaining), chunk message dai (>6000 ky tu) da duoc cua so hoa.
+- Gate: npm run check 82/82 (backend/test). brain bench @256d: hybrid recall@3 100% (8/8), rerank 100% (8/8), FTS-only 0% (8/8) tren corpus paraphrase.
+- Spot-check 3 query that (VN + EN) sau rebuild: khong regression, mot query (export bundle) cho ket qua lien quan hon han truoc.
+
+Su co doc duong: lan rebuild dau crash giua chung do "database is locked" (mot tien trinh zemory khac ghi cung luc, vuot busy_timeout 5s). Khong mat du lieu (moi vector tu commit rieng) nhung CLI khong retry nen chet. Da va: retry-with-backoff (toi da 8 lan, 2s->60s) quanh moi pass cua `zemory brain embed --all`, chi bat dung loi busy.
+
+Code moi: ZEMORY_EMBED_DIMS + sliceNormalize (embed.ts), vec_map chunk mapping + stored-dims-authoritative (vectors.ts), FTS external-content migration v11->v12 (db.ts), `zemory brain vacuum` (privacy.ts) + `zemory brain embed --rebuild`.
+
+Xem docs/plan/12_vector_rebuild_256.md cho chi tiet thi cong; docs/plan/11_db_size_optimization.md buoc 2 (cat 768->256 tai cho) coi la superseded boi plan 12 (rebuild thang o 256d).
+
 ## [2026-07-12] — chore(session): chốt sổ 07-10→07-12 — chuẩn 2-profile, relocate, audit sạch, UI+i18n, embed tối ưu, 115k vector, Drive 1.1GB; bàn giao plan/11 chờ duyệt
 
 Chốt sổ phiên 2026-07-10 → 07-12 — tổng kết MỌI THỨ đã làm (chi tiết từng mục ở changelog #950–#994) + bàn giao cho session sau.

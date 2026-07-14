@@ -1,9 +1,12 @@
+<!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
 # Thi công: rebuild vector với Gemma prompts @ 256d + FTS external-content (một lần mổ)
-
-> **Trạng thái: USER ĐÃ DUYỆT (2026-07-12), KHÔNG backup** — user chốt bỏ backup vì DB là lớp DẪN XUẤT: transcript gốc còn nguyên ở store Claude/Codex (nguồn scan) + `~/.zemory/imports/chatgpt/`; tệ nhất dựng lại bằng `brain scan --deep` + `embed --all`. Executor: session Sonnet 5. Người viết plan: Fable (session 2026-07-12, commit `2164674`).
+> **Trạng thái: HOÀN TẤT (2026-07-14).** User duyệt 2026-07-12 (KHÔNG backup — DB là lớp DẪN XUẤT: transcript gốc còn nguyên ở store Claude/Codex + `~/.zemory/imports/chatgpt/`). Executor: session Sonnet 5. Người viết plan: Fable (session 2026-07-12, commit `2164674`).
+>
+> **Kết quả thật:** DB `global_memory.db` 1141.4MB → 595.1MB (giải phóng 546.3MB, ~48%). 94.384 vector (0 remaining), profile `gemma-prompt-v1` @ 256d. Gate: `npm run check` 82/82, `brain bench --rerank` @256d hybrid 100%/rerank 100% (8/8), FTS-only 0%. Spot-check 3 query thật (VN+EN): không regression, 1 query cho kết quả liên quan hơn hẳn nhờ prompt profile mới.
+>
+> **Sự cố dọc đường:** rebuild lần 1 crash vì "database is locked" (tiến trình zemory khác ghi cùng lúc) — vá bằng retry-with-backoff (commit sau `2164674`) rồi resume thành công, không mất vector đã ghi.
 >
 > Luật bất di bất dịch: **KHÔNG đụng `sessions`/`messages` gốc** — mọi bước chỉ đụng lớp dẫn xuất (vec_*, FTS). Fail-open giữ nguyên: vector lane hỏng thì recall rơi về FTS, không bao giờ chết.
-
 ## 0. Bối cảnh bắt buộc đọc trước
 
 - `docs/plan/11_db_size_optimization.md` — số đo dbstat: DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm 2 lần mổ vô ích.

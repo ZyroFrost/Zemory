@@ -1,8 +1,18 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
 # Giảm dung lượng DB ~50% — đề xuất CHỜ DUYỆT (trả lời "giảm cái gì mà nhiều vậy")
+> **Trạng thái: HOÀN TẤT (2026-07-14) — xem docs/plan/12_vector_rebuild_256.md.** User đã duyệt (2026-07-12, không backup — DB là lớp dẫn xuất). Bước 2 (cắt 768d→256d tại chỗ) được thay bằng rebuild thẳng ở 256d trong plan 12, vì đằng nào cũng phải re-embed toàn bộ để đổi sang asymmetric Gemma prompts. Kết quả thật: DB 1141.4MB → 595.1MB (giải phóng 546.3MB, ~48%), 94384 vector, gate npm run check 82/82 + brain bench hybrid/rerank 100% (8/8), 0 mất dữ liệu.
 
-> **Trạng thái: ĐỀ XUẤT, user CHƯA duyệt (2026-07-12).** Session sau đọc doc này rồi hỏi user chốt. KHÔNG xóa message gốc — mọi thứ chỉ đụng lớp DẪN XUẤT (index), tuân thủ luật preserve-source.
+## 1. Vì sao giảm được tới 50% — DB to KHÔNG phải vì dữ liệu, mà vì INDEX
+Đo thật bằng `dbstat` trên `global_memory.db` 938MB (2026-07-12):
 
+| Thành phần | MB | % | Bản chất |
+|---|---|---|---|
+| Index FTS (word + trigram + **2 bản COPY content**) | ~534 | 51% | index keyword — trong đó 246MB là 2 bản sao nguyên văn text |
+| Vector 768d (`vec_chunks`, 115k vector) | 327 | 31% | index semantic |
+| **Message text gốc** | **133** | **13%** | dữ liệu thật |
+| Digest + section + khác | ~50 | 5% | dẫn xuất |
+
+→ Text gốc chỉ chiếm 13%. **87% còn lại là index dẫn xuất** — nên giảm index là giảm được rất nhiều mà không mất dữ liệu. Đây là câu trả lời cho "giảm cái gì mà nhiều vậy".
 ## 1. Vì sao giảm được tới 50% — DB to KHÔNG phải vì dữ liệu, mà vì INDEX
 Đo thật bằng `dbstat` trên `global_memory.db` 938MB (2026-07-12):
 
