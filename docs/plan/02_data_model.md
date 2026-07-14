@@ -37,7 +37,7 @@ SQLite bật WAL, foreign keys, busy timeout và synchronous NORMAL để nhiề
 Schema thực thi duy nhất nằm trong `backend/src/brain/db.ts`; plan không lặp một bản DDL dài dễ trôi lệch. Các invariant bắt buộc:
 
 - `sessions.id` và `messages(session_id, uuid)` hỗ trợ ingest idempotent;
-- FTS tables đồng bộ bằng trigger insert/delete/update phù hợp;
+- FTS tables đồng bộ bằng trigger insert/delete/update phù hợp (một số bảng — `messages_fts`/`messages_fts_tri`, migration v12 — là EXTERNAL CONTENT, đọc content từ bảng gốc thay vì giữ bản copy riêng);
 - `doc(project_root, path)` unique và `section` giữ body markdown verbatim;
 - changelog giữ metadata `archived`/`supersedes_id` trong DB, không encode archive thành folder thứ hai;
 - `ingest_state` lưu size, mtime, complete-line offset và `parser_version`;
@@ -54,18 +54,22 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 
 ## 4. Sync `db → md` (db là nguồn)
 - `plan set` và `docs add` cập nhật DB rồi render ngay đúng mirror.
-- `changelog add` cập nhật DB rồi render ngay `03_CHANGES.md`.
+- `changelog add` cập nhật DB rồi render ngay `04_CHANGES.md`.
 - `docs sync` import file chưa generated hoặc phục hồi DB rỗng; generated mirror có row DB tương ứng được giữ nguyên và không đổi ID.
 - `docs render` là thao tác DB → markdown có chủ đích và có thể ghi đè mirror.
 - `archive` chỉ set `changelog.archived=1` rồi render active rows; full history vẫn ở DB/FTS.
 
-## 5. Trạng thái harness hiện tại
-Harness chuẩn gồm:
+## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
+Harness chuẩn (`docs-template/`, ship cho project khác) gồm:
 
-- `docs/agent/01_RULES.md`, `02_TODO.md`, `03_CHANGES.md`;
-- `docs/plan/00_build_plan.md`, `01_repo_survey.md`, `02_data_model.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`;
-- `docs/.harness.json` chọn provider và threshold;
-- global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
+- `docs/agent/01_RULES.md`, `02_STRUCTURE.md`, `03_TODO.md`, `04_CHANGES.md`;
+- `docs/plan/00_build_plan.md` (điểm khởi đầu template);
+- `docs/.harness.json` chọn provider và threshold.
+
+Backlog riêng của chính zemory (dogfood, KHÔNG thuộc template) mở rộng thêm `docs/plan/01`–`12` theo thời gian: repo survey, data model (file này), compression (đã bỏ scope), roadmap, RAG, digest, web-chat capture, scoped sync, repo structure, token-savings dashboard (đã gỡ), DB size optimization, vector rebuild 256d.
+
+Global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 
+> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `01_RULES.md`, `00_build_plan.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi mổ DB.

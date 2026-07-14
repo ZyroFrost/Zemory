@@ -30,43 +30,40 @@
 
 **Trạng thái sau 2026-06-30:** remote Git + commit/push `main` đã xong; không còn blocker cơ học trong v0.1. Mốc publish/package registry là quyết định riêng nếu cần.
 ## ⭐ Ưu tiên kế tiếp
-#1094 docs\agent\03_TODO.md — ## ⭐ Ưu tiên kế tiếp
----
-#1094 docs\agent\03_TODO.md — ## ⭐ Ưu tiên kế tiếp
----
 > Compression đã **BỎ khỏi scope** (changelog 2026-06-25). zemory tập trung **global memory + harness**. Source nén ở `attic/`.
 
-**✅ RAG semantic core — đã code/test tới gate A-D + E (rerank, opt-in) + full backfill (2026-06-30):**
+**✅ RAG semantic core — đã code/test tới gate A-D + E (rerank, opt-in) + full backfill (2026-06-30) + F1 (asymmetric prompts/256d/chunking, 2026-07-14):**
 - [x] A. Embed pipeline: EmbeddingGemma-300M qua Transformers.js (ONNX, Node, no Python) — embed ra vector unit-normalized, fail-open khi model lỗi.
 - [x] B. Vector store: `sqlite-vec` trong `global_memory.db`; `zemory brain embed` incremental; vector index hiện chạy thật trên DB local.
 - [x] C. Hybrid retrieve: vector stream đã fuse vào RRF cùng FTS; `brain search` mặc định chạy hybrid khi enabled và fallback FTS khi vector lỗi/thiếu.
 - [x] D. Benchmark gate: `brain bench` PASS; test suite xác nhận hybrid recall@3 >= FTS trên paraphrase corpus.
 - [x] Full corpus backfill: `zemory brain embed --all` đã chạy xong trên corpus lịch sử của `global_memory.db`; mốc nghiệm thu 2026-06-30 xác nhận `vec_chunks` khớp `messages` 1:1. Vì brain ingest transcript sống, message mới sau mốc này xử lý bằng `zemory brain embed` incremental.
 - [x] E. Rerank cross-encoder (opt-in) — `backend/src/brain/rerank.ts` rescore top-40 ứng viên RRF rồi reorder; fail-open giữ thứ tự RRF; default OFF, bật qua UI toggle / `ZEMORY_RERANK=1` / `--rerank`. `brain bench --rerank` đo lane riêng; spot check brain thật xác nhận reorder tốt hơn hybrid thuần. Chi tiết plan 05 §4.E.
-- [ ] F. (TẦM NHÌN, sau core) Mở RAG sang **data chính** (ngoài memory agent): retriever **đa-store + `kind`**, chung model + retriever, DB tách được. Ý tưởng user — plan 05 §4.F.
+- [x] F1. **Asymmetric Gemma prompts + Matryoshka 256d + chunk message dài + MCP grade/rewrite guidance** (2026-07-12, commit `2164674`) + **rebuild toàn bộ DB thật ở 256d + FTS external-content + VACUUM** (plan 12, HOÀN TẤT 2026-07-14: DB 1141.4MB→595.1MB, gate 82/82 + bench 100%/100%).
+- [ ] F2. (TẦM NHÌN, sau core) Mở RAG sang **data chính** (ngoài memory agent): retriever **đa-store + `kind`**, chung model + retriever, DB tách được. Ý tưởng user — plan 05 §4.F.
 
 **✅ MCP global recall — đã code/test 2026-06-29:**
 - [x] `zemory mcp` stdio server local với `brain_search`, `brain_show`, `plan_search`, `plan_show`.
 - [x] Global brain đọc được ở mọi cwd/project; nếu project chưa setup harness thì recall tự rơi về toàn bộ `global_memory.db` thay vì bắt buộc có `docs/.harness.json`.
 - [x] MCP không auto-inject memory; agent gọi on-demand rồi dùng `*_show` để mở full text.
+- [x] (2026-07-12) `brain_search` mô tả giờ hướng dẫn agent tự chấm kết quả + viết lại query (≤2 lần) khi hit kém, thay vì kết luận ngay "không có" — agentic retrieval loop, 0 token phía zemory.
 
 **✅ Memory retention/privacy core — đã code/test 2026-06-30:**
 - [x] Encrypted share đã có: `zemory brain export/import` bằng bundle `.zemory.enc`.
 - [x] Raw local safety net: `zemory brain backup/restore` bằng SQLite online backup, restore luôn rename DB cũ sang `.bak-*`.
 - [x] Forget trong brain DB: `zemory brain forget` theo `--session`, `--project`, `--source/--agent`, `--before`, hoặc `--message`; dry-run mặc định, `--force` mới xóa, auto backup trước khi xóa.
 - [x] Re-redact dữ liệu đã ingest: `zemory brain redact --force` re-apply secret redaction cho messages/artifact index; FTS message update trigger giữ search index đồng bộ.
+- [x] (2026-07-14) `zemory brain vacuum` — thu hồi trang trống sau mổ cấu trúc (dims cut, FTS migration).
 
 **Khác (chưa làm):**
 - [ ] (Nếu cần quên tuyệt đối) Source-transcript privacy/tombstone: xóa/redact transcript gốc của agent host hoặc ghi tombstone chống whole-file adapter re-ingest lại dữ liệu đã quên.
 - [ ] (Sau) code map AST + adapter host mới (Gemini/Cursor/…) khi có fixture thật.
 
-
-
-**🔥 VIỆC KẾ TIẾP (ghi 2026-07-12, cho session sau):**
-- [ ] **CHỜ USER DUYỆT: giảm ~50% DB (938MB → ~450-500MB)** — đề xuất + số đo + lý-do-giảm-được-nhiều đầy đủ ở `docs/plan/11_db_size_optimization.md`. 3 bước: FTS external-content (−246MB, 0 mất) → vector 256d Matryoshka (−218MB, bench gate) → VACUUM. KHÔNG xóa message gốc. Đọc plan 11 rồi hỏi user chốt mới làm.
-- [~] **Đo tốc độ embed/ngày — CÓ SỐ THÔ, cần đo lại ngày thường**: mẫu 5.813 msg (phiên 07-12) = 140 phút → 41 msg/phút. CAVEAT: mẫu LỆCH nặng — phiên này là mega-session (9.7k msg/2 ngày, message dài bất thường), KHÔNG đại diện ngày thường. Việc session sau: sau 1 ngày dùng bình thường, chạy `zemory brain embed --all` + bấm giờ để có số phút/ngày thật; nếu vẫn >20 phút → cân nhắc nấc q4 (ZEMORY_EMBED_DTYPE=q4, ~1.5×, đổi chất lượng nhẹ — hỏi user).
+**🔥 VIỆC KẾ TIẾP:**
+- [x] ~~CHỜ USER DUYỆT: giảm ~50% DB~~ **HOÀN TẤT 2026-07-14** — xem `docs/plan/12_vector_rebuild_256.md`, changelog #1010. Kết quả thật: 1141.4MB→595.1MB (−546.3MB, ~48%), 94.384 vector, gate 82/82 + bench 100%/100%.
+- [~] **Đo tốc độ embed/ngày — VẪN CHƯA có số ngày-thường sạch.** Mẫu cũ (07-12, mega-session) = 41 msg/phút, lệch. Rebuild plan 12 (27 giờ, 94k message tồn đọng) cho thấy tốc độ dao động 40–380 msg/phút tùy độ dài message, nhưng đó là backlog dồn cục, KHÔNG phải nhịp ingest hằng ngày. Việc còn lại: sau 1 ngày dùng bình thường (không rebuild), chạy `zemory brain embed --all` + bấm giờ cho SỐ MESSAGE MỚI TRONG NGÀY ĐÓ để ra phút/ngày thật; nếu >20 phút → cân nhắc q4 dtype (hỏi user).
 - [ ] (nhỏ) Tooltip `title="…"` trong UI chưa theo i18n — chữ hiện là tiếng Việt ở cả mode EN. Chỉ hover-help, không lộ trên màn.
-
+- [ ] **(MỚI, phát hiện 2026-07-14) Bug đồng bộ docs:** 8/16 doc của project hiện tại (`docs/agent/01_RULES.md`, `docs/plan/00_build_plan.md`, `01_repo_survey.md`, `02_data_model.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) đang lưu trong DB dưới dạng **1 section duy nhất, heading=NULL** thay vì tách theo heading như các doc khác (03_TODO, 06-12 đều tách đúng nhiều section). Nguyên nhân: repo từng ở `D:\Work_Study\IT\Data\Tools\zemory`, đổi sang `D:\Zyro\Tool\Zemory` — doc/section cũ không migrate theo project_root mới, và lần tạo doc mới dưới project_root hiện tại không tách section đúng. Hệ quả: search/set trên các file này chỉ thao tác được cả khối, mất độ chi tiết heading-level. CHƯA sửa (cần hiểu rõ `docs/plan.ts` import/split logic trước khi mổ DB, tránh làm hỏng thêm). Cũng thấy 1 bug hiển thị nhỏ: `zemory plan show <id>` in lặp dòng header 2-3 lần trước nội dung.
 ## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 03_CHANGES)
 > Lớp tóm tắt cấp phiên (DẪN XUẤT) để recall đọc rẻ token; đào xuống `messages` qua anchor khi cần. Spec: `docs/plan/06_digest.md`. Cụ thể hoá "memory promotion" (Phase 2) nhưng dạng lăng kính dẫn xuất, KHÔNG phải nguồn.
 - [x] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).
@@ -81,10 +78,11 @@
 - [x] ~~Phân phối LeanCTX: dependency hay binary?~~ MOOT — compression đã bỏ, code ở `attic/`.
 - [x] ~~Artifact lưu bao lâu / tối đa GB?~~ CHỐT 2026-06-25: vĩnh viễn, KHÔNG tự xóa; đầy → cảnh báo, cũ → archive gzip (chi tiết changelog).
 - [x] ~~sqlite-vec hay brute-force cosine?~~ CHỐT 2026-06-29 theo code/test: dùng `sqlite-vec` trong `global_memory.db`, fail-open về FTS.
-- [x] ~~Chiều vector mặc định?~~ CHỐT 2026-06-29 theo code/test: dùng 768d đầy đủ trước; Matryoshka 256/128 để tối ưu dung lượng/tốc độ là việc sau nếu cần.
+- [x] ~~Chiều vector mặc định?~~ CHỐT 2026-06-29: ban đầu 768d đầy đủ. **ĐỔI 2026-07-14 (plan 12): 256d Matryoshka** (cắt + renormalize từ 768d, 0% mất theo bench) — dims lưu trong `vec_config.dims`, stored-dims-authoritative. DB thật đã rebuild xong ở 256d.
 - [x] ~~Lịch backfill toàn bộ corpus thật?~~ CHỐT 2026-06-30: chạy thủ công có kiểm soát bằng `zemory brain embed --all`; mốc nghiệm thu đã backfill đủ corpus lịch sử của `global_memory.db`. Message mới sau đó dùng incremental embed.
 - [x] ~~Có cần rerank cross-encoder không?~~ CHỐT 2026-06-30: **làm rồi, opt-in** (Giai đoạn E — bge-reranker-base, default OFF, bật qua UI/`ZEMORY_RERANK`/`--rerank`).
 - [x] ~~Đồng bộ memory xuyên máy thế nào?~~ CHỐT 2026-07-01: **bundle `.enc` qua Drive folder + `brain import --merge`** (additive), KHÔNG sync DB sống. `brain sync` + Drive link trong UI. Chi tiết changelog + plan 02 §0.
+- [x] ~~Có cần asymmetric query/document prompt cho embed model không?~~ CHỐT 2026-07-12/14 (plan 12): **có** — EmbeddingGemma là prompt-trained, query dùng `task: search result | query:`, document dùng `title: none | text:`. Profile lưu `vec_config.profile`.
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 ## Việc cần xác minh thực tế
 - [ ] Mở phiên Claude và Codex mới để xác nhận Stop hook capture end-to-end trên runtime thật.
