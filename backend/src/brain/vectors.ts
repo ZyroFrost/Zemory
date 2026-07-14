@@ -35,8 +35,10 @@ const CHUNK_STEP = 5500; // 500-char overlap between consecutive windows
 const MAX_CHUNKS = 8; // cap pathological mega-messages (~44.5k chars covered)
 const SYNTH_BASE = 2 ** 40; // synthetic rowids for chunks 1+ (message ids never get near this)
 
-/** A brain connection with the sqlite-vec extension loaded. */
-function vecConnect(dbPath: string): Conn {
+/** A brain connection with the sqlite-vec extension loaded. Exported so callers
+ *  elsewhere (e.g. VACUUM, which must resolve the vec0 module to recreate the
+ *  virtual table's shadow tables in the rebuilt file) don't reimplement this. */
+export function vecConnect(dbPath: string): Conn {
   const db = new Database(dbPath);
   db.pragma("busy_timeout = 5000");
   sqliteVec.load(db);

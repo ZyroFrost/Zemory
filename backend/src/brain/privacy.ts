@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { currentBrainDb, openBrain, type BrainDB } from "./db.js";
 import { redact } from "./redact.js";
-import { forgetVectors } from "./vectors.js";
+import { forgetVectors, vecConnect } from "./vectors.js";
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -56,6 +56,32 @@ export async function backupBrain(opts: BackupBrainOptions = {}): Promise<Backup
   const outPath = opts.outPath ?? defaultBackupPath(dbPath);
   const bytes = await sqliteBackup(dbPath, outPath, opts.force);
   return { dbPath, outPath, bytes };
+}
+
+export interface VacuumBrainResult {
+  dbPath: string;
+  bytesBefore: number;
+  bytesAfter: number;
+}
+
+/**
+ * Reclaim pages freed by prior structural surgery (plan 12: dims cut, FTS
+ * external-content migration, dropped tables). VACUUM rebuilds the whole file,
+ * which means SQLite must resolve every virtual table declaration in
+ * sqlite_master (incl. `vec_chunks USING vec0(...)`) to recreate its shadow
+ * tables — the vec0 module has to be loaded first, same as vecConnect()
+ * elsewhere, or VACUUM fails with "no such module: vec0".
+ */
+export function vacuumBrain(dbPath: string = currentBrainDb()): VacuumBrainResult {
+  const bytesBefore = existsSync(dbPath) ? statSync(dbPath).size : 0;
+  const db = vecConnect(dbPath);
+  try {
+    db.exec("VACUUM");
+  } finally {
+    db.close();
+  }
+  const bytesAfter = statSync(dbPath).size;
+  return { dbPath, bytesBefore, bytesAfter };
 }
 
 export interface RestoreBrainBackupOptions {
