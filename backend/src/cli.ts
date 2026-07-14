@@ -22,7 +22,7 @@ import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searc
 import { exportBrainBundle, importBrainBundle, mergeBrainBundle, resolveShareKey, syncDrive, writeBrainShareKey } from "./brain/share.js";
 import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
-import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "./brain/privacy.js";
+import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrain } from "./brain/privacy.js";
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { validate } from "./validate.js";
 import { runMcpStdio } from "./mcp.js";
@@ -591,6 +591,15 @@ async function cmdBrain(args: string[]): Promise<void> {
     console.log("  note: this is a raw local SQLite backup. Use `brain export` for encrypted sharing.");
     return;
   }
+  if (sub === "vacuum") {
+    console.log("zemory brain vacuum — reclaiming freed pages (this rewrites the whole DB file, may take a while)…");
+    const r = vacuumBrain();
+    const beforeMB = (r.bytesBefore / 1024 / 1024).toFixed(1);
+    const afterMB = (r.bytesAfter / 1024 / 1024).toFixed(1);
+    const savedMB = ((r.bytesBefore - r.bytesAfter) / 1024 / 1024).toFixed(1);
+    console.log(`zemory brain vacuum — ${beforeMB}MB → ${afterMB}MB (freed ${savedMB}MB)`);
+    return;
+  }
   if (sub === "restore") {
     const backup = positionalArgs(args.slice(1))[0];
     if (!backup) {
@@ -864,6 +873,7 @@ async function cmdBrain(args: string[]): Promise<void> {
       "                    Default: one 500-message batch with progress; --all catches up the corpus.",
       "                    --rebuild drops + re-embeds everything under the current embed profile",
       "                    (asymmetric Gemma query/document prompts; long messages chunked).",
+      "  vacuum            reclaim freed pages (rewrites the whole DB file — run after structural surgery).",
       "  keygen <key-file> create a local share key (keep OUT of git).",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
       "  restore <backup.db> [--force]",

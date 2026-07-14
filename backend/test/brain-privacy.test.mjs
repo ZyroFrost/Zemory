@@ -4,8 +4,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
 import { digestBackfill, searchDigests } from "../../dist/brain/digest.js";
-import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup } from "../../dist/brain/privacy.js";
+import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrain } from "../../dist/brain/privacy.js";
 import { search } from "../../dist/brain/search.js";
+import { embedPending, vectorRanks } from "../../dist/brain/vectors.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, { id, project, source = "codex", messages }) {
@@ -154,6 +155,51 @@ test("brain forget also drops the session digest (forgotten text must leave the 
     assert.equal(check.prepare("SELECT COUNT(*) c FROM session_digest_fts").get().c, 0);
   } finally {
     check.close();
+  }
+});
+
+test("vacuumBrain shrinks the file after a bulk delete and preserves a vec0 index (plan 12 buoc 5)", async (t) => {
+  const root = tempDir(t, "zemory-vacuum-");
+  const dbPath = join(root, "brain.db");
+  const db = openBrain(dbPath);
+  // s0 is the SHORTEST content so embedPending's shortest-first ordering picks
+  // it within a tiny limit — that keeps this test from running the real model
+  // over hundreds of long messages (each real embed call is seconds; that
+  // alone turned an earlier version of this test into a 10-minute outlier).
+  // The other 300 rows are bulk filler purely to give VACUUM real freed pages
+  // to reclaim (a couple of tiny rows round-trips too fast to measure).
+  seedSession(db, { id: "s0", project: root, messages: [{ content: "brown fox", timestamp: "2026-01-01T00:00:00Z" }] });
+  const filler = "the quick brown fox jumps over the lazy dog ".repeat(200);
+  for (let i = 1; i < 300; i++) {
+    seedSession(db, { id: `s${i}`, project: root, messages: [{ content: `${filler} #${i}`, timestamp: "2026-01-01T00:00:00Z" }] });
+  }
+  db.close();
+
+  const seeded = await embedPending({ dbPath, limit: 1 });
+  const modelAvailable = seeded.embedded > 0;
+  if (modelAvailable) {
+    const ranks = await vectorRanks("brown fox", { dbPath });
+    assert.ok(ranks.length > 0, "sanity: vector search works before vacuum");
+  }
+
+  // Delete most rows so VACUUM has real freed space to reclaim.
+  const wipe = openBrain(dbPath);
+  wipe.prepare("DELETE FROM messages WHERE session_id != 's0'").run();
+  wipe.prepare("DELETE FROM sessions WHERE id != 's0'").run();
+  wipe.close();
+
+  const r = vacuumBrain(dbPath);
+  assert.ok(r.bytesBefore > 0);
+  assert.ok(r.bytesAfter < r.bytesBefore, `expected shrink, got ${r.bytesBefore} -> ${r.bytesAfter}`);
+
+  // The DB must stay fully functional after VACUUM: FTS, and — if a vec0
+  // index existed — semantic search too (proves the module resolved cleanly).
+  assert.equal(search("fox", { dbPath, all: true }).length, 1, "surviving row still searchable via FTS");
+  if (modelAvailable) {
+    const ranks = await vectorRanks("brown fox", { dbPath });
+    assert.ok(ranks.length > 0, "vec0 index still queryable after VACUUM");
+  } else {
+    console.log("  embed model unavailable — vec0-after-VACUUM check skipped");
   }
 });
 
