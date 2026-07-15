@@ -15,7 +15,7 @@ import { startUi } from "./ui.js";
 import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
 import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "./brain/vectors.js";
-import { runRagBench } from "./brain/ragbench.js";
+import { runRagBench } from "./evals/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
 import { relocateBrain, storageInfo } from "./brain/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
