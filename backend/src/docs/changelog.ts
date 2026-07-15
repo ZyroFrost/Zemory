@@ -20,8 +20,12 @@ function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** Split a changelog markdown into dated entries (one per `## ` heading). */
-export function parseChangelog(text: string): ChEntry[] {
+/** Split a changelog markdown into dated entries (one per `## ` heading).
+ *  CRLF-safe: see the normEol guard in markdown.ts — a Windows-written file
+ *  used to parse as ZERO entries here, so `import` said "merged 0" while the
+ *  .md was full, and the render-salvage guard saw nothing to protect. */
+export function parseChangelog(input: string): ChEntry[] {
+  const text = input.replace(/\r\n/g, "\n");
   const lines = text.split("\n");
   const offsets: number[] = [];
   let off = 0;
