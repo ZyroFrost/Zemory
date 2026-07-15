@@ -251,7 +251,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .field.pill-btn b { color: var(--text); font-weight: 600; }
   button.set-open { color: var(--green2, #b5efc8); border-color: var(--green-dim, #2f6b48) !important; background: rgba(120,223,155,.09); font-weight: 600; white-space: nowrap; }
   button.set-open:hover { background: rgba(120,223,155,.16); }
-  /* Settings modal — tabbed, one fixed size (see 01_RULES §Thiết kế UI). */
+  /* Settings modal — tabbed, one fixed size (see 02_RULES §Thiết kế UI). */
   .settings-modal { display: grid; grid-template-columns: 190px 1fr; width: min(96vw, 780px); max-height: 88vh;
     border: 1px solid var(--line-strong); border-radius: 16px; background: #101713; box-shadow: var(--shadow); overflow: hidden; }
   .set-side { background: rgba(0,0,0,.28); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; }
@@ -682,7 +682,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     justify-content: center;
     z-index: 10;
   }
-  /* Dialog harness — pick ONE fixed size at open time (see 01_RULES §Thiết kế UI).
+  /* Dialog harness — pick ONE fixed size at open time (see 02_RULES §Thiết kế UI).
      No dynamic resize; overflowing content scrolls INSIDE the dialog, never grows it. */
   .modal {
     display: flex;
@@ -1301,7 +1301,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     let h = '';
     // Shared standard (docs-template/) — the canonical harness applied to EVERY
     // project. Read-only reference; NOT this or any project's own docs.
-    const STD = [['AGENTS.md', 'AGENTS.md'], ['01_RULES.md', 'agent/01_RULES.md'], ['02_STRUCTURE.md', 'agent/02_STRUCTURE.md'], ['03_TODO.md', 'agent/03_TODO.md'], ['04_CHANGES.md', 'agent/04_CHANGES.md']];
+    const STD = [['AGENTS.md', 'AGENTS.md'], ['01_CONSTITUTION.md', 'agent/01_CONSTITUTION.md'], ['02_RULES.md', 'agent/02_RULES.md'], ['03_STRUCTURE.md', 'agent/03_STRUCTURE.md'], ['04_TODO.md', 'agent/04_TODO.md'], ['05_CHANGES.md', 'agent/05_CHANGES.md']];
     h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">' + t('r.std') + ' <span class="q" title="Harness chuẩn trong docs-template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs-template/).">?</span></div>';
     h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
     h += row(last.project.name || t('r.noproj'), last.project.connected ? 'on' : 'off', last.project.root || t('r.runinit'), 'docs/.harness.json?');

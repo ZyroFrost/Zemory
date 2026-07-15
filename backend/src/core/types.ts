@@ -17,7 +17,7 @@ export type HookEvent =
   | "threshold"
   | "on_demand";
 
-/** Which of the TWO structure standards applies (02_STRUCTURE):
+/** Which of the TWO structure standards applies (03_STRUCTURE):
  *  "app" (§1–6, default — runnable code) | "non-app" (§7 — deliverable assets:
  *  BI/report, data, docs-only, design; e.g. powerbi_sasinflow). */
 export type StructureProfile = "app" | "non-app";

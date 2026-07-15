@@ -1,6 +1,6 @@
 // Changelog in the DB (log shape). Entries are dated rows; archive becomes a
 // query (full history stays queryable, render shows active ones). Source = DB;
-// .md (04_CHANGES) is a render. import = one-time seed from existing markdown.
+// .md (05_CHANGES) is a render. import = one-time seed from existing markdown.
 
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { currentBrainDb, openBrain } from "../brain/db.js";
@@ -214,7 +214,7 @@ export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath 
       if (current !== md && !current.startsWith("<!-- GENERATED")) {
         const bak = `${outAbsPath}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
         copyFileSync(outAbsPath, bak);
-        console.error(`zemory: 04_CHANGES.md was not a generated mirror — saved it to ${bak} before rendering over it.`);
+        console.error(`zemory: 05_CHANGES.md was not a generated mirror — saved it to ${bak} before rendering over it.`);
       }
     }
     writeFileSync(outAbsPath, md);

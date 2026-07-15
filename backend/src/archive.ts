@@ -62,7 +62,7 @@ export function archiveChanges(ctx: Context, dbPath: string = currentBrainDb()):
     db.close();
   }
 
-  renderChangelog(ctx.projectRoot, join(ctx.docsDir, "04_CHANGES.md"), dbPath);
+  renderChangelog(ctx.projectRoot, join(ctx.docsDir, "05_CHANGES.md"), dbPath);
   return {
     moved,
     activeLines: totalLines(active),

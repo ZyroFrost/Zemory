@@ -289,7 +289,7 @@ npm run check         # strict typecheck + lint + tests (temp SQLite DBs)
 npm pack --dry-run
 ```
 
-- `backend/src/` is 100% first‑party code; external libs/models are called, not vendored. Layout follows the standard in `docs/agent/02_STRUCTURE.md`.
+- `backend/src/` is 100% first‑party code; external libs/models are called, not vendored. Layout follows the standard in `docs/agent/03_STRUCTURE.md`.
 - Docs live in the DB and render to markdown mirrors — edit via commands.
 - Tests run against throwaway databases; no network anywhere.
 
