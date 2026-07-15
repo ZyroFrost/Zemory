@@ -37,17 +37,28 @@ export interface AdoptResult {
 
 // The canonical agent docs (DB-source mirrors). Anything else in docs/agent =
 // non-standard → flag for agent reconciliation rather than gap-filling (which
-// would create duplicates).
-const STANDARD_AGENT = ["01_RULES.md", "02_STRUCTURE.md", "03_TODO.md", "04_CHANGES.md"];
+// would create duplicates). 01_CONSTITUTION (2026-07-14) is the per-app
+// supreme layer — each app's own architectural invariants (like Spec Kit's
+// constitution.md), read BEFORE the generic working rules.
+const STANDARD_AGENT = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_TODO.md", "05_CHANGES.md"];
 
-// Older projects adopted the harness back when the numbering was
-// 01_RULES/02_TODO/03_CHANGES (no STRUCTURE doc). Renumbering shipped a new
-// 02_STRUCTURE.md and shifted TODO/CHANGES to 03/04. A rename is purely
-// mechanical (same content, same role) — do it automatically so those projects
-// still gap-fill cleanly instead of being permanently flagged non-standard.
+// Projects adopted the harness under two older numberings:
+//   gen-1 (pre 2026-07-09): 01_RULES / 02_TODO / 03_CHANGES (no STRUCTURE doc)
+//   gen-2 (pre 2026-07-14): 01_RULES / 02_STRUCTURE / 03_TODO / 04_CHANGES
+// The constitution insert (2026-07-14) shifted everything: RULES→02,
+// STRUCTURE→03, TODO→04, CHANGES→05. A rename is purely mechanical (same
+// content, same role) — do it automatically so old projects still gap-fill
+// cleanly instead of being permanently flagged non-standard. Every target
+// name is brand-new (never used by any earlier generation), so the renames
+// can run in any order without collisions; the exists-guard below still
+// protects the odd folder that carries two generations of the same doc.
 const LEGACY_RENAME: Record<string, string> = {
-  "02_TODO.md": "03_TODO.md",
-  "03_CHANGES.md": "04_CHANGES.md",
+  "04_CHANGES.md": "05_CHANGES.md",
+  "03_CHANGES.md": "05_CHANGES.md", // gen-1
+  "03_TODO.md": "04_TODO.md",
+  "02_TODO.md": "04_TODO.md", // gen-1
+  "02_STRUCTURE.md": "03_STRUCTURE.md",
+  "01_RULES.md": "02_RULES.md",
 };
 
 const DEFAULT_CONFIG: HarnessConfig = {

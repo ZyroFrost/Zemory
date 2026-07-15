@@ -35,18 +35,18 @@ export function validate(ctx: Context): ValidateReport {
   }
 
   // 2. Changelog length (suggest archive).
-  const chFile = join(agentDir, "04_CHANGES.md");
+  const chFile = join(agentDir, "05_CHANGES.md");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
   if (existsSync(chFile)) {
     const n = lineCount(chFile);
     if (n > chMax) {
-      issues.push({ level: "info", msg: `04_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
+      issues.push({ level: "info", msg: `05_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
     }
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
   }
 
-  // 3. Repo structure vs the standard (docs/agent/02_STRUCTURE.md). TWO standards:
+  // 3. Repo structure vs the standard (docs/agent/03_STRUCTURE.md). TWO standards:
   //    profile "app" (§1–6, default) vs "non-app" (§7 — BI/data/docs/design),
   //    chosen by `profile` in docs/.harness.json. ADVISORY only — reconciling is
   //    agent-assisted (AGENTS.md §7); zemory never moves files.
@@ -55,7 +55,7 @@ export function validate(ctx: Context): ValidateReport {
   return { issues, ok: !issues.some((i) => i.level === "error") };
 }
 
-/** The deliverable folders that satisfy the non-app standard (02_STRUCTURE §7). */
+/** The deliverable folders that satisfy the non-app standard (03_STRUCTURE §7). */
 const DELIVERABLES = ["reports", "models", "content", "design"];
 
 /**
@@ -79,7 +79,7 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     if (!deliverables.length) {
       out.push({
         level: "warn",
-        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/02_STRUCTURE.md §7",
+        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/03_STRUCTURE.md §7",
       });
     }
     const present = [
@@ -105,17 +105,17 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     if (deliverables.length) {
       out.push({
         level: "info",
-        msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (02_STRUCTURE §7)`,
+        msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (03_STRUCTURE §7)`,
       });
     } else {
       out.push({
         level: "warn",
-        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/02_STRUCTURE.md; reconcile via AGENTS.md §7",
+        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/03_STRUCTURE.md; reconcile via AGENTS.md §7",
       });
     }
   }
   if (!has("frontend") && ownCode) {
-    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/02_STRUCTURE.md" });
+    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/03_STRUCTURE.md" });
   }
   const present = [
     ownCode,

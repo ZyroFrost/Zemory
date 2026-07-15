@@ -17,8 +17,32 @@ test("ensureHarness honors a custom docs path inside docs", (t) => {
 
   ensureHarness(root);
 
-  assert.equal(existsSync(join(root, "docs", "custom-agent", "01_RULES.md")), true);
+  assert.equal(existsSync(join(root, "docs", "custom-agent", "02_RULES.md")), true);
+  assert.equal(existsSync(join(root, "docs", "custom-agent", "01_CONSTITUTION.md")), true);
   assert.equal(existsSync(join(root, "docs", "plan", "00_build_plan.md")), true);
+});
+
+test("ensureHarness renames every older-generation doc to the current numbering (legacy chains)", (t) => {
+  const root = tempDir(t, "zemory-legacy-");
+  const agentDir = join(root, "docs", "agent");
+  mkdirSync(agentDir, { recursive: true });
+  // gen-2 folder (pre-constitution): 01_RULES/02_STRUCTURE/03_TODO/04_CHANGES
+  writeFileSync(join(agentDir, "01_RULES.md"), "# old rules\n");
+  writeFileSync(join(agentDir, "02_STRUCTURE.md"), "# old structure\n");
+  writeFileSync(join(agentDir, "03_TODO.md"), "# old todo\n");
+  writeFileSync(join(agentDir, "04_CHANGES.md"), "# old changes\n");
+
+  ensureHarness(root);
+
+  // Renamed in place (content preserved), then the missing constitution gap-fills.
+  assert.equal(readFileSync(join(agentDir, "02_RULES.md"), "utf8"), "# old rules\n");
+  assert.equal(readFileSync(join(agentDir, "03_STRUCTURE.md"), "utf8"), "# old structure\n");
+  assert.equal(readFileSync(join(agentDir, "04_TODO.md"), "utf8"), "# old todo\n");
+  assert.equal(readFileSync(join(agentDir, "05_CHANGES.md"), "utf8"), "# old changes\n");
+  assert.equal(existsSync(join(agentDir, "01_CONSTITUTION.md")), true, "constitution gap-filled from template");
+  for (const gone of ["01_RULES.md", "02_STRUCTURE.md", "03_TODO.md", "04_CHANGES.md"]) {
+    assert.equal(existsSync(join(agentDir, gone)), false, `${gone} no longer present under its old name`);
+  }
 });
 
 test("freshHarness backs up both agent docs and plan", (t) => {
