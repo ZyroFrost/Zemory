@@ -1,9 +1,7 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
 # zemory — TODO / Backlog
-
-> `[ ]` chưa làm · `[~]` đang làm · xong → chuyển sang `04_CHANGES.md` (`zemory changelog add`) và xoá khỏi đây.
-
-## ✅ Đã xong (chi tiết 03_CHANGES.md)
+> `[ ]` chưa làm · `[~]` đang làm · xong → chuyển sang `05_CHANGES.md` (`zemory changelog add`) và xoá khỏi đây.
+## ✅ Đã xong (chi tiết 05_CHANGES.md)
 - Chốt: ngôn ngữ **TypeScript** · `planning→plan` · config vào `docs/.harness.json` · root chỉ `AGENTS.md` thin · bỏ CLAUDE.md.
 - `core` (registry/router/hooks/conflict) · `cli` (init/sync/migrate/doctor/ui/archive/grill/structure/setup).
 - Adopt an toàn: sync (in-place) · fresh (backup aside) · migrate (analyze + playbook) · merge legacy planning→plan · auto plan-index.
@@ -64,8 +62,8 @@
 - [~] **Đo tốc độ embed/ngày — VẪN CHƯA có số ngày-thường sạch.** Mẫu cũ (07-12, mega-session) = 41 msg/phút, lệch. Rebuild plan 12 (27 giờ, 94k message tồn đọng) cho thấy tốc độ dao động 40–380 msg/phút tùy độ dài message, nhưng đó là backlog dồn cục, KHÔNG phải nhịp ingest hằng ngày. Việc còn lại: sau 1 ngày dùng bình thường (không rebuild), chạy `zemory brain embed --all` + bấm giờ cho SỐ MESSAGE MỚI TRONG NGÀY ĐÓ để ra phút/ngày thật; nếu >20 phút → cân nhắc q4 dtype (hỏi user).
 - [ ] (nhỏ) Tooltip `title="…"` trong UI chưa theo i18n — chữ hiện là tiếng Việt ở cả mode EN. Chỉ hover-help, không lộ trên màn.
 - [x] ~~Chuẩn RULES chưa có, template RULES stale~~ **HOÀN TẤT 2026-07-14 (commit `cf28037`)** — thêm tầng `01_CONSTITUTION.md` (hiến pháp per-app, ý tưởng Spec Kit; user chốt "đôn lên, không dùng 00") + renumber `01_CONSTITUTION·02_RULES·03_STRUCTURE·04_TODO·05_CHANGES`; vá template stale (refs gen-1); RULES zemory về generic (5 bất biến dời sang hiến pháp, bổ sung 4 mục thiếu); hiến pháp zemory gom 12 điều từ luật rải trong plan 00/02/04–08/10–12; `LEGACY_RENAME` phủ 2 thế hệ tên; UI chip list đủ 5 file. Ghi chú gốc: Kiểm chứng: ① **Template `docs-template/agent/01_RULES.md` STALE** — vẫn trỏ `02_TODO.md`/`03_CHANGES.md`/`04_STRUCTURE.md` (tên trước đợt renumber 2026-07-09; tên thật giờ là `03_TODO`/`04_CHANGES`/`02_STRUCTURE`). `adopt.ts` copy template verbatim ⇒ **mọi project `zemory init` từ 07-09 tới nay đều nhận RULES trỏ file không tồn tại**. (`docs-template/agent/03_TODO.md:4` cũng còn trỏ `03_CHANGES.md`.) ② **KHÔNG có profile app/non-app cho RULES** — khác `02_STRUCTURE` (đã tách §1–6 APP vs §7 NON-APP). `adopt.ts` không hề branch theo `profile`, nên project BI/data (`init --non-app`) vẫn bị nhét luật "Thiết kế UI — dialog 3 size S/M/L" vô nghĩa với nó. ③ **RULES riêng của zemory đã DRIFT khỏi template**: zemory có 5 "Bất biến KIẾN TRÚC" riêng (token-first · `backend/src` vs `external/` · 1 nguồn sự thật · 1 capability=1 slot=1 provider · tách tool khỏi data) nhưng nhét thẳng lên đầu, KHÔNG dùng ô `<!-- Luật riêng của <PROJECT> -->` mà template chừa sẵn ở cuối; đồng thời **thiếu 4 mục template có**: "Thiết kế UI (dialog 3 size)" (mỉa mai: chính zemory đã implement luật này — changelog #317), "Đồng bộ bắt buộc rules↔todo↔change↔plan", "Plan phải đánh số NN_tên.md", "Tra log sâu qua `brain search`". ⇒ Việc bước sau: chốt kiến trúc chuẩn RULES (generic + profile app/non-app + ô luật-riêng), vá template stale, rồi nắn RULES của zemory về đúng chuẩn đó.
-- [ ] **(MỚI, phát hiện 2026-07-14) Bug đồng bộ docs:** 8/16 doc của project hiện tại (`docs/agent/01_RULES.md`, `docs/plan/00_build_plan.md`, `01_repo_survey.md`, `02_data_model.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) đang lưu trong DB dưới dạng **1 section duy nhất, heading=NULL** thay vì tách theo heading như các doc khác (03_TODO, 06-12 đều tách đúng nhiều section). Nguyên nhân: repo từng ở `D:\Work_Study\IT\Data\Tools\zemory`, đổi sang `D:\Zyro\Tool\Zemory` — doc/section cũ không migrate theo project_root mới, và lần tạo doc mới dưới project_root hiện tại không tách section đúng. Hệ quả: search/set trên các file này chỉ thao tác được cả khối, mất độ chi tiết heading-level. CHƯA sửa (cần hiểu rõ `docs/plan.ts` import/split logic trước khi mổ DB, tránh làm hỏng thêm). Cũng thấy 1 bug hiển thị nhỏ: `zemory plan show <id>` in lặp dòng header 2-3 lần trước nội dung.
-## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 03_CHANGES)
+- [ ] **(MỚI, phát hiện 2026-07-14) Bug đồng bộ docs:** 8/17 doc của project hiện tại (`docs/agent/02_RULES.md` — tên sau renumber, `docs/plan/00_build_plan.md`, `01_repo_survey.md`, `02_data_model.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) đang lưu trong DB dưới dạng **1 section duy nhất, heading=NULL** thay vì tách theo heading như các doc khác (04_TODO, 06-12, 01_CONSTITUTION đều tách đúng nhiều section — chứng tỏ split hoạt động đúng với doc MỚI, chỉ 8 doc di sản bị kẹt). Nguyên nhân: repo từng ở `D:\Work_Study\IT\Data\Tools\zemory`, đổi sang `D:\Zyro\Tool\Zemory` — doc/section cũ không migrate theo project_root mới, và lần tạo doc mới dưới project_root hiện tại không tách section đúng. Hệ quả: search/set trên các file này chỉ thao tác được cả khối, mất độ chi tiết heading-level. CHƯA sửa (cần hiểu rõ `docs/plan.ts` import/split logic trước khi mổ DB, tránh làm hỏng thêm). Cũng thấy 1 bug hiển thị nhỏ: `zemory plan show <id>` in lặp dòng header 2-3 lần trước nội dung.
+## 🧩 Session digest (plan 06) — ✅ XONG 2026-07-02 (build v1, xem 05_CHANGES)
 > Lớp tóm tắt cấp phiên (DẪN XUẤT) để recall đọc rẻ token; đào xuống `messages` qua anchor khi cần. Spec: `docs/plan/06_digest.md`. Cụ thể hoá "memory promotion" (Phase 2) nhưng dạng lăng kính dẫn xuất, KHÔNG phải nguồn.
 - [x] Migration v5 + bảng dẫn xuất `session_digest` (1 dòng/phiên) + FTS lane (word/trigram).
 - [x] Generator A (extractive, KHÔNG LLM): `tasks[]` (nhiều việc, mỗi việc 1 anchor) · `paths_touched[]` · `decisions[]` · `errors[]` · `outcome` · `meta` (source/host/project/#msg/time) · `source_sig` hash. Dùng vector sẵn có để *chọn* câu đắt (không sinh chữ), fail-open về heuristic.
@@ -98,13 +96,11 @@
 - [ ] VS Code status bar chỉ đọc status API chung.
 - [ ] Toggle provider/adapter có validation conflict và rollback config.
 ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
-#1100 docs\agent\03_TODO.md — ## 🌐 Web-chat capture (spec: docs/plan/07_web_chat_capture.md) — GPT trước
----
 > Thu hội thoại web (ChatGPT/Gemini/Claude.ai) vào brain. Spec: `docs/plan/07_web_chat_capture.md`. Prototype cũ ở `attic/web-capture/`.
 
 **✅ ĐÃ SHIP — ChatGPT (cập nhật 2026-07-08):**
 - [x] Feasibility test (2026-07-02/03): login-once + CDP pull, enumerate 752 hội thoại, format ChatGPT verify.
-- [x] **Schema `origin`** (thêm ở v6, hiện v9) + `idx_sessions_origin` + migration backfill `'local'`. (`db.ts`)
+- [x] **Schema `origin`** (thêm ở v6) + `idx_sessions_origin` + migration backfill `'local'`. (`db.ts`)
 - [x] **`brain scan-web --platform chatgpt`** (`backend/src/brain/scanweb.ts`): browser-connector + pace/backoff/resume + dedupe theo id. **859 hội thoại ChatGPT (~30.9k msg)** đã vào brain, **cả Project chats** (gizmo endpoints, gắn `project_root`).
 - [x] parseFileMulti + fallback file-export (`~/.zemory/imports/chatgpt/`) — dùng nuốt bộ Export lớn.
 
@@ -115,4 +111,3 @@
 - [ ] Gộp khung `scan-web --platform <gemini|claude>` (khung ChatGPT đã có sẵn).
 
 **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
-

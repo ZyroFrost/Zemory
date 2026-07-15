@@ -1,6 +1,4 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
-# zemory — Data model (global_memory.db ERD)
-
 > Cấu trúc `~/.zemory/global_memory.db` — store global duy nhất, **3 loại nội dung đều ĐÃ BUILD**,
 > tất cả **query bằng FTS**. Nguồn = DB; `docs/*.md` = bản render mirror.
 
@@ -54,7 +52,7 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 
 ## 4. Sync `db → md` (db là nguồn)
 - `plan set` và `docs add` cập nhật DB rồi render ngay đúng mirror.
-- `changelog add` cập nhật DB rồi render ngay `04_CHANGES.md`.
+- `changelog add` cập nhật DB rồi render ngay `05_CHANGES.md`.
 - `docs sync` import file chưa generated hoặc phục hồi DB rỗng; generated mirror có row DB tương ứng được giữ nguyên và không đổi ID.
 - `docs render` là thao tác DB → markdown có chủ đích và có thể ghi đè mirror.
 - `archive` chỉ set `changelog.archived=1` rồi render active rows; full history vẫn ở DB/FTS.
@@ -62,7 +60,7 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 ## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
 Harness chuẩn (`docs-template/`, ship cho project khác) gồm:
 
-- `docs/agent/01_RULES.md`, `02_STRUCTURE.md`, `03_TODO.md`, `04_CHANGES.md`;
+- `docs/agent/01_CONSTITUTION.md`, `02_RULES.md`, `03_STRUCTURE.md`, `04_TODO.md`, `05_CHANGES.md`;
 - `docs/plan/00_build_plan.md` (điểm khởi đầu template);
 - `docs/.harness.json` chọn provider và threshold.
 
@@ -72,4 +70,4 @@ Global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 
-> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `01_RULES.md`, `00_build_plan.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi mổ DB.
+> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `02_RULES.md` — tên sau renumber, `00_build_plan.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi mổ DB.

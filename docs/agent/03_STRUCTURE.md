@@ -109,7 +109,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = bàn test)
 │
 ├── docs/                   ★ harness zemory (nguồn = DB, .md là mirror):
-│   ├── agent/          ★    01_RULES · 02_STRUCTURE · 03_TODO · 04_CHANGES
+│   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES
 │   ├── plan/           ★    spec / plan theo section
 │   └── .harness.json   ★    marker: project đã wire harness
 │
@@ -245,7 +245,7 @@ Setting UI kéo-thả   default ship → frontend/config/ (tracked); bản user 
 Dialog / modal       CHỈ 3 size cố định S/M/L, chọn theo nội-dung + mục-đích, KHÔNG random/động/reflow. Token size ở frontend/styles/
 UI embed (single-bin) app CLI/1-binary có thể EMBED trang UI như resource (vd HTML/CSS/JS trong 1 file TS) để ship gọn — GIỮ ở backend nhưng GHI RÕ; server phục vụ nó vẫn là backend, nội dung UI vẫn "thuộc" frontend về vai trò. KHÔNG ép tách nếu tách làm vỡ build 1-file
 Test                 KHÔNG bắt buộc — chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc frontend/test
-Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 04_CHANGES=log. KHÔNG folder versions/ chép tay
+Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 05_CHANGES=log. KHÔNG folder versions/ chép tay
 2 KIỂU version-up     ① TỰ ĐỘNG (app tự check+tải+apply) → backend/src/update/ (phối attic/+dist/+migrations/). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → dist/ build → backend/scripts/deploy.* → backup bản đang chạy về attic/ TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới
 Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp attic/ local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về attic/ local. Cùng nguyên lý additive-merge của brain sync/share.ts
 Packaging            .spec(root) + backend/scripts + backend/resources/packaging + dist(output) + OS app-data(cài) — DÙNG SLOT CŨ, KHÔNG nhóm mới
@@ -273,7 +273,7 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 <project>/                         # vd powerbi_sasinflow — 1 sản phẩm = 1 cây
 │ ═══ TRACKED (đầu vào / nguồn) ═══
 ├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/
-├── docs/                ★  harness Y HỆT app: agent/(01_RULES·02_STRUCTURE·03_TODO·04_CHANGES) · plan/ · .harness.json
+├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_TODO·05_CHANGES) · plan/ · .harness.json
 │   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
 │ ┄┄ DELIVERABLE — chọn theo loại (≥1) ┄┄
 ├── reports/             ◆  BI: file báo cáo .pbix/.pbip/.twb (bản chính giao đi)      [LFS]

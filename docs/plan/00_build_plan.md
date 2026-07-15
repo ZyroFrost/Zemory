@@ -1,6 +1,4 @@
 <!-- GENERATED from global_memory.db by zemory · do not hand-edit · use `zemory plan set` -->
-# zemory — Build Plan
-
 > Tài liệu kế hoạch xây dựng zemory. Chốt nguyên tắc + kiến trúc + cách chạy + phân kỳ.
 > Viết bằng tiếng Việt (quy ước docs). Code/UI sau này bằng tiếng Anh.
 
@@ -71,7 +69,7 @@ Provider built-in sống trong `backend/src/modules/`. (Capability `governance` 
 ### Model/lib ngoài — gạch public, gọi không dán (⚠️ cập nhật 2026-07-10: `deps/` là khái niệm cũ, KHÔNG dùng)
 - `model/` ban đầu dự tính `all-MiniLM-L6-v2`; thực tế build ra dùng **EmbeddingGemma-300M** (HuggingFace, public) qua Transformers.js — **tải/cache lúc runtime, KHÔNG commit vào repo**, KHÔNG có folder `deps/` vật lý.
 - `lib/` — onnxruntime, sqlite-vec, better-sqlite3... là package npm thường (`package.json` deps), không cần folder riêng.
-- Repo ngoài clone về (không phải package) → `external/` (đúng chuẩn `02_STRUCTURE.md`).
+- Repo ngoài clone về (không phải package) → `external/` (đúng chuẩn `03_STRUCTURE.md`).
 
 ---
 
@@ -112,7 +110,7 @@ Code third-party không được dán vào `backend/src/`. Nếu bắt buộc ve
 - **Năng lực kế:** source-transcript privacy/tombstone nếu cần quên tuyệt đối; sau đó semantic rerank, code map và adapter host mới — chỉ bật sau benchmark/fixture.
 - **Bề mặt:** dashboard metrics và VS Code status bar dùng chung status API.
 
-Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/03_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
+Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/04_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
 ## 9. Quyết định (đã chốt — trước là "mở")
 - TypeScript/Node là runtime của lõi; SQLite/WAL là global brain local.
 - DB là nguồn curated; generated markdown không được routine sync ghi ngược trở lại.
