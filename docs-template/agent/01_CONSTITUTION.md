@@ -1,4 +1,4 @@
-<!-- zemory template · HIẾN PHÁP riêng của project — CHỈ USER được chốt/sửa; agent đề xuất, không tự đổi -->
+<!-- zemory template · HIẾN PHÁP riêng của project — CHỈ USER được chốt/sửa; agent đề xuất, không tự đổi. Áp cho CẢ app lẫn non-app (chốt 2026-07-16) -->
 # <PROJECT> — Hiến pháp (bất biến kiến trúc)
 
 > **Tầng TỐI CAO của harness — đọc TRƯỚC mọi file khác.** Mọi plan / code / quyết định phải đối chiếu về đây; **vi phạm = bug thiết kế**, kể cả khi code chạy được.
