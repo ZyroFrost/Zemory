@@ -2,9 +2,7 @@
 # Zemory
 
 Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agent.
-**Docs trong `docs/` có 2 LOẠI — nhìn DÒNG ĐẦU file để biết, sửa đúng đường:**
-- **Mirror** (dòng đầu có `<!-- GENERATED from global_memory.db -->` — thường là TODO · CHANGES · `docs/plan/*`): **DB là nguồn**, `.md` chỉ là bản render — sửa bằng lệnh (`zemory plan set` / `changelog add`), **ĐỪNG gõ tay** (render sẽ ghi đè; `zemory docs sync` cũng cố tình KHÔNG import sửa tay vào mirror — nó báo `kept DB source` — để mirror cũ không đè ngược DB).
-- **Hand-source** (KHÔNG có header GENERATED — thường là CONSTITUTION · STRUCTURE): **chính file `.md` là nguồn** — sửa file trực tiếp rồi chạy `zemory docs sync` để nạp bản mới vào DB (DB chỉ giữ bản copy cho search).
+**FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search/sync — **sửa xong chạy `zemory docs sync`** để index cập nhật (**file wins**: file khác index → index dựng lại từ file; entry changelog viết tay tự merge vào DB). zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**. *(Đổi luật 2026-07-16 — bỏ chế độ cũ "DB là nguồn, cấm gõ tay".)*
 
 > **Cài harness = NẮN project về CHUẨN, KHÔNG bê nội dung mẫu.** zemory chỉ dựng sẵn **cấu trúc + cách lưu** chuẩn; **nội dung** (CONSTITUTION/TODO/CHANGES/plan) là của riêng project. Bạn (AI) đọc bộ chuẩn (`01_CONSTITUTION.md` + `02_RULES.md` + các mục dưới) rồi tự chỉnh project cho khớp cấu trúc — dựng `docs/agent` + `docs/plan`, đánh số plan, gom todo/plan lạc chỗ. TUYỆT ĐỐI không copy TODO/CHANGES của project khác vào.
 
@@ -25,10 +23,8 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - Backlog: `docs/agent/04_TODO.md` · Changelog: `zemory changelog ls`
 - Việc cũ / session khác: `zemory brain search "<q>" [--all]` — **chỉ khi user nhắc việc đã làm / lỗi cũ**, đừng tìm bừa.
 
-## 3. Sửa docs — MIRROR qua lệnh, HAND-SOURCE sửa file + sync
-**Sửa NỘI DUNG là việc của bạn** — chọn đúng đường theo loại (xem 2 LOẠI ở đầu file):
-- **Hand-source** (không header GENERATED — CONSTITUTION/STRUCTURE): sửa file `.md` trực tiếp → `zemory docs sync`.
-- **Mirror** (có header GENERATED — plan/TODO/CHANGES): đừng mở `.md` gõ tay, làm qua lệnh:
+## 3. Sửa docs — sửa FILE trực tiếp rồi sync (lệnh = tiện ích tùy chọn)
+**Sửa NỘI DUNG là việc của bạn.** Đường chính: **mở `.md` sửa thẳng, bám chuẩn** → xong chạy `zemory docs sync` (index cập nhật, file wins). Tiện ích tùy chọn khi thích thao tác qua DB:
 - Sửa 1 mục (plan/rules): ghi nội dung mới ra **file tạm (UTF-8)** → `zemory plan set <#id> --file <path>` (tự render lại).
 - Thêm changelog: `zemory changelog add "<tiêu đề>" --file <path>` (hoặc bỏ `--file` nếu không có body).
 - Render lại toàn bộ .md: `zemory docs render`.

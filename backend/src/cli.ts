@@ -1083,10 +1083,14 @@ async function cmdDocs(args: string[]): Promise<void> {
     console.log(`zemory docs sync — imported ${docs.length} file(s) → global_memory.db`);
     for (const d of docs) {
       const state = d.skipped ? "·" : d.roundTrip ? "✓" : "⚠";
-      const action = d.skipped ? " — kept DB source" : d.kind === "changelog" ? "" : ` — ${d.sections} sections`;
+      const action = d.skipped
+        ? " — unchanged (matches DB index)"
+        : d.kind === "changelog"
+          ? ` — merged ${d.sections} new entr(ies)`
+          : ` — ${d.sections} sections (file wins)`;
       console.log(`  ${state} [${d.kind}] ${d.path}${action}`);
     }
-    console.log("  (DB only — .md untouched. Prune with `docs rm`, regenerate with `docs render`.)");
+    console.log("  (FILE WINS: .md is the source; DB is the derived search index. .md untouched by sync.)");
     return;
   }
   if (sub === "ls") {

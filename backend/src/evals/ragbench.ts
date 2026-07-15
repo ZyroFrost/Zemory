@@ -10,9 +10,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openBrain } from "./db.js";
-import { search, searchHybrid } from "./search.js";
-import { embedPending } from "./vectors.js";
+import { openBrain } from "../brain/db.js";
+import { search, searchHybrid } from "../brain/search.js";
+import { embedPending } from "../brain/vectors.js";
 
 // doc id = insertion order (1-based)
 const DOCS: string[] = [
