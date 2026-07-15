@@ -5,6 +5,24 @@
 
 ---
 
+## [2026-07-15] — feat(harness): tang hien phap 01_CONSTITUTION per-app + renumber 01..05 + hien phap zemory 12 dieu
+
+Them tang hien phap per-app cho harness (y tuong constitution.md cua GitHub Spec Kit) + renumber agent docs.
+
+Phan nghia (user chot): constitution = luat TOI CAO rieng tung app (moi app mot ban, nhu moi quoc gia mot hien phap; chi user duoc sua) ?? RULES = luat lam viec CHUNG moi project (ship nguyen tu template, nhu cong uoc). Het canh luat rieng app di o nho dau RULES hoac nam rai trong plan.
+
+Renumber (user chot "don len, khong dung 00"): 01_CONSTITUTION ?? 02_RULES ?? 03_STRUCTURE ?? 04_TODO ?? 05_CHANGES.
+
+- Template: 01_CONSTITUTION.md scaffold moi; RULES viet lai thuan-generic (bo o "luat rieng cuoi file"); VA LUON bug template stale (noi dung con tro 02_TODO/03_CHANGES/04_STRUCTURE tu dot renumber 07-09 ??? moi project init tu do den nay nhan RULES tro file khong ton tai).
+- adopt.ts: STANDARD_AGENT 5 file; LEGACY_RENAME phu CA 2 the he ten cu (gen-1 02_TODO/03_CHANGES ?? gen-2 01_RULES/02_STRUCTURE/03_TODO/04_CHANGES) ??? moi ten dich deu moi tinh nen rename khong collision. +1 test e2e chuoi legacy.
+- migrate/status/validate/archive/cli/changelog + comments: theo ten moi. guessRole them constitution|invariant|principle|hien phap.
+- UI cockpit: chip list harness chuan gio du 5 file (co 01_CONSTITUTION).
+- AGENTS.md (root + template): buoc mo phien doc CONSTITUTION truoc RULES; muc 4 them luat "luat rieng cua app -> 01_CONSTITUTION, plan chi dan chieu".
+- Chinh zemory: `zemory sync` tu rename + update doc.path; RULES ve generic (5 bat bien don sang hien phap; bo sung 4 muc template co ma zemory thieu ??? trong do co luat Dialog 3-size chinh zemory da implement o changelog #317 nhung chua nam trong RULES cua no); plan 09 cap nhat ref + ghi nhan ca 2 dot renumber.
+- HIEN PHAP zemory (12 dieu): gom moi luat toi cao dang nam rai ??? token-first ?? ranh gioi minh/nguoi-ta + license/weight-runtime ?? 1-nguon-su-that + derived-rebuildable + KHONG dung sessions/messages goc ?? 1-capability-1-slot ?? tach tool khoi data ?? KHONG BAO GIO tu goi LLM/khong proxy API ?? local-only + privacy (redact-at-ingest, password khong qua zemory, khong commit PII) ?? recall on-demand + progressive disclosure ?? fail-open moi lop phu ?? capture 0-token khong vuot quyen host ?? sync additive + provenance khong lan ?? do trung thuc + gate truoc khi bat mac dinh. Moi dieu co dan chieu plan goc.
+
+Gate: npm run check 83/83 ?? doctor xanh ?? validate chi con 2 warn lich su (changelog cu, giu theo luat khong-viet-lai-lich-su). Commit cf28037 (pha 1) + commit nay (hien phap 12 dieu + ghi so).
+
 ## [2026-07-14] — Plan 12: rebuild vector 256d Gemma-prompt + FTS external-content + VACUUM (DB 1141MB->595MB)
 
 Plan 12 thi cong xong: rebuild vector index (EmbeddingGemma asymmetric query/document prompts + Matryoshka 256d) + FTS external-content migration (v12) + VACUUM.

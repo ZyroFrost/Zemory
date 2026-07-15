@@ -3,15 +3,33 @@
 
 > **Tầng TỐI CAO của harness — đọc TRƯỚC mọi file khác.** Mọi plan / code / quyết định phải đối chiếu về đây; **vi phạm = bug thiết kế**, kể cả khi code chạy được.
 > KHÁC `02_RULES.md`: RULES là luật LÀM VIỆC chung mọi project (ship từ template); hiến pháp là bất biến KIẾN TRÚC **riêng của zemory** — mỗi app một bản, như mỗi quốc gia một hiến pháp.
-> **1 nguồn sự thật cho "luật riêng":** luật riêng của zemory chốt Ở ĐÂY. Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự đẻ luật nằm rải trong plan.
+> **1 nguồn sự thật cho "luật riêng":** luật riêng của zemory chốt Ở ĐÂY (gom 2026-07-14 từ các điều nằm rải trong plan 00/02/04–08/10–12). Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự đẻ luật mới nằm rải trong plan.
 
 ## Điều khoản
 
-1. **Mục tiêu tối thượng: TIẾT KIỆM TOKEN — cái nào tối ưu hơn thì dùng.** Ưu tiên *gọi / extend* tool tốt nhất hiện có hơn là tự viết lại (kể cả tool ngoài, nếu license cho phép). Chỉ tự build khi không có sẵn cái tốt hơn, hoặc phải sửa đúng phần lõi mà extend không với tới. KHÔNG thờ rule cũ nếu có đường tối ưu hơn — rule phục vụ mục tiêu, không phải ngược lại.
-2. **Ranh giới `backend/src/` (của mình) vs `external/` (của người ta).** `backend/src/` = 100% code của mình, một giọng. `external/` = repo/lib public (model, lib) — **gọi/extend**, KHÔNG dán vào backend. Luôn rạch ròi "của mình vs người ta".
-3. **1 NGUỒN sự thật = docs của project.** Không tạo kho thứ 2. Search index = lăng kính dẫn xuất (vứt/dựng lại được).
-4. **1 capability = 1 slot = 1 provider.** Registry ép conflict nếu 2 module đòi cùng slot.
-5. **Tách BỘ MÁY (tool) khỏi DỮ LIỆU (docs project).** Tool đọc docs, không nằm trong project.
+1. **Mục tiêu tối thượng: TIẾT KIỆM TOKEN — cái nào tối ưu hơn thì dùng.** Ưu tiên *gọi / extend* tool tốt nhất hiện có hơn là tự viết lại (kể cả tool ngoài, nếu license cho phép). Chỉ tự build khi không có sẵn cái tốt hơn, hoặc phải sửa đúng phần lõi mà extend không với tới. KHÔNG thờ rule cũ nếu có đường tối ưu hơn — rule phục vụ mục tiêu, không phải ngược lại. *(gốc: build plan §1–2)*
+
+2. **Ranh giới "của mình vs của người ta".** `backend/src/` = 100% code của mình, một giọng. Engine/lib/model public = gọi qua dependency/adapter (`external/` nếu clone repo) — **KHÔNG dán source người khác vào backend**. Model weight **tải/cache lúc runtime, KHÔNG commit vào repo**; dependency/model mới phải rà license (Apache-2.0 tương thích) trước khi thêm. *(gốc: build plan §2.2, §7)*
+
+3. **Mỗi lớp dữ liệu có ĐÚNG MỘT nguồn; mọi index là lăng kính DẪN XUẤT.** Curated (docs/plan/changelog): DB là nguồn, `.md` là mirror render. Episodic: transcript gốc của host là nguồn, `sessions/messages` + FTS + vector + digest là dẫn xuất — **vứt/dựng lại được bất cứ lúc nào**. Hệ quả bất di bất dịch: **tối ưu/mổ xẻ CHỈ đụng lớp dẫn xuất — KHÔNG BAO GIỜ xóa/sửa `sessions`/`messages` gốc**; không tạo kho thứ hai, không auto-summary thành nguồn thứ hai. *(gốc: build plan §2.3 §5, plan 02 §0, plan 06 §2.1, plan 11–12)*
+
+4. **1 capability = 1 slot = 1 provider.** Registry ép conflict nếu 2 module đòi cùng slot; engine phụ (vector, rerank) là engine NỘI BỘ của slot `search`, không đẻ slot mới. *(gốc: build plan §2.4, plan 04 §3, plan 05 §1)*
+
+5. **Tách BỘ MÁY (tool) khỏi DỮ LIỆU (docs project).** Tool cài toàn máy, đọc docs của project; không nằm trong project. Root project chỉ cần `AGENTS.md`; config ở `docs/.harness.json`. *(gốc: build plan §2.8, plan 04 §4)*
+
+6. **zemory KHÔNG BAO GIỜ tự gọi LLM / không proxy model API.** Không `ANTHROPIC_BASE_URL`, không rewrite history/cache, không sinh chữ. "Trí tuệ" là agent đang lái terminal; zemory chỉ là bộ nhớ + kỷ luật. Embed/rerank model nhỏ chạy local chỉ *đo nghĩa* (chấm điểm/xếp hạng), không *sinh chữ* — vẫn đúng luật. *(gốc: build plan §2.5 §2.7, plan 05 §2, plan 06 §2.4 §4B)*
+
+7. **Local-only + privacy mặc định.** Mọi dữ liệu nằm trên máy user; không transmit đi đâu ngoài bundle **mã hóa** do user chủ động sync. Credential-shaped content bị redact NGAY lúc ingest (mọi đường: file, web). Password/2FA của nền web **không bao giờ nhập vào zemory** (login trên trang thật, chỉ mượn phiên). **KHÔNG commit data thật/PII vào git** — chỉ code + docs; bundle sync phải là `.enc`. *(gốc: plan 07 §4 §13 §14, plan 08, share.ts design)*
+
+8. **Recall on-demand + progressive disclosure — KHÔNG auto-inject.** Agent tự gọi khi cần; search trả snippet/ID trước, mở message/section/digest cụ thể khi cần. Không nhét broad memory vào mỗi prompt. *(gốc: build plan §2.6 §5, plan 04 §4, plan 06 §6)*
+
+9. **Fail-open ở mọi lớp phụ.** Vector/rerank/digest/model lỗi hay thiếu → recall RƠI VỀ FTS/heuristic, không bao giờ chết theo. FTS5 là baseline LUÔN CÓ; lớp semantic chỉ THÊM, không thay. *(gốc: plan 05 §2, plan 06 §7, plan 12)*
+
+10. **Capture cơ học, 0 token, không vượt quyền host.** Hook chỉ đọc transcript file incremental — không gọi model, không rewrite command, không bypass permission của host. App cơ học, agent phán đoán; quyết định curated do user/agent duyệt. *(gốc: build plan §2.7, plan 04 §7)*
+
+11. **Sync xuyên máy = ADDITIVE, provenance KHÔNG LẪN.** Merge chỉ thêm, không ghi đè; mỗi session giữ nguyên `host`/`origin`/`source` gốc — bộ chọn scope chỉ *lọc*, KHÔNG đổi/gộp nguồn, KHÔNG xóa (muốn xóa phải qua `forget` tường minh có dry-run + backup). DB sống không bao giờ đặt trong folder cloud-sync (WAL corrupt). *(gốc: plan 08 §1 §5, plan 02 §0, relocate design)*
+
+12. **Đo trung thực + gate trước khi bật mặc định.** TUYỆT ĐỐI không trưng số counterfactual/ảo ("tiết kiệm N token" khi không đo được). Mọi lớp mới (hybrid, rerank, dims, migration…) chỉ bật mặc định SAU khi qua gate: benchmark thắng net trên corpus có nhãn + test + migration an toàn + health check + fallback rõ. *(gốc: build plan §2.1, plan 04 §9, plan 05 §2 §6, plan 10, plan 12 §2)*
 
 ## Sửa đổi hiến pháp
 - **Chỉ user quyết.** Agent thấy cần sửa/thêm → ghi đề xuất vào `04_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
