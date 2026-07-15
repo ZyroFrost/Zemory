@@ -14,8 +14,18 @@ export interface ParsedSection {
 const HEADING = /^(#{1,6})[ \t]+(.*?)[ \t]*$/;
 const FENCE = /^[ \t]*(```|~~~)/;
 
+// CRLF GUARD (bug found 2026-07-16). A doc written by a Windows editor/
+// PowerShell arrives as CRLF; splitting on "\n" leaves a trailing "\r" on every
+// line, and in JS neither `.` nor `$` accepts "\r" — so HEADING matched NOTHING
+// and the whole file collapsed into one heading-less blob (changelog: ZERO
+// entries → `import` reporting "merged 0" over a full file). FILE WINS makes
+// hand-editing the primary path, so normalize at the boundary; stored bodies
+// are LF.
+const normEol = (text: string): string => text.replace(/\r\n/g, "\n");
+
 /** Split markdown into sections at heading boundaries, fence-aware. */
-export function parseMarkdown(text: string): ParsedSection[] {
+export function parseMarkdown(input: string): ParsedSection[] {
+  const text = normEol(input);
   const lines = text.split("\n");
   const offsets: number[] = [];
   let off = 0;
@@ -76,9 +86,9 @@ export function renderSections(sections: { level: number; heading: string | null
 // Heading lines are normalized (level + single space + trimmed text), so for
 // the fidelity check we normalize BOTH sides and compare — body must be exact,
 // only heading whitespace is allowed to differ.
-function normalizeHeadings(text: string): string {
+function normalizeHeadings(input: string): string {
   let inFence = false;
-  return text
+  return normEol(input)
     .split("\n")
     .map((l) => {
       if (FENCE.test(l)) {
