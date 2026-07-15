@@ -1,4 +1,4 @@
-<!-- zemory template · luật làm việc CHUNG mọi project — ship nguyên từ template, KHÔNG thêm luật riêng vào đây (luật riêng của app → 01_CONSTITUTION.md) -->
+<!-- zemory template · luật làm việc CHUNG mọi project (CẢ app lẫn non-app — chốt 2026-07-16, không tách profile) — ship nguyên từ template, KHÔNG thêm luật riêng vào đây (luật riêng của app → 01_CONSTITUTION.md) -->
 # <PROJECT> — Quy tắc làm việc
 
 > AI đọc file này SAU `01_CONSTITUTION.md` (hiến pháp — bất biến riêng của project, tối cao). Tuân thủ tuyệt đối.

@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-07-16] — docs(structure): them 3 slot AI (agents/tools/evals) vao tu dien chuan + chot RULES/CONSTITUTION ap chung app va non-app
+
+Them 3 slot AI vao tu dien chuan cau truc (03_STRUCTURE, ca template lan ban zemory) ??? lap lo hong "AI project" ma ??6 tuyen bo phu nhung tu dien chua co ten:
+
+- `agents/` ??? VONG LAP AGENT (planning/reasoning/state-machine dieu phoi LLM: guardrail ?? grade???rewrite ?? cap vong). Model-driven, KHAC pipelines/ (tat dinh). LLM client ??? ai/ ?? prompt ??? resources/prompts/.
+- `tools/` ??? DINH NGHIA tool cho LLM/agent goi (schema + binding + shape ket qua). Chi khai bao + noi; THUC THI delegate slot san co (search/ ?? integrations/ ?? store/). KHAC scripts/(dev) ?? util/ ?? plugins/(ben-thu-3).
+- `evals/` ??? DO CHAT LUONG model/agent/RAG tren corpus CO NHAN (recall@k ?? LLM-judge ?? golden set) + gate. KHAC test/ (pass/fail tat dinh).
+
+Kem: ??4 routing +4 dong (vong lap agent ?? tool cho LLM goi ?? bo nho agent ??? khong slot rieng: chinh sach???agents/, persistence???store/, runtime???data/state/ ?? do chat luong RAG/agent) va ??5 convention +5 dong (trong do "Agent (LLM) ??? 4 cho RO" chong loi pho bien gop 1 folder "agent" ho lon; "agents/ ??? docs/agent/").
+
+Nguon goc: so sanh voi post cau truc AI-agent co ban tren FB + repo production-agentic-rag-course (LangGraph) ??? bang chung concern co that trong domain ma chuan tuyen bo phu; zemory khong dung agents/ (hien phap dieu 6: khong tu goi LLM) nhung tu dien la cho CA estate.
+
+CUNG CHOT (user 2026-07-16): 01_CONSTITUTION + 02_RULES ap CHUNG cho ca app lan non-app ??? KHONG tach profile; ghi ro trong header comment 2 file template.
+
+Ghi nhan viec moi (TODO ??VIEC KE TIEP): SasinFlow UI 1 file HTML qua bu ??? nghien cuu phuong an phan tang chuan truoc (doi chieu tu dien frontend/ + convention UI-embed single-bin), trinh user duyet, KHOAN fix.
+
 ## [2026-07-15] — feat(harness): tang hien phap 01_CONSTITUTION per-app + renumber 01..05 + hien phap zemory 12 dieu
 
 Them tang hien phap per-app cho harness (y tuong constitution.md cua GitHub Spec Kit) + renumber agent docs.
