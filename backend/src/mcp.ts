@@ -1,9 +1,11 @@
-import { stdin, stdout } from "node:process";
-import { findProjectRoot } from "./core/config.js";
-import { getMessage, getMessageContext, recall } from "./brain/search.js";
-import { searchSections, showSection } from "./docs/plan.js";
+// MCP stdio SURFACE (thin, per 03_STRUCTURE §2 "surface/entry MỎNG"): JSON-RPC
+// framing (line- and Content-Length-delimited) over stdin/stdout. Tool
+// DEFINITIONS + binding live in ./tools/ — this file only ships them.
 
-type JsonObject = Record<string, unknown>;
+import { stdin, stdout } from "node:process";
+import { TOOLS, asString, callMcpTool, type JsonObject, type McpEnv } from "./tools/index.js";
+
+export { callMcpTool } from "./tools/index.js";
 
 interface JsonRpcRequest {
   jsonrpc?: string;
@@ -17,147 +19,7 @@ interface ToolCall {
   arguments?: JsonObject;
 }
 
-interface McpEnv {
-  dbPath?: string;
-  projectRoot?: string | null;
-}
-
 const PROTOCOL_VERSION = "2024-11-05";
-
-const clampLimit = (n: unknown, fallback: number, max: number): number => {
-  const v = typeof n === "number" && Number.isFinite(n) ? Math.floor(n) : fallback;
-  return Math.max(1, Math.min(max, v));
-};
-
-const clampWindow = (n: unknown): number => {
-  const v = typeof n === "number" && Number.isFinite(n) ? Math.floor(n) : 0;
-  return Math.max(0, Math.min(10, v));
-};
-
-const asString = (v: unknown): string => (typeof v === "string" ? v : "");
-
-const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
-  if (args.all) return undefined;
-  if (env.projectRoot === null) return undefined;
-  // No harness in cwd is NOT an error: zemory is installed machine-wide, so
-  // recall falls back to the whole global brain instead of scoping to cwd.
-  return asString(args.project) || env.projectRoot || findProjectRoot() || undefined;
-};
-
-const jsonText = (value: unknown): string => JSON.stringify(value, null, 2);
-
-function toolResult(value: unknown) {
-  return { content: [{ type: "text", text: typeof value === "string" ? value : jsonText(value) }] };
-}
-
-function errorResult(message: string) {
-  return { isError: true, content: [{ type: "text", text: message }] };
-}
-
-const TOOLS = [
-  {
-    name: "brain_search",
-    description:
-      "Search the local cross-agent global brain (hybrid keyword+semantic). Returns lightweight hits; call brain_show for full text. " +
-      "Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a different phrasing, " +
-      "or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the memory has nothing.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search query." },
-        all: { type: "boolean", description: "Search all projects instead of the current project." },
-        project: { type: "string", description: "Project root to scope search to; ignored when all=true." },
-        limit: { type: "number", description: "Maximum hits, default 12, max 50." },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "brain_show",
-    description: "Show one full brain message by id, optionally with neighbouring conversation messages.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "number", description: "Message id returned by brain_search." },
-        window: { type: "number", description: "Neighbour messages on each side. Default 0, max 10." },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "plan_search",
-    description: "Search DB-source project docs/plan sections. Returns section ids; call plan_show for full section text.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search query." },
-        all: { type: "boolean", description: "Search docs across all projects instead of the current project." },
-        project: { type: "string", description: "Project root to scope search to; ignored when all=true." },
-        limit: { type: "number", description: "Maximum hits, default 10, max 50." },
-      },
-      required: ["query"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "plan_show",
-    description: "Show one DB-source plan/doc section by id.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "number", description: "Section id returned by plan_search." },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
-  },
-];
-
-export async function callMcpTool(name: string, args: JsonObject = {}, env: McpEnv = {}) {
-  if (name === "brain_search") {
-    const query = asString(args.query).trim();
-    if (!query) return errorResult("brain_search requires a non-empty query.");
-    const hits = await recall(query, {
-      all: Boolean(args.all),
-      project: currentProject(args, env),
-      limit: clampLimit(args.limit, 12, 50),
-      dbPath: env.dbPath,
-    });
-    return toolResult(hits);
-  }
-
-  if (name === "brain_show") {
-    const id = Number(args.id);
-    if (!Number.isFinite(id) || id <= 0) return errorResult("brain_show requires a positive numeric id.");
-    const window = clampWindow(args.window);
-    const value = window > 0 ? getMessageContext(id, window, env.dbPath) : getMessage(id, env.dbPath);
-    // brain_show is a drill-down WITHIN a recall already counted by brain_search;
-    // not logged separately (same 'recall' feature) to avoid double-counting.
-    return value ? toolResult(value) : errorResult(`No brain message #${id}.`);
-  }
-
-  if (name === "plan_search") {
-    const query = asString(args.query).trim();
-    if (!query) return errorResult("plan_search requires a non-empty query.");
-    const hits = searchSections(query, {
-      project: currentProject(args, env),
-      limit: clampLimit(args.limit, 10, 50),
-      dbPath: env.dbPath,
-    });
-    return toolResult(hits);
-  }
-
-  if (name === "plan_show") {
-    const id = Number(args.id);
-    if (!Number.isFinite(id) || id <= 0) return errorResult("plan_show requires a positive numeric id.");
-    const section = showSection(id, env.dbPath);
-    return section ? toolResult(section) : errorResult(`No plan section #${id}.`);
-  }
-
-  return errorResult(`Unknown zemory MCP tool: ${name}`);
-}
 
 function success(id: JsonRpcRequest["id"], result: unknown) {
   return { jsonrpc: "2.0", id, result };

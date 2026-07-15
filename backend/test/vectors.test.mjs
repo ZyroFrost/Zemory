@@ -19,7 +19,7 @@ import {
   vectorRemaining,
 } from "../../dist/brain/vectors.js";
 import { hybridEnabled, search, searchHybrid } from "../../dist/brain/search.js";
-import { runRagBench } from "../../dist/brain/ragbench.js";
+import { runRagBench } from "../../dist/evals/ragbench.js";
 
 test("hybrid setting: default ON; ZEMORY_HYBRID=0 disables", () => {
   delete process.env.ZEMORY_HYBRID;
