@@ -26,8 +26,8 @@ Tóm tắt bất biến (chi tiết ở 03):
 | `05_CHANGES.md` | changelog | mỗi lần sửa code; **chỉ ghi sau khi xác nhận OK** (viết tay đúng format hoặc `zemory changelog add`) |
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế |
 
-- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); xong chạy `zemory docs sync` để cập nhật index tìm kiếm trong DB. Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
-- **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau. Kết phiên/kết việc: `zemory docs sync`.
+- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong — KHÔNG cần chạy `docs sync`**. *(Chỉ khi muốn `plan search`/`changelog ls` — vốn tìm trên bản index dẫn xuất — hiện đúng bản mới thì mới `docs sync`; tùy chọn, không bắt buộc. Đọc thẳng `.md` luôn đúng.)* Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
+- **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Plan phải đánh số:** mỗi file trong `docs/plan/` đặt tên `NN_tên.md` (`00_`, `01_`, …) theo thứ tự; gom mọi mô tả plan rải rác (folder `planning`, doc plan lạc chỗ) về `docs/plan/`.
 - **Plan KHÔNG chứa luật:** bất biến/luật riêng của app phát sinh khi thiết kế → đề xuất đưa vào `01_CONSTITUTION.md` (user chốt), plan chỉ dẫn chiếu điều khoản.
 - **Tra log sâu:** việc/lỗi/quyết định ở phiên khác → `zemory brain search "<q>" [--all]` (recall on-demand, tự tiết kiệm token; đừng tra bừa).
@@ -51,7 +51,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm trong phiên phải tìm được ở CHANGES **hoặc** TODO — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai / đường cụt / thứ đã thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó).
 
-**Bước cuối:** `zemory docs sync` → `zemory validate` (xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (§Git).
+**Bước cuối:** `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (§Git).
 
 ## Changelog — supersede
 - Mới nhất ở trên cùng (chèn ngay sau header).

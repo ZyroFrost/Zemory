@@ -29,11 +29,12 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - Backlog: `docs/agent/04_TODO.md` · Changelog: `zemory changelog ls`
 - Việc cũ / session khác: `zemory brain search "<q>" [--all]` — **chỉ khi user nhắc việc đã làm / lỗi cũ**, đừng tìm bừa.
 
-## 3. Sửa docs — sửa FILE trực tiếp rồi sync (lệnh = tiện ích tùy chọn)
-**Sửa NỘI DUNG là việc của bạn.** Đường chính: **mở `.md` sửa thẳng, bám chuẩn** → xong chạy `zemory docs sync` (index cập nhật, file wins). Tiện ích tùy chọn khi thích thao tác qua DB:
+## 3. Sửa docs — sửa FILE `.md` trực tiếp (file là nguồn, xong là xong)
+**Sửa NỘI DUNG là việc của bạn.** Mở `.md` sửa thẳng, bám chuẩn — **xong là xong** (file là nguồn, FILE WINS), **KHÔNG cần chạy gì thêm**. Tiện ích tùy chọn khi thích thao tác qua DB:
 - Sửa 1 mục (plan/rules): ghi nội dung mới ra **file tạm (UTF-8)** → `zemory plan set <#id> --file <path>` (tự render lại).
 - Thêm changelog: `zemory changelog add "<tiêu đề>" --file <path>` (hoặc bỏ `--file` nếu không có body).
 - Render lại toàn bộ .md: `zemory docs render`.
+- *(HIẾM khi cần)* muốn `plan search`/`changelog ls` phản ánh sửa đổi → `zemory docs sync` (chỉ cập nhật index tìm kiếm, không đụng file). Bình thường đọc thẳng `.md` là đủ — **khỏi sync**.
 
 ⚠ **Windows/PowerShell**: ĐỪNG dùng `echo "..." | zemory plan set` cho nội dung **có dấu** — PowerShell làm hỏng UTF-8 (đ/ư/ậ → `?`). **Luôn dùng `--file`** (ghi file tạm rồi truyền path).
 
