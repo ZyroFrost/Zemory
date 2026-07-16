@@ -8,7 +8,7 @@
   },
   "files": [
     "dist",
-    "docs-template"
+    "docs_template"
   ],
   "scripts": {
     "clean": "node backend/scripts/clean.mjs",

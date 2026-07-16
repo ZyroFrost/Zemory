@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-16] — fix(ui): tooltip cockpit theo i18n (data-i18n-title) · xác nhận plan show không còn lặp header
+
+**① Tooltip i18n (ui-page.ts)** — 20 tooltip cockpit trước đây hardcode tiếng Việt (hiện VN cả ở mode EN, trái luật "UI = EN hoặc i18n"). Thêm cơ chế `data-i18n-title` vào `applyLang` (đối xứng `data-i18n`/`data-i18n-ph` sẵn có) + 19 key `tt.*` × 2 ngôn ngữ. 18 tooltip HTML tĩnh gắn `data-i18n-title`; 2 tooltip JS-gen (renderStatus/renderBrainSummary) dùng `esc(t('tt.*'))` để tự lật theo ngôn ngữ khi re-render. Verify: `node --check` JS nhúng (63.975 ký tự) PASS · `npm check` 90/90.
+
+**② `plan show <id>` lặp header — KHÔNG tái hiện** (TODO cũ ghi in header 2–3 lần). Thử 5 section đủ loại (preamble/level-0/1/2) + soi `plan show` (cli.ts:1005) → header in đúng 1 lần. Đã tự khỏi nhờ fix docs-split 07-16 (re-split section, body hết chứa dòng heading). Không có gì để sửa; gỡ khỏi TODO.
+
+## [2026-07-16] — feat(structure): slot docs_visual + luật tên gạch dưới + rename docs_template + luật chốt-phiên · vá 5 chỗ FILE WINS stale
+
+Phiên chuẩn-hoá harness (sau bản chốt sổ bên dưới). Cả 4 mục dưới đều ship vào template (`docs-template` → nay `docs_template`) nên mọi `zemory init` từ nay nhận đủ.
+
+**① Luật "Chốt phiên / ghi sổ" (02_RULES + template)**
+Thêm mục luật cứng: user nói "note lại / docs lại / chốt phiên / sắp đổi session" → BẮT BUỘC đọc lại FULL phiên hiện tại + FULL `docs/plan/*` + FULL `docs/agent/*` TRƯỚC khi ghi, KHÔNG ghi theo trí nhớ tóm tắt; định tuyến từng thứ (việc xong→CHANGES + xoá TODO, việc dở→TODO kèm bước kế, đổi thiết kế→plan, luật mới→đề xuất TODO); chuẩn "không bỏ sót" = mọi việc đã làm phải tìm được ở CHANGES hoặc TODO, **kể cả chẩn đoán sai / đường cụt** (để phiên sau khỏi đâm lại). Lý do: phiên 07-14→16 lộ việc mất chi tiết khi bàn giao + chẩn đoán sai lặp 2 lần.
+
+**② Slot `docs_visual/` (03_STRUCTURE §3/§4/§5/§7 + template)**
+Vùng trắng: sơ đồ/flow xem-trực-quan (`.html` tương tác · `.svg`/`.drawio` vẽ tay) chưa có chỗ trong chuẩn — agent SasinFlow đang để ở `docs/diagrams/`. Chốt sau khi grill: **để NGOÀI `docs/`, ngang hàng** (không lồng trong `plan/`), tên `docs_visual/`. Quyết định: ① luật "đọc mọi file docs/" (mục ①) sẽ nuốt `.html` nặng → tốn token; đặt ngoài `docs/` = rào **cấu trúc**, 0 token, không trông vào kỷ luật. ② `.md` THẮNG về sự kiện (visual chỉ trình bày; fact sống một mình trong html = vô hình với `plan search` ⇒ mục). ③ mỗi file phải có `.md` chủ trỏ tới bằng link markdown + tóm tắt 1–3 dòng (progressive disclosure, HP điều 8). Mặc định vẫn là **mermaid TRONG plan `.md`**; `docs_visual/` chỉ khi không-text-được.
+
+**③ Rename `docs-template` → `docs_template` + luật tên gạch dưới**
+Chuẩn hoá: file + folder slot nhiều-từ → gạch DƯỚI (khớp `NN_tên.md` sẵn có); `docs-template` (gạch ngang) là ngoại lệ duy nhất ⇒ đổi. `git mv` giữ history. 2 ref chức năng: `adopt.ts` (`TEMPLATE_DIR`) + `package.json` "files"; còn lại text (README · 01_CONSTITUTION · plan 02/09 · comment+tooltip UI · cây 03_STRUCTURE ×2). Tên do tool/npm ép (`package-lock.json` · `.github/`) = để yên. Entry changelog/todo cũ nhắc `docs-template` GIỮ NGUYÊN (bản ghi lịch sử, như vẫn giữ `02_STRUCTURE`).
+
+**④ Vá 5 chỗ FILE WINS stale**
+Đổi luật FILE WINS (#1061) bỏ sót: `03_STRUCTURE` còn "nguồn = DB, .md là mirror" (cây docs/) + "không gõ tay mirror" (routing) ở **cả repo lẫn template**, và comment `status.ts` ("the .md are derived mirrors"). Nắn hết về "`.md` là NGUỒN, DB là index dẫn xuất" — hoàn tất supersede 07-16.
+
+**Verify:** `npm run build` sạch → `zemory init` (thư mục nháp) dựng đủ 7 doc từ template mới, ship `docs_visual`, 0 sót `docs-template`. `npm run check` **90/90 pass**. `doctor` xanh; `validate` chỉ còn 2 broken-link lịch sử cũ (không phát sinh mới).
+
 ## [2026-07-16] — chore(session): chot so 07-14 to 07-16 — RAG 256d (DB -48%) · tang HIEN PHAP + renumber · 3 slot AI · FILE WINS · 3 bug parser · 3 luat cung moi
 
 Chốt sổ phiên **2026-07-14 → 07-16**. Chi tiết từng mục ở changelog #1010–#1064; đây là bản tổng + bàn giao.

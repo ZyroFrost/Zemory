@@ -810,7 +810,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <section class="panel" id="project" data-grow="rail0" data-grow-default="1" style="flex-grow:1">
           <div class="panel-head"><div><h3 data-i18n="proj.title">Dự án</h3><p data-i18n="proj.sub">Docs &amp; quy tắc của dự án đang chọn.</p></div></div>
           <div class="panel-pad">
-            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)" onclick="runHarness()" data-i18n="proj.run">Chạy</button><button class="ghost" title="Cài đặt" onclick="openSettings()">⚙</button></div>
+            <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)" data-i18n-title="tt.runHarness" onclick="runHarness()" data-i18n="proj.run">Chạy</button><button class="ghost" title="Cài đặt" data-i18n-title="tt.settings" onclick="openSettings()">⚙</button></div>
             <div class="proj-add"><input id="newProj" data-i18n-ph="ph.addproj" placeholder="Thêm dự án bằng đường dẫn folder…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()" data-i18n="proj.add">+ Thêm</button></div>
             <div id="app" style="margin-top:8px"></div>
           </div>
@@ -823,11 +823,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       <header class="commandbar">
         <div class="field"><span class="live-dot"></span> <span data-i18n="bar.env">Máy: local</span></div>
         <div class="field">↗ CLI</div>
-        <div class="field pill-btn" id="storagePill" title="Nơi lưu DB brain — bấm để mở Cài đặt" onclick="openSettings('storage')">🗄 <span id="storagePillTxt">—</span></div>
-        <div class="field pill-btn" id="drivePill" title="Đồng bộ Drive — bấm để mở Cài đặt" onclick="openSettings('drive')">☁ <span id="drivePillTxt">—</span></div>
+        <div class="field pill-btn" id="storagePill" title="Nơi lưu DB brain — bấm để mở Cài đặt" data-i18n-title="tt.storage" onclick="openSettings('storage')">🗄 <span id="storagePillTxt">—</span></div>
+        <div class="field pill-btn" id="drivePill" title="Đồng bộ Drive — bấm để mở Cài đặt" data-i18n-title="tt.drive" onclick="openSettings('drive')">☁ <span id="drivePillTxt">—</span></div>
         <div class="icon-btns" style="margin-left:auto">
-          <button class="ghost set-open" title="Cài đặt" onclick="openSettings()">⚙ <span data-i18n="bar.settings">Cài đặt</span></button>
-          <button class="ghost" title="Làm mới" onclick="manualRefresh()">↻</button>
+          <button class="ghost set-open" title="Cài đặt" data-i18n-title="tt.settings" onclick="openSettings()">⚙ <span data-i18n="bar.settings">Cài đặt</span></button>
+          <button class="ghost" title="Làm mới" data-i18n-title="tt.refresh" onclick="manualRefresh()">↻</button>
         </div>
       </header>
 
@@ -843,32 +843,32 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <button onclick="brainSearch(true)"><span data-i18n="recall.search">Tìm</span> ⌘↵</button>
         </div>
         <div class="filterline">
-          <label class="toggle" title="Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn."><input type="checkbox" id="ball" checked onchange="setScope()"> <span data-i18n="recall.scope">Mọi dự án</span></label>
-          <label class="toggle" title="Recall semantic: FTS + vector. Tắt = chỉ keyword FTS."><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
-          <label class="toggle" title="Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker."><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
-          <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Lọc theo thời gian">
+          <label class="toggle" title="Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn." data-i18n-title="tt.scopeAll"><input type="checkbox" id="ball" checked onchange="setScope()"> <span data-i18n="recall.scope">Mọi dự án</span></label>
+          <label class="toggle" title="Recall semantic: FTS + vector. Tắt = chỉ keyword FTS." data-i18n-title="tt.hybrid"><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
+          <label class="toggle" title="Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker." data-i18n-title="tt.rerank"><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
+          <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Lọc theo thời gian" data-i18n-title="tt.fTime">
             <option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time24">24h qua</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option>
           </select>
-          <select id="fType" class="filter-sel" onchange="brainSearch()" title="Lọc theo vai trò message">
+          <select id="fType" class="filter-sel" onchange="brainSearch()" title="Lọc theo vai trò message" data-i18n-title="tt.fType">
             <option value="" data-i18n="f.typeAny">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
           </select>
-          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)">
+          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)" data-i18n-title="tt.fOrigin">
             <option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
           </select>
-          <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Lọc theo agent/nguồn">
+          <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Lọc theo agent/nguồn" data-i18n-title="tt.fAgent">
             <option value="">Agent: mọi</option>
           </select>
           <span class="tiny" style="margin-left:auto;cursor:pointer" id="queryHint" onclick="clearFilters()" data-i18n="recall.clear">Xoá lọc</span>
         </div>
         <div class="result-meta">
           <span id="resultCount" data-i18n="recall.hint">Gõ ít nhất 2 ký tự để tìm.</span>
-          <span id="sortState" onclick="cycleSort()" title="Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)">Sắp theo liên quan ⇅</span>
+          <span id="sortState" onclick="cycleSort()" title="Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)" data-i18n-title="tt.sort">Sắp theo liên quan ⇅</span>
         </div>
         <div class="recall-workbench">
           <div id="brainhits" class="result-list">
             <div class="empty" data-i18n="recall.empty">Kết quả tìm sẽ hiện ở đây.</div>
           </div>
-          <div class="resize-handle vertical" data-resize="recall" role="separator" aria-orientation="vertical" tabindex="0" title="Kéo để chỉnh cỡ. Bấm đúp để reset."></div>
+          <div class="resize-handle vertical" data-resize="recall" role="separator" aria-orientation="vertical" tabindex="0" title="Kéo để chỉnh cỡ. Bấm đúp để reset." data-i18n-title="tt.resize"></div>
           <div id="threadPreview" class="preview">
             <div class="preview-title"><b data-i18n="recall.preview">Xem trước phiên</b><span data-i18n="recall.waiting">chờ</span></div>
             <div class="empty" data-i18n="recall.previewEmpty">Chọn một kết quả để xem các message lân cận ngay tại đây.</div>
@@ -887,7 +887,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       <section class="panel" id="capture" data-grow="insp1" data-grow-default=".85" style="flex-grow:.85">
-        <div class="panel-head"><div><h3><span data-i18n="scan.title">Quét &amp; thu thập</span><span class="q" title="Đọc transcript agent trên MÁY NÀY vào brain. 'Quét nhanh' đọc lại store đã biết (nhanh); 'Quét sâu' rà cả ổ đĩa tìm folder agent mới.">?</span></h3><p data-i18n="scan.sub">Kéo ngữ cảnh mới từ máy này.</p></div></div>
+        <div class="panel-head"><div><h3><span data-i18n="scan.title">Quét &amp; thu thập</span><span class="q" title="Đọc transcript agent trên MÁY NÀY vào brain. 'Quét nhanh' đọc lại store đã biết (nhanh); 'Quét sâu' rà cả ổ đĩa tìm folder agent mới." data-i18n-title="tt.scan">?</span></h3><p data-i18n="scan.sub">Kéo ngữ cảnh mới từ máy này.</p></div></div>
         <div class="panel-pad">
           <div class="action-stack"><button onclick="brainScan(false)" data-i18n="scan.known">Quét nhanh</button><button class="ghost warn" onclick="brainScan(true)" data-i18n="scan.deep">Quét sâu</button></div>
           <div id="brainmsg" style="margin-top:10px"></div>
@@ -896,7 +896,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       </section>
       <div class="resize-handle horizontal panel-split" data-resize="split" role="separator" aria-orientation="horizontal" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       <section class="panel" id="coverage" data-grow="insp2" data-grow-default="1.1" style="flex-grow:1.1">
-        <div class="panel-head"><div><h3><span data-i18n="proj2.title">Dự án</span><span class="q" title="Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án.">?</span></h3><p data-i18n="proj2.sub">Folder dự án đã có phiên được thu.</p></div></div>
+        <div class="panel-head"><div><h3><span data-i18n="proj2.title">Dự án</span><span class="q" title="Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án." data-i18n-title="tt.projects">?</span></h3><p data-i18n="proj2.sub">Folder dự án đã có phiên được thu.</p></div></div>
         <div class="panel-pad" id="coveragePanel"></div>
       </section>
     </aside>
@@ -914,7 +914,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         <button class="set-tab" data-pane="docs" onclick="setSettingsTab(this)">📄 Docs harness</button>
       </div>
       <div class="set-body">
-        <button class="set-close" onclick="closeSettings()" title="Đóng">✕</button>
+        <button class="set-close" onclick="closeSettings()" title="Đóng" data-i18n-title="tt.close">✕</button>
 
         <div class="set-pane on" data-pane="lang">
           <h2 data-i18n="lang.h">Ngôn ngữ giao diện</h2>
@@ -1299,10 +1299,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     el('proj').innerHTML = projOpts();
     const docsOk = last.docs.filter(d => d.ok).length;
     let h = '';
-    // Shared standard (docs-template/) — the canonical harness applied to EVERY
+    // Shared standard (docs_template/) — the canonical harness applied to EVERY
     // project. Read-only reference; NOT this or any project's own docs.
     const STD = [['AGENTS.md', 'AGENTS.md'], ['01_CONSTITUTION.md', 'agent/01_CONSTITUTION.md'], ['02_RULES.md', 'agent/02_RULES.md'], ['03_STRUCTURE.md', 'agent/03_STRUCTURE.md'], ['04_TODO.md', 'agent/04_TODO.md'], ['05_CHANGES.md', 'agent/05_CHANGES.md']];
-    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">' + t('r.std') + ' <span class="q" title="Harness chuẩn trong docs-template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs-template/).">?</span></div>';
+    h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:2px 0 4px">' + t('r.std') + ' <span class="q" title="' + esc(t('tt.std')) + '">?</span></div>';
     h += '<div class="chips" style="margin-bottom:10px">' + STD.map(s => '<span class="chip doc-link on" onclick="openStandardDoc(\'' + s[1] + '\')" title="' + esc(s[1]) + '">' + esc(s[0]) + '</span>').join('') + '</div>';
     h += row(last.project.name || t('r.noproj'), last.project.connected ? 'on' : 'off', last.project.root || t('r.runinit'), 'docs/.harness.json?');
     h += '<div class="tiny" style="margin:8px 0 4px">' + t('r.projdocs') + '</div>';
@@ -1387,7 +1387,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       '<div class="coverage-stat"><b>' + fmtBytes(brain.sizeKB) + '</b><span>' + t('m.size') + '</span></div>' +
       '</div>' +
       '<div class="mini-list" style="margin-top:8px">' +
-      miniRow(t('m.capcost'), t('m.capval') + '<span class="q" title="Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. ~token đã thu = SUM(len)/4, đo lượng ngữ cảnh brain đang giữ, không phải giảm hoá đơn.">?</span>') +
+      miniRow(t('m.capcost'), t('m.capval') + '<span class="q" title="' + esc(t('tt.capcost')) + '">?</span>') +
       miniRow(t('m.search'), (brain.hybrid ? 'BM25 + Vector' : t('m.ftsonly')) + (brain.rerank ? ' + rerank' : '')) +
       miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' ' + t('m.pending')) : '') + (vectors.error ? ' · ' + t('m.err') : '')) +
       '</div>' +
@@ -1744,7 +1744,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'so.rel':'Sắp theo liên quan','so.new':'Sắp mới nhất','so.old':'Sắp cũ nhất',
       'ph.search':'ví dụ: cách stream tool output cho agent','ph.addproj':'Thêm dự án bằng đường dẫn folder…','f.agentAny':'Agent: mọi','f.timeAny':'Thời gian: mọi lúc','f.time24':'24h qua','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi',
       'dv.loading':'đang tải...','dv.empty':'(trống)','dv.err':'lỗi: ','ctx.err':'lỗi ngữ cảnh: ','ctx.error':'lỗi',
-      'act.working':'đang xử lý...','act.nonstd':'Docs chưa chuẩn — chạy zemory migrate, docs sync/rm/render.','act.added':'đã thêm ','act.nomiss':'không thiếu gì','act.renamed':'đã đổi tên cũ → ','act.created':'đã tạo .harness.json — '
+      'act.working':'đang xử lý...','act.nonstd':'Docs chưa chuẩn — chạy zemory migrate, docs sync/rm/render.','act.added':'đã thêm ','act.nomiss':'không thiếu gì','act.renamed':'đã đổi tên cũ → ','act.created':'đã tạo .harness.json — ',
+      'tt.runHarness':'Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)','tt.settings':'Cài đặt','tt.refresh':'Làm mới','tt.storage':'Nơi lưu DB brain — bấm để mở Cài đặt','tt.drive':'Đồng bộ Drive — bấm để mở Cài đặt','tt.scopeAll':'Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn.','tt.hybrid':'Recall semantic: FTS + vector. Tắt = chỉ keyword FTS.','tt.rerank':'Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker.','tt.fTime':'Lọc theo thời gian','tt.fType':'Lọc theo vai trò message','tt.fOrigin':'Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)','tt.fAgent':'Lọc theo agent/nguồn','tt.sort':'Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)','tt.resize':'Kéo để chỉnh cỡ. Bấm đúp để reset.','tt.scan':'Đọc transcript agent trên MÁY NÀY vào brain. "Quét nhanh" đọc lại store đã biết (nhanh); "Quét sâu" rà cả ổ đĩa tìm folder agent mới.','tt.projects':'Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án.','tt.close':'Đóng','tt.std':'Harness chuẩn trong docs_template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs_template/).','tt.capcost':'Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. ~token đã thu = SUM(len)/4, đo lượng ngữ cảnh brain đang giữ, không phải giảm hoá đơn.'
     },
     en: {
       'bar.env':'Env: local','bar.settings':'Settings','brand.tag':'Memory & docs harness for coding agents · v0.0.1',
@@ -1772,7 +1773,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'so.rel':'Sorted by relevance','so.new':'Sorted newest','so.old':'Sorted oldest',
       'ph.search':'e.g. how we stream tool output for agents','ph.addproj':'Add a project by folder path…','f.agentAny':'Agent: any','f.timeAny':'Time: any','f.time24':'Last 24h','f.time7':'Last 7 days','f.time30':'Last 30 days','f.time90':'Last 90 days','f.typeAny':'Type: any','f.originAny':'Origin: any',
       'dv.loading':'loading...','dv.empty':'(empty)','dv.err':'error: ','ctx.err':'context error: ','ctx.error':'error',
-      'act.working':'working...','act.nonstd':'Docs non-standard — run zemory migrate, docs sync/rm/render.','act.added':'added ','act.nomiss':'nothing missing','act.renamed':'renamed old → ','act.created':'created .harness.json — '
+      'act.working':'working...','act.nonstd':'Docs non-standard — run zemory migrate, docs sync/rm/render.','act.added':'added ','act.nomiss':'nothing missing','act.renamed':'renamed old → ','act.created':'created .harness.json — ',
+      'tt.runHarness':'Run harness: scaffold the project docs to standard (add missing files, number plans, never overwrite the DB source)','tt.settings':'Settings','tt.refresh':'Refresh','tt.storage':'Brain DB location — click to open Settings','tt.drive':'Drive sync — click to open Settings','tt.scopeAll':'Search sessions across ALL projects (the brain is global). Off = only the selected project.','tt.hybrid':'Semantic recall: FTS + vector. Off = keyword FTS only.','tt.rerank':'Cross-encoder rerank: reorder the top candidates for sharper results. Needs the reranker model.','tt.fTime':'Filter by time','tt.fType':'Filter by message role','tt.fOrigin':'Local = agent transcripts on disk; Web = captured web chats (ChatGPT/…)','tt.fAgent':'Filter by agent/source','tt.sort':'Click to change sort (relevance / newest / oldest)','tt.resize':'Drag to resize. Double-click to reset.','tt.scan':'Read agent transcripts on THIS machine into the brain. "Quick scan" re-reads known stores (fast); "Deep scan" sweeps the whole disk for new agent folders.','tt.projects':'Project folders with captured sessions, showing session / message / agent counts each.','tt.close':'Close','tt.std':'The standard harness in docs_template/ — shipped with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts per project. Read-only (edit the standard in docs_template/).','tt.capcost':'Capture is free: the hook reads the agent transcript FILE at session end — no model call, no API cost. ~tokens captured = SUM(len)/4, a measure of context the brain holds, not a bill reduction.'
     }
   };
   function t(k){ var d = T[window.__lang === 'en' ? 'en' : 'vi']; return (d && d[k] != null) ? d[k] : (T.vi[k] != null ? T.vi[k] : k); }
@@ -1787,6 +1789,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     document.querySelectorAll('[data-i18n-ph]').forEach(function(e){
       var v = dict[e.getAttribute('data-i18n-ph')];
       if(v != null) e.setAttribute('placeholder', v);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function(e){
+      var v = dict[e.getAttribute('data-i18n-title')];
+      if(v != null) e.setAttribute('title', v);
     });
     var vi = el('langVi'), en = el('langEn');
     if(vi && en){ vi.classList.toggle('on', lang !== 'en'); en.classList.toggle('on', lang === 'en'); }

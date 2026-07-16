@@ -58,7 +58,7 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 - `archive` chỉ set `changelog.archived=1` rồi render active rows; full history vẫn ở DB/FTS.
 
 ## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
-Harness chuẩn (`docs-template/`, ship cho project khác) gồm:
+Harness chuẩn (`docs_template/`, ship cho project khác) gồm:
 
 - `docs/agent/01_CONSTITUTION.md`, `02_RULES.md`, `03_STRUCTURE.md`, `04_TODO.md`, `05_CHANGES.md`;
 - `docs/plan/00_build_plan.md` (điểm khởi đầu template);

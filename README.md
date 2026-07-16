@@ -68,7 +68,7 @@ disciplined workspace.
 | 🔎 **Hybrid recall** | FTS5 keyword (word **+ Vietnamese trigram**) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python/GPU), with optional cross‑encoder rerank. |
 | 🌐 **Web‑chat capture** | Pull your **ChatGPT web** history into the brain via a login‑once browser window — no password ever touches zemory. |
 | 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent). Filter, roll up, and **exclude** lanes you don't want. |
-| 🪪 **Project harness** | A shared standard (`docs-template/`) the agent adapts into each project: rules ↔ TODO ↔ changelog ↔ numbered plans, kept in sync. |
+| 🪪 **Project harness** | A shared standard (`docs_template/`) the agent adapts into each project: rules ↔ TODO ↔ changelog ↔ numbered plans, kept in sync. |
 | 🔐 **Cross‑machine sync** | Merge machines through an **encrypted bundle** on a Drive folder — additive, never destructive, provenance preserved. |
 | 🖥️ **Live cockpit** | A local web cockpit: recall, source tree, harness, scan, and one‑click sync. |
 | 🔌 **MCP server** | Expose recall to any MCP client (`brain_search`, `brain_show`, `plan_search`, `plan_show`). |
@@ -118,7 +118,7 @@ zemory ui
 Starts a local server on `http://127.0.0.1:<port>` and opens a desktop app
 window (Edge/Chrome). It has three columns:
 
-- **Project harness** (left) — the **shared standard** (from `docs-template/`)
+- **Project harness** (left) — the **shared standard** (from `docs_template/`)
   plus the selected project's own docs; **Run** restructures a project to the
   standard, **+ Add** targets a new project folder. Live capability checks below.
 - **Recall** (center) — search past sessions; toggle Hybrid / Rerank; filter by
@@ -159,7 +159,7 @@ model is unavailable, recall degrades to keyword FTS instead of breaking.
 
 ### The harness (standard + per‑project)
 
-`docs-template/` is the **shared standard** shipped with zemory — the canonical
+`docs_template/` is the **shared standard** shipped with zemory — the canonical
 rules and the *method* for storing them. Installing the harness into a project is
 not a blind copy: zemory scaffolds the **structure**, and the working agent reads
 the standard and **adapts it to the project** (gather & number plans, keep

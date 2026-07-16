@@ -93,7 +93,7 @@ function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string;
   }
 }
 
-/** Read a file from the SHARED STANDARD (docs-template/) — path-guarded. This is
+/** Read a file from the SHARED STANDARD (docs_template/) — path-guarded. This is
  *  the canonical harness, not any project's docs; the UI loads it read-only. */
 function readStandardDoc(rel: string): { ok: boolean; file: string; content: string } {
   const target = resolve(TEMPLATE_DIR, rel);

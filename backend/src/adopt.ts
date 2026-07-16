@@ -24,7 +24,7 @@ import { rememberProject } from "./registry.js";
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's
  *  docs/). This is what `init`/`sync` scaffold and the UI loads for reference. */
-export const TEMPLATE_DIR = join(HERE, "..", "docs-template");
+export const TEMPLATE_DIR = join(HERE, "..", "docs_template");
 
 export interface AdoptResult {
   createdConfig: boolean;

@@ -39,8 +39,9 @@ export interface StatusReport {
 }
 
 /**
- * Plan signal. Plan now lives in global_memory.db (the .md are derived mirrors), so the
- * old overview-index reconcile is gone — we just report whether plan docs exist.
+ * Plan signal. The .md files ARE the source (file wins); global_memory.db is just the
+ * derived search index, so the old overview-index reconcile is gone — we just report
+ * whether plan docs exist.
  */
 function planSignal(docsDir: string): StatusReport["plan"] {
   const planDir = join(dirname(docsDir), "plan");

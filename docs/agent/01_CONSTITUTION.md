@@ -14,7 +14,7 @@
 
 Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). zemory chỉ lo **nhớ** + **kỷ luật**.
 
-**Hệ quả — repo này còn là NGUỒN CHUẨN GỐC để project khác copy:** `docs-template/` + `docs/agent/*` là bản mẫu mọi repo khác lấy về. Nên agent của **project khác** ghé vào đây chỉ được **ĐỌC** (đọc chuẩn → áp vào repo của họ, chạy lệnh bên họ); **cấm ghi / cấm chạy lệnh `zemory` với cwd ở đây** khi user chưa cho phép — repo này thường có phiên agent khác đang làm việc. Banner ⛔ ở đầu `AGENTS.md` là cửa chặn; luật đầy đủ ở `02_RULES` §Phạm vi project.
+**Hệ quả — repo này còn là NGUỒN CHUẨN GỐC để project khác copy:** `docs_template/` + `docs/agent/*` là bản mẫu mọi repo khác lấy về. Nên agent của **project khác** ghé vào đây chỉ được **ĐỌC** (đọc chuẩn → áp vào repo của họ, chạy lệnh bên họ); **cấm ghi / cấm chạy lệnh `zemory` với cwd ở đây** khi user chưa cho phép — repo này thường có phiên agent khác đang làm việc. Banner ⛔ ở đầu `AGENTS.md` là cửa chặn; luật đầy đủ ở `02_RULES` §Phạm vi project.
 
 **PHI-MỤC-TIÊU (cố tình KHÔNG làm):**
 - **Không proxy / không tự gọi model API** (điều 6) — không `ANTHROPIC_BASE_URL`, không rewrite history, không sinh chữ.

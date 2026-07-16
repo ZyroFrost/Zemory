@@ -32,6 +32,27 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **Plan KHÔNG chứa luật:** bất biến/luật riêng phát sinh khi thiết kế → đề xuất đưa vào `01_CONSTITUTION.md` (user chốt), plan chỉ dẫn chiếu điều khoản.
 - **Tra log sâu:** việc/lỗi/quyết định ở phiên khác → `zemory brain search "<q>" [--all]` (recall on-demand; đừng tra bừa).
 
+## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
+**Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
+
+**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.** Ghi theo tóm tắt = mất chi tiết, và cái mất luôn là cái phiên sau cần nhất. Trước khi ghi, ĐỌC LẠI ĐỦ 3 nguồn:
+1. **FULL phiên hiện tại** — đọc lại từ ĐẦU hội thoại, kể cả đoạn đã bị tóm tắt/trôi khỏi context (dùng `zemory brain digest <session>` / `brain search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
+2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không.
+3. **FULL `docs/agent/*`** — `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE` · `04_TODO` · `05_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
+
+**Rồi mới ghi — định tuyến từng thứ về đúng file, KHÔNG BỎ SÓT:**
+
+| Thứ phát sinh trong phiên | Ghi vào |
+|---|---|
+| Việc đã xong / đã sửa code | `05_CHANGES.md` (sau khi user OK) **và xoá khỏi** `04_TODO.md` |
+| Việc còn dở · việc phát sinh · việc phiên sau làm | `04_TODO.md` — nêu rõ trạng thái `[~]`, **đã tới đâu, bước kế tiếp là gì** |
+| Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` (+ supersede ở changelog nếu đảo quyết định cũ) |
+| Luật / bất biến riêng phát sinh | **ĐỀ XUẤT** vào `04_TODO.md` chờ user chốt — KHÔNG tự sửa `01_CONSTITUTION.md` |
+
+**Chuẩn "không bỏ sót":** mọi việc đã làm trong phiên phải tìm được ở CHANGES **hoặc** TODO — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai / đường cụt / thứ đã thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó).
+
+**Bước cuối:** `zemory docs sync` → `zemory validate` (xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (§Git).
+
 ## Changelog — supersede
 - Mới nhất ở trên cùng (chèn ngay sau header).
 - Entry **đảo/thay** quyết định cũ → mở đầu bằng: `> 🔄 **Supersede:** thay quyết định "[đề mục] ([ngày])" — [lý do].` Không sửa/xoá entry cũ; tuỳ chọn thêm `> ⤴ Đã bị thay bởi [ngày].` ở entry cũ.
