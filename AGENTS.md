@@ -2,7 +2,7 @@
 # Zemory
 
 Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agent.
-**FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search/sync — **sửa xong chạy `zemory docs sync`** để index cập nhật (**file wins**: file khác index → index dựng lại từ file; entry changelog viết tay tự merge vào DB). zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**. *(Đổi luật 2026-07-16 — bỏ chế độ cũ "DB là nguồn, cấm gõ tay".)*
+**FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search/sync — **sửa xong chạy `zemory docs sync`** để index cập nhật (**file wins**: file khác index → index dựng lại từ file; entry changelog viết tay tự merge vào DB). zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**.
 
 > **Cài harness = NẮN project về CHUẨN, KHÔNG bê nội dung mẫu.** zemory chỉ dựng sẵn **cấu trúc + cách lưu** chuẩn; **nội dung** (CONSTITUTION/TODO/CHANGES/plan) là của riêng project. Bạn (AI) đọc bộ chuẩn (`01_CONSTITUTION.md` + `02_RULES.md` + các mục dưới) rồi tự chỉnh project cho khớp cấu trúc — dựng `docs/agent` + `docs/plan`, đánh số plan, gom todo/plan lạc chỗ. TUYỆT ĐỐI không copy TODO/CHANGES của project khác vào.
 
