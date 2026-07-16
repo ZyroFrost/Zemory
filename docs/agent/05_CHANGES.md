@@ -5,6 +5,12 @@
 
 ---
 
+## [2026-07-16] — chore(harness): bỏ `docs sync` khỏi bước MỞ phiên + convention UI-1-ngôn-ngữ (Streamlit)
+
+**① Mở phiên KHÔNG còn ép `zemory docs sync`** (`AGENTS.md §1` + template). Lý do (user chốt): `.md` là NGUỒN (FILE WINS), agent đọc thẳng file — không cần nạp docs vào brain để bắt đầu; agent project khác đọc template hay bị "dính" đòi chạy sync vô nghĩa. `docs sync` giờ CHỈ chạy SAU khi sửa docs (refresh index tìm kiếm local, §3) hoặc chốt phiên. **KHÔNG đụng sync XUYÊN MÁY** (`brain sync` qua Drive — HP điều 11): giữ nguyên, khác hẳn `docs sync`.
+
+**② Convention "UI 1-ngôn-ngữ"** (`03_STRUCTURE §5` + template): app render UI server-side bằng chính ngôn ngữ backend (Streamlit/Gradio/Dash/Django+template) → KHÔNG có `frontend/` tách, vai trò "frontend" = pages/views NẰM TRONG backend, bắt buộc còn 3 (backend+docs+AGENTS). Lấp vùng trắng phát hiện khi đọc `personal_cashflow` (Streamlit) — chuẩn cũ ép `backend/+frontend/` không phủ app UI-một-ngôn-ngữ.
+
 ## [2026-07-16] — fix(ui): tooltip cockpit theo i18n (data-i18n-title) · xác nhận plan show không còn lặp header
 
 **① Tooltip i18n (ui-page.ts)** — 20 tooltip cockpit trước đây hardcode tiếng Việt (hiện VN cả ở mode EN, trái luật "UI = EN hoặc i18n"). Thêm cơ chế `data-i18n-title` vào `applyLang` (đối xứng `data-i18n`/`data-i18n-ph` sẵn có) + 19 key `tt.*` × 2 ngôn ngữ. 18 tooltip HTML tĩnh gắn `data-i18n-title`; 2 tooltip JS-gen (renderStatus/renderBrainSummary) dùng `esc(t('tt.*'))` để tự lật theo ngôn ngữ khi re-render. Verify: `node --check` JS nhúng (63.975 ký tự) PASS · `npm check` 90/90.
