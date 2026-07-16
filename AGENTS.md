@@ -49,6 +49,7 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - **Luật riêng của app** (bất biến kiến trúc) → `01_CONSTITUTION.md` (user chốt); thấy luật nằm rải trong plan → đề xuất dời về hiến pháp, plan chỉ dẫn chiếu.
 
 ## 5. Reconcile docs cũ — khi `zemory sync` báo "non-standard", hoặc có doc trùng/thừa
+> *(Flow HIẾM — chỉ khi dọn repo lệch chuẩn. `docs sync` bước 1 ở đây CÓ việc thật: import để so sánh/gộp — KHÁC ritual mở phiên đã bỏ.)*
 1. `zemory docs sync` — import HẾT `.md` → brain (an toàn, không đụng file).
 2. `zemory docs ls` — xem cái nào **trùng**/**thừa**.
 3. `zemory plan show <#id>` — đọc nội dung TRƯỚC khi quyết.
