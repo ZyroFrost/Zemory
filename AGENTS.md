@@ -19,11 +19,10 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 3. `zemory doctor` xanh → setup xong, sang §1.
 → **Đã có `docs/.harness.json` rồi thì KHÔNG chạy §0**, vào thẳng §1.
 
-## 1. Mở phiên (MỖI lần) — ĐÚNG 3 bước rồi BẮT TAY LÀM
-1. `zemory docs sync` — nạp docs vào brain. **LUÔN chạy đầu tiên** (thiếu → plan rỗng).
-2. Đọc `docs/agent/01_CONSTITUTION.md` (hiến pháp — bất biến TỐI CAO riêng của project, vi phạm = bug thiết kế) rồi `02_RULES.md` (luật làm việc chung). Tuân tuyệt đối, hiến pháp trên hết.
-3. `zemory doctor` — xanh là XONG. Làm việc user yêu cầu.
-→ Hết. Đừng lặp lại `plan ls/search`; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
+## 1. Mở phiên (MỖI lần) — Đọc chuẩn rồi BẮT TAY LÀM
+1. Đọc `docs/agent/01_CONSTITUTION.md` (hiến pháp — bất biến TỐI CAO riêng của project, vi phạm = bug thiết kế) rồi `02_RULES.md` (luật làm việc chung). Tuân tuyệt đối, hiến pháp trên hết.
+2. Làm việc user yêu cầu. *(tùy chọn: `zemory doctor` soi harness nếu nghi ngờ.)*
+→ **KHÔNG cần `zemory docs sync` khi MỞ phiên** — `.md` là NGUỒN, agent đọc thẳng file (FILE WINS); `docs sync` chỉ để cập nhật index tìm kiếm SAU khi sửa docs (§3). Đừng lặp `plan ls/search`; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
 
 ## 2. Tra cứu (KHI CẦN, không phải mỗi lần)
 - Plan/spec: `zemory plan ls [doc]` · `plan search "<q>"` · `plan show <#id>`
