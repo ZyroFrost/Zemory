@@ -114,10 +114,14 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   └── public/       [opt]  file tĩnh serve thẳng (favicon, robots.txt, manifest PWA, service-worker)
 │                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = bàn test)
 │
-├── docs/                   ★ harness zemory (nguồn = DB, .md là mirror):
+├── docs/                   ★ harness zemory (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
 │   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES
-│   ├── plan/           ★    spec / plan theo section
+│   ├── plan/           ★    spec / plan theo section — PHẲNG · NN_tên.md · MỌI .md đều được index
 │   └── .harness.json   ★    marker: project đã wire harness
+├── docs_visual/      [opt]  bản XEM TRỰC QUAN cho NGƯỜI (agent KHÔNG đọc) — .html tự chứa CÓ TƯƠNG TÁC ·
+│                            .drawio/.svg vẽ tay: sơ đồ flow/kiến trúc/lineage/lưới trạng thái/timeline của
+│                            hệ hoặc plan. NGOÀI cây docs/ → luật "đọc mọi file docs/" KHÔNG chạm (0 token).
+│                            Mỗi file PHẢI có .md chủ trỏ tới + tóm tắt 1–3 dòng. Vẽ bằng chữ được → mermaid TRONG .md.
 │
 ├── config/           [opt]  file config OPERATOR tự sửa (YAML/TOML): profile kết nối, server list
 │   ├── *.example.*   [opt]    template TRACKED — trỏ secret bằng TÊN env
@@ -127,7 +131,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── contracts/        [opt]  (escape-hatch) spec API ở ROOT khi ĐA CLIENT/SDK dùng chung (thay backend/src/contracts)
 ├── external/         [opt]  repo NGOÀI clone THAM CHIẾU — code HỌ, chỉ gọi/extend, KHÔNG dán vào backend
 ├── attic/            [opt]  backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC deploy/self-update (rollback). Tracked
-├── docs-template/    [opt]  bộ docs MẪU TRẮNG phát cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
+├── docs_template/    [opt]  bộ docs MẪU TRẮNG phát cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
 ├── share/            [opt]  bundle SYNC MÃ HÓA xuyên máy (git-lfs *.enc + key + README) — TRACKED (đã mã hóa). Chỉ app CÓ sync-qua-git
 │
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
@@ -218,7 +222,9 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | code sinh tự động (codegen) | `generated/` (gitignore; commit chỉ khi cần reproducibility) |
 | đóng gói exe/installer | `.spec`(root) + `backend/resources/packaging/`(icon) + `dist/`(output) + Releases |
 | test tự động | `backend/test/` (chỉ khi có lõi logic) |
-| tài liệu / rule / plan | `docs/` (qua lệnh `zemory`, không gõ tay mirror) |
+| tài liệu / rule / plan | `docs/` — sửa FILE `.md` trực tiếp (file wins) rồi `zemory docs sync` (cập nhật index) |
+| **sơ đồ / flow / kiến trúc** (mô tả bằng chữ) | khối `mermaid` **TRONG `docs/plan/NN_*.md`** — đi cùng spec, `plan search` index được |
+| **sơ đồ XEM TRỰC QUAN** (tương tác / vẽ tay) | `docs_visual/` (NGOÀI `docs/`) — 1 file self-contained + có `.md` chủ trỏ tới; sinh từ data → `scripts/` + render `exports/` |
 
 ## 5. Quyết định & Convention
 ```
@@ -226,6 +232,7 @@ BẮT BUỘC = 4         backend/(code) · frontend/ · docs/ · AGENTS.md. TẤ
 KHÔNG folder rỗng    INDEX = TỪ ĐIỂN TÊN để tra, KHÔNG phải checklist tạo. Tạo folder CHỈ khi có file/concern thật; thiếu → bỏ. App điển hình chỉ 4–10 slot hiện diện
 2 trục sắp xếp       LAYER-FIRST (slot phẳng dưới src/, mặc định) HOẶC DOMAIN-FIRST (src/<domain>/ lồng slot). Chọn 1, không trộn. Cross-cutting LUÔN ở src/ gốc. (§2)
 1 TÊN / concern      store/ (KHÔNG db|models) · pages/ (KHÔNG views|screens). Framework ép mới đổi
+Tên nhiều-từ = _     file + folder slot nhiều từ → gạch DƯỚI (docs_visual · docs_template · NN_tên.md), KHÔNG hyphen/camelCase. Tên do tool/npm ép (package-lock.json · .github/ · docker-compose.yml) = ĐỂ YÊN
 Framework ép         framework hardcode quét tên folder (Next pages/, Django models/migrations/, Rails app/models) → theo nó (như Docker ép root)
 Tool ép root         MỌI config tool đọc từ root — folder .<tool>/ (.github/.vscode/.claude/.serena) + file *.config.* / .<tool>rc / .editorconfig / .npmrc / .dockerignore / .nvmrc + Docker/.spec/Makefile — ĐỂ YÊN, refactor KHÔNG dời/dọn/liệt-kê-cứng (là danh sách MỞ)
 Entry ★ (Node-CLI)   entry = run.* HOẶC manifest.bin/main; manifest = root HOẶC backend/. Node-CLI (bin ở root package.json) KHÔNG cần backend/run.* — vẫn đạt ★
@@ -258,6 +265,7 @@ Plugins vs modules   modules/ = feature CỦA MÌNH (domain-first §2) · plugin
 Cross-cutting = RÕ   MỌI concern xuyên suốt (mã hóa/authz/logging/audit/error/cache/i18n…) phải có place+type trong chuẩn này → audit/refactor thấy được, KHÔNG lọt. Thiếu concern → BÁO thêm vào chuẩn
 Setting UI kéo-thả   default ship → frontend/config/ (tracked); bản user chỉnh runtime → data/settings/ (gitignore)
 Dialog / modal       CHỈ 3 size cố định S/M/L, chọn theo nội-dung + mục-đích, KHÔNG random/động/reflow. Token size ở frontend/styles/
+docs_visual (xem)    bản trực quan (sơ đồ/flow/lineage/lưới/timeline) cho NGƯỜI mở NHÌN → docs_visual/ NGOÀI docs/ (agent KHÔNG auto-đọc → 0 token). .md THẮNG về sự kiện (visual chỉ trình bày; fact chỉ nằm trong visual = vô hình với plan search ⇒ mục). Mỗi file: self-contained (CSS/JS/SVG inline · KHÔNG CDN/build) + có .md chủ trỏ tới bằng LINK markdown + tóm tắt 1–3 dòng. Mặc định vẽ mermaid TRONG .md; docs_visual/ CHỈ khi không-text-được. Sinh từ data → scripts/ + exports/, KHÔNG commit render
 UI embed (single-bin) app CLI/1-binary có thể EMBED trang UI như resource (vd HTML/CSS/JS trong 1 file TS) để ship gọn — GIỮ ở backend nhưng GHI RÕ; server phục vụ nó vẫn là backend, nội dung UI vẫn "thuộc" frontend về vai trò. KHÔNG ép tách nếu tách làm vỡ build 1-file
 Test                 KHÔNG bắt buộc — chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc frontend/test
 Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 05_CHANGES=log. KHÔNG folder versions/ chép tay
@@ -290,6 +298,8 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 ├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/
 ├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_TODO·05_CHANGES) · plan/ · .harness.json
 │   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
+├── docs_visual/        [opt] sơ đồ/flow/lineage/lưới XEM TRỰC QUAN cho NGƯỜI (vd luồng nạp DW) — .html tương tác/.svg;
+│                            NGOÀI docs/, mỗi file có .md chủ trỏ tới + tóm tắt 1–3 dòng (= §5 docs_visual)
 │ ┄┄ DELIVERABLE — chọn theo loại (≥1) ┄┄
 ├── reports/             ◆  BI: file báo cáo .pbix/.pbip/.twb (bản chính giao đi)      [LFS]
 ├── models/              ◆  data: semantic/transform layer — dbt model · tabular .bim · DAX model
@@ -318,6 +328,7 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 powerbi_duana/
 ├── AGENTS.md
 ├── docs/{agent/, plan/, dictionary.md}          # định nghĩa metric doanh thu/đơn/khách…
+├── docs_visual/dw_flow.html                      # [xem] sơ đồ luồng nạp DW — .md chủ: docs/plan/08_duan_dw.md
 ├── reports/DuAnA.pbix                        # [LFS] báo cáo chính
 ├── sources/{orders.m, connection.example.json}   # Power Query + spec (trỏ env)
 ├── measures/revenue.dax                          # DAX tách ra để review
@@ -336,5 +347,6 @@ Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection t
 Từ điển dữ liệu      BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu
 SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries app)
 Publish/refresh      tự động hóa → scripts/ · bản render ra → exports/ (gitignore, build lại được)
+Sơ đồ trực quan      .html tương tác/.svg xem trực quan (luồng/lineage/lưới bảng) → docs_visual/ (NGOÀI docs/, agent KHÔNG auto-đọc); mỗi file có .md chủ trỏ + tóm tắt. Chi tiết = §5 docs_visual
 Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, agent điều hướng non-app đúng như app
 ```
