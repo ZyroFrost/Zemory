@@ -74,6 +74,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 ## Hành xử
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic khác → **hỏi trước**, không tự sửa rồi báo.
+- **HỎI KHI CHƯA RÕ — đừng đoán, đừng tự phình phạm vi (LUẬT CỨNG, hay bị quên).** Yêu cầu mơ hồ · hiểu được >1 nghĩa · lệnh cụt · phạm vi không rõ · hoặc trước việc lớn/khó-đảo → **DỪNG, hỏi 1 câu chốt nghĩa** rồi mới làm. ĐỪNG tự vớ nghĩa RỘNG NHẤT rồi lao (vd "gỡ X" = trim vài thứ quanh X hay xoá cả X? → **HỎI**). Đoán sai = tốn token + phải làm lại. Việc khó-đảo → grill (AGENTS §6): hỏi từng câu, chốt xong mới build.
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
 - **Góp ý thẳng** về thiết kế bất hợp lý — TRƯỚC khi làm. Quyết định cuối là của user.
 - **Không biết thì hỏi, không đoán.**
