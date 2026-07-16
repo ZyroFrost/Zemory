@@ -355,10 +355,10 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
 
 const sha1 = (text: string): string => createHash("sha1").update(text).digest("hex");
 
-/** Render a doc from the DB back to its .md file (db → md). If the on-disk
- *  mirror was HAND-EDITED since the last render (hash mismatch vs rendered_hash),
- *  the edited file is salvaged to a `.hand-edited-*.bak` next to it before the
- *  overwrite — the DB stays the source, but nothing is lost silently. */
+/** Render a doc from the DB back to its .md file (db → md) — the RECOVERY path
+ *  under FILE WINS (`docs sync` is the normal direction). Salvages the on-disk
+ *  file to `.hand-edited-*.bak` first IFF it holds content the DB does NOT have
+ *  (i.e. edits never synced) — so a render can't destroy unsynced work. */
 export function renderDoc(
   docPath: string,
   projectRoot: string,
@@ -366,22 +366,29 @@ export function renderDoc(
 ): { path: string; bytes: number; salvaged: string | null } | null {
   const db = openBrain(dbPath);
   try {
-    const doc = db
-      .prepare("SELECT id, rendered_hash FROM doc WHERE project_root=? AND path=?")
-      .get(projectRoot, docPath) as { id: number; rendered_hash: string | null } | undefined;
+    const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as
+      | { id: number }
+      | undefined;
     if (!doc) return null;
     const sections = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
       level: number;
       heading: string | null;
       body: string;
     }[];
-    const md = RENDER_HEADER + renderSections(sections);
+    const body = renderSections(sections);
+    const md = RENDER_HEADER + body;
     const abs = resolveDocPath(projectRoot, docPath);
     mkdirSync(dirname(abs), { recursive: true });
     let salvaged: string | null = null;
-    if (doc.rendered_hash && existsSync(abs)) {
+    if (existsSync(abs)) {
       const current = readFileSync(abs, "utf8");
-      if (current !== md && sha1(current) !== doc.rendered_hash) {
+      // Compare the file's BODY against what the DB holds — NOT rendered_hash.
+      // The hash goes stale the moment `docs sync` imports a hand-edit (sync
+      // doesn't render), which made every post-sync render emit a junk .bak
+      // even though the DB already had that exact content. Body-vs-body is the
+      // question that actually matters: does the file hold anything unsynced?
+      const currentBody = normEol(current.replace(/^<!-- GENERATED[^\n]*-->\r?\n/, ""));
+      if (currentBody !== normEol(body)) {
         salvaged = `${abs}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
         copyFileSync(abs, salvaged);
         console.error(

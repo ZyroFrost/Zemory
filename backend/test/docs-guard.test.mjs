@@ -188,4 +188,13 @@ test("renderDoc salvages a hand-edited mirror to .bak instead of silently overwr
   // Unchanged mirror → no salvage churn on the next render.
   const third = renderDoc(rel, root, dbPath);
   assert.equal(third.salvaged, null);
+
+  // FILE WINS: a hand-edit that was already SYNCED is in the DB → rendering it
+  // back must NOT emit a junk .bak (the old rendered_hash check did: sync never
+  // updates that hash, so every post-sync render looked like an unsynced edit).
+  writeFileSync(abs, readFileSync(abs, "utf8") + "\nsynced hand edit\n");
+  importAll(root, dbPath);
+  const fourth = renderDoc(rel, root, dbPath);
+  assert.equal(fourth.salvaged, null, "synced content must not be salvaged");
+  assert.match(readFileSync(abs, "utf8"), /synced hand edit/, "and must survive the render");
 });
