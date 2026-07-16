@@ -1,6 +1,13 @@
 <!-- zemory · file chỉ đường DUY NHẤT ở root. Mọi hướng dẫn nằm đây. -->
 # <PROJECT>
 
+> ⛔ **DỪNG — bạn mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?**
+> Nếu project bạn đang làm **KHÔNG phải repo này** (bạn chỉ ghé để đọc/copy chuẩn, tra cách làm, xem code mẫu) → **CHỈ ĐỌC. Đọc thoải mái, nhưng KHÔNG GHI:**
+> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — `init` · `sync` · `docs sync` · `docs render` · `plan set` · `changelog add/import` **đều GHI** vào repo này **và** vào `global_memory.db`.
+> - ⚠ Repo này **có thể đang có phiên agent khác làm việc**. Bạn ghi vào = xung đột thật (file nửa cũ nửa mới, DB lệch, agent bên đó phải sửa ngược).
+> - ✅ **Lấy chuẩn = ĐỌC `docs/agent/*` rồi ÁP VÀO REPO CỦA BẠN** — chạy lệnh `zemory` ở repo của bạn, không phải ở đây.
+> - Thật sự cần ghi vào đây → **HỎI USER TRƯỚC**. Luật đầy đủ: `docs/agent/02_RULES.md` §Phạm vi project.
+
 Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agent.
 **FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search/sync — **sửa xong chạy `zemory docs sync`** để index cập nhật (**file wins**: file khác index → index dựng lại từ file; entry changelog viết tay tự merge vào DB). zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**.
 
