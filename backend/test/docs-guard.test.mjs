@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
-import { addEntry, importChangelog, listEntries, renderChangelog } from "../../dist/docs/changelog.js";
+import { addEntry, importChangelog, listEntries, parseChangelog, renderChangelog } from "../../dist/docs/changelog.js";
 import { importAll, importDoc, listToc, renderDoc, showSection } from "../../dist/docs/plan.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -30,6 +30,33 @@ test("CRLF: a Windows-written doc still splits into sections (parser was blind t
     ["Spec", "Part A", "Part B"],
   );
   assert.match(showSection(listToc(rel, root, dbPath)[1].id, dbPath).body, /body A/);
+});
+
+test("changelog: `## ` sub-headings INSIDE an entry body are body — not phantom entries", (t) => {
+  const root = tempDir(t, "zemory-chlog-subhead-");
+  const md = join(root, "05_CHANGES.md");
+  const dbPath = join(root, "brain.db");
+  // A real session-summary entry: the body legitimately uses `## ` sections.
+  writeFileSync(
+    md,
+    "# Change Log\n\n## [2026-07-16] — Session summary\n\nintro\n\n## Đã làm\n\nstuff\n\n## Bàn giao\n\nnext\n\n## [2026-07-15] — Older\n\nbody\n",
+  );
+
+  assert.equal(importChangelog(md, root, dbPath), 2, "exactly 2 dated entries — sub-headings are body");
+  const rows = listEntries(root, dbPath);
+  assert.deepEqual(rows.map((e) => e.title), ["Session summary", "Older"]);
+  assert.equal(rows.filter((e) => e.date === null).length, 0, "no dateless phantom entries");
+  // The sub-headings must live INSIDE the entry body, not become entries.
+  const parsed = parseChangelog(readFileSync(md, "utf8"));
+  assert.equal(parsed.length, 2);
+  assert.match(parsed[0].body, /## Đã làm/);
+  assert.match(parsed[0].body, /## Bàn giao/);
+
+  // Legacy fallback: a changelog with NO dated head still seeds entry-per-H2.
+  const md2 = join(root, "legacy.md");
+  writeFileSync(md2, "# Change Log\n\n## First thing\n\na\n\n## Second thing\n\nb\n");
+  const root2 = join(root, "p2");
+  assert.equal(importChangelog(md2, root2, dbPath), 2, "undated legacy changelog still imports");
 });
 
 test("CRLF: a Windows-written changelog merges (import used to silently report 'merged 0')", (t) => {
@@ -82,6 +109,37 @@ test("FILE WINS: docs sync re-imports a hand-edited mirror (no stale 'kept DB so
   importAll(root, dbPath);
   const toc = listToc(rel, root, dbPath).map((s) => s.heading);
   assert.deepEqual(toc, ["Spec", "New Section"]);
+});
+
+test("FILE WINS: a legacy ONE-BLOB doc re-splits on sync (blob rendered back identical → never healed)", (t) => {
+  const root = tempDir(t, "zemory-blob-heal-");
+  const planDir = join(root, "docs", "plan");
+  const rel = join("docs", "plan", "01_spec.md");
+  const abs = join(planDir, "01_spec.md");
+  const dbPath = join(root, "brain.db");
+  mkdirSync(planDir, { recursive: true });
+  const text = "# Spec\n\nintro\n\n## Part A\n\nbody A\n\n## Part B\n\nbody B\n";
+  writeFileSync(abs, text);
+
+  // Simulate the legacy damage: the whole file stored as ONE heading-less
+  // section (what a CRLF file used to produce before the normEol fix).
+  const db = openBrain(dbPath);
+  db.prepare("INSERT INTO doc (project_root, path, kind) VALUES (?,?,?)").run(root, rel, "plan");
+  const docId = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(root, rel).id;
+  db.prepare("INSERT INTO section (doc_id, ordinal, level, parent_id, heading, anchor, body) VALUES (?,?,?,?,?,?,?)").run(
+    docId, 0, 0, null, null, null, text,
+  );
+  db.close();
+  assert.equal(listToc(rel, root, dbPath).length, 0, "setup: blob has no headings in the index");
+
+  // The blob renders back BYTE-IDENTICAL to the file, so a content-only check
+  // said "unchanged" forever. Sync must notice the STRUCTURE is wrong and heal.
+  importAll(root, dbPath);
+
+  assert.deepEqual(
+    listToc(rel, root, dbPath).map((s) => s.heading),
+    ["Spec", "Part A", "Part B"],
+  );
 });
 
 test("FILE WINS: docs sync merges hand-written changelog entries from the .md", (t) => {

@@ -34,7 +34,7 @@ export function parseChangelog(input: string): ChEntry[] {
     off += l.length + 1;
   }
   let inFence = false;
-  const heads: { idx: number; h: string }[] = [];
+  const all: { idx: number; h: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (FENCE.test(lines[i])) {
       inFence = !inFence;
@@ -42,8 +42,17 @@ export function parseChangelog(input: string): ChEntry[] {
     }
     if (inFence) continue;
     const m = H2.exec(lines[i]);
-    if (m) heads.push({ idx: i, h: m[1] });
+    if (m) all.push({ idx: i, h: m[1] });
   }
+  // An entry head is `## [<date>] — title` (the documented format). A bare
+  // `## Foo` INSIDE a body is body text, not a new entry — treating every H2 as
+  // a boundary shredded any entry whose body had sub-headings into phantom
+  // dateless entries (harmless under the old "DB is source" rule, but FILE WINS
+  // re-imports on every sync, so each one became junk in the DB).
+  // Fallback: a changelog with NO dated head at all is a hand-written/legacy
+  // one — keep the old behaviour so `import` can still seed it.
+  const dated = all.filter((x) => DATE.test(x.h));
+  const heads = dated.length > 0 ? dated : all;
   const entries: ChEntry[] = [];
   for (let k = 0; k < heads.length; k++) {
     const start = offsets[heads[k].idx];
