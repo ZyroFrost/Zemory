@@ -125,20 +125,21 @@ function kindOf(name: string): string | null {
 
 const normPath = (p: string) => normalize(p);
 
-/** The doc's body as the DB would render it (no header) — null if not in DB. */
-function renderedBody(projectRoot: string, relPath: string, dbPath: string): string | null {
+/** What the DB index currently holds for a doc: the body it would render + how
+ *  many sections it is split into. null = not indexed yet. */
+function dbIndexOf(projectRoot: string, relPath: string, dbPath: string): { body: string; sections: number } | null {
   const db = openBrain(dbPath);
   try {
     const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, normPath(relPath)) as
       | { id: number }
       | undefined;
     if (!doc) return null;
-    const sections = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
+    const rows = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
       level: number;
       heading: string | null;
       body: string;
     }[];
-    return renderSections(sections);
+    return { body: renderSections(rows), sections: rows.length };
   } finally {
     db.close();
   }
@@ -229,12 +230,17 @@ export function importAll(projectRoot: string, dbPath = currentBrainDb()): (Impo
         continue;
       }
       const kind = k ?? fallback;
-      // FILE WINS: re-import whenever the file's content differs from what the
-      // DB index would render. Identical content → keep the DB rows (stable
-      // section IDs, zero churn). This also self-heals legacy "one unsplit
-      // blob" docs the first time their file is edited.
-      const dbBody = renderedBody(projectRoot, relPath, dbPath);
-      if (dbBody !== null && normEol(dbBody) === fileBody) {
+      // FILE WINS: skip ONLY when the index already matches the file in BOTH
+      // content and structure — then the DB rows (and section IDs) stay put,
+      // zero churn. Otherwise re-import from the file.
+      //
+      // The structure half is load-bearing: a doc stored as ONE unsplit blob
+      // (level 0, heading=null, body=whole file — what a CRLF file used to
+      // produce, see markdown.ts normEol) renders back BYTE-IDENTICAL to the
+      // file, so a content-only check called it "unchanged" forever and the
+      // blob could never heal. Comparing the split count breaks that loop.
+      const idx = dbIndexOf(projectRoot, relPath, dbPath);
+      if (idx && normEol(idx.body) === fileBody && idx.sections === parseMarkdown(fileBody).length) {
         const current = existingDoc(projectRoot, relPath, dbPath);
         if (current) {
           out.push({ ...current, kind });
