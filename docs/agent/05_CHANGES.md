@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-17] — chore(harness): template GENERIC + dọn lệnh-chết sót (hết vòng lặp re-dọn) + chẩn đoán model embed
+
+Dọn phần đuôi sau đợt gỡ "docs sống trong DB" + xử vụ embed báo "model unavailable".
+
+**Template hygiene (nguồn `zemory init` copy — sửa 1 lần, mọi project sạch):**
+- **Gỡ MỌI tên app cụ thể khỏi `docs_template/`** (`413c2cf`): template = chuẩn xài chung → chỉ slot / `<PROJECT>` / `<domain>` placeholder. Gỡ ví dụ domain-first "chính zemory" (`src/brain`…), ví dụ non-app `powerbi_sasinflow`/`SasinFlow.pbix`, "(SasinFlow)"/"(zemory)"/"vd zemory" rải rác §2/§4/§5/§6/§7, RULES "repo chuẩn như zemory". GIỮ `zemory <lệnh>` + `~/.zemory` + comment provenance (= tên TOOL, không thể generic). Repo `docs/agent/*` của chính zemory GIỮ ví dụ zemory (nó LÀ zemory; chỉ template mới generic).
+- **Gỡ lệnh đã-gỡ còn sót ở template + repo** (`9c5bd11`) — agent project khác (init từ template) phải re-dọn mỗi lần "chuẩn lại": `02_RULES §Tài liệu` còn mời `changelog add`; FILE-WINS bullet liệt kê tên lệnh chết; `03_STRUCTURE §8` dùng `docs ls`/`plan show` → đổi "đọc file `.md`"; `04_TODO` header (repo) còn `changelog add`. Sửa cả 2 phía. Grep verify: 0 lệnh chết làm hướng dẫn sống (chỉ còn ở HISTORY changelog/`[x]` cũ — giữ có chủ đích).
+- Polish: `brain sync` không gán nhầm "(model unavailable?)" khi còn backlog (`02a53cd`); comment digest bỏ ví dụ "plan set" (`8b64e42`).
+
+**Chẩn đoán "model unavailable?" — ĐƯỜNG CỤT TRÁNH ĐƯỢC (ghi để phiên sau khỏi nghi lại):** sync in "10291 msg still need embedding (model unavailable?)" → thoạt nghi model hỏng / zemory chưa cài lại. Kiểm THẬT: `node_modules` đủ (`onnxruntime-node` load OK) · `embedProbe` = `ok` (`embeddinggemma-300m-ONNX` q8, 768d) · embed một chuỗi MỚI toanh → ra vector thật 768d. **→ Model CHẠY BÌNH THƯỜNG.** Backlog do `embedPending` cap **500/lần** (sync gọi không set limit) — KHÔNG phải model down; câu "(model unavailable?)" là hint sai ngữ cảnh (đã fix `02a53cd`). Clear backlog = `zemory brain embed --all` (loop 500/pass tới hết).
+
+**Drive sync đã chạy (`zemory brain sync`):** export `global_memory.SS01-IT-10.zemory.enc` (~696MB) lên `G:\My Drive\Global Memory`; +2301 msg mới; máy kia (`DESKTOP-PFB157K`) +0; embed 500 (cap). `brain embed --all` đang chạy nền để clear 10291 + đo tốc độ thật.
+
+**Verify:** `npm run check` 82/82 · grep lệnh-chết/tên-app trên bề mặt sống = 0 · đã push tới `8b64e42`.
+
 ## [2026-07-17] — refactor(harness): GỠ TRỌN "docs sống trong DB" (ghi/render lên docs) — chỉ giữ search index dẫn xuất
 
 Dưới FILE WINS: docs là file `.md` viết tay, agent đọc thẳng. Toàn bộ cơ chế **GHI/RENDER lên docs** (bản sao DB làm nguồn, render DB→md, sửa-qua-DB) là cruft trái HP điều 3 → **gỡ hoàn toàn**. GIỮ `plan search` + index (part of global brain) nhưng đổi thành **DẪN XUẤT thuần-đọc** — dựng lại từ `.md`, KHÔNG bao giờ ghi ngược file.
