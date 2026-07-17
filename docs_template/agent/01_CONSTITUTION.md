@@ -7,9 +7,10 @@
 
 ## Mục đích (BẮT BUỘC — điền TRƯỚC mọi điều khoản)
 <!-- Project NÀY sinh ra để làm gì, cho ai, giải bài toán gì — 2–4 câu, đủ để một agent lạ
-     đọc là nắm ngay BỐI CẢNH mà mọi điều khoản dưới đang phục vụ. Đây là chỗ DUY NHẤT trong
-     harness khai mục đích: AGENTS.md bị `zemory sync` refresh từ template nên KHÔNG giữ được
-     mô tả riêng; plan mô tả THIẾT KẾ chứ không phải LÝ DO TỒN TẠI.
+     đọc là nắm ngay BỐI CẢNH mà mọi điều khoản dưới đang phục vụ. Đây là nguồn CHỐT của mục
+     đích + phi-mục-tiêu (bất biến, user sở hữu). Mô tả SẢN PHẨM chi tiết (tính năng · ý tưởng ·
+     kiến trúc tổng thể) nằm ở `docs/plan/00_overview.md` — đọc kèm khi mở phiên; overview MỞ
+     RỘNG mục đích này, KHÔNG lặp lại phần bất biến (dẫn chiếu về đây).
      Kèm PHI-MỤC-TIÊU (thứ project cố tình KHÔNG làm) — chống scope creep, và giúp agent biết
      khi nào phải từ chối một đề xuất "nghe hay" nhưng lệch hướng. -->
 

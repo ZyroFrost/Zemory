@@ -1,11 +1,11 @@
-<!-- zemory template · File 00 = OVERVIEW mặc định của mọi app — điền trước khi vào spec chi tiết -->
+<!-- zemory template · File 00 = OVERVIEW mặc định của mọi app — đọc kèm hiến pháp khi mở phiên -->
 # <PROJECT> — Tổng quan (Overview)
 
-> **File `00` = OVERVIEW của app** (mặc định mọi project): mô tả app LÀ GÌ / cho AI / vì SAO, để agent hoặc người đọc nắm BỐI CẢNH trước khi vào spec chi tiết (`01_*` trở đi). Tiếng Việt (quy ước docs); code/UI tiếng Anh.
-> Đây là mô tả SẢN PHẨM. Bất biến KIẾN TRÚC (luật riêng) chốt ở `docs/agent/01_CONSTITUTION.md`, KHÔNG lặp lại ở đây.
+> **File `00` = OVERVIEW của app** (mặc định mọi project): mô tả sản phẩm để agent/người nắm BỐI CẢNH. Nằm trong `docs/` → được đọc cùng toàn bộ docs mỗi khi mở phiên.
+> **Mục đích BẤT BIẾN + phi-mục-tiêu = luật, chốt ở `docs/agent/01_CONSTITUTION.md` §Mục đích** (user sở hữu). File này MỞ RỘNG thành mô tả sản phẩm, KHÔNG lặp phần bất biến — cần "app tồn tại để làm gì" thì xem hiến pháp.
 
-## Mục đích
-App giải bài toán gì, phục vụ ai, giá trị cốt lõi — 2–4 câu.
+## Tóm tắt
+App làm gì, cho ai — 1–2 câu (mở rộng từ §Mục đích của hiến pháp).
 
 ## Tính năng chính
 Các năng lực chính, mỗi dòng một tính năng.
@@ -15,7 +15,4 @@ Các năng lực chính, mỗi dòng một tính năng.
 Ý tưởng cốt lõi, cách tiếp cận, định hướng phát triển dài hạn.
 
 ## Kiến trúc tổng thể
-Các thành phần chính + ranh giới + luồng dữ liệu — một đoạn tóm tắt; chi tiết ở plan `02_*` trở đi.
-
-## Phi-mục-tiêu
-Những gì app CỐ TÌNH không làm (chống scope creep).
+Các thành phần chính + ranh giới + luồng dữ liệu — một đoạn tóm tắt; chi tiết ở plan `02_` trở đi.
