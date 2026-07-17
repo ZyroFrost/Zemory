@@ -357,7 +357,7 @@ Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, a
 > Flow HIẾM, chỉ khi dọn repo chưa theo chuẩn. `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn, zemory KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES` §Hành xử, §Git).
 
 **A. Docs lệch** (doc trùng / thừa / lạc chỗ):
-1. `zemory docs ls` — soi trùng/thừa; `zemory plan show <#id>` đọc nội dung TRƯỚC khi quyết.
+1. Soi file `.md` trùng/thừa trong `docs/`; **đọc file** TRƯỚC khi quyết (`zemory plan search` nếu cần tìm theo nội dung).
 2. Gộp todo lạc → `04_TODO`. Bỏ bản trùng/obsolete: **xoá thẳng file `.md`** (file wins) — **HỎI user trước nếu doc còn nội dung thật** (luật KHÔNG TỰ Ý XÓA); sau khi xoá file, `zemory reindex` cập nhật lại search index.
 3. Gom mọi doc plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên `NN_tên.md` đánh số (`00_overview` → `01_` …); plan chỉ chứa specs, todo tách về `04_TODO`.
 
