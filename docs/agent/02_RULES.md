@@ -74,6 +74,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic/khác → **hỏi trước**, không tự sửa rồi báo.
 - **HỎI KHI CHƯA RÕ — đừng đoán, đừng tự phình phạm vi (LUẬT CỨNG, hay bị quên).** Yêu cầu mơ hồ · hiểu được >1 nghĩa · lệnh cụt · phạm vi không rõ · hoặc trước việc lớn/khó-đảo → **DỪNG, hỏi 1 câu chốt nghĩa** rồi mới làm. ĐỪNG tự vớ nghĩa RỘNG NHẤT rồi lao (vd "gỡ X" = trim vài thứ quanh X hay xoá cả X? → **HỎI**). Đoán sai = tốn token + phải làm lại. Việc khó-đảo → grill (AGENTS §6): hỏi từng câu, chốt xong mới build.
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi user yêu cầu rõ).
+- **KHÔNG TỰ Ý XÓA bất cứ gì (LUẬT CỨNG).** Xóa file · code · hàm · lệnh · chức năng · nội dung docs · folder = **phá + khó đảo**. TRƯỚC khi xóa phải nêu RÕ **xóa GÌ + VÌ SAO** rồi **CHỜ user gật** mới xóa; KHÔNG tự xóa rồi mới báo. Thấy "thừa"/"không dùng nữa" → **ĐỀ XUẤT xóa**, đừng tự tay làm. (Bất đối xứng: THÊM/mở rộng thì thoải mái; BỚT/xóa thì luôn phải hỏi.)
 - **Góp ý thẳng** về thiết kế nếu thấy bất hợp lý — TRƯỚC khi làm. Quyết định cuối là của user.
 - **Không biết thì hỏi, không đoán.**
 

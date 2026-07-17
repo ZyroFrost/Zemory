@@ -5,6 +5,10 @@
 
 ---
 
+## [2026-07-16] — chore(rules): luật cứng "KHÔNG TỰ Ý XÓA" (xóa gì cũng phải hỏi trước)
+
+Thêm `RULES §Hành xử` (+ template): xóa file · code · hàm · lệnh · chức năng · nội dung docs · folder = **phá + khó đảo** → phải nêu rõ **xóa gì + vì sao**, CHỜ user gật; thấy "thừa/không dùng" thì **ĐỀ XUẤT**, đừng tự tay xóa. Bất đối xứng: THÊM thoải mái, BỚT phải hỏi. (User nhắc: session vừa rồi xóa nhiều mà luật còn thiếu điều này — đi cặp với luật "HỎI KHI CHƯA RÕ".)
+
 ## [2026-07-16] — chore(harness): GỠ BỎ HOÀN TOÀN lệnh `docs sync` (command + function + UI + mọi mention)
 
 > 🔄 **Supersede:** thay quyết định "`docs sync` thôi là chỉ thị (2026-07-16)" — user quyết **gỡ hẳn**, không để tồn tại (note "đừng chạy" còn gây agent nhầm "cái đó là gì"). `docs sync` giờ **CHỈ còn ở changelog history này**.
