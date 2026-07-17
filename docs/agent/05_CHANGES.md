@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-07-18] — docs(structure): convention "UI no-build" + enrich slot `assets/` + phân biệt 3-vai-trò-icon
+
+Thêm vào `03_STRUCTURE §3/§4/§5` (repo + template) — sinh từ survey UI của một app desktop (SasinFlow, repo khác — READ-ONLY):
+- **§5 "UI no-build (static)":** app phục vụ UI bằng STATIC files (StaticFiles · express.static · nginx), KHÔNG bundler → 1 file HTML bự **PHẢI tách được** thành nhiều file (`styles/*.css` · `<script src>` · state · api-client), modular hoá **không cần build**. Lộ trình an toàn: `<script src>` global scope → gỡ inline `onclick=` → nâng ES module. Bổ khuyết vùng GIỮA "UI embed (single-bin)" (cấm tách vì vỡ 1-binary) và app có bundler.
+- **§5 "Icon — 3 vai trò":** media UI (logo/icon nút/bg) → `frontend/assets/` · icon `.exe`/binary → `backend/resources/packaging/` (`.spec` đọc) · icon tray/cửa sổ desktop → `backend/resources/packaging/` (backend native đọc). Chống nhầm "sao icon lại ở backend".
+- **§3 tree + §4 routing — enrich `assets/`:** "ảnh/icon/logo/font" → **logo · icon · background · banner · ảnh · font**, tổ chức con theo LOẠI khi có (`logo/ icons/ backgrounds/ banners/ images/ fonts/`).
+
+**Survey SasinFlow (đóng bước ① của TODO):** `index.html` 5.150 dòng (JS 4.020/307 func/127 inline `onclick`), phình vì **JS logic** KHÔNG phải ảnh (0 base64). **Assets đã ĐÚNG CHỖ** (logo→`frontend/assets` · icon exe+tray→`backend/resources/packaging`) — không cần fix. `04_TODO` SasinFlow chuyển `[~]` (khảo sát + phương án 4 bước xong; chờ user duyệt để tách code BÊN repo đó). Ý tưởng **memory-promotion** (episodic → curated learned-rule) ghi rõ vào `04_TODO` — gap thật duy nhất so với harness pattern 3-trụ (trụ ③ subagent/critic zemory cố tình bỏ theo điều 6).
+
 ## [2026-07-17] — chore(harness): template GENERIC + dọn lệnh-chết sót (hết vòng lặp re-dọn) + chẩn đoán model embed
 
 Dọn phần đuôi sau đợt gỡ "docs sống trong DB" + xử vụ embed báo "model unavailable".
