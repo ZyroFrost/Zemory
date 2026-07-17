@@ -26,7 +26,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 | `05_CHANGES.md` | changelog | mỗi lần sửa code; **chỉ ghi sau khi xác nhận OK** (viết tay đúng format hoặc `zemory changelog add`) |
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế |
 
-- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong — KHÔNG cần chạy `docs sync`**. *(Chỉ khi muốn `plan search`/`changelog ls` — vốn tìm trên bản index dẫn xuất — hiện đúng bản mới thì mới `docs sync`; tùy chọn, không bắt buộc. Đọc thẳng `.md` luôn đúng.)* Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
+- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Plan phải đánh số:** mỗi file trong `docs/plan/` đặt tên `NN_tên.md` (`00_`, `01_`, …) theo thứ tự; gom mọi mô tả plan rải rác (folder `planning`, doc plan lạc chỗ) về `docs/plan/`.
 - **Plan KHÔNG chứa luật:** bất biến/luật riêng của app phát sinh khi thiết kế → đề xuất đưa vào `01_CONSTITUTION.md` (user chốt), plan chỉ dẫn chiếu điều khoản.
@@ -63,7 +63,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **CHỈ làm việc trong project folder đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng vào project khác (kể cả lệnh `zemory` trỏ root khác, `cd` sang repo khác, sửa file bên đó) khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp"/"cứu dữ liệu"/"tiện tay sửa luôn"**.
 - Thấy cần đụng project khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao; user gật mới làm. Project khác có thể đang có agent/phiên khác làm việc — đụng chéo gây xung đột dữ liệu.
 - Đọc-tham-khảo (read-only) project khác để trả lời câu hỏi thì được; **mọi thao tác GHI là cấm mặc định**.
-- **Vế ngược — bạn đang ĐỨNG TRONG repo tham khảo:** mở một repo khác chỉ để **xem/copy chuẩn** (vd `zemory` — nơi chứa bộ chuẩn gốc) thì **CHỈ ĐỌC**. Lệnh `zemory` **GHI theo cwd**: chạy `init`/`sync`/`docs sync`/`docs render`/`plan set`/`changelog` khi đang đứng ở repo đó = **ghi vào repo đó + DB của nó**, không phải vào project bạn. Lấy chuẩn = **đọc `docs/agent/*` rồi chạy lệnh Ở REPO CỦA BẠN**.
+- **Vế ngược — bạn đang ĐỨNG TRONG repo tham khảo:** mở một repo khác chỉ để **xem/copy chuẩn** (vd `zemory` — nơi chứa bộ chuẩn gốc) thì **CHỈ ĐỌC**. Lệnh `zemory` **GHI theo cwd**: chạy `init`/`sync`/`docs render`/`plan set`/`changelog` khi đang đứng ở repo đó = **ghi vào repo đó + DB của nó**, không phải vào project bạn. Lấy chuẩn = **đọc `docs/agent/*` rồi chạy lệnh Ở REPO CỦA BẠN**.
 
 ## Git (BẮT BUỘC — luật cứng)
 - **KHÔNG `git push` khi user CHƯA cho phép.** Git remote là **nguồn BACKUP CUỐI CÙNG** của project — đẩy lên là ra ngoài, không gỡ lại được (gỡ = force-push, càng phá). Xong việc → build + test + **BÁO CÁO rồi DỪNG**; user bảo "push"/"lên git" mới đẩy.
