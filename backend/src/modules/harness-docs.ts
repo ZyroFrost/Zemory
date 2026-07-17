@@ -3,7 +3,7 @@ import type { Module } from "../core/types.js";
 import { validate } from "../validate.js";
 
 // The `harness` capability: owns the project docs harness — its structure
-// (rules/TODO/changelog/plan), validation, and DB-source/mirror discipline.
+// (rules/TODO/changelog/plan), validation, and FILE-WINS (.md source / DB index) discipline.
 export const harnessDocs: Module = {
   name: "docs",
   provides: "harness",

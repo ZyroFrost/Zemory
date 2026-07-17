@@ -79,7 +79,7 @@ export const TOOLS = [
   },
   {
     name: "plan_search",
-    description: "Search DB-source project docs/plan sections. Returns section ids; call plan_show for full section text.",
+    description: "Search project docs/plan sections (search index). Returns section ids; call plan_show for full section text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -94,7 +94,7 @@ export const TOOLS = [
   },
   {
     name: "plan_show",
-    description: "Show one DB-source plan/doc section by id.",
+    description: "Show one plan/doc section by id.",
     inputSchema: {
       type: "object",
       properties: {

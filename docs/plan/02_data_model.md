@@ -1,13 +1,13 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 > Cấu trúc `~/.zemory/global_memory.db` — store global duy nhất, **3 loại nội dung đều ĐÃ BUILD**,
-> tất cả **query bằng FTS**. Nguồn = DB; `docs/*.md` = bản render mirror.
+> tất cả **query bằng FTS**. Curated docs: **file `.md` là NGUỒN (FILE WINS, HP điều 3)**; bảng `doc/section/changelog` trong DB = **index dẫn xuất**, rebuild được từ `.md`.
 
 ---
 
 ## 0. Nguyên tắc & quyết định (CHỐT 2026-06-18)
-- Curated docs, TODO, specs và changelog lấy SQLite làm nguồn; markdown có header GENERATED là mirror một chiều.
+- Curated docs, TODO, specs và changelog: **file `.md` là NGUỒN (FILE WINS)**; bảng `doc/section/changelog` là index dẫn xuất, rebuild từ `.md` (HP điều 3, chốt 2026-07-16 — supersede mô hình cũ "DB là nguồn, md là mirror").
 - Transcript gốc của host là nguồn episodic; `sessions/messages` và FTS là lens dẫn xuất có thể rebuild.
-- Sửa curated content qua `plan set`, `docs add`, `changelog add`; routine `docs sync` chỉ seed hand-source và không re-import generated mirror đã có trong DB.
+- Sửa curated content = sửa `.md` trực tiếp (file wins); `plan set`/`docs add`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi render lại file). (`docs sync` đã gỡ hoàn toàn 2026-07-16.)
 - Mọi mutation section phải scope theo `project_root`; mọi path render/delete phải nằm trong `docs/`.
 - Schema có version và migration; trước migration global phải backup bằng SQLite online backup.
 
@@ -50,11 +50,11 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 - Changelog search giữ cả active lẫn archived để quyết định cũ vẫn recall được.
 - TOC là query `section ORDER BY ordinal`; không có `00_INDEX` nguồn riêng.
 
-## 4. Sync `db → md` (db là nguồn)
-- `plan set` và `docs add` cập nhật DB rồi render ngay đúng mirror.
-- `changelog add` cập nhật DB rồi render ngay `05_CHANGES.md`.
-- `docs sync` import file chưa generated hoặc phục hồi DB rỗng; generated mirror có row DB tương ứng được giữ nguyên và không đổi ID.
-- `docs render` là thao tác DB → markdown có chủ đích và có thể ghi đè mirror.
+## 4. Quan hệ `.md` ↔ DB (FILE WINS — file là nguồn)
+- Sửa thường = sửa `.md` trực tiếp; DB doc/section/changelog dựng lại (index dẫn xuất) từ `.md`.
+- `plan set`/`docs add` (tiện ích tùy chọn) cập nhật DB rồi render lại đúng file `.md`.
+- `changelog add` cập nhật DB rồi render lại `05_CHANGES.md`.
+- `docs render` (DB → `.md`) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file, KHÔNG dùng trong luồng sửa thường. (`docs sync` đã gỡ 2026-07-16.)
 - `archive` chỉ set `changelog.archived=1` rồi render active rows; full history vẫn ở DB/FTS.
 
 ## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
@@ -70,4 +70,4 @@ Global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 
-> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `02_RULES.md` — tên sau renumber, `00_overview.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi chỉnh sửa DB.
+> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `02_RULES.md` — tên sau renumber, `00_overview.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). **ĐÃ tự lành 2026-07-16** (FILE WINS: so cả CẤU TRÚC khi reindex → tách lại đúng heading; cả 8 doc về 7–30 section). Xem 04_TODO + 05_CHANGES.

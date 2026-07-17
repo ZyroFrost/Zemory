@@ -182,13 +182,13 @@ function cmdValidate(): void {
   if (!rep.ok) process.exitCode = 1;
 }
 
-// Setup guide now lives in AGENTS.md (single source). Print short install steps + pointer.
+// AGENTS.md = router thuần (điều hướng). Luật/quy trình sống ở docs/agent/*. Print short install steps + pointer.
 function cmdSetup(): void {
   console.log("zemory setup — cài & dùng:");
   console.log("  1. npm i -g zemory                 — cài global (lệnh `zemory`)");
   console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
   console.log("  3. zemory doctor");
-  console.log("Mọi hướng dẫn (mở phiên, tra cứu, sửa docs, reconcile, grill): đọc AGENTS.md ở root.");
+  console.log("Điều hướng mở phiên: AGENTS.md ở root. Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE §8).");
 }
 
 function cmdStructure(): void {
@@ -207,16 +207,16 @@ function cmdStructure(): void {
       "  Source = git tracked; output / runtime / secret = GITIGNORED.",
       "",
       "  Full per-line tree + routing table + all conventions → docs/agent/03_STRUCTURE.md",
-      "  Refactor an app to this → AGENTS.md   ·   drift check → `zemory validate`",
+      "  Refactor an app to this → docs/agent/03_STRUCTURE.md §8 (Reconcile)   ·   drift check → `zemory validate`",
       "",
-      "docs harness (.md; some are DB-render mirrors):",
+      "docs harness (.md is the SOURCE — file wins; DB doc/section/changelog = derived search index):",
       "  docs/agent/01_CONSTITUTION.md — per-app constitution: architectural invariants (user-owned)",
-      "  docs/agent/02_RULES.md      — work rules, generic across projects (markdown source)",
-      "  docs/agent/03_STRUCTURE.md  — repo structure standard (markdown source)",
-      "  docs/agent/04_TODO.md       — backlog (mirror)",
-      "  docs/agent/05_CHANGES.md    — changelog (mirror, source = changelog table)",
-      "  docs/plan/*.md              — specs (mirror, source = doc/section tables)",
-      "  ~/.zemory/global_memory.db          — SOURCE: sessions · doc/section · changelog",
+      "  docs/agent/02_RULES.md      — work rules, generic across projects",
+      "  docs/agent/03_STRUCTURE.md  — repo structure standard (+ §8 Reconcile)",
+      "  docs/agent/04_TODO.md       — backlog",
+      "  docs/agent/05_CHANGES.md    — changelog",
+      "  docs/plan/*.md              — specs (00_overview + numbered specs)",
+      "  ~/.zemory/global_memory.db          — brain (episodic sessions) + derived docs INDEX (rebuilt from .md)",
       "",
       "  Index: `zemory docs ls` · `plan ls` · `plan search` · `changelog ls`.",
     ].join("\n"),
@@ -1131,7 +1131,7 @@ async function cmdDocs(args: string[]): Promise<void> {
     const written = renderAll(root);
     const ch = renderChangelog(root, join(root, "docs", "agent", "05_CHANGES.md"));
     console.log(`zemory docs render — wrote ${written.length} doc mirror(s) + changelog (${ch} entries) [db → md]`);
-    console.log("  ⚠ .md are now GENERATED mirrors — edit via `zemory plan set` / `changelog add`.");
+    console.log("  ⚠ .md là NGUỒN (file wins) — render vừa ĐÈ .md từ DB index (restore có chủ đích); bình thường sửa .md trực tiếp.");
     return;
   }
   console.log(
@@ -1254,10 +1254,10 @@ function cmdHelp(): void {
       "  doctor    quick check (text): wired? docs? features?",
       "  ui        open a small status window (app-mode, on-demand)",
       "  archive   move old 05_CHANGES blocks to archive/ when over threshold",
-      "  validate  check docs mirrors, links, changelog retention, and supersede",
-      "  docs      ALL docs in global_memory.db: sync (import) · ls · render mirrors (db→md)",
-      "  plan      doc sections in global_memory.db: ls · show · search · set · render (db→md)",
-      "  changelog changelog in global_memory.db: import · ls · search · add · render (db→md)",
+      "  validate  check docs (.md), links, changelog retention, and supersede",
+      "  docs      docs-index utilities (.md is the SOURCE): ls · add · render (db→md restore) · rm",
+      "  plan      plan sections (.md is source; DB = search index): ls · show · search · set · render",
+      "  changelog changelog (.md is source; DB = search index): ls · search · add · import · render",
       "  brain     scan/search the global brain (brain scan | search | show)",
       "  mcp       run the local MCP stdio server (brain_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",

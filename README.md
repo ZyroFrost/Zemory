@@ -101,7 +101,7 @@ global `zemory` command in place — no reinstall needed.
 
 ```bash
 cd your-project
-zemory init && zemory docs sync && zemory doctor
+zemory init && zemory doctor
 ```
 
 Any project can query the shared brain even with no harness; `zemory init` only
@@ -128,8 +128,8 @@ window (Edge/Chrome). It has three columns:
   recall**, plus scan, capture coverage, and cross‑machine **Sync**.
 
 Panel sizes you drag are persisted (in `~/.zemory/config.json`) and restored on
-reopen. Generated markdown files are mirrors — edit content through the `zemory
-plan` / `changelog` / `docs` commands, not by hand.
+reopen. The markdown docs are the **source** — edit the `.md` directly (file
+wins); the DB is a derived search index rebuilt from those files.
 
 ---
 
@@ -188,9 +188,9 @@ zemory brain forget / redact / backup   Privacy & retention (see below)
 zemory init | sync                      Scaffold / gap-fill the project harness
 zemory doctor                           Verify docs, providers, capabilities
 zemory validate                         Lint the docs harness (links, length, supersede)
-zemory plan ls | search | show | set    DB-backed plans (mirror renders automatically)
-zemory changelog add "title"            Add + render a changelog entry
-zemory docs ls | sync | render          Manage DB-source docs
+zemory plan ls | search | show | set    Plan index (.md is source; set/show optional utilities)
+zemory changelog add "title"            Add a changelog entry (writes .md + reindexes)
+zemory docs ls | add | render | rm      Docs-index utilities (.md is the source; render = restore)
 
 # Interfaces
 zemory ui                               Live cockpit
@@ -290,7 +290,7 @@ npm pack --dry-run
 ```
 
 - `backend/src/` is 100% first‑party code; external libs/models are called, not vendored. Layout follows the standard in `docs/agent/03_STRUCTURE.md`.
-- Docs live in the DB and render to markdown mirrors — edit via commands.
+- Docs: the `.md` file is the source (file wins); the DB is a derived search index, droppable and rebuildable.
 - Tests run against throwaway databases; no network anywhere.
 
 ---
@@ -299,13 +299,14 @@ npm pack --dry-run
 
 - **Local‑only storage; zemory never calls a model API.** The driving agent is
   the intelligence; zemory is memory + harness.
-- **One source of truth.** Project docs live in the DB; search indexes are
-  derived lenses that can be dropped and rebuilt.
+- **One source of truth.** A project's `.md` docs are the source (file wins);
+  the DB doc/section/changelog is a derived index that can be dropped and rebuilt.
 - **One capability = one slot = one provider** (a registry rejects conflicts).
 - **Tool is separate from data.** The zemory binary reads a project's docs; it
   does not live inside the project.
-- **Non‑destructive by default.** Generated mirrors never overwrite an existing
-  DB source; merges are additive; plan mutations are scoped to the active project.
+- **Non‑destructive by default.** Editing a `.md` is safe (file wins); `docs render`
+  (DB → `.md`) is an intentional restore only; brain merges are additive; plan
+  mutations are scoped to the active project.
 
 ---
 

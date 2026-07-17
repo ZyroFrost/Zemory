@@ -34,7 +34,7 @@ Zemory là lớp **memory + governance (harness)** local dùng chung cho coding 
 ## 2. Nguyên tắc cốt lõi (đã chốt qua thảo luận)
 1. **Tiết kiệm token thật, đo trung thực.** Giá trị = recall trúng (đỡ re-explain) + harness gọn + (sau) RAG semantic; không claim % ảo. (Lane "compress-on-read" đã bỏ — xem changelog.)
 2. **Ranh giới `backend/src/` và dependency.** Code điều phối/policy của Zemory nằm trong `backend/src/`; engine/model public (vd embed model, sqlite-vec) gọi qua dependency hoặc binary optional, không dán source vào lõi.
-3. **Mỗi lớp dữ liệu có đúng một nguồn.** Curated docs/changelog lấy DB làm nguồn và markdown là mirror; transcript gốc của host là nguồn episodic và bảng messages là index dẫn xuất.
+3. **Mỗi lớp dữ liệu có đúng một nguồn.** Curated docs/changelog: **file `.md` là nguồn (FILE WINS, HP điều 3)**, DB doc/section/changelog là index dẫn xuất; transcript gốc của host là nguồn episodic và bảng messages là index dẫn xuất.
 4. **Một capability, một slot, một provider.** Config chọn provider; runtime từ chối provider thiếu hoặc conflict.
 5. **Không proxy model API.** Zemory chỉ ở tầng tool/CLI/MCP + lưu local; không `ANTHROPIC_BASE_URL`, không rewrite history/cache.
 6. **Progressive disclosure.** Search trả snippet/ID trước; chỉ mở message hoặc section cụ thể khi cần.
@@ -55,7 +55,7 @@ Claude / Codex / host khác
   global brain  FTS/RRF   docs policy
   SQLite/WAL    semantic  + doctor
         │
-        ├─ curated docs/changelog: DB source → markdown mirror
+        ├─ curated docs/changelog: file .md = nguồn → DB index dẫn xuất
         └─ sessions: host transcript source → derived searchable rows
 ```
 
@@ -95,7 +95,7 @@ Zemory phân biệt ba lớp theo độ tin cậy, không sao chép cùng một 
 
 | Lớp | Nguồn | Vai trò |
 |---|---|---|
-| Curated | `doc/section` và `changelog` trong global brain, scope theo project | rules, TODO, specs, quyết định bền; markdown là mirror |
+| Curated | **file `.md` là nguồn** (FILE WINS); `doc/section`+`changelog` trong brain = index dẫn xuất, scope theo project | rules, TODO, specs, quyết định bền |
 | Episodic | transcript gốc của host; `sessions/messages` là index dẫn xuất | hội thoại và tool output để recall xuyên phiên |
 | Working | context hiện tại của host | dữ liệu tạm; Zemory không tự biến thành canonical |
 
@@ -104,7 +104,7 @@ Promotion từ episodic sang curated chỉ xảy ra qua lệnh rõ và review. K
 ## 6. Phân phối, cấu trúc & cách chạy (đã chốt + đã build)
 Zemory phân phối dưới dạng package npm CLI, một bản global dùng cho mọi project. Project chỉ chứa `AGENTS.md`, `docs/.harness.json`, `docs/agent/*` và `docs/plan/*`.
 
-`zemory init` scaffold harness không ghi đè; `sync` import hand-source ban đầu nhưng giữ nguyên generated DB mirrors; `fresh` backup cả agent docs và plan; `doctor` kiểm tra setup, provider và capability. Global brain mặc định ở `~/.zemory/global_memory.db`, có thể chuyển bằng `GLOBAL_MEMORY_DB`.
+`zemory init` scaffold harness không ghi đè; `sync` gap-fill (bổ khuyết file harness còn thiếu, giữ nguyên file có sẵn — file wins); `fresh` backup cả agent docs và plan; `doctor` kiểm tra setup, provider và capability. Global brain mặc định ở `~/.zemory/global_memory.db`, có thể chuyển bằng `GLOBAL_MEMORY_DB`.
 
 Claude và Codex dùng Stop hook để capture. Recall dùng instruction hoặc MCP on-demand. UI và extension tương lai chỉ đọc status API chung.
 
@@ -113,7 +113,7 @@ Zemory phát hành theo Apache-2.0 và package phải chứa `LICENSE`. Dependen
 
 Code third-party không được dán vào `backend/src/`. Nếu bắt buộc vendor một phần, nó phải nằm ở vùng tách biệt, giữ notice/license và có hồ sơ provenance. Engine/model ngoài cho RAG (EmbeddingGemma — **kiểm license Gemma trước khi phân phối**; Transformers.js; sqlite-vec) gọi qua dependency/adapter; weight model **tải/cache lúc runtime, KHÔNG commit vào repo**. (LeanCTX/compression: đã bỏ, code ở `attic/`.)
 ## 8. Phân kỳ (trạng thái)
-- **Nền tảng v0.1 (đã có):** DB-source docs/changelog, global ingest/recall, FTS5, provider runtime, Claude/Codex capture, tests/CI và package hygiene.
+- **Nền tảng v0.1 (đã có):** file-source docs/changelog (FILE WINS; DB là index dẫn xuất), global ingest/recall, FTS5, provider runtime, Claude/Codex capture, tests/CI và package hygiene.
 - **Năng lực đã hoàn tất sau v0.1:** MCP progressive disclosure cho recall (`brain_search`/`brain_show`/`plan_search`), RAG semantic core + full vector backfill, memory retention/privacy core (encrypted export/import, raw backup/restore, forget dry-run/force, re-redact).
 - **Năng lực kế:** source-transcript privacy/tombstone nếu cần quên tuyệt đối; sau đó semantic rerank, code map và adapter host mới — chỉ bật sau benchmark/fixture.
 - **Bề mặt:** dashboard metrics và VS Code status bar dùng chung status API.
@@ -121,7 +121,7 @@ Code third-party không được dán vào `backend/src/`. Nếu bắt buộc ve
 Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/04_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
 ## 9. Quyết định (đã chốt — trước là "mở")
 - TypeScript/Node là runtime của lõi; SQLite/WAL là global brain local.
-- DB là nguồn curated; generated markdown không được routine sync ghi ngược trở lại.
+- **File `.md` là nguồn curated (FILE WINS, chốt 2026-07-16 — supersede "DB là nguồn"); DB doc/section/changelog là index dẫn xuất rebuild từ file;** `docs render` (DB→md) chỉ để phục hồi có chủ đích.
 - Capture tự động, recall on-demand; không auto-inject broad memory.
 - Claude và Codex cùng dùng Stop capture; host khác cần adapter/lifecycle riêng.
 - Global memory ở `~/.zemory/global_memory.db` (đã dời khỏi `headroom-custom` 2026-06-25).

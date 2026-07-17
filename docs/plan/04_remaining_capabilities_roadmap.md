@@ -39,8 +39,8 @@ Tool đã code/test (2026-06-29):
 
 - `brain_search`: trả ID, nguồn, project, thời gian và snippet từ global brain;
 - `brain_show`: mở đúng một message, tùy chọn kèm context lân cận;
-- `plan_search`: tìm specs DB-source;
-- `plan_show`: mở một section DB-source.
+- `plan_search`: tìm specs (index dẫn xuất);
+- `plan_show`: mở một section (index dẫn xuất).
 
 Tool để sau nếu cần:
 

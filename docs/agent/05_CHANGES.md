@@ -5,6 +5,19 @@
 
 ---
 
+## [2026-07-17] — chore(harness): CHUẨN LẠI HẾT theo FILE WINS + AGENTS thuần router — áp lên chính zemory
+
+Hoàn tất phần hoãn + soát toàn bộ ("kiểm tra còn sót gì"): dogfood chuẩn mới lên chính zemory qua 1 lượt audit đầy đủ.
+
+- **AGENTS.md (repo + template) = router THUẦN** — bỏ nốt câu doctrine còn lẫn ("FILE WINS", "cài harness = nắn về chuẩn"). Chỉ còn: banner ⛔ read-only · "project dùng zemory, mọi thứ trong docs/" · 3 bước Vào việc.
+- **`01_CONSTITUTION` §Mục đích** — sửa "`docs_template/` + `docs/agent/*` là bản mẫu" → CHỈ `docs_template/` là bản mẫu TRẮNG (`docs/agent/*` + `plan/*` là docs RIÊNG đã điền của zemory, không phải mẫu).
+- **Dọn FILE WINS drift** (mâu thuẫn HP điều 3, chốt 2026-07-16 — supersede "DB là nguồn, .md là mirror") khắp nơi: `plan/00` (§2/§3/§5/§8/§9), `plan/02` (header/§0/§4 + note "8 doc blob" cập nhật "đã tự lành 2026-07-16"), `README` (×6), output `zemory structure`/`docs render`/top-help (`cli.ts`), tooltip UI (`ui-page.ts`), MCP desc (`tools/index.ts` + `plan/04`), comment (`adopt`/`archive`/`plan.ts`/`harness-docs`). Tất cả nhất quán: **`.md` là NGUỒN, DB doc/section/changelog là index dẫn xuất rebuild từ file.**
+- **Gỡ nốt `docs sync`** sót ngoài history: `README` ×2, help `cli.ts:1258` (lệnh đã gỡ nhưng còn liệt kê), `04_TODO:27` (mốc nghiệm thu).
+- **Fix stale**: `02_RULES:33` repo thiếu mệnh đề "gom mọi mô tả plan rải rác" (khớp lại template).
+- **Verify:** `npm run build` sạch · `npm test` 85/85 · grep `docs sync` / `DB-source` / `AGENTS §N` (guidance hiện hành) = 0.
+
+> Còn nợ có chủ đích: `plan/00` giữ tiêu đề "+ Build Plan" + phần build-plan phía dưới (approach A user chốt); mục `[x]` lịch sử trong `04_TODO` (22/67) giữ nguyên chữ "DB-source" vì là bản ghi quá khứ.
+
 ## [2026-07-17] — refactor(harness): AGENTS.md = ROUTER thuần; luật/quy trình dồn về docs/; "chuẩn zemory" = docs_template/
 
 **AGENTS.md chỉ còn là CỬA ĐIỀU HƯỚNG** — không chứa luật, không chứa nội dung harness (user: *"agent là để điều hướng khi có mấy con ai tự mò… bộ harness chuẩn không liên quan gì agent"*). Trước đó AGENTS phình §0–§8 (setup·read·lookup·sửa-docs·content-rule·reconcile·grill·refactor), nhiều mục **trùng hoặc đá nhau với RULES** (điển hình: grill — RULES nói tự-động-khi-mơ-hồ, AGENTS §6 nói "chỉ khi user kêu").

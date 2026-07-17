@@ -30,7 +30,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 - **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file; Windows/PowerShell: nội dung có dấu phải truyền qua `--file`, KHÔNG pipe `echo` — hỏng UTF-8). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file. *(HP điều 3 — sửa đổi 2026-07-16)*
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
-- **Plan phải đánh số:** mỗi file trong `docs/plan/` đặt tên `NN_tên.md` (`00_`, `01_`, …) theo thứ tự.
+- **Plan phải đánh số:** mỗi file trong `docs/plan/` đặt tên `NN_tên.md` (`00_overview`, `01_`, …) theo thứ tự; gom mọi mô tả plan rải rác (folder `planning`, doc plan lạc chỗ) về `docs/plan/`.
 - **Plan KHÔNG chứa luật:** bất biến/luật riêng phát sinh khi thiết kế → đề xuất đưa vào `01_CONSTITUTION.md` (user chốt), plan chỉ dẫn chiếu điều khoản.
 - **Tra log sâu:** việc/lỗi/quyết định ở phiên khác → `zemory brain search "<q>" [--all]` (recall on-demand; đừng tra bừa).
 
