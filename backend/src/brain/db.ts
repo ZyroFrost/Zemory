@@ -102,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, timestam
 CREATE TABLE IF NOT EXISTS doc (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   project_root  TEXT,
-  path          TEXT NOT NULL,        -- e.g. "docs/plan/00_build_plan.md"
+  path          TEXT NOT NULL,        -- e.g. "docs/plan/00_overview.md"
   kind          TEXT NOT NULL DEFAULT 'plan',
   rendered_at   TEXT,
   rendered_hash TEXT,                  -- sha1 of the last render → detect hand-edits before overwriting

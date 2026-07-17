@@ -990,7 +990,7 @@ async function cmdPlan(args: string[]): Promise<void> {
     return;
   }
   if (sub === "ls") {
-    const docPath = args[1] ? args[1] : join("docs", "plan", "00_build_plan.md");
+    const docPath = args[1] ? args[1] : join("docs", "plan", "00_overview.md");
     const toc = listToc(docPath, root);
     if (!toc.length) {
       console.log(`zemory plan: no sections for ${docPath} (index rỗng — thêm nội dung qua \`plan set\`; hoặc đọc thẳng file .md).`);
@@ -1029,7 +1029,7 @@ async function cmdPlan(args: string[]): Promise<void> {
     return;
   }
   if (sub === "render") {
-    const docPath = args[1] ?? join("docs", "plan", "00_build_plan.md");
+    const docPath = args[1] ?? join("docs", "plan", "00_overview.md");
     const r = renderDoc(docPath, root);
     console.log(r ? `zemory plan render — wrote ${r.path} (${r.bytes} bytes)` : `zemory plan: no doc ${docPath}`);
     return;
