@@ -61,7 +61,7 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 Harness chuẩn (`docs_template/`, ship cho project khác) gồm:
 
 - `docs/agent/01_CONSTITUTION.md`, `02_RULES.md`, `03_STRUCTURE.md`, `04_TODO.md`, `05_CHANGES.md`;
-- `docs/plan/00_build_plan.md` (điểm khởi đầu template);
+- `docs/plan/00_overview.md` (điểm khởi đầu template);
 - `docs/.harness.json` chọn provider và threshold.
 
 Backlog riêng của chính zemory (dogfood, KHÔNG thuộc template) mở rộng thêm `docs/plan/01`–`12` theo thời gian: repo survey, data model (file này), compression (đã bỏ scope), roadmap, RAG, digest, web-chat capture, scoped sync, repo structure, token-savings dashboard (đã gỡ), DB size optimization, vector rebuild 256d.
@@ -70,4 +70,4 @@ Global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 
-> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `02_RULES.md` — tên sau renumber, `00_build_plan.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi chỉnh sửa DB.
+> **Lưu ý kỹ thuật (2026-07-14):** section này (và 7 doc khác của chính project zemory: `02_RULES.md` — tên sau renumber, `00_overview.md`, `01_repo_survey.md`, `03_subscription_quota_safe_compression.md`, `04_remaining_capabilities_roadmap.md`, `05_rag.md`, `08_scoped_sync.md`) hiện lưu trong DB dưới dạng **1 section duy nhất** thay vì tách theo heading như các doc khác — di sản từ lúc repo đổi đường dẫn (`D:\Work_Study\...` → `D:\Zyro\Tool\Zemory`). Xem TODO mục "Bug đồng bộ docs" để biết chi tiết; chưa sửa vì cần hiểu rõ cơ chế split trong `docs/plan.ts` trước khi chỉnh sửa DB.

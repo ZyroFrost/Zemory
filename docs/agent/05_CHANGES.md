@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-07-17] — chore(harness): chuẩn plan slot `00 = OVERVIEW` + mô tả zemory = harness + DB tuỳ chọn
+
+Chốt convention: **`docs/plan/00_*` = OVERVIEW mặc định mọi app** (mục đích · tính năng · ý tưởng · phi-mục-tiêu); spec chi tiết từ `01_*` trở đi. Ghi vào `03_STRUCTURE` §3 (dòng cây `plan/`) + §5 (convention `Plan 00 = overview`), cả repo lẫn template — đồng bộ index theo luật "03_STRUCTURE là INDEX".
+
+- **Rename** `docs/plan/00_build_plan.md` → `00_overview.md` (repo + template) qua `git mv` (giữ history). Cập nhật mọi tham chiếu: `cli.ts` (2 default docPath), `db.ts` (comment ví dụ), `adopt.test.mjs` (2 assert), `plan/02_data_model.md` (2 ref). `grep 00_build_plan` = 0 ngoài history.
+- **Template `00_overview.md`:** viết lại từ "Build Plan" → template OVERVIEW chung (Mục đích · Tính năng chính · Ý tưởng/định hướng · Kiến trúc tổng thể · Phi-mục-tiêu).
+- **zemory `00_overview.md`:** prepend mục "Tổng quan" — zemory dùng được ở HAI mức độc lập: (1) **Harness** (chuẩn docs, mặc định, không cần DB); (2) **Memory DB** tuỳ chọn (`global_memory.db`: scan transcript phiên + web chat, recall hybrid, sync xuyên máy mã hoá) — cài thêm khi cần nhớ xuyên phiên. Giữ nguyên build-plan phía dưới.
+
+**Verify:** `npm run build` sạch · `npm test` 85/85 pass (adopt test cover scaffolding `00_overview`) · `grep 00_build_plan` = 0.
+
 ## [2026-07-16] — chore(rules): luật cứng "KHÔNG TỰ Ý XÓA" (xóa gì cũng phải hỏi trước)
 
 Thêm `RULES §Hành xử` (+ template): xóa file · code · hàm · lệnh · chức năng · nội dung docs · folder = **phá + khó đảo** → phải nêu rõ **xóa gì + vì sao**, CHỜ user gật; thấy "thừa/không dùng" thì **ĐỀ XUẤT**, đừng tự tay xóa. Bất đối xứng: THÊM thoải mái, BỚT phải hỏi. (User nhắc: session vừa rồi xóa nhiều mà luật còn thiếu điều này — đi cặp với luật "HỎI KHI CHƯA RÕ".)

@@ -19,7 +19,7 @@ test("ensureHarness honors a custom docs path inside docs", (t) => {
 
   assert.equal(existsSync(join(root, "docs", "custom-agent", "02_RULES.md")), true);
   assert.equal(existsSync(join(root, "docs", "custom-agent", "01_CONSTITUTION.md")), true);
-  assert.equal(existsSync(join(root, "docs", "plan", "00_build_plan.md")), true);
+  assert.equal(existsSync(join(root, "docs", "plan", "00_overview.md")), true);
 });
 
 test("ensureHarness renames every older-generation doc to the current numbering (legacy chains)", (t) => {
@@ -55,7 +55,7 @@ test("freshHarness backs up both agent docs and plan", (t) => {
   assert.ok(result.renamedTo);
   assert.ok(result.renamedPlanTo);
   assert.equal(existsSync(join(result.renamedPlanTo, "custom.md")), true);
-  assert.equal(existsSync(join(root, "docs", "plan", "00_build_plan.md")), true);
+  assert.equal(existsSync(join(root, "docs", "plan", "00_overview.md")), true);
 });
 
 test("validate enforces the APP standard by default (warns on missing backend/frontend)", (t) => {

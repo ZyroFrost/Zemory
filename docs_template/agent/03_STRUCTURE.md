@@ -116,7 +116,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │
 ├── docs/                   ★ harness zemory (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
 │   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES
-│   ├── plan/           ★    spec / plan theo section — PHẲNG · NN_tên.md · MỌI .md đều được index
+│   ├── plan/           ★    spec/plan theo section — PHẲNG · NN_tên.md (00=overview) · MỌI .md đều được index
 │   └── .harness.json   ★    marker: project đã wire harness
 ├── docs_visual/      [opt]  bản XEM TRỰC QUAN cho NGƯỜI (agent KHÔNG đọc) — .html tự chứa CÓ TƯƠNG TÁC ·
 │                            .drawio/.svg vẽ tay: sơ đồ flow/kiến trúc/lineage/lưới trạng thái/timeline của
@@ -233,6 +233,7 @@ KHÔNG folder rỗng    INDEX = TỪ ĐIỂN TÊN để tra, KHÔNG phải check
 2 trục sắp xếp       LAYER-FIRST (slot phẳng dưới src/, mặc định) HOẶC DOMAIN-FIRST (src/<domain>/ lồng slot). Chọn 1, không trộn. Cross-cutting LUÔN ở src/ gốc. (§2)
 1 TÊN / concern      store/ (KHÔNG db|models) · pages/ (KHÔNG views|screens). Framework ép mới đổi
 Tên nhiều-từ = _     file + folder slot nhiều từ → gạch DƯỚI (docs_visual · docs_template · NN_tên.md), KHÔNG hyphen/camelCase. Tên do tool/npm ép (package-lock.json · .github/ · docker-compose.yml) = ĐỂ YÊN
+Plan 00 = overview   docs/plan/00_overview.md = OVERVIEW mặc định mọi app (mục đích · tính năng · ý tưởng · phi-mục-tiêu). Spec chi tiết từ 01_* trở đi; đánh số NN_ tăng dần, PHẲNG. Bất biến kiến trúc riêng → 01_CONSTITUTION, KHÔNG nằm trong plan
 Framework ép         framework hardcode quét tên folder (Next pages/, Django models/migrations/, Rails app/models) → theo nó (như Docker ép root)
 Tool ép root         MỌI config tool đọc từ root — folder .<tool>/ (.github/.vscode/.claude/.serena) + file *.config.* / .<tool>rc / .editorconfig / .npmrc / .dockerignore / .nvmrc + Docker/.spec/Makefile — ĐỂ YÊN, refactor KHÔNG dời/dọn/liệt-kê-cứng (là danh sách MỞ)
 Entry ★ (Node-CLI)   entry = run.* HOẶC manifest.bin/main; manifest = root HOẶC backend/. Node-CLI (bin ở root package.json) KHÔNG cần backend/run.* — vẫn đạt ★

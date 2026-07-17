@@ -1,6 +1,14 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
-> Tài liệu kế hoạch xây dựng zemory. Chốt nguyên tắc + kiến trúc + cách chạy + phân kỳ.
-> Viết bằng tiếng Việt (quy ước docs). Code/UI sau này bằng tiếng Anh.
+# zemory — Tổng quan (Overview) + Build Plan
+
+> File `00` = OVERVIEW của app (mục đích · tính năng · ý tưởng), kèm kế hoạch xây dựng bên dưới. Tiếng Việt (quy ước docs); code/UI tiếng Anh.
+
+## Tổng quan
+**zemory = lớp quản trị BỘ NHỚ + HARNESS cho coding agent — một lõi dùng chung cho mọi project trên máy.** Dùng được ở HAI mức, độc lập nhau:
+1. **Harness (chuẩn docs) — mặc định, không cần DB.** Bộ `docs/agent/*` (constitution · rules · structure · TODO · changelog) + `plan/` đánh số + `AGENTS.md`. Project nào cũng adopt để agent bám một chuẩn thống nhất thay vì mỗi repo một kiểu.
+2. **Memory DB (tuỳ chọn — cài thêm khi cần nhớ xuyên phiên).** Cài `global_memory.db` local: hook scan transcript phiên (Claude Code · Codex · Continue · LM Studio) + web chat vào DB, dedup + redact, recall hybrid (FTS + vector), đồng bộ xuyên máy qua bundle mã hoá. Cho phép agent NHỚ việc phiên trước — xuyên project và xuyên máy.
+
+User chọn dùng chỉ harness, hoặc harness + DB; hai mức không ràng buộc nhau. Bất biến kiến trúc đầy đủ: `docs/agent/01_CONSTITUTION.md`.
 
 ---
 
