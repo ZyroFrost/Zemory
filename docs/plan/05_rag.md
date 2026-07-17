@@ -11,7 +11,7 @@
 - **Slot:** vector là *engine nội bộ* của capability `search` hợp nhất, KHÔNG slot riêng (giữ 1 capability = 1 provider).
 
 ## 2. Bất biến
-- Embed model nhỏ ≠ LLM → vẫn đúng luật "tầng lưu KHÔNG gọi LLM" (nó *đo nghĩa*, không *sinh chữ*).
+- Embed model nhỏ ≠ LLM → vẫn đúng luật "tầng lưu KHÔNG gọi LLM" (nó *đo nghĩa*, không *sinh văn bản*).
 - Local-only; vector là index dẫn xuất, dựng lại được từ content.
 - FTS5 là baseline LUÔN CÓ; vector chỉ THÊM, không thay. Embed lỗi/thiếu → fallback FTS.
 - Recall vẫn agentic on-demand, KHÔNG auto-inject.
@@ -19,10 +19,10 @@
 - Model tải/cache lúc runtime, KHÔNG commit weight vào repo (package sạch).
 
 **Chống trùng khi nối vào A.I Center (thiết kế từ đầu — bắt buộc):**
-- **1 embed service duy nhất.** `embed(text)→vector` là MỘT module dùng-chung (config model + dtype + cache-path), KHÔNG nhúng chết vào search. A.I Center bê nguyên module này làm provider embedding L2 — mọi thứ (session-search, knowledge-RAG, code-map sau) gọi CHUNG, không ai đẻ embedder thứ hai.
+- **1 embed service duy nhất.** `embed(text)→vector` là MỘT module dùng-chung (config model + dtype + cache-path), KHÔNG nhúng chết vào search. A.I Center tái sử dụng nguyên module này làm provider embedding L2 — mọi thứ (session-search, knowledge-RAG, code-map sau) gọi CHUNG, không ai tạo embedder thứ hai.
 - **1 vector store generic.** Bảng sqlite-vec keyed theo `chunk_id` + `kind` (session | knowledge | doc | code) trong CHÍNH `global_memory.db`. Knowledge-RAG của A.I Center insert vào CÙNG bảng với `kind=knowledge` — KHÔNG tạo `rag.db` riêng.
 - **Cache model 1 chỗ, chỉnh được.** Đường dẫn weight qua env/config (sau trỏ về model dir chung của A.I Center / `ai_library`) → tải 1 lần, dùng chung, không tải trùng.
-- **1 inference brick.** Transformers.js là gạch inference duy nhất; A.I Center tái dùng, không thêm runtime thứ hai.
+- **1 lớp inference.** Transformers.js là runtime inference duy nhất; A.I Center tái dùng, không thêm runtime thứ hai.
 ## 3. Kiến trúc (ghép vào cái đã có)
 
 ```text
@@ -42,7 +42,7 @@ query:
 - **C. Hybrid retrieve — XONG 2026-06-29:** vector stream đã vào RRF cùng FTS; `brain search` chạy hybrid khi enabled, vẫn giữ scope project/session và fallback FTS khi vector thiếu/lỗi.
 - **D. Benchmark gate — PASS 2026-06-29:** `brain bench` và test suite xác nhận hybrid recall@3 >= FTS trên paraphrase corpus; benchmark local mới nhất: hybrid 100%, FTS 0% trên corpus gate.
 - **D2. Full corpus backfill — XONG 2026-06-30:** `zemory brain embed --all` đã chạy xong trên corpus lịch sử của `global_memory.db`; mốc nghiệm thu xác nhận `vec_chunks` khớp `messages` 1:1. Backfill writer đã chống duplicate row và batch theo nhóm độ dài để chạy thực tế ổn hơn trên transcript dài. Vì brain ingest transcript sống, message mới sau mốc này xử lý bằng `zemory brain embed` incremental.
-- **E. Rerank cross-encoder — XONG (opt-in) 2026-06-30:** `backend/src/brain/rerank.ts` chạy cross-encoder (mặc định `Xenova/bge-reranker-base` ONNX qua Transformers.js, **dùng chung weight cache + inference brick** với embedder — đúng plan §2) rescore top-40 ứng viên RRF rồi reorder; **fail-open** giữ nguyên thứ tự RRF khi model lỗi/thiếu. Mặc định **OFF (opt-in)** qua UI toggle / `ZEMORY_RERANK=1` / `brain search --rerank`, theo bất biến "chỉ bật mặc định sau khi thắng net". `brain bench --rerank` thêm lane đo riêng (hybrid+rerank); spot check brain thật xác nhận reorder top-K đúng chủ đề hơn hybrid thuần. Giá trị thật ở corpus lớn/nhiễu — trên corpus gate 8-doc hybrid đã chạm trần 100% nên rerank chưa tăng recall ở đó.
+- **E. Rerank cross-encoder — XONG (opt-in) 2026-06-30:** `backend/src/brain/rerank.ts` chạy cross-encoder (mặc định `Xenova/bge-reranker-base` ONNX qua Transformers.js, **dùng chung weight cache + lớp inference** với embedder — đúng plan §2) rescore top-40 ứng viên RRF rồi reorder; **fail-open** giữ nguyên thứ tự RRF khi model lỗi/thiếu. Mặc định **OFF (opt-in)** qua UI toggle / `ZEMORY_RERANK=1` / `brain search --rerank`, theo bất biến "chỉ bật mặc định sau khi thắng net". `brain bench --rerank` thêm lane đo riêng (hybrid+rerank); spot check brain thật xác nhận reorder top-K đúng chủ đề hơn hybrid thuần. Giá trị thật ở corpus lớn/nhiễu — trên corpus gate 8-doc hybrid đã đạt mức tối đa 100% nên rerank chưa tăng recall ở đó.
 - **F1. Asymmetric prompts + Matryoshka 256d + chunk message dài + MCP grade/rewrite — XONG 2026-07-12/14:** so sánh với một repo RAG khác (production-agentic-rag-course) phát hiện EmbeddingGemma là prompt-trained (query cần prefix `task: search result | query:`, document cần `title: none | text:`) mà zemory chưa dùng — thêm `embedQuery`/`embedDocBatch` với profile lưu `vec_config.profile` (stored-config-authoritative, giống pattern dims). Message >6000 ký tự giờ chunk thành cửa sổ chồng lấn (6000/500, tối đa 8, rowid tổng hợp qua `vec_map`) thay vì cắt cụt mất phần đuôi. `brain_search` (MCP) có hướng dẫn agent tự chấm + viết lại query (≤2 lần) trước khi kết luận không có — agentic loop, 0 token phía zemory. Kèm plan 12 (`docs/plan/12_vector_rebuild_256.md`): rebuild toàn bộ DB thật ở 256d (đổi quyết định §5 cũ "768d đầy đủ") + FTS external-content + VACUUM → **DB 1141.4MB→595.1MB (−48%)**, gate `npm run check` 82/82 + `brain bench --rerank` hybrid/rerank 100% (8/8).
 - **F2. (TẦM NHÌN — sau core) Mở RAG sang DATA CHÍNH (ý tưởng user 2026-06-26):** hiện RAG chỉ trên *memory agent* (session transcript); sau này áp lên **toàn bộ data/knowledge chính**, không chỉ memory. **CHUNG 1 hệ thống RAG** — chung model embed + embed service + retriever + RRF. DB **có thể tách** (memory DB vs data-chính DB) nhưng **dùng chung 1 model**. Cách build để KHÔNG phá khi mở rộng: retriever **query nhiều store rồi fuse** + cột `kind` (session | knowledge | doc | code) → thêm store data-chính sau mà không viết lại core. (Quyết tách-hay-chung-DB theo quy mô / vòng đời / privacy — xem §5.)
 ## 5. Quyết định còn mở (chốt khi làm)

@@ -12,12 +12,12 @@
 1. **Dẫn xuất, KHÔNG phải nguồn.** Rules/specs curated + `messages` gốc luôn thắng. Xoá/dựng lại bất cứ lúc nào; không bao giờ ghi đè hay "thay lời" phiên thật.
 2. **1 digest ↔ đúng 1 `session_id`.** Bộ sinh chỉ đọc `messages WHERE session_id = X` → cấu trúc chặn trộn phiên. Digest mang luôn `host` + `project_root` (provenance) → luôn biết phiên nào / máy nào.
 3. **Mỗi mục digest kèm ANCHOR (message id)** → drill xuống tin thật verbatim để kiểm.
-4. **Tầng lưu KHÔNG gọi LLM** (giữ luật + không tốn quota). Nền extractive không sinh chữ nên không cần model "đủ thông minh".
+4. **Tầng lưu KHÔNG gọi LLM** (giữ luật + không tốn quota). Nền extractive không sinh văn bản nên không cần model "đủ thông minh".
 5. **Không phụ thuộc "biết lúc phiên kết thúc".** Regen theo nhịp `brain scan`, guard bằng content-hash — phiên mọc thêm tin thì digest tự cập nhật, không cần ai bấm/nhắc.
 
 ## 3. Nội dung một digest
 - `tasks[]` — DANH SÁCH việc đã làm (nhiều, không gò 1), mỗi việc kèm anchor. Trích từ mỗi yêu cầu user + mỗi nhánh chốt.
-- `paths_touched[]` — tập folder/repo phiên THỰC đụng (từ cwd + đường dẫn file trong tool calls), tách khỏi `project_root` (xử ca "phiên này trỏ folder khác").
+- `paths_touched[]` — tập folder/repo phiên thực sự truy cập (từ cwd + đường dẫn file trong tool calls), tách khỏi `project_root` (xử ca "phiên này trỏ folder khác").
 - `decisions[]` — dòng có dấu hiệu chốt.
 - `errors[]` — tool lỗi / exit ≠ 0.
 - `outcome` — vài tin cuối phiên.

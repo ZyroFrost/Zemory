@@ -68,7 +68,7 @@ Chốt sổ phiên **2026-07-14 → 07-16**. Chi tiết từng mục ở changel
 ### Đã làm
 
 **① RAG — so chuẩn với repo ngoài rồi vá đúng chỗ yếu (#1010, plan 12)**
-So `production-agentic-rag-course` (LangGraph) với zemory ⇒ zemory hơn về hybrid 3-luồng, rerank, eval gate, local-only; nhưng lòi **3 lỗ thật**: (a) **thiếu asymmetric Gemma prompt** (model prompt-trained mà đưa text trần = mất chính xác miễn phí) (b) message >6000 ký tự **cụt đuôi** với vector (c) chưa có vòng grade/rewrite. Vá cả 3 (`2164674`) + **plan 12 mổ DB thật**: rebuild 94.384 vector @ **256d Matryoshka** + prompt mới · FTS **external-content** (v12) · `brain vacuum` (lệnh mới) ⇒ **DB 1141.4MB → 595.1MB (−48%)**, gate `check` 82/82 + bench hybrid/rerank 100%. Sự cố: rebuild lần 1 chết vì `database is locked` → vá **retry-with-backoff**, resume không mất vector.
+So `production-agentic-rag-course` (LangGraph) với zemory ⇒ zemory hơn về hybrid 3-luồng, rerank, eval gate, local-only; nhưng lòi **3 lỗ thật**: (a) **thiếu asymmetric Gemma prompt** (model prompt-trained mà đưa text trần = mất chính xác miễn phí) (b) message >6000 ký tự **cụt đuôi** với vector (c) chưa có vòng grade/rewrite. Vá cả 3 (`2164674`) + **plan 12 chỉnh sửa DB thật**: rebuild 94.384 vector @ **256d Matryoshka** + prompt mới · FTS **external-content** (v12) · `brain vacuum` (lệnh mới) ⇒ **DB 1141.4MB → 595.1MB (−48%)**, gate `check` 82/82 + bench hybrid/rerank 100%. Sự cố: rebuild lần 1 chết vì `database is locked` → vá **retry-with-backoff**, resume không mất vector.
 
 **② Harness — thêm tầng HIẾN PHÁP + đôn số (`cf28037`, #1031)**
 Ý tưởng `constitution.md` của GitHub Spec Kit. Phân nghĩa chốt: **constitution = luật tối cao RIÊNG từng app** (mỗi app 1 bản, chỉ user sửa) · **RULES = luật làm việc CHUNG mọi project** (ship nguyên từ template). Renumber `01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES`; `LEGACY_RENAME` phủ cả 2 thế hệ tên cũ; vá luôn **bug template stale** (từ 07-09 mọi `zemory init` phát ra RULES trỏ file không tồn tại). Hiến pháp zemory gom **12 điều** từ luật nằm rải trong plan 00/02/04–08/10–12. Sau đó thêm **§Mục đích BẮT BUỘC + PHI-MỤC-TIÊU** (#1063) — trước đó **không file nào trong harness nói project sinh ra để làm gì**: AGENTS.md bị `sync` refresh nên không giữ được, plan chỉ tả thiết kế.
@@ -79,12 +79,12 @@ Từ điển thiếu chỗ cho app agent dù §6 tuyên bố phủ "AI project":
 **④ FILE WINS — đổi luật căn bản (#1061, `9457fc1`)**
 > 🔄 **Supersede:** bãi bỏ "DB là nguồn curated docs, .md là mirror" (chốt 2026-06-18) — **user quyết 07-16**: zemory chưa đủ ổn định để cố định NỘI DUNG docs; nó chỉ cố định **cấu trúc folder + rule chung + harness**.
 
-`.md` là **NGUỒN**, DB là **index dẫn xuất**. Sửa tay tự do bám chuẩn → `docs sync` (file wins). Lý do đổi: luật cũ gây rối thật — session khác đọc AGENTS.md thấy "cấm gõ tay" rồi quan sát hành vi (`kept DB source`, sửa tay bị nuốt) → kẹt.
+`.md` là **NGUỒN**, DB là **index dẫn xuất**. Sửa tay tự do bám chuẩn → `docs sync` (file wins). Lý do đổi: luật cũ gây rối thật — session khác đọc AGENTS.md thấy "cấm gõ tay" rồi quan sát hành vi (`kept DB source`, sửa tay bị ghi đè) → kẹt.
 
 **⑤ 3 bug NGUY HIỂM tự tay mình gây/che — tìm ra nhờ agent SasinFlow báo (#1062, #1063, #1064)**
 - **CRLF làm parser MÙ HOÀN TOÀN**: file Windows viết ra có `\r`; JS `.` và `$` không ăn `\r` ⇒ `parseChangelog` **0 entry** (`import` báo "merged 0" trên file 26 heading!), `parseMarkdown` **0 heading** (cả file thành 1 blob). Luật cũ che nó (file luôn do zemory render = LF); vừa đổi FILE WINS thì **chí tử** — guard salvage cũng bị vô hiệu vì nó dùng chính parser đó ⇒ render đè = **mất thật**.
 - **Blob tự duy trì**: blob render ra **trùng khít file** ⇒ check "nội dung khớp" bảo "unchanged" mãi mãi. Vá: so **cả cấu trúc** (`sections === parseMarkdown(file).length`). **8 doc blob của zemory tự lành** (7–30 section) — bug tồn từ đầu tháng, **chẩn đoán sai 2 lần** (đổ cho đổi project_root, rồi cho CRLF).
-- **False-positive salvage**: `renderDoc` so `sha1(file)` với `rendered_hash` — mà `docs sync` không render nên hash luôn cũ ⇒ **mọi render sau sync đẻ 1 `.bak` rác**. Nay so thân-file vs thân-DB.
+- **False-positive salvage**: `renderDoc` so `sha1(file)` với `rendered_hash` — mà `docs sync` không render nên hash luôn cũ ⇒ **mọi render sau sync tạo thừa 1 file `.bak`**. Nay so thân-file vs thân-DB.
 
 **⑥ Luật cứng mới (`cabf3f6`, `1b45fae`) — sinh ra từ sự cố thật của chính phiên này**
 - **§Phạm vi project**: tôi tự ý chạy `zemory sync`+`changelog import` trong **SasinFlow** khi user chỉ hỏi để chỉnh luật zemory — đúng lúc agent khác đang làm việc live bên đó ⇒ xung đột (file nửa cũ nửa mới, DB lệch, nó phải sửa ngược). Đã khôi phục nguyên trạng theo lệnh user. Luật: **cấm GHI ra project khác khi chưa được phép**; read-only thì được.
@@ -98,8 +98,8 @@ Từ điển thiếu chỗ cho app agent dù §6 tuyên bố phủ "AI project":
 ### Bàn giao session sau
 
 1. **3 commit chưa push** (`711cd0e` · `005696d` · `1b45fae`) — chờ user cho phép (§Git).
-2. **SasinFlow — UI 1 file 5.150 dòng** (JS 4.020 dòng/307 function, 127 `onclick` inline): đã khảo sát + có phương án 4 bước (tách CSS → cắt JS thành nhiều `<script src>` giữ global scope → gỡ inline handler → nâng ES module) + draft convention "UI no-build" cho §5. **CHỜ USER GẬT**, chưa đụng code. Hạ tầng bên đó đã sẵn sàng tách (StaticFiles mount + spec bundle nguyên folder), KHÔNG bị ràng buộc single-binary.
-3. **SasinFlow mìn 9-entry**: agent bên đó chạy `zemory docs sync` là tự merge. Đừng tự đụng.
+2. **SasinFlow — UI 1 file 5.150 dòng** (JS 4.020 dòng/307 function, 127 `onclick` inline): đã khảo sát + có phương án 4 bước (tách CSS → cắt JS thành nhiều `<script src>` giữ global scope → gỡ inline handler → nâng ES module) + draft convention "UI no-build" cho §5. **CHỜ USER GẬT**, chưa xử lý code. Hạ tầng bên đó đã sẵn sàng tách (StaticFiles mount + spec bundle nguyên folder), KHÔNG bị ràng buộc single-binary.
+3. **SasinFlow tồn đọng 9 entry**: agent bên đó chạy `zemory docs sync` là tự merge. Đừng tự đụng.
 4. **Đo tốc độ embed/ngày** — vẫn chưa có số ngày-thường sạch.
 5. Nhỏ: `plan show` in lặp header · tooltip UI chưa i18n.
 
@@ -131,7 +131,7 @@ Gate: `npm run check` 88/88 · `docs sync` xác nhận DB nuốt đủ (section 
 
 **Kèm 2 việc dọn:**
 1. **15 file docs còn header cũ "do not hand-edit"** — mâu thuẫn TRỰC TIẾP với luật FILE WINS vừa ship (chính thứ làm session khác rối). `docs render` cập nhật hết; git diff xác nhận **chỉ header đổi**, 0 mất nội dung.
-2. **Vá false-positive salvage trong `renderDoc`**: nó so `sha1(file)` với `doc.rendered_hash` — mà `docs sync` KHÔNG render nên hash luôn cũ ⇒ **mọi lần render sau sync đều đẻ 1 `.bak` rác** dù DB đã có đúng nội dung đó. Nay so **thân file vs thân DB** (đúng câu hỏi cần hỏi: file có gì CHƯA vào DB không?). +1 test khóa: nội dung đã sync → render KHÔNG salvage và vẫn còn nguyên trong file.
+2. **Vá false-positive salvage trong `renderDoc`**: nó so `sha1(file)` với `doc.rendered_hash` — mà `docs sync` KHÔNG render nên hash luôn cũ ⇒ **mọi lần render sau sync đều tạo thừa 1 file `.bak`** dù DB đã có đúng nội dung đó. Nay so **thân file vs thân DB** (đúng câu hỏi cần hỏi: file có gì CHƯA vào DB không?). +1 test khóa: nội dung đã sync → render KHÔNG salvage và vẫn còn nguyên trong file.
 
 Gate: `npm run check` **88/88**.
 
@@ -161,7 +161,7 @@ Gate: `npm run check` **88/88**.
 
 **FILE WINS: `.md` là NGUỒN của docs; DB chỉ là INDEX dẫn xuất** (search/sync), dựng lại được từ file bất cứ lúc nào.
 
-**Vì sao đổi:** luật cũ ("cấm gõ tay .md, phải qua `plan set`/`changelog add`") gây rối thật — session khác đọc AGENTS.md thấy tuyên bố đó rồi quan sát hành vi thật (`docs sync` báo `kept DB source`, sửa tay bị nuốt) → không biết đường nào mà lần. Ràng buộc đó cũng chặn agent làm việc tự nhiên trong khi giá trị thật của zemory nằm ở **khung** chứ không phải ở chỗ giữ nội dung.
+**Vì sao đổi:** luật cũ ("cấm gõ tay .md, phải qua `plan set`/`changelog add`") gây rối thật — session khác đọc AGENTS.md thấy tuyên bố đó rồi quan sát hành vi thật (`docs sync` báo `kept DB source`, sửa tay bị ghi đè) → không biết đường nào mà lần. Ràng buộc đó cũng chặn agent làm việc tự nhiên trong khi giá trị thật của zemory nằm ở **khung** chứ không phải ở chỗ giữ nội dung.
 
 **Code (`backend/src/docs/`):**
 - `plan.ts importAll`: mirror bị sửa tay (nội dung file ≠ bản render từ DB) → **RE-IMPORT theo file**. Nội dung khớp → giữ nguyên DB rows (**ID section ổn định, không churn**). Tự lành 8 doc "1 blob" (bug đồng bộ cũ) ngay lần đầu file được sửa.
@@ -370,7 +370,7 @@ Cho phép **dời DB brain KHỎI ổ hệ thống** (ổ C phình không kiểm
 **Vì sao:** `global_memory.db` lớn dần vô hạn theo số session; nằm ở `~/.zemory` trên ổ C làm đầy ổ. Trước đây chỉ đổi được qua env `GLOBAL_MEMORY_DB` (ẩn, không persist tiện). Nay có setting + script dời.
 
 **Cơ chế (an toàn, khó-đảo nên làm kỹ):**
-- **Con trỏ bootstrap** `~/.zemory/location.json` `{dataDir}` — CỐ ĐỊNH ở home (không thể để cạnh DB: gà–trứng). Thứ tự: env `GLOBAL_MEMORY_DB` > pointer > `~/.zemory` default. Mọi phụ trợ (`config.json`/`browser`/`imports`/`backups`) bám `BRAIN_DIR` nên dời theo cụm. Default GIỮ nguyên `~/.zemory` (không phá máy đang chạy).
+- **Con trỏ bootstrap** `~/.zemory/location.json` `{dataDir}` — CỐ ĐỊNH ở home (không thể để cạnh DB: phụ thuộc vòng). Thứ tự: env `GLOBAL_MEMORY_DB` > pointer > `~/.zemory` default. Mọi phụ trợ (`config.json`/`browser`/`imports`/`backups`) bám `BRAIN_DIR` nên dời theo cụm. Default GIỮ nguyên `~/.zemory` (không phá máy đang chạy).
 - **`brain/relocate.ts`** — `relocateBrain()`: checkpoint WAL → copy `.db`(+`config.json`) → **verify** (`PRAGMA integrity_check` + đếm message khớp) → chỉ khi OK mới đổi con trỏ → GIỮ bản cũ đổi tên `.relocated-*.bak` (không xoá, rollback được). Chặn folder cloud-sync (Google Drive/OneDrive/Dropbox…) trừ `--force` (WAL sống trên Drive = corrupt).
 - **CLI**: `zemory brain where` (xem DB ở đâu + size + con trỏ) · `zemory brain relocate <dir> [--force]`.
 - **UI cockpit**: ô **"Nơi lưu (máy)"** ngay cạnh "Drive folder" + nút **⇄ Dời**; xác nhận → "đang dời…" → báo bản cũ giữ ở đâu.
@@ -381,12 +381,12 @@ Cho phép **dời DB brain KHỎI ổ hệ thống** (ổ C phình không kiểm
 
 ## [2026-07-10] — feat(structure): chuẩn v2 — 2 trục layer/domain-first + phủ đủ slot + luật không-folder-rỗng
 
-Nâng chuẩn cấu trúc (`docs/agent/02_STRUCTURE.md` + `docs-template/`) lên **v2** để phủ đủ mọi project — cái gì cũng có slot gắn vào, không lệch/lẫn, và **KHÔNG đẻ folder rỗng**.
+Nâng chuẩn cấu trúc (`docs/agent/02_STRUCTURE.md` + `docs-template/`) lên **v2** để phủ đủ mọi project — cái gì cũng có slot gắn vào, không lệch/lẫn, và **KHÔNG tạo folder rỗng**.
 
 **Vì sao:** audit chuẩn cũ thấy 1 lỗ hổng gốc + 4 vùng hở — chuẩn chỉ mô tả *layer-first* nhưng chính zemory tổ chức *domain-first* (`brain/`/`docs/`/`core/`), nên mọi app nhiều-domain sẽ tự lệch; thiếu nhà cho code dùng chung BE↔FE (chỉ có `types/` type-only), thiếu tên slot cho cache/blob/notifications/search/pipeline/contracts/plugins/codegen; frontend thiếu `util/`/`types/`; và ★ bắt buộc `backend/run.*` khiến chính zemory (Node-CLI, bin ở root) non-conformant.
 
 **Đã làm:**
-- **§2 mới — 2 trục sắp xếp:** LAYER-FIRST (slot phẳng dưới `src/`) vs DOMAIN-FIRST (`src/<domain>/` lồng lại slot); cross-cutting luôn ở `src/` gốc. Công nhận cách zemory đang tổ chức → không cần đập cấu trúc.
+- **§2 mới — 2 trục sắp xếp:** LAYER-FIRST (slot phẳng dưới `src/`) vs DOMAIN-FIRST (`src/<domain>/` lồng lại slot); cross-cutting luôn ở `src/` gốc. Công nhận cách zemory đang tổ chức → không cần thay đổi cấu trúc.
 - **Cây gom theo 6 dải vai trò** (biên-vào · biên-ra · xử-lý · nền-tảng · chia-sẻ · domain) — dễ quét.
 - **+10 slot:** `cache/` `storage/` `notifications/` `search/` `pipelines/` `core/` `shared/`(nâng từ `types/`, thêm runtime dùng chung) `contracts/` `plugins/` `generated/`; frontend `+util/ +types/`.
 - **Luật KHÔNG folder rỗng** nêu nổi bật: INDEX = từ điển tên để TRA, tạo folder chỉ khi có concern thật (app điển hình 4–10 slot).

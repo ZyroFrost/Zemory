@@ -1,15 +1,15 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
-# Thi công: rebuild vector với Gemma prompts @ 256d + FTS external-content (một lần mổ)
+# Thi công: rebuild vector với Gemma prompts @ 256d + FTS external-content (một lần chỉnh sửa DB)
 > **Trạng thái: HOÀN TẤT (2026-07-14).** User duyệt 2026-07-12 (KHÔNG backup — DB là lớp DẪN XUẤT: transcript gốc còn nguyên ở store Claude/Codex + `~/.zemory/imports/chatgpt/`). Executor: session Sonnet 5. Người viết plan: Fable (session 2026-07-12, commit `2164674`).
 >
 > **Kết quả thật:** DB `global_memory.db` 1141.4MB → 595.1MB (giải phóng 546.3MB, ~48%). 94.384 vector (0 remaining), profile `gemma-prompt-v1` @ 256d. Gate: `npm run check` 82/82, `brain bench --rerank` @256d hybrid 100%/rerank 100% (8/8), FTS-only 0%. Spot-check 3 query thật (VN+EN): không regression, 1 query cho kết quả liên quan hơn hẳn nhờ prompt profile mới.
 >
 > **Sự cố dọc đường:** rebuild lần 1 crash vì "database is locked" (tiến trình zemory khác ghi cùng lúc) — vá bằng retry-with-backoff (commit sau `2164674`) rồi resume thành công, không mất vector đã ghi.
 >
-> Luật bất di bất dịch: **KHÔNG đụng `sessions`/`messages` gốc** — mọi bước chỉ đụng lớp dẫn xuất (vec_*, FTS). Fail-open giữ nguyên: vector lane hỏng thì recall rơi về FTS, không bao giờ chết.
+> Luật bất di bất dịch: **KHÔNG sửa đổi `sessions`/`messages` gốc** — mọi bước chỉ đụng lớp dẫn xuất (vec_*, FTS). Fail-open giữ nguyên: vector lane hỏng thì recall rơi về FTS, không bao giờ chết.
 ## 0. Bối cảnh bắt buộc đọc trước
 
-- `docs/plan/11_db_size_optimization.md` — số đo dbstat: DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm 2 lần mổ vô ích.
+- `docs/plan/11_db_size_optimization.md` — số đo dbstat: DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm chỉnh DB 2 lần không cần thiết.
 - Commit `2164674` — pattern **stored-config-authoritative**: profile ghi trong `vec_config.profile`, index đã build theo gì thì cả phía doc lẫn query đi theo đó; env chỉ có tác dụng lúc TẠO index. Bước 1 dưới đây áp dụng đúng pattern này cho `dims`.
 - `backend/src/brain/vectors.ts` — chú ý: rowid bảng vec0 PHẢI bind BigInt; chunk message dài dùng rowid tổng hợp ≥ 2^40 qua `vec_map`.
 
@@ -27,13 +27,13 @@
   2. Build index với `ZEMORY_EMBED_DIMS=256` → `vec_config.dims = 256`, `vectorRanks` vẫn ra đúng top hit.
   3. Index 256 đã build, XÓA env → query vẫn tự slice 256 (stored dims authoritative).
 
-## 2. Gate chất lượng TRƯỚC khi mổ DB thật
+## 2. Gate chất lượng TRƯỚC khi chỉnh sửa DB thật
 
 ```powershell
 $env:ZEMORY_EMBED_DIMS='256'; zemory brain bench            # mốc: hybrid recall@3 = 100% (8/8)
 $env:ZEMORY_EMBED_DIMS='256'; zemory brain bench --rerank   # lane rerank không vỡ
 ```
-Bench dựng corpus ở DB temp nên tự build 256d + prompt mới — đây chính là bản gate end-to-end. **Nếu < 8/8: DỪNG, thử 512, báo user.** Không được mổ DB thật khi gate đỏ.
+Bench dựng corpus ở DB temp nên tự build 256d + prompt mới — đây chính là bản gate end-to-end. **Nếu < 8/8: DỪNG, thử 512, báo user.** Không được chỉnh sửa DB thật khi gate đỏ.
 
 ## 3. Rebuild DB thật (bước dài — chạy nền nhiều giờ)
 

@@ -1,6 +1,6 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # Web-chat capture — thu session từ ChatGPT / Gemini / Claude.ai
-> Spec cho năng lực: nuốt hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào global brain.
+> Spec cho năng lực: ingest hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào global brain.
 > Khác adapter agent CLI/IDE (`claude-code`, `codex`, `continue`, `lmstudio`): web chat nằm ở **server**, KHÔNG ghi file ra đĩa → `brain scan` quét đĩa không với tới. Phải lấy qua **export chính chủ** hoặc **browser** (đăng nhập).
 > Ưu tiên: **GPT trước**, rồi Gemini, rồi Claude.ai.
 > **Trạng thái (cập nhật 2026-07-08): ✅ v1 ĐÃ SHIP cho ChatGPT** — `backend/src/brain/scanweb.ts` (browser-connector), schema **v9 có cột `origin`**, **859 hội thoại ChatGPT** (~30.9k msg, cả Project chats) đã vào brain. Gemini/Claude.ai chưa làm. Scripts prototype cũ dời `attic/web-capture/`.
@@ -22,7 +22,7 @@
 - **Vì sao 1 cột không phải table:** RULES §3 "1 nguồn sự thật". Table riêng ⇒ mọi query UNION, nhân đôi messages/FTS/vector/digest. Một cột = giữ 1 store + 1 đường search, chỉ thêm bộ lọc. ERD toàn bộ đã vẽ (artifact ngoài repo).
 
 ## 4. Ba cơ chế thu — chọn v2b (browser-connector)
-- **v1 — file-drop (offline, ToS sạch):** user Export chính chủ → thả `conversations.json` vào `~/.zemory/imports/<platform>/` → adapter `whole` multi-session. Ưu: sạch tuyệt đối. Nhược: thủ công, đợi email. Dùng làm fallback + để nuốt bộ data test.
+- **v1 — file-drop (offline, ToS sạch):** user Export chính chủ → thả `conversations.json` vào `~/.zemory/imports/<platform>/` → adapter `whole` multi-session. Ưu: sạch tuyệt đối. Nhược: thủ công, đợi email. Dùng làm fallback + để ingest bộ data test.
 - **v2a — browser extension (push):** MV3 hook `fetch`/XHR → `POST /ingest-web`. Mạnh nhưng phải viết + cài extension, maintain per-site.
 - **v2b — BROWSER-CONNECTOR (CHỌN):** zemory mở **cửa sổ trình duyệt riêng** (profile `~/.zemory/browser/<platform>`), **user đăng nhập 1 lần** vào trang thật của nền (id/pass/2FA nhập vào OpenAI, KHÔNG vào zemory). Sau đó zemory **điều khiển cửa sổ đó qua CDP (`--remote-debugging-port`)**, gọi API nội bộ của site bằng phiên đã login để kéo hội thoại. Profile lưu cookie → lần sau tự chạy, chỉ login lại khi phiên hết hạn.
   - Password **không bao giờ đi qua zemory**; chỉ "mượn" phiên. Đây là cách sạch — đối lập với copy cookie (đã bị guard chặn) và OAuth (OpenAI KHÔNG mở API đọc lịch sử — đã xác minh).
@@ -52,7 +52,7 @@ Prototype (scripts giờ ở `attic/web-capture/`): mở Edge debug + login-once
 - Ghi thẳng `sessions` (origin, source, title, host, project_root=null) + `messages` (uuid, role, content, ts) → tái dùng session upsert `ON CONFLICT(id)` + message `INSERT OR IGNORE ON UNIQUE(session_id,uuid)` (idempotent) + refresh count/started/ended + `redact()` + `buildDigest`.
 - **redact()** BẮT BUỘC áp cho content web (như đường file). Sau nạp cần `brain embed` để vector phủ.
 
-## 9. parseFileMulti — multi-session/file (cho v1 & nuốt file test)
+## 9. parseFileMulti — multi-session/file (cho v1 & ingest file test)
 Một file export = NHIỀU hội thoại → phá bất biến "1 file = 1 session". Sửa additive:
 - Thêm `parseFileMulti?(filePath): Array<ParsedSession & {sessionId}>` vào Adapter contract; giữ `parseFile` cũ (lmstudio không đụng).
 - `ingestFile`: nhánh mới lặp phần per-session (upsert · DELETE whole-replace · INSERT OR IGNORE · refresh) cho từng hội thoại trong một transaction; `ingest_state` giữ short-circuit size/mtime per-file với `session_id` sentinel; `FileResult` trả `SessionReport[]`; `scan()` merge.

@@ -11,10 +11,10 @@ Zemory là lớp **memory + governance (harness)** local dùng chung cho coding 
 ## 1. Mục tiêu & phi-mục-tiêu
 
 **Mục tiêu**
-- Một hệ **dùng vĩnh viễn cho mọi project**, cấu trúc ổn định, **mở rộng được** (cắm ý tưởng mới không phải mổ lõi).
+- Một hệ **dùng vĩnh viễn cho mọi project**, cấu trúc ổn định, **mở rộng được** (cắm ý tưởng mới không phải sửa đổi lõi).
 - **Tự chứa, tự sở hữu**: không phụ thuộc/đụng repo người khác; `backend/src/` 100% của mình.
 - **Tiết kiệm token** thật (search trúng + nén đọc + recall xuyên session).
-- **Sạch sở hữu**: lúc nào cũng biết "của mình (src) vs gạch public (deps)".
+- **Sạch sở hữu**: lúc nào cũng biết "của mình (src) vs dependency public (deps)".
 
 **Phi-mục-tiêu**
 - KHÔNG fork/clone agentmemory hay lean-ctx.
@@ -30,7 +30,7 @@ Zemory là lớp **memory + governance (harness)** local dùng chung cho coding 
 4. **Một capability, một slot, một provider.** Config chọn provider; runtime từ chối provider thiếu hoặc conflict.
 5. **Không proxy model API.** Zemory chỉ ở tầng tool/CLI/MCP + lưu local; không `ANTHROPIC_BASE_URL`, không rewrite history/cache.
 6. **Progressive disclosure.** Search trả snippet/ID trước; chỉ mở message hoặc section cụ thể khi cần.
-7. **App cơ học, agent phán đoán.** Zemory không gọi LLM (embed model nhỏ chỉ *đo nghĩa*, không *sinh chữ*); app validate, index, backup và báo cờ, còn quyết định curated do user/agent duyệt.
+7. **App cơ học, agent phán đoán.** Zemory không gọi LLM (embed model nhỏ chỉ *đo nghĩa*, không *sinh văn bản*); app validate, index, backup và báo cờ, còn quyết định curated do user/agent duyệt.
 8. **Harness gọn trong `docs/`.** Root project chỉ cần `AGENTS.md`; config nằm tại `docs/.harness.json`.
 9. **Code, CLI, UI bằng tiếng Anh; docs project bằng tiếng Việt.**
 ## 3. Kiến trúc
@@ -66,7 +66,7 @@ External engine (embedding model cho semantic) chỉ được gọi qua adapter 
 - `health:core` — kiểm tra config, provider, DB, hook, adapter và feature thực.
 
 Provider built-in sống trong `backend/src/modules/`. (Capability `governance` đã đổi tên → `harness`; provider memory `harness` → `global`; `compress` đã bỏ.)
-### Model/lib ngoài — gạch public, gọi không dán (⚠️ cập nhật 2026-07-10: `deps/` là khái niệm cũ, KHÔNG dùng)
+### Model/lib ngoài — dependency public, gọi qua adapter, không vendor source (⚠️ cập nhật 2026-07-10: `deps/` là khái niệm cũ, KHÔNG dùng)
 - `model/` ban đầu dự tính `all-MiniLM-L6-v2`; thực tế build ra dùng **EmbeddingGemma-300M** (HuggingFace, public) qua Transformers.js — **tải/cache lúc runtime, KHÔNG commit vào repo**, KHÔNG có folder `deps/` vật lý.
 - `lib/` — onnxruntime, sqlite-vec, better-sqlite3... là package npm thường (`package.json` deps), không cần folder riêng.
 - Repo ngoài clone về (không phải package) → `external/` (đúng chuẩn `03_STRUCTURE.md`).

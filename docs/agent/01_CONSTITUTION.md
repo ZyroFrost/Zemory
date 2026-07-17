@@ -4,7 +4,7 @@
 
 > **Tầng TỐI CAO của harness — đọc TRƯỚC mọi file khác.** Mọi plan / code / quyết định phải đối chiếu về đây; **vi phạm = bug thiết kế**, kể cả khi code chạy được.
 > KHÁC `02_RULES.md`: RULES là luật LÀM VIỆC chung mọi project (ship từ template); hiến pháp là bất biến KIẾN TRÚC **riêng của zemory** — mỗi app một bản, như mỗi quốc gia một hiến pháp.
-> **1 nguồn sự thật cho "luật riêng":** luật riêng của zemory chốt Ở ĐÂY (gom 2026-07-14 từ các điều nằm rải trong plan 00/02/04–08/10–12). Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự đẻ luật mới nằm rải trong plan.
+> **1 nguồn sự thật cho "luật riêng":** luật riêng của zemory chốt Ở ĐÂY (gom 2026-07-14 từ các điều nằm rải trong plan 00/02/04–08/10–12). Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự phát sinh luật mới nằm rải trong plan.
 
 ## Mục đích
 
@@ -17,7 +17,7 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
 **Hệ quả — repo này còn là NGUỒN CHUẨN GỐC để project khác copy:** `docs_template/` + `docs/agent/*` là bản mẫu mọi repo khác lấy về. Nên agent của **project khác** ghé vào đây chỉ được **ĐỌC** (đọc chuẩn → áp vào repo của họ, chạy lệnh bên họ); **cấm ghi / cấm chạy lệnh `zemory` với cwd ở đây** khi user chưa cho phép — repo này thường có phiên agent khác đang làm việc. Banner ⛔ ở đầu `AGENTS.md` là cửa chặn; luật đầy đủ ở `02_RULES` §Phạm vi project.
 
 **PHI-MỤC-TIÊU (cố tình KHÔNG làm):**
-- **Không proxy / không tự gọi model API** (điều 6) — không `ANTHROPIC_BASE_URL`, không rewrite history, không sinh chữ.
+- **Không proxy / không tự gọi model API** (điều 6) — không `ANTHROPIC_BASE_URL`, không rewrite history, không sinh văn bản.
 - **Không nén ngữ cảnh (compression)** — từng build rồi **BỎ khỏi scope 2026-06-25** (không cho net saving thật trên subscription); code ở `attic/`, xem plan 03 DROPPED.
 - **Không cố định NỘI DUNG docs của project** — zemory chỉ cố định **cấu trúc folder + rule chung + bộ harness**; nội dung do agent/user viết, bám chuẩn là đủ (điều 3, FILE WINS).
 - **Không dựng kho thứ hai / không auto-summary thành nguồn** (điều 3).
@@ -29,13 +29,13 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
 
 2. **Ranh giới "của mình vs của người ta".** `backend/src/` = 100% code của mình, một giọng. Engine/lib/model public = gọi qua dependency/adapter (`external/` nếu clone repo) — **KHÔNG dán source người khác vào backend**. Model weight **tải/cache lúc runtime, KHÔNG commit vào repo**; dependency/model mới phải rà license (Apache-2.0 tương thích) trước khi thêm. *(gốc: build plan §2.2, §7)*
 
-3. **Mỗi lớp dữ liệu có ĐÚNG MỘT nguồn; mọi index là lăng kính DẪN XUẤT.** Curated docs (rules/plan/TODO/changelog): **FILE `.md` là NGUỒN** — agent viết/sửa tự do BÁM CHUẨN harness; DB doc/section/changelog chỉ là **INDEX dẫn xuất** cho search, dựng lại được từ file (**file wins**). Episodic: transcript gốc của host là nguồn, `sessions/messages` + FTS + vector + digest là dẫn xuất — **vứt/dựng lại được bất cứ lúc nào**. Hệ quả bất di bất dịch: **tối ưu/mổ xẻ CHỈ đụng lớp dẫn xuất — KHÔNG BAO GIỜ xóa/sửa `sessions`/`messages` gốc**; không tạo kho thứ hai, không auto-summary thành nguồn thứ hai. *(SỬA ĐỔI 2026-07-16, user quyết — bãi bỏ vế cũ "DB là nguồn curated docs, .md là mirror": zemory chưa đủ ổn định để làm nguồn NỘI DUNG docs; nó chỉ cố định CẤU TRÚC folder + RULE chung + BỘ HARNESS, agent viết docs bám theo chuẩn là được. Gốc: build plan §2.3 §5, plan 02 §0 — phần curated đã supersede; xem changelog.)*
+3. **Mỗi lớp dữ liệu có ĐÚNG MỘT nguồn; mọi index là lăng kính DẪN XUẤT.** Curated docs (rules/plan/TODO/changelog): **FILE `.md` là NGUỒN** — agent viết/sửa tự do BÁM CHUẨN harness; DB doc/section/changelog chỉ là **INDEX dẫn xuất** cho search, dựng lại được từ file (**file wins**). Episodic: transcript gốc của host là nguồn, `sessions/messages` + FTS + vector + digest là dẫn xuất — **vứt/dựng lại được bất cứ lúc nào**. Hệ quả bất di bất dịch: **tối ưu/can thiệp CHỈ vào lớp dẫn xuất — KHÔNG BAO GIỜ xóa/sửa `sessions`/`messages` gốc**; không tạo kho thứ hai, không auto-summary thành nguồn thứ hai. *(SỬA ĐỔI 2026-07-16, user quyết — bãi bỏ vế cũ "DB là nguồn curated docs, .md là mirror": zemory chưa đủ ổn định để làm nguồn NỘI DUNG docs; nó chỉ cố định CẤU TRÚC folder + RULE chung + BỘ HARNESS, agent viết docs bám theo chuẩn là được. Gốc: build plan §2.3 §5, plan 02 §0 — phần curated đã supersede; xem changelog.)*
 
-4. **1 capability = 1 slot = 1 provider.** Registry ép conflict nếu 2 module đòi cùng slot; engine phụ (vector, rerank) là engine NỘI BỘ của slot `search`, không đẻ slot mới. *(gốc: build plan §2.4, plan 04 §3, plan 05 §1)*
+4. **1 capability = 1 slot = 1 provider.** Registry ép conflict nếu 2 module đòi cùng slot; engine phụ (vector, rerank) là engine NỘI BỘ của slot `search`, không tạo slot mới. *(gốc: build plan §2.4, plan 04 §3, plan 05 §1)*
 
 5. **Tách BỘ MÁY (tool) khỏi DỮ LIỆU (docs project).** Tool cài toàn máy, đọc docs của project; không nằm trong project. Root project chỉ cần `AGENTS.md`; config ở `docs/.harness.json`. *(gốc: build plan §2.8, plan 04 §4)*
 
-6. **zemory KHÔNG BAO GIỜ tự gọi LLM / không proxy model API.** Không `ANTHROPIC_BASE_URL`, không rewrite history/cache, không sinh chữ. "Trí tuệ" là agent đang lái terminal; zemory chỉ là bộ nhớ + kỷ luật. Embed/rerank model nhỏ chạy local chỉ *đo nghĩa* (chấm điểm/xếp hạng), không *sinh chữ* — vẫn đúng luật. *(gốc: build plan §2.5 §2.7, plan 05 §2, plan 06 §2.4 §4B)*
+6. **zemory KHÔNG BAO GIỜ tự gọi LLM / không proxy model API.** Không `ANTHROPIC_BASE_URL`, không rewrite history/cache, không sinh văn bản. "Trí tuệ" là agent đang lái terminal; zemory chỉ là bộ nhớ + kỷ luật. Embed/rerank model nhỏ chạy local chỉ *đo nghĩa* (chấm điểm/xếp hạng), không *sinh văn bản* — vẫn đúng luật. *(gốc: build plan §2.5 §2.7, plan 05 §2, plan 06 §2.4 §4B)*
 
 7. **Local-only + privacy mặc định.** Mọi dữ liệu nằm trên máy user; không transmit đi đâu ngoài bundle **mã hóa** do user chủ động sync. Credential-shaped content bị redact NGAY lúc ingest (mọi đường: file, web). Password/2FA của nền web **không bao giờ nhập vào zemory** (login trên trang thật, chỉ mượn phiên). **KHÔNG commit data thật/PII vào git** — chỉ code + docs; bundle sync phải là `.enc`. *(gốc: plan 07 §4 §13 §14, plan 08, share.ts design)*
 

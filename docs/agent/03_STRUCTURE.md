@@ -10,7 +10,7 @@
 - Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
 - **Chuẩn RIÊNG của mình:** mỗi concern **1 TÊN duy nhất**; chỉ khi framework ÉP CỨNG (Next `pages/`, Django `models/`,`migrations/`, Rails `app/models`) mới theo tên nó — như Docker ép `Dockerfile` ở root.
 - **Mục đích KÉP:** cấu trúc gọn + **INDEX điều hướng** — agent đọc rule là trỏ THẲNG folder cần sửa, KHỎI grep cả repo (nhanh + tiết kiệm token, đúng bất biến #1).
-- **INDEX = TỪ ĐIỂN TÊN, KHÔNG phải danh sách folder phải tạo.** ~40 slot dưới đây là *tên có sẵn để tra cứu*; **CHỈ tạo folder khi CÓ concern THẬT** — **TUYỆT ĐỐI KHÔNG đẻ một đống folder rỗng** cho "đủ bộ". Thiếu concern nào → bỏ folder đó. Một app điển hình chỉ hiện diện 4–10 slot.
+- **INDEX = TỪ ĐIỂN TÊN, KHÔNG phải danh sách folder phải tạo.** ~40 slot dưới đây là *tên có sẵn để tra cứu*; **CHỈ tạo folder khi CÓ concern THẬT** — **TUYỆT ĐỐI KHÔNG tạo hàng loạt folder rỗng** cho "đủ bộ". Thiếu concern nào → bỏ folder đó. Một app điển hình chỉ hiện diện 4–10 slot.
 - **Nguồn = ĐẦU VÀO (git tracked); output/runtime/secret = ĐẦU RA (GITIGNORE).**
 - **BẮT BUỘC = 4 VAI TRÒ:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ còn lại `[opt]` — tạo KHI CÓ concern.
 
@@ -33,7 +33,7 @@ Ví dụ DOMAIN-FIRST — chính zemory:
 
 **Luật bất diệt cho CẢ HAI kiểu:**
 - **Cross-cutting** (`core, auth, vault, config, logging, audit, errors, i18n, update, migrations, shared, util`) → **LUÔN ở cấp `src/` gốc**, KHÔNG lồng/nhân bản trong từng domain.
-- Bên trong một domain **chỉ dùng slot từ CÙNG từ điển** (store/services/ai/io/validators…), KHÔNG đẻ tên mới.
+- Bên trong một domain **chỉ dùng slot từ CÙNG từ điển** (store/services/ai/io/validators…), KHÔNG tạo tên mới.
 - **Surface/entry MỎNG:** CLI → `commands/`, HTTP → `api/`, WS → `realtime/`, UI → `frontend/`; entry chỉ wire vào domain, không chứa nghiệp vụ.
 
 ## 3. Cây thư mục — ghi chú TỪNG DÒNG
@@ -46,7 +46,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── backend/                     ★ server-side: code mình + entry (100% của mình, một giọng)
 │   ├── src/                     ★ nơi CHỨA code (Node: src/ · Python: backend/<pkg>/).
 │   │                              Sắp theo LAYER-FIRST (phẳng) hoặc DOMAIN-FIRST (src/<domain>/ lồng slot) — §2.
-│   │                              ▼ TẤT CẢ [opt] — tạo KHI CÓ concern (KHÔNG đẻ folder rỗng):
+│   │                              ▼ TẤT CẢ [opt] — tạo KHI CÓ concern (KHÔNG tạo folder rỗng):
 │   │  │┄┄ BIÊN VÀO (thế giới → mình) ┄┄
 │   │  ├── api/            [opt]  endpoint app MÌNH mở — REST/route phục vụ FE/client (+ health-check)
 │   │  ├── graphql/        [opt]  schema + resolver (nếu dùng GraphQL)
@@ -113,7 +113,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   ├── util/         [opt]  helper thuần client (+ lib/) — đối xứng backend/util
 │   ├── types/        [opt]  type CHỈ dùng client (dùng chung BE↔FE → backend/src/shared)
 │   └── public/       [opt]  file tĩnh serve thẳng (favicon, robots.txt, manifest PWA, service-worker)
-│                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = bàn test)
+│                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = phép kiểm thử)
 │
 ├── docs/                   ★ harness zemory (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
 │   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES
@@ -162,7 +162,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 - **(1) code của mình** dưới `backend/` (Node: `backend/src/` · Python: `backend/<pkg>/`).
 - **(2) 1 ENTRY:** file `run.*` **HOẶC** manifest khai `bin`/`main` — Node-CLI (zemory) dùng `bin` ở root `package.json` là **HỢP LỆ**, KHÔNG bắt buộc `backend/run.*`.
 - **(3) 1 MANIFEST:** ở root **HOẶC** `backend/` (không cần cả hai).
-- Mọi slot con khác `[opt]` — **tạo KHI CÓ concern, không đẻ folder rỗng**.
+- Mọi slot con khác `[opt]` — **tạo KHI CÓ concern, không tạo folder rỗng**.
 
 ## 4. Routing — sửa gì / có gì → vào đâu
 Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chuẩn duy nhất):
@@ -244,21 +244,21 @@ Storage/blob         quản lý upload/transform/ký-URL → storage/ · client 
 Notifications        điều phối gửi (gì/khi nào) → notifications/ · kênh (SendGrid/Twilio/FCM) → integrations/ · template → resources/locales
 Search/index         build-index + query/rank → search/ (FTS/vector/Elastic). App có domain search riêng (vd zemory) → gói trong domain đó (domain-first)
 Pipelines            ETL/ingest/batch nhiều-bước → pipelines/. KHÁC jobs/ (theo lịch) & events/ (phản ứng sự kiện)
-Agent (LLM) — 4 chỗ  loop/planning → agents/ · provider LLM → ai/ · tool cho LLM gọi → tools/ · prompt → resources/prompts/. KHÔNG gộp 1 folder "agent" hổ lốn (lỗi phổ biến: reasoning+state+memory+tool+LLM-client nhét chung)
+Agent (LLM) — 4 chỗ  loop/planning → agents/ · provider LLM → ai/ · tool cho LLM gọi → tools/ · prompt → resources/prompts/. KHÔNG gộp 1 folder "agent" lộn xộn (lỗi phổ biến: reasoning+state+memory+tool+LLM-client nhét chung)
 tools/ ≠ scripts/    tools/ = tool cho LLM gọi (schema+binding; thực thi delegate slot sẵn có) · scripts/ = dev/build/ops · util/ = helper thuần · plugins/ = bên thứ 3
 Agent memory         KHÔNG slot riêng: chính sách (nhớ gì/tóm tắt/trim) → agents/ · persistence → store/ · runtime → data/state/ — cùng pattern notifications//storage//authz
 agents/ ≠ docs/agent agents/ = code agent CỦA APP · docs/agent/ = harness docs cho coding-agent đọc — 2 thứ khác hẳn nhau
 Evals vs test        evals/ = đo chất lượng XÁC SUẤT trên corpus có nhãn + gate (vd zemory `brain bench`: hybrid recall@3 ≥ FTS) · test/ = pass/fail tất định
-core/ (kernel)       COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối module. KHÔNG chứa business-logic (chống "core = junk drawer")
+core/ (kernel)       COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối module. KHÔNG chứa business-logic (chống "core = nơi dồn tạp nham")
 SQL — 1 CÁCH         mặc định store/queries.* (gom, đặt tên, gọi theo tên); resources/sql/ CHỈ khi cố ý tách file .sql. KHÔNG rải inline
 Secret               config/ + .env.example chỉ trỏ TÊN env (password_env); pass THẬT ở .env/vault → data/secrets/. KHÔNG commit
-Mã hóa / Encryption  concern RIÊNG: key+encrypt/decrypt → vault/ · at-rest DB (SQLCipher) apply ở store/ · key/salt/bundle → data/secrets/ · in-transit bundle → vault/. App có DATA NHẠY CẢM (chat/PII/log) → NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ "chấp nhận plaintext" (để audit thấy, khỏi lọt)
+Mã hóa / Encryption  concern RIÊNG: key+encrypt/decrypt → vault/ · at-rest DB (SQLCipher) apply ở store/ · key/salt/bundle → data/secrets/ · in-transit bundle → vault/. App có DATA NHẠY CẢM (chat/PII/log) → NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ "chấp nhận plaintext" (để audit thấy, không bỏ sót)
 Sync bundle qua git   ngoại lệ CÓ CHỦ ĐÍCH của luật data/=gitignore: bundle MÃ HÓA cần đi qua git để đồng bộ xuyên máy (git-lfs) → TRACKED ở root share/ (đã mã hóa, không phải plaintext secret) — không nhét vào data/ (data/ không sync qua git)
-Nơi lưu DB (di dời)  DB sống lớn dần → cho dời KHỎI ổ hệ thống. Vị trí = con trỏ CỐ ĐỊNH ~/.zemory/location.json (env override > pointer > ~/.zemory default); mọi phụ trợ (config/browser/imports/backups) bám theo. Dời an toàn = checkpoint WAL → copy → verify (integrity + đếm) → đổi pointer → GIỮ bản cũ .bak. Con trỏ PHẢI ở chỗ cố định, KHÔNG cạnh DB (gà–trứng). KHÔNG dời vào folder Drive-sync (WAL corrupt) — Drive chỉ nhận bundle .enc
-Phân quyền / Authz   concern RIÊNG: authentication (LÀ AI) = auth/ · authorization/PHÂN QUYỀN (ĐƯỢC GÌ) = định nghĩa role/permission ở auth/ + ENFORCE (guard) ở middleware/ + role-data (user→role) ở store/ + policy file operator-sửa ở config/. App ĐA-USER / ĐA-ROLE → PHẢI có; single-user/local → ghi rõ "không phân quyền" (khỏi lọt)
+Nơi lưu DB (di dời)  DB sống lớn dần → cho dời KHỎI ổ hệ thống. Vị trí = con trỏ CỐ ĐỊNH ~/.zemory/location.json (env override > pointer > ~/.zemory default); mọi phụ trợ (config/browser/imports/backups) bám theo. Dời an toàn = checkpoint WAL → copy → verify (integrity + đếm) → đổi pointer → GIỮ bản cũ .bak. Con trỏ PHẢI ở chỗ cố định, KHÔNG cạnh DB (phụ thuộc vòng). KHÔNG dời vào folder Drive-sync (WAL corrupt) — Drive chỉ nhận bundle .enc
+Phân quyền / Authz   concern RIÊNG: authentication (LÀ AI) = auth/ · authorization/PHÂN QUYỀN (ĐƯỢC GÌ) = định nghĩa role/permission ở auth/ + ENFORCE (guard) ở middleware/ + role-data (user→role) ở store/ + policy file operator-sửa ở config/. App ĐA-USER / ĐA-ROLE → PHẢI có; single-user/local → ghi rõ "không phân quyền" (không bỏ sót)
 Logging / Observab.  code logger (level/format/sink) + metrics/trace → logging/ · log FILE → data/logs/ · APM/Sentry/Datadog → integrations/. Là DEBUG/vận hành — KHÁC audit-trail
 Audit trail          nhật ký BẢO MẬT "ai làm gì / lúc nào" (đổi quyền, xoá, đăng nhập) → ghi ở audit/ + bảng ở store/. KHÁC log debug (data/logs). App đa-user / có hành động nhạy cảm → NÊN có; không thì ghi rõ
-Error handling       error types + 1 central handler/boundary → errors/. KHÔNG rải try/catch nuốt lỗi khắp nơi
+Error handling       error types + 1 central handler/boundary → errors/. KHÔNG rải try/catch bỏ qua lỗi khắp nơi
 Shared BE↔FE         shared/ = type + RUNTIME dùng chung (zod schema, hằng số, pure logic); type-thuần → shared/types. FE import. Escape-hatch: FE publish độc lập / đa client / SDK → nâng root contracts/ + packages/contracts (cắt coupling)
 Contracts (spec)     FILE hợp đồng API (OpenAPI/proto/GraphQL-SDL/AsyncAPI) → contracts/ (contract-first) → sinh code generated/. KHÁC shared/ (code TS chạy được)
 Generated code       output codegen → generated/, mặc định GITIGNORE (build lại được). Commit CHỈ khi cần reproducibility/offline-build → ghi rõ lý do
@@ -269,12 +269,12 @@ Dialog / modal       CHỈ 3 size cố định S/M/L, chọn theo nội-dung + m
 docs_visual (xem)    bản trực quan (sơ đồ/flow/lineage/lưới/timeline) cho NGƯỜI mở NHÌN → docs_visual/ NGOÀI docs/ (agent KHÔNG auto-đọc → 0 token). .md THẮNG về sự kiện (visual chỉ trình bày; fact chỉ nằm trong visual = vô hình với plan search ⇒ mục). Mỗi file: self-contained (CSS/JS/SVG inline · KHÔNG CDN/build) + có .md chủ trỏ tới bằng LINK markdown + tóm tắt 1–3 dòng. Mặc định vẽ mermaid TRONG .md; docs_visual/ CHỈ khi không-text-được. Sinh từ data → scripts/ + exports/, KHÔNG commit render
 UI embed (single-bin) app CLI/1-binary có thể EMBED trang UI như resource (vd HTML/CSS/JS trong 1 file TS) để ship gọn — GIỮ ở backend nhưng GHI RÕ; server phục vụ nó vẫn là backend, nội dung UI vẫn "thuộc" frontend về vai trò. KHÔNG ép tách nếu tách làm vỡ build 1-file
 UI 1-ngôn-ngữ        app UI render SERVER-SIDE bằng chính ngôn ngữ backend (Streamlit/Gradio/Dash/Django+template) → KHÔNG có frontend/ tách; vai trò "frontend" = pages/views NẰM TRONG backend (Python: backend/<pkg>/pages, hoặc views/ nếu framework ép tên). Bắt buộc còn 3: backend(code)+docs+AGENTS. Asset UI: backend/<pkg>/assets hoặc frontend/assets tuỳ framework
-Test                 KHÔNG bắt buộc — chạy chính app = bàn test; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc frontend/test
+Test                 KHÔNG bắt buộc — chạy chính app = phép kiểm thử; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc frontend/test
 Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 05_CHANGES=log. KHÔNG folder versions/ chép tay
 2 KIỂU version-up     ① TỰ ĐỘNG (app tự check+tải+apply) → backend/src/update/ (phối attic/+dist/+migrations/). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → dist/ build → backend/scripts/deploy.* → backup bản đang chạy về attic/ TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới
 Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp attic/ local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về attic/ local. Cùng nguyên lý additive-merge của brain sync/share.ts
 Packaging            .spec(root) + backend/scripts + backend/resources/packaging + dist(output) + OS app-data(cài) — DÙNG SLOT CŨ, KHÔNG nhóm mới
-util/                CHỈ helper thuần — KHÔNG business-logic / repository / framework-adapter (chống "misc dump"). BE: backend/src/util · FE: frontend/util
+util/                CHỈ helper thuần — KHÔNG business-logic / repository / framework-adapter (chống "nơi dồn tạp nham"). BE: backend/src/util · FE: frontend/util
 auth/                authentication · authorization · jwt · oauth · permission — phân biệt rõ với middleware (enforce)
 events/              event bus · consumer · listener · webhook INBOUND — webhook chỉ là 1 loại nguồn event
 data/ chia con       phình → state/ cache/ settings/ models/ snapshots/ secrets/ logs/ tmp/ uploads/ (tránh trăm file JSON 1 chỗ)
@@ -325,7 +325,7 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 └── .env            [opt]  connection string / token / workspace-id THẬT
 ```
 
-**Ví dụ áp `powerbi_sasinflow`** — chỉ hiện slot CÓ THẬT (không đẻ rỗng):
+**Ví dụ áp `powerbi_sasinflow`** — chỉ hiện slot CÓ THẬT (không tạo folder rỗng):
 ```
 powerbi_sasinflow/
 ├── AGENTS.md

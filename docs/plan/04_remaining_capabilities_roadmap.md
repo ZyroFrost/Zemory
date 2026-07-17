@@ -26,7 +26,7 @@ Provider mặc định `memory` tiếp tục sở hữu ingest và episodic reca
 
 `keyword` vẫn là baseline bắt buộc vì nhanh, local và giải thích được. Provider semantic là lựa chọn thay thế hoặc engine nội bộ của một provider hợp nhất, không đăng ký song song cùng slot.
 
-Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding local để rerank khi corpus đủ lớn, rồi RRF và giới hạn kết quả theo session/project. Model embedding tải/cache lúc runtime (KHÔNG commit vào repo, dùng chung inference brick với rerank — plan 05 §2); `backend/src/` chỉ chứa adapter và policy.
+Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding local để rerank khi corpus đủ lớn, rồi RRF và giới hạn kết quả theo session/project. Model embedding tải/cache lúc runtime (KHÔNG commit vào repo, dùng chung lớp inference với rerank — plan 05 §2); `backend/src/` chỉ chứa adapter và policy.
 
 ## 4. MCP progressive disclosure
 Zemory cung cấp một MCP server local qua `zemory mcp` (stdio). Server này thuộc **tool cài toàn máy**, không thuộc riêng project nào:

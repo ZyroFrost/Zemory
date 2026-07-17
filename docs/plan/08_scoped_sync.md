@@ -6,7 +6,7 @@
 
 ## 1. Mục tiêu & nguyên tắc
 - Cho phép **chọn đúng lane** trí nhớ theo cây phân tầng, thay vì "tất cả hoặc không".
-- **Loại trừ chỗ dùng chung**: có những nơi (account web dùng chung, máy công ty, agent tạp…) **không nên** nuốt vào brain riêng — phải bỏ được.
+- **Loại trừ chỗ dùng chung**: có những nơi (account web dùng chung, máy công ty, agent tạp…) **không nên** ingest vào brain riêng — phải bỏ được.
 - **Provenance TUYỆT ĐỐI không lẫn**: mỗi memory luôn giữ nguồn gốc thật; bộ chọn chỉ *lọc*, KHÔNG bao giờ đổi/gộp nguồn (RULES §3 — 1 nguồn sự thật).
 - Tái dùng engine sẵn có (RULES §1): không viết store thứ 2; bộ chọn = query rollup + bộ lọc.
 
@@ -22,7 +22,7 @@
 ## 4. Áp bộ chọn vào đâu — 2/3 điểm ĐÃ DÙNG, 1 điểm CHƯA
 - ✅ **recall / search** (`backend/src/brain/search.ts`): `isExcluded()` lọc theo `excludeLanes` (mặc định = `getScopeExclude()` từ settings) trước khi trả kết quả.
 - ✅ **sync** (`backend/src/brain/share.ts` export + merge): cùng danh sách exclude áp cho cả 2 chiều.
-- ❌ **ingest (scan / scan-web)** — **CHƯA áp dụng**: `scan`/`scan-web` hiện quét/nuốt HẾT, không lọc theo scope lúc ingest (chỉ lọc sau, ở recall/sync). Muốn "bỏ máy công ty ngay từ lúc quét" thì đây là việc còn lại.
+- ❌ **ingest (scan / scan-web)** — **CHƯA áp dụng**: `scan`/`scan-web` hiện quét/ingest TOÀN BỘ, không lọc theo scope lúc ingest (chỉ lọc sau, ở recall/sync). Muốn "bỏ máy công ty ngay từ lúc quét" thì đây là việc còn lại.
 
 ## 5. "Chỗ xài chung không nên lấy" — cơ chế loại trừ — ✅ ĐÃ CÓ
 - Danh sách exclude lưu ở **`settings.json`** (qua `getScopeExclude`/`setScopeExclude` trong `backend/src/settings.ts`) — đúng phương án nghiêng ở §6 cũ (config, không phải data).
