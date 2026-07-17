@@ -9,7 +9,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
 import { addEntry, importChangelog, listEntries, parseChangelog, renderChangelog } from "../../dist/docs/changelog.js";
-import { importAll, importDoc, listToc, renderDoc, showSection } from "../../dist/docs/plan.js";
+import { importDoc, listToc, renderDoc, showSection } from "../../dist/docs/plan.js";
 import { tempDir } from "./helpers.mjs";
 
 test("CRLF: a Windows-written doc still splits into sections (parser was blind to \\r)", (t) => {
@@ -22,7 +22,7 @@ test("CRLF: a Windows-written doc still splits into sections (parser was blind t
   // Exactly what a Windows editor / PowerShell writes.
   writeFileSync(abs, "# Spec\r\n\r\nintro\r\n\r\n## Part A\r\n\r\nbody A\r\n\r\n## Part B\r\n\r\nbody B\r\n");
 
-  importAll(root, dbPath);
+  importDoc(abs, rel, root, "plan", dbPath);
 
   // Before the fix: 1 blob section, heading=null (every heading was invisible).
   assert.deepEqual(
@@ -77,95 +77,6 @@ test("CRLF: a Windows-written changelog merges (import used to silently report '
   );
   // Titles must not carry a stray \r into the DB (would break dedup on re-import).
   assert.equal(importChangelog(md, root, dbPath), 0, "re-import of the same CRLF file adds nothing");
-});
-
-test("FILE WINS: docs sync re-imports a hand-edited mirror (no stale 'kept DB source')", (t) => {
-  const root = tempDir(t, "zemory-filewins-");
-  const planDir = join(root, "docs", "plan");
-  const rel = join("docs", "plan", "01_spec.md");
-  const abs = join(planDir, "01_spec.md");
-  const dbPath = join(root, "brain.db");
-  mkdirSync(planDir, { recursive: true });
-  writeFileSync(abs, "# Spec\n\noriginal body\n");
-
-  importAll(root, dbPath);
-  renderDoc(rel, root, dbPath); // now a GENERATED mirror on disk
-  const idBefore = listToc(rel, root, dbPath)[0].id;
-
-  // Untouched mirror → sync is a no-op: skipped, same section id (no churn).
-  let synced = importAll(root, dbPath).find((d) => d.path === rel);
-  assert.equal(synced.skipped, true, "unchanged mirror must not re-import");
-  assert.equal(listToc(rel, root, dbPath)[0].id, idBefore, "section id stays stable");
-
-  // Hand-edit the mirror (keeping its GENERATED header — the case the old
-  // "kept DB source" branch silently ignored) → sync MUST take the file.
-  writeFileSync(abs, readFileSync(abs, "utf8").replace("original body", "HAND EDITED body"));
-  synced = importAll(root, dbPath).find((d) => d.path === rel);
-  assert.notEqual(synced.skipped, true, "hand-edited mirror must re-import");
-  assert.match(showSection(listToc(rel, root, dbPath)[0].id, dbPath).body, /HAND EDITED body/);
-
-  // A hand-added heading becomes a real section (self-heals unsplit docs).
-  writeFileSync(abs, readFileSync(abs, "utf8") + "\n## New Section\n\nadded by hand\n");
-  importAll(root, dbPath);
-  const toc = listToc(rel, root, dbPath).map((s) => s.heading);
-  assert.deepEqual(toc, ["Spec", "New Section"]);
-});
-
-test("FILE WINS: a legacy ONE-BLOB doc re-splits on sync (blob rendered back identical → never healed)", (t) => {
-  const root = tempDir(t, "zemory-blob-heal-");
-  const planDir = join(root, "docs", "plan");
-  const rel = join("docs", "plan", "01_spec.md");
-  const abs = join(planDir, "01_spec.md");
-  const dbPath = join(root, "brain.db");
-  mkdirSync(planDir, { recursive: true });
-  const text = "# Spec\n\nintro\n\n## Part A\n\nbody A\n\n## Part B\n\nbody B\n";
-  writeFileSync(abs, text);
-
-  // Simulate the legacy damage: the whole file stored as ONE heading-less
-  // section (what a CRLF file used to produce before the normEol fix).
-  const db = openBrain(dbPath);
-  db.prepare("INSERT INTO doc (project_root, path, kind) VALUES (?,?,?)").run(root, rel, "plan");
-  const docId = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(root, rel).id;
-  db.prepare("INSERT INTO section (doc_id, ordinal, level, parent_id, heading, anchor, body) VALUES (?,?,?,?,?,?,?)").run(
-    docId, 0, 0, null, null, null, text,
-  );
-  db.close();
-  assert.equal(listToc(rel, root, dbPath).length, 0, "setup: blob has no headings in the index");
-
-  // The blob renders back BYTE-IDENTICAL to the file, so a content-only check
-  // said "unchanged" forever. Sync must notice the STRUCTURE is wrong and heal.
-  importAll(root, dbPath);
-
-  assert.deepEqual(
-    listToc(rel, root, dbPath).map((s) => s.heading),
-    ["Spec", "Part A", "Part B"],
-  );
-});
-
-test("FILE WINS: docs sync merges hand-written changelog entries from the .md", (t) => {
-  const root = tempDir(t, "zemory-chlog-filewins-");
-  const agentDir = join(root, "docs", "agent");
-  const md = join(agentDir, "05_CHANGES.md");
-  const dbPath = join(root, "brain.db");
-  mkdirSync(agentDir, { recursive: true });
-  writeFileSync(md, "# Change Log\n\n## [2026-01-01] — Seeded\n\nbody\n");
-
-  importAll(root, dbPath);
-  renderChangelog(root, md, dbPath);
-
-  // Untouched mirror → merges nothing (no duplicate of the seeded entry).
-  let r = importAll(root, dbPath).find((d) => d.kind === "changelog");
-  assert.equal(r.sections, 0, "unchanged changelog merges 0");
-  assert.equal(listEntries(root, dbPath).length, 1);
-
-  // Hand-written entry appended to the mirror → sync merges it into the DB.
-  writeFileSync(md, readFileSync(md, "utf8") + "\n## [2026-01-02] — Hand written\n\nby hand\n");
-  r = importAll(root, dbPath).find((d) => d.kind === "changelog");
-  assert.equal(r.sections, 1, "one new entry merged");
-  assert.deepEqual(
-    listEntries(root, dbPath).map((e) => e.title),
-    ["Hand written", "Seeded"],
-  );
 });
 
 test("FILE WINS: render salvages a changelog holding entries the DB lacks, but not on a routine render", (t) => {
@@ -251,7 +162,7 @@ test("renderDoc salvages a hand-edited mirror to .bak instead of silently overwr
   // back must NOT emit a junk .bak (the old rendered_hash check did: sync never
   // updates that hash, so every post-sync render looked like an unsynced edit).
   writeFileSync(abs, readFileSync(abs, "utf8") + "\nsynced hand edit\n");
-  importAll(root, dbPath);
+  importDoc(abs, rel, root, "plan", dbPath);
   const fourth = renderDoc(rel, root, dbPath);
   assert.equal(fourth.salvaged, null, "synced content must not be salvaged");
   assert.match(readFileSync(abs, "utf8"), /synced hand edit/, "and must survive the render");

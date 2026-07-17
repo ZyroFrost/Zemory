@@ -234,7 +234,7 @@ export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath 
           copyFileSync(outAbsPath, bak);
           console.error(
             `zemory: changelog file holds ${unmerged.length} entr(ies) not in the DB — saved to ${bak}. ` +
-              "FILE WINS: run `zemory docs sync` (or `changelog import`) to merge them, then render.",
+              "FILE WINS: run `zemory changelog import` to merge them, then render.",
           );
         }
       }

@@ -4,18 +4,16 @@
 // back to .md (db → md). Search is FTS over sections (heading-weighted).
 
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, normalize, relative, resolve } from "node:path";
 import { type BrainDB, currentBrainDb, openBrain } from "../brain/db.js";
 import { parseMarkdown, renderSections, roundTripOk, slug } from "./markdown.js";
-import { importChangelog } from "./changelog.js";
 
 // FILE-WINS doctrine (2026-07-16, user decision — supersedes "DB là nguồn"):
 // the .md FILE is the source for curated docs; the DB doc/section rows are a
-// derived SEARCH/SYNC INDEX rebuilt from the file. Agents edit .md freely
-// (following the harness standard); `docs sync` re-imports whatever changed.
-// `plan set`/`changelog add` remain as optional conveniences (they update the
-// DB then re-render the file so both stay aligned).
+// derived SEARCH INDEX. Agents edit .md freely (following the harness standard)
+// — the file IS the source. `plan set`/`changelog add` remain optional
+// conveniences (they update the DB then re-render the file so both stay aligned).
 const RENDER_HEADER =
   "<!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->\n";
 
@@ -109,66 +107,10 @@ export function createDoc(
   return result;
 }
 
-// Classify a doc by FILENAME PATTERN (generic across projects/schemes — not a
-// fixed filename map). Returns the role; null = a generic doc.
-function kindOf(name: string): string | null {
-  const n = name.toLowerCase();
-  if (/change|log|history/.test(n)) return "changes"; // → changelog table
-  if (/rule|policy|convention/.test(n)) return "rules";
-  if (/todo|backlog|task/.test(n)) return "todo";
-  if (/context|digest|state/.test(n)) return "context";
-  if (/(^|[^a-z])index|readme/.test(n)) return "index";
-  if (/overview/.test(n)) return "overview";
-  if (/(^|[^a-z])notes?([^a-z]|$)/.test(n)) return "notes";
-  return null;
-}
-
 const normPath = (p: string) => normalize(p);
-
-/** What the DB index currently holds for a doc: the body it would render + how
- *  many sections it is split into. null = not indexed yet. */
-function dbIndexOf(projectRoot: string, relPath: string, dbPath: string): { body: string; sections: number } | null {
-  const db = openBrain(dbPath);
-  try {
-    const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, normPath(relPath)) as
-      | { id: number }
-      | undefined;
-    if (!doc) return null;
-    const rows = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
-      level: number;
-      heading: string | null;
-      body: string;
-    }[];
-    return { body: renderSections(rows), sections: rows.length };
-  } finally {
-    db.close();
-  }
-}
 
 // Normalize for content comparison only (CRLF checkouts must not force churn).
 const normEol = (s: string) => s.replace(/\r\n/g, "\n");
-
-function existingDoc(
-  projectRoot: string,
-  relPath: string,
-  dbPath: string,
-): ImportResult | null {
-  const db = openBrain(dbPath);
-  try {
-    const row = db
-      .prepare(
-        `SELECT d.id, COUNT(s.id) AS sections
-         FROM doc d LEFT JOIN section s ON s.doc_id=d.id
-         WHERE d.project_root=? AND d.path=? GROUP BY d.id`,
-      )
-      .get(projectRoot, normPath(relPath)) as { id: number; sections: number } | undefined;
-    return row
-      ? { path: relPath, docId: row.id, sections: row.sections, roundTrip: true, skipped: true }
-      : null;
-  } finally {
-    db.close();
-  }
-}
 
 /** Resolve a DB doc path without allowing writes outside the project docs dir. */
 export function resolveDocPath(projectRoot: string, docPath: string): string {
@@ -196,64 +138,8 @@ export function removeDoc(projectRoot: string, relPath: string, dbPath = current
   }
 }
 
-function safeList(dir: string): string[] {
-  try {
-    return readdirSync(dir);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Import EVERY markdown doc (agent + plan) into the DB — GENERIC across projects:
- * classify by filename pattern, route changelog files to the changelog table,
- * everything else to doc/section. Imports all of it (no loss); the user then
- * prunes duplicates/obsolete with `docs rm` and regenerates with `docs render`.
- */
-export function importAll(projectRoot: string, dbPath = currentBrainDb()): (ImportResult & { kind: string })[] {
-  const out: (ImportResult & { kind: string })[] = [];
-  const handle = (dir: string, relDir: string, fallback: string) => {
-    for (const f of safeList(dir)) {
-      if (!f.endsWith(".md")) continue;
-      const k = kindOf(f);
-      if (k === "notes") continue; // empty episodic scratch → brain/session
-      const absPath = join(dir, f);
-      const relPath = join(relDir, f);
-      const raw = readFileSync(absPath, "utf8");
-      const fileBody = normEol(raw.replace(/^<!-- GENERATED[^\n]*-->\r?\n/, ""));
-      if (k === "changes") {
-        // FILE WINS: always MERGE the changelog file into the DB — additive,
-        // keyed by (date, title), so an untouched mirror merges 0 and newer
-        // DB-only entries are never lost. Hand-added entries flow in on sync.
-        const added = importChangelog(absPath, projectRoot, dbPath);
-        out.push({ path: relPath, docId: 0, sections: added, roundTrip: true, skipped: added === 0, kind: "changelog" });
-        continue;
-      }
-      const kind = k ?? fallback;
-      // FILE WINS: skip ONLY when the index already matches the file in BOTH
-      // content and structure — then the DB rows (and section IDs) stay put,
-      // zero churn. Otherwise re-import from the file.
-      //
-      // The structure half is load-bearing: a doc stored as ONE unsplit blob
-      // (level 0, heading=null, body=whole file — what a CRLF file used to
-      // produce, see markdown.ts normEol) renders back BYTE-IDENTICAL to the
-      // file, so a content-only check called it "unchanged" forever and the
-      // blob could never heal. Comparing the split count breaks that loop.
-      const idx = dbIndexOf(projectRoot, relPath, dbPath);
-      if (idx && normEol(idx.body) === fileBody && idx.sections === parseMarkdown(fileBody).length) {
-        const current = existingDoc(projectRoot, relPath, dbPath);
-        if (current) {
-          out.push({ ...current, kind });
-          continue;
-        }
-      }
-      out.push({ ...importDoc(absPath, relPath, projectRoot, kind, dbPath), kind });
-    }
-  };
-  handle(join(projectRoot, "docs", "agent"), join("docs", "agent"), "doc");
-  handle(join(projectRoot, "docs", "plan"), join("docs", "plan"), "plan");
-  return out;
-}
+// (The bulk .md→DB importer was removed 2026-07-16 — the docs-index is fed only
+//  by `plan set`/`changelog add` now; agents read .md directly.)
 
 export interface DocRow {
   id: number;
@@ -362,9 +248,9 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
 const sha1 = (text: string): string => createHash("sha1").update(text).digest("hex");
 
 /** Render a doc from the DB back to its .md file (db → md) — the RECOVERY path
- *  under FILE WINS (`docs sync` is the normal direction). Salvages the on-disk
- *  file to `.hand-edited-*.bak` first IFF it holds content the DB does NOT have
- *  (i.e. edits never synced) — so a render can't destroy unsynced work. */
+ *  under FILE WINS (the file is normally the source). Salvages the on-disk file
+ *  to `.hand-edited-*.bak` first IFF it holds content the DB does NOT have — so a
+ *  render can't destroy work that was never put into the DB. */
 export function renderDoc(
   docPath: string,
   projectRoot: string,
@@ -389,17 +275,15 @@ export function renderDoc(
     if (existsSync(abs)) {
       const current = readFileSync(abs, "utf8");
       // Compare the file's BODY against what the DB holds — NOT rendered_hash.
-      // The hash goes stale the moment `docs sync` imports a hand-edit (sync
-      // doesn't render), which made every post-sync render emit a junk .bak
-      // even though the DB already had that exact content. Body-vs-body is the
-      // question that actually matters: does the file hold anything unsynced?
+      // Body-vs-body (not a stored hash) is the question that actually matters:
+      // does the file hold anything the DB does NOT already have?
       const currentBody = normEol(current.replace(/^<!-- GENERATED[^\n]*-->\r?\n/, ""));
       if (currentBody !== normEol(body)) {
         salvaged = `${abs}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
         copyFileSync(abs, salvaged);
         console.error(
-          `zemory: ${docPath} has hand-edits newer than the DB index — saved to ${salvaged} before this render overwrote them. ` +
-            "FILE WINS on `zemory docs sync`; render (db → md) is for recovery — run sync first next time.",
+          `zemory: ${docPath} has hand-edits the DB index does NOT have — saved to ${salvaged} before this render overwrote them. ` +
+            "FILE WINS: the .md file is the source; render (db → md) is a recovery path only.",
         );
       }
     }
