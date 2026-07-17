@@ -3,7 +3,7 @@
 
 > **Tầng TỐI CAO của harness — đọc TRƯỚC mọi file khác.** Mọi plan / code / quyết định phải đối chiếu về đây; **vi phạm = bug thiết kế**, kể cả khi code chạy được.
 > KHÁC `02_RULES.md`: RULES là luật LÀM VIỆC **chung mọi project** (hành xử, ngôn ngữ, quy ước docs — ship nguyên từ template); hiến pháp là bất biến KIẾN TRÚC **riêng của <PROJECT>** — mỗi app một bản, như mỗi quốc gia một hiến pháp.
-> **1 nguồn sự thật cho "luật riêng":** luật riêng của app chốt Ở ĐÂY. Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự đẻ luật nằm rải trong plan.
+> **1 nguồn sự thật cho "luật riêng":** luật riêng của app chốt Ở ĐÂY. Plan/spec chỉ DẪN CHIẾU điều khoản (`HP điều N`), KHÔNG tự phát sinh luật nằm rải trong plan.
 
 ## Mục đích (BẮT BUỘC — điền TRƯỚC mọi điều khoản)
 <!-- Project NÀY sinh ra để làm gì, cho ai, giải bài toán gì — 2–4 câu, đủ để một agent lạ
