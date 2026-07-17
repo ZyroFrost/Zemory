@@ -1,8 +1,8 @@
 # Cấu trúc repo chuẩn — bộ khung dùng chung cho mọi project
 
-> Chuẩn folder zemory **ship + thực thi** cho MỌI project. Mô tả theo **VAI TRÒ**, không khóa framework.
+> Chuẩn folder này **ship + thực thi** cho MỌI project. Mô tả theo **VAI TRÒ**, không khóa framework.
 > **CÓ 2 CHUẨN — xác định loại project TRƯỚC rồi áp đúng chuẩn:**
-> ① **APP** (có code chạy: UI/server/CLI) → **§1–6**. ② **NON-APP** (sản phẩm/tài sản: BI/report, data, docs-only, design — vd `powerbi_sasinflow`) → **§7**. Cả hai dùng CHUNG harness `docs/` + `AGENTS.md`.
+> ① **APP** (có code chạy: UI/server/CLI) → **§1–6**. ② **NON-APP** (sản phẩm/tài sản: BI/report, data, docs-only, design) → **§7**. Cả hai dùng CHUNG harness `docs/` + `AGENTS.md`.
 > Đọc TRƯỚC khi sửa: cần gì → §4 (app) / §7 (non-app) trỏ thẳng slot. Nắn project về chuẩn: xem **§8** (Reconcile) bên dưới.
 
 ## 1. Nguyên tắc
@@ -18,16 +18,16 @@ Cùng MỘT từ điển tên slot (§3), chỉ khác **cấp lồng**. Chọn 1
 
 - **LAYER-FIRST** (mặc định — app nhỏ / CRUD / ít domain): slot nằm PHẲNG ngay dưới `src/`.
   → `src/{api, services, store, ai, validators, …}`
-- **DOMAIN-FIRST** (app nhiều domain rạch ròi — vd zemory): mỗi domain là `src/<domain>/`, bên trong LỒNG LẠI đúng slot nó cần (cùng từ điển).
+- **DOMAIN-FIRST** (app nhiều domain rạch ròi): mỗi domain là `src/<domain>/`, bên trong LỒNG LẠI đúng slot nó cần (cùng từ điển).
   → `src/<domain>/{store, services, ai, io, validators, …}`
 
 ```
-Ví dụ DOMAIN-FIRST — chính zemory:
-  src/brain/    store=db · services=ingest/search/digest · ai=embed/rerank/vectors · io=scanweb/share
-  src/docs/     services=plan/changelog/markdown              (domain "harness")
-  src/core/     composition root: registry/router/runtime      (wiring, KHÔNG business-logic)
-  src/modules/  provider theo capability (memory/search/harness/health)
-  surface:      commands (cli) · ui (server) · mcp              (entry MỎNG, chỉ wire vào domain)
+Ví dụ DOMAIN-FIRST — mỗi domain LỒNG slot từ CÙNG từ điển:
+  src/<domain-A>/  store=db · services=nghiệp-vụ · ai=model/adapter · io=nhập/xuất
+  src/<domain-B>/  services · validators · search              (chỉ slot domain đó cần)
+  src/core/        composition root: registry/router/runtime   (wiring, KHÔNG business-logic)
+  src/modules/     provider theo capability
+  surface:         commands (cli) · api/ui (server) · …        (entry MỎNG, chỉ wire vào domain)
 ```
 
 **Luật bất diệt cho CẢ HAI kiểu:**
@@ -52,7 +52,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   │  ├── realtime/       [opt]  WebSocket / SSE (realtime push)
 │   │  ├── events/         [opt]  NHẬN & xử lý event/webhook INBOUND · consumer · listener
 │   │  ├── functions/      [opt]  serverless handler (Lambda / Cloud Function)
-│   │  ├── commands/       [opt]  lệnh CLI (app là CLI, vd zemory) — mỗi verb 1 file
+│   │  ├── commands/       [opt]  lệnh CLI (khi app là CLI) — mỗi verb 1 file
 │   │  ├── middleware/     [opt]  pipeline request: guard / cors / log / rate-limit
 │   │  │┄┄ BIÊN RA (mình → thế giới) ┄┄
 │   │  ├── integrations/   [opt]  client gọi SERVICE NGOÀI (Stripe/Slack/SendGrid/FCM/S3-client…)
@@ -114,7 +114,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   └── public/       [opt]  file tĩnh serve thẳng (favicon, robots.txt, manifest PWA, service-worker)
 │                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = phép kiểm thử)
 │
-├── docs/                   ★ harness zemory (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
+├── docs/                   ★ harness (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
 │   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_TODO · 05_CHANGES
 │   ├── plan/           ★    spec/plan theo section — PHẲNG · NN_tên.md (00=overview) · MỌI .md đều được index
 │   └── .harness.json   ★    marker: project đã wire harness
@@ -131,7 +131,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── contracts/        [opt]  (escape-hatch) spec API ở ROOT khi ĐA CLIENT/SDK dùng chung (thay backend/src/contracts)
 ├── external/         [opt]  repo NGOÀI clone THAM CHIẾU — code HỌ, chỉ gọi/extend, KHÔNG dán vào backend
 ├── attic/            [opt]  backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC deploy/self-update (rollback). Tracked
-├── docs_template/    [opt]  bộ docs MẪU TRẮNG phát cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
+├── docs_template/    [opt]  bộ docs MẪU TRẮNG phát cho project khác (chỉ repo phát chuẩn; có `<PROJECT>` placeholder)
 ├── share/            [opt]  bundle SYNC MÃ HÓA xuyên máy (git-lfs *.enc + key + README) — TRACKED (đã mã hóa). Chỉ app CÓ sync-qua-git
 │
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
@@ -159,7 +159,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 **Ghi chú ★ — cây tối thiểu chạy được (khắc phục case Node-CLI):**
 - **4 VAI TRÒ bắt buộc:** `backend/(code)` · `frontend/` (nếu có UI) · `docs/` · `AGENTS.md`.
 - **(1) code của mình** dưới `backend/` (Node: `backend/src/` · Python: `backend/<pkg>/`).
-- **(2) 1 ENTRY:** file `run.*` **HOẶC** manifest khai `bin`/`main` — Node-CLI (zemory) dùng `bin` ở root `package.json` là **HỢP LỆ**, KHÔNG bắt buộc `backend/run.*`.
+- **(2) 1 ENTRY:** file `run.*` **HOẶC** manifest khai `bin`/`main` — Node-CLI dùng `bin` ở root `package.json` là **HỢP LỆ**, KHÔNG bắt buộc `backend/run.*`.
 - **(3) 1 MANIFEST:** ở root **HOẶC** `backend/` (không cần cả hai).
 - Mọi slot con khác `[opt]` — **tạo KHI CÓ concern, không tạo folder rỗng**.
 
@@ -242,13 +242,13 @@ Entry ★ (Node-CLI)   entry = run.* HOẶC manifest.bin/main; manifest = root H
 Cache — 3 chỗ RÕ     lớp cache app (Redis client + policy) → cache/ · file cache runtime → data/cache/ · KHÔNG lẫn vào store/ (primary DB)
 Storage/blob         quản lý upload/transform/ký-URL → storage/ · client S3 (SaaS) → integrations/ · bytes runtime → data/uploads/ · metadata → store/
 Notifications        điều phối gửi (gì/khi nào) → notifications/ · kênh (SendGrid/Twilio/FCM) → integrations/ · template → resources/locales
-Search/index         build-index + query/rank → search/ (FTS/vector/Elastic). App có domain search riêng (vd zemory) → gói trong domain đó (domain-first)
+Search/index         build-index + query/rank → search/ (FTS/vector/Elastic). App có domain search riêng → gói trong domain đó (domain-first)
 Pipelines            ETL/ingest/batch nhiều-bước → pipelines/. KHÁC jobs/ (theo lịch) & events/ (phản ứng sự kiện)
 Agent (LLM) — 4 chỗ  loop/planning → agents/ · provider LLM → ai/ · tool cho LLM gọi → tools/ · prompt → resources/prompts/. KHÔNG gộp 1 folder "agent" lộn xộn (lỗi phổ biến: reasoning+state+memory+tool+LLM-client nhét chung)
 tools/ ≠ scripts/    tools/ = tool cho LLM gọi (schema+binding; thực thi delegate slot sẵn có) · scripts/ = dev/build/ops · util/ = helper thuần · plugins/ = bên thứ 3
 Agent memory         KHÔNG slot riêng: chính sách (nhớ gì/tóm tắt/trim) → agents/ · persistence → store/ · runtime → data/state/ — cùng pattern notifications//storage//authz
 agents/ ≠ docs/agent agents/ = code agent CỦA APP · docs/agent/ = harness docs cho coding-agent đọc — 2 thứ khác hẳn nhau
-Evals vs test        evals/ = đo chất lượng XÁC SUẤT trên corpus có nhãn + gate (vd zemory `brain bench`: hybrid recall@3 ≥ FTS) · test/ = pass/fail tất định
+Evals vs test        evals/ = đo chất lượng XÁC SUẤT trên corpus có nhãn + gate (vd recall@k ≥ baseline keyword) · test/ = pass/fail tất định
 core/ (kernel)       COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối module. KHÔNG chứa business-logic (chống "core = nơi dồn tạp nham")
 SQL — 1 CÁCH         mặc định store/queries.* (gom, đặt tên, gọi theo tên); resources/sql/ CHỈ khi cố ý tách file .sql. KHÔNG rải inline
 Secret               config/ + .env.example chỉ trỏ TÊN env (password_env); pass THẬT ở .env/vault → data/secrets/. KHÔNG commit
@@ -285,17 +285,17 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 ```
 
 ## 6. Phạm vi áp dụng
-- **ÁP §1–6 (chuẩn APP):** hầu hết app estate (UI + server-side) — desktop WebView2 (SasinFlow), web app, tool có cockpit (zemory), AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
-- **ÁP §7 (chuẩn NON-APP):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau, vd `powerbi_sasinflow`), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
+- **ÁP §1–6 (chuẩn APP):** hầu hết app estate (UI + server-side) — desktop WebView2, web app, tool có cockpit, AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
+- **ÁP §7 (chuẩn NON-APP):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
 - **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
 
 ## 7. Chuẩn phụ NON-APP — BI / data / docs / design
-> Dùng khi repo **không phải app chạy được** mà là **sản phẩm/tài sản** (deliverable). Cùng triết lý §1: vai-trò · 1-tên/concern · từ-điển-KHÔNG-checklist · KHÔNG folder rỗng · tracked=đầu-vào / gitignore=đầu-ra. **Harness `docs/` + `AGENTS.md` GIỮ Y HỆT app** (cùng engine zemory, agent điều hướng như nhau).
+> Dùng khi repo **không phải app chạy được** mà là **sản phẩm/tài sản** (deliverable). Cùng triết lý §1: vai-trò · 1-tên/concern · từ-điển-KHÔNG-checklist · KHÔNG folder rỗng · tracked=đầu-vào / gitignore=đầu-ra. **Harness `docs/` + `AGENTS.md` GIỮ Y HỆT app** (cùng engine harness, agent điều hướng như nhau).
 
 **BẮT BUỘC = 3 vai trò** (thay cho 4 của app): `docs/` · `AGENTS.md` · **≥1 folder DELIVERABLE** (`reports/`|`models/`|`content/`|`design/` — chọn theo loại). KHÔNG có `backend/`+`frontend/` vì không có code-app.
 
 ```
-<project>/                         # vd powerbi_sasinflow — 1 sản phẩm = 1 cây
+<project>/                         # <project> — 1 sản phẩm = 1 cây
 │ ═══ TRACKED (đầu vào / nguồn) ═══
 ├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/
 ├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_TODO·05_CHANGES) · plan/ · .harness.json
@@ -325,16 +325,16 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 └── .env            [opt]  connection string / token / workspace-id THẬT
 ```
 
-**Ví dụ áp `powerbi_sasinflow`** — chỉ hiện slot CÓ THẬT (không tạo folder rỗng):
+**Ví dụ áp (một BI project)** — chỉ hiện slot CÓ THẬT (không tạo folder rỗng):
 ```
-powerbi_sasinflow/
+<project>/
 ├── AGENTS.md
 ├── docs/{agent/, plan/, dictionary.md}          # định nghĩa metric doanh thu/đơn/khách…
-├── docs_visual/dw_flow.html                      # [xem] sơ đồ luồng nạp DW — .md chủ: docs/plan/08_sasin_dw.md
-├── reports/SasinFlow.pbix                        # [LFS] báo cáo chính
+├── docs_visual/dw_flow.html                      # [xem] sơ đồ luồng nạp DW — .md chủ: docs/plan/NN_dw.md
+├── reports/main.pbix                             # [LFS] báo cáo chính
 ├── sources/{orders.m, connection.example.json}   # Power Query + spec (trỏ env)
 ├── measures/revenue.dax                          # DAX tách ra để review
-├── assets/sasinflow-theme.json                   # theme màu
+├── assets/theme.json                             # theme màu
 ├── scripts/refresh.ps1                           # refresh + publish workspace
 ├── fixtures/sample_orders.csv                    # mở .pbix khỏi cần DB thật
 └── .env                                          # connection thật (gitignore)
@@ -370,4 +370,4 @@ Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, a
 3. Sau move: **sửa import / entry / path** cho khớp (cần judgment) → **verify bằng cách chạy chính app**.
 4. Xong → cập nhật `README` + ghi entry vào `05_CHANGES.md` (sửa file trực tiếp, sau khi user OK).
 
-**Recipe end-to-end** ("đọc zemory + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc §3 (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.
+**Recipe end-to-end** ("đọc chuẩn + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc §3 (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.
