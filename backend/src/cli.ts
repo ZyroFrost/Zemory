@@ -571,7 +571,13 @@ async function cmdBrain(args: string[]): Promise<void> {
         console.log(m.error ? `  ⚠ ${m.file}: ${m.error}` : `  ↓ merged ${m.file}: +${m.sessionsAdded} session(s) · +${m.messagesAdded} message(s)`);
       }
       console.log(`  ⚙ embedded ${r.embedded} new vector(s) (semantic index)`);
-      if (r.vectorRemaining) console.log(`  ${r.vectorRemaining} message(s) still need embedding → \`zemory brain embed --all\` (model unavailable?)`);
+      if (r.vectorRemaining) {
+        // Sync embeds a capped batch (embedPending default limit) — a remaining
+        // backlog is NORMAL, not a model failure. Only flag the model when this
+        // pass embedded NOTHING (embedded === 0 → model likely down; FTS still works).
+        const why = r.embedded === 0 ? " (model unavailable? — recall vẫn chạy qua FTS)" : "";
+        console.log(`  ${r.vectorRemaining} message(s) chưa embed → chạy \`zemory brain embed --all\` để vector hoá nốt${why}`);
+      }
     } catch (error) {
       console.log(`  error: ${error instanceof Error ? error.message : "sync failed"}`);
       process.exitCode = 1;
