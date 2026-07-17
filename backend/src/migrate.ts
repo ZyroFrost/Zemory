@@ -4,7 +4,7 @@
 //
 // The judgment half (read all docs, propose a refactor, ask, merge duplicates,
 // preserve every original) is driven by the agent following the reconcile
-// guide — see AGENTS.md §5.
+// guide — see docs/agent/03_STRUCTURE.md §8.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";

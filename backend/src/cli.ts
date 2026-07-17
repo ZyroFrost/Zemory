@@ -66,10 +66,10 @@ function cmdInit(args: string[]): void {
   if (r.added.length) console.log(`  + ${r.added.join(", ")}`);
 }
 
-// Reconcile guide now lives in AGENTS.md §5 (single source). Print a short pointer.
+// Reconcile guide now lives in docs/agent/03_STRUCTURE.md §8 (single source). Print a short pointer.
 function cmdMigrate(): void {
   console.log("zemory migrate — reconcile docs cũ về chuẩn (App KHÔNG tự sửa; agent làm).");
-  console.log("Các bước đầy đủ: AGENTS.md §5. Tóm tắt:");
+  console.log("Các bước đầy đủ: docs/agent/03_STRUCTURE.md §8. Tóm tắt:");
   console.log("  1. zemory docs ls          — xem cái nào trùng/thừa");
   console.log("  2. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
   console.log("  3. gộp todo → 04_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
@@ -85,7 +85,7 @@ function cmdSync(): void {
   if (r.present.length) console.log(`  · kept existing: ${r.present.join(", ")}`);
   if (r.needsReconcile) {
     console.log("  ⚠ existing docs are non-standard — NOT auto-modified.");
-    console.log("    → AGENT reconcile (các bước: AGENTS.md §5, hoặc `zemory migrate`):");
+    console.log("    → AGENT reconcile (các bước: docs/agent/03_STRUCTURE.md §8, hoặc `zemory migrate`):");
     console.log("      zemory docs ls / rm  (drop dups + obsolete: 00_INDEX, 02_CONTEXT, overview)");
     console.log("      zemory docs render (regenerate clean mirrors)");
   } else if (!r.added.length && !r.createdConfig) {
@@ -114,7 +114,7 @@ async function cmdDoctor(): Promise<void> {
   console.log(
     `  plan: ${
       s.plan.needsReconcile
-        ? `⚠ ${s.plan.detail} → agent reconcile (AGENTS.md §5 / \`zemory migrate\`)`
+        ? `⚠ ${s.plan.detail} → agent reconcile (docs/agent/03_STRUCTURE.md §8 / \`zemory migrate\`)`
         : s.plan.exists
           ? `✓ ${s.plan.detail}`
           : "○ none yet"

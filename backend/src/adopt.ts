@@ -157,7 +157,7 @@ export function ensureHarness(projectRoot: string): AdoptResult {
   //   • empty docs           → scaffold the standard template (fresh).
   //   • only standard files  → gap-fill any missing standard ones (safe).
   //   • non-standard present → DON'T touch — flag needsReconcile; the agent
-  //     reads AGENTS.md §5 and reconciles to standard
+  //     reads docs/agent/03_STRUCTURE.md §8 and reconciles to standard
   //     (docs ls → rm dupes → render). Avoids the duplicate mess.
   const agentMd = existsSync(docsDir) ? readdirSync(docsDir).filter((f) => f.endsWith(".md")) : [];
   const nonStandard = agentMd.filter((f) => !STANDARD_AGENT.includes(f));

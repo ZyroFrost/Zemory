@@ -21,8 +21,8 @@ export interface CheckResult {
 export async function runCheck(feature: string, rootArg?: string): Promise<CheckResult> {
   // --- Tool/brain-level features (no project needed) ---
   if (feature === "grill") {
-    // Workflow concept (no per-project file). Guide lives in AGENTS.md §6.
-    return { feature, ok: true, state: "on", detail: tr("sẵn sàng (AGENTS.md §6)", "ready (AGENTS.md §6)") };
+    // Workflow concept (no per-project file). Guide lives in 02_RULES §Hành xử.
+    return { feature, ok: true, state: "on", detail: tr("sẵn sàng (02_RULES §Hành xử)", "ready (02_RULES §Hành xử)") };
   }
 
   const configuredRoot =

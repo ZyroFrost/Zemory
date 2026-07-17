@@ -2,7 +2,7 @@
 # <PROJECT> — Quy tắc làm việc
 
 > AI đọc file này SAU `01_CONSTITUTION.md` (hiến pháp — bất biến riêng của project, tối cao). Tuân thủ tuyệt đối.
-> Mở phiên + mọi hướng dẫn quy trình: xem `AGENTS.md` ở root. Backlog: `04_TODO.md`. Changelog: `05_CHANGES.md`.
+> Điều hướng mở phiên (đọc gì, thứ tự nào): `AGENTS.md` ở root. Quy trình chi tiết (sửa docs · reconcile cấu trúc · grill…) nằm TRONG chính bộ docs này, KHÔNG ở AGENTS. Backlog: `04_TODO.md`. Changelog: `05_CHANGES.md`.
 
 ## Cấu trúc repo — xem [`03_STRUCTURE.md`](03_STRUCTURE.md)
 **Chuẩn cấu trúc folder ĐẦY ĐỦ** (cây từng-dòng + routing "sửa gì → vào đâu" + convention) nằm ở **[`03_STRUCTURE.md`](03_STRUCTURE.md)** — **đọc file đó TRƯỚC khi sửa/tạo folder**.
@@ -13,7 +13,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **`03_STRUCTURE` là INDEX/menu tra nhanh — phải khớp cấu trúc thực tế.** Mọi thay đổi cấu trúc code (thêm slot/concern mới, đổi tên, dời tầng, thêm dòng routing) phải cập nhật `03_STRUCTURE` trong CÙNG thay đổi đó. Index lệch code → tra sai; cập nhật index là một phần bắt buộc của thay đổi cấu trúc, không để nợ.
 - **1 TÊN / concern** (chuẩn RIÊNG); chỉ framework ép cứng mới đổi (Next `pages/`, Django `models/`).
 - **Nguồn = git tracked; output / runtime / secret = GITIGNORE.**
-- Nắn app về chuẩn → `AGENTS.md` (recipe reconcile).
+- Nắn app về chuẩn → `03_STRUCTURE.md` §8 (recipe reconcile).
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
@@ -28,7 +28,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 | `05_CHANGES.md` | changelog | mỗi lần sửa code; **chỉ ghi sau khi xác nhận OK** (viết tay đúng format hoặc `zemory changelog add`) |
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế |
 
-- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
+- **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Lệnh `plan set`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi tự render lại file; Windows/PowerShell: nội dung có dấu phải truyền qua `--file`, KHÔNG pipe `echo` — hỏng UTF-8). `docs render` (db → md) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file.
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Plan phải đánh số:** mỗi file trong `docs/plan/` đặt tên `NN_tên.md` (`00_`, `01_`, …) theo thứ tự; gom mọi mô tả plan rải rác (folder `planning`, doc plan lạc chỗ) về `docs/plan/`.
 - **Plan KHÔNG chứa luật:** bất biến/luật riêng của app phát sinh khi thiết kế → đề xuất đưa vào `01_CONSTITUTION.md` (user chốt), plan chỉ dẫn chiếu điều khoản.
@@ -65,7 +65,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **CHỈ làm việc trong project folder đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng vào project khác (kể cả lệnh `zemory` trỏ root khác, `cd` sang repo khác, sửa file bên đó) khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp"/"cứu dữ liệu"/"tiện tay sửa luôn"**.
 - Thấy cần đụng project khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao; user gật mới làm. Project khác có thể đang có agent/phiên khác làm việc — đụng chéo gây xung đột dữ liệu.
 - Đọc-tham-khảo (read-only) project khác để trả lời câu hỏi thì được; **mọi thao tác GHI là cấm mặc định**.
-- **Vế ngược — bạn đang ĐỨNG TRONG repo tham khảo:** mở một repo khác chỉ để **xem/copy chuẩn** (vd `zemory` — nơi chứa bộ chuẩn gốc) thì **CHỈ ĐỌC**. Lệnh `zemory` **GHI theo cwd**: chạy `init`/`sync`/`docs render`/`plan set`/`changelog` khi đang đứng ở repo đó = **ghi vào repo đó + DB của nó**, không phải vào project bạn. Lấy chuẩn = **đọc `docs/agent/*` rồi chạy lệnh Ở REPO CỦA BẠN**.
+- **Vế ngược — bạn đang ĐỨNG TRONG repo tham khảo:** mở một repo khác chỉ để **xem/copy chuẩn** (vd `zemory` — nơi chứa bộ chuẩn gốc) thì **CHỈ ĐỌC**. Lệnh `zemory` **GHI theo cwd**: chạy `init`/`sync`/`docs render`/`plan set`/`changelog` khi đang đứng ở repo đó = **ghi vào repo đó + DB của nó**, không phải vào project bạn. Lấy chuẩn = **đọc `docs_template/`** (bản mẫu TRẮNG — KHÔNG phải `docs/`, đó là docs RIÊNG của repo chuẩn như zemory) **rồi chạy lệnh Ở REPO CỦA BẠN**.
 
 ## Git (BẮT BUỘC — luật cứng)
 - **KHÔNG `git push` khi user CHƯA cho phép.** Git remote là **nguồn BACKUP CUỐI CÙNG** của project — đẩy lên là ra ngoài, không gỡ lại được (gỡ = force-push, càng phá). Xong việc → build + test + **BÁO CÁO rồi DỪNG**; user bảo "push"/"lên git" mới đẩy.
@@ -76,7 +76,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 ## Hành xử
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic khác → **hỏi trước**, không tự sửa rồi báo.
-- **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi.** Điều kiện kích hoạt: yêu cầu đa nghĩa; thuật ngữ có nhiều cách hiểu; thiếu dữ kiện; phạm vi không xác định; tồn tại giả định ngầm chưa nêu; hai yêu cầu mâu thuẫn; hoặc thao tác khó đảo ngược. Quy trình: dừng, đặt câu hỏi xác định ý định và phạm vi (mỗi lần một câu, kèm đề xuất, diễn giải lại để xác nhận) cho tới khi đủ dữ kiện; không tự chọn cách hiểu rộng nhất và không tự suy diễn — theo quy trình grill (AGENTS §6). Điều kiện này áp cho thông tin đầu vào từ user chưa đủ để thực thi đúng, không áp cho kiến thức chung.
+- **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi — cơ chế TỰ ĐỘNG, KHÔNG chờ user gọi "grill".** Điều kiện kích hoạt: yêu cầu đa nghĩa; thuật ngữ có nhiều cách hiểu; thiếu dữ kiện; phạm vi không xác định; tồn tại giả định ngầm chưa nêu; hai yêu cầu mâu thuẫn; hoặc trước thao tác khó đảo ngược. Quy trình (grill): dừng, hỏi mỗi lần MỘT câu — kèm đề xuất của mình, diễn giải lại để xác nhận — đi hết các nhánh còn mơ hồ cho tới khi đủ dữ kiện; KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn. Cái nào đọc code/docs ra được thì ĐỌC, đừng hỏi; chốt đủ rõ MỚI build. Chỉ áp cho input từ user chưa đủ để thực thi đúng, không áp cho kiến thức chung. (User gõ "grill" = ép chạy thủ công cùng cơ chế này.)
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
 - **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần.
 - **Nêu phản biện thiết kế trước khi thực thi** nếu phát hiện điểm bất hợp lý; quyết định cuối thuộc về user.
