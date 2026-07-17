@@ -1,6 +1,6 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # zemory — TODO / Backlog
-> `[ ]` chưa làm · `[~]` đang làm · xong → chuyển sang `05_CHANGES.md` (`zemory changelog add`) và xoá khỏi đây.
+> `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `05_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 ## ✅ Đã xong (chi tiết 05_CHANGES.md)
 - Chốt: ngôn ngữ **TypeScript** · `planning→plan` · config vào `docs/.harness.json` · root chỉ `AGENTS.md` thin · bỏ CLAUDE.md.
 - `core` (registry/router/hooks/conflict) · `cli` (init/sync/migrate/doctor/ui/archive/grill/structure/setup).
