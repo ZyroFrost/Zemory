@@ -58,7 +58,7 @@ Quyết định thiết kế đã chốt (convention đầy đủ ở [`03_STRUC
 ## 6. zemory thực thi thế nào — ship + check + guide (KHÔNG auto-move)
 - **Ship chuẩn:** `docs_template/agent/03_STRUCTURE.md` (markdown source) → mọi project nhận qua `zemory init`/`sync`. `02_RULES.md` chỉ còn con trỏ tới file này; bất biến riêng app → `01_CONSTITUTION.md`.
 - **Check lệch:** `zemory validate` báo advisory (liệt kê tầng có/thiếu; warn nếu code không ở `backend/`(`src/`) hoặc thiếu `AGENTS.md`).
-- **Hướng dẫn reconcile:** `AGENTS.md §7/§8` — agent nắn từng app: `git mv` (giữ history) → sửa import/entry → verify; **hỏi trước khi đập lớn**. zemory chỉ chỉ ra chỗ lệch, KHÔNG tự move file.
+- **Hướng dẫn reconcile:** `03_STRUCTURE.md §8` (Reconcile) — agent nắn từng app: `git mv` (giữ history) → sửa import/entry → verify; **hỏi trước khi đập lớn**. zemory chỉ chỉ ra chỗ lệch, KHÔNG tự move file.
 - **Sync tự động cho project cũ:** `adopt.ts` có `LEGACY_RENAME` — project đã có harness cũ (mọi thế hệ tên: `02_TODO`/`03_CHANGES` gen-1, `01_RULES`/`02_STRUCTURE`/`03_TODO`/`04_CHANGES` gen-2) tự rename sang tên hiện hành (+ update `doc.path` trong DB) khi chạy `sync`, để không bị kẹt "non-standard" vĩnh viễn (bug tìm ra + vá 2026-07-10; mở rộng 2 thế hệ 2026-07-14).
 ## 7. Rollout (chuẩn bị)
 - **zemory: ✅ XONG (2026-07-08, dogfood).** `src/`→`backend/src/` · `test/`→`backend/test/` · `scripts/`→`backend/scripts/` · `prototype/web-capture/`→`attic/web-capture/` · `assets/`→`frontend/assets/`. Verify: `npm run check` (build+lint+57 test) PASS, `zemory validate`/`doctor` xanh, UI Cockpit chạy đúng. Tag backup: `pre-zemory-refactor`.

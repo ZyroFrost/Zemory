@@ -49,7 +49,7 @@ export function validate(ctx: Context): ValidateReport {
   // 3. Repo structure vs the standard (docs/agent/03_STRUCTURE.md). TWO standards:
   //    profile "app" (§1–6, default) vs "non-app" (§7 — BI/data/docs/design),
   //    chosen by `profile` in docs/.harness.json. ADVISORY only — reconciling is
-  //    agent-assisted (AGENTS.md §7); zemory never moves files.
+  //    agent-assisted (docs/agent/03_STRUCTURE.md §8); zemory never moves files.
   for (const i of checkStructure(projectRoot, ctx.config.profile ?? "app")) issues.push(i);
 
   return { issues, ok: !issues.some((i) => i.level === "error") };
@@ -64,7 +64,7 @@ const DELIVERABLES = ["reports", "models", "content", "design"];
  * NON-APP (§7): required = docs/ · AGENTS.md · ≥1 deliverable (reports/models/
  * content/design) — no backend/frontend expected. Everything else optional.
  * Build output + secret + .env are gitignored, so not checked. Warn on drift,
- * never fix (AGENTS.md §7).
+ * never fix (docs/agent/03_STRUCTURE.md §8).
  */
 function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue[] {
   const out: ValidateIssue[] = [];
@@ -110,7 +110,7 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     } else {
       out.push({
         level: "warn",
-        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/03_STRUCTURE.md; reconcile via AGENTS.md §7",
+        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/03_STRUCTURE.md; reconcile via docs/agent/03_STRUCTURE.md §8",
       });
     }
   }

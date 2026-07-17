@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-17] — refactor(harness): AGENTS.md = ROUTER thuần; luật/quy trình dồn về docs/; "chuẩn zemory" = docs_template/
+
+**AGENTS.md chỉ còn là CỬA ĐIỀU HƯỚNG** — không chứa luật, không chứa nội dung harness (user: *"agent là để điều hướng khi có mấy con ai tự mò… bộ harness chuẩn không liên quan gì agent"*). Trước đó AGENTS phình §0–§8 (setup·read·lookup·sửa-docs·content-rule·reconcile·grill·refactor), nhiều mục **trùng hoặc đá nhau với RULES** (điển hình: grill — RULES nói tự-động-khi-mơ-hồ, AGENTS §6 nói "chỉ khi user kêu").
+
+**Gọt AGENTS.md (repo + template) xuống ~18 dòng thuần điều hướng:** banner ⛔ repo-tham-khảo · "project dùng zemory, FILE WINS" · §Điều hướng (1: `zemory init` nếu chưa harness · 2: **ĐỌC HẾT `docs/`** · 3: làm theo RULES + CONSTITUTION). Nội dung cũ **KHÔNG mất** — định tuyến về đúng nhà:
+- **Grill** → gộp trọn vào `02_RULES §Hành xử` (self-contained: trigger + cơ chế "mỗi lần 1 câu, kèm đề xuất, chốt rõ mới build"), ghi rõ **cơ chế TỰ ĐỘNG, không chờ user gõ "grill"**. Bỏ `AGENTS §6`.
+- **Reconcile docs (§5) + reconcile cấu trúc (§7) + recipe refactor end-to-end (§8)** → gộp thành **`03_STRUCTURE §8` (Reconcile)**; flip mọi con trỏ (`03` header, `RULES §Cấu trúc`).
+- **Sửa-docs/content-rule (§3/§4) + lookup (§2)** → đã có sẵn ở `RULES §Tài liệu`; gotcha PowerShell UTF-8 (`--file`) dời vào `RULES §Tài liệu`.
+
+**"Đọc chuẩn zemory" = đọc `docs_template/` (bản mẫu TRẮNG), KHÔNG đọc `docs/`** (user: *"nó phải đọc template, không phải docs của zemory"*). `docs/` là docs RIÊNG của chính zemory (constitution/plan/TODO của nó) → sửa banner AGENTS (repo) + `RULES §Phạm vi project` (repo + template) trỏ đúng `docs_template/`.
+
+**Code refs stale theo:** `AGENTS.md §5/§7`→`03_STRUCTURE §8` (`cli.ts`·`adopt.ts`·`migrate.ts`·`validate.ts`), `AGENTS.md §6`→`02_RULES §Hành xử` (`checks.ts`). **Verify:** `npm run build` sạch · `npm test` 85/85 · `grep "AGENTS §[567]"` code = 0.
+
+> Còn nợ (user hoãn "làm sau"): `01_CONSTITUTION` của zemory phải ghi rõ luật riêng; AGENTS tuyệt đối chỉ điều hướng.
+
 ## [2026-07-17] — chore(harness): chuẩn plan slot `00 = OVERVIEW` + mô tả zemory = harness + DB tuỳ chọn
 
 Chốt convention: **`docs/plan/00_*` = OVERVIEW mặc định mọi app** (mục đích · tính năng · ý tưởng · phi-mục-tiêu); spec chi tiết từ `01_*` trở đi. Ghi vào `03_STRUCTURE` §3 (dòng cây `plan/`) + §5 (convention `Plan 00 = overview`), cả repo lẫn template — đồng bộ index theo luật "03_STRUCTURE là INDEX".

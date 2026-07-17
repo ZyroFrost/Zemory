@@ -4,7 +4,7 @@
 > Chuẩn folder zemory **ship + thực thi** cho MỌI project. Mô tả theo **VAI TRÒ**, không khóa framework.
 > **CÓ 2 CHUẨN — xác định loại project TRƯỚC rồi áp đúng chuẩn:**
 > ① **APP** (có code chạy: UI/server/CLI) → **§1–6**. ② **NON-APP** (sản phẩm/tài sản: BI/report, data, docs-only, design — vd `powerbi_sasinflow`) → **§7**. Cả hai dùng CHUNG harness `docs/` + `AGENTS.md`.
-> Đọc TRƯỚC khi sửa: cần gì → §4 (app) / §7 (non-app) trỏ thẳng slot. Nắn project về chuẩn: xem `AGENTS.md §Reconcile`.
+> Đọc TRƯỚC khi sửa: cần gì → §4 (app) / §7 (non-app) trỏ thẳng slot. Nắn project về chuẩn: xem **§8** (Reconcile) bên dưới.
 
 ## 1. Nguyên tắc
 - Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
@@ -353,3 +353,22 @@ Publish/refresh      tự động hóa → scripts/ · bản render ra → expor
 Sơ đồ trực quan      .html tương tác/.svg xem trực quan (luồng/lineage/lưới bảng) → docs_visual/ (NGOÀI docs/, agent KHÔNG auto-đọc); mỗi file có .md chủ trỏ + tóm tắt. Chi tiết = §5 docs_visual
 Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, agent điều hướng non-app đúng như app
 ```
+
+## 8. Reconcile — nắn repo về chuẩn (khi repo lệch)
+> Flow HIẾM, chỉ khi dọn repo chưa theo chuẩn. `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn, zemory KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES` §Hành xử, §Git).
+
+**A. Docs lệch** (doc trùng / thừa / lạc chỗ):
+1. `zemory docs ls` — soi trùng/thừa; `zemory plan show <#id>` đọc nội dung TRƯỚC khi quyết.
+2. Gộp todo lạc → `04_TODO`. Bỏ bản trùng/obsolete: `zemory docs rm <path>` — **HỎI user nếu doc còn nội dung thật** (không mất nội dung).
+3. Gom mọi doc plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên `NN_tên.md` đánh số (`00_overview` → `01_` …); plan chỉ chứa specs, todo tách về `04_TODO`.
+
+**B. Cấu trúc folder lệch** (chưa theo khung `backend/` · `frontend/` · `docs/`):
+1. `zemory validate` — xem tầng nào thiếu / đặt sai (advisory, không tự sửa).
+2. Nắn theo bảng routing §4 (app) / §7 (non-app), **GIỮ git history — dùng `git mv`, KHÔNG copy rồi xoá**:
+   - code của mình → `backend/` (Python `backend/<pkg>/` · Node `backend/src/`); dùng chung BE↔FE → `backend/src/shared/`.
+   - UI/asset → `frontend/`. Repo ngoài clone → `external/`. Nguồn cũ / code bị thay khi refactor → `attic/` (backup tracked, để rollback). Runtime (`.db`/log/cache) + secret (`.key`/bundle) → `data/` (gitignore). Tool ép root (`.github/` · `.env` + `.env.example` · Docker/`.spec`) → để yên ở root.
+   - **KHÔNG ép tạo `test/`** — chỉ khi có lõi logic dễ sai ngầm. Bắt buộc chỉ 4 vai trò: `backend(code)` · `frontend` · `docs` · `AGENTS.md`.
+3. Sau move: **sửa import / entry / path** cho khớp (cần judgment) → **verify bằng cách chạy chính app**.
+4. Xong → cập nhật `README` + `zemory changelog add` (sau khi user OK).
+
+**Recipe end-to-end** ("đọc zemory + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc §3 (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.

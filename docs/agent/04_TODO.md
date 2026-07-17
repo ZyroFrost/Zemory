@@ -30,6 +30,8 @@
 ## ⭐ Ưu tiên kế tiếp
 > Compression đã **BỎ khỏi scope** (changelog 2026-06-25). zemory tập trung **global memory + harness**. Source nén ở `attic/`.
 
+- [ ] **Harness: rà `01_CONSTITUTION` của zemory ghi RÕ luật riêng của chính app** (bất biến kiến trúc). AGENTS.md giữ TUYỆT ĐỐI chỉ điều hướng — không luật, không nội dung harness. (User hoãn "làm sau" — 2026-07-17, sau khi đã gọt AGENTS về router thuần + dồn luật/quy trình về `docs/`.)
+
 **✅ RAG semantic core — đã code/test tới gate A-D + E (rerank, opt-in) + full backfill (2026-06-30) + F1 (asymmetric prompts/256d/chunking, 2026-07-14):**
 - [x] A. Embed pipeline: EmbeddingGemma-300M qua Transformers.js (ONNX, Node, no Python) — embed ra vector unit-normalized, fail-open khi model lỗi.
 - [x] B. Vector store: `sqlite-vec` trong `global_memory.db`; `zemory brain embed` incremental; vector index hiện chạy thật trên DB local.
