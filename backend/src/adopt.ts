@@ -35,7 +35,7 @@ export interface AdoptResult {
   needsReconcile: boolean;
 }
 
-// The canonical agent docs (DB-source mirrors). Anything else in docs/agent =
+// The canonical agent docs (.md is source; DB = derived index). Anything else in docs/agent =
 // non-standard → flag for agent reconciliation rather than gap-filling (which
 // would create duplicates). 01_CONSTITUTION (2026-07-14) is the per-app
 // supreme layer — each app's own architectural invariants (like Spec Kit's
@@ -128,7 +128,7 @@ export function ensureHarness(projectRoot: string): AdoptResult {
 
   // Normalize legacy filenames first (mechanical rename, same content) so an
   // old-numbered project doesn't get permanently flagged non-standard below.
-  // These docs are DB-source (rendered from global_memory.db by project_root +
+  // These docs: .md is the source; the DB index is rebuilt by project_root +
   // path) — renaming the file alone would leave the DB row pointing at a path
   // that no longer exists, so the doc.path row moves too, in the same step.
   if (existsSync(docsDir)) {

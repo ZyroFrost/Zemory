@@ -1,5 +1,5 @@
 // DB-backed changelog retention. The database remains the only source of
-// truth: old rows are marked archived and stay searchable; the markdown mirror
+// truth: old rows are marked archived and stay searchable; the .md file
 // is regenerated with active rows only. No second archive file is created.
 
 import { join } from "node:path";

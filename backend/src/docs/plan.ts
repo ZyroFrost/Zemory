@@ -77,7 +77,7 @@ export function importDoc(absPath: string, relPath: string, projectRoot: string,
   }
 }
 
-/** Create a new DB-source doc and immediately render its markdown mirror. */
+/** Import a doc into the DB search index and (re)render its .md (the file is the source). */
 export function createDoc(
   relPath: string,
   text: string,
