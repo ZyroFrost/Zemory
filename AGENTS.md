@@ -3,7 +3,7 @@
 
 > ⛔ **DỪNG — bạn mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?**
 > Nếu project bạn đang làm **KHÔNG phải repo này** (chỉ ghé đọc/copy chuẩn, xem code mẫu) → **CHỈ ĐỌC, KHÔNG GHI:**
-> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — `init` · `sync` · `docs render` · `plan set` · `changelog` **đều GHI** vào repo này **và** `global_memory.db`.
+> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — mọi lệnh GHI (`init` · `sync` · `reindex` · `archive` · `brain scan/sync` · `hook`…) ghi vào repo này **và/hoặc** `global_memory.db`.
 > - ⚠ Repo này **có thể đang có phiên agent khác làm việc** — bạn ghi vào = xung đột thật.
 > - ✅ **Lấy CHUẨN zemory = đọc `docs_template/`** (bản mẫu TRẮNG) rồi áp vào REPO CỦA BẠN, chạy lệnh `zemory` ở repo của bạn. **KHÔNG lấy chuẩn từ `docs/`** — đó là docs RIÊNG của zemory, không phải bản mẫu.
 > - Thật sự cần ghi vào đây → **HỎI USER TRƯỚC**.

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
-import { createDoc } from "../../dist/docs/plan.js";
+import { importDoc } from "../../dist/docs/plan.js";
 import { callMcpTool, handleMcpRequest } from "../../dist/mcp.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -29,13 +29,9 @@ function seedMcpDb(t) {
   } finally {
     db.close();
   }
-  createDoc(
-    join("docs", "plan", "mcp.md"),
-    "# MCP Notes\n\nThe recall server exposes brain_search and plan_search tools.\n",
-    root,
-    "plan",
-    dbPath,
-  );
+  const rel = join("docs", "plan", "mcp.md");
+  writeFileSync(join(root, rel), "# MCP Notes\n\nThe recall server exposes brain_search and plan_search tools.\n");
+  importDoc(join(root, rel), rel, root, "plan", dbPath);
   return { projectRoot: root, dbPath };
 }
 

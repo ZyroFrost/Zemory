@@ -7,7 +7,7 @@
 ## 0. Nguyên tắc & quyết định (CHỐT 2026-06-18)
 - Curated docs, TODO, specs và changelog: **file `.md` là NGUỒN (FILE WINS)**; bảng `doc/section/changelog` là index dẫn xuất, rebuild từ `.md` (HP điều 3, chốt 2026-07-16 — supersede mô hình cũ "DB là nguồn, md là mirror").
 - Transcript gốc của host là nguồn episodic; `sessions/messages` và FTS là lens dẫn xuất có thể rebuild.
-- Sửa curated content = sửa `.md` trực tiếp (file wins); `plan set`/`docs add`/`changelog add` là **tiện ích tùy chọn** (ghi DB rồi render lại file). (`docs sync` đã gỡ hoàn toàn 2026-07-16.)
+- Sửa curated content = sửa `.md` trực tiếp (file wins); search index dựng lại bằng `zemory reindex` (đọc `.md`, KHÔNG ghi ngược). (Mọi lệnh ghi DB→md — docs sync/render · plan set · docs add · changelog add — đã gỡ hoàn toàn.)
 - Mọi mutation section phải scope theo `project_root`; mọi path render/delete phải nằm trong `docs/`.
 - Schema có version và migration; trước migration global phải backup bằng SQLite online backup.
 
@@ -52,10 +52,10 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 
 ## 4. Quan hệ `.md` ↔ DB (FILE WINS — file là nguồn)
 - Sửa thường = sửa `.md` trực tiếp; DB doc/section/changelog dựng lại (index dẫn xuất) từ `.md`.
-- `plan set`/`docs add` (tiện ích tùy chọn) cập nhật DB rồi render lại đúng file `.md`.
-- `changelog add` cập nhật DB rồi render lại `05_CHANGES.md`.
-- `docs render` (DB → `.md`) chỉ dùng **phục hồi có chủ đích** — nó ĐÈ file, KHÔNG dùng trong luồng sửa thường. (`docs sync` đã gỡ 2026-07-16.)
-- `archive` chỉ set `changelog.archived=1` rồi render active rows; full history vẫn ở DB/FTS.
+- `zemory reindex` đọc `.md` (docs/plan + 05_CHANGES) → dựng lại doc/section/changelog index; **thuần đọc, KHÔNG ghi ngược file**.
+- Thêm/sửa/xoá nội dung docs = sửa/xoá file `.md` trực tiếp; chạy `reindex` để search tươi.
+- KHÔNG còn lệnh render DB→md hay sửa-qua-DB (docs render/sync · plan set · docs add · changelog add) — **đã gỡ hoàn toàn 2026-07-17** (vi phạm FILE WINS).
+- `archive` là thao tác FILE: cắt entry cũ khỏi `05_CHANGES.md` sang `docs/agent/archive/05_CHANGES.md` (cold, ngoài bộ đọc mỗi phiên), rồi reindex main. KHÔNG dùng cờ DB.
 
 ## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
 Harness chuẩn (`docs_template/`, ship cho project khác) gồm:

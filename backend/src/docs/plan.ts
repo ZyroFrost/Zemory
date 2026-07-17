@@ -1,29 +1,19 @@
-// Plan store — DB is the SOURCE for plan docs; .md is a derived render.
-// import = seed DB from existing .md (one-time, fence-aware, verbatim, with a
-// round-trip fidelity check). After that, edit via set/add/rm (DB) and render
-// back to .md (db → md). Search is FTS over sections (heading-weighted).
+// Plan/docs INDEX — the .md FILE is the SOURCE (FILE WINS); the DB doc/section
+// rows are a DERIVED, READ-ONLY search index, rebuilt from .md by `reindex`.
+// Nothing here writes back to .md — agents edit .md directly and reindex to
+// refresh search. Search is FTS over sections (heading-weighted).
 
-import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, normalize, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { isAbsolute, normalize, relative, resolve } from "node:path";
 import { type BrainDB, currentBrainDb, openBrain } from "../brain/db.js";
-import { parseMarkdown, renderSections, roundTripOk, slug } from "./markdown.js";
-
-// FILE-WINS doctrine (2026-07-16, user decision — supersedes "DB là nguồn"):
-// the .md FILE is the source for curated docs; the DB doc/section rows are a
-// derived SEARCH INDEX. Agents edit .md freely (following the harness standard)
-// — the file IS the source. `plan set`/`changelog add` remain optional
-// conveniences (they update the DB then re-render the file so both stay aligned).
-const RENDER_HEADER =
-  "<!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->\n";
+import { parseMarkdown, roundTripOk } from "./markdown.js";
 
 export interface ImportResult {
   path: string;
   docId: number;
   sections: number;
+  /** File parses+re-renders identically (a clean-structure lint signal). */
   roundTrip: boolean;
-  /** File content matches the DB index (nothing to re-import). */
-  skipped?: boolean;
 }
 
 function upsertDoc(db: BrainDB, projectRoot: string, relPath: string, kind: string): number {
@@ -58,9 +48,10 @@ function replaceSections(db: BrainDB, docId: number, text: string): number {
   return sections.length;
 }
 
-/** Seed the DB from a markdown file (DB becomes the source thereafter). */
+/** Reindex ONE markdown file into the DB search index (read-only; never writes
+ *  the file). The .md is the source; this only refreshes the derived index. */
 export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = currentBrainDb()): ImportResult {
-  // Strip a prior render's GENERATED header so re-import → re-render doesn't double it.
+  // Strip any prior GENERATED header (legacy renders) so it is not indexed as body.
   const text = readFileSync(absPath, "utf8").replace(/^<!-- GENERATED[^\n]*-->\r?\n/, "");
   const roundTrip = roundTripOk(text);
   const db = openBrain(dbPath);
@@ -77,42 +68,7 @@ export function importDoc(absPath: string, relPath: string, projectRoot: string,
   }
 }
 
-/** Import a doc into the DB search index and (re)render its .md (the file is the source). */
-export function createDoc(
-  relPath: string,
-  text: string,
-  projectRoot: string,
-  kind = "plan",
-  dbPath = currentBrainDb(),
-): ImportResult {
-  const canonicalPath = normalize(relPath);
-  resolveDocPath(projectRoot, canonicalPath);
-  const db = openBrain(dbPath);
-  let result: ImportResult;
-  try {
-    const exists = db
-      .prepare("SELECT 1 AS ok FROM doc WHERE project_root=? AND path=?")
-      .get(projectRoot, canonicalPath) as { ok: number } | undefined;
-    if (exists) throw new Error(`Doc already exists: ${canonicalPath}`);
-    const tx = db.transaction(() => {
-      const docId = upsertDoc(db, projectRoot, canonicalPath, kind);
-      const sections = replaceSections(db, docId, text);
-      return { path: canonicalPath, docId, sections, roundTrip: roundTripOk(text) };
-    });
-    result = tx();
-  } finally {
-    db.close();
-  }
-  renderDoc(canonicalPath, projectRoot, dbPath);
-  return result;
-}
-
-const normPath = (p: string) => normalize(p);
-
-// Normalize for content comparison only (CRLF checkouts must not force churn).
-const normEol = (s: string) => s.replace(/\r\n/g, "\n");
-
-/** Resolve a DB doc path without allowing writes outside the project docs dir. */
+/** Resolve a docs-relative path, rejecting anything that escapes `docs/`. */
 export function resolveDocPath(projectRoot: string, docPath: string): string {
   const docsRoot = resolve(projectRoot, "docs");
   const abs = resolve(projectRoot, docPath);
@@ -120,26 +76,6 @@ export function resolveDocPath(projectRoot: string, docPath: string): string {
   if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return abs;
   throw new Error(`Unsafe docs path: ${docPath}`);
 }
-
-/** Remove a doc (and its sections) from the DB. Returns true if it existed. */
-export function removeDoc(projectRoot: string, relPath: string, dbPath = currentBrainDb()): boolean {
-  const db = openBrain(dbPath);
-  try {
-    const want = normPath(relPath);
-    const doc = db
-      .prepare("SELECT id FROM doc WHERE project_root=? AND path=?")
-      .get(projectRoot, want) as { id: number } | undefined;
-    if (!doc) return false;
-    db.prepare("DELETE FROM section WHERE doc_id=?").run(doc.id);
-    db.prepare("DELETE FROM doc WHERE id=?").run(doc.id);
-    return true;
-  } finally {
-    db.close();
-  }
-}
-
-// (The bulk .md→DB importer was removed 2026-07-16 — the docs-index is fed only
-//  by `plan set`/`changelog add` now; agents read .md directly.)
 
 export interface DocRow {
   id: number;
@@ -161,16 +97,6 @@ export function listDocs(projectRoot: string, dbPath = currentBrainDb()): DocRow
   } finally {
     db.close();
   }
-}
-
-/** Render EVERY doc back to its .md mirror (db → md). Overwrites files. */
-export function renderAll(projectRoot: string, dbPath = currentBrainDb()): string[] {
-  const written: string[] = [];
-  for (const d of listDocs(projectRoot, dbPath)) {
-    const r = renderDoc(d.path, projectRoot, dbPath);
-    if (r) written.push(d.path);
-  }
-  return written;
 }
 
 export interface TocRow {
@@ -243,101 +169,4 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
   } finally {
     db.close();
   }
-}
-
-const sha1 = (text: string): string => createHash("sha1").update(text).digest("hex");
-
-/** Render a doc from the DB back to its .md file (db → md) — the RECOVERY path
- *  under FILE WINS (the file is normally the source). Salvages the on-disk file
- *  to `.hand-edited-*.bak` first IFF it holds content the DB does NOT have — so a
- *  render can't destroy work that was never put into the DB. */
-export function renderDoc(
-  docPath: string,
-  projectRoot: string,
-  dbPath = currentBrainDb(),
-): { path: string; bytes: number; salvaged: string | null } | null {
-  const db = openBrain(dbPath);
-  try {
-    const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as
-      | { id: number }
-      | undefined;
-    if (!doc) return null;
-    const sections = db.prepare("SELECT level, heading, body FROM section WHERE doc_id=? ORDER BY ordinal").all(doc.id) as {
-      level: number;
-      heading: string | null;
-      body: string;
-    }[];
-    const body = renderSections(sections);
-    const md = RENDER_HEADER + body;
-    const abs = resolveDocPath(projectRoot, docPath);
-    mkdirSync(dirname(abs), { recursive: true });
-    let salvaged: string | null = null;
-    if (existsSync(abs)) {
-      const current = readFileSync(abs, "utf8");
-      // Compare the file's BODY against what the DB holds — NOT rendered_hash.
-      // Body-vs-body (not a stored hash) is the question that actually matters:
-      // does the file hold anything the DB does NOT already have?
-      const currentBody = normEol(current.replace(/^<!-- GENERATED[^\n]*-->\r?\n/, ""));
-      if (currentBody !== normEol(body)) {
-        salvaged = `${abs}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
-        copyFileSync(abs, salvaged);
-        console.error(
-          `zemory: ${docPath} has hand-edits the DB index does NOT have — saved to ${salvaged} before this render overwrote them. ` +
-            "FILE WINS: the .md file is the source; render (db → md) is a recovery path only.",
-        );
-      }
-    }
-    writeFileSync(abs, md);
-    db.prepare("UPDATE doc SET rendered_at=?, rendered_hash=? WHERE id=?").run(new Date().toISOString(), sha1(md), doc.id);
-    return { path: abs, bytes: md.length, salvaged };
-  } finally {
-    db.close();
-  }
-}
-
-/** Replace a section's body (edit-on-DB), then re-render its .md. */
-export function setBody(id: number, body: string, projectRoot: string, dbPath = currentBrainDb()): boolean {
-  const db = openBrain(dbPath);
-  let docPath: string | undefined;
-  try {
-    const row = db
-      .prepare(
-        "SELECT s.doc_id, d.path FROM section s JOIN doc d ON d.id=s.doc_id WHERE s.id=? AND d.project_root=?",
-      )
-      .get(id, projectRoot) as
-      | { doc_id: number; path: string }
-      | undefined;
-    if (!row) return false;
-    docPath = row.path;
-    db.prepare("UPDATE section SET body=? WHERE id=?").run(body, id);
-  } finally {
-    db.close();
-  }
-  if (docPath) renderDoc(docPath, projectRoot, dbPath);
-  return true;
-}
-
-/** Rename a section's heading (and re-derive its anchor), then re-render its .md.
- *  Body is untouched. Headings are single-line; any newline is rejected. */
-export function setHeading(id: number, heading: string, projectRoot: string, dbPath = currentBrainDb()): boolean {
-  const clean = heading.replace(/^#+\s*/, "").trim();
-  if (!clean || /\n/.test(heading)) return false;
-  const db = openBrain(dbPath);
-  let docPath: string | undefined;
-  try {
-    const row = db
-      .prepare(
-        "SELECT s.level, d.path FROM section s JOIN doc d ON d.id=s.doc_id WHERE s.id=? AND d.project_root=?",
-      )
-      .get(id, projectRoot) as
-      | { level: number; path: string }
-      | undefined;
-    if (!row || row.level === 0) return false; // preamble has no heading
-    docPath = row.path;
-    db.prepare("UPDATE section SET heading=?, anchor=? WHERE id=?").run(clean, slug(clean), id);
-  } finally {
-    db.close();
-  }
-  if (docPath) renderDoc(docPath, projectRoot, dbPath);
-  return true;
 }

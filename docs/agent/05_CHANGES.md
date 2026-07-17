@@ -5,6 +5,28 @@
 
 ---
 
+## [2026-07-17] — refactor(harness): GỠ TRỌN "docs sống trong DB" (ghi/render lên docs) — chỉ giữ search index dẫn xuất
+
+Dưới FILE WINS: docs là file `.md` viết tay, agent đọc thẳng. Toàn bộ cơ chế **GHI/RENDER lên docs** (bản sao DB làm nguồn, render DB→md, sửa-qua-DB) là cruft trái HP điều 3 → **gỡ hoàn toàn**. GIỮ `plan search` + index (part of global brain) nhưng đổi thành **DẪN XUẤT thuần-đọc** — dựng lại từ `.md`, KHÔNG bao giờ ghi ngược file.
+
+**GỠ (ghi ngược `.md` / sửa-qua-DB):**
+- `plan.ts`: `renderDoc` · `renderAll` · `setBody` · `setHeading` · `createDoc` · `removeDoc`.
+- `changelog.ts`: `addEntry` · `renderChangelog` · `setEntryDate`.
+- CLI: `plan set/render/import` · `docs add/render/rm` · `changelog add/set/render/import` + `readBody`.
+- Còn lại (đọc): `importDoc`(reindex thuần-đọc) · `searchSections`/`listToc`/`showSection`/`listDocs` · `importChangelog`/`parseChangelog`/`listEntries`/`searchChangelog`.
+
+**THÊM `zemory reindex`** — đọc `docs/plan/*.md` + `05_CHANGES.md` → dựng lại doc/section/changelog index (thuần đọc, KHÔNG ghi file). Đường DUY NHẤT làm tươi search index.
+
+**REWORK `archive` → FILE-BASED** — cắt entry cũ khỏi `05_CHANGES.md` sang `docs/agent/archive/05_CHANGES.md` (cold, NGOÀI bộ đọc mỗi phiên), rồi reindex main. Bỏ cờ DB `archived`, bỏ render DB→md.
+
+**GIỮ NGUYÊN:** episodic brain (sessions/messages/vector) · `brain *` · **Drive sync** (`brain sync`) · MCP `plan_search`/`plan_show` + `brain_*` · bảng doc/section/changelog (giờ = index dẫn xuất) · `validate` (vốn đã file-based).
+
+**Docs + refs đồng bộ:** AGENTS banner + RULES §Phạm vi/§Tài liệu + `03_STRUCTURE §8` + plan/00·02 + README + cli help/migrate/sync → mọi mention lệnh ghi thay bằng "sửa `.md` + `reindex`".
+
+**Tests:** rewrite docs-store/docs-guard (bỏ test render/set/addEntry; thêm importDoc-scope · archive-file · reindex merge/replace) + mcp (`createDoc`→`importDoc`). **Verify:** `npm run check` **82/82** (typecheck+lint+test) · smoke: `reindex` = 13 doc/143 section/32 changelog, `plan search` trúng, `plan set`→usage (đã gỡ).
+
+> Bối cảnh quyết định (user, 2026-07-17): "loại bỏ hoàn toàn mọi thứ chạy tự động LÊN docs, chỉ giữ Drive sync" + "plan search là 1 phần của global brain — GIỮ". → gỡ ghi/render, giữ search (index thuần-đọc).
+
 ## [2026-07-17] — chore(harness): CHUẨN LẠI HẾT theo FILE WINS + AGENTS thuần router — áp lên chính zemory
 
 Hoàn tất phần hoãn + soát toàn bộ ("kiểm tra còn sót gì"): dogfood chuẩn mới lên chính zemory qua 1 lượt audit đầy đủ.
