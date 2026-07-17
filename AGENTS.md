@@ -3,13 +3,13 @@
 
 > ⛔ **DỪNG — bạn mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?**
 > Nếu project bạn đang làm **KHÔNG phải repo này** (bạn chỉ ghé để đọc/copy chuẩn, tra cách làm, xem code mẫu) → **CHỈ ĐỌC. Đọc thoải mái, nhưng KHÔNG GHI:**
-> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — `init` · `sync` · `docs sync` · `docs render` · `plan set` · `changelog add/import` **đều GHI** vào repo này **và** vào `global_memory.db`.
+> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — `init` · `sync` · `docs render` · `plan set` · `changelog add/import` **đều GHI** vào repo này **và** vào `global_memory.db`.
 > - ⚠ Repo này **có thể đang có phiên agent khác làm việc**. Bạn ghi vào = xung đột thật (file nửa cũ nửa mới, DB lệch, agent bên đó phải sửa ngược).
 > - ✅ **Lấy chuẩn = ĐỌC `docs/agent/*` rồi ÁP VÀO REPO CỦA BẠN** — chạy lệnh `zemory` ở repo của bạn, không phải ở đây.
 > - Thật sự cần ghi vào đây → **HỎI USER TRƯỚC**. Luật đầy đủ: `docs/agent/02_RULES.md` §Phạm vi project.
 
 Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agent.
-**FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search/sync — **sửa xong chạy `zemory docs sync`** để index cập nhật (**file wins**: file khác index → index dựng lại từ file; entry changelog viết tay tự merge vào DB). zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**.
+**FILE `.md` là NGUỒN của docs — viết/sửa tay TỰ DO, miễn BÁM CHUẨN harness** (đúng file đúng vai trò theo `03_STRUCTURE`; changelog đúng format `## [YYYY-MM-DD] — tiêu đề`). DB (`global_memory.db`) chỉ là **INDEX dẫn xuất** cho search — **file là NGUỒN (file wins)**, sửa file là đủ. zemory KHÔNG cố định nội dung docs — nó chỉ cố định **cấu trúc folder + rule chung + bộ harness**.
 
 > **Cài harness = NẮN project về CHUẨN, KHÔNG bê nội dung mẫu.** zemory chỉ dựng sẵn **cấu trúc + cách lưu** chuẩn; **nội dung** (CONSTITUTION/TODO/CHANGES/plan) là của riêng project. Bạn (AI) đọc bộ chuẩn (`01_CONSTITUTION.md` + `02_RULES.md` + các mục dưới) rồi tự chỉnh project cho khớp cấu trúc — dựng `docs/agent` + `docs/plan`, đánh số plan, gom todo/plan lạc chỗ. TUYỆT ĐỐI không copy TODO/CHANGES của project khác vào.
 
@@ -22,7 +22,7 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 ## 1. Mở phiên (MỖI lần) — Đọc chuẩn rồi BẮT TAY LÀM
 1. Đọc `docs/agent/01_CONSTITUTION.md` (hiến pháp — bất biến TỐI CAO riêng của project, vi phạm = bug thiết kế) rồi `02_RULES.md` (luật làm việc chung). Tuân tuyệt đối, hiến pháp trên hết.
 2. Làm việc user yêu cầu. *(tùy chọn: `zemory doctor` soi harness nếu nghi ngờ.)*
-→ **KHÔNG cần `zemory docs sync` khi MỞ phiên** — `.md` là NGUỒN, agent đọc thẳng file (FILE WINS); `docs sync` chỉ để cập nhật index tìm kiếm SAU khi sửa docs (§3). Đừng lặp `plan ls/search`; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
+→ Hết. `.md` là NGUỒN — agent đọc thẳng file (FILE WINS), bắt tay làm luôn. Đừng lặp `plan ls/search`; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
 
 ## 2. Tra cứu (KHI CẦN, không phải mỗi lần)
 - Plan/spec: `zemory plan ls [doc]` · `plan search "<q>"` · `plan show <#id>`
@@ -34,7 +34,6 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - Sửa 1 mục (plan/rules): ghi nội dung mới ra **file tạm (UTF-8)** → `zemory plan set <#id> --file <path>` (tự render lại).
 - Thêm changelog: `zemory changelog add "<tiêu đề>" --file <path>` (hoặc bỏ `--file` nếu không có body).
 - Render lại toàn bộ .md: `zemory docs render`.
-- *(HIẾM khi cần)* muốn `plan search`/`changelog ls` phản ánh sửa đổi → `zemory docs sync` (chỉ cập nhật index tìm kiếm, không đụng file). Bình thường đọc thẳng `.md` là đủ — **khỏi sync**.
 
 ⚠ **Windows/PowerShell**: ĐỪNG dùng `echo "..." | zemory plan set` cho nội dung **có dấu** — PowerShell làm hỏng UTF-8 (đ/ư/ậ → `?`). **Luôn dùng `--file`** (ghi file tạm rồi truyền path).
 
@@ -48,10 +47,8 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 - Bộ chuẩn LUÔN có **TODO**. Thấy todo bất kỳ đâu (TODO.md root, todo lẫn trong plan) → **gộp vào `04_TODO`**. **`plan` = specs thuần, KHÔNG todo.**
 - **Luật riêng của app** (bất biến kiến trúc) → `01_CONSTITUTION.md` (user chốt); thấy luật nằm rải trong plan → đề xuất dời về hiến pháp, plan chỉ dẫn chiếu.
 
-## 5. Reconcile docs cũ — khi `zemory sync` báo "non-standard", hoặc có doc trùng/thừa
-> *(Flow HIẾM — chỉ khi dọn repo lệch chuẩn. `docs sync` bước 1 ở đây CÓ việc thật: import để so sánh/gộp — KHÁC ritual mở phiên đã bỏ.)*
-1. `zemory docs sync` — import HẾT `.md` → brain (an toàn, không đụng file).
-2. `zemory docs ls` — xem cái nào **trùng**/**thừa**.
+## 5. Reconcile docs cũ — có doc trùng/thừa/lạc chỗ (flow HIẾM, chỉ khi dọn repo lệch chuẩn)
+1. `zemory docs ls` — xem cái nào **trùng**/**thừa**.
 3. `zemory plan show <#id>` — đọc nội dung TRƯỚC khi quyết.
 4. Gộp todo → `04_TODO`. Bỏ thừa: `zemory docs rm <path>` cho bản trùng/obsolete. **HỎI user** nếu doc còn nội dung thật.
 5. **Plan:** gom mọi doc mô tả plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên **`NN_tên.md`** đánh số thứ tự (`00_`, `01_`, …); `plan` chỉ chứa specs, todo tách về `04_TODO`.
