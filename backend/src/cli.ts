@@ -26,7 +26,7 @@ import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrai
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { validate } from "./validate.js";
 import { runMcpStdio } from "./mcp.js";
-import { createDoc, importAll, importDoc, listDocs, listToc, removeDoc, renderAll, renderDoc, resolveDocPath, searchSections, setBody, setHeading, showSection } from "./docs/plan.js";
+import { createDoc, importDoc, listDocs, listToc, removeDoc, renderAll, renderDoc, resolveDocPath, searchSections, setBody, setHeading, showSection } from "./docs/plan.js";
 import { addEntry, importChangelog, listEntries, renderChangelog, searchChangelog, setEntryDate } from "./docs/changelog.js";
 const VERSION = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
@@ -70,11 +70,10 @@ function cmdInit(args: string[]): void {
 function cmdMigrate(): void {
   console.log("zemory migrate — reconcile docs cũ về chuẩn (App KHÔNG tự sửa; agent làm).");
   console.log("Các bước đầy đủ: AGENTS.md §5. Tóm tắt:");
-  console.log("  1. zemory docs sync        — import HẾT .md vào brain (không đụng file)");
-  console.log("  2. zemory docs ls          — xem cái nào trùng/thừa");
-  console.log("  3. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
-  console.log("  4. gộp todo → 04_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
-  console.log("  5. zemory docs render → zemory doctor (xanh = xong)");
+  console.log("  1. zemory docs ls          — xem cái nào trùng/thừa");
+  console.log("  2. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
+  console.log("  3. gộp todo → 04_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
+  console.log("  4. zemory docs render → zemory doctor (xanh = xong)");
 }
 
 function cmdSync(): void {
@@ -87,7 +86,6 @@ function cmdSync(): void {
   if (r.needsReconcile) {
     console.log("  ⚠ existing docs are non-standard — NOT auto-modified.");
     console.log("    → AGENT reconcile (các bước: AGENTS.md §5, hoặc `zemory migrate`):");
-    console.log("      zemory docs sync   (import all → global_memory.db)");
     console.log("      zemory docs ls / rm  (drop dups + obsolete: 00_INDEX, 02_CONTEXT, overview)");
     console.log("      zemory docs render (regenerate clean mirrors)");
   } else if (!r.added.length && !r.createdConfig) {
@@ -189,7 +187,7 @@ function cmdSetup(): void {
   console.log("zemory setup — cài & dùng:");
   console.log("  1. npm i -g zemory                 — cài global (lệnh `zemory`)");
   console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
-  console.log("  3. zemory docs sync && zemory doctor");
+  console.log("  3. zemory doctor");
   console.log("Mọi hướng dẫn (mở phiên, tra cứu, sửa docs, reconcile, grill): đọc AGENTS.md ở root.");
 }
 
@@ -995,7 +993,7 @@ async function cmdPlan(args: string[]): Promise<void> {
     const docPath = args[1] ? args[1] : join("docs", "plan", "00_build_plan.md");
     const toc = listToc(docPath, root);
     if (!toc.length) {
-      console.log(`zemory plan: no sections for ${docPath} — run \`zemory docs sync\` first (load docs → brain).`);
+      console.log(`zemory plan: no sections for ${docPath} (index rỗng — thêm nội dung qua \`plan set\`; hoặc đọc thẳng file .md).`);
       return;
     }
     console.log(`zemory plan ls — ${docPath}`);
@@ -1076,23 +1074,6 @@ async function cmdPlan(args: string[]): Promise<void> {
 async function cmdDocs(args: string[]): Promise<void> {
   const sub = args[0];
   const root = findProjectRoot() ?? process.cwd();
-  if (sub === "sync") {
-    // Import ALL docs into global_memory.db (generic: classify by pattern; changelog
-    // files routed to the changelog table). SAFE: writes DB only, .md untouched.
-    const docs = importAll(root);
-    console.log(`zemory docs sync — imported ${docs.length} file(s) → global_memory.db`);
-    for (const d of docs) {
-      const state = d.skipped ? "·" : d.roundTrip ? "✓" : "⚠";
-      const action = d.skipped
-        ? " — unchanged (matches DB index)"
-        : d.kind === "changelog"
-          ? ` — merged ${d.sections} new entr(ies)`
-          : ` — ${d.sections} sections (file wins)`;
-      console.log(`  ${state} [${d.kind}] ${d.path}${action}`);
-    }
-    console.log("  (FILE WINS: .md is the source; DB is the derived search index. .md untouched by sync.)");
-    return;
-  }
   if (sub === "ls") {
     const docs = listDocs(root);
     console.log(`zemory docs — ${docs.length} doc(s) in global_memory.db`);
@@ -1155,11 +1136,10 @@ async function cmdDocs(args: string[]): Promise<void> {
   }
   console.log(
     [
-      "zemory docs <subcommand>   (DB = source for all docs; .md = render mirror)",
+      "zemory docs <subcommand>   (.md = NGUỒN, file wins; DB = derived search index)",
       "",
-      "  sync     import ALL docs (+changelog) from .md into global_memory.db (DB only, safe)",
       "  ls       list docs in global_memory.db (kind · sections)",
-      "  add <p>  create a new DB-source markdown doc from --file",
+      "  add <p>  create a markdown doc from --file",
       "  rm <p>   remove a doc from DB + delete its .md (--keep-file to keep)",
       "  render   (re)generate every .md mirror from global_memory.db (db → md, OVERWRITES)",
     ].join("\n"),

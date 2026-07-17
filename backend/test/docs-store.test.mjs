@@ -3,14 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { archiveChanges } from "../../dist/archive.js";
-import { addEntry, listEntries, renderChangelog, setEntryDate } from "../../dist/docs/changelog.js";
+import { addEntry, importChangelog, listEntries, renderChangelog, setEntryDate } from "../../dist/docs/changelog.js";
 import { renderSections } from "../../dist/docs/markdown.js";
 import {
   createDoc,
-  importAll,
   importDoc,
   listToc,
-  renderDoc,
   setBody,
   showSection,
 } from "../../dist/docs/plan.js";
@@ -23,43 +21,6 @@ test("renderSections separates headings after edited bodies without trailing new
   ]);
 
   assert.equal(rendered, "# First\nbody without trailing newline\n## Second\nnext body\n");
-});
-
-test("syncing generated mirrors preserves newer DB changelog entries", (t) => {
-  const root = tempDir(t, "zemory-changelog-");
-  const agentDir = join(root, "docs", "agent");
-  const mdPath = join(agentDir, "03_CHANGES.md");
-  const dbPath = join(root, "brain.db");
-  mkdirSync(agentDir, { recursive: true });
-  writeFileSync(mdPath, "# Change Log\n\n## [2026-01-01] - Existing\n\nbody\n");
-
-  importAll(root, dbPath);
-  renderChangelog(root, mdPath, dbPath);
-  addEntry(root, "Not rendered yet", "new body", "2026-01-02", dbPath);
-  importAll(root, dbPath);
-
-  assert.deepEqual(
-    listEntries(root, dbPath).map((entry) => entry.title),
-    ["Not rendered yet", "Existing"],
-  );
-});
-
-test("syncing a generated plan mirror keeps stable section IDs", (t) => {
-  const root = tempDir(t, "zemory-plan-sync-");
-  const planDir = join(root, "docs", "plan");
-  const relPath = join("docs", "plan", "spec.md");
-  const absPath = join(planDir, "spec.md");
-  const dbPath = join(root, "brain.db");
-  mkdirSync(planDir, { recursive: true });
-  writeFileSync(absPath, "# Stable\nbody\n");
-
-  importDoc(absPath, relPath, root, "plan", dbPath);
-  const before = listToc(relPath, root, dbPath)[0].id;
-  renderDoc(relPath, root, dbPath);
-  importAll(root, dbPath);
-  const after = listToc(relPath, root, dbPath)[0].id;
-
-  assert.equal(after, before);
 });
 
 test("plan edits cannot mutate a section owned by another project", (t) => {
@@ -90,7 +51,7 @@ test("archive marks old changelog rows in the DB without creating a second store
     "# Change Log\n\n" +
       Array.from({ length: 8 }, (_, i) => `## [2026-01-${String(8 - i).padStart(2, "0")}] - Entry ${8 - i}\n\n${"line\n".repeat(5)}`).join("\n"),
   );
-  importAll(root, dbPath);
+  importChangelog(mdPath, root, dbPath);
 
   const result = archiveChanges({
     projectRoot: root,

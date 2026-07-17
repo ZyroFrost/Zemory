@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-16] — chore(harness): GỠ BỎ HOÀN TOÀN lệnh `docs sync` (command + function + UI + mọi mention)
+
+> 🔄 **Supersede:** thay quyết định "`docs sync` thôi là chỉ thị (2026-07-16)" — user quyết **gỡ hẳn**, không để tồn tại (note "đừng chạy" còn gây agent nhầm "cái đó là gì"). `docs sync` giờ **CHỈ còn ở changelog history này**.
+
+**Đã gỡ SẠCH khỏi code + UI + docs (không còn tồn tại trong project, chỉ ở đây):**
+- **Lệnh CLI** `zemory docs sync` (`cli.ts`) — xoá handler + usage/help + luồng migrate/reconcile dùng nó.
+- **Hàm** `importAll` + helper riêng `dbIndexOf`/`existingDoc`/`safeList`/`kindOf` (`plan.ts`) — đây là bulk importer `.md` → docs-index.
+- **UI** (`ui-page` act.nonstd) + **mọi mention** trong `AGENTS`/`RULES`/18 header doc/`01_CONSTITUTION`/`03_STRUCTURE` (repo + template) + comment/string trong code.
+- **Test** FILE-WINS thử cái sync (5 test) — gỡ; test còn lại chuyển sang `importDoc` (single-doc). 90 → **85 test, xanh**.
+
+**GIỮ NGUYÊN (index vẫn là 1 phần harness, sống):** bảng `doc/section/changelog` · `plan ls/search/show` · `plan set` · `changelog add/import` · `docs render` · MCP `plan_*`. Docs-index giờ chỉ nạp qua `plan set`/`changelog add` (KHÔNG auto-import `.md` nữa); agent đọc thẳng `.md` (FILE WINS). **Não episodic + embed/vector + sync Drive (`brain sync`) KHÔNG ĐỤNG** — khác hẳn lệnh này.
+
+**Verify:** `npm run check` 85/85 pass, lint+typecheck sạch · `grep "docs sync" backend/src` = 0 · `zemory docs sync` → in usage (graceful, không crash) · `zemory doctor` xanh.
+
 ## [2026-07-16] — chore(harness): `docs sync` thôi là chỉ thị cho agent + luật "HỎI KHI CHƯA RÕ"
 
 **Bỏ mọi chỉ thị "chạy `docs sync`" khỏi file agent đọc** (`AGENTS §1/§3` + `RULES §Tài liệu/§Đồng bộ/§Chốt phiên`, cả template): sửa `.md` **xong là xong** (file là nguồn), KHÔNG cần sync. `docs sync` chỉ còn tiện ích tay nếu muốn `plan search`/`changelog ls` tươi. `§5` reconcile GIỮ sync (flow hiếm, có việc thật — kèm note). **docs-index / plan search / MCP / bảng doc-section-changelog GIỮ NGUYÊN** (index là 1 phần harness) — chỉ thôi bắt agent chạy. Não episodic + embed/vector + sync Drive KHÔNG đụng.
