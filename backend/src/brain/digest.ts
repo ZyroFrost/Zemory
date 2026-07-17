@@ -126,7 +126,7 @@ export function buildDigest(db: BrainDB, sessionId: string): { built: boolean; r
   }
 
   // decisions = natural-language lines that read like a commitment (NOT tool
-  // dumps — a rendered RULES/TODO blob contains "dùng"/"plan set" but isn't one).
+  // dumps — a rendered RULES/TODO blob is harness boilerplate, not a decision).
   const decisions: Anchored[] = [];
   for (const m of msgs) {
     if (decisions.length >= 6) break;
