@@ -19,10 +19,11 @@ Project này dùng **zemory** — lớp quản trị bộ nhớ/context cho agen
 3. `zemory doctor` xanh → setup xong, sang §1.
 → **Đã có `docs/.harness.json` rồi thì KHÔNG chạy §0**, vào thẳng §1.
 
-## 1. Mở phiên (MỖI lần) — Đọc chuẩn rồi BẮT TAY LÀM
-1. Đọc `docs/agent/01_CONSTITUTION.md` (hiến pháp — bất biến TỐI CAO riêng của project, vi phạm = bug thiết kế) rồi `02_RULES.md` (luật làm việc chung). Tuân tuyệt đối, hiến pháp trên hết.
+## 1. Mở phiên (MỖI lần) — Đọc HẾT `docs/` rồi BẮT TAY LÀM
+1. **Đọc HẾT mọi file `.md` trong `docs/`** — KHÔNG bỏ sót, KHÔNG tự ý cắt bớt. Gồm toàn bộ `docs/agent/*` (`01_CONSTITUTION` hiến pháp bất biến TỐI CAO, vi phạm = bug thiết kế → `02_RULES` luật làm việc → `03_STRUCTURE` index cấu trúc → `04_TODO` backlog → `05_CHANGES` quyết định đã chốt) **và** toàn bộ `docs/plan/*` (từ `00_overview` app-là-gì/tính-năng/ý-tưởng → các spec `NN_` đánh số). Hiến pháp trên hết.
+   - *Ngoại lệ DUY NHẤT:* `docs_visual/` nằm **NGOÀI** `docs/` (bản xem trực quan, nặng) — chỉ mở khi user nhắc, không thuộc bước đọc này.
 2. Làm việc user yêu cầu. *(tùy chọn: `zemory doctor` soi harness nếu nghi ngờ.)*
-→ Hết. `.md` là NGUỒN — agent đọc thẳng file (FILE WINS), bắt tay làm luôn. Đừng lặp `plan ls/search`; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
+→ `.md` là NGUỒN — agent đọc thẳng file (FILE WINS), bắt tay làm luôn. Không cần chạy lệnh để đọc; đừng tự dọn docs (trừ §3 / §5, hoặc user bảo).
 
 ## 2. Tra cứu (KHI CẦN, không phải mỗi lần)
 - Plan/spec: `zemory plan ls [doc]` · `plan search "<q>"` · `plan show <#id>`
