@@ -16,7 +16,7 @@ Dọn phần đuôi sau đợt gỡ "docs sống trong DB" + xử vụ embed bá
 
 **Chẩn đoán "model unavailable?" — ĐƯỜNG CỤT TRÁNH ĐƯỢC (ghi để phiên sau khỏi nghi lại):** sync in "10291 msg still need embedding (model unavailable?)" → thoạt nghi model hỏng / zemory chưa cài lại. Kiểm THẬT: `node_modules` đủ (`onnxruntime-node` load OK) · `embedProbe` = `ok` (`embeddinggemma-300m-ONNX` q8, 768d) · embed một chuỗi MỚI toanh → ra vector thật 768d. **→ Model CHẠY BÌNH THƯỜNG.** Backlog do `embedPending` cap **500/lần** (sync gọi không set limit) — KHÔNG phải model down; câu "(model unavailable?)" là hint sai ngữ cảnh (đã fix `02a53cd`). Clear backlog = `zemory brain embed --all` (loop 500/pass tới hết).
 
-**Drive sync đã chạy (`zemory brain sync`):** export `global_memory.SS01-IT-10.zemory.enc` (~696MB) lên `G:\My Drive\Global Memory`; +2301 msg mới; máy kia (`DESKTOP-PFB157K`) +0; embed 500 (cap). `brain embed --all` đang chạy nền để clear 10291 + đo tốc độ thật.
+**Drive sync đã chạy (`zemory brain sync`):** export `global_memory.SS01-IT-10.zemory.enc` (~696MB) lên `G:\My Drive\Global Memory`; +2301 msg mới; máy kia (`DESKTOP-PFB157K`) +0; embed 500 (cap). `brain embed --all` đã clear HẾT backlog (remaining 0, +10433 vector, ~3h ⇒ **~57–58 msg/phút** trên 256d/q8/CPU; tổng 109.366 vector) — model chạy suốt 3h, xác nhận 100% ổn.
 
 **Verify:** `npm run check` 82/82 · grep lệnh-chết/tên-app trên bề mặt sống = 0 · đã push tới `8b64e42`.
 
