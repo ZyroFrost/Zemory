@@ -78,7 +78,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
 - **KHÔNG TỰ Ý XÓA bất cứ gì (LUẬT CỨNG).** Xóa file · code · hàm · lệnh · chức năng · nội dung docs · folder = **phá + khó đảo**. TRƯỚC khi xóa phải nêu RÕ **xóa GÌ + VÌ SAO** rồi **CHỜ user gật** mới xóa; KHÔNG tự xóa rồi mới báo. Thấy "thừa"/"không dùng nữa" → **ĐỀ XUẤT xóa**, đừng tự tay làm. (Bất đối xứng: THÊM/mở rộng thì thoải mái; BỚT/xóa thì luôn phải hỏi.)
 - **Góp ý thẳng** về thiết kế bất hợp lý — TRƯỚC khi làm. Quyết định cuối là của user.
-- **Không biết thì hỏi, không đoán.**
+- **Input user MƠ HỒ / THIẾU / phải suy đoán → HỎI cho rõ, ĐỪNG tự diễn giải.** ("Không biết" đây KHÔNG phải kiến thức chung — AI biết nhiều — mà là **yêu cầu/thông tin từ user chưa đủ rõ để làm ĐÚNG cái họ cần**.) Dấu hiệu phải hỏi: câu mơ hồ · thuật ngữ hiểu được >1 nghĩa · thiếu dữ kiện · có giả định ngầm · 2 ý mâu thuẫn. Cách hỏi = **grill** (AGENTS §6): hỏi TỪNG câu (kèm đề xuất), **diễn giải lại để xác nhận** ("ý anh là…?"), tới khi đủ mới làm. Thà hỏi thêm 1 câu còn hơn build sai vì đoán.
 
 ## Thiết kế UI
 - **Dialog / modal: CHỈ 3 size cố định (S/M/L)** — chọn 1 lần lúc mở theo **lượng nội dung + mục đích** (xác nhận / form / log-bảng), **KHÔNG random size, không đổi size động, không nhảy/reflow loạn**:
