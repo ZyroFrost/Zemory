@@ -10,6 +10,7 @@
 Tóm tắt bất biến (chi tiết ở 03):
 - **BẮT BUỘC = 4:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ folder khác `[opt]` — tạo KHI CÓ concern.
 - **INDEX điều hướng:** cần sửa gì → `03 §4` trỏ THẲNG slot → **KHÔNG grep cả repo** (nhanh + tiết kiệm token, HP điều 1).
+- **`03_STRUCTURE` là INDEX/menu tra nhanh — phải khớp cấu trúc thực tế.** Mọi thay đổi cấu trúc code (thêm slot/concern mới, đổi tên, dời tầng, thêm dòng routing) phải cập nhật `03_STRUCTURE` trong CÙNG thay đổi đó. Index lệch code → tra sai; cập nhật index là một phần bắt buộc của thay đổi cấu trúc, không để nợ.
 - **1 TÊN / concern** (chuẩn RIÊNG); chỉ framework ép cứng mới đổi (Next `pages/`, Django `models/`).
 - **Nguồn = git tracked; output / runtime / secret = GITIGNORE.**
 - Nắn app về chuẩn → `AGENTS.md` (recipe reconcile).
