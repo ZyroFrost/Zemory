@@ -390,9 +390,10 @@ function migrate(db: BrainDB, fromVersion: number): void {
     version = 9;
   }
   if (version < 10) {
-    // v10 adds doc.rendered_hash (sha1 of the last render) so renderDoc can spot
-    // a hand-edited mirror and salvage it instead of silently overwriting. NULL
-    // on old rows = "unknown" → first render treats the file as trusted.
+    // v10 added doc.rendered_hash (sha1 of the last render). VESTIGIAL since
+    // 2026-07-17 — render (db → md) was removed under FILE WINS (the .md is the
+    // source; the DB is a read-only search index). Kept for schema-version
+    // continuity; no longer written or read.
     if (!hasColumn(db, "doc", "rendered_hash")) {
       db.exec("ALTER TABLE doc ADD COLUMN rendered_hash TEXT");
     }

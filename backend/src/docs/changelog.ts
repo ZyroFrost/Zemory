@@ -1,8 +1,9 @@
-// Changelog in the DB (log shape). Entries are dated rows; archive becomes a
-// query (full history stays queryable, render shows active ones). Source = DB;
-// .md (05_CHANGES) is a render. import = one-time seed from existing markdown.
+// Changelog INDEX — the .md (05_CHANGES.md) is the SOURCE (FILE WINS); the DB
+// changelog rows are a DERIVED, read-only search index rebuilt from the .md by
+// `reindex`. Nothing here writes the .md — entries are added by editing the file
+// directly; `import` (reindex) reseeds the search index from it.
 
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { currentBrainDb, openBrain } from "../brain/db.js";
 
 const FENCE = /^[ \t]*(```|~~~)/;
@@ -15,15 +16,9 @@ export interface ChEntry {
   body: string;
 }
 
-function localDate(date = new Date()): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
 /** Split a changelog markdown into dated entries (one per `## ` heading).
  *  CRLF-safe: see the normEol guard in markdown.ts — a Windows-written file
- *  used to parse as ZERO entries here, so `import` said "merged 0" while the
- *  .md was full, and the render-salvage guard saw nothing to protect. */
+ *  used to parse as ZERO entries here. */
 export function parseChangelog(input: string): ChEntry[] {
   const text = input.replace(/\r\n/g, "\n");
   const lines = text.split("\n");
@@ -44,13 +39,9 @@ export function parseChangelog(input: string): ChEntry[] {
     const m = H2.exec(lines[i]);
     if (m) all.push({ idx: i, h: m[1] });
   }
-  // An entry head is `## [<date>] — title` (the documented format). A bare
-  // `## Foo` INSIDE a body is body text, not a new entry — treating every H2 as
-  // a boundary shredded any entry whose body had sub-headings into phantom
-  // dateless entries (harmless under the old "DB is source" rule, but FILE WINS
-  // re-imports on every sync, so each one became junk in the DB).
-  // Fallback: a changelog with NO dated head at all is a hand-written/legacy
-  // one — keep the old behaviour so `import` can still seed it.
+  // An entry head is `## [<date>] — title`. A bare `## Foo` inside a body is body
+  // text, not a new entry. Fallback: a changelog with NO dated head is legacy —
+  // keep the old behaviour so `import` can still seed it.
   const dated = all.filter((x) => DATE.test(x.h));
   const heads = dated.length > 0 ? dated : all;
   const entries: ChEntry[] = [];
@@ -66,6 +57,10 @@ export function parseChangelog(input: string): ChEntry[] {
   return entries;
 }
 
+/** Reindex a changelog .md into the DB search index (read-only; never writes the
+ *  file). Default MERGE (add entries the index lacks, by date+title); `replace`
+ *  wipes this project's changelog rows and reseeds — used by `reindex` so the
+ *  index mirrors the file exactly (FILE WINS). */
 export function importChangelog(
   absPath: string,
   projectRoot: string,
@@ -76,10 +71,6 @@ export function importChangelog(
   const db = openBrain(dbPath);
   try {
     const tx = db.transaction(() => {
-      // Default = MERGE: only add entries the DB doesn't have yet (matched on
-      // date+title). A re-import must never renumber ids or wipe archived/
-      // supersedes state — those exist only in the DB, not in the rendered .md.
-      // `replace` keeps the old wipe-and-reseed for a deliberate one-time seed.
       if (opts.replace) db.prepare("DELETE FROM changelog WHERE project_root=?").run(projectRoot);
       const exists = db.prepare(
         "SELECT 1 AS ok FROM changelog WHERE project_root=? AND date IS ? AND title=?",
@@ -97,54 +88,6 @@ export function importChangelog(
       return added;
     });
     return tx();
-  } finally {
-    db.close();
-  }
-}
-
-export function addEntry(
-  projectRoot: string,
-  title: string,
-  body: string,
-  date?: string,
-  dbPath = currentBrainDb(),
-  supersedesId?: number,
-): number {
-  const db = openBrain(dbPath);
-  try {
-    if (supersedesId) {
-      const target = db
-        .prepare("SELECT 1 AS ok FROM changelog WHERE id=? AND project_root=?")
-        .get(supersedesId, projectRoot) as { ok: number } | undefined;
-      if (!target) throw new Error(`Cannot supersede changelog #${supersedesId} from another project.`);
-    }
-    const d = date ?? localDate();
-    return Number(
-      db
-        .prepare(
-          "INSERT INTO changelog (project_root, date, title, body, supersedes_id, created_at) VALUES (?,?,?,?,?,?)",
-        )
-        .run(projectRoot, d, title, body, supersedesId ?? null, new Date().toISOString()).lastInsertRowid,
-    );
-  } finally {
-    db.close();
-  }
-}
-
-/** Correct an entry date without allowing cross-project mutation. */
-export function setEntryDate(
-  projectRoot: string,
-  id: number,
-  date: string,
-  dbPath = currentBrainDb(),
-): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  const db = openBrain(dbPath);
-  try {
-    return (
-      db.prepare("UPDATE changelog SET date=? WHERE id=? AND project_root=?").run(date, id, projectRoot)
-        .changes === 1
-    );
   } finally {
     db.close();
   }
@@ -191,56 +134,6 @@ export function searchChangelog(query: string, opts: { project?: string; limit?:
     } catch {
       return [];
     }
-  } finally {
-    db.close();
-  }
-}
-
-const CH_HEADER =
-  "<!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->\n# Change Log\n\n> Mới nhất ở trên. Đảo/thay quyết định cũ → `> 🔄 Supersede:`.\n\n---\n\n";
-
-/** Render the active changelog (archived=0) back to a .md file (db → md). */
-export function renderChangelog(projectRoot: string, outAbsPath: string, dbPath = currentBrainDb()): number {
-  const db = openBrain(dbPath);
-  try {
-    const rows = db
-      .prepare(
-        "SELECT date, title, body, supersedes_id FROM changelog WHERE project_root=? AND archived=0 ORDER BY date DESC, id DESC",
-      )
-      .all(projectRoot) as {
-      date: string | null;
-      title: string;
-      body: string;
-      supersedes_id: number | null;
-    }[];
-    const parts = rows.map((r) => {
-      const head = r.date ? `## [${r.date}] — ${r.title}` : `## ${r.title}`;
-      const relation = r.supersedes_id ? `> 🔄 Supersedes changelog #${r.supersedes_id}.\n\n` : "";
-      return `${head}\n\n${relation}${r.body}\n`;
-    });
-    const md = CH_HEADER + parts.join("\n");
-    // FILE WINS: before overwriting, salvage the on-disk file iff it holds
-    // entries the DB does NOT have (by date+title) — those would otherwise be
-    // silently lost. (The old header-only check clobbered hand-edits that
-    // kept the GENERATED header; a differs-at-all check would .bak-spam on
-    // every routine `changelog add`, since a fresh render always differs.)
-    if (existsSync(outAbsPath)) {
-      const current = readFileSync(outAbsPath, "utf8");
-      if (current !== md) {
-        const known = db.prepare("SELECT 1 AS ok FROM changelog WHERE project_root=? AND date IS ? AND title=?");
-        const unmerged = parseChangelog(current).filter((e) => !known.get(projectRoot, e.date, e.title));
-        if (unmerged.length > 0) {
-          const bak = `${outAbsPath}.hand-edited-${new Date().toISOString().replace(/[:.]/g, "-")}.bak`;
-          copyFileSync(outAbsPath, bak);
-          console.error(
-            `zemory: changelog file holds ${unmerged.length} entr(ies) not in the DB — saved to ${bak}. ` +
-              "FILE WINS: run `zemory changelog import` to merge them, then render.",
-          );
-        }
-      }
-    }
-    writeFileSync(outAbsPath, md);
-    return rows.length;
   } finally {
     db.close();
   }

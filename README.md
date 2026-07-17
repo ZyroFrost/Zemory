@@ -188,9 +188,9 @@ zemory brain forget / redact / backup   Privacy & retention (see below)
 zemory init | sync                      Scaffold / gap-fill the project harness
 zemory doctor                           Verify docs, providers, capabilities
 zemory validate                         Lint the docs harness (links, length, supersede)
-zemory plan ls | search | show | set    Plan index (.md is source; set/show optional utilities)
-zemory changelog add "title"            Add a changelog entry (writes .md + reindexes)
-zemory docs ls | add | render | rm      Docs-index utilities (.md is the source; render = restore)
+zemory plan ls | search | show          Search project specs (.md is source; DB = index)
+zemory changelog ls | search            Search the changelog (.md is source; DB = index)
+zemory reindex                          Rebuild the docs search index from .md (read-only)
 
 # Interfaces
 zemory ui                               Live cockpit
@@ -304,9 +304,9 @@ npm pack --dry-run
 - **One capability = one slot = one provider** (a registry rejects conflicts).
 - **Tool is separate from data.** The zemory binary reads a project's docs; it
   does not live inside the project.
-- **Non‑destructive by default.** Editing a `.md` is safe (file wins); `docs render`
-  (DB → `.md`) is an intentional restore only; brain merges are additive; plan
-  mutations are scoped to the active project.
+- **Non‑destructive by default.** Editing a `.md` is safe (file wins); the docs
+  search index is rebuilt from files by `reindex`; brain merges are additive;
+  plan mutations are scoped to the active project.
 
 ---
 

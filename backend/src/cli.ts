@@ -2,7 +2,7 @@
 // zemory CLI — Phase 1: init, sync, doctor, ui, archive, --version.
 // init/sync are NON-DESTRUCTIVE (never overwrite existing docs).
 
-import { readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findProjectRoot, loadContext } from "./core/config.js";
@@ -26,8 +26,8 @@ import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrai
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { validate } from "./validate.js";
 import { runMcpStdio } from "./mcp.js";
-import { createDoc, importDoc, listDocs, listToc, removeDoc, renderAll, renderDoc, resolveDocPath, searchSections, setBody, setHeading, showSection } from "./docs/plan.js";
-import { addEntry, importChangelog, listEntries, renderChangelog, searchChangelog, setEntryDate } from "./docs/changelog.js";
+import { importDoc, listDocs, listToc, searchSections, showSection } from "./docs/plan.js";
+import { importChangelog, listEntries, searchChangelog } from "./docs/changelog.js";
 const VERSION = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
 ) as { version: string };
@@ -70,10 +70,10 @@ function cmdInit(args: string[]): void {
 function cmdMigrate(): void {
   console.log("zemory migrate — reconcile docs cũ về chuẩn (App KHÔNG tự sửa; agent làm).");
   console.log("Các bước đầy đủ: docs/agent/03_STRUCTURE.md §8. Tóm tắt:");
-  console.log("  1. zemory docs ls          — xem cái nào trùng/thừa");
+  console.log("  1. zemory docs ls          — xem cái nào trùng/thừa (trong search index)");
   console.log("  2. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
-  console.log("  3. gộp todo → 04_TODO; zemory docs rm <path> cho bản trùng/thừa (HỎI user nếu còn nội dung)");
-  console.log("  4. zemory docs render → zemory doctor (xanh = xong)");
+  console.log("  3. gộp todo → 04_TODO; XOÁ THẲNG file .md trùng/thừa (HỎI user nếu còn nội dung)");
+  console.log("  4. zemory reindex → zemory doctor (xanh = xong)");
 }
 
 function cmdSync(): void {
@@ -86,8 +86,8 @@ function cmdSync(): void {
   if (r.needsReconcile) {
     console.log("  ⚠ existing docs are non-standard — NOT auto-modified.");
     console.log("    → AGENT reconcile (các bước: docs/agent/03_STRUCTURE.md §8, hoặc `zemory migrate`):");
-    console.log("      zemory docs ls / rm  (drop dups + obsolete: 00_INDEX, 02_CONTEXT, overview)");
-    console.log("      zemory docs render (regenerate clean mirrors)");
+    console.log("      zemory docs ls  (xem index) · xoá thẳng file .md trùng/obsolete (00_INDEX, 02_CONTEXT…)");
+    console.log("      zemory reindex  (dựng lại search index từ .md)");
   } else if (!r.added.length && !r.createdConfig) {
     console.log("  ✓ already in sync (nothing to add).");
   }
@@ -914,15 +914,6 @@ function readStdin(): Promise<string> {
   });
 }
 
-// Body input: prefer `--file <path>` (read as UTF-8) over stdin. On Windows
-// PowerShell, piping non-ASCII into a native exe's stdin corrupts UTF-8
-// (diacritics → `?`), so `--file` is the safe path for Vietnamese content.
-async function readBody(args: string[]): Promise<string> {
-  const fi = args.indexOf("--file");
-  if (fi >= 0 && args[fi + 1]) return readFileSync(args[fi + 1], "utf8");
-  return readStdin();
-}
-
 async function cmdHook(args: string[]): Promise<void> {
   const sub = args[0];
   if (sub === "install") {
@@ -972,28 +963,12 @@ async function cmdHook(args: string[]): Promise<void> {
 async function cmdPlan(args: string[]): Promise<void> {
   const sub = args[0];
   const root = findProjectRoot() ?? process.cwd();
-  const planDir = join(root, "docs", "plan");
 
-  if (sub === "import") {
-    let files: string[];
-    try {
-      files = readdirSync(planDir).filter((f) => f.endsWith(".md"));
-    } catch {
-      console.log(`zemory plan: no ${planDir}`);
-      return;
-    }
-    console.log(`zemory plan import — ${files.length} file(s) from docs/plan`);
-    for (const f of files) {
-      const r = importDoc(join(planDir, f), join("docs", "plan", f), root);
-      console.log(`  ${r.roundTrip ? "✓" : "⚠"} ${f} — ${r.sections} sections${r.roundTrip ? "" : " · ROUND-TRIP DIFF (check)"}`);
-    }
-    return;
-  }
   if (sub === "ls") {
     const docPath = args[1] ? args[1] : join("docs", "plan", "00_overview.md");
     const toc = listToc(docPath, root);
     if (!toc.length) {
-      console.log(`zemory plan: no sections for ${docPath} (index rỗng — thêm nội dung qua \`plan set\`; hoặc đọc thẳng file .md).`);
+      console.log(`zemory plan: no sections for ${docPath} (index rỗng — chạy \`zemory reindex\`; hoặc đọc thẳng file .md).`);
       return;
     }
     console.log(`zemory plan ls — ${docPath}`);
@@ -1028,45 +1003,13 @@ async function cmdPlan(args: string[]): Promise<void> {
     for (const h of hits) console.log(`  #${h.id} [${h.path}] ${h.heading ?? ""}\n     ${h.snippet}`);
     return;
   }
-  if (sub === "render") {
-    const docPath = args[1] ?? join("docs", "plan", "00_overview.md");
-    const r = renderDoc(docPath, root);
-    console.log(r ? `zemory plan render — wrote ${r.path} (${r.bytes} bytes)` : `zemory plan: no doc ${docPath}`);
-    return;
-  }
-  if (sub === "set") {
-    const id = Number(args[1]);
-    if (!id) {
-      console.log("usage: zemory plan set <#id> --file <path>   (or body via stdin)");
-      console.log("         zemory plan set <#id> --heading \"<text>\"   (rename heading only)");
-      console.log("  Windows: dùng --file (echo | pipe làm hỏng UTF-8 tiếng Việt).");
-      return;
-    }
-    const hi = args.indexOf("--heading");
-    if (hi >= 0) {
-      // Heading-only edit: never touch stdin/body. argv is UTF-8 safe (title via argv works).
-      const heading = args[hi + 1] ?? "";
-      console.log(
-        setHeading(id, heading, root)
-          ? `zemory plan set — #${id} heading renamed + re-rendered`
-          : `zemory plan: no section #${id} (or empty/multiline heading, or preamble)`,
-      );
-      return;
-    }
-    const body = await readBody(args);
-    console.log(setBody(id, body, root) ? `zemory plan set — #${id} updated + re-rendered` : `zemory plan: no section #${id}`);
-    return;
-  }
   console.log(
     [
-      "zemory plan <subcommand>   (plan lives in global_memory.db; .md is a render)",
+      "zemory plan <subcommand>   (.md là NGUỒN; DB = index dẫn xuất — dựng lại bằng `zemory reindex`)",
       "",
-      "  import            seed global_memory.db from docs/plan/*.md (one-time, fidelity-checked)",
-      "  ls [doc]          table of contents (from db)",
-      "  show <#id>        print a section's body",
+      "  ls [doc]           table of contents (from the search index)",
+      "  show <#id>         print a section's body",
       "  search <q> [--all] FTS over sections (heading-weighted)",
-      "  set <#id>         replace a section body (--file/stdin), or rename heading (--heading)",
-      "  render [doc]      regenerate the .md from db (db → md)",
     ].join("\n"),
   );
 }
@@ -1076,72 +1019,16 @@ async function cmdDocs(args: string[]): Promise<void> {
   const root = findProjectRoot() ?? process.cwd();
   if (sub === "ls") {
     const docs = listDocs(root);
-    console.log(`zemory docs — ${docs.length} doc(s) in global_memory.db`);
+    console.log(`zemory docs — ${docs.length} doc(s) trong search index`);
     for (const d of docs) console.log(`  #${d.id} [${d.kind}] ${d.path} (${d.sections} sections)`);
-    return;
-  }
-  if (sub === "add") {
-    const rel = args[1];
-    if (!rel || !rel.toLowerCase().endsWith(".md")) {
-      console.log("usage: zemory docs add <docs/plan/name.md> --file <path> [--kind plan]");
-      return;
-    }
-    const ki = args.indexOf("--kind");
-    const kind = ki >= 0 ? args[ki + 1] : rel.replace(/\\/g, "/").startsWith("docs/plan/") ? "plan" : "doc";
-    const body = await readBody(args);
-    if (!body.trim()) {
-      console.log("zemory docs add: body is empty (use --file).");
-      process.exitCode = 1;
-      return;
-    }
-    try {
-      const result = createDoc(rel, body, root, kind);
-      console.log(`zemory docs add — #${result.docId} [${kind}] ${result.path} (${result.sections} sections)`);
-    } catch (error) {
-      console.log(`zemory docs add: ${error instanceof Error ? error.message : "failed"}`);
-      process.exitCode = 1;
-    }
-    return;
-  }
-  if (sub === "rm") {
-    const rel = args[1];
-    if (!rel) {
-      console.log("usage: zemory docs rm <docs/...> [--keep-file]");
-      return;
-    }
-    const removed = removeDoc(root, rel);
-    let fileGone = false;
-    if (!args.includes("--keep-file")) {
-      try {
-        unlinkSync(resolveDocPath(root, rel));
-        fileGone = true;
-      } catch (error) {
-        if (error instanceof Error && error.message.startsWith("Unsafe docs path:")) throw error;
-        /* file may not exist */
-      }
-    }
-    console.log(
-      removed || fileGone
-        ? `zemory docs rm — ${rel}: ${removed ? "removed from DB" : "not in DB"}${fileGone ? " + deleted .md" : ""}`
-        : `zemory docs rm — ${rel}: not found`,
-    );
-    return;
-  }
-  if (sub === "render") {
-    const written = renderAll(root);
-    const ch = renderChangelog(root, join(root, "docs", "agent", "05_CHANGES.md"));
-    console.log(`zemory docs render — wrote ${written.length} doc mirror(s) + changelog (${ch} entries) [db → md]`);
-    console.log("  ⚠ .md là NGUỒN (file wins) — render vừa ĐÈ .md từ DB index (restore có chủ đích); bình thường sửa .md trực tiếp.");
     return;
   }
   console.log(
     [
-      "zemory docs <subcommand>   (.md = NGUỒN, file wins; DB = derived search index)",
+      "zemory docs <subcommand>   (.md là NGUỒN, file wins; DB = search index dẫn xuất)",
       "",
-      "  ls       list docs in global_memory.db (kind · sections)",
-      "  add <p>  create a markdown doc from --file",
-      "  rm <p>   remove a doc from DB + delete its .md (--keep-file to keep)",
-      "  render   (re)generate every .md mirror from global_memory.db (db → md, OVERWRITES)",
+      "  ls       list docs currently in the search index (kind · sections)",
+      "  (thêm/sửa/xoá docs = sửa file .md trực tiếp; `zemory reindex` dựng lại index)",
     ].join("\n"),
   );
 }
@@ -1149,17 +1036,6 @@ async function cmdDocs(args: string[]): Promise<void> {
 async function cmdChangelog(args: string[]): Promise<void> {
   const sub = args[0];
   const root = findProjectRoot() ?? process.cwd();
-  const mdPath = join(root, "docs", "agent", "05_CHANGES.md");
-
-  if (sub === "import") {
-    const replace = args.includes("--replace");
-    const n = importChangelog(mdPath, root, undefined, { replace });
-    console.log(
-      `zemory changelog import — ${replace ? `replaced with ${n}` : `merged ${n} new`} entr(ies) from 05_CHANGES.md into global_memory.db`,
-    );
-    if (!replace) console.log("  (merge mode: existing entries + archived/supersede flags untouched; --replace to wipe-and-reseed)");
-    return;
-  }
   if (sub === "ls") {
     const rows = listEntries(root);
     console.log(`zemory changelog — ${rows.length} entr(ies)`);
@@ -1183,63 +1059,38 @@ async function cmdChangelog(args: string[]): Promise<void> {
     if (!hits.length) console.log("  no matches.");
     return;
   }
-  if (sub === "add") {
-    const rest = args.slice(1);
-    const fi = rest.indexOf("--file");
-    if (fi >= 0) rest.splice(fi, 2); // drop --file <path> from the title
-    const si = rest.indexOf("--supersedes");
-    const supersedesId = si >= 0 ? Number(rest[si + 1]) : undefined;
-    if (si >= 0) rest.splice(si, 2);
-    const title = rest.join(" ");
-    if (!title) {
-      console.log("usage: zemory changelog add <title> [--file <path>] [--supersedes <#id>]");
-      return;
-    }
-    const body = await readBody(args);
-    try {
-      const id = addEntry(root, title, body.trim(), undefined, undefined, supersedesId);
-      renderChangelog(root, mdPath);
-      console.log(`zemory changelog add — #${id} added + mirror rendered`);
-    } catch (error) {
-      console.log(`zemory changelog add: ${error instanceof Error ? error.message : "failed"}`);
-      process.exitCode = 1;
-    }
-    return;
-  }
-  if (sub === "set") {
-    const id = Number(args[1]);
-    const di = args.indexOf("--date");
-    const date = di >= 0 ? args[di + 1] : "";
-    if (!id || !date) {
-      console.log("usage: zemory changelog set <#id> --date YYYY-MM-DD");
-      return;
-    }
-    if (!setEntryDate(root, id, date)) {
-      console.log(`zemory changelog set: no scoped entry #${id}, or invalid date`);
-      process.exitCode = 1;
-      return;
-    }
-    renderChangelog(root, mdPath);
-    console.log(`zemory changelog set — #${id} date=${date} + mirror rendered`);
-    return;
-  }
-  if (sub === "render") {
-    const out = args[1] ? join(root, args[1]) : mdPath;
-    const n = renderChangelog(root, out);
-    console.log(`zemory changelog render — wrote ${n} entr(ies) → ${out}`);
-    return;
-  }
   console.log(
     [
-      "zemory changelog <subcommand>   (changelog lives in global_memory.db; .md is a render)",
+      "zemory changelog <subcommand>   (.md là NGUỒN; DB = search index dẫn xuất)",
       "",
-      "  import           seed global_memory.db from docs/agent/05_CHANGES.md",
-      "  ls               list entries (newest first)",
+      "  ls               list entries in the index (newest first)",
       "  search <q> [--all] FTS over entries",
-      "  add <title>      add an entry (body from stdin)",
-      "  set <#id>        update scoped metadata (--date YYYY-MM-DD)",
-      "  render [out]     regenerate .md from db (db → md)",
+      "  (thêm entry = sửa 05_CHANGES.md trực tiếp; `zemory reindex` dựng lại index)",
     ].join("\n"),
+  );
+}
+
+/** Rebuild the docs search index from the .md files (FILE WINS — read-only,
+ *  never writes .md). Indexes docs/plan/*.md sections + 05_CHANGES.md entries. */
+function cmdReindex(): void {
+  const root = findProjectRoot() ?? process.cwd();
+  const planDir = join(root, "docs", "plan");
+  let files: string[] = [];
+  try {
+    files = readdirSync(planDir).filter((f) => f.endsWith(".md"));
+  } catch {
+    /* no docs/plan */
+  }
+  let sections = 0;
+  for (const f of files) {
+    const r = importDoc(join(planDir, f), join("docs", "plan", f), root, "plan");
+    sections += r.sections;
+    if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (cấu trúc lạ; vẫn index)`);
+  }
+  const chPath = join(root, "docs", "agent", "05_CHANGES.md");
+  const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
+  console.log(
+    `zemory reindex — ${files.length} plan doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) → search index (đọc .md, KHÔNG ghi ngược).`,
   );
 }
 
@@ -1253,11 +1104,12 @@ function cmdHelp(): void {
       "  migrate   analyze existing docs for brownfield adopt (no changes)",
       "  doctor    quick check (text): wired? docs? features?",
       "  ui        open a small status window (app-mode, on-demand)",
-      "  archive   move old 05_CHANGES blocks to archive/ when over threshold",
+      "  archive   move old 05_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
-      "  docs      docs-index utilities (.md is the SOURCE): ls · add · render (db→md restore) · rm",
-      "  plan      plan sections (.md is source; DB = search index): ls · show · search · set · render",
-      "  changelog changelog (.md is source; DB = search index): ls · search · add · import · render",
+      "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
+      "  docs      docs search-index: ls (.md is the SOURCE — edit files, then reindex)",
+      "  plan      search project specs (.md is source; DB = index): ls · show · search",
+      "  changelog changelog (.md is source; DB = index): ls · search",
       "  brain     scan/search the global brain (brain scan | search | show)",
       "  mcp       run the local MCP stdio server (brain_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
@@ -1301,6 +1153,9 @@ switch (cmd) {
     break;
   case "validate":
     cmdValidate();
+    break;
+  case "reindex":
+    cmdReindex();
     break;
   case "plan":
     await cmdPlan(args);
