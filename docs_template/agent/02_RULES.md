@@ -16,6 +16,7 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
+- **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
 - **UI · CLI output · code · comment công khai**: **TIẾNG ANH** — TUYỆT ĐỐI không nhét tiếng Việt vào giao diện / output lệnh hiển thị cho người dùng.
 
 ## Tài liệu — quy ước cập nhật
@@ -74,11 +75,10 @@ Tóm tắt bất biến (chi tiết ở 03):
 
 ## Hành xử
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic khác → **hỏi trước**, không tự sửa rồi báo.
-- **HỎI KHI CHƯA RÕ — đừng đoán, đừng tự phình phạm vi (LUẬT CỨNG, hay bị quên).** Yêu cầu mơ hồ · hiểu được >1 nghĩa · lệnh cụt · phạm vi không rõ · hoặc trước việc lớn/khó-đảo → **DỪNG, hỏi 1 câu chốt nghĩa** rồi mới làm. ĐỪNG tự vớ nghĩa RỘNG NHẤT rồi lao (vd "gỡ X" = trim vài thứ quanh X hay xoá cả X? → **HỎI**). Đoán sai = tốn token + phải làm lại. Việc khó-đảo → grill (AGENTS §6): hỏi từng câu, chốt xong mới build.
+- **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi.** Điều kiện kích hoạt: yêu cầu đa nghĩa; thuật ngữ có nhiều cách hiểu; thiếu dữ kiện; phạm vi không xác định; tồn tại giả định ngầm chưa nêu; hai yêu cầu mâu thuẫn; hoặc thao tác khó đảo ngược. Quy trình: dừng, đặt câu hỏi xác định ý định và phạm vi (mỗi lần một câu, kèm đề xuất, diễn giải lại để xác nhận) cho tới khi đủ dữ kiện; không tự chọn cách hiểu rộng nhất và không tự suy diễn — theo quy trình grill (AGENTS §6). Điều kiện này áp cho thông tin đầu vào từ user chưa đủ để thực thi đúng, không áp cho kiến thức chung.
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
-- **KHÔNG TỰ Ý XÓA bất cứ gì (LUẬT CỨNG).** Xóa file · code · hàm · lệnh · chức năng · nội dung docs · folder = **phá + khó đảo**. TRƯỚC khi xóa phải nêu RÕ **xóa GÌ + VÌ SAO** rồi **CHỜ user gật** mới xóa; KHÔNG tự xóa rồi mới báo. Thấy "thừa"/"không dùng nữa" → **ĐỀ XUẤT xóa**, đừng tự tay làm. (Bất đối xứng: THÊM/mở rộng thì thoải mái; BỚT/xóa thì luôn phải hỏi.)
-- **Góp ý thẳng** về thiết kế bất hợp lý — TRƯỚC khi làm. Quyết định cuối là của user.
-- **Input user MƠ HỒ / THIẾU / phải suy đoán → HỎI cho rõ, ĐỪNG tự diễn giải.** ("Không biết" đây KHÔNG phải kiến thức chung — AI biết nhiều — mà là **yêu cầu/thông tin từ user chưa đủ rõ để làm ĐÚNG cái họ cần**.) Dấu hiệu phải hỏi: câu mơ hồ · thuật ngữ hiểu được >1 nghĩa · thiếu dữ kiện · có giả định ngầm · 2 ý mâu thuẫn. Cách hỏi = **grill** (AGENTS §6): hỏi TỪNG câu (kèm đề xuất), **diễn giải lại để xác nhận** ("ý anh là…?"), tới khi đủ mới làm. Thà hỏi thêm 1 câu còn hơn build sai vì đoán.
+- **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần.
+- **Nêu phản biện thiết kế trước khi thực thi** nếu phát hiện điểm bất hợp lý; quyết định cuối thuộc về user.
 
 ## Thiết kế UI
 - **Dialog / modal: CHỈ 3 size cố định (S/M/L)** — chọn 1 lần lúc mở theo **lượng nội dung + mục đích** (xác nhận / form / log-bảng), **KHÔNG random size, không đổi size động, không nhảy/reflow loạn**:
