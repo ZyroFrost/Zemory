@@ -72,7 +72,7 @@ function cmdMigrate(): void {
   console.log("Các bước đầy đủ: docs/agent/03_STRUCTURE.md §8. Tóm tắt:");
   console.log("  1. zemory docs ls          — xem cái nào trùng/thừa (trong search index)");
   console.log("  2. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
-  console.log("  3. gộp todo → 04_TODO; XOÁ THẲNG file .md trùng/thừa (HỎI user nếu còn nội dung)");
+  console.log("  3. gộp todo → 05_TODO; XOÁ THẲNG file .md trùng/thừa (HỎI user nếu còn nội dung)");
   console.log("  4. zemory reindex → zemory doctor (xanh = xong)");
 }
 
@@ -154,11 +154,11 @@ function cmdArchive(): void {
   const r = archiveChanges(ctx);
   if (r.moved === 0) {
     console.log(
-      `zemory archive: nothing to do (05_CHANGES.md = ${r.activeLines} lines, under threshold).`,
+      `zemory archive: nothing to do (06_CHANGES.md = ${r.activeLines} lines, under threshold).`,
     );
   } else {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
-    console.log(`  active 05_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
+    console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
   }
 }
 
@@ -213,8 +213,9 @@ function cmdStructure(): void {
       "  docs/agent/01_CONSTITUTION.md — per-app constitution: architectural invariants (user-owned)",
       "  docs/agent/02_RULES.md      — work rules, generic across projects",
       "  docs/agent/03_STRUCTURE.md  — repo structure standard (+ §8 Reconcile)",
-      "  docs/agent/04_TODO.md       — backlog",
-      "  docs/agent/05_CHANGES.md    — changelog",
+      "  docs/agent/04_SKILLS.md     — playbooks: grill · chốt phiên · reconcile",
+      "  docs/agent/05_TODO.md       — backlog",
+      "  docs/agent/06_CHANGES.md    — changelog",
       "  docs/plan/*.md              — specs (00_overview + numbered specs)",
       "  ~/.zemory/global_memory.db          — brain (episodic sessions) + derived docs INDEX (rebuilt from .md)",
       "",
@@ -1071,13 +1072,13 @@ async function cmdChangelog(args: string[]): Promise<void> {
       "",
       "  ls               list entries in the index (newest first)",
       "  search <q> [--all] FTS over entries",
-      "  (thêm entry = sửa 05_CHANGES.md trực tiếp; `zemory reindex` dựng lại index)",
+      "  (thêm entry = sửa 06_CHANGES.md trực tiếp; `zemory reindex` dựng lại index)",
     ].join("\n"),
   );
 }
 
 /** Rebuild the docs search index from the .md files (FILE WINS — read-only,
- *  never writes .md). Indexes docs/plan/*.md sections + 05_CHANGES.md entries. */
+ *  never writes .md). Indexes docs/plan/*.md sections + 06_CHANGES.md entries. */
 function cmdReindex(): void {
   const root = findProjectRoot() ?? process.cwd();
   const planDir = join(root, "docs", "plan");
@@ -1093,7 +1094,7 @@ function cmdReindex(): void {
     sections += r.sections;
     if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (cấu trúc lạ; vẫn index)`);
   }
-  const chPath = join(root, "docs", "agent", "05_CHANGES.md");
+  const chPath = join(root, "docs", "agent", "06_CHANGES.md");
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
   console.log(
     `zemory reindex — ${files.length} plan doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) → search index (đọc .md, KHÔNG ghi ngược).`,
@@ -1110,7 +1111,7 @@ function cmdHelp(): void {
       "  migrate   analyze existing docs for brownfield adopt (no changes)",
       "  doctor    quick check (text): wired? docs? features?",
       "  ui        open a small status window (app-mode, on-demand)",
-      "  archive   move old 05_CHANGES blocks to docs/agent/archive/ when over threshold",
+      "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
       "  docs      docs search-index: ls (.md is the SOURCE — edit files, then reindex)",

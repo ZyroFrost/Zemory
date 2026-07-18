@@ -50,5 +50,5 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
 12. **Đo trung thực + gate trước khi bật mặc định.** TUYỆT ĐỐI không trưng số counterfactual/ảo ("tiết kiệm N token" khi không đo được). Mọi lớp mới (hybrid, rerank, dims, migration…) chỉ bật mặc định SAU khi qua gate: benchmark thắng net trên corpus có nhãn + test + migration an toàn + health check + fallback rõ. *(gốc: build plan §2.1, plan 04 §9, plan 05 §2 §6, plan 10, plan 12 §2)*
 
 ## Sửa đổi hiến pháp
-- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `04_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
-- Khi user chốt đổi: cập nhật tại đây + ghi `05_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
+- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
+- Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).

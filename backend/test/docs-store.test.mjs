@@ -39,7 +39,7 @@ test("importDoc indexes sections per project; search + toc are project-scoped", 
 test("archive moves the OLDEST changelog entries to a real file (FILE WINS, not a DB-only flag)", (t) => {
   const root = tempDir(t, "zemory-archive-");
   const agentDir = join(root, "docs", "agent");
-  const mainPath = join(agentDir, "05_CHANGES.md");
+  const mainPath = join(agentDir, "06_CHANGES.md");
   const dbPath = join(root, "brain.db");
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(
@@ -58,7 +58,7 @@ test("archive moves the OLDEST changelog entries to a real file (FILE WINS, not 
     dbPath,
   );
 
-  const archivePath = join(agentDir, "archive", "05_CHANGES.md");
+  const archivePath = join(agentDir, "archive", "06_CHANGES.md");
   assert.ok(result.moved > 0, "moved some entries");
   assert.equal(existsSync(archivePath), true, "archive is a real FILE, not a DB flag");
   const main = readFileSync(mainPath, "utf8");
@@ -73,7 +73,7 @@ test("changelog reindex from .md is searchable and project-scoped", (t) => {
   const root = join(base, "a");
   const other = join(base, "b");
   const agentDir = join(root, "docs", "agent");
-  const mainPath = join(agentDir, "05_CHANGES.md");
+  const mainPath = join(agentDir, "06_CHANGES.md");
   const dbPath = join(base, "brain.db");
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(

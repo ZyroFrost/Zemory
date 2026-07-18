@@ -52,15 +52,15 @@ Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backu
 
 ## 4. Quan hệ `.md` ↔ DB (FILE WINS — file là nguồn)
 - Sửa thường = sửa `.md` trực tiếp; DB doc/section/changelog dựng lại (index dẫn xuất) từ `.md`.
-- `zemory reindex` đọc `.md` (docs/plan + 05_CHANGES) → dựng lại doc/section/changelog index; **thuần đọc, KHÔNG ghi ngược file**.
+- `zemory reindex` đọc `.md` (docs/plan + 06_CHANGES) → dựng lại doc/section/changelog index; **thuần đọc, KHÔNG ghi ngược file**.
 - Thêm/sửa/xoá nội dung docs = sửa/xoá file `.md` trực tiếp; chạy `reindex` để search tươi.
 - KHÔNG còn lệnh render DB→md hay sửa-qua-DB (docs render/sync · plan set · docs add · changelog add) — **đã gỡ hoàn toàn 2026-07-17** (vi phạm FILE WINS).
-- `archive` là thao tác FILE: cắt entry cũ khỏi `05_CHANGES.md` sang `docs/agent/archive/05_CHANGES.md` (cold, ngoài bộ đọc mỗi phiên), rồi reindex main. KHÔNG dùng cờ DB.
+- `archive` là thao tác FILE: cắt entry cũ khỏi `06_CHANGES.md` sang `docs/agent/archive/06_CHANGES.md` (cold, ngoài bộ đọc mỗi phiên), rồi reindex main. KHÔNG dùng cờ DB.
 
 ## 5. Trạng thái harness hiện tại (cập nhật 2026-07-14)
 Harness chuẩn (`docs_template/`, ship cho project khác) gồm:
 
-- `docs/agent/01_CONSTITUTION.md`, `02_RULES.md`, `03_STRUCTURE.md`, `04_TODO.md`, `05_CHANGES.md`;
+- `docs/agent/01_CONSTITUTION.md`, `02_RULES.md`, `03_STRUCTURE.md`, `04_SKILLS.md`, `05_TODO.md`, `06_CHANGES.md`;
 - `docs/plan/00_overview.md` (điểm khởi đầu template);
 - `docs/.harness.json` chọn provider và threshold.
 

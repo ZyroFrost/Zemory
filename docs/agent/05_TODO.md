@@ -1,7 +1,7 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # zemory — TODO / Backlog
-> `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `05_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
-## ✅ Đã xong (chi tiết 05_CHANGES.md)
+> `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
+## ✅ Đã xong (chi tiết 06_CHANGES.md)
 - Chốt: ngôn ngữ **TypeScript** · `planning→plan` · config vào `docs/.harness.json` · root chỉ `AGENTS.md` thin · bỏ CLAUDE.md.
 - `core` (registry/router/hooks/conflict) · `cli` (init/sync/migrate/doctor/ui/archive/grill/structure/setup).
 - Adopt an toàn: sync (in-place) · fresh (backup aside) · migrate (analyze + playbook) · merge legacy planning→plan · auto plan-index.
@@ -60,16 +60,8 @@
 - [ ] (Sau) code map AST + adapter host mới (Gemini/Cursor/…) khi có fixture thật.
 
 **🔥 VIỆC KẾ TIẾP:**
-- [ ] **(CHỐT 2026-07-18, THỰC THI PHIÊN SAU) Thêm slot `04_SKILLS.md` — tách playbook khỏi rules/structure.** Harness thiếu nhà riêng cho "skill/playbook"; grill + chốt-phiên đang nhét trong `02_RULES`, reconcile trong `03_STRUCTURE §8` → trộn luật/norm/structure. **Thiết kế đã chốt (user duyệt) — làm y vậy, đừng quyết lại:**
-  - **Số hiệu = `04`.** Thứ tự: 01 luật → 02 norm → 03 structure → **04 skills/playbook** → 05 todo → 06 changes.
-  - **RENUMBER 2 file:** `04_TODO → 05_TODO`, `05_CHANGES → 06_CHANGES`. **STRUCTURE giữ `03`** (không đụng file nặng), 01/02 giữ nguyên.
-  - **`04_SKILLS.md` = 3 playbook thành section:** `## grill` (kéo từ `02_RULES §Hành xử`) · `## chốt phiên / ghi sổ` (kéo từ `02_RULES`) · `## reconcile` (kéo từ `03_STRUCTURE §8`).
-  - **Tách sạch:** RULES/CONSTITUTION giữ NORM + trigger + DẪN CHIẾU ("mơ hồ → skill `grill` (04)"); cách-làm chi tiết dời sang `04_SKILLS`. `03_STRUCTURE §8` còn 1 dòng trỏ.
-  - **Cập nhật MỌI ref:** "04_TODO"→"05_TODO", "05_CHANGES"→"06_CHANGES", "đọc 01→05"→"01→06" ở: `AGENTS §1` (repo+template) · `RULES §Chốt-phiên` (đọc full agent) · `03_STRUCTURE §3` (list file harness) + routing (thêm slot skill) · output `zemory structure` · `adopt.ts`/`checks.ts`/`validate.ts` nếu hardcode danh sách file.
-  - **`LEGACY_RENAME`:** thêm `04_TODO→05_TODO` + `05_CHANGES→06_CHANGES` để project cũ `zemory init` tự lành (cơ chế có sẵn — git `941a79b`).
-  - **Template:** thêm `docs_template/agent/04_SKILLS.md` (playbook generic — grill/chốt-phiên/reconcile là workflow harness chung, KHÔNG nêu tên app) + renumber template `04_TODO`/`05_CHANGES`.
-  - (Tuỳ chọn về sau) ship bản gọi-được sang `.claude/skills/<name>/SKILL.md` — 1 nguồn, 2 dạng (đọc vs invoke).
-  - **Verify:** `npm run check` + `zemory init` thử ra đủ 6 file đúng số + `validate` xanh. Ghi `06_CHANGES` khi xong.
+- [x] ~~**(CHỐT 2026-07-18) Thêm slot `04_SKILLS.md` — tách playbook khỏi rules/structure.**~~ **HOÀN TẤT 2026-07-18** — xem `06_CHANGES`. Thêm `04_SKILLS.md` (grill · chốt phiên · reconcile) + renumber `04_TODO→05_TODO`/`05_CHANGES→06_CHANGES` (repo+template), RULES/STRUCTURE giữ NORM+trigger→dẫn chiếu, `LEGACY_RENAME` phủ gen-1→3, code (adopt/migrate/status/ui/cli/archive/validate/checks/changelog) + test (+gen-3). Verify: `npm run check` 83/83 · `init` ra đúng 6 file · `doctor`/`validate` xanh.
+  - (Tuỳ chọn về sau, CHƯA làm) ship bản gọi-được sang `.claude/skills/<name>/SKILL.md` — 1 nguồn, 2 dạng (đọc vs invoke).
 - [~] **(user giao 2026-07-16) SasinFlow — UI 1 file HTML quá bự — ĐÃ KHẢO SÁT + CÓ PHƯƠNG ÁN, CHỜ USER DUYỆT ĐỂ TÁCH CODE (làm BÊN repo SasinFlow):** survey xong (07-16/18): `frontend/index.html` = **5.150 dòng** (JS ~4.020/307 func = 78% · 127 `onclick=` inline · CSS ~680 · HTML ~430). Phình vì **JS logic**, KHÔNG phải ảnh (0 base64, 1 SVG inline, 2 CSS url). **Assets đã ĐÚNG CHỖ, không cần fix:** logo UI → `frontend/assets/logo.png` · icon .exe (`sasin.ico`, `.spec` đọc) + icon tray/desktop (`sasin_icon.png`, `desktop.py` pystray) → `backend/resources/packaging/`. Hạ tầng sẵn sàng tách (FastAPI `StaticFiles` mount + `.spec` bundle nguyên folder → KHÔNG ràng buộc single-file). **Phương án 4 bước:** CSS ra `styles/` → cắt JS thành nhiều `<script src>` GIỮ global scope → gỡ inline `onclick=` → nâng ES module. Convention **"UI no-build"** + phân biệt 3-vai-trò-icon đã vào `03_STRUCTURE §5` (2026-07-18). **CÒN LẠI: user gật → tách code (repo SasinFlow, KHÔNG phải ở đây; cross-project).**
 - [x] ~~CHỜ USER DUYỆT: giảm ~50% DB~~ **HOÀN TẤT 2026-07-14** — xem `docs/plan/12_vector_rebuild_256.md`, changelog #1010. Kết quả thật: 1141.4MB→595.1MB (−546.3MB, ~48%), 94.384 vector, gate 82/82 + bench 100%/100%.
 - [~] **Đo tốc độ embed/ngày — VẪN CHƯA có số ngày-thường sạch.** Mẫu cũ (07-12, mega-session) = 41 msg/phút, lệch. Rebuild plan 12 (27 giờ, 94k message tồn đọng) cho thấy tốc độ dao động 40–380 msg/phút tùy độ dài message, nhưng đó là backlog dồn cục, KHÔNG phải nhịp ingest hằng ngày. Việc còn lại: sau 1 ngày dùng bình thường (không rebuild), chạy `zemory brain embed --all` + bấm giờ cho SỐ MESSAGE MỚI TRONG NGÀY ĐÓ để ra phút/ngày thật; nếu >20 phút → cân nhắc q4 dtype (hỏi user). **(2026-07-17) ĐO THẬT xong:** backlog 10291 → `brain embed --all` clear HẾT (remaining 0, +10433 vector, 21 pass, ~10834s ≈ 3h) ⇒ **~57–58 msg/phút** (256d · gemma q8 · CPU máy này). Tổng index 109.366 vector. Model verify chạy suốt (probe ok + embed chuỗi mới) — "model unavailable" chỉ là message sai (đã fix). **VẪN CÒN:** đây là backlog-rate; số **ngày-thường** (chỉ msg mới 1 ngày, chạy cuối ngày) mới chốt được q4 — ở ~58/min thì ngưỡng ">20 phút" ⇔ >~1160 msg mới/ngày.

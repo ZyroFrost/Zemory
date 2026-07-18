@@ -5,6 +5,41 @@
 
 ---
 
+## [2026-07-18] — chore(harness): mỗi file harness làm đúng MỘT việc — dọn trùng lặp / lạc chỗ
+
+Sau khi thêm `04_SKILLS`, chốt nguyên tắc + dọn (user chỉ đạo): **mỗi file trong bộ 6 làm đúng MỘT việc, KHÔNG chứa nội dung của file khác** — đọc trùng/lạc chỗ khiến agent bị loạn.
+
+- **Luật mới** (`02_RULES §Tài liệu`, repo + template): một nội dung sống ở ĐÚNG MỘT nhà; file khác cần thì **DẪN CHIẾU** (link + số hiệu), KHÔNG chép lại. Đọc hết 6 file không được thấy trùng.
+- **`04_SKILLS` = KHO SKILL** — mô tả đầu file + nhãn ở `02_RULES`/`03_STRUCTURE`: chỉ chứa skill (mỗi `##` = 1 skill), KHÔNG nhét luật / norm / cấu trúc / linh tinh khác.
+- **Dialog 3-size (design) dồn về `03_STRUCTURE §5`; gỡ `02_RULES §Thiết kế UI`** — RULES là luật **LÀM VIỆC** chung, không phải luật thiết kế. Spec đầy đủ (S/M/L kích thước · trần · overflow · lưu layout) gói gọn 1 dòng convention ở `03 §5`. Comment `ui-page.ts` (×2) trỏ sang `03 §5`.
+- **`02_RULES §Cấu trúc`** rút còn pointer + giữ đúng luật-làm-việc "index phải KHỚP code"; bỏ liệt kê nội dung của `03` (BẮT BUỘC=4 · 1 tên/concern · tracked-vs-gitignore).
+- **`02_RULES` bullet Plan** gộp: giữ "plan chỉ chứa specs, KHÔNG luật/todo" (luật làm việc); chuẩn đánh số `NN_` → `03 §5`.
+- **KHÔNG đụng (khác tầng, không phải trùng):** FILE WINS ở `01_CONSTITUTION điều 3` (nguyên lý) vs `02_RULES` (thao tác sửa `.md` + reindex).
+
+**Verify:** `npm run check` **83/83** · `validate` xanh · `doctor` grill "ready (04_SKILLS §grill)".
+
+## [2026-07-18] — feat(harness): thêm slot `04_SKILLS` (playbook) + renumber TODO→05 / CHANGES→06
+
+Thực thi design đã chốt phiên trước (spec ở TODO §🔥 VIỆC KẾ TIẾP). Harness thiếu **nhà riêng cho playbook** — grill + chốt-phiên nhét trong `02_RULES`, reconcile trong `03_STRUCTURE §8` → trộn luật/norm/structure. Tách ra: RULES/STRUCTURE giữ **NORM + trigger + DẪN CHIẾU**, cách-làm chi tiết gom về `04_SKILLS`.
+
+**Đánh số mới (thứ tự: 01 luật → 02 norm → 03 structure → 04 skills → 05 todo → 06 changes):**
+- **THÊM `docs/agent/04_SKILLS.md`** (repo + template) = 3 playbook section: `## grill` (kéo từ `02_RULES §Hành xử`) · `## chốt phiên / ghi sổ` (kéo từ `02_RULES`) · `## reconcile` (kéo từ `03_STRUCTURE §8`).
+- **RENUMBER (`git mv`, giữ history):** `04_TODO → 05_TODO`, `05_CHANGES → 06_CHANGES` (repo + template). STRUCTURE giữ `03` (không đụng file nặng); 01/02 giữ nguyên; `04_SKILLS` là tên mới → gap-fill từ template, KHÔNG rename.
+
+**Tách sạch (nguồn giữ NORM+trigger, dẫn chiếu tới skill):**
+- `02_RULES §Hành xử` (grill) + §Chốt phiên → rút còn norm + trigger + link `[04_SKILLS §…]`; bỏ quy trình chi tiết (đã dời sang skill).
+- `03_STRUCTURE §8` (Reconcile) → còn 1 dòng trỏ `[04_SKILLS §reconcile]` + bất biến (advisory / `git mv` / hỏi trước khi đập lớn). §3 cây + §7 non-app list thêm `04_SKILLS`; §4 routing thêm dòng "playbook thao tác → `04_SKILLS.md`"; convention Version `05_CHANGES=log → 06_CHANGES=log`.
+
+**Cập nhật mọi ref số hiệu:** `AGENTS.md` (repo+template, "01_CONSTITUTION → 06_CHANGES") · `01_CONSTITUTION §Sửa đổi` (TODO/CHANGES) · `02_RULES` (bảng Tài liệu + thêm dòng `04_SKILLS`) · `plan/00` (backlog → 05_TODO) · `plan/02` (reindex/archive/harness-list → 06_CHANGES + thêm 04_SKILLS).
+
+**Code:** `LEGACY_RENAME` (adopt.ts) thêm `05_CHANGES→06_CHANGES` + `04_TODO→05_TODO` (phủ cả gen-1/2/3, target đều tên mới → exists-guard chống collision); `STANDARD_AGENT`/`STANDARD`/`REQUIRED_DOCS`/UI `STD` = 6 file mới; `migrate.guessRole` thêm nhánh `skill|playbook|grill|reconcile → 04_SKILLS`; `archive.ts`/`validate.ts`/`cli.ts` (help + reindex + archive path) `05_CHANGES→06_CHANGES`; `checks.ts` grill detail → "04_SKILLS §grill"; `changelog.ts` comment.
+
+**Test:** cập nhật legacy-rename assert (gen-2 → 05_TODO/06_CHANGES + gap-fill 04_SKILLS) + **thêm test gen-3** (04_TODO/05_CHANGES → renumber + gap-fill 04_SKILLS); archive test (docs-store) đổi tên file hardcode.
+
+**Verify:** `npm run check` **83/83** (typecheck + lint + test) · `zemory init` (thư mục nháp) scaffold đúng **6 file** thứ tự `01_CONSTITUTION·02_RULES·03_STRUCTURE·04_SKILLS·05_TODO·06_CHANGES` · `doctor` "docs: ✓ all present" + grill "ready (04_SKILLS §grill)" · `validate` xanh.
+
+> Còn nợ có chủ đích (chưa làm, tuỳ chọn): ship bản gọi-được `.claude/skills/<name>/SKILL.md` (1 nguồn, 2 dạng đọc vs invoke) — ghi ở `05_TODO`.
+
 ## [2026-07-18] — chore(harness): CHỐT design slot `04_SKILLS` (tách playbook) — HOÃN thực thi sang phiên sau
 
 Chốt phiên, chuẩn bị đổi session. **Quyết định (user duyệt):** harness thêm file đánh số `04_SKILLS.md` làm nhà riêng cho **playbook** — grill · chốt-phiên · reconcile — hiện đang TRỘN trong `02_RULES` (§Hành xử, §Chốt phiên) + `03_STRUCTURE §8`. Số hiệu **04** (01 luật → 02 norm → 03 structure → **04 skills** → 05 todo → 06 changes); renumber `04_TODO→05_TODO`, `05_CHANGES→06_CHANGES` (STRUCTURE giữ 03). RULES/STRUCTURE giữ NORM+trigger+dẫn-chiếu, cách-làm dời sang 04_SKILLS. Kèm `LEGACY_RENAME` cho project cũ tự lành + template.

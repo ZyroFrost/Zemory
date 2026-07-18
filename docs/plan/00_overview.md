@@ -118,7 +118,7 @@ Code third-party không được dán vào `backend/src/`. Nếu bắt buộc ve
 - **Năng lực kế:** source-transcript privacy/tombstone nếu cần quên tuyệt đối; sau đó semantic rerank, code map và adapter host mới — chỉ bật sau benchmark/fixture.
 - **Bề mặt:** dashboard metrics và VS Code status bar dùng chung status API.
 
-Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/04_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
+Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (changelog) — không còn thuộc phân kỳ. Backlog thực thi nằm duy nhất trong `docs/agent/05_TODO.md`; plan này chỉ mô tả trạng thái và thứ tự kiến trúc.
 ## 9. Quyết định (đã chốt — trước là "mở")
 - TypeScript/Node là runtime của lõi; SQLite/WAL là global brain local.
 - **File `.md` là nguồn curated (FILE WINS, chốt 2026-07-16 — supersede "DB là nguồn"); DB doc/section/changelog là index dẫn xuất, rebuild từ file bằng `zemory reindex` (đọc `.md`, KHÔNG ghi ngược).

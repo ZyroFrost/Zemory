@@ -1,4 +1,4 @@
-// Changelog INDEX — the .md (05_CHANGES.md) is the SOURCE (FILE WINS); the DB
+// Changelog INDEX — the .md (06_CHANGES.md) is the SOURCE (FILE WINS); the DB
 // changelog rows are a DERIVED, read-only search index rebuilt from the .md by
 // `reindex`. Nothing here writes the .md — entries are added by editing the file
 // directly; `import` (reindex) reseeds the search index from it.
