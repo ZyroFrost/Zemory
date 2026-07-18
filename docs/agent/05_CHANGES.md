@@ -5,6 +5,12 @@
 
 ---
 
+## [2026-07-18] — chore(harness): CHỐT design slot `04_SKILLS` (tách playbook) — HOÃN thực thi sang phiên sau
+
+Chốt phiên, chuẩn bị đổi session. **Quyết định (user duyệt):** harness thêm file đánh số `04_SKILLS.md` làm nhà riêng cho **playbook** — grill · chốt-phiên · reconcile — hiện đang TRỘN trong `02_RULES` (§Hành xử, §Chốt phiên) + `03_STRUCTURE §8`. Số hiệu **04** (01 luật → 02 norm → 03 structure → **04 skills** → 05 todo → 06 changes); renumber `04_TODO→05_TODO`, `05_CHANGES→06_CHANGES` (STRUCTURE giữ 03). RULES/STRUCTURE giữ NORM+trigger+dẫn-chiếu, cách-làm dời sang 04_SKILLS. Kèm `LEGACY_RENAME` cho project cũ tự lành + template.
+
+**CHƯA thực thi** — spec đầy đủ (số hiệu · nội dung · renumber · mọi ref cần sửa · LEGACY_RENAME · verify) nằm ở `04_TODO` §"🔥 VIỆC KẾ TIẾP", **phiên sau làm**. Phiên này sau commit `58d4097` không phát sinh code — chỉ phân tích (harness pattern 3-trụ của infographic vs zemory: gap thật = memory-promotion trụ ②, đã note; trụ ③ subagent/critic zemory bỏ theo điều 6) + survey asset SasinFlow (đã đúng chỗ) + chốt design 04_SKILLS.
+
 ## [2026-07-18] — docs(structure): convention "UI no-build" + enrich slot `assets/` + phân biệt 3-vai-trò-icon
 
 Thêm vào `03_STRUCTURE §3/§4/§5` (repo + template) — sinh từ survey UI của một app desktop (SasinFlow, repo khác — READ-ONLY):
