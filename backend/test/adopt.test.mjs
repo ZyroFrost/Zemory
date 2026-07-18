@@ -34,15 +34,36 @@ test("ensureHarness renames every older-generation doc to the current numbering 
 
   ensureHarness(root);
 
-  // Renamed in place (content preserved), then the missing constitution gap-fills.
+  // Renamed in place (content preserved), then missing constitution + skills gap-fill.
   assert.equal(readFileSync(join(agentDir, "02_RULES.md"), "utf8"), "# old rules\n");
   assert.equal(readFileSync(join(agentDir, "03_STRUCTURE.md"), "utf8"), "# old structure\n");
-  assert.equal(readFileSync(join(agentDir, "04_TODO.md"), "utf8"), "# old todo\n");
-  assert.equal(readFileSync(join(agentDir, "05_CHANGES.md"), "utf8"), "# old changes\n");
+  assert.equal(readFileSync(join(agentDir, "05_TODO.md"), "utf8"), "# old todo\n");
+  assert.equal(readFileSync(join(agentDir, "06_CHANGES.md"), "utf8"), "# old changes\n");
   assert.equal(existsSync(join(agentDir, "01_CONSTITUTION.md")), true, "constitution gap-filled from template");
+  assert.equal(existsSync(join(agentDir, "04_SKILLS.md")), true, "skills gap-filled from template");
   for (const gone of ["01_RULES.md", "02_STRUCTURE.md", "03_TODO.md", "04_CHANGES.md"]) {
     assert.equal(existsSync(join(agentDir, gone)), false, `${gone} no longer present under its old name`);
   }
+});
+
+test("ensureHarness renames a gen-3 folder (04_TODO/05_CHANGES) to the current numbering", (t) => {
+  const root = tempDir(t, "zemory-gen3-");
+  const agentDir = join(root, "docs", "agent");
+  mkdirSync(agentDir, { recursive: true });
+  // gen-3 folder (pre-skills, 2026-07-14..18): full set minus 04_SKILLS.
+  writeFileSync(join(agentDir, "01_CONSTITUTION.md"), "# c\n");
+  writeFileSync(join(agentDir, "02_RULES.md"), "# r\n");
+  writeFileSync(join(agentDir, "03_STRUCTURE.md"), "# s\n");
+  writeFileSync(join(agentDir, "04_TODO.md"), "# gen3 todo\n");
+  writeFileSync(join(agentDir, "05_CHANGES.md"), "# gen3 changes\n");
+
+  ensureHarness(root);
+
+  assert.equal(readFileSync(join(agentDir, "05_TODO.md"), "utf8"), "# gen3 todo\n");
+  assert.equal(readFileSync(join(agentDir, "06_CHANGES.md"), "utf8"), "# gen3 changes\n");
+  assert.equal(existsSync(join(agentDir, "04_SKILLS.md")), true, "skills gap-filled from template");
+  assert.equal(existsSync(join(agentDir, "04_TODO.md")), false, "old 04_TODO renamed away");
+  assert.equal(existsSync(join(agentDir, "05_CHANGES.md")), false, "old 05_CHANGES renamed away");
 });
 
 test("freshHarness backs up both agent docs and plan", (t) => {

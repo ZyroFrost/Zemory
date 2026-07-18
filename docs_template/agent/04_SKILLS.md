@@ -1,0 +1,62 @@
+<!-- zemory template · playbook CHUNG mọi project (workflow harness: grill · chốt phiên · reconcile) — ship nguyên từ template. RULES/STRUCTURE nêu NORM+trigger rồi DẪN CHIẾU tới đây; KHÔNG nhét luật riêng vào đây. -->
+# <PROJECT> — Kho skill (playbook thao tác)
+
+> **KHO SKILL** — chứa NHIỀU skill; mỗi `## <tên>` là MỘT skill (playbook thao tác tự-chứa). File này **CHỈ chứa skill** — KHÔNG nhét luật / norm / mô tả cấu trúc / thứ linh tinh khác vào đây (luật → `01_CONSTITUTION`/`02_RULES` · chuẩn cấu trúc → `03_STRUCTURE`). RULES/STRUCTURE chỉ nêu NORM + trigger rồi **DẪN CHIẾU** tới skill tương ứng; cách-làm chi tiết nằm ở đây.
+> **Khuôn mỗi skill:** mở đầu bằng trigger (khi nào bắn) → các bước làm. Kích hoạt khi trigger ở RULES/STRUCTURE bắn, hoặc khi user gọi tên skill. Thêm skill mới = thêm 1 section `## <tên skill>` cùng khuôn. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
+> **Skill mẫu:** `grill` · `chốt phiên / ghi sổ` · `reconcile` (workflow harness chung mọi project).
+
+## grill
+> Kích hoạt (tự động): `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi đúng. User gõ "grill" = ép chạy thủ công cùng cơ chế.
+
+**Mục tiêu:** làm rõ yêu cầu TRƯỚC khi thực thi — KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn.
+
+**Điều kiện kích hoạt (bất kỳ):** yêu cầu đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · tồn tại giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược.
+
+**Quy trình:**
+1. **Dừng** — chưa build.
+2. **Đọc trước, hỏi sau:** cái nào đọc code/docs ra được thì ĐỌC, đừng hỏi. Chỉ hỏi phần input từ user còn thiếu để thực thi đúng (KHÔNG áp cho kiến thức chung).
+3. **Hỏi mỗi lần MỘT câu** — kèm ĐỀ XUẤT của mình + diễn giải lại để xác nhận đúng ý.
+4. **Đi hết mọi nhánh còn mơ hồ** cho tới khi đủ dữ kiện.
+5. **Chốt đủ rõ MỚI build.**
+
+## chốt phiên / ghi sổ
+> Kích hoạt (luật cứng, `02_RULES §Chốt phiên`): user nói "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
+
+**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.** Ghi theo tóm tắt = mất chi tiết, và cái mất luôn là cái phiên sau cần nhất.
+
+**Bước 1 — ĐỌC LẠI ĐỦ 3 nguồn TRƯỚC khi ghi:**
+1. **FULL phiên hiện tại** — đọc lại từ ĐẦU hội thoại, kể cả đoạn đã bị tóm tắt/trôi khỏi context (dùng `zemory brain digest <session>` / `brain search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
+2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không.
+3. **FULL `docs/agent/*`** — `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE` · `04_SKILLS` · `05_TODO` · `06_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
+
+**Bước 2 — định tuyến từng thứ về đúng file, KHÔNG BỎ SÓT:**
+
+| Thứ phát sinh trong phiên | Ghi vào |
+|---|---|
+| Việc đã xong / đã sửa code | `06_CHANGES.md` (sau khi user OK) **và xoá khỏi** `05_TODO.md` |
+| Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ trạng thái `[~]`, **đã tới đâu, bước kế tiếp là gì** |
+| Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` (+ supersede ở changelog nếu đảo quyết định cũ) |
+| Luật / bất biến riêng phát sinh | **ĐỀ XUẤT** vào `05_TODO.md` chờ user chốt — KHÔNG tự sửa `01_CONSTITUTION.md` |
+
+**Chuẩn "không bỏ sót":** mọi việc đã làm trong phiên phải tìm được ở CHANGES **hoặc** TODO — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai / đường cụt / thứ đã thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó).
+
+**Bước cuối:** `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (`02_RULES §Git`).
+
+## reconcile
+> Kích hoạt (`03_STRUCTURE §8`): flow HIẾM, chỉ khi dọn repo chưa theo chuẩn. `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn, zemory KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+
+**A. Docs lệch** (doc trùng / thừa / lạc chỗ):
+1. Soi file `.md` trùng/thừa trong `docs/`; **đọc file** TRƯỚC khi quyết (`zemory plan search` nếu cần tìm theo nội dung).
+2. Gộp todo lạc → `05_TODO`. Bỏ bản trùng/obsolete: **xoá thẳng file `.md`** (file wins) — **HỎI user trước nếu doc còn nội dung thật** (luật KHÔNG TỰ Ý XÓA); sau khi xoá file, `zemory reindex` cập nhật lại search index.
+3. Gom mọi doc plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên `NN_tên.md` đánh số (`00_overview` → `01_` …); plan chỉ chứa specs, todo tách về `05_TODO`.
+
+**B. Cấu trúc folder lệch** (chưa theo khung `backend/` · `frontend/` · `docs/`):
+1. `zemory validate` — xem tầng nào thiếu / đặt sai (advisory, không tự sửa).
+2. Nắn theo bảng routing `03_STRUCTURE §4` (app) / §7 (non-app), **GIỮ git history — dùng `git mv`, KHÔNG copy rồi xoá**:
+   - code của mình → `backend/` (Python `backend/<pkg>/` · Node `backend/src/`); dùng chung BE↔FE → `backend/src/shared/`.
+   - UI/asset → `frontend/`. Repo ngoài clone → `external/`. Nguồn cũ / code bị thay khi refactor → `attic/` (backup tracked, để rollback). Runtime (`.db`/log/cache) + secret (`.key`/bundle) → `data/` (gitignore). Tool ép root (`.github/` · `.env` + `.env.example` · Docker/`.spec`) → để yên ở root.
+   - **KHÔNG ép tạo `test/`** — chỉ khi có lõi logic dễ sai ngầm. Bắt buộc chỉ 4 vai trò: `backend(code)` · `frontend` · `docs` · `AGENTS.md`.
+3. Sau move: **sửa import / entry / path** cho khớp (cần judgment) → **verify bằng cách chạy chính app**.
+4. Xong → cập nhật `README` + ghi entry vào `06_CHANGES.md` (sửa file trực tiếp, sau khi user OK).
+
+**Recipe end-to-end** ("cài harness + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc `03_STRUCTURE §3` (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.

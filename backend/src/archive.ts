@@ -1,6 +1,6 @@
 // Changelog retention — FILE-BASED (the .md is the source, FILE WINS). When
-// 05_CHANGES.md grows past the threshold, the OLDEST entries are moved verbatim
-// into docs/agent/archive/05_CHANGES.md (cold storage, OUTSIDE the per-session
+// 06_CHANGES.md grows past the threshold, the OLDEST entries are moved verbatim
+// into docs/agent/archive/06_CHANGES.md (cold storage, OUTSIDE the per-session
 // read), keeping the newest in place. The search index is then reseeded from the
 // trimmed source. No DB→md render, no second source of truth.
 
@@ -20,7 +20,7 @@ const FENCE = /^[ \t]*(```|~~~)/;
 const DATED_HEAD = /^## \[[^\]]+\]/;
 
 const ARCHIVE_INTRO =
-  "<!-- Changelog ARCHIVE — entry cũ cắt khỏi 05_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# Change Log — Archive\n\n";
+  "<!-- Changelog ARCHIVE — entry cũ cắt khỏi 06_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# Change Log — Archive\n\n";
 
 /** Line indices where dated changelog entries begin (fence-aware; file order = newest first). */
 function entryHeads(lines: string[]): number[] {
@@ -36,10 +36,10 @@ function entryHeads(lines: string[]): number[] {
   return heads;
 }
 
-/** Trim 05_CHANGES.md when it grows past the threshold: move the OLDEST entries
- *  to docs/agent/archive/05_CHANGES.md verbatim, keep the newest in place. */
+/** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries
+ *  to docs/agent/archive/06_CHANGES.md verbatim, keep the newest in place. */
 export function archiveChanges(ctx: Context, dbPath: string = currentBrainDb()): ArchiveResult {
-  const mainPath = join(ctx.docsDir, "05_CHANGES.md");
+  const mainPath = join(ctx.docsDir, "06_CHANGES.md");
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;
   const keep = ctx.config.thresholds?.changes_keep ?? Math.round(threshold * 0.6);
@@ -67,7 +67,7 @@ export function archiveChanges(ctx: Context, dbPath: string = currentBrainDb()):
   const moved = heads.length - k;
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
-  const archivePath = join(ctx.docsDir, "archive", "05_CHANGES.md");
+  const archivePath = join(ctx.docsDir, "archive", "06_CHANGES.md");
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;

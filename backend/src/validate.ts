@@ -35,12 +35,12 @@ export function validate(ctx: Context): ValidateReport {
   }
 
   // 2. Changelog length (suggest archive).
-  const chFile = join(agentDir, "05_CHANGES.md");
+  const chFile = join(agentDir, "06_CHANGES.md");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
   if (existsSync(chFile)) {
     const n = lineCount(chFile);
     if (n > chMax) {
-      issues.push({ level: "info", msg: `05_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
+      issues.push({ level: "info", msg: `06_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
     }
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });

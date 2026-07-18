@@ -52,7 +52,7 @@ function planSignal(docsDir: string): StatusReport["plan"] {
 
 // Canonical markdown docs the harness expects (the rest — plan/changelog — live
 // in global_memory.db and render to mirrors). RULES is the one hand-source doc.
-const REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_TODO.md", "05_CHANGES.md"];
+const REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
 
 /**
  * zemory's token-saving features. Each `state` flips to "on" as the feature

@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { CONFIG_FILE } from "./core/config.js";
 import type { HarnessConfig } from "./core/types.js";
 
-const STANDARD = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_TODO.md", "05_CHANGES.md"];
+const STANDARD = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
 
 export interface MigrationReport {
   docsDir: string;
@@ -26,8 +26,9 @@ const SPEC_RE = /architecture|design|spec|plan|roadmap|contract|vision/i;
 /** Heuristic: guess which standard role a non-standard file might map to. */
 function guessRole(name: string): string | null {
   const n = name.toLowerCase();
-  if (/change|log|history/.test(n)) return "05_CHANGES.md";
-  if (/todo|backlog|task/.test(n)) return "04_TODO.md";
+  if (/change|log|history/.test(n)) return "06_CHANGES.md";
+  if (/todo|backlog|task/.test(n)) return "05_TODO.md";
+  if (/skill|playbook|grill|reconcile/.test(n)) return "04_SKILLS.md";
   if (/structure|folder|layout/.test(n)) return "03_STRUCTURE.md";
   if (/constitution|invariant|principle|hien.?phap/.test(n)) return "01_CONSTITUTION.md";
   if (/rule|policy|convention|agent/.test(n)) return "02_RULES.md";

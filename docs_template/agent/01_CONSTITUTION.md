@@ -26,6 +26,6 @@
 1. **(chưa chốt)** — thêm điều khoản khi user chốt thiết kế nền của project.
 
 ## Sửa đổi hiến pháp
-- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `04_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
-- Khi user chốt đổi: cập nhật tại đây + ghi `05_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
+- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
+- Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
 - **Mục đích còn "(chưa chốt)" = harness chưa xong** — hỏi user chốt sớm; mọi điều khoản chỉ có nghĩa khi biết project phục vụ cái gì.

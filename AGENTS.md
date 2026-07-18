@@ -12,5 +12,5 @@
 
 ## Vào việc
 1. **Chưa có `docs/.harness.json`?** → `zemory --version` (thiếu thì `npm i -g zemory`) → `zemory init` → `zemory doctor` xanh. Đã có → bỏ qua.
-2. **ĐỌC HẾT `docs/`** — KHÔNG bỏ sót: toàn bộ `docs/agent/*` (`01_CONSTITUTION` → `05_CHANGES`) **và** toàn bộ `docs/plan/*` (`00_overview` → các spec `NN_`). *(Ngoại lệ: `docs_visual/` nằm NGOÀI `docs/` — chỉ mở khi user nhắc.)*
+2. **ĐỌC HẾT `docs/`** — KHÔNG bỏ sót: toàn bộ `docs/agent/*` (`01_CONSTITUTION` → `06_CHANGES`) **và** toàn bộ `docs/plan/*` (`00_overview` → các spec `NN_`). *(Ngoại lệ: `docs_visual/` nằm NGOÀI `docs/` — chỉ mở khi user nhắc.)*
 3. Làm theo những gì vừa đọc — `01_CONSTITUTION` (bất biến, TỐI CAO) trên `02_RULES` (luật làm việc).
