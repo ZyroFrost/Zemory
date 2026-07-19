@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-19] — perf(sync): bundle LEAN (chỉ bảng nguồn) + DELTA theo watermark — 709MB → 184MB → 1.8MB
+
+Thực thi bước 1 của lộ trình build (plan 08 backlog; tiền đề auto-sync plan 14 §3b).
+
+**Phát hiện gốc rễ:** `mergeBrainBundle` **VỐN chỉ đọc 3 bảng** — `sessions`, `messages`, `known_stores`. Toàn bộ FTS + `vec_*` + digest + doc/section/changelog trong bundle là **hàng chết được mã hoá và chở đi rồi vứt**. Đó chính là ~87% dung lượng (khớp số đo dbstat plan 11).
+
+**Thay đổi:**
+- **`payload: "rows"` là MẶC ĐỊNH** — dựng một SQLite tạm chỉ gồm 3 bảng nguồn, **DDL copy verbatim từ `sqlite_master` của source** (schema đổi sau này không phải sửa chỗ này). Đọc trong 1 transaction → writer chạy song song không xé được bản export. `--full` giữ nguyên hành vi cũ (snapshot byte) cho disaster-restore.
+- **DELTA:** `sinceMessageId` → chỉ message có `id >` watermark + đúng những session chứa chúng. `messages.id` là AUTOINCREMENT cục bộ nên KHÔNG bao giờ đi theo bundle (merge khớp bằng `UNIQUE(session_id,uuid)` / content identity).
+- **Watermark:** bảng mới `sync_state(bundle, last_message_id, updated_at)` — **schema v13**, per-máy, cùng hạng với `ingest_state`: KHÔNG nằm trong `ROWS_TABLES` nên không đi theo bundle. CLI `brain export --delta` tự đọc + chỉ nâng watermark SAU khi file đã ghi xong.
+- **Import payload rows:** không thể replace file thẳng (thiếu lớp dẫn xuất) → tạo DB trắng đã migrate đầy đủ bằng `openBrain` rồi merge rows vào. Merge bỏ bước normalize cho bundle rows (đã đúng schema, không WAL).
+- Header bundle **v2** (`payload`/`rows`); bundle v1 cũ vẫn đọc được (thiếu `payload` ⇒ hiểu là `full`).
+
+**Đo thật trên DB sống 709.1MB:**
+
+| | Size | Thời gian |
+|---|---|---|
+| Bundle **lean** (đủ dữ liệu) | **184.6 MB** (−74%) | 4.0s |
+| Bundle **delta** (~1.6k msg mới) | **1.8 MB** | 0.2s |
+
+**Verify tính đúng đắn (quan trọng hơn size):** export lean → import vào DB trắng → **1173 session / 144.396 msg khớp tuyệt đối**; **FTS dựng lại đúng** — 13.946 hit `zemory`, khớp y hệt nguồn (FTS là lớp dẫn xuất, không đi theo bundle, trigger dựng lại lúc insert); re-merge cùng bundle **+0/+0** (idempotent). Gate: `npm run check` **87/87** (+4 test khoá: lean-mặc-định-và-nhỏ-hơn-full · delta-chỉ-chở-phần-mới-và-ghép-đúng · watermark-per-bundle-không-đi-theo-bundle · import-rows-dựng-lại-FTS). Smoke CLI trên DB thật + `doctor`/`validate` xanh.
+
+> **CỐ Ý chưa làm:** `syncDrive` vẫn đẩy **lean baseline** chứ không delta — file `global_memory.<host>.zemory.enc` là 1 file/máy bị ghi đè mỗi lần sync, nên phải **tự-đủ**; máy bỏ lỡ vài lần sync sẽ hổng dữ liệu nếu file chỉ chứa delta cuối. Delta cần file tích luỹ + compact định kỳ → làm cùng daemon auto-sync (plan 14 §3b). Riêng lean đã cắt 74%.
+
 ## [2026-07-18] — docs(plan): CHỐT design Graph (plan 13) + App hoá zemory (plan 14) — chưa code, push làm backup trước khi build
 
 Phiên thiết kế (Fable). Hai plan mới + 1 backlog sync, đều CHƯA code — chốt spec xong push làm mốc backup, build ở phiên sau.

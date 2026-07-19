@@ -60,7 +60,7 @@ export const BRAIN_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const BRAIN_DIR = resolveBrainDir();
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -90,6 +90,15 @@ CREATE TABLE IF NOT EXISTS messages (
   tool_name   TEXT,
   timestamp   TEXT,
   UNIQUE(session_id, uuid)
+);
+
+-- Per-MACHINE export watermark (v13): the highest local messages.id already
+-- shipped in a given bundle, so the next export can carry only what is new.
+-- Local state like ingest_state — it must NEVER travel inside a bundle.
+CREATE TABLE IF NOT EXISTS sync_state (
+  bundle          TEXT PRIMARY KEY,   -- bundle file name, e.g. 'global_memory.SS01-IT-10.zemory.enc'
+  last_message_id INTEGER NOT NULL DEFAULT 0,
+  updated_at      TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_source  ON sessions(source);
@@ -424,6 +433,12 @@ function migrate(db: BrainDB, fromVersion: number): void {
     db.exec("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')");
     db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('rebuild')");
     version = 12;
+  }
+  if (version < 13) {
+    // v13 adds sync_state (per-machine export watermark for delta bundles).
+    // Created by the SCHEMA exec above (CREATE TABLE IF NOT EXISTS); an empty
+    // table means "never exported" → the first delta export ships everything.
+    version = 13;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
