@@ -795,8 +795,74 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
+
+  /* ── TAB SHELL (plan 14 §4) ────────────────────────────────────────────────
+     One row of top-level tabs: GLOBAL MEMORY (machine-wide) → zemory → other
+     projects → [+]. The tabs are a VIEW over the existing #proj <select>, which
+     stays the single source of truth, so every existing handler keeps working. */
+  :root { --tabh: 44px; }
+  .tabbar {
+    position: fixed; inset: 0 0 auto 0; height: var(--tabh); z-index: 40;
+    display: flex; align-items: center; gap: 4px; padding: 0 10px;
+    background: linear-gradient(180deg, rgba(10,18,16,.96), rgba(8,14,13,.92));
+    border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+    overflow-x: auto; scrollbar-width: thin;
+  }
+  .tab {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border: 1px solid transparent; border-radius: 7px;
+    background: none; color: var(--muted); font: inherit; font-size: 12.5px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); background: var(--panel-3); }
+  .tab[aria-selected="true"] {
+    color: var(--text); background: var(--green-soft);
+    border-color: var(--line-strong); font-weight: 600;
+  }
+  .tab.tab-global[aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--green); }
+  .tab-sep { flex: 0 0 auto; width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .tab-spacer { flex: 1 1 auto; }
+
+  /* Make room for the fixed bar; keep the sticky rail aligned under it. */
+  .shell { height: calc(100vh - var(--tabh)); margin-top: var(--tabh); }
+  .rail { top: calc(var(--tabh) + 10px); height: calc(100vh - var(--tabh) - 20px); }
+
+  /* GLOBAL MEMORY tab: brain work only — hide the per-project rail. */
+  body[data-tab="global"] .rail,
+  body[data-tab="global"] .resize-handle[data-resize="rail"] { display: none; }
+  body[data-tab="global"] .shell { grid-template-columns: minmax(640px, 1fr) 6px var(--inspector-w); }
+
+  /* PROJECT tab: that project's harness (+ graph, later) full width. */
+  body[data-tab="project"] .workspace,
+  body[data-tab="project"] .inspector,
+  body[data-tab="project"] .resize-handle { display: none; }
+  body[data-tab="project"] .shell { grid-template-columns: 1fr; }
+  body[data-tab="project"] .rail { position: relative; top: 0; width: auto; height: 100%; }
+
+  /* Placeholder for the Graph pane that lands in step D2. */
+  .soon {
+    margin-top: 10px; padding: 14px; border: 1px dashed var(--line-strong);
+    border-radius: 7px; color: var(--faint); font-size: 12.5px; text-align: center;
+  }
+
+  /* ── LIGHT THEME — same variable roles, light values (user chose Dark+Light) */
+  body[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f6f8f6; --bg-soft: #eef2ef;
+    --panel: rgba(255,255,255,.92); --panel-2: rgba(248,250,248,.92); --panel-3: rgba(238,243,239,.9);
+    --line: rgba(24,54,36,.16); --line-strong: rgba(24,54,36,.32);
+    --text: #12211a; --muted: #4d6154; --faint: #74897c;
+    --green: #1f9d57; --green-soft: rgba(31,157,87,.14);
+    background: linear-gradient(180deg, #f6f8f6, #eef2ef);
+  }
+  body[data-theme="light"] .tabbar {
+    background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(244,248,245,.92));
+  }
+  body[data-theme="light"] .rail,
+  body[data-theme="light"] .panel { background: var(--panel); }
 </style></head>
-<body>
+<body data-tab="global">
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="zemory"></nav>
   <div class="shell">
     <aside class="rail">
       <div class="brand">
@@ -813,6 +879,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
             <div class="proj-pick"><select id="proj" onchange="pick()"></select><button class="ghost" title="Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)" data-i18n-title="tt.runHarness" onclick="runHarness()" data-i18n="proj.run">Chạy</button><button class="ghost" title="Cài đặt" data-i18n-title="tt.settings" onclick="openSettings()">⚙</button></div>
             <div class="proj-add"><input id="newProj" data-i18n-ph="ph.addproj" placeholder="Thêm dự án bằng đường dẫn folder…" onkeydown="if(event.key==='Enter')addProject()"><button class="ghost" onclick="addProject()" data-i18n="proj.add">+ Thêm</button></div>
             <div id="app" style="margin-top:8px"></div>
+            <!-- Graph pane lands here in step D2 (plan 13): Code | Docs of THIS project. -->
+            <div class="soon" id="graphSoon">📈 <span data-i18n="tab.graphSoon">Graph của dự án này — sắp có (Code · Docs · soi lỗi)</span></div>
           </div>
         </section>
       </div>
@@ -1283,7 +1351,68 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     }
     return o || '<option value="">(none)</option>';
   }
-  function pick(){ curRoot = el('proj').value; checks = {}; tick(); brainTick(); runChecks(); }
+  function pick(){ curRoot = el('proj').value; checks = {}; tick(); brainTick(); runChecks(); renderTabs(); }
+
+  // ── Tab shell (plan 14 §4) ────────────────────────────────────────────────
+  // GLOBAL MEMORY = machine-wide brain. Each project gets its own tab carrying
+  // that project's harness (and later its graph). The tabs DRIVE the existing
+  // #proj <select>, which stays the source of truth — no handler had to change.
+  function setTab(which, root){
+    if(root && root !== el('proj').value){ el('proj').value = root; pick(); return; }
+    document.body.dataset.tab = which;
+    try { localStorage.setItem('zemory.tab', which); } catch(e){}
+    renderTabs();
+  }
+  // Buttons carry data-act/data-root and ONE delegated listener handles them —
+  // no inline onclick, so no quote-escaping inside this generated markup.
+  function renderTabs(){
+    const bar = el('tabbar'); if(!bar) return;
+    const active = document.body.dataset.tab || 'global';
+    const cur = el('proj') ? el('proj').value : '';
+    const opts = el('proj') ? Array.from(el('proj').options) : [];
+    let h = '<button class="tab tab-global" role="tab" data-act="global" aria-selected="' +
+            (active === 'global') + '">🧠 <span data-i18n="tab.global">Global Memory</span></button>' +
+            '<span class="tab-sep"></span>';
+    opts.forEach(o => {
+      if(!o.value) return;
+      const on = active === 'project' && o.value === cur;
+      h += '<button class="tab" role="tab" data-act="open" data-root="' + esc(o.value) +
+           '" aria-selected="' + on + '" title="' + esc(o.value) + '">' + esc(o.text) + '</button>';
+    });
+    h += '<button class="tab" data-act="add" title="Thêm dự án">＋</button>' +
+         '<span class="tab-spacer"></span>' +
+         '<button class="tab" data-act="theme" title="Đổi giao diện sáng/tối">◐</button>' +
+         '<button class="tab" data-act="settings" title="Cài đặt">⚙</button>';
+    bar.innerHTML = h;
+    if(window.applyLang) try { applyLang(); } catch(e){}
+  }
+  document.addEventListener('click', function(ev){
+    const b = ev.target.closest ? ev.target.closest('.tabbar .tab') : null;
+    if(!b) return;
+    const act = b.dataset.act;
+    if(act === 'global') setTab('global');
+    else if(act === 'open') openProjectTab(b.dataset.root);
+    else if(act === 'add'){ setTab('project'); const n = el('newProj'); if(n) n.focus(); }
+    else if(act === 'theme') toggleTheme();
+    else if(act === 'settings') openSettings();
+  });
+  function openProjectTab(root){
+    if(el('proj').value !== root){ el('proj').value = root; curRoot = root; checks = {}; tick(); brainTick(); runChecks(); }
+    document.body.dataset.tab = 'project';
+    try { localStorage.setItem('zemory.tab', 'project'); } catch(e){}
+    renderTabs();
+  }
+  function toggleTheme(){
+    const next = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+    document.body.dataset.theme = next;
+    try { localStorage.setItem('zemory.theme', next); } catch(e){}
+  }
+  (function restoreShell(){
+    try {
+      const th = localStorage.getItem('zemory.theme'); if(th) document.body.dataset.theme = th;
+      const tb = localStorage.getItem('zemory.tab'); if(tb) document.body.dataset.tab = tb;
+    } catch(e){}
+  })();
   // Run harness = restructure the selected project's docs to the standard
   // (scaffold missing, register it). The agent then adapts content per AGENTS.md.
   function runHarness(){ act('/sync'); }
@@ -1297,6 +1426,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   function renderStatus(){
     if(!last) return;
     el('proj').innerHTML = projOpts();
+    renderTabs();
     const docsOk = last.docs.filter(d => d.ok).length;
     let h = '';
     // Shared standard (docs_template/) — the canonical harness applied to EVERY
