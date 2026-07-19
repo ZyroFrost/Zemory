@@ -86,7 +86,7 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
 - Chạy nền = **tray app + autostart** theo pattern SasinFlow (`backend/resources/packaging/` icon tray/exe — convention "Icon 3 vai trò" `03_STRUCTURE §5`; đóng gói dùng slot sẵn: `.spec`/scripts/dist).
 
 ## 6. Phân kỳ đề xuất
-- **A. Daemon tối thiểu:** port 4444 + single-instance + `zemory ui` attach vào daemon nếu sống. Chưa cần tray.
+- [x] **A. Daemon tối thiểu — XONG 2026-07-19:** port **4444** cố định (`ZEMORY_UI_PORT` override) + endpoint `/ping` (`{app:"zemory",pid}`) để nhận diện instance + single-instance: `zemory ui` lần 2 **attach** vào bản đang chạy (in pid, mở cửa sổ, thoát 0) thay vì dựng bản thứ hai. Cổng bị **app khác** chiếm → rơi về cổng tự do + báo rõ lý do (không từ chối khởi động). Verify thật cả 3 nhánh.
 - **B. Tự động hoá lõi:** setting **"Mở cùng PC"** (autostart per-OS) + setting **"Tự sync brain"** (§3b) + idle scheduler scan/embed. Đây là gap user nêu — ưu tiên ngay sau A.
 - **C. Write gate:** CLI/hook ghi qua daemon khi daemon sống; fallback mở DB trực tiếp.
 - **D. UI redesign + Graph v1:** làm lại cockpit theo §4 (project-first, 3 vùng, tông màu §4b) + graph Code/Docs nằm TRONG tab project; lint badge + tô đỏ.

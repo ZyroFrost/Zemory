@@ -5,6 +5,20 @@
 
 ---
 
+## [2026-07-19] — feat(ui): cổng CỐ ĐỊNH 4444 + single-instance (plan 14.A)
+
+Bước A của app-hoá. Trước đây `zemory ui` bind **cổng ngẫu nhiên** mỗi lần chạy — URL đổi liên tục (không bookmark được, browser mất `localStorage` vì đổi origin), và gõ 2 lần thì dựng 2 server song song.
+
+- **Cổng 4444 cố định** (`DEFAULT_UI_PORT`, override bằng env `ZEMORY_UI_PORT`).
+- **`GET /ping`** → `{app:"zemory", ui:true, pid}` — probe rẻ, không làm việc gì, để phân biệt "cockpit của mình đang giữ cổng" với "app khác chiếm 4444".
+- **Single-instance:** khởi động sẽ probe trước; nếu cockpit đã chạy → in `already running (pid N)`, mở cửa sổ trỏ vào bản đó, **thoát 0** (không dựng server thứ hai).
+- **Fail-open khi cổng bị app khác giữ:** rơi về cổng tự do + in rõ lý do, thay vì từ chối khởi động (đúng HP điều 9).
+- Helper `listenOn()` bọc `server.listen` thành Promise bắt được `EADDRINUSE` (Node phát lỗi này qua event, `await listen` thường không bắt được).
+
+**Verify thật cả 3 nhánh:** ① bind 4444 + `/ping` trả đúng pid · ② instance 2 attach, exit 0 · ③ dựng server lạ giữ 4444 → zemory rơi về cổng tạm kèm cảnh báo. `npm run check` **87/87**.
+
+> Ghi chú kiểm thử: chạy `zemory ui | head -3` trông như "treo" — đó là **artifact của shell** (stdout qua pipe bị đệm khối, tiến trình nền chưa xả), không phải lỗi. Chạy nền rồi đọc file output cho thấy exit code 0 và đúng thông điệp.
+
 ## [2026-07-19] — perf(sync): bundle LEAN (chỉ bảng nguồn) + DELTA theo watermark — 709MB → 184MB → 1.8MB
 
 Thực thi bước 1 của lộ trình build (plan 08 backlog; tiền đề auto-sync plan 14 §3b).
