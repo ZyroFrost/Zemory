@@ -304,6 +304,46 @@ function openWindow(url: string): void {
   child.unref();
 }
 
+/** The cockpit's home address. One fixed port so it is bookmarkable and the
+ *  browser keeps per-origin state; override with ZEMORY_UI_PORT when 4444 clashes. */
+export const DEFAULT_UI_PORT = 4444;
+
+export function uiPort(): number {
+  const raw = Number(process.env.ZEMORY_UI_PORT);
+  return Number.isInteger(raw) && raw > 0 && raw < 65536 ? raw : DEFAULT_UI_PORT;
+}
+
+function listenOn(server: ReturnType<typeof createServer>, port: number): Promise<void> {
+  return new Promise((ok, fail) => {
+    const onError = (e: Error) => {
+      server.removeListener("listening", onOk);
+      fail(e);
+    };
+    const onOk = () => {
+      server.removeListener("error", onError);
+      ok();
+    };
+    server.once("error", onError);
+    server.once("listening", onOk);
+    server.listen(port, "127.0.0.1");
+  });
+}
+
+/** Is OUR cockpit already serving this port? Returns its pid, or null for
+ *  "free" / "someone else's server". Short timeout so startup never hangs. */
+async function probeZemoryUi(port: number): Promise<{ pid: number } | null> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/ping`, {
+      signal: AbortSignal.timeout(700),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { app?: string; pid?: number };
+    return body?.app === "zemory" ? { pid: body.pid ?? 0 } : null;
+  } catch {
+    return null; // nothing listening, or not speaking our protocol
+  }
+}
+
 export async function startUi(): Promise<void> {
   const root = () => findProjectRoot() ?? process.cwd();
   const json = (res: ServerResponse, obj: unknown) => {
@@ -333,6 +373,9 @@ export async function startUi(): Promise<void> {
     const p = u.pathname;
     const rootP = u.searchParams.get("root") || undefined;
     const target = rootP ?? root();
+    // Identity probe: lets a second `zemory ui` tell "our cockpit already owns
+    // this port" from "some other app grabbed 4444" — cheap, no work done.
+    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid });
     if (req.method === "POST" && p === "/sync") return json(res, ensureHarness(target));
     if (req.method === "POST" && p === "/init-fresh") return json(res, freshHarness(target));
     if (p === "/migrate") return json(res, analyzeMigration(target) ?? { error: "no docs dir" });
@@ -443,9 +486,30 @@ export async function startUi(): Promise<void> {
     res.end(PAGE);
   });
 
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const addr = server.address();
-  const port = typeof addr === "object" && addr ? addr.port : 0;
+  // FIXED port so the cockpit always lives at one address (bookmarkable, and the
+  // browser keeps its localStorage — a random port lost it every run). If it is
+  // already taken by OUR cockpit, don't start a rival: just open that one.
+  const wanted = uiPort();
+  const running = await probeZemoryUi(wanted);
+  if (running) {
+    const url = `http://127.0.0.1:${wanted}`;
+    console.log(`zemory ui — already running (pid ${running.pid}) -> ${url}`);
+    openWindow(url);
+    server.close();
+    return;
+  }
+  let port = wanted;
+  try {
+    await listenOn(server, wanted);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE") throw error;
+    // Port held by a NON-zemory process — fall back to an ephemeral one rather
+    // than refusing to start, and say why the address is unusual.
+    await listenOn(server, 0);
+    const addr = server.address();
+    port = typeof addr === "object" && addr ? addr.port : 0;
+    console.log(`zemory ui — port ${wanted} is taken by another app; using ${port} for this run.`);
+  }
   const url = `http://127.0.0.1:${port}`;
   console.log(`zemory ui -> ${url}  (Ctrl+C to stop)`);
   openWindow(url);
