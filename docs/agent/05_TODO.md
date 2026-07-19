@@ -96,7 +96,7 @@
 - [ ] **(Graph) Độ mịn + overlay:** v1 dừng ở file hay kéo tới hàm (AST)? overlay "semantic neighbor" (từ vector sẵn) làm v1 hay phase 2? *(đề xuất: v1 không AST, chỉ cạnh khai báo)*
 - [ ] **(plan 14 §7) Chưa chốt:** tray bằng gì trên Node · write-gate phủ lệnh nào trước · autostart per-OS làm sao · graph cache để trong DB hay file JSON · chu kỳ auto-sync.
 - [ ] **(plan 13 §8 #6) ĐỀ XUẤT HIẾN PHÁP chờ user chốt:** thêm điều "Graph là lớp DẪN XUẤT (rebuild từ .md+code+brain, 0 LLM); app ngoài chỉ CONSUME export; 2 hạng cạnh khai-báo/suy-luận, cạnh suy luận KHÔNG giả dạng khai báo."
-- [ ] **4 commit đang nằm LOCAL, chưa push** (`6180618` · `4e71980` · `1ef6422` · `76523fb`) + phần UI tab chưa commit. Chờ user cho phép push (§Git).
+- [ ] **3 commit đang nằm LOCAL, CHƯA PUSH:** `1ef6422` (lean/delta sync) · `76523fb` (cổng 4444) · `977e6f9` (wip UI tab). *(`6180618` và `4e71980` đã push rồi.)* Chờ user cho phép (§Git).
 - [x] ~~Semantic là provider riêng hay engine nội bộ?~~ CHỐT 2026-06-25: **engine nội bộ** của search hợp nhất — 1 slot `search`, thêm luồng vector vào RRF (xem plan 05).
 - [x] ~~Phân phối LeanCTX: dependency hay binary?~~ MOOT — compression đã bỏ, code ở `attic/`.
 - [x] ~~Artifact lưu bao lâu / tối đa GB?~~ CHỐT 2026-06-25: vĩnh viễn, KHÔNG tự xóa; đầy → cảnh báo, cũ → archive gzip (chi tiết changelog).
