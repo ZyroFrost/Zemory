@@ -68,6 +68,8 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
 └────────────────────────────────────────────────────────────────┘
 ```
 - **Thứ tự tab (user chốt 2026-07-18):** ① `GLOBAL MEMORY` = Main (nhãn UI là "Global Memory" — KHÔNG dùng chữ "brain" trên UI; brain chỉ là tên nội bộ CLI/code) → ② tab `zemory` cố định (dogfood: chính zemory hiển thị harness+graph của nó, cùng khuôn mọi project) → ③ các tab project ngoài + nút **[＋] add** (từ registry `rememberProject` / browse folder). Mỗi project = 1 tab; tab đang mở nhớ qua phiên (state layout user chỉnh phải lưu — `03_STRUCTURE §5` Dialog/layout).
+- **Chuẩn dùng chung KHÔNG lặp trong tab project (user chốt 2026-07-19):** khối "CHUẨN DÙNG CHUNG" (`docs_template/`: AGENTS + 01→06) là tài sản **cấp máy**, thuộc **Global Memory** (hoặc một tab riêng của nó) — **tab của mỗi project CHỈ hiển thị harness của CHÍNH nó**, không kèm bản chuẩn dùng chung. Lý do: lặp ở mọi tab vừa gây nhiễu vừa khiến user tưởng bản chuẩn là của project đó.
+- **Lọc project trong thanh tab (user nêu 2026-07-19 — UI lag):** registry đang gom **mọi** folder từng chạy agent (`ztmpl1–8`, `harness-test`, `demo-proj`… ~15 mục) → thanh tab tràn + chậm. Cần: chỉ hiện project **đã pin/đang dùng**, phần còn lại đưa vào menu "…"; kèm đường **gỡ project khỏi registry**. Đây là điều kiện để tab dùng được thật.
 - Graph build theo plan 13 (cạnh KHAI BÁO baseline; overlay suy luận sau) — cache per `project_root`, invalidate theo mtime. Lint layer: badge thống kê (broken-link/broken-ref/orphan/cycle) + tô đỏ + click-nhảy — prototype 2026-07-18 đã minh chứng (bắt orphan thật `core/index.ts`).
 
 ### 4b. Redesign — đơn giản hoá + tông màu (user yêu cầu 2026-07-18)
@@ -87,9 +89,11 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
 
 ## 6. Phân kỳ đề xuất
 - [x] **A. Daemon tối thiểu — XONG 2026-07-19:** port **4444** cố định (`ZEMORY_UI_PORT` override) + endpoint `/ping` (`{app:"zemory",pid}`) để nhận diện instance + single-instance: `zemory ui` lần 2 **attach** vào bản đang chạy (in pid, mở cửa sổ, thoát 0) thay vì dựng bản thứ hai. Cổng bị **app khác** chiếm → rơi về cổng tự do + báo rõ lý do (không từ chối khởi động). Verify thật cả 3 nhánh.
-- **B. Tự động hoá lõi:** setting **"Mở cùng PC"** (autostart per-OS) + setting **"Tự sync brain"** (§3b) + idle scheduler scan/embed. Đây là gap user nêu — ưu tiên ngay sau A.
+> 🔄 **Đảo thứ tự B↔D (user chốt 2026-07-19):** làm **giao diện TRƯỚC**, vì các setting tự-động cần chỗ để đặt và để bấm thử. Thứ tự thực thi: A ✓ → **D** → B → C → E.
+
+- **D. UI redesign + Graph v1 (LÀM TRƯỚC):** cockpit theo §4 (tab `GLOBAL MEMORY` → tab `zemory` cố định → tab project ngoài + [＋]), theme Dark/Light §4b, và **chỗ trống sẵn cho 2 công tắc của bước B** ("Mở cùng PC", "Tự sync") để test được ngay. Graph Code/Docs nằm TRONG tab project.
+- **B. Tự động hoá lõi:** đấu dây cho 2 công tắc đã có chỗ ở D — setting **"Mở cùng PC"** (autostart per-OS) + **"Tự sync brain"** (§3b) + idle scheduler scan/embed. Đây là gap user nêu từ đầu.
 - **C. Write gate:** CLI/hook ghi qua daemon khi daemon sống; fallback mở DB trực tiếp.
-- **D. UI redesign + Graph v1:** làm lại cockpit theo §4 (project-first, 3 vùng, tông màu §4b) + graph Code/Docs nằm TRONG tab project; lint badge + tô đỏ.
 - **E. Tray icon + đóng gói cài đặt (installer/`npm i -g` + shortcut).**
 - **F. (khi có nhu cầu thật) profile headless/Docker.**
 Mỗi giai đoạn qua gate test/migration/fallback rồi mới bật mặc định (HP điều 12).

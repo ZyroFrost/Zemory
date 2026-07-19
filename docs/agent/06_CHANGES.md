@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-19] — chore(session): CHỐT SỔ phiên 07-18→07-19 — bàn giao sang phiên sau
+
+Chốt sổ trước khi đổi session. Chi tiết từng mục ở các entry bên dưới; đây là bản tổng + bàn giao.
+
+### Đã làm (đều đã verify, 4 commit LOCAL chưa push)
+1. **`6180618` — slot `04_SKILLS` + renumber** `04_TODO→05_TODO`, `05_CHANGES→06_CHANGES` (repo+template) + **dọn single-responsibility** cả bộ 6 file (Dialog 3-size dồn về `03_STRUCTURE §5`, gỡ khỏi RULES; RULES §Cấu trúc rút còn pointer). Luật mới: *mỗi file harness làm đúng MỘT việc, không lặp — cần thì dẫn chiếu*. `04_SKILLS` = **kho skill**, chỉ chứa skill.
+2. **`4e71980` — chốt design** `plan/13` (Graph) + `plan/14` (App hoá zemory/daemon) + backlog delta ở `plan/08`. Chưa code, push làm mốc backup.
+3. **`1ef6422` — bundle LEAN + DELTA:** **709.1MB → 184.6MB (−74%) → delta 1.8MB**. Round-trip khớp tuyệt đối (1173 session/144.396 msg, FTS dựng lại đúng 13.946 hit).
+4. **`76523fb` — cổng CỐ ĐỊNH 4444** + `/ping` + single-instance attach + fail-open khi cổng bị chiếm.
+
+### Đang dở — ĐỌC `05_TODO` §🔥 TRƯỚC KHI LÀM TIẾP
+**Bước D (giao diện tab) chạy được nhưng CHƯA commit và CHƯA đạt.** Thanh tab + theme Dark/Light + nhớ trạng thái đã xong; user xem thật rồi nêu **2 lỗi phải sửa**: ① **UI lag** vì registry gom ~15 project rác (`ztmpl1–8`, `harness-test`, `demo-proj`) → cần lọc + đường gỡ project; ② **"CHUẨN DÙNG CHUNG" (`docs_template/`) đang lặp trong tab project** → phải đưa về Global Memory (hoặc tab riêng), tab project chỉ còn harness của chính nó.
+
+### Quyết định đã chốt trong phiên (ngoài các entry dưới)
+- **Thứ tự thực thi đảo: D (giao diện) → B (tự động) → C** — vì công tắc tự-động cần chỗ đặt để test.
+- **Cài đặt: NATIVE là chính, Docker CHỈ cho headless server** — lý do ở `plan/14 §5` (path Windows thật · SQLite/WAL trên bind-mount · `scan-web` cần browser thật để user login). **Đừng bàn lại.**
+- **Port 4444** · theme **Dark+Light** · Global Memory là tab Main (nhãn UI KHÔNG dùng chữ "brain").
+- **Multi-máy KHÔNG phải gap** (đã có bundle sync); gap thật là **lớp TỰ ĐỘNG** (chưa có "mở cùng PC", chưa có "tự sync") — đó là bước B.
+
+### Bài học kỹ thuật (để phiên sau khỏi vấp lại)
+- **`ui-page.ts`: KHÔNG viết `onclick` inline trong chuỗi sinh HTML** — nháy bị nhân đôi qua template literal ⇒ hỏng cú pháp JS nhúng, mà **`npm run build` KHÔNG bắt được**. Dùng `data-*` + listener uỷ quyền, và **luôn trích `<script>` ra file rồi `node --check`** sau khi sửa.
+- **Chạy `zemory ui | head -n`** trông như treo — đó là **artifact của shell** (stdout qua pipe bị đệm khối), không phải lỗi. Kiểm bằng cách chạy nền rồi đọc file output.
+- **Đo trước khi tin:** check thô "còn nhắc tên cũ" kêu oan 10 lần (toàn lịch sử hợp lệ); chỉ check trên **cấu trúc khai báo** mới đáng tin.
+
+### Còn treo (chi tiết `05_TODO` §Quyết định mở)
+Graph build loại lỗi nào trước · độ mịn/overlay · plan 14 §7 (tray Node, write-gate, autostart, cache) · **đề xuất hiến pháp về Graph chờ user chốt** · **4 commit chưa push**.
+
 ## [2026-07-19] — feat(ui): cổng CỐ ĐỊNH 4444 + single-instance (plan 14.A)
 
 Bước A của app-hoá. Trước đây `zemory ui` bind **cổng ngẫu nhiên** mỗi lần chạy — URL đổi liên tục (không bookmark được, browser mất `localStorage` vì đổi origin), và gõ 2 lần thì dựng 2 server song song.
