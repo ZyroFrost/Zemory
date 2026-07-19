@@ -39,12 +39,32 @@ export interface BrainShareKeyOptions {
   env?: NodeJS.ProcessEnv;
 }
 
+/**
+ * What the bundle carries.
+ *  • "full" — a byte snapshot of the whole DB (v1 behaviour). Ships every derived
+ *    layer (FTS + vector + digest ≈ 87% of the file) that `mergeBrainBundle` then
+ *    IGNORES — kept only for compatibility / disaster restore.
+ *  • "rows" — SOURCE ROWS ONLY (sessions + messages + known_stores): exactly what
+ *    merge reads. The receiver rebuilds FTS on insert and re-embeds locally
+ *    (vectors are keyed by local ids and never travel anyway).
+ */
+export type BundlePayload = "full" | "rows";
+
 export interface ExportBrainBundleOptions extends BrainShareKeyOptions {
   dbPath?: string;
   outPath: string;
   force?: boolean;
   /** Provenance lanes to leave OUT of the bundle (scoped sync). */
   excludeLanes?: ScopeLane[];
+  /** Payload shape. Default "rows" (lean) — "full" only for a byte-for-byte copy. */
+  payload?: BundlePayload;
+  /**
+   * DELTA: carry only messages newer than this local `messages.id` (plus the
+   * sessions they belong to). Implies payload "rows". Merge is additive and
+   * idempotent, so a delta grafts straight onto a receiver that already holds
+   * the earlier rows.
+   */
+  sinceMessageId?: number;
 }
 
 export interface ExportBrainBundleResult {
@@ -52,6 +72,9 @@ export interface ExportBrainBundleResult {
   sourcePath: string;
   sourceBytes: number;
   bundleBytes: number;
+  payload: BundlePayload;
+  /** rows payload only: what actually went in, and the new watermark. */
+  rows?: { sessions: number; messages: number; since: number; maxMessageId: number };
 }
 
 export interface ImportBrainBundleOptions extends BrainShareKeyOptions {
@@ -69,12 +92,17 @@ export interface ImportBrainBundleResult {
 
 interface BundleHeader {
   format: "zemory.brain.bundle";
-  version: 1;
+  /** 1 = full-snapshot only (pre-2026-07). 2 = adds `payload`/`rows`. */
+  version: 1 | 2;
   alg: "aes-256-gcm";
   kdf: { name: "scrypt"; n: number; r: number; p: number; salt: string };
   iv: string;
   createdAt: string;
   source: { name: string; bytes: number };
+  /** v2+. Absent on a v1 bundle → treat as "full". */
+  payload?: BundlePayload;
+  /** v2+, rows payload: counts + watermark span carried by this bundle. */
+  rows?: { sessions: number; messages: number; since: number; maxMessageId: number; host: string };
 }
 
 function readShareSecret(opts: BrainShareKeyOptions): Buffer {
@@ -129,6 +157,88 @@ function filterSnapshot(path: string, lanes: ScopeLane[]): void {
   }
 }
 
+/** The only tables `mergeBrainBundle` ever reads out of a bundle. Everything
+ *  else in the DB is a DERIVED layer the receiver rebuilds locally. */
+const ROWS_TABLES = ["schema_version", "sessions", "messages", "known_stores"] as const;
+
+interface RowsStats {
+  sessions: number;
+  messages: number;
+  since: number;
+  maxMessageId: number;
+}
+
+/**
+ * Build a throwaway SQLite holding ONLY the source rows merge consumes — no FTS,
+ * no vec_*, no digest, no doc/section/changelog, no ingest_state (per-machine).
+ * Table DDL is copied verbatim from the source, so a schema change upstream needs
+ * no edit here. `since` > 0 makes it a DELTA: only messages past that local
+ * `messages.id`, plus the sessions those messages belong to.
+ *
+ * Reads run in one transaction so a concurrent writer can't tear the export
+ * (WAL gives the reader a consistent snapshot).
+ */
+function buildRowsSnapshot(
+  sourcePath: string,
+  opts: { excludeLanes?: ScopeLane[]; since?: number },
+): { path: string; cleanup: () => void; stats: RowsStats } {
+  const dir = mkdtempSync(join(tmpdir(), "zemory-brain-rows-"));
+  const out = join(dir, "global_memory.rows.db");
+  const cleanup = () => rmSync(dir, { recursive: true, force: true });
+  const since = opts.since ?? 0;
+  const db = new Database(out);
+  try {
+    db.pragma("journal_mode = OFF"); // throwaway: no WAL sidecar to ship
+    db.prepare("ATTACH DATABASE ? AS src").run(sourcePath);
+    try {
+      for (const t of db
+        .prepare(
+          `SELECT sql FROM src.sqlite_master WHERE type='table' AND sql IS NOT NULL
+             AND name IN (${ROWS_TABLES.map(() => "?").join(",")})`,
+        )
+        .all(...ROWS_TABLES) as { sql: string }[]) {
+        db.exec(t.sql); // unqualified CREATE lands in main (the new lean file)
+      }
+
+      const excl = opts.excludeLanes?.length
+        ? laneSqlClause("s", opts.excludeLanes)
+        : { match: "", params: [] as unknown[] };
+      const notExcluded = (col: string) =>
+        excl.match ? ` AND ${col} NOT IN (SELECT id FROM src.sessions s WHERE ${excl.match})` : "";
+      const deltaSessions = since > 0 ? " AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?)" : "";
+
+      const stats: RowsStats = { sessions: 0, messages: 0, since, maxMessageId: 0 };
+      db.transaction(() => {
+        stats.maxMessageId = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM src.messages").get() as { m: number }).m;
+        db.exec("INSERT INTO main.schema_version SELECT * FROM src.schema_version");
+        db.prepare(
+          `INSERT INTO main.sessions SELECT * FROM src.sessions WHERE 1=1${deltaSessions}${notExcluded("id")}`,
+        ).run(...(since > 0 ? [since] : []), ...excl.params);
+        // `id` is local AUTOINCREMENT — omitted so it never travels (merge keys on
+        // UNIQUE(session_id, uuid) / content identity, never on id).
+        db.prepare(
+          `INSERT INTO main.messages (session_id, uuid, role, content, tool_name, timestamp)
+             SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages
+             WHERE id > ?${notExcluded("session_id")}`,
+        ).run(since, ...excl.params);
+        db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
+        const c = (sql: string) => (db.prepare(sql).get() as { c: number }).c;
+        stats.sessions = c("SELECT COUNT(*) c FROM main.sessions");
+        stats.messages = c("SELECT COUNT(*) c FROM main.messages");
+      })();
+      return { path: out, cleanup, stats };
+    } finally {
+      db.prepare("DETACH DATABASE src").run();
+    }
+  } catch (error) {
+    db.close();
+    cleanup();
+    throw error;
+  } finally {
+    if (db.open) db.close();
+  }
+}
+
 function writeHeader(outPath: string, header: BundleHeader, force: boolean | undefined): Buffer {
   mkdirSync(dirname(resolve(outPath)), { recursive: true });
   const aad = Buffer.from(MAGIC + JSON.stringify(header) + "\n", "utf8");
@@ -140,20 +250,39 @@ export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise
   const sourcePath = opts.dbPath ?? currentBrainDb();
   if (!existsSync(sourcePath)) throw new Error(`Brain DB not found: ${sourcePath}`);
   const secret = readShareSecret(opts);
-  const snapshot = await snapshotSqlite(sourcePath);
+  // "rows" is the default: ship only what merge consumes. "full" (byte snapshot)
+  // stays available for a disaster-restore copy.
+  const payload: BundlePayload = opts.sinceMessageId ? "rows" : (opts.payload ?? "rows");
+  const snapshot =
+    payload === "rows"
+      ? buildRowsSnapshot(sourcePath, { excludeLanes: opts.excludeLanes, since: opts.sinceMessageId })
+      : await snapshotSqlite(sourcePath);
+  const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
   try {
-    if (opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
+    if (payload === "full" && opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
     const sourceBytes = statSync(snapshot.path).size;
     const salt = randomBytes(16);
     const iv = randomBytes(12);
     const header: BundleHeader = {
       format: "zemory.brain.bundle",
-      version: 1,
+      version: 2,
       alg: "aes-256-gcm",
       kdf: { name: "scrypt", ...KDF, salt: salt.toString("base64") },
       iv: iv.toString("base64"),
       createdAt: new Date().toISOString(),
       source: { name: basename(sourcePath), bytes: sourceBytes },
+      payload,
+      ...(rows
+        ? {
+            rows: {
+              sessions: rows.sessions,
+              messages: rows.messages,
+              since: rows.since,
+              maxMessageId: rows.maxMessageId,
+              host: (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_"),
+            },
+          }
+        : {}),
     };
     const aad = writeHeader(opts.outPath, header, opts.force);
     const cipher = createCipheriv(header.alg, deriveKey(secret, salt), iv);
@@ -170,9 +299,40 @@ export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise
       sourcePath,
       sourceBytes,
       bundleBytes: statSync(opts.outPath).size,
+      payload,
+      ...(rows ? { rows } : {}),
     };
   } finally {
     snapshot.cleanup();
+  }
+}
+
+/**
+ * Export watermark = the highest local `messages.id` already shipped in `bundle`.
+ * Kept per-machine in `sync_state` (never travels in a bundle), so the next
+ * `--delta` export carries only rows added since. 0 = never exported → full set.
+ */
+export function readExportWatermark(bundle: string, dbPath?: string): number {
+  const db = openBrain(dbPath ?? currentBrainDb());
+  try {
+    const row = db.prepare("SELECT last_message_id AS id FROM sync_state WHERE bundle = ?").get(bundle) as
+      | { id: number }
+      | undefined;
+    return row?.id ?? 0;
+  } finally {
+    db.close();
+  }
+}
+
+export function writeExportWatermark(bundle: string, lastMessageId: number, dbPath?: string): void {
+  const db = openBrain(dbPath ?? currentBrainDb());
+  try {
+    db.prepare(
+      `INSERT INTO sync_state (bundle, last_message_id, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(bundle) DO UPDATE SET last_message_id = excluded.last_message_id, updated_at = excluded.updated_at`,
+    ).run(bundle, lastMessageId, new Date().toISOString());
+  } finally {
+    db.close();
   }
 }
 
@@ -187,7 +347,7 @@ function readHeader(bundlePath: string): { header: BundleHeader; aad: Buffer; da
     const magic = probe.subarray(0, firstNl + 1).toString("utf8");
     if (magic !== MAGIC) throw new Error("Not a zemory encrypted brain bundle.");
     const header = JSON.parse(probe.subarray(firstNl + 1, secondNl).toString("utf8")) as BundleHeader;
-    if (header.format !== "zemory.brain.bundle" || header.version !== 1 || header.alg !== "aes-256-gcm") {
+    if (header.format !== "zemory.brain.bundle" || (header.version !== 1 && header.version !== 2) || header.alg !== "aes-256-gcm") {
       throw new Error("Unsupported zemory brain bundle version.");
     }
     return { header, aad: probe.subarray(0, secondNl + 1), dataOffset: secondNl + 1 };
@@ -246,6 +406,19 @@ export async function importBrainBundle(opts: ImportBrainBundleOptions): Promise
   let backupPath: string | null = null;
   try {
     const header = await decryptBundleToFile(opts, tmpPath);
+    // A "rows" bundle carries source rows only — it is NOT a runnable brain DB
+    // (no FTS, no vec_*, no digest). Materialize a fully-migrated empty DB and
+    // merge the rows in, so the result is a complete brain either way.
+    if ((header.payload ?? "full") === "rows") {
+      if (existsSync(targetPath)) {
+        backupPath = `${targetPath}.bak-${timestamp()}`;
+        renameSync(targetPath, backupPath);
+      }
+      openBrain(targetPath).close(); // create + migrate a fresh, complete schema
+      await mergeBrainBundle({ ...opts, dbPath: targetPath });
+      rmSync(tmpPath, { force: true });
+      return { dbPath: targetPath, bundlePath: opts.bundlePath, bytes: header.source.bytes, backupPath };
+    }
     if (existsSync(targetPath)) {
       backupPath = `${targetPath}.bak-${timestamp()}`;
       renameSync(targetPath, backupPath);
@@ -295,15 +468,18 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
   const dir = mkdtempSync(join(tmpdir(), "zemory-brain-merge-"));
   const srcPath = join(dir, "incoming.db");
   try {
-    await decryptBundleToFile(opts, srcPath);
-    // Normalize the incoming DB to the current schema (adds host on a pre-v4
-    // bundle) and drop WAL so it attaches cleanly as a plain file.
-    const src = openBrain(srcPath);
-    try {
-      src.pragma("wal_checkpoint(TRUNCATE)");
-      src.pragma("journal_mode = DELETE");
-    } finally {
-      src.close();
+    const incoming = await decryptBundleToFile(opts, srcPath);
+    // A "rows" bundle is already at the current schema and carries no WAL, so it
+    // attaches as-is. A "full" snapshot still needs normalizing (adds `host` on a
+    // pre-v4 bundle) and its WAL dropped before ATTACH.
+    if ((incoming.payload ?? "full") !== "rows") {
+      const src = openBrain(srcPath);
+      try {
+        src.pragma("wal_checkpoint(TRUNCATE)");
+        src.pragma("journal_mode = DELETE");
+      } finally {
+        src.close();
+      }
     }
 
     const db = openBrain(targetPath);
@@ -422,6 +598,11 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
   const excludeLanes = getScopeExclude(); // scoped sync: same list both directions
   const host = (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
   const myName = `global_memory.${host}.zemory.enc`;
+  // LEAN (rows) but deliberately NOT delta: this is ONE file per host that gets
+  // overwritten every sync, so it must stay self-sufficient — a machine that
+  // skipped a few syncs would lose the gap if the file only held the last delta.
+  // Delta belongs to accumulating per-run files, which arrive with the daemon's
+  // auto-sync (plan 14 §3b); the lean baseline alone already cuts ~74%.
   const exported = await exportBrainBundle({
     outPath: join(dir, myName),
     dbPath: opts.dbPath,

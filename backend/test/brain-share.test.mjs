@@ -3,7 +3,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openBrain } from "../../dist/brain/db.js";
-import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../../dist/brain/share.js";
+import {
+  exportBrainBundle,
+  importBrainBundle,
+  mergeBrainBundle,
+  readExportWatermark,
+  writeBrainShareKey,
+  writeExportWatermark,
+} from "../../dist/brain/share.js";
 import { tempDir } from "./helpers.mjs";
 
 // Seed a brain with sessions/messages; each session carries an explicit host.
@@ -159,4 +166,103 @@ test("merge into a fresh machine (no local DB yet) imports everything", async (t
   const r = await mergeBrainBundle({ bundlePath: bundle, dbPath: dbNew, keyFile: keyPath });
   assert.equal(r.sessionsAdded, 1);
   assert.equal(r.messagesAdded, 1);
+});
+
+test("default bundle is LEAN (rows only) and is far smaller than a full snapshot", async (t) => {
+  const root = tempDir(t, "zemory-brain-lean-");
+  const dbPath = join(root, "brain.db");
+  const keyPath = join(root, "share.key");
+  // Enough rows that the derived layers (FTS + indexes) dominate the file.
+  const messages = Array.from({ length: 400 }, (_, i) => ({ uuid: `m${i}`, content: `lean payload sample ${i} ` .repeat(20) }));
+  seedBrain(dbPath, [{ id: "s1", host: "PC-A", messages }]);
+  writeBrainShareKey(keyPath);
+
+  const lean = await exportBrainBundle({ dbPath, outPath: join(root, "lean.enc"), keyFile: keyPath });
+  const full = await exportBrainBundle({ dbPath, outPath: join(root, "full.enc"), keyFile: keyPath, payload: "full" });
+
+  assert.equal(lean.payload, "rows", "rows is the default payload");
+  assert.equal(full.payload, "full");
+  assert.equal(lean.rows.messages, 400);
+  assert.equal(lean.rows.sessions, 1);
+  assert.ok(lean.bundleBytes < full.bundleBytes, "lean bundle is smaller than the full snapshot");
+});
+
+test("delta carries only messages past the watermark, and merges onto the baseline", async (t) => {
+  const root = tempDir(t, "zemory-brain-delta-");
+  const dbA = join(root, "a.db");
+  const dbB = join(root, "b.db");
+  const keyPath = join(root, "share.key");
+  writeBrainShareKey(keyPath);
+
+  seedBrain(dbA, [{ id: "s1", host: "PC-A", messages: [{ uuid: "m1", content: "first" }, { uuid: "m2", content: "second" }] }]);
+  const base = await exportBrainBundle({ dbPath: dbA, outPath: join(root, "base.enc"), keyFile: keyPath });
+  assert.equal(base.rows.messages, 2);
+
+  // B starts from the baseline.
+  await mergeBrainBundle({ bundlePath: join(root, "base.enc"), dbPath: dbB, keyFile: keyPath });
+
+  // A grows; the delta must carry ONLY the new row.
+  seedBrain(dbA, [{ id: "s2", host: "PC-A", messages: [{ uuid: "m3", content: "third" }] }]);
+  const delta = await exportBrainBundle({
+    dbPath: dbA,
+    outPath: join(root, "delta.enc"),
+    keyFile: keyPath,
+    sinceMessageId: base.rows.maxMessageId,
+  });
+  assert.equal(delta.rows.messages, 1, "delta holds only the new message");
+  assert.equal(delta.rows.sessions, 1, "and only the session that message belongs to");
+  // NOTE: no byte-size assertion here — at this scale SQLite's 4K page floor
+  // makes a 1-row and a 2-row file the same size. The size win is a property of
+  // row COUNT (asserted above); it shows up at real scale, not in a fixture.
+
+  const merged = await mergeBrainBundle({ bundlePath: join(root, "delta.enc"), dbPath: dbB, keyFile: keyPath });
+  assert.equal(merged.messagesAdded, 1, "delta grafts onto the baseline");
+  const db = openBrain(dbB);
+  try {
+    assert.equal(db.prepare("SELECT COUNT(*) c FROM messages").get().c, 3, "B now holds every message");
+  } finally {
+    db.close();
+  }
+});
+
+test("export watermark persists per bundle name and never travels in a bundle", async (t) => {
+  const root = tempDir(t, "zemory-brain-watermark-");
+  const dbPath = join(root, "brain.db");
+  const dbOther = join(root, "other.db");
+  const keyPath = join(root, "share.key");
+  writeBrainShareKey(keyPath);
+  seedBrain(dbPath, [{ id: "s1", host: "PC-A", messages: [{ uuid: "m1", content: "hi" }] }]);
+
+  assert.equal(readExportWatermark("nope.enc", dbPath), 0, "unknown bundle starts at 0");
+  writeExportWatermark("mine.enc", 42, dbPath);
+  assert.equal(readExportWatermark("mine.enc", dbPath), 42);
+  writeExportWatermark("mine.enc", 99, dbPath);
+  assert.equal(readExportWatermark("mine.enc", dbPath), 99, "watermark advances in place");
+
+  // sync_state is machine-local: it must not ride along to another brain.
+  await exportBrainBundle({ dbPath, outPath: join(root, "b.enc"), keyFile: keyPath });
+  await mergeBrainBundle({ bundlePath: join(root, "b.enc"), dbPath: dbOther, keyFile: keyPath });
+  assert.equal(readExportWatermark("mine.enc", dbOther), 0, "receiver keeps its own watermark");
+});
+
+test("importing a rows bundle yields a complete, searchable brain", async (t) => {
+  const root = tempDir(t, "zemory-brain-rows-import-");
+  const dbPath = join(root, "brain.db");
+  const restored = join(root, "restored.db");
+  const keyPath = join(root, "share.key");
+  writeBrainShareKey(keyPath);
+  seedBrain(dbPath, [{ id: "s1", host: "PC-A", messages: [{ uuid: "m1", content: "zsentinelrestore token" }] }]);
+
+  await exportBrainBundle({ dbPath, outPath: join(root, "r.enc"), keyFile: keyPath });
+  await importBrainBundle({ bundlePath: join(root, "r.enc"), dbPath: restored, keyFile: keyPath, force: true });
+
+  const db = openBrain(restored);
+  try {
+    assert.equal(db.prepare("SELECT COUNT(*) c FROM messages").get().c, 1);
+    // FTS is a DERIVED layer that never ships — it must have been rebuilt on insert.
+    const hits = db.prepare("SELECT COUNT(*) c FROM messages_fts WHERE messages_fts MATCH 'zsentinelrestore'").get().c;
+    assert.equal(hits, 1, "FTS index was rebuilt locally from the shipped rows");
+  } finally {
+    db.close();
+  }
 });

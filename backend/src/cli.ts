@@ -3,7 +3,7 @@
 // init/sync are NON-DESTRUCTIVE (never overwrite existing docs).
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findProjectRoot, loadContext } from "./core/config.js";
 import { createRuntime } from "./core/runtime.js";
@@ -19,7 +19,16 @@ import { runRagBench } from "./evals/ragbench.js";
 import { scanWeb } from "./brain/scanweb.js";
 import { relocateBrain, storageInfo } from "./brain/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
-import { exportBrainBundle, importBrainBundle, mergeBrainBundle, resolveShareKey, syncDrive, writeBrainShareKey } from "./brain/share.js";
+import {
+  exportBrainBundle,
+  importBrainBundle,
+  mergeBrainBundle,
+  readExportWatermark,
+  resolveShareKey,
+  syncDrive,
+  writeBrainShareKey,
+  writeExportWatermark,
+} from "./brain/share.js";
 import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
 import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrain } from "./brain/privacy.js";
@@ -505,18 +514,36 @@ async function cmdBrain(args: string[]): Promise<void> {
   if (sub === "export") {
     const out = positionalArgs(args.slice(1))[0];
     if (!out) {
-      console.log("usage: zemory brain export <out.zemory.enc> [--key-file <path>] [--db <path>] [--force]");
+      console.log("usage: zemory brain export <out.zemory.enc> [--delta] [--full] [--key-file <path>] [--db <path>] [--force]");
+      console.log("  default: LEAN bundle — source rows only (sessions/messages); the receiver rebuilds");
+      console.log("           FTS and re-embeds locally. Derived layers are ~87% of the DB and never merge.");
+      console.log("  --delta: only messages added since this bundle's last export (watermark per bundle name).");
+      console.log("  --full : byte-for-byte snapshot of the whole DB (disaster restore; much larger).");
       console.log("  Key source: --key-file <path> or env ZEMORY_SHARE_KEY. Raw DB is never written to the repo.");
       return;
     }
+    const dbPath = flagValue(args, "--db");
+    const delta = args.includes("--delta");
+    const bundleKey = basename(out);
+    const since = delta ? readExportWatermark(bundleKey, dbPath) : undefined;
     const r = await exportBrainBundle({
       outPath: out,
-      dbPath: flagValue(args, "--db"),
+      dbPath,
       keyFile: flagValue(args, "--key-file"),
       force: args.includes("--force"),
+      payload: args.includes("--full") ? "full" : "rows",
+      sinceMessageId: since,
     });
+    const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
     console.log(`zemory brain export — wrote ${r.outPath}`);
-    console.log(`  encrypted ${r.sourceBytes} byte(s) from ${r.sourcePath} → ${r.bundleBytes} byte bundle`);
+    if (r.rows) {
+      const span = r.rows.since > 0 ? `delta since message #${r.rows.since}` : "full row set";
+      console.log(`  ${span}: ${r.rows.sessions} session(s) · ${r.rows.messages} message(s) → ${mb(r.bundleBytes)}`);
+      // Only advance the watermark once the bundle is safely on disk.
+      writeExportWatermark(bundleKey, r.rows.maxMessageId, dbPath);
+    } else {
+      console.log(`  full DB snapshot ${mb(r.sourceBytes)} → ${mb(r.bundleBytes)} bundle`);
+    }
     return;
   }
   if (sub === "import") {
