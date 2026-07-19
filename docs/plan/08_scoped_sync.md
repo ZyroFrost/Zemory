@@ -39,6 +39,7 @@
 - ✅ Quan hệ với sync xuyên máy (plan 02 §0): scope lọc TRƯỚC khi export và TRƯỚC khi merge — đúng thiết kế.
 
 ## Còn lại (backlog thật)
+- [ ] **Export gọn + DELTA (chốt hướng 2026-07-18 — tiền đề auto-sync plan 14 §3b).** Hiện `exportBrainBundle` snapshot NGUYÊN DB (share.ts `db.backup()`) → bundle ~700MB vì chở cả index DẪN XUẤT (FTS+vector ≈ 87% DB, đo plan 11) dù text gốc chỉ ~133MB. Hai nấc: ① **bỏ lớp dẫn xuất khỏi bundle** — chỉ export bảng nguồn (sessions/messages + digest tuỳ chọn); máy nhận tự rebuild FTS/re-embed (importer đã làm vậy với vec) → full bundle ~150–200MB. ② **delta bundle** — watermark per-host (rowid/ts message cuối đã export), bundle chỉ chứa phần mới; merge phía nhận vốn additive idempotent (`UNIQUE(session_id,uuid)`) nên delta ghép thẳng → ngày thường chỉ vài MB. Giữ full bundle làm baseline cho máy mới + compact định kỳ.
 - [ ] Áp scope lúc **ingest** (scan/scan-web) — bỏ qua lane ngay từ lúc quét, không chỉ lọc sau.
 - [ ] Exclude theo **rule/glob** (không chỉ lane tĩnh) nếu cần lọc theo pattern project_root.
 - [ ] **Profile nhiều bộ chọn** nếu user cần đổi nhanh giữa nhiều cấu hình exclude.

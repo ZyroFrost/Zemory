@@ -5,7 +5,17 @@
 
 ---
 
-## [2026-07-18] — chore(harness): mỗi file harness làm đúng MỘT việc — dọn trùng lặp / lạc chỗ
+## [2026-07-18] — docs(plan): CHỐT design Graph (plan 13) + App hoá zemory (plan 14) — chưa code, push làm backup trước khi build
+
+Phiên thiết kế (Fable). Hai plan mới + 1 backlog sync, đều CHƯA code — chốt spec xong push làm mốc backup, build ở phiên sau.
+
+**Plan 13 — Graph (mới):** app phụ trợ vẽ đồ thị cho mọi repo theo chuẩn zemory. Seam: zemory BUILD graph dẫn xuất + `graph export --json` (contract) · app/UI CONSUME. **2 hạng cạnh:** KHAI BÁO (routing·references·supersede·touches — baseline, tất định, 0 LLM) vs SUY LUẬN (overlay fail-open, gắn nhãn, semantic từ vector sẵn). Bất biến dẫn chiếu HP 1/3/5/6/8/9. **Prototype cùng ngày xác nhận hướng:** docs-graph + code-graph thật (55 module/154 import, cụm theo domain, slider layout) — lint bắt **orphan thật `core/index.ts`** (barrel 0 ai import) + blast-radius click-node (`brain/db.ts` fan-in 18). Kết luận: code-graph là chính, docs-graph phụ; giá trị = LINT tô đỏ + thống kê, không phải bức vẽ. §8#1 chốt: graph = TAB trong `zemory ui`, seam JSON giữ để tách app sau.
+
+**Plan 14 — App hoá zemory (mới):** gap user nêu = LỚP TỰ ĐỘNG (đang toàn thủ công), không phải multi-máy (đã có). Chốt: daemon **port 4444** · single-instance + WRITE GATE (CLI ghi qua daemon — trị gốc "database is locked" plan 12) · setting **"Mở cùng PC"** + **"Tự sync brain"** (§3b: tự bấm nút plan 08, mặc định OFF, additive) · idle scheduler · **UI thiết kế lại:** tab `GLOBAL MEMORY` = Main (KHÔNG dùng chữ "brain" trên UI) → tab `zemory` cố định (harness+graph chính nó, cùng khuôn) → tab project ngoài + nút [＋] add; graph đi THEO project trong tab · **theme Dark+Light toggle giống SasinFlow** (dark mặc định, token CSS-var 1 chỗ) · cài NATIVE là chính, **Docker chỉ headless** (lý do §5: path thật/WAL/browser-login — đừng bàn lại). Phân kỳ A→F.
+
+**Plan 08 (+backlog) — export gọn + DELTA:** trả lời "sao bundle 700MB": `exportBrainBundle` snapshot NGUYÊN DB (chở cả index dẫn xuất ~87%). Nấc ① chỉ export bảng nguồn (~150–200MB) · nấc ② delta theo watermark per-host (vài MB/ngày; merge vốn additive-idempotent nên ghép thẳng). **Delta là TIỀN ĐỀ auto-sync** (plan 14 §7.6).
+
+**Thứ tự build đề xuất:** delta export (plan 08) → daemon 4444 (14.A) → tự động hoá lõi (14.B) → write gate (14.C) → UI redesign + graph (14.D).
 
 Sau khi thêm `04_SKILLS`, chốt nguyên tắc + dọn (user chỉ đạo): **mỗi file trong bộ 6 làm đúng MỘT việc, KHÔNG chứa nội dung của file khác** — đọc trùng/lạc chỗ khiến agent bị loạn.
 
