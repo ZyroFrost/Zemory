@@ -248,25 +248,33 @@ export function buildCodeGraph(root: string): CodeGraph {
 }
 
 /**
- * Cheap change-signature of a project's source (file count + newest mtime).
- * Used to invalidate the daemon's graph cache: re-parse only when a file
- * actually changed, not on every request. Walk+stat is far cheaper than the
- * read+parse of a full buildCodeGraph.
+ * Cheap change-signature of a project's source (file count + newest mtime +
+ * a hash of the file PATHS). Used to invalidate the daemon's graph cache:
+ * re-parse only when a file actually changed, not on every request. Walk+stat is
+ * far cheaper than the read+parse of a full buildCodeGraph.
+ *
+ * The path hash matters: `git mv a.ts b.ts` keeps the file COUNT the same and
+ * preserves mtimes, so count+mtime alone would miss the rename and serve a stale
+ * graph. Folding the paths in makes any add/remove/rename flip the signature.
  */
 export function sourceSignature(root: string): string {
   if (!existsSync(root)) return "0:0";
   const files: string[] = [];
   collectFiles(root, root, files, 0);
   let newest = 0;
-  for (const f of files) {
+  let pathHash = 0; // FNV-1a over the sorted paths — order-independent set identity
+  for (const f of files.slice().sort()) {
     try {
       const m = statSync(f).mtimeMs;
       if (m > newest) newest = m;
     } catch {
       /* skip unreadable */
     }
+    for (let i = 0; i < f.length; i++) {
+      pathHash = ((pathHash ^ f.charCodeAt(i)) * 0x01000193) >>> 0;
+    }
   }
-  return `${files.length}:${Math.round(newest)}`;
+  return `${files.length}:${Math.round(newest)}:${pathHash.toString(16)}`;
 }
 
 // ── Fitness (plan 13 §9 Phase A — idea absorbed from CALM's fitness_report) ──

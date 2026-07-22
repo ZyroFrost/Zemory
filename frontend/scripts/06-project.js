@@ -27,11 +27,6 @@
       if(tb) document.body.dataset.tab = (tb === 'standard') ? 'global' : tb;
       const pt = localStorage.getItem('zemory.ptab'); if(pt) document.body.dataset.ptab = pt;
       const gt = localStorage.getItem('zemory.gtab'); if(gt) document.body.dataset.gtab = gt;
-      const it = localStorage.getItem('zemory.itab');
-      if(it){
-        document.body.dataset.itab = it;
-        document.querySelectorAll('.itab').forEach(function(b){ b.classList.toggle('on', b.dataset.itab === it); });
-      }
       const gl = localStorage.getItem('zemory.glayout');
       if(gl && el('graphLayout')) el('graphLayout').value = gl;
     } catch(e){}

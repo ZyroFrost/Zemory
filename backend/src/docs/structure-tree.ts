@@ -50,6 +50,7 @@ export const SLOT_ROLES: Record<string, string> = {
   i18n: "localization: load locale + lookup + auto-translate",
   update: "self-update: check releases + download + apply",
   migrations: "DB migrations — one file per schema step",
+  platform: "OS integration: system-tray · autostart · native window (icons → resources/packaging)",
   shared: "code + types shared BE↔FE (zod/consts/pure logic)",
   contracts: "API spec files (OpenAPI/proto/GraphQL-SDL)",
   plugins: "third-party extension points",

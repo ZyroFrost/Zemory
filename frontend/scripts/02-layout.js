@@ -1,8 +1,7 @@
   function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-  // Layout is persisted SERVER-SIDE (~/.zemory/config.json) so a reopen restores
-  // it exactly — localStorage is keyed by origin and the UI binds a random
-  // port every launch, which is why drags used to reset. localStorage is kept as
-  // a same-port fast cache; the server is the durable source of truth.
+  // Layout is persisted SERVER-SIDE (~/.zemory/config.json) so a reopen restores it
+  // exactly; localStorage is kept only as a same-port fast cache — the server is the
+  // durable source of truth.
   let layoutCache = null;
   function readLayout(){
     if(layoutCache) return layoutCache;
@@ -17,6 +16,19 @@
     try { localStorage.setItem(layoutKey, JSON.stringify(next)); } catch(e){}
     try { fetch('/set-ui-state?state=' + encodeURIComponent(JSON.stringify(next)), { method: 'POST' }); } catch(e){}
   }
+  function setLayoutVar(name, value){ document.documentElement.style.setProperty(name, value); }
+
+  // §5 "Panel resize" — ONE data-driven engine. Every seam is a storage key mapped
+  // to the CSS var it drives; adding a seam = adding a descriptor in seam() below,
+  // never copying drag logic. applyStoredLayout replays them all in one loop.
+  const STORE_VARS = {
+    railW: '--rail-w', inspectorW: '--inspector-w', gmRightW: '--gm-right-w',
+    recallLeft: '--recall-left', gmCovW: '--gm-cov-w', graphColW: '--graph-col-w', graphRowH: '--graph-row-h',
+  };
+  function applyStoredLayout(){
+    const l = readLayout();
+    for(const k in STORE_VARS){ if(l[k] != null) setLayoutVar(STORE_VARS[k], l[k]); }
+  }
   async function loadLayoutFromServer(){
     try {
       const s = await (await fetch('/ui-state')).json();
@@ -24,131 +36,93 @@
         layoutCache = s.layout;
         try { localStorage.setItem(layoutKey, JSON.stringify(s.layout)); } catch(e){}
         applyStoredLayout();
-        applyStoredGrows();
       }
     } catch(e){}
   }
-  function setLayoutVar(name, value){
-    document.documentElement.style.setProperty(name, value);
+
+  function seamRect(sel){ const n = document.querySelector(sel); return n ? n.getBoundingClientRect() : null; }
+  function cssVarNum(name){ return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)); }
+  // Return the LIVE spec for a seam type. The inspector seam swaps var/limits by
+  // sub-tab, and every container-dependent max is measured fresh — seam() is re-read
+  // on each pointerdown / key / dblclick, so a spec is never stale.
+  //   axis     : 'x' (col-resize) | 'y' (row-resize)
+  //   val(x,y) : pointer coordinate -> clamped numeric value in `unit`
+  //   plusKey  : which arrow key INCREASES the value (seams grow in different directions)
+  function seam(type){
+    const narrow = window.matchMedia('(max-width: 760px)').matches;
+    const midNarrow = window.matchMedia('(max-width: 1180px)').matches;
+    const mk = (o) => Object.assign({ unit: 'px', step: 16, axis: 'x' }, o);
+    switch(type){
+      case 'rail': return mk({
+        varName: '--rail-w', key: 'railW', min: 150, max: 340, plusKey: 'ArrowRight', enabled: !narrow && !midNarrow,
+        val: (x) => { const r = seamRect('.shell'); return Math.round(clamp(x - r.left - 10, 150, 340)); },
+        cur: () => parseFloat(readLayout().railW) || cssVarNum('--rail-w') || 244,
+      });
+      case 'inspector': {
+        const mem = memPane();
+        const min = mem ? 420 : 230;
+        const maxOf = () => { const r = seamRect('.shell'); return mem ? Math.max(440, (r ? r.width : 1280) - 320) : 460; };
+        return mk({
+          varName: mem ? '--gm-right-w' : '--inspector-w', key: mem ? 'gmRightW' : 'inspectorW',
+          min, max: maxOf(), plusKey: 'ArrowLeft', enabled: !narrow && !midNarrow,
+          val: (x) => { const r = seamRect('.shell'); return Math.round(clamp(r.right - x - 10, min, maxOf())); },
+          cur: () => parseFloat(readLayout()[mem ? 'gmRightW' : 'inspectorW']) || cssVarNum(mem ? '--gm-right-w' : '--inspector-w') || (mem ? 980 : 366),
+        });
+      }
+      case 'recall': return mk({
+        varName: '--recall-left', key: 'recallLeft', unit: '%', step: 3, min: 36, max: 76, plusKey: 'ArrowRight', enabled: !narrow,
+        val: (x) => { const r = seamRect('.recall-workbench'); return +clamp(((x - r.left) / Math.max(1, r.width)) * 100, 36, 76).toFixed(1); },
+        cur: () => parseFloat(readLayout().recallLeft) || cssVarNum('--recall-left') || 64,
+      });
+      case 'gmSplit': {
+        const min = 260;
+        const maxOf = () => { const r = seamRect('.inspector'); return Math.max(min, (r ? r.width : 900) - min - 6); };
+        return mk({
+          varName: '--gm-cov-w', key: 'gmCovW', min, max: maxOf(), plusKey: 'ArrowRight', enabled: !narrow,
+          val: (x) => { const r = seamRect('.inspector'); return Math.round(clamp(x - r.left, min, maxOf())); },
+          cur: () => parseFloat(readLayout().gmCovW) || cssVarNum('--gm-cov-w') || Math.round(((seamRect('.inspector') || { width: 800 }).width) / 2),
+        });
+      }
+      case 'graphCol': {
+        const min = 180;
+        const maxOf = () => { const r = seamRect('.graph-grid'); return Math.max(220, (r ? r.width : 800) * 0.6); };
+        return mk({
+          varName: '--graph-col-w', key: 'graphColW', min, max: maxOf(), plusKey: 'ArrowRight', enabled: !narrow,
+          val: (x) => { const r = seamRect('.graph-grid'); return Math.round(clamp(x - r.left, min, maxOf())); },
+          cur: () => parseFloat(readLayout().graphColW) || cssVarNum('--graph-col-w') || 260,
+        });
+      }
+      case 'graphRow': {
+        const min = 90;
+        const maxOf = () => { const r = seamRect('.graph-grid'); return Math.max(120, (r ? r.height : 600) * 0.6); };
+        return mk({
+          varName: '--graph-row-h', key: 'graphRowH', axis: 'y', min, max: maxOf(), plusKey: 'ArrowDown', enabled: !narrow,
+          val: (x, y) => { const r = seamRect('.graph-grid'); return Math.round(clamp(y - r.top, min, maxOf())); },
+          cur: () => parseFloat(readLayout().graphRowH) || cssVarNum('--graph-row-h') || 120,
+        });
+      }
+    }
+    return null;
   }
-  function applyStoredLayout(){
-    const l = readLayout();
-    if(l.railW) setLayoutVar('--rail-w', l.railW);
-    if(l.inspectorW) setLayoutVar('--inspector-w', l.inspectorW);
-    if(l.gmRightW) setLayoutVar('--gm-right-w', l.gmRightW);
-    if(l.bottomH) setLayoutVar('--bottom-h', l.bottomH);
-    if(l.recallLeft) setLayoutVar('--recall-left', l.recallLeft);
-  }
+
   function resetResize(type){
-    const patch = {};
-    if(type === 'rail') { setLayoutVar('--rail-w', layoutDefaults.railW); patch.railW = null; }
-    if(type === 'inspector' && memPane()) { setLayoutVar('--gm-right-w', layoutDefaults.gmRightW); patch.gmRightW = null; }
-    else if(type === 'inspector') { setLayoutVar('--inspector-w', layoutDefaults.inspectorW); patch.inspectorW = null; }
-    if(type === 'bottom') { setLayoutVar('--bottom-h', layoutDefaults.bottomH); patch.bottomH = null; }
-    if(type === 'recall') { setLayoutVar('--recall-left', layoutDefaults.recallLeft); patch.recallLeft = null; }
-    writeLayout(patch);
+    const s = seam(type); if(!s) return;
+    // Original shell seams restore their explicit default; the newer split seams
+    // just clear the override so the CSS fallback (1fr / minmax / auto) returns.
+    if(layoutDefaults[s.key] != null) setLayoutVar(s.varName, layoutDefaults[s.key]);
+    else document.documentElement.style.removeProperty(s.varName);
+    writeLayout({ [s.key]: null });
   }
-  function applyStoredGrows(){
-    const g = (readLayout().grows) || {};
-    document.querySelectorAll('[data-grow]').forEach(p => {
-      const v = g[p.dataset.grow];
-      if(v != null) p.style.flexGrow = v;
-    });
-  }
-  function initPanelSplits(){
-    document.querySelectorAll('.panel-split').forEach(h => {
-      let drag = null;
-      h.addEventListener('pointerdown', e => {
-        if(window.matchMedia('(max-width: 760px)').matches) return;
-        const prev = h.previousElementSibling, next = h.nextElementSibling;
-        if(!prev || !next) return;
-        const pH = prev.getBoundingClientRect().height, nH = next.getBoundingClientRect().height;
-        const pG = parseFloat(getComputedStyle(prev).flexGrow) || 1;
-        const nG = parseFloat(getComputedStyle(next).flexGrow) || 1;
-        drag = { prev, next, startY: e.clientY, pH, nH, totalH: pH + nH, totalG: pG + nG };
-        try { h.setPointerCapture(e.pointerId); } catch(_){}
-        h.classList.add('active');
-        document.body.classList.add('resizing', 'resizing-row');
-        e.preventDefault();
-      });
-      h.addEventListener('pointermove', e => {
-        if(!drag) return;
-        const min = 70;
-        const npH = clamp(drag.pH + (e.clientY - drag.startY), min, drag.totalH - min);
-        const pg = drag.totalG * (npH / drag.totalH);
-        drag.prev.style.flexGrow = pg.toFixed(3);
-        drag.next.style.flexGrow = (drag.totalG - pg).toFixed(3);
-        e.preventDefault();
-      });
-      const end = () => {
-        if(!drag) return;
-        const g = (readLayout().grows) || {};
-        if(drag.prev.dataset.grow) g[drag.prev.dataset.grow] = drag.prev.style.flexGrow;
-        if(drag.next.dataset.grow) g[drag.next.dataset.grow] = drag.next.style.flexGrow;
-        writeLayout({ grows: g });
-        h.classList.remove('active');
-        document.body.classList.remove('resizing', 'resizing-row');
-        drag = null;
-      };
-      h.addEventListener('pointerup', end);
-      h.addEventListener('pointercancel', end);
-      h.addEventListener('dblclick', () => {
-        const prev = h.previousElementSibling, next = h.nextElementSibling, g = (readLayout().grows) || {};
-        [prev, next].forEach(p => { if(p && p.dataset.growDefault){ p.style.flexGrow = p.dataset.growDefault; delete g[p.dataset.grow]; } });
-        writeLayout({ grows: g });
-      });
-    });
-  }
+
   function initResizers(){
-    const handles = Array.from(document.querySelectorAll('.resize-handle:not(.panel-split)'));
     let active = null;
-    const cssNum = (name, fallback) => {
-      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : fallback;
-    };
-    const canResize = (type) => {
-      if(window.matchMedia('(max-width: 760px)').matches) return false;
-      if((type === 'rail' || type === 'inspector') && window.matchMedia('(max-width: 1180px)').matches) return false;
-      return true;
-    };
-    const update = (type, clientX, clientY, base) => {
-      let out = null;
-      if(type === 'rail') {
-        const r = document.querySelector('.shell').getBoundingClientRect();
-        const px = Math.round(clamp(clientX - r.left - 10, 150, 340));
-        setLayoutVar('--rail-w', px + 'px');
-        out = { railW: px + 'px' };
-      }
-      if(type === 'inspector') {
-        const r = document.querySelector('.shell').getBoundingClientRect();
-        if(memPane()){
-          // Two panels live on this side, so it needs a far wider range than the
-          // single-panel seam; leave at least 320px for Bộ nhớ on the left.
-          const px = Math.round(clamp(r.right - clientX - 10, 420, Math.max(440, r.width - 320)));
-          setLayoutVar('--gm-right-w', px + 'px');
-          out = { gmRightW: px + 'px' };
-        } else {
-          const px = Math.round(clamp(r.right - clientX - 10, 230, 460));
-          setLayoutVar('--inspector-w', px + 'px');
-          out = { inspectorW: px + 'px' };
-        }
-      }
-      if(type === 'recall') {
-        const r = document.querySelector('.recall-workbench').getBoundingClientRect();
-        const pct = clamp(((clientX - r.left) / Math.max(1, r.width)) * 100, 36, 76);
-        const val = pct.toFixed(1) + '%';
-        setLayoutVar('--recall-left', val);
-        out = { recallLeft: val };
-      }
-      if(type === 'bottom') {
-        const ws = document.querySelector('.workspace').getBoundingClientRect();
-        const max = Math.max(150, Math.round(ws.height * .46));
-        const px = Math.round(clamp(base.bottomStart - (clientY - base.startY), 112, max));
-        setLayoutVar('--bottom-h', px + 'px');
-        out = { bottomH: px + 'px' };
-      }
-      if(out) active.pending = out;
+    const onMove = (e) => {
+      if(!active) return;
+      e.preventDefault();
+      const s = active.spec;
+      const v = s.val(e.clientX, e.clientY) + s.unit;
+      setLayoutVar(s.varName, v);
+      active.pending = { [s.key]: v };
     };
     const stop = () => {
       if(!active) return;
@@ -158,67 +132,31 @@
       document.body.classList.remove('resizing', 'resizing-col', 'resizing-row');
       active = null;
     };
-    window.addEventListener('pointermove', e => {
-      if(!active) return;
-      e.preventDefault();
-      update(active.type, e.clientX, e.clientY, active);
-    });
+    window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', stop);
     window.addEventListener('pointercancel', stop);
-    handles.forEach(handle => {
+    document.querySelectorAll('.resize-handle[data-resize]').forEach(handle => {
       const type = handle.dataset.resize;
       handle.addEventListener('pointerdown', e => {
-        if(!canResize(type)) return;
-        const bottom = document.querySelector('.grid-bottom');
-        active = {
-          type,
-          handle,
-          pointerId: e.pointerId,
-          startX: e.clientX,
-          startY: e.clientY,
-          bottomStart: bottom ? bottom.getBoundingClientRect().height : cssNum('--bottom-h', 210),
-          pending: null,
-        };
-        try { handle.setPointerCapture(e.pointerId); } catch(e){}
+        const s = seam(type); if(!s || !s.enabled) return;
+        active = { spec: s, handle, pointerId: e.pointerId, pending: null };
+        try { handle.setPointerCapture(e.pointerId); } catch(_){}
         handle.classList.add('active');
-        document.body.classList.add('resizing', handle.classList.contains('horizontal') ? 'resizing-row' : 'resizing-col');
+        document.body.classList.add('resizing', s.axis === 'y' ? 'resizing-row' : 'resizing-col');
         e.preventDefault();
       });
       handle.addEventListener('dblclick', () => resetResize(type));
       handle.addEventListener('keydown', e => {
-        if(!canResize(type)) return;
-        const big = e.shiftKey ? 32 : 16;
-        const layout = readLayout();
-        const setAndSave = (name, value) => { setLayoutVar(name, value); writeLayout(name === '--rail-w' ? {railW:value} : name === '--inspector-w' ? {inspectorW:value} : name === '--gm-right-w' ? {gmRightW:value} : name === '--bottom-h' ? {bottomH:value} : {recallLeft:value}); };
-        if(type === 'rail' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-          e.preventDefault();
-          const cur = parseFloat(layout.railW || getComputedStyle(document.documentElement).getPropertyValue('--rail-w')) || 205;
-          setAndSave('--rail-w', Math.round(clamp(cur + (e.key === 'ArrowRight' ? big : -big), 150, 340)) + 'px');
-        }
-        if(type === 'inspector' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-          e.preventDefault();
-          if(memPane()){
-            const shell = document.querySelector('.shell').getBoundingClientRect();
-            const cur = parseFloat(layout.gmRightW || getComputedStyle(document.documentElement).getPropertyValue('--gm-right-w')) || 980;
-            setAndSave('--gm-right-w', Math.round(clamp(cur + (e.key === 'ArrowLeft' ? big : -big), 420, Math.max(440, shell.width - 320))) + 'px');
-          } else {
-            const cur = parseFloat(layout.inspectorW || getComputedStyle(document.documentElement).getPropertyValue('--inspector-w')) || 295;
-            setAndSave('--inspector-w', Math.round(clamp(cur + (e.key === 'ArrowLeft' ? big : -big), 230, 460)) + 'px');
-          }
-        }
-        if(type === 'bottom' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-          e.preventDefault();
-          const cur = parseFloat(layout.bottomH || getComputedStyle(document.documentElement).getPropertyValue('--bottom-h')) || 210;
-          setAndSave('--bottom-h', Math.round(clamp(cur + (e.key === 'ArrowUp' ? big : -big), 112, 380)) + 'px');
-        }
-        if(type === 'recall' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-          e.preventDefault();
-          const cur = parseFloat(layout.recallLeft || getComputedStyle(document.documentElement).getPropertyValue('--recall-left')) || 64;
-          setAndSave('--recall-left', clamp(cur + (e.key === 'ArrowRight' ? 3 : -3), 36, 76).toFixed(1) + '%');
-        }
+        const s = seam(type); if(!s || !s.enabled) return;
+        const keys = s.axis === 'y' ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
+        if(keys.indexOf(e.key) < 0) return;
+        e.preventDefault();
+        const step = (e.shiftKey ? 2 : 1) * s.step;
+        const next = clamp(s.cur() + (e.key === s.plusKey ? step : -step), s.min, s.max);
+        const v = (s.unit === '%' ? +next.toFixed(1) : Math.round(next)) + s.unit;
+        setLayoutVar(s.varName, v);
+        writeLayout({ [s.key]: v });
       });
     });
   }
   applyStoredLayout();
-  applyStoredGrows();
-

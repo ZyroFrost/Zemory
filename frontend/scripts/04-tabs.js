@@ -82,36 +82,9 @@
          '<button class="tab" data-act="theme" title="' + esc(t('tab.themeTitle')) + '" aria-label="' + esc(t('tab.themeTitle')) + '">◐</button>' +
          '<button class="tab" data-act="settings" title="' + esc(t('tt.settings')) + '" aria-label="' + esc(t('tt.settings')) + '">⚙</button>';
     bar.innerHTML = '<div class="tab-strip">' + strip + '</div><div class="tab-actions">' + actions + '</div>';
-    if(el('tabMenu') && el('tabMenu').classList.contains('on')) renderTabMenu();
   }
-  // "…" / "☰" open the same panel: every known project with pin + remove, so a
-  // project can always be reached AND dropped without hunting through the bar.
-  function renderTabMenu(){
-    const box = el('tabMenu'); if(!box) return;
-    const list = projectList();
-    const cur = el('proj') ? el('proj').value : '';
-    let h = '<div class="tabmenu-head">' + esc(t('tab.menuHead')) + '</div>';
-    if(!list.length) h += '<div class="tabmenu-empty">' + esc(t('tab.none')) + '</div>';
-    list.forEach(p => {
-      h += '<div class="tabmenu-row' + (p.root === cur ? ' cur' : '') + '">' +
-        '<button class="tabmenu-open" data-mact="open" data-root="' + esc(p.root) + '" title="' + esc(p.root) + '">' +
-          '<b>' + esc(p.name) + '</b><small>' + esc(p.root) + '</small></button>' +
-        '<button class="tabmenu-btn' + (p.pinned ? ' on' : '') + '" data-mact="pin" data-root="' + esc(p.root) +
-          '" data-on="' + (p.pinned ? '0' : '1') + '" title="' + esc(t(p.pinned ? 'tab.unpin' : 'tab.pin')) + '" aria-label="' + esc(t(p.pinned ? 'tab.unpin' : 'tab.pin')) + '">📌</button>' +
-        '<button class="tabmenu-btn danger" data-mact="forget" data-root="' + esc(p.root) +
-          '" title="' + esc(t('tab.forget')) + '" aria-label="' + esc(t('tab.forget')) + '">✕</button>' +
-      '</div>';
-    });
-    h += '<div class="tabmenu-foot"><button class="ghost" data-mact="prune">' + esc(t('tab.prune')) + '</button>' +
-         '<span class="tiny">' + esc(t('tab.forgetNote')) + '</span></div>';
-    box.innerHTML = h;
-  }
-  function toggleTabMenu(force){
-    const box = el('tabMenu'); if(!box) return;
-    const on = force === undefined ? !box.classList.contains('on') : force;
-    box.classList.toggle('on', on);
-    if(on) renderTabMenu();
-  }
+  // Pin / forget / prune moved onto each row of the Projects list (see covRow in
+  // 07-memory.js) — the old ☰ tab overflow menu is gone (it duplicated that list).
   async function projectAction(path, root, extra){
     const r = await (await fetch(path + '?root=' + encodeURIComponent(root) + (extra || ''), { method: 'POST' })).json();
     if(r && r.knownProjects && last) last.knownProjects = r.knownProjects;
@@ -139,17 +112,6 @@
   document.addEventListener('click', function(ev){
     const b = ev.target.closest ? ev.target.closest('.gsubtab') : null;
     if(b) setGlobalSubTab(b.dataset.gsub);
-  });
-  // ── Inspector tabs: Bộ nhớ | Quét | Dự án | Chuẩn chung ─────────────────────
-  // Was a 4-panel vertical stack; each is now a tab so it gets the full column.
-  function setInspectorTab(which){
-    document.body.dataset.itab = which;
-    try { localStorage.setItem('zemory.itab', which); } catch(e){}
-    document.querySelectorAll('.itab').forEach(function(b){ b.classList.toggle('on', b.dataset.itab === which); });
-  }
-  document.addEventListener('click', function(ev){
-    const b = ev.target.closest ? ev.target.closest('.itab') : null;
-    if(b) setInspectorTab(b.dataset.itab);
   });
   // VSCode-like structure tree: real folders annotated with the standard slot
   // dictionary; unknown folders flagged (a folder-structure conformance check).
