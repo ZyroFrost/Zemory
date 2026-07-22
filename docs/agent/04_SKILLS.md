@@ -9,6 +9,15 @@
 > **Adapter ở đâu?** KHÔNG viết prose adapter ở đây. Chỗ "adapt hiện ra thật" là **`03_STRUCTURE`** (từ điển slot + ràng buộc): agent đọc skill gốc + đọc 03 rồi tự khớp; bỏ vào slot hay không là quyết định của agent theo từng project.
 > **Kích hoạt:** trigger ở RULES/STRUCTURE bắn, hoặc user gọi tên skill. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
 
+## Cách dùng skill (LUẬT chung — vendored `external/skills/`)
+Skill vendored là **kho THAM KHẢO**, KHÔNG auto-apply. Nó là *nguồn gợi ý chuẩn*, không phải lệnh tự sửa. Quy trình BẮT BUỘC mỗi khi làm việc mà skill phủ (thiết kế UI/UX, chọn palette·font·layout·motion, review chất lượng, chart…):
+1. **ĐỌC skill liên quan trước** (dùng công cụ tra của nó nếu có — vd `search.py`); nếu nó không phủ vấn đề → nói RÕ "skill không có match", đừng bịa.
+2. **RÚT KHUYẾN NGHỊ**, phân 3 loại: ✅ cái nào chuẩn/tốt **nên theo** · ⚠ cái nào đang **KẸT / sai / anti-pattern** · ◻ cái nào **nên chuẩn hoá**.
+3. **TRÌNH user (recommend) — KHÔNG tự đổi.** Áp/đổi vẫn theo `02_RULES §Hành xử` (mọi thiết kế UI/UX phải duyệt trước); **user chốt mới làm**.
+4. **User có ý tưởng UI mới** → check skill để **gợi ý lại** trước khi build (đối chiếu ý tưởng với chuẩn của skill, nêu rủi ro/lựa chọn tốt hơn nếu có).
+
+Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi được duyệt.**
+
 ### Kho skill vendored (`external/skills/` — của repo zemory, dùng chung, đọc on-demand)
 > Không phải project nào cũng xài; zemory cũng có thể không xài. Kho nằm **1 chỗ ở repo zemory**, KHÔNG copy sang từng project.
 
