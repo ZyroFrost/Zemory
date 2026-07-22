@@ -7,6 +7,9 @@ dist/
 *.sqlite
 *.sqlite3
 *.zemory.enc
+# Delta/lean sync bundles are named global_memory.<host>.<seq>.enc — they do NOT
+# match *.zemory.enc above, so ignore them explicitly (never let a PII bundle reach git).
+global_memory.*.enc
 # ...EXCEPT the repo's own share bundle — share/README documents it as the
 # LFS-tracked sync artifact; without this exception it silently never commits.
 !share/global_memory.zemory.enc
