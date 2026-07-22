@@ -2,8 +2,21 @@
 # <PROJECT> — Kho skill (playbook thao tác)
 
 > **KHO SKILL** — chứa NHIỀU skill; mỗi `## <tên>` là MỘT skill (playbook thao tác tự-chứa). File này **CHỈ chứa skill** — KHÔNG nhét luật / norm / mô tả cấu trúc / thứ linh tinh khác vào đây (luật → `01_CONSTITUTION`/`02_RULES` · chuẩn cấu trúc → `03_STRUCTURE`). RULES/STRUCTURE chỉ nêu NORM + trigger rồi **DẪN CHIẾU** tới skill tương ứng; cách-làm chi tiết nằm ở đây.
-> **Khuôn mỗi skill:** mở đầu bằng trigger (khi nào bắn) → các bước làm. Kích hoạt khi trigger ở RULES/STRUCTURE bắn, hoặc khi user gọi tên skill. Thêm skill mới = thêm 1 section `## <tên skill>` cùng khuôn. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
-> **Skill mẫu:** `grill` · `chốt phiên / ghi sổ` · `reconcile` (workflow harness chung mọi project).
+> **HAI KHUÔN — chọn theo độ dài:**
+> - **NGẮN → inline:** 1 section `## <tên>` ngay trong file này (trigger → các bước). Vd: `grill` · `chốt phiên` · `reconcile`.
+> - **DÀI / có resources → KHÔNG chép vào đây:** vendor **nguyên bản** repo gốc vào `external/skills/<tên-repo>/` (giữ đúng tên + LICENSE, KHÔNG sửa nội dung người ta — HP điều 1/2), ở đây chỉ để **1 DÒNG INDEX** trỏ tới. Agent cần thì **đọc thẳng bản gốc** (trỏ, KHÔNG chép ⇒ đủ nội dung mà 0 nhân bản).
+> - **⚠ GUARDRAIL:** file này **KHÔNG BAO GIỜ phình**. Nội dung dài ra thì nó thuộc **skill gốc** (`external/skills/`) hoặc **chuẩn** (`03_STRUCTURE`) — không có ngoại lệ.
+> **Adapter ở đâu?** KHÔNG viết prose adapter ở đây. Chỗ "adapt hiện ra thật" là **`03_STRUCTURE`** (từ điển slot + ràng buộc): agent đọc skill gốc + đọc 03 rồi tự khớp; bỏ vào slot hay không là quyết định của agent theo từng project.
+> **Kích hoạt:** trigger ở RULES/STRUCTURE bắn, hoặc user gọi tên skill. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
+
+### Kho skill vendored (`external/skills/` — dùng chung, đọc on-demand)
+> Không phải project nào cũng xài; chính repo này cũng có thể không xài. Kho nằm **1 chỗ**, KHÔNG copy sang từng project.
+
+| skill | dùng khi | đường dẫn | license |
+|---|---|---|---|
+| *(chưa có — thêm khi vendor skill đầu tiên)* | | | |
+
+**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile`.
 
 ## grill
 > Kích hoạt (tự động): `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi đúng. User gõ "grill" = ép chạy thủ công cùng cơ chế.

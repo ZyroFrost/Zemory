@@ -30,10 +30,30 @@ interface ZConfig {
   /** UI language: 'vi' (default) | 'en'. */
   lang?: string;
   scopeExclude?: ScopeLane[];
-  /** UI cockpit layout (panel sizes / resize positions) — persisted so a reopen
+  /** UI UI layout (panel sizes / resize positions) — persisted so a reopen
    *  restores exactly what the user dragged (localStorage resets per random port). */
   ui?: Record<string, unknown>;
+  /** Start zemory when the OS starts (plan 14 §B). Default false. */
+  autostart?: boolean;
+  /** Auto-sync the brain via the Drive bundle when data drifts (plan 14 §3b).
+   *  Default false — it moves data off the machine, so it stays opt-in. */
+  autosync?: boolean;
+  /** Idle background scheduler (scan → embed → digest) while the daemon runs
+   *  (plan 14 §B). Default true — this is the "it just keeps itself current" bit. */
+  scheduler?: boolean;
+  /** How DEEP a cross-machine sync carries (plan 08 §7). "lean" = source rows
+   *  only (default, ~74% smaller); "full" = whole-DB snapshot incl. derived
+   *  layers (disaster-restore copy). */
+  syncLevel?: SyncLevel;
 }
+
+/** Cross-machine sync depth (plan 08 §7).
+ *  • "lean" — source rows only (sessions/messages/known_stores); the receiver
+ *    rebuilds FTS + re-embeds. This is the default and the lean bundle (~74%
+ *    smaller). Maps to the "rows" bundle payload.
+ *  • "full" — a byte-for-byte snapshot of the whole DB (ships every derived
+ *    layer). A disaster-restore copy; much larger. Maps to the "full" payload. */
+export type SyncLevel = "lean" | "full";
 
 function read(): ZConfig {
   try {
@@ -82,6 +102,47 @@ export function setScopeSetting(on: boolean): void {
   write(c);
 }
 
+/** Start-with-OS toggle (the config flag; the actual OS hook is in autostart.ts). */
+export function getAutostart(): boolean {
+  return read().autostart ?? false;
+}
+export function setAutostartSetting(on: boolean): void {
+  const c = read();
+  c.autostart = on;
+  write(c);
+}
+
+/** Auto-sync the brain via Drive when data drifts (plan 14 §3b). Opt-in. */
+export function getAutosync(): boolean {
+  return read().autosync ?? false;
+}
+export function setAutosyncSetting(on: boolean): void {
+  const c = read();
+  c.autosync = on;
+  write(c);
+}
+
+/** Idle background scheduler (scan/embed/digest). Default ON. */
+export function getScheduler(): boolean {
+  return read().scheduler ?? true;
+}
+export function setSchedulerSetting(on: boolean): void {
+  const c = read();
+  c.scheduler = on;
+  write(c);
+}
+
+/** Cross-machine sync depth (plan 08 §7). Default "lean" (the ~74%-smaller
+ *  rows bundle); "full" ships the whole-DB snapshot for disaster restore. */
+export function getSyncLevel(): SyncLevel {
+  return read().syncLevel === "full" ? "full" : "lean";
+}
+export function setSyncLevel(level: SyncLevel): void {
+  const c = read();
+  c.syncLevel = level === "full" ? "full" : "lean";
+  write(c);
+}
+
 /** Drive sync folder (where encrypted bundles live). Empty = not linked. */
 export function getDriveDir(): string {
   return read().drive ?? "";
@@ -122,7 +183,7 @@ export function setScopeExclude(lanes: ScopeLane[]): void {
   write(c);
 }
 
-/** UI cockpit layout blob (opaque to the server; the page defines its shape). */
+/** UI UI layout blob (opaque to the server; the page defines its shape). */
 export function getUiState(): Record<string, unknown> {
   const v = read().ui;
   return v && typeof v === "object" ? v : {};

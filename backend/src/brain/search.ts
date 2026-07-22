@@ -49,6 +49,10 @@ export interface SearchOptions {
   excludeLanes?: ScopeLane[];
 }
 
+/** Default hits a recall returns (progressive disclosure: snippet first, full
+ *  text on demand). The UI derives the per-recall token budget from this. */
+export const DEFAULT_SEARCH_LIMIT = 12;
+
 const RRF_K = 60;
 const W_WORD = 1.0;
 const W_TRI = 0.6;
@@ -159,7 +163,7 @@ function hydrate(
   terms: string[],
   opts: SearchOptions,
 ): SearchHit[] {
-  const limit = opts.limit ?? 12;
+  const limit = opts.limit ?? DEFAULT_SEARCH_LIMIT;
   const perSession = opts.perSession ?? 2;
   const getRow = db.prepare(
     `SELECT m.id, m.session_id, m.role, m.content, m.timestamp, s.source, s.origin, s.host, s.project_root
@@ -424,6 +428,8 @@ export function getSessionThread(sessionId: string, dbPath: string = currentBrai
 }
 
 const SNIP = 90;
+/** Max chars a single hit's snippet spans (a ±SNIP window around the match). */
+export const SNIPPET_MAX_CHARS = SNIP * 2;
 
 // A window around the first matching term (so the hit, not the head, shows).
 function makeSnippet(content: string, terms: string[]): string {

@@ -28,7 +28,7 @@ import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
-import { getScopeExclude } from "../settings.js";
+import { type SyncLevel, getScopeExclude, getSyncLevel } from "../settings.js";
 
 const MAGIC = "ZEMORY-BRAIN-ENC v1\n";
 const TAG_BYTES = 16;
@@ -336,6 +336,46 @@ export function writeExportWatermark(bundle: string, lastMessageId: number, dbPa
   }
 }
 
+/**
+ * A cheap fingerprint of a bundle file WITHOUT decrypting it: byte size + the
+ * `createdAt` from its plaintext header. It changes whenever the file is
+ * rewritten, so the receiver can skip files it has already merged.
+ */
+export function bundleSignature(bundlePath: string): string {
+  const bytes = statSync(bundlePath).size;
+  let createdAt = "";
+  try {
+    createdAt = readHeader(bundlePath).header.createdAt;
+  } catch {
+    /* unreadable header → sig falls back to size only (still detects rewrites) */
+  }
+  return `${bytes}:${createdAt}`;
+}
+
+/** Has this exact bundle file (by signature) already been merged here? */
+export function isBundleMerged(file: string, sig: string, dbPath?: string): boolean {
+  const db = openBrain(dbPath ?? currentBrainDb());
+  try {
+    const row = db.prepare("SELECT sig FROM merged_bundles WHERE file = ?").get(file) as { sig: string } | undefined;
+    return row?.sig === sig;
+  } finally {
+    db.close();
+  }
+}
+
+/** Record that a bundle file (by signature) has been merged here. */
+export function markBundleMerged(file: string, sig: string, dbPath?: string): void {
+  const db = openBrain(dbPath ?? currentBrainDb());
+  try {
+    db.prepare(
+      `INSERT INTO merged_bundles (file, sig, merged_at) VALUES (?, ?, ?)
+         ON CONFLICT(file) DO UPDATE SET sig = excluded.sig, merged_at = excluded.merged_at`,
+    ).run(file, sig, new Date().toISOString());
+  } finally {
+    db.close();
+  }
+}
+
 function readHeader(bundlePath: string): { header: BundleHeader; aad: Buffer; dataOffset: number } {
   const fd = openSync(bundlePath, "r");
   try {
@@ -575,10 +615,44 @@ export interface DriveSyncResult {
   scanned: { newMessages: number; changedFiles: number };
   exported: string;
   exportedBytes: number;
-  merged: { file: string; sessionsAdded?: number; messagesAdded?: number; error?: string }[];
+  /** Sync depth used for the export (plan 08 §7): "lean" rows | "full" snapshot. */
+  level: SyncLevel;
+  /** What this machine wrote out this run (delta series, plan 08 §7 / plan 14 §3b). */
+  push: {
+    /** "baseline" (full row set) · "delta" (rows since watermark) · "full" (whole-DB
+     *  snapshot) · "compact" (fresh baseline that replaced old deltas) · "none". */
+    kind: "baseline" | "delta" | "full" | "compact" | "none";
+    file: string;
+    bytes: number;
+    messages: number;
+    /** Old delta files removed by a compaction (their rows live on in the baseline). */
+    removed: number;
+  };
+  merged: { file: string; sessionsAdded?: number; messagesAdded?: number; skipped?: boolean; error?: string }[];
   /** New vectors built at the end of sync (this machine's + merged messages). */
   embedded: number;
   vectorRemaining: number;
+}
+
+/** Delta series knobs (plan 08 §7). */
+const DRIVE_SEQ_PAD = 6; // zero-padded so files sort lexically by age
+const DRIVE_COMPACT_AT = 12; // ≥ this many of MY files → fold them into a fresh baseline
+
+const sanitizeHost = (): string => (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
+const seriesName = (host: string, seq: number): string =>
+  `global_memory.${host}.${String(seq).padStart(DRIVE_SEQ_PAD, "0")}.enc`;
+const legacyName = (host: string): string => `global_memory.${host}.zemory.enc`;
+
+/** My delta-series files in the folder, with their parsed sequence numbers. */
+function listMySeries(dir: string, host: string): { file: string; seq: number }[] {
+  const prefix = `global_memory.${host}.`;
+  const out: { file: string; seq: number }[] = [];
+  for (const f of readdirSync(dir)) {
+    if (!f.startsWith(prefix) || !f.endsWith(".enc")) continue;
+    const mid = f.slice(prefix.length, -".enc".length); // between prefix and .enc
+    if (/^\d+$/.test(mid)) out.push({ file: f, seq: Number(mid) });
+  }
+  return out.sort((a, b) => a.seq - b.seq);
 }
 
 /**
@@ -588,7 +662,19 @@ export interface DriveSyncResult {
  * other. Returns what was pushed/merged; embedding of new rows is left to the
  * caller (`brain embed`).
  */
-export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPath?: string }): Promise<DriveSyncResult> {
+export async function syncDrive(opts: {
+  driveDir: string;
+  keyFile?: string;
+  dbPath?: string;
+  /** Sync depth (plan 08 §7). Omitted → the persisted setting (getSyncLevel). */
+  level?: SyncLevel;
+  /** This machine's identity for the delta series. Omitted → os.hostname().
+   *  A seam for tests (to simulate two machines) and multi-identity setups. */
+  host?: string;
+  /** Build vectors for new rows at the end (default true). Off in tests that
+   *  exercise the sync protocol, not the embedder. */
+  embed?: boolean;
+}): Promise<DriveSyncResult> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`Drive folder not found: ${dir}`);
@@ -596,24 +682,37 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
   // we upload can never miss the newest chat lines when switching machines.
   const scanReport = scan({ dbPath: opts.dbPath });
   const excludeLanes = getScopeExclude(); // scoped sync: same list both directions
-  const host = (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
-  const myName = `global_memory.${host}.zemory.enc`;
-  // LEAN (rows) but deliberately NOT delta: this is ONE file per host that gets
-  // overwritten every sync, so it must stay self-sufficient — a machine that
-  // skipped a few syncs would lose the gap if the file only held the last delta.
-  // Delta belongs to accumulating per-run files, which arrive with the daemon's
-  // auto-sync (plan 14 §3b); the lean baseline alone already cuts ~74%.
-  const exported = await exportBrainBundle({
-    outPath: join(dir, myName),
-    dbPath: opts.dbPath,
-    keyFile: opts.keyFile,
-    force: true,
-    excludeLanes,
-  });
+  const host = opts.host ? opts.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
+  const level = opts.level ?? getSyncLevel();
+
+  // ── PUSH: write out this machine's changes ──────────────────────────────────
+  // DEPTH (plan 08 §7): "full" = one whole-DB snapshot (disaster restore),
+  // overwritten each sync. "lean" (default) = a DELTA SERIES: a baseline file plus
+  // small per-sync deltas, so a steady sync ships ~KB not ~190MB. The series stays
+  // self-sufficient (baseline + every delta = full history); periodic compaction
+  // folds the deltas back into one baseline and deletes the superseded files.
+  const push = await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath });
+
+  // ── MERGE: pull every OTHER machine's bundles we haven't merged yet ──────────
+  // Skip anything from THIS host (my series + any legacy file), and skip files
+  // whose signature we've already merged (receiver-side dedup, plan 08 §7).
+  const myPrefix = `global_memory.${host}.`;
   const merged: DriveSyncResult["merged"] = [];
-  for (const f of readdirSync(dir).filter((f) => f.endsWith(".zemory.enc") && f !== myName)) {
+  for (const f of readdirSync(dir).filter((f) => f.endsWith(".enc") && !f.startsWith(myPrefix))) {
+    const full = join(dir, f);
+    let sig: string;
     try {
-      const r = await mergeBrainBundle({ bundlePath: join(dir, f), dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
+      sig = bundleSignature(full);
+    } catch {
+      continue; // vanished mid-listing → skip
+    }
+    if (isBundleMerged(f, sig, opts.dbPath)) {
+      merged.push({ file: f, skipped: true });
+      continue;
+    }
+    try {
+      const r = await mergeBrainBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
+      markBundleMerged(f, sig, opts.dbPath);
       merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
     } catch (error) {
       merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
@@ -627,17 +726,97 @@ export async function syncDrive(opts: { driveDir: string; keyFile?: string; dbPa
   // (a handful of new messages) is fully covered; a large one-time backlog is
   // finished by `zemory brain embed --all` (vectorRemaining reports the rest).
   // Fail-open: if the model is unavailable, embedPending embeds 0 (FTS fallback).
-  const embedded = (await embedPending({ dbPath: opts.dbPath })).embedded;
+  const embedded = opts.embed === false ? 0 : (await embedPending({ dbPath: opts.dbPath })).embedded;
 
   return {
     driveDir: dir,
     scanned: { newMessages: scanReport.totals.newMessages, changedFiles: scanReport.changedFiles },
-    exported: myName,
-    exportedBytes: exported.bundleBytes,
+    exported: push.file,
+    exportedBytes: push.bytes,
+    level,
+    push,
     merged,
     embedded,
     vectorRemaining: vectorRemaining(opts.dbPath),
   };
+}
+
+/**
+ * Write this machine's changes into the Drive folder.
+ *
+ * FULL depth → one whole-DB snapshot (`global_memory.<host>.zemory.enc`),
+ * overwritten each sync; the delta series (if any) is cleared so the two schemes
+ * never coexist for one host.
+ *
+ * LEAN depth → a delta series. Rules:
+ *  • no series yet → write a BASELINE (all rows, since=0) as seq 0; drop any
+ *    legacy single-file bundle it supersedes.
+ *  • series exists, few files → write a DELTA (rows past the watermark). Empty
+ *    delta (nothing new) → write nothing.
+ *  • series exists, many files (≥ DRIVE_COMPACT_AT) → COMPACT: write a fresh
+ *    baseline as the next seq, then delete all older files. The baseline is a
+ *    superset of the deletes, so no receiver can lose data.
+ *
+ * The watermark (`sync_state` key `drive:<host>`) tracks the highest local
+ * message id already shipped in the series.
+ */
+async function pushToDrive(o: {
+  dir: string;
+  host: string;
+  level: SyncLevel;
+  excludeLanes: ScopeLane[];
+  keyFile?: string;
+  dbPath?: string;
+}): Promise<DriveSyncResult["push"]> {
+  const { dir, host, level, excludeLanes, keyFile, dbPath } = o;
+
+  if (level === "full") {
+    // Disaster-restore snapshot: one self-contained file, overwritten each sync.
+    const name = legacyName(host);
+    const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, payload: "full" });
+    // A prior lean series is now redundant (the full snapshot carries everything).
+    for (const s of listMySeries(dir, host)) rmSync(join(dir, s.file), { force: true });
+    return { kind: "full", file: name, bytes: r.bundleBytes, messages: 0, removed: 0 };
+  }
+
+  const wmKey = `drive:${host}`;
+  const series = listMySeries(dir, host);
+  const nextSeq = series.length ? series[series.length - 1].seq + 1 : 0;
+
+  // BASELINE — no series yet, or a scheduled compaction folds the deltas back in.
+  const compacting = series.length >= DRIVE_COMPACT_AT;
+  if (series.length === 0 || compacting) {
+    const name = seriesName(host, nextSeq);
+    const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes });
+    if (!r.rows || r.rows.messages === 0) {
+      rmSync(join(dir, name), { force: true }); // empty brain → nothing to publish
+      return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
+    }
+    writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
+    let removed = 0;
+    if (compacting) {
+      // The new baseline is a superset of every older file → deleting them cannot
+      // lose data for any receiver (worst case they re-merge the baseline).
+      for (const s of series) {
+        rmSync(join(dir, s.file), { force: true });
+        removed++;
+      }
+    } else {
+      rmSync(join(dir, legacyName(host)), { force: true }); // supersede a legacy single file
+    }
+    return { kind: compacting ? "compact" : "baseline", file: name, bytes: r.bundleBytes, messages: r.rows.messages, removed };
+  }
+
+  // DELTA — only rows added since the last shipped watermark.
+  const since = readExportWatermark(wmKey, dbPath);
+  const name = seriesName(host, nextSeq);
+  const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, sinceMessageId: since });
+  if (!r.rows || r.rows.messages === 0) {
+    rmSync(join(dir, name), { force: true }); // nothing new this sync
+    return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
+  }
+  writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
+  return { kind: "delta", file: name, bytes: r.bundleBytes, messages: r.rows.messages, removed: 0 };
 }
 
 export function writeBrainShareKey(path: string, opts: { force?: boolean } = {}): string {

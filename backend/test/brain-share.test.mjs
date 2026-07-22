@@ -245,6 +245,64 @@ test("export watermark persists per bundle name and never travels in a bundle", 
   assert.equal(readExportWatermark("mine.enc", dbOther), 0, "receiver keeps its own watermark");
 });
 
+// Point ~/.zemory (where config.json lives) at a temp dir so the sync-level
+// setting round-trips without touching the real machine config.
+function sandboxHome(t) {
+  const home = tempDir(t, "zemory-synclevel-home-");
+  const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB };
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  process.env.APPDATA = home;
+  process.env.XDG_CONFIG_HOME = home;
+  delete process.env.GLOBAL_MEMORY_DB; // let the brain dir follow the sandboxed HOME
+  t.after(() => {
+    for (const k of Object.keys(save)) {
+      if (save[k] === undefined) delete process.env[k];
+      else process.env[k] = save[k];
+    }
+  });
+  return home;
+}
+
+test("sync level (plan 08 §7) defaults to lean and round-trips", async (t) => {
+  sandboxHome(t);
+  const { getSyncLevel, setSyncLevel } = await import("../../dist/settings.js");
+  assert.equal(getSyncLevel(), "lean", "default depth is the lean rows bundle");
+  setSyncLevel("full");
+  assert.equal(getSyncLevel(), "full", "persisted to full");
+  setSyncLevel("lean");
+  assert.equal(getSyncLevel(), "lean", "back to lean");
+  setSyncLevel("bogus"); // anything but "full" normalizes to lean
+  assert.equal(getSyncLevel(), "lean", "unknown value falls back to lean");
+});
+
+test("syncDrive uses the persisted sync level, and an explicit level overrides it", async (t) => {
+  sandboxHome(t);
+  const { setSyncLevel } = await import("../../dist/settings.js");
+  const { syncDrive } = await import("../../dist/brain/share.js");
+  const root = tempDir(t, "zemory-synclevel-drive-");
+  const dbPath = join(root, "brain.db");
+  const driveDir = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(driveDir, { recursive: true });
+  openBrain(dbPath).close(); // empty brain → scan is a no-op, embed has nothing to do
+  writeBrainShareKey(keyPath);
+  process.env.ZEMORY_SHARE_KEY = readFileSync(keyPath, "utf8").trim();
+  t.after(() => delete process.env.ZEMORY_SHARE_KEY);
+
+  setSyncLevel("full");
+  const full = await syncDrive({ driveDir, keyFile: keyPath, dbPath });
+  assert.equal(full.level, "full", "honors the persisted 'full' setting");
+
+  setSyncLevel("lean");
+  const lean = await syncDrive({ driveDir, keyFile: keyPath, dbPath });
+  assert.equal(lean.level, "lean", "honors the persisted 'lean' setting");
+
+  const forced = await syncDrive({ driveDir, keyFile: keyPath, dbPath, level: "full" });
+  assert.equal(forced.level, "full", "explicit level param overrides the setting");
+});
+
 test("importing a rows bundle yields a complete, searchable brain", async (t) => {
   const root = tempDir(t, "zemory-brain-rows-import-");
   const dbPath = join(root, "brain.db");
