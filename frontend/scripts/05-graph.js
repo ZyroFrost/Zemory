@@ -53,8 +53,8 @@
     const used = (data.usedSlots || []).length;
     const unknown = (data.unknownDirs || []).length;
     box.innerHTML = '<div class="tree-bar">'
-      + '<button class="mini-btn ghost" data-tact="collapse" title="' + esc(t('tree.collapseAll')) + '">⊟</button>'
-      + '<button class="mini-btn ghost" data-tact="expand" title="' + esc(t('tree.expandAll')) + '">⊞</button></div>'
+      + '<button class="mini-btn ghost" data-tact="collapse" title="' + esc(t('tree.collapseAll')) + '" aria-label="' + esc(t('tree.collapseAll')) + '">⊟</button>'
+      + '<button class="mini-btn ghost" data-tact="expand" title="' + esc(t('tree.expandAll')) + '" aria-label="' + esc(t('tree.expandAll')) + '">⊞</button></div>'
       + tree.map(treeNodeHtml).join('')
       + '<div class="tree-legend">' + used + ' ' + esc(t('tree.slots'))
       + (unknown ? ' · ' + unknown + ' ' + esc(t('tree.nonstdN')) : '') + '</div>';

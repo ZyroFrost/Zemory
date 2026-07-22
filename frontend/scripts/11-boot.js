@@ -20,6 +20,11 @@
       var v = dict[e.getAttribute('data-i18n-title')];
       if(v != null) e.setAttribute('title', v);
     });
+    // Icon-only controls get an accessible name from aria-label (WCAG / skill a11y).
+    document.querySelectorAll('[data-i18n-aria]').forEach(function(e){
+      var v = dict[e.getAttribute('data-i18n-aria')];
+      if(v != null) e.setAttribute('aria-label', v);
+    });
     var vi = el('langVi'), en = el('langEn');
     if(vi && en){ vi.classList.toggle('on', lang !== 'en'); en.classList.toggle('on', lang === 'en'); }
     // Re-render JS-built views so their strings flip too (they cache last data).

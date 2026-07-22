@@ -77,7 +77,7 @@
         <div class="field" id="storagePill" title="Nơi lưu DB memory" data-i18n-title="tt.storage">🗄 <span id="storagePillTxt">—</span></div>
         <div class="field" id="drivePill" title="Đồng bộ Drive" data-i18n-title="tt.drive">☁ <span id="drivePillTxt">—</span></div>
         <div class="icon-btns" style="margin-left:auto">
-          <button class="ghost" title="Làm mới" data-i18n-title="tt.refresh" onclick="manualRefresh()">↻</button>
+          <button class="ghost" title="Làm mới" data-i18n-title="tt.refresh" data-i18n-aria="tt.refresh" aria-label="Refresh" onclick="manualRefresh()">↻</button>
         </div>
       </header>
 
@@ -188,7 +188,7 @@
         <button class="set-tab" data-pane="docs" onclick="setSettingsTab(this)">📄 Docs harness</button>
       </div>
       <div class="set-body">
-        <button class="set-close" onclick="closeSettings()" title="Đóng" data-i18n-title="tt.close">✕</button>
+        <button class="set-close" onclick="closeSettings()" title="Đóng" data-i18n-title="tt.close" data-i18n-aria="tt.close" aria-label="Close">✕</button>
 
         <div class="set-pane on" data-pane="lang">
           <h2 data-i18n="lang.h">Ngôn ngữ giao diện</h2>
@@ -258,14 +258,14 @@
 
   <div id="docOverlay" onclick="if(event.target===this)closeDoc()">
     <div class="modal l doc-modal">
-      <div class="mtitle"><b id="docName" style="color:var(--text)"></b> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeDoc()">✕</button></div>
+      <div class="mtitle"><b id="docName" style="color:var(--text)"></b> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeDoc()" title="Đóng" data-i18n-title="tt.close" data-i18n-aria="tt.close" aria-label="Close">✕</button></div>
       <pre id="docBody" class="doc-body">loading...</pre>
     </div>
   </div>
 
   <div id="sessionOverlay" onclick="if(event.target===this)closeSession()">
     <div class="modal l session-modal">
-      <div class="mtitle"><b id="sessName" style="color:var(--text)"></b> <span id="sessMeta" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSession()">✕</button></div>
+      <div class="mtitle"><b id="sessName" style="color:var(--text)"></b> <span id="sessMeta" class="tiny"></span> <button class="ghost" style="float:right;padding:4px 10px" onclick="closeSession()" title="Đóng" data-i18n-title="tt.close" data-i18n-aria="tt.close" aria-label="Close">✕</button></div>
       <div id="sessBody" class="session-body">loading...</div>
     </div>
   </div>
