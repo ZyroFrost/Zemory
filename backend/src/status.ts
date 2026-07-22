@@ -5,8 +5,8 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
-import { type KnownProject, listKnownProjects, rememberProject } from "./registry.js";
-import { tr } from "./settings.js";
+import { type KnownProject, listKnownProjects, rememberProject } from "./projects.js";
+import { tr } from "./i18n/index.js";
 
 export type FeatureState = "on" | "planned" | "off" | "idle";
 

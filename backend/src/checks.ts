@@ -10,7 +10,7 @@ import { memorySummary } from "./memory/ingest.js";
 import { openMemory } from "./memory/db.js";
 import { search } from "./memory/search.js";
 import { validate } from "./docs/validate.js";
-import { tr } from "./settings.js";
+import { tr } from "./i18n/index.js";
 
 export interface CheckResult {
   feature: string;

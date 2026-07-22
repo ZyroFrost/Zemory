@@ -266,7 +266,7 @@ function sandboxHome(t) {
 
 test("sync level (plan 08 §7) defaults to lean and round-trips", async (t) => {
   sandboxHome(t);
-  const { getSyncLevel, setSyncLevel } = await import("../../dist/settings.js");
+  const { getSyncLevel, setSyncLevel } = await import("../../dist/config/settings.js");
   assert.equal(getSyncLevel(), "lean", "default depth is the lean rows bundle");
   setSyncLevel("full");
   assert.equal(getSyncLevel(), "full", "persisted to full");
@@ -278,7 +278,7 @@ test("sync level (plan 08 §7) defaults to lean and round-trips", async (t) => {
 
 test("syncDrive uses the persisted sync level, and an explicit level overrides it", async (t) => {
   sandboxHome(t);
-  const { setSyncLevel } = await import("../../dist/settings.js");
+  const { setSyncLevel } = await import("../../dist/config/settings.js");
   const { syncDrive } = await import("../../dist/memory/share.js");
   const root = tempDir(t, "zemory-synclevel-drive-");
   const dbPath = join(root, "memory.db");

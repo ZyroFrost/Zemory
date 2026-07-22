@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
 import { CONFIG_FILE, loadContext } from "../core/config.js";
 import type { HarnessConfig } from "../core/types.js";
-import { rememberProject } from "../registry.js";
+import { rememberProject } from "../projects.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's

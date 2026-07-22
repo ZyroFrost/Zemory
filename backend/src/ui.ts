@@ -16,7 +16,7 @@ import { vectorCount, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { findProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
-import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects } from "./registry.js";
+import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects } from "./projects.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
@@ -50,7 +50,7 @@ import {
   setScopeSetting,
   setSyncLevel,
   setUiState,
-} from "./settings.js";
+} from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { PAGE } from "./ui-page.js";
 import { onPath } from "./util.js";

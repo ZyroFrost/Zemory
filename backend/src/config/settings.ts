@@ -4,7 +4,7 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { currentMemoryDir } from "./memory/db.js";
+import { currentMemoryDir } from "../memory/db.js";
 
 // Resolved per call (not a module const) so a `memory relocate` mid-process makes
 // every subsequent read/write hit the config.json that moved with the data dir.
@@ -163,12 +163,6 @@ export function setLang(lang: string): void {
   const c = read();
   c.lang = lang === "en" ? "en" : "vi";
   write(c);
-}
-
-/** Pick a string by the current UI language. Server-side i18n for the few
- *  human-facing strings that originate in the backend (status/checks/doctor). */
-export function tr(vi: string, en: string): string {
-  return getLang() === "en" ? en : vi;
 }
 
 /** Lanes EXCLUDED from sync + recall (default none). A filter, never a delete. */

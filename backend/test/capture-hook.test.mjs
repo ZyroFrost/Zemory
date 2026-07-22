@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { installCodexHooks, installHooks } from "../../dist/hooks.js";
+import { installCodexHooks, installHooks } from "../../dist/memory/capture-hook.js";
 import { tempDir } from "./helpers.mjs";
 
 test("Claude and Codex hook installers merge safely and are idempotent", (t) => {
