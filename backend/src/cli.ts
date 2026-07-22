@@ -30,9 +30,9 @@ import {
   writeExportWatermark,
 } from "./memory/share.js";
 import { type ScopeNode, scopeTree, toggleLane } from "./memory/scope.js";
-import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
+import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./config/settings.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "./memory/privacy.js";
-import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
+import { handleHook, installCodexHooks, installHooks } from "./memory/capture-hook.js";
 import { validate } from "./docs/validate.js";
 import { runMcpStdio } from "./mcp.js";
 import { importDoc, listDocs, listToc, searchSections, showSection } from "./docs/plan.js";
@@ -42,7 +42,7 @@ import { enrichGraphSymbols, resolveCalls } from "./memory/graph/graph-symbols.j
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
 import { buildDocsGraph } from "./memory/graph/graph-docs.js";
 import { semanticEdges } from "./memory/graph/graph-semantic.js";
-import { listKnownProjects } from "./registry.js";
+import { listKnownProjects } from "./projects.js";
 const VERSION = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
 ) as { version: string };

@@ -15,8 +15,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { scan } from "./memory/ingest.js";
-import { recallCard } from "./memory/recall.js";
+import { scan } from "./ingest.js";
+import { recallCard } from "./recall.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end";
 

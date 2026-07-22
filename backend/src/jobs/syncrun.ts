@@ -5,7 +5,7 @@
 // printed as one JSON line on stdout; the daemon parses it for /sync-status.
 
 import { resolveShareKey, syncDrive } from "../memory/share.js";
-import { getDriveDir } from "../settings.js";
+import { getDriveDir } from "../config/settings.js";
 
 (async () => {
   try {

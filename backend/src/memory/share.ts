@@ -28,7 +28,7 @@ import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
-import { type SyncLevel, getScopeExclude, getSyncLevel } from "../settings.js";
+import { type SyncLevel, getScopeExclude, getSyncLevel } from "../config/settings.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
 const TAG_BYTES = 16;

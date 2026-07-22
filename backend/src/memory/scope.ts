@@ -6,7 +6,7 @@
 // sync (share.ts export + merge). Data stays in the local DB either way.
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
-import { getScopeExclude, type ScopeLane } from "../settings.js";
+import { getScopeExclude, type ScopeLane } from "../config/settings.js";
 
 export type { ScopeLane };
 

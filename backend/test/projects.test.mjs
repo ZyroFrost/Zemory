@@ -13,7 +13,7 @@ import {
   pinProject,
   pruneDeadProjects,
   rememberProject,
-} from "../../dist/registry.js";
+} from "../../dist/projects.js";
 import { tempDir } from "./helpers.mjs";
 
 /** A registry file of its own + a real project root, so nothing touches ~/.zemory. */

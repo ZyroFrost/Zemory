@@ -8,7 +8,7 @@ import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
-import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../settings.js";
+import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
 import { isExcluded } from "./scope.js";
 
 export interface SearchHit {
