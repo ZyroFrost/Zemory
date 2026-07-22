@@ -6,7 +6,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { createServer } from "node:http";
 import { hostname } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./docs/adopt.js";
 import { memoryInfo, memorySummary, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
@@ -52,7 +53,13 @@ import {
   setUiState,
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
-import { PAGE } from "./ui-page.js";
+// The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
+// daemon serves these files as-is — no bundler, no TS template. Read once at
+// startup; editing a file + restarting the daemon shows it (no rebuild needed).
+const FRONTEND_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "frontend");
+const COCKPIT_HTML = readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8");
+const COCKPIT_CSS = readFileSync(join(FRONTEND_DIR, "styles", "cockpit.css"), "utf8");
+const COCKPIT_JS = readFileSync(join(FRONTEND_DIR, "scripts", "cockpit.js"), "utf8");
 import { onPath } from "./util.js";
 
 interface DriveSummary {
@@ -716,8 +723,18 @@ export async function startUi(): Promise<void> {
       // Progress probe for the run-hidden sync dialog / Global-tab spinner.
       return json(res, syncJobStatus());
     }
+    if (p === "/styles/cockpit.css") {
+      res.writeHead(200, { "content-type": "text/css; charset=utf-8" });
+      res.end(COCKPIT_CSS);
+      return;
+    }
+    if (p === "/scripts/cockpit.js") {
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
+      res.end(COCKPIT_JS);
+      return;
+    }
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    res.end(PAGE);
+    res.end(COCKPIT_HTML);
   });
 
   // FIXED port so the UI always lives at one address (bookmarkable, and the
