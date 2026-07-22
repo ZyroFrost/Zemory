@@ -1,0 +1,287 @@
+  /* ── TAB SHELL (plan 14 §4) ────────────────────────────────────────────────
+     One row of top-level tabs: GLOBAL MEMORY (machine-wide) → zemory → other
+     projects → [+]. The tabs are a VIEW over the existing #proj <select>, which
+     stays the single source of truth, so every existing handler keeps working. */
+  :root { --tabh: 44px; }
+  .tabbar {
+    position: fixed; inset: 0 0 auto 0; height: var(--tabh); z-index: 40;
+    display: flex; align-items: center; gap: 6px; padding: 0 10px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line); backdrop-filter: blur(8px);
+  }
+  /* App brand pinned far-left (main identity, present on every tab). */
+  .tab-brand { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; padding: 0 10px 0 2px; }
+  .tab-brand svg { width: 24px; height: 24px; display: block; }
+  .tab-brand b { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+  .tab-host { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; }
+  /* Only the tab list scrolls; the action cluster stays pinned right. */
+  .tab-strip { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+  .tab-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; padding-left: 6px; border-left: 1px solid var(--line); }
+  .tab {
+    flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border: 1px solid transparent; border-radius: 7px;
+    background: none; color: var(--muted); font: inherit; font-size: 12.5px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); background: var(--panel-3); }
+  .tab[aria-selected="true"] {
+    color: var(--text); background: var(--green-soft);
+    border-color: var(--line-strong); font-weight: 600;
+  }
+  .tab.tab-global[aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--green); }
+  .tab-syncspin { display: inline-block; margin-left: 6px; color: var(--green); animation: spin 1s linear infinite; }
+  .tab-sep { flex: 0 0 auto; width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .tab-spacer { flex: 1 1 auto; }
+  .tab-pin { font-size: 10px; opacity: .8; }
+
+  /* Project menu behind "…"/"☰": reach every known project, pin the ones worth
+     keeping on the bar, drop the rest from the picker. */
+  #tabMenu {
+    display: none; position: fixed; top: calc(var(--tabh) + 4px); right: 10px; z-index: 60;
+    width: min(460px, calc(100vw - 20px)); max-height: 60vh; overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--line-strong); border-radius: 9px;
+    box-shadow: var(--shadow); padding: 6px;
+  }
+  #tabMenu.on { display: block; }
+  .tabmenu-head { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); padding: 6px 8px; }
+  .tabmenu-empty { padding: 10px 8px; color: var(--faint); font-size: 12.5px; }
+  .tabmenu-row { display: flex; align-items: center; gap: 4px; border-radius: 7px; padding: 2px; }
+  .tabmenu-row:hover { background: var(--panel-3); }
+  .tabmenu-row.cur { background: var(--green-soft); }
+  .tabmenu-open {
+    flex: 1 1 auto; min-width: 0; text-align: left; background: none; border: 0; cursor: pointer;
+    color: var(--text); font: inherit; padding: 6px 8px; border-radius: 6px;
+  }
+  .tabmenu-open b { display: block; font-size: 12.5px; font-weight: 600; }
+  .tabmenu-open small { display: block; color: var(--faint); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabmenu-btn {
+    flex: 0 0 auto; background: none; border: 1px solid transparent; border-radius: 6px;
+    color: var(--muted); cursor: pointer; font-size: 12px; padding: 6px 8px;
+  }
+  .tabmenu-btn:hover { border-color: var(--line-strong); color: var(--text); }
+  .tabmenu-btn.on { color: var(--green); border-color: var(--line-strong); }
+  .tabmenu-btn.danger:hover { color: var(--red2); border-color: var(--red); }
+  .tabmenu-foot { display: flex; align-items: center; gap: 8px; padding: 8px; border-top: 1px solid var(--line); margin-top: 4px; }
+  .tabmenu-foot .tiny { color: var(--faint); }
+
+  /* Make room for the fixed bar; keep the sticky rail aligned under it. */
+  .shell { height: calc(100vh - var(--tabh)); margin-top: var(--tabh); }
+  .rail { top: calc(var(--tabh) + 10px); height: calc(100vh - var(--tabh) - 20px); }
+
+  /* GLOBAL MEMORY tab: memory work only — hide the per-project rail. */
+  body[data-tab="global"] .rail,
+  body[data-tab="global"] .resize-handle[data-resize="rail"] { display: none; }
+  /* Global Memory holds TWO big sub-tabs (user 2026-07-21): ① Recall + Chuẩn dùng
+     chung ② Bộ nhớ · Nạp & Đồng bộ · Dự án. CSS-driven via body[data-gtab] — the
+     DOM never moves (same pattern as the project Harness|Graph sub-tabs). The bar
+     spans every column; the panels sit in the row below it. */
+  body[data-tab="global"] .shell { grid-template-rows: auto minmax(0, 1fr); }
+  body[data-tab="global"] .gsubtabs { display: flex; grid-row: 1; grid-column: 1 / -1; }
+  /* DIRECT children of .shell only. A loose .resize-handle selector here also hit
+     the seam INSIDE .recall-workbench and shoved it to row 2 — that broke the
+     recall detail frame and made the drag look dead (user 2026-07-21). */
+  body[data-tab="global"] .shell > .workspace,
+  body[data-tab="global"] .shell > .inspector,
+  body[data-tab="global"] .shell > #standard,
+  body[data-tab="global"] .shell > .resize-handle { grid-row: 2; }
+  body[data-tab="global"] .workspace { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  body[data-tab="global"] .gm-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+
+  /* ① Recall (BIG, left) + Chuẩn dùng chung (right, smaller). The seam is the
+     existing inspector handle, so this stays drag-resizable (--inspector-w). */
+  body[data-tab="global"][data-gtab="recall"] .inspector,
+  body[data-tab="global"][data-gtab="recall"] #memory { display: none; }
+  body[data-tab="global"][data-gtab="recall"] .shell { grid-template-columns: minmax(360px, 1fr) 6px var(--inspector-w); }
+  body[data-tab="global"][data-gtab="recall"] .gm-scroll { overflow: hidden; }
+  body[data-tab="global"][data-gtab="recall"] .recall { flex: 1 1 auto; min-height: 0; }
+  body[data-tab="global"][data-gtab="recall"] #standard { display: flex; flex-direction: column; min-height: 0; }
+  body[data-tab="global"][data-gtab="recall"] #standard > .panel-pad { flex: 1 1 auto; overflow: auto; }
+
+  /* ② Bộ nhớ (left) · Nạp & Đồng bộ | Dự án (inspector, 2 columns). */
+  body[data-tab="global"][data-gtab="mem"] #recall,
+  body[data-tab="global"][data-gtab="mem"] #standard { display: none; }
+  /* Right column reads --gm-right-w so the seam actually MOVES something (it was
+     a fixed 2fr, which is why dragging did nothing — user 2026-07-21). */
+  body[data-tab="global"][data-gtab="mem"] .shell { grid-template-columns: minmax(320px, 1fr) 6px minmax(0, var(--gm-right-w)); }
+  /* The commandbar (Máy · storage · Drive pills) already shows on sub-tab ①;
+     repeating it here was a duplicate (user 2026-07-21). */
+  body[data-tab="global"][data-gtab="mem"] .commandbar { display: none; }
+  body[data-tab="global"][data-gtab="mem"] #memory { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  body[data-tab="global"][data-gtab="mem"] #memory > .panel-pad { flex: 1 1 auto; overflow: auto; }
+  /* ONE row that fills the height, so all three panels start and end level. */
+  body[data-tab="global"][data-gtab="mem"] .inspector { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 10px; }
+  body[data-tab="global"][data-gtab="mem"] .inspector > .panel > .panel-pad { flex: 1 1 auto; overflow: auto; }
+  /* Order: Bộ nhớ | Dự án | Nạp & Đồng bộ — projects in the MIDDLE, scan on the
+     OUTSIDE (user 2026-07-21). Both pinned to ROW 1: #capture comes first in the
+     DOM, so placing it in column 2 pushed the auto-placement cursor past row 1
+     and dropped #coverage to row 2 — that was the panel hanging far below the
+     others in the screenshot. */
+  body[data-tab="global"][data-gtab="mem"] .inspector > #coverage { grid-column: 1; grid-row: 1; }
+  body[data-tab="global"][data-gtab="mem"] .inspector > #capture { grid-column: 2; grid-row: 1; }
+
+  /* The two big sub-tab buttons — bigger than the project sub-tabs (they switch
+     the whole Global Memory surface, not a pane inside one). */
+  .gsubtabs { display: none; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+  .gsubtab {
+    flex: 0 0 auto; padding: 9px 18px; border: 0; border-bottom: 2px solid transparent;
+    background: none; color: var(--muted); font: inherit; font-size: 13.5px; cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .gsubtab:hover { color: var(--text); }
+  .gsubtab.on { color: var(--text); border-bottom-color: var(--green); font-weight: 650; }
+
+  /* Chuẩn dùng chung lives INSIDE Global Memory (sub-tab ①) — the separate
+     top-level tab it used to have is gone (user 2026-07-21: it was duplicated). */
+  #standard { display: none; }
+
+  /* PROJECT tab: that project's harness/graph full width. Strip the rail's own
+     box chrome (border/bg/padding/shadow) so we don't nest a bordered panel inside
+     a bordered rail — the double box was the wasted gap the user saw. */
+  body[data-tab="project"] .workspace,
+  body[data-tab="project"] .inspector,
+  body[data-tab="project"] .resize-handle { display: none; }
+  body[data-tab="project"] .shell { grid-template-columns: 1fr; }
+  body[data-tab="project"] .rail {
+    position: relative; top: 0; width: auto; height: 100%;
+    border: 0; background: none; box-shadow: none; padding: 0; gap: 0;
+  }
+  /* One clean container: the project panel keeps its border, flush to the top. */
+  body[data-tab="project"] .psubtabs { margin-top: 0; }
+
+  /* Placeholder for the Graph pane that lands in step D2. */
+  .soon {
+    margin-top: 10px; padding: 14px; border: 1px dashed var(--line-strong);
+    border-radius: 7px; color: var(--faint); font-size: 12.5px; text-align: center;
+  }
+
+  /* ── PROJECT SUB-TABS (plan 14 §4): Harness+checks | Graph ──────────────────
+     CSS-driven show/hide via body[data-ptab]; the DOM is never moved. */
+  .psubtabs { display: flex; gap: 4px; margin: 12px 0 8px; border-bottom: 1px solid var(--line); }
+  .psubtab {
+    flex: 0 0 auto; padding: 6px 14px; border: 0; border-bottom: 2px solid transparent;
+    background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .psubtab:hover { color: var(--text); }
+  .psubtab.on { color: var(--text); border-bottom-color: var(--green); font-weight: 600; }
+  .psub { display: none; }
+  body[data-ptab="harness"] .psub[data-psub="harness"] { display: block; }
+  body[data-ptab="graph"] .psub[data-psub="graph"] { display: flex; }
+  /* PROJECT tab fills the whole app frame: the pad is a flex column and each
+     sub-tab manages its own scroll — Harness scrolls as a page; Graph stretches
+     tree + canvas to the frame edge (no vh-capped mini canvas + dead gap). */
+  body[data-tab="project"] .rail .panel > .panel-pad { display: flex; flex-direction: column; overflow: hidden; }
+  body[data-tab="project"] .psub[data-psub="harness"] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  body[data-tab="project"] .psub[data-psub="graph"] { flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .checks-head { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); }
+
+  /* ── INSPECTOR TABS: Bộ nhớ · Quét · Dự án · Chuẩn chung ────────────────────
+     Same CSS-driven pattern as the project sub-tabs (body[data-itab]); the DOM
+     is never moved. Replaces a 4-panel VERTICAL STACK where every panel fought
+     for the same column height and the user had to scroll to reach anything
+     (user 2026-07-20: "mấy cái panel ở dưới chia theo dạng tab"). */
+  .itabs { display: flex; flex: 0 0 auto; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .itab {
+    flex: 1 1 0; min-width: 0; padding: 7px 4px; border: 0; border-bottom: 2px solid transparent;
+    background: none; color: var(--muted); font: inherit; font-size: 11.5px; cursor: pointer;
+    margin-bottom: -1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .itab:hover { color: var(--text); }
+  .itab.on { color: var(--text); border-bottom-color: var(--green); font-weight: 600; }
+  /* Global Memory is a 3-column dashboard now (no tabs, user 2026-07-21): the
+     inspector holds col2 (Nạp & Đồng bộ) + col3 (Dự án) side by side; col1
+     (recall + Bộ nhớ) is in .workspace, standard moved to its own top tab. */
+  .inspector > .panel { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+  .inspector .panel > .panel-pad { flex: 1 1 auto; overflow: auto; }
+
+  /* Graph sub-tab: a VSCode-like structure tree (left) + graph canvas (right).
+     Both stretch to the frame (flex parent above) — inner scroll only. */
+  /* One 2×2 grid for all four graph panels (fitness · nav-cost / tree · canvas):
+     a SHARED column template means the center seams line up like window panes —
+     two separate rows resolved their own widths and the cross drifted (user
+     2026-07-21). Explicit column placement so an empty panel can't reflow the grid. */
+  .graph-grid { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 10px; align-items: stretch; flex: 1 1 auto; min-height: 320px; margin-top: 2px; }
+  .graph-grid > .graph-fit { grid-column: 1; grid-row: 1; }
+  .graph-grid > .nav-cost { grid-column: 2; grid-row: 1; }
+  .graph-grid > .graph-tree { grid-column: 1; grid-row: 2; }
+  .graph-grid > .graph-canvas { grid-column: 2; grid-row: 2; }
+  .graph-grid > :empty { visibility: hidden; }
+  .graph-tree {
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px; height: 100%; min-height: 0;
+    overflow: auto; font: 12px var(--mono); background: var(--panel-2);
+  }
+  .graph-canvas { height: 100%; min-height: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); overflow: hidden; position: relative; cursor: grab; }
+  .graph-canvas:active { cursor: grabbing; }
+  .graph-canvas svg { display: block; width: 100%; height: 100%; }
+  .graph-toolbar { display: flex; align-items: center; gap: 12px; margin: 10px 0 6px; }
+  .graph-toolbar .tiny { color: var(--faint); }
+  .graph-opt { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .gedge { stroke: var(--line-strong); stroke-width: 1; opacity: .5; }
+  .gedge.hot { stroke: var(--green); stroke-width: 1.6; opacity: 1; }
+  .gnode { cursor: pointer; }
+  .gnode circle { stroke: var(--panel); stroke-width: 1.2; transition: r .1s; }
+  .gnode text { font: 9px var(--mono); fill: var(--muted); pointer-events: none; }
+  .gnode.sel circle { stroke: var(--text); stroke-width: 2.2; }
+  .gnode.dim { opacity: .18; }
+  .gnode.orphan circle { stroke: var(--red); stroke-dasharray: 2 2; }
+  /* Fitness + navigation cost share ONE ROW above the graph — both are narrow
+     summaries; stacking them full-width wasted a band of vertical space. */
+
+  /* Fitness box (plan 13 §9 Phase A): pass/fail chips scored server-side. */
+  .graph-fit { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--wash-1); font-size: 11px; }
+  .fit-head { display: block; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin-bottom: 6px; }
+  .fit-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .fit-chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; color: var(--green); background: var(--wash-2); cursor: help; }
+  .fit-chip.bad { color: var(--amber); border-color: var(--amber); }
+  .fit-hubs { display: block; color: var(--faint); font: 10.5px var(--mono); margin-top: 6px; }
+
+  /* Navigation cost: sweep-vs-routed, both sides measured (see nav-cost.ts). */
+  .nav-cost { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--wash-1); }
+  .nav-cost .nc-h { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); margin-bottom: 4px; }
+  .nc-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: baseline; padding: 3px 0; font-size: 12px; cursor: help; }
+  .nc-row + .nc-row { border-top: 1px solid var(--line); }
+  /* Column headers make the three numbers self-explanatory. */
+  .nc-row.nc-head { cursor: default; color: var(--faint); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding-bottom: 1px; }
+  .nc-row.nc-head span { font: inherit; color: inherit; }
+  .nc-q { color: var(--muted); }
+  .nc-sweep { color: var(--faint); font: 11px var(--mono); }
+  .nc-routed { color: var(--text); font: 11px var(--mono); }
+  .nc-ratio { color: var(--green); font-weight: 600; font-size: 12px; min-width: 52px; text-align: right; }
+  /* Below 1× the routed path is NOT cheaper — never paint that as a win. */
+  .nc-ratio.nc-worse { color: var(--faint); font-weight: 400; }
+  .graph-info { margin-top: 8px; min-height: 20px; font-size: 12px; color: var(--muted); }
+  .graph-info b { color: var(--text); }
+  .graph-info .syms { color: var(--faint); font: 11px var(--mono); word-break: break-word; }
+  .tnode { display: block; }
+  .trow {
+    display: flex; align-items: baseline; gap: 6px; padding: 2px 4px; border-radius: 5px;
+    cursor: default; white-space: nowrap;
+  }
+  .trow:hover { background: var(--panel-3); }
+  .trow.unknown { opacity: .6; }
+  .trow.active { background: var(--green-soft); outline: 1px solid var(--green); }
+  .tname { color: var(--text); }
+  .trow.unknown .tname { color: var(--amber); }
+  .trole { color: var(--faint); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; }
+  .tchildren { margin-left: 12px; border-left: 1px solid var(--line); padding-left: 4px; }
+  .ttw { display: inline-block; flex: 0 0 12px; width: 12px; text-align: center; color: var(--faint); cursor: pointer; user-select: none; transition: transform .12s; }
+  .ttw.leaf { cursor: default; visibility: hidden; }
+  .ttw.collapsed { transform: rotate(-90deg); }
+  .tnode.collapsed > .tchildren { display: none; }
+  .tree-bar { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 6px; }
+  .tree-legend { margin-top: 8px; font: 10.5px var(--mono); color: var(--faint); }
+  .std-file { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; cursor: pointer; background: var(--panel-2); }
+  .std-file:hover { background: var(--panel-3); border-color: var(--green); }
+  .std-name { font: 600 12px var(--mono); color: var(--text); }
+  .std-purpose { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+  .std-sum { color: var(--faint); font-size: 10.5px; margin-top: 3px; line-height: 1.45; }
+  .cov-open { cursor: pointer; border-radius: 6px; transition: background .12s; }
+  .cov-open:hover { background: var(--panel-3); }
+  .cov-machine { margin-bottom: 12px; }
+  .cov-mhead { display: flex; gap: 6px; align-items: center; font: 11px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 6px; cursor: pointer; user-select: none; }
+  .cov-mhead:hover { color: var(--muted); }
+  .cov-mcount { color: var(--green); text-transform: none; letter-spacing: 0; }
+  .cov-local { color: var(--green); font-size: 10px; border: 1px solid var(--green); border-radius: 999px; padding: 0 6px; }
+  .cov-sub { font: 11px var(--mono); color: var(--faint); margin: 6px 0 4px; cursor: pointer; user-select: none; }
+  .cov-sub:hover { color: var(--muted); }
+

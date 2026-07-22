@@ -1,0 +1,44 @@
+  /* ── LIGHT THEME — re-declares the FULL token set (every colour is a token, so
+     switching theme = swapping this one block; user chose Dark+Light). AA-checked
+     text on light surfaces. */
+  /* Light = MONOCHROME (user 2026-07-20: "chỉ trắng đen, như dark mode nhưng đảo
+     màu"). Pure black/white/grey — the accent (green in dark) becomes near-black.
+     Dark mode keeps its green identity; light is the tonal inverse, no colour. */
+  body[data-theme="light"] {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-soft: #f3f3f3;
+    --bg-grad: linear-gradient(135deg, #ffffff 0%, #f6f6f6 60%, #f0f0f0 100%);
+    --panel: #ffffff;
+    --panel-2: #f7f7f7;
+    --panel-3: #eeeeee;
+    --line: rgba(0, 0, 0, .13);
+    --line-strong: rgba(0, 0, 0, .28);
+    --text: #111111;
+    --text-strong: #000000;
+    --muted: #555555;
+    --faint: #888888;
+    --green: #1c1c1c;           /* accent → near-black (buttons/tabs/checkboxes) */
+    --green-soft: rgba(0, 0, 0, .055);   /* pale grey highlight (active/hover) */
+    --green2: #3a3a3a;          /* dark-grey: on-pale text + gradient 2nd stop */
+    --green-dim: #1c1c1c;       /* switch track / accent border → near-black */
+    --on-green: #ffffff;        /* white text on a solid dark button */
+    --amber: #555555;           /* warn → grey (monochrome) */
+    --amber-soft: rgba(0, 0, 0, .05);
+    --amber2: #6a6a6a;
+    --on-amber: #ffffff;
+    --red: #2a2a2a;             /* error → dark grey (monochrome) */
+    --red2: #000000;
+    --blue: #333333;
+    --wash-1: rgba(0, 0, 0, .03);
+    --wash-2: rgba(0, 0, 0, .05);
+    --wash-3: rgba(0, 0, 0, .09);
+    --grid-line: rgba(0, 0, 0, .04);
+    --glow: transparent;        /* no corner glow on a clean white page */
+    --scrim: rgba(0, 0, 0, .45);
+    --inset: rgba(0, 0, 0, .05);
+    --shadow: 0 22px 70px rgba(0, 0, 0, .14);
+    background: var(--bg-grad);
+  }
+  /* Switch knob must contrast its near-black track in light mode → white panel. */
+  body[data-theme="light"] .sw.on::after { background: var(--panel); }

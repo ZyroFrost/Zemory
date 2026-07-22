@@ -1,0 +1,571 @@
+
+  :root {
+    color-scheme: dark;
+    --bg: #08100e;
+    --bg-soft: #0c1512;
+    --bg-grad: linear-gradient(135deg, #06100d 0%, #0a1110 44%, #10130f 100%);
+    --panel: rgba(13, 21, 19, .86);
+    --panel-2: rgba(18, 28, 25, .78);
+    --panel-3: rgba(22, 34, 30, .64);
+    --line: rgba(146, 172, 153, .18);
+    --line-strong: rgba(146, 172, 153, .36);
+    --text: #edf4ee;
+    --text-strong: #f1f7f2;
+    --muted: #9aab9d;
+    --faint: #708174;
+    --green: #78df9b;
+    --green-soft: rgba(120, 223, 155, .14);
+    --green2: #b5efc8;          /* bright mint — text/knob ON a green surface */
+    --green-dim: #2f6b48;       /* deep forest — switch track / accent border */
+    --on-green: #07120c;        /* text ON a solid --green fill */
+    --amber: #f0cf63;
+    --amber-soft: rgba(240, 207, 99, .15);
+    --amber2: #ffe59b;          /* amber gradient 2nd stop / bright amber text */
+    --on-amber: #171008;        /* text ON a solid --amber fill */
+    --red: #ed7676;
+    --red2: #ff6b81;            /* stronger red (danger hover) */
+    --blue: #8cbcff;
+    /* Surface washes: "raise this surface a little" — white on dark, dark on light. */
+    --wash-1: rgba(255, 255, 255, .025);
+    --wash-2: rgba(255, 255, 255, .045);
+    --wash-3: rgba(255, 255, 255, .09);
+    --grid-line: rgba(255, 255, 255, .024);   /* faint background grid */
+    --glow: rgba(120, 223, 155, .14);        /* decorative corner glow (dark only) */
+    --scrim: rgba(0, 0, 0, .62);              /* modal backdrop dim */
+    --inset: rgba(0, 0, 0, .28);             /* code/doc inset panels */
+    --shadow: 0 22px 70px rgba(0, 0, 0, .36);
+    --radius: 18px;
+    --mono: "Cascadia Code", "JetMemorys Mono", "SFMono-Regular", Consolas, monospace;
+    --sans: "Aptos Display", "Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", sans-serif;
+    --rail-w: 244px;
+    --inspector-w: 366px;
+    /* Global Memory sub-tab ② puts TWO panels on the right, so its seam needs its
+       own (much wider) width than the single-panel --inspector-w. */
+    --gm-right-w: 980px;
+    --bottom-h: 210px;
+    --recall-left: 64%;
+  }
+  * { box-sizing: border-box; }
+  html { width: 100%; height: 100%; overflow: hidden; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 22% 2%, var(--glow), transparent 26rem),
+      radial-gradient(circle at 92% 34%, var(--glow), transparent 24rem),
+      var(--bg-grad);
+    color: var(--text);
+    font: 13px/1.42 var(--sans);
+    letter-spacing: -.01em;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 38px 38px;
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,.7), transparent 80%);
+  }
+  button, input, select { font: inherit; }
+  button {
+    border: 0;
+    border-radius: 12px;
+    padding: 9px 14px;
+    color: var(--on-green);
+    background: linear-gradient(135deg, var(--green), var(--green2));
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 22px var(--green-soft);
+    transition: transform .18s ease, filter .18s ease, border-color .18s ease;
+  }
+  button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  button.ghost {
+    color: var(--text);
+    background: var(--wash-2);
+    border: 1px solid var(--line);
+    box-shadow: none;
+  }
+  button.warn { background: linear-gradient(135deg, var(--amber), var(--amber2)); color: var(--on-amber); }
+  input[type=text], select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel-3);
+    color: var(--text);
+    padding: 10px 12px;
+    outline: none;
+  }
+  input[type=text]:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+  code { font-family: var(--mono); color: var(--text); }
+  .shell {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: var(--rail-w) 6px minmax(640px, 1fr) 6px var(--inspector-w);
+    /* ONE row that fills the shell. Without this the implicit row is content-sized,
+       so each column's height:100% resolved to ITS OWN content height → the left
+       (workspace) and right (inspector) bottoms drifted apart (user 2026-07-21). */
+    grid-template-rows: minmax(0, 1fr);
+    gap: 8px;
+    height: 100vh;
+    min-height: 0;
+    padding: 10px;
+    overflow: hidden;
+  }
+  .resize-handle {
+    position: relative;
+    z-index: 3;
+    border-radius: 999px;
+    background: var(--wash-1);
+    transition: background .18s ease, box-shadow .18s ease;
+    touch-action: none;
+  }
+  .resize-handle::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    border-radius: 999px;
+    background: var(--green-soft);
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .resize-handle:hover,
+  .resize-handle:focus-visible,
+  body.resizing .resize-handle.active {
+    background: var(--green-soft);
+    box-shadow: 0 0 0 1px var(--green-soft);
+  }
+  .resize-handle:hover::before,
+  .resize-handle:focus-visible::before,
+  body.resizing .resize-handle.active::before { opacity: 1; }
+  .resize-handle.vertical { cursor: col-resize; min-width: 6px; }
+  .resize-handle.vertical::before { width: 2px; height: 34px; }
+  .resize-handle.horizontal { cursor: row-resize; min-height: 6px; }
+  .resize-handle.horizontal::before { width: 44px; height: 2px; }
+  body.resizing { user-select: none; }
+  body.resizing-col { cursor: col-resize; }
+  body.resizing-row { cursor: row-resize; }
+  .rail, .workspace, .inspector { min-width: 0; min-height: 0; }
+  .rail {
+    position: sticky;
+    top: 10px;
+    height: calc(100vh - 20px);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+  }
+  /* (brand moved to the tab bar — see .tab-brand) */
+  .proj-pick { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+  .proj-pick select { width: 100%; }
+  .proj-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; margin-top: 6px; }
+  .proj-add input { width: 100%; background: var(--panel-3); border: 1px solid var(--wash-3); color: var(--text); border-radius: 6px; padding: 4px 7px; font-size: 12px; min-width: 0; }
+  .rail-scroll { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+  /* Project panel has no header any more — the pad fills the whole panel (the old
+     grid reserved an empty auto header row → a big blank gap above the sub-tabs). */
+  .rail .panel { box-shadow: none; display: flex; flex-direction: column; flex: 1 1 0; min-height: 80px; }
+  .rail .panel > .panel-pad { flex: 1 1 auto; overflow: auto; }
+  .nav { display: grid; gap: 3px; }
+  .nav a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 11px 10px;
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    border-left: 2px solid transparent;
+  }
+  .nav a.on { color: var(--text); background: linear-gradient(90deg, var(--green-soft), transparent); border-left-color: var(--green); }
+  .nav span:last-child { color: var(--faint); font: 11px/1 var(--mono); }
+  .rail-foot {
+    margin-top: auto;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 12px;
+    background: var(--wash-2);
+  }
+  .foot-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    color: var(--muted);
+  }
+  .foot-row b { color: var(--text); font-weight: 650; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; box-shadow: 0 0 0 6px var(--green-soft); }
+  .tiny { color: var(--faint); font-size: 11px; }
+  /* Fills its shell grid cell — the shell already accounts for the tab bar.
+     TWO explicit rows only (commandbar + content). The status line #msg was a
+     THIRD auto row; with gap:8px it reserved a phantom 8px BELOW the recall
+     panel even when #msg was display:none, so the left panel's bottom sat 8px
+     above the inspector's → the two-panel misalignment (root-caused 2026-07-21).
+     #msg now auto-places into an implicit row only when it actually has text. */
+  .workspace {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    align-content: stretch;
+    overflow: hidden;
+  }
+  .commandbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel);
+    padding: 8px;
+    box-shadow: var(--shadow);
+  }
+  .commandbar .field, .commandbar .search-command {
+    min-height: 32px;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--wash-2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .commandbar .field { flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; }
+  .commandbar select, .commandbar input {
+    min-height: 32px;
+    border-radius: 6px;
+    padding: 0 9px;
+    background: var(--panel-3);
+  }
+  .commandbar .search-command { overflow: hidden; }
+  .commandbar .search-command input { flex: 1 1 auto; min-width: 0; border: 0; box-shadow: none; background: transparent; padding: 0; }
+  .commandbar .drive-state { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btns { display: flex; gap: 6px; justify-content: flex-end; }
+  .icon-btns button { min-width: 32px; height: 32px; padding: 0 12px; border-radius: 6px; }
+  .field.pill-btn { cursor: pointer; }
+  .field.pill-btn:hover { border-color: var(--line-strong); color: var(--text); }
+  .field.pill-btn b { color: var(--text); font-weight: 600; }
+  button.set-open { color: var(--green2); border-color: var(--green-dim) !important; background: var(--green-soft); font-weight: 600; white-space: nowrap; }
+  button.set-open:hover { background: var(--green-soft); }
+  /* Settings modal — the L size: same 16:9 screen proportion (03_STRUCTURE §5).
+     Landscape card, width-driven, height from the ratio (capped so height ≤ 90vh,
+     never distorted). Switching tabs never resizes the frame; .set-body scrolls. */
+  .settings-modal { display: grid; grid-template-columns: 190px 1fr; grid-template-rows: minmax(0, 1fr);
+    aspect-ratio: 16 / 9; width: min(90vw, calc(90vh * 16 / 9)); max-height: 92vh;  /* L size = 90% of app */
+    border: 1px solid var(--line-strong); border-radius: 16px; background: var(--bg-soft); box-shadow: var(--shadow); overflow: hidden; }
+  .set-side { background: var(--inset); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; min-height: 0; overflow: auto; }
+  .set-title { font-size: 14px; font-weight: 700; color: var(--text); padding: 2px 8px 12px; }
+  .set-tab { text-align: left; background: transparent; color: var(--muted); border: 0; border-radius: 8px; padding: 9px 11px; cursor: pointer; font-size: 12.5px; }
+  .set-tab:hover { color: var(--text); background: var(--wash-2); }
+  .set-tab.on { color: var(--green2); background: var(--green-soft); }
+  .set-body { position: relative; padding: 22px 24px; overflow: auto; min-height: 0; min-width: 0; }
+  .set-close { position: absolute; top: 14px; right: 16px; background: none; border: 0; color: var(--faint); font-size: 18px; cursor: pointer; }
+  .set-pane { display: none; }
+  .set-pane.on { display: block; }
+  .set-pane h2 { margin: 0 0 4px; font-size: 15px; color: var(--text); }
+  .set-desc { color: var(--muted); font-size: 12px; margin: 0 0 18px; line-height: 1.5; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .set-row:first-of-type { border-top: 0; }
+  .set-lab { font-size: 12.5px; color: var(--text); }
+  .set-lab small { display: block; color: var(--faint); font-size: 11px; margin-top: 3px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 14px; cursor: pointer; font-size: 12px; }
+  .seg button.on { background: var(--green); color: var(--on-green); font-weight: 700; }
+  /* Section label inside a panel — the static-markup twin of sectionTitle(). */
+  .sec-lab { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); margin: 14px 0 6px; }
+  .sec-lab:first-child { margin-top: 0; }
+  .path-box { display: flex; gap: 8px; }
+  .path-box input { flex: 1; min-width: 0; background: var(--panel-3); border: 1px solid var(--line); color: var(--text); border-radius: 7px; padding: 8px 10px; font: 11px var(--mono); }
+  .mini-btn { border: 1px solid var(--green-dim); background: var(--green-soft); color: var(--green2); border-radius: 7px; padding: 0 13px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .mini-btn.ghost { border-color: var(--line); background: var(--wash-2); color: var(--muted); }
+  .set-warn { margin-top: 12px; font-size: 11.5px; color: var(--amber); background: var(--amber-soft); border: 1px solid var(--amber); border-radius: 8px; padding: 9px 11px; }
+  .sw { width: 38px; height: 21px; border-radius: 999px; background: var(--wash-3); border: 1px solid var(--line); position: relative; cursor: pointer; flex: 0 0 auto; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--faint); transition: left .15s, background .15s; }
+  .sw.on { background: var(--green-dim); border-color: var(--green-dim); }
+  .sw.on::after { left: 19px; background: var(--green2); }
+  .sw.sw-off { opacity: .4; cursor: not-allowed; }
+  .status-deck {
+    display: grid;
+    grid-template-columns: 1.35fr .78fr .78fr 1.18fr 1.18fr 1.05fr;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background:
+      radial-gradient(circle at 16% 35%, var(--glow), transparent 18rem),
+      var(--panel);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .status-card {
+    min-height: 72px;
+    padding: 12px 16px;
+    border-right: 1px solid var(--line);
+    display: grid;
+    align-content: center;
+    gap: 5px;
+  }
+  .status-card:last-child { border-right: 0; }
+  .status-card .label { color: var(--text); font-size: 14px; font-weight: 760; }
+  .status-card .value { color: var(--green); font-weight: 800; font-size: 13px; }
+  .status-card .number { color: var(--text-strong); font-size: 22px; font-weight: 850; letter-spacing: -.05em; line-height: 1; }
+  .status-card .sub { color: var(--muted); font: 11px/1.35 var(--mono); }
+  .spark {
+    width: 76px;
+    height: 24px;
+    border-radius: 3px;
+    background:
+      linear-gradient(180deg, var(--green-soft), transparent),
+      linear-gradient(135deg, transparent 6%, var(--green) 7%, var(--green) 10%, transparent 11%, transparent 26%, var(--green) 27%, var(--green) 30%, transparent 31%, transparent 51%, var(--green) 52%, var(--green) 55%, transparent 56%);
+  }
+  .switch {
+    width: 32px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--wash-3);
+    border: 1px solid var(--line);
+    position: relative;
+  }
+  .switch.on { background: var(--green-soft); border-color: var(--green); }
+  .switch::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    top: 2px;
+    left: 3px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: left .18s ease, background .18s ease;
+  }
+  .switch.on::after { left: 15px; background: var(--green); }
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-height: 0;
+  }
+  .panel-pad { padding: 12px; min-height: 0; }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 12px 0;
+  }
+  .panel-head h3 { margin: 0; color: var(--text); font-size: 14px; letter-spacing: .01em; }
+  .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+  .recall {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    background:
+      radial-gradient(circle at 75% 18%, var(--glow), transparent 20rem),
+      var(--panel);
+  }
+  .recall-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: start;
+    padding: 13px 13px 8px;
+  }
+  .recall-title h2 { margin: 0; font-size: 23px; letter-spacing: -.045em; }
+  .recall-title p { margin: 4px 0 0; color: var(--muted); }
+  .searchline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: 8px;
+    padding: 0 13px 8px;
+  }
+  .searchline input[type=text] { height: 39px; font-size: 14px; }
+  .searchline button { height: 39px; border-radius: 7px; }
+  .filterline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 0 13px 9px;
+    border-bottom: 1px solid var(--line);
+  }
+  /* All native checkboxes follow the theme accent (near-black in light mode) —
+     without this they render the browser's default green/blue. */
+  input[type=checkbox] { accent-color: var(--green); }
+  .filter-pill, .toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    gap: 7px;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0 9px;
+    background: var(--wash-2);
+    white-space: nowrap;
+  }
+  .filter-sel {
+    width: auto;
+    min-height: 28px;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0 8px;
+    background: var(--wash-2);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #sortState { cursor: pointer; }
+  #sortState:hover { color: var(--text); }
+  .result-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 13px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .recall-workbench {
+    display: grid;
+    grid-template-columns: minmax(260px, var(--recall-left)) 6px minmax(220px, 1fr);
+    min-height: 0;
+    border-top: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .result-list {
+    border-right: 1px solid var(--line);
+    display: grid;
+    align-content: start;
+    min-height: 0;
+    max-height: none;
+    overflow: auto;
+  }
+  .result-row {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 34px;
+    gap: 10px;
+    min-height: 78px;
+    padding: 12px 10px;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid var(--wash-2);
+    background: var(--wash-1);
+    cursor: pointer;
+  }
+  .result-row:hover, .result-row.selected { background: var(--green-soft); }
+  .result-row.selected { border-left-color: var(--green); }
+  .score {
+    color: var(--green);
+    font: 800 13px/1 var(--mono);
+    padding-top: 2px;
+  }
+  .result-title {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    color: var(--text);
+    font-weight: 780;
+  }
+  .result-snip {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .result-foot {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--muted);
+    font: 11px/1 var(--mono);
+  }
+  .open-arrow { align-self: center; color: var(--muted); text-align: right; cursor: pointer; font-size: 17px; }
+  .open-arrow:hover { color: var(--green); }
+  .preview {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;      /* match the result list column exactly (no ragged bottoms) */
+    overflow: auto;    /* long threads scroll INSIDE the pane, never stretch it */
+    padding: 12px 14px;
+    display: grid;
+    align-content: start;
+    gap: 9px;
+    max-height: none;
+    overflow: auto;
+  }
+  .preview-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .preview-meta { color: var(--muted); font: 11px/1.35 var(--mono); }
+  .thread { display: grid; gap: 8px; }
+  .tmsg {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px;
+    background: var(--wash-2);
+    white-space: pre-wrap;
+    font-size: 12px;
+  }
+  .tmsg .who { display: block; color: var(--faint); font: 800 10px/1 var(--mono); text-transform: uppercase; margin-bottom: 6px; }
+  .tmsg.hit { border-color: var(--green); background: var(--green-soft); }
+  mark { background: var(--amber-soft); color: var(--amber2); border-radius: 3px; padding: 0 2px; }
+  .empty {
+    min-height: 170px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    text-align: center;
+    padding: 18px;
+  }
+  .grid-bottom {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .grid-bottom .panel, .inspector .panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .grid-bottom .panel > .panel-pad, .inspector .panel > .panel-pad {
+    overflow: auto;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 74px minmax(86px, .7fr);
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--wash-3);
+  }
+  .row:last-child { border-bottom: 0; }
+  .name { font-weight: 760; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .d, .muted { color: var(--muted); }
+  .rt { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
+  .rt .d { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+  .bar { height: 7px; background: var(--wash-3); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 99px; transition: width .32s ease; }
+  .bar > i.ind { width: 45%; animation: slide .8s infinite linear; }

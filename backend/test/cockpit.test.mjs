@@ -14,9 +14,10 @@ import { readFileSync } from "node:fs";
 // single page (css + js inlined) so these structural assertions keep guarding the
 // exact content the browser receives.
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
-const CSS = rd("../../frontend/styles/cockpit.css");
-// The cockpit script is split by concern into ordered files (03_STRUCTURE §5 —
-// no-build static); concatenating them in load order === the page the browser runs.
+// The cockpit css + script are split by concern into ordered files (03_STRUCTURE
+// §5 — no-build static); concatenating them in load order === what the browser runs.
+const CSS = ["01-tokens-base", "02-anim", "03-responsive", "04-tabs", "05-theme"]
+  .map((n) => rd("../../frontend/styles/" + n + ".css")).join("\n");
 const JS = [
   "01-core", "02-layout", "03-helpers", "04-tabs", "05-graph", "06-project",
   "07-memory", "08-sync", "09-recall", "10-i18n", "11-boot",
@@ -26,7 +27,8 @@ const JS = [
 // replacements — a STRING replacement would interpret $1/$& inside JS/CSS as
 // capture-group refs and corrupt them.
 const PAGE = rd("../../frontend/pages/cockpit.html")
-  .replace('<link rel="stylesheet" href="/styles/cockpit.css">', () => "<style>" + CSS + "</style>")
+  .replace(/<link rel="stylesheet" href="\/styles\/[^"]+">\s*/g, "")
+  .replace("</head>", () => "<style>" + CSS + "</style></head>")
   .replace(/<script src="\/scripts\/[^"]+"><\/script>\s*/g, "")
   .replace("</body>", () => "<script>" + JS + "</script></body>");
 

@@ -1,0 +1,180 @@
+  @keyframes slide { 0% { margin-left: -45%; } 100% { margin-left: 100%; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--wash-3); border-top-color: var(--green); animation: spin .8s linear infinite; margin: 4px auto 12px; }
+  .sync-box { flex: 1 1 auto; min-height: 90px; overflow: auto; }
+  .sync-step { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; color: var(--muted); }
+  .sync-step b { color: var(--text); font-weight: 700; }
+  .sync-done { color: var(--green); }
+  .q {
+    display: inline-block;
+    width: 17px; height: 17px; border-radius: 50%;
+    background: var(--wash-3);
+    color: var(--muted);
+    font-size: 10px; font-weight: 800;
+    text-align: center; line-height: 17px;
+    cursor: help; flex: 0 0 auto;
+    vertical-align: middle;
+  }
+  .panel-head h3 .q { margin-left: 7px; }
+  .row2 { padding: 9px 0; border-bottom: 1px solid var(--wash-3); display: grid; gap: 6px; }
+  .row2:last-child { border-bottom: 0; }
+  .row2-top { display: flex; align-items: center; gap: 7px; }
+  .row2-top .name { flex: 0 1 auto; white-space: normal; }
+  .row2 > .bar { width: 100%; }
+  .row2 .d2 { font-size: 11px; color: var(--muted); line-height: 1.4; word-break: break-word; }
+  .drive-state { font-size: 11px; white-space: nowrap; padding: 0 8px; color: var(--muted); }
+  .drive-state.ok { color: var(--green); }
+  .drive-state.bad { color: var(--amber); }
+  .doc-link { cursor: pointer; }
+  .doc-link:hover { border-color: var(--line-strong); color: var(--text); }
+  .doc-body { flex: 1 1 auto; min-height: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font: 12px/1.5 var(--mono); color: var(--text); background: var(--inset); border-radius: 10px; padding: 12px; margin: 0; }
+  .session-body { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .smsg { padding: 8px 10px; border-radius: 8px; background: var(--wash-1); border-left: 2px solid var(--line); }
+  .smsg.user { border-left-color: var(--blue); }
+  .smsg.assistant { border-left-color: var(--green); }
+  .smsg .role { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); }
+  .smsg .txt { white-space: pre-wrap; word-break: break-word; font: 12px/1.5 var(--mono); color: var(--text); margin-top: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip, .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 7px;
+    color: var(--muted);
+    background: var(--wash-2);
+    font-size: 11px;
+  }
+  .chip.on, .badge.on { color: var(--green2); border-color: var(--green); }
+  .chip.warn, .badge.warn { color: var(--amber); border-color: var(--amber); }
+  .chip.off, .badge.off { color: var(--red); border-color: var(--red); }
+  .metric {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px;
+    background: var(--wash-2);
+  }
+  .metric b { display: block; font-size: 20px; letter-spacing: -.05em; }
+  .metric span { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .coverage-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .coverage-stat {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px;
+    background: var(--wash-2);
+  }
+  .coverage-stat b { display: block; color: var(--text); font-size: 17px; line-height: 1; }
+  .coverage-stat span { display: block; color: var(--muted); font-size: 10px; margin-top: 4px; }
+  .folder-item {
+    border-bottom: 1px solid var(--wash-3);
+    padding: 8px 0;
+  }
+  .folder-item:last-child { border-bottom: 0; }
+  .folder-item .mini-row { border-bottom: 0; padding: 0 0 3px; }
+  .mini-list { display: grid; gap: 0; }
+  .mini-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid var(--wash-3);
+    padding: 7px 0;
+  }
+  .mini-row:last-child { border-bottom: 0; }
+  .mini-row b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 720; }
+  .scope-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+  .scope-tick { flex: 0 0 auto; accent-color: var(--green); cursor: pointer; margin: 0; }
+  .scope-tick:disabled { cursor: not-allowed; opacity: .5; }
+  .scope-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .scope-label.ex { color: var(--faint); text-decoration: line-through; }
+  .scope-count { flex: 0 0 auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .scope-add { display: flex; gap: 6px; margin: 8px 0 5px; flex-wrap: wrap; align-items: center; }
+  .scope-in { background: var(--panel-3); border: 1px solid var(--wash-3); color: var(--text); border-radius: 6px; padding: 3px 6px; font-size: 11px; min-width: 0; flex: 1 1 84px; }
+  .scope-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+  .scope-chip { font-size: 11px; background: var(--amber-soft); color: var(--amber); border-radius: 10px; padding: 2px 8px; cursor: pointer; }
+  .scope-chip:hover { background: var(--amber-soft); border: 1px solid var(--amber); }
+  .path { font-family: var(--mono); font-size: 10px; word-break: break-all; color: var(--faint); }
+  .activity { display: grid; gap: 8px; align-content: start; }
+  .event {
+    border-left: 2px solid var(--green);
+    padding-left: 9px;
+    color: var(--text);
+    font-size: 12px;
+  }
+  .event span { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .inspector {
+    height: 100%; /* fill the shell cell (pre-tabbar viewport math clipped the bottom) */
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+  }
+  .inspector > .panel { box-shadow: none; flex: 1 1 0; min-height: 84px; }
+  .panel-split { flex: 0 0 6px; margin: 1px 0; }
+  .action-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #memorymsg:empty, #msg:empty { display: none; }
+  #memorymsg, #msg {
+    border-radius: 7px;
+    padding: 10px;
+    background: var(--green-soft);
+    border: 1px solid var(--green-soft);
+    color: var(--green2);
+    white-space: pre-wrap;
+    font-size: 12px;
+  }
+  #settingsOverlay, #docOverlay, #sessionOverlay, #syncOverlay, #addProjOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--scrim);
+    backdrop-filter: blur(10px);
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  /* Dialog harness — 3 sizes, all the SAME 16:9 SCREEN PROPORTION (see 03_STRUCTURE
+     §5). Width-driven; height DERIVED from the 16:9 ratio, so a dialog is always a
+     balanced landscape card — never a tall dangling tower. Width is capped by BOTH
+     the viewport width (94vw) AND 90vh*16/9, so the derived height can never exceed
+     90vh → the ratio is NEVER distorted, on any screen. Content overflow scrolls
+     INSIDE (.set-body/.doc-body/…); the frame itself never jumps with content.
+     Pick a bigger size when S's frame is too small — same proportion, just scaled. */
+  .modal {
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 16 / 9;               /* height follows width — screen-standard shape */
+    /* Each size = a % of the APP frame in BOTH dims (16:9): min(Pvw, Pvh*16/9)
+       → exactly P% on a 16:9 window, smaller on an off-ratio one, never overflows. */
+    width: min(40vw, calc(40vh * 16 / 9));  /* fallback = S (40%) */
+    max-height: 92vh;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    background: var(--bg-soft);
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .modal.s { width: min(40vw, calc(40vh * 16 / 9)); }  /* 40% of app */
+  .modal.m { width: min(60vw, calc(60vh * 16 / 9)); }  /* 60% of app */
+  .modal.l { width: min(90vw, calc(90vh * 16 / 9)); }  /* 90% of app */
+  .modal > .mtitle { flex: 0 0 auto; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .dlg-actions .mini-btn { padding: 7px 16px; }
+  .mtitle { color: var(--muted); margin-bottom: 12px; }
+  .opt {
+    width: 100%;
+    text-align: left;
+    margin: 8px 0;
+    border-radius: 12px;
+    background: var(--wash-3);
+    color: var(--text);
+    box-shadow: none;
+  }
+  .opt b { display: block; }
+  .opt span { display: block; color: var(--muted); font-weight: 500; margin-top: 2px; }
+  .opt.cancel { text-align: center; background: transparent; color: var(--muted); }
