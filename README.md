@@ -2,9 +2,9 @@
 
 # zemory
 
-**Local context & memory governance for coding agents — one daemon, one SQLite brain, one docs harness.**
+**Local context & memory governance for coding agents — one daemon, one SQLite memory, one docs harness.**
 
-Zemory captures every coding‑agent session into a single local brain, gives each
+Zemory captures every coding‑agent session into a single local memory, gives each
 project a self‑healing docs harness, derives a code/docs graph on demand, and lets
 you recall anything across tools, projects, and machines — all offline, with **no
 model API calls**.
@@ -52,7 +52,7 @@ project's rules/TODO/changelog quietly drift out of sync with the code.
 
 Zemory fixes both halves:
 
-- **One global brain.** Every agent session on your machine is ingested into a
+- **One Global Memory.** Every agent session on your machine is ingested into a
   single local SQLite database you can search by keyword or meaning — across
   every project and machine.
 - **One per‑project harness.** A small, standard set of docs (constitution,
@@ -70,15 +70,15 @@ that only *score* text; they never *generate* it.
 
 | | |
 |---|---|
-| 🧠 **Global brain** | Every Claude / Codex / Continue / LM Studio session in one local SQLite DB, deduped, secret‑redacted, digested. |
+| 🧠 **Global Memory** | Every Claude / Codex / Continue / LM Studio session in one local SQLite DB, deduped, secret‑redacted, digested. |
 | 🔎 **Hybrid recall** | FTS5 keyword (word **+ trigram**, so substrings & non‑Latin work) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python/GPU) via RRF, with optional cross‑encoder rerank. Every stage **fails open** to FTS. |
-| 🌐 **Web‑chat capture** | Pull your **ChatGPT web** history into the brain via a login‑once browser window — no password ever touches zemory. |
+| 🌐 **Web‑chat capture** | Pull your **ChatGPT web** history into the memory via a login‑once browser window — no password ever touches zemory. |
 | 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent) — one column, not a second store. Filter, roll up, and **exclude** lanes. |
 | 🪪 **Project harness** | A shared standard (`docs_template/`) the agent adapts into each project: constitution ↔ rules ↔ structure ↔ TODO ↔ changelog ↔ numbered plans, kept in sync. `.md` is the source (file wins); the DB is a derived index. |
 | 🕸️ **Code & docs graph** | On‑demand import graph (TS/JS + Python), tree‑sitter symbols, `graph impact` (blast radius), `graph fitness`, `graph export --json`. A **derived** layer — declared vs inferred edges never mix. |
 | 🖥️ **Background daemon** | A single instance on fixed port **4444** with a system‑tray icon, optional start‑with‑OS, an idle scheduler (scan → embed → digest), and a write‑gate that serializes DB writes. |
 | 🔐 **Cross‑machine sync** | Merge machines through an **encrypted delta bundle** on a Drive folder — additive, never destructive, provenance preserved. |
-| 🔌 **MCP server** | Expose recall to any MCP client (`brain_search`, `brain_show`, `plan_search`, `plan_show`). |
+| 🔌 **MCP server** | Expose recall to any MCP client (`memory_search`, `memory_show`, `plan_search`, `plan_show`). |
 | 🕵️ **Privacy tools** | Forget, re‑redact, back up, and restore — all local, dry‑run by default, backed up before deleting. |
 
 ---
@@ -96,9 +96,9 @@ npm ci
 npm run build
 npm install -g .          # exposes the global `zemory` command (or: npm link)
 
-zemory brain scan         # ingest existing agent transcripts on this machine
+zemory memory scan         # ingest existing agent transcripts on this machine
 zemory hook install       # auto-capture new Claude/Codex sessions (0 tokens)
-zemory brain embed --all  # build the semantic vector index (enables hybrid recall)
+zemory memory embed --all  # build the semantic vector index (enables hybrid recall)
 zemory doctor             # verify everything is green
 ```
 
@@ -112,7 +112,7 @@ cd your-project
 zemory init && zemory doctor
 ```
 
-Any project can query the shared brain even with no harness; `zemory init` only
+Any project can query the shared memory even with no harness; `zemory init` only
 adds the curated constitution/rules/structure/TODO/changelog/plan docs.
 
 ---
@@ -134,7 +134,7 @@ The cockpit has a top tab bar:
   - **Recall & shared standard** — search past sessions (Hybrid / Rerank toggles;
     filter by time, role, origin Local/Web, and agent; inline thread preview), next
     to the **shared standard** (`docs_template/`) every project inherits.
-  - **Memory & sync** — brain totals, a **Sources tree** (Local → machine → agent,
+  - **Memory & sync** — memory totals, a **Sources tree** (Local → machine → agent,
     Web → platform) where you **untick a lane to leave it out of sync + recall**,
     scan, capture coverage, and cross‑machine **Sync**.
 - **Per‑project tabs** — each project you add is its own tab with two sub‑tabs:
@@ -153,11 +153,11 @@ index rebuilt from those files.
 
 ## Core concepts
 
-### The brain (global memory)
+### Global Memory
 
 One SQLite database at `~/.zemory/global_memory.db` (its location is a fixed
 pointer at `~/.zemory/location.json`; move it off the system drive with
-`zemory brain relocate` / the cockpit's "Storage" pane). `zemory brain scan`
+`zemory memory relocate` / the cockpit's "Storage" pane). `zemory memory scan`
 ingests agent transcripts incrementally and idempotently; the Stop hooks keep it
 current with zero extra tokens. Messages are deduped, secret‑redacted, and
 summarized into per‑session digests for cheap recall. **Never** put the live DB in
@@ -193,11 +193,11 @@ Project‑specific content (TODO, changelog) is never copied from another projec
 ## The graph
 
 Zemory builds a **derived** graph over your repo — rebuildable from `.md` + code +
-brain at any time, with **0 LLM** calls. Two edge classes never mix: **declared**
+memory at any time, with **0 LLM** calls. Two edge classes never mix: **declared**
 (deterministic — imports, doc references, supersede markers, `session_digest`
 touches) and **inferred** (fail‑open overlay — cosine `semantic_neighbor`, name‑matched
 `calls` with an honest `inferred`/`textual` confidence, never self‑promoted to
-"resolved"). It is an internal engine of the brain domain, not a fifth capability;
+"resolved"). It is an internal engine of the memory domain, not a fifth capability;
 external tools consume the versioned `graph export`, they do not re‑parse the standard.
 
 ```bash
@@ -215,20 +215,20 @@ In the cockpit, the **Graph** sub‑tab lights up imports and folder‑tree node
 ## CLI reference
 
 ```text
-# Brain
-zemory brain scan [--deep]              Ingest agent transcripts (deep = walk the disk)
-zemory brain scan-web [--limit N]       Capture ChatGPT web chat (login-once browser)
-zemory brain search "q" [--all]         Recall (this project | everywhere)
-zemory brain search "q" --rerank        Recall with cross-encoder rerank
-zemory brain embed --all                Build/refresh the semantic vector index
-zemory brain scope [exclude|include]    Provenance tree; exclude a lane from sync+recall
-zemory brain hosts                      Sessions by machine -> agent -> project
-zemory brain digest <session>           Show a session's summary digest
-zemory brain sync --dir <folder>        Cross-machine sync via a Drive folder (delta)
-zemory brain export / import [--merge]  Encrypted bundle out / in (merge = additive)
-zemory brain forget / redact            Privacy: forget rows / re-apply redaction
-zemory brain backup / restore           Raw local SQLite backup / restore
-zemory brain relocate <dir>             Move the live DB off the system drive
+# Memory
+zemory memory scan [--deep]              Ingest agent transcripts (deep = walk the disk)
+zemory memory scan-web [--limit N]       Capture ChatGPT web chat (login-once browser)
+zemory memory search "q" [--all]         Recall (this project | everywhere)
+zemory memory search "q" --rerank        Recall with cross-encoder rerank
+zemory memory embed --all                Build/refresh the semantic vector index
+zemory memory scope [exclude|include]    Provenance tree; exclude a lane from sync+recall
+zemory memory hosts                      Sessions by machine -> agent -> project
+zemory memory digest <session>           Show a session's summary digest
+zemory memory sync --dir <folder>        Cross-machine sync via a Drive folder (delta)
+zemory memory export / import [--merge]  Encrypted bundle out / in (merge = additive)
+zemory memory forget / redact            Privacy: forget rows / re-apply redaction
+zemory memory backup / restore           Raw local SQLite backup / restore
+zemory memory relocate <dir>             Move the live DB off the system drive
 
 # Graph (derived, 0 LLM)
 zemory graph impact <file>              Blast radius for a change
@@ -257,13 +257,13 @@ zemory hook install                     Install the 0-token Stop-capture hook
 ## Web‑chat capture
 
 Web chats (ChatGPT, later Gemini / Claude.ai) live on the server — there is no
-file on disk for `brain scan` to read. Zemory captures them with a
+file on disk for `memory scan` to read. Zemory captures them with a
 **browser‑connector**:
 
 ```bash
-zemory brain scan-web                    # opens a login-once window; log in ONCE
-zemory brain scan-web                    # re-run: pulls + ingests (origin=web)
-zemory brain scan-web --limit 5          # pull just the newest 5 (quick verify)
+zemory memory scan-web                    # opens a login-once window; log in ONCE
+zemory memory scan-web                    # re-run: pulls + ingests (origin=web)
+zemory memory scan-web --limit 5          # pull just the newest 5 (quick verify)
 ```
 
 Zemory opens a dedicated browser profile (`~/.zemory/browser/chatgpt`), you log
@@ -271,7 +271,7 @@ in on the real site (id/password/2FA go to OpenAI, **never** to zemory), and
 zemory drives that logged‑in tab over CDP to read the site's own conversation API
 — running inside the real browser so it passes Cloudflare. Pulls are **batched
 and resume‑safe** and paced to ease rate limits. Captured chats land in the same
-brain under `origin=web` and are fully searchable.
+memory under `origin=web` and are fully searchable.
 
 > ⚠️ Captured conversation files contain real personal data and are **never
 > committed** — only code and docs live in this repo.
@@ -280,15 +280,15 @@ brain under `origin=web` and are fully searchable.
 
 ## Scoped sync & recall
 
-Some lanes are shared or noisy and you don't want them in your personal brain's
+Some lanes are shared or noisy and you don't want them in your personal memory's
 sync or recall. Tick them off in the cockpit's **Sources** tree, add a rule for
 lanes not captured yet, or use the CLI:
 
 ```bash
-zemory brain scope                        # show the Local/Web x machine x agent tree
-zemory brain scope exclude --source codex # leave codex out of sync + recall
-zemory brain scope exclude --origin web   # leave all web chat out
-zemory brain scope include --source codex # undo
+zemory memory scope                        # show the Local/Web x machine x agent tree
+zemory memory scope exclude --source codex # leave codex out of sync + recall
+zemory memory scope exclude --origin web   # leave all web chat out
+zemory memory scope include --source codex # undo
 ```
 
 Exclusion is a **filter, not a delete** — the data stays in the local DB; it is
@@ -304,15 +304,15 @@ in a synced folder.
 
 ```bash
 # one-time: a LOCAL Drive path (Google Drive/OneDrive) + the same share/share.key on each machine
-zemory brain sync --dir "G:\My Drive\Global Memory"
-zemory brain embed --all                 # vectorize newly merged messages
+zemory memory sync --dir "G:\My Drive\Global Memory"
+zemory memory embed --all                 # vectorize newly merged messages
 ```
 
-`brain sync` exports this machine's changes as a **delta bundle** (a baseline +
+`memory sync` exports this machine's changes as a **delta bundle** (a baseline +
 incremental deltas keyed by a watermark, compacted when the series grows) and
 merges every other machine's bundles it finds. Merge is **additive**: nothing is
-overwritten, each session keeps the `host` that produced it (see `zemory brain
-hosts`), and re‑merging the same bundle adds zero. The brain itself never lives in
+overwritten, each session keeps the `host` that produced it (see `zemory memory
+hosts`), and re‑merging the same bundle adds zero. The memory itself never lives in
 git — a fresh clone starts empty; populate it with `scan` + `sync`.
 
 ---
@@ -320,15 +320,15 @@ git — a fresh clone starts empty; populate it with `scan` + `sync`.
 ## Privacy & retention
 
 ```text
-zemory brain backup [out.db]             Raw local SQLite backup
-zemory brain restore <backup.db> --force Restore a raw backup (renames the old DB aside)
-zemory brain forget --project .          Dry-run forget for the current project
-zemory brain forget --session <id> --force
-zemory brain redact --force              Re-apply secret redaction to old rows
+zemory memory backup [out.db]             Raw local SQLite backup
+zemory memory restore <backup.db> --force Restore a raw backup (renames the old DB aside)
+zemory memory forget --project .          Dry-run forget for the current project
+zemory memory forget --session <id> --force
+zemory memory redact --force              Re-apply secret redaction to old rows
 ```
 
 `forget` is a dry‑run unless `--force`, and always backs up before deleting. It
-removes rows from zemory's derived brain + vector index; it does not delete the
+removes rows from zemory's derived memory + vector index; it does not delete the
 agent's original transcript files. Anyone who can read the share key can decrypt
 the bundles.
 
@@ -350,7 +350,7 @@ unless the user explicitly allows it (another session may be working here).
 Recall from other sessions on demand — do not guess:
 
 ```bash
-zemory brain search "<what a past session decided>" --all
+zemory memory search "<what a past session decided>" --all
 ```
 
 ---
@@ -364,7 +364,7 @@ roles are required — `backend/` (code), `frontend/` (UI), `docs/` (harness),
 ```text
 backend/                server-side: 100% first-party code + thin entry surfaces
   src/
-    brain/              the memory domain: store · ingest/search/digest · embed/rerank · graph engine · io
+    memory/              the memory domain: store · ingest/search/digest · embed/rerank · graph engine · io
     docs/               the harness domain: plan · changelog · markdown · adopt/validate services
     core/               composition root: registry · router · runtime (wiring, no business logic)
     modules/            capability providers (memory · search · harness · health)
@@ -442,7 +442,7 @@ design bug even when the code runs. In brief:
 12. **Honest measurement + a gate before defaults.** No counterfactual numbers; a new
     layer ships as default only after benchmark + tests + safe migration + fallback.
 13. **The graph is a derived layer; declared and inferred edges never mix.** Rebuilt
-    deterministically from `.md` + code + brain (0 LLM); inferred edges are labeled
+    deterministically from `.md` + code + memory (0 LLM); inferred edges are labeled
     and never masquerade as declared. External consumers read only the versioned export.
 
 ---
@@ -464,5 +464,5 @@ design bug even when the code runs. In brief:
 Licensed under **Apache‑2.0**.
 
 <div align="center">
-<sub>Built for agents that should remember. Local‑first, no model API, one brain.</sub>
+<sub>Built for agents that should remember. Local‑first, no model API, one memory.</sub>
 </div>
