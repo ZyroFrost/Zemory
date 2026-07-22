@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { archiveChanges } from "../../dist/archive.js";
+import { archiveChanges } from "../../dist/docs/archive.js";
 import { importChangelog, listEntries, searchChangelog } from "../../dist/docs/changelog.js";
 import { renderSections } from "../../dist/docs/markdown.js";
 import { importDoc, listToc, searchSections, showSection } from "../../dist/docs/plan.js";

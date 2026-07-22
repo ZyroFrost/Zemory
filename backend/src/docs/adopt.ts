@@ -16,15 +16,15 @@ import {
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openBrain } from "./brain/db.js";
-import { CONFIG_FILE, loadContext } from "./core/config.js";
-import type { HarnessConfig } from "./core/types.js";
-import { rememberProject } from "./registry.js";
+import { openBrain } from "../brain/db.js";
+import { CONFIG_FILE, loadContext } from "../core/config.js";
+import type { HarnessConfig } from "../core/types.js";
+import { rememberProject } from "../registry.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's
  *  docs/). This is what `init`/`sync` scaffold and the UI loads for reference. */
-export const TEMPLATE_DIR = join(HERE, "..", "docs_template");
+export const TEMPLATE_DIR = join(HERE, "..", "..", "docs_template");
 
 export interface AdoptResult {
   createdConfig: boolean;

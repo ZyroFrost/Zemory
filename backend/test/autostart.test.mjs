@@ -26,7 +26,7 @@ function sandboxHome(t) {
 
 test("enable creates an OS autostart entry; disable removes it; status tracks it", async (t) => {
   sandboxHome(t);
-  const { autostartStatus, setAutostart } = await import("../../dist/autostart.js");
+  const { autostartStatus, setAutostart } = await import("../../dist/platform/autostart.js");
   const before = autostartStatus();
   if (!before.supported) {
     // Unknown OS — just assert it fails open, don't force a mechanism.
@@ -49,7 +49,7 @@ test("enable creates an OS autostart entry; disable removes it; status tracks it
 test("the Windows entry, when on this OS, is a Startup .cmd that launches `ui`", async (t) => {
   if (platform() !== "win32") return;
   sandboxHome(t);
-  const { setAutostart } = await import("../../dist/autostart.js");
+  const { setAutostart } = await import("../../dist/platform/autostart.js");
   const { readFileSync } = await import("node:fs");
   const st = setAutostart(true);
   assert.match(st.path, /Startup[\\/]zemory\.cmd$/, "entry is a Startup .cmd");

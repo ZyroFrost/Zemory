@@ -6,9 +6,9 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { currentBrainDb } from "./brain/db.js";
-import type { Context } from "./core/types.js";
-import { importChangelog } from "./docs/changelog.js";
+import { currentBrainDb } from "../brain/db.js";
+import type { Context } from "../core/types.js";
+import { importChangelog } from "./changelog.js";
 
 export interface ArchiveResult {
   moved: number;

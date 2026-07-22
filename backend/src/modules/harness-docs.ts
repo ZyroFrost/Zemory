@@ -1,6 +1,6 @@
-import { archiveChanges } from "../archive.js";
+import { archiveChanges } from "../docs/archive.js";
 import type { Module } from "../core/types.js";
-import { validate } from "../validate.js";
+import { validate } from "../docs/validate.js";
 
 // The `harness` capability: owns the project docs harness — its structure
 // (rules/TODO/changelog/plan), validation, and FILE-WINS (.md source / DB index) discipline.

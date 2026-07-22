@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { ensureHarness, freshHarness } from "../../dist/adopt.js";
+import { ensureHarness, freshHarness } from "../../dist/docs/adopt.js";
 import { loadContext } from "../../dist/core/config.js";
-import { validate } from "../../dist/validate.js";
+import { validate } from "../../dist/docs/validate.js";
 import { tempDir } from "./helpers.mjs";
 
 test("ensureHarness honors a custom docs path inside docs", (t) => {

@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import type { Context } from "./core/types.js";
+import type { Context } from "../core/types.js";
 
 export interface ValidateIssue {
   level: "error" | "warn" | "info";
