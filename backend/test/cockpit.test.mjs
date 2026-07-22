@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 // The cockpit css + script are split by concern into ordered files (03_STRUCTURE
 // §5 — no-build static); concatenating them in load order === what the browser runs.
-const CSS = ["01-tokens-base", "02-anim", "03-responsive", "04-tabs", "05-theme"]
+const CSS = ["01-tokens-base", "02-anim", "03-responsive", "04-tabs", "05-theme", "06-states"]
   .map((n) => rd("../../frontend/styles/" + n + ".css")).join("\n");
 const JS = [
   "01-core", "02-layout", "03-helpers", "04-tabs", "05-graph", "06-project",
