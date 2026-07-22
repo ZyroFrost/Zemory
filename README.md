@@ -391,7 +391,7 @@ backend/                server-side: 100% first-party code + thin entry surfaces
 frontend/               the UI (served static by the daemon, no bundler):
   pages/ · styles/ · components/ · scripts/ · assets/
 docs/                   this project's own harness (agent/ + numbered plan/)
-docs_template/          the BLANK generic standard other repos copy
+docs_template/          the BLANK generic standard other repos copy — app/ + nonapp/ (two profiles)
 external/skills/         vendored third-party skills (kept verbatim, indexed in 04_SKILLS)
 AGENTS.md               thin router into docs/
 ```
