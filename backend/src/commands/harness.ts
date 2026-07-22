@@ -1,6 +1,6 @@
 // `zemory init|sync|migrate|doctor|archive|validate|setup|structure|grill|reindex`
 // — the per-project docs harness lifecycle.
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
@@ -22,21 +22,14 @@ export function cmdInit(args: string[]): void {
     );
     return;
   }
-  const r = ensureHarness(process.cwd());
-  // --non-app: this project follows the §7 standard (BI/data/docs/design) —
-  // record it so validate/structure check the right requirements.
-  if (args.includes("--non-app")) {
-    const cfgPath = join(process.cwd(), "docs", ".harness.json");
-    try {
-      const cfg = JSON.parse(readFileSync(cfgPath, "utf8")) as Record<string, unknown>;
-      if (cfg.profile !== "non-app") {
-        cfg.profile = "non-app";
-        writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + "\n");
-      }
-      console.log('  profile: "non-app" (03_STRUCTURE §7 — BI/data/docs/design)');
-    } catch {
-      console.log("  ⚠ could not set profile in docs/.harness.json — add `\"profile\": \"non-app\"` by hand");
-    }
+  // Decide the profile BEFORE scaffolding: it picks which template TREE we copy
+  // (docs_template/app vs nonapp). ensureHarness persists profile:"non-app" into
+  // the config (app stays the implicit default). --non-app follows the NON-APP
+  // standard (BI/data/docs/design — deliverables, no backend/frontend).
+  const profile = args.includes("--non-app") ? "non-app" : undefined;
+  const r = ensureHarness(process.cwd(), profile);
+  if (profile === "non-app") {
+    console.log('  profile: "non-app" (chuẩn hệ NON-APP — BI/data/docs/design; scaffold từ template nonapp/)');
   }
   const parts: string[] = [];
   if (r.createdConfig) parts.push("created .harness.json");
@@ -168,7 +161,7 @@ export function cmdSetup(): void {
   console.log("  1. npm i -g zemory                 — cài global (lệnh `zemory`)");
   console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
   console.log("  3. zemory doctor");
-  console.log("Điều hướng mở phiên: AGENTS.md ở root. Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE §8).");
+  console.log("Điều hướng mở phiên: AGENTS.md ở root (hỏi app/non-app trước khi init). Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE Reconcile).");
 }
 
 export function cmdStructure(): void {
@@ -176,10 +169,12 @@ export function cmdStructure(): void {
     [
       "zemory — repo structure standard. FULL spec (per-line tree + routing + convention): docs/agent/03_STRUCTURE.md",
       "",
-      "  TWO standards — pick by project type (set `\"profile\"` in docs/.harness.json):",
-      "  ① APP (runnable code, default) — §1–6. Required (4): backend/(code) · frontend/ · docs/ · AGENTS.md.",
-      "  ② NON-APP (deliverable assets: BI/report · data · docs-only · design, e.g. powerbi_*) — §7.",
+      "  TWO standards — pick by project type at init (recorded as `\"profile\"` in docs/.harness.json):",
+      "  ① APP (runnable code you build & maintain, default) — `zemory init`. Required (4): backend/(code) · frontend/ · docs/ · AGENTS.md.",
+      "  ② NON-APP (deliverable assets: BI/report · data · docs-only · design) — `zemory init --non-app`.",
       "     Required (3): docs/ · AGENTS.md · ≥1 deliverable (reports/|models/|content/|design/). No backend/frontend.",
+      "     Adds tasks/ · templates/ · data/{extract,adhoc,<task>} · pull/fill/upload playbooks · 0 UI rules.",
+      "  Each project's docs/agent/03_STRUCTURE.md IS its profile's standard (scaffolded from docs_template/{app,nonapp}/).",
       "  Everything else is [opt] — create when the concern exists (never a pile of empty folders).",
       "  6 non-code kinds (never mix): assets=media · resources=bundled-tracked · config=operator-files · data=runtime-gitignored · external=cloned-code · attic=backup.",
       "  3 'connections': api/=you expose · integrations/=external SaaS · store/=DATABASE (remote/cloud/internal). external/=cloned code.",
@@ -187,13 +182,13 @@ export function cmdStructure(): void {
       "  Source = git tracked; output / runtime / secret = GITIGNORED.",
       "",
       "  Full per-line tree + routing table + all conventions → docs/agent/03_STRUCTURE.md",
-      "  Refactor an app to this → docs/agent/03_STRUCTURE.md §8 (Reconcile)   ·   drift check → `zemory validate`",
+      "  Refactor a repo to this → docs/agent/03_STRUCTURE.md (Reconcile section)   ·   drift check → `zemory validate`",
       "",
       "docs harness (.md is the SOURCE — file wins; DB doc/section/changelog = derived search index):",
       "  docs/agent/01_CONSTITUTION.md — per-app constitution: architectural invariants (user-owned)",
       "  docs/agent/02_RULES.md      — work rules, generic across projects",
       "  docs/agent/03_STRUCTURE.md  — repo structure standard (+ §8 Reconcile)",
-      "  docs/agent/04_SKILLS.md     — playbooks: grill · chốt phiên · reconcile",
+      "  docs/agent/04_SKILLS.md     — playbooks: grill · chốt phiên · reconcile (non-app: + pull/fill/upload)",
       "  docs/agent/05_TODO.md       — backlog",
       "  docs/agent/06_CHANGES.md    — changelog",
       "  docs/plan/*.md              — specs (00_overview + numbered specs)",

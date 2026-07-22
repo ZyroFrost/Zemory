@@ -18,13 +18,24 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
 import { CONFIG_FILE, loadContext } from "../core/config.js";
-import type { HarnessConfig } from "../core/types.js";
+import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's
- *  docs/). This is what `init`/`sync` scaffold and the UI loads for reference. */
+ *  docs/). Split by profile: docs_template/app/ (code apps) and docs_template/
+ *  nonapp/ (BI/data/docs/design deliverables). Each tree is complete + read
+ *  standalone; the files that MUST match are locked byte-identical by a parity
+ *  test (template-parity.test.mjs) so the shared shells never drift. */
 export const TEMPLATE_DIR = join(HERE, "..", "..", "docs_template");
+
+/** The template subtree for a profile (defaults to app). `init`/`sync` scaffold
+ *  from here and the UI loads it for reference. The profile value "non-app" (with
+ *  the hyphen the type uses) maps to the folder `nonapp` (slot names carry no
+ *  hyphen — 03_STRUCTURE convention). */
+export function templateDir(profile: StructureProfile = "app"): string {
+  return join(TEMPLATE_DIR, profile === "non-app" ? "nonapp" : "app");
+}
 
 export interface AdoptResult {
   createdConfig: boolean;
@@ -75,17 +86,36 @@ const DEFAULT_CONFIG: HarnessConfig = {
  * Ensure the project has a harness: create .harness.json if absent, then add
  * any template docs that are missing. Existing files are kept untouched.
  */
-export function ensureHarness(projectRoot: string): AdoptResult {
+export function ensureHarness(projectRoot: string, profile?: StructureProfile): AdoptResult {
   const projectName = basename(projectRoot);
   // Config lives INSIDE docs/ (docs/.harness.json) so the project root stays clean.
   const configPath = join(projectRoot, CONFIG_FILE);
   let createdConfig = false;
   if (!existsSync(configPath)) {
     mkdirSync(dirname(configPath), { recursive: true });
-    writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2) + "\n");
+    // Persist the profile ONLY for non-app; app stays the implicit default so
+    // existing configs (and validate's non-app hint) behave exactly as before.
+    const cfg = profile === "non-app" ? { ...DEFAULT_CONFIG, profile } : DEFAULT_CONFIG;
+    writeFileSync(configPath, JSON.stringify(cfg, null, 2) + "\n");
     createdConfig = true;
   }
   const config = loadContext(projectRoot).config;
+  // Effective profile: an explicit --non-app wins, else what the config records,
+  // else app. It decides which template TREE we scaffold from.
+  const effectiveProfile: StructureProfile =
+    profile ?? (config.profile === "non-app" ? "non-app" : "app");
+  // Applying --non-app to a config that predates it (or an app scaffold) records
+  // the profile so validate/scaffold agree from now on.
+  if (effectiveProfile === "non-app" && config.profile !== "non-app") {
+    try {
+      const raw = JSON.parse(readFileSync(configPath, "utf8")) as Record<string, unknown>;
+      raw.profile = "non-app";
+      writeFileSync(configPath, JSON.stringify(raw, null, 2) + "\n");
+    } catch {
+      /* leave as-is — validate still hints toward non-app */
+    }
+  }
+  const tplBase = templateDir(effectiveProfile);
   const docsRel = config.docs ?? DEFAULT_CONFIG.docs;
   const docsDir = join(projectRoot, docsRel);
   const planDir = join(dirname(docsDir), "plan");
@@ -167,10 +197,10 @@ export function ensureHarness(projectRoot: string): AdoptResult {
   const nonStandard = agentMd.filter((f) => !STANDARD_AGENT.includes(f));
   let needsReconcile = false;
   if (agentMd.length === 0) {
-    fill(join(TEMPLATE_DIR, "agent"), docsDir, ""); // fresh scaffold
-    fill(join(TEMPLATE_DIR, "plan"), planDir, "plan/");
+    fill(join(tplBase, "agent"), docsDir, ""); // fresh scaffold (profile tree)
+    fill(join(tplBase, "plan"), planDir, "plan/");
   } else if (nonStandard.length === 0) {
-    fill(join(TEMPLATE_DIR, "agent"), docsDir, ""); // all-standard → gap-fill missing only
+    fill(join(tplBase, "agent"), docsDir, ""); // all-standard → gap-fill missing only
   } else {
     needsReconcile = true; // existing non-standard docs → agent must reconcile
     for (const f of agentMd) present.push(f);
@@ -178,7 +208,7 @@ export function ensureHarness(projectRoot: string): AdoptResult {
 
   // Root entry: ONLY AGENTS.md (thin — setup desc + pointer into docs/). Nothing
   // else lives at root; the whole harness is contained in docs/.
-  const agentsSrc = join(TEMPLATE_DIR, "AGENTS.md");
+  const agentsSrc = join(tplBase, "AGENTS.md");
   const agentsDst = join(projectRoot, "AGENTS.md");
   if (existsSync(agentsSrc)) {
     const fresh = readFileSync(agentsSrc, "utf8").replace(/<PROJECT>/g, projectName);

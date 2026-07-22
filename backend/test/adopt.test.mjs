@@ -22,6 +22,32 @@ test("ensureHarness honors a custom docs path inside docs", (t) => {
   assert.equal(existsSync(join(root, "docs", "plan", "00_overview.md")), true);
 });
 
+test("ensureHarness(root, 'non-app') scaffolds the NON-APP tree (its own 03 + profile in config)", (t) => {
+  const root = tempDir(t, "zemory-nonapp-scaffold-");
+  const r = ensureHarness(root, "non-app");
+  // The whole standard set lands (this regressed once: profile "non-app" mapped to
+  // a folder that did not exist, so ZERO docs were copied).
+  assert.ok(r.added.includes("03_STRUCTURE.md"), "the standard docs are scaffolded, not silently skipped");
+  const struct = readFileSync(join(root, "docs", "agent", "03_STRUCTURE.md"), "utf8");
+  assert.match(struct, /hệ NON-APP/, "scaffolds the NON-APP structure standard, not the app one");
+  assert.match(struct, /KÉO \/ ĐIỀN \/ UPLOAD/, "carries the non-app file-automation model");
+  const skills = readFileSync(join(root, "docs", "agent", "04_SKILLS.md"), "utf8");
+  assert.ok(skills.includes("## pull") && skills.includes("## fill") && skills.includes("## upload"));
+  // The profile is persisted so validate/scaffold agree on later runs.
+  const cfg = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8"));
+  assert.equal(cfg.profile, "non-app");
+});
+
+test("ensureHarness() with no profile scaffolds the APP tree (unchanged default)", (t) => {
+  const root = tempDir(t, "zemory-app-scaffold-");
+  ensureHarness(root);
+  const struct = readFileSync(join(root, "docs", "agent", "03_STRUCTURE.md"), "utf8");
+  assert.match(struct, /hệ APP/, "default scaffold is the app standard");
+  // App stays the IMPLICIT default — no profile key written (validate's non-app hint depends on this).
+  const cfg = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8"));
+  assert.equal(cfg.profile, undefined, "app profile is implicit — no profile key");
+});
+
 test("ensureHarness renames every older-generation doc to the current numbering (legacy chains)", (t) => {
   const root = tempDir(t, "zemory-legacy-");
   const agentDir = join(root, "docs", "agent");
