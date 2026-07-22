@@ -4,12 +4,12 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { currentBrainDir } from "./brain/db.js";
+import { currentMemoryDir } from "./memory/db.js";
 
-// Resolved per call (not a module const) so a `brain relocate` mid-process makes
+// Resolved per call (not a module const) so a `memory relocate` mid-process makes
 // every subsequent read/write hit the config.json that moved with the data dir.
 function configPath(): string {
-  return join(currentBrainDir(), "config.json");
+  return join(currentMemoryDir(), "config.json");
 }
 
 /** A provenance lane selector. Fields left undefined act as wildcards, so
@@ -35,7 +35,7 @@ interface ZConfig {
   ui?: Record<string, unknown>;
   /** Start zemory when the OS starts (plan 14 §B). Default false. */
   autostart?: boolean;
-  /** Auto-sync the brain via the Drive bundle when data drifts (plan 14 §3b).
+  /** Auto-sync the memory via the Drive bundle when data drifts (plan 14 §3b).
    *  Default false — it moves data off the machine, so it stays opt-in. */
   autosync?: boolean;
   /** Idle background scheduler (scan → embed → digest) while the daemon runs
@@ -112,7 +112,7 @@ export function setAutostartSetting(on: boolean): void {
   write(c);
 }
 
-/** Auto-sync the brain via Drive when data drifts (plan 14 §3b). Opt-in. */
+/** Auto-sync the memory via Drive when data drifts (plan 14 §3b). Opt-in. */
 export function getAutosync(): boolean {
   return read().autosync ?? false;
 }

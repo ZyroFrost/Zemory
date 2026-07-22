@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import * as sqliteVec from "sqlite-vec";
-import { openBrain } from "../../dist/brain/db.js";
-import { embed } from "../../dist/brain/embed.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { embed } from "../../dist/memory/embed.js";
 import {
   dropVectorIndex,
   embedPending,
@@ -17,8 +17,8 @@ import {
   vectorIndexProfile,
   vectorRanks,
   vectorRemaining,
-} from "../../dist/brain/vectors.js";
-import { hybridEnabled, search, searchHybrid } from "../../dist/brain/search.js";
+} from "../../dist/memory/vectors.js";
+import { hybridEnabled, search, searchHybrid } from "../../dist/memory/search.js";
 import { runRagBench } from "../../dist/evals/ragbench.js";
 
 test("hybrid setting: default ON; ZEMORY_HYBRID=0 disables", () => {
@@ -33,7 +33,7 @@ test("hybrid setting: default ON; ZEMORY_HYBRID=0 disables", () => {
 
 function seedDb() {
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-vec-")), "test.db");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run(
     "s1", "claude-code", "C:\\demo", 3,
   );
@@ -113,7 +113,7 @@ test("embedPending is incremental (second pass embeds nothing new)", async () =>
 
 test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no extra model call", async () => {
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-dedup-")), "d.db");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run("s1", "codex", "C:\\demo", 3);
   const ins = db.prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
   const REPEATED = "the quarterly report must be filed before the deadline on friday";
@@ -146,7 +146,7 @@ test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no
   }
 
   // A LATER pass re-seeing the same content (new message) copies without the model.
-  const db2 = openBrain(dbPath);
+  const db2 = openMemory(dbPath);
   db2.prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)")
     .run("s1", "u4", "user", REPEATED, "2026-07-02T00:00:00Z");
   db2.close();
@@ -171,7 +171,7 @@ const SYNTH_BASE = 2 ** 40; // chunk rowids for long messages live above this
 
 test("long messages are chunked: the tail (beyond 6000 chars) is visible to semantic search", async () => {
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-chunk-")), "c.db");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run("s1", "claude-code", "C:\\demo", 2);
   const ins = db.prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
   // ~13k chars of cooking filler, then a distinctive fact ONLY in the tail —

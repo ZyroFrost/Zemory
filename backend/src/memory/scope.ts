@@ -1,11 +1,11 @@
-// Scoped sync/recall — a provenance TREE over the brain plus an EXCLUDE list so
+// Scoped sync/recall — a provenance TREE over the memory plus an EXCLUDE list so
 // the user can leave "shared" lanes out of sync and recall WITHOUT deleting them
 // (spec: docs/plan/08_scoped_sync.md). Built on the columns already stamped on
 // every session (origin / host / source) — no new store, no migration. The same
 // exclude list drives three surfaces: recall (search.ts), and both directions of
 // sync (share.ts export + merge). Data stays in the local DB either way.
 
-import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
+import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { getScopeExclude, type ScopeLane } from "../settings.js";
 
 export type { ScopeLane };
@@ -22,7 +22,7 @@ export function laneKey(l: ScopeLane): string {
 }
 
 /** Does one exclude lane match a given session? An empty lane matches nothing
- *  (guard against an all-wildcard selector silently hiding the whole brain). */
+ *  (guard against an all-wildcard selector silently hiding the whole memory). */
 export function laneMatches(lane: ScopeLane, s: ScopeSession): boolean {
   let any = false;
   if (lane.origin !== undefined) {
@@ -106,8 +106,8 @@ interface LaneRow {
  * node carrying session/message counts and its current exclude state. Purely
  * derived — GROUP BY over `sessions`, then assembled in JS.
  */
-export function scopeTree(dbPath: string = currentBrainDb(), lanes: ScopeLane[] = getScopeExclude()): ScopeNode[] {
-  const db: BrainDB = openBrain(dbPath);
+export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[] = getScopeExclude()): ScopeNode[] {
+  const db: MemoryDB = openMemory(dbPath);
   let rows: LaneRow[];
   try {
     rows = db

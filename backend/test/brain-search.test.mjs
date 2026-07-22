@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { openBrain } from "../../dist/brain/db.js";
-import { search } from "../../dist/brain/search.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { search } from "../../dist/memory/search.js";
 import { tempDir } from "./helpers.mjs";
 
 test("project search applies scope before the global candidate limit", (t) => {
   const root = tempDir(t, "zemory-search-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   try {
     const addSession = db.prepare(
       "INSERT INTO sessions (id, source, project_root, message_count) VALUES (?, 'test', ?, 1)",

@@ -3,9 +3,9 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../../dist/brain/db.js";
-import { rerank, rerankConfig, resetRerank } from "../../dist/brain/rerank.js";
-import { rerankEnabled, searchHybrid } from "../../dist/brain/search.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { rerank, rerankConfig, resetRerank } from "../../dist/memory/rerank.js";
+import { rerankEnabled, searchHybrid } from "../../dist/memory/search.js";
 
 test("rerankConfig defaults to a cross-encoder · q8 · ~/.zemory/models", () => {
   const c = rerankConfig();
@@ -58,7 +58,7 @@ test("rerank returns finite scores aligned to docs when model available, else nu
 
 function seedDb() {
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-rerank-")), "test.db");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run(
     "s1", "claude-code", "C:\\demo", 3,
   );

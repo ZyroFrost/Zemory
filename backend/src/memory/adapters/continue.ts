@@ -1,4 +1,4 @@
-// Continue (VSCode/JetBrains extension) adapter. Transcripts:
+// Continue (VSCode/JetMemorys extension) adapter. Transcripts:
 // ~/.continue/sessions/<id>.json — ONE JSON object per session (whole-mode):
 // { sessionId, title, workspaceDirectory (file://), history: [{ message }] }.
 // Continue rewrites the file as the chat grows, so we re-parse on change;

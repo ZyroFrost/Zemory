@@ -1,12 +1,12 @@
 // Idle background scheduler (plan 14 §6.B) — runs INSIDE the `zemory ui` daemon
-// so the brain keeps itself current without the user asking:
+// so the memory keeps itself current without the user asking:
 //   • embed loop  — clear the vector backlog (opt-OUT: `scheduler`, default ON)
 //   • auto-sync   — when data drifts, push/pull the encrypted Drive bundle (opt-in: autosync)
 //
 // CRITICAL (bug 2026-07-21): the heavy work — ONNX embedding, Drive sync — must
 // NOT run on the daemon's event loop. A synchronous embed pass froze /ping for
 // ~28s (Node is single-threaded; native ONNX inference cannot yield). So each
-// heavy pass runs in a SEPARATE PROCESS: embed via `zemory brain embed --all`,
+// heavy pass runs in a SEPARATE PROCESS: embed via `zemory memory embed --all`,
 // sync via the shared sync job (jobs/syncjob.ts — same child the UI button uses).
 // The daemon only COUNTS the backlog (cheap-ish SQLite) and spawns. Exclusive
 // access is coordinated through the write-gate's daemon-job token, so the
@@ -16,14 +16,14 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../settings.js";
-import { vectorRemaining } from "../brain/vectors.js";
+import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
 
 const EMBED_EVERY_MS = 5 * 60_000; // check the vector backlog every 5 min
 const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // The backlog count is a full anti-join (messages NOT IN vec_chunks) run
-// synchronously on the event loop — hundreds of ms on a 595MB brain. When the
+// synchronously on the event loop — hundreds of ms on a 595MB memory. When the
 // backlog was last seen EMPTY, back off to the sync cadence instead of paying
 // that scan every 5 minutes (audit 2026-07-21).
 const IDLE_BACKOFF_MS = 30 * 60_000;
@@ -68,7 +68,7 @@ function embedTick(): void {
   try {
     // ZEMORY_DAEMON_CHILD: the child skips the CLI write-gate — THIS daemon
     // already holds the job token for it (gating made it wait on itself).
-    c = spawn(process.execPath, [cliEntry(), "brain", "embed", "--all"], {
+    c = spawn(process.execPath, [cliEntry(), "memory", "embed", "--all"], {
       stdio: "ignore",
       windowsHide: true,
       env: { ...process.env, ZEMORY_DAEMON_CHILD: "1" },

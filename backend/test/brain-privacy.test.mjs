@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../../dist/brain/db.js";
-import { digestBackfill, searchDigests } from "../../dist/brain/digest.js";
-import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrain } from "../../dist/brain/privacy.js";
-import { search } from "../../dist/brain/search.js";
-import { embedPending, vectorRanks } from "../../dist/brain/vectors.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { digestBackfill, searchDigests } from "../../dist/memory/digest.js";
+import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../../dist/memory/privacy.js";
+import { search } from "../../dist/memory/search.js";
+import { embedPending, vectorRanks } from "../../dist/memory/vectors.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, { id, project, source = "codex", messages }) {
@@ -27,12 +27,12 @@ function seedSession(db, { id, project, source = "codex", messages }) {
   messages.forEach((m, i) => ins.run(id, `${id}-${i}`, m.role ?? "user", m.content, m.timestamp ?? null));
 }
 
-test("brain backup and restore round-trip a raw local DB", async (t) => {
-  const root = tempDir(t, "zemory-brain-backup-");
-  const dbPath = join(root, "brain.db");
+test("memory backup and restore round-trip a raw local DB", async (t) => {
+  const root = tempDir(t, "zemory-memory-backup-");
+  const dbPath = join(root, "memory.db");
   const backupPath = join(root, "backup.db");
 
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   seedSession(db, {
     id: "s1",
     project: root,
@@ -40,17 +40,17 @@ test("brain backup and restore round-trip a raw local DB", async (t) => {
   });
   db.close();
 
-  const backup = await backupBrain({ dbPath, outPath: backupPath });
+  const backup = await backupMemory({ dbPath, outPath: backupPath });
   assert.equal(backup.outPath, backupPath);
   assert.equal(existsSync(backupPath), true);
 
-  const edited = openBrain(dbPath);
+  const edited = openMemory(dbPath);
   edited.prepare("DELETE FROM messages").run();
   edited.close();
 
-  const restored = await restoreBrainBackup({ backupPath, dbPath, force: true });
+  const restored = await restoreMemoryBackup({ backupPath, dbPath, force: true });
   assert.equal(existsSync(restored.previousBackupPath), true);
-  const check = openBrain(dbPath);
+  const check = openMemory(dbPath);
   try {
     assert.deepEqual(check.prepare("SELECT content FROM messages").get(), { content: "keep this memory" });
   } finally {
@@ -58,12 +58,12 @@ test("brain backup and restore round-trip a raw local DB", async (t) => {
   }
 });
 
-test("brain forget previews first, then deletes selected project rows", async (t) => {
-  const root = tempDir(t, "zemory-brain-forget-");
-  const dbPath = join(root, "brain.db");
+test("memory forget previews first, then deletes selected project rows", async (t) => {
+  const root = tempDir(t, "zemory-memory-forget-");
+  const dbPath = join(root, "memory.db");
   const projectA = join(root, "project-a");
   const projectB = join(root, "project-b");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   seedSession(db, {
     id: "a",
     project: projectA,
@@ -79,13 +79,13 @@ test("brain forget previews first, then deletes selected project rows", async (t
   });
   db.close();
 
-  const preview = await forgetBrain({ dbPath, project: projectA });
+  const preview = await forgetMemory({ dbPath, project: projectA });
   assert.equal(preview.dryRun, true);
   assert.equal(preview.messages, 2);
   assert.equal(preview.sessions, 1);
   assert.equal(search("alpha", { dbPath, project: projectA }).length, 2);
 
-  const deleted = await forgetBrain({ dbPath, project: projectA, force: true });
+  const deleted = await forgetMemory({ dbPath, project: projectA, force: true });
   assert.equal(deleted.dryRun, false);
   assert.equal(deleted.messages, 2);
   assert.equal(deleted.sessions, 1);
@@ -93,7 +93,7 @@ test("brain forget previews first, then deletes selected project rows", async (t
   assert.equal(search("alpha", { dbPath, project: projectA }).length, 0);
   assert.equal(search("beta", { dbPath, project: projectB }).length, 1);
 
-  const check = openBrain(dbPath);
+  const check = openMemory(dbPath);
   try {
     assert.deepEqual(check.prepare("SELECT id FROM sessions ORDER BY id").all(), [{ id: "b" }]);
   } finally {
@@ -101,11 +101,11 @@ test("brain forget previews first, then deletes selected project rows", async (t
   }
 });
 
-test("brain redact re-applies secret scrubbing to existing messages and FTS", async (t) => {
-  const root = tempDir(t, "zemory-brain-redact-");
-  const dbPath = join(root, "brain.db");
+test("memory redact re-applies secret scrubbing to existing messages and FTS", async (t) => {
+  const root = tempDir(t, "zemory-memory-redact-");
+  const dbPath = join(root, "memory.db");
   const token = `sk-ant-${"a".repeat(24)}`;
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   seedSession(db, {
     id: "s1",
     project: root,
@@ -113,16 +113,16 @@ test("brain redact re-applies secret scrubbing to existing messages and FTS", as
   });
   db.close();
 
-  const preview = await reRedactBrain({ dbPath });
+  const preview = await reRedactMemory({ dbPath });
   assert.equal(preview.dryRun, true);
   assert.equal(preview.changed.messages, 1);
   assert.equal(search(token, { dbPath, all: true }).length, 1);
 
-  const applied = await reRedactBrain({ dbPath, force: true, skipBackup: true });
+  const applied = await reRedactMemory({ dbPath, force: true, skipBackup: true });
   assert.equal(applied.dryRun, false);
   assert.equal(applied.changed.messages, 1);
 
-  const check = openBrain(dbPath);
+  const check = openMemory(dbPath);
   try {
     const row = check.prepare("SELECT content FROM messages").get();
     assert.equal(row.content.includes(token), false);
@@ -133,10 +133,10 @@ test("brain redact re-applies secret scrubbing to existing messages and FTS", as
   assert.equal(search(token, { dbPath, all: true }).length, 0);
 });
 
-test("brain forget also drops the session digest (forgotten text must leave the digest lane)", async (t) => {
+test("memory forget also drops the session digest (forgotten text must leave the digest lane)", async (t) => {
   const root = tempDir(t, "zemory-forget-digest-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   seedSession(db, {
     id: "d1",
     project: root,
@@ -146,10 +146,10 @@ test("brain forget also drops the session digest (forgotten text must leave the 
   digestBackfill(dbPath);
   assert.equal(searchDigests("quarklet", { dbPath }).length, 1);
 
-  const r = await forgetBrain({ dbPath, session: "d1", force: true, skipBackup: true });
+  const r = await forgetMemory({ dbPath, session: "d1", force: true, skipBackup: true });
   assert.equal(r.digests, 1);
   assert.equal(searchDigests("quarklet", { dbPath }).length, 0);
-  const check = openBrain(dbPath);
+  const check = openMemory(dbPath);
   try {
     assert.equal(check.prepare("SELECT COUNT(*) c FROM session_digest").get().c, 0);
     assert.equal(check.prepare("SELECT COUNT(*) c FROM session_digest_fts").get().c, 0);
@@ -158,10 +158,10 @@ test("brain forget also drops the session digest (forgotten text must leave the 
   }
 });
 
-test("vacuumBrain shrinks the file after a bulk delete and preserves a vec0 index (plan 12 buoc 5)", async (t) => {
+test("vacuumMemory shrinks the file after a bulk delete and preserves a vec0 index (plan 12 buoc 5)", async (t) => {
   const root = tempDir(t, "zemory-vacuum-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   // s0 is the SHORTEST content so embedPending's shortest-first ordering picks
   // it within a tiny limit — that keeps this test from running the real model
   // over hundreds of long messages (each real embed call is seconds; that
@@ -183,12 +183,12 @@ test("vacuumBrain shrinks the file after a bulk delete and preserves a vec0 inde
   }
 
   // Delete most rows so VACUUM has real freed space to reclaim.
-  const wipe = openBrain(dbPath);
+  const wipe = openMemory(dbPath);
   wipe.prepare("DELETE FROM messages WHERE session_id != 's0'").run();
   wipe.prepare("DELETE FROM sessions WHERE id != 's0'").run();
   wipe.close();
 
-  const r = vacuumBrain(dbPath);
+  const r = vacuumMemory(dbPath);
   assert.ok(r.bytesBefore > 0);
   assert.ok(r.bytesAfter < r.bytesBefore, `expected shrink, got ${r.bytesBefore} -> ${r.bytesAfter}`);
 
@@ -203,11 +203,11 @@ test("vacuumBrain shrinks the file after a bulk delete and preserves a vec0 inde
   }
 });
 
-test("brain redact scrubs secrets quoted inside session digests too", async (t) => {
+test("memory redact scrubs secrets quoted inside session digests too", async (t) => {
   const root = tempDir(t, "zemory-redact-digest-");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   const token = `ghp_${"b".repeat(24)}`;
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   seedSession(db, {
     id: "d1",
     project: root,
@@ -218,10 +218,10 @@ test("brain redact scrubs secrets quoted inside session digests too", async (t) 
   // The digest quotes the message, so the secret is now in the digest lane.
   assert.equal(searchDigests(token, { dbPath }).length, 1);
 
-  const r = await reRedactBrain({ dbPath, force: true, skipBackup: true });
+  const r = await reRedactMemory({ dbPath, force: true, skipBackup: true });
   assert.equal(r.changed.sessionDigests, 1);
   assert.equal(searchDigests(token, { dbPath }).length, 0);
-  const check = openBrain(dbPath);
+  const check = openMemory(dbPath);
   try {
     const row = check.prepare("SELECT tasks, digest_text FROM session_digest").get();
     assert.equal(row.digest_text.includes(token), false);

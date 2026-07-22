@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../../dist/brain/db.js";
+import { openMemory } from "../../dist/memory/db.js";
 import { tempDir } from "./helpers.mjs";
 
 // Minimal v11-shaped DB: sessions/messages + the OLD standalone FTS tables and
@@ -56,9 +56,9 @@ test("v11→v12 migrates messages_fts/_tri to EXTERNAL CONTENT tables, preservin
   const dbPath = join(tempDir(t, "zemory-fts-migrate-"), "old.db");
   buildPreV12Db(dbPath);
 
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
-  const fresh = openBrain(join(tempDir(t, "zemory-fts-fresh-"), "fresh.db"));
+  const fresh = openMemory(join(tempDir(t, "zemory-fts-fresh-"), "fresh.db"));
   assert.equal(ver.version, fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version, "migrates to latest schema version");
   fresh.close();
 
@@ -81,7 +81,7 @@ test("v11→v12 migrates messages_fts/_tri to EXTERNAL CONTENT tables, preservin
 test("post-migration triggers keep external-content FTS in sync on insert/update/delete", (t) => {
   const dbPath = join(tempDir(t, "zemory-fts-sync-"), "old.db");
   buildPreV12Db(dbPath);
-  const db = openBrain(dbPath); // migrates to v12 on open
+  const db = openMemory(dbPath); // migrates to v12 on open
 
   // INSERT
   db.prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)").run(

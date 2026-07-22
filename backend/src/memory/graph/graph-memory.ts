@@ -1,14 +1,14 @@
-// Graph ↔ BRAIN edges (plan 13 §4 "touches") — the layer a code-only tool can
+// Graph ↔ MEMORY edges (plan 13 §4 "touches") — the layer a code-only tool can
 // never build: which past SESSIONS touched a given file.
 //
 // Source: `session_digest.paths` (derived, 0 LLM) — the extractive digest already
 // records the paths each session worked on. We normalize those to repo-relative
 // ids so they line up with code-graph node ids, then invert into file → sessions.
 //
-// Deterministic + fail-open (HP điều 9): no brain / no digests → empty map, the
+// Deterministic + fail-open (HP điều 9): no memory / no digests → empty map, the
 // code graph still stands on its own.
 
-import { currentBrainDb, openBrain } from "../db.js";
+import { currentMemoryDb, openMemory } from "../db.js";
 
 /** Windows/JSON-escaped paths arrive in many shapes — flatten to one form. */
 const norm = (p: string): string =>
@@ -24,7 +24,7 @@ export interface FileTouch {
 export interface TouchIndex {
   /** repo-relative file id (lowercase) → sessions that touched it */
   byFile: Map<string, FileTouch>;
-  /** digests scanned for this project (0 = brain empty or project never seen) */
+  /** digests scanned for this project (0 = memory empty or project never seen) */
   digests: number;
 }
 
@@ -39,7 +39,7 @@ export function buildTouchIndex(root: string, dbPath?: string): TouchIndex {
   const wantRoot = norm(root);
   let rows: { session_id: string; paths: string | null; meta: string | null }[];
   try {
-    const db = openBrain(dbPath ?? currentBrainDb());
+    const db = openMemory(dbPath ?? currentMemoryDb());
     try {
       rows = db
         .prepare("SELECT session_id, paths, meta FROM session_digest WHERE paths IS NOT NULL AND paths != '[]'")
@@ -48,7 +48,7 @@ export function buildTouchIndex(root: string, dbPath?: string): TouchIndex {
       db.close();
     }
   } catch {
-    return empty; // brain optional — fail open
+    return empty; // memory optional — fail open
   }
 
   const byFile = new Map<string, FileTouch>();

@@ -4,16 +4,16 @@ import { hostname } from "node:os";
 import test from "node:test";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { claudeAdapter } from "../../dist/brain/adapters/claude.js";
-import { brainHostTree, brainSummary, scan } from "../../dist/brain/ingest.js";
-import { openBrain } from "../../dist/brain/db.js";
+import { claudeAdapter } from "../../dist/memory/adapters/claude.js";
+import { memoryHostTree, memorySummary, scan } from "../../dist/memory/ingest.js";
+import { openMemory } from "../../dist/memory/db.js";
 import { tempDir } from "./helpers.mjs";
 
 test("append scans ingest the first line written after a trailing newline", (t) => {
   const root = tempDir(t, "zemory-ingest-");
   const store = join(root, ".claude", "projects", "demo");
   const transcript = join(store, "session.jsonl");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   mkdirSync(store, { recursive: true });
 
   writeFileSync(
@@ -49,7 +49,7 @@ test("ingest stamps the ingesting machine onto each session (host provenance)", 
   const root = tempDir(t, "zemory-host-");
   const store = join(root, ".claude", "projects", "demo");
   const transcript = join(store, "session.jsonl");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   mkdirSync(store, { recursive: true });
 
   writeFileSync(
@@ -64,21 +64,21 @@ test("ingest stamps the ingesting machine onto each session (host provenance)", 
   scan({ dbPath, home: root, adapters: [claudeAdapter] });
 
   const here = hostname() || "unknown";
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   const row = db.prepare("SELECT host FROM sessions LIMIT 1").get();
   db.close();
   assert.equal(row.host, here);
 
-  // brainSummary rolls sessions up per host…
-  const summary = brainSummary(dbPath);
+  // memorySummary rolls sessions up per host…
+  const summary = memorySummary(dbPath);
   assert.equal(summary.totals.hosts, 1);
   const h = summary.hosts.find((x) => x.host === here);
   assert.ok(h, "host present in summary");
   assert.equal(h.sessions, 1);
   assert.equal(h.messages, 1);
 
-  // …and brainHostTree nests PC → source → project.
-  const tree = brainHostTree(dbPath);
+  // …and memoryHostTree nests PC → source → project.
+  const tree = memoryHostTree(dbPath);
   const node = tree.find((x) => x.host === here);
   assert.ok(node, "host present in tree");
   assert.equal(node.sources[0].source, "claude-code");
@@ -102,7 +102,7 @@ test("opening a pre-v4 DB migrates: adds host column and backfills 'unknown'", (
   `);
   raw.close();
 
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   const cols = db.prepare("PRAGMA table_info(sessions)").all().map((c) => c.name);
   const row = db.prepare("SELECT host, origin FROM sessions WHERE id='legacy'").get();
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
@@ -114,7 +114,7 @@ test("opening a pre-v4 DB migrates: adds host column and backfills 'unknown'", (
   assert.equal(row.origin, "local", "legacy rows backfilled to origin 'local'");
   // migrates through to the LATEST schema version — compare against a fresh DB
   // (not a hardcoded number) so this survives future schema bumps.
-  const fresh = openBrain(join(root, "fresh.db"));
+  const fresh = openMemory(join(root, "fresh.db"));
   const latest = fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version;
   fresh.close();
   assert.equal(ver.version, latest, "migrates to latest schema version");

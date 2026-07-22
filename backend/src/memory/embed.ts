@@ -8,11 +8,11 @@
 // Config-driven so swapping the model is config, not a rewrite:
 //   ZEMORY_EMBED_MODEL  (default EmbeddingGemma-300M, multilingual incl Vietnamese)
 //   ZEMORY_EMBED_DTYPE  (default q8 — quantized, ~light)
-//   ZEMORY_MODEL_DIR    (weight cache; default <brain-dir>/models — never committed)
+//   ZEMORY_MODEL_DIR    (weight cache; default <memory-dir>/models — never committed)
 
 import { join } from "node:path";
 import type { FeatureExtractionPipeline } from "@huggingface/transformers";
-import { currentBrainDir } from "./db.js";
+import { currentMemoryDir } from "./db.js";
 
 const DTYPES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"] as const;
 type Dtype = (typeof DTYPES)[number];
@@ -36,7 +36,7 @@ const DEFAULT_MODEL = "onnx-community/embeddinggemma-300m-ONNX";
 // leaves accuracy on the table. Prefixed and bare vectors live in DIFFERENT
 // spaces, so the profile an index was BUILT with is recorded in vec_config and
 // is authoritative for both sides (vectors.ts passes it in); switching profiles
-// requires `zemory brain embed --rebuild`. New indexes use currentEmbedProfile().
+// requires `zemory memory embed --rebuild`. New indexes use currentEmbedProfile().
 // ZEMORY_EMBED_PROMPTS=0 forces raw; =1 forces prompts for a non-Gemma model.
 // ---------------------------------------------------------------------------
 export type EmbedProfile = "raw" | "gemma-prompt-v1";
@@ -88,7 +88,7 @@ export function embedConfig(): EmbedConfig {
   return {
     model: process.env.ZEMORY_EMBED_MODEL?.trim() || DEFAULT_MODEL,
     dtype: d && DTYPES.includes(d) ? d : "q8",
-    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentBrainDir(), "models"),
+    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentMemoryDir(), "models"),
   };
 }
 

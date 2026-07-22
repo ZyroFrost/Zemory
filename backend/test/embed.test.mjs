@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentEmbedProfile, embed, embedConfig, resetEmbed, sliceNormalize, targetEmbedDims } from "../../dist/brain/embed.js";
+import { currentEmbedProfile, embed, embedConfig, resetEmbed, sliceNormalize, targetEmbedDims } from "../../dist/memory/embed.js";
 
 test("targetEmbedDims: default 768; ZEMORY_EMBED_DIMS picks a valid Matryoshka size; junk ignored", () => {
   delete process.env.ZEMORY_EMBED_DIMS;
@@ -37,11 +37,11 @@ test("embed profile: Gemma model → asymmetric prompts; ZEMORY_EMBED_PROMPTS ov
   delete process.env.ZEMORY_EMBED_MODEL;
 });
 
-test("embedConfig defaults to EmbeddingGemma · q8 · <brain-dir>/models", () => {
+test("embedConfig defaults to EmbeddingGemma · q8 · <memory-dir>/models", () => {
   const c = embedConfig();
   assert.match(c.model, /embeddinggemma/i);
   assert.equal(c.dtype, "q8");
-  // cacheDir follows the brain data dir (so it relocates off C:\ with the DB),
+  // cacheDir follows the memory data dir (so it relocates off C:\ with the DB),
   // not a fixed home path — just assert it lives in a `models` folder.
   assert.match(c.cacheDir, /[\\/]models$/);
 });

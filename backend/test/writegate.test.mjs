@@ -1,5 +1,5 @@
 // Write gate (plan 14 §C) — the daemon-side advisory hold that makes the idle
-// scheduler yield while a CLI writes the brain, so they don't collide on SQLite.
+// scheduler yield while a CLI writes the memory, so they don't collide on SQLite.
 
 import assert from "node:assert/strict";
 import test from "node:test";

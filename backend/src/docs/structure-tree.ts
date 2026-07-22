@@ -65,7 +65,7 @@ export const SLOT_ROLES: Record<string, string> = {
   agent: "harness docs: 01_CONSTITUTION → 06_CHANGES",
   plan: "numbered specs (NN_name.md; 00 = overview)",
   // ── domain folders (domain-first, §2) — zemory's own ──
-  brain: "domain: global memory (store/ingest/search/digest/ai)",
+  memory: "domain: global memory (store/ingest/search/digest/ai)",
   docs: "harness docs (agent/ + plan/) OR domain — by context",
   adapters: "per-host ingest adapters (Claude/Codex/…)",
   packaging: "packaging resources: exe/tray icons (.spec reads)",

@@ -61,10 +61,10 @@ const REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "
 function listFeatures(): FeatureStatus[] {
   // state "idle" = not yet tested; the real state comes from running checks.
   // ONE row per real capability — 'search' and 'memory' used to run the identical
-  // code path and rendered as two rows; merged into one honest brain check.
+  // code path and rendered as two rows; merged into one honest memory check.
   return [
-    { key: "memory", group: "token", label: tr("Tìm & nhớ trong brain (FTS5)", "Search & recall in brain (FTS5)"), state: "idle", detail: "—",
-      help: tr("Brain toàn cục: full-text (word + trigram tiếng Việt) trên mọi phiên đã lưu — agent tìm đúng đoạn và nhớ quyết định/gotcha phiên trước thay vì giải thích lại. `zemory brain search`.", "Global brain: full-text (word + Vietnamese trigram) over every stored session — the agent finds the exact bit and recalls past decisions/gotchas instead of re-explaining. `zemory brain search`.") },
+    { key: "memory", group: "token", label: tr("Tìm & nhớ trong memory (FTS5)", "Search & recall in memory (FTS5)"), state: "idle", detail: "—",
+      help: tr("Memory toàn cục: full-text (word + trigram tiếng Việt) trên mọi phiên đã lưu — agent tìm đúng đoạn và nhớ quyết định/gotcha phiên trước thay vì giải thích lại. `zemory memory search`.", "Global memory: full-text (word + Vietnamese trigram) over every stored session — the agent finds the exact bit and recalls past decisions/gotchas instead of re-explaining. `zemory memory search`.") },
     { key: "validate", group: "workflow", label: tr("Kiểm tra docs harness", "Validate docs harness"), state: "idle", detail: "—",
       help: tr("Kiểm link nội bộ trong docs/, độ dài changelog vs ngưỡng, sổ supersede, và cấu trúc repo theo 03_STRUCTURE. `zemory validate`.", "Check internal links across docs/, changelog length vs threshold, supersede bookkeeping, and repo structure against 03_STRUCTURE. `zemory validate`.") },
     { key: "grill", group: "workflow", label: tr("Grill trước khi build", "Grill before build"), state: "idle", detail: "—",

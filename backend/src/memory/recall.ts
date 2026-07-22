@@ -1,15 +1,15 @@
 // A compact "continuity card" for a project — injected at SessionStart so a new
 // session starts knowing what prior work exists, without re-explaining. Kept
 // small (a few lines) to stay within a tight token budget. Returns "" when the
-// project has no prior brain history (nothing to inject).
+// project has no prior memory history (nothing to inject).
 
-import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
+import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 
 const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
-export function recallCard(project: string, dbPath: string = currentBrainDb()): string {
-  const db: BrainDB = openBrain(dbPath);
+export function recallCard(project: string, dbPath: string = currentMemoryDb()): string {
+  const db: MemoryDB = openMemory(dbPath);
   try {
     const want = norm(project);
     const rows = db
@@ -38,9 +38,9 @@ export function recallCard(project: string, dbPath: string = currentBrainDb()): 
     });
 
     return [
-      `[zemory brain] Prior context exists for this project: ${mine.length} session(s), ${totalMsgs} messages across agents. Recent:`,
+      `[zemory memory] Prior context exists for this project: ${mine.length} session(s), ${totalMsgs} messages across agents. Recent:`,
       ...lines,
-      `Use \`zemory brain search "<query>"\` to recall specifics (cross-project: add --all).`,
+      `Use \`zemory memory search "<query>"\` to recall specifics (cross-project: add --all).`,
     ].join("\n");
   } finally {
     db.close();

@@ -1,11 +1,11 @@
-// Privacy and retention operations for the local brain DB.
+// Privacy and retention operations for the local memory DB.
 // Destructive actions default to dry-run at the CLI layer and create a backup
 // unless explicitly skipped by internal/test callers.
 
 import Database from "better-sqlite3";
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { currentBrainDb, openBrain, type BrainDB } from "./db.js";
+import { currentMemoryDb, openMemory, type MemoryDB } from "./db.js";
 import { redact } from "./redact.js";
 import { forgetVectors, vecConnect } from "./vectors.js";
 
@@ -24,7 +24,7 @@ function ensureMissingOrForced(path: string, force?: boolean): void {
 }
 
 async function sqliteBackup(sourcePath: string, outPath: string, force?: boolean): Promise<number> {
-  if (!existsSync(sourcePath)) throw new Error(`Brain DB not found: ${sourcePath}`);
+  if (!existsSync(sourcePath)) throw new Error(`Memory DB not found: ${sourcePath}`);
   ensureMissingOrForced(outPath, force);
   mkdirSync(dirname(resolve(outPath)), { recursive: true });
   const db = new Database(sourcePath, { readonly: true, fileMustExist: true });
@@ -39,26 +39,26 @@ async function sqliteBackup(sourcePath: string, outPath: string, force?: boolean
   return statSync(outPath).size;
 }
 
-export interface BackupBrainOptions {
+export interface BackupMemoryOptions {
   dbPath?: string;
   outPath?: string;
   force?: boolean;
 }
 
-export interface BackupBrainResult {
+export interface BackupMemoryResult {
   dbPath: string;
   outPath: string;
   bytes: number;
 }
 
-export async function backupBrain(opts: BackupBrainOptions = {}): Promise<BackupBrainResult> {
-  const dbPath = opts.dbPath ?? currentBrainDb();
+export async function backupMemory(opts: BackupMemoryOptions = {}): Promise<BackupMemoryResult> {
+  const dbPath = opts.dbPath ?? currentMemoryDb();
   const outPath = opts.outPath ?? defaultBackupPath(dbPath);
   const bytes = await sqliteBackup(dbPath, outPath, opts.force);
   return { dbPath, outPath, bytes };
 }
 
-export interface VacuumBrainResult {
+export interface VacuumMemoryResult {
   dbPath: string;
   bytesBefore: number;
   bytesAfter: number;
@@ -72,7 +72,7 @@ export interface VacuumBrainResult {
  * tables — the vec0 module has to be loaded first, same as vecConnect()
  * elsewhere, or VACUUM fails with "no such module: vec0".
  */
-export function vacuumBrain(dbPath: string = currentBrainDb()): VacuumBrainResult {
+export function vacuumMemory(dbPath: string = currentMemoryDb()): VacuumMemoryResult {
   const bytesBefore = existsSync(dbPath) ? statSync(dbPath).size : 0;
   const db = vecConnect(dbPath);
   try {
@@ -84,24 +84,24 @@ export function vacuumBrain(dbPath: string = currentBrainDb()): VacuumBrainResul
   return { dbPath, bytesBefore, bytesAfter };
 }
 
-export interface RestoreBrainBackupOptions {
+export interface RestoreMemoryBackupOptions {
   backupPath: string;
   dbPath?: string;
   force?: boolean;
 }
 
-export interface RestoreBrainBackupResult {
+export interface RestoreMemoryBackupResult {
   dbPath: string;
   backupPath: string;
   bytes: number;
   previousBackupPath: string | null;
 }
 
-export async function restoreBrainBackup(opts: RestoreBrainBackupOptions): Promise<RestoreBrainBackupResult> {
-  const targetPath = opts.dbPath ?? currentBrainDb();
+export async function restoreMemoryBackup(opts: RestoreMemoryBackupOptions): Promise<RestoreMemoryBackupResult> {
+  const targetPath = opts.dbPath ?? currentMemoryDb();
   if (!existsSync(opts.backupPath)) throw new Error(`Backup DB not found: ${opts.backupPath}`);
   if (existsSync(targetPath) && !opts.force) {
-    throw new Error(`Refusing to overwrite existing brain DB: ${targetPath}. Re-run with --force to replace it.`);
+    throw new Error(`Refusing to overwrite existing memory DB: ${targetPath}. Re-run with --force to replace it.`);
   }
   mkdirSync(dirname(resolve(targetPath)), { recursive: true });
   const tmpPath = join(dirname(resolve(targetPath)), `.zemory-restore-${process.pid}-${Date.now()}.tmp`);
@@ -123,7 +123,7 @@ export async function restoreBrainBackup(opts: RestoreBrainBackupOptions): Promi
   return { dbPath: targetPath, backupPath: opts.backupPath, bytes: statSync(targetPath).size, previousBackupPath };
 }
 
-export interface ForgetBrainOptions {
+export interface ForgetMemoryOptions {
   dbPath?: string;
   session?: string;
   project?: string;
@@ -135,7 +135,7 @@ export interface ForgetBrainOptions {
   backupPath?: string;
 }
 
-export interface ForgetBrainResult {
+export interface ForgetMemoryResult {
   dbPath: string;
   dryRun: boolean;
   backupPath: string | null;
@@ -148,7 +148,7 @@ export interface ForgetBrainResult {
   sampleSessions: string[];
 }
 
-function hasTable(db: BrainDB, table: string): boolean {
+function hasTable(db: MemoryDB, table: string): boolean {
   return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
 }
 
@@ -159,7 +159,7 @@ function normalizeBefore(before?: string): string | undefined {
   return new Date(ms).toISOString();
 }
 
-function buildForgetWhere(opts: ForgetBrainOptions): { where: string; params: Record<string, string | number>; selectors: string[] } {
+function buildForgetWhere(opts: ForgetMemoryOptions): { where: string; params: Record<string, string | number>; selectors: string[] } {
   const clauses: string[] = [];
   const selectors: string[] = [];
   const params: Record<string, string | number> = {};
@@ -194,10 +194,10 @@ function buildForgetWhere(opts: ForgetBrainOptions): { where: string; params: Re
   return { where: clauses.join(" AND "), params, selectors };
 }
 
-export async function forgetBrain(opts: ForgetBrainOptions = {}): Promise<ForgetBrainResult> {
-  const dbPath = opts.dbPath ?? currentBrainDb();
+export async function forgetMemory(opts: ForgetMemoryOptions = {}): Promise<ForgetMemoryResult> {
+  const dbPath = opts.dbPath ?? currentMemoryDb();
   const { where, params, selectors } = buildForgetWhere(opts);
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const rows = db
       .prepare(
@@ -231,7 +231,7 @@ export async function forgetBrain(opts: ForgetBrainOptions = {}): Promise<Forget
       };
     }
 
-    const backup = opts.skipBackup ? null : await backupBrain({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
+    const backup = opts.skipBackup ? null : await backupMemory({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
     let vectors = 0;
     let digests = 0;
     const tx = db.transaction(() => {
@@ -278,14 +278,14 @@ export async function forgetBrain(opts: ForgetBrainOptions = {}): Promise<Forget
   }
 }
 
-export interface ReRedactBrainOptions {
+export interface ReRedactMemoryOptions {
   dbPath?: string;
   force?: boolean;
   skipBackup?: boolean;
   backupPath?: string;
 }
 
-export interface ReRedactBrainResult {
+export interface ReRedactMemoryResult {
   dbPath: string;
   dryRun: boolean;
   backupPath: string | null;
@@ -299,9 +299,9 @@ function diffRedactions<T extends { id: string | number; value: string | null }>
     .filter((row) => row.redacted !== (row.value ?? ""));
 }
 
-export async function reRedactBrain(opts: ReRedactBrainOptions = {}): Promise<ReRedactBrainResult> {
-  const dbPath = opts.dbPath ?? currentBrainDb();
-  const db = openBrain(dbPath);
+export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<ReRedactMemoryResult> {
+  const dbPath = opts.dbPath ?? currentMemoryDb();
+  const db = openMemory(dbPath);
   try {
     const messages = db.prepare("SELECT id, content AS value FROM messages WHERE content IS NOT NULL AND content != ''").all() as {
       id: number;
@@ -354,7 +354,7 @@ export async function reRedactBrain(opts: ReRedactBrainOptions = {}): Promise<Re
         changed: { messages: changedMessages.length, artifactCommands: changedCommands.length, artifactIndex: changedIndex.length, sessionDigests: changedDigests.length },
       };
     }
-    const backup = opts.skipBackup ? null : await backupBrain({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
+    const backup = opts.skipBackup ? null : await backupMemory({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
     const tx = db.transaction(() => {
       const msgUpdate = db.prepare("UPDATE messages SET content = ? WHERE id = ?");
       for (const row of changedMessages) msgUpdate.run(row.redacted, row.id);

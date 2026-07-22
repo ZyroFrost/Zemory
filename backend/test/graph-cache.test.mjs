@@ -6,8 +6,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { clearCodeGraphCache, getCodeGraph } from "../../dist/brain/graph/graph-cache.js";
-import { sourceSignature } from "../../dist/brain/graph/graph.js";
+import { clearCodeGraphCache, getCodeGraph } from "../../dist/memory/graph/graph-cache.js";
+import { sourceSignature } from "../../dist/memory/graph/graph.js";
 import { tempDir } from "./helpers.mjs";
 
 function scaffold(t) {

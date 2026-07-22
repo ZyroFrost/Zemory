@@ -10,9 +10,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openBrain } from "../brain/db.js";
-import { search, searchHybrid } from "../brain/search.js";
-import { embedPending } from "../brain/vectors.js";
+import { openMemory } from "../memory/db.js";
+import { search, searchHybrid } from "../memory/search.js";
+import { embedPending } from "../memory/vectors.js";
 
 // doc id = insertion order (1-based)
 const DOCS: string[] = [
@@ -71,13 +71,13 @@ export interface BenchResult {
 }
 
 /**
- * Run the labeled RAG benchmark on a fresh temp brain (or a given dbPath).
+ * Run the labeled RAG benchmark on a fresh temp memory (or a given dbPath).
  * `rerank: true` adds a third lane (hybrid + cross-encoder) — off by default so
  * `npm test` never downloads the reranker model.
  */
 export async function runRagBench(opts: { dbPath?: string; rerank?: boolean } = {}): Promise<BenchResult> {
   const dbPath = opts.dbPath ?? join(mkdtempSync(join(tmpdir(), "zemory-bench-")), "bench.db");
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   db.prepare("INSERT OR IGNORE INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run(
     "bench", "bench", "C:\\bench", DOCS.length,
   );
