@@ -3,8 +3,8 @@
 // with a `mapping` node-tree keyed by node id ({message, parent, children[]})
 // plus `current_node`. ONE file → MANY sessions, so this uses parseFileMulti.
 //
-// Drop the file into ~/.zemory/imports/chatgpt/ (or let `brain scan-web` write
-// it) and `brain scan` picks it up. Flatten = walk current_node → parent → root
+// Drop the file into ~/.zemory/imports/chatgpt/ (or let `memory scan-web` write
+// it) and `memory scan` picks it up. Flatten = walk current_node → parent → root
 // then reverse, so only the active branch (not abandoned edits/regens) is kept.
 
 import { basename, dirname, join } from "node:path";

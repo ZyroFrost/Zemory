@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { buildDocsGraph } from "../../dist/brain/graph/graph-docs.js";
+import { buildDocsGraph } from "../../dist/memory/graph/graph-docs.js";
 import { tempDir } from "./helpers.mjs";
 
 /** Harness docs with known links + a CRLF changelog with a supersede marker. */

@@ -271,7 +271,7 @@ export function sourceSignature(root: string): string {
 
 // ── Fitness (plan 13 §9 Phase A — idea absorbed from CALM's fitness_report) ──
 // Deterministic health metrics over the file-level graph, each with a gate
-// threshold like `brain bench`. HONEST NAMING: a file with no edges is
+// threshold like `memory bench`. HONEST NAMING: a file with no edges is
 // "isolated", not "dead" — at file level entries/scripts legitimately have none.
 
 /** A file is a HUB when this many files import it — a change there fans wide. */

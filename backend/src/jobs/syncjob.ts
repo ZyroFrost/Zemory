@@ -47,7 +47,7 @@ export function startSyncJob(onDone?: () => void): SyncJobStatus {
   if (!claimDaemonJob("sync")) {
     // Scheduler embed pass in flight — report as an error the UI can show;
     // the user can simply retry when the spinner clears.
-    return { running: false, startedAt: 0, ok: false, error: "another background job is writing the brain — try again shortly" };
+    return { running: false, startedAt: 0, ok: false, error: "another background job is writing the memory — try again shortly" };
   }
   status = { running: true, startedAt: Date.now() };
   let out = "";

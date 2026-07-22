@@ -22,7 +22,7 @@ test("importDoc indexes sections per project; search + toc are project-scoped", 
   const projectA = join(base, "a");
   const projectB = join(base, "b");
   const relPath = join("docs", "plan", "spec.md");
-  const dbPath = join(base, "brain.db");
+  const dbPath = join(base, "memory.db");
   for (const root of [projectA, projectB]) mkdirSync(join(root, "docs", "plan"), { recursive: true });
   writeFileSync(join(projectA, relPath), "# A\nzsentinelalpha here\n");
   writeFileSync(join(projectB, relPath), "# B\nzsentinelbeta here\n");
@@ -40,7 +40,7 @@ test("archive moves the OLDEST changelog entries to a real file (FILE WINS, not 
   const root = tempDir(t, "zemory-archive-");
   const agentDir = join(root, "docs", "agent");
   const mainPath = join(agentDir, "06_CHANGES.md");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(
     mainPath,
@@ -74,7 +74,7 @@ test("changelog reindex from .md is searchable and project-scoped", (t) => {
   const other = join(base, "b");
   const agentDir = join(root, "docs", "agent");
   const mainPath = join(agentDir, "06_CHANGES.md");
-  const dbPath = join(base, "brain.db");
+  const dbPath = join(base, "memory.db");
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(
     mainPath,

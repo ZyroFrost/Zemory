@@ -2,10 +2,10 @@
 //
 // Design mirrors agentmemory's TRIGGER model (verified from its source):
 //   - CAPTURE is automatic via a write-only hook (Stop → auto-ingest). 0 tokens,
-//     no context change — just keeps the brain fresh.
+//     no context change — just keeps the memory fresh.
 //   - RECALL is NOT auto-pushed every prompt (that bloats tokens / pollutes
 //     context — agentmemory tried it and defaulted it OFF). Recall happens on
-//     the AGENT's judgment: it runs `zemory brain search` when the user's prompt
+//     the AGENT's judgment: it runs `zemory memory search` when the user's prompt
 //     references past work (advertised via the project's AGENTS.md).
 //
 // So `hook install` installs ONLY the Stop capture hook. SessionStart injection
@@ -15,8 +15,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { scan } from "./brain/ingest.js";
-import { recallCard } from "./brain/recall.js";
+import { scan } from "./memory/ingest.js";
+import { recallCard } from "./memory/recall.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end";
 

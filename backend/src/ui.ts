@@ -8,19 +8,19 @@ import { hostname } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./docs/adopt.js";
-import { brainInfo, brainSummary, scan } from "./brain/ingest.js";
-import { currentBrainDir, openBrain } from "./brain/db.js";
-import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./brain/search.js";
-import { relocateBrain, storageInfo } from "./brain/relocate.js";
-import { vectorCount, vectorRemaining } from "./brain/vectors.js";
+import { memoryInfo, memorySummary, scan } from "./memory/ingest.js";
+import { currentMemoryDir, openMemory } from "./memory/db.js";
+import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
+import { relocateMemory, storageInfo } from "./memory/relocate.js";
+import { vectorCount, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { findProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects } from "./registry.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
-import { getCodeGraph } from "./brain/graph/graph-cache.js";
-import { buildNavCost } from "./brain/graph/nav-cost.js";
+import { getCodeGraph } from "./memory/graph/graph-cache.js";
+import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { startScheduler, stopScheduler } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
@@ -51,7 +51,7 @@ import {
   setSyncLevel,
   setUiState,
 } from "./settings.js";
-import { type ScopeLane, scopeTree, toggleLane } from "./brain/scope.js";
+import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { PAGE } from "./ui-page.js";
 import { onPath } from "./util.js";
 
@@ -144,7 +144,7 @@ function captureCoverage(limit = 10): {
    *  linked (registry) projects from merely-scanned ones (user 2026-07-21). */
   localHost: string;
 } {
-  const db = openBrain();
+  const db = openMemory();
   try {
     const stores = db
       .prepare(
@@ -187,8 +187,8 @@ function captureCoverage(limit = 10): {
 }
 
 // ── Dashboard caching ────────────────────────────────────────────────────────
-// The UI polls /brain-status, but every field it shows is a whole-DB
-// aggregate: on a 595MB brain one pass costs ~4s of SYNCHRONOUS SQLite work, and
+// The UI polls /memory-status, but every field it shows is a whole-DB
+// aggregate: on a 595MB memory one pass costs ~4s of SYNCHRONOUS SQLite work, and
 // Node is single-threaded — while it runs, every click, tab switch and search
 // waits behind it. Polled every 2.5s that meant the server never caught up (the
 // "app rất lag" report, 2026-07-20). Two TTLs, because the numbers move at very
@@ -205,7 +205,7 @@ const HEAVY_TTL_MS = 300_000;
 let dashCache: { at: number; value: Record<string, unknown> } | null = null;
 let heavyCache: { at: number; value: { tokensEst: number; count: number; remaining: number } } | null = null;
 
-/** Drop cached stats after anything that actually changes the brain. */
+/** Drop cached stats after anything that actually changes the memory. */
 function invalidateDashboard(): void {
   dashCache = null;
   heavyCache = null;
@@ -214,7 +214,7 @@ function invalidateDashboard(): void {
 /**
  * Drop ONLY the light snapshot, keeping the expensive full-table scans (heavyCache).
  * Use after a change that alters cheap fields (scope tree / exclude rules) but not
- * message/vector counts — the next /brain-status reflects it in ~40ms instead of
+ * message/vector counts — the next /memory-status reflects it in ~40ms instead of
  * paying the ~1s heavy recompute.
  */
 function invalidateDashboardSoft(): void {
@@ -226,11 +226,11 @@ function heavyStats(): { tokensEst: number; count: number; remaining: number } {
   const now = Date.now();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
   // Honest token stat: total captured content ≈ chars/4. A REAL number (how much
-  // context the brain holds), NOT a "saved" claim — capture itself costs 0 extra
+  // context the memory holds), NOT a "saved" claim — capture itself costs 0 extra
   // tokens (hooks read transcript files, no model call).
   let tokensEst = 0;
   try {
-    const db = openBrain();
+    const db = openMemory();
     try {
       tokensEst = Math.round(
         Number((db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get() as { c: number }).c) / 4,
@@ -254,14 +254,14 @@ function heavyStats(): { tokensEst: number; count: number; remaining: number } {
   return value;
 }
 
-function dashboardBrain(opts: { fresh?: boolean } = {}): unknown {
+function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
   const now = Date.now();
   if (!opts.fresh && dashCache && now - dashCache.at < DASH_TTL_MS) {
     return { ...dashCache.value, cached: true, cachedAgeMs: now - dashCache.at };
   }
   if (opts.fresh) invalidateDashboard();
-  const summary = brainSummary();
-  const info = brainInfo();
+  const summary = memorySummary();
+  const info = memoryInfo();
   const heavy = heavyStats();
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
   try {
@@ -290,7 +290,7 @@ function dashboardBrain(opts: { fresh?: boolean } = {}): unknown {
     vectors,
     tokensEst,
     coverage: captureCoverage(),
-    // The MEASURED cost of USING the brain (not a counterfactual "saved" number,
+    // The MEASURED cost of USING the memory (not a counterfactual "saved" number,
     // which HP điều 12 forbids): a default recall injects at most
     // DEFAULT_SEARCH_LIMIT hits × SNIPPET_MAX_CHARS chars of snippet ≈ tokens/4.
     // Full message text is opened on demand (progressive disclosure, HP điều 8).
@@ -323,7 +323,7 @@ function safeScopeTree(): unknown {
   }
 }
 
-/** Where the brain DB lives (for the UI "storage folder" control). */
+/** Where the memory DB lives (for the UI "storage folder" control). */
 function safeStorage(): unknown {
   try {
     return storageInfo();
@@ -349,7 +349,7 @@ function resolveBrowser(): string | null {
 
 /** File recording the cockpit browser window's pid — one window per machine. */
 function windowPidFile(): string {
-  return join(currentBrainDir(), "cockpit", "window.pid");
+  return join(currentMemoryDir(), "cockpit", "window.pid");
 }
 
 /**
@@ -401,7 +401,7 @@ function openWindow(url: string): void {
   // A dedicated profile dir forces a SEPARATE browser instance so the --app
   // window actually opens even when Edge/Chrome is already running. Without it,
   // `msedge --app=URL` is swallowed by the existing browser and no window shows.
-  const profileDir = join(currentBrainDir(), "cockpit", "browser");
+  const profileDir = join(currentMemoryDir(), "cockpit", "browser");
   try {
     mkdirSync(profileDir, { recursive: true });
   } catch {
@@ -515,7 +515,7 @@ export async function startUi(): Promise<void> {
     // this port" from "some other app grabbed 4444" — cheap, no work done.
     if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid });
     if (req.method === "POST" && p === "/gate-acquire") {
-      // A CLI is about to write the brain — pause the scheduler so they don't
+      // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
       // `busy` tells the CLI a daemon child (embed/sync) is ALREADY writing, so
       // it can wait instead of colliding (the gate was one-directional before).
@@ -532,14 +532,14 @@ export async function startUi(): Promise<void> {
     if (p === "/check") return json(res, await runCheck(u.searchParams.get("feature") ?? "", rootP));
     if (p === "/status") return json(res, await gatherStatus(rootP));
     // `fresh=1` = the user pressed refresh; the poll takes whatever is cached.
-    if (p === "/brain-status") return json(res, dashboardBrain({ fresh: u.searchParams.get("fresh") === "1" }));
+    if (p === "/memory-status") return json(res, dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
     if (p === "/set-lang") {
       // Do NOT invalidate the dashboard cache here. tr() (server-side i18n) is used
-      // only by status.ts and checks.ts — NOTHING in the /brain-status payload is
-      // server-localized, so the cached brain snapshot stays valid across a language
+      // only by status.ts and checks.ts — NOTHING in the /memory-status payload is
+      // server-localized, so the cached memory snapshot stays valid across a language
       // change. Busting it forced every language click through the two full-table
       // scans (the reported multi-second delay). /status and /check ARE localized,
-      // and the client refetches those (not brain) after a language change.
+      // and the client refetches those (not memory) after a language change.
       setLang(u.searchParams.get("lang") ?? "vi");
       return json(res, { ok: true, lang: getLang() });
     }
@@ -614,7 +614,7 @@ export async function startUi(): Promise<void> {
       return json(res, { ...g, nodes: g.nodes.map(({ callSites: _cs, ...n }) => n), fitness });
     }
     if (p === "/nav-cost") {
-      // What the harness index + graph + brain buy, in tokens: sweep vs routed.
+      // What the harness index + graph + memory buy, in tokens: sweep vs routed.
       // Shares the cached graph with /code-graph (no second full build).
       return json(res, buildNavCost(target, { graph: (await getCodeGraph(target)).graph }));
     }
@@ -625,7 +625,7 @@ export async function startUi(): Promise<void> {
     }
     if (req.method === "POST" && p === "/forget-project") {
       // Removes the project from zemory's picker ONLY — the folder, its docs and
-      // its brain data are untouched (use `brain forget` to drop memory).
+      // its memory data are untouched (use `memory forget` to drop memory).
       const ok = forgetProject(u.searchParams.get("root") ?? "");
       return json(res, { ok, knownProjects: listKnownProjects() });
     }
@@ -633,12 +633,12 @@ export async function startUi(): Promise<void> {
       const removed = pruneDeadProjects();
       return json(res, { ok: true, removed, knownProjects: listKnownProjects() });
     }
-    if (req.method === "POST" && p === "/brain-scan") {
+    if (req.method === "POST" && p === "/memory-scan") {
       const r = scan({ deep: u.searchParams.get("deep") === "1" });
       invalidateDashboard();
       return json(res, r);
     }
-    if (p === "/brain-search") {
+    if (p === "/memory-search") {
       const days = Number(u.searchParams.get("days") || 0);
       const hits = await recall(u.searchParams.get("q") ?? "", {
         project: target,
@@ -650,20 +650,20 @@ export async function startUi(): Promise<void> {
       });
       return json(res, hits);
     }
-    if (p === "/brain-context") {
-      // Drill-down WITHIN a recall already counted by /brain-search; not logged
+    if (p === "/memory-context") {
+      // Drill-down WITHIN a recall already counted by /memory-search; not logged
       // separately (same 'recall' feature) to avoid double-counting.
       const ctx = getMessageContext(Number(u.searchParams.get("id")), 3);
       return json(res, ctx ?? {});
     }
-    if (p === "/brain-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
+    if (p === "/memory-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
     if (req.method === "POST" && p === "/relocate") {
-      // Move the brain DB off the system drive to a plain local folder. Safe:
-      // relocateBrain verifies the copy and keeps the old DB as a .bak.
+      // Move the memory DB off the system drive to a plain local folder. Safe:
+      // relocateMemory verifies the copy and keeps the old DB as a .bak.
       const path = (u.searchParams.get("path") ?? "").trim();
       const force = u.searchParams.get("force") === "1";
       try {
-        const r = relocateBrain(path, { force });
+        const r = relocateMemory(path, { force });
         invalidateDashboard();
         return json(res, { ok: true, ...r });
       } catch (error) {

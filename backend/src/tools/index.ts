@@ -1,11 +1,11 @@
 // LLM-facing tool DEFINITIONS + binding (03_STRUCTURE §3 `tools/`): the four
 // recall tools an agent can call, each schema + a thin dispatcher that
-// delegates execution to the owning slots (brain/search, docs/plan). The MCP
+// delegates execution to the owning slots (memory/search, docs/plan). The MCP
 // JSON-RPC surface that ships these over stdio lives in ../mcp.ts — keep wire
 // framing OUT of here and tool knowledge OUT of the surface.
 
 import { findProjectRoot } from "../core/config.js";
-import { getMessage, getMessageContext, recall } from "../brain/search.js";
+import { getMessage, getMessageContext, recall } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 
 export type JsonObject = Record<string, unknown>;
@@ -31,7 +31,7 @@ const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
   if (args.all) return undefined;
   if (env.projectRoot === null) return undefined;
   // No harness in cwd is NOT an error: zemory is installed machine-wide, so
-  // recall falls back to the whole global brain instead of scoping to cwd.
+  // recall falls back to the whole global memory instead of scoping to cwd.
   return asString(args.project) || env.projectRoot || findProjectRoot() || undefined;
 };
 
@@ -47,9 +47,9 @@ function errorResult(message: string) {
 
 export const TOOLS = [
   {
-    name: "brain_search",
+    name: "memory_search",
     description:
-      "Search the local cross-agent global brain (hybrid keyword+semantic). Returns lightweight hits; call brain_show for full text. " +
+      "Search the local cross-agent global memory (hybrid keyword+semantic). Returns lightweight hits; call memory_show for full text. " +
       "Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a different phrasing, " +
       "or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the memory has nothing.",
     inputSchema: {
@@ -65,12 +65,12 @@ export const TOOLS = [
     },
   },
   {
-    name: "brain_show",
-    description: "Show one full brain message by id, optionally with neighbouring conversation messages.",
+    name: "memory_show",
+    description: "Show one full memory message by id, optionally with neighbouring conversation messages.",
     inputSchema: {
       type: "object",
       properties: {
-        id: { type: "number", description: "Message id returned by brain_search." },
+        id: { type: "number", description: "Message id returned by memory_search." },
         window: { type: "number", description: "Neighbour messages on each side. Default 0, max 10." },
       },
       required: ["id"],
@@ -107,9 +107,9 @@ export const TOOLS = [
 ];
 
 export async function callMcpTool(name: string, args: JsonObject = {}, env: McpEnv = {}) {
-  if (name === "brain_search") {
+  if (name === "memory_search") {
     const query = asString(args.query).trim();
-    if (!query) return errorResult("brain_search requires a non-empty query.");
+    if (!query) return errorResult("memory_search requires a non-empty query.");
     const hits = await recall(query, {
       all: Boolean(args.all),
       project: currentProject(args, env),
@@ -119,14 +119,14 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     return toolResult(hits);
   }
 
-  if (name === "brain_show") {
+  if (name === "memory_show") {
     const id = Number(args.id);
-    if (!Number.isFinite(id) || id <= 0) return errorResult("brain_show requires a positive numeric id.");
+    if (!Number.isFinite(id) || id <= 0) return errorResult("memory_show requires a positive numeric id.");
     const window = clampWindow(args.window);
     const value = window > 0 ? getMessageContext(id, window, env.dbPath) : getMessage(id, env.dbPath);
-    // brain_show is a drill-down WITHIN a recall already counted by brain_search;
+    // memory_show is a drill-down WITHIN a recall already counted by memory_search;
     // not logged separately (same 'recall' feature) to avoid double-counting.
-    return value ? toolResult(value) : errorResult(`No brain message #${id}.`);
+    return value ? toolResult(value) : errorResult(`No memory message #${id}.`);
   }
 
   if (name === "plan_search") {

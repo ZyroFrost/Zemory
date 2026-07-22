@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../../dist/brain/db.js";
-import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../../dist/brain/scope.js";
-import { search } from "../../dist/brain/search.js";
-import { exportBrainBundle, importBrainBundle, mergeBrainBundle, writeBrainShareKey } from "../../dist/brain/share.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../../dist/memory/scope.js";
+import { search } from "../../dist/memory/search.js";
+import { exportMemoryBundle, importMemoryBundle, mergeMemoryBundle, writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
 
-// Seed a brain; message_count is set to the real count so scopeTree rolls up.
-function seedBrain(dbPath, sessions) {
-  const db = openBrain(dbPath);
+// Seed a memory; message_count is set to the real count so scopeTree rolls up.
+function seedMemory(dbPath, sessions) {
+  const db = openMemory(dbPath);
   try {
     const insS = db.prepare(
       `INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -48,8 +48,8 @@ test("toggleLane adds then removes a lane by key (idempotent)", () => {
 
 test("scopeTree: Local → machine → agent, Web → platform, with counts + exclude flags", (t) => {
   const root = tempDir(t, "zemory-scope-tree-");
-  const dbPath = join(root, "brain.db");
-  seedBrain(dbPath, [
+  const dbPath = join(root, "memory.db");
+  seedMemory(dbPath, [
     { id: "a", origin: "local", host: "PC-A", source: "claude-code", messages: [{ uuid: "1", content: "x" }, { uuid: "2", content: "y" }] },
     { id: "b", origin: "local", host: "PC-A", source: "codex", messages: [{ uuid: "3", content: "z" }] },
     { id: "c", origin: "web", host: "PC-A", source: "chatgpt-web", messages: [{ uuid: "4", content: "w" }] },
@@ -71,8 +71,8 @@ test("scopeTree: Local → machine → agent, Web → platform, with counts + ex
 
 test("recall excludes a lane (hidden from search, still in the DB)", (t) => {
   const root = tempDir(t, "zemory-scope-recall-");
-  const dbPath = join(root, "brain.db");
-  seedBrain(dbPath, [
+  const dbPath = join(root, "memory.db");
+  seedMemory(dbPath, [
     { id: "cc", source: "claude-code", messages: [{ uuid: "1", content: "apple from claude" }] },
     { id: "cx", source: "codex", messages: [{ uuid: "2", content: "apple from codex" }] },
   ]);
@@ -85,7 +85,7 @@ test("recall excludes a lane (hidden from search, still in the DB)", (t) => {
   assert.equal(scoped[0].source, "claude-code", "codex lane hidden from recall");
 
   // Data is still physically present — exclusion is a filter, not a delete.
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     assert.equal(db.prepare("SELECT COUNT(*) c FROM messages WHERE content LIKE 'apple%'").get().c, 2);
   } finally {
@@ -100,18 +100,18 @@ test("merge skips excluded lanes from the incoming bundle", async (t) => {
   const keyPath = join(root, "share.key");
   const bundle = join(root, "b.zemory.enc");
 
-  seedBrain(dbB, [
+  seedMemory(dbB, [
     { id: "loc", origin: "local", host: "PC-B", source: "codex", messages: [{ uuid: "l1", content: "local one" }] },
     { id: "web", origin: "web", host: "PC-B", source: "chatgpt-web", messages: [{ uuid: "w1", content: "web one" }] },
   ]);
-  openBrain(dbA).close(); // empty local brain
-  writeBrainShareKey(keyPath);
-  await exportBrainBundle({ dbPath: dbB, outPath: bundle, keyFile: keyPath });
+  openMemory(dbA).close(); // empty local memory
+  writeMemoryShareKey(keyPath);
+  await exportMemoryBundle({ dbPath: dbB, outPath: bundle, keyFile: keyPath });
 
-  const r = await mergeBrainBundle({ bundlePath: bundle, dbPath: dbA, keyFile: keyPath, excludeLanes: [{ origin: "web" }] });
+  const r = await mergeMemoryBundle({ bundlePath: bundle, dbPath: dbA, keyFile: keyPath, excludeLanes: [{ origin: "web" }] });
   assert.equal(r.sessionsAdded, 1, "only the local session merges; web lane skipped");
 
-  const db = openBrain(dbA);
+  const db = openMemory(dbA);
   try {
     assert.ok(db.prepare("SELECT 1 FROM sessions WHERE id='loc'").get(), "local session pulled");
     assert.equal(db.prepare("SELECT 1 FROM sessions WHERE id='web'").get(), undefined, "web session NOT pulled");
@@ -128,15 +128,15 @@ test("export leaves excluded lanes out of the bundle", async (t) => {
   const keyPath = join(root, "share.key");
   const bundle = join(root, "src.zemory.enc");
 
-  seedBrain(dbSrc, [
+  seedMemory(dbSrc, [
     { id: "loc", origin: "local", host: "PC", source: "codex", messages: [{ uuid: "l1", content: "keep me" }] },
     { id: "web", origin: "web", host: "PC", source: "chatgpt-web", messages: [{ uuid: "w1", content: "drop me" }] },
   ]);
-  writeBrainShareKey(keyPath);
-  await exportBrainBundle({ dbPath: dbSrc, outPath: bundle, keyFile: keyPath, excludeLanes: [{ origin: "web" }] });
-  await importBrainBundle({ bundlePath: bundle, dbPath: dbOut, keyFile: keyPath });
+  writeMemoryShareKey(keyPath);
+  await exportMemoryBundle({ dbPath: dbSrc, outPath: bundle, keyFile: keyPath, excludeLanes: [{ origin: "web" }] });
+  await importMemoryBundle({ bundlePath: bundle, dbPath: dbOut, keyFile: keyPath });
 
-  const db = openBrain(dbOut);
+  const db = openMemory(dbOut);
   try {
     assert.ok(db.prepare("SELECT 1 FROM sessions WHERE id='loc'").get(), "local lane exported");
     assert.equal(db.prepare("SELECT 1 FROM sessions WHERE id='web'").get(), undefined, "web lane left out of the bundle");

@@ -1,4 +1,4 @@
-// Encrypted brain bundles for sharing ~/.zemory/global_memory.db safely.
+// Encrypted memory bundles for sharing ~/.zemory/global_memory.db safely.
 // The raw DB is sensitive; export writes one authenticated AES-GCM file and
 // keeps the key out-of-band via --key-file or ZEMORY_SHARE_KEY.
 
@@ -24,17 +24,17 @@ import {
 import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
+import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncLevel } from "../settings.js";
 
-const MAGIC = "ZEMORY-BRAIN-ENC v1\n";
+const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
 const TAG_BYTES = 16;
 const KDF = { n: 16384, r: 8, p: 1 };
 
-export interface BrainShareKeyOptions {
+export interface MemoryShareKeyOptions {
   keyFile?: string;
   env?: NodeJS.ProcessEnv;
 }
@@ -42,7 +42,7 @@ export interface BrainShareKeyOptions {
 /**
  * What the bundle carries.
  *  • "full" — a byte snapshot of the whole DB (v1 behaviour). Ships every derived
- *    layer (FTS + vector + digest ≈ 87% of the file) that `mergeBrainBundle` then
+ *    layer (FTS + vector + digest ≈ 87% of the file) that `mergeMemoryBundle` then
  *    IGNORES — kept only for compatibility / disaster restore.
  *  • "rows" — SOURCE ROWS ONLY (sessions + messages + known_stores): exactly what
  *    merge reads. The receiver rebuilds FTS on insert and re-embeds locally
@@ -50,7 +50,7 @@ export interface BrainShareKeyOptions {
  */
 export type BundlePayload = "full" | "rows";
 
-export interface ExportBrainBundleOptions extends BrainShareKeyOptions {
+export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
   dbPath?: string;
   outPath: string;
   force?: boolean;
@@ -67,7 +67,7 @@ export interface ExportBrainBundleOptions extends BrainShareKeyOptions {
   sinceMessageId?: number;
 }
 
-export interface ExportBrainBundleResult {
+export interface ExportMemoryBundleResult {
   outPath: string;
   sourcePath: string;
   sourceBytes: number;
@@ -77,13 +77,13 @@ export interface ExportBrainBundleResult {
   rows?: { sessions: number; messages: number; since: number; maxMessageId: number };
 }
 
-export interface ImportBrainBundleOptions extends BrainShareKeyOptions {
+export interface ImportMemoryBundleOptions extends MemoryShareKeyOptions {
   bundlePath: string;
   dbPath?: string;
   force?: boolean;
 }
 
-export interface ImportBrainBundleResult {
+export interface ImportMemoryBundleResult {
   dbPath: string;
   bundlePath: string;
   bytes: number;
@@ -91,7 +91,7 @@ export interface ImportBrainBundleResult {
 }
 
 interface BundleHeader {
-  format: "zemory.brain.bundle";
+  format: "zemory.memory.bundle";
   /** 1 = full-snapshot only (pre-2026-07). 2 = adds `payload`/`rows`. */
   version: 1 | 2;
   alg: "aes-256-gcm";
@@ -105,7 +105,7 @@ interface BundleHeader {
   rows?: { sessions: number; messages: number; since: number; maxMessageId: number; host: string };
 }
 
-function readShareSecret(opts: BrainShareKeyOptions): Buffer {
+function readShareSecret(opts: MemoryShareKeyOptions): Buffer {
   const fromFile = opts.keyFile ? readFileSync(opts.keyFile, "utf8").trim() : "";
   const fromEnv = opts.env?.ZEMORY_SHARE_KEY?.trim() ?? process.env.ZEMORY_SHARE_KEY?.trim() ?? "";
   const secret = fromFile || fromEnv;
@@ -120,7 +120,7 @@ function deriveKey(secret: Buffer, salt: Buffer, kdf = KDF): Buffer {
 }
 
 async function snapshotSqlite(dbPath: string): Promise<{ path: string; cleanup: () => void }> {
-  const dir = mkdtempSync(join(tmpdir(), "zemory-brain-export-"));
+  const dir = mkdtempSync(join(tmpdir(), "zemory-memory-export-"));
   const snapshot = join(dir, "global_memory.snapshot.db");
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
   try {
@@ -140,7 +140,7 @@ async function snapshotSqlite(dbPath: string): Promise<{ path: string; cleanup: 
 function filterSnapshot(path: string, lanes: ScopeLane[]): void {
   const { match, params } = laneSqlClause("sessions", lanes);
   if (!match) return;
-  const db = openBrain(path);
+  const db = openMemory(path);
   try {
     db.transaction(() => {
       db.prepare(`DELETE FROM messages WHERE session_id IN (SELECT id FROM sessions WHERE ${match})`).run(...params);
@@ -157,7 +157,7 @@ function filterSnapshot(path: string, lanes: ScopeLane[]): void {
   }
 }
 
-/** The only tables `mergeBrainBundle` ever reads out of a bundle. Everything
+/** The only tables `mergeMemoryBundle` ever reads out of a bundle. Everything
  *  else in the DB is a DERIVED layer the receiver rebuilds locally. */
 const ROWS_TABLES = ["schema_version", "sessions", "messages", "known_stores"] as const;
 
@@ -182,7 +182,7 @@ function buildRowsSnapshot(
   sourcePath: string,
   opts: { excludeLanes?: ScopeLane[]; since?: number },
 ): { path: string; cleanup: () => void; stats: RowsStats } {
-  const dir = mkdtempSync(join(tmpdir(), "zemory-brain-rows-"));
+  const dir = mkdtempSync(join(tmpdir(), "zemory-memory-rows-"));
   const out = join(dir, "global_memory.rows.db");
   const cleanup = () => rmSync(dir, { recursive: true, force: true });
   const since = opts.since ?? 0;
@@ -246,9 +246,9 @@ function writeHeader(outPath: string, header: BundleHeader, force: boolean | und
   return aad;
 }
 
-export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise<ExportBrainBundleResult> {
-  const sourcePath = opts.dbPath ?? currentBrainDb();
-  if (!existsSync(sourcePath)) throw new Error(`Brain DB not found: ${sourcePath}`);
+export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promise<ExportMemoryBundleResult> {
+  const sourcePath = opts.dbPath ?? currentMemoryDb();
+  if (!existsSync(sourcePath)) throw new Error(`Memory DB not found: ${sourcePath}`);
   const secret = readShareSecret(opts);
   // "rows" is the default: ship only what merge consumes. "full" (byte snapshot)
   // stays available for a disaster-restore copy.
@@ -264,7 +264,7 @@ export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise
     const salt = randomBytes(16);
     const iv = randomBytes(12);
     const header: BundleHeader = {
-      format: "zemory.brain.bundle",
+      format: "zemory.memory.bundle",
       version: 2,
       alg: "aes-256-gcm",
       kdf: { name: "scrypt", ...KDF, salt: salt.toString("base64") },
@@ -313,7 +313,7 @@ export async function exportBrainBundle(opts: ExportBrainBundleOptions): Promise
  * `--delta` export carries only rows added since. 0 = never exported → full set.
  */
 export function readExportWatermark(bundle: string, dbPath?: string): number {
-  const db = openBrain(dbPath ?? currentBrainDb());
+  const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     const row = db.prepare("SELECT last_message_id AS id FROM sync_state WHERE bundle = ?").get(bundle) as
       | { id: number }
@@ -325,7 +325,7 @@ export function readExportWatermark(bundle: string, dbPath?: string): number {
 }
 
 export function writeExportWatermark(bundle: string, lastMessageId: number, dbPath?: string): void {
-  const db = openBrain(dbPath ?? currentBrainDb());
+  const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     db.prepare(
       `INSERT INTO sync_state (bundle, last_message_id, updated_at) VALUES (?, ?, ?)
@@ -354,7 +354,7 @@ export function bundleSignature(bundlePath: string): string {
 
 /** Has this exact bundle file (by signature) already been merged here? */
 export function isBundleMerged(file: string, sig: string, dbPath?: string): boolean {
-  const db = openBrain(dbPath ?? currentBrainDb());
+  const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     const row = db.prepare("SELECT sig FROM merged_bundles WHERE file = ?").get(file) as { sig: string } | undefined;
     return row?.sig === sig;
@@ -365,7 +365,7 @@ export function isBundleMerged(file: string, sig: string, dbPath?: string): bool
 
 /** Record that a bundle file (by signature) has been merged here. */
 export function markBundleMerged(file: string, sig: string, dbPath?: string): void {
-  const db = openBrain(dbPath ?? currentBrainDb());
+  const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     db.prepare(
       `INSERT INTO merged_bundles (file, sig, merged_at) VALUES (?, ?, ?)
@@ -383,12 +383,12 @@ function readHeader(bundlePath: string): { header: BundleHeader; aad: Buffer; da
     readSync(fd, probe, 0, probe.length, 0);
     const firstNl = probe.indexOf(10, 0);
     const secondNl = firstNl >= 0 ? probe.indexOf(10, firstNl + 1) : -1;
-    if (firstNl < 0 || secondNl < 0) throw new Error("Invalid zemory brain bundle header.");
+    if (firstNl < 0 || secondNl < 0) throw new Error("Invalid zemory memory bundle header.");
     const magic = probe.subarray(0, firstNl + 1).toString("utf8");
-    if (magic !== MAGIC) throw new Error("Not a zemory encrypted brain bundle.");
+    if (magic !== MAGIC) throw new Error("Not a zemory encrypted memory bundle.");
     const header = JSON.parse(probe.subarray(firstNl + 1, secondNl).toString("utf8")) as BundleHeader;
-    if (header.format !== "zemory.brain.bundle" || (header.version !== 1 && header.version !== 2) || header.alg !== "aes-256-gcm") {
-      throw new Error("Unsupported zemory brain bundle version.");
+    if (header.format !== "zemory.memory.bundle" || (header.version !== 1 && header.version !== 2) || header.alg !== "aes-256-gcm") {
+      throw new Error("Unsupported zemory memory bundle version.");
     }
     return { header, aad: probe.subarray(0, secondNl + 1), dataOffset: secondNl + 1 };
   } finally {
@@ -398,7 +398,7 @@ function readHeader(bundlePath: string): { header: BundleHeader; aad: Buffer; da
 
 function readAuthTag(bundlePath: string): Buffer {
   const size = statSync(bundlePath).size;
-  if (size <= TAG_BYTES) throw new Error("Invalid zemory brain bundle: missing auth tag.");
+  if (size <= TAG_BYTES) throw new Error("Invalid zemory memory bundle: missing auth tag.");
   const fd = openSync(bundlePath, "r");
   try {
     const tag = Buffer.alloc(TAG_BYTES);
@@ -415,13 +415,13 @@ function timestamp(): string {
 
 /** Decrypt a bundle's SQLite payload to `outPath` (must not yet exist). */
 async function decryptBundleToFile(
-  opts: BrainShareKeyOptions & { bundlePath: string },
+  opts: MemoryShareKeyOptions & { bundlePath: string },
   outPath: string,
 ): Promise<BundleHeader> {
   const { header, aad, dataOffset } = readHeader(opts.bundlePath);
   const size = statSync(opts.bundlePath).size;
   const cipherEnd = size - TAG_BYTES - 1;
-  if (cipherEnd < dataOffset) throw new Error("Invalid zemory brain bundle: empty ciphertext.");
+  if (cipherEnd < dataOffset) throw new Error("Invalid zemory memory bundle: empty ciphertext.");
   const secret = readShareSecret(opts);
   const salt = Buffer.from(header.kdf.salt, "base64");
   const iv = Buffer.from(header.iv, "base64");
@@ -436,26 +436,26 @@ async function decryptBundleToFile(
   return header;
 }
 
-export async function importBrainBundle(opts: ImportBrainBundleOptions): Promise<ImportBrainBundleResult> {
-  const targetPath = opts.dbPath ?? currentBrainDb();
+export async function importMemoryBundle(opts: ImportMemoryBundleOptions): Promise<ImportMemoryBundleResult> {
+  const targetPath = opts.dbPath ?? currentMemoryDb();
   if (existsSync(targetPath) && !opts.force) {
-    throw new Error(`Refusing to overwrite existing brain DB: ${targetPath}. Re-run with --force to replace it.`);
+    throw new Error(`Refusing to overwrite existing memory DB: ${targetPath}. Re-run with --force to replace it.`);
   }
   mkdirSync(dirname(resolve(targetPath)), { recursive: true });
   const tmpPath = join(dirname(resolve(targetPath)), `.zemory-import-${process.pid}-${Date.now()}.tmp`);
   let backupPath: string | null = null;
   try {
     const header = await decryptBundleToFile(opts, tmpPath);
-    // A "rows" bundle carries source rows only — it is NOT a runnable brain DB
+    // A "rows" bundle carries source rows only — it is NOT a runnable memory DB
     // (no FTS, no vec_*, no digest). Materialize a fully-migrated empty DB and
-    // merge the rows in, so the result is a complete brain either way.
+    // merge the rows in, so the result is a complete memory either way.
     if ((header.payload ?? "full") === "rows") {
       if (existsSync(targetPath)) {
         backupPath = `${targetPath}.bak-${timestamp()}`;
         renameSync(targetPath, backupPath);
       }
-      openBrain(targetPath).close(); // create + migrate a fresh, complete schema
-      await mergeBrainBundle({ ...opts, dbPath: targetPath });
+      openMemory(targetPath).close(); // create + migrate a fresh, complete schema
+      await mergeMemoryBundle({ ...opts, dbPath: targetPath });
       rmSync(tmpPath, { force: true });
       return { dbPath: targetPath, bundlePath: opts.bundlePath, bytes: header.source.bytes, backupPath };
     }
@@ -472,14 +472,14 @@ export async function importBrainBundle(opts: ImportBrainBundleOptions): Promise
   }
 }
 
-export interface MergeBrainBundleOptions extends BrainShareKeyOptions {
+export interface MergeMemoryBundleOptions extends MemoryShareKeyOptions {
   bundlePath: string;
   dbPath?: string;
   /** Provenance lanes to NOT pull from the incoming bundle (scoped sync). */
   excludeLanes?: ScopeLane[];
 }
 
-export interface MergeBrainBundleResult {
+export interface MergeMemoryBundleResult {
   dbPath: string;
   bundlePath: string;
   sessionsBefore: number;
@@ -491,7 +491,7 @@ export interface MergeBrainBundleResult {
 }
 
 /**
- * MERGE a bundle into the existing local brain — ADDITIVE, never destructive.
+ * MERGE a bundle into the existing local memory — ADDITIVE, never destructive.
  * Sessions/messages are copied with INSERT OR IGNORE (sessions keyed by id;
  * messages by their UNIQUE(session_id, uuid)), so anything already present is
  * kept untouched and only genuinely new rows are added — no machine overwrites
@@ -500,12 +500,12 @@ export interface MergeBrainBundleResult {
  *
  * NOT copied: ingest_state (per-machine file offsets — merging would corrupt the
  * local incremental scan), vec_chunks (keyed by local message ids that differ
- * across DBs — re-embed new messages with `brain embed`), and doc/section/
- * changelog (those travel via git, not the brain bundle).
+ * across DBs — re-embed new messages with `memory embed`), and doc/section/
+ * changelog (those travel via git, not the memory bundle).
  */
-export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<MergeBrainBundleResult> {
-  const targetPath = opts.dbPath ?? currentBrainDb();
-  const dir = mkdtempSync(join(tmpdir(), "zemory-brain-merge-"));
+export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise<MergeMemoryBundleResult> {
+  const targetPath = opts.dbPath ?? currentMemoryDb();
+  const dir = mkdtempSync(join(tmpdir(), "zemory-memory-merge-"));
   const srcPath = join(dir, "incoming.db");
   try {
     const incoming = await decryptBundleToFile(opts, srcPath);
@@ -513,7 +513,7 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
     // attaches as-is. A "full" snapshot still needs normalizing (adds `host` on a
     // pre-v4 bundle) and its WAL dropped before ATTACH.
     if ((incoming.payload ?? "full") !== "rows") {
-      const src = openBrain(srcPath);
+      const src = openMemory(srcPath);
       try {
         src.pragma("wal_checkpoint(TRUNCATE)");
         src.pragma("journal_mode = DELETE");
@@ -522,7 +522,7 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
       }
     }
 
-    const db = openBrain(targetPath);
+    const db = openMemory(targetPath);
     try {
       const count = (sql: string): number => (db.prepare(sql).get() as { c: number }).c;
       const sessionsBefore = count("SELECT COUNT(*) c FROM sessions");
@@ -538,7 +538,7 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
         db.transaction(() => {
           // Carry `origin` across machines (v6) so captured web-chat keeps its
           // 'web' lane on the receiving PC. COALESCE guards a pre-v6 bundle
-          // (openBrain above migrates the incoming DB, so src.sessions.origin
+          // (openMemory above migrates the incoming DB, so src.sessions.origin
           // exists; the COALESCE is belt-and-braces for a null).
           db.prepare(
             `INSERT OR IGNORE INTO sessions (id, source, origin, project_root, cwd, title, host, started_at, ended_at, message_count)
@@ -603,7 +603,7 @@ export async function mergeBrainBundle(opts: MergeBrainBundleOptions): Promise<M
 
 /** Find the share key: explicit path → ~/.zemory/share.key → <root>/share/share.key. */
 export function resolveShareKey(projectRoot: string, explicit?: string): string | undefined {
-  for (const c of [explicit, join(currentBrainDir(), "share.key"), join(projectRoot, "share", "share.key")]) {
+  for (const c of [explicit, join(currentMemoryDir(), "share.key"), join(projectRoot, "share", "share.key")]) {
     if (c && existsSync(c)) return c;
   }
   return undefined; // fall back to ZEMORY_SHARE_KEY env (export/import read it)
@@ -660,7 +660,7 @@ function listMySeries(dir: string, host: string): { file: string; seq: number }[
  * export THIS machine's bundle into the folder, then merge every OTHER machine's
  * bundle found there. Bundles are named per host so machines never clobber each
  * other. Returns what was pushed/merged; embedding of new rows is left to the
- * caller (`brain embed`).
+ * caller (`memory embed`).
  */
 export async function syncDrive(opts: {
   driveDir: string;
@@ -711,7 +711,7 @@ export async function syncDrive(opts: {
       continue;
     }
     try {
-      const r = await mergeBrainBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
+      const r = await mergeMemoryBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
       markBundleMerged(f, sig, opts.dbPath);
       merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
     } catch (error) {
@@ -724,7 +724,7 @@ export async function syncDrive(opts: {
   // embedding here keeps recall on THIS machine complete right after sync.
   // ONE bounded batch so the sync call stays responsive — a steady-state sync
   // (a handful of new messages) is fully covered; a large one-time backlog is
-  // finished by `zemory brain embed --all` (vectorRemaining reports the rest).
+  // finished by `zemory memory embed --all` (vectorRemaining reports the rest).
   // Fail-open: if the model is unavailable, embedPending embeds 0 (FTS fallback).
   const embedded = opts.embed === false ? 0 : (await embedPending({ dbPath: opts.dbPath })).embedded;
 
@@ -773,7 +773,7 @@ async function pushToDrive(o: {
   if (level === "full") {
     // Disaster-restore snapshot: one self-contained file, overwritten each sync.
     const name = legacyName(host);
-    const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, payload: "full" });
+    const r = await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, payload: "full" });
     // A prior lean series is now redundant (the full snapshot carries everything).
     for (const s of listMySeries(dir, host)) rmSync(join(dir, s.file), { force: true });
     return { kind: "full", file: name, bytes: r.bundleBytes, messages: 0, removed: 0 };
@@ -787,9 +787,9 @@ async function pushToDrive(o: {
   const compacting = series.length >= DRIVE_COMPACT_AT;
   if (series.length === 0 || compacting) {
     const name = seriesName(host, nextSeq);
-    const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes });
+    const r = await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes });
     if (!r.rows || r.rows.messages === 0) {
-      rmSync(join(dir, name), { force: true }); // empty brain → nothing to publish
+      rmSync(join(dir, name), { force: true }); // empty memory → nothing to publish
       return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
     }
     writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
@@ -810,7 +810,7 @@ async function pushToDrive(o: {
   // DELTA — only rows added since the last shipped watermark.
   const since = readExportWatermark(wmKey, dbPath);
   const name = seriesName(host, nextSeq);
-  const r = await exportBrainBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, sinceMessageId: since });
+  const r = await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, sinceMessageId: since });
   if (!r.rows || r.rows.messages === 0) {
     rmSync(join(dir, name), { force: true }); // nothing new this sync
     return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
@@ -819,7 +819,7 @@ async function pushToDrive(o: {
   return { kind: "delta", file: name, bytes: r.bundleBytes, messages: r.rows.messages, removed: 0 };
 }
 
-export function writeBrainShareKey(path: string, opts: { force?: boolean } = {}): string {
+export function writeMemoryShareKey(path: string, opts: { force?: boolean } = {}): string {
   mkdirSync(dirname(resolve(path)), { recursive: true });
   const key = randomBytes(32).toString("base64");
   writeFileSync(path, key + "\n", { flag: opts.force ? "w" : "wx", mode: 0o600 });

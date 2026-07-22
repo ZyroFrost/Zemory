@@ -1,16 +1,16 @@
 // Navigation cost (nav-cost.ts) — the measurement behind zemory's core claim
-// that an index + graph + brain beat sweeping a project blind.
+// that an index + graph + memory beat sweeping a project blind.
 //
 // The point of these tests is the HONESTY CONTRACT (HP điều 12): every number
-// must trace back to real bytes on disk / real rows in the brain, and a lane that
+// must trace back to real bytes on disk / real rows in the memory, and a lane that
 // cannot be measured must report available:false rather than invent a figure.
 
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { buildNavCost, routingTableChars } from "../../dist/brain/graph/nav-cost.js";
-import { openBrain } from "../../dist/brain/db.js";
+import { buildNavCost, routingTableChars } from "../../dist/memory/graph/nav-cost.js";
+import { openMemory } from "../../dist/memory/db.js";
 import { tempDir } from "./helpers.mjs";
 
 function write(root, rel, body) {
@@ -73,13 +73,13 @@ test("impact lane prices the graph answer, not a guess", (t) => {
   assert.match(r.impact.detail, /db\.ts/, "detail names the file the answer is for");
 });
 
-test("recall lane measures THIS project's prior sessions from the brain", (t) => {
+test("recall lane measures THIS project's prior sessions from the memory", (t) => {
   const { root } = scaffold(t);
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   // Realistic history: enough prior text that re-reading it genuinely costs more
   // than one capped recall (see the small-history test below for the inverse).
   const body = "prior session content ".repeat(500);
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     db.prepare(
       "INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)",
@@ -110,8 +110,8 @@ test("recall lane measures THIS project's prior sessions from the brain", (t) =>
 // dishonest dashboard would still print a win. This locks that it does not.
 test("tiny history: the recall lane reports a ratio below 1 rather than a fake win", (t) => {
   const { root } = scaffold(t);
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   try {
     db.prepare(
       "INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)",
@@ -132,7 +132,7 @@ test("fail-open: a project with no harness doc reports the lane unavailable, not
   const r = buildNavCost(root, { dbPath: join(root, "empty.db") });
   assert.equal(r.locate.available, false, "no 03_STRUCTURE → nothing to measure");
   assert.equal(r.locate.ratio, 0, "an unmeasurable lane must not claim a ratio");
-  assert.equal(r.recall.available, false, "empty brain → no prior-context claim");
+  assert.equal(r.recall.available, false, "empty memory → no prior-context claim");
 });
 
 test("an empty/missing project yields no lanes at all (never a fabricated win)", (t) => {

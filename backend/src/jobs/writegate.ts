@@ -1,6 +1,6 @@
 // Write gate (plan 14 §C). The root cause of "database is locked" (plan 12) is
-// two processes writing the brain at once — typically the daemon's idle scheduler
-// AND a CLI `brain embed`/`scan`. This is the daemon-side coordination flag:
+// two processes writing the memory at once — typically the daemon's idle scheduler
+// AND a CLI `memory embed`/`scan`. This is the daemon-side coordination flag:
 // a CLI announces "I'm about to write" and the scheduler yields until it's done.
 //
 // It is a lightweight ADVISORY hold, not a distributed lock: bounded by an

@@ -9,8 +9,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { openBrain } from "../../dist/brain/db.js";
-import { syncDrive, writeBrainShareKey } from "../../dist/brain/share.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { syncDrive, writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
 
 // Each syncDrive call reads getSyncLevel() + the export watermark from config in
@@ -27,7 +27,7 @@ function sandboxHome(t) {
 
 let msgSeq = 0;
 function addMessages(dbPath, project, n) {
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const sid = "s" + ++msgSeq;
     db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run(
@@ -39,15 +39,15 @@ function addMessages(dbPath, project, n) {
     db.close();
   }
 }
-const msgCount = (dbPath) => { const db = openBrain(dbPath); try { return db.prepare("SELECT COUNT(*) c FROM messages").get().c; } finally { db.close(); } };
+const msgCount = (dbPath) => { const db = openMemory(dbPath); try { return db.prepare("SELECT COUNT(*) c FROM messages").get().c; } finally { db.close(); } };
 const enc = (dir) => readdirSync(dir).filter((f) => f.endsWith(".enc"));
 
 test("lean sync writes a baseline first, then only small deltas", async (t) => {
   sandboxHome(t);
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
-  const dbPath = join(root, "brain.db");
-  const keyPath = join(root, "share.key"); writeBrainShareKey(keyPath);
+  const dbPath = join(root, "memory.db");
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
   const project = "C:\\proj";
 
   addMessages(dbPath, project, 5);
@@ -72,7 +72,7 @@ test("a machine that missed syncs still ends up complete (self-sufficient series
   const dir = join(root, "drive"); mkdirSync(dir);
   const A = join(root, "a.db");   // producer
   const B = join(root, "b.db");   // consumer that syncs LATE
-  const keyPath = join(root, "share.key"); writeBrainShareKey(keyPath);
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
 
   // A publishes a baseline, then two more deltas — B is offline the whole time.
   addMessages(A, "C:\\a", 4); await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: A, host: "MACHINE-A" });
@@ -91,7 +91,7 @@ test("receiver dedup: a second sync with no remote change merges nothing", async
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
   const A = join(root, "a.db"), B = join(root, "b.db");
-  const keyPath = join(root, "share.key"); writeBrainShareKey(keyPath);
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
 
   addMessages(A, "C:\\a", 5); await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: A, host: "MACHINE-A" });
   const first = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: B, host: "MACHINE-B" });
@@ -107,7 +107,7 @@ test("compaction folds many deltas into one baseline without losing a row", asyn
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
   const A = join(root, "a.db"), B = join(root, "b.db");
-  const keyPath = join(root, "share.key"); writeBrainShareKey(keyPath);
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
 
   // DRIVE_COMPACT_AT = 12: baseline + 11 deltas = 12 files, the 13th push compacts.
   let total = 0;
@@ -125,8 +125,8 @@ test("full depth writes one self-contained snapshot and clears the delta series"
   sandboxHome(t);
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
-  const dbPath = join(root, "brain.db");
-  const keyPath = join(root, "share.key"); writeBrainShareKey(keyPath);
+  const dbPath = join(root, "memory.db");
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
 
   addMessages(dbPath, "C:\\p", 4);
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath });                 // lean baseline

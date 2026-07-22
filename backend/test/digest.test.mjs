@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { openBrain } from "../../dist/brain/db.js";
-import { buildDigest, digestBackfill, getDigest, searchDigests } from "../../dist/brain/digest.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { buildDigest, digestBackfill, getDigest, searchDigests } from "../../dist/memory/digest.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, id, opts, msgs) {
@@ -25,8 +25,8 @@ function seedSession(db, id, opts, msgs) {
 
 test("digest: build extracts tasks/decisions/errors with anchors, scoped meta; idempotent + change-detect", (t) => {
   const root = tempDir(t, "zemory-digest-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   seedSession(db, "s1", { project: "C:\\proj", host: "PC1", title: "làm robot" }, [
     { role: "user", content: "làm điều khiển robot giúp tôi", ts: "2026-01-01T00:00:00Z" },
     { role: "assistant", content: "CHỐT: dùng Python để điều khiển", ts: "2026-01-01T00:00:01Z" },
@@ -49,7 +49,7 @@ test("digest: build extracts tasks/decisions/errors with anchors, scoped meta; i
   assert.equal(d.meta.messages, 5);
 
   // anchor resolves to the real message
-  const chk = openBrain(dbPath);
+  const chk = openMemory(dbPath);
   const anchored = chk.prepare("SELECT content FROM messages WHERE id=?").get(d.tasks[0].id);
   assert.match(anchored.content, /điều khiển robot/, "anchor points to the true source message");
 
@@ -67,8 +67,8 @@ test("digest: build extracts tasks/decisions/errors with anchors, scoped meta; i
 
 test("digest: sessions never mix — each digest is scoped to its own session_id", (t) => {
   const root = tempDir(t, "zemory-digest2-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   seedSession(db, "A", { host: "PC1" }, [{ role: "user", content: "việc phiên A: alpha alpha", ts: "2026-02-01T00:00:00Z" }]);
   seedSession(db, "B", { host: "PC2" }, [{ role: "user", content: "việc phiên B: bravo bravo", ts: "2026-02-02T00:00:00Z" }]);
   buildDigest(db, "A");
@@ -87,8 +87,8 @@ test("digest: sessions never mix — each digest is scoped to its own session_id
 
 test("digest: backfill builds all + searchDigests finds by content", (t) => {
   const root = tempDir(t, "zemory-digest3-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   seedSession(db, "X", { host: "PC1", project: "C:\\zephyr" }, [
     { role: "user", content: "cấu hình pipeline crypto binance", ts: "2026-03-01T00:00:00Z" },
   ]);
@@ -102,8 +102,8 @@ test("digest: backfill builds all + searchDigests finds by content", (t) => {
 
 test("digest: empty session is a safe no-op (fail-open)", (t) => {
   const root = tempDir(t, "zemory-digest0-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions (id, source, message_count) VALUES ('empty','x',0)").run();
   const r = buildDigest(db, "empty");
   db.close();
@@ -124,14 +124,14 @@ test("opening a pre-v5 DB migrates: adds session_digest table and sets version 5
   `);
   raw.close();
 
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   const tbl = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='session_digest'").all();
   const ver = db.prepare("SELECT version FROM schema_version LIMIT 1").get();
   db.close();
   assert.equal(tbl.length, 1, "session_digest table created by migration");
   // migrates through to the LATEST schema version — compare against a fresh DB
   // instead of a hardcoded number, so this survives future schema bumps.
-  const fresh = openBrain(join(root, "fresh.db"));
+  const fresh = openMemory(join(root, "fresh.db"));
   const latest = fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version;
   fresh.close();
   assert.equal(ver.version, latest, "migrates to latest schema version");

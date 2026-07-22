@@ -4,7 +4,7 @@
 // loop (the same isolation the scheduler uses for embed passes). The result is
 // printed as one JSON line on stdout; the daemon parses it for /sync-status.
 
-import { resolveShareKey, syncDrive } from "../brain/share.js";
+import { resolveShareKey, syncDrive } from "../memory/share.js";
 import { getDriveDir } from "../settings.js";
 
 (async () => {

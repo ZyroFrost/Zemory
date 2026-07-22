@@ -46,7 +46,7 @@ test("tab switching does not refetch status or re-run capability checks", () => 
   // removed the ~1.6s tab lag, so assert the guard itself — not the absence of
   // any fetch (a first visit legitimately has to load once).
   assert.ok(/paintFromCache/.test(body), "tab switch must paint from the per-project cache");
-  assert.ok(!/\bbrainTick\(/.test(body), "tab switch must not refresh the brain panel (Global Memory owns it)");
+  assert.ok(!/\bmemoryTick\(/.test(body), "tab switch must not refresh the memory panel (Global Memory owns it)");
   const callSites = body.split("\n").filter((line) => /\brunChecks\(/.test(line));
   assert.ok(callSites.length > 0, "a cache miss must still be able to load the project once");
   callSites.forEach((line) => {
@@ -222,7 +222,7 @@ test("the per-recall cost is derived from the payload, never a hardcoded number"
   const row = js.split("\n").find((l) => /t\('m\.recall'\)/.test(l));
   assert.ok(row, "the memory panel must show a recall-cost row");
   assert.ok(
-    /brain\.recall[\s\S]*tokensApprox/.test(row),
+    /memory\.recall[\s\S]*tokensApprox/.test(row),
     "the recall cost must come from the server payload (search.ts constants), not a literal",
   );
 });
@@ -242,7 +242,7 @@ test("no element id is declared twice in the page", () => {
 // at once. Chuẩn chung moved to its own top-level tab.
 test("Global Memory holds TWO big sub-tabs; Chuẩn chung folded in, BẢNG list gone", () => {
   assert.ok(/class="gm-scroll"/.test(PAGE), "recall/Bộ nhớ live in one scroll container");
-  for (const id of ["recall", "brain", "capture", "coverage", "standard"]) {
+  for (const id of ["recall", "memory", "capture", "coverage", "standard"]) {
     assert.ok(new RegExp(`id="${id}"`).test(PAGE), `panel #${id} must exist`);
   }
   // Two big sub-tabs, CSS-driven via body[data-gtab] — the DOM never moves.
@@ -354,10 +354,10 @@ test("graph has a layout picker and add-project is an in-app dialog", () => {
   assert.ok(/addProjOverlay[\s\S]{0,120}closeAddProject/.test(js.slice(js.indexOf("escLayers"))), "dialog closes on ESC");
 });
 
-test("the brain-status poll is slow and cache-friendly", () => {
+test("the memory-status poll is slow and cache-friendly", () => {
   const js = embeddedScript();
   // A whole-DB aggregate must not be polled on a short interval.
-  const m = js.match(/setInterval\(function\(\)\{ brainTick\(\); \}, (\d+)\)/);
-  assert.ok(m, "brainTick must be polled through a wrapper (so it never forces a refresh)");
-  assert.ok(Number(m[1]) >= 15000, "brain poll interval must stay >= 15s (was 2.5s against a ~4s query)");
+  const m = js.match(/setInterval\(function\(\)\{ memoryTick\(\); \}, (\d+)\)/);
+  assert.ok(m, "memoryTick must be polled through a wrapper (so it never forces a refresh)");
+  assert.ok(Number(m[1]) >= 15000, "memory poll interval must stay >= 15s (was 2.5s against a ~4s query)");
 });

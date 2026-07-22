@@ -5,8 +5,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { HUB_FANIN, buildCodeGraph, fileImpact, graphFitness } from "../../dist/brain/graph/graph.js";
-import { enrichGraphSymbols, resolveCalls } from "../../dist/brain/graph/graph-symbols.js";
+import { HUB_FANIN, buildCodeGraph, fileImpact, graphFitness } from "../../dist/memory/graph/graph.js";
+import { enrichGraphSymbols, resolveCalls } from "../../dist/memory/graph/graph-symbols.js";
 import { tempDir } from "./helpers.mjs";
 
 /** A tiny project: a → b → c, plus an orphan and an external import (ignored). */

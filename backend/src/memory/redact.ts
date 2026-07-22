@@ -1,7 +1,7 @@
-// Scrub obvious secrets before they land in the brain. Transcripts can contain
+// Scrub obvious secrets before they land in the memory. Transcripts can contain
 // API keys / tokens pasted into prompts or printed by tools; we replace known
 // credential shapes with [REDACTED] at ingest. Local-only DB, but defense in
-// depth: the brain shouldn't become the one file that leaks every key.
+// depth: the memory shouldn't become the one file that leaks every key.
 // (Pattern set mirrors agentmemory's; conservative — known prefixes only.)
 
 const PATTERNS: RegExp[] = [

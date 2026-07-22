@@ -1,10 +1,10 @@
-// Recall over the global brain. Two FTS5 streams — word (unicode61) + trigram
+// Recall over the global memory. Two FTS5 streams — word (unicode61) + trigram
 // (substring / Vietnamese) — fused with Reciprocal Rank Fusion (idea from
 // Context Mode / agentmemory). Returns lightweight hits (progressive
 // disclosure: id + snippet first, full text on demand via getMessage). Default
 // scope = the current project; pass all=true for cross-project recall.
 
-import { type BrainDB, currentBrainDb, openBrain } from "./db.js";
+import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
@@ -27,7 +27,7 @@ export interface SearchOptions {
   dbPath?: string;
   /** Restrict to this project root (normalized match). Ignored if `all`. */
   project?: string;
-  /** Cross-project: search the whole brain. */
+  /** Cross-project: search the whole memory. */
   all?: boolean;
   /** Max hits returned. */
   limit?: number;
@@ -77,7 +77,7 @@ interface Ranked {
   rank: number;
 }
 
-function streamRanks(db: BrainDB, table: string, match: string, project?: string): Ranked[] {
+function streamRanks(db: MemoryDB, table: string, match: string, project?: string): Ranked[] {
   try {
     const rows = project
       ? (db
@@ -105,7 +105,7 @@ interface WeightedStream {
 }
 
 /** The two FTS streams (word + trigram) for the query, weighted for RRF. */
-function ftsStreams(db: BrainDB, terms: string[], scopedProject?: string): WeightedStream[] {
+function ftsStreams(db: MemoryDB, terms: string[], scopedProject?: string): WeightedStream[] {
   const wordMatch = terms.map((t) => `"${t}"`).join(" "); // implicit AND
   const triMatch = `"${terms.join(" ")}"`; // phrase for substring/Vietnamese
   return [
@@ -124,7 +124,7 @@ function rrf(streams: WeightedStream[]): { rowid: number; s: number }[] {
 }
 
 /** Batch-fetch message timestamps for candidate rowids (for the recency blend). */
-function timestampsFor(db: BrainDB, rowids: number[]): Map<number, string | null> {
+function timestampsFor(db: MemoryDB, rowids: number[]): Map<number, string | null> {
   const map = new Map<number, string | null>();
   const CHUNK = 400;
   for (let i = 0; i < rowids.length; i += CHUNK) {
@@ -144,7 +144,7 @@ function timestampsFor(db: BrainDB, rowids: number[]): Map<number, string | null
  * (returns the input unchanged when disabled).
  */
 function rankWithRecency(
-  db: BrainDB,
+  db: MemoryDB,
   ranked: { rowid: number; s: number }[],
   opts: SearchOptions,
 ): { rowid: number; s: number }[] {
@@ -158,7 +158,7 @@ function rankWithRecency(
 
 /** Hydrate fused rowids → hits: scope filter + per-session cap + snippet. */
 function hydrate(
-  db: BrainDB,
+  db: MemoryDB,
   ranked: { rowid: number; s: number }[],
   terms: string[],
   opts: SearchOptions,
@@ -210,7 +210,7 @@ function hydrate(
 export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
   const terms = ftsTerms(query);
   if (!terms.length) return [];
-  const db = openBrain(opts.dbPath ?? currentBrainDb());
+  const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const scopedProject = !opts.all ? opts.project : undefined;
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
@@ -252,7 +252,7 @@ export function rerankEnabled(force?: boolean): boolean {
  * if the reranker is unavailable or returns a bad shape, the RRF order is kept.
  */
 async function maybeRerank(
-  db: BrainDB,
+  db: MemoryDB,
   ranked: { rowid: number; s: number }[],
   query: string,
   force?: boolean,
@@ -281,7 +281,7 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
   const terms = ftsTerms(query);
   const vec = useVector ? await vectorRanks(query, { dbPath: opts.dbPath, pool: POOL }) : [];
   if (!terms.length && !vec.length) return [];
-  const db = openBrain(opts.dbPath ?? currentBrainDb());
+  const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const scopedProject = !opts.all ? opts.project : undefined;
     const streams = terms.length ? ftsStreams(db, terms, scopedProject) : [];
@@ -312,8 +312,8 @@ export async function searchHybrid(query: string, opts: SearchOptions = {}): Pro
 }
 
 /** Progressive disclosure: fetch one message's full content + context. */
-export function getMessage(id: number, dbPath: string = currentBrainDb()) {
-  const db = openBrain(dbPath);
+export function getMessage(id: number, dbPath: string = currentMemoryDb()) {
+  const db = openMemory(dbPath);
   try {
     return db
       .prepare(
@@ -348,9 +348,9 @@ export interface MessageContext {
 export function getMessageContext(
   id: number,
   window = 3,
-  dbPath: string = currentBrainDb(),
+  dbPath: string = currentMemoryDb(),
 ): MessageContext | null {
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const target = db
       .prepare(
@@ -401,9 +401,9 @@ export function getMessageContext(
 const THREAD_CAP = 5000;
 
 /** The ENTIRE session transcript (all messages, ordered) for the full-thread dialog. */
-export function getSessionThread(sessionId: string, dbPath: string = currentBrainDb()): MessageContext | null {
+export function getSessionThread(sessionId: string, dbPath: string = currentMemoryDb()): MessageContext | null {
   if (!sessionId) return null;
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const s = db.prepare("SELECT source, project_root, title FROM sessions WHERE id = ?").get(sessionId) as
       | { source: string; project_root: string | null; title: string | null }

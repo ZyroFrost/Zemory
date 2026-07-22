@@ -16,7 +16,7 @@ import {
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openBrain } from "../brain/db.js";
+import { openMemory } from "../memory/db.js";
 import { CONFIG_FILE, loadContext } from "../core/config.js";
 import type { HarnessConfig } from "../core/types.js";
 import { rememberProject } from "../registry.js";
@@ -146,7 +146,7 @@ export function ensureHarness(projectRoot: string): AdoptResult {
       }
     }
     if (renamed.length > 0) {
-      const db = openBrain();
+      const db = openMemory();
       for (const [oldName, newName] of renamed) {
         db.prepare(
           `UPDATE doc SET path=? WHERE project_root=? AND path=?

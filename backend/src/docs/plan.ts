@@ -5,7 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
-import { type BrainDB, currentBrainDb, openBrain } from "../brain/db.js";
+import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { parseMarkdown, roundTripOk } from "./markdown.js";
 
 export interface ImportResult {
@@ -16,7 +16,7 @@ export interface ImportResult {
   roundTrip: boolean;
 }
 
-function upsertDoc(db: BrainDB, projectRoot: string, relPath: string, kind: string): number {
+function upsertDoc(db: MemoryDB, projectRoot: string, relPath: string, kind: string): number {
   const canonicalPath = normalize(relPath);
   db.prepare(
     `INSERT INTO doc (project_root, path, kind) VALUES (?, ?, ?)
@@ -29,7 +29,7 @@ function upsertDoc(db: BrainDB, projectRoot: string, relPath: string, kind: stri
   ).id;
 }
 
-function replaceSections(db: BrainDB, docId: number, text: string): number {
+function replaceSections(db: MemoryDB, docId: number, text: string): number {
   const sections = parseMarkdown(text);
   db.prepare("DELETE FROM section WHERE doc_id=?").run(docId);
   const ins = db.prepare(
@@ -50,11 +50,11 @@ function replaceSections(db: BrainDB, docId: number, text: string): number {
 
 /** Reindex ONE markdown file into the DB search index (read-only; never writes
  *  the file). The .md is the source; this only refreshes the derived index. */
-export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = currentBrainDb()): ImportResult {
+export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = currentMemoryDb()): ImportResult {
   // Strip any prior GENERATED header (legacy renders) so it is not indexed as body.
   const text = readFileSync(absPath, "utf8").replace(/^<!-- GENERATED[^\n]*-->\r?\n/, "");
   const roundTrip = roundTripOk(text);
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const tx = db.transaction(() => {
       const docId = upsertDoc(db, projectRoot, relPath, kind);
@@ -84,8 +84,8 @@ export interface DocRow {
   sections: number;
 }
 
-export function listDocs(projectRoot: string, dbPath = currentBrainDb()): DocRow[] {
-  const db = openBrain(dbPath);
+export function listDocs(projectRoot: string, dbPath = currentMemoryDb()): DocRow[] {
+  const db = openMemory(dbPath);
   try {
     return db
       .prepare(
@@ -107,8 +107,8 @@ export interface TocRow {
 }
 
 /** Table of contents (derived) for a doc — query, not a stored index file. */
-export function listToc(docPath: string, projectRoot: string, dbPath = currentBrainDb()): TocRow[] {
-  const db = openBrain(dbPath);
+export function listToc(docPath: string, projectRoot: string, dbPath = currentMemoryDb()): TocRow[] {
+  const db = openMemory(dbPath);
   try {
     const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as { id: number } | undefined;
     if (!doc) return [];
@@ -120,8 +120,8 @@ export function listToc(docPath: string, projectRoot: string, dbPath = currentBr
   }
 }
 
-export function showSection(id: number, dbPath = currentBrainDb()) {
-  const db = openBrain(dbPath);
+export function showSection(id: number, dbPath = currentMemoryDb()) {
+  const db = openMemory(dbPath);
   try {
     return db
       .prepare(
@@ -145,7 +145,7 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
   const q = query.trim();
   if (!q) return [];
   const limit = opts.limit ?? 10;
-  const db = openBrain(opts.dbPath ?? currentBrainDb());
+  const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const run = (table: string, match: string): PlanHit[] => {
       try {

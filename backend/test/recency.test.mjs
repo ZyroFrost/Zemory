@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { openBrain } from "../../dist/brain/db.js";
-import { recencyFactor, blendRecency } from "../../dist/brain/recency.js";
-import { search } from "../../dist/brain/search.js";
+import { openMemory } from "../../dist/memory/db.js";
+import { recencyFactor, blendRecency } from "../../dist/memory/recency.js";
+import { search } from "../../dist/memory/search.js";
 import { tempDir } from "./helpers.mjs";
 
 const NOW = Date.parse("2026-07-02T00:00:00Z");
@@ -40,8 +40,8 @@ test("blendRecency: a barely-relevant deep-tail recent item does NOT leap over t
 
 test("search(): recency default ON ranks the fresher relevant message first", (t) => {
   const root = tempDir(t, "zemory-recency-");
-  const dbPath = join(root, "brain.db");
-  const db = openBrain(dbPath);
+  const dbPath = join(root, "memory.db");
+  const db = openMemory(dbPath);
   const ins = db.prepare(
     "INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)",
   );

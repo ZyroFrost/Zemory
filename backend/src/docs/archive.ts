@@ -6,7 +6,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { currentBrainDb } from "../brain/db.js";
+import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
 
@@ -38,7 +38,7 @@ function entryHeads(lines: string[]): number[] {
 
 /** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries
  *  to docs/agent/archive/06_CHANGES.md verbatim, keep the newest in place. */
-export function archiveChanges(ctx: Context, dbPath: string = currentBrainDb()): ArchiveResult {
+export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb()): ArchiveResult {
   const mainPath = join(ctx.docsDir, "06_CHANGES.md");
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;

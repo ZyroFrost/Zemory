@@ -6,9 +6,9 @@ import { join } from "node:path";
 import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
 import { createRuntime } from "./core/runtime.js";
 import type { Capability } from "./core/types.js";
-import { brainSummary } from "./brain/ingest.js";
-import { openBrain } from "./brain/db.js";
-import { search } from "./brain/search.js";
+import { memorySummary } from "./memory/ingest.js";
+import { openMemory } from "./memory/db.js";
+import { search } from "./memory/search.js";
 import { validate } from "./docs/validate.js";
 import { tr } from "./settings.js";
 
@@ -23,7 +23,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
   const configuredRoot =
     rootArg && existsSync(join(rootArg, CONFIG_FILE)) ? rootArg : findProjectRoot();
 
-  // --- Tool/brain-level features (no project needed) ---
+  // --- Tool/memory-level features (no project needed) ---
   if (feature === "grill") {
     // Real check: the grill playbook must actually be present in 04_SKILLS.
     const root = configuredRoot;
@@ -38,7 +38,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
       : { feature, ok: false, state: "off", detail: tr("04_SKILLS thiếu §grill", "04_SKILLS has no §grill") };
   }
 
-  // 'memory' covers both keyword search and recall (one brain, one check).
+  // 'memory' covers both keyword search and recall (one memory, one check).
   const capability = ({ memory: "memory" } as Record<string, Capability>)[feature];
   if (configuredRoot && capability) {
     try {
@@ -64,15 +64,15 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
   }
 
   if (feature === "memory") {
-    // REAL test: read actual brain rows AND exercise the FTS query path. search()
+    // REAL test: read actual memory rows AND exercise the FTS query path. search()
     // swallows FTS errors and returns [], so a probe of 0 can't detect a dropped
     // index — assert the FTS tables exist directly instead of trusting the probe.
     try {
-      const t = brainSummary().totals;
+      const t = memorySummary().totals;
       if (t.sessions === 0) {
-        return { feature, ok: true, state: "on", detail: tr("sẵn sàng · brain trống (chạy quét)", "ready · brain empty (run a scan)") };
+        return { feature, ok: true, state: "on", detail: tr("sẵn sàng · memory trống (chạy quét)", "ready · memory empty (run a scan)") };
       }
-      const db = openBrain();
+      const db = openMemory();
       let ftsOk: boolean;
       try {
         ftsOk =
@@ -83,7 +83,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
         db.close();
       }
       if (!ftsOk) {
-        return { feature, ok: false, state: "off", detail: tr("thiếu index FTS (chạy brain scan)", "FTS index missing (run brain scan)") };
+        return { feature, ok: false, state: "off", detail: tr("thiếu index FTS (chạy memory scan)", "FTS index missing (run memory scan)") };
       }
       const probe = search("the", { all: true, limit: 3 }).length; // exercise FTS5
       return {
@@ -96,7 +96,7 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
         ),
       };
     } catch {
-      return { feature, ok: false, state: "off", detail: tr("lỗi brain", "brain error") };
+      return { feature, ok: false, state: "off", detail: tr("lỗi memory", "memory error") };
     }
   }
 

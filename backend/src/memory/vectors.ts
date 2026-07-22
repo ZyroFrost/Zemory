@@ -7,7 +7,7 @@
 // number binds as REAL and is rejected); embedding binds as a Float32 BLOB; KNN
 // is `... WHERE embedding MATCH ? ORDER BY distance LIMIT ?`.
 //
-// Embedding is a SEPARATE incremental pass (`embedPending` / `zemory brain
+// Embedding is a SEPARATE incremental pass (`embedPending` / `zemory memory
 // embed`), NOT part of the Stop-hook capture — capture stays fast and offline.
 //
 // LONG MESSAGES are split into overlapping windows so their tail is visible to
@@ -20,12 +20,12 @@
 // see embed.ts): prefixed and bare vectors live in different spaces, so both the
 // document and the query side always follow the STORED profile. Pre-profile
 // indexes read as "raw" and keep working unchanged; switching profiles is
-// `zemory brain embed --rebuild`.
+// `zemory memory embed --rebuild`.
 
 import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
-import { currentBrainDb } from "./db.js";
+import { currentMemoryDb } from "./db.js";
 import { currentEmbedProfile, embedDocBatch, embedQuery, sliceNormalize, targetEmbedDims, type EmbedProfile } from "./embed.js";
 
 type Conn = Database.Database;
@@ -35,7 +35,7 @@ const CHUNK_STEP = 5500; // 500-char overlap between consecutive windows
 const MAX_CHUNKS = 8; // cap pathological mega-messages (~44.5k chars covered)
 const SYNTH_BASE = 2 ** 40; // synthetic rowids for chunks 1+ (message ids never get near this)
 
-/** A brain connection with the sqlite-vec extension loaded. Exported so callers
+/** A memory connection with the sqlite-vec extension loaded. Exported so callers
  *  elsewhere (e.g. VACUUM, which must resolve the vec0 module to recreate the
  *  virtual table's shadow tables in the rebuilt file) don't reimplement this. */
 export function vecConnect(dbPath: string): Conn {
@@ -120,7 +120,7 @@ function storedDims(db: Conn): number {
 }
 
 /** The profile of the vector index at dbPath (observability + tests). */
-export function vectorIndexProfile(dbPath: string = currentBrainDb()): EmbedProfile {
+export function vectorIndexProfile(dbPath: string = currentMemoryDb()): EmbedProfile {
   const db = vecConnect(dbPath);
   try {
     return storedProfile(db);
@@ -130,7 +130,7 @@ export function vectorIndexProfile(dbPath: string = currentBrainDb()): EmbedProf
 }
 
 /** Profile + dims of the vector index at dbPath (observability + tests). */
-export function vectorIndexInfo(dbPath: string = currentBrainDb()): { profile: EmbedProfile; dims: number } {
+export function vectorIndexInfo(dbPath: string = currentMemoryDb()): { profile: EmbedProfile; dims: number } {
   const db = vecConnect(dbPath);
   try {
     return { profile: storedProfile(db), dims: storedDims(db) };
@@ -202,7 +202,7 @@ export interface EmbedProgress {
 export async function embedPending(
   opts: { dbPath?: string; limit?: number; batchSize?: number; onProgress?: (progress: EmbedProgress) => void } = {},
 ): Promise<EmbedPendingResult> {
-  const dbPath = opts.dbPath ?? currentBrainDb();
+  const dbPath = opts.dbPath ?? currentMemoryDb();
   const limit = opts.limit ?? 500;
   const batchSize = Math.max(1, opts.batchSize ?? 16);
   const db = vecConnect(dbPath);
@@ -359,7 +359,7 @@ export interface VecRank {
 export async function vectorRanks(query: string, opts: { dbPath?: string; pool?: number } = {}): Promise<VecRank[]> {
   // Fully fail-open: embed failure, missing sqlite-vec, or no table → [] (FTS-only).
   try {
-    const dbPath = opts.dbPath ?? currentBrainDb();
+    const dbPath = opts.dbPath ?? currentMemoryDb();
     let profile: EmbedProfile;
     let dims: number;
     {
@@ -411,7 +411,7 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
 }
 
 /** How many vectors are stored (chunks count individually). */
-export function vectorCount(dbPath: string = currentBrainDb()): number {
+export function vectorCount(dbPath: string = currentMemoryDb()): number {
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) return 0;
@@ -422,7 +422,7 @@ export function vectorCount(dbPath: string = currentBrainDb()): number {
 }
 
 /** How many non-empty EMBEDDABLE messages still need an embedding. */
-export function vectorRemaining(dbPath: string = currentBrainDb()): number {
+export function vectorRemaining(dbPath: string = currentMemoryDb()): number {
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) {
@@ -443,7 +443,7 @@ export function vectorRemaining(dbPath: string = currentBrainDb()): number {
  * so the next `embed --all` rebuilds it under the CURRENT embed profile. The
  * only way to switch profiles — mixed-space indexes are never allowed.
  */
-export function dropVectorIndex(dbPath: string = currentBrainDb()): void {
+export function dropVectorIndex(dbPath: string = currentMemoryDb()): void {
   const db = vecConnect(dbPath);
   try {
     db.exec("DROP TABLE IF EXISTS vec_chunks");

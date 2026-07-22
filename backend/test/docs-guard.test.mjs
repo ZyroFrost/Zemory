@@ -15,7 +15,7 @@ test("CRLF: a Windows-written doc still splits into sections (parser was blind t
   const planDir = join(root, "docs", "plan");
   const rel = join("docs", "plan", "01_spec.md");
   const abs = join(planDir, "01_spec.md");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   mkdirSync(planDir, { recursive: true });
   // Exactly what a Windows editor / PowerShell writes.
   writeFileSync(abs, "# Spec\r\n\r\nintro\r\n\r\n## Part A\r\n\r\nbody A\r\n\r\n## Part B\r\n\r\nbody B\r\n");
@@ -33,7 +33,7 @@ test("CRLF: a Windows-written doc still splits into sections (parser was blind t
 test("changelog: `## ` sub-headings INSIDE an entry body are body — not phantom entries", (t) => {
   const root = tempDir(t, "zemory-chlog-subhead-");
   const md = join(root, "05_CHANGES.md");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   // A real session-summary entry: the body legitimately uses `## ` sections.
   writeFileSync(
     md,
@@ -60,7 +60,7 @@ test("CRLF: a Windows-written changelog merges (import used to silently report '
   const root = tempDir(t, "zemory-crlf-chlog-");
   const agentDir = join(root, "docs", "agent");
   const md = join(agentDir, "05_CHANGES.md");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(
     md,
@@ -78,7 +78,7 @@ test("CRLF: a Windows-written changelog merges (import used to silently report '
 
 test("changelog import MERGES by date+title (re-import is a no-op); --replace wipes and reseeds", (t) => {
   const root = tempDir(t, "zemory-chlog-merge-");
-  const dbPath = join(root, "brain.db");
+  const dbPath = join(root, "memory.db");
   const md = join(root, "05_CHANGES.md");
   writeFileSync(
     md,

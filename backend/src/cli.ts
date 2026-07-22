@@ -12,36 +12,36 @@ import { archiveChanges } from "./docs/archive.js";
 import { runCheck } from "./checks.js";
 import { gatherStatus } from "./status.js";
 import { startUi, uiPort } from "./ui.js";
-import { type ScanReport, brainHostTree, brainInfo, scan } from "./brain/ingest.js";
-import { type Digest, digestBackfill, getDigest, searchDigests } from "./brain/digest.js";
-import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "./brain/vectors.js";
+import { type ScanReport, memoryHostTree, memoryInfo, scan } from "./memory/ingest.js";
+import { type Digest, digestBackfill, getDigest, searchDigests } from "./memory/digest.js";
+import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runRagBench } from "./evals/ragbench.js";
-import { scanWeb } from "./brain/scanweb.js";
-import { relocateBrain, storageInfo } from "./brain/relocate.js";
-import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./brain/search.js";
+import { scanWeb } from "./memory/scanweb.js";
+import { relocateMemory, storageInfo } from "./memory/relocate.js";
+import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "./memory/search.js";
 import {
-  exportBrainBundle,
-  importBrainBundle,
-  mergeBrainBundle,
+  exportMemoryBundle,
+  importMemoryBundle,
+  mergeMemoryBundle,
   readExportWatermark,
   resolveShareKey,
   syncDrive,
-  writeBrainShareKey,
+  writeMemoryShareKey,
   writeExportWatermark,
-} from "./brain/share.js";
-import { type ScopeNode, scopeTree, toggleLane } from "./brain/scope.js";
+} from "./memory/share.js";
+import { type ScopeNode, scopeTree, toggleLane } from "./memory/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "./settings.js";
-import { backupBrain, forgetBrain, reRedactBrain, restoreBrainBackup, vacuumBrain } from "./brain/privacy.js";
+import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "./memory/privacy.js";
 import { handleHook, installCodexHooks, installHooks } from "./hooks.js";
 import { validate } from "./docs/validate.js";
 import { runMcpStdio } from "./mcp.js";
 import { importDoc, listDocs, listToc, searchSections, showSection } from "./docs/plan.js";
 import { importChangelog, listEntries, searchChangelog } from "./docs/changelog.js";
-import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "./brain/graph/graph.js";
-import { enrichGraphSymbols, resolveCalls } from "./brain/graph/graph-symbols.js";
-import { buildTouchIndex, touchesFor } from "./brain/graph/graph-brain.js";
-import { buildDocsGraph } from "./brain/graph/graph-docs.js";
-import { semanticEdges } from "./brain/graph/graph-semantic.js";
+import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "./memory/graph/graph.js";
+import { enrichGraphSymbols, resolveCalls } from "./memory/graph/graph-symbols.js";
+import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
+import { buildDocsGraph } from "./memory/graph/graph-docs.js";
+import { semanticEdges } from "./memory/graph/graph-semantic.js";
 import { listKnownProjects } from "./registry.js";
 const VERSION = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
@@ -232,7 +232,7 @@ function cmdStructure(): void {
       "  docs/agent/05_TODO.md       — backlog",
       "  docs/agent/06_CHANGES.md    — changelog",
       "  docs/plan/*.md              — specs (00_overview + numbered specs)",
-      "  ~/.zemory/global_memory.db          — brain (episodic sessions) + derived docs INDEX (rebuilt from .md)",
+      "  ~/.zemory/global_memory.db          — memory (episodic sessions) + derived docs INDEX (rebuilt from .md)",
       "",
       "  Index: `zemory docs ls` · `plan ls` · `plan search` · `changelog ls`.",
     ].join("\n"),
@@ -277,7 +277,7 @@ function printDigest(d: Digest): void {
 }
 
 function printScanReport(r: ScanReport): void {
-  console.log(`zemory brain scan — global brain at ${r.dbPath}`);
+  console.log(`zemory memory scan — global memory at ${r.dbPath}`);
   console.log(
     `  mode: ${r.deep ? `deep (walked ${r.roots.length} root(s))` : "fast (known locations)"}`,
   );
@@ -302,7 +302,7 @@ function printScanReport(r: ScanReport): void {
   console.log("");
   const t = r.totals;
   console.log(
-    `  ✓ loaded into global brain: +${t.newMessages} message(s) across ${r.changedFiles} session(s) this scan`,
+    `  ✓ loaded into global memory: +${t.newMessages} message(s) across ${r.changedFiles} session(s) this scan`,
   );
   console.log(
     `    total now: ${t.sessions} session(s) · ${t.messages} message(s) · ${t.agents} agent(s) · ${fmtDate(t.from)} → ${fmtDate(t.to)}`,
@@ -318,7 +318,7 @@ function printScanReport(r: ScanReport): void {
 }
 
 function printHits(query: string, scopeLabel: string, hits: SearchHit[]): void {
-  console.log(`zemory brain search — "${query}"  (${scopeLabel})`);
+  console.log(`zemory memory search — "${query}"  (${scopeLabel})`);
   if (!hits.length) {
     console.log("  no matches.");
     return;
@@ -331,7 +331,7 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[]): void {
     console.log(`     ${h.snippet}`);
   }
   console.log("");
-  console.log(`  ${hits.length} hit(s) — \`zemory brain show <#id>\` for full message.`);
+  console.log(`  ${hits.length} hit(s) — \`zemory memory show <#id>\` for full message.`);
 }
 
 function flagValue(args: string[], flag: string): string | undefined {
@@ -352,7 +352,7 @@ function positionalArgs(args: string[], valueFlags = new Set(["--db", "--key-fil
   return out;
 }
 
-// Heavy-write brain subcommands route through the daemon's write gate (plan 14
+// Heavy-write memory subcommands route through the daemon's write gate (plan 14
 // §C): if the `zemory ui` daemon is alive, tell it to pause its idle scheduler
 // while we write, so the two processes never collide on SQLite. Daemon dead →
 // run directly (fallback). Auto-expiring hold + the engine's own retry are the
@@ -369,7 +369,7 @@ async function daemonPort(): Promise<number | null> {
     return null;
   }
 }
-async function cmdBrain(args: string[]): Promise<void> {
+async function cmdMemory(args: string[]): Promise<void> {
   const sub = args[0];
   // Write gate: hold the daemon's scheduler off while a heavy write runs here.
   // Shape matters (audit 2026-07-21): the old version wrapped the RUN in the
@@ -383,7 +383,7 @@ async function cmdBrain(args: string[]): Promise<void> {
   // the daemon already serialized it via its job token — gating here made the
   // child wait on ITSELF and its hold blocked the sync button for the whole run.
   if (process.env.ZEMORY_DAEMON_CHILD === "1") {
-    await cmdBrainInner(args);
+    await cmdMemoryInner(args);
     return;
   }
   let gated = false;
@@ -401,7 +401,7 @@ async function cmdBrain(args: string[]): Promise<void> {
           const g = await acquire();
           gated = true;
           if (!g.busy) break;
-          if (i === 0) console.log("  daemon background job is writing the brain — waiting for it to yield…");
+          if (i === 0) console.log("  daemon background job is writing the memory — waiting for it to yield…");
           await new Promise((r) => setTimeout(r, 5000));
         }
         heartbeat = setInterval(() => void acquire().catch(() => {}), 120_000);
@@ -412,7 +412,7 @@ async function cmdBrain(args: string[]): Promise<void> {
     }
   }
   try {
-    await cmdBrainInner(args);
+    await cmdMemoryInner(args);
   } finally {
     if (heartbeat) clearInterval(heartbeat);
     if (gated && port) {
@@ -425,7 +425,7 @@ async function cmdBrain(args: string[]): Promise<void> {
   }
 }
 
-async function cmdBrainInner(args: string[]): Promise<void> {
+async function cmdMemoryInner(args: string[]): Promise<void> {
   const sub = args[0];
   if (sub === "scan") {
     const deep = args.includes("--deep");
@@ -452,7 +452,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    console.log(`zemory brain scan-web — ${platform} (web-chat capture, origin=web)`);
+    console.log(`zemory memory scan-web — ${platform} (web-chat capture, origin=web)`);
     const r = await scanWeb({ platform, refresh, limit, delayMs }, (m) => console.log("  " + m));
     if (r.status === "no-browser") {
       console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
@@ -465,17 +465,17 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       return;
     }
     if (r.status === "need-login") {
-      console.log(`  → A dedicated browser window is open at ${r.url}. Log in to YOUR account there (one time — password stays in the browser, never touches zemory), then re-run \`zemory brain scan-web\`.`);
+      console.log(`  → A dedicated browser window is open at ${r.url}. Log in to YOUR account there (one time — password stays in the browser, never touches zemory), then re-run \`zemory memory scan-web\`.`);
       return;
     }
     console.log(`  ✓ signed in as ${r.email ?? "?"} · ${r.total} conversation(s) on the account`);
     console.log(`  ↓ pulled ${r.pulled} new · skipped ${r.skipped} (already ingested) · failed ${r.failed}`);
     if (r.scan) {
       const web = r.scan.agents.find((a) => a.source.endsWith("-web"));
-      if (web) console.log(`  ⤷ brain now holds ${web.source}: ${web.sessions} session(s), ${web.messages} message(s)`);
-      console.log("  → vectorize the new ones: `zemory brain embed --all`");
+      if (web) console.log(`  ⤷ memory now holds ${web.source}: ${web.sessions} session(s), ${web.messages} message(s)`);
+      console.log("  → vectorize the new ones: `zemory memory embed --all`");
     }
-    if (r.interrupted) console.log("  ⚠ connection dropped mid-run — pulled batches are saved. Re-run `zemory brain scan-web` to resume the rest.");
+    if (r.interrupted) console.log("  ⚠ connection dropped mid-run — pulled batches are saved. Re-run `zemory memory scan-web` to resume the rest.");
     if (r.failed) console.log("  note: some failed (rate-limit?) — just re-run to resume; it skips what's already in.");
     return;
   }
@@ -496,24 +496,24 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     if (action === "exclude" || action === "include") {
       const lane = laneFromFlags();
       if (lane.origin === undefined && lane.host === undefined && lane.source === undefined) {
-        console.log("usage: zemory brain scope exclude|include [--origin local|web] [--host <machine>] [--source <agent>]");
+        console.log("usage: zemory memory scope exclude|include [--origin local|web] [--host <machine>] [--source <agent>]");
         process.exitCode = 1;
         return;
       }
       setScopeExclude(toggleLane(getScopeExclude(), lane, action === "exclude"));
-      console.log(`zemory brain scope — ${action}d ${JSON.stringify(lane)}`);
+      console.log(`zemory memory scope — ${action}d ${JSON.stringify(lane)}`);
       // fall through to print the tree
     } else if (action === "clear") {
       setScopeExclude([]);
-      console.log("zemory brain scope — cleared all exclusions");
+      console.log("zemory memory scope — cleared all exclusions");
     } else if (action && action !== "ls") {
-      console.log("usage: zemory brain scope [ls] | exclude <sel> | include <sel> | clear");
+      console.log("usage: zemory memory scope [ls] | exclude <sel> | include <sel> | clear");
       console.log("  selector flags: --origin local|web  --host <machine>  --source <agent>");
       return;
     }
     const tree = scopeTree();
     const excluded = getScopeExclude();
-    console.log(`zemory brain scope — Local/Web × machine × agent (${excluded.length} lane(s) excluded)`);
+    console.log(`zemory memory scope — Local/Web × machine × agent (${excluded.length} lane(s) excluded)`);
     const printNode = (n: ScopeNode, depth: number) => {
       const pad = "  ".repeat(depth + 1);
       const mark = n.excluded ? " ✗ EXCLUDED" : n.effectiveExcluded ? " ✗ excluded (covered by a broader rule)" : "";
@@ -521,8 +521,8 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       for (const c of n.children ?? []) printNode(c, depth + 1);
     };
     for (const n of tree) printNode(n, 0);
-    if (!tree.length) console.log("  (brain empty — run `zemory brain scan` first)");
-    console.log("  toggle: `zemory brain scope exclude --source codex` · `… include …` · `… clear`");
+    if (!tree.length) console.log("  (memory empty — run `zemory memory scan` first)");
+    console.log("  toggle: `zemory memory scope exclude --source codex` · `… include …` · `… clear`");
     return;
   }
   if (sub === "search") {
@@ -537,26 +537,26 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     const query = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--origin").join(" ");
     if (!query) {
       console.log(
-        "usage: zemory brain search <query> [--all] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory memory search <query> [--all] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
     const recencyOpt = rest.includes("--no-recency") ? false : undefined;
     if (rest.includes("--digest")) {
       // Recall "digest lane": session-level hits (read the thin digest first,
-      // drill into messages via `brain digest <session>` / `brain show <#id>`).
+      // drill into messages via `memory digest <session>` / `memory show <#id>`).
       const proj = all ? undefined : (findProjectRoot() ?? process.cwd());
       const dhits = searchDigests(query, { project: proj, recency: recencyOpt });
-      console.log(`zemory brain search — "${query}" · digest lane (${all ? "whole brain" : "this project"})`);
+      console.log(`zemory memory search — "${query}" · digest lane (${all ? "whole memory" : "this project"})`);
       if (!dhits.length) {
-        console.log("  no session digests match. (Run `zemory brain digest --all` if you haven't built them.)");
+        console.log("  no session digests match. (Run `zemory memory digest --all` if you haven't built them.)");
         return;
       }
       for (const h of dhits) {
         console.log(`  ▪ ${h.session_id}  [${h.meta.source} · ${h.meta.host}]  ${fmtDate(h.meta.to)}`);
         console.log(`     ${h.snippet}`);
       }
-      console.log("  → open one: `zemory brain digest <session_id>`");
+      console.log("  → open one: `zemory memory digest <session_id>`");
       return;
     }
     const project = findProjectRoot() ?? process.cwd();
@@ -569,7 +569,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       : search(query, { project, all, origin: originOpt, recency: recencyOpt });
     printHits(
       query,
-      (all ? "whole brain" : `project: ${project}`) +
+      (all ? "whole memory" : `project: ${project}`) +
         (originOpt ? ` · origin=${originOpt}` : "") +
         (useHybrid ? " · hybrid (FTS+vector)" : " · FTS") +
         (useRerank ? " · rerank (cross-encoder)" : "") +
@@ -581,19 +581,19 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   if (sub === "keygen") {
     const out = positionalArgs(args.slice(1))[0];
     if (!out) {
-      console.log("usage: zemory brain keygen <key-file> [--force]");
+      console.log("usage: zemory memory keygen <key-file> [--force]");
       console.log("  Keep this file OUT of git. Share it out-of-band with trusted machines only.");
       return;
     }
-    writeBrainShareKey(out, { force: args.includes("--force") });
-    console.log(`zemory brain keygen — wrote ${out}`);
+    writeMemoryShareKey(out, { force: args.includes("--force") });
+    console.log(`zemory memory keygen — wrote ${out}`);
     console.log("  Keep this key file out of git; encrypted bundles are useless without it.");
     return;
   }
   if (sub === "export") {
     const out = positionalArgs(args.slice(1))[0];
     if (!out) {
-      console.log("usage: zemory brain export <out.zemory.enc> [--delta] [--full] [--key-file <path>] [--db <path>] [--force]");
+      console.log("usage: zemory memory export <out.zemory.enc> [--delta] [--full] [--key-file <path>] [--db <path>] [--force]");
       console.log("  default: LEAN bundle — source rows only (sessions/messages); the receiver rebuilds");
       console.log("           FTS and re-embeds locally. Derived layers are ~87% of the DB and never merge.");
       console.log("  --delta: only messages added since this bundle's last export (watermark per bundle name).");
@@ -605,7 +605,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     const delta = args.includes("--delta");
     const bundleKey = basename(out);
     const since = delta ? readExportWatermark(bundleKey, dbPath) : undefined;
-    const r = await exportBrainBundle({
+    const r = await exportMemoryBundle({
       outPath: out,
       dbPath,
       keyFile: flagValue(args, "--key-file"),
@@ -614,7 +614,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       sinceMessageId: since,
     });
     const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
-    console.log(`zemory brain export — wrote ${r.outPath}`);
+    console.log(`zemory memory export — wrote ${r.outPath}`);
     if (r.rows) {
       const span = r.rows.since > 0 ? `delta since message #${r.rows.since}` : "full row set";
       console.log(`  ${span}: ${r.rows.sessions} session(s) · ${r.rows.messages} message(s) → ${mb(r.bundleBytes)}`);
@@ -628,32 +628,32 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   if (sub === "import") {
     const bundle = positionalArgs(args.slice(1))[0];
     if (!bundle) {
-      console.log("usage: zemory brain import <in.zemory.enc> [--merge] [--key-file <path>] [--db <path>] [--force]");
+      console.log("usage: zemory memory import <in.zemory.enc> [--merge] [--key-file <path>] [--db <path>] [--force]");
       console.log("  default: REPLACE the DB (refuses without --force; old DB renamed to .bak-*).");
       console.log("  --merge: ADD sessions/messages into the existing DB (INSERT OR IGNORE; nothing overwritten).");
       return;
     }
     if (args.includes("--merge")) {
-      const r = await mergeBrainBundle({
+      const r = await mergeMemoryBundle({
         bundlePath: bundle,
         dbPath: flagValue(args, "--db"),
         keyFile: flagValue(args, "--key-file"),
       });
-      console.log(`zemory brain import --merge — ${r.dbPath}`);
+      console.log(`zemory memory import --merge — ${r.dbPath}`);
       console.log(
         `  +${r.sessionsAdded} session(s) · +${r.messagesAdded} message(s)  (now ${r.sessionsAfter} sessions · ${r.messagesAfter} messages)`,
       );
       const remaining = vectorRemaining(r.dbPath);
-      if (remaining) console.log(`  ${remaining} message(s) need embedding → run \`zemory brain embed --all\` to vectorize the new ones.`);
+      if (remaining) console.log(`  ${remaining} message(s) need embedding → run \`zemory memory embed --all\` to vectorize the new ones.`);
       return;
     }
-    const r = await importBrainBundle({
+    const r = await importMemoryBundle({
       bundlePath: bundle,
       dbPath: flagValue(args, "--db"),
       keyFile: flagValue(args, "--key-file"),
       force: args.includes("--force"),
     });
-    console.log(`zemory brain import — restored ${r.dbPath}`);
+    console.log(`zemory memory import — restored ${r.dbPath}`);
     console.log(`  decrypted ${r.bytes} byte(s) from ${r.bundlePath}`);
     if (r.backupPath) console.log(`  previous DB backup: ${r.backupPath}`);
     return;
@@ -661,7 +661,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   if (sub === "sync") {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
-      console.log("usage: zemory brain sync [--dir <folder>] [--key-file <path>] [--full]");
+      console.log("usage: zemory memory sync [--dir <folder>] [--key-file <path>] [--full]");
       console.log("  Push this machine's bundle to the synced Drive FOLDER + merge every other machine's bundle there.");
       console.log("  Depth: LEAN by default (source rows; the sync-level setting picks it). --full ships a whole-DB snapshot.");
       console.log("  Link the folder once in `zemory ui`, or pass --dir. Needs the share key (--key-file / ZEMORY_SHARE_KEY / share/share.key).");
@@ -669,7 +669,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     }
     const root = findProjectRoot() ?? process.cwd();
     const keyFile = resolveShareKey(root, flagValue(args, "--key-file"));
-    console.log(`zemory brain sync — ${driveDir}`);
+    console.log(`zemory memory sync — ${driveDir}`);
     try {
       const r = await syncDrive({ driveDir, keyFile, level: args.includes("--full") ? "full" : undefined });
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
@@ -693,7 +693,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
         // backlog is NORMAL, not a model failure. Only flag the model when this
         // pass embedded NOTHING (embedded === 0 → model likely down; FTS still works).
         const why = r.embedded === 0 ? " (model unavailable? — recall vẫn chạy qua FTS)" : "";
-        console.log(`  ${r.vectorRemaining} message(s) chưa embed → chạy \`zemory brain embed --all\` để vector hoá nốt${why}`);
+        console.log(`  ${r.vectorRemaining} message(s) chưa embed → chạy \`zemory memory embed --all\` để vector hoá nốt${why}`);
       }
     } catch (error) {
       console.log(`  error: ${error instanceof Error ? error.message : "sync failed"}`);
@@ -703,38 +703,38 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   }
   if (sub === "backup") {
     const out = positionalArgs(args.slice(1))[0];
-    const r = await backupBrain({
+    const r = await backupMemory({
       dbPath: flagValue(args, "--db"),
       outPath: out,
       force: args.includes("--force"),
     });
-    console.log(`zemory brain backup — wrote ${r.outPath}`);
+    console.log(`zemory memory backup — wrote ${r.outPath}`);
     console.log(`  copied ${r.bytes} byte(s) from ${r.dbPath}`);
-    console.log("  note: this is a raw local SQLite backup. Use `brain export` for encrypted sharing.");
+    console.log("  note: this is a raw local SQLite backup. Use `memory export` for encrypted sharing.");
     return;
   }
   if (sub === "vacuum") {
-    console.log("zemory brain vacuum — reclaiming freed pages (this rewrites the whole DB file, may take a while)…");
-    const r = vacuumBrain();
+    console.log("zemory memory vacuum — reclaiming freed pages (this rewrites the whole DB file, may take a while)…");
+    const r = vacuumMemory();
     const beforeMB = (r.bytesBefore / 1024 / 1024).toFixed(1);
     const afterMB = (r.bytesAfter / 1024 / 1024).toFixed(1);
     const savedMB = ((r.bytesBefore - r.bytesAfter) / 1024 / 1024).toFixed(1);
-    console.log(`zemory brain vacuum — ${beforeMB}MB → ${afterMB}MB (freed ${savedMB}MB)`);
+    console.log(`zemory memory vacuum — ${beforeMB}MB → ${afterMB}MB (freed ${savedMB}MB)`);
     return;
   }
   if (sub === "restore") {
     const backup = positionalArgs(args.slice(1))[0];
     if (!backup) {
-      console.log("usage: zemory brain restore <backup.db> [--db <path>] [--force]");
+      console.log("usage: zemory memory restore <backup.db> [--db <path>] [--force]");
       console.log("  Refuses to overwrite an existing DB unless --force is present; existing DB is renamed to .bak-*.");
       return;
     }
-    const r = await restoreBrainBackup({
+    const r = await restoreMemoryBackup({
       backupPath: backup,
       dbPath: flagValue(args, "--db"),
       force: args.includes("--force"),
     });
-    console.log(`zemory brain restore — restored ${r.dbPath}`);
+    console.log(`zemory memory restore — restored ${r.dbPath}`);
     console.log(`  copied ${r.bytes} byte(s) from ${r.backupPath}`);
     if (r.previousBackupPath) console.log(`  previous DB backup: ${r.previousBackupPath}`);
     return;
@@ -742,14 +742,14 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   if (sub === "forget") {
     const hasSelector = ["--session", "--project", "--source", "--agent", "--before", "--message"].some((flag) => args.includes(flag));
     if (!hasSelector) {
-      console.log("usage: zemory brain forget [--session <id>] [--project <path>] [--source <agent>] [--before <date>] [--message <#id>] [--force]");
-      console.log("  Dry-run by default. Re-run with --force to delete matched brain DB rows.");
+      console.log("usage: zemory memory forget [--session <id>] [--project <path>] [--source <agent>] [--before <date>] [--message <#id>] [--force]");
+      console.log("  Dry-run by default. Re-run with --force to delete matched memory DB rows.");
       console.log("  Deletion creates a local backup unless --no-backup is present.");
       return;
     }
     const project = flagValue(args, "--project");
     const message = flagValue(args, "--message");
-    const r = await forgetBrain({
+    const r = await forgetMemory({
       dbPath: flagValue(args, "--db"),
       session: flagValue(args, "--session"),
       project: project ? resolve(project) : undefined,
@@ -761,7 +761,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       backupPath: flagValue(args, "--backup"),
     });
     console.log(
-      `zemory brain forget — ${r.dryRun ? "dry-run" : "deleted"} ${r.messages} message(s), ${r.sessions} session(s), ${r.vectors} vector row(s), ${r.digests} session digest(s)`,
+      `zemory memory forget — ${r.dryRun ? "dry-run" : "deleted"} ${r.messages} message(s), ${r.sessions} session(s), ${r.vectors} vector row(s), ${r.digests} session digest(s)`,
     );
     console.log(`  selectors: ${r.selectors.join(" · ")}`);
     if (r.sampleSessions.length) console.log(`  sessions: ${r.sampleSessions.join(", ")}${r.sessions > r.sampleSessions.length ? " ..." : ""}`);
@@ -771,14 +771,14 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "redact") {
-    const r = await reRedactBrain({
+    const r = await reRedactMemory({
       dbPath: flagValue(args, "--db"),
       force: args.includes("--force"),
       skipBackup: args.includes("--no-backup"),
       backupPath: flagValue(args, "--backup"),
     });
     console.log(
-      `zemory brain redact — ${r.dryRun ? "dry-run" : "updated"} ` +
+      `zemory memory redact — ${r.dryRun ? "dry-run" : "updated"} ` +
         `${r.changed.messages} message(s), ${r.changed.artifactCommands} artifact command(s), ${r.changed.artifactIndex} artifact index row(s), ${r.changed.sessionDigests} session digest(s)`,
     );
     console.log(
@@ -799,10 +799,10 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     const all = args.includes("--all") || rebuild;
     if (rebuild) {
       dropVectorIndex();
-      console.log("zemory brain embed --rebuild — vector index dropped; re-embedding the whole corpus…");
+      console.log("zemory memory embed --rebuild — vector index dropped; re-embedding the whole corpus…");
     }
     const idx = vectorIndexInfo();
-    console.log(`zemory brain embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d)…`);
+    console.log(`zemory memory embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d)…`);
     let total = 0;
     // A long `--all` run shares the DB with other zemory processes (Stop-hook
     // auto-capture, `zemory ui`, another shell). Each vector write auto-commits
@@ -838,14 +838,14 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       process.stdout.write(`  +${r.embedded} embedded · remaining ${r.remaining}${r.dims ? ` · ${r.dims}d` : ""}\n`);
       if (!all || r.embedded === 0 || r.remaining === 0) break;
     }
-    console.log(`zemory brain embed — done: +${total} this run · ${vectorCount()} vector(s) in index.`);
+    console.log(`zemory memory embed — done: +${total} this run · ${vectorCount()} vector(s) in index.`);
     if (total === 0) console.log("  (nothing embedded — model unavailable? recall still works via FTS.)");
     return;
   }
   if (sub === "bench") {
     const withRerank = args.includes("--rerank");
     console.log(
-      `zemory brain bench — RAG gate: FTS-only vs hybrid (FTS+vector)${withRerank ? " vs hybrid+rerank" : ""} on a labeled paraphrase corpus…`,
+      `zemory memory bench — RAG gate: FTS-only vs hybrid (FTS+vector)${withRerank ? " vs hybrid+rerank" : ""} on a labeled paraphrase corpus…`,
     );
     const r = await runRagBench({ rerank: withRerank });
     if (r.embedded === 0 && r.hybridHit === 0) {
@@ -875,14 +875,14 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "hosts") {
-    const tree = brainHostTree();
+    const tree = memoryHostTree();
     if (!tree.length) {
-      console.log("zemory brain hosts — no sessions captured yet. Run `zemory brain scan`.");
+      console.log("zemory memory hosts — no sessions captured yet. Run `zemory memory scan`.");
       return;
     }
     const n = (v: number) => v.toLocaleString();
     const projName = (p: string) => (p === "(unknown)" ? p : p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || p);
-    console.log("zemory brain hosts — sessions by PC → source → project");
+    console.log("zemory memory hosts — sessions by PC → source → project");
     for (const h of tree) {
       console.log(`\n● ${h.host}   ${n(h.sessions)} sess · ${n(h.messages)} msg`);
       for (const s of h.sources) {
@@ -900,7 +900,7 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     if (sid) {
       const d = getDigest(undefined, sid);
       if (!d) {
-        console.log(`zemory brain digest: no digest for session "${sid}". Build with \`zemory brain digest --all\`.`);
+        console.log(`zemory memory digest: no digest for session "${sid}". Build with \`zemory memory digest --all\`.`);
         return;
       }
       printDigest(d);
@@ -908,12 +908,12 @@ async function cmdBrainInner(args: string[]): Promise<void> {
     }
     // No session id → (re)build digests (hash-guarded; unchanged are skipped).
     const r = digestBackfill();
-    console.log(`zemory brain digest — built/updated ${r.built} of ${r.scanned} session(s) [extractive]`);
+    console.log(`zemory memory digest — built/updated ${r.built} of ${r.scanned} session(s) [extractive]`);
     return;
   }
   if (sub === "info") {
-    const info = brainInfo();
-    console.log(`zemory brain — ${info.dbPath} (${info.sizeKB} KB)`);
+    const info = memoryInfo();
+    console.log(`zemory memory — ${info.dbPath} (${info.sizeKB} KB)`);
     for (const t of info.tables) {
       console.log(`  ${t.name.padEnd(13)} ${String(t.rows).padStart(7)}${t.detail ? "   · " + t.detail : ""}`);
     }
@@ -926,14 +926,14 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   if (sub === "show") {
     const id = Number(args[1]);
     if (!id) {
-      console.log("usage: zemory brain show <#id>");
+      console.log("usage: zemory memory show <#id>");
       return;
     }
     const m = getMessage(id) as
       | { source: string; project_root: string | null; role: string; timestamp: string | null; content: string; title: string | null }
       | undefined;
     if (!m) {
-      console.log(`zemory brain: no message #${id}.`);
+      console.log(`zemory memory: no message #${id}.`);
       return;
     }
     console.log(`#${id} [${m.source}] ${m.project_root ?? "(unknown)"} · ${fmtDate(m.timestamp)} · ${m.role}`);
@@ -944,52 +944,52 @@ async function cmdBrainInner(args: string[]): Promise<void> {
   }
   if (sub === "where") {
     const s = storageInfo();
-    console.log(`zemory brain where — ${s.dbPath}`);
+    console.log(`zemory memory where — ${s.dbPath}`);
     console.log(
       `  folder: ${s.dir}  (${s.source === "env" ? "GLOBAL_MEMORY_DB env" : s.source === "pointer" ? "saved pointer" : "default ~/.zemory"})`,
     );
     console.log(`  size: ${s.exists ? `${(s.sizeKB / 1024).toFixed(1)} MB` : "(no DB yet)"}  ·  pointer: ${s.pointer}`);
     if (s.onCloud) console.log("  ⚠ this folder looks cloud-synced — a live DB here can corrupt. Prefer a plain local folder.");
-    if (s.pinnedByEnv) console.log("  note: GLOBAL_MEMORY_DB pins the location; `brain relocate` is disabled until you unset it.");
+    if (s.pinnedByEnv) console.log("  note: GLOBAL_MEMORY_DB pins the location; `memory relocate` is disabled until you unset it.");
     return;
   }
   if (sub === "relocate") {
     const dir = positionalArgs(args.slice(1))[0];
     if (!dir) {
-      console.log("usage: zemory brain relocate <folder> [--force]");
-      console.log("  Move the brain DB (+ settings) to <folder>, off the system drive. Keeps a .bak of the old DB.");
+      console.log("usage: zemory memory relocate <folder> [--force]");
+      console.log("  Move the memory DB (+ settings) to <folder>, off the system drive. Keeps a .bak of the old DB.");
       console.log("  --force: allow a cloud-synced / already-occupied target (risky).");
       return;
     }
     try {
-      const r = relocateBrain(dir, { force: args.includes("--force") });
+      const r = relocateMemory(dir, { force: args.includes("--force") });
       if (r.pointerOnly) {
-        console.log(`zemory brain relocate — storage folder set → ${r.to} (no DB to move yet; it will be created there).`);
+        console.log(`zemory memory relocate — storage folder set → ${r.to} (no DB to move yet; it will be created there).`);
         return;
       }
-      console.log(`zemory brain relocate — moved brain → ${r.dbPath}`);
+      console.log(`zemory memory relocate — moved memory → ${r.dbPath}`);
       console.log(
         `  ${(r.movedBytes / 1048576).toFixed(1)} MB · ${r.messages} message(s) verified · settings ${r.configMoved ? "moved" : "not found"}`,
       );
       if (r.backup) console.log(`  old DB kept as backup: ${r.backup}\n  (delete it once you've confirmed everything works — frees the old drive)`);
     } catch (error) {
-      console.log(`zemory brain relocate: ${error instanceof Error ? error.message : "failed"}`);
+      console.log(`zemory memory relocate: ${error instanceof Error ? error.message : "failed"}`);
       process.exitCode = 1;
     }
     return;
   }
   console.log(
     [
-      "zemory brain <subcommand>",
+      "zemory memory <subcommand>",
       "",
       "  scan              ingest agent transcripts from known locations into the",
-      "                    global brain (~/.zemory/global_memory.db) — fast, incremental.",
+      "                    global memory (~/.zemory/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
       "  scan-web [--platform chatgpt] [--limit N] [--refresh]",
       "                    capture web-chat (ChatGPT) via a login-once browser window",
       "                    (origin=web). Ingests in batches + resumes; --limit N pulls",
       "                    the N newest for a quick verify.",
-      "  search <q> [--all] recall across the brain (scope: current project; --all = everywhere).",
+      "  search <q> [--all] recall across the memory (scope: current project; --all = everywhere).",
       "  embed [--limit N] [--all] [--rebuild]",
       "                    build the semantic vector index (RAG, local EmbeddingGemma).",
       "                    Default: one 500-message batch with progress; --all catches up the corpus.",
@@ -1003,15 +1003,15 @@ async function cmdBrainInner(args: string[]): Promise<void> {
       "  export <out.zemory.enc> [--key-file <path>]",
       "                    encrypt global_memory.db into a shareable bundle.",
       "  import <in.zemory.enc> [--key-file <path>] [--force]",
-      "                    decrypt a shared bundle into the local brain DB.",
+      "                    decrypt a shared bundle into the local memory DB.",
       "  forget [selectors] [--force]",
-      "                    dry-run/delete brain rows by --session, --project, --source, --before, or --message.",
-      "  redact [--force]   re-apply secret redaction to already ingested brain rows.",
+      "                    dry-run/delete memory rows by --session, --project, --source, --before, or --message.",
+      "  redact [--force]   re-apply secret redaction to already ingested memory rows.",
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",
       "  info              table row-counts of global_memory.db.",
-      "  where             show where the brain DB lives (folder + size + pointer).",
-      "  relocate <dir>    move the brain DB off C:\\ into <dir> (verified; keeps a .bak).",
+      "  where             show where the memory DB lives (folder + size + pointer).",
+      "  relocate <dir>    move the memory DB off C:\\ into <dir> (verified; keeps a .bak).",
       "  hosts             sessions by PC → source → project (per-machine provenance).",
       "  scope [ls|exclude|include|clear]",
       "                    provenance tree (Local/Web × machine × agent); exclude a lane",
@@ -1268,12 +1268,12 @@ async function cmdGraph(args: string[]): Promise<void> {
       console.log(`  reaches transitively (${r.transitiveImporters.length}): ${r.transitiveImporters.slice(0, 8).join(", ")}${r.transitiveImporters.length > 8 ? ", …" : ""}`);
     }
     if (r.imports.length) console.log(`  imports (${r.imports.length}): ${r.imports.join(", ")}`);
-    // Graph ↔ BRAIN (plan 13 §4 `touches`): which past sessions worked on this file.
+    // Graph ↔ MEMORY (plan 13 §4 `touches`): which past sessions worked on this file.
     // This is the part a code-only tool cannot answer.
     const touch = touchesFor(buildTouchIndex(root), r.file);
     if (touch.count) {
       console.log(`  touched by ${touch.count} past session(s): ${touch.sessions.slice(0, 3).join(" · ")}${touch.count > 3 ? " · …" : ""}`);
-      console.log(`    → \`zemory brain digest <session>\` to see what was decided there`);
+      console.log(`    → \`zemory memory digest <session>\` to see what was decided there`);
     }
     return;
   }
@@ -1335,7 +1335,7 @@ async function cmdGraph(args: string[]): Promise<void> {
   if (sub === "export") {
     // CONTRACT seam (plan 13 §5): one versioned JSON any consumer can read —
     // code nodes + DECLARED edges (imports) + INFERRED edges (name-match calls,
-    // optional semantic neighbours) + fitness + the brain `touches` layer + the
+    // optional semantic neighbours) + fitness + the memory `touches` layer + the
     // docs graph (references + supersede). `--all` walks EVERY known project
     // (registry) into one { projects: [...] } bundle (cross-project).
     const buildOne = async (r: string, semantic: boolean) => {
@@ -1459,8 +1459,8 @@ function cmdHelp(): void {
       "  docs      docs search-index: ls (.md is the SOURCE — edit files, then reindex)",
       "  plan      search project specs (.md is source; DB = index): ls · show · search",
       "  changelog changelog (.md is source; DB = index): ls · search",
-      "  brain     scan/search the global brain (brain scan | search | show)",
-      "  mcp       run the local MCP stdio server (brain_search/show, plan_search/show)",
+      "  memory     scan/search the global memory (memory scan | search | show)",
+      "  mcp       run the local MCP stdio server (memory_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
       "  grill     interrogate the plan before building (workflow)",
       "  graph     code-graph queries: impact <file> · callers <symbol> · fitness [--gate]",
@@ -1516,8 +1516,8 @@ switch (cmd) {
   case "changelog":
     await cmdChangelog(args);
     break;
-  case "brain":
-    await cmdBrain(args);
+  case "memory":
+    await cmdMemory(args);
     break;
   case "mcp":
     await runMcpStdio();

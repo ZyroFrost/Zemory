@@ -144,7 +144,7 @@ export function pinProject(root: string, pinned: boolean): boolean {
 
 /**
  * Drop a project from the picker. This only edits zemory's own list — the project
- * folder, its docs and its brain data are left untouched.
+ * folder, its docs and its memory data are left untouched.
  */
 export function forgetProject(root: string): boolean {
   const list = read();

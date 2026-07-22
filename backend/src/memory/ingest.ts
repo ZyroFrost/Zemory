@@ -1,11 +1,11 @@
 // Scan engine: for every known agent adapter, discover its transcripts and
-// ingest new messages into the global brain, returning a detailed report.
+// ingest new messages into the global memory, returning a detailed report.
 // Incremental + idempotent: append-mode files resume from a line offset;
 // whole-mode files re-parse only when changed. Local-only: no network anywhere.
 
 import { readFileSync, statSync } from "node:fs";
 import { homedir, hostname } from "node:os";
-import { type BrainDB, BRAIN_DB, openBrain } from "./db.js";
+import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
 import type { TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
@@ -69,13 +69,13 @@ export interface ScanOptions {
   roots?: string[];
 }
 
-/** Run a full scan over every known agent and ingest into the brain. */
+/** Run a full scan over every known agent and ingest into the memory. */
 export function scan(opts: ScanOptions = {}): ScanReport {
-  const dbPath = opts.dbPath ?? BRAIN_DB;
+  const dbPath = opts.dbPath ?? MEMORY_DB;
   const home = opts.home ?? homedir();
   const adapters = opts.adapters ?? allAdapters();
   const bySource = new Map(adapters.map((a) => [a.source, a]));
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     // Re-use store locations a previous deep scan discovered, so a normal scan
     // never has to walk the disk again.
@@ -135,13 +135,13 @@ export function scan(opts: ScanOptions = {}): ScanReport {
   }
 }
 
-/** Per-table snapshot of the brain DB — a terminal window into the store. */
-export function brainInfo(dbPath: string = BRAIN_DB): {
+/** Per-table snapshot of the memory DB — a terminal window into the store. */
+export function memoryInfo(dbPath: string = MEMORY_DB): {
   dbPath: string;
   sizeKB: number;
   tables: { name: string; rows: number; detail?: string }[];
 } {
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const count = (sql: string, ...p: unknown[]) => (db.prepare(sql).get(...p) as { c: number }).c;
     const docKinds = db
@@ -173,7 +173,7 @@ export function brainInfo(dbPath: string = BRAIN_DB): {
   }
 }
 
-/** One row per machine the brain has ingested sessions from. */
+/** One row per machine the memory has ingested sessions from. */
 export interface HostReport {
   host: string;
   sessions: number;
@@ -182,16 +182,16 @@ export interface HostReport {
   to: string | null;
 }
 
-export interface BrainSummary {
+export interface MemorySummary {
   dbPath: string;
   agents: AgentReport[];
   hosts: HostReport[];
   totals: { agents: number; hosts: number; sessions: number; messages: number; from: string | null; to: string | null };
 }
 
-/** Read current brain state WITHOUT scanning (for the UI's idle view). */
-export function brainSummary(dbPath: string = BRAIN_DB): BrainSummary {
-  const db = openBrain(dbPath);
+/** Read current memory state WITHOUT scanning (for the UI's idle view). */
+export function memorySummary(dbPath: string = MEMORY_DB): MemorySummary {
+  const db = openMemory(dbPath);
   try {
     const agents = db
       .prepare(
@@ -216,7 +216,7 @@ export function brainSummary(dbPath: string = BRAIN_DB): BrainSummary {
                 MIN(started_at) AS "from", MAX(ended_at) AS "to"
          FROM sessions`,
       )
-      .get() as BrainSummary["totals"];
+      .get() as MemorySummary["totals"];
     return { dbPath, agents, hosts, totals: t };
   } finally {
     db.close();
@@ -237,8 +237,8 @@ export interface HostTreeNode {
   }[];
 }
 
-export function brainHostTree(dbPath: string = BRAIN_DB): HostTreeNode[] {
-  const db = openBrain(dbPath);
+export function memoryHostTree(dbPath: string = MEMORY_DB): HostTreeNode[] {
+  const db = openMemory(dbPath);
   try {
     const rows = db
       .prepare(
@@ -316,7 +316,7 @@ interface WriteSessionArgs {
  * Returns net new messages. Shared by the single- and multi-session ingest
  * paths. Content is redacted here so both paths are covered identically.
  */
-function writeSession(db: BrainDB, a: WriteSessionArgs): number {
+function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
   db.prepare(
     `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host)
      VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
@@ -352,7 +352,7 @@ function writeSession(db: BrainDB, a: WriteSessionArgs): number {
   return a.wholeReplace ? Math.max(0, inserted - before) : inserted;
 }
 
-function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileResult {
+function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileResult {
   const sessionId = adapter.sessionId(file.path);
   const prev = db
     .prepare("SELECT size, mtime_ms, last_line, parser_version FROM ingest_state WHERE file_path = ?")
@@ -524,7 +524,7 @@ function ingestFile(db: BrainDB, adapter: Adapter, file: TranscriptFile): FileRe
   return { changed: added > 0, sessions: snap ? [snap] : [] };
 }
 
-function sessionSnapshot(db: BrainDB, sessionId: string): SessionReport | null {
+function sessionSnapshot(db: MemoryDB, sessionId: string): SessionReport | null {
   const s = db
     .prepare(
       "SELECT id, source, project_root, started_at, ended_at, message_count FROM sessions WHERE id = ?",
@@ -545,7 +545,7 @@ function sessionSnapshot(db: BrainDB, sessionId: string): SessionReport | null {
 }
 
 function buildReport(
-  db: BrainDB,
+  db: MemoryDB,
   dbPath: string,
   found: { files: TranscriptFile[]; stores: StoreRef[]; unknown: UnknownStore[]; roots: string[]; deep: boolean },
   changedFiles: number,

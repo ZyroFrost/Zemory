@@ -1,4 +1,4 @@
-// Move the brain data dir OFF the system drive (it grows without bound) to any
+// Move the memory data dir OFF the system drive (it grows without bound) to any
 // local folder — e.g. inside the app repo under data/ (gitignored). The DB
 // location is a FIXED pointer at ~/.zemory/location.json; relocating rewrites it
 // and physically moves the DB. SAFE by construction: checkpoint the WAL, copy to
@@ -19,11 +19,11 @@ import {
 } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import {
-  BRAIN_DB_PINNED_BY_ENV,
+  MEMORY_DB_PINNED_BY_ENV,
   HOME_ZEMORY_DIR,
   LOCATION_POINTER,
-  currentBrainDb,
-  currentBrainDir,
+  currentMemoryDb,
+  currentMemoryDir,
 } from "./db.js";
 
 const DB_NAME = "global_memory.db";
@@ -42,11 +42,11 @@ export interface StoragePaths {
 function livePaths(): StoragePaths {
   // Resolve FRESH (not the module-load consts) so a `where`/dashboard call right
   // after a relocate in the same process already reports the new location.
-  return { dir: currentBrainDir(), db: currentBrainDb(), pointer: LOCATION_POINTER, home: HOME_ZEMORY_DIR, pinned: BRAIN_DB_PINNED_BY_ENV };
+  return { dir: currentMemoryDir(), db: currentMemoryDb(), pointer: LOCATION_POINTER, home: HOME_ZEMORY_DIR, pinned: MEMORY_DB_PINNED_BY_ENV };
 }
 
 export interface StorageInfo {
-  /** Directory the brain data cluster currently lives in. */
+  /** Directory the memory data cluster currently lives in. */
   dir: string;
   dbPath: string;
   exists: boolean;
@@ -131,11 +131,11 @@ export interface RelocateResult {
 }
 
 /**
- * Move the brain data dir to `targetDir`. Non-destructive: the old DB is kept as
+ * Move the memory data dir to `targetDir`. Non-destructive: the old DB is kept as
  * a timestamped `.bak` (delete it yourself once you've confirmed the move). Throws
  * (leaving everything untouched) if the target is unsafe or verification fails.
  */
-export function relocateBrain(targetDir: string, opts: { force?: boolean; paths?: StoragePaths } = {}): RelocateResult {
+export function relocateMemory(targetDir: string, opts: { force?: boolean; paths?: StoragePaths } = {}): RelocateResult {
   const P = opts.paths ?? livePaths();
   if (P.pinned) {
     throw new Error("GLOBAL_MEMORY_DB is set — it pins the DB location. Unset it before relocating.");
@@ -152,7 +152,7 @@ export function relocateBrain(targetDir: string, opts: { force?: boolean; paths?
   if (looksLikeCloudSync(to) && !opts.force) {
     throw new Error(
       `Refusing: "${to}" looks like a cloud-synced folder. A live WAL database there WILL corrupt. ` +
-        `Sync the encrypted bundle via \`brain sync\` instead, or pass --force if you are sure.`,
+        `Sync the encrypted bundle via \`memory sync\` instead, or pass --force if you are sure.`,
     );
   }
   mkdirSync(to, { recursive: true });
@@ -163,7 +163,7 @@ export function relocateBrain(targetDir: string, opts: { force?: boolean; paths?
     return { from, to, dbPath: newDb, movedBytes: 0, messages: 0, configMoved: false, modelsMoved: false, backup: null, pointerOnly: true };
   }
   if (existsSync(newDb) && !opts.force) {
-    throw new Error(`A brain DB already exists at ${newDb}. Move/rename it first, or pass --force.`);
+    throw new Error(`A memory DB already exists at ${newDb}. Move/rename it first, or pass --force.`);
   }
 
   // 1+2. Fold the WAL into the .db, take a WRITE LOCK (BEGIN IMMEDIATE blocks
@@ -192,7 +192,7 @@ export function relocateBrain(targetDir: string, opts: { force?: boolean; paths?
       }
       chk.exec("ROLLBACK"); // a writer landed between checkpoint and lock — retry
     }
-    if (!locked) throw new Error("Brain DB is being written to right now — close other zemory processes and retry.");
+    if (!locked) throw new Error("Memory DB is being written to right now — close other zemory processes and retry.");
     try {
       beforeCount = (chk.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
       movedBytes = statSync(oldDb).size;

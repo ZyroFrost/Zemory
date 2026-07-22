@@ -40,7 +40,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     --inset: rgba(0, 0, 0, .28);             /* code/doc inset panels */
     --shadow: 0 22px 70px rgba(0, 0, 0, .36);
     --radius: 18px;
-    --mono: "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    --mono: "Cascadia Code", "JetMemorys Mono", "SFMono-Regular", Consolas, monospace;
     --sans: "Aptos Display", "Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", sans-serif;
     --rail-w: 244px;
     --inspector-w: 366px;
@@ -693,8 +693,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .inspector > .panel { box-shadow: none; flex: 1 1 0; min-height: 84px; }
   .panel-split { flex: 0 0 6px; margin: 1px 0; }
   .action-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  #brainmsg:empty, #msg:empty { display: none; }
-  #brainmsg, #msg {
+  #memorymsg:empty, #msg:empty { display: none; }
+  #memorymsg, #msg {
     border-radius: 7px;
     padding: 10px;
     background: var(--green-soft);
@@ -904,7 +904,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   .shell { height: calc(100vh - var(--tabh)); margin-top: var(--tabh); }
   .rail { top: calc(var(--tabh) + 10px); height: calc(100vh - var(--tabh) - 20px); }
 
-  /* GLOBAL MEMORY tab: brain work only — hide the per-project rail. */
+  /* GLOBAL MEMORY tab: memory work only — hide the per-project rail. */
   body[data-tab="global"] .rail,
   body[data-tab="global"] .resize-handle[data-resize="rail"] { display: none; }
   /* Global Memory holds TWO big sub-tabs (user 2026-07-21): ① Recall + Chuẩn dùng
@@ -926,7 +926,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   /* ① Recall (BIG, left) + Chuẩn dùng chung (right, smaller). The seam is the
      existing inspector handle, so this stays drag-resizable (--inspector-w). */
   body[data-tab="global"][data-gtab="recall"] .inspector,
-  body[data-tab="global"][data-gtab="recall"] #brain { display: none; }
+  body[data-tab="global"][data-gtab="recall"] #memory { display: none; }
   body[data-tab="global"][data-gtab="recall"] .shell { grid-template-columns: minmax(360px, 1fr) 6px var(--inspector-w); }
   body[data-tab="global"][data-gtab="recall"] .gm-scroll { overflow: hidden; }
   body[data-tab="global"][data-gtab="recall"] .recall { flex: 1 1 auto; min-height: 0; }
@@ -942,8 +942,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   /* The commandbar (Máy · storage · Drive pills) already shows on sub-tab ①;
      repeating it here was a duplicate (user 2026-07-21). */
   body[data-tab="global"][data-gtab="mem"] .commandbar { display: none; }
-  body[data-tab="global"][data-gtab="mem"] #brain { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-  body[data-tab="global"][data-gtab="mem"] #brain > .panel-pad { flex: 1 1 auto; overflow: auto; }
+  body[data-tab="global"][data-gtab="mem"] #memory { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  body[data-tab="global"][data-gtab="mem"] #memory > .panel-pad { flex: 1 1 auto; overflow: auto; }
   /* ONE row that fills the height, so all three panels start and end level. */
   body[data-tab="global"][data-gtab="mem"] .inspector { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 10px; }
   body[data-tab="global"][data-gtab="mem"] .inspector > .panel > .panel-pad { flex: 1 1 auto; overflow: auto; }
@@ -1166,11 +1166,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   /* Switch knob must contrast its near-black track in light mode → white panel. */
   body[data-theme="light"] .sw.on::after { background: var(--panel); }
 </style></head>
-<body data-tab="global" data-gtab="recall" data-ptab="harness" data-itab="brain">
+<body data-tab="global" data-gtab="recall" data-ptab="harness" data-itab="memory">
   <!-- Brand = the APP identity (main), always top-left of the tab bar — NOT inside
        any project's rail (it read as "per project" there). -->
   <nav class="tabbar" role="tablist" aria-label="zemory">
-    <span class="tab-brand" title="zemory · brain &amp; harness docs for agents" data-i18n-title="tt.brand">
+    <span class="tab-brand" title="zemory · memory &amp; harness docs for agents" data-i18n-title="tt.brand">
       <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zbrand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--green)"/><stop offset="1" style="stop-color:var(--green2)"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#zbrand)"/><g style="stroke:var(--bg);fill:var(--bg)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path fill="none" d="M16 16 L10.5 10 M16 16 L21.5 9.5 M16 16 L22 21.5 M16 16 L10 21.5"/><circle cx="16" cy="16" r="2.7"/><circle cx="10.5" cy="10" r="2"/><circle cx="21.5" cy="9.5" r="2"/><circle cx="22" cy="21.5" r="2"/><circle cx="10" cy="21.5" r="2"/></g></svg>
       <b>Zemory</b>
     </span>
@@ -1231,7 +1231,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     <main class="workspace">
       <header class="commandbar">
         <div class="field"><span class="live-dot"></span> <span data-i18n="bar.env">Máy: local</span></div>
-        <div class="field" id="storagePill" title="Nơi lưu DB brain" data-i18n-title="tt.storage">🗄 <span id="storagePillTxt">—</span></div>
+        <div class="field" id="storagePill" title="Nơi lưu DB memory" data-i18n-title="tt.storage">🗄 <span id="storagePillTxt">—</span></div>
         <div class="field" id="drivePill" title="Đồng bộ Drive" data-i18n-title="tt.drive">☁ <span id="drivePillTxt">—</span></div>
         <div class="icon-btns" style="margin-left:auto">
           <button class="ghost" title="Làm mới" data-i18n-title="tt.refresh" onclick="manualRefresh()">↻</button>
@@ -1247,23 +1247,23 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           </div>
         </div>
         <div class="searchline">
-          <input type="text" id="bq" data-i18n-ph="ph.search" placeholder="ví dụ: cách stream tool output cho agent" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')brainSearch(true)">
-          <button onclick="brainSearch(true)"><span data-i18n="recall.search">Tìm</span> ⌘↵</button>
+          <input type="text" id="bq" data-i18n-ph="ph.search" placeholder="ví dụ: cách stream tool output cho agent" autocomplete="off" oninput="onType()" onkeydown="if(event.key==='Enter')memorySearch(true)">
+          <button onclick="memorySearch(true)"><span data-i18n="recall.search">Tìm</span> ⌘↵</button>
         </div>
         <div class="filterline">
-          <label class="toggle" title="Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn." data-i18n-title="tt.scopeAll"><input type="checkbox" id="ball" checked onchange="setScope()"> <span data-i18n="recall.scope">Mọi dự án</span></label>
+          <label class="toggle" title="Tìm trong phiên của MỌI dự án (memory là toàn cục). Tắt = chỉ dự án đang chọn." data-i18n-title="tt.scopeAll"><input type="checkbox" id="ball" checked onchange="setScope()"> <span data-i18n="recall.scope">Mọi dự án</span></label>
           <label class="toggle" title="Recall semantic: FTS + vector. Tắt = chỉ keyword FTS." data-i18n-title="tt.hybrid"><input type="checkbox" id="hybrid" onchange="setHybrid()"> Hybrid</label>
           <label class="toggle" title="Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker." data-i18n-title="tt.rerank"><input type="checkbox" id="rerank" onchange="setRerank()"> Rerank</label>
-          <select id="fTime" class="filter-sel" onchange="brainSearch()" title="Lọc theo thời gian" data-i18n-title="tt.fTime">
+          <select id="fTime" class="filter-sel" onchange="memorySearch()" title="Lọc theo thời gian" data-i18n-title="tt.fTime">
             <option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time24">24h qua</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option>
           </select>
-          <select id="fType" class="filter-sel" onchange="brainSearch()" title="Lọc theo vai trò message" data-i18n-title="tt.fType">
+          <select id="fType" class="filter-sel" onchange="memorySearch()" title="Lọc theo vai trò message" data-i18n-title="tt.fType">
             <option value="" data-i18n="f.typeAny">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option>
           </select>
-          <select id="fOrigin" class="filter-sel" onchange="brainSearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)" data-i18n-title="tt.fOrigin">
+          <select id="fOrigin" class="filter-sel" onchange="memorySearch()" title="Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)" data-i18n-title="tt.fOrigin">
             <option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">Local (agents)</option><option value="web">Web chat</option>
           </select>
-          <select id="fAgent" class="filter-sel" onchange="brainSearch()" title="Lọc theo agent/nguồn" data-i18n-title="tt.fAgent">
+          <select id="fAgent" class="filter-sel" onchange="memorySearch()" title="Lọc theo agent/nguồn" data-i18n-title="tt.fAgent">
             <option value="" data-i18n="f.agentAny">Agent: mọi</option>
           </select>
           <span class="tiny" style="margin-left:auto;cursor:pointer" id="queryHint" onclick="clearFilters()" data-i18n="recall.clear">Xoá lọc</span>
@@ -1273,7 +1273,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
           <span id="sortState" onclick="cycleSort()" title="Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)" data-i18n-title="tt.sort">Sắp theo liên quan ⇅</span>
         </div>
         <div class="recall-workbench">
-          <div id="brainhits" class="result-list">
+          <div id="memoryhits" class="result-list">
             <div class="empty" data-i18n="recall.empty">Kết quả tìm sẽ hiện ở đây.</div>
           </div>
           <div class="resize-handle vertical" data-resize="recall" role="separator" aria-orientation="vertical" tabindex="0" title="Kéo để chỉnh cỡ. Bấm đúp để reset." data-i18n-title="tt.resize"></div>
@@ -1284,8 +1284,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         </div>
       </section>
 
-      <section class="panel" id="brain">
-        <div class="panel-head"><div><h3 data-i18n="mem.title">Bộ nhớ toàn cục</h3><p id="memSub">One SQLite brain.</p></div></div>
+      <section class="panel" id="memory">
+        <div class="panel-head"><div><h3 data-i18n="mem.title">Bộ nhớ toàn cục</h3><p id="memSub">One SQLite memory.</p></div></div>
         <div class="panel-pad" id="memoryPanel"></div>
       </section>
       <div id="msg"></div>
@@ -1296,18 +1296,18 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     <aside class="inspector">
       <!-- One tab per concern instead of four stacked panels: only the active one
            renders, so each gets the full column height (user 2026-07-20). -->
-      <!-- Getting data INTO the brain, one tab: from THIS machine (scan) and from
+      <!-- Getting data INTO the memory, one tab: from THIS machine (scan) and from
            OTHER machines (Drive bundle). Drive used to sit in ⚙ Settings, which
            split one concern across two places (user 2026-07-20). Config that
            belongs to Drive (folder, depth) comes along — splitting it would
            recreate the same fragmentation. -->
       <section class="panel" id="capture">
-        <div class="panel-head"><div><h3><span data-i18n="scan.title">Nạp &amp; Đồng bộ</span><span class="q" title="Đọc transcript agent trên MÁY NÀY vào brain. 'Quét nhanh' đọc lại store đã biết (nhanh); 'Quét sâu' rà cả ổ đĩa tìm folder agent mới." data-i18n-title="tt.scan">?</span></h3><p data-i18n="scan.sub">Kéo ngữ cảnh mới từ máy này.</p></div></div>
+        <div class="panel-head"><div><h3><span data-i18n="scan.title">Nạp &amp; Đồng bộ</span><span class="q" title="Đọc transcript agent trên MÁY NÀY vào memory. 'Quét nhanh' đọc lại store đã biết (nhanh); 'Quét sâu' rà cả ổ đĩa tìm folder agent mới." data-i18n-title="tt.scan">?</span></h3><p data-i18n="scan.sub">Kéo ngữ cảnh mới từ máy này.</p></div></div>
         <div class="panel-pad">
           <div class="sec-lab" data-i18n="scan.local">Máy này</div>
-          <div class="action-stack"><button onclick="brainScan(false)" data-i18n="scan.known">Quét nhanh</button><button class="ghost warn" onclick="brainScan(true)" data-i18n="scan.deep">Quét sâu</button></div>
-          <div id="brainmsg" style="margin-top:10px"></div>
-          <div id="brainreport" class="mini-list" style="margin-top:8px"></div>
+          <div class="action-stack"><button onclick="memoryScan(false)" data-i18n="scan.known">Quét nhanh</button><button class="ghost warn" onclick="memoryScan(true)" data-i18n="scan.deep">Quét sâu</button></div>
+          <div id="memorymsg" style="margin-top:10px"></div>
+          <div id="memoryreport" class="mini-list" style="margin-top:8px"></div>
 
           <div class="sec-lab" data-i18n="drive.h">Đồng bộ qua Drive</div>
           <p class="set-desc" style="margin-bottom:10px" data-i18n="drive.d">Mỗi máy xuất một bundle mã hoá vào folder Drive; máy khác merge vào. DB sống KHÔNG bị sync trực tiếp.</p>
@@ -1356,8 +1356,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
 
         <div class="set-pane" data-pane="storage">
           <h2 data-i18n="storage.h">Nơi lưu dữ liệu</h2>
-          <p class="set-desc" data-i18n="storage.d">DB brain nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.</p>
-          <div class="set-lab" data-i18n="storage.folder">Thư mục lưu brain</div>
+          <p class="set-desc" data-i18n="storage.d">DB memory nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.</p>
+          <div class="set-lab" data-i18n="storage.folder">Thư mục lưu memory</div>
           <div class="path-box">
             <input type="text" id="storageLink" placeholder="vd D:\Zyro\Tool\Zemory\data" onkeydown="if(event.key==='Enter')relocateStorage()">
             <button class="mini-btn" id="relocateBtn" onclick="relocateStorage()">⇄ <span data-i18n="storage.move">Dời</span></button>
@@ -1434,7 +1434,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   // 2026-07-21; ids can arrive from other machines via Drive bundles).
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-  let last = null, brain = null, checks = {}, curRoot = '', typer = null, selectedHit = null, lastHits = [], sortMode = 'rel';
+  let last = null, memory = null, checks = {}, curRoot = '', typer = null, selectedHit = null, lastHits = [], sortMode = 'rel';
   const layoutKey = 'zemory.ui.layout.v2';
   const layoutDefaults = { railW: '244px', inspectorW: '366px', bottomH: '210px', recallLeft: '64%', gmRightW: '980px' };
   // The Global Memory ② seam drives --gm-right-w; every other use of the same
@@ -1793,7 +1793,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   }
 
   // ── Tab shell (plan 14 §4) ────────────────────────────────────────────────
-  // GLOBAL MEMORY = machine-wide brain. Each project gets its own tab carrying
+  // GLOBAL MEMORY = machine-wide memory. Each project gets its own tab carrying
   // that project's harness (and later its graph). The tabs DRIVE the existing
   // #proj <select>, which stays the source of truth — no handler had to change.
   function setTab(which, root){
@@ -2052,7 +2052,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ box.innerHTML = '<div class="soon">graph error: ' + esc(e) + '</div>'; }
     renderNavCost(root, force);
   }
-  // What the index/graph/brain BUY, in tokens. Both sides are measured (nav-cost.ts):
+  // What the index/graph/memory BUY, in tokens. Both sides are measured (nav-cost.ts):
   // sweep = read everything to answer blind · routed = what zemory hands back.
   // Deliberately NOT a "tokens saved" claim — that is unmeasurable (HP điều 12).
   var navCostCache = {};
@@ -2423,7 +2423,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     renderTabMenu();
   });
   // Switching tabs is a VIEW change: flip the CSS, paint from cache, and only
-  // hit the network when this project's data is missing or stale. No brainTick
+  // hit the network when this project's data is missing or stale. No memoryTick
   // here — the memory panel belongs to Global Memory, not to a project tab.
   function openProjectTab(root){
     const changed = el('proj').value !== root;
@@ -2490,8 +2490,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
   async function manualRefresh(){
     // Refresh button = the ONE place that forces a fresh recompute; run the
     // independent fetches concurrently instead of chaining three awaits.
-    await Promise.all([tick().catch(function(){}), brainTick(true).catch(function(){})]);
-    if(el('bq').value.trim().length >= 2) await brainSearch();
+    await Promise.all([tick().catch(function(){}), memoryTick(true).catch(function(){})]);
+    if(el('bq').value.trim().length >= 2) await memorySearch();
   }
 
   function renderStatus(){
@@ -2569,7 +2569,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(!last) return;
     let h = '';
     let pass = 0, total = 0;
-    for (const group of [['token','chk.brain'], ['workflow','chk.workflow']]) {
+    for (const group of [['token','chk.memory'], ['workflow','chk.workflow']]) {
       const feats = last.features.filter(f => f.group === group[0]);
       if(!feats.length) continue;
       h += '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:8px 0 4px">' + esc(t(group[1])) + '</div>';
@@ -2619,31 +2619,31 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     }
   }
 
-  function renderBrainSummary(s){
-    brain = s || {};
-    const tot = brain.totals || {};
-    const vectors = brain.vectors || {};
-    const info = brain.info || {};
-    const capture = brain.coverage || {};
+  function renderMemorySummary(s){
+    memory = s || {};
+    const tot = memory.totals || {};
+    const vectors = memory.vectors || {};
+    const info = memory.info || {};
+    const capture = memory.coverage || {};
     const projects = capture.projects || [];
-    el('hybrid').checked = !!brain.hybrid;
-    el('rerank').checked = !!brain.rerank;
-    el('ball').checked = brain.scope !== false;
-    if(!window.__langApplied){ window.__langApplied = true; applyLang(brain.lang || 'vi'); }
+    el('hybrid').checked = !!memory.hybrid;
+    el('rerank').checked = !!memory.rerank;
+    el('ball').checked = memory.scope !== false;
+    if(!window.__langApplied){ window.__langApplied = true; applyLang(memory.lang || 'vi'); }
     if(el('settingsOverlay').style.display === 'flex') renderSettingsSearch();
     const fa = el('fAgent'); const faCur = fa.value;
-    fa.innerHTML = '<option value="">' + t('f.agentAny') + '</option>' + (brain.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
+    fa.innerHTML = '<option value="">' + t('f.agentAny') + '</option>' + (memory.agents || []).map(a => '<option value="' + esc(a.source) + '">' + esc(a.source) + '</option>').join('');
     fa.value = faCur;
-    const drive = brain.drive || {};
+    const drive = memory.drive || {};
     if(document.activeElement !== el('driveLink')) el('driveLink').value = drive.path || '';
     renderDriveState(drive);
-    const storage = brain.storage || null;
+    const storage = memory.storage || null;
     if(storage && document.activeElement !== el('storageLink')) el('storageLink').value = storage.dir || '';
     renderStorageState(storage);
     const vectorCoverage = vectors.coverage == null ? '-' : vectors.coverage + '%';
-    el('memSub').textContent = (tot.sessions ? t('m.healthy') : t('m.empty')) + ' · ' + t('m.updated') + ' ' + fmtTime(brain.generatedAt);
+    el('memSub').textContent = (tot.sessions ? t('m.healthy') : t('m.empty')) + ' · ' + t('m.updated') + ' ' + fmtTime(memory.generatedAt);
     el('memoryPanel').innerHTML =
-      // Six uniform cards: four "what the brain HOLDS" + two "what it COSTS".
+      // Six uniform cards: four "what the memory HOLDS" + two "what it COSTS".
       // The two cost figures used to be mini-rows, which read as a different
       // class of thing than the cards above them (user 2026-07-20).
       // Cards carry EVERYTHING now. The old "BẢNG" list under the scope tree was
@@ -2652,10 +2652,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       '<div class="coverage-stats">' +
       statCard(fmtN(tot.messages), t('m.msgs'), tableDetail(info, 'messages')) +
       statCard(fmtN(tot.sessions), t('m.sess'), tableDetail(info, 'sessions')) +
-      statCard('~' + fmtN(brain.tokensEst), t('m.tok'), t('tt.capcost')) +
-      statCard(fmtBytes(brain.sizeKB), t('m.size')) +
+      statCard('~' + fmtN(memory.tokensEst), t('m.tok'), t('tt.capcost')) +
+      statCard(fmtBytes(memory.sizeKB), t('m.size')) +
       statCard('0', t('m.capcost'), t('tt.capcost')) +
-      statCard('~' + fmtN(brain.recall ? brain.recall.tokensApprox : 0), t('m.recall'), t('tt.recall')) +
+      statCard('~' + fmtN(memory.recall ? memory.recall.tokensApprox : 0), t('m.recall'), t('tt.recall')) +
       // Every remaining table row, promoted to a card (doc · section · changelog
       // · known_stores …). Data-driven, so a new server table shows up by itself.
       (info.tables || [])
@@ -2663,16 +2663,16 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
         .map(r => statCard(fmtN(r.rows), r.name, r.detail || '')).join('') +
       '</div>' +
       '<div class="mini-list" style="margin-top:8px">' +
-      miniRow(t('m.search'), (brain.hybrid ? 'BM25 + Vector' : t('m.ftsonly')) + (brain.rerank ? ' + rerank' : '')) +
+      miniRow(t('m.search'), (memory.hybrid ? 'BM25 + Vector' : t('m.ftsonly')) + (memory.rerank ? ' + rerank' : '')) +
       miniRow('Vector index', fmtN(vectors.count) + ' vec · ' + vectorCoverage + (vectors.remaining ? (' · ' + fmtN(vectors.remaining) + ' ' + t('m.pending')) : '') + (vectors.error ? ' · ' + t('m.err') : '')) +
       '</div>' +
-      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">' + t('m.sources') + (brain.scopeExcluded ? ' · ' + t('m.excl') + ' ' + brain.scopeExcluded : '') + t('m.untick') + '<span class="q" title="' + esc(t('tt.scopeTree')) + '">?</span></div>' +
-      renderScopeTree(brain.scopeTree || []) +
-      renderScopeAdd(brain.scopeRules || []) +
-      '<div class="path" style="margin-top:8px">' + esc(brain.dbPath || '') + '</div>';
+      '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">' + t('m.sources') + (memory.scopeExcluded ? ' · ' + t('m.excl') + ' ' + memory.scopeExcluded : '') + t('m.untick') + '<span class="q" title="' + esc(t('tt.scopeTree')) + '">?</span></div>' +
+      renderScopeTree(memory.scopeTree || []) +
+      renderScopeAdd(memory.scopeRules || []) +
+      '<div class="path" style="margin-top:8px">' + esc(memory.dbPath || '') + '</div>';
     // Projects grouped by MACHINE, and inside each machine SPLIT (user
     // 2026-07-21): "linked" = added to zemory (registry) vs "discovered" = the
-    // brain scan found sessions there but nobody linked it. Discovered lists are
+    // memory scan found sessions there but nobody linked it. Discovered lists are
     // junk-heavy, so they collapse by default; remote machines collapse whole.
     // Stamps are full date+time (a bare time-of-day said nothing).
     const byHost = {};
@@ -2723,7 +2723,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(mh){ const k = 'm:' + mh.dataset.covHost; st[k] = st[k] === undefined ? (mh.textContent.indexOf('▾') < 0) : !st[k]; }
     else if(fs){ const k = 'f:' + fs.dataset.covFound; st[k] = !st[k]; }
     try { localStorage.setItem('zemory.covm', JSON.stringify(st)); } catch(e){}
-    if(brain && Object.keys(brain).length) renderBrainSummary(brain);
+    if(memory && Object.keys(memory).length) renderMemorySummary(memory);
   });
   // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is
   // INCLUDED; untick to exclude it from sync + recall (a filter, never a delete).
@@ -2758,13 +2758,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     q.set('on', exclude ? '1' : '0');
     try {
       await fetch('/set-scope-exclude?' + q.toString(), { method: 'POST' });
-      await brainTick();
-      if(el('bq').value.trim().length >= 2) brainSearch();
+      await memoryTick();
+      if(el('bq').value.trim().length >= 2) memorySearch();
     } catch(e){}
   }
   // "+ Add rule": preset a blocklist lane even for a source not captured yet
   // (blank field = wildcard). Pairs with scan-level exclude so it can keep a
-  // shared space out of the brain entirely (V2); today it hides from sync+recall.
+  // shared space out of the memory entirely (V2); today it hides from sync+recall.
   function renderScopeAdd(rules){
     const chips = (rules || []).map(r => {
       const parts = [r.origin || 'any', r.host || 'any', r.source || 'any'].join(' · ');
@@ -2795,38 +2795,38 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     await setScopeLane(lane, false);
   }
   // fresh=true forces the server to recompute (user pressed the refresh button /
-  // an action changed the brain). The background poll always takes the cached
+  // an action changed the memory). The background poll always takes the cached
   // snapshot — these are whole-DB aggregates that block the server for seconds.
-  async function brainTick(fresh){
-    try { renderBrainSummary(await (await fetch('/brain-status' + ru(fresh ? { fresh: '1' } : undefined))).json()); }
-    catch(e){ el('memoryPanel').innerHTML = '<div class="muted">brain status error: ' + esc(e) + '</div>'; }
+  async function memoryTick(fresh){
+    try { renderMemorySummary(await (await fetch('/memory-status' + ru(fresh ? { fresh: '1' } : undefined))).json()); }
+    catch(e){ el('memoryPanel').innerHTML = '<div class="muted">memory status error: ' + esc(e) + '</div>'; }
   }
   // Hybrid/Rerank are client-known flags (the checkbox itself). They change no
-  // brain DATA, so update the cached payload locally and repaint — do NOT refetch
-  // /brain-status (that could hit an expired cache and pay the full recompute,
+  // memory DATA, so update the cached payload locally and repaint — do NOT refetch
+  // /memory-status (that could hit an expired cache and pay the full recompute,
   // the same stall as the language toggle).
   async function setHybrid(){
     try {
       var on = el('hybrid').checked;
-      if(brain) brain.hybrid = on;
-      renderBrainSummary(brain);
+      if(memory) memory.hybrid = on;
+      renderMemorySummary(memory);
       await fetch('/set-hybrid?on=' + (on ? 1 : 0), { method: 'POST' });
-      if(el('bq').value.trim().length >= 2) brainSearch();
+      if(el('bq').value.trim().length >= 2) memorySearch();
     } catch(e){}
   }
   async function setRerank(){
     try {
       var on = el('rerank').checked;
-      if(brain) brain.rerank = on;
-      renderBrainSummary(brain);
+      if(memory) memory.rerank = on;
+      renderMemorySummary(memory);
       await fetch('/set-rerank?on=' + (on ? 1 : 0), { method: 'POST' });
-      if(el('bq').value.trim().length >= 2) brainSearch();
+      if(el('bq').value.trim().length >= 2) memorySearch();
     } catch(e){}
   }
   async function setScope(){
     try {
       await fetch('/set-scope?on=' + (el('ball').checked ? 1 : 0), { method: 'POST' });
-      if(el('bq').value.trim().length >= 2) brainSearch();
+      if(el('bq').value.trim().length >= 2) memorySearch();
     } catch(e){}
   }
   function setPill(id, txt){ const p = el(id); if(p) p.textContent = txt; }
@@ -2873,7 +2873,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       if(r.pointerOnly){ ss.className = 'drive-state ok'; ss.textContent = t('s.setptr'); }
       else { ss.className = 'drive-state ok'; ss.textContent = t('s.movedOk') + ' · ' + (r.movedBytes/1048576).toFixed(0) + ' MB · ' + r.messages + ' msg'; ss.title = t('rel.bak') + (r.backup||'') + t('rel.bakhint'); }
       if(rb) rb.disabled = false;
-      brainTick();
+      memoryTick();
     } catch(e){ ss.className = 'drive-state bad'; ss.textContent = t('s.err'); if(rb) rb.disabled = false; }
   }
   async function testDrive(){
@@ -2903,14 +2903,14 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     } catch(e){ el('docBody').textContent = t('dv.err') + e; }
   }
   function closeDoc(){ el('docOverlay').style.display = 'none'; }
-  function clearFilters(){ el('fTime').value = '0'; el('fType').value = ''; el('fOrigin').value = ''; el('fAgent').value = ''; brainSearch(); }
+  function clearFilters(){ el('fTime').value = '0'; el('fType').value = ''; el('fOrigin').value = ''; el('fAgent').value = ''; memorySearch(); }
   async function openSession(sid){
     el('sessName').textContent = 'Full session';
     el('sessMeta').textContent = '';
     el('sessBody').innerHTML = '<div class="muted">' + t('ss.loading') + '</div>';
     el('sessionOverlay').style.display = 'flex';
     try {
-      const s = await (await fetch('/brain-session' + ru({id: sid}))).json();
+      const s = await (await fetch('/memory-session' + ru({id: sid}))).json();
       if(!s || !s.messages){ el('sessBody').innerHTML = '<div class="muted">' + t('ss.notfound') + '</div>'; return; }
       el('sessName').textContent = s.title || projName(s.project);
       el('sessMeta').textContent = esc(s.source) + ' · ' + esc(projName(s.project)) + ' · ' + s.messages.length + t('ss.msgs') + (s.truncated ? t('ss.trunc1') + s.messages.length + t('ss.trunc2') : '');
@@ -2973,7 +2973,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       '<div class="sync-step">' + t('sy.embedded1') + '<b>' + fmtN(r.embedded || 0) + '</b>' + t('sy.embedded2') + (r.vectorRemaining ? ' · ⚠ ' + fmtN(r.vectorRemaining) + t('sy.pending') : '') + '</div>' +
       '<div class="sync-step tiny" style="margin-top:6px">' + t('sy.cloudnote') + '</div>' +
       syncCloseBtn();
-    brainTick();
+    memoryTick();
   }
   async function pollSyncStatus(){
     if(__syncPolling) return;
@@ -3018,12 +3018,12 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     }).catch(function(){});
   })();
   function syncCloseBtn(label){ return '<button class="ghost" style="margin-top:12px;width:100%" onclick="closeSyncBox()">' + (label || t('sy.close')) + '</button>'; }
-  async function brainScan(deep){
-    el('brainmsg').textContent = deep ? t('sn.deep') : t('sn.known');
-    el('brainreport').innerHTML = '';
+  async function memoryScan(deep){
+    el('memorymsg').textContent = deep ? t('sn.deep') : t('sn.known');
+    el('memoryreport').innerHTML = '';
     try {
-      const r = await (await fetch('/brain-scan' + (deep ? '?deep=1' : ''), { method: 'POST' })).json();
-      el('brainmsg').textContent = t('sn.loaded') + fmtN(r.totals.newMessages) + t('sn.msg') + r.changedFiles + t('sn.changed') + r.scannedFiles + t('sn.file');
+      const r = await (await fetch('/memory-scan' + (deep ? '?deep=1' : ''), { method: 'POST' })).json();
+      el('memorymsg').textContent = t('sn.loaded') + fmtN(r.totals.newMessages) + t('sn.msg') + r.changedFiles + t('sn.changed') + r.scannedFiles + t('sn.file');
       let h = '';
       if(r.unknown && r.unknown.length) h += '<div class="chip warn">' + r.unknown.length + t('sn.strange') + '</div>';
       if(r.stores && r.stores.length) {
@@ -3032,29 +3032,29 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       }
       if(r.sessions && r.sessions.length) h += sectionTitle(t('sn.changedS'));
       h += (r.sessions || []).slice(0, 8).map(s => miniRow(s.source + ' / ' + projName(s.project), '+' + fmtN(s.newMessages) + ' msg')).join('');
-      el('brainreport').innerHTML = h;
-      await brainTick();
+      el('memoryreport').innerHTML = h;
+      await memoryTick();
       await tick();
-    } catch(e){ el('brainmsg').textContent = t('sn.err') + e; }
+    } catch(e){ el('memorymsg').textContent = t('sn.err') + e; }
   }
-  function onType(){ clearTimeout(typer); typer = setTimeout(function(){ brainSearch(false); }, 220); }
-  async function brainSearch(commit){
+  function onType(){ clearTimeout(typer); typer = setTimeout(function(){ memorySearch(false); }, 220); }
+  async function memorySearch(commit){
     const q = el('bq').value.trim();
     if(q.length < 2){
       el('resultCount').textContent = t('recall.hint');
-      el('brainhits').innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
+      el('memoryhits').innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
       el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('recall.waiting') + '</span></div><div class="empty">' + t('recall.previewEmpty') + '</div>';
       return;
     }
     const all = el('ball').checked;
     const terms = queryTerms();
     el('resultCount').textContent = t('q.searching');
-    el('brainhits').innerHTML = '<div class="empty">' + t('q.searching') + '</div>';
+    el('memoryhits').innerHTML = '<div class="empty">' + t('q.searching') + '</div>';
     try {
-      const hits = await (await fetch('/brain-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value, commit: commit ? '1' : '0'}))).json();
+      const hits = await (await fetch('/memory-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value, commit: commit ? '1' : '0'}))).json();
       if(!hits.length){
         el('resultCount').textContent = t('q.0');
-        el('brainhits').innerHTML = '<div class="empty">' + t('q.nomatch') + (all ? t('q.nomatchdot') : t('q.nomatchproj')) + '</div>';
+        el('memoryhits').innerHTML = '<div class="empty">' + t('q.nomatch') + (all ? t('q.nomatchdot') : t('q.nomatchproj')) + '</div>';
         el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.emptyState') + '</span></div><div class="empty">' + t('q.noSel') + '</div>';
         return;
       }
@@ -3065,7 +3065,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       await selectHit(selectedHit);
     } catch(e){
       el('resultCount').textContent = t('q.err');
-      el('brainhits').innerHTML = '<div class="empty">' + t('q.errbody') + esc(e) + '</div>';
+      el('memoryhits').innerHTML = '<div class="empty">' + t('q.errbody') + esc(e) + '</div>';
     }
   }
   function renderHitRow(h, i, terms){
@@ -3082,7 +3082,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     const hits = lastHits.slice();
     if(sortMode === 'new') hits.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
     else if(sortMode === 'old') hits.sort((a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')));
-    el('brainhits').innerHTML = hits.map((h, i) => renderHitRow(h, i, terms)).join('');
+    el('memoryhits').innerHTML = hits.map((h, i) => renderHitRow(h, i, terms)).join('');
   }
   function updateSortLabel(){
     var s = el('sortState'); if(!s) return;
@@ -3098,7 +3098,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     document.querySelectorAll('.result-row').forEach(n => n.classList.toggle('selected', n.id === 'hit' + id));
     el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.loadingS') + '</span></div><div class="empty">' + t('q.loadingctx') + '</div>';
     try {
-      const ctx = await (await fetch('/brain-context' + ru({id: id}))).json();
+      const ctx = await (await fetch('/memory-context' + ru({id: id}))).json();
       if(!ctx || !ctx.messages){
         el('threadPreview').innerHTML = '<div class="preview-title"><b>' + t('recall.preview') + '</b><span>' + t('q.emptyState') + '</span></div><div class="empty">' + t('q.nocontext') + '</div>';
         return;
@@ -3123,11 +3123,11 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'bar.env':'Máy: local','bar.settings':'Cài đặt','brand.tag':'Bộ nhớ & harness docs cho agent lập trình · v0.0.1',
       'proj.title':'Dự án','proj.sub':'Docs & quy tắc của dự án đang chọn.','proj.run':'Chạy','proj.add':'+ Thêm','proj.target':'Dự án đích: ',
       'recall.sub':'Tìm trong các phiên Codex, Claude, Continue, LM Studio đã lưu.','recall.search':'Tìm','recall.scope':'Mọi dự án','recall.clear':'Xoá lọc','recall.hint':'Gõ ít nhất 2 ký tự để tìm.','recall.empty':'Kết quả tìm sẽ hiện ở đây.','recall.preview':'Xem trước phiên','recall.waiting':'chờ','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.',
-      'mem.title':'Bộ nhớ toàn cục','scan.title':'Nạp & Đồng bộ','scan.sub':'Đưa ngữ cảnh vào brain: từ máy này, và từ máy khác qua Drive.','scan.known':'Quét nhanh','scan.deep':'Quét sâu','proj2.title':'Dự án','proj2.sub':'Chi tiết bộ nhớ từng dự án — bấm để mở tab.','cov.openTip':'Bấm để mở tab dự án này.',
+      'mem.title':'Bộ nhớ toàn cục','scan.title':'Nạp & Đồng bộ','scan.sub':'Đưa ngữ cảnh vào memory: từ máy này, và từ máy khác qua Drive.','scan.known':'Quét nhanh','scan.deep':'Quét sâu','proj2.title':'Dự án','proj2.sub':'Chi tiết bộ nhớ từng dự án — bấm để mở tab.','cov.openTip':'Bấm để mở tab dự án này.',
       'set.title':'Cài đặt','set.lang':'Ngôn ngữ','set.storage':'Nơi lưu','set.auto':'Tự động','set.search':'Tìm kiếm','set.health':'Kiểm tra',
       'auto.h':'Tự động','auto.d':'zemory tự chạy nền: mở cùng máy, tự cập nhật vector, tự đồng bộ. Lưu vào config.json.',
       'lang.h':'Ngôn ngữ giao diện','lang.d':'Chọn một ngôn ngữ cho toàn bộ giao diện. Thuật ngữ kỹ thuật (Recall, Hybrid, FTS5…) giữ nguyên.','lang.row':'Ngôn ngữ','lang.note':'Áp dụng ngay, lưu vào config.json.',
-      'storage.h':'Nơi lưu dữ liệu','storage.d':'DB brain nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.','storage.folder':'Thư mục lưu brain','storage.move':'Dời','storage.warn':'⚠ Không chọn folder Google Drive / OneDrive đang sync — DB đang mở sẽ hỏng.',
+      'storage.h':'Nơi lưu dữ liệu','storage.d':'DB memory nên nằm ngoài ổ C để ổ C không phình. Con trỏ ~/.zemory/location.json ghi nhớ chỗ này.','storage.folder':'Thư mục lưu memory','storage.move':'Dời','storage.warn':'⚠ Không chọn folder Google Drive / OneDrive đang sync — DB đang mở sẽ hỏng.',
       'drive.h':'Đồng bộ qua Drive','drive.d':'Mỗi máy xuất một bundle mã hoá vào folder Drive; máy khác merge vào. DB sống KHÔNG bị sync trực tiếp.','drive.folder':'Folder Drive',
       'synclv.row':'Mức độ đồng bộ','synclv.note':'Gọn: chỉ tin nhắn (nhẹ ~74%). Đầy đủ: cả DB (khôi phục thảm hoạ, nặng hơn nhiều).','synclv.lean':'Gọn','synclv.full':'Đầy đủ',
       'search.h':'Mặc định tìm kiếm','search.d':'Bật/tắt cũng đổi ngay trên thanh Recall. Lưu vào config.json.',
@@ -3138,7 +3138,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'psub.harness':'Harness','psub.graph':'Graph','psub.checks':'Kiểm tra chi tiết',
       'tree.noproj':'Chưa chọn dự án','tree.loading':'Đang đọc cây thư mục…','tree.empty':'Không có thư mục','tree.nonstd':'ngoài chuẩn','tree.slots':'slot chuẩn đã dùng','tree.nonstdN':'ngoài chuẩn','tree.collapseAll':'Thu gọn hết','tree.expandAll':'Mở hết',
       'graph.orphans':'Chỉ orphan','graph.rebuild':'Dựng lại','graph.building':'Đang dựng graph…','graph.empty':'Không có file nguồn','graph.hint':'Bấm node: soi import + sáng folder trong cây · lăn chuột: thu phóng · kéo nền: di chuyển · bấm đúp nền: về 1:1.','graph.loc':'dòng',
-      'chk.brain':'Toàn vẹn brain','chk.workflow':'Quy trình',
+      'chk.memory':'Toàn vẹn memory','chk.workflow':'Quy trình',
       'std.title':'Chuẩn dùng chung','std.sub':'Bản mẫu áp cho mọi dự án — chỉ đọc.',
       'std.agents.p':'Cửa vào harness — router điều hướng thuần.','std.agents.s':'Banner ⛔ chỉ-đọc nếu ghé tham khảo · "project dùng zemory, mọi thứ ở docs/" · 3 bước vào việc. KHÔNG chứa luật.',
       'std.const.p':'Hiến pháp — bất biến KIẾN TRÚC riêng app, tầng tối cao, chỉ user chốt.','std.const.s':'Mục đích + phi-mục-tiêu + các điều khoản bất biến: token-first · 1 nguồn sự thật · không proxy LLM · local-only · fail-open · đo trung thực.',
@@ -3149,16 +3149,16 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'std.chg.p':'Changelog.','std.chg.s':'Mới nhất trên cùng · supersede khi đảo quyết định cũ · chỉ ghi sau khi user OK.',
       'tab.moreTitle':'Dự án khác','tab.addTitle':'Thêm dự án','tab.manageTitle':'Quản lý dự án','tab.themeTitle':'Đổi giao diện sáng/tối',
       'tab.menuHead':'Dự án đã biết','tab.none':'Chưa có dự án nào.','tab.pin':'Ghim lên thanh tab','tab.unpin':'Bỏ ghim','tab.forget':'Gỡ khỏi danh sách',
-      'tab.forgetConfirm':'Gỡ dự án này khỏi danh sách của zemory? Folder, docs và dữ liệu brain KHÔNG bị đụng tới.',
+      'tab.forgetConfirm':'Gỡ dự án này khỏi danh sách của zemory? Folder, docs và dữ liệu memory KHÔNG bị đụng tới.',
       'tab.forgetNote':'Gỡ chỉ sửa danh sách của zemory — không xoá file.','tab.prune':'Dọn dự án đã mất','tab.pruned':'Đã dọn {n} mục.',
       'r.std':'Chuẩn dùng chung','r.noproj':'Chưa có dự án','r.runinit':'chạy zemory init','r.projdocs':'Docs dự án này (bấm để đọc)','r.setup':'Cài đặt / onboarding','r.plan':'Bản sao plan','r.docs':'docs','r.known':'dự án đã biết',
-      'itab.brain':'Bộ nhớ','itab.capture':'Nạp & Đồng bộ','itab.coverage':'Dự án','itab.standard':'Chuẩn chung','scan.local':'Máy này',
+      'itab.memory':'Bộ nhớ','itab.capture':'Nạp & Đồng bộ','itab.coverage':'Dự án','itab.standard':'Chuẩn chung','scan.local':'Máy này',
       'addp.title':'Thêm dự án','addp.d':'Dán đường dẫn folder của dự án. Repo chưa có harness sẽ hiện là "chưa thiết lập" cho tới khi chạy Run.','addp.ph':'vd D:\\Zyro\\App\\MyProject','addp.ok':'Thêm','addp.cancel':'Huỷ',
       'glay.force':'Layout: force','glay.cluster':'Layout: cluster','glay.layers':'Layout: import layers','tt.glayout':'Cách xếp node: force (theo liên kết) · cluster (gom theo folder) · import layers (entry trái → bị import sâu nhất phải)',
       'nc.colQ':'câu hỏi của agent','nc.colSweep':'đọc mù','nc.colRouted':'qua zemory','nc.colRatio':'rẻ hơn',
       'nc.tipLocate':'Muốn biết sửa X ở đâu: đọc mù = đọc HẾT file nguồn của repo; qua zemory = tra bảng routing 03_STRUCTURE §4 (trỏ thẳng slot). Số = token ước tính từ byte thật.',
       'nc.tipImpact':'Muốn biết sửa file này đụng ai: đọc mù = mở mọi file để lần import; qua zemory = graph trả sẵn danh sách fan-in.',
-      'nc.tipRecall':'Muốn biết phiên trước làm gì: đọc mù = đọc lại toàn bộ phiên cũ của dự án trong brain; qua zemory = 1 lần recall trả 12 snippet.',
+      'nc.tipRecall':'Muốn biết phiên trước làm gì: đọc mù = đọc lại toàn bộ phiên cũ của dự án trong memory; qua zemory = 1 lần recall trả 12 snippet.',
       'nc.h':'Chi phí điều hướng — dò full → qua zemory','nc.locate':'"sửa X ở đâu?"','nc.impact':'"sửa file này đụng ai?"','nc.recall':'"phiên trước làm gì?"',
       'fit.h':'Code fitness','fit.hub_pct':'hub','fit.isolated_pct':'isolated','fit.util_violations':'util purity',
       'fit.help':'Chấm sức khoẻ CẤU TRÚC code từ import-graph — tất định, chạy lại được (CLI: zemory graph fitness). Xanh = trong ngưỡng; vàng = lệch chuẩn, rê chuột từng thẻ để xem vì sao.',
@@ -3171,8 +3171,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'cov.none':'Chưa có folder dự án nào được thu.','cov.sess':'phiên','cov.msg':'msg','cov.agent':'agent','cov.linked':'đã liên kết','cov.found':'Quét được (chưa liên kết)','cov.local':'máy này',
       'd.notlinked':'chưa liên kết','d.linked':'✓ đã liên kết','d.bundle':'bundle','d.readonly':'⚠ chỉ đọc','d.pastelocal':'dán folder local','d.nofolder':'không thấy folder','d.err':'✗ lỗi',
       's.defaultC':'ổ C (mặc định)','s.shortC':'ổ C','s.moved':'đã dời','s.empty':'trống','s.envpin':'ghim bởi env','s.oncloud':'⚠ trên Drive (rủi ro)','s.moving':'đang dời...','s.setptr':'✓ đã đặt nơi lưu','s.movedOk':'✓ đã dời','s.err':'✗ lỗi',
-      'rel.needpath':'Nhập folder muốn lưu brain, vd D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Dời DB brain sang:','rel.confirm2':'App sẽ checkpoint + copy + verify rồi đổi con trỏ. Bản cũ được GIỮ lại dạng .bak (không mất gì). Tiếp tục?','rel.bak':'Bản cũ giữ ở: ','rel.bakhint':' (xoá tay khi chắc chắn OK)',
-      'sy.title':'Đồng bộ xuyên máy','sy.syncing':'Đang đồng bộ…','sy.s1':'1 · quét máy này tìm phiên mới','sy.s2':'2 · xuất phần MỚI thành bundle mã hoá (delta)','sy.s3':'3 · merge bundle của mọi máy khác','sy.s4':'4 · nhúng vector mới','sy.note':'Xuất phần mới (delta) đã mã hoá — thường chỉ vài KB. Đang chạy; cứ để mở.','sy.failed':'✗ Đồng bộ thất bại','sy.unknown':'lỗi không rõ','sy.done':'✓ Đồng bộ local xong','sy.scanned':'Đã quét máy này · ','sy.newmsg':' msg mới thu','sy.exported':'Đã đẩy · ','sy.pushNone':'không có gì mới','sy.push_baseline':'baseline','sy.push_delta':'delta','sy.push_compact':'gộp baseline','sy.push_full':'snapshot đầy đủ','sy.merged1':'Merge ','sy.merged2':' bundle khác · ','sy.embedded1':'Đã nhúng ','sy.embedded2':' vector mới','sy.pending':' chờ (chạy brain embed --all)','sy.cloudnote':'⏳ Google Drive vẫn đang tải lên cloud ở nền — máy khác nhận được khi Drive xong (xem icon khay Drive).','sy.errorT':'✗ Lỗi đồng bộ','sy.close':'Đóng','sy.hide':'Chạy ẩn','sy.syncingShort':'đang đồng bộ...','sy.okShort':'✓ đã đồng bộ','sy.failShort':'✗ đồng bộ lỗi','sy.errShort':'✗ lỗi',
+      'rel.needpath':'Nhập folder muốn lưu memory, vd D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Dời DB memory sang:','rel.confirm2':'App sẽ checkpoint + copy + verify rồi đổi con trỏ. Bản cũ được GIỮ lại dạng .bak (không mất gì). Tiếp tục?','rel.bak':'Bản cũ giữ ở: ','rel.bakhint':' (xoá tay khi chắc chắn OK)',
+      'sy.title':'Đồng bộ xuyên máy','sy.syncing':'Đang đồng bộ…','sy.s1':'1 · quét máy này tìm phiên mới','sy.s2':'2 · xuất phần MỚI thành bundle mã hoá (delta)','sy.s3':'3 · merge bundle của mọi máy khác','sy.s4':'4 · nhúng vector mới','sy.note':'Xuất phần mới (delta) đã mã hoá — thường chỉ vài KB. Đang chạy; cứ để mở.','sy.failed':'✗ Đồng bộ thất bại','sy.unknown':'lỗi không rõ','sy.done':'✓ Đồng bộ local xong','sy.scanned':'Đã quét máy này · ','sy.newmsg':' msg mới thu','sy.exported':'Đã đẩy · ','sy.pushNone':'không có gì mới','sy.push_baseline':'baseline','sy.push_delta':'delta','sy.push_compact':'gộp baseline','sy.push_full':'snapshot đầy đủ','sy.merged1':'Merge ','sy.merged2':' bundle khác · ','sy.embedded1':'Đã nhúng ','sy.embedded2':' vector mới','sy.pending':' chờ (chạy memory embed --all)','sy.cloudnote':'⏳ Google Drive vẫn đang tải lên cloud ở nền — máy khác nhận được khi Drive xong (xem icon khay Drive).','sy.errorT':'✗ Lỗi đồng bộ','sy.close':'Đóng','sy.hide':'Chạy ẩn','sy.syncingShort':'đang đồng bộ...','sy.okShort':'✓ đã đồng bộ','sy.failShort':'✗ đồng bộ lỗi','sy.errShort':'✗ lỗi',
       'sn.deep':'Đang quét sâu cả máy...','sn.known':'Đang quét các vị trí đã biết...','sn.loaded':'Nạp thêm +','sn.msg':' message · ','sn.changed':' phiên đổi · quét ','sn.file':' file.','sn.strange':' store lạ','sn.stores':'Store đã quét','sn.changedS':'Phiên đã đổi','sn.err':'lỗi quét: ',
       'q.searching':'Đang tìm...','q.0':'0 kết quả','q.nomatch':'Không khớp','q.nomatchdot':'.','q.nomatchproj':' trong dự án này. Thử mọi dự án.','q.results':' kết quả','q.err':'Lỗi tìm','q.errbody':'lỗi tìm: ','q.noSel':'Chưa chọn kết quả.','q.emptyState':'trống','q.loadingctx':'đang tải ngữ cảnh...','q.loadingS':'đang tải','q.nocontext':'(không có ngữ cảnh)','q.nearby':' lân cận','q.fullsession':'Phiên đầy đủ ⤢','q.selmsg':'Message đã chọn #','q.openfull':'Mở phiên đầy đủ',
       'ss.loading':'đang tải phiên...','ss.notfound':'(không thấy phiên)','ss.msgs':' messages','ss.trunc1':' (hiển thị ','ss.trunc2':' đầu — phiên còn dài hơn)','ss.err':'lỗi phiên: ',
@@ -3180,17 +3180,17 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'ph.search':'ví dụ: cách stream tool output cho agent','ph.addproj':'Thêm dự án bằng đường dẫn folder…','f.agentAny':'Agent: mọi','f.timeAny':'Thời gian: mọi lúc','f.time24':'24h qua','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi',
       'dv.loading':'đang tải...','dv.empty':'(trống)','dv.err':'lỗi: ','ctx.err':'lỗi ngữ cảnh: ','ctx.error':'lỗi',
       'act.working':'đang xử lý...','act.nonstd':'Docs chưa chuẩn — chạy zemory migrate, docs ls/rm/render.','act.added':'đã thêm ','act.nomiss':'không thiếu gì','act.renamed':'đã đổi tên cũ → ','act.created':'đã tạo .harness.json — ',
-      'tt.runHarness':'Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)','tt.settings':'Cài đặt','tt.refresh':'Làm mới','tt.storage':'Nơi lưu DB brain','tt.drive':'Đồng bộ Drive','tt.scopeAll':'Tìm trong phiên của MỌI dự án (brain là toàn cục). Tắt = chỉ dự án đang chọn.','tt.hybrid':'Recall semantic: FTS + vector. Tắt = chỉ keyword FTS.','tt.rerank':'Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker.','tt.fTime':'Lọc theo thời gian','tt.fType':'Lọc theo vai trò message','tt.fOrigin':'Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)','tt.fAgent':'Lọc theo agent/nguồn','tt.sort':'Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)','tt.resize':'Kéo để chỉnh cỡ. Bấm đúp để reset.','tt.scan':'Đọc transcript agent trên MÁY NÀY vào brain. "Quét nhanh" đọc lại store đã biết (nhanh); "Quét sâu" rà cả ổ đĩa tìm folder agent mới.','tt.projects':'Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án.','tt.close':'Đóng','tt.std':'Harness chuẩn trong docs_template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs_template/).','tt.brand':'zemory · bộ nhớ & harness docs cho agent','tt.scopeTree':'Lane nguồn (máy/agent Local, nền tảng Web) nào feed vào sync + recall. Bỏ tick lane chung/nhiễu để loại — vừa sạch nguồn cho harness vừa ít token rác cho recall. Là bộ lọc, không xoá: dữ liệu vẫn trong DB local.','tt.capcost':'Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. ~token bộ nhớ = SUM(len)/4, đo lượng ngữ cảnh brain ĐANG GIỮ (tài sản), KHÔNG phải token đã tiêu.','tt.navcost':'Đo cái cấu trúc zemory MUA được, bằng token. Cột trái = quét mù (đọc hết file nguồn / đọc lại phiên cũ); cột phải = thứ index-routing / graph / brain trả thẳng về. CẢ HAI VẾ đều tính từ byte thật trên đĩa + message thật trong brain — không ước lượng. Đây KHÔNG phải "hoá đơn giảm N token" (cái đó là counterfactual, điều 12 cấm): nó là so sánh 2 cách đọc cụ thể cho cùng một câu hỏi.','tt.recall':'Token THẬT mỗi lần recall bơm vào ngữ cảnh: brain trả các snippet ngắn, mở full message khi cần (progressive disclosure). Đây là chi phí ĐO ĐƯỢC của việc DÙNG brain. zemory cố tình KHÔNG trưng số "đã tiết kiệm" — đó là counterfactual không đo được (hiến pháp điều 12).'
+      'tt.runHarness':'Chạy harness: dựng docs của dự án theo chuẩn (bổ sung file thiếu, đánh số plan, không ghi đè nguồn DB)','tt.settings':'Cài đặt','tt.refresh':'Làm mới','tt.storage':'Nơi lưu DB memory','tt.drive':'Đồng bộ Drive','tt.scopeAll':'Tìm trong phiên của MỌI dự án (memory là toàn cục). Tắt = chỉ dự án đang chọn.','tt.hybrid':'Recall semantic: FTS + vector. Tắt = chỉ keyword FTS.','tt.rerank':'Cross-encoder rerank: xếp lại top ứng viên cho sắc nét hơn. Cần model reranker.','tt.fTime':'Lọc theo thời gian','tt.fType':'Lọc theo vai trò message','tt.fOrigin':'Local = transcript agent trên đĩa; Web = web-chat đã thu (ChatGPT/…)','tt.fAgent':'Lọc theo agent/nguồn','tt.sort':'Bấm để đổi cách sắp (liên quan / mới nhất / cũ nhất)','tt.resize':'Kéo để chỉnh cỡ. Bấm đúp để reset.','tt.scan':'Đọc transcript agent trên MÁY NÀY vào memory. "Quét nhanh" đọc lại store đã biết (nhanh); "Quét sâu" rà cả ổ đĩa tìm folder agent mới.','tt.projects':'Các folder dự án đã có phiên được thu, kèm số phiên / message / agent mỗi dự án.','tt.close':'Đóng','tt.std':'Harness chuẩn trong docs_template/ — đi kèm zemory, tách khỏi docs của dự án. Đây là thứ Run dựng ra và agent điều chỉnh cho từng dự án. Chỉ đọc (sửa chuẩn trong docs_template/).','tt.brand':'zemory · bộ nhớ & harness docs cho agent','tt.scopeTree':'Lane nguồn (máy/agent Local, nền tảng Web) nào feed vào sync + recall. Bỏ tick lane chung/nhiễu để loại — vừa sạch nguồn cho harness vừa ít token rác cho recall. Là bộ lọc, không xoá: dữ liệu vẫn trong DB local.','tt.capcost':'Thu thập là miễn phí: hook đọc FILE transcript của agent lúc kết thúc phiên — không gọi model, không tốn API. ~token bộ nhớ = SUM(len)/4, đo lượng ngữ cảnh memory ĐANG GIỮ (tài sản), KHÔNG phải token đã tiêu.','tt.navcost':'Đo cái cấu trúc zemory MUA được, bằng token. Cột trái = quét mù (đọc hết file nguồn / đọc lại phiên cũ); cột phải = thứ index-routing / graph / memory trả thẳng về. CẢ HAI VẾ đều tính từ byte thật trên đĩa + message thật trong memory — không ước lượng. Đây KHÔNG phải "hoá đơn giảm N token" (cái đó là counterfactual, điều 12 cấm): nó là so sánh 2 cách đọc cụ thể cho cùng một câu hỏi.','tt.recall':'Token THẬT mỗi lần recall bơm vào ngữ cảnh: memory trả các snippet ngắn, mở full message khi cần (progressive disclosure). Đây là chi phí ĐO ĐƯỢC của việc DÙNG memory. zemory cố tình KHÔNG trưng số "đã tiết kiệm" — đó là counterfactual không đo được (hiến pháp điều 12).'
     },
     en: {
       'bar.env':'Env: local','bar.settings':'Settings','brand.tag':'Memory & docs harness for coding agents · v0.0.1',
       'proj.title':'Project','proj.sub':'Docs & rules for the selected project.','proj.run':'Run','proj.add':'+ Add','proj.target':'Target project: ',
       'recall.sub':'Search saved Codex, Claude, Continue, LM Studio sessions.','recall.search':'Search','recall.scope':'All projects','recall.clear':'Clear','recall.hint':'Type at least 2 characters to search.','recall.empty':'Search results appear here.','recall.preview':'Thread preview','recall.waiting':'waiting','recall.previewEmpty':'Select a result to preview nearby messages right here.',
-      'mem.title':'Global memory','scan.title':'Ingest & Sync','scan.sub':'Get context into the brain: from this machine, and from others via Drive.','scan.known':'Scan known','scan.deep':'Deep scan','proj2.title':'Projects','proj2.sub':'Per-project memory detail — click to open a tab.','cov.openTip':'Click to open this project tab.',
+      'mem.title':'Global memory','scan.title':'Ingest & Sync','scan.sub':'Get context into the memory: from this machine, and from others via Drive.','scan.known':'Scan known','scan.deep':'Deep scan','proj2.title':'Projects','proj2.sub':'Per-project memory detail — click to open a tab.','cov.openTip':'Click to open this project tab.',
       'set.title':'Settings','set.lang':'Language','set.storage':'Storage','set.auto':'Automation','set.search':'Search','set.health':'Health',
       'auto.h':'Automation','auto.d':'zemory runs itself in the background: start with the PC, keep vectors current, auto-sync. Saved to config.json.',
       'lang.h':'Interface language','lang.d':'Pick one language for the whole UI. Technical terms (Recall, Hybrid, FTS5…) stay as-is.','lang.row':'Language','lang.note':'Applies instantly, saved to config.json.',
-      'storage.h':'Data storage','storage.d':'Keep the brain DB off C: so it never bloats. The pointer at ~/.zemory/location.json remembers it.','storage.folder':'Brain folder','storage.move':'Move','storage.warn':'⚠ Do not pick a synced Google Drive / OneDrive folder — a live DB corrupts.',
+      'storage.h':'Data storage','storage.d':'Keep the memory DB off C: so it never bloats. The pointer at ~/.zemory/location.json remembers it.','storage.folder':'Memory folder','storage.move':'Move','storage.warn':'⚠ Do not pick a synced Google Drive / OneDrive folder — a live DB corrupts.',
       'drive.h':'Drive sync','drive.d':'Each machine exports an encrypted bundle to a Drive folder; others merge it. The live DB is NOT synced directly.','drive.folder':'Drive folder',
       'synclv.row':'Sync depth','synclv.note':'Lean: messages only (~74% smaller). Full: the whole DB (disaster restore, much larger).','synclv.lean':'Lean','synclv.full':'Full',
       'search.h':'Search defaults','search.d':'Toggling also flips it on the Recall bar. Saved to config.json.',
@@ -3201,7 +3201,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'psub.harness':'Harness','psub.graph':'Graph','psub.checks':'Detailed checks',
       'tree.noproj':'No project selected','tree.loading':'Reading folder tree…','tree.empty':'No folders','tree.nonstd':'non-standard','tree.slots':'standard slots in use','tree.nonstdN':'non-standard','tree.collapseAll':'Collapse all','tree.expandAll':'Expand all',
       'graph.orphans':'Orphans only','graph.rebuild':'Rebuild','graph.building':'Building graph…','graph.empty':'No source files','graph.hint':'Click a node: imports + tree highlight · wheel: zoom · drag background: pan · double-click background: reset.','graph.loc':'lines',
-      'chk.brain':'Brain integrity','chk.workflow':'Workflow',
+      'chk.memory':'Memory integrity','chk.workflow':'Workflow',
       'std.title':'Shared standard','std.sub':'The template applied to every project — read-only.',
       'std.agents.p':'Harness entry — a pure navigation router.','std.agents.s':'⛔ read-only banner if you are just visiting · "this project uses zemory, everything is under docs/" · 3 steps to start. Holds NO rules.',
       'std.const.p':'Constitution — per-app ARCHITECTURAL invariants, top tier, user-only.','std.const.s':'Purpose + non-goals + invariant articles: token-first · one source of truth · no LLM proxy · local-only · fail-open · honest measurement.',
@@ -3212,16 +3212,16 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'std.chg.p':'Changelog.','std.chg.s':'Newest on top · supersede when reversing an old decision · logged only after user OK.',
       'tab.moreTitle':'Other projects','tab.addTitle':'Add a project','tab.manageTitle':'Manage projects','tab.themeTitle':'Toggle light/dark',
       'tab.menuHead':'Known projects','tab.none':'No projects yet.','tab.pin':'Pin to the tab bar','tab.unpin':'Unpin','tab.forget':'Remove from the list',
-      'tab.forgetConfirm':"Remove this project from zemory's list? The folder, its docs and its brain data are left untouched.",
+      'tab.forgetConfirm':"Remove this project from zemory's list? The folder, its docs and its memory data are left untouched.",
       'tab.forgetNote':"Removing only edits zemory's list — no files are deleted.",'tab.prune':'Clean up missing projects','tab.pruned':'Cleaned up {n} entr(ies).',
       'r.std':'Shared standard','r.noproj':'No project','r.runinit':'run zemory init','r.projdocs':"This project's docs (click to read)",'r.setup':'Setup / onboarding','r.plan':'Plan mirror','r.docs':'docs','r.known':'known projects',
-      'itab.brain':'Memory','itab.capture':'Ingest & Sync','itab.coverage':'Projects','itab.standard':'Standard','scan.local':'This machine',
+      'itab.memory':'Memory','itab.capture':'Ingest & Sync','itab.coverage':'Projects','itab.standard':'Standard','scan.local':'This machine',
       'addp.title':'Add project','addp.d':'Paste the project folder path. A repo without a harness shows as "not set up" until you hit Run.','addp.ph':'e.g. D:\\Zyro\\App\\MyProject','addp.ok':'Add','addp.cancel':'Cancel',
       'glay.force':'Layout: force','glay.cluster':'Layout: folder clusters','glay.layers':'Layout: import layers','tt.glayout':'How nodes are arranged: force (organic, by links) · folder clusters (files grouped by directory) · import layers (entries left → deepest-imported right)',
       'nc.colQ':'agent question','nc.colSweep':'blind sweep','nc.colRouted':'via zemory','nc.colRatio':'cheaper',
       'nc.tipLocate':'"Where do I change X?": blind = read EVERY source file; via zemory = the 03_STRUCTURE §4 routing table (points straight at the slot). Numbers = tokens estimated from real bytes.',
       'nc.tipImpact':'"What does editing this file hit?": blind = open every file to trace imports; via zemory = the graph already holds the fan-in list.',
-      'nc.tipRecall':'"What happened in earlier sessions?": blind = re-read every prior session of this project in the brain; via zemory = one recall returning 12 snippets.',
+      'nc.tipRecall':'"What happened in earlier sessions?": blind = re-read every prior session of this project in the memory; via zemory = one recall returning 12 snippets.',
       'nc.h':'Navigation cost — blind sweep → via zemory','nc.locate':'"where do I change X?"','nc.impact':'"what does this file hit?"','nc.recall':'"what happened before?"',
       'fit.h':'Code fitness','fit.hub_pct':'hubs','fit.isolated_pct':'isolated','fit.util_violations':'util purity',
       'fit.help':'Structural health scored from the import graph — deterministic, re-runnable (CLI: zemory graph fitness). Green = within threshold; amber = off-standard, hover each chip for why.',
@@ -3234,8 +3234,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'cov.none':'No project folders captured yet.','cov.sess':'sess','cov.msg':'msg','cov.agent':'agent','cov.linked':'linked','cov.found':'Discovered (not linked)','cov.local':'this machine',
       'd.notlinked':'not linked','d.linked':'✓ linked','d.bundle':'bundle','d.readonly':'⚠ read-only','d.pastelocal':'paste a local folder','d.nofolder':'folder not found','d.err':'✗ error',
       's.defaultC':'C: (default)','s.shortC':'C:','s.moved':'moved','s.empty':'empty','s.envpin':'env-pinned','s.oncloud':'⚠ on Drive (risky)','s.moving':'moving...','s.setptr':'✓ storage location set','s.movedOk':'✓ moved','s.err':'✗ error',
-      'rel.needpath':'Enter a folder for the brain, e.g. D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Move the brain DB to:','rel.confirm2':'It will checkpoint + copy + verify, then flip the pointer. The old DB is KEPT as a .bak (nothing lost). Continue?','rel.bak':'Old kept at: ','rel.bakhint':' (delete manually once confirmed OK)',
-      'sy.title':'Cross-machine sync','sy.syncing':'Syncing…','sy.s1':'1 · scanning this machine for new sessions','sy.s2':'2 · exporting only what is NEW as an encrypted bundle (delta)','sy.s3':"3 · merging every other machine's bundle",'sy.s4':'4 · embedding new vectors','sy.note':'Exports only the new delta, encrypted — usually a few KB. It is working; leave it open.','sy.failed':'✗ Sync failed','sy.unknown':'unknown error','sy.done':'✓ Local sync complete','sy.scanned':'Scanned this machine · ','sy.newmsg':' new msg captured','sy.exported':'Pushed · ','sy.pushNone':'nothing new','sy.push_baseline':'baseline','sy.push_delta':'delta','sy.push_compact':'compacted baseline','sy.push_full':'full snapshot','sy.merged1':'Merged ','sy.merged2':' other bundle(s) · ','sy.embedded1':'Embedded ','sy.embedded2':' new vector(s)','sy.pending':' pending (run brain embed --all)','sy.cloudnote':'⏳ Google Drive is still uploading to the cloud in the background — other machines receive it once Drive finishes (watch the Drive tray icon).','sy.errorT':'✗ Sync error','sy.close':'Close','sy.hide':'Run hidden','sy.syncingShort':'syncing...','sy.okShort':'✓ synced','sy.failShort':'✗ sync failed','sy.errShort':'✗ error',
+      'rel.needpath':'Enter a folder for the memory, e.g. D:\\\\Zyro\\\\Tool\\\\Zemory\\\\data','rel.confirm':'Move the memory DB to:','rel.confirm2':'It will checkpoint + copy + verify, then flip the pointer. The old DB is KEPT as a .bak (nothing lost). Continue?','rel.bak':'Old kept at: ','rel.bakhint':' (delete manually once confirmed OK)',
+      'sy.title':'Cross-machine sync','sy.syncing':'Syncing…','sy.s1':'1 · scanning this machine for new sessions','sy.s2':'2 · exporting only what is NEW as an encrypted bundle (delta)','sy.s3':"3 · merging every other machine's bundle",'sy.s4':'4 · embedding new vectors','sy.note':'Exports only the new delta, encrypted — usually a few KB. It is working; leave it open.','sy.failed':'✗ Sync failed','sy.unknown':'unknown error','sy.done':'✓ Local sync complete','sy.scanned':'Scanned this machine · ','sy.newmsg':' new msg captured','sy.exported':'Pushed · ','sy.pushNone':'nothing new','sy.push_baseline':'baseline','sy.push_delta':'delta','sy.push_compact':'compacted baseline','sy.push_full':'full snapshot','sy.merged1':'Merged ','sy.merged2':' other bundle(s) · ','sy.embedded1':'Embedded ','sy.embedded2':' new vector(s)','sy.pending':' pending (run memory embed --all)','sy.cloudnote':'⏳ Google Drive is still uploading to the cloud in the background — other machines receive it once Drive finishes (watch the Drive tray icon).','sy.errorT':'✗ Sync error','sy.close':'Close','sy.hide':'Run hidden','sy.syncingShort':'syncing...','sy.okShort':'✓ synced','sy.failShort':'✗ sync failed','sy.errShort':'✗ error',
       'sn.deep':'Deep scanning the whole machine...','sn.known':'Scanning known locations...','sn.loaded':'Loaded +','sn.msg':' message(s) · ','sn.changed':' session(s) changed · scanned ','sn.file':' file(s).','sn.strange':' unrecognized stores','sn.stores':'Stores scanned','sn.changedS':'Changed sessions','sn.err':'scan error: ',
       'q.searching':'Searching...','q.0':'0 results','q.nomatch':'No matches','q.nomatchdot':'.','q.nomatchproj':' in this project. Try all projects.','q.results':' results','q.err':'Search error','q.errbody':'search error: ','q.noSel':'No result selected.','q.emptyState':'empty','q.loadingctx':'loading context...','q.loadingS':'loading','q.nocontext':'(no context)','q.nearby':' nearby','q.fullsession':'Full session ⤢','q.selmsg':'Selected message #','q.openfull':'Open full session',
       'ss.loading':'loading full session...','ss.notfound':'(session not found)','ss.msgs':' messages','ss.trunc1':' (showing first ','ss.trunc2':' — session is longer)','ss.err':'session error: ',
@@ -3243,7 +3243,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
       'ph.search':'e.g. how we stream tool output for agents','ph.addproj':'Add a project by folder path…','f.agentAny':'Agent: any','f.timeAny':'Time: any','f.time24':'Last 24h','f.time7':'Last 7 days','f.time30':'Last 30 days','f.time90':'Last 90 days','f.typeAny':'Type: any','f.originAny':'Origin: any',
       'dv.loading':'loading...','dv.empty':'(empty)','dv.err':'error: ','ctx.err':'context error: ','ctx.error':'error',
       'act.working':'working...','act.nonstd':'Docs non-standard — run zemory migrate, docs ls/rm/render.','act.added':'added ','act.nomiss':'nothing missing','act.renamed':'renamed old → ','act.created':'created .harness.json — ',
-      'tt.runHarness':'Run harness: scaffold the project docs to standard (add missing files, number plans, never overwrite existing files (file wins))','tt.settings':'Settings','tt.refresh':'Refresh','tt.storage':'Brain DB location','tt.drive':'Drive sync','tt.scopeAll':'Search sessions across ALL projects (the brain is global). Off = only the selected project.','tt.hybrid':'Semantic recall: FTS + vector. Off = keyword FTS only.','tt.rerank':'Cross-encoder rerank: reorder the top candidates for sharper results. Needs the reranker model.','tt.fTime':'Filter by time','tt.fType':'Filter by message role','tt.fOrigin':'Local = agent transcripts on disk; Web = captured web chats (ChatGPT/…)','tt.fAgent':'Filter by agent/source','tt.sort':'Click to change sort (relevance / newest / oldest)','tt.resize':'Drag to resize. Double-click to reset.','tt.scan':'Read agent transcripts on THIS machine into the brain. "Quick scan" re-reads known stores (fast); "Deep scan" sweeps the whole disk for new agent folders.','tt.projects':'Project folders with captured sessions, showing session / message / agent counts each.','tt.close':'Close','tt.std':'The standard harness in docs_template/ — shipped with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts per project. Read-only (edit the standard in docs_template/).','tt.brand':'zemory · brain & harness docs for agents','tt.scopeTree':'Which source lanes (Local machine/agent, Web platform) feed sync + recall. Untick shared/noisy lanes to exclude them — cleaner harness sources, less token noise in recall. A filter, not a delete: data stays in the local DB.','tt.capcost':'Capture is free: the hook reads the agent transcript FILE at session end — no model call, no API cost. ~tokens in memory = SUM(len)/4, a measure of the context the brain HOLDS (an asset), NOT tokens spent.','tt.navcost':'What the zemory structure BUYS, measured in tokens. Left = a blind sweep (read every source file / re-read prior sessions); right = what the routing index / graph / brain hands back directly. BOTH sides are computed from real bytes on disk and real messages in the brain — nothing is estimated. This is NOT a "your bill dropped N tokens" claim (that is a counterfactual, forbidden by article 12): it compares two concrete reading strategies for the same question.','tt.recall':'The REAL tokens each recall injects into context: the brain returns short snippets, full messages open on demand (progressive disclosure). This is the MEASURED cost of USING the brain. zemory deliberately shows no "tokens saved" figure — that is an unmeasurable counterfactual (constitution article 12).'
+      'tt.runHarness':'Run harness: scaffold the project docs to standard (add missing files, number plans, never overwrite existing files (file wins))','tt.settings':'Settings','tt.refresh':'Refresh','tt.storage':'Memory DB location','tt.drive':'Drive sync','tt.scopeAll':'Search sessions across ALL projects (the memory is global). Off = only the selected project.','tt.hybrid':'Semantic recall: FTS + vector. Off = keyword FTS only.','tt.rerank':'Cross-encoder rerank: reorder the top candidates for sharper results. Needs the reranker model.','tt.fTime':'Filter by time','tt.fType':'Filter by message role','tt.fOrigin':'Local = agent transcripts on disk; Web = captured web chats (ChatGPT/…)','tt.fAgent':'Filter by agent/source','tt.sort':'Click to change sort (relevance / newest / oldest)','tt.resize':'Drag to resize. Double-click to reset.','tt.scan':'Read agent transcripts on THIS machine into the memory. "Quick scan" re-reads known stores (fast); "Deep scan" sweeps the whole disk for new agent folders.','tt.projects':'Project folders with captured sessions, showing session / message / agent counts each.','tt.close':'Close','tt.std':'The standard harness in docs_template/ — shipped with zemory, separate from any project docs. This is what Run scaffolds and the agent adapts per project. Read-only (edit the standard in docs_template/).','tt.brand':'zemory · memory & harness docs for agents','tt.scopeTree':'Which source lanes (Local machine/agent, Web platform) feed sync + recall. Untick shared/noisy lanes to exclude them — cleaner harness sources, less token noise in recall. A filter, not a delete: data stays in the local DB.','tt.capcost':'Capture is free: the hook reads the agent transcript FILE at session end — no model call, no API cost. ~tokens in memory = SUM(len)/4, a measure of the context the memory HOLDS (an asset), NOT tokens spent.','tt.navcost':'What the zemory structure BUYS, measured in tokens. Left = a blind sweep (read every source file / re-read prior sessions); right = what the routing index / graph / memory hands back directly. BOTH sides are computed from real bytes on disk and real messages in the memory — nothing is estimated. This is NOT a "your bill dropped N tokens" claim (that is a counterfactual, forbidden by article 12): it compares two concrete reading strategies for the same question.','tt.recall':'The REAL tokens each recall injects into context: the memory returns short snippets, full messages open on demand (progressive disclosure). This is the MEASURED cost of USING the memory. zemory deliberately shows no "tokens saved" figure — that is an unmeasurable counterfactual (constitution article 12).'
     }
   };
   function t(k){ var d = T[window.__lang === 'en' ? 'en' : 'vi']; return (d && d[k] != null) ? d[k] : (T.vi[k] != null ? T.vi[k] : k); }
@@ -3276,13 +3276,13 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     if(vi && en){ vi.classList.toggle('on', lang !== 'en'); en.classList.toggle('on', lang === 'en'); }
     // Re-render JS-built views so their strings flip too (they cache last data).
     try { if(last) renderStatus(); } catch(e){}
-    try { if(brain && Object.keys(brain).length) renderBrainSummary(brain); } catch(e){}
+    try { if(memory && Object.keys(memory).length) renderMemorySummary(memory); } catch(e){}
     try { renderSettingsSearch(); } catch(e){}
     try { updateSortLabel(); } catch(e){}
     // Idle recall panels (no active query) → refresh their empty/hint text.
     if(!(lastHits && lastHits.length)){
       var rc = el('resultCount'); if(rc && (el('bq').value.trim().length < 2)) rc.textContent = t('recall.hint');
-      var bh = el('brainhits'); if(bh && el('bq').value.trim().length < 2) bh.innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
+      var bh = el('memoryhits'); if(bh && el('bq').value.trim().length < 2) bh.innerHTML = '<div class="empty">' + t('recall.empty') + '</div>';
     } else { try { renderHits(); } catch(e){} }
   }
   async function setLangUI(lang){
@@ -3293,10 +3293,10 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     // refetched at all, despite the comment claiming they were.
     applyLang(lang);
     try { await fetch('/set-lang?lang=' + lang, { method: 'POST' }); } catch(e){}
-    // Only /status and /check are server-localized (tr()). The brain panel is NOT —
+    // Only /status and /check are server-localized (tr()). The memory panel is NOT —
     // applyLang already re-rendered it client-side from the cached payload — so we
-    // must NOT force a fresh brain recompute here (that was the delay). Refresh the
-    // two localized surfaces concurrently; leave brain alone.
+    // must NOT force a fresh memory recompute here (that was the delay). Refresh the
+    // two localized surfaces concurrently; leave memory alone.
     await Promise.all([
       tick().catch(function(){}),
       runChecks(true).catch(function(){}),
@@ -3328,8 +3328,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     var en = window.__lang === 'en';
     var os = autoState.os || {};
     var L = en
-      ? { as:['Start with the PC','Launch zemory automatically when you log in ('+(os.method||'')+').'], sy:['Auto-sync brain','When data drifts, push/pull the encrypted Drive bundle. Off by default.'], sc:['Idle indexing','Keep vectors current in the background while idle.'] }
-      : { as:['Mở cùng PC','Tự chạy zemory khi đăng nhập máy ('+(os.method||'')+').'], sy:['Tự sync brain','Khi dữ liệu lệch, tự đẩy/kéo bundle mã hoá qua Drive. Mặc định tắt.'], sc:['Tự cập nhật lúc rảnh','Nền tự nhúng vector khi máy rảnh, giữ recall luôn tươi.'] };
+      ? { as:['Start with the PC','Launch zemory automatically when you log in ('+(os.method||'')+').'], sy:['Auto-sync memory','When data drifts, push/pull the encrypted Drive bundle. Off by default.'], sc:['Idle indexing','Keep vectors current in the background while idle.'] }
+      : { as:['Mở cùng PC','Tự chạy zemory khi đăng nhập máy ('+(os.method||'')+').'], sy:['Tự sync memory','Khi dữ liệu lệch, tự đẩy/kéo bundle mã hoá qua Drive. Mặc định tắt.'], sc:['Tự cập nhật lúc rảnh','Nền tự nhúng vector khi máy rảnh, giữ recall luôn tươi.'] };
     var noAuto = os.supported === false;
     var sc = autoState.shortcut || {};
     var scLabel = en ? ['Desktop shortcut','A clickable zemory icon on the desktop.'] : ['Lối tắt Desktop','Icon zemory bấm-là-mở trên Desktop.'];
@@ -3392,8 +3392,8 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     var box = el('searchPrefs'); if(!box) return;
     var lang = window.__lang === 'en' ? 'en' : 'vi';
     var L = lang === 'en'
-      ? { hy:['Hybrid','FTS + vector (semantic). Off = keyword only.'], re:['Rerank','Cross-encoder rescoring. Needs the reranker model.'], sc:['Scope: all projects','The brain is global. Off = current project only.'] }
-      : { hy:['Hybrid','FTS + vector (semantic). Tắt = chỉ keyword.'], re:['Rerank','Cross-encoder xếp lại top. Cần model reranker.'], sc:['Phạm vi: mọi dự án','Brain là toàn cục. Tắt = chỉ dự án đang chọn.'] };
+      ? { hy:['Hybrid','FTS + vector (semantic). Off = keyword only.'], re:['Rerank','Cross-encoder rescoring. Needs the reranker model.'], sc:['Scope: all projects','The memory is global. Off = current project only.'] }
+      : { hy:['Hybrid','FTS + vector (semantic). Tắt = chỉ keyword.'], re:['Rerank','Cross-encoder xếp lại top. Cần model reranker.'], sc:['Phạm vi: mọi dự án','Memory là toàn cục. Tắt = chỉ dự án đang chọn.'] };
     box.innerHTML = swRow('hybrid','hybrid',L.hy[0],L.hy[1]) + swRow('rerank','rerank',L.re[0],L.re[1]) + swRow('ball','scope',L.sc[0],L.sc[1]);
   }
   function flipPref(id, key){
@@ -3426,7 +3426,7 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     initPanelSplits();
     await tick();
     if(!curRoot && last && last.project && last.project.root) curRoot = last.project.root;
-    await brainTick();
+    await memoryTick();
     runChecks().then(cacheProject);
     // Sync the project sub-tab buttons to the restored state; load the tree if
     // the user left off on the Graph sub-tab.
@@ -3434,9 +3434,9 @@ export const PAGE = String.raw`<!doctype html><html><head><meta charset="utf-8">
     setGlobalSubTab(document.body.dataset.gtab === 'mem' ? 'mem' : 'recall');
     if(window.matchMedia('(min-width: 761px)').matches) el('bq').focus();
   })();
-  // Poll rates: brain stats are whole-DB aggregates that only move on scan/sync,
+  // Poll rates: memory stats are whole-DB aggregates that only move on scan/sync,
   // so a slow poll over a CACHED snapshot is plenty. The old 2.5s poll of a ~4s
   // query kept the (single-threaded) server permanently saturated.
   setInterval(tick, 10000);
-  setInterval(function(){ brainTick(); }, 30000);
+  setInterval(function(){ memoryTick(); }, 30000);
 </script></body></html>`;

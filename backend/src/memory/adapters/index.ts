@@ -1,8 +1,8 @@
-// The set of agents the brain knows how to ingest. Add an agent by writing an
+// The set of agents the memory knows how to ingest. Add an agent by writing an
 // adapter and listing it here.
 //   - origin='local' adapters read agent transcript files on disk.
 //   - origin='web' adapters read web-chat exports/dumps (e.g. chatgpt-web reads
-//     ~/.zemory/imports/chatgpt/*.json; fed by export or `brain scan-web`).
+//     ~/.zemory/imports/chatgpt/*.json; fed by export or `memory scan-web`).
 // DEFERRED (binary/sqlite formats, not yet wired):
 //   - Gemini / Antigravity (~/.gemini/antigravity/conversations) — protobuf .pb + sqlite .db
 //   - Cursor (workspaceStorage state.vscdb) — sqlite

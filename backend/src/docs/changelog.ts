@@ -4,7 +4,7 @@
 // directly; `import` (reindex) reseeds the search index from it.
 
 import { readFileSync } from "node:fs";
-import { currentBrainDb, openBrain } from "../brain/db.js";
+import { currentMemoryDb, openMemory } from "../memory/db.js";
 
 const FENCE = /^[ \t]*(```|~~~)/;
 const H2 = /^## (.*?)[ \t]*$/;
@@ -64,11 +64,11 @@ export function parseChangelog(input: string): ChEntry[] {
 export function importChangelog(
   absPath: string,
   projectRoot: string,
-  dbPath = currentBrainDb(),
+  dbPath = currentMemoryDb(),
   opts: { replace?: boolean } = {},
 ): number {
   const entries = parseChangelog(readFileSync(absPath, "utf8"));
-  const db = openBrain(dbPath);
+  const db = openMemory(dbPath);
   try {
     const tx = db.transaction(() => {
       if (opts.replace) db.prepare("DELETE FROM changelog WHERE project_root=?").run(projectRoot);
@@ -101,8 +101,8 @@ export interface ChRow {
   supersedes_id: number | null;
 }
 
-export function listEntries(projectRoot: string, dbPath = currentBrainDb()): ChRow[] {
-  const db = openBrain(dbPath);
+export function listEntries(projectRoot: string, dbPath = currentMemoryDb()): ChRow[] {
+  const db = openMemory(dbPath);
   try {
     return db
       .prepare(
@@ -117,7 +117,7 @@ export function listEntries(projectRoot: string, dbPath = currentBrainDb()): ChR
 export function searchChangelog(query: string, opts: { project?: string; limit?: number; dbPath?: string } = {}): { id: number; date: string | null; title: string; snippet: string }[] {
   const q = query.trim();
   if (!q) return [];
-  const db = openBrain(opts.dbPath ?? currentBrainDb());
+  const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const terms = q.toLowerCase().split(/\s+/).map((t) => t.replace(/["()*:^]/g, "")).filter(Boolean);
     if (!terms.length) return [];

@@ -1,4 +1,4 @@
-// Browser-connector: capture web-chat (ChatGPT today) into the brain WITHOUT
+// Browser-connector: capture web-chat (ChatGPT today) into the memory WITHOUT
 // an OAuth/API that doesn't exist and WITHOUT harvesting cookies. It opens a
 // dedicated browser window (persistent profile under ~/.zemory/browser/<platform>)
 // with a remote-debugging port; the USER logs in there once (password never
@@ -13,7 +13,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer as createNetServer } from "node:net";
 import { join } from "node:path";
-import { currentBrainDb, currentBrainDir, openBrain } from "./db.js";
+import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { type ScanReport, scan } from "./ingest.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
@@ -282,7 +282,7 @@ export interface ScanWebOptions {
   browser?: string;
   /** Delay between per-conversation fetches (rate-limit friendly). */
   delayMs?: number;
-  /** Re-pull conversations already in the brain (default false = resume/skip). */
+  /** Re-pull conversations already in the memory (default false = resume/skip). */
   refresh?: boolean;
   /** Pull at most N new conversations (newest first) — for quick verify. */
   limit?: number;
@@ -347,7 +347,7 @@ async function reconnect(port: number, log: (m: string) => void, relaunch?: () =
 /**
  * Capture web-chat for one platform. Two-step by design: the first run launches
  * the login window (returns 'need-login'); after the user signs in, re-running
- * pulls + ingests. Resumes by skipping conversations already in the brain.
+ * pulls + ingests. Resumes by skipping conversations already in the memory.
  */
 export async function scanWeb(
   opts: ScanWebOptions = {},
@@ -366,9 +366,9 @@ export async function scanWeb(
   const delayMs = opts.delayMs ?? 1500; // ~1 req / 1.5s eases the ~200-req 429 wall
   const limit = opts.limit && opts.limit > 0 ? opts.limit : Infinity;
   const batchSize = opts.batchSize && opts.batchSize > 0 ? opts.batchSize : 25;
-  const dbPath = opts.dbPath ?? currentBrainDb();
-  const profileDir = join(currentBrainDir(), "browser", p.key);
-  const importDir = join(currentBrainDir(), "imports", p.key);
+  const dbPath = opts.dbPath ?? currentMemoryDb();
+  const profileDir = join(currentMemoryDir(), "browser", p.key);
+  const importDir = join(currentMemoryDir(), "imports", p.key);
   mkdirSync(profileDir, { recursive: true });
   mkdirSync(importDir, { recursive: true });
 
@@ -396,7 +396,7 @@ export async function scanWeb(
     // Resume: skip conversations already ingested (unless --refresh).
     const have = new Set<string>();
     if (!opts.refresh) {
-      const db = openBrain(dbPath);
+      const db = openMemory(dbPath);
       try {
         for (const r of db.prepare("SELECT id FROM sessions WHERE source = ?").all(p.source) as { id: string }[]) have.add(r.id);
       } finally {
@@ -504,7 +504,7 @@ export async function scanWeb(
 
     // B2: ingest in batches so a mid-run crash never loses what was pulled. Each
     // batch (current batch only) is written to one reused file and ingested via
-    // the normal scan() → chatgptAdapter (origin=web). Resume skips by brain
+    // the normal scan() → chatgptAdapter (origin=web). Resume skips by memory
     // content, not by file, so a leftover file is harmless.
     const partFile = join(importDir, "scan-web-part.json");
     let batch: unknown[] = [];

@@ -1,5 +1,5 @@
-import { brainInfo, brainSummary, scan } from "../brain/ingest.js";
-import { getMessage, recall, search } from "../brain/search.js";
+import { memoryInfo, memorySummary, scan } from "../memory/ingest.js";
+import { getMessage, recall, search } from "../memory/search.js";
 import type { Module } from "../core/types.js";
 
 interface SearchPayload {
@@ -8,7 +8,7 @@ interface SearchPayload {
   limit?: number;
 }
 
-// The `memory` capability: the global brain — cross-agent session capture and
+// The `memory` capability: the global memory — cross-agent session capture and
 // recall, backed by ~/.zemory/global_memory.db.
 export const memoryGlobal: Module = {
   name: "global",
@@ -25,11 +25,11 @@ export const memoryGlobal: Module = {
       });
     }
     if (op === "show") return getMessage(Number(payload));
-    if (op === "info") return brainInfo();
+    if (op === "info") return memoryInfo();
     throw new Error(`Unsupported memory operation: ${op}`);
   },
   check() {
-    const totals = brainSummary().totals;
+    const totals = memorySummary().totals;
     // Exercise the FTS path even when the probe has no hits.
     search("the", { all: true, limit: 1 });
     return {
