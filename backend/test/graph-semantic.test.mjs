@@ -8,8 +8,8 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { buildCodeGraph } from "../../dist/graph.js";
-import { semanticEdges } from "../../dist/graph-semantic.js";
+import { buildCodeGraph } from "../../dist/brain/graph/graph.js";
+import { semanticEdges } from "../../dist/brain/graph/graph-semantic.js";
 import { tempDir } from "./helpers.mjs";
 
 test("fewer than two files → no overlay, hard-asserted (no model needed)", async () => {

@@ -11,7 +11,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { embedBatch } from "./brain/embed.js";
+import { embedBatch } from "../embed.js";
 import type { CodeGraph } from "./graph.js";
 
 export interface SemanticEdge {

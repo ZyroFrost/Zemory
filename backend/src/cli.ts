@@ -37,11 +37,11 @@ import { validate } from "./validate.js";
 import { runMcpStdio } from "./mcp.js";
 import { importDoc, listDocs, listToc, searchSections, showSection } from "./docs/plan.js";
 import { importChangelog, listEntries, searchChangelog } from "./docs/changelog.js";
-import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "./graph.js";
-import { enrichGraphSymbols, resolveCalls } from "./graph-symbols.js";
-import { buildTouchIndex, touchesFor } from "./graph-brain.js";
-import { buildDocsGraph } from "./graph-docs.js";
-import { semanticEdges } from "./graph-semantic.js";
+import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "./brain/graph/graph.js";
+import { enrichGraphSymbols, resolveCalls } from "./brain/graph/graph-symbols.js";
+import { buildTouchIndex, touchesFor } from "./brain/graph/graph-brain.js";
+import { buildDocsGraph } from "./brain/graph/graph-docs.js";
+import { semanticEdges } from "./brain/graph/graph-semantic.js";
 import { listKnownProjects } from "./registry.js";
 const VERSION = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),

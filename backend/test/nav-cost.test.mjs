@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { buildNavCost, routingTableChars } from "../../dist/nav-cost.js";
+import { buildNavCost, routingTableChars } from "../../dist/brain/graph/nav-cost.js";
 import { openBrain } from "../../dist/brain/db.js";
 import { tempDir } from "./helpers.mjs";
 

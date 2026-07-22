@@ -10,7 +10,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { SLOT_ROLES } from "./structure-tree.js";
+import { SLOT_ROLES } from "../../docs/structure-tree.js";
 
 const SRC_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
 const IGNORE = new Set([
