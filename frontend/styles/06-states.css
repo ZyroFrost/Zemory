@@ -1,0 +1,17 @@
+  /* ── LOADING SKELETON (03_STRUCTURE §9.C states) — shimmer placeholders shown
+     while data is fetching, so a panel never blank-then-jumps. Tokens only (0
+     hardcoded colour); the shimmer stops under prefers-reduced-motion (killed
+     globally in 03-responsive). ─────────────────────────────────────────────── */
+  .sk { position: relative; overflow: hidden; background: var(--panel-3); border-radius: 5px; height: 12px; display: block; }
+  .sk::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, var(--wash-3), transparent);
+    animation: sksh 1.25s ease-in-out infinite;
+  }
+  @keyframes sksh { 100% { transform: translateX(100%); } }
+  .sk-row { border: 1px solid var(--line); border-radius: 7px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .sk-chip { height: 15px; width: 62px; border-radius: 999px; }
+  .sk-w40 { width: 40%; } .sk-w60 { width: 60%; } .sk-w85 { width: 85%; }
+  .sk-num { height: 22px; width: 60%; }
+  .sk-check { flex-direction: row; align-items: center; gap: 10px; }
+  .sk-dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto; }

@@ -81,6 +81,23 @@
   function sectionTitle(text){
     return '<div class="tiny" style="text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px">' + esc(text) + '</div>';
   }
+  // ── Loading skeletons (03_STRUCTURE §9.C states · styles/06-states.css) ───────
+  // Shimmer placeholders shown WHILE data is fetching, so a panel keeps its height
+  // instead of blanking then popping in. Same markup shape as the real content.
+  function skRepeat(one, n){ var s = ''; for(var i = 0; i < n; i++) s += one; return s; }
+  function skResultRows(n){
+    return skRepeat('<div class="sk-row"><span class="sk sk-chip"></span><span class="sk sk-w40"></span>'
+      + '<span class="sk"></span><span class="sk sk-w85"></span></div>', n || 5);
+  }
+  function skStatCards(n){
+    return '<div class="coverage-stats">'
+      + skRepeat('<div class="coverage-stat"><span class="sk sk-num"></span><span class="sk sk-w60"></span></div>', n || 6)
+      + '</div>';
+  }
+  function skCheckRows(n){
+    return skRepeat('<div class="sk-row sk-check"><span class="sk sk-dot"></span><span class="sk sk-w40"></span>'
+      + '<span class="sk sk-w60" style="margin-left:auto"></span></div>', n || 4);
+  }
   function projOpts(){
     const cur = curRoot || (last && last.project && last.project.root) || '';
     const conn = last && last.project && last.project.connected;

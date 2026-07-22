@@ -1,4 +1,8 @@
   async function memoryTick(fresh){
+    // Skeleton only on the FIRST load (empty panel) — the 30s poll repaints from
+    // cached data, so showing it every tick would just flicker.
+    var mp = el('memoryPanel');
+    if(mp && !mp.innerHTML.trim()) mp.innerHTML = skStatCards(6);
     try { renderMemorySummary(await (await fetch('/memory-status' + ru(fresh ? { fresh: '1' } : undefined))).json()); }
     catch(e){ el('memoryPanel').innerHTML = '<div class="muted">memory status error: ' + esc(e) + '</div>'; }
   }

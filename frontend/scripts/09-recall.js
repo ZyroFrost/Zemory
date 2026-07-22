@@ -29,7 +29,8 @@
     const all = el('ball').checked;
     const terms = queryTerms();
     el('resultCount').textContent = t('q.searching');
-    el('memoryhits').innerHTML = '<div class="empty">' + t('q.searching') + '</div>';
+    // Skeleton while fetching (keeps the list height ~ what came back last time).
+    el('memoryhits').innerHTML = skResultRows(lastHits && lastHits.length ? Math.min(lastHits.length, 6) : 5);
     try {
       const hits = await (await fetch('/memory-search' + ru({q: q, all: all ? '1' : '0', days: el('fTime').value, agent: el('fAgent').value, role: el('fType').value, origin: el('fOrigin').value, commit: commit ? '1' : '0'}))).json();
       if(!hits.length){
