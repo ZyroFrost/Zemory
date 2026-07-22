@@ -2,7 +2,7 @@
 # Thi công: rebuild vector với Gemma prompts @ 256d + FTS external-content (một lần chỉnh sửa DB)
 > **Trạng thái: HOÀN TẤT (2026-07-14).** User duyệt 2026-07-12 (KHÔNG backup — DB là lớp DẪN XUẤT: transcript gốc còn nguyên ở store Claude/Codex + `~/.zemory/imports/chatgpt/`). Executor: session Sonnet 5. Người viết plan: Fable (session 2026-07-12, commit `2164674`).
 >
-> **Kết quả thật:** DB `global_memory.db` 1141.4MB → 595.1MB (giải phóng 546.3MB, ~48%). 94.384 vector (0 remaining), profile `gemma-prompt-v1` @ 256d. Gate: `npm run check` 82/82, `brain bench --rerank` @256d hybrid 100%/rerank 100% (8/8), FTS-only 0%. Spot-check 3 query thật (VN+EN): không regression, 1 query cho kết quả liên quan hơn hẳn nhờ prompt profile mới.
+> **Kết quả thật:** DB `global_memory.db` 1141.4MB → 595.1MB (giải phóng 546.3MB, ~48%). 94.384 vector (0 remaining), profile `gemma-prompt-v1` @ 256d. Gate: `npm run check` 82/82, `memory bench --rerank` @256d hybrid 100%/rerank 100% (8/8), FTS-only 0%. Spot-check 3 query thật (VN+EN): không regression, 1 query cho kết quả liên quan hơn hẳn nhờ prompt profile mới.
 >
 > **Sự cố dọc đường:** rebuild lần 1 crash vì "database is locked" (tiến trình zemory khác ghi cùng lúc) — vá bằng retry-with-backoff (commit sau `2164674`) rồi resume thành công, không mất vector đã ghi.
 >
@@ -11,7 +11,7 @@
 
 - `docs/plan/11_db_size_optimization.md` — số đo dbstat: DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm chỉnh DB 2 lần không cần thiết.
 - Commit `2164674` — pattern **stored-config-authoritative**: profile ghi trong `vec_config.profile`, index đã build theo gì thì cả phía doc lẫn query đi theo đó; env chỉ có tác dụng lúc TẠO index. Bước 1 dưới đây áp dụng đúng pattern này cho `dims`.
-- `backend/src/brain/vectors.ts` — chú ý: rowid bảng vec0 PHẢI bind BigInt; chunk message dài dùng rowid tổng hợp ≥ 2^40 qua `vec_map`.
+- `backend/src/memory/vectors.ts` — chú ý: rowid bảng vec0 PHẢI bind BigInt; chunk message dài dùng rowid tổng hợp ≥ 2^40 qua `vec_map`.
 
 ## 1. Code: dims theo pattern profile (nửa ngày, gate = npm run check)
 
@@ -30,34 +30,34 @@
 ## 2. Gate chất lượng TRƯỚC khi chỉnh sửa DB thật
 
 ```powershell
-$env:ZEMORY_EMBED_DIMS='256'; zemory brain bench            # mốc: hybrid recall@3 = 100% (8/8)
-$env:ZEMORY_EMBED_DIMS='256'; zemory brain bench --rerank   # lane rerank không vỡ
+$env:ZEMORY_EMBED_DIMS='256'; zemory memory bench            # mốc: hybrid recall@3 = 100% (8/8)
+$env:ZEMORY_EMBED_DIMS='256'; zemory memory bench --rerank   # lane rerank không vỡ
 ```
 Bench dựng corpus ở DB temp nên tự build 256d + prompt mới — đây chính là bản gate end-to-end. **Nếu < 8/8: DỪNG, thử 512, báo user.** Không được chỉnh sửa DB thật khi gate đỏ.
 
 ## 3. Rebuild DB thật (bước dài — chạy nền nhiều giờ)
 
 ```powershell
-$env:ZEMORY_EMBED_DIMS='256'; zemory brain embed --rebuild
+$env:ZEMORY_EMBED_DIMS='256'; zemory memory embed --rebuild
 ```
 - `--rebuild` drop toàn bộ vec_chunks/vec_map/vec_hash/vec_config rồi loop như `--all`. Re-embed ~115k message dưới profile `gemma-prompt-v1` @ 256d; message dài tự chunk (cửa sổ 6000/500, tối đa 8).
-- **Env phải set trong CÙNG shell với lệnh** (env chỉ có tác dụng lúc tạo bảng). Kiểm chứng trong vài phút đầu: `vec_config.dims` phải = 256 (qua `vectorIndexInfo`/`brain info`) — sai thì Ctrl-C chạy lại ngay, chưa mất gì.
+- **Env phải set trong CÙNG shell với lệnh** (env chỉ có tác dụng lúc tạo bảng). Kiểm chứng trong vài phút đầu: `vec_config.dims` phải = 256 (qua `vectorIndexInfo`/`memory info`) — sai thì Ctrl-C chạy lại ngay, chưa mất gì.
 - Ước lượng: ~41 msg/phút (mẫu lệch) → 1–2 ngày chạy nền; dedup `vec_hash` rút bớt đáng kể. Máy không được sleep. Trong lúc chạy, hybrid recall khuyết dần lane vector (FTS vẫn đầy đủ) — chấp nhận được.
-- **Nếu bị ngắt: resume bằng `zemory brain embed --all` — TUYỆT ĐỐI KHÔNG chạy `--rebuild` lần nữa** (drop làm lại từ đầu). Resume không cần env (stored dims/profile đã ghi trong vec_config).
-- Xong: spot-check 3–5 query thật (cả tiếng Việt lẫn English) bằng `zemory brain search "<q>" --all`, so với cảm quan trước khi mổ.
+- **Nếu bị ngắt: resume bằng `zemory memory embed --all` — TUYỆT ĐỐI KHÔNG chạy `--rebuild` lần nữa** (drop làm lại từ đầu). Resume không cần env (stored dims/profile đã ghi trong vec_config).
+- Xong: spot-check 3–5 query thật (cả tiếng Việt lẫn English) bằng `zemory memory search "<q>" --all`, so với cảm quan trước khi mổ.
 
 ## 4. FTS external-content (migration v12, −~246MB, 0% mất)
 
 - `db.ts migrate()` v11→v12: DROP `messages_fts` + `messages_fts_tri` + trigger cũ của chúng → tạo lại với `content='messages', content_rowid='id'` → tạo trigger theo cú pháp external-content (delete qua `INSERT INTO fts(fts, rowid, …) VALUES('delete', old.id, …)`) → `INSERT INTO messages_fts(messages_fts) VALUES('rebuild')` cho cả 2 bảng.
 - CHỈ 2 bảng messages; FTS của section/digest/changelog nhỏ, để nguyên (ROI thấp).
 - Test: mở DB v11 cũ → migrate lên v12; cùng một query FTS ra cùng kết quả trước/sau; `snippet()` vẫn chạy; INSERT/DELETE message sau migrate vẫn sync FTS (trigger mới đúng).
-- Gate: `npm run check` + `zemory brain search` keyword thuần (lane FTS) trên DB thật.
+- Gate: `npm run check` + `zemory memory search` keyword thuần (lane FTS) trên DB thật.
 
 ## 5. VACUUM + đo kết quả
 
-- `VACUUM` trên DB thật (thêm `zemory brain vacuum` hoặc script node một dòng `db.exec('VACUUM')`; cần dung lượng trống tạm ≈ bằng DB).
-- Đo lại `zemory brain info` + `brain where`: kỳ vọng **938MB → ~400–450MB** (FTS −246MB; vector 327MB → ~110MB ở 256d kể cả chunk mới thêm; VACUUM thu hồi trang trống).
-- Gate cuối: `npm run check` + `zemory brain bench` (+ `--rerank`) + spot-check.
+- `VACUUM` trên DB thật (thêm `zemory memory vacuum` hoặc script node một dòng `db.exec('VACUUM')`; cần dung lượng trống tạm ≈ bằng DB).
+- Đo lại `zemory memory info` + `memory where`: kỳ vọng **938MB → ~400–450MB** (FTS −246MB; vector 327MB → ~110MB ở 256d kể cả chunk mới thêm; VACUUM thu hồi trang trống).
+- Gate cuối: `npm run check` + `zemory memory bench` (+ `--rerank`) + spot-check.
 
 ## 6. Ghi sổ
 
@@ -65,6 +65,6 @@ $env:ZEMORY_EMBED_DIMS='256'; zemory brain embed --rebuild
 
 ## Rollback (không có backup — theo quyết định của user)
 
-- Vector lane: `zemory brain embed --rebuild` lại (bỏ env → về 768/prompt tùy config lúc đó) hoặc `--all` để vá tiếp — DB dẫn xuất, không có gì mất vĩnh viễn.
+- Vector lane: `zemory memory embed --rebuild` lại (bỏ env → về 768/prompt tùy config lúc đó) hoặc `--all` để vá tiếp — DB dẫn xuất, không có gì mất vĩnh viễn.
 - FTS: migration là DROP + tạo lại từ `messages` (nguồn còn nguyên) — chạy lại rebuild là xong.
-- Toàn cục xấu nhất: `zemory brain scan --deep` dựng lại từ transcript gốc + imports.
+- Toàn cục xấu nhất: `zemory memory scan --deep` dựng lại từ transcript gốc + imports.

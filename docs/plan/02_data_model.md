@@ -29,10 +29,10 @@ known_stores       adapter store locations discovered by scan
 schema_version     ordered DB migrations
 ```
 
-SQLite bật WAL, foreign keys, busy timeout và synchronous NORMAL để nhiều reader cùng dùng local brain.
+SQLite bật WAL, foreign keys, busy timeout và synchronous NORMAL để nhiều reader cùng dùng local memory.
 
-## 2. Schema và migration — nguồn thực thi ở backend/src/brain/db.ts
-Schema thực thi duy nhất nằm trong `backend/src/brain/db.ts`; plan không lặp một bản DDL dài dễ trôi lệch. Các invariant bắt buộc:
+## 2. Schema và migration — nguồn thực thi ở backend/src/memory/db.ts
+Schema thực thi duy nhất nằm trong `backend/src/memory/db.ts`; plan không lặp một bản DDL dài dễ trôi lệch. Các invariant bắt buộc:
 
 - `sessions.id` và `messages(session_id, uuid)` hỗ trợ ingest idempotent;
 - FTS tables đồng bộ bằng trigger insert/delete/update phù hợp (một số bảng — `messages_fts`/`messages_fts_tri`, migration v12 — là EXTERNAL CONTENT, đọc content từ bảng gốc thay vì giữ bản copy riêng);
@@ -44,7 +44,7 @@ Schema thực thi duy nhất nằm trong `backend/src/brain/db.ts`; plan không 
 Thêm hoặc đổi cột phải đi qua migration test trên DB tạm và backup trước khi áp global DB.
 
 ## 3. Cách tìm (access patterns) — KHÔNG "index trước rồi trỏ"
-- Brain search filter `project_root` ngay trong từng FTS stream trước candidate limit, sau đó mới RRF và per-session diversification.
+- Memory search filter `project_root` ngay trong từng FTS stream trước candidate limit, sau đó mới RRF và per-session diversification.
 - `--all` bỏ scope có chủ đích; progressive disclosure trả snippet/ID trước và `show` mở một row.
 - Plan search join FTS section với doc và weight heading cao hơn body.
 - Changelog search giữ cả active lẫn archived để quyết định cũ vẫn recall được.
@@ -66,7 +66,7 @@ Harness chuẩn (`docs_template/`, ship cho project khác) gồm:
 
 Backlog riêng của chính zemory (dogfood, KHÔNG thuộc template) mở rộng thêm `docs/plan/01`–`12` theo thời gian: repo survey, data model (file này), compression (đã bỏ scope), roadmap, RAG, digest, web-chat capture, scoped sync, repo structure, token-savings dashboard (đã gỡ), DB size optimization, vector rebuild 256d.
 
-Global brain ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
+Global Memory ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 

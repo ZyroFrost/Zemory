@@ -38,7 +38,7 @@
 
 ## 2. Đáng học → áp vào zemory
 
-### Cho `search`/recall (brain hiện có)
+### Cho `search`/recall (memory hiện có)
 - **Context Mode FTS5 recipe**: porter stemming + trigram + **RRF fusion** + proximity rerank + sửa typo Levenshtein. Đè lên FTS5+trigram đã có.
 - **agentmemory**: progressive disclosure (trả metadata trước, bung text sau), session-diversification cap (max N/session), token-budgeted injection (~2000), relevance = bm25 × salience(type) × recency.
 - **redaction secret lúc ingest** (agentmemory pattern: sk-ant-, token AWS/GCP/GitHub, JWT) — an toàn, làm sớm.

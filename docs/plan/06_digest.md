@@ -13,7 +13,7 @@
 2. **1 digest ↔ đúng 1 `session_id`.** Bộ sinh chỉ đọc `messages WHERE session_id = X` → cấu trúc chặn trộn phiên. Digest mang luôn `host` + `project_root` (provenance) → luôn biết phiên nào / máy nào.
 3. **Mỗi mục digest kèm ANCHOR (message id)** → drill xuống tin thật verbatim để kiểm.
 4. **Tầng lưu KHÔNG gọi LLM** (giữ luật + không tốn quota). Nền extractive không sinh văn bản nên không cần model "đủ thông minh".
-5. **Không phụ thuộc "biết lúc phiên kết thúc".** Regen theo nhịp `brain scan`, guard bằng content-hash — phiên mọc thêm tin thì digest tự cập nhật, không cần ai bấm/nhắc.
+5. **Không phụ thuộc "biết lúc phiên kết thúc".** Regen theo nhịp `memory scan`, guard bằng content-hash — phiên mọc thêm tin thì digest tự cập nhật, không cần ai bấm/nhắc.
 
 ## 3. Nội dung một digest
 - `tasks[]` — DANH SÁCH việc đã làm (nhiều, không gò 1), mỗi việc kèm anchor. Trích từ mỗi yêu cầu user + mỗi nhánh chốt.
@@ -27,7 +27,7 @@
 
 ## 4. Sinh digest
 ### A. Extractive — nền BẮT BUỘC, không LLM (build v1)
-- Regen trong luồng `brain scan`/ingest cho mỗi session có tin mới (guard hash: tin không đổi → bỏ qua). + `zemory brain digest --all` backfill phiên cũ (incremental, idempotent, resumable — như `brain embed`).
+- Regen trong luồng `memory scan`/ingest cho mỗi session có tin mới (guard hash: tin không đổi → bỏ qua). + `zemory memory digest --all` backfill phiên cũ (incremental, idempotent, resumable — như `memory embed`).
 - Chọn câu "đắt" CÓ THỂ dùng vector index sẵn có để rank (embed-assisted selection) — vector *chọn*, KHÔNG *sinh*. Fail-open: thiếu vector thì rank bằng heuristic.
 - Deterministic, ~0 token, không bịa, không lộn phiên.
 ### B. Agent-authored — PHỦ lên, tuỳ chọn, LƯỜI (tầm nhìn, không bắt buộc v1)
@@ -40,8 +40,8 @@
 - FTS riêng cho text digest (word + trigram, Vietnamese) — lane search cấp phiên.
 
 ## 6. Recall (chốt R3)
-- `brain search`: thêm **lane digest** — trả cả hit CẤP PHIÊN (đọc digest gọn) song song hit tin lẻ; theo anchor `show` xuống messages.
-- `brain digest <session_id>`: mở full digest một phiên.
+- `memory search`: thêm **lane digest** — trả cả hit CẤP PHIÊN (đọc digest gọn) song song hit tin lẻ; theo anchor `show` xuống messages.
+- `memory digest <session_id>`: mở full digest một phiên.
 - Progressive disclosure: digest (mỏng) → anchor → `messages` (đầy). Đọc lớp mỏng trước, đào sâu khi cần.
 
 ## 7. Gate nghiệm thu

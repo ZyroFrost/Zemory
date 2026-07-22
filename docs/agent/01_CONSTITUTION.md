@@ -9,7 +9,7 @@
 ## Mục đích
 
 **zemory là lớp quản trị BỘ NHỚ + CONTEXT cho coding agent — một lõi dùng chung cho MỌI project trên máy.** Hai vai, không hơn:
-1. **Một bộ não chung** — mọi phiên agent (Claude Code · Codex · Continue · LM Studio) + web chat (ChatGPT…) được ingest vào MỘT SQLite local, dedup, redact, tìm được bằng cả keyword lẫn ngữ nghĩa, **xuyên project và xuyên máy** (sync bundle mã hóa). Mục tiêu thật: agent **nhớ được việc phiên trước** thay vì bắt user kể lại — đó là chỗ token thật sự tiết kiệm (điều 1).
+1. **Một Global Memory chung** — mọi phiên agent (Claude Code · Codex · Continue · LM Studio) + web chat (ChatGPT…) được ingest vào MỘT SQLite local, dedup, redact, tìm được bằng cả keyword lẫn ngữ nghĩa, **xuyên project và xuyên máy** (sync bundle mã hóa). Mục tiêu thật: agent **nhớ được việc phiên trước** thay vì bắt user kể lại — đó là chỗ token thật sự tiết kiệm (điều 1).
 2. **Một harness chuẩn cho từng project** — hiến pháp / rules / structure / TODO / changelog + plan đánh số, để agent bám theo thay vì mỗi repo một kiểu.
 
 Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). zemory chỉ lo **nhớ** + **kỷ luật**.
@@ -49,7 +49,7 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
 
 12. **Đo trung thực + gate trước khi bật mặc định.** TUYỆT ĐỐI không trưng số counterfactual/ảo ("tiết kiệm N token" khi không đo được). Mọi lớp mới (hybrid, rerank, dims, migration…) chỉ bật mặc định SAU khi qua gate: benchmark thắng net trên corpus có nhãn + test + migration an toàn + health check + fallback rõ. *(gốc: build plan §2.1, plan 04 §9, plan 05 §2 §6, plan 10, plan 12 §2)*
 
-13. **Graph là lớp DẪN XUẤT; cạnh KHAI BÁO và SUY LUẬN không được lẫn.** Graph (node + cạnh) rebuild được từ `.md` + code + brain — vứt/dựng lại bất cứ lúc nào, KHÔNG là kho sự thật thứ hai (hệ quả điều 3). Build TẤT ĐỊNH, 0 LLM (điều 6): cạnh chỉ sinh bằng parse (routing · references · supersede · `touches` · import/AST) hoặc cosine trên vector ĐÃ CÓ — KHÔNG extract quan hệ bằng LLM. Hai hạng cạnh: **KHAI BÁO** = baseline tất định, luôn đúng; **SUY LUẬN** = overlay fail-open (điều 9), PHẢI gắn nhãn `inferred` và KHÔNG BAO GIỜ giả dạng cạnh khai báo (thang confidence `textual`→`resolved` nằm TRONG hạng suy luận, không tự phong "khai báo"). Graph là engine nội bộ của domain brain, KHÔNG tạo capability thứ 5 (điều 4); consumer ngoài chỉ đọc `graph export` (contract có version), KHÔNG parse lại chuẩn (điều 5). *(gốc: plan 13; user chốt 2026-07-21.)*
+13. **Graph là lớp DẪN XUẤT; cạnh KHAI BÁO và SUY LUẬN không được lẫn.** Graph (node + cạnh) rebuild được từ `.md` + code + memory — vứt/dựng lại bất cứ lúc nào, KHÔNG là kho sự thật thứ hai (hệ quả điều 3). Build TẤT ĐỊNH, 0 LLM (điều 6): cạnh chỉ sinh bằng parse (routing · references · supersede · `touches` · import/AST) hoặc cosine trên vector ĐÃ CÓ — KHÔNG extract quan hệ bằng LLM. Hai hạng cạnh: **KHAI BÁO** = baseline tất định, luôn đúng; **SUY LUẬN** = overlay fail-open (điều 9), PHẢI gắn nhãn `inferred` và KHÔNG BAO GIỜ giả dạng cạnh khai báo (thang confidence `textual`→`resolved` nằm TRONG hạng suy luận, không tự phong "khai báo"). Graph là engine nội bộ của domain memory, KHÔNG tạo capability thứ 5 (điều 4); consumer ngoài chỉ đọc `graph export` (contract có version), KHÔNG parse lại chuẩn (điều 5). *(gốc: plan 13; user chốt 2026-07-21.)*
 
 ## Sửa đổi hiến pháp
 - **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
