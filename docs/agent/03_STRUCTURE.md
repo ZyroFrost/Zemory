@@ -101,8 +101,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │
 ├── frontend/               ★ UI (mọi app đều có UI, kể cả tool ít UI). ▼ TẤT CẢ [opt]:
 │   ├── assets/       [opt]  MEDIA UI: logo · icon · background · banner · ảnh · font — con theo LOẠI khi có (logo/ icons/ backgrounds/ banners/ images/ fonts/)
-│   ├── components/   [opt]  component dùng lại — GỒM Dialog 3-size (S/M/L)
-│   ├── styles/       [opt]  TOKENS: 3-size dialog, màu, spacing + CSS/theme chung
+│   ├── components/   [opt]  component dùng lại — GỒM Dialog 3-size (S/M/L) + resize handle/seam (≥2 panel ⇒ bắt buộc, §5 "Panel resize")
+│   ├── styles/       [opt]  TOKENS: 3-size dialog, màu, spacing + CSS/theme chung + biến layout resize (--rail-w…)
 │   ├── pages/        [opt]  trang / màn hình / route
 │   ├── layouts/      [opt]  layout khung trang
 │   ├── state/        [opt]  state client (Redux/Zustand)
@@ -208,6 +208,7 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | **điểm mở rộng cho bên thứ 3** | `backend/src/plugins/` (feature của mình → `modules/`) |
 | helper thuần | `backend/src/util/` · client → `frontend/util/` |
 | UI component (Dialog…) | `frontend/components/` |
+| **panel resize / seam kéo** (≥2 panel ⇒ BẮT BUỘC) | engine → `frontend/components/` (1 engine data-driven dùng chung) · biến layout → `frontend/styles/` — luật §5 "Panel resize", slot §9.C `resizable` |
 | token / CSS / định nghĩa 3-size | `frontend/styles/` |
 | trang / route UI | `frontend/pages/` |
 | media UI (logo·icon·background·banner·ảnh·font) | `frontend/assets/` — con theo loại khi có |
