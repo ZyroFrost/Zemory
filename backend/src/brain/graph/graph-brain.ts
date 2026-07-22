@@ -8,7 +8,7 @@
 // Deterministic + fail-open (HP điều 9): no brain / no digests → empty map, the
 // code graph still stands on its own.
 
-import { currentBrainDb, openBrain } from "./brain/db.js";
+import { currentBrainDb, openBrain } from "../db.js";
 
 /** Windows/JSON-escaped paths arrive in many shapes — flatten to one form. */
 const norm = (p: string): string =>

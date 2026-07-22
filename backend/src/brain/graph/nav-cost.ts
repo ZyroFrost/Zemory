@@ -19,8 +19,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CodeGraph, buildCodeGraph } from "./graph.js";
-import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS } from "./brain/search.js";
-import { currentBrainDb, openBrain } from "./brain/db.js";
+import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS } from "../search.js";
+import { currentBrainDb, openBrain } from "../db.js";
 
 /** Chars→tokens, the same ÷4 estimate used everywhere else in the cockpit. */
 const tok = (chars: number): number => Math.round(chars / 4);
