@@ -55,7 +55,7 @@
       '<div><div class="result-title"><span>' + esc(title) + '</span>' + badge(h.source || 'session', 'on') + badge(projName(h.project), '') + '</div>' +
       '<div class="result-snip">' + highlight(clip(h.snippet, 170), terms) + '</div>' +
       '<div class="result-foot"><span>' + fmtDay(h.timestamp) + '</span><span>#' + h.id + '</span><span>' + esc(h.role || 'message') + '</span></div></div>' +
-      '<div class="open-arrow" onclick="event.stopPropagation();openSession(\'' + esc(h.sessionId) + '\')" title="' + t('q.openfull') + '">⤢</div></div>';
+      '<div class="open-arrow" onclick="event.stopPropagation();openSession(\'' + esc(h.sessionId) + '\')" title="' + t('q.openfull') + '" aria-label="' + t('q.openfull') + '" role="button" tabindex="0">⤢</div></div>';
   }
   function renderHits(){
     const terms = queryTerms();

@@ -73,14 +73,14 @@
            '" aria-selected="' + on + '" title="' + esc(p.root) + '">' +
            (p.pinned ? '<span class="tab-pin">📌</span>' : '') + esc(p.name) + '</button>';
     });
-    strip += '<button class="tab" data-act="add" title="' + esc(t('tab.addTitle')) + '">＋</button>';
+    strip += '<button class="tab" data-act="add" title="' + esc(t('tab.addTitle')) + '" aria-label="' + esc(t('tab.addTitle')) + '">＋</button>';
     // The top project-MANAGEMENT menu (☰ / … overflow) is gone — it duplicated
     // the Projects tab list (user 2026-07-21). Tabs = quick nav to recent; the
     // Projects tab (grouped by machine) is the full list. Only theme + settings
     // stay in the pinned action cluster.
     const actions =
-         '<button class="tab" data-act="theme" title="' + esc(t('tab.themeTitle')) + '">◐</button>' +
-         '<button class="tab" data-act="settings" title="' + esc(t('tt.settings')) + '">⚙</button>';
+         '<button class="tab" data-act="theme" title="' + esc(t('tab.themeTitle')) + '" aria-label="' + esc(t('tab.themeTitle')) + '">◐</button>' +
+         '<button class="tab" data-act="settings" title="' + esc(t('tt.settings')) + '" aria-label="' + esc(t('tt.settings')) + '">⚙</button>';
     bar.innerHTML = '<div class="tab-strip">' + strip + '</div><div class="tab-actions">' + actions + '</div>';
     if(el('tabMenu') && el('tabMenu').classList.contains('on')) renderTabMenu();
   }
@@ -97,9 +97,9 @@
         '<button class="tabmenu-open" data-mact="open" data-root="' + esc(p.root) + '" title="' + esc(p.root) + '">' +
           '<b>' + esc(p.name) + '</b><small>' + esc(p.root) + '</small></button>' +
         '<button class="tabmenu-btn' + (p.pinned ? ' on' : '') + '" data-mact="pin" data-root="' + esc(p.root) +
-          '" data-on="' + (p.pinned ? '0' : '1') + '" title="' + esc(t(p.pinned ? 'tab.unpin' : 'tab.pin')) + '">📌</button>' +
+          '" data-on="' + (p.pinned ? '0' : '1') + '" title="' + esc(t(p.pinned ? 'tab.unpin' : 'tab.pin')) + '" aria-label="' + esc(t(p.pinned ? 'tab.unpin' : 'tab.pin')) + '">📌</button>' +
         '<button class="tabmenu-btn danger" data-mact="forget" data-root="' + esc(p.root) +
-          '" title="' + esc(t('tab.forget')) + '">✕</button>' +
+          '" title="' + esc(t('tab.forget')) + '" aria-label="' + esc(t('tab.forget')) + '">✕</button>' +
       '</div>';
     });
     h += '<div class="tabmenu-foot"><button class="ghost" data-mact="prune">' + esc(t('tab.prune')) + '</button>' +
