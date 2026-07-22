@@ -1,0 +1,80 @@
+  @media (max-width: 1180px) {
+    .shell {
+      grid-template-columns: minmax(0, 1fr) 320px;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+    .shell > .resize-handle { display: none; }
+    .rail {
+      grid-column: 1 / -1;
+      position: relative;
+      top: 0;
+      height: 72px;
+      flex-direction: row;
+      align-items: center;
+    }
+    .nav { display: none; }
+    .rail-foot { margin-left: auto; min-width: 250px; }
+    .workspace { grid-column: 1; height: auto; }
+    .inspector {
+      grid-column: 2;
+      height: auto;
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(82px, .72fr) minmax(120px, .9fr) minmax(160px, 1.35fr) minmax(104px, .9fr) minmax(116px, .95fr) minmax(92px, .72fr);
+    }
+    .commandbar { grid-template-columns: minmax(180px, 1fr) 112px 120px; }
+    .commandbar .search-command { grid-column: 1 / -1; }
+    .status-deck { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    body { font-size: 12px; }
+    .shell {
+      height: 100dvh;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+      padding: 8px;
+      gap: 8px;
+    }
+    .rail {
+      grid-column: 1;
+      height: auto;
+      display: block;
+    }
+    .rail-foot { display: none; }
+    .workspace {
+      grid-column: 1;
+      height: auto;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+    .resize-handle { display: none; }
+    .grid-bottom, .inspector { display: none; }
+    .commandbar, .status-deck, .searchline, .recall-head, .recall-workbench, .grid-bottom, .inspector, .action-stack {
+      grid-template-columns: 1fr;
+    }
+    .status-deck {
+      grid-template-columns: repeat(6, minmax(148px, 1fr));
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    .status-card {
+      height: 72px;
+      min-height: 72px;
+      padding: 8px 10px;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      border-bottom: 0;
+    }
+    .status-card .spark { display: none; }
+    .status-card:last-child { border-right: 0; }
+    .recall-head { display: none; }
+    .recall-workbench { min-height: 0; }
+    .result-list { border-right: 0; max-height: none; }
+    .preview { border-top: 1px solid var(--line); max-height: none; }
+    .searchline button { width: 100%; }
+    .row { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
