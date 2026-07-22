@@ -7,7 +7,20 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PAGE } from "../../dist/ui-page.js";
+import { readFileSync } from "node:fs";
+
+// The cockpit UI now lives as static files in frontend/ (03_STRUCTURE §5 "UI
+// no-build static"): the daemon serves them as-is. We reconstruct the equivalent
+// single page (css + js inlined) so these structural assertions keep guarding the
+// exact content the browser receives.
+const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
+const CSS = rd("../../frontend/styles/cockpit.css");
+const JS = rd("../../frontend/scripts/cockpit.js");
+// Function replacements — a STRING replacement would interpret $1/$& inside the
+// JS/CSS as capture-group refs and corrupt them.
+const PAGE = rd("../../frontend/pages/cockpit.html")
+  .replace('<link rel="stylesheet" href="/styles/cockpit.css">', () => "<style>" + CSS + "</style>")
+  .replace('<script src="/scripts/cockpit.js"></script>', () => "<script>" + JS + "</script>");
 
 function embeddedScript() {
   const m = PAGE.match(/<script>([\s\S]*?)<\/script>/);
