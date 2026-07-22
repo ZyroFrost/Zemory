@@ -2,10 +2,10 @@
 // Deterministic, 0 LLM: nodes = source files, edges = intra-project imports.
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { HUB_FANIN, buildCodeGraph, fileImpact, graphFitness } from "../../dist/memory/graph/graph.js";
+import { HUB_FANIN, buildCodeGraph, fileImpact, graphFitness, sourceSignature } from "../../dist/memory/graph/graph.js";
 import { enrichGraphSymbols, resolveCalls } from "../../dist/memory/graph/graph-symbols.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -19,6 +19,18 @@ function scaffold(t) {
   writeFileSync(join(root, "backend", "src", "lonely.ts"), `const x = 1;\n`);
   return root;
 }
+
+test("sourceSignature flips on a rename (git mv keeps count + mtime — path hash catches it)", (t) => {
+  const root = scaffold(t);
+  const sig1 = sourceSignature(root);
+  // A rename preserves the file's mtime and the total file count, so a
+  // count+mtime-only signature would miss it and serve a stale cached graph.
+  renameSync(join(root, "backend", "src", "lonely.ts"), join(root, "backend", "src", "renamed.ts"));
+  const sig2 = sourceSignature(root);
+  assert.notEqual(sig2, sig1, "renaming a file must change the source signature");
+  // Idempotent: same tree, same signature (so the cache is not busted every call).
+  assert.equal(sourceSignature(root), sig2, "an unchanged tree must yield a stable signature");
+});
 
 test("nodes = source files, edges = resolved intra-project imports", (t) => {
   const root = scaffold(t);

@@ -446,39 +446,13 @@
   }
   document.addEventListener('click', function(ev){
     const b = ev.target.closest ? ev.target.closest('.tabbar .tab') : null;
-    if(!b){
-      // Click outside closes the project menu.
-      if(el('tabMenu') && !(ev.target.closest && ev.target.closest('#tabMenu'))) toggleTabMenu(false);
-      return;
-    }
+    if(!b) return;
     const act = b.dataset.act;
-    if(act === 'global'){ toggleTabMenu(false); setTab('global'); }
-    else if(act === 'open'){ toggleTabMenu(false); openProjectTab(b.dataset.root); }
-    else if(act === 'more' || act === 'manage') toggleTabMenu();
-    else if(act === 'add'){ toggleTabMenu(false); promptAddProject(); }
+    if(act === 'global') setTab('global');
+    else if(act === 'open') openProjectTab(b.dataset.root);
+    else if(act === 'add') promptAddProject();
     else if(act === 'theme') toggleTheme();
     else if(act === 'settings') openSettings();
-  });
-  document.addEventListener('click', async function(ev){
-    const b = ev.target.closest ? ev.target.closest('#tabMenu [data-mact]') : null;
-    if(!b) return;
-    const act = b.dataset.mact;
-    const root = b.dataset.root || '';
-    if(act === 'open'){ toggleTabMenu(false); openProjectTab(root); return; }
-    if(act === 'pin'){ await projectAction('/pin-project', root, '&on=' + b.dataset.on); }
-    else if(act === 'forget'){
-      // Destructive-looking but scoped: this only edits zemory's picker list.
-      if(!confirm(t('tab.forgetConfirm') + '\n\n' + root)) return;
-      await projectAction('/forget-project', root);
-      if(el('proj') && el('proj').value === root){ curRoot = ''; setTab('global'); }
-    } else if(act === 'prune'){
-      const r = await (await fetch('/prune-projects', { method: 'POST' })).json();
-      if(r && r.knownProjects && last) last.knownProjects = r.knownProjects;
-      el('msg').textContent = t('tab.pruned').replace('{n}', String((r && r.removed) || 0));
-    }
-    if(el('proj')) el('proj').innerHTML = projOpts();
-    renderTabs();
-    renderTabMenu();
   });
   // Switching tabs is a VIEW change: flip the CSS, paint from cache, and only
   // hit the network when this project's data is missing or stale. No memoryTick

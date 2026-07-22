@@ -113,7 +113,6 @@
   // closable while a sync runs (window.__syncing) — same guard as its backdrop
   // click. Order = visually topmost first; ESC closes ONE layer per press.
   var escLayers = [
-    { el: 'tabMenu', vis: function(){ return el('tabMenu') && el('tabMenu').classList.contains('on'); }, close: function(){ toggleTabMenu(false); } },
     { el: 'docOverlay', vis: function(){ return shown('docOverlay'); }, close: closeDoc },
     { el: 'sessionOverlay', vis: function(){ return shown('sessionOverlay'); }, close: closeSession },
     // ESC on the sync box = run hidden (closeSyncBox only hides; the daemon-side
@@ -176,7 +175,6 @@
   (async () => {
     await loadLayoutFromServer();
     initResizers();
-    initPanelSplits();
     await tick();
     if(!curRoot && last && last.project && last.project.root) curRoot = last.project.root;
     await memoryTick();

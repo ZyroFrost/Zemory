@@ -1,4 +1,4 @@
-// Start-with-OS integration (plan 14 §B). Enables/disables launching the zemory
+// Start-with-OS integration (plan 14 §6.B). Enables/disables launching the zemory
 // daemon (`zemory ui`) at login, per-OS, in USER space (no admin):
 //   Windows → a .cmd in the Startup folder
 //   macOS   → a LaunchAgent plist
@@ -24,14 +24,22 @@ export interface AutostartStatus {
 
 /** Absolute path to the zemory CLI entry (dist/cli.js), resolved from this module. */
 function cliEntry(): string {
-  // this file compiles to dist/autostart.js; the CLI is its sibling dist/cli.js.
+  // this file compiles to dist/platform/autostart.js; the CLI is dist/cli.js — one
+  // level UP (autostart moved into platform/ but this path wasn't updated, so the
+  // shortcut/autostart used to target a non-existent dist/platform/cli.js).
   const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "cli.js");
+  return join(here, "..", "cli.js");
 }
 
 /** The command that should run at login: node <cli.js> ui. */
 function launchParts(): { exe: string; args: string } {
   return { exe: process.execPath, args: `"${cliEntry()}" ui` };
+}
+
+/** Escape a value for a PowerShell single-quoted string (double the quotes) —
+ *  a username like `O'Brien` puts a `'` in every path and broke the shortcut PS. */
+function psq(s: string): string {
+  return s.replace(/'/g, "''");
 }
 
 // ── Windows ──────────────────────────────────────────────────────────────────
@@ -100,10 +108,12 @@ function linuxStatus(): AutostartStatus {
 function linuxEnable(): AutostartStatus {
   const path = xdgDesktopPath();
   const { exe } = launchParts();
+  // Quote exe + script: a node path or install dir with a space would otherwise
+  // split the Exec line into bogus args (freedesktop Exec allows double-quoting).
   const desktop = `[Desktop Entry]
 Type=Application
 Name=zemory
-Exec=${exe} ${cliEntry()} ui
+Exec="${exe}" "${cliEntry()}" ui
 X-GNOME-Autostart-enabled=true
 `;
   mkdirSync(dirname(path), { recursive: true });
@@ -157,34 +167,90 @@ function desktopDir(): string {
   return join(homedir(), "Desktop");
 }
 
+/** Windows app icon (Start Menu / Desktop shortcut) — the Z logo. Resolved from the
+ *  packaged resources beside dist/; null if absent so the shortcut still works. */
+function winIconPath(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url)); // dist/platform
+  const p = join(here, "..", "..", "backend", "resources", "packaging", "zemory.ico");
+  return existsSync(p) ? p : null;
+}
+
+/** Start Menu entry (the "menubar" the user launches from). */
+function winStartMenuLnk(): string {
+  return join(
+    process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"),
+    "Microsoft", "Windows", "Start Menu", "Programs", "Zemory.lnk",
+  );
+}
+function winDesktopLnk(): string {
+  return join(desktopDir(), "Zemory.lnk");
+}
+
+/** A hidden VBScript launcher: opening from the Start Menu must NOT flash or keep a
+ *  console window. It Run()s node with window-style 0 (hidden); the daemon lives in
+ *  the background and is stopped from the tray. */
+function winLauncherVbs(): string {
+  return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "zemory", "launch.vbs");
+}
+function winWriteLauncher(): string {
+  const vbs = winLauncherVbs();
+  const { exe } = launchParts();
+  mkdirSync(dirname(vbs), { recursive: true });
+  writeFileSync(vbs, `CreateObject("WScript.Shell").Run """${exe}"" ""${cliEntry()}"" ui", 0, False\r\n`);
+  return vbs;
+}
+
+/** Write one .lnk (WScript.Shell — on every Windows) that runs the hidden VBS
+ *  launcher, with the Z app icon so the Start Menu / taskbar shows the logo. */
+function winWriteShortcut(lnkPath: string, vbs: string): void {
+  const icon = winIconPath();
+  const ps = [
+    "$w = New-Object -ComObject WScript.Shell;",
+    `$s = $w.CreateShortcut('${psq(lnkPath)}');`,
+    "$s.TargetPath = 'wscript.exe';",
+    `$s.Arguments = '"${psq(vbs)}"';`,
+    `$s.WorkingDirectory = '${psq(dirname(cliEntry()))}';`,
+    `$s.Description = 'Zemory — memory & harness for coding agents';`,
+    ...(icon ? [`$s.IconLocation = '${psq(icon)}';`] : []),
+    "$s.Save()",
+  ].join(" ");
+  execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
+}
+
 export function desktopShortcutStatus(): ShortcutStatus {
   const os = platform();
-  if (os === "win32") { const p = join(desktopDir(), "zemory.lnk"); return { supported: true, exists: existsSync(p), path: p }; }
+  if (os === "win32") { const p = winDesktopLnk(); return { supported: true, exists: existsSync(p) || existsSync(winStartMenuLnk()), path: p }; }
   if (os === "linux") { const p = join(desktopDir(), "zemory.desktop"); return { supported: true, exists: existsSync(p), path: p }; }
   if (os === "darwin") { const p = join(desktopDir(), "zemory.command"); return { supported: true, exists: existsSync(p), path: p }; }
   return { supported: false, exists: false, detail: `no desktop shortcut on ${os}` };
 }
 
-/** Create (on=true) or remove (on=false) the desktop shortcut. Fail-open. */
+/**
+ * Install (on=true) or remove (on=false) the clickable "Zemory" shortcuts. On
+ * Windows this creates BOTH a Desktop and a Start Menu entry (with the Z icon), so
+ * the app opens from the menubar like an installed app. Fail-open.
+ */
 export function setDesktopShortcut(on: boolean): ShortcutStatus {
   const st = desktopShortcutStatus();
   if (!st.supported || !st.path) return st;
   try {
+    if (platform() === "win32") {
+      const desk = winDesktopLnk();
+      const menu = winStartMenuLnk();
+      if (!on) {
+        for (const p of [desk, menu, winLauncherVbs()]) if (existsSync(p)) rmSync(p, { force: true });
+        return { ...st, exists: false };
+      }
+      mkdirSync(dirname(menu), { recursive: true });
+      const vbs = winWriteLauncher();
+      winWriteShortcut(desk, vbs);
+      winWriteShortcut(menu, vbs);
+      return { ...st, exists: true };
+    }
     if (!on) { if (existsSync(st.path)) rmSync(st.path, { force: true }); return { ...st, exists: false }; }
     const { exe } = launchParts();
-    if (platform() === "win32") {
-      // Build the .lnk via the Windows Script Host (present on every Windows).
-      const ps = [
-        "$w = New-Object -ComObject WScript.Shell;",
-        `$s = $w.CreateShortcut('${st.path}');`,
-        `$s.TargetPath = '${exe}';`,
-        `$s.Arguments = '"${cliEntry()}" ui';`,
-        `$s.WorkingDirectory = '${dirname(cliEntry())}';`,
-        "$s.Save()",
-      ].join(" ");
-      execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
-    } else if (platform() === "linux") {
-      writeFileSync(st.path, `[Desktop Entry]\nType=Application\nName=zemory\nExec=${exe} ${cliEntry()} ui\nTerminal=false\n`);
+    if (platform() === "linux") {
+      writeFileSync(st.path, `[Desktop Entry]\nType=Application\nName=Zemory\nExec="${exe}" "${cliEntry()}" ui\nTerminal=false\n`);
     } else {
       writeFileSync(st.path, `#!/bin/sh\n"${exe}" "${cliEntry()}" ui\n`, { mode: 0o755 });
     }

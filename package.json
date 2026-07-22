@@ -2,6 +2,7 @@
   "name": "zemory",
   "version": "0.0.1",
   "description": "Context & memory governance layer for AI agents — one shared core for every project.",
+  "author": "Nguyen Duc Huy",
   "type": "module",
   "bin": {
     "zemory": "dist/cli.js"
@@ -43,5 +44,9 @@
     "systray2": "^2.1.4",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.20.8"
+  },
+  "optionalDependencies": {
+    "@nativewindow/webview": "^1.0.6",
+    "koffi": "^3.1.2"
   }
 }

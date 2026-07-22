@@ -58,14 +58,30 @@
     for(const p of projects){ (byHost[p.host] = byHost[p.host] || []).push(p); }
     const localHost = capture.localHost || '';
     const linkedRoots = new Set(((last && last.knownProjects) || []).map(k => String(k.root || '').toLowerCase()));
+    // Canonical registry entry per project (case-folded) — carries the exact root
+    // and pin state, so the pin/forget buttons below send the registry's own root.
+    const linkedMap = {};
+    for(const k of ((last && last.knownProjects) || [])) linkedMap[String(k.root || '').toLowerCase()] = k;
     let covState = {};
     try { covState = JSON.parse(localStorage.getItem('zemory.covm') || '{}') || {}; } catch(e){}
     const covHosts = Object.keys(byHost).sort((a, b) => a === localHost ? -1 : b === localHost ? 1 : a.localeCompare(b));
-    const covRow = p => {
+    const covRow = (p, linked) => {
       const meta = fmtN(p.sessions) + ' ' + t('cov.sess') + ' / ' + fmtN(p.messages) + ' ' + t('cov.msg') + ' / ' + fmtN(p.agents) + ' ' + t('cov.agent') + (p.last ? ' · ' + fmtDateTime(p.last) : '');
-      return '<div class="folder-item cov-open" data-open-proj="' + esc(p.path) + '" title="' + esc(t('cov.openTip')) + '">'
+      const open = '<div class="folder-item cov-open" data-open-proj="' + esc(p.path) + '" title="' + esc(t('cov.openTip')) + '">'
         + '<div class="mini-row"><b>' + esc(projName(p.path)) + '</b><span class="muted">' + meta + '</span></div>'
         + '<div class="path">' + esc(p.path) + '</div></div>';
+      if(!linked) return '<div class="cov-line">' + open + '</div>';
+      // Linked projects (in the registry) can be pinned to the tab bar or dropped
+      // from the picker right here — this list is the ONLY surface for it (the old
+      // ☰ tab menu was removed). ✕ edits zemory's list only; folder/docs/memory kept.
+      const km = linkedMap[String(p.path).toLowerCase()];
+      const pinned = !!(km && km.pinned);
+      const root = (km && km.root) || p.path;
+      const acts = '<div class="cov-acts">'
+        + '<button class="cov-act' + (pinned ? ' on' : '') + '" data-cov-pin data-root="' + esc(root) + '" data-on="' + (pinned ? '0' : '1') + '" title="' + esc(t(pinned ? 'tab.unpin' : 'tab.pin')) + '" aria-label="' + esc(t(pinned ? 'tab.unpin' : 'tab.pin')) + '">📌</button>'
+        + '<button class="cov-act danger" data-cov-forget data-root="' + esc(root) + '" title="' + esc(t('tab.forget')) + '" aria-label="' + esc(t('tab.forget')) + '">✕</button>'
+        + '</div>';
+      return '<div class="cov-line">' + open + acts + '</div>';
     };
     el('coveragePanel').innerHTML = projects.length
       ? covHosts.map(h => {
@@ -78,11 +94,14 @@
           const fOpen = !!covState['f:' + h]; // discovered sublist defaults CLOSED
           let body = '';
           if(mOpen){
-            body += linked.map(covRow).join('');
+            body += linked.map(p => covRow(p, true)).join('');
             if(found.length){
               body += '<div class="cov-sub" data-cov-found="' + esc(h) + '">' + (fOpen ? '▾ ' : '▸ ') + esc(t('cov.found')) + ' (' + found.length + ')</div>';
-              if(fOpen) body += found.map(covRow).join('');
+              if(fOpen) body += found.map(p => covRow(p, false)).join('');
             }
+            // Prune sits under the local machine group — it drops registry entries
+            // whose folder is gone / no longer set up / a scratch dir.
+            if(isLocal) body += '<div class="cov-foot"><button class="ghost" data-cov-prune>' + esc(t('tab.prune')) + '</button><span class="tiny">' + esc(t('tab.forgetNote')) + '</span></div>';
           }
           return '<div class="cov-machine"><div class="cov-mhead" data-cov-host="' + esc(h) + '">'
             + (mOpen ? '▾ ' : '▸ ') + '🖥 ' + esc(h) + (isLocal ? ' <span class="cov-local">' + esc(t('cov.local')) + '</span>' : '')
@@ -102,6 +121,32 @@
     if(mh){ const k = 'm:' + mh.dataset.covHost; st[k] = st[k] === undefined ? (mh.textContent.indexOf('▾') < 0) : !st[k]; }
     else if(fs){ const k = 'f:' + fs.dataset.covFound; st[k] = !st[k]; }
     try { localStorage.setItem('zemory.covm', JSON.stringify(st)); } catch(e){}
+    if(memory && Object.keys(memory).length) renderMemorySummary(memory);
+  });
+  // Pin / forget / prune a linked project straight from the Projects list. These
+  // buttons sit OUTSIDE .cov-open, so opening the project tab and managing it never
+  // collide; stopPropagation guards against a future nesting change. projectAction
+  // (04-tabs.js) refreshes last.knownProjects; we then repaint tabs + this list.
+  document.addEventListener('click', async function(ev){
+    if(!ev.target.closest) return;
+    const pin = ev.target.closest('#coveragePanel [data-cov-pin]');
+    const fg  = ev.target.closest('#coveragePanel [data-cov-forget]');
+    const pr  = ev.target.closest('#coveragePanel [data-cov-prune]');
+    if(!pin && !fg && !pr) return;
+    ev.stopPropagation();
+    if(pin){
+      await projectAction('/pin-project', pin.dataset.root, '&on=' + pin.dataset.on);
+    } else if(fg){
+      if(!confirm(t('tab.forgetConfirm') + '\n\n' + fg.dataset.root)) return;
+      await projectAction('/forget-project', fg.dataset.root);
+      if(el('proj') && el('proj').value === fg.dataset.root){ curRoot = ''; setTab('global'); }
+    } else if(pr){
+      const r = await (await fetch('/prune-projects', { method: 'POST' })).json();
+      if(r && r.knownProjects && last) last.knownProjects = r.knownProjects;
+      if(el('msg')) el('msg').textContent = t('tab.pruned').replace('{n}', String((r && r.removed) || 0));
+    }
+    if(el('proj')) el('proj').innerHTML = projOpts();
+    renderTabs();
     if(memory && Object.keys(memory).length) renderMemorySummary(memory);
   });
   // Provenance tree (Local/Web × machine × agent). A ticked box = the lane is

@@ -280,17 +280,35 @@ test("Global Memory holds TWO big sub-tabs; Chuẩn chung folded in, BẢNG list
     !/body\[data-tab="global"\] \.recall-workbench > \.resize-handle \{ display: none/.test(PAGE),
     "recall keeps its drag-resizable workbench seam in Global Memory",
   );
-  // ② Bộ nhớ · Nạp & Đồng bộ | Dự án — the inspector is a 2-column grid there.
+  // ② Bộ nhớ · Nạp & Đồng bộ | Dự án — the inspector splits its two panels with a
+  // REAL drag seam (§5 Panel resize): --gm-cov-w, not the old decorative 1fr 1fr.
   assert.ok(
-    /body\[data-tab="global"\]\[data-gtab="mem"\] \.inspector \{[^}]*grid-template-columns:\s*1fr 1fr/.test(PAGE),
-    "the inspector must be a 2-column grid (Nạp & Đồng bộ | Dự án) on the second sub-tab",
+    /body\[data-tab="global"\]\[data-gtab="mem"\] \.inspector \{[^}]*grid-template-columns:\s*var\(--gm-cov-w/.test(PAGE),
+    "the inspector split (Dự án | Nạp & Đồng bộ) must be a REAL draggable seam driven by --gm-cov-w, not a fixed 1fr 1fr (§5 Panel resize)",
   );
+  assert.ok(/data-resize="gmSplit"/.test(PAGE), "a drag seam sits between the inspector's two panels (§5)");
   // Chuẩn chung folded INTO Global Memory — the duplicate top tab is gone.
   assert.ok(!/data-act="standard"/.test(PAGE), "the standalone Chuẩn chung top tab must be gone");
   assert.ok(!/body\[data-tab="standard"\]/.test(PAGE), "no dead data-tab=standard styling may remain");
   // The BẢNG list under the scope tree is gone; its rows are cards now.
   assert.ok(!/sectionTitle\(t\('m\.tables'\)\)/.test(PAGE), "the redundant BẢNG list must be gone");
   assert.ok(/\.filter\(r => r\.name !== 'messages' && r\.name !== 'sessions'\)/.test(PAGE), "remaining table rows are promoted to cards");
+});
+
+// Pin/forget/prune a project lives on each row of the Projects list now (user
+// 2026-07-22); the old ☰ tab-overflow menu — its element, render/toggle helpers
+// and delegated data-mact handler — was removed. Guard both halves so neither
+// regresses (a live surface must exist, the dead one must not come back).
+test("project pin/forget/prune sit on the Projects list; the dead ☰ tab menu is gone", () => {
+  for (const attr of ["data-cov-pin", "data-cov-forget", "data-cov-prune"]) {
+    assert.ok(JS.includes(attr), `the Projects list must wire ${attr} (the only pin/forget surface)`);
+  }
+  // The removed overflow menu must leave no trace — element, helpers, handler.
+  assert.ok(!/id="tabMenu"/.test(PAGE), "the dead #tabMenu element must be gone");
+  for (const dead of ["renderTabMenu", "toggleTabMenu", "data-mact", "setInspectorTab"]) {
+    assert.ok(!JS.includes(dead), `dead tab-menu/itab code must be removed: ${dead}`);
+  }
+  assert.ok(!/data-itab=/.test(PAGE), "the dead data-itab attribute must be gone");
 });
 
 // The project Graph pane and the Global tab must FILL the app frame: panes size
@@ -346,6 +364,20 @@ test("dialogs are 16:9 proportional, never fixed-height towers", () => {
   for (const s of [".modal.s", ".modal.m", ".modal.l"]) {
     assert.ok(!/height:/.test(block(s)), s + " sets width only, shares the 16:9 height");
   }
+});
+
+// §5 Panel resize (user chốt luật 2026-07-22): every area with ≥2 adjacent panels
+// MUST have a real drag seam (kéo là đổi), 2D grids get both directions, and ALL
+// seams go through ONE data-driven engine — not a branch-per-type + a second engine.
+test("§5 Panel resize: adjacent panels have real seams, driven by one data-driven engine", () => {
+  // Global Memory ② inspector split + graph 2×2 cross; each seam drives a real
+  // layout var (the fixed 1fr/1fr and fixed-2×2 forms were decorative — kéo không đổi).
+  assert.ok(/data-resize="gmSplit"/.test(PAGE) && /var\(--gm-cov-w/.test(PAGE), "inspector split seam (Dự án | Nạp & Đồng bộ)");
+  assert.ok(/data-resize="graphCol"/.test(PAGE) && /var\(--graph-col-w/.test(PAGE), "graph column seam (horizontal drag)");
+  assert.ok(/data-resize="graphRow"/.test(PAGE) && /var\(--graph-row-h/.test(PAGE), "graph row seam (vertical drag) — lưới 2×2 = cả hai chiều");
+  const layoutJs = readFileSync(new URL("../../frontend/scripts/02-layout.js", import.meta.url), "utf8");
+  assert.ok(/function seam\(type\)/.test(layoutJs), "seams declared as data in one seam() descriptor table (§5 ③)");
+  assert.ok(!/function initPanelSplits/.test(layoutJs), "the second (flex-grow) resize engine is removed — one engine only");
 });
 
 test("graph canvas supports wheel zoom, pan, NODE DRAG, and double-click reset", () => {

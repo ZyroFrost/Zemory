@@ -13,11 +13,11 @@
     --text-strong: #f1f7f2;
     --muted: #9aab9d;
     --faint: #708174;
-    --green: #78df9b;
-    --green-soft: rgba(120, 223, 155, .14);
-    --green2: #b5efc8;          /* bright mint — text/knob ON a green surface */
-    --green-dim: #2f6b48;       /* deep forest — switch track / accent border */
-    --on-green: #07120c;        /* text ON a solid --green fill */
+    --green: #4f8bff;
+    --green-soft: rgba(79, 139, 255, .16);
+    --green2: #b3a6ff;          /* light lavender — text/knob ON an accent surface */
+    --green-dim: #39468f;       /* deep indigo — switch track / accent border */
+    --on-green: #06122e;        /* navy text ON a solid --green (blue) fill */
     --amber: #f0cf63;
     --amber-soft: rgba(240, 207, 99, .15);
     --amber2: #ffe59b;          /* amber gradient 2nd stop / bright amber text */
@@ -30,7 +30,7 @@
     --wash-2: rgba(255, 255, 255, .045);
     --wash-3: rgba(255, 255, 255, .09);
     --grid-line: rgba(255, 255, 255, .024);   /* faint background grid */
-    --glow: rgba(120, 223, 155, .14);        /* decorative corner glow (dark only) */
+    --glow: rgba(79, 139, 255, .14);         /* decorative corner glow (dark only) */
     --scrim: rgba(0, 0, 0, .62);              /* modal backdrop dim */
     --inset: rgba(0, 0, 0, .28);             /* code/doc inset panels */
     --shadow: 0 22px 70px rgba(0, 0, 0, .36);
@@ -44,6 +44,11 @@
     --gm-right-w: 980px;
     --bottom-h: 210px;
     --recall-left: 64%;
+    /* Panel-resize seams (§5): default = the pre-seam look; a drag sets an inline
+       px value on :root that overrides these, dblclick removes it to fall back here. */
+    --gm-cov-w: 1fr;
+    --graph-col-w: minmax(220px, 300px);
+    --graph-row-h: auto;
   }
   * { box-sizing: border-box; }
   html { width: 100%; height: 100%; overflow: hidden; scroll-behavior: smooth; }

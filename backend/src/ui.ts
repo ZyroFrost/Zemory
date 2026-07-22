@@ -28,6 +28,7 @@ import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
+import { armCrashReport, daemonLog } from "./logging/daemon-log.js";
 import {
   getAutostart,
   getAutosync,
@@ -70,6 +71,32 @@ function serveFrontend(res: ServerResponse, sub: string, file: string, type: str
   try {
     res.writeHead(200, { "content-type": type });
     res.end(readFileSync(target, "utf8"));
+  } catch {
+    res.writeHead(404, { "content-type": "text/plain" });
+    res.end("not found");
+  }
+}
+const ASSET_MIME: Record<string, string> = {
+  ".png": "image/png",
+  ".ico": "image/x-icon",
+  ".svg": "image/svg+xml",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+};
+/** Serve a BINARY asset (icon/manifest) from frontend/<sub>/, path-guarded. Sends
+ *  no-cache so Edge re-fetches the favicon instead of reusing a stale window icon. */
+function serveBinary(res: ServerResponse, sub: string, file: string): void {
+  const dir = resolve(FRONTEND_DIR, sub);
+  const target = resolve(dir, file);
+  const rel = relative(dir, target);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("forbidden");
+    return;
+  }
+  const ext = file.slice(file.lastIndexOf(".")).toLowerCase();
+  try {
+    res.writeHead(200, { "content-type": ASSET_MIME[ext] ?? "application/octet-stream", "cache-control": "no-cache" });
+    res.end(readFileSync(target));
   } catch {
     res.writeHead(404, { "content-type": "text/plain" });
     res.end("not found");
@@ -385,7 +412,7 @@ function closePrevWindow(): void {
   try {
     const f = windowPidFile();
     if (!existsSync(f)) return;
-    const [pidRaw, image = ""] = readFileSync(f, "utf8").trim().split("|");
+    const [pidRaw, image = "", title = ""] = readFileSync(f, "utf8").trim().split("|");
     const pid = Number(pidRaw);
     rmSync(f, { force: true });
     if (!Number.isInteger(pid) || pid <= 0) return;
@@ -394,6 +421,9 @@ function closePrevWindow(): void {
       // reused pid a no-op instead of a kill.
       const args = ["/F", "/T", "/FI", `PID eq ${pid}`];
       if (image) args.push("/FI", `IMAGENAME eq ${image}`);
+      // A node.exe native-window helper shares the daemon's image; the window TITLE
+      // makes a reused pid a no-op instead of killing the daemon (it has no window).
+      if (title) args.push("/FI", `WINDOWTITLE eq ${title}`);
       try {
         spawn("taskkill", args, { stdio: "ignore" }).unref();
       } catch {
@@ -413,16 +443,15 @@ function closePrevWindow(): void {
   }
 }
 
-function openWindow(url: string): void {
+/** Fallback: open the cockpit in an msedge/chrome --app window (browser icon). */
+function openWindowMsedge(url: string): void {
   const browser = resolveBrowser();
   if (!browser) {
     console.log(`  (no Chrome/Edge found - open ${url} manually)`);
     return;
   }
-  closePrevWindow();
-  // A dedicated profile dir forces a SEPARATE browser instance so the --app
-  // window actually opens even when Edge/Chrome is already running. Without it,
-  // `msedge --app=URL` is swallowed by the existing browser and no window shows.
+  // A dedicated profile dir forces a SEPARATE browser instance so the --app window
+  // actually opens even when Edge/Chrome is already running.
   const profileDir = join(currentMemoryDir(), "cockpit", "browser");
   try {
     mkdirSync(profileDir, { recursive: true });
@@ -441,10 +470,61 @@ function openWindow(url: string): void {
     { detached: true, stdio: "ignore" },
   );
   child.on("error", () => console.log(`  (couldn't launch window - open ${url} manually)`));
-  // Remember pid + image so the NEXT open closes exactly this window and a
-  // reused pid can never match (single-window, no pile-up, no stray kills).
   try {
     writeFileSync(windowPidFile(), `${child.pid ?? ""}|${basename(browser)}`);
+  } catch {
+    /* ignore */
+  }
+  child.unref();
+}
+
+/** Compiled native-window helper (dist/platform/window.js) + its app icon. */
+function nativeWindowScript(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "platform", "window.js");
+}
+function appIcon(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "backend", "resources", "packaging", "zemory.ico");
+}
+
+/**
+ * Open the cockpit window. Prefers a NATIVE webview window that owns the Zemory
+ * icon (taskbar shows Z, not the browser); falls back to `msedge --app` if the
+ * native helper can't start — no prebuilt binary / no WebView2 (HP điều 9).
+ */
+function openWindow(url: string): void {
+  closePrevWindow();
+  const script = nativeWindowScript();
+  if (!existsSync(script)) {
+    openWindowMsedge(url);
+    return;
+  }
+  const child = spawn(process.execPath, [script, url, appIcon()], {
+    detached: true,
+    stdio: "ignore",
+    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(currentMemoryDir(), "cockpit", "webview") },
+  });
+  let settled = false;
+  const fallback = (): void => {
+    if (settled) return;
+    settled = true;
+    openWindowMsedge(url);
+  };
+  child.on("error", fallback);
+  // The helper exits fast & non-zero when the native window can't be created; if it
+  // survives the grace window, the window is up.
+  const onExit = (code: number | null): void => {
+    clearTimeout(grace);
+    if (code !== 0) fallback();
+  };
+  const grace = setTimeout(() => {
+    settled = true;
+    child.removeListener("exit", onExit);
+  }, 2500);
+  child.once("exit", onExit);
+  // Record pid + image + window TITLE so the next open closes exactly this window
+  // (title spares the daemon, which shares node.exe's image but has no window).
+  try {
+    writeFileSync(windowPidFile(), `${child.pid ?? ""}|${basename(process.execPath)}|Zemory`);
   } catch {
     /* ignore */
   }
@@ -740,6 +820,9 @@ export async function startUi(): Promise<void> {
     }
     if (p.startsWith("/scripts/") && p.endsWith(".js")) return serveFrontend(res, "scripts", basename(p), "text/javascript; charset=utf-8");
     if (p.startsWith("/styles/") && p.endsWith(".css")) return serveFrontend(res, "styles", basename(p), "text/css; charset=utf-8");
+    if (p === "/favicon.ico") return serveBinary(res, "assets", "favicon.ico");
+    if (p === "/manifest.webmanifest") return serveBinary(res, "assets", "manifest.webmanifest");
+    if (p.startsWith("/assets/")) return serveBinary(res, "assets", basename(p));
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8"));
   });
@@ -779,8 +862,11 @@ export async function startUi(): Promise<void> {
   }
   const url = `http://127.0.0.1:${port}`;
   console.log(`zemory ui -> ${url}  (Ctrl+C to stop)`);
-  // This process IS the daemon now (it won the port). Reconcile the OS autostart
-  // hook with the saved flag, and start the idle background scheduler (plan 14 §B).
+  // This process IS the daemon now (it won the port). Arm the crash black box
+  // FIRST (a native segfault in a later step must still leave a report), then
+  // reconcile the OS autostart hook and start the idle background scheduler.
+  armCrashReport();
+  daemonLog(`daemon up on ${url} pid=${process.pid}`);
   reconcileAutostart(getAutostart());
   startScheduler();
   openWindow(url);
@@ -799,7 +885,7 @@ export async function startUi(): Promise<void> {
   function shutdown(reason: string): void {
     if (shuttingDown) return; // a second signal must not race the tray handshake
     shuttingDown = true;
-    console.error(`[zemory] shutting down (${reason})`);
+    daemonLog(`shutting down (${reason})`);
     stopScheduler();
     stopSyncJob();
     closePrevWindow();
@@ -817,12 +903,12 @@ export async function startUi(): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   // Black box: a daemon must never die silently. Whatever path ends the process
   // (signal, tray quit, drained loop, crash) leaves a line saying so.
-  process.on("exit", (code) => console.error(`[zemory] process exit code=${code}`));
+  process.on("exit", (code) => daemonLog(`process exit code=${code}`));
   process.on("uncaughtException", (e) => {
-    console.error(`[zemory] uncaughtException: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+    daemonLog(`uncaughtException: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
     process.exit(1);
   });
   process.on("unhandledRejection", (e) => {
-    console.error(`[zemory] unhandledRejection: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
+    daemonLog(`unhandledRejection: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
   });
 }

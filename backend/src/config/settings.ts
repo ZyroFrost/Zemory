@@ -33,13 +33,13 @@ interface ZConfig {
   /** UI UI layout (panel sizes / resize positions) — persisted so a reopen
    *  restores exactly what the user dragged (localStorage resets per random port). */
   ui?: Record<string, unknown>;
-  /** Start zemory when the OS starts (plan 14 §B). Default false. */
+  /** Start zemory when the OS starts (plan 14 §6.B). Default false. */
   autostart?: boolean;
   /** Auto-sync the memory via the Drive bundle when data drifts (plan 14 §3b).
    *  Default false — it moves data off the machine, so it stays opt-in. */
   autosync?: boolean;
   /** Idle background scheduler (scan → embed → digest) while the daemon runs
-   *  (plan 14 §B). Default true — this is the "it just keeps itself current" bit. */
+   *  (plan 14 §6.B). Default true — this is the "it just keeps itself current" bit. */
   scheduler?: boolean;
   /** How DEEP a cross-machine sync carries (plan 08 §7). "lean" = source rows
    *  only (default, ~74% smaller); "full" = whole-DB snapshot incl. derived
