@@ -25,7 +25,7 @@
 ┌─ zemory daemon (1 instance / máy) ───────────────────────────┐
 │ HTTP server  127.0.0.1:4444 (CHỐT — user 2026-07-18;         │
 │              đổi được trong ~/.zemory/config.json)            │
-│ ├─ UI cockpit (tab: Harness · Bộ nhớ · GRAPH · Cài đặt)      │
+│ ├─ UI (tab: Harness · Bộ nhớ · GRAPH · Cài đặt)              │
 │ ├─ status/data API (như hiện tại)                             │
 │ └─ WRITE GATE: mọi ghi DB đi QUA daemon (serialize)           │
 │ Scheduler nền: scan / embed / digest / AUTO-SYNC — CHỈ chạy  │

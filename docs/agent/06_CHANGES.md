@@ -5,6 +5,53 @@
 
 ---
 
+## [2026-07-22] — feat(app): NATIVE WINDOW (hết icon Edge) · resize §5 · logo+màu toàn cục · audit 5-mặt + Bước 0 chốt phiên · sync index↔structure↔graph
+
+Phiên rất dài (Opus). **2 commit ĐÃ push** (`0992490` privacy · `3849168` harness); phần còn lại (resize · logo/native · sync-audit · **tầng 1: pin/gỡ · hộp đen daemon · cruft P3** — §G) **CHƯA commit** — chờ user duyệt mắt. Gate `npm run check` **165/165** ở mốc cuối. Chốt sổ theo Bước 0 (dò Global Memory + verify code thật, không ghi theo trí nhớ).
+
+### A. Bước 0 chốt phiên + privacy/harness (2 commit ĐÃ PUSH)
+- **Bước 0 — DÒ GLOBAL MEMORY + VERIFY** vào `04_SKILLS §chốt phiên` + `02_RULES §Chốt phiên` (repo + template): đổi session/ghi docs/audit ⇒ BẮT BUỘC dò Global Memory + đối chiếu code THẬT, verify từng mục trước khi ghi/khẳng định. **Trị gốc "đổi session là sót/lệch"** (user than "docs cứ thiếu"). Mã hoá bài học: tên cũ trong changelog = bản ghi lịch sử (đừng sửa), chuỗi EN = thuật ngữ (đừng tưởng leak i18n), đừng tin subagent chưa kiểm.
+- **redact.ts** +4 pattern shape-based (PEM · Bearer · connstring · quoted-secret), verify không over-redact prose (điều 7). **gitignore/gitattributes** phủ tên bundle delta `global_memory.*.enc`.
+- **AGENTS.md** `brain scan/sync`→`memory scan/sync` (rename `492cd16` sót). **plan/09** ví dụ `ui-page.ts` (đã tách frontend/). **archive** 06_CHANGES 739→227 dòng (cũ sang `docs/agent/archive/`).
+- TODO sửa đúng thực tế: 4 commit cũ VERIFIED **đã push** (`git branch -r --contains`); `graph*.ts` **đã ở** `memory/graph/` (điều 13 thoả).
+
+### B. Audit 5-mặt (đọc-chỉ) — vá thật + loại false-positive
+5 subagent (structure · UI · BE↔FE · backend · docs). **Thật (verify):** `share/share.key` committed + gitignore mời bundle `.enc` (điều 7 — mìn, chưa rò vì chưa commit `.enc`); recall embed ONNX trên event-loop (freeze/native-crash risk, nghi = daemon exit-1); redact hẹp; gitignore mù delta. **False-positive đã loại:** i18n "leaks" phần lớn là thuật ngữ giữ EN đúng luật; "3 stale link CHANGES" là entry lịch sử (cấm sửa — luật supersede); "graph chưa move" (đã move). → verify từng finding, không tin subagent.
+
+### C. Resize §5 — 1 engine data-driven + 2 seam thiếu
+`frontend/scripts/02-layout.js`: gộp `initResizers` (branch-per-type) + `initPanelSplits` (flex-grow chết) → **1 bảng descriptor `seam()`** (thêm seam = khai dữ liệu). Gỡ code chết `bottom`/`panel-split`. **+2 seam:** inspector "Bộ nhớ & Đồng bộ" (`--gm-cov-w`: Dự án|Nạp&Đồng bộ) + graph 2×2 **chữ thập** (`--graph-col-w`+`--graph-row-h`, kéo 2 chiều). Khai `:root` 3 var. Test khoá `cockpit.test.mjs` (đổi assert `1fr 1fr`→seam + test §5 mới).
+
+### D. Logo+màu TOÀN CỤC + NATIVE WINDOW (trị dứt icon Edge)
+> User đưa ảnh logo (Z gradient xanh→tím + não/database-khoá/node). Yêu cầu logo global + đổi màu app theo logo. Vật lộn icon Edge cả session → cuối cùng **NATIVE WINDOW** mới trị được.
+- **Bộ icon 1 nguồn:** `backend/scripts/make-icons.mjs` (sharp) sinh favicon.ico multi-size · logo-192/512 · favicon-256 · `packaging/zemory.ico` (app) + `zemory-logo.png` · **RGBA** (`ensureAlpha`) · rewrite tray.ts base64. Đổi logo lần sau = chạy lại 1 script.
+- **Favicon + web manifest SERVED** (`ui.ts` route `/favicon.ico`·`/manifest.webmanifest`·`/assets/*` binary + no-cache; head cockpit link). **Tray** icon Z. **Brand** góc tab = ảnh logo (thay SVG). **Màu dark** green→**xanh dương `#4f8bff`→tím `#b3a6ff`** (token `--green*` giữ tên; light MONOCHROME giữ nguyên — user đã chốt). Test màu pass.
+- **Start Menu + Desktop shortcut** (`autostart.ts`): mục "Zemory" icon Z, **launcher VBS ẩn** (không console). **+Fix bug thật `cliEntry()`** trỏ `dist/platform/cli.js` (KHÔNG tồn tại — regression khi dời autostart vào `platform/`) → `dist/cli.js`.
+- **NATIVE WINDOW (mấu chốt):** Edge `--app` KHÔNG cho đổi icon taskbar (bám AppUserModelID của Edge) — favicon/manifest/xoá-cache đều vô ích. Giải = **cửa sổ webview native tự sở hữu icon**:
+  - `@nativewindow/webview` (MIT, wry+tao, WebView2, **optional dep** prebuilt) + helper `backend/src/platform/window.ts` (native window + loadUrl 4444 + `setIcon`). `ui.ts`: **native-first → fallback msedge** (điều 9); `closePrevWindow` +lọc `WINDOWTITLE` (helper cùng image node.exe ⇒ tránh kill nhầm daemon).
+  - **3 bug trị dọc đường (verify từng cái):** ① WebView2 `Access denied 0x80070005` (user-data mặc định cạnh node.exe ở Program Files) → set `WEBVIEW2_USER_DATA_FOLDER` ghi được · ② icon `.ico` PNG không RGBA (tao image crate từ chối) → `ensureAlpha` · ③ **taskbar hiện cube xanh (icon node.exe)** dù setIcon ăn (chỉ fix title bar) → thiếu **AppUserModelID**; thêm **koffi** (MIT FFI) gọi `SetCurrentProcessExplicitAppUserModelID("Zemory.Cockpit")` TRƯỚC khi tạo window (hr=0). **User xác nhận taskbar ra Z.**
+
+### E. Audit index↔structure↔graph đồng bộ (user nhắc) — chống drift bằng CODE
+- **P1 live drift:** slot `platform` (chuẩn 03 §3/§4 + folder thật `backend/src/platform/`) **thiếu key trong `SLOT_ROLES`** (`structure-tree.ts`) → folder-tree gán nhầm "non-standard". Gốc: SLOT_ROLES chép tay, 0 cơ chế sync.
+- **Fix:** thêm role `platform`. **+Test parity `structure-sync.test.mjs`:** parse routing `03_STRUCTURE` → assert mọi slot 03 trỏ tới đều có role trong graph ⇒ drift = gate ĐỎ. **Ghi HP điều 13:** "chuẩn cấu trúc (03) + index điều hướng (routing §4) + từ điển slot graph (SLOT_ROLES) = 3 lăng kính 1 cấu trúc, đồng bộ bằng CODE (gate test), KHÔNG dựa trí nhớ agent" (user chốt).
+
+### F. BE↔FE contract-impact graph — ĐỀ XUẤT (hấp thụ Grapuco, chờ chốt)
+Ghi đầy đủ `05_TODO §🧩 Graph`: cạnh contract/api-seam (declared, từ chuẩn 03 slot) · trần 3 tầng (khai báo/suy luận/ngữ nghĩa) · "fix triệt để = contract-first+codegen chứ KHÔNG phải graph" · protocol đo Grapuco thật trước khi tin · KHÔNG hấp thụ chat/security/recommend (điều 6). Chờ user chốt → graduate plan 13.
+
+### G. Tầng 1 (làm hết theo user 2026-07-22 chiều) — pin/gỡ · hộp đen daemon · cruft P3
+- **#2 registry pin/gỡ/dọn — nút vào LIST "Dự án"** (user duyệt bố trí trước khi code, §Hành xử): mỗi hàng project *đã liên kết* (máy này) có 📌 ghim/bỏ-ghim + ✕ gỡ (hover hiện; pinned thì 📌 sáng sẵn) + nút "Dọn dự án đã mất" cuối nhóm máy. Nút nằm NGOÀI `.cov-open` (mở tab) → không đụng nhau. Wire vào endpoint sẵn có `/pin-project`·`/forget-project`·`/prune-projects` (trước đó sống mà 0 nút gọi sau khi bỏ ☰). `07-memory.js` covRow + handler · `04-tabs.css` `.cov-line/.cov-acts/.cov-act` (opacity, không reflow).
+- **#3 hộp đen daemon bắt được NATIVE crash** — nghi daemon exit-1 (07-21) = segfault better-sqlite3/onnxruntime (qua mặt handler JS) HOẶC stderr detached không capture. Thêm `backend/src/logging/daemon-log.ts` (slot `logging` chuẩn): `daemonLog()` ghi `~/.zemory/logs/daemon.log` + mirror stderr · `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON stack native cạnh log. `ui.ts` arm NGAY khi thắng port + log lifecycle (up/shutdown/exit/uncaught/unhandled) ra file.
+- **#4 cruft P3:** gỡ **☰ tab-menu chết** (`#tabMenu` + `renderTabMenu`/`toggleTabMenu` + handler `data-mact` + escLayers entry + CSS `.tabmenu-*`) — surface pin/gỡ đã dời sang list Dự án (#2). Gỡ **`.itab` chết** (`setInspectorTab` + `.itabs/.itab` CSS + `data-itab` body + restore localStorage). Gỡ **8 i18n mồ côi ×2 dict** (`tab.moreTitle/manageTitle/menuHead/none` + `itab.*`). **autostart quoting:** escape `'` cho PowerShell shortcut (username `O'Brien`) + quote path có space trong `.desktop Exec`. **`sourceSignature`** thêm FNV-1a hash đường dẫn ⇒ `git mv` (giữ count+mtime) vẫn đổi chữ ký (cache graph không stale). Cite `plan 14 §B`→`§6.B` (settings/autostart) · gỡ "cockpit" plan14:28 · `.gitattributes` binary ảnh + eol=lf source. **Để lại:** `CANON_ROOT` gộp case GIỮA-path (rare, đổi hiển thị — tách sau).
+- **Test:** +2 ratchet `cockpit.test.mjs` (list có `data-cov-*`, ☰-menu/itab chết không tái sinh) + `graph.test.mjs` (`sourceSignature` đổi khi rename, ổn định khi không đổi). Gate `npm run check` **165/165**.
+
+### Bài học
+- **Icon cửa sổ browser `--app` = icon browser, bất khả đổi** — chỉ native window (tự sở hữu icon + AUMID) mới ra icon riêng (như SasinFlow/pywebview).
+- **Native host bằng node.exe → taskbar lấy icon node** trừ khi set `AppUserModelID` (setIcon chỉ fix title bar/alt-tab).
+- **Daemon + native-window helper cùng khoá `dist`** ⇒ phải kill CẢ HAI trước `npm run build` (helper detached, kill daemon không đủ).
+- **Verify từng finding subagent** — nhiều false-positive (lịch sử / thuật ngữ / đã-xong).
+
+### Còn treo (05_TODO §🔥)
+Commit + xin phép push cả cụm (gồm tầng 1 vừa xong) · L3 sync (chờ user gật) · `adapters` (thêm 03 hay giữ domain-internal) · `CANON_ROOT` mid-path (edge) · README viết lại (đang làm). **ĐÃ XONG tầng 1:** registry pin/gỡ · hộp đen daemon (native crash) · cruft P3. Khi chạy gate phải kill daemon+helper trước (cùng khoá dist).
+
 ## [2026-07-21] — chore(session): CHỐT SỔ chiều 07-21 (Opus) — audit 5-agent + vá P1/P2 + sync chạy ẩn + 3-cột (design BỊ BÁC) — CHƯA commit
 
 Phiên chiều (nối sáng 07-21). Chạy **audit toàn diện 5 subagent** (đọc-chỉ) rồi vá loạt bug CHÍNH nó bắt được — toàn loại "chạy được nhưng sai ngầm" mà `npm run check` sáng (152/152) KHÔNG phủ (5 module mới chưa có test). Gate cuối: **`npm run check` 161/161** (+9 test parser). **CHƯA commit/push** — cả sáng+chiều còn ở working tree.

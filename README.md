@@ -39,6 +39,7 @@ model API calls**.
 - [Development](#development)
 - [Architecture & safety model (constitution)](#architecture--safety-model-constitution)
 - [Roadmap](#roadmap)
+- [Acknowledgements](#acknowledgements)
 - [License](#license)
 
 ---
@@ -76,7 +77,7 @@ that only *score* text; they never *generate* it.
 | 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent) — one column, not a second store. Filter, roll up, and **exclude** lanes. |
 | 🪪 **Project harness** | A shared standard (`docs_template/`) the agent adapts into each project: constitution ↔ rules ↔ structure ↔ TODO ↔ changelog ↔ numbered plans, kept in sync. `.md` is the source (file wins); the DB is a derived index. |
 | 🕸️ **Code & docs graph** | On‑demand import graph (TS/JS + Python), tree‑sitter symbols, `graph impact` (blast radius), `graph fitness`, `graph export --json`. A **derived** layer — declared vs inferred edges never mix. |
-| 🖥️ **Background daemon** | A single instance on fixed port **4444** with a system‑tray icon, optional start‑with‑OS, an idle scheduler (scan → embed → digest), and a write‑gate that serializes DB writes. |
+| 🖥️ **Background daemon** | A single instance on fixed port **4444** that opens in a **native app window with its own taskbar icon** (falls back to an Edge app window), a system‑tray icon, optional start‑with‑OS, an idle scheduler (scan → embed → digest), and a write‑gate that serializes DB writes. |
 | 🔐 **Cross‑machine sync** | Merge machines through an **encrypted delta bundle** on a Drive folder — additive, never destructive, provenance preserved. |
 | 🔌 **MCP server** | Expose recall to any MCP client (`memory_search`, `memory_show`, `plan_search`, `plan_show`). |
 | 🕵️ **Privacy tools** | Forget, re‑redact, back up, and restore — all local, dry‑run by default, backed up before deleting. |
@@ -84,6 +85,14 @@ that only *score* text; they never *generate* it.
 ---
 
 ## Quickstart
+
+**Requirements:** Node **≥ 20** and a C/C++ toolchain for the native `better-sqlite3`
+build (Xcode CLT on macOS · `build-essential` on Linux · MSVC Build Tools on
+Windows). The embedding/rerank models download automatically on first `memory embed`
+(cached under `~/.zemory/models`, never committed). On Windows the cockpit uses the
+system **WebView2** runtime for its native window and falls back to an Edge app
+window if it is absent. No GPU, no Python, no network at runtime beyond the one‑time
+model fetch.
 
 Zemory is installed **once per machine** and shared by every project. It is not on
 a public npm registry yet — install from this repo (native install; the workstation
@@ -124,9 +133,11 @@ zemory ui
 ```
 
 Starts (or attaches to) the background daemon on `http://127.0.0.1:4444` and opens
-a desktop app window. It is **single‑instance** — a second `zemory ui` focuses the
-running window instead of spawning a duplicate — and carries a system‑tray icon.
-Override the port with `ZEMORY_UI_PORT` when 4444 clashes.
+a **native app window** that carries its own taskbar icon (falling back to an Edge
+app window where WebView2 is unavailable). It is **single‑instance** — a second
+`zemory ui` focuses the running window instead of spawning a duplicate — and adds a
+system‑tray icon (Open / Quit). Override the port with `ZEMORY_UI_PORT` when 4444
+clashes.
 
 The cockpit has a top tab bar:
 
@@ -136,7 +147,10 @@ The cockpit has a top tab bar:
     to the **shared standard** (`docs_template/`) every project inherits.
   - **Memory & sync** — memory totals, a **Sources tree** (Local → machine → agent,
     Web → platform) where you **untick a lane to leave it out of sync + recall**,
-    scan, capture coverage, and cross‑machine **Sync**.
+    scan, capture coverage, and cross‑machine **Sync**. The **Projects** list groups
+    every project by machine; each linked project has a **📌 pin** (keep it on the
+    tab bar) and an **✕ remove** (drop it from the picker — the folder, its docs and
+    its memory are untouched), plus a **prune** button that clears dead entries.
 - **Per‑project tabs** — each project you add is its own tab with two sub‑tabs:
   **Harness** (its docs status, validation, capability checks) and **Graph** (the
   folder‑structure tree + the live code graph).
@@ -459,9 +473,37 @@ design bug even when the code runs. In brief:
 
 ---
 
+## Acknowledgements
+
+Zemory is first‑party code that stands on a small, carefully‑licensed stack — every
+dependency is Apache‑2.0‑compatible and called through an adapter, never pasted into
+`backend/` (constitution §2):
+
+| Layer | Project | License |
+|---|---|---|
+| Storage | [better‑sqlite3](https://github.com/WiseLibs/better-sqlite3) · [sqlite‑vec](https://github.com/asg017/sqlite-vec) | MIT · Apache‑2.0/MIT |
+| Embeddings / rerank | [🤗 Transformers.js](https://github.com/huggingface/transformers.js), [EmbeddingGemma](https://huggingface.co/google/embeddinggemma-300m) (Gemma terms), [BGE reranker](https://huggingface.co/BAAI/bge-reranker-base) | Apache‑2.0 · Gemma · MIT |
+| Code graph | [tree‑sitter](https://github.com/tree-sitter/tree-sitter) (`web-tree-sitter`, `tree-sitter-wasms`) | MIT |
+| Desktop shell | [@nativewindow/webview](https://www.npmjs.com/package/@nativewindow/webview) (wry/tao) · [systray2](https://github.com/felixhao28/node-systray) · [koffi](https://github.com/Koromix/koffi) | MIT |
+
+Model weights are fetched and cached at runtime — **never committed** — and every
+vendored third‑party skill under `external/skills/` keeps its original `LICENSE`.
+
+---
+
 ## License
 
-Licensed under **Apache‑2.0**.
+Licensed under the **Apache License 2.0** — see [LICENSE](LICENSE).
+
+```
+Copyright 2026 Nguyen Duc Huy (zemory contributors)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```
 
 <div align="center">
 <sub>Built for agents that should remember. Local‑first, no model API, one memory.</sub>
