@@ -5,6 +5,139 @@
 
 ---
 
+## [2026-07-21] — chore(session): CHỐT SỔ chiều 07-21 (Opus) — audit 5-agent + vá P1/P2 + sync chạy ẩn + 3-cột (design BỊ BÁC) — CHƯA commit
+
+Phiên chiều (nối sáng 07-21). Chạy **audit toàn diện 5 subagent** (đọc-chỉ) rồi vá loạt bug CHÍNH nó bắt được — toàn loại "chạy được nhưng sai ngầm" mà `npm run check` sáng (152/152) KHÔNG phủ (5 module mới chưa có test). Gate cuối: **`npm run check` 161/161** (+9 test parser). **CHƯA commit/push** — cả sáng+chiều còn ở working tree.
+
+### A. Audit 5-agent (UI · backend mới · structure · docs · test)
+Bắt **8 P1** trong code SÁNG nay + nhiều P2/P3. Giá trị: mấy bug icon/tray/gate/graph "chạy được nên mắt + gate không thấy".
+
+### B. Vá P1 (đã verify)
+- **cmdBrain chạy ĐÚP lệnh heavy khi lỗi** (catch bọc cả acquire lẫn run → nuốt lỗi → chạy lại; `embed --rebuild` drop index 2 lần) → tách: gate best-effort, run đúng 1 lần, lỗi propagate.
+- **Write-gate hết hạn 5' giữa job dài** → **heartbeat** re-acquire mỗi 2'; **gate 2 chiều** (daemon-job token) — CLI biết daemon-child đang ghi để CHỜ.
+- **Tray "fail-open" KHÔNG fail-open** (`onError()` luôn throw vì lib set `_process` sau await → `tray` ref mất, helper hỏng → unhandledRejection GIẾT daemon) → `ready().then(store)/catch(null)` + onClick `.catch`. + **hộp đen** SIGINT/SIGTERM/exit/uncaught/unhandledRejection log (daemon không chết câm).
+- **taskkill pid mù danh tính** (pid file sống qua reboot → tái cấp → kill nhầm) → ghi `pid|image`, kill lọc `IMAGENAME`.
+- **`calls` edge `kind:"declared"`** mà mang confidence ladder → vi phạm điều 13 → đổi `kind:"inferred"`.
+- **supersede ~33/34 cạnh RÁC** (regex bắt prose + nối mọi entry cùng ngày) → anchor `> 🔄 Supersede:` + chỉ nối ngày DUY NHẤT (giờ 0 — số trung thực).
+- **click-mở-tab Dự án hỏng** (setTab return sớm + canon `D:\` vs select `d:\` case-sensitive) → `openProjectPath` match case-insensitive.
+- **Tự bắt khi verify:** scheduler embed-child TỰ CHẶN qua gate của chính nó → child daemon set `ZEMORY_DAEMON_CHILD=1` bỏ qua gate.
+
+### C. Vá P2
+`esc()` thêm `&#39;` (sessionId từ máy khác nhúng `onclick='…'`) · `semanticEdges` chia lô 16 (bài học "batch 16") · `vectorRemaining()` idle-backoff 30' khi backlog=0.
+
+### D. Sync CHẠY ẨN (user) — VERIFIED E2E
+Gốc: `/drive-sync` `await syncDrive()` INLINE trên event loop → daemon đơ 5+' (cùng họ bug scheduler). → `jobs/syncrun.ts` (child chạy syncDrive, in JSON) + `jobs/syncjob.ts` (daemon track state, 1 job/lúc, chung với auto-sync) + `/drive-sync` start-and-return + `/sync-status` poll. UI nút **"Chạy ẩn"** (ESC/backdrop=thu nhỏ, KHÔNG huỷ) · spinner ⟳ tab Global · reload bám lại. **Đo thật: sync chạy → /ping vẫn trả suốt, delta 94KB/+52msg, kết thúc đúng.**
+
+### E. Coverage tách theo MÁY + linked/quét-được + ngày-giờ (user)
+Tab "Dự án" nhóm theo **host** (máy này mở, máy khác gập); trong máy này tách **đã liên kết** (registry) vs **▸ Quét được** (gập). Stamp → **ngày+giờ đầy đủ** (`fmtDateTime`).
+
+### F. Layout Global Memory 3 CỘT — BUILT nhưng USER BÁC → REDO (05_TODO §🔥)
+Dựng 1 tab 3 cột (Bộ nhớ+Recall · Nạp&Đồng bộ · Dự án) + Chuẩn chung tab riêng. **User bác:** recall phải đi với **harness**, 3 cái kia 1 tab riêng — *"tách vớ vẩn"*. Chưa redo (chốt layout với user trước).
+
+### G. Hiến pháp + i18n + test
+**Điều 13** vào `01_CONSTITUTION` (graph=lớp dẫn xuất, declared/inferred không lẫn — user duyệt) · từ khoá kỹ thuật giữ EN trong dict VI (isolated/util purity/Code fitness; force/cluster/import layers) · brand "Zemory" · **+9 test** (`graph-docs` CRLF hard-assert · `graph-cache` chống stale · `graph-semantic` nhãn inferred) + sửa 1 test **vacuous** (`var I18N`→`var T = {`).
+
+### Còn treo (05_TODO §🔥)
+Redo layout (recall+harness) · **bug icon cửa sổ Edge màn extend CHƯA hết** (favicon PNG không đủ) · registry pin/gỡ (bỏ hay ⚙?) · L3 sync-kèm-file (chờ gật) · commit+push · dọn cruft P3.
+
+### Bài học
+- **Audit đa-agent bắt bug mắt + gate bỏ sót** — 5 module mới pass `check` chỉ vì CHƯA test; fail-open sai (tray) chạy y như thật.
+- **Đừng khoe số chưa soi:** "34 supersede edges" verify sáng hoá ra ~33 rác.
+- **Verify E2E mới lộ self-deadlock** (embed-child chờ gate của chính nó) — build+gate không thấy.
+
+## [2026-07-21] — feat: delta sync · graph A→C + touches/export · UI redesign đợt 2 · vendored skill kho — CHỐT SỔ, CHƯA commit
+
+Phiên rất dài (nối tiếp 07-20). `npm run check` **152/152** · `validate` xanh · daemon chạy bản mới. **CHƯA commit/push** — cả phiên + 4 commit cũ vẫn local, chờ user duyệt.
+
+### A. Sync — mức độ + DELTA thật (plan 08 §7, plan 14 §3b)
+- **L1/L2 selector** (`syncLevel` config · `/set-sync-level` · `brain sync --full`): **Gọn** = bundle rows (mặc định) · **Đầy đủ** = snapshot cả DB. UI ở tab Nạp & Đồng bộ.
+- **DELTA drive sync** — thay "1 file/host ghi đè" bằng **series**: `global_memory.<host>.<seq>.enc` = baseline + delta theo watermark; **compaction** khi ≥12 file (baseline mới là superset ⇒ xoá file cũ không mất dữ liệu). Nhận: bảng **`merged_bundles`** (schema **v14**) nhớ file đã merge theo chữ ký `size:createdAt` đọc từ **header plaintext** (không cần giải mã) ⇒ bỏ qua file không đổi.
+- **Đo thật:** baseline 192.14 MB → **delta 0.04 MB (40 KB)** = −99.98%. Kiểm DB: `merged_bundles` ghi file 800MB của máy kia **1 lần rồi skip**; `sync_state[drive:<host>]` watermark đúng.
+- Phát hiện: file 800MB trên Drive là **bundle CŨ của máy kia** (v1, 15/07, trước lean) — không phải máy này đẩy. Máy kia cập nhật code rồi sync thì tự co.
+- Test `drive-sync.test.mjs` (5): baseline→delta · **máy bỏ lỡ sync vẫn ghép đủ** · dedup không merge lại · compaction không mất row · full dọn series. Seam `host`/`embed` cho test.
+
+### B. Graph — hấp thụ CALM, phase A→C + moat brain (plan 13 §9)
+> Khảo sát + **ĐO THẬT** CALM (cài `@eilodon/calm-mcp` 0.3.4, index corpus zemory, bơm JSON-RPC): nó thắng RÕ ở symbol-callers (38 caller quy kết đúng hàm) + `fitness_report`; nhưng **file-level dependencies của nó BUG** (nuốt SQL trong template literal → 2.6k token rác) và semantic search 0 kết quả. Con số "29–241×" của nó là so với *đọc cả file*, không phải so Grep. ⇒ user chốt **"chỉ lấy cái nó tốt hơn"**, không consume MCP (hệ này không nối MCP — đã kiểm: `zemory mcp` có code từ 06-29 nhưng 0 nơi wire).
+- **Phase A** — `zemory graph impact <file>` (blast-radius TƯ VẤN, không chặn: fan-in/out · importer trực tiếp + **bắc cầu** · cờ HUB) + **`graph fitness [--gate]`** (hub% · isolated% · util-purity, exit 1 khi fail ⇒ CI-able) + dải chip Sức khoẻ ở sub-tab Graph. Đặt tên trung thực: "isolated" chứ không phải "dead".
+- **Phase B** — `graph-symbols.ts`: **tree-sitter WASM** thay regex → symbol AST đúng (function/class/**method gắn class** + số dòng), loại hàm lồng. **71/90 file** enriched. Bug đã trị: **ABI mismatch câm** (`web-tree-sitter@0.26` từ chối grammar build bằng CLI 0.20.8, lỗi RỖNG) → **ghim cặp** `web-tree-sitter@0.20.8` + `tree-sitter-wasms@0.1.13`; và test ban đầu **xanh giả** (`if(n===0) return`) → đổi thành hard-assert.
+- **Phase C** — cạnh `calls` name-match + **nhãn confidence trung thực**: bare `foo()`→function/class · member `x.foo()`→**chỉ method** (chặn `console.log`→`log` nội bộ) · 1 định nghĩa=`inferred`, 2–4=`textual` từng ứng viên, >4=bỏ · KHÔNG bao giờ tự phong `resolved`. Đo: `graph callers openBrain` = **57 call-site quy kết đúng hàm bao**. **Regression test chống đúng bug CALM**: call-looking text trong template literal → 0 cạnh giả.
+- **Phase D (tsserver/pyright) CỐ Ý HOÃN** — gate = decision rule 2–4 tuần dùng thật.
+- **MOAT graph ↔ BRAIN** — `graph-brain.ts`: cạnh **`touches`** từ `session_digest.paths` (0 LLM) ⇒ `graph impact` in thêm *"file này từng được N phiên trước đụng"*. Cross-machine: cùng repo ở 2 máy có 2 đường dẫn tuyệt đối khác nhau → match thêm theo **tên folder project** ⇒ 11→**23 digest, 59 file**.
+- **`zemory graph export --json [--out]`** — contract v1: nodes(+symbols+touchedBy) · edges(imports+calls, kèm confidence) · orphans · fitness · stats.
+
+### C. UI — đợt 2 (theo phản hồi trực tiếp)
+- **Panel lệch (ping-pong nhiều vòng) — GỐC RỄ THẬT:** `.workspace` có `grid-template-rows: auto minmax(0,1fr) auto`; track thứ 3 (cho `#msg`) + `gap:8px` **luôn chừa 8px** dù `#msg` rỗng ⇒ panel trái dừng cao hơn inspector đúng 8px. Bỏ track đuôi. Trước đó còn vá `.shell` thiếu `grid-template-rows` (hàng co theo nội dung ⇒ 2 cột `height:100%` ra 2 giá trị khác nhau).
+- **Dialog 3-size → tỉ lệ 16:9 CHUẨN MÀN HÌNH**, width-driven, cao suy từ tỉ lệ, cap `min(Pvw, Pvh*16/9)` ⇒ không méo trên mọi màn. **S 40% · M 60% · L 90% khung app** (user chốt). Bỏ `height:Nvh` cố định (thứ đẻ ra "hộp dài thòng"). Settings = L, hết nhảy khi đổi tab.
+- **Inspector 4 panel xếp dọc → 4 TAB** (`body[data-itab]`, không dời DOM, nhớ localStorage); gộp **Quét + Đồng bộ Drive thành 1 tab "Nạp & Đồng bộ"** (Drive rời khỏi ⚙, một concern một chỗ).
+- **Graph canvas**: **zoom con lăn tại con trỏ · kéo nền pan · KÉO NODE** (circle+nhãn+cạnh theo, không nuốt click chọn) · **Ctrl+Z/Ctrl+Y undo-redo** vị trí node · **3 kiểu sắp xếp** (lực hút · cụm folder · tầng import), nhớ lựa chọn · dblclick reset.
+- **Cây folder** hết "gộp ngắn": `MAX_DEPTH` 4→**6**.
+- **Card & đo lường trung thực (HP điều 12):** `token đã thu`→**`token bộ nhớ`** (tài sản, không phải chi phí); thêm card **`token mỗi recall`** (~540, suy từ `DEFAULT_SEARCH_LIMIT`×`SNIPPET_MAX_CHARS`, không hardcode); **6 card đều nhau** qua helper `statCard`. Bảng **Chi phí điều hướng** (`nav-cost.ts`): *"sửa X ở đâu"* 123.8× · *"đụng ai"* 1.352× · *"phiên trước làm gì"* 4.099× — **cả 2 vế đều đo từ byte/message thật**, có header cột + tooltip; gộp cùng hàng với Sức khoẻ cho đỡ choán.
+- **Add project** = dialog app chuẩn (S, ESC/backdrop/Enter) thay `window.prompt`; gỡ pill `↗ CLI` chết; preview chat `height:100%`+cuộn trong (2 cột bằng đáy).
+- **i18n:** test xác nhận key đủ 2 dict; leak thật là **3 chuỗi hardcode** (tooltip brand · tooltip scope-tree · option "Agent: mọi") → token hoá. Tooltip fitness/nav-cost dựng **client-side từ i18n** (chuỗi `detail` của server là EN-only, chỉ cho CLI).
+
+### D. Harness — luật, chuẩn, kho skill
+- **`02_RULES §Hành xử` (repo+template):** **"MỌI thiết kế UI/UX phải TRÌNH DUYỆT trước — không tự ý"**. Phân định: *bug kỹ thuật* = sửa thẳng · *hình hài thiết kế* = phải hỏi.
+- **`03_STRUCTURE §9` MỚI = TỪ ĐIỂN SLOT thiết kế UI** (song song §3): 4 dải A–D, mỗi slot `★/[opt]`, gộp luật zemory đã khoá + concern mới. Ranh giới ghi rõ: **stack (Tailwind/no-build) = CẤU TRÚC cố định** · **layout & gu = agent bàn với user rồi chốt**.
+- **KHO SKILL VENDORED** — `external/skills/<tên-repo>/`: clone **nguyên bản** repo gốc (đúng tên, bỏ `.git`, **giữ LICENSE**), KHÔNG sửa nội dung người ta (HP điều 1/2). Ca đầu: **`ui-ux-pro-max-skill`** (MIT, 17MB, v2.11.0). Kho nằm **1 chỗ ở repo zemory**, đọc on-demand, **KHÔNG copy sang từng project**.
+- **`04_SKILLS` = INDEX MỎNG + GUARDRAIL** "file này KHÔNG BAO GIỜ phình" (nội dung dài → thuộc skill gốc hoặc 03); **cấm viết prose adapter ở 04** — chỗ "adapt hiện ra thật" là `03 §9`. Hai khuôn: NGẮN→inline · DÀI→vendor + 1 dòng index.
+- **Single-instance probe** — trước coi *timeout* = "chưa ai chạy" ⇒ đẻ daemon thứ 2 (2 tiến trình ghi 1 DB, đúng thứ write-gate sinh ra để chặn). Nay phân biệt **refused (trống) vs timeout/busy (có người)** → không dựng bản thứ 2.
+- Template đã nhân: §3 slot · §4 routing · §9 · `04` (bảng kho để trống) · luật UI.
+
+### Đo thật đáng nhớ
+| | |
+|---|---|
+| Drive sync lần 2 | 192.14 MB → **40 KB** |
+| `graph callers openBrain` | **57** call-site quy kết đúng hàm bao |
+| touches (graph↔brain) | **23 digest · 59 file**, gộp 2 máy |
+| fitness zemory | hub 7.9% (khớp đúng 7.88% CALM đo độc lập) · isolated 9% · util 0 |
+| `/ping` khi daemon nghẽn | **28.289 ms** (bug ONNX, chưa vá) |
+
+### Bài học (để phiên sau khỏi vấp)
+- **Backtick trong comment** bên trong template literal `ui-page.ts` = đứt chuỗi → build đỏ. Dính **2 lần** phiên này. Trước khi build: `grep '\`' ui-page.ts` phải chỉ ra 2 dòng (mở/đóng PAGE).
+- **Test có nhánh `if (x===0) return` = XANH GIẢ** — enrichment fail vẫn pass. Dùng hard-assert.
+- **Đừng tự viết lại skill người ta** — đã lỡ author một bộ ui-design rồi phải gỡ; đúng cách là **vendor nguyên bản + adapter ở 03**.
+- **Ping-pong sửa layout** = dấu hiệu chưa tìm ra cơ chế; phải đọc ra ĐÚNG rule CSS gây lệch (phantom gap) rồi mới sửa.
+
+## [2026-07-20] — chore(session): CHỐT SỔ phiên 07-20 — UI redesign + graph thật + tự-động-hoá (plan 14 B/C/E) — CHƯA commit/push, CHỜ USER DUYỆT MẮT
+
+Phiên rất dài. Toàn bộ **đã verify tự động (`npm run check` 114/114 · `node --check` JS nhúng · endpoint thật)** nhưng **user CHƯA nghiệm thu bằng mắt** (light theme, gap, graph, sub-tab). **KHÔNG commit, KHÔNG push** — 4 commit cũ (`d72fb3e`·`977e6f9`·`76523fb`·`1ef6422`) vẫn local. Cả phiên nằm ở working tree (~15 file, +5 file mới). Session sau: xem mắt → nếu OK thì commit + (xin phép) push.
+
+### A. UI cockpit — 7 việc user giao + hàng loạt chỉnh theo phản hồi
+1. **Delay đổi ngôn ngữ** — gốc: `/set-lang` `invalidateDashboard()` (regression tự thêm) xoá heavyCache + `brainTick(true)` ép quét toàn DB mỗi cú bấm. Vá: bỏ invalidate (payload brain không có chuỗi server-dịch), `setLangUI` chỉ refetch `/status`+`/check` song song; TTL dashboard 15s→60s (>poll 30s); Hybrid/Rerank cập nhật cục bộ; scope-lane dùng `invalidateDashboardSoft` (giữ heavyCache).
+2. **Danh sách "Kiểm tra" cũ** — gộp `search`+`memory` (trùng code) → 1; `grill` kiểm THẬT (đọc 04_SKILLS §grill); `validate` hết luôn-xanh (state theo `rep.ok`) + help bỏ "docs render"; brain assert bảng FTS. Pane health dời khỏi Settings sang sub-tab Harness.
+3. **Light theme = TRẮNG ĐEN (monochrome)** — user chốt: *"lightmode chỉ trắng đen, như dark nhưng đảo màu"*. Token hoá TOÀN BỘ (~126 literal → var), light khai lại đủ bộ **xám** (accent→gần đen, warn/error→xám, glow tắt); dark giữ xanh brand. Logo theo accent (dark ô xanh/light ô đen). 0 literal màu ngoài 2 token `--shadow`. **Bug tự gây + đã sửa:** script tokenize làm hỏng 13 token def (tự-tham-chiếu `--x:var(--x)` → vô hiệu cả dark) + `))` thừa (`.sw`/`.switch`) + ăn nhầm `)` của `linear-gradient`/`calc`/`minmax` → **vỡ toàn UI 1 lần**; đã phục hồi + test khoá cân-bằng-ngoặc + không-tự-tham-chiếu. Checkbox thêm `accent-color`.
+4. **Cài đặt 1 cửa** — chỉ còn ⚙ tab bar (PIN cố định phải qua tách `.tab-strip` cuộn / `.tab-actions` cố định); gỡ 4 lối vào thừa; 2 pill 🗄/☁ giữ làm status.
+5. **ESC đóng mọi dialog** — 1 global keydown đóng overlay trên cùng (trừ sync đang chạy). Ghi **luật chung** `03_STRUCTURE §5` (repo + template generic).
+6. **Tab project = 2 sub-tab** `Harness | Graph` (CSS `body[data-ptab]`, không dời DOM). Panel "Dự án" GỠ HẲN (user: vào 2 tab liền); nút "Chạy" bỏ (Run harness đã có ở ⚙→Docs harness); select #proj ẩn làm nguồn sự thật.
+7. **Brand về main** — logo+"zemory" lên góc trái tab bar (cố định mọi tab), gỡ khỏi rail; ô "Thêm dự án" trong panel bỏ ([＋] tab bar hỏi path qua prompt).
+- **Gỡ chữ "cockpit"** (user ghét): window title `Zemory Cockpit`→`zemory`, sạch mọi comment/string user thấy (giữ path `~/.zemory/cockpit/browser` để không mất login ChatGPT).
+- **Gap hộp-lồng-hộp** — ở tab project `.rail` (viền+nền+padding) lồng `#project` panel (viền+nền+padding) = khoảng thừa; strip chrome rail ở project mode + panel-pad flex lấp đầy.
+- **Registry** (từ đầu phiên) — schema v2 `{root,pinned,lastSeen}`, chặn scratch-root (tmpdir), fold hoa/thường win32, pin/forget/prune, seam `ZEMORY_REGISTRY_FILE`; **prune registry thật 331→6**. Thanh tab: pin + 5 gần đây + menu `…`. Test `registry.test.mjs`.
+- **Lag** (từ đầu phiên) — `/brain-status` ~4s bị poll 2.5s + vòng lặp render vô hạn `renderStatus→renderTabs→applyLang→renderStatus` (6.4k DOM/lần, RangeError bị nuốt). Vá: cache 2 tầng TTL + poll giãn + cắt vòng (renderTabs dịch bằng `t()`, guard `applyLangBusy`). Test `ui-page.test.mjs` (JS parse · vòng lặp · i18n đủ 2 dict · ngoặc cân bằng · light toàn token · ratchet onclick=8).
+
+### B. Graph THẬT (user: "làm graph thật đi") — plan 14 §6.D
+- `backend/src/structure-tree.ts` (`/folder-tree`): cây folder VSCode-like + từ điển ~60 slot `03_STRUCTURE §4` + đánh dấu slot đã dùng / lạ chuẩn (check conformance). 0 LLM.
+- `backend/src/graph.ts` (`/code-graph`): import-graph TĨNH ĐỊNH **TS/JS + Python** (resolve `./x.js`→x.ts/index; Python dotted suffix-match + relative) + symbol (function/class/const · def/class) + fan-in/out + orphan. **Đo: zemory 81 file/175 import/db.ts fan-in 19 · SasinFlow 22 file/40 import/config.py fan-in 7.** Test `graph.test.mjs` 6/6.
+- UI sub-tab Graph: force-layout SVG thuần (PRNG seed cố định, 0 lib) · node theo fan-in · màu theo slot · **đồng bộ 2 chiều** (bấm node→sáng import + sáng folder cây; bấm folder→lọc node) · toggle orphan · Dựng lại.
+
+### C. Tự động hoá — plan 14 §6.B/C/E (user: "làm hết 3 cái trong lịch")
+- **B (autostart + autosync + scheduler):** `autostart.ts` per-OS (Win Startup .cmd/mac launchd/Linux xdg, reconcile lúc daemon bind) + `jobs/scheduler.ts` (idle embed backlog + auto-sync §3b qua `syncDrive`, opt-in) + pane ⚙ **⚡ Tự động** + endpoints. Mặc định scheduler ON, autostart/autosync OFF. Test `autostart.test.mjs`.
+- **C (write gate):** `jobs/writegate.ts` cờ hold auto-hết-hạn; scheduler nhường khi CLI ghi; CLI heavy-write probe daemon `/ping`→`/gate-acquire`→chạy→`/gate-release`, fallback chạy thẳng. Trị gốc "database is locked". Test `writegate.test.mjs`.
+- **E (đóng gói) MỘT PHẦN:** lối tắt Desktop (`setDesktopShortcut`) + công tắc pane ⚡ + `npm i -g` sẵn. **TRAY ICON HOÃN** — cần chốt cơ chế (native dep vs PS helper Windows), quyết định mở §7.2; cố ý chưa ship GUI chưa test.
+
+### Còn treo (session sau)
+1. **USER DUYỆT MẮT** light monochrome · gap · graph render · 2 sub-tab. → OK thì **commit + xin phép push** (cả 4 commit cũ + phiên này).
+2. **Tray icon** — chờ user chốt hướng (native dep / PowerShell / bỏ).
+3. **L3 mức-độ-sync** (plan 08 §7) — file đính kèm, chờ user chốt (L1/L2 selector chưa dựng UI).
+4. **Graph nâng cao** (plan 13 §8) — cạnh suy-luận (semantic) · docs-graph · `graph export --json` + MCP.
+5. **Pane "Docs harness" (Sync/Dựng mới)** trong ⚙ = `zemory sync`/`fresh` (scaffold harness, KHÁC `docs sync` đã gỡ) — hợp lệ nhưng ít dùng; user hỏi có nên giữ trong UI không → chờ chốt.
+6. **Cruft vô hại chưa dọn:** ~10 khối CSS mồ côi (`.proj-pick/.status-card/.grid-bottom/.switch/.nav/.rail-foot`…) + 13 key i18n mồ côi + dead code `pick()`/setTab root-branch/bottom-panel-resizer (audit `ad32a857` liệt kê đủ). Không ảnh hưởng chạy.
+
+### Bài học (để phiên sau khỏi vấp)
+- **KHÔNG dùng script regex tự-động sửa màu/token trên chuỗi CSS nhúng** — 2 lần gây bug nặng (self-ref + ăn nhầm `)` gradient) làm vỡ UI. Sửa tay có chủ đích + test cân-bằng-ngoặc.
+- **Backtick trong comment** bên trong template literal `ui-page.ts` = đứt chuỗi (tsc bắt được — build đỏ, không phải runtime). Tránh backtick trong comment vùng đó.
+- **`npm run build`/`node --check` KHÔNG thấy lỗi CSS/logic trong chuỗi HTML** — phải có test chạy trên PAGE đã sinh (đã có `ui-page.test.mjs`).
+
 ## [2026-07-19] — chore(session): CHỐT SỔ phiên 07-18→07-19 — bàn giao sang phiên sau
 
 Chốt sổ trước khi đổi session. Chi tiết từng mục ở các entry bên dưới; đây là bản tổng + bàn giao.

@@ -1,7 +1,7 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # Plan 13: Graph — app phụ trợ vẽ đồ thị cho MỌI repo theo chuẩn zemory
 
-> Trạng thái: **SPEC DRAFT (chốt hướng 2026-07-18, CHƯA code).** Ý tưởng user: một **app phụ trợ dùng chung** — tự nó là 1 app, kết nối với MỌI repo theo chuẩn zemory rồi vẽ graph (node + cạnh có kiểu) để xem cấu trúc + dò quan hệ/ảnh hưởng.
+> Trạng thái: **BUILT 2026-07-20/21** — Phase A→C + docs-graph (references+supersede) + semantic overlay (`--semantic`, inferred) + `graph export` **v2** + cache + cross-project `--all`; điều 13 hiến pháp đã chốt. Còn hoãn: Phase D (tsserver/pyright), MCP mirror. Chi tiết build/verify: `06_CHANGES` + `05_TODO §🧩 Graph`. §5/§8/§9 dưới đây là SPEC gốc — vài chỗ đã lệch code (§5 `graph build`/bảng DB không tồn tại → cache in-memory; contract v1→v2). *(Sử: SPEC DRAFT chốt hướng 2026-07-18.)* Ý tưởng user: một **app phụ trợ dùng chung** — tự nó là 1 app, kết nối với MỌI repo theo chuẩn zemory rồi vẽ graph (node + cạnh có kiểu) để xem cấu trúc + dò quan hệ/ảnh hưởng.
 > Định vị: chuẩn zemory (slot §4 · harness · `.harness.json` · cross-ref `.md` · brain) là **CONTRACT**; graph app là **CONSUMER** của contract — cùng mô hình A.I Center consume zemory (plan/04 §1). Repo nào theo chuẩn → tự động graph được, app không cần biết gì riêng repo đó.
 
 ## 1. Mục tiêu / vấn đề
@@ -60,7 +60,8 @@
 ## 5. Bề mặt & contract
 - **`zemory graph build`** — parse chuẩn + brain → dựng bảng graph dẫn xuất (incremental, guard hash như digest).
 - **`zemory graph export --json [--project X | --all]`** — xuất `graph.json` (schema **versioned**): `{ version, nodes:[{id,type,label,ref}], edges:[{src,dst,type,kind:declared|inferred}] }`. Đây là contract cho app + mọi consumer.
-- **MCP** `graph_neighbors(node, edge_types?, depth?)` / `graph_impact(file)` — trả node-ID + nhãn 1 dòng (progressive disclosure).
+- **`zemory graph impact <file>`** — CLI advisory blast-radius: in fan-in + danh sách importer/caller của file, agent tự gọi TRƯỚC khi sửa file nóng. **TƯ VẤN, không chặn** — quyền sửa/permission thuộc host (HP điều 10); zemory chỉ đưa dữ kiện để agent tự thận trọng. *(Bề mặt CLI là CHÍNH — xem §9: hệ agent của user lái terminal, không wire MCP.)*
+- **MCP** `graph_neighbors(node, edge_types?, depth?)` / `graph_impact(file)` — bản MIRROR của CLI cho host nào có nối MCP; trả node-ID + nhãn 1 dòng (progressive disclosure). Phụ, không phải đường giao hàng chính.
 - **Viewer** — thuộc **Graph App** (repo riêng); hoặc bản tối giản `docs_visual/graph.html` self-contained cho từng repo (0 token agent) nếu cần nhanh.
 
 ## 6. Discover mode (phụ, KHÔNG flagship)
@@ -81,3 +82,31 @@
 5. **Viewer tech** (khi làm app riêng): cytoscape.js / d3 / sigma.js — cần 1 lượt research license + self-contained-được cho `docs_visual`.
 6. **Constitution:** có thêm 1 điều/khoản "graph = lớp dẫn xuất; app ngoài chỉ consume export; 2 hạng cạnh declared/inferred" vào `01_CONSTITUTION` không? *(user chốt — đã ĐỀ XUẤT ở `05_TODO`.)*
 7. **Export schema versioning:** `graph.json` gắn `version` + chính sách đổi schema (như migration DB).
+8. ~~**Hướng đi so với CALM (§9): tự build sâu · consume CALM · hay hybrid?**~~ **CHỐT 2026-07-20 (user): "chỉ lấy cái nó tốt hơn"** — KHÔNG consume hệ MCP; hấp thụ đúng 2 thứ ĐO THẬT thắng (§9): ① fitness metrics (làm ngay trên file-graph sẵn có) · ② symbol-attributed callers/callees qua tree-sitter (phase sau, kèm nhãn confidence). Bỏ: edit-gate (host lo), MCP-first (hệ CLI), file-level dependencies của nó (bug; của mình đúng + rẻ hơn), semantic code search (0 kết quả). Lộ trình A→D ở cuối §9. *(Đồng thời định hướng #2: symbol-level = CÓ nhưng qua tree-sitter ở phase B/C, KHÔNG regex; v1 file-level giữ nguyên làm baseline.)*
+
+## 9. Khảo sát đối chiếu — CALM (2026-07-20, user đưa)
+> [github.com/Eilodon/CALM](https://github.com/Eilodon/CALM) — MCP server (Rust + tree-sitter + SQLite/FTS5+RRF) dựng call-graph symbol-level 24 ngôn ngữ cho 1 repo, kèm edit-safety-gate (refuse sửa hub symbol) + `fitness_report`. Trùng triết lý zemory ở: index dẫn xuất 0-LLM · FTS+semantic+RRF · "mọi số đều đo được".
+
+**TRẠNG THÁI: PHÂN TÍCH — CHƯA CHỐT (quyết định thuộc user, ghi ở §8#8).** Dữ kiện thực địa: hệ agent của user (Claude Code + coding agent ngoài) hiện **lái terminal, KHÔNG wire MCP** (kiểm chứng 2026-07-20: `zemory mcp` có trong code từ 06-29 nhưng 0 nơi nối — không `.mcp.json`, không entry `~/.claude.json`). Lưu ý: đây là **lựa chọn cấu hình, không phải giới hạn kỹ thuật** — Claude Code nối MCP chỉ cần 1 file `.mcp.json`. Lợi thế cấu trúc của zemory vẫn đứng: **bề mặt CLI/shell mọi agent đều có sẵn, 0 config per-host** — năng lực graph nên CLI-first, MCP chỉ mirror.
+
+**4 ý bốc từ CALM (nâng spec, không đổi kiến trúc):**
+1. **Confidence ladder trên cạnh** — CALM gắn nhãn 4 mức (textual→inferred→resolved→formal). Xác nhận hướng 2-hạng declared/inferred của §4 đúng; nếu sau này thêm nguồn cạnh (AST, LSP), nâng `kind` thành ladder mịn hơn thay vì thêm hạng mới.
+2. **Blast-radius = CỔNG TƯ VẤN qua CLI** — `zemory graph impact <file>` (§5): agent gọi trước khi sửa file fan-in cao. KHÁC CALM: không refuse/chặn (quyền sửa thuộc host, HP điều 10), chỉ đưa dữ kiện.
+3. **Fitness metrics** — biến graph thành thước đo sức khoẻ chạy lại được (hub concentration · orphan/dead code · boundary violation giữa slot) gắn vào `validate`/checks; khớp kết luận §8#1 "lint là giá trị cốt lõi, không phải bức vẽ".
+4. **Symbol-level = tree-sitter nếu làm** — khi file-level tỏ ra không đủ (quyết định mở §8#2), đường đúng là tree-sitter, không phải đào sâu regex.
+
+**Phần CALM không có mà zemory có (giữ làm trọng tâm):** cạnh nối graph ↔ BRAIN (`touches` từ digest, `semantic_neighbor` từ vector) — dữ liệu episodic xuyên phiên/máy mà một tool chỉ đọc code không bao giờ dựng được.
+
+**ĐO THẬT (2026-07-20 — cài `@eilodon/calm-mcp` 0.3.4 win32 vào scratchpad, index corpus backend zemory 87 file/612 symbol/26s, bơm JSON-RPC thẳng vào MCP stdio; đã xoá sạch sau test):**
+- ✅ **`callers openBrain`** (symbol-level): 38 call-site **quy kết đúng hàm bao** (`file::function` + line + preview), nhãn `resolved`, ~1.042 tok. Native Grep cùng câu: 91 dòng thô ~1.490 tok, KHÔNG quy kết hàm (muốn biết phải Read thêm). → symbol-callers là giá trị thật grep không làm được.
+- ❌ **`dependencies` (file-level) BUG trên chính code zemory**: parse nhầm SQL trong template literal (`db.ts` SCHEMA) thành import → ~2.627 tok rác. Grep (176 tok) + zemory file-graph (fan-in 20, ~138 tok) đều đúng và rẻ hơn. → tree-sitter không miễn nhiễm; graph nào cũng phải test trên code thật.
+- ❌ **`search` semantic**: 0 kết quả với câu hỏi tự nhiên (mode mặc định).
+- ✅ **`fitness_report`**: ~470 tok, CI-gate được — chấm zemory: dead code 14% (fail ngưỡng 10%), hub 7.9%, edge coverage 77.6%.
+- Kết luận đo: MCP của CALM **KHÔNG ngon hơn toàn tập** so với tool native — hơn RÕ đúng 1 lớp (symbol-attributed callers/callees + fitness), thua/bug ở file-level và semantic. Con số 29–241× trong README của nó là so với *naive đọc cả file*, không phải so với Grep.
+
+**LỘ TRÌNH HẤP THỤ — CHỐT 2026-07-20, THỰC THI XONG A/B/C 2026-07-21** (xem `06_CHANGES`). Trạng thái: **A ✅ · B ✅ · C ✅ · D ⏸ (cố ý hoãn theo decision rule)**. Ngoài lộ trình, đã làm thêm **`touches` (graph↔brain)** + **`graph export --json` v1**.
+- **Phase A ✅ (0 dependency mới):** `zemory graph impact <file>` (CLI: fan-in + importer list, tư vấn không chặn) + **fitness metrics** trên file-graph sẵn có (hub concentration · orphan/dead % · slot-boundary violation), gắn vào `validate`/checks với ngưỡng như `brain bench` gate. UI: hiện điểm fitness ở sub-tab Graph.
+- **Phase B ✅:** thay regex symbol trong `graph.ts` bằng **tree-sitter WASM** (`web-tree-sitter`, MIT — rà license theo HP điều 2) cho TS/JS/Py → node `symbol` chính xác (hàm/class/method + dòng), cạnh `defines`.
+- **Phase C ✅:** cạnh `calls` bằng name-match trong project, **nhãn confidence bắt buộc** (`inferred`; nâng `resolved` chỉ khi có bằng chứng mạnh hơn) → blast-radius cấp hàm. Đây là lớp CALM thắng đo được; bài học từ bug của nó: **test trên code thật nhiều template-literal/SQL trước khi tin parser**.
+- **Phase D ⏸ (chỉ khi đo thấy cần):** tier `resolved` qua tsserver/pyright. Gate vào phase D = decision rule: đếm câu "sửa X đụng ai" mà file-level + name-match trả lời trượt trong 2–4 tuần dùng thật.
+- **KHÔNG làm:** consume MCP CALM · edit-gate/refuse · đa ngôn ngữ ngoài TS/JS/Py (thêm khi có repo thật) · semantic code search riêng (brain search lo phần memory).

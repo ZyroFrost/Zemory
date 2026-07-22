@@ -49,6 +49,8 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
 
 12. **Đo trung thực + gate trước khi bật mặc định.** TUYỆT ĐỐI không trưng số counterfactual/ảo ("tiết kiệm N token" khi không đo được). Mọi lớp mới (hybrid, rerank, dims, migration…) chỉ bật mặc định SAU khi qua gate: benchmark thắng net trên corpus có nhãn + test + migration an toàn + health check + fallback rõ. *(gốc: build plan §2.1, plan 04 §9, plan 05 §2 §6, plan 10, plan 12 §2)*
 
+13. **Graph là lớp DẪN XUẤT; cạnh KHAI BÁO và SUY LUẬN không được lẫn.** Graph (node + cạnh) rebuild được từ `.md` + code + brain — vứt/dựng lại bất cứ lúc nào, KHÔNG là kho sự thật thứ hai (hệ quả điều 3). Build TẤT ĐỊNH, 0 LLM (điều 6): cạnh chỉ sinh bằng parse (routing · references · supersede · `touches` · import/AST) hoặc cosine trên vector ĐÃ CÓ — KHÔNG extract quan hệ bằng LLM. Hai hạng cạnh: **KHAI BÁO** = baseline tất định, luôn đúng; **SUY LUẬN** = overlay fail-open (điều 9), PHẢI gắn nhãn `inferred` và KHÔNG BAO GIỜ giả dạng cạnh khai báo (thang confidence `textual`→`resolved` nằm TRONG hạng suy luận, không tự phong "khai báo"). Graph là engine nội bộ của domain brain, KHÔNG tạo capability thứ 5 (điều 4); consumer ngoài chỉ đọc `graph export` (contract có version), KHÔNG parse lại chuẩn (điều 5). *(gốc: plan 13; user chốt 2026-07-21.)*
+
 ## Sửa đổi hiến pháp
 - **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).

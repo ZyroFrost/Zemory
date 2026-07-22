@@ -38,6 +38,9 @@
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^12.11.1",
-    "sqlite-vec": "^0.1.9"
+    "sqlite-vec": "^0.1.9",
+    "systray2": "^2.1.4",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "^0.20.8"
   }
 }

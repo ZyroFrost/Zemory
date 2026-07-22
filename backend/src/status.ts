@@ -5,7 +5,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
-import { listKnownProjects, rememberProject } from "./registry.js";
+import { type KnownProject, listKnownProjects, rememberProject } from "./registry.js";
 import { tr } from "./settings.js";
 
 export type FeatureState = "on" | "planned" | "off" | "idle";
@@ -30,8 +30,8 @@ export interface StatusReport {
   docs: { file: string; ok: boolean }[];
   /** Token-saving features layer. */
   features: FeatureStatus[];
-  /** Other projects zemory knows about (for the picker). */
-  knownProjects: { root: string; name: string }[];
+  /** Other projects zemory knows about (for the picker); pinned first, then recent. */
+  knownProjects: KnownProject[];
   /** docs/plan conformance signal — when it needs agent reconciliation. */
   plan: { exists: boolean; needsReconcile: boolean; detail: string };
   /** Onboarding signal: is the harness filled (done) or still skeleton (run setup). */
@@ -60,15 +60,15 @@ const REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "
  */
 function listFeatures(): FeatureStatus[] {
   // state "idle" = not yet tested; the real state comes from running checks.
+  // ONE row per real capability — 'search' and 'memory' used to run the identical
+  // code path and rendered as two rows; merged into one honest brain check.
   return [
-    { key: "search", group: "token", label: tr("Tìm trong brain (FTS5)", "Find in brain (FTS5)"), state: "idle", detail: "—",
-      help: tr("Full-text (word + trigram tiếng Việt) trên mọi phiên đã lưu để agent tìm đúng đoạn thay vì đọc lại. `zemory brain search`.", "Full-text search (word + Vietnamese trigram) across all stored sessions so the agent finds the exact bit instead of re-reading. `zemory brain search`.") },
-    { key: "memory", group: "token", label: tr("Nhớ xuyên phiên", "Remember across sessions"), state: "idle", detail: "—",
-      help: tr("Brain toàn cục: nhớ quyết định/gotcha từ các phiên trước của mọi agent & dự án, khỏi giải thích lại. Agent gọi recall khi cần.", "Global brain: recall decisions/gotchas from past sessions of every agent & project, so you don't re-explain. Agent calls recall on demand.") },
+    { key: "memory", group: "token", label: tr("Tìm & nhớ trong brain (FTS5)", "Search & recall in brain (FTS5)"), state: "idle", detail: "—",
+      help: tr("Brain toàn cục: full-text (word + trigram tiếng Việt) trên mọi phiên đã lưu — agent tìm đúng đoạn và nhớ quyết định/gotcha phiên trước thay vì giải thích lại. `zemory brain search`.", "Global brain: full-text (word + Vietnamese trigram) over every stored session — the agent finds the exact bit and recalls past decisions/gotchas instead of re-explaining. `zemory brain search`.") },
     { key: "validate", group: "workflow", label: tr("Kiểm tra docs harness", "Validate docs harness"), state: "idle", detail: "—",
-      help: tr("Kiểm docs đã render, link nội bộ, giữ changelog, và sổ supersede. `zemory validate`.", "Check generated docs, internal links, changelog retention, and supersede bookkeeping. `zemory validate`.") },
+      help: tr("Kiểm link nội bộ trong docs/, độ dài changelog vs ngưỡng, sổ supersede, và cấu trúc repo theo 03_STRUCTURE. `zemory validate`.", "Check internal links across docs/, changelog length vs threshold, supersede bookkeeping, and repo structure against 03_STRUCTURE. `zemory validate`.") },
     { key: "grill", group: "workflow", label: tr("Grill trước khi build", "Grill before build"), state: "idle", detail: "—",
-      help: tr("Bắt agent tra hỏi plan cùng bạn (từng câu một) TRƯỚC khi build, để build đúng thứ cần.", "Make the agent interrogate the plan with you (one question at a time) BEFORE building, so it builds the right thing.") },
+      help: tr("Bắt agent tra hỏi plan cùng bạn (từng câu một) TRƯỚC khi build, để build đúng thứ cần. Playbook: 04_SKILLS §grill.", "Make the agent interrogate the plan with you (one question at a time) BEFORE building. Playbook: 04_SKILLS §grill.") },
   ];
 }
 

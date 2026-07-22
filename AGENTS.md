@@ -2,13 +2,13 @@
 # Zemory
 
 > ⛔ **DỪNG — bạn mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?**
-> Nếu project bạn đang làm **KHÔNG phải repo này** (chỉ ghé đọc/copy chuẩn, xem code mẫu) → **CHỈ ĐỌC, KHÔNG GHI:**
+> Nếu project bạn đang làm **KHÔNG phải repo này** (chỉ ghé đọc/tham khảo) → **CHỈ ĐỌC, KHÔNG GHI:**
 > - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — mọi lệnh GHI (`init` · `sync` · `reindex` · `archive` · `brain scan/sync` · `hook`…) ghi vào repo này **và/hoặc** `global_memory.db`.
 > - ⚠ Repo này **có thể đang có phiên agent khác làm việc** — bạn ghi vào = xung đột thật.
-> - ✅ **Lấy CHUẨN zemory = đọc `docs_template/`** (bản mẫu TRẮNG) rồi áp vào REPO CỦA BẠN, chạy lệnh `zemory` ở repo của bạn. **KHÔNG lấy chuẩn từ `docs/`** — đó là docs RIÊNG của zemory, không phải bản mẫu.
+> - ✅ Muốn tham khảo cách làm → đọc rồi ÁP VÀO REPO CỦA BẠN, chạy lệnh `zemory` ở repo của bạn.
 > - Thật sự cần ghi vào đây → **HỎI USER TRƯỚC**.
 
-Đây là project **zemory**. Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` — file này CHỈ chỉ đường vào đó:
+Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` — file này CHỈ chỉ đường vào đó:
 
 ## Vào việc
 1. **Chưa có `docs/.harness.json`?** → `zemory --version` (thiếu thì `npm i -g zemory`) → `zemory init` → `zemory doctor` xanh. Đã có → bỏ qua.

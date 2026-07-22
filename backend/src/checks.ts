@@ -1,12 +1,13 @@
 // Per-feature checks — the REAL test behind each green tick. A feature is only
 // "on" if its check actually passes (not hardcoded).
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
 import { createRuntime } from "./core/runtime.js";
 import type { Capability } from "./core/types.js";
 import { brainSummary } from "./brain/ingest.js";
+import { openBrain } from "./brain/db.js";
 import { search } from "./brain/search.js";
 import { validate } from "./validate.js";
 import { tr } from "./settings.js";
@@ -14,20 +15,31 @@ import { tr } from "./settings.js";
 export interface CheckResult {
   feature: string;
   ok: boolean;
-  state: "on" | "off" | "planned";
+  state: "on" | "off" | "planned" | "warn";
   detail: string;
 }
 
 export async function runCheck(feature: string, rootArg?: string): Promise<CheckResult> {
-  // --- Tool/brain-level features (no project needed) ---
-  if (feature === "grill") {
-    // Workflow concept (no per-project file). Playbook lives in 04_SKILLS §grill.
-    return { feature, ok: true, state: "on", detail: tr("sẵn sàng (04_SKILLS §grill)", "ready (04_SKILLS §grill)") };
-  }
-
   const configuredRoot =
     rootArg && existsSync(join(rootArg, CONFIG_FILE)) ? rootArg : findProjectRoot();
-  const capability = ({ search: "search", memory: "memory" } as Record<string, Capability>)[feature];
+
+  // --- Tool/brain-level features (no project needed) ---
+  if (feature === "grill") {
+    // Real check: the grill playbook must actually be present in 04_SKILLS.
+    const root = configuredRoot;
+    if (!root) return { feature, ok: true, state: "on", detail: tr("sẵn sàng (playbook toàn cục)", "ready (global playbook)") };
+    const skills = join(loadContext(root).docsDir, "04_SKILLS.md");
+    if (!existsSync(skills)) {
+      return { feature, ok: false, state: "off", detail: tr("thiếu 04_SKILLS.md", "04_SKILLS.md missing") };
+    }
+    const hasGrill = /##\s*grill/i.test(readFileSync(skills, "utf8"));
+    return hasGrill
+      ? { feature, ok: true, state: "on", detail: tr("sẵn sàng (04_SKILLS §grill)", "ready (04_SKILLS §grill)") }
+      : { feature, ok: false, state: "off", detail: tr("04_SKILLS thiếu §grill", "04_SKILLS has no §grill") };
+  }
+
+  // 'memory' covers both keyword search and recall (one brain, one check).
+  const capability = ({ memory: "memory" } as Record<string, Capability>)[feature];
   if (configuredRoot && capability) {
     try {
       const provider = createRuntime(loadContext(configuredRoot)).registry.resolve(capability);
@@ -51,19 +63,29 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     }
   }
 
-  if (feature === "search" || feature === "memory") {
-    // REAL test: read actual brain rows AND exercise the FTS query path.
+  if (feature === "memory") {
+    // REAL test: read actual brain rows AND exercise the FTS query path. search()
+    // swallows FTS errors and returns [], so a probe of 0 can't detect a dropped
+    // index — assert the FTS tables exist directly instead of trusting the probe.
     try {
       const t = brainSummary().totals;
       if (t.sessions === 0) {
         return { feature, ok: true, state: "on", detail: tr("sẵn sàng · brain trống (chạy quét)", "ready · brain empty (run a scan)") };
       }
-      let probe = 0;
+      const db = openBrain();
+      let ftsOk: boolean;
       try {
-        probe = search("the", { all: true, limit: 3 }).length; // exercise FTS5
-      } catch {
-        return { feature, ok: false, state: "off", detail: tr("query FTS lỗi", "FTS query failed") };
+        ftsOk =
+          (db
+            .prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name IN ('messages_fts','messages_fts_tri')")
+            .get() as { c: number }).c === 2;
+      } finally {
+        db.close();
       }
+      if (!ftsOk) {
+        return { feature, ok: false, state: "off", detail: tr("thiếu index FTS (chạy brain scan)", "FTS index missing (run brain scan)") };
+      }
+      const probe = search("the", { all: true, limit: 3 }).length; // exercise FTS5
       return {
         feature,
         ok: true,
@@ -89,10 +111,13 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     case "validate": {
       const rep = validate(ctx);
       const warns = rep.issues.filter((i) => i.level !== "info").length;
+      // Colour from the REAL result: green only when it passes, amber for
+      // warnings, red on failure. Previously hardcoded "on" → always green even
+      // with issues underneath.
       return {
         feature,
         ok: rep.ok,
-        state: "on",
+        state: rep.ok ? (warns === 0 ? "on" : "warn") : "off",
         detail: warns === 0 ? tr("sẵn sàng · không lỗi", "ready · no issues") : tr(`${warns} lỗi cần sửa`, `${warns} issue(s) to fix`),
       };
     }

@@ -60,7 +60,7 @@ export const BRAIN_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const BRAIN_DIR = resolveBrainDir();
 export const BRAIN_DB = ENV_DB || join(BRAIN_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -99,6 +99,16 @@ CREATE TABLE IF NOT EXISTS sync_state (
   bundle          TEXT PRIMARY KEY,   -- bundle file name, e.g. 'global_memory.SS01-IT-10.zemory.enc'
   last_message_id INTEGER NOT NULL DEFAULT 0,
   updated_at      TEXT
+);
+
+-- RECEIVER side of delta Drive sync: remembers which OTHER-machine bundle files
+-- this machine has already merged, so a sync only pulls files that are new or
+-- changed. Keyed by file name; sig = size + header createdAt (read from the
+-- plaintext header, no decrypt). Per-machine, like sync_state — NEVER travels.
+CREATE TABLE IF NOT EXISTS merged_bundles (
+  file      TEXT PRIMARY KEY,   -- bundle file name in the Drive folder
+  sig       TEXT NOT NULL,      -- '<bytes>:<createdAt>' — changes when the file is rewritten
+  merged_at TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_source  ON sessions(source);
@@ -439,6 +449,12 @@ function migrate(db: BrainDB, fromVersion: number): void {
     // Created by the SCHEMA exec above (CREATE TABLE IF NOT EXISTS); an empty
     // table means "never exported" → the first delta export ships everything.
     version = 13;
+  }
+  if (version < 14) {
+    // v14 adds merged_bundles (receiver-side dedup for delta Drive sync). Created
+    // by the SCHEMA exec above (CREATE TABLE IF NOT EXISTS); empty = "merged
+    // nothing yet" → the first sync merges every remote bundle it finds.
+    version = 14;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
