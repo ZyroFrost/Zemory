@@ -9,7 +9,7 @@ import type { Capability } from "./core/types.js";
 import { brainSummary } from "./brain/ingest.js";
 import { openBrain } from "./brain/db.js";
 import { search } from "./brain/search.js";
-import { validate } from "./validate.js";
+import { validate } from "./docs/validate.js";
 import { tr } from "./settings.js";
 
 export interface CheckResult {
