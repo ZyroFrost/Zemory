@@ -15,12 +15,20 @@ import { readFileSync } from "node:fs";
 // exact content the browser receives.
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const CSS = rd("../../frontend/styles/cockpit.css");
-const JS = rd("../../frontend/scripts/cockpit.js");
-// Function replacements — a STRING replacement would interpret $1/$& inside the
-// JS/CSS as capture-group refs and corrupt them.
+// The cockpit script is split by concern into ordered files (03_STRUCTURE §5 —
+// no-build static); concatenating them in load order === the page the browser runs.
+const JS = [
+  "01-core", "02-layout", "03-helpers", "04-tabs", "05-graph", "06-project",
+  "07-memory", "08-sync", "09-recall", "10-i18n", "11-boot",
+].map((n) => rd("../../frontend/scripts/" + n + ".js")).join("\n");
+// Reconstruct the page the browser runs: inline the css, strip the split
+// <script src> tags and inject the concatenated JS where they were. Function
+// replacements — a STRING replacement would interpret $1/$& inside JS/CSS as
+// capture-group refs and corrupt them.
 const PAGE = rd("../../frontend/pages/cockpit.html")
   .replace('<link rel="stylesheet" href="/styles/cockpit.css">', () => "<style>" + CSS + "</style>")
-  .replace('<script src="/scripts/cockpit.js"></script>', () => "<script>" + JS + "</script>");
+  .replace(/<script src="\/scripts\/[^"]+"><\/script>\s*/g, "")
+  .replace("</body>", () => "<script>" + JS + "</script></body>");
 
 function embeddedScript() {
   const m = PAGE.match(/<script>([\s\S]*?)<\/script>/);

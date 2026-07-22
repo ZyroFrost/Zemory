@@ -54,12 +54,27 @@ import {
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
-// daemon serves these files as-is — no bundler, no TS template. Read once at
-// startup; editing a file + restarting the daemon shows it (no rebuild needed).
+// daemon serves those files as-is — no bundler, no TS template. Read per request
+// so editing a .css/.js + reloading shows it with no rebuild.
 const FRONTEND_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "frontend");
-const COCKPIT_HTML = readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8");
-const COCKPIT_CSS = readFileSync(join(FRONTEND_DIR, "styles", "cockpit.css"), "utf8");
-const COCKPIT_JS = readFileSync(join(FRONTEND_DIR, "scripts", "cockpit.js"), "utf8");
+/** Serve a file from frontend/<sub>/ by basename, path-guarded (no traversal). */
+function serveFrontend(res: ServerResponse, sub: string, file: string, type: string): void {
+  const dir = resolve(FRONTEND_DIR, sub);
+  const target = resolve(dir, file);
+  const rel = relative(dir, target);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("forbidden");
+    return;
+  }
+  try {
+    res.writeHead(200, { "content-type": type });
+    res.end(readFileSync(target, "utf8"));
+  } catch {
+    res.writeHead(404, { "content-type": "text/plain" });
+    res.end("not found");
+  }
+}
 import { onPath } from "./util.js";
 
 interface DriveSummary {
@@ -723,18 +738,10 @@ export async function startUi(): Promise<void> {
       // Progress probe for the run-hidden sync dialog / Global-tab spinner.
       return json(res, syncJobStatus());
     }
-    if (p === "/styles/cockpit.css") {
-      res.writeHead(200, { "content-type": "text/css; charset=utf-8" });
-      res.end(COCKPIT_CSS);
-      return;
-    }
-    if (p === "/scripts/cockpit.js") {
-      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
-      res.end(COCKPIT_JS);
-      return;
-    }
+    if (p.startsWith("/scripts/") && p.endsWith(".js")) return serveFrontend(res, "scripts", basename(p), "text/javascript; charset=utf-8");
+    if (p.startsWith("/styles/") && p.endsWith(".css")) return serveFrontend(res, "styles", basename(p), "text/css; charset=utf-8");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    res.end(COCKPIT_HTML);
+    res.end(readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8"));
   });
 
   // FIXED port so the UI always lives at one address (bookmarkable, and the
