@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-23] — feat(harness): TÁCH 2 template APP / NON-APP + AGENTS bắt hỏi profile + non-app = hệ file (task/pull/fill/upload)
+
+User phát triển hệ non-app + chốt **tách hẳn 2 template**. Đọc kỹ toàn bộ `docs_template/*` + `adopt.ts`/`harness.ts`/`ui.ts` + tests trước khi đụng. Gate `npm run check` **172/172**. **CHƯA commit/push** (gộp cụm chờ user gật).
+
+### Mô hình chốt — "2 cây riêng + parity gate" (không fork engine)
+- User bác cách "1 template gộp §1–6+§7" (đọc rối). Chốt: **`docs_template/{app,nonapp}/`** — 2 cây HOÀN CHỈNH, đọc độc lập. Chống drift bằng **CODE, không trí nhớ** (đúng doctrine điều 13): file `git mv` sang `app/`, dựng `nonapp/`.
+- **5 shell GATE byte-identical** (`AGENTS.md`·`01_CONSTITUTION`·`05_TODO`·`06_CHANGES`·`plan/00_overview`) — `template-parity.test.mjs` đỏ nếu lệch. `plan/00` genericize "app"→"dự án" để neutral.
+- **3 file KHÁC thật:** `02_RULES` (nonapp **bỏ luật UI** + ref §5/§9), `03_STRUCTURE` (app §1–6 + §7-stub-trỏ / nonapp = chuẩn riêng), `04_SKILLS` (nonapp reconcile→§non-app + **playbook pull/fill/upload**).
+
+### AGENTS bắt HỎI app/non-app (user 2026-07-23)
+- `AGENTS.md §Vào việc` (shared, agent đọc ĐẦU TIÊN): trước `init` phải **HỎI user APP hay NON-APP** (đừng đoán) + **giải thích ngắn 2 khái niệm**: APP = LÀM & BẢO TRÌ app (code chạy) → §1–6 · NON-APP = sản phẩm/tài sản, agent chỉ **đọc·dò·kéo·điền·xuất FILE** (kể cả mở `.pbix`) → chuẩn non-app, **0 luật UI**. Rồi `zemory init` / `init --non-app`.
+
+### Non-app = "hệ file cho AI" (nâng từ §7 mỏng → chuẩn đầy đủ)
+- `nonapp/03_STRUCTURE`: thêm **`tasks/NN_<cadence>/`** (đơn vị công việc định kỳ, mirror `data/<task>/`) · **`templates/`** (file chờ ĐIỀN, khác `fixtures/`) · **`data/{extract,adhoc,<task>}`** phân tầng · luật **adhoc≠task** · convention **tên slot THƯỜNG** (trừ file/vendor) · **§5 tự động hoá KÉO/ĐIỀN/UPLOAD** (agent lái + `scripts/` thin + playbook; zemory chỉ nhớ+kỷ luật, KHÔNG tự pull/gọi LLM — điều 6). Bám cấu trúc thật của `PBI_SasinFlow_Maintain` (extract=vm_pbi · adhoc · 01_weekly · TargetAll).
+- **Ranh giới chốt:** có dashboard/`.pbix` trong deliverable KHÔNG biến thành app; chỉ khi PHÁT TRIỂN app (code chạy) mới là app. MCP tự-thiết-kế Power BI = việc tương lai, chưa nhét vào chuẩn.
+
+### Code — profile-aware (mặc định app, tương thích test cũ)
+- `adopt.ts`: `templateDir(profile)` (map `non-app`→folder `nonapp`) + `ensureHarness(root, profile?)` scaffold ĐÚNG cây + persist `profile:"non-app"` (app = default ngầm, KHÔNG ghi key → giữ hint validate). `harness.ts cmdInit`: xác định profile TRƯỚC scaffold (bug cũ: set profile SAU ensureHarness ⇒ non-app scaffold nhầm cây). `ui.ts readStandardDoc(rel, profile="app")` + `/standard-doc?profile=` → UI không vỡ (mặc định app; toggle profile để phiên UI-refactor sau).
+- **Bug tự bắt:** `templateDir("non-app")` trỏ `docs_template/non-app/` (không tồn tại) → 0 doc; test cũ KHÔNG bắt (adopt.test non-app set profile SAU scaffold). Vá + **thêm test** `ensureHarness(root,"non-app")` scaffold cây non-app THẬT + app default vẫn app.
+- Test: `template-parity.test.mjs` (5 shell identical · AGENTS hỏi profile · nonapp 0-UI + pull/fill/upload · app §7 stub) + 2 regression adopt.
+
+### Đồng bộ chuẩn mới lên CHÍNH zemory (user duyệt 2026-07-23)
+- `docs/agent/03_STRUCTURE.md` của zemory → **app-only** (mirror `app/03`): intro "hệ APP" + §6 trỏ non-app + **gỡ §7 body (~64 dòng) → §7 stub** trỏ chuẩn non-app. `AGENTS.md` root → thêm đoạn **HỎI app/non-app + explainer** (khớp `app/AGENTS`). `reindex` (164 section) + `validate` xanh + `structure-sync` pass (§4 routing nguyên).
+
+### Còn treo
+- **UI: badge App/Non-app + toggle chuẩn theo profile** — backend sẵn `/standard-doc?profile=`; **chờ ảnh thiết kế user** (refactor UI 1 lượt, user đã báo).
+
 ## [2026-07-22] — feat(app): NATIVE WINDOW (hết icon Edge) · resize §5 · logo+màu toàn cục · audit 5-mặt + Bước 0 chốt phiên · sync index↔structure↔graph
 
 Phiên rất dài (Opus). **2 commit ĐÃ push** (`0992490` privacy · `3849168` harness); phần còn lại (resize · logo/native · sync-audit · **tầng 1: pin/gỡ · hộp đen daemon · cruft P3** — §G) **CHƯA commit** — chờ user duyệt mắt. Gate `npm run check` **165/165** ở mốc cuối. Chốt sổ theo Bước 0 (dò Global Memory + verify code thật, không ghi theo trí nhớ).
