@@ -8,7 +8,8 @@ import { hostname } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TEMPLATE_DIR, ensureHarness, freshHarness } from "./docs/adopt.js";
+import { templateDir, ensureHarness, freshHarness } from "./docs/adopt.js";
+import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
@@ -162,11 +163,13 @@ function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string;
   }
 }
 
-/** Read a file from the SHARED STANDARD (docs_template/) — path-guarded. This is
- *  the canonical harness, not any project's docs; the UI loads it read-only. */
-function readStandardDoc(rel: string): { ok: boolean; file: string; content: string } {
-  const target = resolve(TEMPLATE_DIR, rel);
-  const rl = relative(TEMPLATE_DIR, target);
+/** Read a file from the SHARED STANDARD (docs_template/<profile>/) — path-guarded.
+ *  This is the canonical harness, not any project's docs; the UI loads it
+ *  read-only. Defaults to the APP tree; pass profile="non-app" for that standard. */
+function readStandardDoc(rel: string, profile: StructureProfile = "app"): { ok: boolean; file: string; content: string } {
+  const base = templateDir(profile);
+  const target = resolve(base, rel);
+  const rl = relative(base, target);
   if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
   try {
     return { ok: true, file: rel, content: readFileSync(target, "utf8") };
@@ -700,7 +703,9 @@ export async function startUi(): Promise<void> {
       return json(res, readDoc(target, u.searchParams.get("file") ?? ""));
     }
     if (p === "/standard-doc") {
-      return json(res, readStandardDoc(u.searchParams.get("file") ?? ""));
+      // Default to the APP standard; the future profile toggle passes ?profile=non-app.
+      const prof: StructureProfile = u.searchParams.get("profile") === "non-app" ? "non-app" : "app";
+      return json(res, readStandardDoc(u.searchParams.get("file") ?? "", prof));
     }
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).

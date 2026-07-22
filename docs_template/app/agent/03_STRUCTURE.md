@@ -1,9 +1,11 @@
-# Cấu trúc repo chuẩn — bộ khung dùng chung cho mọi project
+# Cấu trúc repo chuẩn — hệ APP
 
-> Chuẩn folder này **ship + thực thi** cho MỌI project. Mô tả theo **VAI TRÒ**, không khóa framework.
-> **CÓ 2 CHUẨN — xác định loại project TRƯỚC rồi áp đúng chuẩn:**
-> ① **APP** (có code chạy: UI/server/CLI) → **§1–6**. ② **NON-APP** (sản phẩm/tài sản: BI/report, data, docs-only, design) → **§7**. Cả hai dùng CHUNG harness `docs/` + `AGENTS.md`.
-> Đọc TRƯỚC khi sửa: cần gì → §4 (app) / §7 (non-app) trỏ thẳng slot. Nắn project về chuẩn: xem **§8** (Reconcile) bên dưới.
+> Chuẩn folder cho **hệ APP** (có code CHẠY do mình phát triển: UI / server / CLI). Mô tả theo **VAI TRÒ**, không khóa framework.
+> **HAI CHUẨN, chọn theo LOẠI dự án (chốt TRƯỚC khi nắn folder — `AGENTS.md` §Vào việc bắt agent HỎI user):**
+> - **APP** (file này) — có code chạy → §1–6 (backend/ · frontend/ · docs/ · AGENTS.md).
+> - **NON-APP** (sản phẩm/tài sản: BI/report · data · docs-only · design — agent chỉ đọc/dò/kéo/điền/xuất FILE) → **chuẩn RIÊNG**, KHÔNG ở file này. Project non-app nhận bản `03_STRUCTURE` của hệ non-app (scaffold bằng `zemory init --non-app`; nguồn = template `nonapp/`).
+> Cả hai dùng CHUNG harness `docs/` + `AGENTS.md` (cùng engine, agent điều hướng như nhau).
+> Đọc TRƯỚC khi sửa: cần gì → §4 trỏ thẳng slot. Nắn project về chuẩn: xem **§8** (Reconcile) bên dưới.
 
 ## 1. Nguyên tắc
 - Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
@@ -300,73 +302,12 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 ```
 
 ## 6. Phạm vi áp dụng
-- **ÁP §1–6 (chuẩn APP):** hầu hết app estate (UI + server-side) — desktop WebView2, web app, tool có cockpit, AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
-- **ÁP §7 (chuẩn NON-APP):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
+- **ÁP file này (chuẩn APP §1–5):** hầu hết app estate (UI + server-side) — desktop WebView2, web app, tool có cockpit, AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
+- **NON-APP → chuẩn RIÊNG (không ở file này):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc. Dùng `03_STRUCTURE` của hệ non-app (`zemory init --non-app`). Ranh giới: "có UI/dashboard trong deliverable" KHÔNG biến nó thành app — chừng nào agent chỉ **đọc/dò/kéo/điền/xuất file** (kể cả mở `.pbix`), nó vẫn là non-app; chỉ khi mình **phát triển & bảo trì** một app (code chạy) mới là app.
 - **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
 
-## 7. Chuẩn phụ NON-APP — BI / data / docs / design
-> Dùng khi repo **không phải app chạy được** mà là **sản phẩm/tài sản** (deliverable). Cùng triết lý §1: vai-trò · 1-tên/concern · từ-điển-KHÔNG-checklist · KHÔNG folder rỗng · tracked=đầu-vào / gitignore=đầu-ra. **Harness `docs/` + `AGENTS.md` GIỮ Y HỆT app** (cùng engine harness, agent điều hướng như nhau).
-
-**BẮT BUỘC = 3 vai trò** (thay cho 4 của app): `docs/` · `AGENTS.md` · **≥1 folder DELIVERABLE** (`reports/`|`models/`|`content/`|`design/` — chọn theo loại). KHÔNG có `backend/`+`frontend/` vì không có code-app.
-
-```
-<project>/                         # <project> — 1 sản phẩm = 1 cây
-│ ═══ TRACKED (đầu vào / nguồn) ═══
-├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/
-├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_SKILLS·05_TODO·06_CHANGES) · plan/ · .harness.json
-│   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
-├── docs_visual/        [opt] sơ đồ/flow/lineage/lưới XEM TRỰC QUAN cho NGƯỜI (vd luồng nạp DW) — .html tương tác/.svg;
-│                            NGOÀI docs/, mỗi file có .md chủ trỏ tới + tóm tắt 1–3 dòng (= §5 docs_visual)
-│ ┄┄ DELIVERABLE — chọn theo loại (≥1) ┄┄
-├── reports/             ◆  BI: file báo cáo .pbix/.pbip/.twb (bản chính giao đi)      [LFS]
-├── models/              ◆  data: semantic/transform layer — dbt model · tabular .bim · DAX model
-├── content/             ◆  docs-only: nội dung .md/.mdx là sản phẩm chính
-├── design/              ◆  design: .fig/.sketch/.psd nguồn thiết kế                    [LFS]
-│ ┄┄ ĐẦU VÀO / XỬ LÝ ┄┄
-├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn
-├── measures/       [opt]  thư viện DAX/tính toán đặt tên + chú thích (trích ra để review/tái dùng)
-├── queries/        [opt]  SQL/DAX/M đặt tên, gọi theo tên — KHÔNG rải inline (đối xứng store/queries.* của app)
-├── pipelines/      [opt]  ETL/transform nhiều bước (code-driven: dbt/python)
-├── notebooks/      [opt]  phân tích thăm dò .ipynb (research/analytics)
-├── fixtures/       [opt]  DATA MẪU NHỎ (tracked) để mở report/model KHỎI cần nguồn thật
-├── assets/         [opt]  theme .json · logo · icon · bảng màu cho report/design
-├── scripts/        [opt]  refresh / publish / deploy (pbi-tools · PowerShell · dbt)
-├── config/         [opt]  profile workspace/connection (operator): *.example.* tracked · real→gitignore
-├── attic/          [opt]  bản cũ deliverable / snapshot TRƯỚC publish (rollback)
-├── share/          [opt]  bundle sync mã hóa xuyên máy (chỉ khi cần) — như app
-│ ═══ GITIGNORE (đầu ra / thật / theo máy) ═══
-├── data/           [opt]  extract/cache/dataset THẬT kéo về (nặng, theo máy)
-├── exports/        [opt]  bản render/publish sinh ra (PDF/PNG/build) — build lại được
-└── .env            [opt]  connection string / token / workspace-id THẬT
-```
-
-**Ví dụ áp (một BI project)** — chỉ hiện slot CÓ THẬT (không tạo folder rỗng):
-```
-<project>/
-├── AGENTS.md
-├── docs/{agent/, plan/, dictionary.md}          # định nghĩa metric doanh thu/đơn/khách…
-├── docs_visual/dw_flow.html                      # [xem] sơ đồ luồng nạp DW — .md chủ: docs/plan/NN_dw.md
-├── reports/main.pbix                             # [LFS] báo cáo chính
-├── sources/{orders.m, connection.example.json}   # Power Query + spec (trỏ env)
-├── measures/revenue.dax                          # DAX tách ra để review
-├── assets/theme.json                             # theme màu
-├── scripts/refresh.ps1                           # refresh + publish workspace
-├── fixtures/sample_orders.csv                    # mở .pbix khỏi cần DB thật
-└── .env                                          # connection thật (gitignore)
-```
-
-**Convention NON-APP** (bổ sung; phần còn lại kế thừa §5):
-```
-3 vai trò bắt buộc   docs/ · AGENTS.md · ≥1 deliverable (reports/|models/|content/|design/). KHÔNG backend/frontend
-Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (như share/*.enc): track file, LFS lo dung lượng
-Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
-Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore)
-Từ điển dữ liệu      BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu
-SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries app)
-Publish/refresh      tự động hóa → scripts/ · bản render ra → exports/ (gitignore, build lại được)
-Sơ đồ trực quan      .html tương tác/.svg xem trực quan (luồng/lineage/lưới bảng) → docs_visual/ (NGOÀI docs/, agent KHÔNG auto-đọc); mỗi file có .md chủ trỏ + tóm tắt. Chi tiết = §5 docs_visual
-Harness = app        docs/agent/* + AGENTS.md y hệt → cùng lệnh zemory, agent điều hướng non-app đúng như app
-```
+## 7. Chuẩn NON-APP — đã TÁCH sang hệ riêng
+> Non-app (BI/report · data · docs-only · design) dùng **`03_STRUCTURE` của hệ non-app** — cấu trúc + routing riêng (deliverable · `tasks/` · `templates/` · `data/` phân tầng · automation pull/fill/upload · **0 luật UI**). Scaffold bằng `zemory init --non-app`; nguồn = template `nonapp/`. File này (app) KHÔNG lặp lại chuẩn đó.
 
 ## 8. Reconcile — nắn repo về chuẩn (khi repo lệch)
 > Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ (A. docs lệch · B. cấu trúc folder lệch · recipe end-to-end) → skill **[`04_SKILLS §reconcile`](04_SKILLS.md)**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
