@@ -271,7 +271,9 @@ export function sourceSignature(root: string): string {
       /* skip unreadable */
     }
     for (let i = 0; i < f.length; i++) {
-      pathHash = ((pathHash ^ f.charCodeAt(i)) * 0x01000193) >>> 0;
+      // Math.imul: a plain `* 0x01000193` overflows 2^53 and loses the low bits
+      // BEFORE >>> 0, so use a true 32-bit multiply for a proper FNV-1a.
+      pathHash = Math.imul(pathHash ^ f.charCodeAt(i), 0x01000193) >>> 0;
     }
   }
   return `${files.length}:${Math.round(newest)}:${pathHash.toString(16)}`;
