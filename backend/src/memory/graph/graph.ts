@@ -12,7 +12,10 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
 import { SLOT_ROLES } from "../../docs/structure-tree.js";
 
-const SRC_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
+// Exported so the folder-tree view (structure-tree.ts) walks the EXACT same file
+// set as the graph — tree and graph must never drift (one is the "map", the
+// other the "territory" of the same node set).
+export const SRC_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
 const IGNORE = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".venv", "__pycache__",
   "data", "generated", ".turbo", ".next", ".cache", "models", "attic", "external",

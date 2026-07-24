@@ -13,7 +13,7 @@ export interface ParsedMessage {
 /** One line of an append-mode (jsonl) transcript, normalized. */
 export type ParsedLine =
   | { kind: "message"; msg: ParsedMessage }
-  | { kind: "title"; title: string }
+  | { kind: "title"; title: string; custom?: boolean }
   | { kind: "meta"; cwd?: string }
   | { kind: "skip" };
 
