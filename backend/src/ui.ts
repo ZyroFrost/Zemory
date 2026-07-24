@@ -1,24 +1,28 @@
 // `zemory ui` - live memory UI. The page stays code-native and polls the
 // local data layer so new captured messages appear while the user keeps chatting.
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { hostname } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+const execFileP = promisify(execFile);
 import { templateDir, ensureHarness, freshHarness } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
+import { digestBackfill } from "./memory/digest.js";
+import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { vectorCount, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { findProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
-import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects } from "./projects.js";
+import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
@@ -114,10 +118,35 @@ interface DriveSummary {
   error: string | null;
   /** Sync depth (plan 08 §7): "lean" rows bundle (default) | "full" snapshot. */
   level: "lean" | "full";
+  /** % of local messages already pushed to Drive by THIS machine (own export
+   *  watermark ÷ current max message id). 100 when memory is empty (nothing to
+   *  sync). Powers the Drive Sync donut. */
+  syncPercent: number;
+  syncedMessages: number;
+  totalMessages: number;
+  pendingMessages: number;
+}
+
+/** This machine's own Drive export watermark vs its current message count —
+ *  "how much of what I have has actually left this machine via Drive". */
+function driveSyncProgress(): { syncPercent: number; syncedMessages: number; totalMessages: number; pendingMessages: number } {
+  const db = openMemory();
+  try {
+    const total = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+    const row = db.prepare("SELECT last_message_id AS id FROM sync_state WHERE bundle = ?").get(`drive:${hostname()}`) as
+      | { id: number }
+      | undefined;
+    const synced = Math.min(row?.id ?? 0, total);
+    const pending = Math.max(0, total - synced);
+    const percent = total > 0 ? Math.round((synced / total) * 100) : 100;
+    return { syncPercent: percent, syncedMessages: synced, totalMessages: total, pendingMessages: pending };
+  } finally {
+    db.close();
+  }
 }
 
 /** Probe a Drive sync folder: exists? writable? how many bundles inside? */
-function probeDrive(dir: string): Omit<DriveSummary, "level"> {
+function probeDrive(dir: string): Omit<DriveSummary, "level" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages"> {
   const path = dir.trim();
   if (!path) return { path: "", linked: false, exists: false, writable: false, bundles: 0, error: null };
   if (/^https?:\/\//i.test(path)) {
@@ -147,7 +176,94 @@ function probeDrive(dir: string): Omit<DriveSummary, "level"> {
 }
 
 function driveSummary(): DriveSummary {
-  return { ...probeDrive(getDriveDir()), level: getSyncLevel() };
+  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), ...driveSyncProgress() };
+}
+
+/** Latest sync timestamp (max sync_state.updated_at) — Home "Last Sync". null if
+ *  nothing synced yet or the table predates schema v13 (fail-open). */
+function lastSyncAt(): string | null {
+  const db = openMemory();
+  try {
+    const r = db.prepare("SELECT MAX(updated_at) AS t FROM sync_state").get() as { t?: number } | undefined;
+    return r?.t ? new Date(Number(r.t)).toISOString() : null;
+  } catch {
+    return null;
+  } finally {
+    db.close();
+  }
+}
+
+/** Recent messages (newest first), scoped like recall — feeds the Recall default
+ *  list so the panel is never empty (user 2026-07-23). Same row shape as recall. */
+function queryRecentMessages(
+  limit: number,
+  o: { all?: boolean; project?: string; days?: number; role?: string; origin?: string; agent?: string },
+): unknown[] {
+  const db = openMemory();
+  try {
+    const cond: string[] = [];
+    const args: unknown[] = [];
+    if (!o.all && o.project) {
+      cond.push("lower(s.project_root) = lower(?)");
+      args.push(o.project);
+    }
+    if (o.days && o.days > 0) {
+      cond.push("m.timestamp >= ?");
+      args.push(new Date(Date.now() - o.days * 86400000).toISOString());
+    }
+    if (o.role) {
+      cond.push("m.role = ?");
+      args.push(o.role);
+    }
+    if (o.origin) {
+      cond.push("s.origin = ?");
+      args.push(o.origin);
+    }
+    if (o.agent) {
+      cond.push("s.source = ?");
+      args.push(o.agent);
+    }
+    const where = cond.length ? "WHERE " + cond.join(" AND ") : "";
+    const rows = db
+      .prepare(
+        `SELECT m.id AS id, m.role AS role, m.content AS content, m.timestamp AS timestamp,
+                s.project_root AS project, s.source AS source, s.id AS sessionId
+           FROM messages m JOIN sessions s ON s.id = m.session_id
+           ${where} ORDER BY m.id DESC LIMIT ?`,
+      )
+      .all(...args, limit) as Array<Record<string, unknown>>;
+    return rows.map((r) => ({
+      id: r.id,
+      role: r.role,
+      project: r.project,
+      source: r.source,
+      sessionId: r.sessionId,
+      timestamp: r.timestamp,
+      snippet: String(r.content ?? "").replace(/\s+/g, " ").slice(0, 220),
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+/** Last session per project (newest first) — Home "Recent Sessions". */
+function queryRecentSessions(limit: number): unknown[] {
+  const db = openMemory();
+  try {
+    return db
+      .prepare(
+        `SELECT s.id AS sessionId, s.source AS source, s.project_root AS project,
+                s.title AS title, s.ended_at AS endedAt
+           FROM sessions s
+           JOIN (SELECT project_root, MAX(ended_at) AS m FROM sessions
+                  WHERE project_root IS NOT NULL GROUP BY project_root) x
+             ON s.project_root = x.project_root AND s.ended_at = x.m
+          ORDER BY s.ended_at DESC LIMIT ?`,
+      )
+      .all(limit) as unknown[];
+  } finally {
+    db.close();
+  }
 }
 
 /** Read one harness doc (under <root>/docs) for the file dialog — path-guarded. */
@@ -358,6 +474,7 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
     scopeExcluded: getScopeExclude().length,
     scopeRules: getScopeExclude(),
     drive: driveSummary(),
+    lastSync: lastSyncAt(),
     storage: safeStorage(),
     lang: getLang(),
     generatedAt: new Date().toISOString(),
@@ -725,6 +842,98 @@ export async function startUi(): Promise<void> {
       // Shares the cached graph with /code-graph (no second full build).
       return json(res, buildNavCost(target, { graph: (await getCodeGraph(target)).graph }));
     }
+    if (req.method === "POST" && p === "/pick-folder") {
+      // Native OS folder-browse dialog (Windows: WinForms FolderBrowserDialog via
+      // PowerShell — no extra native dependency, runs on the same interactive
+      // desktop session as the daemon). Script goes through -EncodedCommand
+      // (base64 UTF-16LE): not subject to ExecutionPolicy (unlike a .ps1 file,
+      // verified — Restricted policy blocks -File but not -Command/-EncodedCommand
+      // on this machine) and side-steps all argv-quoting pitfalls. Fail-open:
+      // unsupported OS or a cancelled picker both return ok:false so the UI falls
+      // back to manual path entry.
+      if (process.platform !== "win32") return json(res, { ok: false, unsupported: true });
+      const start = u.searchParams.get("start") ?? "";
+      const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+      const startLine = start && existsSync(start) ? `$f.SelectedPath = ${psQuote(start)}` : "";
+      const script = [
+        "Add-Type -AssemblyName System.Windows.Forms",
+        "$f = New-Object System.Windows.Forms.FolderBrowserDialog",
+        `$f.Description = ${psQuote("Chọn folder project")}`,
+        startLine,
+        'if ($f.ShowDialog() -eq "OK") { Write-Output $f.SelectedPath }',
+      ]
+        .filter(Boolean)
+        .join("\r\n");
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      try {
+        const { stdout } = await execFileP("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encoded], {
+          timeout: 120_000,
+        });
+        const picked = stdout.trim();
+        return json(res, { ok: true, path: picked || null });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
+    if (req.method === "POST" && p === "/pick-file") {
+      // Native OS file-open dialog (Windows: WinForms OpenFileDialog via PowerShell,
+      // -EncodedCommand — same rationale as /pick-folder). `filter` is a WinForms
+      // filter spec ("SQLite DB (*.db)|*.db"); `start` seeds the initial folder.
+      // Fail-open: unsupported OS / cancel → ok:false, UI falls back to typing.
+      if (process.platform !== "win32") return json(res, { ok: false, unsupported: true });
+      const start = u.searchParams.get("start") ?? "";
+      const filter = u.searchParams.get("filter") || "All files (*.*)|*.*";
+      const psQuote = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+      const startDir = start && existsSync(start) ? (statSync(start).isDirectory() ? start : dirname(start)) : "";
+      const startLine = startDir ? `$f.InitialDirectory = ${psQuote(startDir)}` : "";
+      const script = [
+        "Add-Type -AssemblyName System.Windows.Forms",
+        "$f = New-Object System.Windows.Forms.OpenFileDialog",
+        `$f.Filter = ${psQuote(filter)}`,
+        startLine,
+        'if ($f.ShowDialog() -eq "OK") { Write-Output $f.FileName }',
+      ]
+        .filter(Boolean)
+        .join("\r\n");
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      try {
+        const { stdout } = await execFileP("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encoded], {
+          timeout: 120_000,
+        });
+        const picked = stdout.trim();
+        return json(res, { ok: true, path: picked || null });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
+    if (req.method === "POST" && p === "/add-project") {
+      // Link a DISCOVERED project (has sessions but not in the registry) into
+      // zemory's managed list, and pin it. rememberProject skips scratch roots.
+      const root = u.searchParams.get("root") ?? "";
+      if (root) {
+        rememberProject(root);
+        pinProject(root, true);
+      }
+      return json(res, { ok: !!root, knownProjects: listKnownProjects() });
+    }
+    if (req.method === "POST" && p === "/merge-project") {
+      // Reassign a discovered folder's sessions into a target project (user-driven
+      // merge, e.g. a subfolder into its parent). Repoints project_root AND pins it
+      // (project_pinned=1) so the next scan's COALESCE upsert can't revert it to cwd.
+      // The original folder stays intact in sessions.cwd — no source is destroyed.
+      const from = u.searchParams.get("from") ?? "";
+      const to = u.searchParams.get("to") ?? "";
+      if (!from || !to) return json(res, { ok: false, error: "from/to required" });
+      const db = openMemory();
+      let moved = 0;
+      try {
+        moved = db.prepare("UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE lower(project_root) = lower(?)").run(to, from).changes ?? 0;
+      } finally {
+        db.close();
+      }
+      invalidateDashboard();
+      return json(res, { ok: true, moved });
+    }
     if (req.method === "POST" && p === "/pin-project") {
       // Pin keeps a project on the tab bar; unpinned ones fall back to recency.
       const ok = pinProject(u.searchParams.get("root") ?? "", u.searchParams.get("on") === "1");
@@ -745,6 +954,63 @@ export async function startUi(): Promise<void> {
       invalidateDashboard();
       return json(res, r);
     }
+    if (req.method === "POST" && p === "/memory-digest") {
+      // Build the extractive digest for every session that lacks one (or whose
+      // transcript grew since — digestBackfill is content-hash guarded, so already
+      // fresh sessions are a no-op). Powers the System "Build digest" button.
+      const r = digestBackfill();
+      invalidateDashboard();
+      return json(res, { ok: true, ...r });
+    }
+    if (req.method === "POST" && p === "/memory-backup") {
+      // Snapshot the whole memory DB to a standalone .db file (safe SQLite online
+      // backup). Non-destructive. Powers Drive Sync → Backup.
+      try {
+        const r = await backupMemory();
+        return json(res, { ok: true, outPath: r.outPath, bytes: r.bytes });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
+    if (req.method === "POST" && p === "/memory-restore") {
+      // Replace the live DB with a snapshot file (destructive — the caller must
+      // confirm in the UI). Keeps the previous DB as a .bak. Powers Restore.
+      const path = u.searchParams.get("path") ?? "";
+      if (!path) return json(res, { ok: false, error: "path required" });
+      try {
+        const r = await restoreMemoryBackup({ backupPath: path, force: true });
+        invalidateDashboard();
+        return json(res, { ok: true, previousBackupPath: r.previousBackupPath, bytes: r.bytes });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
+    if (req.method === "POST" && p === "/memory-forget") {
+      // Delete memory for a scope. Without force = DRY RUN (counts only). With
+      // force = actually delete (auto-backup first). Scope is required so a blank
+      // request can never wipe everything. Powers Drive Sync → Forget.
+      const project = u.searchParams.get("project") ?? "";
+      if (!project) return json(res, { ok: false, error: "project required" });
+      const force = u.searchParams.get("force") === "1";
+      try {
+        const r = await forgetMemory({ project, force });
+        if (force) invalidateDashboard();
+        return json(res, { ok: true, dryRun: r.dryRun, sessions: r.sessions, messages: r.messages, digests: r.digests, backupPath: r.backupPath });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
+    if (req.method === "POST" && p === "/memory-redact") {
+      // Re-run the secret/PII redactor over already-stored content (masks tokens,
+      // keys, emails that slipped in). Powers Drive Sync → Redact.
+      try {
+        const r = await reRedactMemory();
+        invalidateDashboard();
+        return json(res, { ok: true, ...r });
+      } catch (e) {
+        return json(res, { ok: false, error: String((e as Error).message || e) });
+      }
+    }
     if (p === "/memory-search") {
       const days = Number(u.searchParams.get("days") || 0);
       const hits = await recall(u.searchParams.get("q") ?? "", {
@@ -764,6 +1030,22 @@ export async function startUi(): Promise<void> {
       return json(res, ctx ?? {});
     }
     if (p === "/memory-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
+    if (p === "/recent-messages") {
+      // Recall default list (never empty): newest messages, scoped like recall.
+      const days = Number(u.searchParams.get("days") || 0);
+      return json(res, queryRecentMessages(Math.min(50, Number(u.searchParams.get("limit") || 25)), {
+        all: u.searchParams.get("all") === "1",
+        project: target,
+        days: days > 0 ? days : undefined,
+        role: u.searchParams.get("role") || undefined,
+        origin: u.searchParams.get("origin") || undefined,
+        agent: u.searchParams.get("agent") || undefined,
+      }));
+    }
+    if (p === "/recent-sessions") {
+      // Home "Recent Sessions": the last session of each project, newest first.
+      return json(res, queryRecentSessions(Math.min(20, Number(u.searchParams.get("limit") || 8))));
+    }
     if (req.method === "POST" && p === "/relocate") {
       // Move the memory DB off the system drive to a plain local folder. Safe:
       // relocateMemory verifies the copy and keeps the old DB as a .bak.
@@ -828,8 +1110,17 @@ export async function startUi(): Promise<void> {
     if (p === "/favicon.ico") return serveBinary(res, "assets", "favicon.ico");
     if (p === "/manifest.webmanifest") return serveBinary(res, "assets", "manifest.webmanifest");
     if (p.startsWith("/assets/")) return serveBinary(res, "assets", basename(p));
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    res.end(readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8"));
+    // UI refactor (plan 15) — the new "AI Memory OS" shell is now the DEFAULT app
+    // (served at / and /app). The previous cockpit stays reachable at /cockpit as a
+    // fallback during the transition; remove it once the new shell is fully wired.
+    // no-store: the shell is served live from disk each request; without this the
+    // WebView2 window could show a cached older page after a fix + restart.
+    if (p === "/cockpit") {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      return res.end(readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8"));
+    }
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+    res.end(readFileSync(join(FRONTEND_DIR, "pages", "app.html"), "utf8"));
   });
 
   // FIXED port so the UI always lives at one address (bookmarkable, and the

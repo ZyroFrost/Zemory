@@ -8,7 +8,8 @@
 // (reconcile is agent-driven — 03_STRUCTURE §8).
 
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { extname, join } from "node:path";
+import { SRC_EXT } from "../memory/graph/graph.js";
 
 /**
  * The standard slot dictionary — one line per concern, mirroring 03_STRUCTURE
@@ -131,8 +132,11 @@ export interface TreeNode {
   slot?: string;
   /** one-line role from the dictionary, if recognized */
   role?: string;
-  /** true when the folder name is a known standard slot */
+  /** true when the folder name is a known standard slot (always true for files —
+   *  "known/unknown" is a FOLDER-naming conformance concept, not a file one) */
   known: boolean;
+  /** true = a source FILE leaf (same extension set as the code graph), not a folder */
+  isFile?: boolean;
   children: TreeNode[];
 }
 
@@ -156,23 +160,32 @@ function walk(absDir: string, relDir: string, depth: number): TreeNode[] {
   } catch {
     return [];
   }
-  const nodes: TreeNode[] = [];
+  const dirs: TreeNode[] = [];
+  const files: TreeNode[] = [];
   for (const name of entries) {
     if (name.startsWith(".") || IGNORE.has(name)) continue;
     const abs = join(absDir, name);
+    let isDir: boolean;
     try {
-      if (!statSync(abs).isDirectory()) continue;
+      isDir = statSync(abs).isDirectory();
     } catch {
       continue;
     }
     const rel = relDir ? relDir + "/" + name : name;
-    const meta = roleFor(name, depth);
-    const children = NO_RECURSE.has(name) ? [] : walk(abs, rel, depth + 1);
-    nodes.push({ name, path: rel, ...meta, children });
+    if (isDir) {
+      const meta = roleFor(name, depth);
+      const children = NO_RECURSE.has(name) ? [] : walk(abs, rel, depth + 1);
+      dirs.push({ name, path: rel, ...meta, children });
+    } else if (SRC_EXT.has(extname(name))) {
+      // Source-file leaf — same extension set as the code graph (SRC_EXT), so
+      // every graph node has a matching row here (structure ↔ graph parity).
+      files.push({ name, path: rel, known: true, isFile: true, children: [] });
+    }
   }
   // Known slots first, then alphabetical — mirrors how the standard reads.
-  nodes.sort((a, b) => (a.known === b.known ? a.name.localeCompare(b.name) : a.known ? -1 : 1));
-  return nodes;
+  dirs.sort((a, b) => (a.known === b.known ? a.name.localeCompare(b.name) : a.known ? -1 : 1));
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  return [...dirs, ...files];
 }
 
 export interface FolderTree {
@@ -189,8 +202,10 @@ export function buildFolderTree(root: string): FolderTree {
   const used = new Set<string>();
   const unknown: string[] = [];
   const visit = (n: TreeNode) => {
-    if (n.known && n.slot) used.add(n.slot);
-    else unknown.push(n.path);
+    if (!n.isFile) {
+      if (n.known && n.slot) used.add(n.slot);
+      else unknown.push(n.path);
+    }
     n.children.forEach(visit);
   };
   tree.forEach(visit);

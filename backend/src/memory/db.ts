@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -69,7 +69,8 @@ CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions (
   id            TEXT PRIMARY KEY,   -- session id (transcript file stem)
   source        TEXT NOT NULL,      -- agent name, e.g. 'claude-code'
-  project_root  TEXT,               -- normalized cwd the session ran in
+  project_root  TEXT,               -- grouping folder (defaults to cwd; user 'merge' may repoint it)
+  project_pinned INTEGER NOT NULL DEFAULT 0, -- 1 = project_root set by a user merge → re-scan must NOT overwrite it (cwd still holds the original folder)
   cwd           TEXT,
   title         TEXT,
   host          TEXT,               -- machine that ingested it (os.hostname()); null/'unknown' = pre-v4
@@ -455,6 +456,16 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // by the SCHEMA exec above (CREATE TABLE IF NOT EXISTS); empty = "merged
     // nothing yet" → the first sync merges every remote bundle it finds.
     version = 14;
+  }
+  if (version < 15) {
+    // v15 adds sessions.project_pinned: when the user MERGES a discovered folder
+    // into another project (UI "Gộp"), project_root is repointed and pinned so the
+    // next scan's COALESCE upsert can't revert it to cwd. Existing rows = 0 (not
+    // user-merged); the NOT NULL DEFAULT 0 backfills them.
+    if (!hasColumn(db, "sessions", "project_pinned")) {
+      db.exec("ALTER TABLE sessions ADD COLUMN project_pinned INTEGER NOT NULL DEFAULT 0");
+    }
+    version = 15;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

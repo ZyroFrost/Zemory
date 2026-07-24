@@ -28,15 +28,17 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 ├── content/             ◆  docs-only: nội dung .md/.mdx là sản phẩm chính
 ├── design/              ◆  design: .fig/.sketch/.psd nguồn thiết kế                        [LFS]
 │ ┄┄ CÔNG VIỆC (đơn vị vận hành — định kỳ/lẻ) ┄┄
-├── tasks/          [opt]  ĐƠN VỊ CÔNG VIỆC: mỗi task 1 folder `NN_<tên>/` (số + thường, vd `01_weekly/`)
-│   │                       = spec + input/output CỦA LẦN chạy đó. Data THẬT của task mirror ở `data/<task>/`.
-│   └── 01_weekly/  [opt]    vd task định kỳ: file định kỳ (report tuần) + ghi chú các bước
+├── tasks/          [opt]  ĐƠN VỊ CÔNG VIỆC định kỳ/lặp: mỗi task 1 folder `NN_<tên>/` (số + thường)
+│   └── 01_weekly/  [opt]    └ spec.md = ĐỊNH NGHĨA task (nguồn · mapping · bảng stage→output · việc-mở). Data thật → data/<task>/
 ├── templates/      [opt]  FILE MẪU để ĐIỀN tự động (report/sheet TRỐNG chờ đổ số) — KHÁC `fixtures/` (data mẫu)
 │ ┄┄ ĐẦU VÀO / XỬ LÝ ┄┄
 ├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn — chỗ automation "KÉO" đọc
 ├── measures/       [opt]  thư viện DAX/tính toán đặt tên + chú thích (trích ra để review/tái dùng)
 ├── queries/        [opt]  SQL/DAX/M đặt tên, gọi theo tên — KHÔNG rải inline (đối xứng store/queries.* của app)
-├── pipelines/      [opt]  ETL/transform nhiều bước (code-driven: dbt/python)
+├── pipelines/      [opt]  PIPELINE thực thi. Task đánh số → `NN_<tên>/` MIRROR ĐÚNG tasks/ (§4 "Pipeline đánh số"):
+│   ├── 01_weekly/  [opt]    ├ common.py = helper chung (tên KHÔNG số → import được)
+│   │                        └ 00_ready.py 01_pull.py 02_fill.py … = mỗi STAGE 1 file, số phẳng theo thứ tự chạy
+│   └── <domain>/   [opt]    script gom theo nguồn/domain (fast · haravan · pos…) — legacy KHÔNG đánh số, cùng tồn tại
 ├── notebooks/      [opt]  phân tích thăm dò .ipynb (research/analytics)
 ├── fixtures/       [opt]  DATA MẪU NHỎ (tracked) để mở report/model KHỎI cần nguồn thật
 ├── assets/         [opt]  theme .json · logo · icon · bảng màu cho report/design
@@ -48,6 +50,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
 │
 ├── README.md · LICENSE · .gitignore · .gitattributes   (manifest) giới thiệu/giấy phép/ignore/eol-lfs
+├── <tên>.cmd        [opt]  LAUNCHER task đánh số ở gốc (vd `weekly.cmd`): `<tên> <stage>` dispatch · `<tên> auto` = chạy cổng 00 (exit-code gate) rồi chuỗi stage nếu đủ. **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse)
 ├── .github/ · .vscode/ · .idea/   [opt] config CI/editor — ĐỂ YÊN ở root
 │
 │ ═════════ ③ GITIGNORE — KHÔNG commit (file thật / bí mật / theo máy) ═════════
@@ -55,7 +58,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 ├── data/           [opt]  FILE THẬT theo máy (nặng / PII) — ▼ [opt], tạo khi có:
 │   ├── extract/    [opt]    raw PULL từ nguồn (SQL dump / rar / kéo từ VM) — theo nguồn
 │   ├── adhoc/      [opt]    file LẺ check nhanh, KHÔNG thuộc task nào (README.md tracked = marker giữ folder)
-│   └── <task>/     [opt]    data làm việc của từng task (mirror `tasks/<task>/`)
+│   └── <task>/     [opt]    OUTPUT task (mirror `tasks/`↔`pipelines/` cùng NN): file trung gian tiền tố số stage (`01_pull_*.csv`) + DELIVERABLE cuối tên nghiệp vụ (`YYYYMMDD_..._REPORT.xlsx`, KHÔNG prefix số)
 ├── exports/        [opt]  bản render/publish sinh ra (PDF/PNG/build) — build lại được
 └── .env            [opt]  connection string / token / workspace-id THẬT
 ```
@@ -65,7 +68,10 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | Có gì / cần làm | → Slot |
 |---|---|
 | báo cáo / model / nội dung / thiết kế giao đi | `reports/` \| `models/` \| `content/` \| `design/` (deliverable ◆) |
-| **đơn vị công việc** (report tuần, đợt phân tích) | `tasks/NN_<tên>/` (spec + I/O của lần chạy) · data thật → `data/<task>/` |
+| **đơn vị công việc** (report tuần, đợt phân tích) | `tasks/NN_<tên>/spec.md` (định nghĩa) · data thật → `data/<task>/` |
+| **pipeline thực thi task** (stage đánh số) | `pipelines/NN_<tên>/` MIRROR tasks/ · `common.py` (helper) + `00_/01_/02_…` (stage) |
+| **launcher chạy task** | `<tên>.cmd` ở GỐC repo (`<tên> <stage>` · `<tên> auto`) — ASCII thuần |
+| **output stage / deliverable** | trung gian `data/<task>/NN_*` (prefix số) · deliverable tên nghiệp vụ (KHÔNG số) |
 | **file mẫu chờ ĐIỀN** (report trống) | `templates/` (KHÁC `fixtures/`=data mẫu) |
 | **định nghĩa nguồn** (M / connection / SQL kéo) | `sources/` (trỏ TÊN env, KHÔNG secret thật) |
 | DAX / measure đặt tên | `measures/` |
@@ -95,6 +101,10 @@ KHÔNG folder rỗng    INDEX = từ điển tên để TRA, KHÔNG checklist. T
 Tên THƯỜNG           slot folder viết thường (tasks · sources · templates · extract · adhoc). TÊN có sẵn của người ta GIỮ NGUYÊN: file (TargetAll.xlsx · ..._REPORT.xlsx), vendor/tool ép (.pbix · .Report/ · .SemanticModel/)
 adhoc ≠ task         data/adhoc/ = file LẺ check 1 lần, throwaway (chỉ giữ README marker) · cái gì thuộc DELIVERABLE ĐỊNH KỲ → phải nằm dưới tasks/<task>/ + data/<task>/. KHÔNG quăng file định kỳ vào adhoc
 tasks/ đánh số        tasks/NN_<cadence>/ (00→ tăng dần, thường: 01_weekly · 02_monthly). data/<task>/ mirror ĐÚNG TÊN task
+Pipeline đánh số     task lặp = pipeline đánh số, MIRROR số xuyên 3 nơi: `tasks/NN_<tên>/spec.md` ↔ `pipelines/NN_<tên>/` ↔ `data/NN_<tên>/` (cùng NN, KHÔNG lệch). Stage phẳng `NN_mô-tả.py` (00=cổng/readiness thường KHÔNG xuất data · 01,02…=bước); chạy standalone; logic dùng chung → `common.py` (tên KHÔNG số mới import được)
+Output khớp số       file trung gian mang tiền tố số stage (`01_pull.py` → `data/…/01_pull_*.csv`). ⚠ NGOẠI LỆ file DELIVERABLE cuối: GIỮ TÊN NGHIỆP VỤ (vd `YYYYMMDD_SASIN_WEEKLY_NN_REPORT.xlsx`), KHÔNG prefix số — vì đó là file giao/nộp
+Right-size stage     chỉ tạo stage task THẬT cần (2–4 là thường), KHÔNG chẻ vụn cho "đủ bộ". Script domain cũ (fast/haravan/pos…) KHÔNG bắt đánh số — cùng tồn tại
+Launcher .cmd        `<tên>.cmd` ở gốc: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. File .cmd **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse)
 templates ≠ fixtures  templates/ = file TRỐNG chờ ĐIỀN (đổ số ra deliverable) · fixtures/ = data MẪU nhỏ để mở deliverable khỏi cần nguồn thật
 Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung lượng); như share/*.enc
 Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
@@ -113,7 +123,8 @@ Ngoài phạm vi        app có code chạy (UI/server/CLI) → chuẩn APP · l
 
 - **KÉO (pull):** đọc `sources/` (M/connection/SQL) → kéo raw về `data/extract/` (gitignore). Credential lấy từ `.env`/`config/` — **KHÔNG bao giờ nhập password vào zemory** (mượn phiên login trên trang thật nếu là web). Playbook: `04_SKILLS §pull`.
 - **ĐIỀN (fill):** lấy file `templates/` (trống) + số từ `data/`/`measures/` → xuất deliverable (`reports/`) hoặc `exports/`. Playbook: `04_SKILLS §fill`.
-- **UP (upload/publish):** đẩy deliverable/exports lên đích (workspace BI · Drive · SharePoint) qua `scripts/`. Playbook: `04_SKILLS §upload`.
+- **UP (upload/publish):** đẩy deliverable/exports lên đích (workspace BI · Drive · SharePoint) qua `scripts/` hoặc stage `upload` của pipeline. Playbook: `04_SKILLS §upload`.
+- **Ánh xạ pipeline đánh số ↔ playbook (`04_SKILLS`):** stage `00`=gate/pull-precheck · `01`=pull (§pull) · `fill`=fill (§fill) · `upload`=upload (§upload). Task mới bám khuôn số này; script domain cũ (fast/haravan/pos…) giữ nguyên, không ép đánh số.
 
 **Ràng buộc (bất biến):** file THẬT/PII **KHÔNG commit git** (`data/`·`exports/`·`.env` gitignore); chỉ code + định nghĩa + template + deliverable-nhẹ tracked. Xuyên máy cần chia sẻ file nặng → bundle **mã hoá** `share/` (không phải plaintext lên git). Mọi động tác tự động phải **ghi được lại** (task/lần chạy → `06_CHANGES`/`05_TODO`) để phiên sau truy được.
 
