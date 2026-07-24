@@ -776,6 +776,16 @@ async function pushToDrive(o: {
     const r = await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, payload: "full" });
     // A prior lean series is now redundant (the full snapshot carries everything).
     for (const s of listMySeries(dir, host)) rmSync(join(dir, s.file), { force: true });
+    // "full" payload carries no rows stats (whole-file snapshot, not row-tracked),
+    // so record the watermark separately — it's what the UI sync-progress donut
+    // reads (drive:<host> in sync_state), and every message is in this snapshot.
+    const wdb = openMemory(dbPath);
+    try {
+      const maxId = (wdb.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+      writeExportWatermark(`drive:${host}`, maxId, dbPath);
+    } finally {
+      wdb.close();
+    }
     return { kind: "full", file: name, bytes: r.bundleBytes, messages: 0, removed: 0 };
   }
 

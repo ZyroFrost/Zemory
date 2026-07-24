@@ -5,6 +5,45 @@
 
 ---
 
+## [2026-07-23] — feat(ui): APP MỚI nav-rail (plan 15) — 6 màn · i18n 2-dict · graph per-project THẬT · dialog thay prompt · Drive donut · durable merge
+
+Phiên UI refactor rất dài (Opus+Sonnet). Evolve `cockpit.html` → **`frontend/pages/app.html`** (nav-rail vàng-trên-đen, phục vụ ở `/`, `no-store`). Backend gắn THẬT hầu hết. **CHƯA push** (commit local, chờ user duyệt mắt). Mỗi lần deploy: `node --check` JS nhúng + cross-check i18n (189 key khớp đủ 2 dict) + auto kill+reopen daemon (port 4444) để cửa sổ native nạp lại.
+
+### App mới — 6 màn nav rail + Settings dialog
+- Nav rail: **Trang chủ · Recall · Dự án · Bộ nhớ & Sync · Harness · Hệ thống** + ⚙ Settings (dialog M, góc phải trên) + version kế bên. **Nút thu gọn rail** (icon-only 64px, nhớ localStorage).
+- Home: 6 stat card thật + Recent Projects/Sessions (session cuối mỗi project, giờ thật, tên session chuẩn) + System & Checks (roll-up thật) + quick-action nối màn.
+
+### Backend (ui.ts +303 dòng) — endpoint gắn thật
+- Phục vụ `app.html` ở `/` (đọc `readFileSync` mỗi request, no-build FE). Endpoint mới: `/recent-messages` `/recent-sessions` `/add-project` `/merge-project` `/memory-digest` `/memory-backup` `/memory-restore` `/memory-forget` `/memory-redact` `/pick-folder` `/pick-file` (+ `driveSyncProgress` vào `driveSummary`).
+- **Folder/File picker OS thật** (`/pick-folder` FolderBrowserDialog · `/pick-file` OpenFileDialog) qua PowerShell `-EncodedCommand` (base64 UTF-16LE) — verified: Restricted ExecutionPolicy chặn `-File` nhưng KHÔNG chặn `-EncodedCommand`; fail-open non-Windows.
+
+### i18n (điều 02_RULES §16: 2 dict vi/en, mặc định VI, giữ thuật ngữ)
+- app.html trước KHÔNG có i18n (nút VI/EN chết). Gắn engine `data-i18n`/`t()` + dict **189 key** cả 2 ngôn ngữ, nút VI/EN lật chữ ngay. Giữ EN: Recall·Harness·vector·digest·FTS5·session… Bắt được lỗi lẫn thật (vd `"Time: mọi lúc"` ghép Anh+Việt 1 chuỗi).
+
+### Graph per-project THẬT (nodes=file · label=tên file)
+- Bỏ chấm mock ngẫu nhiên → dựng từ `/code-graph` thật (verified Zemory 123 node). Cây folder structure NẰM CHUNG khối với graph (từ `/folder-tree`). Đủ đồ: kéo node · **Ctrl+Z/Y** · zoom/pan · bấm-đúp reset · 3 layout (force/cluster/layers) · **slider giãn cách** · tree↔node đồng bộ 2 chiều · **bấm nền huỷ chọn** (graph+tree cùng lúc).
+- **Fix parity thật:** `structure-tree.ts` trước chỉ liệt kê FOLDER, sót hết FILE → thêm file leaf dùng CHUNG `SRC_EXT` export từ `graph.ts` (tree ↔ graph khớp 123/123).
+
+### Projects
+- Card grid (fix bug CSS `.ptype app` đụng `.app{height:100vh}` → `is-app/is-non`). **Ghim** = card lên đầu + viền vàng (backend `pinProject` OK, chỉ thiếu hiệu ứng). **Kéo-thả đổi thứ tự** (localStorage). Discovered = **tab theo máy** + nút Gộp. **Filter/Search/Sort thật** (tên/loại/sắp — thủ công·mới·tên·phiên).
+- **Merge durable:** thêm cột `sessions.project_pinned` (schema v15) — `/merge-project` set cờ, upsert ingest CASE-when-pinned giữ nguyên (không revert khi scan lại); `cwd` gốc giữ → điều 3 OK.
+
+### Memory & Sync
+- Gộp 3 concern 1 màn. **Donut % đồng bộ Drive** (watermark máy này vs max message-id; vá full-mode chưa ghi watermark). Card thống kê cho mọi bảng DB (Sessions/Sections/Digest/Changelog/Docs/Known-stores). Drive picker + Backup/Restore/Forget/Redact THẬT (privacy.ts). Gỡ số trend giả (↑12.4%…).
+
+### System
+- Danh sách 14 capability, mỗi cái mô tả docs-style + Kiểm/Bật per-feature. **Build digest** (nút, `digestBackfill`). **Recheck all** refresh đủ (thêm `/status` — trước sót nên "Harness 0/6" không cập nhật) + feedback thị giác. Fix `session_digest` chưa vào `memoryInfo.tables`.
+- Adapter Claude: đọc `custom-title` (`/title` của user) WIN over ai-title; `PARSER_VERSION 3` re-title 59 phiên.
+
+### Dialog hệ thống — thay HẾT prompt()/confirm()/alert() (user 2026-07-23)
+- Engine `zDialog` dùng chung (confirm + input) + `zToast` + `zConfirm`; dialog S. Thay: Thêm dự án (+ 📁), Gộp project (select), Xoá project, Relocate, Restore (+ 📁 file .db), Forget (select + xem-trước→xoá), Redact. Còn 0 native prompt/confirm/alert.
+
+### Non-app template (mở rộng 2026-07-23)
+- `docs_template/nonapp/03_STRUCTURE` + `04_SKILLS`: chuẩn **task = pipeline đánh số** (`tasks/NN_/spec.md ↔ pipelines/NN_/ ↔ data/NN_/`, output stage-prefix, launcher `.cmd` ASCII) — bám thật từ `PBI_SasinFlow_Maintain`.
+
+### Quyết định mở đã log (KHÔNG tự làm)
+- **Zemory tự đổi model Claude theo task lớn/nhỏ** — đụng điều 6 (0-LLM, không proxy model API). User chọn: chỉ ghi `05_TODO` làm quyết định mở, chờ chốt hiến pháp.
+
 ## [2026-07-23] — feat(harness): TÁCH 2 template APP / NON-APP + AGENTS bắt hỏi profile + non-app = hệ file (task/pull/fill/upload)
 
 User phát triển hệ non-app + chốt **tách hẳn 2 template**. Đọc kỹ toàn bộ `docs_template/*` + `adopt.ts`/`harness.ts`/`ui.ts` + tests trước khi đụng. Gate `npm run check` **172/172**. **CHƯA commit/push** (gộp cụm chờ user gật).

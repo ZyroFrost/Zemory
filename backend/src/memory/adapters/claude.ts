@@ -38,6 +38,11 @@ export const claudeAdapter: Adapter = {
       return { kind: "skip" };
     }
 
+    // User-set session name (Claude Code `/title`) — WINS over the AI-generated
+    // title. Stored as its own record: {type:"custom-title", customTitle:"..."}.
+    if (o.type === "custom-title" && typeof o.customTitle === "string" && o.customTitle.trim()) {
+      return { kind: "title", title: o.customTitle.trim(), custom: true };
+    }
     if (o.type === "ai-title" && typeof o.aiTitle === "string") {
       return { kind: "title", title: o.aiTitle };
     }

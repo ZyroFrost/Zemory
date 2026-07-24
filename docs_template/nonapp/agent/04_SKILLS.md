@@ -89,6 +89,7 @@ Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi đư
 
 ## pull  (KÉO nguồn tự động)
 > Kích hoạt: cần đưa data mới từ nguồn (SQL/VM/web/API) về để làm deliverable. `03_STRUCTURE §5`.
+> Trong **pipeline đánh số**: cổng **`00_ready.py`** kiểm nguồn sẵn sàng (exit 0/1) TRƯỚC, rồi **`01_pull.py`** kéo. Launcher `<tên> auto` tự chạy gate → pull nếu đủ; hoặc `<tên> pull` chạy thẳng stage 01.
 
 1. Đọc **`sources/`** (định nghĩa M/connection/SQL) + credential từ **`.env`/`config/`** — **KHÔNG nhập password vào zemory**; nếu nguồn là web thì mượn phiên đã login trên trang thật.
 2. Kéo raw về **`data/extract/`** (gitignore) — đặt tên theo nguồn + ngày. Pace/backoff nếu API có rate-limit; **resume-safe** (kéo tiếp được sau khi đứt).

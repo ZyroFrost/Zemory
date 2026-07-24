@@ -12,7 +12,7 @@ import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
 import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
 
-const PARSER_VERSION = 2;
+const PARSER_VERSION = 3;
 
 // The machine doing the ingest. Transcript files are local to the machine that
 // ran the agent, so the ingesting host IS the producing host. Stamped onto each
@@ -164,6 +164,7 @@ export function memoryInfo(dbPath: string = MEMORY_DB): {
         { name: "messages", rows: count("SELECT COUNT(*) c FROM messages") },
         { name: "doc", rows: count("SELECT COUNT(*) c FROM doc"), detail: docKinds.map((d) => `${d.kind}:${d.c}`).join(" ") },
         { name: "section", rows: count("SELECT COUNT(*) c FROM section") },
+        { name: "session_digest", rows: count("SELECT COUNT(*) c FROM session_digest") },
         { name: "changelog", rows: count("SELECT COUNT(*) c FROM changelog") },
         { name: "known_stores", rows: count("SELECT COUNT(*) c FROM known_stores") },
       ],
@@ -322,7 +323,9 @@ function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
      VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
      ON CONFLICT(id) DO UPDATE SET
        origin       = excluded.origin,
-       project_root = COALESCE(excluded.project_root, sessions.project_root),
+       -- a user-merged (pinned) project_root is kept; otherwise track the transcript's cwd
+       project_root = CASE WHEN sessions.project_pinned = 1 THEN sessions.project_root
+                          ELSE COALESCE(excluded.project_root, sessions.project_root) END,
        cwd          = COALESCE(excluded.cwd, sessions.cwd),
        title        = COALESCE(excluded.title, sessions.title),
        host         = excluded.host`,
@@ -410,6 +413,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
 
   let cwd: string | undefined;
   let title: string | undefined;
+  let titleLocked = false;
   const msgs: PendingMsg[] = [];
   let nextLine = 0;
   let wholeReplace = false;
@@ -445,8 +449,12 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
       const p = adapter.parseLine(lines[i]);
       if (p.kind === "message") {
         msgs.push({ uuid: p.msg.uuid, role: p.msg.role, content: p.msg.content, tool: p.msg.toolName, ts: p.msg.timestamp });
-      } else if (p.kind === "title") title = p.title;
-      else if (p.kind === "meta" && p.cwd) cwd = p.cwd;
+      } else if (p.kind === "title") {
+        // A user's custom title wins and locks; an AI title only fills if no
+        // custom title has been seen (order in the file is not guaranteed).
+        if (p.custom) { title = p.title; titleLocked = true; }
+        else if (!titleLocked) title = p.title;
+      } else if (p.kind === "meta" && p.cwd) cwd = p.cwd;
     }
     nextLine = completeLines;
   } else if (adapter.mode === "whole" && adapter.parseFile) {
