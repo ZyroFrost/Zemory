@@ -28,6 +28,16 @@
 
 **Trạng thái sau 2026-06-30:** remote Git + commit/push `main` đã xong; không còn blocker cơ học trong v0.1. Mốc publish/package registry là quyết định riêng nếu cần.
 ## ⭐ Ưu tiên kế tiếp
+
+> **📍 CHỐT SỔ 2026-07-25 (phiên RẤT DÀI — plan 15 + fix bug + version + hiến pháp).** ĐÃ XONG + verify LIVE trên daemon 4444:
+> 1. **Plan-15 UI** — badge/Harness THẬT (đọc `.harness.json`) · **3 màn nav mới** (Global Memory dashboard · Session Viewer `/sessions` · Insights `/insights` tất-định) · Settings About đầy đủ · Graph **collapse tree+panel · resize 3 bảng · đổi vị trí panel** · tách `app.html`→`frontend/styles/app.css`+`scripts/app.js` · **README viết lại diệt misread no-LLM**. → **đã push `3baaf02`**.
+> 2. **Fix bug (user báo)** — **tray ghost** (`traysweep.ts` EnumChildWindows sweep lúc startup, copy logic SasinFlow `desktop.py`) · **logo Z-stamp bừa → chữ-cái-đầu** (card project/máy) · icon vốn gold trong git (Z xanh = **cache Windows**, user sign-in ra gold).
+> 3. **Version 1.0.0** (user quyết số) + **quy luật release-based** (bump khi deploy · user quyết · gom giữa 2 release) → `03_STRUCTURE §5` + template app.
+> 4. **Hiến pháp điều 6 khoanh vùng** — "no-LLM" chỉ ràng buộc CHÍNH engine zemory (memory/search/harness/graph), KHÔNG áp app harness dựng. *(làm rõ, không supersede)*
+> Chi tiết: `06_CHANGES` 2 entry [2026-07-25]. Cụm (2)(3)(4) commit+push phiên này.
+>
+> **PHIÊN SAU — CHỜ USER CHỐT trước khi code:** ① **L3 sync kèm file/ảnh** (user chốt LÀM, design đã trình, chờ gật "ok build") · ② `adapters` — slot chính thức trong `03` hay domain-internal (allowlist) · ③ (b) **model-routing theo task** — idea-only, ĐỤNG điều 6, chờ chốt hướng (KHÔNG tự mở điều 6). **Backlog có spec:** web capture Gemini/Claude.ai · memory-promotion + ingest bộ-nhớ-curated-của-agent (`~/.claude/.../memory/*.md`) · MCP graph mirror. **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · tách `app.js` sâu theo concern (khi `cockpit.html` nghỉ hưu) · Start Menu icon = **user sign-out/in** (file đã đúng).
+
 > Compression đã **BỎ khỏi scope** (changelog 2026-06-25). zemory tập trung **global memory + harness**. Source nén ở `attic/`.
 
 ### 🎨 UI refactor (plan 15) — 5 quyết định + Graph + tách file XONG 2026-07-25 (xem 06_CHANGES)

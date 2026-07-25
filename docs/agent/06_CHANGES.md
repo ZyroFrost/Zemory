@@ -5,6 +5,25 @@
 
 ---
 
+## [2026-07-25] — fix(app): tray ghost (EnumChildWindows sweep, copy SasinFlow) · logo gold + bỏ Z-stamp bừa → initials · version 1.0.0 + quy luật release-based · khoanh vùng điều 6
+
+Follow-up sau `3baaf02` (plan-15 đã push). User báo 2 bug thật (tray ghost · logo cũ Start Menu) + chỉnh version + 2 việc harness. **CHƯA commit** (chờ user cho push).
+
+### Tray ghost — port logic SasinFlow (`desktop.py _sweep_dead_tray_icons`)
+- Gốc: `shutdown()` graceful CÓ gọi `stopTray()` (NIM_DELETE), nhưng **kill -Force/crash = TerminateProcess → không cleanup → icon chết kẹt tới khi hover**. zemory dùng systray2 = **Go helper process RIÊNG** (khác SasinFlow pystray in-process).
+- `backend/src/platform/traysweep.ts` (mới): lúc daemon startup, gửi `WM_MOUSEMOVE` quét lưới lên mọi `ToolbarWindow32` (thanh tray hiện + overflow). **Tìm toolbar bằng `EnumChildWindows` đệ quy** — chuỗi cứng `Shell_TrayWnd→TrayNotifyWnd→SysPager→ToolbarWindow32` trả **0** trên Win10 19045 này (bug bản đầu, tự bắt bằng test trực tiếp: BARS 0 → sửa thành đệ quy: BARS 4). PowerShell `-EncodedCommand`, fail-open (điều 9). Gọi trong `ui.ts` trước `startTray`.
+- Verify chu kỳ: đóng app → 0 helper · mở lại → **đúng 1** (không tích luỹ process — nguồn ghost cũ).
+
+### Logo
+- Icon vốn **đã gold trong git** (regen từ `frontend/assets/UI_Zemory_Logo.png`) — cái Z xanh user thấy ở Start Menu **100% là Windows icon-cache**, không phải file sai. Đã: xoá shell icon-cache + `iconcache_*.db` + restart explorer + `StartMenuExperienceHost`/`SearchApp` + gỡ shortcut rác **"Zemory Cockpit.lnk"** (chrome-icon cũ từ hồi Edge `--app`). Start Menu search-cache bám session → user **sign-out/in** là ra gold (đã báo).
+- **Bỏ logo Z stamp bừa** (`app.js`+`app.html`): card project + card "This machine" KHÔNG còn hardcode `'Z'`/`'◱'` cho MỌI thứ (SasinFlow/PBI cũng ra "Z") → hiện **chữ-cái-đầu tên** (neutral, phân biệt). Logo THẬT per-project/máy = **để dành làm setting** (user chốt hướng). Giữ brand logo góc rail (của chính zemory — chính đáng).
+
+### Version 1.0.0 + quy luật release-based (user chốt)
+- `package.json` `0.0.1` → **`1.0.0`** (user quyết số). Quy luật (theo SasinFlow `[[sasinflow-version-user-decides]]`): **RELEASE-BASED** — bump khi release/deploy 1 bản, KHÔNG per-commit/per-feature; USER quyết số (semver M.m.p); việc giữa 2 release gom vào version kế; nguồn = manifest 1 chỗ; notes = 06_CHANGES. Ghi `03_STRUCTURE §5` (zemory + **template app** generic; nonapp không có version convention → bỏ qua).
+
+### Hiến pháp điều 6 — khoanh vùng (user "làm luôn")
+- Thêm PHẠM VI vào **điều 6**: "no-LLM" ràng buộc CHÍNH hệ zemory (memory · search · harness · graph), **KHÔNG áp app mà harness dựng** (slot `ai/`·`agents/`·`tools/`·`evals/` để xây app LLM/AI tự do). Chống misread mà nhiều agent gặp (đã sửa README `3baaf02`). Đây là **làm rõ phạm vi, KHÔNG supersede** (luật không đảo). *(model-routing (b) — user tự nhắc "chỉ ghi ý tưởng" — GIỮ idea-only ở `05_TODO`, KHÔNG mở điều 6 kẻo mâu thuẫn chính khoanh-vùng này.)*
+
 ## [2026-07-25] — feat(ui): plan-15 tiếp — Harness/badge THẬT · 3 màn mới (Global Memory·Sessions·Insights) · Settings About · Graph collapse/3-resize/đổi-vị-trí · tách app.html · README diệt misread no-LLM
 
 Phiên tự chủ (user "làm hết", chỉ dừng khi có fork nghiêm trọng). Mọi thứ verify **LIVE** (endpoint thật trên daemon 4444) + `node --check` JS nhúng + i18n parity 2 dict mỗi cụm. Kill+rebuild+reopen daemon 2 lần cho backend mới. **CHƯA có test tự động cho màn mới** (frontend no-build). Chưa push tới khi user duyệt (giờ user bảo push).

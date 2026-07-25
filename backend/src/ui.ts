@@ -32,6 +32,7 @@ import { startScheduler, stopScheduler } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
+import { sweepDeadTrayIcons } from "./platform/traysweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
 import { armCrashReport, daemonLog } from "./logging/daemon-log.js";
 import {
@@ -1294,6 +1295,9 @@ export async function startUi(): Promise<void> {
   // System-tray presence (fail-open, HP điều 9): Open re-focuses the window, Quit
   // stops the daemon. Only the instance that WON the port reaches here — the
   // attach paths above already returned — so there is never a second icon.
+  // Clear any GHOST tray icon a hard-killed / crashed prior instance left behind
+  // (Windows keeps it until hover); then add ours. Ports SasinFlow's startup sweep.
+  sweepDeadTrayIcons();
   startTray(url, {
     onOpen: () => openWindow(url),
     onQuit: () => shutdown("tray quit"),
