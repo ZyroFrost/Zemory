@@ -32,6 +32,22 @@ export interface ProjectEntry {
 
 export interface KnownProject extends ProjectEntry {
   name: string;
+  /** Structure standard the project declares in docs/.harness.json (default "app"). */
+  profile: "app" | "non-app";
+}
+
+/**
+ * Read the structure profile from a project's docs/.harness.json. Fail-open to
+ * "app" (the default when no key is written) so a missing/garbled config never
+ * throws — the UI badge just shows APP. Mirrors config.ts assertConfig's rule.
+ */
+export function projectProfile(root: string): "app" | "non-app" {
+  try {
+    const raw = JSON.parse(readFileSync(join(root, CONFIG_FILE), "utf8")) as { profile?: unknown };
+    return raw && typeof raw === "object" && raw.profile === "non-app" ? "non-app" : "app";
+  } catch {
+    return "app";
+  }
 }
 
 /**
@@ -125,7 +141,7 @@ export function rememberProject(root: string): void {
 export function listKnownProjects(): KnownProject[] {
   return read()
     .filter((e) => existsSync(join(e.root, CONFIG_FILE)))
-    .map((e) => ({ ...e, name: basename(e.root) }))
+    .map((e) => ({ ...e, name: basename(e.root), profile: projectProfile(e.root) }))
     .sort((a, b) => {
       if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
       return (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "");

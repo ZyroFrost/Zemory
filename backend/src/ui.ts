@@ -18,11 +18,11 @@ import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionT
 import { digestBackfill } from "./memory/digest.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
-import { vectorCount, vectorRemaining } from "./memory/vectors.js";
+import { vectorCount, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { findProjectRoot } from "./core/config.js";
+import { CONFIG_FILE, findProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
-import { forgetProject, listKnownProjects, pinProject, pruneDeadProjects, rememberProject } from "./projects.js";
+import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
@@ -108,6 +108,16 @@ function serveBinary(res: ServerResponse, sub: string, file: string): void {
   }
 }
 import { onPath } from "./util.js";
+
+/** Read the package version once (same source the CLI uses). Powers the UI's
+ *  version label — was hardcoded "v1.0.0" in the page. */
+const APP_VERSION: string = (() => {
+  try {
+    return (JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8")) as { version?: string }).version ?? "";
+  } catch {
+    return "";
+  }
+})();
 
 interface DriveSummary {
   path: string;
@@ -247,6 +257,67 @@ function queryRecentMessages(
 }
 
 /** Last session per project (newest first) — Home "Recent Sessions". */
+/** Deterministic insights (NO forecast/AI): daily message activity, agent mix,
+ *  monthly growth, totals. All straight COUNT/SUM from the DB. */
+function insightsData(days: number): unknown {
+  const db = openMemory();
+  try {
+    const daily = db
+      .prepare(
+        `SELECT substr(timestamp, 1, 10) AS day, COUNT(*) AS messages
+           FROM messages
+          WHERE timestamp >= date('now', ?)
+          GROUP BY day ORDER BY day`,
+      )
+      .all(`-${days} days`);
+    const agents = db
+      .prepare(
+        `SELECT COALESCE(source, '(unknown)') AS source, COUNT(*) AS sessions,
+                COALESCE(SUM(message_count), 0) AS messages
+           FROM sessions GROUP BY source ORDER BY messages DESC LIMIT 12`,
+      )
+      .all();
+    const monthly = db
+      .prepare(
+        `SELECT substr(COALESCE(ended_at, started_at), 1, 7) AS month,
+                COUNT(*) AS sessions, COALESCE(SUM(message_count), 0) AS messages
+           FROM sessions
+          WHERE COALESCE(ended_at, started_at) <> ''
+          GROUP BY month ORDER BY month`,
+      )
+      .all();
+    const totals = db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM sessions) AS sessions,
+                (SELECT COUNT(*) FROM messages) AS messages,
+                (SELECT COUNT(*) FROM session_digest) AS digests`,
+      )
+      .get();
+    return { daily, agents, monthly, totals };
+  } finally {
+    db.close();
+  }
+}
+
+/** List sessions (NOT project-deduped) for the Session Viewer screen, newest first. */
+function querySessions(limit: number, offset = 0): unknown[] {
+  const db = openMemory();
+  try {
+    return db
+      .prepare(
+        `SELECT s.id AS sessionId, s.source AS source, s.origin AS origin, s.project_root AS project,
+                s.title AS title, s.host AS host, s.message_count AS messages,
+                s.started_at AS startedAt, s.ended_at AS endedAt
+           FROM sessions s
+          ORDER BY COALESCE(s.ended_at, s.started_at, '') DESC
+          LIMIT ? OFFSET ?`,
+      )
+      .all(limit, offset) as unknown[];
+  } finally {
+    db.close();
+  }
+}
+
 function queryRecentSessions(limit: number): unknown[] {
   const db = openMemory();
   try {
@@ -266,17 +337,47 @@ function queryRecentSessions(limit: number): unknown[] {
   }
 }
 
-/** Read one harness doc (under <root>/docs) for the file dialog — path-guarded. */
+/** Read one harness doc for the viewer — AGENTS.md (root), docs/agent/* or
+ *  docs/plan/* — path-guarded so a request can't escape the project docs. */
 function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string; content: string } {
-  const base = resolve(projectRoot, "docs");
-  const target = resolve(base, "agent", rel);
+  const root = resolve(projectRoot);
+  const notFound = { ok: false, file: rel, content: "(file not found — run zemory init/sync to create it)" };
+  if (rel === "AGENTS.md") {
+    try {
+      return { ok: true, file: rel, content: readFileSync(resolve(root, "AGENTS.md"), "utf8") };
+    } catch {
+      return notFound;
+    }
+  }
+  const base = resolve(root, "docs");
+  const target = rel.startsWith("plan/") ? resolve(base, rel) : resolve(base, "agent", rel);
   const rl = relative(base, target);
   if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
   try {
     return { ok: true, file: rel, content: readFileSync(target, "utf8") };
   } catch {
-    return { ok: false, file: rel, content: "(file not found — run zemory init/sync to create it)" };
+    return notFound;
   }
+}
+
+/** List a project's own harness docs (docs/agent/*.md · docs/plan/*.md) + whether
+ *  a root AGENTS.md exists — feeds the per-project Harness tab's file tree. */
+function listHarnessFiles(projectRoot: string): { hasAgents: boolean; agent: string[]; plan: string[] } {
+  const root = resolve(projectRoot);
+  const md = (dir: string): string[] => {
+    try {
+      return readdirSync(dir)
+        .filter((f) => f.endsWith(".md"))
+        .sort();
+    } catch {
+      return [];
+    }
+  };
+  return {
+    hasAgents: existsSync(resolve(root, "AGENTS.md")),
+    agent: md(resolve(root, "docs", "agent")),
+    plan: md(resolve(root, "docs", "plan")),
+  };
 }
 
 /** Read a file from the SHARED STANDARD (docs_template/<profile>/) — path-guarded.
@@ -306,7 +407,7 @@ const CANON_ROOT =
 
 function captureCoverage(limit = 10): {
   stores: { source: string; root: string; foundAt: string | null }[];
-  projects: { host: string; path: string; sessions: number; messages: number; agents: number; last: string | null }[];
+  projects: { host: string; path: string; sessions: number; messages: number; agents: number; last: string | null; profile: "app" | "non-app" | null }[];
   totals: { stores: number; projectFolders: number };
   /** THIS machine's hostname — lets the UI mark the local group and split
    *  linked (registry) projects from merely-scanned ones (user 2026-07-21). */
@@ -324,9 +425,11 @@ function captureCoverage(limit = 10): {
       .all(limit) as ReturnType<typeof captureCoverage>["stores"];
     // One layer up: group by MACHINE (host) as well as canonical project, so the
     // Projects tab shows each machine and the repos worked on it (user 2026-07-21).
-    const projects = db
-      .prepare(
-        `SELECT COALESCE(host, '(unknown)') AS host,
+    const localHost = hostname();
+    const projects = (
+      db
+        .prepare(
+          `SELECT COALESCE(host, '(unknown)') AS host,
                 ${CANON_ROOT} AS path,
                 COUNT(*) AS sessions,
                 COALESCE(SUM(message_count), 0) AS messages,
@@ -337,8 +440,15 @@ function captureCoverage(limit = 10): {
           GROUP BY host, ${CANON_ROOT}
           ORDER BY host ASC, last DESC
           LIMIT 400`,
-      )
-      .all() as ReturnType<typeof captureCoverage>["projects"];
+        )
+        .all() as Omit<ReturnType<typeof captureCoverage>["projects"][number], "profile">[]
+    ).map((p) => ({
+      // Real profile only when the repo is on THIS machine and actually has a
+      // harness to read — otherwise null (cross-machine / not-set-up projects
+      // are genuinely unknowable; the UI hides the badge instead of guessing).
+      ...p,
+      profile: p.host === localHost && existsSync(join(p.path, CONFIG_FILE)) ? projectProfile(p.path) : null,
+    }));
     const totals = db
       .prepare(
         `SELECT
@@ -348,7 +458,7 @@ function captureCoverage(limit = 10): {
              WHERE project_root IS NOT NULL AND project_root <> '') AS projectFolders`,
       )
       .get() as ReturnType<typeof captureCoverage>["totals"];
-    return { stores, projects, totals, localHost: hostname() };
+    return { stores, projects, totals, localHost };
   } finally {
     db.close();
   }
@@ -434,11 +544,17 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
   try {
     const messages = Number(summary.totals.messages || 0);
+    let dimsLabel = "";
+    try {
+      dimsLabel = vectorIndexInfo().dims + "d"; // REAL index dim (256d after plan-12 rebuild), not a hardcode
+    } catch {
+      /* vec module not loadable → leave blank */
+    }
     vectors = {
       count: heavy.count,
       remaining: heavy.remaining,
       coverage: messages ? Number(((heavy.count / messages) * 100).toFixed(1)) : null,
-      dims: "768d",
+      dims: dimsLabel,
     };
   } catch (error) {
     vectors = {
@@ -735,7 +851,7 @@ export async function startUi(): Promise<void> {
     const target = rootP ?? root();
     // Identity probe: lets a second `zemory ui` tell "our UI already owns
     // this port" from "some other app grabbed 4444" — cheap, no work done.
-    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid });
+    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname() });
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
@@ -818,6 +934,9 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/doc") {
       return json(res, readDoc(target, u.searchParams.get("file") ?? ""));
+    }
+    if (p === "/harness-files") {
+      return json(res, listHarnessFiles(target));
     }
     if (p === "/standard-doc") {
       // Default to the APP standard; the future profile toggle passes ?profile=non-app.
@@ -925,14 +1044,13 @@ export async function startUi(): Promise<void> {
       const to = u.searchParams.get("to") ?? "";
       if (!from || !to) return json(res, { ok: false, error: "from/to required" });
       const db = openMemory();
-      let moved = 0;
       try {
-        moved = db.prepare("UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE lower(project_root) = lower(?)").run(to, from).changes ?? 0;
+        const moved = db.prepare("UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE lower(project_root) = lower(?)").run(to, from).changes ?? 0;
+        invalidateDashboard();
+        return json(res, { ok: true, moved });
       } finally {
         db.close();
       }
-      invalidateDashboard();
-      return json(res, { ok: true, moved });
     }
     if (req.method === "POST" && p === "/pin-project") {
       // Pin keeps a project on the tab bar; unpinned ones fall back to recency.
@@ -1045,6 +1163,13 @@ export async function startUi(): Promise<void> {
     if (p === "/recent-sessions") {
       // Home "Recent Sessions": the last session of each project, newest first.
       return json(res, queryRecentSessions(Math.min(20, Number(u.searchParams.get("limit") || 8))));
+    }
+    if (p === "/sessions") {
+      // Session Viewer: full session list (not deduped), newest first.
+      return json(res, querySessions(Math.min(300, Number(u.searchParams.get("limit") || 80)), Number(u.searchParams.get("offset") || 0)));
+    }
+    if (p === "/insights") {
+      return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));
     }
     if (req.method === "POST" && p === "/relocate") {
       // Move the memory DB off the system drive to a plain local folder. Safe:

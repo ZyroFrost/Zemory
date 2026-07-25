@@ -2,12 +2,19 @@
 
 # zemory
 
-**Local context & memory governance for coding agents — one daemon, one SQLite memory, one docs harness.**
+**A project harness for building apps of any kind — plus a local, cross‑session memory for the agents that build them.**
 
-Zemory captures every coding‑agent session into a single local memory, gives each
-project a self‑healing docs harness, derives a code/docs graph on demand, and lets
-you recall anything across tools, projects, and machines — all offline, with **no
-model API calls**.
+Zemory gives every project a **standard docs + architecture harness** — a ~40‑slot
+structure standard that scaffolds *any* app (web, CLI, desktop, **and AI/LLM apps**,
+with first‑class `ai/` · `agents/` · `tools/` · `evals/` slots) — **and** a single
+local memory that captures every coding‑agent session so you can recall anything
+across tools, projects, and machines, offline.
+
+> **What agents most often misread:** zemory's *own* global‑memory engine never calls
+> an LLM — it only *scores/embeds* text with local models. That is a fact about
+> zemory's internals, **not** an anti‑LLM philosophy and **not** a constraint on the
+> apps you build with the harness. **Scaffolding LLM/AI apps is a first‑class use of
+> the harness.** Use the harness alone, the memory alone, or both.
 
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
@@ -51,19 +58,26 @@ ChatGPT) each keep their own memory in their own place. Across a week you lose
 track of *what you decided, why a fix worked, or where a session ran* — and every
 project's rules/TODO/changelog quietly drift out of sync with the code.
 
-Zemory fixes both halves:
+Zemory is **two independent tools** you can use separately or together:
 
-- **One Global Memory.** Every agent session on your machine is ingested into a
-  single local SQLite database you can search by keyword or meaning — across
-  every project and machine.
-- **One per‑project harness.** A small, standard set of docs (constitution,
-  rules, structure, skills, TODO, changelog, numbered plans) that the working
-  agent keeps aligned with the code.
+- **A per‑project harness (the default — no database needed).** A standard set of
+  docs (constitution, rules, **structure**, skills, TODO, changelog, numbered plans)
+  plus a **~40‑slot folder standard** that scaffolds *any* app and keeps the agent's
+  work aligned with the code. The structure standard covers every concern of a modern
+  app — API, store, jobs, auth, i18n, UI — **including the slots for building AI/LLM
+  apps**: `ai/` (model provider), `agents/` (agent loop / planning), `tools/`
+  (LLM tool‑calling), `evals/` (quality gates). The same harness scaffolds a CRUD
+  service or an LLM agent app.
+- **A Global Memory (optional).** Every agent session on your machine ingested into a
+  single local SQLite database you can search by keyword or meaning — across every
+  project and machine.
 
-It is **local‑only** and **never calls a model API** — the "intelligence" is the
-agent already driving your terminal; zemory gives it durable memory and a
-disciplined workspace. Embedding and reranking run as small local ONNX models
-that only *score* text; they never *generate* it.
+**About "never calls a model API".** This is a rule for zemory's *own* global‑memory
+engine: it *scores/embeds* text with small local ONNX models; it never *generates*
+text and never proxies a model API. It says **nothing** about the apps you build with
+the harness — those can be as LLM‑centric as you want. The "intelligence" is the agent
+already driving your terminal; zemory gives it durable memory and a disciplined,
+standard workspace.
 
 ---
 
@@ -71,11 +85,11 @@ that only *score* text; they never *generate* it.
 
 | | |
 |---|---|
+| 🏗️ **App harness & standard** | A ~40‑slot architecture standard + curated docs (constitution ↔ rules ↔ structure ↔ skills ↔ TODO ↔ changelog ↔ numbered plans) that scaffolds *any* app — from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). `.md` is the source (file wins); the DB is a derived index. |
 | 🧠 **Global Memory** | Every Claude / Codex / Continue / LM Studio session in one local SQLite DB, deduped, secret‑redacted, digested. |
 | 🔎 **Hybrid recall** | FTS5 keyword (word **+ trigram**, so substrings & non‑Latin work) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python/GPU) via RRF, with optional cross‑encoder rerank. Every stage **fails open** to FTS. |
 | 🌐 **Web‑chat capture** | Pull your **ChatGPT web** history into the memory via a login‑once browser window — no password ever touches zemory. |
 | 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent) — one column, not a second store. Filter, roll up, and **exclude** lanes. |
-| 🪪 **Project harness** | A shared standard (`docs_template/`) the agent adapts into each project: constitution ↔ rules ↔ structure ↔ TODO ↔ changelog ↔ numbered plans, kept in sync. `.md` is the source (file wins); the DB is a derived index. |
 | 🕸️ **Code & docs graph** | On‑demand import graph (TS/JS + Python), tree‑sitter symbols, `graph impact` (blast radius), `graph fitness`, `graph export --json`. A **derived** layer — declared vs inferred edges never mix. |
 | 🖥️ **Background daemon** | A single instance on fixed port **4444** that opens in a **native app window with its own taskbar icon** (falls back to an Edge app window), a system‑tray icon, optional start‑with‑OS, an idle scheduler (scan → embed → digest), and a write‑gate that serializes DB writes. |
 | 🔐 **Cross‑machine sync** | Merge machines through an **encrypted delta bundle** on a Drive folder — additive, never destructive, provenance preserved. |
@@ -196,7 +210,11 @@ semantic layer only *adds*.
 ### The harness (standard + per‑project)
 
 `docs_template/` is the **shared, generic standard** shipped with zemory — the
-canonical rules and the *method* for storing them. Installing the harness into a
+canonical rules and the *method* for storing them. Its `03_STRUCTURE` is a ~40‑slot
+dictionary covering every concern of a modern app — including the AI/LLM slots
+(`ai/` · `agents/` · `tools/` · `evals/`) — so the *same* harness scaffolds a plain
+service or an LLM‑centric app; nothing in the standard forbids LLMs in your app.
+Installing the harness into a
 project is not a blind copy: zemory scaffolds the **structure**, and the working
 agent reads the standard and **adapts it to the project** (gather & number plans,
 keep constitution ↔ rules ↔ structure ↔ TODO ↔ changelog ↔ plan in sync).
@@ -441,8 +459,10 @@ design bug even when the code runs. In brief:
    vector/rerank are internal engines of `search`, not new slots).
 5. **Tool is separate from project data.** Installed machine‑wide; reads a project's
    docs. Root needs only `AGENTS.md`; config lives in `docs/.harness.json`.
-6. **Never calls an LLM / no model proxy.** No `ANTHROPIC_BASE_URL`, no history
-   rewrite, no text generation. Local embed/rerank only *score*, never *generate*.
+6. **zemory's memory engine never calls an LLM / no model proxy.** No
+   `ANTHROPIC_BASE_URL`, no history rewrite, no text generation; local embed/rerank
+   only *score*, never *generate*. This binds zemory's *own* internals — it places
+   **no** constraint on apps built with the harness, which may be fully LLM‑driven.
 7. **Local‑only + privacy by default.** Data stays on the machine; the only thing
    that leaves is a user‑initiated **encrypted** bundle. Credentials are redacted at
    ingest; web passwords/2FA never enter zemory. No real data/PII in git.
@@ -506,5 +526,5 @@ You may obtain a copy of the License at
 ```
 
 <div align="center">
-<sub>Built for agents that should remember. Local‑first, no model API, one memory.</sub>
+<sub>A standard harness for building apps · a local memory so agents remember · offline‑first.</sub>
 </div>
