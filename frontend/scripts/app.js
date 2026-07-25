@@ -667,7 +667,7 @@
     var linked=new Set(((Z.status&&Z.status.knownProjects)||[]).map(function(k){return String(k.root||'').toLowerCase();}));
     var ps=(cap.projects||[]).filter(function(p){return p.host===cap.localHost&&linked.has(String(p.path).toLowerCase());}).slice(0,6);
     if(!ps.length){box.innerHTML='<div class="muted">'+t('home.noProjects')+'</div>';return;}
-    box.innerHTML=ps.map(function(p){var pbi=p.profile==='non-app';return '<div class="row" data-open-proj="'+stdEsc(p.path)+'" style="cursor:pointer"><div class="l"><div class="ico">'+(pbi?'◱':'Z')+'</div><div><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="meta">'+(pbi?'Non-app':'App')+' · '+zN(p.sessions)+' sessions · '+zN(p.messages)+' msg</div></div></div><span class="meta">'+(p.last?String(p.last).slice(0,10):'')+'</span></div>';}).join('');
+    box.innerHTML=ps.map(function(p){var pbi=p.profile==='non-app';return '<div class="row" data-open-proj="'+stdEsc(p.path)+'" style="cursor:pointer"><div class="l"><div class="ico">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div><div><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="meta">'+(pbi?'Non-app':'App')+' · '+zN(p.sessions)+' sessions · '+zN(p.messages)+' msg</div></div></div><span class="meta">'+(p.last?String(p.last).slice(0,10):'')+'</span></div>';}).join('');
   }
   function renderProjGrid(cap){
     var box=zid('projGrid');if(!box)return;
@@ -698,7 +698,7 @@
     box.innerHTML=ps.map(function(p){
       var km=pinMap[String(p.path).toLowerCase()]||{},pinned=!!km.pinned,root=km.root||p.path,pbi=p.profile==='non-app';
       return '<div class="proj-card'+(pinned?' pinned':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
-        +'<div class="ph"><div class="pi">'+(pbi?'◱':'Z')+'</div>'
+        +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
         +(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
         +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="Ghim">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="Gỡ">✕</button></div></div>'
@@ -1128,6 +1128,7 @@
     zGet('/ping').then(function(p){
       if(p&&p.version){var vs='v'+p.version;var tv=zid('topVersion');if(tv)tv.textContent=vs;var dv=zid('dlgVer');if(dv)dv.textContent=vs;}
       var rm=zid('railMachine');if(rm)rm.textContent=(p&&p.host?p.host:'local')+' · memory only';
+      var rav=zid('railAv');if(rav)rav.textContent=((((p&&p.host)||'?')+'').charAt(0)||'?').toUpperCase();
     }).catch(function(){});
     zGet('/status').then(renderStatus).catch(function(){}).then(function(){
       return zGet('/memory-status').then(function(m){renderMem(m);renderHomeChecks();}).catch(function(){});
