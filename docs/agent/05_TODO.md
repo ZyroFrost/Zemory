@@ -30,6 +30,20 @@
 ## ⭐ Ưu tiên kế tiếp
 > Compression đã **BỎ khỏi scope** (changelog 2026-06-25). zemory tập trung **global memory + harness**. Source nén ở `attic/`.
 
+### 🎨 UI refactor (plan 15) — 5 quyết định + Graph + tách file XONG 2026-07-25 (xem 06_CHANGES)
+**Đã xong (chi tiết 06_CHANGES 2 entry 2026-07-23):** app.html nav-rail 6 màn phục vụ ở `/` · i18n 2-dict (~200 key, cross-check khớp) · graph per-project THẬT (node=file, orphan/fitness dò được) + tree chung khối + zoom/pan/kéo/Ctrl+Z/layout/spacing · dialog `zDialog`/`zToast` thay HẾT prompt/confirm/alert + folder/file picker OS thật · Drive donut % · durable merge (schema v15 `project_pinned`) · filter/sort Projects · System per-feature check/toggle/build-digest/recheck · tooltip "?" mô tả số · **audit toàn diện + diệt 7 fake** (Recall bịa điểm · graph fitness/checks · dims 768→256 · version/host/health-chip thật). Commit gần nhất `9290f8b` (audit-fixes + tooltip CHƯA commit).
+
+**✅ 5 QUYẾT ĐỊNH — USER CHỐT + BUILD XONG 2026-07-25 (chi tiết 06_CHANGES):** ① Harness tab → **nối THẬT** 2-khung cây/viewer (`/harness-files`+`/doc`) · ② Badge → đọc `docs/.harness.json` `profile` thật (ẩn khi không rõ) · ③ build **4 màn** (Settings About · Global Memory dashboard · Session Viewer · Insights tất định) · ④ **tách `app.html`** → `frontend/styles/app.css`+`scripts/app.js` · ⑤ **dọn dead-code** hết. Kèm: Graph **collapse tree+panel · resize 3 bảng · đổi vị trí panel** (user giao) · **README viết lại diệt misread no-LLM**. Còn: test tự động cho màn mới (frontend no-build), tách sâu app.js theo concern khi cockpit.html nghỉ hưu. *(5 câu hỏi gốc giữ bên dưới làm lịch sử.)*
+
+**⏳ 5 QUYẾT ĐỊNH (gốc — đã giải):**
+1. **Tab "Harness" trong chi tiết project = mock TOÀN BỘ** (cây file cứng · 3 nút `validate/reindex/sync` chết · preview 03_STRUCTURE cứng · tag "mock detail"; là tab MẶC ĐỊNH khi bấm project). → **xoá tab** (Graph đã là view per-project thật) hay **nối `/doc` thật**?
+2. **Badge APP/NON-APP** trên card = đoán theo regex tên file (`/PBI|powerbi/`), CHƯA đọc `docs/.harness.json` thật. → nối backend đọc profile thật?
+3. **Thiếu so với plan 15 GỐC** (user chốt 6 màn thay 10, nên đây là rớt có chủ đích — hỏi cái nào muốn build): Insights analytics (Usage Trends/Top Agents/Memory Growth) · dashboard Global Memory (Memory Health donut/Top Sources/Vector panel) · Home blocks (Alerts list/Activity chart/Recall inline) · Settings đầy đủ (tab·accent-color·check-update·About version/build) · Session Info panel + Export/Open-editor · prune + phân trang project · Sync Depth slider · MCP status.
+4. **Nợ kỹ thuật:** `app.html` = 1 file ~1600 dòng (CSS+JS inline) vs chuẩn tách concern `03_STRUCTURE §UI` (`frontend/scripts/*`+`styles/*`). File split hiện đang phục vụ trang CŨ `cockpit.html` (`/cockpit`). → tách sau?
+5. **Dead code/CSS** (không hiện ra UI, cleanup): `SHELL`/`STD`/`stdRender` cũ (superseded bởi `stdRenderReal`) · CSS chết `.mockbadge/.search/.kbd/.bell/.swatch/.donut`-conic · `subtabs('data-mt'/'data-et')` no-op · nhánh `sysStatus kind==='mock'`. → dọn luôn?
+
+**Ngoài ra (không chặn, từ audit):** graph KHÔNG dò import GÃY (relative không resolve bị bỏ âm thầm) — thêm "báo import hỏng" nếu user muốn; nav-cost (`/nav-cost` backend thật) chưa port vào graph UI.
+
 - [x] ~~Harness: rà `01_CONSTITUTION` ghi RÕ luật riêng + AGENTS chỉ điều hướng~~ **HOÀN TẤT 2026-07-17** — AGENTS (repo+template) gọt về router THUẦN (0 luật/0 nội dung harness); `01_CONSTITUTION` giữ 12 điều luật riêng làm nguồn (fix §Mục đích: chỉ `docs_template/` là bản mẫu); audit toàn repo + dọn FILE WINS drift (plan/00·02, README, cli/ui/tools/comment) + gỡ nốt `docs sync` sót. Xem 05_CHANGES.
 
 **✅ RAG semantic core — đã code/test tới gate A-D + E (rerank, opt-in) + full backfill (2026-06-30) + F1 (asymmetric prompts/256d/chunking, 2026-07-14):**

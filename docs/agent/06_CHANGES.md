@@ -5,6 +5,56 @@
 
 ---
 
+## [2026-07-25] — feat(ui): plan-15 tiếp — Harness/badge THẬT · 3 màn mới (Global Memory·Sessions·Insights) · Settings About · Graph collapse/3-resize/đổi-vị-trí · tách app.html · README diệt misread no-LLM
+
+Phiên tự chủ (user "làm hết", chỉ dừng khi có fork nghiêm trọng). Mọi thứ verify **LIVE** (endpoint thật trên daemon 4444) + `node --check` JS nhúng + i18n parity 2 dict mỗi cụm. Kill+rebuild+reopen daemon 2 lần cho backend mới. **CHƯA có test tự động cho màn mới** (frontend no-build). Chưa push tới khi user duyệt (giờ user bảo push).
+
+### Diệt fake / nối thật
+- **Badge App/Non-app**: `projects.ts projectProfile()` đọc `docs/.harness.json` `config.profile` (fail-open "app"); `KnownProject.profile` + coverage `ui.ts` gắn `profile` (chỉ host này + CÓ harness → app/non-app, còn lại `null`). FE **ẩn badge khi `null`** thay vì đoán regex `/PBI|powerbi/` (4 chỗ). Detail đọc `data-prof` thật.
+- **Harness sub-tab (project-detail)**: gỡ mock (cây cứng + 3 nút chết + preview 03 cứng + tag "mock detail") → **2-khung thật** cây-trái/viewer-`.md`-phải + seam `--phdoc`. Backend `/harness-files` (docs/agent+plan+AGENTS thật) + `readDoc` mở rộng (AGENTS root + `plan/`, path-guard giữ trong docs). Nút validate → `/check?feature=validate`.
+- **Dead-code**: gỡ `SHELL`/`STD`/`stdRender` (mock cũ, `stdRenderReal` đã đè — grep xác nhận 0 caller) · `subtabs('data-mt'/'data-et')` no-op · nhánh `sysStatus kind==='mock'` · CSS `.mockbadge`.
+
+### 3 màn nav mới + Settings (data THẬT, 0 số bịa — điều 12)
+- **Global Memory** (dashboard, `◉`): donut Memory Health (vector coverage) + Top Sources (aggregate `scopeTree` theo source) + Vector Index (count/pending/coverage/dims) + Memory Statistics — toàn `Z.mem`/`/memory-status`.
+- **Session Viewer** (`🗂` · `/sessions` mới, list KHÔNG dedup): list + search + Session Info + thread (`/memory-session`) + **Export .md** (blob client-side).
+- **Insights** (`📈` · `/insights` mới): daily activity (SVG bars) · Top Agents (bar) · Memory growth (SVG line cumulative) · Health tiles — **tất định, 0 AI/forecast** (COUNT/SUM thẳng DB). Đo LIVE: 31 ngày · 5 agent · 15 tháng · 1199 sess/167k msg/1200 digest.
+- **Settings**: About đầy đủ (version·máy·DB path·engine·license — thật từ `/ping`+`storageInfo`; KHÔNG lặp automation đã có ở màn Bộ nhớ&Sync).
+
+### Graph nâng cấp (user giao chi tiết)
+- Collapse **cây folder** + collapse **bảng thông tin** (nút `◀`/`▶`, lưu localStorage) · **resize 3 bảng**: thêm `data-seam-side="after"` vào `initSeams` → seam phải chỉnh CỘT PHẢI (trước chỉ chỉnh cột-trước) · **đổi vị trí bảng thông tin** phải ⇄ **panel ngang trên cùng** (nút `⬒`, di chuyển element `#gPanel` + đổi flex-direction). `gApplyLayout()` repaint graph theo size mới.
+
+### Nợ kỹ thuật + README
+- **Tách `app.html`** (200KB monolith) → `frontend/styles/app.css` (23.5KB) + `frontend/scripts/app.js` (132KB), giữ **global scope** (`<link>`/`<script src>`, daemon phục vụ sẵn `/styles`/`/scripts`, hot 0-build). app.html còn **37KB** (chỉ HTML+2 ref). Verify LIVE: `/styles/app.css` 200 · `/scripts/app.js` 200. *(Tách 2-file; tách sâu theo concern để sau khi `cockpit.html` nghỉ hưu → dùng tên NN-* sạch.)*
+- **README viết lại — trị "lỗi thiết kế" khiến agent hiểu sai bản chất** (user: nhiều agent đọc README tưởng zemory chống-LLM). Xoay trục **memory-first → harness-first**: zemory TRƯỚC HẾT là **harness chuẩn dựng app MỌI loại** (kể cả LLM — slot `ai`/`agents`/`tools`/`evals`) + Global Memory. Khoanh vùng **"never calls a model API" = CHỈ engine memory của zemory**, KHÔNG phải triết lý chống-LLM, KHÔNG ràng buộc app dựng bằng harness. Thêm callout *"What agents most often misread"* đầu README · Highlights harness lên dòng đầu · §6/footer/Why/core-concept đều khoanh vùng lại. **KHÔNG đụng `01_CONSTITUTION`** (luật user chốt; nếu muốn thêm câu khoanh-vùng vào điều 6 → chờ user chốt).
+
+### Còn treo
+- Test tự động cho 3 màn mới + graph layout (frontend no-build — chưa có harness test cho page sinh).
+- Graph vẫn KHÔNG dò import GÃY (relative không resolve bị bỏ âm thầm); nav-cost chưa port vào graph UI mới.
+- ĐỀ XUẤT (chờ user): thêm 1 câu vào `01_CONSTITUTION §Mục đích`/điều 6 khoanh vùng "no-LLM chỉ áp engine memory" để hiến pháp cũng không gây misread.
+
+## [2026-07-23] — audit(ui): audit toàn diện FE↔BE + diệt 7 fake + tooltip "?" mô tả số + graph checks THẬT
+
+Tiếp phiên UI refactor (sau commit `9290f8b`). User yêu cầu **audit toàn diện, dò kỹ không sót**. Chạy **3 subagent song song** (mock/dead-control · FE↔BE wiring · UI-vs-plan15) + tự verify LIVE graph. **CHƯA commit** (chờ user chốt 5 quyết định mở — xem `05_TODO`).
+
+### Tooltip "?" mô tả từng số (user 2026-07-23)
+- Mỗi stat card có dấu **?** nhỏ; rê/bấm → popup nhỏ mô tả "số này là gì + lấy từ bảng DB nào". 16 badge (Home 6 + Memory 10). Tooltip render bằng JS gắn `<body>` (position:fixed, tự canh) nên **không bị card cắt**; mô tả i18n đủ 2 dict (thêm 12 key + xử lý `data-i18n-hint` trong `applyI18n`).
+
+### Kết quả audit (verify từng mục với code thật, KHÔNG tin subagent chưa kiểm)
+- **FE↔BE wiring: LÀNH** — 0 endpoint gãy/404; cả 37 endpoint FE gọi đều có handler + trả data THẬT (đọc DB/FS/hàm thật). Không stub giả.
+- **Graph: HOẠT ĐỘNG + dò được** — orphan (không-liên-kết) **23 file thật** (test/*.mjs·clean.mjs·window.ts·eslint.config), fitness (hub/isolated/util, ngưỡng pass/fail) thật. **Import GÃY: KHÔNG dò** (graph.ts thấy import relative không resolve thì âm thầm bỏ, không báo). nav-cost (`/nav-cost` thật) chưa port vào UI graph mới.
+
+### Diệt 7 fake (đã sửa + verify live)
+- **Recall bịa điểm số** (`0.89·0.85·0.81…` khi backend không trả score) → gỡ hẳn; không có score thật thì không hiện badge.
+- **Graph Inspector "Code fitness: —"** → đọc nhầm field `.score` (graph trả `.metrics`) → hiện **metrics thật** (chip pass/fail hub/isolated/util).
+- **Card "Checks (từ graph)"** số cứng `5/8/OK/OK` → **render THẬT** (`gRenderChecks`): orphan count + 3 metric fitness + ngưỡng; bỏ "broken documents"/"files never modified" (không dẫn xuất được từ code-graph).
+- **`/memory-status` `dims:"768d"`** sai → **256d thật** (`vectorIndexInfo()` đọc `vec_config.dims`) — verify `256d · coverage 97.4%`.
+- **version `v1.0.0`** cứng → **thật `0.0.1`** (`/ping` thêm `version`+`host` đọc từ package.json; `zboot` fetch set `topVersion`/`dlgVer`/`railMachine`).
+- **`railMachine` "local · memory only"** → **host thật** (`SS01-IT-10`).
+- **Chip rail "Healthy"** luôn-xanh → **roll-up thật** (`checkSummary` set `railHealth`/`railDot` theo ok/warn, chấm đổi màu).
+
+### Còn lại — 5 QUYẾT ĐỊNH MỞ (user trả lời phiên sau) → chi tiết `05_TODO`
+Tab Harness trong project-detail = mock toàn bộ · badge APP/NON-APP đoán theo tên file · thiếu các màn plan15 gốc (Insights/Global-Memory-dashboard/Home-blocks/Settings-đầy-đủ/Session-Info/prune-phân-trang/Sync-Depth/MCP) · nợ kỹ thuật app.html 1 file 1600 dòng · dead code/CSS cần dọn.
+
 ## [2026-07-23] — feat(ui): APP MỚI nav-rail (plan 15) — 6 màn · i18n 2-dict · graph per-project THẬT · dialog thay prompt · Drive donut · durable merge
 
 Phiên UI refactor rất dài (Opus+Sonnet). Evolve `cockpit.html` → **`frontend/pages/app.html`** (nav-rail vàng-trên-đen, phục vụ ở `/`, `no-store`). Backend gắn THẬT hầu hết. **CHƯA push** (commit local, chờ user duyệt mắt). Mỗi lần deploy: `node --check` JS nhúng + cross-check i18n (189 key khớp đủ 2 dict) + auto kill+reopen daemon (port 4444) để cửa sổ native nạp lại.
