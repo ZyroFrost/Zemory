@@ -96,3 +96,55 @@ test("custom-title vẫn thắng ai-title (không vỡ khi thêm nhánh attachme
   const a = claudeAdapter.parseLine(line({ type: "ai-title", aiTitle: "Tên máy đặt" }));
   assert.equal(a.custom, undefined);
 });
+
+// ── Ảnh: tách khỏi content, vào bảng attachment ────────────────────────────────
+// Đo 2026-07-28: transcript chứa 1.245 block ảnh (93 MB) mà `flatten()` KHÔNG có nhánh
+// `image` ⇒ toàn bộ bị bỏ IM LẶNG ở khâu nạp. Ba bất biến khoá lại ở đây.
+const PNG_1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+function imgLine(uuid, extra = []) {
+  return JSON.stringify({
+    type: "user",
+    uuid,
+    timestamp: "2026-07-28T00:00:00Z",
+    message: { role: "user", content: [{ type: "text", text: "xem ảnh này" }, { type: "image", source: { type: "base64", media_type: "image/png", data: PNG_1x1 } }, ...extra] },
+  });
+}
+
+test("block ảnh KHÔNG vào content — chỉ để lại một dòng nhãn", () => {
+  const line = JSON.parse(imgLine("m1"));
+  const parsed = claudeAdapter.parseLine(JSON.stringify(line));
+  assert.equal(parsed.kind, "message");
+  const c = parsed.msg.content;
+  assert.ok(c.includes("xem ảnh này"), "văn xuôi phải giữ nguyên");
+  assert.ok(/\[image:image\/png \d+KB [0-9a-f]{12}\]/.test(c), "phải có nhãn một dòng: " + c);
+  assert.ok(!c.includes(PNG_1x1.slice(0, 40)), "base64 KHÔNG được vào content — nó nuôi FTS5 (bài học v16/v17)");
+});
+
+test("ảnh ra `attachments` với sha256 + kind=blob", () => {
+  const parsed = claudeAdapter.parseLine(imgLine("m2"));
+  const atts = parsed.msg.attachments;
+  assert.equal(atts?.length, 1);
+  assert.equal(atts[0].kind, "blob");
+  assert.equal(atts[0].mime, "image/png");
+  assert.ok(atts[0].bytes > 0);
+  assert.match(atts[0].sha256, /^[0-9a-f]{64}$/);
+  assert.ok(Buffer.isBuffer(atts[0].blob));
+});
+
+test("cùng một ảnh ⇒ cùng sha256 (nền tảng của dedup)", () => {
+  const a = claudeAdapter.parseLine(imgLine("m3")).msg.attachments[0];
+  const b = claudeAdapter.parseLine(imgLine("m4")).msg.attachments[0];
+  assert.equal(a.sha256, b.sha256, "dedup dựa vào đây: một ảnh lặp 20 lần = 1 hàng nội dung");
+});
+
+test("block ảnh hỏng/lạ ⇒ bỏ qua, KHÔNG làm mất cả message", () => {
+  const bad = JSON.stringify({
+    type: "user", uuid: "m5", timestamp: "2026-07-28T00:00:00Z",
+    message: { role: "user", content: [{ type: "text", text: "vẫn còn chữ" }, { type: "image", source: { type: "url", url: "http://x/y.png" } }] },
+  });
+  const p = claudeAdapter.parseLine(bad);
+  assert.equal(p.kind, "message");
+  assert.ok(p.msg.content.includes("vẫn còn chữ"));
+  assert.ok(!p.msg.attachments?.length, "source không phải base64 ⇒ không tạo attachment");
+});

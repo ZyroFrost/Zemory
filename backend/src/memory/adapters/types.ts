@@ -8,6 +8,25 @@ export interface ParsedMessage {
   content: string; // flattened, searchable text
   toolName: string | null;
   timestamp: string | null;
+  /** File/ảnh đính kèm của message này. Đi RIÊNG khỏi `content` có chủ ý: `content`
+   *  nuôi FTS5, nhét base64 vào đó là thổi index mà không tìm được gì (v16/v17: trigram
+   *  nuốt tool-dump làm DB phình 435 MB). `content` chỉ giữ MỘT DÒNG NHÃN để người và
+   *  search vẫn thấy "ở đây từng có ảnh". */
+  attachments?: ParsedAttachment[];
+}
+
+/** Một file/ảnh đính kèm, đã tách khỏi text. */
+export interface ParsedAttachment {
+  name?: string;
+  mime?: string;
+  bytes: number;
+  /** sha256 của NỘI DUNG — khoá dedup: một file lặp 20 lần = 1 hàng. */
+  sha256: string;
+  /** 'text' = ở `content` · 'blob' = ở `blob` · 'ref' = chỉ ghi nhận, không lưu nội dung. */
+  kind: "text" | "blob" | "ref";
+  content?: string;
+  blob?: Buffer;
+  srcPath?: string;
 }
 
 /** One line of an append-mode (jsonl) transcript, normalized. */
