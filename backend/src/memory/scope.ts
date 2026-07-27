@@ -6,6 +6,7 @@
 // sync (share.ts export + merge). Data stays in the local DB either way.
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
+import { allAdapters } from "./adapters/index.js";
 import { getScopeExclude, type ScopeLane } from "../config/settings.js";
 
 export type { ScopeLane };
@@ -90,6 +91,10 @@ export interface ScopeNode {
   messages: number;
   excluded: boolean; // this exact lane is in the exclude list
   effectiveExcluded: boolean; // excluded by this lane OR an ancestor lane
+  /** true = zemory HỖ TRỢ nguồn này nhưng CHƯA có dữ liệu. Hiện ra để user biết nó tồn
+   *  tại và biết đường nạp; ẩn đi thì thành vòng luẩn quẩn "muốn có dữ liệu phải tick,
+   *  muốn tick phải có dữ liệu" (user 2026-07-27). */
+  empty?: boolean;
   children?: ScopeNode[];
 }
 
@@ -123,6 +128,18 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
       .all() as LaneRow[];
   } finally {
     db.close();
+  }
+
+  // BỘ CHUẨN: mọi nguồn zemory hỗ trợ, kể cả nguồn CHƯA có dữ liệu. Trước đây cây chỉ
+  // dựng từ `GROUP BY sessions` nên một adapter mới (vd claude-web) vô hình cho tới khi
+  // capture được lần đầu — mà muốn capture thì user phải biết nó tồn tại đã. Vòng luẩn
+  // quẩn. Nay lane rỗng vẫn hiện, gắn cờ `empty` để UI nói rõ "chưa có dữ liệu".
+  const seen = new Set(rows.map((r) => `${r.origin}|${r.source}`));
+  for (const a of allAdapters()) {
+    const origin = a.origin ?? "local";
+    if (seen.has(`${origin}|${a.source}`)) continue;
+    // host rỗng: nguồn chưa có dữ liệu thì chưa gắn với máy nào cả.
+    rows.push({ origin, host: "", source: a.source, sessions: 0, messages: 0 } as LaneRow);
   }
 
   const mark = (lane: ScopeLane): { excluded: boolean; effectiveExcluded: boolean } => ({
@@ -169,6 +186,7 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
                 lane,
                 sessions: r.sessions,
                 messages: r.messages,
+                empty: r.sessions === 0, // nguồn được hỗ trợ nhưng chưa nạp gì
                 ...mark(lane),
               };
             }),
@@ -194,6 +212,7 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
           lane,
           sessions: acc.sessions,
           messages: acc.messages,
+          empty: acc.sessions === 0, // nguồn được hỗ trợ nhưng chưa nạp gì
           ...mark(lane),
         });
       }
