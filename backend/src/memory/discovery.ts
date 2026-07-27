@@ -42,6 +42,10 @@ export interface DiscoverOptions {
   knownStores?: StoreRef[];
   /** Extra roots to walk in deep mode (e.g. other drives). */
   roots?: string[];
+  /** Kho import của web-capture (thường `<thư mục DB>/imports`). Truyền VÀO chứ không
+   *  đọc toàn cục: test dùng DB tạm, đọc `currentMemoryDir()` sẽ quét nhầm kho THẬT và
+   *  nuốt dữ liệu ngoài vào kết quả (3 test drive-sync đỏ đúng vì lỗi này). */
+  importsRoot?: string;
   maxDepth?: number;
 }
 
@@ -113,6 +117,24 @@ function fastDiscover(adapters: Adapter[], opts: DiscoverOptions): DiscoveryResu
       enumStore(bySource, { source: a.source, root: storeRoot }, seen, files);
       recordStore({ source: a.source, root: storeRoot });
     }
+  }
+  // Kho IMPORT của web-capture nằm CẠNH DB, không nằm ở home: `scan-web` ghi vào
+  // `currentMemoryDir()/imports/<platform>`. Signature của adapter lại viết theo
+  // `.zemory/imports/<platform>` — đúng khi DB còn ở ~/.zemory, SAI ngay khi user chạy
+  // `memory relocate` để dời DB khỏi ổ C:.
+  // Hệ quả đo được 2026-07-28: capture claude.ai báo "ingested 2" nhưng DB có 0 phiên,
+  // và ChatGPT cũng vậy — mọi lần capture sau khi relocate đều rơi vào chỗ không ai
+  // nhìn. Hỏng LẶNG LẼ: lệnh báo thành công, dữ liệu không bao giờ tới.
+  const importsRoot = opts.importsRoot;
+  for (const a of adapters) {
+    if (!importsRoot) break;
+    if (a.origin !== "web") continue; // chỉ adapter web mới đọc từ kho import
+    const platform = a.signature.split(sep).pop() ?? "";
+    if (!platform) continue;
+    const storeRoot = join(importsRoot, platform);
+    if (!isDir(storeRoot)) continue;
+    enumStore(bySource, { source: a.source, root: storeRoot }, seen, files);
+    recordStore({ source: a.source, root: storeRoot });
   }
   // Plus everything a deep scan found before.
   for (const ks of opts.knownStores ?? []) {

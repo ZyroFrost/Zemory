@@ -24,7 +24,8 @@ interface Platform {
   source: string;
   /** JS (run in-page) returning {token, email}. */
   authExpr: string;
-  /** JS (run in-page) returning [{id}] for ALL conversations (paged). */
+  /** JS (run in-page) trả MẢNG CHUỖI id cho MỌI hội thoại (đã phân trang).
+   *  (Comment cũ ghi "[{id}]" là SAI — đã làm provider claude fail 2/2 vì tin theo nó.) */
   listExpr: string;
   /** JS (run in-page) returning {gizmoId: projectName} so pulled conversations
    *  can be labelled with their Project ("folder"), and to drive per-project
@@ -134,18 +135,20 @@ const CLAUDE_LIST = `(async()=>{
       if(items.length < 100) break;
       await new Promise(res=>setTimeout(res,200));
     }
-    return ids.map(id=>({id}));
+    // Trả MẢNG CHUỖI, không phải mảng object — hợp đồng THẬT là mảng chuỗi (xem
+    // CHATGPT_LIST: ids.push(c.id)), dù comment của interface Platform ghi ngược lại.
+    // Bản đầu tôi tin comment nên URL thành .../[object Object] và HTTP 400, fail 2/2.
+    return ids;
   }catch(e){ return []; }
 })()`;
 
-const claudeConv = (id: string): string => `(async()=>{
-  const o = await (await fetch('/api/organizations')).json();
-  const org = Array.isArray(o) && o[0] && o[0].uuid;
-  if(!org) throw new Error('no org');
-  const r = await fetch('/api/organizations/'+org+'/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true');
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  return r.json();
-})()`;
+const claudeConv = (id: string): string =>
+  // MỘT DÒNG, như bản chatgpt. Bản đầu tôi viết nhiều dòng và pull fail 2/2 — cùng URL,
+  // dò riêng qua CDP thì cả 4 biến thể đều trả 200. Khác biệt duy nhất là xuống dòng.
+  `(async()=>{const o=await (await fetch('/api/organizations')).json();` +
+  `const org=Array.isArray(o)&&o[0]&&o[0].uuid; if(!org) throw new Error('no org');` +
+  `const r=await fetch('/api/organizations/'+org+'/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true');` +
+  `if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})()`;
 
 const PLATFORMS: Record<string, Platform> = {
   chatgpt: {
@@ -367,7 +370,8 @@ async function fetchConv(cdp: Cdp, p: Platform, id: string): Promise<any | null>
     if (cdp.dead) return null;
     try {
       return await cdp.evaluate(p.convExpr(id));
-    } catch {
+    } catch (e) {
+      if (process.env.ZEMORY_WEB_DEBUG === "1") console.error(`    [debug] ${id}: ${e instanceof Error ? e.message : String(e)}`);
       if (cdp.dead) return null;
       await sleep(1500 * (attempt + 1)); // 1.5s, 3s, 4.5s, 6s
     }
