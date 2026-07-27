@@ -24,3 +24,7 @@ data/
 # web-capture (now in attic/): NEVER commit pulled chat data (PII) or dumps — code only
 attic/web-capture/*.json
 attic/web-capture/*.txt
+
+# Bản lùi do writeFileAtomic({backup:true}) tạo khi ghi đè file NGUỒN (vd `zemory archive`
+# cắt ngắn 06_CHANGES.md). Là lưới an toàn CỤC BỘ — không commit; lịch sử đã có git lo.
+*.md.bak
