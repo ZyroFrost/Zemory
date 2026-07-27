@@ -1,9 +1,10 @@
 // Claude Code adapter. Transcripts: ~/.claude/projects/<proj>/<id>.jsonl
 // (append-mode jsonl). Each line is one record; user/assistant carry messages.
 
+import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
 import { isDir, safeReaddir, toTranscript } from "./_shared.js";
-import type { Adapter, ParsedLine, TranscriptFile } from "./types.js";
+import type { Adapter, ParsedAttachment, ParsedLine, TranscriptFile } from "./types.js";
 
 export const claudeAdapter: Adapter = {
   source: "claude-code",
@@ -74,16 +75,17 @@ export const claudeAdapter: Adapter = {
     }
     if (o.type === "user" || o.type === "assistant") {
       const m = o.message ?? {};
-      const content = flatten(m.content);
-      if (!content) return o.cwd ? { kind: "meta", cwd: o.cwd } : { kind: "skip" };
+      const { text, attachments } = flatten(m.content);
+      if (!text) return o.cwd ? { kind: "meta", cwd: o.cwd } : { kind: "skip" };
       return {
         kind: "message",
         msg: {
           uuid: o.uuid ?? null,
           role: m.role ?? o.type,
-          content,
+          content: text,
           toolName: firstTool(m.content),
           timestamp: o.timestamp ?? null,
+          ...(attachments.length ? { attachments } : {}),
         },
       };
     }
@@ -92,11 +94,41 @@ export const claudeAdapter: Adapter = {
   },
 };
 
-function flatten(content: unknown): string {
-  if (content == null) return "";
-  if (typeof content === "string") return content.trim();
-  if (!Array.isArray(content)) return "";
+// Ngưỡng lưu nhị phân. Đo trên corpus thật 2026-07-28: 1.245 ảnh, p90 182 KB,
+// max 1,28 MB, tổng 93 MB — nên 8 MB là trần rộng rãi, gần như không ai chạm. Vượt
+// ngưỡng thì hạ xuống 'ref' (ghi nhận từng có, không lưu nội dung) chứ KHÔNG bỏ im lặng.
+const MAX_BLOB_BYTES = 8 * 1024 * 1024;
+
+/** Ảnh trong transcript Claude Code: {type:'image', source:{type:'base64', media_type, data}}. */
+function imageAttachment(block: any): ParsedAttachment | null {
+  const src = block?.source;
+  if (!src || src.type !== "base64" || typeof src.data !== "string" || !src.data) return null;
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(src.data, "base64");
+  } catch {
+    return null;
+  }
+  if (!buf.length) return null;
+  const sha256 = createHash("sha256").update(buf).digest("hex");
+  const mime = typeof src.media_type === "string" ? src.media_type : "application/octet-stream";
+  if (buf.length > MAX_BLOB_BYTES) {
+    return { mime, bytes: buf.length, sha256, kind: "ref" };
+  }
+  return { mime, bytes: buf.length, sha256, kind: "blob", blob: buf };
+}
+
+/** Nhãn một dòng để lại trong `content` — người đọc và FTS vẫn thấy có ảnh ở đây. */
+function imageLabel(a: ParsedAttachment): string {
+  return `[image:${a.mime ?? "?"} ${(a.bytes / 1024).toFixed(0)}KB ${a.sha256.slice(0, 12)}]`;
+}
+
+function flatten(content: unknown): { text: string; attachments: ParsedAttachment[] } {
+  if (content == null) return { text: "", attachments: [] };
+  if (typeof content === "string") return { text: content.trim(), attachments: [] };
+  if (!Array.isArray(content)) return { text: "", attachments: [] };
   const parts: string[] = [];
+  const attachments: ParsedAttachment[] = [];
   for (const b of content) {
     if (!b || typeof b !== "object") continue;
     const block = b as any;
@@ -110,10 +142,22 @@ function flatten(content: unknown): string {
       case "tool_result":
         parts.push(`[tool_result] ${resultText(block.content)}`);
         break;
+      case "image": {
+        // Đo 2026-07-28: 1.245 block ảnh / 93 MB nằm trong transcript, và nhánh này
+        // TRƯỚC ĐÂY KHÔNG TỒN TẠI ⇒ toàn bộ bị bỏ im lặng ở khâu nạp. Nay tách sang
+        // `attachments`, chỉ để lại MỘT DÒNG NHÃN trong text: base64 mà vào `content`
+        // là thổi FTS5 lên mà không tìm được gì (bài học v16/v17).
+        const a = imageAttachment(block);
+        if (a) {
+          attachments.push(a);
+          parts.push(imageLabel(a));
+        }
+        break;
+      }
       // 'thinking' intentionally skipped: large, internal, noisy.
     }
   }
-  return parts.join("\n").trim();
+  return { text: parts.join("\n").trim(), attachments };
 }
 
 function firstTool(content: unknown): string | null {
