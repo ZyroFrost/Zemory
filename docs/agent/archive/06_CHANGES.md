@@ -1,6 +1,182 @@
 <!-- Changelog ARCHIVE — entry cũ cắt khỏi 06_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # Change Log — Archive
 
+## [2026-07-23] — audit(ui): audit toàn diện FE↔BE + diệt 7 fake + tooltip "?" mô tả số + graph checks THẬT
+
+Tiếp phiên UI refactor (sau commit `9290f8b`). User yêu cầu **audit toàn diện, dò kỹ không sót**. Chạy **3 subagent song song** (mock/dead-control · FE↔BE wiring · UI-vs-plan15) + tự verify LIVE graph. **CHƯA commit** (chờ user chốt 5 quyết định mở — xem `05_TODO`).
+
+### Tooltip "?" mô tả từng số (user 2026-07-23)
+- Mỗi stat card có dấu **?** nhỏ; rê/bấm → popup nhỏ mô tả "số này là gì + lấy từ bảng DB nào". 16 badge (Home 6 + Memory 10). Tooltip render bằng JS gắn `<body>` (position:fixed, tự canh) nên **không bị card cắt**; mô tả i18n đủ 2 dict (thêm 12 key + xử lý `data-i18n-hint` trong `applyI18n`).
+
+### Kết quả audit (verify từng mục với code thật, KHÔNG tin subagent chưa kiểm)
+- **FE↔BE wiring: LÀNH** — 0 endpoint gãy/404; cả 37 endpoint FE gọi đều có handler + trả data THẬT (đọc DB/FS/hàm thật). Không stub giả.
+- **Graph: HOẠT ĐỘNG + dò được** — orphan (không-liên-kết) **23 file thật** (test/*.mjs·clean.mjs·window.ts·eslint.config), fitness (hub/isolated/util, ngưỡng pass/fail) thật. **Import GÃY: KHÔNG dò** (graph.ts thấy import relative không resolve thì âm thầm bỏ, không báo). nav-cost (`/nav-cost` thật) chưa port vào UI graph mới.
+
+### Diệt 7 fake (đã sửa + verify live)
+- **Recall bịa điểm số** (`0.89·0.85·0.81…` khi backend không trả score) → gỡ hẳn; không có score thật thì không hiện badge.
+- **Graph Inspector "Code fitness: —"** → đọc nhầm field `.score` (graph trả `.metrics`) → hiện **metrics thật** (chip pass/fail hub/isolated/util).
+- **Card "Checks (từ graph)"** số cứng `5/8/OK/OK` → **render THẬT** (`gRenderChecks`): orphan count + 3 metric fitness + ngưỡng; bỏ "broken documents"/"files never modified" (không dẫn xuất được từ code-graph).
+- **`/memory-status` `dims:"768d"`** sai → **256d thật** (`vectorIndexInfo()` đọc `vec_config.dims`) — verify `256d · coverage 97.4%`.
+- **version `v1.0.0`** cứng → **thật `0.0.1`** (`/ping` thêm `version`+`host` đọc từ package.json; `zboot` fetch set `topVersion`/`dlgVer`/`railMachine`).
+- **`railMachine` "local · memory only"** → **host thật** (`SS01-IT-10`).
+- **Chip rail "Healthy"** luôn-xanh → **roll-up thật** (`checkSummary` set `railHealth`/`railDot` theo ok/warn, chấm đổi màu).
+
+### Còn lại — 5 QUYẾT ĐỊNH MỞ (user trả lời phiên sau) → chi tiết `05_TODO`
+Tab Harness trong project-detail = mock toàn bộ · badge APP/NON-APP đoán theo tên file · thiếu các màn plan15 gốc (Insights/Global-Memory-dashboard/Home-blocks/Settings-đầy-đủ/Session-Info/prune-phân-trang/Sync-Depth/MCP) · nợ kỹ thuật app.html 1 file 1600 dòng · dead code/CSS cần dọn.
+
+## [2026-07-23] — feat(ui): APP MỚI nav-rail (plan 15) — 6 màn · i18n 2-dict · graph per-project THẬT · dialog thay prompt · Drive donut · durable merge
+
+Phiên UI refactor rất dài (Opus+Sonnet). Evolve `cockpit.html` → **`frontend/pages/app.html`** (nav-rail vàng-trên-đen, phục vụ ở `/`, `no-store`). Backend gắn THẬT hầu hết. **CHƯA push** (commit local, chờ user duyệt mắt). Mỗi lần deploy: `node --check` JS nhúng + cross-check i18n (189 key khớp đủ 2 dict) + auto kill+reopen daemon (port 4444) để cửa sổ native nạp lại.
+
+### App mới — 6 màn nav rail + Settings dialog
+- Nav rail: **Trang chủ · Recall · Dự án · Bộ nhớ & Sync · Harness · Hệ thống** + ⚙ Settings (dialog M, góc phải trên) + version kế bên. **Nút thu gọn rail** (icon-only 64px, nhớ localStorage).
+- Home: 6 stat card thật + Recent Projects/Sessions (session cuối mỗi project, giờ thật, tên session chuẩn) + System & Checks (roll-up thật) + quick-action nối màn.
+
+### Backend (ui.ts +303 dòng) — endpoint gắn thật
+- Phục vụ `app.html` ở `/` (đọc `readFileSync` mỗi request, no-build FE). Endpoint mới: `/recent-messages` `/recent-sessions` `/add-project` `/merge-project` `/memory-digest` `/memory-backup` `/memory-restore` `/memory-forget` `/memory-redact` `/pick-folder` `/pick-file` (+ `driveSyncProgress` vào `driveSummary`).
+- **Folder/File picker OS thật** (`/pick-folder` FolderBrowserDialog · `/pick-file` OpenFileDialog) qua PowerShell `-EncodedCommand` (base64 UTF-16LE) — verified: Restricted ExecutionPolicy chặn `-File` nhưng KHÔNG chặn `-EncodedCommand`; fail-open non-Windows.
+
+### i18n (điều 02_RULES §16: 2 dict vi/en, mặc định VI, giữ thuật ngữ)
+- app.html trước KHÔNG có i18n (nút VI/EN chết). Gắn engine `data-i18n`/`t()` + dict **189 key** cả 2 ngôn ngữ, nút VI/EN lật chữ ngay. Giữ EN: Recall·Harness·vector·digest·FTS5·session… Bắt được lỗi lẫn thật (vd `"Time: mọi lúc"` ghép Anh+Việt 1 chuỗi).
+
+### Graph per-project THẬT (nodes=file · label=tên file)
+- Bỏ chấm mock ngẫu nhiên → dựng từ `/code-graph` thật (verified Zemory 123 node). Cây folder structure NẰM CHUNG khối với graph (từ `/folder-tree`). Đủ đồ: kéo node · **Ctrl+Z/Y** · zoom/pan · bấm-đúp reset · 3 layout (force/cluster/layers) · **slider giãn cách** · tree↔node đồng bộ 2 chiều · **bấm nền huỷ chọn** (graph+tree cùng lúc).
+- **Fix parity thật:** `structure-tree.ts` trước chỉ liệt kê FOLDER, sót hết FILE → thêm file leaf dùng CHUNG `SRC_EXT` export từ `graph.ts` (tree ↔ graph khớp 123/123).
+
+### Projects
+- Card grid (fix bug CSS `.ptype app` đụng `.app{height:100vh}` → `is-app/is-non`). **Ghim** = card lên đầu + viền vàng (backend `pinProject` OK, chỉ thiếu hiệu ứng). **Kéo-thả đổi thứ tự** (localStorage). Discovered = **tab theo máy** + nút Gộp. **Filter/Search/Sort thật** (tên/loại/sắp — thủ công·mới·tên·phiên).
+- **Merge durable:** thêm cột `sessions.project_pinned` (schema v15) — `/merge-project` set cờ, upsert ingest CASE-when-pinned giữ nguyên (không revert khi scan lại); `cwd` gốc giữ → điều 3 OK.
+
+### Memory & Sync
+- Gộp 3 concern 1 màn. **Donut % đồng bộ Drive** (watermark máy này vs max message-id; vá full-mode chưa ghi watermark). Card thống kê cho mọi bảng DB (Sessions/Sections/Digest/Changelog/Docs/Known-stores). Drive picker + Backup/Restore/Forget/Redact THẬT (privacy.ts). Gỡ số trend giả (↑12.4%…).
+
+### System
+- Danh sách 14 capability, mỗi cái mô tả docs-style + Kiểm/Bật per-feature. **Build digest** (nút, `digestBackfill`). **Recheck all** refresh đủ (thêm `/status` — trước sót nên "Harness 0/6" không cập nhật) + feedback thị giác. Fix `session_digest` chưa vào `memoryInfo.tables`.
+- Adapter Claude: đọc `custom-title` (`/title` của user) WIN over ai-title; `PARSER_VERSION 3` re-title 59 phiên.
+
+### Dialog hệ thống — thay HẾT prompt()/confirm()/alert() (user 2026-07-23)
+- Engine `zDialog` dùng chung (confirm + input) + `zToast` + `zConfirm`; dialog S. Thay: Thêm dự án (+ 📁), Gộp project (select), Xoá project, Relocate, Restore (+ 📁 file .db), Forget (select + xem-trước→xoá), Redact. Còn 0 native prompt/confirm/alert.
+
+### Non-app template (mở rộng 2026-07-23)
+- `docs_template/nonapp/03_STRUCTURE` + `04_SKILLS`: chuẩn **task = pipeline đánh số** (`tasks/NN_/spec.md ↔ pipelines/NN_/ ↔ data/NN_/`, output stage-prefix, launcher `.cmd` ASCII) — bám thật từ `PBI_SasinFlow_Maintain`.
+
+### Quyết định mở đã log (KHÔNG tự làm)
+- **Zemory tự đổi model Claude theo task lớn/nhỏ** — đụng điều 6 (0-LLM, không proxy model API). User chọn: chỉ ghi `05_TODO` làm quyết định mở, chờ chốt hiến pháp.
+
+## [2026-07-23] — feat(harness): TÁCH 2 template APP / NON-APP + AGENTS bắt hỏi profile + non-app = hệ file (task/pull/fill/upload)
+
+User phát triển hệ non-app + chốt **tách hẳn 2 template**. Đọc kỹ toàn bộ `docs_template/*` + `adopt.ts`/`harness.ts`/`ui.ts` + tests trước khi đụng. Gate `npm run check` **172/172**. **CHƯA commit/push** (gộp cụm chờ user gật).
+
+### Mô hình chốt — "2 cây riêng + parity gate" (không fork engine)
+- User bác cách "1 template gộp §1–6+§7" (đọc rối). Chốt: **`docs_template/{app,nonapp}/`** — 2 cây HOÀN CHỈNH, đọc độc lập. Chống drift bằng **CODE, không trí nhớ** (đúng doctrine điều 13): file `git mv` sang `app/`, dựng `nonapp/`.
+- **5 shell GATE byte-identical** (`AGENTS.md`·`01_CONSTITUTION`·`05_TODO`·`06_CHANGES`·`plan/00_overview`) — `template-parity.test.mjs` đỏ nếu lệch. `plan/00` genericize "app"→"dự án" để neutral.
+- **3 file KHÁC thật:** `02_RULES` (nonapp **bỏ luật UI** + ref §5/§9), `03_STRUCTURE` (app §1–6 + §7-stub-trỏ / nonapp = chuẩn riêng), `04_SKILLS` (nonapp reconcile→§non-app + **playbook pull/fill/upload**).
+
+### AGENTS bắt HỎI app/non-app (user 2026-07-23)
+- `AGENTS.md §Vào việc` (shared, agent đọc ĐẦU TIÊN): trước `init` phải **HỎI user APP hay NON-APP** (đừng đoán) + **giải thích ngắn 2 khái niệm**: APP = LÀM & BẢO TRÌ app (code chạy) → §1–6 · NON-APP = sản phẩm/tài sản, agent chỉ **đọc·dò·kéo·điền·xuất FILE** (kể cả mở `.pbix`) → chuẩn non-app, **0 luật UI**. Rồi `zemory init` / `init --non-app`.
+
+### Non-app = "hệ file cho AI" (nâng từ §7 mỏng → chuẩn đầy đủ)
+- `nonapp/03_STRUCTURE`: thêm **`tasks/NN_<cadence>/`** (đơn vị công việc định kỳ, mirror `data/<task>/`) · **`templates/`** (file chờ ĐIỀN, khác `fixtures/`) · **`data/{extract,adhoc,<task>}`** phân tầng · luật **adhoc≠task** · convention **tên slot THƯỜNG** (trừ file/vendor) · **§5 tự động hoá KÉO/ĐIỀN/UPLOAD** (agent lái + `scripts/` thin + playbook; zemory chỉ nhớ+kỷ luật, KHÔNG tự pull/gọi LLM — điều 6). Bám cấu trúc thật của `PBI_SasinFlow_Maintain` (extract=vm_pbi · adhoc · 01_weekly · TargetAll).
+- **Ranh giới chốt:** có dashboard/`.pbix` trong deliverable KHÔNG biến thành app; chỉ khi PHÁT TRIỂN app (code chạy) mới là app. MCP tự-thiết-kế Power BI = việc tương lai, chưa nhét vào chuẩn.
+
+### Code — profile-aware (mặc định app, tương thích test cũ)
+- `adopt.ts`: `templateDir(profile)` (map `non-app`→folder `nonapp`) + `ensureHarness(root, profile?)` scaffold ĐÚNG cây + persist `profile:"non-app"` (app = default ngầm, KHÔNG ghi key → giữ hint validate). `harness.ts cmdInit`: xác định profile TRƯỚC scaffold (bug cũ: set profile SAU ensureHarness ⇒ non-app scaffold nhầm cây). `ui.ts readStandardDoc(rel, profile="app")` + `/standard-doc?profile=` → UI không vỡ (mặc định app; toggle profile để phiên UI-refactor sau).
+- **Bug tự bắt:** `templateDir("non-app")` trỏ `docs_template/non-app/` (không tồn tại) → 0 doc; test cũ KHÔNG bắt (adopt.test non-app set profile SAU scaffold). Vá + **thêm test** `ensureHarness(root,"non-app")` scaffold cây non-app THẬT + app default vẫn app.
+- Test: `template-parity.test.mjs` (5 shell identical · AGENTS hỏi profile · nonapp 0-UI + pull/fill/upload · app §7 stub) + 2 regression adopt.
+
+### Đồng bộ chuẩn mới lên CHÍNH zemory (user duyệt 2026-07-23)
+- `docs/agent/03_STRUCTURE.md` của zemory → **app-only** (mirror `app/03`): intro "hệ APP" + §6 trỏ non-app + **gỡ §7 body (~64 dòng) → §7 stub** trỏ chuẩn non-app. `AGENTS.md` root → thêm đoạn **HỎI app/non-app + explainer** (khớp `app/AGENTS`). `reindex` (164 section) + `validate` xanh + `structure-sync` pass (§4 routing nguyên).
+
+### Còn treo
+- **UI: badge App/Non-app + toggle chuẩn theo profile** — backend sẵn `/standard-doc?profile=`; **chờ ảnh thiết kế user** (refactor UI 1 lượt, user đã báo).
+
+## [2026-07-22] — feat(app): NATIVE WINDOW (hết icon Edge) · resize §5 · logo+màu toàn cục · audit 5-mặt + Bước 0 chốt phiên · sync index↔structure↔graph
+
+Phiên rất dài (Opus). **2 commit ĐÃ push** (`0992490` privacy · `3849168` harness); phần còn lại (resize · logo/native · sync-audit · **tầng 1: pin/gỡ · hộp đen daemon · cruft P3** — §G) **CHƯA commit** — chờ user duyệt mắt. Gate `npm run check` **165/165** ở mốc cuối. Chốt sổ theo Bước 0 (dò Global Memory + verify code thật, không ghi theo trí nhớ).
+
+### A. Bước 0 chốt phiên + privacy/harness (2 commit ĐÃ PUSH)
+- **Bước 0 — DÒ GLOBAL MEMORY + VERIFY** vào `04_SKILLS §chốt phiên` + `02_RULES §Chốt phiên` (repo + template): đổi session/ghi docs/audit ⇒ BẮT BUỘC dò Global Memory + đối chiếu code THẬT, verify từng mục trước khi ghi/khẳng định. **Trị gốc "đổi session là sót/lệch"** (user than "docs cứ thiếu"). Mã hoá bài học: tên cũ trong changelog = bản ghi lịch sử (đừng sửa), chuỗi EN = thuật ngữ (đừng tưởng leak i18n), đừng tin subagent chưa kiểm.
+- **redact.ts** +4 pattern shape-based (PEM · Bearer · connstring · quoted-secret), verify không over-redact prose (điều 7). **gitignore/gitattributes** phủ tên bundle delta `global_memory.*.enc`.
+- **AGENTS.md** `brain scan/sync`→`memory scan/sync` (rename `492cd16` sót). **plan/09** ví dụ `ui-page.ts` (đã tách frontend/). **archive** 06_CHANGES 739→227 dòng (cũ sang `docs/agent/archive/`).
+- TODO sửa đúng thực tế: 4 commit cũ VERIFIED **đã push** (`git branch -r --contains`); `graph*.ts` **đã ở** `memory/graph/` (điều 13 thoả).
+
+### B. Audit 5-mặt (đọc-chỉ) — vá thật + loại false-positive
+5 subagent (structure · UI · BE↔FE · backend · docs). **Thật (verify):** `share/share.key` committed + gitignore mời bundle `.enc` (điều 7 — mìn, chưa rò vì chưa commit `.enc`); recall embed ONNX trên event-loop (freeze/native-crash risk, nghi = daemon exit-1); redact hẹp; gitignore mù delta. **False-positive đã loại:** i18n "leaks" phần lớn là thuật ngữ giữ EN đúng luật; "3 stale link CHANGES" là entry lịch sử (cấm sửa — luật supersede); "graph chưa move" (đã move). → verify từng finding, không tin subagent.
+
+### C. Resize §5 — 1 engine data-driven + 2 seam thiếu
+`frontend/scripts/02-layout.js`: gộp `initResizers` (branch-per-type) + `initPanelSplits` (flex-grow chết) → **1 bảng descriptor `seam()`** (thêm seam = khai dữ liệu). Gỡ code chết `bottom`/`panel-split`. **+2 seam:** inspector "Bộ nhớ & Đồng bộ" (`--gm-cov-w`: Dự án|Nạp&Đồng bộ) + graph 2×2 **chữ thập** (`--graph-col-w`+`--graph-row-h`, kéo 2 chiều). Khai `:root` 3 var. Test khoá `cockpit.test.mjs` (đổi assert `1fr 1fr`→seam + test §5 mới).
+
+### D. Logo+màu TOÀN CỤC + NATIVE WINDOW (trị dứt icon Edge)
+> User đưa ảnh logo (Z gradient xanh→tím + não/database-khoá/node). Yêu cầu logo global + đổi màu app theo logo. Vật lộn icon Edge cả session → cuối cùng **NATIVE WINDOW** mới trị được.
+- **Bộ icon 1 nguồn:** `backend/scripts/make-icons.mjs` (sharp) sinh favicon.ico multi-size · logo-192/512 · favicon-256 · `packaging/zemory.ico` (app) + `zemory-logo.png` · **RGBA** (`ensureAlpha`) · rewrite tray.ts base64. Đổi logo lần sau = chạy lại 1 script.
+- **Favicon + web manifest SERVED** (`ui.ts` route `/favicon.ico`·`/manifest.webmanifest`·`/assets/*` binary + no-cache; head cockpit link). **Tray** icon Z. **Brand** góc tab = ảnh logo (thay SVG). **Màu dark** green→**xanh dương `#4f8bff`→tím `#b3a6ff`** (token `--green*` giữ tên; light MONOCHROME giữ nguyên — user đã chốt). Test màu pass.
+- **Start Menu + Desktop shortcut** (`autostart.ts`): mục "Zemory" icon Z, **launcher VBS ẩn** (không console). **+Fix bug thật `cliEntry()`** trỏ `dist/platform/cli.js` (KHÔNG tồn tại — regression khi dời autostart vào `platform/`) → `dist/cli.js`.
+- **NATIVE WINDOW (mấu chốt):** Edge `--app` KHÔNG cho đổi icon taskbar (bám AppUserModelID của Edge) — favicon/manifest/xoá-cache đều vô ích. Giải = **cửa sổ webview native tự sở hữu icon**:
+  - `@nativewindow/webview` (MIT, wry+tao, WebView2, **optional dep** prebuilt) + helper `backend/src/platform/window.ts` (native window + loadUrl 4444 + `setIcon`). `ui.ts`: **native-first → fallback msedge** (điều 9); `closePrevWindow` +lọc `WINDOWTITLE` (helper cùng image node.exe ⇒ tránh kill nhầm daemon).
+  - **3 bug trị dọc đường (verify từng cái):** ① WebView2 `Access denied 0x80070005` (user-data mặc định cạnh node.exe ở Program Files) → set `WEBVIEW2_USER_DATA_FOLDER` ghi được · ② icon `.ico` PNG không RGBA (tao image crate từ chối) → `ensureAlpha` · ③ **taskbar hiện cube xanh (icon node.exe)** dù setIcon ăn (chỉ fix title bar) → thiếu **AppUserModelID**; thêm **koffi** (MIT FFI) gọi `SetCurrentProcessExplicitAppUserModelID("Zemory.Cockpit")` TRƯỚC khi tạo window (hr=0). **User xác nhận taskbar ra Z.**
+
+### E. Audit index↔structure↔graph đồng bộ (user nhắc) — chống drift bằng CODE
+- **P1 live drift:** slot `platform` (chuẩn 03 §3/§4 + folder thật `backend/src/platform/`) **thiếu key trong `SLOT_ROLES`** (`structure-tree.ts`) → folder-tree gán nhầm "non-standard". Gốc: SLOT_ROLES chép tay, 0 cơ chế sync.
+- **Fix:** thêm role `platform`. **+Test parity `structure-sync.test.mjs`:** parse routing `03_STRUCTURE` → assert mọi slot 03 trỏ tới đều có role trong graph ⇒ drift = gate ĐỎ. **Ghi HP điều 13:** "chuẩn cấu trúc (03) + index điều hướng (routing §4) + từ điển slot graph (SLOT_ROLES) = 3 lăng kính 1 cấu trúc, đồng bộ bằng CODE (gate test), KHÔNG dựa trí nhớ agent" (user chốt).
+
+### F. BE↔FE contract-impact graph — ĐỀ XUẤT (hấp thụ Grapuco, chờ chốt)
+Ghi đầy đủ `05_TODO §🧩 Graph`: cạnh contract/api-seam (declared, từ chuẩn 03 slot) · trần 3 tầng (khai báo/suy luận/ngữ nghĩa) · "fix triệt để = contract-first+codegen chứ KHÔNG phải graph" · protocol đo Grapuco thật trước khi tin · KHÔNG hấp thụ chat/security/recommend (điều 6). Chờ user chốt → graduate plan 13.
+
+### G. Tầng 1 (làm hết theo user 2026-07-22 chiều) — pin/gỡ · hộp đen daemon · cruft P3
+- **#2 registry pin/gỡ/dọn — nút vào LIST "Dự án"** (user duyệt bố trí trước khi code, §Hành xử): mỗi hàng project *đã liên kết* (máy này) có 📌 ghim/bỏ-ghim + ✕ gỡ (hover hiện; pinned thì 📌 sáng sẵn) + nút "Dọn dự án đã mất" cuối nhóm máy. Nút nằm NGOÀI `.cov-open` (mở tab) → không đụng nhau. Wire vào endpoint sẵn có `/pin-project`·`/forget-project`·`/prune-projects` (trước đó sống mà 0 nút gọi sau khi bỏ ☰). `07-memory.js` covRow + handler · `04-tabs.css` `.cov-line/.cov-acts/.cov-act` (opacity, không reflow).
+- **#3 hộp đen daemon bắt được NATIVE crash** — nghi daemon exit-1 (07-21) = segfault better-sqlite3/onnxruntime (qua mặt handler JS) HOẶC stderr detached không capture. Thêm `backend/src/logging/daemon-log.ts` (slot `logging` chuẩn): `daemonLog()` ghi `~/.zemory/logs/daemon.log` + mirror stderr · `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON stack native cạnh log. `ui.ts` arm NGAY khi thắng port + log lifecycle (up/shutdown/exit/uncaught/unhandled) ra file.
+- **#4 cruft P3:** gỡ **☰ tab-menu chết** (`#tabMenu` + `renderTabMenu`/`toggleTabMenu` + handler `data-mact` + escLayers entry + CSS `.tabmenu-*`) — surface pin/gỡ đã dời sang list Dự án (#2). Gỡ **`.itab` chết** (`setInspectorTab` + `.itabs/.itab` CSS + `data-itab` body + restore localStorage). Gỡ **8 i18n mồ côi ×2 dict** (`tab.moreTitle/manageTitle/menuHead/none` + `itab.*`). **autostart quoting:** escape `'` cho PowerShell shortcut (username `O'Brien`) + quote path có space trong `.desktop Exec`. **`sourceSignature`** thêm FNV-1a hash đường dẫn ⇒ `git mv` (giữ count+mtime) vẫn đổi chữ ký (cache graph không stale). Cite `plan 14 §B`→`§6.B` (settings/autostart) · gỡ "cockpit" plan14:28 · `.gitattributes` binary ảnh + eol=lf source. **Để lại:** `CANON_ROOT` gộp case GIỮA-path (rare, đổi hiển thị — tách sau).
+- **Test:** +2 ratchet `cockpit.test.mjs` (list có `data-cov-*`, ☰-menu/itab chết không tái sinh) + `graph.test.mjs` (`sourceSignature` đổi khi rename, ổn định khi không đổi). Gate `npm run check` **165/165**.
+
+### Bài học
+- **Icon cửa sổ browser `--app` = icon browser, bất khả đổi** — chỉ native window (tự sở hữu icon + AUMID) mới ra icon riêng (như SasinFlow/pywebview).
+- **Native host bằng node.exe → taskbar lấy icon node** trừ khi set `AppUserModelID` (setIcon chỉ fix title bar/alt-tab).
+- **Daemon + native-window helper cùng khoá `dist`** ⇒ phải kill CẢ HAI trước `npm run build` (helper detached, kill daemon không đủ).
+- **Verify từng finding subagent** — nhiều false-positive (lịch sử / thuật ngữ / đã-xong).
+
+### Còn treo (05_TODO §🔥)
+Commit + xin phép push cả cụm (gồm tầng 1 vừa xong) · L3 sync (chờ user gật) · `adapters` (thêm 03 hay giữ domain-internal) · `CANON_ROOT` mid-path (edge) · README viết lại (đang làm). **ĐÃ XONG tầng 1:** registry pin/gỡ · hộp đen daemon (native crash) · cruft P3. Khi chạy gate phải kill daemon+helper trước (cùng khoá dist).
+
+## [2026-07-21] — chore(session): CHỐT SỔ chiều 07-21 (Opus) — audit 5-agent + vá P1/P2 + sync chạy ẩn + 3-cột (design BỊ BÁC) — CHƯA commit
+
+Phiên chiều (nối sáng 07-21). Chạy **audit toàn diện 5 subagent** (đọc-chỉ) rồi vá loạt bug CHÍNH nó bắt được — toàn loại "chạy được nhưng sai ngầm" mà `npm run check` sáng (152/152) KHÔNG phủ (5 module mới chưa có test). Gate cuối: **`npm run check` 161/161** (+9 test parser). **CHƯA commit/push** — cả sáng+chiều còn ở working tree.
+
+### A. Audit 5-agent (UI · backend mới · structure · docs · test)
+Bắt **8 P1** trong code SÁNG nay + nhiều P2/P3. Giá trị: mấy bug icon/tray/gate/graph "chạy được nên mắt + gate không thấy".
+
+### B. Vá P1 (đã verify)
+- **cmdMemory chạy ĐÚP lệnh heavy khi lỗi** (catch bọc cả acquire lẫn run → nuốt lỗi → chạy lại; `embed --rebuild` drop index 2 lần) → tách: gate best-effort, run đúng 1 lần, lỗi propagate.
+- **Write-gate hết hạn 5' giữa job dài** → **heartbeat** re-acquire mỗi 2'; **gate 2 chiều** (daemon-job token) — CLI biết daemon-child đang ghi để CHỜ.
+- **Tray "fail-open" KHÔNG fail-open** (`onError()` luôn throw vì lib set `_process` sau await → `tray` ref mất, helper hỏng → unhandledRejection GIẾT daemon) → `ready().then(store)/catch(null)` + onClick `.catch`. + **hộp đen** SIGINT/SIGTERM/exit/uncaught/unhandledRejection log (daemon không chết câm).
+- **taskkill pid mù danh tính** (pid file sống qua reboot → tái cấp → kill nhầm) → ghi `pid|image`, kill lọc `IMAGENAME`.
+- **`calls` edge `kind:"declared"`** mà mang confidence ladder → vi phạm điều 13 → đổi `kind:"inferred"`.
+- **supersede ~33/34 cạnh RÁC** (regex bắt prose + nối mọi entry cùng ngày) → anchor `> 🔄 Supersede:` + chỉ nối ngày DUY NHẤT (giờ 0 — số trung thực).
+- **click-mở-tab Dự án hỏng** (setTab return sớm + canon `D:\` vs select `d:\` case-sensitive) → `openProjectPath` match case-insensitive.
+- **Tự bắt khi verify:** scheduler embed-child TỰ CHẶN qua gate của chính nó → child daemon set `ZEMORY_DAEMON_CHILD=1` bỏ qua gate.
+
+### C. Vá P2
+`esc()` thêm `&#39;` (sessionId từ máy khác nhúng `onclick='…'`) · `semanticEdges` chia lô 16 (bài học "batch 16") · `vectorRemaining()` idle-backoff 30' khi backlog=0.
+
+### D. Sync CHẠY ẨN (user) — VERIFIED E2E
+Gốc: `/drive-sync` `await syncDrive()` INLINE trên event loop → daemon đơ 5+' (cùng họ bug scheduler). → `jobs/syncrun.ts` (child chạy syncDrive, in JSON) + `jobs/syncjob.ts` (daemon track state, 1 job/lúc, chung với auto-sync) + `/drive-sync` start-and-return + `/sync-status` poll. UI nút **"Chạy ẩn"** (ESC/backdrop=thu nhỏ, KHÔNG huỷ) · spinner ⟳ tab Global · reload bám lại. **Đo thật: sync chạy → /ping vẫn trả suốt, delta 94KB/+52msg, kết thúc đúng.**
+
+### E. Coverage tách theo MÁY + linked/quét-được + ngày-giờ (user)
+Tab "Dự án" nhóm theo **host** (máy này mở, máy khác gập); trong máy này tách **đã liên kết** (registry) vs **▸ Quét được** (gập). Stamp → **ngày+giờ đầy đủ** (`fmtDateTime`).
+
+### F. Layout Global Memory 3 CỘT — BUILT nhưng USER BÁC → REDO (05_TODO §🔥)
+Dựng 1 tab 3 cột (Bộ nhớ+Recall · Nạp&Đồng bộ · Dự án) + Chuẩn chung tab riêng. **User bác:** recall phải đi với **harness**, 3 cái kia 1 tab riêng — *"tách vớ vẩn"*. Chưa redo (chốt layout với user trước).
+
+### G. Hiến pháp + i18n + test
+**Điều 13** vào `01_CONSTITUTION` (graph=lớp dẫn xuất, declared/inferred không lẫn — user duyệt) · từ khoá kỹ thuật giữ EN trong dict VI (isolated/util purity/Code fitness; force/cluster/import layers) · brand "Zemory" · **+9 test** (`graph-docs` CRLF hard-assert · `graph-cache` chống stale · `graph-semantic` nhãn inferred) + sửa 1 test **vacuous** (`var I18N`→`var T = {`).
+
+### Còn treo (05_TODO §🔥)
+Redo layout (recall+harness) · **bug icon cửa sổ Edge màn extend CHƯA hết** (favicon PNG không đủ) · registry pin/gỡ (bỏ hay ⚙?) · L3 sync-kèm-file (chờ gật) · commit+push · dọn cruft P3.
+
+### Bài học
+- **Audit đa-agent bắt bug mắt + gate bỏ sót** — 5 module mới pass `check` chỉ vì CHƯA test; fail-open sai (tray) chạy y như thật.
+- **Đừng khoe số chưa soi:** "34 supersede edges" verify sáng hoá ra ~33 rác.
+- **Verify E2E mới lộ self-deadlock** (embed-child chờ gate của chính nó) — build+gate không thấy.
+
 ## [2026-07-21] — feat: delta sync · graph A→C + touches/export · UI redesign đợt 2 · vendored skill kho — CHỐT SỔ, CHƯA commit
 
 Phiên rất dài (nối tiếp 07-20). `npm run check` **152/152** · `validate` xanh · daemon chạy bản mới. **CHƯA commit/push** — cả phiên + 4 commit cũ vẫn local, chờ user duyệt.

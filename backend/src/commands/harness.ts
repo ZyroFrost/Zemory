@@ -1,6 +1,7 @@
 // `zemory init|sync|migrate|doctor|archive|validate|setup|structure|grill|reindex`
 // — the per-project docs harness lifecycle.
 import { existsSync, readdirSync } from "node:fs";
+import { analyzeMigration } from "../docs/migrate.js";
 import { join } from "node:path";
 import { findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
@@ -42,6 +43,24 @@ export function cmdInit(args: string[]): void {
 
 // Reconcile guide now lives in docs/agent/03_STRUCTURE.md §8 (single source). Print a short pointer.
 export function cmdMigrate(): void {
+  // Audit 2026-07-27 (F2): `analyzeMigration()` là một năng lực THẬT (soi docs/ của repo
+  // lạ: thiếu file chuẩn nào · file lạ đoán được vai trò gì · có sẵn plan/ chưa) nhưng
+  // MỒ CÔI — đường duy nhất chạm tới nó là endpoint `/migrate` mà không FE nào gọi, còn
+  // lệnh CLI cùng tên thì chỉ in hướng dẫn. Nay in bảng phân tích THẬT trước, rồi mới
+  // tới các bước. Fail-open: repo chưa có docs/ thì bỏ qua phần bảng.
+  const root = findProjectRoot() ?? process.cwd();
+  const rep = analyzeMigration(root);
+  if (rep) {
+    console.log(`zemory migrate — soi \`${rep.docsDir}\`:`);
+    const missing = rep.roles.filter((r) => !r.present).map((r) => r.file);
+    console.log(`  file chuẩn: ${rep.roles.length - missing.length}/${rep.roles.length} có sẵn` + (missing.length ? ` · THIẾU: ${missing.join(" · ")}` : ""));
+    if (rep.extras.length) {
+      console.log(`  file lạ (${rep.extras.length}) — đoán vai trò:`);
+      for (const e of rep.extras.slice(0, 12)) console.log(`    · ${e.file}${e.guessRole ? `  →  ${e.guessRole}` : "  →  (chưa đoán được)"}`);
+    }
+    console.log(`  plan: ${rep.plan.hasPlanDir ? "có docs/plan/" : "chưa có docs/plan/"}` + (rep.plan.specs.length ? ` · ${rep.plan.specs.length} spec rời` : ""));
+    console.log("");
+  }
   console.log("zemory migrate — reconcile docs cũ về chuẩn (App KHÔNG tự sửa; agent làm).");
   console.log("Các bước đầy đủ: docs/agent/03_STRUCTURE.md §8. Tóm tắt:");
   console.log("  1. zemory docs ls          — xem cái nào trùng/thừa (trong search index)");

@@ -25,6 +25,8 @@ import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
+import { readStandardSpec } from "./docs/standard-spec.js";
+import { TEMPLATE_DIR } from "./docs/adopt.js";
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
@@ -998,6 +1000,16 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/harness-files") {
       return json(res, listHarnessFiles(target));
+    }
+    if (p === "/standard-spec") {
+      // Bản chuẩn ĐỌC TỪ NGUỒN `03_STRUCTURE.md` (§3 cây + §4 routing) — thay cho hai
+      // bảng hardcode tay trong app.js. Xem `standard-spec.ts` để biết vì sao: bản tay
+      // đang thiếu 55/90 hàng cây và 40/66 dòng routing.
+      const prof2: StructureProfile = u.searchParams.get("profile") === "non-app" ? "non-app" : "app";
+      // Nguồn = docs của CHÍNH repo template tương ứng (bản mẫu trắng), không phải repo
+      // đang mở — màn Harness hiển thị CHUẨN DÙNG CHUNG, không phải docs của project.
+      const dir = join(TEMPLATE_DIR, prof2 === "non-app" ? "nonapp" : "app");
+      return json(res, readStandardSpec(dir, join("agent", "03_STRUCTURE.md")));
     }
     if (p === "/standard-doc") {
       // Default to the APP standard; the future profile toggle passes ?profile=non-app.
