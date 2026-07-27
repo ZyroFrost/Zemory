@@ -377,3 +377,36 @@ test("Sources hiện +N của lần quét gần nhất, và giữ lại qua các
   assert.deepEqual(run(tree(120, 80)), { "local||": 20, "local|SS01|": 20 }, "render lại mà không đổi thì GIỮ delta (user còn đang nhìn)");
   assert.deepEqual(run(tree(125, 80)), { "local||": 5 }, "lượt quét mới thay delta cũ");
 });
+
+// ============================ Cổng chặn CSRF của daemon ============================
+// Guard cũ đã chặn Host lạ (DNS rebinding) và `Origin` lạ. Lỗ còn lại HẸP nhưng thật:
+// trình duyệt KHÔNG gửi `Origin` cho GET subresource, nên `<img src="http://127.0.0.1:
+// 4444/set-drive?path=…">` trên một trang bất kỳ vẫn chạy (ảnh hỏng, nhưng REQUEST đã
+// gửi — CORS chặn ĐỌC kết quả chứ không chặn GỬI). Cổng 4444 cố định, có ghi trong README.
+// Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong đó đang nhận GET.
+test("endpoint đổi trạng thái bắt buộc POST + chặn cross-site", () => {
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  assert.ok(/const MUTATING\s*=/.test(src), "phải có danh sách endpoint đổi trạng thái");
+  assert.ok(/MUTATING\.test\([\s\S]{0,40}req\.method !== "POST"/.test(src), "không-POST vào endpoint đổi trạng thái phải bị chặn");
+  assert.ok(/sec-fetch-site/.test(src), "phải chặn cross-site bằng Sec-Fetch-Site (trình duyệt gửi cả cho <img>)");
+  assert.ok(/405/.test(src), "sai method thì trả 405, không phải lặng lẽ bỏ qua");
+
+  // Regex quá tay còn nguy hơn không có: bản đầu tôi viết `sync|migrate` trần và nó bắt
+  // nhầm /sync-pulse + /sync-status — hai endpoint CHỈ ĐỌC mà UI gọi bằng GET liên tục.
+  const m = src.match(/const MUTATING\s*=\s*([\s\S]*?);/);
+  assert.ok(m, "đọc được biểu thức MUTATING");
+  const re = new RegExp(m[1].trim().replace(/^\/|\/$/g, ""));
+  for (const readOnly of ["/sync-pulse", "/sync-status", "/memory-status", "/code-graph", "/standard-spec"]) {
+    assert.ok(!re.test(readOnly), `${readOnly} CHỈ ĐỌC — không được ép POST`);
+  }
+  for (const mut of ["/set-drive", "/memory-forget", "/drive-sync", "/relocate", "/prune-projects"]) {
+    assert.ok(re.test(mut), `${mut} đổi trạng thái — phải ép POST`);
+  }
+});
+
+// /init-fresh gỡ 2026-07-27 (audit F2): 0 người gọi, mà là thao tác DỜI docs cũ đi.
+// Năng lực không mất — `zemory init --fresh` gọi thẳng freshHarness().
+test("/init-fresh không còn là endpoint HTTP", () => {
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  assert.ok(!/p === "\/init-fresh"/.test(src), "thao tác phá huỷ không nên mở trên HTTP khi không ai dùng");
+});
