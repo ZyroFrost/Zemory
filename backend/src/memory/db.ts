@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -267,6 +267,56 @@ CREATE TABLE IF NOT EXISTS graph_fitness (
   metrics   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS graph_fitness_proj ON graph_fitness(project, built_at);
+
+-- FILE ĐÍNH KÈM của một message. Tách khỏi messages vì ba lý do đo được:
+--   ① Nội dung nhị phân KHÔNG được vào messages.content — cột đó nuôi FTS5, nhét blob
+--      vào là thổi index lên mà không tìm được gì (bài học v16/v17: trigram nuốt tool-dump
+--      làm DB phình 435 MB).
+--   ② Một file bị đọc lại nhiều lần trong cùng phiên = MỘT nội dung. Dedup theo sha256
+--      để không lưu 20 bản của cùng một file.
+--   ③ Đính kèm là dữ liệu NGUỒN (đến từ transcript), không phải lớp dẫn xuất — nên nó
+--      không rơi vào điều 3 "vứt đi dựng lại được".
+--
+-- BA HẠNG kind, có chủ ý — quyết định lưu-hay-không phải TƯỜNG MINH, không lặng lẽ:
+--   · 'text' — file văn bản, nội dung nằm ở content (đã redact secret, điều 7).
+--   · 'blob' — nhị phân, nằm ở blob.
+--   · 'ref'  — CHỈ ghi nhận "từng có file này, ở đường dẫn này", KHÔNG lưu nội dung.
+--              Dùng khi file vượt ngưỡng. Thà biết nó từng tồn tại còn hơn im lặng bỏ qua.
+--
+-- Đo trên corpus thật 2026-07-28 (105 transcript, 5.456 attachment): p99 = 1,6 KB,
+-- max 12 KB, tổng 0,2 MB, **0 file nhị phân**. Tức hôm nay mọi thứ rơi vào 'text'.
+-- Đường 'blob'/'ref' dựng sẵn cho ảnh dán từ claude.ai/Desktop — CHƯA có dữ liệu thật
+-- để kiểm, nên chưa nối vào bundle sync (xem 05_TODO: L3 chờ user chốt chính sách).
+CREATE TABLE IF NOT EXISTS attachment (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL,
+  session_id TEXT    NOT NULL,
+  name       TEXT,
+  mime       TEXT,
+  bytes      INTEGER NOT NULL DEFAULT 0,
+  sha256     TEXT    NOT NULL,
+  kind       TEXT    NOT NULL DEFAULT 'text',
+  content    TEXT,
+  blob       BLOB,
+  src_path   TEXT,
+  created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS attachment_msg  ON attachment(message_id);
+CREATE INDEX IF NOT EXISTS attachment_sess ON attachment(session_id);
+-- Dedup NỘI DUNG: cùng sha256 thì chỉ giữ một bản; các message khác trỏ tới qua
+-- attachment_link. Không đặt UNIQUE trên chính bảng vì một nội dung có thể xuất hiện
+-- ở nhiều phiên với tên khác nhau.
+CREATE UNIQUE INDEX IF NOT EXISTS attachment_sha ON attachment(sha256);
+
+-- Nối nhiều-nhiều: message ↔ attachment. Một file đọc lại 20 lần = 1 hàng attachment
+-- + 20 hàng ở đây, thay vì 20 bản sao nội dung.
+CREATE TABLE IF NOT EXISTS attachment_link (
+  message_id    INTEGER NOT NULL,
+  attachment_id INTEGER NOT NULL,
+  name          TEXT,
+  PRIMARY KEY (message_id, attachment_id)
+);
+CREATE INDEX IF NOT EXISTS attachment_link_att ON attachment_link(attachment_id);
 CREATE INDEX IF NOT EXISTS idx_compression_event_art ON compression_event(artifact_id);
 `;
 
@@ -551,6 +601,15 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // lại được từ code hiện tại — nên cố tình không backfill: chuỗi thời gian bắt
     // đầu từ lần dựng graph kế tiếp. Bịa số cho quá khứ là vi phạm điều 12.
     version = 18;
+  }
+  if (version < 19) {
+    // v19 thêm `attachment` + `attachment_link` (file đính kèm của message). Cả hai do
+    // khối SCHEMA ở trên tạo bằng CREATE TABLE IF NOT EXISTS.
+    // KHÔNG backfill: 52 tin đính kèm đã ingest đang nằm ở messages.content dạng
+    // "[file:<đường dẫn>]" + nội dung, và VẪN ĐÚNG — chúng là lớp full, tìm được, đọc
+    // được. Chuyển chúng sang bảng mới là viết lại dữ liệu NGUỒN chỉ để gọn gàng hơn,
+    // không đáng (điều 3). Bảng mới nhận đính kèm TỪ ĐÂY VỀ SAU.
+    version = 19;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
