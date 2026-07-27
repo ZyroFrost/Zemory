@@ -85,6 +85,6 @@ Home/Global Memory → `/status`·`/memory-status` · Projects → `/status.know
 ## Trạng thái
 - [x] Phase 1 static mock + Phase 2 wire — XONG (các entry `06_CHANGES` 2026-07-23 → 07-25).
 - [x] **Gộp IA 9 → 5 màn (2026-07-26)** — xem §IA chốt lại ở trên. Diệt 5 nhóm trùng: 3 màn cùng nói về bộ nhớ · 2 viewer hội thoại · Top Sources vẽ 2 lần · 2 list "sức khoẻ" hardcode song song (`renderHomeChecks` ≡ `FEATURES`) · 2 màn cùng tên "memory".
-- [ ] User duyệt mắt bản 5 màn → rồi ghi `06_CHANGES` + commit.
-- [ ] Chưa có test tự động cho sub-tab routing (frontend no-build) — nên khoá ratchet: "nav đúng 5 mục" + "không tái sinh `sessDlg`/`homeChecks`/`gmSources`/`gmHealth`/`gmVector`".
+- [x] **XONG 2026-07-27** — user duyệt ("ok cái UI rồi"), đã ghi `06_CHANGES` + commit + push. IA cuối là **6 màn** (tách lại "Tính năng & Kiểm tra" khỏi Home).
+- [x] **XONG 2026-07-27** — `backend/test/app-ui.test.mjs` (27 test) khoá: nav đúng 6 mục · mỗi nút sub-tab có đúng một khối `.sub` · không id trùng · i18n hai chiều. Mục cũ: "nav đúng 5 mục" + "không tái sinh `sessDlg`/`homeChecks`/`gmSources`/`gmHealth`/`gmVector`".
 - Backup: 5 commit đã push `origin/main` b0f07c6 (trước refactor).
