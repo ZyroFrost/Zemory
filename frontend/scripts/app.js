@@ -229,22 +229,41 @@
     ['tự động KÉO/ĐIỀN/UPLOAD','scripts/ + playbook 04_SKILLS'],['tài liệu / chuẩn','docs/ (+ dictionary.md)'],
   ]};
   var stdProf='app',stdFile='AGENTS.md';
+  // NGUỒN của hai bảng dưới = `/standard-spec`, đọc thẳng từ `03_STRUCTURE.md`.
+  // Trước 2026-07-27 chúng là hai mảng hardcode TAY trong file này, và đã lệch nặng:
+  // cây 35/90 hàng · routing 26/66 dòng, chữ lại viết tắt khác nguồn. Màn này là màn TRA
+  // CỨU — hiện thiếu 60% mà không báo gì là kiểu hỏng tệ nhất.
+  // FAIL-OPEN: fetch/parse hỏng ⇒ rơi về STRUCT/ROUTE cũ để UI không bao giờ trắng.
+  var specCache={};
+  function specRows(){
+    var sp=specCache[stdProf];
+    if(!sp||!sp.tree||!sp.tree.length)
+      return {tree:(STRUCT[stdProf]||[]).map(function(s){return {depth:s[0],name:s[1],marker:s[2],note:s[3]};}),
+              routing:(ROUTE[stdProf]||[]).map(function(r){return {concern:r[0],where:r[1]};}),fallback:true};
+    return sp;
+  }
+  function loadSpec(){
+    var pr=stdProf==='app'?'app':'non-app';
+    if(specCache[stdProf])return Promise.resolve();
+    return zGet('/standard-spec?profile='+pr).then(function(d){if(d&&d.tree)specCache[stdProf]=d;}).catch(function(){});
+  }
   function structRender(){
     var st=document.getElementById('structTree');if(!st)return;
-    document.getElementById('structProf').textContent='hệ '+(stdProf==='app'?'APP':'NON-APP');
-    st.innerHTML=(STRUCT[stdProf]||[]).map(function(s){
+    var sp=specRows();
+    document.getElementById('structProf').textContent='hệ '+(stdProf==='app'?'APP':'NON-APP')+(sp.fallback?' · bản dự phòng':'');
+    st.innerHTML=sp.tree.map(function(n){
+      var s=[n.depth,n.name,n.marker,n.note];
       var dir=/[\/·|]/.test(s[1]);
       var tag=s[2]==='req'?'<span class="stag req">★</span>':s[2]==='opt'?'<span class="stag">opt</span>':s[2]==='gi'?'<span class="stag gi">gitignore</span>':'';
       return '<div class="strow" style="padding-left:'+(s[0]*15+2)+'px"><span class="sic">'+(dir?'📁':'📄')+'</span><span class="sname">'+stdEsc(s[1])+'</span>'+tag+'<span class="snote">'+stdEsc(s[3])+'</span></div>';
     }).join('');
-    document.getElementById('routeTable').innerHTML=(ROUTE[stdProf]||[]).map(function(r){
-      return '<div class="rrow"><span class="rneed">'+stdEsc(r[0])+'</span><span class="rslot">'+stdEsc(r[1])+'</span></div>';
+    document.getElementById('routeTable').innerHTML=sp.routing.map(function(r){
+      return '<div class="rrow"><span class="rneed">'+stdEsc(r.concern)+'</span><span class="rslot">'+stdEsc(r.where)+'</span></div>';
     }).join('');
   }
-  // renderHarness: docs viewer = REAL /standard-doc (stdRenderReal, in wiring
-  // block below) · Cấu trúc folder = static reference (structRender, accurate to
-  // 03_STRUCTURE — no live endpoint for the pure standard tree).
-  function renderHarness(){stdRenderReal();structRender();}
+  // renderHarness: cả HAI bảng đều đọc từ nguồn thật — docs qua /standard-doc,
+  // cây + routing qua /standard-spec (parse từ 03_STRUCTURE.md).
+  function renderHarness(){stdRenderReal();structRender();loadSpec().then(structRender);}
   document.addEventListener('click',function(e){
     if(e.target.id==='stdApp'){stdProf='app';renderHarness();return;}
     if(e.target.id==='stdNon'){stdProf='nonapp';renderHarness();return;}
