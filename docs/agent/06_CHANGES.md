@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-28c] — Capture claude.ai CHẠY THẬT · 2 lỗi lặng lẽ · ĐÍNH CHÍNH: ảnh 93 MB đang bị bỏ
+
+Gate **242/242**. Capture đầu-cuối: `pulled 2 · failed 0` → DB có 2 phiên `claude-web`, 6 tin, vai đúng.
+
+### ĐÍNH CHÍNH — tôi đã kết luận SAI ở mục [2026-07-28b]
+Tôi báo *"transcript không có file nhị phân"* và thiết kế slot attachment như thứ dự phòng cho tương lai. **Sai**: phép đo đó chỉ nhìn `attachment`, mà ảnh nằm ở content block `{type:'image', source:{base64…}}` — hình dạng hoàn toàn khác. Đo lại đúng chỗ:
+
+```
+1.245 block ảnh THẬT · TỔNG 93,00 MB
+p50 46 KB · p90 182 KB · max 1.287 KB
+png ×1047 · jpeg ×36 · (không rõ) ×162
+```
+
+Và `flatten()` trong `adapters/claude.ts` **không có nhánh `image`** (grep: 0 lần nhắc) — dòng `.map(b => b.type === "text" ? b.text : "")` biến mọi block ảnh thành chuỗi rỗng. Nghĩa là **93 MB ảnh đang bị bỏ im lặng ở khâu nạp**, và slot `attachment` là thứ cần NGAY, không phải dự phòng. *(Bài học: đo sai chỗ còn tệ hơn không đo — nó cho một kết luận tự tin mà sai.)*
+
+### Hai lỗi làm capture fail, đều LẶNG LẼ
+1. **`[object Object]` → HTTP 400, fail 2/2.** Comment của `interface Platform` ghi `listExpr` trả `[{id}]`; hợp đồng THẬT là **mảng chuỗi** (xem `CHATGPT_LIST`: `ids.push(c.id)`). Tôi tin comment nên URL thành `.../chat_conversations/[object Object]`. Đã sửa cả code lẫn **comment sai** đó. Lỗi bị `catch {}` nuốt — thêm `ZEMORY_WEB_DEBUG=1` để in ra thay vì đoán.
+2. **Kho import nằm CẠNH DB, discovery chỉ tìm ở home.** `scan-web` ghi vào `currentMemoryDir()/imports/<platform>`, còn signature adapter là `.zemory/imports/<platform>` — đúng khi DB ở `~/.zemory`, **sai ngay khi user `relocate` DB khỏi ổ C:**. Hệ quả: lệnh báo *"ingested 2"* mà DB có **0** phiên. **Ảnh hưởng cả ChatGPT** — mọi capture web sau khi relocate đều rơi vào chỗ không ai nhìn.
+   - Sửa: discovery quét thêm kho import, nhưng nhận đường dẫn **qua tham số** suy từ chính `dbPath` đang quét. Bản đầu tôi đọc `currentMemoryDir()` toàn cục ⇒ **3 test drive-sync đỏ** vì scan trên DB tạm hút luôn dữ liệu kho thật vào.
+
+*(Họ lỗi "backtick trong comment nằm trong template literal" dính thêm lần thứ 5 và 6 trong phiên này.)*
+
+---
+
 ## [2026-07-28b] — Check giọng văn sản phẩm · slot `attachment` (schema v19)
 
 Gate 239 → **242**.
