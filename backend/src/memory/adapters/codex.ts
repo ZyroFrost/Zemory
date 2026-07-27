@@ -3,7 +3,7 @@
 // event_msg / turn_context (skipped).
 
 import { basename, join } from "node:path";
-import { clip, toTranscript, walkFiles } from "./_shared.js";
+import { toTranscript, walkFiles } from "./_shared.js";
 import type { Adapter, ParsedLine, TranscriptFile } from "./types.js";
 
 export const codexAdapter: Adapter = {
@@ -64,5 +64,5 @@ function flatten(content: unknown): string {
     if (typeof block.text === "string") parts.push(block.text);
     else if (block.type && block.type !== "text") parts.push(`[${block.type}]`);
   }
-  return clip(parts.join("\n").trim());
+  return parts.join("\n").trim();
 }

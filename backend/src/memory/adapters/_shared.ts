@@ -4,11 +4,21 @@ import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { TranscriptFile } from "./types.js";
 
-export const MAX_BLOCK = 4000; // cap any single block so tool dumps don't bloat the index
-
-export function clip(s: string): string {
-  return s.length > MAX_BLOCK ? s.slice(0, MAX_BLOCK) + "…" : s;
-}
+// GỠ 2026-07-26: `clip()` từng cắt cụt mọi block > 4.000 ký tự.
+//
+// Vì sao gỡ: `plan/06 §6` khai lớp `messages` là lớp **ĐẦY** ("digest (mỏng) → anchor →
+// messages (đầy)"), digest mới là lớp lọc. Nhưng clip() cắt thẳng vào lớp đầy, và cắt MÙ —
+// không phân biệt trùng / rác / secret, chỉ xét độ dài. Bốn tầng lọc còn lại đều CÓ LÝ DO và
+// được giữ: dedup `UNIQUE(session_id,uuid)` · `redact()` · bỏ dòng rỗng/không-parse-được ·
+// bỏ `thinking` (nguồn vốn rỗng, xem 05_TODO).
+//
+// Đo trước khi gỡ (374 transcript · 83.337 block · 92,7 MB): **95,25% block < 4k**, chỉ
+// **4,75% bị cắt**, block lớn nhất **1,30 MB** — không có ca bệnh lý nào ⇒ bỏ cap an toàn.
+// Mất mát đang gánh: **16,8% khối lượng lớp full**.
+//
+// Rủi ro còn lại (ghi rõ, không giấu): giờ KHÔNG còn trần nào. Một lần paste/tool-dump khổng
+// lồ sẽ vào DB nguyên vẹn. Chấp nhận có chủ đích — "đầy" là yêu cầu của chuẩn; muốn chặn ca
+// bệnh lý thì thêm trần CAO (vd 8 MB) chứ đừng quay lại cắt ở 4k.
 
 export function safeReaddir(p: string): string[] {
   try {

@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 18;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -248,6 +248,25 @@ CREATE TABLE IF NOT EXISTS compression_event (
   recovery_count          INTEGER NOT NULL DEFAULT 0,
   created_at              TEXT
 );
+
+-- Lịch sử fitness của code-graph, một hàng mỗi lần graph được DỰNG LẠI THẬT (chữ ký
+-- nguồn đổi) — không phải mỗi lần đọc. Vì sao cần: graphFitness vốn chỉ là ảnh chụp
+-- đạt/không-đạt, mà thứ báo hiệu thoái hoá là XU HƯỚNG chứ không phải một điểm số lẻ
+-- (đọc "Graph Engineering" §VII.D 2026-07-27: "một cú tăng đột ngột số node cô lập
+-- báo hiệu hồi quy"). Đây là trạng thái BỀN VỮNG thật, KHÔNG phải lớp dẫn xuất: không
+-- thể dựng lại fitness của hôm qua từ code hôm nay, nên nó không rơi vào điều 3.
+-- Tất cả đo tất định từ graph, 0 LLM (điều 6 · 12).
+CREATE TABLE IF NOT EXISTS graph_fitness (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  project   TEXT NOT NULL,
+  built_at  TEXT NOT NULL,
+  sig       TEXT,
+  passed    INTEGER NOT NULL,
+  files     INTEGER NOT NULL,
+  edges     INTEGER NOT NULL,
+  metrics   TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS graph_fitness_proj ON graph_fitness(project, built_at);
 CREATE INDEX IF NOT EXISTS idx_compression_event_art ON compression_event(artifact_id);
 `;
 
@@ -265,18 +284,39 @@ const MESSAGES_FTS_SQL = `
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content, content='messages', content_rowid='id');
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_tri USING fts5(content, content='messages', content_rowid='id', tokenize='trigram');
 
+-- LANE TRIGRAM CHỈ INDEX TIN CỦA NGƯỜI/MODEL, KHÔNG INDEX TOOL-DUMP (v16, 2026-07-26).
+--
+-- Đo bằng dbstat sau khi bỏ clip(): messages_fts_tri_data = **435,4 MB = 42% cả DB**,
+-- GẤP ĐÔI text gốc (213,4 MB). Trigram băm mọi chuỗi 3 ký tự — nó sinh ra để khớp chuỗi-con
+-- tiếng Việt + chịu lỗi gõ trên VĂN XUÔI; đổ JSON/code dump 50 KB vào thì phình khủng khiếp
+-- mà gần như không ai tìm 3 ký tự bên trong một dump máy.
+--
+-- Đây đúng mô hình "1 lớp đầy + 1 lớp lọc": messages giữ NGUYÊN VẸN (nguồn, plan/06 §6),
+-- chỉ lớp DẪN XUẤT lọc bớt. Lane messages_fts (word/porter) VẪN index tất cả, nên tool-dump
+-- vẫn tìm được bằng từ khoá — chỉ mất khả năng tìm chuỗi-con BÊN TRONG dump.
+-- Tiêu chí là NGỮ NGHĨA (tool_name IS NULL), không phải ngưỡng số ma.
 CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
+END;
+CREATE TRIGGER IF NOT EXISTS messages_ai_tri AFTER INSERT ON messages WHEN new.tool_name IS NULL AND COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
   INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
+END;
+CREATE TRIGGER IF NOT EXISTS messages_ad_tri AFTER DELETE ON messages WHEN old.tool_name IS NULL AND COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
   INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
   INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
-  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
+END;
+-- UPDATE tách 2 trigger vì hàng có thể ĐỔI PHÍA (tool_name null ⇄ không-null): gỡ theo giá
+-- trị CŨ, thêm lại theo giá trị MỚI — gộp một trigger sẽ để lại posting mồ côi.
+CREATE TRIGGER IF NOT EXISTS messages_au_tri_del AFTER UPDATE ON messages WHEN old.tool_name IS NULL AND COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
+  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
+END;
+CREATE TRIGGER IF NOT EXISTS messages_au_tri_ins AFTER UPDATE ON messages WHEN new.tool_name IS NULL AND COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 `;
@@ -466,6 +506,51 @@ function migrate(db: MemoryDB, fromVersion: number): void {
       db.exec("ALTER TABLE sessions ADD COLUMN project_pinned INTEGER NOT NULL DEFAULT 0");
     }
     version = 15;
+  }
+  if (version < 16) {
+    // v16: lane TRIGRAM thôi index tool-dump. `messages_fts_tri_data` đo được **435,4 MB
+    // = 42% cả DB**, gấp đôi text gốc — trigram trên JSON/code dump gần như vô dụng cho
+    // tìm kiếm mà cực tốn. Lane word (`messages_fts`) GIỮ NGUYÊN index tất cả nên tool-dump
+    // vẫn tìm được bằng từ khoá; `messages` KHÔNG đụng tới (nguồn phải đầy — plan/06 §6).
+    //
+    // Trigger cũ gộp 2 lane trong một BEGIN…END ⇒ phải thay hẳn bộ trigger, rồi dựng lại
+    // postings CHỈ cho hàng `tool_name IS NULL`. Dùng 'delete-all' (hợp lệ với external
+    // content) thay vì 'rebuild' — 'rebuild' sẽ nạp lại TOÀN BỘ, đúng thứ đang muốn tránh.
+    for (const t of ["messages_ai", "messages_ad", "messages_au", "messages_ai_tri", "messages_ad_tri", "messages_au_tri_del", "messages_au_tri_ins"]) {
+      db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+    }
+    db.exec(MESSAGES_FTS_SQL);
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('delete-all')");
+    db.exec(
+      "INSERT INTO messages_fts_tri(rowid, content) SELECT id, COALESCE(content, '') FROM messages WHERE tool_name IS NULL",
+    );
+    version = 16;
+  }
+  if (version < 17) {
+    // v17 VÁ LỖI CỦA v16: điều kiện "tool_name IS NULL" KHÔNG bắt được `tool_result`.
+    // Adapter chỉ set `tool_name` cho `tool_use` (firstTool đọc tên tool của assistant);
+    // còn `[tool_result]` nằm trong LƯỢT USER và `tool_name = NULL` (đo: 0/44.102 hàng có
+    // tool_name) ⇒ đúng phần dump TO NHẤT vẫn lọt vào trigram. Đo sau v16: trigram mới giảm
+    // 435→309 MB, còn 46,9 MB tool_result nằm trong đó.
+    // Dùng CÙNG dấu hiệu tất định mà `search.ts roleMatches()` đang dùng: tiền tố
+    // '[tool_result]' (mọi tin chứa nó đều BẮT ĐẦU bằng nó — đo 44.102 = 44.102).
+    for (const t of ["messages_ai_tri", "messages_ad_tri", "messages_au_tri_del", "messages_au_tri_ins"]) {
+      db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+    }
+    db.exec(MESSAGES_FTS_SQL);
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('delete-all')");
+    db.exec(
+      "INSERT INTO messages_fts_tri(rowid, content) SELECT id, COALESCE(content, '') FROM messages " +
+        "WHERE tool_name IS NULL AND COALESCE(content, '') NOT LIKE '[tool_result]%'",
+    );
+    version = 17;
+  }
+  if (version < 18) {
+    // v18 thêm bảng graph_fitness (lịch sử fitness code-graph). Bảng do khối SCHEMA
+    // ở trên tạo bằng CREATE TABLE IF NOT EXISTS, và lịch sử quá khứ thì KHÔNG dựng
+    // lại được từ code hiện tại — nên cố tình không backfill: chuỗi thời gian bắt
+    // đầu từ lần dựng graph kế tiếp. Bịa số cho quá khứ là vi phạm điều 12.
+    version = 18;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

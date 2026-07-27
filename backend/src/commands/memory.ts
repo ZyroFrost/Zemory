@@ -2,6 +2,7 @@
 //  import|forget|redact|backup|restore|relocate|vacuum|bench>` — the global
 // Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
 import { basename, resolve } from "node:path";
+import { scanHiddenChars } from "../memory/redact.js";
 import { findProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
@@ -525,6 +526,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log("  note: agent transcript source files are not deleted. If a whole-file transcript changes later, it can be re-ingested.");
     return;
   }
+  if (sub === "audit") {
+    // Chiều VÀO của redact: soi ký tự điều hướng ẩn (memory poisoning). THUẦN ĐỌC —
+    // không sửa, không xoá, không chặn; người quyết định là user, không phải zemory.
+    const hits = scanHiddenChars(flagValue(args, "--db"));
+    if (!hits.length) {
+      console.log("zemory memory audit — ✓ không thấy ký tự điều hướng ẩn nào.");
+      return;
+    }
+    console.log(`zemory memory audit — ${hits.length} tin có ký tự điều hướng ẩn:`);
+    for (const h of hits.slice(0, 20)) console.log(`  #${h.id}  ${h.chars.join(" · ")}   (phiên ${h.sessionId})`);
+    console.log("  Xem toàn văn: `zemory memory show <#id>`. Bỏ tin: `zemory memory forget --message <#id>`.");
+    return;
+  }
   if (sub === "redact") {
     const r = await reRedactMemory({
       dbPath: flagValue(args, "--db"),
@@ -762,6 +776,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  forget [selectors] [--force]",
       "                    dry-run/delete memory rows by --session, --project, --source, --before, or --message.",
       "  redact [--force]   re-apply secret redaction to already ingested memory rows.",
+      "  audit             soi ký tự điều hướng ẩn trong nội dung đã lưu (chỉ đọc, không sửa).",
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",
       "  info              table row-counts of global_memory.db.",
