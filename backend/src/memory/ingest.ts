@@ -4,6 +4,7 @@
 // whole-mode files re-parse only when changed. Local-only: no network anywhere.
 
 import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
 import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
@@ -88,7 +89,10 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       .prepare("SELECT store_root AS root, source FROM known_stores")
       .all() as { root: string; source: string }[];
 
-    const found = discover(adapters, { home, deep: opts.deep, roots: opts.roots, knownStores });
+    // Kho import suy TỪ CHÍNH dbPath đang quét (không phải biến toàn cục) — nếu không,
+    // một lần scan trên DB tạm sẽ hút dữ liệu từ kho thật vào.
+    const importsRoot = join(dirname(dbPath), "imports");
+    const found = discover(adapters, { home, deep: opts.deep, roots: opts.roots, knownStores, importsRoot });
 
     // Remember every store root seen this run (deep scan discovers new ones).
     const saveStore = db.prepare(
