@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-07-28b] — Check giọng văn sản phẩm · slot `attachment` (schema v19)
+
+Gate 239 → **242**.
+
+### Check giọng văn — UI là sản phẩm giao, không phải ghi chú nội bộ
+User chốt: *"phải check full từ ngữ, không được dùng văn nói, phải dùng từ ngữ chuyên nghiệp chuẩn làm app"*.
+- Đo trên **861 chuỗi hiển thị** (cả hai từ điển + text mặc định của `data-i18n`): **0 vi phạm**. Nên đây là **RATCHET chống tái phát**, không phải bộ sửa.
+- **Hai vòng đo để loại báo oan** — quan trọng hơn bản thân luật:
+  · Vòng 1 dùng `` của JS ⇒ `ngu` khớp trong "**ngu**ồn" (**27 ca oan**), `ui` khớp trong "**UI** language". JS coi ký tự có dấu là ranh giới từ ⇒ **không dùng `` cho tiếng Việt**, phải tự dựng lớp ranh giới.
+  · Đã BỎ khỏi danh sách: `vs` (viết tắt kỹ thuật hợp lệ), `ok` (nhãn trạng thái chuẩn "3/3 OK"), `ui` (acronym).
+  · `05_TODO.md` bị báo oan vì tôi chỉ đặt biên ở CUỐI — `_` là ký tự từ nên không có biên giữa `_` và `T`. Thêm biên đầu.
+- Có test **chứng minh bộ luật NỔ ĐƯỢC** (5 mẫu văn nói phải bắt) **và KHÔNG nổ oan** (7 mẫu hợp lệ phải sạch) — đúng luật 4 của skill `audit toàn diện`.
+- Thêm check thứ hai: ghi chú dev (`TODO`/`FIXME`/`mock`/`placeholder`) không được lọt ra giao diện.
+
+### Slot `attachment` + `attachment_link` (schema **v19**)
+**Đo trước khi thiết kế** — và số đo đổi hẳn phạm vi: quét **105 transcript, 5.456 attachment**:
+`p50 0 KB · p90 0 KB · p99 1,6 KB · max 12 KB · tổng 0,2 MB · >1 MB: 0 · nhị phân: 0`.
+5.104/5.456 không có đuôi file (metadata nội bộ, adapter đã bỏ đúng); phần còn lại là `.md ×181 .py ×46 .ts ×40 .sql ×20`… **toàn văn bản**. Tức 52 tin đính kèm đã ingest LÀ TOÀN BỘ những gì tồn tại — không có kho ảnh nào đang bị bỏ sót.
+
+Thiết kế theo đó — dựng slot đúng, **không** dựng máy móc cho hàng chưa có:
+- **Tách khỏi `messages`** vì cột `content` nuôi FTS5: nhét blob vào là thổi index mà không tìm được gì (bài học v16/v17: trigram nuốt tool-dump làm DB phình 435 MB).
+- **Ba hạng `kind` tường minh** — `text` (nội dung, đã redact) · `blob` (nhị phân) · `ref` (CHỈ ghi nhận "từng có file này, ở đây", không lưu nội dung, dùng khi vượt ngưỡng). Thà biết nó từng tồn tại còn hơn im lặng bỏ qua.
+- **Dedup theo `sha256`** + bảng nối `attachment_link`: một file đọc lại 20 lần = 1 hàng nội dung + 20 hàng nối, không phải 20 bản sao.
+- **KHÔNG backfill** 52 tin cũ: chúng nằm ở `messages.content` dạng `[file:<path>]` + nội dung và VẪN ĐÚNG — là lớp full, tìm được, đọc được. Viết lại dữ liệu nguồn chỉ để gọn hơn là không đáng (điều 3).
+- **Chưa nối vào bundle sync** — đó là L3, cần user chốt chính sách trước (bundle đang "lean" −74%, thả blob vào là phá cân đối đó).
+
+*(Lại dính họ lỗi cũ lần thứ 4: **backtick trong comment SQL nằm trong template literal** cắt đứt `SCHEMA`. Và một `
+` trong comment nở thành xuống dòng thật làm vỡ comment TS.)*
+
+---
+
 ## [2026-07-28] — Sources hiện ĐỦ BỘ nguồn được hỗ trợ, không chỉ nguồn đã có dữ liệu
 
 Gate 238 → **239**.

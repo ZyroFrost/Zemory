@@ -99,9 +99,9 @@ test("UPDATE đổi PHÍA: prose→tool rời trigram; tool→prose vào trigram
 
 // Ghim CỐ Ý một con số cứng: mỗi lần tăng SCHEMA_VERSION phải sửa dòng này, tức là
 // việc tăng version luôn là một quyết định có ý thức chứ không trôi qua lặng lẽ.
-// v18 = thêm bảng graph_fitness (lịch sử fitness code-graph).
-test("DB mới chạy hết migration và dừng ở schema v18", (t) => {
+// v18 = graph_fitness (lịch sử fitness). v19 = attachment + attachment_link.
+test("DB mới chạy hết migration và dừng ở schema v19", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 18);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 19);
   db.close();
 });
