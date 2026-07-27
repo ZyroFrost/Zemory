@@ -6,7 +6,7 @@
 
 import { basename, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { clip, safeReaddir, safeStat, toTranscript } from "./_shared.js";
+import { safeReaddir, safeStat, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedMessage, ParsedSession, TranscriptFile } from "./types.js";
 
 export const lmstudioAdapter: Adapter = {
@@ -65,7 +65,7 @@ function flatten(content: unknown): string {
   for (const b of content) {
     if (b && typeof b === "object" && typeof (b as any).text === "string") parts.push((b as any).text);
   }
-  return clip(parts.join("\n").trim());
+  return parts.join("\n").trim();
 }
 
 // Assistant turns are a list of steps; each contentBlock step has content[].
@@ -78,5 +78,5 @@ function flattenSteps(steps: unknown): string {
       if (t) parts.push(t);
     }
   }
-  return clip(parts.join("\n").trim());
+  return parts.join("\n").trim();
 }

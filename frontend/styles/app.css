@@ -1,15 +1,21 @@
 /* ============================================================================
-   plan 15 · 6 nav (Home·Recall·Projects·Memory·Harness·Settings) · Phase-2 wired
-   (real backend). Elements with .demo class = mock/dư (no real backend yet).
-   Gold on near-black (dark) / white+gold (light). 0 AI-calling (điều 6).
+   plan 15 · 5 nav (Home·Recall·Projects·Global Memory·Harness) — Cài đặt là dialog,
+   không phải mục nav. Vàng trên gần-đen (dark) / trắng + vàng (light).
+   0 AI-calling (điều 6).
+
+   LUẬT MÀU: mọi màu phải đi qua token và token MÀU phải khai ở CẢ hai khối, nếu
+   không light mode giữ nguyên giá trị tối. app-ui.test.mjs canh điều này — trước
+   khi có gate đó, 7 chỗ đã lọt (logo, nút danger, badge, nền dialog, wash của pill).
    ============================================================================ */
 :root,:root[data-theme="dark"]{
   --bg:#0E0F13;--surface:#15171C;--surface-2:#1B1E25;--surface-3:#22262E;
   --text:#E5E7EB;--text-dim:#9BA1AD;--text-faint:#6B7280;
   --border:#23262F;--border-strong:#333844;
   --primary:#FFD166;--primary-dim:#B99534;--on-primary:#1A1400;
-  --success:#34D399;--warn:#FBBF24;--danger:#F87171;
+  --success:#34D399;--warn:#FBBF24;--danger:#F87171;--on-danger:#fff;
   --wash:rgba(255,209,102,.08);--wash-2:rgba(255,255,255,.03);
+  --wash-ok:rgba(52,211,153,.10);--wash-warn:rgba(251,191,36,.12);
+  --scrim:rgba(0,0,0,.55);--logo-plate:#0d0d0d;
   --glow:0 0 24px rgba(255,209,102,.10);--shadow:0 10px 30px rgba(0,0,0,.45);
 }
 :root[data-theme="light"]{
@@ -17,8 +23,11 @@
   --text:#16181D;--text-dim:#5B6270;--text-faint:#8A909C;
   --border:#E4E7EC;--border-strong:#D2D6DD;
   --primary:#C99700;--primary-dim:#E7B84a;--on-primary:#fff;
-  --success:#0E9F6E;--warn:#B45309;--danger:#DC2626;
-  --wash:rgba(201,151,0,.08);--wash-2:rgba(0,0,0,.02);--glow:0 0 0 transparent;--shadow:0 8px 24px rgba(20,22,28,.10);
+  --success:#0E9F6E;--warn:#B45309;--danger:#DC2626;--on-danger:#fff;
+  --wash:rgba(201,151,0,.08);--wash-2:rgba(0,0,0,.02);
+  --wash-ok:rgba(14,159,110,.10);--wash-warn:rgba(180,83,9,.10);
+  --scrim:rgba(20,22,28,.42);--logo-plate:#0d0d0d;
+  --glow:0 0 0 transparent;--shadow:0 8px 24px rgba(20,22,28,.10);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -41,8 +50,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .railcoll .machine{justify-content:center}
 .railcoll .machine>div:last-child{display:none}
 .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px}
-.brand .logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(145deg,#2a2410,#0d0d0d);border:1.5px solid var(--primary);display:grid;place-items:center;color:var(--primary);font-weight:800;font-size:19px;box-shadow:var(--glow)}
-.brand img.logo{border:0;background:#0d0d0d;object-fit:cover;padding:0}
+/* Logo là <img> (đổi từ chữ "Z" sang initials). Bỏ gradient + căn chữ của bản cũ:
+   ảnh object-fit:cover phủ kín nên chúng chỉ là code chết. --logo-plate là nền dự
+   phòng khi ảnh chưa tải. */
+.brand .logo{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--primary);box-shadow:var(--glow)}
+.brand img.logo{border:0;background:var(--logo-plate);object-fit:cover;padding:0}
 .brand b{font-size:16px;letter-spacing:.02em}
 .brand small{display:block;color:var(--text-faint);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;margin-top:1px}
 .nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}
@@ -68,7 +80,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text);padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13px;white-space:nowrap}
 .btn:hover{border-color:var(--primary)}
 .btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary);font-weight:600}
-.btn.danger{background:var(--danger);color:#fff;border-color:var(--danger);font-weight:600}
+.btn.danger{background:var(--danger);color:var(--on-danger);border-color:var(--danger);font-weight:600}
 .btn.danger:hover{border-color:var(--danger);filter:brightness(1.08)}
 .zdi{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none}
 .zdi:focus{border-color:var(--primary)}
@@ -77,14 +89,13 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .btn.sm{padding:6px 10px;font-size:12px}
 .search{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;min-width:240px;color:var(--text-dim)}
 .search input{background:none;border:0;color:var(--text);outline:none;flex:1;font-size:13px}
-.kbd{border:1px solid var(--border-strong);border-radius:5px;padding:1px 6px;font-size:10.5px;color:var(--text-faint)}
 .bell{position:relative;background:none;border:1px solid var(--border);border-radius:9px;color:var(--text-dim);padding:9px 11px;cursor:pointer}
-.bell .badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;font-size:10px;border-radius:9px;padding:0 5px;font-weight:700}
+.bell .badge{position:absolute;top:-6px;right:-6px;background:var(--danger);color:var(--on-danger);font-size:10px;border-radius:9px;padding:0 5px;font-weight:700}
 .topver{color:var(--text-faint);font-size:12px;font-variant-numeric:tabular-nums;padding:0 4px}
 .topgear{background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text);border-radius:9px;padding:8px 12px;cursor:pointer;font-size:15px;line-height:1}
 .topgear:hover{border-color:var(--primary);color:var(--primary)}
 /* Dialog — 3-size (§5), Settings uses M = 60% khung app, 16:9. ESC/backdrop close. */
-.dlg-back{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;place-items:center;z-index:100;padding:20px}
+.dlg-back{position:fixed;inset:0;background:var(--scrim);display:none;place-items:center;z-index:100;padding:20px}
 .dlg-back.on{display:grid}
 .dlg{width:min(60vw,calc(60vh*16/9));aspect-ratio:16/9;max-height:100%;background:var(--surface);border:1px solid var(--border-strong);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
 .dlg-h{display:flex;align-items:center;gap:10px;padding:15px 20px;border-bottom:1px solid var(--border);flex:0 0 auto}
@@ -101,6 +112,60 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .screen.on{display:flex;flex-direction:column;gap:14px;padding:20px 26px 30px;flex:1;min-height:0;animation:fade .18s ease}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .grow{flex:1;min-height:0}
+/* Hàng chart "cho không gian nhỏ thôi" (user chốt 2026-07-25): chart là thứ THAM KHẢO,
+   không được ăn hết màn như bản 2-sub-tab trước. Cap chiều cao thân card; SVG bên trong
+   tự co theo (đều dùng viewBox + height:100%). */
+/* Session viewer: prose nguyên văn · code/tool THU LẠI (user chốt 2026-07-26) */
+.prose{white-space:pre-wrap;word-break:break-word}
+.fold{margin:6px 0;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);overflow:hidden}
+.fold>summary{cursor:pointer;padding:6px 10px;font-size:11.5px;color:var(--text-dim);user-select:none;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:'▸ ';color:var(--primary)}
+.fold[open]>summary::before{content:'▾ '}
+.fold>summary:hover{color:var(--text)}
+.fold pre.code{margin:0;padding:9px 11px;border-top:1px solid var(--border);max-height:420px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.5}
+/* Global Memory › Đồng bộ & Sao lưu: 3 cột có lượng nội dung LỆCH NHAU nhiều (Máy này ngắn,
+   Drive dài). Để card kéo full chiều cao thì cột ngắn chừa nửa màn trống (thấy qua ảnh chụp
+   2026-07-26). Cho card cao theo NỘI DUNG; seam vẫn phải kéo hết chiều cao mới nắm được. */
+.sub[data-gm="sync"] > .rzgrid{align-items:start}
+.sub[data-gm="sync"] > .rzgrid > .seam{align-self:stretch}
+/* Bộ lọc hạng cạnh + legend slot của graph (mượn ý từ Knowledge Graph Viewer 2026-07-26) */
+.gfilter{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gfilter label{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--text-dim);cursor:pointer}
+.gfilter input{accent-color:var(--primary)}
+.gfilter .rel{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
+.glegend{display:flex;flex-wrap:wrap;gap:5px;flex:0 0 auto;padding:2px 0}
+.glegend .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim);
+  border:1px solid var(--border);border-radius:999px;padding:2px 9px;cursor:pointer;user-select:none}
+.glegend .lg:hover{color:var(--text);border-color:var(--text-faint)}
+.glegend .lg.off{opacity:.4;text-decoration:line-through}
+.glegend .lg .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.glegend .lg .n{color:var(--text-faint);font-variant-numeric:tabular-nums}
+/* Danh sách cạnh vào/ra trong Node Inspector — bấm để nhảy sang node đó */
+.eglist{margin-top:4px}
+.eglist .eg{display:flex;align-items:baseline;gap:6px;padding:3px 0;border-bottom:1px solid var(--wash-2);cursor:pointer;font-size:11.5px}
+.eglist .eg:hover{color:var(--primary)}
+.eglist .eg .k{flex:0 0 auto;font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);min-width:52px}
+.eglist .eg .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eglist .eg .c{margin-left:auto;flex:0 0 auto;color:var(--text-faint);font-size:10.5px}
+/* Khung BÔI CHỌN nhiều node trên graph (Shift+kéo nền). Overlay HTML tuyệt đối trong
+   #gcanvas — không vẽ trong SVG để khỏi bị viewBox zoom/pan làm méo bề rộng nét. */
+.graph-canvas{position:relative}
+.gmarquee{position:absolute;pointer-events:none;z-index:3;border:1px dashed var(--primary);
+  background:var(--wash);border-radius:3px}
+/* Lưới chart 2×2 LẤP ĐỦ khung còn lại (user 2026-07-26: "phân ra làm 4 bảng").
+   Trước là 1 hàng 3 chart thấp nên chừa nửa màn trống. */
+.chart-grid{grid-auto-rows:minmax(0,1fr);gap:12px}
+.chart-grid .card{min-height:0}
+.chart-grid .card-b{overflow:hidden;display:flex;flex-direction:column}
+.chart-grid .card-b svg{flex:1;min-height:70px;width:100%}
+/* Trục thời gian: nhãn dựng bằng HTML, KHÔNG dùng <text> trong SVG — viewBox đi cùng
+   preserveAspectRatio="none" nên mọi thứ trong SVG bị bóp méo theo chiều ngang. */
+.xaxis{display:flex;justify-content:space-between;gap:6px;margin-top:5px;padding-top:5px;
+  border-top:1px solid var(--border);font-size:10px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.xaxis span{white-space:nowrap}
+.chart-note{font-size:11px;color:var(--text-faint);margin-top:4px}
 .grid{display:grid;gap:14px}
 .g6{grid-template-columns:repeat(6,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr 1fr}
 /* card */
@@ -126,8 +191,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .row .ico{width:30px;height:30px;border-radius:8px;background:var(--surface-3);display:grid;place-items:center;font-size:14px;flex:0 0 auto;color:var(--primary)}
 .row .nm{font-size:13px;font-weight:550}.row .meta{font-size:11px;color:var(--text-faint)}
 .pill{font-size:10.5px;padding:2px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px}
-.pill.ok{color:var(--success);background:rgba(52,211,153,.1)}
-.pill.warn{color:var(--warn);background:rgba(251,191,36,.12)}
+.pill.ok{color:var(--success);background:var(--wash-ok)}
+.pill.warn{color:var(--warn);background:var(--wash-warn)}
 .pill.dim{color:var(--text-dim);background:var(--surface-3)}
 .qa{display:flex;align-items:center;gap:11px;padding:11px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.12s}
 .qa:hover{border-color:var(--primary);background:var(--wash-2)}
@@ -137,6 +202,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .msg{margin-bottom:13px}
 .msg .who{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-faint);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
 .msg .who .tag{color:var(--primary)}
+/* Output công cụ nằm trong lượt 'user' của API → nhãn riêng, KHÔNG để lẫn với người gõ */
+.msg .who .tag.tool{color:var(--text-faint)}
+.msg[data-role="tool"]{opacity:.82}
 .msg .body{font-size:12.5px;color:var(--text-dim)}
 .tool{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text-dim)}
 .recall-in{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:10px;flex:0 0 auto}
@@ -186,7 +254,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .set-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
 .set-row:last-child{border-bottom:0}
 .set-row .sl b{font-size:13px;display:block}.set-row .sl small{color:var(--text-faint);font-size:11.5px}
-.swatch{display:flex;gap:8px}.swatch span{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent}.swatch span.on{border-color:var(--text)}
 .tree .ti{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;color:var(--text-dim);font-size:12.5px}
 .tree .ti:hover{background:var(--surface-2)}.tree .ti.on{background:var(--wash);color:var(--primary)}.tree .ti.ind{padding-left:22px}
 .badge-req{font-size:10px;color:var(--warn);border:1px solid var(--warn);border-radius:6px;padding:1px 7px}
@@ -213,6 +280,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .graph-canvas{cursor:grab}.graph-canvas:active{cursor:grabbing}
 .graph-canvas svg{display:block;width:100%;height:100%}
 .gedge{stroke:var(--border-strong);stroke-width:1;opacity:.5}
+/* Cạnh SUY LUẬN (calls, name-match) vẽ nét ĐỨT — nhìn là biết ngay không phải cạnh
+   khai báo. HP điều 13: cạnh suy luận KHÔNG BAO GIỜ được giả dạng cạnh khai báo. */
+.gedge.inferred{stroke-dasharray:3 3;opacity:.38}
 .gedge.hot{stroke:var(--success);stroke-width:1.6;opacity:1}
 .gnode{cursor:pointer}
 .gnode circle{stroke:var(--bg);stroke-width:1.2;transition:r .1s}
@@ -252,30 +322,50 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .drv-progress-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
 .drv-progress-txt b{font-size:13px;font-weight:600;line-height:1.35}
 .drv-progress-txt small{color:var(--text-faint);font-size:11px}
-.gline{position:absolute;height:1px;background:var(--border-strong);transform-origin:left center;opacity:.5}
 .section-t{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin:6px 0 2px}
 .muted{color:var(--text-faint)}
 /* Resize seam (§5): kéo chỉnh cột · dblclick reset · lưu localStorage. */
 .seam{cursor:col-resize;align-self:stretch;position:relative;z-index:3;min-height:20px}
 .seam::after{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;border-radius:2px;background:var(--border);transition:background .12s}
 .seam:hover::after,.seam.drag::after{background:var(--primary)}
-.seam.rowseam{cursor:row-resize}
-.seam.rowseam::after{left:0;right:0;top:50%;bottom:auto;transform:translateY(-50%);width:auto;height:2px}
 .sys-grp{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin:16px 0 6px}
 .sys-grp:first-child{margin-top:4px}
-.sys-row{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--border);border-radius:11px;margin-bottom:8px;background:var(--surface)}
-.sys-row .sx{min-width:0;flex:1}
-.sys-row .sxn{font-size:13.5px;font-weight:550}
-.sys-row .sxd{font-size:11.5px;color:var(--text-faint);line-height:1.4;margin-top:2px}
-.sys-row .sxa{display:flex;align-items:center;gap:8px;flex:0 0 auto}
 .sys-li{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;cursor:pointer;font-size:13px}
 .sys-li:hover{background:var(--surface-2)}
 .sys-li.on{background:var(--wash)}
 .sys-li .sxn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .disc-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--surface)}
-.cov-local{color:var(--success);font-size:10px}
 .back{display:inline-flex;align-items:center;gap:6px;color:var(--text-dim);cursor:pointer;font-size:13px}
 .back:hover{color:var(--primary)}
 /* .demo = UI dư (mock) — chỉ nhãn chữ nhỏ, KHÔNG viền vàng (user 2026-07-23) */
 .demo{}
-.demo-tag{font-size:8.5px;letter-spacing:.06em;color:var(--text-faint);border-radius:4px;padding:0 4px;margin-left:6px;text-transform:uppercase;vertical-align:middle;opacity:.7}
+/* Xu hướng fitness (panel Graph). Mọi metric ở đây thấp-hơn-là-tốt-hơn, nên delta
+   tăng = đỏ. Màu qua token để light mode đảo được (app-ui.test.mjs canh). */
+.trendsvg{width:100%;height:30px;display:block}
+.trend-d{font-variant-numeric:tabular-nums;flex:0 0 auto}
+.trend-d.good{color:var(--success)}
+.trend-d.bad{color:var(--danger)}
+.trend-d.flat{color:var(--text-faint)}
+/* Hàng tab của màn Dự án: tab bên trái, tên project + nút back đẩy sang PHẢI cùng hàng
+   (user 2026-07-27 — trước đó back/tên chiếm riêng một hàng chỉ để hiện một chữ). */
+.pjtabs{align-items:center}
+.pjhead{margin-left:auto;display:flex;align-items:center;gap:10px;padding-bottom:4px}
+.pjhead b{font-size:14px}
+.pjhead .back{color:var(--text-dim);cursor:pointer;font-size:12.5px}
+.pjhead .back:hover{color:var(--primary)}
+/* Thông báo kết quả quét — màu theo KẾT QUẢ để nhìn ra ngay (user 2026-07-27: chữ xám
+   nhạt lẫn vào nền). CÓ tin mới = vàng nổi bật, không có = xám im lặng. */
+.scanmsg{font-size:11.5px;margin-top:8px;min-height:1em;color:var(--text-faint)}
+.scanmsg.run{color:var(--text-dim)}
+.scanmsg.none{color:var(--text-faint)}
+.scanmsg.hit{color:var(--primary);font-weight:600;background:var(--wash);border:1px solid var(--primary-dim);border-radius:7px;padding:5px 9px}
+/* Mốc kiểm chứng của Drive: nhãn trái, số phải; đỏ lên khi lần đẩy cũ hơn tin mới nhất. */
+.drv-facts{display:flex;flex-direction:column;gap:3px;margin:8px 0 10px;font-size:11.5px}
+.drv-facts>div{display:flex;justify-content:space-between;gap:10px}
+.drv-facts span{color:var(--text-faint)}
+.drv-facts b{font-variant-numeric:tabular-nums;font-weight:600}
+.drv-facts.stale b{color:var(--warn)}
+/* Sources: badge "+N" của lần quét gần nhất — để đối chiếu chéo với panel Máy này và
+   Drive (ba panel liên quan nhau, user 2026-07-27). Cùng màu với thông báo quét. */
+.scope-n{display:inline-flex;align-items:center;gap:7px}
+.scope-d{color:var(--primary);font-weight:700;font-size:11px;background:var(--wash);border:1px solid var(--primary-dim);border-radius:6px;padding:0 5px;font-variant-numeric:tabular-nums}

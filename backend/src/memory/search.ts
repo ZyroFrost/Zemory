@@ -25,6 +25,8 @@ export interface SearchHit {
 
 export interface SearchOptions {
   dbPath?: string;
+  /** Tắt việc hạ điểm tin tool (mặc định tin tool bị hạ trong recall thường). */
+  includeTools?: boolean;
   /** Restrict to this project root (normalized match). Ignored if `all`. */
   project?: string;
   /** Cross-project: search the whole memory. */
@@ -39,7 +41,7 @@ export interface SearchOptions {
   source?: string;
   /** Filter: only this origin bucket ('local' agent transcripts | 'web' chat). */
   origin?: string;
-  /** Filter: only this message role (e.g. 'user', 'assistant'). */
+  /** Filter: only this message role — 'user' (người thật gõ) · 'assistant' · 'tool'. */
   role?: string;
   /** Filter: only messages at/after this epoch-ms timestamp. */
   sinceMs?: number;
@@ -60,6 +62,27 @@ const W_VEC = 1.0; // semantic stream weight (hybrid)
 const POOL = 60; // candidates pulled from each stream before fusion
 const RERANK_POOL = 40; // top RRF candidates rescored by the cross-encoder
 const RERANK_CHARS = 2000; // doc chars fed to the reranker (it truncates anyway)
+
+/**
+ * Vai THẬT của một message, cho bộ lọc `role`.
+ *
+ * API của Anthropic trả `tool_result` TRONG LƯỢT `user`, nên transcript — và cột
+ * `messages.role` dẫn xuất từ nó — ghi 'user' cho cả output của máy. Trung thực với nguồn,
+ * nhưng lọc `role='user'` thì kéo về toàn rác: đo 2026-07-26 trên DB thật, **44.102/69.324
+ * tin role='user' (63,6%) là `tool_result`**, chỉ 36,4% là người gõ. `tool_name` ở role=user
+ * = 0 dòng nên không phân biệt được bằng metadata; mọi tin tool_result đều BẮT ĐẦU bằng
+ * marker (44.102 = 44.102) ⇒ luật dưới đây tất định, không đoán.
+ *
+ * Nhờ vậy `role='user'` = **người thật hỏi gì**, còn `role='tool'` = output công cụ.
+ * (`digest.ts` đã loại đúng từ trước bằng `NON_NL`, không đụng tới.)
+ */
+const TOOL_RESULT_PREFIX = /^\s*\[tool[_ ]result/i;
+function roleMatches(role: string, content: string, want: string): boolean {
+  const isToolOut = role === "user" && TOOL_RESULT_PREFIX.test(content ?? "");
+  if (want === "tool") return isToolOut;
+  if (want === "user") return role === "user" && !isToolOut;
+  return role === want;
+}
 
 const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
 
@@ -156,6 +179,51 @@ function rankWithRecency(
   return blendRecency(ranked, (r) => ts.get(r.rowid) ?? null, true);
 }
 
+/**
+ * HẠ ĐIỂM đầu ra của tool trong recall thường — chống "recall blindness".
+ *
+ * Vấn đề đo được 2026-07-27: 20 kết quả đầu cho một truy vấn thật có **8 là tin TOOL**
+ * (40% ngân sách recall đổ vào nội dung máy sinh — dump file, kết quả lệnh). Chúng khớp
+ * từ khoá rất tốt vì dài và đầy mã định danh, nên đẩy câu trả lời thật của con người
+ * xuống dưới. (Hermes xử cùng vấn đề bằng cách ẩn hẳn phiên `subagent`/`tool` khỏi search
+ * mặc định; ở đây chọn cách nhẹ hơn — xem dưới.)
+ *
+ * HẠ ĐIỂM, KHÔNG LOẠI BỎ — có chủ ý:
+ *   · Loại hẳn thì mất luôn trường hợp câu trả lời CHỈ nằm trong tool output.
+ *   · Đã đo trường hợp xấu nhất (truy vấn thông báo lỗi — `ERR_HTTP_HEADERS_SENT`,
+ *     `BFCArena`, `ENOENT`…): văn xuôi vẫn chiếm 8–10/10 vì agent có bàn về lỗi bằng lời.
+ *     Nên rủi ro mất thông tin là thấp, còn khi tool là nguồn DUY NHẤT thì nó vẫn ra.
+ *   · Hỏi thẳng `--role tool` thì KHÔNG phạt gì cả.
+ *
+ * Đặt SAU RRF/rerank, cùng tầng với recency: nó điều biến thứ tự cuối chứ không tranh
+ * chấp với phép xếp hạng theo thứ tự của RRF.
+ */
+const TOOL_DEMOTE = 0.3;
+
+function demoteToolOutput(
+  db: MemoryDB,
+  ranked: { rowid: number; s: number }[],
+  opts: SearchOptions,
+): { rowid: number; s: number }[] {
+  if (opts.role === "tool" || opts.includeTools) return ranked; // hỏi thẳng tool ⇒ không phạt
+  if (ranked.length < 2) return ranked;
+  const ids = ranked.map((r) => r.rowid);
+  const rows = db
+    .prepare(
+      `SELECT id, role, substr(COALESCE(content,''), 1, 16) AS head, tool_name
+       FROM messages WHERE id IN (${ids.map(() => "?").join(",")})`,
+    )
+    .all(...ids) as { id: number; role: string; head: string; tool_name: string | null }[];
+  const isTool = new Map<number, boolean>();
+  for (const r of rows) {
+    // Cùng dấu hiệu tất định mà roleMatches() dùng — một định nghĩa "tin tool" duy nhất.
+    isTool.set(r.id, Boolean(r.tool_name) || (r.role === "user" && TOOL_RESULT_PREFIX.test(r.head)));
+  }
+  return ranked
+    .map((r) => (isTool.get(r.rowid) ? { rowid: r.rowid, s: r.s * TOOL_DEMOTE } : r))
+    .sort((a, b) => b.s - a.s);
+}
+
 /** Hydrate fused rowids → hits: scope filter + per-session cap + snippet. */
 function hydrate(
   db: MemoryDB,
@@ -181,7 +249,7 @@ function hydrate(
     if (wantProject && norm(row.project_root ?? "") !== wantProject) continue;
     if (opts.source && row.source !== opts.source) continue;
     if (opts.origin && (row.origin ?? "local") !== opts.origin) continue;
-    if (opts.role && row.role !== opts.role) continue;
+    if (opts.role && !roleMatches(row.role, row.content, opts.role)) continue;
     // Scoped recall: drop lanes the user excluded (still in the DB, just hidden).
     if (excludeLanes.length && isExcluded({ origin: row.origin ?? "local", host: row.host, source: row.source }, excludeLanes)) continue;
     if (opts.sinceMs && !(Date.parse(row.timestamp ?? "") >= opts.sinceMs)) continue;
@@ -215,7 +283,7 @@ export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
     const scopedProject = !opts.all ? opts.project : undefined;
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
     if (!ranked.length) return [];
-    return hydrate(db, rankWithRecency(db, ranked, opts), terms, opts);
+    return hydrate(db, rankWithRecency(db, demoteToolOutput(db, ranked, opts), opts), terms, opts);
   } finally {
     db.close();
   }
@@ -289,6 +357,9 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
     let ranked = rrf(streams);
     if (!ranked.length) return [];
     ranked = await maybeRerank(db, ranked, query, opts.rerank);
+    // SAU rerank, TRƯỚC recency — cùng vị trí như ở search() để hai đường cho cùng
+    // thứ tự. Bỏ sót đây là bỏ sót đường CHÍNH: hybrid bật mặc định, UI đi lối này.
+    ranked = demoteToolOutput(db, ranked, opts);
     ranked = rankWithRecency(db, ranked, opts);
     return hydrate(db, ranked, terms, opts);
   } finally {

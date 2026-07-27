@@ -15,8 +15,8 @@ import {
   renameSync,
   rmSync,
   statSync,
-  writeFileSync,
 } from "node:fs";
+import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { isAbsolute, join, resolve } from "node:path";
 import {
   MEMORY_DB_PINNED_BY_ENV,
@@ -109,7 +109,9 @@ export function setStoragePointer(dataDir: string | null, paths: StoragePaths = 
     }
     return;
   }
-  writeFileSync(paths.pointer, `${JSON.stringify({ dataDir }, null, 2)}\n`);
+  // Con trỏ này quyết định zemory tìm DB ở đâu. Ghi hỏng nửa chừng ⇒ JSON cụt ⇒
+  // resolveMemoryDir() rơi về thư mục home và MỞ RA MỘT BỘ NHỚ RỖNG bên cạnh DB thật.
+  writeJsonAtomic(paths.pointer, { dataDir });
 }
 
 function timestamp(): string {

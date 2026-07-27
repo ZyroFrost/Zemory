@@ -12,7 +12,8 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { scan } from "./ingest.js";
@@ -105,7 +106,9 @@ function mergeCommandHook(
     groups.push({ hooks: [{ type: "command", command }] });
     settings[event] = groups;
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, JSON.stringify(document, null, 2) + "\n");
+    // File cấu hình của CHÍNH agent (vd settings.json của Claude Code). Ghi hỏng ở đây
+    // là làm hỏng công cụ của user, không chỉ hỏng zemory ⇒ phải nguyên tử.
+    writeJsonAtomic(path, document);
   }
   return {
     path,
@@ -150,7 +153,8 @@ function enableCodexHooks(configPath: string): boolean {
   const next = lines.join("\n").replace(/\n*$/, "\n");
   if (next === original) return false;
   mkdirSync(dirname(configPath), { recursive: true });
-  writeFileSync(configPath, next);
+  // config.toml của Codex — cũng là file của CHÍNH agent, hỏng là hỏng công cụ của user.
+  writeFileAtomic(configPath, next);
   return true;
 }
 

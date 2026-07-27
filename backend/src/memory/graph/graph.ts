@@ -8,9 +8,26 @@
 // a lightweight import/symbol scan is enough for a file-level graph and keeps the
 // tool dependency-free. Fail-open: unreadable files are skipped, never fatal.
 
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
 import { SLOT_ROLES } from "../../docs/structure-tree.js";
+
+/**
+ * Định danh ỔN ĐỊNH cho một cạnh — để trích dẫn được.
+ *
+ * Vì sao: hiện agent chỉ nói được "A import B"; không có cách nào chỉ vào ĐÚNG cạnh
+ * đó và cũng không có cách nào kiểm lại sau. Có id ổn định thì một khẳng định mới dẫn
+ * được nguồn (`edge:9f2c…`) và ta mới ĐO được cạnh được dẫn có thật hay không — đúng
+ * tinh thần điều 12 (đo thật, đừng tin lời).
+ *
+ * `rel` nằm TRONG hash một cách cố ý: cùng cặp (A,B) mà một cạnh khai báo và một cạnh
+ * suy luận là HAI sự thật khác hạng (điều 13 cấm trộn) ⇒ phải khác id.
+ * Tất định thuần: cùng đầu vào luôn ra cùng id, không phụ thuộc thứ tự dựng hay máy.
+ */
+export function edgeId(from: string, to: string, kind: string, rel: string): string {
+  return createHash("sha1").update(`${from}|${to}|${kind}|${rel}`).digest("hex").slice(0, 12);
+}
 
 // Exported so the folder-tree view (structure-tree.ts) walks the EXACT same file
 // set as the graph — tree and graph must never drift (one is the "map", the

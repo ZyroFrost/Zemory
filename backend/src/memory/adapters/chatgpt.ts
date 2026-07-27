@@ -9,7 +9,7 @@
 
 import { basename, dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { clip, safeReaddir, toTranscript } from "./_shared.js";
+import { safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
 
 export const chatgptAdapter: Adapter = {
@@ -128,10 +128,10 @@ function flattenConversation(conv: any): ParsedMessage[] {
 
 function flattenParts(content: any): string {
   if (!content) return "";
-  if (typeof content === "string") return clip(content.trim());
+  if (typeof content === "string") return content.trim();
   const parts = content.parts;
   if (Array.isArray(parts)) {
-    return clip(parts.filter((p: unknown) => typeof p === "string" && p.trim()).join("\n").trim());
+    return parts.filter((p: unknown) => typeof p === "string" && p.trim()).join("\n").trim();
   }
   return "";
 }

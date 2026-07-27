@@ -15,7 +15,7 @@ Important:
 - Do not edit `global_memory.zemory.enc` by hand; regenerate it with:
 
 ```powershell
-node dist\cli.js brain export share\global_memory.zemory.enc --key-file share\share.key --force
+node dist\cli.js memory export share\global_memory.zemory.enc --key-file share\share.key --force
 ```
 
 Restore on another trusted machine:
@@ -25,18 +25,18 @@ git lfs install
 git lfs pull
 npm ci
 npm run build
-node dist\cli.js brain import share\global_memory.zemory.enc --key-file share\share.key --force
-node dist\cli.js brain info
+node dist\cli.js memory import share\global_memory.zemory.enc --key-file share\share.key --force
+node dist\cli.js memory info
 ```
 
 Before exporting a new bundle, optional privacy pass:
 
 ```powershell
-node dist\cli.js brain redact --force
-node dist\cli.js brain forget --project "D:\some\project"   # dry-run
-node dist\cli.js brain forget --project "D:\some\project" --force
-node dist\cli.js brain export share\global_memory.zemory.enc --key-file share\share.key --force
+node dist\cli.js memory redact --force
+node dist\cli.js memory forget --project "D:\some\project"   # dry-run
+node dist\cli.js memory forget --project "D:\some\project" --force
+node dist\cli.js memory export share\global_memory.zemory.enc --key-file share\share.key --force
 ```
 
-`forget` changes only zemory's derived brain DB/vector index; it does not delete
+`forget` changes only zemory's derived memory DB/vector index; it does not delete
 the original agent transcript files.
