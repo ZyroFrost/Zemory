@@ -322,7 +322,10 @@ test("serveFrontend/serveBinary đọc file TRƯỚC khi ghi header 200 (không 
 // 2026-07-27: **137** chuỗ như vậy (user hỏi "còn chỗ nào thiếu song ngữ không").
 // RATCHET, không phải giấy chứng nhận sạch: con số chỉ được ĐI XUỐNG. Phần lớn còn lại
 // là mô tả slot của bản chuẩn (nội dung, không phải chrome UI) — hạ dần theo đợt.
-const VI_HARDCODE_BASELINE = 127;
+// Trần chỉ được ĐI XUỐNG. 137 → 127 → 100: đợt cuối chuyển 14 khối tài liệu tính năng
+// sang key i18n. 61 chuỗi còn lại nằm trong STRUCT/ROUTE — hai bảng nay chỉ là BẢN DỰ
+// PHÒNG khi /standard-spec hỏng, không phải nguồn hiển thị, nên không cần dịch.
+const VI_HARDCODE_BASELINE = 100;
 
 test(`chuỗi tiếng Việt hardcode (ngoài từ điển) không được tăng — trần ${VI_HARDCODE_BASELINE}`, () => {
   const VI = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
