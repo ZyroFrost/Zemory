@@ -38,6 +38,31 @@
 > ⑤ **Gỡ `gOrphanN`** chết khỏi `app.js`.
 > *(P2/P3 ĐÃ XONG 2026-07-27 — xem mục ngay dưới.)*
 
+## 📌 BÀN GIAO PHIÊN — chốt 2026-07-28
+> Gate **246/246** · `conform` ✓ · `validate` ✓ · DB **870,9 MB** · schema **v19** · parser **v5**.
+> Toàn bộ đã commit + push lên `origin/main`.
+
+**Trạng thái các năng lực chính**
+- Bộ nhớ: 173.6k tin · 1.2k phiên · 2 máy · 6 nguồn (`claude-code` `codex` `continue` `lmstudio` `chatgpt-web` `claude-web`) · vector phủ 100%.
+- **Ảnh: 678 ảnh / 54,3 MB** đã vào `attachment` (dedup 862 liên kết). Trước 2026-07-28 bị bỏ im lặng.
+- Capture web: ChatGPT ✓ · **claude.ai ✓ (mới)** · Gemini chưa.
+- UI: 6 màn, có gate 32 test soi đúng file đang chạy.
+
+**Việc kế tiếp, theo thứ tự tôi đề nghị**
+- [ ] **L3 — blob trong bundle sync: CHỜ USER CHỐT.** Bảng `attachment` đã có 54,3 MB blob nhưng **chưa nối vào bundle**. Ba lựa chọn: ⓐ không bao giờ sync blob, chỉ sync hàng `ref` · ⓑ sync dưới một ngưỡng · ⓒ opt-in theo máy. Bundle đang "lean" (−74%); thả 54 MB blob vào là phá cân đối đó ⇒ phải là quyết định của user.
+- [ ] **Ảnh chưa có bề mặt xem.** Đã nạp nhưng UI/CLI chưa có chỗ mở ra xem. Cần: `memory show <#id>` liệt kê đính kèm, và viewer phiên hiện thumbnail.
+- [ ] **Adapter khác chưa nối ảnh** — mới làm `adapters/claude.ts`. `codex`/`continue`/`lmstudio`/`chatgpt` vẫn bỏ block ảnh nếu có.
+- [ ] **`claude-web` project = uuid thô** (`019f68e1-…`) vì API không trả tên folder. ChatGPT giải bằng `_projects.json`; làm tương tự cho claude.ai khi cần.
+- [ ] 5 export không ai gọi (advisory) · `/nav-cost` chỉ `ui.ts` dùng.
+
+**Bẫy đã trả giá trong phiên này — đọc trước khi sửa tiếp**
+1. **Backtick trong comment nằm trong template literal** cắt đứt chuỗi — dính **6 lần**. Trước khi viết comment trong một template literal, bỏ hết dấu ``` ` ```.
+2. **Gate xanh KHÔNG chứng minh test đang soi thứ đang chạy** — 22 test UI neo vào file đã chết.
+3. **Đo sai chỗ còn tệ hơn không đo** — kết luận "không có ảnh" vì chỉ nhìn `attachment`, trong khi ảnh nằm ở content block.
+4. **Hai đường ghi message** — vá một đường thì dữ liệu im lặng không vào.
+5. **`` của JS không dùng được cho tiếng Việt** — `ngu` khớp trong "nguồn".
+6. **Luật quá tay nguy hơn không có** — regex `sync|migrate` trần bắt nhầm `/sync-pulse` chỉ-đọc.
+
 ## 🔬 AUDIT TOÀN DIỆN 2026-07-27 — 3 finding (F3 đã xử)
 > Chạy đủ 6 mặt theo skill `audit toàn diện` vừa viết. Gate **227/227** · `conform` ✓ · `integrity_check` ok.
 

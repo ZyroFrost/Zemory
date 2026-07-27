@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { homedir, hostname } from "node:os";
 import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
-import type { TranscriptFile } from "./adapters/types.js";
+import type { ParsedAttachment, TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
 import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
@@ -18,7 +18,9 @@ import { pruneOrphanVectors } from "./vectors.js";
 // `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
 // kéo vào chat). Bump ⇒ `needsRebuild` bật ⇒ scan kế tiếp đọc lại từ dòng 0 và
 // whole-replace, nên phiên CŨ cũng đầy lại. Transcript gốc còn ⇒ dựng lại được (điều 3).
-const PARSER_VERSION = 4;
+// v5: nhánh `image` mới có trong adapters/claude.ts — 1.245 block ảnh (93 MB) trước
+// đây bị bỏ im lặng ở khâu nạp. Bump để mọi transcript nạp lại và ảnh vào bảng attachment.
+const PARSER_VERSION = 5;
 
 // The machine doing the ingest. Transcript files are local to the machine that
 // ran the agent, so the ingesting host IS the producing host. Stamped onto each
@@ -420,12 +422,48 @@ interface FileResult {
   sessions: SessionReport[];
 }
 
+/**
+ * Ghi đính kèm của một message + liên kết. Dedup theo sha256: một ảnh lặp 20 lần = 1
+ * hàng nội dung + 20 liên kết.
+ *
+ * CÓ HAI đường ghi message (whole-replace và append-mode jsonl) — hàm này để cả hai
+ * cùng gọi. Bản đầu tôi chỉ vá một đường và attachment im lặng không vào: nhãn
+ * `[image:…]` đã hiện trong content mà bảng vẫn rỗng.
+ */
+function writeAttachments(
+  db: MemoryDB,
+  sessionId: string,
+  msgs: PendingMsg[],
+): void {
+  if (!msgs.some((m) => m.atts?.length)) return;
+  const insAtt = db.prepare(
+    "INSERT OR IGNORE INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, content, blob, src_path, created_at)" +
+      " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+  );
+  const findAtt = db.prepare("SELECT id FROM attachment WHERE sha256 = ?");
+  const linkAtt = db.prepare("INSERT OR IGNORE INTO attachment_link (message_id, attachment_id, name) VALUES (?,?,?)");
+  const findMsg = db.prepare("SELECT id FROM messages WHERE session_id = ? AND uuid IS ? ORDER BY id DESC LIMIT 1");
+  const now = new Date().toISOString();
+  for (const m of msgs) {
+    if (!m.atts?.length) continue;
+    const row = findMsg.get(sessionId, m.uuid) as { id: number } | undefined;
+    if (!row) continue; // không định vị được message ⇒ bỏ, KHÔNG dựng liên kết mồ côi
+    for (const at of m.atts) {
+      insAtt.run(row.id, sessionId, at.name ?? null, at.mime ?? null, at.bytes, at.sha256, at.kind,
+        at.content ?? null, at.blob ?? null, at.srcPath ?? null, now);
+      const found = findAtt.get(at.sha256) as { id: number } | undefined;
+      if (found) linkAtt.run(row.id, found.id, at.name ?? null);
+    }
+  }
+}
+
 interface PendingMsg {
   uuid: string | null;
   role: string;
   content: string;
   tool: string | null;
   ts: string | null;
+  atts?: ParsedAttachment[];
 }
 
 interface WriteSessionArgs {
@@ -470,6 +508,7 @@ function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
   );
   let inserted = 0;
   for (const m of a.msgs) inserted += ins.run(a.sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
+  writeAttachments(db, a.sessionId, a.msgs);
 
   db.prepare(
     `UPDATE sessions SET
@@ -512,7 +551,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     const tx = db.transaction(() => {
       for (const conv of parsed) {
         const pending: PendingMsg[] = conv.messages.map((m) => ({
-          uuid: m.uuid, role: m.role, content: m.content, tool: m.toolName, ts: m.timestamp,
+          uuid: m.uuid, role: m.role, content: m.content, tool: m.toolName, ts: m.timestamp, atts: m.attachments,
         }));
         const added = writeSession(db, {
           sessionId: conv.sessionId, source: file.source, origin,
@@ -576,7 +615,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     for (let i = start; i < completeLines; i++) {
       const p = adapter.parseLine(lines[i]);
       if (p.kind === "message") {
-        msgs.push({ uuid: p.msg.uuid, role: p.msg.role, content: p.msg.content, tool: p.msg.toolName, ts: p.msg.timestamp });
+        msgs.push({ uuid: p.msg.uuid, role: p.msg.role, content: p.msg.content, tool: p.msg.toolName, ts: p.msg.timestamp, atts: p.msg.attachments });
       } else if (p.kind === "title") {
         // A user's custom title wins and locks; an AI title only fills if no
         // custom title has been seen (order in the file is not guaranteed).
@@ -591,7 +630,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     cwd = parsed.cwd;
     title = parsed.title;
     for (const m of parsed.messages) {
-      msgs.push({ uuid: m.uuid, role: m.role, content: m.content, tool: m.toolName, ts: m.timestamp });
+      msgs.push({ uuid: m.uuid, role: m.role, content: m.content, tool: m.toolName, ts: m.timestamp, atts: m.attachments });
     }
     wholeReplace = true; // file is rewritten wholesale → replace this session's rows
   } else {
@@ -621,6 +660,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     );
     let inserted = 0;
     for (const m of msgs) inserted += ins.run(sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
+    writeAttachments(db, sessionId, msgs);
 
     db.prepare(
       `UPDATE sessions SET

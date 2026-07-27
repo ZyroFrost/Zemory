@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-07-28d] — Nạp ĐƯỢC ảnh: 678 ảnh / 54,3 MB vào bảng attachment (parser v5)
+
+Gate **246/246**. DB 801,1 → **870,9 MB**.
+
+### Kết quả đo sau khi nối
+```
+attachment  : blob=678 · 54,3 MB   (image/png ×665 · image/jpeg ×13)
+attachment_link: 862 liên kết       ← dedup chạy: 862 tham chiếu / 678 nội dung
+messages    : 669 tin mang nhãn [image:…]
+```
+
+### Cách làm — và vì sao KHÔNG nhét base64 vào `content`
+- `flatten()` (`adapters/claude.ts`) thêm nhánh `image`: tách blob ra `attachments`, chỉ để lại **một dòng nhãn** `[image:<mime> <KB> <sha12>]` trong text. Base64 mà vào `content` là thổi FTS5 lên mà không tìm được gì — đúng bài học v16/v17 (trigram nuốt tool-dump làm DB phình 435 MB).
+- Ngưỡng `MAX_BLOB_BYTES = 8 MB`: vượt thì hạ xuống `kind='ref'` (ghi nhận từng có, không lưu nội dung) chứ **không bỏ im lặng**. Đo thật: max 1,28 MB nên chưa ai chạm ngưỡng.
+- Dedup theo `sha256`: một ảnh lặp lại N lần = **1** hàng nội dung + N liên kết.
+- `PARSER_VERSION 4 → 5` để nạp lại transcript cũ (nếu không, ảnh cũ vẫn nằm ngoài).
+
+### Bẫy đã dính khi làm
+- **CÓ HAI đường ghi message** (whole-replace và append-mode jsonl). Vá một đường thì attachment **im lặng không vào**: nhãn `[image:…]` đã hiện trong content mà bảng vẫn rỗng — mà append-mode mới chính là đường Claude Code dùng. Đã tách thành hàm `writeAttachments()` cho cả hai cùng gọi.
+- 4 test khoá lại: base64 không được vào `content` · ảnh ra `attachments` đúng `sha256`/`kind` · cùng ảnh ⇒ cùng sha256 · block ảnh lạ (`source.type='url'`) thì bỏ qua **mà không làm mất cả message**.
+
+---
+
 ## [2026-07-28c] — Capture claude.ai CHẠY THẬT · 2 lỗi lặng lẽ · ĐÍNH CHÍNH: ảnh 93 MB đang bị bỏ
 
 Gate **242/242**. Capture đầu-cuối: `pulled 2 · failed 0` → DB có 2 phiên `claude-web`, 6 tin, vai đúng.
