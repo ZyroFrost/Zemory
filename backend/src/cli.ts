@@ -18,6 +18,7 @@ import {
   cmdDoctor,
   cmdArchive,
   cmdValidate,
+  cmdConform,
   cmdSetup,
   cmdStructure,
   cmdGrill,
@@ -61,6 +62,9 @@ switch (cmd) {
     break;
   case "validate":
     cmdValidate();
+    break;
+  case "conform":
+    cmdConform(args);
     break;
   case "reindex":
     cmdReindex();

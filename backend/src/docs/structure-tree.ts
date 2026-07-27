@@ -70,6 +70,10 @@ export const SLOT_ROLES: Record<string, string> = {
   memory: "domain: global memory (store/ingest/search/digest/ai)",
   docs: "harness docs (agent/ + plan/) OR domain — by context",
   adapters: "per-host ingest adapters (Claude/Codex/…)",
+  // Slot LỒNG trong domain (không phải capability thứ 5 — HP điều 13). Khai tên chính thức
+  // 2026-07-26 sau khi `zemory conform` bắt được cùng một tên tự phát ở 2 repo độc lập
+  // (zemory `memory/graph/`, SasinHarvest `integrations/graph/`) ⇒ concern thật, không ngẫu nhiên.
+  graph: "engine graph dẫn xuất: import/symbol/docs/touches (lồng trong domain)",
   packaging: "packaging resources: exe/tray icons (.spec reads)",
   skills: "vendored skills: one folder per upstream repo, kept verbatim (03 §3)",
   prompts: "LLM prompt templates (tracked resource)",

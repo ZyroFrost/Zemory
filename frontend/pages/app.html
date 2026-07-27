@@ -15,13 +15,12 @@
     <nav class="nav" id="nav">
       <a data-s="home" class="on"><span class="ic">⌂</span> <span data-i18n="nav.home">Trang chủ</span></a>
       <a data-s="recall"><span class="ic">🔍</span> <span data-i18n="nav.recall">Recall</span></a>
-      <a data-s="sessions"><span class="ic">🗂</span> <span data-i18n="nav.sessions">Phiên</span></a>
       <a data-s="projects"><span class="ic">▤</span> <span data-i18n="nav.projects">Dự án</span></a>
       <a data-s="gmem"><span class="ic">◉</span> <span data-i18n="nav.gmem">Global Memory</span></a>
-      <a data-s="memory"><span class="ic">🧠</span> <span data-i18n="nav.memory">Bộ nhớ & Sync</span></a>
       <a data-s="harness"><span class="ic">📘</span> <span data-i18n="nav.harness">Harness</span></a>
-      <a data-s="insights"><span class="ic">📈</span> <span data-i18n="nav.insights">Insights</span></a>
-      <a data-s="system"><span class="ic">✔</span> <span data-i18n="nav.system">Hệ thống</span></a>
+      <!-- Đặt CUỐI: đây là màn chẩn đoán, thỉnh thoảng mới vào — không tranh chỗ với
+           các mục dùng hằng ngày. (Bản 9-màn cũ cũng để "✔ Hệ thống" ở cuối.) -->
+      <a data-s="system"><span class="ic">✔</span> <span data-i18n="nav.system">Tính năng</span></a>
     </nav>
     <div class="rail-foot">
       <div class="status-chip"><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
@@ -39,7 +38,9 @@
     </div>
     <div class="scroll" id="scroll">
 
-      <!-- HOME -->
+      <!-- HOME — MỘT màn liếc-nhanh, KHÔNG sub-tab nữa (Tính năng & Kiểm tra đã tách ra
+           mục nav riêng, xem ghi chú ở màn đó).
+           Số liệu "at a glance" CHỈ sống ở đây; chi tiết/biểu đồ ở Global Memory. -->
       <section class="screen on" data-s="home">
         <div class="grid g6">
           <div class="stat"><div class="lbl"><span class="si">💬</span> Messages<span class="qh" data-i18n-hint="hint.msg">?</span></div><div class="val" id="stMsg">—</div><div class="sub" data-i18n="st.global">toàn cục</div></div>
@@ -49,33 +50,57 @@
           <div class="stat"><div class="lbl"><span class="si">◇</span> Vectors<span class="qh" data-i18n-hint="hint.vec">?</span></div><div class="val" id="stVec">—</div><div class="sub" id="stVecSub">—</div></div>
           <div class="stat"><div class="lbl"><span class="si">🖴</span> Storage<span class="qh" data-i18n-hint="hint.store">?</span></div><div class="val" id="stStore">—</div><div class="sub">cục bộ</div></div>
         </div>
-        <div class="grid g3 grow">
+        <div class="grid g2 grow">
           <div class="card"><div class="card-h"><div class="t"><span class="ci">📁</span> <span data-i18n="home.recentProj">Dự án gần đây</span></div><a data-nav="projects" data-i18n="home.all">Tất cả →</a></div><div class="card-b" id="homeProjects">
             <div class="muted" data-i18n="st.loading">…</div>
           </div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="home.recentSess">Phiên gần đây</span></div><a data-nav="recall" data-i18n="home.recall">Recall →</a></div><div class="card-b" id="homeSessions">
-            <div class="muted" data-i18n="st.loading">…</div>
-          </div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">✔</span> <span data-i18n="home.sysChecks">Hệ thống &amp; Kiểm tra</span></div><span id="checkSummary" class="pill ok" style="font-size:11px">—</span><a data-nav="system" data-i18n-title="home.openSysTip" title="mở màn System đầy đủ" data-i18n="home.detail">Chi tiết →</a></div><div class="card-b" id="homeChecks">
+          <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="home.recentSess">Phiên gần đây</span></div><a data-goto="recall:sess" data-i18n="home.allSess">Tất cả phiên →</a></div><div class="card-b" id="homeSessions">
             <div class="muted" data-i18n="st.loading">…</div>
           </div></div>
         </div>
         <div class="grid g3" style="flex:0 0 auto">
-          <div class="qa" data-nav="system"><span class="qi">✔</span><div><b data-i18n="nav.system">Hệ thống</b><small>tất cả tính năng · kiểm tra</small></div></div>
-          <div class="qa" data-nav="memory"><span class="qi">🔄</span><div><b data-i18n="act.syncNow">Đồng bộ ngay</b><small>đồng bộ mọi drive</small></div></div>
-          <div class="qa" data-nav="harness"><span class="qi">📐</span><div><b data-i18n="home.openHarness">Mở Harness</b><small>chuẩn &amp; docs</small></div></div>
+          <div class="qa" data-goto="recall:find"><span class="qi">🔍</span><div><b data-i18n="nav.recall">Recall</b><small data-i18n="qa.recallD">tìm lại việc phiên trước</small></div></div>
+          <div class="qa" data-nav="gmem"><span class="qi">🔄</span><div><b data-i18n="act.syncNow">Đồng bộ ngay</b><small data-i18n="qa.syncD">quét nguồn · đẩy lên Drive</small></div></div>
+          <div class="qa" data-nav="harness"><span class="qi">📐</span><div><b data-i18n="home.openHarness">Mở Harness</b><small data-i18n="qa.harnessD">chuẩn &amp; docs</small></div></div>
         </div>
       </section>
 
-      <!-- RECALL (+ session viewer merged) -->
+      <!-- TÍNH NĂNG & KIỂM TRA — mục nav RIÊNG, không còn là sub-tab của Home
+           (user 2026-07-27): "chuẩn UI thông thường thì Home đã tổng hợp nhiều bảng rồi,
+           tự nhiên thêm 1 tab nhỏ bên trong thì người ta sẽ không để ý tab đó tồn tại".
+           Và nó khác việc: Home là liếc-nhanh hằng ngày, đây là chẩn đoán — thỉnh thoảng.
+           Lý do gộp ban đầu (hai danh sách check trùng nhau: #homeChecks và #sysList) đã
+           được xử bằng cách XOÁ bản trùng; việc đó không đòi phải gộp luôn màn.
+           MỘT nguồn sự thật duy nhất cho "sức khoẻ" (FEATURES trong app.js); chip ở rail
+           đọc cùng nguồn đó, KHÔNG có list check thứ hai. -->
+      <section class="screen" data-s="system">
+        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto">
+          <span id="sysSummary" class="pill ok" style="font-size:12px">—</span>
+          <span class="muted" style="font-size:12px" data-i18n="sys.hint">Bấm 1 tính năng bên trái → mô tả + Kiểm / Bật bên phải</span>
+          <button class="btn sm" data-act="sysrecheck" style="margin-left:auto">↻ <span data-i18n="sys.recheckAll">Kiểm lại tất cả</span></button>
+        </div>
+        <div class="grid grow rzgrid" style="grid-template-columns:var(--sys,1fr) 8px 1.15fr">
+          <div class="card"><div class="card-b" id="sysList"><div class="muted">…</div></div></div>
+          <div class="seam" data-seam="sys"></div>
+          <div class="card"><div class="card-b" id="sysDetail"><div class="muted" data-i18n="sys.pick">Chọn 1 tính năng bên trái.</div></div></div>
+        </div>
+      </section>
+
+      <!-- RECALL — 2 sub-tab, CHUNG một bộ xem hội thoại (trước đây Recall và màn
+           Sessions là 2 viewer trùng nhau): Tìm kiếm = vào bằng query · Phiên = vào
+           bằng danh sách. Bấm ⤢ ở 1 kết quả → nhảy sang sub-tab Phiên, KHÔNG mở dialog thứ hai. -->
       <section class="screen" data-s="recall">
+        <div class="tabs"><button class="on" data-rc="find">🔍 <span data-i18n="rc.find">Tìm kiếm</span></button><button data-rc="sess">🗂 <span data-i18n="rc.sess">Phiên</span></button></div>
+        <div class="sub on" data-rc="find">
         <div class="recall-in"><span>🔍</span><input id="rq" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall">Tìm ✦</button></div>
         <div class="filters">
           <div class="fchip on" id="rAll" data-rf="all">Cả máy</div>
           <div class="fchip" id="rHybrid" data-rf="hybrid">Hybrid</div>
           <div class="fchip" id="rRerank" data-rf="rerank">Rerank</div>
           <select id="fTime" class="rsel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
-          <select id="fType" class="rsel"><option value="" data-i18n="f.typeAny">Loại: mọi</option><option value="user">user</option><option value="assistant">assistant</option><option value="tool">tool</option></select>
+          <!-- "user" = NGƯỜI thật gõ (backend đã loại tool_result nằm trong lượt user);
+               "tool" = output công cụ. Xem roleMatches() trong search.ts. -->
+          <select id="fType" class="rsel"><option value="" data-i18n="f.typeAny">Loại: mọi</option><option value="user" data-i18n="f.typeUser">user (người gõ)</option><option value="assistant">assistant</option><option value="tool" data-i18n="f.typeTool">tool (output)</option></select>
           <select id="fOrigin" class="rsel"><option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>
           <select id="fAgent" class="rsel"><option value="" data-i18n="f.agentAny">Agent: mọi</option></select>
           <div class="fchip muted" id="rCount" style="border:0" data-i18n="f.noResultYet">— kết quả</div>
@@ -87,8 +112,23 @@
           <div class="seam" data-seam="recall"></div>
           <div class="card"><div class="card-h"><div class="t" id="rPreviewTitle" data-i18n="recall.preview">Xem trước</div><a id="rCopy" style="cursor:pointer" data-i18n="recall.copy">Sao chép</a></div><div class="card-b" id="rPreview">
             <div class="muted" data-i18n="recall.previewEmpty">Chọn một kết quả để xem các message lân cận ngay tại đây.</div>
+          </div></div>
+        </div>
+        </div>
+
+        <!-- Phiên (trước là màn "Sessions" riêng) — list + thread + info + Export .md -->
+        <div class="sub" data-rc="sess">
+          <div class="grid grow rzgrid" style="grid-template-columns:var(--sess,300px) 8px 1fr">
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="rc.sess">Phiên</span></div><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" style="background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text);font-size:12px;outline:none;width:120px"><button class="btn sm" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻</button></div>
+              <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
+            </div>
+            <div class="seam" data-seam="sess"></div>
+            <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a></div>
+              <div id="sessVInfo" class="muted" style="font-size:11px;flex:0 0 auto;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:6px"></div>
+              <div class="card-b" id="sessVBody"><div class="muted" data-i18n="sess.pick">Chọn một phiên bên trái để xem toàn bộ hội thoại.</div></div>
+            </div>
           </div>
-          <div class="muted" style="font-size:11px;grid-column:1/-1;text-align:right;margin-top:-4px" data-i18n="recall.hint">Bấm 1 kết quả → xem full session bên phải.</div></div>
+        </div>
       </section>
 
       <!-- PROJECTS (list -> detail: Harness|Graph|Checks) -->
@@ -98,6 +138,10 @@
             <button class="btn primary sm" data-act="addproj">＋ <span data-i18n="act.addProject">Thêm dự án</span></button>
             <button class="btn sm" data-act="scanproj">🔍 <span data-i18n="act.scanKnown">Quét nguồn đã biết</span></button>
             <button class="btn sm" data-act="deepscanproj">⛁ <span data-i18n="act.deepScan">Quét sâu</span></button>
+            <!-- Nút này TỪNG có ở cockpit cũ (changelog 07-22 §G) rồi rơi mất khi rewrite
+                 app.html: endpoint `/prune-projects` vẫn sống mà FE không còn chỗ nào gọi
+                 (audit 2026-07-26 bắt được). Trả lại đây, cạnh 2 nút quét. -->
+            <button class="btn sm" data-act="pruneproj" data-i18n-title="act.pruneTip" title="Gỡ khỏi danh sách những project mà folder không còn tồn tại">🧹 <span data-i18n="act.prune">Dọn dự án đã mất</span></button>
             <span class="fchip muted" id="projCount" style="border:0">—</span>
             <span id="scanProjMsg" class="muted" style="font-size:11px"></span>
             <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
@@ -113,8 +157,11 @@
           <div id="projDiscovered"></div>
         </div>
         <div id="projDetail" class="grow" style="display:none;flex-direction:column;gap:12px">
-          <div style="display:flex;align-items:center;gap:12px"><span class="back" id="projBack">← Projects</span><b id="projName" style="font-size:16px">Zemory</b><span class="badge-prof" id="projProf">APP</span></div>
-          <div class="tabs"><button class="on" data-pt="harness">Harness</button><button data-pt="graph">Graph</button></div>
+          <!-- Tên project + nút back nằm CÙNG HÀNG với tab, đẩy sang phải (user 2026-07-27):
+               hai hàng mà mỗi hàng chỉ có một chữ là phí chiều dọc — màn Graph cần chỗ. -->
+          <div class="tabs pjtabs"><button class="on" data-pt="harness">Harness</button><button data-pt="graph">Graph</button>
+            <span class="pjhead"><b id="projName">Zemory</b><span class="badge-prof" id="projProf">APP</span><span class="back" id="projBack">← <span data-i18n="pj.back">Danh sách</span></span></span>
+          </div>
           <div class="sub on" data-pt="harness">
             <div class="grid grow rzgrid" style="grid-template-columns:var(--phdoc,240px) 8px 1fr">
               <div class="card"><div class="card-h"><div class="t"><span class="ci">📘</span> Harness</div><a id="phValidate" title="zemory validate">validate</a></div>
@@ -134,6 +181,10 @@
               </select>
               <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-dim);cursor:pointer"><input type="checkbox" id="gOrphans"> <span data-i18n="graph.orphans">Chỉ orphan</span></label>
               <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)"><span data-i18n="graph.spacing">Giãn cách</span><input type="range" id="gSpacing" min="0.6" max="2.6" step="0.2" value="1" style="width:80px;accent-color:var(--primary)"><span id="gSpacingVal" class="mono" style="font-size:11px;color:var(--text-faint);min-width:24px">1.0×</span></label>
+              <!-- Lọc theo HẠNG CẠNH. `imports` = khai báo (tất định) · `calls` = suy luận
+                   (name-match, có confidence) — nhãn phải RÕ, cạnh suy luận không được
+                   giả dạng khai báo (HP điều 13). Dựng động trong gRenderEdgeFilter(). -->
+              <span id="gEdgeFilter" class="gfilter"></span>
               <button class="btn sm" id="gRebuild">↻ <span data-i18n="graph.relayout">Tự xếp lại</span></button>
               <span class="muted" style="font-size:11px" data-i18n="graph.hint2">Kéo node · lăn = zoom · kéo nền = di chuyển · Ctrl+Z hoàn tác · bấm đúp nền = 1:1 · bấm folder trái → sáng node</span>
               <span style="flex:1"></span>
@@ -141,6 +192,9 @@
               <button class="btn sm" id="gPanelToggle" data-i18n-title="graph.collapsePanel" title="Thu gọn bảng thông tin">▶</button>
               <button class="btn sm" id="gPanelPos" data-i18n-title="graph.panelPos" title="Đổi vị trí bảng: phải ⇄ trên">⬒</button>
             </div>
+            <!-- Legend slot: mỗi slot 1 chip có SỐ ĐẾM, bấm để ẩn/hiện nhóm đó.
+                 Trước đây graph tô màu theo slot mà không có chú giải ⇒ nhìn màu đoán mò. -->
+            <div id="gLegend" class="glegend"></div>
             <div id="gPanelTop" class="pg-top"></div>
             <div class="grid grow rzgrid" id="pgGrid" style="grid-template-columns:var(--pgtree,240px) 8px minmax(0,1fr) 8px var(--pgright,300px)">
               <div class="card pg-tree" id="pgTree"><div class="muted" style="font-size:11.5px" data-i18n="graph.treeLoading">Cấu trúc folder…</div></div>
@@ -151,6 +205,12 @@
                 <div id="gPanel" style="display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0">
                   <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t" data-i18n="graph.inspector">Node Inspector</div></div><div class="card-b" id="gInspect"><div class="muted" style="font-size:11.5px" data-i18n="graph.pickNode">Bấm 1 node để xem chi tiết.</div></div></div>
                   <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t"><span class="ci">✔</span> <span data-i18n="graph.checks">Kiểm tra (từ graph)</span></div></div><div class="card-b" id="gChecks"><div class="muted" style="font-size:11.5px" data-i18n="graph.pickNode">…</div></div></div>
+                  <!-- Xu hướng fitness — ĐẶT Ở ĐÂY chứ không nhét vào lưới 4 chart của
+                       Global Memory: lưới đó user đã chốt đúng 4 bảng và nó nói về BỘ NHỚ,
+                       còn fitness nói về CODE-GRAPH của project ⇒ để cạnh Kiểm tra (từ
+                       graph) là đúng chỗ thông tin graph vốn đã sống. Một điểm đạt/không-đạt
+                       không nói được hướng đi; mốc thời gian mới nói. -->
+                  <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t"><span class="ci">📉</span> <span data-i18n="graph.trend">Xu hướng graph</span></div></div><div class="card-b" id="gTrend"><div class="muted" style="font-size:11.5px" data-i18n="st.loading">…</div></div></div>
                 </div>
               </div>
             </div>
@@ -158,60 +218,42 @@
         </div>
       </section>
 
-      <!-- INSIGHTS — deterministic only: daily activity · agent mix · growth · health. 0 AI/forecast. -->
-      <section class="screen" data-s="insights">
-        <div class="grid g2 grow">
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">📊</span> <span data-i18n="ins.usage">Hoạt động theo ngày</span></div></div><div class="card-b" id="insDaily"><div class="muted" data-i18n="st.loading">…</div></div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">🤖</span> Top Agents</div></div><div class="card-b" id="insAgents"><div class="muted" data-i18n="st.loading">…</div></div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">📈</span> <span data-i18n="ins.growth">Tăng trưởng bộ nhớ</span></div></div><div class="card-b" id="insGrowth"><div class="muted" data-i18n="st.loading">…</div></div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">✔</span> <span data-i18n="ins.health">Sức khoẻ</span></div></div><div class="card-b"><div class="grid" style="grid-template-columns:1fr 1fr;gap:10px" id="insHealth"><div class="muted" data-i18n="st.loading">…</div></div></div></div>
-        </div>
-      </section>
-
-      <!-- SESSION VIEWER — full session list + thread + info + export (/sessions + /memory-session) -->
-      <section class="screen" data-s="sessions">
-        <div class="grid grow rzgrid" style="grid-template-columns:var(--sess,300px) 8px 1fr">
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> Sessions</div><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" style="background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text);font-size:12px;outline:none;width:130px"></div>
-            <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
-          </div>
-          <div class="seam" data-seam="sess"></div>
-          <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a></div>
-            <div id="sessVInfo" class="muted" style="font-size:11px;flex:0 0 auto;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:6px"></div>
-            <div class="card-b" id="sessVBody"><div class="muted" data-i18n="sess.pick">Chọn một phiên bên trái để xem toàn bộ hội thoại.</div></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- GLOBAL MEMORY — dashboard (health donut · top sources · vector index · stats). All from /memory-status, 0 fake. -->
+      <!-- GLOBAL MEMORY — MỘT màn duy nhất (user chốt 2026-07-25: "sync đi với global
+           memory, không có từ ingest nào"). Bản trước tôi tách analytics/actions thành 2 màn
+           + 2 sub-tab: SAI — sync LÀ thao tác trên bộ nhớ, và tách ra thì không màn nào đủ
+           nội dung (dư khoảng trống mênh mông). Thứ tự: SỐ lên đầu → chart NHỎ → hành động.
+           Đã bỏ donut "Sức khoẻ" + card "Vector Index" riêng: gộp thành tile trong bảng số. -->
       <section class="screen" data-s="gmem">
-        <div class="grid g3 grow">
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">◉</span> <span data-i18n="gm.health">Sức khoẻ bộ nhớ</span></div></div>
-            <div class="card-b" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px" id="gmHealth"><div class="muted" data-i18n="st.loading">…</div></div>
-          </div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="gm.sources">Top Sources</span></div></div><div class="card-b" id="gmSources"><div class="muted" data-i18n="st.loading">…</div></div></div>
-          <div class="card"><div class="card-h"><div class="t"><span class="ci">◇</span> Vector Index</div></div><div class="card-b" id="gmVector"><div class="muted" data-i18n="st.loading">…</div></div></div>
-        </div>
-        <div class="card" style="flex:0 0 auto"><div class="card-h"><div class="t"><span class="ci">📊</span> <span data-i18n="gm.stats">Thống kê bộ nhớ</span></div></div><div class="card-b" id="gmStats" style="overflow:visible"><div class="muted" data-i18n="st.loading">…</div></div></div>
-      </section>
+        <div class="tabs"><button class="on" data-gm="mem">◉ <span data-i18n="gm.tabMem">Bộ nhớ</span></button><button data-gm="sync">🔄 <span data-i18n="gm.tabSync">Đồng bộ &amp; Sao lưu</span></button></div>
 
-      <!-- MEMORY & SYNC — gộp 3 concern vào 1 màn (Bộ nhớ · Đồng bộ · Backup) -->
-      <section class="screen" data-s="memory">
-        <div class="grid g4" style="flex:0 0 auto">
-          <div class="stat"><div class="lbl">Messages<span class="qh" data-i18n-hint="hint.msg">?</span></div><div class="val" id="mMsg">—</div><div class="sub" data-i18n="st.global">toàn cục</div></div>
-          <div class="stat"><div class="lbl">Tokens (~)<span class="qh" data-i18n-hint="hint.tok">?</span></div><div class="val" id="mTok">—</div><div class="sub" data-i18n="st.estimate">ước tính</div></div>
-          <div class="stat"><div class="lbl">Vector Coverage<span class="qh" data-i18n-hint="hint.vec">?</span></div><div class="val" id="mVec">—</div><div class="sub" id="mVecSub">—</div></div>
-          <div class="stat"><div class="lbl" data-i18n="mem.storage">Lưu trữ<span class="qh" data-i18n-hint="hint.store">?</span></div><div class="val" id="mStore">—</div><div class="sub">cục bộ</div></div>
+        <!-- ① BỘ NHỚ — bộ nhớ này đang có gì. Bảng số ở đây CHỈ chứa thứ Trang chủ KHÔNG có
+             (Trang chủ giữ 6 ô at-a-glance Messages/Sessions/Vector/Storage…) ⇒ một con số
+             chỉ sống ở đúng một chỗ. -->
+        <div class="sub on" data-gm="mem">
+          <div class="card" style="flex:0 0 auto"><div class="card-h"><div class="t"><span class="ci">📊</span> <span data-i18n="gm.stats">Thống kê bộ nhớ</span></div></div><div class="card-b" id="gmStats" style="overflow:visible"><div class="muted" data-i18n="st.loading">…</div></div></div>
+
+          <!-- 4 bảng 2×2 LẤP ĐỦ khung (trước 3 chart thấp một hàng ⇒ chừa nửa màn trống).
+               Hai chart theo thời gian PHẢI có TRỤC THỜI GIAN (user 2026-07-26: "chart mà ko
+               có cột time thì ý nghĩa mẹ gì") — nhãn trục render bằng HTML dưới SVG, KHÔNG
+               nhét <text> vào SVG vì viewBox dùng preserveAspectRatio="none" sẽ bóp méo chữ.
+               Tất cả tất định: COUNT/SUM thẳng từ DB, 0 AI/forecast (điều 6 · 12). -->
+          <div class="grid g2 grow chart-grid">
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">📁</span> <span data-i18n="ins.projects">Bộ nhớ theo dự án</span></div></div><div class="card-b" id="insProjects"><div class="muted" data-i18n="st.loading">…</div></div></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="gm.sources">Top Sources</span></div></div><div class="card-b" id="insAgents"><div class="muted" data-i18n="st.loading">…</div></div></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">📊</span> <span data-i18n="ins.usage">Hoạt động theo ngày</span></div></div><div class="card-b" id="insDaily"><div class="muted" data-i18n="st.loading">…</div></div></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">📈</span> <span data-i18n="ins.growth">Tăng trưởng bộ nhớ</span></div></div><div class="card-b" id="insGrowth"><div class="muted" data-i18n="st.loading">…</div></div></div>
+          </div>
+
         </div>
-        <div class="grid g6" style="flex:0 0 auto">
-          <div class="stat"><div class="lbl">Sessions<span class="qh" data-i18n-hint="hint.sess">?</span></div><div class="val" id="mSessions">—</div><div class="sub">phiên hội thoại</div></div>
-          <div class="stat"><div class="lbl">Sections<span class="qh" data-i18n-hint="hint.section">?</span></div><div class="val" id="mSection">—</div><div class="sub">mục tài liệu (doc)</div></div>
-          <div class="stat"><div class="lbl">Session digest<span class="qh" data-i18n-hint="hint.digest">?</span></div><div class="val" id="mDigest">—</div><div class="sub" id="mDigestSub">tóm tắt phiên</div></div>
-          <div class="stat"><div class="lbl">Changelog<span class="qh" data-i18n-hint="hint.changelog">?</span></div><div class="val" id="mChangelog">—</div><div class="sub">mục nhật ký</div></div>
-          <div class="stat"><div class="lbl">Docs<span class="qh" data-i18n-hint="hint.doc">?</span></div><div class="val" id="mDoc">—</div><div class="sub">tài liệu đã nạp</div></div>
-          <div class="stat"><div class="lbl">Known stores<span class="qh" data-i18n-hint="hint.stores">?</span></div><div class="val" id="mKnownStores">—</div><div class="sub">nguồn agent đã biết</div></div>
-        </div>
+
+        <!-- ② ĐỒNG BỘ & SAO LƯU — **Sources · Máy này(quét+tự động) · Drive+Sao lưu ĐI CHUNG**
+             vì chúng là SETTING CẦN NHAU: bỏ tick lane ở Sources là đổi luôn cái gì được
+             sync/recall. Bản trước tôi nhét Sources sang tab chart (chỉ toàn số liệu) — sai,
+             user bác 2026-07-26. Giữ đúng bố cục 3 cột như ban đầu, kéo được (§5).
+             Tab ① chỉ SỐ + chart, tab ② chỉ SETTING — ranh giới theo VIỆC, không trộn. -->
+        <div class="sub" data-gm="sync">
         <div class="grid grow rzgrid" style="grid-template-columns:var(--mem1,1.1fr) 8px var(--mem2,1fr) 8px 1fr">
-          <!-- Col 1: Sources (scope) + thống kê -->
+          <!-- Col 1: Sources (scope) — thuộc nhóm sync, KHÔNG phải số liệu -->
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.sources">Sources — bao gồm / loại trừ</div></div><div class="card-b">
             <div class="muted" style="font-size:11.5px;margin-bottom:6px" data-i18n="mem.sourcesD">Bỏ tick lane để loại khỏi sync + recall (bộ lọc, không xoá).</div>
             <div id="mScope"><div class="muted">…</div></div>
@@ -221,18 +263,27 @@
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.thisMachine">Máy này</div><span class="pill ok" data-i18n="st.op">ổn</span></div><div class="card-b">
             <div style="display:flex;gap:8px"><button class="btn sm" style="flex:1" data-act="scan" data-i18n="act.scanKnown">Quét nguồn đã biết</button><button class="btn primary sm" style="flex:1" data-act="deepscan" data-i18n="act.deepScan">Quét sâu</button></div>
             <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="mem.scanHint"><b>Quét nguồn đã biết</b>: quét lại các store agent đã biết (nhanh). · <b>Quét sâu</b>: dò toàn ổ tìm agent/máy mới.</div>
-            <div id="scanMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
+            <div id="scanMsg" class="scanmsg"></div>
             <div class="section-t" data-i18n="mem.autoH">Tự động — daemon tự làm gì khi BẬT</div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.scheduler">Scheduler nền</b><small data-i18n="mem.schedulerD">Bật: khi máy rảnh, daemon tự chạy scan → embed → digest; nhường quyền ghi cho CLI.</small></div><div class="toggle" data-auto="scheduler"></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.autostart">Mở cùng PC</b><small data-i18n="mem.autostartD">BẬT: đăng nhập máy là daemon đã chạy nền sẵn ở port 4444 (không phải mở tay).</small></div><div class="toggle" data-auto="autostart"></div></div>
             <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.autosync">Tự sync memory</b><small data-i18n="mem.autosyncD">BẬT: có tin mới → tự export bundle; bundle máy khác mới hơn → tự import --merge. Chỉ đi qua Drive (.enc), không thêm kênh nào.</small></div><div class="toggle" data-auto="autosync"></div></div>
           </div></div>
           <div class="seam" data-seam="mem2"></div>
-          <!-- Col 3: Drive Sync + Backup -->
+          <!-- Col 3: Drive Sync + Sao lưu & Riêng tư (đi cùng: đều là "dữ liệu đi ra/vào") -->
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span></div><div class="card-b">
             <div class="drv-progress" title="% tin nhắn của máy này đã đẩy lên Drive">
               <div class="donut"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="driveArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="driveDonutPct">—</div></div>
               <div class="drv-progress-txt"><b id="driveSyncedTxt">—</b><small id="driveSyncedSub">—</small></div>
+            </div>
+            <!-- MỐC THỜI GIAN để lời "đã đủ" có thể KIỂM CHỨNG (user 2026-07-27: card này
+                 luôn kêu đã đủ trong khi panel quét báo có tin mới). Hai panel trả lời hai
+                 câu khác nhau — nạp vào DB ≠ đẩy lên Drive — nên phải hiện tin mới nhất và
+                 lần đẩy gần nhất thì mới đối chiếu được, thay vì bắt user tin suông. -->
+            <div class="drv-facts">
+              <div><span data-i18n="drv.newest">Tin mới nhất</span><b id="drvNewest">—</b></div>
+              <div><span data-i18n="drv.lastPush">Đẩy lần cuối</span><b id="drvLastPush">—</b></div>
+              <div><span data-i18n="drv.counted">Đã đẩy / tổng</span><b id="drvCount">—</b></div>
             </div>
             <div class="muted" style="font-size:11px;margin-bottom:6px" data-i18n="drv.chooseFolder">Chọn folder Drive dùng chung: mỗi máy xuất bundle mã hoá (.enc) vào đây, máy khác merge về. Dán đường dẫn rồi bấm Link.</div>
             <div style="display:flex;gap:6px"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
@@ -247,6 +298,7 @@
             <div class="set-row" style="border:0"><div class="sl"><b>🛡 <span data-i18n="drv.redact">Che secret</span></b><small data-i18n="drv.redactD">Quét lại tin đã lưu, che token/key/PII lọt vào (đây là "privacy").</small></div><button class="btn sm" data-act="mredact" data-i18n="act.run">Chạy</button></div>
             <div id="drvMsg" class="muted" style="font-size:11.5px;margin-top:6px;min-height:1em"></div>
           </div></div>
+        </div>
         </div>
       </section>
 
@@ -286,21 +338,8 @@
         </div>
       </section>
 
-      <!-- SYSTEM — full capability list (mô tả + trạng thái + Kiểm/Bật per-feature) -->
-      <section class="screen" data-s="system">
-        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto">
-          <span id="sysSummary" class="pill ok" style="font-size:12px">—</span>
-          <span class="muted" style="font-size:12px" data-i18n="sys.hint">Bấm 1 tính năng bên trái → mô tả + Kiểm / Bật bên phải</span>
-          <button class="btn sm" data-act="sysrecheck" style="margin-left:auto">↻ <span data-i18n="sys.recheckAll">Kiểm lại tất cả</span></button>
-        </div>
-        <div class="grid grow rzgrid" style="grid-template-columns:var(--sys,1fr) 8px 1.15fr">
-          <div class="card"><div class="card-b" id="sysList"><div class="muted">…</div></div></div>
-          <div class="seam" data-seam="sys"></div>
-          <div class="card"><div class="card-b" id="sysDetail"><div class="muted" data-i18n="sys.pick">Chọn 1 tính năng bên trái.</div></div></div>
-        </div>
-      </section>
-
-      <!-- SETTINGS now lives in a dialog (⚙ top-right), not a nav screen. -->
+      <!-- SYSTEM đã gộp vào Trang chủ → sub-tab "Tính năng & Kiểm tra" (không còn tab riêng).
+           SETTINGS sống trong dialog (⚙ góc phải trên), không phải một màn nav. -->
 
     </div>
   </main>
@@ -314,7 +353,9 @@
       <div class="set-row"><div class="sl"><b data-i18n="set.theme">Giao diện</b><small>Dark · Light (gold-on-white)</small></div><div class="filters"><div class="fchip on" id="setDark">Dark</div><div class="fchip" id="setLight">Light</div></div></div>
       <div class="set-row"><div class="sl"><b data-i18n="set.lang">Ngôn ngữ</b><small data-i18n="set.langD">ngôn ngữ giao diện</small></div><div class="filters"><div class="fchip" id="langVi" data-lang="vi">VI</div><div class="fchip" id="langEn" data-lang="en">EN</div></div></div>
       <div class="set-row"><div class="sl"><b data-i18n="set.dbLoc">Nơi lưu DB</b><small data-i18n="set.dbLocD">dời khỏi ổ hệ thống (WAL an toàn) · giữ bản cũ .bak</small></div><div style="display:flex;gap:6px"><input id="relocInput" placeholder="D:\\zemory-data" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:150px"><button class="btn sm" data-act="browse-reloc" title="Chọn folder…">📁</button><button class="btn sm" data-act="relocate" data-i18n="set.relocate">Dời…</button></div></div>
-      <div class="set-row"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
+      <!-- set-row CUỐI phải border:0 — ngay dưới là khối About có border-top, để border
+           của row này thì ra HAI vạch sát nhau (user báo 2026-07-25 "dư line ngang"). -->
+      <div class="set-row" style="border:0"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
       <div id="setMsg" class="muted" style="font-size:11.5px;min-height:1em;margin-top:8px"></div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <b style="font-size:12.5px" data-i18n="set.about">Giới thiệu</b>
@@ -367,13 +408,8 @@
 <div id="zToast" class="ztoast" role="status" aria-live="polite"></div>
 <div id="qtip" role="tooltip"></div>
 
-<!-- Full session viewer (L · 16:9) — mở từ Recall. ESC/backdrop/✕ đóng. -->
-<div class="dlg-back" id="sessDlg">
-  <div class="dlg lg" role="dialog" aria-label="Full session">
-    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🗂</span><b id="sessDlgTitle">Full session</b><button class="x" id="sessDlgClose" aria-label="Đóng">✕</button></div>
-    <div class="dlg-b" id="sessDlgBody"><div class="muted">…</div></div>
-  </div>
-</div>
+<!-- (Đã gỡ dialog "Full session" — nó là viewer THỨ HAI trùng với sub-tab Recall › Phiên.
+     Giờ ⤢ ở một kết quả nhảy thẳng sang sub-tab đó, một viewer duy nhất.) -->
 
 <script src="/scripts/app.js"></script>
 </body>

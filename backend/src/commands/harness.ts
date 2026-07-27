@@ -9,6 +9,7 @@ import { archiveChanges } from "../docs/archive.js";
 import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
+import { conform } from "../docs/conform.js";
 import { importDoc } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 
@@ -133,6 +134,44 @@ export function cmdArchive(): void {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
     console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
   }
+}
+
+/**
+ * `zemory conform [--json] [--gate]` — chấm ĐỘ BÁM CHUẨN của repo.
+ *
+ * Khác `validate` (bộ docs harness có đúng khuôn không): lệnh này hỏi CODE + DOCS có bám
+ * chuẩn đã KHAI không. Máy chấm miễn phí, ra bảng lệch ngắn để agent đọc (~vài trăm token)
+ * thay vì nạp cả graph (~56k token). `--gate` → exit 1 khi có mục `blocking`, dùng cho CI.
+ */
+export function cmdConform(args: string[]): void {
+  const root = findProjectRoot();
+  if (!root) {
+    console.log("zemory conform: not connected — run `zemory init` first.");
+    process.exitCode = 1;
+    return;
+  }
+  const rep = conform(root);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(rep, null, 2));
+    if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+    return;
+  }
+  const s = rep.stats;
+  console.log(`zemory conform — độ bám chuẩn (${root})`);
+  console.log(
+    `  ${s.files} file · slot dùng ${s.slotsUsed}/${s.slotsDeclared} · điều ${s.hpDieu} · skill ${s.skills}`,
+  );
+  if (!rep.items.length) {
+    console.log("  ✓ không lệch chuẩn.");
+    return;
+  }
+  for (const it of rep.items) {
+    console.log(`\n  ${it.level === "blocking" ? "✗" : "·"} ${it.title} (${it.count}) [${it.check}]`);
+    for (const sm of it.samples) console.log(`      ${sm}`);
+    if (it.count > it.samples.length) console.log(`      … +${it.count - it.samples.length}`);
+    console.log(`      → ${it.fix}`);
+  }
+  if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
 }
 
 export function cmdValidate(): void {

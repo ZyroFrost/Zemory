@@ -3,7 +3,7 @@
 // Incremental + idempotent: append-mode files resume from a line offset;
 // whole-mode files re-parse only when changed. Local-only: no network anywhere.
 
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
@@ -11,8 +11,13 @@ import type { TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
 import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
+import { pruneOrphanVectors } from "./vectors.js";
 
-const PARSER_VERSION = 3;
+// v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
+// `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
+// kéo vào chat). Bump ⇒ `needsRebuild` bật ⇒ scan kế tiếp đọc lại từ dòng 0 và
+// whole-replace, nên phiên CŨ cũng đầy lại. Transcript gốc còn ⇒ dựng lại được (điều 3).
+const PARSER_VERSION = 4;
 
 // The machine doing the ingest. Transcript files are local to the machine that
 // ran the agent, so the ingesting host IS the producing host. Stamped onto each
@@ -129,6 +134,17 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       }
     }
 
+    // Dọn vector MỒ CÔI sau scan. Khi một file bị whole-replace (bump PARSER_VERSION),
+    // `writeSession` DELETE rồi INSERT lại messages ⇒ message.id MỚI, còn vector cũ vẫn
+    // trỏ id đã mất. Đo sau re-ingest v4: **504 vector mồ côi**. `pruneOrphanVectors` vốn
+    // đã có nhưng CHỈ được gọi trong `share.ts` (lúc export) — nên rác nằm lại trong DB
+    // sống. Fail-open: module vector hỏng/thiếu thì scan vẫn phải thành công (điều 9).
+    try {
+      pruneOrphanVectors(dbPath);
+    } catch {
+      /* vector là lớp dẫn xuất — dọn không được cũng không được làm hỏng ingest */
+    }
+
     return buildReport(db, dbPath, found, changedFiles, live);
   } finally {
     db.close();
@@ -136,6 +152,114 @@ export function scan(opts: ScanOptions = {}): ScanReport {
 }
 
 /** Per-table snapshot of the memory DB — a terminal window into the store. */
+/**
+ * Refresh session TITLES from the tail of each transcript — cheap, metadata only.
+ *
+ * Renaming a session (Claude Code `/title`) APPENDS a `{"type":"custom-title"}` record at
+ * the very end of the .jsonl. Full ingest does pick it up, but only on the next `scan`, so
+ * the UI kept showing the old name until then (user reported twice, 2026-07-26). Measured:
+ * `ingest_state.size` was exactly ~115 bytes behind the file — one un-ingested line, which
+ * was the new title.
+ *
+ * Why not just run `scan`: a scan re-parses and writes messages (heavy, seconds). A rename
+ * only changes one metadata field, so this reads just the LAST few KB of the files whose
+ * size moved, and updates `sessions.title`. It deliberately does NOT touch `messages` or
+ * `ingest_state` — `scan` still owns those, so nothing here can make ingest skip content.
+ *
+ * Only `custom-title` (user-set) is applied. An `ai-title` found in the tail is IGNORED on
+ * purpose: proving "this file has no custom-title anywhere" would need the whole file, and
+ * guessing would let an ai-title overwrite a name the user chose (the `titleLocked` rule).
+ */
+export function refreshSessionTitles(dbPath: string = MEMORY_DB, limit = 150): {
+  checked: number;
+  updated: { sessionId: string; title: string }[];
+} {
+  // Đuôi 16 KB là quá đủ: record rename luôn là DÒNG CUỐI file.
+  const TAIL_BYTES = 16 * 1024;
+  const db = openMemory(dbPath);
+  try {
+    // Chỉ N phiên MỚI NHẤT của máy này — vừa khớp đúng những phiên UI đang liệt kê, vừa chặn
+    // trần IO. CỐ Ý không lọc "file đã mọc thêm" (size > ingested): sau một lần `scan` thì mọi
+    // size đã khớp, lọc như vậy khiến hàm không soi cái nào ⇒ tên sai không bao giờ tự lành
+    // (đã bị chính bug này khi test lần đầu).
+    const rows = db
+      .prepare(
+        `SELECT i.file_path AS path, i.session_id AS sid, s.title AS title
+           FROM ingest_state i JOIN sessions s ON s.id = i.session_id
+          WHERE i.session_id IS NOT NULL AND i.session_id <> '' AND s.host = ?
+          ORDER BY COALESCE(s.ended_at, s.started_at) DESC
+          LIMIT ?`,
+      )
+      .all(HOST, Math.max(1, Math.min(400, limit))) as { path: string; sid: string; title: string | null }[];
+
+    const updated: { sessionId: string; title: string }[] = [];
+    let checked = 0;
+    const set = db.prepare("UPDATE sessions SET title = ? WHERE id = ?");
+
+    for (const r of rows) {
+      const st = safeStatFile(r.path);
+      if (!st) continue; // file của máy khác / đã bị xoá → bỏ qua (fail-open)
+      checked++;
+      const tail = readTail(r.path, Math.min(TAIL_BYTES, st.size));
+      if (!tail) continue;
+      // Bỏ mảnh đầu (có thể bị cắt giữa dòng do đọc từ giữa file), quét từ CUỐI lên.
+      const lines = tail.split("\n").slice(1);
+      let found: string | null = null;
+      for (let i = lines.length - 1; i >= 0 && found === null; i--) {
+        const ln = lines[i].trim();
+        if (!ln || ln.indexOf('"custom-title"') < 0) continue;
+        try {
+          const o = JSON.parse(ln);
+          if (o && o.type === "custom-title" && typeof o.customTitle === "string" && o.customTitle.trim()) {
+            found = o.customTitle.trim();
+          }
+        } catch {
+          /* dòng lỗi/bị cắt → bỏ, lần sau scan sẽ lo */
+        }
+      }
+      if (found !== null && found !== r.title) {
+        set.run(found, r.sid);
+        updated.push({ sessionId: r.sid, title: found });
+      }
+    }
+    return { checked, updated };
+  } finally {
+    db.close();
+  }
+}
+
+function safeStatFile(p: string) {
+  try {
+    const s = statSync(p);
+    return s.isFile() ? s : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Read the last `n` bytes of a file as UTF-8 (no whole-file load — these are MBs). */
+function readTail(p: string, n: number): string | null {
+  let fd: number | undefined;
+  try {
+    fd = openSync(p, "r");
+    const size = fstatSync(fd).size;
+    const len = Math.min(n, size);
+    const buf = Buffer.allocUnsafe(len);
+    readSync(fd, buf, 0, len, size - len);
+    return buf.toString("utf8");
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSync(fd);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
 export function memoryInfo(dbPath: string = MEMORY_DB): {
   dbPath: string;
   sizeKB: number;

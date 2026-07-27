@@ -422,6 +422,44 @@ export function vectorCount(dbPath: string = currentMemoryDb()): number {
 }
 
 /** How many non-empty EMBEDDABLE messages still need an embedding. */
+/**
+ * Coverage ĐO ĐÚNG KHÁI NIỆM: bao nhiêu MESSAGE embed-được đã thật sự có vector.
+ *
+ * Vì sao cần hàm riêng thay vì chia hai con số sẵn có (điều 12 — không trưng số vô lý):
+ *  · `vectorCount()` đếm HÀNG trong `vec_chunks`, mà một message dài bị chunk thành nhiều
+ *    vector (rowid tổng hợp ≥ 2^40, ánh xạ qua `vec_map`) ⇒ lấy nó làm tử số thì vượt 100%
+ *    (UI từng hiện **114,6%**).
+ *  · Mẫu số cũng không phải "mọi message": khi `embedToolCalls()` tắt thì tool-message
+ *    KHÔNG nằm trong diện embed, tính chúng vào mẫu số là tự bôi đen coverage.
+ * Nên: tử = message embed-được CÓ vector (trực tiếp hoặc qua `vec_map`); mẫu = message
+ * embed-được. Không bao giờ vượt 100%, và 100% nghĩa là "hết việc", đúng như nhãn UI.
+ */
+export function vectorCoverage(dbPath: string = currentMemoryDb()): { covered: number; embeddable: number } {
+  const db = vecConnect(dbPath);
+  try {
+    const base = `FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`;
+    const embeddable = (db.prepare(`SELECT count(*) c ${base}`).get() as { c: number }).c;
+    if (!tableExists(db)) return { covered: 0, embeddable };
+    // Dùng `IN (…UNION…)` chứ KHÔNG phải hai `EXISTS` tương quan. Hai EXISTS bắt SQLite
+    // dò `vec_chunks` (bảng ảo vec0 — không có index rowid như bảng thường) MỘT LẦN CHO
+    // MỖI HÀNG messages; đo trên DB thật 2026-07-27: **23,0 s**. Dạng IN cho nó dựng tập
+    // id một lần rồi tra: **0,5 s — nhanh 46×, ĐÁP SỐ Y HỆT** (80.936 = 80.936, đã đối chứng).
+    // Đây là đường nóng: dashboard gọi nó mỗi lần refresh `fresh=1`, nên 23 s biến thành
+    // ~69 s chờ trước khi số Drive/Sources kịp nhảy sau một lần quét (user báo "kẹt rất lâu").
+    const covered = (
+      db
+        .prepare(
+          `SELECT count(*) c ${base} AND messages.id IN (` +
+            `SELECT rowid FROM vec_chunks WHERE rowid < ${SYNTH_BASE} UNION SELECT message_id FROM vec_map)`,
+        )
+        .get() as { c: number }
+    ).c;
+    return { covered, embeddable };
+  } finally {
+    db.close();
+  }
+}
+
 export function vectorRemaining(dbPath: string = currentMemoryDb()): number {
   const db = vecConnect(dbPath);
   try {

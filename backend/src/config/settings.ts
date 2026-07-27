@@ -2,7 +2,8 @@
 // flip and that every fresh CLI process reads. Local-only JSON; fail-open to
 // defaults if missing/corrupt. The env var still wins as an explicit override.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
+import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { dirname, join } from "node:path";
 import { currentMemoryDir } from "../memory/db.js";
 
@@ -66,7 +67,7 @@ function read(): ZConfig {
 function write(c: ZConfig): void {
   const path = configPath();
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(c, null, 2)}\n`);
+  writeJsonAtomic(path, c);
 }
 
 /** Hybrid recall on? Default true (benchmark gate passed). */
@@ -177,14 +178,7 @@ export function setScopeExclude(lanes: ScopeLane[]): void {
   write(c);
 }
 
-/** UI UI layout blob (opaque to the server; the page defines its shape). */
-export function getUiState(): Record<string, unknown> {
-  const v = read().ui;
-  return v && typeof v === "object" ? v : {};
-}
-
-export function setUiState(state: Record<string, unknown>): void {
-  const c = read();
-  c.ui = state;
-  write(c);
-}
+// getUiState/setUiState đã gỡ 2026-07-27 cùng cockpit cũ. Chúng tồn tại vì cockpit
+// bind cổng ngẫu nhiên mỗi lần chạy nên localStorage (khoá theo origin) mất layout;
+// app hiện chốt cổng 4444 nên seam tự lưu qua localStorage. Khoá `ui` trong
+// config.json của máy cũ trở thành mồ côi — vô hại, không cần migration để xoá.

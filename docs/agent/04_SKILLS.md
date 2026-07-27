@@ -25,7 +25,15 @@ Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi đư
 |---|---|---|---|
 | `ui-ux-pro-max` | thiết kế UI/UX: 84 UI style · 192 palette · 74 cặp font · 98 UX guideline · 25 chart · 22 stack | `external/skills/ui-ux-pro-max-skill/` (entry: `skill.json`, sub-skill ở `.claude/skills/*`, data ở `src/ui-ux-pro-max/data`) | MIT |
 
-**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile`.
+### Tool ngoài — gọi qua CLI, KHÔNG vendor source (HP điều 2)
+> Khác bảng trên: đây là **công cụ** (package public), không phải skill-repo. Cài như dependency,
+> agent gọi bằng lệnh; playbook dùng nó nằm ở section inline tương ứng bên dưới.
+
+| tool | dùng khi | cài | license | skill |
+|---|---|---|---|---|
+| `markitdown` (Microsoft) | đọc nội dung file Office/PDF nhị phân (`.xlsx .xls .docx .pptx .pdf`) | `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` | MIT | [§đọc file Office qua Markdown](#đọc-file-office-qua-markdown-xlsx--xls--docx--pptx--pdf) |
+
+**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile` · `đọc file Office qua Markdown` · `soi chuẩn` · `audit toàn diện`.
 
 ## grill
 > Kích hoạt (tự động): `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi đúng. User gõ "grill" = ép chạy thủ công cùng cơ chế.
@@ -89,3 +97,96 @@ Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi đư
 4. Xong → cập nhật `README` + ghi entry vào `06_CHANGES.md` (sửa file trực tiếp, sau khi user OK).
 
 **Recipe end-to-end** ("đọc zemory + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc `03_STRUCTURE §3` (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.
+
+## đọc file Office qua Markdown (xlsx · xls · docx · pptx · pdf)
+> Kích hoạt: cần ĐỌC nội dung một file Office/PDF (bảng số, báo cáo, tài liệu) trong khi agent chỉ
+> có công cụ đọc text. KHÔNG áp cho file vốn đã là text (`.csv` · `.md` · `.json` · `.txt`) — đọc thẳng.
+
+**Vấn đề:** `.xlsx`/`.docx`/`.pptx` là ZIP nhị phân — đọc trực tiếp không ra nội dung. Hai đường sai
+thường gặp: ① coi file như text rồi nạp XML thô vào context; ② mỗi lần gặp file lại viết một script
+`openpyxl`/`python-docx` riêng (đắt công, mỗi lần một kiểu).
+
+**Tool:** `markitdown` (Microsoft · MIT · Python) — convert Office/PDF/HTML/ảnh → Markdown. Là
+**dependency ngoài gọi qua CLI**, KHÔNG dán source vào repo (HP điều 2).
+- Cài: `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` *(bản đã đo: 0.1.6)*
+- Dùng: `python -m markitdown <file>` (ra stdout) · `python -m markitdown <file> -o out.md` (ghi file)
+- Sheet Excel ra `## <tên sheet>` + bảng Markdown ⇒ giữ được ranh giới nhiều sheet.
+
+**ĐO THẬT** (2026-07-25 · file mẫu `.xlsx` 18 KB · 3 sheet · 308 dòng · ~token = ký tự ÷ 4):
+
+| cách đọc | ~token | ghi chú |
+|---|--:|---|
+| unzip → XML thô | 30.119 | đường duy nhất nếu coi file là text |
+| **MarkItDown → Markdown** | **5.395** | **rẻ hơn XML 5,6×**; giữ tên sheet + cấu trúc bảng |
+| CSV từng sheet (tự script) | 4.193 | rẻ hơn Markdown ~22% nhưng MẤT ranh giới nhiều sheet |
+
+**Chọn theo việc — KHÔNG mặc định "Markdown luôn rẻ nhất" (số đo bác điều đó):**
+- Cần HIỂU tài liệu (nhiều sheet · chữ lẫn số · `.docx`/`.pptx`/`.pdf`) → **MarkItDown**.
+- Chỉ cần MỘT bảng số thuần để tính toán → CSV/`openpyxl` rẻ hơn.
+- File lớn: convert ra FILE rồi đọc **đúng phần cần** (`grep`/N dòng đầu) — đừng nạp cả bản
+  convert vào context (progressive disclosure, HP điều 8).
+- Bảng ngàn dòng: token tăng theo số dòng, không theo dung lượng file ⇒ ước lượng trước khi nạp.
+## soi chuẩn (kiểm độ bám chuẩn — máy chấm, agent phán)
+> Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
+> · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
+
+**Nguyên tắc (bất biến `01_CONSTITUTION` điều 13):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
+dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn nó có gì thì KHAI vào chuẩn hoặc sửa
+NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**, không phải người sinh.
+
+**Vì sao đừng nạp cả graph vào ngữ cảnh:** đo thật — payload graph của một repo cỡ vừa ≈ **56.000
+token**, chỉ rẻ hơn đọc cả repo ~4,8×. Nạp định kỳ là đốt quota. Máy chấm trước, agent chỉ đọc
+**bảng lệch** (~vài trăm token).
+
+**Quy trình:**
+1. `zemory conform` → bảng lệch. `--json` cho máy đọc, `--gate` cho CI (exit 1 khi có mục `blocking`).
+2. Đọc từng mục: `blocking` = lệch chuẩn thật, phải xử · `advisory` = đáng xem, tự quyết.
+3. **Phán phần NGỮ NGHĨA máy không hiểu được** — máy chỉ biết "thư mục này không khớp slot nào";
+   chỉ agent mới biết *nó nên về slot nào*, hay *đây là concern thật cần thêm vào chuẩn*.
+4. **Sửa NGUỒN**, không sửa lớp dẫn xuất:
+   - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import
+   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE` §3/§4** (đổi chuẩn:
+     trình user duyệt trước)
+   - folder rỗng → xoá (thao tác xoá phải được user xác nhận trước)
+5. Chạy lại `zemory conform` → xác nhận hết lệch. Ghi việc vào `05_TODO`/`06_CHANGES`.
+
+**Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
+độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs có bám chuẩn đã KHAI không"*.
+Hai việc khác nhau — đừng gộp, đừng thay thế nhau.
+
+**Cấm:** tự thêm node/cạnh "cho đầy đủ"; coi báo cáo là chân lý mà không đối chiếu code thật; xoá
+folder/file chỉ vì báo cáo nói vậy mà chưa hỏi.
+
+## audit toàn diện (user nói "audit toàn diện" = chạy HẾT, không cắt bớt)
+> Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
+> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **6 mặt** dưới.
+
+**Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì test soi thì đúng*, không
+chứng minh nó đang soi thứ đang chạy. Đã dính thật: cả bộ test UI neo vào bản đã bị thay, gate 100%
+xanh trong khi bề mặt đang chạy có **0 test**. Nên mặt ④ luôn phải hỏi: *test đang đọc FILE NÀO?*
+
+**Luật 2 — VERIFY từng finding rồi mới ghi.** Đã có đợt loại 5 nghi vấn vì đo lại thì sai, và 2 đợt
+checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng lòng tin vào cả bảng.
+
+**Luật 3 — mọi con số phải ĐO.** Không suy luận, không nhớ lại. Không đo được thì ghi "chưa đo".
+
+**Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
+và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
+
+### 6 mặt — chạy đủ
+1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
+   nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
+2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
+   nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.
+3. **Kiến trúc** — export không ai gọi · **NGUỒN TRÙNG** (cùng một sự thật nằm ở ≥2 nơi ⇒ chắc chắn
+   sẽ lệch) · file/thư mục ngoài chuẩn · thao tác ghi vào file nguồn có nguyên tử không.
+4. **FE ↔ BE** — mọi endpoint có người gọi & ngược lại · i18n đủ cả hai chiều · CSS/id chết ·
+   **neo test có trỏ vào file đang chạy không**.
+5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
+6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
+   từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
+
+**Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
+Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.
+
+**Cấm:** cắt bớt mặt nào cho nhanh; ghi finding chưa verify; báo "sạch" khi mới chạy mỗi gate.

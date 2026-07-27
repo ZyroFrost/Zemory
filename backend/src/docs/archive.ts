@@ -4,7 +4,8 @@
 // read), keeping the newest in place. The search index is then reseeded from the
 // trimmed source. No DB→md render, no second source of truth.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { writeFileAtomic } from "../util/fs-atomic.js";
 import { dirname, join } from "node:path";
 import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
@@ -71,8 +72,9 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;
-  writeFileSync(archivePath, ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
-  writeFileSync(mainPath, keptText);
+  writeFileAtomic(archivePath, ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
+  // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được.
+  writeFileAtomic(mainPath, keptText, { backup: true });
 
   // Reseed the search index from the trimmed source file (FILE WINS).
   importChangelog(mainPath, ctx.projectRoot, dbPath, { replace: true });

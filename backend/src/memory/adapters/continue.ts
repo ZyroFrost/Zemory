@@ -6,7 +6,7 @@
 
 import { basename, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { clip, decodeFileUri, safeReaddir, safeStat, toTranscript } from "./_shared.js";
+import { decodeFileUri, safeReaddir, safeStat, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedMessage, ParsedSession, TranscriptFile } from "./types.js";
 
 export const continueAdapter: Adapter = {
@@ -67,5 +67,5 @@ function flatten(content: unknown): string {
   for (const b of content) {
     if (b && typeof b === "object" && typeof (b as any).text === "string") parts.push((b as any).text);
   }
-  return clip(parts.join("\n").trim());
+  return parts.join("\n").trim();
 }

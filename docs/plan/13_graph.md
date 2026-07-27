@@ -4,6 +4,108 @@
 > Trạng thái: **BUILT 2026-07-20/21** — Phase A→C + docs-graph (references+supersede) + semantic overlay (`--semantic`, inferred) + `graph export` **v2** + cache + cross-project `--all`; điều 13 hiến pháp đã chốt. Còn hoãn: Phase D (tsserver/pyright), MCP mirror. Chi tiết build/verify: `06_CHANGES` + `05_TODO §🧩 Graph`. §5/§8/§9 dưới đây là SPEC gốc — vài chỗ đã lệch code (§5 `graph build`/bảng DB không tồn tại → cache in-memory; contract v1→v2). *(Sử: SPEC DRAFT chốt hướng 2026-07-18.)* Ý tưởng user: một **app phụ trợ dùng chung** — tự nó là 1 app, kết nối với MỌI repo theo chuẩn zemory rồi vẽ graph (node + cạnh có kiểu) để xem cấu trúc + dò quan hệ/ảnh hưởng.
 > Định vị: chuẩn zemory (slot §4 · harness · `.harness.json` · cross-ref `.md` · memory) là **CONTRACT**; graph app là **CONSUMER** của contract — cùng mô hình A.I Center consume zemory (plan/04 §1). Repo nào theo chuẩn → tự động graph được, app không cần biết gì riêng repo đó.
 
+## 0b. Bề mặt UI — hấp thụ từ "Knowledge Graph Viewer" (user đưa mẫu 2026-07-26)
+> Mẫu là graph **tài liệu nghiệp vụ** (user_story · acceptance_criterion · requirement · jira_issue).
+> Lấy phần **cách TRÌNH BÀY**, KHÔNG lấy taxonomy của nó — lý do ở cuối mục.
+
+**Vấn đề tự bắt được khi đối chiếu:** `/code-graph` (nguồn của màn Graph) trả `edge:{from,to}`
+**không nhãn**, toàn bộ 231 cạnh là `imports`. Trong khi Phase B/C đã build `calls` (tree-sitter +
+confidence) và `touches` (từ digest) từ 07-21 — nhưng chỉ sống trong `graph export` (CLI). **Năng
+lực đã xây mà UI không thấy.** Đã nối vào.
+
+**Đã làm (2026-07-26, đo trên chính repo zemory — 125 node):**
+1. **Cạnh có HẠNG + nhãn** — `imports` (233, `rel:declared`) · `calls` (393, `rel:inferred`, gộp về
+   mức file, giữ `count` + `confidence`, bỏ self-call và bỏ cặp đã có import). Cạnh suy luận vẽ
+   **nét đứt** ⇒ nhìn là biết không phải cạnh khai báo (**điều 13**: suy luận KHÔNG giả dạng khai báo).
+2. **Bộ lọc theo hạng cạnh** (checkbox, hiện số đếm từng hạng) — ẩn HẲN khỏi bản vẽ, khác `dim`.
+3. **Inspector liệt kê cạnh ĐI RA / ĐI VÀO có kiểu, bấm nhảy sang node đó.** Trước chỉ hiện *con số*
+   fan-in/out — biết "5 file import mình" mà không biết file nào thì không tra blast-radius được.
+   Đây là thứ giá trị nhất mượn từ mẫu.
+4. **Legend slot kèm số đếm, bấm ẩn/hiện** (17 slot: test=31 · memory=17 · scripts=14…). Trước tô
+   màu theo slot mà **không có chú giải**.
+5. **Đếm "đang lọc / tổng"** + **`builtAt`** (giờ dựng graph, từ `graph-cache`) — cache sống lâu,
+   xem số cũ mà tưởng mới là bẫy thật (**điều 12**).
+6. `touchedBy` (số phiên agent từng đụng file) thành **thuộc tính NODE**, không dựng thành cạnh —
+   nối mọi cặp file cùng-một-phiên sẽ nổ N².
+
+**Đo trung thực — `touches` đang YẾU:** 35 digest quét được nhưng chỉ **2/125 node** có
+`touchedBy > 0`. `buildTouchIndex` khớp `meta.project_root` NGHIÊM; bản `graph export` có thêm
+fallback khớp theo TÊN FOLDER (07-21 đo được 23 digest · 59 file). Chưa hợp nhất 2 đường — việc còn lại.
+
+### 0b.1 Taxonomy LẤY TỪ BẢN CHUẨN — `graph-standard.ts` (user chốt 2026-07-26)
+> 🔄 **Sửa nhận định trước đó của agent.** Tôi từng nói taxonomy giàu "cần LLM hoặc ép front-matter
+> toàn hệ (trái điều 3)". **Sai** — user chỉ ra ngay: *"nếu trên structure có, thì node phải có, đúng
+> cấu trúc chuẩn mà?"*. Đúng vậy: **bản chuẩn ĐÃ tự khai vai trò rồi**, không cần cơ chế của bài mẫu.
+> Và plan 13 §4 vốn đã đặc tả sẵn `hp_dieu`/`skill`/`plan_spec`/`slot` + cạnh `routing` — chỉ là mãi
+> chưa build, mới có mỗi node `file`.
+
+**Nguồn khai báo → node/cạnh (parse TẤT ĐỊNH, 0 LLM, 0 front-matter):**
+
+| Nguồn đã khai sẵn | Sinh ra |
+|---|---|
+| `SLOT_ROLES` (68 vai trò, từ 03 §3/§4) | `type` cho mọi node **file** (trước chỉ có 1 loại node) |
+| `01_CONSTITUTION` §Điều khoản | `hp_dieu` ×13 |
+| `04_SKILLS` — dòng tự khai *"Skill inline hiện có: …"* | `skill` ×4 |
+| `docs/plan/NN_tên.md` | `plan_spec` ×16 |
+| `docs/agent/*.md` + `AGENTS.md` | `harness_doc` ×7 |
+| Bảng **03 §4** "sửa gì → vào đâu" | `concern` ×58 + cạnh **`routing`** ×102 |
+| Thư mục thật ↔ slot | cạnh **`contains`** ×134 (slot → file) |
+| Docs nhắc `điều N` | cạnh **`references`** ×45 → `hp_dieu` |
+
+**Đo thật trên repo zemory:** 125 file → **288 node · 918 cạnh**
+(`calls` 403 · `imports` 234 · `contains` 134 · `routing` 102 · `references` 45).
+
+**`slot` vs `slot_unused`:** 16 slot có file thật / **48 slot chuẩn khai mà repo chưa dùng**. Tách
+2 loại vì chuẩn nói rõ *"INDEX = TỪ ĐIỂN TÊN, KHÔNG phải checklist phải tạo — app điển hình chỉ 4–10
+slot hiện diện"*; gộp chung sẽ trông như repo đang thiếu 48 folder. `slot_unused` **ẩn mặc định**
+trên UI (một cú bấm legend là hiện) — dùng khi cần soi độ phủ chuẩn.
+
+**Hai bẫy parse đã dính + đã trị (ghi để khỏi lặp):**
+- `01_CONSTITUTION` có **HAI** danh sách đánh số (§Mục đích và §Điều khoản) ⇒ phải cắt đúng section,
+  quét cả file sẽ đẻ "điều" giả.
+- `txt.slice(at).split(/^##\s+/m)[0]` trả **chuỗi rỗng** (chuỗi bắt đầu ngay bằng dấu phân tách)
+  ⇒ `hp_dieu` và `concern` ra **0**. Thay bằng `sectionBody()` cắt tới heading `##` kế tiếp.
+
+### 0b.2 Nguyên tắc: MÁY dựng · LLM chỉ KIỂM (user chốt 2026-07-26)
+> *"cái này là hệ thống tự động cho mọi project khác; LLM nối vào chỉ để check lại đúng chưa, vì LLM
+> cũng cần đọc lại hết khi làm việc, nhưng nó KHÔNG chủ động đoán thêm."*
+
+Chốt vai trò, khớp điều 6 + 13: **graph do MÁY dựng, tất định, cho mọi project — LLM là NGƯỜI KIỂM,
+không phải người sinh.** Agent đọc graph để đối chiếu "chuẩn khai vậy, thực tế có vậy không", và
+được phép BÁO lệch; **KHÔNG** được tự thêm node/cạnh mà chuẩn không khai. Mọi thứ agent suy ra chỉ
+sống ở lời nói/TODO, KHÔNG chảy ngược vào graph — nếu không, graph mất tính rebuild-được (điều 3) và
+cạnh suy luận sẽ lẫn vào cạnh khai báo (điều 13).
+
+**Kiểm chứng "chạy cho MỌI project" — đo thật 7 project đã liên kết, 0 config riêng:**
+
+| project | node · cạnh | hp_dieu | skill | plan | slot dùng/khai | concern |
+|---|--:|--:|--:|--:|--:|--:|
+| Zemory | 288 · 918 | 13 | 4 | 16 | **16/64** | 58 |
+| SasinHarvest | 175 · 242 | 9 | 3 | 4 | 16/62 | 58 |
+| SasinFlow | 173 · 228 | 13 | 3 | 12 | **3/57** | 53 |
+| PBI_SasinFlow_Maintain *(non-app)* | 74 · 62 | 1 | 6 | 7 | 0/0 | 0 |
+| PBI_SasinFlow_Rebuild *(non-app)* | 25 · 7 | 0 | 6 | 10 | 1/1 | 0 |
+| SasinInfra | 21 · 14 | 0 | 0 | 8 | 0/0 | 0 |
+
+**Graph giờ ĐO ĐƯỢC độ bám chuẩn — thứ trước chỉ nằm dạng ghi chú:**
+- **SasinFlow 3/57 slot** ⇒ đúng cái `plan/09 §7` ghi *"docs đã sync, cấu trúc folder THẬT chưa nắn"*.
+  Trước là một dòng note; giờ là con số nhìn thấy trên graph.
+- **SasinHarvest `calls`=0** trong khi có 87 `imports` ⇒ tree-sitter chưa enrich được repo đó (fail-open
+  đúng thiết kế, nhưng là dấu hiệu cần xem).
+- **PBI/non-app: `concern`=0, `slot`=0** ⇒ đúng, chuẩn non-app không có bảng routing §4 dạng slot.
+  `hp_dieu`=1 ở PBI_Maintain ⇒ hiến pháp bên đó gần như còn nguyên bản mẫu, đáng rà.
+
+**Còn để ngỏ — trạng thái NGHIỆP VỤ** (`status:draft` · `priority:P0` · `persona` · `feature`): bản
+chuẩn nói *"file này thuộc slot `pages`"*, KHÔNG nói *"story này đang draft, ưu tiên P0"*. Đó là
+**nội dung**, không phải cấu trúc ⇒ mới cần front-matter, và nếu làm phải **OPT-IN** (bắt buộc mọi
+project = cố định NỘI DUNG docs = trái điều 3). Chưa làm, chờ user có nhu cầu thật.
+
+**KHÔNG hấp thụ (và vì sao):** taxonomy node của mẫu (`user_story`/`requirement`/`status`/`priority`/
+`persona`) chỉ có được bằng ① LLM đọc prose rút entity → **trái điều 6**, hoặc ② bắt mọi project viết
+docs theo front-matter cố định → **trái điều 3** ("zemory KHÔNG cố định NỘI DUNG docs"). `SYNCS_TO jira`
+là integration, không thuộc graph. *Nếu sau này user chủ động chốt một chuẩn front-matter cho docs thì
+làm được taxonomy tương đương, hoàn toàn tất định — đó là quyết định đổi chuẩn docs, thuộc user.*
+
 ## 1. Mục tiêu / vấn đề
 - Slot + index của zemory trả lời tốt **"sửa X ở đâu"** (routing 0-token) và **"từng bàn X chưa"** (recall), nhưng KHÔNG trả lời **"X liên quan / ảnh hưởng gì"** — traceability đa-hop, blast-radius.
 - Graph lấp đúng lớp đó: node = slot/file/doc-section/plan/HP/changelog/skill (+ symbol AST sau), cạnh CÓ KIỂU (routing · references · supersede · touches · imports).
@@ -54,6 +156,12 @@
 **Cạnh SUY LUẬN — OVERLAY [opt] (fail-open, nhãn `inferred`):**
 - `semantic_neighbor` — cosine trên **vector đã có** (0 LLM), ngưỡng cắt để tránh hairball.
 - Luật vàng: overlay tắt/lỗi → graph vẫn đủ dùng bằng cạnh khai báo.
+
+**ID CẠNH ỔN ĐỊNH (thêm 2026-07-27) — để TRÍCH DẪN được.** Mỗi cạnh mang `eid = sha1(from|to|kind|rel)[0..12]`, đóng dấu SAU khi đã gộp đủ ba lớp (`imports` · `calls` · lớp chuẩn) — đóng ở từng lớp thì chắc chắn sót một lớp, mà sót đúng cạnh nào thì cạnh đó không dẫn nguồn được. `rel` nằm TRONG hash có chủ ý: cùng cặp (A,B) mà một cạnh khai báo và một cạnh suy luận là **hai sự thật khác hạng** (điều 13 cấm trộn) ⇒ phải khác id. Tất định thuần — cùng đầu vào luôn ra cùng id, không phụ thuộc thứ tự dựng hay máy.
+*Vì sao cần:* hiện agent chỉ nói được "A import B", không chỉ được vào ĐÚNG cạnh đó và cũng không kiểm lại được. Có id thì một khẳng định mới dẫn nguồn (`edge:9f2c…`) và ta mới **đo** được cạnh được dẫn có thật hay không (điều 12). Đo live 2026-07-27: 860/860 cạnh có eid, 860 id duy nhất.
+
+**LỊCH SỬ FITNESS (thêm 2026-07-27) — bảng `graph_fitness`, schema v18.** Một hàng mỗi lần graph **dựng lại thật** (chữ ký nguồn đổi), KHÔNG phải mỗi lần đọc: nếu ghi theo lần đọc thì mở tab 20 lần đẻ 20 hàng và trục thời gian sẽ nói dối về nhịp thay đổi của code.
+*Vì sao cần:* `graphFitness()` vốn chỉ là ảnh chụp đạt/không-đạt. Số node cô lập nhảy 8%→19% trong một tuần là tín hiệu hồi quy thật, mà đọc riêng con số 19% thì không thấy gì. **Ranh giới với điều 3:** đây KHÔNG phải lớp dẫn xuất — graph dựng lại được từ code, nhưng fitness của HÔM QUA thì không (code hôm qua đã mất) ⇒ trạng thái bền vững thật, và cũng vì thế migration v18 **cố ý không backfill** (bịa số quá khứ = vi phạm điều 12).
 
 **Lưu:** bảng dẫn xuất `graph_node` / `graph_edge` trong `global_memory.db` (như `vec_chunks`/`session_digest`), cột `declared|inferred`. Dựng bằng `zemory graph build`; rebuild an toàn.
 

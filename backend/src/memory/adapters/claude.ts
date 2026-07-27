@@ -2,7 +2,7 @@
 // (append-mode jsonl). Each line is one record; user/assistant carry messages.
 
 import { basename, join } from "node:path";
-import { clip, isDir, safeReaddir, toTranscript } from "./_shared.js";
+import { isDir, safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedLine, TranscriptFile } from "./types.js";
 
 export const claudeAdapter: Adapter = {
@@ -46,6 +46,32 @@ export const claudeAdapter: Adapter = {
     if (o.type === "ai-title" && typeof o.aiTitle === "string") {
       return { kind: "title", title: o.aiTitle };
     }
+    // FILE NGƯỜI DÙNG KÉO VÀO CHAT — record riêng ở cấp dòng (KHÔNG nằm trong
+    // `message.content`, nên `flatten()` không bao giờ thấy). Transcript chở luôn nội dung
+    // đầy đủ ở `attachment.content.file.content`.
+    //
+    // Chỉ nhận `type:"file"`. Các loại `attachment` khác là metadata NỘI BỘ của Claude Code
+    // (`todo_reminder` 3.838 · `queued_command` 520 · `deferred_tools_delta` · `skill_listing`…)
+    // — nạp vào là rác. Cũng KHÔNG nạp `edited_text_file` (chỉ là snippet có đánh số dòng của
+    // file đã nằm trong repo) và KHÔNG đụng `~/.claude/file-history/` (5.009 file · 211 MB
+    // snapshot của chính code trong repo ⇒ dựng kho thứ hai, trái điều 3, phình DB +35,7%).
+    // Đo 2026-07-26: loại này chỉ 62 file · 0,2 MB — rẻ, mà là dữ liệu KHÔNG có ở đâu khác.
+    if (o.type === "attachment") {
+      const a = o.attachment;
+      const body = a?.type === "file" ? a?.content?.file?.content : undefined;
+      if (typeof body !== "string" || !body.trim()) return { kind: "skip" };
+      const name = typeof a.filename === "string" ? a.filename : (a?.content?.file?.filePath ?? "(file)");
+      return {
+        kind: "message",
+        msg: {
+          uuid: o.uuid ?? null,
+          role: "user", // file do NGƯỜI dùng kéo vào — thuộc lượt user
+          content: `[file:${name}]\n${body}`,
+          toolName: "attachment",
+          timestamp: o.timestamp ?? null,
+        },
+      };
+    }
     if (o.type === "user" || o.type === "assistant") {
       const m = o.message ?? {};
       const content = flatten(m.content);
@@ -79,10 +105,10 @@ function flatten(content: unknown): string {
         if (typeof block.text === "string") parts.push(block.text);
         break;
       case "tool_use":
-        parts.push(`[tool_use:${block.name}] ${clip(JSON.stringify(block.input ?? {}))}`);
+        parts.push(`[tool_use:${block.name}] ${JSON.stringify(block.input ?? {})}`);
         break;
       case "tool_result":
-        parts.push(`[tool_result] ${clip(resultText(block.content))}`);
+        parts.push(`[tool_result] ${resultText(block.content)}`);
         break;
       // 'thinking' intentionally skipped: large, internal, noisy.
     }

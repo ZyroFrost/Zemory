@@ -35,7 +35,7 @@ Ví dụ DOMAIN-FIRST — chính zemory:
 
 **Luật bất diệt cho CẢ HAI kiểu:**
 - **Cross-cutting** (`core, auth, vault, config, logging, audit, errors, i18n, update, migrations, shared, util`) → **LUÔN ở cấp `src/` gốc**, KHÔNG lồng/nhân bản trong từng domain.
-- Bên trong một domain **chỉ dùng slot từ CÙNG từ điển** (store/services/ai/io/validators…), KHÔNG tạo tên mới.
+- Bên trong một domain **chỉ dùng slot từ CÙNG từ điển** (store/services/ai/io/validators…), KHÔNG tạo tên mới. Hai slot **CHỈ dùng ở cấp domain** (không đặt ở `src/` gốc): `graph/` (engine graph dẫn xuất) · `adapters/` (parser theo từng host/nguồn). *(Khai chính thức 2026-07-26: `zemory conform` bắt được cùng tên `graph/` tự phát ở 2 repo độc lập ⇒ concern thật; trước đó §4 nói "lồng trong domain" mà không đặt TÊN, thành ra mâu thuẫn với chính luật "chỉ dùng slot từ cùng từ điển" này.)*
 - **Surface/entry MỎNG:** CLI → `commands/`, HTTP → `api/`, WS → `realtime/`, UI → `frontend/`; entry chỉ wire vào domain, không chứa nghiệp vụ.
 
 ## 3. Cây thư mục — ghi chú TỪNG DÒNG
@@ -196,7 +196,8 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | lệnh CLI (mỗi verb) | `backend/src/commands/` |
 | **wiring / DI / registry / lifecycle** | `backend/src/core/` (composition root, KHÔNG business-logic) |
 | **daemon nền / server tiến-trình-dài** phục vụ UI cục bộ (single-instance, cổng cố định) | surface mỏng ở `backend/src/` (vd `ui.ts`) mở endpoint `api/` + serve `frontend/` tĩnh; nghiệp vụ vẫn ở domain |
-| **engine graph** (import-graph · symbol · docs-graph · touches) | LỒNG trong domain (`backend/src/<domain>/` — vd memory), KHÔNG slot thứ 5 (HP điều 13); consumer ngoài đọc `graph export` versioned |
+| **engine graph** (import-graph · symbol · docs-graph · touches) | `backend/src/<domain>/graph/` — slot LỒNG trong domain, KHÔNG phải capability thứ 5 (HP điều 13); consumer ngoài đọc `graph export` versioned |
+| **adapter theo host/nguồn** (mỗi host một parser: Claude/Codex/…) | `backend/src/<domain>/adapters/` — slot LỒNG trong domain, cùng khuôn với `graph/` |
 | **tích hợp OS** (system-tray · autostart/mở-cùng-PC · native desktop) | code → `backend/src/platform/` · FILE icon tray/exe → `backend/resources/packaging/` (§5 "Icon 3 vai trò") |
 | **write-gate / advisory lock** (chống ghi DB đồng thời daemon↔CLI) | `backend/src/jobs/` (cơ chế điều phối ghi, đi cùng scheduler) |
 | **DB migration / đổi schema** (mỗi bước 1 file version) | `backend/src/migrations/` |

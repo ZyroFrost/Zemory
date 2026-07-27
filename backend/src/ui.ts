@@ -12,13 +12,13 @@ import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 import { templateDir, ensureHarness, freshHarness } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
-import { memoryInfo, memorySummary, scan } from "./memory/ingest.js";
+import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
 import { digestBackfill } from "./memory/digest.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
-import { vectorCount, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
+import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { CONFIG_FILE, findProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
@@ -26,6 +26,11 @@ import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDead
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
+import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
+import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
+import { buildStandardGraph } from "./memory/graph/graph-standard.js";
+import { resolveCalls } from "./memory/graph/graph-symbols.js";
+import { edgeId } from "./memory/graph/graph.js";
 import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { startScheduler, stopScheduler } from "./jobs/scheduler.js";
@@ -46,7 +51,6 @@ import {
   getScopeExclude,
   getScopeSetting,
   getSyncLevel,
-  getUiState,
   setAutostartSetting,
   setAutosyncSetting,
   setDriveDir,
@@ -57,7 +61,6 @@ import {
   setScopeExclude,
   setScopeSetting,
   setSyncLevel,
-  setUiState,
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
@@ -74,13 +77,21 @@ function serveFrontend(res: ServerResponse, sub: string, file: string, type: str
     res.end("forbidden");
     return;
   }
+  // ĐỌC XONG RỒI MỚI cam kết header. Thứ tự ngược lại (writeHead 200 trước, readFileSync
+  // sau) là một bẫy TREO chứ không phải 404: file thiếu ⇒ readFileSync ném, nhưng header
+  // 200 đã gửi rồi nên writeHead(404) trong catch lại ném ERR_HTTP_HEADERS_SENT ⇒ res.end()
+  // không bao giờ chạy ⇒ client chờ mãi, không timeout, không lỗi. Đo được 2026-07-27 khi
+  // xin một file của cockpit cũ vừa nghỉ hưu: curl treo hẳn, còn app.js thì 200 bình thường.
+  let body: string;
   try {
-    res.writeHead(200, { "content-type": type });
-    res.end(readFileSync(target, "utf8"));
+    body = readFileSync(target, "utf8");
   } catch {
     res.writeHead(404, { "content-type": "text/plain" });
     res.end("not found");
+    return;
   }
+  res.writeHead(200, { "content-type": type });
+  res.end(body);
 }
 const ASSET_MIME: Record<string, string> = {
   ".png": "image/png",
@@ -100,13 +111,17 @@ function serveBinary(res: ServerResponse, sub: string, file: string): void {
     return;
   }
   const ext = file.slice(file.lastIndexOf(".")).toLowerCase();
+  // Cùng bẫy treo như serveFrontend — đọc trước, cam kết header sau.
+  let body: Buffer;
   try {
-    res.writeHead(200, { "content-type": ASSET_MIME[ext] ?? "application/octet-stream", "cache-control": "no-cache" });
-    res.end(readFileSync(target));
+    body = readFileSync(target);
   } catch {
     res.writeHead(404, { "content-type": "text/plain" });
     res.end("not found");
+    return;
   }
+  res.writeHead(200, { "content-type": ASSET_MIME[ext] ?? "application/octet-stream", "cache-control": "no-cache" });
+  res.end(body);
 }
 import { onPath } from "./util.js";
 
@@ -129,35 +144,66 @@ interface DriveSummary {
   error: string | null;
   /** Sync depth (plan 08 §7): "lean" rows bundle (default) | "full" snapshot. */
   level: "lean" | "full";
-  /** % of local messages already pushed to Drive by THIS machine (own export
-   *  watermark ÷ current max message id). 100 when memory is empty (nothing to
-   *  sync). Powers the Drive Sync donut. */
+  /** % tin đã đẩy lên Drive, ĐẾM THEO HÀNG (không phải theo id). 100 khi bộ nhớ rỗng. */
   syncPercent: number;
   syncedMessages: number;
   totalMessages: number;
   pendingMessages: number;
+  /** Lần đẩy Drive gần nhất của máy này (sync_state.updated_at) — null = chưa từng. */
+  lastPushAt: string | null;
+  /** Thời điểm của tin MỚI NHẤT trong bộ nhớ — để đối chiếu "đã đủ" có thật là mới nhất không. */
+  newestAt: string | null;
 }
 
-/** This machine's own Drive export watermark vs its current message count —
- *  "how much of what I have has actually left this machine via Drive". */
-function driveSyncProgress(): { syncPercent: number; syncedMessages: number; totalMessages: number; pendingMessages: number } {
+/**
+ * Watermark đẩy Drive của MÁY NÀY so với số tin nó đang giữ.
+ *
+ * ĐẾM THEO HÀNG, KHÔNG theo id. Bản cũ lấy `MAX(id)` làm "tổng số tin" và
+ * `MAX(id) − watermark` làm "số tin chờ" — sai vì id là AUTOINCREMENT CÓ LỖ HỔNG
+ * (forget, whole-replace re-ingest). Đo trên DB thật 2026-07-27: MAX(id) = 1.836.847
+ * nhưng COUNT(*) chỉ 172.333 — lệch **10,7×**. Với một watermark trễ thật
+ * (1.127.371) công thức cũ báo **709.476 tin chờ** trong khi sự thật là **70.247**:
+ * bịa ra 639.229 tin không tồn tại (điều 12 cấm số phản-thực).
+ *
+ * Kèm `lastPushAt` + `newestAt` để UI nói được VÌ SAO đang "đủ" — user báo card này
+ * "luôn kêu đã đủ" trong khi panel quét bảo có tin mới; hai panel trả lời hai câu
+ * khác nhau (nạp vào DB ≠ đẩy lên Drive) nên phải hiện mốc thời gian mới đối chiếu được.
+ */
+function driveSyncProgress(): {
+  syncPercent: number;
+  syncedMessages: number;
+  totalMessages: number;
+  pendingMessages: number;
+  lastPushAt: string | null;
+  newestAt: string | null;
+} {
   const db = openMemory();
   try {
-    const total = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
-    const row = db.prepare("SELECT last_message_id AS id FROM sync_state WHERE bundle = ?").get(`drive:${hostname()}`) as
-      | { id: number }
+    const bundle = `drive:${hostname()}`;
+    const row = db.prepare("SELECT last_message_id AS id, updated_at AS at FROM sync_state WHERE bundle = ?").get(bundle) as
+      | { id: number; at: string | null }
       | undefined;
-    const synced = Math.min(row?.id ?? 0, total);
+    const wm = row?.id ?? 0;
+    const total = (db.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+    const synced = (db.prepare("SELECT COUNT(*) c FROM messages WHERE id <= ?").get(wm) as { c: number }).c;
     const pending = Math.max(0, total - synced);
     const percent = total > 0 ? Math.round((synced / total) * 100) : 100;
-    return { syncPercent: percent, syncedMessages: synced, totalMessages: total, pendingMessages: pending };
+    const newest = db.prepare("SELECT MAX(timestamp) t FROM messages").get() as { t: string | null };
+    return {
+      syncPercent: percent,
+      syncedMessages: synced,
+      totalMessages: total,
+      pendingMessages: pending,
+      lastPushAt: row?.at ?? null,
+      newestAt: newest?.t ?? null,
+    };
   } finally {
     db.close();
   }
 }
 
 /** Probe a Drive sync folder: exists? writable? how many bundles inside? */
-function probeDrive(dir: string): Omit<DriveSummary, "level" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages"> {
+function probeDrive(dir: string): Omit<DriveSummary, "level" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages" | "lastPushAt" | "newestAt"> {
   const path = dir.trim();
   if (!path) return { path: "", linked: false, exists: false, writable: false, bundles: 0, error: null };
   if (/^https?:\/\//i.test(path)) {
@@ -287,6 +333,14 @@ function insightsData(days: number): unknown {
           GROUP BY month ORDER BY month`,
       )
       .all();
+    // Project nào đang chiếm bộ nhớ nhiều nhất — COUNT/SUM thẳng, 0 suy diễn (điều 12).
+    const projects = db
+      .prepare(
+        `SELECT COALESCE(NULLIF(project_root, ''), '(không rõ)') AS project,
+                COUNT(*) AS sessions, COALESCE(SUM(message_count), 0) AS messages
+           FROM sessions GROUP BY project ORDER BY messages DESC LIMIT 8`,
+      )
+      .all();
     const totals = db
       .prepare(
         `SELECT (SELECT COUNT(*) FROM sessions) AS sessions,
@@ -294,7 +348,7 @@ function insightsData(days: number): unknown {
                 (SELECT COUNT(*) FROM session_digest) AS digests`,
       )
       .get();
-    return { daily, agents, monthly, totals };
+    return { daily, agents, monthly, projects, totals };
   } finally {
     db.close();
   }
@@ -544,17 +598,21 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
   const heavy = heavyStats();
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
   try {
-    const messages = Number(summary.totals.messages || 0);
     let dimsLabel = "";
     try {
       dimsLabel = vectorIndexInfo().dims + "d"; // REAL index dim (256d after plan-12 rebuild), not a hardcode
     } catch {
       /* vec module not loadable → leave blank */
     }
+    // COVERAGE lấy từ `vectorCoverage()` — message-CÓ-vector / message-embed-được.
+    // Công thức cũ `vectorCount / messages` cho ra **114,6%** trên DB thật (trái điều 12):
+    // tử số đếm cả CHUNK của message dài, mẫu số lại gồm cả tool-message vốn không nằm
+    // trong diện embed. Xem ghi chú đầy đủ ở `vectors.ts vectorCoverage()`.
+    const cov = vectorCoverage();
     vectors = {
       count: heavy.count,
       remaining: heavy.remaining,
-      coverage: messages ? Number(((heavy.count / messages) * 100).toFixed(1)) : null,
+      coverage: cov.embeddable ? Number(((cov.covered / cov.embeddable) * 100).toFixed(1)) : null,
       dims: dimsLabel,
     };
   } catch (error) {
@@ -872,6 +930,19 @@ export async function startUi(): Promise<void> {
     if (p === "/status") return json(res, await gatherStatus(rootP));
     // `fresh=1` = the user pressed refresh; the poll takes whatever is cached.
     if (p === "/memory-status") return json(res, dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
+    if (p === "/sync-pulse") {
+      // NHỊP NHANH: chỉ những con số mà một lần quét vừa làm đổi — Drive còn thiếu bao
+      // nhiêu, và cây Sources. Toàn truy vấn rẻ (đo: ~0,2 s tổng), KHÔNG đụng gì tới
+      // vector/token/kích-thước-file.
+      //
+      // Vì sao tách khỏi /memory-status: ba panel Máy này · Sources · Drive nằm cạnh nhau
+      // vì chúng LIÊN QUAN NHAU (user 2026-07-27) — quét xong thì Drive phải hiện thiếu
+      // NGAY. Nhưng /memory-status gói cả `vectorCoverage()` nên user phải chờ ~69 s mới
+      // thấy số nhảy ("kẹt rất lâu mới lên"). Đã tối ưu coverage 38 s → 0,58 s, nhưng vẫn
+      // KHÔNG nên bắt một cập nhật tức thời đi qua cả gói nặng: cái nào phải tức thời thì
+      // phải có đường riêng, không phụ thuộc thứ nặng nhất trong gói.
+      return json(res, { drive: driveSyncProgress(), scopeTree: safeScopeTree() });
+    }
     if (p === "/set-lang") {
       // Do NOT invalidate the dashboard cache here. tr() (server-side i18n) is used
       // only by status.ts and checks.ts — NOTHING in the /memory-status payload is
@@ -894,21 +965,10 @@ export async function startUi(): Promise<void> {
       setScopeSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, scope: getScopeSetting() });
     }
-    if (p === "/ui-state") {
-      return json(res, { layout: getUiState() });
-    }
-    if (p === "/set-ui-state") {
-      // Persist the UI layout the user dragged, so a reopen restores it
-      // (localStorage is keyed by origin and the UI binds a random port each run).
-      const raw = u.searchParams.get("state") ?? "{}";
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === "object") setUiState(parsed as Record<string, unknown>);
-      } catch {
-        /* ignore malformed layout */
-      }
-      return json(res, { ok: true });
-    }
+    // /ui-state + /set-ui-state đã nghỉ hưu cùng cockpit cũ (2026-07-27). Chúng tồn
+    // tại vì cockpit bind cổng ngẫu nhiên mỗi lần chạy nên localStorage (khoá theo
+    // origin) mất layout. App hiện chốt cổng 4444 ⇒ localStorage giữ được, seam tự
+    // lưu lấy. Nguồn cũ ở attic/frontend-cockpit/.
     if (p === "/set-scope-exclude") {
       // Toggle one provenance lane in/out of the exclude list (sync + recall).
       const lane: ScopeLane = {};
@@ -948,14 +1008,116 @@ export async function startUi(): Promise<void> {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
       return json(res, buildFolderTree(target));
     }
+    if (p === "/graph-fitness-history") {
+      // Xu hướng fitness theo thời gian. Một hàng mỗi lần graph dựng lại thật, nên
+      // trục X là nhịp THAY ĐỔI CODE, không phải nhịp mở tab. Rỗng ở project mới —
+      // chuỗi bắt đầu từ lần dựng đầu tiên, quá khứ không bịa (điều 12).
+      return json(res, { points: fitnessHistory(target) });
+    }
     if (p === "/code-graph") {
-      // Derived import graph (nodes=files, edges=imports) + fitness (plan 13 §9
-      // Phase A) + AST symbols (Phase B, fail-open). Cached per project + source
-      // signature so a graph-tab open doesn't re-parse every file each poll.
-      const { graph: g, fitness } = await getCodeGraph(target);
+      // Derived graph (nodes=files) + fitness (plan 13 §9 Phase A) + AST symbols
+      // (Phase B, fail-open). Cached per project + source signature so a graph-tab
+      // open doesn't re-parse every file each poll.
+      const { graph: g, fitness, builtAt, sig } = await getCodeGraph(target);
+      // Ghi mốc fitness Ở ĐÂY, không phải trong getCodeGraph: daemon phục vụ graph của
+      // một project là chỗ duy nhất quan sát được "project này vừa đổi code". Đặt trong
+      // getCodeGraph thì mọi test dựng repo tạm cũng ghi vào global_memory.db THẬT.
+      // recordFitness tự bỏ qua khi chữ ký nguồn không đổi ⇒ cache-hit không đẻ hàng.
+      recordFitness(target, fitness, { sig, builtAt, files: g.stats.files, edges: g.stats.edges });
+      // HAI HẠNG CẠNH, GẮN NHÃN RÕ (HP điều 13 — cạnh suy luận KHÔNG được giả dạng
+      // khai báo). Trước đây payload chỉ có `imports` và KHÔNG có nhãn nào, nên cạnh
+      // `calls` (Phase C, đã build từ 07-21) chỉ dùng được qua CLI, UI không thấy.
+      const edges: {
+        from: string;
+        to: string;
+        kind: string;
+        rel: "declared" | "inferred";
+        count?: number;
+        confidence?: string;
+        /** id ổn định để trích dẫn — đóng dấu sau khi gộp đủ 3 lớp cạnh */
+        eid?: string;
+      }[] = g.edges.map((e) => ({ ...e, kind: "imports", rel: "declared" as const }));
+      try {
+        // calls: gộp về mức FILE (nhiều call-site giữa 2 file = 1 cạnh, giữ count),
+        // bỏ self-call, và bỏ cặp đã có cạnh import để không vẽ chồng hai lần.
+        const seen = new Set(edges.map((e) => `${e.from} ${e.to}`));
+        const agg = new Map<string, { from: string; to: string; count: number; confidence: string }>();
+        for (const c of resolveCalls(g)) {
+          if (c.fromFile === c.toFile) continue;
+          const key = `${c.fromFile} ${c.toFile}`;
+          if (seen.has(key)) continue;
+          const cur = agg.get(key);
+          if (cur) {
+            cur.count += c.count;
+            if (cur.confidence === "textual" && c.confidence === "inferred") cur.confidence = "inferred";
+          } else agg.set(key, { from: c.fromFile, to: c.toFile, count: c.count, confidence: c.confidence });
+        }
+        for (const v of agg.values()) edges.push({ ...v, kind: "calls", rel: "inferred" });
+      } catch {
+        /* fail-open (điều 9): thiếu tree-sitter thì vẫn còn nguyên lane imports */
+      }
+      // touchedBy = số phiên agent từng đụng file (graph ↔ memory, 0 LLM). Là THUỘC
+      // TÍNH của node, KHÔNG dựng thành cạnh: nối mọi cặp file cùng-một-phiên sẽ nổ N².
+      let touched: Record<string, number> = {};
+      let digests = 0;
+      try {
+        const idx = buildTouchIndex(target);
+        digests = idx.digests;
+        for (const n of g.nodes) {
+          const c = touchesFor(idx, n.id).count;
+          if (c) touched[n.id] = c;
+        }
+      } catch {
+        touched = {};
+      }
       // callSites are Phase-C raw material for the CLI (impact/callers) — heavy
       // and unrendered in the page, so they stay out of the payload.
-      return json(res, { ...g, nodes: g.nodes.map(({ callSites: _cs, ...n }) => n), fitness });
+      // `type` của node FILE = VAI TRÒ SLOT đã khai trong chuẩn (SLOT_ROLES, 68 slot).
+      // Trước đây graph chỉ có đúng một loại node ("file") dù vai trò đã nằm sẵn đó.
+      const nodes: Record<string, unknown>[] = g.nodes.map(({ callSites: _cs, ...n }) => ({
+        ...n,
+        type: n.slot ?? "(ngoài chuẩn)",
+        touchedBy: touched[n.id] ?? 0,
+      }));
+      // Lớp TAXONOMY TỪ BẢN CHUẨN (plan 13 §4 đặc tả đã lâu, tới giờ mới nối vào UI):
+      // hp_dieu · skill · plan_spec · harness_doc · slot · concern + cạnh routing/contains/
+      // references. Toàn bộ hạng KHAI BÁO — parse tất định, 0 LLM (điều 6/13).
+      let stdStats: unknown = null;
+      try {
+        const std = buildStandardGraph(target, g.nodes.map((n) => ({ id: n.id, slot: n.slot })));
+        for (const n of std.nodes) nodes.push({ ...n, loc: 0, bytes: 0, symbols: [], fanIn: 0, fanOut: 0, touchedBy: 0 });
+        for (const e of std.edges) edges.push({ from: e.from, to: e.to, kind: e.kind, rel: "declared" });
+        stdStats = std.stats;
+      } catch {
+        /* fail-open (điều 9): hỏng lớp chuẩn thì code-graph vẫn nguyên vẹn */
+      }
+      // Bậc của node tính trên TOÀN BỘ cạnh (kể cả cạnh chuẩn) — nếu không, node
+      // hp_dieu/skill/slot đều bậc 0 ⇒ vẽ ra chấm bé xíu, không có nhãn, coi như vô hình.
+      const deg: Record<string, { i: number; o: number }> = {};
+      for (const e of edges) {
+        (deg[e.from] ??= { i: 0, o: 0 }).o++;
+        (deg[e.to] ??= { i: 0, o: 0 }).i++;
+      }
+      for (const n of nodes) {
+        const d = deg[n.id as string];
+        if (d && !n.loc) {
+          n.fanIn = d.i;
+          n.fanOut = d.o;
+        }
+      }
+      // Mọi cạnh nhận một id ỔN ĐỊNH để trích dẫn được (`edge:9f2c…`). Đóng dấu Ở ĐÂY,
+      // sau khi cả BA lớp đã gộp (imports · calls · chuẩn) — làm ở từng lớp thì chắc
+      // chắn sót một lớp, và sót thì đúng cạnh đó là cạnh không dẫn nguồn được.
+      for (const e of edges) e.eid = edgeId(e.from, e.to, e.kind, e.rel);
+      return json(res, {
+        ...g,
+        nodes,
+        edges,
+        fitness,
+        builtAt,
+        touchDigests: digests,
+        standard: stdStats,
+      });
     }
     if (p === "/nav-cost") {
       // What the harness index + graph + memory buy, in tokens: sweep vs routed.
@@ -1167,6 +1329,17 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/sessions") {
       // Session Viewer: full session list (not deduped), newest first.
+      // `fresh=1` first refreshes titles from each transcript's tail so a session the user
+      // just renamed (`/title`) shows its NEW name without waiting for the next full scan
+      // (user 2026-07-26: "tui đổi xong thì trên app phải lấy cái mới nhất tự đổi theo").
+      // Cheap + fail-open: metadata only, never touches messages/ingest_state.
+      if (u.searchParams.get("fresh") === "1") {
+        try {
+          refreshSessionTitles();
+        } catch {
+          /* fail-open (điều 9): danh sách vẫn trả được với tên đang có trong DB */
+        }
+      }
       return json(res, querySessions(Math.min(300, Number(u.searchParams.get("limit") || 80)), Number(u.searchParams.get("offset") || 0)));
     }
     if (p === "/insights") {
@@ -1236,15 +1409,13 @@ export async function startUi(): Promise<void> {
     if (p === "/favicon.ico") return serveBinary(res, "assets", "favicon.ico");
     if (p === "/manifest.webmanifest") return serveBinary(res, "assets", "manifest.webmanifest");
     if (p.startsWith("/assets/")) return serveBinary(res, "assets", basename(p));
-    // UI refactor (plan 15) — the new "AI Memory OS" shell is now the DEFAULT app
-    // (served at / and /app). The previous cockpit stays reachable at /cockpit as a
-    // fallback during the transition; remove it once the new shell is fully wired.
-    // no-store: the shell is served live from disk each request; without this the
-    // WebView2 window could show a cached older page after a fix + restart.
-    if (p === "/cockpit") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-      return res.end(readFileSync(join(FRONTEND_DIR, "pages", "cockpit.html"), "utf8"));
-    }
+    // UI refactor (plan 15) — vỏ "AI Memory OS" 5 màn là app DUY NHẤT (phục vụ ở /
+    // và /app). Cockpit cũ đã nghỉ hưu 2026-07-27: 18 file chuyển sang
+    // attic/frontend-cockpit/, route /cockpit gỡ bỏ. Nó từng là đường lui trong lúc
+    // chuyển đổi, nhưng giữ lâu thành nợ: cả bộ test UI vẫn neo vào nó nên UI thật
+    // chạy nhiều vòng mà không có gate nào (nay là backend/test/app-ui.test.mjs).
+    // no-store: vỏ đọc thẳng từ đĩa mỗi request; thiếu nó thì cửa sổ WebView2 có thể
+    // hiện trang cũ đã cache sau khi sửa + khởi động lại.
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
     res.end(readFileSync(join(FRONTEND_DIR, "pages", "app.html"), "utf8"));
   });

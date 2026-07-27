@@ -3,7 +3,7 @@
 // lies), the same invisible-failure class the testing doctrine names.
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { clearCodeGraphCache, getCodeGraph } from "../../dist/memory/graph/graph-cache.js";
@@ -41,4 +41,20 @@ test("adding a source file changes the signature and the next call rebuilds with
   const after = await getCodeGraph(root);
   assert.notEqual(after.graph, before.graph, "changed signature must invalidate the cache");
   assert.equal(after.graph.stats.files, before.graph.stats.files + 1, "the new file is in the rebuilt graph");
+});
+
+// getCodeGraph phải THUẦN ĐỌC. Bản đầu của nhật ký fitness gọi recordFitness() ngay
+// trong đây ⇒ mỗi test dựng một repo tạm lại ghi một hàng vào global_memory.db THẬT
+// của user (đo được 15 hàng rác `zemory-gcache-*` sau một vòng gate). Một hàm đọc
+// graph không được phép mutate trạng thái toàn cục — nơi ghi đúng là endpoint
+// /code-graph của daemon, chỗ duy nhất quan sát được "project này vừa đổi code".
+test("getCodeGraph KHÔNG ghi gì vào memory DB (thuần đọc; sig trả ra để nơi khác chống trùng)", async (t) => {
+  const src = readFileSync(new URL("../src/memory/graph/graph-cache.ts", import.meta.url), "utf8")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.ok(!/recordFitness|openMemory|INSERT\s+INTO/i.test(src), "graph-cache phải không đụng tới DB");
+  const root = tempDir(t, "zemory-gcache-pure-");
+  writeFileSync(join(root, "a.ts"), "export const a = 1;\n");
+  const r = await getCodeGraph(root);
+  assert.equal(typeof r.sig, "string", "phải trả `sig` ra ngoài để nơi ghi tự chống trùng");
+  assert.ok(r.sig.length > 0, "sig phải có giá trị cho repo đọc được");
 });
