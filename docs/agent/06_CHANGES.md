@@ -5,6 +5,21 @@
 
 ---
 
+## [2026-07-28] — Sources hiện ĐỦ BỘ nguồn được hỗ trợ, không chỉ nguồn đã có dữ liệu
+
+Gate 238 → **239**.
+
+**User bác đúng, và tôi đã bảo vệ hành vi sai trước khi nghe ra vấn đề.** Cây Sources dựng thuần từ `GROUP BY sessions`, nên một adapter mới (`claude-web` vừa thêm) **vô hình** cho tới khi capture được lần đầu. Nguyên văn: *"nếu không hiện thì sao check vào để nó scan ra được... tui muốn nó hiện đúng chuẩn"*. Đúng là **vòng luẩn quẩn**: muốn có dữ liệu phải tick, muốn tick phải có dữ liệu.
+
+- `scopeTree()` nay ghép **bộ chuẩn `allAdapters()`** vào cây: nguồn nào zemory hỗ trợ mà chưa nạp gì thì vẫn hiện, gắn cờ `empty`.
+- UI hiện nhãn *"chưa có dữ liệu"* (viền đứt, chữ mờ) kèm tooltip **chỉ luôn lệnh nạp** — `scan-web --platform <tên>` cho web, `scan --deep` cho local. Thấy mà không biết đường nạp thì cũng như không.
+- Có test khoá: mọi adapter trong `allAdapters()` phải có mặt trong cây; nguồn có dữ liệu `empty=false`, nguồn chưa nạp `empty=true`. Lần refactor sau không ẩn lại được.
+- Đo live: cây trả về 11 node, `claude-web` hiện với 0 tin và cờ `empty`.
+
+**Bài học:** một danh sách "cái gì đang có" và một danh sách "cái gì dùng được" là HAI thứ khác nhau. Trộn làm một thì bề mặt cấu hình tự khoá chính nó.
+
+---
+
 ## [2026-07-27h] — Bịt CSRF · gỡ `/init-fresh` · provider Claude.ai cho web-capture
 
 Gate 230 → **238**.

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
 import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../../dist/memory/scope.js";
+import { allAdapters } from "../../dist/memory/adapters/index.js";
 import { search } from "../../dist/memory/search.js";
 import { exportMemoryBundle, importMemoryBundle, mergeMemoryBundle, writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
@@ -151,4 +152,39 @@ test("laneKey is stable and field-order independent enough for toggles", () => {
   assert.equal(laneKey({ origin: "web" }), laneKey({ origin: "web" }));
   assert.notEqual(laneKey({ origin: "web" }), laneKey({ origin: "local" }));
   assert.notEqual(laneKey({ source: "codex" }), laneKey({ origin: "local", source: "codex" }));
+});
+
+// ── Nguồn được HỖ TRỢ nhưng chưa có dữ liệu vẫn phải HIỆN ──────────────────────
+// Trước 2026-07-27 cây Sources dựng thuần từ `GROUP BY sessions`, nên một adapter mới
+// (vd claude-web) VÔ HÌNH cho tới khi capture được lần đầu — mà muốn capture thì user
+// phải biết nó tồn tại đã. User bác đúng: *"nếu không hiện thì sao check vào để nó
+// scan ra được"*. Vòng luẩn quẩn. Test này khoá lại để lần refactor sau không ẩn lại.
+test("cây Sources liệt kê ĐỦ bộ adapter, kể cả nguồn chưa nạp gì", (t) => {
+  const root = tempDir(t, "zemory-scope-roster-");
+  const p = join(root, "memory.db");
+  const db = openMemory(p);
+  try {
+    db.prepare("INSERT INTO sessions (id, source, origin, host, project_root, message_count) VALUES ('s1','claude-code','local','PC-A','C:\\p',3)").run();
+  } finally {
+    db.close();
+  }
+  const flat = [];
+  (function walk(ns) {
+    for (const n of ns ?? []) {
+      flat.push(n);
+      walk(n.children);
+    }
+  })(scopeTree(p, []));
+
+  const bySource = new Map(flat.map((n) => [n.label, n]));
+  for (const a of allAdapters()) {
+    assert.ok(bySource.has(a.source), `adapter '${a.source}' phải có mặt trong cây dù chưa có dữ liệu`);
+  }
+  // Nguồn có dữ liệu KHÔNG được gắn cờ rỗng; nguồn chưa nạp thì PHẢI gắn.
+  assert.equal(bySource.get("claude-code").empty, false, "nguồn có dữ liệu không được coi là rỗng");
+  assert.equal(bySource.get("claude-code").sessions, 1);
+  const web = bySource.get("claude-web");
+  assert.ok(web, "claude-web phải hiện");
+  assert.equal(web.empty, true, "phải gắn cờ để UI nói rõ 'chưa có dữ liệu' thay vì im lặng");
+  assert.equal(web.sessions, 0);
 });

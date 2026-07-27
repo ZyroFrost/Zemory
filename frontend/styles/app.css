@@ -369,3 +369,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    Drive (ba panel liên quan nhau, user 2026-07-27). Cùng màu với thông báo quét. */
 .scope-n{display:inline-flex;align-items:center;gap:7px}
 .scope-d{color:var(--primary);font-weight:700;font-size:11px;background:var(--wash);border:1px solid var(--primary-dim);border-radius:6px;padding:0 5px;font-variant-numeric:tabular-nums}
+/* Nguồn được hỗ trợ nhưng chưa nạp gì — hiện mờ, KHÔNG ẩn: ẩn đi thì user không biết
+   nó tồn tại để mà nạp (vòng luẩn quẩn, user 2026-07-27). */
+.scope-e{color:var(--text-faint);font-size:10.5px;border:1px dashed var(--border-strong);border-radius:6px;padding:0 6px;white-space:nowrap}
