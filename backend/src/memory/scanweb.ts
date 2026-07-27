@@ -102,6 +102,51 @@ const CHATGPT_PROJECTS = `(async()=>{
   }catch(e){ return {}; }
 })()`;
 
+// ── Claude.ai ────────────────────────────────────────────────────────────────
+// Khác ChatGPT ở phần XÁC THỰC: claude.ai dùng COOKIE phiên, không có bearer token
+// như /api/auth/session của ChatGPT. Chạy in-page nên cookie tự đi kèm — không cần
+// (và không được) đọc/lưu cookie ở phía Node. Mọi lời gọi đều phải kèm org id.
+const CLAUDE_AUTH = `(async()=>{
+  try{
+    const r = await fetch('/api/organizations');
+    if(!r.ok) return {token:false, err:'HTTP '+r.status};
+    const o = await r.json();
+    const org = Array.isArray(o) && o[0];
+    return {token: !!(org && org.uuid), email: (org && (org.name||null))};
+  }catch(e){ return {token:false, err:String(e)}; }
+})()`;
+
+// Liệt kê id hội thoại. Phân trang bằng offset/limit; dừng khi trang ngắn — KHÔNG tin
+// trường tổng (bài học từ ChatGPT: total báo thiếu làm dừng sớm, mất chat).
+const CLAUDE_LIST = `(async()=>{
+  try{
+    const o = await (await fetch('/api/organizations')).json();
+    const org = Array.isArray(o) && o[0] && o[0].uuid;
+    if(!org) return [];
+    const ids=[]; let off=0;
+    for(let p=0;p<300;p++){
+      const r = await fetch('/api/organizations/'+org+'/chat_conversations?limit=100&offset='+off);
+      if(!r.ok) break;
+      const j = await r.json();
+      const items = Array.isArray(j) ? j : ((j && j.data) || []);
+      for(const c of items){ if(c && c.uuid) ids.push(c.uuid); }
+      off += items.length;
+      if(items.length < 100) break;
+      await new Promise(res=>setTimeout(res,200));
+    }
+    return ids.map(id=>({id}));
+  }catch(e){ return []; }
+})()`;
+
+const claudeConv = (id: string): string => `(async()=>{
+  const o = await (await fetch('/api/organizations')).json();
+  const org = Array.isArray(o) && o[0] && o[0].uuid;
+  if(!org) throw new Error('no org');
+  const r = await fetch('/api/organizations/'+org+'/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true');
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+})()`;
+
 const PLATFORMS: Record<string, Platform> = {
   chatgpt: {
     key: "chatgpt",
@@ -115,6 +160,14 @@ const PLATFORMS: Record<string, Platform> = {
       `(async()=>{const t=(await (await fetch('/api/auth/session')).json()).accessToken;` +
       `const r=await fetch('/backend-api/conversation/${id}',{headers:{Authorization:'Bearer '+t}});` +
       `if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})()`,
+  },
+  claude: {
+    key: "claude",
+    url: "https://claude.ai",
+    source: "claude-web",
+    authExpr: CLAUDE_AUTH,
+    listExpr: CLAUDE_LIST,
+    convExpr: claudeConv,
   },
 };
 

@@ -5,6 +5,28 @@
 
 ---
 
+## [2026-07-27h] — Bịt CSRF · gỡ `/init-fresh` · provider Claude.ai cho web-capture
+
+Gate 230 → **238**.
+
+### CSRF — tôi đã NÓI QUÁ ở báo cáo trước, đây là số đúng
+Guard cũ **đã có** và chặn được: Host không phải loopback (DNS rebinding) và `Origin` lạ. Lỗ hổng thật **hẹp hơn** tôi mô tả: trình duyệt KHÔNG gửi `Origin` cho GET subresource, nên `<img src="http://127.0.0.1:4444/set-drive?path=…">` trên trang bất kỳ vẫn chạy (ảnh hỏng nhưng REQUEST đã gửi — CORS chặn ĐỌC, không chặn GỬI). Cross-site POST thì luôn kèm `Origin` và đã bị chặn sẵn.
+- **Ép POST** cho endpoint đổi trạng thái ⇒ bịt cả họ, vì cross-site POST không qua nổi guard `Origin`. FE vốn đã POST hết nên không phải sửa gì.
+- **Chặn `Sec-Fetch-Site`** làm lớp hai: trình duyệt gửi header này cho MỌI request kể cả `<img>`; CLI/curl không gửi nên không ảnh hưởng.
+- **Bẫy tự gây, tự bắt:** regex đầu tiên viết `sync|migrate` trần và nó bắt nhầm `/sync-pulse` + `/sync-status` — hai endpoint CHỈ ĐỌC mà UI gọi bằng GET liên tục. Một luật bảo mật quá tay thì hỏng đúng thứ nó định bảo vệ. Neo `sync$`/`migrate$`, và có test khoá danh sách chỉ-đọc.
+- Đo live: GET `/set-hybrid` → **405** · POST → 200 · `Sec-Fetch-Site: cross-site` → **403** · `/` `/sync-pulse` `/memory-status` → 200.
+
+### `/init-fresh` gỡ (audit F2)
+0 người gọi ở cả FE lẫn CLI, mà là thao tác **dời docs cũ đi**. Năng lực không mất: `zemory init --fresh` gọi thẳng `freshHarness()`.
+
+### Web capture Claude.ai — provider mới (cùng khung ChatGPT)
+- `PLATFORMS.claude` trong `scanweb.ts` + adapter `adapters/claudeweb.ts`. **Khác ChatGPT ở hai chỗ**: xác thực bằng **cookie phiên** (không có bearer token) nên mọi lời gọi phải kèm `org uuid`; và `chat_messages` là **mảng PHẲNG đã đúng thứ tự** — không có nhánh chết nên không cần đi `current_node → parent` như `mapping` của ChatGPT.
+- Giữ **lớp FULL**: `thinking` · `tool_use` · `tool_result` đều được giữ và gắn nhãn theo đúng quy ước adapter Claude Code, để `roleMatches()` và việc hạ điểm tin tool nhận ra. Khối lạ (Anthropic thêm loại mới) ⇒ rơi về `text` phẳng, **không mất message**.
+- `sender: 'human'` quy về `role: 'user'` cho khớp mọi adapter khác — không quy đổi thì bộ lọc role bỏ sót nguyên một nguồn.
+- 6 test với fixture đúng dạng API claude.ai. **Chạy thật:** lệnh mở đúng cửa sổ đăng nhập; capture end-to-end **chờ user đăng nhập một lần** (giống hệt bước đầu của ChatGPT).
+
+---
+
 ## [2026-07-27g] — F1 + F2 đã xử: bản chuẩn đọc từ NGUỒN · năng lực migrate hết mồ côi
 
 Gate 227 → **230**.

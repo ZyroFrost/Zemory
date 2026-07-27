@@ -10,6 +10,7 @@
 // These need format-specific decoders; tracked for a later pass.
 
 import { chatgptAdapter } from "./chatgpt.js";
+import { claudeWebAdapter } from "./claudeweb.js";
 import { claudeAdapter } from "./claude.js";
 import { codexAdapter } from "./codex.js";
 import { continueAdapter } from "./continue.js";
@@ -17,7 +18,7 @@ import { lmstudioAdapter } from "./lmstudio.js";
 import type { Adapter } from "./types.js";
 
 export function allAdapters(): Adapter[] {
-  return [claudeAdapter, codexAdapter, continueAdapter, lmstudioAdapter, chatgptAdapter];
+  return [claudeAdapter, codexAdapter, continueAdapter, lmstudioAdapter, chatgptAdapter, claudeWebAdapter];
 }
 
 export type { Adapter, ParsedLine, ParsedMessage, ParsedSession, ParsedSessionMulti, TranscriptFile } from "./types.js";

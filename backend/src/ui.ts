@@ -10,7 +10,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
-import { templateDir, ensureHarness, freshHarness } from "./docs/adopt.js";
+import { templateDir, ensureHarness } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
@@ -894,14 +894,46 @@ export async function startUi(): Promise<void> {
   // our own loopback origin is rejected (the UI page itself is same-origin,
   // so its fetches either omit Origin or match).
   const LOOPBACK = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i;
+
+  // Endpoint LÀM ĐỔI TRẠNG THÁI ⇒ bắt buộc POST. Đây là mảnh còn thiếu của guard trên:
+  // trình duyệt KHÔNG gửi `Origin` cho GET subresource, nên `<img src="http://127.0.0.1:
+  // 4444/set-drive?path=…">` trên một trang bất kỳ vẫn lọt qua (ảnh không tải được,
+  // nhưng REQUEST ĐÃ CHẠY — CORS chặn đọc kết quả, không chặn gửi đi). Cổng 4444 cố định
+  // và có ghi trong README nên đoán được. Cross-site POST thì LUÔN kèm `Origin`, và
+  // guard bên dưới đã chặn — nên chỉ cần ép POST là bịt cả họ.
+  // Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong số đó đang nhận GET.
+  const MUTATING =
+    /^\/(set-|drive-sync|forget-project|prune-projects|memory-(forget|redact|restore|scan|digest|embed)|relocate|sync$|migrate$|gate-(acquire|release))/;
+  // `sync$`/`migrate$` neo cuối CÓ CHỦ Ý: bản đầu tôi viết `sync|migrate` trần và nó bắt
+  // nhầm `/sync-pulse` + `/sync-status` — hai endpoint CHỈ ĐỌC mà UI gọi bằng GET liên
+  // tục. Một luật bảo mật quá tay thì hỏng đúng thứ nó định bảo vệ.
+
   const guard = (req: IncomingMessage, res: ServerResponse): boolean => {
     const host = req.headers.host ?? "";
     const origin = req.headers.origin ?? "";
     const originHost = origin.replace(/^https?:\/\//i, "");
-    if (LOOPBACK.test(host) && (!origin || LOOPBACK.test(originHost))) return true;
-    res.writeHead(403, { "content-type": "text/plain" });
-    res.end("forbidden (zemory ui only serves the local page)");
-    return false;
+    if (!LOOPBACK.test(host) || (origin && !LOOPBACK.test(originHost))) {
+      res.writeHead(403, { "content-type": "text/plain" });
+      res.end("forbidden (zemory ui only serves the local page)");
+      return false;
+    }
+    // Phòng thủ lớp hai: trình duyệt hiện đại gửi `Sec-Fetch-Site` cho MỌI request kể cả
+    // <img>/<script>. Chặn cross-site ngay cả khi endpoint đó vốn cho GET. CLI/curl không
+    // gửi header này ⇒ không ảnh hưởng (fail-open đúng hướng: thiếu header thì cho qua,
+    // vì chỉ trình duyệt mới là nguồn nguy hiểm ở đây).
+    const site = String(req.headers["sec-fetch-site"] ?? "");
+    if (site && site !== "same-origin" && site !== "none") {
+      res.writeHead(403, { "content-type": "text/plain" });
+      res.end("forbidden (cross-site request)");
+      return false;
+    }
+    const p = (req.url ?? "/").split("?")[0];
+    if (MUTATING.test(p) && req.method !== "POST") {
+      res.writeHead(405, { "content-type": "text/plain", allow: "POST" });
+      res.end("method not allowed (state-changing endpoints require POST)");
+      return false;
+    }
+    return true;
   };
 
   const server = createServer(async (req, res) => {
@@ -926,7 +958,9 @@ export async function startUi(): Promise<void> {
       return json(res, { ok: true, held: false });
     }
     if (req.method === "POST" && p === "/sync") return json(res, ensureHarness(target));
-    if (req.method === "POST" && p === "/init-fresh") return json(res, freshHarness(target));
+    // /init-fresh đã gỡ 2026-07-27 (audit F2): 0 người gọi ở cả FE lẫn CLI, mà nó là
+    // thao tác DỜI docs cũ đi. Năng lực không mất — `zemory init --fresh` gọi thẳng
+    // freshHarness(). Không nên mở một thao tác phá huỷ trên HTTP khi không ai dùng.
     if (p === "/migrate") return json(res, analyzeMigration(target) ?? { error: "no docs dir" });
     if (p === "/check") return json(res, await runCheck(u.searchParams.get("feature") ?? "", rootP));
     if (p === "/status") return json(res, await gatherStatus(rootP));
