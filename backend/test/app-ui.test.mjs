@@ -410,3 +410,95 @@ test("/init-fresh không còn là endpoint HTTP", () => {
   const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
   assert.ok(!/p === "\/init-fresh"/.test(src), "thao tác phá huỷ không nên mở trên HTTP khi không ai dùng");
 });
+
+// ============================ Giọng văn · chuẩn sản phẩm ============================
+// User chốt 2026-07-28: UI là sản phẩm giao cho người dùng — KHÔNG dùng văn nói, dùng
+// thuật ngữ chuẩn. Đo trên 861 chuỗi hiển thị hiện tại: **0 vi phạm**, nên đây là
+// RATCHET chống tái phát chứ không phải bộ sửa.
+//
+// Tập luật đã lọc qua HAI vòng đo để báo oan bằng 0:
+//   · Vòng 1 dùng `\b` của JS → `ngu` khớp trong "ngu·ồn" (27 ca oan), `ui` khớp trong
+//     "UI language". JS coi ký tự có dấu là ranh giới từ ⇒ KHÔNG dùng `\b` cho tiếng Việt.
+//   · Đã BỎ khỏi danh sách: `vs` (viết tắt kỹ thuật hợp lệ: "khai báo vs suy luận"),
+//     `ok` (nhãn trạng thái chuẩn: "3/3 OK"), `ui` (acronym UI).
+// Ranh giới từ dựng bằng TAY. KHÔNG dùng `\b`: JS coi ký tự có dấu là ranh giới nên
+// `ngu` khớp trong "nguồn" (đo vòng 1: 27 ca oan). Cũng KHÔNG dùng cờ `/u` — nó bắt
+// escape mọi `[` trong lớp ký tự và không đổi lại được gì ở đây.
+const EDGE = "(?:^|[\\s,.;:!?()\\[\\]\"'…·—-])";
+const EDGE_AHEAD = "(?=$|[\\s,.;:!?()\\[\\]\"'…·—-])";
+const word = (...words) => new RegExp(EDGE + "(" + words.join("|") + ")" + EDGE_AHEAD, "i");
+
+const TONE_RULES = [
+  ["tiểu từ cuối câu (nhé/nha/ạ/đấy)", /(nhé|nha|nhá|ạ|đấy|hén|hen)\s*[.!?]?$/i],
+  ["viết tắt kiểu chat (ko/dc/cx)", word("ko", "dc", "đc", "cx", "hok", "bik", "wa")],
+  ["đại từ suồng sã (tui/tớ/mày/tao)", word("tui", "tớ", "mày", "tao", "má")],
+  ["đánh giá cảm tính", /(vớ vẩn|tùm lum|bậy bạ|dở hơi|kinh khủng|thảm hoạ)/i],
+  ["thán từ", word("ồ", "ê", "trời ơi", "ối", "chà")],
+  ["diễn đạt mơ hồ", /(hình như|chắc là|có lẽ là|kiểu như|đại khái)/i],
+];
+
+/** Mọi chuỗi NGƯỜI DÙNG THẤY: cả hai từ điển + text mặc định của data-i18n trong HTML. */
+function displayStrings() {
+  const out = [];
+  const at = JS.indexOf("var I18N={vi:{");
+  const block = JS.slice(at, JS.indexOf("\n  }};", at));
+  for (const m of block.matchAll(/'([a-zA-Z0-9_.]+)':'((?:[^'\\]|\\.)*)'/g)) out.push([m[1], m[2]]);
+  for (const m of HTML.matchAll(/data-i18n(?:-ph|-title)?="([^"]+)"[^>]*>([^<]+)/g)) out.push(["html:" + m[1], m[2]]);
+  return out;
+}
+
+test("chuỗi hiển thị dùng từ ngữ chuẩn sản phẩm, không văn nói", () => {
+  const strings = displayStrings();
+  assert.ok(strings.length > 300, `kỳ vọng nhiều chuỗi hiển thị, chỉ thấy ${strings.length}`);
+  const bad = [];
+  for (const [name, re] of TONE_RULES) {
+    for (const [key, val] of strings) {
+      if (re.test(val)) bad.push(`${name}  ·  ${key} → ${val.slice(0, 70)}`);
+    }
+  }
+  assert.deepEqual(bad, [], "văn nói lọt vào giao diện — UI là sản phẩm giao, không phải ghi chú nội bộ");
+});
+
+// Ghi chú/lời bàn của dev KHÔNG được lọt ra giao diện. Đây là họ lỗi riêng: chuỗi có
+// thể rất "chuẩn" về giọng nhưng vẫn là ghi chú nội bộ (TODO/FIXME/tên commit/số dòng).
+test("chuỗi hiển thị không chứa ghi chú nội bộ của dev", () => {
+  const bad = [];
+  for (const [key, val] of displayStrings()) {
+    // Biên ở CẢ HAI đầu. Chỉ đặt biên cuối thì `05_TODO.md` — tên file trong bản chuẩn —
+    // bị báo oan (`_` là ký tự từ nên không có biên giữa `_` và `T`).
+    if (/(?<![\w])(TODO|FIXME|HACK|XXX|WIP)(?![\w])/.test(val)) bad.push(`${key} → ${val.slice(0, 70)}`);
+    if (/\b(mock|dummy|placeholder|lorem)\b/i.test(val)) bad.push(`${key} → ${val.slice(0, 70)}`);
+  }
+  assert.deepEqual(bad, [], "ghi chú dev lọt ra giao diện");
+});
+
+// Luật 4 của skill `audit toàn diện`: hỏi ngược mỗi check *"cái gì làm nó ĐỎ?"* — trả
+// lời không được thì check đó không thể nổ, và một check không nổ được còn tệ hơn không
+// có. Đây là câu trả lời, viết thành test.
+test("bộ luật giọng văn NỔ được thật, và không nổ oan", () => {
+  const fire = (s) => TONE_RULES.filter(([, re]) => re.test(s)).map(([n]) => n);
+
+  // PHẢI bắt
+  for (const bad of [
+    "Đồng bộ xong nhé.",
+    "Chưa dc đồng bộ",
+    "tui đã quét xong",
+    "Cái này vớ vẩn",
+    "Hình như thiếu dữ liệu",
+  ]) {
+    assert.ok(fire(bad).length > 0, `phải bắt được văn nói: ${JSON.stringify(bad)}`);
+  }
+
+  // KHÔNG được bắt — đều là chữ hợp lệ đã gây báo oan ở vòng đo trước.
+  for (const ok of [
+    "Đồng bộ hoàn tất",
+    "Sức khoẻ 3/3 OK",
+    "khai báo vs suy luận", // `vs` là viết tắt kỹ thuật
+    "UI language", // `ui` là acronym, không phải thán từ
+    "Nguồn dữ liệu", // `ngu` nằm trong "nguồn"
+    "05_TODO.md", // tên file trong bản chuẩn
+    "Máy này", // `má` nằm trong "máy"
+  ]) {
+    assert.deepEqual(fire(ok), [], `báo oan trên chữ hợp lệ: ${JSON.stringify(ok)}`);
+  }
+});
