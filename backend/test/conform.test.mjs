@@ -14,6 +14,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { conform } from "../../dist/docs/conform.js";
+import { readStandardSpec } from "../../dist/docs/standard-spec.js";
 import { tempDir } from "./helpers.mjs";
 
 const HARNESS = [
@@ -187,4 +188,62 @@ test("dangling-ref KHÔNG báo oan: routing tới tầng, link ngoài, và đi�
   const rep = conform(root);
   assert.equal(find(rep, "dangling-ref"), undefined, "không được báo gì: " + JSON.stringify(rep.items.map((i) => i.samples)));
   assert.equal(rep.ok, true);
+});
+
+// ── Bản chuẩn: FE phải đọc từ NGUỒN, không hardcode ────────────────────────────
+// Audit 2026-07-27 (F1): `03_STRUCTURE.md` là nguồn (điều 3) nhưng `app.js` từng chép
+// tay lại thành `STRUCT`/`ROUTE` — và đã lệch nặng: cây 35/90 hàng, routing 26/66 dòng.
+// Màn Harness là màn TRA CỨU: hiện thiếu 60% mà không báo gì là kiểu hỏng tệ nhất.
+test("readStandardSpec parse ĐỦ cây + routing từ chính file .md", (t) => {
+  const root = tempDir(t, "zemory-spec-");
+  write(root, "docs/agent/03_STRUCTURE.md", [
+    "# Chuẩn",
+    "## 3. Cây thư mục — ghi chú TỪNG DÒNG",
+    "```",
+    "App/                    # gốc",
+    "├── backend/            ★ server-side",
+    "│   ├── src/            ★ nơi chứa code",
+    "│   │  ├── api/   [opt]  endpoint mở ra",
+    "│   │  │                 dòng chú thích nối tiếp",
+    "├── data/          .gitignore  runtime",
+    "```",
+    "## 4. Routing — sửa gì → vào đâu",
+    "| Có gì / cần làm | Vào đâu |",
+    "| --- | --- |",
+    "| endpoint mở ra | `backend/src/api/` |",
+    "| nối DATABASE | `backend/src/store/` |",
+    "## 5. Hết",
+  ].join("\n"));
+  const spec = readStandardSpec(root);
+  assert.equal(spec.tree.length, 4, "4 hàng có nhánh: " + JSON.stringify(spec.tree.map((r) => r.name)));
+  assert.deepEqual(spec.tree.map((r) => r.marker), ["req", "req", "opt", "gi"]);
+  assert.deepEqual(spec.tree.map((r) => r.depth), [0, 1, 2, 0]);
+  assert.ok(spec.tree[2].note.includes("dòng chú thích nối tiếp"), "chú thích xuống dòng phải được nối, không mất chữ");
+  assert.deepEqual(spec.routing.map((r) => r.concern), ["endpoint mở ra", "nối DATABASE"], "bỏ header + gạch ngang");
+});
+
+// Non-app đánh số section KHÁC app (§2 cây / §3 routing). Ghim số là một profile trả
+// rỗng mà không ai biết — bắt được lúc đo thật, khoá lại ở đây.
+test("tìm section theo TÊN, không theo số — non-app đánh số khác vẫn parse được", (t) => {
+  const root = tempDir(t, "zemory-spec2-");
+  write(root, "docs/agent/03_STRUCTURE.md", [
+    "## 2. Cây thư mục — ghi chú TỪNG DÒNG",
+    "```",
+    "├── reports/            ★ sản phẩm giao",
+    "```",
+    "## 3. Routing — cần gì → vào đâu",
+    "| Có gì | Vào đâu |",
+    "| --- | --- |",
+    "| sản phẩm giao | `reports/` |",
+    "## 4. Hết",
+  ].join("\n"));
+  const spec = readStandardSpec(root);
+  assert.equal(spec.tree.length, 1, "cây phải parse được dù đánh số §2");
+  assert.equal(spec.routing.length, 1, "routing phải parse được dù đánh số §3");
+});
+
+test("file thiếu / hỏng ⇒ trả rỗng, KHÔNG ném (fail-open, điều 9)", (t) => {
+  const root = tempDir(t, "zemory-spec3-");
+  const spec = readStandardSpec(root); // không có docs/agent/03_STRUCTURE.md
+  assert.deepEqual(spec, { tree: [], routing: [] });
 });
