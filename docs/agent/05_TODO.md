@@ -41,10 +41,20 @@
 ## 📌 COWORK + DỌN RÁC — 2026-07-28 (phiên tối)
 > Gate **291/291** · `conform` ✓ · `validate` ✓. Chi tiết: `06_CHANGES [2026-07-28k]`.
 
-- [ ] **CHƯA ĐO: `curl` có chạy trong sandbox Cowork không, và `raw.githubusercontent.com` có bị chặn không.**
-  BOOTSTRAP đã cắm 3 lối (`curl` → `web_fetch` → xin `.zip`) nên cả ba gãy vẫn có đường ra, nhưng
-  **thứ tự ưu tiên đang là phỏng đoán**. Phiên test Cowork đầu tiên phải ghi lại nó **rơi xuống lối nào**
-  rồi chốt lại thứ tự. Không có số này thì đừng khẳng định "tải rẻ hơn dán inline" trên máy người khác.
+- [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
+  repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
+  phát hiện máy có sẵn bản chuẩn ở `D:\Zyro\Tool\Zemory\docs_template\nonapp`, **tự đối chiếu số dòng
+  8/8 rồi chép thẳng từ đĩa** — một lối BOOTSTRAP chưa hề khai. Đó là lối rẻ nhất và nó tự kiểm trước
+  khi chép, nên đã **khai chính thức thành "lối 0"** (kèm bắt buộc đối chiếu số dòng — bỏ bước đó thì
+  có nguy cơ chép nhầm bản cũ).
+  - **Hệ quả: `curl` và miền `raw.githubusercontent.com` VẪN chưa biết chạy được trong sandbox Cowork hay không.**
+    Máy sếp sẽ KHÔNG có bản local ⇒ chắc chắn rơi vào đường mạng. Phải test lại trên một máy **không có**
+    repo zemory (hoặc tạm đổi tên thư mục đó) mới ra số thật.
+  - **Đã biết thêm (đo được từ chính phiên đó):** sandbox Cowork **ĐỌC được filesystem của host** — nó đọc
+    thẳng `D:\Zyro\Tool\Zemory`. Khớp tài liệu sandbox của Claude Code (*"Read access covers the entire
+    filesystem"*). Ghi vào không rõ, chưa thử.
+  - **Agent tự áp `02_RULES §Phạm vi project` đúng chỗ:** dừng lại hỏi trước khi ghi harness vào cây git
+    public của user, dù không ai nhắc. Luật đó ăn.
 - [ ] **(ĐỀ XUẤT — chờ user) `zemory archive` tự dọn `.bak` sau khi archive thành công.**
   Hiện archive đẻ `.md.bak` làm lưới lùi rồi để đó vĩnh viễn, mà chỗ đọng lại là `docs/agent/` —
   đúng nơi luật bắt "ĐỌC HẾT", nên nó trông y như rác lọt (chủ repo đã hiểu nhầm đúng một lần).

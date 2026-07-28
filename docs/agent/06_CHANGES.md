@@ -5,6 +5,42 @@
 
 ---
 
+## [2026-07-28l] — Bản cho NGƯỜI đọc · luật diễn đạt · và lối tải mà chính agent nghĩ ra
+
+Gate 291 → **292** · `conform` ✓ · `validate` ✓. Chốt sau **phiên Cowork thật đầu tiên**.
+
+### Thiếu hẳn một nửa: bộ chuẩn chỉ có bản cho máy
+`BOOTSTRAP.md` là bản cho agent thi hành; người dùng mở ra không hiểu gì. Thêm
+`docs_template/cowork/README.md` — bản cho **người**, 5 phút, 0 câu lệnh: harness giải bài toán gì ·
+bảng 8 file với vai trò từng lớp chia 3 tầng (luật → chuẩn → sổ) · trước/sau khi có harness ·
+ba việc người dùng phải làm và ba điều agent **bị cấm** · hỏi nhanh (dữ liệu nằm đâu, có sửa file thật không).
+Hai file trỏ chéo nhau, có test khoá để không bên nào bị bỏ rơi khi đổi tên.
+
+### Agent nói đúng nhưng nói khó hiểu
+Phiên test in ra `03 §3: "định nghĩa nguồn … chỗ automation KÉO đọc → sources/"` — chính xác về
+chuẩn, nhưng người đọc nghiệp vụ không giải mã nổi. Thêm §**Cách NÓI với người dùng** vào BOOTSTRAP:
+nói bằng công việc thay vì thuật ngữ · **giữ nguyên tên thư mục chuẩn** (đó là tên thật trên đĩa) nhưng
+lần đầu nhắc phải kèm một cụm giải thích · bảng 8 từ lóng nội bộ kèm cách nói thay (`routing` →
+*bảng tra "để ở đâu"*, `deliverable` → *sản phẩm giao đi*…) · dẫn chiếu số hiệu đặt **cuối câu trong ngoặc**,
+sau khi đã nói lý do bằng tiếng người · **thuật ngữ của chính dự án thì giữ** (tên định dạng, đơn vị đo,
+hệ toạ độ — đó là ngôn ngữ nghề của người dùng, không phải tiếng lóng của agent).
+
+### Lối 0 — agent tự nghĩ ra, và nó đúng
+BOOTSTRAP khai 3 lối lấy nội dung (`curl` → `web_fetch` → xin `.zip`). Phiên thật đi lối **thứ tư**:
+thấy máy có sẵn bản chuẩn trên đĩa, **tự đối chiếu số dòng 8/8 rồi chép thẳng** — rẻ hơn cả `curl`,
+và nó tự kiểm trước khi chép chứ không tin bừa. Đã khai chính thức thành **lối 0**, kèm ràng buộc
+bắt buộc đối chiếu số dòng (bỏ bước đó thì có nguy cơ chép nhầm một bản cũ nằm sẵn trên máy).
+
+**Cái giá phải ghi rõ:** vì đi lối 0 nên **đường mạng vẫn chưa được test lần nào**. Máy người dùng
+cuối sẽ không có bản local ⇒ chắc chắn rơi vào `curl`/`web_fetch`. Còn treo ở `05_TODO`.
+
+### Phiên test cũng xác nhận hai thứ về sandbox
+Sandbox Cowork **đọc được filesystem của host** (agent đọc thẳng repo zemory ở ổ khác) — khớp tài liệu
+sandbox của Claude Code. Và agent **tự dừng lại hỏi** trước khi ghi harness vào cây git public của user,
+dù không ai nhắc — `02_RULES §Phạm vi project` ăn đúng chỗ nó sinh ra để ăn.
+
+---
+
 ## [2026-07-28k] — Harness đi được vào Claude Cowork · và `data/` trần đã nuốt ruột skill vendored suốt từ đầu
 
 Gate 286 → **291** · `conform` ✓ · `validate` ✓.
