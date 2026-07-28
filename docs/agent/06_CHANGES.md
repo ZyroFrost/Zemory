@@ -5,6 +5,55 @@
 
 ---
 
+## [2026-07-28p] — Archive thôi là "cất kho": 56 entry cũ nay tra lại được
+
+Gate 298 → **303** · `conform` ✓ · `validate` ✓. Áp cho **engine**, tức mọi project dùng zemory.
+
+### Spec hứa một năng lực mà code không có
+`plan/02 §3` viết từ lâu: *"Changelog search giữ cả active lẫn archived để quyết định cũ vẫn recall được."*
+Đo thật: `changelog search "compress"` → **no matches**, trong khi `grep` thấy từ đó **có** trong
+`docs/agent/archive/06_CHANGES.md`. Truy DB: index chỉ **12 dòng**, `archived=1` = **0**. Toàn bộ
+**56 entry** archive (07-10 → 07-27f) không tồn tại với search.
+
+*Kiểm chéo trước khi kết luận:* phép thử đầu tôi tìm `LeanCTX` và cũng ra rỗng — nhưng `grep` cho thấy
+từ đó **không** có trong archive, tức phép thử vô hiệu. Đổi sang `compress` (có trong archive, không có
+trong bản active) mới tách được "không index" khỏi "không có từ".
+
+**Gốc:** mọi lần reseed đều `DELETE FROM changelog WHERE project_root=?` — xoá cả project rồi nạp lại
+từ file **đã cắt**. Nên `archive` và `reindex` (chạy thường xuyên) đều xoá sạch tầng archived như một
+tác dụng phụ không ai thấy.
+
+### Vá: hai tầng, mỗi tầng tự dọn phần của mình
+`importChangelog` nhận cờ `archived`; `replace` nay chỉ xoá **đúng tầng đang nạp** (`AND archived=?`),
+nên nạp lại bản active không thể đụng tới tầng archived nữa. `reindex` nạp thêm `archive/06_CHANGES.md`
+với `archived=1`; `archiveChanges` sau khi cắt thì index luôn phần vừa chuyển đi, không chờ `reindex`.
+
+**Đo sau khi vá:** `reindex` → *"17 changelog entr(ies) + 56 archived"*; DB tách sạch hai tầng
+(`archived=0`: 17 entry 07-27g→07-28o · `archived=1`: 56 entry 07-10→07-27f);
+`changelog search "compress"` nay trả về đúng entry `[2026-07-11]` chỉ nằm trong archive.
+
+### Vì sao đây KHÔNG phải đổi điều 3
+File archive là **file nguồn** — nằm trong git, `reindex` dựng lại được — chỉ khác là nó ở ngoài vùng
+đọc mỗi phiên. Index một file nguồn chính là hành vi dẫn xuất bình thường. Điều bị bác là phương án
+*"cắt thẳng nội dung vào DB rồi bỏ file"*: cái đó lật ngược chiều nguồn, và `reindex` (`replace` —
+comment trong code ghi rõ *"so the index mirrors the file exactly (FILE WINS)"*) sẽ xoá sạch ngay lần chạy kế.
+
+**Mô hình 3 tầng sau khi vá:** nóng = `docs/agent/*.md` (đọc mỗi phiên) · **ấm = `archive/*.md`
+(không đọc, nhưng DÒ ĐƯỢC)** · lạnh = lịch sử git (không mất, phải `git log -p`). Tầng ấm phình cũng
+không tốn token vì không ai đọc nó; đo nhịp: **3,3 entry/ngày ≈ 3,5 MB/năm**, so với DB đã 947 MB.
+
+Hệ quả: ngưỡng archive thành cái núm vô hại — hạ xuống 200 dòng cũng không mất gì, chỉ đổi từ
+"đọc sẵn" sang "tra khi cần". *(Ngưỡng vẫn để 500 như user chốt; chưa đổi.)*
+
+### Đột biến hoá 4/4
+Phá 4 chỗ đòi đỏ, gồm **chính con bug cũ** (`replace` xoá cả project) · luôn ghi `archived=0` ·
+luôn ghi `archived=1` · không ghi `body` vào index. Cả 4 đều bị bắt.
+
+**Còn hụt, ghi để không tưởng là đã xong:** `05_TODO` **chưa từng được index** — `reindex` chỉ nạp
+`docs/plan/*` và `06_CHANGES`. Nên `archive/05_TODO.md` hiện chỉ **grep** được, chưa **search** được.
+
+---
+
 ## [2026-07-28o] — Trả `AGENTS.md` về "đọc HẾT docs/" — luật 3 file chỉ thuộc luồng Cowork
 
 > 🔄 **Supersede:** thay phần **"đọc theo tầng"** của entry `[2026-07-28n]` (cùng ngày) — user chốt:
