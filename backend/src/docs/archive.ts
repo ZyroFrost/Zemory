@@ -37,6 +37,85 @@ function entryHeads(lines: string[]): number[] {
   return heads;
 }
 
+const TODO_INTRO =
+  "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
+
+const ITEM = /^(\s*)-\s*\[([x ~])\]/;
+
+/** One backlog item = its `- [x]` line plus every following line that belongs to
+ *  it (deeper indent, continuation prose). Stops at the next item of the same or
+ *  shallower level, a `##` heading, or a `>` block — those start new structure. */
+function itemBlocks(lines: string[]): Array<{ state: string; start: number; end: number }> {
+  const out: Array<{ state: string; start: number; end: number }> = [];
+  let inFence = false;
+  for (let i = 0; i < lines.length; ) {
+    if (FENCE.test(lines[i])) {
+      inFence = !inFence;
+      i++;
+      continue;
+    }
+    const m = inFence ? null : ITEM.exec(lines[i]);
+    if (!m) {
+      i++;
+      continue;
+    }
+    const indent = m[1].length;
+    let j = i + 1;
+    for (; j < lines.length; j++) {
+      const n = lines[j];
+      if (/^## /.test(n) || /^>/.test(n)) break;
+      const m2 = ITEM.exec(n);
+      if (m2 && m2[1].length <= indent) break;
+    }
+    out.push({ state: m[2], start: i, end: j });
+    i = j;
+  }
+  return out;
+}
+
+/** Trim 05_TODO.md when it grows past a threshold: move every CLOSED item (`[x]`)
+ *  — with its continuation lines — to docs/agent/archive/05_TODO.md, keeping open
+ *  (`[ ]`) and in-progress (`[~]`) items plus all headings and narrative in place.
+ *
+ *  Why per ITEM and not per section (measured 2026-07-28): only 3 of 19 sections
+ *  were fully closed = 18/442 lines (4%), because real sections mix done and open
+ *  work. The closed ITEMS are 107 of them = 49.6 KB = 46% of the file. Archiving
+ *  by section would have moved almost nothing.
+ *
+ *  Why a byte threshold next to the line one: 05_TODO averaged 241 bytes/line vs
+ *  06_CHANGES' 103, so a line count under-measures it by more than 2x — and the
+ *  thing being paid for is context, which is bytes. */
+export function archiveTodo(ctx: Context): ArchiveResult {
+  const mainPath = join(ctx.docsDir, "05_TODO.md");
+  if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
+  const maxLines = ctx.config.thresholds?.todo_lines ?? 500;
+  const maxBytes = ctx.config.thresholds?.todo_bytes ?? 60_000;
+
+  const text = readFileSync(mainPath, "utf8");
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  if (lines.length <= maxLines && Buffer.byteLength(text, "utf8") <= maxBytes) {
+    return { moved: 0, activeLines: lines.length, archivePath: null };
+  }
+
+  const closed = itemBlocks(lines).filter((b) => b.state === "x");
+  if (closed.length === 0) return { moved: 0, activeLines: lines.length, archivePath: null };
+
+  const drop = new Set<number>();
+  for (const b of closed) for (let i = b.start; i < b.end; i++) drop.add(i);
+  const keptText = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
+  const movedText = closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "") + "\n";
+
+  const archivePath = join(ctx.docsDir, "archive", "05_TODO.md");
+  mkdirSync(dirname(archivePath), { recursive: true });
+  const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
+  const prevBody = prev.startsWith(TODO_INTRO) ? prev.slice(TODO_INTRO.length) : prev;
+  writeFileAtomic(archivePath, TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
+  // Truncating the SOURCE backlog is destructive — keep a .bak so it can be undone.
+  writeFileAtomic(mainPath, keptText, { backup: true });
+  return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath };
+}
+
 /** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries
  *  to docs/agent/archive/06_CHANGES.md verbatim, keep the newest in place. */
 export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb()): ArchiveResult {
