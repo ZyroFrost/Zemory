@@ -44,6 +44,41 @@ export function validate(ctx: Context): ValidateReport {
     }
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
+
+    // Per-ENTRY length. The file-level threshold above only says "time to archive";
+    // it says nothing about entries that are individually bloated, and those are what
+    // make archiving pointless — at keep=180 lines, four 50-line entries fill the whole
+    // active window. Measured over 76 real entries (2026-07-29): p50 19 · p75 28 ·
+    // p90 40 · max 53, so the median is already fine and the problem is the tail.
+    // 30 sits between p75 and p90: it disciplines the tail without fighting a normal
+    // entry. ADVISORY on purpose — a hard failure on prose length would block real work,
+    // and `validate` runs at every chốt phiên anyway (04_SKILLS §chốt phiên, bước cuối).
+    const entryMax = ctx.config.thresholds?.changes_entry_lines ?? 30;
+    const long = longEntries(readFileSync(chFile, "utf8"), entryMax);
+    if (long.length > 0) {
+      const worst = long.slice(0, 3).map((e) => `${e.tag} (${e.lines})`).join(" · ");
+      issues.push({
+        level: "info",
+        msg: `${long.length} changelog entr(ies) > ${entryMax} lines: ${worst}${long.length > 3 ? " …" : ""} — giữ số đo + nguyên nhân, chi tiết thiết kế sang docs/plan/`,
+      });
+    }
+  }
+
+  // 2b. Closed items still sitting in the backlog. The standard is explicit in the
+  //     file's own header — "xong → ghi sang 06_CHANGES.md và xoá khỏi đây" — so the
+  //     correct count is ZERO. Nothing checked it, and by 2026-07-29 it had reached
+  //     107 items = 49.6 KB = 46% of 05_TODO, read into context every session. They
+  //     are not a new mechanism's job: a done item belongs in the changelog, and the
+  //     archive is only the net that catches what already piled up.
+  const todoFile = join(agentDir, "05_TODO.md");
+  if (existsSync(todoFile)) {
+    const done = closedItems(readFileSync(todoFile, "utf8"));
+    if (done > 0) {
+      issues.push({
+        level: "info",
+        msg: `${done} mục [x] còn trong 05_TODO.md — chuẩn: xong thì ghi sang 06_CHANGES.md rồi xoá khỏi đây (\`zemory archive\` dọn phần đã dồn)`,
+      });
+    }
   }
 
   // 3. Repo structure vs the standard (docs/agent/03_STRUCTURE.md). TWO standards:
@@ -162,6 +197,50 @@ function extractLinks(md: string): string[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(md))) out.push(m[1]);
   return out;
+}
+
+/** Count of `- [x]` backlog items. Fence-aware: a checked box inside a code block is
+ *  an example, not a real item. */
+export function closedItems(text: string): number {
+  let inFence = false;
+  let n = 0;
+  for (const l of text.split("\n")) {
+    if (/^[ \t]*(```|~~~)/.test(l)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence && /^\s*-\s*\[x\]/.test(l)) n++;
+  }
+  return n;
+}
+
+/** Dated changelog entries longer than `max` lines, longest first. Fence-aware so a
+ *  `## [x]` inside a code block is text, not an entry heading. */
+export function longEntries(text: string, max: number): Array<{ tag: string; lines: number }> {
+  // Deliberately no CRLF normalisation: nothing below is anchored to end-of-line and no
+  // byte offsets are used, so a stray carriage return changes no result. parseChangelog
+  // in changelog.ts DOES need one — it slices by offset, and a Windows-written file once
+  // parsed there as zero entries. Mutation testing (2026-07-29) proved the guard here was
+  // dead code: deleting it kept every test green, because it never changed an outcome.
+  const lines = text.split("\n");
+  const heads: Array<{ i: number; tag: string }> = [];
+  let inFence = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^[ \t]*(```|~~~)/.test(lines[i])) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const m = /^## \[([^\]]+)\]/.exec(lines[i]);
+    if (m) heads.push({ i, tag: m[1] });
+  }
+  const out: Array<{ tag: string; lines: number }> = [];
+  for (let k = 0; k < heads.length; k++) {
+    const end = k + 1 < heads.length ? heads[k + 1].i : lines.length;
+    const n = end - heads[k].i;
+    if (n > max) out.push({ tag: heads[k].tag, lines: n });
+  }
+  return out.sort((a, b) => b.lines - a.lines);
 }
 
 function lineCount(file: string): number {
