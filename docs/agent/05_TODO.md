@@ -38,15 +38,21 @@
 > ⑤ **Gỡ `gOrphanN`** chết khỏi `app.js`.
 > *(P2/P3 ĐÃ XONG 2026-07-27 — xem mục ngay dưới.)*
 
-## 📌 BÀN GIAO PHIÊN — chốt 2026-07-28
-> Gate **246/246** · `conform` ✓ · `validate` ✓ · DB **870,9 MB** · schema **v19** · parser **v5**.
-> Toàn bộ đã commit + push lên `origin/main`.
+## 📌 BÀN GIAO PHIÊN — chốt 2026-07-28 (phiên chiều)
+> Gate **286/286** · `conform` ✓ · `validate` ✓ · DB **947,3 MB** · schema **v19** · parser **v6**.
+> Đã commit + push `origin/main` tới `e71de73`. Daemon chạy ở 4444.
+
+**Bài học đắt nhất phiên này — đọc trước khi làm tiếp**
+> Tôi báo sai **6 lần trước khi tự bắt**, và cả 6 chung một gốc: **đo MỘT lần, bằng MỘT cách, rồi coi kết quả đầu là sự thật**. Không cái nào là "quên check". Hai luật đã vào `02_RULES` + cả 2 template để chặn: **① một phép đo chưa kiểm chéo thì chưa phải sự thật** · **② test mới phải chứng minh mình ĐỎ ĐƯỢC**.
+> **Đột biến hoá là phép kiểm DUY NHẤT trong phiên chưa bỏ sót lần nào** — nó bắt được 2 test xanh giả, 1 tiêu chí xoá sai (suýt mất 87 ảnh sống), và 1 probe chỉ gọi được bằng curl. Thay đổi nào có test thì chạy nó, đừng chờ ai nhắc.
 
 **Trạng thái các năng lực chính**
-- Bộ nhớ: 173.6k tin · 1.2k phiên · 2 máy · 6 nguồn (`claude-code` `codex` `continue` `lmstudio` `chatgpt-web` `claude-web`) · vector phủ 100%.
-- **Ảnh: 678 ảnh / 54,3 MB** đã vào `attachment` (dedup 862 liên kết). Trước 2026-07-28 bị bỏ im lặng.
-- Capture web: ChatGPT ✓ · **claude.ai ✓ (mới)** · Gemini chưa.
-- UI: 6 màn, có gate 32 test soi đúng file đang chạy.
+- Bộ nhớ: **176.852 tin · 1.209 phiên · 2 máy · 6 nguồn**; vector 115.268, còn **14.034 chờ nhúng** (giá của re-ingest v6, scheduler tự tiêu hoá — recall vẫn chạy bằng FTS).
+- **Đính kèm: 816** — trong đó **125 mang TÊN GỐC** (ảnh do tool `Read` đọc từ đĩa). 0 link chết, 0 mồ côi.
+- **Ảnh dùng được đầu-cuối**: xem inline trong Recall (thread + Xem trước) · chip lọc `🖼 Có ảnh` · dialog M 16:9 · tải về có tên (`Content-Disposition`) · **sync xuyên máy qua công tắc `🖼 Kèm ảnh`** (mặc định TẮT).
+- Capture: ChatGPT ✓ · claude.ai ✓ · **Gemini là nền web CUỐI còn thiếu**.
+- **Recall nhanh lại: 25 s → 0,55 s** sau khi vá mặc định rerank (xem changelog `[2026-07-28h]`).
+- Cả **6 adapter** cùng đọc block ảnh qua `_shared.imageAttachment`.
 
 **Việc kế tiếp, theo thứ tự tôi đề nghị**
 - [x] ~~**HAI FILE `config.json` cùng tồn tại**~~ **ĐÃ CÓ CẢNH BÁO 2026-07-28** — `zemory doctor` nay in ra bản ĐANG DÙNG (cạnh DB) và bản MỒ CÔI ở home. **CHỈ báo, không tự xoá** (file của user). Chạy thật trên máy này: cảnh báo hiện đúng hai đường dẫn. Còn lại: bạn tự xoá `~/.zemory/config.json` nếu không cần.

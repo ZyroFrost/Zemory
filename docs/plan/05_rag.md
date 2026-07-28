@@ -60,6 +60,7 @@ query:
 - **Đã chốt 2026-06-30 (rerank — Giai đoạn E):**
 - Rerank cross-encoder là **engine opt-in** trong slot `search` hợp nhất (giống vector), KHÔNG slot riêng — giữ 1 capability = 1 provider.
 - Mặc định **OFF**; chỉ rescore top-N ứng viên (không quét corpus); fail-open về thứ tự RRF.
+  - ⚠ **Đo 2026-07-28: code từng LỆCH khỏi chính điều này** — `getRerankSetting()` trả `?? true` (mặc định BẬT) nên recall mất **25–29 s** thay vì ~0,6 s (chậm **6,3×**). Đợt 07-26 chỉ vá GIÁ TRỊ trong `config.json` nên khi file đó rỗng thì nó bật lại. Nay vá đúng MẶC ĐỊNH + `settings-defaults.test.mjs` khoá lại (đã đột biến hoá).
 - Dùng chung model cache + Transformers.js với embedder; model swap được qua `ZEMORY_RERANK_MODEL`.
 
 - **Đã chốt 2026-07-12/14 (F1 — prompt profile / dims / chunking):**

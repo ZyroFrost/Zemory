@@ -48,9 +48,26 @@
 |---|---|---|
 | **L1 — chỉ message** ("mess thôi") | `sessions` · `messages` · `known_stores` | ✅ **ĐÃ LÀ MẶC ĐỊNH HÔM NAY** — chính là bundle `payload=rows` (lean 184.6MB · delta 1.8MB) |
 | **L2 — snapshot đầy đủ** | thêm mọi lớp dẫn xuất (FTS · vector · digest · doc/section) | ✅ đã có: cờ `--full`, giữ cho disaster-restore |
-| **L3 — kèm FILE đã upload** | bytes của ảnh/file người dùng đính kèm | ❌ **CHƯA KHẢ THI** — xem đo bên dưới |
+| **L3 — kèm FILE đã upload** | bytes của ảnh/file người dùng đính kèm | ✅ **XONG 2026-07-28** — công tắc opt-in, mặc định TẮT |
 
-**Kiểm chứng khả thi L3 (đo thật trên DB sống 2026-07-20 — KHÔNG suy đoán):**
+### L3 — ĐÃ LÀM (2026-07-28), cả ba bước
+> 🔄 **Supersede** kết luận "❌ CHƯA KHẢ THI" bên dưới (viết 2026-07-20). Kết luận đó **đúng với dữ kiện lúc đó** — khi ấy schema thật sự không có bảng file và adapter bỏ mọi part non-text. Ba tiền đề nó đòi nay đã có đủ, nên phần đo cũ giữ lại làm hồ sơ, KHÔNG xoá.
+
+| bước nó đòi | trạng thái |
+|---|---|
+| ① giữ + tải phần non-text lúc ingest | ✅ cả **6 adapter** dùng chung `_shared.imageAttachment` (Anthropic base64 · OpenAI `image_url` · ChatGPT `image_asset_pointer` ⇒ `ref`) |
+| ② chỗ chứa blob | ✅ bảng `attachment` + `attachment_link`, dedup `sha256` (schema v19) |
+| ③ mức sync chở nó | ✅ công tắc `🖼 Kèm ảnh` (`/set-sync-attachments`), **mặc định TẮT** |
+
+**Thiết kế chốt của bước ③:**
+- **KHÔNG phải mức thứ ba** cạnh Gọn/Đầy đủ — là **công tắc độc lập**, ảnh đi kèm được ở cả hai mức. (User 2026-07-28: *"dạng check có lấy hay không, giống setting đang có"*.)
+- **Mặc định TẮT có chủ đích**: bundle lean vừa cắt −74%, thả blob vào là xoá phần lớn lợi ích đó ⇒ phải là lựa chọn có ý thức của từng máy. `settings-defaults.test.mjs` khoá mặc định này.
+- Bundle chở bảng phẳng **`attachment_ship`** mang `session_id` + `msg_uuid`, **KHÔNG mang `message_id`**: id là AUTOINCREMENT CỤC BỘ và cố ý không đi theo bundle (merge khoá `UNIQUE(session_id, uuid)`) — chở id sang máy khác là trỏ vào tin của người ta. Bên nhận tra lại id của mình rồi mới nối; nội dung dedup theo `sha256` nên cùng một ảnh từ nhiều máy chỉ tốn một hàng.
+- Bundle cũ / máy gửi tắt công tắc ⇒ không có bảng đó ⇒ merge **im lặng bỏ qua** (fail-open, điều 9).
+- **Điều 7 vẫn giữ:** blob đi qua bundle `.enc` như mọi thứ khác, KHÔNG đẩy vào `share/` git-LFS.
+- Test round-trip dựng máy nhận có id lệch hẳn (9001): bật ⇒ nối đúng id máy nhận · tắt ⇒ **0** blob.
+
+**Kiểm chứng khả thi L3 (đo thật trên DB sống 2026-07-20 — KHÔNG suy đoán; giữ làm hồ sơ):**
 - Schema **không có bảng/cột nào chứa file**: `messages` chỉ có `content TEXT` (`id · session_id · uuid · role · content · tool_name · timestamp`); không có `artifact`/`attachment`/blob store nào trong DB.
 - Trên **144.396 message**: `file-service://` (con trỏ asset của ChatGPT) = **0 dòng**; chuỗi `attachment` = 77 dòng nhưng là **chữ người viết**, không phải tham chiếu tải được.
 - Nguyên nhân: `scanweb.ts` flatten `content.parts[]` **chỉ lấy phần text** — part ảnh/file bị bỏ ngay lúc ingest. Nên **không có cả con trỏ lẫn bytes** để mà sync.

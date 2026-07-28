@@ -18,7 +18,7 @@ Provider mặc định `memory` tiếp tục sở hữu ingest và episodic reca
 - [x] raw local backup/restore bằng SQLite online backup, restore có rollback DB cũ sang `.bak-*`;
 - [x] forget trong memory DB theo session/project/source/before/message, có dry-run trước khi xóa và auto backup khi `--force`;
 - [x] re-redact dữ liệu đã ingest cho messages/artifact index, đồng bộ lại FTS khi message update;
-- [x] **Lưu file/ảnh đính kèm — XONG 2026-07-28.** Bảng `attachment` + `attachment_link` (schema v19), ba hạng `text|blob|ref`, dedup `sha256`. Đã nạp **678 ảnh / 54,3 MB** từ transcript Claude Code (parser v5). CHƯA nối vào bundle sync — đó là L3, chờ user chốt chính sách.
+- [x] **Lưu file/ảnh đính kèm — XONG 2026-07-28.** Bảng `attachment` + `attachment_link` (schema v19), ba hạng `text|blob|ref`, dedup `sha256`. Đã nạp **815 đính kèm** từ transcript (parser **v6**), trong đó **125 mang TÊN GỐC** (ảnh do tool `Read` đọc từ file trên đĩa — ghép ngược `tool_use_id` → `input.file_path`, đo 166/166). Cả **6 adapter** cùng đọc block ảnh qua `_shared.imageAttachment`. **L3 XONG 2026-07-28**: công tắc `🖼 Kèm ảnh` opt-in (mặc định TẮT) chở blob qua bundle bằng bảng phẳng `attachment_ship` — xem `plan/08 §7`.
 - [ ] source-transcript privacy/tombstone nếu cần bảo đảm dữ liệu đã forget không bị whole-file adapter re-ingest từ transcript gốc;
 - [ ] retention theo dung lượng/quota đĩa nếu memory/artifact store phình quá lớn;
 - [ ] provenance cho mỗi message, adapter version và trạng thái ingest chi tiết hơn;
