@@ -3,7 +3,7 @@
 > Spec cho năng lực: ingest hội thoại **web chat** (chatgpt.com, gemini.google.com, claude.ai) vào Global Memory.
 > Khác adapter agent CLI/IDE (`claude-code`, `codex`, `continue`, `lmstudio`): web chat nằm ở **server**, KHÔNG ghi file ra đĩa → `memory scan` quét đĩa không với tới. Phải lấy qua **export chính chủ** hoặc **browser** (đăng nhập).
 > Ưu tiên: **GPT trước**, rồi Gemini, rồi Claude.ai.
-> **Trạng thái (cập nhật 2026-07-08): ✅ v1 ĐÃ SHIP cho ChatGPT** — `backend/src/memory/scanweb.ts` (browser-connector), schema **v9 có cột `origin`**, **859 hội thoại ChatGPT** (~30.9k msg, cả Project chats) đã vào memory. Gemini/Claude.ai chưa làm. Scripts prototype cũ dời `attic/web-capture/`.
+> **Trạng thái (cập nhật 2026-07-28): ✅ ĐÃ SHIP cho ChatGPT + Claude.ai** — `backend/src/memory/scanweb.ts` (browser-connector), schema **v9 có cột `origin`**, **859 hội thoại ChatGPT** (~30.9k msg, cả Project chats) + **claude.ai chạy end-to-end thật** (adapter `claudeweb.ts`). **Gemini chưa làm** — nền web cuối còn thiếu. Scripts prototype cũ dời `attic/web-capture/`.
 ## 1. Mục tiêu & nguyên tắc
 - Tái dùng memory hiện có: `sessions`/`messages`, dedup `UNIQUE(session_id,uuid)`, redact, digest, recall, sync — KHÔNG tạo store thứ 2 (RULES §3). Web chat chỉ là thêm `source` + nhánh `origin`.
 - Tiết kiệm token/công: EXTEND engine, không viết lại (RULES §1).
@@ -92,6 +92,7 @@ Lệnh (không thuộc `memory scan` quét đĩa):
 
 ## 15. Còn lại
 - ✅ **ChatGPT: XONG** — `memory scan-web --platform chatgpt` đã ship, 859 hội thoại (cả Project chats) trong memory.
-- Gemini: Takeout là log lossy → fidelity cao phải qua browser-connector/extension; **CHƯA làm**.
-- Claude.ai: export `chat_messages` phẳng (dễ nhất) hoặc browser-connector; **CHƯA làm**.
-- Khung `scan-web --platform` đã có sẵn (ChatGPT) → thêm Gemini/Claude.ai dùng chung khung.
+- ✅ **Claude.ai: XONG 2026-07-27** — `PLATFORMS.claude` (`scanweb.ts`) + adapter `adapters/claudeweb.ts`, chạy end-to-end thật (`pulled 2 · failed 0`). Khác ChatGPT ở hai chỗ: xác thực bằng **cookie phiên** nên mọi lời gọi phải kèm `org uuid`; `chat_messages` là **mảng PHẲNG đã đúng thứ tự** ⇒ không phải đi `current_node → parent`. Giữ lớp FULL (`thinking`·`tool_use`·`tool_result` gắn nhãn theo quy ước adapter Claude Code); `sender:'human'` quy về `role:'user'`. Ảnh: nhánh block `image` đã nối 2026-07-28 (dùng chung `_shared.imageAttachment`).
+  - Còn lại của nền này: `project_root` vẫn là **uuid thô** vì API không trả tên folder — cách giải giống ChatGPT (`_projects.json`), làm khi cần.
+- ❌ **Gemini: CHƯA làm** — Takeout là log lossy → muốn fidelity cao phải qua browser-connector/extension. Là nền web **cuối cùng** còn thiếu.
+- Khung `scan-web --platform` đã có sẵn (ChatGPT + Claude.ai) → thêm Gemini dùng chung khung.

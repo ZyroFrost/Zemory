@@ -502,3 +502,102 @@ test("bộ luật giọng văn NỔ được thật, và không nổ oan", () =>
     assert.deepEqual(fire(ok), [], `báo oan trên chữ hợp lệ: ${JSON.stringify(ok)}`);
   }
 });
+
+// ---- Ảnh đính kèm: MỘT bộ vẽ message cho cả hai bề mặt ----
+//
+// user 2026-07-28: "giao diện của phiên nó khác bên tìm". Gốc: ô Xem trước dán thẳng
+// text đã escape nên còn nguyên dòng nhãn `[image:…]` cạnh thumbnail và gọi output tool
+// là "user", trong khi tab Phiên đi qua msgHtml() nên sạch. Hai bộ vẽ thì chắc chắn lệch.
+// Test dưới đây CHẠY THẬT hàm trích từ file đang ship (không chép lại logic — đó đúng là
+// cái bẫy "test neo vào file chết" đã dính một lần).
+
+/** Trích các hàm thuần từ app.js rồi dựng lại trong sandbox với stub tối thiểu. */
+function renderer() {
+  const grab = (name) => {
+    const at = JS.indexOf(`function ${name}(`);
+    assert.ok(at >= 0, `không tìm thấy hàm ${name} trong app.js`);
+    let i = JS.indexOf("{", at), depth = 0;
+    for (let j = i; j < JS.length; j++) {
+      if (JS[j] === "{") depth++;
+      else if (JS[j] === "}") { depth--; if (!depth) return JS.slice(at, j + 1); }
+    }
+    throw new Error(`ngoặc không cân ở ${name}`);
+  };
+  const src = [
+    "var IMG_LABEL=" + JS.slice(JS.indexOf("var IMG_LABEL=") + 14, JS.indexOf("\n", JS.indexOf("var IMG_LABEL="))),
+    grab("stdEsc"), grab("attSize"), grab("attHtml"), grab("foldSize"), grab("fold"),
+    grab("msgHtml"), grab("msgRole"), grab("msgBlock"),
+    "return { msgBlock: msgBlock, msgHtml: msgHtml };",
+  ].join("\n");
+  return new Function("t", src)((k) => k);
+}
+
+test("cả tab Phiên lẫn ô Xem trước cùng gọi msgBlock (một bộ vẽ, không hai)", () => {
+  // `return msgBlock(…)` = chỗ GỌI; loại trừ dòng `function msgBlock(m,cap){` (định nghĩa).
+  const calls = JS.match(/return msgBlock\(m,/g) ?? [];
+  assert.equal(calls.length, 2, "phải đúng hai chỗ gọi: thread phiên + ô Xem trước");
+  assert.equal((JS.match(/function msgBlock\(/g) ?? []).length, 1, "chỉ được có MỘT định nghĩa");
+  assert.ok(!/stdEsc\(String\(m\.content\|\|''\)\.slice/.test(JS), "ô Xem trước không được dán text thô nữa");
+});
+
+test("msgBlock bỏ dòng nhãn [image:…] và vẽ thumbnail — giống nhau ở cả hai bề mặt", () => {
+  const { msgBlock } = renderer();
+  const sha = "d3c228ec003af0c2572c15db36bf52132131d679b5ef0b73cb575345539e1b65";
+  const msg = {
+    id: 1839800, role: "user", timestamp: "2026-07-22T23:25:00Z",
+    content: `[image:image/png 73KB ${sha.slice(0, 12)}]\ngateway này để làm gì`,
+    atts: [{ id: 50, sha256: sha, mime: "image/png", bytes: 74670, kind: "blob", name: null }],
+  };
+  const full = msgBlock(msg, 0);          // tab Phiên
+  const capped = msgBlock(msg, 390);      // ô Xem trước
+  for (const [label, html] of [["phiên", full], ["xem trước", capped]]) {
+    assert.ok(!html.includes("[image:"), `${label}: nhãn phải bị bỏ, không hiện cùng thumbnail`);
+    assert.ok(html.includes(`/attachment?sha=${sha}`), `${label}: phải có thumbnail`);
+    assert.ok(html.includes("gateway này để làm gì"), `${label}: phần chữ phải còn`);
+  }
+});
+
+test("msgBlock gọi output tool là 'tool' ở CẢ hai bề mặt (không dán nhãn 'user')", () => {
+  const { msgBlock } = renderer();
+  const m = { id: 1, role: "user", timestamp: "2026-07-22T23:25:00Z", content: "[tool_result]\nx".repeat(1) };
+  assert.ok(msgBlock(m, 0).includes('data-role="tool"'));
+  assert.ok(msgBlock(m, 390).includes('data-role="tool"'));
+});
+
+test("ảnh không có bytes (kind='ref') thì nói rõ, KHÔNG dựng khung ảnh vỡ", () => {
+  const { msgBlock } = renderer();
+  const m = { id: 2, role: "user", content: "x", atts: [{ sha256: "a".repeat(64), mime: "image/*", bytes: 2048, kind: "ref" }] };
+  const html = msgBlock(m, 0);
+  assert.ok(html.includes("att noimg"), "phải rơi vào nhánh 'chỉ ghi nhận'");
+  assert.ok(!html.includes("<img"), "không được dựng thẻ ảnh cho thứ không có nội dung");
+});
+
+// ---- Tab Phiên: thanh lọc đối xứng với tab Tìm kiếm (user chốt 2026-07-28, bản B) ----
+
+test("tab Phiên có đủ thanh lọc: chip Có ảnh + 4 select + ô đếm", () => {
+  const at = HTML.indexOf('<div class="sub" data-rc="sess">');
+  assert.ok(at > 0, "phải tìm được sub-tab Phiên");
+  const block = HTML.slice(at, HTML.indexOf("</section>", at));
+  for (const id of ["sImg", "fSTime", "fSOrigin", "fSAgent", "fSHost", "sCount", "sessSearch"]) {
+    assert.ok(block.includes(`id="${id}"`), `thiếu ${id} trong tab Phiên`);
+  }
+  // Hybrid/Rerank là công tắc của BỘ MÁY TÌM — không được lẻn sang danh sách phiên.
+  assert.ok(!block.includes('data-rf="hybrid"') && !block.includes('data-rf="rerank"'),
+    "Hybrid/Rerank vô nghĩa với danh sách phiên, không được sao chép sang");
+});
+
+test("select của tab Phiên mang class .ssel — đổi bộ lọc phiên KHÔNG được bắn recall", () => {
+  assert.equal((HTML.match(/class="rsel ssel"/g) ?? []).length, 4, "cả 4 select phiên phải có .ssel");
+  assert.ok(/classList\.contains\('ssel'\)\)loadSessions\(\)/.test(JS.replace(/\s+/g, "")) ||
+    /contains\('ssel'\)/.test(JS), "handler change phải tách nhánh .ssel trước .rsel");
+});
+
+test("bộ lọc phiên đi xuống SERVER (không lọc trên 120 phiên đã tải)", () => {
+  assert.ok(/function sessParams\(\)/.test(JS), "phải có sessParams()");
+  for (const key of ["&q=", "&days=", "&origin=", "&agent=", "&host=", "&withAtt=1"]) {
+    assert.ok(JS.includes(key), `sessParams thiếu tham số ${key}`);
+  }
+  assert.ok(/\/sessions\?limit=120&fresh=1'\+sessParams\(\)/.test(JS), "loadSessions phải gửi kèm bộ lọc");
+  // Bản cũ lọc bằng Array.filter trên svList — nếu quay lại thì con số hiện ra là số dối.
+  assert.ok(!/svList\.filter\(function\(s\)\{return !q/.test(JS), "không được quay lại lọc phía client");
+});

@@ -97,6 +97,7 @@
           <div class="fchip on" id="rAll" data-rf="all">Cả máy</div>
           <div class="fchip" id="rHybrid" data-rf="hybrid">Hybrid</div>
           <div class="fchip" id="rRerank" data-rf="rerank">Rerank</div>
+          <div class="fchip" id="rImg" data-rf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
           <select id="fTime" class="rsel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
           <!-- "user" = NGƯỜI thật gõ (backend đã loại tool_result nằm trong lượt user);
                "tool" = output công cụ. Xem roleMatches() trong search.ts. -->
@@ -118,8 +119,21 @@
 
         <!-- Phiên (trước là màn "Sessions" riêng) — list + thread + info + Export .md -->
         <div class="sub" data-rc="sess">
+          <!-- Thanh lọc ĐỐI XỨNG với tab Tìm kiếm (user 2026-07-28). Không có Hybrid/Rerank
+               vì đó là công tắc của bộ máy tìm, vô nghĩa với một danh sách phiên. Mọi bộ lọc
+               chạy Ở SERVER — lọc phía client chỉ lọc trong 120 phiên vừa tải, trong khi DB
+               có 1.206, tức giao diện sẽ nói dối về phạm vi đã tìm. -->
+          <div class="recall-in"><span>🔍</span><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" value=""><button class="btn sm" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻</button></div>
+          <div class="filters">
+            <div class="fchip" id="sImg" data-sf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
+            <select id="fSTime" class="rsel ssel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
+            <select id="fSOrigin" class="rsel ssel"><option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>
+            <select id="fSAgent" class="rsel ssel"><option value="" data-i18n="f.agentAny">Agent: mọi</option></select>
+            <select id="fSHost" class="rsel ssel"><option value="" data-i18n="f.hostAny">Máy: mọi</option></select>
+            <div class="fchip muted" id="sCount" style="border:0" data-i18n="f.noSessYet">— phiên</div>
+          </div>
           <div class="grid grow rzgrid" style="grid-template-columns:var(--sess,300px) 8px 1fr">
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="rc.sess">Phiên</span></div><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" style="background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:5px 9px;color:var(--text);font-size:12px;outline:none;width:120px"><button class="btn sm" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻</button></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="rc.sess">Phiên</span></div></div>
               <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
             </div>
             <div class="seam" data-seam="sess"></div>
@@ -386,6 +400,16 @@
         <button class="btn primary sm" id="addProjOk" data-i18n="addp.ok">Thêm</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Image viewer (M — 16:9, §5). Riêng khỏi #zDlg vì cái đó là hộp CONFIRM (size S,
+     có Huỷ/OK); đây là VIEWER nên không có footer, chỉ ✕. ESC đóng qua handler chung
+     cho mọi .dlg-back.on; bấm nền cũng đóng. -->
+<div class="dlg-back" id="imgDlg">
+  <div class="dlg" role="dialog" aria-labelledby="imgDlgTitle">
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" aria-label="Đóng">✕</button></div>
+    <div class="dlg-b" id="imgDlgBody"></div>
   </div>
 </div>
 

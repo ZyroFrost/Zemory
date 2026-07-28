@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-07-28e] — Ảnh XEM ĐƯỢC trong Recall · 6 adapter cùng đọc ảnh · byte NUL làm mù mọi phép grep
+
+Gate 246 → **269**. `conform` ✓ · `validate` ✓.
+
+### Byte NUL trong file nguồn — mọi đợt audit bằng grep đều mù 2 file lớn nhất
+`ingest.ts` (1 byte) và `ui.ts` (2 byte) chứa ký tự **NUL THẬT** gõ thẳng vào template literal làm ký tự nối khoá (`` `${a}<NUL>${b}` ``). Chạy đúng, `tsc` im lặng — nhưng **ripgrep xếp file có NUL vào loại nhị phân rồi BỎ QUA**. Nghĩa là mọi lần audit grep `backend/src` (export mồ côi · endpoint chết · i18n · chuỗi hardcode) chưa từng nhìn 777 dòng `ingest.ts` lẫn toàn bộ `ui.ts`. Vá bằng escape; kiểm chứng: `writeAttachments` trước đó **0** kết quả, sau khi vá ra **3**.
+- Phép quét NUL đầu tiên của tôi (`grep -qP`) cho **âm tính giả** nên tôi kết luận nhầm "chỉ `ingest.ts` dính"; quét lại bằng Python mới ra `ui.ts`.
+- Sau đó **tự tái phạm lần thứ ba**: class regex lọc tên file của tôi nở thành hai byte điều khiển thật (0x00, 0x1F) — `eslint` bắt được, viết lại duyệt theo mã ký tự.
+- Khôi phục thêm 4 byte `0x08` có sẵn trong `05_TODO`/`06_CHANGES` từ phiên trước (chuỗi `\b` bị nuốt, làm câu "**`\b` của JS không dùng được cho tiếng Việt**" mất chủ ngữ).
+
+### Ảnh xem được trong Recall (bản B, user duyệt thiết kế)
+`memory/attachments.ts` (mới) + `GET /attachment?sha=` (content-addressed, cache immutable, `nosniff` + CSP) + `atts` gắn vào `/memory-session`·`/memory-context`·`/memory-search`·`/recent-messages` + `hasAttachment` trong `SearchOptions`. FE: thumbnail inline, chip lọc `🖼 Có ảnh`, badge `🖼N`, dialog M 16:9. **Verify LIVE: sha256 tải về khớp tuyệt đối; `withAtt=1` lọc 0/8 → 8/8.**
+- Ánh xạ tin↔ảnh đọc từ **`attachment_link`**, KHÔNG từ `attachment.message_id` — cột đó chỉ giữ tin ĐẦU TIÊN mang nội dung (dedup theo sha) nên phủ 566/724 tin ⇒ dùng nhầm là mất **22%**.
+- **Xem trước và Phiên từng vẽ bằng HAI bộ khác nhau** (user: *"giao diện của phiên khác bên tìm"*): Xem trước dán text thô nên còn nguyên nhãn `[image:…]` cạnh thumbnail và gọi output tool là "user". Gom về **một `msgBlock(m, cap)`**; nhãn bị bỏ TRƯỚC khi cắt nên không còn nhãn đứt nửa.
+- `serveFrontend` trả 200 **không header cache nào** ⇒ trình duyệt áp cache phỏng đoán: vỏ HTML `no-store` nhưng script/style thì không, nên cửa sổ chạy **vỏ mới + script cũ** mà không có dấu hiệu nào. Thêm `cache-control: no-store`.
+
+### Cả 6 adapter cùng đọc ảnh (trước chỉ `claude.ts`)
+Bộ đọc block ảnh gom về MỘT chỗ `_shared.ts`; ba hình dạng ĐÃ KHAI: Anthropic base64 · OpenAI `image_url` data-URI · ChatGPT `image_asset_pointer` ⇒ `kind='ref'` (export không kèm bytes). Hình dạng lạ ⇒ `null`, KHÔNG đoán. `chatgpt` từng lọc `typeof p === "string"`, `continue`/`lmstudio` chỉ lấy `.text` ⇒ mọi block khác biến mất im lặng — đúng họ lỗi đã làm mất 93 MB.
+
+### Tên file khi tải ảnh về — và số đo BÁC kỳ vọng "lấy tên gốc"
+Quét 378 transcript / 889 block ảnh: **không block nào mang tên**, 0/678 hàng có `name` ⇒ với ảnh dán/chụp màn hình **tên gốc không tồn tại**. Nên: có `name` thì dùng, không thì `zemory-<ngày-tin>-<sha8>.<đuôi>` và gọi đúng nó là tên dự phòng. `Content-Disposition` thay cho tên `attachment` mà trình duyệt tự đặt.
+- Lộ ra **166 ảnh chưa hề được nạp**: nằm ở `toolUseResult.file.base64`, NGOÀI `message.content`. Đây cũng là chỗ DUY NHẤT có tên gốc thật — ghép ngược `tool_use_id` → `input.file_path`, đo **166/166 = 100%**. *(Cần bump `PARSER_VERSION` mới vào DB — chưa làm, chờ user.)*
+
+### Tab Phiên: thanh lọc đối xứng tab Tìm kiếm (bản B, user duyệt)
+Chip `🖼 Có ảnh` + 4 select `Thời gian · Nguồn · Agent · Máy` + ô đếm. **Cố ý không chép Hybrid/Rerank** (công tắc của bộ máy tìm). Bản cũ lọc phía client = tìm trong **120/1.206 phiên** mà giao diện vẫn nói như đã tìm hết ⇒ đẩy hết xuống server, `/sessions` trả `{items, total}`. Select mang class `.ssel` riêng, nếu dùng chung `.rsel` thì đổi bộ lọc phiên sẽ bắn một lượt recall hybrid vô ích. Đo LIVE khớp DB: 1.206 · có ảnh 73 · web 861 · máy 251.
+
+### Dọn sổ
+Đóng **20 chỗ** trong `05_TODO` đã xong từ lâu mà còn ghi "chưa làm" (mỗi cái kiểm bằng code trước khi xoá), gộp 3 mục L3 trùng nhau và 3 mục code-map trùng nhau; vá `plan/07` đang ghi "Claude.ai CHƯA làm" trong khi đã ship 07-27. Mục mở: 60 → 43.
+
+---
+
 ## [2026-07-28d] — Nạp ĐƯỢC ảnh: 678 ảnh / 54,3 MB vào bảng attachment (parser v5)
 
 Gate **246/246**. DB 801,1 → **870,9 MB**.
@@ -60,7 +91,7 @@ Gate 239 → **242**.
 User chốt: *"phải check full từ ngữ, không được dùng văn nói, phải dùng từ ngữ chuyên nghiệp chuẩn làm app"*.
 - Đo trên **861 chuỗi hiển thị** (cả hai từ điển + text mặc định của `data-i18n`): **0 vi phạm**. Nên đây là **RATCHET chống tái phát**, không phải bộ sửa.
 - **Hai vòng đo để loại báo oan** — quan trọng hơn bản thân luật:
-  · Vòng 1 dùng `` của JS ⇒ `ngu` khớp trong "**ngu**ồn" (**27 ca oan**), `ui` khớp trong "**UI** language". JS coi ký tự có dấu là ranh giới từ ⇒ **không dùng `` cho tiếng Việt**, phải tự dựng lớp ranh giới.
+  · Vòng 1 dùng `\b` của JS ⇒ `ngu` khớp trong "**ngu**ồn" (**27 ca oan**), `ui` khớp trong "**UI** language". JS coi ký tự có dấu là ranh giới từ ⇒ **không dùng `\b` cho tiếng Việt**, phải tự dựng lớp ranh giới.
   · Đã BỎ khỏi danh sách: `vs` (viết tắt kỹ thuật hợp lệ), `ok` (nhãn trạng thái chuẩn "3/3 OK"), `ui` (acronym).
   · `05_TODO.md` bị báo oan vì tôi chỉ đặt biên ở CUỐI — `_` là ký tự từ nên không có biên giữa `_` và `T`. Thêm biên đầu.
 - Có test **chứng minh bộ luật NỔ ĐƯỢC** (5 mẫu văn nói phải bắt) **và KHÔNG nổ oan** (7 mẫu hợp lệ phải sạch) — đúng luật 4 của skill `audit toàn diện`.
@@ -175,7 +206,7 @@ User chốt: *"khi tui bảo audit toàn diện là phải chạy full mọi th�
 **F3 — 1 digest mồ côi** (`chatgpt-test-export-resolve-001`, phiên gốc đã xoá) → **đã dọn**. `pruneOrphanVectors` dọn vector nhưng không dọn digest.
 
 **Nghi vấn ĐÃ LOẠI (ghi lại để lần sau khỏi đào lại):**
-- *"210 export không ai gọi"* — **detector của tôi sai** (escaping `` trong `node -e` bị nuốt). Viết lại ra file: **5**, và cả 5 đã verify từng cái.
+- *"210 export không ai gọi"* — **detector của tôi sai** (escaping `\b` trong `node -e` bị nuốt). Viết lại ra file: **5**, và cả 5 đã verify từng cái.
 - *"FE gọi `/set-` không tồn tại"* — regex cắt ở dấu `-`; thực tế là `/set-lang`, `/set-drive`… đều có.
 - *"`/gate-acquire` `/gate-release` `/nav-cost` chết"* — đều CÓ người gọi (CLI write-gate, và `ui.ts` nội bộ).
 

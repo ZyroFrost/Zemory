@@ -773,6 +773,7 @@
     var lv=zid('langVi'),le=zid('langEn');if(lv)lv.classList.toggle('on',(m.lang||'vi')==='vi');if(le)le.classList.toggle('on',m.lang==='en');
     applyI18n(m.lang||'vi');
     var fa=zid('fAgent');if(fa){var fac=fa.value;fa.innerHTML='<option value="" data-i18n="f.agentAny">'+t('f.agentAny')+'</option>'+((m.agents||[]).map(function(a){return '<option value="'+stdEsc(a.source)+'">'+stdEsc(a.source)+'</option>';}).join(''));fa.value=fac;}
+    fillSessFilters(m); // 2 select riêng của tab Phiên, cùng nguồn dữ liệu — không endpoint mới
     renderHomeProjects(cap);renderProjGrid(cap);renderDiscovered(cap);renderGmem();
     zset('stProjects',zN((Z.status&&Z.status.knownProjects||[]).length));
   }
@@ -926,17 +927,43 @@
   // ── SESSION VIEWER: full session list (left) + thread + info + export (right).
   //    /sessions (list) + /memory-session (thread). Export = client-side .md download.
   var svList=[],svCur=null,svThread=null;
+  // Bộ lọc tab Phiên — ĐỐI XỨNG với `recallParams()` của tab Tìm kiếm, và cũng đi xuống
+  // SERVER: lọc phía client chỉ soi 120 phiên vừa tải trong khi DB có 1.206 ⇒ số đếm hiện
+  // ra sẽ là số dối.
+  function sessParams(){
+    var p='',f;
+    if((f=zid('sessSearch'))&&f.value.trim())p+='&q='+encodeURIComponent(f.value.trim());
+    if((f=zid('fSTime'))&&f.value!=='0')p+='&days='+f.value;
+    if((f=zid('fSOrigin'))&&f.value)p+='&origin='+encodeURIComponent(f.value);
+    if((f=zid('fSAgent'))&&f.value)p+='&agent='+encodeURIComponent(f.value);
+    if((f=zid('fSHost'))&&f.value)p+='&host='+encodeURIComponent(f.value);
+    if((f=zid('sImg'))&&f.classList.contains('on'))p+='&withAtt=1';
+    return p;
+  }
+  var svTotal=0;
   function loadSessions(){
     var box=zid('sessList');if(!box)return;box.innerHTML='<div class="muted" style="font-size:12px">…</div>';
     // fresh=1 → backend làm tươi TÊN phiên từ đuôi transcript trước khi trả list, nên phiên
     // vừa đổi tên bằng `/title` hiện tên MỚI ngay, không phải chờ scan (user 2026-07-26).
-    zGet('/sessions?limit=120&fresh=1').then(function(list){svList=list||[];renderSessList();}).catch(function(){box.innerHTML='<div class="muted" style="font-size:12px">'+t('ph.err')+'</div>';});
+    zGet('/sessions?limit=120&fresh=1'+sessParams()).then(function(r){
+      svList=(r&&r.items)||[];svTotal=(r&&r.total)||0;renderSessList();
+    }).catch(function(){box.innerHTML='<div class="muted" style="font-size:12px">'+t('ph.err')+'</div>';});
+  }
+  /** Nạp option cho 2 select chỉ có ở tab Phiên, từ payload /memory-status đã có sẵn. */
+  function fillSessFilters(m){
+    if(!m)return;
+    var fa=zid('fSAgent');
+    if(fa){var av=fa.value;fa.innerHTML='<option value="">'+t('f.agentAny')+'</option>'+((m.agents||[]).map(function(a){return '<option value="'+stdEsc(a.source)+'">'+stdEsc(a.source)+'</option>';}).join(''));fa.value=av;}
+    var fh=zid('fSHost');
+    if(fh){var hv=fh.value;fh.innerHTML='<option value="">'+t('f.hostAny')+'</option>'+((m.hosts||[]).map(function(h){return '<option value="'+stdEsc(h.host)+'">'+stdEsc(h.host)+'</option>';}).join(''));fh.value=hv;}
   }
   function renderSessList(){
     var box=zid('sessList');if(!box)return;
-    var q=(((zid('sessSearch')||{}).value)||'').trim().toLowerCase();
-    var rows=svList.filter(function(s){return !q||((String(s.title||'')+' '+String(s.project||'')+' '+String(s.source||'')).toLowerCase().indexOf(q)>=0);});
-    box.innerHTML=rows.length?rows.map(function(s){var ti=(s.title&&String(s.title).trim())||t('sess.untitled');return '<div class="sys-li'+(svCur===s.sessionId?' on':'')+'" data-sess="'+stdEsc(s.sessionId)+'" style="align-items:flex-start"><span class="sxn" style="white-space:normal">'+stdEsc(String(ti).slice(0,64))+'<div class="muted" style="font-size:10.5px;margin-top:1px">'+stdEsc(zProjName(s.project))+' · '+stdEsc(s.source||'')+' · '+zN(s.messages)+' msg</div></span><span style="font-size:10px;color:var(--text-faint);flex:0 0 auto;margin-left:6px">'+relTime(s.endedAt).big+'</span></div>';}).join(''):'<div class="muted" style="font-size:12px">'+t('sess.none')+'</div>';
+    var rows=svList;
+    // "N phiên" là số KHỚP THẬT trên toàn bộ DB; nếu danh sách bị cắt ở 120 thì nói rõ
+    // đang hiện bao nhiêu — thà thừa một con số còn hơn để người đọc tưởng đã thấy hết.
+    zset('sCount',rows.length<svTotal?zN(rows.length)+'/'+zN(svTotal)+' '+t('f.sessions'):zN(svTotal)+' '+t('f.sessions'));
+    box.innerHTML=rows.length?rows.map(function(s){var ti=(s.title&&String(s.title).trim())||t('sess.untitled');return '<div class="sys-li'+(svCur===s.sessionId?' on':'')+'" data-sess="'+stdEsc(s.sessionId)+'" style="align-items:flex-start"><span class="sxn" style="white-space:normal">'+stdEsc(String(ti).slice(0,64))+(s.atts?' <span class="att-n">🖼'+s.atts+'</span>':'')+'<div class="muted" style="font-size:10.5px;margin-top:1px">'+stdEsc(zProjName(s.project))+' · '+stdEsc(s.source||'')+' · '+zN(s.messages)+' msg</div></span><span style="font-size:10px;color:var(--text-faint);flex:0 0 auto;margin-left:6px">'+relTime(s.endedAt).big+'</span></div>';}).join(''):'<div class="muted" style="font-size:12px">'+t('sess.none')+'</div>';
   }
   // ── Render MỘT message trong viewer (user chốt 2026-07-26): prose hiện FULL TEXT y như
   //    lúc chat (pre-wrap, KHÔNG cắt chữ), còn KHỐI CODE và tool_use/tool_result thì THU
@@ -959,8 +986,30 @@
   function fold(label,body){
     return '<details class="fold"><summary>'+stdEsc(label)+'</summary><pre class="code">'+stdEsc(body)+'</pre></details>';
   }
-  function msgHtml(raw){
-    var s=String(raw||'');if(!s)return '';
+  function attSize(n){n=Number(n||0);return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';}
+  // Đính kèm của một message. Payload chỉ mang METADATA; bytes lấy riêng qua
+  // /attachment?sha= để JSON không phình theo kích thước ảnh.
+  function attHtml(atts){
+    if(!atts||!atts.length)return '';
+    return '<div class="atts">'+atts.map(function(a){
+      // Có TÊN GỐC thì hiện tên (ảnh do tool Read đọc từ file trên đĩa); ảnh dán/chụp màn
+      // hình thì transcript không ghi tên nào cả ⇒ hiện kiểu ảnh cho gọn.
+      var cap=stdEsc(a.name?String(a.name):String(a.mime||'?').replace('image/',''))+' · '+attSize(a.bytes);
+      // kind='ref' = CỐ Ý không lưu nội dung (vượt ngưỡng lúc nạp) ⇒ nói rõ, đừng dựng
+      // khung ảnh rỗng: một ô vỡ trông như lỗi trong khi đó là hành vi đã thiết kế.
+      if(a.kind!=='blob'||String(a.mime||'').indexOf('image/')!==0)
+        return '<div class="att noimg">'+t('att.noBody')+' · '+cap+'</div>';
+      return '<div class="att" data-img="'+stdEsc(a.sha256||'')+'" data-cap="'+cap+'" title="'+cap+'"><img loading="lazy" alt="" src="/attachment?sha='+encodeURIComponent(a.sha256||'')+'"><div class="cap">'+cap+'</div></div>';
+    }).join('')+'</div>';
+  }
+  // Nhãn một dòng adapter để lại trong content (`[image:image/png 46KB <sha12>]`) — nó
+  // tồn tại để FTS còn tìm được và để người đọc text thuần vẫn biết có ảnh. Khi đã vẽ
+  // được thumbnail thì bỏ dòng nhãn đi, không hiện cùng một thông tin hai lần.
+  var IMG_LABEL=/^\[image:[^\]\n]*\]$/;
+  function msgHtml(raw,atts){
+    var s=String(raw||'');
+    if(atts&&atts.length&&s)s=s.split('\n').filter(function(l){return !IMG_LABEL.test(l.trim());}).join('\n').trim();
+    if(!s)return attHtml(atts);
     // Một message có thể vừa có prose vừa có tool (adapter join các part bằng '\n')
     // → cắt tại mốc tool ở ĐẦU DÒNG, không dùng regex neo ^ cho cả message.
     return s.split(/\n(?=\[tool_use:|\[tool_result\])/).map(function(seg){
@@ -979,7 +1028,25 @@
           h+=fold('‹/› '+(lang||'code')+' · '+foldSize(body.length),body);}
       }
       return h;
-    }).join('');
+    }).join('')+attHtml(atts);
+  }
+  /**
+   * MỘT bộ vẽ message dùng chung cho CẢ HAI chỗ: thread trong tab Phiên và ô Xem trước
+   * của tab Tìm kiếm. Trước đây mỗi nơi một kiểu (user 2026-07-28: "giao diện của phiên
+   * khác bên tìm"): Xem trước dán thẳng text đã escape nên còn nguyên dòng nhãn
+   * `[image:…]` ngay cạnh thumbnail (một thông tin hiện hai lần), không thu gọn khối
+   * code/tool, và dán nhãn "user" cho cả output tool. Hai bộ vẽ = chắc chắn lệch nhau.
+   * `cap` = số ký tự tối đa (Xem trước cắt cho nhẹ; tab Phiên truyền rỗng = full).
+   */
+  function msgBlock(m,cap){
+    var rl=msgRole(m),s=String(m.content||'');
+    // Bỏ nhãn TRƯỚC khi cắt, để không bao giờ còn lại một nhãn đứt nửa chừng.
+    if(m.atts&&m.atts.length)s=s.split('\n').filter(function(l){return !IMG_LABEL.test(l.trim());}).join('\n').trim();
+    if(cap&&s.length>cap)s=s.slice(0,cap)+'…';
+    return '<div class="msg" data-role="'+stdEsc(rl)+'"><div class="who"><span class="tag '+stdEsc(rl)+'">'+
+      stdEsc(rl==='tool'?t('sess.roleTool'):rl)+'</span>'+
+      (m.timestamp?' · '+String(m.timestamp).slice(0,16).replace('T',' '):'')+
+      (m.id?' · #'+m.id:'')+'</div><div class="body">'+msgHtml(s,m.atts)+'</div></div>';
   }
   // Tiêu đề + dòng info. Phiên mở từ Recall (⤢) có thể CHƯA nằm trong svList → lấy
   // meta từ chính response /memory-session; bỏ field rỗng để hết chuỗi " ·  · ".
@@ -1002,8 +1069,7 @@
       if(!s||!s.messages){body.innerHTML='<div class="muted">'+t('sess.notFound')+'</div>';svThread=null;return;}
       svInfo(meta,s);
       svThread={title:svTitle,messages:s.messages};
-      body.innerHTML='<div class="thread">'+s.messages.map(function(m){var rl=msgRole(m);
-        return '<div class="msg" data-role="'+stdEsc(rl)+'"><div class="who"><span class="tag '+stdEsc(rl)+'">'+stdEsc(rl==='tool'?t('sess.roleTool'):rl)+'</span> · '+String(m.timestamp||'').slice(0,16).replace('T',' ')+' · #'+m.id+'</div><div class="body">'+msgHtml(m.content)+'</div></div>';}).join('')+'</div>';
+      body.innerHTML='<div class="thread">'+s.messages.map(function(m){return msgBlock(m,0);}).join('')+'</div>';
       body.scrollTop=0;
     }).catch(function(){body.innerHTML='<div class="muted">'+t('ph.err')+'</div>';});
   }
@@ -1017,7 +1083,13 @@
     var li=e.target.closest('#sessList [data-sess]');if(li){openSess(li.dataset.sess);return;}
     if(e.target.id==='sessExport'){svExport();return;}
   });
-  document.addEventListener('input',function(e){if(e.target&&e.target.id==='sessSearch')renderSessList();});
+  // Gõ → hỏi lại SERVER (lọc trên cả 1.206 phiên, không phải 120 phiên đã tải). Chờ 250ms
+  // để không bắn một truy vấn cho mỗi phím.
+  var sessQT=null;
+  document.addEventListener('input',function(e){
+    if(!e.target||e.target.id!=='sessSearch')return;
+    clearTimeout(sessQT);sessQT=setTimeout(loadSessions,250);
+  });
   // ── Sources: DELTA sau mỗi lần quét ────────────────────────────────────────
   // Ba panel Máy này · Sources · Drive nằm cạnh nhau vì chúng LIÊN QUAN NHAU (user
   // 2026-07-27). Chỉ hiện tổng mới thì không đối chiếu được: "+20 tin mới" ở panel quét
@@ -1224,7 +1296,7 @@
   // Real relevance score only — NO fabricated fallback (recent-messages mode has
   // no score, so show nothing rather than an invented number).
   function rScore(h){var n=Number(h.score||h.rank||h.similarity||0);if(n>0&&n<=1)return n.toFixed(2);if(n>1)return Math.min(0.99,n/100).toFixed(2);return '';}
-  function recallRow(h,i){var sc=rScore(h);return '<div class="hit'+(h.id===rSel?' sel':'')+'" data-hit="'+h.id+'" data-sess="'+stdEsc(h.sessionId||'')+'"><div class="top">'+(sc?'<span class="score">'+sc+'</span> ':'')+stdEsc(h.role||'msg')+' · '+stdEsc(zProjName(h.project))+' <span class="tagx">'+stdEsc(h.source||'session')+'</span><span class="openfull" data-openfull="'+stdEsc(h.sessionId||'')+'" title="Mở full session">⤢</span></div><div class="txt">'+stdEsc(String(h.snippet||'').slice(0,170))+'</div><div class="dt">'+String(h.timestamp||'').slice(0,10)+' · #'+h.id+'</div></div>';}
+  function recallRow(h,i){var sc=rScore(h),na=h.atts?h.atts.length:0;return '<div class="hit'+(h.id===rSel?' sel':'')+'" data-hit="'+h.id+'" data-sess="'+stdEsc(h.sessionId||'')+'"><div class="top">'+(sc?'<span class="score">'+sc+'</span> ':'')+stdEsc(h.role||'msg')+' · '+stdEsc(zProjName(h.project))+' <span class="tagx">'+stdEsc(h.source||'session')+'</span>'+(na?'<span class="att-n">🖼'+na+'</span>':'')+'<span class="openfull" data-openfull="'+stdEsc(h.sessionId||'')+'" title="Mở full session">⤢</span></div><div class="txt">'+stdEsc(String(h.snippet||'').slice(0,170))+'</div><div class="dt">'+String(h.timestamp||'').slice(0,10)+' · #'+h.id+'</div></div>';}
   // ⤢ "Mở full session" — nhảy sang sub-tab Recall › Phiên và mở phiên đó ở ĐÚNG MỘT
   // viewer. Trước đây mở dialog #sessDlg = viewer thứ hai render lại y hệt (đã gỡ).
   function openFullSession(sid){
@@ -1242,6 +1314,7 @@
     if((f=zid('fType'))&&f.value)p+='&role='+f.value;
     if((f=zid('fOrigin'))&&f.value)p+='&origin='+encodeURIComponent(f.value);
     if((f=zid('fAgent'))&&f.value)p+='&agent='+encodeURIComponent(f.value);
+    if((f=zid('rImg'))&&f.classList.contains('on'))p+='&withAtt=1';
     return p;
   }
   function renderHits(hits,label){
@@ -1268,7 +1341,7 @@
     zset('rPreviewTitle',t('recall.preview')+' #'+id);if(zid('rPreview'))zid('rPreview').innerHTML='<div class="muted">'+t('recall.loadingCtx')+'</div>';
     zGet('/memory-context?id='+id).then(function(ctx){
       if(!ctx||!ctx.messages){zid('rPreview').innerHTML='<div class="muted">'+t('recall.noCtx')+'</div>';return;}
-      zid('rPreview').innerHTML='<button class="btn sm" data-openfull="'+stdEsc(ctx.sessionId||'')+'" style="margin-bottom:10px">⤢ '+t('recall.openFull')+'</button><div class="thread">'+ctx.messages.map(function(m){return '<div class="msg"><div class="who"><span class="tag">'+stdEsc(m.role||'')+'</span></div><div class="body">'+stdEsc(String(m.content||'').slice(0,m.isHit?1200:390))+'</div></div>';}).join('')+'</div>';
+      zid('rPreview').innerHTML='<button class="btn sm" data-openfull="'+stdEsc(ctx.sessionId||'')+'" style="margin-bottom:10px">⤢ '+t('recall.openFull')+'</button><div class="thread">'+ctx.messages.map(function(m){return msgBlock(m,m.isHit?1200:390);}).join('')+'</div>';
     }).catch(function(){zid('rPreview').innerHTML='<div class="muted">'+t('recall.ctxErr')+'</div>';});
   }
   // Copy the preview thread text to clipboard (was a dead link before).
@@ -1281,17 +1354,41 @@
   });
   document.addEventListener('click',function(e){
     var hit=e.target.closest?e.target.closest('#hits .hit'):null;if(hit){selRecall(Number(hit.dataset.hit));return;}
+    var sf=e.target.closest?e.target.closest('[data-sf]'):null;
+    if(sf){sf.classList.toggle('on');loadSessions();return;}
     var rf=e.target.closest?e.target.closest('[data-rf]'):null;
     if(rf){var k=rf.dataset.rf;
       if(k==='all'){rf.classList.toggle('on');doRecall();}
+      // Lọc thuần phía truy vấn (`withAtt=1`), KHÔNG phải setting lưu ở server như
+      // hybrid/rerank — nên chỉ bật/tắt tại chỗ rồi chạy lại.
+      else if(k==='img'){rf.classList.toggle('on');doRecall();}
       else if(k==='hybrid'){var on=!rf.classList.contains('on');rf.classList.toggle('on',on);zPost('/set-hybrid?on='+(on?1:0)).then(function(){if(zid('rq').value.trim().length>=2)doRecall();});}
       else if(k==='rerank'){var o2=!rf.classList.contains('on');rf.classList.toggle('on',o2);zPost('/set-rerank?on='+(o2?1:0)).then(function(){if(zid('rq').value.trim().length>=2)doRecall();});}
       return;
     }
     if(e.target.closest('[data-act="recall"]'))doRecall();
   });
+  // Xem ảnh full. Ảnh nạp LẠI từ cùng URL content-addressed nên trình duyệt lấy từ
+  // cache (immutable), không tải lần hai.
+  function openImg(sha,cap){
+    var d=zid('imgDlg');if(!d||!sha)return;
+    zset('imgDlgTitle',cap||'');
+    zid('imgDlgBody').innerHTML='<img alt="" src="/attachment?sha='+encodeURIComponent(sha)+'">';
+    d.classList.add('on');
+  }
+  document.addEventListener('click',function(e){
+    if(e.target.id==='imgDlg'||e.target.id==='imgDlgX'){var d=zid('imgDlg');if(d)d.classList.remove('on');return;}
+    var th=e.target.closest?e.target.closest('[data-img]'):null;
+    if(th)openImg(th.dataset.img,th.dataset.cap);
+  });
   document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target&&e.target.id==='rq')doRecall();});
-  document.addEventListener('change',function(e){if(e.target&&e.target.classList&&e.target.classList.contains('rsel'))doRecall();});
+  // `.ssel` = select của tab Phiên. Phải tách khỏi `.rsel` chung, nếu không đổi bộ lọc
+  // phiên lại bắn một lượt recall (sai bề mặt, và tốn một truy vấn hybrid vô ích).
+  document.addEventListener('change',function(e){
+    var el=e.target;if(!el||!el.classList)return;
+    if(el.classList.contains('ssel'))loadSessions();
+    else if(el.classList.contains('rsel'))doRecall();
+  });
 
   // ---- Harness: docs viewer = REAL /standard-doc (overrides mock stdRender) ----
   var stdReal={};
@@ -1486,7 +1583,7 @@
     'drv.privH':'Sao lưu & Riêng tư','drv.backup':'Sao lưu','drv.backupD':'Xuất toàn bộ DB nhớ ra 1 file snapshot để cất giữ.','drv.restore':'Phục hồi','drv.restoreD':'Nạp lại từ file snapshot, ghi đè DB hiện tại (giữ bản cũ .bak).','drv.forget':'Xoá nhớ','drv.forgetD':'Xoá vĩnh viễn session/message của 1 project — xem trước rồi mới xoá, tự backup.','drv.redact':'Che secret','drv.redactD':'Quét lại tin đã lưu, che token/key/PII lọt vào (đây là "privacy").',
     'home.all':'Tất cả →','home.recentSess':'Phiên gần đây','home.noSessions':'Chưa có phiên nào.','home.noProjects':'Chưa có project nào.',
     'st.loading':'…','st.global':'toàn cục','st.stored':'đã lưu','st.estimate':'ước tính','rail.needAttn':'cần chú ý','rail.allGreen':'Hoạt động tốt',
-    'f.timeAny':'Thời gian: mọi lúc','f.time1':'24 giờ','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi','f.agentAny':'Agent: mọi','f.noResultYet':'— kết quả',
+    'f.timeAny':'Thời gian: mọi lúc','f.time1':'24 giờ','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi','f.agentAny':'Agent: mọi','f.noResultYet':'— kết quả','f.hasImg':'Có ảnh','f.hostAny':'Máy: mọi','f.noSessYet':'— phiên','f.sessions':'phiên','att.noBody':'chỉ ghi nhận, không lưu nội dung',
     'q.zero':'0 kết quả','q.noResults':'không có kết quả','q.results':'kết quả','q.searching':'đang tìm…','q.err':'lỗi',
     'recall.loadingRecent':'đang tải tin gần nhất…','recall.recentLabel':'gần nhất · ','recall.preview':'Xem trước','recall.copy':'Sao chép','recall.copied':'đã chép','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.','recall.loadingCtx':'đang tải…','recall.noCtx':'không có ngữ cảnh','recall.ctxErr':'lỗi tải ngữ cảnh','recall.openFull':'Mở full session',
     'proj.linkedHere':'Đã liên kết · máy này','proj.count':'dự án','proj.thisMachine':'máy này','proj.noneLinked':'Chưa có project nào liên kết trên máy này.','proj.noMatch':'Không có project khớp bộ lọc.','proj.searchPh':'Tìm project…','proj.typeAll':'Loại: mọi','proj.sortManual':'Thứ tự tự sắp','proj.sortRecent':'Mới cập nhật','proj.sortName':'Tên A→Z','proj.sortSessions':'Nhiều phiên',
@@ -1526,7 +1623,7 @@
     'drv.privH':'Backup & Privacy','drv.backup':'Backup','drv.backupD':'Export the whole memory DB to a snapshot file to keep.','drv.restore':'Restore','drv.restoreD':'Load from a snapshot file, overwriting the current DB (keeps a .bak).','drv.forget':'Forget','drv.forgetD':'Permanently delete a project\'s sessions/messages — preview first, auto-backup.','drv.redact':'Redact','drv.redactD':'Re-scan stored messages and mask tokens/keys/PII that slipped in (this is "privacy").',
     'home.all':'See all →','home.recentSess':'Recent Sessions','home.noSessions':'No sessions yet.','home.noProjects':'No projects yet.',
     'st.loading':'…','st.global':'global','st.stored':'stored','st.estimate':'estimate','rail.needAttn':'needs attention','rail.allGreen':'All systems operational',
-    'f.timeAny':'Time: any time','f.time1':'24h','f.time7':'7 days','f.time30':'30 days','f.time90':'90 days','f.typeAny':'Type: any','f.originAny':'Origin: any','f.agentAny':'Agent: any','f.noResultYet':'— results',
+    'f.timeAny':'Time: any time','f.time1':'24h','f.time7':'7 days','f.time30':'30 days','f.time90':'90 days','f.typeAny':'Type: any','f.originAny':'Origin: any','f.agentAny':'Agent: any','f.noResultYet':'— results','f.hasImg':'Has image','f.hostAny':'Machine: any','f.noSessYet':'— sessions','f.sessions':'sessions','att.noBody':'recorded only, content not stored',
     'q.zero':'0 results','q.noResults':'no results','q.results':'results','q.searching':'searching…','q.err':'error',
     'recall.loadingRecent':'loading recent messages…','recall.recentLabel':'recent · ','recall.preview':'Preview','recall.copy':'Copy','recall.copied':'copied','recall.previewEmpty':'Select a result to preview its nearby messages here.','recall.loadingCtx':'loading…','recall.noCtx':'no context','recall.ctxErr':'context load error','recall.openFull':'Open full session',
     'proj.linkedHere':'Linked · this machine','proj.count':'projects','proj.thisMachine':'this machine','proj.noneLinked':'No projects linked on this machine yet.','proj.noMatch':'No projects match the filter.','proj.searchPh':'Search projects…','proj.typeAll':'Type: any','proj.sortManual':'Manual order','proj.sortRecent':'Recently updated','proj.sortName':'Name A→Z','proj.sortSessions':'Most sessions',
