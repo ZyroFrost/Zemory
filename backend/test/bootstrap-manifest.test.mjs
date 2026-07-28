@@ -94,6 +94,24 @@ test("BOOTSTRAP points at the non-app template and keeps the verbatim-copy rule"
   );
 });
 
+test("the human explainer exists and the two docs point at each other (neither gets orphaned)", () => {
+  const readme = readFileSync(fileURLToPath(new URL("../../docs_template/cowork/README.md", import.meta.url)), "utf8");
+  assert.match(
+    md,
+    /\[`README\.md`\]\(README\.md\)/,
+    "BOOTSTRAP must send the user to the human explainer — otherwise the agent improvises its own wording",
+  );
+  assert.match(
+    readme,
+    /\[`BOOTSTRAP\.md`\]\(BOOTSTRAP\.md\)/,
+    "README must name the machine-facing file, so a reader knows which one they are NOT supposed to read",
+  );
+  assert.ok(
+    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/cowork\/BOOTSTRAP\.md/.test(readme),
+    "README's start instruction must carry a working BOOTSTRAP URL — that one line is the whole entry point",
+  );
+});
+
 test("BOOTSTRAP never tells the agent to run host commands (Cowork's shell can't reach the host)", () => {
   const offenders = [];
   if (/zemory\s+(init|sync|doctor|reindex|conform)/.test(md)) offenders.push("a zemory CLI command");
