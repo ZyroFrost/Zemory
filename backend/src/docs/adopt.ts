@@ -85,7 +85,7 @@ const LEGACY_RENAME: Record<string, string> = {
 const DEFAULT_CONFIG: HarnessConfig = {
   docs: "docs/agent",
   adapters: { memory: "global", search: "keyword" },
-  thresholds: { changes_lines: 300, changes_keep: 180, todo_lines: 300, todo_bytes: 60000 },
+  thresholds: { changes_lines: 300, changes_keep: 180 },
 };
 
 /**
