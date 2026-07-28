@@ -1,8 +1,10 @@
 // `zemory init|sync|migrate|doctor|archive|validate|setup|structure|grill|reindex`
 // — the per-project docs harness lifecycle.
+import { homedir } from "node:os";
 import { existsSync, readdirSync } from "node:fs";
+import { resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
-import { join } from "node:path";
+import { currentMemoryDir } from "../memory/db.js";
 import { findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, freshHarness } from "../docs/adopt.js";
@@ -86,6 +88,24 @@ export function cmdSync(): void {
   }
 }
 
+/**
+ * Cảnh báo khi có HAI file `config.json`: bản THẬT nằm cạnh DB (`currentMemoryDir()`), còn
+ * `~/.zemory/config.json` là bản CŨ còn sót sau khi `memory relocate` dời DB khỏi ổ hệ thống.
+ *
+ * Vì sao đáng cảnh báo: file mồ côi đó đọc được, trông hợp lệ, và nội dung LỆCH hẳn — audit
+ * 2026-07-28 đã đọc nhầm nó rồi kết luận sai về một setting đang bật. Cùng họ lỗi "kho import
+ * nằm cạnh DB mà discovery chỉ tìm ở home" (changelog 07-28c). Chỉ BÁO, không tự xoá — xoá
+ * file của người dùng phải do người dùng quyết.
+ */
+function warnStrayConfig(): void {
+  const live = resolve(currentMemoryDir(), "config.json");
+  const home = resolve(homedir(), ".zemory", "config.json");
+  if (live.toLowerCase() === home.toLowerCase()) return;
+  if (!existsSync(home) || !existsSync(live)) return;
+  console.log(`  ⚠ hai file config: đang dùng ${live}`);
+  console.log(`      bản mồ côi (KHÔNG được đọc): ${home} — xoá tay nếu không cần`);
+}
+
 export async function cmdDoctor(): Promise<void> {
   const s = await gatherStatus();
   if (!s.project.connected) {
@@ -96,6 +116,7 @@ export async function cmdDoctor(): Promise<void> {
   }
   console.log(`zemory doctor — project: ${s.project.name}`);
   console.log(`  ✓ connected · ${s.project.root} · docs: ${s.project.docs}`);
+  warnStrayConfig();
   console.log(
     `  setup: ${s.setup.complete ? "✓ done" : `○ ${s.setup.detail} (first-time → \`zemory setup\`)`}`,
   );
