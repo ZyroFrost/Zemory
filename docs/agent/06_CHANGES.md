@@ -5,6 +5,58 @@
 
 ---
 
+## [2026-07-28k] — Harness đi được vào Claude Cowork · và `data/` trần đã nuốt ruột skill vendored suốt từ đầu
+
+Gate 286 → **291** · `conform` ✓ · `validate` ✓.
+
+### `.gitignore` ghi `data/` thay vì `/data/` — 137 file chưa bao giờ vào git
+Pattern trần khớp **mọi độ sâu**, nên nó nuốt luôn 7 thư mục `data/` bên trong
+`external/skills/ui-ux-pro-max-skill/`. Đo: `git ls-files external/skills | grep "/data/"` = **0**;
+trên đĩa **137 file / 4,82 MB**. Skill này giá trị nằm CHÍNH ở dữ liệu (192 palette · 84 UI style ·
+74 cặp font · 98 UX guideline) ⇒ **ai clone repo về cũng nhận vỏ skill không có ruột**, và im lặng:
+không lỗi, chỉ là tra gì cũng không ra. Đúng cái máy thứ hai của chủ repo đang dùng.
+
+Nó cũng làm repo vi phạm chính chuẩn của mình — `03_STRUCTURE` khai `external/skills/` là
+*"clone **nguyên bản**, KHÔNG sửa nội dung"*, mà thực tế đang ship bản cụt.
+
+Vá: neo `/data/`. Runtime của repo vẫn chỉ ở gốc nên `data/global_memory.db` vẫn ignore
+(kiểm chéo bằng `git check-ignore -v`); lộ ra đúng 137 file đã đo, không dư một file nào.
+
+### `docs/agent/06_CHANGES.md.bak` — rác đã hết hạn, nhưng KHÔNG phải rác lọt
+Do chính `zemory archive` tạo làm lưới lùi (`archive.ts:76`: *"thao tác PHÁ HUỶ — giữ .bak để lùi được"*),
+`.gitignore` có khai riêng. Trước khi xoá đã đối chiếu theo entry chứ không theo dung lượng:
+16 entry trong `.bak`, **0 entry chỉ-có-ở-đó** (đã nằm đủ ở `06_CHANGES` 12 + `archive/` 56) ⇒ xoá không mất gì.
+Vấn đề còn lại là **archive không có bước dọn**, nên `.bak` đọng ngay trong `docs/agent/` —
+đúng chỗ luật bắt "ĐỌC HẾT" (`05_TODO` giữ đề xuất cho archive tự dọn).
+
+### BOOTSTRAP cho Claude Cowork
+`docs_template/cowork/BOOTSTRAP.md` — runbook 4 giai đoạn cho agent Cowork, **không cần CLI**:
+áp chuẩn (tải 8 file `docs_template/nonapp/` + `.harness.json`) → dò toàn bộ thư mục đã mount →
+chiếu file vào routing `03 §3` + điền bản trắng theo `grill` + đề xuất overview + dựng playbook →
+chốt (điền ô **Instructions** của Cowork project).
+
+Ba ràng buộc đến từ số đo, không phải phỏng đoán:
+- **Không lệnh máy thật.** Cowork chạy bash trong sandbox riêng, không với tới terminal host
+  (3 nguồn khớp + `claude-code#55649`) ⇒ mọi đường "cài zemory rồi gọi" là ngõ cụt.
+- **Tải chứ không dán inline.** Bộ chuẩn 499 dòng / 57,6 KB ≈ 14k token; tải thì nội dung ra thẳng đĩa,
+  dán inline thì mỗi lần đọc là nuốt trọn vào ngữ cảnh. Ba lối theo thứ tự: `curl` → `web_fetch` → xin `.zip`.
+- **Skill Cowork agent KHÔNG tự cài được** — Cowork chỉ nạp skill bật trong **Customize** và
+  *"doesn't read the Claude Code CLI's `~/.claude` directory"* (docs chính chủ; nhiều hướng dẫn ngoài nói ngược).
+  Nên BOOTSTRAP viết playbook vào `04_SKILLS.md` (slot chuẩn, chạy ngay), còn skill đóng gói thì **soạn sẵn + hướng dẫn upload**.
+
+### Gate chống mục cho manifest
+`bootstrap-manifest.test.mjs` (5 test) buộc manifest khớp `docs_template/nonapp/` thật: đủ file ·
+đúng số dòng · target mirror source · `<RAW>` trỏ đúng nonapp · không lọt lệnh host. Cần vì cột "Dòng"
+là **bản sao số liệu** — sửa chuẩn mà quên bảng thì bước tự-kiểm của BOOTSTRAP báo ✗ **oan** trên mọi máy
+(cùng họ F1: chuẩn chép tay ra chỗ thứ hai rồi trôi).
+**Đột biến hoá 5/5 bị bắt** (sai số dòng · mất một hàng · target rớt `docs/` · `<RAW>` trỏ sang `app` · nhét `npm install`).
+
+### Kiểm bằng đường thứ hai
+Manifest đếm từ file **local**, còn Cowork tải từ **origin/main** — lệch một dòng là ✗ oan hàng loạt.
+Đo qua HTTP: **8/8 URL raw trả 200, số dòng remote khớp local tuyệt đối**.
+
+---
+
 ## [2026-07-28j] — Tự bắt: probe vừa nối xong CHỈ gọi được bằng curl · audit lại 6 mặt
 
 Gate 284 → **286** · `conform` ✓ · `validate` ✓ · audit lại toàn bộ: **0 FAIL**.

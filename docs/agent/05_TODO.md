@@ -38,6 +38,27 @@
 > ⑤ **Gỡ `gOrphanN`** chết khỏi `app.js`.
 > *(P2/P3 ĐÃ XONG 2026-07-27 — xem mục ngay dưới.)*
 
+## 📌 COWORK + DỌN RÁC — 2026-07-28 (phiên tối)
+> Gate **291/291** · `conform` ✓ · `validate` ✓. Chi tiết: `06_CHANGES [2026-07-28k]`.
+
+- [ ] **CHƯA ĐO: `curl` có chạy trong sandbox Cowork không, và `raw.githubusercontent.com` có bị chặn không.**
+  BOOTSTRAP đã cắm 3 lối (`curl` → `web_fetch` → xin `.zip`) nên cả ba gãy vẫn có đường ra, nhưng
+  **thứ tự ưu tiên đang là phỏng đoán**. Phiên test Cowork đầu tiên phải ghi lại nó **rơi xuống lối nào**
+  rồi chốt lại thứ tự. Không có số này thì đừng khẳng định "tải rẻ hơn dán inline" trên máy người khác.
+- [ ] **(ĐỀ XUẤT — chờ user) `zemory archive` tự dọn `.bak` sau khi archive thành công.**
+  Hiện archive đẻ `.md.bak` làm lưới lùi rồi để đó vĩnh viễn, mà chỗ đọng lại là `docs/agent/` —
+  đúng nơi luật bắt "ĐỌC HẾT", nên nó trông y như rác lọt (chủ repo đã hiểu nhầm đúng một lần).
+  Đổi hành vi lệnh nên không tự làm. Phương án: xoá `.bak` khi đã verify archive ghi xong, hoặc dời sang `attic/`.
+- [ ] **`share/share.key` đang được COMMIT trong repo PUBLIC.** `share/README.md` viết nguyên văn
+  *"intentionally self-contained for the **private** ZyroFrost/Zemory"* + *"Keep the repo private unless you
+  intentionally want to expose the full memory"* — nhưng `gh repo view` trả **PUBLIC**, tức giả định mà quyết
+  định đó dựa vào đã không còn đúng. Giảm nhẹ (đã đo): `git log --all -- 'share/*.enc'` **rỗng** ⇒ bundle mã hoá
+  chưa từng vào git, nên hôm nay lộ *chìa* chứ chưa lộ *khoá*. Nhưng `.gitattributes` đã cắm sẵn luật LFS cho
+  `*.zemory.enc` ⇒ chỉ cần **một** lần export nhầm vào `share/` rồi commit là toàn bộ memory giải mã được bởi bất kỳ ai.
+  Chủ repo đã chốt giữ public (để pull đa máy) ⇒ việc còn lại: **xoay chìa mới · `git rm --cached share/share.key` ·
+  gitignore · đưa chìa qua kênh khác** (Drive/password manager). Xoá khỏi HEAD KHÔNG xoá khỏi lịch sử ⇒ phải coi chìa cũ là đã lộ.
+  *(Ghi chú: private repo vẫn pull được đa máy bằng `gh auth login`/SSH key — "public" không phải điều kiện.)*
+
 ## 📌 BÀN GIAO PHIÊN — chốt 2026-07-28 (phiên chiều)
 > Gate **286/286** · `conform` ✓ · `validate` ✓ · DB **947,3 MB** · schema **v19** · parser **v6**.
 > Đã commit + push `origin/main` tới `e71de73`. Daemon chạy ở 4444.

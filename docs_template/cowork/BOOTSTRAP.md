@@ -1,0 +1,169 @@
+<!-- zemory template · BOOTSTRAP cho Claude Cowork — agent ĐỌC VÀ THI HÀNH, không phải người đọc.
+     Bản mẫu TRẮNG: không nêu tên dự án cụ thể. Số ở cột "Dòng" được gate
+     backend/test/bootstrap-manifest.test.mjs canh — sửa tay là gate đỏ. -->
+# Dựng bộ chuẩn làm việc (harness) — cho Claude Cowork
+
+> **File này để agent đọc và thi hành**, không phải để người đọc.
+>
+> Sau khi chạy xong, thư mục làm việc có một bộ harness đầy đủ, đã điền theo đúng
+> công việc thật của dự án, và một bộ playbook hợp với việc đó.
+
+## Cách khởi động (người dùng)
+Mở một phiên Cowork trong project đã mount thư mục làm việc, rồi nói **một trong hai**:
+
+- Đã có sẵn file này trong thư mục → *"Đọc BOOTSTRAP.md và dựng bộ chuẩn."*
+- Chưa có → dán nguyên dòng này:
+  > Tải `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
+  > rồi làm theo đúng những gì trong đó.
+
+Không cần cài gì trước. Không cần biết dòng lệnh.
+
+## Bối cảnh — đọc trước khi làm
+- Bạn đang chạy trong **Claude Cowork**, thao tác trên các thư mục người dùng đã mount.
+- Cowork chạy lệnh trong **sandbox riêng, KHÔNG với tới terminal máy thật**. Vì vậy:
+  **không cài gì, không gọi `zemory`, không cần Node/git.** Chỉ đọc–ghi file trong
+  thư mục đã mount, cộng lấy nội dung qua mạng.
+- Bộ chuẩn dưới đây là hệ **NON-APP** (sản phẩm/tài sản: báo cáo · dữ liệu · tài liệu ·
+  thiết kế — bạn *đọc · dò · kéo · điền · xuất file*, không phát triển app).
+
+## LUẬT — vi phạm là hỏng bộ chuẩn
+1. **Chép NGUYÊN VĂN 8 file chuẩn.** Không tóm tắt, không rút gọn, không diễn đạt lại,
+   không dịch. Với 8 file đó bạn là người **CHÉP**, không phải người viết.
+2. **File đã tồn tại thì BỎ QUA, tuyệt đối không ghi đè.** Báo lại "đã có".
+3. **Không tự xoá, không tự di chuyển file của người dùng.** Thấy cần nắn → **ĐỀ XUẤT**,
+   chờ gật rồi mới làm.
+4. **Không tạo thư mục rỗng.** Chuẩn là *từ điển tên để tra*, không phải danh sách phải tạo.
+   Chỉ tạo thư mục khi đã có file thật bỏ vào.
+5. **Không rõ thì HỎI, theo đúng skill `grill`** (§Giai đoạn 3): dừng lại · cái nào tự đọc
+   ra được thì đọc, đừng hỏi · hỏi **mỗi lần MỘT câu**, kèm đề xuất của bạn · đủ rõ mới làm.
+   Tuyệt đối không tự chọn cách hiểu rộng nhất rồi chạy.
+6. Lấy nội dung không được ⇒ **DỪNG và báo người dùng**. Cấm bịa nội dung thay thế.
+7. Mỗi giai đoạn xong phải **in bảng kết quả** rồi mới sang giai đoạn sau.
+
+---
+
+## Giai đoạn 1 — Áp bộ chuẩn
+
+### 1a. Lấy nội dung: thử theo THỨ TỰ, dừng ở lối đầu tiên chạy được
+| # | Lối | Vì sao xếp thứ tự này |
+|---|---|---|
+| 1 | `curl -fsSL <URL> -o <đích>` trong bash | Nội dung đi thẳng ra đĩa, gần như không tốn ngữ cảnh |
+| 2 | Tool `web_fetch` rồi tự ghi ra file | Luôn chạy được (đi qua máy chủ Anthropic, không qua mạng sandbox), nhưng tốn ngữ cảnh |
+| 3 | Xin người dùng gửi file `.zip` rồi giải nén | Khi cả hai lối trên đều bị chặn |
+
+### 1b. MANIFEST
+`<RAW>` = `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/nonapp`
+
+| # | Ghi ra | Tải từ | Dòng |
+|---|---|---|---:|
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 20 |
+| 2 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
+| 3 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 69 |
+| 4 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 132 |
+| 5 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 213 |
+| 6 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
+| 7 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
+| 8 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
+
+Rồi tự tạo `docs/.harness.json` (không tải, gõ thẳng):
+```json
+{ "docs": "docs/agent", "profile": "non-app" }
+```
+
+### 1c. Tự kiểm (BẮT BUỘC)
+Đếm số dòng từng file vừa ghi, so với cột **Dòng**. In bảng:
+`đường dẫn · dòng thực · kỳ vọng · ✓/✗`.
+Có ✗ ⇒ nói rõ file nào lệch bao nhiêu và dừng. **Chưa in bảng thì chưa được nói "xong".**
+
+### 1d. Đọc
+Đọc **HẾT** `docs/agent/01_CONSTITUTION.md` → `06_CHANGES.md` và `docs/plan/00_overview.md`
+trước khi sang giai đoạn 2. Từ đây trở đi bạn làm việc theo đúng luật trong đó.
+
+---
+
+## Giai đoạn 2 — Dò toàn bộ dự án
+
+Mục tiêu: biết dự án này **thực tế đang có gì**, trước khi nói nó *nên* trông thế nào.
+
+1. **Liệt kê mọi thư mục đã mount** (không chỉ thư mục chứa file này) và duyệt cây,
+   bỏ qua `.git/`, `node_modules/`, thư mục ẩn của hệ điều hành.
+2. Với mỗi nhóm file, ghi nhận: **đuôi file · số lượng · tổng dung lượng · nơi đang nằm ·
+   file mới sửa gần nhất**. Đừng mở hết mọi file — mở đủ để hiểu vai trò.
+3. File Office/PDF (`.xlsx .xls .docx .pptx .pdf`) cần đọc nội dung thì theo playbook
+   **`04_SKILLS §đọc file Office qua Markdown`**; file lớn thì convert ra file rồi đọc
+   đúng phần cần, đừng nạp cả bản convert vào ngữ cảnh.
+4. **In BẢNG KIỂM KÊ** trước khi đề xuất bất cứ điều gì:
+   `nhóm · số file · dung lượng · đang nằm ở đâu · đoán vai trò`.
+
+**Cấm ở giai đoạn này:** di chuyển, đổi tên, xoá, hay "dọn cho gọn". Chỉ nhìn và ghi.
+
+---
+
+## Giai đoạn 3 — Áp chuẩn lên thực tế, rồi ĐỀ XUẤT
+
+### 3a. Chiếu file thật vào slot chuẩn
+Dùng bảng routing `docs/agent/03_STRUCTURE.md §3`. Với mỗi nhóm đã kiểm kê, xác định
+slot đúng: deliverable (`reports/` `models/` `content/` `design/`) · `tasks/` ·
+`templates/` · `sources/` · `queries/` · `measures/` · `pipelines/` · `fixtures/` ·
+`assets/` · `scripts/` · `config/` · `data/` (gitignore) · `exports/` · `attic/`.
+
+In **BẢNG LỆCH**: `file/nhóm · đang ở · nên ở · vì sao`.
+Cột "vì sao" phải dẫn đúng dòng routing, không nói chung chung.
+
+**Đây là ĐỀ XUẤT.** Không tự dời. Người dùng gật từng mục thì mới làm, và làm xong
+phải in lại bảng đối chiếu.
+
+### 3b. Điền bản trắng — hỏi theo `grill`
+Bản vừa dựng còn chỗ ghi `<PROJECT>`. Trước khi hỏi, **tự trả lời trước bằng những gì
+đã dò được** ở giai đoạn 2 — chỉ hỏi phần thật sự chỉ người dùng mới biết.
+
+Hỏi **mỗi lần MỘT câu, kèm đề xuất của bạn** (đúng `04_SKILLS §grill`). Thứ tự gợi ý:
+1. Dự án này là gì, phục vụ ai? *(kèm phán đoán của bạn từ bảng kiểm kê)*
+2. Đầu ra cuối cùng giao đi là gì? *(kèm loại deliverable bạn đoán)*
+3. Việc nào lặp lại theo kỳ (tuần/tháng), việc nào làm lẻ?
+4. Có quy tắc, mẫu, hay nguồn dữ liệu nào bắt buộc phải theo không?
+
+Đủ rõ thì điền: `AGENTS.md` (tên + mô tả 1–2 dòng) · `01_CONSTITUTION §Mục đích` ·
+`03_STRUCTURE` (nếu có quy ước riêng của dự án).
+
+### 3c. Đề xuất OVERVIEW
+Viết `docs/plan/00_overview.md` theo đúng 4 mục bản mẫu chừa sẵn: **Tóm tắt ·
+Tính năng/năng lực chính · Ý tưởng/định hướng · Kiến trúc/bố cục tổng thể**.
+
+Luật cho phần này:
+- Chỉ viết điều **dò được hoặc người dùng đã xác nhận**. Không suy diễn thành thật.
+- Chỗ chưa đủ dữ kiện thì ghi thẳng *"chưa rõ — cần xác nhận"*, đừng lấp bằng chữ cho đầy.
+- **Trình cho người dùng duyệt** trước khi coi là chốt.
+
+### 3d. Dựng bộ skill hợp với dự án
+Playbook sống trong **`docs/agent/04_SKILLS.md`** (đó là slot chuẩn — xem routing §3).
+Bản mẫu đã có sẵn: `grill` · `chốt phiên` · `reconcile` · `pull` · `fill` · `upload` ·
+`đọc file Office qua Markdown` · `soi chuẩn` · `audit toàn diện`.
+
+Việc của bạn:
+1. Đối chiếu việc thật của dự án với danh sách trên. Việc lặp nào **chưa có playbook** →
+   soạn thêm một mục `## <tên skill>`, viết theo đúng khuôn đang có
+   (*trigger → các bước → cấm gì*), ngắn gọn, thao tác được.
+2. **Trình trước khi ghi**: nêu tên skill + một dòng lý do, người dùng gật mới thêm vào file.
+3. Giữ `04_SKILLS.md` không phình: skill dài, có nhiều tài nguyên đi kèm thì tách riêng,
+   trong file chỉ để một dòng trỏ tới.
+
+**Về skill cài vào Cowork (khác với playbook):** Cowork chỉ nạp skill/plugin bật trong
+**Customize**, và **không đọc thư mục `~/.claude` của máy**. Bạn **không tự cài được**.
+Nếu có việc lặp đáng đóng gói thành skill Cowork, hãy **soạn sẵn** thư mục skill
+(`SKILL.md` + tài nguyên) rồi hướng dẫn người dùng tự nén `.zip` và thêm ở **Customize →
+Skills**. Lưu ý trần: `description` tối đa **200 ký tự**, `SKILL.md` nên dưới **500 dòng**.
+
+---
+
+## Giai đoạn 4 — Chốt
+
+1. In **BÁO CÁO CUỐI**: đã tạo file nào · bỏ qua file nào (đã có) · bảng lệch còn treo ·
+   mục nào trong overview còn "chưa rõ".
+2. Ghi việc còn dở vào `docs/agent/05_TODO.md`; việc đã xong ghi `docs/agent/06_CHANGES.md`
+   theo đúng format `## [YYYY-MM-DD] — tiêu đề` (chỉ ghi sau khi người dùng xác nhận OK).
+3. Nhắc người dùng mở **Projects → project này → Instructions**, dán đúng đoạn này:
+   > Trước mỗi phiên, đọc `docs/agent/01_CONSTITUTION.md` → `06_CHANGES.md` và bám đúng
+   > chuẩn trong đó. Việc đã xong ghi `06_CHANGES.md`, việc còn dở ghi `05_TODO.md`.
+   > Yêu cầu chưa rõ thì hỏi lại theo `04_SKILLS §grill`, mỗi lần một câu.
+4. Báo người dùng: từ giờ chỉ cần mô tả việc, không phải nhắc lại bộ chuẩn nữa.
