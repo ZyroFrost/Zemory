@@ -5,9 +5,9 @@
     "search": "keyword"
   },
   "thresholds": {
-    "changes_lines": 500,
-    "changes_keep": 300,
-    "todo_lines": 500,
+    "changes_lines": 300,
+    "changes_keep": 180,
+    "todo_lines": 300,
     "todo_bytes": 60000
   }
 }
