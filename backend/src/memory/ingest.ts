@@ -13,6 +13,7 @@ import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
 import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
 import { pruneOrphanVectors } from "./vectors.js";
+import { pruneOrphanAttachments } from "./attachments.js";
 
 // v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
 // `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
@@ -20,7 +21,7 @@ import { pruneOrphanVectors } from "./vectors.js";
 // whole-replace, nên phiên CŨ cũng đầy lại. Transcript gốc còn ⇒ dựng lại được (điều 3).
 // v5: nhánh `image` mới có trong adapters/claude.ts — 1.245 block ảnh (93 MB) trước
 // đây bị bỏ im lặng ở khâu nạp. Bump để mọi transcript nạp lại và ảnh vào bảng attachment.
-const PARSER_VERSION = 5;
+const PARSER_VERSION = 6;
 
 // The machine doing the ingest. Transcript files are local to the machine that
 // ran the agent, so the ingesting host IS the producing host. Stamped onto each
@@ -149,6 +150,14 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       pruneOrphanVectors(dbPath);
     } catch {
       /* vector là lớp dẫn xuất — dọn không được cũng không được làm hỏng ingest */
+    }
+    // Cùng lý do, cho lớp đính kèm: whole-replace đổi message id nên LIÊN KẾT cũ trỏ hụt.
+    // CHỈ dọn liên kết chết, KHÔNG đụng nội dung (xem ghi chú ở pruneOrphanAttachments —
+    // tiêu chí "message_id trỏ tin đã chết" sẽ xoá nhầm ảnh còn sống).
+    try {
+      pruneOrphanAttachments(dbPath);
+    } catch {
+      /* fail-open: dọn rác không được thì cũng không được làm hỏng ingest (điều 9) */
     }
 
     return buildReport(db, dbPath, found, changedFiles, live);

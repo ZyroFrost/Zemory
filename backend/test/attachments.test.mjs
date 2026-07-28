@@ -293,3 +293,78 @@ test("tên tải về: có tên gốc thì dùng; không có thì ra tên CỦA 
   }
   assert.match(named.name, /\.png$/);
 });
+
+// ── ⑤ L3: chở đính kèm qua bundle sync (plan 08 §7 bước ③) ───────────────────
+//
+// Điểm dễ sai nhất: `messages.id` là AUTOINCREMENT CỤC BỘ và cố ý KHÔNG đi theo bundle
+// (merge khoá trên UNIQUE(session_id,uuid)). Chở thẳng `message_id` sang máy khác là trỏ
+// vào tin của người ta. Nên bundle mang `session_id` + `msg_uuid`, bên nhận tra id của mình.
+
+test("bật công tắc ⇒ ảnh sang được máy khác và nối ĐÚNG tin; tắt ⇒ bundle không chở gì", async (t) => {
+  const { exportMemoryBundle, mergeMemoryBundle } = await import("../../dist/memory/share.js");
+  const { setSyncAttachments } = await import("../../dist/config/settings.js");
+  const { dbPath: src } = seed(t);
+  const dir = tempDir(t, "zemory-l3-");
+  const env = { ZEMORY_SHARE_KEY: "khoa-test-l3" };
+
+  /** Máy nhận: cùng phiên + cùng uuid tin, nhưng id CỤC BỘ lệch hẳn. */
+  const makeDest = (name) => {
+    const p = join(dir, name);
+    const d = openMemory(p);
+    d.prepare("INSERT INTO sessions (id, source, host, project_root, title) VALUES (?,?,?,?,?)")
+      .run("s1", "claude-code", "may-khac", "/p", "t");
+    // Đẩy id lệch để lộ ngay nếu ai đó chở message_id qua bundle.
+    d.prepare("INSERT INTO messages (id, session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?,?)")
+      .run(9001, "s1", "u1", "user", "nhìn ảnh", "2026-07-28T01:00:00Z");
+    d.close();
+    return p;
+  };
+
+  // ── BẬT ──
+  setSyncAttachments(true);
+  const onBundle = join(dir, "on.enc");
+  await exportMemoryBundle({ dbPath: src, outPath: onBundle, env });
+  const destOn = makeDest("dest-on.db");
+  await mergeMemoryBundle({ bundlePath: onBundle, dbPath: destOn, env });
+  const d1 = openMemory(destOn);
+  const got = d1.prepare(
+    `SELECT a.sha256, a.bytes, al.message_id FROM attachment_link al JOIN attachment a ON a.id = al.attachment_id`,
+  ).all();
+  d1.close();
+  assert.equal(got.length >= 1, true, "bật công tắc thì ảnh phải sang được");
+  assert.equal(got[0].sha256, PNG_SHA);
+  assert.equal(got[0].message_id, 9001, "phải nối vào id CỦA MÁY NHẬN, không phải id trong bundle");
+
+  // ── TẮT (mặc định) ──
+  setSyncAttachments(false);
+  const offBundle = join(dir, "off.enc");
+  await exportMemoryBundle({ dbPath: src, outPath: offBundle, env });
+  const destOff = makeDest("dest-off.db");
+  await mergeMemoryBundle({ bundlePath: offBundle, dbPath: destOff, env });
+  const d2 = openMemory(destOff);
+  const n = d2.prepare("SELECT count(*) c FROM attachment").get().c;
+  d2.close();
+  assert.equal(n, 0, "tắt công tắc thì bundle KHÔNG được chở blob — đó là lý do bundle lean còn lean");
+});
+
+// ── ⑥ Dọn mồ côi: chỉ link chết, TUYỆT ĐỐI không đụng ảnh còn sống ───────────
+
+test("pruneOrphanAttachments xoá link chết nhưng GIỮ ảnh còn tin khác trỏ tới", async (t) => {
+  const { pruneOrphanAttachments } = await import("../../dist/memory/attachments.js");
+  const { dbPath, m1 } = seed(t);
+  // Xoá tin ĐẦU TIÊN — chính là tin mà `attachment.message_id` đang trỏ. Ảnh vẫn còn tin
+  // thứ hai trỏ tới, nên TUYỆT ĐỐI không được xoá nội dung. Đây đúng ca đã suýt xoá nhầm
+  // 87 tấm ảnh sống trên DB thật (2026-07-28).
+  const db = openMemory(dbPath);
+  db.prepare("DELETE FROM messages WHERE id = ?").run(m1);
+  db.close();
+
+  const r = pruneOrphanAttachments(dbPath);
+  assert.equal(r.links, 1, "đúng một liên kết chết bị dọn");
+  assert.equal(r.rows, 0, "mặc định KHÔNG xoá nội dung");
+
+  const after = attachmentStats(dbPath);
+  assert.equal(after.orphanLinks, 0, "hết link chết");
+  assert.equal(after.live, 1, "ảnh vẫn sống vì tin thứ hai còn trỏ tới");
+  assert.equal(after.orphanRows, 0, "và nó KHÔNG bị tính là mồ côi");
+});

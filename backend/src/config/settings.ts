@@ -46,6 +46,8 @@ interface ZConfig {
    *  only (default, ~74% smaller); "full" = whole-DB snapshot incl. derived
    *  layers (disaster-restore copy). */
   syncLevel?: SyncLevel;
+  /** L3: chở blob đính kèm trong bundle sync (mặc định TẮT — xem getSyncAttachments). */
+  syncAttachments?: boolean;
 }
 
 /** Cross-machine sync depth (plan 08 §7).
@@ -141,6 +143,22 @@ export function getSyncLevel(): SyncLevel {
 export function setSyncLevel(level: SyncLevel): void {
   const c = read();
   c.syncLevel = level === "full" ? "full" : "lean";
+  write(c);
+}
+
+/**
+ * L3 (plan 08 §7 bước ③) — có chở ẢNH/FILE đính kèm trong bundle sync không.
+ *
+ * MẶC ĐỊNH TẮT, và cố ý: bundle lean vừa cắt được −74%, thả 54 MB blob vào là xoá phần
+ * lớn lợi ích đó. Nên đây là CÔNG TẮC theo máy (user chốt 2026-07-28: *"dạng check có lấy
+ * hay không, giống setting đang có"*) — máy nào cần ảnh xuyên máy thì tự bật.
+ */
+export function getSyncAttachments(): boolean {
+  return read().syncAttachments === true;
+}
+export function setSyncAttachments(on: boolean): void {
+  const c = read();
+  c.syncAttachments = on;
   write(c);
 }
 
