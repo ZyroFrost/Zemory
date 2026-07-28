@@ -5,6 +5,34 @@
 
 ---
 
+## [2026-07-29b] — Luật "entry ngắn" + 2 cổng kiểm trong `validate`
+
+Gate 303 → **312** · `conform` ✓. Trần dài dòng thành LUẬT, không còn là lời hứa của agent.
+
+- **`02_RULES §Changelog`** (repo + 2 template): entry ≤ **~30 dòng**, chỉ cần *đổi gì · vì sao · số đo*;
+  chi tiết thiết kế → `docs/plan/`. Căn cứ: đo 76 entry thật — p50 **19** · p75 28 · p90 40 · max 53, nên
+  30 nằm giữa p75–p90, không siết entry bình thường. Lý do tồn tại: ở `keep`≈180 dòng thì **4** entry
+  50 dòng chiếm trọn vùng active ⇒ viết dài làm chính cơ chế archive thành vô nghĩa.
+- **`validate` check 1:** đếm entry vượt trần (advisory, `changes_entry_lines`). Chạy ngay bắt 3 entry của tôi.
+- **`validate` check 2 — trả lời câu user hỏi *"sao mục xong không archive luôn"*:** chuẩn **đã** bắt vậy từ
+  đầu (`05_TODO` dòng 1: *"xong → ghi sang `06_CHANGES.md` và xoá khỏi đây"*). 107 mục `[x]` dọn sáng nay
+  **vốn là 107 lần vi phạm dồn lại** — thiếu không phải cơ chế mà là cái kiểm. Nay `validate` báo số mục `[x]`
+  còn sót; trạng thái đúng là **0**.
+- Cả hai **advisory**, không chặn: siết cứng độ dài văn xuôi sẽ cản việc thật, mà `validate` vốn chạy ở mỗi chốt phiên.
+
+### Đột biến hoá 5/6 — cái sống sót là code chết, không phải test yếu
+Phá 6 chỗ: off-by-one `>`/`>=` · bỏ entry cuối · bỏ fence (×2) · `closedItems` đếm cả mục mở → **bắt hết**.
+Sống sót: *"bỏ chuẩn hoá CRLF"* — vì hai hàm này **không neo vào cuối dòng, không dùng byte offset**, nên
+`\r` sót lại chẳng đổi kết quả. Kết luận: guard đó là **code chết** ⇒ **gỡ nó**, giữ test CRLF làm neo hành vi.
+*(Khác `parseChangelog` — hàm đó cắt theo offset và từng parse ra 0 entry với file Windows, nên vẫn cần.)*
+
+### Ba lỗi tự gây trong lúc làm, tự bắt
+Test "entry vừa đúng trần" đỏ vì tôi quên `\n` cuối đẻ thêm một phần tử rỗng (31 ≠ 30) — **test sai, code đúng**.
+Rồi `sed` nhét một CR thật vào comment làm `tsc` đứt chuỗi. Rồi comment viết tiếng Việt, vi phạm
+`02_RULES §Ngôn ngữ` (comment code = tiếng Anh) — đã viết lại.
+
+---
+
 ## [2026-07-29] — Hạ ngưỡng archive 500 → 300 · con trỏ tầng ấm vào `AGENTS.md`
 
 Gate **303/303** · `conform` ✓ · `validate` ✓. *(Entry viết ngắn có chủ đích — xem mục cuối.)*
