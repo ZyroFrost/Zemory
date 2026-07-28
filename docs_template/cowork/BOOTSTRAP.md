@@ -196,6 +196,22 @@ Skills**. Lưu ý trần: `description` tối đa **200 ký tự**, `SKILL.md` n
 
 ---
 
+## Vì sao phải TỰ DỌN — đọc trước khi bỏ qua bước 3 ở dưới
+
+Hai file sổ (`05_TODO.md`, `06_CHANGES.md`) **lớn dần mãi**, và bộ chuẩn bắt đọc chúng ở
+đầu mỗi phiên. Ở đây **không có công cụ dòng lệnh nào để cắt bớt** (Cowork không chạm tới
+terminal máy thật), nên nếu không ai dọn thì mỗi phiên phải nạp lại toàn bộ lịch sử —
+càng dùng lâu càng chậm và càng tốn, cho tới lúc không còn chỗ cho công việc thật.
+
+Việc dọn **không cần công cụ gì**: chỉ là chuyển đoạn cũ từ file này sang file kia, bạn
+làm được bằng thao tác file thông thường. Ngưỡng 300 dòng là để nó xảy ra **trước** khi
+thành vấn đề, chứ không phải sau.
+
+Đừng nén, đừng tóm tắt khi chuyển: nội dung trong `archive/` vẫn phải đọc lại được
+nguyên văn khi cần tra một quyết định cũ.
+
+---
+
 ## Giai đoạn 4 — Chốt
 
 1. In **BÁO CÁO CUỐI**: đã tạo file nào · bỏ qua file nào (đã có) · bảng lệch còn treo ·
@@ -206,6 +222,13 @@ Skills**. Lưu ý trần: `description` tối đa **200 ký tự**, `SKILL.md` n
    > Trước mỗi phiên, đọc `docs/agent/01_CONSTITUTION.md` → `06_CHANGES.md` và bám đúng
    > chuẩn trong đó. Việc đã xong ghi `06_CHANGES.md`, việc còn dở ghi `05_TODO.md`.
    > Yêu cầu chưa rõ thì hỏi lại theo `04_SKILLS §grill`, mỗi lần một câu.
+   >
+   > **Tự dọn cuối phiên.** Sau khi ghi sổ, đếm số dòng hai file sổ. File nào vượt
+   > **300 dòng** thì chuyển phần cũ sang `docs/agent/archive/<tên file>.md` (tạo nếu
+   > chưa có): `06_CHANGES.md` chuyển các entry **cũ nhất**, giữ lại ~200 dòng mới nhất;
+   > `05_TODO.md` chuyển các mục **đã xong** (`- [x]`), giữ toàn bộ mục còn mở.
+   > **Chép nguyên văn, không tóm tắt** — archive là để tra lại, không phải để nén.
+   > Báo người dùng đã chuyển bao nhiêu. Cần tra việc cũ thì tìm trong `archive/`.
 4. Báo người dùng: từ giờ chỉ cần mô tả việc, không phải nhắc lại bộ chuẩn nữa.
 5. Người dùng hỏi *"bộ chuẩn này là cái gì / từng file để làm gì"* → trỏ họ đọc
    [`README.md`](README.md) cạnh file này (bản viết cho người, không có thuật ngữ kỹ thuật).
