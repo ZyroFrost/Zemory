@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { isAbsolute, normalize, relative, resolve } from "node:path";
+import { normalizeRoot } from "../core/config.js";
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { parseMarkdown, roundTripOk } from "./markdown.js";
 
@@ -50,7 +51,16 @@ function replaceSections(db: MemoryDB, docId: number, text: string): number {
 
 /** Reindex ONE markdown file into the DB search index (read-only; never writes
  *  the file). The .md is the source; this only refreshes the derived index. */
-export function importDoc(absPath: string, relPath: string, projectRoot: string, kind = "plan", dbPath = currentMemoryDb()): ImportResult {
+export function importDoc(
+  absPath: string,
+  relPath: string,
+  projectRoot: string,
+  kind = "plan",
+  dbPath = currentMemoryDb(),
+): ImportResult {
+  // Canonical key, whatever spelling the caller had: an un-normalized root splits the
+  // same project's docs across two project_root values (see normalizeRoot).
+  projectRoot = normalizeRoot(projectRoot);
   // Strip any prior GENERATED header (legacy renders) so it is not indexed as body.
   const text = readFileSync(absPath, "utf8").replace(/^<!-- GENERATED[^\n]*-->\r?\n/, "");
   const roundTrip = roundTripOk(text);

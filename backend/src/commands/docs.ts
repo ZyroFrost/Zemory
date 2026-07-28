@@ -1,13 +1,13 @@
 // `zemory plan|docs|changelog <ls|search|show>` — read-only search over the
 // derived docs index (.md is the source, DB is the index — HP điều 3).
 import { join } from "node:path";
-import { findProjectRoot } from "../core/config.js";
+import { currentProjectRoot } from "../core/config.js";
 import { listDocs, listToc, searchSections, showSection } from "../docs/plan.js";
 import { listEntries, searchChangelog } from "../docs/changelog.js";
 
 export async function cmdPlan(args: string[]): Promise<void> {
   const sub = args[0];
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
 
   if (sub === "ls") {
     const docPath = args[1] ? args[1] : join("docs", "plan", "00_overview.md");
@@ -61,7 +61,7 @@ export async function cmdPlan(args: string[]): Promise<void> {
 
 export async function cmdDocs(args: string[]): Promise<void> {
   const sub = args[0];
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   if (sub === "ls") {
     const docs = listDocs(root);
     console.log(`zemory docs — ${docs.length} doc(s) trong search index`);
@@ -80,7 +80,7 @@ export async function cmdDocs(args: string[]): Promise<void> {
 
 export async function cmdChangelog(args: string[]): Promise<void> {
   const sub = args[0];
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   if (sub === "ls") {
     const rows = listEntries(root);
     console.log(`zemory changelog — ${rows.length} entr(ies)`);

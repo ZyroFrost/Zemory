@@ -5,7 +5,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
-import { findProjectRoot, loadContext } from "../core/config.js";
+import { currentProjectRoot, findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, freshHarness } from "../docs/adopt.js";
 import { archiveChanges, archiveTodo } from "../docs/archive.js";
@@ -50,7 +50,7 @@ export function cmdMigrate(): void {
   // MỒ CÔI — đường duy nhất chạm tới nó là endpoint `/migrate` mà không FE nào gọi, còn
   // lệnh CLI cùng tên thì chỉ in hướng dẫn. Nay in bảng phân tích THẬT trước, rồi mới
   // tới các bước. Fail-open: repo chưa có docs/ thì bỏ qua phần bảng.
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   const rep = analyzeMigration(root);
   if (rep) {
     console.log(`zemory migrate — soi \`${rep.docsDir}\`:`);
@@ -72,7 +72,7 @@ export function cmdMigrate(): void {
 }
 
 export function cmdSync(): void {
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   const r = ensureHarness(root);
   console.log(`zemory sync — ${root}`);
   if (r.createdConfig) console.log("  + created .harness.json");
@@ -303,7 +303,7 @@ export function cmdGrill(): void {
 }
 
 export function cmdReindex(): void {
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   const planDir = join(root, "docs", "plan");
   let files: string[] = [];
   try {

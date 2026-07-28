@@ -4,7 +4,7 @@
 // JSON-RPC surface that ships these over stdio lives in ../mcp.ts — keep wire
 // framing OUT of here and tool knowledge OUT of the surface.
 
-import { findProjectRoot } from "../core/config.js";
+import { findProjectRoot, normalizeRoot } from "../core/config.js";
 import { getMessage, getMessageContext, recall } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 
@@ -32,7 +32,10 @@ const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
   if (env.projectRoot === null) return undefined;
   // No harness in cwd is NOT an error: zemory is installed machine-wide, so
   // recall falls back to the whole global memory instead of scoping to cwd.
-  return asString(args.project) || env.projectRoot || findProjectRoot() || undefined;
+  // The MCP caller's `project` / env root arrives in whatever casing it had; normalize
+  // it or a scoped search looks up a key the index never wrote (see normalizeRoot).
+  const picked = asString(args.project) || env.projectRoot;
+  return picked ? normalizeRoot(picked) : findProjectRoot() || undefined;
 };
 
 const jsonText = (value: unknown): string => JSON.stringify(value, null, 2);
