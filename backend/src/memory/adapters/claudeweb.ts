@@ -16,8 +16,8 @@
 
 import { basename, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { safeReaddir, toTranscript } from "./_shared.js";
-import type { Adapter, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
+import { imageAttachment, imageLabel, safeReaddir, toTranscript } from "./_shared.js";
+import type { Adapter, ParsedAttachment, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
 
 interface ClaudeBlock {
   type?: string;
@@ -45,13 +45,24 @@ interface ClaudeConv {
 
 /** Một message → text đầy đủ. Khối tool được GIỮ, gắn nhãn như adapter Claude Code
  *  để `roleMatches()`/`msgRole()` nhận ra và xếp đúng hạng khi recall. */
-function flattenMessage(m: ClaudeMsg): string {
+function flattenMessage(m: ClaudeMsg, atts?: ParsedAttachment[]): string {
   const blocks = Array.isArray(m.content) ? m.content : [];
   if (!blocks.length) return String(m.text ?? "");
   const parts: string[] = [];
   for (const b of blocks) {
     if (!b || typeof b !== "object") continue;
     const kind = String(b.type ?? "");
+    // Ảnh: cùng hình dạng base64 với adapter Claude Code (chung một API Anthropic) —
+    // tách blob ra `attachments`, chỉ để lại NHÃN trong text. Base64 mà vào `content`
+    // là thổi FTS5 lên mà không tìm được gì (bài học v16/v17).
+    if (kind === "image" || kind === "image_url") {
+      const a = imageAttachment(b);
+      if (a) {
+        atts?.push(a);
+        parts.push(imageLabel(a));
+        continue;
+      }
+    }
     if (kind === "text" && typeof b.text === "string") parts.push(b.text);
     else if (kind === "tool_use") parts.push(`[tool_use:${b.name ?? "?"}]\n${JSON.stringify(b.input ?? null)}`);
     else if (kind === "tool_result") parts.push(`[tool_result]\n${typeof b.content === "string" ? b.content : JSON.stringify(b.content ?? null)}`);
@@ -104,7 +115,8 @@ export const claudeWebAdapter: Adapter = {
       const raw = Array.isArray(conv.chat_messages) ? conv.chat_messages : [];
       const messages: ParsedMessage[] = [];
       for (const m of raw) {
-        const content = flattenMessage(m);
+        const atts: ParsedAttachment[] = [];
+        const content = flattenMessage(m, atts);
         if (!content.trim()) continue;
         messages.push({
           uuid: m.uuid ?? null,
@@ -114,6 +126,7 @@ export const claudeWebAdapter: Adapter = {
           content,
           toolName: null,
           timestamp: m.created_at ?? null,
+          ...(atts.length ? { attachments: atts } : {}),
         });
       }
       if (!messages.length) continue;

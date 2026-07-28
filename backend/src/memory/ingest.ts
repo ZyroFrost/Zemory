@@ -397,7 +397,7 @@ export function memoryHostTree(dbPath: string = MEMORY_DB): HostTreeNode[] {
       h.sessions += r.sessions;
       h.messages += r.messages;
 
-      const sKey = `${r.host} ${r.source}`;
+      const sKey = `${r.host}\u0000${r.source}`;
       let s = sourceMap.get(sKey);
       if (!s) {
         s = { source: r.source, sessions: 0, messages: 0, projects: [] };

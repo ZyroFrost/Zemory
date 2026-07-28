@@ -372,3 +372,19 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* Nguồn được hỗ trợ nhưng chưa nạp gì — hiện mờ, KHÔNG ẩn: ẩn đi thì user không biết
    nó tồn tại để mà nạp (vòng luẩn quẩn, user 2026-07-27). */
 .scope-e{color:var(--text-faint);font-size:10.5px;border:1px dashed var(--border-strong);border-radius:6px;padding:0 6px;white-space:nowrap}
+
+/* ── Đính kèm ảnh (Recall: thread + Xem trước) ────────────────────────────────
+   Bytes KHÔNG nằm trong payload JSON — thumbnail trỏ /attachment?sha= (content-
+   addressed, cache immutable). Chiều cao thumbnail CỐ ĐỊNH để hàng ảnh không nhảy
+   layout lúc ảnh tải xong. Mọi màu qua token (0 literal, §5). */
+.atts{display:flex;flex-wrap:wrap;gap:8px;margin-top:7px}
+.att{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface-2);cursor:zoom-in;display:flex;flex-direction:column;max-width:220px}
+.att:hover{border-color:var(--primary)}
+.att img{display:block;height:118px;width:auto;max-width:220px;object-fit:cover;background:var(--surface-3)}
+.att .cap{font-size:10.5px;color:var(--text-dim);padding:3px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* kind='ref' (vượt ngưỡng lúc nạp) hoặc mime không phải ảnh: nói rõ "chỉ ghi nhận",
+   KHÔNG dựng khung ảnh rỗng — ô vỡ trông như lỗi trong khi đó là hành vi cố ý. */
+.att.noimg{cursor:default;padding:7px 10px;font-size:11px;color:var(--text-dim);border-style:dashed}
+.hit .att-n{color:var(--text-faint);font-size:10.5px;margin-left:5px}
+#imgDlgBody{display:grid;place-items:center;background:var(--surface-2);padding:10px}
+#imgDlgBody img{max-width:100%;max-height:100%;object-fit:contain}

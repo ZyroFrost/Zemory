@@ -1,9 +1,8 @@
 // Claude Code adapter. Transcripts: ~/.claude/projects/<proj>/<id>.jsonl
 // (append-mode jsonl). Each line is one record; user/assistant carry messages.
 
-import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
-import { isDir, safeReaddir, toTranscript } from "./_shared.js";
+import { imageAttachment, imageLabel, isDir, safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedAttachment, ParsedLine, TranscriptFile } from "./types.js";
 
 export const claudeAdapter: Adapter = {
@@ -75,7 +74,28 @@ export const claudeAdapter: Adapter = {
     }
     if (o.type === "user" || o.type === "assistant") {
       const m = o.message ?? {};
+      rememberToolPaths(m.content);
       const { text, attachments } = flatten(m.content);
+      // ẢNH DO TOOL `Read` TRẢ VỀ — nằm ở `toolUseResult.file.base64`, NGOÀI
+      // `message.content`, nên `flatten()` không bao giờ thấy (đúng bẫy "hai đường ghi" đã
+      // dính với record `attachment`). Đo 2026-07-28: 166 ảnh chỉ tồn tại ở đường này.
+      // Đây cũng là chỗ DUY NHẤT có TÊN GỐC thật: ghép `tool_use_id` ngược về `file_path`
+      // của lời gọi tool — đo được 166/166 = 100% ghép trúng.
+      const viaTool = toolResultImage(o);
+      if (viaTool) {
+        attachments.push(viaTool);
+        return {
+          kind: "message",
+          msg: {
+            uuid: o.uuid ?? null,
+            role: m.role ?? o.type,
+            content: `${text ? text + "\n" : ""}${imageLabel(viaTool)}`,
+            toolName: firstTool(m.content) ?? "read-image",
+            timestamp: o.timestamp ?? null,
+            attachments,
+          },
+        };
+      }
       if (!text) return o.cwd ? { kind: "meta", cwd: o.cwd } : { kind: "skip" };
       return {
         kind: "message",
@@ -94,33 +114,55 @@ export const claudeAdapter: Adapter = {
   },
 };
 
-// Ngưỡng lưu nhị phân. Đo trên corpus thật 2026-07-28: 1.245 ảnh, p90 182 KB,
-// max 1,28 MB, tổng 93 MB — nên 8 MB là trần rộng rãi, gần như không ai chạm. Vượt
-// ngưỡng thì hạ xuống 'ref' (ghi nhận từng có, không lưu nội dung) chứ KHÔNG bỏ im lặng.
-const MAX_BLOB_BYTES = 8 * 1024 * 1024;
+// Ngưỡng lưu nhị phân + bộ đọc block ảnh nay dùng CHUNG ở `_shared.ts` (`MAX_BLOB_BYTES`,
+// `imageAttachment`, `imageLabel`): trước đây chỉ file này biết đọc ảnh, nên 4 adapter còn
+// lại bỏ im lặng mọi block không phải text. Một định nghĩa — nhân bản parser là cách chắc
+// chắn để hai bản lệch nhau (bài học F1 "nguồn trùng").
+// Đo trên corpus thật 2026-07-28: 1.245 ảnh, p90 182 KB, max 1,28 MB, tổng 93 MB ⇒ trần
+// 8 MB rộng rãi, gần như không ai chạm.
 
-/** Ảnh trong transcript Claude Code: {type:'image', source:{type:'base64', media_type, data}}. */
-function imageAttachment(block: any): ParsedAttachment | null {
-  const src = block?.source;
-  if (!src || src.type !== "base64" || typeof src.data !== "string" || !src.data) return null;
-  let buf: Buffer;
-  try {
-    buf = Buffer.from(src.data, "base64");
-  } catch {
-    return null;
+/**
+ * `tool_use_id` → đường dẫn file của lời gọi tool, để ảnh do `Read` trả về lấy lại được
+ * TÊN GỐC. Hợp đồng `parseLine` không có hook theo-file nên bảng này ở cấp module; id của
+ * Anthropic (`toolu_…`) là duy nhất toàn cục nên không sợ đụng giữa các file.
+ * CÓ TRẦN: một lần quét đi qua hàng trăm transcript, không chặn thì bảng phình vô hạn
+ * trong daemon chạy dài. Quá trần thì bỏ nửa cũ — mất tên là mất một tiện ích, không phải
+ * mất dữ liệu (ảnh vẫn vào, chỉ rơi về tên dự phòng).
+ */
+const TOOL_PATH_CAP = 5000;
+const toolPaths = new Map<string, string>();
+
+function rememberToolPaths(content: unknown): void {
+  if (!Array.isArray(content)) return;
+  for (const b of content) {
+    if (!b || typeof b !== "object") continue;
+    const blk = b as any;
+    if (blk.type !== "tool_use" || typeof blk.id !== "string") continue;
+    const inp = blk.input ?? {};
+    const p = inp.file_path ?? inp.path ?? inp.notebook_path;
+    if (typeof p !== "string" || !p) continue;
+    if (toolPaths.size >= TOOL_PATH_CAP) {
+      for (const k of [...toolPaths.keys()].slice(0, Math.floor(TOOL_PATH_CAP / 2))) toolPaths.delete(k);
+    }
+    toolPaths.set(blk.id, p);
   }
-  if (!buf.length) return null;
-  const sha256 = createHash("sha256").update(buf).digest("hex");
-  const mime = typeof src.media_type === "string" ? src.media_type : "application/octet-stream";
-  if (buf.length > MAX_BLOB_BYTES) {
-    return { mime, bytes: buf.length, sha256, kind: "ref" };
-  }
-  return { mime, bytes: buf.length, sha256, kind: "blob", blob: buf };
 }
 
-/** Nhãn một dòng để lại trong `content` — người đọc và FTS vẫn thấy có ảnh ở đây. */
-function imageLabel(a: ParsedAttachment): string {
-  return `[image:${a.mime ?? "?"} ${(a.bytes / 1024).toFixed(0)}KB ${a.sha256.slice(0, 12)}]`;
+/** Ảnh nằm ở `toolUseResult.file.base64` (kết quả `Read` một file ảnh), kèm tên gốc. */
+function toolResultImage(rec: any): ParsedAttachment | null {
+  const file = rec?.toolUseResult?.file;
+  if (!file || typeof file !== "object" || typeof file.base64 !== "string" || !file.base64) return null;
+  const a = imageAttachment({ type: "image", source: { type: "base64", media_type: file.type, data: file.base64 } });
+  if (!a) return null;
+  const tid =
+    (typeof rec.tool_use_id === "string" && rec.tool_use_id) ||
+    (Array.isArray(rec?.message?.content) ? rec.message.content.find((b: any) => b?.tool_use_id)?.tool_use_id : null);
+  const p = tid ? toolPaths.get(tid) : undefined;
+  if (p) {
+    a.srcPath = p;
+    a.name = basename(p);
+  }
+  return a;
 }
 
 function flatten(content: unknown): { text: string; attachments: ParsedAttachment[] } {
