@@ -5,6 +5,31 @@
 
 ---
 
+## [2026-07-28o] — Trả `AGENTS.md` về "đọc HẾT docs/" — luật 3 file chỉ thuộc luồng Cowork
+
+> 🔄 **Supersede:** thay phần **"đọc theo tầng"** của entry `[2026-07-28n]` (cùng ngày) — user chốt:
+> *"luật đọc 3 file chỉ áp dụng với cowork thôi, hệ non app với app vẫn đọc full docs, không đổi"*.
+> Phần **archive `05_TODO`** của entry đó GIỮ NGUYÊN, không đụng.
+
+Gate **298/298** · `conform` ✓ · `validate` ✓.
+
+**Tôi áp quá phạm vi.** Số đo về chi phí ngữ cảnh (111k token nếu đọc đủ `docs/`) là thật, và mẫu
+"lớp mỏng + lớp theo điều kiện" của 5/6 chuẩn ngoài cũng thật — nhưng nó **không tự động thành lý do
+đổi luật đọc của app/non-app**. Đó là quyết định của chủ repo, và chủ repo giữ nguyên.
+
+Đã trả về nguyên trạng: `AGENTS.md` ở repo + **cả hai template** quay lại
+*"ĐỌC HẾT `docs/` — KHÔNG bỏ sót: toàn bộ `docs/agent/*` và toàn bộ `docs/plan/*`"* (20 dòng, hai
+template byte-identical). `02_RULES` chưa từng bị đụng. `docs_template/cowork/README.md` §5 cũng trả về.
+
+**Luật rút gọn còn sống đúng một chỗ:** `BOOTSTRAP.md §1d`, và đã ghi rõ nó là **luật của riêng lần
+dựng** — vì lúc đó `05_TODO`/`06_CHANGES` còn trống nên đọc trước cũng vô ích, còn `03_STRUCTURE`
+thì tới giai đoạn 3a mới dùng. Kèm cảnh báo tại chỗ: *"từ phiên sau đọc theo đúng `AGENTS.md` của dự
+án — tức đọc HẾT `docs/`; đừng bê thứ tự rút gọn ở đây thành thói quen thường trực."*
+
+Manifest trong BOOTSTRAP theo đó về lại `AGENTS.md` = 20 dòng; gate xác nhận.
+
+---
+
 ## [2026-07-28n] — Đọc theo TẦNG thay vì đọc hết · archive cho `05_TODO` (−46%)
 
 Gate 292 → **298** · `conform` ✓ · `validate` ✓. User chốt cả hai hướng.

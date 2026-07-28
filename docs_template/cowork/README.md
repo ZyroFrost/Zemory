@@ -116,9 +116,7 @@ Hai file đáng chú ý:
 
 ## 5. Trình tự một phiên làm việc
 
-1. Trợ lý đọc `AGENTS.md`, rồi ba file nền: `01_CONSTITUTION.md` · `02_RULES.md` · `04_SKILLS.md`.
-   Các file còn lại nó chỉ mở khi cần: `03_STRUCTURE.md` trước khi đụng tới thư mục,
-   `05_TODO.md` trước khi nhận việc mới, `06_CHANGES.md` khi cần tra một quyết định cũ.
+1. Trợ lý đọc `AGENTS.md`, toàn bộ `docs/agent/`, và `docs/plan/00_overview.md`.
 2. Người dùng mô tả việc cần làm.
 3. Yêu cầu chưa đủ rõ → trợ lý **hỏi lại, mỗi lần một câu, kèm phương án đề xuất**; đủ rõ mới bắt đầu.
 4. Trợ lý làm việc, đặt file mới vào đúng thư mục theo `03_STRUCTURE.md`.
