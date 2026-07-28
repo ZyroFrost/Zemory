@@ -88,7 +88,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 20 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 21 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 69 |

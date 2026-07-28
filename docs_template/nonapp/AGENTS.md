@@ -17,4 +17,5 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
      - **NON-APP** = **sản phẩm / tài sản**, agent chỉ **đọc · dò · kéo · điền · xuất FILE** (BI/report · data · docs-only · design). *Mở một `.pbix` ra dò, đổ số vào template — KHÔNG phải phát triển app.* Áp chuẩn `03_STRUCTURE` **NON-APP** (deliverable + tasks/ + data/ … · **0 luật UI**).
    - Rồi chạy: **APP** → `zemory init` · **NON-APP** → `zemory init --non-app` → `zemory doctor` xanh. (Thiếu lệnh `zemory` → `npm i -g zemory`.) Đã có `.harness.json` → bỏ qua bước này (profile đã chốt trong đó).
 2. **ĐỌC HẾT `docs/`** — KHÔNG bỏ sót: toàn bộ `docs/agent/*` (`01_CONSTITUTION` → `06_CHANGES`) **và** toàn bộ `docs/plan/*` (`00_overview` → các spec `NN_`). *(Ngoại lệ: `docs_visual/` nằm NGOÀI `docs/` — chỉ mở khi user nhắc.)*
-3. Làm theo những gì vừa đọc — `01_CONSTITUTION` (bất biến, TỐI CAO) trên `02_RULES` (luật làm việc).
+3. **Lịch sử cũ nằm ở `docs/agent/archive/`** — NGOÀI bộ đọc mỗi phiên nhưng **vẫn tra được** (`zemory changelog search` · `zemory plan search`, phủ cả tầng archive). Không thấy một việc/quyết định trong `05_TODO`/`06_CHANGES` **KHÔNG** có nghĩa là chưa từng có — tra archive trước khi kết luận "chưa làm".
+4. Làm theo những gì vừa đọc — `01_CONSTITUTION` (bất biến, TỐI CAO) trên `02_RULES` (luật làm việc).
