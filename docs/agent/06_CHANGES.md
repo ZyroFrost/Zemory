@@ -5,6 +5,39 @@
 
 ---
 
+## [2026-07-28q] — Harness docs vào index · và bịt lỗ phình ngữ cảnh của luồng Cowork
+
+Gate **303/303** · `conform` ✓ · `validate` ✓.
+
+### `05_TODO` chưa từng được index
+`reindex` xưa nay chỉ nạp `docs/plan/*` và `06_CHANGES` — nên `05_TODO`, file **to nhất trong
+`docs/agent`**, chỉ grep được chứ không search được, và `archive/05_TODO.md` càng không. Nay nạp toàn bộ
+`docs/agent/*.md` (`kind="agent"`) + `archive/*.md` (`kind="agent-archive"`); `06_CHANGES` **cố ý loại**
+vì đã có lane changelog riêng, nạp cả hai là index trùng.
+Đo sau khi vá: *"16 plan doc(s) · **6 harness doc(s)** · 180 section(s) · 18 changelog + 56 archived"*;
+`plan search "chờ nhúng vector"` nay trả đúng hit từ `docs/agent/05_TODO.md`.
+
+### Lỗ nghiêm trọng trong luồng Cowork — user chỉ ra, và đúng
+Bộ chuẩn Cowork dựng ra bắt **đọc hết `docs/`** mỗi phiên, mà hai file sổ thì **lớn dần mãi** —
+trong khi Cowork **không có công cụ dòng lệnh nào để cắt** (sandbox không chạm terminal máy thật,
+nên `zemory archive` vô hiệu). Tức thứ vừa ship có một đường phình **không phanh**.
+
+Đo mức độ: bản trắng chỉ 57,6 KB (~14k token) — vô hại. Nhưng theo nhịp đo được trên chính repo này
+(**3,3 entry/ngày · 9,5 KB/ngày**) thì sau một năm là **~3,5 MB ≈ 875k token**, tức **tràn** cả cửa sổ
+1M. Ngay ở nhịp nhẹ hơn nhiều (1 entry/ngày, ~1,5 KB) vẫn là ~137k token/năm nạp lại mỗi phiên.
+
+**Vá:** archive **không cần công cụ** — nó chỉ là chuyển đoạn cũ từ file này sang file kia, agent làm
+được bằng thao tác file. Thêm luật **tự dọn cuối phiên** vào BOOTSTRAP, đặt ở **hai chỗ**: một mục
+giải thích *vì sao* (để agent không bỏ qua), và trong chính đoạn dán vào ô **Instructions** của project —
+chỗ duy nhất áp cho **mọi phiên sau**, chứ BOOTSTRAP chỉ chạy một lần.
+Ngưỡng **300 dòng**: `06_CHANGES` chuyển entry cũ nhất giữ ~200 dòng mới; `05_TODO` chuyển mục `[x]`,
+giữ toàn bộ mục mở. Chép **nguyên văn, cấm tóm tắt** — archive để tra lại, không phải để nén.
+
+Luật này nằm **hoàn toàn trong `docs_template/cowork/`**, không đụng hai template gốc (user đã chốt:
+app và non-app giữ nguyên "đọc full docs").
+
+---
+
 ## [2026-07-28p] — Archive thôi là "cất kho": 56 entry cũ nay tra lại được
 
 Gate 298 → **303** · `conform` ✓ · `validate` ✓. Áp cho **engine**, tức mọi project dùng zemory.
