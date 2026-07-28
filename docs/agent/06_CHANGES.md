@@ -5,6 +5,24 @@
 
 ---
 
+## [2026-07-28j] — Tự bắt: probe vừa nối xong CHỈ gọi được bằng curl · audit lại 6 mặt
+
+Gate 284 → **286** · `conform` ✓ · `validate` ✓ · audit lại toàn bộ: **0 FAIL**.
+
+### Nối backend xong tôi tưởng là xong — chưa
+Nút "Kiểm" trong màn Tính năng **chỉ render khi `kind==='check'`**, mà `vector` là `kind:'stat'` và `rerank` là `kind:'toggle'` ⇒ hai check vừa nối vào `runCheck` **không có đường bấm từ UI**, chỉ gọi được bằng `curl`. Tức tôi mới **dời chỗ mồ côi**, chưa nối thật.
+- Vá vòng 1: thêm khai báo `probe` cho feature ⇒ có nút. **Vẫn nửa vời** — `sysStatus` chỉ đọc `Z.checks` cho `kind='check'`, nên bấm xong kết quả nằm im, không hiện ra.
+- Vá vòng 2: `probeLine(f)` trong `renderSysDetail` hiện pill + chi tiết; chưa bấm thì nhắc "≈8 giây vì phải tải model". i18n đủ 2 từ điển.
+- **Đột biến hoá 4/4 bị bắt**: gỡ `probe` của từng feature · vô hiệu nhánh render nút · định nghĩa `probeLine` mà không gọi.
+- Test đầu tiên còn **đỏ oan** vì regex `[^}]*` dừng ở hàm lồng `get:function(m){…}` — sửa cách cắt entry, không sửa code.
+
+### Kiểm luôn hai rủi ro tự đặt ra
+- **Probe tải model có làm `doctor` chậm không?** Không: `doctor` chỉ chạy `memory·validate·grill` — đo **1,3 s**.
+- **UI có tự gọi probe mỗi lần vẽ không?** Không: `refreshChecks()` chỉ nạp 3 check rẻ; probe chỉ chạy khi người dùng bấm.
+
+### Audit lại 6 mặt sau mọi thay đổi
+`0 FAIL · 2 WARN`: **export mồ côi còn đúng 1** (`resolveDocPath`, cố ý để lại) · 2 endpoint > 3 s là **cold start** (đo lại khi ấm: search **0,76 s**, `/code-graph` 2,3 s). Sạch: 0 endpoint chết (54) · 0 CSS chết · 0 id ghi vào hư vô · 0 key i18n lệch · 0 ký tự điều khiển · integrity ok · 0 mồ côi mọi loại · 16/16 endpoint LIVE 200.
+
 ## [2026-07-28i] — Dọn nợ nhẹ: 4/5 export mồ côi được NỐI VÀO (không xoá) · check vector·rerank nay kiểm THẬT
 
 Gate 278 → **284** · `conform` ✓ · `validate` ✓. Mọi thay đổi đã đột biến hoá: **5/5 đột biến bị bắt.**

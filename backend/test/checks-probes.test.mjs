@@ -54,3 +54,32 @@ test("CSS `.bell` đã gỡ và không phần tử nào dùng", () => {
   assert.equal((CSS.match(/\.bell\b/g) ?? []).length, 0, "rule chết phải gỡ");
   assert.equal((MK.match(/class="[^"]*\bbell\b/g) ?? []).length, 0, "và không nơi nào dùng lại");
 });
+
+// ---- Nối đủ đường: backend có probe thì UI phải BẤM ĐƯỢC và THẤY kết quả ----
+//
+// Tự bắt 2026-07-28: nối probe vào `runCheck` xong tôi tưởng là xong, nhưng nút "Kiểm" chỉ
+// render cho `kind==='check'` — mà vector là 'stat', rerank là 'toggle' ⇒ hai check mới chỉ
+// gọi được bằng curl, tức vẫn mồ côi, chỉ đổi chỗ. Rồi vá tiếp vẫn còn nửa vời: kết quả nằm
+// im trong `Z.checks` vì `sysStatus` chỉ đọc nó cho kind='check'. Test này canh CẢ BA khâu.
+
+import { readFileSync as rf } from "node:fs";
+const APPJS = rf(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+
+test("vector + rerank khai `probe` ⇒ có nút Kiểm trong UI", () => {
+  // KHÔNG dùng [^}]* — entry rerank có hàm lồng `get:function(m){…}` nên nó dừng sớm
+  // (test đỏ oan lần đầu). Cắt theo mốc entry kế tiếp mới đúng.
+  const entry = (k) => {
+    const at = APPJS.indexOf(`{k:'${k}'`);
+    assert.ok(at > 0, `không thấy entry ${k}`);
+    return APPJS.slice(at, APPJS.indexOf("{k:'", at + 5));
+  };
+  assert.match(entry("vector"), /probe:'vector'/, "vector phải khai probe");
+  assert.match(entry("rerank"), /probe:'rerank'/, "rerank phải khai probe");
+  assert.match(APPJS, /if\(f\.probe\)return '<button class="btn sm" data-sys-check/, "phải render nút cho feature có probe");
+});
+
+test("kết quả probe được HIỂN THỊ, không nằm im trong Z.checks", () => {
+  assert.match(APPJS, /function probeLine\(f\)/, "phải có hàm vẽ kết quả probe");
+  assert.match(APPJS, /\+probeLine\(f\)/, "và renderSysDetail phải GỌI nó — định nghĩa suông thì vẫn vô hình");
+  assert.match(APPJS, /probeLine[\s\S]{0,400}Z\.checks/, "probeLine phải đọc kết quả từ Z.checks");
+});
