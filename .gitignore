@@ -20,7 +20,11 @@ share/*.key
 *.log
 *.tgz
 coverage/
-data/
+# NEO Ở GỐC (`/data/`, không phải `data/`): pattern trần khớp MỌI độ sâu, nên nó từng
+# nuốt luôn external/skills/**/data/ — 137 file dữ liệu của skill vendored chưa bao giờ
+# vào git, ai clone về cũng nhận bản cụt (vỏ skill, không có ruột). Runtime của repo
+# vẫn chỉ nằm ở gốc nên neo lại không mất gì.
+/data/
 # web-capture (now in attic/): NEVER commit pulled chat data (PII) or dumps — code only
 attic/web-capture/*.json
 attic/web-capture/*.txt
