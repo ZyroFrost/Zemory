@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 const PROFILES = ["app", "nonapp"];
 const STANDARD = [
   "AGENTS.md",
+  "CLAUDE.md",
   "agent/01_CONSTITUTION.md",
   "agent/02_RULES.md",
   "agent/03_STRUCTURE.md",
@@ -24,6 +25,9 @@ const STANDARD = [
 // Files that MUST be identical across the two profiles (the profile-neutral shells).
 const SHARED = [
   "AGENTS.md",
+  // CLAUDE.md is a pure `@AGENTS.md` import — profile-neutral by construction, so
+  // any drift between the two trees would be an accident, not a design choice.
+  "CLAUDE.md",
   "agent/01_CONSTITUTION.md",
   "agent/05_TODO.md",
   "agent/06_CHANGES.md",

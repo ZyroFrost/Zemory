@@ -41,6 +41,7 @@ Ký hiệu: `★` bắt buộc · `◆` phải có ít nhất một · `[tuỳ]`
 <thư mục làm việc>/
 │
 ├── AGENTS.md                    ★  trang chỉ đường: dự án này là gì, phải đọc gì trước
+├── CLAUDE.md                    ★  cửa vào thứ hai, chỉ nạp lại AGENTS.md (một số công cụ chỉ đọc file này)
 ├── docs/                        ★  toàn bộ bộ chuẩn nằm trong đây
 │   ├── .harness.json            ★  dấu hiệu "thư mục này đã có bộ chuẩn"
 │   ├── agent/                   ★

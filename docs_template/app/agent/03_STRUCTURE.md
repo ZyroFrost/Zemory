@@ -142,7 +142,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
 │
-├── AGENTS.md         ★         cửa vào harness (mô tả app + trỏ vào docs/)
+├── AGENTS.md         ★         cửa vào harness (mô tả app + trỏ vào docs/) — chuẩn liên-công-cụ agents.md
+├── CLAUDE.md         ★         cửa vào thứ 2: CHỈ `@AGENTS.md`. Claude Code đọc CLAUDE.md, KHÔNG đọc AGENTS.md ⇒ thiếu file này là cửa vào không tự nạp
 ├── README.md · LICENSE · .gitignore · .gitattributes   (manifest) giới thiệu/giấy phép/ignore/eol-lfs
 ├── package.json | pyproject.toml   ★ manifest (root — vd Node-CLI bin ở đây)
 ├── bin/              [opt]  entry CLI (npm convention: bin/<name> → dist/cli.js)

@@ -53,6 +53,12 @@ export interface AdoptResult {
 // constitution.md), read BEFORE the generic working rules.
 const STANDARD_AGENT = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
 
+/** Files scaffolded at the project ROOT (everything else lives under docs/).
+ *  Two doors into the same harness: AGENTS.md is the cross-vendor standard,
+ *  CLAUDE.md exists because Claude Code reads only CLAUDE.md — it imports
+ *  AGENTS.md rather than repeating it. */
+const ROOT_ENTRIES = ["AGENTS.md", "CLAUDE.md"];
+
 // Projects adopted the harness under older numberings:
 //   gen-1 (pre 2026-07-09): 01_RULES / 02_TODO / 03_CHANGES (no STRUCTURE doc)
 //   gen-2 (pre 2026-07-14): 01_RULES / 02_STRUCTURE / 03_TODO / 04_CHANGES
@@ -206,23 +212,29 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
     for (const f of agentMd) present.push(f);
   }
 
-  // Root entry: ONLY AGENTS.md (thin — setup desc + pointer into docs/). Nothing
-  // else lives at root; the whole harness is contained in docs/.
-  const agentsSrc = join(tplBase, "AGENTS.md");
-  const agentsDst = join(projectRoot, "AGENTS.md");
-  if (existsSync(agentsSrc)) {
-    const fresh = readFileSync(agentsSrc, "utf8").replace(/<PROJECT>/g, projectName);
-    if (!existsSync(agentsDst)) {
-      writeFileSync(agentsDst, fresh);
-      added.push("AGENTS.md");
+  // Root entries — thin pointers only; the whole harness stays inside docs/.
+  //   AGENTS.md  the cross-vendor standard (agents.md): read by Codex, Cursor,
+  //              Copilot, Gemini CLI, Aider, Windsurf and ~60 others.
+  //   CLAUDE.md  Claude Code reads CLAUDE.md and NOT AGENTS.md (its docs say so
+  //              outright), so without this file the harness entry never
+  //              auto-loads in Claude Code. It only imports AGENTS.md — one
+  //              source, two doors, no duplicated content.
+  for (const entry of ROOT_ENTRIES) {
+    const src = join(tplBase, entry);
+    const dst = join(projectRoot, entry);
+    if (!existsSync(src)) continue;
+    const fresh = readFileSync(src, "utf8").replace(/<PROJECT>/g, projectName);
+    if (!existsSync(dst)) {
+      writeFileSync(dst, fresh);
+      added.push(entry);
     } else {
-      const cur = readFileSync(agentsDst, "utf8");
+      const cur = readFileSync(dst, "utf8");
       // Refresh ONLY our own generated file (marker comment); never a user-authored one.
       if (cur.startsWith("<!-- zemory") && cur !== fresh) {
-        writeFileSync(agentsDst, fresh);
-        added.push("AGENTS.md (refreshed)");
+        writeFileSync(dst, fresh);
+        added.push(`${entry} (refreshed)`);
       } else {
-        present.push("AGENTS.md");
+        present.push(entry);
       }
     }
   }

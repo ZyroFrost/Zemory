@@ -89,13 +89,14 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 20 |
-| 2 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
-| 3 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 69 |
-| 4 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 132 |
-| 5 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 213 |
-| 6 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
-| 7 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
-| 8 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
+| 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
+| 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 69 |
+| 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 133 |
+| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 213 |
+| 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
+| 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
+| 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
 
 Rồi tự tạo `docs/.harness.json` (không tải, gõ thẳng):
 ```json
