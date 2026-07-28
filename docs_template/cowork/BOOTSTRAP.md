@@ -42,11 +42,43 @@ Không cần cài gì trước. Không cần biết dòng lệnh.
 
 ---
 
+## Cách NÓI với người dùng — áp cho MỌI giai đoạn
+
+Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ sư. Bảng và báo cáo bạn in ra là
+**sản phẩm giao đi**, không phải log nội bộ.
+
+1. **Nói bằng CÔNG VIỆC, không bằng thuật ngữ.** Trước khi viết một từ chuyên ngành, thử diễn đạt
+   lại bằng thứ người dùng làm hằng ngày. Diễn đạt được thì bỏ từ đó đi.
+2. **Tên thư mục chuẩn thì GIỮ NGUYÊN** (`reports/` · `sources/` · `templates/` …) — đó là tên thật
+   trên đĩa, đổi đi là chỉ sai chỗ. Nhưng **lần đầu nhắc mỗi tên, kèm một cụm giải thích**:
+   *"`sources/` — nơi để dữ liệu đầu vào"*. Từ lần sau dùng trần.
+3. **Những từ này KHÔNG đưa vào câu hướng tới người dùng** (chúng là tiếng lóng nội bộ):
+   | Đừng viết | Viết |
+   |---|---|
+   | routing | bảng tra "để ở đâu" |
+   | manifest | danh sách file |
+   | profile / non-app | loại dự án |
+   | slot | thư mục chuẩn |
+   | deliverable | sản phẩm giao đi |
+   | gap-fill | chỉ bổ sung chỗ còn thiếu |
+   | idempotent | chạy lại nhiều lần vẫn ra một kết quả |
+   | scaffold / bootstrap | dựng |
+4. **Dẫn chiếu chuẩn đặt CUỐI câu, trong ngoặc** — sau khi đã nói lý do bằng tiếng người. Người
+   dùng cần hiểu *vì sao*; số hiệu chỉ để tra lại khi cần.
+   - ✗ `03 §3: "định nghĩa nguồn … chỗ automation KÉO đọc → sources/"`
+   - ✓ File này là dữ liệu đầu vào để dựng bản đồ, nên để ở `sources/` — thư mục chuẩn dành cho
+     dữ liệu nguồn *(chuẩn `03 §3`)*.
+5. **Thuật ngữ CỦA CHÍNH dự án thì giữ** (tên định dạng file, đơn vị đo, tên hệ toạ độ…). Đó là
+   ngôn ngữ nghề của người dùng, không phải tiếng lóng của bạn.
+
+---
+
 ## Giai đoạn 1 — Áp bộ chuẩn
 
 ### 1a. Lấy nội dung: thử theo THỨ TỰ, dừng ở lối đầu tiên chạy được
 | # | Lối | Vì sao xếp thứ tự này |
 |---|---|---|
+| 0 | Máy đã có sẵn một bản chuẩn trên đĩa → **chép thẳng từ đó**, nhưng **phải đối chiếu số dòng với MANIFEST trước khi chép** | Rẻ nhất, không cần mạng. Bỏ bước đối chiếu thì có nguy cơ chép nhầm một bản cũ |
 | 1 | `curl -fsSL <URL> -o <đích>` trong bash | Nội dung đi thẳng ra đĩa, gần như không tốn ngữ cảnh |
 | 2 | Tool `web_fetch` rồi tự ghi ra file | Luôn chạy được (đi qua máy chủ Anthropic, không qua mạng sandbox), nhưng tốn ngữ cảnh |
 | 3 | Xin người dùng gửi file `.zip` rồi giải nén | Khi cả hai lối trên đều bị chặn |
@@ -167,3 +199,6 @@ Skills**. Lưu ý trần: `description` tối đa **200 ký tự**, `SKILL.md` n
    > chuẩn trong đó. Việc đã xong ghi `06_CHANGES.md`, việc còn dở ghi `05_TODO.md`.
    > Yêu cầu chưa rõ thì hỏi lại theo `04_SKILLS §grill`, mỗi lần một câu.
 4. Báo người dùng: từ giờ chỉ cần mô tả việc, không phải nhắc lại bộ chuẩn nữa.
+5. Người dùng hỏi *"bộ chuẩn này là cái gì / từng file để làm gì"* → trỏ họ đọc
+   [`README.md`](README.md) cạnh file này (bản viết cho người, không có thuật ngữ kỹ thuật).
+   **Đừng tự giải thích lại theo cách của bạn** — bản đó đã chốt cách diễn đạt.
