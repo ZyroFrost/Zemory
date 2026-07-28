@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-07-29d] — Một thư mục, HAI khoá index: chữ ổ đĩa chẻ đôi bộ nhớ của chính repo này
+
+Gate 313 → **320** · `conform` ✓ · `validate` ✓ · 3/3 đột biến bị bắt.
+
+- **Bệnh.** `findProjectRoot` trả `resolve(process.cwd())`, mà trên Windows chữ ổ đĩa trong `cwd()` phụ
+  thuộc lúc gõ `cd d:\` hay `cd D:\` ⇒ **cùng một thư mục sinh hai `project_root`**. Đo trên DB thật:
+  docs của repo này bị chẻ **24 row `D:\Zyro\Tool\Zemory`** vs **15 row trùng cũ `d:\Zyro\Tool\Zemory`**,
+  bảng `changelog` thêm 7 row nữa. Tìm kiếm phạm vi-project chỉ thấy nửa nào khớp chữ của lúc đó.
+- **Chữa tận gốc.** `normalizeRoot()` viết hoa chữ ổ đĩa (drive letter Windows vốn không phân biệt
+  hoa-thường; phần còn lại của đường dẫn KHÔNG đụng vì tên folder có nghĩa và OS khác phân biệt hoa-thường).
+  Chặn ở **cả hai đầu**: nơi sinh root (`findProjectRoot`, `currentProjectRoot`) và nơi **ghi** vào index
+  (`importDoc`, `importChangelog`) — cộng 3 cửa nhận root từ ngoài (`checks` rootArg, `status` rootArg,
+  MCP `args.project`). Ghi đã chuẩn thì không caller nào đầu độc lại được index.
+- **Dọn 120 row chết** (cứu trước, xoá sau — mỗi bước có bản hoàn nguyên JSON trong `attic/`):
+  36 doc/296 section thuộc **6 root thư mục đã biến mất** · 15 doc trùng dưới root không chuẩn ·
+  5 doc **mồ côi** (file `.md` đã đổi tên: `04_TODO`→`05_TODO`, `00_build_plan`→`00_overview`) ·
+  64 changelog entry chết. Còn lại **7 root, tất cả chuẩn và còn sống**, 0 section mồ côi, FTS integrity ✓.
+- **Cứu được lịch sử tháng 6.** 33 entry `2026-06-17..06-30` (32,4 KB) **chỉ còn trong index** — không có
+  trong `06_CHANGES.md` lẫn `archive/`, vì bản sống bắt đầu từ `2026-07-10`. Đã trả về tầng archive
+  (nguồn là `.md`, index dựng lại từ đó) ⇒ `changelog search "Khởi tạo repo"` nay ra `[2026-06-17]`.
+  Archive: 71 → **104 entry**, liền mạch `06-17 .. 07-28`.
+- **Bẫy đã dính, ghi lại để khỏi dính lần nữa:** bản cứu đầu tiên báo "36 file" nhưng trên đĩa chỉ có
+  **31** — slug thư mục của hai root chỉ khác chữ `D`/`d` nên Windows coi là **một** folder và 5 file bị
+  **ghi đè**. Đúng cái bệnh đang đi chữa, tái hiện ngay trong công cụ chữa nó. Slug nay mang hash của
+  root gốc. Bài học: đếm chéo file-trên-đĩa vs row-trong-DB, đừng tin con số script tự báo.
+- **Còn hở (chưa sửa):** `PBI_SasinFlow_Maintain` có 6 changelog entry `date=NULL` là `##` heading của
+  `plan/01_legacy_topology.md` bị parse nhầm thành entry — root còn sống nên lần dọn này không đụng.
+- Fixture `changelog-archive-index` từng dùng root giả `/proj/<random>`; `resolve()` biến nó thành
+  `D:\proj\...` trên Windows ⇒ ghi một khoá, tra một khoá. Nay dùng temp dir thật, như production.
+
 ## [2026-07-29c] — Mục xong ra khỏi backlog NGAY, không chờ ngưỡng · và test của tôi vừa ghi vào DB thật
 
 Gate 312 → **313** · `conform` ✓ · `validate` ✓.

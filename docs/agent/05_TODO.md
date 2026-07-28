@@ -248,6 +248,7 @@
 - [ ] **(plan 14 §7) Chưa chốt:** tray bằng gì trên Node · write-gate phủ lệnh nào trước · autostart per-OS làm sao · graph cache để trong DB hay file JSON · chu kỳ auto-sync.
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 ## Việc cần xác minh thực tế
+- [ ] **`##` heading của doc plan bị parse thành changelog entry (`date=NULL`).** Đo 2026-07-29: `PBI_SasinFlow_Maintain` có 6 entry `date=NULL` mà body là **bảng SQL của `plan/01_legacy_topology.md`** — ai đó trỏ `importChangelog` vào file không phải changelog, và `parseChangelog` nhận mọi `##` nên nuốt sạch. Root còn sống nên đợt dọn `2026-07-29d` không đụng. **Cần chốt:** `parseChangelog` bỏ qua entry không có `[ngày]`, hay `importChangelog` từ chối file thiếu header `# Change Log`? (Cân nhắc: entry hợp lệ ghi ngày trong title kiểu `## 2026-07-16 — …` cũng ra `date=NULL` — cấm thẳng sẽ mất chúng.)
 - [ ] Mở phiên Claude và Codex mới để xác nhận Stop hook capture end-to-end trên runtime thật.
 - [ ] Chạy benchmark Raw vs lite vs Lean map/signatures vs semantic trên cùng corpus code/log/test.
 ## Phase 2 — Năng lực nặng

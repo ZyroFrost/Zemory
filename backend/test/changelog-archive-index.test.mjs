@@ -44,7 +44,11 @@ function scratch() {
   writeFileSync(active, ACTIVE);
   writeFileSync(archived, ARCHIVED);
   const dbPath = join(dir, "t.db");
-  const root = `/proj/${Math.random().toString(36).slice(2)}`;
+  // The root must be a REAL absolute path, as it always is in production: importChangelog
+  // canonicalises it (see normalizeRoot), and a synthetic POSIX root like "/proj/x" gets
+  // resolved against the current drive on Windows — so the row would be written under one
+  // key and read back under another. The temp dir is already unique per test.
+  const root = dir;
   const rows = () => {
     const db = openMemory(dbPath);
     try {

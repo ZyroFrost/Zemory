@@ -3,7 +3,7 @@
 // Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
 import { basename, resolve } from "node:path";
 import { scanHiddenChars } from "../memory/redact.js";
-import { findProjectRoot } from "../core/config.js";
+import { currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
@@ -301,7 +301,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     if (rest.includes("--digest")) {
       // Recall "digest lane": session-level hits (read the thin digest first,
       // drill into messages via `memory digest <session>` / `memory show <#id>`).
-      const proj = all ? undefined : (findProjectRoot() ?? process.cwd());
+      const proj = all ? undefined : (currentProjectRoot());
       const dhits = searchDigests(query, { project: proj, recency: recencyOpt });
       console.log(`zemory memory search — "${query}" · digest lane (${all ? "whole memory" : "this project"})`);
       if (!dhits.length) {
@@ -315,7 +315,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log("  → open one: `zemory memory digest <session_id>`");
       return;
     }
-    const project = findProjectRoot() ?? process.cwd();
+    const project = currentProjectRoot();
     const useHybrid = forceHybrid || (!forceFts && hybridEnabled());
     const rerankOpt = forceRerank ? true : forceNoRerank ? false : undefined;
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
@@ -423,7 +423,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log("  Link the folder once in `zemory ui`, or pass --dir. Needs the share key (--key-file / ZEMORY_SHARE_KEY / share/share.key).");
       return;
     }
-    const root = findProjectRoot() ?? process.cwd();
+    const root = currentProjectRoot();
     const keyFile = resolveShareKey(root, flagValue(args, "--key-file"));
     console.log(`zemory memory sync — ${driveDir}`);
     try {

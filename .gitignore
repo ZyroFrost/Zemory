@@ -32,3 +32,10 @@ attic/web-capture/*.txt
 # Bản lùi do writeFileAtomic({backup:true}) tạo khi ghi đè file NGUỒN (vd `zemory archive`
 # cắt ngắn 06_CHANGES.md). Là lưới an toàn CỤC BỘ — không commit; lịch sử đã có git lo.
 *.md.bak
+
+# Bản cứu index (dump doc row của project khác ra .md trước khi xoá row trong
+# global_memory.db). global_memory.db index docs của MỌI project trên máy, nên dump đó
+# mang docs của repo KHÁC — với zemory là repo PUBLIC thì đó là công bố hạ tầng nội bộ
+# của người ta (IP server, tên DB, tên biến *_PASSWORD). Bắt được 2026-07-29 lúc soi
+# diff TRƯỚC khi push; dump nay để ở ~/.zemory/rescue/ (ngoài mọi cây git).
+attic/index-rescue-*/

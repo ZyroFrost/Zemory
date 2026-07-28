@@ -1,7 +1,7 @@
 // `zemory graph <impact|callers|fitness|docs|export>` — the derived code/docs
 // graph (HP điều 13). Advisory, 0 LLM except the opt-in --semantic overlay.
 import { writeFileSync } from "node:fs";
-import { findProjectRoot } from "../core/config.js";
+import { currentProjectRoot } from "../core/config.js";
 import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "../memory/graph/graph.js";
 import { enrichGraphSymbols, resolveCalls } from "../memory/graph/graph-symbols.js";
 import { buildTouchIndex, touchesFor } from "../memory/graph/graph-memory.js";
@@ -12,7 +12,7 @@ import { flagValue } from "./_shared.js";
 
 export async function cmdGraph(args: string[]): Promise<void> {
   const sub = args[0];
-  const root = findProjectRoot() ?? process.cwd();
+  const root = currentProjectRoot();
   if (sub === "impact") {
     const query = args[1];
     if (!query) {

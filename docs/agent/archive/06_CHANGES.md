@@ -1490,3 +1490,374 @@ Nâng chuẩn cấu trúc (`docs/agent/02_STRUCTURE.md` + `docs-template/`) lên
 
 
 ## [2026-07-10] — docs(structure): deploy backup is BIDIRECTIONAL — verify VM backup vs local attic/ before overwrite, resync after
+
+## [2026-06-30] — Clean RAG backlog state and fix generated docs heading separators
+
+- Updated TODO / Plan 05 / roadmap so full vector backfill is recorded as completed historical work, not an open next step.
+- Reworded backfill notes to avoid freezing a live corpus count; new transcript messages are handled by incremental `zemory brain embed`.
+- Fixed generated docs rendering so a section edited via `plan set` without a trailing newline cannot glue the next heading onto the previous line.
+- Added a regression test for the renderer separator behavior and re-rendered docs from `global_memory.db`.
+- Verification: `npm run check`, `zemory validate`, `zemory doctor`, and final `brain info` all pass; vector count matched message count at the verification point.
+
+## [2026-06-30] — Complete full vector backfill for global_memory.db
+
+- Finished zemory brain embed --all on the global brain; vec_chunks now matches messages 1:1 at the verification point.
+- Fixed a real vec0 insert failure by switching the backfill writer to explicit insert + update-on-duplicate, so a preexisting row no longer crashes the pass.
+- Switched backfill to batched embeddings, then tuned the pass order to group similar-length messages so batch padding waste stays low on long transcripts.
+- npm run check passes after the change set.
+
+## [2026-06-30] — Document repo-contained memory share key
+
+- Theo yêu cầu owner, đưa `share/share.key` vào private repo để máy khác clone về có thể giải mã memory bundle trực tiếp.
+- Cập nhật README và `share/README.md` với flow clone → `git lfs pull` → build → `brain import` bằng key trong repo.
+- Giữ cảnh báo rõ: ai có quyền đọc repo private này thì có quyền giải mã toàn bộ memory bundle.
+
+## [2026-06-30] — Dọn backlog sau kiểm tra app
+
+- Kiểm tra lại trạng thái app sau UI resize và push Git.
+- Dọn backlog: bỏ các mục `Initial commit / remote Git` đã hoàn tất khỏi TODO.
+- Xác nhận còn lại là roadmap/việc cần nghiệm thu thực tế, không phải blocker cơ học của v0.1.
+
+## [2026-06-30] — Encrypted global brain sharing bundle
+
+- Thêm `zemory brain keygen` để tạo share key local nằm ngoài repo.
+- Thêm `zemory brain export <out.zemory.enc>` dùng AES-256-GCM + scrypt, snapshot SQLite bằng online backup trước khi mã hóa.
+- Thêm `zemory brain import <in.zemory.enc>` để restore bundle sang brain DB local; mặc định không overwrite nếu thiếu `--force`, và backup DB cũ khi thay thế.
+- Thêm test round-trip mã hóa/giải mã, kiểm tra bundle không chứa plaintext; README ghi flow share memory qua encrypted bundle + Git LFS.
+- Bundle `share/global_memory.zemory.enc` được tạo để upload; key nằm ngoài repo ở `~/.zemory/share.key`.
+
+## [2026-06-30] — Hiển thị coverage agent và folder quét trong UI
+
+- Thêm backend coverage cho live UI: transcript stores từ known_stores và project folders từ sessions.project_root.
+- UI giờ hiển thị rõ số agent/source, số transcript store, số project folder và path đầy đủ trong panel Capture coverage.
+- Scan & capture report giờ liệt kê Stores scanned ngay sau khi bấm Scan known/Deep scan, kể cả khi không có nhiều session mới.
+- QA bằng Playwright/Edge: desktop + mobile đều render coverage paths; search vẫn trả kết quả; không console/page errors; npm run check pass 29 tests.
+
+## [2026-06-30] — Khóa live UI trong một viewport
+
+- Khóa live UI vào một viewport cố định: html/body/shell không còn page-level scroll.
+- Workspace, inspector, Recall, bottom deck được chia bằng grid height 100vh; nội dung dài chỉ scroll trong panel cụ thể như result list, thread preview, coverage và live activity.
+- Mobile cũng không tạo page scroll; status deck chuyển thành strip ngang scroll nội bộ và chỉ giữ core Recall trong viewport.
+- QA Playwright/Edge: desktop 1536x1040 và mobile 390x844 đều có docScrollHeight == clientHeight, windowScrollY = 0, search vẫn trả 12 rows, không console/page errors.
+
+## [2026-06-30] — Live memory cockpit UI redesign
+
+- Redesign `zemory ui` thành live memory cockpit 3 cột: rail điều hướng, vùng recall chính và inspector cho brain/vector/share/activity.
+- Thêm `src/ui-page.ts` để tách template UI khỏi server; `src/ui.ts` giờ tập trung endpoint và dashboard data helpers.
+- `/brain-status` trả thêm table inventory, vector count/remaining/coverage, share bundle/key/LFS status và recent activity để UI hiển thị đầy đủ thông tin.
+- UI tự refresh status/brain trong lúc chat, giữ search/expand context, project picker, setup actions, scan known/deep scan và capability checks.
+- QA: `npm run check` PASS 29/29; Playwright fallback qua Edge kiểm desktop 1440x1000 và mobile 390x844, search FTS trả hit và expand context, không có console error.
+
+## [2026-06-30] — Memory retention/privacy core
+
+- Thêm `src/brain/privacy.ts` với raw local `backup/restore`, `forget` và `redact` cho global brain.
+- CLI mới: `zemory brain backup`, `restore`, `forget`, `redact`; destructive path dry-run mặc định hoặc yêu cầu `--force`, auto backup trước khi sửa/xóa.
+- `forget` hỗ trợ selector `--session`, `--project`, `--source/--agent`, `--before`, `--message`; xóa kèm vector rows để RAG không giữ bóng dữ liệu đã quên.
+- `redact --force` re-apply secret redaction cho messages/artifact index; thêm trigger update cho `messages_fts`/`messages_fts_tri` để search index đồng bộ khi content đổi.
+- Thêm test backup/restore, forget dry-run/force, redact + FTS; `npm run check` pass 32 tests và CLI QA trên DB tạm pass.
+
+## [2026-06-30] — Thêm resize handles cho live UI
+
+- Thêm draggable resize handles cho live UI: sidebar, inspector, split Recall, và bottom deck.
+- Layout resize được lưu vào localStorage, reload vẫn giữ; double-click trên handle để reset vùng tương ứng.
+- Giữ invariant UI một màn hình chính: body/html không scroll, chỉ các panel nội bộ scroll.
+- QA bằng Edge/Playwright: kéo 4 handle, reload persistence, mobile ẩn handle, search brain trả kết quả, không console error.
+
+## [2026-06-30] — Tinh chỉnh live cockpit UI sát concept
+
+- Siết lại layout live memory cockpit theo concept: sidebar trái, command bar, status deck, Recall split list/preview, right rail và bottom deck trong first viewport.
+- Recall search giờ render dạng result rows + thread preview, không bung inline từng card như bản trước.
+- Bổ sung thông tin thật trên UI: global brain, vector index, share bundle, agents, project harness, plan/changelog, checks và live activity.
+- Sửa mobile không còn tự focus search khi load, tránh bị nhảy xuống giữa màn hình.
+- Đã QA bằng Playwright trên Edge: desktop/native 1536x1040, mobile 390x844, search `zemory` trả 12 rows và preview 7 messages, không console/page errors.
+
+## [2026-06-29] — MCP global recall server
+
+Thêm MCP recall server local:
+
+- `zemory mcp` chạy stdio JSON-RPC/MCP với 4 tool ổn định: `brain_search`, `brain_show`, `plan_search`, `plan_show`.
+- Tool logic reuse global brain + DB-source docs hiện có; không tạo memory DB thứ hai.
+- Global brain hoạt động ở cấp máy: nếu cwd/project chưa có `docs/.harness.json`, MCP recall không fail mà rơi về global scope.
+- `brain_search` dùng progressive disclosure: trả hit nhẹ trước, `brain_show` mở full message/context khi cần.
+- `plan_search`/`plan_show` đọc section DB-source, giữ plan/docs là nguồn curated theo project.
+- Vector search fail-fast khi DB chưa có `vec_chunks`, tránh load embed model vô ích trên DB tạm/DB chưa backfill.
+- README cập nhật: zemory cài một lần toàn máy; per-project `zemory init` chỉ là harness docs tùy chọn.
+- Test thêm `test/mcp.test.mjs`; `npm run check` PASS 25/25.
+
+## [2026-06-29] — Nghiệm thu v0.1 + RAG core A-D PASS
+
+Nghiệm thu v0.1 và RAG core trên repo thật:
+
+- `npm run check` PASS: typecheck + lint + build + 21 test.
+- `zemory doctor` PASS: docs, plan, providers, FTS brain, workflow validate/grill đều xanh.
+- CLI smoke PASS: `docs sync`, `docs ls`, `plan search`, `changelog ls`, `validate`, `structure`, `brain scan`, `brain search`, `brain bench`, `npm pack --dry-run`.
+- Global brain thật scan OK: 219 session, 53k+ message, 4 agent.
+- RAG core A-D đã có code/test: EmbeddingGemma/Transformers.js, `sqlite-vec`, hybrid RRF, benchmark gate.
+- `brain embed` CLI thêm progress trong batch để DB lớn không nhìn như treo; test khóa progress callback.
+- Docs/TODO/plan cập nhật lại: v0.1 chuyển sang đã nghiệm thu cơ học, RAG A-D chuyển sang done; còn lại là initial commit, MCP recall tools, retention/privacy, full vector backfill, và mở RAG sang data chính.
+
+## [2026-06-29] — Polish RAG backfill UX: embed progress + remaining count
+
+- `zemory brain embed` thêm progress callback theo batch: CLI in tiến độ `done/total` trong lúc embed, tránh cảm giác treo trên DB thật.
+- `zemory brain info` hiển thị thêm số message còn thiếu embedding (`remaining`) cạnh `vec_chunks`.
+- Help của `zemory brain` mô tả rõ `embed [--limit N] [--all]`, default one-batch 500 message và `--all` để catch up toàn corpus.
+- Test thêm assertion cho progress callback và `vectorRemaining`; `npm run check` PASS.
+
+## [2026-06-26] — Đồng bộ toàn bộ docs về trạng thái hiện tại + RAG Giai đoạn F (data chính)
+
+Thêm **RAG Giai đoạn F** (ý tưởng user 2026-06-26): sau core RAG, mở RAG sang **toàn bộ data chính** (ngoài memory agent) — CHUNG model + embed service + retriever + RRF; DB tách được nhưng dùng chung 1 model; retriever build **đa-store + `kind`** để mở rộng không phá code. Ghi vào plan 05 §4.F + §5 + TODO.
+
+**Đồng bộ toàn bộ docs về trạng thái hiện tại** (bỏ tàn dư compression, governance→harness, hướng tiếp = RAG):
+- `00_build_plan`: §2 nguyên tắc (bỏ framing nén; #5 = "không proxy model API"), §7 bản quyền (LeanCTX→engine RAG: EmbeddingGemma/Transformers.js/sqlite-vec, kiểm license Gemma), §9 quyết định (4 capability, compression bỏ, RAG engine nội bộ search), §10 bước kế (RAG → MCP → retention).
+- `04_roadmap`: §8 dashboard (bỏ token-ledger/bounce/artifact), §10 trình tự (ưu tiên = RAG, không phải compression).
+- `01_repo_survey` §0: banner + định vị hiện tại (2 lane + RAG), khảo sát cũ giữ làm hồ sơ.
+- `02_TODO`: Phase 3 dashboard, mục "Đã xong" đánh dấu compress đã bỏ + governance→harness.
+- Changelog cũ (03_CHANGES) giữ nguyên = lịch sử.
+
+## [2026-06-25] — Artifact store = bộ nhớ vĩnh viễn (không tự xóa); archive gzip thay TTL/LRU
+
+> 🔄 **Supersede:** thay quyết định "Artifact TTL 7 ngày / quota 2 GB LRU (plan 03 §7/§14, 2026-06-20)" — user chốt: database KHÔNG bao giờ tự xóa dữ liệu.
+
+User chốt artifact store là **bộ nhớ vĩnh viễn**: không TTL, không auto-evict. Lý do nền (vá lỗ hổng thiết kế cũ): khi nén bật, raw output **chỉ còn trong artifact** (transcript chỉ giữ envelope) → nếu tự xóa là **mất gốc vĩnh viễn**, không dựng lại được từ transcript.
+
+Chính sách mới (đã build Giai đoạn B):
+- **Đầy → CẢNH BÁO, không xóa.** `output stats` báo dung lượng + cờ over-quota (soft quota mặc định 5 GB, env `ZEMORY_ARTIFACT_QUOTA_GB`). User thêm ổ.
+- **Cũ/lớn → archive (gzip lossless) tại chỗ.** `output archive` nén file nguội (mặc định ≥14 ngày, env `ZEMORY_ARTIFACT_ARCHIVE_DAYS`); `show` tự giải nén → vẫn byte-exact.
+- **Xóa chỉ khi user tường minh** `output rm <id>`. `pin` = giữ nóng, không archive, không xóa.
+
+Code: `src/artifacts/{store,search,retention}.ts` (archiveCold / storeStats / removeArtifact / sweepOrphans; show giải nén .gz; store đặt expires_at=null). DB schema v3 giữ cột expires_at nhưng luôn null. CLI: `zemory output stats|archive|rm` (bỏ `gc` xóa-theo-TTL). 8 test artifact phản ánh model mới.
+
+## [2026-06-25] — Bỏ compression khỏi scope — zemory = global memory + governance
+
+> 🔄 **Supersede:** đảo quyết định "compression quota-safe là ưu tiên số 1 (2026-06-21)" + toàn bộ hướng nén tool-output. User chốt: trên Claude subscription (không trả theo token) compression không cho net saving hợp lý — đúng lý do Headroom thất bại.
+
+Giá trị thật của zemory = **global memory (recall xuyên phiên)** + **governance/docs harness**. Compression bị **gỡ khỏi tool sống**.
+
+- Capability `compress` + provider lite/leanctx: bỏ khỏi registry/types/runtime/checks/status/doctor/UI/CLI.
+- Lệnh CLI bỏ: `run`, `compress`, `read`, `output`, `eval`. UI bỏ panel "Token benchmark" + endpoint `/ledger`.
+- Source nén (Giai đoạn A+B: `src/compress`, `src/eval`, `src/artifacts`, `modules/compress-*`) **dời sang `attic/`** (giữ tham chiếu cho A.I Center sau, không build). Test nén → `attic/test/`.
+- Giữ nguyên: global brain (capture + recall `brain search/show`), governance (plan/changelog/AGENTS), doctor cho 4 capability còn lại (memory/search/governance/health). DB schema giữ bảng artifact (vô hại, không dùng).
+- Còn 13 test, build + doctor xanh.
+
+Plan 03/04 (thiết kế compression) giữ làm hồ sơ ý tưởng đã thử, đánh dấu DROPPED.
+
+## [2026-06-25] — RAG semantic: chốt stack (EmbeddingGemma + Transformers.js + sqlite-vec) + plan 05 + TODO
+
+Chốt làm **RAG semantic** cho zemory (nâng recall từ FTS-only lên hybrid). Tạo `docs/plan/05_rag.md` + TODO phân kỳ A–E.
+
+Stack đã chốt:
+- **Model embed:** EmbeddingGemma-300M (Google) — nhẹ ~300M, đa ngữ 100+ (tiếng Việt tốt), Matryoshka cắt chiều. (BGE-M3 loại vì ~2.2GB không nhẹ; txtai chỉ là framework tham chiếu Python, không dùng.)
+- **Runtime:** Transformers.js (ONNX) — chạy trong Node/TS, KHÔNG Python/GPU.
+- **Vector store:** sqlite-vec trong chính `global_memory.db` (giữ 1 file).
+- **Fusion:** thêm luồng vector vào RRF đã có (BM25 + vector). Vector = engine nội bộ slot `search`, không slot riêng.
+
+Bất biến: embed model nhỏ ≠ LLM (vẫn "tầng lưu không gọi LLM"); FTS là baseline luôn có, vector chỉ thêm + fallback FTS khi lỗi; agentic on-demand; chỉ bật vector sau benchmark thắng net.
+
+Dọn TODO cũ thời nén: quyết định LeanCTX (moot), semantic-provider (chốt = engine nội bộ).
+
+## [2026-06-25] — Đổi tên governance → harness; dọn docs về trạng thái hiện tại
+
+- Capability `governance` → **`harness`** (rõ nghĩa hơn: nó quản đúng cái *docs harness* — rules/TODO/changelog/plan + validate). Provider của `memory` đổi `harness` → **`global`** để tránh trùng tên. Code: types/runtime/modules; file `governance-docs.ts`→`harness-docs.ts`, `memory-harness.ts`→`memory-global.ts`. Doctor giờ: `memory → global · search → keyword · harness → docs · health → core`.
+- Dọn docs về trạng thái hiện tại: `00_build_plan` §0/§3/§4/§8 + modules bỏ compression khỏi kiến trúc + đổi governance→harness; plan 04 §1/§8 + `02_TODO` đồng bộ. zemory = **global memory + harness** (4 capability: memory/search/harness/health).
+- `.harness.json` adapters: `memory: global`. 13 test, build + doctor xanh.
+
+## [2026-06-21] — Chốt compression quota-safe là ưu tiên số 1
+
+User xác nhận chức năng chủ chốt của Zemory là **nén file/tool output an toàn cho subscription quota**. Session kế tiếp phải đọc `docs/plan/03_subscription_quota_safe_compression.md`, bàn nốt ba thông số implementation rồi build ngay Giai đoạn A–C.
+
+Thứ tự được chốt: safety contract và baseline → artifact store/envelope → provider `quota-safe` → LeanCTX structured adapter → host canary. MCP recall, semantic search, code map và UI không được ưu tiên cao hơn lõi compression.
+
+Bất biến giữ nguyên: không `ANTHROPIC_BASE_URL`, không model API proxy, không rewrite history/cache prefix, không auto-allow permission; raw data phải truy hồi được và mọi mức nén phải có bounce/fallback metrics.
+
+## [2026-06-18] — AGENTS flow: docs sync bước 1 + policy gộp TODO vào bộ chuẩn (plan no-todo)
+
+
+- AGENTS flow: thêm **`zemory docs sync` là BƯỚC 1** (nạp docs/plan→brain) — trước đó flow bảo plan ls/search nhưng chưa sync → plan rỗng (setup "lỗi").
+- Policy: bộ chuẩn LUÔN có TODO; agent GỘP mọi todo (TODO.md root, todo trong plan) → 02_TODO; plan = specs thuần KHÔNG todo. Ghi vào AGENTS + migrate playbook.
+- Hint `plan ls` rỗng → "run docs sync".
+
+## [2026-06-18] — AGENTS.md gọn lại (3 bước, có điểm kết) + sync tự refresh
+
+
+- Viết lại AGENTS.md GỌN + tuyến tính: **3 bước mở phiên** (docs sync → đọc 01_RULES → doctor) + điểm KẾT rõ "→ Hết, bắt tay làm" → agent hết lần quẩn. Tách tra-cứu/sửa/quy-tắc thành mục riêng, bỏ câu điều kiện trong luồng chính.
+- `sync` TỰ refresh AGENTS.md nếu là bản zemory tạo (marker `<!-- zemory`) → project cũ (zosage) nhận flow mới khi sync; KHÔNG đụng AGENTS user tự viết.
+
+## [2026-06-18] — Adopt: flag-not-mangle + generic import (app phát cờ, agent reconcile)
+
+
+> Sửa adopt/sync theo nguyên tắc "app phát cờ, agent phán đoán".
+
+- `ensureHarness`: docs TRỐNG → scaffold template chuẩn; CHỈ standard files → gap-fill cái thiếu; LỆCH chuẩn (00_INDEX/02_CONTEXT/dup) → **KHÔNG đụng**, set `needsReconcile` + cảnh báo (sync/UI). Hết tạo file template gây trùng.
+- `docs sync` generic: phân kind theo PATTERN tên file + tự nhận changelog → chạy mọi project (không tuned riêng zemory).
+- Playbook `migrate.md` viết lại cho DB-source (docs sync → ls → rm → render). AGENTS template + root trỏ RULES/plan + hướng dẫn reconcile.
+
+## [2026-06-18] — Dọn docs: bỏ INDEX/CONTEXT/overview/notes + xếp số lại (DB-source)
+
+
+
+
+> Dọn docs theo model DB-source + xếp số lại.
+
+- XOÁ (thừa/derived): `00_INDEX` (TOC=derived), `02_CONTEXT` (digest=query plan thay), `00_overview` (plan-index=derived), `notes` (→brain).
+- XẾP SỐ: agent còn `01_RULES` · `02_TODO` · `03_CHANGES` (mirror). plan: `00_build_plan`·`01_repo_survey`·`02_data_model`.
+- Rewire: status REQUIRED_DOCS/planSignal/setup · validate · archive · checks · cli paths · plan AGENT_KIND · adopt (bỏ refreshPlanIndex) · migrate · ui · docs-template (xoá+đổi số, AGENTS trỏ RULES+plan ls) · xoá planindex.ts.
+- `docs rm` mới (xoá doc khỏi DB + .md). doctor XANH hết.
+
+## [2026-06-18] — Global brain (SQLite+FTS5 đa-agent) + recall + hooks + reframe integrator
+
+
+
+
+
+
+> Pivot lớn sau khảo sát thị trường: zemory = **INTEGRATOR sở hữu** (recall + compress + code-map) làm móng A.I Center, KHÔNG phải "thêm một memory DB". Chi tiết khảo sát: `docs/plan/01_repo_survey.md`. Tầm nhìn lớn hơn (A.I Center): `tools/a.i_center/`.
+
+### Global brain — `src/brain/` (DUNG `better-sqlite3`)
+- **Store** `~/.zemory/brain.db` (WAL): bảng `sessions` + `messages` + **FTS5** + **FTS5 trigram** (cho tiếng Việt/substring) + `ingest_state`, trigger tự-sync FTS. DB = **lăng kính dẫn xuất**, gitignore, dựng lại từ transcript.
+- **Adapter cắm-rút per-agent** (`src/brain/adapters/`): `claude-code` (jsonl), `codex` (jsonl), `continue` (json whole-file), `lmstudio` (json, text assistant trong `steps`). Mode `append` (offset incremental) vs `whole` (re-parse khi đổi).
+- **discovery.ts**: fast (known dir) · **deep (`--deep`) quét TOÀN MÁY** match `signature` ở bất cứ đâu + đánh hơi **kho lạ chưa có adapter** (ignore list cho rác: `.claude/sessions` metadata, hermes dump, powershell).
+- **Luật chung**: session **0 dòng chat = rác → bỏ**. **Dedup** theo uuid. **Redaction secret** lúc ingest (sk-ant-/OpenAI/AWS/GitHub/Google/Slack/JWT).
+- **search.ts**: recall RRF (word FTS5 + trigram, k=60) + snippet căn match + **session-cap** + scope project mặc định / `--all` cross-project + **progressive disclosure** (`show <id>`).
+- Đã chạy thật: **4 agent · ~183 session · ~42k message · 2026-03 → 2026-06**, recall tiếng Việt xuyên project OK.
+
+### Hooks — `src/hooks.ts` (cầu passive → active). Mô hình theo agentmemory (đã verify source nó).
+- **Capture TỰ ĐỘNG**: `zemory hook stop` → auto-ingest (0 token, chỉ ghi DB). `hook install` **chỉ cài Stop** (global; `--project` để scope), merge non-destructive vào `~/.claude/settings.json`. → **ĐÃ CÀI global** (giữ nguyên permissions/theme/model).
+- **Recall do AGENT phán đoán** (KHÔNG auto-inject mỗi prompt — agentmemory thử rồi bỏ vì pollution/token): chỉ dẫn `zemory brain search` nhúng vào **AGENTS.md template** → agent tự gọi khi prompt liên quan quá khứ.
+- `session-start` recall-inject vẫn còn (handler) nhưng **opt-in, KHÔNG cài mặc định** (giống `AGENTMEMORY_INJECT_CONTEXT=false`).
+
+### CLI + UI
+- CLI thêm: `brain scan [--deep]` · `brain search <q> [--all]` · `brain show <id>` · `hook <install|session-start|stop>`.
+- UI `zemory ui`: section **Global brain** — tổng quan agent/session/message/ngày + nút **Scan / Deep scan** + ô **Recall** (click bung full) + báo kho lạ. Endpoint `/brain-status /brain-scan /brain-search /brain-show`.
+
+### CHỐT MODEL: mọi .md → DB là nguồn, .md = mirror render (user không sửa tay, agent làm hết)
+- `doc`/`section` **tổng quát cho MỌI doc** (rules/todo/plan/context — phân `kind`). `importAll` + `listDocs` + `renderAll`.
+- CLI **`zemory docs sync`** (import tất cả + changelog vào DB, **KHÔNG đụng .md** — an toàn) · `docs ls` · `docs render` (ghi mirror db→md, opt-in/destructive).
+- Test: `docs sync` nạp 7 doc + 3 changelog, round-trip ✓, .md nguyên vẹn.
+- CÒN (pass cuối): rewire `status.ts`/`adopt.ts`/doctor để **DB là nguồn** (doctor check DB có doc thay vì đòi file .md) + bỏ CONTEXT/INDEX khỏi REQUIRED_DOCS + retire archive.ts cũ.
+
+### Changelog vào brain.db — BƯỚC 4 phần DB (cộng thêm; chưa retire .md-source)
+- **Schema** `changelog` (date/title/body/supersedes_id/archived) + `changelog_fts` + trigger.
+- **`src/docs/changelog.ts`**: `parseChangelog` (cắt theo `## [date] — title`, fence-aware) · `importChangelog` (seed) · `addEntry` · `listEntries` · `searchChangelog` (FTS) · `renderChangelog` (db→md, archived=0). **archive = query** (không cắt block .md nữa).
+- **CLI** `zemory changelog import|ls|search|add|render`. Test: import 3 entry, search "compress" trúng, render db→md OK.
+- *(Chưa: switch hẳn .md→render + archive.ts cũ; thuộc pass đại phẫu harness.)*
+
+### Plan vào brain.db (db-source) — BƯỚC 1 (cộng thêm, chưa bỏ CONTEXT/INDEX)
+> Quyết định: xem `docs/plan/02_data_model.md`. PLAN = **DB là nguồn**, `.md` = render dẫn xuất (1 chiều db→md). RULES vẫn .md-nguồn. CONTEXT/INDEX sẽ bỏ ở bước sau.
+- **Schema** (`src/brain/db.ts`): `doc` + `section`(level/ordinal/parent_id/heading/anchor/**body verbatim**) + `section_fts`/`section_fts_tri` (heading+body, weight heading↑) + trigger.
+- **`src/docs/markdown.ts`**: splitter **fence-aware** (bỏ `#` trong code block), body **verbatim**, `roundTripOk()` — **test thật: round-trip EXACT** trên 00_build_plan/01_repo_survey/02_data_model/01_RULES.
+- **`src/docs/plan.ts`**: `importDoc` (seed db từ .md, có round-trip check) · `listToc` (mục lục dẫn xuất) · `searchSections` (FTS heading-weight, word→trigram fallback) · `setBody` (edit-on-db) · `renderDoc` (db→md, header GENERATED chống sửa tay).
+- **CLI** `zemory plan import|ls|show|search|set|render`. Test: import 4 plan files OK, search "trigram" trúng, edit-on-db + render giữ nguyên fence/preamble/list.
+- **Fidelity proven:** db↔md hiển thị y hệt (body verbatim + render=ghép + round-trip verify).
+
+### Status/checks chạy THẬT (không báo ảo)
+- `checks.ts` `runCheck` giờ **thực thi feature thật**: compress chạy nén mẫu (60→23), search/memory query FTS thật trên brain (183 sess · 42k msg · "query ok"), validate chạy thật, archive đếm dòng thật. search/memory/compress là tool/brain-level (không cần project). Thêm feature `validate`.
+- `status.ts` `listFeatures` cập nhật label/help đúng thực tế + thêm validate. UI panel Features giờ phản ánh đúng (search/memory/compress = ✓, consolidate = ○ chưa làm).
+- zemory **dogfood**: có `docs/.harness.json` → là project kết nối, `zemory doctor` xanh hết (chạy thật trên chính nó).
+
+### Compress lane + governance validate (src/compress/, src/validate.ts)
+- **compress** (deterministic, KHÔNG LLM — Model B từ squeez/RTK/Caveman): strip ANSI/progress · dedup (×N) · **benign-aware** (lỗi→giữ error+budget rộng; sạch→nén mạnh) · output nhỏ giữ nguyên. CLI `zemory run <cmd>` (chạy+nén, giữ exit code) · `zemory compress` (stdin filter). → lane giúp vượt agentmemory về token (cái nó không làm).
+- **validate**: broken link docs/ · CONTEXT/CHANGES quá ngưỡng · đếm supersede. CLI `zemory validate`.
+- → **3 lane: 🧠 recall ✓ · 🗜️ compress ✓ · 📂 code-map (chưa).**
+
+### Định vị (build plan §0 reframe)
+- 3 lane: 🧠 recall (XONG bản FTS5) · 🗜️ compress-on-read (chưa) · 📂 code-map (chưa). Đối thủ thật duy nhất ở lane recall = `rohitg00/agentmemory`; khác biệt: passive-file-index + 1 file SQLite + không LLM ở tầng lưu + trigram tiếng Việt.
+
+## [2026-06-18] — Gộp guide setup/migrate/grill vào AGENTS.md; xoá docs/guides
+
+
+
+## [2026-06-18] — Pass cuối: docs → DB-source, .md = mirror
+
+
+
+
+
+> PASS CUỐI: chuyển sang DB-source cho mọi doc.
+
+- Mọi .md (rules/todo/context/index/notes/plan) + changelog: **nguồn = brain.db**; .md = **mirror GENERATED** (db→md). Sửa qua `zemory plan set` / `changelog add`, KHÔNG Edit .md.
+- `brain info` soi DB; `docs sync` (import) / `docs render` (ghi mirror).
+- doctor vẫn xanh (mirror là file nên check file-exist vẫn pass).
+
+## [2026-06-18] — Phase 1: tool chạy được (cli + adopt + UI) + chốt cấu trúc
+
+
+
+
+
+
+> Implement từ ý tưởng → tool TypeScript chạy được, `npm link` global. Phần structure/adopt/onboarding/UI xong; token-saver mới có archive + grill.
+
+### Chốt nền (decisions)
+- Ngôn ngữ **TypeScript** (tsc→dist). `planning` → **`plan`** toàn bộ. Config → **`docs/.harness.json`** (dời khỏi root).
+- **Root chỉ chứa `AGENTS.md`** (thin: mô tả setup + trỏ docs). Bỏ `CLAUDE.md`.
+  > 🔄 **Supersede:** thay thiết kế entry trước đó (AGENTS.md + CLAUDE.md đầy đủ ở root, 2026-06-17 cùng phiên) — user muốn gói gọn mọi thứ trong `docs/`, root sạch.
+
+### core + cli
+- `core/`: registry (1 capability=1 slot=1 provider + conflict) · router · hooks · config (findProjectRoot tìm `docs/.harness.json`).
+- `cli`: `init` · `sync` · `migrate` · `doctor` · `ui` · `archive` · `grill` · `structure` · `setup` · `--version`.
+
+### Adopt an toàn (non-destructive)
+- `ensureHarness`: gap-fill file thiếu, **không đè**; config vào docs; **merge legacy `planning/`/`plan/` → `docs/plan`** (move, xoá folder rỗng); `refreshPlanIndex`; đặt `AGENTS.md`.
+- `freshHarness`: rename `docs/agent` aside (`.old-<ts>`) + dựng lại.
+- 3 mode: **sync** (in-place) · **fresh** (backup aside) · **migrate** (agent reconcile + playbook). Plan reconcile = agent đánh số + index + mô tả (app chỉ liệt kê tên + phát cờ).
+
+### Structure / onboarding
+- `00_INDEX` = **menu + cấu trúc + bảng map** (1 chỗ; không tách structure.md). `zemory structure` in nó.
+- `zemory setup` = runbook cài đặt (file `docs/playbooks/setup.md`). Playbooks: migrate, grill, setup.
+- Cờ **setup skeleton/done** + **plan needsReconcile** (chưa vào menu / chưa có mô tả). `notes.md` → lazy.
+
+### Features
+- **archive** ✓ (`zemory archive`: cắt block `## [ngày]` cũ của 04_CHANGES → `docs/agent/archive/`, move không xoá, theo ngưỡng).
+- **grill** ✓ (workflow; playbook `docs/playbooks/grill.md`).
+- search/compress/consolidate/memory: **chưa build** (planned).
+
+### UI (`zemory ui`)
+- Cửa sổ **app-mode** (Edge/Chrome `--app`), tự co theo content. **Project picker** (dropdown, registry `~/.zemory/projects.json`).
+- **Test-runner**: mỗi feature 1 thanh bar (xanh khi check pass; vàng khi đang check). Project section = line onboarding.
+- **Setup ▾** (trên dòng Project docs) = **Sync / Fresh** (= in-place / backup; KHÔNG popup tái-cấu-trúc riêng).
+  > 🔄 **Supersede:** bỏ popup "Tái cấu trúc" + module restructure.ts riêng (cùng phiên) — vì Sync chính là in-place, Fresh là backup, trùng chức năng.
+
+### Ngôn ngữ
+- Siết rule template `01_RULES`: **UI · CLI · code = TIẾNG ANH**; docs = tiếng Việt. Sửa các string UI/CLI còn tiếng Việt.
+
+## [2026-06-18] — Playbooks viết lại gọn + đánh số + model DB-source
+
+
+Viết lại playbooks GỌN + ĐÁNH SỐ rõ từng mục, cập nhật model DB-source:
+- `migrate.md`: §1 Đích · §2 Luật · §3 các bước 1-7 tuần tự (docs sync→ls→show→gộp TODO→rm→render→doctor) · §4 lưu ý.
+- `setup.md`: §1 cài · §2 dựng harness (trống/chuẩn/lệch) · §3 hoàn thiện qua DB (plan set/changelog add) · §4 verify. Bỏ 00_INDEX/02_CONTEXT/00_overview cũ.
+- `grill.md`: sửa "ghi 02_CONTEXT/04_CHANGES" → `changelog add`.
+
+## [2026-06-18] — Sua 01_RULES tro file da xoa; AGENTS them §0 setup; plan set/changelog add them --file giu UTF-8
+
+
+- **01_RULES.md trỏ file đã xoá** (lỗi gốc khiến agent "lần quẩn"): preamble bảo đọc `02_CONTEXT.md` + bắt đầu từ `00_INDEX.md`; bảng tài liệu ghi `04_CHANGES`/`03_TODO`. Đã sửa (#326 preamble, #329 bảng) → trỏ `AGENTS.md`/`02_TODO`/`03_CHANGES`. Sửa cả `docs-template/agent/01_RULES.md`. Sửa `02_TODO` #332 ref `04_CHANGES`→`03_CHANGES`.
+- **AGENTS.md viết lại**: thêm **§0 Setup** (lần đầu: cài/init, BỎ QUA nếu đã có `docs/.harness.json`) tách khỏi **§1 mở phiên (mỗi lần, 3 bước)**; **§3** nói thẳng "thấy ref sai → SỬA qua lệnh, đừng đứng hình".
+- **Bug UTF-8 (nghiêm trọng)**: `plan set`/`changelog add` nhận body qua **stdin**; trên Windows PowerShell `echo "..." | ...` làm **hỏng dấu tiếng Việt** (đ/ư/ậ → `?`) + chèn BOM rác. Thêm tuỳ chọn **`--file <path>`** (đọc UTF-8 trực tiếp, an toàn mọi nền). AGENTS §3 cảnh báo + khuyên dùng `--file`. (argv an toàn → title không cần --file.)
+- Còn lại (giới hạn tool): `plan set` chỉ sửa **body**, không sửa **heading** → vài heading cũ trong `02_TODO` (vd "chi tiết 04_CHANGES.md") cần reconcile sâu hơn / khả năng sửa heading.
+
+## [2026-06-18] — UI: nút Open folder (native picker) — khỏi cd + relaunch
+
+
+- UI thêm nút **📂 Open…** cạnh project picker → gọi hộp thoại chọn folder NATIVE của OS (Windows FolderBrowserDialog / mac osascript / linux zenity) → trỏ UI vào folder bất kỳ, KHỎI cd + mở lại terminal.
+- Endpoint `/pick-folder` (server spawn dialog, trả path). Chọn xong folder không phải project → Project row "not set up" → bấm Setup để init/sync.
+
+## [2026-06-18] — Đổi playbooks→guides + truy cập guide qua LỆNH (zemory migrate/setup/grill), không qua file project
+
+
+Đổi tên `docs/playbooks` → **`docs/guides`** (rõ nghĩa hơn "playbook") + tiêu đề file → "Hướng dẫn".
+- Guide là tài liệu của TOOL (mọi project giống nhau) → truy cập QUA LỆNH, không phải file trong project: `zemory migrate` (in guide reconcile), `zemory setup`, `zemory grill`.
+- Sửa `cmdMigrate` → IN guide (trước đó in analyze model cũ). AGENTS + sync/doctor/ui trỏ **lệnh `zemory migrate`** thay vì path file (project được quản KHÔNG có file đó).
+- Cập nhật checks/cmdSetup/package.json sang docs/guides.
+
+## [2026-06-17] — Khởi tạo repo + build plan + docs harness
+
+
+
+
+
+
+- Tạo repo **`zemory`** tại `D:\Work_Study\IT\Data\Tools\zemory`. Khoá tên `zemory` (lowercase) — npm trống, github không có project trùng (chỉ 2 username).
+- Viết **build plan** đầy đủ `docs/plan/00_build_plan.md`: nguyên tắc Model B + ranh giới src/deps; kiến trúc core + 5 module + deps; memory 3 tầng (precedence + promotion); cách chạy "trỏ về" + adopt rules (init/migrate/map/doctor); license (Apache-2.0, reimplement ý tưởng); phân kỳ 3 phase.
+- Dựng **docs harness chuẩn cho chính zemory** (dogfood template): `00_INDEX` · `01_RULES` · `02_CONTEXT` · `03_TODO` · `04_CHANGES` · `notes`.
+- **Bối cảnh:** tách ra từ thảo luận dài trong project **zflow** (gốc: nhu cầu một harness governance dùng chung mọi project + đánh giá tích hợp agentmemory/lean-ctx; chốt KHÔNG fork mà tự build từ ý tưởng).

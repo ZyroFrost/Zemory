@@ -4,6 +4,7 @@
 // directly; `import` (reindex) reseeds the search index from it.
 
 import { readFileSync } from "node:fs";
+import { normalizeRoot } from "../core/config.js";
 import { currentMemoryDb, openMemory } from "../memory/db.js";
 
 const FENCE = /^[ \t]*(```|~~~)/;
@@ -75,6 +76,7 @@ export function importChangelog(
   dbPath = currentMemoryDb(),
   opts: { replace?: boolean; archived?: boolean } = {},
 ): number {
+  projectRoot = normalizeRoot(projectRoot); // canonical index key — see normalizeRoot
   const entries = parseChangelog(readFileSync(absPath, "utf8"));
   const db = openMemory(dbPath);
   const flag = opts.archived ? 1 : 0;

@@ -25,15 +25,37 @@ function assertConfig(value: unknown, projectRoot: string): HarnessConfig {
   return config as HarnessConfig;
 }
 
+/** Canonical spelling of a project root, for use as an index key.
+ *
+ *  On Windows the case of the drive letter depends on how the shell entered the
+ *  directory (`cd d:\x` vs `cd D:\x`), so process.cwd() hands back two different
+ *  spellings of the SAME folder. Measured 2026-07-29: this repo's own doc index was
+ *  split in two — 24 rows under `D:\Zyro\Tool\Zemory` and 15 stale duplicates under
+ *  `d:\Zyro\Tool\Zemory` — so a project-scoped search saw only whichever half matched
+ *  the casing of the moment. Upper-casing the drive letter is a safe canonical form
+ *  (Windows drive letters are case-insensitive); the rest of the path is left alone,
+ *  since folder names are meaningful and other platforms are case-sensitive. */
+export function normalizeRoot(path: string): string {
+  const abs = resolve(path);
+  return process.platform === "win32" ? abs.replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`) : abs;
+}
+
 /** Walk up from `start` to find the nearest project root (dir with docs/.harness.json). */
 export function findProjectRoot(start: string = process.cwd()): string | null {
-  let dir = resolve(start);
+  let dir = normalizeRoot(start);
   while (true) {
     if (existsSync(join(dir, CONFIG_FILE))) return dir;
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
   }
+}
+
+/** The project root for the current directory, falling back to the directory itself
+ *  when there is no harness above it — always canonical, so what callers look up in
+ *  the index matches what was written into it. */
+export function currentProjectRoot(): string {
+  return findProjectRoot() ?? normalizeRoot(process.cwd());
 }
 
 /** Load the project context (config + resolved docs dir) from a project root. */
