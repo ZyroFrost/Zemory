@@ -1451,9 +1451,9 @@
   // ── SYSTEM screen: full capability inventory + per-feature check/enable ──
   var FEATURES=[
     {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',doc:'f.doc.memory'},
-    {k:'vector',grp:'Lõi nhớ & tìm',n:'Vector index (semantic)',kind:'stat',doc:'f.doc.vector'},
+    {k:'vector',grp:'Lõi nhớ & tìm',n:'Vector index (semantic)',kind:'stat',probe:'vector',doc:'f.doc.vector'},
     {k:'hybrid',grp:'Lõi nhớ & tìm',n:'Hybrid search',kind:'toggle',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
-    {k:'rerank',grp:'Lõi nhớ & tìm',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},doc:'f.doc.rerank'},
+    {k:'rerank',grp:'Lõi nhớ & tìm',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank'},
     {k:'digest',grp:'Lõi nhớ & tìm',n:'Session digest',kind:'stat',doc:'f.doc.digest'},
     {k:'graph',grp:'Lõi nhớ & tìm',n:'Graph (code · docs)',kind:'nav',to:'projects',doc:'f.doc.graph'},
     {k:'drive',grp:'f.grpSync',n:'f.drive',kind:'nav',to:'memory',doc:'f.doc.drive'},
@@ -1484,6 +1484,10 @@
     if(f.kind==='toggle'){var on=f.get(Z.mem||{});return '<button class="btn sm" data-sys-toggle="'+f.ep+'" data-on="'+(on?'0':'1')+'">'+(on?t('sys.off'):t('sys.on'))+'</button>';}
     if(f.kind==='auto'){var o2=(Z.auto||{})[f.auto];return '<button class="btn sm" data-sys-auto="'+f.auto+'" data-on="'+(o2?'0':'1')+'">'+(o2?t('sys.off'):t('sys.on'))+'</button>';}
     if(f.kind==='check')return '<button class="btn sm" data-sys-check="'+f.feat+'">↻ '+t('sys.recheck')+'</button>';
+    // `probe`: feature có PHÉP KIỂM THẬT ở backend nhưng hành động chính là toggle/stat.
+    // Không có nhánh này thì `/check?feature=vector|rerank` chỉ gọi được bằng curl —
+    // tức vẫn mồ côi, chỉ đổi chỗ (tự bắt 2026-07-28 ngay sau khi nối backend).
+    if(f.probe)return '<button class="btn sm" data-sys-check="'+f.probe+'">↻ '+t('sys.recheck')+'</button>';
     if(f.kind==='nav')return '<button class="btn sm" data-sys-nav="'+f.to+'">Đi tới</button>';
     return '';
   }
@@ -1503,6 +1507,15 @@
     setHealthChip(okN,warnN,tot); // pill trong màn + chip ở chân rail = CÙNG một roll-up
     renderSysDetail();
   }
+  /** Một dòng kết quả probe cho feature có `probe` (vector/rerank). Rỗng khi chưa bấm. */
+  function probeLine(f){
+    if(!f.probe)return '';
+    var c=(Z.checks||{})[f.probe];
+    if(!c)return '<div class="muted" style="font-size:11.5px;margin-bottom:12px">'+t('sys.probeHint')+'</div>';
+    return '<div style="font-size:11.5px;margin-bottom:12px;display:flex;gap:8px;align-items:center">'
+      +'<span class="pill '+pillFor(c.state)+'">'+stdEsc(pillTxt(c.state))+'</span>'
+      +'<span class="muted">'+stdEsc(String(c.detail||''))+'</span></div>';
+  }
   function renderSysDetail(){
     var box=zid('sysDetail');if(!box)return;
     var f=FEATURES.filter(function(x){return x.k===sysSel;})[0];if(!f){box.innerHTML='';return;}
@@ -1510,6 +1523,10 @@
     box.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span class="pill '+pillFor(s.on)+'">'+stdEsc(s.txt)+'</span><b style="font-size:15px">'+stdEsc(t(f.n))+'</b></div>'
       +'<div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">'+stdEsc(f.grp)+'</div>'
       +'<div class="sxa" style="margin-bottom:14px">'+sysAction(f)+'</div>'
+      // Kết quả PHÉP KIỂM THẬT (probe model). Không có khối này thì bấm "Kiểm" xong kết quả
+      // nằm im trong Z.checks mà không ai thấy — nửa vời đúng nghĩa. `sysStatus` chỉ đọc
+      // Z.checks cho kind='check', nên feature kind stat/toggle phải hiện ở đây.
+      +probeLine(f)
       +'<div class="mdview">'+stdMd(t(f.doc||f.d||''))+'</div>';
   }
   document.addEventListener('click',function(e){var li=e.target.closest?e.target.closest('#sysList [data-sysfeat]'):null;if(li){sysSel=li.dataset.sysfeat;renderSystem();}});
@@ -1594,7 +1611,7 @@
     'drv.privH':'Sao lưu & Riêng tư','drv.backup':'Sao lưu','drv.backupD':'Xuất toàn bộ DB nhớ ra 1 file snapshot để cất giữ.','drv.restore':'Phục hồi','drv.restoreD':'Nạp lại từ file snapshot, ghi đè DB hiện tại (giữ bản cũ .bak).','drv.forget':'Xoá nhớ','drv.forgetD':'Xoá vĩnh viễn session/message của 1 project — xem trước rồi mới xoá, tự backup.','drv.redact':'Che secret','drv.redactD':'Quét lại tin đã lưu, che token/key/PII lọt vào (đây là "privacy").',
     'home.all':'Tất cả →','home.recentSess':'Phiên gần đây','home.noSessions':'Chưa có phiên nào.','home.noProjects':'Chưa có project nào.',
     'st.loading':'…','st.global':'toàn cục','st.stored':'đã lưu','st.estimate':'ước tính','rail.needAttn':'cần chú ý','rail.allGreen':'Hoạt động tốt',
-    'f.timeAny':'Thời gian: mọi lúc','f.time1':'24 giờ','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi','f.agentAny':'Agent: mọi','f.noResultYet':'— kết quả','f.hasImg':'Có ảnh','f.hostAny':'Máy: mọi','f.noSessYet':'— phiên','f.sessions':'phiên','att.noBody':'chỉ ghi nhận, không lưu nội dung',
+    'f.timeAny':'Thời gian: mọi lúc','f.time1':'24 giờ','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi','f.agentAny':'Agent: mọi','f.noResultYet':'— kết quả','f.hasImg':'Có ảnh','sys.probeHint':'Bấm ↻ Kiểm để chạy phép kiểm thật (tải model, ~8 giây).','f.hostAny':'Máy: mọi','f.noSessYet':'— phiên','f.sessions':'phiên','att.noBody':'chỉ ghi nhận, không lưu nội dung',
     'q.zero':'0 kết quả','q.noResults':'không có kết quả','q.results':'kết quả','q.searching':'đang tìm…','q.err':'lỗi',
     'recall.loadingRecent':'đang tải tin gần nhất…','recall.recentLabel':'gần nhất · ','recall.preview':'Xem trước','recall.copy':'Sao chép','recall.copied':'đã chép','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.','recall.loadingCtx':'đang tải…','recall.noCtx':'không có ngữ cảnh','recall.ctxErr':'lỗi tải ngữ cảnh','recall.openFull':'Mở full session',
     'proj.linkedHere':'Đã liên kết · máy này','proj.count':'dự án','proj.thisMachine':'máy này','proj.noneLinked':'Chưa có project nào liên kết trên máy này.','proj.noMatch':'Không có project khớp bộ lọc.','proj.searchPh':'Tìm project…','proj.typeAll':'Loại: mọi','proj.sortManual':'Thứ tự tự sắp','proj.sortRecent':'Mới cập nhật','proj.sortName':'Tên A→Z','proj.sortSessions':'Nhiều phiên',
@@ -1634,7 +1651,7 @@
     'drv.privH':'Backup & Privacy','drv.backup':'Backup','drv.backupD':'Export the whole memory DB to a snapshot file to keep.','drv.restore':'Restore','drv.restoreD':'Load from a snapshot file, overwriting the current DB (keeps a .bak).','drv.forget':'Forget','drv.forgetD':'Permanently delete a project\'s sessions/messages — preview first, auto-backup.','drv.redact':'Redact','drv.redactD':'Re-scan stored messages and mask tokens/keys/PII that slipped in (this is "privacy").',
     'home.all':'See all →','home.recentSess':'Recent Sessions','home.noSessions':'No sessions yet.','home.noProjects':'No projects yet.',
     'st.loading':'…','st.global':'global','st.stored':'stored','st.estimate':'estimate','rail.needAttn':'needs attention','rail.allGreen':'All systems operational',
-    'f.timeAny':'Time: any time','f.time1':'24h','f.time7':'7 days','f.time30':'30 days','f.time90':'90 days','f.typeAny':'Type: any','f.originAny':'Origin: any','f.agentAny':'Agent: any','f.noResultYet':'— results','f.hasImg':'Has image','f.hostAny':'Machine: any','f.noSessYet':'— sessions','f.sessions':'sessions','att.noBody':'recorded only, content not stored',
+    'f.timeAny':'Time: any time','f.time1':'24h','f.time7':'7 days','f.time30':'30 days','f.time90':'90 days','f.typeAny':'Type: any','f.originAny':'Origin: any','f.agentAny':'Agent: any','f.noResultYet':'— results','f.hasImg':'Has image','sys.probeHint':'Click ↻ Check to run the real probe (loads the model, ~8s).','f.hostAny':'Machine: any','f.noSessYet':'— sessions','f.sessions':'sessions','att.noBody':'recorded only, content not stored',
     'q.zero':'0 results','q.noResults':'no results','q.results':'results','q.searching':'searching…','q.err':'error',
     'recall.loadingRecent':'loading recent messages…','recall.recentLabel':'recent · ','recall.preview':'Preview','recall.copy':'Copy','recall.copied':'copied','recall.previewEmpty':'Select a result to preview its nearby messages here.','recall.loadingCtx':'loading…','recall.noCtx':'no context','recall.ctxErr':'context load error','recall.openFull':'Open full session',
     'proj.linkedHere':'Linked · this machine','proj.count':'projects','proj.thisMachine':'this machine','proj.noneLinked':'No projects linked on this machine yet.','proj.noMatch':'No projects match the filter.','proj.searchPh':'Search projects…','proj.typeAll':'Type: any','proj.sortManual':'Manual order','proj.sortRecent':'Recently updated','proj.sortName':'Name A→Z','proj.sortSessions':'Most sessions',
