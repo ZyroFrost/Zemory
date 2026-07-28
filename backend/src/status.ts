@@ -4,7 +4,7 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
+import { CONFIG_FILE, currentProjectRoot, loadContext, normalizeRoot } from "./core/config.js";
 import { type KnownProject, listKnownProjects, rememberProject } from "./projects.js";
 import { tr } from "./i18n/index.js";
 
@@ -78,7 +78,7 @@ function listFeatures(): FeatureStatus[] {
  */
 export async function gatherStatus(rootArg?: string): Promise<StatusReport> {
   // Always have a target: explicit picker root → found project → the launch folder.
-  const root = rootArg ?? findProjectRoot() ?? process.cwd();
+  const root = rootArg ? normalizeRoot(rootArg) : currentProjectRoot();
   const connected = existsSync(join(root, CONFIG_FILE));
   const report: StatusReport = {
     ts: new Date().toISOString(),

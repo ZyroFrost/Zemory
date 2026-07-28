@@ -22,7 +22,7 @@ import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from 
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { CONFIG_FILE, findProjectRoot } from "./core/config.js";
+import { CONFIG_FILE, currentProjectRoot } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -969,7 +969,7 @@ async function probeZemoryUi(port: number): Promise<{ pid: number } | null | "bu
 }
 
 export async function startUi(): Promise<void> {
-  const root = () => findProjectRoot() ?? process.cwd();
+  const root = () => currentProjectRoot();
   const json = (res: ServerResponse, obj: unknown) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(obj));

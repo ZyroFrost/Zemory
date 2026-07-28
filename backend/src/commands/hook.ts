@@ -1,6 +1,6 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
 import { join } from "node:path";
-import { findProjectRoot } from "../core/config.js";
+import { currentProjectRoot } from "../core/config.js";
 import { handleHook, installCodexHooks, installHooks } from "../memory/capture-hook.js";
 import { readStdin } from "./_shared.js";
 
@@ -15,7 +15,7 @@ export async function cmdHook(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    const root = findProjectRoot() ?? process.cwd();
+    const root = currentProjectRoot();
     const where = scoped ? "project" : "global";
     if (host === "all" || host === "claude") {
       const path = scoped ? join(root, ".claude", "settings.json") : undefined;

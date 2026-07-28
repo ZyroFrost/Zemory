@@ -3,7 +3,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CONFIG_FILE, findProjectRoot, loadContext } from "./core/config.js";
+import { CONFIG_FILE, findProjectRoot, loadContext, normalizeRoot } from "./core/config.js";
 import { createRuntime } from "./core/runtime.js";
 import type { Capability } from "./core/types.js";
 import { memorySummary } from "./memory/ingest.js";
@@ -24,8 +24,10 @@ export interface CheckResult {
 }
 
 export async function runCheck(feature: string, rootArg?: string): Promise<CheckResult> {
+  // normalizeRoot: rootArg comes from the caller (CLI/UI picker) in whatever casing
+  // they had, and an un-normalized root is a different index key for the same folder.
   const configuredRoot =
-    rootArg && existsSync(join(rootArg, CONFIG_FILE)) ? rootArg : findProjectRoot();
+    rootArg && existsSync(join(rootArg, CONFIG_FILE)) ? normalizeRoot(rootArg) : findProjectRoot();
 
   // --- Tool/memory-level features (no project needed) ---
   if (feature === "grill") {
