@@ -319,8 +319,16 @@ export function cmdReindex(): void {
   }
   const chPath = join(root, "docs", "agent", "06_CHANGES.md");
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
+  // The ARCHIVE is a source file too — outside the per-session read, but git-tracked
+  // and rebuildable. Index it as its own tier so old decisions stay searchable
+  // (plan/02 §3). Skipping this is why `changelog search` used to miss everything
+  // older than the last trim.
+  const chArc = join(root, "docs", "agent", "archive", "06_CHANGES.md");
+  const arc = existsSync(chArc)
+    ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
+    : 0;
   console.log(
-    `zemory reindex — ${files.length} plan doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) → search index (đọc .md, KHÔNG ghi ngược).`,
+    `zemory reindex — ${files.length} plan doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).`,
   );
 }
 
