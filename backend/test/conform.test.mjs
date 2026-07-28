@@ -247,3 +247,38 @@ test("file thiếu / hỏng ⇒ trả rỗng, KHÔNG ném (fail-open, điều 9)
   const spec = readStandardSpec(root); // không có docs/agent/03_STRUCTURE.md
   assert.deepEqual(spec, { tree: [], routing: [] });
 });
+
+// ---- ⑦ control-char: check này phải NỔ ĐƯỢC, và không nổ oan ----
+//
+// Bối cảnh (2026-07-28): một byte NUL gõ thẳng vào template literal làm `ingest.ts`
+// (777 dòng) và `ui.ts` bị ripgrep xếp vào loại NHỊ PHÂN rồi bỏ qua — nên MỌI đợt audit
+// bằng grep trước đó chưa từng nhìn hai file lớn nhất của bề mặt. `tsc` xanh, test xanh,
+// không một dấu hiệu nào. Check chỉ có giá trị nếu nó thật sự đỏ được.
+
+test("control-char NỔ khi file nguồn có byte NUL", (t) => {
+  const root = goodRepo(t, (r) => {
+    // NUL thật giữa một template literal — đúng hình dạng đã gặp ngoài đời.
+    write(r, "backend/src/services/key.ts", "export const k = `a" + String.fromCharCode(0) + "b`;\n");
+  });
+  const hit = find(conform(root), "control-char");
+  assert.ok(hit, "phải bắt được byte NUL");
+  assert.equal(hit.level, "blocking");
+  assert.ok(hit.samples.some((s) => s.includes("key.ts") && s.includes("0x00")), `mẫu phải chỉ đúng file + mã: ${hit.samples}`);
+});
+
+test("control-char NỔ khi docs .md nuốt mất chuỗi escape (0x08)", (t) => {
+  const root = goodRepo(t, (r) => {
+    write(r, "docs/plan/01_note.md", "# Ghi chú\nDùng " + String.fromCharCode(8) + " của JS là sai với tiếng Việt.\n");
+  });
+  const hit = find(conform(root), "control-char");
+  assert.ok(hit, "docs cũng phải được soi, không chỉ code");
+  assert.ok(hit.samples.some((s) => s.includes("01_note.md") && s.includes("0x08")));
+});
+
+test("control-char KHÔNG nổ oan với tab / xuống dòng / CRLF / ký tự có dấu", (t) => {
+  const root = goodRepo(t, (r) => {
+    write(r, "backend/src/services/ok.ts", "export const s = {\r\n\ta: 1,\r\n};\t// chú thích có dấu: ăn, ước, đường\n");
+    write(r, "docs/plan/02_ok.md", "# Tiêu đề\n\n\t- mục có tab\r\n- tiếng Việt: nguồn · ưu tiên\n");
+  });
+  assert.equal(find(conform(root), "control-char"), undefined, "tab/CRLF/dấu tiếng Việt là hợp lệ — báo là báo oan");
+});
