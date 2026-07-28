@@ -65,6 +65,8 @@ import {
   setScopeExclude,
   setScopeSetting,
   setSyncLevel,
+  getSyncAttachments,
+  setSyncAttachments,
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
@@ -153,6 +155,8 @@ interface DriveSummary {
   error: string | null;
   /** Sync depth (plan 08 §7): "lean" rows bundle (default) | "full" snapshot. */
   level: "lean" | "full";
+  /** L3 (§7 bước ③): có chở ảnh/file đính kèm trong bundle không. Độc lập với `level`. */
+  atts: boolean;
   /** % tin đã đẩy lên Drive, ĐẾM THEO HÀNG (không phải theo id). 100 khi bộ nhớ rỗng. */
   syncPercent: number;
   syncedMessages: number;
@@ -212,7 +216,7 @@ function driveSyncProgress(): {
 }
 
 /** Probe a Drive sync folder: exists? writable? how many bundles inside? */
-function probeDrive(dir: string): Omit<DriveSummary, "level" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages" | "lastPushAt" | "newestAt"> {
+function probeDrive(dir: string): Omit<DriveSummary, "level" | "atts" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages" | "lastPushAt" | "newestAt"> {
   const path = dir.trim();
   if (!path) return { path: "", linked: false, exists: false, writable: false, bundles: 0, error: null };
   if (/^https?:\/\//i.test(path)) {
@@ -242,7 +246,7 @@ function probeDrive(dir: string): Omit<DriveSummary, "level" | "syncPercent" | "
 }
 
 function driveSummary(): DriveSummary {
-  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), ...driveSyncProgress() };
+  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...driveSyncProgress() };
 }
 
 /** Latest sync timestamp (max sync_state.updated_at) — Home "Last Sync". null if
@@ -1547,6 +1551,13 @@ export async function startUi(): Promise<void> {
     if (p === "/set-sync-level") {
       setSyncLevel(u.searchParams.get("level") === "full" ? "full" : "lean");
       return json(res, { ok: true, level: getSyncLevel() });
+    }
+    // L3 (plan 08 §7 bước ③) — công tắc chở ảnh/file trong bundle sync. MẶC ĐỊNH TẮT:
+    // bundle lean vừa cắt −74%, thả blob vào là xoá phần lớn lợi ích đó nên phải là
+    // lựa chọn có ý thức của từng máy.
+    if (p === "/set-sync-attachments") {
+      setSyncAttachments(u.searchParams.get("on") === "1");
+      return json(res, { ok: true, syncAttachments: getSyncAttachments() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

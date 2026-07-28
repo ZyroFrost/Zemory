@@ -143,9 +143,44 @@ export function attachmentBlob(
  * vector mồ côi (đã có `pruneOrphanVectors`), nhưng lớp đính kèm CHƯA có bộ dọn —
  * hàm này chỉ ĐO, không xoá: xoá blob là thao tác huỷ dữ liệu, phải do user quyết.
  */
+/**
+ * Dọn LIÊN KẾT chết: `attachment_link` trỏ message không còn tồn tại (whole-replace xoá
+ * tin cũ rồi chèn lại với id MỚI). Cùng họ `pruneOrphanVectors`.
+ *
+ * **CHỈ xoá LIÊN KẾT, KHÔNG xoá nội dung** — và đây là chỗ suýt sai: tiêu chí "hàng
+ * `attachment` có `message_id` trỏ tin đã chết" nghe hợp lý nhưng SAI, vì `message_id` chỉ
+ * ghi tin ĐẦU TIÊN mang nội dung ấy (dedup theo sha256). Đo trên DB thật 2026-07-28: 87
+ * hàng "trông như mồ côi" thì **cả 87 vẫn còn liên kết SỐNG** — xoá theo tiêu chí đó là
+ * mất 87 tấm ảnh đang dùng. Số hàng thật sự không còn ai trỏ tới: **0**.
+ *
+ * Nội dung chỉ bị xoá khi KHÔNG còn liên kết sống nào, và mặc định KHÔNG làm (`dropUnlinked`)
+ * — xoá blob là huỷ dữ liệu, phải do người dùng quyết (`02_RULES §Hành xử`).
+ */
+export function pruneOrphanAttachments(
+  dbPath: string = currentMemoryDb(),
+  opts: { dropUnlinked?: boolean } = {},
+): { links: number; rows: number } {
+  const db = openMemory(dbPath);
+  try {
+    const links = db
+      .prepare("DELETE FROM attachment_link WHERE message_id NOT IN (SELECT id FROM messages)")
+      .run().changes;
+    let rows = 0;
+    if (opts.dropUnlinked) {
+      rows = db
+        .prepare("DELETE FROM attachment WHERE id NOT IN (SELECT attachment_id FROM attachment_link)")
+        .run().changes;
+    }
+    return { links, rows };
+  } finally {
+    db.close();
+  }
+}
+
 export function attachmentStats(dbPath: string = currentMemoryDb()): {
   live: number;
   liveBytes: number;
+  /** Hàng nội dung KHÔNG còn liên kết sống nào — mới thật sự là mồ côi. */
   orphanRows: number;
   orphanLinks: number;
 } {
@@ -158,8 +193,14 @@ export function attachmentStats(dbPath: string = currentMemoryDb()): {
            JOIN messages m ON m.id = al.message_id`,
       )
       .get() as { n: number; b: number };
+    // Mồ côi THẬT = không còn liên kết nào tới một message đang sống. KHÔNG dùng
+    // `a.message_id` làm tiêu chí (xem ghi chú ở `pruneOrphanAttachments`).
     const orphanRows = db
-      .prepare("SELECT count(*) AS n FROM attachment a WHERE NOT EXISTS (SELECT 1 FROM messages m WHERE m.id = a.message_id)")
+      .prepare(
+        `SELECT count(*) AS n FROM attachment a
+          WHERE NOT EXISTS (SELECT 1 FROM attachment_link al JOIN messages m ON m.id = al.message_id
+                             WHERE al.attachment_id = a.id)`,
+      )
       .get() as { n: number };
     const orphanLinks = db
       .prepare(

@@ -28,7 +28,7 @@ import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
-import { type SyncLevel, getScopeExclude, getSyncLevel } from "../config/settings.js";
+import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
 const TAG_BYTES = 16;
@@ -161,11 +161,29 @@ function filterSnapshot(path: string, lanes: ScopeLane[]): void {
  *  else in the DB is a DERIVED layer the receiver rebuilds locally. */
 const ROWS_TABLES = ["schema_version", "sessions", "messages", "known_stores"] as const;
 
+/**
+ * L3 (plan 08 §7 bước ③) — bảng CHỞ đính kèm trong bundle, dạng ĐÃ LÀM PHẲNG.
+ *
+ * Vì sao không chở thẳng `attachment` + `attachment_link`: `messages.id` là AUTOINCREMENT
+ * CỤC BỘ và **cố ý không đi theo bundle** (merge khoá trên `UNIQUE(session_id, uuid)`).
+ * Chở `message_id` sang máy khác là trỏ vào tin của người ta — sai hoàn toàn. Nên mỗi hàng
+ * mang sẵn `session_id` + `msg_uuid`, bên nhận tra lại id CỦA MÌNH.
+ *
+ * Bảng này CHỈ tồn tại trong bundle, không có trong DB sống.
+ */
+const ATT_SHIP_DDL = `CREATE TABLE attachment_ship (
+  sha256 TEXT NOT NULL, name TEXT, mime TEXT, bytes INTEGER NOT NULL DEFAULT 0,
+  kind TEXT NOT NULL, content TEXT, blob BLOB, src_path TEXT, created_at TEXT,
+  session_id TEXT NOT NULL, msg_uuid TEXT
+)`;
+
 interface RowsStats {
   sessions: number;
   messages: number;
   since: number;
   maxMessageId: number;
+  /** L3: số liên kết đính kèm đã chở (0 khi công tắc tắt). */
+  attachments?: number;
 }
 
 /**
@@ -180,7 +198,7 @@ interface RowsStats {
  */
 function buildRowsSnapshot(
   sourcePath: string,
-  opts: { excludeLanes?: ScopeLane[]; since?: number },
+  opts: { excludeLanes?: ScopeLane[]; since?: number; attachments?: boolean },
 ): { path: string; cleanup: () => void; stats: RowsStats } {
   const dir = mkdtempSync(join(tmpdir(), "zemory-memory-rows-"));
   const out = join(dir, "global_memory.rows.db");
@@ -207,7 +225,7 @@ function buildRowsSnapshot(
         excl.match ? ` AND ${col} NOT IN (SELECT id FROM src.sessions s WHERE ${excl.match})` : "";
       const deltaSessions = since > 0 ? " AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?)" : "";
 
-      const stats: RowsStats = { sessions: 0, messages: 0, since, maxMessageId: 0 };
+      const stats: RowsStats = { sessions: 0, messages: 0, since, maxMessageId: 0, attachments: 0 };
       db.transaction(() => {
         stats.maxMessageId = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM src.messages").get() as { m: number }).m;
         db.exec("INSERT INTO main.schema_version SELECT * FROM src.schema_version");
@@ -222,6 +240,24 @@ function buildRowsSnapshot(
              WHERE id > ?${notExcluded("session_id")}`,
         ).run(since, ...excl.params);
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
+        // L3: chỉ chở khi máy này BẬT công tắc. Bám đúng tập message vừa chở (delta +
+        // scope exclude) — chở đính kèm của tin không có trong bundle là chở rác.
+        if (opts.attachments) {
+          db.exec(ATT_SHIP_DDL);
+          db.prepare(
+            `INSERT INTO main.attachment_ship
+                    (sha256, name, mime, bytes, kind, content, blob, src_path, created_at, session_id, msg_uuid)
+             SELECT a.sha256, COALESCE(al.name, a.name), a.mime, a.bytes, a.kind, a.content, a.blob,
+                    a.src_path, a.created_at, m.session_id, m.uuid
+               FROM src.attachment_link al
+               JOIN src.attachment a ON a.id = al.attachment_id
+               JOIN src.messages m   ON m.id = al.message_id
+              WHERE m.id > ?${notExcluded("m.session_id")}`,
+          ).run(since, ...excl.params);
+          stats.attachments = (
+            db.prepare("SELECT COUNT(*) c FROM main.attachment_ship").get() as { c: number }
+          ).c;
+        }
         const c = (sql: string) => (db.prepare(sql).get() as { c: number }).c;
         stats.sessions = c("SELECT COUNT(*) c FROM main.sessions");
         stats.messages = c("SELECT COUNT(*) c FROM main.messages");
@@ -255,7 +291,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
   const payload: BundlePayload = opts.sinceMessageId ? "rows" : (opts.payload ?? "rows");
   const snapshot =
     payload === "rows"
-      ? buildRowsSnapshot(sourcePath, { excludeLanes: opts.excludeLanes, since: opts.sinceMessageId })
+      ? buildRowsSnapshot(sourcePath, { excludeLanes: opts.excludeLanes, since: opts.sinceMessageId, attachments: getSyncAttachments() })
       : await snapshotSqlite(sourcePath);
   const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
   try {
@@ -576,6 +612,31 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
                started_at    = (SELECT MIN(timestamp) FROM messages WHERE session_id = sessions.id),
                ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = sessions.id)`,
           );
+          // L3: nhận đính kèm nếu bundle có chở. Bảng `attachment_ship` chỉ xuất hiện khi
+          // máy GỬI bật công tắc ⇒ bundle cũ / máy gửi tắt thì nhánh này im lặng bỏ qua.
+          //
+          // Tra id CỦA MÁY NÀY qua `(session_id, uuid)` — id trong bundle là của máy kia,
+          // dùng thẳng là trỏ nhầm vào tin của mình. Nội dung dedup theo `sha256` nên cùng
+          // một ảnh từ nhiều máy chỉ tốn MỘT hàng.
+          const hasShip = db
+            .prepare("SELECT COUNT(*) c FROM src.sqlite_master WHERE type='table' AND name='attachment_ship'")
+            .get() as { c: number };
+          if (hasShip.c) {
+            db.exec(
+              `INSERT OR IGNORE INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, content, blob, src_path, created_at)
+               SELECT COALESCE(m.id, 0), sp.session_id, sp.name, sp.mime, sp.bytes, sp.sha256, sp.kind,
+                      sp.content, sp.blob, sp.src_path, sp.created_at
+                 FROM src.attachment_ship sp
+                 LEFT JOIN messages m ON m.session_id = sp.session_id AND m.uuid IS sp.msg_uuid`,
+            );
+            db.exec(
+              `INSERT OR IGNORE INTO attachment_link (message_id, attachment_id, name)
+               SELECT m.id, a.id, sp.name
+                 FROM src.attachment_ship sp
+                 JOIN messages m   ON m.session_id = sp.session_id AND m.uuid IS sp.msg_uuid
+                 JOIN attachment a ON a.sha256 = sp.sha256`,
+            );
+          }
           db.exec("DELETE FROM sessions WHERE message_count = 0");
         })();
       } finally {
