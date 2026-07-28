@@ -368,3 +368,25 @@ test("pruneOrphanAttachments xoá link chết nhưng GIỮ ảnh còn tin khác 
   assert.equal(after.live, 1, "ảnh vẫn sống vì tin thứ hai còn trỏ tới");
   assert.equal(after.orphanRows, 0, "và nó KHÔNG bị tính là mồ côi");
 });
+
+test("MỌI liên kết chết ⇒ nội dung VẪN CÒN (mặc định không xoá); chỉ `dropUnlinked` mới xoá", async (t) => {
+  const { pruneOrphanAttachments } = await import("../../dist/memory/attachments.js");
+  const { dbPath } = seed(t);
+  // Ca NGUY HIỂM THẬT: xoá HẾT tin trỏ tới ảnh. Test cũ chỉ xoá một tin nên ảnh vẫn còn
+  // liên kết khác — nhánh xoá-nội-dung không bao giờ chạy, và đột biến "xoá luôn nội dung"
+  // SỐNG SÓT qua gate (đo 2026-07-28). Đây là ca bịt lỗ đó.
+  const db = openMemory(dbPath);
+  db.prepare("DELETE FROM messages").run();
+  db.close();
+
+  const r1 = pruneOrphanAttachments(dbPath);
+  assert.equal(r1.links, 2, "cả hai liên kết đều chết");
+  assert.equal(r1.rows, 0, "mặc định TUYỆT ĐỐI không xoá nội dung — huỷ dữ liệu phải do user quyết");
+  const still = openMemory(dbPath);
+  assert.equal(still.prepare("SELECT count(*) c FROM attachment").get().c, 1, "ảnh phải còn nguyên trong DB");
+  still.close();
+
+  // Chỉ khi người dùng CHỦ ĐỘNG bật mới được xoá.
+  const r2 = pruneOrphanAttachments(dbPath, { dropUnlinked: true });
+  assert.equal(r2.rows, 1, "bật dropUnlinked thì mới dọn nội dung không còn ai trỏ tới");
+});
