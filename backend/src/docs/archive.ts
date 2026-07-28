@@ -155,7 +155,11 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được.
   writeFileAtomic(mainPath, keptText, { backup: true });
 
-  // Reseed the search index from the trimmed source file (FILE WINS).
+  // Reseed BOTH tiers from their source files (FILE WINS): the trimmed active file,
+  // and the archive that just grew. Without the second call the moved entries fall
+  // out of the index entirely — they stop being searchable the moment they are
+  // archived, which defeats the point of keeping them.
   importChangelog(mainPath, ctx.projectRoot, dbPath, { replace: true });
+  importChangelog(archivePath, ctx.projectRoot, dbPath, { replace: true, archived: true });
   return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
 }

@@ -60,29 +60,42 @@ export function parseChangelog(input: string): ChEntry[] {
 /** Reindex a changelog .md into the DB search index (read-only; never writes the
  *  file). Default MERGE (add entries the index lacks, by date+title); `replace`
  *  wipes this project's changelog rows and reseeds — used by `reindex` so the
- *  index mirrors the file exactly (FILE WINS). */
+ *  index mirrors the file exactly (FILE WINS).
+ *
+ *  `archived` stamps the rows as cold storage. The archive file
+ *  (docs/agent/archive/06_CHANGES.md) is a SOURCE file like any other — git-tracked,
+ *  rebuildable-from — it just sits outside the per-session read. Indexing it is
+ *  ordinary derived-index behaviour (điều 3), and it is what plan/02 §3 has always
+ *  described: "changelog search giữ cả active lẫn archived để quyết định cũ vẫn
+ *  recall được". Measured 2026-07-28: that promise was not being kept — the index
+ *  held 12 rows, all archived=0, while 56 archived entries were unreachable. */
 export function importChangelog(
   absPath: string,
   projectRoot: string,
   dbPath = currentMemoryDb(),
-  opts: { replace?: boolean } = {},
+  opts: { replace?: boolean; archived?: boolean } = {},
 ): number {
   const entries = parseChangelog(readFileSync(absPath, "utf8"));
   const db = openMemory(dbPath);
+  const flag = opts.archived ? 1 : 0;
   try {
     const tx = db.transaction(() => {
-      if (opts.replace) db.prepare("DELETE FROM changelog WHERE project_root=?").run(projectRoot);
+      // `replace` only ever clears rows of the SAME tier, so reseeding the active
+      // file can never wipe the archived rows (and vice-versa) — that cross-tier
+      // wipe is exactly how the archived history disappeared before.
+      if (opts.replace)
+        db.prepare("DELETE FROM changelog WHERE project_root=? AND archived=?").run(projectRoot, flag);
       const exists = db.prepare(
         "SELECT 1 AS ok FROM changelog WHERE project_root=? AND date IS ? AND title=?",
       );
       const ins = db.prepare(
-        "INSERT INTO changelog (project_root, date, title, body, created_at) VALUES (?,?,?,?,?)",
+        "INSERT INTO changelog (project_root, date, title, body, archived, created_at) VALUES (?,?,?,?,?,?)",
       );
       const now = new Date().toISOString();
       let added = 0;
       for (const e of entries) {
         if (!opts.replace && exists.get(projectRoot, e.date, e.title)) continue;
-        ins.run(projectRoot, e.date, e.title, e.body, now);
+        ins.run(projectRoot, e.date, e.title, e.body, flag, now);
         added++;
       }
       return added;
