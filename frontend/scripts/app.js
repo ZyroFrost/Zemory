@@ -1012,7 +1012,10 @@
   var IMG_LABEL=/^\[image:[^\]\n]*\]$/;
   function msgHtml(raw,atts){
     var s=String(raw||'');
-    if(atts&&atts.length&&s)s=s.split('\n').filter(function(l){return !IMG_LABEL.test(l.trim());}).join('\n').trim();
+    // Việc bỏ nhãn `[image:…]` nằm ở msgBlock (chỗ gọi DUY NHẤT), CỐ Ý không lặp lại ở đây:
+    // nó phải chạy TRƯỚC khi cắt chuỗi, còn tới đây thì đã muộn — nhãn bị cắt đôi sẽ lọt ra
+    // màn hình. Lặp ở hai nơi còn CHE MẤT lỗi: đột biến 2026-07-28 phá đúng chỗ kia mà gate
+    // vẫn xanh, vì bản sao ở đây gánh thay.
     if(!s)return attHtml(atts);
     // Một message có thể vừa có prose vừa có tool (adapter join các part bằng '\n')
     // → cắt tại mốc tool ở ĐẦU DÒNG, không dùng regex neo ^ cho cả message.
