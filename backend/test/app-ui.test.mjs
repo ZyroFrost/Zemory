@@ -601,3 +601,22 @@ test("bộ lọc phiên đi xuống SERVER (không lọc trên 120 phiên đã t
   // Bản cũ lọc bằng Array.filter trên svList — nếu quay lại thì con số hiện ra là số dối.
   assert.ok(!/svList\.filter\(function\(s\)\{return !q/.test(JS), "không được quay lại lọc phía client");
 });
+
+test("nhãn [image:…] bị bỏ ĐÚNG MỘT chỗ, và bỏ TRƯỚC khi cắt (không để lọt nhãn đứt nửa)", () => {
+  // Đột biến 2026-07-28: gỡ việc bỏ nhãn khỏi msgBlock mà gate VẪN XANH, vì msgHtml có
+  // một bản sao gánh thay. Hai bản sao không chỉ thừa — chúng che mất lỗi, và bản ở
+  // msgHtml chạy SAU khi chuỗi đã bị cắt nên không cứu được nhãn đứt nửa.
+  assert.equal((JS.match(/IMG_LABEL\.test/g) ?? []).length, 1, "chỉ được có MỘT chỗ bỏ nhãn");
+
+  const { msgBlock } = renderer();
+  const sha = "a".repeat(64);
+  const label = `[image:image/png 73KB ${sha.slice(0, 12)}]`;
+  const m = {
+    id: 7, role: "user", timestamp: "2026-07-28T02:00:00Z",
+    content: `${label}\nphần chữ đứng sau nhãn`,
+    atts: [{ id: 1, sha256: sha, mime: "image/png", bytes: 74670, kind: "blob", name: null }],
+  };
+  // cap NGẮN hơn độ dài nhãn: nếu bỏ nhãn sau khi cắt thì mảnh "[image:image/p" sẽ lọt ra.
+  const html = msgBlock(m, 12);
+  assert.ok(!html.includes("[image:"), `nhãn (kể cả mảnh) không được lọt ra: ${html.slice(0, 120)}`);
+});

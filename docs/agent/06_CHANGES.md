@@ -5,6 +5,31 @@
 
 ---
 
+## [2026-07-28g] — Đột biến hoá bắt được 2 test XANH GIẢ · luật kiểm chéo vào RULES + cả 2 template
+
+Gate 274 → **276** · `conform` ✓ · `validate` ✓.
+
+### Vì sao có mục này
+User chỉ ra một mẫu lặp: *"cứ suýt hoài… bạn có để ý là tui nói check kỹ, mà làm một hồi lại phát hiện thêm sai không"*. Đếm lại phiên này: **6 lần báo sai trước khi tự bắt** — NUL (nói 1 file, thật ra 2) · "29 nhãn không link" (báo oan) · "87 hàng mồ côi" (tiêu chí sai, suýt xoá dữ liệu sống) · "Recall chưa duyệt" (đã duyệt) · "L3 chưa code" (xong 2/3) · 20 mục TODO đã xong vẫn ghi chưa làm.
+
+**Cả 6 chung một gốc: đo MỘT lần, bằng MỘT cách, rồi coi kết quả đầu là sự thật.** Không cái nào là "quên check" — cái nào cũng có chạy lệnh.
+
+### Kiểm chéo lại chính việc vừa làm (đường đo thứ hai)
+- Re-ingest KHÔNG mất dữ liệu: sessions 1206 → 1208 · messages 174.405 → **176.067** · 0 session rỗng · 0 message mồ côi · 0 phiên lệch `message_count`.
+- DB nói có ⇒ HTTP phải phục vụ đúng: 10 mẫu ngẫu nhiên **10/10 khớp byte**; 5 mẫu CÓ TÊN GỐC **5/5** đúng cả bytes lẫn tên trong `Content-Disposition`.
+
+### ĐỘT BIẾN HOÁ — và nó bắt được 2 test xanh giả
+Phá 4 chỗ trong code rồi đòi test phải ĐỎ. **2/4 đột biến SỐNG SÓT**:
+1. *`pruneOrphanAttachments` xoá luôn nội dung* → vẫn xanh. Vì test cũ chỉ xoá MỘT tin nên ảnh còn liên kết khác ⇒ **nhánh xoá-nội-dung chưa bao giờ được chạy**. Thêm ca xoá HẾT tin: mặc định nội dung phải còn, chỉ `dropUnlinked` mới xoá.
+2. *`msgBlock` không bỏ nhãn `[image:…]`* → vẫn xanh. Vì **`msgHtml` có một bản sao gánh thay**. Hai bản sao không chỉ thừa: bản ở `msgHtml` chạy SAU khi chuỗi đã bị cắt nên không cứu được nhãn đứt nửa. Gỡ bản sao, giữ đúng một chỗ (trước khi cắt) + test cap ngắn hơn nhãn.
+Sau khi vá: **4/4 đột biến đều bị bắt.**
+
+### Đóng cứng thành luật (RULES + cả 2 template)
+- *"Một phép đo chưa được kiểm chéo thì chưa phải sự thật"* — trước khi báo số / kết luận xong-chưa / xoá bất cứ thứ gì, phải đo lại bằng **đường thứ hai khác cơ chế**; liệt kê 4 dạng đã trả giá.
+- *"Test mới phải chứng minh mình ĐỎ ĐƯỢC"* — viết xong thì phá code nó canh, không đỏ nghĩa là chưa soi gì.
+
+---
+
 ## [2026-07-28f] — L3 sync kèm ảnh (trọn 3 bước) · parser v6: 137 ảnh mới + 125 tên gốc · suýt xoá nhầm 87 ảnh sống
 
 Gate **274/274** · `conform` ✓ · `validate` ✓.
