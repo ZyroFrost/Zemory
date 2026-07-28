@@ -6,8 +6,8 @@
 
 import { basename, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { decodeFileUri, safeReaddir, safeStat, toTranscript } from "./_shared.js";
-import type { Adapter, ParsedMessage, ParsedSession, TranscriptFile } from "./types.js";
+import { decodeFileUri, imageAttachment, imageLabel, safeReaddir, safeStat, toTranscript } from "./_shared.js";
+import type { Adapter, ParsedAttachment, ParsedMessage, ParsedSession, TranscriptFile } from "./types.js";
 
 export const continueAdapter: Adapter = {
   source: "continue",
@@ -44,7 +44,8 @@ export const continueAdapter: Adapter = {
       if (!m) continue;
       const role = m.role;
       if (role !== "user" && role !== "assistant") continue;
-      const content = flatten(m.content);
+      const atts: ParsedAttachment[] = [];
+      const content = flatten(m.content, atts);
       if (!content) continue;
       messages.push({
         uuid: m.id ?? `${idx}`,
@@ -52,6 +53,7 @@ export const continueAdapter: Adapter = {
         content,
         toolName: null,
         timestamp: ts,
+        ...(atts.length ? { attachments: atts } : {}),
       });
       idx++;
     }
@@ -59,13 +61,23 @@ export const continueAdapter: Adapter = {
   },
 };
 
-function flatten(content: unknown): string {
+function flatten(content: unknown, atts?: ParsedAttachment[]): string {
   if (content == null) return "";
   if (typeof content === "string") return content.trim();
   if (!Array.isArray(content)) return "";
   const parts: string[] = [];
   for (const b of content) {
-    if (b && typeof b === "object" && typeof (b as any).text === "string") parts.push((b as any).text);
+    if (!b || typeof b !== "object") continue;
+    // Bản cũ CHỈ lấy `.text` ⇒ mọi block khác biến mất KHÔNG dấu vết (cùng họ lỗi làm mất
+    // 93 MB ảnh ở lớp Claude Code). Ảnh nay thành đính kèm + để lại nhãn; block lạ vẫn bỏ
+    // qua như cũ — KHÔNG đoán hình dạng chưa từng thấy.
+    const a = imageAttachment(b);
+    if (a) {
+      atts?.push(a);
+      parts.push(imageLabel(a));
+      continue;
+    }
+    if (typeof (b as any).text === "string") parts.push((b as any).text);
   }
   return parts.join("\n").trim();
 }

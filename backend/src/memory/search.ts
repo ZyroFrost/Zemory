@@ -45,6 +45,8 @@ export interface SearchOptions {
   role?: string;
   /** Filter: only messages at/after this epoch-ms timestamp. */
   sinceMs?: number;
+  /** Filter: only messages that carry at least one attachment (chip "Có ảnh"). */
+  hasAttachment?: boolean;
   /** Recency blend override: true/false force on/off, undefined = default (on). */
   recency?: boolean;
   /** Provenance lanes to EXCLUDE from results; undefined = the saved scope list. */
@@ -238,6 +240,12 @@ function hydrate(
      FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id = ?`,
   );
   const wantProject = !opts.all && opts.project ? norm(opts.project) : null;
+  // Tra qua `attachment_link` (ánh xạ ĐẦY ĐỦ tin↔đính kèm), KHÔNG qua `attachment.message_id`
+  // — cột đó chỉ giữ tin đầu tiên mang nội dung ấy vì dedup theo sha256. `message_id` là cột
+  // dẫn đầu của PRIMARY KEY nên phép tra này đi thẳng vào index.
+  const hasAtt = opts.hasAttachment
+    ? db.prepare("SELECT 1 FROM attachment_link WHERE message_id = ? LIMIT 1")
+    : null;
   const excludeLanes = opts.excludeLanes ?? getScopeExclude();
   const perSessionCount = new Map<string, number>();
   const hits: SearchHit[] = [];
@@ -253,6 +261,7 @@ function hydrate(
     // Scoped recall: drop lanes the user excluded (still in the DB, just hidden).
     if (excludeLanes.length && isExcluded({ origin: row.origin ?? "local", host: row.host, source: row.source }, excludeLanes)) continue;
     if (opts.sinceMs && !(Date.parse(row.timestamp ?? "") >= opts.sinceMs)) continue;
+    if (hasAtt && !hasAtt.get(row.id)) continue;
     const used = perSessionCount.get(row.session_id) ?? 0;
     if (used >= perSession) continue;
     perSessionCount.set(row.session_id, used + 1);

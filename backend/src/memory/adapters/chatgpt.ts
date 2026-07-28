@@ -9,8 +9,8 @@
 
 import { basename, dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { safeReaddir, toTranscript } from "./_shared.js";
-import type { Adapter, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
+import { imageAttachment, imageLabel, safeReaddir, toTranscript } from "./_shared.js";
+import type { Adapter, ParsedAttachment, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
 
 export const chatgptAdapter: Adapter = {
   source: "chatgpt-web",
@@ -118,20 +118,40 @@ function flattenConversation(conv: any): ParsedMessage[] {
     const role = m.author.role;
     if (role !== "user" && role !== "assistant") continue; // skip system / tool
     if (m.metadata?.is_visually_hidden_from_conversation) continue;
-    const content = flattenParts(m.content);
+    const atts: ParsedAttachment[] = [];
+    const content = flattenParts(m.content, atts);
     if (!content) continue;
     const ts = typeof m.create_time === "number" ? new Date(m.create_time * 1000).toISOString() : null;
-    msgs.push({ uuid: id, role, content, toolName: null, timestamp: ts });
+    msgs.push({ uuid: id, role, content, toolName: null, timestamp: ts, ...(atts.length ? { attachments: atts } : {}) });
   }
   return msgs;
 }
 
-function flattenParts(content: any): string {
+/**
+ * `content.parts[]` trộn CHUỖI (văn bản) với OBJECT (ảnh…). Bản cũ lọc
+ * `typeof p === "string"` nên mọi part object **biến mất không dấu vết** — cùng họ lỗi đã
+ * làm mất 93 MB ảnh ở lớp Claude Code. Nay part ảnh thành đính kèm + để lại nhãn.
+ *
+ * ChatGPT export KHÔNG kèm bytes (chỉ con trỏ `file-service://…`) ⇒ ra `kind:'ref'`:
+ * ghi nhận "từng có ảnh ở đây" chứ không giả vờ có nội dung. Muốn bytes thì phải tải qua
+ * phiên đã đăng nhập — việc khác, chưa làm.
+ */
+function flattenParts(content: any, atts?: ParsedAttachment[]): string {
   if (!content) return "";
   if (typeof content === "string") return content.trim();
   const parts = content.parts;
-  if (Array.isArray(parts)) {
-    return parts.filter((p: unknown) => typeof p === "string" && p.trim()).join("\n").trim();
+  if (!Array.isArray(parts)) return "";
+  const out: string[] = [];
+  for (const p of parts) {
+    if (typeof p === "string") {
+      if (p.trim()) out.push(p);
+      continue;
+    }
+    const a = imageAttachment(p);
+    if (a) {
+      atts?.push(a);
+      out.push(imageLabel(a));
+    }
   }
-  return "";
+  return out.join("\n").trim();
 }

@@ -14,6 +14,8 @@ import { templateDir, ensureHarness } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
+import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
+import type { AttachmentMeta } from "./memory/attachments.js";
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
 import { digestBackfill } from "./memory/digest.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
@@ -92,7 +94,12 @@ function serveFrontend(res: ServerResponse, sub: string, file: string, type: str
     res.end("not found");
     return;
   }
-  res.writeHead(200, { "content-type": type });
+  // KHÔNG có header cache thì trình duyệt áp cache PHỎNG ĐOÁN: sửa xong app.js/app.css
+  // mà cửa sổ đang mở vẫn chạy bản cũ, và không có cách nào biết ngoài việc nhìn thấy
+  // tính năng "không có". Vỏ HTML đã `no-store` từ trước; script/style thì bị bỏ sót nên
+  // vỏ mới đi kèm script cũ. Đây là file đọc thẳng từ đĩa của một daemon cục bộ ⇒ không
+  // cache là đúng, chi phí bằng không.
+  res.writeHead(200, { "content-type": type, "cache-control": "no-store" });
   res.end(body);
 }
 const ASSET_MIME: Record<string, string> = {
@@ -252,12 +259,24 @@ function lastSyncAt(): string | null {
   }
 }
 
+/**
+ * Gắn metadata đính kèm vào từng hàng có `id` — MỘT lượt truy vấn cho cả lô, không
+ * phải mỗi hàng một lần. Chỉ metadata (sha/mime/bytes), KHÔNG kèm bytes: bytes đi
+ * riêng qua `/attachment?sha=` để payload JSON không phình theo kích thước ảnh.
+ * Hàng không có đính kèm thì KHÔNG mọc thêm khoá `atts` (giữ payload cũ y nguyên).
+ */
+function withAttachments<T extends { id: number }>(rows: T[]): Array<T | (T & { atts: AttachmentMeta[] })> {
+  if (!rows.length) return rows;
+  const map = attachmentsFor(rows.map((r) => r.id));
+  return rows.map((r) => (map[r.id]?.length ? { ...r, atts: map[r.id] } : r));
+}
+
 /** Recent messages (newest first), scoped like recall — feeds the Recall default
  *  list so the panel is never empty (user 2026-07-23). Same row shape as recall. */
 function queryRecentMessages(
   limit: number,
-  o: { all?: boolean; project?: string; days?: number; role?: string; origin?: string; agent?: string },
-): unknown[] {
+  o: { all?: boolean; project?: string; days?: number; role?: string; origin?: string; agent?: string; withAtt?: boolean },
+): Array<{ id: number; role: unknown; project: unknown; source: unknown; sessionId: unknown; timestamp: unknown; snippet: string }> {
   const db = openMemory();
   try {
     const cond: string[] = [];
@@ -282,6 +301,7 @@ function queryRecentMessages(
       cond.push("s.source = ?");
       args.push(o.agent);
     }
+    if (o.withAtt) cond.push("EXISTS (SELECT 1 FROM attachment_link al WHERE al.message_id = m.id)");
     const where = cond.length ? "WHERE " + cond.join(" AND ") : "";
     const rows = db
       .prepare(
@@ -292,7 +312,7 @@ function queryRecentMessages(
       )
       .all(...args, limit) as Array<Record<string, unknown>>;
     return rows.map((r) => ({
-      id: r.id,
+      id: Number(r.id),
       role: r.role,
       project: r.project,
       source: r.source,
@@ -357,19 +377,82 @@ function insightsData(days: number): unknown {
 }
 
 /** List sessions (NOT project-deduped) for the Session Viewer screen, newest first. */
-function querySessions(limit: number, offset = 0): unknown[] {
+/**
+ * Danh sách phiên cho tab Recall › Phiên, LỌC Ở SERVER.
+ *
+ * Vì sao không lọc ở client: danh sách chỉ tải 120 phiên đầu trong khi DB có 1.206 —
+ * lọc phía client là tìm trong 120/1.206 mà giao diện vẫn nói như thể đã tìm hết. Cùng
+ * họ "bề mặt chỉ-đọc nói sai" đã trị ở F1. Nên trả kèm `total` = số phiên KHỚP THẬT,
+ * không phải số hàng vừa trả về.
+ */
+function querySessions(
+  limit: number,
+  offset = 0,
+  o: { q?: string; days?: number; origin?: string; agent?: string; host?: string; withAtt?: boolean } = {},
+): { items: unknown[]; total: number } {
   const db = openMemory();
   try {
-    return db
+    // Số ảnh THEO PHIÊN, tính một lần: đi qua `attachment_link` (ánh xạ đầy đủ) rồi quy về
+    // session của message, KHÔNG dùng `attachment.session_id` — cột đó chỉ ghi phiên của tin
+    // ĐẦU TIÊN mang nội dung ấy, nên một ảnh dùng lại ở phiên khác sẽ đếm thiếu.
+    const attRows = db
+      .prepare(
+        `SELECT m.session_id AS sid, count(DISTINCT al.attachment_id) AS n
+           FROM attachment_link al JOIN messages m ON m.id = al.message_id
+          GROUP BY m.session_id`,
+      )
+      .all() as { sid: string; n: number }[];
+    const attBySession = new Map(attRows.map((r) => [r.sid, r.n]));
+
+    const cond: string[] = [];
+    const args: unknown[] = [];
+    if (o.q) {
+      cond.push("(lower(COALESCE(s.title,'')) LIKE ? OR lower(COALESCE(s.project_root,'')) LIKE ? OR lower(s.source) LIKE ?)");
+      const like = `%${o.q.toLowerCase()}%`;
+      args.push(like, like, like);
+    }
+    if (o.days && o.days > 0) {
+      cond.push("COALESCE(s.ended_at, s.started_at, '') >= ?");
+      args.push(new Date(Date.now() - o.days * 86400000).toISOString());
+    }
+    if (o.origin) {
+      cond.push("COALESCE(s.origin, 'local') = ?");
+      args.push(o.origin);
+    }
+    if (o.agent) {
+      cond.push("s.source = ?");
+      args.push(o.agent);
+    }
+    if (o.host) {
+      cond.push("s.host = ?");
+      args.push(o.host);
+    }
+    if (o.withAtt) {
+      // Danh sách phiên-có-ảnh nhỏ (đo thật: 73/1.206) ⇒ đưa thẳng vào IN rẻ hơn nhiều so
+      // với EXISTS chạy lại cho từng phiên.
+      const ids = [...attBySession.keys()];
+      if (!ids.length) return { items: [], total: 0 };
+      cond.push(`s.id IN (${ids.map(() => "?").join(",")})`);
+      args.push(...ids);
+    }
+    const where = cond.length ? "WHERE " + cond.join(" AND ") : "";
+    const total = (db.prepare(`SELECT count(*) AS n FROM sessions s ${where}`).get(...args) as { n: number }).n;
+    const rows = db
       .prepare(
         `SELECT s.id AS sessionId, s.source AS source, s.origin AS origin, s.project_root AS project,
                 s.title AS title, s.host AS host, s.message_count AS messages,
                 s.started_at AS startedAt, s.ended_at AS endedAt
            FROM sessions s
+           ${where}
           ORDER BY COALESCE(s.ended_at, s.started_at, '') DESC
           LIMIT ? OFFSET ?`,
       )
-      .all(limit, offset) as unknown[];
+      .all(...args, limit, offset) as Array<Record<string, unknown>>;
+    const items = rows.map((r) => {
+      const n = attBySession.get(String(r.sessionId));
+      return n ? { ...r, atts: n } : r;
+    });
+    return { items, total };
   } finally {
     db.close();
   }
@@ -1086,11 +1169,11 @@ export async function startUi(): Promise<void> {
       try {
         // calls: gộp về mức FILE (nhiều call-site giữa 2 file = 1 cạnh, giữ count),
         // bỏ self-call, và bỏ cặp đã có cạnh import để không vẽ chồng hai lần.
-        const seen = new Set(edges.map((e) => `${e.from} ${e.to}`));
+        const seen = new Set(edges.map((e) => `${e.from}\u0000${e.to}`));
         const agg = new Map<string, { from: string; to: string; count: number; confidence: string }>();
         for (const c of resolveCalls(g)) {
           if (c.fromFile === c.toFile) continue;
-          const key = `${c.fromFile} ${c.toFile}`;
+          const key = `${c.fromFile}\u0000${c.toFile}`;
           if (seen.has(key)) continue;
           const cur = agg.get(key);
           if (cur) {
@@ -1347,27 +1430,58 @@ export async function startUi(): Promise<void> {
         origin: u.searchParams.get("origin") || undefined,
         role: u.searchParams.get("role") || undefined,
         sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
+        hasAttachment: u.searchParams.get("withAtt") === "1",
       });
-      return json(res, hits);
+      return json(res, withAttachments(hits));
     }
     if (p === "/memory-context") {
       // Drill-down WITHIN a recall already counted by /memory-search; not logged
       // separately (same 'recall' feature) to avoid double-counting.
       const ctx = getMessageContext(Number(u.searchParams.get("id")), 3);
-      return json(res, ctx ?? {});
+      if (!ctx) return json(res, {});
+      return json(res, { ...ctx, messages: withAttachments(ctx.messages) });
     }
-    if (p === "/memory-session") return json(res, getSessionThread(u.searchParams.get("id") ?? "") ?? {});
+    if (p === "/attachment") {
+      // Content-addressed ⇒ một sha luôn ra cùng bytes ⇒ cache vĩnh viễn được. `private`
+      // vì đây là dữ liệu riêng của máy này. Đọc TRƯỚC rồi mới cam kết header — cùng bẫy
+      // treo đã vá ở `serveFrontend`/`serveBinary` (writeHead(200) trước readFileSync).
+      const a = attachmentBlob(u.searchParams.get("sha") ?? "");
+      if (!a) {
+        res.writeHead(404, { "content-type": "text/plain" });
+        return res.end("not found");
+      }
+      res.writeHead(200, {
+        "content-type": a.mime,
+        "content-length": String(a.bytes.length),
+        // `inline` = vẫn hiện trong trang, nhưng ĐẶT TÊN cho lúc "Save image as" — nếu
+        // không, trình duyệt lấy đoạn cuối đường dẫn và mọi ảnh đều lưu thành "attachment".
+        // Tên đã lọc ký tự cấm ở `downloadName()`, nên nhét vào header là an toàn.
+        "content-disposition": `inline; filename="${a.name}"`,
+        "cache-control": "private, max-age=31536000, immutable",
+        // Ảnh do người khác gửi vào chat: chặn trình duyệt tự đoán kiểu và chặn nhúng
+        // chéo trang, phòng ca một "ảnh" thật ra là HTML.
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "default-src 'none'; sandbox",
+      });
+      return res.end(a.bytes);
+    }
+    if (p === "/memory-session") {
+      const th = getSessionThread(u.searchParams.get("id") ?? "");
+      if (!th) return json(res, {});
+      return json(res, { ...th, messages: withAttachments(th.messages) });
+    }
     if (p === "/recent-messages") {
       // Recall default list (never empty): newest messages, scoped like recall.
       const days = Number(u.searchParams.get("days") || 0);
-      return json(res, queryRecentMessages(Math.min(50, Number(u.searchParams.get("limit") || 25)), {
+      return json(res, withAttachments(queryRecentMessages(Math.min(50, Number(u.searchParams.get("limit") || 25)), {
         all: u.searchParams.get("all") === "1",
         project: target,
         days: days > 0 ? days : undefined,
         role: u.searchParams.get("role") || undefined,
         origin: u.searchParams.get("origin") || undefined,
         agent: u.searchParams.get("agent") || undefined,
-      }));
+        withAtt: u.searchParams.get("withAtt") === "1",
+      })));
     }
     if (p === "/recent-sessions") {
       // Home "Recent Sessions": the last session of each project, newest first.
@@ -1386,7 +1500,18 @@ export async function startUi(): Promise<void> {
           /* fail-open (điều 9): danh sách vẫn trả được với tên đang có trong DB */
         }
       }
-      return json(res, querySessions(Math.min(300, Number(u.searchParams.get("limit") || 80)), Number(u.searchParams.get("offset") || 0)));
+      const sDays = Number(u.searchParams.get("days") || 0);
+      return json(
+        res,
+        querySessions(Math.min(300, Number(u.searchParams.get("limit") || 80)), Number(u.searchParams.get("offset") || 0), {
+          q: (u.searchParams.get("q") || "").trim() || undefined,
+          days: sDays > 0 ? sDays : undefined,
+          origin: u.searchParams.get("origin") || undefined,
+          agent: u.searchParams.get("agent") || undefined,
+          host: u.searchParams.get("host") || undefined,
+          withAtt: u.searchParams.get("withAtt") === "1",
+        }),
+      );
     }
     if (p === "/insights") {
       return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));
