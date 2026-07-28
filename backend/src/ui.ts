@@ -37,7 +37,7 @@ import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
-import { startScheduler, stopScheduler } from "./jobs/scheduler.js";
+import { schedulerChildRunning, startScheduler, stopScheduler } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
@@ -1564,6 +1564,10 @@ export async function startUi(): Promise<void> {
       return json(res, {
         autostart: getAutostart(), autosync: getAutosync(), scheduler: getScheduler(),
         os: autostartStatus(), shortcut: desktopShortcutStatus(),
+        // Có ĐANG chạy job nền không (embed/scan). Đo 2026-07-28: job embed nền ngốn
+        // 4.592 s CPU làm MỌI endpoint chậm 2–9× mà giao diện không hề nói gì — phải mở
+        // `Get-Process` mới thấy. Phơi ra đây để lần sau nhìn là biết.
+        embedRunning: schedulerChildRunning(),
       });
     }
     if (p === "/set-shortcut") {

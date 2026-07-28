@@ -5,6 +5,31 @@
 
 ---
 
+## [2026-07-28i] — Dọn nợ nhẹ: 4/5 export mồ côi được NỐI VÀO (không xoá) · check vector·rerank nay kiểm THẬT
+
+Gate 278 → **284** · `conform` ✓ · `validate` ✓. Mọi thay đổi đã đột biến hoá: **5/5 đột biến bị bắt.**
+
+### `vector` và `rerank` trước đây báo trạng thái theo CÔNG TẮC, không phải theo sự thật
+Hai mục này lấy state từ config ⇒ hiện "on" **kể cả khi model không tải nổi**. Trong khi `embedProbe`/`rerankProbe`/`embedDims` viết ra đúng để kiểm thật thì nằm mồ côi (audit: mỗi hàm xuất hiện đúng 1 lần = chỉ có định nghĩa). Nay nối vào `runCheck`:
+- `vector` → `model onnx-community/embeddinggemma-300m-ONNX · 256d (model 768d) · nhúng thử ok`
+- `rerank` → `tắt (opt-in) · model Xenova/bge-reranker-base sẵn sàng` — **tắt là trạng thái ĐÚNG**, không báo đỏ.
+
+**Tự bắt một lỗi ngay khi vừa viết:** bản đầu in **768d** (dims thô của model) trong khi index thật là **256d** — sai đúng kiểu "bề mặt chỉ-đọc nói sai còn nguy hơn báo lỗi". Vá theo pattern *stored-dims-authoritative* (plan 12): ưu tiên `vec_config.dims`, chỉ rơi về dims model khi chưa có index.
+
+### `schedulerChildRunning` → cờ `embedRunning` trong `/automation`
+Đúng thứ tôi đã phải mở `Get-Process` mới thấy khi truy vụ recall chậm: job embed nền ngốn 4.592 s CPU làm **mọi** endpoint chậm 2–9× mà giao diện không hề nói gì.
+
+### `doctor` cảnh báo HAI file `config.json`
+Bản THẬT nằm cạnh DB (`currentMemoryDir()`), bản ở `~/.zemory` là rác còn sót sau `memory relocate` — và chính nó đã khiến tôi chẩn đoán sai một setting. **Chỉ báo, KHÔNG tự xoá** file của user; test khoá luôn điều đó.
+
+### Còn lại 1/5 export — cố ý không đụng
+`resolveDocPath` là **guard bảo mật** trùng ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng khác ngữ nghĩa resolve. Gộp hai guard là refactor an-toàn-đường-dẫn, không phải dọn dẹp ⇒ tách ra làm riêng, không nhét vào đợt dọn nhẹ.
+
+### Vặt
+`.bell` + `.bell .badge` — 2 rule CSS chết (0 phần tử dùng) đã gỡ, có test chống tái sinh.
+
+---
+
 ## [2026-07-28h] — AUDIT TOÀN DIỆN: recall 25 s → 0,55 s (rerank mặc định BẬT trái thiết kế)
 
 Gate 276 → **278** · `conform` ✓ · `validate` ✓ · 6 mặt chạy đủ, mỗi mục đo hai đường.
