@@ -317,6 +317,31 @@ export function cmdReindex(): void {
     sections += r.sections;
     if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (cấu trúc lạ; vẫn index)`);
   }
+  // Harness docs are searchable content too — the backlog especially. Before this,
+  // `reindex` covered docs/plan/* and 06_CHANGES only, so 05_TODO (the biggest file
+  // in docs/agent) was reachable by grep alone, and its archive doubly so. Indexed
+  // under their own `kind` so they stay distinguishable from plan specs.
+  // 06_CHANGES is excluded on purpose: it has a dedicated changelog lane and would
+  // otherwise be indexed twice.
+  const agentDir = join(root, "docs", "agent");
+  const arcDir = join(agentDir, "archive");
+  const mdIn = (dir: string) => {
+    try {
+      return readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "06_CHANGES.md");
+    } catch {
+      return [];
+    }
+  };
+  let agentDocs = 0;
+  for (const f of mdIn(agentDir)) {
+    importDoc(join(agentDir, f), join("docs", "agent", f), root, "agent");
+    agentDocs++;
+  }
+  for (const f of mdIn(arcDir)) {
+    importDoc(join(arcDir, f), join("docs", "agent", "archive", f), root, "agent-archive");
+    agentDocs++;
+  }
+
   const chPath = join(root, "docs", "agent", "06_CHANGES.md");
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
   // The ARCHIVE is a source file too — outside the per-session read, but git-tracked
@@ -328,7 +353,7 @@ export function cmdReindex(): void {
     ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
     : 0;
   console.log(
-    `zemory reindex — ${files.length} plan doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).`,
+    `zemory reindex — ${files.length} plan doc(s) · ${agentDocs} harness doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).`,
   );
 }
 
