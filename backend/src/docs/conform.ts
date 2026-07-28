@@ -267,6 +267,45 @@ export function conform(root: string): ConformReport {
     "sửa NGUỒN .md: bỏ tham chiếu chết hoặc tạo lại đích — .md là nguồn, DB chỉ là index (điều 3)",
   );
 
+  // ⑦ KÝ TỰ ĐIỀU KHIỂN lọt vào file nguồn — thứ làm MÙ chính công cụ đo.
+  //
+  //    Vì sao chặn: một byte NUL trong file .ts khiến ripgrep xếp cả file vào loại NHỊ PHÂN
+  //    rồi BỎ QUA nó. Ở repo này đã xảy ra thật (2026-07-28): `ingest.ts` (777 dòng) và
+  //    `ui.ts` — hai file lớn nhất của bề mặt — mang NUL gõ thẳng vào template literal làm
+  //    ký tự nối khoá, nên MỌI đợt audit bằng grep (export mồ côi · endpoint chết · i18n ·
+  //    chuỗi hardcode) chưa từng nhìn vào chúng. `tsc` xanh, test xanh, không dấu hiệu nào.
+  //    Đây đúng loại lỗi mà `04_SKILLS §audit toàn diện` luật 1 nói: gate xanh KHÔNG chứng
+  //    minh nó đang soi thứ đang chạy.
+  //
+  //    Cùng họ: 4 byte 0x08 nằm sẵn trong docs vì chuỗi `\b` bị nuốt khi soạn, làm câu văn
+  //    mất chủ ngữ mà đọc lướt không thấy.
+  //
+  //    Duyệt theo MÃ KÝ TỰ, không dùng regex: viết dải điều khiển trong class regex vừa khó
+  //    đọc vừa dễ nuốt nhầm — chính lỗi đó đã bị lint bắt khi vá đợt này.
+  const firstCtrl = (txt: string): { line: number; code: number } | null => {
+    for (let i = 0; i < txt.length; i++) {
+      const c = txt.charCodeAt(i);
+      if (c < 9 || c === 11 || c === 12 || (c > 13 && c < 32) || c === 127) {
+        return { line: txt.slice(0, i).split("\n").length, code: c };
+      }
+    }
+    return null;
+  };
+  const ctrlHits: string[] = [];
+  for (const rel of [...new Set([...g.nodes.map((n) => n.id), ...mdFiles])]) {
+    const txt = read(root, rel);
+    if (!txt) continue;
+    const hit = firstCtrl(txt);
+    if (hit) ctrlHits.push(`${rel}:${hit.line} (0x${hit.code.toString(16).padStart(2, "0")})`);
+  }
+  push(
+    "control-char",
+    "blocking",
+    "Ký tự điều khiển trong file nguồn — grep sẽ coi file là nhị phân và BỎ QUA nó",
+    ctrlHits.sort(),
+    "thay bằng escape (vd \\u0000 · \\b) — giá trị runtime y hệt, nhưng file đọc/grep được trở lại",
+  );
+
   return {
     root,
     items,

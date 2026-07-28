@@ -74,7 +74,7 @@
 - `backend/src/memory/ingest.ts` (1 byte, dòng 400) và `backend/src/ui.ts` (2 byte, dòng 1089 + 1093) chứa ký tự **NUL THẬT** gõ thẳng vào template literal làm ký tự nối khoá (`` `${a}<NUL>${b}` ``). Chạy đúng, `tsc` không kêu — nhưng **ripgrep xếp file có NUL vào loại nhị phân rồi BỎ QUA**. Nghĩa là mọi đợt audit grep `backend/src` (export mồ côi · endpoint chết · i18n · chuỗi hardcode) đều **chưa từng nhìn** 777 dòng `ingest.ts` + toàn bộ `ui.ts`.
 - Vá: đổi sang escape ``\u0000`` — giá trị runtime y hệt, `tsc` xanh, grep thấy lại (kiểm chứng: `writeAttachments` trước đó 0 kết quả, sau khi vá ra 3).
 - **Báo oan tự bắt:** phép quét NUL đầu tiên của tôi (`grep -qP '\x00'`) cho ÂM TÍNH GIẢ nên tôi đã kết luận nhầm "chỉ `ingest.ts` dính". Quét lại bằng Python mới ra `ui.ts`. Đã quét toàn bộ file tracked: ngoài 2 file này, mọi hit còn lại đều là nhị phân thật (png/ico/ttf).
-- [ ] **Nên có ratchet**: một check trong `conform` (hoặc test) chặn NUL quay lại file nguồn — hiện chưa có, và đây đúng loại lỗi "công cụ đo bị mù" mà `04_SKILLS §audit toàn diện` luật 1 nói tới.
+- [x] ~~**Ratchet chặn ký tự điều khiển**~~ **XONG 2026-07-28** — `conform` check ⑦ `control-char` (blocking): quét mọi file code + docs, duyệt theo MÃ ký tự (không regex — dải điều khiển trong class regex chính là chỗ lint vừa bắt). 3 test chứng minh nó **nổ được** (NUL trong .ts · 0x08 trong .md) và **không nổ oan** (tab · CRLF · dấu tiếng Việt).
 
 **Bẫy đã trả giá trong phiên này — đọc trước khi sửa tiếp**
 1. **Backtick trong comment nằm trong template literal** cắt đứt chuỗi — dính **6 lần**. Trước khi viết comment trong một template literal, bỏ hết dấu ``` ` ```.
