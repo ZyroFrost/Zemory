@@ -173,6 +173,16 @@ checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng lòng tin v�
 **Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
 và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
 
+**Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật (`02_RULES`).
+Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒ tưởng "sạch") · **báo oan**
+do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒
+tưởng mồ côi, suýt xoá dữ liệu sống) · **sổ nói khác code**. Kiểm chéo = đổi công cụ · đổi hướng đếm ·
+hoặc gọi bề mặt thật (DB ↔ API).
+
+**Luật 6 — ĐỘT BIẾN HOÁ trước khi tin bộ test.** Phá từng chỗ code mà test canh, đòi nó phải ĐỎ. Đo
+2026-07-28: **2/4 đột biến sống sót** — một test chưa bao giờ chạy tới nhánh nguy hiểm, một test bị
+**bản sao logic ở nơi khác gánh thay**. Cả hai đều xanh suốt và không soi gì cả.
+
 ### 6 mặt — chạy đủ
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.

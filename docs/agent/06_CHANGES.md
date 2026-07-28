@@ -5,6 +5,35 @@
 
 ---
 
+## [2026-07-28h] — AUDIT TOÀN DIỆN: recall 25 s → 0,55 s (rerank mặc định BẬT trái thiết kế)
+
+Gate 276 → **278** · `conform` ✓ · `validate` ✓ · 6 mặt chạy đủ, mỗi mục đo hai đường.
+
+### Phát hiện nặng nhất — và nó chỉ lộ ra vì user bắt audit
+`/memory-search` mất **25–62 giây**. Truy ra hai lớp nguyên nhân, phải bóc từng lớp mới thấy:
+1. **Job embed nền ăn hết CPU** (4.592 s CPU, do chính re-ingest v6 tạo 32k backlog). Dừng nó: `/sessions` **4,5 s → 0,05 s**, `/code-graph` **7,8 s → 1,03 s**. Nhưng search **vẫn 23 s** ⇒ chưa phải gốc.
+2. **Rerank BẬT.** Đo dứt điểm cùng tiến trình: `rerank=false` **4.616 ms** · `rerank=true` **29.304 ms** — **6,3×**.
+
+**Gốc rễ:** `settings.ts` trả `read().rerank ?? true` — **mặc định CODE là BẬT**, trong khi `plan/05 §4.E` chốt *opt-in, mặc định OFF* và HP điều 12 cấm bật mặc định lớp chưa qua gate. Đợt 07-26 đã bắt đúng triệu chứng nhưng **chỉ vá GIÁ TRỊ trong config**, không vá mặc định — nên nó quay lại. Nay sửa đúng chỗ (`=== true`) + `settings-defaults.test.mjs` khoá mặc định của cả 3 công tắc đắt (rerank · syncLevel · syncAttachments), đã **đột biến hoá: đặt lại `?? true` thì test ĐỎ**.
+- Trên máy này config còn giá trị `true` lưu tường minh ⇒ đã trả về mặc định thiết kế. **Đo LIVE sau khi tắt: 25 s → 0,55 s (45×).** Rerank không mất: bật lại bằng nút UI · `ZEMORY_RERANK=1` · `--rerank`.
+
+### Chẩn đoán sai của chính tôi trong lúc audit — vì đọc NHẦM FILE
+Tôi kết luận "config rỗng ⇒ rerank không đến từ config" sau khi đọc `~/.zemory/config.json`. **Sai**: config THẬT nằm cạnh DB (`data/config.json` sau relocate), và nó có `"rerank": true`. File ở home là **bản cũ còn sót**. Cùng họ lỗi "kho import cạnh DB mà discovery chỉ tìm ở home" (07-28c). Đã ghi vào `05_TODO`.
+
+### Kết quả 6 mặt (0 FAIL)
+| mặt | kết quả |
+|---|---|
+| ① gate | **278/278** · lint sạch |
+| ② chuẩn & docs | `conform` ✓ · `validate` ✓ · `06_CHANGES` 226 dòng · **`04_SKILLS` 203 > ngưỡng 200** |
+| ③ kiến trúc | **5 export mồ côi** (đo 2 đường) · điều 6: **0** lời gọi model API |
+| ④ FE↔BE | **0/57 endpoint chết** · neo test trỏ đúng file đang chạy · **`.bell` CSS chết** |
+| ⑤ dữ liệu | `integrity_check` ok · FK 0 lỗi · 0 message mồ côi · 0 session rỗng · 0 lệch `message_count` · 0 link đính kèm chết · 0 digest mồ côi |
+| ⑥ bề mặt sống | **15/15 endpoint 200** |
+
+**Báo oan do chính script audit của tôi (ghi lại để khỏi đào lại):** 3 id `mgSel`·`rsPath`·`fgSel` bị coi là "JS ghi mà HTML không có" — thật ra chúng được tạo ĐỘNG trong `zDialog({bodyHtml})`, script chỉ soi HTML tĩnh. Và ngược lại, phép grep thô của tôi suýt tha cho `.bell` vì "bell" là substring của `aria-labelledby`.
+
+---
+
 ## [2026-07-28g] — Đột biến hoá bắt được 2 test XANH GIẢ · luật kiểm chéo vào RULES + cả 2 template
 
 Gate 274 → **276** · `conform` ✓ · `validate` ✓.
