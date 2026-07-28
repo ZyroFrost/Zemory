@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
+import { importDoc } from "./plan.js";
 
 export interface ArchiveResult {
   moved: number;
@@ -73,31 +74,40 @@ function itemBlocks(lines: string[]): Array<{ state: string; start: number; end:
   return out;
 }
 
-/** Trim 05_TODO.md when it grows past a threshold: move every CLOSED item (`[x]`)
- *  — with its continuation lines — to docs/agent/archive/05_TODO.md, keeping open
- *  (`[ ]`) and in-progress (`[~]`) items plus all headings and narrative in place.
+/** Move every CLOSED item (`[x]`) — with its continuation lines — out of 05_TODO.md
+ *  into docs/agent/archive/05_TODO.md, keeping open (`[ ]`) and in-progress (`[~]`)
+ *  items plus all headings and narrative in place. Unconditional: no threshold.
  *
- *  Why per ITEM and not per section (measured 2026-07-28): only 3 of 19 sections
- *  were fully closed = 18/442 lines (4%), because real sections mix done and open
- *  work. The closed ITEMS are 107 of them = 49.6 KB = 46% of the file. Archiving
- *  by section would have moved almost nothing.
+ *  Why unconditional: the backlog's own header has always read "xong → ghi sang
+ *  06_CHANGES.md và xoá khỏi đây", so a closed item is misplaced the moment it closes.
+ *  Nothing enforced that, and by 2026-07-29 the count had reached 107 items = 46% of
+ *  the file, re-read into context every session. A size threshold is the wrong gate for
+ *  a correctness rule — the give-away was the byte threshold firing with nothing to move.
  *
- *  Why a byte threshold next to the line one: 05_TODO averaged 241 bytes/line vs
- *  06_CHANGES' 103, so a line count under-measures it by more than 2x — and the
- *  thing being paid for is context, which is bytes. */
-export function archiveTodo(ctx: Context): ArchiveResult {
+ *  Why per ITEM and not per section (measured 2026-07-28): only 3 of 19 sections were
+ *  fully closed = 18/442 lines (4%), because real sections mix done and open work.
+ *
+ *  Both tiers are reindexed here, so a moved item is searchable immediately rather than
+ *  whenever someone next remembers to run `reindex`. */
+export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
+  // dbPath is REQUIRED, deliberately — it used to default to currentMemoryDb(), and on
+  // 2026-07-29 a .mjs test that forgot the argument wrote 20 doc + 48 section rows for
+  // temp-dir project roots straight into the live database. TypeScript cannot protect a
+  // JS caller (a missing arg arrives as undefined), so the check is at runtime: loud
+  // failure beats silently writing to production.
+  if (!dbPath) throw new Error("archiveTodo: dbPath is required (pass currentMemoryDb() explicitly)");
   const mainPath = join(ctx.docsDir, "05_TODO.md");
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
-  const maxLines = ctx.config.thresholds?.todo_lines ?? 500;
-  const maxBytes = ctx.config.thresholds?.todo_bytes ?? 60_000;
 
   const text = readFileSync(mainPath, "utf8");
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
-  if (lines.length <= maxLines && Buffer.byteLength(text, "utf8") <= maxBytes) {
-    return { moved: 0, activeLines: lines.length, archivePath: null };
-  }
 
+  // NO threshold. The backlog's own header has always said "xong → ghi sang
+  // 06_CHANGES.md và xoá khỏi đây", so a closed item is out of place the moment it is
+  // closed — file size has nothing to do with it. Gating on a threshold is what let
+  // 107 of them pile up to 46% of the file; and the byte threshold was firing anyway
+  // with nothing to move, which is the tell that it was measuring the wrong thing.
   const closed = itemBlocks(lines).filter((b) => b.state === "x");
   if (closed.length === 0) return { moved: 0, activeLines: lines.length, archivePath: null };
 
@@ -113,6 +123,13 @@ export function archiveTodo(ctx: Context): ArchiveResult {
   writeFileAtomic(archivePath, TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
   // Truncating the SOURCE backlog is destructive — keep a .bak so it can be undone.
   writeFileAtomic(mainPath, keptText, { backup: true });
+
+  // Reindex BOTH tiers immediately, same as archiveChanges. Without this the moved
+  // items are only searchable after someone remembers to run `reindex` — and "someone
+  // remembers" is exactly the failure mode this whole thread has been unpicking.
+  const docsRel = join("docs", "agent");
+  importDoc(mainPath, join(docsRel, "05_TODO.md"), ctx.projectRoot, "agent", dbPath);
+  importDoc(archivePath, join(docsRel, "archive", "05_TODO.md"), ctx.projectRoot, "agent-archive", dbPath);
   return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath };
 }
 

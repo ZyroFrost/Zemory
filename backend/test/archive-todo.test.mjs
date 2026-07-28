@@ -6,9 +6,10 @@
 // were fully closed = 18/442 lines (4%), while the closed ITEMS were 107 of them =
 // 49.6 KB = 46% of the file. Section-level archiving would have moved almost nothing.
 //
-// The byte threshold exists for the same reason: 05_TODO averaged 241 bytes/line vs
-// 06_CHANGES' 103, so a line count under-measures it by more than 2x — and what the
-// archive is buying back is context, which is bytes.
+// Closed items move UNCONDITIONALLY — no size threshold. The backlog's own header has
+// always said "xong → ghi sang 06_CHANGES.md và xoá khỏi đây", so a done item is
+// misplaced the moment it closes; a size gate is the wrong instrument for a correctness
+// rule, and it is what let those 107 accumulate.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -17,13 +18,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { archiveTodo } from "../../dist/docs/archive.js";
 
-function scratch(todo, thresholds = { todo_lines: 5, todo_bytes: 50 }) {
+function scratch(todo) {
   const root = mkdtempSync(join(tmpdir(), "ztodo-"));
   const docsDir = join(root, "docs", "agent");
   mkdirSync(docsDir, { recursive: true });
   writeFileSync(join(docsDir, "05_TODO.md"), todo);
   return {
-    ctx: { projectRoot: root, docsDir, config: { thresholds } },
+    dbPath: join(root, "t.db"),
+    ctx: { projectRoot: root, docsDir, config: { thresholds: {} } },
     read: (rel) => readFileSync(join(docsDir, rel), "utf8"),
     cleanup: () => rmSync(root, { recursive: true, force: true }),
   };
@@ -46,7 +48,7 @@ const BACKLOG = `# TODO
 test("archive moves closed items out and leaves open work, headings and prose in place", () => {
   const s = scratch(BACKLOG);
   try {
-    const r = archiveTodo(s.ctx);
+    const r = archiveTodo(s.ctx, s.dbPath);
     assert.equal(r.moved, 2, "both [x] items should move");
 
     const active = s.read("05_TODO.md");
@@ -67,25 +69,25 @@ test("archive moves closed items out and leaves open work, headings and prose in
   }
 });
 
-test("under both thresholds: nothing is touched", () => {
-  const s = scratch(BACKLOG, { todo_lines: 9999, todo_bytes: 9_999_999 });
+// A closed item is misplaced the moment it closes, so size must not gate the move.
+// Gating it on a threshold is what let 107 of them reach 46% of the real file.
+test("a tiny file with one closed item is still trimmed — there is no threshold", () => {
+  const s = scratch("# TODO\n\n- [x] xong rồi\n- [ ] còn mở\n");
   try {
-    const r = archiveTodo(s.ctx);
-    assert.equal(r.moved, 0);
-    assert.equal(s.read("05_TODO.md"), BACKLOG, "file must be byte-identical when under threshold");
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1, "no size gate may stand between a done item and the archive");
+    assert.doesNotMatch(s.read("05_TODO.md"), /xong rồi/);
+    assert.match(s.read("05_TODO.md"), /còn mở/);
   } finally {
     s.cleanup();
   }
 });
 
-test("the BYTE threshold fires on its own — a short file with long lines still trims", () => {
-  // 4 lines only, so any line-count threshold leaves it alone; the bytes say otherwise.
-  const fat = `# TODO\n\n- [x] ${"x".repeat(400)}\n- [ ] còn mở\n`;
-  const s = scratch(fat, { todo_lines: 9999, todo_bytes: 100 });
+test("a backlog with no closed items is left byte-identical", () => {
+  const openOnly = "# TODO\n\n- [ ] còn mở\n- [~] đang làm\n";
+  const s = scratch(openOnly);
   try {
-    const r = archiveTodo(s.ctx);
-    assert.equal(r.moved, 1, "byte threshold alone must be able to trigger the archive");
-    assert.match(s.read("05_TODO.md"), /còn mở/);
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 0);
+    assert.equal(s.read("05_TODO.md"), openOnly, "nothing to move means nothing is rewritten");
   } finally {
     s.cleanup();
   }
@@ -95,7 +97,7 @@ test("a closed item inside a fenced block is text, not an item (no false archivi
   const fenced = `# TODO\n\n\`\`\`\n- [x] đây là ví dụ trong khối code\n\`\`\`\n\n- [ ] việc thật\n`;
   const s = scratch(fenced);
   try {
-    const r = archiveTodo(s.ctx);
+    const r = archiveTodo(s.ctx, s.dbPath);
     assert.equal(r.moved, 0, "an item-looking line inside a fence must not be archived");
     assert.match(s.read("05_TODO.md"), /ví dụ trong khối code/);
   } finally {
@@ -110,7 +112,7 @@ test("a closed item inside a fenced block is text, not an item (no false archivi
 test("a later archive run APPENDS — it must not discard what was archived before", () => {
   const s = scratch(BACKLOG);
   try {
-    assert.equal(archiveTodo(s.ctx).moved, 2);
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 2);
     const first = s.read(join("archive", "05_TODO.md"));
     assert.match(first, /việc đã xong/);
 
@@ -119,7 +121,7 @@ test("a later archive run APPENDS — it must not discard what was archived befo
       join(s.ctx.docsDir, "05_TODO.md"),
       s.read("05_TODO.md") + "\n## Nhóm C\n- [x] việc xong ở đợt sau\n",
     );
-    assert.equal(archiveTodo(s.ctx).moved, 1);
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
 
     const second = s.read(join("archive", "05_TODO.md"));
     assert.match(second, /việc xong ở đợt sau/, "the new batch is archived");
@@ -133,9 +135,38 @@ test("a later archive run APPENDS — it must not discard what was archived befo
 test("archiving twice is safe: the second run finds nothing left to move", () => {
   const s = scratch(BACKLOG);
   try {
-    assert.equal(archiveTodo(s.ctx).moved, 2);
-    assert.equal(archiveTodo(s.ctx).moved, 0, "no closed items remain, so nothing moves");
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 2);
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 0, "no closed items remain, so nothing moves");
     assert.match(s.read(join("archive", "05_TODO.md")), /việc xong thứ hai/, "archive is not clobbered");
+  } finally {
+    s.cleanup();
+  }
+});
+
+// Immediate indexing: a moved item must be searchable straight away, not only after
+// someone next remembers to run `reindex`.
+test("both tiers are indexed by the archive itself", async () => {
+  const { openMemory } = await import("../../dist/memory/db.js");
+  const s = scratch(BACKLOG);
+  try {
+    archiveTodo(s.ctx, s.dbPath);
+    const db = openMemory(s.dbPath);
+    try {
+      const kinds = db
+        .prepare("SELECT kind, COUNT(*) n FROM doc WHERE project_root=? GROUP BY kind")
+        .all(s.ctx.projectRoot)
+        .map((r) => r.kind)
+        .sort();
+      assert.deepEqual(kinds, ["agent", "agent-archive"], "the active backlog AND its archive both land in the index");
+      const hit = db
+        .prepare(
+          "SELECT d.kind FROM section s JOIN doc d ON d.id=s.doc_id WHERE d.project_root=? AND s.body LIKE '%việc đã xong%'",
+        )
+        .get(s.ctx.projectRoot);
+      assert.equal(hit?.kind, "agent-archive", "the archived item is reachable through the archive tier");
+    } finally {
+      db.close();
+    }
   } finally {
     s.cleanup();
   }
