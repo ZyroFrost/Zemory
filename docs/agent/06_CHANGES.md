@@ -5,6 +5,34 @@
 
 ---
 
+## [2026-07-28f] — L3 sync kèm ảnh (trọn 3 bước) · parser v6: 137 ảnh mới + 125 tên gốc · suýt xoá nhầm 87 ảnh sống
+
+Gate **274/274** · `conform` ✓ · `validate` ✓.
+
+### Suýt xoá nhầm 87 tấm ảnh đang sống — tiêu chí "mồ côi" của tôi SAI
+Tôi đã báo "95 link + **87 hàng** `attachment` mồ côi, chờ duyệt để xoá". Trước khi xoá thì đo lại bằng định nghĩa khác, và số đo bác chính tôi: tiêu chí cũ là *"hàng có `message_id` trỏ tin đã chết"* — nhưng cột đó chỉ ghi tin **ĐẦU TIÊN** mang nội dung ấy (dedup theo `sha256`), nên sau whole-replace nó *trông như* chết trong khi ảnh vẫn được nhiều tin khác trỏ tới. Đo: **87/87 hàng vẫn còn liên kết SỐNG**; số hàng thật sự không ai trỏ tới = **0**.
+- `pruneOrphanAttachments()` vì thế chỉ dọn **LIÊN KẾT** chết (95 → 0), chạy tự động cuối mỗi `scan` như `pruneOrphanVectors`. Xoá nội dung là tuỳ chọn `dropUnlinked`, **mặc định KHÔNG** — huỷ dữ liệu phải do user quyết (`02_RULES §Hành xử`).
+- `attachmentStats()` cũng sửa theo: "mồ côi" = không còn liên kết sống nào, không phải `message_id` chết.
+- Bài học lặp lại lần nữa: **một tiêu chí nghe hợp lý vẫn phải đo trước khi cho nó quyền xoá.**
+
+### L3 — trọn 3 bước (plan 08 §7)
+Bước ③: công tắc `🖼 Kèm ảnh` cạnh Gọn/Đầy đủ (`/set-sync-attachments`), **mặc định TẮT** vì bundle lean vừa cắt −74%.
+- Bundle chở bảng phẳng `attachment_ship` mang `session_id` + `msg_uuid`, **KHÔNG mang `message_id`**: id là AUTOINCREMENT cục bộ và cố ý không đi theo bundle (merge khoá `UNIQUE(session_id,uuid)`) — chở id sang máy khác là trỏ vào tin của người ta.
+- Bên nhận tra lại id của mình rồi mới nối; nội dung dedup theo `sha256` nên cùng một ảnh từ nhiều máy chỉ tốn một hàng. Bundle cũ / máy gửi tắt công tắc ⇒ nhánh này im lặng bỏ qua.
+- Test round-trip dựng máy nhận có id **lệch hẳn (9001)**: bật ⇒ ảnh sang và nối đúng id của máy nhận · tắt ⇒ **0** blob.
+
+### Parser v6 — re-ingest
+`PARSER_VERSION` 5→6, quét lại **109/109** transcript. Đính kèm **678 → 815** (+137 ảnh vốn nằm ở `toolUseResult`, ngoài `message.content`, chưa từng được nạp); **0 → 125 ảnh có TÊN GỐC** (`layout_white.png`, `smartphone_red.png`…). DB 870,9 → **947,3 MB**.
+- **Cái giá, nêu rõ vì lần trước quên nêu:** **47.068 tin chờ nhúng vector** (nội dung đổi ⇒ `vec_hash` khác). Scheduler nền tiêu hoá dần; trong lúc đó recall chạy bằng FTS (điều 9).
+
+### Một chỗ đoán bừa còn sót
+Hàng "Phiên gần đây" vẫn suy App/Non-app bằng regex `/PBI|powerbi/` — đúng cái badge-đoán đã bị gỡ khỏi card project từ 07-25. `/recent-sessions` không mang `profile` ⇒ **bỏ hẳn nhãn**: một nhãn ĐOÁN tệ hơn không có nhãn, vì người đọc tưởng nó đọc từ `.harness.json`.
+
+### Dọn sổ (tiếp)
+Đóng thêm 4 mục đã xong mà còn ghi "chưa làm": L3 · link mồ côi · badge App/Non-app · panel Chuẩn chung 2-khung (làm xong từ 07-25 trong màn Harness). Mục mở: 43 → **39**.
+
+---
+
 ## [2026-07-28e] — Ảnh XEM ĐƯỢC trong Recall · 6 adapter cùng đọc ảnh · byte NUL làm mù mọi phép grep
 
 Gate 246 → **269**. `conform` ✓ · `validate` ✓.
