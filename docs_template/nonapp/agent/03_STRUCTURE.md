@@ -17,7 +17,8 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 <project>/                          # 1 SẢN PHẨM = 1 cây
 │ ═════════ ① TRACKED — NGUỒN + ĐỊNH NGHĨA + DELIVERABLE (commit lên git) ═════════
 │
-├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/ (profile: non-app)
+├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/ (profile: non-app) — chuẩn liên-công-cụ agents.md
+├── CLAUDE.md            ★  cửa vào thứ 2: CHỈ `@AGENTS.md`. Claude Code đọc CLAUDE.md, KHÔNG đọc AGENTS.md ⇒ thiếu file này là cửa vào không tự nạp
 ├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_SKILLS·05_TODO·06_CHANGES) · plan/ · .harness.json
 │   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
 ├── docs_visual/        [opt] sơ đồ/flow/lineage XEM TRỰC QUAN cho NGƯỜI (vd luồng nạp DW) — .html tương tác/.svg;

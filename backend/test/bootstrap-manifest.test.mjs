@@ -72,11 +72,16 @@ test("every line count in the BOOTSTRAP manifest matches the real file", () => {
   );
 });
 
+// Files that land at the project ROOT rather than under docs/. Mirrors ROOT_ENTRIES
+// in backend/src/docs/adopt.ts: AGENTS.md is the cross-vendor standard, CLAUDE.md is
+// the Claude Code door (it reads CLAUDE.md and not AGENTS.md).
+const ROOT_ENTRIES = new Set(["AGENTS.md", "CLAUDE.md"]);
+
 test("manifest target paths mirror the source paths (harness lands where the standard says)", () => {
   const rows = manifest();
   assert.ok(rows.length > 0, "manifest parsed as empty — the table format changed and this gate went blind");
   for (const row of rows) {
-    const expected = row.source === "AGENTS.md" ? "AGENTS.md" : `docs/${row.source}`;
+    const expected = ROOT_ENTRIES.has(row.source) ? row.source : `docs/${row.source}`;
     assert.equal(row.target, expected, `manifest row for ${row.source} writes to the wrong path`);
   }
 });

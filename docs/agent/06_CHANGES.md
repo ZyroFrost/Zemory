@@ -5,6 +5,38 @@
 
 ---
 
+## [2026-07-28m] — Cửa vào harness chưa bao giờ tự mở trong Claude Code
+
+Gate **292/292** · `conform` ✓ · `validate` ✓.
+
+### Phát hiện: `AGENTS.md` không được Claude Code đọc
+Khảo sát 10 chuẩn harness đang dùng ngoài thực tế thì lộ ra một câu trong docs chính chủ của
+Anthropic: *"Claude Code reads `CLAUDE.md`, not `AGENTS.md`."* Kiểm trên repo này: có `AGENTS.md`,
+**không có `CLAUDE.md`** ở root lẫn `.claude/`.
+
+Nghĩa là cửa vào harness — file chỉ đường bắt agent đọc `docs/` — **chưa bao giờ tự động nạp**
+trong chính công cụ dùng hằng ngày. Nó chỉ được đọc khi user bảo, hoặc khi agent tình cờ mở.
+Mọi project `zemory init` từ trước tới nay đều dính.
+
+### Vá: hai cửa, một nguồn
+`CLAUDE.md` chứa đúng một dòng `@AGENTS.md` (cú pháp import của Claude Code) — **không nhân bản
+nội dung**, đúng "một sự thật một chỗ". Comment HTML dạng khối bị lược trước khi nạp nên phần ghi
+chú trong đó tốn 0 token.
+- `adopt.ts`: block root-entry vốn hardcode riêng `AGENTS.md` → đổi thành `ROOT_ENTRIES`, giữ nguyên
+  luật chỉ refresh file mang dấu `<!-- zemory`, không bao giờ đè file user tự viết.
+- Ship vào **cả 2 template** + chính repo này; khai vào `03_STRUCTURE` cả ba bản.
+- `template-parity`: `CLAUDE.md` vào cả `STANDARD` (phải tồn tại ở 2 profile) lẫn `SHARED`
+  (byte-identical) — nó là import thuần nên khác nhau giữa 2 profile chỉ có thể là tai nạn.
+- **Verify đầu-cuối:** `zemory init --non-app` trên thư mục trắng → 9 doc, có `CLAUDE.md` ở root.
+
+### Gate manifest nổ đúng ca nó sinh ra để bắt
+Thêm một dòng vào `03_STRUCTURE` làm số dòng 132 → 133, và `bootstrap-manifest.test.mjs` **đỏ ngay**:
+*"manifest says 132, file has 133"*. Đúng kịch bản đã lường khi viết nó — sửa chuẩn mà quên bảng thì
+bước tự-kiểm của BOOTSTRAP sẽ báo ✗ **oan** trên mọi máy. Lần này gate chặn trước khi kịp ra ngoài.
+Cùng lượt nó bắt luôn `CLAUDE.md` chưa có trong luật "target mirror source" (root entry, không phải `docs/`).
+
+---
+
 ## [2026-07-28l] — Bản cho NGƯỜI đọc · luật diễn đạt · và lối tải mà chính agent nghĩ ra
 
 Gate 291 → **292** · `conform` ✓ · `validate` ✓. Chốt sau **phiên Cowork thật đầu tiên**.
