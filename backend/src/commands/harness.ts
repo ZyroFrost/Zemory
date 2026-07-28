@@ -8,7 +8,7 @@ import { currentMemoryDir } from "../memory/db.js";
 import { findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, freshHarness } from "../docs/adopt.js";
-import { archiveChanges } from "../docs/archive.js";
+import { archiveChanges, archiveTodo } from "../docs/archive.js";
 import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
@@ -165,6 +165,8 @@ export function cmdArchive(): void {
     return;
   }
   const ctx = loadContext(root);
+  // Both per-session logs get trimmed: 06_CHANGES by oldest ENTRY, 05_TODO by
+  // closed ITEM. They fill up at different rates, so each has its own threshold.
   const r = archiveChanges(ctx);
   if (r.moved === 0) {
     console.log(
@@ -173,6 +175,13 @@ export function cmdArchive(): void {
   } else {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
     console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
+  }
+  const t = archiveTodo(ctx);
+  if (t.moved === 0) {
+    console.log(`  05_TODO.md = ${t.activeLines} lines, under threshold — left alone.`);
+  } else {
+    console.log(`  moved ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
+    console.log(`  active 05_TODO.md now ${t.activeLines} lines (open work only).`);
   }
 }
 

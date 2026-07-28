@@ -88,7 +88,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 20 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 27 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 69 |
@@ -108,9 +108,13 @@ Rồi tự tạo `docs/.harness.json` (không tải, gõ thẳng):
 `đường dẫn · dòng thực · kỳ vọng · ✓/✗`.
 Có ✗ ⇒ nói rõ file nào lệch bao nhiêu và dừng. **Chưa in bảng thì chưa được nói "xong".**
 
-### 1d. Đọc
-Đọc **HẾT** `docs/agent/01_CONSTITUTION.md` → `06_CHANGES.md` và `docs/plan/00_overview.md`
-trước khi sang giai đoạn 2. Từ đây trở đi bạn làm việc theo đúng luật trong đó.
+### 1d. Đọc lớp nền
+Đọc **ba file**: `docs/agent/01_CONSTITUTION.md` → `02_RULES.md` → `04_SKILLS.md`,
+cộng `docs/plan/00_overview.md`. Từ đây trở đi bạn làm việc theo đúng luật trong đó.
+
+**Đừng nạp trước** `03_STRUCTURE` · `05_TODO` · `06_CHANGES` — mở khi tới lúc cần:
+`03_STRUCTURE` ở giai đoạn 3a (chiếu file vào thư mục chuẩn), hai file kia ở giai đoạn 4.
+Lý do ở `AGENTS.md` §Vào việc: nạp trước cả bộ là trả tiền ngữ cảnh cho thứ chưa dùng tới.
 
 ---
 

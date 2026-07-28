@@ -5,6 +5,55 @@
 
 ---
 
+## [2026-07-28n] — Đọc theo TẦNG thay vì đọc hết · archive cho `05_TODO` (−46%)
+
+Gate 292 → **298** · `conform` ✓ · `validate` ✓. User chốt cả hai hướng.
+
+### Đối chiếu 6 chuẩn ngoài: zemory là bộ duy nhất bắt nạp hết
+Claude Code (`paths:` trong `.claude/rules/`) · Cursor (`globs` + `alwaysApply`) · Kiro (3 chế độ
+nạp) · Agent Skills (lũy tiến 3 nấc) · auto-memory (chỉ 200 dòng đầu của `MEMORY.md`) — **5/6 bộ
+đều tách một lớp MỎNG luôn nạp khỏi một lớp DÀY nạp theo điều kiện.** Chỉ Gemini CLI và zemory nạp hết.
+Ngưỡng họ khuyến nghị đều nhỏ: Claude <200 dòng/file · Cursor <200 từ cho phần luôn-nạp · Kiro <80 dòng.
+
+Đo trên repo này: `docs/` = **443.571 byte ≈ 111.000 token** nếu đọc đủ; riêng `docs/agent/` ≈ 65.000.
+
+### `AGENTS.md`: lớp nền 3 file, phần còn lại tra khi cần
+Luôn đọc `01_CONSTITUTION` (được làm gì) → `02_RULES` (cư xử thế nào) → `04_SKILLS` (làm ra sao).
+Tra khi cần: `03_STRUCTURE` **bắt buộc mở trước khi tạo/đổi/dời file** · `05_TODO` trước khi nhận
+việc mới · `06_CHANGES` khi cần tra quyết định cũ · `plan/NN_*` mở đúng file theo số hiệu.
+**Ngoại lệ giữ nguyên: chốt phiên / audit vẫn đọc HẾT** — bỏ sót lúc ghi sổ là ghi sai sổ.
+`02_RULES` không đổi: nó vốn đã uỷ quyền thứ tự đọc cho `AGENTS.md` (§đầu file).
+
+*Rủi ro đã nêu trước khi làm:* bỏ `03_STRUCTURE` khỏi lớp đầu thì agent có thể đặt file sai chỗ.
+Chặn bằng cách viết luật "BẮT BUỘC mở TRƯỚC khi tạo/đổi tên/dời bất kỳ file hay thư mục nào"
+ngay trong mục tra-khi-cần, cộng luật sẵn có ở `02_RULES §Cấu trúc repo`.
+
+### `zemory archive` nay trim cả `05_TODO` — theo MỤC, không theo dòng
+**Thiết kế đầu của tôi bị chính số đo bác:** định cắt theo SECTION đã đóng — đo ra chỉ 3/19 section,
+**18/442 dòng (4%)**, vì section thật luôn trộn việc xong với việc mở. Cắt theo **MỤC** thì khác hẳn:
+107 mục `[x]` = **49,6 KB = 46% file**. Đã đổi sang cấp mục.
+
+**Ngưỡng kép, và đây là lý do:** `05_TODO` trung bình **241 byte/dòng** còn `06_CHANGES` chỉ 103 —
+đếm dòng đo hụt hơn 2 lần, trong khi thứ đang trả tiền là ngữ cảnh, tức BYTE. Nên trigger là
+`todo_lines` (500, user chốt) **hoặc** `todo_bytes` (60.000), cái nào chạm trước. `changes_lines` 400 → 500.
+
+**Chạy thật:** `05_TODO` **441 → 267 dòng · 123,5 → 66,8 KB (−46%, ~14.200 token/phiên)**.
+Kiểm chéo: 0 mục `[x]` còn sót · 40 mục mở còn nguyên · byte active + archive khớp bản gốc.
+`06_CHANGES` 418 dòng < 500 nên không đụng — đúng.
+
+### Đột biến hoá bắt được một lỗ trong chính bộ test
+6 test mới; phá 5 chỗ đòi đỏ → **1 sống sót**: *"ghi đè archive thay vì nối thêm"*. Test "chạy 2 lần"
+không chạm nhánh đó vì lần hai không còn mục nào để cắt nên hàm return sớm. Thêm ca **archive đợt
+thứ hai** (làm thêm việc → xong → archive lại) thì bắt được: nếu ghi đè, toàn bộ lịch sử đợt một
+biến mất. Sau khi vá: **5/5 đột biến bị bắt**.
+
+*Ghi chú:* `05_TODO` sau khi cắt vẫn 66,8 KB > ngưỡng 60 KB, nhưng không còn mục `[x]` nào ⇒ lần
+`archive` sau là no-op. Phần dư là văn bản tường thuật phiên (khối `>`), không phải mục — muốn cắt
+tiếp thì phải quyết chỗ ở cho nó (`06_CHANGES`?), chưa làm. Archive cũng vừa đẻ một `.md.bak` nữa —
+đúng mục đang treo ở `05_TODO` về việc cho archive tự dọn.
+
+---
+
 ## [2026-07-28m] — Cửa vào harness chưa bao giờ tự mở trong Claude Code
 
 Gate **292/292** · `conform` ✓ · `validate` ✓.
