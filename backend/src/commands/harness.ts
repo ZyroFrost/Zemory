@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { existsSync, readdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
-import { currentMemoryDir } from "../memory/db.js";
+import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { findProjectRoot, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, freshHarness } from "../docs/adopt.js";
@@ -176,7 +176,7 @@ export function cmdArchive(): void {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
     console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
   }
-  const t = archiveTodo(ctx);
+  const t = archiveTodo(ctx, currentMemoryDb());
   if (t.moved === 0) {
     console.log(`  05_TODO.md = ${t.activeLines} lines, under threshold — left alone.`);
   } else {

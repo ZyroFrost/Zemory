@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-29c] — Mục xong ra khỏi backlog NGAY, không chờ ngưỡng · và test của tôi vừa ghi vào DB thật
+
+Gate 312 → **313** · `conform` ✓ · `validate` ✓.
+
+- **`archiveTodo` bỏ hẳn ngưỡng.** Header `05_TODO` vốn đã bắt *"xong → ghi sang `06_CHANGES.md` và xoá
+  khỏi đây"* ⇒ mục đóng là **sai chỗ ngay khi đóng**, dung lượng file không liên quan. Ngưỡng là dụng cụ
+  sai cho một luật ĐÚNG/SAI, và chính nó để 107 mục dồn tới 46% file. Dấu hiệu lộ ra từ trước: ngưỡng
+  byte vẫn nổ mà **không có gì để chuyển**. Gỡ `todo_lines`/`todo_bytes` khỏi config (đã thành key chết).
+- **Index ngay tại chỗ archive** (`importDoc` cả 2 tầng) — trước đó phải chờ ai đó nhớ chạy `reindex`,
+  mà "chờ ai đó nhớ" đúng là thứ cả mạch việc này đang gỡ.
+- Docblock cũ vẫn tả ngưỡng ⇒ **đã viết lại**; để nguyên là tái phạm bệnh "spec hứa thứ code không làm".
+
+### Test của tôi ghi vào DB SẢN XUẤT — 20 doc + 48 section row
+Script sửa test fail giữa đường nên **không ghi được** phần thay `scratch()`; hệ quả là 5 lời gọi
+`archiveTodo(s.ctx)` **thiếu `dbPath`**, rơi vào mặc định `currentMemoryDb()` = **DB thật**. Đã dọn sạch
+(doc 20→0 · section 48→0), rows của repo còn nguyên (`agent` 5 · `agent-archive` 1 · `plan` 17 · `todo` 1).
+
+*Kiểm chéo cứu một kết luận sai:* phép đếm đầu trả **0 row cho repo này** — nghe như tôi vừa xoá nhầm dữ
+liệu thật. Đếm lại bằng `GROUP BY project_root` thì rows còn đủ ⇒ **query sai, không phải mất dữ liệu**.
+
+**Chặn tái phạm bằng code, không bằng cẩn thận hơn:** `dbPath` của `archiveTodo` nay **bắt buộc** — bỏ
+giá trị mặc định, thêm guard `throw` nếu thiếu. TypeScript không cứu được caller `.mjs` (thiếu tham số
+tới dưới dạng `undefined`), nên phải chặn ở runtime: **nổ to còn hơn âm thầm ghi vào production.**
+Kiểm sau khi vá: chạy full gate xong, row tạm còn **0**.
+
+---
+
 ## [2026-07-29b] — Luật "entry ngắn" + 2 cổng kiểm trong `validate`
 
 Gate 303 → **312** · `conform` ✓. Trần dài dòng thành LUẬT, không còn là lời hứa của agent.
