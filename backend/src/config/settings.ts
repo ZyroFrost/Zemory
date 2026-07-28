@@ -83,9 +83,18 @@ export function setHybridSetting(on: boolean): void {
   write(c);
 }
 
-/** Cross-encoder rerank on? Default true (UI defaults all filters on); persisted. */
+/**
+ * Cross-encoder rerank on? **MẶC ĐỊNH TẮT** — `plan/05 §4.E` chốt rerank là *opt-in*, bật
+ * qua nút UI / `ZEMORY_RERANK=1` / `--rerank`; và HP điều 12 cấm bật mặc định một lớp chưa
+ * qua gate thắng net.
+ *
+ * Trước đây hàm này trả `?? true` với lý do "UI defaults all filters on" — cái giá đo được
+ * 2026-07-28 trên corpus thật: **rerank=false 4.616 ms · rerank=true 29.304 ms (6,3×)**.
+ * Đợt 07-26 đã bắt đúng triệu chứng nhưng chỉ vá GIÁ TRỊ trong `config.json`; khi file đó
+ * rỗng thì mặc định lại bật lên và recall lại 23–29 s. Sửa đúng chỗ là ở đây.
+ */
 export function getRerankSetting(): boolean {
-  return read().rerank ?? true;
+  return read().rerank === true;
 }
 
 export function setRerankSetting(on: boolean): void {
