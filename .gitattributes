@@ -1,4 +1,6 @@
-# Encrypted sync bundles ride Git LFS (HP điều 7 — only .enc leaves the machine).
+# Luật LFS cho bundle GIỮ LẠI làm hồ sơ, nhưng .gitignore (2026-07-29) đã chặn mọi
+# `*.enc` vào git — kể cả bundle của chính repo. Git chứa SOURCE, không chứa DATA; bundle
+# đi qua kênh khác (Drive/USB). Hai dòng dưới chỉ còn tác dụng nếu ai đó cố tình `-f`.
 *.zemory.enc filter=lfs diff=lfs merge=lfs -text
 global_memory.*.enc filter=lfs diff=lfs merge=lfs -text
 

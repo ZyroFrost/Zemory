@@ -5,6 +5,47 @@
 
 ---
 
+## [2026-07-29h] — Suýt push hạ tầng nội bộ công ty lên repo PUBLIC — lỗi của tôi · và 2 cửa data-vào-git có tuổi
+
+Gate 336 → **341** · `conform` ✓. Bắt được lúc soi diff **TRƯỚC** khi push; **chưa có gì rời máy**.
+
+- **Lỗi của tôi, commit `b6d57d9` hôm nay.** Lúc dọn row index (`[2026-07-29d]`) tôi dump nội dung row ra
+  `.md` làm lưới lùi và để dump đó trong `attic/` — **cây git của repo này**. Nhưng `global_memory.db` index
+  docs của **MỌI project trên máy**, nên dump mang docs của `PWB/PowerBi_SasinFlow_Maintain` · `SasinFlow` ·
+  `Sharepoint_NAS`: **7 IP server nội bộ** (dải riêng `192.168.x` + `172.16–31.x`), tên linked-server, tên
+  máy chủ ETL, và **4 tên biến môi trường loại `*_USER`/`*_PASSWORD`** của các login BI. Là **tên** biến chứ
+  không phải giá trị, nhưng ghép lại là **bản đồ hạ tầng BI của công ty**. `gh repo view` → **PUBLIC**. Push
+  là không đảo được.
+  *(Số/tên cụ thể CỐ Ý không ghi ở đây — xem đoạn cuối entry này.)*
+- **Sửa:** viết lại 4 commit chưa push (chỉ `b6d57d9` chứa dump) ⇒ dump **chưa từng tồn tại** trong lịch sử;
+  thư mục dời ra `~/.zemory/rescue/` — **ngoài mọi cây git**, cạnh cái DB nó vốn thuộc về. Nhánh lùi
+  `backup-truoc-khi-go` giữ bản cũ tới khi push xong.
+- **Bài học đúng chỗ:** cái sai không phải "quên gitignore" mà là **dump dữ liệu của project khác vào repo
+  của mình**. Lưới lùi của một thao tác DB phải nằm cạnh DB, không nằm trong repo.
+- **User nhắc luật, và luật đó lộ ra 2 cửa CÓ TUỔI (không phải của phiên này):**
+  - `share/share.key` vào git từ **`98bc126` (2026-07-01)** — commit đó tự đặt tên *"code only; memory syncs
+    via Drive, never in git"* trong khi chính nó commit chìa.
+  - `.gitignore` có **`!share/global_memory.zemory.enc`** từ **`f59b2ac` (2026-07-10)**, trong commit tên
+    *"close all audit findings (privacy leak, git bundle…)"* — tức một đợt vá audit lại **mở** cửa. LFS đã
+    cắm sẵn trong `.gitattributes`. Chưa `.enc` nào vào git (`git log --all -- 'share/*.enc'` rỗng), nhưng
+    ghép với chìa nằm cạnh thì **một lần export nhầm + `git add -A` = toàn bộ bộ nhớ lên public kèm chìa giải mã**.
+  - Đã **gỡ whitelist** (mọi `*.enc` bị chặn, kiểm bằng `git check-ignore`), viết lại `share/README.md` (nó
+    đang khai "tracked by Git LFS" và "keep the repo private" — cả hai đã sai).
+- **Gate mới `no-data-in-git`** (5 test) khoá luật *git chứa SOURCE, không chứa DATA*: 10 đường data phải bị
+  `git check-ignore` chặn · `.gitignore` **không** được có dòng `!` cho `.db`/`.enc`/`.sqlite` · 0 file data
+  đang track · 0 dump project khác trong cây git · và ratchet cuối **quét IP nội bộ + tên biến mật khẩu
+  trong mọi file được track** (bắt được bất kể lọt vào bằng đường nào).
+- **Gate đó bắt ngay chính commit này.** Bản đầu của entry trên tôi ghi **nguyên văn** 7 IP và 4 tên biến
+  để "mô tả sự cố" — tức **tái tạo đúng cái rò rỉ đang đi vá**, lần này bằng một file `docs/` chắc chắn được
+  commit. Audit trước-push báo 7 chuỗi, gate `no-data-in-git` đỏ 1/5. Đã viết lại thành mô tả theo LOẠI
+  (dải IP riêng · số lượng · loại biến), đủ để hiểu chuyện mà không mang dữ kiện đi xa hơn. **Luật rút ra:
+  changelog kể sự cố rò rỉ thì mô tả LOẠI, không chép GIÁ TRỊ** — trinh sát không cần bản gốc, chỉ cần bản
+  bạn tự chép lại.
+- **CÒN NGUY, chờ user:** chìa `share/share.key` vẫn trong git và **đã nằm trong lịch sử đã push** ⇒ phải coi
+  là **đã lộ**. Việc cần làm (đã có ở `05_TODO`): xoay chìa mới · `git rm --cached` · gitignore · đưa chìa
+  qua kênh khác. Xoá khỏi HEAD KHÔNG xoá khỏi lịch sử. Chưa tự làm vì nó chặn pull đa máy cho tới khi chìa
+  mới được phát.
+
 ## [2026-07-29g] — `03_STRUCTURE` thành TỪ ĐIỂN TRA, không đọc mỗi phiên · `conform` vào gate
 
 Gate 329 → **336** · `validate` ✓ · 7/7 đột biến bị bắt. Tầng luật **96,4 → 56,1 KB (−42%)**.
