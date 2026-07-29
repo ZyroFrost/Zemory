@@ -4,7 +4,7 @@
 > **KHO SKILL** — chứa NHIỀU skill; mỗi `## <tên>` là MỘT skill (playbook thao tác tự-chứa). File này **CHỈ chứa skill** — KHÔNG nhét luật / norm / mô tả cấu trúc / thứ linh tinh khác vào đây (luật → `01_CONSTITUTION`/`02_RULES` · chuẩn cấu trúc → `03_STRUCTURE`). RULES/STRUCTURE chỉ nêu NORM + trigger rồi **DẪN CHIẾU** tới skill tương ứng; cách-làm chi tiết nằm ở đây.
 > **HAI KHUÔN — chọn theo độ dài:**
 > - **NGẮN → inline:** 1 section `## <tên>` ngay trong file này (trigger → các bước). Vd: `grill` · `chốt phiên` · `reconcile`.
-> - **DÀI / có resources → KHÔNG chép vào đây:** vendor **nguyên bản** repo gốc vào `external/skills/<tên-repo>/` (giữ đúng tên + LICENSE, KHÔNG sửa nội dung người ta — HP điều 1/2), ở đây chỉ để **1 DÒNG INDEX** trỏ tới. Agent cần thì **đọc thẳng bản gốc** (trỏ, KHÔNG chép ⇒ đủ nội dung mà 0 nhân bản).
+> - **DÀI / có resources → KHÔNG chép vào đây:** vendor **nguyên bản** repo gốc vào `external/skills/<tên-repo>/` (giữ đúng tên + LICENSE, KHÔNG sửa nội dung người ta — xem `01_CONSTITUTION`: tool tách khỏi dữ liệu, không nhân bản nguồn của người khác), ở đây chỉ để **1 DÒNG INDEX** trỏ tới. Agent cần thì **đọc thẳng bản gốc** (trỏ, KHÔNG chép ⇒ đủ nội dung mà 0 nhân bản).
 > - **⚠ GUARDRAIL:** file này **KHÔNG BAO GIỜ phình**. Nội dung dài ra thì nó thuộc **skill gốc** (`external/skills/`) hoặc **chuẩn** (`03_STRUCTURE`) — không có ngoại lệ.
 > **Adapter ở đâu?** KHÔNG viết prose adapter ở đây. Chỗ "adapt hiện ra thật" là **`03_STRUCTURE`** (từ điển slot + ràng buộc): agent đọc skill gốc + đọc 03 rồi tự khớp; bỏ vào slot hay không là quyết định của agent theo từng project.
 > **Kích hoạt:** trigger ở RULES/STRUCTURE bắn, hoặc user gọi tên skill. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
@@ -129,7 +129,7 @@ thường gặp: ① coi file như text rồi nạp XML thô vào context; ② m
 > Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
 > · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
 
-**Nguyên tắc (bất biến `01_CONSTITUTION` điều 13):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
+**Nguyên tắc (bất biến — xem `01_CONSTITUTION`, điều "MÁY dựng lớp dẫn xuất · AGENT sửa NGUỒN"):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
 dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn nó có gì thì KHAI vào chuẩn hoặc sửa
 NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**, không phải người sinh.
 

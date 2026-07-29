@@ -151,7 +151,7 @@ thường gặp: ① coi file như text rồi nạp XML thô vào context; ② m
 > Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
 > · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
 
-**Nguyên tắc (bất biến `01_CONSTITUTION` điều 13):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
+**Nguyên tắc (bất biến — xem `01_CONSTITUTION`, điều "MÁY dựng lớp dẫn xuất · AGENT sửa NGUỒN"):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
 dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn nó có gì thì KHAI vào chuẩn hoặc sửa
 NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**, không phải người sinh.
 

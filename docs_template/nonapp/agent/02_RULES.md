@@ -11,6 +11,18 @@
 - **`03_STRUCTURE` là INDEX phải KHỚP repo (luật làm việc):** mọi thay đổi cấu trúc (thêm/đổi/dời slot, thêm routing) phải cập nhật `03_STRUCTURE` trong CÙNG thay đổi đó — index lệch thực tế = tra sai. *(Nội dung chuẩn — 3 vai trò bắt buộc, 1 tên/concern, tracked-vs-gitignore, adhoc≠task… — nằm ở `03`, KHÔNG lặp ở đây.)*
 - **SỬA/TẠO BẤT CỨ GÌ (deliverable · sources · tasks · data · scripts · docs · config) → PHẢI đúng CHUẨN ĐÃ CHỐT (luật cứng).** Trước/trong khi tạo·đổi·dời file: đối chiếu `03_STRUCTURE` (slot · routing · convention) + `01_CONSTITUTION` (bất biến) + `02_RULES`. **TUYỆT ĐỐI không đặt file sai slot, không đẻ tên mới cho concern đã có tên, không rải SQL/DAX/M inline.** Không chắc chuẩn ở đâu → tra routing `03` hoặc HỎI, đừng đoán. Thấy chỗ ĐANG lệch chuẩn → nắn về chuẩn (hoặc BÁO nếu lớn/khó đảo), KHÔNG nhân thêm cái sai lên.
 
+## Luật khi VIẾT (BẮT BUỘC — luật cứng)
+
+> Những luật này nổ **lúc viết code**, không phải lúc tạo folder — và `zemory conform` **không kiểm được**
+> cái nào trong số chúng. Không biết = vi phạm âm thầm, không gate nào kêu. Vì vậy chúng ở đây (luôn nạp),
+> chứ không ở `03_STRUCTURE` (tra khi cần). `03` KHÔNG còn giữ bản sao — một nguồn duy nhất.
+
+```
+Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung lượng); như share/*.enc
+Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
+Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
+SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries của app)
+```
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
