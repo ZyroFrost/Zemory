@@ -72,14 +72,19 @@ export function conform(root: string): ConformReport {
   };
 
   // ① File nằm trong thư mục KHÔNG khớp slot nào của từ điển ⇒ lệch chuẩn thật.
-  //    BA MIỄN TRỪ — đều là thứ CHUẨN CHO PHÉP, báo lên là báo oan (đã lộ ra khi chạy thử
+  //    BỐN MIỄN TRỪ — đều là thứ CHUẨN CHO PHÉP, báo lên là báo oan (đã lộ ra khi chạy thử
   //    trên 3 repo khác; checker kêu oan thì lần sau không ai đọc nữa):
   //    · gốc repo — "Tool ép root: MỌI config tool đọc từ root = ĐỂ YÊN" (03 §5)
   //    · `backend` · `frontend` · `docs` — là 4 VAI TRÒ bắt buộc, không phải slot
   //    · `NN_<tên>` — thư mục đánh số của hệ non-app (`tasks/NN_` · `pipelines/NN_` · `data/NN_`)
   //      là convention ĐÃ KHAI, không phải lệch
+  //    · `docs_template/**` — TEMPLATE là hàng ship đi, không phải code sống của repo này;
+  //      ruột nó theo CHUẨN CỦA PROJECT ĐÍCH (bộ Cowork mang cả script tự kiểm `.py` là
+  //      thiết kế có chủ đích, 2026-07-29). Soi ruột template bằng thước của repo CHỨA nó
+  //      là lấy nhầm thước.
   const exempt = (dir: string): boolean => {
     if (!dir) return true;
+    if (dir === "docs_template" || dir.startsWith("docs_template/")) return true;
     const seg = dir.split("/");
     const last = seg[seg.length - 1];
     return seg.length === 1 && ["backend", "frontend", "docs"].includes(last) ? true : /^\d{2}_/.test(last);

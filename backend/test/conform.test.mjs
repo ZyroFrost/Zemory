@@ -93,6 +93,23 @@ test("BÁO OAN ④: slot chuẩn khai mà repo chưa dùng KHÔNG phải phát h
   }
 });
 
+test("BÁO OAN ⑤: docs_template/** là TEMPLATE (hàng ship đi), không soi bằng thước của repo chứa nó", (t) => {
+  // Lộ ra 2026-07-29 khi bộ Cowork vào docs_template/cowork/ mang theo script tự kiểm
+  // `.py` (check_install.py + check_structure.py — thiết kế có chủ đích): conform báo
+  // `docs_template/cowork` là "thư mục chứa code không khớp slot". Ruột template theo
+  // CHUẨN CỦA PROJECT ĐÍCH; soi nó bằng chuẩn của repo chứa là lấy nhầm thước.
+  const root = goodRepo(t, (r) => {
+    write(r, "docs_template/cowork/check_install.py", "x = 1\n");
+    write(r, "docs_template/cowork/nonapp/.claude/skills/structure/scripts/check_structure.py", "x = 2\n");
+  });
+  const rep = conform(root);
+  const off = find(rep, "off-standard-dir");
+  assert.ok(
+    !off || !off.samples.some((s) => s.includes("docs_template")),
+    `docs_template phải được miễn trừ, nhận: ${JSON.stringify(off?.samples)}`,
+  );
+});
+
 test("BẮT THẬT: thư mục chứa code mà không khớp slot nào ⇒ blocking", (t) => {
   const root = goodRepo(t, (r) => write(r, "backend/src/weirdname/x.ts", "export const c = 3;\n"));
   const rep = conform(root);
