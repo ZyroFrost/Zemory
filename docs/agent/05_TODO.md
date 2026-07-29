@@ -1,7 +1,7 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # zemory — TODO / Backlog
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
-> Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory docs search`).
+> Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
 ## 📌 Cowork — còn treo
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
@@ -18,15 +18,11 @@
     filesystem"*). Ghi vào không rõ, chưa thử.
   - **Agent tự áp `02_RULES §Phạm vi project` đúng chỗ:** dừng lại hỏi trước khi ghi harness vào cây git
     public của user, dù không ai nhắc. Luật đó ăn.
-- [ ] **`share/share.key` đang được COMMIT trong repo PUBLIC.** `share/README.md` viết nguyên văn
-  *"intentionally self-contained for the **private** ZyroFrost/Zemory"* + *"Keep the repo private unless you
-  intentionally want to expose the full memory"* — nhưng `gh repo view` trả **PUBLIC**, tức giả định mà quyết
-  định đó dựa vào đã không còn đúng. Giảm nhẹ (đã đo): `git log --all -- 'share/*.enc'` **rỗng** ⇒ bundle mã hoá
-  chưa từng vào git, nên hôm nay lộ *chìa* chứ chưa lộ *khoá*. Nhưng `.gitattributes` đã cắm sẵn luật LFS cho
-  `*.zemory.enc` ⇒ chỉ cần **một** lần export nhầm vào `share/` rồi commit là toàn bộ memory giải mã được bởi bất kỳ ai.
-  Chủ repo đã chốt giữ public (để pull đa máy) ⇒ việc còn lại: **xoay chìa mới · `git rm --cached share/share.key` ·
-  gitignore · đưa chìa qua kênh khác** (Drive/password manager). Xoá khỏi HEAD KHÔNG xoá khỏi lịch sử ⇒ phải coi chìa cũ là đã lộ.
-  *(Ghi chú: private repo vẫn pull được đa máy bằng `gh auth login`/SSH key — "public" không phải điều kiện.)*
+- [ ] **PHÁT CHÌA MỚI cho các máy khác** (việc của user, không phải của agent). Chìa đã xoay 2026-07-29 và
+  `share/share.key` đã ra khỏi git — copy file đó sang máy khác qua **Drive / password manager** (đừng qua git,
+  đừng dán vào chat). Máy nào còn chìa cũ sẽ **không import được** bundle mới (đã kiểm: chìa cũ bị từ chối).
+  *(Chìa CŨ nằm trong lịch sử ĐÃ PUSH ⇒ coi như lộ vĩnh viễn. Không viết lại lịch sử vì chưa `.enc` nào từng
+  vào git ⇒ chìa cũ không mở được gì đang công khai.)*
 
 ## 📌 Bàn giao 2026-07-28 — việc còn lại
 - [ ] **47.068 tin chờ nhúng vector** — cái giá đã lường trước của re-ingest v6 (nội dung đổi ⇒ `vec_hash` khác ⇒ phải nhúng lại). Scheduler nền tự tiêu hoá lúc máy rảnh; trong lúc đó recall vẫn đủ dùng bằng FTS (fail-open, điều 9). Chỉ cần theo dõi, không phải sửa gì.
@@ -41,7 +37,7 @@
 - [ ] **`04_SKILLS` phình 92 → 203 dòng** (+121%) — file tự khai guardrail "KHÔNG BAO GIỜ phình". Thêm skill nữa thì phải tách sang `external/skills/`.
 
 **🚫 ĐÃ LOẠI — false-positive (giữ lại để phiên sau khỏi báo lại)**
-`/set-` "404" = chuỗi động `'/set-'+nm` · `data-act="recall"`/`sysrecheck` "không handler" = có, qua `closest('[data-act=…]')` · `share/share.key` committed = **quyết định có chủ đích của chủ repo**, `share/README` ghi rõ "committed by owner request, keep repo private" · `/cockpit` "gãy" = không gãy (lúc đo daemon đang tắt) · `/nav-cost` `/gate-acquire` `/gate-release` `/sync` `/migrate` "dead" = CLI/surface khác dùng.
+`/set-` "404" = chuỗi động `'/set-'+nm` · `data-act="recall"`/`sysrecheck` "không handler" = có, qua `closest('[data-act=…]')` · `share/share.key` committed = **KHÔNG còn là false-positive** — repo hoá PUBLIC nên giả định "keep repo private" mà quyết định đó dựa vào đã sai; chìa đã xoay + gỡ khỏi git 2026-07-29 · `/cockpit` "gãy" = không gãy (lúc đo daemon đang tắt) · `/nav-cost` `/gate-acquire` `/gate-release` `/sync` `/migrate` "dead" = CLI/surface khác dùng.
 
 ## ⭐ Ưu tiên kế tiếp
 > Toàn bộ diễn biến UI refactor (VÒNG 1–11, plan 15, 5 quyết định) đã XONG và dời sang `archive/05_TODO.md` + `06_CHANGES`. Dưới đây chỉ còn thứ chưa chốt.

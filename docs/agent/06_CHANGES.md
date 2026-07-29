@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-07-29i] — Xoay chìa share + gỡ khỏi git (user chốt)
+
+Gate **341/341** · `conform` ✓ · `validate` ✓. Xoay chìa được **kiểm bằng round-trip thật**, không phải bằng niềm tin.
+
+- **Chìa mới sinh bằng hàm CỦA REPO,** `writeMemoryShareKey()` (`zemory memory share-key --force`) — 32 byte
+  random → base64, `mode 0600`. Bản đầu tôi tự bịa `randomBytes(48).toString('base64')`; sai vì repo đã có
+  bộ sinh chuẩn, tự viết lại là đẻ nhánh thứ hai cho một việc đã có một cách làm.
+- **`share/share.key` ra khỏi git**: `git rm --cached` + gỡ dòng ngoại lệ `!share/share.key` (thêm `98bc126`,
+  2026-07-01, lúc repo còn dự tính để private). File **vẫn trên đĩa** để export/import ở máy này chạy bình thường.
+- **Kiểm thật, không suy luận:** xuất một bundle bằng chìa MỚI rồi nhập lại **vào DB nháp** (không đụng DB
+  thật — `memory import` không có cờ `--db` nên gọi thẳng thư viện): chìa mới **giải mã được**, chìa cũ
+  **bị từ chối** (`unable to authenticate data`). Chìa cũ giữ tạm ở `~/.zemory/share.key.OLD-2026-07-29`.
+  *(Lần thử đầu vô nghĩa: CLI chặn ở bước "sẽ đè DB" nên chưa hề tới bước giải mã — báo "đúng như mong đợi"
+  lúc đó là tự lừa mình.)*
+- **KHÔNG viết lại lịch sử git.** Chìa cũ nằm trong lịch sử **đã push** của repo PUBLIC ⇒ coi như **lộ vĩnh
+  viễn**. Nhưng `git log --all -- 'share/*.enc'` **rỗng** ⇒ chưa `.enc` nào từng vào git, tức chìa cũ **không
+  mở được gì đang công khai**. Force-push viết lại lịch sử public để xoá một chìa đã vô dụng là cái giá
+  không đáng — xoay chìa đã đủ.
+- **0 bundle phải mã hoá lại**: `find . -name '*.enc'` rỗng trên máy này.
+- `share/README.md` viết lại lần hai; `05_TODO` đổi mục này từ *"chìa đang bị commit"* thành **việc của user:
+  phát chìa mới qua Drive/password manager**. Máy nào còn chìa cũ sẽ không import được bundle mới.
+- Đính chính kèm: `05_TODO` khai `zemory docs search` — **không phải lệnh** (`docs` chỉ có `ls`; tìm docs là
+  `plan search`). Đúng cái nhầm đã làm bộ kiểm ở `[2026-07-29f]` xanh giả; nay sửa ở nguồn.
+
 ## [2026-07-29h] — Suýt push hạ tầng nội bộ công ty lên repo PUBLIC — lỗi của tôi · và 2 cửa data-vào-git có tuổi
 
 Gate 336 → **341** · `conform` ✓. Bắt được lúc soi diff **TRƯỚC** khi push; **chưa có gì rời máy**.
