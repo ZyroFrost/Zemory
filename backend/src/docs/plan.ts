@@ -3,8 +3,8 @@
 // Nothing here writes back to .md — agents edit .md directly and reindex to
 // refresh search. Search is FTS over sections (heading-weighted).
 
-import { readFileSync } from "node:fs";
-import { isAbsolute, normalize, relative, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { normalizeRoot } from "../core/config.js";
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { parseMarkdown, roundTripOk } from "./markdown.js";
@@ -176,6 +176,38 @@ export function searchSections(query: string, opts: { project?: string; limit?: 
     if (!terms.length) return [];
     const word = run("section_fts", terms.map((t) => `"${t}"`).join(" "));
     return word.length ? word : run("section_fts_tri", `"${terms.join(" ")}"`);
+  } finally {
+    db.close();
+  }
+}
+
+/** Drop doc rows (and their sections) whose source `.md` no longer exists on disk.
+ *
+ *  The index is DERIVED (điều 3 — FILE WINS), so a row without a file behind it is not
+ *  history, it is a wrong answer: `plan search` prints the stale path and the reader opens
+ *  nothing. Nothing pruned before this, and it showed the moment three dead plans were
+ *  moved to `attic/dead-plans/` (2026-07-29) — search kept pointing at `docs/plan/…`.
+ *
+ *  Only rows of THIS project are considered, and only when the project root itself still
+ *  exists: a root on an unplugged drive must not have its index wiped.
+ *  Returns the number of doc rows removed. */
+export function pruneMissingDocs(projectRoot: string, dbPath = currentMemoryDb()): number {
+  const root = normalizeRoot(projectRoot);
+  if (!existsSync(root)) return 0;
+  const db = openMemory(dbPath);
+  try {
+    const rows = db.prepare("SELECT id, path FROM doc WHERE project_root=?").all(root) as Array<{ id: number; path: string }>;
+    const dead = rows.filter((r) => !existsSync(join(root, r.path)));
+    if (!dead.length) return 0;
+    const delSec = db.prepare("DELETE FROM section WHERE doc_id=?");
+    const delDoc = db.prepare("DELETE FROM doc WHERE id=?");
+    db.transaction(() => {
+      for (const r of dead) {
+        delSec.run(r.id); // section_ad trigger clears both FTS tables
+        delDoc.run(r.id);
+      }
+    })();
+    return dead.length;
   } finally {
     db.close();
   }
