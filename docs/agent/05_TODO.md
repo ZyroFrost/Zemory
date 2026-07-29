@@ -26,7 +26,6 @@
   **đã push** ⇒ lộ vĩnh viễn; không viết lại lịch sử vì chưa `.enc` nào từng vào git. Nền tảng: `plan/16_share_key`.
 
 ## 📌 Bàn giao 2026-07-28 — việc còn lại
-- [ ] **47.068 tin chờ nhúng vector** — cái giá đã lường trước của re-ingest v6 (nội dung đổi ⇒ `vec_hash` khác ⇒ phải nhúng lại). Scheduler nền tự tiêu hoá lúc máy rảnh; trong lúc đó recall vẫn đủ dùng bằng FTS (fail-open, điều 9). Chỉ cần theo dõi, không phải sửa gì.
 - [ ] **`claude-web` project = uuid thô** (`019f68e1-…`) vì API không trả tên folder. ChatGPT giải bằng `_projects.json`; làm tương tự cho claude.ai khi cần.
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
@@ -46,10 +45,6 @@
 **CÒN TREO từ đợt UI refactor:**
 - [ ] **user duyệt mắt bản 5 màn** → OK thì ghi `06_CHANGES` + commit (4 file: `app.html` · `app.js` · `app.css` · docs).
 - [ ] **`/session-raw` (đọc transcript gốc) — CHƯA làm, chờ user quyết**: chỉ bù được **4,18%** tin bị clip + khối `thinking` bị bỏ lúc ingest; và với session **sync từ máy khác thì file không có ở máy này** (`ingest_state` toàn đường `C:\Users\Zyro\...`) ⇒ phải fail-open về DB. ROI thấp, nêu ra để user chốt chứ không tự làm.
-- [ ] chưa có test tự động cho sub-tab routing — khoá ratchet "nav đúng 5 mục" + "không tái sinh `sessDlg`/`homeChecks`/`gmSources`/`gmHealth`/`gmVector`".
-- [ ] orphan i18n có TỪ TRƯỚC chưa dọn (`home.memEngine` · `home.docsHarness` · `graph.brokenDocs*` · `graph.orphanFiles` · `graph.neverModified*` · `graph.harnessOk` · `graph.validateOk`).
-
-**CHỜ USER CHỐT trước khi code:**
 - [ ] `adapters` — slot chính thức trong `03` hay domain-internal (allowlist).
 - [ ] **model-routing theo task** — idea-only, ĐỤNG điều 6, chờ chốt hướng (KHÔNG tự mở điều 6).
 - [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · tách `app.js` sâu theo concern (khi `cockpit.html` nghỉ hưu) · Start Menu icon = **user sign-out/in** (file đã đúng).
@@ -105,9 +100,6 @@
 
 ## Việc cần xác minh thực tế
 - [ ] **`##` heading của doc plan bị parse thành changelog entry (`date=NULL`).** Đo 2026-07-29: `PBI_SasinFlow_Maintain` có 6 entry `date=NULL` mà body là **bảng SQL của `plan/01_legacy_topology.md`** — ai đó trỏ `importChangelog` vào file không phải changelog, và `parseChangelog` nhận mọi `##` nên nuốt sạch. Root còn sống nên đợt dọn `2026-07-29d` không đụng. **Cần chốt:** `parseChangelog` bỏ qua entry không có `[ngày]`, hay `importChangelog` từ chối file thiếu header `# Change Log`? (Cân nhắc: entry hợp lệ ghi ngày trong title kiểu `## 2026-07-16 — …` cũng ra `date=NULL` — cấm thẳng sẽ mất chúng.)
-- [ ] Mở phiên Claude và Codex mới để xác nhận Stop hook capture end-to-end trên runtime thật.
-- [ ] Chạy benchmark Raw vs lite vs Lean map/signatures vs semantic trên cùng corpus code/log/test.
-
 ## Phase 2 — Năng lực nặng
 - [ ] **Code map AST + adapter host mới** (Gemini/Antigravity · Cursor · Hermes) — chỉ làm sau khi có fixture dữ liệu THẬT. Gồm luôn: hash incremental + import graph/blast-radius, fallback keyword khi parser thiếu. *(gộp 3 mục trùng nhau 2026-07-28)*
 - [ ] **Memory promotion (episodic → curated learned-rule) — Ý TƯỞNG rõ (2026-07-18):** episodic memory đã bắt HẾT correction/decision qua các phiên → **nguyên liệu thô đã sẵn trong zemory**. THIẾU cái CẦU: zemory tự **phát hiện correction/decision LẶP LẠI** trong episodic → **ĐỀ XUẤT** nâng thành **memory-luật bền** (constitution/rules/1 memory doc) — **có review, user duyệt, KHÔNG auto-summary thành nguồn thứ hai** (điều 3). Cơ chế hình dung: quét episodic tìm pattern lặp (theme/correction) → xếp hạng theo tần suất → trình user *"correction X lặp N lần, nâng thành rule?"* → user gật mới ghi. Hiện đang để Claude-Code `memory/` gánh TAY. **Đây là "gap thật" duy nhất so với harness pattern 3-trụ** (trụ ② memory); trụ ③ (subagent/critic) zemory CỐ TÌNH bỏ (điều 6 — agent tự orchestrate, Claude auto-spawn subagent rồi).

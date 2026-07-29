@@ -1,6 +1,14 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] ~~test sub-tab routing + ratchet không-tái-sinh~~ · ~~dọn orphan i18n~~ — **XONG 2026-07-29.** Nửa "test nav/sub-tab" **vốn đã có** (`app-ui.test.mjs`: nav khoá đúng 6 key + mỗi nút sub-tab khớp đúng một khối `.sub` cho 4 nhóm) — mục này khai thiếu. Nửa thật còn thiếu là **ratchet không-tái-sinh**, nay đã thêm: 7 khối (`sessDlg` · `homeChecks` · `renderHomeChecks` · `gmSources` · `insHealth` · `gmHealth` · `gmVector`) + 9 key i18n. Đã xoá **18 cặp** khỏi 2 dict (−715 ký tự); dict 360 → 351 key, parity vẫn cân. Đột biến **5/5**.
+
+**CHỜ USER CHỐT trước khi code:**
+- [x] ~~Mở phiên Claude/Codex mới xác nhận Stop hook capture e2e~~ — **ĐÓNG: đang xác minh SAI ĐƯỜNG.** Đo 2026-07-29: **không máy nào cài hook** (Claude `settings.json` + Codex `config.toml` đều 0 lần nhắc zemory) mà capture vẫn đủ — **6.882 tin/2 ngày**, `ingest_state` tiến nhịp ~30 phút. Đường thật là **scheduler scan của daemon**; hook chỉ là lối tuỳ chọn (code còn sống, `hook install` vẫn ghi được). `plan/00` đã sửa cho khớp thực tế. **Còn lại (nếu muốn):** đo độ trễ scan-vs-hook để quyết có khuyến nghị hook cho ai cần realtime.
+- [x] ~~Benchmark Raw vs lite vs Lean map/signatures vs semantic~~ — **ĐÓNG: nửa còn giá trị đã BUILD, nửa kia thuộc scope đã DROP.** `zemory memory bench` (RAG gate: FTS-only vs hybrid trên corpus paraphrase có nhãn, + rerank) đã có và **đang chạy trong gate** (`vectors.test.mjs` — *"hybrid recall@3 ≥ FTS recall@3"*). Còn "Raw/lite/Lean map/signatures" là từ vựng của **compression — DROPPED 2026-06-25**, plan 03 đã sang `attic/dead-plans/`. Phần code-map (LeanCTX map/signatures cho CODE) vẫn sống nhưng ở mục §Phase 2 *Code map AST*, không phải ở đây. *(Mục này lọt từ backlog tháng 6, trôi qua 2 lần đổi tên file mà không ai soi — tìm lại được nguyên văn trong bản cứu index `02_TODO.md` dòng 77.)*
+
+- [x] ~~47.068 tin chờ nhúng vector~~ — **XONG (đo 2026-07-29):** `vectorRemaining()` = **0**, coverage **134.831/134.831 = 100%**, profile `gemma-prompt-v1` 256d. Scheduler nền đã tiêu hoá hết đúng như lường trước; không phải sửa gì. *(Mục này treo với con số cũ trong khi việc đã xong — đúng loại drift mà `archiveTodo` sinh ra để dọn.)*
+
 - [x] SQLite global đa-agent + FTS5 word/trigram + search theo project/`--all`.
 - [x] Adapter Claude Code, Codex, Continue và LM Studio; parser state có migration versioned.
 - [x] Stop capture cho Claude và Codex; recall on-demand qua global instruction.

@@ -106,7 +106,7 @@ Zemory phân phối dưới dạng package npm CLI, một bản global dùng cho
 
 `zemory init` scaffold harness không ghi đè; `sync` gap-fill (bổ khuyết file harness còn thiếu, giữ nguyên file có sẵn — file wins); `fresh` backup cả agent docs và plan; `doctor` kiểm tra setup, provider và capability. Global Memory mặc định ở `~/.zemory/global_memory.db`, có thể chuyển bằng `GLOBAL_MEMORY_DB`.
 
-Claude và Codex dùng Stop hook để capture. Recall dùng instruction hoặc MCP on-demand. UI và extension tương lai chỉ đọc status API chung.
+**Capture — đường MẶC ĐỊNH là scheduler scan của daemon, KHÔNG phải Stop hook.** Câu cũ ở đây khai *"Claude và Codex dùng Stop hook để capture"*; đo lại 2026-07-29 thì **không máy nào cài hook** (`~/.claude/settings.json` + `~/.codex/config.toml` đều 0 lần nhắc zemory) mà capture vẫn chạy đủ: **6.882 tin nạp trong 2 ngày**, `ingest_state` tiến theo nhịp ~30 phút. Daemon quét transcript trên đĩa và ingest theo `ingest_state` (file_path · size · mtime · last_line · parser_version) nên **không bỏ sót dù agent thoát bất thường** — đúng chỗ Stop hook dễ hụt. `zemory hook install` vẫn còn và vẫn dùng được (`.claude/settings.json` · `.codex/hooks.json` + `codex_hooks`) — giữ làm **lối TUỲ CHỌN** khi muốn độ trễ thấp hơn 30 phút, không phải điều kiện để capture hoạt động. Recall dùng instruction hoặc MCP on-demand. UI và extension tương lai chỉ đọc status API chung.
 
 ## 7. Bản quyền (đã rà — Apache-2.0)
 Zemory phát hành theo Apache-2.0 và package phải chứa `LICENSE`. Dependency, model hoặc binary ngoài chỉ được thêm sau khi xác minh license, attribution và điều kiện phân phối của đúng artifact được chọn.

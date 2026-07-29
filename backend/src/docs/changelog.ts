@@ -11,6 +11,24 @@ const FENCE = /^[ \t]*(```|~~~)/;
 const H2 = /^## (.*?)[ \t]*$/;
 const DATE = /^\[([^\]]+)\][ \t]*[—-]*[ \t]*(.*)$/;
 
+/** Ngày viết KHÔNG ngoặc: `## 2026-07-28 — tiêu đề`.
+ *
+ *  Vì sao cần (đo 2026-07-29): `PBI_SasinFlow_Maintain` viết changelog theo dạng này —
+ *  **16 head `##`, 0 head dạng `[ngày]`** — nên `DATE` trượt sạch, cả file rơi vào nhánh
+ *  legacy "nhận mọi `##`", và các heading NẰM TRONG THÂN entry cũng bị đếm thành entry với
+ *  `date=NULL`. Hậu tố chữ (`2026-07-28m`) là quy ước của zemory khi một ngày có nhiều
+ *  entry, nên cho phép. Bắt buộc có dấu phân cách hoặc hết dòng sau ngày, để `## 2026 kế
+ *  hoạch` không bị nhận là entry. */
+const DATE_BARE = /^(\d{4}-\d{2}-\d{2}[a-z]?)(?:[ \t]*[—–-]+[ \t]*(.*)|[ \t]*)$/;
+
+/** Dấu hiệu "file này LÀ changelog": H1 có chữ Change Log.
+ *
+ *  Đo trên 5 repo thật + 2 template: **100%** changelog có H1 chứa `Change Log`
+ *  (`# Change Log` · `# <PROJECT> — Change Log`), còn plan/TODO thì không. Cổng này chặn
+ *  đúng ca đã xảy ra: trỏ `importChangelog` vào `plan/01_legacy_topology.md` khiến mỗi
+ *  `##` (bảng SQL, "Chưa dò được"…) thành một entry. */
+const H1_CHANGELOG = /^#[ \t]+.*change[ \t]*log/im;
+
 export interface ChEntry {
   date: string | null;
   title: string;
@@ -40,11 +58,15 @@ export function parseChangelog(input: string): ChEntry[] {
     const m = H2.exec(lines[i]);
     if (m) all.push({ idx: i, h: m[1] });
   }
-  // An entry head is `## [<date>] — title`. A bare `## Foo` inside a body is body
-  // text, not a new entry. Fallback: a changelog with NO dated head is legacy —
-  // keep the old behaviour so `import` can still seed it.
-  const dated = all.filter((x) => DATE.test(x.h));
-  const heads = dated.length > 0 ? dated : all;
+  // Head của entry = `## [<ngày>] — tiêu đề` HOẶC `## <ngày> — tiêu đề`. Một `## Foo`
+  // trần nằm trong thân entry là BODY, không phải entry mới.
+  //
+  // Nhánh legacy (nhận mọi `##`) giữ lại cho changelog cũ chưa đánh ngày, nhưng nay CÓ
+  // CỔNG: chỉ chạy khi file thật sự là changelog (H1 có "Change Log"). Không cổng thì bất
+  // kỳ file .md nào bị trỏ vào `importChangelog` cũng sinh ra entry rác — đúng chuyện đã
+  // xảy ra với `plan/01_legacy_topology.md` (6 entry `date=NULL` mang thân là bảng SQL).
+  const dated = all.filter((x) => DATE.test(x.h) || DATE_BARE.test(x.h));
+  const heads = dated.length > 0 ? dated : H1_CHANGELOG.test(text) ? all : [];
   const entries: ChEntry[] = [];
   for (let k = 0; k < heads.length; k++) {
     const start = offsets[heads[k].idx];
@@ -52,8 +74,8 @@ export function parseChangelog(input: string): ChEntry[] {
     const block = text.slice(start, end);
     const nl = block.indexOf("\n");
     const body = (nl < 0 ? "" : block.slice(nl + 1)).replace(/\s+$/, "");
-    const dm = DATE.exec(heads[k].h);
-    entries.push({ date: dm ? dm[1] : null, title: dm ? dm[2] : heads[k].h, body });
+    const dm = DATE.exec(heads[k].h) ?? DATE_BARE.exec(heads[k].h);
+    entries.push({ date: dm ? dm[1] : null, title: (dm ? dm[2] : heads[k].h) ?? "", body });
   }
   return entries;
 }

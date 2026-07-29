@@ -5,6 +5,44 @@
 
 ---
 
+## [2026-07-29k] — Dọn 3 mục backlog: 2 zombie tháng 6 · bug parse changelog thật · ratchet UI. Và 4 phép đo của tôi sai trước khi đúng
+
+Gate 351 → **363** · `conform` ✓ · `validate` ✓ · đột biến **12/12** (5 parser · 2 regex nghiêm · 5 UI).
+
+**User yêu cầu "audit chéo lại từng cái" — và audit chéo là thứ cứu cả ba mục.** Phân loại đầu tiên
+của tôi ("28 mục làm được ngay") làm bằng regex trên chữ trong backlog; soi bằng lệnh thật thì **~1/2
+sai nhãn**, 2 mục đã chết, 1 mục đã làm nửa.
+
+- **Zombie ①: "benchmark Raw vs lite vs Lean map/signatures"** → ĐÓNG. Nửa còn giá trị **đã build**:
+  `zemory memory bench` (FTS-only vs hybrid trên corpus paraphrase có nhãn + rerank) và **đang chạy
+  trong gate** (`vectors.test.mjs` — *hybrid recall@3 ≥ FTS recall@3*). Nửa còn lại là từ vựng của
+  **compression — DROPPED 2026-06-25**. Tìm được nguyên văn mục này trong bản cứu index (`02_TODO.md`
+  tháng 6, dòng 77): nó trôi qua 2 lần đổi tên file mà không ai soi.
+- **Zombie ②: "mở phiên mới xác nhận Stop hook capture e2e"** → ĐÓNG vì **đang xác minh SAI ĐƯỜNG.**
+  Đo: **không máy nào cài hook** (Claude `settings.json` + Codex `config.toml` đều 0 lần nhắc zemory)
+  mà capture vẫn đủ — **6.882 tin/2 ngày**, `ingest_state` tiến nhịp ~30 phút, 100% `claude-code`.
+  Đường thật là **scheduler scan của daemon**; hook chỉ là lối tuỳ chọn (code còn sống). `plan/00`
+  từng khai *"Claude và Codex dùng Stop hook để capture"* — **docs lệch thực tế**, đã viết lại.
+- **Bug thật: `parseChangelog` biến MỌI file .md thành entry.** Chẩn đoán sáng nay của tôi **sai một
+  nửa** — code đã ưu tiên head có ngày; nhánh legacy chỉ chạy khi file có **0** head `[ngày]`. Gốc
+  thật: `PBI_SasinFlow_Maintain` viết `## 2026-07-28 — tiêu đề` **không ngoặc** ⇒ 16 head, 0 khớp ⇒
+  cả file rơi vào legacy ⇒ heading trong thân entry cũng thành entry. Vá hai nửa: nhận **ngày không
+  ngoặc** (kèm hậu tố chữ `…28m`), và **gate nhánh legacy bằng H1 "Change Log"** (đo: 5 repo thật + 2
+  template đều có; plan/TODO thì không). **Audit chéo trên 9 file thật, so với parser cũ lấy từ git:**
+  5 changelog **không đổi** · `PBI_Maintain` 16 entry `date=NULL` → **16 entry có ngày** · 2 file
+  không-phải-changelog **18 entry rác → 0**.
+- **Ratchet UI.** Mục backlog khai "chưa có test sub-tab routing" — **khai thiếu**: test nav (khoá đúng
+  6 key) + sub-tab (nút ↔ khối `.sub`, 4 nhóm) **vốn đã có**. Nửa thật thiếu là **không-tái-sinh**: nay
+  khoá 7 khối đã gỡ + 9 key i18n. Xoá **18 cặp** key mồ côi khỏi 2 dict (−715 ký tự, 360 → 351 key,
+  parity vẫn cân).
+
+**Bốn phép đo của tôi sai trước khi đúng — ghi lại vì cùng một họ lỗi:** ① bộ dò i18n bắt key chỉ ở
+đầu dòng ⇒ thấy 39/360 key · ② bản sau trượt `data-i18n-ph`/`-title` ⇒ báo **212/360 key "mồ côi"**,
+vô lý vì có cả `nav.home` · ③ grep tay trỏ `frontend/app.html` (file thật ở `frontend/pages/`) ⇒ đếm 0
+rồi kết luận "sạch" · ④ đối chứng trong test dùng `includes("gmStats")` nên đột biến đổi tên thành
+`gmStatsX` vẫn lọt. Cái ③ do **chính ratchet mới bắt được**, cái ④ do **đột biến hoá bắt được**. Nên
+cả hai test mới đều mang một **assert đối chứng** để phép đo tự chứng minh mình còn nhìn thấy thứ sống.
+
 ## [2026-07-29j] — `memory key set/show/path`: ô NHẬP chìa · két master-password đã cân và BÁC · Drive sạch chìa cũ
 
 Gate 341 → **351** · `conform` ✓ · `validate` ✓ · 8/8 đột biến bị bắt. Spec: `plan/16_share_key`.
