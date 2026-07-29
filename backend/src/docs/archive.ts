@@ -38,6 +38,13 @@ function entryHeads(lines: string[]): number[] {
   return heads;
 }
 
+/** Where the rollback copies live: `attic/harness-bak/` in the project, i.e. OUTSIDE
+ *  `docs/` — the layer already declared for superseded material, and not part of the
+ *  per-session read set. */
+function bakDir(ctx: Context): string {
+  return join(ctx.projectRoot, "attic", "harness-bak");
+}
+
 const TODO_INTRO =
   "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
 
@@ -122,7 +129,10 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   const prevBody = prev.startsWith(TODO_INTRO) ? prev.slice(TODO_INTRO.length) : prev;
   writeFileAtomic(archivePath, TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
   // Truncating the SOURCE backlog is destructive — keep a .bak so it can be undone.
-  writeFileAtomic(mainPath, keptText, { backup: true });
+  // It goes to attic/, NOT next to the file: docs/agent/ is the folder the agent is told
+  // to read in full, so a .bak parked there reads as stray rubbish (it was mistaken for
+  // exactly that, twice).
+  writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
 
   // Reindex BOTH tiers immediately, same as archiveChanges. Without this the moved
   // items are only searchable after someone remembers to run `reindex` — and "someone
@@ -169,8 +179,9 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;
   writeFileAtomic(archivePath, ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
-  // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được.
-  writeFileAtomic(mainPath, keptText, { backup: true });
+  // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được,
+  // nhưng đặt ở attic/ chứ không cạnh file (xem bakDir).
+  writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
 
   // Reseed BOTH tiers from their source files (FILE WINS): the trimmed active file,
   // and the archive that just grew. Without the second call the moved entries fall
