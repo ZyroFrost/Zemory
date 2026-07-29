@@ -98,7 +98,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 42 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 64 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 65 |
 | 5 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 6 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 7 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
