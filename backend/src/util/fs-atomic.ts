@@ -15,7 +15,7 @@
 // Rename hỏng ⇒ ném lỗi, bản gốc CÒN NGUYÊN — thà báo lỗi to còn hơn hỏng lặng lẽ.
 
 import { closeSync, copyFileSync, existsSync, fsyncSync, mkdirSync, openSync, renameSync, unlinkSync, writeSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 /** Ngủ đồng bộ thật (không busy-wait) — dùng cho retry rename trên Windows. */
 function sleepSync(ms: number): void {
@@ -28,9 +28,14 @@ function sleepSync(ms: number): void {
 const RETRY_CODES = new Set(["EPERM", "EBUSY", "EACCES"]);
 
 export interface AtomicWriteOptions {
-  /** Giữ một bản `<file>.bak` của nội dung CŨ trước khi đè. Bật cho thao tác phá huỷ
-   *  (vd `archive` cắt ngắn changelog) — rẻ, và là đường lùi duy nhất khi ghi nhầm. */
-  backup?: boolean;
+  /** Giữ một bản `.bak` của nội dung CŨ trước khi đè, ĐẶT VÀO thư mục này. Bật cho thao
+   *  tác phá huỷ (vd `archive` cắt ngắn changelog) — rẻ, và là đường lùi duy nhất khi ghi nhầm.
+   *
+   *  Vì sao là THƯ MỤC chứ không phải cờ bật/tắt: bản đầu ghi `<file>.bak` ngay cạnh đích,
+   *  nên `archive` để lại `05_TODO.md.bak` + `06_CHANGES.md.bak` đọng trong `docs/agent/` —
+   *  đúng nơi luật bắt agent "ĐỌC HẾT", nên nó trông y như rác lọt và chủ repo đã hiểu nhầm
+   *  là rác đúng hai lần. Lưới lùi thì giữ, nhưng phải nằm NGOÀI vùng docs. */
+  backupDir?: string;
 }
 
 /**
@@ -57,7 +62,10 @@ export function writeFileAtomic(target: string, data: string, opts: AtomicWriteO
     } finally {
       closeSync(fd);
     }
-    if (opts.backup && existsSync(target)) copyFileSync(target, `${target}.bak`);
+    if (opts.backupDir && existsSync(target)) {
+      mkdirSync(opts.backupDir, { recursive: true });
+      copyFileSync(target, join(opts.backupDir, `${basename(target)}.bak`));
+    }
     let lastError: unknown;
     for (let attempt = 0; attempt < 5; attempt++) {
       try {

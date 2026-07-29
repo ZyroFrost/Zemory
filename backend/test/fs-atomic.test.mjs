@@ -16,13 +16,34 @@ import { tempDir } from "./helpers.mjs";
 
 const ORIGINAL = "NỘI DUNG GỐC — không được mất\n";
 
-test("ghi bình thường thay được nội dung, và --backup giữ bản cũ", (t) => {
+test("ghi bình thường thay được nội dung, và backupDir giữ bản cũ", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "06_CHANGES.md");
+  const bak = join(dir, "attic", "harness-bak");
   writeFileSync(f, ORIGINAL);
-  writeFileAtomic(f, "nội dung mới\n", { backup: true });
+  writeFileAtomic(f, "nội dung mới\n", { backupDir: bak });
   assert.equal(readFileSync(f, "utf8"), "nội dung mới\n");
-  assert.equal(readFileSync(`${f}.bak`, "utf8"), ORIGINAL, ".bak phải giữ nội dung CŨ — đường lùi duy nhất");
+  assert.equal(readFileSync(join(bak, "06_CHANGES.md.bak"), "utf8"), ORIGINAL, ".bak phải giữ nội dung CŨ — đường lùi duy nhất");
+});
+
+test("bản lùi KHÔNG được đọng cạnh file nguồn", (t) => {
+  // Đây là lý do đổi từ cờ `backup: true` sang `backupDir`: `docs/agent/` là thư mục luật
+  // bắt agent ĐỌC HẾT, nên một `.bak` nằm đó vừa tốn ngữ cảnh vừa trông như rác lọt.
+  const dir = tempDir(t, "zemory-atomic-");
+  const f = join(dir, "05_TODO.md");
+  writeFileSync(f, ORIGINAL);
+  writeFileAtomic(f, "mới\n", { backupDir: join(dir, "attic", "harness-bak") });
+  assert.equal(existsSync(`${f}.bak`), false, "không được đẻ .bak cạnh đích");
+  assert.equal(existsSync(join(dir, "attic", "harness-bak", "05_TODO.md.bak")), true);
+});
+
+test("không truyền backupDir thì KHÔNG đẻ bản lùi nào", (t) => {
+  const dir = tempDir(t, "zemory-atomic-");
+  const f = join(dir, "a.md");
+  writeFileSync(f, ORIGINAL);
+  writeFileAtomic(f, "mới\n");
+  assert.equal(existsSync(`${f}.bak`), false);
+  assert.equal(readFileSync(f, "utf8"), "mới\n");
 });
 
 // Đây là lý do tồn tại của cả module. Nếu test này đỏ thì mọi thứ khác vô nghĩa.
