@@ -5,6 +5,50 @@
 
 ---
 
+## [2026-07-29g] — `03_STRUCTURE` thành TỪ ĐIỂN TRA, không đọc mỗi phiên · `conform` vào gate
+
+Gate 329 → **336** · `validate` ✓ · 7/7 đột biến bị bắt. Tầng luật **96,4 → 56,1 KB (−42%)**.
+
+**Ý user, không phải ý tôi:** tôi đề xuất *tách* `03_STRUCTURE` thành 2 file; user bác — *"03 là structure
+slot và index toàn app, ko thể cắt được… chỉ tìm và đọc đúng khi thêm slot, sửa slot, hoặc tra index mới
+đúng logic"*. **User đúng và phương án đó tốt hơn**: sửa LUẬT ĐỌC chứ không cắt file ⇒ không đánh số lại,
+không hỏng **47 chỗ trích `§N`** ở tầng sống, không thêm tier, không sửa parity template.
+
+- **Bằng chứng vòng lặp chạy thật** (thử trên repo nháp): tạo `backend/src/db` + `frontend/js` → `conform`
+  bắt cả hai `[off-standard-dir]` **kèm câu chỉ đường "→ đổi tên về đúng slot (03_STRUCTURE §3)"**. Agent
+  không cần nhớ chuẩn; máy nêu, agent mở đúng mục.
+- **Nhưng `conform` KHÔNG tự chạy ở đâu cả** — không trong `npm run check`, không trong hook nào. Bỏ 03 khỏi
+  bộ đọc trong lúc đó = không còn ai canh chuẩn. Đã nối `conform --gate` vào `npm run check`.
+- **`conform` kiểm 6 thứ, §5 khai 48 luật.** Phân loại: ~38 luật nổ *lúc tạo/đặt tên folder* (tra-khi-cần
+  đúng, và `off-standard-dir`/`empty-slot-dir` bắt được hậu quả) · **~10 luật nổ lúc VIẾT CODE mà `conform`
+  mù hoàn toàn**: SQL-1-cách · secret · `share/` bundle · setting UI · panel resize · dialog 16:9 · test ·
+  version · version-up · backup deploy 2 chiều. Không biết = vi phạm **âm thầm**, không gate nào kêu ⇒ dời
+  **nguyên văn** sang `02_RULES §Luật khi VIẾT` (luôn nạp), **xoá khỏi `03`** — một nguồn duy nhất (điều 3).
+  Bản nonapp dời 4 luật cùng loại (`Secret/connection` · `SQL/DAX/M` · `Nhị phân nặng` LFS · `Data thật vs mẫu`).
+- **`AGENTS.md` (repo + 2 template, byte-identical trừ tiêu đề):** `03_STRUCTURE` ra khỏi danh sách "ĐỌC HẾT",
+  thay bằng item riêng khai nó là **từ điển slot + index để TRA** kèm **trigger**: tạo/đổi tên/dời folder ·
+  thêm/sửa slot · tra index · `conform` báo lệch.
+- **Bắt được lỗi nhân lúc thử: project vừa `init` xong đã ĐỎ.** `04_SKILLS` mẫu trích *"điều 13"* trong khi
+  `01_CONSTITUTION` mẫu chỉ có 1 điều placeholder *"(chưa chốt)"* ⇒ `dangling-ref`, **cả hai template**. Nặng
+  hơn bình thường vì `BOOTSTRAP` Cowork bảo agent của sếp chạy đúng luồng `init` → `conform`: việc đầu tiên
+  sếp thấy là một dấu ✗ không do sếp gây ra. Vá 4 chỗ (nêu nguyên tắc bằng chữ). Nay `init` → `conform --gate`
+  **exit 0** cho cả app và non-app.
+- **Gate mới `read-set-contract`** (7 test) khoá hợp đồng đọc: 03 không được trở lại danh sách đọc · trigger
+  phải có mặt · `conform` phải nằm trong gate kèm `--gate` · 10 luật phải ở `02_RULES` và **không** còn ở
+  `03` · `03` phải để lại con trỏ · template **không** được trích số điều. Đột biến: nhét 03 trở lại, gỡ
+  conform khỏi gate, gỡ `--gate`, lén copy luật về 03, xoá mục §Luật khi VIẾT, template trích lại "điều 13",
+  bỏ con trỏ — **7/7 đỏ đúng**.
+- `bootstrap-manifest` tự bắt số dòng lệch sau khi sửa docs (21→22 · 70→82 · 133→130) — đúng việc nó sinh ra để làm.
+
+**Đo lại theo tầng** (bộ nổi tiếng chỉ có tầng luật, không có backlog/changelog/plan — nên chỉ tầng ① so được):
+
+| | tầng ① luật | vs Cursor 500 dòng |
+|---|---|---|
+| trước | 686 dòng · 96,4 KB | 1,37× thô · 2,82× token |
+| **nay** | **374 dòng · 56,1 KB** | **0,75×** thô · **1,64×** token |
+
+Bộ đọc mỗi phiên: **279,4 → 239,2 KB**. `03_STRUCTURE` (322 dòng · 41,7 KB) ra ngoài, tra bằng `plan search`.
+
 ## [2026-07-29f] — Kiểm archive: file không mất gì, nhưng INDEX đang chỉ sai đường — và bộ kiểm đầu của tôi tự xanh giả
 
 Gate 322 → **329** · `conform` ✓ · `validate` ✓ · 6/6 đột biến bị bắt. Bộ đọc 284,1 → **279,4 KB**.

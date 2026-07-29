@@ -107,11 +107,8 @@ Output khớp số       file trung gian mang tiền tố số stage (`01_pull.p
 Right-size stage     chỉ tạo stage task THẬT cần (2–4 là thường), KHÔNG chẻ vụn cho "đủ bộ". Script domain cũ (fast/haravan/pos…) KHÔNG bắt đánh số — cùng tồn tại
 Launcher .cmd        `<tên>.cmd` ở gốc: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. File .cmd **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse)
 templates ≠ fixtures  templates/ = file TRỐNG chờ ĐIỀN (đổ số ra deliverable) · fixtures/ = data MẪU nhỏ để mở deliverable khỏi cần nguồn thật
-Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung lượng); như share/*.enc
-Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
-Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
+Luật khi VIẾT        đã dời sang `02_RULES §Luật khi VIẾT` (luật nổ lúc viết code, `conform` không kiểm được).
 Từ điển dữ liệu      BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu
-SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries của app)
 Publish/refresh      tự động hóa → scripts/ (§5) · bản render ra → exports/ (gitignore, build lại được)
 Sơ đồ trực quan      .html/.svg xem trực quan (luồng/lineage/lưới bảng) → docs_visual/ (NGOÀI docs/, agent KHÔNG auto-đọc); mỗi file có .md chủ trỏ + tóm tắt
 Harness = app        docs/agent/* + AGENTS.md y hệt app → cùng lệnh zemory, agent điều hướng non-app đúng như app
@@ -120,7 +117,7 @@ Ngoài phạm vi        app có code chạy (UI/server/CLI) → chuẩn APP · l
 ```
 
 ## 5. Tự động hoá — KÉO / ĐIỀN / UPLOAD file
-> Đây là năng lực "hệ file cho AI" của non-app. **AGENT là thứ LÀM** 3 động tác; zemory chỉ **NHỚ + KỶ LUẬT** (index việc/task đã làm vào Global Memory), **KHÔNG tự gọi LLM, KHÔNG tự đi kéo file** (điều 6 hiến pháp). Mỗi động tác = **script THIN ở `scripts/`** + **playbook ở `04_SKILLS`** (recipe cụ thể: kéo nguồn nào, điền template nào, up đi đâu).
+> Đây là năng lực "hệ file cho AI" của non-app. **AGENT là thứ LÀM** 3 động tác; zemory chỉ **NHỚ + KỶ LUẬT** (index việc/task đã làm vào Global Memory), **KHÔNG tự gọi LLM, KHÔNG tự đi kéo file** (xem `01_CONSTITUTION`: trí tuệ là agent, zemory chỉ là bộ nhớ + kỷ luật). Mỗi động tác = **script THIN ở `scripts/`** + **playbook ở `04_SKILLS`** (recipe cụ thể: kéo nguồn nào, điền template nào, up đi đâu).
 
 - **KÉO (pull):** đọc `sources/` (M/connection/SQL) → kéo raw về `data/extract/` (gitignore). Credential lấy từ `.env`/`config/` — **KHÔNG bao giờ nhập password vào zemory** (mượn phiên login trên trang thật nếu là web). Playbook: `04_SKILLS §pull`.
 - **ĐIỀN (fill):** lấy file `templates/` (trống) + số từ `data/`/`measures/` → xuất deliverable (`reports/`) hoặc `exports/`. Playbook: `04_SKILLS §fill`.
