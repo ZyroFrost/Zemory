@@ -10,9 +10,11 @@ dist/
 # Delta/lean sync bundles are named global_memory.<host>.<seq>.enc — they do NOT
 # match *.zemory.enc above, so ignore them explicitly (never let a PII bundle reach git).
 global_memory.*.enc
-# ...EXCEPT the repo's own share bundle — share/README documents it as the
-# LFS-tracked sync artifact; without this exception it silently never commits.
-!share/global_memory.zemory.enc
+# KHÔNG ngoại lệ nào cho bundle. Trước 2026-07-29 có dòng `!share/global_memory.zemory.enc`
+# mở đường cho bundle TOÀN BỘ bộ nhớ vào git (LFS đã cắm sẵn trong .gitattributes), trong khi
+# `share/share.key` lại đang được commit ngay cạnh — một lần export nhầm + `git add -A` là toàn
+# bộ memory lên repo PUBLIC kèm chìa giải mã. Luật: git chứa SOURCE, không chứa DATA.
+# Đồng bộ đa máy đưa bundle qua kênh khác (Drive/USB), không qua git.
 *.zemory.key
 share/*.key
 !share/share.key
