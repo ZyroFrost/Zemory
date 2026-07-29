@@ -1,54 +1,67 @@
 # Zemory Shared Memory Bundle
 
-> ⛔ **2026-07-29 — bundle KHÔNG còn đi qua git.** Repo này là **PUBLIC**
-> (`ZyroFrost/Zemory`), nên `.gitignore` nay chặn **mọi** `*.enc` kể cả bundle của chính
-> repo; dòng ngoại lệ `!share/global_memory.zemory.enc` (thêm 2026-07-10) đã bị gỡ.
-> Luật: **git chứa SOURCE, không chứa DATA.** Gate `no-data-in-git.test.mjs` khoá lại.
+> ⛔ **Thư mục này KHÔNG còn chứa gì ngoài file README.** Từ 2026-07-29:
+> - **bundle `.enc`** — gitignored, **không** đi qua git. Chuyển qua Drive/USB. (Dòng ngoại lệ
+>   `!share/global_memory.zemory.enc`, thêm `f59b2ac` 2026-07-10, đã gỡ.)
+> - **chìa** — dời sang **`<thư mục DB>/share.key`**, gitignored. Tra: `zemory memory key path`.
+>   (Dòng ngoại lệ `!share/share.key`, thêm `98bc126` 2026-07-01, đã gỡ; chìa đã xoay.)
 >
-> Bundle vẫn export/import bình thường — chỉ **chuyển qua kênh khác** (Drive · USB · SMB),
-> không commit. Lệnh y hệt bên dưới, chỉ khác nơi đặt file.
->
-> ✅ **2026-07-29 — chìa đã XOAY và ra khỏi git.** `share/share.key` nay **gitignored**
-> (dòng ngoại lệ `!share/share.key`, thêm `98bc126` 2026-07-01, đã gỡ), chìa mới sinh bằng
-> `zemory memory share-key --force` (32 byte random, base64, mode 0600). Kiểm thật: bundle
-> tạo bằng chìa MỚI **giải mã được** bằng chìa mới và **bị từ chối** bằng chìa cũ
-> (*"unable to authenticate data"*).
->
-> ⚠ **Chìa CŨ phải coi như đã lộ vĩnh viễn** — nó nằm trong lịch sử **đã push** của một repo
-> PUBLIC, xoá khỏi HEAD không xoá khỏi lịch sử. Không viết lại lịch sử vì **chưa `.enc` nào
-> từng vào git** (`git log --all -- 'share/*.enc'` rỗng) ⇒ chìa cũ không mở được gì đang công khai.
->
-> 📋 **Việc của bạn:** copy `share/share.key` sang các máy khác qua **Drive / password manager**
-> (không qua git, không dán vào chat). Máy nào còn chìa cũ sẽ không import được bundle mới.
+> Luật: **git chứa SOURCE, không chứa DATA.** Gate `no-data-in-git` khoá lại.
+> Thiết kế đầy đủ + vì sao KHÔNG có két master-password: **`docs/plan/16_share_key.md`**.
 
-Files:
+## Chìa ở đâu
 
-- `global_memory.zemory.enc` — bundle `global_memory.db` đã mã hoá. **Gitignored** — sinh
-  ra rồi chuyển tay, không commit.
-- `share.key` — chìa giải mã bundle. Đang trong git (xem cảnh báo trên).
-
-Sinh bundle mới (đừng sửa tay file `.enc`):
+`<thư mục DB>/share.key` — **cạnh DB, không phải trong repo**. `currentMemoryDir()` di động được
+(`zemory memory relocate` dời DB khỏi ổ hệ thống), nên "chìa ở `data/`" là câu SAI trên máy chưa
+relocate; ở đó DB nằm `~/.zemory/`. Máy thứ hai **không cần clone repo này** — `npm i -g zemory` là đủ.
 
 ```powershell
-node dist\cli.js memory export share\global_memory.zemory.enc --key-file share\share.key --force
+zemory memory key path      # đường chuẩn của chìa
+zemory memory key show      # dấu tay + nguồn (KHÔNG in chìa)
 ```
 
-Khôi phục ở máy tin cậy khác — **chép `.enc` sang bằng Drive/USB trước**, rồi:
+## Thêm máy — thứ tự BẮT BUỘC
 
+Chìa phải có **trước** lần sync đầu (`sync` = scan → export → merge, mà export không chìa thì chặn ngay).
+
+**Máy nguồn**
 ```powershell
-npm ci
-npm run build
-node dist\cli.js memory import share\global_memory.zemory.enc --key-file share\share.key --force
-node dist\cli.js memory info
+zemory memory keygen        # sinh chìa mới vào đường chuẩn; in dấu tay
+zemory memory sync          # scan + export baseline lên Drive
 ```
+Rồi lưu chìa vào note riêng — **profile Windows hỏng là mất chìa, không còn đường phục hồi nào khác.**
 
-Trước khi export bundle mới, tuỳ chọn quét riêng tư:
-
+**Máy khác**
 ```powershell
-node dist\cli.js memory redact --force
-node dist\cli.js memory forget --project "D:\some\project"   # dry-run
-node dist\cli.js memory forget --project "D:\some\project" --force
-node dist\cli.js memory export share\global_memory.zemory.enc --key-file share\share.key --force
+zemory memory key set       # dán chìa rồi Ctrl+Z (đọc STDIN), hoặc: type chia.txt | zemory memory key set
+zemory memory key show      # PHẢI ra cùng dấu tay với máy nguồn — khác là gõ sai
+zemory memory sync          # một lệnh làm cả hai chiều: merge bundle máy kia + export lane của mình
 ```
 
-`forget` chỉ đổi DB/vector index dẫn xuất của zemory; KHÔNG xoá file transcript gốc của agent.
+Chìa **là danh tính**: zemory local-only nên không có server nhận diện "cùng một user" — người mang
+chìa vào từng máy. Chi tiết: `docs/plan/16_share_key.md §1`.
+
+## Bundle
+
+Sinh/mã hoá lại:
+```powershell
+zemory memory export <out.zemory.enc>          # dùng chìa ở đường chuẩn
+zemory memory import <in.zemory.enc> --force   # giải vào DB local
+```
+`memory sync` tự lo cả hai qua thư mục Drive đã cấu hình (`zemory memory info` để xem).
+
+Trước khi export, tuỳ chọn quét riêng tư:
+```powershell
+zemory memory redact --force
+zemory memory forget --project "D:\some\project"           # dry-run
+zemory memory forget --project "D:\some\project" --force
+```
+`forget` chỉ đổi DB/vector index dẫn xuất; **KHÔNG** xoá transcript gốc của agent.
+
+## Không bao giờ
+
+- Đưa chìa hoặc bundle vào git (kể cả private repo — cứ giữ một luật cho đơn giản).
+- Đặt chìa **cùng thư mục** với bundle (Drive folder chứa `.enc` ⇒ đừng để chìa ở đó).
+- Dán chìa vào chat với agent: phiên bị ingest vào chính `global_memory.db`, rồi theo bundle lên
+  Drive ⇒ ai mở được **một** bundle sẽ đọc được chìa và mở **mọi** bundle. Vì vậy `key show` chỉ in
+  dấu tay và `key set` đọc stdin chứ không nhận đối số.

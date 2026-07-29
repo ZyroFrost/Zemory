@@ -1,6 +1,7 @@
 // `zemory memory <scan|scan-web|search|embed|scope|hosts|digest|sync|export|
 //  import|forget|redact|backup|restore|relocate|vacuum|bench>` — the global
 // Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
+import { readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
@@ -18,6 +19,10 @@ import {
   mergeMemoryBundle,
   readExportWatermark,
   resolveShareKey,
+  setShareKey,
+  shareKeyFingerprint,
+  shareKeyPath,
+  shareKeyStatus,
   syncDrive,
   writeMemoryShareKey,
   writeExportWatermark,
@@ -335,15 +340,59 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "keygen") {
-    const out = positionalArgs(args.slice(1))[0];
-    if (!out) {
-      console.log("usage: zemory memory keygen <key-file> [--force]");
-      console.log("  Keep this file OUT of git. Share it out-of-band with trusted machines only.");
+    // Không có đối số ⇒ ghi vào ĐƯỜNG CHUẨN (cạnh DB) thay vì in usage rồi bỏ đi. Trước
+    // đây bắt buộc truyền đường dẫn, nên người dùng phải tự đoán chỗ đặt — đoán sai thì
+    // `resolveShareKey` không thấy và sync báo "Missing share key" trong khi chìa CÓ, chỉ
+    // nằm sai chỗ.
+    const out = positionalArgs(args.slice(1))[0] ?? shareKeyPath();
+    writeMemoryShareKey(out, { force: args.includes("--force") });
+    console.log(`zemory memory keygen — đã ghi ${out}`);
+    console.log(`  dấu tay: ${shareKeyFingerprint(readFileSync(out, "utf8"))}   (đối chiếu khi nhập chìa này ở máy khác)`);
+    console.log("  Chìa KHÔNG được vào git. Bundle mã hoá là vô dụng nếu thiếu chìa —");
+    console.log("  giữ một bản ở note riêng: profile Windows hỏng là mất chìa, không còn đường phục hồi nào.");
+    return;
+  }
+  if (sub === "key") {
+    // `key set` = nhập chìa ĐANG CÓ (thêm máy thứ hai) · `keygen` = sinh chìa MỚI (máy đầu).
+    // Chìa CHÍNH LÀ danh tính: zemory local-only (điều 7), không có server nào chứng thực
+    // "cùng một user", nên danh tính phải do NGƯỜI mang vào từng máy. Đây là ô nhập đó.
+    const action = positionalArgs(args.slice(1))[0] ?? "show";
+    if (action === "show" || action === "status") {
+      const st = shareKeyStatus(currentProjectRoot());
+      if (!st.found) {
+        console.log("zemory memory key — CHƯA có chìa.");
+        console.log(`  máy đầu tiên : zemory memory keygen      (sinh chìa mới → ${st.path})`);
+        console.log("  máy thứ hai  : zemory memory key set     (nhập chìa từ máy đầu)");
+        return;
+      }
+      console.log(`zemory memory key — dấu tay ${st.fingerprint} · nguồn: ${st.source}`);
+      if (st.path) console.log(`  ${st.path}`);
+      console.log("  (chỉ in DẤU TAY. Không in chìa: phiên agent bị ingest vào chính DB mà chìa bảo vệ.)");
       return;
     }
-    writeMemoryShareKey(out, { force: args.includes("--force") });
-    console.log(`zemory memory keygen — wrote ${out}`);
-    console.log("  Keep this key file out of git; encrypted bundles are useless without it.");
+    if (action === "path") {
+      console.log(shareKeyPath());
+      return;
+    }
+    if (action === "set") {
+      // Đọc từ STDIN (dán rồi Ctrl+Z trên Windows, hoặc pipe từ file). KHÔNG nhận chìa qua
+      // đối số dòng lệnh: đối số đi vào history của shell VÀ vào transcript của agent, tức
+      // rò đúng kiểu vừa đi vá.
+      try {
+        const r = setShareKey(readFileSync(0, "utf8"), { force: args.includes("--force") });
+        console.log(`zemory memory key set — đã ${r.replaced ? "THAY" : "ghi"} ${r.path}`);
+        console.log(`  dấu tay: ${r.fingerprint}`);
+        console.log("  So dấu tay này với máy nguồn (`zemory memory key show`) — khác nhau là gõ sai.");
+      } catch (error) {
+        console.log(`zemory memory key set — ${error instanceof Error ? error.message : "lỗi"}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+    console.log("usage: zemory memory key [show|set|path] [--force]");
+    console.log("  show  dấu tay + đường dẫn chìa đang dùng (KHÔNG in chìa)");
+    console.log("  set   nhập chìa đang có, ĐỌC TỪ STDIN (dán rồi Ctrl+Z, hoặc pipe từ file)");
+    console.log("  path  in đường chuẩn của chìa (cạnh DB, KHÔNG phải trong repo)");
     return;
   }
   if (sub === "export") {
@@ -765,7 +814,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    --rebuild drops + re-embeds everything under the current embed profile",
       "                    (asymmetric Gemma query/document prompts; long messages chunked).",
       "  vacuum            reclaim freed pages (rewrites the whole DB file — run after structural surgery).",
-      "  keygen <key-file> create a local share key (keep OUT of git).",
+      "  keygen [key-file] sinh chìa share MỚI — máy ĐẦU TIÊN. Không truyền đường dẫn thì ghi",
+      "                    vào đường chuẩn (cạnh DB). Chìa KHÔNG được vào git.",
+      "  key [show|set|path]",
+      "                    show = dấu tay + đường dẫn (KHÔNG in chìa) · set = nhập chìa ĐANG CÓ",
+      "                    từ stdin (máy THỨ HAI) · path = đường chuẩn. Chìa là DANH TÍNH:",
+      "                    zemory local-only nên không có server nhận diện — người mang chìa vào.",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
       "  restore <backup.db> [--force]",
       "                    restore a raw local SQLite backup; renames the previous DB aside.",
