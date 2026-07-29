@@ -95,6 +95,58 @@ test("hai từ điển có CÙNG tập key (không bên nào dư key chết)", (
   assert.deepEqual(onlyVi, [], "key chỉ có ở VI — EN sẽ rơi về tiếng Việt giữa giao diện Anh");
 });
 
+test("9 key i18n đã gỡ KHÔNG được quay lại (mồ côi từ đợt gộp nav)", () => {
+  // Đo 2026-07-29: 9 key này còn trong CẢ HAI từ điển nhưng 0 chỗ dùng — sót từ đợt gộp nav
+  // 9→6 màn, khi các card `homeChecks`/`insHealth`/`graph.checks` bị gỡ. Test parity ở trên
+  // KHÔNG bắt được, vì hai dict vẫn cân: key chết nằm đều ở cả hai bên.
+  const GONE = [
+    "home.memEngine",
+    "home.docsHarness",
+    "graph.brokenDocs",
+    "graph.brokenDocsHint",
+    "graph.orphanFiles",
+    "graph.neverModified",
+    "graph.neverModifiedHint",
+    "graph.harnessOk",
+    "graph.validateOk",
+  ];
+  const declared = (k) => (JS.match(new RegExp(`'${k.replace(/\./g, "\\.")}'\\s*:`, "g")) ?? []).length;
+  const back = GONE.filter((k) => declared(k) > 0);
+  assert.deepEqual(back, [], `key đã gỡ bị khai lại trong từ điển: ${back.join(", ")}`);
+  // Đối chứng cho CHÍNH phép đo: một key còn sống phải đếm ra đúng 2. Bộ dò đầu tiên của
+  // tôi báo 212/360 key "mồ côi" vì trượt `data-i18n-ph`/`-title` — xanh giả kiểu đó là thứ
+  // phải chặn ngay trong test.
+  assert.equal(declared("nav.home"), 2, "đối chứng: nav.home phải được khai đúng 2 lần (vi+en)");
+});
+
+test("7 khối UI đã gỡ KHÔNG được tái sinh (nav 9→6, diệt trùng lặp)", () => {
+  // Đợt gộp nav đã gỡ: dialog `#sessDlg` (viewer thứ hai render y hệt màn Phiên) · card
+  // `homeChecks` + `renderHomeChecks` (list sức khoẻ hardcode song song với FEATURES — 2
+  // nguồn sự thật, tất yếu lệch) · `gmSources` (Top Sources vẽ 2 lần) · `insHealth` (4 tile
+  // trùng 7 ô gmStats) · `gmHealth`/`gmVector` (donut + card riêng, gộp vào bảng số).
+  // Không có ratchet thì lần refactor sau rất dễ dựng lại một trong số đó.
+  // Tên vẫn được phép xuất hiện trong COMMENT — ba file đều có ghi chú giải thích vì sao
+  // khối đó bị gỡ, và giữ ghi chú đó có ích hơn là xoá sạch dấu vết. Nên bóc comment trước
+  // khi kiểm, thay vì so cả file. (Phép grep tay của tôi lúc đầu báo "sạch" là do trỏ sai
+  // đường `frontend/app.html` — file thật ở `frontend/pages/app.html` — nên đếm ra 0.)
+  const noHtmlComments = HTML.replace(/<!--[\s\S]*?-->/g, "");
+  const noCssComments = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  const noJsComments = JS.split(/\r?\n/)
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  for (const id of ["sessDlg", "homeChecks", "renderHomeChecks", "gmSources", "insHealth", "gmHealth", "gmVector"]) {
+    assert.ok(!noHtmlComments.includes(id), `${id} quay lại trong app.html (ngoài comment)`);
+    assert.ok(!noCssComments.includes(id), `${id} quay lại trong app.css (ngoài comment)`);
+    assert.ok(!noJsComments.includes(id), `${id} quay lại trong app.js (ngoài comment)`);
+  }
+  // Đối chứng: một id CÒN SỐNG phải bị phát hiện, nếu không thì phép bóc comment đã ăn quá
+  // nhiều và test thành xanh giả.
+  // Neo CHÍNH XÁC `id="gmStats"`, không phải chuỗi con "gmStats": đột biến đổi tên thành
+  // `gmStatsX` vẫn chứa "gmStats" nên phép `includes` lỏng đã cho đột biến sống sót.
+  assert.ok(noHtmlComments.includes('id="gmStats"'), 'đối chứng: id="gmStats" (còn sống) phải còn sau khi bóc comment');
+});
+
 // ============================ Theme · light mode phải đảo đủ ============================
 
 test("light theme đủ: mọi màu đi qua token, không literal nào sót", () => {
