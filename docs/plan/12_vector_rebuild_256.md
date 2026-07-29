@@ -9,7 +9,7 @@
 > Luật bất di bất dịch: **KHÔNG sửa đổi `sessions`/`messages` gốc** — mọi bước chỉ đụng lớp dẫn xuất (vec_*, FTS). Fail-open giữ nguyên: vector lane hỏng thì recall rơi về FTS, không bao giờ chết.
 ## 0. Bối cảnh bắt buộc đọc trước
 
-- `docs/plan/11_db_size_optimization.md` — số đo dbstat: DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm chỉnh DB 2 lần không cần thiết.
+- `attic/dead-plans/11_db_size_optimization.md` (plan 11 — HOÀN TẤT rồi bị plan này thay, dời khỏi `docs/plan/` 2026-07-29; số đo dbstat của nó giữ nguyên ở đây nên không cần mở lại file) — DB 938MB = FTS ~534MB (51%, trong đó 246MB là 2 bản copy content) + vector 768d 327MB (31%) + text gốc 133MB (13%). Plan này THAY THẾ bước 2 của plan 11 (cắt 768→256 tại chỗ) bằng "rebuild thẳng ở 256d" — vì commit `2164674` đã ship asymmetric Gemma prompts (query `task: search result | query:` / doc `title: none | text:`) nên đằng nào cũng phải re-embed toàn bộ để đổi profile; re-embed xong mới cắt là làm chỉnh DB 2 lần không cần thiết.
 - Commit `2164674` — pattern **stored-config-authoritative**: profile ghi trong `vec_config.profile`, index đã build theo gì thì cả phía doc lẫn query đi theo đó; env chỉ có tác dụng lúc TẠO index. Bước 1 dưới đây áp dụng đúng pattern này cho `dims`.
 - `backend/src/memory/vectors.ts` — chú ý: rowid bảng vec0 PHẢI bind BigInt; chunk message dài dùng rowid tổng hợp ≥ 2^40 qua `vec_map`.
 

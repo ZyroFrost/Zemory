@@ -3,7 +3,7 @@
 
 > ⛔ **Lưu ý (2026-06-25):** phần **§5 compress** đã BỎ khỏi scope (xem changelog) — code dời sang `attic/`. Các phần memory/search/MCP/code-map dưới đây vẫn còn giá trị cho zemory (global memory + harness).
 
-> Spec này bổ sung cho `03_subscription_quota_safe_compression.md`. Mục tiêu là hoàn thiện các capability còn thiếu mà không tạo thêm nguồn sự thật, không đưa model proxy trở lại và không để nhiều provider cùng chiếm một slot.
+> Spec này ban đầu bổ sung cho plan nén quota — plan đó đã DROPPED và **dời sang `attic/dead-plans/03_subscription_quota_safe_compression.md`** (2026-07-29, ra khỏi bộ đọc mỗi phiên). Mục tiêu còn lại: hoàn thiện các capability còn thiếu mà không tạo thêm nguồn sự thật, không đưa model proxy trở lại và không để nhiều provider cùng chiếm một slot.
 ## 1. Mục tiêu kiến trúc
 - Agent gọi capability ổn định; runtime chọn đúng một provider từ `docs/.harness.json`.
 - Session, docs và changelog cùng nằm trong Global Memory; index là dữ liệu dẫn xuất, dựng lại được từ transcript.
