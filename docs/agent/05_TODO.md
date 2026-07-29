@@ -18,6 +18,18 @@
     filesystem"*). Ghi vào không rõ, chưa thử.
   - **Agent tự áp `02_RULES §Phạm vi project` đúng chỗ:** dừng lại hỏi trước khi ghi harness vào cây git
     public của user, dù không ai nhắc. Luật đó ăn.
+- [ ] **VAULT — master password mở két, chìa không đi qua kênh nào (spec: `docs/plan/16_vault.md`, ĐỀ XUẤT chờ user chốt).**
+  Ý user 2026-07-29, kèm yêu cầu **bản lùi master password trên máy nguồn** (DPAPI, `data/secrets/`, xem như dữ liệu
+  chứ không phải nguồn — vì "chỉ nhớ trong đầu" thì quên là **không có đường reset**). Đã đo hạ tầng: `koffi` nạp được ·
+  DPAPI blob 170 byte, **có xác thực thật** (lật 1 byte ở 5/6 vị trí đều bị từ chối). **KHÔNG bê `_SYNC_SALT` của
+  SasinFlow sang** — zemory lưu salt trong bundle nên không mắc bệnh đó, bê sang là tự hạ cấp. Thứ tự thi công + 6 cổng
+  kiểm ở `plan/16 §7,§9`. **Xoá bundle chìa-cũ trong Drive chỉ làm SAU khi két chạy.**
+- [ ] **BUNDLE TRONG DRIVE ĐANG MÃ HOÁ BẰNG CHÌA CŨ — chìa cũ công khai trên GitHub.** Đo 2026-07-29:
+  `G:\My Drive\Global Memory` có 500+ MB `.enc` từ 2 máy, thử bundle nhỏ nhất thì **chìa CŨ giải mã được**, chìa mới
+  không. Tức 500 MB bộ nhớ hiện chỉ được che bởi *"thư mục Drive chưa bị share"*, không phải bởi mã hoá. Cần: đưa
+  chìa/master password sang máy kia **trước** (máy kia `autosync=true` và lấy chìa từ `share/share.key` — file nay
+  gitignored nên `git pull` KHÔNG cập nhật chìa cho nó), rồi xoá `.enc` cũ; `syncDrive` thấy 0 file của host là tự
+  export **BASELINE** đầy đủ, không cần `scan`, không cần reset `sync_state`.
 - [ ] **PHÁT CHÌA MỚI cho các máy khác** (việc của user, không phải của agent). Chìa đã xoay 2026-07-29 và
   `share/share.key` đã ra khỏi git — copy file đó sang máy khác qua **Drive / password manager** (đừng qua git,
   đừng dán vào chat). Máy nào còn chìa cũ sẽ **không import được** bundle mới (đã kiểm: chìa cũ bị từ chối).
