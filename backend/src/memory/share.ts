@@ -3,7 +3,7 @@
 // keeps the key out-of-band via --key-file or ZEMORY_SHARE_KEY.
 
 import Database from "better-sqlite3";
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 import {
   appendFileSync,
   closeSync,
@@ -110,7 +110,16 @@ function readShareSecret(opts: MemoryShareKeyOptions): Buffer {
   const fromEnv = opts.env?.ZEMORY_SHARE_KEY?.trim() ?? process.env.ZEMORY_SHARE_KEY?.trim() ?? "";
   const secret = fromFile || fromEnv;
   if (!secret) {
-    throw new Error("Missing share key. Use --key-file <path> or set ZEMORY_SHARE_KEY.");
+    // Câu lỗi cũ chỉ kể tên hai CỜ mà không nói chìa phải nằm ở đâu, nên người dùng ở máy
+    // thứ hai không biết bước kế tiếp là gì. Nay chỉ thẳng vào lệnh.
+    throw new Error(
+      [
+        "Chưa có chìa share.",
+        `  máy đầu tiên : zemory memory keygen        (sinh chìa mới → ${shareKeyPath()})`,
+        "  máy thứ hai  : zemory memory key set      (nhập chìa từ máy đầu, đọc stdin)",
+        "  hoặc         : --key-file <path> · biến ZEMORY_SHARE_KEY",
+      ].join("\n"),
+    );
   }
   return Buffer.from(secret, "utf8");
 }
@@ -895,4 +904,70 @@ export function writeMemoryShareKey(path: string, opts: { force?: boolean } = {}
   const key = randomBytes(32).toString("base64");
   writeFileSync(path, key + "\n", { flag: opts.force ? "w" : "wx", mode: 0o600 });
   return path;
+}
+
+/** Đường CHUẨN của chìa share: cạnh DB, KHÔNG phải trong repo.
+ *
+ *  Vì sao cần hàm này thay vì để người dùng tự đoán: `currentMemoryDir()` di động được
+ *  (`memory relocate` dời DB khỏi ổ hệ thống), nên "chìa ở data/" là câu nói SAI trên máy
+ *  chưa relocate — ở đó DB nằm `~/.zemory/`. Máy thứ hai KHÔNG cần clone repo zemory;
+ *  `npm i -g zemory` là đủ, và chìa đi cạnh DB của máy đó. */
+export function shareKeyPath(dbDir = currentMemoryDir()): string {
+  return join(dbDir, "share.key");
+}
+
+/** Dấu tay của một chuỗi bí mật — 8 hex đầu của sha256.
+ *
+ *  Đây là phần đáng giá nhất của cả luồng mang-chìa-bằng-tay: lỗi thật khi gõ lại chìa ở
+ *  máy khác là GÕ SAI, mà hôm nay gõ sai chỉ lộ ra dưới dạng "unable to authenticate data"
+ *  sau khi import xong một bundle 254 MB. So dấu tay là tức thì. KHÔNG in giá trị chìa ra
+ *  bất kỳ đâu: phiên agent bị ingest vào chính global_memory.db, nên in chìa ra là nhét nó
+ *  vào cái nó bảo vệ, rồi nó theo bundle lên Drive. */
+export function shareKeyFingerprint(secret: string): string {
+  return createHash("sha256").update(secret.trim(), "utf8").digest("hex").slice(0, 8);
+}
+
+export interface SetShareKeyResult {
+  path: string;
+  fingerprint: string;
+  replaced: boolean;
+}
+
+/** Ghi một chìa ĐANG CÓ vào đường chuẩn (luồng "thêm máy thứ hai").
+ *
+ *  Khác `writeMemoryShareKey` (sinh chìa MỚI random — dùng cho máy ĐẦU TIÊN): hàm này nhận
+ *  chìa người dùng mang tới. Trước đây không có đường nào làm việc này, nên ở máy thứ hai
+ *  người dùng phải tự biết đường dẫn rồi tạo file bằng editor — và không có cách nào kiểm
+ *  mình gõ đúng chưa. */
+export function setShareKey(secret: string, opts: { dbDir?: string; force?: boolean } = {}): SetShareKeyResult {
+  const value = secret.trim();
+  if (!value) throw new Error("Chìa rỗng — không ghi.");
+  // Chìa là passphrase tuỳ ý (readShareSecret nhận mọi chuỗi UTF-8), nhưng quá ngắn thì
+  // bundle trên kênh chia sẻ chỉ được che bởi vài bit. Chặn trước khi nó thành thói quen.
+  if (value.length < 16) throw new Error(`Chìa quá ngắn (${value.length} ký tự) — cần ≥ 16.`);
+  if (/\s/.test(value)) throw new Error("Chìa không được chứa khoảng trắng (dùng '-' để nối từ).");
+  const path = shareKeyPath(opts.dbDir);
+  const replaced = existsSync(path);
+  if (replaced && !opts.force) {
+    throw new Error(`Đã có chìa ở ${path} — thêm --force nếu muốn thay (bundle cũ sẽ KHÔNG giải được nữa).`);
+  }
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${value}\n`, { mode: 0o600 });
+  return { path, fingerprint: shareKeyFingerprint(value), replaced };
+}
+
+/** Trạng thái chìa hiện tại — CHỈ dấu tay + đường dẫn, không bao giờ trả giá trị. */
+export function shareKeyStatus(projectRoot: string, dbDir = currentMemoryDir()): {
+  found: boolean;
+  path?: string;
+  fingerprint?: string;
+  source: "file" | "env" | "none";
+} {
+  const file = resolveShareKey(projectRoot);
+  if (file) {
+    return { found: true, path: file, fingerprint: shareKeyFingerprint(readFileSync(file, "utf8")), source: "file" };
+  }
+  const env = process.env.ZEMORY_SHARE_KEY?.trim();
+  if (env) return { found: true, fingerprint: shareKeyFingerprint(env), source: "env" };
+  return { found: false, source: "none", path: shareKeyPath(dbDir) };
 }
