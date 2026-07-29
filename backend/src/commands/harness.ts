@@ -13,7 +13,7 @@ import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { conform } from "../docs/conform.js";
-import { importDoc } from "../docs/plan.js";
+import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 
 export function cmdInit(args: string[]): void {
@@ -342,6 +342,25 @@ export function cmdReindex(): void {
     agentDocs++;
   }
 
+  // Dead plans keep their searchability. Moving a DROPPED/superseded spec out of
+  // docs/plan/ takes it off the per-session read, but the reasoning in it is still worth
+  // finding — the same warm-tier deal already given to the changelog and the backlog.
+  // Only this one folder is indexed, not attic/ at large (attic also holds retired
+  // source, cockpit HTML, rescue dumps — none of that belongs in a docs search).
+  const deadDir = join(root, "attic", "dead-plans");
+  let deadDocs = 0;
+  for (const f of mdIn(deadDir)) {
+    importDoc(join(deadDir, f), join("attic", "dead-plans", f), root, "plan-archive");
+    deadDocs++;
+  }
+
+  // Prune rows whose source .md no longer exists (điều 3 — FILE WINS: the index is
+  // derived, so a row with no file behind it is a lie). Nothing did this before, so
+  // moving the three dead plans to attic/ on 2026-07-29 left `plan search "quota-safe"`
+  // answering with `docs\plan\03_….md` — a path that no longer existed. A stale hit is
+  // worse than a miss: it sends the reader to a file that is not there.
+  const pruned = pruneMissingDocs(root);
+
   const chPath = join(root, "docs", "agent", "06_CHANGES.md");
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
   // The ARCHIVE is a source file too — outside the per-session read, but git-tracked
@@ -353,7 +372,8 @@ export function cmdReindex(): void {
     ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
     : 0;
   console.log(
-    `zemory reindex — ${files.length} plan doc(s) · ${agentDocs} harness doc(s) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).`,
+    `zemory reindex — ${files.length} plan doc(s) · ${agentDocs} harness doc(s) · ${deadDocs} plan chết (attic/dead-plans) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).` +
+      (pruned ? `\n  dọn ${pruned} doc row mồ côi (file .md không còn trên đĩa).` : ""),
   );
 }
 

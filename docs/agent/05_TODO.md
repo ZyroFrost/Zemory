@@ -53,7 +53,6 @@
 - [ ] orphan i18n có TỪ TRƯỚC chưa dọn (`home.memEngine` · `home.docsHarness` · `graph.brokenDocs*` · `graph.orphanFiles` · `graph.neverModified*` · `graph.harnessOk` · `graph.validateOk`).
 
 **CHỜ USER CHỐT trước khi code:**
-- [ ] **L3 sync kèm file/ảnh** (user chốt LÀM, design đã trình, chờ gật "ok build").
 - [ ] `adapters` — slot chính thức trong `03` hay domain-internal (allowlist).
 - [ ] **model-routing theo task** — idea-only, ĐỤNG điều 6, chờ chốt hướng (KHÔNG tự mở điều 6).
 - [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · tách `app.js` sâu theo concern (khi `cockpit.html` nghỉ hưu) · Start Menu icon = **user sign-out/in** (file đã đúng).

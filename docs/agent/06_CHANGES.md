@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-29f] — Kiểm archive: file không mất gì, nhưng INDEX đang chỉ sai đường — và bộ kiểm đầu của tôi tự xanh giả
+
+Gate 322 → **329** · `conform` ✓ · `validate` ✓ · 6/6 đột biến bị bắt. Bộ đọc 284,1 → **279,4 KB**.
+
+> 🔄 **Supersede `[2026-07-29e]`:** câu *"3 plan chết mất khả năng tìm bằng docs search"* là SAI.
+
+- **Kiểm mất mát ở tầng FILE: sạch.** Đối chiếu với git: changelog 68 → 113 entry, **0 entry biến mất**;
+  4 entry rời file active hôm nay **đều** có trong `archive/06_CHANGES.md`; **151/151** dòng cắt khỏi
+  `05_TODO` đều nằm trong `archive/05_TODO.md`; 3 plan trong `attic/dead-plans` **giống hệt byte** bản cũ.
+- **Lỗi thật nằm ở INDEX, và do chính đợt dời hôm nay gây ra.** `reindex` chỉ NẠP file nó thấy, **chưa bao
+  giờ dọn row của file đã biến mất** ⇒ sau khi `git mv` 3 plan sang `attic/`, `plan search "quota-safe"` vẫn
+  trả hit trỏ `docs\plan\03_….md` — đường dẫn không còn tồn tại. **Hit chết còn tệ hơn không có hit**: nó
+  đẩy người đọc tới một file không có ở đó. Thêm `pruneMissingDocs()` — xoá doc+section khi `.md` mất, gọi
+  cuối `reindex`. Hai guard, mỗi guard một test: **root không tồn tại thì KHÔNG dọn** (ổ cắm rời chưa mount
+  ⇒ dọn là xoá sạch index của project còn sống) và **chỉ dọn project được chỉ định**.
+- **Plan chết giữ lại quyền tra cứu.** `reindex` nạp thêm `attic/dead-plans/*.md` thành tầng
+  `kind=plan-archive` — đúng thoả thuận đã áp cho changelog và backlog: **ra khỏi bộ đọc, KHÔNG ra khỏi
+  tầm tìm**. Chỉ đúng thư mục đó, không phải cả `attic/` (attic còn giữ source đã nghỉ, cockpit HTML, bản
+  cứu index — không thứ nào thuộc kết quả tìm docs).
+- **Bộ kiểm ĐẦU TIÊN của tôi tự cho xanh giả.** Nó gọi `docs search` — **không phải lệnh** (`docs` chỉ có
+  `ls`; tìm docs là `plan search`) — nên CLI in bảng help, mà regex `/#\d+/` của tôi lại khớp vào chính
+  bảng help ⇒ **3 probe báo ✓ trong khi chưa tra gì cả**. Bản kiểm mới bắt buộc dòng kết quả đúng dạng
+  `#<id> [<path>]` **và** path phải thuộc tầng đang kiểm, nên lệnh sai không thể đọc thành thành công.
+  Đúng loại bẫy `02_RULES` đã cảnh báo — lần này nó nằm trong công cụ đo, không nằm trong code.
+- Kết quả kiểm lại: **8/8 probe truy xuất qua lệnh thật** (3 tầng changelog · TODO active/archive · plan
+  sống/chết) · **0 hit** trỏ vào đường dẫn đã dời · 3/3 file archive còn đủ nội dung khi đọc trực tiếp.
+
 ## [2026-07-29e] — `.bak` ra khỏi docs · backlog lọc xong 43,6 KB · 3 plan chết rời bộ đọc
 
 Gate 320 → **322** · `conform` ✓ · `validate` ✓. Bộ đọc mỗi phiên **362,1 → 292,6 KB (−19,2%)**.
@@ -28,8 +55,10 @@ Gate 320 → **322** · `conform` ✓ · `validate` ✓. Bộ đọc mỗi phiê
   (DROPPED 2026-06-25, 22,4 KB) · `10_token_savings_dashboard` (GỠ HẲN schema v11) · `11_db_size_optimization`
   (HOÀN TẤT, plan 12 thay). Cả ba **tự khai chết ngay trong header**. Vá 2 chỗ còn trích dẫn: `plan/04`
   (khai "bổ sung cho plan 03") và `plan/12` (trích số đo dbstat của plan 11 — số đã nằm sẵn trong plan 12
-  nên không cần mở lại file). Đánh đổi ghi rõ: `attic/` **không được `reindex` quét** ⇒ 3 file này mất khả
-  năng tìm bằng `docs search`; chấp nhận vì chúng đã chết và bản kế nhiệm giữ số đo.
+  nên không cần mở lại file).
+  > 🔄 **Supersede (cùng ngày, `[2026-07-29f]`):** entry này từng ghi *"attic/ không được reindex quét ⇒ 3
+  > file mất khả năng tìm"* — **SAI cả hai nửa**. Kiểm thật cho thấy chúng **vẫn tìm được** nhưng trỏ vào
+  > `docs\plan\…` **đã không còn tồn tại**. Đã sửa ở entry sau.
 - **Vì sao KHÔNG dựng `docs/plan/archive/`:** sẽ phải thêm tier mới + sửa `reindex` + sửa `AGENTS.md` cho
   một thứ đã chết. `attic/` là lớp đã khai cho vật liệu bị thay thế (source compression, 19 file cockpit)
   — plan chết về đúng chỗ với code nó đặc tả.
