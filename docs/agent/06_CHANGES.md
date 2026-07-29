@@ -5,6 +5,26 @@
 
 ---
 
+## [2026-07-30] — Luật "chưa xác minh thì chưa phải sự thật": NỚI bullet cũ tại chỗ, không đẻ luật trùng
+
+Gate 366 → **367** · `conform` ✓ · đột biến **6/6**.
+
+- **Lỗ hổng thật, do chính tôi để lộ ra.** Luật cũ (`MỘT PHÉP ĐO CHƯA ĐƯỢC KIỂM CHÉO…`) chỉ phủ **con số**,
+  nên mọi khẳng định **phi-số** lọt hết: tôi đoán trạng thái một cửa sổ (nói "đang thu nhỏ" trong khi user
+  đã bấm tắt), đoán một cú click đã ăn (thực ra `SetForegroundWindow` trả `False` — Windows khoá
+  foreground), đoán chỗ hỏng của parser. Ba lần đoán, ba lần sai, không lần nào chạm luật.
+- **Sửa TẠI CHỖ, không thêm bullet** (user: *"ko thêm nhiều luật trùng nhau"*). Cùng một bullet, nới đầu:
+  phủ **mọi khẳng định** (trạng thái hệ thống · nguyên nhân · "đã xong chưa") · mỗi khẳng định phải truy
+  được về **nguồn kiểm được** · **tra không ra ⇒ nói thẳng "không biết"** kèm đã thử đường nào. Phần đuôi
+  (kiểm chéo bằng đường thứ hai khác cơ chế trước khi báo số / kết luận xong / xoá) giữ nguyên.
+- Áp cho **cả 4 bản**: repo + `docs_template/{app,nonapp,cowork/nonapp}`. Bản repo kèm 3 ví dụ có ngày;
+  bản template viết trắng (chỉ nguyên tắc + dạng lỗi) theo luật template không nêu tên dự án cụ thể.
+- **Gate khoá HAI đầu** (`read-set-contract`): mỗi file phải có **đúng 1** bản luật · **0** vết bản cũ hẹp
+  hơn · đủ 3 vế bắt buộc. Đột biến: gỡ luật · bỏ vế "nói KHÔNG BIẾT" · bỏ vế "nguồn kiểm được" · thu hẹp
+  lại còn con số · **đẻ bản trùng** · template mất luật → **6/6 bị bắt**.
+- Kéo theo: manifest `BOOTSTRAP.md` ghi `02_RULES` = 64 dòng, file thật thành 65 → `bootstrap-manifest` đỏ.
+  Đã cập nhật. Số dòng lệch làm **mọi lần dựng Cowork báo ✗ oan** trên file đúng.
+
 ## [2026-07-29l] — Bộ Cowork thế hệ 2 về repo: TÁCH riêng khỏi bản gốc (user chốt) · GUIDE.docx đảo cấu trúc
 
 Gate 365 → **366** · `conform` ✓ · `validate` ✓. Nguồn: `D:\Zyro\Tool\test\docs_template` (agent Cowork của user làm).
