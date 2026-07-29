@@ -5,6 +5,31 @@
 
 ---
 
+## [2026-07-29l] — Bộ Cowork thế hệ 2 về repo: TÁCH riêng khỏi bản gốc (user chốt) · GUIDE.docx đảo cấu trúc
+
+Gate 365 → **366** · `conform` ✓ · `validate` ✓. Nguồn: `D:\Zyro\Tool\test\docs_template` (agent Cowork của user làm).
+
+- **Bộ mới là tái kiến trúc**: nonapp kiểu Cowork bỏ `03_STRUCTURE`/`04_SKILLS`, thay bằng **10 skill
+  `.claude/skills/*`** đúng chuẩn Agent Skills (frontmatter + trigger tiếng Việt, tự nạp theo description);
+  hợp đồng nạp = `01 + 02 + 05-mục-mở`; tự kiểm bằng `check_install.py` (đọc manifest trong BOOTSTRAP, so
+  từng file + frontmatter, exit 0/1) thay cho đếm dòng tay.
+- **User chốt: chuẩn mới áp cho COWORK THÔI, không đụng bản gốc.** Bản copy đầu (overlay vào
+  `docs_template/nonapp/`) vì thế SAI CHỖ — đè `AGENTS.md`+`02_RULES` của bản mà `zemory init --non-app`
+  scaffold. Đã tách: bộ Cowork sống trọn trong **`docs_template/cowork/nonapp/`** (19 file manifest +
+  `CLAUDE.md`), bản gốc revert về nguyên trạng, `<RAW>` trong BOOTSTRAP trỏ nhà mới.
+- **Gate `bootstrap-manifest` viết lại theo bộ mới** (8 test): manifest phủ MỌI file kể cả `.py` · số dòng
+  khớp · path `.claude/**` chép verbatim còn `agent/plan` vào `docs/` · **cấm mọi tham chiếu về
+  `docs_template/nonapp`** · ratchet hai chiều "bộ Cowork không rò vào bản gốc / bản gốc giữ hợp đồng ĐỌC
+  HẾT cũ" · mọi skill phải có frontmatter nạp được. 5 gate đỏ lúc copy đè → **20/20 xanh** sau khi tách.
+- **GUIDE.docx đảo cấu trúc theo yêu cầu user**: mục 10 (cách dùng) lên đầu thành **mục 1 — Hướng dẫn sử
+  dụng**, thêm **"Ba bước dựng lần đầu — làm theo ảnh"** (tạo project → Add folder → dán câu lệnh; 3 ảnh
+  **giữ chỗ** chờ user thay ảnh chụp thật); phần còn lại đánh số lại 2..10 và **remap 4 tham chiếu
+  "mục N"** trong thân + bảng. Thao tác bằng dời element lxml trên biên đã ĐO (docx-inspect) nên style gốc
+  giữ nguyên; kiểm chéo bằng markitdown convert lại. *(Mục lục là TOC field — mở Word bấm F9 để cập nhật.)*
+- `conform` báo oan ca thứ ⑤: `docs_template/cowork` chứa `.py` (script tự kiểm — hàng SHIP ĐI, không phải
+  code sống của repo) → miễn trừ `docs_template/**` + ratchet + đột biến bắt được. Ruột template theo chuẩn
+  của PROJECT ĐÍCH; soi bằng thước của repo chứa nó là lấy nhầm thước.
+
 ## [2026-07-29k] — Dọn 3 mục backlog: 2 zombie tháng 6 · bug parse changelog thật · ratchet UI. Và 4 phép đo của tôi sai trước khi đúng
 
 Gate 351 → **363** · `conform` ✓ · `validate` ✓ · đột biến **12/12** (5 parser · 2 regex nghiêm · 5 UI).

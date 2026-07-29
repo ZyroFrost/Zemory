@@ -4,6 +4,12 @@
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
 ## 📌 Cowork — còn treo
+- [ ] **GUIDE.docx: thay 3 ảnh giữ chỗ bằng ảnh chụp màn hình thật** (tạo project · Add folder · dán câu
+  lệnh) — file `docs_template/cowork/GUIDE.docx`, ảnh nguồn ở `docs_template/cowork/img/step*.png`; mở Word
+  Change Picture là xong, nhớ F9 cập nhật mục lục. *(Việc của user — tôi không chụp được UI Claude Desktop.)*
+- [ ] **`D:\Zyro\Tool\test\docs_template` nay là bản CŨ** — bản mới nhất (đã tách cowork/nonapp + GUIDE
+  đảo cấu trúc) nằm trong repo. Agent Cowork bên kia nên làm việc tiếp trên bản repo; thư mục test/ tôi
+  KHÔNG đụng (ngoài phạm vi).
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
   repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
   phát hiện máy có sẵn bản chuẩn ở `D:\Zyro\Tool\Zemory\docs_template\nonapp`, **tự đối chiếu số dòng
