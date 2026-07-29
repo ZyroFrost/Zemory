@@ -62,6 +62,33 @@ test("conform được nối vào gate, không phải chạy tay", () => {
   assert.match(pkg.scripts.conform ?? "", /--gate/, "script conform phải dùng --gate (exit 1 khi lệch)");
 });
 
+test("luật KHÔNG BỊA có ở mọi bản 02_RULES, và chỉ MỘT bản (không đẻ luật trùng)", () => {
+  // 2026-07-30: luật cũ chỉ phủ CON SỐ ("một phép đo chưa kiểm chéo"), nên các khẳng định
+  // phi-số vẫn lọt — agent đoán trạng thái cửa sổ, đoán click đã ăn, đoán chỗ hỏng của
+  // parser, cả ba đều sai. Nới đúng bullet đã có thay vì thêm bullet mới; gate này khoá cả
+  // hai đầu: phải CÓ luật, và KHÔNG được có bản thứ hai cùng nghĩa.
+  const FILES = [
+    "docs/agent/02_RULES.md",
+    "docs_template/app/agent/02_RULES.md",
+    "docs_template/nonapp/agent/02_RULES.md",
+    "docs_template/cowork/nonapp/agent/02_RULES.md",
+  ];
+  for (const f of FILES) {
+    const t = read(f);
+    const n = (t.match(/CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT/gu) ?? []).length;
+    assert.equal(n, 1, `${f}: phải có ĐÚNG 1 bản luật (đang có ${n})`);
+    assert.equal(
+      (t.match(/MỘT PHÉP ĐO CHƯA/gu) ?? []).length,
+      0,
+      `${f}: bản CŨ hẹp hơn còn sót — hai bản cùng nghĩa là luật trùng`,
+    );
+    // Ba vế bắt buộc: phủ mọi khẳng định · đòi nguồn kiểm được · cho phép nói KHÔNG BIẾT.
+    assert.match(t, /mọi khẳng định/u, `${f}: luật phải nói rõ phủ MỌI khẳng định, không riêng con số`);
+    assert.match(t, /nguồn kiểm được/u, `${f}: luật phải đòi nguồn kiểm được`);
+    assert.match(t, /không biết \/ chưa xác minh được/u, `${f}: thiếu vế "tra không ra thì nói KHÔNG BIẾT"`);
+  }
+});
+
 test("luật khi VIẾT nằm ở 02_RULES, KHÔNG còn ở 03_STRUCTURE", () => {
   for (const [profile, names] of Object.entries(WRITE_TIME)) {
     const base = `docs_template/${profile}/agent`;
