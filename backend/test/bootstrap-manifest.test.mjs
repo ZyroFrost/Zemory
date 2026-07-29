@@ -1,14 +1,18 @@
-// The Cowork BOOTSTRAP carries a COPY of facts that live in docs_template/nonapp/:
-// which files make up the standard, and how many lines each one has. A copy that
+// The Cowork BOOTSTRAP carries a COPY of facts that live in docs_template/cowork/nonapp/:
+// which files make up the Cowork standard, and how many lines each one has. A copy that
 // nobody checks goes stale silently — and the failure is nasty, because the stale
-// number lands in BOOTSTRAP's own self-check step and makes every machine report a
-// false ✗ on a file that is actually fine (same family as the F1 bug: the standard
-// hand-copied into a second place, then drifting).
+// number lands in BOOTSTRAP's own self-check step (check_install.py) and makes every
+// machine report a false ✗ on a file that is actually fine.
 //
-// So this gate ties the copy back to the source:
-//   - every .md in docs_template/nonapp/ must appear in the manifest (no silent gap)
+// NOTE the source moved on 2026-07-29: the Cowork set used to overlay docs_template/nonapp/
+// (the master template that `zemory init --non-app` scaffolds from). The user ruled the
+// new skills-based standard is COWORK-ONLY — "chuẩn mới áp cho cowork thôi, ko đụng bản
+// gốc" — so the whole set now lives under docs_template/cowork/nonapp/ and the master
+// template stays untouched. This gate pins that separation too.
+//
+//   - every file in docs_template/cowork/nonapp/ must appear in the manifest (no silent gap)
 //   - every declared line count must equal the real file's line count
-//   - the target path must mirror the source path
+//   - the target path must mirror the source path (.claude/** verbatim, agent/plan under docs/)
 // Break any of those and the gate goes red instead of the user's session.
 
 import assert from "node:assert/strict";
@@ -17,7 +21,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TEMPLATE = fileURLToPath(new URL("../../docs_template/nonapp/", import.meta.url));
+const TEMPLATE = fileURLToPath(new URL("../../docs_template/cowork/nonapp/", import.meta.url));
+const MASTER = fileURLToPath(new URL("../../docs_template/nonapp/", import.meta.url));
 const BOOTSTRAP = fileURLToPath(new URL("../../docs_template/cowork/BOOTSTRAP.md", import.meta.url));
 const md = readFileSync(BOOTSTRAP, "utf8");
 
@@ -27,18 +32,19 @@ function lineCount(text) {
   return text.endsWith("\n") ? parts.length - 1 : parts.length;
 }
 
-/** Every .md shipped as part of the non-app standard, relative to the template root. */
+/** Every file shipped as part of the Cowork standard — .md AND the self-check script;
+ *  the manifest must cover ALL of them, or Cowork scaffolds half a harness. */
 function templateFiles(dir = TEMPLATE, prefix = "") {
   const out = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) out.push(...templateFiles(join(dir, entry.name), rel));
-    else if (entry.name.endsWith(".md")) out.push(rel);
+    else out.push(rel);
   }
   return out.sort();
 }
 
-// | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 20 |
+// | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 42 |
 const ROW = /^\|\s*\d+\s*\|\s*`([^`]+)`\s*\|\s*`<RAW>\/([^`]+)`\s*\|\s*(\d+)\s*\|\s*$/gm;
 
 function manifest() {
@@ -47,12 +53,12 @@ function manifest() {
   return rows;
 }
 
-test("BOOTSTRAP manifest covers every file of the non-app standard (nothing ships half a harness)", () => {
+test("BOOTSTRAP manifest covers every file of the Cowork standard (nothing ships half a harness)", () => {
   const declared = manifest().map((r) => r.source).sort();
   assert.deepEqual(
     declared,
     templateFiles(),
-    "docs_template/cowork/BOOTSTRAP.md manifest and docs_template/nonapp/ disagree — " +
+    "docs_template/cowork/BOOTSTRAP.md manifest and docs_template/cowork/nonapp/ disagree — " +
       "a file was added or removed from the standard without updating the manifest, so Cowork would " +
       "scaffold an incomplete harness",
   );
@@ -67,36 +73,60 @@ test("every line count in the BOOTSTRAP manifest matches the real file", () => {
   assert.deepEqual(
     wrong,
     [],
-    "BOOTSTRAP's self-check step compares against these numbers — a stale number makes every " +
-      "Cowork run report a false ✗ on a correct file",
+    "BOOTSTRAP's self-check step (check_install.py) compares against these numbers — a stale " +
+      "number makes every Cowork run report a false ✗ on a correct file",
   );
 });
 
-// Files that land at the project ROOT rather than under docs/. Mirrors ROOT_ENTRIES
-// in backend/src/docs/adopt.ts: AGENTS.md is the cross-vendor standard, CLAUDE.md is
-// the Claude Code door (it reads CLAUDE.md and not AGENTS.md).
+// Files that land at the project ROOT rather than under docs/. AGENTS.md is the
+// cross-vendor standard, CLAUDE.md is the Claude door (it reads CLAUDE.md, not AGENTS.md).
 const ROOT_ENTRIES = new Set(["AGENTS.md", "CLAUDE.md"]);
 
 test("manifest target paths mirror the source paths (harness lands where the standard says)", () => {
   const rows = manifest();
   assert.ok(rows.length > 0, "manifest parsed as empty — the table format changed and this gate went blind");
   for (const row of rows) {
-    const expected = ROOT_ENTRIES.has(row.source) ? row.source : `docs/${row.source}`;
+    // .claude/skills/** is already an absolute project-relative shape — it copies verbatim.
+    // agent/** and plan/** live under docs/ in the target project. Root entries stay at root.
+    const expected = ROOT_ENTRIES.has(row.source)
+      ? row.source
+      : row.source.startsWith(".claude/")
+        ? row.source
+        : `docs/${row.source}`;
     assert.equal(row.target, expected, `manifest row for ${row.source} writes to the wrong path`);
   }
 });
 
-test("BOOTSTRAP points at the non-app template and keeps the verbatim-copy rule", () => {
+test("BOOTSTRAP points at the COWORK standard, not the master template", () => {
   assert.match(
     md,
-    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/nonapp/,
-    "the <RAW> base must resolve to docs_template/nonapp — a wrong base scaffolds the wrong standard",
+    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/cowork\/nonapp/,
+    "the <RAW> base must resolve to docs_template/cowork/nonapp — the master nonapp template is a " +
+      "DIFFERENT standard (03_STRUCTURE/04_SKILLS based) and scaffolding it into Cowork mixes the two",
+  );
+  assert.doesNotMatch(
+    md,
+    /docs_template\/nonapp/,
+    "no reference may point at docs_template/nonapp — that is the zemory-CLI master template, " +
+      "kept separate by user ruling (2026-07-29)",
   );
   assert.match(
     md,
     /NGUYÊN VĂN/,
     "the copy-verbatim rule is what stops the agent from 'improving' the standard while transcribing it",
   );
+});
+
+test("the Cowork set does NOT leak into the master template (user ruling: cowork-only)", () => {
+  // The first landing of this set overlaid docs_template/nonapp/ and silently changed
+  // what `zemory init --non-app` would scaffold. Pin the separation from both sides.
+  const masterFiles = templateFiles(MASTER, "");
+  const leaked = masterFiles.filter((f) => f.startsWith(".claude/"));
+  assert.deepEqual(leaked, [], "`.claude/` skills belong to docs_template/cowork/nonapp/, not the master template");
+  const masterAgents = readFileSync(join(MASTER, "AGENTS.md"), "utf8");
+  assert.match(masterAgents, /ĐỌC HẾT/u, "master AGENTS.md must keep the old read-everything contract");
+  const coworkAgents = readFileSync(join(TEMPLATE, "AGENTS.md"), "utf8");
+  assert.match(coworkAgents, /Hợp đồng nạp/u, "cowork AGENTS.md must carry the trigger-based load contract");
 });
 
 test("the human explainer exists and the two docs point at each other (neither gets orphaned)", () => {
@@ -126,4 +156,22 @@ test("BOOTSTRAP never tells the agent to run host commands (Cowork's shell can't
     [],
     "Cowork runs bash in its own sandbox, so a host command here fails on the user's machine with no way to recover",
   );
+});
+
+test("every skill in the set carries a machine-loadable frontmatter (name + description)", () => {
+  // The description is the ONLY thing that decides whether Claude ever picks the skill
+  // up — a skill without one exists but never fires. check_install.py verifies this on
+  // the user's machine; this gate verifies it at the source so it never ships broken.
+  const bad = [];
+  for (const rel of templateFiles().filter((f) => /^\.claude\/skills\/[a-z0-9-]+\/SKILL\.md$/.test(f))) {
+    const body = readFileSync(join(TEMPLATE, rel), "utf8");
+    const name = /^name:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? "";
+    const desc = /^description:\s*(.+)$/m.exec(body)?.[1]?.trim() ?? "";
+    const dir = rel.split("/")[2];
+    if (!/^[a-z0-9-]{1,64}$/.test(name)) bad.push(`${rel}: name không hợp lệ (${JSON.stringify(name)})`);
+    else if (name !== dir) bad.push(`${rel}: name '${name}' không khớp thư mục '${dir}'`);
+    if (!desc) bad.push(`${rel}: thiếu description`);
+    else if (desc.length > 1024) bad.push(`${rel}: description ${desc.length} ký tự (> 1024)`);
+  }
+  assert.deepEqual(bad, [], "skill hỏng frontmatter sẽ không bao giờ được nạp");
 });
