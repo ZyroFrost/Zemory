@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint backend/src backend/test backend/scripts eslint.config.js",
     "test": "npm run build && node --test \"backend/test/*.test.mjs\"",
-    "check": "npm run typecheck && npm run lint && npm test",
+    "check": "npm run typecheck && npm run lint && npm test && npm run conform",
+  "conform": "node dist/cli.js conform --gate",
     "prepack": "npm run check",
     "dev": "tsx backend/src/cli.ts",
     "start": "node dist/cli.js"
