@@ -8,11 +8,18 @@
 > Bundle vẫn export/import bình thường — chỉ **chuyển qua kênh khác** (Drive · USB · SMB),
 > không commit. Lệnh y hệt bên dưới, chỉ khác nơi đặt file.
 >
-> ⚠ **`share.key` vẫn đang được commit** (từ `98bc126`, 2026-07-01, theo yêu cầu chủ repo
-> lúc repo còn dự tính để private). Repo nay PUBLIC ⇒ **chìa đó phải coi như đã lộ**. Xoá
-> khỏi HEAD KHÔNG xoá khỏi lịch sử. Việc cần làm còn treo ở `05_TODO`: **xoay chìa mới ·
-> `git rm --cached share/share.key` · gitignore · đưa chìa qua kênh khác**. Giảm nhẹ: chưa
-> có `.enc` nào từng vào git (`git log --all -- 'share/*.enc'` rỗng) ⇒ hiện lộ *chìa*, chưa lộ *khoá*.
+> ✅ **2026-07-29 — chìa đã XOAY và ra khỏi git.** `share/share.key` nay **gitignored**
+> (dòng ngoại lệ `!share/share.key`, thêm `98bc126` 2026-07-01, đã gỡ), chìa mới sinh bằng
+> `zemory memory share-key --force` (32 byte random, base64, mode 0600). Kiểm thật: bundle
+> tạo bằng chìa MỚI **giải mã được** bằng chìa mới và **bị từ chối** bằng chìa cũ
+> (*"unable to authenticate data"*).
+>
+> ⚠ **Chìa CŨ phải coi như đã lộ vĩnh viễn** — nó nằm trong lịch sử **đã push** của một repo
+> PUBLIC, xoá khỏi HEAD không xoá khỏi lịch sử. Không viết lại lịch sử vì **chưa `.enc` nào
+> từng vào git** (`git log --all -- 'share/*.enc'` rỗng) ⇒ chìa cũ không mở được gì đang công khai.
+>
+> 📋 **Việc của bạn:** copy `share/share.key` sang các máy khác qua **Drive / password manager**
+> (không qua git, không dán vào chat). Máy nào còn chìa cũ sẽ không import được bundle mới.
 
 Files:
 

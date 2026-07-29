@@ -17,7 +17,10 @@ global_memory.*.enc
 # Đồng bộ đa máy đưa bundle qua kênh khác (Drive/USB), không qua git.
 *.zemory.key
 share/*.key
-!share/share.key
+# KHÔNG ngoại lệ. Dòng `!share/share.key` (thêm 98bc126, 2026-07-01, lúc repo còn dự tính
+# để private) đã bị gỡ 2026-07-29: repo là PUBLIC, và chìa nằm trong git = ai cũng giải mã
+# được bundle nếu bundle lỡ lọt lên. Chìa mới sinh cùng ngày, đưa qua kênh khác (Drive /
+# password manager). Chìa CŨ phải coi như đã lộ — nó vẫn trong lịch sử đã push.
 .zemory-share.key
 *.log
 *.tgz
