@@ -40,9 +40,24 @@
   chat trong Project; `PLATFORMS.claude` **chỉ có `listExpr`**. Mà khối enumerate project ở
   `scanweb.ts:525` chạy `if (p.projectConvsExpr && …)` — với claude điều kiện đó **luôn false**.
   Chính comment ngay đó đã cảnh báo: *"A Project's chats are NOT in the loose list"*.
-  **Việc cần làm:** viết `CLAUDE_PROJECTS` + `claudeProjectConvs` (dò endpoint thật bằng in-page fetch
-  TRƯỚC khi code — KHÔNG đoán URL; bài học `claudeConv` đã fail 2/2 vì tin comment thay vì đo).
-  **Chưa biết:** phiên **Cowork** có phơi qua đường claude.ai hay không — chưa đo được, đừng hứa.
+  **ĐÃ DÒ ENDPOINT THẬT (2026-07-30, in-page fetch qua CDP, CHỈ GET) — số liệu để viết code, khỏi đoán:**
+
+  | Endpoint | Kết quả |
+  |---|---|
+  | `/api/organizations` | **2 org**: `fd5ef0f8…` *"huy.nguyen@sasin.vn's Organization"* caps `chat`·`claude_max` — và `446e19e3…` *"Individual Org"* caps `api`·`api_individual` |
+  | `…/<org>/projects` · `?limit=100` | **200**, array **len=1** · field: `uuid` `name` `description` `is_private` `creator` `is_starred` `is_starter_project` `is_harmony_project` `type` `subtype` |
+  | `…/<org>/chat_conversations?limit=100&offset=0` | **200**, array **len=2** · field có **`project_uuid`** |
+  | `/api/bootstrap` | 200 (`account` · `statsig` · `growthbook` · intercom) |
+  | `…/<org>/cowork_sessions` · `…/tasks` · `…/sync/mcp` | **404** cả ba |
+
+  **Rút ra:** (a) `projects` CÓ THẬT ⇒ viết được `CLAUDE_PROJECTS` (map `uuid`→`name`) và
+  `claudeProjectConvs`; (b) `chat_conversations` đã chở sẵn `project_uuid` nên **gán nhãn project không
+  cần endpoint thứ hai** — mục "uuid thô" cũ giải được ngay bằng `projects` + field này; (c) **tài khoản
+  này thật sự chỉ có 2 hội thoại + 1 project** trên đường claude.ai ⇒ **phiên Cowork KHÔNG phơi ở đây**
+  (3 endpoint ứng viên đều 404). Nên vá Project là đúng việc, nhưng **đừng hứa nó lấy được Cowork**.
+  **Bẫy phải xử luôn:** scanner lấy `o[0]` làm org — ở máy này tình cờ đúng org `chat`, nhưng account có
+  **2 org** và org kia chỉ có caps `api` ⇒ phải **chọn org theo caps chứa `chat`**, không lấy theo thứ tự.
+  **Khi chạy lại mà thiếu authen thì PHẢI HỎI USER** (mở cửa sổ đăng nhập), không tự lặng lẽ bỏ qua.
   *(Hệ quả đang chịu: mọi quyết định bàn trong Cowork là không tra lại được — xem `06_CHANGES [2026-07-30d]`.)*
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
