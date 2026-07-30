@@ -21,9 +21,8 @@ KHÔNG thấy cấu trúc bị phá.** Chữ trong ô bảng cũng là đoạn v
 đổi `styleId` thành số, **đảo thứ tự thuộc tính** trong `<w:pgSz>`, bỏ vài part rỗng.
 **Chữ không đổi một ký tự** — nên nhìn diff văn bản thì thấy "y nguyên".
 
-- Cần xem thì mở rồi **đóng, KHÔNG lưu**.
-- File đang bị editor giữ (`PermissionError` khi ghi) → **đừng kill editor của user**. Chờ đóng.
-- Đã lưu rồi thì phải **đếm lại số bảng và số ảnh** trước khi kết luận "không sao".
+Cần xem thì mở rồi **đóng, KHÔNG lưu**. File đang bị editor giữ (`PermissionError`) → **đừng kill
+editor của user**, chờ đóng. Đã lưu rồi thì **đếm lại số bảng và số ảnh** trước khi kết luận "không sao".
 
 ## Luật 2 — sửa bằng script trên XML, theo từng RUN
 
@@ -73,22 +72,21 @@ tổng phần bị bỏ qua phải bằng 0). An toàn hơn: `xml.replace(<đo�
 
 ## Trang và mục lục — bản đọc phải gọn, mục lục phải TỰ hiện
 
-Người đọc thấy TRANG, không thấy XML. Bốn việc, chi tiết ở
-[`reference/pagination-toc.md`](reference/pagination-toc.md) — mở khi phải canh trang hoặc dựng mục lục:
+Người đọc thấy TRANG, không thấy XML. Bốn việc, chi tiết ở [`reference/pagination-toc.md`](reference/pagination-toc.md).
+**Trước khi sao vỏ đoạn/bảng hoặc đụng field, đọc [`reference/edit-traps.md`](reference/edit-traps.md)** — 7 bẫy đã làm hỏng file thật:
 
 - **Ngắt trang:** `<w:keepNext/>` cho tiêu đề và đoạn ngay trên ảnh/bảng · `<w:keepLines/>` chống
   xé đoạn · `<w:pageBreakBefore/>` cho Heading 1 **nhưng KHÔNG ép cho mọi mục** — mục ngắn hơn
   một trang thì ép break là bỏ trắng nửa trang. **Render bằng `x2t` của ONLYOFFICE rồi ĐO** phần
-  trống đáy mỗi trang; bỏ break ở mục gây trống > 1/3, xong thử thêm ngược lại. Miễn trang bìa
-  và trang cuối.
+  trống đáy mỗi trang; bỏ break ở mục gây trống > 1/3, xong thử thêm ngược lại. Chỉ miễn TRANG BÌA
+  — miễn cả trang cuối thì bỏ sót bản xấu hơn (đo thật: 12 trang đầy 97% vs 13 trang trống 76%).
 - **Khoảng cách:** đoạn có `<w:spacing />` rỗng sẽ dán sát đoạn trên — soát MỌI tiêu đề.
 - **Mục lục tự động:** cần **cả hai** — `<w:updateFields w:val="true"/>` trong `settings.xml`, và
   nội dung mục lục tự dựng (bookmark ở mỗi Heading 1 + đoạn style `toc 1` + `PAGEREF`).
   **Số trang để TRỐNG** — không render được thì ghi số là bịa; viewer tự điền.
-- **BẪY:** một field trải trên NHIỀU đoạn (`begin` đoạn này, `end` đoạn khác). Thay một đoạn là
-  còn `end` mồ côi ⇒ **file không mở được**. Chốt: `begin == separate == end`.
-
-Không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"**; mục dài hơn một trang phải tràn.
+- **BẪY:** một field trải trên NHIỀU đoạn (`begin` đoạn này, `end` đoạn khác) ⇒ thay một đoạn là
+  còn `end` mồ côi, **file không mở được**. Chốt per-dòng, không chỉ `begin == separate == end`.
+  Và không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"**.
 
 ## Kiểm sau MỖI lần sửa — bắt buộc, không bỏ bước nào
 
@@ -100,6 +98,8 @@ Không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"
 | rel trỏ tới file có thật | trỏ vào hư không |
 | ảnh có rel mà không ai dùng | còn ảnh mồ vàng |
 | `<wp:docPr id>` | có id trùng |
+| bookmark: `w:name` · `w:id` · start==end | trùng tên/id, hoặc lệch số |
+| TỪNG dòng mục lục đúng hình field | tổng `fldChar` cân mà per-dòng vẫn sai |
 | `<w:instrText>` chứa `TOC` | mục lục biến mất |
 | chiều rộng ảnh ≤ khổ chữ | tràn lề |
 | tỷ lệ hiển thị so tỷ lệ pixel | lệch ⇒ ảnh bị dẹt |
