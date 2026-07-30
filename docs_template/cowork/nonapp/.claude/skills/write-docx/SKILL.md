@@ -48,13 +48,10 @@ Word đặt kích thước hiển thị bằng **EMU**, không theo pixel ảnh.
 giữ nguyên `cx/cy` ⇒ **ảnh bị bóp dẹt**. Rộng hơn khổ chữ ⇒ **tràn lề**.
 
 ```python
-# khổ chữ = pgSz w − pgMar left − pgMar right   (twip) · 1 twip = 635 EMU
-# ĐỌC THEO TÊN thuộc tính, KHÔNG theo vị trí — editor khác nhau đảo thứ tự
-w   = int(re.search(r'w:w="(\d+)"',     re.search(r"<w:pgSz[^>]*>",  sect).group(0)).group(1))
-lef = int(re.search(r'w:left="(\d+)"',  re.search(r"<w:pgMar[^>]*>", sect).group(0)).group(1))
-rig = int(re.search(r'w:right="(\d+)"', re.search(r"<w:pgMar[^>]*>", sect).group(0)).group(1))
-cx  = (w - lef - rig) * 635
-cy  = round(cx * px_h / px_w)          # cao theo TỶ LỆ GỐC của ảnh
+# kho chu (twip) = pgSz@w − pgMar@left − pgMar@right · 1 twip = 635 EMU
+# ĐỌC THEO TÊN thuộc tính, KHÔNG theo vị trí — editor khác nhau đảo thứ tự trong <w:pgSz>
+cx = (attr("pgSz", "w") - attr("pgMar", "left") - attr("pgMar", "right")) * 635
+cy = round(cx * px_h / px_w)           # cao theo TỶ LỆ GỐC của ảnh
 ```
 
 Sửa **cả hai** chỗ khai kích thước trong khối ảnh: `<wp:extent>` và `<a:ext>`. Nhiều ảnh khai
@@ -64,12 +61,8 @@ cùng `cx/cy` ⇒ **sửa theo KHỐI `<w:drawing>`**, thay chuỗi toàn cục 
 
 `<w:t xml:space="preserve"/>` là thẻ **tự đóng** (ô rỗng). Regex `<w:t(?:\s[^>]*)?>` khớp nhầm nó
 thành thẻ mở rồi **nuốt XML** tới `</w:t>` kế tiếp ⇒ phép đo "chữ có đổi không" báo lệch giả.
-
-```python
-WT = re.compile(r"<w:t(?:\s[^>]*(?<!/))?>(.*?)</w:t>", re.S)   # (?<!/) chặn thẻ tự đóng
-```
-
-Viết lỏng hơn (`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:tr>`.
+Dùng `<w:t(?:\s[^>]*(?<!/))?>(.*?)</w:t>` — `(?<!/)` chặn thẻ tự đóng. Viết lỏng hơn
+(`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:tr>`.
 
 ## Đừng dựng lại file bằng cách nối các đoạn
 
@@ -77,18 +70,24 @@ Viết lỏng hơn (`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:
 bookmark. Muốn dùng thì phải **đo trước** là giữa các đoạn không còn gì (đi tuần tự `xml.find(p, pos)`,
 tổng phần bị bỏ qua phải bằng 0). An toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)`.
 
-## Ngắt trang — mỗi mục ở yên trang của nó
+## Trang và mục lục — bản đọc phải gọn, mục lục phải TỰ hiện
 
-Người đọc thấy TRANG, không thấy XML. Ba thuộc tính trong `<w:pPr>`, chen **ngay sau `<w:pStyle>`** (schema bắt thứ tự `keepNext → keepLines → pageBreakBefore`):
+Người đọc thấy TRANG, không thấy XML. Bốn việc, chi tiết ở
+[`reference/pagination-toc.md`](reference/pagination-toc.md) — mở khi phải canh trang hoặc dựng mục lục:
 
-- `<w:pageBreakBefore/>` vào mỗi **Heading 1** → mục lớn luôn bắt đầu ở đầu trang mới, hết cảnh
-  đuôi mục trước dính đầu mục sau.
-- `<w:keepNext/>` vào **tiêu đề + đoạn đứng ngay trên ảnh/bảng** → tiêu đề không nằm cuối trang
-  một mình, ảnh không rời khối của nó.
-- `<w:keepLines/>` vào các đoạn của khối → đoạn không bị xé đôi giữa trang.
+- **Ngắt trang:** `<w:keepNext/>` cho tiêu đề và đoạn ngay trên ảnh/bảng · `<w:keepLines/>` chống
+  xé đoạn · `<w:pageBreakBefore/>` cho Heading 1 **nhưng KHÔNG ép cho mọi mục** — mục ngắn hơn
+  một trang thì ép break là bỏ trắng nửa trang. **Render bằng `x2t` của ONLYOFFICE rồi ĐO** phần
+  trống đáy mỗi trang; bỏ break ở mục gây trống > 1/3, xong thử thêm ngược lại. Miễn trang bìa
+  và trang cuối.
+- **Khoảng cách:** đoạn có `<w:spacing />` rỗng sẽ dán sát đoạn trên — soát MỌI tiêu đề.
+- **Mục lục tự động:** cần **cả hai** — `<w:updateFields w:val="true"/>` trong `settings.xml`, và
+  nội dung mục lục tự dựng (bookmark ở mỗi Heading 1 + đoạn style `toc 1` + `PAGEREF`).
+  **Số trang để TRỐNG** — không render được thì ghi số là bịa; viewer tự điền.
+- **BẪY:** một field trải trên NHIỀU đoạn (`begin` đoạn này, `end` đoạn khác). Thay một đoạn là
+  còn `end` mồ côi ⇒ **file không mở được**. Chốt: `begin == separate == end`.
 
-Không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"** — chỉ ép được *bắt đầu ở đầu
-trang* + *khối dính nhau*. Mục dài quá một trang thì nó phải tràn, đó không phải lỗi.
+Không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"**; mục dài hơn một trang phải tràn.
 
 ## Kiểm sau MỖI lần sửa — bắt buộc, không bỏ bước nào
 
