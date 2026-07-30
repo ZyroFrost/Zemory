@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-07-30d] — LỖI THẬT: daemon KHÔNG hề scan. UI hứa "scan → embed → digest", code làm 2/3
+
+Gate 367 → **372** · `conform` ✓ · đột biến **8/8**.
+
+- **Con bug.** `jobs/scheduler.ts` chỉ có `embedTick` + `syncTick`. **Không có bước `scan`.** Trong khi
+  UI cam kết ở HAI chỗ (`mem.schedulerD` và panel `f.doc.scheduler`): *"daemon tự chạy scan → embed →
+  digest"*. Hệ quả: daemon bật, khoẻ, mà **không tin nào được nạp tự động** — máy đứng ở *+2.722 tin
+  mới* trong UI. User báo là "lỗi quét web"; lỗ thật nằm ở đây.
+- **Sửa:** thay `embedTick` bằng **chuỗi `maintainTick`** chạy tuần tự `scan → embed → digest`, mỗi
+  bước một tiến trình riêng (việc nặng không được lên event loop của daemon — bug 2026-07-21), và
+  **MỘT job token cho cả chuỗi** để CLI không chen vào giữa. Backoff của vector backlog **chỉ** được
+  bỏ qua bước embed, **không** chặn scan — chặn scan là quay lại đúng con bug. Nhịp 10 phút.
+- **Gate mới `scheduler-contract` (5 test)** canh đúng khe đã vỡ: *UI hứa bước nào thì scheduler phải
+  spawn bước đó* · chuỗi phải tuần tự · đúng 1 token và release trong `finally` · backoff không chặn
+  scan · guard nhường quyền ghi còn đủ. **Đột biến 8/8**, gồm cả ca "UI âm thầm hạ lời hứa xuống 2 bước".
+- **Hai test đầu của tôi YẾU, đột biến bắt được:** ① `await runStep(` chỉ cần có *một chỗ* là xanh, nên
+  đổi một lần gọi thành `void` vẫn lọt → giờ **đếm**: mọi lần gọi phải được await. ② `s.includes("cliHoldsWrite()")`
+  xanh nhờ dòng `import`, nên gỡ guard vẫn lọt → giờ soi **đúng câu điều kiện thoát sớm** của `maintainTick`.
+- **TỰ SỬA một khẳng định sai của tôi:** tôi nói *"digest cũng chưa bao giờ chạy tự động"*. **Sai** —
+  `session_digest` có đủ **1.225 dòng**, kể cả phiên đang chạy, `updated_at` mới hôm nay. Chỗ tôi hiểu
+  nhầm: `memory digest <session>` cần **ID ĐẦY ĐỦ**; tôi tra bằng tiêu đề người-đặt (`Zemory_Claude_28-7-
+  2026_CoworkCEO`) và bằng tiền tố (`0b2dc2bd`) nên cả hai đều không ra. Scheduler thiếu bước digest là
+  đúng, nhưng bằng chứng tôi nêu thì sai.
+- **Cowork KHÔNG vào Global Memory** — `memory hosts` cho 6 nguồn (`chatgpt-web` · `claude-code` ·
+  `claude-web` · `codex` · `lmstudio` · `continue`), **không có cowork**. `scan-web` *có* platform
+  `claude` (→ `claude.ai`, source `claude-web`, adapter riêng) nhưng lane đó chỉ có **2 phiên / 6 tin**.
+  ⇒ **mọi quyết định bàn trong phiên Cowork là không tra lại được**, phải chốt lại bằng file trong repo.
+- Nạp bù bằng tay: `memory scan` → **+107 tin / 2 phiên** (1.225 phiên · 189.885 tin). *Con số +2.722
+  của UI thì tôi **chưa giải thích được** — không đo lại được sau khi đã scan; chưa kết luận.*
+
 ## [2026-07-30c] — Đọc lại TOÀN BỘ GUIDE.docx: 5 chỗ lệch · mục lục tự hiện · ngắt trang chọn theo ĐO
 
 `bootstrap-manifest` 8/8 · `conform` ✓. User yêu cầu soát cả file; đọc hết rồi đối chiếu với
