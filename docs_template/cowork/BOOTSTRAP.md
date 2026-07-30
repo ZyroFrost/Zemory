@@ -25,8 +25,10 @@ trợ lý dừng lại hỏi, không phải mức duyệt. **Cân nhắc:** ở 
 toàn, mà luật chỉ ràng được sau khi bộ chuẩn đã dựng xong — nên chỉ bật khi đã gắn ĐÚNG thư mục dự án
 (đừng gắn cả ổ đĩa hay thư mục cha) và thư mục đó đã có bản sao hoặc đã commit git.
 
-Máy không ra được internet → gắn thêm thư mục chứa bản zemory có sẵn, hoặc chép trước file này vào
-thư mục dự án; câu trên tự dùng bản đó.
+*(Không có mạng thì cũng không mở được phiên, nên đừng dặn người dùng chuyện "máy offline". Ca có thật
+là **mạng công ty CHẶN GitHub** trong khi miền Anthropic vẫn thông: lúc đó lối tải ở §1a hỏng, nhưng lối
+"tool lấy nội dung web" vẫn chạy vì nó đi qua máy chủ Anthropic. Chặn cả hai thì mới xin người dùng gắn
+thêm thư mục chứa bản zemory có sẵn, hoặc chép trước file này vào thư mục dự án.)*
 
 Không cần cài gì trước. Không cần biết dòng lệnh.
 
@@ -115,8 +117,8 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 6 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 7 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
 | 8 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 96 |
-| 9 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 78 |
-| 10 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 174 |
+| 9 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 105 |
+| 10 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 206 |
 | 11 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
 | 12 | `.claude/skills/session-close/SKILL.md` | `<RAW>/.claude/skills/session-close/SKILL.md` | 53 |
 | 13 | `.claude/skills/read-office/SKILL.md` | `<RAW>/.claude/skills/read-office/SKILL.md` | 55 |

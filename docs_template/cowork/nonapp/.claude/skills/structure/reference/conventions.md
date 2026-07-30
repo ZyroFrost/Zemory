@@ -18,6 +18,33 @@ Tên tiếng Anh     Slot và tên skill: tiếng Anh, chữ thường, nối b�
                   Nội dung bên trong file: tiếng Việt có dấu.
 ```
 
+## Khuôn `spec.md` — để LỊCH chỉ cần trỏ vào file
+
+Lịch định kỳ (tác vụ định kỳ của Cowork) chạy **một phiên trắng**: không ai kể lại việc, không có
+ngữ cảnh phiên trước. Nên `spec.md` phải **tự chứa đủ để làm xong việc**, và câu đặt lịch chỉ là
+một dòng trỏ vào nó. Bốn mục **BẮT BUỘC** (máy canh — `check_structure.py` chặn nếu thiếu):
+
+```
+# <Tên việc> — <nhịp>
+
+## Nhịp                 Bằng chữ: "mỗi thứ Hai 08:00". Lịch THẬT đặt ở tác vụ định
+                        kỳ của Cowork; file này chỉ khai ý định để người sau đọc ra.
+## Câu đặt lịch         ĐÚNG một dòng, dán được ngay vào tác vụ định kỳ. Vd:
+                          > Chạy việc trong tasks/01_weekly/spec.md.
+                        Không nhồi cách làm vào câu này — cách làm ở mục dưới.
+## Các bước             Đánh số, mỗi bước một hành động. Nêu rõ lấy gì ở đâu
+                        (sources/ · templates/ · data/<task>/) và stage nào chạy.
+## Sản phẩm giao đi      Đường dẫn + tên file thật sẽ sinh ra. Không có mục này thì
+                        phiên định kỳ không biết khi nào coi là XONG.
+```
+
+Nên có thêm (không bắt buộc): **Đầu vào** liệt kê nguồn · **Xong thì** (ghi sổ, báo ai) ·
+**Hỏng thì** (dừng ở đâu, ai cần biết).
+
+Vì sao khoá bốn mục đó: thiếu *Nhịp* thì không ai biết nó đáng chạy bao lâu một lần · thiếu *Câu
+đặt lịch* thì mỗi người đặt lịch một kiểu, cách làm bị chép vào ô lịch rồi lệch với file · thiếu
+*Các bước* thì phiên trắng phải đoán · thiếu *Sản phẩm* thì không có điều kiện dừng.
+
 ## Đánh số task và pipeline
 
 ```
