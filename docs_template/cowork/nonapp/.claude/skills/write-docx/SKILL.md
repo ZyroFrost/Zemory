@@ -74,15 +74,21 @@ Viết lỏng hơn (`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:
 ## Đừng dựng lại file bằng cách nối các đoạn
 
 `head + "".join(mọi <w:p>) + tail` **đánh rơi mọi thứ nằm GIỮA các đoạn**: bảng, lớp bọc mục lục,
-bookmark. Muốn dùng cách đó thì phải **đo trước** là giữa các đoạn không còn gì:
+bookmark. Muốn dùng thì phải **đo trước** là giữa các đoạn không còn gì (đi tuần tự `xml.find(p, pos)`,
+tổng phần bị bỏ qua phải bằng 0). An toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)`.
 
-```python
-pos = 0
-for p in paras:            # nếu tổng phần bị bỏ qua > 0 ⇒ KHÔNG được nối kiểu này
-    i = xml.find(p, pos); assert i == pos or not xml[pos:i].strip(); pos = i + len(p)
-```
+## Ngắt trang — mỗi mục ở yên trang của nó
 
-An toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)` trên đúng chuỗi cần đổi.
+Người đọc thấy TRANG, không thấy XML. Ba thuộc tính trong `<w:pPr>`, chen **ngay sau `<w:pStyle>`** (schema bắt thứ tự `keepNext → keepLines → pageBreakBefore`):
+
+- `<w:pageBreakBefore/>` vào mỗi **Heading 1** → mục lớn luôn bắt đầu ở đầu trang mới, hết cảnh
+  đuôi mục trước dính đầu mục sau.
+- `<w:keepNext/>` vào **tiêu đề + đoạn đứng ngay trên ảnh/bảng** → tiêu đề không nằm cuối trang
+  một mình, ảnh không rời khối của nó.
+- `<w:keepLines/>` vào các đoạn của khối → đoạn không bị xé đôi giữa trang.
+
+Không render được trang ⇒ **không hứa "mục nào cũng gọn 1 trang"** — chỉ ép được *bắt đầu ở đầu
+trang* + *khối dính nhau*. Mục dài quá một trang thì nó phải tràn, đó không phải lỗi.
 
 ## Kiểm sau MỖI lần sửa — bắt buộc, không bỏ bước nào
 
