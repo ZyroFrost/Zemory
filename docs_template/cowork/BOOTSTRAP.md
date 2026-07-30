@@ -11,12 +11,16 @@
 ## Cách khởi động (người dùng)
 Mở một phiên Cowork với thư mục làm việc đã gắn — ở ô chat bấm **Project or folder**, rồi chọn **một
 trong hai**: **Add a folder** (gắn thẳng thư mục), hoặc **Create new project** (cũng chọn thư mục ở
-bước đầu, thêm lời dặn thường trực · ghi nhớ · tác vụ định kỳ). Rồi nói **một trong hai**:
+bước đầu, thêm lời dặn thường trực · ghi nhớ · tác vụ định kỳ). Rồi dán **đúng một câu** này —
+nguyên văn, không phải sửa gì:
 
-- Đã có sẵn file này trong thư mục → *"Đọc BOOTSTRAP.md và dựng bộ chuẩn."*
-- Chưa có → dán nguyên dòng này:
-  > Tải `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
-  > rồi làm theo đúng những gì trong đó.
+> Dựng bộ khung làm việc zemory cho dự án này.
+> Thư mục tôi đã gắn có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
+> theo đúng những gì trong đó.
+> `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
+
+Máy không ra được internet → gắn thêm thư mục chứa bản zemory có sẵn, hoặc chép trước file này vào
+thư mục dự án; câu trên tự dùng bản đó.
 
 Không cần cài gì trước. Không cần biết dòng lệnh.
 
