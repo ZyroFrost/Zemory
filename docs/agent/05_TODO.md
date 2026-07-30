@@ -4,9 +4,19 @@
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
 ## 📌 Cowork — còn treo
-- [ ] **GUIDE.docx: thay 3 ảnh giữ chỗ bằng ảnh chụp màn hình thật** (tạo project · Add folder · dán câu
-  lệnh) — file `docs_template/cowork/GUIDE.docx`, ảnh nguồn ở `docs_template/cowork/img/step*.png`; mở Word
-  Change Picture là xong, nhớ F9 cập nhật mục lục. *(Việc của user — tôi không chụp được UI Claude Desktop.)*
+- [ ] **GUIDE.docx: còn 1 ảnh giữ chỗ — màn hình DÁN CÂU LỆNH vào ô chat.** Hai ảnh kia đã là ảnh thật
+  (user chụp 2026-07-30): `img/opt1_create_project.png` · `img/opt2_add_folder.png`; ảnh còn thiếu là
+  `img/step_paste_command.png`. Thay trong `docs_template/cowork/GUIDE.docx` bằng Change Picture, nhớ F9
+  cập nhật mục lục. Ảnh mới đặt **rộng = khổ chữ 15.92 cm**, cao theo tỷ lệ gốc (đọc khổ chữ từ `sectPr`,
+  đừng ghim số — ONLYOFFICE đảo thứ tự thuộc tính `pgSz`). *(Việc của user — tôi không chụp được UI Claude Desktop.)*
+- [ ] **Guide chưa nói bộ chuẩn áp được cho CẢ project mới LẪN project đang chạy.** `GUIDE.docx` +
+  `BOOTSTRAP.md` hiện viết một giọng "dựng mới" (thư mục trắng), nên người đọc tưởng phải mở thư mục trắng
+  và **không dám thử trên dự án đang làm — đúng nơi bộ chuẩn có giá trị nhất**. Cơ chế thì đã sẵn cho cả
+  hai: BOOTSTRAP luật 2 *"file đã tồn tại thì BỎ QUA, tuyệt đối không ghi đè"* + luật 3 *"không tự xoá/dời
+  file của user, thấy cần nắn thì ĐỀ XUẤT chờ gật"* ⇒ chạy trên thư mục đã có file là chỉ **bù chỗ thiếu**,
+  không đụng thứ đang có. Việc cần làm: nói thẳng điều đó cho user ở phần đầu guide (một dòng, kèm câu
+  "đã có file rồi thì nó chỉ bù phần thiếu"), và cân xem có cần một câu dán riêng cho ca "đưa vào project
+  cũ" hay câu hiện tại đã đủ. *(User nêu 2026-07-30.)*
 - [ ] **`D:\Zyro\Tool\test\docs_template` nay là bản CŨ** — bản mới nhất (đã tách cowork/nonapp + GUIDE
   đảo cấu trúc) nằm trong repo. Agent Cowork bên kia nên làm việc tiếp trên bản repo; thư mục test/ tôi
   KHÔNG đụng (ngoài phạm vi).
@@ -16,9 +26,14 @@
   8/8 rồi chép thẳng từ đĩa** — một lối BOOTSTRAP chưa hề khai. Đó là lối rẻ nhất và nó tự kiểm trước
   khi chép, nên đã **khai chính thức thành "lối 0"** (kèm bắt buộc đối chiếu số dòng — bỏ bước đó thì
   có nguy cơ chép nhầm bản cũ).
-  - **Hệ quả: `curl` và miền `raw.githubusercontent.com` VẪN chưa biết chạy được trong sandbox Cowork hay không.**
-    Máy sếp sẽ KHÔNG có bản local ⇒ chắc chắn rơi vào đường mạng. Phải test lại trên một máy **không có**
-    repo zemory (hoặc tạm đổi tên thư mục đó) mới ra số thật.
+  - **ĐÃ CÓ SỐ THẬT (2026-07-30, user chụp lại phiên trên thư mục `test2` trắng — không có bản local nên
+    rơi đúng vào đường mạng):** `curl` thẳng tới `raw.githubusercontent.com` **BỊ CHẶN** — sandbox chỉ ra
+    được miền Anthropic, đúng như BOOTSTRAP §1a dự đoán. **Lối 1 (tool lấy nội dung web của Cowork) CHẠY**:
+    agent tự chuyển sang lối đó và ghi ra file theo từng lô (5 → 4 → 2 …), panel file hiện `AGENTS.md` ·
+    `CLAUDE.md` · `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES` · `00_overview` · 2 `SKILL.md` ·
+    `conventions.md` · `check_structure.py`. ⇒ **Thứ tự lối trong BOOTSTRAP là đúng, và máy sếp sẽ dựng được.**
+    *(Bằng chứng là ảnh chụp phiên, không phải tôi tự chạy — và phiên đó chụp lúc còn đang chạy Giai đoạn 1,
+    CHƯA thấy BÁO CÁO CUỐI nên chưa kết luận là dựng trọn bộ 19 file + `check_install.py` xanh.)*
   - **Đã biết thêm (đo được từ chính phiên đó):** sandbox Cowork **ĐỌC được filesystem của host** — nó đọc
     thẳng `D:\Zyro\Tool\Zemory`. Khớp tài liệu sandbox của Claude Code (*"Read access covers the entire
     filesystem"*). Ghi vào không rõ, chưa thử.
