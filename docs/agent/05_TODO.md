@@ -4,11 +4,6 @@
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
 ## 📌 Cowork — còn treo
-- [ ] **GUIDE.docx: còn 1 ảnh giữ chỗ — màn hình DÁN CÂU LỆNH vào ô chat.** Hai ảnh kia đã là ảnh thật
-  (user chụp 2026-07-30): `img/opt1_create_project.png` · `img/opt2_add_folder.png`; ảnh còn thiếu là
-  `img/step_paste_command.png`. Thay trong `docs_template/cowork/GUIDE.docx` bằng Change Picture, nhớ F9
-  cập nhật mục lục. Ảnh mới đặt **rộng = khổ chữ 15.92 cm**, cao theo tỷ lệ gốc (đọc khổ chữ từ `sectPr`,
-  đừng ghim số — ONLYOFFICE đảo thứ tự thuộc tính `pgSz`). *(Việc của user — tôi không chụp được UI Claude Desktop.)*
 - [ ] **Guide chưa nói bộ chuẩn áp được cho CẢ project mới LẪN project đang chạy.** `GUIDE.docx` +
   `BOOTSTRAP.md` hiện viết một giọng "dựng mới" (thư mục trắng), nên người đọc tưởng phải mở thư mục trắng
   và **không dám thử trên dự án đang làm — đúng nơi bộ chuẩn có giá trị nhất**. Cơ chế thì đã sẵn cho cả

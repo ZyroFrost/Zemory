@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-30a] — GUIDE.docx hết ảnh giữ chỗ: 3 ảnh THẬT · hai HƯỚNG VÀO · một câu dán · bỏ duyệt từng lệnh
+
+`bootstrap-manifest` 8/8 · `conform` ✓. User chụp ảnh, tôi ráp — **tôi không tự chụp được UI Claude Desktop**
+(thử `PrintWindow` + tự động chuột đều tắc, một lần còn chụp trúng thứ không được phép).
+
+- **Luật ảnh, user chốt: CHỈ chụp bước phải BẤM NÚT.** Phần trợ lý hỏi–đáp thì UI tự hiện, người dùng tự
+  trả lời — chụp vào là thừa. Theo đó ảnh giữ chỗ cuối (dán câu lệnh) **bỏ hẳn**: chỗ đó dán chữ rồi Enter,
+  không có nút nào để chỉ. Guide còn **0 giữ chỗ** (3 ảnh nút + 3 sơ đồ).
+- **"Dựng lần đầu" là hai HƯỚNG VÀO, không phải hai bước** (user chốt): *Cách 1 — Tạo project* · *Cách 2 —
+  Gắn thẳng thư mục*. Không dán nhãn "nên dùng" cái nào: thứ duy nhất phân biệt chúng là ghi nhớ xuyên
+  phiên + tác vụ định kỳ, cái đó tuỳ dự án. **Tôi đã sai một nhịp ở đây** — tự nắn thành 2 bước và xoá
+  hẳn đường project khi user mới chỉ HỎI; đã dựng lại.
+- **Hai câu lệnh gộp thành MỘT**, hết chỗ điền tay. Kèm đó sửa một lỗi thật của bản cũ: câu ① chỉ đường
+  bằng path trên máy, nhưng Cowork **chỉ đọc được thư mục ĐÃ GẮN** ⇒ path ngoài đó là ngõ cụt. Và URL cũ
+  bị ngắt giữa dòng (`docs_template/` | `cowork/…`) — dán vào chat là đứt link.
+- **Câu dán không được mở bằng tên công cụ**: Cowork sinh tên phiên từ câu đầu, nên bản trước làm phiên
+  tên thành *"Zemory framework setup"* — tên CÔNG CỤ, không phải việc của user. Lỗi ở câu tôi viết.
+- **Thêm bước "Bỏ bước duyệt từng lệnh"** — user chốt khuyến nghị **Skip all approvals**, vì thứ bắt trợ
+  lý dừng lại hỏi là LUẬT trong bộ chuẩn chứ không phải mức duyệt. Cảnh báo giữ ở mức "cân nhắc", kèm
+  một dữ kiện: luật chỉ ràng được **sau khi** bộ chuẩn dựng xong — lần chạy đầu thư mục còn trắng.
+- **Ảnh: rộng = khổ chữ, cao theo tỷ lệ gốc.** Bản user tự phóng bị 16.34 cm (tràn khổ chữ 15.92) và tỷ lệ
+  1.80 trong khi ảnh gốc 1.52 (kéo dẹt). Khổ chữ **đọc từ `sectPr`**, không ghim số — ONLYOFFICE đảo thứ
+  tự thuộc tính `pgSz`, đọc theo vị trí là sai (tôi sập đúng lỗi đó một lần).
+- Giữ bản đóng gói ONLYOFFICE của user thay vì revert: đã đối chiếu với bản trong git — chữ chỉ khác đúng
+  phần sửa, style vẫn giải ra `Heading 1/2`, TOC còn, hai part bị bỏ (`comments.xml` · `docProps/custom.xml`)
+  đều **RỖNG**. Sửa docx theo **từng run** nên viền/nền khối lệnh không vỡ.
+
 ## [2026-07-30] — Luật "chưa xác minh thì chưa phải sự thật": NỚI bullet cũ tại chỗ, không đẻ luật trùng
 
 Gate 366 → **367** · `conform` ✓ · đột biến **6/6**.
