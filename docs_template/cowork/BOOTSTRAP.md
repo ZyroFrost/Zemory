@@ -19,9 +19,11 @@ nguyên văn, không phải sửa gì:
 > theo đúng những gì trong đó.
 > `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
 
-Trước khi dán, ở ô chat đổi **Auto → Automatically approve** — để mức xin phép từng lệnh thì việc dựng
-dừng liên tục. **Đừng** chọn *Skip all approvals*: mức đó không dừng cả ở hành động không an toàn. Và
-chỉ bật khi đã gắn ĐÚNG thư mục dự án (đừng gắn cả ổ đĩa hay thư mục cha).
+Trước khi dán, ở ô chat đổi **Auto → Skip all approvals** cho khỏi phải bấm duyệt từng lệnh — luật
+trong bộ chuẩn (không ghi đè · không tự xoá/dời · việc hệ trọng phải trình rồi chờ gật) mới là thứ bắt
+trợ lý dừng lại hỏi, không phải mức duyệt. **Cân nhắc:** ở mức đó nó không dừng cả ở hành động không an
+toàn, mà luật chỉ ràng được sau khi bộ chuẩn đã dựng xong — nên chỉ bật khi đã gắn ĐÚNG thư mục dự án
+(đừng gắn cả ổ đĩa hay thư mục cha) và thư mục đó đã có bản sao hoặc đã commit git.
 
 Máy không ra được internet → gắn thêm thư mục chứa bản zemory có sẵn, hoặc chép trước file này vào
 thư mục dự án; câu trên tự dùng bản đó.
