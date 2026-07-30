@@ -109,16 +109,16 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 43 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 44 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 65 |
 | 5 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 6 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 7 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
-| 8 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 96 |
-| 9 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 105 |
-| 10 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 206 |
+| 8 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 97 |
+| 9 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 129 |
+| 10 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 227 |
 | 11 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
 | 12 | `.claude/skills/session-close/SKILL.md` | `<RAW>/.claude/skills/session-close/SKILL.md` | 53 |
 | 13 | `.claude/skills/read-office/SKILL.md` | `<RAW>/.claude/skills/read-office/SKILL.md` | 55 |
@@ -128,7 +128,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 17 | `.claude/skills/reconcile/SKILL.md` | `<RAW>/.claude/skills/reconcile/SKILL.md` | 38 |
 | 18 | `.claude/skills/conform/SKILL.md` | `<RAW>/.claude/skills/conform/SKILL.md` | 41 |
 | 19 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 41 |
-| 20 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
+| 20 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 121 |
 | 21 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
 | 22 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
 

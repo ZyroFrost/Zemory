@@ -18,6 +18,30 @@ Tên tiếng Anh     Slot và tên skill: tiếng Anh, chữ thường, nối b�
                   Nội dung bên trong file: tiếng Việt có dấu.
 ```
 
+## `tasks/SCHEDULE.md` — danh mục lịch, đối xứng với danh mục quy trình
+
+Lịch **thật** nằm ở tác vụ định kỳ của Cowork, không nằm trong repo. Nhưng nếu repo không ghi lại
+thì **không ai đọc ra được dự án đang chạy lịch gì** — phải mở app lên xem, và người sau không biết
+câu nào đã dán. Đây đúng là chuyện đã giải cho quy trình: quy trình là file **và** có một dòng
+trong danh mục ở trang chỉ đường. Việc định kỳ làm y vậy.
+
+`tasks/SCHEDULE.md` — một dòng mỗi task, **tên ngăn task phải xuất hiện đúng như trên đĩa**
+(`check_structure.py` đối chiếu hai chiều: task không có dòng ⇒ chặn):
+
+```
+| Ngăn việc      | Nhịp                 | Câu đã dán vào lịch Cowork              | Ghi chú |
+|----------------|----------------------|-----------------------------------------|---------|
+| 01_weekly      | thứ Hai 08:00        | Chạy việc trong tasks/01_weekly/spec.md | |
+| 02_monthly     | ngày 1 mỗi tháng     | Chạy việc trong tasks/02_monthly/spec.md| tạm tắt |
+```
+
+Luật giữ nó không thành giấy lộn:
+
+- **Đặt hoặc đổi lịch trong Cowork thì sửa dòng ở đây NGAY** — lệch là mất giá trị duy nhất của file.
+- **Câu đã dán chép NGUYÊN VĂN**, không diễn đạt lại. Đó là thứ người sau dán lại khi dựng máy khác.
+- **Tắt lịch thì GIỮ dòng**, ghi "tạm tắt" ở Ghi chú — xoá dòng là mất luôn dấu vết đã từng có.
+- Nhịp ở đây và mục **Nhịp** trong `spec.md` phải khớp; lệch thì `spec.md` là bản đúng (nó ở cạnh việc).
+
 ## Khuôn `spec.md` — để LỊCH chỉ cần trỏ vào file
 
 Lịch định kỳ (tác vụ định kỳ của Cowork) chạy **một phiên trắng**: không ai kể lại việc, không có

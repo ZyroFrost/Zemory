@@ -28,6 +28,7 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 | kéo dữ liệu từ nguồn về | `.claude/skills/pull/SKILL.md` |
 | điền số vào mẫu → xuất sản phẩm giao đi | `.claude/skills/fill/SKILL.md` |
 | đẩy sản phẩm lên đích (BI · Drive · SharePoint) | `.claude/skills/upload/SKILL.md` |
+| đặt · đổi · hỏi "dự án đang chạy lịch gì" | `tasks/SCHEDULE.md` (danh mục lịch) |
 | thư mục lệch chuẩn, cần nắn lại | `.claude/skills/reconcile/SKILL.md` |
 | kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
 | user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |

@@ -33,7 +33,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 ├── content/          ◆  docs-only: .md/.mdx là sản phẩm chính
 ├── design/           ◆  design: .fig/.sketch/.psd               [LFS]
 │ ─── CÔNG VIỆC ───
-├── tasks/            [opt] việc định kỳ: mỗi task 1 folder NN_<tên>/ + spec.md
+├── tasks/            [opt] việc định kỳ: SCHEDULE.md + mỗi task 1 folder NN_<tên>/ + spec.md
 ├── templates/        [opt] file mẫu TRỐNG chờ ĐIỀN  (≠ fixtures)
 │ ─── ĐẦU VÀO / XỬ LÝ ───
 ├── sources/          [opt] định nghĩa nguồn: M · connection spec · SQL kéo
@@ -65,6 +65,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 | báo cáo / model / nội dung / thiết kế giao đi | `reports/` \| `models/` \| `content/` \| `design/` ◆ |
 | **đơn vị công việc** (báo cáo tuần, đợt phân tích) | `tasks/NN_<tên>/spec.md` · data thật → `data/<task>/` |
 | **pipeline thực thi task** (stage đánh số) | `pipelines/NN_<tên>/` MIRROR `tasks/` · `common.py` + `00_`/`01_`/`02_` |
+| **danh mục việc định kỳ** (nhịp + câu đã dán vào lịch) | `tasks/SCHEDULE.md` — MỘT dòng mỗi task |
 | **launcher chạy task** | `<tên>.cmd` ở GỐC — ASCII thuần |
 | **output stage / deliverable** | trung gian `data/<task>/NN_*` · deliverable tên nghiệp vụ (KHÔNG prefix số) |
 | **file mẫu chờ ĐIỀN** (report trống) | `templates/` |
