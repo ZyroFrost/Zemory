@@ -1,7 +1,16 @@
 // Idle background scheduler (plan 14 §6.B) — runs INSIDE the `zemory ui` daemon
 // so the memory keeps itself current without the user asking:
-//   • embed loop  — clear the vector backlog (opt-OUT: `scheduler`, default ON)
-//   • auto-sync   — when data drifts, push/pull the encrypted Drive bundle (opt-in: autosync)
+//   • maintain chain — scan → embed → digest (opt-OUT: `scheduler`, default ON)
+//   • auto-sync      — when data drifts, push/pull the encrypted Drive bundle (opt-in: autosync)
+//
+// BUG 2026-07-30: this file only had embed + sync, while the UI has always
+// promised "daemon tự chạy scan → embed → digest". So NOTHING ingested new
+// transcripts automatically — a machine sat at +2.722 unscanned messages with the
+// daemon running and healthy, and `memory digest <session>` answered "no digest"
+// because digest never ran either. The user read that as "web scan is broken";
+// the real hole was the missing scan/digest steps here. Gate:
+// backend/test/scheduler-contract.test.mjs now fails if the UI promises a step
+// this file does not run.
 //
 // CRITICAL (bug 2026-07-21): the heavy work — ONNX embedding, Drive sync — must
 // NOT run on the daemon's event loop. A synchronous embed pass froze /ping for
@@ -20,7 +29,7 @@ import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
 
-const EMBED_EVERY_MS = 5 * 60_000; // check the vector backlog every 5 min
+const MAINTAIN_EVERY_MS = 10 * 60_000; // run the scan → embed → digest chain every 10 min
 const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // The backlog count is a full anti-join (messages NOT IN vec_chunks) run
 // synchronously on the event loop — hundreds of ms on a 595MB memory. When the
@@ -28,9 +37,10 @@ const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // that scan every 5 minutes (audit 2026-07-21).
 const IDLE_BACKOFF_MS = 30 * 60_000;
 
-let embedTimer: ReturnType<typeof setInterval> | null = null;
+let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let child: ChildProcess | null = null;
+let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
 
 function log(msg: string): void {
@@ -43,52 +53,88 @@ function cliEntry(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
 }
 
-/** True while THIS module's embed child is alive. */
+/** True while THIS module's maintain child is alive. */
 export function schedulerChildRunning(): boolean {
   return child !== null;
 }
 
-function embedTick(): void {
-  if (child || syncJobRunning() || cliHoldsWrite() || !getScheduler()) return; // yield to any other writer
-  if (lastEmptyAt && Date.now() - lastEmptyAt < IDLE_BACKOFF_MS) return; // backlog was empty — skip the scan
-  let remaining: number;
-  try {
-    remaining = vectorRemaining();
-  } catch {
-    return; // vector lane unavailable → fail-open, try next tick
-  }
-  if (remaining <= 0) {
-    lastEmptyAt = Date.now();
-    return;
-  }
-  lastEmptyAt = 0;
-  if (!claimDaemonJob("embed")) return;
-  log(`embed backlog ${remaining} — spawning background embed (--all)`);
-  let c: ChildProcess;
-  try {
-    // ZEMORY_DAEMON_CHILD: the child skips the CLI write-gate — THIS daemon
-    // already holds the job token for it (gating made it wait on itself).
-    c = spawn(process.execPath, [cliEntry(), "memory", "embed", "--all"], {
-      stdio: "ignore",
-      windowsHide: true,
-      env: { ...process.env, ZEMORY_DAEMON_CHILD: "1" },
+/**
+ * Run ONE maintenance command in a separate process and wait for it.
+ * Heavy work must never touch the daemon's event loop (see header), and the
+ * chain must be sequential — scan feeds embed, embed feeds digest.
+ */
+function runStep(label: string, args: string[]): Promise<number> {
+  return new Promise((resolve) => {
+    let c: ChildProcess;
+    try {
+      // ZEMORY_DAEMON_CHILD: the child skips the CLI write-gate — THIS daemon
+      // already holds the job token for it (gating made it wait on itself).
+      c = spawn(process.execPath, [cliEntry(), ...args], {
+        stdio: "ignore",
+        windowsHide: true,
+        env: { ...process.env, ZEMORY_DAEMON_CHILD: "1" },
+      });
+    } catch (e) {
+      log(`${label}: could not spawn (${e instanceof Error ? e.message : e})`);
+      resolve(-1);
+      return;
+    }
+    child = c;
+    const done = (code: number): void => {
+      if (child === c) child = null;
+      resolve(code);
+    };
+    c.on("exit", (code) => {
+      log(`${label}: finished (exit ${code ?? "?"})`);
+      done(code ?? -1);
     });
-  } catch (e) {
+    c.on("error", (e) => {
+      log(`${label}: child error ${e instanceof Error ? e.message : e}`);
+      done(-1);
+    });
+  });
+}
+
+/**
+ * The chain the UI promises: scan → embed → digest.
+ * ONE job token for the whole chain so a CLI writer never lands mid-sequence.
+ */
+async function maintainTick(): Promise<void> {
+  if (chainRunning || child || syncJobRunning() || cliHoldsWrite() || !getScheduler()) return; // yield to any other writer
+  if (!claimDaemonJob("maintain")) return;
+  chainRunning = true;
+  try {
+    // 1. scan — ingest new/changed transcripts. Incremental (dedup by uuid), and
+    //    it is the ONLY step that brings new messages in, so it never backs off.
+    await runStep("scan", ["memory", "scan"]);
+
+    // 2. embed — only when there is a vector backlog. Counting is a full
+    //    anti-join (hundreds of ms on a 595MB memory), so when the backlog was
+    //    last seen EMPTY, skip the count for a while (audit 2026-07-21).
+    const skipCount = lastEmptyAt !== 0 && Date.now() - lastEmptyAt < IDLE_BACKOFF_MS;
+    if (!skipCount) {
+      let remaining = 0;
+      try {
+        remaining = vectorRemaining();
+      } catch {
+        remaining = 0; // vector lane unavailable → fail-open, try next tick
+      }
+      if (remaining > 0) {
+        lastEmptyAt = 0;
+        log(`embed backlog ${remaining} — running embed (--all)`);
+        await runStep("embed", ["memory", "embed", "--all"]);
+      } else {
+        lastEmptyAt = Date.now();
+      }
+    }
+
+    // 3. digest — cheap when nothing changed (content-hash guard skips sessions
+    //    already summarised), so it can run every chain.
+    await runStep("digest", ["memory", "digest", "--all"]);
+  } finally {
+    chainRunning = false;
     releaseDaemonJob();
-    log(`embed: could not spawn (${e instanceof Error ? e.message : e})`);
-    return;
   }
-  child = c;
-  c.on("exit", (code) => {
-    log(`embed: background pass finished (exit ${code ?? "?"})`);
-    if (child === c) child = null;
-    releaseDaemonJob();
-  });
-  c.on("error", (e) => {
-    log(`embed: child error ${e instanceof Error ? e.message : e}`);
-    if (child === c) child = null;
-    releaseDaemonJob();
-  });
 }
 
 function syncTick(): void {
@@ -100,22 +146,23 @@ function syncTick(): void {
 
 /** Start the background loops. Idempotent — a second call is a no-op. */
 export function startScheduler(): void {
-  if (embedTimer || syncTimer) return;
-  embedTimer = setInterval(embedTick, EMBED_EVERY_MS);
+  if (maintainTimer || syncTimer) return;
+  maintainTimer = setInterval(() => void maintainTick(), MAINTAIN_EVERY_MS);
   syncTimer = setInterval(syncTick, SYNC_EVERY_MS);
   // The HTTP server keeps the process alive; don't let these timers do it.
-  embedTimer.unref?.();
+  maintainTimer.unref?.();
   syncTimer.unref?.();
-  // Kick an embed check shortly after boot, then on the interval.
-  setTimeout(embedTick, 15_000).unref?.();
-  log(`started (embed ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"})`);
+  // Kick the chain shortly after boot, then on the interval.
+  setTimeout(() => void maintainTick(), 15_000).unref?.();
+  log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"})`);
 }
 
 /** Stop the loops and any running child (tests / shutdown). */
 export function stopScheduler(): void {
-  if (embedTimer) clearInterval(embedTimer);
+  if (maintainTimer) clearInterval(maintainTimer);
   if (syncTimer) clearInterval(syncTimer);
-  embedTimer = syncTimer = null;
+  maintainTimer = syncTimer = null;
+  chainRunning = false;
   if (child) {
     try {
       child.kill();
