@@ -9,7 +9,9 @@
 > và một bộ quy trình (skill) hợp với việc đó.
 
 ## Cách khởi động (người dùng)
-Mở một phiên Cowork trong project đã mount thư mục làm việc, rồi nói **một trong hai**:
+Mở một phiên Cowork với thư mục làm việc đã gắn — ở ô chat bấm **Project or folder**, rồi chọn **một
+trong hai**: **Add a folder** (gắn thẳng thư mục), hoặc **Create new project** (cũng chọn thư mục ở
+bước đầu, thêm lời dặn thường trực · ghi nhớ · tác vụ định kỳ). Rồi nói **một trong hai**:
 
 - Đã có sẵn file này trong thư mục → *"Đọc BOOTSTRAP.md và dựng bộ chuẩn."*
 - Chưa có → dán nguyên dòng này:
@@ -236,7 +238,9 @@ Mười quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc của 
    mục nào trong overview còn "chưa rõ".
 2. Ghi việc còn dở vào `docs/agent/05_TODO.md`; việc đã xong ghi `docs/agent/06_CHANGES.md`
    theo format `## [YYYY-MM-DD] — tiêu đề` (chỉ ghi sau khi người dùng xác nhận OK).
-3. Nhắc người dùng mở **Projects → project này → Instructions**, dán đúng đoạn này:
+3. Nhắc người dùng dán đoạn dưới đây vào chỗ ghi **lời dặn thường trực** của thư mục làm việc —
+   chỉ gắn thư mục thì là **Folder instructions**, có project thì là **Projects → project này →
+   Instructions**. Dán đúng nguyên văn:
    > Trước mỗi phiên, đọc `AGENTS.md` rồi làm theo đúng hợp đồng nạp trong đó:
    > luôn đọc `docs/agent/01_CONSTITUTION.md` + `02_RULES.md` + mục còn mở trong `05_TODO.md`;
    > các quy trình trong `.claude/skills/` chỉ mở khi trúng việc.
