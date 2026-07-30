@@ -31,7 +31,19 @@
   **đã push** ⇒ lộ vĩnh viễn; không viết lại lịch sử vì chưa `.enc` nào từng vào git. Nền tảng: `plan/16_share_key`.
 
 ## 📌 Bàn giao 2026-07-28 — việc còn lại
-- [ ] **`claude-web` project = uuid thô** (`019f68e1-…`) vì API không trả tên folder. ChatGPT giải bằng `_projects.json`; làm tương tự cho claude.ai khi cần.
+- [ ] **`claude-web` MẤT TRẮNG chat trong Project — nặng hơn mục "tên uuid thô" ghi trước đây.**
+  **Đo 2026-07-30** (`memory scan-web --platform claude --limit 5`, profile đã đăng nhập từ 28/07):
+  đăng nhập OK (`huy.nguyen@sasin.vn's Organization`), scanner báo thẳng *"enumerated **2 loose**
+  conversation(s) · 2 conversation(s) on the account"* ⇒ lane `claude-web` đứng ở **2 phiên / 6 tin**
+  không phải vì hỏng, mà vì **nó chỉ được phép thấy chat loose**.
+  **Nguyên nhân trong code:** `PLATFORMS.chatgpt` có `projectsExpr` + `projectConvsExpr` nên đếm được
+  chat trong Project; `PLATFORMS.claude` **chỉ có `listExpr`**. Mà khối enumerate project ở
+  `scanweb.ts:525` chạy `if (p.projectConvsExpr && …)` — với claude điều kiện đó **luôn false**.
+  Chính comment ngay đó đã cảnh báo: *"A Project's chats are NOT in the loose list"*.
+  **Việc cần làm:** viết `CLAUDE_PROJECTS` + `claudeProjectConvs` (dò endpoint thật bằng in-page fetch
+  TRƯỚC khi code — KHÔNG đoán URL; bài học `claudeConv` đã fail 2/2 vì tin comment thay vì đo).
+  **Chưa biết:** phiên **Cowork** có phơi qua đường claude.ai hay không — chưa đo được, đừng hứa.
+  *(Hệ quả đang chịu: mọi quyết định bàn trong Cowork là không tra lại được — xem `06_CHANGES [2026-07-30d]`.)*
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
