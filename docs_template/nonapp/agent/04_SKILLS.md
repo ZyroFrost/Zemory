@@ -160,6 +160,7 @@ thường gặp: ① coi file như text rồi nạp XML thô vào context; ② m
 6. **Đừng dựng lại file bằng `head + "".join(mọi <w:p>) + tail`** — cách đó **đánh rơi mọi thứ nằm GIỮA các đoạn** (bảng, lớp `<w:sdt>` bọc mục lục, bookmark). Muốn dùng thì phải ĐO trước là giữa các đoạn không còn gì; an toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)`.
 7. **Kiểm sau MỖI lần sửa — đủ, không bỏ bước:** số `<w:tbl>` · số ảnh + thứ tự · mọi `r:embed` tra ra rel · rel trỏ file có thật · không ảnh mồ vàng · không `docPr` trùng · `<w:instrText>` còn `TOC` · rộng ảnh ≤ khổ chữ · tỷ lệ hiển thị == tỷ lệ pixel · chữ chỉ khác đúng chỗ cố ý sửa · mở lại được.
 8. **Mục lục là FIELD** — sửa ngoài Word thì không tự tính lại. Xong việc phải **nhắc user mở file bấm `F9`**; đừng gõ tay số trang.
+9. **Ngắt trang cho bản đọc:** `<w:pageBreakBefore/>` vào mỗi Heading 1 (mục lớn luôn bắt đầu ở đầu trang mới, hết cảnh đuôi mục trước dính đầu mục sau) · `<w:keepNext/>` vào tiêu đề + đoạn đứng ngay trên ảnh/bảng (tiêu đề không nằm cuối trang một mình, ảnh không rời khối của nó) · `<w:keepLines/>` chống xé đôi đoạn. Chen **ngay sau `<w:pStyle>`** trong `<w:pPr>` (schema bắt thứ tự `keepNext → keepLines → pageBreakBefore`). Không render được trang ⇒ chỉ ép được *bắt đầu ở đầu trang* + *khối dính nhau*; mục dài quá một trang thì phải tràn — không phải lỗi.
 
 **Cấm:** mở file giao đi bằng editor khác rồi lưu · sửa file gốc khi chỉ được yêu cầu ĐỌC · ghi đè file chưa đọc · dựng lại `.docx` từ Markdown ("cho nhanh" = mất sạch bảng, ảnh, mục lục, style) · báo "xong" khi chưa chạy hết bảng kiểm.
 
