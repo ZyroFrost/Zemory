@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-07-30b] — ONLYOFFICE bẻ phẳng 8 BẢNG mà tôi không thấy · skill `ghi file Word` cho cả 4 nơi
+
+Gate **367/367** · `conform` ✓ (skill 6 → **7**).
+
+- **Hồi quy im lặng, và phép kiểm của tôi mù đúng chỗ đó.** User mở `GUIDE.docx` bằng ONLYOFFICE Desktop
+  rồi lưu lại → **8 bảng thành 0**, mọi ô bị bẻ thành đoạn thường; kèm bóc lớp `<w:sdt>` bọc mục lục,
+  đổi `styleId` thành số, đảo thứ tự thuộc tính `<w:pgSz>`. Tôi đã đối chiếu và tuyên bố *"chữ chỉ khác
+  đúng phần sửa, style vẫn giải ra Heading 1/2, TOC còn"* — **đúng từng vế nhưng bỏ sót cái chính**: chữ
+  trong ô bảng cũng là đoạn văn, nên so bằng *văn bản đoạn* thì bảng mất mà số liệu vẫn khớp. **Không hề
+  đếm `<w:tbl>`.**
+- **Khôi phục bằng ghép nguyên khối `<w:tbl>` từ bản trong git** — bảng không tham chiếu style nào (viền ·
+  độ rộng đều inline) nên ghép sang bản đã bị ONLYOFFICE đánh số lại `styleId` vẫn chạy. Dò vị trí bằng
+  cách khớp **dãy đoạn đã bị bẻ**: cả 8 bảng đều khớp **đúng một chỗ**, không chồng nhau.
+- **Một bẫy regex làm phép kiểm báo lệch giả:** ô bảng rỗng viết dạng tự đóng `<w:t xml:space="preserve"/>`,
+  mà `<w:t(?:\s[^>]*)?>` khớp nhầm nó thành thẻ mở rồi **nuốt XML** tới `</w:t>` kế tiếp. Chốt `(?<!/)`.
+- **Đo thêm, có ích về sau:** bản ONLYOFFICE **không có gì nằm giữa các đoạn** (1 khoảng = header XML),
+  còn bản gốc có **178 khoảng / 45,7 KB** (bảng · `<w:sdt>`). ⇒ các script trước của tôi dựng lại file
+  bằng `head + join(đoạn) + tail` **không đánh rơi gì**, nhưng cách đó chỉ an toàn khi đã ĐO như vậy.
+- **Skill `ghi file Word (.docx)` — user yêu cầu, áp cả 4 nơi.** Cowork: `.claude/skills/write-docx/SKILL.md`
+  (114 dòng, chuẩn Agent Skills) + dòng trigger trong `AGENTS.md` + dòng manifest #20 trong `BOOTSTRAP.md`.
+  Repo + template app/nonapp: section inline trong `04_SKILLS.md`. Nội dung là thứ hôm nay trả giá mới có:
+  cấm mở file giao đi bằng editor khác rồi lưu · sửa theo từng RUN · ảnh phải khớp 3 tầng · khổ chữ đọc từ
+  `sectPr` theo TÊN thuộc tính · bẫy `<w:t/>` · cấm nối đoạn để dựng lại file · **bảng kiểm 11 mục** chạy
+  sau mỗi lần sửa · mục lục là field, nhắc user bấm F9.
+  Bản template viết **trắng** (không nêu tên dự án); bản repo dẫn sự cố có ngày.
+- Thêm dòng vào `AGENTS.md` làm số dòng lệch manifest ⇒ gate đỏ ngay, đã cập nhật 42 → 43. Đúng vai của gate.
+
 ## [2026-07-30a] — GUIDE.docx hết ảnh giữ chỗ: 3 ảnh THẬT · hai HƯỚNG VÀO · một câu dán · bỏ duyệt từng lệnh
 
 `bootstrap-manifest` 8/8 · `conform` ✓. User chụp ảnh, tôi ráp — **tôi không tự chụp được UI Claude Desktop**
