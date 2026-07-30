@@ -11,8 +11,9 @@
 (thử `PrintWindow` + tự động chuột đều tắc, một lần còn chụp trúng thứ không được phép).
 
 - **Luật ảnh, user chốt: CHỈ chụp bước phải BẤM NÚT.** Phần trợ lý hỏi–đáp thì UI tự hiện, người dùng tự
-  trả lời — chụp vào là thừa. Theo đó ảnh giữ chỗ cuối (dán câu lệnh) **bỏ hẳn**: chỗ đó dán chữ rồi Enter,
-  không có nút nào để chỉ. Guide còn **0 giữ chỗ** (3 ảnh nút + 3 sơ đồ).
+  trả lời — chụp vào là thừa. Tôi áp luật này quá rộng, gỡ luôn ảnh bước "dán câu lệnh"; user chỉ lại: ô
+  chat **có nút gửi** nên vẫn thuộc diện chụp. Đã đưa ảnh thật vào. Guide còn **0 giữ chỗ**: 4 ảnh nút
+  (Create new project · Add a folder · menu Auto · ô chat đã dán prompt) + 3 sơ đồ.
 - **"Dựng lần đầu" là hai HƯỚNG VÀO, không phải hai bước** (user chốt): *Cách 1 — Tạo project* · *Cách 2 —
   Gắn thẳng thư mục*. Không dán nhãn "nên dùng" cái nào: thứ duy nhất phân biệt chúng là ghi nhớ xuyên
   phiên + tác vụ định kỳ, cái đó tuỳ dự án. **Tôi đã sai một nhịp ở đây** — tự nắn thành 2 bước và xoá
