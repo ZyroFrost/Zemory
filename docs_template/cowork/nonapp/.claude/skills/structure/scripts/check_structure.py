@@ -26,6 +26,24 @@ KNOWN_SLOTS = {
     "data", "exports", "share",
 }
 DELIVERABLES = ["reports", "models", "content", "design"]
+# Bon muc BAT BUOC trong tasks/NN_*/spec.md (khuon o reference/conventions.md).
+# Khop LONG: bo dau roi tim tu khoa trong cac dong tieu de. Khong doi dung chu, va
+# khong doi co dau - agent moi nguoi dat tieu de mot kieu, khoa chat la bao oan.
+SPEC_SECTIONS = [
+    ("Nhip", r"nhip|cadence|tan suat"),
+    ("Cau dat lich", r"dat lich|cau lenh lich|schedule prompt"),
+    ("Cac buoc", r"cac buoc|buoc lam|quy trinh lam|steps"),
+    ("San pham giao di", r"san pham|deliverable|dau ra|output"),
+]
+
+
+def fold(s):
+    """Bo dau tieng Viet + ha chu thuong, de khop tieu de ma khong ep phai co dau."""
+    import unicodedata
+
+    out = unicodedata.normalize("NFD", s).lower()
+    out = "".join(c for c in out if not unicodedata.combining(c))
+    return out.replace("đ", "d")  # 'd' gach ngang khong tach duoc bang NFD
 REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"]
 MUST_IGNORE = ["data/", "exports/", ".env"]
 # Tooling and OS folders that legitimately sit at the root.
@@ -106,8 +124,22 @@ def check_task_mirror(root):
 
     tasks, pipes, datas = numbered("tasks"), numbered("pipelines"), numbered("data")
     for nn, name in sorted(tasks.items()):
-        if not os.path.isfile(os.path.join(root, "tasks", name, "spec.md")):
+        spec = os.path.join(root, "tasks", name, "spec.md")
+        if not os.path.isfile(spec):
             add("BLOCK", "task", "tasks/%s/ thieu spec.md" % name)
+        else:
+            # Lich dinh ky chay mot phien TRANG: spec.md phai tu chua du de lam xong
+            # viec, va cau dat lich chi la mot dong tro vao no. Thieu bat cu muc nao
+            # trong bon muc duoi la phien dinh ky phai DOAN -> chan luon.
+            try:
+                with open(spec, encoding="utf-8") as fh:
+                    heads = [ln for ln in fh.read().splitlines() if ln.lstrip().startswith("#")]
+            except OSError:
+                heads = []
+            blob = fold("\n".join(heads))
+            for label, pat in SPEC_SECTIONS:
+                if not re.search(pat, blob):
+                    add("BLOCK", "task", "tasks/%s/spec.md thieu muc '%s'" % (name, label))
         if pipes and nn not in pipes:
             add("INFO", "mirror", "tasks/%s khong co pipelines/%s_* tuong ung" % (name, nn))
         if datas and nn in datas and datas[nn] != name:
