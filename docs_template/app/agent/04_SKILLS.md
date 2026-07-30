@@ -33,7 +33,7 @@ Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi đư
 |---|---|---|---|---|
 | `markitdown` (Microsoft) | đọc nội dung file Office/PDF nhị phân (`.xlsx .xls .docx .pptx .pdf`) | `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` | MIT | §đọc file Office qua Markdown |
 
-**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile` · `đọc file Office qua Markdown` · `soi chuẩn` · `audit toàn diện`.
+**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile` · `đọc file Office qua Markdown` · `ghi file Word (.docx)` · `soi chuẩn` · `audit toàn diện`.
 
 ## grill
 > Kích hoạt (tự động): `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi đúng. User gõ "grill" = ép chạy thủ công cùng cơ chế.
@@ -125,6 +125,22 @@ thường gặp: ① coi file như text rồi nạp XML thô vào context; ② m
 - File lớn: convert ra FILE rồi đọc **đúng phần cần** (`grep`/N dòng đầu) — đừng nạp cả bản
   convert vào context (progressive disclosure).
 - Bảng ngàn dòng: token tăng theo số DÒNG, không theo dung lượng file ⇒ ước lượng trước khi nạp.
+## ghi file Word (.docx) — sửa mà không phá cấu trúc
+> Kích hoạt: cần **SỬA / TẠO** `.docx` (đổi chữ · thay hoặc chèn ảnh · thêm mục). Chỉ ĐỌC → dùng §đọc file Office qua Markdown.
+
+**Vì sao cần playbook riêng:** `.docx` là ZIP + XML. Chữ nằm ở `<w:t>`, còn **cấu trúc** (bảng · ảnh · mục lục · style · khổ trang) nằm ở XML quanh nó ⇒ **mọi phép kiểm dựa trên "chữ có đổi không" đều KHÔNG thấy cấu trúc bị phá** — chữ trong ô bảng cũng là đoạn văn.
+
+1. **KHÔNG mở file giao đi bằng editor khác rồi lưu lại.** Đo thật: một tài liệu **8 bảng**, mở bằng một editor desktop khác Word rồi Ctrl+S → **8 bảng thành 0**, mọi ô bị bẻ thành đoạn thường; kèm bóc lớp `<w:sdt>` bọc mục lục, đổi `styleId` thành số, đảo thứ tự thuộc tính `<w:pgSz>`. **Chữ không đổi một ký tự** — nhìn diff văn bản thấy "y nguyên". Cần xem thì mở rồi **đóng, KHÔNG lưu**. File đang bị editor giữ (`PermissionError` khi ghi) → **chờ, đừng kill editor của user**. Lỡ lưu rồi thì **đếm lại số bảng + số ảnh** trước khi kết luận "không sao".
+2. **Sửa bằng script trên XML, theo từng RUN.** Một đoạn gồm nhiều `<w:r>` định dạng khác nhau — thay cả đoạn là mất đậm/nghiêng. Thêm đoạn mới → **sao vỏ `<w:p>` của đoạn cùng vai đã có**, đừng đẻ style mới. Neo phải khớp **đúng 1 lần**; 0 hoặc ≥2 thì **DỪNG**.
+3. **Ảnh = BA tầng phải khớp**, thiếu một là file hỏng: `word/media/<tên>` + `<Relationship … Target="media/<tên>">` trong `document.xml.rels` + khối `<w:drawing>` trỏ đúng `r:embed`, với `<wp:docPr id>` **cấp số mới**.
+4. **Kích thước ảnh** — Word đặt theo **EMU**, không theo pixel: khổ chữ `= (pgSz@w − pgMar@left − pgMar@right) × 635`, cao `= rộng × tỷ lệ gốc của ảnh`. **Đọc thuộc tính theo TÊN, không theo vị trí** (editor khác nhau đảo thứ tự `pgSz`). Sửa **cả** `<wp:extent>` lẫn `<a:ext>`, và sửa **theo KHỐI `<w:drawing>`** — nhiều ảnh khai cùng `cx/cy`, thay chuỗi toàn cục là đổi lây ảnh khác.
+5. **Bẫy regex:** `<w:t xml:space="preserve"/>` là thẻ **tự đóng** (ô rỗng) — `<w:t(?:\s[^>]*)?>` khớp nhầm nó thành thẻ mở rồi **nuốt XML** tới `</w:t>` kế tiếp, làm phép đo "chữ có đổi không" báo lệch giả. Dùng `<w:t(?:\s[^>]*(?<!/))?>`. Viết lỏng hơn (`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:tr>`.
+6. **Đừng dựng lại file bằng `head + "".join(mọi <w:p>) + tail`** — cách đó **đánh rơi mọi thứ nằm GIỮA các đoạn** (bảng, lớp `<w:sdt>` bọc mục lục, bookmark). Muốn dùng thì phải ĐO trước là giữa các đoạn không còn gì; an toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)`.
+7. **Kiểm sau MỖI lần sửa — đủ, không bỏ bước:** số `<w:tbl>` · số ảnh + thứ tự · mọi `r:embed` tra ra rel · rel trỏ file có thật · không ảnh mồ vàng · không `docPr` trùng · `<w:instrText>` còn `TOC` · rộng ảnh ≤ khổ chữ · tỷ lệ hiển thị == tỷ lệ pixel · chữ chỉ khác đúng chỗ cố ý sửa · mở lại được.
+8. **Mục lục là FIELD** — sửa ngoài Word thì không tự tính lại. Xong việc phải **nhắc user mở file bấm `F9`**; đừng gõ tay số trang.
+
+**Cấm:** mở file giao đi bằng editor khác rồi lưu · sửa file gốc khi chỉ được yêu cầu ĐỌC · ghi đè file chưa đọc · dựng lại `.docx` từ Markdown ("cho nhanh" = mất sạch bảng, ảnh, mục lục, style) · báo "xong" khi chưa chạy hết bảng kiểm.
+
 ## soi chuẩn (kiểm độ bám chuẩn — máy chấm, agent phán)
 > Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
 > · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
