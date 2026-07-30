@@ -5,6 +5,39 @@
 
 ---
 
+## [2026-07-30c] — Đọc lại TOÀN BỘ GUIDE.docx: 5 chỗ lệch · mục lục tự hiện · ngắt trang chọn theo ĐO
+
+`bootstrap-manifest` 8/8 · `conform` ✓. User yêu cầu soát cả file; đọc hết rồi đối chiếu với
+manifest · bảng tra chuẩn · docs Anthropic.
+
+- **Guide hứa chắc hơn bằng chứng.** Mục 3 + mục 4 ghi *"Tự nhận việc theo mô tả — ✔ có sẵn"* và
+  *"Cowork dùng được **hết** những thứ ở Lớp 2"*. Nhưng `AGENTS.md` **trong cùng bộ** lại rào: *"Chạy
+  trong **Claude Code**: skill được harness tự nạp theo `description`; bảng này là đường dự phòng khi
+  cơ chế đó không có"* — và help center Anthropic chỉ mô tả đường cài skill **ở cấp tài khoản**
+  (upload `.zip`), không trang nào nói Cowork nạp skill từ thư mục đã gắn. Đã hạ giọng guide cho khớp
+  bằng chứng: tự đọc bối cảnh thì **có** (ảnh phiên cho thấy Cowork nhận `CLAUDE.md` làm Instructions),
+  còn cách LẤY quy trình thì nêu rõ có đường dự phòng là bảng tra.
+- **Bỏ "trên máy bạn"** ở mục 3 + mục 5: help center nói việc chạy trên máy chủ Anthropic, còn đo của
+  chính repo lại thấy sandbox đọc được filesystem host — **hai nguồn ngược nhau, chưa phân xử được**
+  nên không khẳng định. *(Câu "kho dữ liệu trên máy bạn" ở phần ② thì GIỮ — kho nhớ zemory thật sự nằm
+  trên máy.)*
+- **`docs/dictionary.md` vẽ như file mặc định nhưng manifest KHÔNG có** — BOOTSTRAP không tạo nó.
+  Người dùng dựng xong sẽ thấy thiếu và tưởng hỏng. Đánh dấu `[tuỳ]` tại chỗ trong cây mục 7.
+- Mục 1 Cách 2 thiếu **lời dặn thường trực** trong danh sách "project thêm gì" — mà Instructions đúng
+  là thứ `BOOTSTRAP §Giai đoạn 4` dùng. Đã bù. Mục 9 thêm `docs_visual/` cho khớp bảng tra `structure §3`.
+- `BOOTSTRAP §Giai đoạn 4.3` viết lại cho hết mâu thuẫn với guide: nêu rõ Cowork **tự đọc** `CLAUDE.md`,
+  nhưng cơ chế đó **chưa có tài liệu chính thức** nên dán thêm vào lời dặn thường trực là **đường chắc**
+  — dán trùng thì vô hại, thiếu thì mất hợp đồng nạp.
+- **Sửa xong phải ĐO LẠI trang**, vì đổi nội dung là đổi phân trang: render lại ⇒ **11 trang, 0 vi phạm
+  giữa bài** (trống nhiều nhất 29% ở trang 10) ⇒ không phải tối ưu lại ngắt trang.
+- Tự gây rồi tự bắt: lúc gỡ `dictionary.md` tôi để `plan/` thành nhánh cuối (`└──`) trong khi nó vẫn
+  còn con ⇒ **vỡ ký hiệu cây**; và đặt `docs/dictionary.md` vào cây mục 9 thì sai chỗ lẫn lệch cột. Đã
+  trả về đúng chỗ.
+- **Kiểm được và ĐÚNG, không sửa:** *"giảm khoảng 70%"* — đo thật phần ngoài bộ đọc mỗi phiên chiếm
+  **79%** dung lượng (14.660 / 71.214 B) ⇒ 70% là nói dè. Mục lục 11 dòng khớp 11 tiêu đề · bảng mục 8
+  đủ 11 dòng khớp tiêu đề "Mười một" và ô *"11 quy trình sẵn dùng"* ở mục 4 · cây mục 7 đủ 11 quy trình
+  · con trỏ *"(xem mục 7)"* đúng · 4 ảnh nút + 3 sơ đồ đúng mục.
+
 ## [2026-07-30b] — ONLYOFFICE bẻ phẳng 8 BẢNG mà tôi không thấy · skill `ghi file Word` cho cả 4 nơi
 
 Gate **367/367** · `conform` ✓ (skill 6 → **7**).

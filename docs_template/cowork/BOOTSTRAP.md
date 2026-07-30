@@ -250,9 +250,11 @@ Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc 
    mục nào trong overview còn "chưa rõ".
 2. Ghi việc còn dở vào `docs/agent/05_TODO.md`; việc đã xong ghi `docs/agent/06_CHANGES.md`
    theo format `## [YYYY-MM-DD] — tiêu đề` (chỉ ghi sau khi người dùng xác nhận OK).
-3. Nhắc người dùng dán đoạn dưới đây vào chỗ ghi **lời dặn thường trực** của thư mục làm việc —
+3. **Đường CHẮC cho hợp đồng nạp.** Cowork tự đọc `CLAUDE.md` của thư mục đã gắn (nó hiện lên dưới
+   dạng *Instructions*), nên hợp đồng nạp thường đã có hiệu lực. Nhưng cơ chế đó **chưa có tài liệu
+   chính thức** — nên nhắc người dùng dán thêm đoạn dưới đây vào chỗ ghi **lời dặn thường trực**:
    chỉ gắn thư mục thì là **Folder instructions**, có project thì là **Projects → project này →
-   Instructions**. Dán đúng nguyên văn:
+   Instructions**. Dán trùng thì vô hại; thiếu thì mất hợp đồng nạp. Dán đúng nguyên văn:
    > Trước mỗi phiên, đọc `AGENTS.md` rồi làm theo đúng hợp đồng nạp trong đó:
    > luôn đọc `docs/agent/01_CONSTITUTION.md` + `02_RULES.md` + mục còn mở trong `05_TODO.md`;
    > các quy trình trong `.claude/skills/` chỉ mở khi trúng việc.
