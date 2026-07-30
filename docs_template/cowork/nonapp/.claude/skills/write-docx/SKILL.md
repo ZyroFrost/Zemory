@@ -49,8 +49,7 @@ giữ nguyên `cx/cy` ⇒ **ảnh bị bóp dẹt**. Rộng hơn khổ chữ ⇒
 ⇒ **MỜ** (phóng quá kích thước gốc) — nên `cx = min(khổ chữ, px_w/96 × 914400)`.
 
 ```python
-# kho chu (twip) = pgSz@w − pgMar@left − pgMar@right · 1 twip = 635 EMU
-# ĐỌC THEO TÊN thuộc tính, KHÔNG theo vị trí — editor khác nhau đảo thứ tự trong <w:pgSz>
+# kho chu = (pgSz@w − pgMar@left − pgMar@right) × 635 EMU · ĐỌC THEO TÊN thuộc tính (editor đảo thứ tự)
 cx = (attr("pgSz", "w") - attr("pgMar", "left") - attr("pgMar", "right")) * 635
 cy = round(cx * px_h / px_w)           # cao theo TỶ LỆ GỐC của ảnh
 ```
