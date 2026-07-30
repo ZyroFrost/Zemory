@@ -45,7 +45,8 @@ Thêm hoặc đổi một ảnh là sửa **cả ba**, thiếu một tầng là 
 ## Kích thước ảnh: đọc khổ chữ, đừng ghim số
 
 Word đặt kích thước hiển thị bằng **EMU**, không theo pixel ảnh. Thay byte ảnh có tỷ lệ khác mà
-giữ nguyên `cx/cy` ⇒ **ảnh bị bóp dẹt**. Rộng hơn khổ chữ ⇒ **tràn lề**.
+giữ nguyên `cx/cy` ⇒ **ảnh bị bóp dẹt**. Rộng hơn khổ chữ ⇒ **tràn lề**. Rộng hơn `px_w/96` inch
+⇒ **MỜ** (phóng quá kích thước gốc) — nên `cx = min(khổ chữ, px_w/96 × 914400)`.
 
 ```python
 # kho chu (twip) = pgSz@w − pgMar@left − pgMar@right · 1 twip = 635 EMU
@@ -54,8 +55,8 @@ cx = (attr("pgSz", "w") - attr("pgMar", "left") - attr("pgMar", "right")) * 635
 cy = round(cx * px_h / px_w)           # cao theo TỶ LỆ GỐC của ảnh
 ```
 
-Sửa **cả hai** chỗ khai kích thước trong khối ảnh: `<wp:extent>` và `<a:ext>`. Nhiều ảnh khai
-cùng `cx/cy` ⇒ **sửa theo KHỐI `<w:drawing>`**, thay chuỗi toàn cục là đổi lây ảnh khác.
+Sửa **cả hai** chỗ khai kích thước trong khối ảnh (`<wp:extent>` + `<a:ext>`), và sửa theo **KHỐI
+`<w:drawing>`** — nhiều ảnh khai cùng `cx/cy`, thay chuỗi toàn cục là đổi lây ảnh khác.
 
 ## Bẫy regex khi đọc chữ
 

@@ -123,6 +123,27 @@ def check_task_mirror(root):
         return out
 
     tasks, pipes, datas = numbered("tasks"), numbered("pipelines"), numbered("data")
+    # Lich THAT nam o tac vu dinh ky cua Cowork, khong nam trong repo. Neu repo khong
+    # ghi lai thi khong ai doc ra duoc du an dang chay lich gi, va nguoi sau khong biet
+    # cau nao da dan. Doi xung voi quy trinh: quy trinh la file VA co mot dong trong
+    # danh muc. Nen tasks/SCHEDULE.md la BAT BUOC khi da co viec dinh ky, va moi task
+    # phai co mot dong trong do.
+    if tasks:
+        sched = os.path.join(root, "tasks", "SCHEDULE.md")
+        if not os.path.isfile(sched):
+            add("BLOCK", "task", "tasks/ co viec dinh ky nhung thieu tasks/SCHEDULE.md (danh muc lich)")
+        else:
+            try:
+                with open(sched, encoding="utf-8") as fh:
+                    roster = fh.read()
+            except OSError:
+                roster = ""
+            for nn, name in sorted(tasks.items()):
+                if name not in roster:
+                    add("BLOCK", "task", "tasks/SCHEDULE.md khong co dong cho tasks/%s" % name)
+            for m in re.finditer(r"^\s*\|\s*([0-9]{2}_[A-Za-z0-9_\-]+)\s*\|", roster, re.M):
+                if m.group(1) not in tasks.values():
+                    add("INFO", "task", "tasks/SCHEDULE.md co dong '%s' ma khong co thu muc tuong ung" % m.group(1))
     for nn, name in sorted(tasks.items()):
         spec = os.path.join(root, "tasks", name, "spec.md")
         if not os.path.isfile(spec):
