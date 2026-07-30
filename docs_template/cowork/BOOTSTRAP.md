@@ -14,8 +14,8 @@ trong hai**: **Add a folder** (gắn thẳng thư mục), hoặc **Create new pr
 bước đầu, thêm lời dặn thường trực · ghi nhớ · tác vụ định kỳ). Rồi dán **đúng một câu** này —
 nguyên văn, không phải sửa gì:
 
-> Dựng bộ khung làm việc zemory cho dự án này.
-> Thư mục tôi đã gắn có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
+> Dựng bộ khung làm việc cho dự án trong thư mục tôi đã gắn.
+> Thư mục đó có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
 > theo đúng những gì trong đó.
 > `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
 
