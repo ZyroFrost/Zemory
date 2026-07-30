@@ -107,7 +107,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 42 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 43 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 65 |
@@ -126,6 +126,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 17 | `.claude/skills/reconcile/SKILL.md` | `<RAW>/.claude/skills/reconcile/SKILL.md` | 38 |
 | 18 | `.claude/skills/conform/SKILL.md` | `<RAW>/.claude/skills/conform/SKILL.md` | 41 |
 | 19 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 41 |
+| 20 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 114 |
 
 Rồi **tự tạo** `docs/.harness.json` (không tải, gõ thẳng):
 ```json
@@ -228,7 +229,7 @@ Tính năng/năng lực chính · Ý tưởng/định hướng · Kiến trúc/b
 - **Trình cho người dùng duyệt** trước khi coi là chốt.
 
 ### 3d. Quy trình riêng của dự án
-Mười quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc của bạn:
+Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc của bạn:
 
 1. Đối chiếu việc thật của dự án với mười cái đó. Việc lặp nào **chưa có** → soạn thêm một thư mục
    `.claude/skills/<tên>/SKILL.md`, viết theo đúng khuôn đang có (*phần đầu file `name` +
