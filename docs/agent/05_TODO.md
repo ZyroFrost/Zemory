@@ -17,6 +17,12 @@
   không đụng thứ đang có. Việc cần làm: nói thẳng điều đó cho user ở phần đầu guide (một dòng, kèm câu
   "đã có file rồi thì nó chỉ bù phần thiếu"), và cân xem có cần một câu dán riêng cho ca "đưa vào project
   cũ" hay câu hiện tại đã đủ. *(User nêu 2026-07-30.)*
+  - **User chốt hành vi mong muốn (2026-07-30):** project đã tồn tại thì khi nhận chuẩn mới, agent **áp
+    lại theo cấu trúc** và **hỏi user có áp theo không**. Đã đối chiếu: **BOOTSTRAP §Giai đoạn 3a làm
+    đúng như vậy rồi** — chiếu file thật vào bảng tra "cần gì → để đâu", in **BẢNG LỆCH** (`file/nhóm ·
+    đang ở · nên ở · vì sao`, cột "vì sao" phải dẫn đúng dòng bảng tra), rồi *"Đây là ĐỀ XUẤT. Không tự
+    dời. Người dùng gật từng mục thì mới làm, và làm xong phải in lại bảng đối chiếu."* ⇒ **không phải
+    xây thêm cơ chế**; việc còn lại thuần là NÓI ra ở phần người dùng đọc.
 - [ ] **`D:\Zyro\Tool\test\docs_template` nay là bản CŨ** — bản mới nhất (đã tách cowork/nonapp + GUIDE
   đảo cấu trúc) nằm trong repo. Agent Cowork bên kia nên làm việc tiếp trên bản repo; thư mục test/ tôi
   KHÔNG đụng (ngoài phạm vi).
