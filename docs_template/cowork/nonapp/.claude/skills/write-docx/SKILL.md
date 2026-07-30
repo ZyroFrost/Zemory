@@ -5,7 +5,8 @@ description: Edit or produce Word files (.docx) without silently destroying thei
 
 # write-docx — sửa file Word mà không phá cấu trúc
 
-> Chỉ ĐỌC thôi thì dùng `read-office`. Skill này chỉ dùng khi phải GHI.
+> Chỉ ĐỌC thôi thì dùng `read-office` — nó chuyển đổi bằng `markitdown`. Skill này dùng khi phải GHI,
+> và nhớ: **`markitdown` chỉ để ĐỌC** — dựng lại `.docx` từ Markdown là mất sạch bảng · ảnh · mục lục · style.
 
 ## Vấn đề
 
