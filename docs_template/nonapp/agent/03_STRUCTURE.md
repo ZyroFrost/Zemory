@@ -20,7 +20,8 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 ├── AGENTS.md            ★  cửa vào: mô tả sản phẩm + trỏ docs/ (profile: non-app) — chuẩn liên-công-cụ agents.md
 ├── CLAUDE.md            ★  cửa vào thứ 2: CHỈ `@AGENTS.md`. Claude Code đọc CLAUDE.md, KHÔNG đọc AGENTS.md ⇒ thiếu file này là cửa vào không tự nạp
 ├── docs/                ★  harness Y HỆT app: agent/(01_CONSTITUTION·02_RULES·03_STRUCTURE·04_SKILLS·05_TODO·06_CHANGES) · plan/ · .harness.json
-│   └── dictionary.md   [opt] TỪ ĐIỂN DỮ LIỆU: định nghĩa metric/cột/bảng (BI/data NÊN có — chống mỗi report tính 1 kiểu)
+│                            ⚠ TỪ ĐIỂN DỮ LIỆU nằm ở §7 của CHÍNH file này — KHÔNG tạo `docs/dictionary.md`
+├── .claude/skills/      ★  QUY TRÌNH thao tác, mỗi skill một thư mục tự chứa (sổ đăng ký: 04_SKILLS)
 ├── docs_visual/        [opt] sơ đồ/flow/lineage XEM TRỰC QUAN cho NGƯỜI (vd luồng nạp DW) — .html tương tác/.svg;
 │                            NGOÀI docs/, mỗi file có .md chủ trỏ tới + tóm tắt 1–3 dòng
 │ ┄┄ DELIVERABLE — sản phẩm chính giao đi (chọn theo loại, ≥1) ┄┄
@@ -81,14 +82,15 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | phân tích thăm dò | `notebooks/` |
 | data mẫu nhỏ mở được deliverable | `fixtures/` (tracked) |
 | theme / logo / bảng màu report | `assets/` |
-| **tự động KÉO / ĐIỀN / UPLOAD** | `scripts/` (thin) + playbook `04_SKILLS` (§5) |
+| **tự động KÉO / ĐIỀN / UPLOAD** | `scripts/` (thin) + skill `pull/` · `fill/` · `upload/` (§5) |
 | profile workspace/connection operator | `config/` (`.example` tracked · real gitignore) |
 | **raw extract kéo về** (nặng, PII) | `data/extract/` (gitignore) |
 | **file lẻ check nhanh, không thuộc task** | `data/adhoc/` (+ README marker) |
 | data làm việc của 1 task | `data/<task>/` (gitignore, mirror `tasks/`) |
 | bản render/publish sinh ra | `exports/` (gitignore, build lại được) |
 | connection string / token THẬT | `.env` (gitignore) |
-| định nghĩa metric/cột (nguồn sự thật) | `docs/dictionary.md` |
+| định nghĩa metric/cột (nguồn sự thật) | **§7 của file này** — KHÔNG tạo `docs/dictionary.md` |
+| quy trình thao tác lặp lại (playbook) | `.claude/skills/<tên>/SKILL.md` (đăng ký ở `04_SKILLS`) |
 | sơ đồ luồng/lineage xem trực quan | `docs_visual/` (NGOÀI docs/, có .md chủ trỏ tới) |
 | bản cũ deliverable / trước publish | `attic/` (rollback) |
 | tài liệu / rule / plan | `docs/` — sửa FILE `.md` trực tiếp (file wins) |
@@ -108,7 +110,7 @@ Right-size stage     chỉ tạo stage task THẬT cần (2–4 là thường), 
 Launcher .cmd        `<tên>.cmd` ở gốc: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. File .cmd **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse)
 templates ≠ fixtures  templates/ = file TRỐNG chờ ĐIỀN (đổ số ra deliverable) · fixtures/ = data MẪU nhỏ để mở deliverable khỏi cần nguồn thật
 Luật khi VIẾT        đã dời sang `02_RULES §Luật khi VIẾT` (luật nổ lúc viết code, `conform` không kiểm được).
-Từ điển dữ liệu      BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu
+Từ điển dữ liệu      §7 của file này là nhà DUY NHẤT — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu. KHÔNG tạo docs/dictionary.md (một dự án một từ điển; tách ra là chắc chắn lệch)
 Publish/refresh      tự động hóa → scripts/ (§5) · bản render ra → exports/ (gitignore, build lại được)
 Sơ đồ trực quan      .html/.svg xem trực quan (luồng/lineage/lưới bảng) → docs_visual/ (NGOÀI docs/, agent KHÔNG auto-đọc); mỗi file có .md chủ trỏ + tóm tắt
 Harness = app        docs/agent/* + AGENTS.md y hệt app → cùng lệnh zemory, agent điều hướng non-app đúng như app
@@ -119,12 +121,23 @@ Ngoài phạm vi        app có code chạy (UI/server/CLI) → chuẩn APP · l
 ## 5. Tự động hoá — KÉO / ĐIỀN / UPLOAD file
 > Đây là năng lực "hệ file cho AI" của non-app. **AGENT là thứ LÀM** 3 động tác; zemory chỉ **NHỚ + KỶ LUẬT** (index việc/task đã làm vào Global Memory), **KHÔNG tự gọi LLM, KHÔNG tự đi kéo file** (xem `01_CONSTITUTION`: trí tuệ là agent, zemory chỉ là bộ nhớ + kỷ luật). Mỗi động tác = **script THIN ở `scripts/`** + **playbook ở `04_SKILLS`** (recipe cụ thể: kéo nguồn nào, điền template nào, up đi đâu).
 
-- **KÉO (pull):** đọc `sources/` (M/connection/SQL) → kéo raw về `data/extract/` (gitignore). Credential lấy từ `.env`/`config/` — **KHÔNG bao giờ nhập password vào zemory** (mượn phiên login trên trang thật nếu là web). Playbook: `04_SKILLS §pull`.
-- **ĐIỀN (fill):** lấy file `templates/` (trống) + số từ `data/`/`measures/` → xuất deliverable (`reports/`) hoặc `exports/`. Playbook: `04_SKILLS §fill`.
-- **UP (upload/publish):** đẩy deliverable/exports lên đích (workspace BI · Drive · SharePoint) qua `scripts/` hoặc stage `upload` của pipeline. Playbook: `04_SKILLS §upload`.
+- **KÉO (pull):** đọc `sources/` (M/connection/SQL) → kéo raw về `data/extract/` (gitignore). Credential lấy từ `.env`/`config/` — **KHÔNG bao giờ nhập password vào zemory** (mượn phiên login trên trang thật nếu là web). Playbook: `.claude/skills/pull/`.
+- **ĐIỀN (fill):** lấy file `templates/` (trống) + số từ `data/`/`measures/` → xuất deliverable (`reports/`) hoặc `exports/`. Playbook: `.claude/skills/fill/`.
+- **UP (upload/publish):** đẩy deliverable/exports lên đích (workspace BI · Drive · SharePoint) qua `scripts/` hoặc stage `upload` của pipeline. Playbook: `.claude/skills/upload/`.
 - **Ánh xạ pipeline đánh số ↔ playbook (`04_SKILLS`):** stage `00`=gate/pull-precheck · `01`=pull (§pull) · `fill`=fill (§fill) · `upload`=upload (§upload). Task mới bám khuôn số này; script domain cũ (fast/haravan/pos…) giữ nguyên, không ép đánh số.
 
 **Ràng buộc (bất biến):** file THẬT/PII **KHÔNG commit git** (`data/`·`exports/`·`.env` gitignore); chỉ code + định nghĩa + template + deliverable-nhẹ tracked. Xuyên máy cần chia sẻ file nặng → bundle **mã hoá** `share/` (không phải plaintext lên git). Mọi động tác tự động phải **ghi được lại** (task/lần chạy → `06_CHANGES`/`05_TODO`) để phiên sau truy được.
 
 ## 6. Reconcile — nắn repo về chuẩn (khi repo lệch)
-> Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ → skill **[`04_SKILLS §reconcile`](04_SKILLS.md)**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+> Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ → skill **`.claude/skills/reconcile/SKILL.md`**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+
+## 7. Từ điển dữ liệu — metric · cột · thuật ngữ
+> **Nhà DUY NHẤT của từ điển. KHÔNG tạo `docs/dictionary.md`** — một dự án một từ điển, và nó nằm cạnh từ điển tên-slot ở §2/§3: hai thứ cùng trả lời một câu hỏi *"cái này gọi là gì, và ở đâu"*. Tách ra hai file là chắc chắn lệch, mà lệch định nghĩa metric thì **số liệu sai chứ không phải tài liệu sai**.
+>
+> Định nghĩa ở đây là **NGUỒN SỰ THẬT**: `measures/` · `queries/` · script điền đều phải tính đúng như mô tả. Thấy công thức thực tế khác mô tả ⇒ **BÁO**, KHÔNG tự sửa bên nào.
+
+| Tên | Định nghĩa | Công thức / nguồn | Ghi chú |
+|---|---|---|---|
+| *(chưa có — điền khi dự án có metric đầu tiên)* | | | |
+
+**Quy ước:** một dòng một khái niệm · tên viết đúng như trên deliverable giao đi · **đổi định nghĩa là đổi SỐ LIỆU** ⇒ ghi `06_CHANGES` (supersede nếu đảo định nghĩa cũ) và nêu rõ ảnh hưởng tới bản đã phát hành.

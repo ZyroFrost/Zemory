@@ -36,8 +36,17 @@ test("AGENTS.md không liệt kê 03_STRUCTURE trong danh sách ĐỌC HẾT", (
       .split(/\r?\n/)
       .find((l) => l.includes("ĐỌC HẾT"));
     assert.ok(line, `${f}: không tìm thấy dòng "ĐỌC HẾT"`);
+    // Chỉ soi phần LIỆT KÊ. Từ Phase 3 (2026-07-31) chính dòng này cũng là chỗ khai
+    // loại trừ ("`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ này"), nên khớp thô
+    // `/03_STRUCTURE/` là bắt đúng câu tuyên bố loại trừ — báo oan.
+    // 04_SKILLS thì KHÔNG kiểm ở đây: từ Phase 3 nó rời bộ đọc trong hai bản TEMPLATE
+    // (gate `bootstrap-manifest.test.mjs` canh chỗ đó), còn repo NÀY vẫn giữ hình dạng
+    // playbook-inline nên 04 của nó vẫn phải được đọc mỗi phiên. Ghim chung một luật cho
+    // cả hai là bắt repo migrate — việc đó chưa chốt, và ghim trước là gate đỏ vô cớ.
+    const listed = line.split("`03_STRUCTURE` và")[0];
+    assert.ok(listed.includes("01_CONSTITUTION"), `${f}: không đọc được danh sách để kiểm`);
     assert.ok(
-      !/03_STRUCTURE/.test(line),
+      !/03_STRUCTURE/.test(listed),
       `${f}: 03_STRUCTURE bị đưa trở lại danh sách đọc mỗi phiên — nó là từ điển để TRA`,
     );
   }

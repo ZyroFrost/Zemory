@@ -31,8 +31,18 @@ test("ensureHarness(root, 'non-app') scaffolds the NON-APP tree (its own 03 + pr
   const struct = readFileSync(join(root, "docs", "agent", "03_STRUCTURE.md"), "utf8");
   assert.match(struct, /hệ NON-APP/, "scaffolds the NON-APP structure standard, not the app one");
   assert.match(struct, /KÉO \/ ĐIỀN \/ UPLOAD/, "carries the non-app file-automation model");
+  // Phase 3 (2026-07-31): playbooks are skill FILES, and scaffolding them is part of
+  // init — 04_SKILLS only NAMES them now, so a scaffold that skipped .claude/skills/
+  // would hand the project a registry pointing at files that do not exist.
   const skills = readFileSync(join(root, "docs", "agent", "04_SKILLS.md"), "utf8");
-  assert.ok(skills.includes("## pull") && skills.includes("## fill") && skills.includes("## upload"));
+  for (const s of ["pull", "fill", "upload"]) {
+    assert.ok(skills.includes(`\`${s}/\``), `04_SKILLS must register the ${s} skill`);
+    assert.equal(
+      existsSync(join(root, ".claude", "skills", s, "SKILL.md")),
+      true,
+      `.claude/skills/${s}/SKILL.md must be scaffolded, not just registered`,
+    );
+  }
   // The profile is persisted so validate/scaffold agree on later runs.
   const cfg = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8"));
   assert.equal(cfg.profile, "non-app");
@@ -135,7 +145,10 @@ test("validate with profile non-app checks deliverables, never asks for backend/
   rep = validate(loadContext(root));
   msgs = rep.issues.map((i) => i.msg).join("\n");
   assert.doesNotMatch(msgs, /no deliverable folder/);
-  assert.match(msgs, /non-app §7.*reports\//);
+  // "§7" dropped from the message on 2026-07-31: the non-app standard is its OWN file
+  // now, and §7 THERE is the data dictionary — pointing a deliverable warning at it sent
+  // the reader to the wrong section. The profile tag is what matters, not a section number.
+  assert.match(msgs, /structure\[non-app\].*reports\//);
 });
 
 test("validate hints at the non-app profile when there is no code but a deliverable exists", (t) => {

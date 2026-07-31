@@ -302,7 +302,7 @@ Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/no
 > Non-app (BI/report · data · docs-only · design) dùng **`03_STRUCTURE` của hệ non-app** — cấu trúc + routing riêng (deliverable · `tasks/` · `templates/` · `data/` phân tầng · automation pull/fill/upload · **0 luật UI**). Scaffold bằng `zemory init --non-app`; nguồn = template `nonapp/`. File này (app) KHÔNG lặp lại chuẩn đó.
 
 ## 8. Reconcile — nắn repo về chuẩn (khi repo lệch)
-> Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ (A. docs lệch · B. cấu trúc folder lệch · recipe end-to-end) → skill **[`04_SKILLS §reconcile`](04_SKILLS.md)**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+> Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ (A. docs lệch · B. cấu trúc folder lệch · recipe end-to-end) → skill **`.claude/skills/reconcile/`**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
 
 ## 9. UI/UX — TỪ ĐIỂN SLOT thiết kế
 > **Đây là nơi skill thiết kế ADAPT HIỆN RA THẬT.** Skill gốc (đầy đủ) nằm ở `external/skills/` — agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ, rồi **khớp về các slot dưới đây** để ra đúng cấu trúc/ràng buộc của project. Index skill: [`04_SKILLS`](04_SKILLS.md).

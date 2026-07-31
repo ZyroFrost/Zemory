@@ -31,17 +31,35 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
 
   // --- Tool/memory-level features (no project needed) ---
   if (feature === "grill") {
-    // Real check: the grill playbook must actually be present in 04_SKILLS.
+    // Real check: the grill playbook must actually exist. TWO shapes are valid, because
+    // Phase 3 (2026-07-31) moved playbooks out of 04_SKILLS into their own skill files —
+    // and projects scaffolded before that still carry the inline shape. Probing only the
+    // new location would report "off" on a project whose grill works fine, which is worse
+    // than not probing at all: a false "off" sends someone fixing a non-problem.
     const root = configuredRoot;
     if (!root) return { feature, ok: true, state: "on", detail: tr("sẵn sàng (playbook toàn cục)", "ready (global playbook)") };
+    const skillFile = join(root, ".claude", "skills", "grill", "SKILL.md");
+    if (existsSync(skillFile)) {
+      return { feature, ok: true, state: "on", detail: tr("sẵn sàng (skill grill)", "ready (grill skill)") };
+    }
     const skills = join(loadContext(root).docsDir, "04_SKILLS.md");
     if (!existsSync(skills)) {
-      return { feature, ok: false, state: "off", detail: tr("thiếu 04_SKILLS.md", "04_SKILLS.md missing") };
+      return {
+        feature,
+        ok: false,
+        state: "off",
+        detail: tr("thiếu .claude/skills/grill/ và 04_SKILLS.md", ".claude/skills/grill/ and 04_SKILLS.md both missing"),
+      };
     }
     const hasGrill = /##\s*grill/i.test(readFileSync(skills, "utf8"));
     return hasGrill
-      ? { feature, ok: true, state: "on", detail: tr("sẵn sàng (04_SKILLS §grill)", "ready (04_SKILLS §grill)") }
-      : { feature, ok: false, state: "off", detail: tr("04_SKILLS thiếu §grill", "04_SKILLS has no §grill") };
+      ? { feature, ok: true, state: "on", detail: tr("sẵn sàng (04_SKILLS §grill — bản cũ)", "ready (04_SKILLS §grill — legacy)") }
+      : {
+          feature,
+          ok: false,
+          state: "off",
+          detail: tr("không thấy grill (skill hay §grill)", "no grill found (skill file or §grill)"),
+        };
   }
 
   // 'memory' covers both keyword search and recall (one memory, one check).

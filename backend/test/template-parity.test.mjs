@@ -23,8 +23,13 @@ const STANDARD = [
   "plan/00_overview.md",
 ];
 // Files that MUST be identical across the two profiles (the profile-neutral shells).
+// AGENTS.md is NOT in this list since Phase 3 (2026-07-31): its trigger table names
+// the skills each profile actually ships, and non-app ships three more (pull · fill ·
+// upload). Byte-identity there would force the app tree to advertise skills it does
+// not have — a pointer to a missing file is worse than an admitted difference. The
+// part that still must not drift (the router that asks app-vs-non-app) is compared
+// separately below, prefix-wise.
 const SHARED = [
-  "AGENTS.md",
   // CLAUDE.md is a pure `@AGENTS.md` import — profile-neutral by construction, so
   // any drift between the two trees would be an accident, not a design choice.
   "CLAUDE.md",
@@ -55,6 +60,20 @@ test("shared harness shells are byte-identical across app and non-app (no drift)
   }
 });
 
+test("AGENTS.md: the router half stays byte-identical, only the trigger table differs", () => {
+  // Everything before the trigger table is the profile-NEUTRAL router (stop-and-ask,
+  // app-vs-non-app explainer, load contract). That half must not drift; the table
+  // below it is per-profile by design because the two trees ship different skills.
+  const MARK = "## Mở khi trúng trigger";
+  const halves = PROFILES.map((p) => {
+    const t = read(p, "AGENTS.md");
+    assert.ok(t.includes(MARK), `${p}/AGENTS.md has no trigger section — the skills have no way in`);
+    return t.slice(0, t.indexOf(MARK));
+  });
+  assert.equal(halves[0], halves[1], "the router half of AGENTS.md must be byte-identical across profiles");
+  assert.ok(halves[0].includes("01_CONSTITUTION"), "sanity: the router half must contain the load contract");
+});
+
 test("AGENTS.md makes every agent ASK app-vs-non-app before applying the standard", () => {
   // User 2026-07-23: any agent opening a fresh repo must ask the user which
   // profile, then explain both — so it never guesses the wrong structure.
@@ -75,10 +94,17 @@ test("non-app standard drops UI rules and adds the file-automation model", () =>
   const nonappStruct = read("nonapp", "agent/03_STRUCTURE.md");
   assert.match(nonappStruct, /KÉO \/ ĐIỀN \/ UPLOAD/, "non-app structure must document pull/fill/upload");
   assert.match(nonappStruct, /adhoc ≠ task/, "non-app structure must state the adhoc-vs-task rule");
-  // The non-app skills carry the automation playbooks.
-  const nonappSkills = read("nonapp", "agent/04_SKILLS.md");
-  for (const s of ["## pull", "## fill", "## upload"]) {
-    assert.ok(nonappSkills.includes(s), `non-app skills must include the ${s} playbook`);
+  // The non-app tree carries the automation playbooks — as skill FILES since Phase 3,
+  // and named in the registry, because a playbook nobody registered never gets opened.
+  const nonappRegistry = read("nonapp", "agent/04_SKILLS.md");
+  const appRegistry = read("app", "agent/04_SKILLS.md");
+  for (const s of ["pull", "fill", "upload"]) {
+    assert.doesNotThrow(
+      () => read("nonapp", `.claude/skills/${s}/SKILL.md`),
+      `non-app must ship .claude/skills/${s}/SKILL.md`,
+    );
+    assert.ok(nonappRegistry.includes(`\`${s}/\``), `non-app registry must list the ${s} skill`);
+    assert.ok(!appRegistry.includes(`\`${s}/\``), `the app registry must NOT list ${s} (no file automation there)`);
   }
 });
 
