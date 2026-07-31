@@ -353,9 +353,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .pjhead .back:hover{color:var(--primary)}
 /* Thông báo kết quả quét — màu theo KẾT QUẢ để nhìn ra ngay (user 2026-07-27: chữ xám
    nhạt lẫn vào nền). CÓ tin mới = vàng nổi bật, không có = xám im lặng. */
-.scanmsg{font-size:11.5px;margin-top:8px;min-height:1em;color:var(--text-faint)}
-.scanmsg.run{color:var(--text-dim)}
-.scanmsg.none{color:var(--text-faint)}
+/* Dòng trạng thái quét/đồng bộ. Trước đây dùng --text-faint nên gần như đọc không
+   ra (user 2026-07-30: "chữ quét đang mờ ko thấy rõ") — mà đây đúng là chỗ người dùng
+   nhìn để biết máy đang làm gì. Nay: chữ to hơn, màu chữ thường, và trạng thái ĐANG CHẠY
+   có chấm xoay để phân biệt với kết quả đứng yên. */
+.scanmsg{font-size:12.5px;margin-top:8px;min-height:1.2em;color:var(--text)}
+.scanmsg.run{color:var(--text);font-weight:600;display:flex;align-items:center;gap:7px}
+.scanmsg.run::before{content:'';width:11px;height:11px;border:2px solid var(--primary);border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
+.scanmsg.none{color:var(--text-dim)}
+@keyframes zspin{to{transform:rotate(360deg)}}
 .scanmsg.hit{color:var(--primary);font-weight:600;background:var(--wash);border:1px solid var(--primary-dim);border-radius:7px;padding:5px 9px}
 /* Mốc kiểm chứng của Drive: nhãn trái, số phải; đỏ lên khi lần đẩy cũ hơn tin mới nhất. */
 .drv-facts{display:flex;flex-direction:column;gap:3px;margin:8px 0 10px;font-size:11.5px}
@@ -386,3 +392,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .hit .att-n{color:var(--text-faint);font-size:10.5px;margin-left:5px}
 #imgDlgBody{display:grid;place-items:center;background:var(--surface-2);padding:10px}
 #imgDlgBody img{max-width:100%;max-height:100%;object-fit:contain}
+
+/* Bảng "Liên kết" dưới Sources — nguồn nào còn nối / đứt. Màu đi qua token như mọi
+   chỗ khác (light mode tự đảo theo bộ biến, không hardcode). */
+.conn-ok{color:var(--success);font-weight:700}
+.conn-bad{color:var(--warn);font-weight:700}
+.conn-unk{color:var(--text-faint)}

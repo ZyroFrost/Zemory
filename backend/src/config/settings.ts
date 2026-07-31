@@ -48,6 +48,8 @@ interface ZConfig {
   syncLevel?: SyncLevel;
   /** L3: chở blob đính kèm trong bundle sync (mặc định TẮT — xem getSyncAttachments). */
   syncAttachments?: boolean;
+  /** Kết quả kiểm đăng nhập gần nhất của từng nền web — xem getWebAuth. */
+  webAuth?: Record<string, { ok: boolean; at: string; who?: string }>;
 }
 
 /** Cross-machine sync depth (plan 08 §7).
@@ -168,6 +170,23 @@ export function getSyncAttachments(): boolean {
 export function setSyncAttachments(on: boolean): void {
   const c = read();
   c.syncAttachments = on;
+  write(c);
+}
+
+/**
+ * Kết quả kiểm đăng nhập GẦN NHẤT của từng nền web.
+ *
+ * Kiểm thật thì phải mở trình duyệt, nên bảng "Liên kết" không thể tự kiểm mỗi lần vẽ.
+ * Nó hiện kết quả lần cuối KÈM thời điểm — nói rõ mình đang trưng số cũ, thay vì đoán
+ * "chắc còn nối" (điều 12). Không có bản ghi ⇒ hiện "chưa kiểm lần nào", khác hẳn "đứt".
+ */
+export function getWebAuth(): Record<string, { ok: boolean; at: string; who?: string }> {
+  const v = read().webAuth;
+  return v && typeof v === "object" ? v : {};
+}
+export function setWebAuth(platform: string, ok: boolean, who?: string): void {
+  const c = read();
+  c.webAuth = { ...(c.webAuth ?? {}), [platform]: { ok, at: new Date().toISOString(), ...(who ? { who } : {}) } };
   write(c);
 }
 

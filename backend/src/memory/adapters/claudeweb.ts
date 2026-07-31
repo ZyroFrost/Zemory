@@ -14,9 +14,9 @@
 //
 // Giữ nguyên lớp FULL (điều 3 + quyết định 2026-07-26): KHÔNG cắt, KHÔNG tóm tắt.
 
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { imageAttachment, imageLabel, safeReaddir, toTranscript } from "./_shared.js";
+import { imageAttachment, imageLabel, readProjectMap, safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedAttachment, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
 
 interface ClaudeBlock {
@@ -41,6 +41,8 @@ interface ClaudeConv {
   chat_messages?: ClaudeMsg[];
   project_uuid?: string;
   project?: { name?: string; uuid?: string };
+  /** Tên Project do `memory scan-web` dập vào (map uuid→tên lấy từ `…/projects`). */
+  __zemory_project?: string;
 }
 
 /** Một message → text đầy đủ. Khối tool được GIỮ, gắn nhãn như adapter Claude Code
@@ -109,6 +111,12 @@ export const claudeWebAdapter: Adapter = {
         ? ((data as { conversations: ClaudeConv[] }).conversations)
         : [];
 
+    // Map uuid→tên Project, đặt cạnh transcript dưới dạng `_projects.json` (do
+    // `scan-web` ghi). Cần vì payload CHI TIẾT của claude.ai — thứ được ghi ra file —
+    // chỉ có `project_uuid`, còn `project` thì NULL (đo 2026-07-30); danh sách phẳng
+    // mới có `project:{name}`. Thiếu map ⇒ nhãn project_root là uuid thô.
+    const projectNames = readProjectMap(dirname(filePath));
+
     const out: ParsedSessionMulti[] = [];
     for (const conv of convs) {
       if (!conv || typeof conv !== "object") continue;
@@ -131,11 +139,20 @@ export const claudeWebAdapter: Adapter = {
       }
       if (!messages.length) continue;
       const cid = conv.uuid ?? String(out.length);
+      // Project ("folder") của claude.ai → project_root để recall lọc được. Thứ tự:
+      // tên do scan-web dập → tên tra từ `_projects.json` → `project.name` (chỉ có ở
+      // danh sách phẳng) → uuid thô (vẫn gom đúng nhóm, chỉ là nhãn khó đọc).
+      const puuid = conv.project_uuid?.trim() || conv.project?.uuid?.trim() || undefined;
+      const project =
+        conv.__zemory_project?.trim() ||
+        (puuid && projectNames[puuid]?.trim()) ||
+        conv.project?.name?.trim() ||
+        puuid ||
+        undefined;
       out.push({
         sessionId: `claudeweb-${cid}`,
         title: conv.name?.trim() || undefined,
-        // Project ("folder") của claude.ai → dùng làm project_root để recall lọc được.
-        project: conv.project?.name?.trim() || conv.project_uuid || undefined,
+        project,
         messages,
       });
     }

@@ -2,6 +2,7 @@
 //  import|forget|redact|backup|restore|relocate|vacuum|bench>` — the global
 // Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
 import { readFileSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { basename, resolve } from "node:path";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
@@ -11,6 +12,7 @@ import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory
 import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
 import { scanWeb } from "../memory/scanweb.js";
+import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, storageInfo } from "../memory/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "../memory/search.js";
 import {
@@ -34,6 +36,37 @@ import { flagValue, positionalArgs } from "./_shared.js";
 
 function fmtDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
+}
+
+/**
+ * The "log in / log in AGAIN" prompt for `scan-web`.
+ *
+ * A web session expires or gets signed out, and the old flow just stopped with a
+ * message telling the user to re-run — including when the browser was already open
+ * (so the message claimed a window had been opened when none had). Now scanWeb opens
+ * and focuses the window, then asks here, then re-checks — the run continues in place.
+ *
+ * Returns undefined when stdin is NOT a TTY: a daemon child or a piped run must never
+ * block on a question nobody can answer, so it falls back to reporting 'need-login'.
+ */
+function loginPrompt(): ((ctx: { platform: string; url: string; expired: boolean }) => Promise<boolean>) | undefined {
+  if (!process.stdin.isTTY) return undefined;
+  return async ({ platform, url, expired }) => {
+    console.log("");
+    console.log(
+      expired
+        ? `  ⚠ The ${platform} session EXPIRED mid-run — everything pulled so far is already saved.`
+        : `  → Not signed in to ${platform} (or the session expired).`,
+    );
+    console.log(`     A browser window is open at ${url}. Sign in there — the password stays in the browser and never touches zemory.`);
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const a = await rl.question("     Press Enter when you are signed in, or type s to stop: ");
+      return a.trim().toLowerCase() !== "s";
+    } finally {
+      rl.close();
+    }
+  };
 }
 
 function printDigest(d: Digest): void {
@@ -214,7 +247,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       return;
     }
     console.log(`zemory memory scan-web — ${platform} (web-chat capture, origin=web)`);
-    const r = await scanWeb({ platform, refresh, limit, delayMs }, (m) => console.log("  " + m));
+    const r = await scanWeb({ platform, refresh, limit, delayMs, onNeedLogin: loginPrompt() }, (m) => console.log("  " + m));
     if (r.status === "no-browser") {
       console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
       process.exitCode = 1;
@@ -226,18 +259,56 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       return;
     }
     if (r.status === "need-login") {
-      console.log(`  → A dedicated browser window is open at ${r.url}. Log in to YOUR account there (one time — password stays in the browser, never touches zemory), then re-run \`zemory memory scan-web\`.`);
+      // Two shapes: never signed in, or the session died mid-backfill. The second
+      // one already pulled something, so say what survived instead of implying the
+      // run did nothing.
+      if (r.authExpired) {
+        console.log(`  ⚠ the ${platform} session expired mid-run and was not restored.`);
+        console.log(`     saved so far: pulled ${r.pulled} · skipped ${r.skipped} · failed ${r.failed} (already ingested — nothing lost).`);
+        console.log(`     Log in at ${r.url} in the open window, then re-run \`zemory memory scan-web --platform ${platform}\` to resume.`);
+      } else {
+        console.log(`  → A dedicated browser window is open at ${r.url}. Log in to YOUR account there (one time — password stays in the browser, never touches zemory), then re-run \`zemory memory scan-web --platform ${platform}\`.`);
+      }
+      process.exitCode = 1;
       return;
     }
     console.log(`  ✓ signed in as ${r.email ?? "?"} · ${r.total} conversation(s) on the account`);
     console.log(`  ↓ pulled ${r.pulled} new · skipped ${r.skipped} (already ingested) · failed ${r.failed}`);
     if (r.scan) {
-      const web = r.scan.agents.find((a) => a.source.endsWith("-web"));
+      // THIS platform's lane, not "the first web-looking one": a claude pull used to
+      // sign off with ChatGPT's 859 sessions, which reads as if it captured them.
+      const web = r.scan.agents.find((a) => a.source === r.source);
       if (web) console.log(`  ⤷ memory now holds ${web.source}: ${web.sessions} session(s), ${web.messages} message(s)`);
       console.log("  → vectorize the new ones: `zemory memory embed --all`");
     }
     if (r.interrupted) console.log("  ⚠ connection dropped mid-run — pulled batches are saved. Re-run `zemory memory scan-web` to resume the rest.");
     if (r.failed) console.log("  note: some failed (rate-limit?) — just re-run to resume; it skips what's already in.");
+    return;
+  }
+  if (sub === "borrow-cookies") {
+    // Mượn phiên ĐÃ đăng nhập từ trình duyệt thật, để không ai phải gõ mật khẩu vào
+    // cửa sổ do zemory mở. Chỉ chở cookie của ĐÚNG một nền; giá trị cookie không bao
+    // giờ được đọc, chỉ xoá dòng không thuộc nền đó.
+    const platform = flagValue(args, "--platform") ?? "chatgpt";
+    const from = flagValue(args, "--from");
+    const profile = flagValue(args, "--profile");
+    const replace = args.includes("--replace");
+    if (args.includes("--list")) {
+      const srcs = cookieSources();
+      if (!srcs.length) console.log("  no Chrome/Edge profile store found on this machine.");
+      for (const s of srcs) console.log(`  ${s.key.padEnd(7)} ${s.label} — profiles: ${listSourceProfiles(s).join(" · ") || "(none)"}`);
+      return;
+    }
+    const r = borrowCookies({ platform, from, profile, replace });
+    if (!r.ok) {
+      console.log(`  ✗ ${r.error}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`  ✓ borrowed the ${platform} session from ${r.source} profile '${r.sourceProfile}'`);
+    console.log(`     kept ${r.kept} cookie(s) for this site · dropped ${r.dropped} belonging to everything else (never read, just deleted)`);
+    console.log(`     that profile will open in ${basename(r.browser ?? "?")} — the key only unwraps in the browser it came from.`);
+    console.log(`  → now run: zemory memory scan-web --platform ${platform}`);
     return;
   }
   if (sub === "scope") {
@@ -803,10 +874,15 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  scan              ingest agent transcripts from known locations into the",
       "                    global memory (~/.zemory/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
-      "  scan-web [--platform chatgpt] [--limit N] [--refresh]",
-      "                    capture web-chat (ChatGPT) via a login-once browser window",
-      "                    (origin=web). Ingests in batches + resumes; --limit N pulls",
-      "                    the N newest for a quick verify.",
+      "  scan-web [--platform chatgpt|claude] [--limit N] [--refresh]",
+      "                    capture web-chat (ChatGPT · claude.ai) via a login-once browser",
+      "                    window (origin=web). Ingests in batches + resumes; --limit N pulls",
+      "                    the N newest for a quick verify. Session expired or signed out →",
+      "                    it opens the window and ASKS, then continues in place.",
+      "  borrow-cookies --platform <chatgpt|claude> [--from chrome|edge] [--profile Default] [--replace]",
+      "                    reuse the session ALREADY signed in in your own browser, so no",
+      "                    password is typed anywhere. Copies ONE site's cookies, deletes",
+      "                    every other row, never reads a cookie value. --list shows sources.",
       "  search <q> [--all] recall across the memory (scope: current project; --all = everywhere).",
       "  embed [--limit N] [--all] [--rebuild]",
       "                    build the semantic vector index (RAG, local EmbeddingGemma).",

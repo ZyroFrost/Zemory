@@ -9,7 +9,7 @@
 
 import { basename, dirname, join } from "node:path";
 import { readFileSync } from "node:fs";
-import { imageAttachment, imageLabel, safeReaddir, toTranscript } from "./_shared.js";
+import { imageAttachment, imageLabel, readProjectMap, safeReaddir, toTranscript } from "./_shared.js";
 import type { Adapter, ParsedAttachment, ParsedMessage, ParsedSessionMulti, TranscriptFile } from "./types.js";
 
 export const chatgptAdapter: Adapter = {
@@ -80,17 +80,6 @@ export const chatgptAdapter: Adapter = {
     return out.length ? out : null;
   },
 };
-
-/** Load the gizmo-id → project-name map dropped next to the transcript as
- *  `_projects.json` ({"g-p-…":"Video-Music Maker", …}). Absent/bad → {}. */
-function readProjectMap(dir: string): Record<string, string> {
-  try {
-    const m = JSON.parse(readFileSync(join(dir, "_projects.json"), "utf8"));
-    return m && typeof m === "object" ? (m as Record<string, string>) : {};
-  } catch {
-    return {};
-  }
-}
 
 /** Walk the active branch (current_node → parent → root), reverse to
  *  chronological, and emit user/assistant messages with real text. */

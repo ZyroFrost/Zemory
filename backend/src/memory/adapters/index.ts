@@ -11,6 +11,7 @@
 
 import { chatgptAdapter } from "./chatgpt.js";
 import { claudeWebAdapter } from "./claudeweb.js";
+import { coworkAdapter } from "./cowork.js";
 import { claudeAdapter } from "./claude.js";
 import { codexAdapter } from "./codex.js";
 import { continueAdapter } from "./continue.js";
@@ -18,7 +19,7 @@ import { lmstudioAdapter } from "./lmstudio.js";
 import type { Adapter } from "./types.js";
 
 export function allAdapters(): Adapter[] {
-  return [claudeAdapter, codexAdapter, continueAdapter, lmstudioAdapter, chatgptAdapter, claudeWebAdapter];
+  return [claudeAdapter, codexAdapter, continueAdapter, lmstudioAdapter, chatgptAdapter, claudeWebAdapter, coworkAdapter];
 }
 
 export type { Adapter, ParsedLine, ParsedMessage, ParsedSession, ParsedSessionMulti, TranscriptFile } from "./types.js";
