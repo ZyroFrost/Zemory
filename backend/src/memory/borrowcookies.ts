@@ -1,0 +1,262 @@
+// Borrow an ALREADY SIGNED-IN session from the browser the user actually uses, so
+// nobody has to type a password into a window zemory opened.
+//
+// Why this exists (user, 2026-07-30): being asked for a password is both annoying and
+// suspicious-looking — *"cookie là cái có sẵn thì phải xài"*. Correct: a live session
+// already sits in their normal Chrome/Edge profile. This moves that ONE session across.
+//
+// WHAT IT DOES NOT DO — this is the whole design, not a disclaimer:
+//   · never reads a cookie VALUE. It copies the file, then DELETES the rows that do not
+//     belong to the target site. Decryption happens only inside the browser, as always.
+//   · never touches passwords. `Login Data` is not copied; nothing here can read one.
+//   · borrows ONE site's cookies, not the jar. Copying the whole store would park the
+//     user's bank/mail sessions inside zemory's profile — worse than one login prompt.
+//
+// LIMITS, measured or documented, so nobody is sold magic:
+//   · the source profile must ACTUALLY be signed in. A cookie is a session, not a
+//     password: if the source is signed out too, there is nothing to borrow.
+//   · the target profile must be opened by the SAME browser the cookies came from —
+//     App-Bound Encryption ties the key in `Local State` to that browser. That is why
+//     the brand marker is written here.
+//   · the browser may hold the cookie file open; on Windows the copy usually still
+//     works, and if it does not the user closes the browser and retries.
+//   · Chromium hardens against exactly this shape every release. It can break on an
+//     update — that is the cost of this route, and it is the user's call to take it.
+
+import Database from "better-sqlite3";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { currentMemoryDir } from "./db.js";
+
+export interface CookieSource {
+  key: string;
+  label: string;
+  userData: string;
+  exe: string;
+}
+
+const WIN = process.platform === "win32";
+const LOCAL = process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local");
+
+/** Where each browser keeps its profiles + which binary must reopen them. */
+export function cookieSources(): CookieSource[] {
+  if (!WIN) return [];
+  return [
+    {
+      key: "chrome",
+      label: "Google Chrome",
+      userData: join(LOCAL, "Google", "Chrome", "User Data"),
+      exe: ["C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"].find((p) => existsSync(p)) ?? "",
+    },
+    {
+      key: "edge",
+      label: "Microsoft Edge",
+      userData: join(LOCAL, "Microsoft", "Edge", "User Data"),
+      exe: ["C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"].find((p) => existsSync(p)) ?? "",
+    },
+  ].filter((s) => existsSync(s.userData) && s.exe);
+}
+
+/** Profiles inside one browser's User Data ("Default", "Profile 2", …). */
+export function listSourceProfiles(src: CookieSource): string[] {
+  try {
+    return readdirSync(src.userData).filter((d) => (d === "Default" || d.startsWith("Profile ")) && existsSync(join(src.userData, d, "Network", "Cookies")));
+  } catch {
+    return [];
+  }
+}
+
+/** Cookie hosts a platform needs. Kept narrow ON PURPOSE — see the header. */
+const PLATFORM_HOSTS: Record<string, string[]> = {
+  chatgpt: ["chatgpt.com", "openai.com"],
+  claude: ["claude.ai", "anthropic.com"],
+};
+
+export interface BorrowResult {
+  ok: boolean;
+  platform: string;
+  source?: string;
+  sourceProfile?: string;
+  /** How many cookie rows survived pruning (i.e. belong to the target site). */
+  kept?: number;
+  /** How many rows were dropped as none of zemory's business. */
+  dropped?: number;
+  browser?: string;
+  /** Bản profile cũ được dời sang một bên — gọi restoreProfile() để trả lại nguyên trạng. */
+  backup?: string;
+  error?: string;
+}
+
+export interface BorrowOptions {
+  platform: string;
+  /** "chrome" | "edge"; default = the first source that has the platform's cookies. */
+  from?: string;
+  /** Source profile folder name; default "Default". */
+  profile?: string;
+  /** Overwrite an existing zemory profile for this platform. */
+  replace?: boolean;
+  /** Test seam: where zemory's browser profiles live. */
+  browserRoot?: string;
+  /** Test seam: use this source list instead of probing the real browsers. */
+  sources?: CookieSource[];
+}
+
+/** Count rows per host in a cookie DB. Names only — values are never read. */
+function hostCounts(dbPath: string, hosts: string[]): number {
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
+    const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE ${like}`).get(...hosts.map((h) => `%${h}`)) as { n: number };
+    return row?.n ?? 0;
+  } finally {
+    db.close();
+  }
+}
+
+export interface BorrowSource {
+  from: string;
+  label: string;
+  profile: string;
+  cookies: number;
+}
+
+/**
+ * First real browser profile that ACTUALLY holds a session for this platform.
+ *
+ * The UI asks this before offering "borrow" — offering a button that then fails with
+ * "your browser is signed out too" is worse than not offering it. Counts rows only.
+ */
+export function findBorrowSource(platform: string): BorrowSource | null {
+  const hosts = PLATFORM_HOSTS[platform];
+  if (!hosts || !WIN) return null;
+  for (const src of cookieSources()) {
+    for (const profile of listSourceProfiles(src)) {
+      try {
+        const n = hostCounts(join(src.userData, profile, "Network", "Cookies"), hosts);
+        if (n > 0) return { from: src.key, label: src.label, profile, cookies: n };
+      } catch {
+        /* locked/unreadable profile — try the next one */
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Copy ONE site's live session from a real browser profile into zemory's profile for
+ * that platform. Returns what it kept/dropped so the caller can report honestly.
+ */
+export function borrowCookies(opts: BorrowOptions): BorrowResult {
+  const platform = opts.platform;
+  const hosts = PLATFORM_HOSTS[platform];
+  if (!hosts) return { ok: false, platform, error: `unknown platform '${platform}' (chatgpt · claude)` };
+  if (!WIN) return { ok: false, platform, error: "borrowing cookies is implemented for Windows browsers only" };
+
+  const sources = opts.sources ?? cookieSources();
+  if (!sources.length) return { ok: false, platform, error: "no Chrome/Edge installation found" };
+  const src = opts.from ? sources.find((s) => s.key === opts.from) : sources[0];
+  if (!src) return { ok: false, platform, error: `unknown source '${opts.from}' (${sources.map((s) => s.key).join(" · ")})` };
+
+  const profile = opts.profile ?? "Default";
+  const srcCookies = join(src.userData, profile, "Network", "Cookies");
+  const srcLocalState = join(src.userData, "Local State");
+  if (!existsSync(srcCookies)) return { ok: false, platform, source: src.key, error: `no cookie store at ${srcCookies}` };
+
+  // Nothing to borrow if the source is signed out too — say so instead of producing an
+  // empty profile that fails later with a confusing "please log in".
+  let available: number;
+  try {
+    available = hostCounts(srcCookies, hosts);
+  } catch (e) {
+    return { ok: false, platform, source: src.key, error: `cannot read the source cookie store (browser may hold it open): ${e instanceof Error ? e.message : e}` };
+  }
+  if (!available) {
+    return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' has no ${hosts[0]} cookies — sign in there first, or pick another --profile` };
+  }
+
+  const target = join(opts.browserRoot ?? join(currentMemoryDir(), "browser"), platform);
+  if (existsSync(target) && readdirSync(target).length && !opts.replace) {
+    return { ok: false, platform, source: src.key, error: `zemory already has a ${platform} browser profile — pass --replace to overwrite it (its current session is lost)` };
+  }
+  // ĐỔI CHỖ, KHÔNG XOÁ. Đo 2026-07-30: cookie mượn về KHÔNG chắc mở được phiên (App-Bound
+  // Encryption), mà profile bị thay có thể đang đăng nhập ngon lành — xoá thẳng là biến
+  // một nút "thử xem có mượn được không" thành nút phá. Người gọi kiểm xong: mượn được
+  // thì dọn bản lùi, không được thì `restoreProfile()` trả nguyên trạng.
+  let backup: string | undefined;
+  if (existsSync(target)) {
+    backup = `${target}.bak-${process.hrtime.bigint().toString(36)}`;
+    try {
+      renameSync(target, backup);
+    } catch {
+      backup = undefined;
+      rmSync(target, { recursive: true, force: true }); // bị khoá — không còn đường nào khác
+    }
+  }
+  mkdirSync(join(target, "Default", "Network"), { recursive: true });
+
+  try {
+    copyFileSync(srcLocalState, join(target, "Local State")); // holds the app-bound key
+    // KHÔNG copyFileSync cho cookie DB: Chromium chạy WAL, nên phần ghi gần nhất — đúng
+    // cái cookie phiên vừa đăng nhập — còn nằm ở `Cookies-wal`, chưa vào file chính.
+    // Chép file trần khi trình duyệt đang mở là lấy về một bản CŨ, và triệu chứng của nó
+    // là "mượn xong vẫn báo chưa đăng nhập". `VACUUM INTO` đọc qua SQLite nên gộp cả WAL
+    // và cho một bản sao nhất quán. (Đọc read-only ⇒ không đụng gì tới file gốc.)
+    const srcDb = new Database(srcCookies, { readonly: true });
+    try {
+      srcDb.prepare("VACUUM INTO ?").run(join(target, "Default", "Network", "Cookies"));
+    } finally {
+      srcDb.close();
+    }
+  } catch (e) {
+    rmSync(target, { recursive: true, force: true });
+    if (backup) renameSync(backup, target);
+    return { ok: false, platform, source: src.key, error: `copy failed (close ${src.label} and retry): ${e instanceof Error ? e.message : e}` };
+  }
+
+  // PRUNE: keep only the target site. This is the step that makes the feature defensible
+  // — zemory's profile ends up holding one site's session, not the user's whole life.
+  let kept: number;
+  let dropped: number;
+  try {
+    const db = new Database(join(target, "Default", "Network", "Cookies"));
+    try {
+      const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
+      const args = hosts.map((h) => `%${h}`);
+      const before = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;
+      db.prepare(`DELETE FROM cookies WHERE NOT (${like})`).run(...args);
+      kept = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;
+      dropped = before - kept;
+      db.exec("VACUUM");
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    rmSync(target, { recursive: true, force: true }); // never leave a half-pruned jar behind
+    if (backup) renameSync(backup, target); // trả lại profile cũ
+    return { ok: false, platform, source: src.key, error: `pruning failed, nothing kept: ${e instanceof Error ? e.message : e}` };
+  }
+
+  // The copied key can only be unwrapped by the browser it came from.
+  writeFileSync(join(target, ".zemory-browser"), src.exe, "utf8");
+  return { ok: true, platform, source: src.key, sourceProfile: profile, kept, dropped, browser: src.exe, backup };
+}
+
+/** Trả profile về trạng thái trước khi mượn (mượn không ăn thì không được để lại hậu quả). */
+export function restoreProfile(target: string, backup: string): void {
+  try {
+    rmSync(target, { recursive: true, force: true });
+    renameSync(backup, target);
+  } catch {
+    /* fail-open: bản lùi vẫn nằm cạnh đó, người dùng đổi tên tay được */
+  }
+}
+
+/** Dọn bản lùi khi đã chắc chắn không cần nữa. */
+export function dropBackup(backup: string): void {
+  try {
+    rmSync(backup, { recursive: true, force: true });
+  } catch {
+    /* để lại cũng vô hại */
+  }
+}

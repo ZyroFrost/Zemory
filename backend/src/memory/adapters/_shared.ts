@@ -1,7 +1,7 @@
 // Small filesystem + text helpers shared by adapters.
 
 import { createHash } from "node:crypto";
-import { readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { ParsedAttachment, TranscriptFile } from "./types.js";
 
@@ -86,6 +86,20 @@ export function imageAttachment(block: unknown): ParsedAttachment | null {
 /** Nhãn một dòng để lại trong `content` — người đọc và FTS vẫn thấy "có ảnh ở đây". */
 export function imageLabel(a: ParsedAttachment): string {
   return `[image:${a.mime ?? "?"} ${(a.bytes / 1024).toFixed(0)}KB ${a.sha256.slice(0, 12)}]`;
+}
+
+/** Load the project-id → project-name map dropped next to the transcript as
+ *  `_projects.json` ({"g-p-…":"Video-Music Maker", …}) by `memory scan-web`, or
+ *  seeded by hand for a bulk "Export data" dump (which carries ids only).
+ *  Absent/bad → {}. Shared: both web adapters resolve project labels this way —
+ *  ChatGPT keys it by `gizmo_id`, claude.ai by `project_uuid`. */
+export function readProjectMap(dir: string): Record<string, string> {
+  try {
+    const m = JSON.parse(readFileSync(join(dir, "_projects.json"), "utf8"));
+    return m && typeof m === "object" ? (m as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
 }
 
 export function safeReaddir(p: string): string[] {

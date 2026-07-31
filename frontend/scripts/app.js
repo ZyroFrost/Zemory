@@ -271,7 +271,6 @@
   });
   renderHarness();
   // fake graph
-
   // ── Per-project code graph + folder tree beside it (nodes=files, label=file name,
   //    edges=imports). Structure ↔ graph sync · zoom/pan · kéo node · Ctrl+Z · layouts.
   // gSelIds = NGUỒN SỰ THẬT của lựa chọn trên graph (1 hoặc nhiều node) — xem gPaintSel().
@@ -757,7 +756,6 @@
   function zGet(u){return fetch(u).then(function(r){return r.json();});}
   function zPost(u){return fetch(u,{method:'POST'}).then(function(r){return r.json();});}
   var Z={status:null,mem:null,auto:null,checks:{}};
-
   function renderMem(m){
     Z.mem=m||{};
     var tot=m.totals||{},vec=m.vectors||{},cap=m.coverage||{};
@@ -1209,14 +1207,103 @@
   document.addEventListener('input',function(e){if(e.target&&e.target.id==='pjSearch')pjRerender();});
   document.addEventListener('change',function(e){if(e.target&&(e.target.id==='pjType'||e.target.id==='pjSort')){try{localStorage.setItem('zemory.'+e.target.id,e.target.value);}catch(_){}pjRerender();}});
   (function(){try{var pt=localStorage.getItem('zemory.pjType');if(pt&&zid('pjType'))zid('pjType').value=pt;var pss=localStorage.getItem('zemory.pjSort');if(pss&&zid('pjSort'))zid('pjSort').value=pss;}catch(_){}})();
+  /** Bật/tắt trạng thái ĐANG CHẠY (chấm xoay) cho một dòng trạng thái — dùng chung cho
+   *  cả Quét lẫn Đồng bộ, một cơ chế, không mỗi chỗ một kiểu. */
+  function zrun(id,on){var e=zid(id);if(e)e.classList.toggle('run',!!on);}
   function renderStatus(s){Z.status=s||{};}
+  // ── Kèm web chat: tóm tắt + HỎI ĐĂNG NHẬP ──────────────────────────────────
+  // Quét web chạy KHÔNG tương tác ở phía server (giữ request HTTP mở để chờ người dùng
+  // đăng nhập là treo daemon), nên server chỉ MỞ cửa sổ đăng nhập rồi trả 'need-login'.
+  // Nền nào đứt thì hiện ở bảng LIÊN KẾT bên dưới Sources, KHÔNG nhảy hộp thoại ra hỏi.
+  function webTail(rows){
+    if(!rows||!rows.length)return '';
+    var got=0;
+    rows.forEach(function(w){got+=(w.pulled||0);});
+    return ' · '+t('scan.web').replace('{n}',zN(got));
+  }
+  /** Bảng LIÊN KẾT dưới Sources. Thay cho hộp thoại tự nhảy giữa lúc quét — trạng thái
+   *  được TRƯNG ra để nhìn, và người dùng bấm nối lại khi họ muốn, không bị hỏi ngang. */
+  function renderConn(d){
+    var el=zid('mConn');if(!el)return;
+    var rows=(d&&d.rows)||[];
+    if(!rows.length){el.innerHTML='<div class="muted">'+t('conn.none')+'</div>';return;}
+    el.innerHTML=rows.map(function(r){
+      var mark=r.connected?'<span class="conn-ok">✓</span>':(r.unknown?'<span class="conn-unk">•</span>':'<span class="conn-bad">⚠</span>');
+      var note=r.connected?t('conn.on'):(r.unknown?t('conn.unknown'):t('conn.off'));
+      var btn=(!r.connected&&r.kind==='web')
+        ? '<button class="btn sm" data-conn="'+stdEsc(r.platform||'')+'" data-acct="'+stdEsc(r.account||'main')+'">'+t(r.canBorrow?'conn.borrow':'conn.link')+'</button>'
+        : '';
+      var add=(r.kind==='web'&&(r.account||'main')==='main')?'<button class="btn sm" data-addacct="'+stdEsc(r.platform||'')+'" title="'+t('conn.addAcctTip')+'">＋</button>':'';
+      return '<div class="set-row" style="padding:6px 0;border:0"><span class="nm" style="font-size:12px">'+mark+' '+stdEsc(r.label)
+        +'<small class="muted" style="display:block">'+stdEsc(note+(r.detail?' · '+r.detail:''))+'</small></span>'
+        +'<span class="scope-n"><span class="muted">'+zN(r.messages||0)+'</span> '+btn+'</span></div>';
+    }).join('');
+  }
+  function loadConn(){return zGet('/connections').then(renderConn).catch(function(){});}
+  // Sau khi bấm Liên kết, cửa sổ đăng nhập mở ra — và người dùng đăng nhập xong thì
+  // KHÔNG có ai kiểm lại, bảng đứng nguyên ở ⚠. Nên ở đây CHỜ: hỏi lại mỗi 5s (phép hỏi
+  // rẻ, không mở thêm cửa sổ) tối đa 3 phút, thấy đăng nhập được là tự kéo luôn.
+  var connWait=null;
+  /** Chờ MỌI nền còn đứt, không riêng nền vừa bấm: người dùng có thể đăng nhập ở cửa sổ
+   *  nền khác đang mở sẵn — trước đây hàng đó đứng nguyên ⚠ dù đã đăng nhập xong. */
+  function connPoll(left){
+    if(left<=0)return;
+    connWait=setTimeout(function(){
+      zGet('/connections').then(function(d){
+        renderConn(d);
+        var pend=(d&&d.rows||[]).filter(function(x){return x.kind==='web'&&!x.connected;});
+        var fresh=(d&&d.rows||[]).filter(function(x){return x.kind==='web'&&x.connected&&connPending[x.platform];});
+        fresh.forEach(function(x){
+          delete connPending[x.platform];
+          zPost('/connect?platform='+encodeURIComponent(x.platform)).then(function(r){
+            renderConn(r);zGet('/memory-status?fresh=1').then(renderMem);zToast(t('conn.done').replace('{p}',x.platform));});
+        });
+        if(pend.length)connPoll(left-1);
+      }).catch(function(){connPoll(left-1);});
+    },5000);
+  }
+  var connPending={};
+  // Thêm TÀI KHOẢN cho một nền: mở profile mới để đăng nhập tài khoản khác, KHÔNG đụng
+  // tài khoản đang có. Hội thoại nằm theo tài khoản, nên đây là đường duy nhất lấy được
+  // hội thoại của tài khoản thứ hai mà không phải đăng xuất cái thứ nhất.
+  document.addEventListener('click',function(e){
+    var a=e.target.closest?e.target.closest('[data-addacct]'):null;if(!a)return;
+    var p=a.dataset.addacct,o=a.textContent;
+    a.textContent='…';a.disabled=true;
+    zPost('/add-account?platform='+encodeURIComponent(p)).then(function(r){
+      renderConn(r);
+      if(r&&r.ok===false){zToast('✗ '+(r.error||''));return;}
+      zToast(t('conn.acctAdded').replace('{n}',(r&&r.account)||'?'));
+      connPending[p]=true;connPoll(36);
+    }).catch(function(){a.textContent=o;a.disabled=false;});
+  });
+  document.addEventListener('click',function(e){
+    var c=e.target.closest?e.target.closest('[data-conn]'):null;if(!c)return;
+    var p=c.dataset.conn,acct=c.dataset.acct||'main';
+    if(connWait)clearTimeout(connWait);
+    c.textContent=t('conn.linking');c.disabled=true;
+    zPost('/connect?platform='+encodeURIComponent(p)+'&account='+encodeURIComponent(acct)).then(function(r){
+      renderConn(r);
+      if(r&&r.ok===false)zToast('✗ '+(r.error||''));
+      zGet('/memory-status?fresh=1').then(renderMem);
+      var row=(r&&r.rows||[]).filter(function(x){return x.platform===p;})[0];
+      if(row&&!row.connected){
+        // Vẫn chưa vào được ⇒ cửa sổ đăng nhập đang mở, bắt đầu chờ.
+        var b=document.querySelector('[data-conn="'+p+'"]');
+        if(b){b.textContent=t('conn.waiting');b.disabled=true;}
+        connPoll(p,36);
+      }
+    }).catch(function(){loadConn();});
+  });
   function setTog(name,on){document.querySelectorAll('[data-auto="'+name+'"]').forEach(function(t){t.classList.toggle('on',!!on);});}
   function renderAuto(a){Z.auto=a=a||{};setTog('scheduler',a.scheduler);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);}
+  // Một BẢNG, không phải chuỗi if lồng nhau: thêm công tắc mới = thêm một dòng dữ liệu.
+  var AUTO_URL={scheduler:'/set-scheduler',autostart:'/set-autostart',autosync:'/set-autosync',shortcut:'/set-shortcut'};
   document.addEventListener('click',function(e){
     var t=e.target.closest?e.target.closest('[data-auto]'):null;if(!t)return;
     var name=t.dataset.auto,on=!t.classList.contains('on');
-    var url=name==='scheduler'?'/set-scheduler?on='+(on?1:0):name==='autostart'?'/set-autostart?on='+(on?1:0):name==='autosync'?'/set-autosync?on='+(on?1:0):name==='shortcut'?'/set-shortcut?on='+(on?1:0):null;
-    if(!url)return;setTog(name,on);zPost(url).then(function(){zGet('/automation').then(renderAuto);});
+    var url=AUTO_URL[name];
+    if(!url)return;setTog(name,on);zPost(url+'?on='+(on?1:0)).then(function(){zGet('/automation').then(renderAuto);});
   });
   document.addEventListener('click',function(e){
     var lg=e.target.closest?e.target.closest('[data-lang]'):null;
@@ -1237,15 +1324,16 @@
         // Màu theo KẾT QUẢ (user 2026-07-27: chữ xám nhạt nhìn không ra): có tin mới = nổi
         // bật, không có = im lặng. Số 0 mà tô nổi thì lần sau không ai để ý nữa.
         if(sm){sm.className='scanmsg '+(n?'hit':'none');
-          sm.textContent=n?t('scan.found').replace('{n}',zN(n)).replace('{f}',zN(f)):t('scan.none');}
+          sm.textContent=(n?t('scan.found').replace('{n}',zN(n)).replace('{f}',zN(f)):t('scan.none'))+webTail(r&&r.web);}
         // NHỊP NHANH trước: Drive + Sources phải nhảy số NGAY khi quét xong (3 panel này
         // nằm cạnh nhau vì liên quan nhau). Gói /memory-status nặng hơn nhiều nên chạy sau
         // và chỉ để làm tươi phần còn lại — không bắt user chờ nó mới thấy Drive thiếu.
         syncPulse();
         zGet('/memory-status?fresh=1').then(renderMem);
+        loadConn(); // trạng thái liên kết đổi sau mỗi lần quét — làm tươi bảng, KHÔNG hỏi ngang
       });}
     else if(act==='drivelink'){var p=zid('driveInput').value.trim();zset('driveState','…');zPost('/set-drive?path='+encodeURIComponent(p)).then(function(d){zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);});}
-    else if(act==='drivesync'){zset('driveState',t('drv.syncingBg'));zPost('/drive-sync').then(function(r){if(r&&r.ok===false){zset('driveState','✗ '+(r.error||t('drv.err')));return;}pollSync();});}
+    else if(act==='drivesync'){zrun('driveState',true);zset('driveState',t('drv.syncingBg'));zPost('/drive-sync').then(function(r){if(r&&r.ok===false){zrun('driveState',false);zset('driveState','✗ '+(r.error||t('drv.err')));return;}pollSync();});}
     else if(act==='scanproj'||act==='deepscanproj'){zset('scanProjMsg','đang quét…');zPost('/memory-scan'+(act==='deepscanproj'?'?deep=1':'')).then(function(r){zset('scanProjMsg','+'+zN(r&&r.totals&&r.totals.newMessages)+' msg · '+((r&&r.changedFiles)||0)+' file mới');return zGet('/status');}).then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zset('scanProjMsg','lỗi quét');});}
     // Tên phiên: backend ĐÃ đúng (custom-title của `/title` thắng + khoá, ai-title sau
     // không ghi đè — claude.ts / ingest.ts titleLocked). Thiếu là chỗ LÀM TƯƠI: app chỉ
@@ -1296,12 +1384,11 @@
     else if(act==='mredact'){zConfirm({title:t('rd.title'),body:t('rd.body'),okLabel:t('rd.ok'),onOk:function(){zset('drvMsg',t('rd.running'));zPost('/memory-redact').then(function(r){zset('drvMsg',r&&r.ok?'✓ '+t('rd.done'):('✗ '+((r&&r.error)||t('q.err'))));});}});}
   });
   function pollSync(){zGet('/sync-status').then(function(st){
-    if(st&&st.running){zset('driveState',t('drv.syncing'));setTimeout(pollSync,2000);return;}
-    zset('driveState','✓ '+t('drv.syncDone'));
+    if(st&&st.running){zrun('driveState',true);zset('driveState',t('drv.syncing'));setTimeout(pollSync,2000);return;}
+    zrun('driveState',false);zset('driveState','✓ '+t('drv.syncDone'));
     syncPulse();                                   // số Drive về đúng NGAY khi đẩy xong
     zGet('/memory-status?fresh=1').then(renderMem); // phần nặng làm tươi sau
   }).catch(function(){setTimeout(pollSync,2000);});}
-
   // ---- Recall: real search + preview ----
   var rHits=[],rSel=null;
   // Real relevance score only — NO fabricated fallback (recent-messages mode has
@@ -1400,7 +1487,6 @@
     if(el.classList.contains('ssel'))loadSessions();
     else if(el.classList.contains('rsel'))doRecall();
   });
-
   // ---- Harness: docs viewer = REAL /standard-doc (overrides mock stdRender) ----
   var stdReal={};
   function stdRenderReal(){
@@ -1414,7 +1500,6 @@
     zid('stdBody').innerHTML='<div class="muted">đang tải '+stdEsc(stdFile)+'…</div>';
     zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||'(trống)';stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">lỗi tải doc</div>';});
   }
-
   // ── Per-project Harness: real docs viewer (this project's docs/agent + plan +
   //    AGENTS.md) · click file → /doc?root=&file= · reuse stdMd markdown renderer.
   var phFile='',phDoc={},phRoot='';
@@ -1447,7 +1532,6 @@
     var ti=e.target.closest('#phTree .ti[data-f]');if(ti){phOpen(ti.dataset.f);return;}
     if(e.target.id==='phValidate'){var pv=e.target;pv.textContent='…';zGet('/check?feature=validate&root='+encodeURIComponent(phRoot)).then(function(r){zToast(r&&r.ok?t('ph.valOk'):t('ph.valBad'));pv.textContent='validate';}).catch(function(){pv.textContent='validate';});}
   });
-
   // ── SYSTEM screen: full capability inventory + per-feature check/enable ──
   var FEATURES=[
     {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',doc:'f.doc.memory'},
@@ -1569,7 +1653,6 @@
       return;
     }
   });
-
   // Resize seams (§5): drag a .seam[data-seam] to size the column BEFORE it (a
   // CSS var on the grid). Persist per key; double-click resets to default.
   function initSeams(){
@@ -1599,7 +1682,9 @@
     'scope.justScanned':'vừa thêm ở lần quét gần nhất',
     'drv.syncing':'đang sync…','drv.syncingBg':'đang sync (chạy ẩn)…','drv.syncDone':'sync xong','drv.err':'lỗi',
     'drv.notLinked':'chưa link Drive','drv.notLinkedShort':'chưa link','drv.noFolder':'folder không tồn tại','drv.readOnly':'chỉ đọc','drv.linked':'đã link · {n} bundle',
+    'conn.title':'Liên kết','conn.desc':'Nguồn nào còn nối thì ✓; đứt thì ⚠ kèm nút nối lại. Nguồn web kiểm bằng cách mở trình duyệt nên chỉ hiện kết quả lần kiểm gần nhất.','conn.none':'chưa có nguồn nào','conn.on':'đang liên kết','conn.off':'KHÔNG có liên kết','conn.unknown':'chưa kiểm lần nào','conn.link':'Liên kết','conn.borrow':'Mượn phiên có sẵn','conn.linking':'đang nối…','conn.addAcctTip':'Thêm tài khoản khác cho nền này (hội thoại nằm theo tài khoản)','conn.acctAdded':'đã mở cửa sổ cho tài khoản {n} — đăng nhập vào đó','conn.waiting':'đang chờ bạn đăng nhập…','conn.done':'✓ đã nối lại {p}',
     'pj.back':'Danh sách','drv.newest':'Tin mới nhất','drv.lastPush':'Đẩy lần cuối','drv.counted':'Đã đẩy / tổng','drv.never':'chưa từng','drv.pendN':'Còn {n} tin mới chưa đẩy lên Drive','drv.pendSub':'theo watermark máy này · bấm Đồng bộ ngay để đẩy nốt','drv.upToDate':'Đã đồng bộ đủ lên Drive','drv.upToDateSub':'lần đẩy mới hơn tin mới nhất — không còn gì chờ','drv.staleSub':'⚠ có tin mới hơn lần đẩy — chạy Quét nguồn rồi Đồng bộ ngay','scan.running':'đang quét…','scan.found':'+{n} tin mới · {f} file đổi','scan.none':'không có tin mới',
+    'scan.web':'web chat: +{n}',
     'graph.trend':'Xu hướng graph','graph.trendNone':'Chưa có mốc nào — xu hướng bắt đầu từ lần graph được dựng lại kế tiếp.','graph.trendOne':'Mới 1 mốc. Cần ≥2 lần code đổi mới có xu hướng để so.','graph.trendBuilds':'lần dựng','graph.trendLower':'thấp hơn = tốt hơn',
     'nav.home':'Trang chủ','nav.recall':'Recall','nav.projects':'Dự án','nav.harness':'Harness',
     'nav.system':'Tính năng','rc.find':'Tìm kiếm','rc.sess':'Phiên',
@@ -1639,7 +1724,9 @@
     'scope.justScanned':'added by the latest scan',
     'drv.syncing':'syncing…','drv.syncingBg':'syncing (in background)…','drv.syncDone':'sync complete','drv.err':'error',
     'drv.notLinked':'Drive not linked','drv.notLinkedShort':'not linked','drv.noFolder':'folder does not exist','drv.readOnly':'read-only','drv.linked':'linked · {n} bundle',
+    'conn.title':'Connections','conn.desc':'A linked source shows ✓; a broken one shows ⚠ with a re-link button. Web sources are checked by opening a browser, so this shows the last check.','conn.none':'no sources yet','conn.on':'linked','conn.off':'NOT linked','conn.unknown':'never checked','conn.link':'Link','conn.borrow':'Borrow existing session','conn.linking':'linking…','conn.addAcctTip':'Add another account for this platform (conversations live per account)','conn.acctAdded':'opened a window for account {n} — sign in there','conn.waiting':'waiting for you to sign in…','conn.done':'✓ {p} linked again',
     'pj.back':'All projects','drv.newest':'Newest message','drv.lastPush':'Last push','drv.counted':'Pushed / total','drv.never':'never','drv.pendN':'{n} new messages not pushed to Drive yet','drv.pendSub':'per this machine watermark · hit Sync now to push them','drv.upToDate':'Fully synced to Drive','drv.upToDateSub':'last push is newer than the newest message — nothing waiting','drv.staleSub':'⚠ messages newer than the last push — run Scan sources, then Sync now','scan.running':'scanning…','scan.found':'+{n} new messages · {f} files changed','scan.none':'no new messages',
+    'scan.web':'web chat: +{n}',
     'graph.trend':'Graph trend','graph.trendNone':'No data points yet — the trend starts at the next graph rebuild.','graph.trendOne':'Only 1 data point. A trend needs ≥2 code changes to compare.','graph.trendBuilds':'builds','graph.trendLower':'lower is better',
     'nav.home':'Home','nav.recall':'Recall','nav.projects':'Projects','nav.harness':'Harness',
     'nav.system':'Features','rc.find':'Search','rc.sess':'Sessions',
@@ -1711,14 +1798,13 @@
       var rav=zid('railAv');if(rav)rav.textContent=((((p&&p.host)||'?')+'').charAt(0)||'?').toUpperCase();
     }).catch(function(){});
     zGet('/status').then(renderStatus).catch(function(){}).then(function(){
-      return zGet('/memory-status').then(function(m){renderMem(m);return refreshChecks();}).catch(function(){});
+      return zGet('/memory-status').then(function(m){renderMem(m);loadConn();return refreshChecks();}).catch(function(){});
     });
     zGet('/automation').then(function(a){renderAuto(a);renderSystem();}).catch(function(){});
     loadRecentSessions();
     loadRecent();
   }
   zboot();
-
   // ── restore: theme → sub-tab của từng màn → màn đang mở (go() nạp đúng sub đó)
   try{var st=localStorage.getItem('zemory.app.theme');if(st)setTheme(st);}catch(e){}
   Object.keys(PERSIST).forEach(function(a){try{var v=localStorage.getItem('zemory.sub.'+PERSIST[a]);if(v)subApply(a,v);}catch(_){}});
