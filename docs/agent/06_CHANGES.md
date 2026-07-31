@@ -5,6 +5,25 @@
 
 ---
 
+## [2026-07-31] — PHASE 3: kiến trúc skill của cowork áp lên CẢ hai bản chính (app + nonapp)
+
+> 🔄 **Supersede:** thay quyết định *"chuẩn mới áp cho COWORK THÔI, không đụng bản gốc"* (`archive/06_CHANGES` 2026-07-29) và *"luật đọc 3 file chỉ áp dụng với cowork thôi, hệ non-app với app vẫn đọc full docs"* (29/07) — **user chốt làm trọn 31/07** sau khi bản cowork chạy ổn và đo được mức nạp nhẹ hơn ~69%. Hai test khoá hai chiều trong `bootstrap-manifest.test.mjs` được nới theo, KHÔNG xoá: chúng đổi từ *"cowork-only"* sang *"cả ba bộ cùng một kiến trúc, mỗi bộ một biến thể"*.
+
+- **Playbook rời khỏi `04_SKILLS`.** Mỗi quy trình thành `.claude/skills/<tên>/SKILL.md` tự chứa,
+  có frontmatter `name` + `description` ⇒ harness tự nạp theo mô tả, không chờ ai nhớ mở file.
+  `04_SKILLS` còn lại **sổ đăng ký mỏng** (một dòng một skill + luật dùng) và **ra khỏi bộ ĐỌC HẾT**.
+- **`03_STRUCTURE` giữ vai chuẩn cấu trúc** (code `structure-tree`/`conform` đọc nó) và bản nonapp
+  **nhận thêm §Từ điển dữ liệu** — nhà DUY NHẤT của định nghĩa metric/cột. `docs/dictionary.md`
+  bị **cấm**; mọi dẫn chiếu tới nó trong template đã đổi về `03_STRUCTURE`.
+- **`session-close` Bước 4 — TỰ DỌN** có ở cả ba bộ (trước chỉ cowork). Bản app/nonapp trước đây
+  phó mặc cho `zemory archive`, mà lệnh đó chỉ chạy khi có người nhớ gõ.
+- **Trần archive đổi ĐƠN VỊ: ký tự, không phải dòng.** Đo 31/07: `05_TODO` của repo này
+  **33,8 tok/dòng** ⇒ trần 300 dòng ≈ **10.155 tok** cho một file *luôn được nạp*, tức nặng hơn cả bộ
+  docs đầy đủ mà kiến trúc mới vừa thay thế. Dòng ở sổ dày gấp ~3 dòng code nên đếm dòng là đo sai thứ.
+- **Code phải đi kèm, không thì báo tính năng sai:** `checks.ts` (probe `grill`) và `conform` luật ④
+  (roster ↔ section) trước đây chỉ biết hình dạng "playbook inline trong `04_SKILLS`" — nay nhận **cả
+  hai** hình dạng, nên project cũ chưa migrate vẫn xanh.
+
 ## [2026-07-30d] — LỖI THẬT: daemon KHÔNG hề scan. UI hứa "scan → embed → digest", code làm 2/3
 
 Gate 367 → **372** · `conform` ✓ · đột biến **8/8**.

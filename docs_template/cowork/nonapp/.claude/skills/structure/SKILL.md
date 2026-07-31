@@ -25,7 +25,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 │ ═══ TRACKED — nguồn + định nghĩa + deliverable ═══
 ├── AGENTS.md         ★  cửa vào: mô tả dự án + hợp đồng nạp
 ├── docs/             ★  agent/(01·02·05·06) · plan/ · .harness.json
-│   └── dictionary.md    [opt] định nghĩa metric/cột — BI/data NÊN có
+│       └ 03_STRUCTURE §2 = TỪ ĐIỂN: metric · cột · thuật ngữ (KHÔNG tạo dictionary.md riêng)
 ├── docs_visual/      [opt] sơ đồ · lineage cho NGƯỜI xem (.html/.svg), NGOÀI docs/
 │ ─── DELIVERABLE — chọn theo loại, ≥1 ───
 ├── reports/          ◆  BI: .pbix/.pbip/.twb                    [LFS nếu nặng]
@@ -83,7 +83,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 | data làm việc của 1 task | `data/<task>/` (gitignore, mirror `tasks/`) |
 | bản render/publish sinh ra | `exports/` (gitignore) |
 | connection string / token THẬT | `.env` (gitignore) |
-| định nghĩa metric/cột (nguồn sự thật) | `docs/dictionary.md` |
+| định nghĩa metric/cột (nguồn sự thật) | `docs/agent/03_STRUCTURE.md` §2 |
 | sơ đồ luồng/lineage xem trực quan | `docs_visual/` — NGOÀI `docs/`, có `.md` chủ trỏ tới |
 | bản cũ deliverable / trước publish | `attic/` |
 | tài liệu / luật / plan | `docs/` — sửa file `.md` trực tiếp (file wins) |

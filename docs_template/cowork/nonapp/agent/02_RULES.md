@@ -9,6 +9,7 @@
 
 ## Cấu trúc thư mục
 **Cần đặt · tạo · dời bất cứ file nào → mở `.claude/skills/structure/` TRƯỚC.** Ở đó có cây thư mục, bảng tra "cần gì → để đâu", và quy ước đặt tên. Không chắc để đâu → tra bảng đó hoặc HỎI, **đừng đoán**. Thấy chỗ đang lệch chuẩn → nắn về chuẩn (lớn/khó đảo thì BÁO), KHÔNG nhân cái sai lên.
+**Định nghĩa metric/cột** → `03_STRUCTURE` §2 (từ điển dữ liệu, nguồn sự thật). **KHÔNG tạo `docs/dictionary.md`** — một dự án một từ điển.
 
 ## Luật khi VIẾT (BẮT BUỘC — luật cứng)
 
@@ -30,7 +31,8 @@ SQL/DAX/M         gom queries/ hoặc measures/, đặt tên — KHÔNG rải in
 
 ## Tài liệu
 - **Docs = FILE là nguồn (FILE WINS):** sửa `.md` trực tiếp, bám chuẩn; **xong là xong**.
-- **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một nội dung sống ở ĐÚNG MỘT nhà; nơi khác cần thì **DẪN CHIẾU**, không chép lại.
+- **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `03` chỗ-để-file + từ điển · `04` sổ đăng ký skill · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một nội dung sống ở ĐÚNG MỘT nhà; nơi khác cần thì **DẪN CHIẾU**, không chép lại.
+- **Đồng bộ bắt buộc — `01` ↔ `02` ↔ `03` ↔ `04` ↔ `05` ↔ `06` ↔ `plan/` luôn KHỚP nhau.** Mỗi thay đổi: `05_TODO` phản ánh việc, `06_CHANGES` ghi log (sau khi user OK), `03` cập nhật nếu đụng cấu trúc/định nghĩa, `04` cập nhật nếu thêm/bớt skill, `plan/` cập nhật nếu đổi thiết kế. Sổ nói khác thực tế là dạng sai khó phát hiện nhất — không cổng nào bắt được.
 - **`docs/plan/` chỉ chứa SPECS** — KHÔNG todo (→ `05_TODO`), KHÔNG luật (→ đề xuất vào `01_CONSTITUTION`).
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
@@ -60,6 +62,7 @@ Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **ho�
 - **Thao tác XOÁ phải được user xác nhận trước.** Xoá file, sản phẩm, script, nội dung docs hay thư mục đều coi là bất khả đảo: nêu đối tượng + lý do, chờ chấp thuận rồi mới làm. Thứ dư thừa: **đề xuất, không tự xoá**. Bổ sung/mở rộng không cần xác nhận; **xoá/thu hẹp luôn cần**.
 - **CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT — KHÔNG BỊA, KHÔNG SUY DIỄN (luật cứng).** Áp cho **mọi khẳng định**, không riêng con số: trạng thái hệ thống · nguyên nhân · "cái gì đang xảy ra" · "đã xong chưa". Mỗi khẳng định phải truy được về **nguồn kiểm được** (đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài). **Tra không ra ⇒ nói thẳng "không biết / chưa xác minh được"** và nêu đã thử đường nào — cấm lấp bằng suy đoán nghe hợp lý, vì *nghe hợp lý* chính là thứ làm nó lọt.
   Trước khi ① báo một con số · ② kết luận "xong / chưa xong" · ③ xoá bất cứ thứ gì — phải đo lại bằng **đường thứ hai, khác cơ chế**. Bốn dạng sai thường gặp: công cụ trả rỗng vì **hỏng lặng** (cờ sai ⇒ tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒ tưởng dữ liệu mồ côi, suýt xoá thứ đang sống) · **sổ nói khác thực tế**. Kiểm chéo = đổi công cụ, đổi hướng đếm, hoặc gọi bề mặt thật.
+- **Phép kiểm mới phải chứng minh mình ĐỎ ĐƯỢC.** Viết xong một phép kiểm (script, công thức đối chiếu, bảng so số) → **phá đúng thứ nó canh** rồi chạy lại: không đỏ ⇒ nó chưa soi gì, phải sửa phép kiểm chứ không phải mừng vì xanh. Hai lỗ điển hình: phép kiểm chưa bao giờ chạy tới nhánh nguy hiểm, và **bản sao logic ở nơi khác gánh thay**. Xanh KHÔNG phải bằng chứng.
 - **Nêu phản biện thiết kế trước khi thực thi** nếu thấy điểm bất hợp lý; quyết định cuối thuộc về user.
 - **Đổi HÌNH HÀI / BỐ CỤC sản phẩm giao đi** (layout báo cáo, chọn biểu đồ, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi**. Điền số theo mẫu có sẵn thì cứ làm.
 - **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.

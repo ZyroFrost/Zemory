@@ -31,34 +31,212 @@
   **đã push** ⇒ lộ vĩnh viễn; không viết lại lịch sử vì chưa `.enc` nào từng vào git. Nền tảng: `plan/16_share_key`.
 
 ## 📌 Bàn giao 2026-07-28 — việc còn lại
-- [ ] **`claude-web` MẤT TRẮNG chat trong Project — nặng hơn mục "tên uuid thô" ghi trước đây.**
-  **Đo 2026-07-30** (`memory scan-web --platform claude --limit 5`, profile đã đăng nhập từ 28/07):
-  đăng nhập OK (`huy.nguyen@sasin.vn's Organization`), scanner báo thẳng *"enumerated **2 loose**
-  conversation(s) · 2 conversation(s) on the account"* ⇒ lane `claude-web` đứng ở **2 phiên / 6 tin**
-  không phải vì hỏng, mà vì **nó chỉ được phép thấy chat loose**.
-  **Nguyên nhân trong code:** `PLATFORMS.chatgpt` có `projectsExpr` + `projectConvsExpr` nên đếm được
-  chat trong Project; `PLATFORMS.claude` **chỉ có `listExpr`**. Mà khối enumerate project ở
-  `scanweb.ts:525` chạy `if (p.projectConvsExpr && …)` — với claude điều kiện đó **luôn false**.
-  Chính comment ngay đó đã cảnh báo: *"A Project's chats are NOT in the loose list"*.
-  **ĐÃ DÒ ENDPOINT THẬT (2026-07-30, in-page fetch qua CDP, CHỈ GET) — số liệu để viết code, khỏi đoán:**
+- [~] **`claude-web` — ĐÃ SỬA 2026-07-30, chờ user duyệt để ghi `06_CHANGES`.**
+  > 🔄 **Bác bỏ chẩn đoán cũ của chính mục này** (*"MẤT TRẮNG chat trong Project vì thiếu
+  > `projectConvsExpr`"*). Sai. Đo hai đường trước khi sửa: ① item của
+  > `…/<org>/chat_conversations` mang `project_uuid` **không null**; ② so TẬP id với
+  > `…/<org>/projects/<pid>/conversations` ⇒ **`projectIdsMissingFromLoose: []`**. Tức danh sách
+  > phẳng của claude.ai **đã chứa cả chat trong Project** — khác ChatGPT, nơi comment
+  > *"A Project's chats are NOT in the loose list"* mới đúng. Tài khoản này **thật sự chỉ có 2 hội
+  > thoại / 1 project**, nên "2 phiên · 6 tin" là con số ĐÚNG, không phải triệu chứng.
+  > ⇒ **KHÔNG thêm `projectConvsExpr` cho claude** — nó chỉ kéo về đúng những id đã có (`CLAUDE_LIST`
+  > có comment ghi rõ + test khoá, để phiên sau khỏi "vá" lại).
 
-  | Endpoint | Kết quả |
+  **Ba lỗi THẬT tìm được khi đo, đã sửa:**
+  1. **`o[0]` làm org** — account có 2 org (`chat`·`claude_max` và `api`·`api_individual`); máy này
+     tình cờ đúng. Nay chọn theo caps `chat`; không org nào có caps `chat` ⇒ **báo lỗi rõ**, không im
+     lặng dùng org rỗng (biểu hiện y hệt "chưa đăng nhập").
+  2. **Khoá resume hardcode `chatgpt-`** trong khi adapter claude ghi `claudeweb-<uuid>` ⇒ resume chết
+     lặng, **mỗi lần chạy kéo lại toàn bộ tài khoản**. Nay `Platform.sessionPrefix`, test so PARITY với
+     id adapter thật sinh ra. *(Đo trên DB thật: 2 phiên đều mang tiền tố `claudeweb-`.)*
+  3. **`project_root` là uuid thô** — payload CHI TIẾT (`?tree=True…`) có `project_uuid` nhưng
+     `project: null`; chỉ danh sách phẳng mới có `project:{name}`. Nay `CLAUDE_PROJECTS` map uuid→tên +
+     sidecar `_projects.json` (dùng chung `readProjectMap` với ChatGPT). **Đo sau khi chạy thật:
+     `019f68e1-…` → `VU-Project`.**
+
+  **Cowork vẫn KHÔNG lấy được qua đường này** — `cowork_sessions` · `tasks` · `sync/mcp` đều **404**
+  (đo 2026-07-30). Vá Project không đổi điều đó; đừng hứa ngược lại.
+- [~] **Hết hạn xác thực khi scan web → HỎI + mở cửa sổ (user giao 2026-07-30) — ĐÃ LÀM, chờ duyệt.**
+  Trước: `need-login` là ngõ cụt — in *"a browser window is open at …"* **kể cả khi không mở cửa sổ nào**
+  (chỉ mở khi cổng debug chết), và hết hạn GIỮA run thì mọi hội thoại còn lại đếm thành `failed`, log
+  trông y như bị rate-limit. Nay: `awaitLogin()` mở cửa sổ **trước** rồi mới hỏi, kiểm lại auth sau mỗi
+  câu trả lời; giữa run cứ **3 lần fail liên tiếp** thì hỏi lại site xem còn đăng nhập không — mất phiên
+  thì lưu phần đã kéo, hỏi, đăng nhập xong **chạy tiếp tại chỗ**. Không TTY (daemon/pipe) ⇒ mở cửa sổ rồi
+  báo `need-login` + exit 1, **không treo** chờ câu trả lời không ai gõ được.
+- [~] **UI: nút Quét giờ kéo được web + hỏi đăng nhập (user báo 2026-07-30: *"bấm scan nó ra mới nhưng
+  vẫn ko lấy từ web dc, cũng ko hề hỏi authen"*) — ĐÃ LÀM, chờ duyệt.**
+  **Nguyên nhân:** cả hai nút (`scan`·`deepscan`) POST `/memory-scan` → `scan()` = **chỉ đọc đĩa**. UI
+  **chưa bao giờ** có đường quét web ⇒ không lấy được web, và cũng không có chỗ nào để hỏi authen. Bản
+  sửa CLI trước đó đúng nhưng nằm sai bề mặt.
+  **Thiết kế user chốt:** *gộp vào nút Quét sẵn có + công tắc bật/tắt, nhớ qua phiên* (không đẻ nút mới).
+  ⇒ `getScanWeb()` mặc định **TẮT** · `/memory-scan?web=1` · `/memory-scan-web?platform=` (nút "chạy tiếp"
+  sau khi đăng nhập) · `/set-scan-web` · công tắc `data-auto="scanweb"`.
+  **Vì sao UI không hỏi trực tiếp trong lúc quét:** giữ request HTTP mở để chờ người đăng nhập là treo
+  daemon ⇒ server chạy **không tương tác**, chỉ MỞ cửa sổ rồi trả `need-login`; chỗ HỎI nằm ở dialog UI.
+  CLI vẫn hỏi ngay tại terminal (có TTY).
+  **Scheduler nền KHÔNG kéo web** (test khoá) — 10 phút một lần tự mở trình duyệt là hành vi không ai xin.
+  **Đo bề mặt sống:** `POST /memory-scan` trả `web: [{chatgpt: need-login}, {claude: done · skipped 2}]`,
+  và cửa sổ đăng nhập chatgpt **mở thật** (pid 7440, đúng thời điểm quét).
+  **Còn lại:** phiên **chatgpt-web hết hạn trên máy này** — user cần đăng nhập lại một lần trong cửa sổ đó
+  thì lane 30.913 tin mới nhận tiếp được (claude.ai không cần, cookie profile còn sống).
+- [ ] **KHÔNG lấy cookie từ trình duyệt chính (user hỏi 2026-07-30) — giữ nguyên quyết định cũ.**
+  Đã xác minh từ `plan/07 §5`: copy cookie/DPAPI từ profile Edge có sẵn bị **App-Bound Encryption** +
+  guard chặn; vượt được chỉ bằng cách tiêm vào tiến trình trình duyệt (kiểu malware) và phá điều 7. Cookie
+  **đã tự dùng lại** trong profile RIÊNG của zemory (`data/browser/<nền>`) — hỏi đăng nhập chỉ xảy ra khi
+  chính cookie đó hết hạn. Ghi lại đây để phiên sau khỏi thử lại đường đã chết.
+
+## 🔓 COWORK ĐỌC ĐƯỢC — công thức đã đo xong 2026-07-31, chỉ còn viết adapter
+> 🔄 **Đảo kết luận cũ.** `06_CHANGES [2026-07-30d]` ghi *"phiên Cowork không phơi qua claude.ai"*
+> vì 3 endpoint đoán mò (`cowork_sessions` · `tasks` · `sync/mcp`) đều 404. **Sai vì đoán sai chỗ:**
+> Cowork KHÔNG nằm dưới `/api/organizations/…` mà ở **`/v1/code/sessions`**. Tìm ra bằng cách cắm móc
+> vào `fetch` của trang rồi mở thật một phiên (`Page.addScriptToEvaluateOnNewDocument` để móc sống qua
+> lần tải lại) — đoán URL 6 lần đều trượt, móc một lần là ra.
+
+**Công thức (đã gọi thật, 200):**
+```
+GET /v1/code/sessions?tags=cowork-remote&limit=100&include_trigger_sessions=true   → {data[], resume_token}
+GET /v1/code/sessions/<cse_id>/events?limit=500                                    → {data[], resume_cursor}
+headers BẮT BUỘC (thiếu ⇒ 400, kể cả khi đã đăng nhập):
+  anthropic-version: 2023-06-01 · anthropic-beta: ccr-byoc-2025-07-29
+  anthropic-client-feature: ccr · anthropic-client-platform: web_claude_ai
+  x-organization-uuid: <org có caps 'chat'>
+```
+**Shape:** session `{id: cse_… , title, created_at, last_event_at, status, user_message_count, tags}` ·
+event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phiên *"Claude-swap setup"*:
+**218 event** → `user` 30 (payload.message.content là **CHUỖI**) + `assistant` 50 (content là **MẢNG block**
+`{text}`) = **80 tin thật**; phần còn lại (`system` 61 · `control_request/response` 36 · `env_manager_log` 26
+· `result` · `active_goal` · `prompt_suggestion` · `rate_limit_event`) là điều khiển/log.
+
+- [~] **Lane `claude-cowork` — ĐÃ BUILD + chạy thật 2026-07-31, chờ user duyệt để ghi `06_CHANGES`.**
+  Làm đúng như ghi chú: **lane phụ của `PLATFORMS.claude`** (`Platform.sub`), chung cửa sổ · chung cổng
+  9223 · chung phiên đăng nhập — KHÔNG đẻ `PLATFORMS` thứ ba. Adapter `adapters/cowork.ts`
+  (`source=claude-cowork`, origin `web`, `coworkweb-<cse_id>`), đã đăng ký trong `allAdapters()`.
+  **Đo bề mặt sống:** `Claude-swap setup` → **63 tin** trong bộ nhớ, nội dung + vai + thời gian đúng.
+  - **BẪY đã trả giá — `resume_token`/`resume_cursor` KHÔNG phải con trỏ trang.** Truyền lại vào
+    `/v1/code/sessions` là endpoint chuyển sang **long-poll và không bao giờ trả về**: lần chạy đầu treo
+    **25 phút, CPU chỉ 10 giây**, không lỗi không log. Nay gọi MỘT lần, không phân trang.
+  - **Kèm sửa lớp dưới:** `Cdp.evaluate` giờ **có hạn giờ 90s** rồi NÉM. Trước đó `awaitPromise` chờ vô
+    hạn nên một expr treo là treo cả tiến trình — lỗi này không riêng Cowork, mọi nền đều dính.
+  - **Tiêu đề phải lấy từ DANH SÁCH**: `GET /v1/code/sessions/<id>` KHÔNG trả `title` (đo: chỉ có
+    `response_shape`), nên phiên vào bộ nhớ không tên nếu không dập nhãn từ list.
+  - Còn lại: danh sách mới lấy **1 trang (limit=100)** — tài khoản >100 phiên Cowork thì cần tìm cách
+    phân trang THẬT (không phải resume_token). Chưa có tài khoản nào để đo.
+
+- [ ] **CHƯA LẤY ĐƯỢC 3 phiên Cowork user CẦN — nằm ở TÀI KHOẢN CLAUDE KHÁC (hoãn, user chốt
+  2026-07-31: *"fix app zemory lấy dc cowork thì sẽ fix sau"*).**
+  Ba phiên cần: **Harness AI frameworks comparison** · **Bootstrap setup** · **Vietnam 34 provinces
+  GRDP dashboard**. Đã loại trừ mọi khả năng khác bằng đo, KHÔNG phải đoán:
+
+  | Đo (2026-07-31) | Kết quả |
   |---|---|
-  | `/api/organizations` | **2 org**: `fd5ef0f8…` *"huy.nguyen@sasin.vn's Organization"* caps `chat`·`claude_max` — và `446e19e3…` *"Individual Org"* caps `api`·`api_individual` |
-  | `…/<org>/projects` · `?limit=100` | **200**, array **len=1** · field: `uuid` `name` `description` `is_private` `creator` `is_starred` `is_starter_project` `is_harmony_project` `type` `subtype` |
-  | `…/<org>/chat_conversations?limit=100&offset=0` | **200**, array **len=2** · field có **`project_uuid`** |
-  | `/api/bootstrap` | 200 (`account` · `statsig` · `growthbook` · intercom) |
-  | `…/<org>/cowork_sessions` · `…/tasks` · `…/sync/mcp` | **404** cả ba |
+  | `/v1/code/sessions` × 7 giá trị `tags` (`cowork-remote`·`cowork-local`·`cowork`·`product:*`·`config:*`·`claude-code`·`code`) | đều **1 phiên** |
+  | thử **cả 2 org** của tài khoản | org caps `chat`: 1 phiên · org caps `api`: **403** |
+  | tra 2 tiêu đề trong TOÀN BỘ GM | không có (chỉ ra chỗ agent *nói về* chúng) |
+  | Claude Desktop lưu cục bộ trên máy | **không tồn tại** thư mục nào |
 
-  **Rút ra:** (a) `projects` CÓ THẬT ⇒ viết được `CLAUDE_PROJECTS` (map `uuid`→`name`) và
-  `claudeProjectConvs`; (b) `chat_conversations` đã chở sẵn `project_uuid` nên **gán nhãn project không
-  cần endpoint thứ hai** — mục "uuid thô" cũ giải được ngay bằng `projects` + field này; (c) **tài khoản
-  này thật sự chỉ có 2 hội thoại + 1 project** trên đường claude.ai ⇒ **phiên Cowork KHÔNG phơi ở đây**
-  (3 endpoint ứng viên đều 404). Nên vá Project là đúng việc, nhưng **đừng hứa nó lấy được Cowork**.
-  **Bẫy phải xử luôn:** scanner lấy `o[0]` làm org — ở máy này tình cờ đúng org `chat`, nhưng account có
-  **2 org** và org kia chỉ có caps `api` ⇒ phải **chọn org theo caps chứa `chat`**, không lấy theo thứ tự.
-  **Khi chạy lại mà thiếu authen thì PHẢI HỎI USER** (mở cửa sổ đăng nhập), không tự lặng lẽ bỏ qua.
-  *(Hệ quả đang chịu: mọi quyết định bàn trong Cowork là không tra lại được — xem `06_CHANGES [2026-07-30d]`.)*
+  ⇒ chúng không thuộc `huy.nguyen@sasin.vn`. **Hạ tầng đã sẵn** (khe tài khoản: profile riêng + cổng
+  riêng, quét lặp qua mọi khe, nút ＋ trong bảng Liên kết; khe `claude-2` đã tạo, cửa sổ đứng ở
+  `claude.ai/login`). **Việc còn lại của USER:** đăng nhập tài khoản chứa 3 phiên đó vào cửa sổ khe 2 →
+  app tự kiểm 5s/lần rồi tự kéo (cả chat lẫn Cowork).
+
+- [ ] **CÂU HỎI đang chờ chính 3 phiên đó trả lời — bộ chuẩn Cowork có bị CẮT QUÁ TAY?**
+  Nguyên văn user (`GM #2136043`, 2026-07-30): *"bộ cowork rút gọn là lúc t làm việc bên cowork của
+  claude, bên đó bàn là để **tiết kiệm token khi load**, mới loại bỏ khá nhiều, vì **cowork ko có bộ não
+  global như hệ claudecode** nên nó ko chứa nhiều thông tin để nén dc… nhưng **tui ko nghĩ là nó lại cắt
+  quá nhiều như vậy**… t cần bạn tra gm để kiểm tra **đã nói gì và đã quyết định ntn**"*.
+  **Nghi vấn cụ thể nhất:** bộ cowork **không có `03_STRUCTURE`** (chỉ `01_CONSTITUTION`·`02_RULES`·
+  `05_TODO`·`06_CHANGES` — đo `GM #2136037`), trong khi user khẳng định (`#2136034`) *"logic ban đầu của
+  tui chính là để 03 làm luôn công việc của dictionary… ý định ban đầu là hợp nhất vào 1 file"* và 03
+  vốn **vừa là cây thư mục vừa là mô tả từng dòng** (`#2136039`·`#2136041`).
+  ⇒ Cần **quyết định gốc** (cắt gì · vì sao) để chấm "cắt này có lý do token thật hay quá tay".
+  *(2026-07-31: user sẽ COPY THẲNG nội dung từ Cowork sang thay vì chờ capture.)*
+
+## 📐 Đối chiếu bộ COWORK vs bộ ĐẦY ĐỦ (đo 2026-07-31) — 2 việc
+> Nền quyết định (GM `#2131427`, user 29/07): *"dùng harness zemory **ko có nghĩa là toàn bộ**… kết hợp
+> với harness của chính claude… **vẫn đủ ý, đủ luật của zemory** và **cắt nhỏ lại phù hợp cho memory
+> ngắn hạn của claude**… nếu cần thì sẽ **bổ sung thêm phần template cowork lại**"*.
+>
+> **Kết quả đối chiếu — phần lớn KHÔNG mất, chỉ đổi nhà:** `03_STRUCTURE` (130 dòng) → skill
+> `structure/` (SKILL 97 + conventions 129 + `check_structure.py` 227) — **nhiều hơn bản gốc**, giữ đủ
+> cây-có-mô-tả + routing + dòng `docs/dictionary.md`. `04_SKILLS` (233) → 13 skill nạp on-demand.
+> Changelog/supersede → `session-close` Bước 3. Global Memory-verify → `session-close` Bước 1 **có rào
+> 🖥️ "chỉ khi có zemory CLI"**. Bộ cowork còn SỬA một lỗi của template gốc: `audit` bỏ 3 mặt app-only
+> (`npm run check` · FE↔BE · `integrity_check`) vốn không áp được cho non-app.
+
+- [~] **PHASE 1 — BỘ COWORK: XONG 2026-07-31, chờ user duyệt để ghi `06_CHANGES`.**
+  `03_STRUCTURE` + `04_SKILLS` **trở lại đủ 6 file**, nhưng **trigger-load** (bảng trong `AGENTS.md`),
+  KHÔNG phải luôn-nạp ⇒ nền mỗi phiên **3.182 tok** (trước 2.842; bộ đầy đủ 10.268). `03 §2` là **nhà duy
+  nhất của từ điển** — `docs/dictionary.md` bị gỡ khỏi chuẩn, 10 chỗ trỏ lại về `03 §2`
+  (structure ×2 · fill ×2 · session-close · audit · conventions · README · 02_RULES · AGENTS).
+  Bù 3 luật: **đồng bộ 01↔02↔03↔05↔06↔plan** · **phép kiểm phải ĐỎ ĐƯỢC** (+ luật 5 "PHÁ THỬ" trong
+  `audit`) · **"tra `archive/` trước khi kết luận chưa từng làm"** trong `AGENTS.md`.
+  Manifest `BOOTSTRAP.md` **24 hàng** (thêm 2, sửa 6 số dòng — đọc số THẬT bằng script, không gõ tay).
+  **Đo end-to-end:** dựng thử một dự án theo manifest rồi chạy `check_install.py` → **24/24 khớp, exit 0**.
+  Gate `bootstrap-manifest` 8/8 · `npm run check` 422/422 · `conform` ✓.
+  - ⚠ **`check_install.py` chỉ dùng được NGAY SAU KHI CÀI** — nó gate cả `05_TODO`(7) và `06_CHANGES`(9),
+    hai file bắt buộc phải phình. Đừng quảng cáo là "chạy lại lúc nào cũng được".
+
+- [~] **PHASE 2 — GUIDE.docx đồng bộ + thêm mục `/context`: XONG 2026-07-31, chờ duyệt.**
+  Đọc trọn 463 dòng (markitdown) rồi đối chiếu với bộ file thật. **7 sửa đồng bộ:** cây §7 thiếu
+  `03`/`04` · câu chốt §7 ánh xạ 3 mức sai · §12 thiếu dòng "định nghĩa chỉ số" · §6 gọi nhầm "danh mục
+  quy trình" (thứ luôn nạp là BẢNG TRA) · §2 thêm thuật ngữ "Từ điển dữ liệu" · §11 thêm ranh giới "tra
+  archive trước khi nói chưa từng làm" · `BOOTSTRAP.md` 1d nói thiếu 03/04.
+  **Thêm theo user (dựa trên đo GM 9.730 tin ngắn):** hàng "Bắt đầu một phiên mới → *đọc docs và chuẩn
+  bị*" (user gõ 11×, guide chưa hề có) · ví dụ ghi sổ đổi thành *"note lại đi"* (dạng user hay dùng hơn
+  *"ghi sổ"*) · **mục mới "Canh chỗ nhớ còn lại — lệnh `/context`"** kèm **ảnh thật user chụp**
+  (`img/step_context.png`, moi từ transcript phiên), ngưỡng **95%** thì ghi sổ + đổi phiên, kèm phân biệt
+  *context window* vs *weekly usage limit*.
+  **User BÁC 2 đề xuất của tôi:** `xong chưa` (chỉ dùng khi vòng lặp kẹt) · `làm đi` (không cần).
+  **Bảng kiểm write-docx:** bảng 9→9 · ảnh 9→**10** · mọi `r:embed` tra ra rel + file có thật · 0 ảnh mồ
+  côi · ảnh rộng = khổ chữ (5.731.510 EMU, cao theo tỷ lệ gốc 828×407) · TOC field còn · begin=separate=
+  end=13 · **trang 15 → 16** (render thật bằng x2t).
+  - ⚠ **Vá thêm lỗi CÓ SẴN:** `wp:docPr id` trùng (`1`×3 · `4`×2 · `5`×2) từ trước đợt này — đã đánh số
+    lại 1..10. *(Bản `.bak` cũng trùng ⇒ không phải do đợt sửa hôm nay.)*
+  - ⚠ **Bẫy đã trả giá:** `x2t.exe` render lỗi JS *"Cannot read property 'length' of undefined"* — KHÔNG
+    phải docx hỏng, mà là **`AllFonts.js` không nằm cạnh `x2t.exe`** (nó ở
+    `%LOCALAPPDATA%\ONLYOFFICE\DesktopEditors\data\fonts`). Trỏ đúng là render được ngay.
+  - **Còn lại:** mục lục là TOC field ⇒ **user mở Word bấm `F9`** để cập nhật số trang.
+    Chưa đo phân bố **khoảng trắng cuối trang** (skill `write-docx` §10) — đợt này không chèn ngắt trang
+    ép nên rủi ro thấp, nhưng chưa đo thì ghi là **chưa đo**.
+
+- [x] **PHASE 3 — ĐÃ ĐEM LÊN BẢN CHÍNH (app + nonapp), 2026-07-31.** Supersede đã ghi; hai test khoá
+  hai chiều đã nới sang "ba bộ cùng kiến trúc". Kết quả: 17 file skill mới (app 7 · nonapp 10, chép
+  NGUYÊN VĂN playbook cũ + frontmatter), `04_SKILLS` thành sổ đăng ký (211→52 · 233→55 dòng, trần 60
+  dòng có gate canh), `04` ra khỏi ĐỌC HẾT, nonapp `03` **§7 = Từ điển dữ liệu** và `docs/dictionary.md`
+  bị cấm ở mọi chỗ. Gate 422 → **423** · `conform` ✓.
+  - **Code phải đi kèm (5 chỗ):** `adopt.ts` scaffold `.claude/skills/**` (thiếu ⇒ `init` dựng sổ đăng
+    ký trỏ vào file không tồn tại — `init --non-app` giờ ra **19 doc**) · `checks.ts` probe `grill` nhận
+    cả hai hình dạng · `conform` luật ④ đối chiếu 3 chiều (thư mục ↔ `04` §2 ↔ trigger `AGENTS`) ·
+    `graph-standard` đếm skill theo THƯ MỤC (trước đếm heading ⇒ sổ mỏng ra "skill 4" sai) ·
+    `validate` bỏ chuỗi "§7" (trên dự án non-app nó chỉ vào mục TỪ ĐIỂN, không phải luật deliverable).
+  - **Đã đo:** `check_install` cowork 24/24 · `init --non-app` ra đủ 10 skill · đột biến 2 phép kiểm mới
+    (nhét `04_SKILLS` lại vào ĐỌC HẾT ⇒ đỏ · skill không khai trong sổ ⇒ `skill-unregistered` đỏ).
+  - ⚠ **Sửa lại một kết luận CŨ của chính mục này:** trần theo dòng chỉ sai với `06_CHANGES`; còn
+    `05_TODO` thì **không có trần nào cả** — `archiveTodo` đã đúng từ trước (mọi mục `[x]` rời file
+    NGAY, comment trong code ghi rõ *"ngưỡng kích thước là cổng SAI cho một luật đúng-chỗ"*, đo
+    2026-07-29: gác bằng ngưỡng là lý do 107 mục đã xong nằm lại chiếm 46% file). Doc của cả ba bộ
+    nay nói đúng thực tế đó; `06_CHANGES` bản cowork (không có CLI) trần **40.000 ký tự**, giữ ~25.000.
+
+- [ ] **MIGRATE CHÍNH REPO NÀY sang kiến trúc skill (chưa chốt — Phase 3 chỉ đụng template).**
+  `docs/agent/04_SKILLS.md` của repo còn là playbook inline 211 dòng và **vẫn nằm trong ĐỌC HẾT**, tức
+  chính repo dạy chuẩn mới lại đang chạy chuẩn cũ. Code đã đỡ cả hai hình dạng nên không gấp, nhưng
+  hai chỗ đang ghim sự chênh này: `read-set-contract` chỉ kiểm `03` (không kiểm `04`) và roster
+  `**Skill inline hiện có:**` vẫn là đường sống của luật ④ bản cũ. Làm thì phải: tách 7 playbook ra
+  `.claude/skills/`, làm mỏng `04`, gỡ `04` khỏi ĐỌC HẾT trong `AGENTS.md` gốc, rồi SIẾT hai test đó.
+
+
+- [x] **ĐEM Bước 4 "TỰ DỌN" LÊN MỌI BẢN CHÍNH — XONG 2026-07-31** (làm cùng Phase 3 ở trên).
+  `session-close` Bước 4: sau khi ghi sổ, đếm dòng; file vượt ngưỡng thì chuyển phần cũ sang
+  `docs/agent/archive/`, chép NGUYÊN VĂN. Bản app/nonapp đang phó mặc cho lệnh `zemory archive` — mà
+  lệnh đó chỉ chạy khi có người nhớ gõ.
+  - ⚠ **SỬA LUÔN ĐƠN VỊ TRẦN — trần theo DÒNG là sai đơn vị (đo 2026-07-31).** Dòng ở sổ rất dày:
+    `05_TODO` của zemory **33,8 tok/dòng**, `06_CHANGES` **20,7 tok/dòng** ⇒ **trần 300 dòng ≈ 10.155 tok
+    MỖI file**. Mà `05_TODO` **luôn được nạp**: nền cowork 2.842 tok + TODO chạm trần = **~12,9k tok**,
+    **nặng hơn cả bộ đầy đủ (10.268 tok)** mà nó thay thế — toàn bộ 7,4k tiết kiệm từ việc dời 03/04
+    sang skill bị MỘT cái TODO đầy ăn sạch. ⇒ trần phải tính bằng **KÍCH THƯỚC (ký tự/token)**, không
+    phải dòng.
+  - ⚠ Ghi chú kèm: câu *"05_TODO — CHỈ các mục còn mở"* trong `AGENTS.md` **không giảm token đầu vào**
+    (đọc file là đọc nguyên file); nó chỉ là chỉ dẫn chú ý. Đòn duy nhất có tác dụng là **giữ file nhỏ**.
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.

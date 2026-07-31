@@ -8,7 +8,7 @@ description: Fill a blank template with real numbers and export the finished del
 ## Quy trình
 
 1. **Lấy file mẫu từ `templates/`** (bản TRỐNG). **KHÔNG sửa template gốc** — làm việc trên bản sao.
-2. **Đổ số** từ `data/` · `measures/` · `queries/` vào đúng ô/sheet, theo **`docs/dictionary.md`** — định nghĩa metric ở đó là **nguồn sự thật**, chống mỗi lần điền một kiểu.
+2. **Đổ số** từ `data/` · `measures/` · `queries/` vào đúng ô/sheet, theo **`docs/agent/03_STRUCTURE.md` §2 (Từ điển dữ liệu)** — định nghĩa metric ở đó là **nguồn sự thật**, chống mỗi lần điền một kiểu.
 3. **Xuất ra:**
    - bản chính đem giao → thư mục deliverable (`reports/` · `models/` · `content/`)
    - bản render lại được → `exports/` (gitignore)
@@ -27,5 +27,5 @@ description: Fill a blank template with real numbers and export the finished del
 ## Cấm
 
 - Sửa đè lên file template gốc.
-- Tự đổi công thức metric khác với `dictionary.md` vì "thấy hợp lý hơn".
+- Tự đổi công thức metric khác với `03_STRUCTURE` §2 vì "thấy hợp lý hơn".
 - Báo "xong" khi chưa mở file ra nhìn.

@@ -49,12 +49,13 @@ Ký hiệu: `★` bắt buộc · `◆` phải có ít nhất một · `[tuỳ]`
 │   ├── agent/                   ★
 │   │   ├── 01_CONSTITUTION.md      mục đích dự án + những việc cố tình không làm
 │   │   ├── 02_RULES.md             luật làm việc: khi nào phải hỏi lại, khi nào cấm tự quyết
+│   │   ├── 03_STRUCTURE.md         chỗ để file + TỪ ĐIỂN dữ liệu (định nghĩa chỉ số, cột)
+│   │   ├── 04_SKILLS.md            sổ đăng ký: dự án có sẵn những quy trình nào
 │   │   ├── 05_TODO.md              việc chưa xong và đang dở, kèm đã tới bước nào
 │   │   ├── 06_CHANGES.md           nhật ký việc đã xong
 │   │   └── archive/         [tuỳ]  phần cũ của hai file sổ, chuyển sang khi chúng dài quá
 │   ├── plan/                    ★
 │   │   └── 00_overview.md          mô tả dự án: làm gì, cho ai, gồm những phần nào
-│   └── dictionary.md         [tuỳ]  định nghĩa các chỉ số và cột dữ liệu dùng chung
 │
 ├── .claude/skills/              ★  các QUY TRÌNH thao tác — mỗi quy trình một thư mục
 │   ├── structure/                  chuẩn thư mục + bảng tra "cần gì để ở đâu"
@@ -66,7 +67,8 @@ Ký hiệu: `★` bắt buộc · `◆` phải có ít nhất một · `[tuỳ]`
 │   ├── upload/                     đưa sản phẩm lên đích
 │   ├── reconcile/                  nắn thư mục về đúng chuẩn
 │   ├── conform/                    kiểm độ bám chuẩn
-│   └── audit/                      soi toàn diện trước mốc quan trọng
+│   ├── audit/                      soi toàn diện trước mốc quan trọng
+│   └── write-docx/                 sửa · tạo file Word, giữ nguyên bảng · ảnh · mục lục
 │
 │   ────────── phần dưới chỉ tạo khi đã có nội dung thật ──────────
 │
@@ -123,6 +125,8 @@ phần bị chiếm sẵn giảm khoảng 70%.
 | `AGENTS.md` | Tên dự án, mô tả ngắn, quy định đọc gì lúc nào | Trợ lý, sau khi người dùng duyệt | Hiếm |
 | `01_CONSTITUTION.md` | Dự án tồn tại để làm gì, phục vụ ai; và những việc **cố tình không làm** | **Chỉ người dùng.** Trợ lý chỉ được đề xuất, ghi vào `05_TODO.md` chờ duyệt | Hiếm |
 | `02_RULES.md` | Luật làm việc: ngôn ngữ, cách ghi sổ, điều kiện phải hỏi lại, giới hạn phạm vi, quy định về xoá và sửa | Đi kèm bộ chuẩn, ít khi đổi | Hiếm |
+| `03_STRUCTURE.md` | Hai câu trả lời cho "cái này gọi là gì, để ở đâu": chỗ đặt từng loại file, và **từ điển dữ liệu** — định nghĩa từng chỉ số, từng cột | Trợ lý cập nhật ngay khi đổi cấu trúc hoặc thêm định nghĩa | Thỉnh thoảng |
+| `04_SKILLS.md` | Sổ đăng ký: dự án đang có sẵn những quy trình nào, mỗi quy trình một dòng | Trợ lý, mỗi lần thêm hoặc bớt một quy trình | Thỉnh thoảng |
 | `.claude/skills/` | Các quy trình lặp lại, mỗi quy trình một thư mục tự chứa | Khi có việc lặp mới | Thỉnh thoảng |
 | `05_TODO.md` | Việc chưa xong, việc đang dở, đã tới bước nào, bước kế tiếp là gì | Trợ lý cập nhật trong lúc làm | Mỗi phiên |
 | `06_CHANGES.md` | Nhật ký việc đã xong, xếp theo ngày, mới nhất ở trên | Trợ lý, **chỉ sau khi người dùng xác nhận** | Mỗi phiên |
@@ -133,7 +137,7 @@ phần bị chiếm sẵn giảm khoảng 70%.
 | Nhóm | Phần | Quyết định điều gì |
 |---|---|---|
 | **Luật** | `01`, `02` | Dự án được phép và không được phép làm gì. Gần như không đổi |
-| **Chuẩn** | `.claude/skills/` | File để ở đâu; việc lặp làm theo trình tự nào. Đổi khi cách làm đổi |
+| **Chuẩn** | `03`, `04`, `.claude/skills/` | File để ở đâu, chỉ số tính thế nào, việc lặp làm theo trình tự nào. Đổi khi cách làm đổi |
 | **Sổ** | `05`, `06` | Trạng thái công việc. Đổi mỗi phiên, nối các phiên lại với nhau |
 
 Hai phần đáng chú ý:
@@ -173,8 +177,10 @@ Không cần học câu lệnh, không cần cài phần mềm, không cần nh�
 2. Tạo một dự án trong ứng dụng, trỏ vào thư mục đó.
 3. Mở phiên và dán một dòng:
 
-   > Tải `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
-   > rồi làm theo đúng những gì trong đó.
+   > Dựng bộ khung làm việc cho dự án trong thư mục tôi đã gắn.
+   > Thư mục đó có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
+   > theo đúng những gì trong đó.
+   > `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
 
 Trợ lý tạo bộ chuẩn, đọc toàn bộ thư mục để nắm hiện trạng, trình bảng đề xuất sắp xếp,
 rồi hỏi những phần nó không tự xác định được.
