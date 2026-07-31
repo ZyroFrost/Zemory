@@ -82,7 +82,10 @@ export function validate(ctx: Context): ValidateReport {
   }
 
   // 3. Repo structure vs the standard (docs/agent/03_STRUCTURE.md). TWO standards:
-  //    profile "app" (§1–6, default) vs "non-app" (§7 — BI/data/docs/design),
+  //    profile "app" (docs_template/app) vs "non-app" (its OWN 03_STRUCTURE —
+//    BI/data/docs/design). "§7" used to mean "the non-app standard" back when it
+//    was a section inside the app file; it is a separate file now, and each file
+//    numbers its own sections, so messages below name the section per profile.
   //    chosen by `profile` in docs/.harness.json. ADVISORY only — reconciling is
   //    agent-assisted (docs/agent/03_STRUCTURE.md §8); zemory never moves files.
   for (const i of checkStructure(projectRoot, ctx.config.profile ?? "app")) issues.push(i);
@@ -90,13 +93,13 @@ export function validate(ctx: Context): ValidateReport {
   return { issues, ok: !issues.some((i) => i.level === "error") };
 }
 
-/** The deliverable folders that satisfy the non-app standard (03_STRUCTURE §7). */
+/** The deliverable folders that satisfy the non-app standard (its 03_STRUCTURE §1). */
 const DELIVERABLES = ["reports", "models", "content", "design"];
 
 /**
  * Report how the repo lines up with the standard layout for its profile.
  * APP (§1–6): required = backend/(code) · frontend/ · docs/ · AGENTS.md.
- * NON-APP (§7): required = docs/ · AGENTS.md · ≥1 deliverable (reports/models/
+ * NON-APP (its 03 §1): required = docs/ · AGENTS.md · ≥1 deliverable (reports/models/
  * content/design) — no backend/frontend expected. Everything else optional.
  * Build output + secret + .env are gitignored, so not checked. Warn on drift,
  * never fix (docs/agent/03_STRUCTURE.md §8).
@@ -110,11 +113,11 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
   if (!has("AGENTS.md")) out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
 
   if (profile === "non-app") {
-    // §7: a deliverable-asset project (BI/data/docs/design) — no app code expected.
+    // non-app: a deliverable-asset project (BI/data/docs/design) — no app code expected.
     if (!deliverables.length) {
       out.push({
         level: "warn",
-        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/03_STRUCTURE.md §7",
+        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/03_STRUCTURE.md §1 (3 vai trò bắt buộc)",
       });
     }
     const present = [
@@ -128,19 +131,19 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
       has("attic") && "attic/",
       has("data") && "data/",
     ].filter(Boolean);
-    out.push({ level: "info", msg: `structure[non-app §7]: slots present — ${present.join(" · ") || "(none)"}` });
+    out.push({ level: "info", msg: `structure[non-app]: slots present — ${present.join(" · ") || "(none)"}` });
     return out;
   }
 
   // Default: APP standard (§1–6).
   const ownCode = has("backend") ? "backend/" : has("src") ? "src/" : null;
   if (!ownCode) {
-    // No app code but deliverable folders exist → this is probably a §7 project
+    // No app code but deliverable folders exist → this is probably a non-app project
     // validated under the wrong profile; point at the switch instead of nagging.
     if (deliverables.length) {
       out.push({
         level: "info",
-        msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (03_STRUCTURE §7)`,
+        msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (áp chuẩn 03_STRUCTURE hệ non-app)`,
       });
     } else {
       out.push({

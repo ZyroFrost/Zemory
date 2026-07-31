@@ -239,6 +239,35 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
     }
   }
 
+  // Skills — one folder per playbook under .claude/skills/ (Phase 3, 2026-07-31).
+  // They live OUTSIDE docs/ because that is where Claude Code looks for them, and
+  // they must be scaffolded here: 04_SKILLS is only a registry now, so skipping this
+  // step would scaffold a harness whose registry names playbooks that do not exist.
+  // Same never-overwrite rule as everything else, and `reference/`+`scripts/`
+  // subfolders come along because a skill that lost its resources is a broken skill.
+  const skillSrcRoot = join(tplBase, ".claude", "skills");
+  if (existsSync(skillSrcRoot)) {
+    const copyTree = (srcDir: string, dstDir: string, prefix: string) => {
+      mkdirSync(dstDir, { recursive: true });
+      for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
+        const src = join(srcDir, entry.name);
+        const dst = join(dstDir, entry.name);
+        const rel = prefix + entry.name;
+        if (entry.isDirectory()) {
+          copyTree(src, dst, rel + "/");
+          continue;
+        }
+        if (existsSync(dst)) {
+          present.push(rel);
+          continue;
+        }
+        writeFileSync(dst, readFileSync(src, "utf8").replace(/<PROJECT>/g, projectName));
+        added.push(rel);
+      }
+    };
+    copyTree(skillSrcRoot, join(projectRoot, ".claude", "skills"), ".claude/skills/");
+  }
+
   rememberProject(projectRoot);
   return { createdConfig, added, present, docsRel, needsReconcile };
 }
