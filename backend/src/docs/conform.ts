@@ -131,9 +131,46 @@ export function conform(root: string): ConformReport {
     "nếu điều còn hiệu lực: dẫn chiếu từ plan/rules liên quan; nếu đã lỗi thời: đề xuất user sửa hiến pháp",
   );
 
-  // ④ Roster skill (dòng tự khai trong 04_SKILLS) lệch với các section `##` thật.
+  // ④ Sổ đăng ký skill (04_SKILLS) lệch với skill THẬT.
+  //    HAI hình dạng, vì Phase 3 (2026-07-31) dời playbook ra `.claude/skills/`:
+  //      · MỚI  — mỗi skill một thư mục; roster = bảng §2 của 04; đối chiếu 3 chiều
+  //               (thư mục ↔ §2 ↔ bảng trigger AGENTS), vì thiếu MỘT chỗ là skill mồ côi:
+  //               nó tồn tại mà không phiên nào tìm ra, tức tốn công viết mà không ai dùng.
+  //      · CŨ   — playbook inline; roster = dòng "Skill inline hiện có"; đối chiếu với `##`.
+  //    Giữ cả hai để project chưa migrate không bị báo oan.
   const sk = read(root, join("docs", "agent", "04_SKILLS.md"));
-  if (sk) {
+  const skillsDir = join(root, ".claude", "skills");
+  const onDisk = existsSync(skillsDir)
+    ? readdirSync(skillsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md")))
+        .map((e) => e.name)
+        .sort()
+    : [];
+  if (sk && onDisk.length) {
+    const declared = [...sk.matchAll(/^\|\s*`([a-z0-9-]+)\/`\s*\|/gm)].map((m) => m[1]);
+    push(
+      "skill-roster-drift",
+      "blocking",
+      "Skill khai trong `04_SKILLS` §2 nhưng KHÔNG có `.claude/skills/<tên>/SKILL.md`",
+      declared.filter((d) => !onDisk.includes(d)),
+      "tạo skill đó, hoặc bỏ dòng khỏi sổ đăng ký",
+    );
+    push(
+      "skill-unregistered",
+      "blocking",
+      "Skill có thật nhưng KHÔNG khai trong `04_SKILLS` §2 (skill mồ côi)",
+      onDisk.filter((d) => !declared.includes(d)),
+      "thêm một dòng vào `04_SKILLS` §2",
+    );
+    const agents = read(root, "AGENTS.md") ?? "";
+    push(
+      "skill-no-trigger",
+      "advisory",
+      "Skill không có dòng nào trong bảng trigger `AGENTS.md` (chỉ được gọi khi harness tự nạp)",
+      onDisk.filter((d) => !agents.includes(`.claude/skills/${d}/`)),
+      "thêm một dòng “mở khi …” vào bảng trigger trong `AGENTS.md`",
+    );
+  } else if (sk) {
     const roster = sk.match(/\*\*Skill inline hiện có:\*\*(.+)/);
     if (roster) {
       const declared = [...roster[1].matchAll(/`([^`]+)`/g)].map((x) => x[1].trim());

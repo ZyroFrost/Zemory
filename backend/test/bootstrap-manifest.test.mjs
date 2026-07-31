@@ -5,10 +5,15 @@
 // machine report a false ✗ on a file that is actually fine.
 //
 // NOTE the source moved on 2026-07-29: the Cowork set used to overlay docs_template/nonapp/
-// (the master template that `zemory init --non-app` scaffolds from). The user ruled the
-// new skills-based standard is COWORK-ONLY — "chuẩn mới áp cho cowork thôi, ko đụng bản
-// gốc" — so the whole set now lives under docs_template/cowork/nonapp/ and the master
-// template stays untouched. This gate pins that separation too.
+// (the master template that `zemory init --non-app` scaffolds from), so the whole set was
+// moved under docs_template/cowork/nonapp/ and the master template was pinned untouched.
+//
+// SUPERSEDED 2026-07-31 (Phase 3, see docs/agent/06_CHANGES): the user ruled the skills
+// architecture goes onto the master templates too. So this gate no longer pins "masters
+// must NOT have .claude/" — it pins the opposite: all three sets carry the same shape
+// (skills as .claude/skills/<name>/SKILL.md, 04_SKILLS as a thin registry outside the
+// always-read set), while each stays its own variant. The separation still pinned is the
+// one that matters: BOOTSTRAP must scaffold from cowork/nonapp, never from the master.
 //
 //   - every file in docs_template/cowork/nonapp/ must appear in the manifest (no silent gap)
 //   - every declared line count must equal the real file's line count
@@ -23,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 const TEMPLATE = fileURLToPath(new URL("../../docs_template/cowork/nonapp/", import.meta.url));
 const MASTER = fileURLToPath(new URL("../../docs_template/nonapp/", import.meta.url));
+const MASTER_APP = fileURLToPath(new URL("../../docs_template/app/", import.meta.url));
 const BOOTSTRAP = fileURLToPath(new URL("../../docs_template/cowork/BOOTSTRAP.md", import.meta.url));
 const md = readFileSync(BOOTSTRAP, "utf8");
 
@@ -117,16 +123,45 @@ test("BOOTSTRAP points at the COWORK standard, not the master template", () => {
   );
 });
 
-test("the Cowork set does NOT leak into the master template (user ruling: cowork-only)", () => {
-  // The first landing of this set overlaid docs_template/nonapp/ and silently changed
-  // what `zemory init --non-app` would scaffold. Pin the separation from both sides.
-  const masterFiles = templateFiles(MASTER, "");
-  const leaked = masterFiles.filter((f) => f.startsWith(".claude/"));
-  assert.deepEqual(leaked, [], "`.claude/` skills belong to docs_template/cowork/nonapp/, not the master template");
-  const masterAgents = readFileSync(join(MASTER, "AGENTS.md"), "utf8");
-  assert.match(masterAgents, /ĐỌC HẾT/u, "master AGENTS.md must keep the old read-everything contract");
+test("all three sets carry the skills architecture (Phase 3 — no profile left on the old shape)", () => {
+  // Before Phase 3 the masters kept every playbook inline in 04_SKILLS, which meant a
+  // 211-233 line file inside the always-read set. The point of the move is that a skill
+  // is only paid for when it is used, so what has to be pinned is the SHAPE: skills live
+  // as their own files, and 04_SKILLS is a registry thin enough to stay cheap.
+  for (const [label, root] of [["cowork", TEMPLATE], ["master nonapp", MASTER], ["master app", MASTER_APP]]) {
+    const files = templateFiles(root, "");
+    const skills = files.filter((f) => /^\.claude\/skills\/[a-z0-9-]+\/SKILL\.md$/.test(f));
+    assert.ok(skills.length >= 7, `${label}: only ${skills.length} skill file(s) — playbooks must live in .claude/skills/`);
+    for (const rel of skills) {
+      const body = readFileSync(join(root, rel), "utf8");
+      assert.match(body, /^---\r?\nname:/u, `${label}/${rel}: no frontmatter — the harness cannot auto-load it`);
+    }
+    // A registry that grows playbooks back into itself defeats the whole move.
+    const registry = readFileSync(join(root, "agent", "04_SKILLS.md"), "utf8");
+    assert.ok(
+      lineCount(registry) <= 60,
+      `${label}: 04_SKILLS is ${lineCount(registry)} lines — a registry, not a playbook dump (cap 60)`,
+    );
+  }
   const coworkAgents = readFileSync(join(TEMPLATE, "AGENTS.md"), "utf8");
   assert.match(coworkAgents, /Hợp đồng nạp/u, "cowork AGENTS.md must carry the trigger-based load contract");
+  for (const [label, root] of [["master nonapp", MASTER], ["master app", MASTER_APP]]) {
+    const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
+    const readAll = agents.split(/\r?\n/).find((l) => /ĐỌC HẾT/u.test(l)) ?? "";
+    // Only the ENUMERATION counts. The same line also declares the exclusion
+    // ("03_STRUCTURE và 04_SKILLS KHÔNG nằm trong bộ này"), so a bare /04_SKILLS/ match
+    // would flag that declaration as the very thing it forbids. Cut at the exclusion
+    // clause — NOT at the first "KHÔNG", because the line opens with "KHÔNG bỏ sót" and
+    // cutting there would leave an empty string, i.e. a check that can never go red.
+    const enumerated = readAll.split(/`03_STRUCTURE`/u)[0];
+    assert.ok(enumerated.includes("01_CONSTITUTION"), `${label}: cannot find the always-read list to check`);
+    assert.doesNotMatch(
+      enumerated,
+      /04_SKILLS/u,
+      `${label}: 04_SKILLS still listed as always-read — it must be trigger-loaded now`,
+    );
+    assert.match(agents, /\.claude\/skills\//u, `${label}: AGENTS.md never mentions .claude/skills/ — no way in`);
+  }
 });
 
 test("the human explainer exists and the two docs point at each other (neither gets orphaned)", () => {

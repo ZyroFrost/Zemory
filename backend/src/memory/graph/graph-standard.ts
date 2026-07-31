@@ -16,7 +16,7 @@
 // draft". Muốn lớp đó thì mới cần front-matter — cố ý CHƯA làm, và nếu làm phải OPT-IN
 // (bắt buộc mọi project = cố định NỘI DUNG docs = trái điều 3).
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { SLOT_ROLES } from "../../docs/structure-tree.js";
 
@@ -146,10 +146,28 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
     }
   }
 
-  // ── skill: dùng chính DÒNG TỰ KHAI của file ("Skill inline hiện có: `a` · `b`"),
-  //    nên không phải đoán heading nào là skill, heading nào là luật.
+  // ── skill: HAI hình dạng, vì Phase 3 (2026-07-31) dời playbook ra file riêng.
+  //    · MỚI  — mỗi skill là `.claude/skills/<tên>/SKILL.md`. Đếm THƯ MỤC THẬT, không
+  //      đếm heading của `04_SKILLS`: file đó giờ là sổ đăng ký, heading của nó là
+  //      "Luật dùng skill"/"Danh mục"/"Thêm một skill" — đếm heading ra 4 "skill" không
+  //      tồn tại, tức con số trong `conform` nói sai về chính thứ nó đang chấm.
+  //    · CŨ   — playbook inline: dùng dòng tự khai ("Skill inline hiện có: `a` · `b`")
+  //      nên không phải đoán heading nào là skill, heading nào là luật.
+  const skillsDir = join(root, ".claude", "skills");
+  const skillDirs = existsSync(skillsDir)
+    ? readdirSync(skillsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md")))
+        .map((e) => e.name)
+        .sort()
+    : [];
   const skills = read(root, join("docs", "agent", "04_SKILLS.md"));
-  if (skills) {
+  if (skillDirs.length) {
+    for (const name of skillDirs) {
+      const id = `skill:${slug(name)}`;
+      add({ id, label: name, type: "skill", dir: ".claude/skills", src: `.claude/skills/${name}/SKILL.md` });
+      if (skills) edges.push({ from: "doc:agent/04_SKILLS.md", to: id, kind: "contains" });
+    }
+  } else if (skills) {
     const roster = skills.match(/\*\*Skill inline hiện có:\*\*(.+)/);
     const declared = roster ? [...roster[1].matchAll(/`([^`]+)`/g)].map((x) => x[1].trim()) : [];
     for (const m of skills.matchAll(/^##\s+(.+?)\s*$/gm)) {
