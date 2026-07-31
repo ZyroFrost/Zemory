@@ -5,6 +5,55 @@
 
 ---
 
+## [2026-08-01] — Chốt GUIDE.docx để gửi ra ngoài + đẩy bản chuẩn lên remote
+
+Bố cục lại theo user: bảng thuật ngữ lên **mục 1** (giải thích trước khi vào hướng dẫn), mẹo
+mở rộng đôn từ mục 12 lên **mục 3** ngay sau phần hướng dẫn, mục 3–11 lùi số — đổi ở **cả ba
+nơi**: tiêu đề thật, dòng mục lục (dời trọn đoạn nên neo nhảy vẫn đúng), và **5 dẫn chiếu
+"mục N"** trong thân bài. Phần đổi phiên rút **5 đoạn → 2**.
+
+- **SỬA MÔ TẢ SAI về mức nỗ lực.** Bản cũ viết *"Max = ultracode + xhigh"* (tôi viết theo lời
+  user, user viết theo tooltip). Dò lại tài liệu chính thức: **ngược** — ultracode gửi `xhigh`
+  (nhãn UI *Extra*) rồi thêm phần điều phối nhiều agent, và là **một DÒNG RIÊNG** trong menu
+  `/effort`, không dính `max`. `high` mới là mặc định thật (*"đặt high == không đặt gì"*), còn
+  `max` thì chính Anthropic cảnh báo *"diminishing returns · prone to overthinking"* và chỉ áp
+  cho phiên hiện tại. Đã **gỡ mọi con số chi phí**: không có hệ số chính thức nào cho
+  high→xhigh→max hay ultracode; mấy con 7x/4x/15x ngoài kia là của thứ khác. Thay bằng cách
+  kiểm được: chạy thử một thư mục trước rồi mới mở rộng.
+- **Lỗi trình bày đã trả giá:** **14 dấu `**` gõ lẫn vào thân run** (trong `.docx` in đậm là
+  THUỘC TÍNH của run — gõ `**` là Word in ra dấu sao; 6 dấu trong số đó đã lọt sang bản user
+  mở ở lượt trước) · 8 đoạn in đậm **ngược vai** (thân đậm, dẫn thường) · 8/12 ảnh để
+  `<w:spacing/>` rỗng nên chữ dính sát · 4 chỗ ép mục lớn sang trang để lại lỗ **78% · 97% ·
+  44% · 70%**. Đo phần trống từng trang **phải loại vùng chân trang**, không thì trang nào
+  cũng ra 0% trống — phép đo đầu tiên của tôi dính đúng bẫy này.
+- **Chặn việc gửi, phát hiện đúng lúc:** link trong GUIDE trỏ vào GitHub, mà remote đang **cũ
+  hơn 27 commit** — CEO dán câu lệnh sẽ dựng ra bộ CŨ (19 dòng manifest, không có `04_SKILLS`,
+  không có `write-docx`), lệch hẳn tài liệu đang đọc. User cho phép push; đẩy 3 commit
+  (`dd6c541..86dbf33`). Kiểm lại bằng lần tải **phá cache**: 24 dòng manifest, có `03_STRUCTURE`
+  · `04_SKILLS` · `write-docx`, trần archive **40.000 ký tự**. Link trong tài liệu giờ đúng bộ.
+- `cowork.7z` đã verify **59/59 mục · CRC GUIDE trùng byte**, nhưng user chốt **chỉ gửi GUIDE**
+  (agent tự tải về dựng) ⇒ file nén **KHÔNG commit** — nó là bản render, không phải nguồn.
+
+## [2026-07-31b] — Bộ Cowork: 03/04 vào bộ · GUIDE đồng bộ · audit toàn diện 8 lỗi (user duyệt 2026-08-01)
+
+Gộp hai đợt đã xong từ 31/07 mà còn treo chờ duyệt.
+
+- **`03_STRUCTURE` + `04_SKILLS` vào bộ cowork** — giữ đúng cấu trúc 6 file như bản gốc, chỉ
+  đổi vai: `03` trỏ sang skill `structure` và giữ **§2 = TỪ ĐIỂN dữ liệu** (ship rỗng), `04` là
+  sổ đăng ký. Manifest `BOOTSTRAP.md` **22 → 24 hàng**, số dòng đọc bằng script chứ không gõ tay.
+  Dựng thử một cài đặt từ đầu rồi chạy `check_install.py` → **24/24, exit 0**.
+- **GUIDE.docx đồng bộ với bộ file thật** (7 sửa) + mục mới **"Canh chỗ nhớ còn lại — `/context`"**
+  kèm ảnh thật, ngưỡng 95% thì ghi sổ rồi đổi phiên; thêm hai đường thêm quy trình (kho Directory
+  + nhờ soạn) và luật *"sai lặp lại → cho vào LUẬT"*.
+- **Audit toàn diện trước khi giao — 8 lỗi thật, đã sửa hết:** `README` thiếu hẳn quy trình
+  `write-docx` (liệt kê 10/11) và thiếu `03`/`04` trong bảng vai trò · `BOOTSTRAP` ghi "mười một
+  quy trình" rồi ngay dòng dưới "mười cái đó" · bảo đăng ký skill ở MỘT chỗ trong khi luật đòi
+  HAI · `02_RULES` bỏ sót `04` trong chuỗi đồng bộ · **overview đọc lúc nào: ba file nói ba kiểu**
+  · **luật dọn `05_TODO` là luật CHẾT** (bước trước đã xoá hết mục đã xong, bước sau lại bảo
+  archive chính chúng) · câu dán khởi động khác nhau giữa `README` và `BOOTSTRAP`.
+  Đo lại sau sửa: `check_install` 24/24 · `check_structure` **đỏ đúng chỗ rồi xanh** (đột biến) ·
+  47/47 test của 4 bộ liên quan · gate toàn repo 422/422 · `conform` ✓.
+
 ## [2026-07-31] — PHASE 3: kiến trúc skill của cowork áp lên CẢ hai bản chính (app + nonapp)
 
 > 🔄 **Supersede:** thay quyết định *"chuẩn mới áp cho COWORK THÔI, không đụng bản gốc"* (`archive/06_CHANGES` 2026-07-29) và *"luật đọc 3 file chỉ áp dụng với cowork thôi, hệ non-app với app vẫn đọc full docs"* (29/07) — **user chốt làm trọn 31/07** sau khi bản cowork chạy ổn và đo được mức nạp nhẹ hơn ~69%. Hai test khoá hai chiều trong `bootstrap-manifest.test.mjs` được nới theo, KHÔNG xoá: chúng đổi từ *"cowork-only"* sang *"cả ba bộ cùng một kiến trúc, mỗi bộ một biến thể"*.

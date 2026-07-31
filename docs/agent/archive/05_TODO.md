@@ -1,6 +1,73 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **PHASE 1 — BỘ COWORK: XONG 2026-07-31** (đã ghi `06_CHANGES [2026-07-31b]`, user duyệt 01/08).
+  `03_STRUCTURE` + `04_SKILLS` **trở lại đủ 6 file**, nhưng **trigger-load** (bảng trong `AGENTS.md`),
+  KHÔNG phải luôn-nạp ⇒ nền mỗi phiên **3.182 tok** (trước 2.842; bộ đầy đủ 10.268). `03 §2` là **nhà duy
+  nhất của từ điển** — `docs/dictionary.md` bị gỡ khỏi chuẩn, 10 chỗ trỏ lại về `03 §2`
+  (structure ×2 · fill ×2 · session-close · audit · conventions · README · 02_RULES · AGENTS).
+  Bù 3 luật: **đồng bộ 01↔02↔03↔05↔06↔plan** · **phép kiểm phải ĐỎ ĐƯỢC** (+ luật 5 "PHÁ THỬ" trong
+  `audit`) · **"tra `archive/` trước khi kết luận chưa từng làm"** trong `AGENTS.md`.
+  Manifest `BOOTSTRAP.md` **24 hàng** (thêm 2, sửa 6 số dòng — đọc số THẬT bằng script, không gõ tay).
+  **Đo end-to-end:** dựng thử một dự án theo manifest rồi chạy `check_install.py` → **24/24 khớp, exit 0**.
+  Gate `bootstrap-manifest` 8/8 · `npm run check` 422/422 · `conform` ✓.
+  - ⚠ **`check_install.py` chỉ dùng được NGAY SAU KHI CÀI** — nó gate cả `05_TODO`(7) và `06_CHANGES`(9),
+    hai file bắt buộc phải phình. Đừng quảng cáo là "chạy lại lúc nào cũng được".
+
+- [x] **PHASE 2 — GUIDE.docx đồng bộ + mục `/context`: XONG 2026-07-31** (đã ghi `06_CHANGES [2026-07-31b]`).
+  Đọc trọn 463 dòng (markitdown) rồi đối chiếu với bộ file thật. **7 sửa đồng bộ:** cây §7 thiếu
+  `03`/`04` · câu chốt §7 ánh xạ 3 mức sai · §12 thiếu dòng "định nghĩa chỉ số" · §6 gọi nhầm "danh mục
+  quy trình" (thứ luôn nạp là BẢNG TRA) · §2 thêm thuật ngữ "Từ điển dữ liệu" · §11 thêm ranh giới "tra
+  archive trước khi nói chưa từng làm" · `BOOTSTRAP.md` 1d nói thiếu 03/04.
+  **Thêm theo user (dựa trên đo GM 9.730 tin ngắn):** hàng "Bắt đầu một phiên mới → *đọc docs và chuẩn
+  bị*" (user gõ 11×, guide chưa hề có) · ví dụ ghi sổ đổi thành *"note lại đi"* (dạng user hay dùng hơn
+  *"ghi sổ"*) · **mục mới "Canh chỗ nhớ còn lại — lệnh `/context`"** kèm **ảnh thật user chụp**
+  (`img/step_context.png`, moi từ transcript phiên), ngưỡng **95%** thì ghi sổ + đổi phiên, kèm phân biệt
+  *context window* vs *weekly usage limit*.
+  **User BÁC 2 đề xuất của tôi:** `xong chưa` (chỉ dùng khi vòng lặp kẹt) · `làm đi` (không cần).
+  **Bảng kiểm write-docx:** bảng 9→9 · ảnh 9→**10** · mọi `r:embed` tra ra rel + file có thật · 0 ảnh mồ
+  côi · ảnh rộng = khổ chữ (5.731.510 EMU, cao theo tỷ lệ gốc 828×407) · TOC field còn · begin=separate=
+  end=13 · **trang 15 → 16** (render thật bằng x2t).
+  - ⚠ **Vá thêm lỗi CÓ SẴN:** `wp:docPr id` trùng (`1`×3 · `4`×2 · `5`×2) từ trước đợt này — đã đánh số
+    lại 1..10. *(Bản `.bak` cũng trùng ⇒ không phải do đợt sửa hôm nay.)*
+  - ⚠ **Bẫy đã trả giá:** `x2t.exe` render lỗi JS *"Cannot read property 'length' of undefined"* — KHÔNG
+    phải docx hỏng, mà là **`AllFonts.js` không nằm cạnh `x2t.exe`** (nó ở
+    `%LOCALAPPDATA%\ONLYOFFICE\DesktopEditors\data\fonts`). Trỏ đúng là render được ngay.
+  - **Còn lại:** mục lục là TOC field ⇒ **user mở Word bấm `F9`** để cập nhật số trang.
+    Chưa đo phân bố **khoảng trắng cuối trang** (skill `write-docx` §10) — đợt này không chèn ngắt trang
+    ép nên rủi ro thấp, nhưng chưa đo thì ghi là **chưa đo**.
+
+- [x] **PHASE 3 — ĐÃ ĐEM LÊN BẢN CHÍNH (app + nonapp), 2026-07-31.** Supersede đã ghi; hai test khoá
+  hai chiều đã nới sang "ba bộ cùng kiến trúc". Kết quả: 17 file skill mới (app 7 · nonapp 10, chép
+  NGUYÊN VĂN playbook cũ + frontmatter), `04_SKILLS` thành sổ đăng ký (211→52 · 233→55 dòng, trần 60
+  dòng có gate canh), `04` ra khỏi ĐỌC HẾT, nonapp `03` **§7 = Từ điển dữ liệu** và `docs/dictionary.md`
+  bị cấm ở mọi chỗ. Gate 422 → **423** · `conform` ✓.
+  - **Code phải đi kèm (5 chỗ):** `adopt.ts` scaffold `.claude/skills/**` (thiếu ⇒ `init` dựng sổ đăng
+    ký trỏ vào file không tồn tại — `init --non-app` giờ ra **19 doc**) · `checks.ts` probe `grill` nhận
+    cả hai hình dạng · `conform` luật ④ đối chiếu 3 chiều (thư mục ↔ `04` §2 ↔ trigger `AGENTS`) ·
+    `graph-standard` đếm skill theo THƯ MỤC (trước đếm heading ⇒ sổ mỏng ra "skill 4" sai) ·
+    `validate` bỏ chuỗi "§7" (trên dự án non-app nó chỉ vào mục TỪ ĐIỂN, không phải luật deliverable).
+  - **Đã đo:** `check_install` cowork 24/24 · `init --non-app` ra đủ 10 skill · đột biến 2 phép kiểm mới
+    (nhét `04_SKILLS` lại vào ĐỌC HẾT ⇒ đỏ · skill không khai trong sổ ⇒ `skill-unregistered` đỏ).
+  - ⚠ **Sửa lại một kết luận CŨ của chính mục này:** trần theo dòng chỉ sai với `06_CHANGES`; còn
+    `05_TODO` thì **không có trần nào cả** — `archiveTodo` đã đúng từ trước (mọi mục `[x]` rời file
+    NGAY, comment trong code ghi rõ *"ngưỡng kích thước là cổng SAI cho một luật đúng-chỗ"*, đo
+    2026-07-29: gác bằng ngưỡng là lý do 107 mục đã xong nằm lại chiếm 46% file). Doc của cả ba bộ
+    nay nói đúng thực tế đó; `06_CHANGES` bản cowork (không có CLI) trần **40.000 ký tự**, giữ ~25.000.
+
+- [x] **ĐEM Bước 4 "TỰ DỌN" LÊN MỌI BẢN CHÍNH — XONG 2026-07-31** (làm cùng Phase 3 ở trên).
+  `session-close` Bước 4: sau khi ghi sổ, đếm dòng; file vượt ngưỡng thì chuyển phần cũ sang
+  `docs/agent/archive/`, chép NGUYÊN VĂN. Bản app/nonapp đang phó mặc cho lệnh `zemory archive` — mà
+  lệnh đó chỉ chạy khi có người nhớ gõ.
+  - ⚠ **SỬA LUÔN ĐƠN VỊ TRẦN — trần theo DÒNG là sai đơn vị (đo 2026-07-31).** Dòng ở sổ rất dày:
+    `05_TODO` của zemory **33,8 tok/dòng**, `06_CHANGES` **20,7 tok/dòng** ⇒ **trần 300 dòng ≈ 10.155 tok
+    MỖI file**. Mà `05_TODO` **luôn được nạp**: nền cowork 2.842 tok + TODO chạm trần = **~12,9k tok**,
+    **nặng hơn cả bộ đầy đủ (10.268 tok)** mà nó thay thế — toàn bộ 7,4k tiết kiệm từ việc dời 03/04
+    sang skill bị MỘT cái TODO đầy ăn sạch. ⇒ trần phải tính bằng **KÍCH THƯỚC (ký tự/token)**, không
+    phải dòng.
+  - ⚠ Ghi chú kèm: câu *"05_TODO — CHỈ các mục còn mở"* trong `AGENTS.md` **không giảm token đầu vào**
+    (đọc file là đọc nguyên file); nó chỉ là chỉ dẫn chú ý. Đòn duy nhất có tác dụng là **giữ file nhỏ**.
+
 - [x] ~~test sub-tab routing + ratchet không-tái-sinh~~ · ~~dọn orphan i18n~~ — **XONG 2026-07-29.** Nửa "test nav/sub-tab" **vốn đã có** (`app-ui.test.mjs`: nav khoá đúng 6 key + mỗi nút sub-tab khớp đúng một khối `.sub` cho 4 nhóm) — mục này khai thiếu. Nửa thật còn thiếu là **ratchet không-tái-sinh**, nay đã thêm: 7 khối (`sessDlg` · `homeChecks` · `renderHomeChecks` · `gmSources` · `insHealth` · `gmHealth` · `gmVector`) + 9 key i18n. Đã xoá **18 cặp** khỏi 2 dict (−715 ký tự); dict 360 → 351 key, parity vẫn cân. Đột biến **5/5**.
 
 **CHỜ USER CHỐT trước khi code:**
