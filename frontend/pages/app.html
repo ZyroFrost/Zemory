@@ -271,6 +271,9 @@
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.sources">Sources — bao gồm / loại trừ</div></div><div class="card-b">
             <div class="muted" style="font-size:11.5px;margin-bottom:6px" data-i18n="mem.sourcesD">Bỏ tick lane để loại khỏi sync + recall (bộ lọc, không xoá).</div>
             <div id="mScope"><div class="muted">…</div></div>
+            <div class="section-t" data-i18n="conn.title">Liên kết</div>
+            <div class="muted" style="font-size:11.5px;margin-bottom:6px" data-i18n="conn.desc">Nguồn nào còn nối thì ✓; đứt thì ⚠ kèm nút nối lại. Nguồn web kiểm bằng cách mở trình duyệt nên chỉ hiện kết quả lần kiểm gần nhất.</div>
+            <div id="mConn"><div class="muted">…</div></div>
           </div></div>
           <div class="seam" data-seam="mem1"></div>
           <!-- Col 2: This Machine + tự động -->
@@ -301,7 +304,7 @@
             </div>
             <div class="muted" style="font-size:11px;margin-bottom:6px" data-i18n="drv.chooseFolder">Chọn folder Drive dùng chung: mỗi máy xuất bundle mã hoá (.enc) vào đây, máy khác merge về. Dán đường dẫn rồi bấm Link.</div>
             <div style="display:flex;gap:6px"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
-            <div id="driveState" class="muted" style="font-size:11.5px;margin:8px 0">—</div>
+            <div id="driveState" class="scanmsg" style="margin:8px 0">—</div>
             <div style="display:flex;gap:8px"><button class="btn primary sm" style="flex:1" data-act="drivesync" data-i18n="act.syncNow">Đồng bộ ngay</button></div>
             <div class="section-t" data-i18n="mem.syncMode">Chế độ đồng bộ</div>
             <div class="filters"><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div>

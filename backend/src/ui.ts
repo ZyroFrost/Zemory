@@ -13,6 +13,9 @@ const execFileP = promisify(execFile);
 import { templateDir, ensureHarness } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
+import { scanWeb } from "./memory/scanweb.js";
+import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
+import { listConnections, webProfileDir } from "./memory/connections.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
 import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
 import type { AttachmentMeta } from "./memory/attachments.js";
@@ -67,6 +70,7 @@ import {
   setSyncLevel,
   getSyncAttachments,
   setSyncAttachments,
+  setWebAuth,
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
@@ -247,6 +251,143 @@ function probeDrive(dir: string): Omit<DriveSummary, "level" | "atts" | "syncPer
 
 function driveSummary(): DriveSummary {
   return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...driveSyncProgress() };
+}
+
+/** Một dòng kết quả kéo web cho MỘT nền, đủ để UI quyết định có phải hỏi đăng nhập không. */
+export interface WebScanRow {
+  platform: string;
+  /** Khe tài khoản ("main", "2", …) — cùng một nền có thể có nhiều tài khoản, và hội
+   *  thoại nằm theo TÀI KHOẢN chứ không theo nền. */
+  account?: string;
+  status: string;
+  url?: string;
+  pulled?: number;
+  skipped?: number;
+  failed?: number;
+  /** Mất phiên GIỮA lúc kéo (khác "chưa đăng nhập bao giờ") — phần đã kéo vẫn được lưu. */
+  authExpired?: boolean;
+  /** Có phiên ĐANG đăng nhập sẵn trong trình duyệt thật ⇒ mượn được, khỏi gõ mật khẩu.
+   *  Chỉ gắn khi thật sự có cookie: mời mượn rồi báo "trình duyệt cũng đăng xuất" thì
+   *  tệ hơn là không mời. */
+  canBorrow?: { from: string; label: string; profile: string; cookies: number } | null;
+  error?: string;
+}
+
+/** Các nền web-chat nút Quét biết tới. */
+const WEB_PLATFORMS = ["chatgpt", "claude"];
+
+/**
+ * Nền nào ĐANG DÙNG trên máy này = đã có profile trình duyệt của zemory.
+ *
+ * Không có công tắc "kèm web chat" nữa (user chốt 2026-07-30: *"đéo cần phải nút check
+ * scan web làm gì hết… 1 nút scan, tự động dò thằng nào thiếu rồi hiện ra đăng nhập"*).
+ * Nhưng cũng KHÔNG quét mù mọi nền: máy chưa từng dùng ChatGPT mà bấm Quét lại bị bật
+ * hai cửa sổ trình duyệt là một kiểu phiền khác. Đã dùng rồi ⇒ có profile ⇒ quét.
+ */
+function platformsInUse(): string[] {
+  const root = join(currentMemoryDir(), "browser");
+  return WEB_PLATFORMS.filter((k) => existsSync(join(root, k)));
+}
+
+/**
+ * Các KHE TÀI KHOẢN đang có của một nền: `main` + mọi `<platform>-<account>`.
+ *
+ * Hội thoại nằm theo TÀI KHOẢN chứ không theo nền — đo 2026-07-31: 3 phiên Cowork user
+ * cần nằm ở một tài khoản Claude khác cái đang đăng nhập. Không có khe thì muốn lấy chúng
+ * phải đăng xuất cái đang dùng.
+ */
+function accountsOf(platform: string): string[] {
+  const root = join(currentMemoryDir(), "browser");
+  const out = existsSync(join(root, platform)) ? ["main"] : [];
+  try {
+    for (const d of readdirSync(root)) {
+      const m = new RegExp(`^${platform}-(.+)$`).exec(d);
+      if (m) out.push(m[1]);
+    }
+  } catch {
+    /* chưa có thư mục nào */
+  }
+  return out.length ? out : ["main"];
+}
+
+/** Khe trống kế tiếp — nút "thêm tài khoản" không bắt người dùng tự đặt tên. */
+function nextAccountSlot(platform: string): string {
+  const have = new Set(accountsOf(platform));
+  for (let i = 2; i < 20; i++) if (!have.has(String(i))) return String(i);
+  return "20";
+}
+
+/**
+ * Kéo web chat cho từng nền, KHÔNG tương tác.
+ *
+ * Vì sao không tương tác: `scanWeb` nhận `onNeedLogin` để HỎI rồi chạy tiếp — hợp với CLI
+ * (có TTY), nhưng qua HTTP thì giữ request mở chờ người dùng đăng nhập là treo daemon.
+ * Nên ở đây bỏ callback: `scanWeb` vẫn MỞ cửa sổ đăng nhập rồi trả 'need-login', UI đọc
+ * dòng đó, hiện dialog, và bấm "chạy tiếp" là gọi `/memory-scan-web?platform=…`.
+ *
+ * Một nền hỏng KHÔNG được kéo nền kia theo (fail-open, HP điều 9) — lỗi ghi vào dòng của
+ * chính nền đó.
+ */
+/**
+ * Bảng Liên kết + kiểm LẠI mọi nền web đang có cửa sổ mở.
+ *
+ * Vì sao phải kiểm ở đây: user đăng nhập trong cửa sổ claude, nhưng app lúc đó chỉ đang
+ * theo dõi nền vừa được BẤM (chatgpt) ⇒ hàng claude đứng nguyên ở ⚠ dù đã đăng nhập
+ * xong (*"vào web xong nhưng app ko hề nhận dc đăng nhập"*). Nay mỗi lần đọc bảng là
+ * hỏi lại tất cả — `probeOnly` nên nó KHÔNG mở cửa sổ và không kéo gì; cửa sổ nào không
+ * sống thì giữ nguyên kết quả lần kiểm trước.
+ */
+async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
+  const rows = listConnections();
+  await Promise.all(
+    rows.map(async (r) => {
+      if (r.kind !== "web" || !r.platform || r.connected) return;
+      try {
+        const probe = await scanWeb({ platform: r.platform, account: r.account, probeOnly: true });
+        if (probe.status === "done") {
+          setWebAuth(r.account && r.account !== "main" ? r.platform + "#" + r.account : r.platform, true, probe.email ?? undefined);
+          r.connected = true;
+          r.unknown = false;
+          r.detail = "vừa kiểm xong";
+          r.canBorrow = undefined;
+        }
+      } catch {
+        /* fail-open: giữ trạng thái đã lưu */
+      }
+    }),
+  );
+  return rows;
+}
+
+async function scanWebPlatforms(only?: string[], account?: string): Promise<WebScanRow[]> {
+  const list = (only ?? platformsInUse()).filter((k) => WEB_PLATFORMS.includes(k));
+  const out: WebScanRow[] = [];
+  for (const platform of list) {
+    // Không truyền khe cụ thể ⇒ quét MỌI tài khoản của nền đó. Bỏ sót khe nào là hội
+    // thoại của tài khoản đó không bao giờ vào bộ nhớ.
+    for (const acct of account ? [account] : accountsOf(platform)) {
+    try {
+      const r = await scanWeb({ platform, account: acct });
+      // Ghi lại kết quả kiểm để bảng "Liên kết" có cái THẬT mà hiện — nó không tự mở
+      // trình duyệt đi kiểm mỗi lần vẽ được.
+      setWebAuth(acct === "main" ? platform : `${platform}#${acct}`, r.status === "done", r.email ?? undefined);
+      out.push({
+        platform,
+        account: acct,
+        status: r.status,
+        url: r.url,
+        pulled: r.pulled,
+        skipped: r.skipped,
+        failed: r.failed,
+        authExpired: r.authExpired,
+        canBorrow: r.status === "need-login" ? findBorrowSource(platform) : undefined,
+      });
+    } catch (e) {
+      out.push({ platform, account: acct, status: "error", error: e instanceof Error ? e.message : String(e) });
+    }
+    }
+  }
+  return out;
 }
 
 /** Latest sync timestamp (max sync_state.updated_at) — Home "Last Sync". null if
@@ -1365,8 +1506,57 @@ export async function startUi(): Promise<void> {
     }
     if (req.method === "POST" && p === "/memory-scan") {
       const r = scan({ deep: u.searchParams.get("deep") === "1" });
+      // MỘT nút Quét làm cả hai: nguồn trên máy rồi web chat của những nền đang dùng.
+      // Quét đĩa TRƯỚC, vì phần web mở trình duyệt và có thể dừng lại hỏi đăng nhập —
+      // người dùng vẫn phải nhận được kết quả quét đĩa trong mọi trường hợp. Chạy KHÔNG
+      // tương tác: `scanWeb` mở sẵn cửa sổ rồi trả 'need-login', UI hỏi bằng dialog (giữ
+      // request HTTP mở để chờ người đăng nhập là treo cả daemon).
+      const webResults = u.searchParams.get("web") === "0" ? undefined : await scanWebPlatforms();
       invalidateDashboard();
-      return json(res, r);
+      return json(res, { ...r, web: webResults });
+    }
+    if (req.method === "POST" && p === "/add-account") {
+      // THÊM TÀI KHOẢN cho một nền: mở một profile trình duyệt MỚI (khe trống kế tiếp) để
+      // người dùng đăng nhập tài khoản khác, KHÔNG đụng tới tài khoản đang có. Hội thoại
+      // nằm theo tài khoản — đo 2026-07-31: 3 phiên Cowork cần tra nằm ở tài khoản khác.
+      const platform = u.searchParams.get("platform") ?? "";
+      if (!WEB_PLATFORMS.includes(platform)) return json(res, { ok: false, error: `unknown platform '${platform}'` });
+      const account = nextAccountSlot(platform);
+      const web = await scanWebPlatforms([platform], account);
+      invalidateDashboard();
+      return json(res, { ok: true, account, web, rows: await liveConnections() });
+    }
+    if (p === "/connections") {
+      // Bảng "Liên kết" cạnh Sources: nguồn nào đang nối, nguồn nào đứt + nút nối lại.
+      return json(res, { ok: true, rows: await liveConnections() });
+    }
+    if (req.method === "POST" && p === "/connect") {
+      // Nút "Liên kết" của một nguồn web: có phiên sẵn trong trình duyệt thật thì MƯỢN
+      // (không gõ mật khẩu); không thì mở cửa sổ đăng nhập rồi kiểm lại.
+      const platform = u.searchParams.get("platform") ?? "";
+      const account = u.searchParams.get("account") ?? undefined;
+      const src = account && account !== "main" ? null : findBorrowSource(platform);
+      let backup: string | undefined;
+      if (src) {
+        const b = borrowCookies({ platform, from: src.from, profile: src.profile, replace: true });
+        if (!b.ok) return json(res, { ok: false, error: b.error, rows: await liveConnections() });
+        backup = b.backup;
+      }
+      const web = await scanWebPlatforms([platform], account);
+      // LÙI LẠI nếu mượn không ăn. Đo 2026-07-30: cookie chép từ Chrome sang profile khác
+      // KHÔNG mở được phiên (App-Bound Encryption) — mà profile vừa bị thay có thể đang
+      // đăng nhập ngon. Không có bước này thì nút "thử mượn" là nút phá.
+      if (backup) {
+        if (web[0]?.status === "done") dropBackup(backup);
+        else {
+          restoreProfile(webProfileDir(platform, account), backup);
+          const after = await scanWebPlatforms([platform], account);
+          invalidateDashboard();
+          return json(res, { ok: true, borrowed: null, borrowFailed: true, web: after, rows: await liveConnections() });
+        }
+      }
+      invalidateDashboard();
+      return json(res, { ok: true, borrowed: src ? { ...src } : null, web, rows: await liveConnections() });
     }
     if (req.method === "POST" && p === "/memory-digest") {
       // Build the extractive digest for every session that lacks one (or whose
