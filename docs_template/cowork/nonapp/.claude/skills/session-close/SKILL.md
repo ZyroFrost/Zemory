@@ -23,7 +23,7 @@ description: Close out a work session correctly - route everything that happened
 |---|---|
 | Việc đã xong / sản phẩm đã sửa | `06_CHANGES.md` (**sau khi user OK**) và **xoá khỏi** `05_TODO.md` |
 | Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ **đã tới đâu, bước kế tiếp là gì** |
-| Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` · `docs/dictionary.md` nếu là định nghĩa metric |
+| Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` · `03_STRUCTURE` §2 nếu là định nghĩa metric |
 | Luật riêng phát sinh | **ĐỀ XUẤT** vào `05_TODO.md` chờ user chốt — **KHÔNG tự sửa `01_CONSTITUTION.md`** |
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO`. **Chẩn đoán sai và đường cụt cũng phải ghi** — để phiên sau khỏi đâm lại.
@@ -41,10 +41,10 @@ description: Close out a work session correctly - route everything that happened
 
 Hai file sổ **lớn dần mãi**, mà chuẩn bắt đọc `05_TODO` ở đầu mỗi phiên. Không dọn thì mỗi phiên phải nạp lại toàn bộ lịch sử — càng dùng lâu càng tốn, tới lúc không còn chỗ cho việc thật.
 
-Sau khi ghi sổ, **đếm số dòng hai file**. File nào vượt **300 dòng** thì chuyển phần cũ sang `docs/agent/archive/<tên file>.md` (tạo nếu chưa có):
+Hai file, **hai luật khác nhau** — đừng áp chung một ngưỡng. Đích đến: `docs/agent/archive/<tên file>.md` (tạo nếu chưa có).
 
-- `06_CHANGES.md` → chuyển các entry **cũ nhất**, giữ lại ~200 dòng mới nhất
-- `05_TODO.md` → chuyển các mục **đã xong**, giữ **toàn bộ** mục còn mở
+- **`05_TODO.md` — KHÔNG chờ ngưỡng nào.** Mục vừa xong đã sang `06_CHANGES` ở Bước 2, nên ở đây chỉ dọn mục **đã huỷ / hoãn vô hạn** + ghi chú cũ; mục còn mở giữ **toàn bộ**. Một mục đã đóng là đặt sai chỗ **kể từ giây nó xong**, không liên quan file dài hay ngắn — gác bằng ngưỡng là lý do sổ phình mà vẫn "chưa tới hạn dọn". File vẫn to vì quá nhiều việc đang mở ⇒ **BÁO user cắt phạm vi**, KHÔNG tự xoá việc.
+- **`06_CHANGES.md` — trần theo KÍCH THƯỚC, không phải số dòng.** Đếm bằng `wc -c`; vượt **40.000 ký tự** (~10k token) thì chuyển các entry **cũ nhất** đi, giữ lại ~**25.000 ký tự** mới nhất. *Vì sao không đếm dòng: dòng ở sổ dày mỏng rất khác nhau (đo 2026-07-31: 20–34 token/dòng) nên "300 dòng" có thể là 6k hay 10k token — đếm dòng là đo sai thứ.*
 
 **Chép nguyên văn, KHÔNG tóm tắt** — archive là để tra lại, không phải để nén. Báo user đã chuyển bao nhiêu.
 

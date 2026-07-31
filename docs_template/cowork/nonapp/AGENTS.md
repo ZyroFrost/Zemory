@@ -21,6 +21,8 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 | Mở khi | Đọc |
 |---|---|
 | cần đặt · tạo · dời file · hỏi "để ở đâu" | `.claude/skills/structure/SKILL.md` |
+| cần **định nghĩa metric/cột**, hoặc vừa đổi cấu trúc thư mục | `docs/agent/03_STRUCTURE.md` |
+| hỏi "dự án có sẵn quy trình gì" · thêm/bớt skill | `docs/agent/04_SKILLS.md` |
 | yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/grill/SKILL.md` |
 | "ghi sổ" · "chốt phiên" · "note lại" · đổi session | `.claude/skills/session-close/SKILL.md` |
 | cần đọc nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
@@ -35,6 +37,10 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 
 **KHÔNG đọc trừ khi được hỏi thẳng:**
 `docs/agent/06_CHANGES.md` · `docs/agent/archive/` · `docs/plan/`
+
+> ⚠ **Nhưng PHẢI tra `archive/` trước khi kết luận "chưa từng làm".** Hai file sổ bị cắt ngắn định kỳ
+> (xem `session-close`), nên **không thấy một việc trong `05_TODO`/`06_CHANGES` KHÔNG có nghĩa là chưa
+> từng có**. Kết luận "chưa làm" mà chưa mở `archive/` là kết luận trên một file đã bị cắt.
 
 > **Mở một skill = đọc NGUYÊN file đó**, không đọc lướt.
 > Chưa trúng trigger mà mở trước = đốt ngữ cảnh vô ích.

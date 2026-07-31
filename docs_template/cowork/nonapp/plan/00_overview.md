@@ -1,7 +1,7 @@
 <!-- zemory template · File 00 = OVERVIEW mặc định của mọi dự án — đọc kèm hiến pháp khi mở phiên -->
 # <PROJECT> — Tổng quan (Overview)
 
-> **File `00` = OVERVIEW của dự án** (mặc định mọi project, app lẫn non-app): mô tả sản phẩm để agent/người nắm BỐI CẢNH. Nằm trong `docs/` → được đọc cùng toàn bộ docs mỗi khi mở phiên.
+> **File `00` = OVERVIEW của dự án** (mặc định mọi project, app lẫn non-app): mô tả sản phẩm để agent/người nắm BỐI CẢNH. **MỞ KHI CẦN** — `AGENTS.md` xếp `docs/plan/` ngoài bộ đọc mỗi phiên; mở khi cần bối cảnh sản phẩm, khi dựng lần đầu, hoặc khi user hỏi tới.
 > **Mục đích BẤT BIẾN + phi-mục-tiêu = luật, chốt ở `docs/agent/01_CONSTITUTION.md` §Mục đích** (user sở hữu). File này MỞ RỘNG thành mô tả sản phẩm, KHÔNG lặp phần bất biến — cần "dự án tồn tại để làm gì" thì xem hiến pháp.
 
 ## Tóm tắt
