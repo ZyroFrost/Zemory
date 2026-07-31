@@ -109,28 +109,30 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 44 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 50 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 65 |
-| 5 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
-| 6 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
-| 7 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
-| 8 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 97 |
-| 9 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 129 |
-| 10 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 227 |
-| 11 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
-| 12 | `.claude/skills/session-close/SKILL.md` | `<RAW>/.claude/skills/session-close/SKILL.md` | 53 |
-| 13 | `.claude/skills/read-office/SKILL.md` | `<RAW>/.claude/skills/read-office/SKILL.md` | 55 |
-| 14 | `.claude/skills/pull/SKILL.md` | `<RAW>/.claude/skills/pull/SKILL.md` | 24 |
-| 15 | `.claude/skills/fill/SKILL.md` | `<RAW>/.claude/skills/fill/SKILL.md` | 31 |
-| 16 | `.claude/skills/upload/SKILL.md` | `<RAW>/.claude/skills/upload/SKILL.md` | 22 |
-| 17 | `.claude/skills/reconcile/SKILL.md` | `<RAW>/.claude/skills/reconcile/SKILL.md` | 38 |
-| 18 | `.claude/skills/conform/SKILL.md` | `<RAW>/.claude/skills/conform/SKILL.md` | 41 |
-| 19 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 41 |
-| 20 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
-| 21 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
-| 22 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 68 |
+| 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 36 |
+| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 41 |
+| 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
+| 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
+| 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
+| 10 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 97 |
+| 11 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 130 |
+| 12 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 227 |
+| 13 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
+| 14 | `.claude/skills/session-close/SKILL.md` | `<RAW>/.claude/skills/session-close/SKILL.md` | 53 |
+| 15 | `.claude/skills/read-office/SKILL.md` | `<RAW>/.claude/skills/read-office/SKILL.md` | 55 |
+| 16 | `.claude/skills/pull/SKILL.md` | `<RAW>/.claude/skills/pull/SKILL.md` | 24 |
+| 17 | `.claude/skills/fill/SKILL.md` | `<RAW>/.claude/skills/fill/SKILL.md` | 31 |
+| 18 | `.claude/skills/upload/SKILL.md` | `<RAW>/.claude/skills/upload/SKILL.md` | 22 |
+| 19 | `.claude/skills/reconcile/SKILL.md` | `<RAW>/.claude/skills/reconcile/SKILL.md` | 38 |
+| 20 | `.claude/skills/conform/SKILL.md` | `<RAW>/.claude/skills/conform/SKILL.md` | 41 |
+| 21 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 43 |
+| 22 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
+| 23 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
+| 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
 
 Rồi **tự tạo** `docs/.harness.json` (không tải, gõ thẳng):
 ```json
@@ -170,8 +172,9 @@ mỗi quy trình. In ra bảng lệch. Thoát `0` = đúng hết · `1` = có ch
 Đọc **`docs/agent/01_CONSTITUTION.md`** → **`02_RULES.md`** → **`docs/plan/00_overview.md`**.
 
 > Đây **cũng chính là** cách đọc từ phiên sau trở đi — không có luật riêng cho lần dựng.
-> `AGENTS.md` quy định: luôn đọc `01` + `02` + mục còn mở trong `05_TODO`; các quy trình trong
-> `.claude/skills/` **chỉ mở khi trúng việc**. Đừng mở trước cho "chắc".
+> `AGENTS.md` quy định: luôn đọc `01` + `02` + mục còn mở trong `05_TODO`. Ba thứ **chỉ mở khi
+> trúng việc**: các quy trình trong `.claude/skills/`, `03_STRUCTURE` (chỗ-để-file **+ từ điển
+> chỉ số/cột**) và `04_SKILLS` (sổ đăng ký quy trình). Đừng mở trước cho "chắc".
 
 ---
 
@@ -235,7 +238,7 @@ Tính năng/năng lực chính · Ý tưởng/định hướng · Kiến trúc/b
 ### 3d. Quy trình riêng của dự án
 Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc của bạn:
 
-1. Đối chiếu việc thật của dự án với mười cái đó. Việc lặp nào **chưa có** → soạn thêm một thư mục
+1. Đối chiếu việc thật của dự án với mười một cái đó. Việc lặp nào **chưa có** → soạn thêm một thư mục
    `.claude/skills/<tên>/SKILL.md`, viết theo đúng khuôn đang có (*phần đầu file `name` +
    `description` → các bước → cấm gì*), ngắn gọn, thao tác được.
    - `name`: **tiếng Anh**, chữ thường, nối bằng `-`. Thân file: tiếng Việt.
@@ -243,7 +246,8 @@ Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc 
      quy trình có được gọi ra hay không. Kèm vài cụm tiếng Việt người dùng hay gõ.
    - Mỗi `SKILL.md` **≤ 120 dòng**; dài hơn thì đẩy phần chi tiết xuống `reference/`.
 2. **Trình trước khi ghi**: nêu tên + một dòng lý do, người dùng gật mới thêm.
-3. Thêm một dòng vào bảng trong `AGENTS.md` để nó xuất hiện trong danh mục.
+3. Đăng ký ở **HAI chỗ**, thiếu một là quy trình thành mồ côi: một dòng vào danh mục §2 của
+   `docs/agent/04_SKILLS.md`, và một dòng vào bảng trigger trong `AGENTS.md` (mở lúc nào).
 
 ---
 
@@ -264,10 +268,12 @@ Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc 
    > Việc đã xong ghi `06_CHANGES.md`, việc còn dở ghi `05_TODO.md`.
    > Yêu cầu chưa rõ thì hỏi lại theo quy trình `grill`, mỗi lần một câu.
    >
-   > **Tự dọn cuối phiên.** Sau khi ghi sổ, đếm số dòng hai file sổ. File nào vượt **300 dòng**
-   > thì chuyển phần cũ sang `docs/agent/archive/<tên file>.md` (tạo nếu chưa có):
-   > `06_CHANGES.md` chuyển các mục **cũ nhất**, giữ lại ~200 dòng mới nhất;
-   > `05_TODO.md` chuyển các mục **đã xong**, giữ toàn bộ mục còn mở.
+   > **Tự dọn cuối phiên.** Sau khi ghi sổ, dọn hai file sổ sang `docs/agent/archive/<tên file>.md`
+   > (tạo nếu chưa có) — hai file hai luật khác nhau:
+   > `05_TODO.md` KHÔNG chờ ngưỡng nào — mục **đã huỷ/hoãn vô hạn** đi ngay, mục còn mở giữ toàn bộ
+   > (mục đã xong thì đã sang `06_CHANGES` rồi); vẫn to vì quá nhiều việc mở thì BÁO, đừng tự xoá việc.
+   > `06_CHANGES.md` có trần theo **KÍCH THƯỚC**: `wc -c` vượt **40.000 ký tự** thì chuyển entry
+   > **cũ nhất** đi, giữ ~25.000 ký tự mới nhất. Đếm dòng là đo sai — dòng ở sổ dày mỏng rất khác nhau.
    > **Chép nguyên văn, không tóm tắt** — phần lưu trữ là để tra lại, không phải để nén.
    > Báo người dùng đã chuyển bao nhiêu.
 4. Báo người dùng: từ giờ chỉ cần mô tả việc, không phải nhắc lại bộ chuẩn nữa.

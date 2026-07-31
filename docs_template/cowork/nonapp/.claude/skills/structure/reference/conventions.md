@@ -109,8 +109,9 @@ docs_visual ≠ docs    docs_visual/ nằm NGOÀI docs/ — agent KHÔNG tự đ
 ## Nguồn sự thật
 
 ```
-Từ điển dữ liệu   BI/data NÊN có docs/dictionary.md — định nghĩa metric/cột là
-                  nguồn sự thật, chống mỗi báo cáo tính một kiểu.
+Từ điển dữ liệu   docs/agent/03_STRUCTURE.md §2 — định nghĩa metric/cột là nguồn
+                  sự thật, chống mỗi báo cáo tính một kiểu. MỘT từ điển cho cả dự
+                  án: tên-chỗ (§1) và tên-nghiệp-vụ (§2) ở chung một file.
 Publish/refresh   Tự động hoá → scripts/ · bản render ra → exports/ (gitignore,
                   build lại được). Giữ bản trước khi đè vào attic/ để rollback.
 ```

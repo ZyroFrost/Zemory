@@ -9,7 +9,7 @@
 <!-- Project NÀY sinh ra để làm gì, cho ai, giải bài toán gì — 2–4 câu, đủ để một agent lạ
      đọc là nắm ngay BỐI CẢNH mà mọi điều khoản dưới đang phục vụ. Đây là nguồn CHỐT của mục
      đích + phi-mục-tiêu (bất biến, user sở hữu). Mô tả SẢN PHẨM chi tiết (tính năng · ý tưởng ·
-     kiến trúc tổng thể) nằm ở `docs/plan/00_overview.md` — đọc kèm khi mở phiên; overview MỞ
+     kiến trúc tổng thể) nằm ở `docs/plan/00_overview.md` — MỞ KHI CẦN, KHÔNG đọc mỗi phiên; overview MỞ
      RỘNG mục đích này, KHÔNG lặp lại phần bất biến (dẫn chiếu về đây).
      Kèm PHI-MỤC-TIÊU (thứ project cố tình KHÔNG làm) — chống scope creep, và giúp agent biết
      khi nào phải từ chối một đề xuất "nghe hay" nhưng lệch hướng. -->
