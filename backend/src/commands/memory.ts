@@ -365,11 +365,17 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const forceRerank = rest.includes("--rerank");
     const forceNoRerank = rest.includes("--no-rerank");
     const originOpt = flagValue(rest, "--origin"); // 'local' | 'web' | undefined
-    // Drop --flags AND the value token that follows --origin so it never leaks into the query.
-    const query = rest.filter((a, i) => !a.startsWith("--") && rest[i - 1] !== "--origin").join(" ");
+    const limitRaw = flagValue(rest, "--limit");
+    const limit = limitRaw !== undefined ? Math.min(Math.max(1, Number(limitRaw) || 0), 50) : undefined;
+    // Drop --flags AND the value token of EVERY value-taking flag. Listing only --origin
+    // (as this did until 2026-08-02) meant `search foo --limit 3` searched for "foo 3":
+    // the stray token silently changed the ranking, which is worse than ignoring the flag
+    // because the output still looks like a normal answer.
+    const VALUE_FLAGS = new Set(["--origin", "--limit"]);
+    const query = rest.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(rest[i - 1] ?? "")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory memory search <query> [--all] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory memory search <query> [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
@@ -397,8 +403,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
     const hits = useHybrid
-      ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt })
-      : search(query, { project, all, origin: originOpt, recency: recencyOpt });
+      ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt, limit })
+      : search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
     printHits(
       query,
       (all ? "whole memory" : `project: ${project}`) +

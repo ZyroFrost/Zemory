@@ -85,7 +85,7 @@ export async function cmdChangelog(args: string[]): Promise<void> {
     const rows = listEntries(root);
     console.log(`zemory changelog — ${rows.length} entr(ies)`);
     for (const r of rows) {
-      const relation = r.supersedes_id ? ` → supersedes #${r.supersedes_id}` : "";
+      const relation = r.supersedes_id ? ` → thay #${r.supersedes_id}` : "";
       console.log(`  #${r.id} [${r.date ?? "—"}] ${r.title}${r.archived ? " (archived)" : ""}${relation}`);
     }
     return;
@@ -100,7 +100,15 @@ export async function cmdChangelog(args: string[]): Promise<void> {
     }
     const hits = searchChangelog(q, { project: all ? undefined : root });
     console.log(`zemory changelog search — "${q}"`);
-    for (const h of hits) console.log(`  #${h.id} [${h.date ?? "—"}] ${h.title}\n     ${h.snippet}`);
+    for (const h of hits) {
+      // Một quyết định đã bị đảo phải NÓI RA ngay ở dòng kết quả. Trước 2026-08-02 nó im
+      // lặng: search trả phán quyết 29/07 ("chuẩn mới cho cowork thôi") y như luật còn
+      // sống, trong khi 31/07 đã lật — phiên sau đọc trúng dòng đó là làm sai.
+      const dead = h.supersededBy
+        ? `\n     ⚠ ĐÃ BỊ THAY bởi #${h.supersededBy}${h.supersededDate ? ` (${h.supersededDate})` : ""} — đọc bản đó trước khi tin dòng này.`
+        : "";
+      console.log(`  #${h.id} [${h.date ?? "—"}] ${h.title}\n     ${h.snippet}${dead}`);
+    }
     if (!hits.length) console.log("  no matches.");
     return;
   }
