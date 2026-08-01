@@ -168,6 +168,28 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   đang không-add bằng tay — lần commit sau ai đó `git add -A` là nó lên remote. Chọn một: thêm
   `*.7z`/`*.zip` vào `.gitignore`, hoặc dời file ra ngoài repo.
 
+- [ ] **RÁC `[tool_result]` LỌT VÀO KẾT QUẢ TÌM — cần cờ dẫn xuất, đừng lọc bằng regex.**
+  Đo 2026-08-02: 33.717/195.533 tin trùng khít (17%), trong đó **81% là boilerplate tool**
+  (`Todos have been modified successfully` ×1.240 · hai kết quả ghi file ×951 và ×555). Trên 5
+  truy vấn thật, **~16% kết quả trả về là `tool_result`** (0–3 trên mỗi 10). Cách làm ĐÚNG: tính
+  một cờ `boilerplate` lúc scan/reindex (nội dung trùng khít ≥N lần ⇒ không mang thông tin riêng
+  của phiên) rồi loại khỏi xếp hạng — **KHÔNG** quét `GROUP BY content` trên 195k dòng mỗi lần
+  tìm, cũng KHÔNG khớp mẫu chữ (dễ giết nhầm tool_result có nội dung thật). ⚠ Luật: chỉ đụng lớp
+  dẫn xuất, **không xoá message gốc**.
+
+- [ ] **RERANK: bật mặc định hay không — HP điều 12 đang chặn, cần user chốt.**
+  Trạng thái thật (đo 2026-08-02): rerank **đang BẬT** cho máy này (`data/config.json` có
+  `"rerank": true`) — không hề bị auto-disable. Cái tắt là **mặc định trong code**
+  (`getRerankSetting()` chỉ bật khi config ghi rõ `true`), nên mất/reset `data/config.json`
+  (máy mới, clone lại không kèm `data/`) là rerank âm thầm tắt mà không ai biết.
+  - Lý do lịch sử đã YẾU đi: 28/07 đo 4.616 ms vs 29.304 ms (**6,3×**); **02/08 đo lại: 4,8 s vs
+    9,9 s (2,1×)**.
+  - Nhưng `HP điều 12` đòi **thắng net trên corpus có nhãn** mới được bật mặc định, và corpus gate
+    hiện **bão hoà**: FTS 0% · hybrid **100% (8/8)** · rerank 100% — không thể thắng net.
+  - Hai đường ra: ① **dựng corpus nhãn lớn/nhiễu hơn** rồi chạy gate thật (đúng đường, `plan/05`
+    dòng 73 đã ghi sẵn ý này); ② user **chốt miễn điều 12 cho lớp này**, tôi ghi supersede rồi đổi
+    mặc định. KHÔNG tự làm ② — sửa hiến pháp là quyền user.
+
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
 

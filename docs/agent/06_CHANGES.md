@@ -5,6 +5,41 @@
 
 ---
 
+## [2026-08-02] — Quyết định đã bị đảo nay TỰ NÓI ra · sửa `--limit` nuốt vào truy vấn
+
+Đối chiếu với **engram** (5.8k sao, memory server viết bằng Go, MCP 20 tool) để xem zemory
+thiếu gì. Ba đề xuất ban đầu của tôi thì **hai sai tiền đề** — đo lại mới thấy:
+
+- **Trường CHẾT: `supersedes_id` có trong schema và có cả code hiển thị, nhưng KHÔNG ai điền.**
+  Đo: 42 entry mang mệnh đề `🔄 Supersede`, **0/204 dòng có link**. Hậu quả đã chứng minh sống:
+  tra *"chuẩn mới áp cho cowork thôi"* trả về phán quyết 29/07 y như luật còn sống, trong khi
+  31/07 đã lật — phiên sau đọc trúng là làm sai. Nay `linkSupersedes` điền lúc reindex và
+  `changelog search` gắn nhãn **⚠ ĐÃ BỊ THAY bởi #id (ngày)** lên entry cũ.
+- **Nối CÓ CHỦ ĐÍCH ít, không đoán bừa: 4 link chắc thay vì 42 link nghe-có-lý.** Đo: chỉ 11/42
+  mệnh đề nêu ngày, và trích tiêu đề cũ chỉ khớp 2/26 (người viết trích *nội dung* quyết định,
+  không trích tiêu đề). Hai chốt chặn đều do **link SAI thật** trong lúc dựng: ngày trần
+  `2026-07-29` khi có anh em `29e/29f` từng nối Phase 3 vào nhầm entry; và `29e ↔ 29f` từng
+  "thay" lẫn nhau thành vòng tròn. Gate mới `changelog-supersede` 4 test, **đột biến 2/2 đỏ**.
+- **Siết cách VIẾT** (`02_RULES §Changelog` + `session-close` cả 4 bộ): mệnh đề supersede phải
+  nêu **đúng khoá ngày** của entry bị thay (`2026-07-29l`). Không có khoá thì máy không nối, và
+  quyết định chết vẫn hiện như đang sống — luật này mới là thứ làm cơ chế trên có giá trị lâu dài.
+- **Lỗi thật: `memory search "x" --limit 3` tìm chuỗi `"x 3"`.** Bộ lọc chỉ bỏ token đứng sau
+  `--origin`, nên giá trị của mọi cờ khác lọt vào truy vấn và **âm thầm đổi thứ hạng** — tệ hơn
+  bỏ qua cờ, vì kết quả vẫn trông như câu trả lời bình thường. Nay `--limit` chạy đúng.
+
+**Ba thứ tôi ĐÃ ĐỊNH làm mà đo xong thì không cần / chưa nên:**
+- *Truy hồi ba lớp* — **đã có sẵn**: CLI trả ~33 token/kết quả rồi trỏ `memory show <id>`; MCP có
+  `memory_search` → `memory_show` (có `window` = đúng lớp timeline). Con số "7.082 token/kết quả"
+  tôi nêu lúc đầu là đo **độ dài tin thô trong DB**, không phải thứ search trả ra — đo sai chỗ.
+- *`topic_key` upsert kiểu engram* — quy sai nguyên nhân: trong 33.717 tin trùng khít, **81% là
+  `[tool_result]` boilerplate**, chỉ 18% là nội dung thật. Chỗ đau là **rác tool lọt vào index**
+  (đo: ~16% kết quả mỗi truy vấn), cần một cờ dẫn xuất tính lúc nạp — để `05_TODO`, không bolt vội.
+- *Bật rerank mặc định* — **HP điều 12 chặn** (chỉ bật mặc định sau khi thắng net trên corpus có
+  nhãn). Chạy gate: FTS 0% · **hybrid 100% (8/8)** · rerank 100% — corpus đã bão hoà nên rerank
+  KHÔNG thể thắng net ở đó. Chi tiết trong `05_TODO`.
+
+Gate 423 → **427** · `conform` ✓ · `check_install` cowork 24/24.
+
 ## [2026-08-01b] — Chuẩn hoá CHÍNH repo zemory: 7 playbook ra `.claude/skills/`
 
 Repo vừa dạy chuẩn mới xong thì chính nó vẫn chạy chuẩn cũ — `04_SKILLS` 222 dòng playbook

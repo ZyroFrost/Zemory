@@ -124,10 +124,81 @@ export function importChangelog(
       }
       return added;
     });
-    return tx();
+    const added = tx();
+    linkSupersedes(db, projectRoot);
+    return added;
   } finally {
     db.close();
   }
+}
+
+/** Fill `supersedes_id` for entries that reverse an older decision.
+ *
+ *  The column and its renderer shipped long ago; the PARSER never did. Measured
+ *  2026-08-02 on this repo: 41 entries carry a `🔄 Supersede:` clause and **0 of 204
+ *  rows had the link set** — so the relation existed only in prose, and a search that
+ *  surfaced the OLD decision gave no hint it had been reversed. That is the worst
+ *  shape of wrong: the reader gets a real, confidently-worded ruling that is dead.
+ *
+ *  Linking is DETERMINISTIC and DELIBERATELY LOW-YIELD — no guessing (điều 6, "chưa xác
+ *  minh thì chưa phải sự thật"). Measured on this repo's 42 supersede clauses: only 11
+ *  name a date at all (31 are pure prose), and quoting the old TITLE resolves just 2 —
+ *  authors quote the decision's wording, not the heading. So most clauses are simply not
+ *  machine-resolvable, and the honest result is 4 solid links, not 42 plausible ones.
+ *  Two guards earned by real wrong answers during this build: a bare `2026-07-29` is
+ *  rejected when suffixed siblings exist (it linked Phase 3 to the wrong 29/07 entry),
+ *  and a target must be OLDER than the entry citing it (29e ↔ 29f formed a cycle).
+ *
+ *  To get a link, the clause must name the target's exact dated key (`2026-07-29l`);
+ *  `session-close` now requires that form. Runs across BOTH tiers: the reversal usually
+ *  lives in the active file while the ruling it kills has already been archived. */
+function linkSupersedes(db: ReturnType<typeof openMemory>, projectRoot: string): void {
+  const rows = db
+    .prepare("SELECT id, date, body FROM changelog WHERE project_root=? AND body LIKE '%Supersede%'")
+    .all(projectRoot) as { id: number; date: string | null; body: string }[];
+  if (!rows.length) return;
+  const byDate = new Map<string, number[]>();
+  for (const r of db
+    .prepare("SELECT id, date FROM changelog WHERE project_root=? AND date IS NOT NULL")
+    .all(projectRoot) as { id: number; date: string }[]) {
+    const list = byDate.get(r.date) ?? [];
+    list.push(r.id);
+    byDate.set(r.date, list);
+  }
+  const upd = db.prepare("UPDATE changelog SET supersedes_id=? WHERE id=?");
+  const tx = db.transaction(() => {
+    for (const r of rows) {
+      // Only the supersede CLAUSE, not the whole entry: a body mentions other dates in
+      // passing, and those must not be mistaken for the thing being reversed.
+      const m = /Supersede:?\*{0,2}([\s\S]{0,400})/.exec(r.body);
+      if (!m) continue;
+      const clause = m[1];
+      // The key is the entry's DATED HEADING (`2026-07-29l`), never a `#id`: ids are
+      // assigned by the index and change on every `reindex`, so writing one into the .md
+      // would put an unstable reference in the SOURCE (điều 3 — the file is the truth).
+      //
+      // ① a date that resolves to EXACTLY ONE entry. A bare `2026-07-29` is REJECTED when
+      //    suffixed siblings exist (…29e, …29f): measured 2026-08-02, that bare form matched
+      //    the one unsuffixed row and produced a confidently WRONG link (Phase 3 → "Hạ ngưỡng
+      //    archive" instead of the cowork-only ruling it actually reversed). Near-miss keys
+      //    are worse than no key: the reader trusts them.
+      const dates = [...new Set((clause.match(/\d{4}-\d{2}-\d{2}[a-z]?/g) ?? []).filter((d) => d !== r.date))];
+      const resolved = dates.filter((d) => {
+        const exact = byDate.get(d) ?? [];
+        if (exact.length !== 1) return false;
+        if (/[a-z]$/.test(d)) return true; // suffixed ⇒ already unique by construction
+        const siblings = [...byDate.keys()].filter((k) => k !== d && k.startsWith(d));
+        return siblings.length === 0; // bare date + suffixed siblings ⇒ ambiguous, skip
+      });
+      // ② direction guard: a supersede points BACKWARD. Without it the linker produced a
+      //    CYCLE on this repo (29e ↔ 29f each "superseding" the other) — a body that merely
+      //    mentions a neighbouring entry's date was read as reversing it.
+      const older = resolved.filter((d) => (r.date ? d < r.date : true));
+      const targets = [...new Set(older.flatMap((d) => byDate.get(d) ?? []))].filter((id) => id !== r.id);
+      if (targets.length === 1) upd.run(targets[0], r.id);
+    }
+  });
+  tx();
 }
 
 export interface ChRow {
@@ -151,7 +222,7 @@ export function listEntries(projectRoot: string, dbPath = currentMemoryDb()): Ch
   }
 }
 
-export function searchChangelog(query: string, opts: { project?: string; limit?: number; dbPath?: string } = {}): { id: number; date: string | null; title: string; snippet: string }[] {
+export function searchChangelog(query: string, opts: { project?: string; limit?: number; dbPath?: string } = {}): { id: number; date: string | null; title: string; snippet: string; supersededBy?: number; supersededDate?: string | null }[] {
   const q = query.trim();
   if (!q) return [];
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
@@ -167,7 +238,17 @@ export function searchChangelog(query: string, opts: { project?: string; limit?:
            ${opts.project ? "WHERE c.project_root=@proj AND" : "WHERE"} changelog_fts MATCH @m
            ORDER BY bm25(changelog_fts, 5.0, 1.0) LIMIT @lim`,
         )
-        .all({ proj: opts.project, m: match, lim: opts.limit ?? 10 }) as any;
+        .all({ proj: opts.project, m: match, lim: opts.limit ?? 10 })
+        .map((r: any) => {
+          // A hit that a LATER entry reversed must say so. Without this the reader gets a
+          // dead ruling worded as confidently as a live one — the exact failure measured
+          // on 2026-08-02 (search returned the 29/07 "cowork-only" ruling with no sign
+          // that 31/07 had overturned it).
+          const rev = db
+            .prepare("SELECT id, date FROM changelog WHERE supersedes_id=? ORDER BY date DESC LIMIT 1")
+            .get(r.id) as { id: number; date: string | null } | undefined;
+          return rev ? { ...r, supersededBy: rev.id, supersededDate: rev.date } : r;
+        }) as any;
     } catch {
       return [];
     }

@@ -58,7 +58,7 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 
 ## Changelog — supersede
 - Mới nhất ở trên cùng (chèn ngay sau header).
-- Entry **đảo/thay** quyết định cũ → mở đầu bằng: `> 🔄 **Supersede:** thay quyết định "[đề mục] ([ngày])" — [lý do].` Không sửa/xoá entry cũ; tuỳ chọn thêm `> ⤴ Đã bị thay bởi [ngày].` ở entry cũ.
+- Entry **đảo/thay** quyết định cũ → mở đầu bằng: `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].` **Phải nêu ĐÚNG khoá ngày của entry bị thay** (`2026-07-29l`, y như heading của nó): đó là thứ DUY NHẤT máy nối được, và nối rồi thì ai tra trúng entry CŨ mới thấy nhãn “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định đã chết vẫn hiện ra như đang sống. Ngày trần khi hôm đó có nhiều entry (`29e`/`29f`) ⇒ **bỏ qua, không đoán**. Không sửa/xoá entry cũ; tuỳ chọn thêm `> ⤴ Đã bị thay bởi [ngày].` ở entry cũ.
 - **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì sao · số đo**. Chi tiết thiết kế → `docs/plan/NN_*`; tường thuật quá trình → bỏ. Lý do là số học: ở `changes_keep` ~180 dòng thì **bốn** entry 50 dòng chiếm trọn vùng active, tức viết dài làm chính cơ chế archive thành vô nghĩa. `zemory validate` báo entry vượt trần (advisory) — đo trên 76 entry thật: p50 19 dòng, nên 30 là rộng rãi với một entry bình thường.
 
 ## Phạm vi project (BẮT BUỘC — luật cứng)
