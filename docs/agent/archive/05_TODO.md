@@ -1,6 +1,8 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **MIGRATE CHÍNH REPO NÀY sang kiến trúc skill — XONG 2026-08-01** (ghi `06_CHANGES [2026-08-01b]`): 7 skill ra `.claude/skills/`, `04_SKILLS` 222→53 dòng, `04` ra khỏi ĐỌC HẾT, bộ luôn nạp −5.4k tok/phiên, test `read-set-contract` siết lại.
+
 - [x] **PHASE 1 — BỘ COWORK: XONG 2026-07-31** (đã ghi `06_CHANGES [2026-07-31b]`, user duyệt 01/08).
   `03_STRUCTURE` + `04_SKILLS` **trở lại đủ 6 file**, nhưng **trigger-load** (bảng trong `AGENTS.md`),
   KHÔNG phải luôn-nạp ⇒ nền mỗi phiên **3.182 tok** (trước 2.842; bộ đầy đủ 10.268). `03 §2` là **nhà duy

@@ -5,6 +5,28 @@
 
 ---
 
+## [2026-08-01b] — Chuẩn hoá CHÍNH repo zemory: 7 playbook ra `.claude/skills/`
+
+Repo vừa dạy chuẩn mới xong thì chính nó vẫn chạy chuẩn cũ — `04_SKILLS` 222 dòng playbook
+inline nằm trong bộ ĐỌC HẾT. Nay áp đúng thứ Phase 3 đã áp cho hai bản template.
+
+- **7 skill ra file riêng** (`grill` · `session-close` · `reconcile` · `conform` · `audit` ·
+  `read-office` · `write-docx`), chép NGUYÊN VĂN + frontmatter, `description` lấy từ bản
+  template app nên repo và template cùng một cách gọi. `04_SKILLS` 222 → **53 dòng** sổ đăng ký,
+  giữ nguyên phần vendored `ui-ux-pro-max` và tool `markitdown` (HP điều 1/2).
+- **`04` ra khỏi ĐỌC HẾT**, `AGENTS.md` có bảng trigger 9 dòng. **Đo: bộ luôn nạp ~25.5k →
+  ~20.1k token mỗi phiên (−5.4k, −21%)** — phần bỏ ra không mất, chỉ chuyển sang mở khi trúng việc.
+- **`session-close` nhận Bước 3 tự-dọn** (repo có CLI nên giao `zemory archive`): `05_TODO`
+  không ngưỡng, `06_CHANGES` theo trần khai trong `.harness.json`.
+- **Siết lại phép kiểm đã nới:** `read-set-contract` giờ kiểm CẢ `04_SKILLS` (trước chỉ `03`,
+  vì lúc đó repo chưa migrate nên ghim là gate đỏ vô cớ). Đột biến: nhét `04` lại vào dòng
+  ĐỌC HẾT ⇒ đỏ; gỡ ra ⇒ xanh.
+- Luật ④ của `conform` lần đầu chạy nhánh MỚI trên chính repo này: đối chiếu 3 chiều
+  (thư mục ↔ `04` §2 ↔ trigger `AGENTS`) — **✓ không lệch**, và số skill trong `conform` giờ
+  đếm từ thư mục thật thay vì đếm heading.
+
+Gate 423/423 · `conform` ✓.
+
 ## [2026-08-01] — Chốt GUIDE.docx để gửi ra ngoài + đẩy bản chuẩn lên remote
 
 Bố cục lại theo user: bảng thuật ngữ lên **mục 1** (giải thích trước khi vào hướng dẫn), mẹo

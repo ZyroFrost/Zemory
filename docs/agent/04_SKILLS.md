@@ -1,222 +1,53 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
-# zemory — Kho skill (playbook thao tác)
+# zemory — Sổ đăng ký skill
 
-> **KHO SKILL** — chứa NHIỀU skill; mỗi `## <tên>` là MỘT skill (playbook thao tác tự-chứa). File này **CHỈ chứa skill** — KHÔNG nhét luật / norm / mô tả cấu trúc / thứ linh tinh khác vào đây (luật → `01_CONSTITUTION`/`02_RULES` · chuẩn cấu trúc → `03_STRUCTURE`). RULES/STRUCTURE chỉ nêu NORM + trigger rồi **DẪN CHIẾU** tới skill tương ứng; cách-làm chi tiết nằm ở đây.
-> **HAI KHUÔN — chọn theo độ dài:**
-> - **NGẮN → inline:** 1 section `## <tên>` ngay trong file này (trigger → các bước). Vd: `grill` · `chốt phiên` · `reconcile`.
-> - **DÀI / có resources → KHÔNG chép vào đây:** vendor **nguyên bản** repo gốc vào `external/skills/<tên-repo>/` (giữ đúng tên + LICENSE, KHÔNG sửa nội dung người ta — HP điều 1/2), ở đây chỉ để **1 DÒNG INDEX** trỏ tới. Agent cần thì **đọc thẳng bản gốc** (trỏ, KHÔNG chép ⇒ đủ nội dung mà 0 nhân bản).
-> - **⚠ GUARDRAIL:** file này **KHÔNG BAO GIỜ phình**. Nội dung dài ra thì nó thuộc **skill gốc** (`external/skills/`) hoặc **chuẩn** (`03_STRUCTURE`) — không có ngoại lệ.
-> **Adapter ở đâu?** KHÔNG viết prose adapter ở đây. Chỗ "adapt hiện ra thật" là **`03_STRUCTURE`** (từ điển slot + ràng buộc): agent đọc skill gốc + đọc 03 rồi tự khớp; bỏ vào slot hay không là quyết định của agent theo từng project.
-> **Kích hoạt:** trigger ở RULES/STRUCTURE bắn, hoặc user gọi tên skill. Đọc SAU `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE`.
+> Mở khi: cần biết **repo có sẵn quy trình gì**, hoặc thêm/bớt một skill.
+> Cần biết **lúc nào mở skill nào** → bảng trigger trong `AGENTS.md`.
+> File này **KHÔNG** nằm trong bộ đọc mỗi phiên, và **có TRẦN 60 dòng** — phình lên nghĩa là
+> playbook đang bò ngược về đây (playbook sống ở `.claude/skills/<tên>/SKILL.md`).
 
-## Cách dùng skill (LUẬT chung — vendored `external/skills/`)
-Skill vendored là **kho THAM KHẢO**, KHÔNG auto-apply. Nó là *nguồn gợi ý chuẩn*, không phải lệnh tự sửa. Quy trình BẮT BUỘC mỗi khi làm việc mà skill phủ (thiết kế UI/UX, chọn palette·font·layout·motion, review chất lượng, chart…):
-1. **ĐỌC skill liên quan trước** (dùng công cụ tra của nó nếu có — vd `search.py`); nếu nó không phủ vấn đề → nói RÕ "skill không có match", đừng bịa.
-2. **RÚT KHUYẾN NGHỊ**, phân 3 loại: ✅ cái nào chuẩn/tốt **nên theo** · ⚠ cái nào đang **KẸT / sai / anti-pattern** · ◻ cái nào **nên chuẩn hoá**.
-3. **TRÌNH user (recommend) — KHÔNG tự đổi.** Áp/đổi vẫn theo `02_RULES §Hành xử` (mọi thiết kế UI/UX phải duyệt trước); **user chốt mới làm**.
-4. **User có ý tưởng UI mới** → check skill để **gợi ý lại** trước khi build (đối chiếu ý tưởng với chuẩn của skill, nêu rủi ro/lựa chọn tốt hơn nếu có).
+## 1. Luật dùng skill
 
-Nói gọn: **skill khuyến nghị, user quyết, agent thực thi sau khi được duyệt.**
+- **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (✅ nên theo ·
+  ⚠ đang KẸT / anti-pattern · ◻ nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm. Đổi UI/UX vẫn theo
+  `02_RULES §Hành xử` (phải duyệt trước). User có ý tưởng UI mới → check skill để **gợi ý lại** trước
+  khi build.
+- **Mở một skill = đọc NGUYÊN file đó**, không đọc lướt. Thà mở thừa còn hơn làm sai.
+- **Skill KHÔNG chứa luật.** Luật chung → `02_RULES`; bất biến kiến trúc → `01_CONSTITUTION`; chuẩn
+  cấu trúc → `03_STRUCTURE`. Skill chỉ mô tả **cách làm**, dẫn chiếu luật khi cần.
+- **Skill dài / có tài nguyên → tách file, KHÔNG phình `SKILL.md`**: `reference/*.md` và `scripts/*`
+  đặt cạnh nó, thân `SKILL.md` chỉ trỏ tới. Trần **120 dòng** mỗi `SKILL.md`.
 
-### Kho skill vendored (`external/skills/` — của repo zemory, dùng chung, đọc on-demand)
-> Không phải project nào cũng xài; zemory cũng có thể không xài. Kho nằm **1 chỗ ở repo zemory**, KHÔNG copy sang từng project.
+## 2. Danh mục — mỗi skill một việc
 
-| skill | dùng khi | đường dẫn | license |
-|---|---|---|---|
-| `ui-ux-pro-max` | thiết kế UI/UX: 84 UI style · 192 palette · 74 cặp font · 98 UX guideline · 25 chart · 22 stack | `external/skills/ui-ux-pro-max-skill/` (entry: `skill.json`, sub-skill ở `.claude/skills/*`, data ở `src/ui-ux-pro-max/data`) | MIT |
-
-### Tool ngoài — gọi qua CLI, KHÔNG vendor source (HP điều 2)
-> Khác bảng trên: đây là **công cụ** (package public), không phải skill-repo. Cài như dependency,
-> agent gọi bằng lệnh; playbook dùng nó nằm ở section inline tương ứng bên dưới.
-
-| tool | dùng khi | cài | license | skill |
-|---|---|---|---|---|
-| `markitdown` (Microsoft) | đọc nội dung file Office/PDF nhị phân (`.xlsx .xls .docx .pptx .pdf`) | `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` | MIT | [§đọc file Office qua Markdown](#đọc-file-office-qua-markdown-xlsx--xls--docx--pptx--pdf) |
-
-**Skill inline hiện có:** `grill` · `chốt phiên / ghi sổ` · `reconcile` · `đọc file Office qua Markdown` · `ghi file Word (.docx)` · `soi chuẩn` · `audit toàn diện`.
-
-## grill
-> Kích hoạt (tự động): `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi đúng. User gõ "grill" = ép chạy thủ công cùng cơ chế.
-
-**Mục tiêu:** làm rõ yêu cầu TRƯỚC khi thực thi — KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn.
-
-**Điều kiện kích hoạt (bất kỳ):** yêu cầu đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · tồn tại giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược.
-
-**Quy trình:**
-1. **Dừng** — chưa build.
-2. **Đọc trước, hỏi sau:** cái nào đọc code/docs ra được thì ĐỌC, đừng hỏi. Chỉ hỏi phần input từ user còn thiếu để thực thi đúng (KHÔNG áp cho kiến thức chung).
-3. **Hỏi mỗi lần MỘT câu** — kèm ĐỀ XUẤT của mình + diễn giải lại để xác nhận đúng ý.
-4. **Đi hết mọi nhánh còn mơ hồ** cho tới khi đủ dữ kiện.
-5. **Chốt đủ rõ MỚI build.**
-
-## chốt phiên / ghi sổ
-> Kích hoạt (luật cứng, `02_RULES §Chốt phiên`): user nói "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
-
-**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.** Ghi theo tóm tắt = mất chi tiết, và cái mất luôn là cái phiên sau cần nhất.
-
-**Global Memory là NGUỒN THẬT của phiên — trí nhớ trong context thì KHÔNG.** Khi context bị tóm tắt/trim, chi tiết phiên vẫn còn NGUYÊN trong episodic memory (DB); cái bạn "nhớ" trong context đã bị lược. Đây là GỐC của "đổi session là sót/lệch". Nên **mọi lần ghi docs / audit / báo cáo — nhất là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code THẬT để verify TRƯỚC khi khẳng định bất cứ điều gì.**
-
-**Bước 0 — DÒ GLOBAL MEMORY + VERIFY (bắt buộc, KHÔNG skip, làm TRƯỚC Bước 1):**
-1. `zemory memory digest <session>` + `zemory memory search "<chủ đề phiên>" [--all]` → dựng lại ĐẦY ĐỦ việc/đổi/quyết định/lỗi của phiên, kể cả đoạn đã trôi khỏi context.
-2. **Verify từng mục sắp ghi vào docs với NGUỒN THẬT** = GM (điều đã thực sự làm/nói/quyết) + code/file THẬT (đọc lại dòng liên quan). Chỉ mục SỐNG SÓT verify mới được ghi; claim chưa verify = KHÔNG ghi.
-3. **Áp CẢ cho audit / báo cáo lỗi:** mỗi finding phải đối chiếu code + GM trước khi gọi là "lỗi thật" — phần lớn false-positive đến từ đọc code thiếu ngữ cảnh hoặc không biết quyết định lịch sử. Bẫy thật đã gặp: tên file cũ trong entry changelog CŨ là **BẢN GHI LỊCH SỬ**, KHÔNG phải link gãy cần sửa (sửa = vi phạm luật supersede); chuỗi English có thể là **thuật ngữ kỹ thuật GIỮ NGUYÊN**, KHÔNG phải leak i18n. KHÔNG tin kết quả subagent chưa tự kiểm lại.
-
-**Bước 1 — ĐỌC LẠI ĐỦ 3 nguồn TRƯỚC khi ghi:**
-1. **FULL phiên hiện tại** — đọc lại từ ĐẦU hội thoại, kể cả đoạn đã bị tóm tắt/trôi khỏi context (dùng `zemory memory digest <session>` / `memory search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
-2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không.
-3. **FULL `docs/agent/*`** — `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE` · `04_SKILLS` · `05_TODO` · `06_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
-
-**Bước 2 — định tuyến từng thứ về đúng file, KHÔNG BỎ SÓT:**
-
-| Thứ phát sinh trong phiên | Ghi vào |
+| Skill | Làm gì |
 |---|---|
-| Việc đã xong / đã sửa code | `06_CHANGES.md` (sau khi user OK) **và xoá khỏi** `05_TODO.md` |
-| Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ trạng thái `[~]`, **đã tới đâu, bước kế tiếp là gì** |
-| Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` (+ supersede ở changelog nếu đảo quyết định cũ) |
-| Luật / bất biến riêng phát sinh | **ĐỀ XUẤT** vào `05_TODO.md` chờ user chốt — KHÔNG tự sửa `01_CONSTITUTION.md` |
+| `grill/` | làm rõ yêu cầu chưa đủ rõ TRƯỚC khi bắt tay |
+| `session-close/` | chốt phiên: định tuyến mọi thứ về đúng file, rồi tự dọn hai file sổ |
+| `reconcile/` | nắn repo đã lệch về chuẩn — **đề xuất**, không tự dời |
+| `conform/` | chấm độ bám chuẩn (máy chấm, agent phán) |
+| `audit/` | soi toàn diện trước mốc lớn — verify từng phát hiện rồi mới ghi |
+| `read-office/` | đọc `.xlsx .xls .docx .pptx .pdf` rẻ nhất có thể |
+| `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
 
-**Chuẩn "không bỏ sót":** mọi việc đã làm trong phiên phải tìm được ở CHANGES **hoặc** TODO — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai / đường cụt / thứ đã thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó).
+## 3. Skill NGOÀI — vendor, KHÔNG chép nội dung (HP điều 1/2)
 
-**Bước cuối:** `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (`02_RULES §Git`).
+- **Skill repo của người khác** → vendor **nguyên bản** vào `external/skills/<tên-repo>/` (giữ tên +
+  LICENSE, KHÔNG sửa nội dung người ta), ở đây chỉ **một dòng index**; agent đọc thẳng bản gốc. Kho nằm
+  **một chỗ ở repo zemory**, KHÔNG copy sang từng project. **Adapter thì KHÔNG viết prose ở đây** — chỗ
+  adapt hiện ra thật là `03_STRUCTURE` (từ điển slot); agent đọc skill gốc + đọc 03 rồi tự khớp.
+- **Tool ngoài** (package public) → cài như dependency, **gọi qua CLI**, KHÔNG dán source vào repo.
 
-## reconcile
-> Kích hoạt (`03_STRUCTURE §8`): flow HIẾM, chỉ khi dọn repo chưa theo chuẩn. `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn, zemory KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+| Vendor / tool | Dùng khi | Đường dẫn / cách cài | License |
+|---|---|---|---|
+| `ui-ux-pro-max` (skill repo) | thiết kế UI/UX: 84 UI style · 192 palette · 74 cặp font · 98 UX guideline · 25 chart · 22 stack | `external/skills/ui-ux-pro-max-skill/` (entry `skill.json`) | MIT |
+| `markitdown` (Microsoft · tool) | đọc nội dung `.xlsx .xls .docx .pptx .pdf` — phục vụ skill `read-office/` | `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` | MIT |
 
-**A. Docs lệch** (doc trùng / thừa / lạc chỗ):
-1. Soi file `.md` trùng/thừa trong `docs/`; **đọc file** TRƯỚC khi quyết (`zemory plan search` nếu cần tìm theo nội dung).
-2. Gộp todo lạc → `05_TODO`. Bỏ bản trùng/obsolete: **xoá thẳng file `.md`** (file wins) — **HỎI user trước nếu doc còn nội dung thật** (luật KHÔNG TỰ Ý XÓA); sau khi xoá file, `zemory reindex` cập nhật lại search index.
-3. Gom mọi doc plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên `NN_tên.md` đánh số (`00_overview` → `01_` …); plan chỉ chứa specs, todo tách về `05_TODO`.
+## 4. Thêm một skill
 
-**B. Cấu trúc folder lệch** (chưa theo khung `backend/` · `frontend/` · `docs/`):
-1. `zemory validate` — xem tầng nào thiếu / đặt sai (advisory, không tự sửa).
-2. Nắn theo bảng routing `03_STRUCTURE §4` (app) / §7 (non-app), **GIỮ git history — dùng `git mv`, KHÔNG copy rồi xoá**:
-   - code của mình → `backend/` (Python `backend/<pkg>/` · Node `backend/src/`); dùng chung BE↔FE → `backend/src/shared/`.
-   - UI/asset → `frontend/`. Repo ngoài clone → `external/`. Nguồn cũ / code bị thay khi refactor → `attic/` (backup tracked, để rollback). Runtime (`.db`/log/cache) + secret (`.key`/bundle) → `data/` (gitignore). Tool ép root (`.github/` · `.env` + `.env.example` · Docker/`.spec`) → để yên ở root.
-   - **KHÔNG ép tạo `test/`** — chỉ khi có lõi logic dễ sai ngầm. Bắt buộc chỉ 4 vai trò: `backend(code)` · `frontend` · `docs` · `AGENTS.md`.
-3. Sau move: **sửa import / entry / path** cho khớp (cần judgment) → **verify bằng cách chạy chính app**.
-4. Xong → cập nhật `README` + ghi entry vào `06_CHANGES.md` (sửa file trực tiếp, sau khi user OK).
-
-**Recipe end-to-end** ("đọc zemory + nắn app này về chuẩn"): `zemory init` (nếu chưa có harness) → `zemory structure` (xem ĐÍCH: layout + routing) + `zemory validate` (xem đang lệch đâu) → đọc `03_STRUCTURE §3` (cây từng-dòng) + §4/§7 (routing) → làm **A** rồi **B** ở trên → verify bằng cách chạy app → cập nhật README + changelog (sau khi user OK). Việc lớn / khó đảo: HỎI user trước.
-
-## đọc file Office qua Markdown (xlsx · xls · docx · pptx · pdf)
-> Kích hoạt: cần ĐỌC nội dung một file Office/PDF (bảng số, báo cáo, tài liệu) trong khi agent chỉ
-> có công cụ đọc text. KHÔNG áp cho file vốn đã là text (`.csv` · `.md` · `.json` · `.txt`) — đọc thẳng.
-
-**Vấn đề:** `.xlsx`/`.docx`/`.pptx` là ZIP nhị phân — đọc trực tiếp không ra nội dung. Hai đường sai
-thường gặp: ① coi file như text rồi nạp XML thô vào context; ② mỗi lần gặp file lại viết một script
-`openpyxl`/`python-docx` riêng (đắt công, mỗi lần một kiểu).
-
-**Tool:** `markitdown` (Microsoft · MIT · Python) — convert Office/PDF/HTML/ảnh → Markdown. Là
-**dependency ngoài gọi qua CLI**, KHÔNG dán source vào repo (HP điều 2).
-- Cài: `pip install "markitdown[xlsx,xls,docx,pptx,pdf]"` *(bản đã đo: 0.1.6)*
-- Dùng: `python -m markitdown <file>` (ra stdout) · `python -m markitdown <file> -o out.md` (ghi file)
-- Sheet Excel ra `## <tên sheet>` + bảng Markdown ⇒ giữ được ranh giới nhiều sheet.
-
-**ĐO THẬT** (2026-07-25 · file mẫu `.xlsx` 18 KB · 3 sheet · 308 dòng · ~token = ký tự ÷ 4):
-
-| cách đọc | ~token | ghi chú |
-|---|--:|---|
-| unzip → XML thô | 30.119 | đường duy nhất nếu coi file là text |
-| **MarkItDown → Markdown** | **5.395** | **rẻ hơn XML 5,6×**; giữ tên sheet + cấu trúc bảng |
-| CSV từng sheet (tự script) | 4.193 | rẻ hơn Markdown ~22% nhưng MẤT ranh giới nhiều sheet |
-
-**Chọn theo việc — KHÔNG mặc định "Markdown luôn rẻ nhất" (số đo bác điều đó):**
-- Cần HIỂU tài liệu (nhiều sheet · chữ lẫn số · `.docx`/`.pptx`/`.pdf`) → **MarkItDown**.
-- Chỉ cần MỘT bảng số thuần để tính toán → CSV/`openpyxl` rẻ hơn.
-- File lớn: convert ra FILE rồi đọc **đúng phần cần** (`grep`/N dòng đầu) — đừng nạp cả bản
-  convert vào context (progressive disclosure, HP điều 8).
-- Bảng ngàn dòng: token tăng theo số dòng, không theo dung lượng file ⇒ ước lượng trước khi nạp.
-## ghi file Word (.docx) — sửa mà không phá cấu trúc
-> Kích hoạt: cần **SỬA / TẠO** `.docx` (đổi chữ · thay hoặc chèn ảnh · thêm mục). Chỉ ĐỌC → dùng §đọc file Office qua Markdown.
-
-**Vì sao cần playbook riêng:** `.docx` là ZIP + XML. Chữ nằm ở `<w:t>`, còn **cấu trúc** (bảng · ảnh · mục lục · style · khổ trang) nằm ở XML quanh nó ⇒ **mọi phép kiểm dựa trên "chữ có đổi không" đều KHÔNG thấy cấu trúc bị phá** — chữ trong ô bảng cũng là đoạn văn.
-
-1. **KHÔNG mở file giao đi bằng editor khác rồi lưu lại.** **Đo thật 2026-07-30** (`docs_template/cowork/GUIDE.docx`): tài liệu **8 bảng**, user mở bằng ONLYOFFICE Desktop rồi Ctrl+S → **8 bảng thành 0**, mọi ô bị bẻ thành đoạn thường; kèm bóc lớp `<w:sdt>` bọc mục lục, đổi `styleId` thành số, đảo thứ tự thuộc tính `<w:pgSz>`. **Chữ không đổi một ký tự** — nên bản đối chiếu văn bản của tôi báo "y nguyên" và tôi tin nhầm. Cần xem thì mở rồi **đóng, KHÔNG lưu**. File đang bị editor giữ (`PermissionError` khi ghi) → **chờ, đừng kill editor của user**. Lỡ lưu rồi thì **đếm lại số bảng + số ảnh** trước khi kết luận "không sao".
-2. **Sửa bằng script trên XML, theo từng RUN.** Một đoạn gồm nhiều `<w:r>` định dạng khác nhau — thay cả đoạn là mất đậm/nghiêng. Thêm đoạn mới → **sao vỏ `<w:p>` của đoạn cùng vai đã có**, đừng đẻ style mới. Neo phải khớp **đúng 1 lần**; 0 hoặc ≥2 thì **DỪNG**.
-3. **Ảnh = BA tầng phải khớp**, thiếu một là file hỏng: `word/media/<tên>` + `<Relationship … Target="media/<tên>">` trong `document.xml.rels` + khối `<w:drawing>` trỏ đúng `r:embed`, với `<wp:docPr id>` **cấp số mới**.
-4. **Kích thước ảnh** — Word đặt theo **EMU**, không theo pixel: khổ chữ `= (pgSz@w − pgMar@left − pgMar@right) × 635`, cao `= rộng × tỷ lệ gốc của ảnh`. **Đọc thuộc tính theo TÊN, không theo vị trí** (editor khác nhau đảo thứ tự `pgSz`). Sửa **cả** `<wp:extent>` lẫn `<a:ext>`, và sửa **theo KHỐI `<w:drawing>`** — nhiều ảnh khai cùng `cx/cy`, thay chuỗi toàn cục là đổi lây ảnh khác.
-5. **Bẫy regex:** `<w:t xml:space="preserve"/>` là thẻ **tự đóng** (ô rỗng) — `<w:t(?:\s[^>]*)?>` khớp nhầm nó thành thẻ mở rồi **nuốt XML** tới `</w:t>` kế tiếp, làm phép đo "chữ có đổi không" báo lệch giả. Dùng `<w:t(?:\s[^>]*(?<!/))?>`. Viết lỏng hơn (`<w:t[^>]*>`) còn khớp cả `<w:tbl>` · `<w:tc>` · `<w:tr>`.
-6. **Đừng dựng lại file bằng `head + "".join(mọi <w:p>) + tail`** — cách đó **đánh rơi mọi thứ nằm GIỮA các đoạn** (bảng, lớp `<w:sdt>` bọc mục lục, bookmark). Muốn dùng thì phải ĐO trước là giữa các đoạn không còn gì; an toàn hơn: `xml.replace(<đoạn cũ>, <đoạn mới>, 1)`.
-7. **Kiểm sau MỖI lần sửa — đủ, không bỏ bước:** số `<w:tbl>` · số ảnh + thứ tự · mọi `r:embed` tra ra rel · rel trỏ file có thật · không ảnh mồ vàng · không `docPr` trùng · `<w:instrText>` còn `TOC` · rộng ảnh ≤ khổ chữ · tỷ lệ hiển thị == tỷ lệ pixel · chữ chỉ khác đúng chỗ cố ý sửa · mở lại được.
-8. **Mục lục là FIELD** — sửa ngoài Word thì không tự tính lại. Xong việc phải **nhắc user mở file bấm `F9`**; đừng gõ tay số trang.
-9. **Ngắt trang cho bản đọc:** `<w:keepNext/>` cho tiêu đề + đoạn ngay trên ảnh/bảng · `<w:keepLines/>` chống xé đoạn · `<w:pageBreakBefore/>` cho Heading 1 — **nhưng KHÔNG ép cho mọi mục**: mục ngắn hơn một trang thì ép break là bỏ trắng nửa trang (đo thật: ép hết 11 mục ⇒ 15 trang, 7 trang trống >1/3, có trang 94% trắng). Chen **ngay sau `<w:pStyle>`** (schema bắt thứ tự `keepNext → keepLines → pageBreakBefore`).
-10. **Đo trang thật, đừng đoán — không có Word vẫn render được:** `x2t.exe` trong `<ProgramFiles>/ONLYOFFICE/DesktopEditors/converter/` nhận params XML (`m_nFormatTo=513` = PDF, kèm `m_sAllFontsPath`/`m_sFontDir` trỏ `AllFonts.js` — thiếu font là nó lỗi JS, không ra file). Rồi `pdfminer` đo `y0` thấp nhất của chữ **thân bài** (phải **loại vùng footer**, không thì trang nào cũng ra 0% trống). Quy trình: ép hết → bỏ break ở mục gây trống >1/3 → thêm ngược lại tối đa; **miễn trang bìa và trang cuối**.
-11. **Mục lục tự động** cần **cả hai**: `<w:updateFields w:val="true"/>` trong `settings.xml` (chen trước `<w:footnotePr>`), và nội dung mục lục tự dựng (bookmark ở mỗi Heading 1 + đoạn style `toc 1` + `PAGEREF`). **Số trang để TRỐNG** — không render được thì ghi số là bịa; viewer tự điền khi mở.
-12. **BẪY: một field trải trên NHIỀU đoạn** — `begin`+`separate` ở đoạn này, `end` ở đoạn khác. Thay một đoạn là còn `end` mồ côi ⇒ **file không mở được nữa** (converter báo lỗi lạ). Chốt sau mỗi lần đụng field: `begin == separate == end`, mọi `w:anchor`/`PAGEREF` trỏ tới bookmark có thật.
-
-**Cấm:** mở file giao đi bằng editor khác rồi lưu · sửa file gốc khi chỉ được yêu cầu ĐỌC · ghi đè file chưa đọc · dựng lại `.docx` từ Markdown ("cho nhanh" = mất sạch bảng, ảnh, mục lục, style) · báo "xong" khi chưa chạy hết bảng kiểm.
-
-## soi chuẩn (kiểm độ bám chuẩn — máy chấm, agent phán)
-> Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
-> · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
-
-**Nguyên tắc (bất biến `01_CONSTITUTION` điều 13):** lớp dẫn xuất (graph · index · taxonomy) do MÁY
-dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn nó có gì thì KHAI vào chuẩn hoặc sửa
-NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**, không phải người sinh.
-
-**Vì sao đừng nạp cả graph vào ngữ cảnh:** đo thật — payload graph của một repo cỡ vừa ≈ **56.000
-token**, chỉ rẻ hơn đọc cả repo ~4,8×. Nạp định kỳ là đốt quota. Máy chấm trước, agent chỉ đọc
-**bảng lệch** (~vài trăm token).
-
-**Quy trình:**
-1. `zemory conform` → bảng lệch. `--json` cho máy đọc, `--gate` cho CI (exit 1 khi có mục `blocking`).
-2. Đọc từng mục: `blocking` = lệch chuẩn thật, phải xử · `advisory` = đáng xem, tự quyết.
-3. **Phán phần NGỮ NGHĨA máy không hiểu được** — máy chỉ biết "thư mục này không khớp slot nào";
-   chỉ agent mới biết *nó nên về slot nào*, hay *đây là concern thật cần thêm vào chuẩn*.
-4. **Sửa NGUỒN**, không sửa lớp dẫn xuất:
-   - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import
-   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE` §3/§4** (đổi chuẩn:
-     trình user duyệt trước)
-   - folder rỗng → xoá (thao tác xoá phải được user xác nhận trước)
-5. Chạy lại `zemory conform` → xác nhận hết lệch. Ghi việc vào `05_TODO`/`06_CHANGES`.
-
-**Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
-độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs có bám chuẩn đã KHAI không"*.
-Hai việc khác nhau — đừng gộp, đừng thay thế nhau.
-
-**Cấm:** tự thêm node/cạnh "cho đầy đủ"; coi báo cáo là chân lý mà không đối chiếu code thật; xoá
-folder/file chỉ vì báo cáo nói vậy mà chưa hỏi.
-
-## audit toàn diện (user nói "audit toàn diện" = chạy HẾT, không cắt bớt)
-> Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
-> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **6 mặt** dưới.
-
-**Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì test soi thì đúng*, không
-chứng minh nó đang soi thứ đang chạy. Đã dính thật: cả bộ test UI neo vào bản đã bị thay, gate 100%
-xanh trong khi bề mặt đang chạy có **0 test**. Nên mặt ④ luôn phải hỏi: *test đang đọc FILE NÀO?*
-
-**Luật 2 — VERIFY từng finding rồi mới ghi.** Đã có đợt loại 5 nghi vấn vì đo lại thì sai, và 2 đợt
-checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng lòng tin vào cả bảng.
-
-**Luật 3 — mọi con số phải ĐO.** Không suy luận, không nhớ lại. Không đo được thì ghi "chưa đo".
-
-**Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
-và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
-
-**Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật (`02_RULES`).
-Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒ tưởng "sạch") · **báo oan**
-do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒
-tưởng mồ côi, suýt xoá dữ liệu sống) · **sổ nói khác code**. Kiểm chéo = đổi công cụ · đổi hướng đếm ·
-hoặc gọi bề mặt thật (DB ↔ API).
-
-**Luật 6 — ĐỘT BIẾN HOÁ trước khi tin bộ test.** Phá từng chỗ code mà test canh, đòi nó phải ĐỎ. Đo
-2026-07-28: **2/4 đột biến sống sót** — một test chưa bao giờ chạy tới nhánh nguy hiểm, một test bị
-**bản sao logic ở nơi khác gánh thay**. Cả hai đều xanh suốt và không soi gì cả.
-
-### 6 mặt — chạy đủ
-1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
-   nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
-2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
-   nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.
-3. **Kiến trúc** — export không ai gọi · **NGUỒN TRÙNG** (cùng một sự thật nằm ở ≥2 nơi ⇒ chắc chắn
-   sẽ lệch) · file/thư mục ngoài chuẩn · thao tác ghi vào file nguồn có nguyên tử không.
-4. **FE ↔ BE** — mọi endpoint có người gọi & ngược lại · i18n đủ cả hai chiều · CSS/id chết ·
-   **neo test có trỏ vào file đang chạy không**.
-5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
-6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
-   từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
-
-**Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
-Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.
-
-**Cấm:** cắt bớt mặt nào cho nhanh; ghi finding chưa verify; báo "sạch" khi mới chạy mỗi gate.
+1. Tạo `.claude/skills/<tên-tiếng-anh>/SKILL.md` — frontmatter `name` + `description` (nói cả **làm gì**
+   lẫn **khi nào dùng**, kèm cụm tiếng Việt user hay gõ: đó là thứ DUY NHẤT quyết định skill có được gọi
+   ra hay không).
+2. **Trình trước khi ghi**: nêu tên + một dòng lý do, user gật mới thêm.
+3. Đăng ký ở **HAI chỗ**, thiếu một là skill mồ côi: một dòng vào §2 của file này, và một dòng vào bảng
+   trigger trong `AGENTS.md`. `zemory conform` canh cả hai chiều.

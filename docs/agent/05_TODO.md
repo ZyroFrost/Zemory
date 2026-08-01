@@ -168,14 +168,6 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   đang không-add bằng tay — lần commit sau ai đó `git add -A` là nó lên remote. Chọn một: thêm
   `*.7z`/`*.zip` vào `.gitignore`, hoặc dời file ra ngoài repo.
 
-- [ ] **MIGRATE CHÍNH REPO NÀY sang kiến trúc skill (chưa chốt — Phase 3 chỉ đụng template).**
-  `docs/agent/04_SKILLS.md` của repo còn là playbook inline 211 dòng và **vẫn nằm trong ĐỌC HẾT**, tức
-  chính repo dạy chuẩn mới lại đang chạy chuẩn cũ. Code đã đỡ cả hai hình dạng nên không gấp, nhưng
-  hai chỗ đang ghim sự chênh này: `read-set-contract` chỉ kiểm `03` (không kiểm `04`) và roster
-  `**Skill inline hiện có:**` vẫn là đường sống của luật ④ bản cũ. Làm thì phải: tách 7 playbook ra
-  `.claude/skills/`, làm mỏng `04`, gỡ `04` khỏi ĐỌC HẾT trong `AGENTS.md` gốc, rồi SIẾT hai test đó.
-
-
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
 
