@@ -32,7 +32,11 @@ description: Close out a work session correctly - route everything that happened
 
 - Mới nhất ở **trên cùng**, ngay sau header. Format: `## [YYYY-MM-DD] — tiêu đề`
 - Entry **đảo/thay** quyết định cũ → mở đầu bằng:
-  `> 🔄 **Supersede:** thay quyết định "[đề mục] ([ngày])" — [lý do].`
+  `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`
+  **Phải nêu ĐÚNG khoá ngày của entry bị thay** (`2026-07-29l`, y như trong heading của nó).
+  Đó là thứ duy nhất máy nối được: nối xong thì ai tra trúng entry CŨ sẽ thấy nhãn
+  “⚠ ĐÃ BỊ THAY”, còn viết trống ngày thì quyết định chết vẫn hiện ra như đang sống.
+  Ngày trần (`2026-07-29`) khi hôm đó có nhiều entry (`29e`, `29f`) ⇒ **bị bỏ qua**, không đoán.
   **Không sửa/xoá entry cũ.**
 - **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì sao · số đo**. Chi tiết thiết kế → `docs/plan/`; tường thuật quá trình → bỏ.
   *Lý do là số học: vùng active chỉ ~180 dòng, bốn entry 50 dòng là chiếm trọn, tức viết dài làm chính cơ chế archive thành vô nghĩa.*

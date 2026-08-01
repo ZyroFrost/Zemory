@@ -32,6 +32,8 @@ description: Close out a work session correctly - route everything that happened
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm phải tìm được ở CHANGES **hoặc** TODO. Chẩn đoán sai / đường cụt **cũng phải ghi** (để phiên sau khỏi đâm lại).
 
+**Đảo một quyết định cũ?** Mệnh đề `> 🔄 **Supersede:**` phải nêu ĐÚNG khoá ngày của entry bị thay (`2026-07-29l`) — máy chỉ nối được khi có khoá đó, và nối rồi thì ai tra trúng entry CŨ mới thấy nhãn “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định chết vẫn hiện như đang sống (`02_RULES §Changelog`).
+
 **Bước 3 — TỰ DỌN hai file sổ (bắt buộc, đừng chờ ai nhớ gõ lệnh):**
 
 Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng bản chất từng file:
