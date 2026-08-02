@@ -7,6 +7,9 @@
 import { findProjectRoot, normalizeRoot } from "../core/config.js";
 import { getMessage, getMessageContext, recall } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
+import { searchChangelog } from "../docs/changelog.js";
+import { recallCard } from "../memory/recall.js";
+import { memoryInfo } from "../memory/ingest.js";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -69,7 +72,10 @@ export const TOOLS = [
   },
   {
     name: "memory_show",
-    description: "Show one full memory message by id, optionally with neighbouring conversation messages.",
+    description:
+      "Get the FULL text of one memory message. WHEN TO CALL: right after memory_search, on the hits that "
+      + "look relevant — search returns short snippets on purpose. Set `window` to also read the messages "
+      + "around it when you need the conversation, not just the line (search → show(window) → decide).",
     inputSchema: {
       type: "object",
       properties: {
@@ -81,8 +87,60 @@ export const TOOLS = [
     },
   },
   {
+    name: "changelog_search",
+    description:
+      "Search this project's DECISION LOG (06_CHANGES + its archive). WHEN TO CALL: before acting on any rule, "
+      + "convention or past decision — and always before saying 'we never did X'. A hit that a later entry reversed "
+      + "comes back flagged `supersededBy`; when you see that flag, read the newer entry and follow IT, not the hit. "
+      + "This is the only surface that knows a decision is dead: memory_search returns the old wording as confidently "
+      + "as the new one.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Search query." },
+        all: { type: "boolean", description: "Search every project instead of the current one." },
+        project: { type: "string", description: "Project root to scope to; ignored when all=true." },
+        limit: { type: "number", description: "Maximum hits, default 10, max 50." },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "memory_context",
+    description:
+      "Where the last sessions in this project left off — recent sessions, what was touched, open threads. "
+      + "WHEN TO CALL: as the FIRST call of a session in an unfamiliar or resumed project, before asking the user "
+      + "to re-explain context. Cheap and read-only. For a specific question use memory_search instead.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root; defaults to the current one." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "project_current",
+    description:
+      "Which project zemory thinks you are in, and whether a harness is connected. NEVER fails — returns "
+      + "`connected:false` instead of erroring. WHEN TO CALL: first, when you are unsure whether the other tools "
+      + "will be scoped to the right project, or when a scoped search comes back empty and you suspect the scope.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "memory_stats",
+    description:
+      "Size and shape of the memory store: sessions, messages, agents, date range. WHEN TO CALL: to sanity-check "
+      + "an empty or surprising search result — an empty store and a bad query look identical from memory_search.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
     name: "plan_search",
-    description: "Search project docs/plan sections (search index). Returns section ids; call plan_show for full section text.",
+    description:
+      "Search this project's design docs (docs/plan/*). WHEN TO CALL: before proposing or changing a design, "
+      + "to find what was already specified — the plan is the source of truth for HOW things are meant to work, "
+      + "while memory_search holds what actually happened. Returns section ids; call plan_show for full text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -97,7 +155,9 @@ export const TOOLS = [
   },
   {
     name: "plan_show",
-    description: "Show one plan/doc section by id.",
+    description:
+      "Get the full text of one plan/doc section. WHEN TO CALL: after plan_search, on the section you actually "
+      + "need — do not guess a spec from its snippet.",
     inputSchema: {
       type: "object",
       properties: {
@@ -130,6 +190,43 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     // memory_show is a drill-down WITHIN a recall already counted by memory_search;
     // not logged separately (same 'recall' feature) to avoid double-counting.
     return value ? toolResult(value) : errorResult(`No memory message #${id}.`);
+  }
+
+  if (name === "changelog_search") {
+    const query = asString(args.query).trim();
+    if (!query) return errorResult("changelog_search requires a non-empty query.");
+    return toolResult(
+      searchChangelog(query, {
+        project: currentProject(args, env),
+        limit: clampLimit(args.limit, 10, 50),
+        dbPath: env.dbPath,
+      }),
+    );
+  }
+
+  if (name === "memory_context") {
+    // Fail-open by design: no project resolved ⇒ say so, never throw. An agent calling
+    // this at session start must not be blocked by a missing harness.
+    const project = asString(args.project) || env.projectRoot || findProjectRoot();
+    if (!project) return toolResult("No project resolved — nothing to summarise. Call project_current for details.");
+    const card = recallCard(normalizeRoot(project), env.dbPath);
+    return toolResult(card || "No sessions recorded for this project yet.");
+  }
+
+  if (name === "project_current") {
+    const root = env.projectRoot ?? findProjectRoot();
+    return toolResult({
+      connected: Boolean(root),
+      project_root: root ? normalizeRoot(root) : null,
+      detected_from: env.projectRoot ? "caller" : root ? "cwd walk (docs/.harness.json)" : "none",
+      note: root
+        ? "Tools scope to this root unless you pass all=true."
+        : "No docs/.harness.json found upward from cwd — searches fall back to the WHOLE memory.",
+    });
+  }
+
+  if (name === "memory_stats") {
+    return toolResult(memoryInfo(env.dbPath));
   }
 
   if (name === "plan_search") {
