@@ -481,6 +481,31 @@ test("tìm kiếm trên daemon phải RẺ theo mặc định — lớp đắt c
   );
 });
 
+test("UI: có nút Tìm sâu, và nó là lựa chọn TỪNG LƯỢT chứ không lấy từ setting máy", () => {
+  // Không có nút thì lớp ngữ nghĩa chỉ gọi được bằng URL — tính năng có mà người dùng không
+  // với tới. Và nếu nó đọc setting máy (`hybrid` đang bật sẵn ở nhiều máy) thì mọi lượt tìm
+  // lại rơi vào đường 20–60s — đúng thứ vừa sửa xong.
+  assert.match(HTML, /id="rDeep"[^>]*data-rf="deep"/u, "màn Recall phải có chip Tìm sâu");
+  const js = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+  assert.match(js, /if\(deepOn\(\)\)p\+='&deep=1'/u, "chỉ gửi deep=1 khi người dùng bật chip");
+  assert.match(js, /function deepOn\(\)\{var d=zid\('rDeep'\)/u, "trạng thái deep đọc từ CHIP, không từ Z.mem");
+  assert.ok(
+    !/deepOn[\s\S]{0,120}Z\.mem/u.test(js),
+    "deep không được lấy từ setting máy — mặc định mỗi lần mở phải là lớp rẻ",
+  );
+  // Lượt sâu chậm ⇒ phải có nhãn chờ riêng, và lỗi phải nói ra chứ không hiện '0 kết quả'.
+  // Đếm trong ĐÚNG hai khối từ điển: bản đầu của test này đếm cả file và ra 3 — vì chuỗi
+  // trong biểu thức ba ngôi `deepOn()?'q.searchingDeep':'q.searching'` cũng khớp. Một phép
+  // đếm bắt nhầm chỗ thì con số nó đưa ra vô nghĩa.
+  const d = dicts();
+  const vi = keysIn(d.vi);
+  const en = keysIn(d.en);
+  for (const key of ["q.searchingDeep", "q.deepErr", "f.deep", "f.deepTip"]) {
+    assert.ok(vi.has(key), `${key}: thiếu bản VI`);
+    assert.ok(en.has(key), `${key}: thiếu bản EN (đổi sang EN sẽ hiện key trần)`);
+  }
+});
+
 test("/init-fresh không còn là endpoint HTTP", () => {
   const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
   assert.ok(!/p === "\/init-fresh"/.test(src), "thao tác phá huỷ không nên mở trên HTTP khi không ai dùng");
