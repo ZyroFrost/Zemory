@@ -220,11 +220,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     đánh dấu dirty, lưới bù lượm (đo: chờ là 125s/turn, không chấp nhận được).
   - **Lưới bù (scheduler cũ, teo vai):** embed backlog + digest sweep + scan bù (nguồn không
     hook, hook trượt/gate bận) — nhịp giãn được 10'→30'.
-  - **UI:** panel "TỰ ĐỘNG" vẫn 3 công tắc, KHÔNG thêm cái thứ 4 — "Scheduler nền" đổi mô tả
-    thành lưới bù; "Tự sync memory" GIỮ mô tả poll 30' (không đổi hành vi); realtime là hành
-    vi mặc định của hệ (tắt được trong cùng công tắc scheduler hay tách — **trình user duyệt
-    lúc build**, luật UI phải duyệt trước). Mô tả UI phải khớp vai mới (UI text discipline —
-    không để mô tả nói "nhịp 10'" khi nạp đã per-message).
+  - **UI (user chốt 2026-08-02 — hết câu hỏi treo): realtime TÁCH thành công tắc RIÊNG,
+    mặc định BẬT** ("tự sync mes theo máy"); "Tự sync memory" giữ nguyên = Drive poll 30'
+    hai chiều; "Scheduler nền" = lưới bù (embed + digest + quét vét). Hai tầng độc lập —
+    tắt Drive vẫn nhớ đầy đủ theo máy, tắt realtime rơi về quét bù. Mô tả UI đổi khớp vai
+    (UI text discipline — không để mô tả nói "nhịp 10'" khi nạp đã per-message); layout
+    cụ thể vẫn trình duyệt lúc build theo luật UI.
   - Gate `scheduler-contract` phải viết lại theo vai mới (UI hứa gì scheduler làm đó).
 - [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
