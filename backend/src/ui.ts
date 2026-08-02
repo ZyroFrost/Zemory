@@ -139,6 +139,7 @@ function serveBinary(res: ServerResponse, sub: string, file: string): void {
   res.end(body);
 }
 import { onPath } from "./util.js";
+import { checkLoopback } from "./util/loopback.js";
 
 /** Read the package version once (same source the CLI uses). Powers the UI's
  *  version label — was hardcoded "v1.0.0" in the page. */
@@ -1116,12 +1117,9 @@ export async function startUi(): Promise<void> {
     res.end(JSON.stringify(obj));
   };
 
-  // Loopback-only guard. (a) Host must be a loopback name — a DNS-rebinding page
-  // (evil.com resolving to 127.0.0.1) sends its own hostname and is rejected.
-  // (b) State-changing cross-site requests carry an Origin header; anything not
-  // our own loopback origin is rejected (the UI page itself is same-origin,
-  // so its fetches either omit Origin or match).
-  const LOOPBACK = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i;
+  // Guard loopback (Host + Origin + Sec-Fetch-Site) nay ở `util/loopback.ts` — dùng CHUNG
+  // với MCP-over-HTTP. Trước đây nó nằm inline ngay đây; tách ra vì bề mặt HTTP thứ hai
+  // cần đúng luật đó, mà chép sang bản thứ hai là tạo chỗ để vá sót về sau.
 
   // Endpoint LÀM ĐỔI TRẠNG THÁI ⇒ bắt buộc POST. Đây là mảnh còn thiếu của guard trên:
   // trình duyệt KHÔNG gửi `Origin` cho GET subresource, nên `<img src="http://127.0.0.1:
@@ -1137,22 +1135,14 @@ export async function startUi(): Promise<void> {
   // tục. Một luật bảo mật quá tay thì hỏng đúng thứ nó định bảo vệ.
 
   const guard = (req: IncomingMessage, res: ServerResponse): boolean => {
-    const host = req.headers.host ?? "";
-    const origin = req.headers.origin ?? "";
-    const originHost = origin.replace(/^https?:\/\//i, "");
-    if (!LOOPBACK.test(host) || (origin && !LOOPBACK.test(originHost))) {
+    const verdict = checkLoopback(req);
+    if (!verdict.ok) {
       res.writeHead(403, { "content-type": "text/plain" });
-      res.end("forbidden (zemory ui only serves the local page)");
-      return false;
-    }
-    // Phòng thủ lớp hai: trình duyệt hiện đại gửi `Sec-Fetch-Site` cho MỌI request kể cả
-    // <img>/<script>. Chặn cross-site ngay cả khi endpoint đó vốn cho GET. CLI/curl không
-    // gửi header này ⇒ không ảnh hưởng (fail-open đúng hướng: thiếu header thì cho qua,
-    // vì chỉ trình duyệt mới là nguồn nguy hiểm ở đây).
-    const site = String(req.headers["sec-fetch-site"] ?? "");
-    if (site && site !== "same-origin" && site !== "none") {
-      res.writeHead(403, { "content-type": "text/plain" });
-      res.end("forbidden (cross-site request)");
+      res.end(
+        verdict.why === "cross-site request"
+          ? "forbidden (cross-site request)"
+          : "forbidden (zemory ui only serves the local page)",
+      );
       return false;
     }
     const p = (req.url ?? "/").split("?")[0];

@@ -51,9 +51,33 @@ test("MCP tool list exposes recall tools", async () => {
     "memory_context",
     "project_current",
     "memory_stats",
+    "memory_doctor",
+    "memory_conflicts",
+    "session_pin",
+    "project_merge",
     "plan_search",
     "plan_show",
   ]);
+});
+
+test("mọi tool khai trong danh sách phải có người thực thi — không có tool ma", async () => {
+  // Khai một tool rồi quên nối dispatcher là lỗi im lặng tệ nhất của bề mặt này: agent thấy
+  // nó trong tools/list, gọi, và nhận "Unknown zemory MCP tool" — trông như zemory hỏng.
+  for (const t of TOOLS) {
+    const r = await callMcpTool(t.name, {}, { dbPath: ":memory:", projectRoot: null });
+    const text = r.content?.[0]?.text ?? "";
+    assert.ok(!/^Unknown zemory MCP tool/.test(text), `${t.name} khai mà không có dispatcher`);
+  }
+});
+
+test("tool ĐỔI DỮ LIỆU phải mặc định KHÔNG đổi gì", () => {
+  // `project_merge` là tool duy nhất ghi vào DB. Agent gọi tool thì không có ai gật ở giữa,
+  // nên mặc định phải là dry-run và `apply` phải là thứ người ta cố ý bật.
+  const merge = TOOLS.find((t) => t.name === "project_merge");
+  assert.ok(merge, "thiếu project_merge");
+  assert.deepEqual(merge.inputSchema.required ?? [], [], "không được bắt buộc tham số nào");
+  assert.match(merge.description, /dry run/i, "mô tả phải nói rõ mặc định là dry run");
+  assert.ok(merge.inputSchema.properties.apply, "phải có cờ apply tường minh");
 });
 
 test("mỗi tool phải nói KHI NÀO gọi, không chỉ nói nó là gì", () => {
@@ -100,6 +124,107 @@ test("MCP memory search works without a project harness scope", async (t) => {
   const hits = textPayload(search);
   assert.equal(hits.length, 1);
   assert.equal(hits[0].sessionId, "mcp-session");
+});
+
+test("session_pin: ghim phiên CŨ vẫn nổi lên đầu memory_context", async (t) => {
+  const { projectRoot, dbPath } = seedMcpDb(t);
+  const env = { dbPath, projectRoot };
+  const db = openMemory(dbPath);
+  try {
+    // 6 phiên MỚI HƠN đứng trước; phiên đáng nhớ thì cũ nhất — đúng ca ghim sinh ra để trị.
+    for (let i = 0; i < 6; i++) {
+      db.prepare(
+        "INSERT INTO sessions(id, source, project_root, title, ended_at, message_count) VALUES (?,?,?,?,?,?)",
+      ).run(`newer-${i}`, "codex", projectRoot, `phiên mới ${i}`, `2026-07-1${i}T00:00:00Z`, 3);
+    }
+    db.prepare("UPDATE sessions SET title=?, ended_at=? WHERE id=?").run(
+      "quyết định gốc",
+      "2026-01-01T00:00:00Z",
+      "mcp-session",
+    );
+  } finally {
+    db.close();
+  }
+
+  const before = (await callMcpTool("memory_context", {}, env)).content[0].text;
+  assert.ok(!before.includes("quyết định gốc"), "chưa ghim thì phiên cũ phải bị đẩy ra khỏi thẻ");
+
+  const pin = textPayload(await callMcpTool("session_pin", { session_id: "mcp-session" }, env));
+  assert.equal(pin.pinned, true);
+
+  const after = (await callMcpTool("memory_context", {}, env)).content[0].text;
+  assert.match(after, /📌.*quyết định gốc/, "ghim rồi phải nổi lên đầu, có dấu vì sao nó ở đó");
+
+  const off = textPayload(await callMcpTool("session_pin", { session_id: "mcp-session", on: false }, env));
+  assert.equal(off.pinned, false);
+  assert.ok(!(await callMcpTool("memory_context", {}, env)).content[0].text.includes("quyết định gốc"), "bỏ ghim phải trả về như cũ");
+
+  const bad = await callMcpTool("session_pin", { session_id: "khong-co-that" }, env);
+  assert.equal(bad.isError, true, "id sai phải BÁO, không được im lặng coi như xong");
+});
+
+test("project_merge: dry-run KHÔNG đổi gì, apply gộp mà KHÔNG xoá dòng nào", async (t) => {
+  const { projectRoot, dbPath } = seedMcpDb(t);
+  const env = { dbPath, projectRoot };
+  const db = openMemory(dbPath);
+  const lower = projectRoot.replace(/^([A-Z]):/, (m, d) => `${d.toLowerCase()}:`);
+  try {
+    db.prepare("INSERT INTO sessions(id, source, project_root, cwd, message_count) VALUES (?,?,?,?,?)").run(
+      "split-a",
+      "claude-code",
+      `${lower}\\`, // cùng thư mục, viết khác: hoa/thường + gạch cuối
+      `${lower}\\`,
+      5,
+    );
+  } finally {
+    db.close();
+  }
+
+  const dry = textPayload(await callMcpTool("project_merge", {}, env));
+  assert.equal(dry.applied, false);
+  assert.equal(dry.split_groups.length, 1, "phải thấy đúng một nhóm bị tách");
+  assert.equal(dry.outcomes.length, 0, "dry-run không được đổi gì");
+
+  const applied = textPayload(await callMcpTool("project_merge", { apply: true }, env));
+  assert.equal(applied.applied, true);
+  assert.equal(applied.outcomes[0].sessionsMoved, 1);
+
+  const after = openMemory(dbPath);
+  try {
+    const roots = after.prepare("SELECT DISTINCT project_root FROM sessions WHERE project_root IS NOT NULL").all();
+    assert.equal(roots.length, 1, "sau khi gộp chỉ còn MỘT khoá project");
+    const rows = after.prepare("SELECT COUNT(*) c FROM sessions").get();
+    assert.equal(rows.c, 2, "KHÔNG được xoá dòng nào — chỉ trỏ lại project_root");
+    const kept = after.prepare("SELECT cwd FROM sessions WHERE id='split-a'").get();
+    assert.equal(kept.cwd, `${lower}\\`, "cwd gốc phải còn nguyên để truy ngược");
+  } finally {
+    after.close();
+  }
+});
+
+test("memory_conflicts: chỉ ghép CẶP, tuyệt đối không tự phán", async (t) => {
+  const { projectRoot, dbPath } = seedMcpDb(t);
+  const env = { dbPath, projectRoot };
+  const db = openMemory(dbPath);
+  try {
+    const add = (uuid, content, when) =>
+      db
+        .prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)")
+        .run("mcp-session", uuid, "user", content, when);
+    add("d1", "chốt: rerank luôn bật mặc định cho mọi máy", "2026-03-01T00:00:00Z");
+    add("d2", "quyết định đổi hướng: rerank KHÔNG bật mặc định nữa, chỉ opt-in", "2026-06-01T00:00:00Z");
+  } finally {
+    db.close();
+  }
+
+  const r = textPayload(await callMcpTool("memory_conflicts", { topic: "rerank mặc định" }, env));
+  assert.ok(r.candidates.length >= 1, "hai câu chốt ngược nhau, cách nhau 3 tháng ⇒ phải thành cặp");
+  const c = r.candidates[0];
+  assert.ok(Date.parse(c.newer.timestamp) > Date.parse(c.older.timestamp), "phải nêu rõ bên nào MỚI hơn");
+  assert.ok(c.daysApart >= 1);
+  assert.match(r.note, /CANDIDATES ONLY|did not judge/i, "phải nói rõ zemory KHÔNG phán — agent mới là người phán");
+  const tool = TOOLS.find((x) => x.name === "memory_conflicts");
+  assert.match(tool.description, /YOU judge/i, "mô tả phải giao việc phán cho agent (HP điều 6: ①script → ②agent)");
 });
 
 test("MCP plan tools search and show a section", async (t) => {
