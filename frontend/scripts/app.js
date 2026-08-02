@@ -1409,8 +1409,13 @@
     var of=e.target.closest?e.target.closest('[data-openfull]'):null;
     if(of){e.stopPropagation();openFullSession(of.dataset.openfull);}
   });
+  // `deep` là lựa chọn CỦA TỪNG LƯỢT TÌM, cố ý KHÔNG lưu và KHÔNG lấy từ setting máy: mặc
+  // định mỗi lần mở là lớp rẻ (FTS + bộ lọc, ~0,4s). Lớp ngữ nghĩa 20–60s nên phải là thứ
+  // người dùng chủ động xin, không phải thứ họ vô tình để bật từ hôm trước.
+  function deepOn(){var d=zid('rDeep');return !!(d&&d.classList.contains('on'));}
   function recallParams(){
     var p='all='+(zid('rAll').classList.contains('on')?1:0),f;
+    if(deepOn())p+='&deep=1';
     if((f=zid('fTime'))&&f.value!=='0')p+='&days='+f.value;
     if((f=zid('fType'))&&f.value)p+='&role='+f.value;
     if((f=zid('fOrigin'))&&f.value)p+='&origin='+encodeURIComponent(f.value);
@@ -1429,8 +1434,15 @@
   function doRecall(){
     var q=zid('rq')?zid('rq').value.trim():'';
     if(q.length<2){loadRecent();return;}
-    zset('rCount',t('q.searching'));
-    zGet('/memory-search?q='+encodeURIComponent(q)+'&'+recallParams()).then(function(h){renderHits(h);}).catch(function(){zset('rCount',t('q.err'));});
+    // Lượt sâu mất 20–60s (chạy ở tiến trình con, cửa sổ vẫn dùng được) — phải nói rõ đang
+    // chờ, không thì trông như treo.
+    zset('rCount',t(deepOn()?'q.searchingDeep':'q.searching'));
+    zGet('/memory-search?q='+encodeURIComponent(q)+'&'+recallParams()).then(function(h){
+      // Đường sâu trả `{error,hits}` khi tiến trình con hỏng/quá giờ — nói thẳng, đừng hiện
+      // "0 kết quả" (0 kết quả và tìm-hỏng trông y hệt nhau, đó là kiểu nói dối tệ nhất).
+      if(h&&h.error){zset('rCount',t('q.deepErr')+' — '+h.error);renderHits([]);return;}
+      renderHits(h);
+    }).catch(function(){zset('rCount',t('q.err'));});
   }
   function loadRecent(){
     if(!zid('hits'))return;
@@ -1460,6 +1472,8 @@
     var rf=e.target.closest?e.target.closest('[data-rf]'):null;
     if(rf){var k=rf.dataset.rf;
       if(k==='all'){rf.classList.toggle('on');doRecall();}
+      // `deep` KHÔNG gửi setting nào lên server — nó chỉ đổi lớp cho lượt tìm này.
+      else if(k==='deep'){rf.classList.toggle('on');doRecall();}
       // Lọc thuần phía truy vấn (`withAtt=1`), KHÔNG phải setting lưu ở server như
       // hybrid/rerank — nên chỉ bật/tắt tại chỗ rồi chạy lại.
       else if(k==='img'){rf.classList.toggle('on');doRecall();}
@@ -1700,7 +1714,7 @@
     'home.all':'Tất cả →','home.recentSess':'Phiên gần đây','home.noSessions':'Chưa có phiên nào.','home.noProjects':'Chưa có project nào.',
     'st.loading':'…','st.global':'toàn cục','st.stored':'đã lưu','st.estimate':'ước tính','rail.needAttn':'cần chú ý','rail.allGreen':'Hoạt động tốt',
     'f.timeAny':'Thời gian: mọi lúc','f.time1':'24 giờ','f.time7':'7 ngày','f.time30':'30 ngày','f.time90':'90 ngày','f.typeAny':'Loại: mọi','f.originAny':'Nguồn: mọi','f.agentAny':'Agent: mọi','f.noResultYet':'— kết quả','f.hasImg':'Có ảnh','sys.probeHint':'Bấm ↻ Kiểm để chạy phép kiểm thật (tải model, ~8 giây).','f.hostAny':'Máy: mọi','f.noSessYet':'— phiên','f.sessions':'phiên','att.noBody':'chỉ ghi nhận, không lưu nội dung',
-    'q.zero':'0 kết quả','q.noResults':'không có kết quả','q.results':'kết quả','q.searching':'đang tìm…','q.err':'lỗi',
+    'q.zero':'0 kết quả','q.noResults':'không có kết quả','q.results':'kết quả','q.searching':'đang tìm…','q.searchingDeep':'đang tìm SÂU (theo nghĩa) — có thể mất 20–60 giây…','q.deepErr':'tìm sâu không xong','q.err':'lỗi','f.deep':'🔬 Tìm sâu','f.deepTip':'Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ.','f.hybridTip':'Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.','f.rerankTip':'Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.',
     'recall.loadingRecent':'đang tải tin gần nhất…','recall.recentLabel':'gần nhất · ','recall.preview':'Xem trước','recall.copy':'Sao chép','recall.copied':'đã chép','recall.previewEmpty':'Chọn một kết quả để xem các message lân cận ngay tại đây.','recall.loadingCtx':'đang tải…','recall.noCtx':'không có ngữ cảnh','recall.ctxErr':'lỗi tải ngữ cảnh','recall.openFull':'Mở full session',
     'proj.linkedHere':'Đã liên kết · máy này','proj.count':'dự án','proj.thisMachine':'máy này','proj.noneLinked':'Chưa có project nào liên kết trên máy này.','proj.noMatch':'Không có project khớp bộ lọc.','proj.searchPh':'Tìm project…','proj.typeAll':'Loại: mọi','proj.sortManual':'Thứ tự tự sắp','proj.sortRecent':'Mới cập nhật','proj.sortName':'Tên A→Z','proj.sortSessions':'Nhiều phiên',
     'glay.force':'Xếp: lực hút','glay.cluster':'Xếp: theo folder','glay.layers':'Xếp: theo tầng import',
@@ -1742,7 +1756,7 @@
     'home.all':'See all →','home.recentSess':'Recent Sessions','home.noSessions':'No sessions yet.','home.noProjects':'No projects yet.',
     'st.loading':'…','st.global':'global','st.stored':'stored','st.estimate':'estimate','rail.needAttn':'needs attention','rail.allGreen':'All systems operational',
     'f.timeAny':'Time: any time','f.time1':'24h','f.time7':'7 days','f.time30':'30 days','f.time90':'90 days','f.typeAny':'Type: any','f.originAny':'Origin: any','f.agentAny':'Agent: any','f.noResultYet':'— results','f.hasImg':'Has image','sys.probeHint':'Click ↻ Check to run the real probe (loads the model, ~8s).','f.hostAny':'Machine: any','f.noSessYet':'— sessions','f.sessions':'sessions','att.noBody':'recorded only, content not stored',
-    'q.zero':'0 results','q.noResults':'no results','q.results':'results','q.searching':'searching…','q.err':'error',
+    'q.zero':'0 results','q.noResults':'no results','q.results':'results','q.searching':'searching…','q.searchingDeep':'DEEP search (semantic) — this can take 20–60s…','q.deepErr':'deep search did not finish','q.err':'error','f.deep':'🔬 Deep search','f.deepTip':'Search by MEANING (vector + rerank). Much slower — runs in the background, never freezes the window.','f.hybridTip':'MACHINE engine switch (used by deep search, the CLI and MCP) — it does not change fast-search results.','f.rerankTip':'MACHINE engine switch: cross-encoder re-ranking during deep search. Very slow.',
     'recall.loadingRecent':'loading recent messages…','recall.recentLabel':'recent · ','recall.preview':'Preview','recall.copy':'Copy','recall.copied':'copied','recall.previewEmpty':'Select a result to preview its nearby messages here.','recall.loadingCtx':'loading…','recall.noCtx':'no context','recall.ctxErr':'context load error','recall.openFull':'Open full session',
     'proj.linkedHere':'Linked · this machine','proj.count':'projects','proj.thisMachine':'this machine','proj.noneLinked':'No projects linked on this machine yet.','proj.noMatch':'No projects match the filter.','proj.searchPh':'Search projects…','proj.typeAll':'Type: any','proj.sortManual':'Manual order','proj.sortRecent':'Recently updated','proj.sortName':'Name A→Z','proj.sortSessions':'Most sessions',
     'glay.force':'Layout: force','glay.cluster':'Layout: by folder','glay.layers':'Layout: import layers',

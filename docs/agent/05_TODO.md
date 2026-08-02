@@ -249,11 +249,9 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > exit-1 thật (07-21) vẫn CHƯA tái hiện. · "134 export mồ côi" — 133 là interface/type (bề mặt
 > kiểu công khai) hoặc dùng nội bộ; chết thật chỉ `resolveDocPath` (đã biết, cố ý giữ).
 
-- [ ] **CÒN LẠI của F6 — UI chưa có nút "tìm sâu".** Backend đã tách hai lớp (`deep=1` +
-  tiến trình con) nhưng bề mặt UI mới chỉ dùng lớp rẻ ⇒ lớp ngữ nghĩa hiện chỉ gọi được bằng
-  URL. Cần một nút/ô tick trong màn Recall — **là quyết định THIẾT KẾ, phải trình user duyệt
-  trước** (`02_RULES §Hành xử`). Đề xuất: ô tick "Tìm sâu (ngữ nghĩa)" cạnh ô tìm, tắt mặc
-  định, bật thì hiện trạng thái "đang tìm sâu…" vì mất 20–60s.
+> **F6 XONG TRỌN** (`[2026-08-02i]`): backend tách hai lớp + UI có chip `🔬 Tìm sâu`.
+> Còn để ngỏ, chưa cần: lượt sâu hiện chờ đồng bộ tới 120s rồi mới trả — nếu sau này thấy
+> vướng thì đổi sang trả `202` + poll như `/sync-status` (hạ tầng đã có sẵn).
 
 <details><summary>F6 gốc — ĐÃ SỬA phần lõi `[2026-08-02i]`</summary>
 

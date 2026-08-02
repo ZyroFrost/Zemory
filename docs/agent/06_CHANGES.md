@@ -10,10 +10,18 @@
 - **F6 — daemon hết nghẹt.** `/memory-search` gọi thẳng `recall()` = hybrid + rerank cho MỌI
   lần gõ, ngay trên event loop. Đo trên kho thật (196.894 tin): **FTS 360ms · hybrid 20,5s ·
   hybrid+rerank 63,6s** (51s cả khi model đã ấm). Nay mặc định là lớp RẺ; lớp ngữ nghĩa chỉ
-  chạy khi xin `deep=1` **và chạy ở tiến trình con**. Đo sống: tìm nhanh **992ms**, và trong
-  lúc tìm sâu 35,7s chạy thì `/memory-status` vẫn trả lời **409ms** (trước: 48s).
+  chạy khi xin `deep=1` **và chạy ở tiến trình con**. Đo sống qua daemon: tìm nhanh
+  **44–139ms** khi ấm (lượt ĐẦU sau khi daemon vừa bật, lại trúng lúc `embed --all` chạy:
+  13,2s — nói ra để không ai tưởng lúc nào cũng 40ms), tìm sâu 51,5s mà `/ping` vẫn **6ms**
+  và `/memory-status` **409ms** — trước đây mọi endpoint đứng 48s.
   Đây là quay về đúng điều 8 (progressive disclosure) mà bề mặt đã trôi khỏi — user chỉ ra:
   *"logic search ban đầu là search bộ lọc mà, rồi khi cần mới search full GM"*.
+- **UI có chip `🔬 Tìm sâu`** — lựa chọn TỪNG LƯỢT, không lấy từ setting máy (máy này
+  `hybrid=true` sẵn; đọc theo nó là mọi lượt tìm lại rơi vào đường 20–60s). Hai chip
+  `Hybrid`/`Rerank` cũ giữ nguyên vai **công tắc engine của MÁY** (dùng cho lượt sâu + CLI +
+  MCP) và nay nói rõ điều đó trong tooltip — trước đây chúng hứa đổi kết quả tìm, mà sau khi
+  tách lớp thì không còn đúng. Lượt sâu có nhãn chờ riêng; hỏng/quá giờ thì **nói ra**, không
+  hiện "0 kết quả" (hai thứ đó trông y hệt nhau).
 - **F5 — gộp xong 23 nhóm project bị tách tên** (user duyệt). 115 phiên trỏ lại, **44ms**;
   khoá project **135 → 112**; phiên/tin **không đổi** (1.272 / 198.179) — không xoá dòng nào.
   Riêng repo này gom về **29 phiên · 35.941 tin** (trước nằm hai khoá 24+5). `cwd` gốc giữ
@@ -30,7 +38,9 @@
   một file test** (`Get-Content -Raw` đọc bằng ANSI rồi ghi lại UTF-8): khôi phục từ git, và
   bài học là sửa văn bản bằng công cụ sửa file, không bằng `-replace` của shell.
 
-Gate 475 → **476** · `conform` ✓ · đột biến: dấu-vết-nén 2/2 đỏ · "UI mặc định phải rẻ" 2/2 đỏ.
+Gate 475 → **478** · `conform` ✓ · đột biến: dấu-vết-nén 2/2 · "UI mặc định phải rẻ" 2/2 ·
+chip Tìm sâu 2/2 — tất cả đỏ. *(Một phép đếm trong test tự nó sai lúc đầu: đếm cả chuỗi nằm
+trong biểu thức ba ngôi nên ra 3 thay vì 2 — sửa bằng cách đếm trong đúng hai khối từ điển.)*
 
 ## [2026-08-02h] — Nạp bộ nhớ chuyển sang PER-MESSAGE · đồng hồ context · lưới sau khi nén
 
