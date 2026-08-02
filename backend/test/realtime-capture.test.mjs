@@ -145,6 +145,27 @@ test("đồng hồ context IM khi dưới ngưỡng, và chỉ kêu MỘT lần 
   );
 });
 
+test("nén xong thì MỞ LẠI quyền cảnh báo — một lần mỗi CHU KỲ ĐẦY, không phải mỗi phiên", (t) => {
+  // Đo transcript thật trên máy này (30 lần nén): 7/19 phiên bị nén NHIỀU HƠN MỘT LẦN, cá
+  // biệt một phiên 6 lần. Giữ cờ theo phiên ⇒ từ lần nén thứ hai trở đi im lặng, đúng lúc
+  // cần nhắc nhất.
+  const high = fakeTranscript(t, [
+    userMsg("u1", "a"),
+    assistantMsg("a1", "b", { input_tokens: 2, cache_read_input_tokens: 985_000, cache_creation_input_tokens: 0 }),
+  ]);
+  const sid = `s-cycle-${Date.now()}`;
+  const arg = { transcript_path: high.file, session_id: sid, cwd: high.home };
+
+  assert.match(handleHook("prompt", arg), /Context ~/, "chu kỳ 1: phải cảnh báo");
+  assert.equal(handleHook("prompt", arg), "", "vẫn trong chu kỳ 1: im");
+
+  handleHook("pre-compact", arg); // ← nén xảy ra (auto hoặc user tự bấm, đều vào đây)
+  assert.match(handleHook("prompt", arg), /Context ~/, "chu kỳ 2 sau khi nén: PHẢI cảnh báo lại");
+
+  handleHook("session-start", { ...arg, source: "compact" }); // lưới thứ hai
+  assert.match(handleHook("prompt", arg), /Context ~/, "SessionStart(compact) cũng phải mở lại quyền cảnh báo");
+});
+
 test("SessionStart chỉ nói khi source=compact; phiên bình thường phải IM", (t) => {
   const { home, file } = fakeTranscript(t, [userMsg("u1", "a"), assistantMsg("a1", "b", { input_tokens: 1 })]);
   assert.equal(handleHook("session-start", { cwd: home, transcript_path: file }), "", "phiên mở bình thường ⇒ im (điều 8)");
