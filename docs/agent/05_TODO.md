@@ -168,15 +168,6 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   đang không-add bằng tay — lần commit sau ai đó `git add -A` là nó lên remote. Chọn một: thêm
   `*.7z`/`*.zip` vào `.gitignore`, hoặc dời file ra ngoài repo.
 
-- [ ] **RÁC `[tool_result]` LỌT VÀO KẾT QUẢ TÌM — cần cờ dẫn xuất, đừng lọc bằng regex.**
-  Đo 2026-08-02: 33.717/195.533 tin trùng khít (17%), trong đó **81% là boilerplate tool**
-  (`Todos have been modified successfully` ×1.240 · hai kết quả ghi file ×951 và ×555). Trên 5
-  truy vấn thật, **~16% kết quả trả về là `tool_result`** (0–3 trên mỗi 10). Cách làm ĐÚNG: tính
-  một cờ `boilerplate` lúc scan/reindex (nội dung trùng khít ≥N lần ⇒ không mang thông tin riêng
-  của phiên) rồi loại khỏi xếp hạng — **KHÔNG** quét `GROUP BY content` trên 195k dòng mỗi lần
-  tìm, cũng KHÔNG khớp mẫu chữ (dễ giết nhầm tool_result có nội dung thật). ⚠ Luật: chỉ đụng lớp
-  dẫn xuất, **không xoá message gốc**.
-
 - [ ] **RERANK: bật mặc định hay không — HP điều 12 đang chặn, cần user chốt.**
   Trạng thái thật (đo 2026-08-02): rerank **đang BẬT** cho máy này (`data/config.json` có
   `"rerank": true`) — không hề bị auto-disable. Cái tắt là **mặc định trong code**

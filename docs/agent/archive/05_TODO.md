@@ -1,6 +1,22 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **RÁC `[tool_result]` — ĐÃ DỰNG RỒI GỠ BỎ 2026-08-02. Tiền đề SAI, đừng đề xuất lại.**
+  Đã build đủ: bảng dẫn xuất `boiler` (schema v20) + `rebuildBoiler` nối vào `scan`/`reindex`
+  + `dropBoilerplate` lọc trước xếp hạng. Chạy thật: đánh dấu **13.524 tin**. Rồi đo hiệu quả và
+  **gỡ sạch**, vì nó không thắng net (`HP điều 12`).
+  - **Đo quyết định:** trên 5 truy vấn thật, số tin boilerplate lọt vào top-10 khi KHÔNG lọc là
+    **0/10 ở cả 5** — bộ lọc không đổi được gì. Chỉ khi truy vấn CHÍNH LÀ câu boilerplate
+    (`todos modified successfully`) mới có 8–10/10, mà lúc đó trả về chúng là **đúng**, không phải rác.
+  - **Vì sao tiền đề sai:** con số "~16% kết quả là rác" là tôi đếm `[tool_result]`, mà tool_result
+    **không** đồng nghĩa boilerplate. Soi tay 3 hit của truy vấn `cowork bootstrap`: 2/3 là **nội
+    dung file test BOOTSTRAP thật** — đúng thứ người tìm cần. Nhóm này đã có `demoteToolOutput`
+    phạt nhẹ, và phạt nhẹ mới đúng liều.
+  - **Giữ lại bài học, không giữ code:** phân bố trùng khít (đo 195.533 tin) — ≥5: 25.117 tin
+    (12,8%) nhưng **giết nhầm nội dung file đọc lại 5–19 lần**; ≥20: 13.524 (6,9%), 93% là
+    tool/hệ thống; ≥50: 9.510. Muốn làm lại thì phải có **corpus nhãn chứng minh recall tăng**,
+    không phải chỉ đếm rác.
+
 - [x] **MIGRATE CHÍNH REPO NÀY sang kiến trúc skill — XONG 2026-08-01** (ghi `06_CHANGES [2026-08-01b]`): 7 skill ra `.claude/skills/`, `04_SKILLS` 222→53 dòng, `04` ra khỏi ĐỌC HẾT, bộ luôn nạp −5.4k tok/phiên, test `read-set-contract` siết lại.
 
 - [x] **PHASE 1 — BỘ COWORK: XONG 2026-07-31** (đã ghi `06_CHANGES [2026-07-31b]`, user duyệt 01/08).

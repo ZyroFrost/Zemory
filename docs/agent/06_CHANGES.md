@@ -38,6 +38,15 @@ thiếu gì. Ba đề xuất ban đầu của tôi thì **hai sai tiền đề**
   nhãn). Chạy gate: FTS 0% · **hybrid 100% (8/8)** · rerank 100% — corpus đã bão hoà nên rerank
   KHÔNG thể thắng net ở đó. Chi tiết trong `05_TODO`.
 
+**Lọc boilerplate: dựng xong rồi GỠ.** Đã build đủ (bảng dẫn xuất `boiler` schema v20 +
+`rebuildBoiler` trong `scan`/`reindex` + `dropBoilerplate` lọc trước xếp hạng, đánh dấu thật
+13.524 tin) rồi **gỡ sạch** vì đo ra **0 lợi ích**: trên 5 truy vấn thật, boilerplate lọt vào
+top-10 khi KHÔNG lọc là **0/10 ở cả 5**. Tiền đề "~16% kết quả là rác" của tôi đếm nhầm —
+`[tool_result]` không phải boilerplate; soi tay thì 2/3 hit tool_result của `cowork bootstrap`
+là nội dung file test THẬT, đúng thứ cần tìm. `HP điều 12` cấm bật mặc định một lớp chưa thắng
+net, nên giữ lại là vi phạm chính luật vừa dùng để chặn rerank. Bài học + phân bố đo được ghi ở
+`05_TODO` để không ai đề xuất lại mà thiếu bằng chứng.
+
 Gate 423 → **427** · `conform` ✓ · `check_install` cowork 24/24.
 
 ## [2026-08-01b] — Chuẩn hoá CHÍNH repo zemory: 7 playbook ra `.claude/skills/`
