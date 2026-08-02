@@ -282,7 +282,8 @@
             <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="mem.scanHint"><b>Quét nguồn đã biết</b>: quét lại các store agent đã biết (nhanh). · <b>Quét sâu</b>: dò toàn ổ tìm agent/máy mới.</div>
             <div id="scanMsg" class="scanmsg"></div>
             <div class="section-t" data-i18n="mem.autoH">Tự động — daemon tự làm gì khi BẬT</div>
-            <div class="set-row"><div class="sl"><b data-i18n="mem.scheduler">Scheduler nền</b><small data-i18n="mem.schedulerD">Bật: khi máy rảnh, daemon tự chạy scan → embed → digest; nhường quyền ghi cho CLI.</small></div><div class="toggle" data-auto="scheduler"></div></div>
+            <div class="set-row"><div class="sl"><b data-i18n="mem.realtime">Lưu tức thì mỗi tin</b><small data-i18n="mem.realtimeD">BẬT: mỗi lượt trả lời xong là phiên được nạp ngay vào bộ nhớ (&lt;1s), không chờ nhịp nền. Kèm cảnh báo khi context gần đầy và tự chốt sổ trước khi bị nén.</small></div><div class="toggle" data-auto="realtime"></div></div>
+            <div class="set-row"><div class="sl"><b data-i18n="mem.scheduler">Lưới bù nền</b><small data-i18n="mem.schedulerD">BẬT: mỗi 30 phút daemon quét vét nguồn không có hook, chạy embed cho phần tồn và dựng lại digest; nhường quyền ghi cho CLI.</small></div><div class="toggle" data-auto="scheduler"></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.autostart">Mở cùng PC</b><small data-i18n="mem.autostartD">BẬT: đăng nhập máy là daemon đã chạy nền sẵn ở port 4444 (không phải mở tay).</small></div><div class="toggle" data-auto="autostart"></div></div>
             <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.autosync">Tự sync memory</b><small data-i18n="mem.autosyncD">BẬT: có tin mới → tự export bundle; bundle máy khác mới hơn → tự import --merge. Chỉ đi qua Drive (.enc), không thêm kênh nào.</small></div><div class="toggle" data-auto="autosync"></div></div>
           </div></div>

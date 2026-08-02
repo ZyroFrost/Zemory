@@ -54,6 +54,7 @@ import {
   getHybridSetting,
   getRerankSetting,
   getLang,
+  getRealtime,
   getScheduler,
   getScopeExclude,
   getScopeSetting,
@@ -63,6 +64,7 @@ import {
   setDriveDir,
   setHybridSetting,
   setLang,
+  setRealtimeSetting,
   setRerankSetting,
   setSchedulerSetting,
   setScopeExclude,
@@ -73,6 +75,7 @@ import {
   setWebAuth,
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
+import { hooksInstalled, installHooks, uninstallHooks } from "./memory/capture-hook.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
 // daemon serves those files as-is — no bundler, no TS template. Read per request
 // so editing a .css/.js + reloading shows it with no rebuild.
@@ -1728,6 +1731,22 @@ export async function startUi(): Promise<void> {
       setSchedulerSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, scheduler: getScheduler() });
     }
+    // Realtime capture: cờ config CHỈ là ý định — thứ thật sự nạp là hook trong settings của
+    // host. Nên công tắc phải kéo theo install/uninstall, không thì bật xong không có gì chạy
+    // (và tắt xong hook vẫn còn) — đúng kiểu "sổ nói khác code" mà repo này ghét nhất.
+    if (p === "/set-realtime") {
+      const on = u.searchParams.get("on") === "1";
+      setRealtimeSetting(on);
+      let hook: { path: string; changed: string[] };
+      try {
+        hook = on
+          ? (() => { const r = installHooks(); return { path: r.path, changed: r.added }; })()
+          : (() => { const r = uninstallHooks(); return { path: r.path, changed: r.removed }; })();
+      } catch (e) {
+        return json(res, { ok: false, realtime: getRealtime(), error: e instanceof Error ? e.message : "hook write failed" });
+      }
+      return json(res, { ok: true, realtime: getRealtime(), hookPath: hook.path, changed: hook.changed });
+    }
     if (p === "/set-sync-level") {
       setSyncLevel(u.searchParams.get("level") === "full" ? "full" : "lean");
       return json(res, { ok: true, level: getSyncLevel() });
@@ -1743,6 +1762,10 @@ export async function startUi(): Promise<void> {
       // State for the ⚙ automation panel: config flags + real autostart status.
       return json(res, {
         autostart: getAutostart(), autosync: getAutosync(), scheduler: getScheduler(),
+        // `realtime` = ý định; `realtimeWired` = SỰ THẬT (hook có trong settings của host
+        // không). Phơi cả hai vì chúng lệch được: user sửa tay settings.json, hoặc cài trên
+        // máy chưa có Claude Code. Chỉ hiện cờ config là hứa suông.
+        realtime: getRealtime(), realtimeWired: hooksInstalled(),
         os: autostartStatus(), shortcut: desktopShortcutStatus(),
         // Có ĐANG chạy job nền không (embed/scan). Đo 2026-07-28: job embed nền ngốn
         // 4.592 s CPU làm MỌI endpoint chậm 2–9× mà giao diện không hề nói gì — phải mở

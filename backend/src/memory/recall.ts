@@ -4,8 +4,11 @@
 // project has no prior memory history (nothing to inject).
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
+import { projectKey } from "../core/config.js";
 
-const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
+// MỘT bản so-path cho cả hệ (F4, 2026-08-02) — bản cũ ở đây không cắt gạch cuối nên
+// `D:\X\` trượt trong khi các chỗ khác khớp.
+const norm = projectKey;
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
 interface Row {

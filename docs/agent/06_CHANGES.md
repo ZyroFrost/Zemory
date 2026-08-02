@@ -5,6 +5,39 @@
 
 ---
 
+## [2026-08-02h] — Nạp bộ nhớ chuyển sang PER-MESSAGE · đồng hồ context · lưới sau khi nén
+
+> 🔄 **Supersede:** thay [2026-07-30d] — "daemon KHÔNG hề scan" — ở phần NHỊP: chuỗi nền
+> vẫn còn nhưng thôi làm đường nạp chính. User chốt: *"nhịp 10' là lần đó chưa xét kỹ — mỗi
+> 1 mes phải tự đưa lên luôn mới đúng"*.
+
+- **Vì sao đổi (số, không phải cảm tính):** poll trả tiền theo THỜI GIAN — 6 lần scan/giờ kể
+  cả máy rảnh, 1,8–7,2s/lần — và vẫn trễ tới 10 phút. Hook trả theo CÔNG VIỆC: không tin thì
+  0 chạy, có tin thì **~320ms** cả tiến trình (việc thật 5–71ms). Rẻ hơn, lại tươi hơn.
+- **`scanOneFile`** nạp đúng MỘT transcript từ `transcript_path` của host, bỏ hẳn khâu
+  discover. Không nhận diện được đường ⇒ trả "không nhận", **KHÔNG** lặng lẽ rơi về quét cả
+  kho. Write-gate bận ⇒ bỏ qua ngay (chờ là ~125s/lượt), lưới bù lượm.
+- **Bốn móc, mỗi cái một vai:** `Stop` nạp mỗi lượt · `UserPromptSubmit` im tuyệt đối tới
+  95% rồi **chốt sổ + cảnh báo MỘT lần/phiên** · `PreCompact` nạp nốt trước khi nén ·
+  `SessionStart` **chỉ** nói khi `source=compact` — auto-inject đầu tiên của hệ: một thẻ
+  795 B, đúng sự kiện agent vừa mất trí nhớ, không phải memory mỗi prompt (điều 8).
+- **Scheduler teo thành LƯỚI BÙ** (10' → 30'): embed · digest sweep · quét vét nguồn không
+  hook · poll chiều import. Drive giữ nguyên nhịp 30' hai chiều theo user chốt.
+- **Ba lỗi THẬT bắt được lúc chạy bề mặt sống, không phải khi đọc code:** ① hook hét
+  **"Context ~295%"** (transcript ghi `claude-opus-5` ⇒ tính theo 200k trong khi phiên chạy
+  1M) — nay `windowFor` **tự sửa**: phiên không thể vượt cửa sổ của chính nó nên số >100% là
+  bằng chứng giả định sai ⇒ nâng bậc; vượt cả bậc cao nhất ⇒ IM thay vì hét bậy. ②
+  `readStdin` cắm `setTimeout(800)` **không `unref`** ⇒ mỗi lần gọi hook chờ thừa 800ms. ③
+  `memory_doctor` gọi thật mất **48s** ⇒ tách cờ `deep` (lượt nhanh **186ms**, khai `notProbed`).
+- **CLI tách lối tắt cho `hook`** (nạp động) — 400ms → **232–320ms**; lệnh khác giữ đường cũ.
+- **F1/F4 của audit sáng nay** xử luôn: doctor probe đúng thứ nó hứa · gom 5 bản so-path về
+  `core/config::projectKey` (`graph-memory` CỐ Ý giữ riêng: id node dùng `/`, đã ghi rõ).
+- **Một test của tôi XANH GIẢ, tự bắt bằng đột biến:** F1 chỉ soi CHỮ trong source nên gỡ
+  hẳn hai key khỏi vòng probe vẫn xanh — viết lại thành kiểm hành vi.
+
+Gate 462 → **474** · `conform` ✓ · đột biến realtime **7/7** đỏ, F1 **2/2**, F4 (phải gỡ cả
+hai cơ chế mới đỏ — chúng dự phòng nhau).
+
 ## [2026-08-02g] — Chạy engram THẬT (v1.20.0) rồi mới so — hai chỗ hôm nay tôi đo sai
 
 > 🔄 **Supersede:** thay [2026-08-02e] — "Soát sổ: 6 mục chưa làm thực ra đã xong · 3 tiền đề

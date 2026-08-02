@@ -176,7 +176,14 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   · `pi` → cài npm `gentle-engram`, cần `pi` trong PATH (thiếu thì lệnh của họ cũng lỗi).
   ⇒ khoảng cách là THẬT, không phải giới hạn của ngành. Rẻ nhất là `codex` (chỉ cần bộ ghi TOML).
 
-## 🧷 Context-guard + realtime capture (user chốt 2026-08-02, Fable ghi spec — ĐỔI MODEL rồi BUILD)
+## 🧷 Context-guard + realtime capture — ĐÃ BUILD XONG `[2026-08-02h]`; còn 2 việc
+- [ ] **Codex chỉ nhận `Stop`** — hệ hook của nó không có `UserPromptSubmit`/`PreCompact`/
+  `SessionStart`, nên máy chạy Codex có capture per-message nhưng KHÔNG có đồng hồ context
+  lẫn lưới sau nén. Chưa tìm hiểu Codex có sự kiện tương đương không.
+- [ ] **Ngưỡng 95% chưa chỉnh được từ UI** (hằng `WARN_AT_PERCENT` trong code). Đợi có ca
+  thật muốn đổi rồi hãy phơi ra — thêm một ô cấu hình chưa ai xin là nợ.
+
+<details><summary>Spec gốc (giữ để tra lại lý do từng quyết định)</summary>
 > Gốc: đối chiếu "compaction recovery" của engram. **Session-lifecycle KHÔNG làm** (đã có tốt
 > hơn, tự động: sessions từ transcript + digest 100%). "Nén từng đoạn hội thoại": digest
 > per-phiên ĐÃ CÓ (plan 06, 2026-07-02); compression đúng nghĩa đã BỎ 2026-06-25 (attic/).
@@ -231,8 +238,9 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
   lại TRƯỚC khi làm tiếp, đừng đoán từ bản tóm tắt."* Cursor/Windsurf/Qwen chỉ nhận mảnh này;
   Cowork ngoài phạm vi.
+</details>
 
-## 🔬 Audit toàn diện 2026-08-02 (Fable, 6 mặt) — 4 finding mới, xếp theo độ đau
+## 🔬 Audit toàn diện 2026-08-02 (Fable, 6 mặt) — F1/F4 ĐÃ SỬA `[2026-08-02h]`, còn F5/F6
 > Gate 462/462 · conform ✓ · integrity ok · schema v20 trên DB thật · 0 mồ côi (3 phép đo) ·
 > digest 100% · neo test sống 100% · endpoint parity sạch · 15/15 endpoint sống 200.
 > Nghi vấn ĐÃ LOẠI (ghi để khỏi đào lại): "daemon crash tái hiện khi audit" — SAI, daemon chết
@@ -251,19 +259,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **F5 — DB thật còn 23 nhóm project TÁCH TÊN** (mỗi nhóm 2 biến thể: `D:\` vs `d:\`…, cả
   `d:\zyro\tool\zemory`). Công cụ trị đã có (`project_merge`), dry-run đã thấy đủ — **chạy
   `apply=true` cần user gật** (mutation, đúng thiết kế).
-- [ ] **F1 — `memory_doctor` HỨA probe vector/rerank nhưng KHÔNG probe** (bug tôi tạo
-  2026-08-02f): mô tả viết *"vector/rerank engines are loaded, not just read off a config
-  flag"*, nhưng nó lặp `gatherStatus().features` = `listFeatures()` chỉ có 3 key
-  (memory/validate/grill) — `runCheck` CÓ nhánh vector/rerank mà không ai đưa vào vòng.
-  Đo sống: tool trả đúng 3 feature. Sửa rẻ: probe thêm `vector`+`rerank` trong dispatcher
-  (đừng đổi `listFeatures` — UI Home đang đếm theo nó). Kèm test parity mô-tả↔dispatcher.
-- [ ] **F4 — NGUỒN TRÙNG: 5 bản "so path" đã lệch nhau.** `projects.ts::key` ·
-  `mergeprojects.ts::key` · `search.ts::norm` · `recall.ts::norm` · `graph-memory.ts::norm` —
-  search/recall đổi `/`→`\` KHÔNG strip gạch cuối; graph-memory đổi ngược `\`→`/`; hai `key()`
-  resolve+strip. `D:\X\` khớp qua `key()` nhưng trượt qua `norm()` của recall. Gom về MỘT hàm
-  cạnh `normalizeRoot` (`core/config`), 5 chỗ gọi chung.
+> **F1 + F4 đã sửa** — chi tiết ở `06_CHANGES [2026-08-02h]`. (F1 hoá ra còn một tầng nữa:
+> probe thật mất **48s** nên tách cờ `deep`; F4 gom về `core/config::projectKey`, riêng
+> `graph-memory::norm` giữ lại CÓ CHỦ ĐÍCH vì id node dùng `/`.)
+
 - [ ] Nợ đo lại: vector backlog ~4.6k (embed con bị tôi tắt lúc chẩn đoán — scheduler tự chạy
-  lại trong 10') · entry `2026-08-02` 44 dòng > trần 30 (advisory validate, entry đã chốt).
+  lại trong 30') · entry `2026-08-02` 44 dòng > trần 30 (advisory validate, entry đã chốt).
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.

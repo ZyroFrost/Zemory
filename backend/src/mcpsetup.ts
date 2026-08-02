@@ -289,6 +289,10 @@ the user to re-explain work you could look up.
 - **Before proposing or changing a design** → \`plan_search\` / \`plan_show\`.
 - **Empty or surprising result** → \`project_current\` (wrong scope?) then \`memory_stats\`
   (empty store?). An empty store and a bad query look identical from \`memory_search\`.
+- **Right after your context was COMPACTED or summarised** — details you had are gone, and a
+  summary reads like knowledge you still have → call \`memory_context\` (and \`memory_search\`
+  for the specifics) to rebuild the real state BEFORE continuing. zemory kept the full session
+  on disk even though your context did not. Never continue from the summary alone.
 
 Everything here is local and read-only. Nothing is sent anywhere.`;
 
