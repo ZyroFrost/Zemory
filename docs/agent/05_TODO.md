@@ -197,15 +197,20 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   SẴN trong `capture-hook.ts` (opt-in chưa cài) — chỉ thiếu khai matcher. Đây là auto-inject
   đầu tiên của hệ: 1 thẻ nhỏ, đúng 1 lần, đúng sự kiện mất trí nhớ — user đã chốt; ghi
   changelog như diễn giải điều 8 (điều 8 cấm *broad memory mỗi prompt*, không cấm thẻ này).
-- [ ] **③ Realtime capture mỗi turn (ý user: "như chat realtime") — CÔNG TẮC bật/tắt.**
-  Cơ chế Stop hook ĐÃ TỒN TẠI (`zemory hook install` → Stop → `scan()`), chưa cài máy nào.
+- [ ] **③ Realtime capture mỗi turn (ý user: "như chat realtime") — CÔNG TẮC thứ 4 trong panel
+  "Máy này / TỰ ĐỘNG" (user chỉ đúng chỗ 2026-08-02).**
+  **Đã dò cái cũ (đọc `jobs/scheduler.ts`), KHÔNG trùng:** hai công tắc hiện có đều chạy theo
+  NHỊP — `maintainTick` nạp GM mỗi **10'**, `syncTick` đẩy Drive mỗi **30'** — không phải
+  mỗi-tin. Cơ chế per-turn thì Stop hook ĐÃ TỒN TẠI (`zemory hook install` → Stop → `scan()`)
+  nhưng chưa máy nào cài và scan CẢ KHO.
   Việc thật khi build: (a) **scan đúng 1 file** từ `transcript_path` trong payload thay vì cả
-  kho (1,8–7s → mục tiêu <1s; comment "fast, incremental" trong `capture-hook.ts` đang nói
-  quá so với số đo); (b) công tắc `data-auto` trong pane ⚡ Tự động (khuôn `getScanWeb` sẵn);
-  (c) digest regen theo (scan chạm phiên là tự cập nhật — có sẵn).
-  **Sync KHÔNG per-message** (đã can user, chờ xác nhận): mỗi turn 1 delta lên Drive = spam
-  file + compact quay vòng (DRIVE_COMPACT_AT=12); ingest realtime + autosync debounce sẵn có
-  là đúng nhịp. Muốn sát hơn thì hạ chu kỳ autosync, không đổi kiến trúc.
+  kho (đo: 1,8–7s cả kho → mục tiêu <1s; comment "fast, incremental" trong `capture-hook.ts`
+  đang nói quá so với số đo); (b) công tắc `data-auto` cạnh 3 công tắc sẵn có (khuôn
+  `getScanWeb`); bật = cài Stop hook, tắt = gỡ; (c) digest regen theo (sẵn có).
+  **Sync đi kèm — GẦN-realtime, không per-message** (đã can, user chưa phản đối): bật realtime
+  thì sau mỗi lần ingest turn đánh dấu *dirty* → sync job chạy **debounce ngắn** (vd 2–5' sau
+  tin cuối) thay vì chờ nhịp 30' — mỗi CỤM hội thoại ra một delta, không phải mỗi tin một file
+  (per-message = spam Drive + compact quay vòng, DRIVE_COMPACT_AT=12).
 - [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
   lại TRƯỚC khi làm tiếp, đừng đoán từ bản tóm tắt."* Cursor/Windsurf/Qwen chỉ nhận mảnh này;
