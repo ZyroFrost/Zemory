@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -57,6 +57,22 @@ function markWarned(sessionId: string): void {
   writeFileAtomic(p, new Date().toISOString());
 }
 
+/**
+ * Xoá cờ khi context vừa được nén — cảnh báo là "một lần mỗi CHU KỲ ĐẦY", KHÔNG phải một
+ * lần mỗi phiên.
+ *
+ * Đo trên transcript thật của máy này (2026-08-02, 30 lần nén): **7/19 phiên bị nén NHIỀU
+ * HƠN MỘT LẦN**, cá biệt một phiên nén **6 lần**. Nén xong context tụt về ~30% rồi đầy lại
+ * — nếu giữ cờ theo phiên thì mấy lần sau im lặng, đúng lúc người dùng cần nhắc nhất.
+ */
+function clearWarned(sessionId: string): void {
+  try {
+    rmSync(warnedFlagPath(sessionId), { force: true });
+  } catch {
+    /* cờ là tiện ích: xoá không được thì cùng lắm mất một lần nhắc, không sai dữ liệu */
+  }
+}
+
 /** Run a hook handler. Returns text to write to stdout (may be ""). */
 export function handleHook(event: HookEventName, payload: any): string {
   try {
@@ -66,6 +82,9 @@ export function handleHook(event: HookEventName, payload: any): string {
     // recall là phán đoán của agent (điều 8), không đẩy memory vào mỗi lần mở phiên.
     if (event === "session-start") {
       if (payload?.source !== "compact") return "";
+      // Lưới thứ hai cho cùng việc: host nào KHÔNG bắn `PreCompact` thì đây là chỗ duy nhất
+      // biết vừa có một lần nén ⇒ mở lại quyền cảnh báo tại đây luôn.
+      clearWarned(String(payload?.session_id ?? payload?.transcript_path ?? ""));
       const card = cwd ? recallCard(cwd) : "";
       const note =
         "[zemory] Context vừa bị NÉN — phần chi tiết trước đó đã bị tóm tắt, nhưng Global Memory " +
@@ -80,8 +99,16 @@ export function handleHook(event: HookEventName, payload: any): string {
     }
 
     // PreCompact — lưới chốt cuối: nạp nốt phần đuôi NGAY TRƯỚC khi host nén.
+    //
+    // Chạy cho CẢ hai kiểu nén (`trigger: "auto" | "manual"`), và đó mới là lưới thật: đo 30
+    // lần nén trên máy này thì auto thường nổ sát trần (p50 **1.000.183** token) nhưng KHÔNG
+    // phải lúc nào cũng vậy — có lần auto ở **711.803**, có lần chỉ **342.068**, cộng 3 lần
+    // user tự bấm (thấp nhất 511.388). Những ca đó ngưỡng 95% không kịp kêu, nên nếu chỉ dựa
+    // vào đồng hồ thì mất phần đuôi. Móc này không quan tâm nén vì lý do gì.
     if (event === "pre-compact") {
       ingestCurrent(payload);
+      // Nén xong context tụt về ~30% rồi đầy lại ⇒ mở lại quyền cảnh báo cho chu kỳ sau.
+      clearWarned(String(payload?.session_id ?? payload?.transcript_path ?? ""));
       return "";
     }
 
