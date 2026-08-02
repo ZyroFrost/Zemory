@@ -5,6 +5,50 @@
 
 ---
 
+## [2026-08-02c] — MCP: 4 → 8 tool · `setup mcp` tự khai vào agent · mô tả tool thành LỜI DẶN
+
+Học từ engram (22 tool) nhưng chỉ lấy phần hợp kiến trúc. Đã đo trước: `zemory mcp` **vốn đã
+là MCP server thật** (trả lời `initialize` + `tools/list` bằng đúng phép thử dùng cho engram),
+nên thứ thiếu không phải giao thức mà là **bề mặt** và **đường nối**.
+
+- **+4 tool, đều bọc năng lực CÓ SẴN, không đẻ logic mới:** `changelog_search` (kèm cờ
+  `supersededBy`) · `memory_context` (bọc `recallCard`) · `project_current` (không bao giờ lỗi)
+  · `memory_stats`. Gọi thật qua MCP cả 4 — `changelog_search` trả đúng cờ đã-bị-thay.
+- **Vá lỗ tự tạo sáng nay:** nhãn "⚠ ĐÃ BỊ THAY" chỉ chạy được ở CLI, nên **agent qua MCP
+  không có cách nào biết một quyết định đã chết** — đúng cái vấn đề cả buổi đi chữa mà bỏ trống
+  lối vào chính.
+- **`zemory setup mcp [agent]`** — khai zemory vào Claude Code (`.mcp.json` theo project) ·
+  Claude Desktop · Cursor · Windsurf · Gemini. Gọi trần thì **chỉ liệt kê**, phải nêu đích danh
+  agent mới ghi, vì đây là file NGOÀI project (`02_RULES §Phạm vi`). Ba chốt chặn có test +
+  đột biến: giữ nguyên server khác · JSON hỏng thì DỪNG không ghi đè · thiếu thư mục cấu hình
+  (agent chưa cài) thì không tự dựng cây thư mục để lại rác.
+- **Mô tả tool = LỜI DẶN, không phải nhãn.** engram viết "WHEN TO CALL: after mem_save returns
+  judgment_required=true"; zemory viết "Show one plan/doc section by id." — đúng mà vô dụng.
+  Trớ trêu: zemory **bắt mọi `SKILL.md` phải có `description` nói dùng-khi-nào**, chỉ quên áp
+  cho chính tool của mình. Nay có gate `mcp.test` chặn mô tả kiểu định-nghĩa (đột biến ✓ đỏ).
+- **KHÔNG copy 8 tool ghi của engram** (`mem_save`, `mem_update`, `mem_session_*`…): trí nhớ
+  engram do agent tự viết, còn zemory nạp transcript tự động và lấy **file docs làm nguồn**.
+  Thêm đường ghi cho agent = mở đường ghi thứ hai vào lớp dẫn xuất, phạm điều 3.
+
+Gate 427 → **435** · `conform` ✓.
+
+## [2026-08-02b] — HIẾN PHÁP điều 6: "KHÔNG BAO GIỜ gọi LLM" → "HẠN CHẾ gọi LLM" (user chốt)
+
+> 🔄 **Supersede:** thay [2026-07-25] — "điều 6 khoanh vùng no-LLM" — user chốt 2026-08-02: cấm
+> tuyệt đối là hiểu sai ý ban đầu. Lý do thật của luật là **tối ưu token**, không phải chống-LLM.
+
+- **Câu mới, thứ tự ưu tiên rõ:** ① script/luật **tất định** làm được thì SCRIPT LÀM → ② không tất
+  định được thì **AGENT LIÊN KẾT** làm (nó đã ở đó, dùng token của phiên đang chạy) → ③ zemory tự
+  gọi model **chỉ khi** ①② đều không xong, có ích lợi **đo được** (điều 12), user chốt, và
+  **fail-open** khi thiếu model. Giữ nguyên: không proxy model API, không sinh văn bản trong lõi;
+  embed/rerank local chỉ *đo nghĩa* nên luôn hợp lệ.
+- **Vì sao phải ghi:** quyết định này user đã nói từ lâu nhưng **chưa bao giờ vào văn bản** — tra
+  `changelog search` (cả archive) + kho nhớ đều không có. File vẫn ghi "KHÔNG BAO GIỜ", nên mọi
+  agent đọc hiến pháp đều áp luật cũ, và chính tôi hôm nay đã viện dẫn nó để bác một đề xuất.
+  Đúng dạng "sổ nói khác thực tế" mà `02_RULES` gọi là sai khó phát hiện nhất.
+- **Mở ra cái gì:** xử lý xung đột ở TẦNG TRÍ NHỚ (kiểu `mem_judge` của engram) trước đây bị chặn
+  thẳng vì cần model phán. Nay hợp lệ nếu qua được thứ tự ①②③.
+
 ## [2026-08-02] — Quyết định đã bị đảo nay TỰ NÓI ra · sửa `--limit` nuốt vào truy vấn
 
 Đối chiếu với **engram** (5.8k sao, memory server viết bằng Go, MCP 20 tool) để xem zemory

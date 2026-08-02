@@ -13,6 +13,7 @@ import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { conform } from "../docs/conform.js";
+import { agentTargets, inspectAgent, wireAgent } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 
@@ -244,12 +245,63 @@ export function cmdValidate(): void {
 }
 
 // AGENTS.md = router thuần (điều hướng). Luật/quy trình sống ở docs/agent/*. Print short install steps + pointer.
-export function cmdSetup(): void {
+export function cmdSetup(args: string[] = []): void {
+  if (args[0] === "mcp") {
+    cmdSetupMcp(args.slice(1));
+    return;
+  }
   console.log("zemory setup — cài & dùng:");
   console.log("  1. npm i -g zemory                 — cài global (lệnh `zemory`)");
   console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
   console.log("  3. zemory doctor");
+  console.log("  4. zemory setup mcp                 — nối zemory vào agent nói MCP (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
   console.log("Điều hướng mở phiên: AGENTS.md ở root (hỏi app/non-app trước khi init). Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE Reconcile).");
+}
+
+/** `zemory setup mcp [agent] [--force]` — khai zemory vào cấu hình MCP của agent.
+ *
+ *  Gọi TRẦN thì chỉ LIỆT KÊ, không ghi gì: các file này nằm ngoài project, mà `02_RULES
+ *  §Phạm vi` đặt "ghi ra ngoài" ở mức cấm mặc định. Phải nêu đích danh agent mới ghi. */
+function cmdSetupMcp(args: string[]): void {
+  const root = currentProjectRoot();
+  const targets = agentTargets(root);
+  const force = args.includes("--force");
+  const pick = args.find((a) => !a.startsWith("--"));
+  if (!pick) {
+    console.log("zemory setup mcp — nối zemory vào agent nói MCP (chỉ LIỆT KÊ; nêu tên agent mới ghi)");
+    for (const t of targets) {
+      const state = inspectAgent(t);
+      const mark = state === "wired" ? "✓ đã khai" : state === "present-not-wired" ? "○ có file, chưa khai" : state === "bad-json" ? "⚠ file JSON hỏng" : "· chưa có file";
+      console.log(`  ${mark.padEnd(22)} ${t.id.padEnd(15)} ${t.path ?? "(không hỗ trợ trên OS này)"}`);
+    }
+    console.log("");
+    console.log("  ghi vào một agent:  zemory setup mcp <agent> [--force]");
+    console.log("  agent hợp lệ:       " + targets.map((t) => t.id).join(" · "));
+    console.log("  luôn sao lưu .bak trước khi ghi · KHÔNG đụng server khác trong file");
+    return;
+  }
+  const target = targets.find((t) => t.id === pick);
+  if (!target) {
+    console.log(`zemory setup mcp: không biết agent "${pick}". Hợp lệ: ${targets.map((t) => t.id).join(" · ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const r = wireAgent(target, force);
+  if (r.wrote) {
+    console.log(`zemory setup mcp — ${r.reason === "replaced" ? "ghi đè" : "đã khai"} zemory vào ${target.label}`);
+    console.log(`  ${target.path}`);
+    if (r.backup) console.log(`  sao lưu: ${r.backup}`);
+    console.log("  → mở lại agent đó để nó nạp server mới.");
+    return;
+  }
+  const why: Record<string, string> = {
+    already: "đã khai sẵn rồi (dùng --force để ghi đè)",
+    "no-parent-dir": "chưa thấy thư mục cấu hình — agent này có vẻ chưa cài trên máy",
+    "bad-json": "file cấu hình không parse được JSON — KHÔNG ghi đè, sửa tay trước",
+  };
+  console.log(`zemory setup mcp — không ghi: ${why[r.reason] ?? r.reason}`);
+  console.log(`  ${target.path}`);
+  if (r.reason === "bad-json") process.exitCode = 1;
 }
 
 export function cmdStructure(): void {

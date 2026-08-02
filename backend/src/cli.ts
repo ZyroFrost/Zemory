@@ -97,7 +97,7 @@ switch (cmd) {
     await cmdGraph(args);
     break;
   case "setup":
-    cmdSetup();
+    cmdSetup(args);
     break;
   case "--version":
   case "-v":
