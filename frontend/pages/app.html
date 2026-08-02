@@ -95,8 +95,9 @@
         <div class="recall-in"><span>🔍</span><input id="rq" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall">Tìm ✦</button></div>
         <div class="filters">
           <div class="fchip on" id="rAll" data-rf="all">Cả máy</div>
-          <div class="fchip" id="rHybrid" data-rf="hybrid">Hybrid</div>
-          <div class="fchip" id="rRerank" data-rf="rerank">Rerank</div>
+          <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>
+          <div class="fchip" id="rHybrid" data-rf="hybrid" data-i18n-title="f.hybridTip" title="Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.">Hybrid</div>
+          <div class="fchip" id="rRerank" data-rf="rerank" data-i18n-title="f.rerankTip" title="Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.">Rerank</div>
           <div class="fchip" id="rImg" data-rf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
           <select id="fTime" class="rsel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
           <!-- "user" = NGƯỜI thật gõ (backend đã loại tool_result nằm trong lượt user);
