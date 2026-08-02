@@ -375,7 +375,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const query = rest.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(rest[i - 1] ?? "")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory memory search <query> [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory memory search <query> [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency] [--json]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
@@ -405,6 +405,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const hits = useHybrid
       ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt, limit })
       : search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
+    // `--json`: đường máy-đọc, cho daemon gọi tìm-sâu ở TIẾN TRÌNH CON thay vì tự chạy ONNX
+    // trên event loop của mình (xem jobs/searchjob.ts). In THUẦN JSON, không thêm chữ nào.
+    if (rest.includes("--json")) {
+      console.log(JSON.stringify(hits));
+      return;
+    }
     printHits(
       query,
       (all ? "whole memory" : `project: ${project}`) +

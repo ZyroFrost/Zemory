@@ -44,6 +44,53 @@ export function windowFor(model: string | undefined, observed = 0): number | nul
   return base;
 }
 
+/**
+ * Thời điểm lần NÉN gần nhất ĐÃ THỰC SỰ xảy ra trong transcript (ms), 0 nếu chưa lần nào.
+ *
+ * Bằng chứng là bản ghi `{"type":"system","subtype":"compact_boundary","compactMetadata":{…}}`
+ * do chính host ghi SAU KHI nén xong — đo trên máy này: 30 bản ghi như vậy, mang cả
+ * `trigger` (auto/manual) lẫn `preTokens`.
+ *
+ * Vì sao cần đúng thứ này thay vì "hook PreCompact đã nổ": user BẤM NHẦM `/compact` rồi huỷ
+ * ngay — hook đã chạy nhưng nén KHÔNG xảy ra. Lấy sự kiện làm mốc thì mọi lần bấm nhầm đều
+ * bị tính là một chu kỳ mới; lấy dấu vết trong transcript thì chỉ lần nén THẬT mới tính.
+ */
+export function lastCompactAt(transcriptPath: string): number {
+  let fd: number;
+  try {
+    fd = openSync(transcriptPath, "r");
+  } catch {
+    return 0;
+  }
+  try {
+    const size = fstatSync(fd).size;
+    // Nén để lại bản ghi rồi cuộc trò chuyện chạy tiếp, nên mốc có thể đã lùi khá xa cuối
+    // file — đọc rộng hơn cửa sổ đo usage, nhưng vẫn không đọc cả file (transcript hàng chục MB).
+    const span = Math.min(size, 4 * 1024 * 1024);
+    const buf = Buffer.alloc(span);
+    readSync(fd, buf, 0, span, size - span);
+    let newest = 0;
+    for (const line of buf.toString("utf8").split("\n")) {
+      if (!line.includes("compact_boundary")) continue;
+      try {
+        const rec = JSON.parse(line);
+        // Chỉ nhận bản ghi THẬT: chuỗi "compact_boundary" cũng xuất hiện trong nội dung chat
+        // (đã dính đúng bẫy này khi đo — phiên đang bàn về compact bị đếm thành lần nén).
+        if (rec?.type !== "system" || rec?.subtype !== "compact_boundary" || !rec?.compactMetadata) continue;
+        const t = Date.parse(rec.timestamp ?? "");
+        if (Number.isFinite(t) && t > newest) newest = t;
+      } catch {
+        /* dòng cụt ở đầu lát cắt */
+      }
+    }
+    return newest;
+  } catch {
+    return 0;
+  } finally {
+    closeSync(fd);
+  }
+}
+
 export interface ContextUsage {
   /** Token đang chiếm cửa sổ = cache_read + cache_creation + input (không tính output). */
   tokens: number;
