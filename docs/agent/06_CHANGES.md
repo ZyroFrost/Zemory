@@ -35,7 +35,14 @@
 - **Một test của tôi XANH GIẢ, tự bắt bằng đột biến:** F1 chỉ soi CHỮ trong source nên gỡ
   hẳn hai key khỏi vòng probe vẫn xanh — viết lại thành kiểm hành vi.
 
-Gate 462 → **474** · `conform` ✓ · đột biến realtime **7/7** đỏ, F1 **2/2**, F4 (phải gỡ cả
+- **Cảnh báo là một lần mỗi CHU KỲ ĐẦY, không phải mỗi phiên** (user hỏi "lâu lâu bị nén dù
+  chưa tới hạn" ⇒ đo 30 lần nén thật trên máy: **27 auto · 3 manual**; p50 nén ở
+  **1.000.183** token nhưng có ca auto ở **711.803** và thấp nhất **342.068**; **7/19 phiên
+  bị nén >1 lần**, cá biệt **6 lần**). Vậy hai điều: ① ngưỡng 95% KHÔNG phải lưới duy nhất —
+  `PreCompact` chạy cho cả nén tay lẫn nén tự động nên không phụ thuộc lúc nào nổ; ② cờ
+  "đã cảnh báo" nay được XOÁ khi nén, nếu không thì từ lần nén thứ hai trở đi im lặng.
+
+Gate 462 → **475** · `conform` ✓ · đột biến realtime **8/8** đỏ, F1 **2/2**, F4 (phải gỡ cả
 hai cơ chế mới đỏ — chúng dự phòng nhau).
 
 ## [2026-08-02g] — Chạy engram THẬT (v1.20.0) rồi mới so — hai chỗ hôm nay tôi đo sai
