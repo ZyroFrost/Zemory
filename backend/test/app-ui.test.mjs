@@ -440,7 +440,13 @@ test("endpoint đổi trạng thái bắt buộc POST + chặn cross-site", () =
   const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
   assert.ok(/const MUTATING\s*=/.test(src), "phải có danh sách endpoint đổi trạng thái");
   assert.ok(/MUTATING\.test\([\s\S]{0,40}req\.method !== "POST"/.test(src), "không-POST vào endpoint đổi trạng thái phải bị chặn");
-  assert.ok(/sec-fetch-site/.test(src), "phải chặn cross-site bằng Sec-Fetch-Site (trình duyệt gửi cả cho <img>)");
+  // Guard loopback/cross-site dời sang `util/loopback.ts` (2026-08-02) để MCP-over-HTTP
+  // dùng CHUNG một bản. Neo test đi theo code: kiểm luật ở nhà mới, VÀ kiểm ui.ts thật sự
+  // gọi nó — thiếu vế sau thì gỡ guard khỏi ui.ts vẫn xanh.
+  const guardSrc = readFileSync(new URL("../src/util/loopback.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  assert.ok(/sec-fetch-site/.test(guardSrc), "phải chặn cross-site bằng Sec-Fetch-Site (trình duyệt gửi cả cho <img>)");
+  assert.ok(/LOOPBACK\s*=/.test(guardSrc), "phải có luật chỉ-loopback (chống DNS-rebinding)");
+  assert.ok(/checkLoopback\(req\)/.test(src), "ui.ts phải THỰC SỰ gọi guard dùng chung, không chỉ import cho có");
   assert.ok(/405/.test(src), "sai method thì trả 405, không phải lặng lẽ bỏ qua");
 
   // Regex quá tay còn nguy hơn không có: bản đầu tôi viết `sync|migrate` trần và nó bắt

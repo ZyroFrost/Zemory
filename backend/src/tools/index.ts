@@ -8,8 +8,12 @@ import { findProjectRoot, normalizeRoot } from "../core/config.js";
 import { getMessage, getMessageContext, recall } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 import { searchChangelog } from "../docs/changelog.js";
-import { recallCard } from "../memory/recall.js";
+import { listPinned, pinSession, recallCard } from "../memory/recall.js";
+import { mergeSplitProjects } from "../memory/mergeprojects.js";
+import { conflictCandidates } from "../memory/conflicts.js";
 import { memoryInfo } from "../memory/ingest.js";
+import { gatherStatus } from "../status.js";
+import { runCheck } from "../checks.js";
 
 export type JsonObject = Record<string, unknown>;
 
@@ -136,6 +140,76 @@ export const TOOLS = [
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
+    name: "memory_doctor",
+    description:
+      "Diagnose this machine's zemory install: harness docs present, providers resolved, and every "
+      + "capability PROBED for real (the vector/rerank engines are loaded, not just read off a config flag). "
+      + "WHEN TO CALL: when a memory tool behaves oddly — empty results, missing project scope, a feature the "
+      + "user says should be on — before blaming the query. Read-only, but takes a few seconds because it "
+      + "actually exercises the engines.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root to diagnose; defaults to the current one." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "memory_conflicts",
+    description:
+      "Find memory records about one topic that may CONTRADICT each other — an older decision still being "
+      + "returned as if it were live. WHEN TO CALL: before you rely on something 'the memory says', when two "
+      + "recalls disagree, or when the user says a rule changed. zemory only PAIRS the candidates (same topic, "
+      + "decision-shaped wording, far apart in time) — YOU judge whether they actually conflict, and the newer "
+      + "one wins unless it says otherwise. If a decision really was reversed, say so and record it in "
+      + "06_CHANGES with a Supersede line naming the old entry's date key; that is what makes it machine-visible next time.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "The subject to check, in the words the memory would use." },
+        all: { type: "boolean", description: "Check every project instead of the current one." },
+        project: { type: "string", description: "Project root to scope to; ignored when all=true." },
+        limit: { type: "number", description: "How many hits to scan, default 20, max 50." },
+      },
+      required: ["topic"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "session_pin",
+    description:
+      "Pin (or unpin) one memory session so it always shows at the top of memory_context, however old it gets. "
+      + "WHEN TO CALL: when the user says a session matters long-term — the decision thread, the incident, the "
+      + "one they keep asking you to re-read. Pin the session id from memory_search/memory_context. Pass on=false "
+      + "to unpin. Pinning changes ranking only: nothing is copied, edited or deleted.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        session_id: { type: "string", description: "Session id to pin." },
+        on: { type: "boolean", description: "true = pin (default), false = unpin." },
+      },
+      required: ["session_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "project_merge",
+    description:
+      "Find (and optionally fix) projects the index SPLIT into two keys for the same folder — 'D:\\x' vs 'd:\\x', "
+      + "trailing slash, mixed separators. WHEN TO CALL: when a project-scoped search returns far less than the user "
+      + "expects, or memory_stats shows a folder listed twice. Defaults to a DRY RUN that only reports the groups; "
+      + "pass apply=true (after showing the user what would move) to repoint them. Never deletes a row — only the "
+      + "grouping field changes, each session keeps its original cwd.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        apply: { type: "boolean", description: "false (default) = report only; true = actually merge." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "plan_search",
     description:
       "Search this project's design docs (docs/plan/*). WHEN TO CALL: before proposing or changing a design, "
@@ -227,6 +301,73 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
 
   if (name === "memory_stats") {
     return toolResult(memoryInfo(env.dbPath));
+  }
+
+  if (name === "memory_doctor") {
+    // Chỉ-đọc, và cố ý PROBE thật: bản chỉ-đọc-công-tắc từng báo "on" cho một engine không
+    // tải nổi model (sửa 2026-07-27). Một chẩn đoán nói dối còn tệ hơn không có chẩn đoán.
+    const root = asString(args.project) || env.projectRoot || undefined;
+    const s = await gatherStatus(root ?? undefined);
+    const features = await Promise.all(
+      s.features.map(async (f) => {
+        const c = await runCheck(f.key, s.project.root ?? undefined);
+        return { key: f.key, group: f.group, label: f.label, state: c.state, ok: c.ok, detail: c.detail };
+      }),
+    );
+    const missingDocs = s.docs.filter((d) => !d.ok).map((d) => d.file);
+    return toolResult({
+      project: { connected: s.project.connected, root: s.project.root, docs: s.project.docs },
+      setup: s.setup,
+      docs: { missing: missingDocs, ok: missingDocs.length === 0 },
+      plan: s.plan,
+      features,
+      failing: features.filter((f) => !f.ok).map((f) => f.key),
+    });
+  }
+
+  if (name === "memory_conflicts") {
+    const topic = asString(args.topic).trim();
+    if (!topic) return errorResult("memory_conflicts requires a topic.");
+    const r = await conflictCandidates(topic, {
+      all: Boolean(args.all),
+      project: currentProject(args, env),
+      limit: clampLimit(args.limit, 20, 50),
+      dbPath: env.dbPath,
+    });
+    // Nói rõ mức tin: đây là CẶP ĐÁNG NHÌN, không phải phán quyết. zemory không phán —
+    // giữ đúng ranh giới điều 6 (script lọc, agent phán).
+    return toolResult({
+      ...r,
+      note:
+        r.candidates.length === 0
+          ? "No decision-shaped pairs far enough apart in time. This is NOT proof the memory agrees with itself — only that this topic has no obvious pair."
+          : "CANDIDATES ONLY — zemory did not judge these. Read both sides, decide if they truly conflict, and prefer the newer one unless it says otherwise.",
+    });
+  }
+
+  if (name === "session_pin") {
+    const sid = asString(args.session_id).trim();
+    if (!sid) return errorResult("session_pin requires a session_id.");
+    const on = args.on === undefined ? true : Boolean(args.on);
+    const ok = pinSession(sid, on, env.dbPath);
+    if (!ok) return errorResult(`No session "${sid}" — pin not applied. Check the id from memory_search.`);
+    return toolResult({ session_id: sid, pinned: on, pinned_now: listPinned(undefined, env.dbPath).length });
+  }
+
+  if (name === "project_merge") {
+    // Mặc định DRY RUN: đây là lệnh đổi dữ liệu, mà agent gọi tool thì không có ai gật ở
+    // giữa. Muốn ghi thì phải nói apply=true một cách tường minh.
+    const apply = Boolean(args.apply);
+    const r = mergeSplitProjects({ apply, dbPath: env.dbPath });
+    if (!r.groups.length) return toolResult({ split_groups: [], note: "No split projects found." });
+    return toolResult({
+      applied: r.applied,
+      split_groups: r.groups,
+      outcomes: r.outcomes,
+      note: r.applied
+        ? "Merged. Each session kept its original cwd; nothing was deleted."
+        : "DRY RUN — nothing changed. Show these groups to the user, then call again with apply=true.",
+    });
   }
 
   if (name === "plan_search") {
