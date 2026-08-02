@@ -13,7 +13,7 @@ import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { conform } from "../docs/conform.js";
-import { agentTargets, inspectAgent, wireAgent } from "../mcpsetup.js";
+import { UNSUPPORTED, agentTargets, inspectAgent, wireAgent } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 
@@ -271,13 +271,15 @@ function cmdSetupMcp(args: string[]): void {
     console.log("zemory setup mcp — nối zemory vào agent nói MCP (chỉ LIỆT KÊ; nêu tên agent mới ghi)");
     for (const t of targets) {
       const state = inspectAgent(t);
-      const mark = state === "wired" ? "✓ đã khai" : state === "present-not-wired" ? "○ có file, chưa khai" : state === "bad-json" ? "⚠ file JSON hỏng" : "· chưa có file";
-      console.log(`  ${mark.padEnd(22)} ${t.id.padEnd(15)} ${t.path ?? "(không hỗ trợ trên OS này)"}`);
+      const mark = state === "wired" ? "✓ đã khai" : state === "present-not-wired" ? "○ có file, chưa khai" : state === "bad-json" ? "⚠ file JSON hỏng" : t.path ? "· chưa có file" : "· chưa cài";
+      console.log(`  ${mark.padEnd(22)} ${t.id.padEnd(15)} ${t.path ?? `(chưa thấy: ${t.candidates[0]})`}`);
     }
     console.log("");
     console.log("  ghi vào một agent:  zemory setup mcp <agent> [--force]");
     console.log("  agent hợp lệ:       " + targets.map((t) => t.id).join(" · "));
     console.log("  luôn sao lưu .bak trước khi ghi · KHÔNG đụng server khác trong file");
+    console.log("  chưa khai tự động được (khai tay): " + UNSUPPORTED.map((u) => `${u.id} — ${u.why}`).join(" · "));
+    console.log("  ⓘ Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory` trên máy thật.");
     return;
   }
   const target = targets.find((t) => t.id === pick);
