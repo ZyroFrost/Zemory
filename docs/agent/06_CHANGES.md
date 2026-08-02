@@ -11,8 +11,12 @@
   đường agent**, vốn là đường bị gọi nhiều nhất. Đo trong tiến trình đã ấm (kho 198.334 tin):
   **FTS 172ms · hybrid 746ms · hybrid+rerank 29.420ms** ⇒ thủ phạm là **rerank, không phải
   hybrid** (40×). Nay mặc định hybrid-không-rerank, `deep=true` mới thêm rerank: đo lại
-  **0,9–1,05s** (lần đầu 9,7s vì nạp model). Mô tả tool nói thẳng cái GIÁ và rằng rerank
-  **chưa từng thắng hybrid** trên corpus có nhãn của repo (8/8 = 8/8) — để agent khỏi bật bừa.
+  **0,9–1,05s** (lần đầu 9,7s vì nạp model). Mô tả tool nói thẳng cái GIÁ.
+  ⚠ **Sửa cách diễn đạt của chính mục này:** câu *"rerank chưa từng thắng hybrid (8/8 = 8/8)"*
+  ĐÚNG số nhưng dễ hiểu thành "rerank vô dụng" — corpus gate chỉ **8 truy vấn** và hybrid đã
+  bão hoà, nên nó **không thể** cho rerank cơ hội thắng. Rerank vẫn là thành phần chuẩn của
+  RAG (cross-encoder cho query và doc "nhìn" nhau, bi-encoder thì không); việc phải làm là
+  làm nó RẺ, không phải bỏ — xem `05_TODO §RERANK`.
 - **Daemon trả 200 + HTML cho MỌI đường lạ.** Bắt được bằng chính phép quét của mình: nó gọi
   `/scope-tree` (KHÔNG tồn tại — dữ liệu nằm trong `/memory-status`) và nhận 200, nên bảng
   kết quả báo "TẤT CẢ 200" trong khi một mục là hư không. Client gõ sai tên endpoint cũng

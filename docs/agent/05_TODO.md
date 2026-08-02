@@ -244,16 +244,35 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > Chi tiết + số đo: `06_CHANGES [2026-08-03]`. Sạch: gate 481 · conform · integrity ok ·
 > 0 mồ côi · digest 100% · 0 project tách tên · 44/44 neo test sống.
 
-- [ ] **Công tắc `rerank` của MÁY nên TẮT — chờ user chốt.** `data/config.json` đang để
-  `"rerank": true`, nhưng số đo mới nhất: rerank **29,4s** vs hybrid **746ms** (40×), trong
-  khi corpus gate có nhãn cho **rerank 8/8 = hybrid 8/8** — tức trả 40× cho 0 lợi ích ĐO
-  ĐƯỢC. `HP điều 12` vốn cấm bật mặc định một lớp chưa thắng net; máy này đang bật ngược lại.
-  Đường agent (MCP) đã tự miễn nhiễm (không đọc công tắc nữa), nhưng **CLI và nút Tìm sâu của
-  UI vẫn ăn theo nó**. Đổi = 1 lệnh `zemory` hoặc bấm chip Rerank; KHÔNG tự làm — đây là
-  config của user.
-- [ ] **Rerank chỉ nên rescore top-N nhỏ hơn?** Chưa đo: hiện `RERANK_POOL` cross-encode 40
-  ứng viên. Nếu hạ xuống 10 mà chất lượng không đổi thì rerank rẻ đi ~4×, đáng đo trước khi
-  bỏ hẳn lớp này.
+- [~] **RERANK: GIỮ, nhưng phải rẻ đi — đang đo cách cắt (user phản biện đúng 2026-08-03).**
+  > 🔄 **Rút lại đề xuất "nên tắt rerank" tôi viết cùng ngày.** Nó dựa vào hai câu chưa đủ:
+  > ① *"rerank chưa từng thắng"* — corpus gate chỉ **8 truy vấn** và hybrid đã **8/8**, một
+  > corpus BÃO HOÀ thì không thể cho rerank cơ hội thắng; đó là giới hạn của phép đo, không
+  > phải bằng chứng rerank vô dụng. ② rerank là **thành phần chuẩn của RAG** (bi-encoder
+  > không cho query và doc "nhìn" nhau; cross-encoder thì có) — bỏ nó là bỏ một lớp chất
+  > lượng thật để đổi lấy tốc độ.
+  **Đã đo (2026-08-03):** chi phí TUYẾN TÍNH theo tổng token — 40 cặp×2000 ký tự **51,6s** ·
+  20×2000 **25,5s** · 10×2000 **13,6s** · 40×400 **10,3s**. Ép số luồng ONNX (8) **không
+  đổi** (25,6s → 27,9s = nhiễu) ⇒ không phải lỗi cấu hình luồng, mà là giá thật của
+  cross-encoder base trên CPU máy này (Ryzen 5 7520U).
+  **Bảng đánh đổi (pool đóng băng, 4 truy vấn, tự-kiểm gốc-vs-gốc đạt 3/3 & 5/5):**
+  `40×2000` (hiện tại) 31–38s · `20×2000` 23,8s · `40×800` 31,5s · `20×800` **12,4s** ·
+  `16×800` 10,7s · `12×600` 8,9s. Đáng chú ý: ở pool 20, cắt 2000→800 ký tự **không đổi độ
+  đồng thuận** (1,8/3 · 2,8/5) mà **rẻ đi gần một nửa**.
+  **Model nhẹ hơn — đo rồi, CHƯA dùng được:** `ms-marco-MiniLM-L-6-v2` nhanh **6×**
+  (3,3s vs 19,6s/truy vấn) và qua được phép thử lẻ tiếng Việt, NHƯNG xếp hạng lệch hẳn bge
+  (top-1 **0,3/1** · top-3 **0,5/3**) — nó huấn luyện trên MS MARCO tiếng Anh, kho này chủ
+  yếu tiếng Việt ⇒ lệch nhiều khả năng là KÉM đi, không phải khác đi.
+  **⚠ GIỚI HẠN của chính phép đo trên — phải nói ra:** "độ đồng thuận với cấu hình hiện tại"
+  đo **độ ỔN ĐỊNH, không phải CHẤT LƯỢNG**. Bản 40×2000 không phải chân lý; một thứ tự khác
+  chưa chắc tệ hơn. Muốn chốt pool/chars/model thì **phải có corpus có nhãn đủ lớn** — đúng
+  đường `plan/05` dòng 73 đã ghi, và đúng đòi hỏi của `HP điều 12`. Trước khi có nó thì
+  KHÔNG đổi mặc định dựa trên mấy con số này.
+  *(Bài học phép đo: hai bản đầu đều SAI — bản 1 bị daemon ingest làm trôi pool giữa các lần
+  đo, bản 2 tính cả truy vấn pool=1 nên top-3 tối đa đã là 1/3. Bản 3 thêm PHÉP TỰ KIỂM
+  "gốc vs gốc phải ra 3/3 và 5/5" — đạt — mới tin được số.)*
+  **Đã giảm đau mà KHÔNG đụng chất lượng:** rerank thôi chặn đường — MCP mặc định hybrid
+  (0,9s), lượt sâu của UI chạy ở tiến trình con. Rerank vẫn còn nguyên, gọi khi cần.
 
 ## 🔬 Audit toàn diện 2026-08-02 (Fable, 6 mặt) — F1/F4 ĐÃ SỬA `[2026-08-02h]`, còn F5/F6
 > Gate 462/462 · conform ✓ · integrity ok · schema v20 trên DB thật · 0 mồ côi (3 phép đo) ·
