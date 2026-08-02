@@ -19,7 +19,9 @@ import { listConnections, webProfileDir } from "./memory/connections.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
 import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
 import type { AttachmentMeta } from "./memory/attachments.js";
-import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, recall } from "./memory/search.js";
+// `recall` (hybrid+rerank) KHÔNG còn được gọi từ daemon nữa — nó là lớp đắt, nay chạy ở
+// tiến trình con qua `deepSearchChild`. Bề mặt này chỉ giữ đường RẺ (`search` = FTS + lọc).
+import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, search } from "./memory/search.js";
 import { digestBackfill } from "./memory/digest.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
@@ -76,6 +78,7 @@ import {
 } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, uninstallHooks } from "./memory/capture-hook.js";
+import { deepSearchChild } from "./jobs/searchjob.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
 // daemon serves those files as-is — no bundler, no TS template. Read per request
 // so editing a .css/.js + reloading shows it with no rebuild.
@@ -1608,9 +1611,17 @@ export async function startUi(): Promise<void> {
         return json(res, { ok: false, error: String((e as Error).message || e) });
       }
     }
+    // TÌM: mặc định lớp RẺ (FTS + bộ lọc), lớp ngữ nghĩa chỉ chạy khi được XIN (`deep=1`).
+    //
+    // Đây là quay về đúng thiết kế gốc (HP điều 8 — progressive disclosure) mà bề mặt này đã
+    // trôi khỏi: nó gọi thẳng `recall()` = hybrid + rerank cho MỌI lần gõ. Đo trên kho thật
+    // 2026-08-02: **FTS 360ms · hybrid 20,5s · hybrid+rerank 63,6s** (51s cả khi model đã
+    // ấm) — và vì chạy ngay trên event loop của daemon, mỗi lần tìm là cả giao diện đứng
+    // hình, kể cả `/memory-status` vốn 4ms. Nay: gõ tìm = 360ms; muốn ngữ nghĩa thì bấm xin,
+    // và lớp đó chạy ở TIẾN TRÌNH CON để daemon không nghẹt (cùng lý do embed/sync đã tách).
     if (p === "/memory-search") {
       const days = Number(u.searchParams.get("days") || 0);
-      const hits = await recall(u.searchParams.get("q") ?? "", {
+      const opts = {
         project: target,
         all: u.searchParams.get("all") === "1",
         source: u.searchParams.get("agent") || undefined,
@@ -1618,8 +1629,12 @@ export async function startUi(): Promise<void> {
         role: u.searchParams.get("role") || undefined,
         sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
         hasAttachment: u.searchParams.get("withAtt") === "1",
-      });
-      return json(res, withAttachments(hits));
+      };
+      const deep = u.searchParams.get("deep") === "1";
+      if (!deep) return json(res, withAttachments(search(u.searchParams.get("q") ?? "", opts)));
+      const r = await deepSearchChild(u.searchParams.get("q") ?? "", opts);
+      if (!r.ok) return json(res, { error: r.error, hits: [] });
+      return json(res, withAttachments(r.hits));
     }
     if (p === "/memory-context") {
       // Drill-down WITHIN a recall already counted by /memory-search; not logged

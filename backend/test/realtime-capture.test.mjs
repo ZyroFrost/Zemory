@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { tempDir } from "./helpers.mjs";
@@ -22,7 +22,7 @@ import { tempDir } from "./helpers.mjs";
 process.env.GLOBAL_MEMORY_DB = join(mkdtempSync(join(tmpdir(), "zrt-env-")), "memory.db");
 const { openMemory } = await import("../../dist/memory/db.js");
 const { scanOneFile } = await import("../../dist/memory/ingest.js");
-const { readContextUsage, windowFor } = await import("../../dist/memory/context-guard.js");
+const { lastCompactAt, readContextUsage, windowFor } = await import("../../dist/memory/context-guard.js");
 const { handleHook, hooksInstalled, installHooks, uninstallHooks } = await import("../../dist/memory/capture-hook.js");
 
 /** Một transcript Claude Code tối thiểu, đặt ĐÚNG chỗ adapter nhận (`.claude/projects/...`). */
@@ -159,11 +159,36 @@ test("nén xong thì MỞ LẠI quyền cảnh báo — một lần mỗi CHU K�
   assert.match(handleHook("prompt", arg), /Context ~/, "chu kỳ 1: phải cảnh báo");
   assert.equal(handleHook("prompt", arg), "", "vẫn trong chu kỳ 1: im");
 
-  handleHook("pre-compact", arg); // ← nén xảy ra (auto hoặc user tự bấm, đều vào đây)
-  assert.match(handleHook("prompt", arg), /Context ~/, "chu kỳ 2 sau khi nén: PHẢI cảnh báo lại");
+  // BẤM NHẦM rồi HUỶ: móc PreCompact đã chạy nhưng transcript KHÔNG có dấu nén ⇒ phải coi
+  // như chưa từng bấm, không được mở chu kỳ giả rồi cảnh báo lại.
+  handleHook("pre-compact", arg);
+  assert.equal(handleHook("prompt", arg), "", "bấm nhầm compact rồi huỷ ⇒ vẫn im (chưa nén thật)");
 
-  handleHook("session-start", { ...arg, source: "compact" }); // lưới thứ hai
-  assert.match(handleHook("prompt", arg), /Context ~/, "SessionStart(compact) cũng phải mở lại quyền cảnh báo");
+  // Nén THẬT: host ghi bản ghi `compact_boundary` vào transcript.
+  appendFileSync(
+    high.file,
+    JSON.stringify({
+      type: "system",
+      subtype: "compact_boundary",
+      timestamp: new Date(Date.now() + 1000).toISOString(),
+      compactMetadata: { trigger: "auto", preTokens: 985_002 },
+    }) + "\n",
+  );
+  assert.match(handleHook("prompt", arg), /Context ~/, "sau khi nén THẬT: phải cảnh báo lại cho chu kỳ mới");
+});
+
+test("dấu nén phải là bản ghi THẬT — chữ 'compact_boundary' trong nội dung chat không tính", (t) => {
+  // Đã dính đúng bẫy này lúc đo thống kê: phiên đang BÀN về compact bị đếm thành lần nén.
+  const { file } = fakeTranscript(t, [
+    userMsg("u1", "bàn về compact_boundary trong transcript"),
+    assistantMsg("a1", "type system subtype compact_boundary là gì", { input_tokens: 1 }),
+  ]);
+  assert.equal(lastCompactAt(file), 0, "nhắc tới tên bản ghi KHÔNG phải là đã nén");
+  appendFileSync(
+    file,
+    JSON.stringify({ type: "system", subtype: "compact_boundary", timestamp: "2026-08-02T10:00:00.000Z", compactMetadata: { trigger: "manual" } }) + "\n",
+  );
+  assert.equal(lastCompactAt(file), Date.parse("2026-08-02T10:00:00.000Z"), "bản ghi thật thì phải nhận");
 });
 
 test("SessionStart chỉ nói khi source=compact; phiên bình thường phải IM", (t) => {

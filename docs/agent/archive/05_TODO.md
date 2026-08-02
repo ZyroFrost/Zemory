@@ -1,6 +1,17 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **F6 — search hybrid+rerank chạy IN-PROCESS trong daemon, nuốt event loop (đau nhất).**
+  Đo sống 2026-08-02: máy RẢNH search vẫn **25,5 s** (rerank bật, model ấm — CLI chỉ 9,9 s);
+  trong lúc scheduler embed backlog chạy thì **MỌI endpoint ~48 s**, kể cả `/memory-status`
+  vốn **4 ms** (kiểm chéo: tắt embed con ⇒ status về 4 ms). Bài học 07-21 *"việc nặng không
+  được lên event loop của daemon"* đã áp cho scan/embed/digest (tiến trình con) nhưng **chưa
+  áp cho search** — một người bấm Tìm là cả UI đứng. Hướng: đẩy search/rerank ra worker/child,
+  hoặc tối thiểu trả 202+poll. Cần user chốt hướng.
+- [x] **F5 — 23 nhóm project TÁCH TÊN** — user duyệt, đã gộp `[2026-08-02i]`: 115 phiên trỏ
+  lại trong 44ms, khoá project 135 → 112, phiên/tin không đổi, `cwd` gốc còn nguyên ở 59 phiên.
+</details>
+
 - [x] **RÁC `[tool_result]` — ĐÃ DỰNG RỒI GỠ BỎ 2026-08-02. Tiền đề SAI, đừng đề xuất lại.**
   Đã build đủ: bảng dẫn xuất `boiler` (schema v20) + `rebuildBoiler` nối vào `scan`/`reindex`
   + `dropBoilerplate` lọc trước xếp hạng. Chạy thật: đánh dấu **13.524 tin**. Rồi đo hiệu quả và

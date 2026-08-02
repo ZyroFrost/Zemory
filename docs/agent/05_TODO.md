@@ -249,16 +249,14 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > exit-1 thật (07-21) vẫn CHƯA tái hiện. · "134 export mồ côi" — 133 là interface/type (bề mặt
 > kiểu công khai) hoặc dùng nội bộ; chết thật chỉ `resolveDocPath` (đã biết, cố ý giữ).
 
-- [ ] **F6 — search hybrid+rerank chạy IN-PROCESS trong daemon, nuốt event loop (đau nhất).**
-  Đo sống 2026-08-02: máy RẢNH search vẫn **25,5 s** (rerank bật, model ấm — CLI chỉ 9,9 s);
-  trong lúc scheduler embed backlog chạy thì **MỌI endpoint ~48 s**, kể cả `/memory-status`
-  vốn **4 ms** (kiểm chéo: tắt embed con ⇒ status về 4 ms). Bài học 07-21 *"việc nặng không
-  được lên event loop của daemon"* đã áp cho scan/embed/digest (tiến trình con) nhưng **chưa
-  áp cho search** — một người bấm Tìm là cả UI đứng. Hướng: đẩy search/rerank ra worker/child,
-  hoặc tối thiểu trả 202+poll. Cần user chốt hướng.
-- [ ] **F5 — DB thật còn 23 nhóm project TÁCH TÊN** (mỗi nhóm 2 biến thể: `D:\` vs `d:\`…, cả
-  `d:\zyro\tool\zemory`). Công cụ trị đã có (`project_merge`), dry-run đã thấy đủ — **chạy
-  `apply=true` cần user gật** (mutation, đúng thiết kế).
+- [ ] **CÒN LẠI của F6 — UI chưa có nút "tìm sâu".** Backend đã tách hai lớp (`deep=1` +
+  tiến trình con) nhưng bề mặt UI mới chỉ dùng lớp rẻ ⇒ lớp ngữ nghĩa hiện chỉ gọi được bằng
+  URL. Cần một nút/ô tick trong màn Recall — **là quyết định THIẾT KẾ, phải trình user duyệt
+  trước** (`02_RULES §Hành xử`). Đề xuất: ô tick "Tìm sâu (ngữ nghĩa)" cạnh ô tìm, tắt mặc
+  định, bật thì hiện trạng thái "đang tìm sâu…" vì mất 20–60s.
+
+<details><summary>F6 gốc — ĐÃ SỬA phần lõi `[2026-08-02i]`</summary>
+
 > **F1 + F4 đã sửa** — chi tiết ở `06_CHANGES [2026-08-02h]`. (F1 hoá ra còn một tầng nữa:
 > probe thật mất **48s** nên tách cờ `deep`; F4 gom về `core/config::projectKey`, riêng
 > `graph-memory::norm` giữ lại CÓ CHỦ ĐÍCH vì id node dùng `/`.)

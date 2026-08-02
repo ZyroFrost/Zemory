@@ -464,6 +464,23 @@ test("endpoint đổi trạng thái bắt buộc POST + chặn cross-site", () =
 
 // /init-fresh gỡ 2026-07-27 (audit F2): 0 người gọi, mà là thao tác DỜI docs cũ đi.
 // Năng lực không mất — `zemory init --fresh` gọi thẳng freshHarness().
+test("tìm kiếm trên daemon phải RẺ theo mặc định — lớp đắt chỉ khi được XIN", () => {
+  // Đo 2026-08-02 trên kho thật: FTS 360ms · hybrid 20,5s · hybrid+rerank 63,6s. Cả ba từng
+  // chạy ngay trên event loop của daemon, nên mỗi lần gõ Tìm là toàn bộ UI đứng hình
+  // (`/memory-status` 4ms → 48s). Hai bất biến canh đúng chỗ đó:
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  //   ① daemon KHÔNG được cầm lối vào đắt tiền nữa — hybrid/rerank chạy ở tiến trình con.
+  assert.ok(!/\brecall\s*\(/.test(src), "ui.ts gọi recall() = hybrid+rerank ngay trên event loop — đúng lỗi đã sửa");
+  assert.ok(!/searchHybrid/.test(src), "ui.ts không được gọi thẳng searchHybrid");
+  assert.match(src, /deepSearchChild\(/, "lớp sâu phải đi qua tiến trình con");
+  //   ② mặc định phải do NGƯỜI GỌI quyết, không phải hằng số bật sẵn.
+  assert.match(
+    src,
+    /const deep = u\.searchParams\.get\("deep"\) === "1"/,
+    "cờ deep phải đọc từ request; ghim cứng là quay lại chạy lớp đắt cho mọi lần tìm",
+  );
+});
+
 test("/init-fresh không còn là endpoint HTTP", () => {
   const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
   assert.ok(!/p === "\/init-fresh"/.test(src), "thao tác phá huỷ không nên mở trên HTTP khi không ai dùng");

@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-02i] — Tìm kiếm về lại HAI LỚP (rẻ trước, sâu khi xin) · gộp 23 project bị tách
+
+- **F6 — daemon hết nghẹt.** `/memory-search` gọi thẳng `recall()` = hybrid + rerank cho MỌI
+  lần gõ, ngay trên event loop. Đo trên kho thật (196.894 tin): **FTS 360ms · hybrid 20,5s ·
+  hybrid+rerank 63,6s** (51s cả khi model đã ấm). Nay mặc định là lớp RẺ; lớp ngữ nghĩa chỉ
+  chạy khi xin `deep=1` **và chạy ở tiến trình con**. Đo sống: tìm nhanh **992ms**, và trong
+  lúc tìm sâu 35,7s chạy thì `/memory-status` vẫn trả lời **409ms** (trước: 48s).
+  Đây là quay về đúng điều 8 (progressive disclosure) mà bề mặt đã trôi khỏi — user chỉ ra:
+  *"logic search ban đầu là search bộ lọc mà, rồi khi cần mới search full GM"*.
+- **F5 — gộp xong 23 nhóm project bị tách tên** (user duyệt). 115 phiên trỏ lại, **44ms**;
+  khoá project **135 → 112**; phiên/tin **không đổi** (1.272 / 198.179) — không xoá dòng nào.
+  Riêng repo này gom về **29 phiên · 35.941 tin** (trước nằm hai khoá 24+5). `cwd` gốc giữ
+  nguyên cách viết cũ ở **59 phiên** ⇒ vẫn truy ngược được nó vốn thuộc chỗ nào.
+- **Bấm nhầm `/compact` rồi huỷ — nay không còn tính là một chu kỳ.** Cờ cảnh báo mở lại dựa
+  trên **DẤU VẾT** `compact_boundary` trong transcript (host chỉ ghi khi nén THẬT xảy ra),
+  không dựa vào việc móc `PreCompact` đã nổ. Kèm bẫy đã trả giá lúc đo: chuỗi
+  `"compact_boundary"` cũng xuất hiện trong nội dung chat (phiên đang BÀN về compact bị đếm
+  thành lần nén) ⇒ chỉ nhận bản ghi có đủ `type=system` + `subtype` + `compactMetadata`.
+- **Bối cảnh đo được, để khỏi đoán:** 30 lần nén thật trên máy — **27 auto · 3 tay**; p50 nén
+  ở **1.000.183** token nhưng có ca auto ở **711.803** và thấp nhất **342.068** ⇒ ngưỡng 95%
+  KHÔNG phải lưới duy nhất, `PreCompact` mới là thứ chạy bất kể nén sớm hay muộn.
+- **`memory search --json`** — đường máy-đọc cho tiến trình con. **PowerShell làm hỏng encoding
+  một file test** (`Get-Content -Raw` đọc bằng ANSI rồi ghi lại UTF-8): khôi phục từ git, và
+  bài học là sửa văn bản bằng công cụ sửa file, không bằng `-replace` của shell.
+
+Gate 475 → **476** · `conform` ✓ · đột biến: dấu-vết-nén 2/2 đỏ · "UI mặc định phải rẻ" 2/2 đỏ.
+
 ## [2026-08-02h] — Nạp bộ nhớ chuyển sang PER-MESSAGE · đồng hồ context · lưới sau khi nén
 
 > 🔄 **Supersede:** thay [2026-07-30d] — "daemon KHÔNG hề scan" — ở phần NHỊP: chuỗi nền

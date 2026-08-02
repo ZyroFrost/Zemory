@@ -18,7 +18,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { scan, scanOneFile } from "./ingest.js";
 import { recallCard } from "./recall.js";
-import { readContextUsage } from "./context-guard.js";
+import { lastCompactAt, readContextUsage } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
 
@@ -47,8 +47,30 @@ function warnedFlagPath(sessionId: string): string {
   return join(currentMemoryDir(), "context-guard", `${sessionId.replace(/[^\w.-]/g, "_")}.warned`);
 }
 
-function alreadyWarned(sessionId: string): boolean {
-  return existsSync(warnedFlagPath(sessionId));
+/**
+ * Đã cảnh báo cho CHU KỲ ĐẦY hiện tại chưa?
+ *
+ * Không chỉ hỏi "có cờ không" mà hỏi "cờ còn hiệu lực không": nếu sau lúc đặt cờ đã có một
+ * lần nén THẬT (dấu `compact_boundary` trong transcript) thì context đã tụt về ~30% và đang
+ * đầy lại — đó là chu kỳ MỚI, phải được nhắc lại.
+ *
+ * Mốc là DẤU VẾT chứ không phải sự kiện hook, vì hai thứ đó khác nhau ở đúng ca người dùng
+ * kể: bấm nhầm `/compact` rồi huỷ ngay ⇒ `PreCompact` đã chạy nhưng **nén không xảy ra**.
+ * Lấy hook làm mốc thì mỗi lần bấm nhầm lại mở một chu kỳ giả; lấy dấu vết thì huỷ là như
+ * chưa từng bấm.
+ */
+function alreadyWarned(sessionId: string, transcriptPath?: string): boolean {
+  const p = warnedFlagPath(sessionId);
+  if (!existsSync(p)) return false;
+  if (!transcriptPath) return true;
+  try {
+    const warnedAt = Date.parse(readFileSync(p, "utf8").trim());
+    const compactedAt = lastCompactAt(transcriptPath);
+    if (Number.isFinite(warnedAt) && compactedAt > warnedAt) return false; // đã nén thật ⇒ chu kỳ mới
+  } catch {
+    /* đọc cờ hỏng ⇒ coi như đã cảnh báo, thà im còn hơn spam */
+  }
+  return true;
 }
 
 function markWarned(sessionId: string): void {
@@ -107,8 +129,9 @@ export function handleHook(event: HookEventName, payload: any): string {
     // vào đồng hồ thì mất phần đuôi. Móc này không quan tâm nén vì lý do gì.
     if (event === "pre-compact") {
       ingestCurrent(payload);
-      // Nén xong context tụt về ~30% rồi đầy lại ⇒ mở lại quyền cảnh báo cho chu kỳ sau.
-      clearWarned(String(payload?.session_id ?? payload?.transcript_path ?? ""));
+      // CỐ Ý không xoá cờ cảnh báo ở đây: móc này chạy TRƯỚC khi nén, mà người dùng có thể
+      // bấm nhầm rồi huỷ ⇒ nén không xảy ra. Quyền cảnh báo mở lại dựa trên DẤU VẾT nén thật
+      // trong transcript (xem `alreadyWarned`), không dựa trên việc móc này đã nổ.
       return "";
     }
 
@@ -119,7 +142,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       const usage = readContextUsage(path);
       if (!usage || usage.percent === null || usage.percent < WARN_AT_PERCENT) return "";
       const sid: string = String(payload?.session_id ?? path);
-      if (alreadyWarned(sid)) return ""; // một lần cho cả phiên, không lặp mỗi prompt
+      if (alreadyWarned(sid, path)) return ""; // một lần mỗi CHU KỲ ĐẦY, không lặp mỗi prompt
       const saved = ingestCurrent(payload); // chạm ngưỡng ⇒ chốt sổ NGAY, không đợi nhịp nền
       markWarned(sid);
       const pct = Math.round(usage.percent);
