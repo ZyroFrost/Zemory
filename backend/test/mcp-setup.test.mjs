@@ -10,12 +10,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
-import { agentTargets, inspectAgent, mergeServerConfig, wireAgent } from "../../dist/mcpsetup.js";
+import { UNSUPPORTED, agentTargets, inspectAgent, mergeServerConfig, wireAgent } from "../../dist/mcpsetup.js";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "zmcp-"));
-const target = (path, scope = "user") => ({ id: "t", label: "T", path, key: "mcpServers", scope });
+const target = (path, scope = "user") => ({ id: "t", label: "T", path, candidates: [path], key: "mcpServers", scope });
 
 test("merge giữ nguyên server khác và khoá lạ của user", () => {
   const before = {
@@ -78,10 +78,30 @@ test("ghi thật: tạo file, sao lưu .bak, và inspect thấy đã khai", () =
 test("bảng đích phủ đủ các agent nói MCP, mỗi cái một đường dẫn", () => {
   const targets = agentTargets("D:\\proj");
   const ids = targets.map((t) => t.id);
-  for (const want of ["claude-code", "claude-desktop", "cursor", "windsurf", "gemini"]) {
+  for (const want of ["claude-code", "claude-desktop", "cursor", "windsurf", "gemini", "qwen", "kiro", "antigravity"]) {
     assert.ok(ids.includes(want), `thiếu đích ${want}`);
   }
-  assert.equal(new Set(targets.map((t) => t.path)).size, targets.length, "hai agent không được trỏ cùng một file");
+  const firsts = targets.map((t) => t.candidates[0]);
+  assert.equal(new Set(firsts).size, firsts.length, "hai agent không được trỏ cùng một file");
   const cc = targets.find((t) => t.id === "claude-code");
   assert.equal(cc.scope, "project", "Claude Code khai theo PROJECT — nằm trong repo, không phải máy");
+});
+
+test("agent chưa cài ⇒ KHÔNG đoán bừa một đường để ghi vào", () => {
+  // Đo 2026-08-02: 0/10 đường cấu hình của các agent này tồn tại trên máy dev, nên đường dẫn
+  // lấy từ tài liệu bên thứ ba là chỗ ĐOÁN. Quy tắc "chỉ chọn khi file hoặc thư mục cha có
+  // thật" biến nó thành tự-xác-minh: sai đường thì không ghi gì, thay vì đẻ file cấu hình ma.
+  for (const t of agentTargets("D:\\proj").filter((x) => x.scope === "user")) {
+    if (t.path === null) continue;
+    assert.ok(
+      existsSync(t.path) || existsSync(dirname(t.path)),
+      `${t.id}: chọn đường mà cả file lẫn thư mục cha đều không có — đó là đoán`,
+    );
+  }
+});
+
+test("agent không khai được bằng JSON thì phải NÊU TÊN, không im lặng bỏ qua", () => {
+  const ids = UNSUPPORTED.map((u) => u.id);
+  for (const want of ["codex", "opencode", "pi"]) assert.ok(ids.includes(want), `thiếu ghi chú cho ${want}`);
+  for (const u of UNSUPPORTED) assert.ok(u.why.length > 20, `${u.id}: phải nói RÕ vì sao, để user biết đường khai tay`);
 });

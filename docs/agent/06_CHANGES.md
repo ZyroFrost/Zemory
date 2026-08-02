@@ -5,6 +5,22 @@
 
 ---
 
+## [2026-08-02d] — `setup mcp` 5 → 8 agent · chọn đường TỰ XÁC MINH thay vì đoán
+
+- **+3 agent** (`qwen` · `kiro` · `antigravity`) và Gemini nhận **hai đường ứng viên** — bản cài
+  khác nhau đặt file khác chỗ (`~/.gemini/settings.json` vs `%APPDATA%/gemini/settings.json`).
+- **Đường dẫn giờ TỰ XÁC MINH.** Đo: **0/10** đường cấu hình của các agent này tồn tại trên máy
+  dev, nên chúng là chỗ ĐOÁN (nguồn: bản cài engram). Luật mới: chỉ chọn đường mà **file hoặc thư
+  mục cha có thật** ⇒ sai đường thì cùng lắm không ghi gì, thay vì đẻ file cấu hình ma ở nơi vô
+  nghĩa. Agent chưa cài hiện `· chưa cài` kèm đường đã dò.
+- **Ba agent KHÔNG khai được thì nêu tên + lý do** (`codex` TOML · `opencode` khoá `mcp` khuôn
+  khác · `pi` plugin) thay vì im lặng — im lặng thì user tưởng zemory không hỗ trợ.
+- **Ghi chú Cowork ngay trong lệnh:** Cowork không dùng được MCP (máy ảo riêng, không với tới
+  `zemory` máy thật) ⇒ `setup mcp` chỉ có nghĩa với app + non-app.
+- 6 việc còn thiếu so với engram đã ghi thành mục riêng trong `05_TODO`.
+
+Gate 435 → **437** · `conform` ✓.
+
 ## [2026-08-02c] — MCP: 4 → 8 tool · `setup mcp` tự khai vào agent · mô tả tool thành LỜI DẶN
 
 Học từ engram (22 tool) nhưng chỉ lấy phần hợp kiến trúc. Đã đo trước: `zemory mcp` **vốn đã

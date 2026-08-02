@@ -181,6 +181,39 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     dòng 73 đã ghi sẵn ý này); ② user **chốt miễn điều 12 cho lớp này**, tôi ghi supersede rồi đổi
     mặc định. KHÔNG tự làm ② — sửa hiến pháp là quyền user.
 
+## 🔌 Đối chiếu engram (audit 2026-08-02) — 6 việc, xếp theo giá trị đo được
+> Nền: engram 22 tool MCP · zemory 8. Đã map: 6 cái có tương đương · **9 cái KHÔNG áp dụng**
+> (`mem_save`/`update`/`session_*`/`suggest_topic_key` — trí nhớ engram do agent tự viết, zemory
+> nạp transcript tự động + lấy file docs làm nguồn ⇒ thêm đường ghi cho agent là mở đường ghi
+> thứ hai vào lớp dẫn xuất, phạm điều 3). Sáu cái dưới là phần THIẾU THẬT.
+> ⚠ Mọi mục ở đây chỉ áp cho hệ **app + non-app**. **Cowork KHÔNG dùng được MCP** — nó chạy
+> trong máy ảo riêng, không với tới `zemory` trên máy thật (`BOOTSTRAP §Bối cảnh`).
+
+- [ ] **① Cài "Memory Protocol" khi `setup mcp` — giá trị cao nhất.** engram không chỉ khai server:
+  nó nhét luôn lời dặn *khi nào gọi trí nhớ* vào file chỉ dẫn của từng agent (`GEMINI.md` ·
+  `global_rules.md` · `QWEN.md` · steering của Kiro), cộng hooks + compaction recovery; riêng
+  Claude Code là **plugin marketplace**. zemory hiện **chỉ khai server** (đo: 0 dòng cài chỉ dẫn).
+  Hệ quả: với Cursor/Windsurf/Qwen thì tool **có mà agent không biết lúc nào gọi** — `AGENTS.md`
+  chỉ ăn với agent chịu đọc nó. Đây là thứ biến 8 tool từ "có" thành "được dùng".
+- [ ] **② `mem_judge`/`mem_compare` — xung đột ở TẦNG TRÍ NHỚ.** zemory nay đánh dấu được quyết
+  định đã bị đảo (4 link tất định trong changelog), nhưng hai bản ghi trong kho nói ngược nhau thì
+  vẫn nằm im cạnh nhau. **Vừa được mở đường**: HP điều 6 đã nới (2026-08-02b) nên phán bằng model
+  là hợp lệ — nhưng phải theo thứ tự ①script → ②agent liên kết → ③model.
+- [ ] **③ `merge_projects` — gộp dự án bị tách tên.** zemory **đã dính đúng bệnh này**: `D:\` vs
+  `d:\` từng tách index làm đôi (24 dòng một bên, 15 dòng mồ côi bên kia), vá bằng `normalizeRoot`
+  nhưng **không có công cụ gộp phần đã lỡ tách**. Cần: gộp theo khoá chuẩn hoá, in bảng trước khi
+  làm, và KHÔNG xoá dòng gốc.
+- [ ] **④ `memory_doctor` qua MCP** — chẩn đoán chỉ-đọc hiện chỉ có ở CLI, agent không gọi được.
+  Rẻ: bọc `gatherStatus()` như đã bọc `memoryInfo()` cho `memory_stats`.
+- [ ] **⑤ `pin`/`unpin`** — cột `sessions.project_pinned` **đã có sẵn trong schema**, chưa phơi ra
+  đường nào. Ghim một phiên để nó nổi lên đầu `memory_context`.
+- [ ] **⑥ Transport HTTP** — engram có `serve :7437`, zemory chỉ stdio. Chặn đúng ca agent chạy
+  trong Docker/máy ảo không spawn được tiến trình host.
+
+- [ ] **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
+  `codex` (cấu hình **TOML**, cần bộ ghi riêng) · `opencode` (khoá `mcp`, khuôn entry `type: local`)
+  · `pi` (nối bằng plugin package, không qua file MCP).
+
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
 

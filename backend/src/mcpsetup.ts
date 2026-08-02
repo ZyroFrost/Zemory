@@ -19,32 +19,62 @@ import { dirname, join } from "node:path";
 export interface AgentTarget {
   id: string;
   label: string;
-  /** File cấu hình MCP; null = nền này không hỗ trợ trên OS hiện tại. */
+  /** File cấu hình MCP đã CHỌN; null = không đường ứng viên nào có thư mục cha thật. */
   path: string | null;
+  /** Mọi đường ứng viên, theo thứ tự ưu tiên (tài liệu của agent đôi khi đổi chỗ). */
+  candidates: string[];
   /** Khoá chứa bảng server trong file đó. */
   key: string;
   /** Cấu hình theo TỪNG PROJECT (ghi vào repo) hay theo máy. */
   scope: "project" | "user";
 }
 
+/** Chọn đường ứng viên: ưu tiên file ĐÃ CÓ, kế đến thư mục cha đã có (agent đã cài).
+ *
+ *  Vì sao không lấy đại cái đầu tiên: đường dẫn của mấy agent này lấy từ tài liệu/bản cài
+ *  của bên thứ ba, KHÔNG đo được trên máy chưa cài chúng (đo 2026-08-02: 0/10 đường tồn tại
+ *  ở đây). Chọn theo "thư mục cha có thật" biến chỗ đoán thành chỗ TỰ XÁC MINH: sai đường
+ *  thì cùng lắm là không ghi gì, chứ không đẻ ra một file cấu hình ma ở nơi vô nghĩa. */
+function pickPath(candidates: string[], scope: "project" | "user"): string | null {
+  if (scope === "project") return candidates[0] ?? null;
+  const existingFile = candidates.find((c) => existsSync(c));
+  if (existingFile) return existingFile;
+  const installed = candidates.find((c) => existsSync(dirname(c)));
+  return installed ?? null;
+}
+
 /** Bảng đích. Đường dẫn theo tài liệu chính thức của từng agent; OS khác thì đổi gốc. */
 export function agentTargets(projectRoot: string): AgentTarget[] {
   const home = homedir();
   const os = platform();
+  const appdata = process.env.APPDATA ?? join(home, "AppData", "Roaming");
   const desktop =
     os === "win32"
-      ? join(process.env.APPDATA ?? join(home, "AppData", "Roaming"), "Claude", "claude_desktop_config.json")
+      ? join(appdata, "Claude", "claude_desktop_config.json")
       : os === "darwin"
         ? join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
         : join(home, ".config", "Claude", "claude_desktop_config.json");
-  return [
-    { id: "claude-code", label: "Claude Code (theo project)", path: join(projectRoot, ".mcp.json"), key: "mcpServers", scope: "project" },
-    { id: "claude-desktop", label: "Claude Desktop", path: desktop, key: "mcpServers", scope: "user" },
-    { id: "cursor", label: "Cursor", path: join(home, ".cursor", "mcp.json"), key: "mcpServers", scope: "user" },
-    { id: "windsurf", label: "Windsurf", path: join(home, ".codeium", "windsurf", "mcp_config.json"), key: "mcpServers", scope: "user" },
-    { id: "gemini", label: "Gemini CLI", path: join(home, ".gemini", "settings.json"), key: "mcpServers", scope: "user" },
+  const raw: Omit<AgentTarget, "path">[] = [
+    { id: "claude-code", label: "Claude Code (theo project)", candidates: [join(projectRoot, ".mcp.json")], key: "mcpServers", scope: "project" },
+    { id: "claude-desktop", label: "Claude Desktop", candidates: [desktop], key: "mcpServers", scope: "user" },
+    { id: "cursor", label: "Cursor", candidates: [join(home, ".cursor", "mcp.json")], key: "mcpServers", scope: "user" },
+    { id: "windsurf", label: "Windsurf (Cascade)", candidates: [join(home, ".codeium", "windsurf", "mcp_config.json")], key: "mcpServers", scope: "user" },
+    // Gemini: hai đường đang cùng lưu hành (bản cài khác nhau đặt khác chỗ) — thử cả hai.
+    { id: "gemini", label: "Gemini CLI", candidates: [join(home, ".gemini", "settings.json"), join(appdata, "gemini", "settings.json")], key: "mcpServers", scope: "user" },
+    { id: "qwen", label: "Qwen Code", candidates: [join(home, ".qwen", "settings.json")], key: "mcpServers", scope: "user" },
+    { id: "kiro", label: "Kiro IDE", candidates: [join(home, ".kiro", "settings", "mcp.json")], key: "mcpServers", scope: "user" },
+    { id: "antigravity", label: "Antigravity CLI", candidates: [join(home, ".gemini", "config", "mcp_config.json")], key: "mcpServers", scope: "user" },
   ];
+  return raw.map((r) => ({ ...r, path: pickPath(r.candidates, r.scope) }));
 }
+
+/** Agent KHÔNG khai được bằng bảng trên — nêu tên + lý do thay vì im lặng bỏ qua.
+ *  Im lặng thì người dùng tưởng zemory không hỗ trợ; nói ra thì họ biết phải khai tay. */
+export const UNSUPPORTED: { id: string; why: string }[] = [
+  { id: "codex", why: "cấu hình là TOML (config.toml), không phải JSON — cần bộ ghi riêng" },
+  { id: "opencode", why: "dùng khoá `mcp` với khuôn entry khác (`type: local`), không phải `mcpServers`" },
+  { id: "pi", why: "nối bằng plugin package, không qua file cấu hình MCP" },
+];
 
 /** Khối server zemory được khai vào file cấu hình của agent. */
 export const SERVER_ENTRY = { command: "zemory", args: ["mcp"] };
