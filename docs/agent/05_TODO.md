@@ -197,20 +197,29 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   SẴN trong `capture-hook.ts` (opt-in chưa cài) — chỉ thiếu khai matcher. Đây là auto-inject
   đầu tiên của hệ: 1 thẻ nhỏ, đúng 1 lần, đúng sự kiện mất trí nhớ — user đã chốt; ghi
   changelog như diễn giải điều 8 (điều 8 cấm *broad memory mỗi prompt*, không cấm thẻ này).
-- [ ] **③ Realtime capture mỗi turn (ý user: "như chat realtime") — CÔNG TẮC thứ 4 trong panel
-  "Máy này / TỰ ĐỘNG" (user chỉ đúng chỗ 2026-08-02).**
-  **Đã dò cái cũ (đọc `jobs/scheduler.ts`), KHÔNG trùng:** hai công tắc hiện có đều chạy theo
-  NHỊP — `maintainTick` nạp GM mỗi **10'**, `syncTick` đẩy Drive mỗi **30'** — không phải
-  mỗi-tin. Cơ chế per-turn thì Stop hook ĐÃ TỒN TẠI (`zemory hook install` → Stop → `scan()`)
-  nhưng chưa máy nào cài và scan CẢ KHO.
-  Việc thật khi build: (a) **scan đúng 1 file** từ `transcript_path` trong payload thay vì cả
-  kho (đo: 1,8–7s cả kho → mục tiêu <1s; comment "fast, incremental" trong `capture-hook.ts`
-  đang nói quá so với số đo); (b) công tắc `data-auto` cạnh 3 công tắc sẵn có (khuôn
-  `getScanWeb`); bật = cài Stop hook, tắt = gỡ; (c) digest regen theo (sẵn có).
-  **Sync đi kèm — GẦN-realtime, không per-message** (đã can, user chưa phản đối): bật realtime
-  thì sau mỗi lần ingest turn đánh dấu *dirty* → sync job chạy **debounce ngắn** (vd 2–5' sau
-  tin cuối) thay vì chờ nhịp 30' — mỗi CỤM hội thoại ra một delta, không phải mỗi tin một file
-  (per-message = spam Drive + compact quay vòng, DRIVE_COMPACT_AT=12).
+- [ ] **③ Realtime capture — LÀ ĐƯỜNG NẠP CHÍNH, mặc định BẬT (user chốt lại 2026-08-02:
+  *"nhịp 10' là lần đó chưa xét kỹ — mỗi 1 mes phải tự đưa lên luôn mới đúng"*).**
+  > 🔄 Đảo thiết kế cũ của chính mục này ("công tắc thứ 4 thêm vào"): realtime **THAY** vai
+  > nạp chính của `maintainTick`; hệ nhịp cũ KHÔNG bị xoá mà **teo thành lưới bù** — chỉ giữ
+  > cho hai thứ vật-lý-không-per-message-được (embed: load model ONNX vài giây/lần · chiều
+  > IMPORT: bundle máy khác trên Drive không có sự kiện để nghe, phải poll) + quét bù nguồn
+  > không hook / hook trượt (đo: hook timeout khi embed nền chạy, ~125s).
+  **Kiến trúc chốt:**
+  - **Nạp:** Stop hook (đã tồn tại: `zemory hook install` → Stop → `scan()`) thành **mặc
+    định** — cài trong `init`/`setup`/`doctor` nhắc; mỗi reply ingest **đúng 1 file** từ
+    `transcript_path` (đo: cả kho 1,8–7s → 1 file mục tiêu <1s; comment "fast, incremental"
+    trong `capture-hook.ts` đang nói quá) + digest regen phiên đó (sẵn có).
+  - **Sync chiều ĐẨY:** event-driven theo cụm — ingest xong đánh dấu *dirty* → export delta
+    sau **debounce 2–5' từ tin cuối** (per-message từng tin một file = spam Drive + compact
+    quay vòng DRIVE_COMPACT_AT=12 — giữ nguyên lý do đã can). Bỏ timer đẩy 30'.
+  - **Lưới bù (scheduler cũ, teo vai):** embed backlog + digest sweep + scan bù (nguồn không
+    hook, hook trượt) + poll chiều IMPORT — nhịp giãn được 10'→30'.
+  - **UI:** panel "TỰ ĐỘNG" vẫn 3 công tắc, KHÔNG thêm cái thứ 4 — "Scheduler nền" đổi mô tả
+    thành lưới bù, "Tự sync memory" đổi mô tả thành event-driven + poll import; realtime là
+    hành vi mặc định của hệ (tắt được trong cùng công tắc scheduler hay tách — **trình user
+    duyệt lúc build**, luật UI phải duyệt trước). Chuỗi mô tả UI phải đổi theo (UI text
+    discipline — không để mô tả nói nhịp 10' khi code đã event-driven).
+  - Gate `scheduler-contract` phải viết lại theo vai mới (UI hứa gì scheduler làm đó).
 - [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
   lại TRƯỚC khi làm tiếp, đừng đoán từ bản tóm tắt."* Cursor/Windsurf/Qwen chỉ nhận mảnh này;
