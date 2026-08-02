@@ -5,7 +5,7 @@
 // framing OUT of here and tool knowledge OUT of the surface.
 
 import { findProjectRoot, normalizeRoot } from "../core/config.js";
-import { getMessage, getMessageContext, recall } from "../memory/search.js";
+import { getMessage, getMessageContext, searchHybrid } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 import { searchChangelog } from "../docs/changelog.js";
 import { listPinned, pinSession, recallCard } from "../memory/recall.js";
@@ -75,9 +75,11 @@ export const TOOLS = [
   {
     name: "memory_search",
     description:
-      "Search the local cross-agent global memory (hybrid keyword+semantic). Returns lightweight hits; call memory_show for full text. " +
-      "Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a different phrasing, " +
-      "or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the memory has nothing.",
+      "Search the local cross-agent global memory (hybrid keyword+semantic, about a second). Returns lightweight hits; call memory_show " +
+      "for full text. Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a " +
+      "different phrasing, or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the " +
+      "memory has nothing. Only when rewriting still fails, retry once with deep=true: it adds cross-encoder re-ranking, which measures " +
+      "~40x slower (tens of seconds) and has never beaten plain hybrid on this repo's labelled benchmark — a last resort, not a better default.",
     inputSchema: {
       type: "object",
       properties: {
@@ -85,6 +87,7 @@ export const TOOLS = [
         all: { type: "boolean", description: "Search all projects instead of the current project." },
         project: { type: "string", description: "Project root to scope search to; ignored when all=true." },
         limit: { type: "number", description: "Maximum hits, default 12, max 50." },
+        deep: { type: "boolean", description: "Add cross-encoder re-ranking. LAST RESORT: ~40x slower (tens of seconds)." },
       },
       required: ["query"],
       additionalProperties: false,
@@ -266,10 +269,17 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
   if (name === "memory_search") {
     const query = asString(args.query).trim();
     if (!query) return errorResult("memory_search requires a non-empty query.");
-    const hits = await recall(query, {
+    // Mặc định: FTS + vector (hybrid), KHÔNG rerank. Đo trong tiến trình ĐÃ ẤM trên kho
+    // 198.334 tin: FTS 172ms · hybrid **746ms** · hybrid+rerank **29.420ms**. Trước đây tool
+    // này gọi `recall()` nên ăn theo công tắc rerank của máy — đo thật qua MCP: **27–34s MỖI
+    // lần tìm**, không chỉ lần đầu. Agent gọi search liên tục, nên đó là thuế khổng lồ để
+    // đổi lấy thứ chưa chứng minh được: trên corpus gate có nhãn, rerank 8/8 = hybrid 8/8.
+    // `deep=true` khi agent thật sự cần xếp hạng kỹ hơn — nó tự chọn, có số để chọn.
+    const hits = await searchHybrid(query, {
       all: Boolean(args.all),
       project: currentProject(args, env),
       limit: clampLimit(args.limit, 12, 50),
+      rerank: Boolean(args.deep),
       dbPath: env.dbPath,
     });
     return toolResult(hits);
