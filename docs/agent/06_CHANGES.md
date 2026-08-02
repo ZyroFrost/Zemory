@@ -10,32 +10,28 @@
 > 🔄 **Supersede:** thay [2026-08-02e] — "Soát sổ: 6 mục chưa làm thực ra đã xong · 3 tiền đề
 > sai" — ở đúng một gạch đầu dòng: số tool của engram và chuyện họ có pin hay không.
 
-Tải bản phát hành windows_amd64, **khớp checksum công bố**, chạy trong HOME sandbox, bơm
-JSON-RPC vào `engram mcp` — đúng phép thử đã dùng cho zemory và cho CALM (`plan/13 §9`).
-Xong xoá sạch binary + sandbox.
+Tải bản phát hành windows_amd64 (**khớp checksum công bố**), chạy trong HOME sandbox, bơm
+JSON-RPC vào `engram mcp` — đúng phép thử đã dùng cho zemory và cho CALM (`plan/13 §9`). Xong
+xoá sạch binary + sandbox.
 
-- **Sai 1 — "20 tool": binary trả về 22**, có cả `mem_pin`/`mem_unpin`. `DOCS.md` của họ liệt
-  kê thiếu 2 cái. Tôi đã lấy TÀI LIỆU của bên thứ ba làm phép đo rồi gọi nó là "đo lại" — đúng
-  cái bẫy `02_RULES` nói: *chạy một đường rồi tin luôn*. Sổ cũ ghi 22 là đúng.
-- **Sai 2 — "engram không có pin": có.** Nên ⑤ là bám kịp, không phải đi trước.
-- **Ngược lại, ⑥ thì zemory ĐI TRƯỚC THẬT, và bằng chứng là README của chính họ:** *"Engram's
-  MCP transport is **stdio only** — there is no HTTP or network MCP endpoint."* `serve :7437`
-  là **REST cho plugin OpenCode/Pi** (đo: `/health` 200 · `/mcp` **404**), không phải MCP. Ghi
-  chú Docker tôi viết cho `mcp --http` trùng khớp điều họ tự thú: loopback ⇒ container không với tới.
-- **Lời dặn — cùng cách làm, đo cạnh nhau:** cả hai dùng marker; chạy **3 lần** rồi chèn chữ user
-  vào giữa: engram 1 khối · chữ user còn · zemory **1 khối · chữ user còn**. Khác cỡ: engram
-  **3.873 B** (bắt buộc gọi `mem_save` sau mỗi việc), zemory **1.289 B** (chỉ dạy lúc nào ĐỌC).
-  Mô tả tool có câu "khi nào gọi": engram **10/22** · zemory **12/12**.
-- **Mô hình khác nhau, đo bằng vòng ghi–đọc:** engram tìm trước khi ghi = *No memories found*,
-  phải `mem_save` rồi mới thấy. zemory cùng lúc đó có sẵn **1.271 phiên · 196.894 tin** mà agent
-  **không gọi một lệnh ghi nào**. Cỡ một kết quả: engram 540 B · zemory 454 B/hit.
-- **Ba agent zemory chưa khai được thì họ khai được** — và giờ biết bằng cách nào: `codex` ghi
-  `config.toml` + file chỉ dẫn riêng · `opencode` ghi plugin `.ts` **21 KB** · `pi` cài qua npm
-  (cần `pi` trong PATH). Khoảng cách là THẬT, không phải giới hạn của ngành.
-- **Bắt được một lỗi SỐNG ngay lúc tra lại sổ vừa ghi:** `changelog search "x" --limit 3` đi tìm
-  chuỗi `"x 3"` — **cùng họ với lỗi đã vá sáng nay cho `memory search`, chỉ khác bề mặt**, và
-  `plan search` dính y hệt. Cả hai nay dùng chung `positionalArgs`, `--limit` chạy thật; gate mới
-  `docs-search-flags` 4 test, đột biến bắt cả hai hướng (query bẩn · limit vô tác dụng).
+- **Sai 1 — "20 tool": binary trả 22**, có cả `mem_pin`/`mem_unpin` (`DOCS.md` của họ liệt kê
+  thiếu). Tôi lấy TÀI LIỆU bên thứ ba làm phép đo rồi gọi là "đo lại". **Sai 2 — "họ không có
+  pin": có** ⇒ ⑤ là bám kịp, không phải đi trước. Sổ cũ ghi 22 là đúng.
+- **⑥ thì zemory đi trước THẬT, bằng chứng là README của họ:** *"Engram's MCP transport is
+  **stdio only** — there is no HTTP or network MCP endpoint."* `serve :7437` là REST cho plugin
+  OpenCode/Pi (đo: `/health` 200 · `/mcp` **404**). Ghi chú Docker tôi viết cho `mcp --http`
+  trùng điều họ tự thú: loopback ⇒ container không với tới.
+- **Lời dặn, đo cạnh nhau:** cùng dùng marker; chạy **3 lần** + chèn chữ user vào giữa ⇒ cả hai
+  **1 khối, chữ user còn**. Khác cỡ: engram **3.873 B** (ép gọi `mem_save` sau mỗi việc) ·
+  zemory **1.289 B** (chỉ dạy lúc nào ĐỌC). Mô tả có "khi nào gọi": engram **10/22** · zemory **12/12**.
+- **Mô hình khác nhau — vòng ghi–đọc:** engram tìm trước khi ghi = *No memories found*, phải
+  `mem_save` mới thấy; zemory cùng lúc có sẵn **1.271 phiên · 196.894 tin**, agent **không gọi
+  lệnh ghi nào**. Cỡ một kết quả: engram 540 B · zemory 454 B/hit.
+- **Ba agent ta chưa khai được thì họ khai được**, và giờ biết hình dạng: `codex` → `config.toml`
+  + file chỉ dẫn · `opencode` → plugin `.ts` 21 KB · `pi` → npm. Khoảng cách là thật.
+- **Lỗi SỐNG bắt được lúc tra lại sổ vừa ghi:** `changelog search "x" --limit 3` tìm chuỗi
+  `"x 3"` (và `plan search` y hệt) — **cùng họ lỗi đã vá sáng nay cho `memory search`, khác bề
+  mặt**. Nay dùng chung `positionalArgs`; gate `docs-search-flags` 4 test, đột biến 2 hướng đỏ.
 
 Gate 458 → **462** · `conform` ✓.
 
