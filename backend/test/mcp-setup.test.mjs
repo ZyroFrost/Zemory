@@ -12,7 +12,21 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { UNSUPPORTED, agentTargets, inspectAgent, mergeServerConfig, wireAgent } from "../../dist/mcpsetup.js";
+import {
+  MEMORY_PROTOCOL,
+  PROTOCOL_BEGIN,
+  PROTOCOL_END,
+  UNSUPPORTED,
+  agentTargets,
+  inspectAgent,
+  inspectProtocol,
+  mergeProtocol,
+  mergeServerConfig,
+  protocolBlock,
+  wireAgent,
+  writeProtocol,
+} from "../../dist/mcpsetup.js";
+import { TOOLS } from "../../dist/tools/index.js";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "zmcp-"));
 const target = (path, scope = "user") => ({ id: "t", label: "T", path, candidates: [path], key: "mcpServers", scope });
@@ -97,6 +111,103 @@ test("agent chưa cài ⇒ KHÔNG đoán bừa một đường để ghi vào", 
       existsSync(t.path) || existsSync(dirname(t.path)),
       `${t.id}: chọn đường mà cả file lẫn thư mục cha đều không có — đó là đoán`,
     );
+  }
+});
+
+// ─── Lời dặn (memory protocol) ────────────────────────────────────────────────
+// Khai server chỉ cho agent CÓ tool; lời dặn mới làm nó BIẾT LÚC NÀO gọi. Khối này ghi vào
+// file chỉ dẫn của user — nơi họ tự viết luật của mình — nên phải: chèn/thay ĐÚNG khối của
+// mình, không bao giờ đẻ bản thứ hai, và không đụng một chữ nào bên ngoài marker.
+
+const memoTarget = (memo, memoScope = "user") => ({
+  ...target(join(dirname(memo), "cfg.json")),
+  memo,
+  memoCandidates: [memo],
+  memoScope,
+});
+
+test("chèn lời dặn: giữ nguyên chữ user, chạy lại KHÔNG đẻ khối thứ hai", () => {
+  const mine = "# Luật của tôi\n\n- luôn dùng tiếng Việt\n";
+  const one = mergeProtocol(mine);
+  assert.equal(one.reason, "added");
+  assert.ok(one.next.startsWith(mine), "phần user viết phải còn NGUYÊN ở đầu file");
+  assert.ok(one.next.includes(PROTOCOL_BEGIN) && one.next.includes(PROTOCOL_END));
+
+  const two = mergeProtocol(one.next);
+  assert.equal(two.changed, false, "chạy lần hai không được ghi gì");
+  assert.equal(two.reason, "already");
+  const count = one.next.split(PROTOCOL_BEGIN).length - 1;
+  assert.equal(count, 1, "chỉ được có ĐÚNG MỘT khối, không nối thêm bản mới vào cuối");
+});
+
+test("bản cũ được THAY đúng chỗ, chữ user ở CẢ HAI phía còn nguyên", () => {
+  const before = "# Đầu file\n\n";
+  const after = "\n## Ghi chú riêng\n\n- giữ nguyên dòng này\n";
+  const stale = `${before}${PROTOCOL_BEGIN}\nnội dung bản CŨ\n${PROTOCOL_END}${after}`;
+  const r = mergeProtocol(stale);
+  assert.equal(r.reason, "updated");
+  assert.ok(r.next.startsWith(before), "chữ trước khối phải còn");
+  assert.ok(r.next.endsWith(after), "chữ sau khối phải còn");
+  assert.ok(!r.next.includes("nội dung bản CŨ"), "bản cũ phải bị thay, không được để lại");
+  assert.ok(r.next.includes(protocolBlock()));
+});
+
+test("marker mở mà không đóng ⇒ DỪNG, không đoán chỗ kết thúc", () => {
+  const broken = `# File\n\n${PROTOCOL_BEGIN}\nai đó cắt mất đuôi\n`;
+  const r = mergeProtocol(broken);
+  assert.equal(r.changed, false);
+  assert.equal(r.reason, "broken-marker");
+  assert.equal(r.next, broken, "không được sửa một ký tự nào");
+});
+
+test("ghi thật: sao lưu .bak, inspect thấy đã cài, và bản cũ thì báo stale", () => {
+  const dir = scratch();
+  const memo = join(dir, "global_rules.md");
+  writeFileSync(memo, `# Của tôi\n\n${PROTOCOL_BEGIN}\ncũ\n${PROTOCOL_END}\n`);
+  const t = memoTarget(memo);
+  assert.equal(inspectProtocol(t), "stale", "khối có nhưng khác bản hiện hành ⇒ stale");
+  const r = writeProtocol(t);
+  assert.equal(r.wrote, true);
+  assert.equal(r.reason, "updated");
+  assert.ok(r.backup && existsSync(r.backup), "phải sao lưu trước khi ghi");
+  assert.equal(inspectProtocol(t), "installed");
+  assert.ok(readFileSync(memo, "utf8").startsWith("# Của tôi"), "chữ user phải còn");
+});
+
+test("agent chưa cài ⇒ không dựng cây thư mục để nhét lời dặn", () => {
+  const dir = scratch();
+  const memo = join(dir, "chua-cai", "GEMINI.md");
+  const r = writeProtocol(memoTarget(memo));
+  assert.equal(r.wrote, false);
+  assert.equal(r.reason, "no-parent-dir");
+  assert.equal(existsSync(join(dir, "chua-cai")), false, "không để lại thư mục rác");
+});
+
+test("file .mdc mới phải tự khai alwaysApply — thiếu là ghi xong không ai đọc", () => {
+  const dir = scratch();
+  const memo = join(dir, "rules", "zemory-memory.mdc");
+  const r = writeProtocol(memoTarget(memo, "project"));
+  assert.equal(r.wrote, true);
+  const text = readFileSync(memo, "utf8");
+  assert.match(text, /^---\r?\nalwaysApply: true\r?\n---/, "Cursor chỉ nạp rule tự khai alwaysApply");
+  assert.ok(text.includes(protocolBlock()));
+});
+
+test("lời dặn chỉ được nhắc tool CÓ THẬT (parity với tools/list)", () => {
+  const known = new Set(TOOLS.map((t) => t.name));
+  const named = [...MEMORY_PROTOCOL.matchAll(/`([a-z_]+)`/g)].map((m) => m[1]).filter((n) => n.includes("_"));
+  assert.ok(named.length >= 5, "lời dặn phải nêu đích danh tool, không nói chung chung");
+  for (const n of named) assert.ok(known.has(n), `lời dặn nhắc tool không tồn tại: ${n}`);
+  // Ba tool này là xương sống của luồng dùng — thiếu một cái là lời dặn hụt một nhánh.
+  for (const must of ["memory_context", "memory_search", "changelog_search"]) {
+    assert.ok(MEMORY_PROTOCOL.includes(must), `lời dặn phải dạy khi nào gọi ${must}`);
+  }
+});
+
+test("agent không dặn được thì phải nói VÌ SAO, không im lặng bỏ trống", () => {
+  for (const t of agentTargets("D:\\proj")) {
+    if (t.memoCandidates.length) continue;
+    assert.ok(t.memoWhy && t.memoWhy.length > 20, `${t.id}: bỏ trống lời dặn mà không nêu lý do`);
   }
 });
 

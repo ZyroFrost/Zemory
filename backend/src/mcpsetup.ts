@@ -27,6 +27,15 @@ export interface AgentTarget {
   key: string;
   /** Cấu hình theo TỪNG PROJECT (ghi vào repo) hay theo máy. */
   scope: "project" | "user";
+  /** File chỉ dẫn thường trực agent tự nạp mỗi phiên — chỗ dặn KHI NÀO gọi trí nhớ.
+   *  null = agent này không có chỗ AN TOÀN để dặn (lý do ở `memoWhy`). */
+  memo: string | null;
+  memoCandidates: string[];
+  /** Vì sao không dặn được — in ra thay vì im lặng bỏ qua. */
+  memoWhy?: string;
+  /** Chỉ dẫn ghi theo project hay theo máy (khác `scope`: Cursor khai server theo máy
+   *  nhưng luật thì nạp từ repo). */
+  memoScope: "project" | "user";
 }
 
 /** Chọn đường ứng viên: ưu tiên file ĐÃ CÓ, kế đến thư mục cha đã có (agent đã cài).
@@ -54,18 +63,128 @@ export function agentTargets(projectRoot: string): AgentTarget[] {
       : os === "darwin"
         ? join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
         : join(home, ".config", "Claude", "claude_desktop_config.json");
-  const raw: Omit<AgentTarget, "path">[] = [
-    { id: "claude-code", label: "Claude Code (theo project)", candidates: [join(projectRoot, ".mcp.json")], key: "mcpServers", scope: "project" },
-    { id: "claude-desktop", label: "Claude Desktop", candidates: [desktop], key: "mcpServers", scope: "user" },
-    { id: "cursor", label: "Cursor", candidates: [join(home, ".cursor", "mcp.json")], key: "mcpServers", scope: "user" },
-    { id: "windsurf", label: "Windsurf (Cascade)", candidates: [join(home, ".codeium", "windsurf", "mcp_config.json")], key: "mcpServers", scope: "user" },
+  // Khai server = agent CÓ tool. Dặn trong file chỉ dẫn = agent BIẾT LÚC NÀO gọi. Thiếu vế
+  // sau thì tool nằm đó không ai đụng — đo trên chính repo này trước 2026-08-02: 0 dòng cài
+  // chỉ dẫn. Hai vế đi cùng nhau trong MỘT lệnh, không bắt user nhớ làm bước hai.
+  const raw: Omit<AgentTarget, "path" | "memo">[] = [
+    {
+      id: "claude-code",
+      label: "Claude Code (theo project)",
+      candidates: [join(projectRoot, ".mcp.json")],
+      key: "mcpServers",
+      scope: "project",
+      // `AGENTS.md`/`CLAUDE.md` là file HARNESS của project (docs/agent làm chủ nội dung, gate
+      // đếm dòng nó) ⇒ zemory tự chèn vào là sửa tài sản của project. Claude Code đã nhận lời
+      // dặn qua MÔ TẢ TOOL (`tools/index.ts`, luật "mô tả = lời dặn" chốt 2026-08-02c).
+      memoCandidates: [],
+      memoWhy: "AGENTS.md/CLAUDE.md do harness làm chủ — không tự chèn; lời dặn đã nằm trong mô tả tool",
+      memoScope: "project",
+    },
+    {
+      id: "claude-desktop",
+      label: "Claude Desktop",
+      candidates: [desktop],
+      key: "mcpServers",
+      scope: "user",
+      memoCandidates: [],
+      memoWhy: "không có file chỉ dẫn thường trực — lời dặn đi theo mô tả tool",
+      memoScope: "user",
+    },
+    {
+      id: "cursor",
+      label: "Cursor",
+      candidates: [join(home, ".cursor", "mcp.json")],
+      key: "mcpServers",
+      scope: "user",
+      // Cursor nạp rule từ `~/.cursor/rules/` (toàn máy) và `<project>/.cursor/rules/`.
+      // Ưu tiên bản toàn máy nếu Cursor đã cài; không thì rơi về rule của project.
+      // File mới phải mang `alwaysApply: true` mới được nạp mỗi phiên (xem writeProtocol).
+      memoCandidates: [
+        join(home, ".cursor", "rules", "zemory-memory.mdc"),
+        join(projectRoot, ".cursor", "rules", "zemory-memory.mdc"),
+      ],
+      memoScope: "user",
+    },
+    {
+      id: "windsurf",
+      label: "Windsurf (Cascade)",
+      candidates: [join(home, ".codeium", "windsurf", "mcp_config.json")],
+      key: "mcpServers",
+      scope: "user",
+      memoCandidates: [join(home, ".codeium", "windsurf", "memories", "global_rules.md")],
+      memoScope: "user",
+    },
     // Gemini: hai đường đang cùng lưu hành (bản cài khác nhau đặt khác chỗ) — thử cả hai.
-    { id: "gemini", label: "Gemini CLI", candidates: [join(home, ".gemini", "settings.json"), join(appdata, "gemini", "settings.json")], key: "mcpServers", scope: "user" },
-    { id: "qwen", label: "Qwen Code", candidates: [join(home, ".qwen", "settings.json")], key: "mcpServers", scope: "user" },
-    { id: "kiro", label: "Kiro IDE", candidates: [join(home, ".kiro", "settings", "mcp.json")], key: "mcpServers", scope: "user" },
-    { id: "antigravity", label: "Antigravity CLI", candidates: [join(home, ".gemini", "config", "mcp_config.json")], key: "mcpServers", scope: "user" },
+    {
+      id: "gemini",
+      label: "Gemini CLI",
+      candidates: [join(home, ".gemini", "settings.json"), join(appdata, "gemini", "settings.json")],
+      key: "mcpServers",
+      scope: "user",
+      memoCandidates: [join(home, ".gemini", "GEMINI.md"), join(appdata, "gemini", "GEMINI.md")],
+      memoScope: "user",
+    },
+    {
+      id: "qwen",
+      label: "Qwen Code",
+      candidates: [join(home, ".qwen", "settings.json")],
+      key: "mcpServers",
+      scope: "user",
+      memoCandidates: [join(home, ".qwen", "QWEN.md")],
+      memoScope: "user",
+    },
+    {
+      id: "kiro",
+      label: "Kiro IDE",
+      candidates: [join(home, ".kiro", "settings", "mcp.json")],
+      key: "mcpServers",
+      scope: "user",
+      memoCandidates: [
+        join(home, ".kiro", "steering", "zemory-memory.md"),
+        join(projectRoot, ".kiro", "steering", "zemory-memory.md"),
+      ],
+      memoScope: "user",
+    },
+    {
+      id: "antigravity",
+      label: "Antigravity CLI",
+      candidates: [join(home, ".gemini", "config", "mcp_config.json")],
+      key: "mcpServers",
+      scope: "user",
+      // Antigravity nạp `~/.gemini/GEMINI.md` — CÙNG file với Gemini CLI, nên khai cả hai
+      // vẫn an toàn: khối có marker nên lần thứ hai chỉ cập nhật đúng khối đó, không nhân đôi.
+      memoCandidates: [join(home, ".gemini", "GEMINI.md")],
+      memoScope: "user",
+    },
   ];
-  return raw.map((r) => ({ ...r, path: pickPath(r.candidates, r.scope) }));
+  const inProject = (p: string) => p.toLowerCase().startsWith(projectRoot.toLowerCase());
+  /** Chọn chỗ đặt lời dặn: ① file đã có → ② thư mục đã có (agent đã cài) → ③ đường nằm
+   *  TRONG repo (luôn tạo được) → ④ chịu. Bậc ③ là khác biệt so với `pickPath`: với file
+   *  cấu hình thì "chưa có thư mục" nghĩa là agent chưa cài nên thôi; còn rule trong repo
+   *  của chính user thì tạo là hợp lệ, và đó là đường duy nhất còn lại cho Cursor/Kiro
+   *  khi bản toàn máy chưa dựng. */
+  const pickMemo = (candidates: string[]): string | null => {
+    if (!candidates.length) return null;
+    return (
+      candidates.find((c) => existsSync(c)) ??
+      candidates.find((c) => existsSync(dirname(c))) ??
+      candidates.find((c) => inProject(c)) ??
+      null
+    );
+  };
+  return raw.map((r) => {
+    // Một agent có thể có ứng viên ở CẢ hai nơi (Cursor/Kiro: rule toàn máy hoặc rule của
+    // repo). Quyền "được tạo thư mục" phải theo ĐƯỜNG ĐÃ CHỌN, không theo nhãn khai sẵn:
+    // trong repo của user thì tạo thư mục là bình thường, còn dựng cây trong home của một
+    // agent chưa cài là để lại rác.
+    const memo = pickMemo(r.memoCandidates);
+    return {
+      ...r,
+      path: pickPath(r.candidates, r.scope),
+      memo,
+      memoScope: memo && inProject(memo) ? ("project" as const) : r.memoScope,
+    };
+  });
 }
 
 /** Agent KHÔNG khai được bằng bảng trên — nêu tên + lý do thay vì im lặng bỏ qua.
@@ -140,6 +259,120 @@ export function wireAgent(target: AgentTarget, force = false): WriteReport {
   }
   writeFileSync(target.path, JSON.stringify(merged.next, null, 2) + "\n", "utf8");
   return { target, wrote: true, reason: merged.reason, backup };
+}
+
+// ─── Memory protocol: dặn agent KHI NÀO gọi trí nhớ ────────────────────────────
+//
+// Khai server chỉ cho agent CÓ tool. Thứ quyết định nó có GỌI hay không là lời dặn nằm
+// trong file chỉ dẫn thường trực — với Cursor/Windsurf/Qwen/Gemini thì `AGENTS.md` của
+// project không chắc được nạp, nên tool có mà agent không biết lúc nào dùng.
+//
+// Viết bằng tiếng Anh: đây là văn bản cho AGENT đọc, không phải docs người đọc
+// (`02_RULES §Ngôn ngữ` — docs tiếng Việt, thứ agent/code đọc thì tiếng Anh).
+
+export const PROTOCOL_BEGIN = "<!-- zemory:memory-protocol -->";
+export const PROTOCOL_END = "<!-- /zemory:memory-protocol -->";
+
+/** Thân khối. Ngắn có chủ đích: nó nằm trong ngữ cảnh MỌI phiên của agent đó. */
+export const MEMORY_PROTOCOL = `## zemory — memory protocol
+
+This machine has a local cross-session memory (zemory MCP server). Use it instead of asking
+the user to re-explain work you could look up.
+
+- **Starting or resuming work in a project** → call \`memory_context\` first. Cheap, read-only.
+- **Anything that may have been discussed, decided, or hit before** — "we tried X", "why is Y
+  like this", an error that looks familiar → \`memory_search\`, then \`memory_show\` on the hits
+  worth reading in full. Snippets are deliberately short; never conclude from one you did not open.
+- **Before acting on a rule, convention or past decision — and always before saying "we never
+  did X"** → \`changelog_search\`. A hit flagged \`supersededBy\` is DEAD: read the newer entry
+  and follow that one. This is the only surface that knows a decision was reversed.
+- **Before proposing or changing a design** → \`plan_search\` / \`plan_show\`.
+- **Empty or surprising result** → \`project_current\` (wrong scope?) then \`memory_stats\`
+  (empty store?). An empty store and a bad query look identical from \`memory_search\`.
+
+Everything here is local and read-only. Nothing is sent anywhere.`;
+
+export function protocolBlock(): string {
+  return `${PROTOCOL_BEGIN}\n${MEMORY_PROTOCOL}\n${PROTOCOL_END}`;
+}
+
+export interface ProtocolMerge {
+  next: string;
+  changed: boolean;
+  reason: "added" | "updated" | "already" | "broken-marker";
+}
+
+/** Chèn/cập nhật khối chỉ dẫn trong một file markdown của user — HÀM THUẦN.
+ *
+ *  Neo bằng cặp marker để lần chạy sau GHI ĐÈ đúng khối cũ thay vì nối thêm bản thứ hai
+ *  (chạy `setup mcp` ba lần mà ra ba khối là lỗi kinh điển của kiểu chèn-vào-cuối-file).
+ *  Mọi chữ user tự viết nằm ngoài marker không bị đụng. */
+export function mergeProtocol(existing: string): ProtocolMerge {
+  const block = protocolBlock();
+  const b = existing.indexOf(PROTOCOL_BEGIN);
+  const e = existing.indexOf(PROTOCOL_END);
+  if (b >= 0 && e < 0) {
+    // Mở mà không đóng ⇒ ai đó đã cắt file. Đoán chỗ kết thúc là đoán vào văn bản của user;
+    // dừng lại và báo, đúng luật "chưa xác minh thì chưa phải sự thật".
+    return { next: existing, changed: false, reason: "broken-marker" };
+  }
+  if (b >= 0 && e > b) {
+    const next = existing.slice(0, b) + block + existing.slice(e + PROTOCOL_END.length);
+    return next === existing
+      ? { next: existing, changed: false, reason: "already" }
+      : { next, changed: true, reason: "updated" };
+  }
+  if (!existing.trim()) return { next: `${block}\n`, changed: true, reason: "added" };
+  const pad = existing.endsWith("\n\n") ? "" : existing.endsWith("\n") ? "\n" : "\n\n";
+  return { next: `${existing}${pad}${block}\n`, changed: true, reason: "added" };
+}
+
+export interface ProtocolReport {
+  target: AgentTarget;
+  path: string | null;
+  wrote: boolean;
+  reason: ProtocolMerge["reason"] | "no-parent-dir" | "unsupported";
+  backup?: string;
+}
+
+/** Cursor chỉ nạp một rule file mỗi phiên khi nó tự khai `alwaysApply`. File .mdc mới mà
+ *  thiếu frontmatter này thì nằm im — tức là ghi xong vẫn không ai đọc. */
+const MDC_FRONTMATTER = "---\nalwaysApply: true\n---\n\n";
+
+/** Ghi lời dặn vào file chỉ dẫn của ĐÚNG MỘT agent. Cùng ba chốt chặn như `wireAgent`:
+ *  không tự dựng cây thư mục của agent chưa cài · sao lưu `.bak` · không đè phần user viết. */
+export function writeProtocol(target: AgentTarget): ProtocolReport {
+  if (!target.memoCandidates.length) return { target, path: null, wrote: false, reason: "unsupported" };
+  if (!target.memo) return { target, path: null, wrote: false, reason: "no-parent-dir" };
+  const path = target.memo;
+  const parent = dirname(path);
+  const fileExists = existsSync(path);
+  if (!fileExists && !existsSync(parent)) {
+    if (target.memoScope !== "project") return { target, path, wrote: false, reason: "no-parent-dir" };
+    mkdirSync(parent, { recursive: true });
+  }
+  const current = fileExists ? readFileSync(path, "utf8") : path.endsWith(".mdc") ? MDC_FRONTMATTER : "";
+  const merged = mergeProtocol(current);
+  if (!merged.changed) return { target, path, wrote: false, reason: merged.reason };
+  let backup: string | undefined;
+  if (fileExists) {
+    backup = `${path}.bak`;
+    copyFileSync(path, backup);
+  }
+  writeFileSync(path, merged.next, "utf8");
+  return { target, path, wrote: true, reason: merged.reason, backup };
+}
+
+/** Trạng thái lời dặn: đã cài · cài bản CŨ · chưa cài · không áp dụng. */
+export function inspectProtocol(
+  target: AgentTarget,
+): "installed" | "stale" | "absent" | "no-file" | "unsupported" | "broken-marker" {
+  if (!target.memoCandidates.length) return "unsupported";
+  if (!target.memo || !existsSync(target.memo)) return "no-file";
+  const text = readFileSync(target.memo, "utf8");
+  if (!text.includes(PROTOCOL_BEGIN)) return "absent";
+  if (!text.includes(PROTOCOL_END)) return "broken-marker";
+  return text.includes(protocolBlock()) ? "installed" : "stale";
 }
 
 /** Trạng thái hiện tại của một đích: đã khai zemory chưa. */

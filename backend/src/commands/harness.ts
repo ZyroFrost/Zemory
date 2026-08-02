@@ -13,7 +13,7 @@ import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { conform } from "../docs/conform.js";
-import { UNSUPPORTED, agentTargets, inspectAgent, wireAgent } from "../mcpsetup.js";
+import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 
@@ -272,11 +272,25 @@ function cmdSetupMcp(args: string[]): void {
     for (const t of targets) {
       const state = inspectAgent(t);
       const mark = state === "wired" ? "✓ đã khai" : state === "present-not-wired" ? "○ có file, chưa khai" : state === "bad-json" ? "⚠ file JSON hỏng" : t.path ? "· chưa có file" : "· chưa cài";
+      const memo: Record<string, string> = {
+        installed: "✓ có lời dặn",
+        stale: "○ lời dặn bản cũ",
+        absent: "○ chưa dặn",
+        "no-file": "· chưa có file",
+        "broken-marker": "⚠ khối hỏng",
+        unsupported: "— không áp dụng",
+      };
       console.log(`  ${mark.padEnd(22)} ${t.id.padEnd(15)} ${t.path ?? `(chưa thấy: ${t.candidates[0]})`}`);
+      const memoWhere = t.memo ?? t.memoCandidates[0];
+      console.log(
+        `  ${" ".repeat(22)} ${"↳ chỉ dẫn".padEnd(15)} ${memo[inspectProtocol(t)]}` +
+          (memoWhere ? ` — ${memoWhere}` : t.memoWhy ? ` (${t.memoWhy})` : ""),
+      );
     }
     console.log("");
     console.log("  ghi vào một agent:  zemory setup mcp <agent> [--force]");
     console.log("  agent hợp lệ:       " + targets.map((t) => t.id).join(" · "));
+    console.log("  mỗi lần ghi làm HAI việc: khai server + cài LỜI DẶN khi nào gọi trí nhớ (`--no-protocol` để bỏ vế sau)");
     console.log("  luôn sao lưu .bak trước khi ghi · KHÔNG đụng server khác trong file");
     console.log("  chưa khai tự động được (khai tay): " + UNSUPPORTED.map((u) => `${u.id} — ${u.why}`).join(" · "));
     console.log("  ⓘ Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory` trên máy thật.");
@@ -289,21 +303,38 @@ function cmdSetupMcp(args: string[]): void {
     return;
   }
   const r = wireAgent(target, force);
-  if (r.wrote) {
-    console.log(`zemory setup mcp — ${r.reason === "replaced" ? "ghi đè" : "đã khai"} zemory vào ${target.label}`);
-    console.log(`  ${target.path}`);
-    if (r.backup) console.log(`  sao lưu: ${r.backup}`);
-    console.log("  → mở lại agent đó để nó nạp server mới.");
-    return;
-  }
   const why: Record<string, string> = {
     already: "đã khai sẵn rồi (dùng --force để ghi đè)",
     "no-parent-dir": "chưa thấy thư mục cấu hình — agent này có vẻ chưa cài trên máy",
     "bad-json": "file cấu hình không parse được JSON — KHÔNG ghi đè, sửa tay trước",
   };
-  console.log(`zemory setup mcp — không ghi: ${why[r.reason] ?? r.reason}`);
-  console.log(`  ${target.path}`);
-  if (r.reason === "bad-json") process.exitCode = 1;
+  if (r.wrote) {
+    console.log(`zemory setup mcp — ${r.reason === "replaced" ? "ghi đè" : "đã khai"} zemory vào ${target.label}`);
+    console.log(`  server:   ${target.path}`);
+    if (r.backup) console.log(`  sao lưu:  ${r.backup}`);
+  } else {
+    console.log(`zemory setup mcp — server KHÔNG ghi: ${why[r.reason] ?? r.reason}`);
+    console.log(`  server:   ${target.path ?? `(chưa thấy: ${target.candidates[0]})`}`);
+    if (r.reason === "bad-json") process.exitCode = 1;
+  }
+
+  // Vế hai: khai server chỉ cho agent CÓ tool; lời dặn mới làm nó BIẾT LÚC NÀO gọi.
+  if (!args.includes("--no-protocol")) {
+    const p = writeProtocol(target);
+    const pw: Record<string, string> = {
+      added: "đã cài lời dặn",
+      updated: "đã cập nhật lời dặn (bản cũ được thay đúng chỗ)",
+      already: "lời dặn đã đúng bản mới nhất",
+      "broken-marker": "⚠ khối cũ thiếu marker đóng — KHÔNG ghi, sửa tay rồi chạy lại",
+      "no-parent-dir": "chưa thấy thư mục — agent này có vẻ chưa cài",
+      unsupported: `không áp dụng${target.memoWhy ? ` (${target.memoWhy})` : ""}`,
+    };
+    console.log(`  chỉ dẫn:  ${pw[p.reason] ?? p.reason}`);
+    if (p.path) console.log(`            ${p.path}`);
+    if (p.backup) console.log(`            sao lưu: ${p.backup}`);
+    if (p.reason === "broken-marker") process.exitCode = 1;
+  }
+  if (r.wrote) console.log("  → mở lại agent đó để nó nạp server mới.");
 }
 
 export function cmdStructure(): void {

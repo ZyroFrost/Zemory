@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startUi } from "./ui.js";
 import { runMcpStdio } from "./mcp.js";
+import { runMcpHttp } from "./mcphttp.js";
 import { cmdGraph } from "./commands/graph.js";
 import { cmdMemory } from "./commands/memory.js";
 import { cmdHook } from "./commands/hook.js";
@@ -82,7 +83,20 @@ switch (cmd) {
     await cmdMemory(args);
     break;
   case "mcp":
-    await runMcpStdio();
+    // stdio là đường mặc định (host tự spawn tiến trình). `--http` cho host KHÔNG spawn
+    // được: agent trong máy ảo/sandbox, hoặc host chỉ nói HTTP. Cùng một bộ tool.
+    if (args.includes("--http")) {
+      const at = args.indexOf("--port");
+      const port = at >= 0 ? Number(args[at + 1]) : undefined;
+      if (at >= 0 && (!Number.isInteger(port) || port! < 1 || port! > 65535)) {
+        console.error("zemory mcp --http: --port cần một số cổng hợp lệ (1–65535).");
+        process.exitCode = 1;
+        break;
+      }
+      await runMcpHttp(port);
+    } else {
+      await runMcpStdio();
+    }
     break;
   case "hook":
     await cmdHook(args);

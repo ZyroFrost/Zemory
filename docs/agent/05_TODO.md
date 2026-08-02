@@ -163,52 +163,45 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > 🖥️ "chỉ khi có zemory CLI"**. Bộ cowork còn SỬA một lỗi của template gốc: `audit` bỏ 3 mặt app-only
 > (`npm run check` · FE↔BE · `integrity_check`) vốn không áp được cho non-app.
 
-- [ ] **`docs_template/cowork.7z` đang nằm trong repo mà chưa bị gitignore.** Nó là bản RENDER
-  (1,6 MB nhị phân), luật của chính bộ chuẩn xếp loại này vào `exports/` + gitignore. Hiện chỉ
-  đang không-add bằng tay — lần commit sau ai đó `git add -A` là nó lên remote. Chọn một: thêm
-  `*.7z`/`*.zip` vào `.gitignore`, hoặc dời file ra ngoài repo.
-
-- [ ] **RERANK: bật mặc định hay không — HP điều 12 đang chặn, cần user chốt.**
-  Trạng thái thật (đo 2026-08-02): rerank **đang BẬT** cho máy này (`data/config.json` có
-  `"rerank": true`) — không hề bị auto-disable. Cái tắt là **mặc định trong code**
-  (`getRerankSetting()` chỉ bật khi config ghi rõ `true`), nên mất/reset `data/config.json`
-  (máy mới, clone lại không kèm `data/`) là rerank âm thầm tắt mà không ai biết.
-  - Lý do lịch sử đã YẾU đi: 28/07 đo 4.616 ms vs 29.304 ms (**6,3×**); **02/08 đo lại: 4,8 s vs
-    9,9 s (2,1×)**.
-  - Nhưng `HP điều 12` đòi **thắng net trên corpus có nhãn** mới được bật mặc định, và corpus gate
-    hiện **bão hoà**: FTS 0% · hybrid **100% (8/8)** · rerank 100% — không thể thắng net.
-  - Hai đường ra: ① **dựng corpus nhãn lớn/nhiễu hơn** rồi chạy gate thật (đúng đường, `plan/05`
-    dòng 73 đã ghi sẵn ý này); ② user **chốt miễn điều 12 cho lớp này**, tôi ghi supersede rồi đổi
-    mặc định. KHÔNG tự làm ② — sửa hiến pháp là quyền user.
-
-## 🔌 Đối chiếu engram (audit 2026-08-02) — 6 việc, xếp theo giá trị đo được
-> Nền: engram 22 tool MCP · zemory 8. Đã map: 6 cái có tương đương · **9 cái KHÔNG áp dụng**
-> (`mem_save`/`update`/`session_*`/`suggest_topic_key` — trí nhớ engram do agent tự viết, zemory
-> nạp transcript tự động + lấy file docs làm nguồn ⇒ thêm đường ghi cho agent là mở đường ghi
-> thứ hai vào lớp dẫn xuất, phạm điều 3). Sáu cái dưới là phần THIẾU THẬT.
+## 🔌 Đối chiếu engram — CẢ 6 VIỆC ĐÃ XONG (ghi `06_CHANGES [2026-08-02f]`); còn phần dưới
+> **Số nền đã đo lại tươi** (`DOCS.md` của engram, 2026-08-02): engram **20 tool** — dòng cũ ở
+> đây ghi "22" là sai, không rõ đếm từ đâu. zemory **8 → 12**. Trong 20 tool của engram có
+> **12 cái GHI vào kho**; zemory cố tình không lấy nhóm đó (`mem_save`/`update`/`delete`/
+> `session_*`/`capture_passive`/`suggest_topic_key`/`review`): trí nhớ engram do agent tự
+> viết, còn zemory nạp transcript tự động + lấy file docs làm nguồn ⇒ thêm đường ghi cho
+> agent là mở đường ghi thứ hai vào lớp dẫn xuất, phạm điều 3.
 > ⚠ Mọi mục ở đây chỉ áp cho hệ **app + non-app**. **Cowork KHÔNG dùng được MCP** — nó chạy
 > trong máy ảo riêng, không với tới `zemory` trên máy thật (`BOOTSTRAP §Bối cảnh`).
 
-- [ ] **① Cài "Memory Protocol" khi `setup mcp` — giá trị cao nhất.** engram không chỉ khai server:
-  nó nhét luôn lời dặn *khi nào gọi trí nhớ* vào file chỉ dẫn của từng agent (`GEMINI.md` ·
-  `global_rules.md` · `QWEN.md` · steering của Kiro), cộng hooks + compaction recovery; riêng
-  Claude Code là **plugin marketplace**. zemory hiện **chỉ khai server** (đo: 0 dòng cài chỉ dẫn).
-  Hệ quả: với Cursor/Windsurf/Qwen thì tool **có mà agent không biết lúc nào gọi** — `AGENTS.md`
-  chỉ ăn với agent chịu đọc nó. Đây là thứ biến 8 tool từ "có" thành "được dùng".
-- [ ] **② `mem_judge`/`mem_compare` — xung đột ở TẦNG TRÍ NHỚ.** zemory nay đánh dấu được quyết
-  định đã bị đảo (4 link tất định trong changelog), nhưng hai bản ghi trong kho nói ngược nhau thì
-  vẫn nằm im cạnh nhau. **Vừa được mở đường**: HP điều 6 đã nới (2026-08-02b) nên phán bằng model
-  là hợp lệ — nhưng phải theo thứ tự ①script → ②agent liên kết → ③model.
-- [ ] **③ `merge_projects` — gộp dự án bị tách tên.** zemory **đã dính đúng bệnh này**: `D:\` vs
-  `d:\` từng tách index làm đôi (24 dòng một bên, 15 dòng mồ côi bên kia), vá bằng `normalizeRoot`
-  nhưng **không có công cụ gộp phần đã lỡ tách**. Cần: gộp theo khoá chuẩn hoá, in bảng trước khi
-  làm, và KHÔNG xoá dòng gốc.
-- [ ] **④ `memory_doctor` qua MCP** — chẩn đoán chỉ-đọc hiện chỉ có ở CLI, agent không gọi được.
-  Rẻ: bọc `gatherStatus()` như đã bọc `memoryInfo()` cho `memory_stats`.
-- [ ] **⑤ `pin`/`unpin`** — cột `sessions.project_pinned` **đã có sẵn trong schema**, chưa phơi ra
-  đường nào. Ghim một phiên để nó nổi lên đầu `memory_context`.
-- [ ] **⑥ Transport HTTP** — engram có `serve :7437`, zemory chỉ stdio. Chặn đúng ca agent chạy
-  trong Docker/máy ảo không spawn được tiến trình host.
+- [~] **① "Memory Protocol" cài cùng `setup mcp` — XONG.** Mỗi lần khai một agent giờ làm HAI
+  việc: khai server + ghi khối lời dặn *khi nào gọi trí nhớ* vào file chỉ dẫn thường trực
+  (Cursor `.cursor/rules/zemory-memory.mdc` có `alwaysApply` · Windsurf `global_rules.md` ·
+  Gemini + Antigravity `~/.gemini/GEMINI.md` · Qwen `QWEN.md` · Kiro steering). Khối có
+  **marker hai đầu** nên chạy lại là THAY đúng khối cũ, không đẻ bản thứ hai, và không đụng
+  chữ user viết. `--no-protocol` để bỏ vế sau.
+  - **Claude Code / Desktop cố ý KHÔNG chèn**: `AGENTS.md`/`CLAUDE.md` là tài sản harness của
+    project (gate đếm dòng nó), và lời dặn đã nằm trong **mô tả tool** từ `2026-08-02c`.
+  - Marker mở-mà-không-đóng ⇒ **DỪNG, không đoán chỗ kết thúc** (đó là văn bản của user).
+- [~] **② Xung đột ở TẦNG TRÍ NHỚ → `memory_conflicts` — XONG, nhưng KHÁC engram có chủ đích.**
+  engram `mem_judge`/`mem_compare` **GHI phán quyết vào kho**; zemory **chỉ ghép CẶP NGHI NGỜ**
+  (cùng chủ đề · có dấu hiệu quyết định · cách xa nhau về thời gian) rồi giao agent phán —
+  đúng thứ tự điều 6 ①script → ②agent liên kết, và không ghi verdict vào lớp dẫn xuất (điều 3).
+  Kết quả nói thẳng `CANDIDATES ONLY — zemory did not judge these`.
+- [~] **③ `project_merge` — XONG.** Tự tìm nhóm bị tách theo `normalizeRoot` (hoa/thường ·
+  gạch cuối · dấu phân cách), **mặc định DRY RUN** in bảng, `apply=true` mới ghi. Không xoá
+  dòng nào — chỉ trỏ lại `project_root`, `cwd` gốc giữ nguyên để truy ngược.
+- [~] **④ `memory_doctor` qua MCP — XONG.** Bọc `gatherStatus()` + chạy `runCheck` THẬT cho
+  từng capability (probe engine, không đọc công tắc), trả kèm danh sách `failing`.
+- [~] **⑤ `session_pin` — XONG.** Cột RIÊNG `sessions.pinned` (**schema v20**), KHÔNG mượn
+  `project_pinned` (cột đó chịu lực cho upsert của scan). Phiên ghim lấy bằng truy vấn riêng
+  nên **không tuột khỏi cửa sổ 400 dòng** dù rất cũ — đúng ca ghim sinh ra để trị; hiện dấu 📌.
+  *(engram không có pin — đo trên `DOCS.md`.)*
+- [~] **⑥ Transport HTTP — XONG.** `zemory mcp --http [--port N]`, mặc định **4445**, cùng bộ
+  tool với stdio (có gate parity). Guard loopback + `Sec-Fetch-Site` dùng CHUNG một bản với
+  daemon UI (`util/loopback.ts`).
+  - **GIỚI HẠN nói thẳng:** bind loopback nên container Docker mặc định **KHÔNG** với tới —
+    phải `--network host` hoặc map cổng. Bind ra ngoài loopback là mở kho nhớ ra mạng (điều 7),
+    không làm mặc định.
 
 - [ ] **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
   `codex` (cấu hình **TOML**, cần bộ ghi riêng) · `opencode` (khoá `mcp`, khuôn entry `type: local`)
@@ -220,7 +213,6 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 ## 🧹 Từ đợt P2/P3 + Graph Engineering — còn mở
 - [ ] **Edge id chưa ai TIÊU THỤ.** Mới có phía phát (payload `/code-graph`). Bước sau: cho agent dẫn `edge:<id>` trong khẳng định, rồi thêm phép đo "cạnh được dẫn có thật không" (metric *cited-edge validity*).
 - [ ] Đã đối chiếu bản "Graph Engineering" (user gửi 2026-07-27) với graph mình. **Khoảng trống lớn nhất còn lại: KHÔNG có phía WRITE** — worker đọc được graph nhưng không publish phát hiện ngược lại kèm `run_id`/provenance; và **không có lớp công việc** (không node `AgentRun`/`Claim`/`Evaluation`). Chấm theo thước của tài liệu, zemory đạt *artifact · source · graph path*, thiếu *objective · plan · evaluator decision · execution record*. **KHOAN xây** — chính tài liệu cảnh báo "đừng thêm knowledge graph chỉ vì hệ có agent"; graph hiện đang kiếm đủ tiền nuôi thân ở vai cấu trúc + định tuyến.
-- [ ] **`04_SKILLS` phình 92 → 203 dòng** (+121%) — file tự khai guardrail "KHÔNG BAO GIỜ phình". Thêm skill nữa thì phải tách sang `external/skills/`.
 
 **🚫 ĐÃ LOẠI — false-positive (giữ lại để phiên sau khỏi báo lại)**
 `/set-` "404" = chuỗi động `'/set-'+nm` · `data-act="recall"`/`sysrecheck` "không handler" = có, qua `closest('[data-act=…]')` · `share/share.key` committed = **KHÔNG còn là false-positive** — repo hoá PUBLIC nên giả định "keep repo private" mà quyết định đó dựa vào đã sai; chìa đã xoay + gỡ khỏi git 2026-07-29 · `/cockpit` "gãy" = không gãy (lúc đo daemon đang tắt) · `/nav-cost` `/gate-acquire` `/gate-release` `/sync` `/migrate` "dead" = CLI/surface khác dùng.
@@ -229,11 +221,11 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > Toàn bộ diễn biến UI refactor (VÒNG 1–11, plan 15, 5 quyết định) đã XONG và dời sang `archive/05_TODO.md` + `06_CHANGES`. Dưới đây chỉ còn thứ chưa chốt.
 
 **CÒN TREO từ đợt UI refactor:**
-- [ ] **user duyệt mắt bản 5 màn** → OK thì ghi `06_CHANGES` + commit (4 file: `app.html` · `app.js` · `app.css` · docs).
 - [ ] **`/session-raw` (đọc transcript gốc) — CHƯA làm, chờ user quyết**: chỉ bù được **4,18%** tin bị clip + khối `thinking` bị bỏ lúc ingest; và với session **sync từ máy khác thì file không có ở máy này** (`ingest_state` toàn đường `C:\Users\Zyro\...`) ⇒ phải fail-open về DB. ROI thấp, nêu ra để user chốt chứ không tự làm.
 - [ ] `adapters` — slot chính thức trong `03` hay domain-internal (allowlist).
-- [ ] **model-routing theo task** — idea-only, ĐỤNG điều 6, chờ chốt hướng (KHÔNG tự mở điều 6).
-- [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · tách `app.js` sâu theo concern (khi `cockpit.html` nghỉ hưu) · Start Menu icon = **user sign-out/in** (file đã đúng).
+- [ ] **model-routing theo task** — idea-only. *(Soát 2026-08-02: tiền đề cũ "ĐỤNG điều 6, KHÔNG tự mở" đã HẾT HIỆU LỰC — điều 6 nới sang "HẠN CHẾ gọi LLM" ngày `2026-08-02b`. Nay không còn bị chặn thẳng, nhưng phải qua thứ tự ①script → ②agent liên kết → ③model + ích lợi đo được + user chốt.)*
+- [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · Start Menu icon = **user sign-out/in** (file đã đúng).
+- [ ] **Tách `app.js` theo concern — HẾT bị chặn.** Điều kiện cũ ("khi `cockpit.html` nghỉ hưu") **đã tới**: `frontend/pages/` giờ chỉ còn `app.html` (44 KB), `frontend/scripts/` chỉ còn **`app.js` 196 KB một file**. Chưa làm, không còn lý do hoãn.
 
 **🔥 VIỆC KẾ TIẾP:**
 - [~] **(user giao 2026-07-16) SasinFlow — UI 1 file HTML quá bự — ĐÃ KHẢO SÁT + CÓ PHƯƠNG ÁN, CHỜ USER DUYỆT ĐỂ TÁCH CODE (làm BÊN repo SasinFlow):** survey xong (07-16/18): `frontend/index.html` = **5.150 dòng** (JS ~4.020/307 func = 78% · 127 `onclick=` inline · CSS ~680 · HTML ~430). Phình vì **JS logic**, KHÔNG phải ảnh (0 base64, 1 SVG inline, 2 CSS url). **Assets đã ĐÚNG CHỖ, không cần fix:** logo UI → `frontend/assets/logo.png` · icon .exe (`sasin.ico`, `.spec` đọc) + icon tray/desktop (`sasin_icon.png`, `desktop.py` pystray) → `backend/resources/packaging/`. Hạ tầng sẵn sàng tách (FastAPI `StaticFiles` mount + `.spec` bundle nguyên folder → KHÔNG ràng buộc single-file). **Phương án 4 bước:** CSS ra `styles/` → cắt JS thành nhiều `<script src>` GIỮ global scope → gỡ inline `onclick=` → nâng ES module. Convention **"UI no-build"** + phân biệt 3-vai-trò-icon đã vào `03_STRUCTURE §5` (2026-07-18). **CÒN LẠI: user gật → tách code (repo SasinFlow, KHÔNG phải ở đây; cross-project).**
@@ -272,20 +264,17 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 ## 🧠 Kho skill vendored — còn mở
 - [ ] **`ui-ux-pro-max` mới VENDOR + INDEX, chưa có ca ÁP DỤNG thật nào** — chưa dùng nó thiết kế/nắn UI nào của zemory.
 - [ ] **Cấu trúc `external/skills/` — user để ngỏ:** giữ 1 tầng `skills/` (kho enumerate được) hay **phẳng** `external/<repo>/` (đúng luật "đừng tạo cấu trúc chưa có nhu cầu" vì hiện `external/` chỉ có skill). Đổi = 1 lệnh `mv` + 3 dòng docs.
-- [ ] **`.claude/skills/` wrapper** (bản gọi-được cho Claude Code) — user: "backup phụ, có hay không cũng được". Chưa làm.
 - [ ] **Lệnh `zemory skill add <repo-url>`** (clone vào kho đúng khuôn) — ý tưởng nêu ra, chưa quyết.
 - [ ] **Skill chung vs riêng 2 tầng** (mục ở §Ưu tiên kế tiếp) — mô hình vendored đã trả lời phần lớn; cần rà lại mục đó xem còn gì.
 
 ## Quyết định mở / cần chốt
 - [ ] **`01_CONSTITUTION`: KHÔNG gộp §Mục đích với §Điều khoản (user hỏi, agent trả lời 2026-07-26 — chờ user xác nhận đóng).** Đã đo: riêng zemory có **45 cạnh `references` trỏ vào `hp:N`**, cộng SasinHarvest 14 + SasinFlow 11 ⇒ **~70 trích dẫn "điều N" xuyên docs**. Gộp = đánh số lại = **hỏng cả 70 trích dẫn**, và `06_CHANGES` cấm sửa entry lịch sử nên không vá ngược được. Hai mục cũng khác BẢN CHẤT: §Mục đích định nghĩa zemory LÀ GÌ (+ phi-mục-tiêu), §Điều khoản là luật ĐÁNH SỐ được trích dẫn khắp nơi. **Nỗi lo "gộp sợ tràn/bể UI" không được giải bằng việc gộp** — độ dài file y nguyên; thứ thật sự trị là lớp graph vừa dựng (điều N thành node, có legend + bộ lọc + bấm nhảy) thay cho việc cuộn một file dài. *(Bẫy parse hai-list-đánh-số đã trị bằng cắt đúng section — không phải lý do để gộp.)*
-- [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** ĐỤNG THẲNG **điều 6 hiến pháp** ("zemory KHÔNG BAO GIỜ tự gọi LLM / không proxy model API" — trí tuệ là agent lái terminal, zemory chỉ là bộ nhớ + kỷ luật). Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
+- [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** *(Soát 2026-08-02 — tiền đề đã đổi: điều 6 nay là "**HẠN CHẾ** gọi LLM" (`2026-08-02b`), KHÔNG còn "KHÔNG BAO GIỜ". Vế **không proxy model API** thì GIỮ NGUYÊN, mà model-routing đúng là chạm vế đó ⇒ vẫn cần user chốt, nhưng lý do chặn hẹp hơn trước.)* Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
 - [ ] **(Graph — plan 13 §8) Loại lỗi nào build TRƯỚC?** Đã trình 8 loại; user CHƯA chọn. Ba nhóm: (a) link gãy + orphan (docs, rẻ, làm ngay được) · (b) **blast-radius** "sửa X đụng ai" (cần đọc import code) · (c) traceability "requirement nào chưa có test". Prototype 2026-07-18 đã chứng minh (b) chạy được: code-graph 55 module/154 import, tìm ra **orphan thật `core/index.ts`** (barrel 0 ai import), fan-in `memory/db.ts`=18.
 - [ ] **(Graph) Độ mịn + overlay:** v1 dừng ở file hay kéo tới hàm (AST)? overlay "semantic neighbor" (từ vector sẵn) làm v1 hay phase 2? *(đề xuất: v1 không AST, chỉ cạnh khai báo)*
 - [ ] **(plan 14 §7) Chưa chốt:** tray bằng gì trên Node · write-gate phủ lệnh nào trước · autostart per-OS làm sao · graph cache để trong DB hay file JSON · chu kỳ auto-sync.
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 
-## Việc cần xác minh thực tế
-- [ ] **`##` heading của doc plan bị parse thành changelog entry (`date=NULL`).** Đo 2026-07-29: `PBI_SasinFlow_Maintain` có 6 entry `date=NULL` mà body là **bảng SQL của `plan/01_legacy_topology.md`** — ai đó trỏ `importChangelog` vào file không phải changelog, và `parseChangelog` nhận mọi `##` nên nuốt sạch. Root còn sống nên đợt dọn `2026-07-29d` không đụng. **Cần chốt:** `parseChangelog` bỏ qua entry không có `[ngày]`, hay `importChangelog` từ chối file thiếu header `# Change Log`? (Cân nhắc: entry hợp lệ ghi ngày trong title kiểu `## 2026-07-16 — …` cũng ra `date=NULL` — cấm thẳng sẽ mất chúng.)
 ## Phase 2 — Năng lực nặng
 - [ ] **Code map AST + adapter host mới** (Gemini/Antigravity · Cursor · Hermes) — chỉ làm sau khi có fixture dữ liệu THẬT. Gồm luôn: hash incremental + import graph/blast-radius, fallback keyword khi parser thiếu. *(gộp 3 mục trùng nhau 2026-07-28)*
 - [ ] **Memory promotion (episodic → curated learned-rule) — Ý TƯỞNG rõ (2026-07-18):** episodic memory đã bắt HẾT correction/decision qua các phiên → **nguyên liệu thô đã sẵn trong zemory**. THIẾU cái CẦU: zemory tự **phát hiện correction/decision LẶP LẠI** trong episodic → **ĐỀ XUẤT** nâng thành **memory-luật bền** (constitution/rules/1 memory doc) — **có review, user duyệt, KHÔNG auto-summary thành nguồn thứ hai** (điều 3). Cơ chế hình dung: quét episodic tìm pattern lặp (theme/correction) → xếp hạng theo tần suất → trình user *"correction X lặp N lần, nâng thành rule?"* → user gật mới ghi. Hiện đang để Claude-Code `memory/` gánh TAY. **Đây là "gap thật" duy nhất so với harness pattern 3-trụ** (trụ ② memory); trụ ③ (subagent/critic) zemory CỐ TÌNH bỏ (điều 6 — agent tự orchestrate, Claude auto-spawn subagent rồi).

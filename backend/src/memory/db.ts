@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   source        TEXT NOT NULL,      -- agent name, e.g. 'claude-code'
   project_root  TEXT,               -- grouping folder (defaults to cwd; user 'merge' may repoint it)
   project_pinned INTEGER NOT NULL DEFAULT 0, -- 1 = project_root set by a user merge → re-scan must NOT overwrite it (cwd still holds the original folder)
+  pinned        INTEGER NOT NULL DEFAULT 0, -- 1 = user pinned THIS session: float it to the top of memory_context. Deliberately NOT project_pinned, which is load-bearing for re-scan (v20)
   cwd           TEXT,
   title         TEXT,
   host          TEXT,               -- machine that ingested it (os.hostname()); null/'unknown' = pre-v4
@@ -610,6 +611,17 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // được. Chuyển chúng sang bảng mới là viết lại dữ liệu NGUỒN chỉ để gọn gàng hơn,
     // không đáng (điều 3). Bảng mới nhận đính kèm TỪ ĐÂY VỀ SAU.
     version = 19;
+  }
+  if (version < 20) {
+    // v20 thêm `sessions.pinned` — ghim MỘT PHIÊN để nó nổi lên đầu `memory_context`.
+    // CỘT RIÊNG, cố ý không mượn `project_pinned`: cột đó đang gánh nghĩa khác và chịu
+    // lực ("project_root do user gộp tay ⇒ scan sau CẤM ghi đè", dùng trong upsert của
+    // ingest). Mượn nó thì ghim một phiên = khoá luôn đường cập nhật project_root của
+    // phiên đó — một lỗi âm thầm, không ai thấy cho tới lúc scan không cập nhật nữa.
+    if (!hasColumn(db, "sessions", "pinned")) {
+      db.exec("ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
+    }
+    version = 20;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
