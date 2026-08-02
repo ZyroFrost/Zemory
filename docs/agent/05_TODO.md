@@ -163,49 +163,10 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > 🖥️ "chỉ khi có zemory CLI"**. Bộ cowork còn SỬA một lỗi của template gốc: `audit` bỏ 3 mặt app-only
 > (`npm run check` · FE↔BE · `integrity_check`) vốn không áp được cho non-app.
 
-## 🔌 Đối chiếu engram — CẢ 6 VIỆC ĐÃ XONG (ghi `06_CHANGES [2026-08-02f]`); còn phần dưới
-> **Số nền đo trên BINARY THẬT** (engram v1.20.0, chạy `engram mcp` trong sandbox 2026-08-02):
-> engram **22 tool** · zemory **8 → 12**. *(Lưu ý cho phiên sau: `DOCS.md` của engram liệt kê
-> thiếu 2 tool — đọc tài liệu của họ KHÔNG thay được việc chạy binary.)* zemory cố tình không
-> lấy nhóm tool GHI (`mem_save`/`update`/`delete`/`session_*`/`capture_passive`/
-> `suggest_topic_key`/`review`): trí nhớ engram do agent tự viết, còn zemory nạp transcript tự
-> động + lấy file docs làm nguồn ⇒ thêm đường ghi cho agent là mở đường ghi thứ hai vào lớp
-> dẫn xuất, phạm điều 3.
-> ⚠ Mọi mục ở đây chỉ áp cho hệ **app + non-app**. **Cowork KHÔNG dùng được MCP** — nó chạy
-> trong máy ảo riêng, không với tới `zemory` trên máy thật (`BOOTSTRAP §Bối cảnh`).
-
-- [~] **① "Memory Protocol" cài cùng `setup mcp` — XONG.** Mỗi lần khai một agent giờ làm HAI
-  việc: khai server + ghi khối lời dặn *khi nào gọi trí nhớ* vào file chỉ dẫn thường trực
-  (Cursor `.cursor/rules/zemory-memory.mdc` có `alwaysApply` · Windsurf `global_rules.md` ·
-  Gemini + Antigravity `~/.gemini/GEMINI.md` · Qwen `QWEN.md` · Kiro steering). Khối có
-  **marker hai đầu** nên chạy lại là THAY đúng khối cũ, không đẻ bản thứ hai, và không đụng
-  chữ user viết. `--no-protocol` để bỏ vế sau.
-  - **Claude Code / Desktop cố ý KHÔNG chèn**: `AGENTS.md`/`CLAUDE.md` là tài sản harness của
-    project (gate đếm dòng nó), và lời dặn đã nằm trong **mô tả tool** từ `2026-08-02c`.
-  - Marker mở-mà-không-đóng ⇒ **DỪNG, không đoán chỗ kết thúc** (đó là văn bản của user).
-- [~] **② Xung đột ở TẦNG TRÍ NHỚ → `memory_conflicts` — XONG, nhưng KHÁC engram có chủ đích.**
-  engram `mem_judge`/`mem_compare` **GHI phán quyết vào kho**; zemory **chỉ ghép CẶP NGHI NGỜ**
-  (cùng chủ đề · có dấu hiệu quyết định · cách xa nhau về thời gian) rồi giao agent phán —
-  đúng thứ tự điều 6 ①script → ②agent liên kết, và không ghi verdict vào lớp dẫn xuất (điều 3).
-  Kết quả nói thẳng `CANDIDATES ONLY — zemory did not judge these`.
-- [~] **③ `project_merge` — XONG.** Tự tìm nhóm bị tách theo `normalizeRoot` (hoa/thường ·
-  gạch cuối · dấu phân cách), **mặc định DRY RUN** in bảng, `apply=true` mới ghi. Không xoá
-  dòng nào — chỉ trỏ lại `project_root`, `cwd` gốc giữ nguyên để truy ngược.
-  *(So đo: `mem_merge_projects` của engram **bắt buộc `from`,`to`** — người gọi phải tự biết
-  hai tên bị tách, và không có bước in bảng trước khi làm.)*
-- [~] **④ `memory_doctor` qua MCP — XONG.** Bọc `gatherStatus()` + chạy `runCheck` THẬT cho
-  từng capability (probe engine, không đọc công tắc), trả kèm danh sách `failing`.
-- [~] **⑤ `session_pin` — XONG.** Cột RIÊNG `sessions.pinned` (**schema v20**), KHÔNG mượn
-  `project_pinned` (cột đó chịu lực cho upsert của scan). Phiên ghim lấy bằng truy vấn riêng
-  nên **không tuột khỏi cửa sổ 400 dòng** dù rất cũ — đúng ca ghim sinh ra để trị; hiện dấu 📌.
-  *(engram CÓ `mem_pin`/`mem_unpin` — đo trên binary; câu "họ không có pin" tôi ghi lúc trưa là
-  sai vì đọc `DOCS.md` thay vì chạy thật.)*
-- [~] **⑥ Transport HTTP — XONG.** `zemory mcp --http [--port N]`, mặc định **4445**, cùng bộ
-  tool với stdio (có gate parity). Guard loopback + `Sec-Fetch-Site` dùng CHUNG một bản với
-  daemon UI (`util/loopback.ts`).
-  - **GIỚI HẠN nói thẳng:** bind loopback nên container Docker mặc định **KHÔNG** với tới —
-    phải `--network host` hoặc map cổng. Bind ra ngoài loopback là mở kho nhớ ra mạng (điều 7),
-    không làm mặc định.
+## 🔌 Đối chiếu engram — 6 việc ĐÃ XONG + ghi sổ (`06_CHANGES [2026-08-02f]`/`[g]`, chi tiết ở đó); còn:
+> Số nền đo trên BINARY THẬT (engram v1.20.0): engram **22 tool** · zemory **12**. `DOCS.md`
+> của họ liệt kê thiếu 2 tool — đọc tài liệu KHÔNG thay được chạy binary. Cowork vẫn ngoài
+> phạm vi MCP (máy ảo riêng).
 
 - [ ] **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
   `codex` (cấu hình **TOML**) · `opencode` (khuôn entry khác) · `pi` (nối bằng plugin package).
@@ -214,6 +175,74 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   hồi sau nén · `opencode` → `~/.config/opencode/opencode.json` + plugin `engram.ts` **21 KB**
   · `pi` → cài npm `gentle-engram`, cần `pi` trong PATH (thiếu thì lệnh của họ cũng lỗi).
   ⇒ khoảng cách là THẬT, không phải giới hạn của ngành. Rẻ nhất là `codex` (chỉ cần bộ ghi TOML).
+
+## 🧷 Context-guard + realtime capture (user chốt 2026-08-02, Fable ghi spec — ĐỔI MODEL rồi BUILD)
+> Gốc: đối chiếu "compaction recovery" của engram. **Session-lifecycle KHÔNG làm** (đã có tốt
+> hơn, tự động: sessions từ transcript + digest 100%). "Nén từng đoạn hội thoại": digest
+> per-phiên ĐÃ CÓ (plan 06, 2026-07-02); compression đúng nghĩa đã BỎ 2026-06-25 (attic/).
+> Số đo nền (2026-08-02): usage nằm sẵn trong transcript (`cache_read+cache_create+input` —
+> phiên thật đo 439k) · scan incremental cả kho: **7,2s** có tin mới · **1,8s** no-op ·
+> **~125s khi embed nền chạy** (tranh CPU + write-gate — hook sẽ timeout, scheduler lượm lại).
+
+- [ ] **① Hook `context-guard` (UserPromptSubmit, Claude Code) — GỘP cảnh báo + lưu (ý user).**
+  Đọc `usage` tin cuối transcript phiên hiện tại → % cửa sổ (200k/1M theo model id). Dưới
+  ngưỡng ⇒ **im lặng tuyệt đối**. Chạm ngưỡng (mặc định **95%**, config được) ⇒ MỘT phát làm
+  cả hai: ingest ngay ĐÚNG file transcript này (đường scan-1-file mới, xem ③) + in 1 dòng:
+  *"⚠ context ~95% — phiên đã lưu FULL vào GM. Chốt việc dở/ghi sổ trước khi bị nén; sau nén
+  gọi `memory_context`."* Chống spam: **1 lần/phiên** (cờ marker). Verify lúc build: kênh
+  hiển thị hook output tới user; công thức % có sai số cache/model.
+- [ ] **② Lưới sau nén:** `PreCompact` → scan lần cuối ngay trước nén (đỡ ca compact ập tới
+  không qua ngưỡng) · `SessionStart(matcher: compact)` → thẻ phục hồi 1-LẦN (`recallCard` +
+  câu "vừa bị nén — kho còn nguyên, tra lại trước khi làm tiếp"). Handler session-start ĐÃ CÓ
+  SẴN trong `capture-hook.ts` (opt-in chưa cài) — chỉ thiếu khai matcher. Đây là auto-inject
+  đầu tiên của hệ: 1 thẻ nhỏ, đúng 1 lần, đúng sự kiện mất trí nhớ — user đã chốt; ghi
+  changelog như diễn giải điều 8 (điều 8 cấm *broad memory mỗi prompt*, không cấm thẻ này).
+- [ ] **③ Realtime capture mỗi turn (ý user: "như chat realtime") — CÔNG TẮC bật/tắt.**
+  Cơ chế Stop hook ĐÃ TỒN TẠI (`zemory hook install` → Stop → `scan()`), chưa cài máy nào.
+  Việc thật khi build: (a) **scan đúng 1 file** từ `transcript_path` trong payload thay vì cả
+  kho (1,8–7s → mục tiêu <1s; comment "fast, incremental" trong `capture-hook.ts` đang nói
+  quá so với số đo); (b) công tắc `data-auto` trong pane ⚡ Tự động (khuôn `getScanWeb` sẵn);
+  (c) digest regen theo (scan chạm phiên là tự cập nhật — có sẵn).
+  **Sync KHÔNG per-message** (đã can user, chờ xác nhận): mỗi turn 1 delta lên Drive = spam
+  file + compact quay vòng (DRIVE_COMPACT_AT=12); ingest realtime + autosync debounce sẵn có
+  là đúng nhịp. Muốn sát hơn thì hạ chu kỳ autosync, không đổi kiến trúc.
+- [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
+  `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
+  lại TRƯỚC khi làm tiếp, đừng đoán từ bản tóm tắt."* Cursor/Windsurf/Qwen chỉ nhận mảnh này;
+  Cowork ngoài phạm vi.
+
+## 🔬 Audit toàn diện 2026-08-02 (Fable, 6 mặt) — 4 finding mới, xếp theo độ đau
+> Gate 462/462 · conform ✓ · integrity ok · schema v20 trên DB thật · 0 mồ côi (3 phép đo) ·
+> digest 100% · neo test sống 100% · endpoint parity sạch · 15/15 endpoint sống 200.
+> Nghi vấn ĐÃ LOẠI (ghi để khỏi đào lại): "daemon crash tái hiện khi audit" — SAI, daemon chết
+> vì lệnh đo của tôi (`| Select-Object -First 5` giết native command khi pipeline đủ N object);
+> chạy detached thì 15/15 xanh. Hộp đen đúng: không có dòng exit vì bị kill cứng. Con bug
+> exit-1 thật (07-21) vẫn CHƯA tái hiện. · "134 export mồ côi" — 133 là interface/type (bề mặt
+> kiểu công khai) hoặc dùng nội bộ; chết thật chỉ `resolveDocPath` (đã biết, cố ý giữ).
+
+- [ ] **F6 — search hybrid+rerank chạy IN-PROCESS trong daemon, nuốt event loop (đau nhất).**
+  Đo sống 2026-08-02: máy RẢNH search vẫn **25,5 s** (rerank bật, model ấm — CLI chỉ 9,9 s);
+  trong lúc scheduler embed backlog chạy thì **MỌI endpoint ~48 s**, kể cả `/memory-status`
+  vốn **4 ms** (kiểm chéo: tắt embed con ⇒ status về 4 ms). Bài học 07-21 *"việc nặng không
+  được lên event loop của daemon"* đã áp cho scan/embed/digest (tiến trình con) nhưng **chưa
+  áp cho search** — một người bấm Tìm là cả UI đứng. Hướng: đẩy search/rerank ra worker/child,
+  hoặc tối thiểu trả 202+poll. Cần user chốt hướng.
+- [ ] **F5 — DB thật còn 23 nhóm project TÁCH TÊN** (mỗi nhóm 2 biến thể: `D:\` vs `d:\`…, cả
+  `d:\zyro\tool\zemory`). Công cụ trị đã có (`project_merge`), dry-run đã thấy đủ — **chạy
+  `apply=true` cần user gật** (mutation, đúng thiết kế).
+- [ ] **F1 — `memory_doctor` HỨA probe vector/rerank nhưng KHÔNG probe** (bug tôi tạo
+  2026-08-02f): mô tả viết *"vector/rerank engines are loaded, not just read off a config
+  flag"*, nhưng nó lặp `gatherStatus().features` = `listFeatures()` chỉ có 3 key
+  (memory/validate/grill) — `runCheck` CÓ nhánh vector/rerank mà không ai đưa vào vòng.
+  Đo sống: tool trả đúng 3 feature. Sửa rẻ: probe thêm `vector`+`rerank` trong dispatcher
+  (đừng đổi `listFeatures` — UI Home đang đếm theo nó). Kèm test parity mô-tả↔dispatcher.
+- [ ] **F4 — NGUỒN TRÙNG: 5 bản "so path" đã lệch nhau.** `projects.ts::key` ·
+  `mergeprojects.ts::key` · `search.ts::norm` · `recall.ts::norm` · `graph-memory.ts::norm` —
+  search/recall đổi `/`→`\` KHÔNG strip gạch cuối; graph-memory đổi ngược `\`→`/`; hai `key()`
+  resolve+strip. `D:\X\` khớp qua `key()` nhưng trượt qua `norm()` của recall. Gom về MỘT hàm
+  cạnh `normalizeRoot` (`core/config`), 5 chỗ gọi chung.
+- [ ] Nợ đo lại: vector backlog ~4.6k (embed con bị tôi tắt lúc chẩn đoán — scheduler tự chạy
+  lại trong 10') · entry `2026-08-02` 44 dòng > trần 30 (advisory validate, entry đã chốt).
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
