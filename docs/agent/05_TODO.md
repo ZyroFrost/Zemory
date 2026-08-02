@@ -240,6 +240,21 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   Cowork ngoài phạm vi.
 </details>
 
+## 🔬 Audit 2026-08-03 (6 mặt) — 3 lỗ đã sửa tại chỗ, còn 2 việc CHỜ USER
+> Chi tiết + số đo: `06_CHANGES [2026-08-03]`. Sạch: gate 481 · conform · integrity ok ·
+> 0 mồ côi · digest 100% · 0 project tách tên · 44/44 neo test sống.
+
+- [ ] **Công tắc `rerank` của MÁY nên TẮT — chờ user chốt.** `data/config.json` đang để
+  `"rerank": true`, nhưng số đo mới nhất: rerank **29,4s** vs hybrid **746ms** (40×), trong
+  khi corpus gate có nhãn cho **rerank 8/8 = hybrid 8/8** — tức trả 40× cho 0 lợi ích ĐO
+  ĐƯỢC. `HP điều 12` vốn cấm bật mặc định một lớp chưa thắng net; máy này đang bật ngược lại.
+  Đường agent (MCP) đã tự miễn nhiễm (không đọc công tắc nữa), nhưng **CLI và nút Tìm sâu của
+  UI vẫn ăn theo nó**. Đổi = 1 lệnh `zemory` hoặc bấm chip Rerank; KHÔNG tự làm — đây là
+  config của user.
+- [ ] **Rerank chỉ nên rescore top-N nhỏ hơn?** Chưa đo: hiện `RERANK_POOL` cross-encode 40
+  ứng viên. Nếu hạ xuống 10 mà chất lượng không đổi thì rerank rẻ đi ~4×, đáng đo trước khi
+  bỏ hẳn lớp này.
+
 ## 🔬 Audit toàn diện 2026-08-02 (Fable, 6 mặt) — F1/F4 ĐÃ SỬA `[2026-08-02h]`, còn F5/F6
 > Gate 462/462 · conform ✓ · integrity ok · schema v20 trên DB thật · 0 mồ côi (3 phép đo) ·
 > digest 100% · neo test sống 100% · endpoint parity sạch · 15/15 endpoint sống 200.

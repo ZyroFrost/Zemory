@@ -1818,6 +1818,18 @@ export async function startUi(): Promise<void> {
     // attic/frontend-cockpit/, route /cockpit gỡ bỏ. Nó từng là đường lui trong lúc
     // chuyển đổi, nhưng giữ lâu thành nợ: cả bộ test UI vẫn neo vào nó nên UI thật
     // chạy nhiều vòng mà không có gate nào (nay là backend/test/app-ui.test.mjs).
+    // Đường LẠ mà trông như API thì phải 404, KHÔNG rơi vào vỏ app.
+    //
+    // Trước đây mọi path không khớp đều trả 200 + HTML. Hệ quả đo được trong audit
+    // 2026-08-02: phép quét bề mặt sống của tôi gọi `/scope-tree` (endpoint KHÔNG tồn tại —
+    // dữ liệu đó nằm trong `/memory-status`) và nhận **200**, nên bảng kết quả báo "TẤT CẢ
+    // 200" trong khi một mục là hư không. Client cũng chịu chung: gõ sai một chữ trong tên
+    // endpoint thì nhận HTML rồi vỡ ở `JSON.parse`, với thông báo chẳng liên quan gì.
+    // Chỉ hai đường được nhận vỏ app: `/` và `/app` — phần còn lại là thật hoặc là 404.
+    if (p !== "/" && p !== "/app") {
+      res.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+      return res.end(JSON.stringify({ error: "not found", path: p }));
+    }
     // no-store: vỏ đọc thẳng từ đĩa mỗi request; thiếu nó thì cửa sổ WebView2 có thể
     // hiện trang cũ đã cache sau khi sửa + khởi động lại.
     res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });

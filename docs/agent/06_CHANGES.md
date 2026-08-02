@@ -5,6 +5,35 @@
 
 ---
 
+## [2026-08-03] — Audit 6 mặt: 3 lỗ THẬT, đau nhất là agent trả 30s mỗi lần tìm
+
+- **`memory_search` qua MCP tốn 27–34s MỖI LẦN** — đợt trước tôi sửa đường UI mà **bỏ sót
+  đường agent**, vốn là đường bị gọi nhiều nhất. Đo trong tiến trình đã ấm (kho 198.334 tin):
+  **FTS 172ms · hybrid 746ms · hybrid+rerank 29.420ms** ⇒ thủ phạm là **rerank, không phải
+  hybrid** (40×). Nay mặc định hybrid-không-rerank, `deep=true` mới thêm rerank: đo lại
+  **0,9–1,05s** (lần đầu 9,7s vì nạp model). Mô tả tool nói thẳng cái GIÁ và rằng rerank
+  **chưa từng thắng hybrid** trên corpus có nhãn của repo (8/8 = 8/8) — để agent khỏi bật bừa.
+- **Daemon trả 200 + HTML cho MỌI đường lạ.** Bắt được bằng chính phép quét của mình: nó gọi
+  `/scope-tree` (KHÔNG tồn tại — dữ liệu nằm trong `/memory-status`) và nhận 200, nên bảng
+  kết quả báo "TẤT CẢ 200" trong khi một mục là hư không. Client gõ sai tên endpoint cũng
+  nhận HTML rồi vỡ ở `JSON.parse`. Nay chỉ `/` và `/app` được vỏ app, còn lại **404 JSON**.
+  *(Phép quét cũng đã sửa: thêm vế "đường lạ PHẢI 404" — "tất cả 200" mà không kiểm vế này
+  thì không chứng minh được gì.)*
+- **Hai danh sách móc có thể lệch nhau mà không ai biết:** `ZEMORY_HOOKS` (khai vào settings
+  của host) và bộ sự kiện `cmdHook` chấp nhận. Lệch một cái ⇒ host gọi, CLI in `usage:` ⇒
+  hook hỏng LẶNG, triệu chứng duy nhất là bộ nhớ thiếu tin. Đã chạy thật cả 4 (đều dispatch
+  được) và thêm gate parity.
+- **Sạch ở các mặt còn lại:** gate 481/481 · `conform` ✓ · `integrity_check ok` · schema v20 ·
+  **0 mồ côi** (3 phép đo) · digest **1.272/1.272** · **0 nhóm project tách tên** (sau đợt gộp
+  hôm qua) · 44/44 neo test trỏ file sống · endpoint parity chỉ còn false-positive `'/set-'+x`
+  đã biết · 14 endpoint sống 200 + 3 đường lạ 404.
+- **Nghi vấn đã loại:** "137 export mồ côi" — 136 là type/interface hoặc dùng nội bộ; chết
+  thật vẫn chỉ `resolveDocPath` (cố ý giữ). · "engram có tool đo context" — regex khớp
+  `mem_save` chỉ vì ví dụ trong mô tả có chữ *jsonwebtoken*; đọc từng tool thì engram **không
+  có** tool nào đo context/nén.
+
+Gate 478 → **481** · đột biến: rerank-mặc-định · 404-đường-lạ · parity-móc — **3/3 đỏ**.
+
 ## [2026-08-02i] — Tìm kiếm về lại HAI LỚP (rẻ trước, sâu khi xin) · gộp 23 project bị tách
 
 - **F6 — daemon hết nghẹt.** `/memory-search` gọi thẳng `recall()` = hybrid + rerank cho MỌI

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
@@ -68,6 +68,21 @@ test("mọi tool khai trong danh sách phải có người thực thi — không
     const text = r.content?.[0]?.text ?? "";
     assert.ok(!/^Unknown zemory MCP tool/.test(text), `${t.name} khai mà không có dispatcher`);
   }
+});
+
+test("memory_search KHÔNG rerank theo mặc định — rerank là lối chót, phải xin", () => {
+  // Đo trong tiến trình đã ấm trên kho 198.334 tin: FTS 172ms · hybrid **746ms** ·
+  // hybrid+rerank **29.420ms**. Tool này từng gọi `recall()` nên ăn theo công tắc rerank của
+  // MÁY — đo thật qua MCP: **27–34s MỖI lần tìm**, không chỉ lần đầu. Agent gọi search liên
+  // tục ⇒ đó là thuế khổng lồ, đổi lấy thứ chưa thắng: corpus gate có nhãn cho rerank 8/8 =
+  // hybrid 8/8. Sau khi sửa: **0,9–1,05s**.
+  const src = readFileSync(new URL("../src/tools/index.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  assert.ok(!/\brecall\(/.test(src), "không được gọi recall() — nó thừa hưởng công tắc rerank của máy");
+  assert.match(src, /rerank:\s*Boolean\(args\.deep\)/u, "rerank chỉ bật khi người gọi xin deep");
+  const tool = TOOLS.find((t) => t.name === "memory_search");
+  assert.ok(tool.inputSchema.properties.deep, "phải phơi cờ deep để agent tự chọn");
+  assert.match(tool.description, /last resort/i, "mô tả phải nói rõ deep là lối chót, không phải mặc định tốt hơn");
+  assert.match(tool.description, /slower/i, "mô tả phải nêu cái GIÁ, không thì agent bật bừa");
 });
 
 test("tool ĐỔI DỮ LIỆU phải mặc định KHÔNG đổi gì", () => {
