@@ -28,6 +28,18 @@ test("Claude and Codex hook installers merge safely and are idempotent", (t) => 
   assert.equal(claude.hooks.Stop[0].hooks[0].command, "zemory hook stop");
   assert.equal(codex.hooks.Stop[0].hooks[0].command, "zemory hook stop");
   assert.equal((config.match(/codex_hooks = true/g) ?? []).length, 1);
-  assert.deepEqual(secondClaude.present, ["Stop"]);
+  // 2026-08-02: bộ móc của Claude Code lên 4 (Stop + UserPromptSubmit + PreCompact +
+  // SessionStart) khi realtime capture thành đường nạp chính. Neo test đi theo code —
+  // giữ nguyên TÍNH CHẤT nó canh: cài lần hai không thêm gì, chỉ báo "đã có".
+  assert.deepEqual(
+    [...secondClaude.present].sort(),
+    ["PreCompact", "SessionStart", "Stop", "UserPromptSubmit"],
+    "cài lại phải thấy ĐỦ bộ móc đã có, không thêm bản trùng",
+  );
+  assert.deepEqual(secondClaude.added, [], "lần hai không được thêm móc nào");
+  // Codex chỉ nhận Stop — hệ hook của nó không có mấy sự kiện kia; khai bừa là hứa suông.
   assert.deepEqual(secondCodex.present, ["Stop"]);
+  for (const ev of ["UserPromptSubmit", "PreCompact"]) {
+    assert.ok(!codex.hooks[ev], `Codex không có sự kiện ${ev} — không được khai bừa vào file của nó`);
+  }
 });

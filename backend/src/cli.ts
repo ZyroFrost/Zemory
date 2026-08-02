@@ -5,14 +5,44 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { startUi } from "./ui.js";
-import { runMcpStdio } from "./mcp.js";
-import { runMcpHttp } from "./mcphttp.js";
-import { cmdGraph } from "./commands/graph.js";
-import { cmdMemory } from "./commands/memory.js";
-import { cmdHook } from "./commands/hook.js";
-import { cmdPlan, cmdDocs, cmdChangelog } from "./commands/docs.js";
-import {
+
+const VERSION = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
+) as { version: string };
+
+const [cmd, ...args] = process.argv.slice(2);
+
+// LỐI TẮT cho hook — phải đứng TRƯỚC mọi import khác của CLI.
+//
+// Vì sao: `hook stop` chạy sau MỖI lượt trả lời (capture per-message), mà import tĩnh của
+// ESM được kéo hết trước khi một dòng code chạy — nghĩa là mỗi tin nhắn phải trả tiền nạp
+// cả `ui.ts`, `mcp`, `graph`, `memory`… trong khi hook chỉ cần đúng một module. Đo
+// 2026-08-02: cả CLI ~340ms, việc thật ~70ms. Nạp ĐỘNG đúng thứ cần cắt phần lớn khoản đó.
+// Các lệnh khác giữ nguyên đường cũ bên dưới (đổi hết sang động là refactor rộng hơn việc
+// đang làm, và không lệnh nào khác chạy mỗi tin).
+try {
+  if (cmd === "hook") {
+    const { cmdHook } = await import("./commands/hook.js");
+    await cmdHook(args);
+  } else {
+    await runRest();
+  }
+} catch (error) {
+  // Một chỗ bắt cho MỌI lệnh: lỗi ném ra in một dòng gọn + exit 1, không phải stack
+  // UnhandledRejection thô (vd export sai đường dẫn).
+  console.error(`zemory ${cmd ?? ""}: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+}
+
+async function runRest(): Promise<void> {
+const { startUi } = await import("./ui.js");
+const { runMcpStdio } = await import("./mcp.js");
+const { runMcpHttp } = await import("./mcphttp.js");
+const { cmdGraph } = await import("./commands/graph.js");
+const { cmdMemory } = await import("./commands/memory.js");
+const { cmdHook } = await import("./commands/hook.js");
+const { cmdPlan, cmdDocs, cmdChangelog } = await import("./commands/docs.js");
+const {
   cmdInit,
   cmdMigrate,
   cmdSync,
@@ -24,22 +54,9 @@ import {
   cmdStructure,
   cmdGrill,
   cmdReindex,
-} from "./commands/harness.js";
-import { cmdHelp } from "./commands/help.js";
-
-const VERSION = JSON.parse(
-  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
-) as { version: string };
-
-const [cmd, ...args] = process.argv.slice(2);
-try {
-  await main();
-} catch (error) {
-  // One catch for every command: a thrown Error prints as a clean one-liner and
-  // exit 1, never a raw UnhandledRejection stack (e.g. export with a bad path).
-  console.error(`zemory ${cmd ?? ""}: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
-}
+} = await import("./commands/harness.js");
+const { cmdHelp } = await import("./commands/help.js");
+await main();
 
 async function main(): Promise<void> {
 switch (cmd) {
@@ -119,5 +136,6 @@ switch (cmd) {
     break;
   default:
     cmdHelp();
+}
 }
 }

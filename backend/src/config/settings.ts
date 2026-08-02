@@ -42,6 +42,9 @@ interface ZConfig {
   /** Idle background scheduler (scan → embed → digest) while the daemon runs
    *  (plan 14 §6.B). Default true — this is the "it just keeps itself current" bit. */
   scheduler?: boolean;
+  /** Realtime capture: nạp phiên vào GM sau MỖI lượt trả lời (Stop hook của host).
+   *  Default true — đây là đường nạp CHÍNH; scheduler chỉ còn là lưới bù. */
+  realtime?: boolean;
   /** How DEEP a cross-machine sync carries (plan 08 §7). "lean" = source rows
    *  only (default, ~74% smaller); "full" = whole-DB snapshot incl. derived
    *  layers (disaster-restore copy). */
@@ -133,6 +136,24 @@ export function getAutosync(): boolean {
 export function setAutosyncSetting(on: boolean): void {
   const c = read();
   c.autosync = on;
+  write(c);
+}
+
+/**
+ * Realtime capture — nạp phiên vào GM sau MỖI lượt trả lời (Stop hook), thay vì chờ nhịp nền.
+ *
+ * Mặc định BẬT (user chốt 2026-08-02: *"mỗi 1 mes phải tự đưa lên luôn mới đúng"*). Rẻ hơn
+ * poll chứ không đắt hơn: hook trả chi phí theo CÔNG VIỆC (không tin = 0 chạy, có tin = <1s
+ * cho MỘT file), còn nhịp 10' trả theo THỜI GIAN (6 lần scan/giờ kể cả máy rảnh, 1,8–7s/lần).
+ * Cờ này chỉ là Ý ĐỊNH của user; thứ thực sự làm việc là hook trong settings của host, nên
+ * `setRealtimeSetting` phải kéo theo install/uninstall (xem ui.ts `/set-realtime`).
+ */
+export function getRealtime(): boolean {
+  return read().realtime ?? true;
+}
+export function setRealtimeSetting(on: boolean): void {
+  const c = read();
+  c.realtime = on;
   write(c);
 }
 

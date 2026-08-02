@@ -16,25 +16,100 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { scan } from "./ingest.js";
+import { scan, scanOneFile } from "./ingest.js";
 import { recallCard } from "./recall.js";
+import { readContextUsage } from "./context-guard.js";
+import { currentMemoryDir } from "./db.js";
+import { daemonJobBusyExternal } from "../jobs/writegate.js";
 
-export type HookEventName = "session-start" | "stop" | "session-end";
+export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
+
+/** Ngưỡng cảnh báo context (%). Chạm là chốt sổ + báo MỘT lần cho cả phiên. */
+const WARN_AT_PERCENT = 95;
+
+/**
+ * Nạp phiên đang chạy vào GM. Ưu tiên `transcript_path` của host (đường MỘT file, <1s);
+ * không có thì KHÔNG rơi về quét cả kho — đường per-message mà lặng lẽ quét 1,8–7s (và ~125s
+ * khi embed nền chạy) là đúng thứ làm người ta phải tắt tính năng. Lưới bù sẽ lượm.
+ */
+function ingestCurrent(payload: any): { newMessages: number; ms: number } | null {
+  const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
+  if (!path) return null;
+  // Write-gate bận (embed nền giữ token chuỗi dài) ⇒ BỎ QUA NGAY, không xếp hàng: chờ là
+  // ~125s mỗi lượt trả lời (đo 2026-08-02). Tin không mất — nó nằm trên transcript, lưới bù nạp.
+  if (daemonJobBusyExternal()) return null;
+  const r = scanOneFile(path);
+  return r.ingested ? { newMessages: r.newMessages, ms: r.ms } : null;
+}
+
+/** Cờ "đã cảnh báo phiên này" — cạnh DB, không nằm trong repo (dữ liệu runtime). */
+function warnedFlagPath(sessionId: string): string {
+  return join(currentMemoryDir(), "context-guard", `${sessionId.replace(/[^\w.-]/g, "_")}.warned`);
+}
+
+function alreadyWarned(sessionId: string): boolean {
+  return existsSync(warnedFlagPath(sessionId));
+}
+
+function markWarned(sessionId: string): void {
+  const p = warnedFlagPath(sessionId);
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileAtomic(p, new Date().toISOString());
+}
 
 /** Run a hook handler. Returns text to write to stdout (may be ""). */
 export function handleHook(event: HookEventName, payload: any): string {
   try {
     const cwd: string | undefined = payload?.cwd;
+
+    // SessionStart — chỉ nói khi host báo lý do `compact`. Phiên mới bình thường thì IM:
+    // recall là phán đoán của agent (điều 8), không đẩy memory vào mỗi lần mở phiên.
     if (event === "session-start") {
+      if (payload?.source !== "compact") return "";
       const card = cwd ? recallCard(cwd) : "";
-      if (!card) return "";
-      // Claude Code injects `additionalContext` from a SessionStart hook.
+      const note =
+        "[zemory] Context vừa bị NÉN — phần chi tiết trước đó đã bị tóm tắt, nhưng Global Memory " +
+        "giữ NGUYÊN VẸN cả phiên này. Trước khi làm tiếp: gọi `memory_context` (hoặc " +
+        "`zemory memory search`) để dựng lại trạng thái thật, đừng suy ra từ bản tóm tắt.";
       return JSON.stringify({
-        hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: card },
+        hookSpecificOutput: {
+          hookEventName: "SessionStart",
+          additionalContext: card ? `${note}\n${card}` : note,
+        },
       });
     }
+
+    // PreCompact — lưới chốt cuối: nạp nốt phần đuôi NGAY TRƯỚC khi host nén.
+    if (event === "pre-compact") {
+      ingestCurrent(payload);
+      return "";
+    }
+
+    // UserPromptSubmit — đồng hồ đo context. Dưới ngưỡng: IM TUYỆT ĐỐI (0 ký tự, 0 token).
+    if (event === "prompt") {
+      const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
+      if (!path) return "";
+      const usage = readContextUsage(path);
+      if (!usage || usage.percent === null || usage.percent < WARN_AT_PERCENT) return "";
+      const sid: string = String(payload?.session_id ?? path);
+      if (alreadyWarned(sid)) return ""; // một lần cho cả phiên, không lặp mỗi prompt
+      const saved = ingestCurrent(payload); // chạm ngưỡng ⇒ chốt sổ NGAY, không đợi nhịp nền
+      markWarned(sid);
+      const pct = Math.round(usage.percent);
+      const savedNote = saved
+        ? `Đã lưu phiên vào Global Memory (+${saved.newMessages} tin, ${saved.ms}ms).`
+        : "Global Memory sẽ nạp phiên này ở lượt nền kế tiếp.";
+      return (
+        `[zemory] ⚠ Context ~${pct}% (${usage.tokens.toLocaleString("en-US")} token). ${savedNote} ` +
+        "Nên chốt việc đang dở / ghi sổ trước khi bị nén; sau khi nén hãy gọi `memory_context` để dựng lại."
+      );
+    }
+
     if (event === "stop" || event === "session-end") {
-      scan(); // fast, incremental — ingest whatever the session just appended
+      // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
+      // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
+      const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
+      if (!ingestCurrent(payload) && !path && !daemonJobBusyExternal()) scan();
       return "";
     }
     return "";
@@ -53,11 +128,20 @@ const CLAUDE_SETTINGS = join(homedir(), ".claude", "settings.json");
 const CODEX_HOOKS = join(homedir(), ".codex", "hooks.json");
 const CODEX_CONFIG = join(homedir(), ".codex", "config.toml");
 
-// Only the write-only capture hook is installed by default (agentmemory model:
-// auto-capture, recall on demand). SessionStart injection is intentionally NOT
-// here — recall is agent-judgment via AGENTS.md, not auto-pushed.
+// Bốn móc, mỗi cái một vai — user chốt 2026-08-02 ("mỗi 1 mes phải tự đưa lên luôn"):
+//   · Stop              — ĐƯỜNG NẠP CHÍNH: mỗi lượt trả lời xong, nạp NGAY phiên đó (<1s).
+//   · UserPromptSubmit  — đồng hồ context; im tuyệt đối tới khi chạm ngưỡng.
+//   · PreCompact        — chốt sổ lần cuối ngay trước khi host nén.
+//   · SessionStart      — CHỈ nói khi `source=compact`: thẻ nhắc dựng lại trạng thái.
+//
+// SessionStart ở đây KHÔNG phải "auto-inject memory mỗi phiên" (điều 8 cấm) — handler tự
+// kiểm `source` và im lặng với mọi phiên mở bình thường; nó chỉ mở miệng đúng lúc agent vừa
+// MẤT trí nhớ vì bị nén, tức đúng sự kiện chứ không phải mỗi prompt.
 const ZEMORY_HOOKS: { event: string; command: string }[] = [
   { event: "Stop", command: "zemory hook stop" },
+  { event: "UserPromptSubmit", command: "zemory hook prompt" },
+  { event: "PreCompact", command: "zemory hook pre-compact" },
+  { event: "SessionStart", command: "zemory hook session-start" },
 ];
 
 export interface InstallResult {
@@ -117,6 +201,18 @@ function mergeCommandHook(
   };
 }
 
+/** Móc của zemory có THẬT trong settings của host không (không phải chỉ cờ config). */
+export function hooksInstalled(settingsPath: string = CLAUDE_SETTINGS): boolean {
+  if (!existsSync(settingsPath)) return false;
+  try {
+    const hooks = (readJsonObject(settingsPath).hooks ?? {}) as Record<string, HookCmd[]>;
+    const groups = Array.isArray(hooks.Stop) ? hooks.Stop : [];
+    return groups.some((g) => (g.hooks ?? []).some((h) => h.command === "zemory hook stop"));
+  } catch {
+    return false;
+  }
+}
+
 /** Add zemory's hooks to Claude Code settings.json, merging (never overwriting). */
 export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallResult {
   const added: string[] = [];
@@ -127,6 +223,33 @@ export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallRes
     present.push(...result.present);
   }
   return { path: settingsPath, added, present };
+}
+
+/**
+ * Gỡ đúng những móc do zemory khai — công tắc realtime TẮT phải gỡ được, không thì bật một
+ * lần là dính vĩnh viễn. Chỉ xoá entry có `command` khớp chính xác; mọi hook khác của user
+ * trong cùng sự kiện giữ nguyên, và sự kiện rỗng thì bỏ luôn khoá cho sạch.
+ */
+export function uninstallHooks(settingsPath: string = CLAUDE_SETTINGS): { path: string; removed: string[] } {
+  if (!existsSync(settingsPath)) return { path: settingsPath, removed: [] };
+  const document = readJsonObject(settingsPath);
+  const hooks = (document.hooks ?? {}) as Record<string, HookCmd[]>;
+  const mine = new Set(ZEMORY_HOOKS.map((h) => h.command));
+  const removed: string[] = [];
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) continue;
+    const kept = groups
+      .map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => !mine.has(h.command)) }))
+      .filter((g) => g.hooks.length > 0);
+    if (kept.length !== groups.length || JSON.stringify(kept) !== JSON.stringify(groups)) removed.push(event);
+    if (kept.length) hooks[event] = kept;
+    else delete hooks[event];
+  }
+  if (!removed.length) return { path: settingsPath, removed: [] };
+  if (Object.keys(hooks).length) document.hooks = hooks;
+  else delete document.hooks;
+  writeJsonAtomic(settingsPath, document);
+  return { path: settingsPath, removed };
 }
 
 function enableCodexHooks(configPath: string): boolean {

@@ -47,6 +47,22 @@ const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
 
 const jsonText = (value: unknown): string => JSON.stringify(value, null, 2);
 
+/** Engine chỉ probe được bằng cách NẠP MODEL — đắt, nên chỉ chạy khi gọi `deep`. */
+export const DEEP_ONLY_CHECKS = ["vector", "rerank"] as const;
+
+/**
+ * Những capability `memory_doctor` sẽ probe.
+ *
+ * Tách thành hàm THUẦN để cổng kiểm khẳng định được lời hứa mà không phải nạp model: bản
+ * test đầu tiên gọi thật với `deep` mất **48 giây** (đo 2026-08-02) — một phép kiểm đắt như
+ * thế thì hoặc bị bỏ, hoặc làm cả gate chậm. `listFeatures()` là danh mục cho màn Home (3
+ * dòng: memory/validate/grill); hai engine đắt nằm trong `runCheck` nên phải nối thêm ở đây
+ * — audit 2026-08-02 bắt đúng chỗ này: tool trả 3 feature trong khi mô tả nói "engines are loaded".
+ */
+export function doctorFeatureKeys(base: string[], deep: boolean): string[] {
+  return deep ? [...new Set([...base, ...DEEP_ONLY_CHECKS])] : base;
+}
+
 function toolResult(value: unknown) {
   return { content: [{ type: "text", text: typeof value === "string" ? value : jsonText(value) }] };
 }
@@ -115,7 +131,9 @@ export const TOOLS = [
     description:
       "Where the last sessions in this project left off — recent sessions, what was touched, open threads. "
       + "WHEN TO CALL: as the FIRST call of a session in an unfamiliar or resumed project, before asking the user "
-      + "to re-explain context. Cheap and read-only. For a specific question use memory_search instead.",
+      + "to re-explain context — and again right AFTER your context was compacted or summarised, because the full "
+      + "session survives here even though your context does not. Cheap and read-only. For a specific question use "
+      + "memory_search instead.",
     inputSchema: {
       type: "object",
       properties: {
@@ -142,15 +160,16 @@ export const TOOLS = [
   {
     name: "memory_doctor",
     description:
-      "Diagnose this machine's zemory install: harness docs present, providers resolved, and every "
-      + "capability PROBED for real (the vector/rerank engines are loaded, not just read off a config flag). "
+      "Diagnose this machine's zemory install: harness docs present, providers resolved, capabilities probed. "
       + "WHEN TO CALL: when a memory tool behaves oddly — empty results, missing project scope, a feature the "
-      + "user says should be on — before blaming the query. Read-only, but takes a few seconds because it "
-      + "actually exercises the engines.",
+      + "user says should be on — before blaming the query. Read-only. Default is the FAST pass (a second or "
+      + "two). Pass deep=true to also load and exercise the vector + rerank engines — that is the only way to "
+      + "tell 'switched on' from 'actually works', but it costs ~30-60s because the ONNX models get loaded.",
     inputSchema: {
       type: "object",
       properties: {
         project: { type: "string", description: "Project root to diagnose; defaults to the current one." },
+        deep: { type: "boolean", description: "Also probe the vector/rerank engines (slow: loads models)." },
       },
       additionalProperties: false,
     },
@@ -308,10 +327,13 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     // tải nổi model (sửa 2026-07-27). Một chẩn đoán nói dối còn tệ hơn không có chẩn đoán.
     const root = asString(args.project) || env.projectRoot || undefined;
     const s = await gatherStatus(root ?? undefined);
+    const keys = doctorFeatureKeys(s.features.map((f) => f.key), Boolean(args.deep));
+    const meta = new Map(s.features.map((f) => [f.key, f]));
     const features = await Promise.all(
-      s.features.map(async (f) => {
-        const c = await runCheck(f.key, s.project.root ?? undefined);
-        return { key: f.key, group: f.group, label: f.label, state: c.state, ok: c.ok, detail: c.detail };
+      keys.map(async (key) => {
+        const c = await runCheck(key, s.project.root ?? undefined);
+        const f = meta.get(key);
+        return { key, group: f?.group ?? "token", label: f?.label ?? key, state: c.state, ok: c.ok, detail: c.detail };
       }),
     );
     const missingDocs = s.docs.filter((d) => !d.ok).map((d) => d.file);
@@ -322,6 +344,10 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
       plan: s.plan,
       features,
       failing: features.filter((f) => !f.ok).map((f) => f.key),
+      // Nói RÕ cái gì CHƯA được thử, thay vì để người đọc tưởng đã soi hết: một chẩn đoán
+      // im lặng về phần mình bỏ qua chính là cách nó nói dối.
+      notProbed: args.deep ? [] : [...DEEP_ONLY_CHECKS],
+      hint: args.deep ? undefined : "Pass deep=true to actually load and exercise the vector/rerank engines (~30-60s).",
     });
   }
 

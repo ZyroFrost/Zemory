@@ -40,6 +40,24 @@ export function normalizeRoot(path: string): string {
   return process.platform === "win32" ? abs.replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`) : abs;
 }
 
+/**
+ * KHOÁ SO SÁNH của một đường dẫn project — MỘT bản duy nhất cho cả hệ.
+ *
+ * Khác `normalizeRoot` (trả về dạng CHUẨN để GHI vào index): hàm này trả về khoá để SO,
+ * nên nó nắn thêm ba thứ mà việc so hay vấp: dấu phân cách (`/` ↔ `\`), gạch cuối, và
+ * hoa/thường trên Windows (hệ tệp không phân biệt).
+ *
+ * Vì sao phải gom (audit 2026-08-02 — F4): repo từng có **5 bản** tự chế —
+ * `projects.ts::key` · `mergeprojects.ts::key` · `search.ts::norm` · `recall.ts::norm` ·
+ * `graph-memory.ts::norm` — và chúng ĐÃ LỆCH NHAU: hai bản `norm` không cắt gạch cuối, bản
+ * graph đổi ngược `\`→`/`. Hệ quả đo được: `D:\X\` khớp qua `key()` nhưng TRƯỢT qua `norm()`
+ * của recall — cùng một thư mục, hai câu trả lời. Một sự thật thì phải có một hàm.
+ */
+export function projectKey(path: string): string {
+  const abs = resolve(path).replace(/\//g, "\\").replace(/[\\/]+$/, "");
+  return process.platform === "win32" ? abs.toLowerCase() : abs;
+}
+
 /** Walk up from `start` to find the nearest project root (dir with docs/.harness.json). */
 export function findProjectRoot(start: string = process.cwd()): string | null {
   let dir = normalizeRoot(start);

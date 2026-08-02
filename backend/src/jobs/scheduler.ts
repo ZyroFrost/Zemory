@@ -29,7 +29,14 @@ import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
 
-const MAINTAIN_EVERY_MS = 10 * 60_000; // run the scan → embed → digest chain every 10 min
+// 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
+// thật). Vòng này TEO thành LƯỚI BÙ cho ba thứ per-message không làm được:
+//   ① embed — mỗi lần nạp model ONNX mất vài giây, không thể chạy mỗi tin;
+//   ② digest sweep + scan vét — nguồn không có hook (web, máy khác), hoặc hook trượt vì
+//      write-gate đang bận (đo: chờ = ~125s/lượt nên hook bỏ qua, để lưới bù lượm);
+//   ③ chiều IMPORT của Drive — bundle máy khác rơi xuống không phát sự kiện gì, phải poll.
+// Vì vậy nhịp giãn 10' → 30': trả tiền theo thời gian ít lại, phần tươi đã có hook lo.
+const MAINTAIN_EVERY_MS = 30 * 60_000; // lưới bù: scan vét → embed → digest
 const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // The backlog count is a full anti-join (messages NOT IN vec_chunks) run
 // synchronously on the event loop — hundreds of ms on a 595MB memory. When the

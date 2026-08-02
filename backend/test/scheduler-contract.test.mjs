@@ -23,16 +23,50 @@ const I18N = "frontend/scripts/app.js";
 /** Every maintenance step the UI promises the daemon runs, in order. */
 const PROMISED = ["scan", "embed", "digest"];
 
-test("UI vẫn hứa đúng chuỗi scan → embed → digest (nếu đổi lời hứa thì đổi cả test)", () => {
+// 2026-08-02 — VAI ĐỔI: nạp GM là việc của Stop hook (per-message), vòng nền teo thành LƯỚI
+// BÙ. Lời hứa trên UI đổi theo, nên phép kiểm cũng phải đổi — nhưng THỨ nó canh thì giữ
+// nguyên: *UI hứa việc gì thì code phải làm đúng việc đó*. Panel giờ hứa hai thứ tách nhau,
+// nên có hai phép kiểm: lưới bù (dưới) và realtime (test kế).
+test("UI hứa lưới bù có đủ ba việc (quét vét · embed · digest) — đổi lời hứa thì đổi cả code", () => {
   const ui = read(I18N);
-  for (const key of ["mem.schedulerD", "f.doc.scheduler"]) {
-    // `'<key>':` = chỗ ĐỊNH NGHĨA. Bảng FEATURES cũng nhắc `doc:'f.doc.scheduler'`
-    // (không có dấu hai chấm sau) và nó đứng TRƯỚC — bắt nhầm chỗ đó là đo hư không.
-    const i = ui.indexOf(`'${key}':`);
-    assert.ok(i > 0, `${I18N}: không tìm thấy chỗ định nghĩa khoá i18n ${key}`);
-    const blob = ui.slice(i, i + 900);
-    assert.match(blob, /scan\s*→\s*embed\s*→\s*digest/u, `${key}: lời hứa về scheduler đã đổi — soát lại scheduler.ts rồi sửa test`);
+  const i = ui.indexOf("'mem.schedulerD':");
+  assert.ok(i > 0, `${I18N}: không tìm thấy chỗ định nghĩa khoá i18n mem.schedulerD`);
+  const blob = ui.slice(i, i + 900);
+  for (const [what, re] of [
+    ["quét vét", /quét vét|sweep/iu],
+    ["embed", /embed/iu],
+    ["digest", /digest/iu],
+  ]) {
+    assert.match(blob, re, `mem.schedulerD: lời hứa thiếu "${what}" trong khi scheduler vẫn chạy bước đó`);
   }
+  // Panel doc dài hơn và vẫn mô tả chuỗi đầy đủ — nó giải thích CƠ CHẾ, không phải nhịp.
+  const j = ui.indexOf("'f.doc.scheduler':");
+  assert.ok(j > 0, `${I18N}: thiếu f.doc.scheduler`);
+  assert.match(ui.slice(j, j + 900), /scan\s*→\s*embed\s*→\s*digest/u, "f.doc.scheduler phải còn mô tả chuỗi thật");
+});
+
+test("UI hứa realtime thì hook PHẢI được khai — và đúng 4 sự kiện của lời hứa", () => {
+  // Lời hứa mới trên panel: "mỗi lượt trả lời xong là phiên được nạp ngay (<1s)" + "cảnh báo
+  // khi context gần đầy" + "tự chốt sổ trước khi bị nén". Ba vế đó ĐÚNG BẰNG ba móc; thiếu
+  // móc nào là hứa suông — đúng loại lỗ mà file này sinh ra để canh.
+  const ui = read(I18N);
+  const i = ui.indexOf("'mem.realtimeD':");
+  assert.ok(i > 0, `${I18N}: thiếu mô tả công tắc realtime`);
+  const blob = ui.slice(i, i + 700);
+  assert.match(blob, /ngay|<1s/iu, "phải hứa nạp NGAY, không phải theo nhịp");
+  assert.match(blob, /context/iu, "phải hứa cảnh báo context");
+  assert.match(blob, /nén|compact/iu, "phải hứa chốt sổ trước khi bị nén");
+
+  const hook = read("backend/src/memory/capture-hook.ts");
+  for (const ev of ["Stop", "UserPromptSubmit", "PreCompact", "SessionStart"]) {
+    assert.match(
+      hook,
+      new RegExp(String.raw`event:\s*"${ev}"`, "u"),
+      `capture-hook.ts: UI hứa realtime nhưng KHÔNG khai móc ${ev}`,
+    );
+  }
+  // Và đường nạp per-message phải là scanOneFile, không phải scan() cả kho (1,8–7s/lượt).
+  assert.match(hook, /scanOneFile\(/u, "đường per-message phải dùng scanOneFile");
 });
 
 test("scheduler THẬT SỰ chạy mọi bước UI đã hứa — không chỉ một phần", () => {

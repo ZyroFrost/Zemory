@@ -1,7 +1,7 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
 import { join } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
-import { handleHook, installCodexHooks, installHooks } from "../memory/capture-hook.js";
+import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
 import { readStdin } from "./_shared.js";
 
 export async function cmdHook(args: string[]): Promise<void> {
@@ -31,11 +31,26 @@ export async function cmdHook(args: string[]): Promise<void> {
       console.log(`zemory hook: Codex Stop ${state} (${where}) → ${result.path}`);
       console.log(`  codex_hooks ${result.featureEnabled ? "enabled" : "already enabled"} → ${result.configPath}`);
     }
-    console.log("  (capture only — auto-ingest on session end; recall stays agent-driven. Remove the entry to undo.)");
+    console.log("  Stop → nạp phiên vào bộ nhớ sau MỖI lượt trả lời (~0,3s, không chặn bạn gõ tiếp).");
+    console.log("  UserPromptSubmit → im lặng tới khi context chạm 95%, rồi chốt sổ + cảnh báo MỘT lần.");
+    console.log("  PreCompact → nạp nốt ngay trước khi context bị nén · SessionStart → chỉ nhắc SAU khi bị nén.");
+    console.log("  Recall vẫn do agent tự gọi (điều 8). Gỡ: `zemory hook uninstall` (hoặc tắt công tắc trong UI).");
     return;
   }
-  if (sub !== "session-start" && sub !== "stop" && sub !== "session-end") {
-    console.log("usage: zemory hook <session-start|stop|install>");
+  if (sub === "uninstall") {
+    const scoped = args.includes("--project");
+    const path = scoped ? join(currentProjectRoot(), ".claude", "settings.json") : undefined;
+    const r = uninstallHooks(path);
+    console.log(
+      r.removed.length
+        ? `zemory hook: gỡ ${r.removed.join(" · ")} khỏi ${r.path}`
+        : `zemory hook: không có móc nào của zemory trong ${r.path}`,
+    );
+    return;
+  }
+  const EVENTS = ["session-start", "stop", "session-end", "prompt", "pre-compact"];
+  if (!EVENTS.includes(sub ?? "")) {
+    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall>`);
     return;
   }
   const raw = await readStdin();
@@ -46,7 +61,7 @@ export async function cmdHook(args: string[]): Promise<void> {
     payload = {};
   }
   if (!payload.cwd) payload.cwd = process.cwd();
-  const out = handleHook(sub, payload);
+  const out = handleHook(sub as Parameters<typeof handleHook>[0], payload);
   if (out) process.stdout.write(out);
 }
 

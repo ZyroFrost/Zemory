@@ -9,8 +9,8 @@
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, dirname, join, normalize, resolve } from "node:path";
-import { CONFIG_FILE } from "./core/config.js";
+import { basename, dirname, join } from "node:path";
+import { CONFIG_FILE, projectKey } from "./core/config.js";
 
 /**
  * Where the registry lives. Resolved per call (not frozen at import) so tests —
@@ -54,11 +54,10 @@ export function projectProfile(root: string): "app" | "non-app" {
  * Comparison key for a project root. Windows paths are case-insensitive and the
  * same repo shows up as both `D:\…` and `d:\…` depending on how the shell spelled
  * it — without folding, one project renders as two tabs.
+ *
+ * Bản chép riêng ở đây đã gộp về `core/config::projectKey` ngày 2026-08-02 (F4).
  */
-function key(root: string): string {
-  const norm = normalize(resolve(root)).replace(/[\\/]+$/, "");
-  return process.platform === "win32" ? norm.toLowerCase() : norm;
-}
+const key = projectKey;
 
 /** Resolve 8.3 short names (`HUY~1.NGU`) to their long form so prefix checks match. */
 function longPath(p: string): string {

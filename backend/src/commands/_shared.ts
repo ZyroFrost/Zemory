@@ -28,6 +28,10 @@ export function readStdin(): Promise<string> {
     process.stdin.setEncoding("utf8");
     process.stdin.on("data", (c) => (d += c));
     process.stdin.on("end", () => resolve(d));
-    setTimeout(() => resolve(d), 800); // safety: don't hang if no EOF
+    // Lưới an toàn: đừng treo nếu không bao giờ có EOF. `.unref()` là phần THIẾU — không có
+    // nó thì timer giữ event loop sống nốt 800ms KỂ CẢ khi stdin đã đóng và promise đã
+    // resolve. Đo 2026-08-02 trên đường hook: mỗi lượt trả lời tốn thêm ~0,8s hoàn toàn vô
+    // ích — với capture per-message thì đó là thuế đánh vào MỌI tin nhắn.
+    setTimeout(() => resolve(d), 800).unref?.();
   });
 }
