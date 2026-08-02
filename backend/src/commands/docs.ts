@@ -4,6 +4,18 @@ import { join } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
 import { listDocs, listToc, searchSections, showSection } from "../docs/plan.js";
 import { listEntries, searchChangelog } from "../docs/changelog.js";
+import { flagValue, positionalArgs } from "./_shared.js";
+
+/** Tách truy vấn khỏi cờ — GIÁ TRỊ của cờ phải bị loại, không được rơi vào truy vấn.
+ *
+ *  Lỗi đã sống thật (bắt 2026-08-02 ngay khi tra sổ): `changelog search "x" --limit 3` đi tìm
+ *  chuỗi `"x 3"`. Tệ hơn việc bỏ qua cờ, vì kết quả vẫn trông như một câu trả lời bình thường
+ *  — cùng họ với lỗi đã vá cho `memory search` sáng cùng ngày, chỉ khác bề mặt. */
+function searchArgs(rest: string[]): { q: string; limit?: number } {
+  const q = positionalArgs(rest, new Set(["--limit"])).join(" ");
+  const raw = Number(flagValue(rest, "--limit"));
+  return { q, limit: Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : undefined };
+}
 
 export async function cmdPlan(args: string[]): Promise<void> {
   const sub = args[0];
@@ -34,12 +46,12 @@ export async function cmdPlan(args: string[]): Promise<void> {
   if (sub === "search") {
     const rest = args.slice(1);
     const all = rest.includes("--all");
-    const q = rest.filter((a) => !a.startsWith("--")).join(" ");
+    const { q, limit } = searchArgs(rest);
     if (!q) {
-      console.log("usage: zemory plan search <query> [--all]");
+      console.log("usage: zemory plan search <query> [--all] [--limit N]");
       return;
     }
-    const hits = searchSections(q, { project: all ? undefined : root });
+    const hits = searchSections(q, { project: all ? undefined : root, limit });
     console.log(`zemory plan search — "${q}" (${all ? "all projects" : "this project"})`);
     if (!hits.length) {
       console.log("  no matches.");
@@ -93,12 +105,12 @@ export async function cmdChangelog(args: string[]): Promise<void> {
   if (sub === "search") {
     const rest = args.slice(1);
     const all = rest.includes("--all");
-    const q = rest.filter((a) => !a.startsWith("--")).join(" ");
+    const { q, limit } = searchArgs(rest);
     if (!q) {
-      console.log("usage: zemory changelog search <query> [--all]");
+      console.log("usage: zemory changelog search <query> [--all] [--limit N]");
       return;
     }
-    const hits = searchChangelog(q, { project: all ? undefined : root });
+    const hits = searchChangelog(q, { project: all ? undefined : root, limit });
     console.log(`zemory changelog search — "${q}"`);
     for (const h of hits) {
       // Một quyết định đã bị đảo phải NÓI RA ngay ở dòng kết quả. Trước 2026-08-02 nó im
