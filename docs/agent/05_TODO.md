@@ -164,12 +164,13 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > (`npm run check` · FE↔BE · `integrity_check`) vốn không áp được cho non-app.
 
 ## 🔌 Đối chiếu engram — CẢ 6 VIỆC ĐÃ XONG (ghi `06_CHANGES [2026-08-02f]`); còn phần dưới
-> **Số nền đã đo lại tươi** (`DOCS.md` của engram, 2026-08-02): engram **20 tool** — dòng cũ ở
-> đây ghi "22" là sai, không rõ đếm từ đâu. zemory **8 → 12**. Trong 20 tool của engram có
-> **12 cái GHI vào kho**; zemory cố tình không lấy nhóm đó (`mem_save`/`update`/`delete`/
-> `session_*`/`capture_passive`/`suggest_topic_key`/`review`): trí nhớ engram do agent tự
-> viết, còn zemory nạp transcript tự động + lấy file docs làm nguồn ⇒ thêm đường ghi cho
-> agent là mở đường ghi thứ hai vào lớp dẫn xuất, phạm điều 3.
+> **Số nền đo trên BINARY THẬT** (engram v1.20.0, chạy `engram mcp` trong sandbox 2026-08-02):
+> engram **22 tool** · zemory **8 → 12**. *(Lưu ý cho phiên sau: `DOCS.md` của engram liệt kê
+> thiếu 2 tool — đọc tài liệu của họ KHÔNG thay được việc chạy binary.)* zemory cố tình không
+> lấy nhóm tool GHI (`mem_save`/`update`/`delete`/`session_*`/`capture_passive`/
+> `suggest_topic_key`/`review`): trí nhớ engram do agent tự viết, còn zemory nạp transcript tự
+> động + lấy file docs làm nguồn ⇒ thêm đường ghi cho agent là mở đường ghi thứ hai vào lớp
+> dẫn xuất, phạm điều 3.
 > ⚠ Mọi mục ở đây chỉ áp cho hệ **app + non-app**. **Cowork KHÔNG dùng được MCP** — nó chạy
 > trong máy ảo riêng, không với tới `zemory` trên máy thật (`BOOTSTRAP §Bối cảnh`).
 
@@ -190,12 +191,15 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [~] **③ `project_merge` — XONG.** Tự tìm nhóm bị tách theo `normalizeRoot` (hoa/thường ·
   gạch cuối · dấu phân cách), **mặc định DRY RUN** in bảng, `apply=true` mới ghi. Không xoá
   dòng nào — chỉ trỏ lại `project_root`, `cwd` gốc giữ nguyên để truy ngược.
+  *(So đo: `mem_merge_projects` của engram **bắt buộc `from`,`to`** — người gọi phải tự biết
+  hai tên bị tách, và không có bước in bảng trước khi làm.)*
 - [~] **④ `memory_doctor` qua MCP — XONG.** Bọc `gatherStatus()` + chạy `runCheck` THẬT cho
   từng capability (probe engine, không đọc công tắc), trả kèm danh sách `failing`.
 - [~] **⑤ `session_pin` — XONG.** Cột RIÊNG `sessions.pinned` (**schema v20**), KHÔNG mượn
   `project_pinned` (cột đó chịu lực cho upsert của scan). Phiên ghim lấy bằng truy vấn riêng
   nên **không tuột khỏi cửa sổ 400 dòng** dù rất cũ — đúng ca ghim sinh ra để trị; hiện dấu 📌.
-  *(engram không có pin — đo trên `DOCS.md`.)*
+  *(engram CÓ `mem_pin`/`mem_unpin` — đo trên binary; câu "họ không có pin" tôi ghi lúc trưa là
+  sai vì đọc `DOCS.md` thay vì chạy thật.)*
 - [~] **⑥ Transport HTTP — XONG.** `zemory mcp --http [--port N]`, mặc định **4445**, cùng bộ
   tool với stdio (có gate parity). Guard loopback + `Sec-Fetch-Site` dùng CHUNG một bản với
   daemon UI (`util/loopback.ts`).
@@ -204,8 +208,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     không làm mặc định.
 
 - [ ] **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
-  `codex` (cấu hình **TOML**, cần bộ ghi riêng) · `opencode` (khoá `mcp`, khuôn entry `type: local`)
-  · `pi` (nối bằng plugin package, không qua file MCP).
+  `codex` (cấu hình **TOML**) · `opencode` (khuôn entry khác) · `pi` (nối bằng plugin package).
+  **Đo trên engram v1.20.0 (2026-08-02) — họ làm được cả ba, và đây là hình dạng cần khớp:**
+  `codex` → ghi `%APPDATA%/codex/config.toml` (642 B) + `engram-instructions.md` + prompt phục
+  hồi sau nén · `opencode` → `~/.config/opencode/opencode.json` + plugin `engram.ts` **21 KB**
+  · `pi` → cài npm `gentle-engram`, cần `pi` trong PATH (thiếu thì lệnh của họ cũng lỗi).
+  ⇒ khoảng cách là THẬT, không phải giới hạn của ngành. Rẻ nhất là `codex` (chỉ cần bộ ghi TOML).
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
