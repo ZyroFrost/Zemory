@@ -481,6 +481,19 @@ test("tìm kiếm trên daemon phải RẺ theo mặc định — lớp đắt c
   );
 });
 
+test("đường LẠ phải 404 — không được rơi vào vỏ app rồi trả 200", () => {
+  // Audit 2026-08-02 bắt được bằng chính phép quét của mình: gọi `/scope-tree` (KHÔNG tồn
+  // tại — dữ liệu đó nằm trong `/memory-status`) và nhận **200 + HTML**, nên bảng kết quả
+  // báo "TẤT CẢ 200" trong khi một mục là hư không. Với client thì tệ hơn: gõ sai tên
+  // endpoint ⇒ nhận HTML ⇒ vỡ ở JSON.parse với thông báo chẳng liên quan.
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  const i = src.lastIndexOf('res.end(readFileSync(join(FRONTEND_DIR, "pages", "app.html")');
+  assert.ok(i > 0, "không tìm thấy chỗ phục vụ vỏ app");
+  const before = src.slice(Math.max(0, i - 700), i);
+  assert.match(before, /p !== "\/" && p !== "\/app"/u, "phải chặn mọi path lạ TRƯỚC khi trả vỏ app");
+  assert.match(before, /writeHead\(404/u, "đường lạ phải trả 404");
+});
+
 test("UI: có nút Tìm sâu, và nó là lựa chọn TỪNG LƯỢT chứ không lấy từ setting máy", () => {
   // Không có nút thì lớp ngữ nghĩa chỉ gọi được bằng URL — tính năng có mà người dùng không
   // với tới. Và nếu nó đọc setting máy (`hybrid` đang bật sẵn ở nhiều máy) thì mọi lượt tìm

@@ -209,6 +209,23 @@ test("Stop hook nạp qua transcript_path (không đụng scan cả kho)", (t) =
   assert.equal(handleHook("pre-compact", { cwd: home, transcript_path: file }), "");
 });
 
+test("mọi móc KHAI ra phải dispatch được — hai danh sách không được lệch nhau", () => {
+  // `ZEMORY_HOOKS` (khai vào settings của host) và bộ sự kiện `cmdHook` chấp nhận là HAI
+  // danh sách rời nhau. Lệch một cái là host gọi rồi CLI in "usage:" — hook hỏng LẶNG, và
+  // triệu chứng duy nhất là bộ nhớ thiếu tin mà không ai biết vì sao (audit 2026-08-02).
+  const hookSrc = readFileSync(new URL("../src/memory/capture-hook.ts", import.meta.url), "utf8");
+  const cliSrc = readFileSync(new URL("../src/commands/hook.ts", import.meta.url), "utf8");
+  const declared = [...hookSrc.matchAll(/command:\s*"zemory hook ([a-z-]+)"/gu)].map((m) => m[1]);
+  assert.ok(declared.length >= 4, `kỳ vọng ≥4 móc, thấy ${declared.length}`);
+  const accepted = new Set(
+    (/const EVENTS = \[([^\]]+)\]/u.exec(cliSrc)?.[1] ?? "").match(/"([a-z-]+)"/gu)?.map((s) => s.slice(1, -1)) ?? [],
+  );
+  assert.ok(accepted.size > 0, "không đọc được danh sách sự kiện CLI chấp nhận");
+  for (const c of declared) {
+    assert.ok(accepted.has(c), `khai móc "zemory hook ${c}" nhưng CLI không nhận sự kiện đó`);
+  }
+});
+
 test("công tắc realtime phải khai hook THẬT — và tắt thì gỡ sạch, giữ hook của user", (t) => {
   const dir = tempDir(t, "zhooks-");
   const settings = join(dir, "settings.json");
