@@ -209,16 +209,22 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     định** — cài trong `init`/`setup`/`doctor` nhắc; mỗi reply ingest **đúng 1 file** từ
     `transcript_path` (đo: cả kho 1,8–7s → 1 file mục tiêu <1s; comment "fast, incremental"
     trong `capture-hook.ts` đang nói quá) + digest regen phiên đó (sẵn có).
-  - **Sync chiều ĐẨY:** event-driven theo cụm — ingest xong đánh dấu *dirty* → export delta
-    sau **debounce 2–5' từ tin cuối** (per-message từng tin một file = spam Drive + compact
-    quay vòng DRIVE_COMPACT_AT=12 — giữ nguyên lý do đã can). Bỏ timer đẩy 30'.
+  - **Drive sync: GIỮ NGUYÊN poll 30' hai chiều như cũ** (user chốt 2026-08-02 sau khi cân:
+    per-message/event-driven chưa đáng đợt này, thủ công thì quên là lệch máy). Event-driven
+    debounce theo cụm ghi lại thành nâng-cấp-sau-nếu-cần, KHÔNG làm đợt này.
+  - **Vì sao per-message chứ không 5'/10' (số đã đo, ghi để khỏi bàn lại):** poll trả chi phí
+    theo THỜI GIAN (6–12 scan/giờ kể cả máy rảnh, 1,8–7s/lần) và vẫn trễ 5–10'; hook trả theo
+    CÔNG VIỆC (không tin = 0 chạy, có tin = <1s, mỗi LƯỢT reply 1 lần). 95%/PreCompact không
+    thay thế per-message — là tầng CHỐT đi kèm, đỡ ca hook trượt.
+  - **Ca write-gate bận (embed nền giữ token chuỗi dài):** hook KHÔNG chờ — bỏ qua nhanh,
+    đánh dấu dirty, lưới bù lượm (đo: chờ là 125s/turn, không chấp nhận được).
   - **Lưới bù (scheduler cũ, teo vai):** embed backlog + digest sweep + scan bù (nguồn không
-    hook, hook trượt) + poll chiều IMPORT — nhịp giãn được 10'→30'.
+    hook, hook trượt/gate bận) — nhịp giãn được 10'→30'.
   - **UI:** panel "TỰ ĐỘNG" vẫn 3 công tắc, KHÔNG thêm cái thứ 4 — "Scheduler nền" đổi mô tả
-    thành lưới bù, "Tự sync memory" đổi mô tả thành event-driven + poll import; realtime là
-    hành vi mặc định của hệ (tắt được trong cùng công tắc scheduler hay tách — **trình user
-    duyệt lúc build**, luật UI phải duyệt trước). Chuỗi mô tả UI phải đổi theo (UI text
-    discipline — không để mô tả nói nhịp 10' khi code đã event-driven).
+    thành lưới bù; "Tự sync memory" GIỮ mô tả poll 30' (không đổi hành vi); realtime là hành
+    vi mặc định của hệ (tắt được trong cùng công tắc scheduler hay tách — **trình user duyệt
+    lúc build**, luật UI phải duyệt trước). Mô tả UI phải khớp vai mới (UI text discipline —
+    không để mô tả nói "nhịp 10'" khi nạp đã per-message).
   - Gate `scheduler-contract` phải viết lại theo vai mới (UI hứa gì scheduler làm đó).
 - [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
