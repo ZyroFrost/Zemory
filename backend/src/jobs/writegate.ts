@@ -7,6 +7,10 @@
 // auto-expiry so a crashed CLI can never wedge the scheduler forever, and the
 // engine's own retry-with-backoff stays as the last line of defence.
 
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { currentMemoryDir } from "../memory/db.js";
+
 const HOLD_MS = 5 * 60_000; // a CLI hold self-expires after 5 min
 
 let holdUntil = 0;
@@ -34,15 +38,52 @@ export function cliHoldsWrite(): boolean {
 
 let daemonJob: string | null = null;
 
+// Cờ XUYÊN TIẾN TRÌNH cho cùng một sự thật. Biến `daemonJob` ở trên chỉ sống trong tiến
+// trình daemon, nhưng hook realtime chạy như một tiến trình RIÊNG, ngắn hạn — nó phải biết
+// "daemon đang ghi" để bỏ qua ngay thay vì xếp hàng sau một chuỗi embed dài (đo 2026-08-02:
+// chờ = ~125s mỗi lượt trả lời). Dùng file thay vì hỏi HTTP: một lần `statSync` là sub-ms,
+// còn một vòng fetch cộng vào MỌI lượt chat thì không đáng.
+const JOB_STALE_MS = 6 * 60 * 60_000; // daemon chết giữa chừng ⇒ marker cũ không được kẹt vĩnh viễn
+
+function jobMarkerPath(): string {
+  return join(currentMemoryDir(), "daemon-job.lock");
+}
+
 /** Claim the single daemon-job slot. Returns false when something already runs. */
 export function claimDaemonJob(label: string): boolean {
   if (daemonJob) return false;
   daemonJob = label;
+  try {
+    const p = jobMarkerPath();
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify({ label, at: Date.now(), pid: process.pid }));
+  } catch {
+    /* marker là lớp tiện ích: mất nó thì hook chỉ mất tối ưu, không sai kết quả (điều 9) */
+  }
   return true;
 }
 
 export function releaseDaemonJob(): void {
   daemonJob = null;
+  try {
+    rmSync(jobMarkerPath(), { force: true });
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Daemon có đang chạy job nặng không — ĐỌC ĐƯỢC TỪ TIẾN TRÌNH KHÁC.
+ * Marker quá hạn ⇒ coi như rảnh (daemon chết mà chưa kịp dọn).
+ */
+export function daemonJobBusyExternal(): boolean {
+  try {
+    const raw = readFileSync(jobMarkerPath(), "utf8");
+    const at = Number(JSON.parse(raw)?.at ?? 0);
+    return Number.isFinite(at) && Date.now() - at < JOB_STALE_MS;
+  } catch {
+    return false; // không có marker = rảnh
+  }
 }
 
 /** What the daemon is running right now, or null. */

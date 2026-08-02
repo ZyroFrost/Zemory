@@ -12,7 +12,7 @@
 //   · Chỉ gộp nhóm mà `normalizeRoot` chứng minh là CÙNG MỘT đường dẫn — không đoán theo
 //     tên giống nhau, không gộp thư mục cha/con.
 
-import { normalizeRoot } from "../core/config.js";
+import { normalizeRoot, projectKey } from "../core/config.js";
 import { currentMemoryDb, openMemory } from "./db.js";
 
 export interface SplitVariant {
@@ -27,12 +27,9 @@ export interface SplitGroup {
   variants: SplitVariant[];
 }
 
-/** Khoá so sánh: `normalizeRoot` + bỏ dấu gạch cuối + hạ chữ trên Windows (hệ tệp không
- *  phân biệt hoa/thường, nên `D:\A` và `D:\a` LÀ một thư mục). */
-function key(root: string): string {
-  const abs = normalizeRoot(root).replace(/[\\/]+$/, "");
-  return process.platform === "win32" ? abs.toLowerCase() : abs;
-}
+// Khoá so sánh dùng CHUNG toàn hệ (`core/config::projectKey`) — bản chép riêng ở đây đã gộp
+// về đó ngày 2026-08-02 (F4: 5 bản tự chế đã lệch nhau).
+const key = projectKey;
 
 /** Nhóm nào có ≥2 biến thể viết khác nhau của cùng một thư mục. */
 export function findSplitProjects(dbPath: string = currentMemoryDb()): SplitGroup[] {

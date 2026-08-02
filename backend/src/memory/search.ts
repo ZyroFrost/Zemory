@@ -9,6 +9,7 @@ import { vectorRanks } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
+import { projectKey } from "../core/config.js";
 import { isExcluded } from "./scope.js";
 
 export interface SearchHit {
@@ -86,7 +87,8 @@ function roleMatches(role: string, content: string, want: string): boolean {
   return role === want;
 }
 
-const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
+// MỘT bản so-path cho cả hệ (F4, 2026-08-02) — bản cũ ở đây không cắt gạch cuối.
+const norm = projectKey;
 
 /** Tokenize + sanitize a user query for safe FTS5 MATCH (quote each term). */
 function ftsTerms(query: string): string[] {

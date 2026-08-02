@@ -10,7 +10,12 @@
 
 import { currentMemoryDb, openMemory } from "../db.js";
 
-/** Windows/JSON-escaped paths arrive in many shapes — flatten to one form. */
+/** Windows/JSON-escaped paths arrive in many shapes — flatten to one form.
+ *
+ *  CỐ Ý KHÁC `core/config::projectKey` (đợt gom F4 2026-08-02 đã soi và giữ lại bản này):
+ *  đây là id NODE của graph — phải là đường TƯƠNG ĐỐI, dấu `/`, để khớp id do code-graph
+ *  sinh ra; còn `projectKey` là khoá so THƯ MỤC GỐC — tuyệt đối, dấu `\`. Hai concern khác
+ *  nhau, gộp lại thì id node và khoá project sẽ đá nhau. */
 const norm = (p: string): string =>
   p.replace(/\\+/g, "/").replace(/\/+/g, "/").replace(/\/+$/, "").trim().toLowerCase();
 

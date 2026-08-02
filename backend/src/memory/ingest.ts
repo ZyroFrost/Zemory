@@ -166,6 +166,73 @@ export function scan(opts: ScanOptions = {}): ScanReport {
   }
 }
 
+export interface OneFileResult {
+  /** false = no adapter owns this path, or the file is gone. */
+  ingested: boolean;
+  source?: string;
+  sessionId?: string;
+  newMessages: number;
+  ms: number;
+}
+
+/**
+ * Ingest exactly ONE transcript file — the realtime capture path (per-message).
+ *
+ * Vì sao KHÔNG dùng `scan()`: `scan()` phải `discover()` toàn bộ store của mọi adapter rồi
+ * đụng `ingest_state` của hàng nghìn file — đo 2026-08-02 trên kho thật: **1,8s khi rảnh,
+ * 7,2s khi có tin mới, ~125s khi embed nền đang chạy**. Chạy sau MỖI lượt trả lời thì đó là
+ * chi phí không chấp nhận được. Hook của host đã đưa sẵn `transcript_path`, nên đường này bỏ
+ * hẳn khâu discover: mở đúng file đó, ingest phần đuôi mới (`ingest_state` vẫn là con trỏ
+ * cũ ⇒ idempotent y hệt), rồi dựng lại digest của đúng phiên đó.
+ *
+ * Ba thứ CỐ TÌNH không làm ở đây (chúng thuộc lưới bù, chạy theo nhịp):
+ *   · embed  — mỗi lần nạp model ONNX mất vài giây, per-message là nạp model liên tục;
+ *   · prune vector/attachment mồ côi — chỉ có nghĩa sau whole-replace, không phải mỗi tin;
+ *   · quét các nguồn khác — đây là đường của MỘT phiên đang sống.
+ */
+export function scanOneFile(filePath: string, opts: ScanOptions = {}): OneFileResult {
+  const t0 = Date.now();
+  const dbPath = opts.dbPath ?? MEMORY_DB;
+  const adapters = opts.adapters ?? allAdapters();
+  let st: ReturnType<typeof statSync>;
+  try {
+    st = statSync(filePath);
+  } catch {
+    return { ingested: false, newMessages: 0, ms: Date.now() - t0 };
+  }
+  // Adapter nào NHẬN file này? Khớp theo `signature` — chính cái tail mà `discovery` dùng để
+  // nhận ra store của agent đó (vd `.claude\projects`). Không đoán theo đuôi file: hai agent
+  // cùng ghi `.jsonl`, chỉ vị trí store mới phân biệt được. Không khớp ⇒ trả về "không nhận",
+  // KHÔNG rơi về quét cả kho (im lặng làm việc nặng là cách hỏng tệ nhất ở đường per-message).
+  const norm = (p: string) => p.replace(/\//g, "\\").toLowerCase();
+  const hay = norm(filePath);
+  const adapter = adapters.find((a) => hay.includes(norm(a.signature) + "\\"));
+  if (!adapter) return { ingested: false, newMessages: 0, ms: Date.now() - t0 };
+
+  const file: TranscriptFile = { source: adapter.source, path: filePath, size: st.size, mtimeMs: st.mtimeMs };
+  const db = openMemory(dbPath);
+  try {
+    const r = ingestFile(db, adapter, file);
+    const live = r.sessions.filter((s) => s.messages > 0);
+    for (const s of live) {
+      try {
+        buildDigest(db, s.id);
+      } catch {
+        /* digest là lăng kính dẫn xuất — hỏng không được làm hỏng ingest (điều 9) */
+      }
+    }
+    return {
+      ingested: true,
+      source: adapter.source,
+      sessionId: live[0]?.id,
+      newMessages: live.reduce((n, s) => n + s.newMessages, 0),
+      ms: Date.now() - t0,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 /** Per-table snapshot of the memory DB — a terminal window into the store. */
 /**
  * Refresh session TITLES from the tail of each transcript — cheap, metadata only.
