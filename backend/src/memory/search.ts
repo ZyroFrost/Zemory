@@ -63,8 +63,17 @@ const W_WORD = 1.0;
 const W_TRI = 0.6;
 const W_VEC = 1.0; // semantic stream weight (hybrid)
 const POOL = 60; // candidates pulled from each stream before fusion
-const RERANK_POOL = 40; // top RRF candidates rescored by the cross-encoder
-const RERANK_CHARS = 2000; // doc chars fed to the reranker (it truncates anyway)
+// Hai hằng số này ĐO ĐƯỢC nên phải chỉnh được từ ngoài — không thì mỗi lần thử một cấu hình
+// lại phải sửa mã + build lại, và người sau muốn kiểm chứng số của tôi cũng không làm nổi.
+// Bối cảnh (bench 34 câu có nhãn, 2026-08-03): bật rerank làm recall@10 TỤT 41% → 26% và MRR
+// 0,238 → 0,129. Giả thuyết "mô hình không đọc được tiếng Việt" đã bị BÁC bằng phép thử phân
+// biệt (`bge-reranker-base` tách đúng/sai chủ đề rất rõ). Hai nghi can còn lại chính là đây:
+//   · CHARS=2000 cắt cụt tin dài ⇒ cross-encoder không thấy đoạn phân biệt, trong khi vector
+//     đã nhúng cả tin;
+//   · POOL=40 cho nó quá nhiều cơ hội xáo lại thứ hạng vốn đã tốt của hybrid — mà 40 ứng viên
+//     ở kho này đều CÙNG chủ đề, tức không có cái nào "lạc đề" để nó loại.
+const RERANK_POOL = Number(process.env.ZEMORY_RERANK_POOL) || 40; // top RRF candidates rescored by the cross-encoder
+const RERANK_CHARS = Number(process.env.ZEMORY_RERANK_CHARS) || 2000; // doc chars fed to the reranker
 
 /**
  * Vai THẬT của một message, cho bộ lọc `role`.
