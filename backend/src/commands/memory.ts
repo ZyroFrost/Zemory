@@ -35,6 +35,7 @@ import {
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
+import { acquireCliWriteLock, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
 
 function fmtDate(iso: string | null): string {
@@ -186,7 +187,21 @@ export async function cmdMemory(args: string[]): Promise<void> {
   let gated = false;
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let port: number | null = null;
+  let locked = false;
   if (HEAVY_WRITES.has(sub)) {
+    // KHOÁ FILE trước, độc lập với daemon. Cổng HTTP bên dưới chỉ để bảo scheduler nhường;
+    // nó KHÔNG loại trừ CLI↔CLI và biến mất khi daemon chết (xem `writegate.ts`). Chờ tối đa
+    // 2 phút rồi CHẠY LUÔN: khoá là cố vấn, không được biến thành chỗ treo việc người dùng.
+    for (let i = 0; i < 24; i++) {
+      const g = acquireCliWriteLock(sub);
+      if (g.ok) {
+        locked = true;
+        break;
+      }
+      if (i === 0) console.log(`  tiến trình khác đang ghi kho (pid ${g.heldBy?.pid}, ${g.heldBy?.label}) — chờ…`);
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    if (!locked) console.log("  chờ quá lâu — chạy tiếp, engine sẽ tự lùi-thử-lại nếu kẹt.");
     port = await daemonPort();
     if (port) {
       const acquire = async (): Promise<{ busy?: boolean }> => {
@@ -201,7 +216,11 @@ export async function cmdMemory(args: string[]): Promise<void> {
           if (i === 0) console.log("  daemon background job is writing the memory — waiting for it to yield…");
           await new Promise((r) => setTimeout(r, 5000));
         }
-        heartbeat = setInterval(() => void acquire().catch(() => {}), 120_000);
+        // Nhịp tim gia hạn CẢ HAI: cờ 5 phút của daemon và khoá file 15 phút.
+        heartbeat = setInterval(() => {
+          if (locked) acquireCliWriteLock(sub);
+          void acquire().catch(() => {});
+        }, 120_000);
         heartbeat.unref?.();
       } catch {
         gated = false; // gate unreachable — run anyway (retry-backoff is the net)
@@ -212,6 +231,7 @@ export async function cmdMemory(args: string[]): Promise<void> {
     await cmdMemoryInner(args);
   } finally {
     if (heartbeat) clearInterval(heartbeat);
+    if (locked) releaseCliWriteLock();
     if (gated && port) {
       try {
         await fetch(`http://127.0.0.1:${port}/gate-release`, { method: "POST", signal: AbortSignal.timeout(400) });
