@@ -119,10 +119,31 @@ test("validate enforces the APP standard by default (warns on missing backend/fr
   const root = tempDir(t, "zemory-profile-app-");
   ensureHarness(root);
   writeFileSync(join(root, "AGENTS.md"), "# app\n");
+  // PHẢI có code đặt SAI CHỖ thì cảnh báo mới đúng. Trước đây kho giả này TRỐNG RỖNG, nên nó
+  // vô tình kiểm "dự án trắng cũng bị cảnh báo" — mà đó chính là hành vi đã sửa (2026-08-03:
+  // người mới `init` xong thấy ngay "1 lỗi cần sửa" dù chưa làm gì sai). Ý ĐỊNH của phép kiểm
+  // là "chuẩn APP có được áp không", nên sửa KHO GIẢ cho khớp ý định, KHÔNG nới khẳng định.
+  mkdirSync(join(root, "lib"), { recursive: true });
+  writeFileSync(join(root, "lib", "thing.ts"), "export const x = 1;\n");
   const rep = validate(loadContext(root));
   const msgs = rep.issues.map((i) => i.msg).join("\n");
   assert.match(msgs, /own code not under/);
   assert.doesNotMatch(msgs, /non-app/i);
+});
+
+test("dự án TRẮNG (vừa init, chưa có code) KHÔNG bị cảnh báo đặt code sai chỗ", (t) => {
+  // Chặn hồi quy cho đúng lỗi vừa sửa: `doctor` báo "1 lỗi cần sửa" ngay phút đầu người mới
+  // dùng công cụ, trong khi họ chưa viết dòng nào. Không có code thì không thể để code sai chỗ.
+  const root = tempDir(t, "zemory-profile-blank-");
+  ensureHarness(root);
+  writeFileSync(join(root, "AGENTS.md"), "# app\n");
+  const rep = validate(loadContext(root));
+  assert.doesNotMatch(rep.issues.map((i) => i.msg).join("\n"), /own code not under/);
+  assert.equal(
+    rep.issues.filter((i) => i.level === "warn" && /structure/.test(i.msg)).length,
+    0,
+    "dự án trắng không được có cảnh báo cấu trúc nào",
+  );
 });
 
 test("validate with profile non-app checks deliverables, never asks for backend/frontend", (t) => {
