@@ -26,6 +26,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
 import { rotateBackup } from "../memory/backup-rotate.js";
+import { currentMemoryDb } from "../memory/db.js";
+import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
@@ -112,6 +114,15 @@ async function maintainTick(): Promise<void> {
   if (!claimDaemonJob("maintain")) return;
   chainRunning = true;
   try {
+    // 0. KHO CÓ LÀNH KHÔNG — hỏi TRƯỚC khi ghi thêm gì.
+    //    Sự cố 2026-08-03: kho hỏng lúc nào không ai biết, chỉ lộ ra vì tình cờ chạy bench.
+    //    Mỗi ngày chậm phát hiện là bản sao lưu gần nhất càng cũ. Hỏng thì DỪNG cả chuỗi:
+    //    ghi tiếp vào một file đã hỏng chỉ làm hỏng thêm và đè lên bản sao lưu còn tốt.
+    const health = verifyMemory(currentMemoryDb());
+    if (!health.ok) {
+      log(`⛔ KHO HỎNG (${health.detail}) — dừng chuỗi bảo trì. Chạy \`zemory memory salvage\` rồi \`memory reopen\` + \`memory scan\`.`);
+      return;
+    }
     // 1. scan — ingest new/changed transcripts. Incremental (dedup by uuid), and
     //    it is the ONLY step that brings new messages in, so it never backs off.
     await runStep("scan", ["memory", "scan"]);
