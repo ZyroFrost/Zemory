@@ -102,3 +102,14 @@ test("reconcileCounts chỉnh bộ đếm về số tin THẬT", () => {
   db.close();
   assert.equal(reopenIngest(p).missing, 0, "chỉnh xong thì không còn báo thiếu");
 });
+
+test("kho CHƯA TỒN TẠI ⇒ 'chưa có kho', KHÔNG phải HỎNG", () => {
+  // Máy cài mới chưa chạy lần nào thì chưa có file. Bản đầu mở read-only rồi nhận
+  // `unable to open database file` ⇒ báo HỎNG và bảo user đi cứu dữ liệu — dọa oan.
+  // Nặng hơn: `verify` nằm ở bước 0 chuỗi bảo trì và DỪNG chuỗi khi không ok ⇒ máy mới
+  // cài sẽ không scan/embed/digest/backup được gì.
+  const dir = mkdtempSync(join(tmpdir(), "zemory-fresh-"));
+  const r = verifyMemory(join(dir, "global_memory.db"));
+  assert.equal(r.ok, true, "kho chưa có mà báo hỏng = dọa oan máy cài mới");
+  assert.equal(r.fresh, true, "phải phân biệt được 'chưa có' với 'lành'");
+});
