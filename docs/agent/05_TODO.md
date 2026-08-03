@@ -20,7 +20,21 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
   `integrity_check: ok` → kiểm nghiệp vụ (FTS ra 31.748 dòng, CLI tìm đủ ba lớp) → đổi chỗ →
   `memory scan` nạp lại 144 tin từ transcript gốc ⇒ **+602 tin, mất 0**.
 - [~] **Đang chạy nền:** `memory embed --all` bù **15.718** tin chưa có vector.
-- [ ] **TRUY NGUYÊN NHÂN GỐC — chưa kết luận, mới loại trừ được vài đường.**
+- [x] **✅ ĐÃ TÌM RA (2026-08-03h): Google Drive đồng bộ chính file DB.** `D:\Zyro` nằm trong
+  vùng Drive; `fsutil hardlink list` cho thấy `global_memory.db` bị hardlink vào
+  `\Zyro\.tmp.driveupload\`. Đã `relocate` sang `D:\zemory-data` (ngoài vùng Drive), verify lành.
+  Chi tiết + phần tôi kết luận sai: `06_CHANGES [2026-08-03h]`.
+- [ ] **Sửa `relocate` cho đúng lời hứa** — nó in "settings moved" nhưng bỏ lại `backups/` ·
+  `browser/` · `imports/` · `logs/` · `cockpit/` · `context-guard/`, và **bỏ lại `secrets/` +
+  `share.key`** (chìa danh tính ở lại trong thư mục đang upload cloud — lỗ **điều 7**, không chỉ
+  bất tiện). Lần này đã dời tay; lệnh phải tự làm.
+- [ ] **Cảnh báo sớm: `doctor`/`verify` phải BÁO khi DB nằm trong thư mục đồng bộ đám mây.**
+  Kiểm rẻ: hardlink count > 1, hoặc có `.tmp.driveupload`/`.dropbox`/`OneDrive` ở thư mục cha.
+  Nếu có sẵn từ đầu thì đã không mất một ngày.
+- [ ] **Việc còn dở khi dừng:** `memory embed` đã dừng ở còn ~2.282 tin chưa có vector — chạy
+  lại `zemory memory embed --all` lúc rảnh. Bản `.bak` 1,1 GB của `relocate` vẫn nằm trong vùng
+  Drive ở `data/`, xoá được sau khi yên tâm.
+- [ ] **TRUY NGUYÊN NHÂN GỐC — (giữ lại phần đã loại, để không ai đi lại)**
   - **Đã loại:** đĩa đầy (D: còn **168 GB**) · thư mục đồng bộ đám mây (D: là đĩa cục bộ,
     Drive nằm ở G: — điều 11 không bị vi phạm).
   - **Nghi, chưa chứng minh:** hôm nay là ngày ĐẦU TIÊN chạy **ghi per-message** (hook Stop

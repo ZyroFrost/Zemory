@@ -5,6 +5,50 @@
 
 ---
 
+## [2026-08-03h] — 🎯 NGUYÊN NHÂN GỐC: Google Drive đang đồng bộ chính file DB. Tôi đã loại sai.
+
+> 🔄 **Supersede [2026-08-03b] · [2026-08-03d] · [2026-08-03f]** — mọi chỗ tôi viết *"đã loại:
+> thư mục đồng bộ đám mây (D: là đĩa cục bộ, Drive nằm ở G: — điều 11 không bị vi phạm)"*.
+> **SAI.** Tôi thấy Drive gắn ở `G:` rồi suy ra `D:` an toàn, **không kiểm** `D:\Zyro` có nằm
+> trong vùng Drive đồng bộ không. Một lệnh là ra.
+
+**Bằng chứng:**
+```
+fsutil hardlink list D:\Zyro\Tool\Zemory\data\global_memory.db
+  \Zyro\.tmp.driveupload\423483          ← thư mục staging của Google Drive
+  \Zyro\Tool\Zemory\data\global_memory.db
+```
+`D:\Zyro\.tmp.driveupload` + `.tmp.drivedownload` tồn tại, **sửa lần cuối cùng ngày**, và 2 tiến
+trình `GoogleDriveFS` đang chạy. Tức Drive **hardlink file DB 1,19 GB ĐANG ĐƯỢC GHI vào staging
+rồi upload**. Đây là **điều 11 bị vi phạm**, và là nguyên nhân hỏng SQLite kinh điển nhất: WAL
+cần `.db` + `-wal` + `-shm` nhất quán VỚI NHAU, mà Drive chép từng file một lúc chúng đang đổi.
+
+**Khớp toàn bộ dấu hiệu, kể cả những thứ giả thuyết cũ giải thích không nổi:**
+| dấu hiệu | Drive sync? |
+|---|---|
+| Trang được cây trỏ tới mà **chưa bao giờ ghi xuống** | ✅ đúng chữ ký thao tác file mức HĐH trên DB WAL đang sống |
+| Hỏng dồn ở cây FTS5 | ✅ cấu trúc bị ghi lại nhiều nhất |
+| Giết tiến trình **0/8 không tái hiện** | ✅ vì kill không phải nguyên nhân |
+| Không có sự kiện đĩa/điện nào | ✅ không cần |
+
+**Đã xử lý:** `zemory memory relocate "D:\zemory-data"` — 1.140,7 MB · 200.327 tin đã kiểm ·
+chỗ mới **chỉ còn MỘT hardlink** (Drive không với tới). `memory verify` → lành.
+
+**Hai lỗ của `relocate` lộ ra khi làm (chưa sửa):**
+- Nó in *"settings moved"* nhưng **bỏ lại** `backups/` (2,2 GB) · `browser/` (cookie) ·
+  `imports/` · `logs/` · `cockpit/` · `context-guard/` — trái với comment trong `db.ts` vốn hứa
+  *"relocating the data dir moves the whole cluster in one step"*. Phải dời tay.
+- Tệ hơn: nó **bỏ lại `secrets/` và `share.key`** — tức chìa danh tính vẫn nằm trong thư mục
+  đang được upload lên cloud. Đây là lỗ **điều 7**, không chỉ là bất tiện. Đã dời tay; cần sửa
+  `relocate` cho đúng lời hứa của nó.
+
+**Bài học, và nó cay:** tôi đã viết ba mục changelog truy nguyên nhân, dựng phép tái hiện, đo
+`synchronous`, đổi cả pragma — trong khi câu trả lời nằm ở **một lệnh `fsutil` chưa ai gõ**. Và
+người phát hiện không phải tôi: một agent khác tình cờ để ý `link count = 2`. Lần sau, với bất
+kỳ nghi ngờ nào về hỏng file: **kiểm hardlink + thư mục đồng bộ TRƯỚC**, đừng suy luận từ code.
+*(Các sửa ở [c]/[f] — bọc giao dịch vector, `synchronous = FULL`, `verify`, backup xoay vòng —
+vẫn giữ: chúng đúng về nguyên tắc và rẻ. Chỉ đừng đọc chúng như "đã chữa nguyên nhân".)*
+
 ## [2026-08-03g] — Template thứ 4: hệ ADAPT — nhận repo CÓ SẴN cấu trúc riêng
 
 **Vấn đề:** muốn dùng harness cho một repo **không phải của mình** (bên thứ ba · làm nhóm · có
