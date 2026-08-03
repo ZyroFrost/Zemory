@@ -72,19 +72,16 @@ Chốt xong thì ghi lại đường dẫn đó — mọi bước sau dùng nó.
 zemory --version && echo "đã có, bỏ qua bước cài"
 ```
 
-Chưa có thì cài:
-
-```bash
-npm i -g zemory
-zemory --version     # phải in ra số hiệu
-```
-
-Máy ảo Cowork ra được npm registry (`npm ping` → PONG, đo 2026-08-03) nên lối này thường chạy.
-**Mạng chặn npm** thì cài từ mã nguồn — nặng hơn nhiều (kéo ~500 MB phụ thuộc để có `tsc`):
+Chưa có thì cài **từ mã nguồn**. **`npm i -g zemory` KHÔNG chạy** — gói *chưa publish lên npm*
+(404, đo 2026-08-03). Đường chạy được (nặng: kéo ~500 MB phụ thuộc để có `tsc`):
 
 ```bash
 git clone https://github.com/ZyroFrost/Zemory
-cd Zemory && npm install && npm run build && npm link
+cd Zemory
+npm install          # kéo cả devDependencies → có tsc
+npm run build        # dựng dist/
+npm link             # hoặc: npm i -g .
+zemory --version     # phải in ra số hiệu
 ```
 
 > ⚠ **Đừng dùng `npm i -g github:ZyroFrost/Zemory`** — cài global **không kéo devDependencies**

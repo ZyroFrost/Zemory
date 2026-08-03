@@ -13,7 +13,7 @@
 
 `<thư mục DB>/share.key` — **cạnh DB, không phải trong repo**. `currentMemoryDir()` di động được
 (`zemory memory relocate` dời DB khỏi ổ hệ thống), nên "chìa ở `data/`" là câu SAI trên máy chưa
-relocate; ở đó DB nằm `~/.zemory/`. Máy thứ hai **không cần clone repo này** — `npm i -g zemory` là đủ.
+relocate; ở đó DB nằm `~/.zemory/`. Máy thứ hai **vẫn phải cài từ mã nguồn** (`git clone` → `npm install` → `npm run build` → `npm link`) — `npm i -g zemory` chưa chạy được vì gói chưa publish lên npm.
 
 ```powershell
 zemory memory key path      # đường chuẩn của chìa
