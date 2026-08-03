@@ -52,6 +52,45 @@ function read(root: string, rel: string): string | null {
 }
 
 /** Chấm độ bám chuẩn của một project. Thuần đọc — không sửa gì. */
+/** Bỏ dấu `/` thừa + chuẩn hoá `\` → `/` để so đường khai với đường thật không lệch vì hình thức. */
+function normDir(d: string): string {
+  return d.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+}
+
+export interface ForeignLayout {
+  /** slot (từ điển zemory) → đường THẬT trong repo. */
+  slots: Record<string, string>;
+  /** Folder repo có mà từ điển không có — hợp lệ, nhưng phải được KHAI. */
+  extra: string[];
+}
+
+/**
+ * Đọc khai báo hệ ADAPT từ `docs/.harness.json`, hay `null` nếu repo không ở hệ này.
+ *
+ * CỐ Ý chặt: chỉ nhận khi `layout === "foreign"` VÀ có ít nhất một khai báo. Thiếu là trả `null`
+ * ⇒ rơi về cổng chuẩn (đòi slot), chứ KHÔNG im lặng bỏ qua. Một file `.harness.json` gõ sai
+ * không được phép biến cổng thành vô hiệu — đó đúng là kiểu xanh-giả mà hệ này sinh ra để tránh.
+ */
+export function foreignLayout(root: string): ForeignLayout | null {
+  try {
+    const j = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8")) as {
+      layout?: unknown;
+      slots?: unknown;
+      extra?: unknown;
+    };
+    if (j.layout !== "foreign") return null;
+    const slots: Record<string, string> = {};
+    if (j.slots && typeof j.slots === "object") {
+      for (const [k, v] of Object.entries(j.slots as Record<string, unknown>)) if (typeof v === "string" && v.trim()) slots[k] = v.trim();
+    }
+    const extra = Array.isArray(j.extra) ? j.extra.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
+    if (!Object.keys(slots).length && !extra.length) return null; // khai rỗng = chưa nhận repo
+    return { slots, extra };
+  } catch {
+    return null;
+  }
+}
+
 export function conform(root: string): ConformReport {
   const g = buildCodeGraph(root);
   const std = buildStandardGraph(
@@ -89,14 +128,42 @@ export function conform(root: string): ConformReport {
     const last = seg[seg.length - 1];
     return seg.length === 1 && ["backend", "frontend", "docs"].includes(last) ? true : /^\d{2}_/.test(last);
   };
-  const offDirs = [...new Set(g.nodes.filter((n) => !n.slot && n.dir && !exempt(n.dir)).map((n) => n.dir))].sort();
-  push(
-    "off-standard-dir",
-    "blocking",
-    "Thư mục chứa code nhưng KHÔNG khớp slot chuẩn nào",
-    offDirs,
-    "đổi tên về đúng slot (03_STRUCTURE §3) HOẶC thêm slot vào chuẩn nếu là concern thật",
-  );
+  // ①bis — HỆ ADAPT (`layout: "foreign"`): repo có cấu trúc RIÊNG và KHÔNG được nắn (repo bên
+  // thứ ba, repo làm nhóm, repo có CI/import khoá cứng theo tên folder). Ở đây câu hỏi ĐỔI:
+  // không phải "có đúng slot chuẩn không" mà là **"có đúng bản đã KHAI không"**.
+  //
+  // Vì sao vẫn phải có cổng: nếu chuẩn uốn theo bất cứ thứ gì nó nhìn thấy thì `conform` thành
+  // lời nói vòng — "repo tuân thủ đúng cái repo đang là", luôn xanh, gác con số không. Nên bản
+  // ánh xạ phải được NGƯỜI DUYỆT rồi KHOÁ vào `.harness.json`, và từ đó cổng so **thực tế với
+  // bản khoá**. Folder mới mọc lên mà không ai khai ⇒ ĐỎ. Đường khai mà không tồn tại ⇒ ĐỎ.
+  const fh = foreignLayout(root);
+  if (fh) {
+    const declared = new Set([...Object.values(fh.slots), ...fh.extra].map(normDir));
+    const tops = [...new Set(g.nodes.filter((n) => n.dir).map((n) => n.dir.split("/")[0]))].filter((d) => d && !exempt(d)).sort();
+    push(
+      "foreign-undeclared-dir",
+      "blocking",
+      "Thư mục cấp 1 CHƯA được khai trong .harness.json (cấu trúc gốc đã đổi?)",
+      tops.filter((d) => !declared.has(normDir(d))),
+      "chạy skill `adopt` để đọc lại cây rồi cập nhật `slots`/`extra` + 03_STRUCTURE §3 — ĐỪNG nới bảng cho khỏi đỏ",
+    );
+    push(
+      "foreign-missing-dir",
+      "blocking",
+      "Đường đã khai trong .harness.json nhưng KHÔNG tồn tại",
+      [...declared].filter((d) => !existsSync(join(root, d))),
+      "bảng ánh xạ đã lỗi thời — chạy skill `adopt` để đọc lại cây thật",
+    );
+  } else {
+    const offDirs = [...new Set(g.nodes.filter((n) => !n.slot && n.dir && !exempt(n.dir)).map((n) => n.dir))].sort();
+    push(
+      "off-standard-dir",
+      "blocking",
+      "Thư mục chứa code nhưng KHÔNG khớp slot chuẩn nào",
+      offDirs,
+      "đổi tên về đúng slot (03_STRUCTURE §3) HOẶC thêm slot vào chuẩn nếu là concern thật",
+    );
+  }
 
   // ② Harness thiếu file bắt buộc.
   const need = [
