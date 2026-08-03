@@ -31,6 +31,21 @@ Hai việc PHÒNG NGỪA, cả hai sinh thẳng từ bằng chứng của sự c
   này thì đỏ được thật.
 - **Lý do có `keep`/`everyMs` mà không phải cron hệ điều hành:** khoảng hở phải do MÁY giữ, và
   phải giữ ở nơi biết được lúc nào an toàn để chép. Cron ngoài không biết daemon đang embed.
+- **Write-gate thành KHOÁ THẬT (`writegate.ts` §khoá xuyên tiến trình).** Bản cũ
+  `acquireCliWrite()` chỉ đặt một mốc thời gian và **không bao giờ từ chối** — hai CLI cùng
+  gọi đều nhận `{ok:true}`. Nó một chiều: chỉ bảo *scheduler daemon* nhường, không loại trừ
+  CLI↔CLI. Và CLI hỏi qua HTTP nên **daemon chết ⇒ không còn cổng nào** — đúng cảnh ngày hỏng
+  (daemon khởi động 8 lần gần như không lần nào tắt sạch, hook `scan` mỗi lượt trả lời, cộng
+  `memory embed` gõ tay). Nay khoá nằm ở FILE (`cli-write.lock`, kèm pid + nhãn + mốc):
+  mọi tiến trình đều thấy, sống sót qua việc daemon chết, **từ chối** khi người khác đang giữ,
+  và tự nhả khi chủ chết hoặc quá 15 phút (điều 9 — không được kẹt vĩnh viễn). Đặt được khoá
+  hay không thì lệnh **vẫn chạy** sau 2 phút chờ: khoá là cố vấn, không phải chỗ treo việc.
+  **6/6 test xanh, 2/2 đột biến bị bắt** (bỏ luật từ chối · bỏ kiểm chủ khoá khi nhả).
+- **Một bẫy test đã sập rồi mới thấy:** bản đầu dùng `pid: 1` để giả "tiến trình khác còn
+  sống" — trên Windows pid 1 KHÔNG tồn tại (`ESRCH`) nên khoá bị coi là mồ côi và mọi phép
+  kiểm "phải từ chối" đều **xanh giả**. Và `GLOBAL_MEMORY_DB` bị chốt lúc nạp module nên
+  import tĩnh khiến khoá rơi vào `data/` THẬT — test tự ghi vào kho thật rồi đọc file khác.
+  Cả hai đều là xanh-giả, đều ghi lại ngay trong đầu file test.
 
 ## [2026-08-03b] — DB THẬT HỎNG: phục hồi **ĐỦ 100%** · thêm `memory salvage` · một chỗ tôi ghi sai
 
