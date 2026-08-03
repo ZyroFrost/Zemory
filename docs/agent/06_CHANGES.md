@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-03d] — Dò tiếp nguyên nhân: loại thêm 3 nghi can · dựng đường QUÉT LẠI TỪ NGUỒN
+
+**Dò (nhật ký Windows + đọc code) — loại được ba nghi can, KHÔNG tìm ra nguyên nhân:**
+- **Đĩa hỏng: LOẠI.** Ngày 03/08 không có sự kiện lỗi đĩa nào. Lần `disk 153` (thử lại I/O)
+  gần nhất là **01/08** trên Disk 1.
+- **Mất điện / tắt máy bẩn: LOẠI.** `Kernel-Power 41` gần nhất là **30/07**, không phải 03/08.
+  (Có một lần ngủ vì hết pin 02/08 19:11 — vẫn TRƯỚC mốc "sáng 03/08 integrity_check còn ok".)
+- **Ghi bảng bóng bằng kết nối thiếu `vec0`: LOẠI.** Soi hết repo: `vec_chunks`/`vec_map`/
+  `vec_hash` chỉ được đụng trong `vectors.ts` và `salvage.ts`, cả hai đều qua `vecConnect`.
+⇒ Không phải phần cứng, không phải điện. Nghi can còn lại vẫn là tranh chấp ghi phần mềm —
+  **nhưng chưa tái hiện được nên vẫn KHÔNG gọi là tìm ra nguyên nhân gốc.**
+
+**Vì chưa fix được nguyên nhân, dựng đường SỐNG cho lần sau (user chỉ đạo: "ko fix dc thì
+phải scan lại từ source"):**
+- **`memory verify`** — kho có lành không. Trước đây **KHÔNG AI HỎI câu này**: kho hỏng lúc nào
+  không rõ, chỉ lộ ra vì tình cờ chạy bench. Nay nằm ở **bước 0 của chuỗi bảo trì daemon**, và
+  hỏng thì **DỪNG cả chuỗi** — ghi tiếp vào file hỏng chỉ hỏng thêm, mà còn đè lên bản sao lưu
+  đang tốt. Dùng `quick_check` (nhanh hơn `integrity_check` nhiều trên file 1 GB).
+- **`memory reopen`** — mở lại đường nạp cho phiên bị thủng để `scan` kéo lại từ transcript
+  GỐC. Đây là thứ đã cho lượt cứu hôm nay về **đủ 100%**, và giờ là một lệnh thay vì mò tay.
+  Chỉ đụng phiên có `message_count` lệch số tin thật — không bắt máy đọc lại cả kho.
+- **7/7 test xanh · 1/2 đột biến bị bắt.**
+- **⚠ Đột biến KHÔNG bắt được, ghi thẳng ra:** bỏ dòng "đọc thử một dòng mỗi bảng nguồn" trong
+  `verifyMemory` thì test **vẫn xanh** — `quick_check` đã đủ bắt mọi cảnh tôi dựng được. Giữ
+  dòng đó vì tài liệu SQLite nói `quick_check` không chạm dữ liệu, **chứ không phải vì đã đo**.
+  Đã ghi cảnh báo ngay tại chỗ trong code.
+
 ## [2026-08-03c] — Sau sự cố: bọc giao dịch đường ghi vector · backup tự xoay vòng
 
 Hai việc PHÒNG NGỪA, cả hai sinh thẳng từ bằng chứng của sự cố [2026-08-03b], không phải phòng xa.

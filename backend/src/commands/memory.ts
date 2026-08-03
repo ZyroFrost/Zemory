@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { rebuildFts, salvageMemory } from "../memory/salvage.js";
+import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, verifyMemory } from "../memory/salvage.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
@@ -629,6 +629,29 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // `memory scan`: cứu xong thì đặt lại `ingest_state.last_line = 0` cho phiên bị thủng rồi
   // quét lại — transcript gốc còn trên đĩa nên tin nằm trên trang hỏng về đủ.
   // KHÔNG đụng file gốc; ghi sang đường mới rồi người dùng tự đổi chỗ khi yên tâm.
+  // `verify` — kho có lành không. Rẻ, chạy đều được; trước 2026-08-03 KHÔNG AI HỎI câu này
+  // nên hỏng lúc nào không rõ, chỉ lộ ra khi tình cờ chạy bench.
+  if (sub === "verify") {
+    const db = flagValue(args, "--db") ?? currentMemoryDb();
+    const r = verifyMemory(db);
+    console.log(`zemory memory verify — ${db}\n  ${r.ok ? "✓ lành" : `✗ HỎNG: ${r.detail}`}`);
+    if (!r.ok) {
+      console.log("  → cứu: `zemory memory salvage` rồi `memory reopen` + `memory scan` (nguồn thật là transcript trên đĩa).");
+      process.exitCode = 1;
+    }
+    return;
+  }
+  // `reopen` — mở lại đường nạp cho phiên bị thủng để `scan` kéo lại từ transcript GỐC.
+  if (sub === "reopen") {
+    const db = flagValue(args, "--db") ?? currentMemoryDb();
+    const all = args.includes("--all");
+    const r = reopenIngest(db, { all });
+    console.log(`zemory memory reopen — ${db}`);
+    console.log(`  ${r.missing ? `thiếu ${r.missing} tin so với bộ đếm` : "không phiên nào thiếu tin"} · mở lại ${r.sessions} file transcript`);
+    console.log(r.sessions ? "  → chạy `zemory memory scan` để nạp lại phần thiếu (tin đã có sẽ tự bỏ qua)." : "  → không có gì để nạp lại.");
+    if (args.includes("--reconcile")) console.log(`  chỉnh bộ đếm: ${reconcileCounts(db)} phiên`);
+    return;
+  }
   if (sub === "salvage") {
     const src = flagValue(args, "--db") ?? currentMemoryDb();
     const out = positionalArgs(args.slice(1))[0] ?? join(dirname(src), "salvaged.db");
