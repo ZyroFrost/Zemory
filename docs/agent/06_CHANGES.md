@@ -5,6 +5,41 @@
 
 ---
 
+## [2026-08-03g] — Template thứ 4: hệ ADAPT — nhận repo CÓ SẴN cấu trúc riêng
+
+**Vấn đề:** muốn dùng harness cho một repo **không phải của mình** (bên thứ ba · làm nhóm · có
+CI/import khoá cứng theo tên folder). Hai chuẩn cũ đều ÉP folder: APP đòi `backend/`+`frontend/`,
+NON-APP đòi deliverable+`tasks/`. Nắn repo người ta là phá đường import, CI, pre-commit và tài
+liệu của họ.
+
+**Cách giải — nắn HARNESS theo repo, không nắn repo:**
+- `docs_template/adapt/` — bộ thứ 4. Khác ba bộ kia ở ĐÚNG MỘT chỗ: `03_STRUCTURE` không *quy
+  định* cấu trúc mà *mô tả* cấu trúc rồi **khoá** lại. Mọi thứ còn lại (`01_CONSTITUTION`,
+  `02_RULES`, skill, kỷ luật TODO/changelog) chép nguyên — chúng nói về *cách làm việc*, không
+  về tên folder, nên không có gì để nắn.
+- **Từ điển 54 slot KHÔNG được chép sang repo ngoài** — chỉ mang một **bảng dịch** slot↔đường
+  thật. Chép từ điển là tạo bản sao thứ hai của chuẩn, sửa một chỗ thì các bản kia trôi lệch
+  (phạm điều 3). Đây là lý do bộ này KHÔNG phải "một chuẩn mới".
+- `.claude/skills/adopt/SKILL.md` — quy trình 4 bước: **hỏi user APP/NON-APP** (đừng đoán) → đọc
+  cây THẬT → **đề xuất** bảng ánh xạ → **chờ NGƯỜI DUYỆT** → khoá vào `.harness.json`.
+  Bỏ `reconcile` khỏi bộ này: nó nắn repo, đúng thứ hệ ADAPT cấm.
+- `conform` thêm `layout: "foreign"`: đổi câu hỏi từ *"có đúng slot chuẩn không"* sang
+  ***"có đúng bản đã KHAI không"***. Folder cấp 1 mọc thêm mà chưa khai ⇒ ĐỎ. Đường khai mà
+  không tồn tại ⇒ ĐỎ.
+
+**Cái bẫy trung tâm của thiết kế, và cách chặn:** nếu chuẩn uốn theo bất cứ thứ gì nó nhìn thấy
+thì `conform` thành **lời nói vòng** — "repo tuân thủ đúng cái repo đang là", luôn xanh, gác con
+số không. Cùng đúng một loại xanh-giả đã dính 3 lần trong ngày. Chặn bằng **duyệt + đóng băng**:
+bảng chỉ có hiệu lực sau khi người duyệt, và từ đó cổng so thực tế với bản khoá.
+Thêm một lớp nữa: `.harness.json` thiếu / gõ sai / **khai rỗng** ⇒ **rơi về cổng chuẩn**, KHÔNG
+im lặng bỏ qua — một file gõ sai không được phép vô hiệu hoá cổng.
+
+**5/5 test · 2/2 đột biến bị bắt** (bỏ luật khai-rỗng · bỏ kiểm đường-khai-không-tồn-tại).
+**Một bẫy xanh-giả nữa đã sập ngay khi viết test này:** repo giả ban đầu chỉ có `pipelines/` và
+`notebooks/` — hoá ra cả hai **LÀ slot hợp lệ**, nên cổng chuẩn không bao giờ nổ và phép kiểm
+"phải rơi về cổng chuẩn" thành vô nghĩa. Phải thêm một thư mục chắc chắn không phải slot **và có
+file trong đó** (thư mục RỖNG không có code để chấm — lần đầu tôi tạo thư mục mà quên ghi file).
+
 ## [2026-08-03f] — TÁI HIỆN: kill KHÔNG làm hỏng (0/8) ⇒ đổi `synchronous` sang FULL
 
 **Phép tái hiện (`attic/repro/`):** ép một tiến trình chèn FTS5 liên tục — đúng tải ghi
