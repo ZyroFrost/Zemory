@@ -16,6 +16,7 @@
 // mù — FTS dựng lại từ nội dung nguồn (rẻ, không cần model), vector chép được thì chép, phần
 // thiếu để `memory embed` vá sau (embed lại toàn bộ 198k tin là >50 giờ).
 
+import { existsSync } from "node:fs";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { openMemory } from "./db.js";
@@ -202,7 +203,14 @@ export function salvageVectors(
  * phút (nó dò cả chỉ mục), còn `quick_check` bỏ qua phần dò chỉ mục nên nhanh hơn nhiều mà vẫn
  * bắt được hỏng trang — đúng thứ ta cần cho một phép kiểm chạy đều.
  */
-export function verifyMemory(dbPath: string): { ok: boolean; detail: string } {
+export function verifyMemory(dbPath: string): { ok: boolean; detail: string; fresh?: boolean } {
+  // KHO CHƯA TỒN TẠI ≠ KHO HỎNG. Máy cài mới chưa chạy lần nào thì chưa có file — `openMemory`
+  // sẽ tạo lúc dùng tới. Bản đầu của hàm này mở read-only nên nhận `unable to open database
+  // file` rồi **báo HỎNG và bảo người dùng đi cứu dữ liệu** — dọa oan ngay lần chạy đầu tiên.
+  // Nặng hơn: `verify` nằm ở bước 0 chuỗi bảo trì và DỪNG cả chuỗi khi không ok, nên máy mới
+  // cài sẽ không scan/embed/digest/backup được gì. Lỗi này do chính bản [2026-08-03d] gây ra
+  // và lộ ra khi chạy thử một bản cài mới hoàn toàn — đo mới thấy, đọc code không thấy.
+  if (!existsSync(dbPath)) return { ok: true, detail: "chưa có kho (máy mới) — sẽ tạo khi dùng", fresh: true };
   let db: Db | null = null;
   try {
     db = new Database(dbPath, { readonly: true });
