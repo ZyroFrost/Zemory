@@ -1,9 +1,11 @@
 // `zemory memory <scan|scan-web|search|embed|scope|hosts|digest|sync|export|
 //  import|forget|redact|backup|restore|relocate|vacuum|bench>` — the global
 // Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
-import { basename, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { rebuildFts, salvageMemory } from "../memory/salvage.js";
+import { currentMemoryDb } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
@@ -11,6 +13,7 @@ import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ing
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
+import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, storageInfo } from "../memory/relocate.js";
@@ -601,6 +604,31 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log("  note: this is a raw local SQLite backup. Use `memory export` for encrypted sharing.");
     return;
   }
+  // `salvage` — đường sống khi DB đã hỏng (`database disk image is malformed`). Sinh từ sự cố
+  // thật 2026-08-03. Nó cho lại NHIỀU hơn `restore` một bản backup cũ, và đi cặp với
+  // `memory scan`: cứu xong thì đặt lại `ingest_state.last_line = 0` cho phiên bị thủng rồi
+  // quét lại — transcript gốc còn trên đĩa nên tin nằm trên trang hỏng về đủ.
+  // KHÔNG đụng file gốc; ghi sang đường mới rồi người dùng tự đổi chỗ khi yên tâm.
+  if (sub === "salvage") {
+    const src = flagValue(args, "--db") ?? currentMemoryDb();
+    const out = positionalArgs(args.slice(1))[0] ?? join(dirname(src), "salvaged.db");
+    if (existsSync(out) && !args.includes("--force")) {
+      console.log(`zemory memory salvage: ${out} đã tồn tại — dùng --force để ghi đè, hoặc nêu đường khác.`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`zemory memory salvage — vét dữ liệu còn đọc được\n  từ: ${src}\n  sang: ${out}`);
+    const r = salvageMemory(src, out);
+    for (const t of r.tables) {
+      if (t.copied || t.lost) console.log(`  ${t.lost ? "⚠" : "✓"} ${t.table.padEnd(18)} ${t.copied}${t.lost ? ` · MẤT ${t.lost}` : ""}`);
+    }
+    console.log(`  tổng: chép ${r.copied} dòng · mất ${r.lost}`);
+    console.log("  dựng lại chỉ mục FTS…");
+    for (const f of rebuildFts(out)) if (!f.ok) console.log(`  ✗ ${f.table}`);
+    console.log("  → bước tiếp: kiểm `PRAGMA integrity_check`, đổi chỗ, rồi `zemory reindex`");
+    console.log("    + `memory digest --all` + `memory embed --all` để vá phần vector còn thiếu.");
+    return;
+  }
   if (sub === "vacuum") {
     console.log("zemory memory vacuum — reclaiming freed pages (this rewrites the whole DB file, may take a while)…");
     const r = vacuumMemory();
@@ -744,6 +772,20 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "bench") {
+    // `--recall`: cổng ĐO TRÊN KHO THẬT (corpus có nhãn, mồi nhiễu gần chủ đề). Khác hẳn
+    // bench mặc định bên dưới — bench đó chạy corpus 8 tài liệu rời chủ đề, đủ để gác hybrid
+    // nhưng KHÔNG đủ để phán về rerank (pool rerank 40 > cả corpus). Xem evals/recallbench.ts.
+    if (args.includes("--recall")) {
+      const limRaw = flagValue(args, "--limit");
+      const opts = {
+        limit: limRaw ? Number(limRaw) : undefined,
+        skipRerank: args.includes("--no-rerank"),
+      };
+      console.log("zemory memory bench --recall — FTS vs hybrid vs hybrid+rerank trên kho THẬT…");
+      const rr = await runRecallBench(opts);
+      for (const line of formatRecallBench(rr)) console.log(line);
+      return;
+    }
     const withRerank = args.includes("--rerank");
     console.log(
       `zemory memory bench — RAG gate: FTS-only vs hybrid (FTS+vector)${withRerank ? " vs hybrid+rerank" : ""} on a labeled paraphrase corpus…`,
