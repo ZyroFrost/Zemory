@@ -69,10 +69,27 @@ Chốt xong thì ghi lại đường dẫn đó — mọi bước sau dùng nó.
 ## §2. Cài zemory + trỏ kho về đúng chỗ
 
 ```bash
-zemory --version || npm i -g zemory
-zemory --version                          # phải in ra số hiệu
+zemory --version && echo "đã có, bỏ qua bước cài"
+```
+
+Chưa có thì cài từ mã nguồn. **`npm i -g zemory` KHÔNG chạy** — gói này *chưa publish lên npm*
+(404), và `npm i -g github:ZyroFrost/Zemory` cũng hỏng vì cài global không kéo devDependencies
+nên không có `tsc` để dựng. **Đo thật 2026-08-03, cả hai lệnh đều lỗi.** Đường chạy được:
+
+```bash
+git clone https://github.com/ZyroFrost/Zemory
+cd Zemory
+npm install          # kéo cả devDependencies → có tsc
+npm run build        # dựng dist/
+npm link             # hoặc: npm i -g .
+zemory --version     # phải in ra số hiệu
+```
+
+Rồi trỏ kho về chỗ đã chốt ở §1:
+
+```bash
 zemory memory relocate "<đường-dẫn-đã-chốt>"
-zemory memory verify                      # phải "lành"
+zemory memory verify                      # phải "lành" hoặc "chưa có kho (máy mới)"
 ```
 
 `relocate` dời kho **và** ghi con trỏ, nên từ đó mọi lệnh đều tự tìm đúng chỗ.
