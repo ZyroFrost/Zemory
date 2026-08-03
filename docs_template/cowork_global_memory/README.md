@@ -11,7 +11,8 @@ hội thoại của mọi phiên làm việc trước, trên mọi máy.
 |---|---|---|
 | Cách dựng | **chép từng file** bộ chuẩn về | **cài hẳn công cụ** rồi dùng thẳng |
 | Cần gì ở máy ảo | gần như không cần gì | cần chạy được `node` + tải được gói |
-| Bộ chuẩn nhận được | bản đã cắt gọn cho vừa | **bản đầy đủ** |
+| Bộ chuẩn nhận được | **bản đã cắt gọn** (bảng tra thư mục còn 36/143 dòng) | **bản đầy đủ, y như máy thường** |
+| Chấm độ bám chuẩn | script chép kèm | **lệnh thật của công cụ** |
 | Bộ nhớ chung | **không có** | **có** — tra lại được việc đã làm tháng trước |
 | Rủi ro | thấp | phải cẩn thận khi **ghi** vào bộ nhớ (xem dưới) |
 

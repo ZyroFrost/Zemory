@@ -84,11 +84,7 @@ zemory memory verify                      # phải "lành"
 
 Cài hoặc `verify` hỏng ⇒ **DỪNG, báo người dùng, chuyển sang bộ `cowork/` cũ.** Cấm bịa.
 
-## §3. Dựng bộ chuẩn — KHÔNG chép file nữa
-
-Đây là chỗ bản này rẻ hơn hẳn bộ cũ: không danh sách file, không đối chiếu số dòng, không chép
-nguyên văn. Lệnh `init` tự rót bộ chuẩn **từ bản gốc** ⇒ không bao giờ lệch phiên bản, và nhận
-được **bản ĐẦY ĐỦ** chứ không phải bản cắt gọn.
+## §3. Dựng bộ chuẩn — bản ĐẦY ĐỦ, giống hệt một máy bình thường
 
 1. **HỎI USER — dự án này là APP hay NON-APP? ĐỪNG tự đoán.**
    - **NON-APP** = sản phẩm / tài sản: báo cáo · dữ liệu · tài liệu · thiết kế. Agent *đọc · dò ·
@@ -97,6 +93,27 @@ nguyên văn. Lệnh `init` tự rót bộ chuẩn **từ bản gốc** ⇒ khô
 2. Chạy ở **thư mục dự án**: `zemory init --non-app` (hoặc `zemory init` nếu là APP).
 3. `zemory doctor` — phải xanh. Đỏ thì đọc lỗi rồi sửa, đừng bỏ qua.
 4. `zemory conform` — chấm độ bám chuẩn.
+
+### Bản này nhận được ĐỦ những gì bộ cũ buộc phải cắt
+
+Bộ `cowork/` cũ không gọi được `zemory` nên phải **chép tay từng tệp**, mà chép tay thì tốn ngữ
+cảnh — nên nó **cắt bớt cho vừa**. Bản này để `init` rót từ bản gốc, nên không cắt gì. Số đo thật:
+
+| | bộ `cowork/` cũ | bản này |
+|---|---:|---:|
+| `03_STRUCTURE` (từ điển thư mục chuẩn) | 36 dòng | **143 dòng** |
+| `02_RULES` | 68 dòng | **86 dòng** |
+| `04_SKILLS` | 41 dòng | **55 dòng** |
+| Chấm độ bám chuẩn | script `check_structure.py` chép kèm | **`zemory conform` thật** |
+| Kho nhớ chung | **không có** | **có** |
+
+⇒ **KHÔNG chép `check_structure.py`, KHÔNG dựng skill `structure`.** Đó là đường vòng bộ cũ phải
+đi vì thiếu công cụ; ở đây `zemory conform` làm đúng việc đó và bám sát chuẩn hơn. Thấy hai thứ
+đó trong thư mục dự án (do phiên trước dựng bằng bộ cũ) thì **báo người dùng**, đừng tự xoá.
+
+⇒ Vì bộ chuẩn đã đầy đủ, **cứ dùng nguyên chuẩn NON-APP như một máy bình thường** — không phải
+lược bớt, không phải diễn giải lại. Mọi quy trình (`fill` · `pull` · `upload` · `audit` ·
+`reconcile` · `session-close` · `grill` · `read-office` · `write-docx`) đều có sẵn và chạy được.
 
 ## §4. Quét dữ liệu vào kho — như bản zemory gốc
 
