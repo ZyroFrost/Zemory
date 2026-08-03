@@ -634,7 +634,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   if (sub === "verify") {
     const db = flagValue(args, "--db") ?? currentMemoryDb();
     const r = verifyMemory(db);
-    console.log(`zemory memory verify — ${db}\n  ${r.ok ? "✓ lành" : `✗ HỎNG: ${r.detail}`}`);
+    console.log(`zemory memory verify — ${db}\n  ${r.ok ? (r.fresh ? `· ${r.detail}` : "✓ lành") : `✗ HỎNG: ${r.detail}`}`);
     if (!r.ok) {
       console.log("  → cứu: `zemory memory salvage` rồi `memory reopen` + `memory scan` (nguồn thật là transcript trên đĩa).");
       process.exitCode = 1;
