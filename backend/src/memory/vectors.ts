@@ -175,10 +175,6 @@ function writeVectorRaw(db: Conn, id: number, embedding: Buffer): void {
   }
 }
 
-function writeVector(db: Conn, id: number, vec: number[]): void {
-  writeVectorRaw(db, id, toBlob(vec));
-}
-
 export interface EmbedPendingResult {
   embedded: number; // vectors written this pass (a long message counts once per chunk)
   /** Of `embedded`, how many were COPIED from identical earlier content (no model call). */
@@ -245,13 +241,32 @@ export async function embedPending(
       return rowid;
     };
 
-    const ins = (messageId: number, seq: number, vec: number[]): number => {
+    // MỘT giao dịch cho cả bộ ba `vec_map` → `vec_chunks` → `vec_hash`.
+    //
+    // Vì sao (bằng chứng từ sự cố 2026-08-03, không phải phòng xa): trước đây ba lệnh này là
+    // ba autocommit RIÊNG, mà `vec_map` lại được ghi TRƯỚC vector. Bất kỳ khe nào giữa chúng —
+    // tiến trình khác ghi xen, hay bị kill — để lại đúng trạng thái ta đã thấy trong DB hỏng:
+    // `vec_map`/`vec_hash` trỏ tới rowid mà `vec_chunks` KHÔNG có ("Could not find a row with
+    // rowid 2150772"; vec_hash 119.784 vs vec_chunks 142.840). Bọc chung thì hoặc có đủ ba,
+    // hoặc không có gì — không còn trạng thái nửa vời để ai đó đọc phải.
+    const insTx = db.transaction((messageId: number, seq: number, blob: Buffer, key: string | null): number => {
+      const rowid = targetRowid(messageId, seq);
+      writeVectorRaw(db, rowid, blob);
+      if (key !== null) hashPut.run(key, rowid);
+      return rowid;
+    });
+
+    /** Đường CHÉP LẠI (dedup): không gọi model, nhưng vẫn ghi map + vector ⇒ vẫn phải bọc. */
+    const copyTx = db.transaction((messageId: number, seq: number, blob: Buffer): void => {
+      writeVectorRaw(db, targetRowid(messageId, seq), blob);
+    });
+
+    const ins = (messageId: number, seq: number, vec: number[], key: string | null = null): number => {
       if (dims === null) {
         dims = vec.length;
-        ensureVecTable(db, dims, profile);
+        ensureVecTable(db, dims, profile); // DDL: phải nằm NGOÀI giao dịch ghi
       }
-      const rowid = targetRowid(messageId, seq);
-      writeVector(db, rowid, vec);
+      const rowid = insTx(messageId, seq, toBlob(vec), key);
       embedded++;
       return rowid;
     };
@@ -286,7 +301,7 @@ export async function embedPending(
         const canonical = (hashGet.get(key) as { rowid: number } | undefined)?.rowid;
         const blob = canonical != null && tableExists(db) ? vectorOf(db, canonical) : null;
         if (blob) {
-          writeVectorRaw(db, targetRowid(r.id, seq), blob);
+          copyTx(r.id, seq, blob); // cùng một giao dịch: map + vector đi chung
           embedded++;
           deduped++;
           if (seq === 0) tick(r.id);
@@ -308,9 +323,9 @@ export async function embedPending(
         const r = batch[j];
         const v = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
         if (v) {
-          const rowid = ins(r.messageId, r.seq, v);
-          hashPut.run(r.key, rowid);
-          seenThisRun.set(r.key, rowid);
+          // `key` đi CÙNG giao dịch — trước đây `hashPut` chạy sau, tách rời, nên một lần
+          // kill đúng khe đó để lại vector không có hash (hoặc ngược lại).
+          seenThisRun.set(r.key, ins(r.messageId, r.seq, v, r.key));
         }
         if (r.seq === 0) tick(r.messageId);
       }
@@ -320,7 +335,7 @@ export async function embedPending(
       const cid = seenThisRun.get(d.key);
       const blob = cid != null ? vectorOf(db, cid) : null;
       if (blob) {
-        writeVectorRaw(db, targetRowid(d.messageId, d.seq), blob);
+        copyTx(d.messageId, d.seq, blob);
         embedded++;
         deduped++;
       } // else: canonical failed (fail-open) — the twin stays pending for the next pass
