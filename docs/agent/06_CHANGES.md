@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-08-03f] — TÁI HIỆN: kill KHÔNG làm hỏng (0/8) ⇒ đổi `synchronous` sang FULL
+
+**Phép tái hiện (`attic/repro/`):** ép một tiến trình chèn FTS5 liên tục — đúng tải ghi
+per-message (giao dịch nhỏ, trigger đẩy vào `messages_fts` + `_tri`, FTS5 tự trộn) — để cây
+lớn tới 5–17 MB rồi **SIGKILL giữa lúc đang ghi**, 8 lượt với thời điểm giết khác nhau.
+**KẾT QUẢ: 0/8 lượt hỏng.** Đúng như tài liệu SQLite: giết một TIẾN TRÌNH không được phép làm
+hỏng DB — WAL tự phục hồi lúc mở lại.
+
+⇒ **LOẠI giả thuyết force-kill.** Tôi đã tự nhận 8 lần `Stop-Process -Force` hôm đó là biến số
+do mình đưa vào; phép đo nói đó KHÔNG phải nguyên nhân. Ghi lại để không ai — kể cả tôi — đổ
+lỗi sai chỗ ở lần sau.
+
+**Còn lại đúng một hướng, và nó khớp chữ ký:** trang được cây trỏ tới nhưng **chưa bao giờ
+xuống đĩa** = MẤT GHI ở tầng HĐH/đĩa. Máy này là laptop; nhật ký Windows có *"entering sleep —
+Sleep Reason: Battery"* (02/08 19:11) cùng 51 lần vào/ra modern standby.
+
+**Nên đổi `synchronous` NORMAL → FULL, và ĐÃ ĐO chi phí chứ không đoán.** Trên chính tải
+per-message (200 giao dịch × 20 tin, có trigger FTS):
+**NORMAL 12,3 ms/lượt → FULL 13,0 ms/lượt — đắt hơn 5% (0,7 ms).**
+Với WAL, `NORMAL` không fsync ở mỗi commit còn `FULL` thì có. Đổi 0,7 ms lấy việc không mất
+ghi khi máy ngủ / hết pin là quá rẻ.
+*(Vẫn CHƯA chứng minh được đây là nguyên nhân — nhưng nó là phòng thủ đúng chỗ, rẻ, và không
+phụ thuộc vào việc có tìm ra nguyên nhân hay không.)*
+
 ## [2026-08-03e] — VẬT CHỨNG lật lại kết luận của tôi: hỏng là MẤT ĐUÔI FILE, không phải tranh chấp ghi
 
 > 🔄 **Supersede [2026-08-03c] §"bọc giao dịch":** tôi đã viết rằng `vec_hash` 119.784 vs

@@ -645,7 +645,19 @@ export function openMemory(dbPath: string = currentMemoryDb()): MemoryDB {
   if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL"); // many readers, single writer
-  db.pragma("synchronous = NORMAL");
+  // FULL, không phải NORMAL — đổi sau sự cố hỏng DB 2026-08-03, và ĐÃ ĐO chứ không đoán.
+  //
+  // Vật chứng của lần hỏng đó: cây bóng FTS5 trỏ tới trang VƯỢT `page_count` — tức trang được
+  // tham chiếu nhưng **chưa bao giờ xuống đĩa**. Đó là chữ ký của MẤT GHI, không phải tranh
+  // chấp ghi (tranh chấp cho ra lệch logic, không tạo được con trỏ vượt cuối file). Đã dựng
+  // phép tái hiện giết cứng tiến trình giữa lúc FTS5 đang trộn: **0/8 lượt hỏng** — nên kill
+  // KHÔNG phải nguyên nhân. Nghi can còn lại là mất ghi ở tầng HĐH/đĩa; máy này là laptop và
+  // nhật ký Windows có "entering sleep — Sleep Reason: Battery".
+  //
+  // Với WAL, `NORMAL` không fsync ở mỗi commit; `FULL` thì có. Chi phí ĐO ĐƯỢC trên chính tải
+  // per-message của repo (200 giao dịch × 20 tin, có trigger FTS): **12,3ms → 13,0ms mỗi lượt,
+  // đắt hơn 5%**. Đổi lấy việc không mất ghi khi máy ngủ/hết pin thì quá rẻ.
+  db.pragma("synchronous = FULL");
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
   db.exec(SCHEMA);
