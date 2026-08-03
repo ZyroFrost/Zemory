@@ -5,38 +5,45 @@
 
 ---
 
-## [2026-08-03j] — Lỗi TÔI vừa gây:  báo máy cài mới là KHO HỎNG
+## [2026-08-03l] — Chuẩn bị PUBLISH lên npm · và một lỗi tôi lặp lại lần thứ HAI trong ngày
 
-**Lộ ra khi user hỏi "cài mới chạy mới vẫn được đúng không" và tôi dựng thử một bản cài mới
-hoàn toàn.** Đọc code không thấy — phải chạy thật mới thấy.
+**User chốt: publish.** Publish **không thêm một dòng code nào** — nó đổi thứ khác:
 
- mở kho bằng read-only. Kho **chưa tồn tại** (máy cài lần đầu) ⇒ SQLite trả
- ⇒ nó báo **"✗ HỎNG"** kèm lời khuyên đi  cứu dữ liệu.
-Dọa oan ngay lần chạy đầu tiên. **Nặng hơn:** [2026-08-03d] đặt  ở **bước 0 chuỗi bảo
-trì** và cho **DỪNG cả chuỗi** khi không ok ⇒ máy mới cài thì daemon **không scan / không embed
-/ không digest / không backup** gì hết.
+| | clone + build | `npm i -g zemory` |
+|---|---:|---:|
+| tải về | `.git` **449 MB** + `node_modules` **519 MB** | **7,1 MB** |
+| cần có | git · node · toolchain build | **chỉ node** |
+| số bước | 5 | **1** |
 
-**Sửa:** . Trả  kèm chữ *"chưa có kho (máy
-mới) — sẽ tạo khi dùng"*, và  in khác hẳn với "lành". Test hồi quy kèm theo.
+Gói: **315 file · 8,5 MB giải nén**. Đã kiểm **không lọt file nhạy cảm** (`.db` · `share.key` ·
+`secrets/` · `config.json` · `data/` đều **0**) — chỉ chở `dist/` + `docs_template/` + `frontend/`.
 
-**Đo lại bản cài mới, đầu tới cuối — mọi thứ còn lại BÌNH THƯỜNG:**
-| | |
-|---|---|
-|  |  |
-|  | **2 = FULL** (đổi ở [2026-08-03f], áp đúng cho kho mới) |
-| schema | 20 · 58 bảng |
-|  | **+90.780 tin / 104 phiên** |
-|  sau khi ghi | ✓ lành |
-|  | ra kết quả thật |
-| kho THẬT của máy | ✓ lành |
+**KHÔNG tăng version.** Gói chưa từng publish nên `1.0.0` chính là bản phát hành ĐẦU TIÊN; nhảy
+lên `1.0.1` trong khi `1.0.0` chưa hề tồn tại là sai.
 
-⇒ **Sự cố hỏng kho [2026-08-03h] KHÔNG ảnh hưởng bản cài mới** — nguyên nhân là thư mục đồng bộ
-đám mây, mà bản cài mới mặc định nằm ở , không phải vùng Drive. *(Việc  chưa
-cảnh báo khi kho lỡ nằm trong vùng đồng bộ vẫn còn treo ở .)*
+**Đã trỏ 7 chỗ tài liệu về `npm i -g zemory`**, nhưng **giữ đường mã nguồn làm lối dự phòng** —
+mạng chặn npm là ca có thật. Giữ nguyên cảnh báo **đừng dùng `npm i -g github:…`** (cài global
+không kéo devDependencies ⇒ thiếu `tsc` ⇒ cài xong vẫn hỏng).
 
-**Bài học lặp lại lần thứ ba trong ngày:** cả ba lỗi nặng nhất hôm nay đều **chỉ lộ ra khi chạy
-thật** — engram 22 tool (đọc docs ra 20),  (đoán là rỗng), và lần này. Viết xong
-một đường mới thì **phải chạy nó ở trạng thái TRẮNG**, không chỉ trên máy đã có sẵn dữ liệu.
+**Vì sao publish quan trọng với bộ Cowork mới:** đo được máy ảo Cowork **ra được npm registry**
+(`npm ping` → PONG) nhưng **`curl` tới GitHub bị chặn**. Không publish thì `cowork_global_memory`
+có thể chết ngay ở bước clone.
+
+**Cổng trước khi publish: `npm run check` → 508/508 · `conform` xanh.** `prepack` chạy lại chính
+cổng đó nên đỏ là không publish được — đúng như mong muốn.
+
+**Còn lại đúng hai lệnh, do USER chạy vì là tài khoản của user:** `npm login` → `npm publish`.
+
+### ⚠ Lỗi của tôi, LẶP LẠI lần thứ hai trong cùng một ngày
+
+Tôi nhồi nội dung changelog vào `node -e "…"` **qua shell**. Chuỗi có backtick ⇒ **bash thực thi
+chúng như lệnh** — nó chạy thật `npm i -g zemory`, `npm ping`, `curl`, và **`npm login`**, rồi
+treo 10 phút chờ nhập liệu. Hậu quả: một **bản trùng lặp bị cắt nát** của mục `[2026-08-03j]`
+lọt vào đầu file (đã xoá), và tiêu đề mục đó mất chữ trong dấu nháy ngược.
+
+Lần đầu mắc là vài giờ trước, tôi **đã tự ghi lại là "dùng công cụ sửa file, đừng nhồi chuỗi dài
+qua shell"** — rồi vẫn làm lại. Luật cứng, không có ngoại lệ: **văn bản nhiều dòng hoặc có
+backtick thì SỬA BẰNG CÔNG CỤ SỬA FILE.** `node -e` chỉ dành cho mã không chứa dấu nháy ngược.
 
 ## [2026-08-03k] — 🔴 LỆNH CÀI TRONG MỌI TÀI LIỆU ĐỀU SAI — user khác cài không được
 

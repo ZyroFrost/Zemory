@@ -21,7 +21,7 @@ không có bên đó. Và nếu máy mới **tự** lấy được chìa từ ch
 
 **Cạnh DB, KHÔNG phải trong repo.** `currentMemoryDir()` di động được (`memory relocate` dời DB
 khỏi ổ hệ thống), nên câu *"chìa ở `data/`"* là SAI trên máy chưa relocate — ở đó DB nằm
-`~/.zemory/`. Máy thứ hai **vẫn phải cài từ mã nguồn** (`git clone` → `npm install` → `npm run build` → `npm link`); `npm i -g zemory` KHÔNG chạy — chưa publish lên npm (đo 2026-08-03).
+`~/.zemory/`. Máy thứ hai **không cần clone repo zemory**; `npm i -g zemory` là đủ.
 
 `resolveShareKey` xét: `--key-file` → `<DB>/share.key` → `<repo>/share/share.key` → env
 `ZEMORY_SHARE_KEY`. **File thắng env**, nên còn file là env bị bỏ qua — đây là bẫy đã dính một lần.
