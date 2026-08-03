@@ -190,7 +190,87 @@ export function salvageVectors(
   }
 }
 
+/**
+ * Kho có LÀNH không — câu hỏi rẻ nhất và quan trọng nhất, nhưng trước 2026-08-03 KHÔNG AI HỎI.
+ *
+ * Sự cố hôm đó không phải hỏng rồi mới biết ngay: nó hỏng lúc nào không rõ, và chỉ lộ ra khi
+ * tôi tình cờ chạy bench. Nếu bench không chạy hôm đó thì hôm sau, hôm sau nữa mới biết — mà
+ * mỗi ngày trôi qua là bản sao lưu gần nhất càng cũ. Nên phép kiểm này được nối vào chuỗi bảo
+ * trì của daemon: phát hiện tính bằng phút, không phải bằng may mắn.
+ *
+ * Dùng `quick_check` chứ không `integrity_check`: trên file 1 GB, `integrity_check` mất vài
+ * phút (nó dò cả chỉ mục), còn `quick_check` bỏ qua phần dò chỉ mục nên nhanh hơn nhiều mà vẫn
+ * bắt được hỏng trang — đúng thứ ta cần cho một phép kiểm chạy đều.
+ */
+export function verifyMemory(dbPath: string): { ok: boolean; detail: string } {
+  let db: Db | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true });
+    const r = (db.prepare("PRAGMA quick_check").get() as { quick_check: string }).quick_check;
+    if (r !== "ok") return { ok: false, detail: r };
+    // Đọc thật một dòng ở mỗi bảng NGUỒN: `quick_check` không chạm dữ liệu nên một trang hỏng
+    // giữa bảng vẫn có thể lọt.
+    // ⚠ THÀNH THẬT: dòng này CHƯA có phép kiểm nào chứng minh là cần — thử đột biến (bỏ nó
+    // đi) thì test vẫn xanh, vì `quick_check` đã bắt được các cảnh tôi dựng được. Giữ lại vì
+    // nó rẻ và phòng đúng lớp lỗi mà `quick_check` theo tài liệu KHÔNG phủ, chứ không phải vì
+    // đã đo. Ai bỏ nó đi cũng sẽ không thấy cổng đỏ — nên đừng coi cổng xanh là bằng chứng.
+    for (const t of ["sessions", "messages"]) db.prepare(`SELECT * FROM "${t}" LIMIT 1`).all();
+    return { ok: true, detail: "ok" };
+  } catch (e) {
+    return { ok: false, detail: (e as Error).message };
+  } finally {
+    db?.close();
+  }
+}
+
 /** Dựng lại mọi chỉ mục FTS từ nội dung nguồn. Rẻ: không cần model, không cần mạng. */
+/**
+ * Mở lại đường NẠP cho những phiên bị thủng, để `memory scan` kéo lại từ transcript GỐC.
+ *
+ * Đây là mấu chốt mà lượt cứu 2026-08-03 mới dạy: `salvage` KHÔNG phải bước cuối. Với dữ liệu
+ * nạp từ file, **nguồn thật là transcript `.jsonl` trên đĩa**, DB chỉ là chỉ mục (đúng tinh
+ * thần "file wins"). Hôm đó 144 tin nằm trên trang hỏng đã về đủ chỉ nhờ bước này.
+ *
+ * Cách làm: so số tin THẬT trong `messages` với `sessions.message_count` (bộ đếm ghi lúc nạp).
+ * Phiên nào lệch là phiên bị thủng ⇒ đặt `last_line = 0` để lượt quét sau đọc lại từ đầu file.
+ * Chèn lại là vô hại: `UNIQUE(session_id, uuid)` bỏ qua tin đã có.
+ *
+ * `all: true` thì mở lại TẤT CẢ (dùng khi không tin bộ đếm nữa — nó cũng nằm trong DB hỏng).
+ */
+export function reopenIngest(dbPath: string, opts: { all?: boolean } = {}): { sessions: number; missing: number } {
+  const db = openMemory(dbPath);
+  try {
+    const gaps = db
+      .prepare(
+        `SELECT s.id, s.message_count - COUNT(m.id) AS gap
+           FROM sessions s LEFT JOIN messages m ON m.session_id = s.id
+          GROUP BY s.id HAVING gap > 0`,
+      )
+      .all() as { id: string; gap: number }[];
+    const missing = gaps.reduce((n, g) => n + g.gap, 0);
+    if (opts.all) {
+      const r = db.prepare("UPDATE ingest_state SET last_line = 0, size = 0").run();
+      return { sessions: r.changes, missing };
+    }
+    let sessions = 0;
+    const reset = db.prepare("UPDATE ingest_state SET last_line = 0, size = 0 WHERE session_id = ?");
+    for (const g of gaps) sessions += reset.run(g.id).changes;
+    return { sessions, missing };
+  } finally {
+    db.close();
+  }
+}
+
+/** Chỉnh `sessions.message_count` cho khớp số tin THẬT. Bộ đếm lệch làm mọi báo cáo sai. */
+export function reconcileCounts(dbPath: string): number {
+  const db = openMemory(dbPath);
+  try {
+    return db.prepare("UPDATE sessions SET message_count = (SELECT COUNT(*) FROM messages WHERE session_id = sessions.id)").run().changes;
+  } finally {
+    db.close();
+  }
+}
+
 export function rebuildFts(dbPath: string): { table: string; ok: boolean }[] {
   const db = openMemory(dbPath);
   const out: { table: string; ok: boolean }[] = [];
