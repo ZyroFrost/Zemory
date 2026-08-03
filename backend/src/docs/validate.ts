@@ -107,6 +107,28 @@ const DELIVERABLES = ["reports", "models", "content", "design"];
 function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue[] {
   const out: ValidateIssue[] = [];
   const has = (p: string) => existsSync(join(root, p));
+  /** Repo có dòng code nào chưa — để phân biệt "code đặt sai chỗ" với "chưa có code". */
+  const hasAnyCode = (r: string): boolean => {
+    const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|rb|php|cs|cpp|c|swift|kt)$/i;
+    const SKIP = new Set(["node_modules", ".git", "docs", "docs_template", "dist", "build", ".claude", "attic", "data"]);
+    const walk = (dir: string, depth: number): boolean => {
+      if (depth > 3) return false;
+      let items: { name: string; isDirectory(): boolean }[];
+      try {
+        items = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        return false;
+      }
+      for (const it of items) {
+        if (it.isDirectory()) {
+          if (SKIP.has(it.name) || it.name.startsWith(".")) continue;
+          if (walk(join(dir, it.name), depth + 1)) return true;
+        } else if (CODE.test(it.name)) return true;
+      }
+      return false;
+    };
+    return walk(r, 0);
+  };
   const deliverables = DELIVERABLES.filter((d) => has(d)).map((d) => `${d}/`);
 
   if (!has("docs")) out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
@@ -145,10 +167,20 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
         level: "info",
         msg: `structure: no app code but ${deliverables.join("/")} present — if this is a BI/data/docs/design project, set \`"profile": "non-app"\` in docs/.harness.json (áp chuẩn 03_STRUCTURE hệ non-app)`,
       });
-    } else {
+    } else if (hasAnyCode(root)) {
       out.push({
         level: "warn",
         msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/03_STRUCTURE.md; reconcile via docs/agent/03_STRUCTURE.md §8",
+      });
+    } else {
+      // DỰ ÁN TRẮNG — vừa `zemory init`, CHƯA có dòng code nào. Không có code thì không thể
+      // "để code sai chỗ", nên cảnh báo ở đây là báo oan đúng phút đầu tiên người dùng mới gặp
+      // công cụ: `doctor` in "1 lỗi cần sửa" trong khi họ chưa làm gì sai.
+      // (Cùng lớp lỗi với `verify` báo máy cài mới là kho hỏng — xem 06_CHANGES [2026-08-03j]:
+      // phép kiểm viết cho trạng thái ĐÃ CÓ NỘI DUNG, nổ oan ở trạng thái TRẮNG.)
+      out.push({
+        level: "info",
+        msg: "structure: chưa có code nào — dự án mới dựng. Khi thêm code, đặt dưới `backend/` (hoặc `src/`) theo 03_STRUCTURE §3.",
       });
     }
   }
