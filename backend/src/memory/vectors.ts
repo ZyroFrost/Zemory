@@ -243,12 +243,16 @@ export async function embedPending(
 
     // MỘT giao dịch cho cả bộ ba `vec_map` → `vec_chunks` → `vec_hash`.
     //
-    // Vì sao (bằng chứng từ sự cố 2026-08-03, không phải phòng xa): trước đây ba lệnh này là
-    // ba autocommit RIÊNG, mà `vec_map` lại được ghi TRƯỚC vector. Bất kỳ khe nào giữa chúng —
-    // tiến trình khác ghi xen, hay bị kill — để lại đúng trạng thái ta đã thấy trong DB hỏng:
-    // `vec_map`/`vec_hash` trỏ tới rowid mà `vec_chunks` KHÔNG có ("Could not find a row with
-    // rowid 2150772"; vec_hash 119.784 vs vec_chunks 142.840). Bọc chung thì hoặc có đủ ba,
-    // hoặc không có gì — không còn trạng thái nửa vời để ai đó đọc phải.
+    // Vì sao: ba lệnh này từng là ba autocommit RIÊNG, mà `vec_map` lại được ghi TRƯỚC vector.
+    // Khe giữa chúng (tiến trình khác ghi xen, hoặc bị kill) để lại `vec_map` trỏ vào vector
+    // chưa tồn tại. Bọc chung thì hoặc có đủ ba, hoặc không có gì.
+    //
+    // ⚠ ĐÍNH CHÍNH (2026-08-03e): tôi từng ghi ở đây rằng sự cố hỏng DB là BẰNG CHỨNG cho lỗi
+    // này, viện dẫn "vec_hash 119.784 vs vec_chunks 142.840". SAI — `vec_hash` **điền dần**
+    // theo thiết kế (xem `ensureHashTable`), chênh lệch đó là bình thường. Vật chứng cho thấy
+    // **toàn bộ bảng vector còn LÀNH**; hỏng nằm ở cây bóng FTS5. Sửa này đúng về nguyên tắc
+    // (SQLite: nhiều bảng đổi cùng lúc thì phải một giao dịch) nhưng KHÔNG do sự cố đó chứng
+    // minh. Đừng dùng nó làm lý lẽ.
     const insTx = db.transaction((messageId: number, seq: number, blob: Buffer, key: string | null): number => {
       const rowid = targetRowid(messageId, seq);
       writeVectorRaw(db, rowid, blob);

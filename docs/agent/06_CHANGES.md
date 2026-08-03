@@ -5,6 +5,40 @@
 
 ---
 
+## [2026-08-03e] — VẬT CHỨNG lật lại kết luận của tôi: hỏng là MẤT ĐUÔI FILE, không phải tranh chấp ghi
+
+> 🔄 **Supersede [2026-08-03c] §"bọc giao dịch":** tôi đã viết rằng `vec_hash` 119.784 vs
+> `vec_chunks` 142.840 là *bằng chứng* đường ghi vector không nguyên tử. **SAI.** Chính comment
+> trong `vectors.ts` nói `vec_hash` **điền dần** ("fills lazily from now on, converging within
+> days") — chênh lệch đó là **THIẾT KẾ**, không phải hỏng. Tôi lấy một con số bình thường làm
+> bằng chứng cho giả thuyết mình đang tin. Việc bọc giao dịch vẫn đúng về nguyên tắc và giữ
+> lại, nhưng nó **KHÔNG được chống lưng bởi vật chứng này**.
+
+**Trước khi xoá bản hỏng (user duyệt: khôi phục được từ nguồn rồi thì không cần giữ 2,1 GB),
+tôi vắt lấy vật chứng — và nó nói khác hẳn:** (`data/corrupt-20260803-forensic.txt`)
+
+- **Hỏng CHỈ nằm ở cây bóng của FTS5.** Đọc được bình thường: `messages` 198.902 · `sessions`
+  1.272 · `attachment` 3.940 · **`vec_chunks_rowids` 142.840 · `vec_map` 5.241 · `vec_hash`
+  119.784 · `vec_chunks_chunks` · `vec_chunks_vector_chunks00`** — **toàn bộ bảng vector LÀNH.**
+  Hỏng đúng: `messages_fts` · `messages_fts_data` · `messages_fts_tri*` · `section_fts*` ·
+  `changelog_fts*` · `session_digest_fts_tri_data`.
+- **Chữ ký của lỗi là DANGLING POINTER VƯỢT CUỐI FILE:** `page_count = 262534`, mà cây B trỏ
+  tới `page 263511`, `263214`, `262698`… — **gần 1.000 trang (~4 MB) được tham chiếu nhưng
+  KHÔNG TỒN TẠI trong file**. File khớp đúng header của nó (262.534 × 4.096 = 1.075.339.264
+  byte = đúng kích thước thật), tức **không phải file bị cắt cụt — mà là những trang đó chưa
+  bao giờ được ghi xuống**, trong khi cây đã trỏ vào chúng.
+- **⇒ Đây KHÔNG phải chữ ký của hai tiến trình ghi xen kẽ.** Tranh chấp ghi cho ra lệch LOGIC
+  giữa các bảng; nó không tạo được con trỏ vượt cuối file. Chữ ký này là **một lượt mở rộng DB
+  bị đứt giữa chừng** — cây B đã commit phần trỏ, phần trang mới thì không xuống đĩa.
+- **Khớp với thứ MỚI xuất hiện đúng hôm đó:** 02/08 là ngày đầu chạy **ghi per-message**, nên
+  FTS5 bị chèn + tự trộn (automerge) liên tục hàng trăm lần — đúng cấu trúc bị hỏng. Cộng với
+  **8 lần daemon bị `Stop-Process -Force`** (tôi làm), tức kill có thể rơi giữa một lượt
+  checkpoint. Bảng NGUỒN hầu như không đổi cấu trúc nên sống sót; cây FTS bị nắn liên tục nên
+  chết. **Vẫn CHƯA tái hiện được ⇒ vẫn chưa gọi là kết luận.**
+- **Bài học về chính tôi, ghi để nhớ:** tôi đã có vật chứng này trong tay từ đầu (bản hỏng nằm
+  đó suốt) nhưng đi suy luận từ code trước, rồi *chọn* con số hợp với giả thuyết. Lẽ ra phải
+  chạy `quick_check` và liệt kê bảng nào đọc được **NGAY** — mất 30 giây và nó chỉ thẳng chỗ.
+
 ## [2026-08-03d] — Dò tiếp nguyên nhân: loại thêm 3 nghi can · dựng đường QUÉT LẠI TỪ NGUỒN
 
 **Dò (nhật ký Windows + đọc code) — loại được ba nghi can, KHÔNG tìm ra nguyên nhân:**
