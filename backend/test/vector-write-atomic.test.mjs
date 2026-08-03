@@ -1,11 +1,13 @@
 // Ba bảng vector phải KHỚP NHAU sau khi embed.
 //
-// Bối cảnh (sự cố thật 2026-08-03): DB 1 GB hỏng. Khi vét cứu, thứ tìm thấy KHÔNG phải trang
-// đĩa hỏng ngẫu nhiên mà là ba bảng vector **lệch nhau**: `vec_map` có dòng trỏ tới rowid mà
-// `vec_chunks` không có (`Could not find a row with rowid 2150772`), `vec_hash` 119.784 dòng
-// so với `vec_chunks` 142.840. Đọc code thì rõ đường sinh ra trạng thái đó: `vec_map` ghi
-// TRƯỚC vector, `vec_hash` ghi SAU, ba lệnh là ba autocommit RỜI. Đã sửa: bọc chung một
-// giao dịch (`vectors.ts` §insTx/copyTx).
+// Bối cảnh: `vec_map` từng được ghi TRƯỚC vector, `vec_hash` ghi SAU, ba lệnh là ba autocommit
+// RỜI ⇒ khe giữa chúng để lại map trỏ vào vector chưa có. Đã sửa: bọc chung một giao dịch.
+//
+// ⚠ ĐÍNH CHÍNH (2026-08-03e): tôi từng viết ở đây rằng sự cố hỏng DB 1 GB là bằng chứng cho
+// lỗi này, viện dẫn "vec_hash 119.784 vs vec_chunks 142.840". SAI — `vec_hash` điền dần theo
+// THIẾT KẾ nên chênh đó là bình thường. Vật chứng cho thấy toàn bộ bảng vector còn LÀNH; hỏng
+// nằm ở cây bóng FTS5, với con trỏ vượt cuối file. Sửa này đúng về nguyên tắc, không phải do
+// sự cố đó chứng minh.
 //
 // ⚠ **PHÉP KIỂM NÀY CHỨNG MINH ĐƯỢC GÌ — và KHÔNG chứng minh được gì.** Tôi đã thử đột biến
 // (gỡ `db.transaction` ra) và nó **VẪN XANH**. Đúng như vậy: trong MỘT tiến trình không bị
