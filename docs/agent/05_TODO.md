@@ -456,3 +456,13 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > Thu hội thoại web vào memory. ChatGPT ✓ · claude.ai ✓. Prototype cũ ở `attic/web-capture/`.
 > **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
 - [ ] **Gemini** là nền web CUỐI còn thiếu — khung `scan-web --platform` đã phục vụ ChatGPT + Claude.ai, thêm Gemini là dùng lại khung.
+
+- [ ] **Cho `npm i -g github:ZyroFrost/Zemory` chạy được — CHƯA QUYẾT, cần chọn một đường.**
+  Hiện cả hai lệnh cài phổ thông đều lỗi (`06_CHANGES [2026-08-03k]`), người mới buộc phải
+  `git clone` → `npm install` → `npm run build` → `npm link`. Hai lối chữa, mỗi lối một giá:
+  - **đưa `typescript` sang `dependencies`** — cài global sẽ kéo nó ⇒ `prepare` dựng được.
+    Giá: mọi bản cài mang theo cả bộ biên dịch (nặng), và lẫn lộn dev/runtime.
+  - **commit sẵn `dist/` vào repo** — cài xong chạy ngay, không cần build.
+    Giá: đưa file sinh ra vào git (phạm tinh thần điều 3), và mỗi lần sửa code phải nhớ commit
+    lại `dist` nếu không bản cài sẽ cũ hơn mã nguồn.
+  Chưa chọn được thì **tài liệu phải nói đúng đường clone** — đã sửa cả 7 chỗ.

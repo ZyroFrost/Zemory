@@ -38,6 +38,36 @@ cảnh báo khi kho lỡ nằm trong vùng đồng bộ vẫn còn treo ở .)*
 thật** — engram 22 tool (đọc docs ra 20),  (đoán là rỗng), và lần này. Viết xong
 một đường mới thì **phải chạy nó ở trạng thái TRẮNG**, không chỉ trên máy đã có sẵn dữ liệu.
 
+## [2026-08-03k] — 🔴 LỆNH CÀI TRONG MỌI TÀI LIỆU ĐỀU SAI — user khác cài không được
+
+**User báo: *"lệnh cài của zemory đang lỗi, user khác cài chưa được."* Dò ra ba sự thật:**
+
+1. **`zemory` CHƯA HỀ được publish lên npm** — `npm view zemory` trả **404**. Máy tôi chạy được
+   vì `zemory` toàn cục là một **junction trỏ vào repo**, không phải bản cài npm.
+2. Repo là **PUBLIC** nên cài từ GitHub được về nguyên tắc…
+3. …**nhưng cũng hỏng**: thiếu script `prepare` ⇒ không dựng `dist/`, mà `bin` trỏ vào
+   `dist/cli.js`. Thêm `prepare` rồi thử lại thì **vẫn hỏng** — `'tsc' is not recognized`, vì
+   **cài global không kéo devDependencies**. **Đo thật, cả hai lệnh đều lỗi.**
+
+**Đường CHẠY ĐƯỢC** (chính là đường máy này đang dùng):
+`git clone` → `npm install` → `npm run build` → `npm link`.
+
+**Lệnh sai nằm ở 7 chỗ, đã sửa hết:** `AGENTS.md` của repo · `docs_template/app/AGENTS.md` ·
+`docs_template/nonapp/AGENTS.md` · `docs_template/cowork_global_memory/{BOOTSTRAP,README}.md` ·
+`share/README.md` · `docs/plan/16_share_key.md`. Hai file cuối còn khẳng định *"máy thứ hai
+KHÔNG cần clone repo"* — sai hẳn về cách dùng nhiều máy.
+
+**Mức độ:** lỗi **chặn người mới hoàn toàn**. Mọi tài liệu onboarding đều bảo gõ một lệnh không
+tồn tại. Nó sống sót lâu vì **máy tôi không bao giờ chạy nó** — junction có sẵn nên tôi chưa
+từng đi qua đường cài thật lần nào.
+
+**Còn treo:** muốn `npm i -g github:ZyroFrost/Zemory` chạy được thì phải chọn — đưa `typescript`
+sang `dependencies`, hoặc commit sẵn `dist/`. Cả hai đều có đánh đổi, chưa quyết (`05_TODO`).
+
+**Bài học lần thứ TƯ trong ngày, cùng một dạng:** engram 22 tool · `data/backups/` · `verify`
+dọa oan máy mới · và giờ là lệnh cài. **Tất cả đều là thứ tôi chưa từng chạy ở trạng thái của
+NGƯỜI KHÁC.** Máy tôi có sẵn mọi thứ nên mọi đường tắt đều trông như đường chính.
+
 ## [2026-08-03j] — Lỗi TÔI vừa gây: `verify` báo máy cài MỚI là "KHO HỎNG"
 
 **Lộ ra khi user hỏi *"cài mới chạy mới vẫn được đúng không"* và tôi dựng thử một bản cài mới
@@ -86,7 +116,8 @@ Nhưng **KHÔNG lật ngược thành "luôn có"**: máy đó vốn đã cài z
 máy mở Cowork lần đầu thì trắng. ⇒ **Giữ NGUYÊN bộ cũ làm đường lùi, thêm bộ mới có bước DÒ.**
 
 - `docs_template/cowork_global_memory/` — `BOOTSTRAP.md` mở đầu bằng **§0 dò ba lệnh**
-  (`node -v` · `npm ping` · `ls`); dò đạt thì `npm i -g zemory` → `zemory init --non-app` →
+  (`node -v` · `npm ping` · `ls`); dò đạt thì cài từ mã nguồn *(đã sửa ở `[2026-08-03k]` —
+  `npm i -g zemory` KHÔNG chạy)* → `zemory init --non-app` →
   `doctor` → `conform`. **Bỏ hẳn MANIFEST**: `init` rót bộ chuẩn từ bản gốc nên không bao giờ
   lệch phiên bản, và nhận được **bản ĐẦY ĐỦ** chứ không phải bản cắt gọn như bộ cũ buộc phải làm.
   Dò không đạt ⇒ tự bảo agent quay về `cowork/BOOTSTRAP.md`.
