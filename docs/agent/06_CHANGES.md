@@ -38,6 +38,41 @@ cảnh báo khi kho lỡ nằm trong vùng đồng bộ vẫn còn treo ở .)*
 thật** — engram 22 tool (đọc docs ra 20),  (đoán là rỗng), và lần này. Viết xong
 một đường mới thì **phải chạy nó ở trạng thái TRẮNG**, không chỉ trên máy đã có sẵn dữ liệu.
 
+## [2026-08-03j] — Lỗi TÔI vừa gây: `verify` báo máy cài MỚI là "KHO HỎNG"
+
+**Lộ ra khi user hỏi *"cài mới chạy mới vẫn được đúng không"* và tôi dựng thử một bản cài mới
+hoàn toàn.** Đọc code không thấy — phải chạy thật mới thấy.
+
+`verifyMemory` mở kho bằng read-only. Kho **chưa tồn tại** (máy cài lần đầu) ⇒ SQLite trả
+`unable to open database file` ⇒ nó báo **"✗ HỎNG"** kèm lời khuyên đi `salvage` cứu dữ liệu.
+Dọa oan ngay lần chạy đầu tiên. **Nặng hơn:** [2026-08-03d] đặt `verify` ở **bước 0 chuỗi bảo
+trì** và cho **DỪNG cả chuỗi** khi không ok ⇒ máy mới cài thì daemon **không scan · không embed
+· không digest · không backup** gì hết.
+
+**Sửa:** *kho chưa tồn tại ≠ kho hỏng*. Trả `{ok: true, fresh: true}` kèm chữ *"chưa có kho (máy
+mới) — sẽ tạo khi dùng"*, và `verify` in khác hẳn với "lành". Test hồi quy kèm theo (8/8).
+
+**Đo lại bản cài mới, đầu tới cuối — mọi thứ còn lại BÌNH THƯỜNG:**
+
+| | |
+|---|---|
+| `journal_mode` | `wal` |
+| `synchronous` | **2 = FULL** (đổi ở [2026-08-03f], áp đúng cho kho mới) |
+| schema | 20 · 58 bảng |
+| `scan` | **+90.780 tin / 104 phiên** |
+| `verify` sau khi ghi | ✓ lành |
+| `search` | ra kết quả thật |
+| kho THẬT của máy | ✓ lành |
+
+⇒ **Sự cố hỏng kho [2026-08-03h] KHÔNG ảnh hưởng bản cài mới** — nguyên nhân là thư mục đồng bộ
+đám mây, mà bản cài mới mặc định nằm ở `~/.zemory`, không phải vùng Drive. *(Việc `doctor` chưa
+cảnh báo khi kho lỡ nằm trong vùng đồng bộ vẫn còn treo ở `05_TODO`.)*
+
+**Bài học lặp lại lần thứ BA trong ngày:** cả ba lỗi nặng nhất hôm nay đều **chỉ lộ ra khi chạy
+thật** — engram 22 tool (đọc tài liệu ra 20) · `data/backups/` (tôi đoán là rỗng) · và lần này.
+Viết xong một đường mới thì **phải chạy nó ở trạng thái TRẮNG**, không chỉ trên máy đã có sẵn
+dữ liệu.
+
 ## [2026-08-03i] — Bộ Cowork thứ hai: `cowork_global_memory` — dùng THẲNG zemory + GM
 
 **Vì sao có bộ mới thay vì sửa bộ cũ:** bộ `cowork/` được thiết kế trên giả định *"máy ảo không
