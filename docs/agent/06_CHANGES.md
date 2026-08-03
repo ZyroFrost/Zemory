@@ -29,6 +29,18 @@ máy mở Cowork lần đầu thì trắng. ⇒ **Giữ NGUYÊN bộ cũ làm đ
   máy ảo**. Kèm bắt buộc `memory verify` trước khi đụng, kiểm kho có nằm trong thư mục đồng bộ
   đám mây không, và trên Windows kiểm `fsutil hardlink list` — **đúng ba thứ vừa làm hỏng kho
   1,19 GB hôm nay** ([2026-08-03h]).
+- **Luồng đầy đủ, không chỉ rót docs:** §0 dò → **§1 HỎI người dùng kho nhớ đặt ở đâu** →
+  §2 cài + `memory relocate` về đúng chỗ + `verify` → §3 `init` bộ chuẩn → §4 `memory scan`
+  quét nguồn → §5 giao diện → §6 đồng bộ Drive **để SAU**.
+- **§1 là quyết định khó sửa nhất nên bắt HỎI trước khi cài gì**, kèm hai luật cứng:
+  ① **không đặt trong thư mục đồng bộ đám mây** — đúng thứ vừa làm hỏng kho 1,19 GB hôm nay;
+  ② **kho RIÊNG, KHÔNG trỏ vào kho của máy thật** — trỏ chung là hai bên cùng ghi mà khoá dựa
+  trên pid không phủ qua ranh giới máy ảo. Gộp dữ liệu thì dùng export/import, không dùng
+  chung tệp.
+- Cảnh báo sẵn trong §2 rằng `relocate` **bỏ lại** `backups/`·`browser/`·`secrets/`+chìa — bắt
+  agent kiểm thư mục cũ và dời tay (lỗ đã ghi ở `05_TODO`).
+- **Trung thực về giới hạn:** §4 bắt nói thẳng khi quét ra **0 tin** (máy ảo trắng là bình
+  thường), §5 bắt nói thẳng khi **giao diện không mở được** trong máy ảo — cấm báo "đã mở".
 - Báo cáo cuối bắt **liệt kê từng lệnh đã GHI + ai cho phép**, hoặc nói rõ "không ghi gì".
 
 ## [2026-08-03h] — 🎯 NGUYÊN NHÂN GỐC: Google Drive đang đồng bộ chính file DB. Tôi đã loại sai.

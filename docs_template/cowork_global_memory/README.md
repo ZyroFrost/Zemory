@@ -27,24 +27,37 @@ cũ, giải thích lại vì sao lần trước làm thế. Có nó, trợ lý *
 Đây là thứ mà cách chép file **không bao giờ có được** — bộ chuẩn chép về chỉ là mấy tài liệu quy
 định cách làm việc, còn bộ nhớ là toàn bộ lịch sử thật.
 
-## Điều quan trọng nhất phải biết trước khi dùng
+## Trợ lý sẽ làm gì, theo thứ tự
 
-**Đọc bộ nhớ thì thoải mái. GHI vào thì trợ lý phải hỏi bạn trước.**
+| | bước | bạn phải quyết |
+|---|---|---|
+| §0 | dò xem máy ảo có chạy được không — không được thì tự quay về bộ cũ | — |
+| **§1** | **hỏi bạn: kho nhớ đặt ở thư mục nào** | ✅ **bạn chốt** |
+| §2 | cài công cụ, trỏ kho về đúng chỗ đó, kiểm kho lành | — |
+| §3 | hỏi loại dự án rồi dựng bộ chuẩn | ✅ **bạn chốt** |
+| §4 | quét dữ liệu từ các nguồn vào kho | — |
+| §5 | mở giao diện (nếu môi trường cho phép) | — |
+| §6 | đồng bộ nhiều máy — **để sau**, chỉ ghi vào sổ việc | — |
 
-Bộ nhớ là **một tệp dùng chung**. Máy thật của bạn rất có thể đang mở nó ngay lúc đó (có tiến
-trình chạy nền ghi vào sau mỗi lượt trò chuyện). Hai bên cùng ghi mà không thấy nhau là cách
-làm **hỏng tệp** — đã xảy ra thật: một kho gần 1,2 GB hỏng chỉ vì một phần mềm đồng bộ đám mây
-đụng vào tệp trong lúc nó đang được ghi, mất gần một ngày để cứu lại.
+## Hai điều quan trọng nhất về chỗ đặt kho
 
-Vì vậy `BOOTSTRAP.md` bắt trợ lý:
-- kiểm sức khoẻ kho **trước** khi đụng vào;
-- kiểm kho có nằm trong thư mục đồng bộ đám mây không (**không được nằm trong đó**);
-- **hỏi bạn** trước mọi lệnh ghi, và **liệt kê ra ở báo cáo cuối** đã ghi những gì.
+Đây là quyết định khó sửa nhất, nên trợ lý **phải hỏi bạn trước khi cài gì**.
+
+**1. Không đặt trong thư mục đồng bộ đám mây** (Google Drive · OneDrive · Dropbox · iCloud).
+Kho nhớ là một cơ sở dữ liệu đang mở, gồm ba tệp phải khớp nhau; phần mềm đồng bộ chép từng tệp
+một trong lúc chúng đang đổi ⇒ **hỏng kho**. Đã xảy ra thật: một kho gần **1,2 GB hỏng đúng vì
+lý do này**, mất gần một ngày để cứu lại.
+
+**2. Đây là kho RIÊNG, không dùng chung với máy thật.**
+Nếu máy bạn đã dùng công cụ này, nó có kho riêng và **đang mở kho đó**. Trỏ chung vào một tệp là
+hai bên cùng ghi mà không thấy nhau — cùng một kiểu làm hỏng. Muốn gộp dữ liệu về sau thì dùng
+đường xuất/nhập gói đã mã hoá, **không phải** dùng chung tệp.
 
 ## Dùng thế nào
 
 Mở một phiên Cowork, gắn thư mục dự án, rồi dán câu lệnh ở đầu `BOOTSTRAP.md`. Không cần cài gì
 trước, không cần biết dòng lệnh.
 
-Xong, trợ lý phải in một **bảng báo cáo cuối**: đã dựng được gì, kho nhớ ở đâu và có lành không,
-đã ghi những gì vào kho (hoặc "không ghi gì"), và việc nào còn treo.
+Xong, trợ lý phải in một **bảng báo cáo cuối**: kho nhớ ở đâu và có lành không, quét được bao
+nhiêu dữ liệu (**không có thì phải nói thẳng là không có**), giao diện mở được hay không, đã ghi
+những gì, và việc nào còn treo.
