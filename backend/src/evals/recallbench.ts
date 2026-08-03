@@ -26,6 +26,17 @@ export interface LaneResult {
   hit1: number;
   hit3: number;
   hit10: number;
+  /**
+   * TRẦN CỦA POOL — đáp án có NẰM TRONG pool mà rerank được phép sắp lại hay không.
+   *
+   * Vì sao đây là con số quan trọng nhất, và vì sao trước đó không có (tra chuẩn ngành
+   * 2026-08-03): mọi hướng dẫn RAG đều nói **lớp LẤY phải tối ưu RECALL, rerank là lớp
+   * PRECISION** — lấy dư 3–5 lần rồi rerank lọc xuống. Nếu `hit40 ≈ hit10` thì đáp án
+   * **không có trong pool**, và không mô hình rerank nào cứu được: nó chỉ đang xáo lại một
+   * đống câu sai. Nghẽn khi đó nằm ở lớp LẤY, không phải lớp XẾP.
+   * Tôi đã mò ba lượt tham số rerank trước khi hỏi câu này — đó là sai thứ tự.
+   */
+  hit40: number;
   /** Mean Reciprocal Rank — thước nhạy hơn recall@k khi so hai lớp gần nhau. */
   mrr: number;
   msAvg: number;
@@ -68,7 +79,9 @@ export interface RecallBenchOptions {
 }
 
 export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<RecallBenchResult> {
-  const topN = opts.topN ?? 10;
+  // 40, không phải 10: phải nhìn HẾT pool rerank mới đo được trần (hit40). Chỉ số @1/@3/@10
+  // vẫn tính đúng vì chúng lọc theo thứ hạng, không theo số kết quả trả về.
+  const topN = opts.topN ?? 40;
   const all = loadCorpus();
   const corpus = opts.limit ? all.slice(0, opts.limit) : all;
   const db = openMemory(currentMemoryDb());
@@ -100,6 +113,7 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
       hit1: hitAt(1),
       hit3: hitAt(3),
       hit10: hitAt(10),
+      hit40: hitAt(40),
       mrr: ranks.reduce((s, r) => s + (r > 0 ? 1 / r : 0), 0) / (items.length || 1),
       msAvg: Math.round(ms / (items.length || 1)),
       ranks,
@@ -121,10 +135,24 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
     return out;
   }
   const pct = (n: number) => `${((100 * n) / r.resolved).toFixed(0)}%`;
-  out.push(`  ${"lane".padEnd(16)} ${"recall@1".padStart(9)} ${"@3".padStart(6)} ${"@10".padStart(6)} ${"MRR".padStart(7)} ${"ms/truy vấn".padStart(12)}`);
+  out.push(
+    `  ${"lane".padEnd(16)} ${"recall@1".padStart(9)} ${"@3".padStart(6)} ${"@10".padStart(6)} ${"@40".padStart(6)} ${"MRR".padStart(7)} ${"ms/truy vấn".padStart(12)}`,
+  );
   for (const l of r.lanes) {
     out.push(
-      `  ${l.lane.padEnd(16)} ${pct(l.hit1).padStart(9)} ${pct(l.hit3).padStart(6)} ${pct(l.hit10).padStart(6)} ${l.mrr.toFixed(3).padStart(7)} ${String(l.msAvg).padStart(12)}`,
+      `  ${l.lane.padEnd(16)} ${pct(l.hit1).padStart(9)} ${pct(l.hit3).padStart(6)} ${pct(l.hit10).padStart(6)} ${pct(l.hit40).padStart(6)} ${l.mrr.toFixed(3).padStart(7)} ${String(l.msAvg).padStart(12)}`,
+    );
+  }
+  // `@40` là TRẦN: đáp án có nằm trong pool rerank được phép sắp lại không. `@40 ≈ @10` ⇒ nghẽn
+  // ở lớp LẤY, rerank không có gì để cứu. `@40` cao hơn hẳn ⇒ đáp án có trong pool mà bị xếp
+  // tụt, lúc đó rerank mới có cửa.
+  const hy = r.lanes.find((l) => l.lane === "hybrid");
+  if (hy) {
+    const room = hy.hit40 - hy.hit10;
+    out.push(
+      room > 0
+        ? `  → hybrid còn ${room}/${r.resolved} câu nằm trong pool mà ngoài top-10 ⇒ rerank CÓ chỗ để cải thiện.`
+        : `  → hybrid: @40 == @10 ⇒ đáp án KHÔNG nằm thêm trong pool. Nghẽn ở lớp LẤY, không phải lớp XẾP — đổi mô hình rerank cũng vô ích.`,
     );
   }
   return out;

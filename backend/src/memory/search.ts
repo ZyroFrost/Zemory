@@ -62,7 +62,12 @@ const RRF_K = 60;
 const W_WORD = 1.0;
 const W_TRI = 0.6;
 const W_VEC = 1.0; // semantic stream weight (hybrid)
-const POOL = 60; // candidates pulled from each stream before fusion
+// Số ứng viên kéo về TỪ MỖI LUỒNG trước khi gộp RRF. Đây là **TRẦN** của cả hệ: thứ không
+// lọt vào đây thì không lớp xếp nào cứu được. Đo 2026-08-03 trên corpus 34 câu có nhãn: với
+// POOL=60, hybrid đạt recall@40 = 56% ⇒ **44% số câu đáp án không hề có trong pool**. Chuẩn
+// ngành khuyên lớp lấy nên kéo 50–1.000 ứng viên và tối ưu RECALL, còn rerank lo PRECISION.
+// Để chỉnh được từ ngoài vì đây là thứ ĐO ĐƯỢC — xem `evals/recallbench.ts`.
+const POOL = Number(process.env.ZEMORY_POOL) || 60;
 // Hai hằng số này ĐO ĐƯỢC nên phải chỉnh được từ ngoài — không thì mỗi lần thử một cấu hình
 // lại phải sửa mã + build lại, và người sau muốn kiểm chứng số của tôi cũng không làm nổi.
 // Bối cảnh (bench 34 câu có nhãn, 2026-08-03): bật rerank làm recall@10 TỤT 41% → 26% và MRR
