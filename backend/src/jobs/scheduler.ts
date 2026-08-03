@@ -25,6 +25,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
+import { rotateBackup } from "../memory/backup-rotate.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
@@ -138,6 +139,17 @@ async function maintainTick(): Promise<void> {
     // 3. digest — cheap when nothing changed (content-hash guard skips sessions
     //    already summarised), so it can run every chain.
     await runStep("digest", ["memory", "digest", "--all"]);
+
+    // 4. backup — MỘT bản/ngày, giữ 5 bản. Chạy ở ĐÂY chứ không phải một timer riêng vì
+    //    nó phải nằm TRONG token job: chép 1,1 GB trong lúc scan/embed đang ghi là chính
+    //    cái kiểu tranh chấp mà sự cố 2026-08-03 nghi là nguyên nhân. `rotateBackup` tự
+    //    kiểm hạn nên gọi mỗi vòng 30 phút vẫn rẻ (một lần `readdir`).
+    try {
+      const b = await rotateBackup();
+      if (b.wrote) log(`backup → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
+    } catch (e) {
+      log(`backup bỏ qua: ${(e as Error).message}`); // điều 9: hỏng backup KHÔNG được giết chuỗi
+    }
   } finally {
     chainRunning = false;
     releaseDaemonJob();

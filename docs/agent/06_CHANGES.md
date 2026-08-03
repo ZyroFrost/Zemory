@@ -5,6 +5,93 @@
 
 ---
 
+## [2026-08-03c] — Sau sự cố: bọc giao dịch đường ghi vector · backup tự xoay vòng
+
+Hai việc PHÒNG NGỪA, cả hai sinh thẳng từ bằng chứng của sự cố [2026-08-03b], không phải phòng xa.
+
+- **Bọc `vec_map` + `vec_chunks` + `vec_hash` vào MỘT giao dịch** (`vectors.ts` §`insTx`/`copyTx`).
+  Trước đó là ba autocommit rời và `vec_map` được ghi **trước** vector — đúng khuôn của trạng
+  thái tìm thấy trong DB hỏng (`vec_map` trỏ tới rowid `vec_chunks` không có; `vec_hash`
+  119.784 vs `vec_chunks` 142.840). Chính comment cũ trong `writeVectorRaw` đã tự thú có kẻ
+  ghi song song: *"…if another writer already filled it"*. Sửa cả ba đường: embed mới, chép
+  dedup, và bản sao trong-lượt.
+- **⚠ Phép kiểm kèm theo KHÔNG chứng minh được tính nguyên tử — tôi đã thử đột biến và nó vẫn
+  XANH.** Gỡ `db.transaction` ra thì `vector-write-atomic.test.mjs` vẫn qua, vì trong một tiến
+  trình không bị ngắt hai lệnh rời vẫn thành công cả hai. Muốn phân biệt phải ngắt đúng khe
+  giữa hai lệnh — cần hai tiến trình tranh chấp hoặc kill giữa chừng, cả hai đều không tất
+  định nên không đưa vào cổng. Giữ nó làm **chốt hồi quy** (ai đó đổi thứ tự ghi / bỏ sót dọn
+  map cũ) và ghi rõ giới hạn ngay trong đầu file, để không ai đọc cổng xanh thành "đã chứng
+  minh". Bằng chứng cho tính nguyên tử nằm ở chỗ code có bọc giao dịch, không ở phép kiểm.
+- **`backup-rotate.ts` — sao lưu định kỳ + tự dọn.** Một bản/ngày, giữ 5 bản, nối vào cuối
+  chuỗi bảo trì của daemon (`scan → embed → digest → backup`) nên nằm TRONG token job, không
+  bao giờ chép 1,1 GB lúc có tiến trình khác đang ghi. Chép bằng `db.backup()` của SQLite chứ
+  không `copyFile` — chép byte một file đang mở WAL cho ra bản RÁCH, đúng cái bẫy làm người ta
+  tưởng mình có backup mà không có. Dọn CHỈ đụng file khớp khuôn tên `global_memory-<ISO>.db`.
+  **3/3 đột biến bị bắt** (bỏ lọc tên · bỏ kiểm hạn · cho phép xoá bản mới nhất) — phép kiểm
+  này thì đỏ được thật.
+- **Lý do có `keep`/`everyMs` mà không phải cron hệ điều hành:** khoảng hở phải do MÁY giữ, và
+  phải giữ ở nơi biết được lúc nào an toàn để chép. Cron ngoài không biết daemon đang embed.
+
+## [2026-08-03b] — DB THẬT HỎNG: phục hồi **ĐỦ 100%** · thêm `memory salvage` · một chỗ tôi ghi sai
+
+**Sự cố.** Đang dựng corpus đo rerank thì kho báo `database disk image is malformed`. Sáng
+cùng ngày `integrity_check` còn **ok** ⇒ hỏng xảy ra trong hôm nay.
+
+- **Hỏng ở đâu:** nặng nhất là bảng bóng FTS (`messages_fts*` · `section_fts*` ·
+  `changelog_fts*` · `session_digest_fts_tri*`) và chỉ mục vector — toàn lớp DẪN XUẤT. Nhưng
+  **chạm cả bảng nguồn**: `messages` · `attachment` · `section` · `changelog` · `vec_map`.
+- **Sai lầm suýt mắc khi đo thiệt hại:** `SELECT *` một lượt **DỪNG ở trang hỏng đầu tiên**,
+  báo "đọc được 197.323/198.902" ⇒ tưởng mất 1.579 tin. Đọc lại theo **LÔ rowid, lô nào lỗi
+  thì chia đôi xuống tới từng dòng** ⇒ cứu được **198.758 — mất 144 (0,07%)**. Chênh hơn 1.400
+  dòng chỉ vì cách đọc. Tương tự: `attachment` 3.935/3.940 · `section` 758/768 ·
+  `changelog` 216/218 (hai cái sau dựng lại từ `.md`, coi như không mất).
+- **`zemory memory salvage`** — biến việc cứu thành năng lực, không phải script tạm: mở file
+  gốc READ-ONLY, vét sang DB mới bằng đúng thuật toán chia-đôi trên, rồi dựng lại FTS từ nội
+  dung nguồn. Không chép mù lớp dẫn xuất.
+- **Bốn lỗi của tôi trong lúc cứu — mất 4 lượt chạy mới ra, ghi để không ai mò lại:**
+  ① vòng chép 142k vector **không bọc transaction** ⇒ với WAL là 142k lần commit+fsync ⇒ treo.
+  ② duyệt theo **khoảng rowid** (`lo += n`) trong khi rowid của chunk bắt đầu từ **2^40** —
+  offset CÓ CHỦ ĐÍCH chứ không phải rowid hỏng như tôi tưởng ⇒ vòng lặp cần 220 triệu lượt.
+  ③ bảng ảo `vec0` **không nhận** `WHERE rowid > ? ORDER BY rowid`; phải lấy rowid từ bảng
+  bóng rồi nạp bằng `rowid IN (…)` (đã DÒ THẬT ba dạng truy vấn mới biết).
+  ④ better-sqlite3 trả integer dạng `number` (float64) ⇒ vec0 từ chối *"Only integers are
+  allowed for primary key values"*; phải bật `safeIntegers` (BigInt).
+  **Lỗi ④ ẩn suốt ba lượt vì các khối `catch` của tôi NUỐT lỗi** — chỉ in "0 vector" mà không
+  nói vì sao. In lỗi thật ra là tìm được trong một phút. Cộng thêm một lần **pipe qua `tail`
+  nuốt hết output** nên tưởng tiến trình đã chết.
+  Sau khi sửa: **120.000 vector trong 50 giây**.
+- **KẾT QUẢ CUỐI: mất 0 tin.** Sau khi đổi chỗ, 144 tin nằm trên trang hỏng hoá ra dồn vào
+  đúng **2 phiên** (102 + 42) — tức vùng hỏng là vùng ghi GẦN NHẤT, một manh mối mạnh. Mà
+  transcript gốc `.jsonl` của hai phiên đó **vẫn còn trên đĩa**, nên chỉ cần đặt
+  `ingest_state.last_line = 0` cho hai file rồi `memory scan`: `UNIQUE(session_id, uuid)` bỏ
+  qua tin đã có và chèn đúng phần thiếu. **+602 tin** (144 cứu lại + 458 mới) ⇒
+  **199.360 tin · 1.272 phiên**, NHIỀU HƠN cả trước khi hỏng.
+  ⇒ Bài học dùng lại được: `salvage` KHÔNG phải bước cuối. Với dữ liệu nạp từ file, **nguồn
+  thật là transcript trên đĩa**, DB chỉ là chỉ mục (đúng "file wins") — cứu xong phải quét lại.
+- **Kiểm chứng trước khi đổi chỗ, không đổi mù:** `integrity_check: ok` · 7/7 chỉ mục FTS dựng
+  lại (`messages_fts_tri` nặng nhất, 105s) · FTS tra thật `"zemory"` ra 31.748 dòng · tìm kiếm
+  qua CLI chạy đủ ba lớp (FTS + vector + rerank). Bản hỏng giữ nguyên 2 bản ở
+  `data/corrupt-20260803-091106/`, không xoá gì.
+- **Còn thiếu, đang vá nền:** 127.700/142.840 vector cứu được (phần còn lại nằm trong vùng
+  hỏng); `vectorRemaining` = **15.718** tin cần embed lại (thấp vậy nhờ `vec_hash` khử trùng
+  lặp). Vector là lớp dẫn xuất nên vá được bằng máy cục bộ.
+- **⚠ MỘT CHỖ TÔI GHI SAI, tự sửa:** tôi đã ghi ở đây rằng `data/backups/` **RỖNG** và "không
+  có bản lùi nào". **Sai.** Trong đó có `global_memory-2026-07-26…db` — 1,12 GB, **171.345
+  tin · 1.203 phiên**, mở ra đọc được. Tôi kết luận từ một lần `ls` sai chỗ và không kiểm lại
+  trước khi viết vào sổ — đúng cái lỗi mà chính bản ghi hôm nay đã dạy ở mục engram (*"tài
+  liệu không phải phép đo"*), lần này tôi mắc với chính máy mình.
+  Việc cứu vẫn là lựa chọn đúng — nó cho 199.360 tin so với 171.345 của bản lùi — nhưng lý do
+  phải là **"cứu được nhiều hơn"**, không phải "không còn đường nào khác".
+  Vấn đề THẬT còn lại: backup đang chạy TAY, khoảng hở gần nhất là **8 ngày**. Cần lịch tự
+  động. Đã tạo bản 03/08 ngay sau khi cứu xong.
+- **Nguyên nhân gốc: CHƯA kết luận.** Đã loại: đĩa đầy (còn 168 GB) · thư mục cloud-sync (D:
+  cục bộ, Drive ở G: — điều 11 không bị phạm). Nghi nhưng chưa chứng minh: hôm nay là ngày
+  ĐẦU chạy **ghi per-message**, tức tiến trình ngắn hạn ghi xen kẽ daemon + embed nền, và
+  `daemon.log` ghi **8 lần khởi động trong ~6 giờ, gần như không lần nào tắt sạch** (tôi
+  `Stop-Process -Force` để chạy gate). WAL vốn chịu được kill nên riêng điều đó chưa đủ giải
+  thích — nhưng hỏng bắt đầu đúng ở hai cấu trúc do **extension/virtual table** quản lý.
+  Chi tiết + việc còn lại: `05_TODO §DB THẬT BỊ HỎNG`.
+
 ## [2026-08-03] — Audit 6 mặt: 3 lỗ THẬT, đau nhất là agent trả 30s mỗi lần tìm
 
 - **`memory_search` qua MCP tốn 27–34s MỖI LẦN** — đợt trước tôi sửa đường UI mà **bỏ sót

@@ -3,6 +3,70 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — ĐÃ PHỤC HỒI ĐỦ, còn treo mỗi nguyên nhân gốc
+> Phát hiện lúc chạy bench recall: `database disk image is malformed`. Sáng cùng ngày
+> `integrity_check` còn **ok**, nên hỏng xảy ra TRONG hôm nay.
+> **Kết quả: mất 0 tin.** Kho hiện có **199.360 tin · 1.272 phiên**, nhiều hơn trước khi hỏng.
+> Chi tiết đầy đủ ở `06_CHANGES [2026-08-03b]`.
+
+**Thiệt hại (đo, không đoán):** hỏng nằm ở `messages_fts*` · `section_fts*` · `changelog_fts*`
+· `session_digest_fts_tri*` (bảng bóng FTS — 100% dẫn xuất) và chạm cả **bảng nguồn**:
+`messages` · `attachment` · `section` · `changelog` · `vec_map`.
+
+**Bản gốc hỏng giữ nguyên 2 bản** ở `data/corrupt-20260803-091106/` — KHÔNG xoá cho tới khi
+truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
+
+- [x] **Đã xong:** cứu theo lô-chia-đôi (198.758) → chép 127.700 vector → dựng lại 7/7 FTS →
+  `integrity_check: ok` → kiểm nghiệp vụ (FTS ra 31.748 dòng, CLI tìm đủ ba lớp) → đổi chỗ →
+  `memory scan` nạp lại 144 tin từ transcript gốc ⇒ **+602 tin, mất 0**.
+- [~] **Đang chạy nền:** `memory embed --all` bù **15.718** tin chưa có vector.
+- [ ] **TRUY NGUYÊN NHÂN GỐC — chưa kết luận, mới loại trừ được vài đường.**
+  - **Đã loại:** đĩa đầy (D: còn **168 GB**) · thư mục đồng bộ đám mây (D: là đĩa cục bộ,
+    Drive nằm ở G: — điều 11 không bị vi phạm).
+  - **Nghi, chưa chứng minh:** hôm nay là ngày ĐẦU TIÊN chạy **ghi per-message** (hook Stop
+    sau mỗi lượt) — tức tiến trình ngắn hạn ghi DB **xen kẽ** daemon + embed nền + script đo.
+    `daemon.log` cho thấy **8 lần daemon khởi động trong ~6 giờ ngày 02/08, gần như không lần
+    nào tắt sạch** (tôi `Stop-Process -Force` để chạy gate). WAL vốn chịu được kill, nên
+    riêng việc kill CHƯA đủ giải thích — nhưng hỏng bắt đầu đúng ở `vec_chunks_rowids` và
+    bảng bóng FTS, tức hai cấu trúc do **extension/virtual table** quản lý, không phải B-tree
+    thường. Cần xem còn ai mở DB bằng đường khác (`vecConnect` mở READ-WRITE) lúc bị kill.
+  - ✅ **ĐÃ ĐỌC CODE, tìm ra HAI khuyết tật THẬT — và đây là bằng chứng, không phải suy đoán:**
+    - **① Bộ ba ghi vector KHÔNG nguyên tử (đã sửa).** `vectors.ts` ghi `vec_map` **TRƯỚC**
+      vector, `vec_hash` **SAU**, ba lệnh là ba autocommit RỜI. Khớp CHÍNH XÁC với trạng thái
+      tìm thấy trong DB hỏng: `vec_map` trỏ tới rowid `vec_chunks` không có, `vec_hash`
+      119.784 vs `vec_chunks` 142.840. Bản thân code đã tự thú: comment trong `writeVectorRaw`
+      viết *"repair by updating the existing row so backfill can resume **if another writer
+      already filled it**"* — tức đường ghi này VỐN đã biết có kẻ ghi song song và chỉ vá tạm.
+      ⇒ Đã bọc cả ba vào **một** giao dịch (`insTx`/`copyTx`).
+    - **② Write-gate KHÔNG BAO GIỜ TỪ CHỐI ai (chưa sửa).** `acquireCliWrite()` chỉ đặt một
+      mốc thời gian và luôn trả `{ok:true, held:true}` — **hai CLI cùng gọi thì cả hai đều
+      được "cấp"**. Cổng này một chiều: nó chỉ bảo *scheduler của daemon* nhường, chứ không hề
+      loại trừ CLI↔CLI. Tệ hơn: `daemonPort()` trả null khi daemon chết ⇒ **không có cổng
+      nào cả**. Ngày 02/08 daemon khởi động 8 lần và gần như không lần nào tắt sạch, trong khi
+      hook chạy `scan` mỗi lượt trả lời và tôi gõ `memory embed` bằng tay.
+      ⇒ Việc cần làm: đổi `acquireCliWrite` thành khoá THẬT (từ chối khi có người giữ, kèm pid
+      + hạn), và đặt marker ra FILE để tiến trình khác thấy được kể cả khi daemon chết.
+  - ⚠ **NHƯNG CHƯA GỌI LÀ TÌM RA NGUYÊN NHÂN.** Hai khuyết tật trên giải thích được **lệch
+    giữa các bảng vector**; chúng KHÔNG giải thích `database disk image is malformed` ở tầng
+    trang đĩa. Muốn kết luận thì phải TÁI HIỆN: ép hai tiến trình ghi `vec_chunks` đồng thời
+    rồi kill giữa chừng. Chưa làm được ⇒ vẫn để mở.
+  - ⚠ **Phép kiểm mới KHÔNG chứng minh tính nguyên tử — tôi đã thử đột biến và nó vẫn XANH.**
+    Gỡ `db.transaction` ra, `vector-write-atomic.test.mjs` vẫn qua: trong một tiến trình không
+    bị ngắt, hai lệnh rời vẫn thành công cả hai. Nó chỉ là chốt hồi quy cho lớp lỗi tất định.
+    Ghi rõ ở đây để không ai đọc nhầm cổng xanh thành "đã chứng minh".
+  - **Chưa xem:** nhật ký sự kiện Windows (lỗi đĩa), và liệu `project_merge apply` hôm qua
+    (UPDATE 115 dòng trong một giao dịch) có để lại dấu gì không.
+- [x] **TÔI ĐÃ NÓI SAI, tự sửa:** tôi ghi `data/backups/` **RỖNG**. Không đúng — trong đó có
+  `global_memory-2026-07-26T12-48-21-379Z.db` (1,12 GB, **171.345 tin · 1.203 phiên**, đọc
+  được, `quick_check` chạy). Tôi kết luận "rỗng" từ một lần `ls` sai chỗ và **không kiểm lại**
+  trước khi viết vào sổ — đúng cái lỗi mà chính sổ này đã ghi ở mục engram ("tài liệu không
+  phải phép đo"). Vậy máy **CÓ** đường lùi, chỉ là cũ 8 ngày (thiếu ~28k tin).
+  Cứu + quét lại vẫn là lựa chọn đúng vì nó cho **199.360 tin** — nhiều hơn cả bản trước khi
+  hỏng — nhưng lý do phải là "cứu được nhiều hơn", KHÔNG phải "không còn đường nào khác".
+- [ ] **Việc còn lại vẫn đúng:** backup đang là chạy tay, lần gần nhất trước sự cố là 26/07
+  (8 ngày). Cần **lịch tự động** (`memory backup` định kỳ + dọn bản cũ) để khoảng hở không
+  bao giờ dài như vậy nữa. Đã có bản 03/08 sau khi cứu xong.
+
 ## 📌 Cowork — còn treo
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
   repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
