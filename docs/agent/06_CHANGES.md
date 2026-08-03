@@ -5,6 +5,32 @@
 
 ---
 
+## [2026-08-03i] — Bộ Cowork thứ hai: `cowork_global_memory` — dùng THẲNG zemory + GM
+
+**Vì sao có bộ mới thay vì sửa bộ cũ:** bộ `cowork/` được thiết kế trên giả định *"máy ảo không
+gọi được `zemory`, chỉ ra mạng được tới domain Anthropic"* — cả cơ chế MANIFEST + lối 0/1/2 đều
+sinh ra từ đó. **Đo lại trên một máy thật (agent bên Cowork chạy, 2026-08-03): giả định SAI** —
+có `node` v24 · `npm` v11 · `npm ping` PONG 736ms · `zemory` đã cài sẵn · đọc được cả thư mục
+máy thật, mở được `global_memory.db` read-only qua `better-sqlite3` (65 object, schema v20, FTS
+tra được trong 54ms).
+
+Nhưng **KHÔNG lật ngược thành "luôn có"**: máy đó vốn đã cài zemory (junction) và đã mount sẵn;
+máy mở Cowork lần đầu thì trắng. ⇒ **Giữ NGUYÊN bộ cũ làm đường lùi, thêm bộ mới có bước DÒ.**
+
+- `docs_template/cowork_global_memory/` — `BOOTSTRAP.md` mở đầu bằng **§0 dò ba lệnh**
+  (`node -v` · `npm ping` · `ls`); dò đạt thì `npm i -g zemory` → `zemory init --non-app` →
+  `doctor` → `conform`. **Bỏ hẳn MANIFEST**: `init` rót bộ chuẩn từ bản gốc nên không bao giờ
+  lệch phiên bản, và nhận được **bản ĐẦY ĐỦ** chứ không phải bản cắt gọn như bộ cũ buộc phải làm.
+  Dò không đạt ⇒ tự bảo agent quay về `cowork/BOOTSTRAP.md`.
+- **Điểm ăn tiền là Global Memory** — thứ chép file không bao giờ có được.
+- **Và điểm nguy hiểm cũng ở đó, nên viết luật cứng:** ĐỌC thoải mái, **GHI phải hỏi user trước**
+  (`scan`/`sync`/`embed`/`reindex`/`hook`). Lý do ghi thẳng vào file: GM là **một SQLite dùng
+  chung**, máy thật có thể đang mở nó, và khoá ghi dựa trên **pid** nên **không phủ qua ranh giới
+  máy ảo**. Kèm bắt buộc `memory verify` trước khi đụng, kiểm kho có nằm trong thư mục đồng bộ
+  đám mây không, và trên Windows kiểm `fsutil hardlink list` — **đúng ba thứ vừa làm hỏng kho
+  1,19 GB hôm nay** ([2026-08-03h]).
+- Báo cáo cuối bắt **liệt kê từng lệnh đã GHI + ai cho phép**, hoặc nói rõ "không ghi gì".
+
 ## [2026-08-03h] — 🎯 NGUYÊN NHÂN GỐC: Google Drive đang đồng bộ chính file DB. Tôi đã loại sai.
 
 > 🔄 **Supersede [2026-08-03b] · [2026-08-03d] · [2026-08-03f]** — mọi chỗ tôi viết *"đã loại:
