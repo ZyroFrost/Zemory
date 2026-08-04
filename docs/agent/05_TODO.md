@@ -3,6 +3,41 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔴 VIỆC ĐẦU PHIÊN SAU — máy mới `SS01-IT-12`, đọc hết mục này trước khi gõ gì
+
+> Phiên 04/08 đổi máy giữa chừng. Máy cũ `SS01-IT-10` sẽ bỏ. Chi tiết: `06_CHANGES [2026-08-04]`.
+> **Trạng thái hiện tại:** kho `✓ lành` · **204.523 tin · 1.281 phiên** · chìa `e6fb0eff` ·
+> repo commit `77582dc` · kho nằm **trong repo** ở `D:\huy.nguyen\Tool\Zemory\data\`.
+
+- [ ] **⛔ HOOK PER-MESSAGE ĐANG CHẠY — ĐỪNG chạy `npm run check` khi chưa xử.**
+  `settings.json` (chép từ máy cũ) có đủ 4 hook, nên **mỗi lượt trả lời là một tiến trình
+  `zemory hook stop` GHI vào kho**. Cộng với `node --test` chạy 60 file song song ⇒ **đã làm
+  hỏng kho một lần trong phiên 04/08**. Khoá `cli-write.lock` **không phủ đường hook** (kiểm
+  lúc hỏng: file khoá không tồn tại).
+  **Đường xử đã bàn, user chưa chốt:**
+  ① tắt 4 hook → chạy gate → bật lại *(nhanh, an toàn ngay — tôi nghiêng về cái này trước)*;
+  ② sửa gốc cho khoá phủ cả hook *(đúng hơn, nhưng mỗi lần test lại là một lần rủi ro)*.
+  ⇒ Làm ① trước để có gate xanh, rồi mới ②.
+- [ ] **`zemory reindex`** — chỉ mục docs còn ghi đường `D:\Zyro\...` nên `changelog search`
+  và `plan search` ra **rỗng**. Một lệnh là xong. *(Đây cũng là lý do 4 test `docs-search-flags`
+  đỏ — không phải lỗi code.)*
+- [ ] **Nắn `project_root` cho 29 phiên cũ** — chúng ghi `D:\Zyro\Tool\Zemory`, repo giờ ở
+  `D:\huy.nguyen\Tool\Zemory` ⇒ tìm theo project ra rỗng, phải `--all`. Thiết kế có sẵn cho việc
+  này: giữ nguyên `cwd`, bật `project_pinned` để lần quét sau không ghi đè. **Chưa làm vì là ghi
+  vào 29 phiên dữ liệu thật — chờ user gật.**
+  *(Lưu ý: `memory scan` ngày 04/08 đã tự tạo bản ghi mới cho các phiên đang mở với đường MỚI,
+  nên chỉ còn phần lịch sử cũ cần nắn.)*
+- [ ] **Xoá `data\global_memory.HONG-20260804-*.db`** — bản kho hỏng giữ làm vật chứng. Xoá khi
+  đã chắc kho mới chạy ổn vài ngày.
+- [ ] **`memory embed` còn ~1.000 tin** chưa có vector. Daemon tự bù khi bật `zemory ui` — nhưng
+  **xem lại mục hook ở trên trước khi bật**, vì daemon cũng ghi vào kho.
+- [ ] **`npm install` sạch KHÔNG chạy được** — `@nativewindow/webview@1.0.6` (phụ thuộc tuỳ chọn,
+  cửa sổ giao diện) đòi `peer typescript@^6.0.2` mà repo dùng 5.9 + eslint chặn `<6.1.0` ⇒
+  `ERESOLVE`. Tạm qua bằng `--legacy-peer-deps`. **Cần quyết: ghim `@nativewindow/webview` về
+  bản cũ, hay bỏ hẳn phụ thuộc tuỳ chọn này.**
+- [ ] **Ổ E đã rút và Drive sắp bị xoá** ⇒ **máy này thành bản DUY NHẤT**. Cần dựng đường sao lưu
+  ngoài mới (ổ cứng khác, hoặc bật lại `memory sync` lên Drive) trước khi user xoá Drive.
+
 ## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — ĐÃ PHỤC HỒI ĐỦ, còn treo mỗi nguyên nhân gốc
 > Phát hiện lúc chạy bench recall: `database disk image is malformed`. Sáng cùng ngày
 > `integrity_check` còn **ok**, nên hỏng xảy ra TRONG hôm nay.
@@ -16,14 +51,7 @@
 **Bản gốc hỏng giữ nguyên 2 bản** ở `data/corrupt-20260803-091106/` — KHÔNG xoá cho tới khi
 truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
 
-- [x] **Đã xong:** cứu theo lô-chia-đôi (198.758) → chép 127.700 vector → dựng lại 7/7 FTS →
-  `integrity_check: ok` → kiểm nghiệp vụ (FTS ra 31.748 dòng, CLI tìm đủ ba lớp) → đổi chỗ →
-  `memory scan` nạp lại 144 tin từ transcript gốc ⇒ **+602 tin, mất 0**.
 - [~] **Đang chạy nền:** `memory embed --all` bù **15.718** tin chưa có vector.
-- [x] **✅ ĐÃ TÌM RA (2026-08-03h): Google Drive đồng bộ chính file DB.** `D:\Zyro` nằm trong
-  vùng Drive; `fsutil hardlink list` cho thấy `global_memory.db` bị hardlink vào
-  `\Zyro\.tmp.driveupload\`. Đã `relocate` sang `D:\zemory-data` (ngoài vùng Drive), verify lành.
-  Chi tiết + phần tôi kết luận sai: `06_CHANGES [2026-08-03h]`.
 - [ ] **Sửa `relocate` cho đúng lời hứa** — nó in "settings moved" nhưng bỏ lại `backups/` ·
   `browser/` · `imports/` · `logs/` · `cockpit/` · `context-guard/`, và **bỏ lại `secrets/` +
   `share.key`** (chìa danh tính ở lại trong thư mục đang upload cloud — lỗ **điều 7**, không chỉ
@@ -70,13 +98,6 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
     Ghi rõ ở đây để không ai đọc nhầm cổng xanh thành "đã chứng minh".
   - **Chưa xem:** nhật ký sự kiện Windows (lỗi đĩa), và liệu `project_merge apply` hôm qua
     (UPDATE 115 dòng trong một giao dịch) có để lại dấu gì không.
-- [x] **TÔI ĐÃ NÓI SAI, tự sửa:** tôi ghi `data/backups/` **RỖNG**. Không đúng — trong đó có
-  `global_memory-2026-07-26T12-48-21-379Z.db` (1,12 GB, **171.345 tin · 1.203 phiên**, đọc
-  được, `quick_check` chạy). Tôi kết luận "rỗng" từ một lần `ls` sai chỗ và **không kiểm lại**
-  trước khi viết vào sổ — đúng cái lỗi mà chính sổ này đã ghi ở mục engram ("tài liệu không
-  phải phép đo"). Vậy máy **CÓ** đường lùi, chỉ là cũ 8 ngày (thiếu ~28k tin).
-  Cứu + quét lại vẫn là lựa chọn đúng vì nó cho **199.360 tin** — nhiều hơn cả bản trước khi
-  hỏng — nhưng lý do phải là "cứu được nhiều hơn", KHÔNG phải "không còn đường nào khác".
 - [ ] **Việc còn lại vẫn đúng:** backup đang là chạy tay, lần gần nhất trước sự cố là 26/07
   (8 ngày). Cần **lịch tự động** (`memory backup` định kỳ + dọn bản cũ) để khoảng hở không
   bao giờ dài như vậy nữa. Đã có bản 03/08 sau khi cứu xong.

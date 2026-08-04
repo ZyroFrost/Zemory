@@ -1,6 +1,27 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **Đã xong:** cứu theo lô-chia-đôi (198.758) → chép 127.700 vector → dựng lại 7/7 FTS →
+  `integrity_check: ok` → kiểm nghiệp vụ (FTS ra 31.748 dòng, CLI tìm đủ ba lớp) → đổi chỗ →
+  `memory scan` nạp lại 144 tin từ transcript gốc ⇒ **+602 tin, mất 0**.
+- [x] **✅ NGUYÊN NHÂN THỨ HAI (2026-08-04): hook per-message + `npm run check` song song.**
+  Lần hỏng thứ hai **Drive vô can** (kho ngoài vùng sync, 1 hardlink). Thủ phạm là 4 hook chép
+  từ máy cũ — mỗi lượt trả lời sinh một tiến trình ghi kho — chồng lên `node --test` chạy 60 file
+  song song. **Khoá `cli-write.lock` KHÔNG phủ đường hook** (kiểm lúc hỏng: file khoá không tồn
+  tại). ⇒ Sửa khoá là việc thật, ghi ở mục 🔴 đầu file.
+  **Nghĩa là kho có ÍT NHẤT HAI đường hỏng khác nhau** — vá một đường không đóng được đường kia.
+- [x] **✅ ĐÃ TÌM RA (2026-08-03h): Google Drive đồng bộ chính file DB.** `D:\Zyro` nằm trong
+  vùng Drive; `fsutil hardlink list` cho thấy `global_memory.db` bị hardlink vào
+  `\Zyro\.tmp.driveupload\`. Đã `relocate` sang `D:\zemory-data` (ngoài vùng Drive), verify lành.
+  Chi tiết + phần tôi kết luận sai: `06_CHANGES [2026-08-03h]`.
+- [x] **TÔI ĐÃ NÓI SAI, tự sửa:** tôi ghi `data/backups/` **RỖNG**. Không đúng — trong đó có
+  `global_memory-2026-07-26T12-48-21-379Z.db` (1,12 GB, **171.345 tin · 1.203 phiên**, đọc
+  được, `quick_check` chạy). Tôi kết luận "rỗng" từ một lần `ls` sai chỗ và **không kiểm lại**
+  trước khi viết vào sổ — đúng cái lỗi mà chính sổ này đã ghi ở mục engram ("tài liệu không
+  phải phép đo"). Vậy máy **CÓ** đường lùi, chỉ là cũ 8 ngày (thiếu ~28k tin).
+  Cứu + quét lại vẫn là lựa chọn đúng vì nó cho **199.360 tin** — nhiều hơn cả bản trước khi
+  hỏng — nhưng lý do phải là "cứu được nhiều hơn", KHÔNG phải "không còn đường nào khác".
+
 - [x] **F6 — search hybrid+rerank chạy IN-PROCESS trong daemon, nuốt event loop (đau nhất).**
   Đo sống 2026-08-02: máy RẢNH search vẫn **25,5 s** (rerank bật, model ấm — CLI chỉ 9,9 s);
   trong lúc scheduler embed backlog chạy thì **MỌI endpoint ~48 s**, kể cả `/memory-status`
