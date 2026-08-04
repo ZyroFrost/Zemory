@@ -81,6 +81,48 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
   (8 ngày). Cần **lịch tự động** (`memory backup` định kỳ + dọn bản cũ) để khoảng hở không
   bao giờ dài như vậy nữa. Đã có bản 03/08 sau khi cứu xong.
 
+## 🎯 CHỜ CHỐT — dựng lại chỉ mục vector ở số chiều đầy đủ
+
+**Đã đo, có bằng chứng. Chưa làm vì đắt, cần user chọn đường.**
+
+**Nghẽn KHÔNG phải rerank — là lớp NHÚNG.** Chuỗi đo trên corpus 34 câu có nhãn, kho thật:
+`recall@10 41%` · `@40 56%` · `@100 56%` · `@200 56%` · `@500 56%` ⇒ **chạm trần**.
+**15/34 câu (44%) đáp án KHÔNG bao giờ được lấy về**, dù nhìn tới 500 kết quả. Nới `POOL`
+60 → 200 → 500 **không đổi một con số nào**. 15 tin trượt vs 19 tin tìm ra: dài 714 vs 635 ký
+tự, **cả hai nhóm đều 100% CÓ VECTOR** ⇒ không phải thiếu chỉ mục, không phải chunk, không
+phải xếp hạng.
+
+**Phép thử có kiểm soát** (`scratchpad/dims-test.mjs`, chạy trên bản sao `D:/zemory-lab/lab.db`):
+EmbeddingGemma huấn luyện Matryoshka nên **256 chiều CHÍNH LÀ 256 số đầu của 768** — embed MỘT
+lần ở 768 rồi so bốn cách cắt trên **cùng một dãy số**, nên khác biệt duy nhất là số chiều.
+
+| chiều | @1 | @3 | @10 | @40 | MRR |
+|---:|---:|---:|---:|---:|---:|
+| 128 | 62% | 82% | 88% | 97% | 0,728 |
+| **256** *(đang dùng)* | **74%** | 88% | 97% | 97% | **0,816** |
+| 512 | 85% | 97% | 97% | 100% | 0,913 |
+| **768** *(gốc của model)* | **91%** | 97% | 100% | 100% | **0,944** |
+
+Tăng ĐỀU qua cả bốn mức ⇒ quan hệ thật, không phải nhiễu. `recall@1` **74% → 91%** là chỉ số
+đáng giá nhất (agent tra cứu cần đúng ngay vị trí đầu).
+
+**Vì sao đang là 256:** cắt hồi 2026-07 để giảm DB **1.141 MB → 595 MB**. Đánh đổi có chủ đích,
+nhưng **lúc đó chưa ai đo được nó lấy mất bao nhiêu chất lượng** — bench khi ấy dùng corpus 8
+câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới có thước.
+
+- [ ] **CHỌN MỘT ĐƯỜNG (chi phí là lý do chưa làm):** embed lại 202k tin ước **60–190 giờ**
+  (đo được 3,4 giây/tin ở phép thử; đường thật nhanh hơn nhờ khử trùng lặp + bỏ tool call).
+  - **① Đo lại với 3.000 mồi nhiễu trước (~3 giờ)** ← *tôi nghiêng về đường này.* Với 300 mồi
+    thì 256 chiều đã đạt 97%@10, tức bài quá dễ; kho thật có 202k mồi và 256 chỉ đạt 41%. Cần
+    biết khoảng cách 256↔768 **giữ nguyên hay giãn ra** ở quy mô thật. Bỏ 3 giờ để khỏi cược 60.
+  - **② Lấy 512 chiều** — @3 và @40 đã bằng 768, MRR 0,913 vs 0,944, mà chỉ tốn **2/3** dung
+    lượng và thời gian.
+  - **③ Làm thẳng 768** — chắc nhất, đắt nhất.
+- [ ] **Luật user đã chốt: mọi thí nghiệm chạy trên BẢN SAO**, không nén tới lui trên kho thật.
+  Bản sao đã tạo: `D:/zemory-lab/lab.db` (1,23 GB, chụp bằng `db.backup()` nên nhất quán).
+- [ ] **Đã làm sẵn để chạy được:** `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS`
+  chỉnh được từ ngoài; bench thêm cột `@40` (trần pool) + dòng kết luận tự động; `topN` 10 → 40.
+
 ## 📌 Cowork — còn treo
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
   repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
