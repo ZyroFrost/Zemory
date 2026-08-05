@@ -5,6 +5,24 @@
 
 ---
 
+## [2026-08-05c] — PUSH release **1.1.0** (user chốt số) · luật mới "push = lên version" · gỡ model 294 MB khỏi lịch sử chưa push
+
+**Luật mới `02_RULES §Git` (user chốt):** mỗi push = một lần lên version, SỐ do user chốt (hỏi
+trước khi đẩy); trước push phải kiểm file sạch + rà `05_TODO`. Đợt này user chọn **1.1.0**.
+
+**Hai chướng ngại thật trên đường push, đều là di sản máy cũ:**
+- `~/.gitconfig` ghim credential github.com vào `gh.exe` **không tồn tại** (kèm dòng rỗng loại luôn
+  GCM) ⇒ mọi push chết từ vòng xác thực. Gỡ 2 entry chết → GCM tự lo.
+- Commit chốt phiên 04/08 mang theo **model weight q8 294,6 MB** (`attic/zemory-lab/models/…`) —
+  vi phạm HP điều 2, GitHub chặn cứng (>100 MB). Xử: `filter-branch` gỡ `attic/zemory-lab` khỏi
+  **2 commit CHƯA push** (hợp luật — chỉ cấm rewrite lịch sử đã push), tag an toàn
+  `pre-lfs-fix-20260805` giữ bản cũ, `.gitignore` chặn `attic/zemory-lab/` vĩnh viễn. Tác dụng
+  phụ đã kiểm: reset cuối của filter-branch rút 5 file tracked khỏi đĩa — **toàn bộ là bản sao
+  của `data\models`** (đối chiếu True), không mất gì; `lab.db` cũ 1,18 GB (untracked) còn nguyên.
+
+**Kết quả:** `77582dc..e423a8f main → main`, remote khớp HEAD. Gate trước push: typecheck · lint
+· 0 file data/secret trong diff · TODO 0 mục `[x]` sót.
+
 ## [2026-08-05b] — Nối lại 8 repo sau đổi máy · secret về folder repo · gợi ý HP vào template · audit 6 mặt
 
 **Nối lại app sau đổi máy.** Sổ đăng ký chỉ còn 2 project ⇒ đăng ký + ghim lại **8/8 repo** có
