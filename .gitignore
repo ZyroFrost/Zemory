@@ -38,6 +38,12 @@ attic/web-capture/*.txt
 # cắt ngắn 06_CHANGES.md). Là lưới an toàn CỤC BỘ — không commit; lịch sử đã có git lo.
 *.md.bak
 
+# Lab thí nghiệm (bản sao DB + model cache chở theo từ máy cũ). Đã dính thật 2026-08-05:
+# commit chốt phiên 04/08 mang theo model weight 294,6 MB ⇒ GitHub chặn CẢ push (giới hạn
+# 100 MB) — phải filter-branch 2 commit chưa push mới đẩy được. Model weight tải/cache lúc
+# runtime, KHÔNG BAO GIỜ vào git (HP điều 2); *.db đã có luật riêng ở trên.
+attic/zemory-lab/
+
 # Bản cứu index (dump doc row của project khác ra .md trước khi xoá row trong
 # global_memory.db). global_memory.db index docs của MỌI project trên máy, nên dump đó
 # mang docs của repo KHÁC — với zemory là repo PUBLIC thì đó là công bố hạ tầng nội bộ
