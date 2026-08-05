@@ -11,15 +11,34 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, projectKey } from "./core/config.js";
+import { currentMemoryDir } from "./memory/db.js";
+
+/** The pre-2026-08-05 location, kept ONLY so an existing registry still loads. */
+function legacyRegistryFile(): string {
+  return join(homedir(), ".zemory", "projects.json");
+}
 
 /**
- * Where the registry lives. Resolved per call (not frozen at import) so tests —
- * and anyone isolating a run — can point it elsewhere via ZEMORY_REGISTRY_FILE
- * instead of writing into the real ~/.zemory/projects.json.
+ * Where the registry lives: BESIDE THE DATA DIR (`<data>/projects.json`), not in the
+ * home folder — user rule 2026-08-05, `02_RULES §Luật khi VIẾT` (Secret Ở ĐÂU): the DB,
+ * its key, its config and this registry are ONE cluster that must move together, so
+ * `memory relocate` can't leave half of it on the system drive. Only `location.json`
+ * stays in home (it is the pointer that says where the data dir IS).
+ *
+ * Resolved per call (not frozen at import) so tests — and anyone isolating a run — can
+ * point it elsewhere via ZEMORY_REGISTRY_FILE instead of writing the real one.
  */
 function registryFile(): string {
   const override = process.env.ZEMORY_REGISTRY_FILE;
-  return override && override.trim() ? override.trim() : join(homedir(), ".zemory", "projects.json");
+  if (override && override.trim()) return override.trim();
+  return join(currentMemoryDir(), "projects.json");
+}
+
+/** Read path: the new location, falling back to the legacy one until it is migrated. */
+function registryReadFile(): string {
+  const f = registryFile();
+  if (existsSync(f) || process.env.ZEMORY_REGISTRY_FILE) return f;
+  return existsSync(legacyRegistryFile()) ? legacyRegistryFile() : f;
 }
 
 export interface ProjectEntry {
@@ -82,7 +101,7 @@ export function isScratchRoot(root: string): boolean {
 }
 
 function read(): ProjectEntry[] {
-  const FILE = registryFile();
+  const FILE = registryReadFile();
   if (!existsSync(FILE)) return [];
   try {
     const v = JSON.parse(readFileSync(FILE, "utf8"));

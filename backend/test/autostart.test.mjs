@@ -46,6 +46,20 @@ test("enable creates an OS autostart entry; disable removes it; status tracks it
   assert.ok(!on.path || !existsSync(on.path), "the OS entry file is gone");
 });
 
+// Regression 2026-08-05: `desktopDir()` hardcoded <home>\Desktop, but company
+// Windows REDIRECTS Desktop into OneDrive and then <home>\Desktop does not exist —
+// writing the .lnk threw DirectoryNotFoundException, and because Desktop was written
+// FIRST the Start Menu entry was never attempted either. Read-only on purpose: it
+// resolves the path, it must not create anything.
+test("the Desktop shortcut resolves to a folder that actually EXISTS", async () => {
+  if (platform() !== "win32") return;
+  const { desktopShortcutStatus } = await import("../../dist/platform/autostart.js");
+  const { dirname } = await import("node:path");
+  const st = desktopShortcutStatus();
+  assert.ok(st.path, "a shortcut path is resolved");
+  assert.ok(existsSync(dirname(st.path)), `Desktop folder must exist, got ${dirname(st.path)}`);
+});
+
 test("the Windows entry, when on this OS, is a Startup .cmd that launches `ui`", async (t) => {
   if (platform() !== "win32") return;
   sandboxHome(t);

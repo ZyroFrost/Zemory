@@ -163,8 +163,38 @@ export function setAutostart(on: boolean): AutostartStatus {
 // gives the app-like install the user asked for, with no native dependency.
 export interface ShortcutStatus { supported: boolean; exists: boolean; path?: string; detail?: string }
 
+/** Expand `%VAR%` inside a Windows registry REG_EXPAND_SZ value. */
+function expandWinEnv(s: string): string {
+  return s.replace(/%([^%]+)%/g, (whole, name: string) => process.env[name] ?? whole);
+}
+
+/**
+ * The Desktop folder — NOT always `<home>\Desktop` on Windows. Company machines
+ * commonly REDIRECT it into OneDrive (`<home>\OneDrive - <org>\Desktop`), and then
+ * `<home>\Desktop` does not exist at all, so writing a .lnk there throws
+ * DirectoryNotFoundException. The registry is the authority; env vars are a cheap
+ * fallback for the (rare) case the query fails.
+ */
 function desktopDir(): string {
-  return join(homedir(), "Desktop");
+  const plain = join(homedir(), "Desktop");
+  if (platform() !== "win32" || existsSync(plain)) return plain;
+  try {
+    const out = execFileSync(
+      "reg",
+      ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders", "/v", "Desktop"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    );
+    const m = /Desktop\s+REG_(?:EXPAND_)?SZ\s+(.+)/.exec(out);
+    const p = m ? expandWinEnv(m[1].trim()) : "";
+    if (p && existsSync(p)) return p;
+  } catch {
+    /* fall through to the env fallback */
+  }
+  for (const key of ["OneDriveCommercial", "OneDrive", "OneDriveConsumer"]) {
+    const base = process.env[key];
+    if (base && existsSync(join(base, "Desktop"))) return join(base, "Desktop");
+  }
+  return plain;
 }
 
 /** Windows app icon (Start Menu / Desktop shortcut) — the Z logo. Resolved from the
@@ -214,7 +244,14 @@ function winWriteShortcut(lnkPath: string, vbs: string): void {
     ...(icon ? [`$s.IconLocation = '${psq(icon)}';`] : []),
     "$s.Save()",
   ].join(" ");
-  execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
+  try {
+    execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: ["ignore", "ignore", "pipe"] });
+  } catch (error) {
+    // stdio "ignore" used to swallow the REASON — a redirected Desktop reports
+    // DirectoryNotFoundException, but all the UI ever saw was "Command failed".
+    const why = String((error as { stderr?: Buffer | string }).stderr ?? "").trim().split("\n")[0];
+    throw new Error(why ? `${lnkPath}: ${why}` : `${lnkPath}: shortcut write failed`, { cause: error });
+  }
 }
 
 export function desktopShortcutStatus(): ShortcutStatus {
@@ -243,9 +280,18 @@ export function setDesktopShortcut(on: boolean): ShortcutStatus {
       }
       mkdirSync(dirname(menu), { recursive: true });
       const vbs = winWriteLauncher();
-      winWriteShortcut(desk, vbs);
-      winWriteShortcut(menu, vbs);
-      return { ...st, exists: true };
+      // INDEPENDENT, Start Menu FIRST: one unwritable target must not cost the other.
+      // Before, a redirected Desktop threw and the Start Menu entry — the one the app
+      // is actually launched from — was never even attempted.
+      const fails: string[] = [];
+      for (const target of [menu, desk]) {
+        try {
+          winWriteShortcut(target, vbs);
+        } catch (error) {
+          fails.push(error instanceof Error ? error.message : String(error));
+        }
+      }
+      return { ...st, exists: existsSync(menu) || existsSync(desk), ...(fails.length ? { detail: fails.join(" · ") } : {}) };
     }
     if (!on) { if (existsSync(st.path)) rmSync(st.path, { force: true }); return { ...st, exists: false }; }
     const { exe } = launchParts();
