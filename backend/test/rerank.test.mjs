@@ -4,14 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
+import { embedConfig } from "../../dist/memory/embed.js";
 import { rerank, rerankConfig, resetRerank } from "../../dist/memory/rerank.js";
 import { rerankEnabled, searchHybrid } from "../../dist/memory/search.js";
 
-test("rerankConfig defaults to a cross-encoder · q8 · ~/.zemory/models", () => {
+test("rerankConfig: cross-encoder, sharing the EMBEDDER's weight cache (plan 05 §2)", () => {
+  // This used to assert a hardcoded `~/.zemory/models`, which locked in a bug: the
+  // embedder follows the RELOCATED data dir, so after `memory relocate` the reranker
+  // pointed at a directory nothing else used and re-downloaded its weights there.
+  // The real invariant is ONE cache shared with the embedder — assert that instead.
   const c = rerankConfig();
   assert.match(c.model, /rerank/i);
   assert.equal(c.dtype, "q8");
-  assert.match(c.cacheDir, /[\\/]\.zemory[\\/]models/);
+  assert.equal(c.cacheDir, embedConfig().cacheDir, "one weight cache, shared with the embedder");
 });
 
 test("rerankEnabled: force arg wins; ZEMORY_RERANK env overrides; default off via env", () => {

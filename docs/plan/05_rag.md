@@ -68,6 +68,10 @@ query:
 - Dims + profile đều lưu trong `vec_config`, KHÔNG đọc lại từ env sau khi index đã build — tránh trộn lẫn hai không gian vector khác nhau.
 - Chunk message dài là derived-only (rowid tổng hợp qua `vec_map`), KHÔNG đổi bảng `messages` gốc.
 
+- **Đã chốt 2026-08-05 (dtype — mở rộng cùng doctrine stored-config-authoritative):**
+- **`dtype` là chiều thứ BA của `vec_config`** (cùng hạng dims/profile): q8 và fp32 của cùng model cho vector GẦN nhau nhưng KHÔNG trùng ⇒ chỉ mục dựng bằng dtype nào phải được nuôi bằng đúng dtype đó, ở **cả hai phía** nạp tài liệu lẫn truy vấn (`useEmbedDtype` đọc từ `vec_config` trước khi embed). Chỉ mục cũ không có cột ⇒ đọc là `q8` (mặc định thời nó được dựng).
+- **Mặc định embed dtype `q8` → `fp32`** — đo trên corpus thật (i5-13420H, 48 chunk, mỗi dtype một tiến trình): fp32 **1,61 s/chunk** · fp16 1,66 · q8 3,09 · q4f16 5,23 · q4 5,45. Nén 4-bit phải giải nén trọng số trước mỗi phép nhân và song song hoá kém (fp32 dùng 7,5 nhân, q4 chỉ 3,5) ⇒ q8 trả giá kép (chậm ~2× và kém chính xác) đổi lấy đĩa. Rerank dtype vẫn `q8` — model khác, CHƯA đo, không suy từ số của embed (điều 12).
+
 - **Còn mở khi mở rộng RAG:**
 - Chunk doc dài / knowledge / code thế nào.
 - Khi nào BẬT rerank mặc định (cơ chế đã có ở §4.E) — chốt khi corpus đủ lớn/nhiễu để benchmark thắng net, hoặc khi mở sang data chính.

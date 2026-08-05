@@ -19,9 +19,16 @@ không có bên đó. Và nếu máy mới **tự** lấy được chìa từ ch
 
 `<thư mục DB>/share.key` — tra bằng `zemory memory key path`.
 
-**Cạnh DB, KHÔNG phải trong repo.** `currentMemoryDir()` di động được (`memory relocate` dời DB
-khỏi ổ hệ thống), nên câu *"chìa ở `data/`"* là SAI trên máy chưa relocate — ở đó DB nằm
-`~/.zemory/`. Máy thứ hai **vẫn phải cài từ mã nguồn** (`git clone` → `npm install` → `npm run build` → `npm link`); `npm i -g zemory` chưa chạy được — gói chưa publish.
+**Cạnh DB.** `currentMemoryDir()` di động được (`memory relocate`), nên chìa đi theo kho chứ không
+gắn với một đường cố định.
+
+> 🔄 **Supersede 2026-08-05 (user chốt):** câu cũ ở đây là *"cạnh DB, KHÔNG phải trong repo"*.
+> Nay ngược lại: **kho và chìa nằm TRONG folder repo** (`<repo>/data/`), **không để trên ổ hệ
+> thống**. Lý do: cả cụm (kho · chìa · config · model cache) đi cùng nhau, dời máy là dời trọn gói;
+> rải sang `~/.zemory` thì `relocate` bỏ sót — đã dính đúng lỗi đó, chìa ở lại trong thư mục đang
+> upload cloud (lỗ điều 7). Ràng buộc KHÔNG đổi và là thứ thật sự bảo vệ: **cấm git · cấm mọi
+> nguồn online · cấm đẩy sang VM**. Xem `02_RULES §Luật khi VIẾT` dòng *Secret Ở ĐÂU*.
+> Ngoại lệ duy nhất còn ở home: `~/.zemory/location.json` (con trỏ tới kho, không chứa bí mật). Máy thứ hai **vẫn phải cài từ mã nguồn** (`git clone` → `npm install` → `npm run build` → `npm link`); `npm i -g zemory` chưa chạy được — gói chưa publish.
 
 `resolveShareKey` xét: `--key-file` → `<DB>/share.key` → `<repo>/share/share.key` → env
 `ZEMORY_SHARE_KEY`. **File thắng env**, nên còn file là env bị bỏ qua — đây là bẫy đã dính một lần.

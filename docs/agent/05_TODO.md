@@ -3,40 +3,34 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔴 VIỆC ĐẦU PHIÊN SAU — máy mới `SS01-IT-12`, đọc hết mục này trước khi gõ gì
+## 🔴 ĐANG CHẠY — dựng lại chỉ mục ở 768 chiều + fp32 (máy `SS01-IT-12`)
 
-> Phiên 04/08 đổi máy giữa chừng. Máy cũ `SS01-IT-10` sẽ bỏ. Chi tiết: `06_CHANGES [2026-08-04]`.
-> **Trạng thái hiện tại:** kho `✓ lành` · **204.523 tin · 1.281 phiên** · chìa `e6fb0eff` ·
-> repo commit `77582dc` · kho nằm **trong repo** ở `D:\huy.nguyen\Tool\Zemory\data\`.
+> Kho thật `✓ lành` · **~205,7k tin · 1.283 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
+> Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓.
 
-- [ ] **⛔ HOOK PER-MESSAGE ĐANG CHẠY — ĐỪNG chạy `npm run check` khi chưa xử.**
-  `settings.json` (chép từ máy cũ) có đủ 4 hook, nên **mỗi lượt trả lời là một tiến trình
-  `zemory hook stop` GHI vào kho**. Cộng với `node --test` chạy 60 file song song ⇒ **đã làm
-  hỏng kho một lần trong phiên 04/08**. Khoá `cli-write.lock` **không phủ đường hook** (kiểm
-  lúc hỏng: file khoá không tồn tại).
-  **Đường xử đã bàn, user chưa chốt:**
-  ① tắt 4 hook → chạy gate → bật lại *(nhanh, an toàn ngay — tôi nghiêng về cái này trước)*;
-  ② sửa gốc cho khoá phủ cả hook *(đúng hơn, nhưng mỗi lần test lại là một lần rủi ro)*.
-  ⇒ Làm ① trước để có gate xanh, rồi mới ②.
-- [ ] **`zemory reindex`** — chỉ mục docs còn ghi đường `D:\Zyro\...` nên `changelog search`
-  và `plan search` ra **rỗng**. Một lệnh là xong. *(Đây cũng là lý do 4 test `docs-search-flags`
-  đỏ — không phải lỗi code.)*
-- [ ] **Nắn `project_root` cho 29 phiên cũ** — chúng ghi `D:\Zyro\Tool\Zemory`, repo giờ ở
-  `D:\huy.nguyen\Tool\Zemory` ⇒ tìm theo project ra rỗng, phải `--all`. Thiết kế có sẵn cho việc
-  này: giữ nguyên `cwd`, bật `project_pinned` để lần quét sau không ghi đè. **Chưa làm vì là ghi
-  vào 29 phiên dữ liệu thật — chờ user gật.**
-  *(Lưu ý: `memory scan` ngày 04/08 đã tự tạo bản ghi mới cho các phiên đang mở với đường MỚI,
-  nên chỉ còn phần lịch sử cũ cần nắn.)*
-- [ ] **Xoá `data\global_memory.HONG-20260804-*.db`** — bản kho hỏng giữ làm vật chứng. Xoá khi
-  đã chắc kho mới chạy ổn vài ngày.
-- [ ] **`memory embed` còn ~1.000 tin** chưa có vector. Daemon tự bù khi bật `zemory ui` — nhưng
-  **xem lại mục hook ở trên trước khi bật**, vì daemon cũng ghi vào kho.
-- [ ] **`npm install` sạch KHÔNG chạy được** — `@nativewindow/webview@1.0.6` (phụ thuộc tuỳ chọn,
-  cửa sổ giao diện) đòi `peer typescript@^6.0.2` mà repo dùng 5.9 + eslint chặn `<6.1.0` ⇒
-  `ERESOLVE`. Tạm qua bằng `--legacy-peer-deps`. **Cần quyết: ghim `@nativewindow/webview` về
-  bản cũ, hay bỏ hẳn phụ thuộc tuỳ chọn này.**
-- [ ] **Ổ E đã rút và Drive sắp bị xoá** ⇒ **máy này thành bản DUY NHẤT**. Cần dựng đường sao lưu
-  ngoài mới (ổ cứng khác, hoặc bật lại `memory sync` lên Drive) trước khi user xoá Drive.
+- [~] **Rebuild 768+fp32 trên BẢN SAO** `D:\huy.nguyen\zemory-lab\lab.db` (~43 giờ, đo thật).
+  Chạy tiếp: `memory embed --all` với `GLOBAL_MEMORY_DB` trỏ bản sao **và** `ZEMORY_MODEL_DIR`
+  ghim `data\models` (thiếu là nó tải lại 1,2 GB model, vì thư mục model suy ra từ thư mục DB).
+  Bản sao đã đóng dấu `vec_config = {768, gemma-prompt-v1, fp32}`.
+  - ⚠ **KHÔNG `npm run build` khi job đang chạy** — `clean` xoá `dist/` ngay dưới chân tiến trình
+    (đã giết job một lần). Cần build thì `npx tsc` (ghi đè tại chỗ, không xoá).
+  - ⚠ **Tiến trình agent tự phóng đều bị dọn** (`Start-Process`, WMI `Win32_Process.Create`);
+    `schtasks` thì bị bộ lọc quyền chặn. Chỉ lệnh nền do harness quản lý mới sống qua nhiều lượt.
+- [ ] **TRÁO kho sau khi xong (thứ tự bắt buộc):** `bench --recall` trên bản sao phải thắng mốc
+  **41%@10** (điều 12) → thay file kho thật → `memory scan` nạp lại transcript sinh ra trong lúc
+  chờ (idempotent, đọc từ đĩa) → `memory embed` bù phần mới ở 768/fp32.
+- [ ] **HOOK ĐANG TẮT** (user tắt 2026-08-05 để chạy gate). Bật lại: `zemory hook install`.
+  **Việc của USER** — agent bị bộ lọc quyền chặn cả `install` lẫn `uninstall`.
+- [ ] **Rerank vẫn `q8`, CHƯA đo** — model khác (cross-encoder `bge-reranker-base`), số đo của
+  embed KHÔNG suy ra được cho nó. User chốt tạm chấp nhận vì rerank chỉ chạy lúc TRUY VẤN, không
+  dính đường nạp. Đo xong mới được đổi mặc định (điều 12).
+- [ ] **23 doc trùng đường cũ — ĐÃ DỌN 2026-08-05** (23 doc + 288 section; `section` 1090 → 802).
+  Còn lại: sau khi TRÁO kho thì chạy `zemory reindex` một lần cho chỉ mục docs tươi lại.
+- [ ] **Sao lưu NGOÀI máy** — ổ E đã rút, Drive sắp xoá ⇒ máy này là bản **DUY NHẤT**. Backup
+  `data\backups\global_memory-2026-08-05T03-26-42-301Z.db` (1,25 GB) nằm **cùng ổ** với kho.
+- [ ] **23 doc trùng đường cũ** `D:\Zyro\Tool\Zemory` trong bảng `doc` — trùng path **23/23** với
+  bản đường mới (đo 2026-08-05), tức nhánh cũ dư thuần, dọn được.
+- [ ] **Xoá `data\global_memory.HONG-20260804-*.db`** (1.025 MB) khi chắc kho mới chạy ổn.
 
 ## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — ĐÃ PHỤC HỒI ĐỦ, còn treo mỗi nguyên nhân gốc
 > Phát hiện lúc chạy bench recall: `database disk image is malformed`. Sáng cùng ngày
@@ -102,9 +96,10 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
   (8 ngày). Cần **lịch tự động** (`memory backup` định kỳ + dọn bản cũ) để khoảng hở không
   bao giờ dài như vậy nữa. Đã có bản 03/08 sau khi cứu xong.
 
-## 🎯 CHỜ CHỐT — dựng lại chỉ mục vector ở số chiều đầy đủ
+## 🎯 ĐÃ CHỐT 2026-08-05 — dựng thẳng **768 chiều + fp32** (user quyết), đang chạy
 
-**Đã đo, có bằng chứng. Chưa làm vì đắt, cần user chọn đường.**
+**Bằng chứng dưới đây GIỮ LẠI:** nó giải thích vì sao chọn 768, và mốc **41%@10** của nó chính là
+ngưỡng bản sao phải vượt thì mới được tráo vào kho thật.
 
 **Nghẽn KHÔNG phải rerank — là lớp NHÚNG.** Chuỗi đo trên corpus 34 câu có nhãn, kho thật:
 `recall@10 41%` · `@40 56%` · `@100 56%` · `@200 56%` · `@500 56%` ⇒ **chạm trần**.
@@ -131,14 +126,15 @@ Tăng ĐỀU qua cả bốn mức ⇒ quan hệ thật, không phải nhiễu. `
 nhưng **lúc đó chưa ai đo được nó lấy mất bao nhiêu chất lượng** — bench khi ấy dùng corpus 8
 câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới có thước.
 
-- [ ] **CHỌN MỘT ĐƯỜNG (chi phí là lý do chưa làm):** embed lại 202k tin ước **60–190 giờ**
-  (đo được 3,4 giây/tin ở phép thử; đường thật nhanh hơn nhờ khử trùng lặp + bỏ tool call).
-  - **① Đo lại với 3.000 mồi nhiễu trước (~3 giờ)** ← *tôi nghiêng về đường này.* Với 300 mồi
-    thì 256 chiều đã đạt 97%@10, tức bài quá dễ; kho thật có 202k mồi và 256 chỉ đạt 41%. Cần
-    biết khoảng cách 256↔768 **giữ nguyên hay giãn ra** ở quy mô thật. Bỏ 3 giờ để khỏi cược 60.
-  - **② Lấy 512 chiều** — @3 và @40 đã bằng 768, MRR 0,913 vs 0,944, mà chỉ tốn **2/3** dung
-    lượng và thời gian.
-  - **③ Làm thẳng 768** — chắc nhất, đắt nhất.
+- **ĐƯỜNG ĐÃ CHỌN: ③ làm thẳng 768 + fp32** *(quyết định — không phải việc; việc đang chạy là mục
+  [~] ở đầu file)*. Hai số đo mới (2026-08-05) làm hai lựa chọn kia mất lý do tồn tại:
+  - **512 KHÔNG rẻ hơn 768 một giây nào** — model luôn tính đủ 768 rồi `sliceNormalize` mới cắt,
+    nên hai mức là **cùng một lần chạy model**; khác biệt duy nhất là dung lượng (297 vs 446 MB).
+    Ưu điểm "tốn 2/3 thời gian" của phương án ② là SAI, đã bác.
+  - **Chi phí thật rẻ hơn ước cũ nhiều:** 123.086 chunk duy nhất × 1,26 s = **43 giờ** (ước cũ
+    60–190 giờ dựa trên 3,4 s/tin và chưa trừ dedup 19% + tool call).
+  - Đo lại với 3.000 mồi (phương án ①) **bỏ**: nó tốn ~1 giờ chỉ để tinh chỉnh một lựa chọn mà
+    giờ không còn đánh đổi — 768 đã trội cả về chất lượng lẫn thời gian.
 - [ ] **Luật user đã chốt: mọi thí nghiệm chạy trên BẢN SAO**, không nén tới lui trên kho thật.
   Bản sao đã tạo: `D:/zemory-lab/lab.db` (1,23 GB, chụp bằng `db.backup()` nên nhất quán).
 - [ ] **Đã làm sẵn để chạy được:** `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS`
@@ -497,7 +493,30 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **Lệnh `zemory skill add <repo-url>`** (clone vào kho đúng khuôn) — ý tưởng nêu ra, chưa quyết.
 - [ ] **Skill chung vs riêng 2 tầng** (mục ở §Ưu tiên kế tiếp) — mô hình vendored đã trả lời phần lớn; cần rà lại mục đó xem còn gì.
 
+## 📥 User gửi 2026-08-05 tối — "để tính sau", note lại đây
+- [ ] **DỌN bundle trên Drive + CODE chống chất đống (user giao: *"phải có code xử lý ko để đè 1 đống"*).**
+  Đo 2026-08-05: `G:\My Drive\Global Memory` = **11 file · 631 MB** — máy này 2 file (baseline 289,7 +
+  delta 1,6) nhưng máy cũ `SS01-IT-10` **9 file** (baseline 264,5 + 8 delta 30/07→04/08). Gốc: plan/08
+  đã khai *"delta tích luỹ + compact định kỳ (plan 14 §3b)"* nhưng vế **compact chưa từng code** —
+  auto-sync chỉ đẻ thêm, không dọn. Việc: ① lệnh/cơ chế compact per-host (gộp baseline+delta cũ →
+  baseline mới, xoá file đã gộp) chạy cùng auto-sync; ② ràng buộc điều 11: TRƯỚC khi xoá bundle nào
+  phải VERIFY nội dung nó đã nằm trong kho local (đối chiếu watermark/merge-state), dry-run mặc định;
+  ③ dọn tay đợt đầu 9 file máy cũ SAU khi verify đã merge đủ (kho hiện có đủ dữ liệu máy cũ tới 04/08).
+- [ ] **Số phận folder Drive** — kế hoạch cũ "xoá Drive" nay đảo: nó đang là **bản sao ngoài máy DUY
+  NHẤT** (auto-sync đẩy baseline+delta máy này lên 05/08). Chốt: giữ làm đường sao lưu, hay dời bundle
+  sang chỗ khác rồi mới xoá. KHÔNG xoá trước khi có đường thay thế.
+- [ ] **`PowerBi_SasinFlow` (6 phiên, đường cũ `D:\Zyro\DA\PowerBI\PowerBi_SasinFlow`)** — tên KHÁC hai
+  repo PBI hiện có; có phải tiền thân `PBI_SasinFlow_Maintain` không? User nhận dạng rồi mới gộp/để.
+- *(Đề xuất HP điều 14 "bí mật: ngoài git ≠ ngoài repo" — đã nằm ở mục ngay dưới, cũng chờ user.)*
+
 ## Quyết định mở / cần chốt
+- [ ] **(ĐỀ XUẤT HP — chờ user chốt, 2026-08-05) Điều khoản "bí mật: ngoài git ≠ ngoài repo" cho CHÍNH zemory.**
+  Repo này đã THỰC HÀNH luật đó hôm nay (kho + chìa + registry + rescue đều về `<repo>/data/`, ổ C chỉ còn
+  `location.json`; ràng buộc thật = `.gitignore` + gate `no-data-in-git`), và đã ship nó thành §Điều khoản
+  GỢI Ý trong template `01_CONSTITUTION` (nguồn: hiến pháp SasinFlow điều 3, user chốt bên đó 2026-08-05).
+  Nhưng hiến pháp của CHÍNH zemory chưa có điều tương ứng — điều 7 chỉ nói local-only/không transmit, chưa
+  nói "bí mật sống Ở ĐÂU". Theo luật sửa đổi: agent chỉ đề xuất, user chốt thì chuyển thành điều khoản
+  (đánh số 14) + ghi changelog supersede phần liên quan của `plan/16 §2` (đã supersede sẵn).
 - [ ] **`01_CONSTITUTION`: KHÔNG gộp §Mục đích với §Điều khoản (user hỏi, agent trả lời 2026-07-26 — chờ user xác nhận đóng).** Đã đo: riêng zemory có **45 cạnh `references` trỏ vào `hp:N`**, cộng SasinHarvest 14 + SasinFlow 11 ⇒ **~70 trích dẫn "điều N" xuyên docs**. Gộp = đánh số lại = **hỏng cả 70 trích dẫn**, và `06_CHANGES` cấm sửa entry lịch sử nên không vá ngược được. Hai mục cũng khác BẢN CHẤT: §Mục đích định nghĩa zemory LÀ GÌ (+ phi-mục-tiêu), §Điều khoản là luật ĐÁNH SỐ được trích dẫn khắp nơi. **Nỗi lo "gộp sợ tràn/bể UI" không được giải bằng việc gộp** — độ dài file y nguyên; thứ thật sự trị là lớp graph vừa dựng (điều N thành node, có legend + bộ lọc + bấm nhảy) thay cho việc cuộn một file dài. *(Bẫy parse hai-list-đánh-số đã trị bằng cắt đúng section — không phải lý do để gộp.)*
 - [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** *(Soát 2026-08-02 — tiền đề đã đổi: điều 6 nay là "**HẠN CHẾ** gọi LLM" (`2026-08-02b`), KHÔNG còn "KHÔNG BAO GIỜ". Vế **không proxy model API** thì GIỮ NGUYÊN, mà model-routing đúng là chạm vế đó ⇒ vẫn cần user chốt, nhưng lý do chặn hẹp hơn trước.)* Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
 - [ ] **(Graph — plan 13 §8) Loại lỗi nào build TRƯỚC?** Đã trình 8 loại; user CHƯA chọn. Ba nhóm: (a) link gãy + orphan (docs, rẻ, làm ngay được) · (b) **blast-radius** "sửa X đụng ai" (cần đọc import code) · (c) traceability "requirement nào chưa có test". Prototype 2026-07-18 đã chứng minh (b) chạy được: code-graph 55 module/154 import, tìm ra **orphan thật `core/index.ts`** (barrel 0 ai import), fan-in `memory/db.ts`=18.

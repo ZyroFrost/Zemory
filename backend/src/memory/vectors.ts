@@ -16,6 +16,10 @@
 // (>= SYNTH_BASE, far above any message id) recorded in `vec_map` so KNN hits
 // resolve back to their message.
 //
+// The index records the EMBED DTYPE it was built with too (vec_config.dtype): q8 and
+// fp32 vectors of the same model are close but NOT identical, so an index built with
+// one must keep being fed by that one. Pre-column indexes read as q8 (the old default).
+//
 // The index also records the EMBED PROFILE it was built with (vec_config.profile,
 // see embed.ts): prefixed and bare vectors live in different spaces, so both the
 // document and the query side always follow the STORED profile. Pre-profile
@@ -26,7 +30,16 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentMemoryDb } from "./db.js";
-import { currentEmbedProfile, embedDocBatch, embedQuery, sliceNormalize, targetEmbedDims, type EmbedProfile } from "./embed.js";
+import {
+  currentEmbedProfile,
+  embedConfig,
+  embedDocBatch,
+  embedQuery,
+  sliceNormalize,
+  targetEmbedDims,
+  useEmbedDtype,
+  type EmbedProfile,
+} from "./embed.js";
 
 type Conn = Database.Database;
 
@@ -109,6 +122,22 @@ function storedProfile(db: Conn): EmbedProfile {
   }
 }
 
+// Indexes built before vec_config had a `dtype` column were built under the OLD
+// default, q8. Reading NULL as "whatever is configured today" would silently feed
+// fp32 vectors into a q8-built index — the exact mixing this column exists to stop.
+const LEGACY_DTYPE = "q8";
+
+/** Dtype the existing index was built with; null when there is no index yet. */
+function storedDtype(db: Conn): string | null {
+  try {
+    const row = db.prepare("SELECT * FROM vec_config LIMIT 1").get() as { dtype?: unknown } | undefined;
+    if (!row) return null;
+    return typeof row.dtype === "string" && row.dtype ? row.dtype : LEGACY_DTYPE;
+  } catch {
+    return null; // no vec_config yet — a new index adopts the current config
+  }
+}
+
 /** Dims the existing index was built with (Matryoshka-sliced); else the configured target. */
 function storedDims(db: Conn): number {
   try {
@@ -130,10 +159,10 @@ export function vectorIndexProfile(dbPath: string = currentMemoryDb()): EmbedPro
 }
 
 /** Profile + dims of the vector index at dbPath (observability + tests). */
-export function vectorIndexInfo(dbPath: string = currentMemoryDb()): { profile: EmbedProfile; dims: number } {
+export function vectorIndexInfo(dbPath: string = currentMemoryDb()): { profile: EmbedProfile; dims: number; dtype: string } {
   const db = vecConnect(dbPath);
   try {
-    return { profile: storedProfile(db), dims: storedDims(db) };
+    return { profile: storedProfile(db), dims: storedDims(db), dtype: storedDtype(db) ?? embedConfig().dtype };
   } finally {
     db.close();
   }
@@ -143,13 +172,15 @@ export function vectorIndexInfo(dbPath: string = currentMemoryDb()): { profile: 
 function ensureVecTable(db: Conn, dims: number, profile: EmbedProfile): void {
   db.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${dims}])`);
   db.exec("CREATE TABLE IF NOT EXISTS vec_config (dims INTEGER NOT NULL)");
-  try {
-    db.exec("ALTER TABLE vec_config ADD COLUMN profile TEXT");
-  } catch {
-    /* column already there */
+  for (const col of ["profile TEXT", "dtype TEXT"]) {
+    try {
+      db.exec(`ALTER TABLE vec_config ADD COLUMN ${col}`);
+    } catch {
+      /* column already there */
+    }
   }
   if (!db.prepare("SELECT dims FROM vec_config LIMIT 1").get()) {
-    db.prepare("INSERT INTO vec_config(dims, profile) VALUES (?, ?)").run(dims, profile);
+    db.prepare("INSERT INTO vec_config(dims, profile, dtype) VALUES (?, ?, ?)").run(dims, profile, embedConfig().dtype);
   }
 }
 
@@ -219,6 +250,7 @@ export async function embedPending(
     // with — never mix spaces. A brand-new index adopts the current config.
     const profile = has ? storedProfile(db) : currentEmbedProfile();
     const dimsTarget = has ? storedDims(db) : targetEmbedDims();
+    useEmbedDtype(has ? storedDtype(db) : null);
 
     let dims: number | null = null;
     let embedded = 0;
@@ -388,6 +420,7 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
         // The query MUST live in the index's space: same prompt profile, same dims.
         profile = storedProfile(probe);
         dims = storedDims(probe);
+        useEmbedDtype(storedDtype(probe));
       } finally {
         probe.close();
       }

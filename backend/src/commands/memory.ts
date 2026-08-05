@@ -774,7 +774,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log("zemory memory embed --rebuild — vector index dropped; re-embedding the whole corpus…");
     }
     const idx = vectorIndexInfo();
-    console.log(`zemory memory embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d)…`);
+    console.log(
+      `zemory memory embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d · ${idx.dtype})…`,
+    );
     let total = 0;
     // A long `--all` run shares the DB with other zemory processes (Stop-hook
     // auto-capture, `zemory ui`, another shell). Each vector write auto-commits

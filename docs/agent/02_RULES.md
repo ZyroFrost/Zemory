@@ -69,6 +69,7 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 
 ## Git (BẮT BUỘC — luật cứng)
 - **KHÔNG `git push` khi user CHƯA cho phép.** Git remote là **nguồn BACKUP CUỐI CÙNG** của project — đẩy lên là ra ngoài, không gỡ lại được (gỡ = force-push, càng phá). Xong việc → build + test + **BÁO CÁO rồi DỪNG**; user bảo "push"/"lên git" mới đẩy.
+- **MỖI LẦN PUSH = MỘT LẦN LÊN VERSION — và SỐ do USER chốt (user chốt 2026-08-05).** Push là mốc phát hành (khớp luật Version release-based ở §Luật khi VIẾT): trước khi đẩy, agent ① kiểm file sạch (gate/lint những gì chạy được, `git status` không lọt data/secret) + rà `05_TODO` còn gì phải đóng, ② **HỎI user số version** (đề xuất theo semver: minor=tính năng, patch=fix — nhưng quyền chốt là của user), ③ bump `package.json` + commit + push trong cùng một mốc. KHÔNG push với số cũ, KHÔNG tự quyết số.
 - **Ghi sổ ≠ publish:** user bảo ghi changelog / commit / "xong rồi" **KHÔNG phải** là cho phép push. Đừng suy diễn.
 - Commit cục bộ (đảo được) thì thoải mái theo phong cách repo; **push mới là cửa cần phép**.
 - Sửa code chạy trên máy này **không cần push** — build là bản mới sống ngay.

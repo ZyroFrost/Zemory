@@ -5,6 +5,67 @@
 
 ---
 
+## [2026-08-05b] — Nối lại 8 repo sau đổi máy · secret về folder repo · gợi ý HP vào template · audit 6 mặt
+
+**Nối lại app sau đổi máy.** Sổ đăng ký chỉ còn 2 project ⇒ đăng ký + ghim lại **8/8 repo** có
+`.harness.json` trên máy (dò cả ổ, không đoán). Lịch sử phiên kẹt ở đường máy cũ ⇒ gộp qua
+`/merge-project` (giữ `cwd`, ghim `project_pinned`): Zemory 42 · SasinFlow 32 · PBI_Maintain 13 ·
+còn lại 9 phiên. Bản đảo ngược: `zemory-lab/premerge-undo*.json`. *(Lưới "ĐÃ LIÊN KẾT" lấy GIAO
+"có phiên máy này ∩ khớp sổ" chứ không đọc sổ làm nguồn — `Harness AI` 0 phiên nên không hiện,
+user chốt kệ.)*
+
+**Secret dời về folder repo, ổ C chỉ còn `location.json`** (con trỏ, không chứa bí mật). Registry
+→ `<data>/projects.json` (`projects.ts`, có đường lùi đọc bản cũ); dọn `~/.zemory`: xoá bản model
+trùng **282,7 MB** (rác của bug cache rerank), vật chứng cứu 29/07 dời vào `data\rescue`. Ràng
+buộc thật không đổi: **cấm git · cấm nguồn online · cấm đẩy VM** (`.gitignore` + gate canh, đã
+kiểm `git ls-files` 0 lọt). `plan/16 §2` supersede câu "không phải trong repo".
+
+**Luật secret KHÔNG vào `02_RULES`** (user chốt lại) — thành **§Điều khoản GỢI Ý** trong template
+`01_CONSTITUTION` (app=nonapp=adapt, parity 52/52): 8 điều rút từ hiến pháp SasinFlow đã trả giá
+thật (secret "ngoài git ≠ ngoài repo" · một bề mặt+bộ lọc · đọc version đang chạy · docs khớp code
+· từ điển định danh · UI không tên kỹ thuật · bố cục bất biến · làm liền đừng backlog). User sẽ
+gọi các repo áp chuẩn lại.
+
+**Audit 6 mặt (đủ, theo skill):** quick_check ok · digest 1284/1284 · 0 mồ côi (sau khi xoá 3
+att-link) · 8/8 endpoint 200 · đột biến test dtype ĐỎ được · **B1**: daemon code cũ tự đẻ lại
+registry ở ổ C ⇒ HAI sổ song song, UI hiện 1 project — đóng cửa sổ KHÔNG giết daemon nền, phải
+kill (đã) + mở lại · **A1**: 55 dòng `doc` đường cũ của 6 repo khác → nắn về đường mới · đã loại:
+238 session đường cũ (lịch sử project đời trước, giữ đúng điều 11) · `/memory-status` 14,7s (nguội;
+ấm 69ms). Còn treo: `PowerBi_SasinFlow` (6 phiên, tên khác 2 repo PBI) chờ user nhận dạng.
+
+## [2026-08-05] — Máy mới chạy MỘT CHÂN suốt 2 ngày: lớp vector chết lặng · nén sâu là ngõ cụt · dựng lại 768+fp32
+
+**Lớp vector CHẾT không dấu hiệu.** `memory search` vẫn in *"hybrid · rerank"* nhưng `bench` nói
+**"embed model unavailable"** — fail-open về FTS từ lúc dựng máy. Gốc: `onnxruntime_binding.node`
+*DLL initialization failed* vì máy chỉ có VC++ **14.24**, onnxruntime 1.24 cần bản VS2022. Cài
+redist **14.51** → hybrid **100% (8/8)** vs FTS 0%. Bài học: **fail-open đúng thiết kế chính là
+lớp giấu lỗi giỏi nhất** — dòng chữ trên màn hình không phải bằng chứng.
+
+**Nén sâu THUA trên CPU** (5 dtype, cùng 48 chunk thật, mỗi dtype một tiến trình — s/chunk):
+**fp32 1,61** · fp16 1,66 · q8 3,09 · q4f16 5,23 · q4 5,45. fp32 dùng 7,5 nhân, q4 chỉ 3,5 (4-bit
+giải nén trọng số trước mỗi phép nhân). `q8` trả giá KÉP (chậm ~2× và kém chính xác) đổi lấy đĩa
+— tài nguyên rẻ nhất (295 MB vs 1.178 MB). RAM đỉnh 2,1–3,5 GB.
+
+**Dựng lại chỉ mục — đo corpus thật:** 146.679 tin → **123.086 chunk duy nhất** (dedup 19%).
+fp32 1,26 s/chunk ⇒ **43 giờ** (q8 là 80). **512 và 768 tốn thời gian NHƯ NHAU** — model luôn tính
+đủ 768 rồi mới cắt ⇒ chọn thẳng 768. Chạy trên **bản sao** `zemory-lab/lab.db`; tráo chỉ khi
+`bench --recall` thắng mốc 41%@10 (điều 12).
+
+**`vec_config` thêm `dtype`** — stored-dtype-authoritative ở CẢ HAI phía nạp + truy vấn; mặc định
+`q8`→`fp32`; chỉ mục cũ không có cột đọc là `q8` ⇒ kho 256d hiện tại không bị trộn.
+
+**Hai lỗi chỉ lộ khi cài cho NGƯỜI KHÁC:** ① lối tắt Desktop/Start Menu chưa bao giờ tạo được trên
+máy Desktop-chuyển-hướng-OneDrive (`desktopDir()` ghim `<home>\Desktop`; hỏng Desktop kéo mất luôn
+Start Menu; lỗi bị `stdio:"ignore"` nuốt) — nay đọc registry, hai lối tắt độc lập; ② cache model
+rerank ghim `~/.zemory/models` trong khi embed theo thư mục relocate ⇒ tải trùng trọng số — test cũ
+khoá ĐƯỜNG DẪN thay vì bất biến "chung cache", đã sửa cả hai.
+
+**`npm install` sạch chạy lại — trị gốc:** `@nativewindow/webview` đòi `peer typescript@^6.0.2`;
+TS **6.0.x nằm trong vùng eslint cho phép** (`<6.1.0`) ⇒ nâng 5.9.3→6.0.3, typecheck+lint sạch,
+phòng sạch giải 190 gói exit 0. `.npmrc legacy-peer-deps` đã cân và **BỎ** (che thay vì trị).
+
+**Cổng:** typecheck · lint · **510/510** test · `conform` ✓.
+
 ## [2026-08-04] — ĐỔI MÁY sang `SS01-IT-12` · KHO HỎNG LẦN HAI (cứu, mất 0) · tìm ra nguyên nhân thứ hai
 
 > Phiên này chạy trên **hai máy**: nửa đầu ở `SS01-IT-10` (laptop cũ), nửa sau ở **`SS01-IT-12`**.

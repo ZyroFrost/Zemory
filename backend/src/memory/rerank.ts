@@ -17,8 +17,8 @@
 //   ZEMORY_RERANK_DTYPE  (default q8 — quantized, ~light)
 //   ZEMORY_MODEL_DIR     (weight cache; shared with the embedder)
 
-import { homedir } from "node:os";
 import { join } from "node:path";
+import { currentMemoryDir } from "./db.js";
 
 const DTYPES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"] as const;
 type Dtype = (typeof DTYPES)[number];
@@ -39,7 +39,11 @@ export function rerankConfig(): RerankConfig {
   return {
     model: process.env.ZEMORY_RERANK_MODEL?.trim() || DEFAULT_MODEL,
     dtype: d && DTYPES.includes(d) ? d : "q8",
-    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(homedir(), ".zemory", "models"),
+    // SAME cache as the embedder (plan 05 §2: one weight cache, one runtime). This
+    // used to hardcode ~/.zemory/models while embed.ts followed the RELOCATED data
+    // dir, so after `memory relocate` the reranker re-downloaded into a directory
+    // nothing else used — a second copy of the weights, silently.
+    cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentMemoryDir(), "models"),
   };
 }
 
