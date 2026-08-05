@@ -7,7 +7,7 @@
 //
 // Config-driven so swapping the model is config, not a rewrite:
 //   ZEMORY_EMBED_MODEL  (default EmbeddingGemma-300M, multilingual incl Vietnamese)
-//   ZEMORY_EMBED_DTYPE  (default q8 — quantized, ~light)
+//   ZEMORY_EMBED_DTYPE  (default fp32 — see DEFAULT_DTYPE)
 //   ZEMORY_MODEL_DIR    (weight cache; default <memory-dir>/models — never committed)
 
 import { join } from "node:path";
@@ -83,11 +83,38 @@ export async function embedDocBatch(texts: string[], profile: EmbedProfile): Pro
   return embedBatch(texts.map((t) => promptFor("document", t, profile)));
 }
 
+/**
+ * fp32, not a quantized build. Measured on this corpus (i5-13420H, 48 real chunks,
+ * one process per dtype, 2026-08-05): fp32 **1.61 s/chunk** · fp16 1.66 · q8 3.09 ·
+ * q4f16 5.23 · q4 5.45. Quantization LOSES here — the 4-bit paths dequantize weights
+ * back to float before every matmul and parallelize worse (fp32 used 7.5 cores, q4
+ * only 3.5). So q8 was paying twice: ~2x slower AND lossier than the full model, and
+ * all it bought was disk (295 MB vs 1178 MB). Disk is the cheap resource.
+ */
+const DEFAULT_DTYPE: Dtype = "fp32";
+
+/**
+ * Stored-dtype-authoritative — the same doctrine as profile and dims. An index built
+ * with one dtype must keep being fed by that dtype, on BOTH the document and the query
+ * side: q8 and fp32 vectors of the same model are CLOSE but not identical, so mixing
+ * them degrades ranking with nothing to show for it. vectors.ts sets this from
+ * vec_config before embedding; null = no index yet, adopt the current config.
+ */
+let dtypeOverride: Dtype | null = null;
+
+export function useEmbedDtype(d: string | null | undefined): void {
+  const next = d && (DTYPES as readonly string[]).includes(d) ? (d as Dtype) : null;
+  if (next !== dtypeOverride) {
+    dtypeOverride = next;
+    resetEmbed(); // a different dtype is a different model file — reload the pipeline
+  }
+}
+
 export function embedConfig(): EmbedConfig {
   const d = process.env.ZEMORY_EMBED_DTYPE?.trim() as Dtype | undefined;
   return {
     model: process.env.ZEMORY_EMBED_MODEL?.trim() || DEFAULT_MODEL,
-    dtype: d && DTYPES.includes(d) ? d : "q8",
+    dtype: dtypeOverride ?? (d && DTYPES.includes(d) ? d : DEFAULT_DTYPE),
     cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentMemoryDir(), "models"),
   };
 }

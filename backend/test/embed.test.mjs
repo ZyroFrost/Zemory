@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { currentEmbedProfile, embed, embedConfig, resetEmbed, sliceNormalize, targetEmbedDims } from "../../dist/memory/embed.js";
+import {
+  currentEmbedProfile,
+  embed,
+  embedConfig,
+  resetEmbed,
+  sliceNormalize,
+  targetEmbedDims,
+  useEmbedDtype,
+} from "../../dist/memory/embed.js";
 
 test("targetEmbedDims: default 768; ZEMORY_EMBED_DIMS picks a valid Matryoshka size; junk ignored", () => {
   delete process.env.ZEMORY_EMBED_DIMS;
@@ -37,13 +45,44 @@ test("embed profile: Gemma model → asymmetric prompts; ZEMORY_EMBED_PROMPTS ov
   delete process.env.ZEMORY_EMBED_MODEL;
 });
 
-test("embedConfig defaults to EmbeddingGemma · q8 · <memory-dir>/models", () => {
+test("embedConfig defaults to EmbeddingGemma · fp32 · <memory-dir>/models", () => {
+  // fp32, not q8 — measured 2026-08-05 on real corpus chunks: fp32 1.61 s/chunk vs
+  // q8 3.09 (and q4 5.45). Quantizing this 300M model LOSES on CPU: the 4-bit paths
+  // dequantize before every matmul and parallelize worse. q8 bought only disk.
   const c = embedConfig();
   assert.match(c.model, /embeddinggemma/i);
-  assert.equal(c.dtype, "q8");
+  assert.equal(c.dtype, "fp32");
   // cacheDir follows the memory data dir (so it relocates off C:\ with the DB),
   // not a fixed home path — just assert it lives in a `models` folder.
   assert.match(c.cacheDir, /[\\/]models$/);
+});
+
+test("stored dtype WINS over the default and over env — an index keeps the dtype it was built with", () => {
+  // Why this matters: an index built with q8 must keep receiving q8 vectors on BOTH
+  // the document and the query side. Without this, flipping the default to fp32 would
+  // start feeding fp32 vectors into every EXISTING q8 index — silent quality rot with
+  // nothing in the logs. Same doctrine as stored-profile / stored-dims.
+  delete process.env.ZEMORY_EMBED_DTYPE;
+  try {
+    useEmbedDtype("q8");
+    assert.equal(embedConfig().dtype, "q8", "stored q8 index keeps q8");
+
+    process.env.ZEMORY_EMBED_DTYPE = "fp16";
+    assert.equal(embedConfig().dtype, "q8", "stored value beats env too");
+
+    delete process.env.ZEMORY_EMBED_DTYPE;
+    useEmbedDtype("not-a-dtype");
+    assert.equal(embedConfig().dtype, "fp32", "junk is ignored → back to the default");
+
+    useEmbedDtype("q4");
+    assert.equal(embedConfig().dtype, "q4");
+    useEmbedDtype(null); // no index yet → adopt the current config
+    assert.equal(embedConfig().dtype, "fp32");
+  } finally {
+    delete process.env.ZEMORY_EMBED_DTYPE;
+    useEmbedDtype(null);
+    resetEmbed();
+  }
 });
 
 test("embed returns a unit-normalized vector when model available, else null (never throws)", async () => {
