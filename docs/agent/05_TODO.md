@@ -161,8 +161,10 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
     agent tự chuyển sang lối đó và ghi ra file theo từng lô (5 → 4 → 2 …), panel file hiện `AGENTS.md` ·
     `CLAUDE.md` · `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES` · `00_overview` · 2 `SKILL.md` ·
     `conventions.md` · `check_structure.py`. ⇒ **Thứ tự lối trong BOOTSTRAP là đúng, và máy sếp sẽ dựng được.**
-    *(Bằng chứng là ảnh chụp phiên, không phải tôi tự chạy — và phiên đó chụp lúc còn đang chạy Giai đoạn 1,
-    CHƯA thấy BÁO CÁO CUỐI nên chưa kết luận là dựng trọn bộ 19 file + `check_install.py` xanh.)*
+    *(Bằng chứng là ảnh chụp phiên, không phải tôi tự chạy — và phiên đó chụp lúc còn đang chạy Giai
+    đoạn 1, CHƯA thấy BÁO CÁO CUỐI. Tức chưa kết luận được: dựng trọn bộ 19 file, và bước tự kiểm
+    cuối — script check_install chạy BÊN MÁY SẾP — có xanh không. File script tồn tại trong repo
+    nguồn không nói gì về lần cài bên kia; `todo verify` từng giơ cờ mục này vì đúng chỗ đó.)*
   - **Đã biết thêm (đo được từ chính phiên đó):** sandbox Cowork **ĐỌC được filesystem của host** — nó đọc
     thẳng `D:\Zyro\Tool\Zemory`. Khớp tài liệu sandbox của Claude Code (*"Read access covers the entire
     filesystem"*). Ghi vào không rõ, chưa thử.
@@ -547,10 +549,10 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   dung đã nằm trong kho local (kho đã có đủ dữ liệu máy cũ tới 04/08 — vẫn phải đo, không tin); ②
   cân nhắc cho compact/`sync` xử được **series của host đã chết** (hoặc lệnh `memory sync --prune-host
   <host>` có dry-run), vì đây là ca sẽ lặp mỗi lần đổi máy.
-- [ ] **Số phận folder Drive** (`G:\My Drive\Global Memory` — kênh bundle) — kế hoạch cũ "xoá Drive"
-  nay đảo: nó đang là **bản sao ngoài máy DUY NHẤT** (auto-sync đẩy baseline+delta máy này lên 05/08).
-  Chốt: giữ làm đường sao lưu, hay dời bundle sang chỗ khác rồi mới xoá. KHÔNG xoá trước khi có đường
-  thay thế.
+- ✅ **Folder Drive — ĐÃ CHỐT 2026-08-06 (user): GIỮ, không hỏi lại.** Nguyên văn: *"cái này là nơi
+  lưu chính của GM để share máy khác mà… để đó chứ hỏi gì"*. `G:\My Drive\Global Memory` = kênh bundle
+  `.enc` chính thức xuyên máy (đúng thiết kế plan 08/14) kiêm bản sao ngoài máy. Câu hỏi "xoá Drive"
+  là kế hoạch cũ đã chết — đừng dựng lại.
 - [x→06_CHANGES khi user OK] **Backup máy (Computers) từng cuốn cả kho trần + chìa — ĐÃ TẮT 2026-08-05 tối.**
   Phát hiện: DriveFS backup **toàn bộ `D:\huy.nguyen`** (sổ `mirror_item` có `cloud_filename` cho
   `global_memory.db` + `share.key` = ĐÃ từng lên Drive dạng trần — chìa nằm cạnh két, điều 7; DB sống
