@@ -17,7 +17,7 @@ import test from "node:test";
 import { PLATFORMS, awaitLogin, orderByProgId } from "../../dist/memory/scanweb.js";
 import { chatgptAdapter } from "../../dist/memory/adapters/chatgpt.js";
 import { claudeWebAdapter } from "../../dist/memory/adapters/claudeweb.js";
-import { tempDir } from "./helpers.mjs";
+import { tempDir, readAppJs } from "./helpers.mjs";
 
 /** Chạy một expr in-page với fetch giả. Trả cả kết quả lẫn danh sách URL đã gọi. */
 function runExpr(expr, routes) {
@@ -222,7 +222,7 @@ test("adapter claude: nhãn project theo thứ tự stamp → _projects.json →
 // phải có URL trong app.js, và URL đó phải có handler thật trong ui.ts.
 
 const FE_HTML = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
-const FE_JS = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+const FE_JS = readAppJs();
 const UI_TS = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 
 test("mọi công tắc data-auto có URL trong app.js VÀ handler trong ui.ts (không công tắc chết)", () => {

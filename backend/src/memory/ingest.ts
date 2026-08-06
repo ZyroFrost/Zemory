@@ -14,6 +14,8 @@ import { buildDigest } from "./digest.js";
 import { redact } from "./redact.js";
 import { pruneOrphanVectors } from "./vectors.js";
 import { pruneOrphanAttachments } from "./attachments.js";
+import { isExcluded } from "./scope.js";
+import { getScopeExclude, type ScopeLane } from "../config/settings.js";
 
 // v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
 // `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
@@ -58,6 +60,8 @@ export interface ScanReport {
   sessions: SessionReport[];
   /** Transcript-shaped stores found in a deep scan that no adapter can read. */
   unknown: UnknownStore[];
+  /** Lane bị loại lúc nạp → số file đã bỏ qua. Hiện ra để KHÔNG cắt âm thầm. */
+  skippedLanes: { lane: string; files: number }[];
   totals: {
     agents: number;
     sessions: number;
@@ -76,6 +80,8 @@ export interface ScanOptions {
   deep?: boolean;
   /** Extra roots to walk in deep mode (e.g. other drives). */
   roots?: string[];
+  /** Lane bị loại NGAY LÚC NẠP. Bỏ trống ⇒ lấy danh sách đã lưu (`getScopeExclude`). */
+  excludeLanes?: ScopeLane[];
 }
 
 /** Run a full scan over every known agent and ingest into the memory. */
@@ -106,10 +112,24 @@ export function scan(opts: ScanOptions = {}): ScanReport {
 
     const touched = new Map<string, SessionReport>();
     let changedFiles = 0;
+    // Scope áp NGAY LÚC NẠP (plan 08 §4 — điểm thứ ba, trước đây bỏ ngỏ). Từ trước tới nay
+    // `scan` nạp TOÀN BỘ rồi mới lọc ở recall/sync, nên "bỏ máy công ty ra khỏi bộ nhớ
+    // riêng" vẫn để dữ liệu đó nằm trong kho. Lọc ở đây là chặn từ cửa vào.
+    //
+    // Bỏ qua = KHÔNG ghi `ingest_state`, nên bỏ một lane rồi lấy lại thì lần quét sau nạp
+    // đủ từ đầu — đúng tinh thần "exclude là BỘ LỌC, không phải xoá" (HP điều 11).
+    const excludeLanes = opts.excludeLanes ?? getScopeExclude();
+    const skippedLanes = new Map<string, number>();
 
     for (const file of found.files) {
       const adapter = bySource.get(file.source);
       if (!adapter) continue;
+      const lane = { origin: adapter.origin ?? "local", host: HOST, source: file.source };
+      if (excludeLanes.length && isExcluded(lane, excludeLanes)) {
+        const key = `${lane.origin}/${lane.host}/${lane.source}`;
+        skippedLanes.set(key, (skippedLanes.get(key) ?? 0) + 1);
+        continue;
+      }
       const r = ingestFile(db, adapter, file);
       if (r.changed) changedFiles++;
       for (const rs of r.sessions) {
@@ -160,7 +180,8 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       /* fail-open: dọn rác không được thì cũng không được làm hỏng ingest (điều 9) */
     }
 
-    return buildReport(db, dbPath, found, changedFiles, live);
+    const skipped = [...skippedLanes].map(([lane, files]) => ({ lane, files }));
+    return buildReport(db, dbPath, found, changedFiles, live, skipped);
   } finally {
     db.close();
   }
@@ -208,6 +229,14 @@ export function scanOneFile(filePath: string, opts: ScanOptions = {}): OneFileRe
   const hay = norm(filePath);
   const adapter = adapters.find((a) => hay.includes(norm(a.signature) + "\\"));
   if (!adapter) return { ingested: false, newMessages: 0, ms: Date.now() - t0 };
+
+  // Cùng bộ lọc scope với `scan()`. Bỏ vế này thì cửa vào vẫn hở đúng ở đường NÓNG NHẤT:
+  // hook chạy sau MỖI lượt trả lời, nên một lane đã bị loại vẫn chảy vào kho từng tin một
+  // trong khi `scan` định kỳ thì chặn — hai đường nạp nói hai chuyện khác nhau.
+  const lanes = opts.excludeLanes ?? getScopeExclude();
+  if (lanes.length && isExcluded({ origin: adapter.origin ?? "local", host: HOST, source: adapter.source }, lanes)) {
+    return { ingested: false, newMessages: 0, ms: Date.now() - t0 };
+  }
 
   const file: TranscriptFile = { source: adapter.source, path: filePath, size: st.size, mtimeMs: st.mtimeMs };
   const db = openMemory(dbPath);
@@ -802,6 +831,7 @@ function buildReport(
   found: { files: TranscriptFile[]; stores: StoreRef[]; unknown: UnknownStore[]; roots: string[]; deep: boolean },
   changedFiles: number,
   sessions: SessionReport[],
+  skippedLanes: { lane: string; files: number }[] = [],
 ): ScanReport {
   const newMessages = sessions.reduce((n, s) => n + s.newMessages, 0);
 
@@ -837,6 +867,7 @@ function buildReport(
     agents,
     sessions: sessions.sort((a, b) => (b.to ?? "").localeCompare(a.to ?? "")),
     unknown: found.unknown,
+    skippedLanes,
     totals: { ...t, newMessages },
   };
 }

@@ -25,6 +25,8 @@ import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionT
 import { digestBackfill } from "./memory/digest.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
+import { setContextWarnPercent } from "./config/settings.js";
+import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { CONFIG_FILE, currentProjectRoot } from "./core/config.js";
@@ -52,6 +54,7 @@ import { armCrashReport, daemonLog } from "./logging/daemon-log.js";
 import {
   getAutostart,
   getAutosync,
+  getContextWarnPercent,
   getDriveDir,
   getHybridSetting,
   getRerankSetting,
@@ -642,9 +645,11 @@ function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string;
     }
   }
   const base = resolve(root, "docs");
+  // Resolve theo ngữ nghĩa RIÊNG của bề mặt này (mặc định `docs/agent`, nhánh `plan/` tính
+  // từ `docs/`), nhưng phép kiểm thoát-thư-mục thì dùng CHUNG với `resolveDocPath` —
+  // xem `util/safe-path.ts` để biết vì sao không gộp thẳng hai hàm.
   const target = rel.startsWith("plan/") ? resolve(base, rel) : resolve(base, "agent", rel);
-  const rl = relative(base, target);
-  if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
+  if (!isWithinBase(base, target)) return { ok: false, file: rel, content: "invalid path" };
   try {
     return { ok: true, file: rel, content: readFileSync(target, "utf8") };
   } catch {
@@ -1745,6 +1750,13 @@ export async function startUi(): Promise<void> {
     if (p === "/set-scheduler") {
       setSchedulerSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, scheduler: getScheduler() });
+    }
+    if (p === "/set-context-warn") {
+      // Ngưỡng % context mà hook nhắc chốt sổ. Giá trị lạ (chữ, rỗng, ngoài khoảng) KHÔNG
+      // được làm hỏng cấu hình: `setContextWarnPercent` tự kẹp, còn NaN thì giữ nguyên bản cũ.
+      const raw = Number(u.searchParams.get("percent"));
+      if (Number.isFinite(raw)) setContextWarnPercent(raw);
+      return json(res, { ok: Number.isFinite(raw), contextWarnPercent: getContextWarnPercent() });
     }
     // Realtime capture: cờ config CHỈ là ý định — thứ thật sự nạp là hook trong settings của
     // host. Nên công tắc phải kéo theo install/uninstall, không thì bật xong không có gì chạy

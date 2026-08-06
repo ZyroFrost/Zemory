@@ -31,6 +31,12 @@ lực đã xây mà UI không thấy.** Đã nối vào.
 **Đo trung thực — `touches` đang YẾU:** 35 digest quét được nhưng chỉ **2/125 node** có
 `touchedBy > 0`. `buildTouchIndex` khớp `meta.project_root` NGHIÊM; bản `graph export` có thêm
 fallback khớp theo TÊN FOLDER (07-21 đo được 23 digest · 59 file). Chưa hợp nhất 2 đường — việc còn lại.
+> 🔄 **Đo lại 2026-08-06 (`06_CHANGES [2026-08-06c]`):** vế "chưa hợp nhất" đã LỖI THỜI — cả hai bề
+> mặt cùng gọi MỘT `buildTouchIndex` (fallback tên folder nằm trong đó) từ trước. Bệnh thật khác hẳn:
+> digest ghi đường của **BỐ CỤC CŨ** (`src/` trước khi dời `backend/src/` 08/07) ⇒ giao với node graph
+> = **0/174 vĩnh viễn**. Trị: `touchesFor` thêm tầng khớp-ĐUÔI cắt đúng ranh giới thư mục, gắn nhãn
+> **`moved`** (suy luận — điều 13, tắt được qua `includeMoved:false`) → 5/174. Trần còn lại nằm ở
+> CHẤT LƯỢNG bộ trích path của digest (nuốt cả văn xuôi thành "path") — việc riêng, chưa làm.
 
 ### 0b.1 Taxonomy LẤY TỪ BẢN CHUẨN — `graph-standard.ts` (user chốt 2026-07-26)
 > 🔄 **Sửa nhận định trước đó của agent.** Tôi từng nói taxonomy giàu "cần LLM hoặc ép front-matter

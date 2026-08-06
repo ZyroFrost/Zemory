@@ -21,11 +21,19 @@ import { recallCard } from "./recall.js";
 import { lastCompactAt, readContextUsage } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
+import { getContextWarnPercent } from "../config/settings.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
-/** Ngưỡng cảnh báo context (%). Chạm là chốt sổ + báo MỘT lần cho cả phiên. */
-const WARN_AT_PERCENT = 95;
+/**
+ * Ngưỡng cảnh báo context (%). Chạm là chốt sổ + báo MỘT lần cho cả chu kỳ.
+ *
+ * Đọc từ config (mặc định 95) chứ không còn là hằng chôn trong file này: cùng một % KHÔNG
+ * hợp cho mọi cửa sổ — 95% của 200k chừa ~10k token để chốt việc, 95% của 1M chừa 50k.
+ * Đọc MỖI LẦN GỌI (không cache ở tầng module) vì hook là tiến trình ngắn, và vì đổi ngưỡng
+ * phải ăn ngay ở lượt sau chứ không đợi khởi động lại.
+ */
+const warnAtPercent = (): number => getContextWarnPercent();
 
 /**
  * Nạp phiên đang chạy vào GM. Ưu tiên `transcript_path` của host (đường MỘT file, <1s);
@@ -140,7 +148,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
       if (!path) return "";
       const usage = readContextUsage(path);
-      if (!usage || usage.percent === null || usage.percent < WARN_AT_PERCENT) return "";
+      if (!usage || usage.percent === null || usage.percent < warnAtPercent()) return "";
       const sid: string = String(payload?.session_id ?? path);
       if (alreadyWarned(sid, path)) return ""; // một lần mỗi CHU KỲ ĐẦY, không lặp mỗi prompt
       const saved = ingestCurrent(payload); // chạm ngưỡng ⇒ chốt sổ NGAY, không đợi nhịp nền

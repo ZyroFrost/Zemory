@@ -12,6 +12,7 @@ export function cmdHelp(): void {
       "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
+      "  todo      todo verify: re-measure every 05_TODO item against the code, print drift",
       "  docs      docs search-index: ls (.md is the SOURCE — edit files, then reindex)",
       "  plan      search project specs (.md is source; DB = index): ls · show · search",
       "  changelog changelog (.md is source; DB = index): ls · search",

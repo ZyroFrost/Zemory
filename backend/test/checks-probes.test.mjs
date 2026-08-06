@@ -50,7 +50,7 @@ test("`doctor` cảnh báo khi tồn tại HAI file config.json", () => {
 test("CSS `.bell` đã gỡ và không phần tử nào dùng", () => {
   const CSS = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
   const MK = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8")
-    + readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+    + readAppJs();
   assert.equal((CSS.match(/\.bell\b/g) ?? []).length, 0, "rule chết phải gỡ");
   assert.equal((MK.match(/class="[^"]*\bbell\b/g) ?? []).length, 0, "và không nơi nào dùng lại");
 });
@@ -62,8 +62,8 @@ test("CSS `.bell` đã gỡ và không phần tử nào dùng", () => {
 // gọi được bằng curl, tức vẫn mồ côi, chỉ đổi chỗ. Rồi vá tiếp vẫn còn nửa vời: kết quả nằm
 // im trong `Z.checks` vì `sysStatus` chỉ đọc nó cho kind='check'. Test này canh CẢ BA khâu.
 
-import { readFileSync as rf } from "node:fs";
-const APPJS = rf(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+import { readAppJs } from "./helpers.mjs";
+const APPJS = readAppJs();
 
 test("vector + rerank khai `probe` ⇒ có nút Kiểm trong UI", () => {
   // KHÔNG dùng [^}]* — entry rerank có hàm lồng `get:function(m){…}` nên nó dừng sớm

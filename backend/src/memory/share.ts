@@ -725,6 +725,129 @@ function listMySeries(dir: string, host: string): { file: string; seq: number }[
   return out.sort((a, b) => a.seq - b.seq);
 }
 
+/** Mọi host có series trong thư mục Drive, kèm số file + tổng dung lượng. */
+export function listDriveHosts(dir: string): { host: string; files: string[]; bytes: number }[] {
+  const byHost = new Map<string, { host: string; files: string[]; bytes: number }>();
+  for (const f of readdirSync(dir)) {
+    const m = /^global_memory\.(.+?)\.(?:\d+|zemory)\.enc$/.exec(f);
+    if (!m) continue;
+    const host = m[1];
+    const e = byHost.get(host) ?? { host, files: [], bytes: 0 };
+    e.files.push(f);
+    try {
+      e.bytes += statSync(join(dir, f)).size;
+    } catch {
+      /* file vừa biến mất giữa lúc liệt kê */
+    }
+    byHost.set(host, e);
+  }
+  return [...byHost.values()].sort((a, b) => b.bytes - a.bytes);
+}
+
+export interface PruneHostResult {
+  host: string;
+  files: { file: string; bytes: number; merged: boolean }[];
+  bytes: number;
+  /** Đủ điều kiện xoá an toàn? */
+  safe: boolean;
+  /** Vì sao KHÔNG an toàn (rỗng khi safe). */
+  blockers: string[];
+  /** Đã thật sự xoá chưa (false khi dry-run). */
+  applied: boolean;
+  removed: string[];
+}
+
+/**
+ * Dọn series của một host ĐÃ CHẾT (máy bỏ đi, không còn ai chạy compact cho nó).
+ *
+ * Vì sao cần: `pushToDrive` chỉ compact `listMySeries(dir, host)` — series của CHÍNH máy
+ * đang chạy. Máy cũ ngừng dùng thì file của nó **nằm đó vĩnh viễn** (đo 2026-08-05:
+ * `SS01-IT-10` để lại 9 file ~338 MB). Đây là ca sẽ LẶP mỗi lần đổi máy.
+ *
+ * An toàn dựa trên đúng lập luận đã dùng cho compaction — "cái mới là TẬP CHA của cái bị
+ * xoá" — nhưng phải chứng minh, không được tin:
+ *  ① MỌI file của host đó đã được merge vào kho local (bảng `merged_bundles`);
+ *  ② máy này CÓ series của mình trong thư mục, và watermark của nó đã phủ hết `messages`
+ *     local. Vì merge là ADDITIVE (HP điều 11), kho local chứa trọn nội dung máy cũ, nên
+ *     series của máy này là tập cha ⇒ máy thứ ba vẫn lấy đủ dữ liệu từ đó.
+ * Thiếu một trong hai ⇒ TỪ CHỐI và nói rõ thiếu gì. Mặc định DRY-RUN.
+ */
+export function pruneDriveHost(o: {
+  dir: string;
+  host: string;
+  apply?: boolean;
+  dbPath?: string;
+  /** Danh tính máy này (mặc định hostname) — seam cho test. */
+  selfHost?: string;
+}): PruneHostResult {
+  const dir = o.dir.trim();
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`Drive folder not found: ${dir}`);
+  const self = o.selfHost ? o.selfHost.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
+  const host = o.host.trim().replace(/[^A-Za-z0-9._-]/g, "_");
+  if (!host) throw new Error("Missing --prune-host <host>");
+  if (host === self) {
+    throw new Error(`"${host}" is THIS machine — its series is compacted automatically; prune is for retired hosts.`);
+  }
+
+  const entry = listDriveHosts(dir).find((h) => h.host === host);
+  if (!entry) throw new Error(`No bundles for host "${host}" in ${dir}`);
+
+  const files = entry.files.map((f) => {
+    let merged: boolean;
+    try {
+      merged = isBundleMerged(f, bundleSignature(join(dir, f)), o.dbPath);
+    } catch {
+      merged = false; // đọc không được ⇒ coi như CHƯA merge (nghiêng về phía không xoá)
+    }
+    let bytes = 0;
+    try {
+      bytes = statSync(join(dir, f)).size;
+    } catch {
+      /* vừa biến mất */
+    }
+    return { file: f, bytes, merged };
+  });
+
+  const blockers: string[] = [];
+  const unmerged = files.filter((f) => !f.merged);
+  if (unmerged.length) {
+    blockers.push(`${unmerged.length}/${files.length} bundle chưa được merge vào kho máy này: ${unmerged.map((f) => f.file).join(", ")}`);
+  }
+
+  // ② Máy này phải đang PHÁT một series phủ hết kho local, nếu không thì xoá xong
+  //    nội dung máy cũ không còn đường nào tới máy thứ ba.
+  const mySeries = listMySeries(dir, self);
+  if (mySeries.length === 0 && !existsSync(join(dir, legacyName(self)))) {
+    blockers.push(`máy này (${self}) chưa có bundle nào trong thư mục — chạy \`zemory memory sync\` trước để nội dung máy cũ có đường đi tiếp`);
+  } else {
+    const db = openMemory(o.dbPath ?? currentMemoryDb());
+    let maxLocal: number;
+    try {
+      maxLocal = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+    } finally {
+      db.close();
+    }
+    const wm = readExportWatermark(`drive:${self}`, o.dbPath);
+    if (wm < maxLocal) {
+      blockers.push(`series của máy này mới phủ tới message #${wm}/${maxLocal} — chạy \`zemory memory sync\` cho đủ rồi hãy dọn`);
+    }
+  }
+
+  const safe = blockers.length === 0;
+  const removed: string[] = [];
+  if (safe && o.apply) {
+    for (const f of files) {
+      try {
+        rmSync(join(dir, f.file), { force: true });
+        removed.push(f.file);
+      } catch {
+        /* xoá hụt một file không phá vỡ gì — lần sau dọn tiếp */
+      }
+    }
+  }
+  return { host, files, bytes: entry.bytes, safe, blockers, applied: Boolean(o.apply) && safe, removed };
+}
+
 /**
  * One-shot cross-machine sync through a synced Drive FOLDER (not the live DB):
  * export THIS machine's bundle into the folder, then merge every OTHER machine's

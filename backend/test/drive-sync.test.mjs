@@ -10,7 +10,7 @@ import { mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
-import { syncDrive, writeMemoryShareKey } from "../../dist/memory/share.js";
+import { pruneDriveHost, syncDrive, writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
 
 // Each syncDrive call reads getSyncLevel() + the export watermark from config in
@@ -134,4 +134,76 @@ test("full depth writes one self-contained snapshot and clears the delta series"
   const files = enc(dir);
   assert.ok(files.some((f) => f.endsWith(".zemory.enc")), "a full snapshot file exists");
   assert.ok(!files.some((f) => /\.\d+\.enc$/.test(f)), "the lean delta series was cleared");
+});
+
+// ── Dọn series của HOST ĐÃ CHẾT (05_TODO §📥) ────────────────────────────────
+// `pushToDrive` chỉ compact series của CHÍNH máy đang chạy, nên máy đã bỏ để lại file
+// nằm đó vĩnh viễn (đo thật: `SS01-IT-10` bỏ lại 9 file ~338 MB). Ca này sẽ LẶP mỗi lần
+// đổi máy, nên nó phải có lệnh — và lệnh đó phải TỪ CHỐI khi chưa chứng minh được là
+// không mất gì, chứ không phải xoá theo lời hứa.
+
+test("prune-host TỪ CHỐI khi bundle của máy cũ CHƯA nằm trong kho máy này", async (t) => {
+  sandboxHome(t);
+  const root = tempDir(t, "zemory-ds-");
+  const dir = join(root, "drive"); mkdirSync(dir);
+  const OLD = join(root, "old.db");
+  const NEW = join(root, "new.db");
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
+
+  // Thứ tự CÓ CHỦ ĐÍCH: máy MỚI sync trước (đã có series riêng + watermark phủ đủ kho của
+  // nó), rồi máy cũ mới đăng bundle. Nhờ vậy chốt chặn duy nhất còn hiệu lực là "chưa
+  // merge". Bản đầu của test này cho máy mới sync SAU — mà `syncDrive` push XONG thì MERGE
+  // luôn, nên nó tự merge hộ và ta đo nhầm sang chốt chặn watermark.
+  addMessages(NEW, "C:\\b", 2);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: NEW, host: "NEW-PC" });
+  addMessages(OLD, "C:\\a", 5);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+
+  const dry = pruneDriveHost({ dir, host: "DEAD-PC", dbPath: NEW, selfHost: "NEW-PC" });
+  assert.equal(dry.safe, false, "chưa merge mà cho xoá là mất dữ liệu thật");
+  assert.ok(dry.blockers.join(" ").includes("chưa được merge"), dry.blockers.join(" · "));
+  assert.equal(enc(dir).filter((f) => f.includes("DEAD-PC")).length, 1, "dry-run không được đụng file");
+});
+
+test("prune-host xoá được SAU khi máy này đã merge đủ và đang phát series phủ hết kho", async (t) => {
+  sandboxHome(t);
+  const root = tempDir(t, "zemory-ds-");
+  const dir = join(root, "drive"); mkdirSync(dir);
+  const OLD = join(root, "old.db");
+  const NEW = join(root, "new.db");
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
+
+  addMessages(OLD, "C:\\a", 5);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+  addMessages(OLD, "C:\\a", 3);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+
+  // Máy mới sync: kéo hết của máy cũ về, rồi phát series của chính nó.
+  addMessages(NEW, "C:\b", 2);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: NEW, host: "NEW-PC" });
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: NEW, host: "NEW-PC" });
+  const totalBefore = msgCount(NEW);
+  assert.equal(totalBefore, 10, "kho máy mới đã chứa trọn 8 tin của máy cũ + 2 của nó");
+
+  const dry = pruneDriveHost({ dir, host: "DEAD-PC", dbPath: NEW, selfHost: "NEW-PC" });
+  assert.equal(dry.safe, true, dry.blockers.join(" · "));
+  assert.equal(dry.applied, false, "không có --apply thì TUYỆT ĐỐI không xoá");
+  assert.equal(enc(dir).filter((f) => f.includes("DEAD-PC")).length, 2);
+
+  const done = pruneDriveHost({ dir, host: "DEAD-PC", dbPath: NEW, selfHost: "NEW-PC", apply: true });
+  assert.equal(done.applied, true);
+  assert.equal(done.removed.length, 2);
+  assert.equal(enc(dir).filter((f) => f.includes("DEAD-PC")).length, 0, "file máy cũ đã dọn");
+  assert.equal(msgCount(NEW), totalBefore, "XOÁ TRÊN DRIVE KHÔNG ĐƯỢC ĐỤNG KHO LOCAL");
+});
+
+test("prune-host không cho tự dọn series của CHÍNH máy đang chạy", async (t) => {
+  sandboxHome(t);
+  const root = tempDir(t, "zemory-ds-");
+  const dir = join(root, "drive"); mkdirSync(dir);
+  const dbPath = join(root, "m.db");
+  const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
+  addMessages(dbPath, "C:\\a", 3);
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath, host: "ME" });
+  assert.throws(() => pruneDriveHost({ dir, host: "ME", dbPath, selfHost: "ME" }), /THIS machine/i);
 });

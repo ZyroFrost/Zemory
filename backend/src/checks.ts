@@ -15,6 +15,8 @@ import { embedDims, embedProbe } from "./memory/embed.js";
 import { rerankProbe } from "./memory/rerank.js";
 import { getRerankSetting } from "./config/settings.js";
 import { vectorIndexInfo } from "./memory/vectors.js";
+import { cloudSyncReport } from "./memory/cloudguard.js";
+import { currentMemoryDb, currentMemoryDir } from "./memory/db.js";
 
 export interface CheckResult {
   feature: string;
@@ -84,6 +86,39 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
         state: "off",
         detail: error instanceof Error ? error.message : tr("lỗi provider", "provider error"),
       };
+    }
+  }
+
+  if (feature === "storage-safety") {
+    // Phép kiểm tồn tại vì kho THẬT đã hỏng hai lần và không lệnh nào kêu trước đó: cả
+    // hai lần đều do Google Drive đồng bộ chính file DB, mà đường dẫn thì không mang chữ
+    // "Drive" nào nên heuristic tên thư mục im re. Đây là cảnh báo SỚM (HP điều 11/14).
+    try {
+      const r = cloudSyncReport(currentMemoryDir(), { dbPath: currentMemoryDb() });
+      if (r.atRisk) {
+        return {
+          feature,
+          ok: false,
+          state: "off",
+          detail: tr(
+            `kho nằm trong vùng đồng bộ đám mây — ${r.evidence[0]?.detail ?? ""}`,
+            `memory store sits in a cloud-synced area — ${r.evidence[0]?.detail ?? ""}`,
+          ),
+        };
+      }
+      // Không đo được thì NÓI, không trả xanh trơn: "sạch" và "không kiểm được" là hai
+      // câu trả lời khác nhau, gộp lại là đúng lỗi fail-open-giấu-lỗi của 05/08.
+      if (r.inconclusive.length) {
+        return {
+          feature,
+          ok: true,
+          state: "warn",
+          detail: tr(`chưa kiểm đủ: ${r.inconclusive.join(" · ")}`, `partly unchecked: ${r.inconclusive.join(" · ")}`),
+        };
+      }
+      return { feature, ok: true, state: "on", detail: tr("kho nằm ngoài mọi vùng đồng bộ", "store is outside every sync scope") };
+    } catch (error) {
+      return { feature, ok: false, state: "off", detail: error instanceof Error ? error.message : "storage-safety check failed" };
     }
   }
 

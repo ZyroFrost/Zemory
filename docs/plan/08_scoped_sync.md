@@ -22,7 +22,7 @@
 ## 4. Áp bộ chọn vào đâu — 2/3 điểm ĐÃ DÙNG, 1 điểm CHƯA
 - ✅ **recall / search** (`backend/src/memory/search.ts`): `isExcluded()` lọc theo `excludeLanes` (mặc định = `getScopeExclude()` từ settings) trước khi trả kết quả.
 - ✅ **sync** (`backend/src/memory/share.ts` export + merge): cùng danh sách exclude áp cho cả 2 chiều.
-- ❌ **ingest (scan / scan-web)** — **CHƯA áp dụng**: `scan`/`scan-web` hiện quét/ingest TOÀN BỘ, không lọc theo scope lúc ingest (chỉ lọc sau, ở recall/sync). Muốn "bỏ máy công ty ngay từ lúc quét" thì đây là việc còn lại.
+- ✅ **ingest (scan / scan-web)** — **XONG 2026-08-06**: cùng bộ lọc áp ở cả ba cửa nạp (xem §Còn lại).
 
 ## 5. "Chỗ xài chung không nên lấy" — cơ chế loại trừ — ✅ ĐÃ CÓ
 - Danh sách exclude lưu ở **`settings.json`** (qua `getScopeExclude`/`setScopeExclude` trong `backend/src/settings.ts`) — đúng phương án nghiêng ở §6 cũ (config, không phải data).
@@ -83,6 +83,9 @@
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
   - **Còn lại (thuộc plan 14):** `syncDrive` vẫn đẩy **lean baseline** (1 file/máy, ghi đè) — CỐ Ý chưa dùng delta vì file đó phải tự-đủ, máy bỏ lỡ vài lần sync sẽ hổng nếu chỉ có delta cuối. Delta dùng file tích luỹ + compact định kỳ, làm cùng daemon auto-sync (plan 14 §3b).
-- [ ] Áp scope lúc **ingest** (scan/scan-web) — bỏ qua lane ngay từ lúc quét, không chỉ lọc sau.
+- [x] ~~Áp scope lúc **ingest**~~ **XONG 2026-08-06** (`06_CHANGES [2026-08-06c]`): `scan` +
+  `scanOneFile` (đường hook per-message) + `scanWeb` cùng một bộ lọc; lane bị loại được BÁO
+  (`skippedLanes`), KHÔNG ghi `ingest_state` nên bỏ lọc là lần quét sau nạp lại đủ; `scan-web`
+  chặn TRƯỚC khi mở trình duyệt (status `excluded`). §4 bên trên: điểm ingest nay ✅.
 - [ ] Exclude theo **rule/glob** (không chỉ lane tĩnh) nếu cần lọc theo pattern project_root.
 - [ ] **Profile nhiều bộ chọn** nếu user cần đổi nhanh giữa nhiều cấu hình exclude.

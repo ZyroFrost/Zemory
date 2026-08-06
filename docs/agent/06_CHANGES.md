@@ -5,6 +5,39 @@
 
 ---
 
+## [2026-08-06c] — Đợt "fix nhóm B": 10 việc code · luật BA NGUỒN lan 4 bộ mẫu · tách app.js 11 file
+
+**Nền:** soát 48 mục theo luật ĐO LẠI → 3 chỗ sổ≠code (write-gate "chưa sửa" đã sửa · plan14§7
+"còn hai" đã chốt cả 5 · spec context-guard còn `[ ]`) — sửa sổ, rồi fix lần lượt:
+- **`relocate` chở CẢ CỤM kho** (trước chỉ db+config+models, bỏ lại `share.key`/`secrets`/8 folder
+  — lỗ điều 7 đã trả giá 05/08). Đảo sang **danh sách ĐEN** (chở hết, chừa `.bak`/`corrupt-*`/lock);
+  bí mật kẹt ⇒ **HUỶ trước khi lật con trỏ**. CLI nói rõ cái gì sang/ở lại/hỏng.
+- **`cloudguard.ts` + check `storage-safety`**: đọc `roots` DriveFS THẬT (schema đo trên máy, bắt
+  được kênh Computers-backup — thứ regex tên đường dẫn mù) + OneDrive env + marker + hardlink.
+  Bằng chứng thẩm quyền ≠ DẤU VẾT cũ (bản đầu báo oan trên chính kho thật — rác `.tmp.driveupload`).
+- **`memory sync --prune-host <host>`**: dọn series máy đã bỏ (ca `SS01-IT-10` 9 file ~338MB, lặp
+  mỗi lần đổi máy). Dry-run mặc định; chỉ xoá khi ① mọi bundle đã merge ② series máy này phủ đủ.
+- **Ngưỡng context ra config** (`contextWarnPercent`, kẹp [50,99], mặc định vẫn 95) + `/set-context-warn`.
+- **Scope áp LÚC NẠP** (plan 08 §4 điểm ③): `scan`+`scanOneFile`+`scanWeb` cùng bộ lọc; lane bị loại
+  báo `skippedLanes`, không ghi `ingest_state` (bỏ lọc là nạp lại đủ); scanWeb chặn TRƯỚC khi mở browser.
+- **MCP mirror graph**: `graph_impact`+`graph_neighbors` (mcp.ts từng 0 match `graph`); mơ hồ trả
+  candidates, không đoán. **eid**: `graph export` nay đóng dấu (trước CHỈ payload UI có) — lộ trùng id
+  **2.865 cạnh/1.288 id** (1 id gánh 157 cạnh `calls`) → băm cả symbol ⇒ 2.868/2.868 duy nhất, id
+  `imports` GIỮ NGUYÊN; thêm **`graph edge <eid>…`** = phía tiêu thụ + cited-edge validity.
+- **`zemory todo verify`** (gate chống TODO thối, user chốt hình dạng): 4 trục — ref chết · "nghi đã
+  xong" (phủ định CÙNG CÂU) · đo lại "0 match" · **git blame dòng sổ vs git log file** (trục duy nhất
+  bắt được ca write-gate: sổ nêu tên hàm CŨ, vá landing tên MỚI). Nhiễu 8 phát hiện→1/58. Exit 1 khi lệch.
+- **`util/safe-path.ts`**: gộp BẤT BIẾN guard thoát-thư-mục (resolveDocPath ↔ readDoc giữ resolve riêng).
+- **`touches` khớp lại lúc đọc**: digest ghi đường BỐ CỤC CŨ (`src/` trước 08/07) ⇒ giao với graph = 0;
+  thêm tầng khớp-đuôi nhãn `moved` (điều 13) → 0→5 node. *(Hợp nhất 2 đường: đã xong từ trước — sổ sai.)*
+- **Luật BA NGUỒN lan 4 bộ mẫu** (app·nonapp·adapt·cowork; 4 bộ CHƯA HỀ có luật SOÁT SỔ, session-close
+  mang bản phân-nhánh cũ): 02_RULES + session-close ×4, nguồn ①③ nắn theo profile, manifest cowork 68→80.
+- **Tách `app.js` 1.837 dòng/1 IIFE → 11 file** global-scope (core nạp đầu · boot cuối). Ba bẫy de-IIFE
+  đã xử: `renderHarness()` gọi-lúc-nạp tới hàm dòng 1509 (hoisting che) → dời boot · `var scroll` đè
+  `window.scroll` → `scrollEl` · thứ tự nạp khai ở app.html. 7 test re-neo qua `readAppJs()` (có guard
+  drift). Smoke daemon tạm: 11×200, app.js cũ 404. Hoãn Codex/Gemini (user); clone giữ làm lối cài.
+**Cổng:** typecheck · eslint 0 (src+test) · **296/296** test/32 file · đột biến đỏ 3/3 khu · embed 20884 sống.
+
 ## [2026-08-06b] — Luật SOÁT SỔ dời về §Hành xử (áp MỌI LÚC) · lan ra 5 bản skill · manifest Cowork
 
 **User hỏi đúng chỗ luật vừa viết còn hở:** *"nó áp luôn cho giữa chừng luôn ko, ko cần chốt phiên?"*

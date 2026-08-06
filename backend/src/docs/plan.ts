@@ -4,7 +4,8 @@
 // refresh search. Search is FTS over sections (heading-weighted).
 
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { isWithinBase } from "../util/safe-path.js";
+import { join, normalize, resolve } from "node:path";
 import { normalizeRoot } from "../core/config.js";
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { parseMarkdown, roundTripOk } from "./markdown.js";
@@ -78,12 +79,13 @@ export function importDoc(
   }
 }
 
-/** Resolve a docs-relative path, rejecting anything that escapes `docs/`. */
+/** Resolve a docs-relative path, rejecting anything that escapes `docs/`.
+ *  Phép kiểm "còn nằm trong nền" dùng CHUNG `isWithinBase` với `readDoc` (`ui.ts`) —
+ *  hai bên resolve khác nhau nhưng bất biến an toàn thì chỉ được có MỘT bản. */
 export function resolveDocPath(projectRoot: string, docPath: string): string {
   const docsRoot = resolve(projectRoot, "docs");
   const abs = resolve(projectRoot, docPath);
-  const rel = relative(docsRoot, abs);
-  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) return abs;
+  if (isWithinBase(docsRoot, abs)) return abs;
   throw new Error(`Unsafe docs path: ${docPath}`);
 }
 

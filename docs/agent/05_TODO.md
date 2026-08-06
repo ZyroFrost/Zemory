@@ -46,8 +46,9 @@
 > `06_CHANGES [2026-08-03h]` kết luận **Google Drive đồng bộ chính file DB** (dòng "Đã loại: thư
 > mục đồng bộ đám mây" bên dưới là kết luận SAI thời điểm đó, giữ làm hồ sơ). Ngày 05/08 còn phát
 > hiện thêm tầng nữa: DriveFS backup **cả `D:\huy.nguyen`** (kho + chìa lên mây trần) — user đã gỡ.
-> **Việc CODE còn sống duy nhất của mục này = vá write-gate (② bên dưới).** Backup tự xoay vòng
-> đã xây `[2026-08-03c]`; embed dở dang đã bị rebuild 768 thay thế.
+> **Việc CODE của mục này: ĐÃ ĐÓNG HẾT 2026-08-06** (`06_CHANGES [2026-08-06c]`): vá write-gate ✓
+> · `relocate` chở cả cụm ✓ · cảnh báo sớm cloud (`cloudguard` + check `storage-safety`) ✓.
+> Backup tự xoay vòng đã xây `[2026-08-03c]`; embed dở dang đã bị rebuild 768 thay thế.
 > *(Sử gốc: phát hiện lúc bench recall; mất 0 tin; kho lúc đó 199.360 tin. Chi tiết `[2026-08-03b]`.)*
 
 **Thiệt hại (đo, không đoán):** hỏng nằm ở `messages_fts*` · `section_fts*` · `changelog_fts*`
@@ -57,15 +58,9 @@
 **Bản gốc hỏng giữ nguyên 2 bản** ở `data/corrupt-20260803-091106/` — KHÔNG xoá cho tới khi
 truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
 
-- [ ] **Sửa `relocate` cho đúng lời hứa** — nó in "settings moved" nhưng bỏ lại `backups/` ·
-  `browser/` · `imports/` · `logs/` · `cockpit/` · `context-guard/`, và **bỏ lại `secrets/` +
-  `share.key`** (chìa danh tính ở lại trong thư mục đang upload cloud — lỗ **điều 7**, không chỉ
-  bất tiện). Lần này đã dời tay; lệnh phải tự làm. *(05/08: registry `projects.json` đã theo kho —
-  phần đó xong; các folder phụ + secrets vẫn chưa.)*
-- [ ] **Cảnh báo sớm: `doctor`/`verify` phải BÁO khi DB nằm trong vùng đồng bộ/backup đám mây.**
-  Kiểm rẻ: hardlink count > 1 · marker `.tmp.driveupload`/`.dropbox`/OneDrive ở thư mục cha ·
-  **và đọc `roots` trong `%LOCALAPPDATA%\Google\DriveFS\root_preference_sqlite.db`** (cách đã
-  bắt được vụ Computers-backup 05/08 — hai vụ liên tiếp đều lọt vì thiếu check này).
+- ✅ **`relocate` chở cả cụm — XONG 2026-08-06** (`[2026-08-06c]`: danh sách ĐEN, bí mật kẹt ⇒ huỷ).
+- ✅ **Cảnh báo sớm cloud — XONG 2026-08-06** (`cloudguard.ts` + check `storage-safety`, đọc `roots`
+  DriveFS thật; phân hạng bằng-chứng/dấu-vết chống báo oan — `[2026-08-06c]`).
 - ✅ **TRUY NGUYÊN NHÂN GỐC — ĐÃ ĐÓNG** (Drive đồng bộ chính file DB — `[2026-08-03h]`; 05/08 lộ thêm
   tầng Computers-backup). Hồ sơ điều tra giữ nguyên bên dưới **để không ai đi lại**; dòng "đã loại:
   thư mục đồng bộ đám mây" là kết luận SAI thời điểm đó, đọc kèm cảnh báo này.
@@ -86,14 +81,16 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
       viết *"repair by updating the existing row so backfill can resume **if another writer
       already filled it**"* — tức đường ghi này VỐN đã biết có kẻ ghi song song và chỉ vá tạm.
       ⇒ Đã bọc cả ba vào **một** giao dịch (`insTx`/`copyTx`).
-    - **② Write-gate KHÔNG BAO GIỜ TỪ CHỐI ai (chưa sửa).** `acquireCliWrite()` chỉ đặt một
-      mốc thời gian và luôn trả `{ok:true, held:true}` — **hai CLI cùng gọi thì cả hai đều
-      được "cấp"**. Cổng này một chiều: nó chỉ bảo *scheduler của daemon* nhường, chứ không hề
-      loại trừ CLI↔CLI. Tệ hơn: `daemonPort()` trả null khi daemon chết ⇒ **không có cổng
-      nào cả**. Ngày 02/08 daemon khởi động 8 lần và gần như không lần nào tắt sạch, trong khi
-      hook chạy `scan` mỗi lượt trả lời và tôi gõ `memory embed` bằng tay.
-      ⇒ Việc cần làm: đổi `acquireCliWrite` thành khoá THẬT (từ chối khi có người giữ, kèm pid
-      + hạn), và đặt marker ra FILE để tiến trình khác thấy được kể cả khi daemon chết.
+    - **② Write-gate KHÔNG BAO GIỜ TỪ CHỐI ai — ĐÃ SỬA** *(soát bằng code 2026-08-06; dòng này
+      trước ghi "chưa sửa", SAI — sổ nói khác code)*. Khuyết tật gốc: `acquireCliWrite()` chỉ đặt
+      một mốc thời gian và luôn trả `{ok:true, held:true}` — **hai CLI cùng gọi thì cả hai đều
+      được "cấp"**. Cổng một chiều: chỉ bảo *scheduler của daemon* nhường, KHÔNG loại trừ
+      CLI↔CLI; và `daemonPort()` trả null khi daemon chết ⇒ **không có cổng nào cả**.
+      ⇒ Đã có khoá THẬT: `acquireCliWriteLock(label)` (`jobs/writegate.ts`) ghi **khoá FILE**
+      mang `{pid,label,at}`, **trả `ok:false` + `heldBy`** khi tiến trình KHÁC đang giữ, gia hạn
+      khi chính mình giữ (heartbeat cho job nhiều giờ); không đặt được khoá thì CHẠY (điều 9).
+      `commands/memory.ts` bọc `HEAVY_WRITES = {scan · scan-web · embed · digest · sync}`, chờ
+      tối đa 2 phút rồi chạy luôn. Test khoá `cli-write-lock.test.mjs` (có ca "phải bị từ chối").
   - ⚠ **NHƯNG CHƯA GỌI LÀ TÌM RA NGUYÊN NHÂN.** Hai khuyết tật trên giải thích được **lệch
     giữa các bảng vector**; chúng KHÔNG giải thích `database disk image is malformed` ở tầng
     trang đĩa. Muốn kết luận thì phải TÁI HIỆN: ép hai tiến trình ghi `vec_chunks` đồng thời
@@ -283,7 +280,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > của họ liệt kê thiếu 2 tool — đọc tài liệu KHÔNG thay được chạy binary. Cowork vẫn ngoài
 > phạm vi MCP (máy ảo riêng).
 
-- [ ] **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
+> ⏸ **HOÃN VÔ THỜI HẠN 2026-08-06 (user chốt): mọi mục nhánh CODEX + GEMINI.** Nguyên văn:
+> *"cái này ko cần quan tâm, t chưa làm… bỏ qua đi"* — user chưa dùng hai host đó, nên khai MCP
+> cho `codex`, mở rộng hook Codex, và nền web Gemini đều KHÔNG có người tiêu thụ. Giữ nguyên hồ
+> sơ (đo đạc còn giá trị nếu sau này dùng tới); **đừng đưa lại vào danh sách ưu tiên khi chưa hỏi.**
+
+- [ ] ⏸ **Ba agent chưa khai tự động được** (đã nêu tên trong `setup mcp`, không im lặng bỏ qua):
   `codex` (cấu hình **TOML**) · `opencode` (khuôn entry khác) · `pi` (nối bằng plugin package).
   **Đo trên engram v1.20.0 (2026-08-02) — họ làm được cả ba, và đây là hình dạng cần khớp:**
   `codex` → ghi `%APPDATA%/codex/config.toml` (642 B) + `engram-instructions.md` + prompt phục
@@ -292,20 +294,25 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   ⇒ khoảng cách là THẬT, không phải giới hạn của ngành. Rẻ nhất là `codex` (chỉ cần bộ ghi TOML).
 
 ## 🧷 Context-guard + realtime capture — ĐÃ BUILD XONG `[2026-08-02h]`; còn 2 việc
-- [ ] **Codex chỉ nhận `Stop`** — hệ hook của nó không có `UserPromptSubmit`/`PreCompact`/
+- [ ] ⏸ **Codex chỉ nhận `Stop`** — hệ hook của nó không có `UserPromptSubmit`/`PreCompact`/
   `SessionStart`, nên máy chạy Codex có capture per-message nhưng KHÔNG có đồng hồ context
   lẫn lưới sau nén. Chưa tìm hiểu Codex có sự kiện tương đương không.
-- [ ] **Ngưỡng 95% chưa chỉnh được từ UI** (hằng `WARN_AT_PERCENT` trong code). Đợi có ca
-  thật muốn đổi rồi hãy phơi ra — thêm một ô cấu hình chưa ai xin là nợ.
+  *(HOÃN 2026-08-06 — user chưa dùng Codex; xem ghi chú ⏸ ở §🔌 engram.)*
+- [~] **Ngưỡng cảnh báo context — ĐÃ PHƠI RA CONFIG 2026-08-06; còn mỗi ô chỉnh trên UI.**
+  Không còn là hằng chôn trong `capture-hook.ts`: `getContextWarnPercent()`/`setContextWarnPercent()`
+  (`config/settings.ts`), kẹp **[50,99]**, **mặc định vẫn 95** (test khoá), đọc mỗi lần gọi nên
+  đổi là ăn ngay ở lượt sau; endpoint `POST /set-context-warn?percent=`. Lý do phơi: cùng một %
+  KHÔNG hợp mọi cửa sổ — 95% của 200k chừa ~10k token để chốt việc, 95% của 1M chừa 50k.
+  **Còn lại:** ô chỉnh trong pane ⚙ ⚡ Tự động — là thay đổi THIẾT KẾ UI nên phải trình duyệt trước.
 
 <details><summary>Spec gốc ①②③④ — ĐÃ BUILD HẾT, giữ để tra lý do (soát bằng code 2026-08-05)</summary>
 
-> ⚠ **Bốn mục dưới còn dấu `[ ]` nhưng ĐÃ XONG** — đo trên `capture-hook.ts` 05/08: `WARN_AT_PERCENT
-> = 95` (dòng 28) + marker chống spam (`context-guard/<sid>.warned`) · handler `pre-compact` (dòng
-> 130) · handler `session-start` chỉ nói khi `source=compact` + `recallCard` (dòng 105–117) · bảng
-> khai hook có đủ `PreCompact` + `SessionStart` (dòng 193–194) · `context-guard.ts` có
-> `readContextUsage` + `lastCompactAt`. Dấu `[ ]` là DI SẢN lúc viết spec, không phải việc còn nợ —
-> để nguyên ký hiệu sẽ khiến phiên sau build lại lần hai.
+> ✅ **Bốn mục dưới ĐÃ XONG — dấu đã đổi `[ ]` → `✅` (05/08), soát lại bằng code 2026-08-06 vẫn
+> đúng:** `WARN_AT_PERCENT = 95` (`capture-hook.ts:28`) + marker chống spam
+> (`context-guard/<sid>.warned`) · handler `pre-compact` · handler `session-start` chỉ nói khi
+> `source=compact` + `recallCard` · bảng khai hook có đủ 4 sự kiện (`capture-hook.ts:191–194`) ·
+> `context-guard.ts` có `readContextUsage` + `lastCompactAt`.
+> **Giữ nguyên dấu `✅` — đừng đổi ngược về `[ ]`,** phiên sau sẽ build lại lần hai.
 
 > Gốc: đối chiếu "compaction recovery" của engram. **Session-lifecycle KHÔNG làm** (đã có tốt
 > hơn, tự động: sessions từ transcript + digest 100%). "Nén từng đoạn hội thoại": digest
@@ -421,10 +428,15 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   khi TRÁO xử) · entry `2026-08-02` đã trôi xuống `archive/06_CHANGES.md`, không còn trong bộ đọc.
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
-- [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
+- ✅ **5 export mồ côi — ĐÓNG NỐT 2026-08-06.** 4 mục nối từ trước; `resolveDocPath` xử theo đúng
+  chẩn đoán cũ ("hai bên KHÁC ngữ nghĩa resolve, gộp hàm là sai"): rút BẤT BIẾN an toàn ra
+  `util/safe-path.ts::isWithinBase`, hai bên giữ resolve riêng — `[2026-08-06c]`.
 
 ## 🧹 Từ đợt P2/P3 + Graph Engineering — còn mở
-- [ ] **Edge id chưa ai TIÊU THỤ.** Mới có phía phát (payload `/code-graph`). Bước sau: cho agent dẫn `edge:<id>` trong khẳng định, rồi thêm phép đo "cạnh được dẫn có thật không" (metric *cited-edge validity*).
+- ✅ **Edge id — ĐÃ CÓ PHÍA TIÊU THỤ 2026-08-06** (`[2026-08-06c]`): `graph export` đóng dấu eid
+  (trước CHỈ payload UI có — consumer không trích dẫn nổi từ contract) · lệnh `zemory graph edge
+  <eid>…` kiểm id được dẫn + in **cited-edge validity** N/M. Kèm vá trùng id: 2.865 cạnh/1.288 id
+  (1 id gánh 157 cạnh calls) → băm cả symbol ⇒ duy nhất 100%, id `imports` giữ nguyên.
 - [ ] Đã đối chiếu bản "Graph Engineering" (user gửi 2026-07-27) với graph mình. **Khoảng trống lớn nhất còn lại: KHÔNG có phía WRITE** — worker đọc được graph nhưng không publish phát hiện ngược lại kèm `run_id`/provenance; và **không có lớp công việc** (không node `AgentRun`/`Claim`/`Evaluation`). Chấm theo thước của tài liệu, zemory đạt *artifact · source · graph path*, thiếu *objective · plan · evaluator decision · execution record*. **KHOAN xây** — chính tài liệu cảnh báo "đừng thêm knowledge graph chỉ vì hệ có agent"; graph hiện đang kiếm đủ tiền nuôi thân ở vai cấu trúc + định tuyến.
 
 **🚫 ĐÃ LOẠI — false-positive (giữ lại để phiên sau khỏi báo lại)**
@@ -443,7 +455,10 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro). *(Start Menu icon **ĐÃ XONG** —
   `Start Menu\Programs\Zemory.lnk` tồn tại thật, kèm icon Z; dựng lại được sau khi vá bug
   Desktop-chuyển-hướng 05/08, không cần sign-out/in nữa.)*
-- [ ] **Tách `app.js` theo concern — HẾT bị chặn.** Điều kiện cũ ("khi `cockpit.html` nghỉ hưu") **đã tới**: `frontend/pages/` giờ chỉ còn `app.html` (44 KB), `frontend/scripts/` chỉ còn **`app.js` 196 KB một file**. Chưa làm, không còn lý do hoãn.
+- [~] **Tách `app.js` — BƯỚC 1+2 XONG 2026-08-06** (`[2026-08-06c]`): 1.837 dòng/1 IIFE → **11 file**
+  global-scope (`core` nạp đầu · `boot` cuối; thứ tự khai ở `app.html`). Smoke 11×200 · 296/296 test.
+  **Còn bước 3 (tự đề, chưa gấp):** `graph.js` vẫn 559 dòng — tách `graph-render`/`graph-panel` đợt sau.
+  **Chờ user:** đảo mắt UI thật một lượt khi mở `zemory ui` lần tới (máy kiểm hết, mắt người chưa).
 
 **🔥 VIỆC KẾ TIẾP:**
 - **(user giao 2026-07-16) SasinFlow — UI 1 file HTML: ĐÃ TÁCH XONG, mục này lẽ ra đóng từ lâu.**
@@ -489,7 +504,7 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **(ĐỀ XUẤT — chờ user) Tách "lưu đầy" khỏi "index đầy".** +231 MB chủ yếu do FTS trigram index nuốt cả tool-dump 50 KB — mà tìm trigram trong dump máy thì giá trị recall thấp. Đúng mô hình user mô tả (*"1 lớp full đầy đủ, 1 lớp lọc"*): giữ `messages` ĐẦY làm nguồn, nhưng **lớp DẪN XUẤT (FTS/vector) chỉ index phần đáng tìm** — vd bỏ qua block > N KB hoặc bỏ tool-dump khỏi trigram. Cần đo trước: FTS chiếm bao nhiêu trong 231 MB đó.
 
 ## 🧩 Graph — phase sau
-- [ ] **Phase D** (tsserver/pyright → cạnh `resolved`) — HOÃN theo decision rule (đếm câu hỏi "sửa X đụng ai" trượt trong 2–4 tuần). **MCP mirror** `graph_neighbors`/`graph_impact` — CHƯA wire (`mcp.ts` 0 match `graph`). Schema-change policy cho `graph.json` v2 — chưa viết.
+- [ ] **Phase D** (tsserver/pyright → cạnh `resolved`) — HOÃN theo decision rule (đếm câu hỏi "sửa X đụng ai" trượt trong 2–4 tuần). ~~MCP mirror~~ **ĐÃ WIRE 2026-08-06** (`graph_impact`+`graph_neighbors`, 6/6 test — `[2026-08-06c]`). Schema-change policy cho `graph.json` v2 — vẫn chưa viết.
 - [ ] **(ĐỀ XUẤT — chờ user chốt, gợi ý từ Grapuco 2026-07-22) Hạng cạnh CONTRACT / BE↔FE seam — hấp thụ "cái mạnh nhất" của Grapuco theo đúng kiểu đã làm với CALM.**
   **Bối cảnh:** bài FB nhóm giới thiệu **Grapuco** (SaaS): AST toàn codebase → dependency/call/module graph + flow · **phát hiện phần bị ảnh hưởng khi API/schema/function đổi** · context cho agent qua MCP · chat-with-codebase · security scan · recommendation+priority. Bài toán nó nhắm = **2 người vibecode BE/FE lệch nhau**: BE thêm field / đổi schema → FE chưa cập nhật; FE đổi luồng đăng ký → BE giữ business rule cũ. User muốn hấp thụ **đúng phần mạnh nhất** (contract-impact BE↔FE) vào graph zemory, **KHÔNG** lấy phần LLM (chat/security/recommend — trái điều 6).
   **Insight then chốt (vì sao zemory hợp hơn Grapuco):** Grapuco phải **ĐOÁN** kiến trúc từ code trần; zemory **ĐỌC VAI TRÒ đã khai trong chuẩn 03** → suy cạnh khai báo mà không cần đoán. **Chuẩn 03 chính là "hệ nối" để graph nhìn được luồng BE↔FE** — đây là lợi thế không đối xứng, thứ Grapuco không có.
@@ -516,8 +531,10 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - *(Skill chung vs riêng — **ĐÃ CHỐT 2026-08-05**: giữ cấu trúc hiện tại; xem §Ưu tiên kế tiếp.)*
 
 ## 📥 User gửi 2026-08-05 tối — "để tính sau", note lại đây
-- [ ] **CODE: compact chưa với tới series của HOST ĐÃ CHẾT** *(phần dọn tay ĐÃ XONG 2026-08-06 — xem
-  `06_CHANGES [2026-08-06]`; giữ mục này vì cái LỖ trong code vẫn còn và sẽ lặp mỗi lần đổi máy).*
+- ✅ **CODE: series của HOST ĐÃ CHẾT — ĐÓNG 2026-08-06** (`[2026-08-06c]`): lệnh
+  `zemory memory sync --prune-host <host>` (dry-run mặc định; chỉ xoá khi ① mọi bundle của host đó
+  đã merge vào kho máy này ② series máy này phủ đủ để máy thứ ba lấy tiếp; cấm tự dọn chính mình).
+  *(Phần dọn tay đã xong trước đó — `[2026-08-06]`. Hồ sơ chẩn-đoán-sai giữ dưới để khỏi lặp.)*
   > ⚠ **Tự sửa mô tả tôi viết vài giờ trước** (*"compact chưa từng code"*) — **SAI**. Đo: `share.ts`
   > có `DRIVE_COMPACT_AT = 12`, nhánh `compacting` ghi baseline mới rồi **xoá hết file cũ** (an toàn
   > vì baseline là tập cha), và `drive-sync.test.mjs` có test khoá *"compaction folds many deltas
@@ -544,7 +561,28 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - *(Đề xuất HP điều 14 "bí mật: ngoài git ≠ ngoài repo" — đã nằm ở mục ngay dưới, cũng chờ user.)*
 
 ## Quyết định mở / cần chốt
-- [ ] **🔒 GATE CHỐNG "TODO THỐI" — máy phải canh, đừng dựa agent nhớ (user chốt 2026-08-05).**
+- [~] **🔒 GATE CHỐNG "TODO THỐI" — ĐÃ BUILD `zemory todo verify` 2026-08-06** (user chốt hình
+  dạng: *máy ĐO lại*, không dùng dấu ngày thủ công). `docs/todo-verify.ts` + `commands/harness.ts`.
+  **Bốn phép đo, đều tất định:** ① **ref chết** — mục nhắc một đường dẫn hoặc endpoint như thứ
+  đang có mà repo không có · ② **nghi đã xong** — sổ nói "chưa" NGAY TRONG CÂU nêu tên, mà tên
+  đó tồn tại · ③ **đo lại "0 match"** — sổ ghi "tệp X 0 match Y" thì grep lại đúng phép đo đó ·
+  ④ **code mới hơn sổ** — `git blame` dòng sổ vs `git log` file nó nêu tên.
+  **Trục ④ mới là trục bắt được ca write-gate thật**, và nó dạy một điều: ca đó KHÔNG heuristic
+  chữ nghĩa nào bắt nổi — sổ nêu tên hàm CŨ, bản vá landing dưới tên MỚI, không có mâu thuẫn
+  chữ nào cả. Chỉ git biết.
+  **Luật bất đối xứng theo GIỌNG câu** (bản đầu làm sai, đã sửa): giọng phủ định + TỒN TẠI =
+  đáng ngờ · giọng khẳng định + THIẾU = đáng ngờ. Không phân giọng thì một mục ghi rõ "CHƯA làm"
+  lại bị gán nhãn "sổ khẳng định có" — ngược hẳn ý người viết.
+  ⚠ **Hệ quả cho người VIẾT sổ:** đừng đặt đường dẫn/endpoint GIẢ vào backtick làm ví dụ — máy
+  không phân biệt được ví dụ với khẳng định, và sẽ báo chúng là ref chết (đã dính ngay khi viết
+  chính mục này).
+  **Độ nhiễu đã đo:** bản đầu 8 phát hiện (5 báo oan) → nay **1/57 mục**. Gate nhiễu = gate bị bỏ qua.
+  Test `todo-verify.test.mjs` **9/9**, gồm ca write-gate dựng bằng git thật (ngày commit ép cứng).
+  **Còn lại:** nối vào `npm run check` (lệnh đã exit 1 khi có lệch, chỉ cần thêm vào script) —
+  chưa nối vì cổng đó đang không chạy được (hook bật).
+  *(Hồ sơ đề xuất gốc giữ bên dưới.)*
+
+- [ ] **(hồ sơ) Đề xuất gốc của gate — giữ để tra lý do**
   Vấn đề đã TÁI DIỄN SUỐT MỘT THÁNG: agent soát TODO bằng cách ĐỌC file rồi báo lại, nên mục đã xong
   vẫn nằm đó và user bị hỏi lại lần hai. Luật `02_RULES §Chốt phiên` đã cấm — **và vẫn hỏng**, đúng
   như luật structure-sync từng dạy: *thứ CHẶN drift là code, không phải rule dễ quên.*
@@ -557,10 +595,14 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** *(Soát 2026-08-02 — tiền đề đã đổi: điều 6 nay là "**HẠN CHẾ** gọi LLM" (`2026-08-02b`), KHÔNG còn "KHÔNG BAO GIỜ". Vế **không proxy model API** thì GIỮ NGUYÊN, mà model-routing đúng là chạm vế đó ⇒ vẫn cần user chốt, nhưng lý do chặn hẹp hơn trước.)* Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
 - [ ] **(Graph — plan 13 §8) Loại lỗi nào build TRƯỚC?** Đã trình 8 loại; user CHƯA chọn. Ba nhóm: (a) link gãy + orphan (docs, rẻ, làm ngay được) · (b) **blast-radius** "sửa X đụng ai" (cần đọc import code) · (c) traceability "requirement nào chưa có test". Prototype 2026-07-18 đã chứng minh (b) chạy được: code-graph 55 module/154 import, tìm ra **orphan thật `core/index.ts`** (barrel 0 ai import), fan-in `memory/db.ts`=18.
 - [ ] **(Graph) Độ mịn + overlay:** v1 dừng ở file hay kéo tới hàm (AST)? overlay "semantic neighbor" (từ vector sẵn) làm v1 hay phase 2? *(đề xuất: v1 không AST, chỉ cạnh khai báo)*
-- [ ] **(plan 14 §7) Chưa chốt — soát lại 2026-08-05, chỉ còn HAI:** ① tray bằng gì trên Node ·
-  ② write-gate phủ lệnh nào trước (dính mục vá khoá viết ở §🚨). Ba cái kia đã chốt bằng code:
-  autostart per-OS = `platform/autostart.ts` (Startup .cmd/launchd/xdg) · graph cache = in-memory
-  + bảng `graph_fitness` · chu kỳ auto-sync = syncjob 30'.
+- ✅ **(plan 14 §7) HẾT quyết định mở — cả 5 đã chốt BẰNG CODE** *(soát 2026-08-06; mục này trước
+  ghi "chỉ còn HAI: ① tray ② write-gate", SAI — sổ nói khác code)*:
+  ① **tray** = `platform/tray.ts` dùng **systray2** (MIT, helper Go prebuilt nên không cần
+  node-gyp — đã rà license theo HP điều 2), fail-open khi tray không dựng được, helper là con của
+  daemon nên không đẻ icon ma; `traysweep.ts` dọn icon mồ côi. Verify live 2026-07-21.
+  ② **write-gate phủ lệnh nào** = `HEAVY_WRITES = {scan · scan-web · embed · digest · sync}`
+  (`commands/memory.ts`). ③ autostart per-OS = `platform/autostart.ts` (Startup .cmd/launchd/xdg)
+  · ④ graph cache = in-memory + bảng `graph_fitness` · ⑤ chu kỳ auto-sync = syncjob 30'.
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 
 ## Phase 2 — Năng lực nặng
@@ -578,7 +620,14 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
 - [ ] **Gemini** là nền web CUỐI còn thiếu — khung `scan-web --platform` đã phục vụ ChatGPT + Claude.ai, thêm Gemini là dùng lại khung.
 
-- [ ] **Cho `npm i -g github:ZyroFrost/Zemory` chạy được — CHƯA QUYẾT, cần chọn một đường.**
+- ✅ **`npm i -g github:` — ĐÃ CHỐT 2026-08-06 (user): GIỮ ĐƯỜNG CLONE, không đổi package.**
+  Cả hai lối chữa đều trả giá không đáng: `typescript` sang `dependencies` = mọi bản cài kéo
+  theo cả bộ biên dịch + nhoè ranh giới dev/runtime · commit `dist/` = đưa lớp DẪN XUẤT vào git
+  (phạm tinh thần HP điều 3) và đẻ nguy cơ `dist` cũ hơn `src`. Đường clone (`git clone` →
+  `npm install` → `npm run build` → `npm link`) đã chạy sạch từ khi lên TS 6.0.3.
+  **Việc còn lại = TÀI LIỆU phải nói đúng đường clone** (đã sửa 7 chỗ). Hồ sơ cân nhắc giữ dưới.
+
+<details><summary>Hai lối đã cân và BỎ (giữ để khỏi bàn lại)</summary>
   *(Soát 2026-08-05: đường CLONE đã hết lỗi `ERESOLVE` — TS 6.0.3, `npm install` sạch chạy được;
   nhưng `npm i -g github:` VẪN hỏng vì cài global không kéo devDependencies ⇒ thiếu `tsc` cho
   `prepare`. Và token npm để publish đã tìm lại được — nằm trong `_migration`, nay ở `~/.npmrc`;
@@ -590,3 +639,8 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     Giá: đưa file sinh ra vào git (phạm tinh thần điều 3), và mỗi lần sửa code phải nhớ commit
     lại `dist` nếu không bản cài sẽ cũ hơn mã nguồn.
   Chưa chọn được thì **tài liệu phải nói đúng đường clone** — đã sửa cả 7 chỗ.
+
+</details>
+
+- [ ] **Đuôi còn lại của mục trên: XOAY token npm** — token publish từng nằm trần trên Drive
+  (nay ở `~/.npmrc`). Việc của user; không liên quan tới lối cài đã chốt.
