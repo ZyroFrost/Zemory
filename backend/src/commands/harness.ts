@@ -170,9 +170,19 @@ export function cmdArchive(): void {
   // closed ITEM. They fill up at different rates, so each has its own threshold.
   const r = archiveChanges(ctx);
   if (r.moved === 0) {
-    console.log(
-      `zemory archive: nothing to do (06_CHANGES.md = ${r.activeLines} lines, under threshold).`,
-    );
+    if (r.skipped === "no-entries") {
+      // Do NOT say "under threshold" here — the file is OVER it; the headings are the problem.
+      console.log(
+        `zemory archive: 06_CHANGES.md = ${r.activeLines} lines (OVER threshold) but no dated entry was recognised.`,
+      );
+      console.log(
+        "  Entry headings must look like `## [YYYY-MM-DD] — title` (square brackets). Fix them, then re-run.",
+      );
+    } else {
+      console.log(
+        `zemory archive: nothing to do (06_CHANGES.md = ${r.activeLines} lines, under threshold).`,
+      );
+    }
   } else {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
     console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
