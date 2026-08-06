@@ -12,9 +12,12 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { createServer as createNetServer } from "node:net";
+import { hostname } from "node:os";
 import { basename, join } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { type ScanReport, scan } from "./ingest.js";
+import { isExcluded } from "./scope.js";
+import { getScopeExclude } from "../config/settings.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
 
@@ -636,7 +639,7 @@ export interface ScanWebOptions {
 }
 
 export interface ScanWebResult {
-  status: "need-login" | "done" | "no-browser" | "no-tab";
+  status: "need-login" | "done" | "no-browser" | "no-tab" | "excluded";
   platform: string;
   /** The memory lane this platform ingests into (`claude-web`, `chatgpt-web`). Reported
    *  so the caller quotes THIS lane's totals: it used to print the first `*-web` agent
@@ -738,6 +741,14 @@ export async function scanWeb(
 ): Promise<ScanWebResult> {
   const p = PLATFORMS[opts.platform ?? "chatgpt"];
   if (!p) return { status: "no-browser", platform: opts.platform ?? "?" };
+  // Scope áp NGAY LÚC NẠP (plan 08 §4). Kéo về rồi mới lọc ở recall là vẫn để dữ liệu của
+  // một lane đã bị loại nằm trong kho — chưa kể ở đây còn tốn cả một phiên trình duyệt và
+  // hàng trăm request. Chặn TRƯỚC khi mở cửa sổ là rẻ nhất và đúng ý "không lấy lane này".
+  const lanes = getScopeExclude();
+  if (lanes.length && isExcluded({ origin: "web", host: hostname() || "unknown", source: p.source }, lanes)) {
+    log(`lane ${p.source} đang bị loại khỏi phạm vi (memory scope) — bỏ qua, không mở trình duyệt.`);
+    return { status: "excluded", platform: p.key, source: p.source, url: p.url };
+  }
   // Per-platform default port so a rerun reuses THIS platform's window. Sharing one
   // port across platforms was the bug: the second window cannot bind it, so the first
   // one answers and the run drives the wrong site. When no CDP answers there AND

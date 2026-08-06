@@ -22,6 +22,7 @@ import {
   exportMemoryBundle,
   importMemoryBundle,
   mergeMemoryBundle,
+  pruneDriveHost,
   readExportWatermark,
   resolveShareKey,
   setShareKey,
@@ -97,6 +98,11 @@ function printScanReport(r: ScanReport): void {
     `  mode: ${r.deep ? `deep (walked ${r.roots.length} root(s))` : "fast (known locations)"}`,
   );
   console.log(`  scanned ${r.scannedFiles} file(s), ${r.changedFiles} with new data`);
+  // Lane bị loại phải HIỆN RA. Cắt âm thầm là cách người dùng ngồi tự hỏi vì sao thiếu
+  // dữ liệu mà không có chỗ nào nói — cùng nguyên tắc `memory scope ls` đánh dấu ✗ EXCLUDED.
+  for (const s of r.skippedLanes) {
+    console.log(`  ✗ bỏ qua ${s.files} file của lane ${s.lane} (đang bị loại — \`zemory memory scope ls\`)`);
+  }
   console.log("");
   console.log(`  agents (${r.agents.length}):`);
   for (const a of r.agents) {
@@ -573,9 +579,39 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
       console.log("usage: zemory memory sync [--dir <folder>] [--key-file <path>] [--full]");
+      console.log("         zemory memory sync --prune-host <host> [--apply]   (dọn series của máy đã bỏ)");
       console.log("  Push this machine's bundle to the synced Drive FOLDER + merge every other machine's bundle there.");
       console.log("  Depth: LEAN by default (source rows; the sync-level setting picks it). --full ships a whole-DB snapshot.");
       console.log("  Link the folder once in `zemory ui`, or pass --dir. Needs the share key (--key-file / ZEMORY_SHARE_KEY / share/share.key).");
+      return;
+    }
+
+    // Dọn series của HOST ĐÃ CHẾT. Tách khỏi đường sync thường vì nó XOÁ file của máy
+    // khác — mặc định DRY-RUN, và chỉ chạy khi tự chứng minh được là không mất gì.
+    const pruneHost = flagValue(args, "--prune-host");
+    if (pruneHost !== undefined) {
+      const apply = args.includes("--apply");
+      try {
+        const r = pruneDriveHost({ dir: driveDir, host: pruneHost, apply });
+        const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
+        console.log(`zemory memory sync --prune-host ${r.host} — ${r.files.length} file · ${mb(r.bytes)}${apply ? "" : "  (DRY-RUN)"}`);
+        for (const f of r.files) console.log(`  ${f.merged ? "✓ đã merge" : "✗ CHƯA merge"}  ${f.file}  ${mb(f.bytes)}`);
+        if (!r.safe) {
+          console.log("  ⛔ CHƯA an toàn để xoá:");
+          for (const b of r.blockers) console.log(`     · ${b}`);
+          process.exitCode = 1;
+          return;
+        }
+        if (!apply) {
+          console.log(`  ✅ An toàn: mọi bundle đã nằm trong kho máy này, và series của máy này đã phủ đủ để máy thứ ba lấy tiếp.`);
+          console.log(`     Chạy lại kèm --apply để xoá thật.`);
+          return;
+        }
+        console.log(`  🗑 đã xoá ${r.removed.length} file, giải phóng ${mb(r.bytes)}`);
+      } catch (error) {
+        console.log(`zemory memory sync --prune-host: ${error instanceof Error ? error.message : "failed"}`);
+        process.exitCode = 1;
+      }
       return;
     }
     const root = currentProjectRoot();
@@ -956,9 +992,13 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         return;
       }
       console.log(`zemory memory relocate — moved memory → ${r.dbPath}`);
-      console.log(
-        `  ${(r.movedBytes / 1048576).toFixed(1)} MB · ${r.messages} message(s) verified · settings ${r.configMoved ? "moved" : "not found"}`,
-      );
+      console.log(`  ${(r.movedBytes / 1048576).toFixed(1)} MB · ${r.messages} message(s) verified`);
+      // Nói THẲNG cụm nào đi theo. Bản cũ chỉ in "settings moved" trong khi bỏ lại chìa +
+      // két + 8 thư mục khác — câu đúng-một-nửa đó khiến không ai biết mình còn hở.
+      if (r.cluster.moved.length) console.log(`  carried along: ${r.cluster.moved.join(" · ")}`);
+      if (r.cluster.left.length) console.log(`  left in place (backups / corrupt evidence / stale locks): ${r.cluster.left.join(" · ")}`);
+      if (r.cluster.conflict.length) console.log(`  ⚠ already existed at the target, source KEPT: ${r.cluster.conflict.join(" · ")}`);
+      if (r.cluster.failed.length) console.log(`  ⚠ could NOT copy: ${r.cluster.failed.join(" · ")} — move these by hand`);
       if (r.backup) console.log(`  old DB kept as backup: ${r.backup}\n  (delete it once you've confirmed everything works — frees the old drive)`);
     } catch (error) {
       console.log(`zemory memory relocate: ${error instanceof Error ? error.message : "failed"}`);

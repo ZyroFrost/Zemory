@@ -5,6 +5,8 @@
 // framing OUT of here and tool knowledge OUT of the surface.
 
 import { findProjectRoot, normalizeRoot } from "../core/config.js";
+import { getCodeGraph } from "../memory/graph/graph-cache.js";
+import { fileImpact } from "../memory/graph/graph.js";
 import { getMessage, getMessageContext, searchHybrid } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 import { searchChangelog } from "../docs/changelog.js";
@@ -263,6 +265,41 @@ export const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: "graph_impact",
+    description:
+      "Blast radius of ONE file: who imports it, who it imports, how far a change reaches. WHEN TO CALL: BEFORE "
+      + "editing a file you did not write, to find out what breaks — this answers 'if I change X, who is affected', "
+      + "which memory_search (what happened) and plan_search (what was designed) cannot. ADVISORY ONLY: it never "
+      + "blocks an edit, it hands you the facts. Ambiguous name returns candidates instead of guessing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Repo-relative path or a suffix of it (e.g. 'memory/db.ts')." },
+        project: { type: "string", description: "Project root; defaults to the current project." },
+      },
+      required: ["file"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "graph_neighbors",
+    description:
+      "Immediate neighbours of one file in the code graph, one line each. WHEN TO CALL: to walk the structure "
+      + "cheaply instead of opening several files — each hop costs a line, not a file read. Use graph_impact when "
+      + "you need reach and hub status rather than just the adjacent nodes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: { type: "string", description: "Repo-relative path or a suffix of it." },
+        direction: { type: "string", description: "'in' (importers) · 'out' (imports) · 'both' (default)." },
+        limit: { type: "number", description: "Max neighbours per direction, default 20, max 100." },
+        project: { type: "string", description: "Project root; defaults to the current project." },
+      },
+      required: ["file"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 export async function callMcpTool(name: string, args: JsonObject = {}, env: McpEnv = {}) {
@@ -422,6 +459,43 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     if (!Number.isFinite(id) || id <= 0) return errorResult("plan_show requires a positive numeric id.");
     const section = showSection(id, env.dbPath);
     return section ? toolResult(section) : errorResult(`No plan section #${id}.`);
+  }
+
+  // ── Graph (plan 13 §5) — bản MIRROR của `zemory graph impact` cho host nói MCP.
+  //
+  // Vì sao mãi tới giờ mới nối: hệ agent của user lái TERMINAL, nên CLI là đường giao hàng
+  // chính và MCP chỉ là gương (plan 13 §9). Nhưng "không ai dùng" khác "không nối được" —
+  // `mcp.ts` 0 match `graph` là một khoảng trống thật, và nó khiến host nào CÓ nối MCP thì
+  // mất hẳn lớp blast-radius. Hai tool này KHÔNG chặn sửa file (quyền thuộc host, HP điều
+  // 10) — chúng chỉ đưa dữ kiện, đúng vai "cổng TƯ VẤN".
+  if (name === "graph_impact" || name === "graph_neighbors") {
+    const file = asString(args.file).trim();
+    if (!file) return errorResult(`${name} requires a non-empty file.`);
+    const root = currentProject(args, env);
+    if (!root) return errorResult(`${name} needs a project root (pass project=, or run inside a project).`);
+    let impact;
+    try {
+      const { graph } = await getCodeGraph(root);
+      impact = fileImpact(graph, file);
+    } catch (error) {
+      // Fail-open (điều 9): graph hỏng/thiếu không được làm chết cả phiên MCP.
+      return errorResult(`graph unavailable for ${root}: ${error instanceof Error ? error.message : "build failed"}`);
+    }
+    if (!impact.file) {
+      return impact.candidates.length
+        ? errorResult(`"${file}" is ambiguous — did you mean: ${impact.candidates.join(" · ")}`)
+        : errorResult(`No file matching "${file}" in the code graph of ${root}.`);
+    }
+    if (name === "graph_impact") return toolResult(impact);
+
+    const dir = asString(args.direction).trim() || "both";
+    const cap = clampLimit(args.limit, 20, 100);
+    return toolResult({
+      file: impact.file,
+      isHub: impact.isHub,
+      ...(dir === "out" ? {} : { importedBy: impact.importers.slice(0, cap), fanIn: impact.fanIn }),
+      ...(dir === "in" ? {} : { imports: impact.imports.slice(0, cap), fanOut: impact.fanOut }),
+    });
   }
 
   return errorResult(`Unknown zemory MCP tool: ${name}`);

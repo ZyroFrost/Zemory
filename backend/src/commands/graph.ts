@@ -2,7 +2,7 @@
 // graph (HP điều 13). Advisory, 0 LLM except the opt-in --semantic overlay.
 import { writeFileSync } from "node:fs";
 import { currentProjectRoot } from "../core/config.js";
-import { buildCodeGraph, fileImpact, graphFitness, HUB_FANIN } from "../memory/graph/graph.js";
+import { buildCodeGraph, fileImpact, graphFitness, stampEdgeIds, HUB_FANIN } from "../memory/graph/graph.js";
 import { enrichGraphSymbols, resolveCalls } from "../memory/graph/graph-symbols.js";
 import { buildTouchIndex, touchesFor } from "../memory/graph/graph-memory.js";
 import { buildDocsGraph } from "../memory/graph/graph-docs.js";
@@ -122,6 +122,62 @@ export async function cmdGraph(args: string[]): Promise<void> {
     if (args.includes("--gate") && !f.passed) process.exitCode = 1;
     return;
   }
+  // ── PHÍA TIÊU THỤ của edge id (plan 13 §4) ─────────────────────────────────
+  //
+  // `eid` sinh ra để một khẳng định DẪN ĐƯỢC NGUỒN ("A gọi B — edge:9f2c…"), nhưng suốt
+  // từ 07-27 mới chỉ có phía PHÁT: không ai kiểm lại được cạnh được dẫn có thật không, nên
+  // trên thực tế nó chưa mua được gì. Lệnh này đóng vòng: dán id vào, máy nói cạnh đó có
+  // thật không, thuộc HẠNG nào (khai báo hay suy luận — điều 13 cấm trộn), và nối ai với ai.
+  //
+  // Đây cũng là *cited-edge validity*: đưa N id thì in luôn tỉ lệ hợp lệ, để đo được một
+  // agent dẫn nguồn thật hay dẫn bừa (điều 12 — số phải đo được, không counterfactual).
+  if (sub === "edge") {
+    const ids = args.slice(1).filter((a) => !a.startsWith("--"));
+    if (!ids.length) {
+      console.log("usage: zemory graph edge <eid> [<eid>…]");
+      console.log("  Kiểm một (hoặc nhiều) edge id được TRÍCH DẪN: có thật không · hạng gì · nối ai với ai.");
+      console.log("  Id lấy từ `zemory graph export` (trường `eid`) hoặc payload /code-graph của UI.");
+      process.exitCode = 1;
+      return;
+    }
+    const g = buildCodeGraph(root);
+    await enrichGraphSymbols(g);
+    const calls = resolveCalls(g);
+    const edges = stampEdgeIds([
+      ...g.edges.map((e) => ({ from: e.from, to: e.to, type: "imports", kind: "declared" as const })),
+      ...calls.map((c) => ({
+        from: c.fromFile,
+        to: c.toFile,
+        type: "calls",
+        kind: "inferred" as const,
+        fromSymbol: c.fromSymbol,
+        toSymbol: c.toSymbol,
+        confidence: c.confidence,
+        count: c.count,
+      })),
+    ]);
+    const byId = new Map(edges.map((e) => [e.eid, e]));
+    let valid = 0;
+    console.log(`zemory graph edge — ${root} (${edges.length} cạnh trong graph)`);
+    for (const raw of ids) {
+      const id = raw.replace(/^edge:/, "").trim().toLowerCase();
+      const e = byId.get(id);
+      if (!e) {
+        console.log(`  ✗ ${id} — KHÔNG có cạnh nào mang id này`);
+        continue;
+      }
+      valid++;
+      const hang = e.kind === "declared" ? "KHAI BÁO" : `SUY LUẬN${"confidence" in e ? ` (${(e as { confidence?: string }).confidence})` : ""}`;
+      console.log(`  ✓ ${id} — [${e.type} · ${hang}] ${e.from} → ${e.to}`);
+    }
+    if (ids.length > 1) {
+      const pct = ((valid / ids.length) * 100).toFixed(0);
+      console.log(`  cited-edge validity: ${valid}/${ids.length} (${pct}%)`);
+    }
+    if (valid !== ids.length) process.exitCode = 1;
+    return;
+  }
+
   if (sub === "export") {
     // CONTRACT seam (plan 13 §5): one versioned JSON any consumer can read —
     // code nodes + DECLARED edges (imports) + INFERRED edges (name-match calls,
@@ -153,7 +209,12 @@ export async function cmdGraph(args: string[]): Promise<void> {
           symbols: n.symbolsDetail ?? n.symbols.map((s) => ({ name: s, kind: "function", line: 0, endLine: 0 })),
           touchedBy: touchesFor(touch, n.id).sessions,
         })),
-        edges: [
+        // `eid` đóng dấu SAU khi đã gộp đủ ba lớp (imports · calls · semantic) — đóng ở
+        // từng lớp thì chắc chắn sót một lớp, mà sót cạnh nào thì cạnh đó không dẫn nguồn
+        // được (plan 13 §4). Trước bản này CHỈ payload UI (`/code-graph`) có eid, còn
+        // `graph export` — tức chính CONTRACT mà consumer đọc — thì không: nên "trích dẫn
+        // cạnh" là chuyện không ai làm nổi từ ngoài. Kiểm lại bằng `zemory graph edge <eid>`.
+        edges: stampEdgeIds([
           ...g.edges.map((e) => ({ from: e.from, to: e.to, type: "imports", kind: "declared" as const })),
           // Name-match calls are GUESSES with a confidence label — điều 13 puts
           // that ladder INSIDE the inferred class; exporting them as "declared"
@@ -169,7 +230,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
             count: c.count,
           })),
           ...sem,
-        ],
+        ]),
         orphans: g.orphans,
         fitness: graphFitness(g),
         docs,

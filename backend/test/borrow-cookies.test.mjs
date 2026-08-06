@@ -11,7 +11,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { join } from "node:path";
 import test from "node:test";
 import { borrowCookies, restoreProfile } from "../../dist/memory/borrowcookies.js";
-import { tempDir } from "./helpers.mjs";
+import { tempDir, readAppJs } from "./helpers.mjs";
 
 /** Cookie store giống Chromium: giá trị nằm ở cột BLOB đã mã hoá — không ai đọc nổi. */
 function fakeStore(path, rows) {
@@ -119,7 +119,7 @@ test("nút Liên kết làm TRỌN việc: tự dò nguồn → mượn → kéo
   assert.ok(/replace: true/.test(branch), "profile cũ đã hết phiên thì phải cho đè, không thì nút bấm vô tác dụng");
   assert.ok(/liveConnections\(\)/.test(branch), "trả trạng thái MỚI (đã kiểm lại thật) để bảng tự cập nhật, khỏi bắt bấm lại");
 
-  const js = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+  const js = readAppJs();
   assert.ok(/r\.canBorrow/.test(js), "bảng phải phân biệt 'mượn được' với 'phải đăng nhập'…");
   assert.ok(/\/connect\?platform=/.test(js), "…và bấm là gọi thẳng endpoint, không in ra lệnh cho người ta gõ");
   assert.ok(!/borrow-cookies --platform/.test(js), "UI KHÔNG được bảo người dùng chạy lệnh CLI");
@@ -136,7 +136,7 @@ test("sau khi bấm Liên kết, app tự CHỜ đăng nhập rồi chạy tiế
   assert.ok(/if \(opts\.probeOnly\) return \{ status: "need-login"/.test(sw), "probeOnly: cổng chết ⇒ trả lời ngay, KHÔNG mở cửa sổ");
   assert.ok(/!first && !opts\.probeOnly/.test(sw), "probeOnly: không có tab cũng KHÔNG được mở thêm cửa sổ");
 
-  const js = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+  const js = readAppJs();
   assert.ok(/function connPoll\(/.test(js) && js.includes("zGet('/connections')"), "app phải tự chờ, và chờ CẢ BẢNG — user đăng nhập nền nào cũng phải nhận ra");
   assert.ok(/conn\.waiting/.test(js), "và nói cho người dùng biết là đang chờ, không đứng im");
 });

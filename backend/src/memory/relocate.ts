@@ -11,12 +11,14 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
   statSync,
 } from "node:fs";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
+import { cloudSyncReport } from "./cloudguard.js";
 import { isAbsolute, join, resolve } from "node:path";
 import {
   MEMORY_DB_PINNED_BY_ENV,
@@ -28,6 +30,74 @@ import {
 
 const DB_NAME = "global_memory.db";
 const CONFIG_NAME = "config.json";
+
+// ── Cả CỤM kho, không chỉ mỗi file .db ───────────────────────────────────────
+// Vì sao viết theo lối "chở HẾT, chừa theo danh sách" chứ không "chở theo danh sách":
+// bản cũ liệt kê đích danh (db + config + models) nên MỌI thư mục sinh ra sau đó —
+// `secrets/` · `share.key` · `projects.json` · `browser/` · `imports/` · `logs/` ·
+// `cockpit/` · `context-guard/` · `backups/` — đều bị bỏ lại **âm thầm**. Đó không phải
+// bất tiện: chìa danh tính ở lại trong thư mục đang bị đồng bộ đám mây là lỗ HP điều 7,
+// và đã xảy ra thật (05/08). Danh sách trắng luôn thiếu thứ chưa ai nghĩ ra; danh sách
+// ĐEN thì thứ mới mặc định được chở — sai về phía an toàn.
+
+/** Bí mật. Không tới nơi ⇒ HUỶ cả cuộc dời, không để chìa nằm lại chỗ cũ (HP điều 7/14). */
+const CRITICAL = new Set(["share.key", "secrets"]);
+
+/**
+ * Những gì CỐ Ý ở lại. Ba nhóm, đều là vật-của-chỗ-cũ chứ không phải kho đang sống:
+ * bản sao lưu của chính lệnh này, vật chứng hỏng hóc (cồng kềnh, gắn với sự cố cũ),
+ * và khoá runtime (đã ôi ngay khi tiến trình đổi chỗ).
+ */
+function staysBehind(name: string): boolean {
+  if (name === DB_NAME || name.startsWith(`${DB_NAME}-`)) return true; // .db + -wal/-shm: đi đường riêng
+  if (name.endsWith(".bak")) return true;
+  if (name.startsWith("corrupt-")) return true;
+  if (/^global_memory\..+\.db$/.test(name)) return true; // bản hỏng đặt tên kiểu HONG-...
+  if (name.endsWith(".lock")) return true;
+  return false;
+}
+
+export interface ClusterMove {
+  /** Tên đã sang được thư mục mới. */
+  moved: string[];
+  /** Tên cố ý để lại (xem `staysBehind`) — in ra để người dùng biết còn gì ở chỗ cũ. */
+  left: string[];
+  /** Đích đã có sẵn tên này ⇒ KHÔNG đè, nguồn Ở LẠI. Dính `CRITICAL` thì huỷ cả cuộc dời. */
+  conflict: string[];
+  /** Chép hỏng. Dính `CRITICAL` thì huỷ cả cuộc dời. */
+  failed: string[];
+}
+
+/** Chép (CHƯA xoá nguồn) mọi thứ thuộc cụm kho sang thư mục mới. */
+function copyCluster(from: string, to: string): ClusterMove {
+  const out: ClusterMove = { moved: [], left: [], conflict: [], failed: [] };
+  let entries: string[];
+  try {
+    entries = readdirSync(from);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    if (staysBehind(name)) {
+      out.left.push(name);
+      continue;
+    }
+    const dst = join(to, name);
+    if (existsSync(dst)) {
+      // Đích đã có sẵn: KHÔNG đè (có thể là kho cũ hợp lệ của máy này). Nhưng nguồn
+      // Ở LẠI — với bí mật thì chính đó là mối nguy, nên phía gọi sẽ huỷ, không im.
+      out.conflict.push(name);
+      continue;
+    }
+    try {
+      cpSync(join(from, name), dst, { recursive: true });
+      out.moved.push(name);
+    } catch {
+      out.failed.push(name);
+    }
+  }
+  return out;
+}
 
 /** The live locations (from db.ts). Tests pass an override so they never touch the
  *  real ~/.zemory. `pinned` mirrors the GLOBAL_MEMORY_DB env override. */
@@ -61,9 +131,16 @@ export interface StorageInfo {
   pinnedByEnv: boolean;
 }
 
-/** Heuristic: a folder a desktop cloud client keeps in sync — a live WAL DB there corrupts. */
+/**
+ * A folder a desktop cloud client keeps in sync — a live WAL DB there corrupts.
+ *
+ * Không còn chỉ soi TÊN thư mục: tên là thứ yếu nhất. Hai lần hỏng kho thật (03/08 và
+ * 04/08) đường dẫn đều KHÔNG mang chữ "Drive" nào, thứ cuốn nó đi là kênh backup máy
+ * khai trong sổ của DriveFS. `cloudSyncReport` đọc đúng những nguồn khai đó; tên thư mục
+ * giờ chỉ là một trong năm bằng chứng.
+ */
 export function looksLikeCloudSync(dir: string): boolean {
-  return /(google drive|[\\/]my drive|onedrive|dropbox|icloud|creative cloud)/i.test(dir);
+  return cloudSyncReport(dir).atRisk;
 }
 
 function dirSource(P: StoragePaths): StorageInfo["source"] {
@@ -130,6 +207,8 @@ export interface RelocateResult {
   backup: string | null;
   /** True when there was no DB to move — only the pointer was set. */
   pointerOnly: boolean;
+  /** Cả cụm kho đi kèm: cái gì sang, cái gì cố ý ở lại, cái gì chép hỏng. */
+  cluster: ClusterMove;
 }
 
 /**
@@ -149,7 +228,7 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
   const newDb = join(to, DB_NAME);
 
   if (to === from) {
-    return { from, to, dbPath: oldDb, movedBytes: 0, messages: 0, configMoved: false, modelsMoved: false, backup: null, pointerOnly: true };
+    return { from, to, dbPath: oldDb, movedBytes: 0, messages: 0, configMoved: false, modelsMoved: false, backup: null, pointerOnly: true, cluster: { moved: [], left: [], conflict: [], failed: [] } };
   }
   if (looksLikeCloudSync(to) && !opts.force) {
     throw new Error(
@@ -159,10 +238,30 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
   }
   mkdirSync(to, { recursive: true });
 
-  // No DB yet → nothing to move; just remember the new home for next time.
+  // Chưa có DB → không có gì để verify, NHƯNG cụm vẫn có thể tồn tại (chìa/két/settings
+  // sinh ra trước lần ingest đầu). Bỏ qua chúng ở nhánh này là để lại đúng thứ nguy hiểm nhất.
   if (!existsSync(oldDb)) {
+    const only = copyCluster(from, to);
     setStoragePointer(to, P);
-    return { from, to, dbPath: newDb, movedBytes: 0, messages: 0, configMoved: false, modelsMoved: false, backup: null, pointerOnly: true };
+    for (const name of only.moved) {
+      try {
+        rmSync(join(from, name), { recursive: true, force: true });
+      } catch {
+        /* bản mới đã sống; đây chỉ là rác ở chỗ cũ */
+      }
+    }
+    return {
+      from,
+      to,
+      dbPath: newDb,
+      movedBytes: 0,
+      messages: 0,
+      configMoved: only.moved.includes(CONFIG_NAME),
+      modelsMoved: only.moved.includes("models"),
+      backup: null,
+      pointerOnly: true,
+      cluster: only,
+    };
   }
   if (existsSync(newDb) && !opts.force) {
     throw new Error(`A memory DB already exists at ${newDb}. Move/rename it first, or pass --force.`);
@@ -205,16 +304,9 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
   } finally {
     chk.close();
   }
-  let configMoved = false;
-  const oldConfig = join(from, CONFIG_NAME);
-  if (existsSync(oldConfig)) {
-    try {
-      copyFileSync(oldConfig, join(to, CONFIG_NAME));
-      configMoved = true;
-    } catch {
-      /* settings are non-critical; they fall back to defaults if missing */
-    }
-  }
+  // 2b. CHÉP cả cụm (chưa xoá nguồn): settings · registry · chìa · két · model cache ·
+  //     profile trình duyệt · kho import · log · cockpit · context-guard · backups…
+  const cluster = copyCluster(from, to);
 
   // 3. VERIFY the copy before committing to it.
   try {
@@ -235,28 +327,49 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
     throw error instanceof Error ? error : new Error("Verify failed");
   }
 
-  // 4. Commit: flip the pointer, then retire the old DB as a .bak (kept, not deleted).
-  setStoragePointer(to, P);
+  // 3b. BÍ MẬT không tới nơi được ⇒ HUỶ khi con trỏ CHƯA lật, nên chưa có gì đổi. Hai ca
+  //     đều tính: chép HỎNG, và đích ĐÃ CÓ tên đó (khi ấy nguồn ở lại — chính là cái lỗ).
+  //     Dời nửa vời mà chìa nằm lại thư mục đang đồng bộ đám mây là sự cố thật 05/08;
+  //     thà không dời còn hơn dời hở.
+  const criticalStuck = [...cluster.failed, ...cluster.conflict].filter((n) => CRITICAL.has(n));
+  if (criticalStuck.length) {
+    rmSync(newDb, { force: true });
+    for (const n of cluster.moved) rmSync(join(to, n), { recursive: true, force: true });
+    throw new Error(
+      `Refusing: cannot carry ${criticalStuck.join(", ")} to ${to} (already present there, or copy failed). ` +
+        `Leaving a secret behind in the old folder is exactly the leak this move is meant to close. ` +
+        `Nothing was changed — clear those names at the target (or move them by hand) and retry.`,
+    );
+  }
 
-  // Best-effort: carry the embed model cache too — it's large (~600MB) and slow to
-  // re-download, but non-critical (re-caches on demand), so failure is not fatal.
-  let modelsMoved = false;
-  const oldModels = join(from, "models");
-  if (existsSync(oldModels) && !existsSync(join(to, "models"))) {
+  // 4. Commit: flip the pointer, THEN vacate the old copies (source removed only after the
+  //    new home is the official one, so a crash in between leaves a readable duplicate,
+  //    never a hole).
+  setStoragePointer(to, P);
+  for (const name of cluster.moved) {
     try {
-      cpSync(oldModels, join(to, "models"), { recursive: true });
-      rmSync(oldModels, { recursive: true, force: true });
-      modelsMoved = true;
+      rmSync(join(from, name), { recursive: true, force: true });
     } catch {
-      /* model stays put; it will re-cache under the new dir on next embed */
+      /* nguồn không xoá được: bản mới đã sống, đây chỉ là rác ở chỗ cũ */
     }
   }
 
   const backup = `${oldDb}.relocated-${timestamp()}.bak`;
+  const base = {
+    from,
+    to,
+    dbPath: newDb,
+    movedBytes,
+    messages: beforeCount,
+    configMoved: cluster.moved.includes(CONFIG_NAME),
+    modelsMoved: cluster.moved.includes("models"),
+    pointerOnly: false,
+    cluster,
+  };
   try {
     renameSync(oldDb, backup);
   } catch {
-    return { from, to, dbPath: newDb, movedBytes, messages: beforeCount, configMoved, modelsMoved, backup: null, pointerOnly: false };
+    return { ...base, backup: null };
   }
-  return { from, to, dbPath: newDb, movedBytes, messages: beforeCount, configMoved, modelsMoved, backup, pointerOnly: false };
+  return { ...base, backup };
 }

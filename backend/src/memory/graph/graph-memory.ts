@@ -24,6 +24,8 @@ export interface FileTouch {
   sessions: string[];
   /** how many distinct sessions touched it */
   count: number;
+  /** Khớp bằng đường nào — `moved` là SUY LUẬN, không được vẽ như cạnh khai báo (điều 13). */
+  match?: "exact" | "moved" | "none";
 }
 
 export interface TouchIndex {
@@ -101,7 +103,36 @@ export function buildTouchIndex(root: string, dbPath?: string): TouchIndex {
   return { byFile, digests };
 }
 
-/** Sessions that touched one file id (graph node id). Case-insensitive. */
-export function touchesFor(idx: TouchIndex, fileId: string): FileTouch {
-  return idx.byFile.get(fileId.toLowerCase()) ?? { sessions: [], count: 0 };
+/**
+ * Sessions that touched one file id (graph node id). Case-insensitive.
+ *
+ * HAI TẦNG khớp, và tầng hai PHẢI gắn nhãn (HP điều 13 — suy luận không được giả dạng
+ * khai báo):
+ *  ① `exact` — đường trong digest trùng đúng id node.
+ *  ② `moved` — đường trong digest là ĐUÔI của id node (`src/cli.ts` ⊂ `backend/src/cli.ts`).
+ *
+ * Vì sao cần tầng ②, đo thật trên repo này 2026-08-06: touch index có 65 file, node graph
+ * có 174, **giao nhau = 0**. Không phải index hỏng — mà digest ghi đường của BỐ CỤC CŨ
+ * (`src/` trước khi dời sang `backend/src/` ngày 08/07; `docs/agent/01_rules.md` trước lần
+ * đánh số lại). Lịch sử phiên là thứ KHÔNG viết lại được (điều 3: digest là dẫn xuất của
+ * transcript gốc), nên hoặc chấp nhận 0% mãi mãi, hoặc khớp lại lúc ĐỌC. Chọn cách hai.
+ *
+ * Khớp theo ĐUÔI chứ không theo tên file trần: `db.ts` trần sẽ đụng mọi `db.ts` trong repo,
+ * còn `src/memory/db.ts` thì gần như chỉ có một đường ra. Vẫn là suy luận — nên có nhãn, và
+ * người gọi được quyền bỏ nếu chỉ muốn cạnh chắc chắn.
+ */
+export function touchesFor(idx: TouchIndex, fileId: string, opts: { includeMoved?: boolean } = {}): FileTouch {
+  const id = fileId.toLowerCase();
+  const exact = idx.byFile.get(id);
+  if (exact) return { ...exact, match: "exact" };
+  if (opts.includeMoved === false) return { sessions: [], count: 0, match: "none" };
+
+  const sessions: string[] = [];
+  for (const [key, t] of idx.byFile) {
+    // Đuôi phải cắt đúng ranh giới thư mục: `rc/cli.ts` không được coi là đuôi của
+    // `src/cli.ts`, nếu không thì mọi thứ trùng vài ký tự cuối đều khớp.
+    if (!id.endsWith(`/${key}`)) continue;
+    for (const s of t.sessions) if (!sessions.includes(s)) sessions.push(s);
+  }
+  return sessions.length ? { sessions, count: sessions.length, match: "moved" } : { sessions: [], count: 0, match: "none" };
 }

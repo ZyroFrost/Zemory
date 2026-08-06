@@ -442,6 +442,19 @@
 <!-- (Đã gỡ dialog "Full session" — nó là viewer THỨ HAI trùng với sub-tab Recall › Phiên.
      Giờ ⤢ ở một kết quả nhảy thẳng sang sub-tab đó, một viewer duy nhất.) -->
 
-<script src="/scripts/app.js"></script>
+<!-- Tách từ app.js 2026-08-06 — THỨ TỰ LÀ RÀNG BUỘC THẬT (global scope, không bundler):
+     core trước (hộp đồ nghề mọi file gọi lúc nạp) · boot cuối (gọi go()/zboot() khi mọi
+     định nghĩa đã có — hồi còn một IIFE thì hoisting che hộ chuyện này). -->
+<script src="/scripts/core.js"></script>
+<script src="/scripts/shell.js"></script>
+<script src="/scripts/graph.js"></script>
+<script src="/scripts/gm.js"></script>
+<script src="/scripts/session.js"></script>
+<script src="/scripts/sources.js"></script>
+<script src="/scripts/recall.js"></script>
+<script src="/scripts/harness.js"></script>
+<script src="/scripts/system.js"></script>
+<script src="/scripts/chrome.js"></script>
+<script src="/scripts/boot.js"></script>
 </body>
 </html>

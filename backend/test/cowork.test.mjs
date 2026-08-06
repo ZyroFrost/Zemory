@@ -12,7 +12,7 @@ import test from "node:test";
 import { coworkAdapter } from "../../dist/memory/adapters/cowork.js";
 import { allAdapters } from "../../dist/memory/adapters/index.js";
 import { PLATFORMS } from "../../dist/memory/scanweb.js";
-import { tempDir } from "./helpers.mjs";
+import { tempDir, readAppJs } from "./helpers.mjs";
 
 // Hai vai có HAI hình dạng content khác nhau — đây chính là chỗ dễ parse hụt.
 const SESSION = {
@@ -122,7 +122,7 @@ test("app quét MỌI tài khoản, và có nút thêm tài khoản (bỏ sót k
   assert.ok(/function accountsOf\(/.test(ui), "phải liệt kê được các khe");
   assert.ok(/for \(const acct of account \? \[account\] : accountsOf\(platform\)\)/.test(ui), "quét phải lặp qua mọi khe khi không chỉ định khe");
   assert.ok(ui.includes('p === "/add-account"'), "phải có đường thêm tài khoản");
-  const js = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+  const js = readAppJs();
   assert.ok(/data-addacct=/.test(js) && /\/add-account\?platform=/.test(js), "UI phải có nút thêm tài khoản và gọi đúng endpoint");
   assert.ok(/data-acct=/.test(js) && /&account='\+encodeURIComponent\(acct\)/.test(js), "nút nối phải mang theo khe tài khoản");
 });

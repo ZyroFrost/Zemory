@@ -13,11 +13,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
+import { readAppJs } from "./helpers.mjs";
 
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
 const HTML = rd("../../frontend/pages/app.html");
 const CSS = rd("../../frontend/styles/app.css");
-const JS = rd("../../frontend/scripts/app.js");
+const JS = readAppJs();
 // Bản cũ phải ghép 18 file lại thành một trang để soi. UI mới đã là 3 file phẳng
 // (no-build static, 03_STRUCTURE §5) nên soi thẳng từng file — rõ hơn và thông báo
 // lỗi chỉ đúng file cần sửa.
@@ -499,7 +500,7 @@ test("UI: có nút Tìm sâu, và nó là lựa chọn TỪNG LƯỢT chứ khô
   // với tới. Và nếu nó đọc setting máy (`hybrid` đang bật sẵn ở nhiều máy) thì mọi lượt tìm
   // lại rơi vào đường 20–60s — đúng thứ vừa sửa xong.
   assert.match(HTML, /id="rDeep"[^>]*data-rf="deep"/u, "màn Recall phải có chip Tìm sâu");
-  const js = readFileSync(new URL("../../frontend/scripts/app.js", import.meta.url), "utf8");
+  const js = readAppJs();
   assert.match(js, /if\(deepOn\(\)\)p\+='&deep=1'/u, "chỉ gửi deep=1 khi người dùng bật chip");
   assert.match(js, /function deepOn\(\)\{var d=zid\('rDeep'\)/u, "trạng thái deep đọc từ CHIP, không từ Z.mem");
   assert.ok(

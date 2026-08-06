@@ -42,3 +42,25 @@ test("mặc định các công tắc nặng khác: sync 'lean', KHÔNG kèm ản
     assert.equal(getSyncAttachments(), false, "L3 kèm ảnh phải là opt-in — nó phá cân đối bundle lean");
   });
 });
+
+// Ngưỡng cảnh báo context — trước là hằng chôn trong `capture-hook.ts` (05_TODO §🧷).
+// Mặc định phải GIỮ NGUYÊN 95, và giá trị vô lý phải bị KẸP chứ không được ghi thẳng: một
+// ngưỡng 0 hay 150 lọt vào config sẽ làm hook hoặc spam mỗi prompt, hoặc câm vĩnh viễn.
+test("context warn threshold: mặc định 95, kẹp trong [50,99], rác không phá được config", async () => {
+  await withEmptyConfig(async () => {
+    const { getContextWarnPercent, setContextWarnPercent } = await import(`../../dist/config/settings.js?cfg=${Date.now()}c`);
+    assert.equal(getContextWarnPercent(), 95, "mặc định KHÔNG được đổi lặng lẽ khi phơi ra config");
+
+    setContextWarnPercent(80);
+    assert.equal(getContextWarnPercent(), 80);
+
+    setContextWarnPercent(5);
+    assert.equal(getContextWarnPercent(), 50, "quá thấp ⇒ kẹp, không thì nhắc suốt ngày rồi bị bỏ qua");
+
+    setContextWarnPercent(140);
+    assert.equal(getContextWarnPercent(), 99, "≥100 là không bao giờ kịp nhắc");
+
+    setContextWarnPercent(92.4);
+    assert.equal(getContextWarnPercent(), 92, "làm tròn, không để số lẻ trôi vào so sánh");
+  });
+});
