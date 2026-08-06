@@ -34,6 +34,9 @@
   dính đường nạp. Đo xong mới được đổi mặc định (điều 12).
 - [ ] **Sau khi TRÁO: `zemory reindex`** một lần cho chỉ mục docs tươi (đợt dọn 78 dòng doc đường
   cũ 05/08 đã xong — Zemory 23 + 6 repo khác 55, xem `06_CHANGES [2026-08-05b]`).
+  Kèm theo tự động: digest toàn kho sẽ TỰ DỰNG LẠI LƯỜI ở scan/scheduler kế tiếp — `DIGEST_VERSION`
+  bump 3→4 (2026-08-06, `cleanPath` cắt văn xuôi khỏi `paths_touched`; đo 261/261 path bẩn xử sạch).
+  KHÔNG cần `digest --all` tay trước tráo — kho hiện tại sắp bị thay, chạy là công dã tràng.
 - [ ] **Sao lưu NGOÀI máy — đã có MỘT phần:** bundle `.enc` trên Drive (baseline 289,7 MB + delta,
   auto-sync 05/08) phủ được phần NGUỒN; backup local 1,25 GB vẫn nằm **cùng ổ** với kho, và công
   embed 43 giờ chưa được bảo hiểm (bundle lean không chở vector) → sau tráo cân nhắc `export --full`.

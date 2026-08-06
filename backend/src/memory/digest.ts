@@ -61,9 +61,34 @@ function clip(s: string, n = 180): string {
   return one.length > n ? one.slice(0, n) + "…" : one;
 }
 
+/**
+ * Cắt sạch một ứng viên path mà PATH_RE vừa bắt.
+ *
+ * PATH_RE nhánh Windows CỐ Ý cho khoảng trắng trong segment (`Program Files` · `My Drive`
+ * là đường thật) — nhưng chính vì thế nó nuốt luôn văn xuôi đứng sau tên file: đo trên kho
+ * thật 2026-08-06 có **153/5.918 path (2,6%)** dạng `…\charts.py has been updated
+ * successfully.` hoặc đuôi khoảng-trắng-thẳng-cột từ bảng tool output. Path bẩn làm bẩn
+ * cả `touches` của graph (khoá `src/x.ts has been…` không bao giờ khớp node nào).
+ *
+ * Luật cắt TẤT ĐỊNH: khoảng trắng hợp lệ chỉ nằm TRƯỚC tên file — một khi đã thấy
+ * `tên.đuôi` (đuôi 2–5 ký tự, mở đầu bằng chữ) mà liền sau là khoảng trắng, thì path đã
+ * TRỌN VẸN, phần sau là văn xuôi ⇒ cắt ngay sau đuôi. Kèm: gọt khoảng trắng + dấu câu
+ * cuối câu bám ở đuôi (`sửa D:\x\y.ts.` → bỏ dấu chấm trần).
+ */
+const EXT_THEN_SPACE = /\.[A-Za-z][A-Za-z0-9]{1,4}(?=\s)/;
+export function cleanPath(raw: string): string {
+  let p = raw.trim();
+  const m = EXT_THEN_SPACE.exec(p);
+  if (m) p = p.slice(0, m.index + m[0].length);
+  // Dấu câu cuối câu dính đuôi (path đứng cuối câu văn). KHÔNG gọt trong thân path.
+  p = p.replace(/[.,;:!?…'")\]]+$/, "");
+  return p;
+}
+
 // Bump when the extraction logic changes → every stored digest's signature no
 // longer matches, so `memory scan` / `memory digest --all` regenerates them all.
-const DIGEST_VERSION = 3;
+// v4 (2026-08-06): cleanPath — cắt văn xuôi/đuôi trắng khỏi paths_touched.
+const DIGEST_VERSION = 4;
 
 /** Staleness signature: logic version + message count + last id + last timestamp. */
 function signature(msgs: MsgRow[]): string {
@@ -149,7 +174,11 @@ export function buildDigest(db: MemoryDB, sessionId: string): { built: boolean; 
   for (const m of msgs) {
     if (pathSet.size >= 12 || !m.content) continue;
     const found = m.content.match(PATH_RE);
-    if (found) for (const p of found.slice(0, 3)) if (p.length >= 6 && p.length <= 120) pathSet.add(p);
+    if (found)
+      for (const raw of found.slice(0, 3)) {
+        const p = cleanPath(raw);
+        if (p.length >= 6 && p.length <= 120) pathSet.add(p);
+      }
   }
   const paths = [...pathSet].slice(0, 12);
 
