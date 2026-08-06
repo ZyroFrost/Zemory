@@ -161,6 +161,17 @@ làm được taxonomy tương đương, hoàn toàn tất định — đó là 
 
 **Cạnh SUY LUẬN — OVERLAY [opt] (fail-open, nhãn `inferred`):**
 - `semantic_neighbor` — cosine trên **vector đã có** (0 LLM), ngưỡng cắt để tránh hairball.
+- **`api` — seam BE↔FE (BUILT 2026-08-07, user chốt — hấp thụ từ khảo sát Grapuco).** FE nói
+  chuyện với BE qua HTTP, không qua import ⇒ import-graph có **0 cạnh** giữa hai bờ; cạnh này
+  lấp đúng lỗ đó: *"sửa handler này thì màn nào gãy"*. V1 = khớp CHUỖI route — FE có
+  `fetch('/x')`/`zGet`/`zPost` (route cắt ở `?`/ghép biến; bỏ đuôi file tĩnh), BE chứa nguyên văn
+  `"/x"` trong nháy ⇒ cạnh `api · inferred · textual`, **gộp về mức file** (mang `routes[]` +
+  `count`, mỗi cặp một eid — cùng khuôn cạnh `calls`). `graph-seam.ts`; ba bề mặt cùng ăn:
+  `/code-graph` (UI tự có bộ lọc + nét đứt) · `graph export`/`graph edge` · `graph impact` in
+  hai chiều "calls backend over HTTP" / "called from the frontend". Đo trên chính zemory:
+  `ui.ts` ← **10 file FE** kèm từng route. **TRẦN ghi rõ (điều 13):** đây vẫn là match chuỗi —
+  nhãn `textual` vĩnh viễn; tầng `resolved` field-level CHỈ có khi repo có **typed contract**
+  (OpenAPI/tRPC — chưa repo nào có; khi có thì thêm parser contract, KHÔNG nâng nhãn tầng này).
 - Luật vàng: overlay tắt/lỗi → graph vẫn đủ dùng bằng cạnh khai báo.
 
 **ID CẠNH ỔN ĐỊNH (thêm 2026-07-27) — để TRÍCH DẪN được.** Mỗi cạnh mang `eid = sha1(from|to|kind|rel)[0..12]`, đóng dấu SAU khi đã gộp đủ ba lớp (`imports` · `calls` · lớp chuẩn) — đóng ở từng lớp thì chắc chắn sót một lớp, mà sót đúng cạnh nào thì cạnh đó không dẫn nguồn được. `rel` nằm TRONG hash có chủ ý: cùng cặp (A,B) mà một cạnh khai báo và một cạnh suy luận là **hai sự thật khác hạng** (điều 13 cấm trộn) ⇒ phải khác id. Tất định thuần — cùng đầu vào luôn ra cùng id, không phụ thuộc thứ tự dựng hay máy.

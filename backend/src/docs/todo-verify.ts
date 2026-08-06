@@ -344,7 +344,10 @@ export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
     const itemTime = lineTimes.get(it.line) ?? 0;
     if (itemTime) {
       const newer = it.refs
-        .filter((r) => r.exists && r.kind === "file" && r.foundAt)
+        // Chỉ canh file CODE. Đo 2026-08-07: để cả `.md` thì `AGENTS.md`/`CLAUDE.md` — hub
+        // docs đổi hàng tuần vì đủ lý do không liên quan — flag oan 2/4 mục; ca thật
+        // (write-gate) là file .ts. Gate ồn là gate chết (bài học cloudguard).
+        .filter((r) => r.exists && r.kind === "file" && r.foundAt && !r.foundAt.endsWith(".md"))
         .map((r) => ({ r, t: fileTimeCache.get(r.foundAt) ?? 0 }))
         .filter((x) => x.t > itemTime + STALE_MARGIN_S);
       if (newer.length) {
@@ -388,6 +391,7 @@ export function formatTodoVerify(r: TodoVerifyReport): string {
   } else {
     const dead = r.findings.filter((f) => f.kind === "ref-chet");
     const maybe = r.findings.filter((f) => f.kind === "nghi-da-xong");
+    const newer = r.findings.filter((f) => f.kind === "code-moi-hon-so");
     if (maybe.length) {
       out.push(`\n  ⚠ NGHI ĐÃ XONG (${maybe.length}) — sổ nói "chưa", code nói "có":`);
       for (const f of maybe) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
@@ -395,6 +399,12 @@ export function formatTodoVerify(r: TodoVerifyReport): string {
     if (dead.length) {
       out.push(`\n  ✗ REF CHẾT (${dead.length}) — sổ trỏ vào thứ không còn tồn tại:`);
       for (const f of dead) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
+    }
+    // Loại này từng bị NUỐT: findings có (exit 1) mà bảng in 0 dòng — gate đỏ không nói vì
+    // sao là gate bị tắt. Bắt buộc mọi kind có mặt trong bảng; kind mới phải thêm ở ĐÂY.
+    if (newer.length) {
+      out.push(`\n  ⏱ CODE MỚI HƠN SỔ (${newer.length}) — file mục nêu tên đã bị sửa SAU khi dòng sổ được viết (đo lại rồi cập nhật sổ):`);
+      for (const f of newer) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
     }
   }
   out.push(

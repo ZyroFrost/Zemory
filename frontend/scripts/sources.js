@@ -204,7 +204,17 @@
   // `realtime` hiện theo SỰ THẬT (`realtimeWired` = hook có trong settings của host) chứ không
   // theo cờ config: hai thứ lệch được (user sửa tay settings.json, hoặc máy chưa cài Claude
   // Code), và một công tắc sáng đèn trong khi không có gì chạy là lời hứa suông.
-  function renderAuto(a){Z.auto=a=a||{};setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);}
+  function renderAuto(a){Z.auto=a=a||{};setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
+    // Ngưỡng nhắc context — chỉ đổ giá trị khi user KHÔNG đang gõ dở (renderAuto chạy lại
+    // sau mỗi lần bật/tắt công tắc khác; đè lên ô đang focus là nuốt mất số người ta gõ).
+    var cw=zid('ctxWarnPct');if(cw&&document.activeElement!==cw&&a.contextWarnPercent)cw.value=a.contextWarnPercent;}
+  // Đổi ngưỡng: gửi khi rời ô/Enter (change), KHÔNG gửi từng phím. Server kẹp [50,99] và
+  // trả giá trị đã kẹp — đổ ngược lại ô để user thấy số THẬT được lưu, không phải số vừa gõ.
+  document.addEventListener('change',function(e){
+    if(!e.target||e.target.id!=='ctxWarnPct')return;
+    var v=parseInt(e.target.value,10);if(isNaN(v)){zGet('/automation').then(renderAuto);return;}
+    zPost('/set-context-warn?percent='+v).then(function(r){if(r&&r.contextWarnPercent)e.target.value=r.contextWarnPercent;zToast(t('mem.ctxWarnSaved'));}).catch(function(){});
+  });
   // Một BẢNG, không phải chuỗi if lồng nhau: thêm công tắc mới = thêm một dòng dữ liệu.
   var AUTO_URL={scheduler:'/set-scheduler',realtime:'/set-realtime',autostart:'/set-autostart',autosync:'/set-autosync',shortcut:'/set-shortcut'};
   document.addEventListener('click',function(e){
