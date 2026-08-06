@@ -18,7 +18,7 @@ const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
 const SCHED = "backend/src/jobs/scheduler.ts";
-const I18N = "frontend/scripts/app.js";
+const I18N = "frontend/scripts/chrome.js"; // từ điển i18n — app.js tách 2026-08-06
 
 /** Every maintenance step the UI promises the daemon runs, in order. */
 const PROMISED = ["scan", "embed", "digest"];

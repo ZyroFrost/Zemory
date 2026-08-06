@@ -25,6 +25,36 @@ import { SLOT_ROLES } from "../../docs/structure-tree.js";
  * suy luận là HAI sự thật khác hạng (điều 13 cấm trộn) ⇒ phải khác id.
  * Tất định thuần: cùng đầu vào luôn ra cùng id, không phụ thuộc thứ tự dựng hay máy.
  */
+/**
+ * Đóng dấu `eid` cho một DANH SÁCH cạnh ĐÃ GỘP ĐỦ mọi lớp.
+ *
+ * Tách thành hàm dùng chung vì trước đây mỗi bề mặt tự đóng dấu một kiểu: payload UI có
+ * `eid`, còn `graph export` (chính là CONTRACT) thì không — nên id không ổn định GIỮA CÁC
+ * BỀ MẶT và việc trích dẫn cạnh trở nên vô nghĩa. Một hàm ⇒ cùng đầu vào, cùng id, ở mọi nơi.
+ */
+export function stampEdgeIds<
+  T extends {
+    from: string;
+    to: string;
+    type?: string;
+    kind?: string;
+    // `fromSymbol` là null khi lời gọi nằm ở mức module (không trong hàm nào) — nhận cả
+    // null để cạnh đó vẫn băm được, thay vì bắt phía gọi tự nắn kiểu.
+    fromSymbol?: string | null;
+    toSymbol?: string | null;
+  },
+>(edges: T[]): (T & { eid: string })[] {
+  return edges.map((e) => {
+    // Cạnh CẤP HÀM phải băm CẢ hai symbol. Đo 2026-08-06 trên chính repo này: bỏ symbol ra
+    // thì 2.526 cạnh `calls` co lại còn 949 id — có id gánh **157 cạnh khác nhau** (mọi lời
+    // gọi từ `go` sang một file đều trùng id). Một id trỏ 157 chỗ thì không định danh được
+    // gì, tức là hỏng đúng cái việc `eid` sinh ra để làm. Cạnh `imports` không có symbol nên
+    // id của chúng KHÔNG đổi — giữ nguyên tương thích với id đã công bố.
+    const sym = e.fromSymbol || e.toSymbol ? `${e.fromSymbol ?? ""}>${e.toSymbol ?? ""}` : "";
+    return { ...e, eid: edgeId(e.from, e.to, `${e.type ?? "imports"}${sym ? `#${sym}` : ""}`, e.kind ?? "declared") };
+  });
+}
+
 export function edgeId(from: string, to: string, kind: string, rel: string): string {
   return createHash("sha1").update(`${from}|${to}|${kind}|${rel}`).digest("hex").slice(0, 12);
 }

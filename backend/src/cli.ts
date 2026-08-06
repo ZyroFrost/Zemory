@@ -54,6 +54,7 @@ const {
   cmdStructure,
   cmdGrill,
   cmdReindex,
+  cmdTodoVerify,
 } = await import("./commands/harness.js");
 const { cmdHelp } = await import("./commands/help.js");
 await main();
@@ -86,6 +87,9 @@ switch (cmd) {
     break;
   case "reindex":
     cmdReindex();
+    break;
+  case "todo":
+    cmdTodoVerify(args);
     break;
   case "plan":
     await cmdPlan(args);

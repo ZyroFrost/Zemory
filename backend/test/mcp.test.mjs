@@ -57,6 +57,9 @@ test("MCP tool list exposes recall tools", async () => {
     "project_merge",
     "plan_search",
     "plan_show",
+    // Graph mirror (plan 13 §5) — nối 2026-08-06, đóng khoảng trống "mcp.ts 0 match graph".
+    "graph_impact",
+    "graph_neighbors",
   ]);
 });
 

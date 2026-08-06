@@ -12,6 +12,7 @@ import { archiveChanges, archiveTodo } from "../docs/archive.js";
 import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
+import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
@@ -477,3 +478,28 @@ export function cmdReindex(): void {
 //   impact <file>   ADVISORY blast-radius: importers (direct + transitive) + hub flag.
 //   fitness [--gate] deterministic health metrics; --gate exits 1 on failure (CI).
 
+
+/**
+ * `zemory todo verify` — đo lại từng mục `05_TODO` bằng CODE, in bảng LỆCH.
+ *
+ * Gate: exit 1 khi có lệch, để nối được vào `npm run check` như mọi cổng khác. Luật
+ * `02_RULES §Hành xử` đòi "soát sổ = đo lại"; lệnh này là phần MÁY của đòi hỏi đó.
+ */
+export function cmdTodoVerify(args: string[]): void {
+  const sub = args[0];
+  if (sub && sub !== "verify") {
+    console.log("usage: zemory todo verify");
+    console.log("  Đo lại từng mục 05_TODO bằng code (file/ký hiệu/endpoint nó nêu tên có thật không).");
+    process.exitCode = 1;
+    return;
+  }
+  const root = currentProjectRoot();
+  try {
+    const rep = verifyTodo(root);
+    console.log(formatTodoVerify(rep));
+    if (rep.findings.length) process.exitCode = 1;
+  } catch (error) {
+    console.log(`zemory todo verify: ${error instanceof Error ? error.message : "failed"}`);
+    process.exitCode = 1;
+  }
+}

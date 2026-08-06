@@ -69,6 +69,8 @@ function listFeatures(): FeatureStatus[] {
       help: tr("Kiểm link nội bộ trong docs/, độ dài changelog vs ngưỡng, sổ supersede, và cấu trúc repo theo 03_STRUCTURE. `zemory validate`.", "Check internal links across docs/, changelog length vs threshold, supersede bookkeeping, and repo structure against 03_STRUCTURE. `zemory validate`.") },
     { key: "grill", group: "workflow", label: tr("Grill trước khi build", "Grill before build"), state: "idle", detail: "—",
       help: tr("Bắt agent tra hỏi plan cùng bạn (từng câu một) TRƯỚC khi build, để build đúng thứ cần. Playbook: 04_SKILLS §grill.", "Make the agent interrogate the plan with you (one question at a time) BEFORE building. Playbook: 04_SKILLS §grill.") },
+    { key: "storage-safety", group: "token", label: tr("Kho nằm ngoài vùng đồng bộ", "Store outside sync scope"), state: "idle", detail: "—",
+      help: tr("Kho SQLite (WAL) nằm trong thư mục do trình đồng bộ đám mây quản là HỎNG — đã xảy ra thật 2 lần. Phép kiểm đọc sổ root của Google DriveFS (gồm cả kênh backup máy), biến môi trường OneDrive, marker Dropbox/Drive và số liên kết cứng của file DB. Đồng bộ xuyên máy đi bằng bundle mã hoá (`memory sync`).", "A live SQLite/WAL store inside a cloud-sync folder WILL corrupt — it happened twice. This check reads Google DriveFS's root table (including the machine-backup channel), OneDrive env vars, Dropbox/Drive markers and the DB file's hardlink count. Cross-machine sync goes through the encrypted bundle (`memory sync`).") },
   ];
 }
 

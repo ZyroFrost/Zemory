@@ -42,6 +42,8 @@ interface ZConfig {
   /** Idle background scheduler (scan → embed → digest) while the daemon runs
    *  (plan 14 §6.B). Default true — this is the "it just keeps itself current" bit. */
   scheduler?: boolean;
+  /** % cửa sổ context mà hook nhắc chốt sổ. Mặc định 95, kẹp [50,99]. */
+  contextWarnPercent?: number;
   /** Realtime capture: nạp phiên vào GM sau MỖI lượt trả lời (Stop hook của host).
    *  Default true — đây là đường nạp CHÍNH; scheduler chỉ còn là lưới bù. */
   realtime?: boolean;
@@ -164,6 +166,29 @@ export function getScheduler(): boolean {
 export function setSchedulerSetting(on: boolean): void {
   const c = read();
   c.scheduler = on;
+  write(c);
+}
+
+/** Mặc định ngưỡng cảnh báo context (%). Xem `getContextWarnPercent`. */
+export const CONTEXT_WARN_PERCENT_DEFAULT = 95;
+
+/**
+ * Ngưỡng % cửa sổ context mà hook `UserPromptSubmit` chốt sổ + nhắc MỘT lần.
+ *
+ * Trước đây là hằng `WARN_AT_PERCENT` chôn trong `capture-hook.ts` với lý do "chưa ai xin
+ * thì đừng phơi ra". Nay phơi vì cùng một ngưỡng KHÔNG hợp cho mọi cửa sổ: ở 200k thì 95%
+ * còn chừa ~10k token để chốt việc, ở 1M thì 95% chừa 50k — mà ở 200k, 95% có khi đã trễ.
+ * Kẹp trong [50, 99]: dưới 50 là nhắc suốt ngày (thành tiếng ồn, rồi bị bỏ qua), từ 100 trở
+ * lên là không bao giờ kịp nhắc.
+ */
+export function getContextWarnPercent(): number {
+  const raw = read().contextWarnPercent;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return CONTEXT_WARN_PERCENT_DEFAULT;
+  return Math.min(99, Math.max(50, Math.round(raw)));
+}
+export function setContextWarnPercent(percent: number): void {
+  const c = read();
+  c.contextWarnPercent = Math.min(99, Math.max(50, Math.round(percent)));
   write(c);
 }
 
