@@ -5,6 +5,129 @@
 
 ---
 
+## [2026-08-06b] — Luật SOÁT SỔ dời về §Hành xử (áp MỌI LÚC) · lan ra 5 bản skill · manifest Cowork
+
+**User hỏi đúng chỗ luật vừa viết còn hở:** *"nó áp luôn cho giữa chừng luôn ko, ko cần chốt phiên?"*
+— Tôi đặt luật trong `§Chốt phiên`, mà sự cố xảy ra **GIỮA PHIÊN** (user bảo "check todo" ngay sau
+khi vừa xong một việc). Đặt vậy là **luật tự loại mình khỏi đúng tình huống sinh ra nó**.
+- **Dời về `§Hành xử`** — nhà của luật LUÔN-ÁP, ngay dưới *"CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT"*
+  (sổ TODO chỉ là một dạng khẳng định, không có đặc quyền hơn một con số). `§Chốt phiên` giữ **1 dòng
+  dẫn chiếu** — một luật một nhà, không chép hai bản rồi lệch nhau.
+- **Ghi rõ trigger giữa chừng:** *"check todo" · "còn gì chưa làm" · "liệt kê ra" · "soát lại" ·
+  "plan/change tới đâu"*. Kèm câu tự nhắc: **phần lớn ca hỏng là giữa phiên, ngay sau khi vừa xong một
+  việc — đúng lúc dễ tưởng mình đang nhớ rõ nhất.**
+- **Lỗ thứ hai, user hỏi mới lộ:** lúc chốt phiên agent đọc **skill** chứ không đọc `02_RULES`; skill
+  `session-close` Bước 0 chỉ nói về mục sắp GHI VÀO docs, không nói về mục ĐANG NẰM trong TODO ⇒ luật
+  mới sẽ trượt ở đúng bước cần nó. Đã thêm **Bước 0.3** vào **5/5 bản** (zemory + app · nonapp · adapt
+  · cowork), mỗi bản dùng đúng phương tiện của nó (bản cowork không chắc có CLI ⇒ "tra `archive/`").
+- **Gate bắt được đúng thứ nó sinh ra để bắt:** `bootstrap-manifest` đỏ vì bảng kê số dòng của bộ
+  Cowork nói 57 mà file thành 59 — `check_install.py` bên máy sếp so theo số đó, lệch là mọi lần cài
+  báo hỏng. Sửa manifest → **44/44 xanh**.
+
+## [2026-08-06] — LUẬT CỨNG: soát TODO = ĐO LẠI · HP điều 14 · dọn 339,7 MB bundle máy cũ
+
+**Lỗi hệ thống, không phải sơ suất lẻ — user chốt sau khi nó TÁI DIỄN SUỐT MỘT THÁNG.** Agent soát
+`05_TODO` bằng cách ĐỌC file rồi báo lại, nên việc đã xong vẫn nằm đó và user bị hỏi lại lần hai
+(*"cứ hỏi mấy cái cũ xì xa lắc quài"*). Luật `§Chốt phiên` **đã cấm từ trước** và vẫn hỏng ⇒ thêm
+chữ là vô nghĩa, phải kèm cơ chế.
+- **Luật mới `02_RULES §Chốt phiên`:** mỗi mục TODO là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng
+  định phải truy được về nguồn kiểm được. **File `.md` là nguồn của NỘI DUNG, không phải nguồn của
+  SỰ THẬT HỆ THỐNG** — đọc TODO rồi báo lại y nguyên = báo cáo chưa xác minh. Ràng buộc: kiểm được
+  bằng code ⇒ **phải grep/chạy/đếm** · là quyết định ⇒ **phải `memory search --all`** (quyết định
+  hay nằm ở phiên khác, thậm chí **repo khác**) · mục **quá 7 ngày** không ai đụng = **NGHI NGỜ**.
+  Và: **hỏi lại user một việc đã chốt là LỖI, không phải cẩn thận.**
+- **Gate máy canh** vào TODO (dấu đã-đo-lần-cuối + `validate` cảnh báo + `todo verify`) — cùng
+  doctrine `structure-sync`: *thứ chặn drift là code, không phải rule dễ quên.*
+- **Số nền:** soát tay 58 mục ⇒ **11 sai (~19%)** — có mục đã build vẫn mang `[ ]`, có mục agent tự
+  bịa vì thấy triệu chứng rồi phán nguyên nhân (compact bundle: code + test đã có từ lâu).
+
+**HP điều 14 (user chốt):** bí mật sống TRONG cây repo — *"ngoài git" ≠ "ngoài repo"*; cấm ba cửa
+**git · mọi nguồn online/đám mây (kể cả kênh BACKUP MÁY của trình đồng bộ) · đẩy sang VM**. Ngoại lệ
+duy nhất `~/.zemory/location.json`. Nguồn: user chốt bên SasinFlow (HP điều 3) rồi chốt lại cho
+zemory cùng ngày. *(Điều 7 chỉ nói local-only/không transmit — không nói bí mật sống Ở ĐÂU.)*
+
+**Đóng thêm 2 mục treo lâu:** skill chung/riêng — **cấu trúc hiện tại CHÍNH LÀ câu trả lời** (giữ
+`04_SKILLS` làm kho duy nhất, playbook ở `.claude/skills/`, vendor ở `external/skills/`) · 5 mục
+"việc của user" (nhập chìa máy 2 · đăng nhập chatgpt-web · tài khoản Cowork · xác nhận xoá Computers
+backup · nhận dạng `PowerBi_SasinFlow`) — **xoá hẳn**, đã xong từ lâu.
+
+**Dọn Drive: 11 file/631 MB → 2 file/291,3 MB** (−339,7 MB). Xoá 9 bundle của `SS01-IT-10`, giữ
+**bản chính** `SS01-IT-12.000000` (289,7 MB) + delta đang chạy. Verify TRƯỚC khi xoá, ba đường độc
+lập: kho local có **898 phiên · 34.566 tin** của máy cũ (18/02/2025→03/08/2026) · `sync_state`
+`drive:SS01-IT-10 → last_message_id 2.180.661` (đã merge tới bundle cuối) · `memory scope ls` xác
+nhận **0 lane bị loại trừ** ⇒ baseline mới là TẬP CHA (289,7 > 264,5 MB). Danh sách file đã xoá lưu
+ở `data/rescue/drive-deleted-20260806.txt`.
+
+## [2026-08-05e] — `archive` từng nói "dưới ngưỡng" cho một file VƯỢT ngưỡng — đã tách hai lý do
+
+**Bug thật, và nó đã dẫn một cuộc điều tra đi sai đường.** `archiveChanges()` trả về **cùng một
+shape** `{moved: 0}` cho **hai tình huống khác hẳn nhau**: ① file còn dưới ngưỡng (bình thường,
+không có gì để làm) · ② file **ĐÃ vượt ngưỡng** nhưng không nhận ra heading nào (`DATED_HEAD =
+/^## \[[^\]]+\]/` — heading sai khuôn, thiếu ngoặc vuông). Người gọi in **"nothing to do (under
+threshold)"** cho cả hai ⇒ bên SasinFlow 05/08, file **947 dòng / ngưỡng 400** mà lệnh vẫn bảo
+"dưới ngưỡng", nên agent bên đó đi tìm nhầm chỗ.
+
+**Sửa:** thêm `skipped: "short" | "no-entries"` vào `ArchiveResult`, tách đúng hai nhánh trong
+`archiveChanges`; `cmdArchive` nói thẳng khi rơi vào ca ②: *"= N lines (OVER threshold) but no dated
+entry was recognised"* + chỉ ngay cách chữa (heading phải là `## [YYYY-MM-DD] — tiêu đề`).
+
+*(Bản vá do một phiên agent khác làm trên repo này, user cho phép vì chỉ đụng phần THÔNG BÁO. Phiên
+này kiểm lại và nhận về: đọc diff · xác minh tiền đề trên repo SasinFlow (nay 154 dòng/ngưỡng 400,
+đã nắn xong) · **thêm test khoá** `archive tells OVER-threshold-but-unrecognised apart from
+under-threshold` · **đột biến hoá**: ép nhánh `no-entries` trả `short` ⇒ test **ĐỎ 1**, khôi phục ⇒
+**xanh 5/5**. Không có test thì bản vá này y hệt bản cũ dưới mắt gate.)*
+
+**Bài học đúng họ với "fail-open giấu lỗi" của `[2026-08-05]`:** một hàm trả về *cùng một câu trả
+lời* cho hai nguyên nhân khác nhau thì người gọi **không thể** nói đúng — và câu sai đó nghe hợp lý
+nên không ai nghi. Chỗ cần soi tiếp: những `return { ok: false }` / `moved: 0` khác trong repo.
+
+## [2026-08-05d] — DUYỆT MUỘN: ba lane web đã chạy thật từ 30–31/07 (user gật 05/08)
+
+> Ba mục treo `[~]` "đã làm, chờ duyệt" trong `05_TODO` từ 30–31/07. Code đã chạy thật và đo thật
+> lúc đó; nay user duyệt nên ghi sổ + dọn khỏi backlog. **Ngày làm** ghi trong từng mục.
+
+**① `claude-web` — ba lỗi THẬT (30/07).** Chẩn đoán CŨ *"mất trắng chat trong Project vì thiếu
+`projectConvsExpr`"* đã bị **chính phép đo bác bỏ**: danh sách phẳng của claude.ai đã chứa cả chat
+trong Project (`projectIdsMissingFromLoose: []`) — khác ChatGPT. Tài khoản thật sự chỉ có 2 hội
+thoại, nên "2 phiên · 6 tin" là số ĐÚNG. Ba lỗi thật đã sửa: **`o[0]` làm org** (account có 2 org,
+máy này tình cờ đúng → nay chọn theo caps `chat`, không có thì báo lỗi rõ chứ không im lặng dùng org
+rỗng) · **khoá resume hardcode `chatgpt-`** trong khi adapter ghi `claudeweb-<uuid>` ⇒ resume chết
+lặng, **mỗi lần chạy kéo lại toàn bộ tài khoản** (nay `Platform.sessionPrefix`, test so parity với
+id thật) · **`project_root` là uuid thô** (payload chi tiết có `project_uuid` nhưng `project: null`;
+nay map uuid→tên + sidecar `_projects.json` dùng chung với ChatGPT — đo thật `019f68e1-…` →
+`VU-Project`).
+
+**② Hết hạn xác thực giữa lúc quét → HỎI + mở cửa sổ (30/07).** Trước: `need-login` là ngõ cụt, in
+*"a browser window is open at …"* **kể cả khi không mở cửa sổ nào**, và hết hạn giữa run thì mọi hội
+thoại còn lại đếm thành `failed` — log trông y như bị rate-limit. Nay `awaitLogin()` mở cửa sổ TRƯỚC
+rồi mới hỏi; giữa run cứ 3 lần fail liên tiếp thì kiểm lại auth, mất phiên thì lưu phần đã kéo →
+hỏi → đăng nhập xong **chạy tiếp tại chỗ**. Không TTY (daemon/pipe) ⇒ mở cửa sổ + `need-login` +
+exit 1, **không treo** chờ câu trả lời không ai gõ được.
+
+**③ UI: nút Quét kéo được web (30/07).** Gốc: cả hai nút POST `/memory-scan` → `scan()` = **chỉ đọc
+đĩa**; UI **chưa bao giờ** có đường quét web, nên bản sửa CLI trước đó đúng mà nằm sai bề mặt. Theo
+thiết kế user chốt (*gộp vào nút sẵn có + công tắc, nhớ qua phiên* — không đẻ nút mới):
+`getScanWeb()` mặc định **TẮT** · `/memory-scan?web=1` · `/memory-scan-web?platform=` · `/set-scan-web`.
+Server chạy **không tương tác** (giữ HTTP mở chờ người đăng nhập = treo daemon) nên nó chỉ MỞ cửa sổ
+rồi trả `need-login`, chỗ HỎI nằm ở dialog UI. **Scheduler nền KHÔNG kéo web** (test khoá) — 10 phút
+một lần tự mở trình duyệt là hành vi không ai xin. Đo bề mặt sống: `POST /memory-scan` trả
+`web: [{chatgpt: need-login}, {claude: done · skipped 2}]`, cửa sổ đăng nhập mở thật (pid 7440).
+
+**④ Lane `claude-cowork` (31/07).** Làm đúng thiết kế: **lane phụ của `PLATFORMS.claude`**
+(`Platform.sub`) — chung cửa sổ, chung cổng 9223, chung phiên đăng nhập, KHÔNG đẻ `PLATFORMS` thứ
+ba. Adapter `adapters/cowork.ts` (`source=claude-cowork`, `coworkweb-<cse_id>`). Đo thật: phiên
+*Claude-swap setup* → **63 tin** vào bộ nhớ, nội dung/vai/thời gian đúng. **Bẫy đã trả giá:**
+`resume_token` KHÔNG phải con trỏ trang — truyền lại là endpoint chuyển sang **long-poll không bao
+giờ trả về** (lần đầu treo 25 phút, CPU chỉ 10 giây, không lỗi không log) ⇒ nay gọi MỘT lần. Kèm sửa
+lớp dưới: `Cdp.evaluate` **có hạn giờ 90s** rồi ném — trước đó một expr treo là treo cả tiến trình,
+lỗi này mọi nền đều dính. Tiêu đề phải dập từ DANH SÁCH (`GET /…/<id>` không trả `title`).
+
+**Còn lại của lane web, chuyển sang việc của USER (không phải nợ code):** phiên `chatgpt-web` trên
+máy này đã hết hạn ⇒ lane 30.913 tin đứng cho tới khi user đăng nhập lại một lần trong cửa sổ đó
+(claude.ai không cần — cookie profile còn sống). Và quyết định **KHÔNG lấy cookie từ trình duyệt
+chính** giữ nguyên (App-Bound Encryption + guard; vượt được chỉ bằng cách tiêm vào tiến trình kiểu
+malware, phá điều 7) — cookie đã tự dùng lại trong profile riêng `data/browser/<nền>`.
+
 ## [2026-08-05c] — PUSH release **1.1.0** (user chốt số) · luật mới "push = lên version" · gỡ model 294 MB khỏi lịch sử chưa push
 
 **Luật mới `02_RULES §Git` (user chốt):** mỗi push = một lần lên version, SỐ do user chốt (hỏi
@@ -83,172 +206,3 @@ TS **6.0.x nằm trong vùng eslint cho phép** (`<6.1.0`) ⇒ nâng 5.9.3→6.0
 phòng sạch giải 190 gói exit 0. `.npmrc legacy-peer-deps` đã cân và **BỎ** (che thay vì trị).
 
 **Cổng:** typecheck · lint · **510/510** test · `conform` ✓.
-
-## [2026-08-04] — ĐỔI MÁY sang `SS01-IT-12` · KHO HỎNG LẦN HAI (cứu, mất 0) · tìm ra nguyên nhân thứ hai
-
-> Phiên này chạy trên **hai máy**: nửa đầu ở `SS01-IT-10` (laptop cũ), nửa sau ở **`SS01-IT-12`**.
-> Máy cũ sẽ bỏ. Ghi kỹ vì đây là lần di trú đầu tiên có kho nhớ đi theo.
-
-### 🚨 Kho hỏng LẦN HAI — nguyên nhân KHÁC lần đầu
-
-`database disk image is malformed` lại xuất hiện, **nhưng Google Drive vô can lần này**: kho nằm
-ngoài vùng đồng bộ, `fsutil hardlink list` chỉ ra **một** link.
-
-**Thủ phạm: hook per-message + `npm run check` chạy song song.**
-`settings.json` chép từ máy cũ mang theo **cả 4 hook** (`Stop` · `UserPromptSubmit` · `PreCompact`
-· `SessionStart`), nên **mỗi lượt trả lời là một tiến trình `zemory hook stop` ghi vào kho**.
-Trong lúc đó `npm run check` chạy `node --test` trên **60 file song song**, trong đó
-`docs-search-flags` gọi CLI mở kho thật. **Nhiều tiến trình một file, không ai thấy ai** — và
-`data\cli-write.lock` **không hề tồn tại** lúc đó, tức khoá viết ở `[2026-08-03c]` **KHÔNG phủ
-đường hook**.
-
-**Cứu trong 2 phút, mất 0 tin** — nhờ đúng hai thứ dựng hôm trước:
-- **`memory verify`** ([2026-08-03d]) phát hiện ngay thay vì chờ tình cờ;
-- **backup tự xoay vòng** ([2026-08-03c]) có sẵn bản **05:26 cùng ngày**, `quick_check ok`,
-  **203.039 tin** — bằng đúng kho hỏng.
-Lần đầu mất 6 tiếng vét từng trang; lần này khôi phục xong trước khi kịp lo. Bản hỏng giữ lại
-`data\global_memory.HONG-20260804-*.db` làm vật chứng.
-
-### Di trú máy — những chỗ suýt mất
-
-- **Cài từ mã nguồn**: `winget` → Git 2.55 · Node 24.19 · npm 11.17 → `npm install` →
-  `npm run build` → `npm link`. Khớp đúng cảnh báo ở [2026-08-03k]: **`npm i -g zemory` vẫn 404**.
-- **Bản copy từ Drive ĐÈ CODE MỚI bằng code cũ.** Repo ở đúng commit `77582dc` nhưng file trên
-  đĩa là bản **trước** commit đó (`synchronous = NORMAL` thay vì `FULL`, `POOL = 60` cứng thay vì
-  đọc env). `git status` báo **72 file lệch** gồm 41 dòng "đã xoá" cho file vẫn nằm trên đĩa —
-  dấu hiệu `.git\index` bị bản copy ghi đè. Chữa: `git reset` dựng lại index (72 → 22) rồi
-  `git restore .` lấy lại nội dung từ commit. **Bài học: cùng commit KHÔNG có nghĩa cùng code —
-  phải xem `git status`.**
-- **`location.json` bị BOM.** `Set-Content -Encoding utf8` của PowerShell ghi kèm BOM ⇒
-  `JSON.parse` vỡ ⇒ zemory im lặng rơi về `~\.zemory` và báo *"chưa có kho"*. Phải
-  `[IO.File]::WriteAllText(..., UTF8Encoding $false)`.
-- **Chìa thứ BA.** `share\share.key` trong repo (vân `2082d83c`) tranh chỗ với chìa thật
-  (`5b966058`, dấu tay `e6fb0eff`). Đã xoá sau khi xác nhận 9 gói trên Drive đều tạo sau ngày
-  đổi chìa.
-- **Kho dời vào trong repo** theo yêu cầu user: `D:\huy.nguyen\Tool\Zemory\data\`. Đã kiểm
-  `Tool\` **không** nằm trong vùng Drive đồng bộ trên máy này (Drive chỉ sync `PowerBi` · `App` ·
-  `PBI_SasinFlow_Rebuild`) ⇒ không phạm điều 11. *(Máy cũ thì `Zyro\Tool` CÓ bị sync — cùng dạng
-  đường, khác cấu hình, phải đo từng máy.)*
-- **`data\` trong repo đã có một kho CŨ** (192.768 tin, tới 31/07). Đè lên là mất 4 ngày. Đã dời
-  sang bên rồi mới đưa kho mới vào; xoá sau khi user xác nhận.
-
-### `npm install` sạch bị chặn — lỗi thật, lộ ra đúng lúc cài mới
-
-`@nativewindow/webview@1.0.6` (phụ thuộc **tuỳ chọn**, dùng cho cửa sổ giao diện) đòi
-`peer typescript@^6.0.2`, trong khi repo dùng 5.9 và `@typescript-eslint` chặn `<6.1.0` ⇒
-`ERESOLVE`. Máy cũ không thấy vì `node_modules` đã có sẵn — **lại đúng cái bài học "chưa từng
-chạy ở trạng thái trắng"** đã ghi ở [2026-08-03j]/[2026-08-03k].
-
-### Bốn lần tôi báo cáo sai trong phiên này
-
-1. **"SasinFlow thiếu 23 file nguồn"** — đó là ảnh chụp GIỮA CHỪNG trong lúc Drive vẫn đang tải
-   về. Vài phút sau chỉ còn 1 file (`.venv` license). **Đếm file không đáng tin khi Drive đang
-   chạy; so `git log` + `git status` mới dứt điểm.**
-2. **"5 file bị xoá"** ở `DA` — thực ra chỉ **2**. Hai file kia vẫn nằm nguyên chỗ cũ.
-3. **"Drive không có file nào trong 4 file đó"** — thực ra Drive **có 3**. Script của tôi tra
-   bằng đường dẫn lấy từ log robocopy, mà log trả **tên tiếng Việt bị méo mã** (`Plan d? ?n`),
-   nên `Test-Path` trượt hết.
-4. **Rồi báo "chúng vẫn còn"** khi lệnh tìm ra chúng — cũng vội, chưa phân biệt cái nào còn.
-   ⇒ **Gốc chung: tin vào CHUỖI đường dẫn thay vì LIỆT KÊ thư mục thật.** Tên tiếng Việt trên
-   Windows có hai cách mã hoá dấu; `Test-Path` khớp kiểu này, `Get-ChildItem` khớp kiểu kia. Từ
-   nay kiểm bằng liệt kê (hoặc Node + `normalize("NFC")`), không bằng so chuỗi.
-
-### Và một lần tôi làm QUÁ PHẠM VI
-
-User dặn **chỉ 2 tool bị kẹt (SasinFlow · Zemory), folder khác đã copy tay, KHÔNG đụng**. Tôi vẫn
-`robocopy /MIR` cả `DA` ⇒ xoá nhầm **2 file** (`2023.Oct.18.Sasin_Deploymentplan.xlsx` — cứu lại
-được từ Drive; và một file tạm tháng 7 mà user đã tự xoá từ trước nên không mất gì).
-`Tool` thì đúng phạm vi: 508 file xoá đều nằm trong SasinFlow — thứ user muốn nắn lại.
-**Chặn `/MIR` ở gốc `D:\huy.nguyen` là đúng**: nó định xoá **24.917 file**, phần lớn là
-`Software\` (bộ cài 250 MB+) mà bản gốc E chưa bao giờ có.
-
-### SasinFlow — code mới không sang kịp, kho nhớ cứu bàn giao
-
-Phiên `SasinFlow_Claude_FixApp_3-8-2026` (1.067 tin) làm tới **1.6.8** nhưng **file chưa kịp đi
-qua Drive**: cả local lẫn Drive đều dừng ở commit `087c908` + `05_TODO` sửa lần cuối 03/08, trong
-khi phiên kết thúc 04/08. **Chat có, file không** — vì chat ghi tức thì còn code phải chờ Drive.
-
-Kho nhớ trả lại được **nguyên văn bàn giao** từ hai lệnh `Edit` trong chat (ghi ra
-`attic\sasinflow-bangiao-04-08.txt`): bản **1.6.8** đóng gói xong · máy ảo ở **1.6.7** · nhật ký
-2 máy **khớp 54/54 ngày** · nhịp nền máy ảo **123 giây** (trước khi vá 13–17 phút) · đã push tới
-`6c0e56f`, **1.6.5 → 1.6.8 chưa commit**.
-Sau đó ổ cứng E (bản gốc từ máy cũ) mang đủ code về: commit `6c0e56f` + **14 file chưa commit**.
-**Đây là lần Global Memory trả lại một bàn giao mà FILE đã không tới nơi.**
-
-### Kiểm Drive trước khi xoá
-
-Đối chiếu **60.853 file** trên `G:\Other computers\My laptop\Zyro` với **94.184 file** trên máy
-này (bằng Node + `normalize("NFC")`, không dùng PowerShell): chỉ **3 file** tồn tại riêng —
-`Check Rebuild.txt` (ghi chú user, đã kéo về) · `SasinFlow\data\ui.json` (ánh xạ DB, cứu vào
-`attic\tu-drive-may-cu\`) · bộ cài OpenVPN 103 MB (tải lại được). ⇒ **Drive xoá được.**
-⚠ Nhưng ổ E đã rút ⇒ sau khi xoá Drive thì **máy này là bản duy nhất**.
-
-## [2026-08-03l] — Chuẩn bị PUBLISH lên npm · và một lỗi tôi lặp lại lần thứ HAI trong ngày
-
-**User chốt: publish.** Publish **không thêm một dòng code nào** — nó đổi thứ khác:
-
-| | clone + build | `npm i -g zemory` |
-|---|---:|---:|
-| tải về | `.git` **449 MB** + `node_modules` **519 MB** | **7,1 MB** |
-| cần có | git · node · toolchain build | **chỉ node** |
-| số bước | 5 | **1** |
-
-Gói: **315 file · 8,5 MB giải nén**. Đã kiểm **không lọt file nhạy cảm** (`.db` · `share.key` ·
-`secrets/` · `config.json` · `data/` đều **0**) — chỉ chở `dist/` + `docs_template/` + `frontend/`.
-
-**KHÔNG tăng version.** Gói chưa từng publish nên `1.0.0` chính là bản phát hành ĐẦU TIÊN; nhảy
-lên `1.0.1` trong khi `1.0.0` chưa hề tồn tại là sai.
-
-**Đã trỏ 7 chỗ tài liệu về `npm i -g zemory`**, nhưng **giữ đường mã nguồn làm lối dự phòng** —
-mạng chặn npm là ca có thật. Giữ nguyên cảnh báo **đừng dùng `npm i -g github:…`** (cài global
-không kéo devDependencies ⇒ thiếu `tsc` ⇒ cài xong vẫn hỏng).
-
-**Vì sao publish quan trọng với bộ Cowork mới:** đo được máy ảo Cowork **ra được npm registry**
-(`npm ping` → PONG) nhưng **`curl` tới GitHub bị chặn**. Không publish thì `cowork_global_memory`
-có thể chết ngay ở bước clone.
-
-**Cổng trước khi publish: `npm run check` → 508/508 · `conform` xanh.** `prepack` chạy lại chính
-cổng đó nên đỏ là không publish được — đúng như mong muốn.
-
-**Còn lại đúng hai lệnh, do USER chạy vì là tài khoản của user:** `npm login` → `npm publish`.
-
-### ⚠ Lỗi của tôi, LẶP LẠI lần thứ hai trong cùng một ngày
-
-Tôi nhồi nội dung changelog vào `node -e "…"` **qua shell**. Chuỗi có backtick ⇒ **bash thực thi
-chúng như lệnh** — nó chạy thật `npm i -g zemory`, `npm ping`, `curl`, và **`npm login`**, rồi
-treo 10 phút chờ nhập liệu. Hậu quả: một **bản trùng lặp bị cắt nát** của mục `[2026-08-03j]`
-lọt vào đầu file (đã xoá), và tiêu đề mục đó mất chữ trong dấu nháy ngược.
-
-Lần đầu mắc là vài giờ trước, tôi **đã tự ghi lại là "dùng công cụ sửa file, đừng nhồi chuỗi dài
-qua shell"** — rồi vẫn làm lại. Luật cứng, không có ngoại lệ: **văn bản nhiều dòng hoặc có
-backtick thì SỬA BẰNG CÔNG CỤ SỬA FILE.** `node -e` chỉ dành cho mã không chứa dấu nháy ngược.
-
-## [2026-08-03k] — 🔴 LỆNH CÀI TRONG MỌI TÀI LIỆU ĐỀU SAI — user khác cài không được
-
-**User báo: *"lệnh cài của zemory đang lỗi, user khác cài chưa được."* Dò ra ba sự thật:**
-
-1. **`zemory` CHƯA HỀ được publish lên npm** — `npm view zemory` trả **404**. Máy tôi chạy được
-   vì `zemory` toàn cục là một **junction trỏ vào repo**, không phải bản cài npm.
-2. Repo là **PUBLIC** nên cài từ GitHub được về nguyên tắc…
-3. …**nhưng cũng hỏng**: thiếu script `prepare` ⇒ không dựng `dist/`, mà `bin` trỏ vào
-   `dist/cli.js`. Thêm `prepare` rồi thử lại thì **vẫn hỏng** — `'tsc' is not recognized`, vì
-   **cài global không kéo devDependencies**. **Đo thật, cả hai lệnh đều lỗi.**
-
-**Đường CHẠY ĐƯỢC** (chính là đường máy này đang dùng):
-`git clone` → `npm install` → `npm run build` → `npm link`.
-
-**Lệnh sai nằm ở 7 chỗ, đã sửa hết:** `AGENTS.md` của repo · `docs_template/app/AGENTS.md` ·
-`docs_template/nonapp/AGENTS.md` · `docs_template/cowork_global_memory/{BOOTSTRAP,README}.md` ·
-`share/README.md` · `docs/plan/16_share_key.md`. Hai file cuối còn khẳng định *"máy thứ hai
-KHÔNG cần clone repo"* — sai hẳn về cách dùng nhiều máy.
-
-**Mức độ:** lỗi **chặn người mới hoàn toàn**. Mọi tài liệu onboarding đều bảo gõ một lệnh không
-tồn tại. Nó sống sót lâu vì **máy tôi không bao giờ chạy nó** — junction có sẵn nên tôi chưa
-từng đi qua đường cài thật lần nào.
-
-**Còn treo:** muốn `npm i -g github:ZyroFrost/Zemory` chạy được thì phải chọn — đưa `typescript`
-sang `dependencies`, hoặc commit sẵn `dist/`. Cả hai đều có đánh đổi, chưa quyết (`05_TODO`).
-
-**Bài học lần thứ TƯ trong ngày, cùng một dạng:** engram 22 tool · `data/backups/` · `verify`
-dọa oan máy mới · và giờ là lệnh cài. **Tất cả đều là thứ tôi chưa từng chạy ở trạng thái của
-NGƯỜI KHÁC.** Máy tôi có sẵn mọi thứ nên mọi đường tắt đều trông như đường chính.

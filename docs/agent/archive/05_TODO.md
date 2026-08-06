@@ -1,6 +1,22 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **Lane `claude-cowork` — ĐÃ GHI SỔ `06_CHANGES [2026-08-05d]` (user duyệt 05/08).** *(chi tiết
+  build + bẫy `resume_token` nằm ở entry đó; dòng dưới giữ làm hồ sơ đo)*
+  Làm đúng như ghi chú: **lane phụ của `PLATFORMS.claude`** (`Platform.sub`), chung cửa sổ · chung cổng
+  9223 · chung phiên đăng nhập — KHÔNG đẻ `PLATFORMS` thứ ba. Adapter `adapters/cowork.ts`
+  (`source=claude-cowork`, origin `web`, `coworkweb-<cse_id>`), đã đăng ký trong `allAdapters()`.
+  **Đo bề mặt sống:** `Claude-swap setup` → **63 tin** trong bộ nhớ, nội dung + vai + thời gian đúng.
+  - **BẪY đã trả giá — `resume_token`/`resume_cursor` KHÔNG phải con trỏ trang.** Truyền lại vào
+    `/v1/code/sessions` là endpoint chuyển sang **long-poll và không bao giờ trả về**: lần chạy đầu treo
+    **25 phút, CPU chỉ 10 giây**, không lỗi không log. Nay gọi MỘT lần, không phân trang.
+  - **Kèm sửa lớp dưới:** `Cdp.evaluate` giờ **có hạn giờ 90s** rồi NÉM. Trước đó `awaitPromise` chờ vô
+    hạn nên một expr treo là treo cả tiến trình — lỗi này không riêng Cowork, mọi nền đều dính.
+  - **Tiêu đề phải lấy từ DANH SÁCH**: `GET /v1/code/sessions/<id>` KHÔNG trả `title` (đo: chỉ có
+    `response_shape`), nên phiên vào bộ nhớ không tên nếu không dập nhãn từ list.
+  - Còn lại: danh sách mới lấy **1 trang (limit=100)** — tài khoản >100 phiên Cowork thì cần tìm cách
+    phân trang THẬT (không phải resume_token). Chưa có tài khoản nào để đo.
+
 - [x] **Đã xong:** cứu theo lô-chia-đôi (198.758) → chép 127.700 vector → dựng lại 7/7 FTS →
   `integrity_check: ok` → kiểm nghiệp vụ (FTS ra 31.748 dòng, CLI tìm đủ ba lớp) → đổi chỗ →
   `memory scan` nạp lại 144 tin từ transcript gốc ⇒ **+602 tin, mất 0**.

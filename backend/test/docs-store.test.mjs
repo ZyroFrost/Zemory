@@ -68,6 +68,36 @@ test("archive moves the OLDEST changelog entries to a real file (FILE WINS, not 
   assert.ok(listEntries(root, dbPath).length >= 1);
 });
 
+test("archive tells OVER-threshold-but-unrecognised apart from under-threshold", (t) => {
+  // Hai lý do "không làm gì" từng trả về CÙNG một shape, và người gọi in "under threshold"
+  // cho cả hai — một cuộc điều tra thật (SasinFlow 05/08) bị dẫn sai đường vì file 947 dòng
+  // trên ngưỡng 400 mà lệnh vẫn bảo "dưới ngưỡng". Test khoá đúng chỗ phân biệt đó.
+  const root = tempDir(t, "zemory-archive-why-");
+  const agentDir = join(root, "docs", "agent");
+  const mainPath = join(agentDir, "06_CHANGES.md");
+  const dbPath = join(root, "memory.db");
+  mkdirSync(agentDir, { recursive: true });
+  const ctx = {
+    projectRoot: root,
+    docsDir: agentDir,
+    config: { docs: "docs/agent", adapters: {}, thresholds: { changes_lines: 30, changes_keep: 18 } },
+    log: () => {},
+  };
+
+  // ① NGẮN — dưới ngưỡng, đúng nghĩa "không có gì để làm".
+  writeFileSync(mainPath, "# Change Log\n\n## [2026-01-01] — one\n\nline\n");
+  const short = archiveChanges(ctx, dbPath);
+  assert.equal(short.moved, 0);
+  assert.equal(short.skipped, "short", "under threshold ⇒ 'short'");
+
+  // ② DÀI nhưng heading SAI KHUÔN (thiếu ngoặc vuông) — file vượt ngưỡng mà không nhận ra entry nào.
+  writeFileSync(mainPath, "# Change Log\n\n" + Array.from({ length: 6 }, (_, i) => `## 2026-01-0${i + 1} — no brackets\n\n${"line\n".repeat(6)}`).join("\n"));
+  const bad = archiveChanges(ctx, dbPath);
+  assert.equal(bad.moved, 0);
+  assert.ok(bad.activeLines > 30, "file thật sự VƯỢT ngưỡng");
+  assert.equal(bad.skipped, "no-entries", "vượt ngưỡng mà không nhận ra heading ⇒ 'no-entries', KHÔNG phải 'short'");
+});
+
 test("changelog reindex from .md is searchable and project-scoped", (t) => {
   const base = tempDir(t, "zemory-ch-");
   const root = join(base, "a");

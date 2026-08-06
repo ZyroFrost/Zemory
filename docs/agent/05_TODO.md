@@ -5,8 +5,15 @@
 
 ## 🔴 ĐANG CHẠY — dựng lại chỉ mục ở 768 chiều + fp32 (máy `SS01-IT-12`)
 
-> Kho thật `✓ lành` · **~205,7k tin · 1.283 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
-> Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓.
+> Kho thật `✓ lành` · **~207k tin · 1.284 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
+> Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓ · đã push **1.1.0**.
+
+> 🔄 **BÀN GIAO PHIÊN 2026-08-05/06 — đọc trước khi gõ gì.** Embed đang chạy trong **cửa sổ PowerShell
+> RIÊNG của user** (không phải job của agent): `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db";
+> $env:ZEMORY_MODEL_DIR="D:\huy.nguyen\Tool\Zemory\data\models"; node "…\dist\cli.js" memory embed --all`.
+> **Còn ~51.000 tin** lúc chốt phiên. Nó im giữa hai dòng in là BÌNH THƯỜNG (tin dài, mỗi pass hàng chục
+> phút) — **đừng bôi đen console** (làm treo tiến trình), muốn xem tiến độ thì đếm thẳng trong DB. Thoát
+> ra thì mũi tên lên + Enter, tự nối chỗ dừng (`--all` chỉ làm phần thiếu; **TUYỆT ĐỐI không `--rebuild`**).
 
 - [~] **Rebuild 768+fp32 trên BẢN SAO** `D:\huy.nguyen\zemory-lab\lab.db` (~43 giờ, đo thật).
   Chạy tiếp: `memory embed --all` với `GLOBAL_MEMORY_DB` trỏ bản sao **và** `ZEMORY_MODEL_DIR`
@@ -19,24 +26,29 @@
 - [ ] **TRÁO kho sau khi xong (thứ tự bắt buộc):** `bench --recall` trên bản sao phải thắng mốc
   **41%@10** (điều 12) → thay file kho thật → `memory scan` nạp lại transcript sinh ra trong lúc
   chờ (idempotent, đọc từ đĩa) → `memory embed` bù phần mới ở 768/fp32.
-- [ ] **HOOK ĐANG TẮT** (user tắt 2026-08-05 để chạy gate). Bật lại: `zemory hook install`.
-  **Việc của USER** — agent bị bộ lọc quyền chặn cả `install` lẫn `uninstall`.
+- [ ] **HOOK ĐANG BẬT** (user bật lại 2026-08-05 chiều, sau cửa sổ gate). Hệ quả: **KHÔNG chạy
+  `npm run check`** khi hook còn bật (60 test song song + hook ghi = tổ hợp hỏng kho 04/08);
+  muốn chạy gate → user tắt (`zemory hook uninstall`) rồi bật lại — agent bị bộ lọc quyền chặn cả hai.
 - [ ] **Rerank vẫn `q8`, CHƯA đo** — model khác (cross-encoder `bge-reranker-base`), số đo của
   embed KHÔNG suy ra được cho nó. User chốt tạm chấp nhận vì rerank chỉ chạy lúc TRUY VẤN, không
   dính đường nạp. Đo xong mới được đổi mặc định (điều 12).
-- [ ] **23 doc trùng đường cũ — ĐÃ DỌN 2026-08-05** (23 doc + 288 section; `section` 1090 → 802).
-  Còn lại: sau khi TRÁO kho thì chạy `zemory reindex` một lần cho chỉ mục docs tươi lại.
-- [ ] **Sao lưu NGOÀI máy** — ổ E đã rút, Drive sắp xoá ⇒ máy này là bản **DUY NHẤT**. Backup
-  `data\backups\global_memory-2026-08-05T03-26-42-301Z.db` (1,25 GB) nằm **cùng ổ** với kho.
-- [ ] **23 doc trùng đường cũ** `D:\Zyro\Tool\Zemory` trong bảng `doc` — trùng path **23/23** với
-  bản đường mới (đo 2026-08-05), tức nhánh cũ dư thuần, dọn được.
+- [ ] **Sau khi TRÁO: `zemory reindex`** một lần cho chỉ mục docs tươi (đợt dọn 78 dòng doc đường
+  cũ 05/08 đã xong — Zemory 23 + 6 repo khác 55, xem `06_CHANGES [2026-08-05b]`).
+- [ ] **Sao lưu NGOÀI máy — đã có MỘT phần:** bundle `.enc` trên Drive (baseline 289,7 MB + delta,
+  auto-sync 05/08) phủ được phần NGUỒN; backup local 1,25 GB vẫn nằm **cùng ổ** với kho, và công
+  embed 43 giờ chưa được bảo hiểm (bundle lean không chở vector) → sau tráo cân nhắc `export --full`.
 - [ ] **Xoá `data\global_memory.HONG-20260804-*.db`** (1.025 MB) khi chắc kho mới chạy ổn.
+  Cùng đợt: `attic\zemory-lab\lab.db` (1,18 GB, bản lab máy cũ đã lỗi thời) + folder
+  `D:\huy.nguyen\zemory-lab` (sau khi tráo xong) — đều chờ user gật vì là XOÁ.
 
-## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — ĐÃ PHỤC HỒI ĐỦ, còn treo mỗi nguyên nhân gốc
-> Phát hiện lúc chạy bench recall: `database disk image is malformed`. Sáng cùng ngày
-> `integrity_check` còn **ok**, nên hỏng xảy ra TRONG hôm nay.
-> **Kết quả: mất 0 tin.** Kho hiện có **199.360 tin · 1.272 phiên**, nhiều hơn trước khi hỏng.
-> Chi tiết đầy đủ ở `06_CHANGES [2026-08-03b]`.
+## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — PHỤC HỒI ĐỦ · nguyên nhân gốc ĐÃ TÌM RA — còn MỘT việc code
+> 🔄 **Cập nhật 2026-08-05 (soát TODO):** vế "còn treo nguyên nhân gốc" của mục này ĐÃ ĐÓNG —
+> `06_CHANGES [2026-08-03h]` kết luận **Google Drive đồng bộ chính file DB** (dòng "Đã loại: thư
+> mục đồng bộ đám mây" bên dưới là kết luận SAI thời điểm đó, giữ làm hồ sơ). Ngày 05/08 còn phát
+> hiện thêm tầng nữa: DriveFS backup **cả `D:\huy.nguyen`** (kho + chìa lên mây trần) — user đã gỡ.
+> **Việc CODE còn sống duy nhất của mục này = vá write-gate (② bên dưới).** Backup tự xoay vòng
+> đã xây `[2026-08-03c]`; embed dở dang đã bị rebuild 768 thay thế.
+> *(Sử gốc: phát hiện lúc bench recall; mất 0 tin; kho lúc đó 199.360 tin. Chi tiết `[2026-08-03b]`.)*
 
 **Thiệt hại (đo, không đoán):** hỏng nằm ở `messages_fts*` · `section_fts*` · `changelog_fts*`
 · `session_digest_fts_tri*` (bảng bóng FTS — 100% dẫn xuất) và chạm cả **bảng nguồn**:
@@ -45,18 +57,18 @@
 **Bản gốc hỏng giữ nguyên 2 bản** ở `data/corrupt-20260803-091106/` — KHÔNG xoá cho tới khi
 truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
 
-- [~] **Đang chạy nền:** `memory embed --all` bù **15.718** tin chưa có vector.
 - [ ] **Sửa `relocate` cho đúng lời hứa** — nó in "settings moved" nhưng bỏ lại `backups/` ·
   `browser/` · `imports/` · `logs/` · `cockpit/` · `context-guard/`, và **bỏ lại `secrets/` +
   `share.key`** (chìa danh tính ở lại trong thư mục đang upload cloud — lỗ **điều 7**, không chỉ
-  bất tiện). Lần này đã dời tay; lệnh phải tự làm.
-- [ ] **Cảnh báo sớm: `doctor`/`verify` phải BÁO khi DB nằm trong thư mục đồng bộ đám mây.**
-  Kiểm rẻ: hardlink count > 1, hoặc có `.tmp.driveupload`/`.dropbox`/`OneDrive` ở thư mục cha.
-  Nếu có sẵn từ đầu thì đã không mất một ngày.
-- [ ] **Việc còn dở khi dừng:** `memory embed` đã dừng ở còn ~2.282 tin chưa có vector — chạy
-  lại `zemory memory embed --all` lúc rảnh. Bản `.bak` 1,1 GB của `relocate` vẫn nằm trong vùng
-  Drive ở `data/`, xoá được sau khi yên tâm.
-- [ ] **TRUY NGUYÊN NHÂN GỐC — (giữ lại phần đã loại, để không ai đi lại)**
+  bất tiện). Lần này đã dời tay; lệnh phải tự làm. *(05/08: registry `projects.json` đã theo kho —
+  phần đó xong; các folder phụ + secrets vẫn chưa.)*
+- [ ] **Cảnh báo sớm: `doctor`/`verify` phải BÁO khi DB nằm trong vùng đồng bộ/backup đám mây.**
+  Kiểm rẻ: hardlink count > 1 · marker `.tmp.driveupload`/`.dropbox`/OneDrive ở thư mục cha ·
+  **và đọc `roots` trong `%LOCALAPPDATA%\Google\DriveFS\root_preference_sqlite.db`** (cách đã
+  bắt được vụ Computers-backup 05/08 — hai vụ liên tiếp đều lọt vì thiếu check này).
+- ✅ **TRUY NGUYÊN NHÂN GỐC — ĐÃ ĐÓNG** (Drive đồng bộ chính file DB — `[2026-08-03h]`; 05/08 lộ thêm
+  tầng Computers-backup). Hồ sơ điều tra giữ nguyên bên dưới **để không ai đi lại**; dòng "đã loại:
+  thư mục đồng bộ đám mây" là kết luận SAI thời điểm đó, đọc kèm cảnh báo này.
   - **Đã loại:** đĩa đầy (D: còn **168 GB**) · thư mục đồng bộ đám mây (D: là đĩa cục bộ,
     Drive nằm ở G: — điều 11 không bị vi phạm).
   - **Nghi, chưa chứng minh:** hôm nay là ngày ĐẦU TIÊN chạy **ghi per-message** (hook Stop
@@ -92,9 +104,8 @@ truy xong nguyên nhân gốc (nó là vật chứng duy nhất).
     Ghi rõ ở đây để không ai đọc nhầm cổng xanh thành "đã chứng minh".
   - **Chưa xem:** nhật ký sự kiện Windows (lỗi đĩa), và liệu `project_merge apply` hôm qua
     (UPDATE 115 dòng trong một giao dịch) có để lại dấu gì không.
-- [ ] **Việc còn lại vẫn đúng:** backup đang là chạy tay, lần gần nhất trước sự cố là 26/07
-  (8 ngày). Cần **lịch tự động** (`memory backup` định kỳ + dọn bản cũ) để khoảng hở không
-  bao giờ dài như vậy nữa. Đã có bản 03/08 sau khi cứu xong.
+- *(ĐÃ XONG, giữ dòng để khỏi mở lại: lịch backup tự động + xoay vòng đã xây `[2026-08-03c]` —
+  chính nó cứu vụ kho hỏng lần hai trong 2 phút, `06_CHANGES [2026-08-04]`.)*
 
 ## 🎯 ĐÃ CHỐT 2026-08-05 — dựng thẳng **768 chiều + fp32** (user quyết), đang chạy
 
@@ -135,10 +146,10 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
     60–190 giờ dựa trên 3,4 s/tin và chưa trừ dedup 19% + tool call).
   - Đo lại với 3.000 mồi (phương án ①) **bỏ**: nó tốn ~1 giờ chỉ để tinh chỉnh một lựa chọn mà
     giờ không còn đánh đổi — 768 đã trội cả về chất lượng lẫn thời gian.
-- [ ] **Luật user đã chốt: mọi thí nghiệm chạy trên BẢN SAO**, không nén tới lui trên kho thật.
-  Bản sao đã tạo: `D:/zemory-lab/lab.db` (1,23 GB, chụp bằng `db.backup()` nên nhất quán).
-- [ ] **Đã làm sẵn để chạy được:** `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS`
-  chỉnh được từ ngoài; bench thêm cột `@40` (trần pool) + dòng kết luận tự động; `topN` 10 → 40.
+- *(Luật user đã chốt, KHÔNG phải việc: mọi thí nghiệm chạy trên BẢN SAO — bản đang dùng:
+  `D:\huy.nguyen\zemory-lab\lab.db`, chụp bằng `db.backup()` nên nhất quán.)*
+- *(Hạ tầng sẵn: `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS` chỉnh từ ngoài;
+  bench có cột `@40` + kết luận tự động; `topN` 10 → 40.)*
 
 ## 📌 Cowork — còn treo
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
@@ -160,15 +171,14 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
     filesystem"*). Ghi vào không rõ, chưa thử.
   - **Agent tự áp `02_RULES §Phạm vi project` đúng chỗ:** dừng lại hỏi trước khi ghi harness vào cây git
     public của user, dù không ai nhắc. Luật đó ăn.
-- [ ] **NHẬP CHÌA VÀO MÁY THỨ HAI** (việc của user — agent không làm được, và không nên làm được).
-  Chìa mới dấu tay `e6fb0eff` ở `<thư mục DB>/share.key` (`zemory memory key path`). Ở máy kia:
-  `zemory memory key set` (dán chìa, đọc stdin) → `zemory memory key show` phải ra **cùng dấu tay** → `zemory memory sync`.
-  **Cho tới lúc đó máy kia còn chìa cũ**, nên lần sync tiếp theo của nó sẽ đẩy **một bundle chìa-cũ** lên Drive —
-  nhận ra bằng file `global_memory.<host-máy-kia>.*.enc` mới xuất hiện. Chìa cũ (`41d88e4d`) nằm trong lịch sử git
-  **đã push** ⇒ lộ vĩnh viễn; không viết lại lịch sử vì chưa `.enc` nào từng vào git. Nền tảng: `plan/16_share_key`.
 
-## 📌 Bàn giao 2026-07-28 — việc còn lại
-- [~] **`claude-web` — ĐÃ SỬA 2026-07-30, chờ user duyệt để ghi `06_CHANGES`.**
+## 📌 Bàn giao 2026-07-28 — ĐÃ ĐÓNG 2026-08-05 (user duyệt → `06_CHANGES [2026-08-05d]`)
+> Ba lane web (claude-web 3 lỗi · hỏi-đăng-nhập giữa run · nút Quét kéo web) + lane `claude-cowork`
+> đã ghi sổ đầy đủ ở entry đó. Quyết định "KHÔNG lấy cookie từ trình duyệt chính" giữ nguyên.
+
+<details><summary>Bản gốc 3 mục (giữ để tra lại lý do — nội dung đã vào changelog)</summary>
+
+- **`claude-web` — ĐÃ GHI SỔ `[2026-08-05d]`.** *(hồ sơ đo, không còn là việc)*
   > 🔄 **Bác bỏ chẩn đoán cũ của chính mục này** (*"MẤT TRẮNG chat trong Project vì thiếu
   > `projectConvsExpr`"*). Sai. Đo hai đường trước khi sửa: ① item của
   > `…/<org>/chat_conversations` mang `project_uuid` **không null**; ② so TẬP id với
@@ -193,15 +203,15 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
 
   **Cowork vẫn KHÔNG lấy được qua đường này** — `cowork_sessions` · `tasks` · `sync/mcp` đều **404**
   (đo 2026-07-30). Vá Project không đổi điều đó; đừng hứa ngược lại.
-- [~] **Hết hạn xác thực khi scan web → HỎI + mở cửa sổ (user giao 2026-07-30) — ĐÃ LÀM, chờ duyệt.**
+- **Hết hạn xác thực khi scan web → HỎI + mở cửa sổ — ĐÃ GHI SỔ `[2026-08-05d]`.**
   Trước: `need-login` là ngõ cụt — in *"a browser window is open at …"* **kể cả khi không mở cửa sổ nào**
   (chỉ mở khi cổng debug chết), và hết hạn GIỮA run thì mọi hội thoại còn lại đếm thành `failed`, log
   trông y như bị rate-limit. Nay: `awaitLogin()` mở cửa sổ **trước** rồi mới hỏi, kiểm lại auth sau mỗi
   câu trả lời; giữa run cứ **3 lần fail liên tiếp** thì hỏi lại site xem còn đăng nhập không — mất phiên
   thì lưu phần đã kéo, hỏi, đăng nhập xong **chạy tiếp tại chỗ**. Không TTY (daemon/pipe) ⇒ mở cửa sổ rồi
   báo `need-login` + exit 1, **không treo** chờ câu trả lời không ai gõ được.
-- [~] **UI: nút Quét giờ kéo được web + hỏi đăng nhập (user báo 2026-07-30: *"bấm scan nó ra mới nhưng
-  vẫn ko lấy từ web dc, cũng ko hề hỏi authen"*) — ĐÃ LÀM, chờ duyệt.**
+- **UI: nút Quét kéo được web + hỏi đăng nhập — ĐÃ GHI SỔ `[2026-08-05d]`.** *(user báo 2026-07-30:
+  "bấm scan nó ra mới nhưng vẫn ko lấy từ web dc, cũng ko hề hỏi authen")*
   **Nguyên nhân:** cả hai nút (`scan`·`deepscan`) POST `/memory-scan` → `scan()` = **chỉ đọc đĩa**. UI
   **chưa bao giờ** có đường quét web ⇒ không lấy được web, và cũng không có chỗ nào để hỏi authen. Bản
   sửa CLI trước đó đúng nhưng nằm sai bề mặt.
@@ -214,13 +224,13 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
   **Scheduler nền KHÔNG kéo web** (test khoá) — 10 phút một lần tự mở trình duyệt là hành vi không ai xin.
   **Đo bề mặt sống:** `POST /memory-scan` trả `web: [{chatgpt: need-login}, {claude: done · skipped 2}]`,
   và cửa sổ đăng nhập chatgpt **mở thật** (pid 7440, đúng thời điểm quét).
-  **Còn lại:** phiên **chatgpt-web hết hạn trên máy này** — user cần đăng nhập lại một lần trong cửa sổ đó
-  thì lane 30.913 tin mới nhận tiếp được (claude.ai không cần, cookie profile còn sống).
-- [ ] **KHÔNG lấy cookie từ trình duyệt chính (user hỏi 2026-07-30) — giữ nguyên quyết định cũ.**
+- **KHÔNG lấy cookie từ trình duyệt chính (user hỏi 2026-07-30) — quyết định GIỮ NGUYÊN, không phải việc.**
   Đã xác minh từ `plan/07 §5`: copy cookie/DPAPI từ profile Edge có sẵn bị **App-Bound Encryption** +
   guard chặn; vượt được chỉ bằng cách tiêm vào tiến trình trình duyệt (kiểu malware) và phá điều 7. Cookie
   **đã tự dùng lại** trong profile RIÊNG của zemory (`data/browser/<nền>`) — hỏi đăng nhập chỉ xảy ra khi
   chính cookie đó hết hạn. Ghi lại đây để phiên sau khỏi thử lại đường đã chết.
+
+</details>
 
 ## 🔓 COWORK ĐỌC ĐƯỢC — công thức đã đo xong 2026-07-31, chỉ còn viết adapter
 > 🔄 **Đảo kết luận cũ.** `06_CHANGES [2026-07-30d]` ghi *"phiên Cowork không phơi qua claude.ai"*
@@ -243,38 +253,6 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 **218 event** → `user` 30 (payload.message.content là **CHUỖI**) + `assistant` 50 (content là **MẢNG block**
 `{text}`) = **80 tin thật**; phần còn lại (`system` 61 · `control_request/response` 36 · `env_manager_log` 26
 · `result` · `active_goal` · `prompt_suggestion` · `rate_limit_event`) là điều khiển/log.
-
-- [~] **Lane `claude-cowork` — ĐÃ BUILD + chạy thật 2026-07-31, chờ user duyệt để ghi `06_CHANGES`.**
-  Làm đúng như ghi chú: **lane phụ của `PLATFORMS.claude`** (`Platform.sub`), chung cửa sổ · chung cổng
-  9223 · chung phiên đăng nhập — KHÔNG đẻ `PLATFORMS` thứ ba. Adapter `adapters/cowork.ts`
-  (`source=claude-cowork`, origin `web`, `coworkweb-<cse_id>`), đã đăng ký trong `allAdapters()`.
-  **Đo bề mặt sống:** `Claude-swap setup` → **63 tin** trong bộ nhớ, nội dung + vai + thời gian đúng.
-  - **BẪY đã trả giá — `resume_token`/`resume_cursor` KHÔNG phải con trỏ trang.** Truyền lại vào
-    `/v1/code/sessions` là endpoint chuyển sang **long-poll và không bao giờ trả về**: lần chạy đầu treo
-    **25 phút, CPU chỉ 10 giây**, không lỗi không log. Nay gọi MỘT lần, không phân trang.
-  - **Kèm sửa lớp dưới:** `Cdp.evaluate` giờ **có hạn giờ 90s** rồi NÉM. Trước đó `awaitPromise` chờ vô
-    hạn nên một expr treo là treo cả tiến trình — lỗi này không riêng Cowork, mọi nền đều dính.
-  - **Tiêu đề phải lấy từ DANH SÁCH**: `GET /v1/code/sessions/<id>` KHÔNG trả `title` (đo: chỉ có
-    `response_shape`), nên phiên vào bộ nhớ không tên nếu không dập nhãn từ list.
-  - Còn lại: danh sách mới lấy **1 trang (limit=100)** — tài khoản >100 phiên Cowork thì cần tìm cách
-    phân trang THẬT (không phải resume_token). Chưa có tài khoản nào để đo.
-
-- [ ] **CHƯA LẤY ĐƯỢC 3 phiên Cowork user CẦN — nằm ở TÀI KHOẢN CLAUDE KHÁC (hoãn, user chốt
-  2026-07-31: *"fix app zemory lấy dc cowork thì sẽ fix sau"*).**
-  Ba phiên cần: **Harness AI frameworks comparison** · **Bootstrap setup** · **Vietnam 34 provinces
-  GRDP dashboard**. Đã loại trừ mọi khả năng khác bằng đo, KHÔNG phải đoán:
-
-  | Đo (2026-07-31) | Kết quả |
-  |---|---|
-  | `/v1/code/sessions` × 7 giá trị `tags` (`cowork-remote`·`cowork-local`·`cowork`·`product:*`·`config:*`·`claude-code`·`code`) | đều **1 phiên** |
-  | thử **cả 2 org** của tài khoản | org caps `chat`: 1 phiên · org caps `api`: **403** |
-  | tra 2 tiêu đề trong TOÀN BỘ GM | không có (chỉ ra chỗ agent *nói về* chúng) |
-  | Claude Desktop lưu cục bộ trên máy | **không tồn tại** thư mục nào |
-
-  ⇒ chúng không thuộc `huy.nguyen@sasin.vn`. **Hạ tầng đã sẵn** (khe tài khoản: profile riêng + cổng
-  riêng, quét lặp qua mọi khe, nút ＋ trong bảng Liên kết; khe `claude-2` đã tạo, cửa sổ đứng ở
-  `claude.ai/login`). **Việc còn lại của USER:** đăng nhập tài khoản chứa 3 phiên đó vào cửa sổ khe 2 →
-  app tự kiểm 5s/lần rồi tự kéo (cả chat lẫn Cowork).
 
 - [ ] **CÂU HỎI đang chờ chính 3 phiên đó trả lời — bộ chuẩn Cowork có bị CẮT QUÁ TAY?**
   Nguyên văn user (`GM #2136043`, 2026-07-30): *"bộ cowork rút gọn là lúc t làm việc bên cowork của
@@ -320,7 +298,15 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **Ngưỡng 95% chưa chỉnh được từ UI** (hằng `WARN_AT_PERCENT` trong code). Đợi có ca
   thật muốn đổi rồi hãy phơi ra — thêm một ô cấu hình chưa ai xin là nợ.
 
-<details><summary>Spec gốc (giữ để tra lại lý do từng quyết định)</summary>
+<details><summary>Spec gốc ①②③④ — ĐÃ BUILD HẾT, giữ để tra lý do (soát bằng code 2026-08-05)</summary>
+
+> ⚠ **Bốn mục dưới còn dấu `[ ]` nhưng ĐÃ XONG** — đo trên `capture-hook.ts` 05/08: `WARN_AT_PERCENT
+> = 95` (dòng 28) + marker chống spam (`context-guard/<sid>.warned`) · handler `pre-compact` (dòng
+> 130) · handler `session-start` chỉ nói khi `source=compact` + `recallCard` (dòng 105–117) · bảng
+> khai hook có đủ `PreCompact` + `SessionStart` (dòng 193–194) · `context-guard.ts` có
+> `readContextUsage` + `lastCompactAt`. Dấu `[ ]` là DI SẢN lúc viết spec, không phải việc còn nợ —
+> để nguyên ký hiệu sẽ khiến phiên sau build lại lần hai.
+
 > Gốc: đối chiếu "compaction recovery" của engram. **Session-lifecycle KHÔNG làm** (đã có tốt
 > hơn, tự động: sessions từ transcript + digest 100%). "Nén từng đoạn hội thoại": digest
 > per-phiên ĐÃ CÓ (plan 06, 2026-07-02); compression đúng nghĩa đã BỎ 2026-06-25 (attic/).
@@ -328,20 +314,20 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > phiên thật đo 439k) · scan incremental cả kho: **7,2s** có tin mới · **1,8s** no-op ·
 > **~125s khi embed nền chạy** (tranh CPU + write-gate — hook sẽ timeout, scheduler lượm lại).
 
-- [ ] **① Hook `context-guard` (UserPromptSubmit, Claude Code) — GỘP cảnh báo + lưu (ý user).**
+- ✅ **① Hook `context-guard` (UserPromptSubmit, Claude Code) — GỘP cảnh báo + lưu (ý user).**
   Đọc `usage` tin cuối transcript phiên hiện tại → % cửa sổ (200k/1M theo model id). Dưới
   ngưỡng ⇒ **im lặng tuyệt đối**. Chạm ngưỡng (mặc định **95%**, config được) ⇒ MỘT phát làm
   cả hai: ingest ngay ĐÚNG file transcript này (đường scan-1-file mới, xem ③) + in 1 dòng:
   *"⚠ context ~95% — phiên đã lưu FULL vào GM. Chốt việc dở/ghi sổ trước khi bị nén; sau nén
   gọi `memory_context`."* Chống spam: **1 lần/phiên** (cờ marker). Verify lúc build: kênh
   hiển thị hook output tới user; công thức % có sai số cache/model.
-- [ ] **② Lưới sau nén:** `PreCompact` → scan lần cuối ngay trước nén (đỡ ca compact ập tới
+- ✅ **② Lưới sau nén:** `PreCompact` → scan lần cuối ngay trước nén (đỡ ca compact ập tới
   không qua ngưỡng) · `SessionStart(matcher: compact)` → thẻ phục hồi 1-LẦN (`recallCard` +
   câu "vừa bị nén — kho còn nguyên, tra lại trước khi làm tiếp"). Handler session-start ĐÃ CÓ
   SẴN trong `capture-hook.ts` (opt-in chưa cài) — chỉ thiếu khai matcher. Đây là auto-inject
   đầu tiên của hệ: 1 thẻ nhỏ, đúng 1 lần, đúng sự kiện mất trí nhớ — user đã chốt; ghi
   changelog như diễn giải điều 8 (điều 8 cấm *broad memory mỗi prompt*, không cấm thẻ này).
-- [ ] **③ Realtime capture — LÀ ĐƯỜNG NẠP CHÍNH, mặc định BẬT (user chốt lại 2026-08-02:
+- ✅ **③ Realtime capture — LÀ ĐƯỜNG NẠP CHÍNH, mặc định BẬT (user chốt lại 2026-08-02:
   *"nhịp 10' là lần đó chưa xét kỹ — mỗi 1 mes phải tự đưa lên luôn mới đúng"*).**
   > 🔄 Đảo thiết kế cũ của chính mục này ("công tắc thứ 4 thêm vào"): realtime **THAY** vai
   > nạp chính của `maintainTick`; hệ nhịp cũ KHÔNG bị xoá mà **teo thành lưới bù** — chỉ giữ
@@ -371,7 +357,7 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
     (UI text discipline — không để mô tả nói "nhịp 10'" khi nạp đã per-message); layout
     cụ thể vẫn trình duyệt lúc build theo luật UI.
   - Gate `scheduler-contract` phải viết lại theo vai mới (UI hứa gì scheduler làm đó).
-- [ ] **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
+- ✅ **④ Mảnh luật (mọi agent, kể cả không hook):** +2 câu vào `MEMORY_PROTOCOL` + mô tả
   `memory_context`: *"context vừa bị nén/tóm tắt → gọi memory_context + memory_search dựng
   lại TRƯỚC khi làm tiếp, đừng đoán từ bản tóm tắt."* Cursor/Windsurf/Qwen chỉ nhận mảnh này;
   Cowork ngoài phạm vi.
@@ -430,8 +416,9 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 > probe thật mất **48s** nên tách cờ `deep`; F4 gom về `core/config::projectKey`, riêng
 > `graph-memory::norm` giữ lại CÓ CHỦ ĐÍCH vì id node dùng `/`.)
 
-- [ ] Nợ đo lại: vector backlog ~4.6k (embed con bị tôi tắt lúc chẩn đoán — scheduler tự chạy
-  lại trong 30') · entry `2026-08-02` 44 dòng > trần 30 (advisory validate, entry đã chốt).
+- **Nợ đo lại — ĐÃ ĐO 2026-08-05, cả hai đóng:** vector backlog kho thật còn **639** (không phải
+  ~4.6k; scheduler đã lượm gần hết trước khi tôi tắt nó chiều nay — phần còn lại sẽ do lần embed sau
+  khi TRÁO xử) · entry `2026-08-02` đã trôi xuống `archive/06_CHANGES.md`, không còn trong bộ đọc.
 
 ## 🔬 Audit 2026-07-27 — còn 1 finding
 - [~] **5 export mồ côi — NỐI 4, CÒN 1.** `embedProbe`+`embedDims` → check `vector` THẬT · `rerankProbe` → check `rerank` THẬT (trước đây hai mục này chỉ hiện trạng thái theo CÔNG TẮC, tức báo "on" kể cả khi model không tải nổi) · `schedulerChildRunning` → cờ `embedRunning` trong `/automation` (đúng thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng). **Còn `resolveDocPath`**: là guard bảo mật trùng Ý với đoạn inline ở `readDoc` (`ui.ts:496`) nhưng KHÁC ngữ nghĩa resolve — gộp là refactor guard bảo mật, không phải dọn dẹp, nên để riêng.
@@ -448,19 +435,54 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 
 **CÒN TREO từ đợt UI refactor:**
 - [ ] **`/session-raw` (đọc transcript gốc) — CHƯA làm, chờ user quyết**: chỉ bù được **4,18%** tin bị clip + khối `thinking` bị bỏ lúc ingest; và với session **sync từ máy khác thì file không có ở máy này** (`ingest_state` toàn đường `C:\Users\Zyro\...`) ⇒ phải fail-open về DB. ROI thấp, nêu ra để user chốt chứ không tự làm.
-- [ ] `adapters` — slot chính thức trong `03` hay domain-internal (allowlist).
+- **`adapters` — ĐÃ CHỐT, không còn là câu hỏi** *(soát bằng code 2026-08-05)*: `03_STRUCTURE §4`
+  dòng 201 khai rõ *"adapter theo host/nguồn → `backend/src/<domain>/adapters/` — slot LỒNG trong
+  domain, cùng khuôn với `graph/`"*. Tức đã chọn **domain-internal**, và `conform` xanh với cấu
+  trúc đó. Giữ dòng này làm hồ sơ, không phải việc.
 - [ ] **model-routing theo task** — idea-only. *(Soát 2026-08-02: tiền đề cũ "ĐỤNG điều 6, KHÔNG tự mở" đã HẾT HIỆU LỰC — điều 6 nới sang "HẠN CHẾ gọi LLM" ngày `2026-08-02b`. Nay không còn bị chặn thẳng, nhưng phải qua thứ tự ①script → ②agent liên kết → ③model + ích lợi đo được + user chốt.)*
-- [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro) · Start Menu icon = **user sign-out/in** (file đã đúng).
+- [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro). *(Start Menu icon **ĐÃ XONG** —
+  `Start Menu\Programs\Zemory.lnk` tồn tại thật, kèm icon Z; dựng lại được sau khi vá bug
+  Desktop-chuyển-hướng 05/08, không cần sign-out/in nữa.)*
 - [ ] **Tách `app.js` theo concern — HẾT bị chặn.** Điều kiện cũ ("khi `cockpit.html` nghỉ hưu") **đã tới**: `frontend/pages/` giờ chỉ còn `app.html` (44 KB), `frontend/scripts/` chỉ còn **`app.js` 196 KB một file**. Chưa làm, không còn lý do hoãn.
 
 **🔥 VIỆC KẾ TIẾP:**
-- [~] **(user giao 2026-07-16) SasinFlow — UI 1 file HTML quá bự — ĐÃ KHẢO SÁT + CÓ PHƯƠNG ÁN, CHỜ USER DUYỆT ĐỂ TÁCH CODE (làm BÊN repo SasinFlow):** survey xong (07-16/18): `frontend/index.html` = **5.150 dòng** (JS ~4.020/307 func = 78% · 127 `onclick=` inline · CSS ~680 · HTML ~430). Phình vì **JS logic**, KHÔNG phải ảnh (0 base64, 1 SVG inline, 2 CSS url). **Assets đã ĐÚNG CHỖ, không cần fix:** logo UI → `frontend/assets/logo.png` · icon .exe (`sasin.ico`, `.spec` đọc) + icon tray/desktop (`sasin_icon.png`, `desktop.py` pystray) → `backend/resources/packaging/`. Hạ tầng sẵn sàng tách (FastAPI `StaticFiles` mount + `.spec` bundle nguyên folder → KHÔNG ràng buộc single-file). **Phương án 4 bước:** CSS ra `styles/` → cắt JS thành nhiều `<script src>` GIỮ global scope → gỡ inline `onclick=` → nâng ES module. Convention **"UI no-build"** + phân biệt 3-vai-trò-icon đã vào `03_STRUCTURE §5` (2026-07-18). **CÒN LẠI: user gật → tách code (repo SasinFlow, KHÔNG phải ở đây; cross-project).**
-- [~] **Đo tốc độ embed/ngày — VẪN CHƯA có số ngày-thường sạch.** Mẫu cũ (07-12, mega-session) = 41 msg/phút, lệch. Rebuild plan 12 (27 giờ, 94k message tồn đọng) cho thấy tốc độ dao động 40–380 msg/phút tùy độ dài message, nhưng đó là backlog dồn cục, KHÔNG phải nhịp ingest hằng ngày. Việc còn lại: sau 1 ngày dùng bình thường (không rebuild), chạy `zemory memory embed --all` + bấm giờ cho SỐ MESSAGE MỚI TRONG NGÀY ĐÓ để ra phút/ngày thật; nếu >20 phút → cân nhắc q4 dtype (hỏi user). **(2026-07-17) ĐO THẬT xong:** backlog 10291 → `memory embed --all` clear HẾT (remaining 0, +10433 vector, 21 pass, ~10834s ≈ 3h) ⇒ **~57–58 msg/phút** (256d · gemma q8 · CPU máy này). Tổng index 109.366 vector. **VẪN CÒN:** đây là backlog-rate; số **ngày-thường** (chỉ msg mới 1 ngày, chạy cuối ngày) mới chốt được q4 — ở ~58/min thì ngưỡng ">20 phút" ⇔ >~1160 msg mới/ngày.
+- **(user giao 2026-07-16) SasinFlow — UI 1 file HTML: ĐÃ TÁCH XONG, mục này lẽ ra đóng từ lâu.**
+  > ⚠ **Sổ đã nói khác code suốt ~3 tuần** — user bắt được 2026-08-05 (*"2 cái này làm lâu rồi mà má,
+  > ko check code thật à?"*). Tôi liệt kê theo TODO mà không mở repo ra đo. Đúng cái lỗi `02_RULES`
+  > gọi là *"sổ nói khác code"*, và là lý do luật đòi đo trước khi khẳng định.
+  **ĐO THẬT (read-only trên repo SasinFlow, 2026-08-05):** `frontend/index.html` **5.150 → 499 dòng**
+  (38 KB). JS đã ra **7 file** — `anomaly.js` 237 KB · `core.js` 114 · `invoice.js` 94 · `settings.js`
+  92 · `recon.js` 82 · `heartbeat.js` 22 · `update.js` 6 — CSS ra `styles/app.css` (79 KB), HTML nạp
+  bằng **7 `<script src>` + 1 `<link>`**, chỉ còn 1 khối script nội tuyến. Tức **bước 1–2 của phương
+  án 4 bước đã xong** (CSS tách · JS cắt nhiều file giữ global scope).
+  **CÒN LẠI (đúng 2 bước cuối, vẫn ở repo SasinFlow — cross-project, không tự làm):** ③ gỡ **105
+  `onclick=` inline** (survey cũ ghi 127 ⇒ đã giảm phần nào) · ④ nâng ES module. Cả hai là "làm sạch",
+  không chặn gì — chỉ làm khi user yêu cầu bên đó.
+- [~] **Đo tốc độ embed/ngày — VẪN CHƯA có số ngày-thường sạch.** Mẫu cũ (07-12, mega-session) = 41 msg/phút, lệch. Rebuild plan 12 (27 giờ, 94k message tồn đọng) cho thấy tốc độ dao động 40–380 msg/phút tùy độ dài message, nhưng đó là backlog dồn cục, KHÔNG phải nhịp ingest hằng ngày. Việc còn lại: sau 1 ngày dùng bình thường (không rebuild), chạy `zemory memory embed --all` + bấm giờ cho SỐ MESSAGE MỚI TRONG NGÀY ĐÓ để ra phút/ngày thật; nếu >20 phút → cân nhắc q4 dtype (hỏi user). **(2026-07-17) ĐO THẬT xong:** backlog 10291 → clear hết ~3h ⇒ ~57–58 msg/phút (256d · q8 · máy CŨ). **⚠ Vế "cân nhắc q4" ĐÃ CHẾT (2026-08-05):** đo 5 dtype trên máy mới — q4 **chậm hơn** q8 1,8× và kém chính xác hơn, fp32 mới là nhanh nhất (xem `06_CHANGES [2026-08-05]`). **VẪN CÒN:** số ngày-thường đo lại SAU khi tráo 768+fp32 (tốc độ đổi hẳn: 1,26 s/chunk).
 - [ ] **(chờ user, việc ở repo khác) SasinFlow còn tồn đọng 9 entry changelog:** 9 entry 07-14→07-16 chỉ nằm trong `.md`, DB không có (tôi xóa khi khôi phục theo lệnh user). Với code mới **không mất được nữa** (CRLF đã vá + render salvage). Theo **FILE WINS**: 9 entry đã nằm trong `.md` (nguồn) nên coi như đủ; DB chỉ là index search, dựng lại từ file khi cần. (`docs sync` đã gỡ 2026-07-16.) KHÔNG tự sửa repo đó (`02_RULES §Phạm vi project`).
 - [ ] F2. (TẦM NHÌN, sau core) Mở RAG sang **data chính** (ngoài memory agent): retriever **đa-store + `kind`**, chung model + retriever, DB tách được. Ý tưởng user — plan 05 §4.F.
 - [ ] (Nếu cần quên tuyệt đối) Source-transcript privacy/tombstone: xóa/redact transcript gốc của agent host hoặc ghi tombstone chống whole-file adapter re-ingest lại dữ liệu đã quên.
 - [ ] (TẦM NHÌN, tuỳ chọn — không bắt buộc v1) Session digest **B agent-authored**: khi recall chạm phiên, agent hiện tại đọc transcript viết đè `kind=agent` (có anchor). Bỏ B1 "agent tự viết lúc kết thúc". KHÔNG để zemory tự gọi LLM API. Spec: `docs/plan/06_digest.md`.
-- [ ] **(user nêu 2026-07-20 — ĐỀ XUẤT KIẾN TRÚC, chờ chốt) Skill CHUNG vs skill RIÊNG từng repo.** User: *"skill đang tính chung như Claude skill chứ không tính riêng cho từng repo — skill chung nằm ở rule tổng 02, skill riêng ở 04?"* Vấn đề THẬT: 04_SKILLS hiện ship 3 skill generic (grill · chốt phiên · reconcile) giống nhau mọi repo, KHÔNG có ranh giới với skill riêng repo tự thêm — sync/gap-fill không phân biệt được, người đọc không biết cái nào là chuẩn. **Phản biện của agent (chờ user chốt):** KHÔNG dời skill chung về `02_RULES` — 02 vừa được dọn sạch playbook (2026-07-18, single-responsibility: 02 = luật + trigger, 04 = kho playbook); dời ngược = tái phạm. Đề xuất thay thế: **giữ 04 làm kho duy nhất, phân 2 TẦNG trong file** — `## Skill chuẩn (ship từ docs_template — nguồn là template, repo không sửa tay)` vs `## Skill riêng của <PROJECT>` (repo tự thêm); template `docs_template/agent/04_SKILLS.md` là NGUỒN của tầng chuẩn (đúng vai trò "chuẩn chung" user muốn), sync gap-fill chỉ đắp tầng chuẩn. Cần chốt: dời về 02 (ý user) hay 2-tầng trong 04 (đề xuất) → mới sửa template + adopt.
+- **(user nêu 2026-07-20) Skill CHUNG vs RIÊNG — ĐÃ CHỐT: cấu trúc HIỆN TẠI chính là câu trả lời**
+  (user 2026-08-05: *"cấu trúc hiện tại là đã chốt và build còn gì"*). Tức: **giữ `04_SKILLS` làm kho
+  duy nhất** (7 skill, 4 mục, trần 60 dòng), playbook ở `.claude/skills/<tên>/`, skill ngoài vendor ở
+  `external/skills/` — **KHÔNG dời skill chung về `02_RULES`**. Hồ sơ tranh luận cũ giữ bên dưới, KHÔNG
+  hỏi lại.
+
+<details><summary>Hồ sơ tranh luận (đã chốt, giữ để tra)</summary>
+  > ⚠ **Đo lại 2026-08-05** (user bắt: *"làm lâu rồi mà, ko check code thật à?"*): mô tả cũ nói
+  > *"04 ship 3 skill generic"* — **SAI, giờ là 7** (`grill` · `session-close` · `reconcile` ·
+  > `conform` · `audit` · `read-office` · `write-docx`). Và `04_SKILLS` đã được **dọn đúng vai**:
+  > 4 mục (luật dùng · danh mục · skill NGOÀI vendor · thêm skill), có **trần 60 dòng**, playbook
+  > đã ra `.claude/skills/<tên>/SKILL.md` — tức phần "đừng để playbook bò về 04" ĐÃ XONG.
+  **Phần CHƯA làm, đúng nguyên bản câu hỏi:** `04_SKILLS` (zemory) và `docs_template/*/04_SKILLS`
+  vẫn có **cùng 4 heading, KHÔNG phân tầng** — không chỗ nào nói skill nào *ship từ template* (repo
+  không sửa tay) vs skill nào *repo tự thêm*. Hệ quả: `sync` gap-fill không phân biệt được, người
+  đọc không biết cái nào là chuẩn. **Đề xuất giữ nguyên:** 2 TẦNG trong `04` (`## Skill chuẩn (ship
+  từ docs_template)` vs `## Skill riêng của <PROJECT>`), KHÔNG dời về `02_RULES` — 02 vừa dọn sạch
+  playbook 2026-07-18, dời ngược là tái phạm.
+
+</details>
 
 ## 🔥 Từ chốt sổ 2026-07-21 — làm trước
 - [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `~/.zemory/logs/daemon.log` (mirror stderr) cho mọi lifecycle (up/shutdown/exit/uncaught/unhandled) + `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON **stack native** cạnh log. `ui.ts` arm ngay khi thắng port. **CÒN LẠI:** chờ lần daemon chết tiếp theo → đọc `daemon.log` + `report.*.json` để chẩn gốc; nếu tái hiện được thì chạy foreground + ép embed↔sync xen kẽ.
@@ -491,37 +513,54 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **`ui-ux-pro-max` mới VENDOR + INDEX, chưa có ca ÁP DỤNG thật nào** — chưa dùng nó thiết kế/nắn UI nào của zemory.
 - [ ] **Cấu trúc `external/skills/` — user để ngỏ:** giữ 1 tầng `skills/` (kho enumerate được) hay **phẳng** `external/<repo>/` (đúng luật "đừng tạo cấu trúc chưa có nhu cầu" vì hiện `external/` chỉ có skill). Đổi = 1 lệnh `mv` + 3 dòng docs.
 - [ ] **Lệnh `zemory skill add <repo-url>`** (clone vào kho đúng khuôn) — ý tưởng nêu ra, chưa quyết.
-- [ ] **Skill chung vs riêng 2 tầng** (mục ở §Ưu tiên kế tiếp) — mô hình vendored đã trả lời phần lớn; cần rà lại mục đó xem còn gì.
+- *(Skill chung vs riêng — **ĐÃ CHỐT 2026-08-05**: giữ cấu trúc hiện tại; xem §Ưu tiên kế tiếp.)*
 
 ## 📥 User gửi 2026-08-05 tối — "để tính sau", note lại đây
-- [ ] **DỌN bundle trên Drive + CODE chống chất đống (user giao: *"phải có code xử lý ko để đè 1 đống"*).**
-  Đo 2026-08-05: `G:\My Drive\Global Memory` = **11 file · 631 MB** — máy này 2 file (baseline 289,7 +
-  delta 1,6) nhưng máy cũ `SS01-IT-10` **9 file** (baseline 264,5 + 8 delta 30/07→04/08). Gốc: plan/08
-  đã khai *"delta tích luỹ + compact định kỳ (plan 14 §3b)"* nhưng vế **compact chưa từng code** —
-  auto-sync chỉ đẻ thêm, không dọn. Việc: ① lệnh/cơ chế compact per-host (gộp baseline+delta cũ →
-  baseline mới, xoá file đã gộp) chạy cùng auto-sync; ② ràng buộc điều 11: TRƯỚC khi xoá bundle nào
-  phải VERIFY nội dung nó đã nằm trong kho local (đối chiếu watermark/merge-state), dry-run mặc định;
-  ③ dọn tay đợt đầu 9 file máy cũ SAU khi verify đã merge đủ (kho hiện có đủ dữ liệu máy cũ tới 04/08).
-- [ ] **Số phận folder Drive** — kế hoạch cũ "xoá Drive" nay đảo: nó đang là **bản sao ngoài máy DUY
-  NHẤT** (auto-sync đẩy baseline+delta máy này lên 05/08). Chốt: giữ làm đường sao lưu, hay dời bundle
-  sang chỗ khác rồi mới xoá. KHÔNG xoá trước khi có đường thay thế.
-- [ ] **`PowerBi_SasinFlow` (6 phiên, đường cũ `D:\Zyro\DA\PowerBI\PowerBi_SasinFlow`)** — tên KHÁC hai
-  repo PBI hiện có; có phải tiền thân `PBI_SasinFlow_Maintain` không? User nhận dạng rồi mới gộp/để.
+- [ ] **CODE: compact chưa với tới series của HOST ĐÃ CHẾT** *(phần dọn tay ĐÃ XONG 2026-08-06 — xem
+  `06_CHANGES [2026-08-06]`; giữ mục này vì cái LỖ trong code vẫn còn và sẽ lặp mỗi lần đổi máy).*
+  > ⚠ **Tự sửa mô tả tôi viết vài giờ trước** (*"compact chưa từng code"*) — **SAI**. Đo: `share.ts`
+  > có `DRIVE_COMPACT_AT = 12`, nhánh `compacting` ghi baseline mới rồi **xoá hết file cũ** (an toàn
+  > vì baseline là tập cha), và `drive-sync.test.mjs` có test khoá *"compaction folds many deltas
+  > into one baseline without losing a row"*. Tôi kết luận "chưa code" chỉ từ việc **đếm file trên
+  > Drive** — đúng cái lỗi luật cấm: thấy triệu chứng rồi phán nguyên nhân.
+  **Lỗ THẬT (hẹp hơn nhiều):** compact chỉ chạy cho **series của CHÍNH máy đang chạy**
+  (`listMySeries(dir, host)`), và ngưỡng là **12 file**. Nên: máy này 2 file — chưa tới ngưỡng, đúng
+  thiết kế; máy cũ `SS01-IT-10` **9 file (~338 MB)** — **sẽ nằm đó vĩnh viễn** vì máy đó đã bỏ, không
+  còn ai chạy compact cho series của nó. **Việc còn lại:** ① dọn tay 9 file máy cũ SAU khi verify nội
+  dung đã nằm trong kho local (kho đã có đủ dữ liệu máy cũ tới 04/08 — vẫn phải đo, không tin); ②
+  cân nhắc cho compact/`sync` xử được **series của host đã chết** (hoặc lệnh `memory sync --prune-host
+  <host>` có dry-run), vì đây là ca sẽ lặp mỗi lần đổi máy.
+- [ ] **Số phận folder Drive** (`G:\My Drive\Global Memory` — kênh bundle) — kế hoạch cũ "xoá Drive"
+  nay đảo: nó đang là **bản sao ngoài máy DUY NHẤT** (auto-sync đẩy baseline+delta máy này lên 05/08).
+  Chốt: giữ làm đường sao lưu, hay dời bundle sang chỗ khác rồi mới xoá. KHÔNG xoá trước khi có đường
+  thay thế.
+- [x→06_CHANGES khi user OK] **Backup máy (Computers) từng cuốn cả kho trần + chìa — ĐÃ TẮT 2026-08-05 tối.**
+  Phát hiện: DriveFS backup **toàn bộ `D:\huy.nguyen`** (sổ `mirror_item` có `cloud_filename` cho
+  `global_memory.db` + `share.key` = ĐÃ từng lên Drive dạng trần — chìa nằm cạnh két, điều 7; DB sống
+  trong vùng sync, điều 11 — đúng cơ chế hỏng kho 03/08). User gỡ root khỏi Computers; verify bằng
+  HÀNH VI (file mồi không bị cuốn sau 35s + hàng đợi chỉ còn xác cũ mtime tháng 7) vì file config ghi trễ.
+  Bản đã lỡ lên mây: **user xác nhận đã xoá**. **Còn 1 đuôi:** cân nhắc **xoay `share.key`**
+  (plan/16, quy trình đã có từ 07-29) sau khi tráo kho — chìa từng nằm trần trên Drive.
 - *(Đề xuất HP điều 14 "bí mật: ngoài git ≠ ngoài repo" — đã nằm ở mục ngay dưới, cũng chờ user.)*
 
 ## Quyết định mở / cần chốt
-- [ ] **(ĐỀ XUẤT HP — chờ user chốt, 2026-08-05) Điều khoản "bí mật: ngoài git ≠ ngoài repo" cho CHÍNH zemory.**
-  Repo này đã THỰC HÀNH luật đó hôm nay (kho + chìa + registry + rescue đều về `<repo>/data/`, ổ C chỉ còn
-  `location.json`; ràng buộc thật = `.gitignore` + gate `no-data-in-git`), và đã ship nó thành §Điều khoản
-  GỢI Ý trong template `01_CONSTITUTION` (nguồn: hiến pháp SasinFlow điều 3, user chốt bên đó 2026-08-05).
-  Nhưng hiến pháp của CHÍNH zemory chưa có điều tương ứng — điều 7 chỉ nói local-only/không transmit, chưa
-  nói "bí mật sống Ở ĐÂU". Theo luật sửa đổi: agent chỉ đề xuất, user chốt thì chuyển thành điều khoản
-  (đánh số 14) + ghi changelog supersede phần liên quan của `plan/16 §2` (đã supersede sẵn).
+- [ ] **🔒 GATE CHỐNG "TODO THỐI" — máy phải canh, đừng dựa agent nhớ (user chốt 2026-08-05).**
+  Vấn đề đã TÁI DIỄN SUỐT MỘT THÁNG: agent soát TODO bằng cách ĐỌC file rồi báo lại, nên mục đã xong
+  vẫn nằm đó và user bị hỏi lại lần hai. Luật `02_RULES §Chốt phiên` đã cấm — **và vẫn hỏng**, đúng
+  như luật structure-sync từng dạy: *thứ CHẶN drift là code, không phải rule dễ quên.*
+  **Đề xuất cơ chế (cần chốt hình dạng trước khi code):** mỗi mục TODO mang dấu **đã-đo-lần-cuối**
+  (vd `<!-- v:2026-08-05 -->`); `zemory validate` cảnh báo mục nào **quá N ngày chưa đo lại**, và
+  `zemory conform --gate` đỏ nếu có mục quá hạn xa. Cộng thêm: lệnh `zemory todo verify` chạy các
+  phép đo rẻ tự động được (file tồn tại? hằng số? endpoint sống?) rồi in bảng LỆCH.
+  *(Số nền để đo hiệu quả: soát tay 2026-08-05 phát hiện **11/58 mục sai ≈ 19%**.)*
 - [ ] **`01_CONSTITUTION`: KHÔNG gộp §Mục đích với §Điều khoản (user hỏi, agent trả lời 2026-07-26 — chờ user xác nhận đóng).** Đã đo: riêng zemory có **45 cạnh `references` trỏ vào `hp:N`**, cộng SasinHarvest 14 + SasinFlow 11 ⇒ **~70 trích dẫn "điều N" xuyên docs**. Gộp = đánh số lại = **hỏng cả 70 trích dẫn**, và `06_CHANGES` cấm sửa entry lịch sử nên không vá ngược được. Hai mục cũng khác BẢN CHẤT: §Mục đích định nghĩa zemory LÀ GÌ (+ phi-mục-tiêu), §Điều khoản là luật ĐÁNH SỐ được trích dẫn khắp nơi. **Nỗi lo "gộp sợ tràn/bể UI" không được giải bằng việc gộp** — độ dài file y nguyên; thứ thật sự trị là lớp graph vừa dựng (điều N thành node, có legend + bộ lọc + bấm nhảy) thay cho việc cuộn một file dài. *(Bẫy parse hai-list-đánh-số đã trị bằng cắt đúng section — không phải lý do để gộp.)*
 - [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** *(Soát 2026-08-02 — tiền đề đã đổi: điều 6 nay là "**HẠN CHẾ** gọi LLM" (`2026-08-02b`), KHÔNG còn "KHÔNG BAO GIỜ". Vế **không proxy model API** thì GIỮ NGUYÊN, mà model-routing đúng là chạm vế đó ⇒ vẫn cần user chốt, nhưng lý do chặn hẹp hơn trước.)* Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
 - [ ] **(Graph — plan 13 §8) Loại lỗi nào build TRƯỚC?** Đã trình 8 loại; user CHƯA chọn. Ba nhóm: (a) link gãy + orphan (docs, rẻ, làm ngay được) · (b) **blast-radius** "sửa X đụng ai" (cần đọc import code) · (c) traceability "requirement nào chưa có test". Prototype 2026-07-18 đã chứng minh (b) chạy được: code-graph 55 module/154 import, tìm ra **orphan thật `core/index.ts`** (barrel 0 ai import), fan-in `memory/db.ts`=18.
 - [ ] **(Graph) Độ mịn + overlay:** v1 dừng ở file hay kéo tới hàm (AST)? overlay "semantic neighbor" (từ vector sẵn) làm v1 hay phase 2? *(đề xuất: v1 không AST, chỉ cạnh khai báo)*
-- [ ] **(plan 14 §7) Chưa chốt:** tray bằng gì trên Node · write-gate phủ lệnh nào trước · autostart per-OS làm sao · graph cache để trong DB hay file JSON · chu kỳ auto-sync.
+- [ ] **(plan 14 §7) Chưa chốt — soát lại 2026-08-05, chỉ còn HAI:** ① tray bằng gì trên Node ·
+  ② write-gate phủ lệnh nào trước (dính mục vá khoá viết ở §🚨). Ba cái kia đã chốt bằng code:
+  autostart per-OS = `platform/autostart.ts` (Startup .cmd/launchd/xdg) · graph cache = in-memory
+  + bảng `graph_fitness` · chu kỳ auto-sync = syncjob 30'.
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 
 ## Phase 2 — Năng lực nặng
@@ -540,8 +579,11 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **Gemini** là nền web CUỐI còn thiếu — khung `scan-web --platform` đã phục vụ ChatGPT + Claude.ai, thêm Gemini là dùng lại khung.
 
 - [ ] **Cho `npm i -g github:ZyroFrost/Zemory` chạy được — CHƯA QUYẾT, cần chọn một đường.**
-  Hiện cả hai lệnh cài phổ thông đều lỗi (`06_CHANGES [2026-08-03k]`), người mới buộc phải
-  `git clone` → `npm install` → `npm run build` → `npm link`. Hai lối chữa, mỗi lối một giá:
+  *(Soát 2026-08-05: đường CLONE đã hết lỗi `ERESOLVE` — TS 6.0.3, `npm install` sạch chạy được;
+  nhưng `npm i -g github:` VẪN hỏng vì cài global không kéo devDependencies ⇒ thiếu `tsc` cho
+  `prepare`. Và token npm để publish đã tìm lại được — nằm trong `_migration`, nay ở `~/.npmrc`;
+  cân nhắc XOAY token vì nó từng nằm trần trên Drive. Publish 1.1.0 = `npm login` + `npm publish`,
+  việc của user — `[2026-08-03l]`.)* Người mới hiện đi đường clone. Hai lối chữa, mỗi lối một giá:
   - **đưa `typescript` sang `dependencies`** — cài global sẽ kéo nó ⇒ `prepare` dựng được.
     Giá: mọi bản cài mang theo cả bộ biên dịch (nặng), và lẫn lộn dev/runtime.
   - **commit sẵn `dist/` vào repo** — cài xong chạy ngay, không cần build.

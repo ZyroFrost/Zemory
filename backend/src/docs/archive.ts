@@ -16,6 +16,12 @@ export interface ArchiveResult {
   moved: number;
   activeLines: number;
   archivePath: string | null;
+  /** Why nothing moved. "short" = file still under the threshold (normal, nothing to do).
+   *  "no-entries" = the file IS over the threshold but no dated headings were recognised,
+   *  i.e. the headings do not match DATED_HEAD. Reporting both as "under threshold" sent a
+   *  real investigation down the wrong path (SasinFlow, 2026-08-05): the file was 947 lines
+   *  against a 400 threshold and the caller was told it was under it. */
+  skipped?: "short" | "no-entries";
 }
 
 const FENCE = /^[ \t]*(```|~~~)/;
@@ -155,8 +161,12 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
   const heads = entryHeads(lines);
-  if (lines.length <= threshold || heads.length <= 1) {
-    return { moved: 0, activeLines: lines.length, archivePath: null };
+  // Two different reasons to do nothing — keep them apart so the caller can say WHICH.
+  if (lines.length <= threshold) {
+    return { moved: 0, activeLines: lines.length, archivePath: null, skipped: "short" };
+  }
+  if (heads.length <= 1) {
+    return { moved: 0, activeLines: lines.length, archivePath: null, skipped: "no-entries" };
   }
 
   // Kept region for the k newest entries spans lines [0, heads[k]). Keep the most
