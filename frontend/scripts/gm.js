@@ -75,3 +75,65 @@
     // (Đã gỡ 4 ô "Sức khoẻ" ở đây — Vector coverage/Digest/Sessions/Messages đã có ở
     //  sub-tab Tổng quan ngay cạnh. Xu hướng chỉ vẽ thứ THEO THỜI GIAN.)
   }
+
+  // ── DỜI TỪ graph.js 2026-08-07: số liệu Global Memory, không phải graph
+  function renderMem(m){
+    Z.mem=m||{};
+    var tot=m.totals||{},vec=m.vectors||{},cap=m.coverage||{};
+    // Trang chủ = 6 ô "at a glance" DUY NHẤT. Bảng số chi tiết (Sections/Digest/Changelog/
+    // Doc/Known stores/Tokens) sống ở Global Memory › Tổng quan — trước đây màn Nạp&Đồng bộ
+    // có thêm 10 stat card lặp lại y hệt, đã gỡ.
+    zset('stMsg',zN(tot.messages));zset('stSess',zN(tot.sessions));
+    zset('stVec',vec.coverage==null?'—':vec.coverage+'%');zset('stVecSub',zN(vec.count)+' vec'+(vec.remaining?' · '+zN(vec.remaining)+' chờ':''));
+    zset('stStore',zBytes(m.sizeKB));
+    var ls=relTime(m.lastSync);zset('stSync',ls.big);zset('stSyncSub',ls.sub);
+    if(zid('mScope'))zid('mScope').innerHTML=renderScope(m.scopeTree||[]);
+    var rh=zid('rHybrid'),rr=zid('rRerank');if(rh)rh.classList.toggle('on',!!m.hybrid);if(rr)rr.classList.toggle('on',!!m.rerank);
+    var d=m.drive||{};zset('driveBundles',d.linked?(zN(d.bundles)+' bundle'):t('drv.notLinkedShort'));
+    if(zid('driveInput')&&document.activeElement!==zid('driveInput'))zid('driveInput').value=d.path||'';
+    zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);
+    renderDriveDonut(d);
+    var lv=zid('langVi'),le=zid('langEn');if(lv)lv.classList.toggle('on',(m.lang||'vi')==='vi');if(le)le.classList.toggle('on',m.lang==='en');
+    applyI18n(m.lang||'vi');
+    var fa=zid('fAgent');if(fa){var fac=fa.value;fa.innerHTML='<option value="" data-i18n="f.agentAny">'+t('f.agentAny')+'</option>'+((m.agents||[]).map(function(a){return '<option value="'+stdEsc(a.source)+'">'+stdEsc(a.source)+'</option>';}).join(''));fa.value=fac;}
+    fillSessFilters(m); // 2 select riêng của tab Phiên, cùng nguồn dữ liệu — không endpoint mới
+    renderHomeProjects(cap);renderProjGrid(cap);renderDiscovered(cap);renderGmem();
+    zset('stProjects',zN((Z.status&&Z.status.knownProjects||[]).length));
+  }
+  // #5: discovered (chưa liên kết) projects grouped by machine + Add per project.
+
+  // ── DỜI TỪ graph.js 2026-08-07: Drive sync (IA: sync đi với Global Memory)
+  function driveMsg(d){if(!d||!d.linked)return t('drv.notLinked');if(!d.exists)return '✗ '+t('drv.noFolder');if(!d.writable)return '✗ '+t('drv.readOnly');return '✓ '+t('drv.linked').replace('{n}',zN(d.bundles));}
+  // Làm tươi TỨC THÌ hai thứ mà một lần quét vừa làm đổi: Drive còn thiếu bao nhiêu, và
+  // cây Sources. Đường riêng, rẻ — không đi qua gói /memory-status nặng.
+  function syncPulse(){
+    return zGet('/sync-pulse').then(function(d){
+      if(!d)return;
+      if(d.drive)renderDriveDonut(d.drive);
+      var sc=zid('mScope');if(sc&&d.scopeTree)sc.innerHTML=renderScope(d.scopeTree);
+    }).catch(function(){});
+  }
+  var DONUT_C=2*Math.PI*16;
+  function renderDriveDonut(d){
+    var arc=zid('driveArc'),lbl=zid('driveDonutPct');if(!arc||!lbl)return;
+    var pct=Math.max(0,Math.min(100,(d&&d.syncPercent!=null)?d.syncPercent:0));
+    if(pct>=100)arc.removeAttribute('stroke-dasharray'); // solid ring — no dash seam, no track sliver
+    else arc.setAttribute('stroke-dasharray',(pct/100*DONUT_C).toFixed(1)+' '+DONUT_C.toFixed(1));
+    arc.style.stroke=pct>=100?'var(--success)':(pct<50?'var(--warn)':'var(--primary)');
+    lbl.textContent=pct+'%';
+    var txt=zid('driveSyncedTxt'),sub=zid('driveSyncedSub'),pend=(d&&d.pendingMessages)||0;
+    if(txt)txt.textContent=pend?(t('drv.pendN').replace('{n}',zN(pend))):t('drv.upToDate');
+    if(sub)sub.textContent=pend?t('drv.pendSub'):t('drv.upToDateSub');
+    // Mốc kiểm chứng: "đủ" chỉ đáng tin khi lần đẩy KHÔNG cũ hơn tin mới nhất. Nếu cũ hơn
+    // thì có tin mới chưa nạp vào DB ⇒ nói thẳng, đừng để card báo an toàn giả.
+    var nw=d&&d.newestAt,lp=d&&d.lastPushAt;
+    // relTime trả về OBJECT {big,sub} chứ không phải chuỗi — dùng thẳng ra "[object Object]".
+    zset('drvNewest',nw?relTime(nw).big:'—');
+    zset('drvLastPush',lp?relTime(lp).big:t('drv.never'));
+    zset('drvCount',zN((d&&d.syncedMessages)||0)+' / '+zN((d&&d.totalMessages)||0));
+    var stale=!pend&&nw&&lp&&(new Date(nw)>new Date(lp));
+    if(stale&&sub)sub.textContent=t('drv.staleSub');
+    var fx=document.querySelector('.drv-facts');
+    if(fx)fx.classList.toggle('stale',!!stale||pend>0);
+  }
+  function setLvl(l){var a=zid('lvLean'),b=zid('lvFull');if(a)a.classList.toggle('on',l!=='full');if(b)b.classList.toggle('on',l==='full');}

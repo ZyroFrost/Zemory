@@ -238,3 +238,20 @@
     var ti=e.target.closest('#stdTree .ti');if(ti&&ti.dataset.f){stdFile=ti.dataset.f;stdRenderReal();}
   });
   // fake graph
+
+  // ── DỜI TỪ graph.js 2026-08-07: màn Home, không phải graph
+  function loadRecentSessions(){
+    var box=zid('homeSessions');if(!box)return;
+    zGet('/recent-sessions?limit=6').then(function(list){
+      if(!list||!list.length){box.innerHTML='<div class="muted">'+t('home.noSessions')+'</div>';return;}
+      // KHÔNG đoán App/Non-app từ TÊN project ở đây. Bản cũ dùng regex /PBI|powerbi/ —
+      // đúng cái "badge đoán bừa" đã bị gỡ khỏi card project (changelog 2026-07-25), nhưng
+      // còn sót lại ở hàng này. Payload /recent-sessions không mang `profile`, và một nhãn
+      // ĐOÁN thì tệ hơn không có nhãn: người đọc tưởng đó là sự thật đọc từ .harness.json.
+      box.innerHTML=list.map(function(s){var title=(s.title&&String(s.title).trim())||t('sess.untitled');return '<div class="row" data-open-proj="'+stdEsc(s.project||'')+'" style="cursor:pointer"><div class="l"><div class="ico">◆</div><div><div class="nm">'+stdEsc(String(title).slice(0,50))+'</div><div class="meta">'+stdEsc(zProjName(s.project))+' · '+stdEsc(s.source||'')+'</div></div></div><span class="meta">'+relTime(s.endedAt).big+'</span></div>';}).join('');
+    }).catch(function(){});
+  }
+  // Roll-up sức khoẻ — đếm TRUNG THỰC (không trọng số bịa, điều 12): 'on'=OK ·
+  // 'warn'/'off'=cảnh báo · 'dim'=tắt-có-chủ-đích, KHÔNG tính là lỗi.
+  // MỘT nguồn duy nhất = FEATURES + sysStatus() (trước 2026-07-25 còn một list check
+  // thứ hai hardcode ở Home — 2 chỗ phải sửa song song, tất yếu lệch nhau).
