@@ -460,9 +460,14 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **Nợ nhỏ:** daemon exit-1 (hộp đen đã cắm, chờ repro). *(Start Menu icon **ĐÃ XONG** —
   `Start Menu\Programs\Zemory.lnk` tồn tại thật, kèm icon Z; dựng lại được sau khi vá bug
   Desktop-chuyển-hướng 05/08, không cần sign-out/in nữa.)*
-- [~] **Tách `app.js` — BƯỚC 1+2 XONG 2026-08-06** (`[2026-08-06c]`): 1.837 dòng/1 IIFE → **11 file**
-  global-scope (`core` nạp đầu · `boot` cuối; thứ tự khai ở `app.html`). Smoke 11×200 · 296/296 test.
-  **Còn bước 3 (tự đề, chưa gấp):** `graph.js` vẫn 559 dòng — tách `graph-render`/`graph-panel` đợt sau.
+- ✅ **Tách `app.js` — XONG CẢ 3 BƯỚC** (`[2026-08-06c]` + 2026-08-07). 1.837 dòng/1 IIFE → **12 file**
+  global-scope (`core` nạp đầu · `boot` cuối; thứ tự khai ở `app.html`, guard drift ở `helpers.mjs`).
+  Bước 3 lộ ra một lỗi của chính bước 1: `graph.js` **ôm 125 dòng KHÔNG phải graph** (`renderMem` ·
+  `renderDiscovered` · `renderDriveDonut` · `refreshChecks` · `loadRecentSessions`…) vì lần đó cắt
+  theo dải phân cách, mà dải "graph" trùm luôn đầu khối PHASE-2. Đã trả về đúng nhà theo concern
+  (gm · sources · system · shell), rồi mới chia phần graph thật thành `graph-render` (canvas, 31 KB)
+  + `graph-panel` (cây/toolbar/seam, 9 KB). File to nhất giờ là `chrome.js` 56 KB — **từ điển i18n**,
+  không phải logic, nên không tách.
   **Chờ user:** đảo mắt UI thật một lượt khi mở `zemory ui` lần tới (máy kiểm hết, mắt người chưa).
 
 **🔥 VIỆC KẾ TIẾP:**

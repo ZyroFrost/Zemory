@@ -297,3 +297,42 @@
     syncPulse();                                   // số Drive về đúng NGAY khi đẩy xong
     zGet('/memory-status?fresh=1').then(renderMem); // phần nặng làm tươi sau
   }).catch(function(){setTimeout(pollSync,2000);});}
+
+  // ── DỜI TỪ graph.js 2026-08-07: nguồn đã dò, không phải graph
+  var discTab=null;
+  function renderDiscovered(cap){
+    var box=zid('projDiscovered');if(!box)return;cap=cap||{};
+    var linked=new Set(((Z.status&&Z.status.knownProjects)||[]).map(function(k){return String(k.root||'').toLowerCase();}));
+    var localHost=cap.localHost||'';
+    var byHost={};
+    (cap.projects||[]).forEach(function(p){
+      if(String(p.host||'')===localHost&&linked.has(String(p.path).toLowerCase()))return; // đã liên kết → không hiện lại
+      var h=p.host||'(không rõ máy)';(byHost[h]=byHost[h]||[]).push(p);
+    });
+    var hosts=Object.keys(byHost).sort(function(a,b){return a===localHost?-1:b===localHost?1:String(a).localeCompare(b);});
+    if(!hosts.length){box.innerHTML='';return;}
+    if(!discTab||hosts.indexOf(discTab)<0)discTab=hosts[0];
+    var tabs='<div class="tabs" style="margin-top:6px;flex-wrap:wrap">'+hosts.map(function(h){return '<button class="'+(h===discTab?'on':'')+'" data-disc-tab="'+stdEsc(h)+'">🖥 '+stdEsc(h===localHost?(h+' · máy này'):h)+' ('+byHost[h].length+')</button>';}).join('')+'</div>';
+    var isLocalTab=discTab===localHost;
+    var rows=(byHost[discTab]||[]).slice(0,80).map(function(p){var pbi=p.profile==='non-app';
+      var act=isLocalTab
+        ? '<button class="btn sm" data-add-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto">＋ Add</button><button class="btn sm" data-merge-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto" title="Gộp session folder này vào 1 project đã liên kết">⇢ Gộp</button>'
+        : '<span class="muted" style="font-size:11px;flex:0 0 auto">từ '+stdEsc(discTab)+'</span>';
+      return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+act+'</div></div>';
+    }).join('');
+    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">CHƯA LIÊN KẾT — phân theo máy (tab). Add = zemory quản lý · Gộp = nhập session vào project khác</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>';
+  }
+  document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('[data-disc-tab]'):null;if(t){discTab=t.dataset.discTab;renderDiscovered((Z.mem&&Z.mem.coverage)||{});}});
+  document.addEventListener('click',function(e){var mg=e.target.closest?e.target.closest('[data-merge-proj]'):null;if(!mg)return;
+    var from=mg.dataset.mergeProj,ks=(Z.status&&Z.status.knownProjects)||[];
+    if(!ks.length){zConfirm({title:t('mg.title'),body:t('mg.noTarget'),okLabel:'OK',onOk:function(){}});return;}
+    var opts=ks.map(function(k){return '<option value="'+stdEsc(k.root)+'">'+stdEsc(zProjName(k.root))+'</option>';}).join('');
+    zDialog({icon:'⇢',title:t('mg.title'),okLabel:t('mg.ok'),focus:'#mgSel',
+      bodyHtml:'<div style="font-size:13px;margin-bottom:8px">'+t('mg.from')+' <b>'+stdEsc(zProjName(from))+'</b></div>'
+        +'<label style="font-size:12px;color:var(--text-dim)">'+t('mg.into')+'</label><select id="mgSel" class="zdi" style="margin-top:4px">'+opts+'</select>'
+        +'<div class="muted" style="font-size:11px;margin-top:8px">'+t('mg.note')+'</div>',
+      onOk:function(){var sel=zid('mgSel');var to=sel&&sel.value;if(!to)return true;
+        zDlgMsg(t('mg.merging'));zid('zDlgOk').disabled=true;
+        zPost('/merge-project?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to)).then(function(){zDlgClose();return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zDlgMsg('✗ '+t('q.err'));zid('zDlgOk').disabled=false;});
+        return true;}});
+  });
