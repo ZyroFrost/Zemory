@@ -3,7 +3,7 @@ import test from "node:test";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { openMemory } from "../../dist/memory/db.js";
-import { buildDigest, digestBackfill, getDigest, searchDigests } from "../../dist/memory/digest.js";
+import { buildDigest, digestBackfill, getDigest, searchDigests, cleanPath } from "../../dist/memory/digest.js";
 import { tempDir } from "./helpers.mjs";
 
 function seedSession(db, id, opts, msgs) {
@@ -135,4 +135,29 @@ test("opening a pre-v5 DB migrates: adds session_digest table and sets version 5
   const latest = fresh.prepare("SELECT version FROM schema_version LIMIT 1").get().version;
   fresh.close();
   assert.equal(ver.version, latest, "migrates to latest schema version");
+});
+
+// ── cleanPath (DIGEST_VERSION 4) — path bẩn làm bẩn cả `touches` của graph ──
+// Đo kho thật 2026-08-06: 153/5.918 path (2,6%) nuốt văn xuôi sau tên file hoặc mang đuôi
+// khoảng-trắng-thẳng-cột. Luật: khoảng trắng hợp lệ chỉ đứng TRƯỚC tên file — thấy `.ext`
+// rồi tới khoảng trắng là path đã trọn, phần sau là văn xuôi.
+test("cleanPath: cắt văn xuôi sau tên file — ca thật từ kho", () => {
+  assert.equal(
+    cleanPath("d:\\Work\\dashboard\\charts.py has been updated successfully. "),
+    "d:\\Work\\dashboard\\charts.py",
+  );
+  assert.equal(cleanPath("D:\\Tools\\mv\\frontend\\src\\App.tsx                 "), "D:\\Tools\\mv\\frontend\\src\\App.tsx");
+});
+
+test("cleanPath: KHÔNG cắt khoảng trắng hợp lệ trong thân path (Program Files · My Drive)", () => {
+  assert.equal(cleanPath("C:\\Program Files\\nodejs\\node.exe"), "C:\\Program Files\\nodejs\\node.exe");
+  assert.equal(cleanPath("G:\\My Drive\\Global Memory"), "G:\\My Drive\\Global Memory");
+  // thư mục mang dấu chấm + khoảng trắng phía TRƯỚC tên file vẫn nguyên vẹn
+  assert.equal(cleanPath("D:\\proj v2\\src\\main.ts"), "D:\\proj v2\\src\\main.ts");
+});
+
+test("cleanPath: gọt dấu câu bám đuôi khi path đứng cuối câu, giữ dấu chấm của đuôi file", () => {
+  assert.equal(cleanPath("D:\\x\\y.ts."), "D:\\x\\y.ts");
+  assert.equal(cleanPath("/srv/app/config/settings.py),"), "/srv/app/config/settings.py");
+  assert.equal(cleanPath("D:\\x\\y.ts"), "D:\\x\\y.ts", "path sạch phải đi qua nguyên vẹn");
 });
