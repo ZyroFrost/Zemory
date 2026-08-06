@@ -8,12 +8,17 @@
 > Kho thật `✓ lành` · **~207k tin · 1.284 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
 > Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓ · đã push **1.1.0**.
 
-> 🔄 **BÀN GIAO PHIÊN 2026-08-05/06 — đọc trước khi gõ gì.** Embed đang chạy trong **cửa sổ PowerShell
-> RIÊNG của user** (không phải job của agent): `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db";
-> $env:ZEMORY_MODEL_DIR="D:\huy.nguyen\Tool\Zemory\data\models"; node "…\dist\cli.js" memory embed --all`.
-> **Còn ~51.000 tin** lúc chốt phiên. Nó im giữa hai dòng in là BÌNH THƯỜNG (tin dài, mỗi pass hàng chục
-> phút) — **đừng bôi đen console** (làm treo tiến trình), muốn xem tiến độ thì đếm thẳng trong DB. Thoát
-> ra thì mũi tên lên + Enter, tự nối chỗ dừng (`--all` chỉ làm phần thiếu; **TUYỆT ĐỐI không `--rebuild`**).
+> 🔄 **BÀN GIAO PHIÊN 2026-08-07 — đọc trước khi gõ gì.** Embed chạy trong **cửa sổ PowerShell RIÊNG
+> của user**, output đã CHUYỂN HƯỚNG vào file (console không còn gì để in ⇒ hết bẫy đóng băng):
+> `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db"; $env:ZEMORY_MODEL_DIR="D:\huy.nguyen\Tool\Zemory\data\models";`
+> `node dist\cli.js memory embed --all *> D:\huy.nguyen\zemory-lab\embed.log`
+> **Mốc lúc chốt phiên: 100.223/123.086 chunk (81,4%)** — còn ~23k, nhịp 20–60 chunk/phút tuỳ máy bận.
+> **Xem tiến độ (cửa sổ KHÁC, đừng đụng cửa sổ job):** `node D:\huy.nguyen\zemory-lab\watch.cjs` (bảng
+> tự cập nhật 30s, tự báo ĐỨNG IM) hoặc `progress.cjs` (một phát). **Bài học trả giá 4 lần trong ngày:
+> bôi đen/copy console đang in = Windows ĐÓNG BĂNG tiến trình** (mark-mode chặn write; ESC là chạy lại).
+> Chết thì mũi tên lên + Enter, `--all` tự nối; **TUYỆT ĐỐI không `--rebuild`**.
+> **Đừng smoke bằng `zemory ui`** — nó LUÔN bật cửa sổ thật lên desktop user (sự cố "344 KB không có
+> data" 06/08 đêm — xem `[2026-08-07b]`); kiểm bề mặt thì curl daemon 4444 thật, read-only.
 
 - [~] **Rebuild 768+fp32 trên BẢN SAO** `D:\huy.nguyen\zemory-lab\lab.db` (~43 giờ, đo thật).
   Chạy tiếp: `memory embed --all` với `GLOBAL_MEMORY_DB` trỏ bản sao **và** `ZEMORY_MODEL_DIR`
@@ -37,6 +42,13 @@
   Kèm theo tự động: digest toàn kho sẽ TỰ DỰNG LẠI LƯỜI ở scan/scheduler kế tiếp — `DIGEST_VERSION`
   bump 3→4 (2026-08-06, `cleanPath` cắt văn xuôi khỏi `paths_touched`; đo 261/261 path bẩn xử sạch).
   KHÔNG cần `digest --all` tay trước tráo — kho hiện tại sắp bị thay, chạy là công dã tràng.
+- [ ] **SAU TRÁO: viết plan 17 — recall quality** (file mới, chưa tồn tại: docs/plan/17_recall_quality;
+  user chốt 2026-08-07: *"không cần fix cái
+  cũ, muốn thêm thì viết thêm plan"* — trong mạch HP điều 15). Nội dung: các hướng TĂNG chất lượng
+  recall, mỗi hướng kèm **phép thử nhỏ trên bản sao** trước khi bỏ công (khuôn `dims-test`): mở rộng
+  corpus có nhãn (34 câu là mỏng) · rerank có đáng bật mặc định ở kho 768 không · chunk overlap ·
+  truy hồi lai theo digest · embed cả tool-dump có đáng không (171/119.668 hiện nay là lỗ recall của
+  57% kho — đúng chỗ vụ trigram lộ ra). **Cố ý chờ tráo xong** — viết bây giờ là spec chay không số.
 - [ ] **Sao lưu NGOÀI máy — đã có MỘT phần:** bundle `.enc` trên Drive (baseline 289,7 MB + delta,
   auto-sync 05/08) phủ được phần NGUỒN; backup local 1,25 GB vẫn nằm **cùng ổ** với kho, và công
   embed 43 giờ chưa được bảo hiểm (bundle lean không chở vector) → sau tráo cân nhắc `export --full`.
@@ -303,15 +315,6 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   `SessionStart`, nên máy chạy Codex có capture per-message nhưng KHÔNG có đồng hồ context
   lẫn lưới sau nén. Chưa tìm hiểu Codex có sự kiện tương đương không.
   *(HOÃN 2026-08-06 — user chưa dùng Codex; xem ghi chú ⏸ ở §🔌 engram.)*
-- [~] **Ngưỡng cảnh báo context — ĐÃ PHƠI RA CONFIG 2026-08-06; còn mỗi ô chỉnh trên UI.**
-  Không còn là hằng chôn trong `capture-hook.ts`: `getContextWarnPercent()`/`setContextWarnPercent()`
-  (`config/settings.ts`), kẹp **[50,99]**, **mặc định vẫn 95** (test khoá), đọc mỗi lần gọi nên
-  đổi là ăn ngay ở lượt sau; endpoint `POST /set-context-warn?percent=`. Lý do phơi: cùng một %
-  KHÔNG hợp mọi cửa sổ — 95% của 200k chừa ~10k token để chốt việc, 95% của 1M chừa 50k.
-  **Còn lại:** ô chỉnh trong pane ⚙ ⚡ Tự động — là thay đổi THIẾT KẾ UI nên phải trình duyệt trước.
-
-<details><summary>Spec gốc ①②③④ — ĐÃ BUILD HẾT, giữ để tra lý do (soát bằng code 2026-08-05)</summary>
-
 > ✅ **Bốn mục dưới ĐÃ XONG — dấu đã đổi `[ ]` → `✅` (05/08), soát lại bằng code 2026-08-06 vẫn
 > đúng:** `WARN_AT_PERCENT = 95` (`capture-hook.ts:28`) + marker chống spam
 > (`context-guard/<sid>.warned`) · handler `pre-compact` · handler `session-start` chỉ nói khi
@@ -591,6 +594,9 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - *(Đề xuất HP điều 14 "bí mật: ngoài git ≠ ngoài repo" — đã nằm ở mục ngay dưới, cũng chờ user.)*
 
 ## Quyết định mở / cần chốt
+- [ ] **(ĐỀ XUẤT — chờ user) Cờ `--no-window` cho `zemory ui`.** Hiện lệnh LUÔN bật cửa sổ app thật
+  lên desktop — đúng cho người dùng, sai cho smoke-test/CI (sự cố 3 cửa sổ rỗng 06/08 đêm,
+  `[2026-08-07b]`). Một cờ nhỏ: dựng daemon + serve, bỏ bước mở window. Chưa làm vì là feature mới.
 - [~] **🔒 GATE CHỐNG "TODO THỐI" — ĐÃ BUILD `zemory todo verify` 2026-08-06** (user chốt hình
   dạng: *máy ĐO lại*, không dùng dấu ngày thủ công). `docs/todo-verify.ts` + `commands/harness.ts`.
   **Bốn phép đo, đều tất định:** ① **ref chết** — mục nhắc một đường dẫn hoặc endpoint như thứ

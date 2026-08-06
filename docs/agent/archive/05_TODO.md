@@ -1,6 +1,12 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- [x] **Ngưỡng cảnh báo context — XONG TRỌN 2026-08-07** (`[2026-08-07b]`): config kẹp [50,99]
+  (06/08) + ô chỉnh trên pane ⚙→⚡ (07/08, user chốt "làm đi") — `/automation` phơi số, đổi qua
+  `/set-context-warn`, server kẹp và trả số thật về ô. Smoke: gõ 120 → lưu 99.
+
+<details><summary>Spec gốc ①②③④ — ĐÃ BUILD HẾT, giữ để tra lý do (soát bằng code 2026-08-05)</summary>
+
 - [x] **Lane `claude-cowork` — ĐÃ GHI SỔ `06_CHANGES [2026-08-05d]` (user duyệt 05/08).** *(chi tiết
   build + bẫy `resume_token` nằm ở entry đó; dòng dưới giữ làm hồ sơ đo)*
   Làm đúng như ghi chú: **lane phụ của `PLATFORMS.claude`** (`Platform.sub`), chung cửa sổ · chung cổng

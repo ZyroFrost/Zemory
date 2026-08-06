@@ -1,6 +1,155 @@
 <!-- Changelog ARCHIVE — entry cũ cắt khỏi 06_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # Change Log — Archive
 
+## [2026-08-05e] — `archive` từng nói "dưới ngưỡng" cho một file VƯỢT ngưỡng — đã tách hai lý do
+
+**Bug thật, và nó đã dẫn một cuộc điều tra đi sai đường.** `archiveChanges()` trả về **cùng một
+shape** `{moved: 0}` cho **hai tình huống khác hẳn nhau**: ① file còn dưới ngưỡng (bình thường,
+không có gì để làm) · ② file **ĐÃ vượt ngưỡng** nhưng không nhận ra heading nào (`DATED_HEAD =
+/^## \[[^\]]+\]/` — heading sai khuôn, thiếu ngoặc vuông). Người gọi in **"nothing to do (under
+threshold)"** cho cả hai ⇒ bên SasinFlow 05/08, file **947 dòng / ngưỡng 400** mà lệnh vẫn bảo
+"dưới ngưỡng", nên agent bên đó đi tìm nhầm chỗ.
+
+**Sửa:** thêm `skipped: "short" | "no-entries"` vào `ArchiveResult`, tách đúng hai nhánh trong
+`archiveChanges`; `cmdArchive` nói thẳng khi rơi vào ca ②: *"= N lines (OVER threshold) but no dated
+entry was recognised"* + chỉ ngay cách chữa (heading phải là `## [YYYY-MM-DD] — tiêu đề`).
+
+*(Bản vá do một phiên agent khác làm trên repo này, user cho phép vì chỉ đụng phần THÔNG BÁO. Phiên
+này kiểm lại và nhận về: đọc diff · xác minh tiền đề trên repo SasinFlow (nay 154 dòng/ngưỡng 400,
+đã nắn xong) · **thêm test khoá** `archive tells OVER-threshold-but-unrecognised apart from
+under-threshold` · **đột biến hoá**: ép nhánh `no-entries` trả `short` ⇒ test **ĐỎ 1**, khôi phục ⇒
+**xanh 5/5**. Không có test thì bản vá này y hệt bản cũ dưới mắt gate.)*
+
+**Bài học đúng họ với "fail-open giấu lỗi" của `[2026-08-05]`:** một hàm trả về *cùng một câu trả
+lời* cho hai nguyên nhân khác nhau thì người gọi **không thể** nói đúng — và câu sai đó nghe hợp lý
+nên không ai nghi. Chỗ cần soi tiếp: những `return { ok: false }` / `moved: 0` khác trong repo.
+
+## [2026-08-05d] — DUYỆT MUỘN: ba lane web đã chạy thật từ 30–31/07 (user gật 05/08)
+
+> Ba mục treo `[~]` "đã làm, chờ duyệt" trong `05_TODO` từ 30–31/07. Code đã chạy thật và đo thật
+> lúc đó; nay user duyệt nên ghi sổ + dọn khỏi backlog. **Ngày làm** ghi trong từng mục.
+
+**① `claude-web` — ba lỗi THẬT (30/07).** Chẩn đoán CŨ *"mất trắng chat trong Project vì thiếu
+`projectConvsExpr`"* đã bị **chính phép đo bác bỏ**: danh sách phẳng của claude.ai đã chứa cả chat
+trong Project (`projectIdsMissingFromLoose: []`) — khác ChatGPT. Tài khoản thật sự chỉ có 2 hội
+thoại, nên "2 phiên · 6 tin" là số ĐÚNG. Ba lỗi thật đã sửa: **`o[0]` làm org** (account có 2 org,
+máy này tình cờ đúng → nay chọn theo caps `chat`, không có thì báo lỗi rõ chứ không im lặng dùng org
+rỗng) · **khoá resume hardcode `chatgpt-`** trong khi adapter ghi `claudeweb-<uuid>` ⇒ resume chết
+lặng, **mỗi lần chạy kéo lại toàn bộ tài khoản** (nay `Platform.sessionPrefix`, test so parity với
+id thật) · **`project_root` là uuid thô** (payload chi tiết có `project_uuid` nhưng `project: null`;
+nay map uuid→tên + sidecar `_projects.json` dùng chung với ChatGPT — đo thật `019f68e1-…` →
+`VU-Project`).
+
+**② Hết hạn xác thực giữa lúc quét → HỎI + mở cửa sổ (30/07).** Trước: `need-login` là ngõ cụt, in
+*"a browser window is open at …"* **kể cả khi không mở cửa sổ nào**, và hết hạn giữa run thì mọi hội
+thoại còn lại đếm thành `failed` — log trông y như bị rate-limit. Nay `awaitLogin()` mở cửa sổ TRƯỚC
+rồi mới hỏi; giữa run cứ 3 lần fail liên tiếp thì kiểm lại auth, mất phiên thì lưu phần đã kéo →
+hỏi → đăng nhập xong **chạy tiếp tại chỗ**. Không TTY (daemon/pipe) ⇒ mở cửa sổ + `need-login` +
+exit 1, **không treo** chờ câu trả lời không ai gõ được.
+
+**③ UI: nút Quét kéo được web (30/07).** Gốc: cả hai nút POST `/memory-scan` → `scan()` = **chỉ đọc
+đĩa**; UI **chưa bao giờ** có đường quét web, nên bản sửa CLI trước đó đúng mà nằm sai bề mặt. Theo
+thiết kế user chốt (*gộp vào nút sẵn có + công tắc, nhớ qua phiên* — không đẻ nút mới):
+`getScanWeb()` mặc định **TẮT** · `/memory-scan?web=1` · `/memory-scan-web?platform=` · `/set-scan-web`.
+Server chạy **không tương tác** (giữ HTTP mở chờ người đăng nhập = treo daemon) nên nó chỉ MỞ cửa sổ
+rồi trả `need-login`, chỗ HỎI nằm ở dialog UI. **Scheduler nền KHÔNG kéo web** (test khoá) — 10 phút
+một lần tự mở trình duyệt là hành vi không ai xin. Đo bề mặt sống: `POST /memory-scan` trả
+`web: [{chatgpt: need-login}, {claude: done · skipped 2}]`, cửa sổ đăng nhập mở thật (pid 7440).
+
+**④ Lane `claude-cowork` (31/07).** Làm đúng thiết kế: **lane phụ của `PLATFORMS.claude`**
+(`Platform.sub`) — chung cửa sổ, chung cổng 9223, chung phiên đăng nhập, KHÔNG đẻ `PLATFORMS` thứ
+ba. Adapter `adapters/cowork.ts` (`source=claude-cowork`, `coworkweb-<cse_id>`). Đo thật: phiên
+*Claude-swap setup* → **63 tin** vào bộ nhớ, nội dung/vai/thời gian đúng. **Bẫy đã trả giá:**
+`resume_token` KHÔNG phải con trỏ trang — truyền lại là endpoint chuyển sang **long-poll không bao
+giờ trả về** (lần đầu treo 25 phút, CPU chỉ 10 giây, không lỗi không log) ⇒ nay gọi MỘT lần. Kèm sửa
+lớp dưới: `Cdp.evaluate` **có hạn giờ 90s** rồi ném — trước đó một expr treo là treo cả tiến trình,
+lỗi này mọi nền đều dính. Tiêu đề phải dập từ DANH SÁCH (`GET /…/<id>` không trả `title`).
+
+**Còn lại của lane web, chuyển sang việc của USER (không phải nợ code):** phiên `chatgpt-web` trên
+máy này đã hết hạn ⇒ lane 30.913 tin đứng cho tới khi user đăng nhập lại một lần trong cửa sổ đó
+(claude.ai không cần — cookie profile còn sống). Và quyết định **KHÔNG lấy cookie từ trình duyệt
+chính** giữ nguyên (App-Bound Encryption + guard; vượt được chỉ bằng cách tiêm vào tiến trình kiểu
+malware, phá điều 7) — cookie đã tự dùng lại trong profile riêng `data/browser/<nền>`.
+
+## [2026-08-05c] — PUSH release **1.1.0** (user chốt số) · luật mới "push = lên version" · gỡ model 294 MB khỏi lịch sử chưa push
+
+**Luật mới `02_RULES §Git` (user chốt):** mỗi push = một lần lên version, SỐ do user chốt (hỏi
+trước khi đẩy); trước push phải kiểm file sạch + rà `05_TODO`. Đợt này user chọn **1.1.0**.
+
+**Hai chướng ngại thật trên đường push, đều là di sản máy cũ:**
+- `~/.gitconfig` ghim credential github.com vào `gh.exe` **không tồn tại** (kèm dòng rỗng loại luôn
+  GCM) ⇒ mọi push chết từ vòng xác thực. Gỡ 2 entry chết → GCM tự lo.
+- Commit chốt phiên 04/08 mang theo **model weight q8 294,6 MB** (`attic/zemory-lab/models/…`) —
+  vi phạm HP điều 2, GitHub chặn cứng (>100 MB). Xử: `filter-branch` gỡ `attic/zemory-lab` khỏi
+  **2 commit CHƯA push** (hợp luật — chỉ cấm rewrite lịch sử đã push), tag an toàn
+  `pre-lfs-fix-20260805` giữ bản cũ, `.gitignore` chặn `attic/zemory-lab/` vĩnh viễn. Tác dụng
+  phụ đã kiểm: reset cuối của filter-branch rút 5 file tracked khỏi đĩa — **toàn bộ là bản sao
+  của `data\models`** (đối chiếu True), không mất gì; `lab.db` cũ 1,18 GB (untracked) còn nguyên.
+
+**Kết quả:** `77582dc..e423a8f main → main`, remote khớp HEAD. Gate trước push: typecheck · lint
+· 0 file data/secret trong diff · TODO 0 mục `[x]` sót.
+
+## [2026-08-05b] — Nối lại 8 repo sau đổi máy · secret về folder repo · gợi ý HP vào template · audit 6 mặt
+
+**Nối lại app sau đổi máy.** Sổ đăng ký chỉ còn 2 project ⇒ đăng ký + ghim lại **8/8 repo** có
+`.harness.json` trên máy (dò cả ổ, không đoán). Lịch sử phiên kẹt ở đường máy cũ ⇒ gộp qua
+`/merge-project` (giữ `cwd`, ghim `project_pinned`): Zemory 42 · SasinFlow 32 · PBI_Maintain 13 ·
+còn lại 9 phiên. Bản đảo ngược: `zemory-lab/premerge-undo*.json`. *(Lưới "ĐÃ LIÊN KẾT" lấy GIAO
+"có phiên máy này ∩ khớp sổ" chứ không đọc sổ làm nguồn — `Harness AI` 0 phiên nên không hiện,
+user chốt kệ.)*
+
+**Secret dời về folder repo, ổ C chỉ còn `location.json`** (con trỏ, không chứa bí mật). Registry
+→ `<data>/projects.json` (`projects.ts`, có đường lùi đọc bản cũ); dọn `~/.zemory`: xoá bản model
+trùng **282,7 MB** (rác của bug cache rerank), vật chứng cứu 29/07 dời vào `data\rescue`. Ràng
+buộc thật không đổi: **cấm git · cấm nguồn online · cấm đẩy VM** (`.gitignore` + gate canh, đã
+kiểm `git ls-files` 0 lọt). `plan/16 §2` supersede câu "không phải trong repo".
+
+**Luật secret KHÔNG vào `02_RULES`** (user chốt lại) — thành **§Điều khoản GỢI Ý** trong template
+`01_CONSTITUTION` (app=nonapp=adapt, parity 52/52): 8 điều rút từ hiến pháp SasinFlow đã trả giá
+thật (secret "ngoài git ≠ ngoài repo" · một bề mặt+bộ lọc · đọc version đang chạy · docs khớp code
+· từ điển định danh · UI không tên kỹ thuật · bố cục bất biến · làm liền đừng backlog). User sẽ
+gọi các repo áp chuẩn lại.
+
+**Audit 6 mặt (đủ, theo skill):** quick_check ok · digest 1284/1284 · 0 mồ côi (sau khi xoá 3
+att-link) · 8/8 endpoint 200 · đột biến test dtype ĐỎ được · **B1**: daemon code cũ tự đẻ lại
+registry ở ổ C ⇒ HAI sổ song song, UI hiện 1 project — đóng cửa sổ KHÔNG giết daemon nền, phải
+kill (đã) + mở lại · **A1**: 55 dòng `doc` đường cũ của 6 repo khác → nắn về đường mới · đã loại:
+238 session đường cũ (lịch sử project đời trước, giữ đúng điều 11) · `/memory-status` 14,7s (nguội;
+ấm 69ms). Còn treo: `PowerBi_SasinFlow` (6 phiên, tên khác 2 repo PBI) chờ user nhận dạng.
+
+## [2026-08-05] — Máy mới chạy MỘT CHÂN suốt 2 ngày: lớp vector chết lặng · nén sâu là ngõ cụt · dựng lại 768+fp32
+
+**Lớp vector CHẾT không dấu hiệu.** `memory search` vẫn in *"hybrid · rerank"* nhưng `bench` nói
+**"embed model unavailable"** — fail-open về FTS từ lúc dựng máy. Gốc: `onnxruntime_binding.node`
+*DLL initialization failed* vì máy chỉ có VC++ **14.24**, onnxruntime 1.24 cần bản VS2022. Cài
+redist **14.51** → hybrid **100% (8/8)** vs FTS 0%. Bài học: **fail-open đúng thiết kế chính là
+lớp giấu lỗi giỏi nhất** — dòng chữ trên màn hình không phải bằng chứng.
+
+**Nén sâu THUA trên CPU** (5 dtype, cùng 48 chunk thật, mỗi dtype một tiến trình — s/chunk):
+**fp32 1,61** · fp16 1,66 · q8 3,09 · q4f16 5,23 · q4 5,45. fp32 dùng 7,5 nhân, q4 chỉ 3,5 (4-bit
+giải nén trọng số trước mỗi phép nhân). `q8` trả giá KÉP (chậm ~2× và kém chính xác) đổi lấy đĩa
+— tài nguyên rẻ nhất (295 MB vs 1.178 MB). RAM đỉnh 2,1–3,5 GB.
+
+**Dựng lại chỉ mục — đo corpus thật:** 146.679 tin → **123.086 chunk duy nhất** (dedup 19%).
+fp32 1,26 s/chunk ⇒ **43 giờ** (q8 là 80). **512 và 768 tốn thời gian NHƯ NHAU** — model luôn tính
+đủ 768 rồi mới cắt ⇒ chọn thẳng 768. Chạy trên **bản sao** `zemory-lab/lab.db`; tráo chỉ khi
+`bench --recall` thắng mốc 41%@10 (điều 12).
+
+**`vec_config` thêm `dtype`** — stored-dtype-authoritative ở CẢ HAI phía nạp + truy vấn; mặc định
+`q8`→`fp32`; chỉ mục cũ không có cột đọc là `q8` ⇒ kho 256d hiện tại không bị trộn.
+
+**Hai lỗi chỉ lộ khi cài cho NGƯỜI KHÁC:** ① lối tắt Desktop/Start Menu chưa bao giờ tạo được trên
+máy Desktop-chuyển-hướng-OneDrive (`desktopDir()` ghim `<home>\Desktop`; hỏng Desktop kéo mất luôn
+Start Menu; lỗi bị `stdio:"ignore"` nuốt) — nay đọc registry, hai lối tắt độc lập; ② cache model
+rerank ghim `~/.zemory/models` trong khi embed theo thư mục relocate ⇒ tải trùng trọng số — test cũ
+khoá ĐƯỜNG DẪN thay vì bất biến "chung cache", đã sửa cả hai.
+
+**`npm install` sạch chạy lại — trị gốc:** `@nativewindow/webview` đòi `peer typescript@^6.0.2`;
+TS **6.0.x nằm trong vùng eslint cho phép** (`<6.1.0`) ⇒ nâng 5.9.3→6.0.3, typecheck+lint sạch,
+phòng sạch giải 190 gói exit 0. `.npmrc legacy-peer-deps` đã cân và **BỎ** (che thay vì trị).
+
+**Cổng:** typecheck · lint · **510/510** test · `conform` ✓.
+
 ## [2026-08-04] — ĐỔI MÁY sang `SS01-IT-12` · KHO HỎNG LẦN HAI (cứu, mất 0) · tìm ra nguyên nhân thứ hai
 
 > Phiên này chạy trên **hai máy**: nửa đầu ở `SS01-IT-10` (laptop cũ), nửa sau ở **`SS01-IT-12`**.
