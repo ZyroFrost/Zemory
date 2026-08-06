@@ -40,6 +40,7 @@ import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
 import { buildStandardGraph } from "./memory/graph/graph-standard.js";
+import { buildSeamEdges } from "./memory/graph/graph-seam.js";
 import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { buildNavCost } from "./memory/graph/nav-cost.js";
@@ -1309,6 +1310,8 @@ export async function startUi(): Promise<void> {
         rel: "declared" | "inferred";
         count?: number;
         confidence?: string;
+        /** cạnh `api`: các route FE→BE mà cạnh này đại diện (gộp về mức file) */
+        routes?: string[];
         /** id ổn định để trích dẫn — đóng dấu sau khi gộp đủ 3 lớp cạnh */
         eid?: string;
       }[] = g.edges.map((e) => ({ ...e, kind: "imports", rel: "declared" as const }));
@@ -1328,6 +1331,12 @@ export async function startUi(): Promise<void> {
           } else agg.set(key, { from: c.fromFile, to: c.toFile, count: c.count, confidence: c.confidence });
         }
         for (const v of agg.values()) edges.push({ ...v, kind: "calls", rel: "inferred" });
+        // api seam (plan 13 §4): FE gọi endpoint nào của BE — hai bờ nói chuyện qua HTTP
+        // nên import-graph không có lấy một cạnh nào giữa chúng. Nhãn inferred/textual
+        // (điều 13 — khớp chuỗi route, không phải contract). Fail-open cùng khối try này.
+        for (const s of buildSeamEdges(target, g.nodes)) {
+          edges.push({ from: s.from, to: s.to, kind: "api", rel: "inferred", confidence: s.confidence, count: s.count, routes: s.routes });
+        }
       } catch {
         /* fail-open (điều 9): thiếu tree-sitter thì vẫn còn nguyên lane imports */
       }
@@ -1793,6 +1802,9 @@ export async function startUi(): Promise<void> {
         // không). Phơi cả hai vì chúng lệch được: user sửa tay settings.json, hoặc cài trên
         // máy chưa có Claude Code. Chỉ hiện cờ config là hứa suông.
         realtime: getRealtime(), realtimeWired: hooksInstalled(),
+        // Ngưỡng % context mà hook nhắc chốt sổ (kẹp [50,99] ở settings). Đi cùng công tắc
+        // realtime vì lời nhắc là một phần của tính năng đó — UI chỉnh qua /set-context-warn.
+        contextWarnPercent: getContextWarnPercent(),
         os: autostartStatus(), shortcut: desktopShortcutStatus(),
         // Có ĐANG chạy job nền không (embed/scan). Đo 2026-07-28: job embed nền ngốn
         // 4.592 s CPU làm MỌI endpoint chậm 2–9× mà giao diện không hề nói gì — phải mở

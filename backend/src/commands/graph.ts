@@ -5,6 +5,7 @@ import { currentProjectRoot } from "../core/config.js";
 import { buildCodeGraph, fileImpact, graphFitness, stampEdgeIds, HUB_FANIN } from "../memory/graph/graph.js";
 import { enrichGraphSymbols, resolveCalls } from "../memory/graph/graph-symbols.js";
 import { buildTouchIndex, touchesFor } from "../memory/graph/graph-memory.js";
+import { buildSeamEdges } from "../memory/graph/graph-seam.js";
 import { buildDocsGraph } from "../memory/graph/graph-docs.js";
 import { semanticEdges } from "../memory/graph/graph-semantic.js";
 import { listKnownProjects } from "../projects.js";
@@ -58,6 +59,24 @@ export async function cmdGraph(args: string[]): Promise<void> {
       console.log(`  reaches transitively (${r.transitiveImporters.length}): ${r.transitiveImporters.slice(0, 8).join(", ")}${r.transitiveImporters.length > 8 ? ", …" : ""}`);
     }
     if (r.imports.length) console.log(`  imports (${r.imports.length}): ${r.imports.join(", ")}`);
+    // api seam (plan 13 §4): FE↔BE talk over HTTP, so the import graph has NO edge between
+    // the two shores — this is the blast radius imports cannot see. Labeled [textual]:
+    // it is a route-string match, not a typed contract (điều 13).
+    try {
+      const seams = buildSeamEdges(root, g.nodes);
+      const callsOut = seams.filter((s) => s.from === r.file);
+      const calledBy = seams.filter((s) => s.to === r.file);
+      if (callsOut.length) {
+        console.log(`  calls backend over HTTP (${callsOut.length}) [api · textual]:`);
+        for (const s of callsOut) console.log(`    → ${s.to}  (${s.routes.join(" · ")})`);
+      }
+      if (calledBy.length) {
+        console.log(`  called from the frontend over HTTP (${calledBy.length}) [api · textual] — a route change here breaks these:`);
+        for (const s of calledBy) console.log(`    ← ${s.from}  (${s.routes.join(" · ")})`);
+      }
+    } catch {
+      /* fail-open: seam hỏng thì impact vẫn đủ dùng bằng imports */
+    }
     // Graph ↔ MEMORY (plan 13 §4 `touches`): which past sessions worked on this file.
     // This is the part a code-only tool cannot answer.
     const touch = touchesFor(buildTouchIndex(root), r.file);
@@ -155,6 +174,14 @@ export async function cmdGraph(args: string[]): Promise<void> {
         confidence: c.confidence,
         count: c.count,
       })),
+      ...buildSeamEdges(root, g.nodes).map((se) => ({
+        from: se.from,
+        to: se.to,
+        type: "api",
+        kind: "inferred" as const,
+        confidence: se.confidence,
+        toSymbol: se.routes.join(","),
+      })),
     ]);
     const byId = new Map(edges.map((e) => [e.eid, e]));
     let valid = 0;
@@ -188,6 +215,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
       const g = buildCodeGraph(r);
       await enrichGraphSymbols(g);
       const calls = resolveCalls(g);
+      const seams = buildSeamEdges(r, g.nodes);
       const touch = buildTouchIndex(r);
       const docs = buildDocsGraph(r);
       // Inferred overlay (opt-in): ONNX embedding runs HERE in the CLI process,
@@ -197,7 +225,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
         version: 2,
         root: r,
         generatedAt: new Date().toISOString(),
-        stats: { ...g.stats, calls: calls.length, digests: touch.digests, docs: docs.stats.docs, semantic: sem.length },
+        stats: { ...g.stats, calls: calls.length, api: seams.length, digests: touch.digests, docs: docs.stats.docs, semantic: sem.length },
         nodes: g.nodes.map((n) => ({
           id: n.id,
           label: n.label,
@@ -228,6 +256,18 @@ export async function cmdGraph(args: string[]): Promise<void> {
             toSymbol: c.toSymbol,
             confidence: c.confidence,
             count: c.count,
+          })),
+          // api seam (plan 13 §4): FE↔BE qua HTTP — import-graph mù hoàn toàn giữa hai bờ.
+          // routes[] đưa vào toSymbol để eid phân biệt được các cặp có nhiều nhóm route.
+          ...seams.map((se) => ({
+            from: se.from,
+            to: se.to,
+            type: "api",
+            kind: "inferred" as const,
+            confidence: se.confidence,
+            routes: se.routes,
+            count: se.count,
+            toSymbol: se.routes.join(","),
           })),
           ...sem,
         ]),
