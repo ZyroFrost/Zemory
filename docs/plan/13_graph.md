@@ -195,7 +195,12 @@ làm được taxonomy tương đương, hoàn toàn tất định — đó là 
 4. **Cross-project:** app graph 1 repo (mặc định) có thêm mode `--all` xuyên nhiều repo (memory cross-project) không?
 5. **Viewer tech** (khi làm app riêng): cytoscape.js / d3 / sigma.js — cần 1 lượt research license + self-contained-được cho `docs_visual`.
 6. **Constitution:** có thêm 1 điều/khoản "graph = lớp dẫn xuất; app ngoài chỉ consume export; 2 hạng cạnh declared/inferred" vào `01_CONSTITUTION` không? *(user chốt — đã ĐỀ XUẤT ở `05_TODO`.)*
-7. **Export schema versioning:** `graph.json` gắn `version` + chính sách đổi schema (như migration DB).
+7. ~~**Export schema versioning:** `graph.json` gắn `version` + chính sách đổi schema.~~ **ĐÓNG
+   2026-08-07 (user chốt): KHÔNG viết chính sách.** Lý do đo được: hợp đồng `graph.json` **chưa có
+   consumer nào**. Kế hoạch gốc §3 là "Graph App" repo riêng đọc file xuất — nhưng §8#1 đã đảo hướng
+   18/07 (graph thành TAB trong `zemory ui`, đọc thẳng `/code-graph`). Nguyên văn user: *"ko xài,
+   cũng ko phù hợp app"*. Lệnh `graph export` GIỮ NGUYÊN (rẻ, dùng để soi/kiểm tay và là seam nếu
+   sau này thật sự tách app); chỉ bỏ phần luật versioning. Có consumer thật thì mở lại.
 8. ~~**Hướng đi so với CALM (§9): tự build sâu · consume CALM · hay hybrid?**~~ **CHỐT 2026-07-20 (user): "chỉ lấy cái nó tốt hơn"** — KHÔNG consume hệ MCP; hấp thụ đúng 2 thứ ĐO THẬT thắng (§9): ① fitness metrics (làm ngay trên file-graph sẵn có) · ② symbol-attributed callers/callees qua tree-sitter (phase sau, kèm nhãn confidence). Bỏ: edit-gate (host lo), MCP-first (hệ CLI), file-level dependencies của nó (bug; của mình đúng + rẻ hơn), semantic code search (0 kết quả). Lộ trình A→D ở cuối §9. *(Đồng thời định hướng #2: symbol-level = CÓ nhưng qua tree-sitter ở phase B/C, KHÔNG regex; v1 file-level giữ nguyên làm baseline.)*
 
 ## 9. Khảo sát đối chiếu — CALM (2026-07-20, user đưa)

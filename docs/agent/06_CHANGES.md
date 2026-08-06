@@ -5,6 +5,45 @@
 
 ---
 
+## [2026-08-07] — HP điều 15: CHẤT LƯỢNG bộ nhớ > dung lượng · bác đề xuất cắt trigram · bỏ policy graph.json · tách graph.js
+
+**HP điều 15 (user chốt), sinh ra từ một đề xuất SAI của chính agent trong phiên này.** Tôi đề xuất
+cắt tool-dump khỏi FTS trigram (~285 MB, 24% kho). User bác — *"cái t hướng tới là chất lượng… chính
+bạn đề xuất giảm chiều embed 256 làm hư hết data, giờ mới tốn công embed lại cực lâu"*. Đo lại thì
+user đúng và đề xuất của tôi hỏng ở gốc: **119.668 tin tool-dump chỉ có 171 tin mang vector** (embed
+cố ý bỏ `tool_name IS NOT NULL`) ⇒ với 57% kho, FTS word + trigram là **hai chân tìm kiếm DUY NHẤT**,
+cắt trigram là chặt một chân. Đổi lấy 285 MB trong khi ổ còn **140 GB trống**.
+- **Lỗi phương pháp, không phải sơ suất số học:** tôi tính được phần TIẾT KIỆM (MB cân ngay được)
+  mà không đo phần MẤT (recall — phải có corpus nhãn). Y hệt vụ **cắt 256 chiều**: đo được
+  1.141→595 MB, không ai đo chất lượng, tới 05/08 mới lộ **recall@1 74% vs 91%** + **44% câu không
+  bao giờ lấy về được**, chuộc bằng **43 giờ**.
+- **Điều 15 chốt:** chất lượng truy hồi là đích cao nhất của mọi mô hình RAG · đề xuất tối ưu **phải
+  đi theo hướng TĂNG** chất lượng · **cắt/thu hẹp phải qua ĐÚNG CỔNG như thêm mới** (điều 12: đo
+  recall trên corpus có nhãn TRƯỚC) · *"đĩa rẻ và mua thêm được; một câu trả lời trượt vì recall kém
+  thì không mua lại được"*. Điều 12 vốn chỉ canh cửa **BẬT lớp mới** — đây là bịt cửa **CẮT lớp cũ**.
+- **Và chiều NGƯỢC LẠI cũng bị canh (user chốt cùng ngày):** được phép **TĂNG** (thêm chiều, đổi
+  model, thêm lớp) *nếu đáng giá*, nhưng phải đo bằng **phép thử NHỎ trên BẢN SAO TRƯỚC** — mức tăng
+  bao nhiêu · giá phải trả · có đáng đổi không; không đáng thì **đề xuất đường khác**. Cấm "làm hết
+  rồi mới thấy sai". Khuôn mẫu đã làm ĐÚNG và phải dùng lại: `dims-test` embed MỘT lần ở 768 rồi cắt
+  4 mức trên **cùng một dãy số** (Matryoshka ⇒ biến duy nhất là số chiều) → bảng `recall@1`
+  62/74/85/**91%** trong ~1 giờ, rồi mới bỏ 43 giờ. **Một giờ đo cứu 43 giờ đi sai đường.**
+- **KHÔNG lan sang `docs_template`:** đây là luật riêng của một app có RAG/bộ nhớ; phần lớn repo dùng
+  template (BI · report · docs-only) không có lớp đó, thêm vào là nhét luật không dùng.
+
+**Bỏ policy schema `graph.json` (user chốt: "ko xài, cũng ko phù hợp app").** Đo trước khi bỏ: hợp
+đồng đó **chưa có consumer nào** — kế hoạch gốc là "Graph App" repo riêng, nhưng 18/07 đã đảo hướng
+(graph thành tab trong `zemory ui`, đọc thẳng `/code-graph`). Lệnh `graph export` giữ nguyên.
+
+**Tách `graph.js` (bước 3) — và nó lòi ra lỗi của bước 1.** `graph.js` đang ôm **125 dòng KHÔNG phải
+graph** (`renderMem` · `renderDiscovered` · `renderDriveDonut` · `refreshChecks` · `loadRecentSessions`…)
+vì lần cắt trước neo theo dải phân cách, mà dải "graph" trùm luôn đầu khối PHASE-2. Đã trả về đúng nhà
+theo concern (gm · sources · system · shell), rồi mới chia phần graph thật: **`graph-render`** (canvas
+31 KB) + **`graph-panel`** (cây/toolbar/seam 9 KB). Phủ kín kiểm bằng Counter (560 dòng → 355+80+125),
+lệch một dòng là dừng không ghi. **129/129** test · smoke 12/12 script → 200 · `graph.js` cũ → 404.
+
+**Kèm:** `todo verify` nối vào `npm run check` (gate 5 bước) · `digest v4 cleanPath` cắt văn xuôi khỏi
+`paths_touched` (261/261 path bẩn xử sạch) · đo dung lượng kho bằng `dbstat` (trigram 512 MB = 42,3%).
+
 ## [2026-08-06c] — Đợt "fix nhóm B": 10 việc code · luật BA NGUỒN lan 4 bộ mẫu · tách app.js 11 file
 
 **Nền:** soát 48 mục theo luật ĐO LẠI → 3 chỗ sổ≠code (write-gate "chưa sửa" đã sửa · plan14§7
