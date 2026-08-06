@@ -506,7 +506,16 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 
 ## 🔥 Từ chốt sổ 2026-07-21 — làm trước
 - [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `~/.zemory/logs/daemon.log` (mirror stderr) cho mọi lifecycle (up/shutdown/exit/uncaught/unhandled) + `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON **stack native** cạnh log. `ui.ts` arm ngay khi thắng port. **CÒN LẠI:** chờ lần daemon chết tiếp theo → đọc `daemon.log` + `report.*.json` để chẩn gốc; nếu tái hiện được thì chạy foreground + ép embed↔sync xen kẽ.
-- [ ] **(ĐỀ XUẤT — chờ user) Tách "lưu đầy" khỏi "index đầy".** +231 MB chủ yếu do FTS trigram index nuốt cả tool-dump 50 KB — mà tìm trigram trong dump máy thì giá trị recall thấp. Đúng mô hình user mô tả (*"1 lớp full đầy đủ, 1 lớp lọc"*): giữ `messages` ĐẦY làm nguồn, nhưng **lớp DẪN XUẤT (FTS/vector) chỉ index phần đáng tìm** — vd bỏ qua block > N KB hoặc bỏ tool-dump khỏi trigram. Cần đo trước: FTS chiếm bao nhiêu trong 231 MB đó.
+- [ ] **(ĐỀ XUẤT — chờ user, SỐ Đà ĐO 2026-08-06) Tách "lưu đầy" khỏi "index đầy".** Đúng mô
+  hình user mô tả (*"1 lớp full đầy đủ, 1 lớp lọc"*): giữ `messages` ĐẦY làm nguồn, lớp DẪN XUẤT
+  chỉ index phần đáng tìm. **Số đo (dbstat trên kho thật 1.210 MB):**
+  - **FTS trigram của messages một mình = 512 MB (42,3% CẢ KHO)** — to hơn chính bảng nguồn
+    `messages` (275 MB); FTS word 77 MB; vector 161 MB; attachment 99 MB.
+  - Nội dung là **tool-dump** (content mở đầu `[tool_` ∪ `tool_name`): **119.217 tin · 109/195 MB
+    = 56% khối lượng chữ**. Trigram phình ~2,6× chữ nó index ⇒ bỏ tool-dump khỏi trigram ước tiết
+    kiệm **~285 MB (~24% kho)** — mà "tìm trigram trong dump máy" vốn giá trị recall thấp.
+  - Nếu làm: đổi trigger `messages_fts_tri` bọc điều kiện + rebuild index (external-content sẵn) —
+    làm SAU TRÁO kho 768 (kho sắp thay, đừng mổ bây giờ). FTS word GIỮ NGUYÊN (baseline điều 9).
 
 ## 🧩 Graph — phase sau
 - [ ] **Phase D** (tsserver/pyright → cạnh `resolved`) — HOÃN theo decision rule (đếm câu hỏi "sửa X đụng ai" trượt trong 2–4 tuần). ~~MCP mirror~~ **ĐÃ WIRE 2026-08-06** (`graph_impact`+`graph_neighbors`, 6/6 test — `[2026-08-06c]`). Schema-change policy cho `graph.json` v2 — vẫn chưa viết.
