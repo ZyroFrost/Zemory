@@ -17,6 +17,8 @@ description: Close out a work session correctly - route everything that happened
 > `zemory memory digest <session>` + `zemory memory search "<chủ đề>" [--all]` để dựng lại đầy đủ,
 > rồi **verify từng mục với nguồn thật** trước khi ghi. Không có CLI thì đọc lại phiên hiện tại là nguồn duy nhất — càng phải ghi sớm, đừng để trôi.
 
+**SOÁT `05_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`02_RULES §Hành xử` — luật áp **MỌI LÚC**, chốt phiên chỉ là một trường hợp; kích hoạt cả khi user nói *"check todo"* · *"còn gì chưa làm"* giữa chừng). Mỗi mục là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng định phải truy được về nguồn kiểm được — file `.md` là nguồn của NỘI DUNG, **không phải nguồn của sự thật**. Kiểm được bằng file/số liệu ⇒ **mở ra đếm**; là quyết định ⇒ tra lại lịch sử (có CLI thì `memory search --all`; không có thì đọc `archive/`) vì quyết định hay nằm ở phiên khác. Tra không ra ⇒ ghi **"chưa xác minh được"**, KHÔNG mặc định "chưa làm". **Mục quá 7 ngày không ai đụng = NGHI NGỜ.** **Hỏi lại user một việc đã chốt là LỖI**, không phải cẩn thận.
+
 ## Bước 2 — định tuyến, KHÔNG BỎ SÓT
 
 | Thứ phát sinh trong phiên | Ghi vào |
