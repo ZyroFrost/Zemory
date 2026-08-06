@@ -15,7 +15,7 @@ export function tempDir(t, prefix) {
 import { readFileSync, readdirSync } from "node:fs";
 
 export const APP_SCRIPT_ORDER = [
-  "core.js", "shell.js", "graph.js", "gm.js", "session.js", "sources.js",
+  "core.js", "shell.js", "graph-render.js", "graph-panel.js", "gm.js", "session.js", "sources.js",
   "recall.js", "harness.js", "system.js", "chrome.js", "boot.js",
 ];
 

@@ -140,3 +140,19 @@
       sm.addEventListener('dblclick',function(){cont.style.removeProperty(cvar);try{localStorage.removeItem('zemory.seam.'+key);}catch(e){}});
     });
   }
+
+  // ── DỜI TỪ graph.js 2026-08-07: sức khoẻ + check, không phải graph
+  function setHealthChip(okN,warnN,tot){
+    var el=zid('sysSummary');
+    if(el){el.className='pill '+(warnN?'warn':'ok');el.textContent=t('sys.health').replace('{ok}',okN).replace('{n}',tot)+(warnN?' · '+warnN+' ⚠':'');}
+    var rh=zid('railHealth'),rd=zid('railDot'),rs=zid('railHealthSub');
+    if(rh)rh.textContent=warnN?(warnN+' ⚠'):(okN+' OK');
+    if(rd)rd.classList.toggle('warn',warnN>0);
+    if(rs){rs.removeAttribute('data-i18n');rs.textContent=warnN?t('rail.needAttn'):t('rail.allGreen');}
+  }
+  // Nạp 3 check thật (/check) rồi vẽ lại inventory — đường duy nhất làm tươi roll-up.
+  function refreshChecks(){
+    return Promise.all(['memory','validate','grill'].map(function(f){
+      return zGet('/check?feature='+f).then(function(r){Z.checks[f]=r;}).catch(function(){Z.checks[f]={state:'off',detail:'err'};});
+    })).then(function(){renderSystem();});
+  }
