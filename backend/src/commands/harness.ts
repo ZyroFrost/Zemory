@@ -458,7 +458,12 @@ export function cmdReindex(): void {
   // mà không báo lỗi gì: lệnh in "0 plan doc" như thể repo không có spec nào. Đường ghi vào
   // index cũng phải là đường THẬT, không thì `plan search` trả về đường dẫn không tồn tại.
   const hp = harnessPathsAt(root);
-  const rel = (p: string) => relative(root, p).replace(/\\/g, "/");
+  // KHÔNG chuẩn hoá sang `/`: index hiện lưu đường theo separator của OS (đo 2026-08-07 —
+  // 23 doc row của repo này đều dạng `docs\agent\…`), và mọi chỗ TRA cũng ghép bằng `join`.
+  // Đổi một đầu sang posix là đẻ doc row TRÙNG cho cùng một file, rồi `plan ls`/`plan search`
+  // tra dạng này lại không khớp dạng kia. Muốn chuyển sang posix thì đó là một migration
+  // riêng (đổi cả index cũ), không phải việc của đợt vét literal.
+  const rel = (p: string) => relative(root, p);
   const planDir = hp.plan;
   let files: string[] = [];
   try {
