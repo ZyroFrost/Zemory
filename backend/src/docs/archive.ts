@@ -149,7 +149,9 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   // repo đặt harness ở `harness/` mà index ghi `docs/agent/05_TODO.md` thì mọi tra cứu sau
   // đó trỏ vào file không tồn tại (đúng lớp lỗi `LEGACY_RENAME` từng trả giá — đổi chỗ file
   // mà không dời hàng index).
-  const rel = (p: string) => relative(ctx.projectRoot, p).replace(/\\/g, "/");
+  // Separator của OS, KHÔNG chuẩn hoá posix — phải khớp dạng `reindex` đang ghi, nếu không
+  // một file có hai hàng index (xem ghi chú trong `cmdReindex`).
+  const rel = (p: string) => relative(ctx.projectRoot, p);
   importDoc(mainPath, rel(mainPath), ctx.projectRoot, "agent", dbPath);
   importDoc(archivePath, rel(archivePath), ctx.projectRoot, "agent-archive", dbPath);
   return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath };
