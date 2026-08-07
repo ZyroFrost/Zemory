@@ -10,6 +10,7 @@ export {
   findMarker,
   findProjectRoot,
   harnessPaths,
+  harnessPathsAt,
   isConnected,
   loadContext,
   normalizeRoot,

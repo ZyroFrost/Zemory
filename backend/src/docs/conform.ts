@@ -16,8 +16,8 @@
 // diện". Báo nó thành lỗi là hiểu ngược chuẩn.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { findMarker } from "../core/config.js";
+import { dirname, join, relative } from "node:path";
+import { findMarker, harnessPathsAt } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { SLOT_ROLES } from "./structure-tree.js";
@@ -207,21 +207,30 @@ export function conform(root: string): ConformReport {
   }
 
   // ② Harness thiếu file bắt buộc.
+  //
+  // ADAPT v2 · N2 — đường lấy từ MARKER, không phải hằng số. Bản trước đóng cứng
+  // `docs/agent/01..06` + `docs/plan/00_overview.md`, nên repo đặt harness ở `harness/agent`
+  // (có ĐỦ cả 6 file) vẫn bị báo THIẾU cả 7 — cổng đi tìm ở chỗ không ai bảo nó tìm.
+  // Đo trên repo thật trước khi vá: đúng 7 mục báo oan, trong khi file nằm đủ bên `harness/`.
+  const hp = harnessPathsAt(root);
   const need = [
-    "AGENTS.md",
-    "docs/agent/01_CONSTITUTION.md",
-    "docs/agent/02_RULES.md",
-    "docs/agent/03_STRUCTURE.md",
-    "docs/agent/04_SKILLS.md",
-    "docs/agent/05_TODO.md",
-    "docs/agent/06_CHANGES.md",
-    "docs/plan/00_overview.md",
+    ...hp.entries,
+    ...["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"].map((f) =>
+      join(hp.agent, `${f}.md`),
+    ),
+    join(hp.plan, "00_overview.md"),
   ];
+  // Hai cửa vào ở gốc: chỉ cần MỘT là harness nạp được (AGENTS.md là chuẩn liên-hãng,
+  // CLAUDE.md tồn tại vì Claude Code chỉ đọc tên đó). Đòi đủ cả hai là đòi thừa.
+  const entryOk = hp.entries.some((e) => existsSync(e));
   push(
     "harness-missing",
     "blocking",
     "Thiếu file harness bắt buộc",
-    need.filter((f) => !existsSync(join(root, f))),
+    need
+      .filter((f) => !existsSync(f))
+      .filter((f) => !(entryOk && hp.entries.includes(f)))
+      .map((f) => relative(root, f).replace(/\\/g, "/")),
     "chạy `zemory sync` để gap-fill từ template (không ghi đè file đã có)",
   );
 
@@ -441,8 +450,15 @@ export function conform(root: string): ConformReport {
     }
     return null;
   };
+  // KHÔNG soi code của người khác: file vendor/thư viện nhúng và bundle đã minify vốn
+  // chứa byte điều khiển hợp lệ, và ta cũng không có quyền sửa chúng. Đo trên repo tham
+  // chiếu: `app/public/vendor/mermaid.min.js` (3,3 MB, 0x01) bị báo — một phát hiện mà
+  // người nhận không thể hành động gì, tức đúng loại báo oan giết lòng tin vào cổng.
+  const isVendored = (rel: string): boolean =>
+    /(^|\/)(vendor|third_party|node_modules|external)\//.test(rel) || /\.min\.(js|css)$/.test(rel);
   const ctrlHits: string[] = [];
   for (const rel of [...new Set([...g.nodes.map((n) => n.id), ...mdFiles])]) {
+    if (isVendored(rel)) continue;
     const txt = read(root, rel);
     if (!txt) continue;
     const hit = firstCtrl(txt);
