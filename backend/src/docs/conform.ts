@@ -256,8 +256,8 @@ export function conform(root: string): ConformReport {
   //               nó tồn tại mà không phiên nào tìm ra, tức tốn công viết mà không ai dùng.
   //      · CŨ   — playbook inline; roster = dòng "Skill inline hiện có"; đối chiếu với `##`.
   //    Giữ cả hai để project chưa migrate không bị báo oan.
-  const sk = read(root, join("docs", "agent", "04_SKILLS.md"));
-  const skillsDir = join(root, ".claude", "skills");
+  const sk = read(root, relative(root, join(hp.agent, "04_SKILLS.md")).replace(/\\/g, "/"));
+  const skillsDir = hp.skills;
   const onDisk = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md")))
@@ -378,11 +378,16 @@ export function conform(root: string): ConformReport {
       return [];
     }
   };
-  const mdFiles: string[] = [...listMd(join("docs", "agent")), ...listMd(join("docs", "plan"))];
+  // Đường lấy từ MARKER (N2). Ghép cứng `docs/agent`·`docs/plan` ở đây làm ba phép kiểm cuối
+  // (skill mồ côi · dangling-ref · control-char trong docs) MÙ HẲN trên repo đặt harness chỗ
+  // khác — mà mù thì `conform` vẫn in "không lệch chuẩn", tức phát ra lời bảo đảm cho thứ nó
+  // chưa hề nhìn. Audit cùng ngày bắt được đúng lỗ này sau khi các phần khác đã vét xong.
+  const hpRel = (abs: string) => relative(root, abs).replace(/\\/g, "/");
+  const mdFiles: string[] = [...listMd(hpRel(hp.agent)), ...listMd(hpRel(hp.plan))];
   //   (a) `điều N` trỏ tới số điều không có trong 01_CONSTITUTION. Đây đúng là kiểu
   //       hỏng mà việc ĐÁNH SỐ LẠI hiến pháp từng gây ra ở chính repo này.
   const dieuNums = new Set<string>();
-  const consti = read(root, join("docs", "agent", "01_CONSTITUTION.md"));
+  const consti = read(root, hpRel(join(hp.agent, "01_CONSTITUTION.md")));
   if (consti) {
     // CHỈ quét từ mục "Điều khoản" trở đi: 01_CONSTITUTION có HAI danh sách đánh số
     // (§Mục đích và §Điều khoản); quét cả file sẽ đẻ ra số điều ma.
