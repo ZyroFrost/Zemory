@@ -1,6 +1,7 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
+import { generateGuards } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
 import { readStdin } from "./_shared.js";
 
@@ -37,6 +38,27 @@ export async function cmdHook(args: string[]): Promise<void> {
     console.log("  Recall vẫn do agent tự gọi (điều 8). Gỡ: `zemory hook uninstall` (hoặc tắt công tắc trong UI).");
     return;
   }
+  if (sub === "guard") {
+    // ADAPT v2 · §4b — sinh chốt chặn lớp ① từ marker. CHỈ SINH FILE trong nhà harness;
+    // việc cắm con trỏ runtime (.claude/settings.json · pre-commit) in ra cho user quyết —
+    // tự cắm hook vào cấu hình đang chạy của người ta là đúng loại hành vi N1 cấm.
+    const root = currentProjectRoot();
+    const r = generateGuards(root);
+    const rel = (p: string): string => relative(root, p).replace(/\\/g, "/");
+    console.log(`zemory hook guard — ${rel(r.hooksDir)}/`);
+    if (r.added.length) console.log(`  + ${r.added.join(" · ")}`);
+    if (r.kept.length) console.log(`  · giữ nguyên: ${r.kept.join(" · ")}`);
+    console.log(
+      r.protectedWrite.length
+        ? `  đường cấm ghi (marker \`protected\`): ${r.protectedWrite.join(" · ")}`
+        : "  chưa khai đường cấm ghi — thêm khoá `protected: [\"...\"]` vào .harness.json rồi chạy lại (mẫu secret vẫn gác).",
+    );
+    console.log("  Nối vào runtime (user duyệt rồi tự thêm — tool không cắm hộ):");
+    console.log(`    · Claude Code (.claude/settings.json): PreToolUse → node ${rel(r.hooksDir)}/guard.cjs`);
+    console.log(`    · pre-commit: hook local chạy node ${rel(r.hooksDir)}/precommit-guard.cjs`);
+    console.log("  Flag một-lần (.allow-*) nằm trong thư mục hooks, đã .gitignore — chỉ tạo khi user nói rõ.");
+    return;
+  }
   if (sub === "uninstall") {
     const scoped = args.includes("--project");
     const path = scoped ? join(currentProjectRoot(), ".claude", "settings.json") : undefined;
@@ -50,7 +72,7 @@ export async function cmdHook(args: string[]): Promise<void> {
   }
   const EVENTS = ["session-start", "stop", "session-end", "prompt", "pre-compact"];
   if (!EVENTS.includes(sub ?? "")) {
-    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall>`);
+    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall|guard>`);
     return;
   }
   const raw = await readStdin();
