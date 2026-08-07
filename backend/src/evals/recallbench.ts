@@ -16,7 +16,7 @@
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { type SearchHit, search, searchHybrid } from "../memory/search.js";
-import { type LabeledQuery, RECALL_CORPUS } from "./recall-corpus.js";
+import { corpusByKind, type LabeledQuery, RECALL_CORPUS } from "./recall-corpus.js";
 
 export type { LabeledQuery };
 
@@ -68,6 +68,14 @@ export interface RecallBenchResult {
   resolved: number;
   missing: number;
   lanes: LaneResult[];
+  /** Mỗi lớp: `have` = nhãn GIẢI ĐƯỢC trên kho này / `total` = nhãn có trong corpus.
+   *
+   *  Vì sao phải tách (lỗ audit 2026-08-07 để lọt một lượt): `missing` là số đếm GỘP, còn
+   *  bảng theo lớp chỉ tính trên nhãn giải được — nên một lớp mất gần hết nhãn (chạy trên
+   *  máy khác, kho khác) vẫn in ra một tỉ lệ recall trông như đầy đủ, hoặc biến mất khỏi
+   *  bảng mà không ai hay. Tỉ lệ tính trên 2/14 câu KHÔNG so được với tỉ lệ tính trên 14/14,
+   *  và đó đúng là kiểu số liệu sai mà không báo lỗi. */
+  coverage: Record<string, { have: number; total: number }>;
 }
 
 /** Corpus là module TS (không phải .json) để `tsc` ship nó theo `dist` — repo này không có
@@ -159,7 +167,15 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
   await run("hybrid", (q) => searchHybrid(q, { limit: topN, all: true, rerank: false }));
   if (!opts.skipRerank) await run("hybrid+rerank", (q) => searchHybrid(q, { limit: topN, all: true, rerank: true }));
 
-  return { corpus: corpus.length, resolved: items.length, missing, lanes };
+  // Độ phủ nhãn theo lớp — `corpusByKind()` là nguồn "tổng có bao nhiêu", `items` là
+  // "giải được bao nhiêu trên kho NÀY".
+  const coverage: Record<string, { have: number; total: number }> = {};
+  for (const [kind, list] of corpusByKind()) coverage[kind] = { have: 0, total: list.length };
+  for (const it of items) {
+    const k = it.q.kind ?? "prose";
+    (coverage[k] ??= { have: 0, total: 0 }).have++;
+  }
+  return { corpus: corpus.length, resolved: items.length, missing, lanes, coverage };
 }
 
 export function formatRecallBench(r: RecallBenchResult): string[] {
@@ -183,8 +199,11 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
   // tụt, lúc đó rerank mới có cửa.
   // BẢNG THEO LỚP — thứ con số gộp che mất. Chỉ in cho `hybrid` (đường recall mặc định);
   // muốn so lane khác thì đọc `byKind` trong kết quả JSON.
+  // Điều kiện in xét ĐỘ PHỦ CỦA CORPUS, không xét kết quả: bản đầu dùng
+  // `Object.keys(hyb.byKind).length > 1` — nghĩa là đúng lúc một lớp mất sạch nhãn (chỉ còn
+  // một lớp có kết quả) thì cả bảng biến mất, che luôn thứ cần báo. Test bắt được ca này.
   const hyb = r.lanes.find((l) => l.lane === "hybrid");
-  if (hyb && Object.keys(hyb.byKind).length > 1) {
+  if (hyb && Object.keys(r.coverage ?? {}).length > 1) {
     out.push("");
     out.push(`  hybrid theo LỚP (mỗi lớp tìm bằng đường khác nhau — KHÔNG so lớp này với lớp kia):`);
     out.push(`  ${"lớp".padEnd(16)} ${"n".padStart(4)} ${"@1".padStart(6)} ${"@3".padStart(6)} ${"@10".padStart(6)} ${"@40".padStart(6)} ${"MRR".padStart(7)}`);
@@ -195,10 +214,19 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
     };
     for (const [kind, s] of Object.entries(hyb.byKind).sort()) {
       const p = (n: number) => `${((100 * n) / (s.n || 1)).toFixed(0)}%`;
+      const cov = r.coverage?.[kind];
+      // Cột `n` in dạng `giải-được/tổng` khi có nhãn không giải được: tỉ lệ tính trên 2/14 câu
+      // KHÔNG so được với tỉ lệ tính trên 14/14, mà nhìn thì hai bên giống hệt nhau.
+      const nCol = cov && cov.have !== cov.total ? `${s.n}/${cov.total}` : String(s.n);
       out.push(
-        `  ${kind.padEnd(16)} ${String(s.n).padStart(4)} ${p(s.hit1).padStart(6)} ${p(s.hit3).padStart(6)} ${p(s.hit10).padStart(6)} ${p(s.hit40).padStart(6)} ${s.mrr.toFixed(3).padStart(7)}` +
+        `  ${kind.padEnd(16)} ${nCol.padStart(6)} ${p(s.hit1).padStart(6)} ${p(s.hit3).padStart(6)} ${p(s.hit10).padStart(6)} ${p(s.hit40).padStart(6)} ${s.mrr.toFixed(3).padStart(7)}` +
           (NOTE[kind] ? `   ${NOTE[kind]}` : ""),
       );
+    }
+    // Lớp MẤT SẠCH nhãn không có hàng nào ở trên — phải nói ra, không thì nó im lặng biến mất.
+    const gone = Object.entries(r.coverage ?? {}).filter(([k, c]) => c.have === 0 && c.total > 0 && !hyb.byKind[k]);
+    for (const [k, c] of gone) {
+      out.push(`  ${k.padEnd(16)} ${`0/${c.total}`.padStart(6)}   — KHÔNG nhãn nào giải được trên kho này ⇒ lớp này CHƯA được đo`);
     }
     out.push("");
   }
