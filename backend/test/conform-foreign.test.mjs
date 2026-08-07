@@ -11,7 +11,7 @@
 //   ④ `.harness.json` thiếu/gõ sai/khai rỗng ⇒ **rơi về cổng chuẩn**, KHÔNG im lặng bỏ qua.
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { conform, foreignLayout } from "../../dist/docs/conform.js";
@@ -97,6 +97,57 @@ test("marker ở harness/ vẫn đọc được, và `ignore` của repo đượ
   assert.ok(
     !conform(root).items.some((i) => i.level === "blocking" && i.check === "foreign-undeclared-dir" && i.samples.includes("docs")),
     "`docs` đã khai trong ignore (docs/ của team) thì không được chặn",
+  );
+});
+
+// ── ADAPT v2 · N2: bộ file bắt buộc phải tìm theo MARKER, không theo hằng số ─────
+//
+// Ca thật (đo trên repo tham chiếu trước khi vá): repo để harness ở `harness/agent` với ĐỦ
+// cả 6 file, `conform` vẫn báo thiếu cả 7 — vì nó đi tìm ở `docs/agent`, chỗ không ai bảo
+// nó tìm. Cổng tìm sai chỗ rồi bắt người ta chạy `zemory sync` để "gap-fill" là đẩy họ vào
+// đúng hành vi phá `docs/` của team.
+test("harness ở harness/agent + đủ file ⇒ KHÔNG báo thiếu (N2 — đường lấy từ marker)", (t) => {
+  const root = repo(t); // repo() ghi sẵn docs/agent + docs/plan; ta dựng thêm nhà harness/
+  mkdirSync(join(root, "harness", "agent"), { recursive: true });
+  mkdirSync(join(root, "harness", "plan"), { recursive: true });
+  for (const f of ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"]) {
+    writeFileSync(join(root, "harness", "agent", `${f}.md`), "# x\n");
+  }
+  writeFileSync(join(root, "harness", "plan", "00_overview.md"), "# x\n");
+  writeFileSync(
+    join(root, "harness", ".harness.json"),
+    JSON.stringify({
+      layout: "adapt",
+      docs: "harness/agent",
+      slots: { backend: "src" },
+      extra: ["pipelines", "notebooks", "vendor_stuff", "docs", "harness"],
+    }),
+  );
+
+  const missing = conform(root).items.find((i) => i.check === "harness-missing");
+  assert.ok(!missing || missing.count === 0, `phải nhìn vào harness/agent, nhưng vẫn báo: ${missing?.samples?.join(", ")}`);
+
+  // Chiều ngược — cổng phải còn nổ được: bỏ đi một file BÊN TRONG nhà đã khai.
+  rmSync(join(root, "harness", "agent", "02_RULES.md"));
+  const after = conform(root).items.find((i) => i.check === "harness-missing");
+  assert.ok(after && after.count > 0, "thiếu file trong nhà đã khai mà không đỏ ⇒ cổng giả");
+  assert.ok(after.samples.some((s) => s.includes("harness/agent/02_RULES.md")), "phải chỉ đúng đường thật");
+});
+
+test("control-char KHÔNG soi file vendor / .min.js (code của người khác)", (t) => {
+  const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
+  mkdirSync(join(root, "app", "public", "vendor"), { recursive: true });
+  // Byte 0x01 y như bundle mermaid thật trong repo tham chiếu.
+  writeFileSync(join(root, "app", "public", "vendor", "lib.min.js"), Buffer.concat([Buffer.from("v"), Buffer.from([0x01])])); writeFileSync(join(root, "src", "mine.py"), Buffer.concat([Buffer.from("x"), Buffer.from([0x01])])); void ("x;var b=2;\n");
+  assert.ok(
+    !conform(root).items.some((i) => i.check === "control-char" && i.samples.some((s) => s.includes("lib.min.js"))),
+    "báo lỗi trên file vendor là phát hiện người nhận không hành động được — đúng loại báo oan",
+  );
+  // Chiều ngược: cùng byte đó nằm trong code CỦA MÌNH thì vẫn phải bắt, nếu không thì
+  // miễn trừ vendor đã vô tình tắt luôn cả phép kiểm.
+  assert.ok(
+    conform(root).items.some((i) => i.check === "control-char" && i.samples.some((s) => s.includes("mine.py"))),
+    "byte điều khiển trong code của mình phải còn bắt được",
   );
 });
 
