@@ -14,7 +14,8 @@
 > của user**, output đã CHUYỂN HƯỚNG vào file (console không còn gì để in ⇒ hết bẫy đóng băng):
 > `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db"; $env:ZEMORY_MODEL_DIR="D:\huy.nguyen\Tool\Zemory\data\models";`
 > `node dist\cli.js memory embed --all *> D:\huy.nguyen\zemory-lab\embed.log`
-> **Mốc lúc chốt phiên: 100.223/123.086 chunk (81,4%)** — còn ~23k, nhịp 20–60 chunk/phút tuỳ máy bận.
+> **Mốc 2026-08-07 chiều: 108.543/123.086 chunk (88,2%)** — còn ~14,5k, nhịp 32 chunk/phút ⇒ ~7,6 giờ.
+> *(mốc cũ lúc chốt phiên trước: 100.223 = 81,4%)*
 > **Xem tiến độ (cửa sổ KHÁC, đừng đụng cửa sổ job):** `node D:\huy.nguyen\zemory-lab\watch.cjs` (bảng
 > tự cập nhật 30s, tự báo ĐỨNG IM) hoặc `progress.cjs` (một phát). **Bài học trả giá 4 lần trong ngày:
 > bôi đen/copy console đang in = Windows ĐÓNG BĂNG tiến trình** (mark-mode chặn write; ESC là chạy lại).
@@ -33,6 +34,15 @@
 - [ ] **TRÁO kho sau khi xong (thứ tự bắt buộc):** `bench --recall` trên bản sao phải thắng mốc
   **41%@10** (điều 12) → thay file kho thật → `memory scan` nạp lại transcript sinh ra trong lúc
   chờ (idempotent, đọc từ đĩa) → `memory embed` bù phần mới ở 768/fp32.
+  > 📏 **ĐO HAI LƯỢT, CẢ HAI SAU KHI EMBED XONG — đừng chạy song song với job** (bài học đo được
+  > 2026-08-07: bench và embed cùng chạy mô hình ONNX trên một CPU nên giẫm chân nhau — bench ngốn
+  > 3.208 s CPU mà 19 phút mới in nổi dòng tiêu đề, embed tụt về **0 chunk/30 s**; dừng bench thì
+  > embed hồi lại **32 chunk/phút** sau ba mẫu đo. Ngoài ra bench chạy lúc máy bị chiếm thì cột
+  > `ms/truy vấn` vô nghĩa). Kho thật 256 đứng yên tới lúc tráo ⇒ đo lúc nào trước tráo cũng cùng số.
+  > ① `node dist\cli.js memory bench --recall --skip-rerank` (mặc định = kho THẬT 256) ⇒ mốc TRƯỚC.
+  > ② `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db"` rồi chạy lại ⇒ mốc SAU (768/fp32).
+  > ③ So **BẢNG THEO LỚP** (`prose` · `tool_use` · `tool_result`), không so con số gộp.
+  > Công cụ đã sẵn: corpus 56 câu chia lớp + bench in bảng theo lớp (commit `67a5812`).
   > 🔴 **BIẾT TRƯỚC: kho 768 sắp tráo VẪN thiếu vector cho hơn nửa số tin — đừng tưởng tráo xong
   > là recall hết rác** (user báo 2026-08-07: agent bên SasinFlow thấy `memory search` trả kết quả
   > lạc repo / ảnh / không liên quan, nghi kho hỏng vì cắt 256 chiều). Đo bằng MÃ, không qua search:
