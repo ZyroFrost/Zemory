@@ -173,14 +173,16 @@ export function harnessPathsAt(projectRoot: string): HarnessPaths {
   try {
     return harnessPaths(loadContext(projectRoot));
   } catch {
-    const agent = join(projectRoot, "docs", "agent");
-    return {
-      agent,
-      plan: join(projectRoot, "docs", "plan"),
-      archive: join(agent, "archive"),
-      skills: join(projectRoot, ".claude", "skills"),
-      entries: [join(projectRoot, "AGENTS.md"), join(projectRoot, "CLAUDE.md")],
-    };
+    // Repo chưa nối / marker hỏng ⇒ vẫn đi qua CHÍNH harnessPaths() với context mặc định
+    // nếp cũ — KHÔNG chép tay bộ đường ở đây. Bản đầu của hàm này chép tay 5 đường và đó
+    // đúng là lớp lỗi "5 bản norm đã lệch nhau" (audit F4): đổi mặc định trong
+    // harnessPaths() là bản chép quên theo, mà fallback thì không test nào soi thường xuyên.
+    return harnessPaths({
+      projectRoot,
+      docsDir: join(projectRoot, "docs", "agent"),
+      config: { docs: join("docs", "agent"), adapters: {}, thresholds: {} },
+      log: () => {},
+    });
   }
 }
 
