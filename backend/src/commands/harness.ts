@@ -5,7 +5,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
-import { currentProjectRoot, findProjectRoot, harnessPathsAt, loadContext } from "../core/config.js";
+import { currentProjectRoot, findProjectRoot, harnessPathsAt, loadContext, readMarker } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, entryStates, freshHarness } from "../docs/adopt.js";
 import { archiveChanges, archiveTodo } from "../docs/archive.js";
@@ -158,6 +158,24 @@ export async function cmdDoctor(): Promise<void> {
     } else {
       console.log(`  entry: ⚠ ${line}`);
       console.log(`      → harness KHÔNG được nạp qua cửa nào — thêm dòng con trỏ tới \`${agentRel}/\` (xem \`zemory sync\`)`);
+    }
+
+    // ADAPT v2 · §4b ⓐ — "luật lớp ① chưa được cưỡng chế" phải có máy nhắc, đừng dựa
+    // agent nhớ. Repo đã KHAI đường cấm (khoá `protected` trong marker) tức là đã nhận
+    // mình có luật bất-khả-đảo — mà chưa sinh chốt thì luật đó chỉ có chữ gác, đúng lỗ
+    // đã làm lộ secret 04/08. Chỉ BÁO; sinh hay không là quyết định của user.
+    try {
+      const mj = readMarker(s.project.root)?.data as { protected?: unknown } | undefined;
+      const declared = Array.isArray(mj?.protected) && mj.protected.length > 0;
+      const guardPath = join(hp.agent, "..", "hooks", "guard.cjs");
+      if (declared && !existsSync(guardPath)) {
+        console.log("  guard: ⚠ marker khai `protected` nhưng CHƯA có chốt máy — luật lớp ① đang chỉ có chữ gác");
+        console.log("      → chạy `zemory hook guard` để sinh policy + guard từ marker (02_RULES §Guardrail lớp ①)");
+      } else if (existsSync(guardPath)) {
+        console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (nối runtime: xem \`zemory hook guard\`)`);
+      }
+    } catch {
+      /* marker hỏng — validate/conform đã có chỗ báo, doctor không lặp */
     }
   }
 
