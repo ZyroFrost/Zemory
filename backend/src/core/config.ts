@@ -166,6 +166,24 @@ function resolveHarnessRel(projectRoot: string, rel: string): string {
  * Suy diễn giữ NGUYÊN nếp cũ khi marker không khai `paths`: `plan` là anh em cạnh `agent`,
  * `archive` nằm trong `agent`. Nhờ vậy repo đang chạy chuẩn 1.1.0 không phải sửa một chữ.
  */
+/** Bảng đường harness của một repo, chỉ từ đường gốc — cho chỗ gọi không cầm `Context`
+ *  (gate, checks, graph). FAIL-OPEN (điều 9): repo chưa nối hoặc marker hỏng ⇒ trả bộ mặc
+ *  định theo nếp cũ, để cổng vẫn chạy được chứ không ném giữa chừng. */
+export function harnessPathsAt(projectRoot: string): HarnessPaths {
+  try {
+    return harnessPaths(loadContext(projectRoot));
+  } catch {
+    const agent = join(projectRoot, "docs", "agent");
+    return {
+      agent,
+      plan: join(projectRoot, "docs", "plan"),
+      archive: join(agent, "archive"),
+      skills: join(projectRoot, ".claude", "skills"),
+      entries: [join(projectRoot, "AGENTS.md"), join(projectRoot, "CLAUDE.md")],
+    };
+  }
+}
+
 export function harnessPaths(ctx: Context): HarnessPaths {
   const p = ctx.config.paths ?? {};
   const rel = (v: string | undefined, fallback: string): string =>
