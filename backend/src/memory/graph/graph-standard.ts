@@ -17,7 +17,8 @@
 // (bắt buộc mọi project = cố định NỘI DUNG docs = trái điều 3).
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import { harnessPathsAt } from "../../core/config.js";
 import { SLOT_ROLES } from "../../docs/structure-tree.js";
 
 /** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG. */
@@ -68,9 +69,9 @@ function read(root: string, rel: string): string | null {
   }
 }
 
-function listPlans(root: string): string[] {
+function listPlans(planDir: string): string[] {
   try {
-    return readdirSync(join(root, "docs", "plan"))
+    return readdirSync(planDir)
       .filter((f) => /^\d{2}_.+\.md$/.test(f))
       .sort();
   } catch {
@@ -125,22 +126,35 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
     nodes.push(n);
   };
 
+  // ADAPT v2 · N2 — nhà của harness lấy từ MARKER, phân giải MỘT lần ở đây.
+  //
+  // Trước đó `docs/agent` · `docs/plan` là literal ở 19 chỗ trong chính file này, nên với
+  // repo đặt harness chỗ khác thì cả tầng chuẩn biến mất KHÔNG một tiếng động: đo trên repo
+  // tham chiếu (harness ở `harness/agent`, hiến pháp có nội dung thật) — `conform` in
+  // "điều 0", kéo theo cạnh `references` và phép kiểm "điều nào không ai trích dẫn" thành
+  // vô nghĩa. Cổng vẫn XANH, nên không ai biết mình đang mất gì; đó mới là kiểu hỏng đắt.
+  const hp = harnessPathsAt(root);
+  const rel = (abs: string): string => relative(root, abs).replace(/\\/g, "/");
+  const AGENT = rel(hp.agent);
+  const PLAN = rel(hp.plan);
+  const SKILLS = rel(hp.skills);
+
   // ── harness docs (01..06 + AGENTS.md) — cửa vào của mọi thứ bên dưới
   for (const f of AGENT_DOCS) {
-    if (read(root, join("docs", "agent", f)) === null) continue;
-    add({ id: `doc:agent/${f}`, label: f.replace(/\.md$/, ""), type: "harness_doc", dir: "docs/agent", src: `docs/agent/${f}` });
+    if (read(root, join(AGENT,f)) === null) continue;
+    add({ id: `doc:agent/${f}`, label: f.replace(/\.md$/, ""), type: "harness_doc", dir: AGENT, src: `${AGENT}/${f}` });
   }
   if (read(root, "AGENTS.md") !== null) add({ id: "doc:AGENTS.md", label: "AGENTS.md", type: "harness_doc", dir: ".", src: "AGENTS.md" });
 
   // ── hp_dieu: CHỈ danh sách đánh số nằm SAU "## Điều khoản".
   //    Bẫy: §Mục đích phía trên cũng có list "1. … 2. …" — quét cả file sẽ đẻ điều giả.
-  const consti = read(root, join("docs", "agent", "01_CONSTITUTION.md"));
+  const consti = read(root, join(AGENT,"01_CONSTITUTION.md"));
   if (consti) {
     const body = sectionBody(consti, /^##\s*Điều khoản/m);
     if (body) {
       for (const m of body.matchAll(/^(\d+)\.\s+\*\*(.+?)\*\*/gm)) {
         const id = `hp:${m[1]}`;
-        add({ id, label: `Điều ${m[1]} — ${short(m[2], 44)}`, type: "hp_dieu", dir: "docs/agent", src: "docs/agent/01_CONSTITUTION.md" });
+        add({ id, label: `Điều ${m[1]} — ${short(m[2], 44)}`, type: "hp_dieu", dir: AGENT, src: `${AGENT}/01_CONSTITUTION.md` });
         edges.push({ from: "doc:agent/01_CONSTITUTION.md", to: id, kind: "contains" });
       }
     }
@@ -153,18 +167,18 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   //      tồn tại, tức con số trong `conform` nói sai về chính thứ nó đang chấm.
   //    · CŨ   — playbook inline: dùng dòng tự khai ("Skill inline hiện có: `a` · `b`")
   //      nên không phải đoán heading nào là skill, heading nào là luật.
-  const skillsDir = join(root, ".claude", "skills");
+  const skillsDir = hp.skills;
   const skillDirs = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md")))
         .map((e) => e.name)
         .sort()
     : [];
-  const skills = read(root, join("docs", "agent", "04_SKILLS.md"));
+  const skills = read(root, join(AGENT,"04_SKILLS.md"));
   if (skillDirs.length) {
     for (const name of skillDirs) {
       const id = `skill:${slug(name)}`;
-      add({ id, label: name, type: "skill", dir: ".claude/skills", src: `.claude/skills/${name}/SKILL.md` });
+      add({ id, label: name, type: "skill", dir: SKILLS, src: `${SKILLS}/${name}/SKILL.md` });
       if (skills) edges.push({ from: "doc:agent/04_SKILLS.md", to: id, kind: "contains" });
     }
   } else if (skills) {
@@ -176,22 +190,22 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
       const isSkill = declared.length ? declared.some((d) => title.toLowerCase().startsWith(d.toLowerCase())) : !/LUẬT chung/i.test(title);
       if (!isSkill) continue;
       const id = `skill:${slug(title.split("(")[0])}`;
-      add({ id, label: short(title, 40), type: "skill", dir: "docs/agent", src: "docs/agent/04_SKILLS.md" });
+      add({ id, label: short(title, 40), type: "skill", dir: AGENT, src: `${AGENT}/04_SKILLS.md` });
       edges.push({ from: "doc:agent/04_SKILLS.md", to: id, kind: "contains" });
     }
   }
 
   // ── plan_spec: docs/plan/NN_tên.md (nhãn lấy H1 nếu có)
-  for (const f of listPlans(root)) {
-    const txt = read(root, join("docs", "plan", f)) ?? "";
+  for (const f of listPlans(hp.plan)) {
+    const txt = read(root, join(PLAN, f)) ?? "";
     const h1 = txt.match(/^#\s+(.+)$/m);
-    add({ id: `plan:${f}`, label: short(h1 ? h1[1] : f.replace(/\.md$/, ""), 46), type: "plan_spec", dir: "docs/plan", src: `docs/plan/${f}` });
+    add({ id: `plan:${f}`, label: short(h1 ? h1[1] : f.replace(/\.md$/, ""), 46), type: "plan_spec", dir: PLAN, src: `${PLAN}/${f}` });
   }
 
   // ── references: doc/plan nhắc "điều N" → cạnh tới hp_dieu (khai báo, parse thuần)
   const refSources: { id: string; rel: string }[] = [
-    ...AGENT_DOCS.map((f) => ({ id: `doc:agent/${f}`, rel: join("docs", "agent", f) })),
-    ...listPlans(root).map((f) => ({ id: `plan:${f}`, rel: join("docs", "plan", f) })),
+    ...AGENT_DOCS.map((f) => ({ id: `doc:agent/${f}`, rel: join(AGENT, f) })),
+    ...listPlans(hp.plan).map((f) => ({ id: `plan:${f}`, rel: join(PLAN, f) })),
   ];
   for (const s of refSources) {
     if (!has.has(s.id)) continue;
@@ -208,7 +222,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
 
   // ── slot + routing: bảng "## 4. Routing" trong 03_STRUCTURE.
   //    Mỗi hàng `| concern | …`backend/src/api/`… |` ⇒ node concern + cạnh routing → slot.
-  const struct = read(root, join("docs", "agent", "03_STRUCTURE.md"));
+  const struct = read(root, join(AGENT,"03_STRUCTURE.md"));
   // §4 định tuyến vào HAI thứ khác hạng, và phải phân biệt:
   //   · SLOT (§3) — vai trò BÊN TRONG một tầng: `backend/src/api/` → `api`. Có trong từ điển.
   //   · TẦNG / thư mục đã khai (§2, §3 dải ①②③) — `attic/` `data/` `external/` `frontend/`,
@@ -252,14 +266,14 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
           .filter((x) => (seenT.has(x.id) ? false : (seenT.add(x.id), true)));
         if (!dests.length) continue;
         const cid = `concern:${i++}`;
-        add({ id: cid, label: short(concern, 46), type: "concern", dir: "docs/agent", src: "docs/agent/03_STRUCTURE.md §4" });
+        add({ id: cid, label: short(concern, 46), type: "concern", dir: AGENT, src: `${AGENT}/03_STRUCTURE.md §4` });
         for (const d of dests) {
           add({
             id: d.id,
             label: d.label,
             type: d.slot ? slotType(d.slot) : "layer",
             dir: d.slot ? "slot" : "layer",
-            src: "docs/agent/03_STRUCTURE.md §4",
+            src: `${AGENT}/03_STRUCTURE.md §4`,
           });
           edges.push({ from: cid, to: d.id, kind: "routing" });
         }
@@ -271,7 +285,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   for (const f of files) {
     if (!f.slot) continue;
     const sid = `slot:${f.slot}`;
-    if (!has.has(sid)) add({ id: sid, label: f.slot + "/", type: "slot", dir: "slot", src: "docs/agent/03_STRUCTURE.md §3" });
+    if (!has.has(sid)) add({ id: sid, label: f.slot + "/", type: "slot", dir: "slot", src: `${AGENT}/03_STRUCTURE.md §3` });
     edges.push({ from: sid, to: f.id, kind: "contains" });
   }
 
