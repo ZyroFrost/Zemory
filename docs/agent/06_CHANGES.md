@@ -15,7 +15,8 @@ read-only — spec là nguồn chi tiết, entry này chỉ ghi số đo). 10 co
 chặn folder chứa code (hết 4 blocking oan) · bộ file bắt buộc + `graph-standard` đọc theo marker ·
 entry BA trạng thái (nối gián tiếp qua `@AGENTS.md` tính là nối) · `zemory hook guard` sinh chốt
 lớp ① từ marker. **Nghiệm thu trên clone repo tham chiếu: doctor not-connected→connected · conform
-2 lỗi chặn→sạch · validate `structure[adapt]: 10+6` · điều 0→8.** Nếp cũ `docs/` không gãy.
+2 lỗi chặn→sạch · validate `structure[adapt]: 10+6` · số điều hiến pháp đọc được: **0 → 8**.**
+Nếp cũ `docs/` không gãy.
 
 **Guardrail lớp ① thành chuẩn + dogfood:** `02_RULES §Guardrail` vào template app/nonapp/adapt
 (cowork CỐ Ý không — không bảo đảm CLI/hook) · doctor nhắc khi khai `protected` mà chưa có chốt ·

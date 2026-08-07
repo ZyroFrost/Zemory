@@ -636,8 +636,13 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **(ĐỀ XUẤT — chờ user) Cờ `--no-window` cho `zemory ui`.** Hiện lệnh LUÔN bật cửa sổ app thật
   lên desktop — đúng cho người dùng, sai cho smoke-test/CI (sự cố 3 cửa sổ rỗng 06/08 đêm,
   `[2026-08-07b]`). Một cờ nhỏ: dựng daemon + serve, bỏ bước mở window. Chưa làm vì là feature mới.
-- [~] **🔒 GATE CHỐNG "TODO THỐI" — ĐÃ BUILD `zemory todo verify` 2026-08-06** (user chốt hình
-  dạng: *máy ĐO lại*, không dùng dấu ngày thủ công). `docs/todo-verify.ts` + `commands/harness.ts`.
+- [~] **🔒 GATE CHỐNG "TODO THỐI" — ĐÃ BUILD `zemory todo verify` 2026-08-06, sửa tiếp 2026-08-07**
+  (user chốt hình dạng: *máy ĐO lại*, không dùng dấu ngày thủ công). `docs/todo-verify.ts` +
+  `commands/harness.ts`.
+  > 🛠 **Sửa 2026-08-07 (ADAPT v2 · N2):** sổ giờ tìm theo MARKER (`harnessPathsAt(root)`) thay vì
+  > ghép cứng `docs/agent/05_TODO.md`, và đọc qua `readTextFile` (lột BOM). Trước đó, repo đặt
+  > harness ở `harness/` thì gate báo 0 mục — **một cổng không bao giờ đỏ được**. Chính trục ④ của
+  > nó bắt ra dòng sổ này lạc hậu ngay trong lượt audit cùng ngày (gate tự soi được người sửa nó).
   **Bốn phép đo, đều tất định:** ① **ref chết** — mục nhắc một đường dẫn hoặc endpoint như thứ
   đang có mà repo không có · ② **nghi đã xong** — sổ nói "chưa" NGAY TRONG CÂU nêu tên, mà tên
   đó tồn tại · ③ **đo lại "0 match"** — sổ ghi "tệp X 0 match Y" thì grep lại đúng phép đo đó ·
