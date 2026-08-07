@@ -138,7 +138,7 @@ test("control-char KHÔNG soi file vendor / .min.js (code của người khác)"
   const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   mkdirSync(join(root, "app", "public", "vendor"), { recursive: true });
   // Byte 0x01 y như bundle mermaid thật trong repo tham chiếu.
-  writeFileSync(join(root, "app", "public", "vendor", "lib.min.js"), Buffer.concat([Buffer.from("v"), Buffer.from([0x01])])); writeFileSync(join(root, "src", "mine.py"), Buffer.concat([Buffer.from("x"), Buffer.from([0x01])])); void ("x;var b=2;\n");
+  writeFileSync(join(root, "app", "public", "vendor", "lib.min.js"), Buffer.concat([Buffer.from("v"), Buffer.from([0x01])])); writeFileSync(join(root, "src", "mine.py"), Buffer.concat([Buffer.from("x"), Buffer.from([0x01])]));
   assert.ok(
     !conform(root).items.some((i) => i.check === "control-char" && i.samples.some((s) => s.includes("lib.min.js"))),
     "báo lỗi trên file vendor là phát hiện người nhận không hành động được — đúng loại báo oan",
