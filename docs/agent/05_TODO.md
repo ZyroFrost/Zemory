@@ -14,8 +14,8 @@
 > của user**, output đã CHUYỂN HƯỚNG vào file (console không còn gì để in ⇒ hết bẫy đóng băng):
 > `$env:GLOBAL_MEMORY_DB="D:\huy.nguyen\zemory-lab\lab.db"; $env:ZEMORY_MODEL_DIR="D:\huy.nguyen\Tool\Zemory\data\models";`
 > `node dist\cli.js memory embed --all *> D:\huy.nguyen\zemory-lab\embed.log`
-> **Mốc 2026-08-07 chiều: 108.543/123.086 chunk (88,2%)** — còn ~14,5k, nhịp 32 chunk/phút ⇒ ~7,6 giờ.
-> *(mốc cũ lúc chốt phiên trước: 100.223 = 81,4%)*
+> **Mốc 2026-08-07 tối: 112.889/123.086 chunk (91,7%)** — còn ~10,2k, nhịp 32 chunk/phút ⇒ ~5,3 giờ.
+> *(mốc trong ngày: 81,4% lúc chốt phiên trước → 88,2% chiều → 91,7% tối)*
 > **Xem tiến độ (cửa sổ KHÁC, đừng đụng cửa sổ job):** `node D:\huy.nguyen\zemory-lab\watch.cjs` (bảng
 > tự cập nhật 30s, tự báo ĐỨNG IM) hoặc `progress.cjs` (một phát). **Bài học trả giá 4 lần trong ngày:
 > bôi đen/copy console đang in = Windows ĐÓNG BĂNG tiến trình** (mark-mode chặn write; ESC là chạy lại).
@@ -188,6 +188,29 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
   `D:\huy.nguyen\zemory-lab\lab.db`, chụp bằng `db.backup()` nên nhất quán.)*
 - *(Hạ tầng sẵn: `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS` chỉnh từ ngoài;
   bench có cột `@40` + kết luận tự động; `topN` 10 → 40.)*
+
+## 🆕 Phát sinh 2026-08-07 tối (sau release 1.2.0) — 4 việc
+
+- [ ] **CHẠY 5 FILE TEST CÒN MÙ sau khi embed xong:** `embed` · `rerank` · `vectors` ·
+  `memory-search` · `digest`. Ba lượt audit hôm nay CỐ Ý bỏ chúng để không tranh CPU với job
+  embed (đo thật: bench chạy song song làm embed tụt về 0 chunk/30 s). Ghi ra đây để **không ai
+  đọc "audit xanh" thành "đã soi hết"** — vùng này chưa được soi trong cả ba lượt.
+  Chạy CÙNG DỊP hai lượt bench, không cần lượt audit riêng.
+- [ ] **(chờ user) Guard PreToolUse thêm ~650 ms MỖI tool call** — đo 2026-08-07: Bash cho qua
+  652 · Bash bị chặn 734 · Read 660 · Write 437 ms (p50, đo TRONG lúc embed chạy nên là cận
+  trên). Vài trăm tool call/phiên ⇒ cỡ 1–2 phút. Không phải lỗi, là **chi phí cần quyết**: có
+  thu hẹp `matcher` trong `.claude/settings.json` không (vd bỏ `Read` — nhưng mất chốt chặn đọc
+  file khoá trực tiếp). Đường gỡ hoàn toàn: xoá `.claude/settings.json` của repo.
+  ⚠ **Guard chỉ ăn TỪ PHIÊN SAU** (hook nạp lúc mở phiên). Đo 07/08: `.allow-push` vẫn còn
+  nguyên sau khi push ⇒ phiên đó guard chưa gác. Từ phiên tới `git push` sẽ bị chặn tới khi
+  user duyệt; flag đã tự dọn, KHÔNG để lại sẵn.
+- [ ] **Chưa tạo git tag `v1.2.0`.** Repo mới có tag dạng mốc-trước-refactor, chưa có tag
+  version nào — không tự tạo tiền lệ mới. Một lệnh là xong nếu user muốn.
+- [ ] **(ĐỪNG "dọn cho đẹp") Index lưu đường theo separator của OS**, không phải posix: 23 doc
+  row của repo này đều dạng `docs\agent\…`, và mọi chỗ TRA cũng ghép bằng `join`. Đợt vét 07/08
+  từng "chuẩn hoá" sang `/` và hậu quả đo được: `plan ls` im lặng báo "index rỗng" dù chỉ mục
+  đủ, và lần `reindex` sau sẽ đẻ doc row TRÙNG. Chuyển sang posix là một **MIGRATION riêng**
+  (phải đổi cả index cũ + mọi chỗ tra trong cùng bước), không phải việc dọn dẹp lẻ.
 
 ## 📌 Cowork — còn treo
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
