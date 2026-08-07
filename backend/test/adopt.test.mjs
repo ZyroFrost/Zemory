@@ -152,6 +152,64 @@ test("repo không có plan/ sẵn ⇒ untouchedLegacyPlan rỗng (không báo oa
   assert.deepEqual(r.untouchedLegacyPlan, [], "trường hợp thường phải im lặng");
 });
 
+// ── ADAPT v2 · 4.2: entry ba trạng thái — "chưa nối" phải nhìn thấy được ─────────
+//
+// 43% repo lớn đã có AGENTS.md riêng. Bản trước gộp ca đó im lặng vào "kept existing":
+// harness trông như "đã nhận" mà không bao giờ được nạp, và không gì báo cho ai biết.
+test("entry là bản riêng của repo, KHÔNG nhắc harness ⇒ báo 'chưa nối' kèm dòng con trỏ", (t) => {
+  const root = tempDir(t, "zemory-entry-unlinked-");
+  writeFileSync(join(root, "AGENTS.md"), "# Quy ước nội bộ của team\nĐây là file của repo.\n");
+  writeFileSync(join(root, "CLAUDE.md"), "# Ghi chú riêng\n");
+
+  const r = ensureHarness(root);
+
+  assert.equal(r.entriesUnlinked.length, 2, "cả hai entry đều là bản riêng chưa nhắc harness");
+  const files = r.entriesUnlinked.map((e) => e.file).sort();
+  assert.deepEqual(files, ["AGENTS.md", "CLAUDE.md"]);
+  for (const e of r.entriesUnlinked) {
+    assert.match(e.pointer, /docs\/agent/, "dòng con trỏ phải chỉ đúng nhà harness đã khai");
+  }
+  // Và tuyệt đối KHÔNG được sửa file của repo — chỉ đề xuất.
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), "# Quy ước nội bộ của team\nĐây là file của repo.\n");
+});
+
+test("entry bản riêng NHƯNG đã nhắc tới nhà harness ⇒ coi là nối rồi, không báo", (t) => {
+  const root = tempDir(t, "zemory-entry-linked-");
+  writeFileSync(join(root, "AGENTS.md"), "# Team\n> Harness: đọc docs/agent/ trước khi làm.\n");
+
+  const r = ensureHarness(root);
+
+  assert.ok(
+    !r.entriesUnlinked.some((e) => e.file === "AGENTS.md"),
+    "đã trỏ tới harness rồi mà vẫn báo 'chưa nối' là báo oan",
+  );
+  // CLAUDE.md chưa tồn tại ⇒ được scaffold từ template (mang dấu zemory) ⇒ cũng không báo.
+  assert.ok(!r.entriesUnlinked.length, `không được báo gì thêm: ${JSON.stringify(r.entriesUnlinked)}`);
+});
+
+test("nối GIÁN TIẾP: CLAUDE.md chỉ chứa @AGENTS.md, AGENTS.md đã trỏ harness ⇒ cả hai nối", (t) => {
+  // Ca thật đã báo oan trên repo tham chiếu: khuôn "một nguồn, hai cửa" là thiết kế
+  // của CHÍNH template zemory — CLAUDE.md import AGENTS.md thay vì lặp nội dung.
+  const root = tempDir(t, "zemory-entry-transitive-");
+  writeFileSync(join(root, "AGENTS.md"), "# Team\n> Harness: đọc docs/agent/ trước.\n");
+  writeFileSync(join(root, "CLAUDE.md"), "<!-- entry -->\n@AGENTS.md\n");
+
+  const r = ensureHarness(root);
+
+  assert.equal(
+    r.entriesUnlinked.length,
+    0,
+    `CLAUDE.md nối qua AGENTS.md mà vẫn báo: ${JSON.stringify(r.entriesUnlinked)}`,
+  );
+});
+
+test("entry do template sinh (mang dấu zemory) ⇒ không bao giờ bị báo 'chưa nối'", (t) => {
+  const root = tempDir(t, "zemory-entry-generated-");
+  ensureHarness(root); // lần 1: scaffold cả hai entry từ template
+  const r = ensureHarness(root); // lần 2: chạy lại trên chính kết quả của mình
+  assert.equal(r.entriesUnlinked.length, 0, "file của chính tool sinh ra mà báo 'chưa nối' ⇒ phép thử sai");
+});
+
 test("freshHarness backs up both agent docs and plan", (t) => {
   const root = tempDir(t, "zemory-fresh-");
   ensureHarness(root);
