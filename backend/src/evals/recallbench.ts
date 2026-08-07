@@ -42,6 +42,25 @@ export interface LaneResult {
   msAvg: number;
   /** Thứ hạng của tin đích từng truy vấn (0 = không thấy trong top-N). */
   ranks: number[];
+  /**
+   * Cùng số đo, TÁCH THEO LỚP truy vấn (`prose` · `tool_use` · `tool_result`).
+   *
+   * Vì sao con số gộp không đủ (đo thành phần kho 2026-08-07): ba lớp được tìm bằng những
+   * đường KHÁC HẲN nhau — `prose` có cả vector lẫn trigram, `tool_result` có vector nhưng
+   * không trigram, `tool_use` chỉ còn FTS word. Gộp lại thành một tỉ lệ thì một lớp sập
+   * hoàn toàn vẫn có thể bị lớp khác kéo cho đẹp, và ta mất đúng thứ cần biết để quyết
+   * "có đáng embed thêm / cắt bớt lớp nào không" (HP điều 15: cắt hay thêm đều phải đo trước).
+   */
+  byKind: Record<string, KindStat>;
+}
+
+export interface KindStat {
+  n: number;
+  hit1: number;
+  hit3: number;
+  hit10: number;
+  hit40: number;
+  mrr: number;
 }
 
 export interface RecallBenchResult {
@@ -108,6 +127,21 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
       ranks.push(rankOf(hits, it.gold));
     }
     const hitAt = (k: number) => ranks.filter((r) => r > 0 && r <= k).length;
+    // Tách theo lớp: đi qua CÙNG mảng ranks nên không chạy lại truy vấn nào — chỉ là cách
+    // đọc khác trên cùng số đo, không thêm chi phí và không thể lệch với con số gộp.
+    const byKind: Record<string, KindStat> = {};
+    items.forEach((it, i) => {
+      const k = it.q.kind ?? "prose";
+      const s = (byKind[k] ??= { n: 0, hit1: 0, hit3: 0, hit10: 0, hit40: 0, mrr: 0 });
+      const r = ranks[i];
+      s.n++;
+      if (r > 0 && r <= 1) s.hit1++;
+      if (r > 0 && r <= 3) s.hit3++;
+      if (r > 0 && r <= 10) s.hit10++;
+      if (r > 0 && r <= 40) s.hit40++;
+      s.mrr += r > 0 ? 1 / r : 0;
+    });
+    for (const s of Object.values(byKind)) s.mrr = s.mrr / (s.n || 1);
     lanes.push({
       lane,
       hit1: hitAt(1),
@@ -117,6 +151,7 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
       mrr: ranks.reduce((s, r) => s + (r > 0 ? 1 / r : 0), 0) / (items.length || 1),
       msAvg: Math.round(ms / (items.length || 1)),
       ranks,
+      byKind,
     });
   };
 
@@ -146,6 +181,28 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
   // `@40` là TRẦN: đáp án có nằm trong pool rerank được phép sắp lại không. `@40 ≈ @10` ⇒ nghẽn
   // ở lớp LẤY, rerank không có gì để cứu. `@40` cao hơn hẳn ⇒ đáp án có trong pool mà bị xếp
   // tụt, lúc đó rerank mới có cửa.
+  // BẢNG THEO LỚP — thứ con số gộp che mất. Chỉ in cho `hybrid` (đường recall mặc định);
+  // muốn so lane khác thì đọc `byKind` trong kết quả JSON.
+  const hyb = r.lanes.find((l) => l.lane === "hybrid");
+  if (hyb && Object.keys(hyb.byKind).length > 1) {
+    out.push("");
+    out.push(`  hybrid theo LỚP (mỗi lớp tìm bằng đường khác nhau — KHÔNG so lớp này với lớp kia):`);
+    out.push(`  ${"lớp".padEnd(16)} ${"n".padStart(4)} ${"@1".padStart(6)} ${"@3".padStart(6)} ${"@10".padStart(6)} ${"@40".padStart(6)} ${"MRR".padStart(7)}`);
+    const NOTE: Record<string, string> = {
+      prose: "vector + trigram",
+      tool_use: "CHỈ FTS word",
+      tool_result: "vector, KHÔNG trigram",
+    };
+    for (const [kind, s] of Object.entries(hyb.byKind).sort()) {
+      const p = (n: number) => `${((100 * n) / (s.n || 1)).toFixed(0)}%`;
+      out.push(
+        `  ${kind.padEnd(16)} ${String(s.n).padStart(4)} ${p(s.hit1).padStart(6)} ${p(s.hit3).padStart(6)} ${p(s.hit10).padStart(6)} ${p(s.hit40).padStart(6)} ${s.mrr.toFixed(3).padStart(7)}` +
+          (NOTE[kind] ? `   ${NOTE[kind]}` : ""),
+      );
+    }
+    out.push("");
+  }
+
   const hy = r.lanes.find((l) => l.lane === "hybrid");
   if (hy) {
     const room = hy.hit40 - hy.hit10;
