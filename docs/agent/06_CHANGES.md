@@ -30,6 +30,8 @@ quát. Scaffold trắng: 20 file, conform sạch. **Kèm:** gate bắt byte NUL 
 (grep coi file là nhị phân) — sửa bằng escape · audit 6 mặt ra 1 finding thật đã sửa (fallback
 `harnessPathsAt` chép tay bộ mặc định) · 75/75 test vùng đụng, conform/todo-verify exit 0.
 
+## [2026-08-07b] — Ô chỉnh ngưỡng context · cạnh `api` BE↔FE v1 · todo-verify vá 2 lỗi của chính nó · sự cố cửa sổ smoke
+
 **Ô chỉnh ngưỡng nhắc context (user chốt "làm đi"):** hàng mới pane ⚙→⚡ (input 50–99%), `/automation`
 phơi `contextWarnPercent`, đổi gửi qua `/set-context-warn`, server kẹp và TRẢ SỐ THẬT về ô (smoke: gõ
 120 → lưu 99); i18n đủ 2 dict — gate "cấm khẳng định tiết kiệm token" bắt đúng một chuỗi EN, đổi chữ
