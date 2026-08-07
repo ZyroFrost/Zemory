@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-08-07d] — Vét TRỌN harness theo marker (đóng ADAPT v2) · corpus recall CHIA LỚP · 3 lượt audit
+
+**Vét trọn nhóm LỆNH + bề mặt** (các cổng đã theo marker ở `[2026-08-07c]`; đây là phần đuôi):
+`reindex` · `archive` · `todo verify` · `plan ls` · và **UI** (`listHarnessFiles`/`readDoc`).
+Mỗi cái hỏng một kiểu riêng trên repo đặt harness ở `harness/`: reindex nhận chỉ mục RỖNG mà
+không báo lỗi · todo verify báo 0 mục = **cổng không bao giờ đỏ được** · archive ĐẺ cây docs
+thứ hai (ghi vào thư mục của team) · UI hiện cây file rỗng rồi mời chạy `init/sync` — đúng
+lệnh sẽ scaffold vào `docs/` của team. Nghiệm thu trên clone repo tham chiếu: reindex 9 plan +
+6 harness doc + 117 section + 17 changelog (trước: 0 hết) · todo verify thấy 63 mục.
+⇒ **10/10 điểm ép của spec đã đóng; hai literal còn lại là CỐ Ý** (fallback nếp cũ trong
+`core/config`, tham số mặc định `readStandardSpec` — ghi đè được).
+
+**Corpus recall CHIA LỚP 34 → 56 câu** (`prose` · `tool_use` · `tool_result`) + bench in bảng
+theo lớp. Cơ sở: đo thành phần kho 213.241 tin — `tool_use` 28,7% (không vector, không trigram
+⇒ chỉ FTS word) · `tool_result` 28,3% (CÓ vector, đang ăn ~40% công embed) · hội thoại 42,9%.
+Corpus cũ toàn `prose` nên có nhân lên 200 câu vẫn mù với 57% kho. Kèm `coverage` theo lớp
+(cột `n` in `2/14` khi thiếu nhãn; lớp mất sạch nhãn vẫn có hàng riêng) — nếu không, tỉ lệ
+tính trên 2 câu trông y hệt tỉ lệ tính trên 14 câu.
+
+**3 lượt audit, 6 mặt.** Lượt 2 ra bug thật: `conform` còn 3 literal ⇒ **XANH GIẢ** trên repo
+adapt — sửa xong nó bắt ngay 2 dangling-ref THẬT của repo đó. Lượt 3 không còn bug chức năng,
+chỉ ra: thang marker chưa có test (đã thêm 6 ca, đột biến đỏ 2/6) · guard thêm **~650 ms/tool
+call** (số đo, chờ user quyết có thu hẹp matcher) · **còn mù 5 file test nặng model** (embed ·
+rerank · vectors · memory-search · digest) — chạy sau khi embed xong, ghi ra để không đọc
+"audit xanh" thành "đã soi hết".
+- **Bug do chính đợt vét gây ra, bề mặt thật mới bắt được:** tôi "chuẩn hoá" đường index sang
+  posix, nhưng index lưu theo separator OS (23 doc row dạng `docs\agent\…`) ⇒ lần reindex sau
+  sẽ đẻ hàng TRÙNG, và `plan ls` im lặng báo "index rỗng" dù chỉ mục đủ. **115/115 test xanh
+  không bắt được — chỉ gọi bề mặt thật mới bắt.** Chuyển index sang posix là MIGRATION riêng.
+
 ## [2026-08-07c] — ADAPT v2 trọn bộ · guardrail lớp ① vào template + dogfood · NON-APP hấp thụ mẫu case-folder
 
 **ADAPT v2** (user chốt; thi hành spec `harness/plan/08_adapt_standard.md` của repo OpenRCA, đọc
