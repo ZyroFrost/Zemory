@@ -453,7 +453,13 @@ export function cmdGrill(): void {
 
 export function cmdReindex(): void {
   const root = currentProjectRoot();
-  const planDir = join(root, "docs", "plan");
+  // ADAPT v2 · N2 — nhà của harness lấy từ MARKER. Bản trước ghép cứng `docs/plan` và
+  // `docs/agent`, nên repo đặt harness ở `harness/` chạy `reindex` được một chỉ mục RỖNG
+  // mà không báo lỗi gì: lệnh in "0 plan doc" như thể repo không có spec nào. Đường ghi vào
+  // index cũng phải là đường THẬT, không thì `plan search` trả về đường dẫn không tồn tại.
+  const hp = harnessPathsAt(root);
+  const rel = (p: string) => relative(root, p).replace(/\\/g, "/");
+  const planDir = hp.plan;
   let files: string[] = [];
   try {
     files = readdirSync(planDir).filter((f) => f.endsWith(".md"));
@@ -462,7 +468,7 @@ export function cmdReindex(): void {
   }
   let sections = 0;
   for (const f of files) {
-    const r = importDoc(join(planDir, f), join("docs", "plan", f), root, "plan");
+    const r = importDoc(join(planDir, f), rel(join(planDir, f)), root, "plan");
     sections += r.sections;
     if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (cấu trúc lạ; vẫn index)`);
   }
@@ -472,8 +478,8 @@ export function cmdReindex(): void {
   // under their own `kind` so they stay distinguishable from plan specs.
   // 06_CHANGES is excluded on purpose: it has a dedicated changelog lane and would
   // otherwise be indexed twice.
-  const agentDir = join(root, "docs", "agent");
-  const arcDir = join(agentDir, "archive");
+  const agentDir = hp.agent;
+  const arcDir = hp.archive;
   const mdIn = (dir: string) => {
     try {
       return readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "06_CHANGES.md");
@@ -483,11 +489,11 @@ export function cmdReindex(): void {
   };
   let agentDocs = 0;
   for (const f of mdIn(agentDir)) {
-    importDoc(join(agentDir, f), join("docs", "agent", f), root, "agent");
+    importDoc(join(agentDir, f), rel(join(agentDir, f)), root, "agent");
     agentDocs++;
   }
   for (const f of mdIn(arcDir)) {
-    importDoc(join(arcDir, f), join("docs", "agent", "archive", f), root, "agent-archive");
+    importDoc(join(arcDir, f), rel(join(arcDir, f)), root, "agent-archive");
     agentDocs++;
   }
 
@@ -510,13 +516,13 @@ export function cmdReindex(): void {
   // worse than a miss: it sends the reader to a file that is not there.
   const pruned = pruneMissingDocs(root);
 
-  const chPath = join(root, "docs", "agent", "06_CHANGES.md");
+  const chPath = join(agentDir, "06_CHANGES.md");
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
   // The ARCHIVE is a source file too — outside the per-session read, but git-tracked
   // and rebuildable. Index it as its own tier so old decisions stay searchable
   // (plan/02 §3). Skipping this is why `changelog search` used to miss everything
   // older than the last trim.
-  const chArc = join(root, "docs", "agent", "archive", "06_CHANGES.md");
+  const chArc = join(arcDir, "06_CHANGES.md");
   const arc = existsSync(chArc)
     ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
     : 0;

@@ -19,6 +19,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, posix, relative, sep } from "node:path";
+import { harnessPathsAt } from "../core/config.js";
+import { readTextFile } from "../util/read-text.js";
 
 export type TodoStatus = "open" | "doing" | "done";
 
@@ -248,9 +250,12 @@ export function markdownSentences(body: string): string[] {
 }
 
 export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
-  const file = todoPath ?? join(root, "docs", "agent", "05_TODO.md");
+  // Nhà của sổ lấy từ MARKER (ADAPT v2 · N2): repo đặt harness ở `harness/agent` mà gate đi
+  // tìm `docs/agent/05_TODO.md` thì nó báo "0 mục" — một cổng KHÔNG BAO GIỜ ĐỎ ĐƯỢC, tức tệ
+  // hơn không có cổng (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
+  const file = todoPath ?? join(harnessPathsAt(root).agent, "05_TODO.md");
   if (!existsSync(file)) throw new Error(`Không thấy ${file}`);
-  const items = parseTodoItems(readFileSync(file, "utf8"));
+  const items = parseTodoItems(readTextFile(file));
   const src = loadSourceBlob(root);
 
   const lineTimes = blameLineTimes(root, relative(root, file).split(sep).join(posix.sep));

@@ -4,9 +4,11 @@
 // read), keeping the newest in place. The search index is then reseeded from the
 // trimmed source. No DB→md render, no second source of truth.
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { writeFileAtomic } from "../util/fs-atomic.js";
-import { dirname, join } from "node:path";
+import { readTextFile } from "../util/read-text.js";
+import { dirname, join, relative } from "node:path";
+import { harnessPaths } from "../core/config.js";
 import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
@@ -112,7 +114,7 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   const mainPath = join(ctx.docsDir, "05_TODO.md");
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
 
-  const text = readFileSync(mainPath, "utf8");
+  const text = readTextFile(mainPath);
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
 
@@ -129,9 +131,9 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   const keptText = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
   const movedText = closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "") + "\n";
 
-  const archivePath = join(ctx.docsDir, "archive", "05_TODO.md");
+  const archivePath = join(harnessPaths(ctx).archive, "05_TODO.md");
   mkdirSync(dirname(archivePath), { recursive: true });
-  const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
+  const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(TODO_INTRO) ? prev.slice(TODO_INTRO.length) : prev;
   writeFileAtomic(archivePath, TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
   // Truncating the SOURCE backlog is destructive — keep a .bak so it can be undone.
@@ -143,9 +145,13 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   // Reindex BOTH tiers immediately, same as archiveChanges. Without this the moved
   // items are only searchable after someone remembers to run `reindex` — and "someone
   // remembers" is exactly the failure mode this whole thread has been unpicking.
-  const docsRel = join("docs", "agent");
-  importDoc(mainPath, join(docsRel, "05_TODO.md"), ctx.projectRoot, "agent", dbPath);
-  importDoc(archivePath, join(docsRel, "archive", "05_TODO.md"), ctx.projectRoot, "agent-archive", dbPath);
+  // Đường ghi vào index phải là đường THẬT của repo này, không phải hằng `docs/agent`:
+  // repo đặt harness ở `harness/` mà index ghi `docs/agent/05_TODO.md` thì mọi tra cứu sau
+  // đó trỏ vào file không tồn tại (đúng lớp lỗi `LEGACY_RENAME` từng trả giá — đổi chỗ file
+  // mà không dời hàng index).
+  const rel = (p: string) => relative(ctx.projectRoot, p).replace(/\\/g, "/");
+  importDoc(mainPath, rel(mainPath), ctx.projectRoot, "agent", dbPath);
+  importDoc(archivePath, rel(archivePath), ctx.projectRoot, "agent-archive", dbPath);
   return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath };
 }
 
@@ -157,7 +163,7 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;
   const keep = ctx.config.thresholds?.changes_keep ?? Math.round(threshold * 0.6);
 
-  const text = readFileSync(mainPath, "utf8");
+  const text = readTextFile(mainPath);
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
   const heads = entryHeads(lines);
@@ -184,9 +190,9 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   const moved = heads.length - k;
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
-  const archivePath = join(ctx.docsDir, "archive", "06_CHANGES.md");
+  const archivePath = join(harnessPaths(ctx).archive, "06_CHANGES.md");
   mkdirSync(dirname(archivePath), { recursive: true });
-  const prev = existsSync(archivePath) ? readFileSync(archivePath, "utf8") : "";
+  const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;
   writeFileAtomic(archivePath, ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
   // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được,

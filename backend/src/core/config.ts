@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { stripBom } from "../util/read-text.js";
 import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
 
 /** Đường marker MẶC ĐỊNH khi tạo mới (nếp cũ — repo của chính zemory dùng nó).
@@ -56,9 +57,6 @@ export function readMarker(projectRoot: string): { path: string; data: Record<st
   }
 }
 
-function stripBom(s: string): string {
-  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
-}
 
 function assertConfig(value: unknown, markerRel: string): HarnessConfig {
   if (!value || typeof value !== "object") throw new Error(`Invalid ${markerRel}: expected an object.`);
