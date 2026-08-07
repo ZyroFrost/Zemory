@@ -47,6 +47,11 @@ export interface AdoptResult {
    *  Trước đây chúng bị `renameSync` vào `docs/plan` âm thầm; nay chỉ báo để người
    *  quyết. Rỗng là trường hợp thường. Đường tương đối so với gốc project. */
   untouchedLegacyPlan: string[];
+  /** ADAPT v2 · 4.2 — entry gốc (AGENTS.md/CLAUDE.md) là BẢN RIÊNG của repo và KHÔNG
+   *  nhắc gì tới harness. Trạng thái thứ ba, phải nhìn thấy được: "chưa nối" khác hẳn
+   *  "đã có" — harness không nạp được thì mọi luật phía trong thành vô hình. Mỗi mục
+   *  kèm dòng con trỏ đề xuất để user (hoặc agent, sau khi user duyệt) tự thêm. */
+  entriesUnlinked: Array<{ file: string; pointer: string }>;
 }
 
 // The canonical agent docs (.md is source; DB = derived index). Anything else in docs/agent =
@@ -84,6 +89,46 @@ const LEGACY_RENAME: Record<string, string> = {
   "02_STRUCTURE.md": "03_STRUCTURE.md",
   "01_RULES.md": "02_RULES.md",
 };
+
+/** ADAPT v2 · 4.2 — trạng thái MỘT cửa vào, ba mức. "linked" tính cả nối GIÁN TIẾP:
+ *  CLAUDE.md chỉ chứa `@AGENTS.md` mà AGENTS.md đã trỏ harness thì CLAUDE.md cũng nối —
+ *  đó chính là khuôn "một nguồn, hai cửa" mà template của chính zemory ship, nên báo
+ *  "chưa nối" cho ca đó là tự báo oan lên thiết kế của mình (đã dính trên repo tham chiếu).
+ *  Fixpoint trên danh sách entry (nhỏ, thường là 2) — không giới hạn một bậc để khỏi
+ *  phải nhớ thứ tự file. MỘT hàm cho cả adopt lẫn doctor: hai bản tự chế sẽ lệch nhau. */
+export function entryStates(
+  projectRoot: string,
+  agentDirAbs: string,
+  entriesAbs: string[],
+): Array<{ file: string; state: "missing" | "linked" | "unlinked" }> {
+  const agentRel = relative(projectRoot, agentDirAbs).replace(/\\/g, "/");
+  const items = entriesAbs.map((abs) => {
+    const file = relative(projectRoot, abs).replace(/\\/g, "/");
+    if (!existsSync(abs)) return { file, content: null };
+    return { file, content: readFileSync(abs, "utf8") };
+  });
+  const linked = new Set<string>();
+  for (const it of items) {
+    if (it.content === null) continue;
+    if (it.content.startsWith("<!-- zemory") || it.content.includes(agentRel) || it.content.includes(agentRel.replace(/\//g, "\\"))) {
+      linked.add(it.file);
+    }
+  }
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const it of items) {
+      if (it.content === null || linked.has(it.file)) continue;
+      if ([...linked].some((l) => it.content!.includes(basename(l)))) {
+        linked.add(it.file);
+        grew = true;
+      }
+    }
+  }
+  return items.map((it) => ({
+    file: it.file,
+    state: it.content === null ? "missing" : linked.has(it.file) ? "linked" : "unlinked",
+  }));
+}
 
 const DEFAULT_CONFIG: HarnessConfig = {
   docs: "docs/agent",
@@ -154,6 +199,7 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
 
   const added: string[] = [];
   const present: string[] = [];
+  const entriesUnlinked: Array<{ file: string; pointer: string }> = [];
   const fill = (srcDir: string, destDir: string, prefix: string) => {
     if (!existsSync(srcDir)) return;
     for (const file of readdirSync(srcDir)) {
@@ -240,6 +286,20 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
       }
     }
   }
+  // ADAPT v2 · 4.2 — bản RIÊNG của repo (43% repo lớn đã có AGENTS.md sẵn): KHÔNG ghi
+  // đè (N1), nhưng cũng KHÔNG được lặn mất tăm như trước — entry không trỏ tới harness
+  // thì mọi thứ bên trong không bao giờ được nạp, và không ai biết. Tính SAU vòng scaffold
+  // để nối GIÁN TIẾP (CLAUDE.md → @AGENTS.md → harness) được nhìn thấy.
+  {
+    const agentRel = relative(projectRoot, docsDir).replace(/\\/g, "/");
+    for (const st of entryStates(projectRoot, docsDir, ROOT_ENTRIES.map((e) => join(projectRoot, e)))) {
+      if (st.state !== "unlinked") continue;
+      entriesUnlinked.push({
+        file: st.file,
+        pointer: `> Harness của repo: đọc \`${agentRel}/\` (bắt đầu từ \`01_CONSTITUTION.md\`) trước khi làm việc.`,
+      });
+    }
+  }
 
   // Skills — one folder per playbook under .claude/skills/ (Phase 3, 2026-07-31).
   // They live OUTSIDE docs/ because that is where Claude Code looks for them, and
@@ -278,6 +338,7 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
     docsRel,
     needsReconcile,
     untouchedLegacyPlan: legacyPlanDirs.map((d) => relative(projectRoot, d).replace(/\\/g, "/")),
+    entriesUnlinked,
   };
 }
 
