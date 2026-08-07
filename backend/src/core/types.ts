@@ -22,10 +22,36 @@ export type HookEvent =
  *  BI/report, data, docs-only, design; e.g. powerbi_sasinflow). */
 export type StructureProfile = "app" | "non-app";
 
+/** MỌI đường của harness trong một repo — ADAPT v2 · N2 ("mọi đường là tham số").
+ *
+ *  Trước v2, các đường này là hằng số rải khắp code (`docs/agent`, `docs/plan`,
+ *  `.claude/skills`), nên harness chỉ sống được ở đúng một chỗ. Repo nào đã có chủ
+ *  ở `docs/` là tool gãy. Nay chúng là DỮ LIỆU, phân giải một lần qua `harnessPaths()`.
+ *  Đường tuyệt đối, để chỗ dùng không phải tự ghép. */
+export interface HarnessPaths {
+  /** Nhà của bộ 01..06. */
+  agent: string;
+  /** Nhà của `docs/plan/NN_*.md` (spec). */
+  plan: string;
+  /** Nơi changelog/TODO nguội chuyển tới. */
+  archive: string;
+  /** Playbook skill. Nằm ngoài folder harness vì RUNTIME của agent đòi chỗ đó
+   *  (Claude Code chỉ đọc `.claude/skills`), không phải zemory chọn. */
+  skills: string;
+  /** Hai cửa vào ở gốc repo — thuần con trỏ vào `agent`. */
+  entries: string[];
+}
+
 /** Per-project config, loaded from `.harness.json` at the project root. */
 export interface HarnessConfig {
   /** Path to the project's docs harness, relative to project root. */
   docs: string;
+  /** ADAPT v2 · N1 — dấu chủ quyền. File nào harness sinh ra mới mang dấu này;
+   *  không có dấu ⇒ của repo ⇒ chỉ đọc. */
+  generator?: string;
+  /** ADAPT v2 — bảng đường ghi đè (tương đối so với gốc repo). Thiếu khoá nào thì
+   *  khoá đó suy ra từ `docs` theo nếp cũ, nên marker 1.1.0 chạy y nguyên. */
+  paths?: Partial<Record<"agent" | "plan" | "archive" | "skills", string>> & { entries?: string[] };
   /** Which provider name fills each capability slot. */
   adapters: Partial<Record<Capability, string>>;
   /** Numeric thresholds (e.g. archive trigger line counts). */

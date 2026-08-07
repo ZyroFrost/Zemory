@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { CONFIG_FILE, projectKey } from "./core/config.js";
+import { findMarker, isConnected, projectKey } from "./core/config.js";
 import { currentMemoryDir } from "./memory/db.js";
 
 /** The pre-2026-08-05 location, kept ONLY so an existing registry still loads. */
@@ -62,7 +62,9 @@ export interface KnownProject extends ProjectEntry {
  */
 export function projectProfile(root: string): "app" | "non-app" {
   try {
-    const raw = JSON.parse(readFileSync(join(root, CONFIG_FILE), "utf8")) as { profile?: unknown };
+    const marker = findMarker(root);
+    if (!marker) return "app";
+    const raw = JSON.parse(readFileSync(marker, "utf8")) as { profile?: unknown };
     return raw && typeof raw === "object" && raw.profile === "non-app" ? "non-app" : "app";
   } catch {
     return "app";
@@ -158,7 +160,7 @@ export function rememberProject(root: string): void {
 /** Known projects that still exist + are still set up, most recent first. */
 export function listKnownProjects(): KnownProject[] {
   return read()
-    .filter((e) => existsSync(join(e.root, CONFIG_FILE)))
+    .filter((e) => isConnected(e.root))
     .map((e) => ({ ...e, name: basename(e.root), profile: projectProfile(e.root) }))
     .sort((a, b) => {
       if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
@@ -195,7 +197,7 @@ export function forgetProject(root: string): boolean {
  */
 export function pruneDeadProjects(): number {
   const list = read();
-  const next = list.filter((e) => existsSync(join(e.root, CONFIG_FILE)) && !isScratchRoot(e.root));
+  const next = list.filter((e) => isConnected(e.root) && !isScratchRoot(e.root));
   if (next.length === list.length) return 0;
   write(next);
   return list.length - next.length;

@@ -6,7 +6,9 @@
 ## 🔴 ĐANG CHẠY — dựng lại chỉ mục ở 768 chiều + fp32 (máy `SS01-IT-12`)
 
 > Kho thật `✓ lành` · **~207k tin · 1.284 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
-> Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓ · đã push **1.1.0**.
+> Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓ · đã push **1.1.1**
+> *(đo lại 2026-08-07: `package.json` = 1.1.1, release commit `c58fa76`; dòng này trước ghi 1.1.0 — lỗi thời một bậc).*
+> Kho thật lúc đo: **211.050 tin · 1.287 phiên** (số 207k/1.284 ở dưới là mốc 05/08, hook vẫn nạp thêm mỗi ngày).
 
 > 🔄 **BÀN GIAO PHIÊN 2026-08-07 — đọc trước khi gõ gì.** Embed chạy trong **cửa sổ PowerShell RIÊNG
 > của user**, output đã CHUYỂN HƯỚNG vào file (console không còn gì để in ⇒ hết bẫy đóng băng):
@@ -31,6 +33,20 @@
 - [ ] **TRÁO kho sau khi xong (thứ tự bắt buộc):** `bench --recall` trên bản sao phải thắng mốc
   **41%@10** (điều 12) → thay file kho thật → `memory scan` nạp lại transcript sinh ra trong lúc
   chờ (idempotent, đọc từ đĩa) → `memory embed` bù phần mới ở 768/fp32.
+  > 🔴 **BIẾT TRƯỚC: kho 768 sắp tráo VẪN thiếu vector cho hơn nửa số tin — đừng tưởng tráo xong
+  > là recall hết rác** (user báo 2026-08-07: agent bên SasinFlow thấy `memory search` trả kết quả
+  > lạc repo / ảnh / không liên quan, nghi kho hỏng vì cắt 256 chiều). Đo bằng MÃ, không qua search:
+  > `vectors.ts` lọc `tool_name IS NULL` khi chọn tin để embed (chỉ mở bằng `ZEMORY_EMBED_TOOLS=1`),
+  > và lệnh embed đang chạy KHÔNG đặt biến đó ⇒ 43 giờ này nâng phần ĐÃ có vector, **không lấp**
+  > phần chưa bao giờ có. Cộng thêm `db.ts` loại chính nhóm đó khỏi FTS trigram ⇒ với phần kho ấy
+  > chỉ còn MỘT chân tìm kiếm (FTS word). Khớp con số cũ: 119.668 tin tool-dump / 171 có vector.
+  > **Chưa xác minh, đừng đoán:** "trả kết quả từ repo khác" nghe giống lỗi SCOPE (search vốn scope
+  > theo project, trừ khi `--all`) hơn là lỗi số chiều; "trả về ảnh" chưa tìm ra nguyên nhân. Hai
+  > cái này phải đo riêng — plan 17.
+  > ✅ **User chốt 2026-08-07:** *cứ để 768 chạy cho xong, rồi embed tiếp đợt nhỏ cho các tin mới.*
+  > Tức KHÔNG dừng job, KHÔNG thử tool-dump lúc này; việc embed tool-dump có đáng hay không để
+  > **sau khi tráo + `bench --recall`** cho ra số thật, và phải qua phép thử nhỏ trên BẢN SAO
+  > trước (HP điều 15 — tăng cũng phải đo trước).
 - [ ] **HOOK ĐANG BẬT** (user bật lại 2026-08-05 chiều, sau cửa sổ gate). Hệ quả: **KHÔNG chạy
   `npm run check`** khi hook còn bật (60 test song song + hook ghi = tổ hợp hỏng kho 04/08);
   muốn chạy gate → user tắt (`zemory hook uninstall`) rồi bật lại — agent bị bộ lọc quyền chặn cả hai.
@@ -246,7 +262,16 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
 
 </details>
 
-## 🔓 COWORK ĐỌC ĐƯỢC — công thức đã đo xong 2026-07-31, chỉ còn viết adapter
+## 🔓 COWORK ĐỌC ĐƯỢC — ✅ ĐÃ BUILD XONG (soát lại 2026-08-07); còn đúng 1 CÂU HỎI chờ user
+> ⚠ **Sổ đã nói khác code — heading cũ ghi *"chỉ còn viết adapter"*, SAI.** Đo đủ ba nguồn 2026-08-07:
+> ① **MÃ** — `backend/src/memory/adapters/cowork.ts` (parse event → tin, giữ khối tool) **và** đường KÉO
+> trong `backend/src/memory/scanweb.ts` (`PLATFORMS.cowork`, `/v1/code/sessions`, đi cùng cửa sổ claude.ai)
+> + test `backend/test/cowork.test.mjs`; commit `1e151de`. ② **GM/git** — lane ship cùng đợt "thu hội thoại
+> web nhiều tài khoản". ③ **CHẠY THẬT** — daemon 4444 báo source `claude-cowork`: **1 phiên · 63 tin**
+> (16/07) đã nằm trong kho. ⇒ Adapter KHÔNG còn là việc; **gate `todo verify` xanh vẫn không bắt được ca
+> này** (nó chỉ phủ 20/58 mục có tên tra được), nên ghi ra đây để phiên sau khỏi build lại lần hai.
+> *(Vẫn đúng: 3 phiên user cần — "Harness AI" v.v. — CHƯA có trong kho, mới 1 phiên; xem câu hỏi bên dưới.)*
+
 > 🔄 **Đảo kết luận cũ.** `06_CHANGES [2026-07-30d]` ghi *"phiên Cowork không phơi qua claude.ai"*
 > vì 3 endpoint đoán mò (`cowork_sessions` · `tasks` · `sync/mcp`) đều 404. **Sai vì đoán sai chỗ:**
 > Cowork KHÔNG nằm dưới `/api/organizations/…` mà ở **`/v1/code/sessions`**. Tìm ra bằng cách cắm móc
@@ -513,7 +538,11 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 </details>
 
 ## 🔥 Từ chốt sổ 2026-07-21 — làm trước
-- [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** *(Soát 2026-08-07: `daemon.log` sạch tới 06/08 20:41, daemon 4444 sống ổn từ đó — vẫn CHƯA tái hiện.)* Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `~/.zemory/logs/daemon.log` (mirror stderr) cho mọi lifecycle (up/shutdown/exit/uncaught/unhandled) + `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON **stack native** cạnh log. `ui.ts` arm ngay khi thắng port. **CÒN LẠI:** chờ lần daemon chết tiếp theo → đọc `daemon.log` + `report.*.json` để chẩn gốc; nếu tái hiện được thì chạy foreground + ép embed↔sync xen kẽ.
+- [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** *(Soát 2026-08-07: `daemon.log` sạch tới 06/08 20:41, daemon 4444 sống ổn từ đó — vẫn CHƯA tái hiện.)* Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `<thư mục kho>/logs/daemon.log` (mirror stderr)
+  *(⚠ sửa 2026-08-07: sổ — và cả comment trong chính file đó — ghi `~/.zemory/logs`, **SAI**. Đo:
+  `logsDir()` = `join(currentMemoryDir(), "logs")`, tức log ĐI THEO KHO khi `relocate`; file thật ở
+  `data/logs/daemon.log` (12.830 B, 07/08 09:04), còn `~/.zemory/` chỉ có `location.json`. Ghi sai
+  chỗ này làm phiên sau soi nhầm nơi rồi kết luận "không có log".)* cho mọi lifecycle (up/shutdown/exit/uncaught/unhandled) + `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON **stack native** cạnh log. `ui.ts` arm ngay khi thắng port. **CÒN LẠI:** chờ lần daemon chết tiếp theo → đọc `daemon.log` + `report.*.json` để chẩn gốc; nếu tái hiện được thì chạy foreground + ép embed↔sync xen kẽ.
 - ❌ **BÁC BỎ 2026-08-07 (user chốt) — cắt tool-dump khỏi FTS trigram. ĐỪNG ĐỀ XUẤT LẠI.**
   Agent nêu vì thấy **trigram = 512 MB = 42,3% kho** (to hơn bảng nguồn `messages` 275 MB) và
   tool-dump chiếm **56% khối lượng chữ** ⇒ ước tiết kiệm ~285 MB. **Sai ở gốc:** đo lại thì
@@ -614,8 +643,11 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   chính mục này).
   **Độ nhiễu đã đo:** bản đầu 8 phát hiện (5 báo oan) → nay **1/57 mục**. Gate nhiễu = gate bị bỏ qua.
   Test `todo-verify.test.mjs` **9/9**, gồm ca write-gate dựng bằng git thật (ngày commit ép cứng).
-  **Còn lại:** nối vào `npm run check` (lệnh đã exit 1 khi có lệch, chỉ cần thêm vào script) —
-  chưa nối vì cổng đó đang không chạy được (hook bật).
+  ✅ **ĐÃ NỐI vào `npm run check` — đóng 2026-08-07** *(dòng này trước ghi "chưa nối", SAI)*.
+  Đo: `package.json` khoá `check` = `typecheck && lint && test && conform && **todo**`, khoá
+  `todo` = `node dist/cli.js todo verify`; commit `d3ebbe6` (06/08) muộn hơn chính dòng sổ này.
+  ⇒ Đúng **trục ④ "code mới hơn sổ"** mà chính mục này dựng ra để bắt — gate tự dính lỗi nó
+  sinh ra để chống, và nó KHÔNG tự bắt được (mục nằm ngoài 20/58 mục máy tra được).
   *(Hồ sơ đề xuất gốc giữ bên dưới.)*
 
 - [ ] **(hồ sơ) Đề xuất gốc của gate — giữ để tra lý do**
@@ -630,7 +662,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] **`01_CONSTITUTION`: KHÔNG gộp §Mục đích với §Điều khoản (user hỏi, agent trả lời 2026-07-26 — chờ user xác nhận đóng).** Đã đo: riêng zemory có **45 cạnh `references` trỏ vào `hp:N`**, cộng SasinHarvest 14 + SasinFlow 11 ⇒ **~70 trích dẫn "điều N" xuyên docs**. Gộp = đánh số lại = **hỏng cả 70 trích dẫn**, và `06_CHANGES` cấm sửa entry lịch sử nên không vá ngược được. Hai mục cũng khác BẢN CHẤT: §Mục đích định nghĩa zemory LÀ GÌ (+ phi-mục-tiêu), §Điều khoản là luật ĐÁNH SỐ được trích dẫn khắp nơi. **Nỗi lo "gộp sợ tràn/bể UI" không được giải bằng việc gộp** — độ dài file y nguyên; thứ thật sự trị là lớp graph vừa dựng (điều N thành node, có legend + bộ lọc + bấm nhảy) thay cho việc cuộn một file dài. *(Bẫy parse hai-list-đánh-số đã trị bằng cắt đúng section — không phải lý do để gộp.)*
 - [ ] **(Ý tưởng user 2026-07-23) Zemory tự đổi model/agent Claude theo việc lớn·nhỏ để tiết kiệm chi phí.** *(Soát 2026-08-02 — tiền đề đã đổi: điều 6 nay là "**HẠN CHẾ** gọi LLM" (`2026-08-02b`), KHÔNG còn "KHÔNG BAO GIỜ". Vế **không proxy model API** thì GIỮ NGUYÊN, mà model-routing đúng là chạm vế đó ⇒ vẫn cần user chốt, nhưng lý do chặn hẹp hơn trước.)* Đây là đổi BẢN CHẤT zemory (bộ nhớ thụ động → lớp điều khiển agent), không phải chi tiết nhỏ. User đã chọn: CHỈ ghi ý tưởng, KHÔNG code, chờ chốt hiến pháp trước khi làm gì tiếp. 3 hướng đã trình: (a) sửa hiến pháp mở khe cho model-routing (thay đổi tầng cao nhất) · (b) để CLI/agent tự quản (Claude Code đã có setting chọn model riêng, zemory không đụng vào) · (c) (chưa trình) zemory chỉ ĐO/GỢI Ý tín hiệu độ lớn task (vd token ước tính, số file đụng) qua UI/API cho AGENT tự quyết — vẫn 0-LLM vì zemory không tự gọi/đổi model, chỉ cung cấp số đo.
 - [ ] **(Graph — plan 13 §8) Loại lỗi nào build TRƯỚC?** Đã trình 8 loại; user CHƯA chọn. Ba nhóm: (a) link gãy + orphan (docs, rẻ, làm ngay được) · (b) **blast-radius** "sửa X đụng ai" (cần đọc import code) · (c) traceability "requirement nào chưa có test". Prototype 2026-07-18 đã chứng minh (b) chạy được: code-graph 55 module/154 import, tìm ra **orphan thật `core/index.ts`** (barrel 0 ai import), fan-in `memory/db.ts`=18. *(Soát 2026-08-07: số prototype là HỒ SƠ lịch sử — hai file đó nay đã đổi, đừng lấy số này làm hiện trạng; câu hỏi chờ user thì vẫn nguyên.)*
-- [ ] **(Graph) Độ mịn + overlay:** v1 dừng ở file hay kéo tới hàm (AST)? overlay "semantic neighbor" (từ vector sẵn) làm v1 hay phase 2? *(đề xuất: v1 không AST, chỉ cạnh khai báo)*
+- ✅ **(Graph) Độ mịn + overlay — CÂU HỎI ĐÃ BỊ CODE TRẢ LỜI, đóng 2026-08-07.** Sổ hỏi *"v1 dừng
+  ở file hay kéo tới hàm (AST)? overlay semantic_neighbor làm v1 hay phase 2?"* (viết 19/07) —
+  **cả hai vế đã build từ 22/07**, tức câu hỏi treo 2,5 tuần sau khi hết là câu hỏi: `graph-symbols.ts`
+  (symbol AST hàm/class/method + dòng, qua tree-sitter WASM; tiêu thụ ở `zemory graph callers` và
+  `graph impact`) · `graph-semantic.ts` (`semanticEdges()`, `type:"semantic_neighbor"` nhãn `inferred`,
+  cờ `--semantic`). Cả hai dependency nằm trong `package.json`, không phải optional.
 - ✅ **(plan 14 §7) HẾT quyết định mở — cả 5 đã chốt BẰNG CODE** *(soát 2026-08-06; mục này trước
   ghi "chỉ còn HAI: ① tray ② write-gate", SAI — sổ nói khác code)*:
   ① **tray** = `platform/tray.ts` dùng **systray2** (MIT, helper Go prebuilt nên không cần
@@ -642,7 +679,13 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 - [ ] RAG còn cần chốt khi mở rộng sang **data chính**: chunk doc dài cho docs/knowledge/code; data chính dùng chung `global_memory.db` (cột `kind`) hay store tách rồi fuse.
 
 ## Phase 2 — Năng lực nặng
-- [ ] **Code map AST + adapter host mới** (Gemini/Antigravity · Cursor · Hermes) — chỉ làm sau khi có fixture dữ liệu THẬT. Gồm luôn: hash incremental + import graph/blast-radius, fallback keyword khi parser thiếu. *(gộp 3 mục trùng nhau 2026-07-28)*
+- [ ] **ADAPTER HOST MỚI** (Gemini/Antigravity · Cursor · Hermes) — chỉ làm sau khi có fixture dữ
+  liệu THẬT. *(Đo 2026-08-07: `backend/src/memory/adapters/` có chatgpt · claude · claudeweb ·
+  codex · continue · cowork · lmstudio — ba host trên đúng là CHƯA có.)*
+  ⚠ **Vế "Code map AST" của mục này ĐÃ XONG, tách ra khỏi đây** *(sổ viết 28/07, tức viết SAU khi
+  code đã có từ 22/07)*: AST → `graph-symbols.ts` · hash incremental → `graph-cache.ts` · import
+  graph/blast-radius → `zemory graph impact` · fallback khi thiếu parser → `graph.ts` (regex
+  `symbols` vẫn đứng). Giữ nguyên chữ "chỉ làm sau khi có fixture THẬT" cho phần adapter.
 - [ ] **Memory promotion (episodic → curated learned-rule) — Ý TƯỞNG rõ (2026-07-18):** episodic memory đã bắt HẾT correction/decision qua các phiên → **nguyên liệu thô đã sẵn trong zemory**. THIẾU cái CẦU: zemory tự **phát hiện correction/decision LẶP LẠI** trong episodic → **ĐỀ XUẤT** nâng thành **memory-luật bền** (constitution/rules/1 memory doc) — **có review, user duyệt, KHÔNG auto-summary thành nguồn thứ hai** (điều 3). Cơ chế hình dung: quét episodic tìm pattern lặp (theme/correction) → xếp hạng theo tần suất → trình user *"correction X lặp N lần, nâng thành rule?"* → user gật mới ghi. Hiện đang để Claude-Code `memory/` gánh TAY. **Đây là "gap thật" duy nhất so với harness pattern 3-trụ** (trụ ② memory); trụ ③ (subagent/critic) zemory CỐ TÌNH bỏ (điều 6 — agent tự orchestrate, Claude auto-spawn subagent rồi).
 - [ ] **(user nêu 2026-07-23 — ĐỀ XUẤT capability mới) Quét & ingest BỘ NHỚ CURATED của agent** (Claude Code `~/.claude/projects/<proj>/memory/*.md`+`MEMORY.md`; Codex/Cursor tương tự). **Bổ trợ TRỰC TIẾP** memory-promotion ở trên: thay vì zemory TỰ chưng cất (rủi ro auto-summary — điều 3/6), **ingest cái agent ĐÃ chưng cất sẵn** = fact cao-tín-hiệu, 0 LLM. Là adapter capture MỚI (như web-capture): đọc thư mục memory của host → ingest **read-only** (KHÔNG ghi ngược — điều 3/10) · stamp provenance riêng (`source=<agent>-memory`, `kind=curated` — tách lane khỏi episodic transcript, scope-tree lọc được) · **redact lúc ingest** (điều 7) · dedup + re-ingest khi file đổi (source_sig, giống scanweb full-replace) · recall xếp cao hơn (đã distilled). **Cần chốt:** ① `kind=curated` cột mới hay origin lane? ② map path Claude `<url-encoded-proj>` → project · global `CLAUDE.md`/`MEMORY.md` gắn `--all` · ③ adapter nào trước (Claude Code có cấu trúc rõ nhất). Ghi episodic vẫn giữ; đây THÊM lớp curated-external.
 - [ ] Hook harness cảnh báo vi phạm docs nhưng không tự bypass permission host.
