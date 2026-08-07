@@ -8,11 +8,27 @@
 // Thêm truy vấn: đọc một tin thật, viết lại ý bằng từ KHÁC, rồi thêm một dòng. Corpus càng
 // lớn thì cổng càng phân biệt được hai lớp gần nhau (34 truy vấn là mức tối thiểu dùng được).
 
+/**
+ * LỚP của một truy vấn — thứ quyết định corpus có nhìn thấy chỗ cần nhìn hay không.
+ *
+ * Đo thành phần kho 2026-08-07 (213.241 tin): `tool_use` 28,7% (KHÔNG vector, KHÔNG trigram
+ * ⇒ chỉ còn FTS word) · `tool_result` 28,3% (CÓ vector, KHÔNG trigram) · hội thoại 42,9%
+ * (đủ cả hai). Ba nhóm này được tìm bằng những đường KHÁC HẲN nhau, nên một con số recall
+ * gộp không nói được gì: corpus cũ 34 câu toàn `prose`, có nhân lên 200 câu vẫn mù với
+ * 57% kho. Chia lớp để `bench --recall` trả lời được ba câu đang treo:
+ *   · `tool_use` thiếu vector có THẬT SỰ làm mất recall không (⇒ có đáng embed thêm không)
+ *   · `tool_result` đang ăn ~40% công embed có đáng giữ không (⇒ cắt được thì rút 43h → ~26h)
+ *   · `prose` lên 768 hơn 256 bao nhiêu (mốc chính của đợt rebuild)
+ */
+export type QueryKind = "prose" | "tool_use" | "tool_result";
+
 export interface LabeledQuery {
   q: string;
   lang: string;
   session: string;
   uuid: string;
+  /** Thiếu ⇒ `prose` (34 truy vấn đầu viết trước khi có phân lớp, đều thuộc lớp đó). */
+  kind?: QueryKind;
 }
 
 export const RECALL_CORPUS: LabeledQuery[] = [
@@ -50,4 +66,54 @@ export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "một thẻ lớn gộp phần tra cứu với phần khung chuẩn, ba cái còn lại gom vào thẻ máy", lang: "vi", session: "3145fe31-3a4f-4f14-90db-0ca8bc9ddfea", uuid: "6b96ca59-eba9-4eae-b066-6ada0c5e7caf" },
   { q: "chỉ mượn ý tưởng chế độ đọc, mật độ, bản đồ và sổ ghi từ repo kia chứ không sao chép cả kho", lang: "vi", session: "rollout-2026-06-20T19-53-56-019ee518-5171-7410-a785-d4bb19e21b9e", uuid: "msg_03249aaab0fe91d7016a36a2deb22881919d6ca1d05c6717bd" },
   { q: "máy chủ giao thức sống lâu nạp mô hình một lần nên tra khoảng hai trăm mili giây, thay vì mỗi lệnh phải nạp lại", lang: "vi", session: "f568ecae-0e85-45aa-b2ef-73e244f797b9", uuid: "f1479e10-c613-403c-91ca-df7919a5b4c3" },
+
+  // ── LỚP `tool_use` (2026-08-07) — 28,7% kho, KHÔNG vector KHÔNG trigram ─────────────
+  //
+  // ⚠ LỐI DIỄN ĐẠT KHÁC lớp `prose` bên trên — đọc kỹ trước khi so hai lớp với nhau.
+  // `prose` cố ý TRÁNH mọi từ khoá để đo riêng sức của vector. Hai lớp tool thì dùng lối
+  // "NHỚ MANG MÁNG": giữ một hai danh từ riêng (tên dự án, tên file, tên lệnh) rồi diễn
+  // đạt phần còn lại bằng từ khác — vì đó mới là cách người thật đi tìm lại một lệnh đã
+  // chạy. Tránh sạch từ khoá ở lớp không có vector thì recall chắc chắn 0%, và con số đó
+  // chỉ xác nhận điều đã biết chứ không giúp quyết định gì. So sánh chéo hai lối paraphrase
+  // này là SAI — mỗi lớp chỉ so được với chính nó qua các lần đo.
+  { q: "lệnh xem trong thư mục data của crypto_pipeline_binance có gì, liệt kê cả nhánh raw bên dưới", lang: "vi", kind: "tool_use", session: "96666196-7a2d-45a4-a197-f121928864e5", uuid: "d2da825b-3896-4ba0-aafe-ace42278453f" },
+  { q: "sửa khối khai báo kiểu nhập vào ở FlowCanvas.tsx, thêm dòng cho Connection và OnSelect", lang: "vi", kind: "tool_use", session: "784a13f4-916f-4b34-a787-16834f66d250", uuid: "97e43c3d-77c8-48f4-9974-d221f19d9d45" },
+  { q: "khởi động lại container của music_video_flow rồi chờ vài giây xem trạng thái nó ra sao", lang: "vi", kind: "tool_use", session: "26a80738-40fb-4be9-932c-e3069a3e0e40", uuid: "a57269df-b18f-4daa-9ef2-ed78324f9585" },
+  { q: "sửa nhánh tải bản WAV trong suno_dl.py ở thư mục tạm", lang: "vi", kind: "tool_use", session: "40a576bc-fa1f-4686-98ab-dec3434d0a2c", uuid: "f9df5b80-441d-4e72-a8f1-d30b25232e58" },
+  { q: "soi thư mục data của OpenRCA bên Ubuntu, đi sâu hai tầng xem có gì", lang: "vi", kind: "tool_use", session: "988fd273-8246-493d-853c-c1ceaeb91fe6", uuid: "8dea2be2-fab6-46f6-8b21-7f15df8a1d89" },
+  { q: "dựng trang sơ đồ luồng nạp kho dữ liệu SASIN, vẽ từ nguồn gốc tới các bảng thật", lang: "vi", kind: "tool_use", session: "90977e21-710b-44c2-b799-b8c7b7a0b377", uuid: "0628b87c-15d9-4f3c-8ac3-bdcd59c0c731" },
+  { q: "sửa đoạn giải thích về máng lề và đường phân cách của cột chênh lệch trong trang web SasinFlow", lang: "vi", kind: "tool_use", session: "4f1ea683-0a03-41fa-aec2-9252a4300a03", uuid: "fab00b80-441e-461e-a724-c9f70632ec79" },
+  { q: "viết một tệp python tạm rồi gọi endpoint query để chạy câu lệnh lên kho INVOICE", lang: "vi", kind: "tool_use", session: "d60b4cb7-1bc9-42a2-bea3-bfc4b6119cd3", uuid: "8d9f11a8-5960-4ec6-9050-7595d75406bc" },
+  { q: "chạy trong SasinInfra, trỏ tới tệp todo và tệp bàn giao nằm bên thư mục tạm của phiên", lang: "vi", kind: "tool_use", session: "d158fb77-fce8-43ed-ba9d-50822825eaa1", uuid: "09a651e8-2390-4b06-b8d1-c8aa75a7e19d" },
+  { q: "gom nhóm các khoá trong ui.json bằng một đoạn node chạy thẳng trên dòng lệnh", lang: "vi", kind: "tool_use", session: "88015817-4be1-4817-8f05-1d9e34786b4f", uuid: "1329ad32-dc66-4d75-970f-bca9a149b716" },
+  { q: "thêm dòng vào MEMORY.md về luật cấm ghi sang project khác", lang: "vi", kind: "tool_use", session: "d541a4d9-efdb-4bef-8b21-6cae1337544b", uuid: "fc759206-b1ae-4c7b-a0d3-00e45fae095f" },
+  { q: "giết tiến trình đang chiếm cổng 8756 bên Ubuntu rồi kiểm lại xem cổng đã trống chưa", lang: "vi", kind: "tool_use", session: "ca59b27f-74da-493f-88ce-43f81414a413", uuid: "00a3c17e-b3d1-4755-8dbc-98c1c51dd45f" },
+  { q: "chạy lại launcher nq của repo PBI_SasinFlow_Maintain ở bước điền, xem còn sinh rác ở gốc không", lang: "vi", kind: "tool_use", session: "5ccc6d83-f120-4b37-8f6c-086b526c4e43", uuid: "f283b2b6-0b0e-4802-bd02-41731dd23f1d" },
+  { q: "dừng hết tiến trình robocopy rồi đếm lại còn sót cái nào không", lang: "vi", kind: "tool_use", session: "7ddd9210-e3a7-42d3-ba10-5e5bcbe34099", uuid: "f9b81a50-20db-46e9-945e-a0e35300cbac" },
+
+  // ── LỚP `tool_result` (2026-08-07) — 28,3% kho, CÓ vector, ăn ~40% công embed ────────
+  // Nhãn CHỈ chọn kết quả có NỘI DUNG THẬT. Cố ý bỏ khối văn bản lặp ("Command running in
+  // background with ID…" — 3/12 mẫu rút ngẫu nhiên): không ai đi tìm lại một câu boilerplate,
+  // nên lấy nó làm đáp án là tự bơm điểm cho lớp này. Chính tỉ lệ boilerplate cao đó là một
+  // phần câu hỏi "lớp này có đáng embed không".
+  { q: "nội dung tệp dựng ảnh airflow: cài git bằng apt rồi quay về người dùng thường và cài gói theo requirements", lang: "vi", kind: "tool_result", session: "96666196-7a2d-45a4-a197-f121928864e5", uuid: "1a305a34-8a1a-4017-8e72-39215d315164" },
+  { q: "đoạn mã đẩy các hàng đầu vào vào danh sách, có nhánh đánh dấu biến đã ngắt kết nối", lang: "vi", kind: "tool_result", session: "e573d701-a79d-4dce-bd50-3a909342a35f", uuid: "2ca8bd26-8ba2-4fe4-9f3d-c92f8d2c6717" },
+  { q: "kết quả dò các nơi gọi track-node-states và rerun-track-node, cả bên giao diện lẫn bên máy chủ", lang: "vi", kind: "tool_result", session: "e5c549b7-e9a1-4208-a2b8-83f8fabada1b", uuid: "6c5c3207-fbb2-4345-8a2a-cb5044012205" },
+  { q: "tra xem hàm định dạng số được khai ở tầng mô-đun hay khai riêng trong hàm vẽ thống kê đối soát", lang: "vi", kind: "tool_result", session: "4f1ea683-0a03-41fa-aec2-9252a4300a03", uuid: "b99b1c4f-fba7-4ffd-bf6f-61efac6737ce" },
+  { q: "kết quả tìm hộp thoại cấu hình nguồn đối soát, chỗ chọn kho và câu lệnh cho từng nguồn", lang: "vi", kind: "tool_result", session: "f3668722-c322-4945-b048-3d1092ef0838", uuid: "71858070-25c2-48d3-be21-fcf84c08effc" },
+  { q: "khối thẻ giao diện hiển thị danh sách nguồn hàng đầu, có khoá dịch và ô chờ nạp", lang: "vi", kind: "tool_result", session: "88015817-4be1-4817-8f05-1d9e34786b4f", uuid: "8e719970-fa37-48cb-bd32-53f1585c816d" },
+  { q: "bản đếm khoá app đọc được và kích thước ui.json, kèm danh sách còn lại trong hồ sơ người dùng", lang: "vi", kind: "tool_result", session: "381f6d09-1cea-46ab-9474-cd8fab5bd94f", uuid: "31bc78d2-ecfd-4dd7-9062-15b20e5fc3c6" },
+  { q: "báo đã tạo xong tệp model_cover.ps1 trong thư mục tạm của phiên bên repo bảo trì Power BI", lang: "vi", kind: "tool_result", session: "ebaa7b66-963a-4edb-9642-7ad757f2574b", uuid: "e34baae5-9c7e-4fa5-8131-7f3cfe95dd98" },
 ];
+
+/** Truy vấn theo lớp — `kind` khuyết nghĩa là `prose` (34 câu viết trước khi phân lớp). */
+export function corpusByKind(): Map<QueryKind, LabeledQuery[]> {
+  const m = new Map<QueryKind, LabeledQuery[]>();
+  for (const q of RECALL_CORPUS) {
+    const k = q.kind ?? "prose";
+    const list = m.get(k);
+    if (list) list.push(q);
+    else m.set(k, [q]);
+  }
+  return m;
+}
