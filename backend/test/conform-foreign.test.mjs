@@ -47,6 +47,59 @@ test("khai đủ ⇒ KHÔNG còn đòi slot chuẩn (đây là điểm của h�
   assert.ok(!c.has("foreign-missing-dir"), "khai đúng đường có thật mà vẫn báo thiếu");
 });
 
+// ── ADAPT v2 · N7: gánh khai báo không được đè lên repo ─────────────────────────
+//
+// Ca thật: repo OpenRCA ăn 4 lần CHẶN cho `.claude` · `.github` · `data` · `secrets` —
+// không cái nào là drift. Đo 23 repo lớn: 6–31 folder cấp 1, 22/23 có dot-entry ở gốc.
+// Nới cổng thì phải kiểm luôn chiều ngược lại, nếu không là tự tạo cổng giả (ca kế tiếp).
+test("dot-entry + data/secrets KHÔNG còn bị chặn (N7 — hết 4 blocking oan)", (t) => {
+  const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
+  for (const d of [".claude", ".github", "data", "secrets"]) {
+    mkdirSync(join(root, d), { recursive: true });
+    writeFileSync(join(root, d, "thing.py"), "q = 1\n"); // có code mà VẪN không được chặn: chúng nằm trong ignore mặc định
+  }
+  const blocking = new Set(conform(root).items.filter((i) => i.level === "blocking").map((i) => i.check));
+  assert.ok(
+    !blocking.has("foreign-undeclared-dir"),
+    "`.claude`/`.github`/`data`/`secrets` phải nằm trong ignore mặc định — chặn chúng là báo oan",
+  );
+});
+
+test("folder chỉ chứa .md ⇒ ADVISORY, không chặn; folder CHỨA CODE ⇒ vẫn CHẶN (cổng còn nổ được)", (t) => {
+  const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
+  mkdirSync(join(root, "notes"), { recursive: true });
+  writeFileSync(join(root, "notes", "idea.md"), "# ghi chú\n");
+  let items = conform(root).items;
+  assert.ok(
+    !items.some((i) => i.level === "blocking" && i.check === "foreign-undeclared-dir"),
+    "thư mục chỉ có .md không phải drift cấu trúc — không được chặn",
+  );
+
+  // Chiều ngược: thêm CODE chưa khai thì cổng PHẢI đỏ, nếu không thì bản nới này vô dụng.
+  mkdirSync(join(root, "worker"), { recursive: true });
+  writeFileSync(join(root, "worker", "job.py"), "r = 1\n");
+  items = conform(root).items;
+  const blocked = items.find((i) => i.level === "blocking" && i.check === "foreign-undeclared-dir");
+  assert.ok(blocked, "thư mục CHỨA CODE chưa khai vẫn phải chặn — cổng không đỏ được là cổng giả");
+  assert.ok(blocked.samples.includes("worker"), "phải nêu đúng tên thư mục có code");
+});
+
+test("marker ở harness/ vẫn đọc được, và `ignore` của repo được tôn trọng (N5 + N7)", (t) => {
+  const root = repo(t); // KHÔNG ghi docs/.harness.json
+  mkdirSync(join(root, "harness"), { recursive: true });
+  writeFileSync(
+    join(root, "harness", ".harness.json"),
+    JSON.stringify({ layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff"], ignore: ["docs"] }),
+  );
+  const fh = foreignLayout(root);
+  assert.ok(fh, "marker đặt ở harness/ mà đọc không ra ⇒ chính hệ ADAPT tự vô hiệu");
+  assert.deepEqual(fh.ignore, ["docs"]);
+  assert.ok(
+    !conform(root).items.some((i) => i.level === "blocking" && i.check === "foreign-undeclared-dir" && i.samples.includes("docs")),
+    "`docs` đã khai trong ignore (docs/ của team) thì không được chặn",
+  );
+});
+
 test("mọc thêm folder cấp 1 chưa khai ⇒ ĐỎ", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src" }, extra: ["docs"] });
   // `pipelines` và `notebooks` có thật nhưng KHÔNG được khai

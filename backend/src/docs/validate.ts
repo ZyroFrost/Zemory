@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
+import { foreignLayout } from "./conform.js";
 
 export interface ValidateIssue {
   level: "error" | "warn" | "info";
@@ -130,6 +131,28 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     return walk(r, 0);
   };
   const deliverables = DELIVERABLES.filter((d) => has(d)).map((d) => `${d}/`);
+
+  // ADAPT v2 · N8 — APP/NON-APP chỉ là PRESET, KHÔNG phải chuẩn ép.
+  //
+  // Repo đã khai bảng ánh xạ riêng (`layout: adapt|foreign`) thì thước đo của nó là CHÍNH
+  // BẢNG ĐÓ, không phải `backend/`·`frontend/`. Bản trước không có nhánh này nên mọi repo
+  // ngoài đều bị đo bằng chuẩn APP rồi lĩnh cảnh báo "own code not under backend/" — cảnh
+  // báo mà người nhận không có cách nào sửa đúng, vì cấu trúc của họ là cố ý.
+  // `conform` mới là chỗ so thực tế với bản khoá; `validate` ở đây chỉ nói repo đang ở hệ nào.
+  const adapt = foreignLayout(root);
+  if (adapt) {
+    const slots = Object.keys(adapt.slots).length;
+    out.push({
+      level: "info",
+      msg:
+        `structure[adapt]: ${slots} slot + ${adapt.extra.length} extra đã khai trong .harness.json` +
+        ` — đo theo BẢNG ĐÃ KHAI, không áp chuẩn APP/NON-APP. Lệch bảng ⇒ \`zemory conform\`.`,
+    });
+    if (!has("AGENTS.md")) {
+      out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
+    }
+    return out;
+  }
 
   if (!has("docs")) out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
   if (!has("AGENTS.md")) out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
