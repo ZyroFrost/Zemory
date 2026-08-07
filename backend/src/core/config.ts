@@ -35,6 +35,31 @@ export function isConnected(projectRoot: string): boolean {
   return findMarker(projectRoot) !== null;
 }
 
+/** ĐỌC + PARSE marker — MỘT hàm cho mọi người đọc "mềm" (fail-open trả null).
+ *
+ *  Vì sao phải gom: từng có 5 chỗ tự `JSON.parse(readFileSync(marker))` riêng
+ *  (loadContext · foreignLayout · buildPolicy · projectProfile · doctor) — đúng lớp lỗi
+ *  "5 bản norm", và cả 5 cùng ngã trên một ca Windows RẤT thật: PowerShell 5.1
+ *  `Set-Content -Encoding utf8` ghi BOM (U+FEFF), `JSON.parse` ném ngay ký tự đầu. Hậu quả đo được
+ *  trên fixture: buildPolicy nuốt lỗi im lặng ⇒ policy MẤT `protected`; harnessPathsAt
+ *  rơi fallback ⇒ guard sinh nhầm chỗ. Sai-im-lặng, không ai biết mình đang mất gì.
+ *  (`loadContext` KHÔNG dùng hàm này — nó phải NÉM TO khi marker hỏng, chỉ mượn bước
+ *  lột BOM.) */
+export function readMarker(projectRoot: string): { path: string; data: Record<string, unknown> } | null {
+  const p = findMarker(projectRoot);
+  if (!p) return null;
+  try {
+    const data: unknown = JSON.parse(stripBom(readFileSync(p, "utf8")));
+    return data && typeof data === "object" ? { path: p, data: data as Record<string, unknown> } : null;
+  } catch {
+    return null;
+  }
+}
+
+function stripBom(s: string): string {
+  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
+}
+
 function assertConfig(value: unknown, markerRel: string): HarnessConfig {
   if (!value || typeof value !== "object") throw new Error(`Invalid ${markerRel}: expected an object.`);
   const config = value as Partial<HarnessConfig>;
@@ -110,7 +135,7 @@ export function loadContext(projectRoot: string): Context {
   const markerRel = relative(projectRoot, markerPath).replace(/\\/g, "/");
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(markerPath, "utf8"));
+    raw = JSON.parse(stripBom(readFileSync(markerPath, "utf8")));
   } catch (error) {
     throw new Error(
       `Invalid ${markerRel}: ${error instanceof Error ? error.message : "cannot read config"}`,
@@ -125,7 +150,7 @@ export function loadContext(projectRoot: string): Context {
     const homeMarker = join(resolveHarnessRel(projectRoot, pointer), ".harness.json");
     if (existsSync(homeMarker)) {
       try {
-        raw = JSON.parse(readFileSync(homeMarker, "utf8"));
+        raw = JSON.parse(stripBom(readFileSync(homeMarker, "utf8")));
       } catch (error) {
         throw new Error(
           `Invalid ${relative(projectRoot, homeMarker).replace(/\\/g, "/")} (trỏ tới từ ${markerRel}): ` +

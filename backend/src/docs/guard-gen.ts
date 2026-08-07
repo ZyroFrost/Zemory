@@ -19,7 +19,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { findMarker, harnessPathsAt } from "../core/config.js";
+import { harnessPathsAt, readMarker } from "../core/config.js";
 
 export interface GuardGenResult {
   /** Thư mục hooks (nhà của policy + guard + flags). */
@@ -41,22 +41,17 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   let protectedWrite: string[] = [];
   let secretExtra: string[] = [];
   let secretAllowExtra: string[] = [];
-  const marker = findMarker(root);
+  // readMarker: MỘT người đọc marker (đã lột BOM). Bản đầu tự parse ở đây và nuốt lỗi
+  // im lặng — fixture Windows (Set-Content ghi BOM) đã chứng minh policy sinh ra MẤT
+  // `protected` mà không ai hay. Marker hỏng ⇒ policy chỉ còn bộ mặc định (secret vẫn gác).
+  const marker = readMarker(root);
   if (marker) {
-    try {
-      const j = JSON.parse(readFileSync(marker, "utf8")) as {
-        protected?: unknown;
-        secretNames?: unknown;
-        secretAllow?: unknown;
-      };
-      const strs = (v: unknown): string[] =>
-        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
-      protectedWrite = strs(j.protected);
-      secretExtra = strs(j.secretNames);
-      secretAllowExtra = strs(j.secretAllow);
-    } catch {
-      /* marker hỏng ⇒ policy chỉ còn bộ mặc định — guard vẫn gác secret (fail-safe hơn fail-open ở đây) */
-    }
+    const j = marker.data as { protected?: unknown; secretNames?: unknown; secretAllow?: unknown };
+    const strs = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
+    protectedWrite = strs(j.protected);
+    secretExtra = strs(j.secretNames);
+    secretAllowExtra = strs(j.secretAllow);
   }
   return {
     generator: "zemory",
