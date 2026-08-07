@@ -5,7 +5,14 @@
 
 ---
 
-## [2026-08-07d] — Vét TRỌN harness theo marker (đóng ADAPT v2) · corpus recall CHIA LỚP · 3 lượt audit
+## [2026-08-07d] — RELEASE 1.2.0 · Vét TRỌN harness theo marker (đóng ADAPT v2) · corpus recall CHIA LỚP · 3 lượt audit
+
+> 🏷 **1.2.0 (user chốt số, push 2026-08-07)** — minor vì có tính năng mới: `zemory hook guard`
+> (chốt chặn lớp ①) · chuẩn ADAPT v2 (harness đặt được ở bất kỳ đâu trong repo) · chuẩn NON-APP
+> mở rộng (1-case-1-folder + data 3 chặng) · corpus recall chia lớp. Gộp 20 commit của ngày.
+> Trước khi đẩy: `typecheck` · `lint` · `conform --gate` · `todo verify` · `validate` đều exit 0;
+> `no-data-in-git` 5/5; `git ls-files` không có `data/` · `share.key` · `.env` · `*.db` · `*.enc`;
+> `docs/hooks/` chỉ track 4 file (policy chứa MẪU secret, không có giá trị thật), 0 flag `.allow-*`.
 
 **Vét trọn nhóm LỆNH + bề mặt** (các cổng đã theo marker ở `[2026-08-07c]`; đây là phần đuôi):
 `reindex` · `archive` · `todo verify` · `plan ls` · và **UI** (`listHarnessFiles`/`readDoc`).
