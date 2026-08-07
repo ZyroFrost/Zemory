@@ -2,12 +2,12 @@
 // — the per-project docs harness lifecycle.
 import { homedir } from "node:os";
 import { existsSync, readdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
-import { currentProjectRoot, findProjectRoot, loadContext } from "../core/config.js";
+import { currentProjectRoot, findProjectRoot, harnessPathsAt, loadContext } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
-import { ensureHarness, freshHarness } from "../docs/adopt.js";
+import { ensureHarness, entryStates, freshHarness } from "../docs/adopt.js";
 import { archiveChanges, archiveTodo } from "../docs/archive.js";
 import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
@@ -43,6 +43,21 @@ export function cmdInit(args: string[]): void {
   if (r.present.length) parts.push(`kept ${r.present.length} existing (not overwritten)`);
   console.log(`zemory init — ${parts.join(", ")}.`);
   if (r.added.length) console.log(`  + ${r.added.join(", ")}`);
+  printAdoptNotices(r);
+}
+
+/** ADAPT v2 — hai thông báo mà im lặng chính là lỗi (N1 + 4.2), in chung cho init/sync.
+ *  Không in gì khi rỗng: trường hợp thường phải yên tĩnh. */
+function printAdoptNotices(r: { untouchedLegacyPlan: string[]; entriesUnlinked: Array<{ file: string; pointer: string }> }): void {
+  if (r.untouchedLegacyPlan.length) {
+    console.log(`  · thấy thư mục plan CÓ SẴN của repo (KHÔNG đụng vào): ${r.untouchedLegacyPlan.join(", ")}`);
+    console.log("    → muốn gộp vào plan của harness thì người/agent tự dời, tool không tự dời đồ của repo.");
+  }
+  for (const e of r.entriesUnlinked) {
+    console.log(`  ⚠ ${e.file} là bản riêng của repo và CHƯA trỏ tới harness — harness sẽ KHÔNG được nạp qua cửa này.`);
+    console.log(`    → thêm (sau khi user duyệt) một dòng con trỏ vào ${e.file}:`);
+    console.log(`      ${e.pointer}`);
+  }
 }
 
 // Reconcile guide now lives in docs/agent/03_STRUCTURE.md §8 (single source). Print a short pointer.
@@ -88,6 +103,7 @@ export function cmdSync(): void {
   } else if (!r.added.length && !r.createdConfig) {
     console.log("  ✓ already in sync (nothing to add).");
   }
+  printAdoptNotices(r);
 }
 
 /**
@@ -126,6 +142,24 @@ export async function cmdDoctor(): Promise<void> {
   const missing = s.docs.filter((d) => !d.ok);
   console.log(`  docs: ${missing.length === 0 ? "✓ all present" : `✗ ${missing.length} missing (run \`zemory sync\`)`}`);
   for (const d of missing) console.log(`      ✗ ${d.file}`);
+
+  // ADAPT v2 · 4.2 — trạng thái CỬA VÀO, ba mức chứ không phải hai. "Repo có bản riêng
+  // chưa nối" phải nhìn thấy được: entry không trỏ tới harness thì mọi luật phía trong
+  // thành vô hình, và trước đây trạng thái đó bị gộp im lặng vào "đã có".
+  if (s.project.root) {
+    const hp = harnessPathsAt(s.project.root);
+    const agentRel = relative(s.project.root, hp.agent).replace(/\\/g, "/");
+    const label = { linked: "nối rồi", unlinked: "bản riêng CHƯA nối", missing: "thiếu" } as const;
+    const states = entryStates(s.project.root, hp.agent, hp.entries);
+    const anyLinked = states.some((e) => e.state === "linked");
+    const line = states.map((e) => `${e.file} (${label[e.state]})`).join(" · ");
+    if (anyLinked) {
+      console.log(`  entry: ✓ ${line}`);
+    } else {
+      console.log(`  entry: ⚠ ${line}`);
+      console.log(`      → harness KHÔNG được nạp qua cửa nào — thêm dòng con trỏ tới \`${agentRel}/\` (xem \`zemory sync\`)`);
+    }
+  }
 
   console.log(
     `  plan: ${
