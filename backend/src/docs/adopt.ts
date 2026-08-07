@@ -11,13 +11,12 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
-  rmdirSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
-import { CONFIG_FILE, loadContext } from "../core/config.js";
+import { CONFIG_FILE, findMarker, loadContext } from "../core/config.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
 
@@ -44,6 +43,10 @@ export interface AdoptResult {
   docsRel: string;
   /** Existing docs don't match the standard → an agent must reconcile them. */
   needsReconcile: boolean;
+  /** Thư mục plan/planning CÓ SẴN của repo mà harness KHÔNG đụng vào (ADAPT v2 · N1).
+   *  Trước đây chúng bị `renameSync` vào `docs/plan` âm thầm; nay chỉ báo để người
+   *  quyết. Rỗng là trường hợp thường. Đường tương đối so với gốc project. */
+  untouchedLegacyPlan: string[];
 }
 
 // The canonical agent docs (.md is source; DB = derived index). Anything else in docs/agent =
@@ -94,8 +97,10 @@ const DEFAULT_CONFIG: HarnessConfig = {
  */
 export function ensureHarness(projectRoot: string, profile?: StructureProfile): AdoptResult {
   const projectName = basename(projectRoot);
-  // Config lives INSIDE docs/ (docs/.harness.json) so the project root stays clean.
-  const configPath = join(projectRoot, CONFIG_FILE);
+  // ADAPT v2 · N5 — dùng marker ĐANG CÓ (bất kể bậc nào của thang); chỉ khi repo chưa
+  // nối mới tạo mới ở đường mặc định. Ghép cứng `docs/.harness.json` như bản trước sẽ
+  // đẻ marker THỨ HAI cho repo đã đặt harness ở `harness/` — hai nguồn sự thật.
+  const configPath = findMarker(projectRoot) ?? join(projectRoot, CONFIG_FILE);
   let createdConfig = false;
   if (!existsSync(configPath)) {
     mkdirSync(dirname(configPath), { recursive: true });
@@ -129,26 +134,23 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
   mkdirSync(docsDir, { recursive: true });
   mkdirSync(planDir, { recursive: true });
 
-  // MERGE any legacy plan/planning folder INTO docs/plan: move each file that
-  // isn't already there (never overwrite), then remove the legacy dir if empty.
-  // Handles the case where docs/plan already exists but docs/planning still has
-  // old content — so the old plan files actually get synced in.
-  for (const legacy of [
-    join(dirname(docsDir), "planning"), // docs/planning (legacy)
+  // ADAPT v2 · N1 (chủ quyền) — KHÔNG dời bất cứ thứ gì của repo.
+  //
+  // Bản trước gom `docs/planning` + `<root>/plan` + `<root>/planning` vào `docs/plan`
+  // bằng `renameSync`. Với repo của CHÍNH mình thì tiện; với repo NGOÀI thì đó là tool
+  // tự ý DỜI thư mục của người ta ngay trong `init`/`sync` — mất dữ liệu, và mâu thuẫn
+  // thẳng với luật ADAPT mà chính bản này ship (*"Trùng tên với thứ có sẵn → đổi đường
+  // HARNESS, không đổi thứ của repo"*). Đo trên 23 repo lớn (plan 08 §2): `plan/`·
+  // `planning/` cấp 1 = 0/23, tức hành vi này gần như không giúp ai, nhưng khi nổ thì
+  // nổ vào dữ liệu không dựng lại được.
+  //
+  // Nay: chỉ ĐỌC và BÁO. Thư mục cũ giữ nguyên tại chỗ; người/agent tự quyết có gộp hay
+  // không. Đây là quyết định một chiều — không thêm cờ để bật lại hành vi dời.
+  const legacyPlanDirs = [
+    join(dirname(docsDir), "planning"), // docs/planning (nếp cũ của chính zemory)
     join(projectRoot, "plan"),
     join(projectRoot, "planning"),
-  ]) {
-    if (!existsSync(legacy) || legacy === planDir) continue;
-    for (const file of readdirSync(legacy)) {
-      const dst = join(planDir, file);
-      if (!existsSync(dst)) renameSync(join(legacy, file), dst);
-    }
-    try {
-      if (readdirSync(legacy).length === 0) rmdirSync(legacy);
-    } catch {
-      /* leave non-empty legacy dir (name conflicts) for the agent to resolve */
-    }
-  }
+  ].filter((d) => d !== planDir && existsSync(d));
 
   const added: string[] = [];
   const present: string[] = [];
@@ -269,7 +271,14 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
   }
 
   rememberProject(projectRoot);
-  return { createdConfig, added, present, docsRel, needsReconcile };
+  return {
+    createdConfig,
+    added,
+    present,
+    docsRel,
+    needsReconcile,
+    untouchedLegacyPlan: legacyPlanDirs.map((d) => relative(projectRoot, d).replace(/\\/g, "/")),
+  };
 }
 
 function stamp(): string {

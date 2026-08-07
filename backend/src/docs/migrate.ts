@@ -8,7 +8,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CONFIG_FILE } from "../core/config.js";
+import { CONFIG_FILE, findMarker } from "../core/config.js";
 import type { HarnessConfig } from "../core/types.js";
 
 const STANDARD = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
@@ -37,7 +37,7 @@ function guessRole(name: string): string | null {
 
 export function analyzeMigration(projectRoot: string): MigrationReport | null {
   let docsRel = "docs/agent";
-  const cfgPath = join(projectRoot, CONFIG_FILE);
+  const cfgPath = findMarker(projectRoot) ?? join(projectRoot, CONFIG_FILE);
   if (existsSync(cfgPath)) {
     docsRel = (JSON.parse(readFileSync(cfgPath, "utf8")) as HarnessConfig).docs ?? docsRel;
   }

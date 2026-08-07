@@ -19,7 +19,10 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { currentMemoryDir } from "../memory/db.js";
 
-/** ~/.zemory/logs — the data-dir logs folder (moves with `memory relocate`). */
+/** `<memory dir>/logs` — the data-dir logs folder (moves with `memory relocate`).
+ *  NOT `~/.zemory/logs`: the comment used to say that, and a later session went
+ *  looking there, found nothing, and concluded there were no logs at all. Home
+ *  only ever holds `location.json`; everything else lives beside the store. */
 function logsDir(): string {
   const dir = join(currentMemoryDir(), "logs");
   mkdirSync(dir, { recursive: true });
@@ -39,7 +42,7 @@ export function daemonLog(line: string): void {
 
 /** Arm Node's diagnostic report so a FATAL error (native segfault, OOM, or an
  *  uncaught JS exception) writes a report.*.json with a full native + JS stack
- *  into ~/.zemory/logs. This is the ONLY way to see where a native-addon crash
+ *  into the same logs dir. This is the ONLY way to see where a native-addon crash
  *  occurred, because no JS handler ever runs for it. Fail-open on older runtimes
  *  where process.report is unavailable. */
 export function armCrashReport(): void {

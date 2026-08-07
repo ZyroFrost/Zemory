@@ -29,7 +29,7 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { CONFIG_FILE, currentProjectRoot } from "./core/config.js";
+import { currentProjectRoot, isConnected } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -745,7 +745,7 @@ function captureCoverage(limit = 10): {
       // harness to read — otherwise null (cross-machine / not-set-up projects
       // are genuinely unknowable; the UI hides the badge instead of guessing).
       ...p,
-      profile: p.host === localHost && existsSync(join(p.path, CONFIG_FILE)) ? projectProfile(p.path) : null,
+      profile: p.host === localHost && isConnected(p.path) ? projectProfile(p.path) : null,
     }));
     const totals = db
       .prepare(
