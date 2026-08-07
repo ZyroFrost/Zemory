@@ -63,7 +63,11 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     secret_names: [...new Set([...SECRET_DEFAULTS, ...secretExtra])],
     secret_allow: [...new Set([...SECRET_ALLOW_DEFAULTS, ...secretAllowExtra])],
     secret_reason: "secret khong bao gio vao commit — KHONG co flag vuot (gia da tra: secret len GitHub 2026-08-04)",
-    key_read_block: ["*.pem", "*.ppk", "id_rsa*", "id_ed25519*"],
+    // `*.key` CÓ MẶT ở đây dù bản mẫu gốc không có: nhất quán với secret_names — đã cấm
+    // COMMIT thì cũng cấm ĐỌC vào transcript (phiên agent bị ingest vào DB rồi theo bundle
+    // đi xa; chìa lọt vào transcript là kịch bản plan/16 §4 cấm). Đo thật trên zemory:
+    // Read data/share.key từng đi qua êm vì thiếu đúng mẫu này.
+    key_read_block: ["*.pem", "*.ppk", "id_rsa*", "id_ed25519*", "*.key"],
     key_read_reason: "noi dung file key khong bao gio duoc doc/tra/ghi log; duong dan key chi la DUONG DAN",
     flags_dir: hooksRel,
     flags: { push: ".allow-push", docs_write: ".allow-docs-write", git_add_all: ".allow-git-add-all" },
@@ -190,7 +194,9 @@ function checkBash(cmd) {
 function main() {
   let payload;
   try {
-    payload = JSON.parse(fs.readFileSync(0, "utf8"));
+    // Lot BOM truoc khi parse: pipe PowerShell 5.1 chen U+FEFF vao dau stdin (do that
+    // 2026-08-07 — cung ho loi voi marker BOM), khong lot la moi luat tat cam (fail-open).
+    payload = JSON.parse(fs.readFileSync(0, "utf8").replace(/^\\uFEFF/, ""));
   } catch {
     process.exit(0); // khong doc duoc input thi khong phan - guard hong khong duoc chan bua
   }
