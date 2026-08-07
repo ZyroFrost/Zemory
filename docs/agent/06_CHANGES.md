@@ -5,7 +5,30 @@
 
 ---
 
-## [2026-08-07b] — Ô chỉnh ngưỡng context · cạnh `api` BE↔FE v1 · todo-verify vá 2 lỗi của chính nó · sự cố cửa sổ smoke
+## [2026-08-07c] — ADAPT v2 trọn bộ · guardrail lớp ① vào template + dogfood · NON-APP hấp thụ mẫu case-folder
+
+**ADAPT v2** (user chốt; thi hành spec `harness/plan/08_adapt_standard.md` của repo OpenRCA, đọc
+read-only — spec là nguồn chi tiết, entry này chỉ ghi số đo). 10 commit `673ecbb..b03ede5` sửa đủ
+10 điểm-ép: bỏ `renameSync` dời `plan/` của repo · marker thang 3 bậc + con trỏ `{home}` ·
+`harnessPaths()`/`readMarker()` MỖI sự thật MỘT hàm (thay 147 literal/37 file + 5 bản parse marker
+— cả 5 từng cùng ngã trên marker có BOM) · `validate` nhánh adapt · `foreign-undeclared-dir` chỉ
+chặn folder chứa code (hết 4 blocking oan) · bộ file bắt buộc + `graph-standard` đọc theo marker ·
+entry BA trạng thái (nối gián tiếp qua `@AGENTS.md` tính là nối) · `zemory hook guard` sinh chốt
+lớp ① từ marker. **Nghiệm thu trên clone repo tham chiếu: doctor not-connected→connected · conform
+2 lỗi chặn→sạch · validate `structure[adapt]: 10+6` · điều 0→8.** Nếp cũ `docs/` không gãy.
+
+**Guardrail lớp ① thành chuẩn + dogfood:** `02_RULES §Guardrail` vào template app/nonapp/adapt
+(cowork CỐ Ý không — không bảo đảm CLI/hook) · doctor nhắc khi khai `protected` mà chưa có chốt ·
+zemory tự đeo (`docs/hooks/` + PreToolUse project-scoped, user duyệt). Đeo thật lộ 2 lỗ sửa ngay:
+pipe PS chèn BOM ⇒ guard fail-open thành TẮT CẢ LUẬT (nay tự lột BOM) · `*.key` thiếu trong
+`key_read_block` ⇒ Read `share.key` đi qua êm (nay chặn — plan/16 §4: cấm commit thì cấm đọc).
+
+**NON-APP hấp thụ từ PBI_SasinFlow_Maintain** (user chốt; §4b bên đó tự ghi đường thăng cấp):
+1-CASE-1-FOLDER (`NN_` định kỳ + không-số theo yêu cầu; spec.md sổ sống; 3 ngoại lệ) · data 3 chặng
+`01_raw/02_processing/03_output` + phép thử "xoá đi dựng lại được không" · skill `case/` port tổng
+quát. Scaffold trắng: 20 file, conform sạch. **Kèm:** gate bắt byte NUL sẵn có trong `graph-seam.ts`
+(grep coi file là nhị phân) — sửa bằng escape · audit 6 mặt ra 1 finding thật đã sửa (fallback
+`harnessPathsAt` chép tay bộ mặc định) · 75/75 test vùng đụng, conform/todo-verify exit 0.
 
 **Ô chỉnh ngưỡng nhắc context (user chốt "làm đi"):** hàng mới pane ⚙→⚡ (input 50–99%), `/automation`
 phơi `contextWarnPercent`, đổi gửi qua `/set-context-warn`, server kẹp và TRẢ SỐ THẬT về ô (smoke: gõ
