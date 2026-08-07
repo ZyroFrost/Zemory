@@ -1,7 +1,7 @@
 // `zemory plan|docs|changelog <ls|search|show>` — read-only search over the
 // derived docs index (.md is the source, DB is the index — HP điều 3).
-import { join } from "node:path";
-import { currentProjectRoot } from "../core/config.js";
+import { join, relative } from "node:path";
+import { currentProjectRoot, harnessPathsAt } from "../core/config.js";
 import { listDocs, listToc, searchSections, showSection } from "../docs/plan.js";
 import { listEntries, searchChangelog } from "../docs/changelog.js";
 import { flagValue, positionalArgs } from "./_shared.js";
@@ -22,7 +22,13 @@ export async function cmdPlan(args: string[]): Promise<void> {
   const root = currentProjectRoot();
 
   if (sub === "ls") {
-    const docPath = args[1] ? args[1] : join("docs", "plan", "00_overview.md");
+    // Mặc định lấy theo MARKER (N2): `plan ls` không có đối số trên repo đặt harness ở
+    // `harness/` từng tra `docs/plan/00_overview.md` — một đường không tồn tại, rồi in
+    // "index rỗng, chạy reindex" nên trông như lỗi chỉ mục thay vì lỗi tra sai chỗ.
+    // Ghép bằng `join` (separator của OS) để KHỚP dạng đường index đang lưu — đo 2026-08-07:
+    // index của repo này lưu `docs\plan\…`, nên chuẩn hoá sang `/` ở đây làm lệnh im lặng
+    // in "index rỗng, chạy reindex" trong khi chỉ mục vẫn đủ. Xem `cmdReindex`.
+    const docPath = args[1] ? args[1] : join(relative(root, harnessPathsAt(root).plan), "00_overview.md");
     const toc = listToc(docPath, root);
     if (!toc.length) {
       console.log(`zemory plan: no sections for ${docPath} (index rỗng — chạy \`zemory reindex\`; hoặc đọc thẳng file .md).`);

@@ -29,7 +29,7 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { currentProjectRoot, isConnected } from "./core/config.js";
+import { currentProjectRoot, harnessPathsAt, isConnected } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -635,6 +635,11 @@ function queryRecentSessions(limit: number): unknown[] {
 
 /** Read one harness doc for the viewer — AGENTS.md (root), docs/agent/* or
  *  docs/plan/* — path-guarded so a request can't escape the project docs. */
+/** Export để test soi ĐÚNG hàm đang chạy — hai bề mặt này hỏng ở tầng TRÌNH BÀY (cây file
+ *  rỗng, mọi file "not found") nên không cổng nào bắt được, mà test chép lại logic thì canh
+ *  bản sao chứ không canh bản thật (bài học audit: bộ test từng neo vào bản đã bị thay). */
+export { listHarnessFiles as listHarnessFilesForTest, readDoc as readProjectDocForTest };
+
 function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string; content: string } {
   const root = resolve(projectRoot);
   const notFound = { ok: false, file: rel, content: "(file not found — run zemory init/sync to create it)" };
@@ -645,11 +650,16 @@ function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string;
       return notFound;
     }
   }
-  const base = resolve(root, "docs");
-  // Resolve theo ngữ nghĩa RIÊNG của bề mặt này (mặc định `docs/agent`, nhánh `plan/` tính
-  // từ `docs/`), nhưng phép kiểm thoát-thư-mục thì dùng CHUNG với `resolveDocPath` —
-  // xem `util/safe-path.ts` để biết vì sao không gộp thẳng hai hàm.
-  const target = rel.startsWith("plan/") ? resolve(base, rel) : resolve(base, "agent", rel);
+  // ADAPT v2 · N2 — nhà harness lấy từ MARKER, không phải hằng `docs/`. Trước đó bề mặt này
+  // đọc cứng `docs/agent`, nên với project đặt harness ở `harness/` thì tab Harness của UI
+  // trả "(file not found — run zemory init/sync)" cho MỌI file, tức mời người ta chạy đúng
+  // lệnh sẽ scaffold vào `docs/` của team.
+  const hp = harnessPathsAt(root);
+  // `base` = cha của agent-dir: nhánh `plan/` tính từ đó (nếp `docs/agent` ↔ `docs/plan`,
+  // `harness/agent` ↔ `harness/plan`). Phép kiểm thoát-thư-mục vẫn dùng CHUNG với
+  // `resolveDocPath` — xem `util/safe-path.ts` để biết vì sao không gộp thẳng hai hàm.
+  const base = resolve(hp.agent, "..");
+  const target = rel.startsWith("plan/") ? resolve(hp.plan, rel.slice("plan/".length)) : resolve(hp.agent, rel);
   if (!isWithinBase(base, target)) return { ok: false, file: rel, content: "invalid path" };
   try {
     return { ok: true, file: rel, content: readFileSync(target, "utf8") };
@@ -671,10 +681,11 @@ function listHarnessFiles(projectRoot: string): { hasAgents: boolean; agent: str
       return [];
     }
   };
+  const hp = harnessPathsAt(root);
   return {
     hasAgents: existsSync(resolve(root, "AGENTS.md")),
-    agent: md(resolve(root, "docs", "agent")),
-    plan: md(resolve(root, "docs", "plan")),
+    agent: md(hp.agent),
+    plan: md(hp.plan),
   };
 }
 

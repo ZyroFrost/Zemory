@@ -89,6 +89,36 @@ test("marker mang BOM: cả hai lệnh vẫn tìm đúng nhà (không chết im 
   );
 });
 
+// Bề mặt UI: tab Harness của một project đọc docs qua hai hàm này. Trước khi vá, cả hai đọc
+// cứng `docs/agent`·`docs/plan`, nên với repo đặt harness ở `harness/` thì cây file hiện RỖNG
+// và mọi lần mở file trả "(file not found — run zemory init/sync to create it)" — tức mời
+// người ta chạy đúng cái lệnh sẽ scaffold vào `docs/` của team. Hỏng ở tầng TRÌNH BÀY nên
+// không cổng nào bắt được; phải có test riêng.
+test("UI: cây file + đọc doc của project ADAPT phải thấy harness/ (không rỗng, không not-found)", async (t) => {
+  const { listHarnessFilesForTest, readProjectDocForTest } = await import("../../dist/ui.js").then((m) => ({
+    listHarnessFilesForTest: m.listHarnessFilesForTest,
+    readProjectDocForTest: m.readProjectDocForTest,
+  }));
+  const root = adaptRepo(t);
+  writeFileSync(join(root, "harness", "agent", "05_TODO.md"), "# TODO\n\n- [ ] còn mở\n");
+  writeFileSync(join(root, "AGENTS.md"), "# repo\nHarness: harness/agent/\n");
+
+  const tree = listHarnessFilesForTest(root);
+  assert.ok(tree.agent.includes("05_TODO.md"), `cây file phải liệt kê docs của harness/, nhận: ${JSON.stringify(tree.agent)}`);
+  assert.ok(tree.plan.includes("00_overview.md"), `phải liệt kê plan của harness/, nhận: ${JSON.stringify(tree.plan)}`);
+  assert.equal(tree.hasAgents, true);
+
+  const doc = readProjectDocForTest(root, "05_TODO.md");
+  assert.equal(doc.ok, true, `đọc doc phải thành công, nhận: ${doc.content}`);
+  assert.match(doc.content, /còn mở/);
+
+  const plan = readProjectDocForTest(root, "plan/00_overview.md");
+  assert.equal(plan.ok, true, `nhánh plan/ phải đọc được, nhận: ${plan.content}`);
+
+  // Guard thoát-thư-mục vẫn phải chặn.
+  assert.equal(readProjectDocForTest(root, "../../../etc/passwd").ok, false, "đường thoát ra ngoài phải bị chặn");
+});
+
 test("nếp cũ không gãy: repo chuẩn docs/ vẫn archive vào docs/agent/archive", (t) => {
   const root = tempDir(t, "zemory-legacy-cmd-");
   mkdirSync(join(root, "docs", "agent"), { recursive: true });
