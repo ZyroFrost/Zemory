@@ -1,23 +1,50 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import type { Context, HarnessConfig } from "./types.js";
+import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
 
-// Config lives INSIDE docs/ so the project root stays clean (everything zemory
-// is contained in docs/). Root only carries AGENTS.md.
+/** Đường marker MẶC ĐỊNH khi tạo mới (nếp cũ — repo của chính zemory dùng nó).
+ *  ĐỌC thì KHÔNG được dùng hằng này: hãy gọi `findMarker()`, vì marker có thể nằm
+ *  ở `harness/` hoặc ở gốc (ADAPT v2 · N5). */
 export const CONFIG_FILE = join("docs", ".harness.json");
 
-function assertConfig(value: unknown, projectRoot: string): HarnessConfig {
-  if (!value || typeof value !== "object") throw new Error("Invalid docs/.harness.json: expected an object.");
+/** Thang tìm marker tại MỘT thư mục, theo đúng thứ tự ưu tiên (ADAPT v2 · N5).
+ *  ① `harness/` — mặc định v2, đo trên 23 repo lớn: 0/23 cấn tên.
+ *  ② `docs/`    — nếp cũ 1.1.0. Đứng thứ hai để repo đang chạy KHÔNG phải sửa gì.
+ *  ③ gốc repo   — dùng cho ca N4 (tên folder harness phải đổi vì bị chiếm); nội dung
+ *     có thể chỉ là con trỏ `{"home": "<folder>"}`. Dot-entry ở gốc là khe cắm được
+ *     96% mẫu repo chấp nhận, nên nó không cấn ai. */
+export const MARKER_CANDIDATES = [
+  join("harness", ".harness.json"),
+  join("docs", ".harness.json"),
+  ".harness.json",
+] as const;
+
+/** Marker THẬT của một project root — đường tuyệt đối, hoặc null nếu chưa nối harness.
+ *  Đây là phép thử "đã nối harness chưa" DUY NHẤT; đừng tự ghép `join(root, CONFIG_FILE)`
+ *  ở chỗ khác, vì làm vậy là mù với hai bậc kia của thang. */
+export function findMarker(projectRoot: string): string | null {
+  for (const rel of MARKER_CANDIDATES) {
+    const p = join(projectRoot, rel);
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+/** Repo đã nối harness chưa (bất kể harness nằm ở đâu). */
+export function isConnected(projectRoot: string): boolean {
+  return findMarker(projectRoot) !== null;
+}
+
+function assertConfig(value: unknown, markerRel: string): HarnessConfig {
+  if (!value || typeof value !== "object") throw new Error(`Invalid ${markerRel}: expected an object.`);
   const config = value as Partial<HarnessConfig>;
   if (typeof config.docs !== "string" || !config.docs.trim()) {
-    throw new Error("Invalid docs/.harness.json: docs must be a relative path.");
+    throw new Error(`Invalid ${markerRel}: docs must be a relative path.`);
   }
-  const docsRoot = resolve(projectRoot, "docs");
-  const docsDir = resolve(projectRoot, config.docs);
-  const rel = relative(docsRoot, docsDir);
-  if (rel.startsWith("..") || isAbsolute(rel)) {
-    throw new Error("Invalid docs/.harness.json: docs must stay inside the project docs directory.");
-  }
+  // ADAPT v2 · N1/N2 — BỎ ràng buộc "docs phải nằm trong docs/" của bản 1.1.0.
+  // Ràng buộc đó là lý do repo trỏ harness sang `harness/` bị `zemory doctor` trả
+  // "not connected": tool hứa thích nghi mọi repo nhưng lại ép đúng một tên folder.
+  // Thứ CẦN chặn là thoát ra ngoài gốc repo, và việc đó `resolveHarnessRel` lo.
   if (!config.adapters || typeof config.adapters !== "object") config.adapters = {};
   if (!config.thresholds || typeof config.thresholds !== "object") config.thresholds = {};
   // Structure profile: which standard validate/structure enforce (03_STRUCTURE).
@@ -58,11 +85,12 @@ export function projectKey(path: string): string {
   return process.platform === "win32" ? abs.toLowerCase() : abs;
 }
 
-/** Walk up from `start` to find the nearest project root (dir with docs/.harness.json). */
+/** Walk up from `start` to find the nearest project root — thư mục MANG marker,
+ *  bất kể marker nằm ở bậc nào của thang N5. */
 export function findProjectRoot(start: string = process.cwd()): string | null {
   let dir = normalizeRoot(start);
   while (true) {
-    if (existsSync(join(dir, CONFIG_FILE))) return dir;
+    if (findMarker(dir)) return dir;
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
@@ -78,20 +106,78 @@ export function currentProjectRoot(): string {
 
 /** Load the project context (config + resolved docs dir) from a project root. */
 export function loadContext(projectRoot: string): Context {
+  const markerPath = findMarker(projectRoot) ?? join(projectRoot, CONFIG_FILE);
+  const markerRel = relative(projectRoot, markerPath).replace(/\\/g, "/");
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(join(projectRoot, CONFIG_FILE), "utf8"));
+    raw = JSON.parse(readFileSync(markerPath, "utf8"));
   } catch (error) {
     throw new Error(
-      `Invalid ${CONFIG_FILE}: ${error instanceof Error ? error.message : "cannot read config"}`,
+      `Invalid ${markerRel}: ${error instanceof Error ? error.message : "cannot read config"}`,
       { cause: error },
     );
   }
-  const config = assertConfig(raw, projectRoot);
+  // Bậc ③ của thang N5: marker ở gốc có thể chỉ là CON TRỎ `{"home": "<folder>"}` —
+  // dùng khi tên folder harness mặc định bị repo chiếm (N4). Đi theo con trỏ đúng MỘT
+  // bước; con trỏ trỏ tới con trỏ là vòng lặp không ai cần, nên không đuổi tiếp.
+  const pointer = (raw as { home?: unknown } | null)?.home;
+  if (typeof pointer === "string" && pointer.trim()) {
+    const homeMarker = join(resolveHarnessRel(projectRoot, pointer), ".harness.json");
+    if (existsSync(homeMarker)) {
+      try {
+        raw = JSON.parse(readFileSync(homeMarker, "utf8"));
+      } catch (error) {
+        throw new Error(
+          `Invalid ${relative(projectRoot, homeMarker).replace(/\\/g, "/")} (trỏ tới từ ${markerRel}): ` +
+            `${error instanceof Error ? error.message : "cannot read config"}`,
+          { cause: error },
+        );
+      }
+    }
+  }
+  const config = assertConfig(raw, markerRel);
   return {
     projectRoot,
     docsDir: resolve(projectRoot, config.docs),
     config,
     log: (msg) => console.log(msg),
+  };
+}
+
+/** Phân giải một đường của harness, CHẶN thoát ra ngoài gốc repo.
+ *  Đây là ràng buộc còn lại sau khi bỏ luật "phải nằm trong docs/": harness được đặt ở
+ *  đâu trong repo cũng được, nhưng không được trỏ ra ngoài cây repo. */
+function resolveHarnessRel(projectRoot: string, rel: string): string {
+  const abs = resolve(projectRoot, rel);
+  const out = relative(projectRoot, abs);
+  if (out.startsWith("..") || isAbsolute(out)) {
+    throw new Error(`Invalid harness path "${rel}": phải nằm trong cây project.`);
+  }
+  return abs;
+}
+
+/**
+ * MỌI đường của harness — MỘT hàm, MỘT sự thật (ADAPT v2 · N2).
+ *
+ * Trước v2, `docs/agent` · `docs/plan` · `.claude/skills` là literal nằm rải ở ≥6 module
+ * (đo lúc viết hàm này: 147 chỗ / 37 file). Mỗi bản sao là một cơ hội lệch — đúng bài học
+ * `projectKey` đã trả giá: *"5 bản norm đã lệch nhau — một sự thật thì phải có một hàm"*.
+ *
+ * Suy diễn giữ NGUYÊN nếp cũ khi marker không khai `paths`: `plan` là anh em cạnh `agent`,
+ * `archive` nằm trong `agent`. Nhờ vậy repo đang chạy chuẩn 1.1.0 không phải sửa một chữ.
+ */
+export function harnessPaths(ctx: Context): HarnessPaths {
+  const p = ctx.config.paths ?? {};
+  const rel = (v: string | undefined, fallback: string): string =>
+    resolveHarnessRel(ctx.projectRoot, v?.trim() ? v : fallback);
+  const agent = p.agent?.trim() ? resolveHarnessRel(ctx.projectRoot, p.agent) : ctx.docsDir;
+  return {
+    agent,
+    plan: p.plan?.trim() ? resolveHarnessRel(ctx.projectRoot, p.plan) : join(dirname(agent), "plan"),
+    archive: p.archive?.trim() ? resolveHarnessRel(ctx.projectRoot, p.archive) : join(agent, "archive"),
+    skills: rel(p.skills, join(".claude", "skills")),
+    entries: (p.entries?.length ? p.entries : ["AGENTS.md", "CLAUDE.md"]).map((e) =>
+      resolveHarnessRel(ctx.projectRoot, e),
+    ),
   };
 }

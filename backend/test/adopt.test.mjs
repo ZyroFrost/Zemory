@@ -102,6 +102,56 @@ test("ensureHarness renames a gen-3 folder (04_TODO/05_CHANGES) to the current n
   assert.equal(existsSync(join(agentDir, "05_CHANGES.md")), false, "old 05_CHANGES renamed away");
 });
 
+// ── ADAPT v2 · N1 (chủ quyền): harness KHÔNG dời đồ của repo ────────────────────
+//
+// Ca thật: repo OpenRCA_3BoysAI trỏ zemory vào `harness/` vì `docs/` là bài nộp của team.
+// Bản trước, `init`/`sync` gặp `plan/` hay `planning/` ở gốc repo là `renameSync` từng file
+// vào `docs/plan` — tool tự ý dời thư mục của người ta, và im lặng. Đo trên 23 repo lớn:
+// `plan/`·`planning/` cấp 1 = 0/23 ⇒ hành vi này gần như không giúp ai, nhưng khi nổ thì nổ
+// vào dữ liệu không dựng lại được. Hai khẳng định dưới đây là hai NỬA của cùng một luật:
+// không dời (①) VÀ phải nói ra là mình thấy (②) — im lặng bỏ qua cũng là một dạng hỏng.
+test("ensureHarness KHÔNG dời plan/ · planning/ của repo, chỉ BÁO (ADAPT v2 · N1)", (t) => {
+  const root = tempDir(t, "zemory-adapt-sovereign-");
+  for (const dir of ["plan", "planning"]) {
+    mkdirSync(join(root, dir), { recursive: true });
+    writeFileSync(join(root, dir, "repo-owned.md"), `# ${dir} của repo\n`);
+  }
+
+  const r = ensureHarness(root);
+
+  // ① Đồ của repo còn nguyên TẠI CHỖ, nội dung không suy suyển.
+  for (const dir of ["plan", "planning"]) {
+    assert.equal(
+      existsSync(join(root, dir, "repo-owned.md")),
+      true,
+      `${dir}/repo-owned.md phải Ở NGUYÊN chỗ cũ — harness không được dời đồ của repo`,
+    );
+    assert.equal(readFileSync(join(root, dir, "repo-owned.md"), "utf8"), `# ${dir} của repo\n`);
+  }
+  // ...và KHÔNG bị lén chép sang nhà của harness.
+  assert.equal(
+    existsSync(join(root, "docs", "plan", "repo-owned.md")),
+    false,
+    "file của repo không được xuất hiện trong docs/plan",
+  );
+
+  // ② Thấy thì phải BÁO — người quyết có gộp hay không, không phải tool.
+  assert.deepEqual(
+    [...r.untouchedLegacyPlan].sort(),
+    ["plan", "planning"],
+    "hai thư mục có sẵn phải được nêu tên trong kết quả adopt",
+  );
+
+  // Harness vẫn dựng đủ nhà RIÊNG của nó (không dời ≠ không làm gì).
+  assert.equal(existsSync(join(root, "docs", "plan", "00_overview.md")), true);
+});
+
+test("repo không có plan/ sẵn ⇒ untouchedLegacyPlan rỗng (không báo oan)", (t) => {
+  const root = tempDir(t, "zemory-adapt-clean-");
+  const r = ensureHarness(root);
+  assert.deepEqual(r.untouchedLegacyPlan, [], "trường hợp thường phải im lặng");
+});
+
 test("freshHarness backs up both agent docs and plan", (t) => {
   const root = tempDir(t, "zemory-fresh-");
   ensureHarness(root);

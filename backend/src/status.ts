@@ -4,7 +4,7 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { CONFIG_FILE, currentProjectRoot, loadContext, normalizeRoot } from "./core/config.js";
+import { currentProjectRoot, isConnected, loadContext, normalizeRoot } from "./core/config.js";
 import { type KnownProject, listKnownProjects, rememberProject } from "./projects.js";
 import { tr } from "./i18n/index.js";
 
@@ -81,7 +81,10 @@ function listFeatures(): FeatureStatus[] {
 export async function gatherStatus(rootArg?: string): Promise<StatusReport> {
   // Always have a target: explicit picker root → found project → the launch folder.
   const root = rootArg ? normalizeRoot(rootArg) : currentProjectRoot();
-  const connected = existsSync(join(root, CONFIG_FILE));
+  // ADAPT v2 · N5 — "đã nối" nghĩa là TÌM THẤY marker ở bất kỳ bậc nào của thang, không
+  // phải "có đúng file docs/.harness.json". Đây chính là chỗ repo trỏ harness sang
+  // `harness/` bị trả về "not connected" dù nối đúng theo luật ADAPT.
+  const connected = isConnected(root);
   const report: StatusReport = {
     ts: new Date().toISOString(),
     project: { connected, name: basename(root), root, docs: "docs/agent" },
