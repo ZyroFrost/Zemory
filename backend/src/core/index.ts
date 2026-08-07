@@ -14,4 +14,5 @@ export {
   isConnected,
   loadContext,
   normalizeRoot,
+  readMarker,
 } from "./config.js";

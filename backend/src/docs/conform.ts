@@ -17,7 +17,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { findMarker, harnessPathsAt } from "../core/config.js";
+import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { SLOT_ROLES } from "./structure-tree.js";
@@ -77,12 +77,13 @@ export interface ForeignLayout {
  */
 export function foreignLayout(root: string): ForeignLayout | null {
   try {
-    // ADAPT v2 · N5 — marker theo THANG, không phải một đường cứng. Đọc cứng `docs/.harness.json`
-    // như bản trước có hệ quả trớ trêu: repo đặt harness ở `harness/` (đúng luật ADAPT) thì hàm
-    // này trả null ⇒ chính hệ ADAPT tự vô hiệu ⇒ repo bị đem đi soi bằng cổng chuẩn APP.
-    const marker = findMarker(root);
+    // ADAPT v2 · N5 — marker theo THANG (readMarker: một người đọc, đã lột BOM), không
+    // phải một đường cứng. Đọc cứng `docs/.harness.json` như bản trước có hệ quả trớ trêu:
+    // repo đặt harness ở `harness/` (đúng luật ADAPT) thì hàm này trả null ⇒ chính hệ
+    // ADAPT tự vô hiệu ⇒ repo bị đem đi soi bằng cổng chuẩn APP.
+    const marker = readMarker(root);
     if (!marker) return null;
-    const j = JSON.parse(readFileSync(marker, "utf8")) as {
+    const j = marker.data as {
       layout?: unknown;
       slots?: unknown;
       extra?: unknown;

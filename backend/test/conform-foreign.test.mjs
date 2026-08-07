@@ -151,6 +151,18 @@ test("control-char KHÔNG soi file vendor / .min.js (code của người khác)"
   );
 });
 
+test("marker có BOM (PowerShell 5.1 Set-Content) VẪN parse được — không chết im lặng", (t) => {
+  // Ca Windows rất thật: PS 5.1 `-Encoding utf8` ghi BOM, JSON.parse ném ngay ký tự đầu.
+  // Trước khi gom về readMarker, 5 người đọc marker đều ngã ca này — và ngã IM LẶNG
+  // (buildPolicy mất `protected`, harnessPathsAt rơi fallback sinh guard nhầm chỗ).
+  const root = repo(t); // không ghi marker thường
+  const body = JSON.stringify({ layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
+  writeFileSync(join(root, "docs", ".harness.json"), "\uFEFF" + body);
+  const fh = foreignLayout(root);
+  assert.ok(fh, "marker mang BOM phải vẫn đọc được — đây là file do chính người dùng Windows tạo");
+  assert.equal(fh.slots.backend, "src");
+});
+
 test("mọc thêm folder cấp 1 chưa khai ⇒ ĐỎ", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src" }, extra: ["docs"] });
   // `pipelines` và `notebooks` có thật nhưng KHÔNG được khai

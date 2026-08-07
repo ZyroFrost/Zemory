@@ -10,7 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { findMarker, isConnected, projectKey } from "./core/config.js";
+import { isConnected, projectKey, readMarker } from "./core/config.js";
 import { currentMemoryDir } from "./memory/db.js";
 
 /** The pre-2026-08-05 location, kept ONLY so an existing registry still loads. */
@@ -62,10 +62,8 @@ export interface KnownProject extends ProjectEntry {
  */
 export function projectProfile(root: string): "app" | "non-app" {
   try {
-    const marker = findMarker(root);
-    if (!marker) return "app";
-    const raw = JSON.parse(readFileSync(marker, "utf8")) as { profile?: unknown };
-    return raw && typeof raw === "object" && raw.profile === "non-app" ? "non-app" : "app";
+    const marker = readMarker(root);
+    return marker?.data.profile === "non-app" ? "non-app" : "app";
   } catch {
     return "app";
   }
