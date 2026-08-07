@@ -17,6 +17,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { findMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { SLOT_ROLES } from "./structure-tree.js";
@@ -62,6 +63,9 @@ export interface ForeignLayout {
   slots: Record<string, string>;
   /** Folder repo có mà từ điển không có — hợp lệ, nhưng phải được KHAI. */
   extra: string[];
+  /** ADAPT v2 · N7 — CỘNG THÊM vào bộ ignore mặc định. Chỗ để repo khai một lần thứ
+   *  thuộc về nó mà harness không cần soi (vd `docs/` do team sở hữu). */
+  ignore: string[];
 }
 
 /**
@@ -73,19 +77,27 @@ export interface ForeignLayout {
  */
 export function foreignLayout(root: string): ForeignLayout | null {
   try {
-    const j = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8")) as {
+    // ADAPT v2 · N5 — marker theo THANG, không phải một đường cứng. Đọc cứng `docs/.harness.json`
+    // như bản trước có hệ quả trớ trêu: repo đặt harness ở `harness/` (đúng luật ADAPT) thì hàm
+    // này trả null ⇒ chính hệ ADAPT tự vô hiệu ⇒ repo bị đem đi soi bằng cổng chuẩn APP.
+    const marker = findMarker(root);
+    if (!marker) return null;
+    const j = JSON.parse(readFileSync(marker, "utf8")) as {
       layout?: unknown;
       slots?: unknown;
       extra?: unknown;
+      ignore?: unknown;
     };
-    if (j.layout !== "foreign") return null;
+    // `"adapt"` là tên v2 của cùng một hệ; `"foreign"` giữ làm alias để marker cũ chạy y nguyên.
+    if (j.layout !== "foreign" && j.layout !== "adapt") return null;
     const slots: Record<string, string> = {};
     if (j.slots && typeof j.slots === "object") {
       for (const [k, v] of Object.entries(j.slots as Record<string, unknown>)) if (typeof v === "string" && v.trim()) slots[k] = v.trim();
     }
     const extra = Array.isArray(j.extra) ? j.extra.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
+    const ignore = Array.isArray(j.ignore) ? j.ignore.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
     if (!Object.keys(slots).length && !extra.length) return null; // khai rỗng = chưa nhận repo
-    return { slots, extra };
+    return { slots, extra, ignore };
   } catch {
     return null;
   }
@@ -140,12 +152,41 @@ export function conform(root: string): ConformReport {
   if (fh) {
     const declared = new Set([...Object.values(fh.slots), ...fh.extra].map(normDir));
     const tops = [...new Set(g.nodes.filter((n) => n.dir).map((n) => n.dir.split("/")[0]))].filter((d) => d && !exempt(d)).sort();
+    // ADAPT v2 · N7 — GÁNH KHAI BÁO KHÔNG ĐƯỢC ĐÈ LÊN REPO.
+    //
+    // Bản trước bắt khai MỌI thư mục cấp 1 và chặn (blocking) nếu thiếu. Đo trên repo thật:
+    // 4 lần chặn cho `.claude` · `.github` · `data` · `secrets` — KHÔNG cái nào là drift thật.
+    // Đo trên 23 repo lớn: 6–31 thư mục cấp 1 (trung vị ~13), và 22/23 mang ít nhất một
+    // dot-entry ở gốc. Tức luật cũ bắt người ta khai hàng chục mục rồi đỏ lại mỗi lần mọc
+    // thêm một cái — mà cổng kêu oan thì lần sau không ai đọc nữa (đúng bài học ①).
+    //
+    // Nay chia hai mức: thư mục CHỨA CODE mà không khai ⇒ vẫn chặn (đây mới là drift thật,
+    // và giữ nó thì cổng vẫn nổ được); còn lại ⇒ advisory. `ignore` trong marker cộng thêm
+    // vào danh sách này, để repo khai một lần cho thứ riêng của mình (vd `docs/` của team).
+    const IGNORED_TOPS = new Set([
+      "node_modules", "dist", "build", "out", "coverage", "vendor", "third_party", "external",
+      "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "venv", "target",
+      "data", "attic", "secrets", "tmp", "temp", "logs",
+    ]);
+    const ignored = (d: string): boolean =>
+      d.startsWith(".") || IGNORED_TOPS.has(d) || fh.ignore.some((i) => normDir(i) === normDir(d));
+    // "Chứa code" = code-graph đã index ít nhất một file NGUỒN trong đó. Thư mục chỉ có `.md`
+    // (vd `notes/`) không phải drift cấu trúc ⇒ không đáng chặn ai.
+    const hasCode = new Set(g.nodes.filter((n) => n.dir).map((n) => n.dir.split("/")[0]));
+    const undeclared = tops.filter((d) => !declared.has(normDir(d)) && !ignored(d));
     push(
       "foreign-undeclared-dir",
       "blocking",
-      "Thư mục cấp 1 CHƯA được khai trong .harness.json (cấu trúc gốc đã đổi?)",
-      tops.filter((d) => !declared.has(normDir(d))),
+      "Thư mục CHỨA CODE ở cấp 1 chưa được khai trong .harness.json (cấu trúc gốc đã đổi?)",
+      undeclared.filter((d) => hasCode.has(d)),
       "chạy skill `adopt` để đọc lại cây rồi cập nhật `slots`/`extra` + 03_STRUCTURE §3 — ĐỪNG nới bảng cho khỏi đỏ",
+    );
+    push(
+      "foreign-undeclared-dir-advisory",
+      "advisory",
+      "Thư mục cấp 1 chưa khai (không chứa code — chỉ đáng xem, KHÔNG chặn)",
+      undeclared.filter((d) => !hasCode.has(d)),
+      "khai vào `extra` nếu là phần của repo, hoặc thêm vào `ignore` trong .harness.json",
     );
     push(
       "foreign-missing-dir",
