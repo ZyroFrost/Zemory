@@ -717,7 +717,7 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   "Graph App" repo riêng đọc file đó, nhưng quyết định 18/07 đã đảo (graph thành TAB trong `zemory ui`,
   đọc thẳng `/code-graph`, không qua file xuất). Viết luật versioning cho hợp đồng chưa ai ký là tạo
   cấu trúc chưa có nhu cầu. **Đừng đề xuất lại khi chưa có consumer thật.**
-- [~] **Hạng cạnh BE↔FE seam — V1 ĐÃ BUILD 2026-08-07 (user chốt "làm đi"); spec graduate sang
+- [~] **Hạng cạnh BE↔FE seam — V1 ĐÃ BUILD 2026-08-07, soát lại 2026-08-09; spec graduate sang
   `plan/13 §4` (cạnh `api`).** *(Soát 2026-08-09: `todo verify` giơ cờ vì `ui.ts` sửa 08/09 —
   **báo oan**, đó là thêm tham số `also` cho `/memory-search`; cạnh `api` sinh bằng khớp chuỗi
   route nên route MỚI tự vào graph, không cần sửa gì. Vế `resolved` vẫn chờ typed contract.)*
