@@ -223,6 +223,33 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
 - *(Hạ tầng sẵn: `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS` chỉnh từ ngoài;
   bench có cột `@40` + kết luận tự động; `topN` 10 → 40.)*
 
+## 🔴 WRITE-GATE VẪN THỦNG — bắt được ĐANG XẢY RA 2026-08-08 (ưu tiên cao)
+
+**Hai `memory embed --all` cùng ghi MỘT kho** — đúng tổ hợp đã hỏng kho 03/08. Bắt được lúc
+đang chạy, không phải suy đoán: `Win32_Process` cho thấy **pid 15640** (backfill chạy tay) và
+**pid 11092** (do daemon vừa bật sinh ra) cùng chạy `dist\cli.js memory embed --all`, mỗi bên
+~2,3–2,8 GB RAM. Đã dừng pid 11092 + tắt scheduler qua `/set-scheduler` (đảo được: bật lại
+trong ⚙ Tự động).
+
+**Khoá KHÔNG hỏng — người GỌI bỏ qua lời từ chối.** Bằng chứng: `data/cli-write.lock` ghi
+`{"pid":15640,"label":"embed"}`, tức `acquireCliWriteLock` ĐÃ trả `ok:false` cho tiến trình
+thứ hai. Nhưng `commands/memory.ts` chờ 24×5 s rồi in *"chờ quá lâu — chạy tiếp"* và **chạy
+luôn**. Với job embed dài HÀNG GIỜ thì nhánh "chạy luôn" là nhánh **luôn luôn** được chọn.
+⇒ Bản vá 2026-08-06 sửa được vế "khoá không bao giờ từ chối", nhưng vế "người gọi phải nghe
+lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
+
+- [ ] **Sửa: phân biệt khoá TƯƠI với khoá MỒ CÔI, thay vì đếm thời gian chờ.** Ý định gốc của
+  "chờ 2 phút rồi chạy" là chống kẹt vĩnh viễn (điều 9) — nhưng `cliWriteHolder()` ĐÃ tự loại
+  khoá của pid chết và khoá quá `CLI_LOCK_STALE_MS` (15 phút, có heartbeat gia hạn). Nghĩa là
+  khoá còn sống = chủ nó còn sống thật ⇒ **phải TỪ CHỐI, không chạy đè**. Đề xuất: hết thời
+  gian chờ mà khoá vẫn TƯƠI ⇒ thoát với thông báo rõ *"pid X đang ghi (label), chạy lại sau"*;
+  chỉ chạy đè khi khoá đã mồ côi. Cân nhắc cờ `--force` cho ca người dùng biết mình làm gì.
+- [ ] **Đo lại sau khi sửa:** ép hai `memory embed` chạy đồng thời ⇒ cái thứ hai PHẢI thoát,
+  không được ghi. Đây cũng là ca test còn thiếu: `cli-write-lock.test.mjs` có ca "phải bị từ
+  chối" ở tầng HÀM, nhưng KHÔNG có ca nào phủ tầng LỆNH (người gọi có nghe không).
+- [ ] **Xem lại scheduler:** nó sinh `memory embed --all` như tiến trình CON khi vừa bật app,
+  trong khi backlog đang được xử bởi tiến trình khác. Ít nhất phải kiểm khoá trước khi sinh.
+
 ## 🆕 Phát sinh 2026-08-07 tối (sau release 1.2.0) — 4 việc
 
 - [ ] **CHẠY 5 FILE TEST CÒN MÙ sau khi embed xong:** `embed` · `rerank` · `vectors` ·
