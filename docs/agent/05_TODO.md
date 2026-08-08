@@ -223,6 +223,27 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
 - *(Hạ tầng sẵn: `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS` chỉnh từ ngoài;
   bench có cột `@40` + kết luận tự động; `topN` 10 → 40.)*
 
+## 🔴 RERANK ĐANG BẬT TRÊN MÁY NÀY — chờ user tắt (phát hiện 2026-08-08, ưu tiên cao)
+
+File config cạnh kho (gitignored) có khoá `rerank` = `true`. Code đã vá **mặc định = TẮT** (có
+`settings-defaults.test.mjs` khoá), nhưng **giá trị cũ trong config KHÔNG tự tắt theo** — đúng
+ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá MẶC ĐỊNH, và máy nào đã lỡ ghi
+`true` thì nằm lại vĩnh viễn. Bằng chứng nó đang chạy thật: `memory search` in header
+`… · rerank (cross-encoder) · …`.
+
+**Giá phải trả, đo 2026-08-08 trên kho 768:** hybrid `41%@10` → hybrid+rerank `27%@10`
+(MRR 0,220 → 0,160) và **11 s/truy vấn** thay vì 0,68 s. Tức mọi lần recall trên máy này đang
+**chậm 16 lần và tệ hơn**. Rất có thể là một phần của triệu chứng "search trả rác".
+
+- [ ] **User tắt rerank** — nút trong UI (⚙), hoặc đổi khoá `rerank` thành `false` trong file
+  config cạnh kho (gitignored nên `todo verify` không thấy đường dẫn — đừng viết nó dạng
+  backtick đường dẫn, gate sẽ báo ref chết). KHÔNG tự đổi: đây là setting hiển thị của user.
+- [ ] **Sau khi tắt: đo lại** một truy vấn thật để xác nhận header không còn `rerank` và
+  thời gian về ~0,7 s.
+- [ ] **Cân nhắc sửa gốc:** giá trị `true` sót lại từ thời mặc-định-sai nên được coi là NỢ và
+  dọn một lần (migration nhỏ: config còn bật rerank mà chưa ai bật tay sau ngày vá ⇒ hạ về
+  false + báo). Chưa làm vì cần user chốt — đụng setting người dùng.
+
 ## 🔴 WRITE-GATE VẪN THỦNG — bắt được ĐANG XẢY RA 2026-08-08 (ưu tiên cao)
 
 **Hai `memory embed --all` cùng ghi MỘT kho** — đúng tổ hợp đã hỏng kho 03/08. Bắt được lúc

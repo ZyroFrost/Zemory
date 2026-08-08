@@ -5,6 +5,41 @@
 
 ---
 
+## [2026-08-08] — TRÁO kho 768 · tìm ra NGHẼN THẬT của recall (không phải model) · vá write-gate thủng
+
+**TRÁO KHO 768/fp32 — xong.** Embed 43 giờ kết thúc (`152.894 vector`); tráo: tắt daemon → 256
+thành bản lùi `global_memory.256d-backup-20260808.db` → chép 768 vào → `quick_check ok` →
+`memory scan` (**+9.530 tin**, 6 s) → embed bù. Kho thật nay **215.452 tin · coverage 99,2% ·
+768d**. **Cổng điều 12 vượt** (so `prose` với `prose` — mốc 41%@10 vốn đo trên corpus toàn
+prose): **41% → 62%**@10, MRR 0,245 → 0,354. `tool_use` giữ **0%**, đúng như đã cảnh báo.
+⚠ Bảng `dims-test` cũ hứa `recall@1` **91%**, thực đo **18%** — nó so vector-với-vector trên tập
+hẹp, không phải recall xuyên 215k tin. Thứ hạng tương đối thì đúng; ĐỪNG dùng lại làm mốc.
+
+**NGHẼN THẬT của "search trả rác" — hai dòng dựng truy vấn, KHÔNG phải model.** Bác bỏ lần lượt
+bằng đo: model đa ngữ LÀNH (đồng nghĩa VI 0,824 · khác nghĩa 0,602 · VI↔EN 0,827) · dedup,
+recency, lane định danh đều làm recall TỆ ĐI. Gốc ở `ftsStreams`: lane `tri` khớp NGUYÊN CỤM cả
+câu ⇒ **56/56 câu ra 0 kết quả** (nửa sức FTS chết, fail-open nên không ai biết); lane `word`
+AND ngầm ⇒ còn **5,4 ứng viên** trên 215k tin — `search()` trả **1 kết quả** trong khi SQL cùng
+index với OR trả đủ 100. ⇒ Thêm lane `word` OR + `tri` khớp theo TỪ: câu DÀI `prose` **3% →
+38%**@10; câu NGẮN không thua chỗ nào (`tool_result` 75% → **88%**@1). GIỮ lane AND — bỏ nó thì
+câu ngắn tụt 75% → 63%@1, mà đó là lối dùng phổ biến nhất.
+
+**Corpus thêm `NEGATIVE_CORPUS`** (8 câu kho chắc chắn không có đáp án): 56 nhãn dương chỉ đo
+"tìm có ra không", mù với "có bịa không" — mà bản vá trên nới pool từ 5,4 lên 100 ứng viên, nên
+thước một chiều sẽ luôn nói là cải thiện thuần. bench in thêm: trả rỗng mấy câu · bao nhiêu kết
+quả · ĐIỂM ĐẦU (so ca dương mới biết hệ có "tự tin sai" không).
+
+**WRITE-GATE THỦNG — bắt được ĐANG XẢY RA:** hai `memory embed --all` cùng ghi một kho sau khi
+bật app — đúng tổ hợp hỏng kho 03/08. Khoá KHÔNG hỏng (`cli-write.lock` ghi rõ pid giữ); hai chỗ
+NGƯỜI GỌI bỏ qua: ① con của daemon (`ZEMORY_DAEMON_CHILD=1`) bỏ qua SẠCH gate — token daemon chỉ
+điều phối job của daemon, mù với CLI ngoài (gốc) · ② CLI thường chờ 2 phút rồi "chạy tiếp", mà
+job dài hàng giờ thì nhánh đó LUÔN được chọn. Nay khoá còn TƯƠI ⇒ dừng (exit 1), chỉ đè khi khoá
+MỒ CÔI, `--force` là đường vượt có ý thức, chờ 120 s → 30 s. Test mới ở tầng LỆNH (cũ chỉ tầng HÀM).
+
+**Kèm:** xoá `global_memory.HONG-*.db` sau khi SHA256 chứng minh trùng khít vật chứng · rerank ĐO
+XONG: TỤT 41%→27%@10 và 11 s/truy vấn ⇒ giữ tắt · phát hiện `config.json` máy này vẫn
+`"rerank": true` (giá trị cũ không tự tắt khi code sửa mặc định) — `05_TODO` ưu tiên cao.
+
 ## [2026-08-07d] — RELEASE 1.2.0 · Vét TRỌN harness theo marker (đóng ADAPT v2) · corpus recall CHIA LỚP · 3 lượt audit
 
 > 🏷 **1.2.0 (user chốt số, push 2026-08-07)** — minor vì có tính năng mới: `zemory hook guard`
