@@ -223,6 +223,32 @@ câu bão hoà và `topN=10` nên không nhìn quá 10 kết quả. Giờ mới 
 - *(Hạ tầng sẵn: `ZEMORY_POOL` · `ZEMORY_RERANK_POOL` · `ZEMORY_RERANK_CHARS` chỉnh từ ngoài;
   bench có cột `@40` + kết luận tự động; `topN` 10 → 40.)*
 
+## 🔴 RECALL: bản vá 3 lane ĐỔI CHỖ, chưa xong — việc kế tiếp rõ ràng (2026-08-08)
+
+**Bench THẬT cuối ngày (máy rảnh, coverage 100%, `bench-final.log`)** — số này SUPERSEDE mọi
+con số mô phỏng đã báo trong ngày:
+
+| | trước vá | sau vá |
+|---|---:|---:|
+| `prose` @1 | 18% | **32%** ↑ |
+| `prose` @3 | 47% | 41% ↓ |
+| `prose` @10 | 62% | 53% ↓ |
+| `prose` MRR | 0,354 | **0,384** ↑ |
+| `tool_result` @10 | 25% | **0%** ↓↓ |
+
+⇒ Bản vá **đẩy đáp án lên vị trí đầu nhưng làm mỏng top-3/top-10**. Giả thuyết (CHƯA xác minh):
+lane OR rộng, lấn chỗ lane VECTOR vốn gánh @10 cho `prose`. Mô phỏng trước đó chạy FTS thuần
+nên mù với cạnh tranh này — **giới hạn của phép thử pool đóng băng, ghi lại để đừng lặp**.
+
+- [ ] **Hạ `W_OR` 0,6 → ~0,25 rồi đo lại** (`search.ts`). Mục tiêu: giữ @1/MRR vừa tăng, lấy
+  lại @3/@10. Đo bằng `bench --recall --skip-rerank` khi máy RẢNH, so cả ba lớp + vế âm tính.
+- [ ] **ÂM TÍNH đang rất xấu — 0/8 câu trả rỗng, TB 40 kết quả, điểm đầu 0,0284** (gần bằng ca
+  thật). Hỏi nấu phở/bóng đá/thơ vẫn trả 40 kết quả trông tự tin ⇒ **đây chính là "search trả
+  rác"**. Cần NGƯỠNG ĐIỂM: dưới ngưỡng thì trả rỗng thay vì trả bừa. Chưa có cơ chế nào làm
+  việc đó — hiện RRF luôn xếp được thứ gì đó lên đầu, dù điểm bao nhiêu cũng mặc kệ.
+- [ ] **`tool_result` về 0% cần truy riêng** — trước vá còn 25%@10. Nó CÓ vector nên đáng lẽ
+  không bị lane FTS ảnh hưởng nhiều; nghi RRF bị OR làm loãng. Đo trước khi kết luận.
+
 ## 🔴 RERANK ĐANG BẬT TRÊN MÁY NÀY — chờ user tắt (phát hiện 2026-08-08, ưu tiên cao)
 
 File config cạnh kho (gitignored) có khoá `rerank` = `true`. Code đã vá **mặc định = TẮT** (có

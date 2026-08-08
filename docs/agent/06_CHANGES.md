@@ -20,14 +20,21 @@ bằng đo: model đa ngữ LÀNH (đồng nghĩa VI 0,824 · khác nghĩa 0,602
 recency, lane định danh đều làm recall TỆ ĐI. Gốc ở `ftsStreams`: lane `tri` khớp NGUYÊN CỤM cả
 câu ⇒ **56/56 câu ra 0 kết quả** (nửa sức FTS chết, fail-open nên không ai biết); lane `word`
 AND ngầm ⇒ còn **5,4 ứng viên** trên 215k tin — `search()` trả **1 kết quả** trong khi SQL cùng
-index với OR trả đủ 100. ⇒ Thêm lane `word` OR + `tri` khớp theo TỪ: câu DÀI `prose` **3% →
-38%**@10; câu NGẮN không thua chỗ nào (`tool_result` 75% → **88%**@1). GIỮ lane AND — bỏ nó thì
-câu ngắn tụt 75% → 63%@1, mà đó là lối dùng phổ biến nhất.
+index với OR trả đủ 100. ⇒ Thêm lane `word` OR + `tri` khớp theo TỪ. GIỮ lane AND — bỏ nó thì
+truy vấn ngắn tụt 75% → 63%@1, mà đó là lối dùng phổ biến nhất.
+> ⚠ **NGHIỆM THU THẬT (bench cuối ngày, máy rảnh) — KHÔNG phải cải thiện thuần, ĐỪNG đọc mô
+> phỏng thành kết quả.** `prose` @1 **18% → 32%** và MRR 0,354 → 0,384 (tốt), nhưng @3 **47% →
+> 41%** và @10 **62% → 53%** (xấu); `tool_result` @10 **25% → 0%**. Bản vá ĐỔI CHỖ: đẩy đáp án
+> lên vị trí đầu nhưng làm mỏng top-3/top-10. Giả thuyết: lane OR rộng, lấn chỗ lane VECTOR vốn
+> đang gánh @10 cho `prose` — mô phỏng trước đó chạy FTS thuần nên không thấy cạnh tranh này.
+> **Bước kế: hạ `W_OR` (0,6 → ~0,25) rồi đo lại**, để OR chỉ cứu ca pool rỗng chứ không lấn.
 
-**Corpus thêm `NEGATIVE_CORPUS`** (8 câu kho chắc chắn không có đáp án): 56 nhãn dương chỉ đo
-"tìm có ra không", mù với "có bịa không" — mà bản vá trên nới pool từ 5,4 lên 100 ứng viên, nên
-thước một chiều sẽ luôn nói là cải thiện thuần. bench in thêm: trả rỗng mấy câu · bao nhiêu kết
-quả · ĐIỂM ĐẦU (so ca dương mới biết hệ có "tự tin sai" không).
+**Corpus thêm `NEGATIVE_CORPUS`** (8 câu kho chắc chắn không có đáp án) — và nó **trả giá ngay
+trong ngày**: đo lần đầu ra **0/8 câu trả rỗng · trung bình 40 kết quả · điểm đầu 0,0284**, gần
+bằng điểm ca thật. Hỏi về nấu phở/bóng đá/thơ mà hệ vẫn trả 40 kết quả trông tự tin — **đây
+chính là "search trả rác" người dùng báo, nay thành số**. Không có vế này thì bảng recall chỉ
+khoe `@1` tăng và bản vá đã được kết luận là thành công. Bài học: mọi thay đổi NỚI POOL phải đo
+kèm mặt trái, thước một chiều luôn nói "cải thiện".
 
 **WRITE-GATE THỦNG — bắt được ĐANG XẢY RA:** hai `memory embed --all` cùng ghi một kho sau khi
 bật app — đúng tổ hợp hỏng kho 03/08. Khoá KHÔNG hỏng (`cli-write.lock` ghi rõ pid giữ); hai chỗ
