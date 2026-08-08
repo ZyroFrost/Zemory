@@ -5,7 +5,7 @@
 // scope = the current project; pass all=true for cross-project recall.
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
-import { vectorRanks } from "./vectors.js";
+import { vectorProbe, vectorsByRowid } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
@@ -22,6 +22,8 @@ export interface SearchHit {
   timestamp: string | null;
   score: number;
   snippet: string;
+  /** Gộp near-duplicate: số bản gần trùng đã xếp sau dòng này (plan 17 §1.2). Khuyết = 0. */
+  similar?: number;
 }
 
 export interface SearchOptions {
@@ -50,6 +52,12 @@ export interface SearchOptions {
   hasAttachment?: boolean;
   /** Recency blend override: true/false force on/off, undefined = default (on). */
   recency?: boolean;
+  /** Gộp near-duplicate: true/false ép bật/tắt, undefined = mặc định (TẮT — trượt cổng recall). */
+  collapse?: boolean;
+  /** Cổng "không biết": true/false ép bật/tắt, undefined = mặc định (TẮT — còn nợ đo lường). */
+  abstain?: boolean;
+  /** Trộn cosine vào thứ hạng (rerank rẻ): true/false ép, undefined = mặc định (BẬT). */
+  vecMix?: boolean;
   /** Provenance lanes to EXCLUDE from results; undefined = the saved scope list. */
   excludeLanes?: ScopeLane[];
 }
@@ -59,12 +67,30 @@ export interface SearchOptions {
 export const DEFAULT_SEARCH_LIMIT = 12;
 
 const RRF_K = 60;
-const W_WORD = 1.0;
-const W_TRI = 0.6;
+// Bốn trọng số này ĐO ĐƯỢC nên phải chỉnh được từ ngoài (cùng lý lẽ như POOL bên dưới): không
+// thì mỗi lần thử một cấu hình lại phải sửa code + build, và không ai sweep nổi.
+//
+// ⚠ TỔNG trọng số lexical phải cân với vector — bài học đo 2026-08-08. Khi ba luồng FTS mới
+// sống hẳn (bản vá `17fe270`), tổng lexical thành 1.0+0.6+0.6 = 2.2 đè vector 1.0, tức semantic
+// bị áp phiếu 2,2:1. Đo trên 34 câu prose: vector-thuần @10 59% · @3 50%, còn fused chỉ @10 53%
+// · @3 41% — có 3 câu vector xếp hạng 1 mà fusion đẩy ra ngoài top-10. Trước bản vá luồng `tri`
+// trả 0 kết quả cho 56/56 câu nên FTS gần như không có phiếu và hybrid ≈ vector-thuần; bản vá
+// làm chúng sống lại mà KHÔNG cân lại trọng số ⇒ prose tụt.
+//
+// CÂN LẠI 2026-08-08 (hai vòng sweep, 56 câu có nhãn, kho 768 — cổng điều 12):
+//   trước  word 1.0 · tri 0.6 · or 0.6 · vec 1.0 → @1 20% @3 25% @10 32% @40 43% MRR 0.235 · prose@10 53%
+//   sau    word 1.0 · tri 0.3 · or 0.3 · vec 1.6 → @1 16% @3 30% @10 39% @40 45% MRR 0.255 · prose@10 62%
+// Net thắng: @3 +5 · @10 +7 · @40 +2 · MRR +8,5% · prose +9 điểm (đúng lại mốc 62% từng đo trước
+// bản vá) · tool_result@10 0% → 13%. ĐÁNH ĐỔI ĐÃ BIẾT: @1 tụt 4 điểm (2 câu/56) — nâng luồng AND
+// lên 1.5 rồi 2.0 đều KHÔNG lấy lại được, nên đó là giá của việc bỏ phiếu-lexical-áp-đảo, không
+// phải lỗi cấu hình. Chạy lại cùng cấu hình cho ra y hệt ⇒ kho trôi không phải nhiễu.
+// `tool_use` giữ 0% ở MỌI cấu hình — lớp đó không có vector lẫn trigram, trọng số không cứu được.
+const W_WORD = Number(process.env.ZEMORY_W_WORD) || 1.0;
+const W_TRI = Number(process.env.ZEMORY_W_TRI) || 0.3;
 /** Luồng "khớp BẤT KỲ từ nào" — lưới vét cho truy vấn dài. Trọng số THẤP hơn AND có chủ ý:
  *  nó rộng nên dùng để pool không rỗng, không phải để quyết thứ hạng đầu. */
-const W_OR = 0.6;
-const W_VEC = 1.0; // semantic stream weight (hybrid)
+const W_OR = Number(process.env.ZEMORY_W_OR) || 0.3;
+const W_VEC = Number(process.env.ZEMORY_W_VEC) || 1.6; // semantic stream weight (hybrid)
 // Số ứng viên kéo về TỪ MỖI LUỒNG trước khi gộp RRF. Đây là **TRẦN** của cả hệ: thứ không
 // lọt vào đây thì không lớp xếp nào cứu được. Đo 2026-08-03 trên corpus 34 câu có nhãn: với
 // POOL=60, hybrid đạt recall@40 = 56% ⇒ **44% số câu đáp án không hề có trong pool**. Chuẩn
@@ -270,6 +296,133 @@ function demoteToolOutput(
     .sort((a, b) => b.s - a.s);
 }
 
+// ── GỘP NEAR-DUPLICATE (plan 17 §1.2) — OPT-IN, TRƯỢT CỔNG ───────────────────
+// Bệnh nhắm tới (đo 2026-08-08): 16/34 ca trượt lớp `prose` là vì một tin MỚI HƠN cùng chủ
+// đề chiếm chỗ tin có nhãn — kho chat bàn đi bàn lại một việc hàng chục lần nên top-N đầy
+// bản gần trùng.
+//
+// 🔴 NHƯNG ĐO TRÊN BỀ MẶT THẬT THÌ NÓ TRƯỢT (điều 12 ⇒ KHÔNG bật mặc định):
+//     1 truy vấn: MRR 0,255 → **0,223** · `@10` 39% → **32%**
+//     3 truy vấn: `@10` 45% → **39%** · `@40` 64% → **41%**
+// Phép thử ngoại tuyến trước đó hứa MRR +29% — **con số đó SAI vì thước sai**: nó chấm theo
+// *"cụm chứa đáp án nằm ở vị trí mấy"*, tức cho điểm dù thứ TRẢ VỀ là tin khác. Bản cài thật
+// trả về ĐẠI DIỆN, nên đáp án là bản-trùng thì bị đẩy khỏi top-10. Đã thử cả hai lối (xoá
+// bản trùng · hạ chúng xuống sau) — hạ tốt hơn xoá ở `@40` nhưng cả hai đều không cứu `@10`.
+//
+// Vì sao GIỮ code lại thay vì xoá: giá trị thật của gộp là *"trả về một tin TƯƠNG ĐƯƠNG cũng
+// được"* — mà thước hiện tại đòi ĐÚNG MỘT uuid nên nó không thể ghi nhận điều đó (đúng món nợ
+// `plan 17 §4.3` nhãn đa-uuid). Chưa sửa thước thì KHÔNG được tuyên nó thắng; để opt-in cho
+// bề mặt NGƯỜI đọc (danh sách gọn hơn) và để đo lại khi có nhãn đa-uuid.
+const COLLAPSE_SIM = Number(process.env.ZEMORY_COLLAPSE_SIM) || 0.85;
+// Lấy dư rồi mới gộp: gộp SAU khi đã cắt còn `limit` thì mỗi bản trùng vẫn chiếm một suất
+// trong `limit`. ⚠ Lấy dư cũng làm mất phần "sạch hơn": suất trống được LẤP BẰNG RÁC MỚI, nên
+// ca âm vẫn 40 kết quả/câu (phép thử cũ tưởng 40 → 22 vì nó không lấp lại).
+const COLLAPSE_OVERFETCH = 4;
+
+/**
+ * Gộp near-duplicate — **MẶC ĐỊNH TẮT**: nó TRƯỢT cổng recall trên corpus có nhãn (xem khối
+ * chú thích trên), và điều 12 cấm bật mặc định một lớp chưa thắng net. Bật bằng
+ * `ZEMORY_COLLAPSE=1` hoặc `collapse: true` mỗi lời gọi.
+ */
+export function collapseEnabled(force?: boolean): boolean {
+  if (force !== undefined) return force;
+  const v = process.env.ZEMORY_COLLAPSE?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
+// ── CỔNG "KHÔNG BIẾT" (abstention — plan 17 §1.3) ────────────────────────────
+// Bệnh đo được 2026-08-08: **8/8** câu hỏi mà kho CHẮC CHẮN không có đáp án vẫn trả về ~40
+// kết quả, và ĐIỂM ĐẦU gần bằng ca có đáp án thật ⇒ người đọc không phân biệt được thật với
+// rác. Đây đúng triệu chứng user báo ("search trả kết quả lạc repo, không liên quan").
+//
+// Tín hiệu tách được rất sạch — ca dương khoảng cách cosine top-1 cao nhất **0,812**, ca âm
+// thấp nhất **0,844**: θ=0,82 chặn 8/8 ca âm, giết oan **0/56**, và trên pipeline đa-truy-vấn
+// **mất 0 kết quả đang ở top-10**.
+// θ và M đo 2026-08-09 trên 68 nhãn dương + 8 ca âm cũ + 10 ca âm GIỮ RIÊNG (chưa từng dùng
+// để chọn tham số). Cấu hình chốt: chặn 5/8 ca âm cũ · 4/10 giữ riêng · **giết oan 0/68**.
+const ABSTAIN_DIST = Number(process.env.ZEMORY_ABSTAIN_DIST) || 0.86;
+// MARGIN = khoảng cách của hit thứ 10 trừ hit đầu, trên chính pool vector đã lấy.
+//
+// Vì sao margin mà không phải khoảng cách tuyệt đối: câu hỏi ĐÚNG CHỦ ĐỀ có một hit NỔI TRỘI
+// khỏi nhóm; câu lạc đề thì mọi ứng viên đều tầm tầm như nhau nên hit đầu gần như không hơn
+// hit thứ mười. Margin không phụ thuộc thang đo — đúng chỗ khoảng cách tuyệt đối thất bại, vì
+// truy vấn kiểu từ khoá NẰM XA một cách hợp lệ (lớp `keyword` chạm 0,856 trong khi ca âm giữ
+// riêng tụt tới 0,806 ⇒ hai phân bố chồng nhau, không θ nào tách nổi).
+const ABSTAIN_MARGIN = Number(process.env.ZEMORY_ABSTAIN_MARGIN) || 0.05;
+
+/**
+ * Cổng "không biết" — **MẶC ĐỊNH TẮT** cho tới khi trả xong nợ đo lường (plan 17 §4.1/§4.2):
+ * θ hiện tại hiệu chỉnh trên CHÍNH 8 ca âm dùng để chấm nó (fit trên tập test), và corpus
+ * chưa có truy vấn kiểu từ khoá để kiểm điều kiện ②. Bật: `ZEMORY_ABSTAIN=1`.
+ */
+export function abstainEnabled(force?: boolean): boolean {
+  if (force !== undefined) return force;
+  const v = process.env.ZEMORY_ABSTAIN?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
+/**
+ * Có nên nói "kho không có gì đủ khớp" không: hit đầu vừa XA vừa KHÔNG nổi trội khỏi nhóm.
+ *
+ * 🔴 Hai điều kiện ② trước đó đã bị BÁC bằng đo, ghi lại để không ai dựng lại:
+ *   · *"lane AND rỗng"* — tưởng là dấu hiệu câu hỏi tự nhiên dài. Thực đo: lane AND **không
+ *     bao giờ rỗng**, nó trả 1–3 ứng viên cho cả câu "công thức nấu phở bò gia truyền Nam
+ *     Định". Trong 215k tin có tin đủ dài để chứa mọi từ thông dụng ⇒ cửa không bao giờ mở.
+ *   · *"truy vấn không mang từ hiếm"* — tưởng câu tán gẫu chỉ có từ thông dụng. Thực đo NGƯỢC:
+ *     ca âm mang từ HIẾM HƠN ca dương (`minDF` trung vị 19 so với 213) vì câu lạc đề chứa từ
+ *     vựng kho gần như không có ("arabica", "plank", "vali"). Tín hiệu ngược dấu.
+ *
+ * Còn lại margin, và nó không phụ thuộc thang đo nên sống được ở chỗ hai cái kia chết.
+ */
+function shouldAbstain(topDist: number | undefined, margin: number | undefined, force?: boolean): boolean {
+  if (!abstainEnabled(force)) return false;
+  if (topDist === undefined || margin === undefined) return false; // không có số đo ⇒ KHÔNG chặn (điều 9)
+  return topDist > ABSTAIN_DIST && margin < ABSTAIN_MARGIN;
+}
+
+function cosine(a: Float32Array, b: Float32Array): number {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s; // vector trong chỉ mục đã chuẩn hoá đơn vị ⇒ dot product LÀ cosine
+}
+
+/**
+ * Gộp các hit gần trùng nội dung: đại diện cụm (hit xếp cao nhất) lên trước, bản trùng
+ * **HẠ XUỐNG SAU** chứ KHÔNG bị loại — cùng doctrine với `demoteToolOutput`.
+ *
+ * 🔴 Vì sao phải HẠ chứ không XOÁ (bài học đo được 2026-08-08, sửa bản đầu của chính mình):
+ * bản đầu xoá bản trùng và giữ mỗi đại diện. Đo trên kho thật thì nó làm recall **TỆ ĐI**
+ * (`@40` 64% → 41%): khi một tin gần trùng xếp CAO HƠN tin đang tìm, tin đang tìm bị xoá
+ * hẳn khỏi kết quả. Phép thử ngoại tuyến của tôi không thấy điều đó vì nó chấm theo "cụm
+ * của đáp án nằm ở vị trí mấy" — tức tính điểm cho một cụm dù thứ TRẢ VỀ là tin khác. Hạ
+ * xuống thì mặt trên sạch mà không mất gì: `@40` giữ nguyên, `similar` cho biết có bản trùng.
+ */
+function collapseHits(hits: SearchHit[], dbPath: string | undefined, limit: number): SearchHit[] {
+  if (hits.length < 2) return hits.slice(0, limit);
+  const vecs = vectorsByRowid(
+    hits.map((h) => h.id),
+    dbPath ?? currentMemoryDb(),
+  );
+  const reps: { hit: SearchHit; vec: Float32Array | undefined }[] = [];
+  const dupes: SearchHit[] = [];
+  for (const h of hits) {
+    const v = vecs.get(h.id);
+    let joined = false;
+    if (v) {
+      for (const r of reps) {
+        if (r.vec && cosine(v, r.vec) >= COLLAPSE_SIM) {
+          r.hit.similar = (r.hit.similar ?? 0) + 1;
+          dupes.push({ ...h });
+          joined = true;
+          break;
+        }
+      }
+    }
+    if (!joined) reps.push({ hit: { ...h }, vec: v });
+  }
+  return [...reps.map((r) => r.hit), ...dupes].slice(0, limit);
+}
+
 /** Hydrate fused rowids → hits: scope filter + per-session cap + snippet. */
 function hydrate(
   db: MemoryDB,
@@ -327,6 +480,71 @@ function hydrate(
   return hits;
 }
 
+// ── TRỘN COSINE (rerank RẺ — plan 17 §3.1 đường ③) ───────────────────────────
+// Xếp lại ứng viên bằng cosine trên vector ĐÃ LƯU rồi TRỘN với thứ tự RRF. Đo 2026-08-09 trên
+// 68 nhãn: MRR 0,258 → **0,282** · `@1` 18% → 21% · `prose` MRR 0,410 → **0,458** (`@1` 26% →
+// 35%) · `tool_result` MRR 0,039 → 0,087. Giá **119 ms/truy vấn** — cross-encoder tốn 10–32
+// GIÂY và làm recall TỆ ĐI, nên đây là lớp rerank duy nhất ở repo này vừa rẻ vừa thắng.
+//
+// TRỘN chứ không THAY: thay hẳn bằng cosine cho MRR 0,276, trộn cho 0,282 — giữ lại tín hiệu
+// từ khoá là có giá trị thật.
+// ⚠ ĐÁNH ĐỔI ĐÃ BIẾT: lớp `keyword` tệ đi (`@1` 25% → 17%) — xếp lại theo NGỮ NGHĨA đúng là
+// thứ làm hỏng truy vấn mà người ta gõ nguyên văn từ khoá. Tắt bằng `ZEMORY_VECMIX=0`.
+const VECMIX_POOL = 60;
+
+/** Trộn cosine vào thứ hạng: mặc định BẬT (thắng net trên corpus có nhãn — điều 12). */
+export function vecMixEnabled(force?: boolean): boolean {
+  if (force !== undefined) return force;
+  const v = process.env.ZEMORY_VECMIX?.trim().toLowerCase();
+  return !(v === "0" || v === "false" || v === "off");
+}
+
+/** RRF giữa thứ tự hiện có và thứ tự cosine tới truy vấn. Thiếu vector ⇒ giữ nguyên (điều 9). */
+function mixByCosine(hits: SearchHit[], qv: Float32Array | undefined, dbPath: string | undefined): SearchHit[] {
+  if (!qv || hits.length < 3) return hits;
+  const ids = hits.slice(0, VECMIX_POOL).map((h) => h.id);
+  const vecs = vectorsByRowid(ids, dbPath ?? currentMemoryDb());
+  if (!vecs.size) return hits;
+  // Tin không có vector: điểm -2 ⇒ rơi xuống đáy của lượt cosine nhưng KHÔNG bị loại, vì nó
+  // vẫn giữ nguyên hạng trong lượt RRF và hai lượt được cộng lại.
+  const byCos = [...ids]
+    .map((id) => ({ id, s: vecs.get(id) ? cosine(qv, vecs.get(id) as Float32Array) : -2 }))
+    .sort((a, b) => b.s - a.s)
+    .map((x) => x.id);
+  const score = new Map<number, number>();
+  hits.forEach((h, i) => score.set(h.id, (score.get(h.id) ?? 0) + 1 / (RRF_K + i + 1)));
+  byCos.forEach((id, i) => score.set(id, (score.get(id) ?? 0) + 1 / (RRF_K + i + 1)));
+  const pos = new Map(hits.map((h) => [h.id, h]));
+  return [...score.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => pos.get(id) as SearchHit)
+    .filter(Boolean);
+}
+
+/**
+ * Chặng cuối dùng chung cho CẢ HAI đường (FTS và hybrid): lấy dư → trộn cosine → gộp
+ * near-duplicate → cắt về `limit`. Một chỗ duy nhất để hai đường không lệch thứ tự (bài học
+ * `demoteToolOutput` từng chỉ nằm ở một đường, và đường bị bỏ sót lại chính là đường mặc định).
+ *
+ * Thứ tự này KHÔNG tuỳ tiện: trộn cosine đặt đúng chỗ phép đo đã chạy — trên danh sách ĐÃ qua
+ * hạ-điểm-tool và recency, chứ không phải trên thứ hạng RRF thô.
+ */
+function finish(
+  db: MemoryDB,
+  ordered: { rowid: number; s: number }[],
+  terms: string[],
+  opts: SearchOptions,
+  qv?: Float32Array,
+): SearchHit[] {
+  const limit = opts.limit ?? DEFAULT_SEARCH_LIMIT;
+  const collapse = collapseEnabled(opts.collapse);
+  const mix = vecMixEnabled(opts.vecMix);
+  if (!collapse && !mix) return hydrate(db, ordered, terms, opts);
+  const wide = hydrate(db, ordered, terms, { ...opts, limit: limit * COLLAPSE_OVERFETCH });
+  const mixed = mix ? mixByCosine(wide, qv, opts.dbPath) : wide;
+  return collapse ? collapseHits(mixed, opts.dbPath, limit) : mixed.slice(0, limit);
+}
+
 /** Run a recall query — FTS5 word + trigram fused with RRF (the always-on baseline). */
 export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
   const terms = ftsTerms(query);
@@ -336,7 +554,8 @@ export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
     const scopedProject = !opts.all ? opts.project : undefined;
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
     if (!ranked.length) return [];
-    return hydrate(db, rankWithRecency(db, demoteToolOutput(db, ranked, opts), opts), terms, opts);
+    const ordered = rankWithRecency(db, demoteToolOutput(db, ranked, opts), opts);
+    return finish(db, ordered, terms, opts);
   } finally {
     db.close();
   }
@@ -398,30 +617,54 @@ async function maybeRerank(
  * added stage — degrades to exactly `search()` (FTS-only) when vectors and the
  * reranker are unavailable.
  */
-async function fusedSearch(query: string, opts: SearchOptions, useVector: boolean): Promise<SearchHit[]> {
+async function fusedSearch(query: string, opts: SearchOptions, useVector: boolean): Promise<RecallResult> {
   const terms = ftsTerms(query);
-  const vec = useVector ? await vectorRanks(query, { dbPath: opts.dbPath, pool: POOL }) : [];
-  if (!terms.length && !vec.length) return [];
+  const probe = useVector ? await vectorProbe(query, { dbPath: opts.dbPath, pool: POOL }) : { ranks: [] };
+  const vec = probe.ranks;
+  const topDistance = vec.length ? vec[0].dist : undefined;
+  // Độ vượt trội của hit đầu so với nhóm — tín hiệu của cổng "không biết" (xem shouldAbstain).
+  const spread = vec.length >= 3 ? vec.slice(0, 10) : [];
+  const margin = spread.length >= 3 ? (spread[spread.length - 1].dist ?? 0) - (spread[0].dist ?? 0) : undefined;
+  if (!terms.length && !vec.length) return { hits: [] };
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const scopedProject = !opts.all ? opts.project : undefined;
     const streams = terms.length ? ftsStreams(db, terms, scopedProject) : [];
     if (vec.length) streams.push({ ranks: vec, w: W_VEC });
     let ranked = rrf(streams);
-    if (!ranked.length) return [];
+    if (!ranked.length) return { hits: [], topDistance };
+    if (shouldAbstain(topDistance, margin, opts.abstain)) return { hits: [], abstained: true, topDistance };
     ranked = await maybeRerank(db, ranked, query, opts.rerank);
     // SAU rerank, TRƯỚC recency — cùng vị trí như ở search() để hai đường cho cùng
     // thứ tự. Bỏ sót đây là bỏ sót đường CHÍNH: hybrid bật mặc định, UI đi lối này.
     ranked = demoteToolOutput(db, ranked, opts);
     ranked = rankWithRecency(db, ranked, opts);
-    return hydrate(db, ranked, terms, opts);
+    return { hits: finish(db, ranked, terms, opts, probe.qv), topDistance };
   } finally {
     db.close();
   }
 }
 
+/**
+ * Kết quả recall KÈM LÝ DO — bề mặt nào cần phân biệt *"không tìm thấy"* với *"có tìm nhưng
+ * không đủ khớp nên tôi không trả"* thì gọi đường này (plan 17 §1.3). Trả rỗng mà im lặng
+ * là đúng cái làm người đọc tưởng kho trống.
+ */
+export interface RecallResult {
+  hits: SearchHit[];
+  /** Cổng "không biết" đã nổ: có ứng viên nhưng không cái nào đủ gần. */
+  abstained?: boolean;
+  /** Khoảng cách cosine của hit vector gần nhất — số để người/agent tự phán. */
+  topDistance?: number;
+}
+
 /** Recall entry point used by the surfaces: hybrid when enabled, else FTS-only. */
 export async function recall(query: string, opts: SearchOptions = {}): Promise<SearchHit[]> {
+  return (await fusedSearch(query, opts, hybridEnabled())).hits;
+}
+
+/** Như `recall()` nhưng nói luôn vì sao rỗng (dùng cho CLI/MCP). */
+export async function recallChecked(query: string, opts: SearchOptions = {}): Promise<RecallResult> {
   return fusedSearch(query, opts, hybridEnabled());
 }
 
@@ -432,7 +675,54 @@ export async function recall(query: string, opts: SearchOptions = {}): Promise<S
  * FTS-only. Vector/rerank are additive, never a replacement.
  */
 export async function searchHybrid(query: string, opts: SearchOptions = {}): Promise<SearchHit[]> {
-  return fusedSearch(query, opts, true);
+  return (await fusedSearch(query, opts, true)).hits;
+}
+
+/**
+ * ĐA-TRUY-VẤN: một câu hỏi, nhiều cách diễn đạt, gộp bằng RRF (plan 17 §1.1).
+ *
+ * Vì sao: đo 2026-08-08 trên corpus 56 nhãn — hỏi cùng một việc bằng BA cách nâng
+ * `@10` 39% → 50% và `@40` 45% → 64%; riêng lớp `prose` `@40` **68% → 94%**. Tức cái
+ * "trần pool" từng bị chẩn là nghẽn ở lớp NHÚNG (lý do bỏ 43 giờ dựng 768 chiều) phần
+ * lớn là giới hạn của MỘT cách diễn đạt, không phải của model.
+ *
+ * AI sinh biến thể? **AGENT ĐANG GỌI** — HP điều 6② (token của phiên nó; lõi zemory không
+ * sinh văn bản). Ở đây chỉ gộp, thuần tất định.
+ *
+ * Gộp ở tầng DANH SÁCH CUỐI, không phải tầng stream: đó đúng là chỗ phép đo đã chạy, nên
+ * số đo và code nói về cùng một thứ. Một truy vấn ⇒ đi thẳng `recall()`, hành vi y như cũ.
+ */
+export async function searchMulti(queries: string[], opts: SearchOptions = {}): Promise<SearchHit[]> {
+  const qs = queries.map((q) => q.trim()).filter(Boolean);
+  if (!qs.length) return [];
+  if (qs.length === 1) return recall(qs[0], opts);
+  const limit = opts.limit ?? DEFAULT_SEARCH_LIMIT;
+  // Từng lượt lấy DƯ và KHÔNG gộp: gộp phải xảy ra SAU khi hợp nhất, vì bản gần trùng của
+  // nhau thường do các lối nói KHÁC nhau kéo về — gộp sớm ở từng danh sách thì mỗi danh sách
+  // chỉ thấy một phần của cụm. Đây cũng đúng chỗ phép thử đã đo (gộp trên danh sách đã fuse).
+  const sub = { ...opts, collapse: false, limit: limit * COLLAPSE_OVERFETCH };
+  const lists: SearchHit[][] = [];
+  // Tuần tự có chủ ý: mỗi truy vấn nhúng một lần qua CÙNG một session ONNX; chạy song song
+  // là hai lượt giẫm chân nhau trên cùng CPU (bài học bench↔embed 2026-08-07).
+  for (const q of qs) lists.push(await recall(q, sub));
+  const fused = fuseHitLists(lists, limit * COLLAPSE_OVERFETCH);
+  return collapseEnabled(opts.collapse) ? collapseHits(fused, opts.dbPath, limit) : fused.slice(0, limit);
+}
+
+/** RRF trên nhiều danh sách hit đã hoàn chỉnh; giữ metadata của lần xuất hiện đầu tiên. */
+function fuseHitLists(lists: SearchHit[][], limit: number): SearchHit[] {
+  const score = new Map<number, number>();
+  const meta = new Map<number, SearchHit>();
+  for (const hits of lists) {
+    hits.forEach((h, i) => {
+      score.set(h.id, (score.get(h.id) ?? 0) + 1 / (RRF_K + i + 1));
+      if (!meta.has(h.id)) meta.set(h.id, h);
+    });
+  }
+  return [...score.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id, s]) => ({ ...(meta.get(id) as SearchHit), score: s }));
 }
 
 /** Progressive disclosure: fetch one message's full content + context. */
