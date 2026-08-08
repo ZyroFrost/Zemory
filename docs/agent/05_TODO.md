@@ -97,13 +97,29 @@
   Kèm theo tự động: digest toàn kho sẽ TỰ DỰNG LẠI LƯỜI ở scan/scheduler kế tiếp — `DIGEST_VERSION`
   bump 3→4 (2026-08-06, `cleanPath` cắt văn xuôi khỏi `paths_touched`; đo 261/261 path bẩn xử sạch).
   KHÔNG cần `digest --all` tay trước tráo — kho hiện tại sắp bị thay, chạy là công dã tràng.
-- [ ] **SAU TRÁO: viết plan 17 — recall quality** (file mới, chưa tồn tại: docs/plan/17_recall_quality;
-  user chốt 2026-08-07: *"không cần fix cái
-  cũ, muốn thêm thì viết thêm plan"* — trong mạch HP điều 15). Nội dung: các hướng TĂNG chất lượng
-  recall, mỗi hướng kèm **phép thử nhỏ trên bản sao** trước khi bỏ công (khuôn `dims-test`): mở rộng
-  corpus có nhãn (34 câu là mỏng) · rerank có đáng bật mặc định ở kho 768 không · chunk overlap ·
-  truy hồi lai theo digest · embed cả tool-dump có đáng không (171/119.668 hiện nay là lỗ recall của
-  57% kho — đúng chỗ vụ trigram lộ ra). **Cố ý chờ tráo xong** — viết bây giờ là spec chay không số.
+- ✅ **plan 17 — recall quality: VIẾT XONG + ĐO XONG 6 GIẢ THUYẾT 2026-08-08/09.**
+  `docs/plan/17_recall_quality.md`. Kết quả: **2 thắng đã ship mặc định** (đa-truy-vấn RRF ·
+  trộn cosine) · **2 opt-in trượt cổng** (gộp near-dup · cổng không-biết) · **2 bị bác bằng số**
+  (router trọng số · tiền tố ngữ cảnh — cái sau cứu ~40 giờ embed lại toàn kho).
+  Thước chính thức 68 nhãn: `@10` **32% → 41%** · MRR **0,235 → 0,282** · `prose` MRR
+  0,410 → **0,458** · `prose@40` 68% → **94%** khi agent gửi 3 lối nói.
+  Trả 2 món nợ đo lường: **bộ âm giữ riêng 10 câu** + **lớp nhãn `keyword` 12 câu** (12 phiên/
+  12 project) — lần đầu corpus phủ lối gõ từ khoá; bench nay chạy CẢ HAI bộ âm (18 câu).
+
+- [ ] **(ĐỀ XUẤT — chờ user duyệt THIẾT KẾ) Ô nhập "cách nói khác" trên màn Recall.**
+  Backend đã sẵn: `/memory-search?also=…` (lặp được, hoặc `alsoList=a|b`) tự chuyển sang đường
+  sâu và truyền `--also` cho tiến trình con. Nhưng **chưa có chỗ bấm trên giao diện** — thêm
+  phần tử UI là quyết định thiết kế, `02_RULES §Hành xử` bắt trình duyệt trước. Đây là đường
+  duy nhất để NGƯỜI dùng được T5 trong app (agent thì đã có qua MCP `also[]`).
+
+- [ ] **(hướng lớn, chưa quyết) LATE INTERACTION / ColBERT — nhắm vào TRẦN POOL.**
+  Lý do: `@40` mới **50%**, tức nửa số câu đáp án không vào nổi pool, và bench đo được **chỉ
+  6/68 câu** nằm trong pool mà ngoài top-10 ⇒ **mọi lớp rerank ở kho này chỉ có 6 câu dư địa**.
+  Tài liệu ngành khớp đúng ca của mình: *"bi-encoder huấn luyện trên web tổng quát hoá KÉM sang
+  corpus kỹ thuật; khớp mức TOKEN của MaxSim lấy lại phần lớn khoảng cách đó mà KHÔNG cần huấn
+  luyện lại"*, chất lượng ngang cross-encoder ở độ trễ ngang bi-encoder. Kho mình đúng là ngoài
+  miền (log kỹ thuật tiếng Việt, embedder zero-shot). **Giá: đĩa 10–30× dense** + định dạng chỉ
+  mục riêng ⇒ phải qua phép thử nhỏ trên bản sao trước (HP điều 15). Xem `plan/17 §3.1`.
 - [ ] **Sao lưu NGOÀI máy — đã có MỘT phần:** bundle `.enc` trên Drive (baseline 289,7 MB + delta,
   auto-sync 05/08) phủ được phần NGUỒN; backup local 1,25 GB vẫn nằm **cùng ổ** với kho, và công
   embed 43 giờ chưa được bảo hiểm (bundle lean không chở vector) → sau tráo cân nhắc `export --full`.

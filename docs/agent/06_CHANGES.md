@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-09] — Plan 17: đo 6 giả thuyết recall · ship đa-truy-vấn + trộn cosine · 2 thước mới
+
+**Thước chính thức (68 nhãn, kho 768): `@10` 32% → 41% · MRR 0,235 → 0,282 · `prose` MRR
+0,410 → 0,458.** Riêng khi agent gửi 3 lối nói: `prose@40` **68% → 94%**.
+
+**Ship mặc định 2 lớp.** ① **Đa-truy-vấn RRF** (`searchMulti`, CLI `--also`, MCP `also[]`,
+`/memory-search?also=`): một câu hỏi nhiều cách diễn đạt, gộp bằng RRF — `@10` 39% → 48%.
+Agent sinh biến thể (điều 6②), lõi chỉ trộn. Cái này **lật một chẩn đoán cũ**: trần pool từng
+bị quy cho lớp NHÚNG (lý do bỏ 43 giờ dựng 768 chiều) — phần lớn là giới hạn của MỘT cách hỏi.
+② **Trộn cosine** (`mixByCosine`, `ZEMORY_VECMIX`): xếp lại bằng vector đã lưu rồi trộn với RRF
+— MRR +9% ở **119 ms**, trong khi cross-encoder tốn 10–32 GIÂY và làm recall TỆ ĐI. Đánh đổi đã
+biết: lớp `keyword` `@1` 25% → 17%.
+
+**Bác bằng số 2 lớp, giữ opt-in 2 lớp.** Tiền tố ngữ cảnh tất định: MRR −10% (ngữ cảnh cấp
+PHIÊN giống nhau cho mọi tin nên là nhiễu chia đều) — **cứu ~40 giờ embed lại toàn kho**. Router
+trọng số theo độ dài: không đổi một con số nào. Gộp near-dup và cổng không-biết TRƯỢT cổng ⇒
+mặc định TẮT, có test khoá.
+
+**Hai thước mới, vì thước cũ mù hai chỗ.** ① `NEGATIVE_HOLDOUT` 10 câu **giữ riêng** — ngưỡng cổng
+từng hiệu chỉnh trên chính 8 ca âm dùng để chấm nó, thêm bộ giữ riêng thì "tách hoàn hảo 8/8" bốc
+hơi (hai phân bố chồng nhau 0,806–0,856). ② Lớp nhãn **`keyword` 12 câu** (12 phiên/12 project) —
+cả 64 nhãn cũ đều có lane AND rỗng nên lối gõ từ khoá CHƯA TỪNG được đo. bench nay chạy cả hai bộ âm.
+
+**Ba lần số tự báo bị chính phép đo sau bác bỏ, đều vì đo bằng bản tự viết lại thay vì gọi đường
+thật:** gộp near-dup "+29%" (chấm theo cụm, không theo tin TRẢ VỀ) · cổng "tách hoàn hảo" (fit trên
+tập test) · `ftsAnd = 0` (bộ tách từ khác `ftsTerms` — lane AND thật không bao giờ rỗng).
+
 ## [2026-08-08] — TRÁO kho 768 · tìm ra NGHẼN THẬT của recall (không phải model) · vá write-gate thủng
 
 **TRÁO KHO 768/fp32 — xong.** Embed 43 giờ kết thúc (`152.894 vector`); tráo: tắt daemon → 256

@@ -16,7 +16,7 @@
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { type SearchHit, search, searchHybrid } from "../memory/search.js";
-import { corpusByKind, type LabeledQuery, NEGATIVE_CORPUS, RECALL_CORPUS } from "./recall-corpus.js";
+import { corpusByKind, type LabeledQuery, NEGATIVE_CORPUS, NEGATIVE_HOLDOUT, RECALL_CORPUS } from "./recall-corpus.js";
 
 export type { LabeledQuery };
 
@@ -195,20 +195,26 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
   // Mặt TRÁI — chạy trên cùng đường `hybrid` (đường mặc định của recall), vì đó là thứ
   // người dùng thật chạm vào. Đo ba con số bổ nhau: có trả rỗng không · trả bao nhiêu ·
   // điểm đầu bao nhiêu (so với ca dương thì mới biết hệ "tự tin sai" tới mức nào).
+  // CHẠY CẢ HAI bộ âm: bộ cũ (đã dùng để chỉnh ngưỡng cổng "không biết") và bộ GIỮ RIÊNG
+  // (chưa từng tham gia chọn tham số). Bản trước chỉ chạy bộ cũ, nên thước chính thức đo trên
+  // đúng dữ liệu người ta đã fit — luôn cho điểm đẹp. Đo 2026-08-09 cho thấy khác biệt là
+  // THẬT: ca âm gần nhất của bộ cũ ở 0,844 còn bộ giữ riêng tụt tới 0,806, và chính con số đó
+  // làm "tách hoàn hảo" của cổng bốc hơi.
   let negative: NegativeResult | undefined;
-  if (!opts.skipNegative && NEGATIVE_CORPUS.length) {
+  const negAll = [...NEGATIVE_CORPUS, ...NEGATIVE_HOLDOUT];
+  if (!opts.skipNegative && negAll.length) {
     let empty = 0, hits = 0, score = 0;
-    for (const nq of NEGATIVE_CORPUS) {
+    for (const nq of negAll) {
       const r = await searchHybrid(nq.q, { limit: topN, all: true, rerank: false });
       if (!r.length) empty++;
       hits += r.length;
       score += r[0]?.score ?? 0;
     }
     negative = {
-      n: NEGATIVE_CORPUS.length,
+      n: negAll.length,
       empty,
-      hitsAvg: hits / NEGATIVE_CORPUS.length,
-      topScoreAvg: score / NEGATIVE_CORPUS.length,
+      hitsAvg: hits / negAll.length,
+      topScoreAvg: score / negAll.length,
     };
   }
   return { corpus: corpus.length, resolved: items.length, missing, lanes, coverage, negative };
