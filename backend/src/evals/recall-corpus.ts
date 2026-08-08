@@ -25,11 +25,47 @@ export type QueryKind = "prose" | "tool_use" | "tool_result";
 export interface LabeledQuery {
   q: string;
   lang: string;
+  /** Nhãn DƯƠNG: neo tới tin đích. Ca ÂM TÍNH để rỗng (xem `NEGATIVE_CORPUS`). */
   session: string;
   uuid: string;
   /** Thiếu ⇒ `prose` (34 truy vấn đầu viết trước khi có phân lớp, đều thuộc lớp đó). */
   kind?: QueryKind;
 }
+
+/**
+ * CA ÂM TÍNH — câu hỏi mà kho **KHÔNG** có câu trả lời.
+ *
+ * Vì sao phải có (lỗ đo được 2026-08-08): 56 nhãn dương chỉ trả lời được *"tìm có ra không"*.
+ * Chúng MÙ với *"có bịa không"* — mà đó đúng là triệu chứng người dùng báo (search trả kết
+ * quả lạc repo, không liên quan). Nguy hơn nữa: bản vá thêm luồng OR nới pool từ ~5,4 lên
+ * 100 ứng viên, chắc chắn tăng recall nhưng cũng chắc chắn kéo thêm thứ không liên quan —
+ * và nếu chỉ có nhãn dương thì **không cách nào nhìn thấy mặt trái đó**. Một cái thước đo
+ * một chiều sẽ luôn nói bản vá là cải thiện thuần.
+ *
+ * Cách dùng: chạy truy vấn, rồi đọc ĐIỂM/thứ hạng của kết quả đầu. Hệ tốt phải trả **rỗng**,
+ * hoặc trả điểm thấp rõ rệt so với ca dương — chứ không phải trả 12 kết quả trông tự tin.
+ *
+ * Chủ đề cố ý chọn NGOÀI hẳn phạm vi kho (kho là hội thoại kỹ thuật/BI của một người dùng
+ * Việt Nam): không thể "vô tình đúng". Tránh dùng thuật ngữ kỹ thuật, vì mọi tin kỹ thuật
+ * đều na ná nhau ở tầng ngữ nghĩa và ta sẽ đo nhầm sang bài toán khác.
+ */
+export interface NegativeQuery {
+  q: string;
+  lang: string;
+  /** Vì sao chắc chắn kho không có — ghi lại để người sau khỏi tưởng là nhãn thiếu. */
+  why: string;
+}
+
+export const NEGATIVE_CORPUS: NegativeQuery[] = [
+  { q: "công thức nấu phở bò gia truyền Nam Định cần hầm xương mấy tiếng", lang: "vi", why: "kho là hội thoại kỹ thuật, chưa bao giờ bàn nấu ăn" },
+  { q: "lịch thi đấu vòng loại World Cup khu vực châu Á tháng này", lang: "vi", why: "không có nội dung thể thao" },
+  { q: "triệu chứng và cách điều trị bệnh sốt xuất huyết ở trẻ nhỏ", lang: "vi", why: "không có nội dung y tế" },
+  { q: "thủ tục làm hộ chiếu phổ thông cần giấy tờ gì và mất bao lâu", lang: "vi", why: "không có nội dung hành chính công" },
+  { q: "phân tích ý nghĩa bài thơ Tây Tiến của Quang Dũng", lang: "vi", why: "không có nội dung văn học" },
+  { q: "giá vé máy bay khứ hồi Hà Nội Đà Lạt tháng sau", lang: "vi", why: "không có nội dung du lịch/đặt vé" },
+  { q: "cách chăm sóc lan hồ điệp sau khi tàn hoa", lang: "vi", why: "không có nội dung trồng trọt" },
+  { q: "luật chơi cờ vua: tốt phong hậu trong trường hợp nào", lang: "vi", why: "không có nội dung cờ/game luật" },
+];
 
 export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "ứng dụng chỉ chạy lại lịch sử: một tab thử chiến lược, một tab replay nến bấm tay mất trạng thái khi tải lại, một tab thử bằng JS — còn thiếu ví ảo chạy tới", lang: "vi", session: "25c71331-0b7a-445c-a280-17f5292ab02a", uuid: "634dc937-bee0-422e-84de-c442d1e00e7e" },
