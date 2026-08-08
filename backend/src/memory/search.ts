@@ -270,7 +270,19 @@ function rankWithRecency(
  * Đặt SAU RRF/rerank, cùng tầng với recency: nó điều biến thứ tự cuối chứ không tranh
  * chấp với phép xếp hạng theo thứ tự của RRF.
  */
-const TOOL_DEMOTE = 0.3;
+// 0,3 → **0,7** (đo 2026-08-09, quét 5 mức trên 68 nhãn chia lớp). Hằng số 0,3 chọn hồi
+// 2026-07-27 khi tin tool chiếm **8/20 = 40%** kết quả đầu; nay đo lại thì ở 0,3 chúng chỉ còn
+// **7%** — tức hình phạt đang làm QUÁ TAY và chôn luôn một lớp đã tốn công embed
+// (`tool_result`: 61.473 tin, vector 99,8%, mà recall chỉ 25%).
+//
+// Vì sao đúng 0,7 mà không cao hơn: đây là mức duy nhất KHÔNG đánh đổi gì —
+//   prose MRR **0,458 → 0,458** (y nguyên) · keyword 0,241 → **0,373** (+55%)
+//   tool_result 0,092 → **0,209** (+127%) · tổng 0,282 → **0,319** (+13%)
+//   dump chiếm top-10: 7% → 12% (vẫn xa mức 40% đã sinh ra hình phạt)
+// Lên 0,85 thì tổng cao hơn (0,331) và tool_result vọt 0,425, NHƯNG prose bắt đầu trả giá
+// (MRR 0,443 · `@1` 35% → 32%) — đổi lớp mạnh nhất lấy lớp yếu là lỗ, đúng lý lẽ đã dùng khi
+// giữ lane AND. Tắt hẳn (1,0) còn tệ hơn 0,85 ở cả tổng lẫn prose.
+const TOOL_DEMOTE = Number(process.env.ZEMORY_TOOL_DEMOTE) || 0.7;
 
 function demoteToolOutput(
   db: MemoryDB,

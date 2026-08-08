@@ -66,10 +66,41 @@ function tableExists(db: Conn, name = "vec_chunks"): boolean {
 // value but are long and numerous (~1/3 of daily volume), so by default they are
 // NOT embedded — FTS keyword search still covers them fully, and skipping them
 // cuts the daily embed workload by a third. ZEMORY_EMBED_TOOLS=1 re-includes.
-function embedToolCalls(): boolean {
-  return process.env.ZEMORY_EMBED_TOOLS === "1";
+//
+// 🔴 NHƯNG "gần như không có giá trị ngữ nghĩa" chỉ đúng với PHẦN LỚN, không phải tất cả —
+// đo thành phần lớp này 2026-08-09 (62.284 tin): `Read` 10.863 tin dài trung bình **117 ký
+// tự** (một đường dẫn — nhúng thành 768 chiều là vô nghĩa, FTS word khớp tốt hơn) · `Bash`
+// 17.162 + `PowerShell` 7.652 là lệnh shell (token literal) · **29% cả lớp dưới 200 ký tự**.
+// Nhưng `Edit` 16.215 (avg 1.233, mang cả `old_string`/`new_string`) và `Write` 3.350 (avg
+// 3.201, mang NGUYÊN nội dung file) là **code thật** — chất liệu ngữ nghĩa đúng nghĩa.
+//
+// Phép thử trong RAM (khuôn dims-test, pool 326 tin trong đó 218 tin tool làm nhiễu CÙNG
+// HẠNG): nhúng `Edit`+`Write` đưa lớp `tool_use` từ **0% tuyệt đối** lên `@1` 57% · `@10`
+// 100% (MRR 0 → 0,672), và nhóm truy vấn gõ-nguyên-văn lên `@1` 50% (MRR 0,015 → 0,615).
+// ⚠ Pool nhỏ nên số tuyệt đối bị thổi lên — chỉ đọc như phép so A/B, không so với kho thật.
+//
+// Vì vậy cờ nay nhận DANH SÁCH tên tool, để embed đúng 19.565 tin đáng nhúng (~9–16 giờ,
+// ~60 MB) thay vì cả 62.284 tin (gấp ~3 lần công cho phần lớn là đường dẫn và lệnh).
+//   ZEMORY_EMBED_TOOLS=1            → mọi tin tool (nếp cũ, giữ nguyên)
+//   ZEMORY_EMBED_TOOLS=Edit,Write   → chỉ các tool nêu tên
+function embedToolNames(): string[] | "all" | null {
+  const raw = process.env.ZEMORY_EMBED_TOOLS?.trim();
+  if (!raw) return null;
+  if (raw === "1" || raw.toLowerCase() === "all") return "all";
+  const names = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return names.length ? names : null;
 }
-const EMBEDDABLE = (): string => (embedToolCalls() ? "" : " AND tool_name IS NULL");
+
+const EMBEDDABLE = (): string => {
+  const want = embedToolNames();
+  if (want === "all") return "";
+  if (!want) return " AND tool_name IS NULL";
+  // Tên tool đến từ env nên KHÔNG nội suy thẳng vào SQL: lọc còn ký tự an toàn rồi mới ghép
+  // (cùng kỷ luật "SQL 1 cách" của 02_RULES — không rải chuỗi người dùng vào câu lệnh).
+  const safe = want.filter((n) => /^[A-Za-z0-9_-]{1,40}$/.test(n)).map((n) => `'${n}'`);
+  if (!safe.length) return " AND tool_name IS NULL";
+  return ` AND (tool_name IS NULL OR tool_name IN (${safe.join(",")}))`;
+};
 
 // DEDUP at the DERIVED layer (~21% of daily messages are exact repeats — injected
 // rules/recall cards, re-read files). Identical content ⇒ the model would produce
