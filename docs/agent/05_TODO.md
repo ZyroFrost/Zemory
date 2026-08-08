@@ -695,7 +695,7 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 </details>
 
 ## 🔥 Từ chốt sổ 2026-07-21 — làm trước
-- [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** *(Soát 2026-08-07: `daemon.log` sạch tới 06/08 20:41, daemon 4444 sống ổn từ đó — vẫn CHƯA tái hiện.)* Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `<thư mục kho>/logs/daemon.log` (mirror stderr)
+- [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** *(Soát 2026-08-07: `daemon.log` sạch tới 06/08 20:41, daemon 4444 sống ổn từ đó — vẫn CHƯA tái hiện. Soát lại 2026-08-09: `todo verify` giơ cờ "code mới hơn sổ" vì `ui.ts` bị sửa 08/09 — **báo oan**, thay đổi đó là thêm tham số `also` cho `/memory-search`, không đụng `armCrashReport`. Mục vẫn ĐANG CHỜ tái hiện.)* Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `<thư mục kho>/logs/daemon.log` (mirror stderr)
   *(⚠ sửa 2026-08-07: sổ — và cả comment trong chính file đó — ghi `~/.zemory/logs`, **SAI**. Đo:
   `logsDir()` = `join(currentMemoryDir(), "logs")`, tức log ĐI THEO KHO khi `relocate`; file thật ở
   `data/logs/daemon.log` (12.830 B, 07/08 09:04), còn `~/.zemory/` chỉ có `location.json`. Ghi sai
@@ -718,7 +718,10 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   đọc thẳng `/code-graph`, không qua file xuất). Viết luật versioning cho hợp đồng chưa ai ký là tạo
   cấu trúc chưa có nhu cầu. **Đừng đề xuất lại khi chưa có consumer thật.**
 - [~] **Hạng cạnh BE↔FE seam — V1 ĐÃ BUILD 2026-08-07 (user chốt "làm đi"); spec graduate sang
-  `plan/13 §4` (cạnh `api`).** Đã ship: `graph-seam.ts` khớp chuỗi route FE↔BE, nhãn
+  `plan/13 §4` (cạnh `api`).** *(Soát 2026-08-09: `todo verify` giơ cờ vì `ui.ts` sửa 08/09 —
+  **báo oan**, đó là thêm tham số `also` cho `/memory-search`; cạnh `api` sinh bằng khớp chuỗi
+  route nên route MỚI tự vào graph, không cần sửa gì. Vế `resolved` vẫn chờ typed contract.)*
+  Đã ship: `graph-seam.ts` khớp chuỗi route FE↔BE, nhãn
   `inferred·textual`, ba bề mặt (`/code-graph` · `graph export`/`edge` · `graph impact` — đo trên
   zemory: `ui.ts` ← 10 file FE kèm route). **CÒN MỞ đúng một vế:** tầng `resolved` field-level cần
   **typed contract** (OpenAPI/tRPC) — chưa repo nào có contract; khi nào có thì thêm parser, và

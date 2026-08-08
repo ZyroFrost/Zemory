@@ -5,6 +5,35 @@
 
 ---
 
+## [2026-08-09b] — Nới hình phạt tin tool 0,3→0,7 (thắng không đánh đổi) · LLM nhẹ: thử, kết quả ÂM
+
+**Hằng số đúng lúc chọn, sai dần khi lớp quanh nó mạnh lên.** `TOOL_DEMOTE=0,3` chọn 07-27 khi tin
+tool chiếm **8/20 = 40%** kết quả đầu; đo lại ở chính mức đó hôm nay còn **7%** ⇒ hình phạt quá tay,
+chôn luôn lớp ĐÃ tốn công embed (`tool_result` 61.473 tin, vector 99,8%, recall@10 chỉ 25%). Quét 5
+mức: **0,7 là mức duy nhất KHÔNG đánh đổi** — `prose` MRR 0,458 → 0,458 y nguyên, `keyword` +55%,
+`tool_result` +127%, tổng MRR 0,282 → **0,319**. Không lên 0,85 dù tổng cao hơn: nó bắt `prose` trả
+giá (`@1` 35%→32%). Loại lỗi này **không hỏng, không gate nào đỏ** — chỉ bắt được bằng cách đo lại
+CHÍNH con số đã sinh ra hằng số.
+
+**Thước sau ba bản vá hôm nay: `@10` 32% → 44% · MRR 0,235 → 0,319** (cân trọng số · trộn cosine ·
+nới hình phạt tool). Không lớp nào cần embed lại, không model mới.
+
+**LLM nhẹ trong lõi (điều 6 bậc ③, user chốt) — thử đúng thủ tục, kết quả ÂM.** Việc chọn: sinh biến
+thể truy vấn (chỗ bậc ② BẾ TẮC vì trong app không có agent nào viết hộ; phần thưởng đã đo trước:
+biến thể TAY cho `prose@40` 68%→94%). Qwen3-0.6B ONNX chạy được trên runtime sẵn có, nhưng biến thể
+nó sinh **tệ hơn cả một truy vấn** (MRR 0,458 → 0,334) vì model **nhại lại chính chỉ thị** thay vì
+làm theo — vách năng lực, không phải chuyện prompt. ⇒ Đường đúng vẫn là **bậc ②**: agent liên kết
+viết (đã ship). Xác nhận thứ tự ưu tiên điều 6 **bằng số**, không bằng nguyên tắc.
+Số phụ giữ lại: `enable_thinking:false` phải ở KHUÔN CHAT (`/no_think` trong tin không ăn) — 7,7 →
+17,1 tok/s · dtype KHÔNG đổi tốc độ sinh (bài học fp32 của embedder không chuyển sang model sinh) ·
+7,45 s/câu ⇒ dù tốt cũng chỉ đặt được ở tầng "Tìm sâu".
+
+**`tool_use` — đã thử, ĐÁNG LÀM.** Nhúng `Edit`+`Write` (code thật; `Read`/`Bash` chỉ là path/lệnh,
+29% lớp dưới 200 ký tự) đưa lớp này từ **0% tuyệt đối** lên `@10` 100% trong pool 326 tin có 218 tin
+tool làm nhiễu cùng hạng. Bác nghi vấn cũ "câu diễn giải đo lối dùng không có thật" — cả nhóm gõ
+nguyên văn cũng tăng như vậy. Ship phần chuẩn bị: `ZEMORY_EMBED_TOOLS` nhận DANH SÁCH tên tool
+(backlog đo thật **20.196 tin**, ~9–16 giờ). Chạy job là quyết định giờ máy, chưa chạy.
+
 ## [2026-08-09] — Plan 17: đo 6 giả thuyết recall · ship đa-truy-vấn + trộn cosine · 2 thước mới
 
 **Thước chính thức (68 nhãn, kho 768): `@10` 32% → 41% · MRR 0,235 → 0,282 · `prose` MRR

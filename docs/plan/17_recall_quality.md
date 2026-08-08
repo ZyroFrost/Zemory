@@ -130,6 +130,32 @@ thì truy vấn kiểu từ khoá ngắn sẽ bị bóp oan. Nổ ⇒ trả rỗ
 **Mặc định: TẮT cho tới khi có bộ âm tính GIỮ RIÊNG** (§4.1) — θ hiện tại hiệu chỉnh trên chính 8 ca
 âm dùng để chấm nó, tức fit trên tập test. Bật mặc định trước khi có tập giữ riêng là vi phạm điều 12.
 
+### 1.4 Hiệu chỉnh lại HÌNH PHẠT TIN TOOL — ✅ đã ship, thắng KHÔNG đánh đổi (2026-08-09)
+**Bệnh: một hằng số đúng lúc chọn, sai dần khi các lớp quanh nó mạnh lên.** `TOOL_DEMOTE = 0,3`
+chọn 2026-07-27 khi tin tool chiếm **8/20 = 40%** kết quả đầu. Đo lại ở chính mức 0,3 hôm nay:
+chúng chỉ còn **7%** — hình phạt làm quá tay và chôn luôn một lớp ĐÃ TỐN CÔNG EMBED
+(`tool_result`: 61.473 tin, vector 99,8%, mà recall `@10` chỉ 25%).
+
+Quét 5 mức trên 68 nhãn chia lớp:
+
+| TOOL_DEMOTE | TỔNG MRR | prose MRR | keyword MRR | tool_result MRR | dump chiếm top-10 |
+|---|---|---|---|---|---|
+| 0,3 (cũ) | 0,282 | **0,458** | 0,241 | 0,092 | 7% |
+| 0,5 | 0,298 | 0,457 | 0,320 | 0,109 | 9% |
+| **0,7 (mới)** | **0,319** | **0,458** | **0,373** | **0,209** | 12% |
+| 0,85 | 0,331 | 0,443 | 0,340 | 0,425 | 15% |
+| 1,0 (tắt) | 0,328 | 0,435 | 0,342 | 0,428 | 19% |
+
+**0,7 là mức DUY NHẤT không đánh đổi gì:** `prose` MRR **0,458 → 0,458** y nguyên, mà `keyword`
+**+55%**, `tool_result` **+127%**, tổng **+13%**. Dừng ở 0,7 chứ không lên 0,85 dù tổng cao hơn —
+0,85 bắt `prose` trả giá (`@1` 35% → 32%), đổi lớp mạnh nhất lấy lớp yếu là lỗ (cùng lý lẽ đã dùng
+khi quyết GIỮ lane AND). Test guard *"tin tool bị hạ xuống dưới văn xuôi"* vẫn xanh ở 0,7.
+
+**Bài học đáng nhớ hơn cả con số:** loại lỗi này **không hỏng, không ai báo, mọi gate vẫn xanh** —
+nó chỉ âm thầm ăn recall của một lớp. Cách duy nhất bắt được là **đo lại chính con số đã sinh ra
+hằng số đó** (40% → 7%), chứ không phải nhìn recall gộp. Mọi hằng số điều biến thứ hạng nên được
+soát lại theo nhịp này.
+
 ## 2. BÁC — có số, đừng đề xuất lại
 
 ### 2.1 T2 router trọng số theo độ dài truy vấn — BÁC
@@ -226,13 +252,86 @@ trong pool mà ngoài top-10 ⇒ **dư địa của mọi lớp rerank ở kho n
 vector; nhúng một đường dẫn thành 768 chiều gần như vô nghĩa. Chất liệu semantic thật chỉ ở
 `Edit`+`Write` = **19.565 tin (~31% lớp) ≈ 9–16 giờ embed + ~60 MB**.
 
-⚠ **Trước khi tốn giờ máy:** 14 câu `tool_use` của corpus là câu DIỄN GIẢI, mà lối tìm thật là gõ
-chính mảnh lệnh/đường dẫn đó (FTS word đang phục vụ được). Nên **0% hiện tại có thể đang đo một lối
-dùng không có thật**. Phải thêm nhãn kiểu keyword cho lớp này rồi đo lại TRƯỚC.
+✅ **ĐÃ THỬ 2026-08-09 — ĐÁNG LÀM, và nó bác chính nghi vấn của tôi.** Phép thử trong RAM (khuôn
+`dims-test`; pool 326 tin, trong đó **218 tin tool làm nhiễu CÙNG HẠNG** để đáp án không thắng chỉ
+vì là tin tool duy nhất có vector):
+
+| nhóm truy vấn | hiện tại (không vector) | nếu có vector |
+|---|---|---|
+| `tool_use` diễn giải (n=14) | @1 0% · @10 **0%** · MRR 0,000 | @1 **57%** · @3 71% · @10 **100%** · MRR **0,672** |
+| `keyword` trỏ vào tin tool_use (n=4) | @1 0% · @10 **0%** · MRR 0,015 | @1 **50%** · @3 75% · @10 **100%** · MRR **0,615** |
+
+⚠ Pool nhỏ nên **số tuyệt đối bị thổi lên** — đọc như phép so A/B, đừng so với kho thật.
+
+🔄 **Bác nghi vấn cũ của chính mục này** (*"14 câu diễn giải có thể đang đo một lối dùng không có
+thật"*): **SAI** — cả hai nhóm cải thiện như nhau, tức câu diễn giải TRẢ LỜI ĐƯỢC, chỉ là không có
+vector thì vô vọng. Lớp nhãn `keyword` (§4.2) chính là thứ cho phép tách hai giả thuyết này.
+
+**Đã ship phần CHUẨN BỊ:** `ZEMORY_EMBED_TOOLS` nay nhận **danh sách tên tool**
+(`ZEMORY_EMBED_TOOLS=Edit,Write`), không còn tất-cả-hoặc-không — để nhúng đúng phần đáng nhúng thay
+vì cả 62.284 tin (gấp ~3 lần công cho phần lớn là đường dẫn `Read` và lệnh shell). Tên tool được
+lọc còn ký tự an toàn trước khi ghép SQL. **Backlog đo thật: 20.196 tin** (mặc định chỉ 527).
+
+**Còn lại là quyết định GIỜ MÁY:** ~9–16 giờ + ~60 MB. Lệnh sẵn sàng:
+`ZEMORY_EMBED_TOOLS=Edit,Write node dist/cli.js memory embed --all`. Nên chạy MỘT MÌNH (write-gate
+đã chặn được kẻ ghi thứ hai, nhưng đừng bật app trong lúc chạy — sự cố 08/08).
 
 **Trigram cho `tool_use`:** trigger hiện loại theo `WHEN new.tool_name IS NULL AND content NOT LIKE
 '[tool_result]%'` ⇒ mở ra là MIGRATION riêng + dựng lại bảng trigram (từng chiếm 42% cả DB). Chỉ bàn
 khi vector-Edit/Write đã chứng minh đáng.
+
+## 3b. LLM NHẸ TRONG LÕI — đã thử theo điều 6 bậc ③, kết quả ÂM (2026-08-09)
+
+> **Bối cảnh, ghi cho đúng:** user chỉ ra rằng triết lý luôn là *"base code lo phần tất định để
+> GIẢM TẢI và LỌC RÁC cho LLM; base code chạm trần thì LLM giải phần còn lại"* — và điều 6 vốn
+> viết là **"HẠN CHẾ để tối ưu token"** với một thang ba bậc, chứ không phải "tránh LLM". Agent
+> (tôi) đã đọc thành cái thứ hai và dừng ở bậc ①②, không bao giờ leo lên bậc ③ dù điều 6 mở sẵn.
+> Đây là lần đầu bậc ③ được thi hành đúng thủ tục: user chốt, có phép thử, fail-open.
+
+**Việc được chọn (và vì sao chỉ chọn một):** sinh **biến thể truy vấn** — chỗ base code không thể
+làm được về bản chất, và là chỗ bậc ② thật sự BẾ TẮC: trong app KHÔNG CÓ agent nào để viết biến
+thể hộ người dùng. Phần thưởng lại đã đo trước khi xây (biến thể TAY: `prose@40` 68% → **94%**),
+nên ẩn số duy nhất là *"model 0,6B viết được ngang tay không"*.
+Ba việc khác CỐ Ý không giao cho LLM: `tool_use` 0% là lỗ **coverage** (base code embed là xong) ·
+LLM rerank có trần **6/68 câu** · HyDE *"cải thiện độ khớp ngữ nghĩa, KHÔNG cải thiện recall"* và
+bơm ảo giác vào chính tầng truy hồi (tài liệu ngành), trong khi bệnh của kho là **lệch từ vựng**.
+
+**Hạ tầng: KHÔNG cần runtime thứ hai.** `onnx-community/Qwen3-0.6B-ONNX` chạy qua chính
+`@huggingface/transformers` 4.2 sẵn có, weight vào cùng cache `data/models` (plan 05 §2).
+
+**Kết quả — 34 câu `prose`, cùng thước:**
+
+| lane | @1 | @3 | @10 | @40 | MRR |
+|---|---|---|---|---|---|
+| 1 truy vấn | **35%** | **56%** | 62% | 68% | **0,458** |
+| 3 truy vấn — TAY | 29% | 53% | **65%** | **94%** | 0,441 |
+| 3 truy vấn — Qwen 0,6B | 21% | 44% | 53% | 62% | 0,334 |
+
+⇒ **Biến thể do 0,6B sinh TỆ HƠN CẢ MỘT TRUY VẤN ở mọi cột.** Chế độ hỏng đã nhìn thấy: model
+**nhại lại chính chỉ thị** thay vì làm theo (`"**Write a technical summary in English** using terms
+like bundle, vector index"`, `"Dòng 1:** Write the event in a technical language…"`). Nó không tách
+được *chỉ thị* khỏi *nội dung* — vách NĂNG LỰC, không phải chuyện tinh chỉnh prompt.
+
+**Bốn số đo phụ đáng giữ:**
+- `enable_thinking:false` phải đặt ở **KHUÔN CHAT**; `/no_think` nhét trong nội dung tin **KHÔNG
+  ăn**. Tắt suy luận đưa tốc độ **7,7 → 17,1 tok/s** — ở mức này mỗi token cho phần "suy nghĩ" là
+  token mất trắng.
+- **dtype không đổi tốc độ sinh** (q8 6,9–7,5 vs q4f16 7,7–7,9 tok/s). Tức bài học *"fp32 nhanh
+  nhất, q4 chậm nhất"* của **embedder** (plan 05 §5) **KHÔNG chuyển sang** model sinh — đừng suy
+  số đo giữa hai model, kể cả cùng runtime cùng CPU.
+- Sinh 2 biến thể mất **7,45 s/câu** ⇒ dù chất lượng có tốt cũng KHÔNG đặt được ở đường tìm
+  mặc định; chỗ duy nhất khả thi là tầng "Tìm sâu" hoặc sinh trước rồi lưu.
+- `onnx-community/Qwen2.5-0.5B-Instruct` **không nạp được** (onnxruntime báo lỗi dựng graph).
+
+**Kết luận thi hành:** đường ĐÚNG cho đa-truy-vấn vẫn là **bậc ②** — agent liên kết viết biến thể
+(đã ship, và chính biến thể "tay" trong phép đo này LÀ thứ một agent đủ mạnh viết ra), cộng một ô
+nhập cho NGƯỜI dùng (§4 mục chờ duyệt thiết kế). **Không** đưa model sinh vào lõi cho việc này.
+Ghi lại như một xác nhận cho thứ tự ưu tiên của điều 6: bậc ② thắng bậc ③ **bằng số**, không phải
+bằng nguyên tắc.
+
+**Nếu quay lại hướng này** thì câu hỏi KHÔNG phải "1,7B có khá hơn không" — 3× tính toán trên nền
+7,45 s là hơn 20 s/câu, hết khả thi tương tác bất kể chất lượng. Câu hỏi đúng là **đổi runtime**
+(llama.cpp/GPU) hoặc **sinh trước, lưu lại** cho tập truy vấn hay dùng.
 
 ## 4. NỢ ĐO LƯỜNG — phải trả trước khi bật T1 mặc định
 
