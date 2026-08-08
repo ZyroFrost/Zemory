@@ -20,7 +20,15 @@
  *   · `tool_result` đang ăn ~40% công embed có đáng giữ không (⇒ cắt được thì rút 43h → ~26h)
  *   · `prose` lên 768 hơn 256 bao nhiêu (mốc chính của đợt rebuild)
  */
-export type QueryKind = "prose" | "tool_use" | "tool_result";
+/**
+ * `keyword` (thêm 2026-08-09) — lối tìm PHỔ BIẾN NHẤT mà corpus từng MÙ HOÀN TOÀN: gõ 2–3 từ
+ * khoá, một đường dẫn, một mảnh lệnh. Đo 2026-08-08: **cả 64 câu cũ đều có lane AND rỗng**
+ * (câu tự nhiên dài không bao giờ khớp đủ mọi từ) ⇒ không có phép đo nào cho nhóm này, và
+ * cổng "không biết" (plan 17 §1.3) *không thể* nghiệm thu vì điều kiện ② của nó nói về đúng
+ * lane AND đó. Nhóm này cố ý dùng NGUYÊN VĂN từ khoá — trái hẳn lối "tránh trùng từ khoá" của
+ * lớp `prose`, và đó là chủ đích: hai lớp đo hai năng lực khác nhau, KHÔNG so chéo với nhau.
+ */
+export type QueryKind = "prose" | "tool_use" | "tool_result" | "keyword";
 
 export interface LabeledQuery {
   q: string;
@@ -65,6 +73,31 @@ export const NEGATIVE_CORPUS: NegativeQuery[] = [
   { q: "giá vé máy bay khứ hồi Hà Nội Đà Lạt tháng sau", lang: "vi", why: "không có nội dung du lịch/đặt vé" },
   { q: "cách chăm sóc lan hồ điệp sau khi tàn hoa", lang: "vi", why: "không có nội dung trồng trọt" },
   { q: "luật chơi cờ vua: tốt phong hậu trong trường hợp nào", lang: "vi", why: "không có nội dung cờ/game luật" },
+];
+
+/**
+ * CA ÂM **GIỮ RIÊNG** (thêm 2026-08-09) — chỉ để NGHIỆM THU, tuyệt đối KHÔNG dùng để chọn ngưỡng.
+ *
+ * Vì sao phải tách làm hai bộ: ngưỡng θ=0,82 của cổng "không biết" được hiệu chỉnh bằng cách
+ * quét trên `NEGATIVE_CORPUS` — tức **fit trên chính tập dùng để chấm nó**. Một cái thước hiệu
+ * chỉnh trên đúng dữ liệu nó sẽ chấm thì luôn cho điểm đẹp, và điều 12 gọi đó là chưa qua cổng.
+ * Bộ này chưa từng tham gia chọn θ, nên tỉ lệ chặn ở đây mới là con số nói thật.
+ *
+ * Cùng nguyên tắc chọn chủ đề như bộ trên: NGOÀI HẲN phạm vi kho (kho là hội thoại kỹ thuật/BI
+ * của một người dùng Việt Nam) để không thể "vô tình đúng"; tránh thuật ngữ kỹ thuật vì mọi tin
+ * kỹ thuật đều na ná nhau ở tầng ngữ nghĩa và sẽ đo nhầm sang bài toán khác.
+ */
+export const NEGATIVE_HOLDOUT: NegativeQuery[] = [
+  { q: "cách gấp áo sơ mi cho gọn khi xếp vào vali", lang: "vi", why: "kho không có nội dung sinh hoạt/gia đình" },
+  { q: "bao lâu nên thay dầu nhớt xe máy một lần", lang: "vi", why: "không có nội dung bảo dưỡng xe" },
+  { q: "trồng rau mầm tại nhà mấy ngày thì thu hoạch được", lang: "vi", why: "không có nội dung trồng trọt" },
+  { q: "phân biệt cà phê arabica với robusta khi pha phin", lang: "vi", why: "không có nội dung đồ uống/ẩm thực" },
+  { q: "tập plank đúng cách giữ bao lâu mỗi lần", lang: "vi", why: "không có nội dung thể dục" },
+  { q: "thủ tục đăng ký kết hôn ở phường cần những gì", lang: "vi", why: "không có nội dung hành chính hộ tịch" },
+  { q: "mèo con mấy tuần thì cai sữa và ăn được hạt", lang: "vi", why: "không có nội dung thú nuôi" },
+  { q: "đàn guitar bị rè dây thì căn chỉnh chỗ nào", lang: "vi", why: "không có nội dung nhạc cụ" },
+  { q: "nên chọn sơn nước loại nào cho tường ngoài trời", lang: "vi", why: "không có nội dung xây dựng/nội thất" },
+  { q: "cách tính tiền điện bậc thang của hộ gia đình", lang: "vi", why: "không có nội dung hoá đơn điện dân dụng" },
 ];
 
 export const RECALL_CORPUS: LabeledQuery[] = [
@@ -140,6 +173,36 @@ export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "khối thẻ giao diện hiển thị danh sách nguồn hàng đầu, có khoá dịch và ô chờ nạp", lang: "vi", kind: "tool_result", session: "88015817-4be1-4817-8f05-1d9e34786b4f", uuid: "8e719970-fa37-48cb-bd32-53f1585c816d" },
   { q: "bản đếm khoá app đọc được và kích thước ui.json, kèm danh sách còn lại trong hồ sơ người dùng", lang: "vi", kind: "tool_result", session: "381f6d09-1cea-46ab-9474-cd8fab5bd94f", uuid: "31bc78d2-ecfd-4dd7-9062-15b20e5fc3c6" },
   { q: "báo đã tạo xong tệp model_cover.ps1 trong thư mục tạm của phiên bên repo bảo trì Power BI", lang: "vi", kind: "tool_result", session: "ebaa7b66-963a-4edb-9642-7ad757f2574b", uuid: "e34baae5-9c7e-4fa5-8131-7f3cfe95dd98" },
+
+  // ── LỚP `keyword` (2026-08-09) — lối tìm PHỔ BIẾN NHẤT, corpus từng MÙ HOÀN TOÀN ───────
+  //
+  // ⚠ ĐỌC TRƯỚC KHI SO: lớp này dùng NGUYÊN VĂN từ khoá (tên file, tên hàm, tên gói) — TRÁI
+  // HẲN lối "tránh trùng từ khoá" của lớp `prose`. Không phải sơ suất mà là chủ đích: `prose`
+  // đo sức của VECTOR khi không có từ nào trùng, còn lớp này đo lane TỪ KHOÁ khi người ta gõ
+  // đúng chữ họ nhớ. So chéo hai lớp là vô nghĩa; mỗi lớp chỉ so với chính nó qua các lần đo.
+  //
+  // Vì sao bắt buộc phải có: đo 2026-08-08 thấy **cả 64 câu cũ đều có lane AND rỗng**, nên
+  // không phép đo nào phủ nhóm này — và cổng "không biết" (plan 17 §1.3) có điều kiện ② nói
+  // về đúng lane AND đó, tức nó KHÔNG THỂ nghiệm thu bằng corpus cũ. Đây cũng là nhóm duy
+  // nhất kiểm được lớp `tool_use` theo lối dùng THẬT (gõ lại mảnh lệnh/đường dẫn đã chạy) —
+  // 14 câu `tool_use` kia diễn giải bằng từ khác nên chúng đo một lối dùng có thể không có thật.
+  //
+  // Cách sinh (lặp lại được): rải mẫu theo bước id cố định trên tin cũ hơn 01/08, MỖI PHIÊN
+  // nhiều nhất một câu, chọn 3 token có tần số tài liệu 2–400 rồi giữ lại câu nào lane AND
+  // trả 1–60 ứng viên. Bản đầu lấy theo id giảm dần nên 14/14 câu rơi vào ĐÚNG MỘT phiên —
+  // corpus như thế đo cái phiên đó, không đo cái kho. Bản này trải 12 phiên/12 project.
+  { q: "fetch_history.py window-based fetching", lang: "en", kind: "keyword", session: "9ca1789c-0676-4272-a014-8a7186ec68b0", uuid: "dab0bdb2-e630-4fbb-a19a-292d28b1de4d" },
+  { q: "candle airflow.operators.python pythonoperator", lang: "en", kind: "keyword", session: "a34b501b-3c7e-4504-b6ff-484722473c56", uuid: "f0f0a6eb-ad2c-413b-8483-1fab48e40bc1" },
+  { q: "pydantic base_provider.py csv_provider.py", lang: "en", kind: "keyword", session: "89c2eef5-a20b-40b3-896c-c099bf3ec675", uuid: "cbeed3ef-11f1-4eaa-b96f-df9b1c9a97f6" },
+  { q: "apirouter app.core.config_loader configloader", lang: "en", kind: "keyword", session: "13856ad2-6e33-4e6c-ad38-86e55533e26f", uuid: "88401dd1-3bf1-4da6-9bfa-410867a4ef9d" },
+  { q: "handlers openai.py memory_handler.py", lang: "en", kind: "keyword", session: "54a2acbd-15bc-454b-9aa9-ddbab86563f5", uuid: "2d14404c-92d2-480c-96d1-43689cda458a" },
+  { q: "langgraph_workspace-langgraph-api langchain langgraph-api", lang: "en", kind: "keyword", session: "11d14bc7-6cde-4c38-8f2a-db8a72ce4c4c", uuid: "065f6a55-8b08-4ae1-99d6-18de44b12636" },
+  { q: "markitdown file.pdf output.md", lang: "en", kind: "keyword", session: "d35c5632-e5c3-4548-80fb-65d70985cabb", uuid: "63e68bc8-2f9d-495d-b846-d503443b9e36" },
+  { q: "generateimageprompt trackid urlsearchparams", lang: "en", kind: "keyword", session: "38d0af8f-d667-4606-94e2-51a372d300d5", uuid: "c9009fd5-2cef-4232-8e5f-dba9e3d869b8" },
+  { q: ".dockerignore progress.md run_dev.bat", lang: "en", kind: "keyword", session: "2e83fb0e-5f7f-4712-968c-b0b32acfab01", uuid: "bc9ed07d-c368-4ded-a616-49e32944dec1" },
+  { q: "headroom_memory memory_backend enable_memory", lang: "en", kind: "keyword", session: "98b4d9bf-69b2-476c-8c87-d322cc4d2c26", uuid: "75e522fd-281b-461d-8382-9496c9360c6e" },
+  { q: "claude-plugins-official anthropics installlocation", lang: "en", kind: "keyword", session: "a90f54d0-a483-4c3d-8872-f8bac2579e46", uuid: "0059262f-5c6c-498e-9b9e-c8e4788ddbda" },
+  { q: "flowstore.ts movenode positions", lang: "en", kind: "keyword", session: "22836668-7408-49ac-998d-c13b0f0a8278", uuid: "d7358bba-f375-4007-a724-221b0691f734" },
 ];
 
 /** Truy vấn theo lớp — `kind` khuyết nghĩa là `prose` (34 câu viết trước khi phân lớp). */

@@ -7,7 +7,7 @@
 import { findProjectRoot, normalizeRoot } from "../core/config.js";
 import { getCodeGraph } from "../memory/graph/graph-cache.js";
 import { fileImpact } from "../memory/graph/graph.js";
-import { getMessage, getMessageContext, searchHybrid } from "../memory/search.js";
+import { getMessage, getMessageContext, searchHybrid, searchMulti } from "../memory/search.js";
 import { searchSections, showSection } from "../docs/plan.js";
 import { searchChangelog } from "../docs/changelog.js";
 import { listPinned, pinSession, recallCard } from "../memory/recall.js";
@@ -81,11 +81,21 @@ export const TOOLS = [
       "for full text. Grade the hits before trusting them: if they do not actually answer the question, rewrite the query — synonyms, a " +
       "different phrasing, or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the " +
       "memory has nothing. Only when rewriting still fails, retry once with deep=true: it adds cross-encoder re-ranking, which measures " +
-      "~40x slower (tens of seconds) and has never beaten plain hybrid on this repo's labelled benchmark — a last resort, not a better default.",
+      "~40x slower (tens of seconds) and has never beaten plain hybrid on this repo's labelled benchmark — a last resort, not a better default. " +
+      "BETTER THAN REWRITING TWICE: send the rewrites TOGETHER in `also` on the FIRST call. Measured on this repo's labelled corpus, three " +
+      "phrasings of one question lift recall@10 from 39% to 50% and recall@40 from 45% to 64% (prose 68% to 94%) — the answer is often in " +
+      "the store but invisible to the exact words you picked. Costs one extra search per phrasing (~1s each).",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Search query." },
+        also: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Other phrasings of the SAME question (2 is usually enough): synonyms, the other language, keyword-style vs " +
+            "natural-sentence. Results are fused by rank, so a hit found by any phrasing surfaces. Do NOT put different questions here.",
+        },
         all: { type: "boolean", description: "Search all projects instead of the current project." },
         project: { type: "string", description: "Project root to scope search to; ignored when all=true." },
         limit: { type: "number", description: "Maximum hits, default 12, max 50." },
@@ -312,13 +322,18 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     // lần tìm**, không chỉ lần đầu. Agent gọi search liên tục, nên đó là thuế khổng lồ để
     // đổi lấy thứ chưa chứng minh được: trên corpus gate có nhãn, rerank 8/8 = hybrid 8/8.
     // `deep=true` khi agent thật sự cần xếp hạng kỹ hơn — nó tự chọn, có số để chọn.
-    const hits = await searchHybrid(query, {
+    // `also`: cách diễn đạt KHÁC của cùng câu hỏi, gộp bằng RRF (plan 17 §1.1). Đo trên
+    // corpus 56 nhãn: `@10` 39% → 50%, `prose@40` **68% → 94%**. Giá: mỗi lối nói thêm là
+    // một lượt tìm nữa (~0,9 s). Agent viết biến thể — điều 6②, lõi không sinh văn bản.
+    const also = Array.isArray(args.also) ? args.also.map(asString).filter((s) => s.trim()) : [];
+    const sOpts = {
       all: Boolean(args.all),
       project: currentProject(args, env),
       limit: clampLimit(args.limit, 12, 50),
       rerank: Boolean(args.deep),
       dbPath: env.dbPath,
-    });
+    };
+    const hits = also.length ? await searchMulti([query, ...also], sOpts) : await searchHybrid(query, sOpts);
     return toolResult(hits);
   }
 

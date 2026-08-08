@@ -1655,9 +1655,19 @@ export async function startUi(): Promise<void> {
         sinceMs: days > 0 ? Date.now() - days * 86400000 : undefined,
         hasAttachment: u.searchParams.get("withAtt") === "1",
       };
-      const deep = u.searchParams.get("deep") === "1";
+      // `also` = cách diễn đạt KHÁC của cùng câu hỏi (đa-truy-vấn RRF, plan 17 §1.1). Nhận
+      // nhiều tham số `also=` hoặc một chuỗi ngăn bằng `|`. Có `also` ⇒ BUỘC đi đường sâu:
+      // gộp nhiều lối nói cần lớp vector, mà lớp đó chỉ sống ở tiến trình con (nạp ONNX trên
+      // event loop của daemon là treo cả app — cùng lý do đường nhanh vẫn là FTS thuần).
+      const also = [
+        ...u.searchParams.getAll("also"),
+        ...(u.searchParams.get("alsoList") ?? "").split("|"),
+      ]
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const deep = u.searchParams.get("deep") === "1" || also.length > 0;
       if (!deep) return json(res, withAttachments(search(u.searchParams.get("q") ?? "", opts)));
-      const r = await deepSearchChild(u.searchParams.get("q") ?? "", opts);
+      const r = await deepSearchChild(u.searchParams.get("q") ?? "", opts, also);
       if (!r.ok) return json(res, { error: r.error, hits: [] });
       return json(res, withAttachments(r.hits));
     }

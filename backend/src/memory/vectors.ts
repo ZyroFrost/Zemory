@@ -399,6 +399,13 @@ export async function embedPending(
 export interface VecRank {
   rowid: number;
   rank: number;
+  /**
+   * Khoảng cách cosine tới truy vấn (0 = trùng khớp, càng lớn càng xa). Chỉ có khi chỉ mục
+   * vector trả được — cần cho cổng "không biết" (plan 17 §1.3): thứ hạng nói *cái nào gần
+   * nhất*, còn khoảng cách mới nói *có cái nào đủ gần hay không*. Hai câu hỏi khác nhau, và
+   * chỉ câu thứ hai phân biệt được "kho có đáp án" với "kho chẳng có gì mà vẫn xếp hạng".
+   */
+  dist?: number;
 }
 
 /**
@@ -407,7 +414,27 @@ export interface VecRank {
  * to their owning message and duplicates collapse to the best rank. Returns []
  * when the query can't be embedded or no vectors exist (fail-open → FTS-only).
  */
-export async function vectorRanks(query: string, opts: { dbPath?: string; pool?: number } = {}): Promise<VecRank[]> {
+export interface VectorProbe {
+  ranks: VecRank[];
+  /** Vector của TRUY VẤN, đã cắt đúng dims của chỉ mục — để người gọi chấm lại ứng viên mà
+   *  KHÔNG phải nhúng lần hai (lớp trộn cosine ở `search.ts` dùng nó). */
+  qv?: Float32Array;
+}
+
+/** Như `vectorRanks` nhưng trả kèm vector truy vấn (tránh nhúng hai lần cho cùng một câu). */
+export async function vectorProbe(query: string, opts: { dbPath?: string; pool?: number } = {}): Promise<VectorProbe> {
+  const ranks = await vectorRanks(query, opts, lastQueryVector);
+  return { ranks, qv: lastQueryVector.v };
+}
+
+/** Ô nhớ một-chỗ để `vectorRanks` trả vector truy vấn ra ngoài mà không đổi chữ ký công khai. */
+const lastQueryVector: { v?: Float32Array } = {};
+
+export async function vectorRanks(
+  query: string,
+  opts: { dbPath?: string; pool?: number } = {},
+  out?: { v?: Float32Array },
+): Promise<VecRank[]> {
   // Fully fail-open: embed failure, missing sqlite-vec, or no table → [] (FTS-only).
   try {
     const dbPath = opts.dbPath ?? currentMemoryDb();
@@ -428,6 +455,7 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
     const raw = await embedQuery(query, profile);
     if (!raw) return [];
     const qv = sliceNormalize(raw, dims);
+    if (out) out.v = Float32Array.from(qv);
     const db = vecConnect(dbPath);
     try {
       if (!tableExists(db)) return [];
@@ -435,8 +463,8 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
       // Over-fetch: several chunks of one long message can occupy KNN slots
       // before collapsing to a single message below.
       const rows = db
-        .prepare("SELECT rowid FROM vec_chunks WHERE embedding MATCH ? ORDER BY distance LIMIT ?")
-        .all(toBlob(qv), pool * 2) as { rowid: number }[];
+        .prepare("SELECT rowid, distance FROM vec_chunks WHERE embedding MATCH ? ORDER BY distance LIMIT ?")
+        .all(toBlob(qv), pool * 2) as { rowid: number; distance: number }[];
       const hasMap = tableExists(db, "vec_map");
       const mapGet = hasMap ? db.prepare("SELECT message_id FROM vec_map WHERE rowid = ?") : null;
       const seen = new Set<number>();
@@ -450,7 +478,7 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
         }
         if (seen.has(id)) continue;
         seen.add(id);
-        out.push({ rowid: id, rank: out.length });
+        out.push({ rowid: id, rank: out.length, dist: r.distance });
         if (out.length >= pool) break;
       }
       return out;
@@ -460,6 +488,38 @@ export async function vectorRanks(query: string, opts: { dbPath?: string; pool?:
   } catch {
     return [];
   }
+}
+
+/**
+ * Vector của một nhóm message, để so tin-với-tin (gộp near-duplicate — plan 17 §1.2).
+ *
+ * Chỉ đọc hàng CHÍNH của mỗi tin (`rowid = messages.id`), KHÔNG đi qua `vec_map`: cửa sổ
+ * chồng lấn của một tin dài không phải "tin khác", đưa vào chỉ làm nhiễu phép so. Tin nào
+ * không có vector thì KHÔNG có mặt trong Map — người gọi phải coi đó là "đứng riêng"
+ * (fail-open, điều 9), tuyệt đối không suy ra là "giống nhau".
+ */
+export function vectorsByRowid(ids: number[], dbPath: string = currentMemoryDb()): Map<number, Float32Array> {
+  const out = new Map<number, Float32Array>();
+  if (!ids.length) return out;
+  try {
+    const db = vecConnect(dbPath);
+    try {
+      if (!tableExists(db)) return out;
+      const dims = storedDims(db);
+      const get = db.prepare("SELECT embedding FROM vec_chunks WHERE rowid = ?");
+      for (const id of ids) {
+        const row = get.get(id) as { embedding: Buffer } | undefined;
+        if (row?.embedding && row.embedding.byteLength >= dims * 4) {
+          out.set(id, new Float32Array(row.embedding.buffer, row.embedding.byteOffset, dims));
+        }
+      }
+    } finally {
+      db.close();
+    }
+  } catch {
+    /* thiếu sqlite-vec / bảng chưa có ⇒ Map rỗng: mọi tin đứng riêng, recall không vỡ */
+  }
+  return out;
 }
 
 /** How many vectors are stored (chunks count individually). */

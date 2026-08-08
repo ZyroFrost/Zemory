@@ -17,7 +17,7 @@ import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, storageInfo } from "../memory/relocate.js";
-import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid } from "../memory/search.js";
+import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid, searchMulti } from "../memory/search.js";
 import {
   exportMemoryBundle,
   importMemoryBundle,
@@ -447,11 +447,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // (as this did until 2026-08-02) meant `search foo --limit 3` searched for "foo 3":
     // the stray token silently changed the ranking, which is worse than ignoring the flag
     // because the output still looks like a normal answer.
-    const VALUE_FLAGS = new Set(["--origin", "--limit"]);
+    // `--also` LẶP ĐƯỢC: cách diễn đạt KHÁC của cùng câu hỏi (plan 17 §1.1 — đa-truy-vấn RRF).
+    // Agent gửi 2–3 lối nói trong MỘT lời gọi; đo được `@10` 39% → 50%, `prose@40` 68% → 94%.
+    const alsoQueries = rest.flatMap((a, i) => (rest[i - 1] === "--also" && !a.startsWith("--") ? [a] : []));
+    const VALUE_FLAGS = new Set(["--origin", "--limit", "--also"]);
     const query = rest.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(rest[i - 1] ?? "")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory memory search <query> [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency] [--json]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory memory search <query> [--also <cách nói khác>]… [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency] [--json]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
@@ -478,9 +481,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const rerankOpt = forceRerank ? true : forceNoRerank ? false : undefined;
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
-    const hits = useHybrid
-      ? await searchHybrid(query, { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt, limit })
-      : search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
+    const sOpts = { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt, limit };
+    const hits = alsoQueries.length
+      ? await searchMulti([query, ...alsoQueries], sOpts)
+      : useHybrid
+        ? await searchHybrid(query, sOpts)
+        : search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
     // `--json`: đường máy-đọc, cho daemon gọi tìm-sâu ở TIẾN TRÌNH CON thay vì tự chạy ONNX
     // trên event loop của mình (xem jobs/searchjob.ts). In THUẦN JSON, không thêm chữ nào.
     if (rest.includes("--json")) {

@@ -23,10 +23,21 @@ const TIMEOUT_MS = 120_000; // rerank nguội có thể mất ~60s; quá mức �
 
 export type DeepSearchResult = { ok: true; hits: SearchHit[] } | { ok: false; error: string };
 
-export function deepSearchChild(query: string, opts: SearchOptions = {}): Promise<DeepSearchResult> {
+export function deepSearchChild(
+  query: string,
+  opts: SearchOptions = {},
+  /** Cách diễn đạt KHÁC của cùng câu hỏi — đa-truy-vấn RRF (plan 17 §1.1). Đo: `@10` 39% →
+   *  48%, `prose@40` 68% → 94%. Mỗi lối nói thêm là một lượt tìm nữa trong CÙNG tiến trình
+   *  con, nên model ONNX chỉ nạp một lần cho cả chùm. */
+  also: string[] = [],
+): Promise<DeepSearchResult> {
   const q = query.trim();
   if (!q) return Promise.resolve({ ok: true, hits: [] });
   const args = [cliEntry(), "memory", "search", q, "--json", "--hybrid"];
+  for (const a of also) {
+    const t = a.trim();
+    if (t) args.push("--also", t);
+  }
   if (opts.all) args.push("--all");
   if (opts.origin) args.push("--origin", opts.origin);
   if (opts.limit) args.push("--limit", String(opts.limit));
