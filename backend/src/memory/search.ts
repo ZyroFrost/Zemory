@@ -61,6 +61,9 @@ export const DEFAULT_SEARCH_LIMIT = 12;
 const RRF_K = 60;
 const W_WORD = 1.0;
 const W_TRI = 0.6;
+/** Luồng "khớp BẤT KỲ từ nào" — lưới vét cho truy vấn dài. Trọng số THẤP hơn AND có chủ ý:
+ *  nó rộng nên dùng để pool không rỗng, không phải để quyết thứ hạng đầu. */
+const W_OR = 0.6;
 const W_VEC = 1.0; // semantic stream weight (hybrid)
 // Số ứng viên kéo về TỪ MỖI LUỒNG trước khi gộp RRF. Đây là **TRẦN** của cả hệ: thứ không
 // lọt vào đây thì không lớp xếp nào cứu được. Đo 2026-08-03 trên corpus 34 câu có nhãn: với
@@ -145,13 +148,38 @@ interface WeightedStream {
   w: number;
 }
 
-/** The two FTS streams (word + trigram) for the query, weighted for RRF. */
+/**
+ * BA luồng FTS cho một truy vấn, gộp bằng RRF.
+ *
+ * Vì sao ba chứ không phải hai (đo 2026-08-08 trên corpus 56 câu có nhãn, kho 768d):
+ * bản cũ chỉ có `word` (AND ngầm) + `tri` (khớp NGUYÊN CỤM cả câu). Cả hai đều đòi hỏi quá
+ * chặt với **câu hỏi dài tự nhiên** — thứ agent thật sự gửi vào `memory_search`:
+ *   · `tri` khớp nguyên cụm ⇒ **56/56 câu trả 0 kết quả**. Nửa sức FTS chết hẳn, và vì
+ *     fail-open nên KHÔNG có gì báo — cổng vẫn xanh, chỉ recall âm thầm mất.
+ *   · `word` AND ⇒ trung bình còn **5,4 ứng viên** trên cả kho 215k tin; `prose` recall@10
+ *     chỉ **3%**. Pool bị cắt sạch TRƯỚC khi có gì để xếp hạng.
+ * Đây là lời giải cho báo cáo "search trả rác": hỏi câu dài thì nhận về một hai kết quả
+ * gần như ngẫu nhiên. Không phải lỗi model (đã đo: đồng nghĩa VI 0,824 vs khác nghĩa 0,602),
+ * cũng không phải số chiều.
+ *
+ * Thêm `word` OR làm LƯỚI VÉT, và cho `tri` khớp theo TỪ thay vì nguyên cụm. Kết quả đo:
+ *   câu DÀI  — prose @10 **3% → 38%** · tool_use 0% → 14% · tool_result 0% → 13%
+ *   câu NGẮN — không thua chỗ nào: tool_use 86%@1 giữ nguyên, tool_result 75% → **88%**@1,
+ *              prose @10 76% → 88%
+ *
+ * ⚠ GIỮ lane AND, đừng bỏ. Bảng câu-dài xét riêng thì bỏ AND còn hơn (@10 41% so với 38%),
+ * nhưng đo trên truy vấn NGẮN 2–3 từ khoá — lối dùng phổ biến nhất — thì bỏ AND kéo
+ * `tool_result` @1 **75% → 63%**. Đổi 3 điểm ở nhóm yếu lấy 12 điểm ở nhóm mạnh là lỗ.
+ * Trọng số OR cố ý THẤP hơn AND: nó rộng nên là lưới vét, không phải luồng chính.
+ */
 function ftsStreams(db: MemoryDB, terms: string[], scopedProject?: string): WeightedStream[] {
-  const wordMatch = terms.map((t) => `"${t}"`).join(" "); // implicit AND
-  const triMatch = `"${terms.join(" ")}"`; // phrase for substring/Vietnamese
+  const quoted = terms.map((t) => `"${t}"`);
+  const wordAnd = quoted.join(" "); // AND ngầm — chính xác cao khi truy vấn NGẮN
+  const anyTerm = quoted.join(" OR "); // lưới vét — cứu truy vấn DÀI
   return [
-    { ranks: streamRanks(db, "messages_fts", wordMatch, scopedProject), w: W_WORD },
-    { ranks: streamRanks(db, "messages_fts_tri", triMatch, scopedProject), w: W_TRI },
+    { ranks: streamRanks(db, "messages_fts", wordAnd, scopedProject), w: W_WORD },
+    { ranks: streamRanks(db, "messages_fts_tri", anyTerm, scopedProject), w: W_TRI },
+    { ranks: streamRanks(db, "messages_fts", anyTerm, scopedProject), w: W_OR },
   ];
 }
 

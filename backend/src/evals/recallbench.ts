@@ -16,7 +16,7 @@
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { type SearchHit, search, searchHybrid } from "../memory/search.js";
-import { corpusByKind, type LabeledQuery, RECALL_CORPUS } from "./recall-corpus.js";
+import { corpusByKind, type LabeledQuery, NEGATIVE_CORPUS, RECALL_CORPUS } from "./recall-corpus.js";
 
 export type { LabeledQuery };
 
@@ -76,6 +76,20 @@ export interface RecallBenchResult {
    *  bảng mà không ai hay. Tỉ lệ tính trên 2/14 câu KHÔNG so được với tỉ lệ tính trên 14/14,
    *  và đó đúng là kiểu số liệu sai mà không báo lỗi. */
   coverage: Record<string, { have: number; total: number }>;
+  /** Mặt TRÁI: hệ có bịa không. Đo trên `NEGATIVE_CORPUS` — câu hỏi kho chắc chắn không có
+   *  câu trả lời. Thiếu vế này thì mọi thay đổi nới pool đều "cải thiện", vì cái thước chỉ
+   *  đo một chiều (lỗ đo được 2026-08-08, ngay sau khi thêm luồng OR). */
+  negative?: NegativeResult;
+}
+
+export interface NegativeResult {
+  n: number;
+  /** Số câu hệ trả về RỖNG — hành vi lý tưởng cho câu hỏi không có đáp án. */
+  empty: number;
+  /** Số kết quả trung bình trả về khi kho KHÔNG có gì để trả. Càng thấp càng tốt. */
+  hitsAvg: number;
+  /** Điểm RRF của kết quả đầu, trung bình. So với ca dương để biết hệ có "tự tin sai" không. */
+  topScoreAvg: number;
 }
 
 /** Corpus là module TS (không phải .json) để `tsc` ship nó theo `dist` — repo này không có
@@ -102,6 +116,9 @@ export interface RecallBenchOptions {
   limit?: number;
   /** Bỏ lane rerank (nó chậm hàng chục lần). */
   skipRerank?: boolean;
+  /** Bỏ vế ÂM TÍNH. Chỉ dùng khi cố tình chỉ muốn số recall — mặc định KHÔNG bỏ, vì
+   *  thiếu nó thì mọi thay đổi nới pool đều trông như cải thiện thuần. */
+  skipNegative?: boolean;
   topN?: number;
 }
 
@@ -175,7 +192,26 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
     const k = it.q.kind ?? "prose";
     (coverage[k] ??= { have: 0, total: 0 }).have++;
   }
-  return { corpus: corpus.length, resolved: items.length, missing, lanes, coverage };
+  // Mặt TRÁI — chạy trên cùng đường `hybrid` (đường mặc định của recall), vì đó là thứ
+  // người dùng thật chạm vào. Đo ba con số bổ nhau: có trả rỗng không · trả bao nhiêu ·
+  // điểm đầu bao nhiêu (so với ca dương thì mới biết hệ "tự tin sai" tới mức nào).
+  let negative: NegativeResult | undefined;
+  if (!opts.skipNegative && NEGATIVE_CORPUS.length) {
+    let empty = 0, hits = 0, score = 0;
+    for (const nq of NEGATIVE_CORPUS) {
+      const r = await searchHybrid(nq.q, { limit: topN, all: true, rerank: false });
+      if (!r.length) empty++;
+      hits += r.length;
+      score += r[0]?.score ?? 0;
+    }
+    negative = {
+      n: NEGATIVE_CORPUS.length,
+      empty,
+      hitsAvg: hits / NEGATIVE_CORPUS.length,
+      topScoreAvg: score / NEGATIVE_CORPUS.length,
+    };
+  }
+  return { corpus: corpus.length, resolved: items.length, missing, lanes, coverage, negative };
 }
 
 export function formatRecallBench(r: RecallBenchResult): string[] {
@@ -229,6 +265,23 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
       out.push(`  ${k.padEnd(16)} ${`0/${c.total}`.padStart(6)}   — KHÔNG nhãn nào giải được trên kho này ⇒ lớp này CHƯA được đo`);
     }
     out.push("");
+  }
+
+  // MẶT TRÁI — in NGAY dưới bảng recall, không để cuối: người đọc phải thấy cả hai chiều
+  // cùng lúc, nếu không sẽ đọc recall tăng là "tốt lên" mà không biết giá phải trả.
+  if (r.negative) {
+    const g = r.negative;
+    out.push("");
+    out.push(
+      `  ÂM TÍNH (${g.n} câu hỏi kho KHÔNG có đáp án — đo "hệ có bịa không"):` +
+        ` trả rỗng ${g.empty}/${g.n} · trung bình ${g.hitsAvg.toFixed(1)} kết quả · điểm đầu TB ${g.topScoreAvg.toFixed(4)}`,
+    );
+    out.push(
+      g.empty === g.n
+        ? "  → tốt: không câu nào bịa ra kết quả."
+        : `  → ${g.n - g.empty}/${g.n} câu VẪN trả kết quả dù không có gì để trả. So ĐIỂM ĐẦU với ca dương:` +
+          " gần bằng nhau ⇒ hệ 'tự tin sai', người đọc không phân biệt được thật/rác.",
+    );
   }
 
   const hy = r.lanes.find((l) => l.lane === "hybrid");
