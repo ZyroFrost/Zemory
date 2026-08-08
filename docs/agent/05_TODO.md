@@ -3,7 +3,31 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔴 ĐANG CHẠY — dựng lại chỉ mục ở 768 chiều + fp32 (máy `SS01-IT-12`)
+## ✅ XONG 2026-08-08 — kho 768 chiều + fp32 ĐÃ TRÁO, đang chạy thật
+
+> **Đo trên daemon 4444 sau khi tráo:** `dbPath` = `data/global_memory.db` · **215.452 tin ·
+> 1.290 phiên** · vector **157.524 · coverage 99,2% · dims 768d** · `quick_check ok`.
+> Kho 256 cũ GIỮ LẠI làm bản lùi: `data/global_memory.256d-backup-20260808.db` (1.234 MB).
+>
+> **Cổng điều 12 đã vượt** — mốc phải thắng là `41%@10`, đo trên lớp `prose` (mốc cũ chính là
+> đo trên corpus toàn prose): **41% → 62%** @10, MRR 0,245 → 0,354. Bảng đầy đủ theo lớp trong
+> `06_CHANGES`. `tool_use` giữ **0%** — đúng như đã cảnh báo trước: đợt này KHÔNG lấp lớp chưa
+> bao giờ có vector.
+>
+> ⚠ **Kỳ vọng từ bảng `dims-test` là QUÁ LẠC QUAN, đừng dùng lại làm mốc:** bảng đó hứa
+> `recall@1` **91%** ở 768; thực đo trên kho thật chỉ **18%**. Không mâu thuẫn — `dims-test`
+> so vector-với-vector trên tập ứng viên hẹp, còn đây là recall thật xuyên 215k tin qua hybrid.
+> Phần THỨ HẠNG TƯƠNG ĐỐI của bảng cũ thì đúng, và đó mới là thứ nó dùng để quyết.
+>
+> ✅ **Rerank: ĐÃ ĐO, KHÔNG được bật mặc định** (mục "rerank chưa đo" bên dưới đóng theo).
+> Ở kho 768: hybrid `41%@10` nhưng hybrid+rerank chỉ `27%@10`, MRR 0,220 → 0,160, và tốn
+> **11 giây/truy vấn** so với 0,68 giây. Nó làm recall TỤT chứ không tăng.
+>
+> ✅ **Đã xoá `global_memory.HONG-20260804-*.db`** (1.026 MB, user duyệt 2026-08-08). An toàn
+> vì SHA256 cho thấy nó TRÙNG KHÍT hai bản trong `data/corrupt-20260803-091106/` — vật chứng
+> vẫn còn đủ hai bản, đúng ràng buộc "không xoá cho tới khi truy xong nguyên nhân gốc".
+
+## 🔴 Hồ sơ đợt rebuild (giữ để tra) — dựng lại chỉ mục ở 768 chiều + fp32
 
 > Kho thật `✓ lành` · **~207k tin · 1.284 phiên** · chìa `e6fb0eff` · repo `D:\huy.nguyen\Tool\Zemory`.
 > Số đo + lý do đầy đủ: `06_CHANGES [2026-08-05]`. Cổng đã xanh: **510/510** · `conform` ✓ · đã push **1.1.1**
@@ -31,9 +55,13 @@
     (đã giết job một lần). Cần build thì `npx tsc` (ghi đè tại chỗ, không xoá).
   - ⚠ **Tiến trình agent tự phóng đều bị dọn** (`Start-Process`, WMI `Win32_Process.Create`);
     `schtasks` thì bị bộ lọc quyền chặn. Chỉ lệnh nền do harness quản lý mới sống qua nhiều lượt.
-- [ ] **TRÁO kho sau khi xong (thứ tự bắt buộc):** `bench --recall` trên bản sao phải thắng mốc
-  **41%@10** (điều 12) → thay file kho thật → `memory scan` nạp lại transcript sinh ra trong lúc
-  chờ (idempotent, đọc từ đĩa) → `memory embed` bù phần mới ở 768/fp32.
+- ✅ **TRÁO KHO — XONG 2026-08-08.** Thực hiện đúng thứ tự: tắt daemon (nó giữ file) → đổi tên
+  256 thành bản lùi → chép 768 vào vị trí → `quick_check ok` → `memory scan` (**+9.530 tin**,
+  6 giây) → `memory embed` bù ở 768/fp32 → daemon bật lại đọc đúng kho mới.
+  **Bài học thao tác:** gói TOÀN BỘ bước thay file vào MỘT lần chạy script, để hook capture
+  (đang bật) không chen vào giữa lúc file đang đổi tên; và script có chốt "file còn bị tiến
+  trình khác giữ sau 30 s ⇒ DỪNG, không thay" — thay file đang mở đúng là cách hỏng kho mà
+  repo này đã trả giá hai lần.
   > 📏 **ĐO HAI LƯỢT, CẢ HAI SAU KHI EMBED XONG — đừng chạy song song với job** (bài học đo được
   > 2026-08-07: bench và embed cùng chạy mô hình ONNX trên một CPU nên giẫm chân nhau — bench ngốn
   > 3.208 s CPU mà 19 phút mới in nổi dòng tiêu đề, embed tụt về **0 chunk/30 s**; dừng bench thì
@@ -60,9 +88,10 @@
 - [ ] **HOOK ĐANG BẬT** (user bật lại 2026-08-05 chiều, sau cửa sổ gate). Hệ quả: **KHÔNG chạy
   `npm run check`** khi hook còn bật (60 test song song + hook ghi = tổ hợp hỏng kho 04/08);
   muốn chạy gate → user tắt (`zemory hook uninstall`) rồi bật lại — agent bị bộ lọc quyền chặn cả hai.
-- [ ] **Rerank vẫn `q8`, CHƯA đo** — model khác (cross-encoder `bge-reranker-base`), số đo của
-  embed KHÔNG suy ra được cho nó. User chốt tạm chấp nhận vì rerank chỉ chạy lúc TRUY VẤN, không
-  dính đường nạp. Đo xong mới được đổi mặc định (điều 12).
+- ✅ **Rerank — ĐÃ ĐO 2026-08-08, kết luận: GIỮ TẮT mặc định.** Trên kho 768: hybrid `41%@10`
+  · hybrid+rerank `27%@10` (MRR 0,220 → 0,160) · **11 s/truy vấn** so với 0,68 s. Nó làm recall
+  TỤT, không phải tăng. Mục này trước ghi "chưa đo, tạm chấp nhận" — nay đóng bằng số.
+  *(dtype rerank vẫn `q8`; không còn ý nghĩa để đo tiếp khi lane này không bật.)*
 - [ ] **Sau khi TRÁO: `zemory reindex`** một lần cho chỉ mục docs tươi (đợt dọn 78 dòng doc đường
   cũ 05/08 đã xong — Zemory 23 + 6 repo khác 55, xem `06_CHANGES [2026-08-05b]`).
   Kèm theo tự động: digest toàn kho sẽ TỰ DỰNG LẠI LƯỜI ở scan/scheduler kế tiếp — `DIGEST_VERSION`
@@ -78,9 +107,14 @@
 - [ ] **Sao lưu NGOÀI máy — đã có MỘT phần:** bundle `.enc` trên Drive (baseline 289,7 MB + delta,
   auto-sync 05/08) phủ được phần NGUỒN; backup local 1,25 GB vẫn nằm **cùng ổ** với kho, và công
   embed 43 giờ chưa được bảo hiểm (bundle lean không chở vector) → sau tráo cân nhắc `export --full`.
-- [ ] **Xoá `data\global_memory.HONG-20260804-*.db`** (1.025 MB) khi chắc kho mới chạy ổn.
-  Cùng đợt: `attic\zemory-lab\lab.db` (1,18 GB, bản lab máy cũ đã lỗi thời) + folder
-  `D:\huy.nguyen\zemory-lab` (sau khi tráo xong) — đều chờ user gật vì là XOÁ.
+- ✅ **`global_memory.HONG-20260804-*.db` — ĐÃ XOÁ 2026-08-08** (1.026 MB, user duyệt). Kiểm
+  SHA256 trước khi xoá: trùng khít hai bản trong `data/corrupt-20260803-091106/` ⇒ vật chứng
+  còn nguyên. Đây là cách xoá đúng với thứ được đánh dấu "không được xoá": chứng minh nó là
+  BẢN SAO trước, đừng tin mỗi tên file.
+- [ ] **Còn hai mục xoá, CHỜ user:** `attic\zemory-lab\lab.db` (1,18 GB, bản lab máy cũ) +
+  folder `D:\huy.nguyen\zemory-lab`. ⚠ **Khuyến nghị GIỮ `zemory-lab` thêm vài ngày** — chính
+  `lab.db` trong đó là NGUỒN của kho 768 đang chạy; xoá sớm là bỏ mất đường lùi thứ hai khi
+  bản lùi 256 đã cũ hơn hiện trạng. Ổ D còn **139 GB**, không có áp lực dung lượng.
 
 ## 🚨 DB THẬT BỊ HỎNG 2026-08-03 — PHỤC HỒI ĐỦ · nguyên nhân gốc ĐÃ TÌM RA — còn MỘT việc code
 > 🔄 **Cập nhật 2026-08-05 (soát TODO):** vế "còn treo nguyên nhân gốc" của mục này ĐÃ ĐÓNG —
