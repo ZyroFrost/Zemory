@@ -82,7 +82,10 @@ function runStep(label: string, args: string[]): Promise<number> {
       c = spawn(process.execPath, [cliEntry(), ...args], {
         stdio: "ignore",
         windowsHide: true,
-        env: { ...process.env, ZEMORY_DAEMON_CHILD: "1" },
+        // ZEMORY_DAEMON_PID: để con phân biệt khoá CỦA MÌNH (daemon giữ hộ) với khoá của
+        // một CLI NGOÀI đang ghi. Thiếu nó thì con không có cách nào biết, và sẽ ghi đè —
+        // đúng ca 2026-08-08 (hai `embed --all` cùng kho).
+        env: { ...process.env, ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: String(process.pid) },
       });
     } catch (e) {
       log(`${label}: could not spawn (${e instanceof Error ? e.message : e})`);

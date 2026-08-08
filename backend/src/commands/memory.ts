@@ -36,7 +36,7 @@ import {
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
-import { acquireCliWriteLock, releaseCliWriteLock } from "../jobs/writegate.js";
+import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
 
 function fmtDate(iso: string | null): string {
@@ -187,6 +187,23 @@ export async function cmdMemory(args: string[]): Promise<void> {
   // the daemon already serialized it via its job token — gating here made the
   // child wait on ITSELF and its hold blocked the sync button for the whole run.
   if (process.env.ZEMORY_DAEMON_CHILD === "1") {
+    // Con của daemon bỏ qua cổng HTTP + khoá file CỦA CHÍNH NÓ — daemon đã giữ job token,
+    // gating ở đây từng làm nó chờ chính mình. NHƯNG token đó chỉ điều phối giữa các job
+    // CỦA DAEMON; nó mù với CLI chạy tay bên ngoài.
+    //
+    // 🔴 Đây là nguyên nhân GỐC của ca 2026-08-08 (hai `embed --all` cùng ghi một kho): khi
+    // user bật app, scheduler sinh con với cờ này, con bỏ qua sạch write-gate và ghi đè lên
+    // một backfill đang chạy — trong khi `cli-write.lock` ghi rõ pid khác đang giữ. Bỏ qua
+    // khoá CỦA MÌNH là đúng; bỏ qua khoá của NGƯỜI KHÁC là đúng tổ hợp đã hỏng kho 03/08.
+    if (HEAVY_WRITES.has(sub)) {
+      const held = cliWriteHolder();
+      if (held && held.pid !== process.pid && held.pid !== Number(process.env.ZEMORY_DAEMON_PID)) {
+        console.error(
+          `zemory memory ${sub} (job nền): BỎ QUA — CLI khác đang ghi kho (pid ${held.pid}, ${held.label}).`,
+        );
+        return; // lượt nền bỏ qua là chuyện thường; lượt sau sẽ lượm lại
+      }
+    }
     await cmdMemoryInner(args);
     return;
   }
@@ -196,18 +213,48 @@ export async function cmdMemory(args: string[]): Promise<void> {
   let locked = false;
   if (HEAVY_WRITES.has(sub)) {
     // KHOÁ FILE trước, độc lập với daemon. Cổng HTTP bên dưới chỉ để bảo scheduler nhường;
-    // nó KHÔNG loại trừ CLI↔CLI và biến mất khi daemon chết (xem `writegate.ts`). Chờ tối đa
-    // 2 phút rồi CHẠY LUÔN: khoá là cố vấn, không được biến thành chỗ treo việc người dùng.
-    for (let i = 0; i < 24; i++) {
+    // nó KHÔNG loại trừ CLI↔CLI và biến mất khi daemon chết (xem `writegate.ts`).
+    //
+    // 🔴 SỬA 2026-08-08 — bản trước chờ 2 phút rồi CHẠY LUÔN, và điều đó biến khoá thành vô
+    // nghĩa cho đúng loại việc cần nó nhất. Bắt được ĐANG XẢY RA: hai `memory embed --all`
+    // cùng ghi một kho (pid 15640 + pid 11092 do daemon sinh khi vừa bật app) — đúng tổ hợp
+    // đã hỏng kho 03/08. `cli-write.lock` lúc đó ghi rõ pid 15640 đang giữ, tức khoá ĐÃ từ
+    // chối đúng; chỉ là NGƯỜI GỌI bỏ qua lời từ chối. Với job embed dài hàng giờ thì nhánh
+    // "chạy luôn" là nhánh LUÔN LUÔN được chọn.
+    //
+    // Nay phân biệt khoá TƯƠI với khoá MỒ CÔI thay vì đếm thời gian chờ. Ý định gốc của
+    // "chờ rồi chạy" là chống kẹt vĩnh viễn (điều 9) — nhưng `cliWriteHolder()` ĐÃ tự loại
+    // khoá của pid chết và khoá quá `CLI_LOCK_STALE_MS`. Nên khoá còn sống = chủ nó còn sống
+    // THẬT ⇒ phải DỪNG, không ghi đè. Muốn ép thì có `--force`, và đó là lựa chọn có ý thức.
+    // Chờ NGẮN (30 s), không phải 2 phút: đủ cho một job ngắn (digest/scan nhỏ) chạy xong và
+    // nhường, nhưng không bắt người gõ lệnh ngồi đợi 2 phút chỉ để nhận lời từ chối. Job dài
+    // hàng giờ thì chờ bao lâu cũng vô ích — trả lời sớm mới đúng.
+    const forced = args.includes("--force");
+    for (let i = 0; i < (forced ? 1 : 6); i++) {
       const g = acquireCliWriteLock(sub);
       if (g.ok) {
         locked = true;
         break;
       }
+      if (forced) break;
       if (i === 0) console.log(`  tiến trình khác đang ghi kho (pid ${g.heldBy?.pid}, ${g.heldBy?.label}) — chờ…`);
       await new Promise((r) => setTimeout(r, 5000));
     }
-    if (!locked) console.log("  chờ quá lâu — chạy tiếp, engine sẽ tự lùi-thử-lại nếu kẹt.");
+    if (!locked) {
+      const held = cliWriteHolder();
+      if (held && !forced) {
+        const mins = Math.round((Date.now() - held.at) / 60_000);
+        console.error(
+          `zemory memory ${sub}: DỪNG — tiến trình khác đang ghi kho (pid ${held.pid}, ${held.label}, đã ${mins} phút).\n` +
+            "  Hai tiến trình cùng ghi vector là đúng tổ hợp đã hỏng kho 2026-08-03, nên lệnh này KHÔNG chạy đè.\n" +
+            "  → chờ nó xong rồi chạy lại; hoặc `--force` nếu bạn chắc tiến trình kia không còn ghi.",
+        );
+        process.exitCode = 1;
+        return;
+      }
+      // Khoá đã mồ côi (chủ chết / quá hạn) — hoặc user ép bằng --force.
+      console.log(`  khoá ghi ${held ? "bị ép bỏ qua (--force)" : "đã mồ côi"} — chạy tiếp.`);
+    }
     port = await daemonPort();
     if (port) {
       const acquire = async (): Promise<{ busy?: boolean }> => {
