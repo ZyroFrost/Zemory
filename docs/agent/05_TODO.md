@@ -723,7 +723,9 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   route nên route MỚI tự vào graph, không cần sửa gì. Vế `resolved` vẫn chờ typed contract.)*
   Đã ship: `graph-seam.ts` khớp chuỗi route FE↔BE, nhãn
   `inferred·textual`, ba bề mặt (`/code-graph` · `graph export`/`edge` · `graph impact` — đo trên
-  zemory: `ui.ts` ← 10 file FE kèm route). **CÒN MỞ đúng một vế:** tầng `resolved` field-level cần
+  zemory: `ui.ts` ← 10 file FE kèm route; soát 2026-08-09 sau khi `ui.ts` thêm tham số `also` —
+  cạnh `api` sinh bằng khớp chuỗi route nên route mới TỰ vào graph, không phải sửa gì).
+  **CÒN MỞ đúng một vế:** tầng `resolved` field-level cần
   **typed contract** (OpenAPI/tRPC) — chưa repo nào có contract; khi nào có thì thêm parser, và
   nhớ kết luận bên dưới: *codegen+tsc mới là KHOÁ CỨNG, graph chỉ là KÍNH SOI*. Hồ sơ phân tích
   gốc giữ nguyên bên dưới để tra lý do.
