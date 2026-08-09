@@ -3,6 +3,45 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-09 — recall: đọc mục này TRƯỚC khi làm gì tiếp
+
+**Trạng thái thước (bench chính thức, 68 nhãn, `bench --recall --no-rerank`):**
+
+| lane | nghiêm | tương đương |
+|---|---|---|
+| hybrid | `@10` 35% · MRR 0,288 | `@10` **54%** · `@40` **63%** · MRR **0,413** |
+| FTS-thuần | `@10` 28% · MRR 0,191 | `@10` 44% · MRR 0,312 |
+
+Đầu phiên chỉ có MỘT thước và `@10` 32% · MRR 0,235. **Đọc `plan/17` §1.2b trước khi đo lại bất
+cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng là ra quyết định sai.
+
+**Mặc định đang chạy:** đa-truy-vấn (agent gửi `also`) · trộn cosine `vecMix` · gộp near-dup +
+`similarIds` · hình phạt tool **hai mức theo lane** (FTS 0,3 · hybrid 0,7). Đang TẮT: cổng
+"không biết" (`ZEMORY_ABSTAIN=1` để bật — trượt cổng nghiêm, chặn 5/8+4/10, giết oan 0/68).
+
+- [ ] **CHẠY JOB EMBED `Edit`+`Write` — đã chứng minh ĐÁNG, chỉ chờ giờ máy.** Phép thử RAM:
+  lớp `tool_use` từ **0% tuyệt đối** lên `@10` **100%** (pool 326 tin có 218 tin tool làm nhiễu
+  cùng hạng). Backlog đo thật **20.196 tin**, ~9–16 giờ, ~60 MB.
+  Lệnh: `ZEMORY_EMBED_TOOLS=Edit,Write node dist/cli.js memory embed --all`
+  ⚠ Chạy MỘT MÌNH, **đừng bật app trong lúc chạy** (sự cố hai-writer 08/08). `ZEMORY_EMBED_TOOLS`
+  nay nhận DANH SÁCH tên tool — đừng dùng `=1`, nó embed cả 62.284 tin gồm `Read` (chỉ là đường
+  dẫn, 117 ký tự) và lệnh shell, gấp ~3 lần công cho phần vector gần như vô dụng.
+- [ ] **Backlog embed mặc định 674 tin** (tin của chính phiên này) — `memory embed` một lượt.
+- [ ] **Đo lại 2 mục dưới thước TƯƠNG ĐƯƠNG** (chưa làm, thước mới có thể đảo tiếp):
+  ① cổng "không biết" — số ca âm không đổi, nhưng "mất bao nhiêu kết quả đang ở top-10" thì đổi.
+  ② `vecMix` — bảng 09/08 cho thấy tắt nó thì `tool_result` MRR sập **0,209 → 0,074**, tức lớp đó
+  sống gần như hoàn toàn nhờ nó; đáng xác nhận lại bằng thước tương đương.
+- [ ] **(ĐỀ XUẤT `02_RULES` — chờ user chốt) Hai luật ĐO rút ra từ phiên này.**
+  ① *"N phép thử cùng thất bại theo CÙNG MỘT hướng ⇒ nghi THƯỚC, không nghi N thiết kế"* — tôi
+  chạy **tám** giả thuyết, diễn giải tám lần như tám vấn đề kỹ thuật riêng, trước khi hỏi thước có
+  đếm đúng không. ② *"Đo một cấu hình bằng bề mặt HẸP HƠN bề mặt sẽ chịu ảnh hưởng"* — dính **hai
+  lần trong một phiên**: T3 chấm theo "cụm" thay vì tin TRẢ VỀ (báo +29% giả); hình phạt tool quét
+  chỉ bằng `searchHybrid` nên làm hỏng đường nhanh của app (đã kịp commit rồi mới phát hiện).
+- [ ] **`autosync` đang TẮT** — tôi tắt 08/08 để chặn writer thứ hai lúc embed chạy. Bật lại ở
+  ⚙ → ⚡ Tự động khi thấy ổn (hoặc đổi khoá `autosync` trong file config cạnh kho — **đừng viết
+  đường dẫn đó trong backtick**, nó gitignored nên `todo verify` báo ref chết; tôi vừa dính đúng
+  lỗi mà mục rerank bên dưới đã cảnh báo).
+
 ## ✅ XONG 2026-08-08 — kho 768 chiều + fp32 ĐÃ TRÁO, đang chạy thật
 
 > **Đo trên daemon 4444 sau khi tráo:** `dbPath` = `data/global_memory.db` · **215.452 tin ·
@@ -280,6 +319,11 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
 - [ ] **User tắt rerank** — nút trong UI (⚙), hoặc đổi khoá `rerank` thành `false` trong file
   config cạnh kho (gitignored nên `todo verify` không thấy đường dẫn — đừng viết nó dạng
   backtick đường dẫn, gate sẽ báo ref chết). KHÔNG tự đổi: đây là setting hiển thị của user.
+  ⚠ **Soát 2026-08-09 (nguồn ③ chạy thật): VẪN đang `true`** — chưa tắt. Và giờ có thêm hai lý do
+  mạnh hơn: ① đo lại trên 25 câu có đáp án TRONG pool, rerank vẫn thua hybrid (MRR 0,571 → 0,459)
+  và tốn 10 s/truy vấn · ② **đã có bản thay thế rẻ hơn 270 lần đang chạy mặc định**: trộn cosine
+  (`vecMix`) thắng ở đúng chỗ cross-encoder thua, giá 119 ms. Tức bật rerank hiện nay là trả 10 s
+  để nhận kết quả tệ hơn thứ đã có sẵn miễn phí.
 - [ ] **Sau khi tắt: đo lại** một truy vấn thật để xác nhận header không còn `rerank` và
   thời gian về ~0,7 s.
 - [ ] **Cân nhắc sửa gốc:** giá trị `true` sót lại từ thời mặc-định-sai nên được coi là NỢ và
