@@ -45,7 +45,56 @@ mô tả tool dặn agent gửi 2–3 cách diễn đạt. Một truy vấn ⇒ 
 
 **Giá:** ~3× thời gian một lần tìm (0,9 s → ~2,7 s). Chấp nhận được vì recall là on-demand (điều 8).
 
-### 1.2 T3 — Gộp near-duplicate — 🔴 **TRƯỢT CỔNG, đã ship dạng OPT-IN, mặc định TẮT**
+### 1.2b HAI THƯỚC CÓ THỂ NÓI NGƯỢC NHAU — và đó là dữ kiện, không phải lỗi (2026-08-09)
+
+> Đây là bài học lớn nhất của cả plan, rút ra sau khi **tám** giả thuyết liên tiếp thất bại theo
+> **cùng một hướng** (`@40` lên, `@1` xuống). Tám lần cùng một dấu vết là dấu hiệu **thước sai**,
+> không phải tám thiết kế sai — mà tôi đã diễn giải nó tám lần như tám vấn đề kỹ thuật riêng.
+
+**Phép đo tách bạch:** soi 6 ca "đáp án bị tụt do đa-truy-vấn" → kẻ chiếm chỗ **gần trùng nội
+dung (≥0,80): 4/6 · lạc đề (<0,60): 0/6**. Tức recall trả về *một tin tương đương từ phiên khác*,
+và thước nhãn-đơn-uuid đếm là TRƯỢT. Chuẩn ngành (Natural Questions) tính hit khi **bất kỳ** đoạn
+nào chứa đáp án ⇒ thước cũ **phạt oan đúng thứ hệ làm tốt**.
+
+**Nay bench in HAI DÒNG cạnh nhau** (`recallbench.ts`, ngưỡng `ZEMORY_EQUIV_SIM` = 0,85 — các tin
+chiếm chỗ đo được nằm ở 0,757–0,889 nên 0,85 đòi *giống rõ*, không phải chỉ cùng chủ đề):
+
+| cùng một hệ, không đổi dòng code nào | @1 | @3 | @10 | @40 | MRR |
+|---|---|---|---|---|---|
+| hybrid · NGHIÊM | 25% | 37% | 44% | 51% | 0,319 |
+| hybrid · **TƯƠNG ĐƯƠNG** | **35%** | **44%** | **49%** | **60%** | **0,407** |
+
+`prose` MRR 0,458 → **0,552** · `keyword` 0,373 → **0,515** · `tool_result@10` 38% → **63%**.
+Lớp `tool_use` giữ 0% ở CẢ HAI — không có vector thì không có gì để tương đương với gì (thước
+tương đương **rơi về nghiêm** khi thiếu vector; không bịa điểm cho lớp không đo được — điều 12).
+
+**GIỮ CẢ HAI, không thay thế.** Nghiêm trả lời *"có trả đúng cái được đánh dấu"*; tương đương trả
+lời *"người dùng có nhận được câu trả lời"*. Dùng lẫn hai câu là ra quyết định sai — đúng lỗi đã
+mắc suốt 8 phép thử. **Ở repo này TƯƠNG ĐƯƠNG cầm lái**, vì zemory là bộ nhớ để agent **đọc và
+hiểu việc**, không phải hệ trích dẫn đúng một uuid.
+
+### 1.2 T3 — Gộp near-duplicate — ✅ **MẶC ĐỊNH BẬT (user chốt 2026-08-09)**
+> 🔄 **Supersede kết luận "TRƯỢT CỔNG, mặc định TẮT" viết cùng ngày.** Hai thước nói NGƯỢC nhau,
+> và gộp là thay đổi bị thước nghiêm phạt NẶNG NHẤT — vì bản chất của nó LÀ gom bản trùng, nên
+> đại diện cụm thường không phải đúng uuid được đánh dấu dù nội dung y hệt.
+
+| | nghiêm MRR | **tương đương** MRR | tđ `@10` | tđ `@40` |
+|---|---|---|---|---|
+| không gộp | **0,319** | 0,407 | 49% | 60% |
+| **có gộp** | 0,288 | **0,413** | **54%** | **63%** |
+
+Theo lớp (tương đương): `prose@40` 76% → **82%** · `tool_result@10` 63% → **75%**.
+
+**Cơ chế để agent tự leo thang, KHÔNG phải đoán (user hỏi đúng chỗ này):**
+1. mặc định gộp — mỗi đại diện mang `similar` (đã gom mấy bản) **và `similarIds`** (id của chúng);
+2. cần xem bản khác ⇒ `memory_show` đúng id đó, **không phải tìm lại**. *(Bản đầu chỉ có số đếm
+   nên agent muốn xem phải chạy lại cả lượt search — một lượt tìm cho việc đáng lẽ là một lượt mở.)*
+3. cần liệt kê từng bản riêng ⇒ `expand_duplicates: true` (MCP) / `collapse:false`.
+
+**Không có gì bị ẩn** — đó là điều kiện để cái thang này hợp điều 8 (hiện lớp mỏng trước, đào sâu
+khi cần) thay vì thành "ẩn bớt". Mô tả tool nói rõ KHI NÀO leo bậc 3, không để agent tự suy.
+
+<details><summary>Hồ sơ kết luận CŨ (bác vì thước sai) — giữ để không ai đo lại bằng thước cũ</summary>
 > 🔄 **Sửa chính mục này.** Bản trước ghi *"MRR 0,255 → 0,328 (+29%), `@1` 16% → 27%, rác ca âm
 > 40 → 22 cụm"* và xếp nó là "chốt build". **Cả ba con số đó SAI** — chúng đến từ một phép thử
 > ngoại tuyến chấm bằng thước lệch. Đo lại trên bề mặt THẬT sau khi ship:
@@ -74,6 +123,9 @@ lấp lại).
 `ZEMORY_COLLAPSE=1` / `collapse: true`; **mặc định TẮT có test khoá** (`collapseEnabled`).
 
 **Đo lại khi nào:** sau khi §4.3 xong. Đó là lúc câu hỏi "gộp có tốt không" mới trả lời được.
+*(§4.3 ĐÃ XONG cùng ngày dưới dạng thước tương đương — xem §1.2b; đó chính là thứ đảo phán quyết.)*
+
+</details>
 
 ### 1.3 T1 — Cổng "không biết" — ⚠ **CỔNG NGHIÊM TRƯỢT; ship OPT-IN dạng YẾU**
 > 🔄 **Sửa chính mục này.** Bản trước ghi *"θ=0,82 chặn 8/8 ca âm, giết oan 0/56 ⇒ tách hoàn hảo"*.
