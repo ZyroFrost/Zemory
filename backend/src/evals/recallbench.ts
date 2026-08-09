@@ -17,6 +17,7 @@
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { type SearchHit, search, searchHybrid } from "../memory/search.js";
 import { corpusByKind, type LabeledQuery, NEGATIVE_CORPUS, NEGATIVE_HOLDOUT, RECALL_CORPUS } from "./recall-corpus.js";
+import { vectorsByRowid } from "../memory/vectors.js";
 
 export type { LabeledQuery };
 
@@ -42,6 +43,22 @@ export interface LaneResult {
   msAvg: number;
   /** Thứ hạng của tin đích từng truy vấn (0 = không thấy trong top-N). */
   ranks: number[];
+  /**
+   * THƯỚC THỨ HAI — "TƯƠNG ĐƯƠNG": hit khi tin trả về LÀ đáp án **hoặc** gần trùng nội dung
+   * với nó (cosine ≥ `EQUIV_SIM` trên vector ĐÃ CÓ, 0 gọi model).
+   *
+   * 🔴 Vì sao BẮT BUỘC phải có (đo 2026-08-09, sau khi 8 giả thuyết liên tiếp cùng thất bại
+   * theo CÙNG MỘT hướng): kho này bàn đi bàn lại một việc ở nhiều phiên, nên khi recall trả
+   * về một tin **tương đương từ phiên khác**, thước nhãn-đơn-uuid đếm là TRƯỢT. Soi 6 ca
+   * "đáp án bị tụt": **4/6 kẻ chiếm chỗ gần trùng nội dung (≥0,80), 0/6 lạc đề**. Chuẩn ngành
+   * (Natural Questions) tính hit khi BẤT KỲ đoạn nào chứa đáp án — tức thước cũ đang phạt oan
+   * đúng thứ hệ làm tốt, và nó đã làm tôi BÁC những thay đổi đáng ship.
+   *
+   * GIỮ CẢ HAI, không thay thế: nghiêm trả lời *"có trả đúng cái được đánh dấu"*, tương đương
+   * trả lời *"người dùng có nhận được câu trả lời"*. Hai câu khác nhau; dùng lẫn là ra quyết
+   * định sai — đó chính là lỗi đã mắc suốt 8 phép thử.
+   */
+  equiv?: { hit1: number; hit3: number; hit10: number; hit40: number; mrr: number };
   /**
    * Cùng số đo, TÁCH THEO LỚP truy vấn (`prose` · `tool_use` · `tool_result`).
    *
@@ -111,6 +128,36 @@ const rankOf = (hits: SearchHit[], gold: number): number => {
   return i < 0 ? 0 : i + 1;
 };
 
+/** Ngưỡng "cùng nội dung" cho thước TƯƠNG ĐƯƠNG. Đo 2026-08-09: các tin chiếm chỗ đáp án nằm
+ *  ở 0,757–0,889; 0,85 là mức đòi giống RÕ, không phải chỉ cùng chủ đề. Chỉnh được từ ngoài
+ *  vì nó là tham số ĐO — không phải hằng số hành vi. */
+const EQUIV_SIM = Number(process.env.ZEMORY_EQUIV_SIM) || 0.85;
+
+const cosine = (a: Float32Array, b: Float32Array): number => {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s; // vector trong chỉ mục đã chuẩn hoá đơn vị
+};
+
+/**
+ * Hạng theo thước TƯƠNG ĐƯƠNG: vị trí đầu tiên mà tin trả về LÀ đáp án hoặc gần trùng nó.
+ * Thiếu vector (lớp `tool_use` không có vector nào) ⇒ rơi về đúng thước nghiêm, KHÔNG bịa
+ * điểm cho lớp không đo được (điều 12).
+ */
+const rankEquivOf = (hits: SearchHit[], gold: number): number => {
+  const strict = rankOf(hits, gold);
+  if (strict === 1 || !hits.length) return strict;
+  const vecs = vectorsByRowid([gold, ...hits.map((h) => h.id)]);
+  const gv = vecs.get(gold);
+  if (!gv) return strict;
+  for (let i = 0; i < hits.length; i++) {
+    if (hits[i].id === gold) return i + 1;
+    const v = vecs.get(hits[i].id);
+    if (v && cosine(gv, v) >= EQUIV_SIM) return i + 1;
+  }
+  return 0;
+};
+
 export interface RecallBenchOptions {
   /** Chỉ chạy N truy vấn đầu (chạy nhanh khi thử). */
   limit?: number;
@@ -144,14 +191,17 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
   const lanes: LaneResult[] = [];
   const run = async (lane: string, fn: (q: string) => Promise<SearchHit[]> | SearchHit[]) => {
     const ranks: number[] = [];
+    const eqRanks: number[] = [];
     let ms = 0;
     for (const it of items) {
       const t = Date.now();
       const hits = await fn(it.q.q);
-      ms += Date.now() - t;
-      ranks.push(rankOf(hits, it.gold));
+      ms += Date.now() - t; // đo TRƯỚC khi chấm: thước tương đương tra vector nên tốn thêm,
+      ranks.push(rankOf(hits, it.gold)); //   mà đó là chi phí của PHÉP ĐO, không phải của recall.
+      eqRanks.push(rankEquivOf(hits, it.gold));
     }
     const hitAt = (k: number) => ranks.filter((r) => r > 0 && r <= k).length;
+    const eqAt = (k: number) => eqRanks.filter((r) => r > 0 && r <= k).length;
     // Tách theo lớp: đi qua CÙNG mảng ranks nên không chạy lại truy vấn nào — chỉ là cách
     // đọc khác trên cùng số đo, không thêm chi phí và không thể lệch với con số gộp.
     const byKind: Record<string, KindStat> = {};
@@ -176,6 +226,13 @@ export async function runRecallBench(opts: RecallBenchOptions = {}): Promise<Rec
       mrr: ranks.reduce((s, r) => s + (r > 0 ? 1 / r : 0), 0) / (items.length || 1),
       msAvg: Math.round(ms / (items.length || 1)),
       ranks,
+      equiv: {
+        hit1: eqAt(1),
+        hit3: eqAt(3),
+        hit10: eqAt(10),
+        hit40: eqAt(40),
+        mrr: eqRanks.reduce((s, r) => s + (r > 0 ? 1 / r : 0), 0) / (items.length || 1),
+      },
       byKind,
     });
   };
@@ -235,7 +292,20 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
     out.push(
       `  ${l.lane.padEnd(16)} ${pct(l.hit1).padStart(9)} ${pct(l.hit3).padStart(6)} ${pct(l.hit10).padStart(6)} ${pct(l.hit40).padStart(6)} ${l.mrr.toFixed(3).padStart(7)} ${String(l.msAvg).padStart(12)}`,
     );
+    // Dòng TƯƠNG ĐƯƠNG in ngay dưới dòng nghiêm, cùng cột — để không ai đọc một thước rồi
+    // tưởng đó là toàn bộ sự thật. Chênh lệch giữa hai dòng CHÍNH LÀ phần thước nghiêm phạt
+    // oan vì kho có nhiều bản gần trùng (đo 2026-08-09: 4/6 kẻ chiếm chỗ là bản gần trùng).
+    if (l.equiv) {
+      const e = l.equiv;
+      out.push(
+        `  ${"  ↳ tương đương".padEnd(16)} ${pct(e.hit1).padStart(9)} ${pct(e.hit3).padStart(6)} ${pct(e.hit10).padStart(6)} ${pct(e.hit40).padStart(6)} ${e.mrr.toFixed(3).padStart(7)}`,
+      );
+    }
   }
+  out.push(
+    `  (dòng "tương đương": hit khi tin trả về LÀ đáp án HOẶC gần trùng nội dung ≥ ${EQUIV_SIM} —` +
+      ` quy tắc chuẩn ngành "bất kỳ đoạn nào chứa đáp án". Lớp không có vector rơi về thước nghiêm.)`,
+  );
   // `@40` là TRẦN: đáp án có nằm trong pool rerank được phép sắp lại không. `@40 ≈ @10` ⇒ nghẽn
   // ở lớp LẤY, rerank không có gì để cứu. `@40` cao hơn hẳn ⇒ đáp án có trong pool mà bị xếp
   // tụt, lúc đó rerank mới có cửa.
