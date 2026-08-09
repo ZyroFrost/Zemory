@@ -1064,7 +1064,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "zemory memory <subcommand>",
       "",
       "  scan              ingest agent transcripts from known locations into the",
-      "                    global memory (~/.zemory/global_memory.db) — fast, incremental.",
+      "                    global memory (<repo>/data/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
       "  scan-web [--platform chatgpt|claude] [--limit N] [--refresh]",
       "                    capture web-chat (ChatGPT · claude.ai) via a login-once browser",

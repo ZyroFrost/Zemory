@@ -429,7 +429,7 @@ export function cmdStructure(): void {
       "  docs/agent/06_CHANGES.md    — changelog",
       "  docs/plan/*.md              — specs (00_overview + numbered specs)",
       "  .claude/skills/<name>/SKILL.md — one playbook per folder, auto-loaded by its `description`",
-      "  ~/.zemory/global_memory.db          — memory (episodic sessions) + derived docs INDEX (rebuilt from .md)",
+      "  <repo>/data/global_memory.db        — memory (episodic sessions) + derived docs INDEX (rebuilt from .md)",
       "",
       "  Index: `zemory docs ls` · `plan ls` · `plan search` · `changelog ls`.",
     ].join("\n"),
