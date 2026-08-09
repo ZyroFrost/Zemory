@@ -3,7 +3,22 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-09 — recall: đọc mục này TRƯỚC khi làm gì tiếp
+## 🔵 BÀN GIAO 2026-08-10 — recall: đọc mục này TRƯỚC khi làm gì tiếp
+
+> **Đổi so với bàn giao 09/08:** ① **rerank ĐÃ TẮT** (đo: thua mọi cột nghiêm, chậm 11,6×) —
+> mốc nền dưới đây đo KHÔNG rerank, giữ nguyên giá trị · ② thêm hai lớp **RM3** và **luồng
+> từ-hiếm**, cả hai **TRƯỢT CỔNG, mặc định TẮT** (`ZEMORY_RM3=1` / `ZEMORY_RARE=1`) · ③ đang
+> chạy **phép thử nhúng tin tool trên BẢN SAO** — xem mục `[~]` đầu danh sách.
+>
+> **Điều quan trọng nhất phiên này tìm ra:** `tool_use` 0% **KHÔNG phải** vì thiếu vector mà vì
+> **RRF thưởng đồng thuận nhiều luồng** — thứ chỉ có mặt ở MỘT luồng thì hạng 1 cũng bị vùi.
+> Bằng chứng: luồng từ-hiếm có đáp án **7/14 ở pool 60** mà đường ống trả **0/14**; nâng
+> `W_RARE` 0,45→3 cứu 3/14 vào top-40. Quan hệ đơn điệu theo số luồng: `prose` 3 luồng 50%@10 ·
+> `tool_result` 2 luồng 25% · `tool_use` 1 luồng 0%. **Đọc trước khi quyết chi giờ máy cho embed.**
+>
+> ⚠ **Bẫy phương pháp đã dính phiên này:** probe tự dựng thiếu `all: true` (bench luôn có) ⇒ ba
+> thí nghiệm `TOOL_DEMOTE`/`vecMix`/gộp-trùng cho số VÔ NGHĨA, đã bỏ. Probe mới phải sao chép
+> tham số của `recallbench.ts:240` trước khi tin bất kỳ con số nào.
 
 **Trạng thái thước (bench chính thức, 68 nhãn, `bench --recall --no-rerank`):**
 
@@ -19,14 +34,23 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
 `similarIds` · hình phạt tool **hai mức theo lane** (FTS 0,3 · hybrid 0,7). Đang TẮT: cổng
 "không biết" (`ZEMORY_ABSTAIN=1` để bật — trượt cổng nghiêm, chặn 5/8+4/10, giết oan 0/68).
 
-- [ ] **CHẠY JOB EMBED `Edit`+`Write` — đã chứng minh ĐÁNG, chỉ chờ giờ máy.** Phép thử RAM:
-  lớp `tool_use` từ **0% tuyệt đối** lên `@10` **100%** (pool 326 tin có 218 tin tool làm nhiễu
-  cùng hạng). Backlog đo thật **20.196 tin**, ~9–16 giờ, ~60 MB.
-  Lệnh: `ZEMORY_EMBED_TOOLS=Edit,Write node dist/cli.js memory embed --all`
-  ⚠ Chạy MỘT MÌNH, **đừng bật app trong lúc chạy** (sự cố hai-writer 08/08). `ZEMORY_EMBED_TOOLS`
-  nay nhận DANH SÁCH tên tool — đừng dùng `=1`, nó embed cả 62.284 tin gồm `Read` (chỉ là đường
-  dẫn, 117 ký tự) và lệnh shell, gấp ~3 lần công cho phần vector gần như vô dụng.
-- [ ] **Backlog embed mặc định 674 tin** (tin của chính phiên này) — `memory embed` một lượt.
+- [~] **PHÉP THỬ ĐANG CHẠY trên BẢN SAO — nhúng tin tool để kiểm giả thuyết "hai luồng".**
+  > 🔄 **Đổi PHẠM VI và LÝ DO so với mục cũ** (`Edit,Write` 9–16 giờ vì "khớp ngữ nghĩa").
+  > Đo 2026-08-09/10: 14 nhãn `tool_use` trỏ vào **Bash 6 · Edit 4 · PowerShell 3 · Artifact 1 ·
+  > Write 0** ⇒ `Edit,Write` chỉ phủ **4/14**. Và lý do thật KHÔNG phải ngữ nghĩa mà là **RRF
+  > thưởng đồng thuận nhiều luồng**: `prose` 3 luồng 50%@10 · `tool_result` 2 luồng 25% ·
+  > `tool_use` 1 luồng **0%**. Embed = cấp cho lớp này luồng thứ hai.
+  **Đang chạy:** `GLOBAL_MEMORY_DB=D:\huy.nguyen\zemory-lab\tooltest.db`
+  `ZEMORY_MODEL_DIR=…\data\models ZEMORY_EMBED_TOOLS=Edit,Write,Bash,PowerShell memory embed --all`
+  (bản sao chụp bằng `db.backup()`, 1.550 MB, `quick_check ok`; log `zemory-lab\tooltest-embed.log`).
+  **Mốc bằng chứng** (embed xử theo độ dài TĂNG DẦN): 8.246 tin→phủ 1/14 · **11.000→4/14 (~3,9 giờ)**
+  · 16.682→7/14 · 28.705→**14/14 (~10 giờ)**; trọn nhóm 44.747 tin ≈ 15,7 giờ.
+  **Nghiệm thu đã định TRƯỚC:** `bench --recall --no-rerank` trên bản sao, so bảng THEO LỚP với mốc
+  nền (`prose` 50%@10 · `tool_result` 25% · `tool_use` 0%). ĐÚNG nếu `tool_use` tiến về ~25% mà
+  `prose`/`keyword` không tụt; SAI nếu vẫn ~0% dù đáp án đã có vector ⇒ **đừng chạy job trên kho thật**.
+  ⚠ Chạy MỘT MÌNH — bench và embed cùng dùng ONNX một CPU thì cả hai số đều hỏng.
+- [ ] **Backlog embed mặc định ~960 tin** (số cũ 674 đã lỗi thời) — `memory embed` một lượt.
+  Scheduler đang TẮT nên không ai tự xử.
 - [ ] **Đo lại 2 mục dưới thước TƯƠNG ĐƯƠNG** (chưa làm, thước mới có thể đảo tiếp):
   ① cổng "không biết" — số ca âm không đổi, nhưng "mất bao nhiêu kết quả đang ở top-10" thì đổi.
   ② `vecMix` — bảng 09/08 cho thấy tắt nó thì `tool_result` MRR sập **0,209 → 0,074**, tức lớp đó
@@ -86,7 +110,8 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
 > **Đừng smoke bằng `zemory ui`** — nó LUÔN bật cửa sổ thật lên desktop user (sự cố "344 KB không có
 > data" 06/08 đêm — xem `[2026-08-07b]`); kiểm bề mặt thì curl daemon 4444 thật, read-only.
 
-- [~] **Rebuild 768+fp32 trên BẢN SAO** `D:\huy.nguyen\zemory-lab\lab.db` (~43 giờ, đo thật).
+- ✅ **Rebuild 768+fp32 trên BẢN SAO — XONG 08/08, ĐÃ TRÁO** *(dấu `[~]` giữ tới 09/08 là lạc
+  hậu — kho thật đang chạy 768d/fp32, xem mục TRÁO KHO ngay dưới)*. `D:\huy.nguyen\zemory-lab\lab.db` (~43 giờ, đo thật).
   Chạy tiếp: `memory embed --all` với `GLOBAL_MEMORY_DB` trỏ bản sao **và** `ZEMORY_MODEL_DIR`
   ghim `data\models` (thiếu là nó tải lại 1,2 GB model, vì thư mục model suy ra từ thư mục DB).
   Bản sao đã đóng dấu `vec_config = {768, gemma-prompt-v1, fp32}`.
@@ -295,14 +320,36 @@ con số mô phỏng đã báo trong ngày:
 lane OR rộng, lấn chỗ lane VECTOR vốn gánh @10 cho `prose`. Mô phỏng trước đó chạy FTS thuần
 nên mù với cạnh tranh này — **giới hạn của phép thử pool đóng băng, ghi lại để đừng lặp**.
 
-- [ ] **Hạ `W_OR` 0,6 → ~0,25 rồi đo lại** (`search.ts`). Mục tiêu: giữ @1/MRR vừa tăng, lấy
-  lại @3/@10. Đo bằng `bench --recall --skip-rerank` khi máy RẢNH, so cả ba lớp + vế âm tính.
-- [ ] **ÂM TÍNH đang rất xấu — 0/8 câu trả rỗng, TB 40 kết quả, điểm đầu 0,0284** (gần bằng ca
-  thật). Hỏi nấu phở/bóng đá/thơ vẫn trả 40 kết quả trông tự tin ⇒ **đây chính là "search trả
-  rác"**. Cần NGƯỠNG ĐIỂM: dưới ngưỡng thì trả rỗng thay vì trả bừa. Chưa có cơ chế nào làm
-  việc đó — hiện RRF luôn xếp được thứ gì đó lên đầu, dù điểm bao nhiêu cũng mặc kệ.
-- [ ] **`tool_result` về 0% cần truy riêng** — trước vá còn 25%@10. Nó CÓ vector nên đáng lẽ
-  không bị lane FTS ảnh hưởng nhiều; nghi RRF bị OR làm loãng. Đo trước khi kết luận.
+> ✅ **CẢ BA MỤC DƯỚI ĐÂY ĐÃ ĐÓNG — soát bằng code 2026-08-09.** Sổ đứng yên ở trạng thái
+> 08/08 trong khi ba đợt vá ngày 09/08 đã xử hết. Giữ dòng + bằng chứng để không ai mở lại.
+
+- ✅ **`W_OR` — ĐÃ HẠ.** Sổ ghi "0,6 → cần hạ ~0,25"; đo code: `search.ts:101`
+  `W_OR = 0.3` (chỉnh được qua `ZEMORY_W_OR`). Đã nằm trong khoảng đề xuất.
+- ✅ **ÂM TÍNH — CƠ CHẾ ĐÃ CÓ** (câu cũ *"chưa có cơ chế nào làm việc đó"* nay SAI).
+  `search.ts:389` `ABSTAIN_DIST = 0,86` + `ABSTAIN_MARGIN = 0,05`, bật bằng `ZEMORY_ABSTAIN=1`.
+  **Mặc định TẮT có chủ đích** vì trượt cổng nghiêm (chặn 5/8 bộ cũ + 4/10 bộ giữ riêng, giết
+  oan 0/68) — xem `plan/17 §1.3`. Việc còn lại KHÔNG phải "xây cơ chế" mà là "tìm tín hiệu
+  mạnh hơn margin" — đã nằm ở mục đo lại dưới thước tương đương ở đầu file.
+- ✅ **`tool_result` KHÔNG còn 0%** — nới hình phạt tin tool 0,3 → 0,7 theo lane + trộn cosine
+  đưa lớp này lên `@10` **63% → 75%** (thước tương đương). Xem `06_CHANGES [2026-08-09b]`/`[c]`.
+
+## ✅ RERANK — ĐÃ TẮT 2026-08-10, đóng bằng số (hồ sơ giữ lại bên dưới)
+
+> **Đo dứt điểm** (bench 68 nhãn, kho thật): thua mọi cột nghiêm (`@10` 35→28% · MRR 0,288→0,204)
+> và chậm **11,6×**. Đã tắt bằng `/set-rerank?on=0`; header lệnh không còn `rerank (cross-encoder)`.
+> ⚠ **Đọc kèm sắc thái, đừng dùng entry này để kết luận "rerank vô dụng":** dưới thước TƯƠNG ĐƯƠNG
+> nó gần như HOÀ (0,413 vs 0,402) — nó xáo giữa các tin tương đương nhau chứ không phá recall.
+> Phán quyết đúng: **không đáng 11,6× thời gian**.
+>
+> **Ba đường CỨU rerank chưa ai thử** (ghi để phiên sau không kết luận vội): ① **reranker ĐA NGỮ** —
+> `bge-reranker-base` là model zh/en trên kho tiếng Việt, tài liệu ngành đo English-only sụp 31% vs
+> 84–90% của bản đa ngữ; chưa kiểm được vì 4 model dò đều không có ONNX nạp được (đường ra: tự
+> chuyển `bge-reranker-v2-m3`) · ② **TRỘN thay vì THAY** — rerank hiện thay HẲN thứ tự, trong khi
+> `vecMix` đã chứng minh *trộn ăn hơn thay hẳn* · ③ **thu cửa sổ** top-40→top-10 (rẻ 4×, ít chỗ phá).
+> **TRẦN cần biết trước:** bench đo chỉ **6–8/68 câu** có đáp án trong pool mà ngoài top-10 ⇒ đó là
+> TOÀN BỘ dư địa của mọi lớp rerank ở kho này. Nghẽn thật nằm ở POOL, không phải ở xếp lại.
+
+<details><summary>Hồ sơ gốc (phát hiện 2026-08-08) — giữ để tra</summary>
 
 ## 🔴 RERANK ĐANG BẬT TRÊN MÁY NÀY — chờ user tắt (phát hiện 2026-08-08, ưu tiên cao)
 
@@ -319,7 +366,11 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
 - [ ] **User tắt rerank** — nút trong UI (⚙), hoặc đổi khoá `rerank` thành `false` trong file
   config cạnh kho (gitignored nên `todo verify` không thấy đường dẫn — đừng viết nó dạng
   backtick đường dẫn, gate sẽ báo ref chết). KHÔNG tự đổi: đây là setting hiển thị của user.
-  ⚠ **Soát 2026-08-09 (nguồn ③ chạy thật): VẪN đang `true`** — chưa tắt. Và giờ có thêm hai lý do
+  ⚠ **Soát 2026-08-09 (nguồn ③ chạy thật): VẪN đang `true`** — chưa tắt. **Đo lại end-to-end cuối
+  ngày trên một truy vấn thật** (`"vì sao rerank làm recall tệ đi"`): tắt rerank **2,60 s** · bật
+  **18,8–29,4 s** (chậm **7,2×**), và **top-10 chỉ trùng 1/10** — giữ hạng 1, xáo sạch 9 hạng sau.
+  Cùng câu đó FTS-thuần **0,57 s** cho top-1 ĐÚNG là câu trả lời. Một truy vấn không phải kết luận
+  chung, nhưng đây là lần đầu đo trên đường THẬT chứ không qua bench. Và giờ có thêm hai lý do
   mạnh hơn: ① đo lại trên 25 câu có đáp án TRONG pool, rerank vẫn thua hybrid (MRR 0,571 → 0,459)
   và tốn 10 s/truy vấn · ② **đã có bản thay thế rẻ hơn 270 lần đang chạy mặc định**: trộn cosine
   (`vecMix`) thắng ở đúng chỗ cross-encoder thua, giá 119 ms. Tức bật rerank hiện nay là trả 10 s
@@ -329,6 +380,25 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
 - [ ] **Cân nhắc sửa gốc:** giá trị `true` sót lại từ thời mặc-định-sai nên được coi là NỢ và
   dọn một lần (migration nhỏ: config còn bật rerank mà chưa ai bật tay sau ngày vá ⇒ hạ về
   false + báo). Chưa làm vì cần user chốt — đụng setting người dùng.
+
+</details>
+
+## 🆕 Phát sinh 2026-08-09/10 — 4 việc
+
+- [ ] **BUG: UI đếm bundle luôn ra 0.** `ui.ts:256` khớp `f.endsWith(".zemory.enc")`, nhưng
+  `share.ts:714` gọi đúng tên đó là **`legacyName`** còn bộ đọc series thật (`share.ts:721`/`:894`)
+  khớp `.enc` ⇒ máy đã lên định dạng `global_memory.<host>.<seq>.enc` thì **vĩnh viễn hiện 0
+  bundle** (Drive thật có 3 file, 634 MB). **Chỉ sai HIỂN THỊ** — merge và ghi series đều đúng.
+  Sửa 1 dòng (`.endsWith(".enc")`) + test khoá. Chờ user gật.
+- [ ] **UI khuyên SAI về rerank.** Mô tả trong `chrome.js` vẫn nói *"đáng bật khi corpus lớn/nhiễu,
+  câu hỏi khó"* trong khi đo trên chính kho này nó **tệ hơn + chậm 11,6×**. Cùng loại "UI nói sai
+  thực tế" vừa sửa cho 256d/đường kho, nhưng đây là LỜI KHUYÊN nên không tự đổi — chờ user.
+- [ ] **3 comment code còn đường `~/.zemory/global_memory.db`** (`memory/db.ts:1` · `share.ts:1` ·
+  `modules/memory-global.ts:12`). Không ai ngoài lập trình viên thấy, nhưng sai so với HP điều 14.
+- [ ] **(ĐỀ XUẤT `02_RULES` — chờ user chốt) Luật: phép đo TỰ DỰNG phải khớp tham số của bench.**
+  Phiên này tôi dựng probe thiếu `all: true` (bench luôn có) rồi rút 3 kết luận sai từ nó
+  (`TOOL_DEMOTE` · `vecMix` · gộp-trùng). Luật đã có câu *"đo bằng bề mặt hẹp hơn…"* nhưng KHÔNG
+  nói rõ ràng buộc "probe phải sao chép tham số của thước chính thức" — đó là chỗ tôi lọt qua.
 
 ## 🔴 WRITE-GATE VẪN THỦNG — bắt được ĐANG XẢY RA 2026-08-08 (ưu tiên cao)
 
@@ -345,17 +415,19 @@ luôn**. Với job embed dài HÀNG GIỜ thì nhánh "chạy luôn" là nhánh 
 ⇒ Bản vá 2026-08-06 sửa được vế "khoá không bao giờ từ chối", nhưng vế "người gọi phải nghe
 lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
 
-- [ ] **Sửa: phân biệt khoá TƯƠI với khoá MỒ CÔI, thay vì đếm thời gian chờ.** Ý định gốc của
-  "chờ 2 phút rồi chạy" là chống kẹt vĩnh viễn (điều 9) — nhưng `cliWriteHolder()` ĐÃ tự loại
-  khoá của pid chết và khoá quá `CLI_LOCK_STALE_MS` (15 phút, có heartbeat gia hạn). Nghĩa là
-  khoá còn sống = chủ nó còn sống thật ⇒ **phải TỪ CHỐI, không chạy đè**. Đề xuất: hết thời
-  gian chờ mà khoá vẫn TƯƠI ⇒ thoát với thông báo rõ *"pid X đang ghi (label), chạy lại sau"*;
-  chỉ chạy đè khi khoá đã mồ côi. Cân nhắc cờ `--force` cho ca người dùng biết mình làm gì.
-- [ ] **Đo lại sau khi sửa:** ép hai `memory embed` chạy đồng thời ⇒ cái thứ hai PHẢI thoát,
-  không được ghi. Đây cũng là ca test còn thiếu: `cli-write-lock.test.mjs` có ca "phải bị từ
-  chối" ở tầng HÀM, nhưng KHÔNG có ca nào phủ tầng LỆNH (người gọi có nghe không).
-- [ ] **Xem lại scheduler:** nó sinh `memory embed --all` như tiến trình CON khi vừa bật app,
-  trong khi backlog đang được xử bởi tiến trình khác. Ít nhất phải kiểm khoá trước khi sinh.
+> ✅ **CẢ BA MỤC ĐÃ ĐÓNG — soát bằng code 2026-08-09** (sổ đứng ở trạng thái sáng 08/08, bản vá
+> landing cùng ngày nhưng không ai đổi dấu). Giữ dòng + bằng chứng để không ai build lại lần hai.
+
+- ✅ **Phân biệt khoá TƯƠI / MỒ CÔI — ĐÃ LÀM.** `commands/memory.ts:225-256`: hết thời gian chờ
+  mà khoá vẫn TƯƠI ⇒ in `pid X đang ghi (label)` rồi **thoát**, chỉ chạy đè khi khoá đã mồ côi;
+  `--force` là đường vượt có ý thức. Đúng nguyên văn đề xuất cũ.
+- ✅ **Ca test tầng LỆNH — ĐÃ CÓ.** `backend/test/write-gate-command.test.mjs` (mục cũ ghi
+  *"KHÔNG có ca nào phủ tầng LỆNH"* — nay sai). ⚠ Tồn tại ≠ đã chạy: file này nằm trong nhóm
+  test chưa chạy lại vì hook đang bật (xem mục "5 file test còn mù").
+- ✅ **Lỗ CON-CỦA-DAEMON — ĐÃ BỊT** (đây mới là nguyên nhân GỐC của ca 08/08, không phải
+  scheduler). `memory.ts:189-202`: con mang `ZEMORY_DAEMON_CHILD=1` nay chỉ bỏ qua khoá **của
+  chính mình**, gặp khoá của pid KHÁC thì BỎ QUA lượt ghi; `scheduler.ts:88` truyền thêm
+  `ZEMORY_DAEMON_PID` để con phân biệt được hai loại khoá đó.
 
 ## 🆕 Phát sinh 2026-08-07 tối (sau release 1.2.0) — 4 việc
 

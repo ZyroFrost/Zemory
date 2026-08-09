@@ -211,11 +211,171 @@ function ftsStreams(db: MemoryDB, terms: string[], scopedProject?: string): Weig
   const quoted = terms.map((t) => `"${t}"`);
   const wordAnd = quoted.join(" "); // AND ngầm — chính xác cao khi truy vấn NGẮN
   const anyTerm = quoted.join(" OR "); // lưới vét — cứu truy vấn DÀI
-  return [
+  const streams: WeightedStream[] = [
     { ranks: streamRanks(db, "messages_fts", wordAnd, scopedProject), w: W_WORD },
     { ranks: streamRanks(db, "messages_fts_tri", anyTerm, scopedProject), w: W_TRI },
     { ranks: streamRanks(db, "messages_fts", anyTerm, scopedProject), w: W_OR },
   ];
+  if (rareEnabled()) {
+    // LUỒNG TỪ-HIẾM: chỉ giữ vài từ IDF cao NHẤT của chính câu hỏi.
+    //
+    // Khác RM3 ở chỗ then chốt: RM3 THÊM từ mới (và đo được là thêm nhiễu), còn luồng này
+    // BỎ BỚT — nó hỏi lại kho bằng đúng phần mang thông tin của câu người dùng đã gõ.
+    // Cơ sở: BM25 bão hoà kém với truy vấn dài; câu 15–25 từ nhét vào hàng chục từ thông
+    // dụng làm loãng trọng số của `crypto_pipeline_binance`·`8756`·`suno_dl.py`. Dò tay
+    // 2026-08-09: hỏi bằng 3 từ hiếm thì đáp án nằm hạng 6–24, còn cả câu thì KHÔNG vào pool.
+    const rare = rareTerms(db, terms);
+    if (rare.length) {
+      const match = rare.map((t) => `"${t}"`).join(" OR ");
+      streams.push({ ranks: streamRanks(db, "messages_fts", match, scopedProject), w: W_RARE });
+    }
+  }
+  if (rm3Enabled()) {
+    const expanded = rm3Expand(db, terms, scopedProject);
+    if (expanded.length) {
+      const match = expanded.map((t) => `"${t}"`).join(" OR ");
+      streams.push({ ranks: streamRanks(db, "messages_fts", match, scopedProject), w: W_RM3 });
+    }
+  }
+  return streams;
+}
+
+// ─────────────────────────── RM3 — pseudo-relevance feedback ───────────────────────────
+//
+// VẤN ĐỀ ĐO ĐƯỢC (2026-08-09): nghẽn recall của kho này KHÔNG phải kích thước pool — nới
+// `POOL` 60 → 200 → 500 hồi 05/08 không đổi MỘT con số nào. Nghẽn nằm ở chỗ ứng viên được
+// SINH RA: đáp án của lớp `tool_use` chỉ vào pool 1/14 dù dò thẳng chỉ mục FTS bằng 3 từ
+// HIẾM thì chúng nằm ở hạng 6–24. Khác biệt duy nhất là cách dựng truy vấn — câu hỏi tự
+// nhiên dài 15–25 từ, và BM25 bão hoà kém với truy vấn dài: từ đặc trưng
+// (`crypto_pipeline_binance`, `8756`, `suno_dl.py`) bị pha loãng giữa hàng chục từ thông dụng.
+//
+// RM3 là lời giải kinh điển và hợp điều 6 bậc ① (script tất định làm được thì script làm):
+//   ① chạy truy vấn gốc → lấy top-k tài liệu phản hồi
+//   ② rút từ có tf cao trong k tài liệu đó, cân theo IDF của cả kho
+//   ③ thêm các từ đó thành MỘT luồng RRF nữa (không thay truy vấn gốc)
+//
+// Vì sao THÊM LUỒNG chứ không viết lại truy vấn: cùng doctrine đã thắng ở `vecMix` — *trộn*
+// ăn hơn *thay hẳn*. Truy vấn gốc giữ nguyên trọng số của nó; RM3 chỉ góp thêm ứng viên.
+// Hỏng/rỗng ⇒ trả mảng rỗng ⇒ không có luồng thứ tư, hành vi y như cũ (điều 9 fail-open).
+//
+// Đây là bản KHÔNG-CẦN-LLM của thứ đã chứng minh thắng ở kho này: đa-truy-vấn (agent gửi 3
+// lối nói) cho `prose@40` 68% → 94%. RM3 lấy cùng lợi ích đó cho NGƯỜI dùng trong app, nơi
+// không có agent nào viết biến thể hộ.
+const RM3_FB = Number(process.env.ZEMORY_RM3_FB) || 10; // số tài liệu phản hồi
+const RM3_TERMS = Number(process.env.ZEMORY_RM3_TERMS) || 8; // số từ giãn thêm
+const RM3_CAND = Number(process.env.ZEMORY_RM3_CAND) || 40; // trần ứng viên đem đi tra df
+const RM3_MAX_DF = Number(process.env.ZEMORY_RM3_MAX_DF) || 0.05; // bỏ từ có mặt ở >5% kho
+const RM3_MIN_DOCS = Number(process.env.ZEMORY_RM3_MIN_DOCS) || 2; // phải ≥2 tài liệu cùng xác nhận
+const RM3_DOC_CHARS = Number(process.env.ZEMORY_RM3_DOC_CHARS) || 2000; // cắt đuôi dump
+const W_RM3 = Number(process.env.ZEMORY_W_RM3) || 0.35;
+
+const RARE_K = Number(process.env.ZEMORY_RARE_K) || 3; // giữ mấy từ hiếm nhất
+const W_RARE = Number(process.env.ZEMORY_W_RARE) || 0.45;
+
+/** Mặc định TẮT cho tới khi qua cổng (điều 12). Bật: `ZEMORY_RARE=1`. */
+export function rareEnabled(force?: boolean): boolean {
+  if (force !== undefined) return force;
+  const v = process.env.ZEMORY_RARE?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
+/**
+ * `RARE_K` từ hiếm nhất của truy vấn (df thấp nhất), bỏ từ quá phổ biến.
+ * Truy vấn vốn đã ngắn (≤ RARE_K từ) ⇒ trả rỗng: luồng này sẽ trùng lane OR, thêm chỉ tốn.
+ */
+export function rareTerms(db: MemoryDB, terms: string[]): string[] {
+  if (terms.length <= RARE_K) return [];
+  try {
+    const scored = terms.map((t) => ({ t, d: docFreq(db, t) })).filter((x) => x.d > 0);
+    scored.sort((a, b) => a.d - b.d);
+    return scored.slice(0, RARE_K).map((x) => x.t);
+  } catch {
+    return [];
+  }
+}
+
+/** Mặc định TẮT cho tới khi qua cổng corpus có nhãn (điều 12). Bật: `ZEMORY_RM3=1`. */
+export function rm3Enabled(force?: boolean): boolean {
+  if (force !== undefined) return force;
+  const v = process.env.ZEMORY_RM3?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+}
+
+/** df của một term, cache trong tiến trình — đo 2026-08-09: ~3 ms/từ chưa cache. */
+const dfCache = new Map<string, number>();
+function docFreq(db: MemoryDB, term: string): number {
+  const hit = dfCache.get(term);
+  if (hit !== undefined) return hit;
+  let n = 0;
+  try {
+    n = (db.prepare("SELECT count(*) c FROM messages_fts WHERE messages_fts MATCH ?").get(`"${term}"`) as { c: number })
+      .c;
+  } catch {
+    n = 0; // term hỏng sau sanitize ⇒ coi như không tra được, sẽ bị loại
+  }
+  if (dfCache.size > 5000) dfCache.clear(); // trần thô, tránh phình theo phiên dài
+  dfCache.set(term, n);
+  return n;
+}
+
+/** Tách từ cho phía TÀI LIỆU — rộng hơn `ftsTerms` vì phải cắt cả dấu câu trong văn bản thật. */
+function docTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}_.\-/]+/u)
+    .map((t) => t.replace(/^[.\-/]+|[.\-/]+$/g, ""))
+    .filter((t) => t.length >= 3 && t.length <= 40);
+}
+
+export function rm3Expand(db: MemoryDB, terms: string[], scopedProject?: string): string[] {
+  try {
+    const seedMatch = terms.map((t) => `"${t}"`).join(" OR ");
+    const seed = streamRanks(db, "messages_fts", seedMatch, scopedProject).slice(0, RM3_FB);
+    if (seed.length < 3) return []; // quá ít phản hồi ⇒ giãn từ chỉ thêm nhiễu
+    const ids = seed.map((r) => r.rowid);
+    const rows = db
+      .prepare(`SELECT content FROM messages WHERE id IN (${ids.map(() => "?").join(",")})`)
+      .all(...ids) as { content: string | null }[];
+
+    // ĐẾM THEO SỐ TÀI LIỆU CHỨA TỪ, KHÔNG cộng dồn tần suất thô.
+    //
+    // Bản đầu của chính hàm này cộng tf qua mọi tài liệu và HỎNG ngay lần đo đầu: một tin
+    // tool dump dài vài chục KB đóng góp hàng trăm token nên chiếm trọn danh sách giãn —
+    // đo được nó nhả ra `os.listdir`·`qubit`·`app_name`, tức từ vựng của ĐÚNG MỘT tài liệu
+    // lạc đề. Đây là "query drift" kinh điển: RM3 khuếch đại chất lượng của lượt lấy đầu,
+    // nên lượt đầu lẫn rác thì nó nhân rác lên.
+    //
+    // Cân theo SỰ HIỆN DIỆN (có mặt ở mấy trong k tài liệu) làm hai việc cùng lúc: chặn một
+    // tài liệu dài thống trị, và đòi từ phải được NHIỀU tài liệu cùng xác nhận mới đáng tin.
+    // Kèm cắt nội dung mỗi tài liệu ở `RM3_DOC_CHARS` — phần đuôi của một dump không mang
+    // thêm tín hiệu chủ đề, chỉ mang thêm token.
+    const already = new Set(terms);
+    const docCount = new Map<string, number>();
+    for (const r of rows) {
+      const seen = new Set(docTokens((r.content ?? "").slice(0, RM3_DOC_CHARS)));
+      for (const t of seen) {
+        if (already.has(t)) continue;
+        docCount.set(t, (docCount.get(t) ?? 0) + 1);
+      }
+    }
+    const tf = new Map([...docCount].filter(([, n]) => n >= RM3_MIN_DOCS));
+    if (!tf.size) return [];
+
+    const total = (db.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c || 1;
+    const maxDf = total * RM3_MAX_DF;
+    // Cắt theo tf TRƯỚC rồi mới tra df — df là phần tốn tiền, đừng tra cho cả nghìn token.
+    const cand = [...tf.entries()].sort((a, b) => b[1] - a[1]).slice(0, RM3_CAND);
+    const scored: { t: string; s: number }[] = [];
+    for (const [t, f] of cand) {
+      const d = docFreq(db, t);
+      if (d <= 0 || d > maxDf) continue; // quá phổ biến ⇒ đúng thứ đang làm loãng truy vấn
+      scored.push({ t, s: f * Math.log(total / d) });
+    }
+    scored.sort((a, b) => b.s - a.s);
+    return scored.slice(0, RM3_TERMS).map((x) => x.t);
+  } catch {
+    return []; // fail-open: không có luồng RM3 thì hệ chạy y như trước
+  }
 }
 
 /** Reciprocal Rank Fusion across weighted streams → rowids by descending score. */

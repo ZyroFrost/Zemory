@@ -5,6 +5,90 @@
 
 ---
 
+## [2026-08-10] — Rerank ĐÓNG bằng số · RM3 + luồng từ-hiếm TRƯỢT CỔNG · tìm ra cơ chế chôn `tool_use`
+
+**Rerank: đo dứt điểm rồi TẮT.** Bench 68 nhãn, kho thật: thua **mọi** cột nghiêm (`@1` 25→18% ·
+`@10` 35→28% · MRR 0,288→**0,204**) và chậm **11,6×** (1.165 → 13.499 ms). Đã tắt qua
+`/set-rerank?on=0`. ⚠ **Đính chính báo cáo giữa phiên của tôi:** dưới thước **tương đương** rerank
+gần như HOÀ (0,413 vs 0,402) — nó không phá recall mà *xáo giữa các tin tương đương*, thước
+nghiêm phạt nặng chuyện đó. Phán quyết đúng là **"không đáng 11,6× thời gian"**, không phải "làm hỏng".
+
+**Hai lớp mới TRƯỢT CỔNG — giữ code, mặc định TẮT** (`ZEMORY_RM3=1` / `ZEMORY_RARE=1`).
+RM3 nhích đỉnh (MRR 0,288→0,294) nhưng **tụt chính `@40` — thứ nó sinh ra để cứu** (47→44%) và
+phá nặng FTS-thuần (0,191→0,154), tức đường nhanh của app. Luồng từ-hiếm cũng trượt (0,277).
+Bảng đầy đủ + vì sao: `plan/17 §3d`.
+
+**Phát hiện đáng giá nhất — `tool_use` 0% là lỗi KIẾN TRÚC GỘP, không phải thiếu vector.** Luồng
+từ-hiếm CÓ đáp án **7/14** ở pool 60 (nhiều câu hạng 1–2) mà đường ống trả **0/14**; nâng
+`W_RARE` 0,45→3 cứu 3/14 vào top-40. RRF **thưởng đồng thuận nhiều luồng** nên thứ chỉ có mặt ở
+MỘT luồng thì hạng 1 cũng bị vùi — quan hệ đơn điệu: `prose` 3 luồng **50%@10** · `tool_result`
+2 luồng **25%** · `tool_use` 1 luồng **0%**. ⇒ Giá trị của job embed là **cấp luồng thứ hai**,
+không phải "khớp ngữ nghĩa" như `plan/17 §3.2` nói; phạm vi đúng theo nhãn là
+`Edit,Write,Bash,PowerShell` (44.747 tin ≈ 15,7 giờ). Chi tiết + cổng nghiệm thu: `plan/17 §3c`.
+
+**⚠ LỖI PHƯƠNG PHÁP CỦA TÔI — rút lại 3 kết luận.** Probe tự dựng **thiếu `all: true`** trong khi
+`recallbench.ts:240` luôn có; 14 đáp án nằm rải **12 project** nên probe lọc mất gần hết. Ba thí
+nghiệm chạy trên nó (`TOOL_DEMOTE` 0,7/0,9/1,0 · `vecMix` · gộp-trùng) **vô giá trị, đã bỏ**. Bench
+vẫn đứng vì có `all:true`. Đúng luật `02_RULES` cấm: *đo bằng bề mặt hẹp hơn bề mặt chịu ảnh hưởng*.
+
+## [2026-08-09e] — Đồng bộ sổ↔code (5 mục thối) · UI nói SAI thực tế · reindex · bug đếm bundle
+
+**5 mục sổ nói khác code, sửa bằng bằng chứng dòng code** (đổi `[ ]`→`✅`, KHÔNG xoá dòng):
+`W_OR` sổ ghi "cần hạ 0,6→0,25" mà code đã 0,3 (`search.ts:101`) · write-gate khoá TƯƠI/MỒ CÔI đã
+làm (`commands/memory.ts:225-256`) · ca test tầng LỆNH đã có · "chưa có cơ chế cổng không-biết" —
+SAI, có từ `search.ts:389` · `tool_result` "về 0%" — đã lên 63→75%. Cộng dấu `[~]` rebuild 768
+lạc hậu. **Lỗ của chính gate:** `todo verify` xanh nhưng chỉ tra được **28/79 mục**, cả 5 chỗ
+lệch đều nằm ngoài vùng nó với tới.
+
+**UI nói SAI với người dùng — 6 chuỗi, cả hai từ điển VI+EN.** Mô tả Bộ nhớ ghi
+`~/.zemory/global_memory.db` (sai từ khi kho dời vào repo — HP điều 14) · mô tả Vector và tooltip
+`hint.dims` ghi **256d** trong khi kho chạy **768d/fp32** từ 08/08 ⇒ **màn hình tự mâu thuẫn**: ô số
+hiện 768d, phần mô tả nói 256d. Kèm 2 dòng **help CLI** cũng còn đường cũ (đã `npx tsc`), 5 chỗ
+trong `docs/plan` (00 ×2 · 02 ×2 · 04) và `plan/05 §5` (gạch dòng "256d là mặc định thật").
+
+**⚠ Chính bản vá UI đó làm CHẾT TOÀN BỘ giao diện.** Dấu nháy đơn trong câu tiếng Anh tôi thêm
+(`the model's native size`) **đóng sớm chuỗi** ở từ điển toàn nháy đơn ⇒ `chrome.js` lỗi cú pháp ⇒
+`zboot` không định nghĩa ⇒ `boot.js:5` chết ⇒ mọi thẻ đứng ở placeholder tĩnh (badge `v1.0.0`
+chính là placeholder chưa bị `/ping` ghi đè). **Tôi CÓ chạy `node --check` — nhưng TRƯỚC lần sửa
+cuối, nên nó chứng nhận cho bản không phải bản ship.** Chốt chặn mới chạy SAU khi sửa xong: parse
+cả 12 file + **nạp 12 script theo đúng thứ tự `app.html` trong DOM giả** rồi xác nhận
+`zboot`/`renderHarness`/`renderMem` tồn tại (bắt được cả lỗi thứ tự nạp mà `--check` mù), và
+nghiệm thu trên bản daemon **phục vụ qua HTTP** chứ không phải file trên đĩa.
+
+**`zemory reindex`** — chỉ mục thiếu phần sửa hôm nay (changelog 394→395, section 1080→1111).
+⚠ Đính chính: tôi từng báo "mù ba tuần" dựa vào `doc.rendered_at`=16/07 — **suy luận sai**, đó là
+cột đời cũ của đường render DB→md đã gỡ, `reindex` không ghi vào nó.
+
+**Bug MỚI, chưa sửa** (chi tiết `05_TODO §Phát sinh 09/10-08`): `ui.ts:256` đếm bundle bằng hậu tố
+**đời cũ** `.zemory.enc` ⇒ máy đã lên định dạng series **vĩnh viễn hiện 0 bundle**; chỉ sai HIỂN THỊ.
+
+## [2026-08-09d] — Bản đồ vận hành cho NGƯỜI · luật "tên file = tiếng Anh"
+
+**Sơ đồ toàn hệ → `docs_visual/zemory_runtime_map.html`** (self-contained 31 KB, 0 tài nguyên
+ngoài; `.md` chủ ở `plan/00`). Node-link SVG dựng từ MỘT khai báo dữ liệu (26 node · 27 cạnh),
+cạnh liền = luôn chạy · đứt = tuỳ chọn/đang tắt; kèm tab **chạy thật** — token trượt dọc đường
+ống 10 chặng, mỗi chặng in số ĐO THẬT. Dựng vì các lớp recall cộng dồn hai tuần (đa-truy-vấn ·
+trộn cosine · gộp near-dup · hai mức hạ tool · cổng không-biết) tới mức không nhìn được cả chuỗi.
+
+**Phép A/B end-to-end trên MỘT truy vấn thật** (`"vì sao rerank làm recall tệ đi"`, kho sống):
+FTS-thuần **0,57 s** · hybrid tắt hết phụ trợ 0,83 s · +trộn cosine 2,60 s · **+rerank 18,8–29,4 s**.
+Rerank **chậm 7,2×** và **top-10 chỉ còn trùng 1/10** — nó giữ nguyên hạng 1 rồi xáo toàn bộ 9 vị
+trí sau. Đáng ghi hơn: top-1 của **FTS-thuần** chính là câu trả lời, còn đường hybrid đắt gấp ~33
+lần lại đẩy nó khỏi vị trí đầu. ⚠ MỘT truy vấn ⇒ **không phải kết luận chung** (điều 12) — nhưng
+nó là bằng chứng chạy-thật cho mục rerank đang treo ở `05_TODO`, mạnh hơn số bench trước đó.
+
+**Đo lúc dựng LỆCH sổ bốn chỗ:** sổ ghi 215.452 tin / 157.524 vector / 99,2% / backlog 20.196;
+thật (daemon 06:08) **216.885 tin · 1.292 phiên · 1,51 GB · 159.375 vector · còn 740 · 99,5% ·
+backlog 19.711**. Cộng một chỗ sổ không nói: **scheduler đang TẮT**. ⚠ "coverage 99,5%" tính trên
+phần ĐỦ ĐIỀU KIỆN nhúng, KHÔNG phải trên 216.885 tin — 62.644 tin `tool_use` ngoài mẫu số.
+
+**Luật mới `03_STRUCTURE §5` "Tên file = TIẾNG ANH"** (user chốt). Quét 22.475 mục: **0 tên tiếng
+Việt** — 953 file tracked đều đã tuân, tức quy ước sống bằng thói quen mà **chưa từng viết ra**,
+nên vi phạm được không cổng nào kêu (tôi đặt `zemory_van_hanh.html`, user bắt). 3 tên ngoài ASCII
+đều **KHÔNG đổi** vì không phải của mình: 2 bundle extension `data/browser/**` (ký tự đầu là `с`
+**Cyrillic**, đồng hình) + 1 file tiếng Trung trong `external/` (HP điều 2) ⇒ luật khoanh vùng
+ĐỂ YÊN hai chỗ đó ngay trong câu chữ.
+
 ## [2026-08-09c] — THƯỚC THỨ HAI (tương đương) · vá hồi quy FTS tự gây · gộp near-dup BẬT + thang leo
 
 > 🔄 **Supersede [2026-08-09] và [2026-08-09b]** ở hai điểm: gộp near-dup từ *"trượt cổng, mặc định

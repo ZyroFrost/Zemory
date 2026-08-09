@@ -1,5 +1,5 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
-> Cấu trúc `~/.zemory/global_memory.db` — store global duy nhất, **3 loại nội dung đều ĐÃ BUILD**,
+> Cấu trúc `<repo>/data/global_memory.db` — store global duy nhất, **3 loại nội dung đều ĐÃ BUILD**,
 > tất cả **query bằng FTS**. Curated docs: **file `.md` là NGUỒN (FILE WINS, HP điều 3)**; bảng `doc/section/changelog` trong DB = **index dẫn xuất**, rebuild được từ `.md`.
 
 ---
@@ -66,7 +66,7 @@ Harness chuẩn (`docs_template/`, ship cho project khác) gồm:
 
 Backlog riêng của chính zemory (dogfood, KHÔNG thuộc template) mở rộng thêm `docs/plan/01`–`12` theo thời gian: repo survey, data model (file này), compression (đã bỏ scope), roadmap, RAG, digest, web-chat capture, scoped sync, repo structure, token-savings dashboard (đã gỡ), DB size optimization, vector rebuild 256d.
 
-Global Memory ở `GLOBAL_MEMORY_DB` hoặc `~/.zemory/global_memory.db`.
+Global Memory ở `<repo>/data/global_memory.db` (**HP điều 14** — trong cây repo, KHÔNG rải sang ổ hệ thống); con trỏ vị trí `~/.zemory/location.json`, ép bằng `GLOBAL_MEMORY_DB`.
 
 Các file `00_INDEX`, `02_CONTEXT`, overview dẫn xuất, notes và archive markdown không còn thuộc schema chuẩn.
 

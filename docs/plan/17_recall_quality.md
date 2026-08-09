@@ -385,6 +385,62 @@ bằng nguyên tắc.
 7,45 s là hơn 20 s/câu, hết khả thi tương tác bất kể chất lượng. Câu hỏi đúng là **đổi runtime**
 (llama.cpp/GPU) hoặc **sinh trước, lưu lại** cho tập truy vấn hay dùng.
 
+## 3c. NGHẼN THẬT CỦA `tool_use`: KIẾN TRÚC GỘP, không phải thiếu vector (đo 2026-08-10)
+
+> 🔄 **Sửa chẩn đoán của §3.2.** Mục đó nói lớp `tool_use` 0% vì **thiếu vector**, và đề xuất
+> nhúng `Edit`+`Write` để "khớp ngữ nghĩa". Đo lại thì cả hai vế đều lệch.
+
+**Bằng chứng 1 — phạm vi đề xuất không khớp thứ thước đo.** 14 nhãn `tool_use` trỏ vào
+**Bash 6 · Edit 4 · PowerShell 3 · Artifact 1 · Write 0** ⇒ `Edit,Write` chỉ phủ **4/14**.
+Con số "0% → 100%@10" của §3.2 đến từ phép thử RAM pool 326 tin — chính nó đã tự cảnh báo
+"số tuyệt đối bị thổi lên", và đây là lúc lời cảnh báo đó thành hiện thực.
+
+**Bằng chứng 2 — ứng viên ĐƯỢC SINH RA rồi bị đánh rơi.** Thêm một luồng FTS chỉ gồm 3 từ IDF
+cao nhất của câu hỏi: luồng đó chứa đáp án **7/14 ở pool 60** (nhiều câu hạng 1–2), trong khi
+đường ống hoàn chỉnh trả **0/14**. Nâng `W_RARE` 0,45 → 3 cứu được 3/14 vào top-40; lên 8 lại
+tụt còn 2/14.
+
+**Cơ chế:** RRF cộng điểm theo **sự đồng thuận giữa các luồng**. Một tin hạng 1 ở DUY NHẤT một
+luồng (0,45/(60+0) ≈ 0,0075) thua một tin hạng trung bình có mặt ở ba luồng. `tool_use` **không
+thể** vào lane trigram (trigger loại `tool_name IS NOT NULL`) và không có vector ⇒ vĩnh viễn
+một luồng. Quan hệ đơn điệu, đo trên cùng một lượt bench:
+
+| lớp | luồng tham gia | `@10` |
+|---|---|---:|
+| `prose` | word · trigram · vector (3) | **50%** |
+| `tool_result` | word · vector (2) | **25%** |
+| `tool_use` | word (1) | **0%** |
+
+⇒ **Giá trị của việc nhúng lớp này là "cấp cho nó luồng thứ hai", KHÔNG phải "khớp ngữ nghĩa".**
+Phạm vi đúng theo nhãn: `Edit,Write,Bash,PowerShell` = **44.747 tin ≈ 15,7 giờ**; phủ đủ 14 nhãn
+cần 28.705 tin (**~10 giờ**). Phép thử đang chạy trên BẢN SAO (điều 15) với cổng nghiệm thu định
+trước: `tool_use` tiến về mức `tool_result` (~25%@10) mà `prose`/`keyword` không tụt.
+
+**Đường thứ hai chưa thử, có thể RẺ HƠN nhiều giờ máy:** cho `tool_use` một luồng thứ hai bằng
+**trigram** thay vì vector — tức đảo điều kiện trigger đã loại nó. Giá là dung lượng (trigram
+từng chiếm 42% cả DB) và một MIGRATION dựng lại bảng, nhưng KHÔNG tốn giờ nhúng. Chưa đo.
+
+## 3d. RM3 và luồng TỪ-HIẾM — đã cài, đã đo, TRƯỢT CỔNG (2026-08-10)
+
+Hai lớp giãn/chọn truy vấn, cả hai **mặc định TẮT** (`ZEMORY_RM3=1` · `ZEMORY_RARE=1`):
+
+| | nền | RM3 | từ-hiếm |
+|---|---:|---:|---:|
+| hybrid MRR | **0,288** | 0,294 | 0,277 |
+| hybrid tương đương | **0,413** | 0,423 | 0,409 |
+| hybrid `@40` | **47%** | 44% | 44% |
+| FTS-thuần MRR | **0,191** | 0,154 | 0,164 |
+
+**RM3 hỏng vì đúng điều kiện tiên quyết của PRF:** nó khuếch đại chất lượng lượt lấy đầu, mà
+lượt đầu ở kho này yếu ⇒ giãn ra toàn từ thông dụng (`nắm·đầy·những·nhanh`), thêm một luồng
+nhiễu vào RRF thì **đẩy ứng viên thật ra khỏi danh sách** — nên nó làm tụt chính `@40`, thứ nó
+sinh ra để cứu. Bản đầu còn cộng tf thô nên **một dump dài chiếm trọn từ vựng**; đã sửa sang
+đếm theo số tài liệu chứa từ (≥2) + cắt đuôi ở 2.000 ký tự, vẫn không đủ.
+
+**Cả hai đều làm hỏng lane FTS-thuần nặng hơn lane hybrid** — mà đó là đường nhanh của app và
+đường fail-open. Lặp lại đúng bài học `§1.4`: đo một cấu hình bằng bề mặt hẹp hơn bề mặt chịu
+ảnh hưởng. Giữ code vì cơ chế đúng và có thể dùng lại khi lượt lấy đầu mạnh lên.
+
 ## 4. NỢ ĐO LƯỜNG — phải trả trước khi bật T1 mặc định
 
 ### 4.1 Bộ âm tính GIỮ RIÊNG (chặn T1 khỏi bật mặc định)

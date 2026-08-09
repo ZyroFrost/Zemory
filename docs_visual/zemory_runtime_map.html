@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zemory — bản đồ vận hành</title>
+<style>
+  :root{
+    --bg:#0E0F13; --surface:#15171C; --surface2:#1B1E25; --border:#23262F;
+    --text:#E5E7EB; --dim:#98A0AD; --faint:#666E7B;
+    --gold:#FFD166; --gold2:#8A6E30;
+    --ok:#5BC08C; --warn:#E0A458; --bad:#D9686B; --off:#5A6070; --blue:#7FB5E8;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 18px 70px}
+  .wrap{max-width:1360px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 4px;letter-spacing:-.01em}
+  h1 b{color:var(--gold)}
+  .stamp{color:var(--faint);font-size:12px;font-family:var(--mono);margin:0}
+
+  nav{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 16px;border-bottom:1px solid var(--border);padding-bottom:9px}
+  nav button{background:transparent;border:1px solid var(--border);color:var(--dim);
+    padding:7px 13px;border-radius:7px;cursor:pointer;font-size:13.5px;font-family:inherit}
+  nav button:hover{color:var(--text);border-color:var(--gold2)}
+  nav button[aria-selected="true"]{background:var(--gold);color:#14161a;border-color:var(--gold);font-weight:600}
+  section[hidden]{display:none}
+  .lede{color:var(--dim);font-size:13px;margin:0 0 12px;max-width:88ch}
+
+  /* ---------- svg canvas ---------- */
+  .canvas{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+          padding:6px;overflow-x:auto}
+  svg{display:block;width:100%;height:auto;min-width:900px}
+  .nd rect,.nd path.box{fill:var(--surface2);stroke:var(--border);stroke-width:1.2}
+  .nd.src rect{stroke:#5C6572}
+  .nd.store rect{stroke:var(--gold);fill:#1F1B12}
+  .nd.deriv rect{fill:#191C22;stroke:var(--gold2)}
+  .nd.pipe rect{stroke:#5E7288}
+  .nd.surf rect{stroke:var(--ok)}
+  .nd.dim rect{opacity:.5}
+  .nd text{fill:var(--text);font-size:12.5px;font-family:inherit}
+  .nd text.sub{fill:var(--dim);font-size:10.8px}
+  .nd text.big{font-size:13.2px;font-weight:600}
+  .nd .icon{stroke:var(--gold);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .nd.src .icon{stroke:#8A93A1} .nd.surf .icon{stroke:var(--ok)} .nd.pipe .icon{stroke:var(--blue)}
+  .nd:hover rect{stroke:var(--gold)}
+  .edge{fill:none;stroke:#3A4150;stroke-width:1.5;marker-end:url(#ah)}
+  .edge.soft{stroke-dasharray:4 4;stroke:#39404E}
+  .edge.hot{stroke:var(--gold);stroke-width:2.2;marker-end:url(#ahg)}
+  .elabel{fill:var(--faint);font-size:10px;font-family:var(--mono)}
+  .grouplbl{fill:var(--faint);font-size:10.5px;letter-spacing:.14em;font-weight:600}
+  .zone{fill:none;stroke:var(--border);stroke-dasharray:3 5;rx:10}
+  .badge{font-size:9.5px;font-family:var(--mono);font-weight:700}
+
+  /* ---------- trace ---------- */
+  .trace-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+  @media(max-width:1050px){.trace-grid{grid-template-columns:1fr}}
+  .ctrls{display:flex;gap:8px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
+  .ctrls button{background:var(--gold);color:#14161a;border:0;border-radius:7px;
+    padding:8px 16px;font:600 13.5px inherit;cursor:pointer}
+  .ctrls button.ghost{background:transparent;color:var(--dim);border:1px solid var(--border)}
+  .ctrls button.ghost:hover{color:var(--text);border-color:var(--gold2)}
+  .ctrls .q{font-family:var(--mono);font-size:12.5px;color:var(--gold);
+    background:var(--surface2);border:1px solid var(--border);padding:6px 11px;border-radius:6px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    padding:15px 17px;position:sticky;top:16px}
+  .panel .step{color:var(--faint);font:600 10.5px/1 var(--mono);letter-spacing:.1em;margin-bottom:7px}
+  .panel h4{margin:0 0 9px;font-size:16px;color:var(--gold)}
+  .panel p{margin:0 0 11px;font-size:13.2px}
+  .panel .why{color:var(--dim);font-size:12.5px;border-left:2px solid var(--border);padding-left:11px;margin-bottom:11px}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.4px;
+      padding:5px 0;border-top:1px solid var(--border)}
+  .kv .k{color:var(--dim)} .kv .v{font-family:var(--mono);color:var(--text);text-align:right}
+  .kv .v.g{color:var(--gold)} .kv .v.r{color:var(--bad)} .kv .v.o{color:var(--ok)}
+  .prog{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:13px}
+  .prog i{display:block;height:100%;background:var(--gold);width:0;transition:width .25s}
+  .blk{margin:12px 0 0}
+  .blk .cap{font:600 9.8px/1 var(--mono);letter-spacing:.11em;color:var(--faint);
+            display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}
+  .blk .cap em{font-style:normal;color:var(--gold2)}
+  .blk pre{margin:0;background:#0B0C10;border:1px solid var(--border);border-radius:7px;
+    padding:9px 11px;overflow-x:auto;font:11.6px/1.5 var(--mono);color:#C9D1DB;white-space:pre}
+  .blk pre b{color:var(--gold);font-weight:600}
+  .blk pre i{color:var(--faint);font-style:normal}
+  .blk pre u{color:var(--ok);text-decoration:none}
+  .blk pre s{color:var(--bad);text-decoration:none}
+
+  /* ---------- tables ---------- */
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:2px 0 10px;min-width:540px}
+  th,td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--surface2);color:var(--dim);font-weight:600;font-size:11.8px;text-transform:uppercase;letter-spacing:.03em}
+  td.num{text-align:right;font-family:var(--mono);white-space:nowrap}
+  tr:hover td{background:#171A20}
+  .yes{color:var(--ok);font-weight:700} .no{color:var(--bad);font-weight:700}
+  code{font-family:var(--mono);font-size:12.1px;background:var(--surface2);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
+  .pill{font:700 10.3px var(--mono);padding:1.5px 6px;border-radius:20px;border:1px solid currentColor;white-space:nowrap}
+  .on{color:var(--ok)} .offp{color:var(--off)} .bd{color:var(--bad)} .wn{color:var(--warn)}
+
+  .traps{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:11px}
+  .trap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .trap h4{margin:0 0 7px;font-size:13.6px;color:var(--gold)}
+  .trap .row{display:flex;gap:9px;font-size:12.5px;margin-bottom:5px;line-height:1.4}
+  .trap .k{font-family:var(--mono);min-width:88px;flex:0 0 auto;font-size:11.6px}
+  .trap .v{color:var(--dim)}
+  .trap .note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--warn);font-size:12px;line-height:1.42}
+  .foot{margin-top:28px;padding-top:12px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;line-height:1.55}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1><b>Zemory</b> — bản đồ vận hành</h1>
+<p class="stamp">đo trên kho sống 2026-08-09 · 216.885 tin · 1.292 phiên · 1,51 GB · vector 159.375 (768d fp32)</p>
+
+<nav role="tablist">
+  <button role="tab" aria-selected="true"  data-v="v1">Kiến trúc</button>
+  <button role="tab" aria-selected="false" data-v="v2">▶ Chạy thật một truy vấn</button>
+  <button role="tab" aria-selected="false" data-v="v3">Ba lớp tin</button>
+  <button role="tab" aria-selected="false" data-v="v4">Công tắc</button>
+  <button role="tab" aria-selected="false" data-v="v5">Bẫy</button>
+</nav>
+
+<section id="v1">
+  <p class="lede">Một kho duy nhất. Mũi tên <b>liền</b> = đường luôn chạy · <b>đứt</b> = tuỳ chọn / đang tắt.
+    Rê chuột lên node để làm nổi đường của nó.</p>
+  <div class="canvas"><svg id="arch" viewBox="0 0 1340 610" role="img" aria-label="Sơ đồ kiến trúc zemory"></svg></div>
+</section>
+
+<section id="v2" hidden>
+  <p class="lede">Một câu hỏi <b>có thật</b> chạy qua toàn bộ đường ống, số ở mỗi chặng là <b>đo thật hôm nay</b>
+     trên chính kho này — không phải minh hoạ.</p>
+  <div class="ctrls">
+    <button id="play">▶ Chạy</button>
+    <button id="prev" class="ghost">‹ Lùi</button>
+    <button id="next" class="ghost">Tiến ›</button>
+    <button id="reset" class="ghost">⟲ Đầu</button>
+    <span class="q">"vì sao rerank làm recall tệ đi"</span>
+  </div>
+  <div class="trace-grid">
+    <div class="canvas"><svg id="trace" viewBox="0 0 900 640" role="img" aria-label="Đường đi của một truy vấn"></svg></div>
+    <div class="panel">
+      <div class="prog"><i id="pbar"></i></div>
+      <div class="step" id="tstep"></div>
+      <h4 id="ttitle"></h4>
+      <p id="twhat"></p>
+      <div class="why" id="twhy"></div>
+      <div id="tkv"></div>
+    </div>
+  </div>
+</section>
+
+<section id="v3" hidden>
+  <p class="lede">Cùng nằm trong một bảng <code>messages</code>, nhưng ba lớp được phủ khác nhau —
+     đây là gốc của phần lớn nhầm lẫn.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Lớp tin</th><th>Số tin</th><th>FTS word</th><th>trigram</th><th>vector</th><th>Chất lượng tìm</th></tr></thead>
+    <tbody>
+      <tr><td><b>Văn xuôi</b><br><span style="color:var(--dim);font-size:12px">người nói · agent trả lời</span></td>
+          <td class="num">92.408</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td>khoẻ nhất — MRR <b>0,552</b></td></tr>
+      <tr><td><b>tool_result</b><br><span style="color:var(--dim);font-size:12px">kết quả tool trả về</span></td>
+          <td class="num">61.833</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td>@10 <b>75%</b></td></tr>
+      <tr><td><b>tool_use</b><br><span style="color:var(--dim);font-size:12px">tham số đầu vào của lệnh</span></td>
+          <td class="num">62.644</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">0% tuyệt đối</td></tr>
+    </tbody></table></div>
+  <p class="lede">Hai dấu ✗ là <b>cố ý</b>: trigram trên dump máy từng ngốn 42% cả DB; vector cho một đường dẫn
+     117 ký tự thì vô nghĩa. Job embed sắp tới chỉ nới cho <b>Edit</b>+<b>Write</b> — <b>19.711 tin</b>, ~9–16 giờ, ~60 MB.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Tool</th><th>Số tin</th><th>Dài TB</th><th>Bản chất</th><th>Nhúng?</th></tr></thead>
+    <tbody>
+      <tr><td><b>Edit</b></td><td class="num">16.326</td><td class="num">1.233</td><td>code thật</td><td class="yes">CÓ</td></tr>
+      <tr><td><b>Write</b></td><td class="num">3.385</td><td class="num">3.201</td><td>nguyên nội dung file</td><td class="yes">CÓ</td></tr>
+      <tr><td>Bash</td><td class="num">17.162</td><td class="num">592</td><td>lệnh shell</td><td class="no">không</td></tr>
+      <tr><td>PowerShell</td><td class="num">7.652</td><td class="num">596</td><td>lệnh shell</td><td class="no">không</td></tr>
+      <tr><td>Read</td><td class="num">10.863</td><td class="num">117</td><td>chỉ một đường dẫn</td><td class="no">không</td></tr>
+      <tr><td>Grep</td><td class="num">3.407</td><td class="num">188</td><td>pattern + path</td><td class="no">không</td></tr>
+    </tbody></table></div>
+</section>
+
+<section id="v4" hidden>
+  <p class="lede">Đo trên daemon sống, không đọc sổ.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Thứ</th><th>Mặc định</th><th>Máy này</th><th>Ghi chú</th></tr></thead>
+    <tbody>
+      <tr><td>Nạp realtime (hook mỗi lượt)</td><td>BẬT</td><td><span class="pill on">BẬT</span></td><td>đường nạp chính</td></tr>
+      <tr><td>Scheduler nền (lưới bù)</td><td>BẬT</td><td><span class="pill offp">TẮT</span></td><td class="wn">tắt tay 08/08 chặn writer thứ hai — nhớ bật lại</td></tr>
+      <tr><td>Tự sync Drive</td><td>TẮT</td><td><span class="pill offp">TẮT</span></td><td>—</td></tr>
+      <tr><td>Mở cùng PC</td><td>TẮT</td><td><span class="pill on">BẬT</span></td><td>startup-cmd</td></tr>
+      <tr><td>Trộn cosine <code>vecMix</code></td><td>BẬT</td><td><span class="pill on">BẬT</span></td><td>đo hôm nay +1,77 s, đổi 1/10 vị trí</td></tr>
+      <tr><td>Gộp near-dup</td><td>BẬT</td><td><span class="pill on">BẬT</span></td><td>đo hôm nay: gom 7 bản, đổi 4/10 vị trí</td></tr>
+      <tr><td>Cổng "không biết"</td><td>TẮT</td><td><span class="pill offp">TẮT</span></td><td>trượt cổng — chặn 5/8 + 4/10</td></tr>
+      <tr><td><b>Rerank cross-encoder</b></td><td>TẮT</td><td><span class="pill bd">BẬT</span></td>
+          <td class="wn"><b>giá trị cũ sót trong config máy này</b> — đo hôm nay: <b>+16 s</b>, đảo 9/10 kết quả</td></tr>
+      <tr><td>Nhúng tin tool</td><td>TẮT</td><td><span class="pill offp">TẮT</span></td><td>job <code>Edit,Write</code> chờ giờ máy</td></tr>
+      <tr><td>Hook guard</td><td>—</td><td><span class="pill on">BẬT</span></td><td class="wn">còn bật thì đừng chạy <code>npm run check</code></td></tr>
+    </tbody></table></div>
+</section>
+
+<section id="v5" hidden>
+  <div class="traps">
+    <div class="trap"><h4>--all và --rebuild</h4>
+      <div class="row"><span class="k">--all</span><span class="v">chạy tiếp tới hết hàng chờ, <b>bỏ qua tin đã có vector</b></span></div>
+      <div class="row"><span class="k">--rebuild</span><span class="v">xoá bảng băm, dựng lại từ đầu</span></div>
+      <div class="note">⚠ <code>--rebuild</code> xoá sạch 43 giờ đã bỏ ra. Không gõ nó để "cho chắc".</div></div>
+    <div class="trap"><h4>Hai cái thước</h4>
+      <div class="row"><span class="k">nghiêm</span><span class="v">trả đúng uuid được đánh dấu</span></div>
+      <div class="row"><span class="k">tương đương</span><span class="v">tin cùng nội dung từ phiên khác cũng tính đúng</span></div>
+      <div class="note">⚠ Hai thước <b>nói ngược nhau được</b>. Tám phép thử từng bị đọc sai vì dùng lẫn. Ở kho này tương đương cầm lái.</div></div>
+    <div class="trap"><h4>Nguồn và dẫn xuất</h4>
+      <div class="row"><span class="k">nguồn</span><span class="v">transcript host · file .md · sessions/messages</span></div>
+      <div class="row"><span class="k">dẫn xuất</span><span class="v">FTS · vector · digest · doc/section · graph</span></div>
+      <div class="note">⚠ Tối ưu <b>chỉ đụng lớp dẫn xuất</b>. Không bao giờ xoá tin gốc, kể cả khi nó "rác".</div></div>
+    <div class="trap"><h4>Bundle gọn / đầy</h4>
+      <div class="row"><span class="k">lean</span><span class="v">3 bảng nguồn, bên nhận tự dựng chỉ mục</span></div>
+      <div class="row"><span class="k">--full</span><span class="v">chở cả lớp dẫn xuất</span></div>
+      <div class="note">⚠ Bản trên Drive là lean ⇒ <b>không chở vector</b>. 43 giờ embed chưa được bảo hiểm ngoài ổ này.</div></div>
+    <div class="trap"><h4>"Ngoài git" ≠ "ngoài repo"</h4>
+      <div class="row"><span class="k">đúng</span><span class="v">kho · chìa · .env nằm <b>trong</b> &lt;repo&gt;/data/</span></div>
+      <div class="row"><span class="k">cấm</span><span class="v">git · mọi nguồn mây (kể cả backup máy) · đẩy sang VM</span></div>
+      <div class="note">⚠ Thứ bảo vệ là gitignore + phạm vi đồng bộ, không phải vị trí thư mục.</div></div>
+    <div class="trap"><h4>Độ phủ vector 99,5%</h4>
+      <div class="row"><span class="k">đọc đúng</span><span class="v">99,5% của phần <b>đủ điều kiện nhúng</b></span></div>
+      <div class="row"><span class="k">đọc sai</span><span class="v">99,5% của 216.885 tin</span></div>
+      <div class="note">⚠ 62.644 tin tool_use nằm <b>ngoài mẫu số</b>. Con số đẹp che đúng cái lỗ cần lấp.</div></div>
+  </div>
+</section>
+
+<div class="foot">
+  Bản XEM cho người, nằm ngoài <code>docs/</code> nên agent không tự đọc. Nguồn sự thật:
+  <code>docs/agent/01_CONSTITUTION</code> · <code>02_RULES</code> · <code>docs/plan/*</code> · <code>05_TODO</code>.
+  Số vận hành ở đây <b>có hạn dùng</b> — đo lại bằng <code>/memory-status</code> + <code>/automation</code>.
+</div>
+</div>
+
+<script>
+/* ═════════ icon set (24×24, vẽ tay, không phụ thuộc font) ═════════ */
+const ICON = {
+  term:  "M4 6h16v12H4z M7 10l2.5 2L7 14 M12.5 14.5h4",
+  globe: "M12 3a9 9 0 100 18 9 9 0 000-18 M3 12h18 M12 3c2.5 2.6 2.5 15.4 0 18 M12 3c-2.5 2.6-2.5 15.4 0 18",
+  doc:   "M6 3h8l4 4v14H6z M14 3v4h4",
+  bolt:  "M13 3L5 13h6l-1 8 8-10h-6z",
+  clock: "M12 3a9 9 0 100 18 9 9 0 000-18 M12 7v5l3.5 2",
+  cyl:   "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6",
+  layer: "M12 3l9 4.5-9 4.5-9-4.5z M3 12l9 4.5 9-4.5 M3 16.5L12 21l9-4.5",
+  lens:  "M11 4a7 7 0 100 14 7 7 0 000-14 M16 16l4.5 4.5",
+  merge: "M6 3v5c0 3 3 4 6 4s6 1 6 4v5 M6 3v5c0 3 3 4 6 4h6 M15 9l3 3-3 3",
+  filter:"M3 5h18l-7 8v6l-4 2v-8z",
+  shield:"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z M9 12l2.2 2.2L15.5 10",
+  plug:  "M9 3v6 M15 3v6 M6 9h12v3a6 6 0 01-12 0z M12 18v3",
+  gear:  "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2",
+  win:   "M3 5h18v14H3z M3 9h18 M6 7h.01 M8.5 7h.01",
+  refresh:"M20 12a8 8 0 11-2.3-5.7 M20 4v4h-4",
+  cloud: "M7 18a4 4 0 010-8 5.5 5.5 0 0110.5-1.2A3.6 3.6 0 0117.5 18z M12 11v6 M9.5 14.5L12 17l2.5-2.5",
+  key:   "M15 4a5 5 0 11-4.6 7L4 17.4V20h3v-2h2v-2h1.6l1.8-1.8A5 5 0 0115 4 M16.2 7.8h.01",
+  vec:   "M4 20L20 4 M4 20h6 M4 20v-6 M13 6l5 5",
+  flag:  "M6 21V4h11l-2 3.5L17 11H6",
+  bar:   "M4 20h16 M7 20v-6 M12 20V8 M17 20v-9",
+};
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+/* Vẽ 1 node: rect + icon + nhãn + phụ đề + badge */
+function nodeSVG(n){
+  const ix = n.x + 12, iy = n.y + (n.h/2) - (n.sub ? 10 : 8);
+  const sc = 0.72;
+  const tx = n.x + 40;
+  const cls = "nd " + (n.cls||"") + (n.dim ? " dim" : "");
+  let t = `<g class="${cls}" data-id="${n.id}">
+    <rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="8"/>
+    <g class="icon" transform="translate(${ix},${iy}) scale(${sc})">
+      ${(ICON[n.icon]||"").split(" M").map((d,i)=>`<path d="${i?"M"+d:d}"/>`).join("")}
+    </g>
+    <text class="big" x="${tx}" y="${n.y + (n.sub ? n.h/2 - 2 : n.h/2 + 4)}">${esc(n.label)}</text>`;
+  if(n.sub) t += `<text class="sub" x="${tx}" y="${n.y + n.h/2 + 13}">${esc(n.sub)}</text>`;
+  if(n.badge){
+    const col = n.badge==="BẬT" ? "var(--ok)" : n.badge==="TẮT" ? "var(--off)" : "var(--bad)";
+    t += `<text class="badge" x="${n.x+n.w-8}" y="${n.y+14}" text-anchor="end" fill="${col}">${esc(n.badge)}</text>`;
+  }
+  return t + "</g>";
+}
+
+/* Đường nối: tự chọn hướng theo vị trí tương đối */
+function edgeSVG(a, b, o={}){
+  let d, lx, ly;
+  if (b.x > a.x + a.w - 4){                       // sang phải
+    const x1=a.x+a.w, y1=a.y+a.h/2, x2=b.x-7, y2=b.y+b.h/2, m=(x1+x2)/2;
+    d=`M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`; lx=m; ly=(y1+y2)/2-5;
+  } else if (b.y > a.y + a.h - 4){                // xuống dưới
+    const x1=a.x+a.w/2, y1=a.y+a.h, x2=b.x+b.w/2, y2=b.y-7, m=(y1+y2)/2;
+    d=`M${x1},${y1} C${x1},${m} ${x2},${m} ${x2},${y2}`; lx=(x1+x2)/2+8; ly=m;
+  } else {                                        // lên trên
+    const x1=a.x+a.w/2, y1=a.y, x2=b.x+b.w/2, y2=b.y+b.h+7, m=(y1+y2)/2;
+    d=`M${x1},${y1} C${x1},${m} ${x2},${m} ${x2},${y2}`; lx=(x1+x2)/2+8; ly=m;
+  }
+  const cls = "edge" + (o.soft?" soft":"") + (o.hot?" hot":"");
+  let s = `<path class="${cls}" d="${d}" data-from="${a.id}" data-to="${b.id}"${o.id?` id="${o.id}"`:""}/>`;
+  if(o.label) s += `<text class="elabel" x="${lx}" y="${ly}" text-anchor="middle">${esc(o.label)}</text>`;
+  return s;
+}
+
+const DEFS = `<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,1 L9,5 L0,9" fill="none" stroke="#3A4150" stroke-width="1.6"/></marker>
+  <marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,1 L9,5 L0,9" fill="none" stroke="#FFD166" stroke-width="1.8"/></marker>
+</defs>`;
+
+/* ═════════════════ TAB 1 — KIẾN TRÚC ═════════════════ */
+(function(){
+  const W=196, H=52;
+  const N = {};
+  const def = (id,x,y,label,sub,icon,cls,extra={}) =>
+    N[id] = Object.assign({id,x,y,w:extra.w||W,h:extra.h||H,label,sub,icon,cls}, extra);
+
+  def("agent",  20,  86,"Agent trên máy","claude-code · codex · …","term","src",{w:180});
+  def("web",    20, 158,"Chat trên web","chatgpt · claude.ai","globe","src",{w:180});
+  def("md",     20, 230,"docs/*.md","file LÀ nguồn","doc","src",{w:180});
+
+  def("hook",  260,  70,"Hook mỗi lượt","<1s, đúng 1 file","bolt","pipe",{badge:"BẬT"});
+  def("sched", 260, 138,"Scheduler bù","lưới vét","clock","pipe",{badge:"TẮT",dim:true});
+  def("sweb",  260, 206,"scan-web","mượn phiên đã login","globe","pipe");
+  def("reidx", 260, 274,"reindex","đọc .md, không ghi ngược","refresh","pipe");
+  def("guard", 260, 352,"redact · lọc scope","cửa chung mọi đường nạp","shield","pipe");
+
+  def("msgs",  560,  86,"messages · sessions","216.885 · 1.292 — NGUỒN","cyl","store",{w:210,h:56});
+  def("fword", 560, 168,"FTS word","phủ TẤT CẢ","layer","deriv",{w:100,h:44});
+  def("ftri",  670, 168,"trigram","bỏ tool dump","layer","deriv",{w:100,h:44});
+  def("vec",   560, 224,"vector 768d","159.375","vec","deriv",{w:100,h:44});
+  def("dig",   670, 224,"digest","1.292","bar","deriv",{w:100,h:44});
+  def("docidx",560, 280,"doc · section · changelog","101 · 1.080 · 394","doc","deriv",{w:210,h:44});
+
+  def("lanes", 880,  86,"4 lane song song","word AND · OR · tri · vector","lens","pipe",{w:200});
+  def("rrf",   880, 160,"RRF gộp","trộn THỨ HẠNG","merge","pipe",{w:200,h:44});
+  def("post",  880, 226,"hạ tool · recency","0,3 FTS / 0,7 hybrid","filter","pipe",{w:200,h:44});
+  def("mix",   880, 292,"trộn cosine","vecMix","vec","pipe",{w:200,h:44,badge:"BẬT"});
+  def("coll",  880, 358,"gộp near-dup","θ 0,85 · hạ, không xoá","merge","pipe",{w:200,h:44,badge:"BẬT"});
+  def("abst",  880, 424,"cổng không-biết","trả rỗng thay vì rác","flag","pipe",{w:200,h:44,badge:"TẮT",dim:true});
+  def("rrk",   880, 490,"rerank","cross-encoder","gear","pipe",{w:200,h:44,badge:"BẬT SAI"});
+
+  def("mcp",  1140, 160,"MCP","agent tự gọi","plug","surf",{w:180,h:44});
+  def("cli",  1140, 226,"CLI","zemory memory search","term","surf",{w:180,h:44});
+  def("ui",   1140, 292,"UI 4444","daemon nền","win","surf",{w:180,h:44});
+
+  def("key",   560, 430,"share.key","chìa = danh tính","key","",{w:210,h:44});
+  def("drive", 560, 496,"bundle .enc → Drive","merge CHỈ THÊM","cloud","",{w:210,h:44});
+
+  const E = [
+    ["agent","hook","transcript"], ["web","sweb","CDP"], ["md","reidx",".md"],
+    ["hook","guard"], ["sched","guard",null,{soft:1}], ["sweb","guard"], ["reidx","guard"],
+    ["guard","msgs","redact xong"],
+    ["msgs","fword",null,{soft:1}], ["msgs","ftri",null,{soft:1}],
+    ["msgs","vec",null,{soft:1}], ["msgs","dig",null,{soft:1}], ["msgs","docidx",null,{soft:1}],
+    ["fword","lanes"], ["ftri","lanes"], ["vec","lanes"],
+    ["lanes","rrf"], ["rrf","post"], ["post","mix"], ["mix","coll"],
+    ["coll","abst",null,{soft:1}], ["abst","rrk",null,{soft:1}],
+    ["coll","mcp","kết quả"], ["coll","cli"], ["coll","ui"],
+    ["msgs","key",null,{soft:1}], ["key","drive","mã hoá"],
+  ];
+
+  let s = DEFS;
+  s += `<text class="grouplbl" x="20"   y="62">NGUỒN</text>`;
+  s += `<text class="grouplbl" x="260"  y="52">NẠP</text>`;
+  s += `<text class="grouplbl" x="560"  y="62">KHO — MỘT file SQLite</text>`;
+  s += `<text class="grouplbl" x="880"  y="62">TÌM</text>`;
+  s += `<text class="grouplbl" x="1140" y="140">BỀ MẶT</text>`;
+  s += `<text class="grouplbl" x="560"  y="412">ĐỒNG BỘ XUYÊN MÁY</text>`;
+  s += `<rect class="zone" x="548" y="70" width="234" height="256"/>`;
+  for(const [a,b,l,o] of E) s += edgeSVG(N[a], N[b], Object.assign({label:l}, o||{}));
+  for(const k in N) s += nodeSVG(N[k]);
+  document.getElementById("arch").innerHTML = s;
+
+  const svg = document.getElementById("arch");
+  svg.querySelectorAll(".nd").forEach(g=>{
+    g.addEventListener("mouseenter",()=>{
+      const id=g.dataset.id;
+      svg.querySelectorAll(".edge").forEach(e=>{
+        const hit = e.dataset.from===id || e.dataset.to===id;
+        e.style.stroke = hit ? "var(--gold)" : "";
+        e.style.strokeWidth = hit ? "2.4" : "";
+        e.style.opacity = hit ? "1" : ".35";
+      });
+    });
+    g.addEventListener("mouseleave",()=>{
+      svg.querySelectorAll(".edge").forEach(e=>{e.style.stroke="";e.style.strokeWidth="";e.style.opacity="";});
+    });
+  });
+})();
+
+/* ═════════════════ TAB 2 — CHẠY THẬT ═════════════════ */
+const STEPS = [
+  { id:"q", title:"Agent gửi câu hỏi", icon:"plug",
+    what:'Một câu tiếng Việt có dấu, không từ khoá đặc biệt.',
+    why:'Agent tự quyết định lúc nào cần tra — zemory không bao giờ tự nhét bộ nhớ vào prompt.',
+    kv:[["câu hỏi",'"vì sao rerank làm recall tệ đi"'],["giới hạn trả về","5"]],
+    blocks:[
+      { cap:"LỆNH ĐÃ CHẠY THẬT", tag:"CLI",
+        code:'<b>$ zemory memory search</b> "vì sao rerank làm recall tệ đi" <b>--limit</b> 5' },
+      { cap:"CÙNG LÕI, KHUÔN MCP", tag:"agent gọi",
+        code:'{\n  "tool": "memory_search",\n  "arguments": {\n    "query": "vì sao rerank làm recall tệ đi",\n' +
+             '    "limit": 5,\n    <i>// gửi kèm 2 lối nói khác → recall@10 39%→50%</i>\n' +
+             '    "also": ["rerank cross-encoder chậm hơn hybrid",\n             "đo rerank recall tụt"]\n  }\n}' },
+    ] },
+
+  { id:"tok", title:"Tách từ khoá", icon:"filter",
+    what:'Câu được cắt thành các từ để ba lane chữ dùng; đồng thời câu gốc được nhúng thành vector cho lane thứ tư.',
+    why:'Ngưỡng của cổng "không biết" sau này phải tính trên CÂU GỐC này, không phải trên biến thể — nếu không hai lớp sẽ đá nhau.',
+    kv:[["đầu vào cho lane chữ","các từ đã tách"],["đầu vào cho lane vector","1 vector 768 chiều"]] },
+
+  { id:"lane", title:"4 lane chạy song song", icon:"lens",
+    what:'word AND (chặt) · word OR (rộng) · trigram (chịu lỗi gõ) · vector (theo nghĩa). Lane nào rỗng thì thôi, không ai chết theo.',
+    why:'FTS là chân luôn có; vector chỉ THÊM. Đã có lần lane trigram khớp nguyên cụm cả câu nên 56/56 truy vấn ra 0 kết quả — nửa sức FTS chết âm thầm vì fail-open không kêu.',
+    kv:[["FTS-thuần, toàn bộ 4 lane chữ","0,57 s → 10 kết quả"],["lane vector","cần nhúng câu hỏi trước"]] },
+
+  { id:"rrf", title:"RRF gộp thứ hạng", icon:"merge",
+    what:'Trộn THỨ HẠNG của các lane, không trộn điểm số.',
+    why:'Điểm BM25 và cosine khác thang, cộng thẳng là vô nghĩa. Nhưng RRF luôn xếp được thứ gì đó lên đầu dù điểm thấp tới đâu — đây chính là gốc của bệnh "trả rác một cách tự tin".',
+    kv:[["đầu ra","một danh sách xếp hạng duy nhất"]] },
+
+  { id:"demote", title:"Hạ điểm tin tool", icon:"filter",
+    what:'Tin có tool_name bị nhân điểm phạt để dump máy không lấn chỗ câu người nói.',
+    why:'Hằng số này chọn hồi 07-27 khi tin tool chiếm 40% kết quả đầu; đo lại thì còn 7% — phạt đã quá tay và chôn luôn lớp đã tốn công nhúng. Loại lỗi không hỏng, không gate nào đỏ.',
+    kv:[["lane FTS-thuần","×0,3"],["lane hybrid","×0,7"]] },
+
+  { id:"mix", title:"Trộn cosine", icon:"vec",
+    what:'Xếp lại top-40 bằng vector đã lưu rồi trộn ngược vào thứ hạng RRF.',
+    why:'Trộn ăn hơn thay hẳn vì còn giữ được tín hiệu từ khoá. Đây là thứ thay được cross-encoder với giá rẻ hơn nhiều bậc.',
+    kv:[["thời gian đo hôm nay","0,83 s → 2,60 s"],["đổi thứ hạng","1/10 vị trí"]] },
+
+  { id:"coll", title:"Gộp near-duplicate", icon:"merge",
+    what:'Bản gần trùng gom về một đại diện, các bản kia HẠ xuống sau chứ không bị xoá. Đại diện mang similarIds để mở thẳng bản khác.',
+    why:'Bản đầu XOÁ bản trùng và làm recall tệ đi (@40 64%→41%): khi một tin gần trùng xếp cao hơn tin đang tìm thì tin đang tìm bị xoá mất.',
+    kv:[["đo hôm nay","gom 7 bản trùng"],["đổi thứ hạng","4/10 vị trí"]] },
+
+  { id:"abst", title:"Cổng \"không biết\"", icon:"flag", off:true,
+    what:'Điểm quá thấp thì trả RỖNG thay vì trả bừa. ĐANG TẮT nên truy vấn này đi thẳng qua.',
+    why:'Ngưỡng từng trông "tách hoàn hảo 8/8" hoá ra là hiệu chỉnh trên chính tập dùng để chấm nó. Thêm bộ giữ riêng thì hai phân bố chồng nhau, không ngưỡng nào tách nổi.',
+    kv:[["trạng thái","TẮT — chặn 5/8 + 4/10"]] },
+
+  { id:"rrk", title:"Rerank cross-encoder", icon:"gear", bad:true,
+    what:'Chấm lại từng cặp câu-hỏi × kết quả bằng một model riêng. Mặc định TẮT — nhưng config máy này còn giá trị cũ true nên nó ĐANG CHẠY.',
+    why:'Đây là chỗ phép đo hôm nay bắt quả tang: nó giữ nguyên kết quả số 1 nhưng xáo trộn toàn bộ 9 vị trí còn lại, và tính tiền bằng 16 giây.',
+    kv:[["không rerank","2,60 s"],["có rerank","18,8 – 29,4 s"],["chậm hơn","7,2 ×"],["top-10 còn trùng","1/10"]],
+    blocks:[
+      { cap:"HEADER LỆNH IN RA — BẰNG CHỨNG NÓ ĐANG CHẠY", tag:"nguyên văn",
+        code:'zemory memory search — "vì sao rerank làm recall tệ đi"\n  (project: D:\\huy.nguyen\\Tool\\Zemory · hybrid (FTS+vector)\n' +
+             '   · <s>rerank (cross-encoder)</s> · recency)' },
+      { cap:"TẮT ĐI THÌ HEADER CÒN LẠI", tag:"ZEMORY_RERANK=0",
+        code:'  (project: D:\\huy.nguyen\\Tool\\Zemory · hybrid (FTS+vector)\n   · recency)' },
+    ] },
+
+  { id:"out", title:"Về đích — 10 kết quả", icon:"flag", end:true,
+    what:'Agent nhận danh sách kèm snippet, mở sâu bằng memory_show khi cần.',
+    why:'Câu trả lời thật sự (#2292683 — "rerank trên kho mới vẫn KHÔNG tốt hơn") CÓ trong top-5 khi tắt rerank, và BIẾN MẤT khi bật. Tức lớp đắt nhất của đường ống đang đẩy đúng câu trả lời ra khỏi tầm nhìn. MỘT truy vấn không phải kết luận chung — nhưng nó đủ để nói rằng cái đắt nhất không mặc nhiên là cái tốt nhất.',
+    kv:[["FTS-thuần","0,57 s"],["hybrid như máy này","18,8 – 29,4 s"],["lần chạy CLI nguội","62,5 s"]],
+    blocks:[
+      { cap:"KẾT QUẢ THẬT — RERANK BẬT (máy này)", tag:"62,5 s",
+        code:'<b>#2180577</b> 03/08 assistant  Tra xong. Chuẩn của người ta khác…\n' +
+             '<b>#2282398</b> 04/08 <i>user</i>   t nhớ cái repo này đang xử lý vụ rerank…\n' +
+             '<b>#2293790</b> 09/08 assistant  <u>← tin của CHÍNH phiên này</u>\n' +
+             '<b>#2288518</b> 05/08 <i>user</i>   Rerank vẫn đang q8, tôi cố ý chưa đổi…\n' +
+             '<b>#2293784</b> 09/08 assistant  <u>← tin của CHÍNH phiên này</u>\n' +
+             '<s>câu trả lời #2292683 KHÔNG có trong top-5</s>' },
+      { cap:"KẾT QUẢ THẬT — RERANK TẮT", tag:"cùng câu hỏi",
+        code:'<b>#2180577</b> 03/08 assistant  Tra xong. Chuẩn của người ta khác…\n' +
+             '<b>#2288460</b> 05/08 assistant  cache model của rerank trỏ sai đường…\n' +
+             '<b>#2282398</b> 04/08 <i>user</i>   t nhớ cái repo này đang xử lý vụ rerank…\n' +
+             '<b>#2293790</b> 09/08 assistant  ← tin của chính phiên này\n' +
+             '<u>#2292683</u> 08/08 assistant  <u>"rerank trên kho mới vẫn KHÔNG tốt</u>\n' +
+             '                              <u>hơn — nó tệ đi ở hầu hết mọi mức"</u>' },
+      { cap:"VÒNG LẶP KHÉP KÍN", tag:"hook realtime",
+        code:'Hai dòng <u>#2293784</u> / <u>#2293790</u> là tin tôi vừa gõ vài phút trước\ntrong chính phiên này — hook đã nạp và chúng TÌM ĐƯỢC ngay.' },
+    ] },
+];
+
+(function(){
+  const svg = document.getElementById("trace");
+  const X = 250, W = 400, H = 46, GAP = 12, TOP = 20;
+  const nodes = STEPS.map((s,i)=>({
+    id:s.id, x:X, y:TOP + i*(H+GAP), w:W, h:H,
+    label:s.title, icon:s.icon,
+    cls: s.end ? "surf" : s.bad ? "" : "pipe",
+    dim: s.off
+  }));
+
+  let out = DEFS;
+  for(let i=0;i<nodes.length-1;i++)
+    out += edgeSVG(nodes[i], nodes[i+1], {id:"e"+i, soft: STEPS[i+1].off});
+  nodes.forEach(n=> out += nodeSVG(n));
+  out += `<circle id="tok" r="7" fill="var(--gold)" opacity="0"/>`;
+  svg.setAttribute("viewBox", `0 0 900 ${TOP + nodes.length*(H+GAP) + 16}`);
+  svg.innerHTML = out;
+
+  const tok = svg.querySelector("#tok");
+  let cur = -1, playing = false, raf = 0;
+
+  function paint(i){
+    svg.querySelectorAll(".nd").forEach((g,j)=>{
+      g.querySelector("rect").style.stroke = j===i ? "var(--gold)" : "";
+      g.querySelector("rect").style.fill   = j===i ? "#241F14" : "";
+      g.style.opacity = j<=i ? "1" : ".42";
+    });
+    svg.querySelectorAll(".edge").forEach((e,j)=>{
+      e.style.stroke = j < i ? "var(--gold)" : "";
+      e.style.opacity = j < i ? "1" : ".4";
+    });
+    const s = STEPS[i];
+    document.getElementById("tstep").textContent = `CHẶNG ${i+1} / ${STEPS.length}`;
+    document.getElementById("ttitle").textContent = s.title;
+    document.getElementById("twhat").textContent = s.what;
+    document.getElementById("twhy").textContent = s.why;
+    document.getElementById("tkv").innerHTML =
+      s.kv.map(([k,v])=>`<div class="kv"><span class="k">${esc(k)}</span><span class="v${
+        /s$|×/.test(v)&&/1[89]|29|62|7,2|33/.test(v)?" r":/0,5|0,8|2,6/.test(v)?" o":" g"}">${esc(v)}</span></div>`).join("")
+      + (s.blocks||[]).map(b=>
+          `<div class="blk"><div class="cap"><span>${esc(b.cap)}</span><em>${esc(b.tag)}</em></div>`
+        + `<pre>${b.code}</pre></div>`).join("");
+    document.getElementById("pbar").style.width = ((i+1)/STEPS.length*100)+"%";
+    const n = nodes[i];
+    tok.setAttribute("cx", n.x - 18); tok.setAttribute("cy", n.y + n.h/2);
+    tok.setAttribute("opacity", 1);
+  }
+
+  function glide(from, to, done){
+    const p = svg.querySelector("#e"+from);
+    if(!p){ done(); return; }
+    const L = p.getTotalLength(); const T0 = performance.now(); const DUR = 620;
+    (function step(now){
+      const k = Math.min(1, (now-T0)/DUR);
+      const pt = p.getPointAtLength(L*k);
+      tok.setAttribute("cx", pt.x); tok.setAttribute("cy", pt.y);
+      if(k<1) raf = requestAnimationFrame(step); else done();
+    })(T0);
+  }
+
+  function go(i){ cur = Math.max(0, Math.min(STEPS.length-1, i)); paint(cur); }
+
+  function play(){
+    if(cur >= STEPS.length-1) go(0);
+    playing = true; document.getElementById("play").textContent = "❚❚ Dừng";
+    (function next(){
+      if(!playing || cur >= STEPS.length-1){
+        playing=false; document.getElementById("play").textContent="▶ Chạy"; return;
+      }
+      const from = cur;
+      glide(from, from+1, ()=>{ go(from+1); setTimeout(next, 950); });
+    })();
+  }
+
+  document.getElementById("play").onclick = ()=>{
+    if(playing){ playing=false; cancelAnimationFrame(raf);
+      document.getElementById("play").textContent="▶ Chạy"; }
+    else play();
+  };
+  document.getElementById("next").onclick  = ()=>{ playing=false; go(cur+1); };
+  document.getElementById("prev").onclick  = ()=>{ playing=false; go(cur-1); };
+  document.getElementById("reset").onclick = ()=>{ playing=false; go(0); };
+  svg.querySelectorAll(".nd").forEach((g,i)=> g.onclick = ()=>{ playing=false; go(i); });
+  go(0);
+})();
+
+/* ═════════════════ tabs ═════════════════ */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected", String(x===b)));
+    document.querySelectorAll("section").forEach(s=> s.hidden = s.id !== b.dataset.v);
+  };
+});
+</script>
+</body></html>

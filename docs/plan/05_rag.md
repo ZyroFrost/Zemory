@@ -48,7 +48,15 @@ query:
 ## 5. Quyết định còn mở (chốt khi làm)
 - **Đã chốt trong core 2026-06-29:**
 - Vector store = `sqlite-vec` trong `global_memory.db`, không tạo DB thứ hai.
-- Vector mặc định = 768d đầy đủ ban đầu; **ĐỔI 2026-07-14 (F1/plan 12): 256d Matryoshka** là mặc định thật trên DB — cắt + renormalize từ 768d, dims lưu `vec_config.dims`, stored-dims-authoritative (giống pattern profile).
+- Vector mặc định = 768d đầy đủ ban đầu; ~~ĐỔI 2026-07-14 (F1/plan 12): 256d Matryoshka~~ →
+  **ĐẢO LẠI 2026-08-08: quay về 768d ĐẦY ĐỦ + fp32**, là mặc định thật trên kho hiện nay.
+  Lý do đảo: 256d tiết kiệm được đĩa (1.141 → 595 MB) nhưng **không ai đo phần chất lượng mất**;
+  đo lại 05/08 bằng phép thử có kiểm soát (embed MỘT lần ở 768 rồi cắt bốn mức trên cùng dãy số)
+  ra `recall@1` 128/256/512/768 = 62/**74**/85/**91%** ⇒ 256d đang cắt mất ~17 điểm ở vị trí đầu,
+  và 44% câu không bao giờ lấy về được. Chuộc bằng **43 giờ** embed lại. Đây chính là ca sinh ra
+  **HP điều 15** (chất lượng > dung lượng; cắt phải qua cổng như thêm).
+  `dims` vẫn lưu ở `vec_config.dims`, **stored-dims-authoritative** — không đọc lại từ env sau khi
+  index đã dựng (giữ nguyên, chính nó cho phép tráo kho mà truy vấn không lẫn hai không gian).
 - Message transcript = chunk tự nhiên cho memory agent; nội dung dài được cap khi embed để tránh tool output quá khổ — **ĐỔI 2026-07-12: cap 6000 ký tự giờ CHUNK thành cửa sổ chồng lấn thay vì cắt cụt**, xem F1.
 - Hybrid mặc định bật khi config/env cho phép; vector fail-open về FTS.
 

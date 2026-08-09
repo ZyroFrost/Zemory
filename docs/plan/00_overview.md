@@ -10,6 +10,10 @@
 
 User chọn dùng chỉ harness, hoặc harness + DB; hai mức không ràng buộc nhau. Bất biến kiến trúc đầy đủ: `docs/agent/01_CONSTITUTION.md`.
 
+### Bản đồ vận hành (xem trực quan)
+- [zemory_runtime_map.html](../../docs_visual/zemory_runtime_map.html) — sơ đồ tương tác toàn hệ, 5 tab: ① dòng chảy nguồn → nạp → kho → tìm → bề mặt · ② mười chặng của một lượt recall, mỗi chặng kèm lý do tồn tại · ③ ba lớp tin (`prose` · `tool_result` · `tool_use`) và chỉ mục nào phủ lớp nào · ④ công tắc nào đang bật · ⑤ những cặp khái niệm dễ lẫn (`--all` vs `--rebuild`, hai thước, lean vs full…).
+- Dựng 2026-08-09 để gỡ rối "nhiều lớp chồng lên nhau"; số vận hành trong đó **có hạn dùng** — đo lại bằng `/memory-status` + `/automation` trước khi dựa vào.
+
 ---
 
 ## 0. Tóm tắt 1 đoạn
@@ -104,7 +108,7 @@ Promotion từ episodic sang curated chỉ xảy ra qua lệnh rõ và review. K
 ## 6. Phân phối, cấu trúc & cách chạy (đã chốt + đã build)
 Zemory phân phối dưới dạng package npm CLI, một bản global dùng cho mọi project. Project chỉ chứa `AGENTS.md`, `docs/.harness.json`, `docs/agent/*` và `docs/plan/*`.
 
-`zemory init` scaffold harness không ghi đè; `sync` gap-fill (bổ khuyết file harness còn thiếu, giữ nguyên file có sẵn — file wins); `fresh` backup cả agent docs và plan; `doctor` kiểm tra setup, provider và capability. Global Memory mặc định ở `~/.zemory/global_memory.db`, có thể chuyển bằng `GLOBAL_MEMORY_DB`.
+`zemory init` scaffold harness không ghi đè; `sync` gap-fill (bổ khuyết file harness còn thiếu, giữ nguyên file có sẵn — file wins); `fresh` backup cả agent docs và plan; `doctor` kiểm tra setup, provider và capability. Global Memory nằm **TRONG cây repo** (`<repo>/data/global_memory.db` — HP điều 14, chốt 2026-08-05), con trỏ vị trí ở `~/.zemory/location.json`; dời bằng `memory relocate`, ép bằng `GLOBAL_MEMORY_DB`.
 
 **Capture — đường MẶC ĐỊNH là scheduler scan của daemon, KHÔNG phải Stop hook.** Câu cũ ở đây khai *"Claude và Codex dùng Stop hook để capture"*; đo lại 2026-07-29 thì **không máy nào cài hook** (`~/.claude/settings.json` + `~/.codex/config.toml` đều 0 lần nhắc zemory) mà capture vẫn chạy đủ: **6.882 tin nạp trong 2 ngày**, `ingest_state` tiến theo nhịp ~30 phút. Daemon quét transcript trên đĩa và ingest theo `ingest_state` (file_path · size · mtime · last_line · parser_version) nên **không bỏ sót dù agent thoát bất thường** — đúng chỗ Stop hook dễ hụt. `zemory hook install` vẫn còn và vẫn dùng được (`.claude/settings.json` · `.codex/hooks.json` + `codex_hooks`) — giữ làm **lối TUỲ CHỌN** khi muốn độ trễ thấp hơn 30 phút, không phải điều kiện để capture hoạt động. Recall dùng instruction hoặc MCP on-demand. UI và extension tương lai chỉ đọc status API chung.
 
@@ -124,7 +128,7 @@ Compression (deterministic + quota-safe) đã **BỎ khỏi scope 2026-06-25** (
 - **File `.md` là nguồn curated (FILE WINS, chốt 2026-07-16 — supersede "DB là nguồn"); DB doc/section/changelog là index dẫn xuất, rebuild từ file bằng `zemory reindex` (đọc `.md`, KHÔNG ghi ngược).
 - Capture tự động, recall on-demand; không auto-inject broad memory.
 - Claude và Codex cùng dùng Stop capture; host khác cần adapter/lifecycle riêng.
-- Global memory ở `~/.zemory/global_memory.db` (đã dời khỏi `headroom-custom` 2026-06-25).
+- Global memory ở `<repo>/data/global_memory.db` (**ĐỔI 2026-08-05, HP điều 14** — supersede vị trí cũ `~/.zemory/`, vốn đã dời khỏi `headroom-custom` 2026-06-25). Cả cụm kho · chìa · config · model cache đi cùng nhau trong repo để `relocate` không bỏ sót; chỉ `~/.zemory/location.json` (con trỏ, không chứa bí mật) còn ở home. Kho chỉ được nằm **trong repo hoặc trong bundle `.enc` trên Drive** — không nơi nào khác.
 - 4 capability: **memory · search · harness · health** (`governance` đổi tên → `harness`; **compression đã BỎ khỏi scope**, code ở `attic/`).
 - Không proxy model API (không `ANTHROPIC_BASE_URL`/rewrite history).
 - RAG semantic (plan 05): vector là **engine nội bộ slot `search`**, không slot riêng; model **EmbeddingGemma** chạy local qua **Transformers.js**, lưu **sqlite-vec**; chỉ bật sau benchmark thắng FTS.

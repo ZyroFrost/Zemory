@@ -32,7 +32,7 @@ Luồng hợp nhất dùng FTS5 word/trigram làm candidate recall, embedding lo
 ## 4. MCP progressive disclosure
 Zemory cung cấp một MCP server local qua `zemory mcp` (stdio). Server này thuộc **tool cài toàn máy**, không thuộc riêng project nào:
 
-- **Global Memory là cấp máy** (`~/.zemory/global_memory.db` hoặc `GLOBAL_MEMORY_DB`). Project nào cũng gọi được recall, kể cả khi project đó chưa có `docs/.harness.json`.
+- **Global Memory là cấp máy** (`<repo>/data/global_memory.db` — HP điều 14; con trỏ `~/.zemory/location.json`, ép bằng `GLOBAL_MEMORY_DB`). Project nào cũng gọi được recall, kể cả khi project đó chưa có `docs/.harness.json`.
 - **Harness theo project là tùy chọn**: chỉ dùng cho rules/plan/TODO/changelog curated của project. Không có harness thì `memory_search` vẫn hoạt động và rơi về global scope; `plan_search` chỉ có kết quả nếu docs đã từng sync vào DB.
 - MCP không tự inject memory. Agent tự quyết định gọi khi prompt liên quan việc cũ, lỗi cũ, hoặc cần mở plan/spec.
 
