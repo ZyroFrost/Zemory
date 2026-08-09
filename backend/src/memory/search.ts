@@ -270,27 +270,37 @@ function rankWithRecency(
  * Đặt SAU RRF/rerank, cùng tầng với recency: nó điều biến thứ tự cuối chứ không tranh
  * chấp với phép xếp hạng theo thứ tự của RRF.
  */
-// 0,3 → **0,7** (đo 2026-08-09, quét 5 mức trên 68 nhãn chia lớp). Hằng số 0,3 chọn hồi
-// 2026-07-27 khi tin tool chiếm **8/20 = 40%** kết quả đầu; nay đo lại thì ở 0,3 chúng chỉ còn
-// **7%** — tức hình phạt đang làm QUÁ TAY và chôn luôn một lớp đã tốn công embed
-// (`tool_result`: 61.473 tin, vector 99,8%, mà recall chỉ 25%).
+// HAI MỨC, chọn theo LANE — không phải một hằng số cho cả hệ (đo 2026-08-09, 68 nhãn):
 //
-// Vì sao đúng 0,7 mà không cao hơn: đây là mức duy nhất KHÔNG đánh đổi gì —
-//   prose MRR **0,458 → 0,458** (y nguyên) · keyword 0,241 → **0,373** (+55%)
-//   tool_result 0,092 → **0,209** (+127%) · tổng 0,282 → **0,319** (+13%)
-//   dump chiếm top-10: 7% → 12% (vẫn xa mức 40% đã sinh ra hình phạt)
-// Lên 0,85 thì tổng cao hơn (0,331) và tool_result vọt 0,425, NHƯNG prose bắt đầu trả giá
-// (MRR 0,443 · `@1` 35% → 32%) — đổi lớp mạnh nhất lấy lớp yếu là lỗ, đúng lý lẽ đã dùng khi
-// giữ lane AND. Tắt hẳn (1,0) còn tệ hơn 0,85 ở cả tổng lẫn prose.
-const TOOL_DEMOTE = Number(process.env.ZEMORY_TOOL_DEMOTE) || 0.7;
+//   TOOL_DEMOTE   FTS-thuần MRR   hybrid MRR
+//   0,3           **0,204**       0,282
+//   0,5           0,105           0,298
+//   0,7           0,121           **0,319**
+//
+// FTS-thuần ở 0,3 hơn 0,7 tới **69%**; hybrid thì ngược lại. Không mức nào tốt cho cả hai, và
+// lý do rất vật lý: trong FTS-thuần, tin tool khớp từ khoá RẤT mạnh (dài, đầy mã định danh —
+// đúng phát hiện gốc 2026-07-27: 8/20 kết quả đầu là tin tool) và **không có lane vector để
+// bù**; trong hybrid thì vector bù được, nên phạt nhẹ đi lại lợi. Tiêu chí tách vì thế là
+// "có tín hiệu semantic tham gia hay không", KHÔNG phải "hàm nào được gọi" — vector fail-open
+// trả rỗng thì lane đó THỰC SỰ là FTS-thuần và phải dùng mức mạnh.
+//
+// 🔴 Bài học cách đo: bản vá 0,3→0,7 đầu tiên quét CHỈ bằng `searchHybrid`, nên không thấy
+// lane FTS-thuần tụt MRR 0,204 → 0,121 — mà đó là **đường nhanh của app** (`search()`) và
+// đường fail-open. Đo một cấu hình bằng bề mặt HẸP HƠN bề mặt sẽ chịu ảnh hưởng là cách làm
+// hỏng thứ không ai đang nhìn.
+const TOOL_DEMOTE_FTS = Number(process.env.ZEMORY_TOOL_DEMOTE_FTS) || 0.3;
+const TOOL_DEMOTE_HYBRID = Number(process.env.ZEMORY_TOOL_DEMOTE) || 0.7;
 
 function demoteToolOutput(
   db: MemoryDB,
   ranked: { rowid: number; s: number }[],
   opts: SearchOptions,
+  /** Lane vector CÓ THẬT SỰ tham gia không (không phải "có gọi hybrid không"). */
+  hasVector = false,
 ): { rowid: number; s: number }[] {
   if (opts.role === "tool" || opts.includeTools) return ranked; // hỏi thẳng tool ⇒ không phạt
   if (ranked.length < 2) return ranked;
+  const factor = hasVector ? TOOL_DEMOTE_HYBRID : TOOL_DEMOTE_FTS;
   const ids = ranked.map((r) => r.rowid);
   const rows = db
     .prepare(
@@ -304,7 +314,7 @@ function demoteToolOutput(
     isTool.set(r.id, Boolean(r.tool_name) || (r.role === "user" && TOOL_RESULT_PREFIX.test(r.head)));
   }
   return ranked
-    .map((r) => (isTool.get(r.rowid) ? { rowid: r.rowid, s: r.s * TOOL_DEMOTE } : r))
+    .map((r) => (isTool.get(r.rowid) ? { rowid: r.rowid, s: r.s * factor } : r))
     .sort((a, b) => b.s - a.s);
 }
 
@@ -649,7 +659,9 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
     ranked = await maybeRerank(db, ranked, query, opts.rerank);
     // SAU rerank, TRƯỚC recency — cùng vị trí như ở search() để hai đường cho cùng
     // thứ tự. Bỏ sót đây là bỏ sót đường CHÍNH: hybrid bật mặc định, UI đi lối này.
-    ranked = demoteToolOutput(db, ranked, opts);
+    // `vec.length > 0`, KHÔNG phải `useVector`: vector fail-open trả rỗng thì lane này thực sự
+    // là FTS-thuần và phải chịu mức phạt mạnh của FTS.
+    ranked = demoteToolOutput(db, ranked, opts, vec.length > 0);
     ranked = rankWithRecency(db, ranked, opts);
     return { hits: finish(db, ranked, terms, opts, probe.qv), topDistance };
   } finally {
