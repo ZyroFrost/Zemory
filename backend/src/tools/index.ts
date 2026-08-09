@@ -99,6 +99,15 @@ export const TOOLS = [
         all: { type: "boolean", description: "Search all projects instead of the current project." },
         project: { type: "string", description: "Project root to scope search to; ignored when all=true." },
         limit: { type: "number", description: "Maximum hits, default 12, max 50." },
+        expand_duplicates: {
+          type: "boolean",
+          description:
+            "Off by default: this store discusses the same work across many sessions, so near-identical messages are " +
+            "MERGED into one line carrying `similar` (how many were folded in) and `similarIds` (their ids — open any " +
+            "with memory_show, no second search needed). NOTHING is hidden. Set true only when you need every copy " +
+            "listed separately — e.g. tracing how one decision was worded over time, or the merged line is not the " +
+            "exact message you must cite.",
+        },
         deep: { type: "boolean", description: "Add cross-encoder re-ranking. LAST RESORT: ~40x slower (tens of seconds)." },
       },
       required: ["query"],
@@ -331,6 +340,8 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
       project: currentProject(args, env),
       limit: clampLimit(args.limit, 12, 50),
       rerank: Boolean(args.deep),
+      // `expand_duplicates:true` ⇒ TẮT gộp (liệt kê từng bản riêng). Mặc định gộp BẬT.
+      ...(args.expand_duplicates ? { collapse: false } : {}),
       dbPath: env.dbPath,
     };
     const hits = also.length ? await searchMulti([query, ...also], sOpts) : await searchHybrid(query, sOpts);
