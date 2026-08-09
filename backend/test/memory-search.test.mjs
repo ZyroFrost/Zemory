@@ -131,14 +131,16 @@ test("gộp near-dup: thiếu vector ⇒ mọi tin đứng riêng, KHÔNG mất 
 // Mặc định phải TẮT: gộp TRƯỢT cổng recall trên corpus có nhãn (`@10` 39% → 32%), và điều 12
 // cấm bật mặc định một lớp chưa thắng net. Khoá lại vì đây đúng loại mặc-định-sai đã trả giá
 // một lần với rerank: đợt 07-26 chỉ vá GIÁ TRỊ trong config, mặc định vẫn bật nên nó quay lại.
-test("gộp near-dup: MẶC ĐỊNH TẮT, chỉ bật qua env/opts", () => {
+// MẶC ĐỊNH BẬT (user chốt 2026-08-09) sau khi thước TƯƠNG ĐƯƠNG đảo phán quyết: gộp thua trên
+// thước nghiêm (MRR 0,319→0,288) nhưng THẮNG trên thước tương đương (0,407→0,413, @10 49→54%).
+test("gộp near-dup: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
   const prev = process.env.ZEMORY_COLLAPSE;
   try {
     delete process.env.ZEMORY_COLLAPSE;
-    assert.equal(collapseEnabled(), false, "không khai gì ⇒ phải TẮT");
-    process.env.ZEMORY_COLLAPSE = "1";
-    assert.equal(collapseEnabled(), true, "ZEMORY_COLLAPSE=1 bật được");
-    assert.equal(collapseEnabled(false), false, "tham số mỗi lời gọi thắng env");
+    assert.equal(collapseEnabled(), true, "không khai gì ⇒ phải BẬT");
+    process.env.ZEMORY_COLLAPSE = "0";
+    assert.equal(collapseEnabled(), false, "ZEMORY_COLLAPSE=0 tắt được");
+    assert.equal(collapseEnabled(true), true, "tham số mỗi lời gọi thắng env");
   } finally {
     if (prev === undefined) delete process.env.ZEMORY_COLLAPSE;
     else process.env.ZEMORY_COLLAPSE = prev;

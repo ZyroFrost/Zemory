@@ -24,6 +24,15 @@ export interface SearchHit {
   snippet: string;
   /** Gộp near-duplicate: số bản gần trùng đã xếp sau dòng này (plan 17 §1.2). Khuyết = 0. */
   similar?: number;
+  /**
+   * ID của các bản gần trùng đã gom vào dòng này (tối đa `SIMILAR_IDS_CAP`).
+   *
+   * Vì sao trả ID chứ chỉ đếm số: có số mà không có ID thì agent muốn xem bản khác phải TÌM
+   * LẠI toàn bộ với `collapse:false` — một lượt search nữa cho một việc đáng lẽ là một lượt
+   * `memory_show`. Có ID thì mở đúng cái cần, không cái nào bị che (điều 8: hiện lớp mỏng
+   * trước, đào sâu khi cần — KHÔNG phải ẩn bớt).
+   */
+  similarIds?: number[];
 }
 
 export interface SearchOptions {
@@ -340,16 +349,31 @@ const COLLAPSE_SIM = Number(process.env.ZEMORY_COLLAPSE_SIM) || 0.85;
 // trong `limit`. ⚠ Lấy dư cũng làm mất phần "sạch hơn": suất trống được LẤP BẰNG RÁC MỚI, nên
 // ca âm vẫn 40 kết quả/câu (phép thử cũ tưởng 40 → 22 vì nó không lấp lại).
 const COLLAPSE_OVERFETCH = 4;
+/** Trần số ID bản-trùng trả kèm mỗi dòng: đủ để mở, không phá tinh thần "lớp mỏng trước". */
+const SIMILAR_IDS_CAP = 5;
 
 /**
- * Gộp near-duplicate — **MẶC ĐỊNH TẮT**: nó TRƯỢT cổng recall trên corpus có nhãn (xem khối
- * chú thích trên), và điều 12 cấm bật mặc định một lớp chưa thắng net. Bật bằng
- * `ZEMORY_COLLAPSE=1` hoặc `collapse: true` mỗi lời gọi.
+ * Gộp near-duplicate — **MẶC ĐỊNH BẬT (user chốt 2026-08-09)**, sau khi thước TƯƠNG ĐƯƠNG
+ * đảo phán quyết cũ.
+ *
+ * 🔄 **Supersede kết luận "TRƯỢT CỔNG, mặc định TẮT" của chính khối này.** Hai thước nói NGƯỢC
+ * nhau về cùng thay đổi, và cả hai đều đúng vì đo hai việc khác:
+ *   · thước NGHIÊM (đúng 1 uuid): gộp THUA — MRR 0,319 → 0,288
+ *   · thước TƯƠNG ĐƯƠNG (gần trùng cũng tính): gộp THẮNG — MRR 0,407 → **0,413**,
+ *     `@10` 49% → **54%**, `@40` 60% → **63%**; `prose@40` 76% → **82%**,
+ *     `tool_result@10` 63% → **75%**
+ * Thước nghiêm phạt gộp nặng nhất trong mọi thay đổi, vì bản chất của gộp LÀ gom bản trùng nên
+ * đại diện cụm thường không phải đúng uuid được đánh dấu — dù nội dung y hệt. Với mục đích thật
+ * của zemory (agent tra cứu để BIẾT VIỆC, không phải hệ trích dẫn một uuid) thì tương đương là
+ * thước cầm lái. `ZEMORY_COLLAPSE=0` để tắt.
+ *
+ * KHÔNG có gì bị ẩn: mỗi đại diện mang `similar` (số bản đã gom) + `similarIds` (mở được ngay
+ * bằng `memory_show`). Agent nào cần thấy từng bản riêng thì gọi lại với `collapse:false`.
  */
 export function collapseEnabled(force?: boolean): boolean {
   if (force !== undefined) return force;
   const v = process.env.ZEMORY_COLLAPSE?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "on";
+  return !(v === "0" || v === "false" || v === "off");
 }
 
 // ── CỔNG "KHÔNG BIẾT" (abstention — plan 17 §1.3) ────────────────────────────
@@ -434,6 +458,8 @@ function collapseHits(hits: SearchHit[], dbPath: string | undefined, limit: numb
       for (const r of reps) {
         if (r.vec && cosine(v, r.vec) >= COLLAPSE_SIM) {
           r.hit.similar = (r.hit.similar ?? 0) + 1;
+          // Kèm ID để mở được đúng bản cần bằng một lượt `memory_show`, khỏi tìm lại cả kho.
+          if ((r.hit.similarIds ??= []).length < SIMILAR_IDS_CAP) r.hit.similarIds.push(h.id);
           dupes.push({ ...h });
           joined = true;
           break;
