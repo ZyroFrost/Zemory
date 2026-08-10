@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-08-10b] — Đa-truy-vấn: CHẤT LƯỢNG biến thể quyết định DẤU · sửa mô tả tool MCP · biến thể tự sinh THẤT BẠI
+
+> 🔄 **Supersede số của [2026-08-09]** — *"ba lối nói cho `prose@40` 68 → 94%"*. Đo lại trên đường
+> ống hôm nay (đã đổi nhiều: `vecMix` · gộp trùng · hình phạt tool hai mức · `W_OR` 0,3): ba lối
+> nói chỉ ra **59%**. Con số 94% hết hạn, đừng dùng lại làm mốc.
+
+**Đo trên 34 nhãn `prose`, tham số khớp `recallbench.ts:241` (`all:true`, rerank off):**
+
+| cấu hình | @1 | @3 | @10 | @40 | MRR |
+|---|---:|---:|---:|---:|---:|
+| 1 truy vấn (nền) | **35%** | 44% | 50% | 65% | 0,407 |
+| q + biến thể **CỤ THỂ** | 32% | **47%** | **71%** | **79%** | **0,432** |
+| q + biến thể **MƠ HỒ** | 15% | 15% | 35% | 50% | **0,189** |
+| q + cả hai | 21% | 32% | 50% | 59% | 0,300 |
+
+**Kết luận không phải "gửi mấy cái" mà là "gửi cái NHƯ THẾ NÀO".** Cùng một số lượng: biến thể
+diễn đạt kỹ, giữ nguyên độ cụ thể ⇒ `@10` **+21 điểm**; biến thể ngắn/mơ hồ ⇒ MRR rơi xuống **dưới
+một nửa mức không dùng gì**. Đây là lớp có **PHƯƠNG SAI CAO**, không phải lớp "bật là lợi".
+
+**Ba nguồn sinh biến thể, đã đo đủ cả ba — chỉ một nguồn dùng được:**
+· luật tất định (3 từ hiếm) → MRR 0,407 → **0,215**, hại nặng · LLM nhỏ trong lõi (Qwen3-0,6B,
+09/08) → 0,458 → 0,334, hại · **agent/người viết → 0,407 → 0,432, THẮNG**. Tức đúng thứ tự ưu
+tiên điều 6: bậc ① và ③ đều thua, **bậc ② thắng** — nay có thêm bằng chứng thứ hai.
+
+**Đã sửa mô tả tool MCP `memory_search`** theo đúng số mới: khuyên gửi **MỘT** biến thể, bắt buộc
+*"cụ thể ngang câu gốc — viết không nổi thì đừng gửi"*, và nêu thẳng con số phạt (0,189 vs 0,407).
+Mô tả cũ khuyên 2–3 biến thể dựa trên mốc 94% nay đã hết hạn ⇒ nó đang dạy sai mọi agent nối vào.
+
+**Hệ quả thiết kế** (chi tiết `05_TODO` + `plan/17 §1.1b`): ô "cách nói khác" trên UI KHÔNG còn là
+thắng lợi hiển nhiên — gõ câu mơ hồ vào là tệ hơn không gõ, nên nó không thể là một ô trống.
+
 ## [2026-08-10] — Rerank ĐÓNG bằng số · RM3 + luồng từ-hiếm TRƯỢT CỔNG · tìm ra cơ chế chôn `tool_use`
 
 **Rerank: đo dứt điểm rồi TẮT.** Bench 68 nhãn, kho thật: thua **mọi** cột nghiêm (`@1` 25→18% ·

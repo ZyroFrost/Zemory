@@ -176,6 +176,20 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   phần tử UI là quyết định thiết kế, `02_RULES §Hành xử` bắt trình duyệt trước. Đây là đường
   duy nhất để NGƯỜI dùng được T5 trong app (agent thì đã có qua MCP `also[]`).
 
+- [ ] **(ĐỀ XUẤT — chờ user duyệt THIẾT KẾ) Ô nhập "cách nói khác" — nay CÓ SỐ, nhưng RỦI RO hai chiều.**
+  Đo 2026-08-10 (34 nhãn `prose`): biến thể **cụ thể** ⇒ `@10` 50 → **71%**, `@40` 65 → **79%**;
+  biến thể **mơ hồ** ⇒ MRR 0,407 → **0,189**, tức **tệ hơn không gõ gì**. Nên ô này KHÔNG được là
+  một ô trống — phải kèm ví dụ/hướng dẫn tại chỗ, nếu không người dùng gõ bừa là tự làm hỏng kết
+  quả của mình. Backend đã sẵn (`/memory-search?also=`). Thêm phần tử UI ⇒ `02_RULES` bắt trình duyệt.
+
+- [ ] **ColBERT làm LUỒNG SONG SONG để THỬ, bỏ được nếu không ăn (user chốt hướng 2026-08-10).**
+  Không cần "zemory 2.0": vector vốn là *engine nội bộ của slot `search`* và RRF gộp bao nhiêu
+  luồng cũng được (vừa chứng minh — thêm luồng thứ 4 trong ngày). ColBERT = **một bảng chỉ mục
+  nữa + một luồng nữa**, `vec_chunks` cũ **không đụng**; thua thì tắt luồng, kho cũ chạy y nguyên
+  (điều 9). Hai ràng buộc thật: **đĩa 10–30×** (cộng thêm, không thay) và `vec_config` hiện chỉ mô
+  tả MỘT không gian vector ⇒ phải tách cấu hình riêng. Vẫn phải qua phép thử nhỏ trên bản sao
+  (điều 15), và nhớ TRẦN: chỉ 6–8/68 câu có đáp án trong pool mà ngoài top-10.
+
 - [ ] **(hướng lớn, chưa quyết) LATE INTERACTION / ColBERT — nhắm vào TRẦN POOL.**
   Lý do: `@40` mới **50%**, tức nửa số câu đáp án không vào nổi pool, và bench đo được **chỉ
   6/68 câu** nằm trong pool mà ngoài top-10 ⇒ **mọi lớp rerank ở kho này chỉ có 6 câu dư địa**.

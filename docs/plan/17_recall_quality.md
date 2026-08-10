@@ -45,6 +45,39 @@ mô tả tool dặn agent gửi 2–3 cách diễn đạt. Một truy vấn ⇒ 
 
 **Giá:** ~3× thời gian một lần tìm (0,9 s → ~2,7 s). Chấp nhận được vì recall là on-demand (điều 8).
 
+### 1.1b T5 ĐO LẠI 2026-08-10 — CHẤT LƯỢNG biến thể quyết định DẤU, không phải số lượng
+
+> 🔄 **Supersede con số của §1.1** (*"3 lối nói ⇒ `prose@40` 68 → 94%"*). Đường ống đã đổi nhiều
+> kể từ đó (`vecMix` · gộp near-dup · hình phạt tool hai mức · `W_OR` 0,3); đo lại thì ba lối nói
+> chỉ ra **59%**. Giữ §1.1 làm hồ sơ, nhưng **đừng dùng 94% làm mốc nữa**.
+
+Đo trên 34 nhãn `prose`, tham số khớp `recallbench.ts:241`:
+
+| cấu hình | @1 | @3 | @10 | @40 | MRR |
+|---|---:|---:|---:|---:|---:|
+| 1 truy vấn | **35%** | 44% | 50% | 65% | 0,407 |
+| q + biến thể **CỤ THỂ** | 32% | **47%** | **71%** | **79%** | **0,432** |
+| q + biến thể **MƠ HỒ** | 15% | 15% | 35% | 50% | **0,189** |
+| q + cả hai | 21% | 32% | 50% | 59% | 0,300 |
+
+**T5 là lớp PHƯƠNG SAI CAO, không phải lớp "bật là lợi".** Cùng số lượng biến thể, chất lượng
+quyết định dấu: giữ nguyên độ cụ thể ⇒ `@10` +21 điểm; diễn đạt mơ hồ hơn câu gốc ⇒ MRR rơi
+xuống **dưới một nửa** mức không dùng gì. Lý do cơ học: RRF gộp **ngang quyền**, nên một truy vấn
+kém kéo tụt một nửa thứ hạng cuối.
+
+**Ba nguồn sinh biến thể — đã đo đủ, chỉ MỘT dùng được:**
+
+| nguồn | MRR | phán quyết |
+|---|---|---|
+| luật tất định (3 từ hiếm) | 0,407 → **0,215** | hại nặng |
+| LLM nhỏ trong lõi (Qwen3-0,6B, §3b) | 0,458 → 0,334 | hại |
+| **agent / người viết** | 0,407 → **0,432** | **thắng** |
+
+⇒ Xác nhận thứ tự ưu tiên điều 6 lần thứ hai bằng số: bậc ① và ③ đều thua, **bậc ② thắng**.
+Đã sửa mô tả tool MCP theo đó (một biến thể, bắt buộc cụ thể ngang câu gốc, viết không nổi thì
+đừng gửi). **Hệ quả thiết kế:** ô nhập "cách nói khác" trên UI KHÔNG còn là thắng lợi hiển nhiên —
+người dùng gõ câu mơ hồ vào là kết quả tệ đi; nếu làm phải kèm hướng dẫn tại chỗ, không để ô trống.
+
 ### 1.2b HAI THƯỚC CÓ THỂ NÓI NGƯỢC NHAU — và đó là dữ kiện, không phải lỗi (2026-08-09)
 
 > Đây là bài học lớn nhất của cả plan, rút ra sau khi **tám** giả thuyết liên tiếp thất bại theo
