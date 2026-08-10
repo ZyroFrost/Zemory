@@ -51,7 +51,7 @@ import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
-import { armCrashReport, daemonLog } from "./logging/daemon-log.js";
+import { armCrashReport, daemonHeartbeat, daemonLog } from "./logging/daemon-log.js";
 import {
   getAutostart,
   getAutosync,
@@ -253,7 +253,15 @@ function probeDrive(dir: string): Omit<DriveSummary, "level" | "atts" | "syncPer
   }
   let bundles = 0;
   try {
-    bundles = readdirSync(path).filter((f) => f.endsWith(".zemory.enc")).length;
+    // ĐẾM MỌI `.enc`, KHÔNG chỉ hậu tố đời cũ `.zemory.enc`.
+    //
+    // Bug đo được 2026-08-09: Drive có 3 bundle thật (634 MB) mà ô này hiện **0**. Hậu tố
+    // `.zemory.enc` chính là thứ `share.ts:714` tự gọi là `legacyName`; bộ ghi/đọc series
+    // hiện tại sinh `global_memory.<host>.<seq>.enc` và khớp bằng `.enc` (`share.ts:721`,
+    // `:894`). Nên máy nào đã lên định dạng series thì ô đếm **vĩnh viễn ra 0** — sai lệch
+    // im lặng, không cổng nào đỏ, và nó khiến người dùng tưởng chưa từng sync (đúng ca
+    // user báo hôm đó). Chỉ sai HIỂN THỊ: merge và ghi series vốn khớp đúng.
+    bundles = readdirSync(path).filter((f) => f.endsWith(".enc")).length;
   } catch {
     /* ignore */
   }
@@ -638,7 +646,7 @@ function queryRecentSessions(limit: number): unknown[] {
 /** Export để test soi ĐÚNG hàm đang chạy — hai bề mặt này hỏng ở tầng TRÌNH BÀY (cây file
  *  rỗng, mọi file "not found") nên không cổng nào bắt được, mà test chép lại logic thì canh
  *  bản sao chứ không canh bản thật (bài học audit: bộ test từng neo vào bản đã bị thay). */
-export { listHarnessFiles as listHarnessFilesForTest, readDoc as readProjectDocForTest };
+export { listHarnessFiles as listHarnessFilesForTest, probeDrive as probeDriveForTest, readDoc as readProjectDocForTest };
 
 function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string; content: string } {
   const root = resolve(projectRoot);
@@ -1921,6 +1929,10 @@ export async function startUi(): Promise<void> {
   // reconcile the OS autostart hook and start the idle background scheduler.
   armCrashReport();
   daemonLog(`daemon up on ${url} pid=${process.pid}`);
+  // Nhịp tim mỗi 30 s — thứ DUY NHẤT còn lại khi daemon bị giết cứng (xem daemon-log.ts).
+  // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
+  daemonHeartbeat();
+  setInterval(daemonHeartbeat, 30_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
   openWindow(url);

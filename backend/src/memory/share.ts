@@ -1,4 +1,4 @@
-// Encrypted memory bundles for sharing ~/.zemory/global_memory.db safely.
+// Encrypted memory bundles for sharing <repo>/data/global_memory.db safely.
 // The raw DB is sensitive; export writes one authenticated AES-GCM file and
 // keeps the key out-of-band via --key-file or ZEMORY_SHARE_KEY.
 

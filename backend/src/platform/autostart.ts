@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 export interface AutostartStatus {
   supported: boolean;
   enabled: boolean;
-  /** os mechanism used (startup-cmd | launchd | xdg-desktop | none) */
+  /** os mechanism used (startup-vbs | launchd | xdg-desktop | none) */
   method: string;
   /** path of the entry file, when applicable */
   path?: string;
@@ -43,28 +43,62 @@ function psq(s: string): string {
 }
 
 // ── Windows ──────────────────────────────────────────────────────────────────
-function winStartupCmd(): string {
+//
+// TÁCH HẲN CONSOLE — `start /b` là SAI cho một daemon (sửa 2026-08-10).
+//
+// Bản cũ ghi `start "" /b /min node cli.js ui`. Cờ `/b` KHÔNG tách tiến trình: nó chạy
+// daemon TRONG CÙNG console với file .cmd, chỉ là không mở thêm cửa sổ. Daemon vì thế
+// bị buộc vào vòng đời console đó — console đóng thì Windows gửi `CTRL_CLOSE_EVENT` rồi
+// `TerminateProcess`, tức GIẾT CỨNG: không handler nào của Node kịp chạy.
+//
+// Đó đúng là dấu vân tay của ca chết 2026-08-10: KHÔNG `shutting down`, KHÔNG
+// `process exit code=`, KHÔNG `report.*.json`, và Windows cũng không ghi `Application
+// Error`. Bốn nguồn im lặng vì tiến trình không được phép nói gì. (Bug "daemon thoát
+// không log" treo từ 2026-07-21 — xem `05_TODO`.)
+//
+// Bản mới dùng `wscript` chạy một tệp .vbs: `WshShell.Run(cmd, 0, false)` sinh tiến
+// trình ĐỘC LẬP với console ẩn (0 = hidden, false = không chờ), rồi wscript tự thoát.
+// Daemon giữ console RIÊNG của nó ⇒ không còn ai đóng hộ nữa.
+//
+// ⚠ Vẫn còn một đường chết KHÔNG sửa được ở đây: user tự tắt máy / kết thúc tiến trình.
+// Nhịp tim (`daemon-log.ts::daemonHeartbeat`) lo phần ghim thời điểm cho các ca đó.
+function winStartupVbs(): string {
   return join(
     process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"),
-    "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "zemory.cmd",
+    "Microsoft", "Windows", "Start Menu", "Programs", "Startup", "zemory.vbs",
   );
 }
+/** Tên đời cũ — giữ để nhận diện + dọn khi bật lại (đừng để hai mục cùng chạy). */
+function winStartupCmdLegacy(): string {
+  return join(dirname(winStartupVbs()), "zemory.cmd");
+}
 function winStatus(): AutostartStatus {
-  const path = winStartupCmd();
-  return { supported: true, enabled: existsSync(path), method: "startup-cmd", path };
+  const path = winStartupVbs();
+  // Bản .cmd cũ vẫn tính là "đang bật" để UI không báo tắt oan trước khi user bật lại.
+  const enabled = existsSync(path) || existsSync(winStartupCmdLegacy());
+  return { supported: true, enabled, method: "startup-vbs", path };
 }
 function winEnable(): AutostartStatus {
-  const path = winStartupCmd();
+  const path = winStartupVbs();
   const { exe, args } = launchParts();
   mkdirSync(dirname(path), { recursive: true });
-  // `start "" /b` launches without opening a console window; /min as a fallback.
-  writeFileSync(path, `@echo off\r\nstart "" /b /min "${exe}" ${args}\r\n`);
-  return { supported: true, enabled: true, method: "startup-cmd", path };
+  // VBS dùng nháy đôi LỒNG ("" bên trong chuỗi) cho đường dẫn có khoảng trắng.
+  const cmd = `""${exe}"" ${args.replace(/"/g, '""')}`;
+  writeFileSync(
+    path,
+    `' zemory — mo daemon nen luc dang nhap, TACH HAN console (xem autostart.ts)\r\n` +
+      `Set sh = CreateObject("WScript.Shell")\r\n` +
+      `sh.Run "${cmd}", 0, False\r\n`,
+    "utf8",
+  );
+  // Dọn mục .cmd đời cũ, nếu không sẽ có HAI daemon cùng mọc lúc đăng nhập.
+  if (existsSync(winStartupCmdLegacy())) rmSync(winStartupCmdLegacy(), { force: true });
+  return { supported: true, enabled: true, method: "startup-vbs", path };
 }
 function winDisable(): AutostartStatus {
-  const path = winStartupCmd();
-  if (existsSync(path)) rmSync(path, { force: true });
-  return { supported: true, enabled: false, method: "startup-cmd", path };
+  const path = winStartupVbs();
+  for (const p of [path, winStartupCmdLegacy()]) if (existsSync(p)) rmSync(p, { force: true });
+  return { supported: true, enabled: false, method: "startup-vbs", path };
 }
 
 // ── macOS ────────────────────────────────────────────────────────────────────

@@ -82,9 +82,11 @@ export const TOOLS = [
       "different phrasing, or the other language in a bilingual workspace — and search again (up to 2 rewrites) before concluding the " +
       "memory has nothing. Only when rewriting still fails, retry once with deep=true: it adds cross-encoder re-ranking, which measures " +
       "~40x slower (tens of seconds) and has never beaten plain hybrid on this repo's labelled benchmark — a last resort, not a better default. " +
-      "BETTER THAN REWRITING TWICE: send the rewrites TOGETHER in `also` on the FIRST call. Measured on this repo's labelled corpus, three " +
-      "phrasings of one question lift recall@10 from 39% to 50% and recall@40 from 45% to 64% (prose 68% to 94%) — the answer is often in " +
-      "the store but invisible to the exact words you picked. Costs one extra search per phrasing (~1s each).",
+      "BETTER THAN REWRITING TWICE: send ONE well-formed rewrite in `also` on the FIRST call. Measured 2026-08-10 on this repo's labelled " +
+      "corpus (prose, n=34): a single GOOD variant lifts recall@10 from 50% to 71% and recall@40 from 65% to 79% — the answer is often in " +
+      "the store but invisible to the exact words you picked. But QUALITY decides the sign: a vague restatement of the same question dropped " +
+      "MRR to 0.189, far WORSE than sending nothing (0.407). A variant must be as specific as the original — different words, same amount of " +
+      "detail. If you cannot write one that specific, send none. Costs one extra search (~1s).",
     inputSchema: {
       type: "object",
       properties: {
@@ -93,8 +95,10 @@ export const TOOLS = [
           type: "array",
           items: { type: "string" },
           description:
-            "Other phrasings of the SAME question (2 is usually enough): synonyms, the other language, keyword-style vs " +
-            "natural-sentence. Results are fused by rank, so a hit found by any phrasing surfaces. Do NOT put different questions here.",
+            "ONE other phrasing of the SAME question — synonyms, the other language, keyword-style vs natural-sentence. Results " +
+            "are fused by rank, so a hit found by either phrasing surfaces. Two rules, both measured: (1) keep it AS SPECIFIC as " +
+            "the original — a vaguer restatement is worse than sending nothing; (2) more is not better — a second, weaker variant " +
+            "dragged prose recall@10 from 71% back down to 50%. Do NOT put different questions here.",
         },
         all: { type: "boolean", description: "Search all projects instead of the current project." },
         project: { type: "string", description: "Project root to scope search to; ignored when all=true." },

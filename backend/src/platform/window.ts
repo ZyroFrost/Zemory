@@ -74,6 +74,44 @@ async function main(): Promise<void> {
   };
   process.on("SIGTERM", bye);
   process.on("SIGINT", bye);
+
+  // NHỊP TIM — cửa sổ KHÔNG được sống lâu hơn daemon (user chốt 2026-08-10).
+  //
+  // Ca thật: daemon chết lúc nào không rõ, cửa sổ vẫn mở nguyên và hiển thị ảnh chụp
+  // cuối cùng. Mọi nút bấm từ đó gửi request vào chỗ trống ⇒ vòng xoay "đang sync…"
+  // quay MÃI MÃI. User đọc thành "sync bị kẹt" và chờ hàng giờ — trong khi thực tế
+  // không có gì đang chạy cả. Vỏ rỗng trông y như đang sống là kiểu hỏng TỆ NHẤT:
+  // nó không báo lỗi, nó nói dối.
+  //
+  // Chịu lỗi có chủ đích: chỉ đếm SAU khi đã thấy daemon sống ít nhất một lần (đừng
+  // giết cửa sổ lúc daemon còn đang khởi động), và phải trượt LIÊN TIẾP `MAX_MISS`
+  // lần mới đóng — daemon bận một nhịp (quét/embed) không phải là chết.
+  const HEARTBEAT_MS = 5000;
+  const MAX_MISS = 3; // ~15 s im lặng liên tiếp mới coi là chết
+  let seenAlive = false;
+  let miss = 0;
+  const beat = setInterval(() => {
+    void (async () => {
+      let alive = false;
+      try {
+        const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(3000) });
+        alive = res.ok;
+      } catch {
+        alive = false;
+      }
+      if (alive) {
+        seenAlive = true;
+        miss = 0;
+        return;
+      }
+      if (!seenAlive) return; // chưa từng thấy sống ⇒ đang khởi động, chờ tiếp
+      if (++miss < MAX_MISS) return;
+      clearInterval(beat);
+      console.error(`[zemory window] daemon không phản hồi ${MAX_MISS} nhịp liên tiếp — đóng cửa sổ`);
+      bye();
+    })();
+  }, HEARTBEAT_MS);
+  beat.unref?.(); // đừng giữ tiến trình sống chỉ vì cái hẹn giờ này
 }
 
 main().catch((error) => {
