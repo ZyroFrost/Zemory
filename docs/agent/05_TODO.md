@@ -825,11 +825,46 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 </details>
 
 ## 🔥 Từ chốt sổ 2026-07-21 — làm trước
+- ✅ **DAEMON CHẾT KHÔNG LỜI TRĂNG TRỐI — TÌM RA NGUYÊN NHÂN GỐC 2026-08-10, ĐÃ SỬA.**
+  > 🔄 **Bác giả thuyết chủ đạo của chính mục này** (*"nghi crash NATIVE — better-sqlite3/
+  > onnxruntime segfault bỏ qua handler JS"*). Soi ba tuần sai hướng. Nguyên nhân thật là
+  > lỗi thiết kế của repo: `autostart.ts` dùng `start "" /b` — cờ `/b` **KHÔNG tách tiến
+  > trình**, daemon chạy TRONG CÙNG console với file khởi động nên bị buộc vào vòng đời
+  > console đó; console đóng ⇒ Windows gửi `CTRL_CLOSE_EVENT` rồi `TerminateProcess` ⇒
+  > **giết cứng, không handler nào kịp chạy**.
+  >
+  > **Vì sao hộp đen im lặng — và vì sao đó là bằng chứng chứ không phải hộp đen hỏng:**
+  > `process.on("exit")` ghi MỌI lối thoát bình thường. Bốn nguồn cùng im (không
+  > `shutting down` · không `process exit code=` · không `report.*.json` · Windows không
+  > có `Application Error` cho `node.exe`) ⇒ **loại trừ** hết đường đi qua Node, còn đúng
+  > một khả năng: bị kết thúc cứng từ ngoài. Hộp đen trong tiến trình **về nguyên tắc**
+  > không bắt được ca này.
+  >
+  > **Đã sửa 3 lớp:** ① gốc — autostart sang `.vbs` (`WshShell.Run(cmd,0,False)`), thử
+  > thật: daemon sinh ra MỒ CÔI (cha đã thoát), `/ping` sống · ② triệu chứng — cửa sổ có
+  > nhịp tim, daemon chết thì cửa sổ **chết theo** (thử thật: giết server giả ⇒ cửa sổ
+  > thoát sau 20,2 s); kèm luật `02_RULES §Bề mặt CHẾT THEO nền` · ③ chẩn đoán —
+  > `daemonHeartbeat()` ghi mốc mỗi 30 s vào `data/logs/daemon-heartbeat`, để lần sau
+  > ghim được PHÚT chết.
+  >
+  > ⚠ **Chưa bắt tận tay.** Giả thuyết khớp rất sát nhưng ca 10/08 không được quan sát
+  > trực tiếp lúc chết. Nhịp tim là thứ chốt ở lần sau. Ca chết còn lại trong ngày
+  > (02:18) **user tự tắt máy** — đã xác nhận, không phải bug.
+  >
+  > 🔎 **Hệ quả chưa sửa:** mọi daemon do agent khởi động từ shell của nó cũng dính đúng
+  > lỗi này (con của `bash.exe`) — đó là lý do **hai job embed chết giữa chừng 10/08**.
+  > Lệnh dài phải chạy qua đường tách tiến trình, không phải qua shell của phiên.
+
+<details><summary>Hồ sơ điều tra gốc (2026-07-21 → 08-10) — giữ để tra</summary>
+
 - [~] **DAEMON THOÁT exit 1 KHÔNG LOG (2026-07-21, thấy 1 lần) — ĐÃ CẮM HỘP ĐEN 2026-07-22, chờ repro để chẩn gốc.** *(Soát 2026-08-07: `daemon.log` sạch tới 06/08 20:41, daemon 4444 sống ổn từ đó — vẫn CHƯA tái hiện. Soát lại 2026-08-09: `todo verify` giơ cờ "code mới hơn sổ" vì `ui.ts` bị sửa 08/09 — **báo oan**, thay đổi đó là thêm tham số `also` cho `/memory-search`, không đụng `armCrashReport`. Mục vẫn ĐANG CHỜ tái hiện.)* Nghi **crash NATIVE** (better-sqlite3/onnxruntime segfault — bỏ qua handler JS) HOẶC stderr detached không capture. **Đã làm:** `backend/src/logging/daemon-log.ts` — `daemonLog()` ghi `<thư mục kho>/logs/daemon.log` (mirror stderr)
   *(⚠ sửa 2026-08-07: sổ — và cả comment trong chính file đó — ghi `~/.zemory/logs`, **SAI**. Đo:
   `logsDir()` = `join(currentMemoryDir(), "logs")`, tức log ĐI THEO KHO khi `relocate`; file thật ở
   `data/logs/daemon.log` (12.830 B, 07/08 09:04), còn `~/.zemory/` chỉ có `location.json`. Ghi sai
   chỗ này làm phiên sau soi nhầm nơi rồi kết luận "không có log".)* cho mọi lifecycle (up/shutdown/exit/uncaught/unhandled) + `armCrashReport()` bật `process.report` (reportOnFatalError + reportOnUncaughtException) → dump JSON **stack native** cạnh log. `ui.ts` arm ngay khi thắng port. **CÒN LẠI:** chờ lần daemon chết tiếp theo → đọc `daemon.log` + `report.*.json` để chẩn gốc; nếu tái hiện được thì chạy foreground + ép embed↔sync xen kẽ.
+  *(⤴ Đã đóng 2026-08-10 — nguyên nhân là `start /b` không tách console, xem mục ✅ ở trên.)*
+
+</details>
 - ❌ **BÁC BỎ 2026-08-07 (user chốt) — cắt tool-dump khỏi FTS trigram. ĐỪNG ĐỀ XUẤT LẠI.**
   Agent nêu vì thấy **trigram = 512 MB = 42,3% kho** (to hơn bảng nguồn `messages` 275 MB) và
   tool-dump chiếm **56% khối lượng chữ** ⇒ ước tiết kiệm ~285 MB. **Sai ở gốc:** đo lại thì
