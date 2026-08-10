@@ -194,6 +194,32 @@ def check_adhoc_marker(root):
         add("INFO", "adhoc", "data/adhoc/ thieu README.md lam marker")
 
 
+STAGES = ("01_raw", "02_processing", "03_output")
+
+
+def check_data_stages(root):
+    """data/<task>/ phai chia 3 chang; adhoc/ thi KHONG (file le, vut di duoc).
+
+    Ba chang co ba VONG DOI khac nhau: dau vao khong dung lai duoc · trung gian
+    dung lai duoc · ban giao di phai giu de doi chieu. Do chung mot cho thi luc
+    don khong ai dam xoa gi, va chi mot lan ghi de nham len dau vao la mat that.
+    """
+    data = os.path.join(root, "data")
+    if not os.path.isdir(data):
+        return
+    for name in sorted(os.listdir(data)):
+        d = os.path.join(data, name)
+        if not os.path.isdir(d) or name == "adhoc":
+            continue
+        have = [s for s in STAGES if os.path.isdir(os.path.join(d, s))]
+        if not have:
+            add("INFO", "data-3-chang",
+                "data/%s/ chua chia 3 chang (01_raw · 02_processing · 03_output)" % name)
+        elif len(have) < len(STAGES):
+            add("INFO", "data-3-chang",
+                "data/%s/ thieu chang: %s" % (name, " ".join(s for s in STAGES if s not in have)))
+
+
 def main():
     root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
     if not os.path.isdir(root):
@@ -201,7 +227,8 @@ def main():
         return 2
 
     for check in (check_required_roles, check_docs, check_empty_and_unknown,
-                  check_task_mirror, check_gitignore, check_adhoc_marker):
+                  check_task_mirror, check_gitignore, check_adhoc_marker,
+                  check_data_stages):
         check(root)
 
     print("Kiem chuan thu muc — %s" % root)
