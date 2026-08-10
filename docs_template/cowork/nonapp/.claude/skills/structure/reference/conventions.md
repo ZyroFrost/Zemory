@@ -93,6 +93,27 @@ Launcher .cmd     <tên>.cmd ở GỐC: `<tên> <stage>` dispatch · `<tên> aut
                   File .cmd THUẦN ASCII — dấu tiếng Việt làm cmd.exe vỡ parse.
 ```
 
+## Ba chặng trong `data/<task>/` — ĐẦU VÀO · TRUNG GIAN · GIAO ĐI
+
+```
+01_raw/         ĐẦU VÀO từ ngoài: người gửi · kéo từ nguồn.
+                🔴 CHỈ ĐỌC — không sửa, không ghi đè. Đây là bản gốc duy nhất;
+                ghi đè lên nó là mất thứ không dựng lại được.
+02_processing/  TRUNG GIAN do pipeline sinh: .csv extract · nháp · _state.json.
+                Xoá đi dựng lại được. File mang tiền tố số của stage sinh ra nó
+                (01_pull.py → 01_pull_*.csv) để nhìn là biết ai đẻ ra nó.
+03_output/      BẢN GIAO ĐI: mail · đẩy SharePoint/BI.
+                Tên NGHIỆP VỤ (YYYYMMDD_<CTY>_..._REPORT.xlsx) — KHÔNG prefix số,
+                vì đây là file đem nộp cho người, không phải file của pipeline.
+
+adhoc/          KHÔNG chia 3 chặng — file lẻ check một lần, vứt đi được.
+```
+
+**Vì sao tách ba chứ không đổ chung một thư mục:** ba chặng có **ba vòng đời khác nhau**.
+Đầu vào không dựng lại được (mất là mất). Trung gian dựng lại được (xoá thoải mái).
+Bản giao đi phải giữ để đối chiếu về sau. Đổ chung thì lúc dọn không ai dám xoá gì, và
+chỉ cần một lần ghi đè nhầm lên đầu vào là hỏng cả mạch việc.
+
 ## Phân biệt dễ nhầm
 
 ```
