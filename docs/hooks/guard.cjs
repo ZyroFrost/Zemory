@@ -102,6 +102,43 @@ function checkBash(cmd) {
     }
   }
 
+  // XOA - nhanh HEP CO CHU DICH (them 2026-08-10).
+  //
+  // Vi sao truoc do khong co: guard 1.2.0 sinh 5 nhanh, khong nhanh nao ve xoa. Thu that
+  // tren ban do: `rm -rf docs/agent`, `Remove-Item -Recurse -Force data`, `del /S /Q`
+  // deu rc=0, LOT sach. Trong khi 02_RULES Hanh xu noi ro xoa la BAT KHA DAO va phai
+  // hoi user truoc - luat co chu, khong co chot may.
+  //
+  // Vi sao HEP chu khong chan moi lenh xoa: agent xoa file tam suot ngay; chan tat thi
+  // moi lenh deu phai xin flag, va "gate nhieu = gate bi bo qua" (02_RULES). Nen chi
+  // chan hai thu that su khong dao duoc:
+  //   (a) xoa DE QUY / hang loat - mot lenh quet ca cay
+  //   (b) xoa trung duong da khai `protected` hoac khop mau secret - du khong de quy
+  const RECURSIVE_DEL =
+    /\brm\b[^\n;|&]*\s-[a-z]*r[a-z]*\b|\bRemove-Item\b[^\n;|&]*-Recurse\b|\brmdir\b[^\n;|&]*\/[sS]\b|\bdel\b[^\n;|&]*\/[sS]\b/;
+  const ANY_DEL = /\brm\b|\bRemove-Item\b|\brmdir\b|\bdel\b|\bUnlink\b/;
+  if (ANY_DEL.test(bare)) {
+    const recursive = RECURSIVE_DEL.test(bare);
+    for (const tok of bare.split(/[\s'";|&]+/)) {
+      if (!tok || tok.startsWith("-") || tok.startsWith("/")) continue;
+      const rel = tok.replace(/\\/g, "/").replace(/^\.\//, "");
+      const name = rel.split("/").pop();
+      if (name && !nameMatches(name, POLICY.secret_allow || []) && nameMatches(name, POLICY.secret_names || [])) {
+        deny("CHAN (guard lop 1): lenh xoa cham file secret `" + name + "` - " + POLICY.secret_reason);
+      }
+      for (const prefix of POLICY.protected_write || []) {
+        if (rel === prefix || rel.startsWith(prefix.replace(/\/$/, "") + "/")) {
+          deny("CHAN (guard lop 1): xoa trong duong da khai protected `" + prefix + "` - " +
+            POLICY.protected_write_reason);
+        }
+      }
+    }
+    if (recursive && !consumeFlag("delete")) {
+      deny("CHAN (guard lop 1): xoa DE QUY - thao tac bat kha dao, 02_RULES bat hoi user truoc." +
+        "\nUser da dong y? -> tao flag `" + POLICY.flags_dir + "/" + POLICY.flags.delete + "` roi chay lai (mot lan).");
+    }
+  }
+
   // Doc noi dung file key bang shell - cung luat voi checkRead.
   if (/\b(cat|less|more|head|tail|type|base64|xxd|od|strings|cp|scp)\b/.test(bare)) {
     for (const tok of cmd.split(/[\s'";|&]+/)) {

@@ -7,5 +7,16 @@
   "thresholds": {
     "changes_lines": 300,
     "changes_keep": 180
-  }
+  },
+  "protected": [
+    "data",
+    "share",
+    "attic",
+    "external"
+  ],
+  "secretNames": [
+    "share.key",
+    "*.enc",
+    "global_memory*.db"
+  ]
 }

@@ -13,7 +13,7 @@
 
 ## Luật khi VIẾT (BẮT BUỘC — luật cứng)
 
-> Bốn luật này nổ **lúc viết**, không phải lúc tạo thư mục, và **không cổng kiểm nào bắt được**.
+> Năm luật này nổ **lúc viết**, không phải lúc tạo thư mục, và **không cổng kiểm nào bắt được**.
 > Không biết = vi phạm âm thầm. Vì vậy chúng nằm ở đây (luôn nạp), không ở skill (tra khi cần).
 
 ```
@@ -21,7 +21,21 @@ Nhị phân nặng     .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung
 Data thật vs mẫu  nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được sản phẩm → fixtures/ (tracked)
 Secret/connection config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
 SQL/DAX/M         gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline
+ĐẦU VÀO CHỈ ĐỌC   data/<task>/01_raw/ là bản GỐC người ta gửi / kéo từ nguồn — **KHÔNG sửa, KHÔNG ghi đè, KHÔNG xoá**.
+                  Trung gian (02_processing/) xoá thoải mái, dựng lại được; bản giao đi (03_output/) giữ để đối chiếu.
+                  Ba chặng có BA VÒNG ĐỜI khác nhau, đó là lý do chúng tách — và vì sao chỉ 01_raw bất khả đảo:
+                  trung gian mất thì chạy lại, đầu vào mất là mất luôn, đi xin lại người gửi.
 ```
+
+**Chốt MÁY cho việc xoá/ghi đè — TUỲ MÔI TRƯỜNG, agent tự dựng (opt-in).**
+Bộ này cố ý **không ship** chốt máy sẵn: môi trường Cowork không bảo đảm có CLI lẫn hook chặn
+lệnh, mà **luật không thi hành được là chữ chết**. Nhưng nếu môi trường bạn đang chạy CÓ cơ chế
+chặn lệnh trước khi thực thi, thì **được phép và nên** tự dựng, theo đúng thứ tự ưu tiên này:
+1. **Xoá đệ quy** (`rm -r`, `Remove-Item -Recurse`, `del /S`) — một lệnh quét cả cây, hỏng là hỏng hết.
+2. **Mọi thao tác ghi/xoá chạm `data/<task>/01_raw/`** — đầu vào gốc, mất là không dựng lại được.
+3. **Ghi đè file trong `03_output/` đã giao đi** — người nhận đang giữ bản đó, sửa lặng là lệch số.
+Chốt chặn ≠ chốt chặt: đừng chặn xoá một file tạm, vì **gate nhiễu là gate bị bỏ qua**. Không dựng
+được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên — *xoá là bất khả đảo, phải hỏi trước*.
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`) và thân `SKILL.md`**: tiếng Việt có dấu.

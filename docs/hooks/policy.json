@@ -1,7 +1,12 @@
 {
   "generator": "zemory",
   "comment": "MOT nguon luat lop 1 (bat kha dao + may kiem duoc). guard.cjs (PreToolUse) va precommit-guard.cjs cung doc file nay. Sinh tu marker (.harness.json khoa `protected`/`secretNames`/`secretAllow`) — sua marker roi chay `zemory hook guard` de sinh lai.",
-  "protected_write": [],
+  "protected_write": [
+    "data",
+    "share",
+    "attic",
+    "external"
+  ],
   "protected_write_reason": "duong da khai `protected` trong .harness.json — do cua repo, harness/agent khong duoc ghi vao",
   "secret_names": [
     ".env",
@@ -10,7 +15,10 @@
     "*.ppk",
     "id_rsa*",
     "id_ed25519*",
-    "*.key"
+    "*.key",
+    "share.key",
+    "*.enc",
+    "global_memory*.db"
   ],
   "secret_allow": [
     ".env.example"
@@ -28,7 +36,8 @@
   "flags": {
     "push": ".allow-push",
     "docs_write": ".allow-docs-write",
-    "git_add_all": ".allow-git-add-all"
+    "git_add_all": ".allow-git-add-all",
+    "delete": ".allow-delete"
   },
   "flags_comment": "Flag = user duyet MOT lan: guard cho qua roi TU XOA. Agent chi duoc tao flag sau khi user noi ro trong phien."
 }
