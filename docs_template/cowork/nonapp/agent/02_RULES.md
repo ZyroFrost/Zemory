@@ -27,15 +27,31 @@ SQL/DAX/M         gom queries/ hoặc measures/, đặt tên — KHÔNG rải in
                   trung gian mất thì chạy lại, đầu vào mất là mất luôn, đi xin lại người gửi.
 ```
 
-**Chốt MÁY cho việc xoá/ghi đè — TUỲ MÔI TRƯỜNG, agent tự dựng (opt-in).**
-Bộ này cố ý **không ship** chốt máy sẵn: môi trường Cowork không bảo đảm có CLI lẫn hook chặn
-lệnh, mà **luật không thi hành được là chữ chết**. Nhưng nếu môi trường bạn đang chạy CÓ cơ chế
-chặn lệnh trước khi thực thi, thì **được phép và nên** tự dựng, theo đúng thứ tự ưu tiên này:
-1. **Xoá đệ quy** (`rm -r`, `Remove-Item -Recurse`, `del /S`) — một lệnh quét cả cây, hỏng là hỏng hết.
-2. **Mọi thao tác ghi/xoá chạm `data/<task>/01_raw/`** — đầu vào gốc, mất là không dựng lại được.
-3. **Ghi đè file trong `03_output/` đã giao đi** — người nhận đang giữ bản đó, sửa lặng là lệch số.
-Chốt chặn ≠ chốt chặt: đừng chặn xoá một file tạm, vì **gate nhiễu là gate bị bỏ qua**. Không dựng
-được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên — *xoá là bất khả đảo, phải hỏi trước*.
+## Chốt MÁY — `hooks/` (BẮT BUỘC nối nếu môi trường cho phép)
+
+> 🔄 **Đảo quyết định cũ** (*"bộ cowork CỐ Ý không mang chốt máy vì không bảo đảm có CLI"*).
+> Lý do đảo: bộ này **phụ thuộc hoàn toàn vào luật chữ**, mà chữ thì agent **quên được** — và
+> đã quên. Kiểm lại rào cũ thì nó chỉ đúng một nửa: `guard.cjs` dùng **thuần `node:fs` + `node:path`**,
+> **không cần CLI zemory lúc chạy** (CLI chỉ để SINH ra nó). Nên bộ này nay **ship sẵn bản đã sinh**.
+
+`hooks/guard.cjs` + `hooks/policy.json` đã nằm sẵn trong bộ. **Nối vào cơ chế chặn-lệnh-trước-khi-chạy
+của host** (Claude Code: `.claude/settings.json` → `PreToolUse` → `node hooks/guard.cjs`).
+Host không có cơ chế đó ⇒ file nằm im, **vô hại**, và ăn ngay ngày host có.
+
+```
+CHAN ghi     data/*/01_raw   dau vao GOC moi case — mat la mat luon, phai xin lai nguoi gui
+             docs/agent      hien phap + luat
+CHAN xoa     xoa DE QUY (rm -r · Remove-Item -Recurse · del /S) — mot lenh quet ca cay
+             xoa cham file secret (.env · *.key · *.pem …)
+CHO QUA      02_processing/ · 03_output/ · file tam — agent ghi suot o day
+Vuot mot lan flag hooks/.allow-* (user duyet trong phien; guard tu xoa sau khi dung)
+```
+
+**Chốt chặn ≠ chốt chặt.** Danh sách trên cố ý KHÔNG chặn xoá một file thường: gate nhiễu là
+gate bị bỏ qua, và lúc đó nó tệ hơn không có gate. Sửa luật = sửa thẳng `hooks/policy.json`
+(bộ này không có lệnh sinh lại).
+
+**Không nối được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên** — *xoá là bất khả đảo, phải hỏi trước*.
 
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`) và thân `SKILL.md`**: tiếng Việt có dấu.

@@ -127,7 +127,14 @@ function checkWrite(rel) {
   if (nameMatches(rel, POLICY.secret_allow || [])) return;
   for (const prefix of POLICY.protected_write || []) {
     const pre = prefix.replace(/\\/+$/, "");
-    if (rel === pre || rel.startsWith(pre + "/")) {
+    // Khop TIEN TO (duong co dinh) HOAC GLOB (co \`*\`) - glob de dien dat duoc thu ma tien
+    // to khong noi noi: \`data/*/01_raw\` (dau vao goc cua MOI case, ten case khong biet
+    // truoc). Thieu no thi hoac phai liet ke tay tung case (khong ai bao tri noi), hoac
+    // chan ca \`data\` (chan luon 02_processing ma agent ghi suot => gate bi bo qua).
+    const hit = pre.includes("*")
+      ? globToRe(pre).test(rel) || globToRe(pre + "/*").test(rel)
+      : rel === pre || rel.startsWith(pre + "/");
+    if (hit) {
       if (consumeFlag("docs_write")) return;
       deny("CHAN (guard lop 1): ghi vao \`" + prefix + "\` - " + POLICY.protected_write_reason +
         "\\nUser da duyet trong phien? -> tao flag \`" + POLICY.flags_dir + "/" + POLICY.flags.docs_write + "\` roi lam lai (flag dung MOT lan).");

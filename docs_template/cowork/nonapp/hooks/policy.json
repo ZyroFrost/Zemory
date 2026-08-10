@@ -1,0 +1,41 @@
+{
+  "generator": "zemory",
+  "comment": "Luat lop 1 cho bo COWORK — SHIP SAN, khong can CLI zemory. guard.cjs canh file nay doc no. Sua luat = sua truc tiep file nay (bo cowork khong co lenh sinh lai).",
+  "protected_write": [
+    "data/*/01_raw",
+    "docs/agent"
+  ],
+  "protected_write_reason": "dau vao goc (01_raw) + hien phap/luat — mat la khong dung lai duoc, phai di xin lai nguoi gui",
+  "secret_names": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.ppk",
+    "id_rsa*",
+    "id_ed25519*",
+    "*.key",
+    "share.key",
+    "*.enc",
+    "global_memory*.db"
+  ],
+  "secret_allow": [
+    ".env.example"
+  ],
+  "secret_reason": "secret khong bao gio vao commit — KHONG co flag vuot (gia da tra: secret len GitHub 2026-08-04)",
+  "key_read_block": [
+    "*.pem",
+    "*.ppk",
+    "id_rsa*",
+    "id_ed25519*",
+    "*.key"
+  ],
+  "key_read_reason": "noi dung file key khong bao gio duoc doc/tra/ghi log; duong dan key chi la DUONG DAN",
+  "flags_dir": "hooks",
+  "flags": {
+    "push": ".allow-push",
+    "docs_write": ".allow-docs-write",
+    "git_add_all": ".allow-git-add-all",
+    "delete": ".allow-delete"
+  },
+  "flags_comment": "Flag = user duyet MOT lan: guard cho qua roi TU XOA. Agent chi duoc tao flag sau khi user noi ro trong phien."
+}
