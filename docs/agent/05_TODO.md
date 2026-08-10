@@ -3,6 +3,30 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔴 VIỆC ĐẦU TIÊN CỦA PHIÊN SAU — đo phép thử đang DỞ (2026-08-11)
+
+**Job nhúng lớp tool đã DỪNG ở 24.073/44.747 (53,8%) — đủ dữ liệu, chỉ còn thiếu phép ĐO.**
+Bản sao `D:\huy.nguyen\zemory-lab\tooltest.db` giữ nguyên; kho thật KHÔNG bị đụng.
+
+Phủ được **7/14 nhãn `tool_use`** (mốc 8.246 · 11.000 · 16.682 đều đã qua; 14/14 cần 28.705,
+tức còn ~2 giờ máy nếu muốn phủ trọn).
+
+**Chạy đúng lệnh này, KHÔNG chạy gì khác cùng lúc** (bench và embed cùng ăn ONNX một CPU):
+```
+GLOBAL_MEMORY_DB=D:\huy.nguyen\zemory-lab\tooltest.db  node dist/cli.js memory bench --recall --no-rerank
+```
+**So bảng THEO LỚP với mốc nền** (đo 2026-08-10, kho thật, cùng thước):
+`prose` 50%@10 · `keyword` 42% · `tool_result` 25% · **`tool_use` 0%** ← con số phải đánh bại.
+
+**Cổng nghiệm thu ĐỊNH TRƯỚC — đừng chọn thước sau khi thấy số:**
+· ĐÚNG nếu `tool_use` tiến về mức `tool_result` (~25%@10) **và** `prose`/`keyword` KHÔNG tụt.
+· SAI nếu `tool_use` vẫn ~0% dù đáp án đã có vector ⇒ **giả thuyết "luồng thứ hai" chết**, và
+  **ĐỪNG chạy job trên kho thật** (tiết kiệm ~8 giờ máy còn lại).
+Chạy tiếp job: `& D:\huy.nguyen\zemory-lab\embed-tool.cmd` (`--all` nối tiếp, không làm lại).
+
+⚠ **Lệnh dài PHẢI do user chạy ở cửa sổ riêng.** Job do agent phóng từ shell của nó là con của
+`bash.exe`, chết theo phiên — đã mất **hai** job vì đúng chuyện này ngày 10/08.
+
 ## 🔵 BÀN GIAO 2026-08-10 — recall: đọc mục này TRƯỚC khi làm gì tiếp
 
 > **Đổi so với bàn giao 09/08:** ① **rerank ĐÃ TẮT** (đo: thua mọi cột nghiêm, chậm 11,6×) —
@@ -181,6 +205,34 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   biến thể **mơ hồ** ⇒ MRR 0,407 → **0,189**, tức **tệ hơn không gõ gì**. Nên ô này KHÔNG được là
   một ô trống — phải kèm ví dụ/hướng dẫn tại chỗ, nếu không người dùng gõ bừa là tự làm hỏng kết
   quả của mình. Backend đã sẵn (`/memory-search?also=`). Thêm phần tử UI ⇒ `02_RULES` bắt trình duyệt.
+
+- [ ] **ColBERT — DÒ XONG 2026-08-11, BẾ TẮC Ở MODEL (không phải ở kiến trúc hay giá).**
+  Dò 100 model ColBERT phổ biến nhất; **đúng HAI cái biết tiếng Việt**, và chúng chia nhau hai
+  nửa của vấn đề:
+
+  | model | license | tiếng Việt | ONNX | runtime hỗ trợ? |
+  |---|---|---|---|---|
+  | `antoinelouis/colbert-xm` | **MIT** ✅ | có (1/81) | ✗ | ❌ nền **XMOD**, `transformers.js` KHÔNG có |
+  | `jinaai/jina-colbert-v2` | **cc-by-nc-4.0** ❌ | có | ✅ | ✅ nền XLM-RoBERTa |
+  | `LiquidAI/LFM2-ColBERT-350M` | other | ❌ 8 thứ tiếng, KHÔNG có VI | ✗ | — |
+  | `answerai-colbert-small-v1` · `colbertv2.0` · mxbai · NeuML | MIT/apache ✅ | ❌ chỉ EN | ✅ | ✅ |
+
+  **Đo được vì sao model tiếng Anh vô dụng ở đây** — cùng một câu, tokenizer cắt ra:
+  `answerai` → `đ ##oi k ##hun ##g cho tu cu ##a so …` (24 token, **MẤT DẤU**, vocab BERT-EN 30.522)
+  `jina`     → `đổi khung chờ từ cửa sổ rời sang widget con …` (16 token, **nguyên vẹn**)
+  MaxSim khớp ở mức TOKEN, nên token vô nghĩa thì phép khớp là nhiễu-với-nhiễu. Thử `answerai`
+  xếp lại top-40: MRR **0,476 → 0,170** (−64%), **1.784 ms/lần mã hoá** ⇒ 15% kho ≈ 15,9 giờ.
+  ⚠ Con số −64% đó **KHÔNG đo ColBERT**, nó đo một model không đọc được tiếng Việt.
+
+  **CẦN USER QUYẾT:** kho này dùng **cá nhân/nội bộ** hay có tính **thương mại**? `cc-by-nc-4.0`
+  cấm thương mại. Weight tải lúc chạy nên zemory vẫn Apache-2.0 sạch, nhưng nếu dùng cho việc
+  có tính thương mại thì đó là vi phạm của NGƯỜI DÙNG — không tự bật thay user.
+  Đường sạch còn lại: tự chuyển `colbert-xm` sang ONNX **rồi gọi thẳng `onnxruntime-node`** (bỏ
+  qua tầng dựng model của transformers.js) — vướng XMOD có adapter theo ngôn ngữ, cần `lang_ids`,
+  là dự án nhỏ chưa chắc kết cục.
+  ⚠ **Nhớ TRẦN trước khi chi giờ:** bench đo chỉ **6–8/68 câu** có đáp án trong pool mà ngoài
+  top-10 ⇒ ở vai *xếp lại* mọi reranker chỉ có ngần ấy dư địa. Đáng chi chỉ khi dùng ở vai
+  **lấy ứng viên** — mà vai đó cần chỉ mục đa-vector, đắt gấp bội.
 
 - [ ] **ColBERT làm LUỒNG SONG SONG để THỬ, bỏ được nếu không ăn (user chốt hướng 2026-08-10).**
   Không cần "zemory 2.0": vector vốn là *engine nội bộ của slot `search`* và RRF gộp bao nhiêu
