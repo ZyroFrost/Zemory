@@ -1,4 +1,4 @@
-// Global memory store — one SQLite DB at ~/.zemory/global_memory.db holding session
+// Global memory store — one SQLite DB at <repo>/data/global_memory.db holding session
 // transcripts from every agent across every project. The DB is a DERIVED lens:
 // it is rebuilt from the agents' own transcript files and is safe to delete.
 //

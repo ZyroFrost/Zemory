@@ -15,7 +15,7 @@
 // Fail-open at every step (HP điều 9): logging must never be the thing that kills
 // the process it exists to record.
 
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { currentMemoryDir } from "../memory/db.js";
 
@@ -30,6 +30,30 @@ function logsDir(): string {
 }
 
 /** Append one ISO-timestamped line to daemon.log AND mirror it to stderr. */
+/**
+ * NHỊP TIM — dấu vết DUY NHẤT còn lại khi daemon bị GIẾT CỨNG.
+ *
+ * Đo 2026-08-10 trên một ca chết thật: KHÔNG có `shutting down`, KHÔNG có
+ * `process exit code=`, KHÔNG có `report.*.json`, và Windows cũng không ghi
+ * `Application Error` nào cho `node.exe`. Bốn nguồn cùng im lặng loại trừ hết các
+ * đường thoát đi qua Node (tín hiệu · tray · uncaughtException · exit sạch) — còn
+ * lại đúng một khả năng: **TerminateProcess từ bên ngoài**, và ca đó thì tiến trình
+ * KHÔNG kịp chạy bất kỳ handler nào.
+ *
+ * ⇒ Hộp đen trong tiến trình về NGUYÊN TẮC không bắt được ca này. Thứ duy nhất còn
+ * dùng được là dấu vết ghi TRƯỚC lúc chết: mỗi nhịp ghi đè một mốc thời gian, nên
+ * lần sau ta biết nó chết trong PHÚT nào mà đối chiếu với nhật ký hệ thống, áp lực
+ * RAM, hay việc người dùng vừa làm. Ghi đè (không nối) để file không phình.
+ */
+export function daemonHeartbeat(): void {
+  try {
+    mkdirSync(logsDir(), { recursive: true });
+    writeFileSync(join(logsDir(), "daemon-heartbeat"), `${new Date().toISOString()} pid=${process.pid}\n`);
+  } catch {
+    /* nhịp tim là chẩn đoán, hỏng thì thôi — không được làm daemon chết theo */
+  }
+}
+
 export function daemonLog(line: string): void {
   const msg = `${new Date().toISOString()} ${line}`;
   console.error(msg);

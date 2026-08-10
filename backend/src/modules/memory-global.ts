@@ -9,7 +9,7 @@ interface SearchPayload {
 }
 
 // The `memory` capability: the global memory — cross-agent session capture and
-// recall, backed by ~/.zemory/global_memory.db.
+// recall, backed by <repo>/data/global_memory.db.
 export const memoryGlobal: Module = {
   name: "global",
   provides: "memory",
