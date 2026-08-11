@@ -24,6 +24,14 @@ across tools, projects, and machines, offline.
 
 ![zemory cockpit](docs_visual/ui/01-home.png)
 
+**Six screens, captured from a running instance** — [full tour with commentary below ↓](#the-cockpit--a-screen-by-screen-tour)
+
+| | | |
+|:--:|:--:|:--:|
+| [<img src="docs_visual/ui/01-home.png" width="270">](#1--trang-chủ-home--the-at-a-glance-row)<br>**1 · Trang chủ** — six tiles, recent projects & sessions | [<img src="docs_visual/ui/02-recall.png" width="270">](#2--recall--find-the-session-then-read-it)<br>**2 · Recall** — filter, pick a session, read the thread | [<img src="docs_visual/ui/03-projects.png" width="270">](#3--dự-án-projects--linked-vs-discovered)<br>**3 · Dự án** — linked cards vs discovered-by-machine |
+| [<img src="docs_visual/ui/04-global-memory-sync.png" width="270">](#4--global-memory--the-numbers-and-the-two-ways-data-moves)<br>**4 · Global Memory** — sources, automation, Drive sync | [<img src="docs_visual/ui/05-harness-docs.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**5 · Harness ›Docs** — the shared standard, App \| Non-app | [<img src="docs_visual/ui/06-harness-structure.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness ›Structure** — slot tree + routing table |
+| [<img src="docs_visual/ui/07-features.png" width="270">](#6--tính-năng-features--what-this-machine-can-actually-do)<br>**7 · Tính năng** — 14 capabilities, each re-checkable | | |
+
 </div>
 
 ---
