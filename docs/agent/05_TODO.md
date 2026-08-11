@@ -634,6 +634,31 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
   gửi tự nén từ cây nguồn. Chấp nhận được: lối 1 (tải qua tool web) mới là lối chính, đã đo chạy.
 - [ ] **Khoá mồ côi `D:\huy.nguyen\zemory-lab\cli-write.lock`** giữ pid 13068 đã chết. Vô hại
   (code phân biệt khoá TƯƠI/MỒ CÔI từ `[2026-08-09]`), nhưng là rác nên dọn khi bỏ thư mục lab.
+
+- [ ] **Nợ cổng của 4 mặt audit mới (spec: `docs/plan/18_audit_coverage.md`).** Xếp theo "có sự
+  cố THẬT mà chưa có cổng nào":
+  · **⑧ Phụ thuộc & license — chưa có cổng nào**: kiểm license dependency/model mới (HP điều 2 BẮT
+    rà mà không ai kiểm) + dựng thử từ **clone SẠCH** (thứ chạy được trên máy đang có sẵn đồ thì
+    chưa chứng minh được gì — model weight 294,6 MB từng lọt commit làm nghẽn cả push).
+  · **⑨ Diễn tập phục hồi định kỳ**: "dữ liệu lành" KHÁC "dựng lại được"; mãi 11/08 mới thử lần đầu
+    và đúng lần đó lộ ra kênh mang đi vứt sạch lớp vector.
+  · **⑦ Quét LỊCH SỬ git** (hiện chỉ quét cây HEAD) + canh file lớn trước khi push.
+  · **⑩ Đưa ma trận guardrail vào gate chính** thay vì chạy tay như hôm nay.
+
+- [ ] **(ĐỀ XUẤT — cổng máy canh) Kiểm bundle ĐÃ RỜI KHỎI MÁY chưa, đừng chỉ kiểm "đã ghi file".**
+  Sự cố 2026-08-11: client đồng bộ kẹt hàng đợi ⇒ bundle nằm im trong thư mục Drive, **hai gói
+  317 MB kẹt từ 08/08 (3 ngày)** và bản bàn giao 1,63 GB cũng vậy — trong khi `memory sync` lần nào
+  cũng báo "đã xuất" thành công. Máy kia không nhận được gì suốt thời gian đó và **không cổng nào đỏ**.
+  **Đo được bằng máy:** sổ của client giữ hàng đợi thao tác + định danh mục; mục chưa lên mây mang
+  định danh **cục bộ** (tiền tố `local-`) và **kích thước phía máy chủ = 0**. Đề xuất: thêm một check
+  cạnh `storage-safety`/`cloudguard` — bundle mang định danh cục bộ quá N phút ⇒ **báo đỏ**, kèm số
+  mục đang kẹt và mục cũ nhất. Cùng doctrine "máy canh, đừng dựa agent nhớ".
+  ⚠ **Ràng buộc:** chỉ ĐỌC sổ của client, tuyệt đối không sửa/xoá trạng thái của nó; và phải chịu
+  được ca không tìm thấy sổ (fail-open — điều 9), vì đường dẫn/định dạng của client có thể đổi.
+  *(Bài học kèm theo: dấu `user-paused` và dòng "Syncing is paused" trong nhật ký client **KHÔNG**
+  đủ để kết luận đang bị dừng — tôi đã kết luận sai từ đúng hai dấu hiệu đó, trong khi hàng đợi vẫn
+  tự rút hết sau khi khởi động lại client. Thứ đáng tin là **hàng đợi + định danh**, không phải chữ
+  trong log.)*
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
   repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
   phát hiện máy có sẵn bản chuẩn ở `D:\Zyro\Tool\Zemory\docs_template\nonapp`, **tự đối chiếu số dòng

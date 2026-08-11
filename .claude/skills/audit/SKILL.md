@@ -30,7 +30,15 @@ hoặc gọi bề mặt thật (DB ↔ API).
 2026-07-28: **2/4 đột biến sống sót** — một test chưa bao giờ chạy tới nhánh nguy hiểm, một test bị
 **bản sao logic ở nơi khác gánh thay**. Cả hai đều xanh suốt và không soi gì cả.
 
-### 6 mặt — chạy đủ
+**Luật 7 — MỌI CỔNG PHẢI ĐO BẰNG CẢ CA ÂM.** Chỉ chạy ca *phải chặn* thì không biết cổng có **chặn
+nhầm** không, mà chặn nhầm là đường ngắn nhất tới "gate nhiễu ⇒ gate bị bỏ qua" — tự tay phá thứ
+mình đang xây. Đo 2026-08-11 trên guardrail: bảng 28 ca có ý nghĩa **chính nhờ 6 ca *phải cho qua***;
+thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
+
+### 10 mặt — chạy đủ
+*(6 mặt đầu là bản gốc; **mặt 7–10 thêm 2026-08-11** sau khi đối chiếu 6 mặt với những lần repo
+thật sự hỏng — xem `docs/plan/18_audit_coverage.md`. Phát hiện: **mọi sự cố nặng nhất đều rơi vào
+vùng 6 mặt không nhìn tới**.)*
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
@@ -42,6 +50,20 @@ hoặc gọi bề mặt thật (DB ↔ API).
 5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
 6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
    từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
+7. **Bí mật & phát tán** — secret trong cây **VÀ trong LỊCH SỬ git** (không chỉ HEAD: chìa lộ rồi
+   thì lộ vĩnh viễn) · file lớn/binary lọt git · **đường ra ngoài** (thư mục đồng bộ đám mây · kênh
+   backup máy · máy đích lúc deploy) · quyền file khoá. Không mặt nào cũ nhìn tới đây, trong khi
+   đây là chỗ mất mát **không đảo được**.
+8. **Phụ thuộc & license** — dependency/model mới có license tương thích không (bất biến kiến trúc
+   bắt rà, mà chưa cổng nào kiểm) · lockfile khớp · dependency chết · **dựng lại từ CLONE SẠCH có
+   chạy không** (thứ chỉ chạy được trên máy đang có sẵn đồ thì chưa gọi là dựng được).
+9. **Toàn vẹn & đồng thời** — write-gate còn **TỪ CHỐI THẬT** không (khoá đúng mà người gọi bỏ qua
+   lời từ chối thì vẫn thủng) · có kẻ ghi thứ hai nào đang mở kho không · giao dịch có nguyên tử ·
+   **THỬ PHỤC HỒI THẬT** một bản sao lưu ra chỗ tạm rồi đếm — "dữ liệu lành" KHÁC "dựng lại được",
+   và kênh mang đi có thể lặng lẽ vứt mất lớp đắt nhất. Kèm: chạy skill `sync-path/`.
+10. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
+   chết cứng không · bề mặt có **chết theo nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó nói dối) ·
+   **chạy ma trận guardrail** (ca phải chặn + ca phải cho qua — luật 7).
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
 Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.

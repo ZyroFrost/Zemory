@@ -16,9 +16,25 @@ const ROOT = path.resolve(HERE, ...POLICY.flags_dir.split("/").map(() => ".."));
 function deny(msg) { process.stderr.write(String(msg).trim() + "\n"); process.exit(2); }
 
 function consumeFlag(name) {
-  const p = path.join(ROOT, POLICY.flags_dir, POLICY.flags[name]);
+  // Ten flag THIEU trong policy = policy CU di cung guard MOI (bo cowork duoc mang tay
+  // sang may khac nen hai file chac chan co luc lech phien ban). Truoc day cho nay se
+  // `path.join(..., undefined)` => nem loi => guard chet giua chung, ma guard chet thi
+  // khong con ai gac. Nay: thieu ten thi coi nhu KHONG co flag - van CHAN, chi la khong
+  // co duong vuot. Chan nham con hon thung im lang.
+  const file = (POLICY.flags || {})[name];
+  if (!file) return false;
+  const p = path.join(ROOT, POLICY.flags_dir, file);
   if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} return true; }
   return false;
+}
+
+// Cau chi duong vuot. Policy CU khong khai ten flag => truoc day in ra
+// `docs/hooks/undefined`, tuc bao nguoi ta tao mot file ten "undefined" - loi huong dan
+// im lang, chi lo ra khi co nguoi lam theo. Nay noi thang la policy thieu, va chi cach sinh lai.
+function flagTip(name) {
+  const file = (POLICY.flags || {})[name];
+  if (!file) return "\n(Policy ban nay chua khai flag `" + name + "` => KHONG co duong vuot. Chay `zemory hook guard` de sinh lai policy.)";
+  return "\nUser da dong y? -> tao flag `" + POLICY.flags_dir + "/" + file + "` roi lam lai (mot lan).";
 }
 
 function relToRoot(p) {
@@ -124,6 +140,42 @@ function checkBash(cmd) {
   const RECURSIVE_DEL =
     /\brm\b[^\n;|&]*\s-[a-z]*r[a-z]*\b|\bRemove-Item\b[^\n;|&]*-Recurse\b|\brmdir\b[^\n;|&]*\/[sS]\b|\bdel\b[^\n;|&]*\/[sS]\b/;
   const ANY_DEL = /\brm\b|\bRemove-Item\b|\brmdir\b|\bdel\b|\bUnlink\b/;
+  // XOA HANG LOAT KHONG DUNG TU KHOA TREN (them 2026-08-11 sau khi do ma tran 28 ca).
+  // Nhanh cu chi nhin `rm -r` va ho hang; do that thi 8 duong quet ca cay LOT sach:
+  // `find -delete` · `find -exec rm` · `git clean -fdx` · `robocopy /MIR` (mirror =
+  // xoa thu khong co o nguon) · `fs.rmSync(recursive)` trong `node -e` · `shutil.rmtree`
+  // trong `python -c` · `xargs rm` · `Get-ChildItem -Recurse | Remove-Item` (duong ong,
+  // khong co duong dan de khop). Chung deu bat kha dao ngang `rm -rf`.
+  const MASS_DEL =
+    /\bfind\b[^\n]*-delete\b|\bfind\b[^\n]*-exec[^\n]*\brm\b|\bgit\s+clean\b[^\n]*-[a-z]*[fdx]|\brobocopy\b[^\n]*\/(MIR|PURGE)\b|\brmSync\s*\([^)]*recursive|\brmtree\s*\(|\bxargs\b[^\n]*\brm\b|\bGet-ChildItem\b[^\n]*\|[^\n]*\bRemove-Item\b/i;
+  if (MASS_DEL.test(bare) && !consumeFlag("delete")) {
+    deny("CHAN (guard lop 1): xoa HANG LOAT (quet ca cay) - bat kha dao, 02_RULES bat hoi user truoc." +
+      flagTip("delete"));
+  }
+
+  // HUY VIEC CHUA COMMIT - luat da co CHU o 02_RULES §Git ("KHONG reset --hard/clean len
+  // viec chua commit cua user neu chua hoi") nhung do 2026-08-11 thi KHONG co chot: ca
+  // `git reset --hard` lan `git checkout -- .` deu di qua em. Mat viec chua commit la
+  // mat han - git khong cuu duoc thu chua bao gio vao git.
+  const DISCARD =
+    /\bgit\s+reset\b[^\n]*--hard\b|\bgit\s+checkout\b[^\n]*--\s|\bgit\s+checkout\s+\.|\bgit\s+restore\b[^\n]*(\.|--staged)|\bgit\s+stash\s+(drop|clear)\b/;
+  if (DISCARD.test(bare) && !consumeFlag("discard")) {
+    deny("CHAN (guard lop 1): lenh HUY viec chua commit - 02_RULES §Git bat hoi user truoc." +
+      flagTip("discard"));
+  }
+
+  // XOA TRANG NOI DUNG ma khong "xoa" file. Xet theo tieu chi BAT KHA DAO thi bang mot lan
+  // xoa: file con do nhung ruot mat han. Chi lay hai lenh KHONG co cong dung nao khac ngoai
+  // xoa trang - de gate khoi thanh nhieu.
+  //   Con LOT co chu dich (bao cao, chua chan): `> file` va `echo '' > file` (chuyen huong
+  //   dau ra la thao tac hang ngay, chan la nhieu ngay) va `mv` (doi ten/dep repo la viec
+  //   thuong). Muon chan thi phai phan biet "ghi de file DANG CO trong repo" voi "tao file
+  //   moi", va do la viec rieng - dung nhet vao day cho du.
+  if (/\btruncate\b[^\n]*-s\s*0\b|\bClear-Content\b/.test(bare) && !consumeFlag("overwrite")) {
+    deny("CANH BAO (guard lop 1): lenh XOA TRANG noi dung file - noi dung cu mat han." +
+      "\nHOI USER truoc." + flagTip("overwrite"));
+  }
+
   if (ANY_DEL.test(bare)) {
     const recursive = RECURSIVE_DEL.test(bare);
     for (const tok of bare.split(/[\s'";|&]+/)) {
@@ -142,7 +194,7 @@ function checkBash(cmd) {
     }
     if (recursive && !consumeFlag("delete")) {
       deny("CHAN (guard lop 1): xoa DE QUY - thao tac bat kha dao, 02_RULES bat hoi user truoc." +
-        "\nUser da dong y? -> tao flag `" + POLICY.flags_dir + "/" + POLICY.flags.delete + "` roi chay lai (mot lan).");
+        flagTip("delete"));
     }
   }
 
@@ -171,6 +223,30 @@ function main() {
   if (tool === "Write" || tool === "Edit" || tool === "NotebookEdit") {
     const p = ti.file_path || ti.notebook_path || "";
     if (p) checkWrite(relToRoot(p));
+    // GHI DE = mat noi dung cu, ngang mot lan xoa. `Write` thay TRON file; `Edit` thi
+    // khong (no sua mot doan) nen CHI `Write` bi hoi.
+    //
+    // Vi sao HOI chu khong CAM (user chot 2026-08-11): ghi de la thao tac binh thuong
+    // hang ngay, cam thang thi gate thanh nhieu roi bi bo qua. Nhung no bat kha dao, nen
+    // phai co canh bao TRUOC - dung tinh than "luat bat kha dao phai co chot may".
+    //
+    // Chi ap TRONG cay repo: file o thu muc tam / scratchpad bi ghi de suot, chan o do
+    // chi tao nhieu ma khong bao ve gi.
+    if (tool === "Write" && p) {
+      const rel = relToRoot(p);
+      const inside = !rel.startsWith("..") && !path.isAbsolute(rel);
+      let sizeNow = 0;
+      try {
+        sizeNow = fs.existsSync(p) ? fs.statSync(p).size : 0;
+      } catch {
+        sizeNow = 0; // khong stat duoc thi khong phan (fail-open)
+      }
+      if (inside && sizeNow > 0 && !consumeFlag("overwrite")) {
+        deny("CANH BAO (guard lop 1): GHI DE `" + rel + "` (" + sizeNow + " byte dang co) - " +
+          "noi dung cu mat han, khong dao duoc.\nHOI USER truoc." + flagTip("overwrite") +
+          "\nSua mot doan thoi thi dung Edit - Edit KHONG bi hoi.");
+      }
+    }
   } else if (tool === "Read") {
     if (ti.file_path) checkRead(relToRoot(ti.file_path));
   } else if (tool === "Bash") {

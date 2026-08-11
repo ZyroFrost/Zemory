@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-08-11d] — Guardrail xoá: 10 → 22/28 · VAI của hook thành luật · audit 6 → 10 mặt
+
+**Đo trước, không đọc mô tả.** Bơm 28 payload PreToolUse vào guard rồi đọc mã thoát: bản cũ chỉ
+chặn **10**. Tám đường quét cả cây LỌT sạch (`find -delete` · `-exec rm` · `fs.rmSync` trong
+`node -e` · `shutil.rmtree` · `git clean -fdx` · `robocopy /MIR` · `xargs rm` · `Get-ChildItem |
+Remove-Item`), cộng `git reset --hard` và `git checkout -- .` — hai lệnh mà `02_RULES §Git` **đã
+cấm bằng chữ từ lâu mà chưa hề có chốt**. Nay **22/28**; 6 ca còn lại cố ý cho qua (xoá một file
+thường · `>` chuyển hướng · `mv`) để gate khỏi thành nhiễu.
+
+**Ghi đè = xoá, nên nay HỎI trước** (user chốt): `Write` đè file đang có nội dung **trong repo** ⇒
+chặn kèm *"HỎI USER trước"* + flag một lần; `Edit` **không** bị hỏi. Thêm `truncate -s 0` ·
+`Clear-Content` vì chúng không có công dụng nào ngoài xoá trắng.
+
+**Hai lỗi phụ do CHÍNH test mới bắt, không phải tôi tự thấy:** policy CŨ đi cùng guard MỚI thì
+`path.join(…, undefined)` **ném lỗi giữa chừng** — guard chết là không còn ai gác (nay thiếu tên
+flag thì VẪN chặn, chỉ mất đường vượt); và câu hướng dẫn in ra `docs/hooks/undefined`, tức bảo
+người ta tạo file tên "undefined". Cổng `guard-delete.test.mjs` **6/6**, có cả ca *phải cho qua*.
+
+> 🔄 **Supersede cách hiểu cũ về vai của hook.** `02_RULES §Guardrail` nay chốt (user 2026-08-11):
+> **hook là LƯỚI ĐỠ, không phải người quyết** — nó đỡ lúc agent đọc sót/quên, KHÔNG phải cơ chế cấm
+> xoá và **càng không phải giấy phép**. Quyền quyết định xoá luôn thuộc USER, hỏi TRƯỚC bất kể hook
+> có chặn hay không. Hai vế: *hook cho qua ≠ được phép* · *hook chặn ≠ hết việc* (đi hỏi user, đừng
+> tìm đường vòng, đừng tự tạo flag). Ship cả 4 bộ template.
+
+**Audit 6 → 10 mặt** (`plan/18_audit_coverage.md`). Cách kiểm "đủ hay chưa": **soi ngược từ 8 sự cố
+THẬT** rồi hỏi mặt nào lẽ ra bắt được — **cả 8 đều ngoài tầm nhìn 6 mặt cũ**, vì 6 mặt soi *có đúng
+không* còn 8 ca kia thuộc *có sống sót không*. Thêm ⑦ bí mật & phát tán (nhấn **lịch sử git**) · ⑧
+phụ thuộc & license (dựng từ **clone sạch**) · ⑨ toàn vẹn & đồng thời (+ **diễn tập phục hồi**) · ⑩
+vận hành nền & guardrail. Kèm **luật 7: mọi cổng phải đo bằng CẢ ca ÂM** — chỉ đo ca phải-chặn thì
+không thấy chặn nhầm, mà chặn nhầm là đường ngắn nhất tới gate-bị-bỏ-qua.
+
 ## [2026-08-11c] — Skill `sync-path` + vá đường sync gãy: 3 cửa không tự dò chìa · bundle full đã lên Drive
 
 **User chốt luật mới:** *"code và data mới cứ bị kẹt giữa 2 máy là sai quy tắc và plan cốt lõi…

@@ -35,7 +35,9 @@
     "push": ".allow-push",
     "docs_write": ".allow-docs-write",
     "git_add_all": ".allow-git-add-all",
-    "delete": ".allow-delete"
+    "delete": ".allow-delete",
+    "discard": ".allow-discard",
+    "overwrite": ".allow-overwrite"
   },
   "flags_comment": "Flag = user duyet MOT lan: guard cho qua roi TU XOA. Agent chi duoc tao flag sau khi user noi ro trong phien."
 }

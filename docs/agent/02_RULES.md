@@ -83,6 +83,17 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **`zemory hook guard`** sinh bộ chốt vào `<nhà harness>/hooks/` từ marker (`protected` / `secretNames`): `policy.json` · `guard.cjs` (PreToolUse, chặn TRƯỚC khi chạm đĩa/mạng) · `precommit-guard.cjs` (chặn secret vào staging). **User duyệt rồi tự nối vào runtime — tool không tự cắm.** Flag `.allow-*` dùng MỘT lần tự xoá; nhóm secret KHÔNG có flag. `zemory doctor` nhắc khi repo khai `protected` mà chưa sinh chốt.
 - Ship trong template app/nonapp/adapt (`02_RULES §Guardrail lớp ①` của từng bộ) — và **từ 2026-08-10 ship cả cho cowork**.
   > 🔄 **Đảo vế cũ** *"bộ cowork CỐ Ý không mang — không bảo đảm có CLI lẫn hook PreToolUse"*. Vế đó chỉ đúng MỘT NỬA: đo lại thì `guard.cjs` dùng **thuần `node:fs`+`node:path`**, CLI chỉ cần lúc SINH chứ không cần lúc CHẠY ⇒ ship **bản đã sinh sẵn** là hết phụ thuộc CLI. Chỉ còn phụ thuộc hook của host, mà thiếu hook thì file nằm im **vô hại** và ăn ngay ngày host có — tốt hơn hẳn không ship gì. Lý do đảo (user chốt): bộ cowork **phụ thuộc hoàn toàn vào luật chữ**, mà chữ thì **agent quên được**. Bộ cowork nhận `hooks/guard.cjs` + `policy.json` với `protected_write = data/*/01_raw · docs/agent`.
+- **VAI CỦA HOOK: LƯỚI ĐỠ, KHÔNG PHẢI NGƯỜI QUYẾT (user chốt 2026-08-11).** Mọi hook guardrail
+  tồn tại để **đỡ lúc agent đọc sót hoặc quên luật** — nó KHÔNG phải cơ chế cấm xoá, và **càng
+  không phải giấy phép**. **Quyền quyết định xoá luôn thuộc USER: phải hỏi và được đồng ý TRƯỚC,
+  bất kể hook có chặn hay không.** Hai hệ quả phải nhớ, vì cả hai đều là cách hiểu sai tự nhiên:
+  · **Hook cho qua ≠ được phép.** Lưới chỉ bắt được thứ nó biết trước — đo 2026-08-11: xoá **một
+  file thường** cố ý CHO QUA để gate khỏi thành nhiễu, nhưng nó vẫn là thao tác bất khả đảo và
+  vẫn phải hỏi user. Lấy "guard không kêu" làm bằng chứng được phép là **đọc ngược ý nghĩa của gate**.
+  · **Hook chặn ≠ hết việc.** Bị chặn thì đi HỎI USER, không phải đi tìm đường vòng hay tự tạo flag;
+  flag `.allow-*` chỉ được tạo SAU khi user nói rõ trong phiên.
+  Cùng doctrine với `§Hành xử` (*"thao tác xoá phải được user xác nhận trước"*): **chữ là tầng
+  QUYẾT ĐỊNH, máy là tầng ĐỠ HỤT** — bỏ một tầng thì tầng kia không gánh thay được.
 - **`protected_write` nhận GLOB, không chỉ tiền tố** (2026-08-10): `data/*/01_raw` diễn đạt được "đầu vào gốc của MỌI case" — thứ tiền tố không nói nổi vì tên case không biết trước. Thiếu nó thì hoặc liệt kê tay từng case (không ai bảo trì nổi), hoặc chặn cả `data` (chặn luôn chỗ agent ghi suốt ⇒ gate bị bỏ qua).
 
 ## Hành xử
