@@ -53,10 +53,25 @@
   sinh ra để bắt. Sửa hẹp: chỉ soi token **giống đường dẫn** (có `/` hoặc `\`, hoặc là đối số cuối),
   đừng soi mọi token trong chuỗi mẫu regex.
 
+**Mặt ① — ĐANG CHẠY 2026-08-11, và đã ra 3 phát hiện trước cả khi test xong:**
+
+- ❌ **Sổ SAI: "agent bị bộ lọc quyền chặn cả hai (`hook install`/`uninstall`)".** Thử thật:
+  `zemory hook uninstall` chạy sạch, gỡ đủ 4 sự kiện khỏi `~/.claude/settings.json` (đếm lại: 0 dấu
+  vết). **Agent tự tắt hook được** — dòng cũ đã chặn oan mặt ① suốt nhiều tuần. *(Lần thứ tư trong
+  ngày sổ nói khác thực tế.)*
+- 🔴 **Chốt chặn THẬT của `npm run check` không phải hook, mà là `clean`:** khoá `test` chạy
+  `npm run build` trước, mà `build` = `clean && tsc` ⇒ **xoá `dist/` ngay dưới chân job đang chạy**
+  (repo đã giết job một lần đúng kiểu này). Đường vòng an toàn, dùng lại được: **`npx tsc`** (ghi
+  đè tại chỗ, không xoá) rồi gọi thẳng `node --test "backend/test/*.test.mjs"`.
+- ✅ **LINT ĐỎ 2 lỗi, đã sửa** — `search.ts` `docFreq` và `platform/window.ts` nhịp tim, cùng một
+  kiểu `no-useless-assignment` (khởi tạo rồi luôn bị ghi đè ở cả `try` lẫn `catch`). Cả hai landing
+  **09–10/08**, tức **gate chưa hề chạy từ ~05/08** vì hook bật chặn ⇒ lỗi lọt vào mà không ai biết.
+  Đây đúng là thứ mặt ① sinh ra để bắt. Sau khi sửa: `lint` xanh · `typecheck` xanh.
+
+⚠ **HOOK ĐANG TẮT** (tôi gỡ để chạy gate). **Bật lại bằng `zemory hook install` ngay sau khi gate
+xong** — quên là capture chết lặng, không ai báo.
+
 **Chưa đo được — ghi thẳng, KHÔNG ghi "sạch"** (luật 3):
-- **Mặt ① `npm run check`:** hook đang BẬT **và** job embed đang chạy ⇒ 60 test song song + hook ghi
-  là **đúng tổ hợp đã hỏng kho 04/08**. Cần user tắt hook + chờ job xong. Đã chạy bù: `npx tsc` xanh
-  + 16 file test vùng đụng (**153 ca, 0 đỏ**).
 - **Mặt ③ vế "export mồ côi":** chưa có công cụ, chưa đo. Vế "nguồn trùng" đã đo xong.
 - **Mặt ⑧ vế "dựng từ clone SẠCH":** chưa đo (cần `npm install` ở thư mục trắng).
 

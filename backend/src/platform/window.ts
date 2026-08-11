@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   let miss = 0;
   const beat = setInterval(() => {
     void (async () => {
-      let alive = false;
+      let alive: boolean;
       try {
         const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(3000) });
         alive = res.ok;

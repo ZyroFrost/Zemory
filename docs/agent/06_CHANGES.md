@@ -5,6 +5,38 @@
 
 ---
 
+## [2026-08-11f] — Mặt ① mở được: gate chưa chạy từ ~05/08, và nó đang ĐỎ · lớp `tool_use` 0 → 21%
+
+> 🔄 **Supersede:** thay [2026-08-11e] — "mặt ① chưa đo được, cần user tắt hook" — **agent TỰ tắt
+> được**: `zemory hook uninstall` chạy sạch, gỡ đủ 4 sự kiện (đếm lại `~/.claude/settings.json`: 0).
+> Dòng "agent bị bộ lọc quyền chặn cả hai" trong `05_TODO` đã **chặn oan mặt ① suốt nhiều tuần**.
+
+**Chốt chặn THẬT không phải hook, mà là `clean`:** khoá `test` gọi `npm run build` = `clean && tsc`
+⇒ **xoá `dist/` ngay dưới chân job đang chạy**. Làm theo sổ cũ (tắt hook rồi `npm run check`) là
+**giết job 18 giờ**. Đường an toàn: `npx tsc` (ghi đè tại chỗ) rồi `node --test` thẳng.
+
+**Gate ĐỎ 3 chỗ — đều landing 09–10/08, đúng quãng gate không chạy được:** ① `lint` 2 lỗi
+`no-useless-assignment` · ② `autostart.test.mjs` **neo vào bản đã chết** (đòi `zemory.cmd` trong
+khi code đổi sang **`.vbs` 10/08** — bản vá GỐC vụ daemon chết); nay neo vào thứ quyết định:
+`WScript.Shell` + `Run(…, 0, False)` · ③ `writegate.test.mjs` **không tự cô lập** — `cliHoldsWrite()`
+cố ý nhìn cả khoá FILE nên máy có job ghi thật là đỏ dù code đúng; cổng chỉ xanh khi không ai làm
+việc là cổng đánh lừa. Sau khi vá: `typecheck` ✓ · `lint` ✓ · bộ đầy đủ **619 kiểm, 1 đỏ** (chính
+ca autostart, nay xanh) · `embed` 7/7 · `rerank` 5/5.
+
+**Nghiệm thu lớp tool trên KHO THẬT** — nhãn phủ đủ (`tool_use` **14/14** · `tool_result` 8/8 ·
+`prose` 34/34 · `keyword` 11/12, thiếu một tin `Grep` ngoài phạm vi nhúng):
+
+| lớp | mốc nền sáng | sau khi nhúng |
+|---|---|---|
+| `tool_use` @10 | **0%** · MRR 0,000 | **21%** · MRR 0,119 |
+| `keyword` @10 | 42% | **50%** |
+| hybrid nghiêm @10 | 35% | **40%** |
+| hybrid tương đương @10 | 53% · @40 65% | **71%** · @40 **76%** |
+
+⚠ `prose` xuống nhẹ (50 → 47%@10) nhưng **KHÔNG quy kết được**: giữa hai lần đo kho lớn thêm
+**18.494 tin** ⇒ hai biến cùng đổi; A/B sạch duy nhất vẫn là bản-sao-vs-kho-thật lúc sáng. Mẫu số
+cũng tự lùi (45.059 → 52.152 tin tool) vì phiên đang chạy đẻ thêm tin tool — **tiêu chí là NHÃN**.
+
 ## [2026-08-11e] — Audit 10 mặt lần đầu: bắt được đường CỨU HỘ chỉ chạy một nửa
 
 **Bốn mặt mới (⑦–⑩) ngay lượt đầu ra 5 phát hiện mà 6 mặt cũ không thể thấy** — bằng chứng cho

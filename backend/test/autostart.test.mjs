@@ -60,14 +60,30 @@ test("the Desktop shortcut resolves to a folder that actually EXISTS", async () 
   assert.ok(existsSync(dirname(st.path)), `Desktop folder must exist, got ${dirname(st.path)}`);
 });
 
-test("the Windows entry, when on this OS, is a Startup .cmd that launches `ui`", async (t) => {
+// Neo vào `.vbs`, KHÔNG phải `.cmd`. Đổi từ 2026-08-10 và là bản vá GỐC của vụ "daemon chết
+// không lời trăng trối": `start "" /b` trong .cmd KHÔNG tách tiến trình — daemon chạy trong
+// cùng console nên console đóng là bị `TerminateProcess`, không handler nào kịp chạy. Bản .vbs
+// dùng `WshShell.Run(cmd, 0, False)` sinh tiến trình MỒ CÔI, sống độc lập.
+//
+// Test này neo `.cmd` tới tận 11/08 mới lộ, vì gate không chạy được từ ~05/08 (hook bật chặn).
+// Bài học: ĐỔI CÁCH LÀM thì phải ĐỔI NEO TEST trong cùng thay đổi — không thì cổng canh một
+// bản đã chết, và nó sẽ đỏ oan đúng lúc người ta cần nó nói thật.
+test("the Windows entry, when on this OS, is a Startup .vbs that launches `ui` detached", async (t) => {
   if (platform() !== "win32") return;
   sandboxHome(t);
   const { setAutostart } = await import("../../dist/platform/autostart.js");
   const { readFileSync } = await import("node:fs");
   const st = setAutostart(true);
-  assert.match(st.path, /Startup[\\/]zemory\.cmd$/, "entry is a Startup .cmd");
+  assert.match(st.path, /Startup[\\/]zemory\.vbs$/, "entry is a Startup .vbs");
+  assert.equal(st.method, "startup-vbs", "method phải nói đúng cơ chế đang dùng");
   const body = readFileSync(st.path, "utf8");
-  assert.match(body, /cli\.js" ui/, "the .cmd launches the zemory UI daemon");
+  // Nháy ĐÔI-ĐÔI: trong VBS mỗi `"` của lệnh phải viết thành `""`, nên chuỗi thật là
+  // `…cli.js"" ui`. Mẫu cũ (`cli\.js" ui`) hợp với .cmd chứ không hợp .vbs.
+  assert.match(body, /cli\.js"{1,2} ui/, "the .vbs launches the zemory UI daemon");
+  // Neo vào THỨ QUYẾT ĐỊNH, không neo vào tên biến (bản thật đặt là `sh`): phải gọi qua
+  // WScript.Shell và tham số cuối phải là `False` — đó chính là chỗ KHÔNG chờ tiến trình con,
+  // tức thứ làm daemon sống mồ côi. Đổi `False` thành `True` là quay lại đúng con bug cũ.
+  assert.match(body, /WScript\.Shell/i, "phải dùng WScript.Shell");
+  assert.match(body, /\.Run\b[^\n]*,\s*0,\s*False/i, "phải Run(..., 0, False) — cửa TÁCH tiến trình");
   setAutostart(false);
 });
