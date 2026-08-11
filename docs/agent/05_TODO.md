@@ -3,6 +3,63 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔬 Audit 10 mặt 2026-08-11 (lần đầu chạy bộ mở rộng) — 1 lỗ sửa tại chỗ, 5 việc còn
+
+> Sạch: `conform` ✓ · 0 mồ côi (3 phép đo) · digest **1.294/1.294** · vector `prose` **99,93%** ·
+> 6/6 dependency license tương thích Apache-2.0 · đúng MỘT kẻ ghi kho · nhịp tim daemon tươi ·
+> guardrail **22/28** · **diễn tập phục hồi ĐÃ LÀM** (bundle 1,63 GB giải mã ra chỗ tạm, đếm đủ).
+> Bốn mặt mới (⑦–⑩) **ngay lần đầu chạy đã ra 4 phát hiện** mà 6 mặt cũ không thể thấy.
+
+- ✅ **SỬA TẠI CHỖ: cổng so NỘI DUNG bản guard của bộ cowork** (`template-parity.test.mjs`, đột biến
+  chứng minh đỏ được). Bộ cowork là bộ DUY NHẤT ship sẵn `hooks/guard.cjs` và hôm nay nó được **chép
+  tay**; cổng duy nhất canh nó là **số dòng** trong MANIFEST ⇒ hai bản lệch nội dung mà trùng số
+  dòng thì lọt. Nay so từng byte.
+- [ ] 🔴 **(③) ĐƯỜNG CỨU HỘ CHỈ CHẠY MỘT NỬA — `salvageVectors` không ai gọi.** Đây là phát hiện
+  đáng giá nhất của lượt audit, và đúng loại mà 6 mặt cũ **không thể** thấy (không lỗi, không đỏ,
+  chỉ im lặng thiếu).
+  **Bằng chứng, ba nguồn khớp nhau:** ① quét 567 export ⇒ `salvageVectors` là hàm DUY NHẤT không
+  phải kiểu mà **không ai dùng, kể cả trong chính file nó** (grep toàn repo: xuất hiện đúng 1 lần =
+  dòng khai báo) · ② `salvage.ts:103` — `salvageMemory` tự ghi *"KHÔNG dựng lại FTS/vector ở đây —
+  gọi …"*, tức nó CỐ Ý để phần vector cho người gọi · ③ `commands/memory.ts:758` gọi **mỗi**
+  `salvageMemory` rồi in kết quả, không gọi tiếp.
+  **Hậu quả:** kho hỏng (đã xảy ra **HAI LẦN**) thì `zemory memory salvage` cứu được dòng nguồn
+  nhưng **bỏ lại toàn bộ chỉ mục vector** — phải embed lại từ đầu, hiện là **~55 giờ máy** (43 giờ
+  đợt 768d + 12–16 giờ lớp tool). Chính đoạn code viết ra để tránh việc đó thì nằm im.
+  ⚠ **Đừng coi là "chỉ là lớp dẫn xuất nên không sao"**: đúng về nguyên tắc (HP điều 3), nhưng cái
+  giá là 55 giờ, và hàm này đã ghi sẵn ba cái bẫy phải trả giá mới biết (vec0 không nhận
+  `WHERE rowid > ? ORDER BY rowid` · rowid chunk bắt đầu từ 2^40 · phải bật `safeIntegers` vì vec0
+  từ chối float64). Vứt đi là vứt luôn hiểu biết đó.
+  **Sửa:** sau `salvageMemory`, gọi `salvageVectors(src, out, dims)` (đọc `dims` từ `vec_config`
+  của kho nguồn, fail-open nếu không đọc được) rồi in `copied/lost`. **Chưa tự làm** — đường cứu hộ
+  sai còn tệ hơn không sửa, nên cần một fixture kho hỏng để chứng minh nó chạy đúng. Chờ user gật.
+- [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
+  (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
+  KIỂU, KHÔNG phải rác; đừng "dọn".*
+- [ ] **(⑦) `.git/objects/pack` có 10 file `.idx` KHÔNG có `.pack` tương ứng.** Dấu hiệu một lần
+  `gc`/`filter-branch` bị ngắt giữa chừng (khớp đợt `filter-branch` gỡ model weight 05/08). Không
+  mất dữ liệu — `git count-objects` vẫn đọc được 5.138 object — nhưng là rác và làm mọi lệnh đếm
+  object kêu warning. Dọn bằng `git gc` (cần user gật: nó viết lại vùng object).
+- [ ] **(⑦) Pack repo 233 MiB** — to bất thường cho một repo thuần code+docs. Chưa truy ra blob nào
+  gánh phần lớn (cần `rev-list --objects` + `cat-file --batch-check`, chưa đo). Liên quan mục xoay
+  chìa: `share/share.key` **có thật trong lịch sử** (đo 2026-08-11 trên 1.173 file từng xuất hiện).
+- [ ] **(⑥) `/memory-status` mất 18,5 giây** (các endpoint khác 112–246 ms). Có yếu tố job embed
+  đang tranh I/O, nhưng UI gọi endpoint này lúc mở màn ⇒ người dùng thấy như treo. **Đo lại sau khi
+  job xong** trước khi kết luận là bug thật.
+- [ ] **(⑩) Daemon đang chạy báo `v1.2.0` trong khi `package.json` là 1.3.0** — bản đang chạy là
+  build cũ, nên số version trên UI lạc hậu cho tới lần khởi động lại. Không phải bug, nhưng là bẫy
+  đọc số: đừng lấy version trên UI làm bằng chứng về mã đang có.
+- [ ] **(⑩ · luật 7) Guard CHẶN NHẦM chính lệnh audit.** Lệnh dò lịch sử git chứa `head` + chuỗi
+  `id_rsa` **trong mẫu tìm kiếm** bị hiểu là "đọc nội dung file khoá". Đúng loại chặn-nhầm mà luật 7
+  sinh ra để bắt. Sửa hẹp: chỉ soi token **giống đường dẫn** (có `/` hoặc `\`, hoặc là đối số cuối),
+  đừng soi mọi token trong chuỗi mẫu regex.
+
+**Chưa đo được — ghi thẳng, KHÔNG ghi "sạch"** (luật 3):
+- **Mặt ① `npm run check`:** hook đang BẬT **và** job embed đang chạy ⇒ 60 test song song + hook ghi
+  là **đúng tổ hợp đã hỏng kho 04/08**. Cần user tắt hook + chờ job xong. Đã chạy bù: `npx tsc` xanh
+  + 16 file test vùng đụng (**153 ca, 0 đỏ**).
+- **Mặt ③ vế "export mồ côi":** chưa có công cụ, chưa đo. Vế "nguồn trùng" đã đo xong.
+- **Mặt ⑧ vế "dựng từ clone SẠCH":** chưa đo (cần `npm install` ở thư mục trắng).
+
 ## 🔗 NGUỒN ĐỒNG BỘ GLOBAL MEMORY — đọc TRƯỚC khi nối một máy mới (đo 2026-08-11)
 
 > Máy nào pull repo về cũng đọc mục này để biết kho nhớ chung nằm đâu và nối vào thế nào.

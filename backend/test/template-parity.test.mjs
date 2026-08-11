@@ -42,6 +42,20 @@ const SHARED = [
 const read = (profile, rel) =>
   readFileSync(new URL(`../../docs_template/${profile}/${rel}`, import.meta.url), "utf8");
 
+test("bo cowork mang DUNG ban guard da sinh (chep tay se troi, dem dong khong bat duoc)", () => {
+  // Bo cowork la bo DUY NHAT ship san `hooks/guard.cjs` (khong co CLI de sinh tai cho), nen
+  // ban do phai la BAN CHEP cua ban `zemory hook guard` sinh ra. Hom nay chep TAY — va cong
+  // duy nhat canh no la so dong trong MANIFEST cua BOOTSTRAP, tuc hai ban lech noi dung ma
+  // trung so dong thi LOT. Gate nay so tung byte.
+  const gen = readFileSync(new URL("../../docs/hooks/guard.cjs", import.meta.url), "utf8");
+  const shipped = readFileSync(new URL("../../docs_template/cowork/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
+  assert.equal(
+    shipped.replace(/\r\n/g, "\n"),
+    gen.replace(/\r\n/g, "\n"),
+    "docs_template/cowork/nonapp/hooks/guard.cjs da troi khoi ban sinh — chay `zemory hook guard` roi chep lai",
+  );
+});
+
 test("both template trees carry the full standard set (agent 01–06 + AGENTS + plan overview)", () => {
   for (const profile of PROFILES) {
     for (const rel of STANDARD) {

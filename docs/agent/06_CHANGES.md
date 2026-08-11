@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-11e] — Audit 10 mặt lần đầu: bắt được đường CỨU HỘ chỉ chạy một nửa
+
+**Bốn mặt mới (⑦–⑩) ngay lượt đầu ra 5 phát hiện mà 6 mặt cũ không thể thấy** — bằng chứng cho
+chính lý lẽ của `plan/18`: 6 mặt cũ soi *có đúng không*, không soi *có sống sót không*.
+
+🔴 **Đáng giá nhất, từ mặt ③: `salvageVectors` KHÔNG AI GỌI.** Quét 567 export ⇒ đây là hàm duy
+nhất không-phải-kiểu mà chết thật (grep toàn repo: đúng **1 lần** = dòng khai báo). Mà nó không
+phải rác: `salvage.ts:103` tự ghi *"KHÔNG dựng lại FTS/vector ở đây — gọi …"*, tức cố ý để phần
+vector cho người gọi; còn `commands/memory.ts:758` gọi **mỗi** `salvageMemory` rồi dừng. ⇒ Kho hỏng
+(đã **hai lần**) thì `memory salvage` cứu dòng nguồn nhưng **bỏ lại toàn bộ chỉ mục vector** —
+embed lại hết **~55 giờ máy**, đúng thứ đoạn code đó viết ra để tránh. Chưa vá: đường cứu hộ sai
+còn tệ hơn không sửa, cần fixture kho hỏng chứng minh trước (`05_TODO`).
+
+**Sửa tại chỗ 1 lỗ:** thêm cổng so **từng byte** bản `guard.cjs` bộ cowork với bản sinh
+(`template-parity`). Bộ cowork là bộ duy nhất ship sẵn guard và hôm nay nó được **chép tay**, trong
+khi cổng duy nhất canh nó là *số dòng* ở MANIFEST ⇒ lệch nội dung mà trùng số dòng thì lọt. Đột
+biến chứng minh đỏ được.
+
+**Bốn phát hiện còn lại** (`05_TODO`): `share/share.key` **có trong lịch sử git** (quét 1.173 file)
+· 10 file `.idx` không có `.pack` (gc/filter-branch từng bị ngắt) · pack **233 MiB** chưa truy ra
+blob nào gánh · `/memory-status` **18,5 s** trong khi endpoint khác 112–246 ms.
+
+**Sạch:** 0 mồ côi (3 phép đo) · digest 1.294/1.294 · vector `prose` 99,93% · 6/6 license tương
+thích · đúng MỘT kẻ ghi kho · **diễn tập phục hồi ĐÃ LÀM**. **Chưa đo, KHÔNG ghi "sạch"** (luật 3):
+mặt ① `npm run check` — cần user tắt hook **và** job embed xong (đúng tổ hợp đã hỏng kho 04/08);
+mặt ⑧ vế dựng-từ-clone-sạch. Bù bằng `npx tsc` + 16 file test vùng đụng (**153 ca, 0 đỏ**).
+
 ## [2026-08-11d] — Guardrail xoá: 10 → 22/28 · VAI của hook thành luật · audit 6 → 10 mặt
 
 **Đo trước, không đọc mô tả.** Bơm 28 payload PreToolUse vào guard rồi đọc mã thoát: bản cũ chỉ
