@@ -1,6 +1,6 @@
 // Start-with-OS integration (plan 14 §6.B). Enables/disables launching the zemory
 // daemon (`zemory ui`) at login, per-OS, in USER space (no admin):
-//   Windows → a .cmd in the Startup folder
+//   Windows → a .vbs in the Startup folder (KHÔNG phải .cmd — xem ghi chú tách tiến trình bên dưới)
 //   macOS   → a LaunchAgent plist
 //   Linux   → an XDG autostart .desktop
 // Everything is best-effort and reversible; failures fail-open with a reason so
