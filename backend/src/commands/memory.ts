@@ -575,10 +575,15 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const delta = args.includes("--delta");
     const bundleKey = basename(out);
     const since = delta ? readExportWatermark(bundleKey, dbPath) : undefined;
+    // Chìa phải TỰ DÒ, như `sync` vẫn làm — `readShareSecret` chỉ đọc `--key-file`/env, nên
+    // trước 2026-08-11 ba lệnh này báo "Chưa có chìa share" trong khi chìa nằm NGAY CẠNH kho
+    // (`data/share.key`). Hậu quả không phải bất tiện mà là ĐỨT ĐƯỜNG ĐỒNG BỘ: người bàn giao
+    // máy mới gõ đúng lệnh trong tài liệu vẫn thất bại, rồi đi tìm cách vòng. Một đường sync
+    // cố định thì mọi cửa vào nó phải dò chìa GIỐNG NHAU.
     const r = await exportMemoryBundle({
       outPath: out,
       dbPath,
-      keyFile: flagValue(args, "--key-file"),
+      keyFile: resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file")),
       force: args.includes("--force"),
       payload: args.includes("--full") ? "full" : "rows",
       sinceMessageId: since,
@@ -607,7 +612,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const r = await mergeMemoryBundle({
         bundlePath: bundle,
         dbPath: flagValue(args, "--db"),
-        keyFile: flagValue(args, "--key-file"),
+        keyFile: resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file")),
       });
       console.log(`zemory memory import --merge — ${r.dbPath}`);
       console.log(
@@ -620,7 +625,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const r = await importMemoryBundle({
       bundlePath: bundle,
       dbPath: flagValue(args, "--db"),
-      keyFile: flagValue(args, "--key-file"),
+      keyFile: resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file")),
       force: args.includes("--force"),
     });
     console.log(`zemory memory import — restored ${r.dbPath}`);

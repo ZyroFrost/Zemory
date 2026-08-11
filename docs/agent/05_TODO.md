@@ -51,16 +51,32 @@ Cổng `no-data-in-git` **5/5 xanh** (đo 2026-08-11), gồm hai bẫy đã tr�
 `/data/` phải **neo ở gốc** — pattern trần từng nuốt luôn `external/skills/**/data/` làm ai clone
 về cũng nhận skill cụt ruột.
 
+### BUNDLE FULL ĐÃ SẴN TRÊN DRIVE (xuất + nghiệm thu 2026-08-11)
+
+```
+G:\My Drive\Global Memory\global_memory.FULL-768.SS01-IT-12.20260811.enc      1,63 GB
+```
+**Đã nghiệm thu bằng vòng khép kín, không phải "thấy file là tin"** — giải mã ra CHỖ TẠM rồi đếm:
+`quick_check ok` · **218.494 tin · 1.293 phiên** · `vec_config` **768d/gemma-prompt-v1/fp32** ·
+**195.514 hàng vector** (prose 155.205 · tool 34.311) · FTS sống (38.419 hit cho "zemory").
+Xuất mất 75 giây, giải mã 14 giây. *(Chụp lúc lớp tool mới 76% — sẽ xuất bản mới khi job xong.)*
+
 ### Bốn thứ máy mới cần để CHẠY LIỀN (thiếu một là hụt)
 
 1. **Mã nguồn** — `git clone`/`git pull` → `npm install` → `npm run build` → `npm link`.
-2. **Kho + chỉ mục** — bundle `--full` (~1,7 GB) → `zemory memory import`. Đây là thứ chở
-   công embed (43 giờ đợt 768d + 12–16 giờ đợt lớp tool); bundle lean **không** chở.
-3. **Chìa** — mang tay, `zemory memory key set` (đọc stdin), rồi **so dấu tay** `key show` với
-   máy nguồn. Chìa phải có **TRƯỚC** lần sync đầu (`plan/16 §3`).
+2. **Chìa** — mang tay, `zemory memory key set` (đọc stdin), rồi **so dấu tay** `key show` với
+   máy nguồn. Chìa phải có **TRƯỚC** mọi thao tác bundle (`plan/16 §3`).
+3. **Kho + chỉ mục** — `zemory memory import "<đường tới file FULL ở trên>" --force`.
+   **KHÔNG dùng `--merge`** ở bước này: merge chỉ lấy 4 bảng nguồn, vector sẽ bị vứt.
+   *(Từ 2026-08-11 lệnh này TỰ DÒ chìa cạnh kho — không cần `--key-file`; cổng
+   `sync-path-key.test.mjs` khoá lại điều đó.)*
 4. **Model 4,4 GB** (`data/models`) — không chép thì máy kia **tự tải lúc chạy**. Cần cả lúc
    **TRUY VẤN**, không riêng lúc embed: câu hỏi phải được nhúng mới so được với vector ⇒ thiếu
    model thì dù kho có đủ vector, hybrid vẫn rơi về FTS.
+
+Sau khi import xong, từ đó trở đi hai máy chạy `zemory memory sync` như thường (lean, additive).
+**Quy trình chung cho MỌI thứ mới sinh ra sau này: skill `.claude/skills/sync-path/`** — khai kênh
++ đo vòng khép kín trước khi gọi là xong, để không lặp lại cảnh dò-rồi-vá của phiên này.
 
 ⚠ **Series của máy cũ `SS01-IT-10` đã CHẾT** (9 file ~338 MB nằm lại vĩnh viễn — không còn ai chạy
 compact cho nó). Đừng chờ nó cập nhật; dọn bằng `zemory memory sync --prune-host SS01-IT-10`

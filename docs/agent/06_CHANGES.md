@@ -5,6 +5,34 @@
 
 ---
 
+## [2026-08-11c] — Skill `sync-path` + vá đường sync gãy: 3 cửa không tự dò chìa · bundle full đã lên Drive
+
+**User chốt luật mới:** *"code và data mới cứ bị kẹt giữa 2 máy là sai quy tắc và plan cốt lõi…
+phải có 1 đường cụ thể để sync đồng bộ, cố định"*. Phiên này là bằng chứng: mất nhiều lượt chỉ để
+DÒ ra rằng bundle lean không chở vector, rồi lại dò ra lệnh xuất không tìm được chìa.
+
+**Lỗi thật, tìm ra khi xuất bundle bàn giao:** `readShareSecret` (`share.ts:108`) chỉ đọc
+`--key-file`/env, còn hàm tự dò `resolveShareKey` thì **chỉ `memory sync` gọi**. Nên `export` và
+cả hai nhánh `import` báo *"Chưa có chìa share"* trong khi chìa nằm NGAY CẠNH kho. Hậu quả không
+phải bất tiện mà là **ĐỨT đường bàn giao**: người làm đúng tài liệu vẫn thất bại rồi đi tìm đường
+vòng, mỗi máy vòng một kiểu. Đã vá cả **3 cửa** (`memory.ts:581 · 610 · 623`) dùng chung một lối
+dò như `sync`. Cổng mới `sync-path-key.test.mjs` **3/3**, đột biến chứng minh đỏ được: gỡ đường
+tự dò ⇒ **2/3 đỏ** (ca `--key-file` vẫn xanh, đúng thiết kế).
+
+**Skill `sync-path`** (`.claude/skills/sync-path/`, 79 dòng) — mọi thứ mới sinh ra phải khai
+**KÊNH** (git · bundle `.enc` · người mang tay · dựng lại tại đích · tải lúc chạy) và **ĐO bằng
+vòng khép kín** (giải mã ra chỗ tạm rồi đếm cả lớp dẫn xuất) trước khi gọi là xong. Ba câu hỏi
+bắt buộc, trong đó câu quyết định là *"bên NHẬN đọc những bảng nào"* — bên gửi gói đủ mà bên nhận
+đọc thiếu thì phần còn lại **bị vứt trong im lặng**. Đăng ký đủ hai chỗ (`04_SKILLS §2` +
+`AGENTS.md`); `conform` xanh, skill 7 → **8**.
+
+**Bundle full đã lên Drive + nghiệm thu vòng khép kín:** `global_memory.FULL-768.SS01-IT-12.
+20260811.enc` **1,63 GB** — giải mã ra chỗ tạm cho `quick_check ok` · 218.494 tin · 1.293 phiên ·
+`vec_config` 768d/fp32 · **195.514 hàng vector** · FTS sống. Xuất 75 giây, giải mã 14 giây, và
+**không đụng kho**: `snapshotSqlite` dùng `db.backup()` (API sao lưu trực tuyến) nên nó là kẻ ĐỌC
+— job embed vẫn chạy song song, kho vẫn `quick_check ok`. *(Vì vậy `export` KHÔNG nằm trong
+`HEAVY_WRITES`; thứ bị khoá chặn là `sync`, vì sync còn merge = ghi thật.)*
+
 ## [2026-08-11b] — Bàn giao máy mới: `--full` là đường DUY NHẤT chở vector; bảng kênh git-vs-Drive
 
 > 🔄 **Supersede:** thay [2026-08-11] — "khối NGUỒN ĐỒNG BỘ GLOBAL MEMORY" — khối đó chỉ ghi đường
