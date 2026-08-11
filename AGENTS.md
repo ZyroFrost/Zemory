@@ -35,6 +35,7 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
 | repo lệch chuẩn, cần nắn lại | `.claude/skills/reconcile/SKILL.md` |
 | kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
+| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/sync-path/SKILL.md` |
 | user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
