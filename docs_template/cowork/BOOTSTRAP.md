@@ -112,15 +112,15 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 50 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 80 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 110 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 36 |
 | 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 41 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
 | 10 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 97 |
-| 11 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 130 |
-| 12 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 227 |
+| 11 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 151 |
+| 12 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 254 |
 | 13 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
 | 14 | `.claude/skills/session-close/SKILL.md` | `<RAW>/.claude/skills/session-close/SKILL.md` | 59 |
 | 15 | `.claude/skills/read-office/SKILL.md` | `<RAW>/.claude/skills/read-office/SKILL.md` | 55 |
@@ -133,6 +133,17 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 22 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
 | 23 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
 | 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
+| 25 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 181 |
+| 26 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 41 |
+
+**Hai file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
+lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào
+bản lưu. Luật bằng chữ ngăn được phần lớn, nhưng chữ thì người đọc có thể quên — hai file này
+để máy chặn ngay lúc xảy ra, thay vì phát hiện sau.
+
+Cứ ghi chúng ra như mọi file khác. **Không tự nối vào máy** — muốn bật thì người dùng tự khai
+vào phần cài đặt của công cụ họ đang chạy. Nơi bạn làm việc chưa hỗ trợ thì hai file nằm yên,
+không gây hại gì, và ăn ngay khi nào được hỗ trợ.
 
 Rồi **tự tạo** `docs/.harness.json` (không tải, gõ thẳng):
 ```json
