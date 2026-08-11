@@ -306,7 +306,7 @@ const dfCache = new Map<string, number>();
 function docFreq(db: MemoryDB, term: string): number {
   const hit = dfCache.get(term);
   if (hit !== undefined) return hit;
-  let n = 0;
+  let n: number;
   try {
     n = (db.prepare("SELECT count(*) c FROM messages_fts WHERE messages_fts MATCH ?").get(`"${term}"`) as { c: number })
       .c;
