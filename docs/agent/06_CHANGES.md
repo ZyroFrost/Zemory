@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-08-11] — Nhúng lớp tool QUA CỔNG · vá lỗ manifest cowork · 3 mục sổ nói khác code
+
+**Phép thử nhúng lớp tool: cổng QUA.** A/B cùng mã, cùng ngày, 68 nhãn — đối chứng chạy trên kho
+thật thay vì so chéo với con số 10/08: `tool_use` **0% → 14%@10** · `keyword` 42% → **50%** ·
+`prose` 50% → 50% (không tụt) · tổng nghiêm 35% → **40%**. ⚠ Mức nhảy của thước *tương đương*
+(53→66%) **không phải toàn bộ là hệ tốt lên** — thước đó cần vector mới chấm được "gần trùng",
+nên tin tool trước đây không thể được tính. Bằng chứng đáng tin là thước nghiêm **+3 nhãn**.
+⇒ Đã phóng job embed kho thật (`Edit,Write,Bash,PowerShell,Artifact` = 45.059 tin, ~12–16 giờ),
+tách tiến trình bằng `.vbs` nên **không chết theo phiên agent** như hai job ngày 10/08.
+
+> 🔄 **Supersede mốc bằng chứng của `05_TODO`** (*"24.073 tin · 7/14 nhãn · 14/14 cần 28.705"*).
+> Đo bằng DB: đã là **26.479 · 12/14**, và **14/14 là BẤT KHẢ THI** với phạm vi 4 tool — một nhãn
+> nằm ở tool `Artifact`, ngoài danh sách ⇒ trần thật **13/14** (nay đã thêm `Artifact`, 21 tin).
+> Neo đếm đúng: trong `vec_chunks_rowids` thì **`rowid`** là id tin, cột `id` bỏ trống.
+
+**Bộ cowork: chốt máy ship rồi nhưng ĐƯỜNG TẢI không lấy được.** Gate `bootstrap-manifest` đỏ —
+`[2026-08-10d]` khai "cowork nhận `hooks/`" chỉ đúng cho lối chép từ đĩa; MANIFEST **không khai
+hai file đó** nên lối tải web (lối chính của Cowork thật) dựng ra bộ **không có chốt máy**. Kèm
+3 số dòng lạc hậu — chính thứ làm `check_install.py` báo ✗ oan trên máy người dùng. Đã khai 2
+hàng + vá số, nghiệm thu bằng bản cài dựng thật: **26/26, exit 0**; gate 8/8 · `guard-gen` 7.
+**Xoá `docs_template/cowork.7z`** (user duyệt) — đúng hai quyết định cũ (*"KHÔNG commit, nó là
+bản render"* 31/07 · *"chốt xoá"* 02/08) mà file vẫn tracked tới `d9cf711`, lại còn lạc hậu.
+
+**Ba mục sổ nói khác code, đóng bằng bằng chứng:** đếm bundle ra 0 (đã vá `1cbe86c`, test khoá
+`recall-lane-defaults.test.mjs:88`) · 3 comment sai đường kho (grep ra 0) · `autosync` "đang TẮT"
+(đo config **và** `/automation` — đều `true`).
+
+**Thêm `05_TODO §NGUỒN ĐỒNG BỘ GLOBAL MEMORY`** cho máy mới pull về (đường kho · con trỏ · thư mục
+Drive · series · chìa TRƯỚC sync) — kèm cảnh báo **bundle lean KHÔNG chở vector**, máy kia tự embed.
+
 ## [2026-08-10d] — Guard: chặn XOÁ · dogfood pre-commit · SHIP chốt máy cho cowork (đảo quyết định)
 
 > 🔄 **Supersede [2026-08-07] §Guardrail** ở vế *"bộ cowork CỐ Ý không mang chốt máy"*. Lý do đảo

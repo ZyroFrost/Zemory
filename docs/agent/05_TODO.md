@@ -3,29 +3,77 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔴 VIỆC ĐẦU TIÊN CỦA PHIÊN SAU — đo phép thử đang DỞ (2026-08-11)
+## 🔗 NGUỒN ĐỒNG BỘ GLOBAL MEMORY — đọc TRƯỚC khi nối một máy mới (đo 2026-08-11)
 
-**Job nhúng lớp tool đã DỪNG ở 24.073/44.747 (53,8%) — đủ dữ liệu, chỉ còn thiếu phép ĐO.**
-Bản sao `D:\huy.nguyen\zemory-lab\tooltest.db` giữ nguyên; kho thật KHÔNG bị đụng.
+> Máy nào pull repo về cũng đọc mục này để biết kho nhớ chung nằm đâu và nối vào thế nào.
+> Mọi số dưới đây đo bằng `~/.zemory/location.json` · file config cạnh kho · `/automation` của
+> daemon đang chạy — không phải chép lại từ sổ.
 
-Phủ được **7/14 nhãn `tool_use`** (mốc 8.246 · 11.000 · 16.682 đều đã qua; 14/14 cần 28.705,
-tức còn ~2 giờ máy nếu muốn phủ trọn).
+| | giá trị hiện tại |
+|---|---|
+| kho sống | `<repo>/data/global_memory.db` (HP điều 14 — TRONG cây repo, KHÔNG ở ổ hệ thống) |
+| con trỏ vị trí | `~/.zemory/location.json` → `{"dataDir": "<repo>/data"}` |
+| kênh xuyên máy | thư mục Drive dùng chung, máy này trỏ `G:\My Drive\Global Memory` |
+| series của máy này | `global_memory.SS01-IT-12.0000NN.enc` — mới nhất **`000018`** (10/08 19:57) |
+| mức chở | **lean** (`syncLevel`) |
 
-**Chạy đúng lệnh này, KHÔNG chạy gì khác cùng lúc** (bench và embed cùng ăn ONNX một CPU):
-```
-GLOBAL_MEMORY_DB=D:\huy.nguyen\zemory-lab\tooltest.db  node dist/cli.js memory bench --recall --no-rerank
-```
-**So bảng THEO LỚP với mốc nền** (đo 2026-08-10, kho thật, cùng thước):
-`prose` 50%@10 · `keyword` 42% · `tool_result` 25% · **`tool_use` 0%** ← con số phải đánh bại.
+**Máy mới nối vào — thứ tự BẮT BUỘC** (chìa phải có TRƯỚC lần sync đầu, xem `plan/16 §3`):
+cài từ mã nguồn (`git clone` → `npm install` → `npm run build` → `npm link`) → `zemory memory
+key set` dán chìa rồi **so dấu tay** bằng `key show` với máy này → trỏ **CÙNG** thư mục Drive
+(ký tự ổ có thể khác, miễn là cùng thư mục) → `zemory memory sync` (một lệnh làm cả hai chiều).
 
-**Cổng nghiệm thu ĐỊNH TRƯỚC — đừng chọn thước sau khi thấy số:**
-· ĐÚNG nếu `tool_use` tiến về mức `tool_result` (~25%@10) **và** `prose`/`keyword` KHÔNG tụt.
-· SAI nếu `tool_use` vẫn ~0% dù đáp án đã có vector ⇒ **giả thuyết "luồng thứ hai" chết**, và
-  **ĐỪNG chạy job trên kho thật** (tiết kiệm ~8 giờ máy còn lại).
-Chạy tiếp job: `& D:\huy.nguyen\zemory-lab\embed-tool.cmd` (`--all` nối tiếp, không làm lại).
+⚠ **Bundle lean KHÔNG chở vector** (`share.ts:300`, mặc định `payload: "rows"` = chỉ `sessions` ·
+`messages` · `known_stores`). Máy kia merge xong sẽ có **đủ tin nhưng không có chỉ mục ngữ nghĩa**
+⇒ phải tự chạy `zemory memory embed --all` bên đó, hoặc xin một bundle `--full`. Đây cũng là lý do
+công embed (43 giờ đợt 768d + 12–16 giờ đợt lớp tool) **không có bản sao ngoài máy nào**.
 
-⚠ **Lệnh dài PHẢI do user chạy ở cửa sổ riêng.** Job do agent phóng từ shell của nó là con của
-`bash.exe`, chết theo phiên — đã mất **hai** job vì đúng chuyện này ngày 10/08.
+⚠ **Series của máy cũ `SS01-IT-10` đã CHẾT** (9 file ~338 MB nằm lại vĩnh viễn — không còn ai chạy
+compact cho nó). Đừng chờ nó cập nhật; dọn bằng `zemory memory sync --prune-host SS01-IT-10`
+(có dry-run) khi đã verify nội dung của nó nằm trong kho local.
+
+**Công tắc đang bật trên máy này** (đo `/automation` + config, 2026-08-11):
+`autostart` BẬT · `autosync` **BẬT** · `realtime` BẬT (đã nối) · `scheduler` TẮT · `rerank` TẮT ·
+`hybrid` BẬT · `syncAttachments` TẮT.
+
+## ✅ PHÉP THỬ NHÚNG LỚP TOOL — ĐÃ ĐO 2026-08-11, CỔNG QUA, đang embed kho thật
+
+> 🔄 **Supersede mục "VIỆC ĐẦU TIÊN CỦA PHIÊN SAU" viết cùng file.** Sổ ghi job dừng ở
+> **24.073 (53,8%) · 7/14 nhãn** — đo lại bằng DB thì đã là **26.479 (59,2%) · 12/14 nhãn**.
+> Lượt chạy thứ hai (15:30 10/08 → 01:18 11/08) không ai ghi log nên sổ đứng ở mốc cũ.
+
+**A/B cùng mã, cùng ngày, cùng 68 nhãn** — đối chứng chạy trên kho thật (chưa có vector tool),
+không so chéo với con số 10/08:
+
+| lớp | kho thật (không vector tool) | bản sao (có vector tool) |
+|---|---|---|
+| `tool_use` @10 | **0%** · MRR 0,000 | **14%** · MRR 0,048 |
+| `keyword` @10 | 42% · MRR 0,314 | **50%** · MRR 0,336 |
+| `prose` @10 | 50% · MRR 0,393 | 50% · MRR 0,392 |
+| `tool_result` @10 | 25% | 25% |
+| hybrid nghiêm @10 | 35% · MRR 0,274 | **40%** · MRR 0,287 |
+| hybrid tương đương @10 | 53% · @40 65% | **66%** · @40 **74%** |
+
+**Cổng QUA:** `tool_use` thoát 0% (nhánh SAI là *vẫn ~0%*), không lớp nào tụt.
+⚠ Mức nhảy của thước **tương đương** (+13đ) **không phải toàn bộ là hệ tốt lên** — thước đó cần
+vector mới chấm được "gần trùng", nên trước đây tin tool *không thể* được tính tương đương.
+Con số đáng tin là thước **nghiêm +3 nhãn**, khớp cộng dồn 2 `tool_use` + 1 `keyword`.
+
+**Sửa hai chỗ SAI trong mốc bằng chứng cũ:**
+· **14/14 KHÔNG đạt được** với phạm vi `Edit,Write,Bash,PowerShell` — một nhãn trỏ vào tool
+  **`Artifact`**, nằm ngoài danh sách ⇒ trần thật là 13/14. Dòng "28.705 ⇒ 14/14" đã chết.
+· Phạm vi chạy kho thật nay là **`Edit,Write,Bash,PowerShell,Artifact`** = **45.059 tin**
+  (`Artifact` chỉ 21 tin — thêm vào gần như miễn phí và nó phủ đúng nhãn thứ 14).
+
+- [~] **Job embed kho thật ĐANG CHẠY** (bắt đầu 01:46 ngày 11/08, ~15,7 giờ máy).
+  Log `D:\huy.nguyen\zemory-lab\embed-full-real.log`; đo tiến độ bằng SQL trên `messages`
+  ⋈ `vec_chunks_rowids`, đừng tin log (lượt trước mất dấu vì không ai ghi).
+  **Phóng bằng `.vbs` (`WshShell.Run(cmd,0,False)`) nên nó MỒ CÔI, không chết theo phiên agent** —
+  đây là đường thay cho câu cũ "lệnh dài phải do user chạy ở cửa sổ riêng".
+  Xong ⇒ chạy lại `memory bench --recall --no-rerank` trên kho thật, so đúng bảng trên.
+
+- [ ] **Neo đo tiến độ — ghi ra để đừng đếm sai lần nữa:** trong bảng bóng `vec_chunks_rowids`,
+  **`rowid` mới là id tin**, cột `id` bỏ trống (NULL). Đếm bằng `vec_map` chỉ ra tin bị CHUNK
+  (5.874 hàng), không phải toàn kho. Tự kiểm đúng: 180.697 hàng chính + 5.874 chunk = 186.571.
 
 ## 🔵 BÀN GIAO 2026-08-10 — recall: đọc mục này TRƯỚC khi làm gì tiếp
 
@@ -85,10 +133,9 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   đếm đúng không. ② *"Đo một cấu hình bằng bề mặt HẸP HƠN bề mặt sẽ chịu ảnh hưởng"* — dính **hai
   lần trong một phiên**: T3 chấm theo "cụm" thay vì tin TRẢ VỀ (báo +29% giả); hình phạt tool quét
   chỉ bằng `searchHybrid` nên làm hỏng đường nhanh của app (đã kịp commit rồi mới phát hiện).
-- [ ] **`autosync` đang TẮT** — tôi tắt 08/08 để chặn writer thứ hai lúc embed chạy. Bật lại ở
-  ⚙ → ⚡ Tự động khi thấy ổn (hoặc đổi khoá `autosync` trong file config cạnh kho — **đừng viết
-  đường dẫn đó trong backtick**, nó gitignored nên `todo verify` báo ref chết; tôi vừa dính đúng
-  lỗi mà mục rerank bên dưới đã cảnh báo).
+- ✅ **`autosync` — ĐÃ BẬT LẠI, sổ nói sai** *(đo 2026-08-11 bằng HAI nguồn: khoá `autosync` trong
+  file config cạnh kho **và** `/automation` của daemon đang chạy — cả hai đều `true`)*. Dòng cũ ghi
+  "đang TẮT, tôi tắt 08/08" đã hết đúng. `scheduler` thì vẫn TẮT thật.
 
 ## ✅ XONG 2026-08-08 — kho 768 chiều + fp32 ĐÃ TRÁO, đang chạy thật
 
@@ -451,16 +498,22 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
 
 ## 🆕 Phát sinh 2026-08-09/10 — 4 việc
 
-- [ ] **BUG: UI đếm bundle luôn ra 0.** `ui.ts:256` khớp `f.endsWith(".zemory.enc")`, nhưng
-  `share.ts:714` gọi đúng tên đó là **`legacyName`** còn bộ đọc series thật (`share.ts:721`/`:894`)
-  khớp `.enc` ⇒ máy đã lên định dạng `global_memory.<host>.<seq>.enc` thì **vĩnh viễn hiện 0
-  bundle** (Drive thật có 3 file, 634 MB). **Chỉ sai HIỂN THỊ** — merge và ghi series đều đúng.
-  Sửa 1 dòng (`.endsWith(".enc")`) + test khoá. Chờ user gật.
-- [ ] **UI khuyên SAI về rerank.** Mô tả trong `chrome.js` vẫn nói *"đáng bật khi corpus lớn/nhiễu,
-  câu hỏi khó"* trong khi đo trên chính kho này nó **tệ hơn + chậm 11,6×**. Cùng loại "UI nói sai
-  thực tế" vừa sửa cho 256d/đường kho, nhưng đây là LỜI KHUYÊN nên không tự đổi — chờ user.
-- [ ] **3 comment code còn đường `~/.zemory/global_memory.db`** (`memory/db.ts:1` · `share.ts:1` ·
-  `modules/memory-global.ts:12`). Không ai ngoài lập trình viên thấy, nhưng sai so với HP điều 14.
+- ✅ **BUG đếm bundle — ĐÃ SỬA, sổ lạc hậu** *(soát bằng code 2026-08-11; dòng cũ ghi "chờ user
+  gật" nhưng bản vá landing CÙNG NGÀY dòng sổ được viết)*. Đo: `ui.ts:264` nay khớp
+  `.endsWith(".enc")` kèm comment nêu rõ lý do; commit **`1cbe86c` (10/08)**. Test khoá cũng có
+  rồi: `recall-lane-defaults.test.mjs:88` chốt *"2 bundle series + 1 bundle đời cũ, KHÔNG đếm
+  .txt/.md"* — chạy lại 11/08: **5/5 xanh**. Giữ dòng để không ai sửa lần hai.
+- [ ] **UI khuyên SAI về rerank — VẪN CÒN** *(đo lại 2026-08-11: `chrome.js` khoá `f.doc.rerank`
+  còn nguyên câu "đáng bật khi corpus lớn/nhiễu, câu hỏi khó")*, trong khi đo trên chính kho này
+  nó **tệ hơn + chậm 11,6×**. Cùng loại "UI nói sai thực tế" đã sửa cho 256d/đường kho, nhưng đây
+  là LỜI KHUYÊN nên không tự đổi — chờ user.
+  **Câu thay đề xuất (cả 2 từ điển VI+EN):** *"OPT-IN, mặc định TẮT. Đo trên chính kho này
+  (68 nhãn, 2026-08-10): rerank làm recall TỤT (`@10` 35%→28%) và chậm 11,6×. Chỉ bật khi muốn
+  thử lại trên kho khác — đừng bật vì nghĩ 'corpus lớn thì nên bật'."*
+- ✅ **3 comment sai đường kho — ĐÃ HẾT** *(soát 2026-08-11)*: grep toàn `backend/src` cho chuỗi
+  `.zemory/global_memory` ra **0 kết quả**. Các chỗ còn nhắc `~/.zemory` đều HỢP LỆ và phải giữ
+  (`location.json` con trỏ · `config.json` · thư mục `imports/` · ghi chú mặc định đời cũ) —
+  đừng "dọn" chúng, chúng không phải đường kho.
 - [ ] **(ĐỀ XUẤT `02_RULES` — chờ user chốt) Luật: phép đo TỰ DỰNG phải khớp tham số của bench.**
   Phiên này tôi dựng probe thiếu `all: true` (bench luôn có) rồi rút 3 kết luận sai từ nó
   (`TOOL_DEMOTE` · `vecMix` · gộp-trùng). Luật đã có câu *"đo bằng bề mặt hẹp hơn…"* nhưng KHÔNG
@@ -519,6 +572,17 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
   (phải đổi cả index cũ + mọi chỗ tra trong cùng bước), không phải việc dọn dẹp lẻ.
 
 ## 📌 Cowork — còn treo
+
+- ✅ **Gói nén bộ cowork — ĐÃ XOÁ 2026-08-11 (user duyệt).** Nguyên văn: *"file 7z ko cần, bỏ đi
+  cũng dc, vì lấy trực tiếp từ git rồi"*. Đúng hai quyết định cũ đã ghi ở archive changelog
+  (*"KHÔNG commit — nó là bản render, không phải nguồn"* 31/07 · *"chốt xoá, không gitignore"*
+  02/08) mà file vẫn tracked tới `d9cf711` (05/08). **KHÔNG gitignore** — đúng nguyên văn quyết
+  định cũ. Trước khi xoá đã đo: không tài liệu nào trỏ tới gói, và bản thân gói lạc hậu (mốc
+  31/07, thiếu nhánh hooks, chở 4 file bản cũ) nên giữ lại là phát tán bản sai.
+  ⇒ **Lối 3 của BOOTSTRAP ("xin người dùng gửi file zip") nay không có gói dựng sẵn** — người
+  gửi tự nén từ cây nguồn. Chấp nhận được: lối 1 (tải qua tool web) mới là lối chính, đã đo chạy.
+- [ ] **Khoá mồ côi `D:\huy.nguyen\zemory-lab\cli-write.lock`** giữ pid 13068 đã chết. Vô hại
+  (code phân biệt khoá TƯƠI/MỒ CÔI từ `[2026-08-09]`), nhưng là rác nên dọn khi bỏ thư mục lab.
 - [~] **Đường TẢI vẫn chưa test — test 1 đi vòng qua nó.** Phiên Cowork thật đầu tiên (2026-07-28,
   repo `vietnam_34_provinces_grdp_dashboard` clone vào `D:\Zyro\Tool\test`) **không dùng URL**: agent
   phát hiện máy có sẵn bản chuẩn ở `D:\Zyro\Tool\Zemory\docs_template\nonapp`, **tự đối chiếu số dòng
