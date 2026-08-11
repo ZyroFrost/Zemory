@@ -53,6 +53,16 @@ lại** — đúng thứ máy kia sẽ nhận:
 Đếm phải phủ **cả lớp dẫn xuất**, vì đó chính là lớp hay bị rơi. Một con số tổng ("2 GB") không
 nói được gì — nó vẫn đúng khi 87% dung lượng là thứ bên nhận sẽ vứt.
 
+**Và một bước nữa, dễ quên nhất: NÓ ĐÃ RỜI KHỎI MÁY CHƯA?** "Ghi được vào thư mục đồng bộ" **không
+phải** "đã lên mây". Thư mục đám mây là một **bề mặt lười**: ghi vào là thấy file ngay, còn việc đẩy
+đi nằm ở hàng đợi của client — hàng đợi đó kẹt thì mọi thứ **trông y như đã xong**. Phải hỏi chính
+client (sổ/hàng đợi/nhật ký của nó) xem mục đã được cấp **định danh phía máy chủ** chưa, và kích
+thước phía máy chủ có **khớp bản cục bộ** không.
+
+*Đã trả giá 2026-08-11:* bundle bàn giao nằm im trong thư mục đồng bộ, và **hai gói 317 MB kẹt suốt
+3 ngày** mà không ai biết — trong khi lệnh đồng bộ vẫn báo "đã xuất" thành công mỗi lần. Đúng kiểu
+hỏng mà `02_RULES §Bề mặt CHẾT THEO nền` gọi là **vỏ rỗng: không báo lỗi, nó nói dối**.
+
 ## 4. Bẫy đã trả giá — đọc trước khi tự tin
 
 - **Hai đường tên gần giống nhau, hành vi khác hẳn.** *Gộp thêm* (merge) chỉ lấy bảng NGUỒN;

@@ -78,6 +78,7 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
 - **`zemory hook guard`** sinh bộ chốt vào `<nhà harness>/hooks/`: `policy.json` (luật — sinh từ khoá `protected` / `secretNames` trong `.harness.json`) · `guard.cjs` (PreToolUse — chặn TRƯỚC khi hành động chạm đĩa/mạng) · `precommit-guard.cjs` (chặn secret vào staging, phủ cả người). Cách nối vào runtime lệnh in ra — **user duyệt rồi tự nối, tool không tự cắm**.
 - **Flag `.allow-*` = user duyệt MỘT lần**, guard cho qua rồi tự xoá; agent chỉ được tạo flag SAU khi user nói rõ trong phiên. **Nhóm secret KHÔNG có flag.**
 - Khai đường cấm ghi của repo qua khoá `protected: ["..."]` trong `.harness.json`; `zemory doctor` nhắc khi đã khai mà chưa sinh chốt.
+- **VAI CỦA HOOK: LƯỚI ĐỠ, KHÔNG PHẢI NGƯỜI QUYẾT.** Chốt máy tồn tại để đỡ lúc agent **đọc sót hoặc quên** luật — nó KHÔNG phải cơ chế cấm xoá, và càng không phải giấy phép. **Quyền quyết định xoá luôn thuộc USER: hỏi và được đồng ý TRƯỚC, bất kể hook có chặn hay không.** · **Hook cho qua ≠ được phép** — lưới chỉ bắt thứ nó biết trước (xoá một file thường cố ý cho qua để gate khỏi thành nhiễu, nhưng vẫn phải hỏi). · **Hook chặn ≠ hết việc** — bị chặn thì đi HỎI USER, không đi tìm đường vòng, không tự tạo flag. Chữ là tầng QUYẾT ĐỊNH, máy là tầng ĐỠ HỤT; bỏ một tầng thì tầng kia không gánh thay được.
 
 ## Hành xử
 - **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.

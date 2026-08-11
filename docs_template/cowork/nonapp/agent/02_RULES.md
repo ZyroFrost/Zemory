@@ -51,6 +51,14 @@ Vuot mot lan flag hooks/.allow-* (user duyet trong phien; guard tu xoa sau khi d
 gate bị bỏ qua, và lúc đó nó tệ hơn không có gate. Sửa luật = sửa thẳng `hooks/policy.json`
 (bộ này không có lệnh sinh lại).
 
+**Bộ chặn này là LƯỚI ĐỠ, không phải người quyết.** Nó có mặt để đỡ những lúc bạn đọc sót hoặc
+quên luật — nó **không** phải cơ chế cấm xoá, và **càng không** phải giấy phép. Quyền quyết định
+xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, dù bộ chặn có kêu hay không.
+- **Nó im ≠ bạn được phép.** Nó chỉ bắt được những kiểu đã liệt kê ở trên; xoá một file thường
+  cố ý cho qua, nhưng đó vẫn là việc không lấy lại được, vẫn phải hỏi.
+- **Nó chặn ≠ hết việc.** Bị chặn thì đi HỎI người dùng, đừng tìm đường vòng và đừng tự tạo file
+  cho phép.
+
 **Không nối được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên** — *xoá là bất khả đảo, phải hỏi trước*.
 
 ## Ngôn ngữ (BẮT BUỘC)
