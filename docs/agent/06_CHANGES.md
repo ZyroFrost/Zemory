@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-11b] — Bàn giao máy mới: `--full` là đường DUY NHẤT chở vector; bảng kênh git-vs-Drive
+
+> 🔄 **Supersede:** thay [2026-08-11] — "khối NGUỒN ĐỒNG BỘ GLOBAL MEMORY" — khối đó chỉ ghi đường
+> **lean/merge** nên đọc ra thành *"máy kia sync là chạy được"*, trong khi lean **không chở
+> vector**: máy kia có đủ tin mà recall rơi về FTS. User bắt đúng chỗ (*"ko up embed 768 thì máy
+> kia chạy sao"*).
+
+**Đo bằng code, không đoán:** `share.ts:169` khai `ROWS_TABLES` = `schema_version · sessions ·
+messages · known_stores` — `mergeMemoryBundle` **chỉ đọc bốn bảng đó**, nên gửi bundle `--full`
+mà bên kia MERGE thì lớp dẫn xuất (≈87% dung lượng file) vẫn bị vứt. Đường duy nhất chở được
+vector là **`import`**: `share.ts:508-512` đổi tên file giải mã **vào thẳng chỗ DB**, bản cũ lùi
+thành `.bak-<mốc>` ⇒ **THAY, không phải THÊM** (máy đích có tin riêng phải `sync` đẩy lên trước).
+
+**Thêm vào `05_TODO §NGUỒN ĐỒNG BỘ`:** bảng so hai đường lean/full · bốn thứ máy mới cần (mã ·
+kho+chỉ mục · chìa · **model 4,4 GB**) · và **bảng KÊNH**: mã/docs/hooks đi **git**, kho đi
+**Drive `.enc`**, chìa **mang tay**, model **tự tải** (HP điều 2), `dist/` không đi đâu cả.
+Nhấn một điểm dễ sót: model cần cả lúc **TRUY VẤN** (phải nhúng câu hỏi mới so được với vector),
+nên thiếu model thì kho có đủ vector vẫn rơi về FTS.
+
+**Kiểm data không lộ:** cổng `no-data-in-git` **5/5**, và đã soát chiều ngược — mọi file cần để
+dựng lại đều tracked (`package-lock` · `tsconfig` · `.gitattributes` · bộ `hooks/`), không thứ
+nào cần mà bị ignore nhầm.
+
 ## [2026-08-11] — Nhúng lớp tool QUA CỔNG · vá lỗ manifest cowork · 3 mục sổ nói khác code
 
 **Phép thử nhúng lớp tool: cổng QUA.** A/B cùng mã, cùng ngày, 68 nhãn — đối chứng chạy trên kho

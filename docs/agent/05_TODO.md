@@ -15,17 +15,52 @@
 | con trỏ vị trí | `~/.zemory/location.json` → `{"dataDir": "<repo>/data"}` |
 | kênh xuyên máy | thư mục Drive dùng chung, máy này trỏ `G:\My Drive\Global Memory` |
 | series của máy này | `global_memory.SS01-IT-12.0000NN.enc` — mới nhất **`000018`** (10/08 19:57) |
-| mức chở | **lean** (`syncLevel`) |
+| mức chở | **lean** (`syncLevel`) — xem bảng hai đường ngay dưới |
+| model | `data/models` **4,4 GB** (EmbeddingGemma + rerank) |
 
-**Máy mới nối vào — thứ tự BẮT BUỘC** (chìa phải có TRƯỚC lần sync đầu, xem `plan/16 §3`):
-cài từ mã nguồn (`git clone` → `npm install` → `npm run build` → `npm link`) → `zemory memory
-key set` dán chìa rồi **so dấu tay** bằng `key show` với máy này → trỏ **CÙNG** thư mục Drive
-(ký tự ổ có thể khác, miễn là cùng thư mục) → `zemory memory sync` (một lệnh làm cả hai chiều).
+### HAI ĐƯỜNG CHỞ, KHÁC HẲN NHAU — chọn sai là máy kia không chạy được
 
-⚠ **Bundle lean KHÔNG chở vector** (`share.ts:300`, mặc định `payload: "rows"` = chỉ `sessions` ·
-`messages` · `known_stores`). Máy kia merge xong sẽ có **đủ tin nhưng không có chỉ mục ngữ nghĩa**
-⇒ phải tự chạy `zemory memory embed --all` bên đó, hoặc xin một bundle `--full`. Đây cũng là lý do
-công embed (43 giờ đợt 768d + 12–16 giờ đợt lớp tool) **không có bản sao ngoài máy nào**.
+|  | **lean** (mặc định, autosync đang dùng) | **full** |
+|---|---|---|
+| xuất | `zemory memory sync` | `zemory memory export <file>.enc **--full**` |
+| chở gì | đúng 4 bảng nguồn | **nguyên file DB** — kèm FTS · **vector 768d** · digest |
+| bên nhận | merge ⇒ **THÊM** vào kho sẵn có | `zemory memory import <file>.enc` ⇒ **THAY nguyên DB** |
+| máy kia dùng được ngay? | có đủ TIN, **không có lớp ngữ nghĩa** (rơi về FTS) | **chạy liền, đủ cả recall hybrid** |
+
+**Bằng chứng, đừng đoán:** `share.ts:169` khai `ROWS_TABLES` = `schema_version · sessions ·
+messages · known_stores` — **`mergeMemoryBundle` chỉ đọc đúng bốn bảng đó**, nên dù có gửi bundle
+`--full` mà bên kia MERGE thì lớp dẫn xuất (≈87% dung lượng file) vẫn **bị vứt**. Đường duy nhất
+chở được vector là **`import`** (`share.ts:508-512`: nhánh không phải `rows` đổi tên file giải mã
+**vào thẳng chỗ DB**, bản cũ lùi thành `.bak-<mốc>`).
+
+⚠ **`import` là THAY, KHÔNG phải THÊM.** Máy đích đang có tin riêng chưa đồng bộ thì phải
+`zemory memory sync` đẩy lên Drive **TRƯỚC**, vì sau khi thay chúng chỉ còn nằm trong `.bak`.
+
+### Thứ nào đi KÊNH nào — data KHÔNG BAO GIỜ qua git (HP điều 7 · 14)
+
+| thứ | kênh | ghi chú |
+|---|---|---|
+| mã nguồn · docs · `docs_template` · `hooks/` | **git** | đã đo tracked: `package.json` · `package-lock.json` · `tsconfig.json` · `.gitattributes` · `guard.cjs` · `policy.json` · `precommit-guard.cjs` |
+| kho nhớ + chỉ mục (`global_memory.db`) | **Drive** (`.enc`) | KHÔNG qua git |
+| chìa `share.key` | **người mang tay** | không git, không Drive trần |
+| model 4,4 GB (`data/models`) | **tự tải lúc chạy** | HP điều 2 — weight KHÔNG commit; từng làm nghẽn push 100 MB ngày 05/08 |
+| `dist/` | **không** | máy kia `npm run build` |
+
+Cổng `no-data-in-git` **5/5 xanh** (đo 2026-08-11), gồm hai bẫy đã trả giá: bundle series
+`global_memory.<host>.<seq>.enc` **không khớp** `*.zemory.enc` nên phải có dòng ignore riêng; và
+`/data/` phải **neo ở gốc** — pattern trần từng nuốt luôn `external/skills/**/data/` làm ai clone
+về cũng nhận skill cụt ruột.
+
+### Bốn thứ máy mới cần để CHẠY LIỀN (thiếu một là hụt)
+
+1. **Mã nguồn** — `git clone`/`git pull` → `npm install` → `npm run build` → `npm link`.
+2. **Kho + chỉ mục** — bundle `--full` (~1,7 GB) → `zemory memory import`. Đây là thứ chở
+   công embed (43 giờ đợt 768d + 12–16 giờ đợt lớp tool); bundle lean **không** chở.
+3. **Chìa** — mang tay, `zemory memory key set` (đọc stdin), rồi **so dấu tay** `key show` với
+   máy nguồn. Chìa phải có **TRƯỚC** lần sync đầu (`plan/16 §3`).
+4. **Model 4,4 GB** (`data/models`) — không chép thì máy kia **tự tải lúc chạy**. Cần cả lúc
+   **TRUY VẤN**, không riêng lúc embed: câu hỏi phải được nhúng mới so được với vector ⇒ thiếu
+   model thì dù kho có đủ vector, hybrid vẫn rơi về FTS.
 
 ⚠ **Series của máy cũ `SS01-IT-10` đã CHẾT** (9 file ~338 MB nằm lại vĩnh viễn — không còn ai chạy
 compact cho nó). Đừng chờ nó cập nhật; dọn bằng `zemory memory sync --prune-host SS01-IT-10`
