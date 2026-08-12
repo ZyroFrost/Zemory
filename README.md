@@ -28,9 +28,9 @@ across tools, projects, and machines, offline.
 
 | | | |
 |:--:|:--:|:--:|
-| [<img src="docs_visual/ui/01-home.png" width="270">](#1--trang-chủ-home--the-at-a-glance-row)<br>**1 · Trang chủ** — six tiles, recent projects & sessions | [<img src="docs_visual/ui/02-recall.png" width="270">](#2--recall--find-the-session-then-read-it)<br>**2 · Recall** — filter, pick a session, read the thread | [<img src="docs_visual/ui/03-projects.png" width="270">](#3--dự-án-projects--linked-vs-discovered)<br>**3 · Dự án** — linked cards vs discovered-by-machine |
-| [<img src="docs_visual/ui/04-global-memory-sync.png" width="270">](#4--global-memory--the-numbers-and-the-two-ways-data-moves)<br>**4 · Global Memory** — sources, automation, Drive sync | [<img src="docs_visual/ui/05-harness-docs.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**5 · Harness ›Docs** — the shared standard, App \| Non-app | [<img src="docs_visual/ui/06-harness-structure.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness ›Structure** — slot tree + routing table |
-| [<img src="docs_visual/ui/07-features.png" width="270">](#6--tính-năng-features--what-this-machine-can-actually-do)<br>**7 · Tính năng** — 14 capabilities, each re-checkable | | |
+| [<img src="docs_visual/ui/01-home.png" width="270">](#1--home--the-at-a-glance-row)<br>**1 · Home** — six tiles, recent projects & sessions | [<img src="docs_visual/ui/02-recall.png" width="270">](#2--recall--find-the-session-then-read-it)<br>**2 · Recall** — filter, pick a session, read the thread | [<img src="docs_visual/ui/03-projects.png" width="270">](#3--projects--linked-vs-discovered)<br>**3 · Projects** — linked cards vs discovered-by-machine |
+| [<img src="docs_visual/ui/04-global-memory-sync.png" width="270">](#4--global-memory--the-numbers-and-the-two-ways-data-moves)<br>**4 · Global Memory** — sources, automation, Drive sync | [<img src="docs_visual/ui/05-harness-docs.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**5 · Harness › Docs** — the shared standard, App \| Non-app | [<img src="docs_visual/ui/06-harness-structure.png" width="270">](#5--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness › Structure** — slot tree + routing table |
+| [<img src="docs_visual/ui/07-features.png" width="270">](#6--features--what-this-machine-can-actually-do)<br>**7 · Features** — 14 capabilities, each re-checkable | | |
 
 </div>
 
@@ -170,7 +170,7 @@ place**; anywhere else links to it. Two themes (dark default · light monochrome
 i18n; every user-visible string goes through both dictionaries, with technical terms (Recall,
 Hybrid, FTS5, vector, embed, token) deliberately left untranslated.
 
-### 1 · Trang chủ (Home) — the at-a-glance row
+### 1 · Home — the at-a-glance row
 
 ![Home](docs_visual/ui/01-home.png)
 
@@ -183,8 +183,8 @@ many items need attention.
 
 ![Recall](docs_visual/ui/02-recall.png)
 
-Two sub-tabs: **Tìm kiếm** (search messages) and **Phiên** (browse sessions). Filters cover
-*has-images · time · source · agent · machine*, with the live count (`120/1,295 phiên`) so a
+Two sub-tabs: **Search** (across messages) and **Sessions** (browse whole threads). Filters cover
+*has-images · time · source · agent · machine*, with the live count (`120/1,295 sessions`) so a
 filter never silently hides everything. Pick a session on the left and the whole conversation
 opens on the right, exportable to `.md`.
 
@@ -193,29 +193,29 @@ Display rule worth knowing: prose renders **in full, exactly as chatted**, while
 taste — **52.5%** of 167,738 messages contain tool traffic, and that is what makes a transcript
 unreadable, not message length.
 
-### 3 · Dự án (Projects) — linked vs discovered
+### 3 · Projects — linked vs discovered
 
 ![Projects](docs_visual/ui/03-projects.png)
 
 Linked projects appear as cards (App / Non-app badge, sessions, messages, agents, last update)
 with **pin** and **remove** — removing only drops it from the picker; the folder, its docs and its
 memory are untouched. Below, everything zemory has *seen but not linked*, **tabbed by machine**,
-each row offering **Add** (zemory manages it) or **Gộp** (fold its sessions into another project).
+each row offering **Add** (zemory manages it) or **Merge** (fold its sessions into another project).
 That second list is why the picker stays clean: discovery is separated from adoption.
 
 ### 4 · Global Memory — the numbers, and the two ways data moves
 
 ![Global Memory — sync & backup](docs_visual/ui/04-global-memory-sync.png)
 
-Sub-tab **Bộ nhớ** holds the statistics; **Đồng bộ & Sao lưu** holds every action that moves data:
+Sub-tab **Memory** holds the statistics; **Sync & Backup** holds every action that moves data:
 
 - **Sources** — the provenance tree (Local → machine → agent, Web → platform) with live counts.
   Untick a lane to leave it out of **both** sync and recall. It is a *filter, never a delete*.
-- **Máy này** — known-source scan vs deep scan, and the four automation switches with their real
+- **This Machine** — *Scan Known* vs *Deep Scan*, and the automation switches with their real
   behaviour spelled out: realtime capture per message, the context-warning threshold, the
   background sweep, start-with-OS, auto-sync.
-- **Đồng bộ Drive** — bundle count, watermark (`Còn N tin mới chưa đẩy lên Drive`), the shared
-  folder path, and the depth selector: **Gọn (−74%)** vs **Đầy đủ (khôi phục)** vs **Kèm ảnh**.
+- **Drive Sync** — bundle count, a `pushed / total` watermark, the shared folder path, and the
+  depth selector: **Lean (−74%)** vs **Full (restore)** vs **With images**.
   Backup · Restore · Forget · Redact sit in the same column.
 
 > **The one distinction to internalise:** *lean* bundles carry only source rows
@@ -239,14 +239,14 @@ an agent reads the routing line and opens the right folder instead of grepping t
 first-class AI slots — `ai/` · `agents/` · `tools/` · `evals/` — the same standard scaffolds a CRUD
 service or an LLM agent app.
 
-### 6 · Tính năng (Features) — what this machine can actually do
+### 6 · Features — what this machine can actually do
 
 ![Features](docs_visual/ui/07-features.png)
 
-Fourteen capabilities with live status (`Sức khoẻ 11/14 OK`), grouped by concern. Click one and the
+Fourteen capabilities with live status (`Health 11/14 OK`), grouped by concern. Click one and the
 right pane explains **what it is · how it works · the details that bite**, in plain language. This
 screen exists because a feature list that cannot be *checked* is a promise, not a status — each row
-has a **Kiểm** button that re-measures instead of repeating what a config file claims.
+has a **Check** button that re-measures instead of repeating what a config file claims.
 
 Any region with two or more adjacent panels has a **drag-to-resize** seam; sizes persist across
 sessions. The markdown docs remain the **source** — edit the `.md` directly (file wins); the DB is

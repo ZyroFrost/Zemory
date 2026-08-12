@@ -4,7 +4,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
-import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, verifyMemory } from "../memory/salvage.js";
+import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, salvageVectors, vectorDimsOf, verifyMemory } from "../memory/salvage.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
@@ -762,6 +762,31 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log(`  tổng: chép ${r.copied} dòng · mất ${r.lost}`);
     console.log("  dựng lại chỉ mục FTS…");
     for (const f of rebuildFts(out)) if (!f.ok) console.log(`  ✗ ${f.table}`);
+
+    // CỨU LUÔN CHỈ MỤC VECTOR — nửa sau của đường cứu hộ, trước 2026-08-11 KHÔNG AI GỌI.
+    //
+    // `salvageMemory` cố ý chỉ chép bảng NGUỒN (chú thích của chính nó: "KHÔNG dựng lại
+    // FTS/vector ở đây — gọi …"), còn `salvageVectors` được tách riêng vì nó cần extension
+    // vec0. Nhưng lệnh này chỉ gọi vế đầu rồi dừng, và câu dặn cuối bảo người dùng đi
+    // `memory embed --all` — tức chấp nhận đốt lại TOÀN BỘ công nhúng. Đo 2026-08-11: chỗ đó
+    // là **~55 giờ máy** (43 giờ đợt 768 chiều + 12–16 giờ lớp tool). FTS dựng lại rẻ nên
+    // dựng; vector thì chép được bao nhiêu hay bấy nhiêu — vẫn hơn dựng lại từ đầu.
+    //
+    // Fail-open (HP điều 9): kho nguồn chưa từng có vector, hoặc vùng hỏng nuốt luôn
+    // `vec_config` ⇒ BỎ QUA và nói ra, tuyệt đối không làm hỏng lượt cứu hộ đang chạy.
+    const dims = vectorDimsOf(src);
+    if (dims > 0) {
+      console.log(`  cứu chỉ mục vector (${dims} chiều)…`);
+      try {
+        const v = salvageVectors(src, out, dims);
+        console.log(`  ${v.lost ? "⚠" : "✓"} vector: chép ${v.copied}${v.lost ? ` · MẤT ${v.lost}` : ""}`);
+      } catch (e) {
+        console.log(`  ⚠ không cứu được vector (${(e as Error).message}) — kho vẫn cứu xong, chạy \`memory embed --all\` để dựng lại.`);
+      }
+    } else {
+      console.log("  · bỏ qua vector: kho nguồn không có `vec_config` (chưa từng nhúng, hoặc vùng hỏng nuốt mất).");
+    }
+
     console.log("  → bước tiếp: kiểm `PRAGMA integrity_check`, đổi chỗ, rồi `zemory reindex`");
     console.log("    + `memory digest --all` + `memory embed --all` để vá phần vector còn thiếu.");
     return;
