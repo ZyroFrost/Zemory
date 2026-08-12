@@ -289,13 +289,38 @@ function checkBash(cmd) {
   }
 
   // Doc noi dung file key bang shell - cung luat voi checkRead.
+  //
+  // CHI soi token TRONG NHU MOT TEP DANG BI DOC, khong soi moi token trong cau lenh.
+  // Ban cu soi tat: he cau lenh CHUA \`head\`/\`cat\`/... la moi token deu bi doi chieu, nen
+  // \`grep -rln "id_rsa" src/ | head\` bi chan - ten khoa nam trong MAU TIM KIEM chu khong
+  // phai la tep bi doc. Do chinh la ca chan-nham do duoc 2026-08-11 (no chan dung lenh
+  // audit di do lich su git), va luat 7 sinh ra de bat kieu nay: mot gate chan nham thi
+  // nguoi ta tim duong vong, roi ca gate thanh vo nghia.
+  //
+  // Ba dau hieu duoc coi la "tep dang bi doc" - deu chan lai duoc ca that:
+  //   1. token co dau phan cach duong dan  ->  cat /etc/ssh/id_rsa
+  //   2. token dung NGAY SAU mot lenh doc (bo qua cac co -x)  ->  cat id_rsa | grep x
+  //   3. token cuoi cau  ->  head id_rsa
+  const READER = /^(cat|less|more|head|tail|type|base64|xxd|od|strings|cp|scp)$/;
   if (/\\b(cat|less|more|head|tail|type|base64|xxd|od|strings|cp|scp)\\b/.test(bare)) {
-    for (const tok of cmd.split(/[\\s'";|&]+/)) {
-      const name = tok.replace(/\\\\/g, "/").split("/").pop();
+    const toks = cmd.split(/[\\s'";|&]+/).filter(Boolean);
+    let afterReader = false;
+    toks.forEach((tok, i) => {
+      const bareTok = tok.replace(/^["']|["']$/g, "");
+      const looksLikePath = /[\\/\\\\]/.test(bareTok);
+      const isLast = i === toks.length - 1;
+      const suspect = looksLikePath || afterReader || isLast;
+      if (READER.test(bareTok.replace(/\\\\/g, "/").split("/").pop() || "")) {
+        afterReader = true;
+      } else if (!bareTok.startsWith("-")) {
+        afterReader = false;
+      }
+      if (!suspect) return;
+      const name = bareTok.replace(/\\\\/g, "/").split("/").pop();
       if (name && nameMatches(name, POLICY.key_read_block || [])) {
         deny("CHAN (guard lop 1): lenh shell cham noi dung file key \`" + name + "\` - " + POLICY.key_read_reason);
       }
-    }
+    });
   }
 }
 
