@@ -5,6 +5,26 @@
 
 ---
 
+## [2026-08-13b] — (⑥) `/memory-status`: một phép quét không được che, đứng lẫn giữa những phép đã che
+
+**Truy ra chỗ tốn.** Bốn phép quét toàn bảng gánh gần hết: `SUM(LENGTH(content))` **1.615 ms** ·
+`vectorCoverage` **1.391 ms** · `vectorRemaining` **994 ms** · `vectorCount` **194 ms**; toàn bộ
+phần còn lại của payload ~100 ms.
+
+**Lỗi thiết kế:** ba phép sau nằm trong `heavyStats()` (TTL 300 s), riêng `vectorCoverage()` bị
+gọi thẳng trong `dashboardMemory()` ⇒ trả giá lại mỗi lượt `dashCache` (60 s) hết hạn, tức **gấp
+5 lần số lượt** cho một con số đổi chậm y như hàng xóm. Nay gộp vào `heavyStats()` — **con số y
+hệt, chỉ đổi tần suất tính**.
+
+**Cổng:** `app-ui.test.mjs` thêm bất biến "mọi quét toàn bảng phải sau TTL dài" (46/46, đột biến
+đỏ được). Vì sao cần máy canh: thêm một aggregate vào payload là việc tự nhiên, không gì trong mã
+nhắc chỗ đúng của nó — và lỗi này **không bao giờ đỏ** ở test thường, kết quả vẫn đúng, chỉ chậm.
+
+**CHƯA XONG, không đọc thành đã xong:** lượt LẠNH vẫn ~4 s. Và **mọi số tuyệt đối trên chưa đáng
+tin** — đo khi job embed đang chạy, hai lượt cách nhau vài phút lệch **3×**. Warm-up đồng bộ lúc
+khởi động là đường SAI (chặn event loop ⇒ đúng cơ chế bug "hai daemon"); đường đúng là đẩy sang
+tiến trình con như `deepSearchChild`. Đo lại lúc máy rảnh trước khi quyết.
+
 ## [2026-08-13] — (⑧) clone sạch DỰNG ĐƯỢC: thủ phạm là ĐƯỜNG TẢI, không phải thiếu prebuild
 
 > 🔄 **Supersede:** thay [2026-08-12e] — "audit 10 mặt sau 1.5.0" — vế chẩn đoán *"`better-sqlite3`

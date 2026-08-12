@@ -66,9 +66,21 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   chứng minh được cả hai điều trái ngược** — hôm 12/08 trúng lượt hỏng nên kết luận "thiếu
   prebuild", hôm nay có lượt trúng 1/10 làm cả một phép thử xanh giả. Đo tỉ lệ, đừng đo một lượt.
 
-- [ ] **(⑥) `/memory-status` còn 5,83 giây** *(sổ cũ ghi 18,5 s — đo lại hôm nay, máy rảnh)*.
-  Nhanh hơn 3× nhưng vẫn chậm gấp ~70 lần các endpoint khác (`/ping` 0,002 s · `/automation`
-  0,081 s), và **UI gọi nó lúc mở màn** ⇒ người dùng thấy treo 6 giây. Bug thật, chưa truy.
+- [~] **(⑥) `/memory-status` — ĐÃ TRUY RA + vá một nửa 2026-08-13.** Bốn phép quét toàn bảng
+  gánh gần hết thời gian (đo lúc job embed đang chạy, nên là cận trên): `SUM(LENGTH(content))`
+  **1.615 ms** · `vectorCoverage` **1.391 ms** · `vectorRemaining` **994 ms** · `vectorCount`
+  **194 ms**; toàn bộ phần còn lại ~100 ms.
+  **Vá:** `vectorCoverage()` bị gọi THẲNG trong `dashboardMemory()` nên trả giá mỗi lượt
+  `dashCache` (60 s) hết hạn, trong khi ba cái kia đã nằm sau TTL 300 s. Nay gộp vào
+  `heavyStats()` — **con số y hệt, chỉ đổi tần suất tính**. Cổng mới trong `app-ui.test.mjs`
+  (đột biến chứng minh đỏ được) canh mọi aggregate mới phải vào `heavyStats()`.
+  **CÒN LẠI — lượt LẠNH (mở màn) vẫn trả trọn ~4 s.** Hai điều chưa làm, ghi rõ để không ai đọc
+  thành đã xong: ① **chưa đo lại lúc máy rảnh** — đo hôm nay lệch 3× giữa hai lượt cách nhau vài
+  phút vì job embed tranh CPU/I-O, nên **mọi con số tuyệt đối ở trên chưa đáng tin** · ② đường
+  sửa lượt lạnh **KHÔNG phải warm-up đồng bộ lúc daemon khởi động** — nó chặn event loop nhiều
+  giây, đúng cơ chế đẻ ra bug "hai daemon" (`ui.ts` §probeZemoryUi). Đường đúng: đẩy phép quét
+  sang tiến trình con như `deepSearchChild`, hoặc trả payload nhẹ trước + số nặng bổ sung sau
+  (vế sau đụng thiết kế UI ⇒ phải trình duyệt).
 
 **⚠ CÒN LẠI CHƯA CHẠY — không được đọc thành "sạch":**
 · **④ FE↔BE — chạy MỘT PHẦN:** 59 endpoint, 2 không thấy người gọi (`/migrate` · `/nav-cost`) —
