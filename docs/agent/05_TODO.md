@@ -3,6 +3,35 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-12 — đọc mục này TRƯỚC khi làm gì tiếp
+
+**Ba việc lớn của phiên đã ĐÓNG, không mở lại:** ① lớp `tool_use` nhúng xong (**52.169/52.177 =
+100%**), bench chốt **0% → 21%@10**, nhãn phủ 14/14 · ② mặt ① của audit chạy được lần đầu kể từ
+~05/08 và đã vá 3 chỗ đỏ · ③ đường cứu hộ nay chở cả vector (cổng 3/3, đột biến đỏ được).
+
+**Trạng thái máy lúc chốt:** kho **238.495 tin · 1.314 phiên · `quick_check ok`** · vector **100%**
+· Drive **238.495/238.495 đã đẩy, 9 bundle** · hook capture **ĐANG BẬT** (4 sự kiện) · daemon
+**v1.4.1** · `lang` đã trả về **`vi`** sau khi chụp ảnh tiếng Anh.
+
+**BA VIỆC CHỜ USER — đừng tự quyết:**
+1. **`git gc`** dọn 10 file `.idx` mồ côi trong `.git/objects/pack` (nó viết lại vùng object).
+2. **Số version** để push — hiện `package.json` **1.4.1**, có commit chưa push.
+3. **ColBERT** treo chờ user kiếm model tiếng Việt (kẹt ở MODEL, không phải kiến trúc).
+
+**VIỆC KẾ TIẾP đã có số, làm được ngay:**
+- **Trigram cho `tool_use`** — đường rẻ nhất còn lại, KHÔNG tốn giờ máy (chỉ đảo điều kiện trigger
+  đang loại tin tool + một migration dựng lại bảng). Đo hôm nay: lớp đó có 2 luồng thì được 21%@10,
+  `tool_result` 2 luồng được 25% ⇒ luồng thứ ba là chỗ còn dư địa. **Chưa đo.**
+- **Cổng "không biết" chấm bằng ĐỒNG THUẬN 3 luồng** thay vì khoảng cách riêng luồng vector. Bench
+  hôm nay vẫn: **18/18 câu lạc đề đều trả ~40 kết quả**, điểm đầu gần bằng ca dương.
+- **Xuất bundle FULL bản mới** lên Drive — bản 1,63 GB hiện có chụp lúc lớp tool mới 76%, nay 100%.
+
+⚠ **Hai bẫy thao tác đã trả giá hôm nay, đừng dẫm lại:**
+· **KHÔNG chạy `npm run check` khi có job nền** — khoá `test` kéo `npm run build` = `clean && tsc`,
+  **xoá `dist/` ngay dưới chân job**. Đường an toàn: `npx tsc` rồi `node --test` thẳng.
+· **Job dài phải phóng qua `.vbs`** (`WshShell.Run(cmd,0,False)`); phóng từ shell của agent là chết
+  theo phiên. Script sẵn ở scratchpad của phiên, chép lại nếu cần.
+
 ## 🔬 Audit 10 mặt 2026-08-11 (lần đầu chạy bộ mở rộng) — 1 lỗ sửa tại chỗ, 5 việc còn
 
 > Sạch: `conform` ✓ · 0 mồ côi (3 phép đo) · digest **1.294/1.294** · vector `prose` **99,93%** ·
@@ -14,7 +43,14 @@
   chứng minh đỏ được). Bộ cowork là bộ DUY NHẤT ship sẵn `hooks/guard.cjs` và hôm nay nó được **chép
   tay**; cổng duy nhất canh nó là **số dòng** trong MANIFEST ⇒ hai bản lệch nội dung mà trùng số
   dòng thì lọt. Nay so từng byte.
-- [ ] 🔴 **(③) ĐƯỜNG CỨU HỘ CHỈ CHẠY MỘT NỬA — `salvageVectors` không ai gọi.** Đây là phát hiện
+- ✅ **(③) ĐƯỜNG CỨU HỘ — ĐÃ NỐI XONG 2026-08-12** (`06_CHANGES [2026-08-12]`). `memory salvage`
+  nay gọi `salvageVectors` sau `salvageMemory`, đọc số chiều qua `vectorDimsOf()` mới, in
+  `copied/lost`, fail-open khi kho nguồn chưa từng nhúng. Cổng `salvage-vectors.test.mjs` **3/3**,
+  đột biến chứng minh đỏ được (bỏ lời gọi ⇒ 1 đỏ). *Giữ hồ sơ gốc bên dưới để không ai mở lại.*
+
+<details><summary>Hồ sơ gốc của lỗ (phát hiện 2026-08-11) — giữ để tra lý do</summary>
+
+- **ĐƯỜNG CỨU HỘ CHỈ CHẠY MỘT NỬA — `salvageVectors` không ai gọi.** Đây là phát hiện
   đáng giá nhất của lượt audit, và đúng loại mà 6 mặt cũ **không thể** thấy (không lỗi, không đỏ,
   chỉ im lặng thiếu).
   **Bằng chứng, ba nguồn khớp nhau:** ① quét 567 export ⇒ `salvageVectors` là hàm DUY NHẤT không
@@ -30,8 +66,10 @@
   `WHERE rowid > ? ORDER BY rowid` · rowid chunk bắt đầu từ 2^40 · phải bật `safeIntegers` vì vec0
   từ chối float64). Vứt đi là vứt luôn hiểu biết đó.
   **Sửa:** sau `salvageMemory`, gọi `salvageVectors(src, out, dims)` (đọc `dims` từ `vec_config`
-  của kho nguồn, fail-open nếu không đọc được) rồi in `copied/lost`. **Chưa tự làm** — đường cứu hộ
-  sai còn tệ hơn không sửa, nên cần một fixture kho hỏng để chứng minh nó chạy đúng. Chờ user gật.
+  của kho nguồn, fail-open nếu không đọc được) rồi in `copied/lost`.
+
+</details>
+
 - [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
