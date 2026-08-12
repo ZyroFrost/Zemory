@@ -51,6 +51,37 @@ test("HUY viec chua commit bi chan (02_RULES §Git da cam bang chu, nay co chot)
   }
 });
 
+test("ten khoa trong MAU TIM KIEM khong phai la doc khoa - gate khong duoc chan nham", () => {
+  // Do 2026-08-11: guard chan dung lenh AUDIT di do lich su git, vi cau lenh vua chua \`head\`
+  // vua chua chuoi \`id_rsa\` trong MAU TIM KIEM. Ban cu he thay mot lenh doc la soi MOI token,
+  // nen ten khoa nam o bat ky dau cung bi doi chieu.
+  //
+  // Vi sao dang mot cong rieng, khong phai "phien nhe": luat 7 noi thang - gate chan nham thi
+  // nguoi ta di duong vong, va mot gate bi di vong la gate KHONG con ton tai. Chinh phien
+  // 2026-08-13 dinh lai ca nay khi go lenh grep de di SUA no.
+  for (const cmd of [
+    `grep -rln "id_rsa" backend/src/ | head`,
+    `grep -rn id_rsa docs/ | tail -5`,
+    `rg "id_rsa|id_ed25519" --files-with-matches | head -20`,
+  ]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `CHAN NHAM: ${cmd}\n${r.say}`);
+  }
+});
+
+test("doc THAT noi dung file khoa van bi chan - ban va khong duoc noi long", () => {
+  // Doi trong cua ca tren. Ba dau hieu "tep dang bi doc" phai chan lai duoc het:
+  for (const cmd of [
+    "cat /etc/ssh/id_rsa", //        1. co dau phan cach duong dan
+    "cat id_rsa | grep BEGIN", //    2. dung ngay sau mot lenh doc
+    "head id_rsa", //                3. token cuoi cau
+    "base64 ~/.ssh/id_rsa",
+  ]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, true, `LOT: ${cmd}\n${r.say}`);
+  }
+});
+
 test("xoa trang noi dung file bi chan", () => {
   for (const cmd of ["truncate -s 0 backend/src/ui.ts", "Clear-Content backend/src/ui.ts"]) {
     assert.equal(ask(bash(cmd)).blocked, true, `LOT: ${cmd}`);
