@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -335,40 +335,59 @@ const MESSAGES_FTS_SQL = `
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(content, content='messages', content_rowid='id');
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_tri USING fts5(content, content='messages', content_rowid='id', tokenize='trigram');
 
--- LANE TRIGRAM CHỈ INDEX TIN CỦA NGƯỜI/MODEL, KHÔNG INDEX TOOL-DUMP (v16, 2026-07-26).
+-- LANE TRIGRAM INDEX CẢ tool_use, CHỈ LOẠI tool_result (v21, 2026-08-12).
 --
--- Đo bằng dbstat sau khi bỏ clip(): messages_fts_tri_data = **435,4 MB = 42% cả DB**,
--- GẤP ĐÔI text gốc (213,4 MB). Trigram băm mọi chuỗi 3 ký tự — nó sinh ra để khớp chuỗi-con
--- tiếng Việt + chịu lỗi gõ trên VĂN XUÔI; đổ JSON/code dump 50 KB vào thì phình khủng khiếp
--- mà gần như không ai tìm 3 ký tự bên trong một dump máy.
+-- ĐẢO vế "không index tool-dump" của v16/v17. Vế đó chọn bằng số DUNG LƯỢNG mà KHÔNG ai đo
+-- phần chất lượng mất — đúng lỗi HP điều 15 sinh ra để chặn. Đo A/B/C trên bản sao kho thật
+-- (68 nhãn, cùng lệnh, chỉ khác trigram của tool_use):
+--   trigram 0%   → tool_use @10 14% · MRR 0,046 | keyword @10 42% | hybrid MRR 0,263
+--   trigram 78%  → tool_use @10 21% · MRR 0,116 | keyword @10 50% | hybrid MRR 0,290
+--   trigram 100% → tool_use @10 21% · MRR 0,080 | keyword @10 50% | hybrid MRR 0,276
+-- Gỡ lane này đi thì tool_use mất 60% MRR, và lớp keyword — không ai ngờ — sập 8 điểm@10.
+-- Tức tool-dump trong trigram ĐANG trả tiền nuôi thân. Giá: +167 MB trên kho 1,9 GB.
 --
--- Đây đúng mô hình "1 lớp đầy + 1 lớp lọc": messages giữ NGUYÊN VẸN (nguồn, plan/06 §6),
--- chỉ lớp DẪN XUẤT lọc bớt. Lane messages_fts (word/porter) VẪN index tất cả, nên tool-dump
--- vẫn tìm được bằng từ khoá — chỉ mất khả năng tìm chuỗi-con BÊN TRONG dump.
--- Tiêu chí là NGỮ NGHĨA (tool_name IS NULL), không phải ngưỡng số ma.
+-- Lớp tool_result GIỮ NGUYÊN loại trừ: nó là phần dump TO NHẤT (46,9 MB hồi v17) và đã có sẵn
+-- HAI luồng (word + vector 99,8%), nên thêm luồng thứ ba là trả đĩa cho thứ chưa đo là thiếu.
+--
+-- Vẫn đúng mô hình "1 lớp đầy + 1 lớp lọc": messages giữ NGUYÊN VẸN (nguồn, plan/06 §6),
+-- chỉ lớp DẪN XUẤT lọc bớt. Tiêu chí vẫn là NGỮ NGHĨA (tiền tố '[tool_result]'), không phải
+-- ngưỡng số ma.
 CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
 END;
-CREATE TRIGGER IF NOT EXISTS messages_ai_tri AFTER INSERT ON messages WHEN new.tool_name IS NULL AND COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
+CREATE TRIGGER IF NOT EXISTS messages_ai_tri AFTER INSERT ON messages WHEN COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
   INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
-CREATE TRIGGER IF NOT EXISTS messages_ad_tri AFTER DELETE ON messages WHEN old.tool_name IS NULL AND COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
+CREATE TRIGGER IF NOT EXISTS messages_ad_tri AFTER DELETE ON messages WHEN COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
   INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
   INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
 END;
--- UPDATE tách 2 trigger vì hàng có thể ĐỔI PHÍA (tool_name null ⇄ không-null): gỡ theo giá
--- trị CŨ, thêm lại theo giá trị MỚI — gộp một trigger sẽ để lại posting mồ côi.
-CREATE TRIGGER IF NOT EXISTS messages_au_tri_del AFTER UPDATE ON messages WHEN old.tool_name IS NULL AND COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
-  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
-END;
-CREATE TRIGGER IF NOT EXISTS messages_au_tri_ins AFTER UPDATE ON messages WHEN new.tool_name IS NULL AND COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
-  INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
+-- UPDATE: MỘT trigger, hai câu lệnh CÓ ĐIỀU KIỆN — gỡ theo giá trị CŨ rồi thêm theo giá trị MỚI.
+--
+-- 🔴 SỬA LỖI THẬT (2026-08-12). Bản cũ tách thành hai trigger (_del + _ins) với lý do
+-- "hàng có thể ĐỔI PHÍA". Lý do đúng, cách làm SAI: SQLite KHÔNG bảo đảm thứ tự nổ giữa
+-- nhiều trigger cùng loại trên cùng bảng. Khi CẢ HAI điều kiện cùng đúng — tin văn xuôi bị
+-- sửa nội dung, ca xảy ra mỗi lần redact() chạy — thì _ins có thể nổ TRƯỚC _del, thành
+-- "thêm rồi xoá" ⇒ posting biến mất hoàn toàn. Đo được: UPDATE một hàng prose xong thì
+-- bảng _docsize RỖNG, tin đó rơi khỏi trigram vĩnh viễn mà không lệnh nào báo.
+-- Bộ test cũ mù ca này vì mọi ca của nó đều ĐỔI PHÍA (chỉ một trigger nổ, thứ tự vô nghĩa).
+--
+-- Thứ tự các câu lệnh TRONG một thân trigger thì SQLite bảo đảm, nên gộp lại là cách đúng.
+-- Dùng INSERT … SELECT … WHERE để mỗi câu tự mang điều kiện riêng (thân trigger không có IF).
+-- Lane word ở trên vốn đã là một trigger hai câu — nay hai lane cùng một khuôn.
+CREATE TRIGGER IF NOT EXISTS messages_au_tri AFTER UPDATE ON messages BEGIN
+  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content)
+    SELECT 'delete', old.id, COALESCE(old.content, '')
+    WHERE COALESCE(old.content, '') NOT LIKE '[tool_result]%';
+  INSERT INTO messages_fts_tri(rowid, content)
+    SELECT new.id, COALESCE(new.content, '')
+    WHERE COALESCE(new.content, '') NOT LIKE '[tool_result]%';
 END;
 `;
 
@@ -622,6 +641,38 @@ function migrate(db: MemoryDB, fromVersion: number): void {
       db.exec("ALTER TABLE sessions ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0");
     }
     version = 20;
+  }
+  if (version < 21) {
+    // v21 ĐẢO v16/v17 cho lớp `tool_use`: nay CÓ trigram (lý do + số đo ở MESSAGES_FTS_SQL).
+    //
+    // DELETE-ALL rồi nạp lại TOÀN BỘ theo chính sách mới, thay vì "chỉ thêm phần thiếu".
+    // Hai lý do, cái thứ hai mới là cái quyết định:
+    //  ① không có cách RẺ và CHẮC nào để biết một hàng đã có posting hay chưa — bảng
+    //    `_docsize` là bảng bóng nội bộ của FTS5, dựa vào nó là dựa vào chi tiết cài đặt;
+    //  ② kho thật đang ở trạng thái NỬA VỜI mà không ai cố ý tạo ra: `salvage.ts` chạy
+    //    'rebuild' (nạp TẤT CẢ, bỏ qua điều kiện trigger) nên tin có trước lần cứu hộ
+    //    cuối thì có posting, tin sau thì không — đo 2026-08-12: tháng 5–7 phủ 98–100%,
+    //    tháng 8 chỉ 8%. Nạp-phần-thiếu sẽ GIỮ NGUYÊN mọi lệch lạc khác đang có; nạp lại
+    //    tất cả đưa chỉ mục về đúng một trạng thái suy ra được từ nguồn (điều 3).
+    // Giá đo trên bản sao 1,9 GB: ~40 s nạp + ~20 s optimize, 0 lời gọi model.
+    //
+    // Migration này KIÊM luôn bản vá lỗi thứ tự trigger UPDATE (xem MESSAGES_FTS_SQL): hai
+    // trigger `_del`/`_ins` bị thay bằng MỘT `messages_au_tri`. Dựng lại toàn bộ postings ở
+    // đây cũng chính là thứ dọn sạch những hàng đã rơi khỏi trigram vì lỗi đó — chúng không
+    // đếm được bằng cách nào rẻ hơn, vì index không lưu dấu vết của thứ nó đã đánh mất.
+    for (const t of ["messages_ai_tri", "messages_ad_tri", "messages_au_tri_del", "messages_au_tri_ins", "messages_au_tri"]) {
+      db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+    }
+    db.exec(MESSAGES_FTS_SQL);
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('delete-all')");
+    db.exec(
+      "INSERT INTO messages_fts_tri(rowid, content) SELECT id, COALESCE(content, '') FROM messages " +
+        "WHERE COALESCE(content, '') NOT LIKE '[tool_result]%'",
+    );
+    // Gộp segment ngay: bỏ qua bước này thì truy vấn đầu tiên sau migration phải đọc rất
+    // nhiều segment rời — người dùng gặp một lượt tìm chậm bất thường mà không hiểu vì sao.
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('optimize')");
+    version = 21;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

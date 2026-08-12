@@ -10,7 +10,17 @@ import { mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
-import { pruneDriveHost, syncDrive, writeMemoryShareKey } from "../../dist/memory/share.js";
+import { exportMemoryBundle, pruneDriveHost, syncDrive, writeMemoryShareKey } from "../../dist/memory/share.js";
+
+// Từ 2026-08-12 `syncDrive` KHÔNG còn đẻ series mang tên host — nó nối thêm vào MỘT kho
+// chính (`global_memory.enc`). `pruneDriveHost` vì vậy đổi vai: nó dọn **file ĐỜI CŨ** mà
+// các máy để lại trên Drive. Nên test phải tự dựng file đời cũ thay vì nhờ `syncDrive` —
+// nếu cứ dựng bằng syncDrive thì ta đang kiểm một cơ chế không còn ai sinh ra nữa.
+async function legacySeriesFile(dir, host, seq, dbPath, keyFile) {
+  const name = `global_memory.${host}.${String(seq).padStart(6, "0")}.enc`;
+  await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true });
+  return name;
+}
 import { tempDir } from "./helpers.mjs";
 
 // Each syncDrive call reads getSyncLevel() + the export watermark from config in
@@ -63,7 +73,9 @@ test("lean sync writes a baseline first, then only small deltas", async (t) => {
 
   const r3 = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath });
   assert.equal(r3.push.kind, "none", "nothing new → no file written");
-  assert.equal(enc(dir).length, 2, "still just baseline + one delta (empty delta not written)");
+  // ĐỔI 2026-08-12: baseline và delta nay là hai KHỐI trong CÙNG một kho chính, không còn
+  // là hai file. Con số phải chốt là "đúng MỘT file" — đó là cả yêu cầu của thiết kế mới.
+  assert.deepEqual(enc(dir), ["global_memory.enc"], "kho chính luôn là MỘT file duy nhất");
 });
 
 test("a machine that missed syncs still ends up complete (self-sufficient series)", async (t) => {
@@ -157,7 +169,7 @@ test("prune-host TỪ CHỐI khi bundle của máy cũ CHƯA nằm trong kho má
   addMessages(NEW, "C:\\b", 2);
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: NEW, host: "NEW-PC" });
   addMessages(OLD, "C:\\a", 5);
-  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+  await legacySeriesFile(dir, "DEAD-PC", 0, OLD, keyPath); // file đời cũ máy chết để lại
 
   const dry = pruneDriveHost({ dir, host: "DEAD-PC", dbPath: NEW, selfHost: "NEW-PC" });
   assert.equal(dry.safe, false, "chưa merge mà cho xoá là mất dữ liệu thật");
@@ -174,9 +186,9 @@ test("prune-host xoá được SAU khi máy này đã merge đủ và đang phá
   const keyPath = join(root, "share.key"); writeMemoryShareKey(keyPath);
 
   addMessages(OLD, "C:\\a", 5);
-  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+  await legacySeriesFile(dir, "DEAD-PC", 0, OLD, keyPath);
   addMessages(OLD, "C:\\a", 3);
-  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: OLD, host: "DEAD-PC" });
+  await legacySeriesFile(dir, "DEAD-PC", 1, OLD, keyPath);
 
   // Máy mới sync: kéo hết của máy cũ về, rồi phát series của chính nó.
   addMessages(NEW, "C:\b", 2);
