@@ -88,9 +88,12 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   (vế sau đụng thiết kế UI ⇒ phải trình duyệt).
 
 **⚠ CÒN LẠI CHƯA CHẠY — không được đọc thành "sạch":**
-· **④ FE↔BE — chạy MỘT PHẦN:** 59 endpoint, 2 không thấy người gọi (`/migrate` · `/nav-cost`) —
-  cả hai đã nằm trong danh sách false-positive cũ, KHÔNG mở lại. Chưa soi i18n hai chiều và
-  chưa kiểm neo test trỏ vào file đang chạy.
+· **④ FE↔BE — hai vế treo nay ĐÃ CHẠY 2026-08-13:** ① *neo test* — **13 neo trỏ vào
+  `backend/src/`, 0 neo trỏ vào file chết**. *Phép đo đầu báo 3 "mồ côi"
+  (`commands/harness|hook|memory.ts`); kiểm chéo thì cả ba được `await import()` **động** trong
+  `cli.ts` — báo oan vì phép quét chỉ bắt `from "…"`. Ai đo lại phải nhớ vế import động.*
+  ② *i18n hai chiều* — đã đo, **90 chuỗi hardcode**, xem mục i18n bên dưới. Vế endpoint parity
+  vẫn như cũ (2 false-positive `/migrate` · `/nav-cost`, KHÔNG mở lại).
 · **⑥ Bề mặt sống — chạy MỘT NỬA:** đã gọi endpoint thật (bảng trên), **chưa mở app nhìn tận
   mắt** — theo skill, gọi endpoint KHÔNG thay được việc nhìn.
 · **⑧ Rà license dependency** — đã chạy vế dựng-từ-clone-sạch (đỏ, xem trên), chưa rà license.
