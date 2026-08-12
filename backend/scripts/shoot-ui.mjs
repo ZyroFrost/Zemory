@@ -117,8 +117,46 @@ async function main() {
     });
 
   await send("Page.enable", {});
-  console.log("  dang cho UI nap so lieu (/memory-status co the mat ~20 giay)…");
-  await sleep(30000); // KHONG rut ngan: xem ghi chu o SHOTS
+
+  // DIEU HUONG LAI cho chac. Edge tren may da dang nhap tai khoan cong ty chen mot trang quang
+  // ba "we've signed you in / syncing your browsing data" DE LEN tab dau tien, nen URL truyen
+  // luc mo trinh duyet khong phai thu dang hien. Do that 2026-08-12: cho 150 giay van thay
+  // trang quang ba chu khong thay app. `Page.navigate` de len no.
+  // EP kich thuoc qua CDP, dung tin `--window-size`: trong headless co truong hop khung that
+  // ve con 500x450 (do duoc 2026-08-12) => anh bi bop, cot doi cho nhau, doc khong ra gi.
+  await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
+  await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/` });
+  await sleep(2000);
+
+  // CHO THEO DIEU KIEN, KHONG theo dong ho. Hai lan chup hong deu vi cho co dinh roi doan la
+  // xong: lan 1 o so lieu con dau gach, lan 2 giao dien con nguyen tieng Viet du da doi sang en.
+  // Cung MOT goc: client ap ca so lieu LAN ngon ngu tu payload `/memory-status`, ma endpoint do
+  // mat ~18,5 giay — chua ve toi thi trang van o trang thai mac dinh.
+  console.log("  cho /memory-status ve (thuong ~20 giay, toi da 150)…");
+  let ready = false;
+  for (let i = 0; i < 150 && !ready; i++) {
+    await sleep(1000);
+    const r = await send("Runtime.evaluate", {
+      // So co dau phay = tile da co du lieu that (vd "238,495"), khong con "—".
+      expression: `/\\d,\\d{3}/.test(document.body.innerText)`,
+      returnByValue: true,
+    });
+    ready = r?.result?.result?.value === true;
+  }
+  if (!ready) {
+    // In ra THAY GI thay vi chi bao "khong dat" — mot lan that bai cam nin la mot lan phai
+    // dung script rieng di do lai tu dau.
+    const d = await send("Runtime.evaluate", {
+      expression: `JSON.stringify({len:document.body.innerText.length, head:document.body.innerText.slice(0,200).replace(/\\s+/g,' ')})`,
+      returnByValue: true,
+    });
+    console.log("  ✗ so lieu KHONG ve sau 150 giay — KHONG chup anh dang tai.");
+    console.log("    trang dang co:", d?.result?.result?.value ?? "(khong doc duoc)");
+    sock.close();
+    child.kill();
+    process.exit(1);
+  }
+  await sleep(1500); // cho ve xong not phan con lai
 
   let bad = 0;
   for (const [name, nav, sub, wait] of SHOTS) {

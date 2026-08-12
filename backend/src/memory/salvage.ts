@@ -137,6 +137,28 @@ export function salvageMemory(srcPath: string, dstPath: string): SalvageReport {
  * 120.000 vector trong 50 giây rồi 7 phút không ghi thêm byte nào. Nên có `maxFailPages`:
  * chạm ngưỡng thì DỪNG và trả về `copied`; phần thiếu để `memory embed --all` dựng lại.
  */
+/**
+ * Số chiều vector kho nguồn ĐANG dùng, đọc từ `vec_config`. Trả 0 khi không đọc được —
+ * kho chưa từng nhúng, hoặc vùng hỏng nuốt luôn bảng cấu hình.
+ *
+ * Ở đây thay vì ở tầng lệnh vì nó là chi tiết của lớp vector (và tầng lệnh không nên mở
+ * SQLite thẳng). Trả 0 thay vì ném lỗi: đây là đường CỨU HỘ — không được để một phép dò
+ * phụ làm hỏng lượt cứu chính (HP điều 9).
+ */
+export function vectorDimsOf(dbPath: string): number {
+  try {
+    const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    try {
+      const row = db.prepare("SELECT dims FROM vec_config LIMIT 1").get() as { dims?: number } | undefined;
+      return Number(row?.dims ?? 0) || 0;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return 0;
+  }
+}
+
 export function salvageVectors(
   srcPath: string,
   dstPath: string,
