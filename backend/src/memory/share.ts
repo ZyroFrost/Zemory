@@ -27,6 +27,7 @@ import { pipeline } from "node:stream/promises";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
+import { receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 
@@ -75,6 +76,11 @@ export interface ExportMemoryBundleResult {
   payload: BundlePayload;
   /** rows payload only: what actually went in, and the new watermark. */
   rows?: { sessions: number; messages: number; since: number; maxMessageId: number };
+  /** Vector chở kèm trong gói (HP điều 16). Trưng ra để một lượt chở HỤT lộ ngay ở bề mặt —
+   *  lỗ 75% ngày 2026-08-12 sống sót được chính vì con số này không đi tới đâu cả. */
+  vectorsShipped?: number;
+  /** Hàng bị SQLite từ chối lúc nhét vào gói. Khác 0 là có chuyện, đừng bỏ qua. */
+  vectorsRejected?: number;
 }
 
 export interface ImportMemoryBundleOptions extends MemoryShareKeyOptions {
@@ -304,6 +310,11 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
       : await snapshotSqlite(sourcePath);
   const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
   try {
+    // CHỞ KÈM VECTOR (2026-08-12): máy nhận merge xong là dùng được hybrid ngay, thay vì có
+    // đủ chữ mà recall rơi về FTS cho tới khi nhúng lại xong (đo: FTS-thuần @10 26% nghiêm /
+    // 50% tương đương, so với hybrid 38% / 71% — mất hơn một nửa, đúng phần "hiểu ý câu hỏi").
+    // Chỉ áp cho payload "rows": bản "full" vốn đã là ảnh chụp nguyên kho, có sẵn vector.
+    const shipped = payload === "rows" ? shipVectorsInto(snapshot.path, sourcePath, opts.sinceMessageId) : null;
     if (payload === "full" && opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
     const sourceBytes = statSync(snapshot.path).size;
     const salt = randomBytes(16);
@@ -346,6 +357,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
       bundleBytes: statSync(opts.outPath).size,
       payload,
       ...(rows ? { rows } : {}),
+      ...(shipped ? { vectorsShipped: shipped.shipped, vectorsRejected: shipped.rejected } : {}),
     };
   } finally {
     snapshot.cleanup();
@@ -482,6 +494,15 @@ async function decryptBundleToFile(
 }
 
 export async function importMemoryBundle(opts: ImportMemoryBundleOptions): Promise<ImportMemoryBundleResult> {
+  // Kho chính là CONTAINER nhiều khối, không phải ảnh chụp nguyên kho ⇒ không có gì để "thay
+  // nguyên DB" cả. Chỉ đường sang `--merge` (chạy được cả trên máy trắng: merge tự tạo kho)
+  // thay vì để người dùng nhận câu "Not a zemory encrypted memory bundle" rồi tự đoán.
+  if (isChunkContainer(opts.bundlePath)) {
+    throw new Error(
+      "Đây là KHO CHÍNH nhiều khối, không phải ảnh chụp nguyên kho — dùng `zemory memory import <file> --merge` " +
+        "(merge chạy được cả trên máy chưa có kho).",
+    );
+  }
   const targetPath = opts.dbPath ?? currentMemoryDb();
   if (existsSync(targetPath) && !opts.force) {
     throw new Error(`Refusing to overwrite existing memory DB: ${targetPath}. Re-run with --force to replace it.`);
@@ -533,6 +554,10 @@ export interface MergeMemoryBundleResult {
   messagesAfter: number;
   sessionsAdded: number;
   messagesAdded: number;
+  /** Vector nhận được từ gói (chở kèm từ 2026-08-12) — 0 với gói đời cũ. */
+  vectorsApplied?: number;
+  /** Vì sao KHÔNG nhận vector (thường là lệch cấu hình nhúng). Nói ra thay vì im lặng bỏ. */
+  vectorsSkippedReason?: string;
 }
 
 /**
@@ -548,7 +573,53 @@ export interface MergeMemoryBundleResult {
  * across DBs — re-embed new messages with `memory embed`), and doc/section/
  * changelog (those travel via git, not the memory bundle).
  */
+/**
+ * Merge một gói vào kho local. Nhận CẢ HAI hình dạng:
+ *  • một bundle đơn (mọi gói đời cũ, và từng khối bên trong container);
+ *  • **container nhiều khối** — kho chính trên Drive từ 2026-08-12.
+ *
+ * 🔴 Vì sao cửa này phải mở: `zemory memory import` là đường BÀN GIAO MÁY MỚI trong tài liệu.
+ * Bản đầu của lối một-file chỉ dạy `syncDrive` đọc container, nên `import` gặp kho chính là
+ * trả về *"Not a zemory encrypted memory bundle"* — người làm đúng tài liệu vẫn thất bại, đúng
+ * kiểu ĐỨT đường bàn giao mà `skill sync-path` sinh ra để bắt. Đo được ngay khi thử thật.
+ */
 export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise<MergeMemoryBundleResult> {
+  if (isChunkContainer(opts.bundlePath)) {
+    const chunks = listChunks(opts.bundlePath);
+    if (!chunks.length) throw new Error("Kho chính rỗng (không có khối nào đọc được).");
+    const targetPath = opts.dbPath ?? currentMemoryDb();
+    let first: MergeMemoryBundleResult | null = null;
+    let last: MergeMemoryBundleResult | null = null;
+    let vectors = 0;
+    for (const chunk of chunks) {
+      const tmp = mkdtempSync(join(tmpdir(), "zemory-mchunk-"));
+      try {
+        const part = join(tmp, "chunk.enc");
+        await extractChunk(opts.bundlePath, chunk, part);
+        const r = await mergeSingleBundle({ ...opts, bundlePath: part });
+        vectors += r.vectorsApplied ?? 0;
+        first ??= r;
+        last = r;
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    }
+    return {
+      dbPath: targetPath,
+      bundlePath: opts.bundlePath,
+      sessionsBefore: first!.sessionsBefore,
+      sessionsAfter: last!.sessionsAfter,
+      messagesBefore: first!.messagesBefore,
+      messagesAfter: last!.messagesAfter,
+      sessionsAdded: last!.sessionsAfter - first!.sessionsBefore,
+      messagesAdded: last!.messagesAfter - first!.messagesBefore,
+      vectorsApplied: vectors,
+    };
+  }
+  return mergeSingleBundle(opts);
+}
+
+async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeMemoryBundleResult> {
   const targetPath = opts.dbPath ?? currentMemoryDb();
   const dir = mkdtempSync(join(tmpdir(), "zemory-memory-merge-"));
   const srcPath = join(dir, "incoming.db");
@@ -653,6 +724,11 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
       }
       const sessionsAfter = count("SELECT COUNT(*) c FROM sessions");
       const messagesAfter = count("SELECT COUNT(*) c FROM messages");
+      db.close(); // nhả kho trước khi lớp vector mở lại nó bằng kết nối có sqlite-vec
+      // Vector đi CÙNG gói: nối vào sau khi tin đã nằm trong kho, vì nó tra id local theo
+      // (session_id, uuid) — chạy trước thì không có gì để tra. Fail-open: lệch cấu hình
+      // nhúng hay thiếu extension chỉ làm mất phần vector, tin vẫn vào đủ.
+      const vec = receiveVectorsFrom(srcPath, targetPath);
       return {
         dbPath: targetPath,
         bundlePath: opts.bundlePath,
@@ -662,9 +738,11 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
         messagesAfter,
         sessionsAdded: sessionsAfter - sessionsBefore,
         messagesAdded: messagesAfter - messagesBefore,
+        vectorsApplied: vec.applied,
+        ...(vec.reason ? { vectorsSkippedReason: vec.reason } : {}),
       };
     } finally {
-      db.close();
+      if (db.open) db.close();
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -707,6 +785,155 @@ export interface DriveSyncResult {
 /** Delta series knobs (plan 08 §7). */
 const DRIVE_SEQ_PAD = 6; // zero-padded so files sort lexically by age
 const DRIVE_COMPACT_AT = 12; // ≥ this many of MY files → fold them into a fresh baseline
+
+/**
+ * MỘT KHO CHÍNH TRÊN DRIVE (user chốt 2026-08-12) — thay hẳn lối "mỗi máy một series".
+ *
+ * Nguyên văn yêu cầu: *"trên drive luôn chỉ tồn tại 1 kho chính, 1 file duy nhất… bất kể máy
+ * nào khi bấm sync đều ghi lên 1 file duy nhất, không được ghi vào file khác"*.
+ *
+ * Vì sao lối cũ phải bỏ: series-theo-máy khiến MỖI máy đẻ một baseline riêng của cùng một kho
+ * đã hội tụ. Đo 2026-08-12 trên Drive thật: `DESKTOP-PFB157K.000003` (1.312 phiên · 235.839
+ * tin · 331 MB) và `SS01-IT-12.000024` (1.314 · 238.422 · 336 MB) gần như CÙNG nội dung —
+ * 667 MB cho thứ một gói phủ xong. Cộng thêm ca máy kia đổ lại baseline ba lần trong một ngày
+ * (watermark chết sau `import`) ⇒ 13 file / 2,9 GB.
+ *
+ * ĐÁNH ĐỔI ĐÃ BIẾT, ghi ra để không ai ngạc nhiên: gói mã hoá KHÔNG sửa từng phần được, nên
+ * mỗi lần sync có thay đổi là ghi lại NGUYÊN gói (~336 MB) thay cho delta ~100 KB. Đây là giá
+ * của "một file", user đã chốt chấp nhận. Bù lại ta chỉ ghi khi THẬT SỰ có thay đổi.
+ *
+ * VÌ SAO MẤT TIN KHÔNG PHẢI THẢM HOẠ (lập luận của user, và nó đúng): kho THẬT nằm ở
+ * `<repo>/data/global_memory.db` của TỪNG máy — gói trên Drive chỉ là chỗ gặp nhau. Hai máy
+ * sync sát nhau thì máy sau ghi đè phần của máy trước; lần sync kế tiếp của máy trước đẩy lại
+ * đủ. Nên thiết kế ở đây ưu tiên **báo lỗi rõ ràng** hơn là cố chống mọi tranh chấp.
+ */
+const MAIN_BUNDLE = "global_memory.enc";
+/** Thế hệ trước của kho chính. Giữ đúng MỘT bản — đủ để lùi khi một lượt ghi hỏng giữa chừng,
+ *  mà không đẻ lại đúng cái đống file vừa dọn. */
+const MAIN_BAK = "global_memory.bak.enc";
+const SYNC_LOCK = "global_memory.sync.lock";
+/** Khoá cũ hơn mức này coi như MỒ CÔI (máy kia chết giữa chừng). Rộng tay vì một lượt ghi
+ *  336 MB qua thư mục đồng bộ có thể lâu; hẹp quá thì hai máy cùng tưởng mình được quyền. */
+const LOCK_STALE_MS = 15 * 60_000;
+
+/**
+ * ĐỊNH DẠNG KHO CHÍNH — CONTAINER NỐI THÊM (user chốt 2026-08-12: *"ghi thêm được mà"*).
+ *
+ * ```
+ * ZEMORY-MEMORY-CHUNKS v1\n
+ * ZCHUNK <số byte>\n<nguyên một bundle .enc>
+ * ZCHUNK <số byte>\n<nguyên một bundle .enc>
+ * ```
+ *
+ * Mỗi khối là **một bundle hoàn chỉnh** (có header · salt · iv · thẻ xác thực của riêng nó),
+ * chỉ được nối vào cuối file. Hai hệ quả, và đó là lý do chọn hình dạng này thay vì bẻ lại
+ * lớp mã hoá:
+ *  ① **Ghi thêm là ghi thêm thật** — không giải mã, không mã hoá lại, không đụng byte cũ.
+ *    Một lượt sync bình thường nối ~100 KB vào cuối, thay vì viết lại ~336 MB.
+ *  ② **Không phải viết lại lớp mật mã** — mọi khối đi qua đúng `exportMemoryBundle` /
+ *    `mergeMemoryBundle` đã có; ở đây chỉ thêm việc cắt byte theo tiền tố độ dài. Tự chế
+ *    khung mã hoá mới là chỗ dễ sai nhất trong cả repo, và không có lý do gì để chạm vào.
+ *
+ * Tiền tố ĐỘ DÀI chứ không dò theo dấu hiệu đầu gói: bản mã trông như ngẫu nhiên nên nó có
+ * thể chứa đúng chuỗi dấu hiệu, và một bộ đọc dò-dấu-hiệu sẽ cắt nhầm giữa thân gói.
+ */
+const CHUNKS_MAGIC = "ZEMORY-MEMORY-CHUNKS v1\n";
+const CHUNK_PREFIX = "ZCHUNK ";
+/** Bao nhiêu khối thì gộp lại thành một. Gộp = viết lại nguyên file (đắt), nên để thưa;
+ *  nhưng cũng không để vô hạn vì bên nhận phải giải mã lần lượt từng khối chưa merge. */
+const MAIN_COMPACT_CHUNKS = 48;
+
+interface DriveLock {
+  host: string;
+  pid: number;
+  at: string;
+}
+
+interface ChunkRef {
+  index: number;
+  offset: number; // byte đầu của bundle bên trong (đã bỏ qua dòng tiền tố)
+  len: number;
+}
+
+function isChunkContainer(path: string): boolean {
+  if (!existsSync(path)) return false;
+  const fd = openSync(path, "r");
+  try {
+    const probe = Buffer.alloc(CHUNKS_MAGIC.length);
+    readSync(fd, probe, 0, probe.length, 0);
+    return probe.toString("utf8") === CHUNKS_MAGIC;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Danh mục khối trong container. Gặp khung hỏng ⇒ DỪNG ở đó và trả những khối đọc được:
+ *  một lượt ghi bị cắt giữa chừng (mất điện, client đồng bộ chen ngang) chỉ được phép làm
+ *  mất phần ĐUÔI, không được làm cả file thành vô dụng. */
+function listChunks(path: string): ChunkRef[] {
+  const size = statSync(path).size;
+  const fd = openSync(path, "r");
+  const out: ChunkRef[] = [];
+  try {
+    let pos = CHUNKS_MAGIC.length;
+    for (let index = 0; pos < size; index++) {
+      const head = Buffer.alloc(64);
+      const got = readSync(fd, head, 0, Math.min(64, size - pos), pos);
+      const nl = head.subarray(0, got).indexOf(10);
+      if (nl < 0) break;
+      const line = head.subarray(0, nl).toString("utf8");
+      if (!line.startsWith(CHUNK_PREFIX)) break;
+      const len = Number(line.slice(CHUNK_PREFIX.length));
+      if (!Number.isSafeInteger(len) || len <= 0) break;
+      const offset = pos + nl + 1;
+      if (offset + len > size) break; // khối viết dở ⇒ bỏ, phần trước vẫn dùng được
+      out.push({ index, offset, len });
+      pos = offset + len;
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return out;
+}
+
+/** Nối một bundle đã dựng sẵn vào cuối container (tạo container nếu chưa có). */
+function appendChunk(containerPath: string, bundlePath: string): number {
+  const bytes = readFileSync(bundlePath);
+  if (!existsSync(containerPath)) writeFileSync(containerPath, CHUNKS_MAGIC);
+  appendFileSync(containerPath, Buffer.concat([Buffer.from(`${CHUNK_PREFIX}${bytes.length}\n`, "utf8"), bytes]));
+  return bytes.length;
+}
+
+/** Cắt một khối ra file rời để đi qua đúng đường merge sẵn có. */
+async function extractChunk(containerPath: string, chunk: ChunkRef, outPath: string): Promise<void> {
+  await pipeline(
+    createReadStream(containerPath, { start: chunk.offset, end: chunk.offset + chunk.len - 1 }),
+    createWriteStream(outPath, { flags: "wx" }),
+  );
+}
+
+/** Giành quyền ghi kho chính. Trả hàm nhả khoá; ném lỗi RÕ khi máy khác đang giữ.
+ *  KHÔNG phải khoá thật (Drive không có khoá file) — nó chỉ thu hẹp cửa sổ tranh chấp và,
+ *  quan trọng hơn, biến một lần giẫm chân im lặng thành một câu báo lỗi đọc được. */
+function acquireDriveLock(dir: string, host: string): () => void {
+  const path = join(dir, SYNC_LOCK);
+  try {
+    const cur = JSON.parse(readFileSync(path, "utf8")) as DriveLock;
+    const age = Date.now() - Date.parse(cur.at);
+    if (cur.host !== host && age < LOCK_STALE_MS) {
+      throw new Error(
+        `Kho chính trên Drive đang được máy "${cur.host}" ghi (${Math.round(age / 1000)}s trước). ` +
+          `Chờ nó xong rồi sync lại — kho của máy này vẫn đủ, không mất gì.`,
+      );
+    }
+  } catch (e) {
+    // Không đọc được khoá = chưa có khoá (hoặc rác) ⇒ đi tiếp. Nhưng lỗi TỪ CHỐI ở trên phải
+    // ném ra ngoài, không được nuốt chung với "file không tồn tại".
+    if (e instanceof Error && e.message.startsWith("Kho chính trên Drive")) throw e;
+  }
+  writeFileSync(path, JSON.stringify({ host, pid: process.pid, at: new Date().toISOString() } satisfies DriveLock));
+  return () => rmSync(path, { force: true });
+}
 
 const sanitizeHost = (): string => (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
 const seriesName = (host: string, seq: number): string =>
@@ -816,8 +1043,11 @@ export function pruneDriveHost(o: {
 
   // ② Máy này phải đang PHÁT một series phủ hết kho local, nếu không thì xoá xong
   //    nội dung máy cũ không còn đường nào tới máy thứ ba.
+  // Từ 2026-08-12 đường phát của máy này là KHO CHÍNH (container nối thêm), không còn là
+  // series mang tên host. Vẫn chấp nhận hai hình dạng cũ để repo đang dùng dở không kẹt.
   const mySeries = listMySeries(dir, self);
-  if (mySeries.length === 0 && !existsSync(join(dir, legacyName(self)))) {
+  const publishes = mySeries.length > 0 || existsSync(join(dir, legacyName(self))) || existsSync(join(dir, MAIN_BUNDLE));
+  if (!publishes) {
     blockers.push(`máy này (${self}) chưa có bundle nào trong thư mục — chạy \`zemory memory sync\` trước để nội dung máy cũ có đường đi tiếp`);
   } else {
     const db = openMemory(o.dbPath ?? currentMemoryDb());
@@ -878,38 +1108,49 @@ export async function syncDrive(opts: {
   const host = opts.host ? opts.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
   const level = opts.level ?? getSyncLevel();
 
-  // ── PUSH: write out this machine's changes ──────────────────────────────────
-  // DEPTH (plan 08 §7): "full" = one whole-DB snapshot (disaster restore),
-  // overwritten each sync. "lean" (default) = a DELTA SERIES: a baseline file plus
-  // small per-sync deltas, so a steady sync ships ~KB not ~190MB. The series stays
-  // self-sufficient (baseline + every delta = full history); periodic compaction
-  // folds the deltas back into one baseline and deletes the superseded files.
-  const push = await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath });
-
-  // ── MERGE: pull every OTHER machine's bundles we haven't merged yet ──────────
-  // Skip anything from THIS host (my series + any legacy file), and skip files
-  // whose signature we've already merged (receiver-side dedup, plan 08 §7).
-  const myPrefix = `global_memory.${host}.`;
+  // ── MỘT KHO CHÍNH: GỘP TRƯỚC, GHI SAU ───────────────────────────────────────
+  // Thứ tự này là bắt buộc và là cả thiết kế: phải merge kho chính (+ mọi gói đời
+  // cũ còn sót) vào kho local TRƯỚC, rồi mới xuất kho local đè lên kho chính. Làm
+  // ngược lại thì gói mình ghi lên thiếu phần của máy kia ⇒ ghi đè là mất thật.
+  // Ghi xong, kho chính = HỢP của cả hai bên, nên máy kia merge về cũng đủ.
+  const release = level === "full" ? () => {} : acquireDriveLock(dir, host);
   const merged: DriveSyncResult["merged"] = [];
-  for (const f of readdirSync(dir).filter((f) => f.endsWith(".enc") && !f.startsWith(myPrefix))) {
-    const full = join(dir, f);
-    let sig: string;
-    try {
-      sig = bundleSignature(full);
-    } catch {
-      continue; // vanished mid-listing → skip
+  let push: DriveSyncResult["push"];
+  try {
+    // Merge MỌI gói trong thư mục: kho chính (container nhiều khối) VÀ mọi file `.enc`
+    // đời cũ còn sót — người dùng không phải dọn tay trước khi đổi sang lối một-file.
+    // KHÔNG loại gói của chính máy này nữa: ở lối một-file, tên gói không còn nói "của
+    // ai"; dedup theo CHỮ KÝ nội dung lo phần đó, và merge vốn idempotent.
+    for (const f of readdirSync(dir).filter((f) => f.endsWith(".enc"))) {
+      const full = join(dir, f);
+      if (isChunkContainer(full)) {
+        merged.push(...(await mergeContainer(full, f, { dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes })));
+        continue;
+      }
+      let sig: string;
+      try {
+        sig = bundleSignature(full);
+      } catch {
+        continue; // vanished mid-listing → skip
+      }
+      if (isBundleMerged(f, sig, opts.dbPath)) {
+        merged.push({ file: f, skipped: true });
+        continue;
+      }
+      try {
+        const r = await mergeMemoryBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
+        markBundleMerged(f, sig, opts.dbPath);
+        merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
+      } catch (error) {
+        merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
+      }
     }
-    if (isBundleMerged(f, sig, opts.dbPath)) {
-      merged.push({ file: f, skipped: true });
-      continue;
-    }
-    try {
-      const r = await mergeMemoryBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
-      markBundleMerged(f, sig, opts.dbPath);
-      merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
-    } catch (error) {
-      merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
-    }
+    push =
+      level === "full"
+        ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath })
+        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath });
+  } finally {
+    release();
   }
   // Build the semantic vector index for messages that still lack one — this
   // machine's freshly scanned lines AND the ones just merged from other machines.
@@ -932,6 +1173,135 @@ export async function syncDrive(opts: {
     embedded,
     vectorRemaining: vectorRemaining(opts.dbPath),
   };
+}
+
+/**
+ * Merge từng khối CHƯA merge của kho chính vào kho local.
+ *
+ * Dedup ở mức KHỐI, không ở mức FILE: kho chính đổi mỗi lần có máy nối thêm, nên chữ ký cả
+ * file luôn khác ⇒ dùng nó thì lần sync nào cũng merge lại từ đầu. Khoá dedup là
+ * `<tên file>#<số thứ tự khối>` kèm chữ ký của CHÍNH khối đó — số thứ tự một mình không đủ,
+ * vì sau một lần gộp thì khối #0 là nội dung khác hẳn.
+ *
+ * Khối của chính máy này cũng được merge lại (rẻ: `INSERT OR IGNORE` không thêm gì) — đổi lấy
+ * việc không phải đoán "khối này của ai" từ tên file.
+ */
+async function mergeContainer(
+  containerPath: string,
+  displayName: string,
+  o: { dbPath?: string; keyFile?: string; excludeLanes: ScopeLane[] },
+): Promise<DriveSyncResult["merged"]> {
+  const out: DriveSyncResult["merged"] = [];
+  const chunks = listChunks(containerPath);
+  for (const chunk of chunks) {
+    const tmp = mkdtempSync(join(tmpdir(), "zemory-chunk-"));
+    const part = join(tmp, "chunk.enc");
+    const label = `${displayName}#${chunk.index}`;
+    try {
+      await extractChunk(containerPath, chunk, part);
+      const sig = bundleSignature(part);
+      if (isBundleMerged(label, sig, o.dbPath)) {
+        out.push({ file: label, skipped: true });
+        continue;
+      }
+      const r = await mergeMemoryBundle({ bundlePath: part, dbPath: o.dbPath, keyFile: o.keyFile, excludeLanes: o.excludeLanes });
+      markBundleMerged(label, sig, o.dbPath);
+      out.push({ file: label, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
+    } catch (error) {
+      out.push({ file: label, error: error instanceof Error ? error.message : "merge failed" });
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+  return out;
+}
+
+/**
+ * NỐI THÊM phần mới của máy này vào kho chính — đường ghi mặc định từ 2026-08-12.
+ *
+ * Không có gì mới ⇒ KHÔNG chạm file. Đây là điều kiện để một thư mục đồng bộ không bị đánh
+ * thức vô cớ mỗi 30 phút.
+ *
+ * Gộp khi số khối vượt ngưỡng: viết container MỚI (một khối, `since=0`) ra file tạm rồi đổi
+ * tên đè lên — bản cũ lùi thành `.bak`. Đổi tên là thao tác nguyên tử trong cùng ổ đĩa, nên
+ * không có khoảnh khắc nào kho chính tồn tại ở trạng thái nửa vời.
+ */
+async function pushAppend(o: {
+  dir: string;
+  host: string;
+  excludeLanes: ScopeLane[];
+  keyFile?: string;
+  dbPath?: string;
+}): Promise<DriveSyncResult["push"]> {
+  const { dir, host, excludeLanes, keyFile, dbPath } = o;
+  const mainPath = join(dir, MAIN_BUNDLE);
+  const wmKey = `drive:${host}`;
+  const chunks = existsSync(mainPath) && isChunkContainer(mainPath) ? listChunks(mainPath) : [];
+  const compacting = chunks.length >= MAIN_COMPACT_CHUNKS;
+  const since = compacting || chunks.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
+
+  const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
+  const part = join(tmp, "part.enc");
+  try {
+    const r = await exportMemoryBundle({
+      outPath: part,
+      dbPath,
+      keyFile,
+      force: true,
+      excludeLanes,
+      ...(since ? { sinceMessageId: since } : {}),
+    });
+    if (!r.rows || r.rows.messages === 0) {
+      return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
+    }
+    let removed = 0;
+    let written = 0; // byte THẬT SỰ ghi thêm lượt này — xem chú thích ở `bytes` bên dưới
+    if (compacting) {
+      // Container MỚI chỉ một khối; bản cũ giữ đúng MỘT thế hệ làm đường lùi.
+      const fresh = join(tmp, "fresh.enc");
+      writeFileSync(fresh, CHUNKS_MAGIC);
+      written = appendChunk(fresh, part);
+      if (existsSync(mainPath)) {
+        rmSync(join(dir, MAIN_BAK), { force: true });
+        renameSync(mainPath, join(dir, MAIN_BAK));
+      }
+      renameSync(fresh, mainPath);
+      removed = chunks.length;
+    } else {
+      written = appendChunk(mainPath, part);
+    }
+    // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE.
+    // Nội dung khối này lấy ra từ kho local, nên merge lại nó vào chính kho đó là việc
+    // thừa 100%. Không đánh dấu thì mỗi lượt sync sau phải GIẢI MÃ lại nguyên khối chỉ để
+    // phát hiện "0 dòng mới" — với khối cỡ 336 MB thì đó là vài chục giây và một lượt đọc
+    // cả file, đúng thứ lối nối-thêm sinh ra để tránh. (Bắt được nhờ ca `receiver dedup`.)
+    const after = listChunks(mainPath);
+    const mine = after[after.length - 1];
+    if (mine) {
+      const tmp2 = mkdtempSync(join(tmpdir(), "zemory-mark-"));
+      try {
+        const copy = join(tmp2, "mine.enc");
+        await extractChunk(mainPath, mine, copy);
+        markBundleMerged(`${MAIN_BUNDLE}#${mine.index}`, bundleSignature(copy), dbPath);
+      } finally {
+        rmSync(tmp2, { recursive: true, force: true });
+      }
+    }
+    writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
+    return {
+      kind: compacting ? "compact" : chunks.length === 0 ? "baseline" : "delta",
+      file: MAIN_BUNDLE,
+      // Byte GHI THÊM lượt này, KHÔNG phải kích thước cả kho chính. Đây là con số người
+      // dùng cần: nó nói lượt sync vừa rồi tốn bao nhiêu. Báo kích thước cả file thì mỗi
+      // lượt sync đều hiện ~336 MB và cảm giác "nối thêm rẻ" biến mất khỏi màn hình dù
+      // thực tế chỉ ghi 100 KB.
+      bytes: written,
+      messages: r.rows.messages,
+      removed,
+    };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 /**

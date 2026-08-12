@@ -301,13 +301,30 @@ export function reconcileCounts(dbPath: string): number {
   }
 }
 
+// ⚠ `messages_fts_tri` KHÔNG được dựng bằng 'rebuild'. Với bảng external-content, 'rebuild'
+// nạp lại MỌI hàng của bảng nguồn — bỏ qua sạch điều kiện WHEN của trigger. Lane trigram cố
+// ý loại `[tool_result]` (phần dump to nhất, đã có word + vector), nên 'rebuild' ở đây ÂM
+// THẦM ĐẢO CHÍNH SÁCH: đường cứu hộ nạp lại cả thứ chính sách vừa loại, và không cổng nào kêu.
+//
+// Đây không phải giả thuyết — kho thật đã dính: sau hai lần cứu hộ (03–04/08), đo 2026-08-12
+// thấy 54.879 tin `tool_result` nằm trong trigram trái chính sách, còn tin mới thì không, tạo
+// ra một chỉ mục NỬA VỜI mà không ai cố ý tạo ra. Vì vậy lane này nạp lại theo ĐÚNG vị từ của
+// trigger; các lane khác vẫn 'rebuild' được vì chúng index toàn bộ bảng nguồn.
+const FTS_REBUILD_SQL: Record<string, string> = {
+  messages_fts_tri:
+    "INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('delete-all');" +
+    "INSERT INTO messages_fts_tri(rowid, content) SELECT id, COALESCE(content, '') FROM messages WHERE COALESCE(content, '') NOT LIKE '[tool_result]%';",
+};
+
 export function rebuildFts(dbPath: string): { table: string; ok: boolean }[] {
   const db = openMemory(dbPath);
   const out: { table: string; ok: boolean }[] = [];
   try {
     for (const t of ["messages_fts", "messages_fts_tri", "section_fts", "section_fts_tri", "changelog_fts", "session_digest_fts", "session_digest_fts_tri"]) {
       try {
-        db.prepare(`INSERT INTO ${t}(${t}) VALUES('rebuild')`).run();
+        const custom = FTS_REBUILD_SQL[t];
+        if (custom) db.exec(custom);
+        else db.prepare(`INSERT INTO ${t}(${t}) VALUES('rebuild')`).run();
         out.push({ table: t, ok: true });
       } catch {
         out.push({ table: t, ok: false });

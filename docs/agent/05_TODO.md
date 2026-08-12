@@ -3,7 +3,54 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-12 — đọc mục này TRƯỚC khi làm gì tiếp
+## 🔵 BÀN GIAO 2026-08-12 (chiều) — đọc mục này TRƯỚC khi làm gì tiếp
+
+**Đã đóng phiên này** (chi tiết + số đo: `06_CHANGES [2026-08-12b]` và `[c]`): `git gc` (10 file
+`.idx` mồ côi → 0) · **trigram nhận lại `tool_use`** (migration **v21**, kho thật 100%) · **lỗi
+thứ tự trigger UPDATE** (có sẵn từ trước, làm tin rơi khỏi trigram mỗi lần `redact()` chạy) ·
+`salvage` thôi đảo chính sách bằng `'rebuild'` · **phạm vi embed vào config** + tách hai số tồn
+đọng · **Drive thành MỘT kho chính ghi bằng nối thêm** · **vector đi cùng gói**.
+
+**Trạng thái máy lúc chốt:** kho **239.105 tin · 1.315 phiên · `quick_check ok`** · vector
+**226.973 · trong phạm vi thiếu 0 · ngoài phạm vi 19.474** · `scheduler` **BẬT** (mới bật phiên
+này) · hook capture BẬT · daemon **v1.4.1**. Bộ test **639/639**.
+
+⚠ **Daemon phải khởi động lại sau đợt sửa này** — nó nạp code lúc bind cổng, nên bản đang chạy
+vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ ⇒ nó ghi theo lối series CŨ.
+
+- [ ] **(ĐỀ XUẤT `01_CONSTITUTION` — chờ user chốt) Nâng 9 yêu cầu đồng bộ lên tầng hiến pháp.**
+  Chúng đang nằm ở `plan/08 §8.0` (user chốt 2026-08-12), nhưng bản chất là **bất biến kiến
+  trúc**, không phải chi tiết thiết kế: một kho chính · ghi là nối thêm · chở trọn bộ RAG · máy
+  mới không nhúng lại gì · mọi thứ lên GM là add-only. Bằng chứng cần nâng tầng: **trong MỘT
+  phiên, agent đi sai bốn lần** đúng những điều này, mỗi lần đều vì tự thêm một ràng buộc
+  "an toàn/đơn giản" mà user không đặt. Plan thì agent chỉ mở khi trúng trigger; hiến pháp thì
+  luôn nạp — đó là khác biệt quyết định.
+
+**CHỜ USER — đừng tự quyết:**
+1. **Số version + push** — 11 file sửa, 3 commit cũ chưa push, chưa commit đợt này.
+2. **File dư trên Drive**: `FULL-768…20260811` (1,67 GB, chụp trước v21) · `DESKTOP-PFB157K.000003`
+   (331 MB) · `SS01-IT-12.000024` + 5 delta. Sau lượt sync ĐẦU TIÊN bằng code mới, chúng bị kho
+   chính phủ hết ⇒ xoá được. **Guard chặn agent xoá `*.enc`** (nhóm secret, không có flag) — user
+   tự xoá hoặc bảo agent sửa policy.
+3. **ColBERT** — vẫn kẹt ở model tiếng Việt.
+4. **`tooltest.db` 1,71 GB** trong `zemory-lab` — bản thử 10/08, kho thật đã vượt qua; xoá được.
+
+**VIỆC KẾ TIẾP đã rõ đường:**
+- 🔴 **Backup tự động ĐÃ KHÔNG CHẠY 4 NGÀY** — bản mới nhất trong `data/backups/` là **08/08
+  01:02** (1.232 MB). Chính cơ chế này cứu kho hồi 04/08. Chưa truy nguyên nhân. **Ưu tiên cao
+  nhất** trong danh sách này: nó là lưới đỡ cuối cùng của kho.
+- **Watermark chết sau `import`** — nguồn gốc của cả đống file vừa dọn: `import` đổi hẳn không
+  gian id, watermark `drive:<host>` không khớp nữa nên lượt push kế tiếp đổ nguyên kho. Ở lối
+  một-file nó không còn đẻ file mới, nhưng vẫn nối một khối ~336 MB thừa. Sửa: sau `import`, đặt
+  lại watermark theo `MAX(messages.id)` mới.
+- **Khối vector LỊCH SỬ** (226k vector ≈ 700 MB) — đường thường ngày đã chở vector của tin mới;
+  phần tồn đọng chỉ cần khi dựng máy mới. Chưa làm, chờ lúc bàn giao thật.
+- **19.474 tin ngoài phạm vi embed** (`Read` · `Grep` · `TodoWrite`…) — cố ý bỏ, nay NHÌN THẤY
+  được. Muốn phủ thì phải qua cổng điều 15 (đo trước, bản sao trước).
+- **Cửa sổ phụ của tin dài không đi theo gói** (`vec_map`, 5.874/226.973 ≈ 2,6%) — máy nhận tự
+  nhúng phần đuôi. Ghi ra để không ai tưởng gói chở đủ 100%.
+
+## 🔵 BÀN GIAO 2026-08-12 (sáng) — đọc mục này TRƯỚC khi làm gì tiếp
 
 **Ba việc lớn của phiên đã ĐÓNG, không mở lại:** ① lớp `tool_use` nhúng xong (**52.169/52.177 =
 100%**), bench chốt **0% → 21%@10**, nhãn phủ 14/14 · ② mặt ① của audit chạy được lần đầu kể từ
@@ -131,67 +178,55 @@ xong** — quên là capture chết lặng, không ai báo.
 | kho sống | `<repo>/data/global_memory.db` (HP điều 14 — TRONG cây repo, KHÔNG ở ổ hệ thống) |
 | con trỏ vị trí | `~/.zemory/location.json` → `{"dataDir": "<repo>/data"}` |
 | kênh xuyên máy | thư mục Drive dùng chung, máy này trỏ `G:\My Drive\Global Memory` |
-| series của máy này | `global_memory.SS01-IT-12.0000NN.enc` — mới nhất **`000018`** (10/08 19:57) |
-| mức chở | **lean** (`syncLevel`) — xem bảng hai đường ngay dưới |
-| model | `data/models` **4,4 GB** (EmbeddingGemma + rerank) |
+| kho chính trên Drive | **`global_memory.enc`** — MỘT file duy nhất, container nhiều khối (+ `global_memory.bak.enc` là bản lùi) |
+| cách ghi | **NỐI THÊM** một khối vào cuối; không có tin mới ⇒ không chạm file |
+| chở gì | **TRỌN bộ RAG**: tin gốc + vector + cửa sổ phụ của tin dài (HP điều 16) |
+| model | `data/models` **4,4 GB** (EmbeddingGemma + rerank) — vẫn cần ở máy mới để nhúng CÂU HỎI |
 
-### HAI ĐƯỜNG CHỞ, KHÁC HẲN NHAU — chọn sai là máy kia không chạy được
+### MỘT KHO CHÍNH — mọi máy ghi vào chính nó
 
-|  | **lean** (mặc định, autosync đang dùng) | **full** |
-|---|---|---|
-| xuất | `zemory memory sync` | `zemory memory export <file>.enc **--full**` |
-| chở gì | đúng 4 bảng nguồn | **nguyên file DB** — kèm FTS · **vector 768d** · digest |
-| bên nhận | merge ⇒ **THÊM** vào kho sẵn có | `zemory memory import <file>.enc` ⇒ **THAY nguyên DB** |
-| máy kia dùng được ngay? | có đủ TIN, **không có lớp ngữ nghĩa** (rơi về FTS) | **chạy liền, đủ cả recall hybrid** |
+> 🔄 **Thay bảng "HAI ĐƯỜNG CHỞ lean/full" viết 2026-08-11.** Bảng đó dạy rằng đường mặc định
+> **không chở vector** nên máy kia "có đủ TIN, không có lớp ngữ nghĩa" — **hết đúng từ 2026-08-12**.
+> Nó cũng dạy phải `import --force` (THAY nguyên DB) để có vector; nay **không cần**, và
+> `import` trên kho chính sẽ báo lỗi chỉ đường sang `--merge`.
 
-**Bằng chứng, đừng đoán:** `share.ts:169` khai `ROWS_TABLES` = `schema_version · sessions ·
-messages · known_stores` — **`mergeMemoryBundle` chỉ đọc đúng bốn bảng đó**, nên dù có gửi bundle
-`--full` mà bên kia MERGE thì lớp dẫn xuất (≈87% dung lượng file) vẫn **bị vứt**. Đường duy nhất
-chở được vector là **`import`** (`share.ts:508-512`: nhánh không phải `rows` đổi tên file giải mã
-**vào thẳng chỗ DB**, bản cũ lùi thành `.bak-<mốc>`).
+| | đường DUY NHẤT hiện nay |
+|---|---|
+| xuất | `zemory memory sync` (tự động 30 phút/lần, hoặc bấm tay) |
+| ghi vào | `global_memory.enc` — **nối thêm**, mọi máy cùng file |
+| bên nhận | `zemory memory sync` (tự merge) hoặc `zemory memory import <file> --merge` |
+| máy mới dùng được ngay? | **CÓ — đủ cả hybrid.** Đo 2026-08-12 trên kho trắng: nhận **219.944/219.946 vector**, còn phải nhúng lại **2 tin** |
 
-⚠ **`import` là THAY, KHÔNG phải THÊM.** Máy đích đang có tin riêng chưa đồng bộ thì phải
-`zemory memory sync` đẩy lên Drive **TRƯỚC**, vì sau khi thay chúng chỉ còn nằm trong `.bak`.
+**Đo bằng vòng khép kín, không suy đoán** (2026-08-12): xuất gói **1.356 MB** → merge vào kho
+TRẮNG → đếm hai đầu. Tin 239.495 · vector 226.675 · cửa sổ phụ 6.664 · `vectorRemaining` = **2**.
+Chênh vài trăm hàng so với nguồn là do kho lớn thêm trong lúc xuất (autosync vẫn chạy) — không
+phải lỗ thiết kế, và lượt sync kế tiếp tự bù.
 
-### Thứ nào đi KÊNH nào — data KHÔNG BAO GIỜ qua git (HP điều 7 · 14)
-
-| thứ | kênh | ghi chú |
-|---|---|---|
-| mã nguồn · docs · `docs_template` · `hooks/` | **git** | đã đo tracked: `package.json` · `package-lock.json` · `tsconfig.json` · `.gitattributes` · `guard.cjs` · `policy.json` · `precommit-guard.cjs` |
-| kho nhớ + chỉ mục (`global_memory.db`) | **Drive** (`.enc`) | KHÔNG qua git |
-| chìa `share.key` | **người mang tay** | không git, không Drive trần |
-| model 4,4 GB (`data/models`) | **tự tải lúc chạy** | HP điều 2 — weight KHÔNG commit; từng làm nghẽn push 100 MB ngày 05/08 |
-| `dist/` | **không** | máy kia `npm run build` |
-
-Cổng `no-data-in-git` **5/5 xanh** (đo 2026-08-11), gồm hai bẫy đã trả giá: bundle series
-`global_memory.<host>.<seq>.enc` **không khớp** `*.zemory.enc` nên phải có dòng ignore riêng; và
-`/data/` phải **neo ở gốc** — pattern trần từng nuốt luôn `external/skills/**/data/` làm ai clone
-về cũng nhận skill cụt ruột.
-
-### BUNDLE FULL ĐÃ SẴN TRÊN DRIVE (xuất + nghiệm thu 2026-08-11)
-
-```
-G:\My Drive\Global Memory\global_memory.FULL-768.SS01-IT-12.20260811.enc      1,63 GB
-```
-**Đã nghiệm thu bằng vòng khép kín, không phải "thấy file là tin"** — giải mã ra CHỖ TẠM rồi đếm:
-`quick_check ok` · **218.494 tin · 1.293 phiên** · `vec_config` **768d/gemma-prompt-v1/fp32** ·
-**195.514 hàng vector** (prose 155.205 · tool 34.311) · FTS sống (38.419 hit cho "zemory").
-Xuất mất 75 giây, giải mã 14 giây. *(Chụp lúc lớp tool mới 76% — sẽ xuất bản mới khi job xong.)*
+**Ba bẫy đã trả giá khi dựng đường này, đừng dẫm lại:**
+· **id trong gói là ID GIẢ** — `buildRowsSnapshot` cố ý không chép cột `id`, tin được đánh số
+  lại từ 1. Lấy id đó tra ngược kho nguồn ⇒ chở đúng 25% vector, `rejected=0`, không log nào báo.
+· **Tin `uuid IS NULL`** (11.233 = 4,7%) phải định danh bằng **băm mốc-thời-gian + nội dung**;
+  bỏ chúng là đẩy ~3,9 giờ nhúng lại sang máy mới.
+· **Một hàng hỏng không được giết cả lô** — bọc lô 500 trong một giao dịch rồi nuốt lỗi ở vòng
+  ngoài là mất 500 vector một lần, âm thầm.
 
 ### Bốn thứ máy mới cần để CHẠY LIỀN (thiếu một là hụt)
 
 1. **Mã nguồn** — `git clone`/`git pull` → `npm install` → `npm run build` → `npm link`.
 2. **Chìa** — mang tay, `zemory memory key set` (đọc stdin), rồi **so dấu tay** `key show` với
    máy nguồn. Chìa phải có **TRƯỚC** mọi thao tác bundle (`plan/16 §3`).
-3. **Kho + chỉ mục** — `zemory memory import "<đường tới file FULL ở trên>" --force`.
-   **KHÔNG dùng `--merge`** ở bước này: merge chỉ lấy 4 bảng nguồn, vector sẽ bị vứt.
-   *(Từ 2026-08-11 lệnh này TỰ DÒ chìa cạnh kho — không cần `--key-file`; cổng
-   `sync-path-key.test.mjs` khoá lại điều đó.)*
+3. **Kho + trọn bộ RAG** — `zemory memory import "<thư mục Drive>/global_memory.enc" --merge`
+   *(hoặc chỉ cần trỏ Drive rồi `zemory memory sync` — nó tự merge)*.
+   > 🔄 **ĐỔI 2026-08-12.** Bước này trước ghi `--force` kèm câu *"KHÔNG dùng `--merge`: merge chỉ
+   > lấy 4 bảng nguồn, vector sẽ bị vứt"* — **nay ngược lại**: `--merge` là đường ĐÚNG và nó chở
+   > đủ vector; còn `--force` trên kho chính sẽ bị từ chối kèm câu chỉ đường (kho chính là
+   > container nhiều khối, không phải ảnh chụp nguyên DB).
+   *(Lệnh TỰ DÒ chìa cạnh kho — không cần `--key-file`; cổng `sync-path-key.test.mjs` khoá.)*
 4. **Model 4,4 GB** (`data/models`) — không chép thì máy kia **tự tải lúc chạy**. Cần cả lúc
    **TRUY VẤN**, không riêng lúc embed: câu hỏi phải được nhúng mới so được với vector ⇒ thiếu
    model thì dù kho có đủ vector, hybrid vẫn rơi về FTS.
 
-Sau khi import xong, từ đó trở đi hai máy chạy `zemory memory sync` như thường (lean, additive).
+Sau khi merge xong, từ đó trở đi mọi máy chạy `zemory memory sync` như thường — nối thêm, additive.
 **Quy trình chung cho MỌI thứ mới sinh ra sau này: skill `.claude/skills/sync-path/`** — khai kênh
 + đo vòng khép kín trước khi gọi là xong, để không lặp lại cảnh dò-rồi-vá của phiên này.
 

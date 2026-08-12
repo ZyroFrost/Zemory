@@ -125,3 +125,31 @@ test("daemon vẫn nhường quyền ghi cho CLI và cho sync job", () => {
     assert.ok(guard.includes(g), `${SCHED}: guard thoát sớm của maintainTick thiếu ${g} — daemon sẽ ghi chồng lên CLI hoặc chạy trùng chuỗi`);
   }
 });
+
+// 🔴 HAI CÔNG TẮC KHÔNG ĐƯỢC GIẾT NHAU (đo 2026-08-12).
+//
+// `maintainTimer` và `syncTimer` cùng chu kỳ 30 phút và được tạo CÙNG một khoảnh khắc, nên tới
+// hạn chúng nổ trong cùng một lượt timer — và cái đăng ký TRƯỚC (maintain) chạy đồng bộ tới tận
+// lúc `spawn` (gán `child`) rồi mới nhả event loop. `syncTick` chạy ngay sau, thấy `child` thì
+// bỏ lượt. Bản cũ bỏ lượt là đợi trọn 30 phút ⇒ **bỏ đói vĩnh viễn**.
+//
+// Hậu quả thật: bật `scheduler` lúc trưa ⇒ **2,5 giờ không một lượt sync**, thư mục Drive trống,
+// KHÔNG lỗi, KHÔNG log (log của scheduler đi vào stderr mà cách phóng daemon không hứng).
+// Trước đó autosync chạy đều CHỈ VÌ scheduler đang TẮT — tức bật một tính năng làm chết một
+// tính năng khác, và không cổng nào thấy. Hai phép kiểm dưới canh đúng hai vế của bản vá.
+test("syncTick BỊ CHẶN thì hẹn quay lại — không được đợi trọn chu kỳ (chống bỏ đói)", () => {
+  const src = read(SCHED);
+  const body = src.slice(src.indexOf("function syncTick"), src.indexOf("export function startScheduler"));
+  assert.match(body, /syncRetry/, "phải có đường hẹn lại khi bị chặn");
+  assert.match(body, /setTimeout\(/, "hẹn lại bằng timer riêng, không dựa vào chu kỳ chính");
+  assert.ok(
+    /SYNC_RETRY_MS/.test(src) && !/SYNC_RETRY_MS\s*=\s*SYNC_EVERY_MS/.test(src),
+    "nhịp hẹn lại phải NGẮN HƠN chu kỳ chính — bằng nhau thì vẫn là đợi trọn vòng",
+  );
+});
+
+test("hai đồng hồ cùng chu kỳ phải LỆCH PHA — không được cùng nổ một khoảnh khắc", () => {
+  const src = read(SCHED);
+  const start = src.slice(src.indexOf("export function startScheduler"), src.indexOf("export function stopScheduler"));
+  assert.match(start, /SYNC_EVERY_MS\s*\/\s*2/, "phải đặt sync lệch nửa chu kỳ so với chuỗi bảo trì");
+});

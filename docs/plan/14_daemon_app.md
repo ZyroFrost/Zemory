@@ -106,4 +106,9 @@ Mỗi giai đoạn qua gate test/migration/fallback rồi mới bật mặc đ�
 3. Write gate phủ NHỮNG lệnh nào trước (scan/embed/digest là nặng nhất).
 4. Autostart per-OS cơ chế cụ thể (Win: Startup shortcut / Task Scheduler · macOS: launchd · Linux: systemd-user).
 5. Graph cache: lưu bảng trong `global_memory.db` (plan 13) hay file JSON per-project.
-6. Auto-sync: chu kỳ check (đề xuất: lúc khởi động + mỗi 30–60 phút idle) · có auto-embed phần mới sau merge không. **Tiền đề: làm DELTA EXPORT trước (plan 08 backlog, chốt 2026-07-18)** — bundle hiện snapshot nguyên DB ~700MB (chở cả index dẫn xuất); delta chỉ vài MB/ngày → auto-sync mới chạy thoải mái được.
+6. ~~Auto-sync: tiền đề phải làm DELTA EXPORT trước…~~ **ĐÓNG 2026-08-12 — xem `plan/08 §8`.**
+   Đường hiện tại: **một kho chính trên kênh chung, ghi bằng NỐI THÊM**. Một lượt sync bình
+   thường nối ~vài trăm KB (tin mới + vector của chúng), không có gì cản auto-sync chạy mỗi 30
+   phút; không có tin mới thì **không chạm file**. Vế "auto-embed phần mới sau merge" cũng hết
+   là câu hỏi: máy gửi nhúng phần của nó rồi chở kèm, nên máy nhận **không phải nhúng lại**
+   (HP điều 16).

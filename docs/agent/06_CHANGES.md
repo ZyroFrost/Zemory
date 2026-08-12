@@ -5,6 +5,114 @@
 
 ---
 
+## [2026-08-12d] — release 1.5.0 · BẬT scheduler BỎ ĐÓI autosync · chở vector: 3 lỗi phải đo mới thấy
+
+**Bật một tính năng giết một tính năng khác, im lặng tuyệt đối.** Trưa nay bật `scheduler` theo
+yêu cầu; từ đó **2 giờ 34 phút KHÔNG một lượt autosync nào**, Drive trống, không lỗi, không log.
+Cơ chế: `maintainTimer` và `syncTimer` **cùng chu kỳ 30 phút, tạo cùng một khoảnh khắc** ⇒ tới
+hạn `maintainTick` (đăng ký TRƯỚC) chạy đồng bộ tới tận lúc `spawn` rồi mới nhả event loop;
+`syncTick` chạy ngay sau, thấy `child` ⇒ bỏ lượt, rồi đợi trọn chu kỳ. Trước đó autosync chạy
+đều **chỉ vì scheduler đang TẮT** (`maintainTick` return sớm ⇒ không có `child`). Vá: bị chặn thì
+**hẹn lại sau 3 phút**, và hai đồng hồ **lệch pha nửa chu kỳ**. Nghiệm thu trên máy thật: daemon
+khởi động 19:55 ⇒ kho chính **tự sinh sau 1.170 giây**, lượt kế tiếp 21:08 **chỉ nối 0,5 MB**.
+
+**Chở vector — ba lỗi, cả ba chỉ lộ khi ĐẾM HAI ĐẦU, không cái nào ném lỗi:**
+· **id trong gói là ID GIẢ** — `buildRowsSnapshot` cố ý không chép cột `id` (tin đánh số lại từ
+  1), mà bản đầu lấy id đó tra `vec_chunks` của kho nguồn ⇒ chở **51.349/208.612 = 25%**,
+  `rejected=0`. Bằng chứng khớp khít: đúng **51.474** vector có `rowid ≤ 239.388`.
+· **11.233 tin `uuid=NULL`** (4,7%, tất cả đều có vector) bị bỏ ⇒ đẩy **3,9 giờ** nhúng lại sang
+  máy mới. Nay định danh bằng **băm mốc-thời-gian + nội dung** — giống nhau trên mọi máy.
+· **Một hàng hỏng giết cả lô 500** (giao dịch bọc cả lô, lỗi nuốt ở vòng ngoài).
+Kết quả: máy trắng nhận **226.898 vector**, còn phải nhúng lại **2 tin** (trước: 3,9 giờ).
+
+**`import` không đọc nổi kho chính** — mà đó là đường BÀN GIAO trong tài liệu: người làm đúng
+hướng dẫn nhận *"Not a zemory encrypted memory bundle"*. Nay `merge` hiểu container; `import`
+không kèm `--merge` thì báo câu chỉ đường.
+
+**Hai bài học phương pháp, đắt hơn cả ba lỗi trên:**
+· **Fixture tự dựng CHE MẤT lỗi thật** — phép thử độc lập của tôi giữ nguyên id nên chứng minh
+  cho một tình huống không tồn tại; ba ca test đầu cũng mù vì ở quy mô nhỏ id nguồn (1,2,3)
+  TÌNH CỜ trùng id gói. Nay có ca ép id nguồn từ 5000.
+· **Chạy một truy vấn rồi tin luôn** — `WHERE local_title='global_memory.enc'` trả HAI hàng
+  (bản đã xoá `trashed=1` + bản mới), `.get()` lấy hàng đầu ⇒ suýt báo "Drive không đẩy bản mới"
+  trong khi nó đã lên xong.
+
+Cổng: **648/648** · `scheduler-contract` 8/8 (2 ca mới) · `vector-ship` 5/5 · `drive-single-file`
+4/4, đột biến đều đỏ được. Version **1.5.0**.
+
+## [2026-08-12c] — Drive: MỘT kho chính ghi bằng NỐI THÊM · vector đi cùng gói
+
+> 🔄 **Supersede:** thay [2026-07-19] — "Export gọn + DELTA" — vế *series theo từng máy* bị bỏ.
+> Nó khiến MỖI máy đẻ một baseline riêng của cùng một kho đã hội tụ: đo trên Drive thật
+> `DESKTOP-PFB157K.000003` (1.312 phiên · 235.839 tin · 331 MB) và `SS01-IT-12.000024`
+> (1.314 · 238.422 · 336 MB) **gần như trùng nội dung**. User chốt: *"trên drive luôn chỉ tồn
+> tại 1 kho chính, 1 file duy nhất… bất kể máy nào bấm sync đều ghi lên 1 file đó"*.
+
+**Kho chính = `global_memory.enc`, container nhiều khối.** Mỗi khối là một bundle HOÀN CHỈNH
+(header · salt · iv · thẻ xác thực riêng), có tiền tố `ZCHUNK <độ dài>`, **chỉ nối vào cuối**.
+Hai hệ quả: ghi thêm không đụng byte cũ (một lượt sync nối ~100 KB thay vì viết lại ~336 MB),
+và **không phải bẻ lại lớp mật mã** — mọi khối đi qua đúng `exportMemoryBundle`/`mergeMemoryBundle`
+đã có. Tiền tố ĐỘ DÀI chứ không dò dấu hiệu: bản mã trông ngẫu nhiên nên có thể chứa đúng chuỗi
+dấu hiệu, dò-dấu-hiệu sẽ cắt nhầm giữa thân gói.
+
+**Thứ tự bắt buộc: GỘP TRƯỚC, GHI SAU** — merge kho chính vào kho local rồi mới xuất kho local
+nối lên. Ngược lại là khối mình ghi thiếu phần máy kia ⇒ ghi đè thành mất thật. Kèm khoá
+`global_memory.sync.lock` (mồ côi sau 15 phút): máy khác đang ghi thì **báo lỗi rõ**, không giẫm
+lặng lẽ — kho THẬT nằm ở repo mỗi máy nên sync lại là đủ (lập luận của user).
+
+**Vector đi cùng gói** (`vecship.ts`): khoá theo `session_id`+`msg_uuid` — `messages.id` là
+AUTOINCREMENT cục bộ, chở id sang là trỏ vào tin của người ta (đúng khuôn `attachment_ship` đã
+giải cho ảnh). Giá **3 KB/tin** ⇒ sync ~100 tin tốn thêm ~300 KB; con số ~700 MB chỉ là toàn bộ
+226k vector lịch sử, việc MỘT LẦN. Lệch `vec_config` ⇒ **từ chối kèm lý do**, tin vẫn vào đủ:
+trộn hai không gian vector là hỏng recall im lặng. Vì sao đáng làm: máy nhận không có vector thì
+recall rơi về FTS — đo hôm nay `@10` **26%/50%** (nghiêm/tương đương) so với hybrid **38%/71%**.
+
+**Lỗi của chính bản vá này, do cổng cũ bắt:** máy tự merge lại khối nó vừa nối (giải mã thừa
+nguyên khối mỗi lượt). Đã đánh dấu khối của mình là đã-merge ngay lúc ghi. `push.bytes` cũng
+sửa thành **byte ghi thêm**, không phải kích thước cả kho.
+
+Cổng: `drive-single-file` 4/4 · `vector-ship` 3/3, đột biến đều đỏ được. Ba neo cũ (`baseline/
+delta`, 2 ca `prune-host`) **nắn theo thiết kế mới** chứ không sửa cho xanh; `pruneDriveHost` nay
+nhận kho chính làm đường phát. Bộ đầy đủ **639/639**.
+
+## [2026-08-12b] — Trigram nhận lại `tool_use` (v21) · lỗi THỨ TỰ trigger · phạm vi embed vào config
+
+> 🔄 **Supersede:** thay [2026-07-26] — "lane trigram bỏ tool-dump" (v16/v17). Vế đó chọn bằng số
+> DUNG LƯỢNG mà **không ai đo phần chất lượng mất** — đúng lỗi HP điều 15 sinh ra để chặn.
+
+**Đo A/B/C trên bản sao kho thật** (68 nhãn, cùng lệnh, chỉ khác trigram của `tool_use`):
+
+| trigram | `tool_use` @10 / MRR | `keyword` @10 | hybrid MRR |
+|---|---|---|---|
+| 0% | 14% / **0,046** | 42% | 0,263 |
+| 78% *(kho đang chạy)* | 21% / 0,116 | 50% | 0,290 |
+| 100% | 21% / 0,080 | 50% | 0,276 |
+
+Gỡ lane này đi thì `tool_use` **mất 60% MRR**, và lớp `keyword` — không ai ngờ — sập 8 điểm@10.
+Chênh giữa 78% và 100% nằm trong nhiễu (n=8–14). ⇒ v21: trigram nhận `tool_use`, vẫn loại
+`tool_result` (dump to nhất, đã có word + vector 99,8%). Kho thật: **71.499/71.499 = 100%**,
+dung lượng KHÔNG phình (phần thêm bù đúng phần `tool_result` dọn đi), `quick_check` + hai lane
+`integrity-check` sạch.
+
+**Vì sao kho đang ở 78% mà sổ ghi "chỉ FTS word":** `salvage.ts` chạy `'rebuild'`, mà với bảng
+external-content lệnh đó nạp lại TOÀN BỘ hàng, **bỏ qua điều kiện WHEN của trigger** — hai lần
+cứu hộ 03–04/08 đã âm thầm đảo chính sách. Nay lane này nạp lại theo đúng vị từ.
+
+**Lỗi thật, có sẵn từ trước, không ai thấy:** trigger UPDATE tách làm hai (`_del`/`_ins`), mà
+**SQLite không bảo đảm thứ tự nổ giữa các trigger cùng loại**. Khi cả hai điều kiện cùng đúng —
+mỗi lần `redact()` sửa nội dung một tin văn xuôi — thứ tự có thể thành "thêm rồi xoá" và tin
+**rơi khỏi trigram vĩnh viễn**. Đo: UPDATE một hàng prose xong thì `_docsize` RỖNG. Đã gộp về
+MỘT trigger hai câu có điều kiện. Bộ test cũ mù ca này vì mọi ca UPDATE của nó đều ĐỔI PHÍA.
+
+**Phạm vi embed rời biến môi trường, vào config** (`embedTools`, mặc định
+`Edit,Write,Bash,PowerShell,Artifact` — bộ đã đo phủ 14/14 nhãn). Trước đó nó chết theo cửa sổ
+terminal: job 11/08 phủ 100%, nhưng daemon/scheduler/hook chạy không có biến ⇒ rò **~50 tin/giờ**
+(72 tin lúc 10h → 146 lúc 11h30). Và `vectorRemaining()` đếm bằng CHÍNH bộ lọc đó nên
+`/memory-status` vẫn báo `remaining 0` — lớp tự teo, không cổng nào kêu. Nay thêm
+`vectorOutOfScope()`: **0 trong phạm vi · 19.474 cố ý bỏ ngoài**.
+
+Cổng: `fts-trigram-scope` 12/12 (4 ca mới) · `embed-scope-config` 3/3, đột biến đều đỏ được.
+
 ## [2026-08-12] — Nối nốt đường CỨU HỘ (vector) · README hết tiếng Việt · ảnh UI do MÁY chụp
 
 **Vá lỗ audit mặt ③: `memory salvage` nay chở CẢ chỉ mục vector.** Trước đó lệnh chỉ gọi

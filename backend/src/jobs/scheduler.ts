@@ -170,9 +170,37 @@ async function maintainTick(): Promise<void> {
   }
 }
 
+/**
+ * 🔴 NHƯỜNG THÌ PHẢI QUAY LẠI — nếu không, nhường một lần là nhường mãi mãi.
+ *
+ * Bản cũ: bị chặn ⇒ `return`, đợi hết chu kỳ 30 phút. Nghe vô hại, nhưng ghép với việc hai
+ * đồng hồ CÙNG chu kỳ và được tạo CÙNG một khoảnh khắc thì thành **bỏ đói vĩnh viễn**:
+ * `maintainTick` đăng ký TRƯỚC nên tới hạn nó chạy trước, và nó chạy đồng bộ tới tận lúc
+ * `spawn` (gán `child`) rồi mới nhả event loop — `syncTick` chạy ngay sau, thấy `child` ⇒ bỏ
+ * lượt. Cứ thế mỗi 30 phút.
+ *
+ * Đo được 2026-08-12: bật scheduler lúc trưa ⇒ **2,5 giờ không một lượt sync nào**, Drive
+ * trống trơn, không lỗi, không log. Trước đó autosync chạy đều **chỉ vì scheduler đang TẮT**
+ * (maintainTick return sớm ⇒ không có `child` ⇒ sync thông đường). Tức bật một công tắc làm
+ * chết một công tắc khác, và không cổng nào thấy.
+ */
+const SYNC_RETRY_MS = 3 * 60_000;
+let syncRetry: ReturnType<typeof setTimeout> | null = null;
+
 function syncTick(): void {
-  if (child || syncJobRunning() || cliHoldsWrite() || !getAutosync()) return; // yield to any other writer
+  if (!getAutosync()) return;
   if (!getDriveDir()) return; // no Drive folder linked → nothing to sync
+  if (child || syncJobRunning() || cliHoldsWrite()) {
+    // Nhường kẻ đang ghi, nhưng HẸN QUAY LẠI sớm thay vì đợi hết chu kỳ.
+    if (!syncRetry) {
+      syncRetry = setTimeout(() => {
+        syncRetry = null;
+        syncTick();
+      }, SYNC_RETRY_MS);
+      syncRetry.unref?.();
+    }
+    return;
+  }
   log("auto-sync — starting background sync job");
   startSyncJob(() => log("auto-sync: job finished"));
 }
@@ -181,7 +209,12 @@ function syncTick(): void {
 export function startScheduler(): void {
   if (maintainTimer || syncTimer) return;
   maintainTimer = setInterval(() => void maintainTick(), MAINTAIN_EVERY_MS);
+  // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
+  // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
+  // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.
   syncTimer = setInterval(syncTick, SYNC_EVERY_MS);
+  const stagger = setTimeout(syncTick, SYNC_EVERY_MS / 2);
+  stagger.unref?.();
   // The HTTP server keeps the process alive; don't let these timers do it.
   maintainTimer.unref?.();
   syncTimer.unref?.();

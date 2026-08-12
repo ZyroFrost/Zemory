@@ -40,6 +40,14 @@
 
 ## 7. MỨC ĐỘ sync (ý tưởng user 2026-07-20) — chọn sync "sâu tới đâu"
 
+> 🔄 **LỖI THỜI TỪ 2026-08-12 — đọc §8.0 trước.** Cả mục này dựng trên tiền đề *"bundle mặc định
+> chỉ chở 4 bảng nguồn, lớp dẫn xuất để máy nhận tự dựng lại"*. Tiền đề đó **đã bị bãi bỏ**: kho
+> chính nay chở **TRỌN bộ RAG** (nguồn + vector + cửa sổ phụ của tin dài), vì bắt máy nhận nhúng
+> lại là sai mục đích của cả hệ (HP điều 16). Ba mức L1/L2/L3 vì vậy **không còn là trục chọn**:
+> mặc định là "đủ", không phải "gọn".
+> Phần dưới GIỮ LẠI làm hồ sơ — nó giải thích vì sao có `attachment_ship`, và chính khuôn
+> làm-phẳng-theo-`(session_id, uuid)` của L3 là thứ được dùng lại để chở vector ở §8b.
+
 > Khác §2–§5: chỗ đó chọn **LANE NÀO** (Local/Web × máy × agent) được sync. Mục này chọn **SÂU TỚI ĐÂU** trong một lane: chỉ chữ, hay kéo theo cả file đã upload. User nêu: *"chọn sync ở mức độ nào, mess thôi, hoặc lấy luôn file đã up"*.
 
 **Ba mức đề xuất:**
@@ -80,9 +88,94 @@
 - **Đụng kết quả vừa đạt:** vừa cắt bundle 709MB → 184MB → delta 1.8MB (−74%); binary sẽ thổi ngược lại và xoá phần lớn lợi ích đó.
 - **Đề xuất:** làm **L1/L2 selector trước** (đã có sẵn, chỉ thiếu chỗ bấm), L3 để dạng ý tưởng có điều kiện — chỉ mở khi user thật sự cần file gốc xuyên máy và chấp nhận đánh đổi dung lượng + luồng lưu riêng cho blob.
 
+## 8.0 YÊU CẦU GỐC CỦA ĐỒNG BỘ — user chốt 2026-08-12, ĐỌC TRƯỚC KHI ĐỘNG VÀO SYNC
+
+> Chép lại nguyên ý user, vì phiên này đã đi sai **bốn lần** do agent tự suy diễn thêm ràng buộc
+> mà user không đặt ra. Mọi thay đổi ở §8/§8b phải đối chiếu về đây trước.
+
+1. **Kho THẬT nằm ở `<repo>/data/` của TỪNG máy** — đó là bản đầy đủ nhất. Thứ trên Drive chỉ
+   là chỗ gặp nhau; hỏng/mất nó không mất dữ liệu, sync lại là xong.
+2. **Trên Drive luôn CHỈ tồn tại MỘT kho chính — một file.** Cần thì thêm đúng một bản lùi.
+   **KHÔNG** mỗi máy một file, **KHÔNG** series theo host, **KHÔNG** đống file rải rác.
+3. **Mọi máy bấm sync đều ghi vào CHÍNH file đó** — không được ghi sang file khác.
+4. **Ghi là NỐI THÊM, không ghi đè.** Đã tối ưu thì không có chuyện mỗi lượt sync viết lại
+   nguyên gói.
+5. **Chở TRỌN bộ RAG** — vector và mọi lớp dò, không giữ lại phần nào. Cả gói đã mã hoá bằng
+   share key, nên lý lẽ "cẩn thận nên bỏ bớt phần này" là **thừa và sai mục tiêu**.
+6. **Máy mới: cài zemory + có chìa ⇒ đọc được Global Memory NGAY.** Đây là mục đích thật của
+   zemory. **KHÔNG máy nào được nhúng lại kho của máy khác** — bắt máy mới chờ hàng chục giờ
+   là vô lý, và là dấu hiệu thiết kế sai.
+7. **Mỗi máy chỉ nhúng ĐÚNG phần dữ liệu của chính nó**, rồi add thẳng vào GM.
+8. **Mọi tiến trình lên GM đều là ADD THÊM.** Không chạy lại, không dựng lại, không ghi đè.
+9. **Tự động** — người dùng không phải nhớ bấm gì.
+
+**Bốn lần đi sai của phiên 2026-08-12, ghi ra để không lặp:** ① dựng series theo từng máy ⇒
+13 file / 2,9 GB cho cùng một kho · ② định ghi đè nguyên gói mỗi lượt sync (user: *"đã tối ưu mà
+cứ ghi đè thì ai chơi"*) · ③ bỏ 11.233 tin `uuid=NULL` vì "khó định danh" ⇒ đẩy 3,9 giờ nhúng
+lại sang máy mới · ④ bỏ 7.381 cửa sổ phụ vì "chỉ 2,6%, không đáng" ⇒ máy nhận mất phần đuôi tin
+dài mà không cổng nào thấy. **Mẫu số chung: agent tự thêm ràng buộc an toàn/đơn giản mà user
+không đặt, rồi trả bằng đúng thứ user cần nhất.**
+
+## 8. MỘT KHO CHÍNH TRÊN DRIVE — ghi bằng NỐI THÊM (user chốt 2026-08-12)
+
+> 🔄 **Supersede §7 vế "series theo từng máy"** (baseline + delta mang tên host, gộp khi đủ 12
+> file). Vế đó khiến MỖI máy đẻ một baseline riêng của **cùng một kho đã hội tụ** — đo trên Drive
+> thật: `DESKTOP-PFB157K.000003` (1.312 phiên · 235.839 tin · 331 MB) và `SS01-IT-12.000024`
+> (1.314 · 238.422 · 336 MB) gần như trùng nội dung, tức 667 MB cho thứ một gói phủ xong. Nguyên
+> văn user: *"trên drive luôn chỉ tồn tại 1 kho chính, 1 file duy nhất… bất kể máy nào bấm sync
+> đều ghi lên 1 file đó, không được ghi vào file khác"*.
+
+**Định dạng.** `global_memory.enc` = container:
+
+```
+ZEMORY-MEMORY-CHUNKS v1
+ZCHUNK <độ dài>  <nguyên một bundle .enc>
+```
+
+Mỗi khối là một bundle HOÀN CHỈNH (header · salt · iv · thẻ xác thực riêng), chỉ nối vào cuối.
+Chọn hình dạng này thay vì bẻ lại lớp mã hoá vì hai lẽ: ① nối thêm là nối thật — không giải mã,
+không mã hoá lại, không đụng byte cũ (sync thường ngày nối ~100 KB thay vì viết lại ~336 MB);
+② mọi khối vẫn đi qua đúng `exportMemoryBundle`/`mergeMemoryBundle` — tự chế khung mật mã mới là
+chỗ dễ sai nhất, không có lý do chạm vào. Tiền tố ĐỘ DÀI, không dò dấu hiệu đầu gói: bản mã trông
+ngẫu nhiên nên có thể chứa đúng chuỗi dấu hiệu, bộ đọc dò-dấu-hiệu sẽ cắt nhầm giữa thân gói.
+
+**Giao thức một lượt sync:** khoá (`global_memory.sync.lock`, mồ côi sau 15 phút) → **merge mọi
+khối chưa có** (và mọi file `.enc` đời cũ còn sót) → **nối** khối của mình → nhả khoá. Thứ tự
+gộp-trước-ghi-sau là BẮT BUỘC: ngược lại thì khối mình ghi thiếu phần máy kia. Không có tin mới ⇒
+KHÔNG chạm file. Dedup ở mức KHỐI (`<tên file>#<số thứ tự>` + chữ ký khối), không mức file — file
+đổi mỗi lần nối nên chữ ký cả file thì lượt nào cũng merge lại từ đầu.
+
+**Tranh chấp thì BÁO, không cố chống.** Drive không có khoá file thật; khoá ở đây chỉ thu hẹp cửa
+sổ và biến một lần giẫm chân im lặng thành câu báo lỗi. Chấp nhận được vì **kho THẬT nằm ở
+`<repo>/data/` của từng máy** — Drive chỉ là chỗ gặp nhau, sync lỗi thì sync lại.
+
+**Gộp:** quá `MAIN_COMPACT_CHUNKS` (48) khối ⇒ viết container mới một khối (`since=0`) ra file tạm
+rồi đổi tên đè; bản trước lùi thành `global_memory.bak.enc` (giữ đúng MỘT thế hệ).
+
+### 8b. Vector đi cùng gói (cùng đợt)
+
+Trước đó gói chỉ chở nguồn ⇒ máy nhận có đủ chữ mà recall rơi về FTS: đo `@10` **26%/50%**
+(nghiêm/tương đương) so với hybrid **38%/71%**. Nay bundle `rows` mang thêm bảng `vector_ship`
+khoá theo **`session_id` + `msg_uuid`** — `messages.id` là AUTOINCREMENT cục bộ, chở id sang là
+trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giải cho ảnh).
+
+- Giá **3 KB/tin** ⇒ sync ~100 tin tốn thêm ~300 KB. Con số ~700 MB là **toàn bộ 226k vector lịch
+  sử**, việc MỘT LẦN lúc bàn giao máy — chưa làm.
+- **Lệch `vec_config` ⇒ TỪ CHỐI kèm lý do**, tin vẫn vào đủ. Trộn hai không gian vector (256 vs
+  768, q8 vs fp32) là hỏng recall im lặng — thà không có còn hơn có bậy.
+- Kho đích **chưa từng nhúng** ⇒ nhận và đóng dấu cấu hình bên gửi, để không đẻ kho lai.
+- **Phạm vi hẹp có chủ ý:** chỉ vector CHÍNH của mỗi tin. Cửa sổ phụ của tin dài (`vec_map`,
+  2,6%) cần rowid tổng hợp riêng ở máy nhận ⇒ không chở; máy nhận tự nhúng phần đuôi.
+
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
-  - **Còn lại (thuộc plan 14):** `syncDrive` vẫn đẩy **lean baseline** (1 file/máy, ghi đè) — CỐ Ý chưa dùng delta vì file đó phải tự-đủ, máy bỏ lỡ vài lần sync sẽ hổng nếu chỉ có delta cuối. Delta dùng file tích luỹ + compact định kỳ, làm cùng daemon auto-sync (plan 14 §3b).
+  - ~~**Còn lại:** `syncDrive` vẫn đẩy lean baseline (1 file/máy, ghi đè)…~~ **ĐÓNG 2026-08-12 —
+    xem §8.** Nay đúng MỘT kho chính cho MỌI máy, ghi bằng **nối thêm** (file tích luỹ + gộp định
+    kỳ, đúng hướng dòng này đã đoán), và nó chở **trọn bộ RAG** chứ không chỉ bảng nguồn.
+    ⚠ Câu *"mọi lớp dẫn xuất trong bundle là hàng chết được chở đi vô ích"* ở dòng trên **chỉ đúng
+    với `mergeMemoryBundle` ĐỜI 07-2019**, khi merge không biết đọc chúng. Từ 2026-08-12 merge
+    nhận cả vector ⇒ lớp dẫn xuất trong gói là **hàng SỐNG**, và chính là thứ giúp máy mới khỏi
+    nhúng lại hàng chục giờ (HP điều 16). Đừng đọc dòng cũ rồi cắt vector khỏi gói lần nữa.
 - [x] ~~Áp scope lúc **ingest**~~ **XONG 2026-08-06** (`06_CHANGES [2026-08-06c]`): `scan` +
   `scanOneFile` (đường hook per-message) + `scanWeb` cùng một bộ lọc; lane bị loại được BÁO
   (`skippedLanes`), KHÔNG ghi `ingest_state` nên bỏ lọc là lần quét sau nạp lại đủ; `scan-web`

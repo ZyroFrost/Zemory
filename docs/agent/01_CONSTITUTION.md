@@ -61,6 +61,14 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
       *Khuôn mẫu đã làm ĐÚNG, dùng lại:* trước khi bỏ 43 giờ dựng lại 768 chiều, phép thử `dims-test` embed **MỘT lần** ở 768 rồi cắt bốn mức trên **cùng một dãy số** (EmbeddingGemma huấn luyện Matryoshka) — nên khác biệt duy nhất là số chiều, không lẫn biến nào khác. Ra bảng `128/256/512/768` (`recall@1` 62/74/85/**91%**) trong ~1 giờ, rồi mới quyết. Một giờ đo cứu 43 giờ đi sai đường.
     - **Đĩa rẻ và mua thêm được; một câu trả lời trượt vì recall kém thì không mua lại được.**
 
+16. **ĐỒNG BỘ CHỞ TRỌN BỘ RAG — MÁY NHẬN KHÔNG BAO GIỜ PHẢI DỰNG LẠI GÌ** *(user chốt 2026-08-12)*. Mục đích thật của zemory: **cài zemory + có chìa ⇒ đọc được Global Memory NGAY**. Mọi thiết kế đồng bộ phải phục vụ điều đó.
+    - **Một tin lên kho chung là mang theo TRỌN bộ RAG của chính nó** — dữ liệu gốc **và** vector **và** mọi lớp dò khác. Không chở nửa vời rồi để máy kia dựng bù: bắt máy mới nhúng lại kho của máy khác là **sai thiết kế**, không phải đánh đổi.
+    - **Mỗi máy chỉ nhúng ĐÚNG phần dữ liệu của chính nó**, rồi **ADD THẲNG** vào kho chung. Mọi tiến trình lên kho chung là **THÊM** — không chạy lại, không dựng lại, không ghi đè.
+    - **Kho THẬT là bản local của từng máy** (`<repo>/data/`); thứ nằm trên kênh chung chỉ là chỗ gặp nhau. Mất nó không mất dữ liệu ⇒ thiết kế được phép ưu tiên **báo lỗi rõ ràng** hơn là chống mọi tranh chấp.
+    - **Kênh chung chỉ có ĐÚNG MỘT kho chính** (thêm tối đa một bản lùi), **mọi máy ghi vào chính nó**, và **ghi là NỐI THÊM**. Series-theo-máy, ghi đè nguyên gói, hay đống file rải rác đều **trái điều này**.
+    - **Cả gói đã mã hoá bằng chìa share** ⇒ **KHÔNG được lấy "cho an toàn" làm lý do bỏ bớt lớp nào**. Lý lẽ an toàn ở đây là thừa, và cái giá phải trả rơi đúng vào mục tiêu tối cao (điều 15: chất lượng truy hồi).
+    - *Vì sao thành điều khoản: trong MỘT phiên (2026-08-12) agent đi sai **bốn lần** đúng những điểm này — series theo máy (13 file/2,9 GB cho cùng một kho) · định ghi đè nguyên gói mỗi lượt · bỏ 11.233 tin không-uuid (đẩy 3,9 giờ nhúng lại sang máy mới) · bỏ 7.381 cửa sổ phụ vì "chỉ 2,6%". Mẫu số chung: **agent tự thêm ràng buộc an toàn/đơn giản mà user không đặt**. Đặc tả đầy đủ ở `plan/08 §8.0`.*
+
 ## Sửa đổi hiến pháp
 - **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
