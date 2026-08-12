@@ -319,10 +319,16 @@ export function formatRecallBench(r: RecallBenchResult): string[] {
     out.push("");
     out.push(`  hybrid theo LỚP (mỗi lớp tìm bằng đường khác nhau — KHÔNG so lớp này với lớp kia):`);
     out.push(`  ${"lớp".padEnd(16)} ${"n".padStart(4)} ${"@1".padStart(6)} ${"@3".padStart(6)} ${"@10".padStart(6)} ${"@40".padStart(6)} ${"MRR".padStart(7)}`);
+    // Ghi chú theo CHÍNH SÁCH chỉ mục đang hiệu lực (migration v21), không phải theo trạng
+    // thái đo được của từng kho — kho có thể còn tin chưa nhúng xong.
+    // ⚠ Dòng `tool_use: "CHỈ FTS word"` cũ đã SAI suốt một thời gian: đo 2026-08-12 thấy
+    // 77,6% tin tool_use vẫn nằm trong trigram (do `salvage` chạy 'rebuild'), tức lớp đó
+    // vốn đã có hai luồng trong khi bảng này vẫn in "CHỈ" — và chẩn đoán của mấy phiên sau
+    // đều dựa vào dòng chữ đó. Sửa nhãn ở đây thì nhớ sửa cả `plan/17 §3c`.
     const NOTE: Record<string, string> = {
-      prose: "vector + trigram",
-      tool_use: "CHỈ FTS word",
-      tool_result: "vector, KHÔNG trigram",
+      prose: "word · trigram · vector",
+      tool_use: "word · trigram (v21) · vector nếu đã nhúng",
+      tool_result: "word · vector — KHÔNG trigram (v21 giữ loại)",
     };
     for (const [kind, s] of Object.entries(hyb.byKind).sort()) {
       const p = (n: number) => `${((100 * n) / (s.n || 1)).toFixed(0)}%`;

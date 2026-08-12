@@ -30,6 +30,7 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentMemoryDb } from "./db.js";
+import { getEmbedTools } from "../config/settings.js";
 import {
   currentEmbedProfile,
   embedConfig,
@@ -84,7 +85,10 @@ function tableExists(db: Conn, name = "vec_chunks"): boolean {
 //   ZEMORY_EMBED_TOOLS=1            → mọi tin tool (nếp cũ, giữ nguyên)
 //   ZEMORY_EMBED_TOOLS=Edit,Write   → chỉ các tool nêu tên
 function embedToolNames(): string[] | "all" | null {
-  const raw = process.env.ZEMORY_EMBED_TOOLS?.trim();
+  // Thứ tự: env (đường thử một lần) → config (đường CHÍNH, bền qua tiến trình).
+  // Trước 2026-08-12 chỉ có env, nên phạm vi chết theo cửa sổ terminal và tin tool mới
+  // âm thầm không được nhúng — xem getEmbedTools() để biết nhịp rò đo được.
+  const raw = process.env.ZEMORY_EMBED_TOOLS?.trim() || getEmbedTools().join(",");
   if (!raw) return null;
   if (raw === "1" || raw.toLowerCase() === "all") return "all";
   const names = raw.split(",").map((s) => s.trim()).filter(Boolean);
@@ -614,6 +618,31 @@ export function vectorRemaining(dbPath: string = currentMemoryDb()): number {
         .prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()} AND id NOT IN (SELECT rowid FROM vec_chunks)`)
         .get() as { c: number }
     ).c;
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Bao nhiêu tin bị phạm vi hiện tại CỐ Ý bỏ qua (chưa có vector và sẽ không bao giờ có,
+ * chừng nào phạm vi chưa đổi).
+ *
+ * 🔴 Vì sao phải có hàm này: `vectorRemaining()` đếm bằng **chính bộ lọc** dùng để chọn tin,
+ * nên thứ nằm ngoài phạm vi không xuất hiện trong bất kỳ con số nào — `/memory-status` báo
+ * `remaining 0 · coverage 100%` trong khi 19.620 tin không có vector và 146 tin vừa trôi ra
+ * ngoài (đo 2026-08-12). Đồng hồ đo đúng cái nó định làm, và vì thế nó NÓI DỐI về cái nó
+ * không định làm. Hai con số cạnh nhau thì "cố ý bỏ" phân biệt được với "chưa kịp làm" —
+ * chính là ranh giới mà một con số đơn lẻ xoá mất.
+ */
+export function vectorOutOfScope(dbPath: string = currentMemoryDb()): number {
+  const db = vecConnect(dbPath);
+  try {
+    const inScope = EMBEDDABLE();
+    if (!inScope) return 0; // phạm vi = tất cả ⇒ không có gì bị bỏ
+    const notInScope = `NOT (1=1${inScope})`;
+    const base = `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!='' AND ${notInScope}`;
+    const sql = tableExists(db) ? `${base} AND id NOT IN (SELECT rowid FROM vec_chunks)` : base;
+    return (db.prepare(sql).get() as { c: number }).c;
   } finally {
     db.close();
   }

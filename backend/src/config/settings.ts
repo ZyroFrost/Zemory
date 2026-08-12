@@ -55,7 +55,19 @@ interface ZConfig {
   syncAttachments?: boolean;
   /** Kết quả kiểm đăng nhập gần nhất của từng nền web — xem getWebAuth. */
   webAuth?: Record<string, { ok: boolean; at: string; who?: string }>;
+  /** Tên các tool mà tin `tool_use` của chúng ĐƯỢC nhúng vector — xem getEmbedTools. */
+  embedTools?: string[];
 }
+
+/**
+ * Lớp tin TOOL nào được nhúng vector, MẶC ĐỊNH — phạm vi này là kết quả ĐO, không phải
+ * phỏng đoán: nó phủ đủ 14/14 nhãn `tool_use` của corpus và đưa lớp đó từ **0% lên 21%@10**
+ * (`06_CHANGES [2026-08-11f]`). Các tool còn lại (`Read` · `Grep` · `TodoWrite` · `Glob`…)
+ * CỐ Ý đứng ngoài: 29% lớp này dưới 200 ký tự — đường dẫn, pattern, tham số — tức token
+ * literal mà FTS word khớp tốt hơn, nhúng một đường dẫn thành 768 chiều gần như vô nghĩa
+ * (`plan/17 §3.2`). Thêm chúng vào là ~19.600 tin ≈ nhiều giờ máy cho phần rẻ nhất.
+ */
+export const EMBED_TOOLS_DEFAULT = ["Edit", "Write", "Bash", "PowerShell", "Artifact"];
 
 /** Cross-machine sync depth (plan 08 §7).
  *  • "lean" — source rows only (sessions/messages/known_stores); the receiver
@@ -77,6 +89,31 @@ function write(c: ZConfig): void {
   const path = configPath();
   mkdirSync(dirname(path), { recursive: true });
   writeJsonAtomic(path, c);
+}
+
+/**
+ * Phạm vi nhúng lớp tool — LƯU TRONG CONFIG, không phải biến môi trường.
+ *
+ * 🔴 Vì sao phải đổi (đo 2026-08-12): phạm vi này từng CHỈ sống ở `ZEMORY_EMBED_TOOLS`, tức
+ * nó chết theo cửa sổ terminal đã gõ lệnh. Job 11/08 chạy với biến đó và phủ 100%; nhưng
+ * daemon + scheduler + hook chạy KHÔNG có biến ⇒ mọi tin tool sinh ra sau đó không ai nhặt.
+ * Đo được nhịp rò: **72 tin lúc 10h → 146 tin lúc 11h30 ≈ 50 tin/giờ** trôi ra ngoài lớp
+ * vector. Và vì `vectorRemaining()` đếm bằng CHÍNH bộ lọc này, chúng không xuất hiện trong
+ * bất kỳ con số nào — `/memory-status` vẫn báo `remaining 0`. Một lớp tự teo, không cổng nào
+ * kêu, đúng kiểu hỏng lặng mà `02_RULES` cấm.
+ *
+ * Nằm trong config thì MỌI tiến trình đọc được: một lần chỉnh là scheduler tự lo từ đó về sau.
+ * Biến môi trường VẪN thắng khi có mặt (đường thử nghiệm một lần, không ghi vào config).
+ */
+export function getEmbedTools(): string[] {
+  const v = read().embedTools;
+  return Array.isArray(v) ? v : EMBED_TOOLS_DEFAULT;
+}
+
+export function setEmbedTools(names: string[]): void {
+  const c = read();
+  c.embedTools = names;
+  write(c);
 }
 
 /** Hybrid recall on? Default true (benchmark gate passed). */
