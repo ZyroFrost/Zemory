@@ -93,14 +93,47 @@ test("chuỗi chạy TUẦN TỰ và giữ ĐÚNG MỘT job token cho cả chu�
   const awaited = (s.match(/await runStep\(/gu) ?? []).length;
   assert.ok(calls > 0, `${SCHED}: không thấy lần gọi runStep nào`);
   assert.equal(awaited, calls, `${SCHED}: ${calls - awaited}/${calls} lần gọi runStep KHÔNG await — chuỗi hoá song song, embed đọc trước khi scan ghi xong`);
+  // CHUỖI maintain phải claim ĐÚNG MỘT lần. Neo cũ đếm cả file = 1; nắn theo thiết kế
+  // 2026-08-13 (backup tách ra nhịp riêng nên có lần claim THỨ HAI, của `backupTick`) —
+  // nắn PHẠM VI đo, KHÔNG nới bất biến: vẫn là "một token cho cả chuỗi", chỉ đo trong
+  // đúng thân `maintainTick` thay vì cả file.
+  const chain = s.slice(s.indexOf("async function maintainTick("), s.indexOf("async function backupTick("));
+  assert.ok(chain.length > 0, `${SCHED}: không tìm thấy thân maintainTick`);
   assert.equal(
-    (s.match(/claimDaemonJob\(/gu) ?? []).length,
+    (chain.match(/claimDaemonJob\(/gu) ?? []).length,
     1,
     `${SCHED}: chỉ được claim job MỘT lần cho cả chuỗi`,
   );
   const claimAt = s.indexOf("claimDaemonJob(");
   const releaseInFinally = /finally\s*\{[^}]*releaseDaemonJob\(\)/su.test(s.slice(claimAt));
   assert.ok(releaseInFinally, `${SCHED}: releaseDaemonJob phải nằm trong finally — một bước lỗi là token kẹt vĩnh viễn`);
+  // Backup gọi từ TRONG chuỗi thì KHÔNG được claim lồng (token đã ở trong tay) — claim lồng
+  // là tự khoá chính mình, đúng kiểu bế tắc mà write-gate sinh ra để tránh.
+  assert.match(
+    s,
+    /const holdsToken = chainRunning/u,
+    `${SCHED}: backupTick phải biết token đã ở trong tay khi được gọi từ trong chuỗi`,
+  );
+});
+
+test("BACKUP không được treo vào công tắc của tính năng khác", () => {
+  // Lỗi thật 2026-08-08 → 12/08: `rotateBackup()` là bước 4 của `maintainTick`, mà hàm đó
+  // return ngay khi `getScheduler()` tắt ⇒ tắt scheduler là TẮT LUÔN BACKUP, im lặng. Bốn
+  // ngày không có bản sao lưu, và không ai biết vì job có hỏng đâu — nó không được gọi.
+  // Backup là lưới đỡ cuối cùng của kho (đã cứu kho thật 04/08), nên nó phải có đồng hồ
+  // riêng và KHÔNG được hỏi bất kỳ công tắc tính năng nào.
+  const s = read(SCHED);
+  assert.match(s, /backupTimer = setInterval\(/u, `${SCHED}: backup phải có đồng hồ RIÊNG`);
+  const tick = s.slice(s.indexOf("async function backupTick("), s.indexOf("function syncTick("));
+  assert.ok(tick.length > 0, `${SCHED}: không tìm thấy thân backupTick`);
+  assert.ok(
+    !/getScheduler\(\)/u.test(tick),
+    `${SCHED}: backupTick hỏi getScheduler() — backup lại chết theo công tắc scheduler, đúng lỗi 4 ngày mất backup`,
+  );
+  assert.ok(
+    !/getAutosync\(\)/u.test(tick),
+    `${SCHED}: backupTick hỏi getAutosync() — cùng một kiểu treo vào công tắc của tính năng khác`,
+  );
 });
 
 test("scan KHÔNG bị chặn bởi backoff của vector backlog", () => {
