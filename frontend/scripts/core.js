@@ -45,12 +45,14 @@
   function zN(n){return Number(n||0).toLocaleString();}
   function zBytes(kb){var n=Number(kb||0);if(!n)return '0';if(n>1048576)return (n/1048576).toFixed(1)+' GB';if(n>1024)return (n/1024).toFixed(0)+' MB';return n+' KB';}
   function zProjName(p){return String(p||'').split(/[\\/]/).filter(Boolean).pop()||'(unknown)';}
+  // Mọi mảnh chữ ở đây đi qua i18n: ô này hiện ngay trang chủ nên nó là chỗ tiếng Việt lọt ra
+  // rõ nhất khi bật `lang=en` (đo 2026-08-12 lúc chụp ảnh README bằng UI tiếng Anh).
   function relTime(iso){
-    if(!iso)return {big:'chưa sync',sub:'—'};
-    var t=new Date(iso).getTime();if(isNaN(t))return {big:'—',sub:'—'};
-    var s=Math.max(0,Math.floor((Date.now()-t)/1000));
-    var big=s<60?s+' giây':s<3600?Math.floor(s/60)+' phút':s<86400?Math.floor(s/3600)+' giờ':Math.floor(s/86400)+' ngày';
-    return {big:big+' trước',sub:String(iso).slice(0,16).replace('T',' ')};
+    if(!iso)return {big:t('st.notSynced'),sub:'—'};
+    var ts=new Date(iso).getTime();if(isNaN(ts))return {big:'—',sub:'—'};
+    var s=Math.max(0,Math.floor((Date.now()-ts)/1000));
+    var big=s<60?s+' '+t('rel.sec'):s<3600?Math.floor(s/60)+' '+t('rel.min'):s<86400?Math.floor(s/3600)+' '+t('rel.hour'):Math.floor(s/86400)+' '+t('rel.day');
+    return {big:t('rel.ago').replace('{v}',big),sub:String(iso).slice(0,16).replace('T',' ')};
   }
   function pillFor(st){return st==='on'?'ok':st==='warn'?'warn':st==='off'?'warn':'dim';}
   function pillTxt(st){return st==='on'?'Healthy':st==='warn'?'Warning':st==='off'?'Off':'—';}
