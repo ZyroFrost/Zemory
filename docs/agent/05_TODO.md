@@ -53,9 +53,10 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   717**, nên KHÔNG phải nhiễu do kho lớn thêm (giả thuyết cũ của tôi, nay bác). Đã loại: cửa sổ
   mồ côi (**0**), trùng khoá băm (**2**), tổng số khớp khít (220.280 + 7.408 = 227.688). Phần
   vector CHÍNH sang đủ (chênh đúng 2 = tin mới trong lúc xuất). Cần A/B trên **kho ĐÓNG BĂNG**.
-- [ ] **(②) 6 entry changelog vượt trần 30 dòng** — trong đó **3 entry hôm nay của tôi** (38 ·
-  35 · 35). Chính luật tôi vừa viết mà tôi vi phạm; `validate` bắt được. Cắt bớt phần tường
-  thuật, giữ *đổi gì · vì sao · số đo*.
+- ✅ **(②) Entry changelog vượt trần — XONG 2026-08-13.** `zemory archive` dời 7 entry cũ (active
+  339 → 149 dòng, lịch sử vẫn tra được), 2 entry còn lại nén chữ giữ nguyên số đo. `validate` nay
+  **0 entry vượt trần**. *Ghi kèm: lượt cắt đầu tôi tưởng đã giảm dòng nhưng đếm tay ra y nguyên
+  31 — gộp câu mà vẫn xuống dòng đúng chỗ cũ thì không giảm gì. Công cụ đúng, tôi sai.*
 
 - ✅ **(⑧) CLONE SẠCH — ĐÃ DỰNG ĐƯỢC 2026-08-13** (chi tiết + số đo: `06_CHANGES [2026-08-13]`).
   Chẩn đoán cũ *"không có prebuilt cho Node 24"* **SAI**: asset ABI 137 có thật. Thủ phạm là host
