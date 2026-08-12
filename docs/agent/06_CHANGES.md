@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-13] — (⑧) clone sạch DỰNG ĐƯỢC: thủ phạm là ĐƯỜNG TẢI, không phải thiếu prebuild
+
+> 🔄 **Supersede:** thay [2026-08-12e] — "audit 10 mặt sau 1.5.0" — vế chẩn đoán *"`better-sqlite3`
+> không có prebuilt cho Node 24"*. Asset ABI 137 **CÓ thật**; ba hướng sửa sổ đề ra (hạ version ·
+> ghim Node LTS · buộc cài Build Tools) đều dựa trên tiền đề sai — đổi ABI vẫn tải từ cùng host hỏng.
+
+**Nguyên nhân thật: host `github.com` chập chờn.** Đo 10 lượt/host: `github.com` **1/10** lọt ·
+`api.github.com` **10/10**. Trượt lượt nào là `prebuild-install` rơi về `node-gyp rebuild` (cần
+bộ biên dịch C++) ⇒ clone sạch chết.
+
+**Vá:** `backend/scripts/fetch-prebuilds.mjs` kéo đúng asset đó qua **API release** rồi đặt vào
+cache đĩa của `prebuild-install`. Node thuần, 0 dependency, fail-open + in rõ khi hụt. **Phải chạy
+TAY trước `npm install`** — đo mốc thời gian: npm chạy install script của *dependency* TRƯỚC
+`preinstall` của gói gốc, nên không hook nào đủ sớm (đã thử `preinstall` rồi gỡ). Nối vào
+`AGENTS.md` + `README`.
+
+**Nghiệm thu vòng khép kín** (clone sạch + cache npm TRẮNG): `found cached prebuild` →
+`Successfully installed prebuilt binary!` → `build_exit=0` → `zemory 1.5.0`. Đối chứng cùng
+máy/cùng mạng khác đúng một biến: **không seed ⇒ `gyp ERR`**.
+
+**Cổng:** `prebuild-cache.test.mjs` 4/4 (so tên cache + URL với chính `prebuild-install/util.js`),
+đột biến `slice(0,6)`→`7` chứng minh đỏ được. Nó canh dạng hỏng CÂM: lệch một ký tự thì file nằm
+cạnh chỗ cần nằm — không lỗi, không cảnh báo, bản vá vô tác dụng.
+
+**Hai sổ sai, đã sửa:** ⑩ log scheduler ghi 🔴 trong khi `scheduler.ts:65` đã dùng `daemonLog` ·
+bài học đo: **đường chập chờn thì MỘT lượt đo chứng minh được cả hai điều trái ngược** — đo tỉ lệ.
+
 ## [2026-08-12e] — audit 10 mặt sau 1.5.0 · luật HIỆN SUY NGHĨ · log nền ra đĩa
 
 **Luật mới `02_RULES §Hành xử` (user chốt): HIỆN SUY NGHĨ TỪNG BƯỚC, CẤM CHẠY IM LẶNG.** Ba ca

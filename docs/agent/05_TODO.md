@@ -12,17 +12,10 @@
 nối thêm · chở trọn bộ RAG (máy trắng còn phải nhúng **2 tin**) · vá bỏ đói autosync (nghiệm thu:
 tự chạy sau 1.170 s, lượt kế chỉ nối **0,5 MB**) · log nền ra đĩa · audit 10 mặt.
 
-**HAI VIỆC ĐỎ, làm trước hết:**
+**MỘT VIỆC ĐỎ CÒN LẠI** *(mục ⑧ đã ĐÓNG 2026-08-13 — xem `06_CHANGES [2026-08-13]`: asset ABI 137
+CÓ thật, thủ phạm là host `github.com` lọt 1/10 lượt; vá bằng `fetch-prebuilds.mjs` + cổng 4/4)*:
 
-1. **(⑧) Clone sạch không dựng được** — chặn MỌI máy mới. Cách xác minh (cần mạng ngoài):
-   xem release `better-sqlite3 v12.11.1` có asset `…-node-v137-win32-x64.tar.gz` không.
-   · CÓ ⇒ lỗi nằm ở đường tải prebuild, sửa hướng đó.
-   · KHÔNG ⇒ chọn một trong ba: hạ về bản có prebuild cho Node 24 · ghim Node LTS trong
-   `engines` + tài liệu · hoặc ghi rõ máy Windows phải cài Build Tools trước.
-   Lệnh tái hiện: `git clone <repo> z && cd z && npm install` — **ĐỪNG nối `| tail`**, mã thoát
-   sẽ bị nuốt và in ra kết quả NGƯỢC (đã dính hôm nay).
-
-2. **(⑦) Gỡ 314 MB model weight khỏi LỊCH SỬ git** — `attic/zemory-lab/models/…onnx_data`
+1. **(⑦) Gỡ 314 MB model weight khỏi LỊCH SỬ git** — `attic/zemory-lab/models/…onnx_data`
    294,6 MB + `tokenizer.json` 19,4 MB, trái HP điều 2. **CẦN USER CHỐT TRƯỚC** vì:
    viết lại lịch sử ⇒ **mọi hash đổi** (kể cả `73420e4` vừa push) ⇒ **clone trên
    `DESKTOP-PFB157K` hỏng, phải xoá và clone lại**, và phải `--force` (trái `02_RULES §Git` nếu
@@ -46,11 +39,9 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   **19,4 MB**, nằm trong **LỊCH SỬ git** (đã xoá khỏi cây nhưng lịch sử giữ). Mọi lần clone đều
   kéo về ~314 MB rác, và nó **trái HP điều 2** (*weight tải lúc chạy, KHÔNG commit*). Gỡ được
   chỉ bằng viết lại lịch sử (`filter-repo`) + force-push ⇒ **thao tác một chiều, cần user chốt**.
-- [ ] 🔴 **(⑩) LOG CỦA SCHEDULER BỊ VỨT** — `scheduler.ts:56` dùng `console.error`, mà daemon
-  được phóng qua `.vbs` không hứng stderr ⇒ **không dòng nào tới đĩa**. Đây chính là lý do lỗi
-  bỏ đói autosync sống im lặng 2,5 giờ: nó có log *"auto-sync — starting"*, chỉ là không ai đọc
-  được. Sửa hẹp: cho scheduler ghi qua `daemonLog()` (đã có sẵn, ghi `data/logs/daemon.log`).
-  **Không có lớp này thì mọi lỗi nền sau đây đều sẽ im lặng y hệt.**
+- ✅ **(⑩) LOG CỦA SCHEDULER — ĐÃ VÁ** (`scheduler.ts:65` gọi `daemonLog`, ghi
+  `data/logs/daemon.log`). *Sổ ghi 🔴 tới 2026-08-13 trong khi mã đã sửa từ hôm trước — đúng dạng
+  "sổ nói khác code" mà luật SOÁT SỔ = ĐO LẠI sinh ra để bắt; bắt được vì kiểm mã, không đọc sổ.*
 - [ ] **(⑨) MỘT CÔNG TẮC GÁNH BA VIỆC.** `rotateBackup()` nằm TRONG chuỗi bảo trì (bước 4), nên
   `scheduler` TẮT là **backup chết theo** — đó là lý do thật của "4 ngày không backup" (08/08 →
   12/08), không phải job hỏng. Cộng với lỗi bỏ đói (đã vá), trước hôm nay **không có cấu hình
@@ -66,20 +57,14 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   35 · 35). Chính luật tôi vừa viết mà tôi vi phạm; `validate` bắt được. Cắt bớt phần tường
   thuật, giữ *đổi gì · vì sao · số đo*.
 
-- [ ] 🔴 **(⑧) CLONE SẠCH KHÔNG DỰNG ĐƯỢC — mặt ⑧ chạy lần đầu và ĐỎ ngay.**
-  Đo: `git clone` → `npm install` **CHẾT** (`gyp ERR! Could not find any Visual Studio
-  installation`) ⇒ không có `tsc` ⇒ `npm run build` chết theo. Thủ phạm:
-  **`better-sqlite3@^12.11.1` không có prebuilt cho Node 24** nên rơi về biên dịch từ mã nguồn,
-  mà máy không có bộ biên dịch C++.
-  **Vì sao nghiêm trọng:** đây ĐÚNG quy trình `AGENTS.md` dạy cho mọi máy thứ hai
-  (`clone → npm install → npm run build → npm link`). Repo này chạy được **chỉ vì máy đang có
-  sẵn `node_modules` cài từ thời Node cũ** — đúng cái mà mặt ⑧ sinh ra để bắt (*"thứ chạy được
-  trên máy đang có sẵn đồ thì chưa chứng minh được gì"*).
-  **Hướng sửa (chưa chọn):** ghim Node LTS có prebuilt · hạ `better-sqlite3` về bản có prebuilt
-  cho Node 24 · hoặc ghi thẳng vào tài liệu là máy Windows phải cài Build Tools trước.
-  ⚠ **Bài học phép đo, ghi kèm:** lượt đầu tôi nối `| tail -3` nên mã thoát thành của `tail`,
-  chuỗi `&&` chạy tiếp và in ra *"CLONE SẠCH: DỰNG ĐƯỢC"* — **một câu khẳng định NGƯỢC với sự
-  thật, do chính cách đo sinh ra**. Đúng dạng "công cụ hỏng lặng" ở luật 5.
+- ✅ **(⑧) CLONE SẠCH — ĐÃ DỰNG ĐƯỢC 2026-08-13** (chi tiết + số đo: `06_CHANGES [2026-08-13]`).
+  Chẩn đoán cũ *"không có prebuilt cho Node 24"* **SAI**: asset ABI 137 có thật. Thủ phạm là host
+  `github.com` **lọt 1/10 lượt** (`api.github.com` 10/10) ⇒ rơi về `node-gyp`, máy trắng không có
+  bộ biên dịch C++. Vá: `backend/scripts/fetch-prebuilds.mjs` chạy TRƯỚC `npm install`.
+  ⚠ **Hai bài học phép đo, giữ lại:** ① nối `| tail -3` làm mã thoát thành của `tail` ⇒ in ra
+  *"CLONE SẠCH: DỰNG ĐƯỢC"* **ngược hẳn sự thật** · ② **đường mạng chập chờn thì một lượt đo
+  chứng minh được cả hai điều trái ngược** — hôm 12/08 trúng lượt hỏng nên kết luận "thiếu
+  prebuild", hôm nay có lượt trúng 1/10 làm cả một phép thử xanh giả. Đo tỉ lệ, đừng đo một lượt.
 
 - [ ] **(⑥) `/memory-status` còn 5,83 giây** *(sổ cũ ghi 18,5 s — đo lại hôm nay, máy rảnh)*.
   Nhanh hơn 3× nhưng vẫn chậm gấp ~70 lần các endpoint khác (`/ping` 0,002 s · `/automation`
