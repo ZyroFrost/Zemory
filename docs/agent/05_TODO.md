@@ -35,6 +35,13 @@
 - [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
+- [ ] **i18n HỤT: bật `lang=en` mà nhiều chuỗi vẫn ra tiếng Việt** (đo 2026-08-12 khi chụp ảnh
+  README bằng UI tiếng Anh). Nav/panel/nút đã dịch, nhưng còn lọt ít nhất: ô **Last Sync** hiện
+  `chưa sync` · thời gian tương đối `7 giờ trước` · `39 phút trước` · `✓ đã link · 9 bundle` ·
+  dòng trạng thái Drive `Đã đồng bộ đủ lên Drive` · `kiểm lần cuối 41 giờ trước` · `NOT linked ·
+  store đã biết nhưng không còn trên đĩa`. Trái luật `02_RULES §Ngôn ngữ` (*"0 chuỗi hardcode,
+  mọi chuỗi người-dùng-thấy đi qua i18n, có cả 2 bản"*). **Cách bắt lại rẻ:** chụp UI ở `lang=en`
+  rồi soi ảnh — chính lượt chụp này bắt được, không cần dựng cổng riêng.
 - [ ] **(⑦) `.git/objects/pack` có 10 file `.idx` KHÔNG có `.pack` tương ứng.** Dấu hiệu một lần
   `gc`/`filter-branch` bị ngắt giữa chừng (khớp đợt `filter-branch` gỡ model weight 05/08). Không
   mất dữ liệu — `git count-objects` vẫn đọc được 5.138 object — nhưng là rác và làm mọi lệnh đếm

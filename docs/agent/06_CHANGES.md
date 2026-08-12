@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-08-12] — Nối nốt đường CỨU HỘ (vector) · README hết tiếng Việt · ảnh UI do MÁY chụp
+
+**Vá lỗ audit mặt ③: `memory salvage` nay chở CẢ chỉ mục vector.** Trước đó lệnh chỉ gọi
+`salvageMemory` rồi dừng, và câu dặn cuối bảo người dùng đi `memory embed --all` — tức chấp nhận
+đốt lại **~55 giờ máy**. Nay đọc số chiều qua `vectorDimsOf()` (mới, ở `salvage.ts` — tầng lệnh
+không mở SQLite thẳng) rồi gọi `salvageVectors`, in `copied/lost`, **fail-open** khi kho nguồn chưa
+từng nhúng. Cổng `salvage-vectors.test.mjs` **3/3**, đột biến chứng minh đỏ được (bỏ lời gọi ⇒ 1 đỏ).
+*Hai lần fixture đỏ trước khi xanh, cả hai đều là bài học đáng giữ:* vec0 đòi `safeIntegers`+BigInt
+(đúng bẫy ③ mà chú thích trong `salvage.ts` đã ghi — chú thích chính xác), và fixture **phải dựng
+bằng `openMemory`** chứ không tự bịa `CREATE TABLE`: nguồn lệch tên cột thì `salvageMemory` chép
+sang đích là gãy, và test hoá ra đang soi một cái không tồn tại.
+
+**README: bỏ hết tiếng Việt tôi chèn — và sửa tận gốc, không dịch tay.** Đổi UI sang `lang=en`,
+**chụp lại 7 màn**, rồi trả `lang` về `vi`; nhãn trong README nay lấy đúng chữ app hiển thị
+(`Search`/`Sessions` · `Memory`/`Sync & Backup` · `This Machine` · `Drive Sync` ·
+`Lean (−74%)`/`Full (restore)`/`With images` · `Health 11/14 OK` · `Check`).
+
+**Ba lần chụp hỏng trước khi được, mỗi lần lộ một lỗi thật** — nên `shoot-ui.mjs` nay: ① **chờ theo
+ĐIỀU KIỆN** (đợi số liệu thật hiện) thay vì chờ theo đồng hồ, không đạt thì **từ chối ghi file** ·
+② `Page.navigate` đè lên **trang quảng bá đăng nhập của Edge** (thứ chiếm tab đầu, khiến chờ 150
+giây vẫn trượt — không phải app chậm) · ③ ép khung bằng `Emulation.setDeviceMetricsOverride` vì
+`--window-size` không ăn trong headless (ảnh từng ra 500×450). Thất bại nay **in ra trang đang có
+gì** thay vì câm nín.
+
+**Phép chụp bắt được một lỗi sản phẩm:** bật `lang=en` mà nhiều chuỗi vẫn ra tiếng Việt (`chưa
+sync` · `7 giờ trước` · `đã link · 9 bundle` · `Đã đồng bộ đủ lên Drive`) — trái `02_RULES §Ngôn
+ngữ`. Đã ghi `05_TODO` kèm cách bắt lại rẻ nhất: chụp ở `lang=en` rồi soi ảnh.
+
+**Số đo cuối ngày:** lớp tool **52.169/52.177 = 100%** · kho 238.495 tin · `quick_check ok` ·
+Drive **238.495/238.495 đã đẩy**, 9 bundle.
+
 ## [2026-08-11f] — Mặt ① mở được: gate chưa chạy từ ~05/08, và nó đang ĐỎ · lớp `tool_use` 0 → 21%
 
 > 🔄 **Supersede:** thay [2026-08-11e] — "mặt ① chưa đo được, cần user tắt hook" — **agent TỰ tắt
