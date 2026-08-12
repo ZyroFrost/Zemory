@@ -27,7 +27,7 @@
     "start": "node dist/cli.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.11 <25"
   },
   "license": "Apache-2.0",
   "devDependencies": {
