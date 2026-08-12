@@ -798,7 +798,10 @@ const DASH_TTL_MS = 60_000;
 const HEAVY_TTL_MS = 300_000;
 
 let dashCache: { at: number; value: Record<string, unknown> } | null = null;
-let heavyCache: { at: number; value: { tokensEst: number; count: number; remaining: number } } | null = null;
+let heavyCache: {
+  at: number;
+  value: { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number };
+} | null = null;
 
 /** Drop cached stats after anything that actually changes the memory. */
 function invalidateDashboard(): void {
@@ -816,8 +819,21 @@ function invalidateDashboardSoft(): void {
   dashCache = null;
 }
 
-/** The expensive aggregates, behind their own long TTL. */
-function heavyStats(): { tokensEst: number; count: number; remaining: number } {
+/**
+ * The expensive aggregates, behind their own long TTL.
+ *
+ * `vectorCoverage()` belongs HERE, not in the caller: measured 2026-08-13 it costs ~1.4s (same
+ * order as the other two full scans) but used to run on every `dashCache` miss — i.e. every 60s
+ * instead of every 300s, for a number that moves just as slowly as its neighbours. That was most
+ * of the "/memory-status takes seconds" report: one uncached scan hidden among cached ones.
+ */
+function heavyStats(): {
+  tokensEst: number;
+  count: number;
+  remaining: number;
+  covered: number;
+  embeddable: number;
+} {
   const now = Date.now();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
   // Honest token stat: total captured content ≈ chars/4. A REAL number (how much
@@ -838,13 +854,18 @@ function heavyStats(): { tokensEst: number; count: number; remaining: number } {
   }
   let count = 0;
   let remaining = 0;
+  let covered = 0;
+  let embeddable = 0;
   try {
     count = vectorCount();
     remaining = vectorRemaining();
+    const cov = vectorCoverage();
+    covered = cov.covered;
+    embeddable = cov.embeddable;
   } catch {
     /* vector lane is optional — fail open (HP điều 9) */
   }
-  const value = { tokensEst, count, remaining };
+  const value = { tokensEst, count, remaining, covered, embeddable };
   heavyCache = { at: now, value };
   return value;
 }
@@ -870,11 +891,11 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
     // Công thức cũ `vectorCount / messages` cho ra **114,6%** trên DB thật (trái điều 12):
     // tử số đếm cả CHUNK của message dài, mẫu số lại gồm cả tool-message vốn không nằm
     // trong diện embed. Xem ghi chú đầy đủ ở `vectors.ts vectorCoverage()`.
-    const cov = vectorCoverage();
+    // Con số y hệt như trước, chỉ đổi chỗ TÍNH: nay nằm trong `heavyStats()` (TTL 300s).
     vectors = {
       count: heavy.count,
       remaining: heavy.remaining,
-      coverage: cov.embeddable ? Number(((cov.covered / cov.embeddable) * 100).toFixed(1)) : null,
+      coverage: heavy.embeddable ? Number(((heavy.covered / heavy.embeddable) * 100).toFixed(1)) : null,
       dims: dimsLabel,
     };
   } catch (error) {

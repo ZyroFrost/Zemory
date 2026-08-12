@@ -482,6 +482,31 @@ test("tìm kiếm trên daemon phải RẺ theo mặc định — lớp đắt c
   );
 });
 
+test("mọi phép QUÉT TOÀN BẢNG của dashboard phải nằm sau TTL dài, không rải trong payload", () => {
+  // Đo 2026-08-13: `vectorCoverage()` ~1,4s · `vectorRemaining()` ~1,0s · `SUM(LENGTH(content))`
+  // ~1,6s — cùng bậc, cùng kiểu "quét cả kho, số đổi rất chậm". Nhưng hai cái sau nằm trong
+  // `heavyStats()` (TTL 300s) còn `vectorCoverage()` bị gọi THẲNG trong `dashboardMemory()`, tức
+  // trả giá lại mỗi khi `dashCache` (60s) hết hạn. Một phép quét không được che, đứng lẫn giữa
+  // những phép quét đã che — nhìn thì giống nhau, giá thì gấp năm lần số lượt.
+  //
+  // Vì sao là cổng chứ không phải lời dặn: thêm một aggregate mới vào payload là việc TỰ NHIÊN
+  // và trông vô hại; không có gì trong mã nhắc rằng chỗ đúng của nó là `heavyStats()`. Lỗi này
+  // đã xảy ra một lần đúng theo cách đó. Nó cũng KHÔNG bao giờ đỏ trong test thường: kết quả
+  // vẫn đúng, chỉ chậm — đúng loại hỏng câm mà `02_RULES §Hành xử` bắt phải soi bằng máy.
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
+  const start = src.indexOf("function dashboardMemory(");
+  assert.ok(start > 0, "không tìm thấy dashboardMemory()");
+  const body = src.slice(start, src.indexOf("\n}", start));
+  for (const scan of ["vectorCoverage(", "vectorCount(", "vectorRemaining("]) {
+    assert.ok(
+      !body.includes(scan),
+      `dashboardMemory() gọi thẳng ${scan} — phép quét toàn bảng phải đi qua heavyStats() (TTL dài)`,
+    );
+  }
+  const heavy = src.slice(src.indexOf("function heavyStats("));
+  assert.match(heavy, /vectorCoverage\(/, "heavyStats() phải là nơi tính coverage");
+});
+
 test("đường LẠ phải 404 — không được rơi vào vỏ app rồi trả 200", () => {
   // Audit 2026-08-02 bắt được bằng chính phép quét của mình: gọi `/scope-tree` (KHÔNG tồn
   // tại — dữ liệu đó nằm trong `/memory-status`) và nhận **200 + HTML**, nên bảng kết quả
