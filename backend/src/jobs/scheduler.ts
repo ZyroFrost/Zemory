@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
 import { rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
+import { daemonLog } from "../logging/daemon-log.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
@@ -54,8 +55,14 @@ let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
 
 function log(msg: string): void {
-  // Daemon-side background log; the UI Drive panel surfaces sync results too.
-  console.error(`[zemory scheduler] ${msg}`);
+  // 🔴 GHI RA ĐĨA, không chỉ stderr (2026-08-12).
+  // Bản cũ chỉ `console.error`, mà daemon được phóng TÁCH KHỎI console (autostart `.vbs`,
+  // `WshShell.Run(cmd,0,False)`) nên stderr không đi đâu cả — **không một dòng nào tới đĩa**.
+  // Cái giá đo được: lỗi bỏ đói autosync sống im lặng **2 giờ 34 phút**; nó CÓ in
+  // "auto-sync — starting background sync job", chỉ là không ai đọc được. Một lớp nền không
+  // để lại dấu vết thì mọi lỗi của nó đều là lỗi câm — đúng thứ `02_RULES §Bề mặt CHẾT THEO
+  // nền` cấm. `daemonLog` ghi `<thư mục kho>/logs/daemon.log` và vẫn mirror ra stderr.
+  daemonLog(`[scheduler] ${msg}`);
 }
 
 /** dist/jobs/scheduler.js → its sibling dist/cli.js. */
