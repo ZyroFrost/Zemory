@@ -3,6 +3,97 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-12 (tối) — VIỆC ĐẦU TIÊN CỦA PHIÊN SAU
+
+> ⚠ **Luật mới, áp ngay từ dòng đầu phiên:** `02_RULES §Hành xử` — **HIỆN SUY NGHĨ TỪNG BƯỚC,
+> CẤM CHẠY IM LẶNG**. Nói trước mỗi cụm hành động; số lệch dự đoán thì báo NGAY, không dồn cuối.
+
+**Đã xong hôm nay:** release **1.5.0 đã push** (`73420e4`) · một kho chính trên Drive ghi bằng
+nối thêm · chở trọn bộ RAG (máy trắng còn phải nhúng **2 tin**) · vá bỏ đói autosync (nghiệm thu:
+tự chạy sau 1.170 s, lượt kế chỉ nối **0,5 MB**) · log nền ra đĩa · audit 10 mặt.
+
+**HAI VIỆC ĐỎ, làm trước hết:**
+
+1. **(⑧) Clone sạch không dựng được** — chặn MỌI máy mới. Cách xác minh (cần mạng ngoài):
+   xem release `better-sqlite3 v12.11.1` có asset `…-node-v137-win32-x64.tar.gz` không.
+   · CÓ ⇒ lỗi nằm ở đường tải prebuild, sửa hướng đó.
+   · KHÔNG ⇒ chọn một trong ba: hạ về bản có prebuild cho Node 24 · ghim Node LTS trong
+   `engines` + tài liệu · hoặc ghi rõ máy Windows phải cài Build Tools trước.
+   Lệnh tái hiện: `git clone <repo> z && cd z && npm install` — **ĐỪNG nối `| tail`**, mã thoát
+   sẽ bị nuốt và in ra kết quả NGƯỢC (đã dính hôm nay).
+
+2. **(⑦) Gỡ 314 MB model weight khỏi LỊCH SỬ git** — `attic/zemory-lab/models/…onnx_data`
+   294,6 MB + `tokenizer.json` 19,4 MB, trái HP điều 2. **CẦN USER CHỐT TRƯỚC** vì:
+   viết lại lịch sử ⇒ **mọi hash đổi** (kể cả `73420e4` vừa push) ⇒ **clone trên
+   `DESKTOP-PFB157K` hỏng, phải xoá và clone lại**, và phải `--force` (trái `02_RULES §Git` nếu
+   chưa xin). Kiểm `git filter-repo` có sẵn chưa trước khi bắt đầu.
+
+**Trạng thái máy lúc chốt:** kho **239.778+ tin · `quick_check ok`** · vector **227.688** ·
+`scheduler`/`autosync`/`realtime` đều BẬT · daemon pid 5468 **đang chạy build CŨ (báo v1.4.1)** —
+khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memory.enc` 1.357,5 MB, đã lên mây ·
+`zemory-lab` còn 1,5 GB (chỉ `lab.db` + script).
+
+## 🔬 Audit sau release 1.5.0 (2026-08-12 tối) — 5 phát hiện · 3 mặt CHƯA CHẠY
+
+> **Sạch, đã đo:** gate **646/646** · typecheck · lint · `conform` ✓ (nhận ra `điều 16`) ·
+> `quick_check` + `foreign_key_check` sạch · **0 cửa sổ vector mồ côi** · cây làm việc KHÔNG
+> track bí mật nào (13 file khớp mẫu chỉ vì tên thư mục `cowork_global_memory/`) · nhịp tim
+> daemon tươi · **diễn tập phục hồi ĐÃ LÀM** (merge kho chính vào kho trắng: 239.706 tin ·
+> 226.898 vector · còn phải nhúng 2 tin).
+
+- [ ] 🔴 **(⑦) TRUY RA THỦ PHẠM pack 235 MB** — mục treo từ 11/08 nay có tên:
+  `attic/zemory-lab/models/…/model_quantized.onnx_data` **294,6 MB** + `tokenizer.json`
+  **19,4 MB**, nằm trong **LỊCH SỬ git** (đã xoá khỏi cây nhưng lịch sử giữ). Mọi lần clone đều
+  kéo về ~314 MB rác, và nó **trái HP điều 2** (*weight tải lúc chạy, KHÔNG commit*). Gỡ được
+  chỉ bằng viết lại lịch sử (`filter-repo`) + force-push ⇒ **thao tác một chiều, cần user chốt**.
+- [ ] 🔴 **(⑩) LOG CỦA SCHEDULER BỊ VỨT** — `scheduler.ts:56` dùng `console.error`, mà daemon
+  được phóng qua `.vbs` không hứng stderr ⇒ **không dòng nào tới đĩa**. Đây chính là lý do lỗi
+  bỏ đói autosync sống im lặng 2,5 giờ: nó có log *"auto-sync — starting"*, chỉ là không ai đọc
+  được. Sửa hẹp: cho scheduler ghi qua `daemonLog()` (đã có sẵn, ghi `data/logs/daemon.log`).
+  **Không có lớp này thì mọi lỗi nền sau đây đều sẽ im lặng y hệt.**
+- [ ] **(⑨) MỘT CÔNG TẮC GÁNH BA VIỆC.** `rotateBackup()` nằm TRONG chuỗi bảo trì (bước 4), nên
+  `scheduler` TẮT là **backup chết theo** — đó là lý do thật của "4 ngày không backup" (08/08 →
+  12/08), không phải job hỏng. Cộng với lỗi bỏ đói (đã vá), trước hôm nay **không có cấu hình
+  nào cho quét + backup + autosync cùng sống**. Cân nhắc tách backup khỏi cửa `getScheduler()`.
+- [ ] **(⑨) Backup local nằm CÙNG Ổ với kho** (`data/backups/`, 5 bản × ~1,8 GB). Mất ổ D là mất
+  cả hai; bù duy nhất là kho chính trên Drive, mà nó **không chở FTS/digest** (dựng lại được,
+  vài phút — nên là rủi ro THỜI GIAN, không phải mất dữ liệu). Ghi để đừng tưởng đã có 2 lớp.
+- [ ] **(③) 717 CỬA SỔ PHỤ CHÊNH — CHƯA TRUY RA.** Đo hai lần cách nhau ~30 phút đều ra **đúng
+  717**, nên KHÔNG phải nhiễu do kho lớn thêm (giả thuyết cũ của tôi, nay bác). Đã loại: cửa sổ
+  mồ côi (**0**), trùng khoá băm (**2**), tổng số khớp khít (220.280 + 7.408 = 227.688). Phần
+  vector CHÍNH sang đủ (chênh đúng 2 = tin mới trong lúc xuất). Cần A/B trên **kho ĐÓNG BĂNG**.
+- [ ] **(②) 6 entry changelog vượt trần 30 dòng** — trong đó **3 entry hôm nay của tôi** (38 ·
+  35 · 35). Chính luật tôi vừa viết mà tôi vi phạm; `validate` bắt được. Cắt bớt phần tường
+  thuật, giữ *đổi gì · vì sao · số đo*.
+
+- [ ] 🔴 **(⑧) CLONE SẠCH KHÔNG DỰNG ĐƯỢC — mặt ⑧ chạy lần đầu và ĐỎ ngay.**
+  Đo: `git clone` → `npm install` **CHẾT** (`gyp ERR! Could not find any Visual Studio
+  installation`) ⇒ không có `tsc` ⇒ `npm run build` chết theo. Thủ phạm:
+  **`better-sqlite3@^12.11.1` không có prebuilt cho Node 24** nên rơi về biên dịch từ mã nguồn,
+  mà máy không có bộ biên dịch C++.
+  **Vì sao nghiêm trọng:** đây ĐÚNG quy trình `AGENTS.md` dạy cho mọi máy thứ hai
+  (`clone → npm install → npm run build → npm link`). Repo này chạy được **chỉ vì máy đang có
+  sẵn `node_modules` cài từ thời Node cũ** — đúng cái mà mặt ⑧ sinh ra để bắt (*"thứ chạy được
+  trên máy đang có sẵn đồ thì chưa chứng minh được gì"*).
+  **Hướng sửa (chưa chọn):** ghim Node LTS có prebuilt · hạ `better-sqlite3` về bản có prebuilt
+  cho Node 24 · hoặc ghi thẳng vào tài liệu là máy Windows phải cài Build Tools trước.
+  ⚠ **Bài học phép đo, ghi kèm:** lượt đầu tôi nối `| tail -3` nên mã thoát thành của `tail`,
+  chuỗi `&&` chạy tiếp và in ra *"CLONE SẠCH: DỰNG ĐƯỢC"* — **một câu khẳng định NGƯỢC với sự
+  thật, do chính cách đo sinh ra**. Đúng dạng "công cụ hỏng lặng" ở luật 5.
+
+- [ ] **(⑥) `/memory-status` còn 5,83 giây** *(sổ cũ ghi 18,5 s — đo lại hôm nay, máy rảnh)*.
+  Nhanh hơn 3× nhưng vẫn chậm gấp ~70 lần các endpoint khác (`/ping` 0,002 s · `/automation`
+  0,081 s), và **UI gọi nó lúc mở màn** ⇒ người dùng thấy treo 6 giây. Bug thật, chưa truy.
+
+**⚠ CÒN LẠI CHƯA CHẠY — không được đọc thành "sạch":**
+· **④ FE↔BE — chạy MỘT PHẦN:** 59 endpoint, 2 không thấy người gọi (`/migrate` · `/nav-cost`) —
+  cả hai đã nằm trong danh sách false-positive cũ, KHÔNG mở lại. Chưa soi i18n hai chiều và
+  chưa kiểm neo test trỏ vào file đang chạy.
+· **⑥ Bề mặt sống — chạy MỘT NỬA:** đã gọi endpoint thật (bảng trên), **chưa mở app nhìn tận
+  mắt** — theo skill, gọi endpoint KHÔNG thay được việc nhìn.
+· **⑧ Rà license dependency** — đã chạy vế dựng-từ-clone-sạch (đỏ, xem trên), chưa rà license.
+Ngoài ra **mặt ① chạy khi daemon đang có job nền** ⇒ xanh nhưng không phải điều kiện sạch.
+
 ## 🔵 BÀN GIAO 2026-08-12 (chiều) — đọc mục này TRƯỚC khi làm gì tiếp
 
 **Đã đóng phiên này** (chi tiết + số đo: `06_CHANGES [2026-08-12b]` và `[c]`): `git gc` (10 file

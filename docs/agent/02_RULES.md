@@ -97,6 +97,18 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **`protected_write` nhận GLOB, không chỉ tiền tố** (2026-08-10): `data/*/01_raw` diễn đạt được "đầu vào gốc của MỌI case" — thứ tiền tố không nói nổi vì tên case không biết trước. Thiếu nó thì hoặc liệt kê tay từng case (không ai bảo trì nổi), hoặc chặn cả `data` (chặn luôn chỗ agent ghi suốt ⇒ gate bị bỏ qua).
 
 ## Hành xử
+- **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (user chốt 2026-08-12, luật cứng).** Mỗi phiên
+  mới, mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, ngay khi làm chứ không phải
+  dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả.
+  **Vì sao thành luật:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** —
+  user mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Đúng ba ca
+  đã trả giá trong phiên 2026-08-12: lỗi bỏ đói autosync câm **2 giờ 34 phút** vì log không tới
+  đĩa · lệnh clone-sạch in ra *"DỰNG ĐƯỢC"* trong khi nó vừa chết (mã thoát bị `| tail` nuốt) ·
+  chở hụt 75% vector với `rejected=0`, không một dòng nào báo. Cả ba đều là **im lặng**, không
+  phải lỗi khó.
+  **Hệ quả bắt buộc:** ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm
+  nguồn đo được · ③ đo xong mà số lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc
+  chạy nền lâu phải báo đang chờ gì, không im tới lúc xong.
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic/khác → **hỏi trước**, không tự sửa rồi báo.
 - **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi — cơ chế TỰ ĐỘNG, KHÔNG chờ user gọi "grill".** Kích hoạt khi: yêu cầu đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Chạy skill **`.claude/skills/grill/`** (dừng · cái nào đọc code/docs ra được thì đọc · hỏi mỗi lần MỘT câu kèm đề xuất · chốt đủ rõ mới build). KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn; chỉ áp cho input user chưa đủ để thực thi đúng. (User gõ "grill" = ép chạy thủ công.)
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi user yêu cầu rõ).

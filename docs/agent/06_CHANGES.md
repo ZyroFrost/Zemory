@@ -5,6 +5,31 @@
 
 ---
 
+## [2026-08-12e] — audit 10 mặt sau 1.5.0 · luật HIỆN SUY NGHĨ · log nền ra đĩa
+
+**Luật mới `02_RULES §Hành xử` (user chốt): HIỆN SUY NGHĨ TỪNG BƯỚC, CẤM CHẠY IM LẶNG.** Ba ca
+trong ngày làm nền cho luật này, cả ba đều là **im lặng** chứ không phải lỗi khó: autosync chết
+câm 2h34 · lệnh clone-sạch in *"DỰNG ĐƯỢC"* trong khi vừa chết (mã thoát bị `| tail` nuốt) · chở
+hụt 75% vector với `rejected=0`.
+
+**Vá: log scheduler ra ĐĨA** (`console.error` → `daemonLog`). Daemon phóng tách console nên
+stderr rơi vào hư không — lớp nền không để lại dấu vết thì mọi lỗi của nó là lỗi câm.
+
+**Audit — hai phát hiện đỏ:**
+· 🔴 **(⑧) CLONE SẠCH KHÔNG DỰNG ĐƯỢC**, mặt này chạy lần đầu và đỏ ngay: `npm install` chết
+  (`gyp ERR: no Visual Studio`) vì `better-sqlite3@12.11.1` phải biên dịch từ nguồn trên Node 24.
+  Repo chạy được **chỉ vì máy có sẵn `node_modules`**. Đây đúng quy trình `AGENTS.md` dạy mọi máy
+  thứ hai. Đã khai `engines` để lỗi hiện sớm; **chưa xác minh được** bản dựng sẵn có ABI 137 hay
+  không (sandbox không ra được mạng ngoài).
+· 🔴 **(⑦) Truy ra thủ phạm pack 235 MB**: `model_quantized.onnx_data` **294,6 MB** + tokenizer
+  19,4 MB nằm trong LỊCH SỬ git (trái HP điều 2). **Chưa vá** — gỡ = viết lại lịch sử +
+  force-push, làm hỏng clone máy kia; chờ user chốt.
+
+**Sạch, đã đo:** 646/646 · conform ✓ · `quick_check`/`foreign_key` ✓ · 0 vector mồ côi · cây làm
+việc không track bí mật · **diễn tập phục hồi ĐÃ LÀM**. **Chạy một phần, KHÔNG ghi "sạch":** ④ mới
+soi endpoint parity · ⑥ mới gọi endpoint, chưa mở app nhìn · ⑧ chưa rà license · ① gate chạy khi
+daemon có job nền. Chi tiết + việc còn lại: `05_TODO §Audit sau release 1.5.0`.
+
 ## [2026-08-12d] — release 1.5.0 · BẬT scheduler BỎ ĐÓI autosync · chở vector: 3 lỗi phải đo mới thấy
 
 **Bật một tính năng giết một tính năng khác, im lặng tuyệt đối.** Trưa nay bật `scheduler` theo
