@@ -127,6 +127,7 @@ profile is native, not Docker):
 ```bash
 git clone <this-repo>
 cd zemory
+node backend/scripts/fetch-prebuilds.mjs   # see note below — run BEFORE npm ci
 npm ci
 npm run build
 npm install -g .          # exposes the global `zemory` command (or: npm link)
@@ -139,6 +140,15 @@ zemory doctor             # verify everything is green
 
 Because `npm install -g .` links the repo, a later `npm run build` updates the
 global `zemory` command in place — no reinstall needed.
+
+**Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
+`github.com/<repo>/releases/download/…`. Networks that block or throttle that host (measured on
+one corporate network: 1 of 10 attempts succeeded, while `api.github.com` succeeded 10 of 10)
+push it into `node-gyp rebuild`, which needs a C++ toolchain — so a clean clone fails to install
+at all. The script fetches the same asset through the release **API** and drops it into the
+`prebuild-install` disk cache, so `npm ci` finds it locally. It must run *before* `npm ci`: npm
+executes a dependency's install script before the root package's `preinstall`, so no lifecycle
+hook fires early enough. It is safe to skip on unrestricted networks, and safe to re-run.
 
 **Add a docs harness to a project (optional):**
 
