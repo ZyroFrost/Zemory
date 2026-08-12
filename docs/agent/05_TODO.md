@@ -233,10 +233,14 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
 - [ ] **(⑩) Daemon đang chạy báo `v1.2.0` trong khi `package.json` là 1.3.0** — bản đang chạy là
   build cũ, nên số version trên UI lạc hậu cho tới lần khởi động lại. Không phải bug, nhưng là bẫy
   đọc số: đừng lấy version trên UI làm bằng chứng về mã đang có.
-- [ ] **(⑩ · luật 7) Guard CHẶN NHẦM chính lệnh audit.** Lệnh dò lịch sử git chứa `head` + chuỗi
-  `id_rsa` **trong mẫu tìm kiếm** bị hiểu là "đọc nội dung file khoá". Đúng loại chặn-nhầm mà luật 7
-  sinh ra để bắt. Sửa hẹp: chỉ soi token **giống đường dẫn** (có `/` hoặc `\`, hoặc là đối số cuối),
-  đừng soi mọi token trong chuỗi mẫu regex.
+- ✅ **(⑩ · luật 7) Guard CHẶN NHẦM lệnh audit — ĐÃ SỬA 2026-08-13.** Nay chỉ soi token **trông
+  như tệp đang bị đọc**: có dấu phân cách đường dẫn · đứng ngay sau một lệnh đọc (bỏ qua cờ) ·
+  hoặc là token cuối câu. Ba dấu hiệu đó vẫn chặn đủ `cat /etc/ssh/id_rsa` · `cat id_rsa | grep`
+  · `head id_rsa` · `base64 ~/.ssh/id_rsa` (có cổng riêng cho từng ca, để bản vá không lén nới).
+  **Bằng chứng A/B trên cùng payload:** guard cũ `exit 2` (chặn) — guard mới `exit 0`.
+  *Phiên này dính lại đúng ca đó khi gõ `grep -rln "id_rsa" …| head` để đi SỬA nó.*
+  Đã sinh lại `docs/hooks/guard.cjs` + đồng bộ bản ship cho bộ cowork (cổng byte-parity bắt được
+  ngay khi quên — đúng việc nó sinh ra để làm).
 
 **Mặt ① — ĐANG CHẠY 2026-08-11, và đã ra 3 phát hiện trước cả khi test xong:**
 

@@ -5,6 +5,27 @@
 
 ---
 
+## [2026-08-13d] — (⑩ · luật 7) guard thôi chặn nhầm: tên khoá trong MẪU TÌM KIẾM ≠ đọc khoá
+
+**Bản cũ soi tất:** hễ câu lệnh chứa một lệnh đọc (`cat`/`head`/`tail`…) là **mọi** token đều bị
+đối chiếu với danh sách tên khoá — nên `grep -rln "id_rsa" src/ | head` bị chặn, dù tên khoá nằm
+trong *mẫu tìm kiếm* chứ không phải tệp bị đọc. Đo 2026-08-11: nó chặn đúng lệnh **audit** đi dò
+lịch sử git. Phiên này dính lại y hệt khi gõ lệnh đó để đi SỬA nó.
+
+**Vì sao không phải phiền nhẹ:** luật 7 nói thẳng — gate chặn nhầm thì người ta đi đường vòng, và
+một gate bị đi vòng là gate **không còn tồn tại**.
+
+**Vá (hẹp):** chỉ soi token trông như *tệp đang bị đọc* — ① có dấu phân cách đường dẫn · ② đứng
+ngay sau một lệnh đọc (bỏ qua cờ `-x`) · ③ là token cuối câu.
+
+**Không nới lỏng — có cổng cho cả hai chiều:** ca "phải cho qua" (3 dạng lệnh tìm) và ca "phải
+vẫn chặn" (`cat /etc/ssh/id_rsa` · `cat id_rsa | grep` · `head id_rsa` · `base64 ~/.ssh/id_rsa`).
+Test gọi guard THẬT qua stdin, đo hành vi chứ không đọc regex. **A/B trên cùng payload: guard cũ
+`exit 2`, guard mới `exit 0`.**
+
+Sinh lại `docs/hooks/guard.cjs`; bản ship cho bộ cowork được **cổng byte-parity bắt ngay** khi
+tôi quên đồng bộ — đúng việc nó sinh ra để làm. Cổng: 33/33.
+
 ## [2026-08-13c] — (⑨) BACKUP thôi treo vào công tắc của tính năng khác
 
 **Lưới đỡ cuối cùng của kho từng tắt theo một công tắc không liên quan.** `rotateBackup()` là
