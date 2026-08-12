@@ -42,10 +42,14 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
 - ✅ **(⑩) LOG CỦA SCHEDULER — ĐÃ VÁ** (`scheduler.ts:65` gọi `daemonLog`, ghi
   `data/logs/daemon.log`). *Sổ ghi 🔴 tới 2026-08-13 trong khi mã đã sửa từ hôm trước — đúng dạng
   "sổ nói khác code" mà luật SOÁT SỔ = ĐO LẠI sinh ra để bắt; bắt được vì kiểm mã, không đọc sổ.*
-- [ ] **(⑨) MỘT CÔNG TẮC GÁNH BA VIỆC.** `rotateBackup()` nằm TRONG chuỗi bảo trì (bước 4), nên
-  `scheduler` TẮT là **backup chết theo** — đó là lý do thật của "4 ngày không backup" (08/08 →
-  12/08), không phải job hỏng. Cộng với lỗi bỏ đói (đã vá), trước hôm nay **không có cấu hình
-  nào cho quét + backup + autosync cùng sống**. Cân nhắc tách backup khỏi cửa `getScheduler()`.
+- ✅ **(⑨) MỘT CÔNG TẮC GÁNH BA VIỆC — ĐÃ TÁCH 2026-08-13.** `rotateBackup()` từng là bước 4 của
+  chuỗi bảo trì, mà chuỗi đó `return` ngay khi `getScheduler()` tắt ⇒ **backup chết theo**, im
+  lặng (lý do thật của "4 ngày không backup" 08/08 → 12/08 — job không hỏng, nó không được gọi).
+  Nay `backupTick()` có đồng hồ riêng, **không hỏi bất kỳ công tắc tính năng nào**, lệch pha 1/4
+  chu kỳ, có mồi riêng sau khởi động; vẫn giữ hai ràng buộc cũ (nằm trong token job · fail-open)
+  và không claim lồng khi được gọi từ trong chuỗi. Cổng `scheduler-contract` 9/9 + ca mới
+  *"BACKUP không được treo vào công tắc của tính năng khác"*, đột biến chứng minh đỏ được.
+  ⚠ **Chỉ sống sau khi khởi động lại daemon** — daemon nạp mã lúc bind cổng.
 - [ ] **(⑨) Backup local nằm CÙNG Ổ với kho** (`data/backups/`, 5 bản × ~1,8 GB). Mất ổ D là mất
   cả hai; bù duy nhất là kho chính trên Drive, mà nó **không chở FTS/digest** (dựng lại được,
   vài phút — nên là rủi ro THỜI GIAN, không phải mất dữ liệu). Ghi để đừng tưởng đã có 2 lớp.

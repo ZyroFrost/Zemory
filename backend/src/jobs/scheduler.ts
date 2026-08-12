@@ -47,9 +47,12 @@ const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // backlog was last seen EMPTY, back off to the sync cadence instead of paying
 // that scan every 5 minutes (audit 2026-07-21).
 const IDLE_BACKOFF_MS = 30 * 60_000;
+/** Backup tự kiểm hạn (1 bản/ngày) nên nhịp này chỉ là "có cơ hội để hỏi", rẻ như một readdir. */
+const BACKUP_EVERY_MS = 30 * 60_000;
 
 let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
+let backupTimer: ReturnType<typeof setInterval> | null = null;
 let child: ChildProcess | null = null;
 let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
@@ -161,19 +164,44 @@ async function maintainTick(): Promise<void> {
     //    already summarised), so it can run every chain.
     await runStep("digest", ["memory", "digest", "--all"]);
 
-    // 4. backup — MỘT bản/ngày, giữ 5 bản. Chạy ở ĐÂY chứ không phải một timer riêng vì
-    //    nó phải nằm TRONG token job: chép 1,1 GB trong lúc scan/embed đang ghi là chính
-    //    cái kiểu tranh chấp mà sự cố 2026-08-03 nghi là nguyên nhân. `rotateBackup` tự
-    //    kiểm hạn nên gọi mỗi vòng 30 phút vẫn rẻ (một lần `readdir`).
-    try {
-      const b = await rotateBackup();
-      if (b.wrote) log(`backup → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
-    } catch (e) {
-      log(`backup bỏ qua: ${(e as Error).message}`); // điều 9: hỏng backup KHÔNG được giết chuỗi
-    }
+    // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
+    //    chuỗi này làm backup chết theo công tắc `scheduler`.
+    await backupTick("sau chuỗi bảo trì");
   } finally {
     chainRunning = false;
     releaseDaemonJob();
+  }
+}
+
+/**
+ * 🔴 BACKUP KHÔNG ĐƯỢC TREO VÀO CÔNG TẮC CỦA MỘT TÍNH NĂNG KHÁC.
+ *
+ * Bản cũ đặt `rotateBackup()` làm bước 4 của `maintainTick`, và `maintainTick` return ngay ở
+ * dòng đầu khi `getScheduler()` tắt ⇒ **tắt scheduler là tắt luôn backup**, không một dòng log,
+ * không cổng nào thấy. Đó là lý do THẬT của "4 ngày không có bản sao lưu" (08/08 → 12/08) —
+ * job không hỏng, nó chỉ không bao giờ được gọi. Cùng họ với lỗi bỏ đói autosync: **một công
+ * tắc gánh ba việc**, người bật tưởng mình chỉ đang đổi một thứ.
+ *
+ * Backup là LƯỚI ĐỠ CUỐI CÙNG của kho (nó đã cứu kho thật ngày 04/08), nên nó phải sống độc
+ * lập với mọi tính năng khác. Nhưng vẫn giữ hai ràng buộc cũ, vì cả hai đều có lý do:
+ *  · nằm TRONG token job — chép 1,1 GB trong lúc scan/embed đang ghi đúng là kiểu tranh chấp
+ *    mà sự cố 2026-08-03 nghi là nguyên nhân;
+ *  · fail-open — backup hỏng không được giết thứ đang gọi nó (HP điều 9).
+ * `rotateBackup` tự kiểm hạn (một bản/ngày, giữ 5) nên gọi mỗi 30 phút vẫn rẻ: một `readdir`.
+ */
+async function backupTick(why: string): Promise<void> {
+  const holdsToken = chainRunning; // gọi từ trong chuỗi ⇒ token đã ở trong tay
+  if (!holdsToken) {
+    if (child || syncJobRunning() || cliHoldsWrite()) return; // kẻ khác đang ghi — nhịp sau
+    if (!claimDaemonJob("backup")) return;
+  }
+  try {
+    const b = await rotateBackup();
+    if (b.wrote) log(`backup (${why}) → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
+  } catch (e) {
+    log(`backup bỏ qua: ${(e as Error).message}`); // điều 9: hỏng backup KHÔNG được giết ai
+  } finally {
+    if (!holdsToken) releaseDaemonJob();
   }
 }
 
@@ -214,27 +242,37 @@ function syncTick(): void {
 
 /** Start the background loops. Idempotent — a second call is a no-op. */
 export function startScheduler(): void {
-  if (maintainTimer || syncTimer) return;
+  if (maintainTimer || syncTimer || backupTimer) return;
   maintainTimer = setInterval(() => void maintainTick(), MAINTAIN_EVERY_MS);
+  // Backup có ĐỒNG HỒ RIÊNG, KHÔNG hỏi `getScheduler()` — xem chú thích ở `backupTick()`.
+  // Lệch pha 1/4 chu kỳ để không tới hạn cùng lúc với hai đồng hồ kia (cùng bài học bỏ đói).
+  backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
   // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
   // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
   // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.
   syncTimer = setInterval(syncTick, SYNC_EVERY_MS);
   const stagger = setTimeout(syncTick, SYNC_EVERY_MS / 2);
   stagger.unref?.();
+  const backupStagger = setTimeout(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS / 4);
+  backupStagger.unref?.();
   // The HTTP server keeps the process alive; don't let these timers do it.
   maintainTimer.unref?.();
   syncTimer.unref?.();
+  backupTimer.unref?.();
   // Kick the chain shortly after boot, then on the interval.
   setTimeout(() => void maintainTick(), 15_000).unref?.();
-  log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"})`);
+  // Backup được mồi RIÊNG — chuỗi trên có thể không bao giờ chạy (scheduler tắt), mà một máy
+  // vừa khởi động lại sau nhiều ngày thì đó đúng là lúc cần hỏi "bản gần nhất cũ chưa?".
+  setTimeout(() => void backupTick("mồi sau khởi động"), 60_000).unref?.();
+  log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"}, backup luôn bật)`);
 }
 
 /** Stop the loops and any running child (tests / shutdown). */
 export function stopScheduler(): void {
   if (maintainTimer) clearInterval(maintainTimer);
   if (syncTimer) clearInterval(syncTimer);
-  maintainTimer = syncTimer = null;
+  if (backupTimer) clearInterval(backupTimer);
+  maintainTimer = syncTimer = backupTimer = null;
   chainRunning = false;
   if (child) {
     try {

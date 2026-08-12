@@ -5,6 +5,26 @@
 
 ---
 
+## [2026-08-13c] — (⑨) BACKUP thôi treo vào công tắc của tính năng khác
+
+**Lưới đỡ cuối cùng của kho từng tắt theo một công tắc không liên quan.** `rotateBackup()` là
+bước 4 của `maintainTick`, mà hàm đó `return` ngay dòng đầu khi `getScheduler()` tắt ⇒ **tắt
+scheduler là tắt luôn backup**, không một dòng log. Đó là lý do THẬT của "4 ngày không có bản sao
+lưu" (08/08 → 12/08): job không hỏng, nó **không bao giờ được gọi**. Cùng họ với lỗi bỏ đói
+autosync — một công tắc gánh ba việc, người bật tưởng chỉ đổi một thứ.
+
+**Vá:** `backupTick()` có đồng hồ riêng, **không hỏi công tắc tính năng nào**, lệch pha 1/4 chu
+kỳ, mồi riêng 60 s sau khởi động (máy vừa bật lại sau nhiều ngày đúng là lúc cần hỏi "bản gần
+nhất cũ chưa?"). Giữ nguyên hai ràng buộc cũ vì cả hai đều có lý do: **nằm trong token job**
+(chép 1,1 GB trong lúc scan/embed đang ghi là kiểu tranh chấp nghi gây sự cố 03/08) và
+**fail-open** (HP điều 9). Gọi từ trong chuỗi thì không claim lồng (`holdsToken`).
+
+**Cổng:** `scheduler-contract` 9/9. Ca mới *"BACKUP không được treo vào công tắc của tính năng
+khác"* — đột biến (cho `backupTick` hỏi `getScheduler()`) chứng minh đỏ được. Neo cũ *"claim
+ĐÚNG MỘT lần"* **nắn PHẠM VI đo** (cả file → thân `maintainTick`) chứ không nới bất biến.
+
+⚠ Chỉ sống sau khi **khởi động lại daemon** — daemon nạp mã lúc bind cổng.
+
 ## [2026-08-13b] — (⑥) `/memory-status`: một phép quét không được che, đứng lẫn giữa những phép đã che
 
 **Truy ra chỗ tốn.** Bốn phép quét toàn bảng gánh gần hết: `SUM(LENGTH(content))` **1.615 ms** ·
