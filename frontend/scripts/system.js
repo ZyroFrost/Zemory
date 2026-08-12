@@ -22,10 +22,10 @@
     if(f.kind==='toggle')return {on:f.get(m)?'on':'dim',txt:f.get(m)?t('sys.on'):t('sys.off')};
     if(f.kind==='auto')return {on:a[f.auto]?'on':'dim',txt:a[f.auto]?t('sys.on'):t('sys.off')};
     if(f.kind==='check'){var c=(Z.checks||{})[f.feat];return c?{on:c.state,txt:pillTxt(c.state)}:{on:'dim',txt:'…'};}
-    if(f.k==='vector')return {on:vec.remaining===0?'on':(vec.remaining>0?'warn':'dim'),txt:vec.remaining===0?('đủ '+zN(vec.count)):(zN(vec.remaining)+' chờ')};
-    if(f.k==='digest'){var d=((m.info&&m.info.tables)||[]).find(function(x){return x.name==='session_digest';});return {on:d&&d.rows>0?'on':'dim',txt:d&&d.rows>0?(zN(d.rows)+' phiên'):'chưa build'};}
-    if(f.k==='graph')return {on:'on',txt:'sẵn sàng'};
-    if(f.k==='drive')return {on:drive.linked?'on':'dim',txt:drive.linked?'đã link':'chưa link'};
+    if(f.k==='vector')return {on:vec.remaining===0?'on':(vec.remaining>0?'warn':'dim'),txt:vec.remaining===0?(t('st.enough')+zN(vec.count)):(zN(vec.remaining)+t('st.pending'))};
+    if(f.k==='digest'){var d=((m.info&&m.info.tables)||[]).find(function(x){return x.name==='session_digest';});return {on:d&&d.rows>0?'on':'dim',txt:d&&d.rows>0?(zN(d.rows)+t('st.sessions')):t('st.notBuilt')};}
+    if(f.k==='graph')return {on:'on',txt:t('st.ready')};
+    if(f.k==='drive')return {on:drive.linked?'on':'dim',txt:drive.linked?t('st.linked'):t('st.notLinked')};
     if(f.k==='storage')return {on:st&&st.onCloud?'warn':'on',txt:st&&st.onCloud?'⚠ cloud':'local'};
     if(f.k==='harness'){var docs=s.docs||[],n=docs.filter(function(x){return x.ok;}).length;return {on:docs.length&&n===docs.length?'on':'warn',txt:n+'/'+(docs.length||0)};}
     return {on:'dim',txt:'—'};
