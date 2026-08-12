@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-13e] — i18n: từ danh sách triệu chứng thành SỐ ĐO + cổng không-lùi
+
+**Trước:** mục sổ chỉ liệt kê vài chuỗi thấy được khi chụp ảnh UI tiếng Anh. **Nay có số:**
+**90 chuỗi** tiếng Việt hardcode trong `frontend/scripts/` (ngoài `chrome.js` — nơi giữ hai
+dict): `shell.js` 45 · `system.js` 11 · `graph-panel.js` 10 · `sources.js` 10 · `graph-render.js`
+6 · `harness.js` 5 · `gm.js` 2 · `recall.js` 1.
+
+**Đã sửa phần lộ rõ nhất** (trang chủ): `relTime()` — ô Last Sync `chưa sync`, `7 giờ trước` —
+và 4 pill trạng thái. Thêm 6 key vào **cả hai** dict. Các key kia vốn đã có sẵn ở cả hai bản;
+code chỉ đơn giản **quên gọi `t()`**.
+
+**Cổng `i18n-ratchet.test.mjs` 3/3** (cả ba đột biến đỏ được): ① số hardcode không được tăng ·
+② gỡ được thì phải HẠ trần — trần treo cao hơn thực tế thì chỗ vừa dọn lặng lẽ quay lại được ·
+③ mọi key phải có ở CẢ HAI dict: `t()` fallback về vi nên **thiếu bản EN không báo lỗi**, nó chỉ
+hiện tiếng Việt giữa giao diện tiếng Anh — hỏng câm.
+
+**Vì sao trần là 90 chứ không phải 0:** gate đỏ triền miên là gate bị bỏ qua — đúng luật 7 vừa
+phải sửa cho `guard` ở entry trên. Trần chốt bằng số đo thật: thoái lui đỏ ngay, dọn dần thì
+luôn xanh, và vế ② ép hạ trần nên con số thật sự đi về 0.
+
+**Chưa làm — tầng BACKEND nặng hơn:** `connections.ts` sinh thẳng chuỗi tiếng Việt rồi gửi lên
+UI, nên UI không có cách nào dịch. Sửa đúng là trả mã + tham số, đổi hình dạng payload.
+
 ## [2026-08-13d] — (⑩ · luật 7) guard thôi chặn nhầm: tên khoá trong MẪU TÌM KIẾM ≠ đọc khoá
 
 **Bản cũ soi tất:** hễ câu lệnh chứa một lệnh đọc (`cat`/`head`/`tail`…) là **mọi** token đều bị

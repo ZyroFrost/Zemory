@@ -213,13 +213,24 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
 - [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
-- [ ] **i18n HỤT: bật `lang=en` mà nhiều chuỗi vẫn ra tiếng Việt** (đo 2026-08-12 khi chụp ảnh
-  README bằng UI tiếng Anh). Nav/panel/nút đã dịch, nhưng còn lọt ít nhất: ô **Last Sync** hiện
-  `chưa sync` · thời gian tương đối `7 giờ trước` · `39 phút trước` · `✓ đã link · 9 bundle` ·
-  dòng trạng thái Drive `Đã đồng bộ đủ lên Drive` · `kiểm lần cuối 41 giờ trước` · `NOT linked ·
-  store đã biết nhưng không còn trên đĩa`. Trái luật `02_RULES §Ngôn ngữ` (*"0 chuỗi hardcode,
-  mọi chuỗi người-dùng-thấy đi qua i18n, có cả 2 bản"*). **Cách bắt lại rẻ:** chụp UI ở `lang=en`
-  rồi soi ảnh — chính lượt chụp này bắt được, không cần dựng cổng riêng.
+- [~] **i18n HỤT — ĐO ĐƯỢC + có cổng KHÔNG-LÙI 2026-08-13.** Trước chỉ có danh sách triệu chứng;
+  nay có số: **90 chuỗi tiếng Việt hardcode** trong `frontend/scripts/` (ngoài `chrome.js` — nơi
+  giữ hai dict): `shell.js` 45 · `system.js` 11 · `graph-panel.js` 10 · `sources.js` 10 ·
+  `graph-render.js` 6 · `harness.js` 5 · `gm.js` 2 · `recall.js` 1.
+  **Đã sửa** phần lộ rõ nhất ở trang chủ: `relTime()` (ô Last Sync: `chưa sync` · `7 giờ trước`)
+  và 4 pill trạng thái hệ thống (`đủ`/`chờ`/`phiên`/`chưa build`/`sẵn sàng`/`đã link`/`chưa
+  link`) — thêm 6 key vào **cả hai** dict.
+  **Cổng `i18n-ratchet.test.mjs` (3/3, cả ba đột biến đỏ được):** ① số hardcode không được tăng
+  ② gỡ được thì phải HẠ trần (trần treo cao hơn thực tế thì chỗ vừa dọn lặng lẽ quay lại được)
+  ③ mọi key phải có ở CẢ HAI dict — `t()` fallback về vi nên thiếu bản EN **không báo lỗi**, nó
+  chỉ lặng lẽ hiện tiếng Việt giữa giao diện tiếng Anh.
+  *Vì sao không đặt trần 0 ngay: gate đỏ triền miên là gate bị bỏ qua — đúng luật 7 vừa phải
+  sửa cho `guard`.* **CÒN LẠI 90 chuỗi**, gỡ dần rồi hạ trần.
+- [ ] **i18n tầng BACKEND — nặng hơn, chưa làm.** `memory/connections.ts` **sinh thẳng chuỗi
+  tiếng Việt** rồi gửi lên UI (`${m} phút trước` · `kiểm lần cuối …` · `chưa kiểm lần nào` ·
+  `store đã biết nhưng không còn trên đĩa` · `không có store trên máy này`). UI **không có cách
+  nào dịch** vì nhận về câu đã ghép. Sửa đúng = trả mã + tham số (`{code, args}`) để UI ghép —
+  đổi hình dạng payload, cần cổng riêng cho cả hai đầu.
 - [ ] **(⑦) `.git/objects/pack` có 10 file `.idx` KHÔNG có `.pack` tương ứng.** Dấu hiệu một lần
   `gc`/`filter-branch` bị ngắt giữa chừng (khớp đợt `filter-branch` gỡ model weight 05/08). Không
   mất dữ liệu — `git count-objects` vẫn đọc được 5.138 object — nhưng là rác và làm mọi lệnh đếm
