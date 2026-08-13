@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-13j] — ô "Last Sync" NÓI DỐI: TEXT ISO bị đọc như số epoch, catch nuốt lỗi
+
+**User báo:** card cứ hiện *"never synced"* dù vừa sync xong. Đo lại thấy mâu thuẫn **ngay trong
+cùng một payload**: `lastSync: null` trong khi `drive.lastPushAt` là **một phút trước** và
+`syncPercent 100 · 241.011/241.011 · pending 0`.
+
+**Nguyên nhân:** `sync_state.updated_at` là **TEXT chứa chuỗi ISO**, code đọc như **số epoch** —
+`Number("2026-08-13T06:59:26.646Z")` = NaN ⇒ `new Date(NaN).toISOString()` **ném RangeError** ⇒
+`catch` nuốt ⇒ `null`. Dữ liệu trong DB vẫn đúng suốt; chỉ ô hiển thị nói dối.
+
+**Hai thứ khiến nó sống lâu, đáng nhớ hơn bản thân lỗi:** ① lệch kiểu chỉ lộ khi mở schema ra
+xem — đọc code không thấy gì sai · ② `catch` vốn dựng cho ca *"bảng chưa tồn tại"* đã âm thầm
+nuốt luôn một **lỗi kiểu**. Một catch không phân biệt được *"không có gì để báo"* với *"tôi vừa
+vỡ"* thì biến bug thành **lời nói dối** — người dùng thấy một con số sai chứ không thấy lỗi.
+Cùng họ với `02_RULES §Bề mặt CHẾT THEO nền`: vỏ rỗng không báo lỗi, nó nói dối.
+
+**Vá:** tách `parseSyncTimestamp()` — nhận ISO **và** epoch (kho bản cũ không vỡ), rác thì trả
+null chứ không ném (`/memory-status` gói mọi số trang chủ: một ô ném là mất TOÀN BỘ payload).
+A/B trên dữ liệu thật: cũ `THROW RangeError` → mới `2026-08-13T06:59:26.646Z`.
+
+**Cổng `last-sync.test.mjs` 4/4**, soi HÀNH VI chứ không soi chữ trong mã; đột biến (trả về công
+thức cũ) làm **2 ca đỏ**.
+
+⚠ **Chỉ sống sau khi khởi động lại daemon** — daemon đang chạy là pid 5468 từ 12/08 19:55, báo
+`v1.4.1` trong khi `package.json` đã 1.5.8. Mở cửa sổ UI KHÔNG nạp lại mã: cửa sổ chỉ gắn vào
+daemon có sẵn.
+
 ## [2026-08-13i] — (⑦) ĐÃ DỌN: pack 234,91 → 22,52 MiB, giữ nguyên mốc lịch sử
 
 **Cách làm — giữ LOG, bỏ BLOB** (user hỏi thẳng: xoá hay để làm log). Thứ đáng giữ là *"ngày

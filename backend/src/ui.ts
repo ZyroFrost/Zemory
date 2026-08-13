@@ -409,15 +409,37 @@ async function scanWebPlatforms(only?: string[], account?: string): Promise<WebS
   return out;
 }
 
-/** Latest sync timestamp (max sync_state.updated_at) — Home "Last Sync". null if
- *  nothing synced yet or the table predates schema v13 (fail-open). */
+/**
+ * Latest sync timestamp (max sync_state.updated_at) — Home "Last Sync". null if nothing has
+ * synced yet or the table predates schema v13 (fail-open).
+ *
+ * 🔴 `updated_at` is TEXT holding an ISO string, NOT an epoch number. The old code read it as
+ * `new Date(Number(r.t))` → `Number("2026-08-13T06:59:26.646Z")` is NaN → `.toISOString()` throws
+ * → the catch swallowed it → null → the card read "never synced" while the very same payload
+ * carried `drive.lastPushAt` from a minute earlier (measured 2026-08-13, reported by the user).
+ *
+ * Two things made it survive: the mismatch is invisible without looking at the schema, and the
+ * fail-open catch — meant for "table doesn't exist yet" — quietly absorbed a plain type bug too.
+ * A catch that cannot tell "nothing to report" from "I just crashed" turns a bug into a lie.
+ *
+ * MAX() over ISO-8601 text is still correct ordering (lexical = chronological). Numbers are
+ * accepted too so a store written by an older build keeps working.
+ */
+export function parseSyncTimestamp(raw: string | number | null | undefined): string | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const d = typeof raw === "number" || /^\d+$/.test(String(raw)) ? new Date(Number(raw)) : new Date(String(raw));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function lastSyncAt(): string | null {
   const db = openMemory();
   try {
-    const r = db.prepare("SELECT MAX(updated_at) AS t FROM sync_state").get() as { t?: number } | undefined;
-    return r?.t ? new Date(Number(r.t)).toISOString() : null;
+    const r = db.prepare("SELECT MAX(updated_at) AS t FROM sync_state").get() as
+      | { t?: string | number | null }
+      | undefined;
+    return parseSyncTimestamp(r?.t);
   } catch {
-    return null;
+    return null; // table missing on an old store — genuinely "nothing to report"
   } finally {
     db.close();
   }
