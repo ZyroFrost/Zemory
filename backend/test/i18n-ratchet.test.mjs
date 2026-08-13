@@ -29,12 +29,14 @@ const DICT_FILE = "chrome.js";
 const BUDGET = {
   "shell.js": 45,
   "system.js": 0,
-  "graph-panel.js": 10,
-  "sources.js": 9,
-  "graph-render.js": 6,
-  "harness.js": 3,
+  "graph-panel.js": 0,
+  "sources.js": 0,
+  // 1 chuỗi còn lại là KHOÁ dữ liệu do backend sinh (`ui.ts`: `type: n.slot ?? "(ngoài chuẩn)"`),
+  // KHÔNG phải nhãn — nhãn đã đi qua `gSlotLabel()`. Dịch khoá là làm lệch trạng thái lọc slot.
+  "graph-render.js": 1,
+  "harness.js": 0,
   "gm.js": 0,
-  "recall.js": 1,
+  "recall.js": 0,
 };
 
 const VIETNAMESE =

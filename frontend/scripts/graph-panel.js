@@ -16,19 +16,19 @@
   function gTreeNodeHtml(n){
     if(n.isFile)return '<div class="tnode"><div class="trow file" data-path="'+stdEsc(n.path)+'" data-file="1" title="'+stdEsc(n.path)+'"><span class="ttw leaf">▾</span><span class="tfi">📄</span><span class="tname">'+stdEsc(n.name)+'</span></div></div>';
     var kids=n.children&&n.children.length,coll=!!gCollapsed[n.path];
-    var role=n.role?'<span class="trole">'+stdEsc(n.role)+'</span>':(n.known?'':'<span class="trole">ngoài chuẩn</span>');
+    var role=n.role?'<span class="trole">'+stdEsc(n.role)+'</span>':(n.known?'':'<span class="trole">'+t('gp.offStdTag')+'</span>');
     var tw=kids?'<span class="ttw'+(coll?' collapsed':'')+'" data-tw="'+stdEsc(n.path)+'">▾</span>':'<span class="ttw leaf">▾</span>';
     var h='<div class="tnode'+(coll?' collapsed':'')+'"><div class="trow'+(n.known?'':' unknown')+'" data-path="'+stdEsc(n.path)+'" title="'+stdEsc(n.path)+'">'+tw+'<span class="tname">'+stdEsc(n.name)+'/</span>'+role+'</div>';
     if(kids)h+='<div class="tchildren">'+n.children.map(gTreeNodeHtml).join('')+'</div>';
     return h+'</div>';}
   function gPaintTree(data){var box=zid('pgTree');if(!box)return;var tree=(data&&data.tree)||[];
-    if(!tree.length){box.innerHTML='<div class="muted" style="font-size:11.5px">Không có thư mục.</div>';return;}
+    if(!tree.length){box.innerHTML='<div class="muted" style="font-size:11.5px">'+t('gp.noDirs')+'</div>';return;}
     var used=(data.usedSlots||[]).length,unk=(data.unknownDirs||[]).length;
-    box.innerHTML='<div class="tree-bar"><button class="btn sm" data-tact="collapse" title="Thu gọn hết">⊟</button><button class="btn sm" data-tact="expand" title="Mở hết">⊞</button></div>'+tree.map(gTreeNodeHtml).join('')+'<div class="tree-legend">'+used+' slot chuẩn'+(unk?' · '+unk+' ngoài chuẩn':'')+'</div>';}
+    box.innerHTML='<div class="tree-bar"><button class="btn sm" data-tact="collapse" title="'+t('gp.collapseAll')+'">⊟</button><button class="btn sm" data-tact="expand" title="'+t('gp.expandAll')+'">⊞</button></div>'+tree.map(gTreeNodeHtml).join('')+'<div class="tree-legend">'+used+t('gp.stdSlots')+(unk?' · '+unk+t('gp.offStd'):'')+'</div>';}
   function gSetAllColl(on){var d=gTreeCache;if(!d)return;gCollapsed={};if(on){(function walk(ns){ns.forEach(function(n){if(n.children&&n.children.length){gCollapsed[n.path]=true;walk(n.children);}});})(d.tree||[]);}gSaveColl();gPaintTree(d);}
   function gLoadTree(root){var box=zid('pgTree');if(!box)return;gTreeRoot=root;gCollapsed=gLoadColl(root);
-    box.innerHTML='<div class="muted" style="font-size:11.5px">Đang đọc cây thư mục…</div>';
-    zGet('/folder-tree?root='+encodeURIComponent(root)).then(function(d){gTreeCache=d;gPaintTree(d);}).catch(function(){box.innerHTML='<div class="muted" style="font-size:11.5px">Lỗi đọc cây.</div>';});}
+    box.innerHTML='<div class="muted" style="font-size:11.5px">'+t('gp.readingTree')+'</div>';
+    zGet('/folder-tree?root='+encodeURIComponent(root)).then(function(d){gTreeCache=d;gPaintTree(d);}).catch(function(){box.innerHTML='<div class="muted" style="font-size:11.5px">'+t('gp.treeErr')+'</div>';});}
   // ---- tree interactions (collapse · click folder → dim non-members · click file → select its graph node · click empty area → deselect) ----
   document.addEventListener('click',function(ev){if(!ev.target.closest)return;
     var tree=ev.target.closest('#pgTree');if(!tree)return;
@@ -75,10 +75,10 @@
     if(e.target.id==='gPanelPos'){gPanelPos=(gPanelPos==='top')?'right':'top';try{localStorage.setItem('zemory.g.pos',gPanelPos);}catch(x){}gApplyLayout();return;}
   });
   function loadProjGraph(root,force){var box=zid('gcanvas');if(!box)return;
-    if(!root){box.innerHTML='<div class="muted" style="padding:20px">Chọn 1 project để dựng graph.</div>';var pt0=zid('pgTree');if(pt0)pt0.innerHTML='';return;}
+    if(!root){box.innerHTML='<div class="muted" style="padding:20px">'+t('gp.pickProject')+'</div>';var pt0=zid('pgTree');if(pt0)pt0.innerHTML='';return;}
     try{var sv=localStorage.getItem('zemory.pglayout');if(sv&&zid('gLayout'))zid('gLayout').value=sv;}catch(_){}
     try{var ss=localStorage.getItem('zemory.pgspacing');if(ss&&zid('gSpacing')){zid('gSpacing').value=ss;var lv=zid('gSpacingVal');if(lv)lv.textContent=parseFloat(ss).toFixed(1)+'×';}}catch(_){}
     if(!force&&gLoadedRoot===root&&gData){paintProjGraph(gData);gPaintTree(gTreeCache);return;}
-    box.innerHTML='<div class="muted" style="padding:20px">Đang dựng graph từ code thật…</div>';
+    box.innerHTML='<div class="muted" style="padding:20px">'+t('gp.building')+'</div>';
     gLoadTree(root);gLoadTrend(root);
-    zGet('/code-graph?root='+encodeURIComponent(root)).then(function(d){gLoadedRoot=root;paintProjGraph(d);}).catch(function(){box.innerHTML='<div class="muted" style="padding:20px">Lỗi dựng graph.</div>';});}
+    zGet('/code-graph?root='+encodeURIComponent(root)).then(function(d){gLoadedRoot=root;paintProjGraph(d);}).catch(function(){box.innerHTML='<div class="muted" style="padding:20px">'+t('gp.buildErr')+'</div>';});}
