@@ -53,6 +53,28 @@ function bakDir(ctx: Context): string {
   return join(ctx.projectRoot, "attic", "harness-bak");
 }
 
+/**
+ * Archiving moves text one directory DEEPER (`docs/agent/` → `docs/agent/archive/`), so every
+ * relative link inside it must gain one `../` or it stops resolving.
+ *
+ * Measured 2026-08-13: **26 of 26** internal links in `docs/agent/archive/06_CHANGES.md` were
+ * broken — every single one. They were written as `../../backend/src/…` (correct from
+ * `docs/agent/`) and moved verbatim, so they now point into `docs/backend/…`, which does not
+ * exist. A changelog entry links to code precisely so a later reader can go check the claim;
+ * a link that silently resolves to nothing turns that into a dead end, and nothing ever
+ * complains — the file still renders, the link is still blue.
+ *
+ * Left alone: absolute paths, anchors, external URLs, and template placeholders (`<…>`/`{…}`).
+ */
+export function deepenRelativeLinks(markdown: string): string {
+  return markdown.replace(/\]\(([^)\s]+)\)/g, (whole, target: string) => {
+    if (/^(https?:|mailto:|#|\/)/.test(target)) return whole;
+    if (target.includes("<") || target.includes("{")) return whole;
+    const deeper = target.startsWith("./") ? "../" + target.slice(2) : "../" + target;
+    return `](${deeper})`;
+  });
+}
+
 const TODO_INTRO =
   "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
 
@@ -129,7 +151,8 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   const drop = new Set<number>();
   for (const b of closed) for (let i = b.start; i < b.end; i++) drop.add(i);
   const keptText = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
-  const movedText = closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "") + "\n";
+  const movedText =
+    deepenRelativeLinks(closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "")) + "\n";
 
   const archivePath = join(harnessPaths(ctx).archive, "05_TODO.md");
   mkdirSync(dirname(archivePath), { recursive: true });
@@ -188,7 +211,7 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
   }
   const splitLine = heads[k];
   const keptText = lines.slice(0, splitLine).join(eol).replace(/\s+$/, "") + eol;
-  const movedText = lines.slice(splitLine).join(eol).replace(/\s+$/, "") + "\n";
+  const movedText = deepenRelativeLinks(lines.slice(splitLine).join(eol).replace(/\s+$/, "")) + "\n";
   const moved = heads.length - k;
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.

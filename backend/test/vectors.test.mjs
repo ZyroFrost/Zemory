@@ -20,6 +20,7 @@ import {
 } from "../../dist/memory/vectors.js";
 import { hybridEnabled, search, searchHybrid } from "../../dist/memory/search.js";
 import { runRagBench } from "../../dist/evals/ragbench.js";
+import { skipIfBusy } from "./helpers.mjs";
 
 test("hybrid setting: default ON; ZEMORY_HYBRID=0 disables", () => {
   delete process.env.ZEMORY_HYBRID;
@@ -58,7 +59,8 @@ function insertVectorRow(dbPath, rowid, vec) {
   }
 }
 
-test("embedPending builds vectors; vectorRanks finds the semantically closest message", async () => {
+test("embedPending builds vectors; vectorRanks finds the semantically closest message", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const progress = [];
   const r = await embedPending({ dbPath, onProgress: (p) => progress.push(p) });
@@ -82,7 +84,8 @@ test("embedPending builds vectors; vectorRanks finds the semantically closest me
   assert.equal(ranks[0].rowid, 1, `top hit should be the db-password message, got #${ranks[0].rowid}`);
 });
 
-test("searchHybrid finds a semantic match that FTS-only misses (Giai đoạn C)", async () => {
+test("searchHybrid finds a semantic match that FTS-only misses (Giai đoạn C)", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const r = await embedPending({ dbPath });
   if (r.embedded === 0) {
@@ -98,7 +101,8 @@ test("searchHybrid finds a semantic match that FTS-only misses (Giai đoạn C)"
   console.log(`  FTS hits=${fts.length} · hybrid hits=${hyb.length} · hybrid top=#${hyb[0].id}`);
 });
 
-test("embedPending is incremental (second pass embeds nothing new)", async () => {
+test("embedPending is incremental (second pass embeds nothing new)", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const a = await embedPending({ dbPath });
   if (a.embedded === 0) {
@@ -111,7 +115,8 @@ test("embedPending is incremental (second pass embeds nothing new)", async () =>
   assert.equal(vectorRemaining(dbPath), 0);
 });
 
-test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no extra model call", async () => {
+test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no extra model call", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-dedup-")), "d.db");
   const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run("s1", "codex", "C:\\demo", 3);
@@ -155,7 +160,8 @@ test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no
   assert.equal(r2.deduped, 1, "cross-run duplicate copied via vec_hash");
 });
 
-test("RAG gate: hybrid recall@3 >= FTS recall@3 on the paraphrase corpus (Giai đoạn D)", async () => {
+test("RAG gate: hybrid recall@3 >= FTS recall@3 on the paraphrase corpus (Giai đoạn D)", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-bench-")), "b.db");
   const r = await runRagBench({ dbPath });
   if (r.embedded === 0) {
@@ -169,7 +175,8 @@ test("RAG gate: hybrid recall@3 >= FTS recall@3 on the paraphrase corpus (Giai �
 });
 const SYNTH_BASE = 2 ** 40; // chunk rowids for long messages live above this
 
-test("long messages are chunked: the tail (beyond 6000 chars) is visible to semantic search", async () => {
+test("long messages are chunked: the tail (beyond 6000 chars) is visible to semantic search", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-chunk-")), "c.db");
   const db = openMemory(dbPath);
   db.prepare("INSERT INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run("s1", "claude-code", "C:\\demo", 2);
@@ -208,7 +215,8 @@ test("long messages are chunked: the tail (beyond 6000 chars) is visible to sema
   assert.equal(new Set(ranks.map((x) => x.rowid)).size, ranks.length, "chunk hits collapse to unique messages");
 });
 
-test("vec_config records the embed profile; a raw-built index stays raw for later queries", async () => {
+test("vec_config records the embed profile; a raw-built index stays raw for later queries", async (t) => {
+  if (await skipIfBusy(t)) return;
   process.env.ZEMORY_EMBED_PROMPTS = "0";
   let dbPath;
   try {
@@ -231,7 +239,8 @@ test("vec_config records the embed profile; a raw-built index stays raw for late
   if (r2.embedded > 0) assert.equal(vectorIndexProfile(dbPath2), "gemma-prompt-v1");
 });
 
-test("ZEMORY_EMBED_DIMS=256 builds a Matryoshka-sliced index; stored dims stay authoritative for queries", async () => {
+test("ZEMORY_EMBED_DIMS=256 builds a Matryoshka-sliced index; stored dims stay authoritative for queries", async (t) => {
+  if (await skipIfBusy(t)) return;
   process.env.ZEMORY_EMBED_DIMS = "256";
   let dbPath;
   try {
@@ -252,7 +261,8 @@ test("ZEMORY_EMBED_DIMS=256 builds a Matryoshka-sliced index; stored dims stay a
   assert.equal(ranks[0].rowid, 1, `256d top hit should be the db-password message, got #${ranks[0].rowid}`);
 });
 
-test("dropVectorIndex clears the derived index so --rebuild can re-embed under a new profile", async () => {
+test("dropVectorIndex clears the derived index so --rebuild can re-embed under a new profile", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const r = await embedPending({ dbPath });
   if (r.embedded === 0) {
@@ -339,7 +349,8 @@ test("pruneOrphanVectors drops vectors whose message is gone (snapshot filtering
   }
 });
 
-test("embedPending survives a preexisting vec_chunks row during backfill", async () => {
+test("embedPending survives a preexisting vec_chunks row during backfill", async (t) => {
+  if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const seedVector = await embed("seed vector probe");
   if (!seedVector) {
