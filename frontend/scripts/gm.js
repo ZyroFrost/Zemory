@@ -14,7 +14,7 @@
     // KHÔNG lặp lại Messages/Sessions/Vector-coverage/Storage — Trang chủ đã sở hữu 6 ô
     // at-a-glance đó (user 2026-07-26: "nhiều card quá dư"). Ở đây chỉ những số Trang chủ
     // KHÔNG có; riêng "Chờ embed" giữ vì nó là việc-cần-làm, khác con số coverage.
-    var tiles=[['⏳','Chờ embed',zN(vec.remaining||0),'hint.pending',vec.remaining?t('gm.pendingHint'):t('gm.pendingNone')],
+    var tiles=[['⏳',t('st.waitEmbed'),zN(vec.remaining||0),'hint.pending',vec.remaining?t('gm.pendingHint'):t('gm.pendingNone')],
       ['⬢','Vector dims',stdEsc(vec.dims||'—'),'hint.dims',''],
       ['📝','Digest',zN(digN),'hint.digest',sessN?(digN>=sessN?t('gm.digestFull'):t('gm.digestLeft').replace('{n}',zN(sessN-digN))):''],
       ['≈','Tokens (~)','~'+zN(m.tokensEst),'hint.tok',t('st.estimate')],
@@ -84,7 +84,7 @@
     // Doc/Known stores/Tokens) sống ở Global Memory › Tổng quan — trước đây màn Nạp&Đồng bộ
     // có thêm 10 stat card lặp lại y hệt, đã gỡ.
     zset('stMsg',zN(tot.messages));zset('stSess',zN(tot.sessions));
-    zset('stVec',vec.coverage==null?'—':vec.coverage+'%');zset('stVecSub',zN(vec.count)+' vec'+(vec.remaining?' · '+zN(vec.remaining)+' chờ':''));
+    zset('stVec',vec.coverage==null?'—':vec.coverage+'%');zset('stVecSub',zN(vec.count)+' vec'+(vec.remaining?' · '+zN(vec.remaining)+t('st.pending'):''));
     zset('stStore',zBytes(m.sizeKB));
     var ls=relTime(m.lastSync);zset('stSync',ls.big);zset('stSyncSub',ls.sub);
     if(zid('mScope'))zid('mScope').innerHTML=renderScope(m.scopeTree||[]);

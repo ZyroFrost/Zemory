@@ -24,14 +24,16 @@ const DIR = new URL("../../frontend/scripts/", import.meta.url).pathname.replace
 const DICT_FILE = "chrome.js";
 
 // Ngưỡng đo 2026-08-13. HẠ xuống mỗi khi gỡ được chuỗi; KHÔNG được nâng lên.
+// `system.js` 11 → 0 cùng ngày: 10 chuỗi vốn đã có key sẵn trong dict (code chỉ quên gọi `t()`),
+// chuỗi cuối thêm key mới `sys.goto`. Đây là loại dọn RẺ — không phải dịch gì.
 const BUDGET = {
   "shell.js": 45,
-  "system.js": 11,
+  "system.js": 0,
   "graph-panel.js": 10,
-  "sources.js": 10,
+  "sources.js": 9,
   "graph-render.js": 6,
-  "harness.js": 5,
-  "gm.js": 2,
+  "harness.js": 3,
+  "gm.js": 0,
   "recall.js": 1,
 };
 
