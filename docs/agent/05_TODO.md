@@ -8,6 +8,13 @@
 > ⚠ **Luật mới, áp ngay từ dòng đầu phiên:** `02_RULES §Hành xử` — **HIỆN SUY NGHĨ TỪNG BƯỚC,
 > CẤM CHẠY IM LẶNG**. Nói trước mỗi cụm hành động; số lệch dự đoán thì báo NGAY, không dồn cuối.
 
+> ⚠ **BẪY ĐO ĐÃ DẪM LẠI 2026-08-13 — đọc trước khi chạy gate.** Bộ đầy đủ cho **654 pass / 7 fail**,
+> cả 7 đều ở `vectors.test.mjs`. Chạy lại đúng file đó lúc máy rảnh: **13/13 XANH** (RAG gate FTS
+> 75% · hybrid 88%). Nguyên nhân: test embed nạp model ONNX thật, mà lúc chạy thì daemon đang
+> merge gói sync **1,36 GB** ⇒ tranh CPU/I-O. **Đỏ do điều kiện đo, không phải bug.** Sổ đã ghi
+> bài này từ trước ("tắt daemon trước khi chạy gate") mà vẫn dẫm — nên nhắc ngay đầu file: trước
+> khi tin một lượt gate đỏ, hỏi `/sync-status` + `/automation` xem daemon có đang bận không.
+
 **Đã xong hôm nay:** release **1.5.0 đã push** (`73420e4`) · một kho chính trên Drive ghi bằng
 nối thêm · chở trọn bộ RAG (máy trắng còn phải nhúng **2 tin**) · vá bỏ đói autosync (nghiệm thu:
 tự chạy sau 1.170 s, lượt kế chỉ nối **0,5 MB**) · log nền ra đĩa · audit 10 mặt.
