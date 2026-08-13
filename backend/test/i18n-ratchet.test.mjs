@@ -27,6 +27,14 @@ const DICT_FILE = "chrome.js";
 // `system.js` 11 → 0 cùng ngày: 10 chuỗi vốn đã có key sẵn trong dict (code chỉ quên gọi `t()`),
 // chuỗi cuối thêm key mới `sys.goto`. Đây là loại dọn RẺ — không phải dịch gì.
 const BUDGET = {
+  // ⛔ ĐỪNG dịch 45 chuỗi này — dịch xong UI VẪN hiện tiếng Việt (đo 2026-08-13).
+  // Chúng là bảng `STRUCT`/`ROUTE`, và `shell.js` ghi rõ: *"NGUỒN của hai bảng dưới =
+  // `/standard-spec`, đọc thẳng từ `03_STRUCTURE.md`. FAIL-OPEN: fetch/parse hỏng ⇒ rơi về
+  // STRUCT/ROUTE cũ"*. Tức đây chỉ là LƯỚI ĐỠ khi fetch hỏng. Đo trên daemon thật:
+  // `/standard-spec` trả **91 dòng** tiếng Việt từ file `.md`, còn bảng dự phòng có **25 dòng**.
+  // Muốn màn này ra tiếng Anh thì phải có bản `03_STRUCTURE` tiếng Anh (hoặc backend trả song
+  // ngữ) — đó là việc ở TẦNG TÀI LIỆU, không phải i18n frontend. Hạ trần này mà không làm tầng
+  // đó là tự thưởng cho mình một con số đẹp trong khi người dùng không thấy khác gì.
   "shell.js": 45,
   "system.js": 0,
   "graph-panel.js": 0,
