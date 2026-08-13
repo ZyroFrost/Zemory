@@ -8,12 +8,19 @@
 > ⚠ **Luật mới, áp ngay từ dòng đầu phiên:** `02_RULES §Hành xử` — **HIỆN SUY NGHĨ TỪNG BƯỚC,
 > CẤM CHẠY IM LẶNG**. Nói trước mỗi cụm hành động; số lệch dự đoán thì báo NGAY, không dồn cuối.
 
-> ⚠ **BẪY ĐO ĐÃ DẪM LẠI 2026-08-13 — đọc trước khi chạy gate.** Bộ đầy đủ cho **654 pass / 7 fail**,
-> cả 7 đều ở `vectors.test.mjs`. Chạy lại đúng file đó lúc máy rảnh: **13/13 XANH** (RAG gate FTS
-> 75% · hybrid 88%). Nguyên nhân: test embed nạp model ONNX thật, mà lúc chạy thì daemon đang
-> merge gói sync **1,36 GB** ⇒ tranh CPU/I-O. **Đỏ do điều kiện đo, không phải bug.** Sổ đã ghi
-> bài này từ trước ("tắt daemon trước khi chạy gate") mà vẫn dẫm — nên nhắc ngay đầu file: trước
-> khi tin một lượt gate đỏ, hỏi `/sync-status` + `/automation` xem daemon có đang bận không.
+> ✅ **BẪY ĐO ĐÃ ĐƯỢC BỊT BẰNG MÁY 2026-08-13** *(trước đó chỉ là lời dặn, và đã bị bỏ qua hai
+> lần — lần sau cùng bởi chính agent viết ra nó).* Bệnh: bộ đầy đủ cho **654 pass / 7 fail**, cả
+> 7 ở `vectors.test.mjs`; chạy lại lúc máy rảnh **13/13 XANH**. Test embed nạp model ONNX thật,
+> tranh CPU/I-O với job nền ⇒ **đỏ do điều kiện đo**. Giá phải trả không phải một lượt chạy hỏng
+> mà là **niềm tin vào gate** — đỏ-giả vài lần là người ta bắt đầu bỏ qua màu đỏ.
+> **Hai lớp chốt:** ① `npm run preflight` (đã nối vào `npm run check`) **chặn** gate khi daemon
+> đang embed/sync, kèm lý do + đường đi tiếp; `ZEMORY_GATE_FORCE=1` để đè · ② `skipIfBusy(t)` ở
+> 10 ca embed: bận thì **bỏ qua CÓ LÝ DO** (hiện ở dòng `skipped`) thay vì đỏ mập mờ.
+> Đo trong cùng tình huống: trước **7 đỏ / 22 phút** → sau **fail 0 · skipped 10 / ~0,5 giây**.
+> ⚠ **Giới hạn còn lại, đừng đọc thành phủ kín:** `preflight` chỉ kiểm **lúc bắt đầu**. Lượt gate
+> hôm nay khởi động lúc máy rảnh, giữa chừng daemon tự bật job embed ⇒ ca cuối bị bỏ qua. Lớp ②
+> đỡ đúng chỗ đó, nhưng **"xanh có kèm skipped" KHÔNG phải "xanh phủ đủ"** — đọc dòng `skipped`
+> trước khi kết luận.
 
 **Đã xong hôm nay:** release **1.5.0 đã push** (`73420e4`) · một kho chính trên Drive ghi bằng
 nối thêm · chở trọn bộ RAG (máy trắng còn phải nhúng **2 tin**) · vá bỏ đói autosync (nghiệm thu:
@@ -103,7 +110,18 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   vẫn như cũ (2 false-positive `/migrate` · `/nav-cost`, KHÔNG mở lại).
 · **⑥ Bề mặt sống — chạy MỘT NỬA:** đã gọi endpoint thật (bảng trên), **chưa mở app nhìn tận
   mắt** — theo skill, gọi endpoint KHÔNG thay được việc nhìn.
-· **⑧ Rà license dependency** — đã chạy vế dựng-từ-clone-sạch (đỏ, xem trên), chưa rà license.
+· **⑧ Rà license — ĐÃ CHẠY 2026-08-13, quét CẢ CÂY 190 gói** (không chỉ 14 dependency trực
+  tiếp: license xấu ở tầng sâu vẫn đi kèm sản phẩm). Phân bố: MIT 127 · Apache-2.0 20 ·
+  BSD-3 15 · ISC 13 · BSD-2 6 · còn lại lẻ. **2 gói cần biết, cả hai KHÔNG chặn:**
+  · `@img/sharp-win32-x64` — `Apache-2.0 AND LGPL-3.0-or-later` (nhị phân đóng kèm **libvips**,
+    LGPL). Là **optional dep của `@huggingface/transformers`**, zemory **không import `sharp`**
+    ở đâu cả. Nếu đóng gói phân phối thì hoặc loại nó, hoặc giữ notice LGPL.
+  · `@nativewindow/webview-win32-x64-msvc` — **không khai `license`**; nhưng gói cha
+    `@nativewindow/webview` khai **MIT**, cùng repo cùng version ⇒ chỉ là thiếu field ở gói
+    nhị phân theo nền tảng. Đây là optional dep TRỰC TIẾP, dùng thật ở `platform/window.ts`.
+  ⚠ **Bài học phép đo (chính lượt này):** bản đầu tách `OR` và `AND` bằng CÙNG một regex ⇒
+  `Apache-2.0 AND LGPL-3.0-or-later` **lọt qua**. `OR` = chọn một vế hợp lệ là đủ; `AND` = phải
+  hợp lệ MỌI vế. Sửa xong mới lòi ra gói thứ hai — trước đó báo "chỉ 1 gói".
 Ngoài ra **mặt ① chạy khi daemon đang có job nền** ⇒ xanh nhưng không phải điều kiện sạch.
 
 ## 🔵 BÀN GIAO 2026-08-12 (chiều) — đọc mục này TRƯỚC khi làm gì tiếp

@@ -5,6 +5,47 @@
 
 ---
 
+## [2026-08-13g] — archive dời file xuống sâu một tầng mà bỏ quên link: 26/26 gãy
+
+**Đo:** `docs/agent/archive/06_CHANGES.md` có **26 link nội bộ, gãy cả 26** — không một link nào
+còn đúng. `zemory archive` cắt entry từ `docs/agent/` xuống `docs/agent/archive/` và chép NGUYÊN
+VĂN, nên `../../backend/src/…` (đúng ở tầng trên) nay trỏ vào `docs/backend/…`, không tồn tại.
+
+**Vì sao nguy hiểm hơn vẻ ngoài:** nó KHÔNG BAO GIỜ tự lộ — file vẫn render, link vẫn xanh, không
+lệnh nào kêu. Mà entry changelog dẫn tới code chính là để người đọc sau **đi kiểm chứng lời khẳng
+định**; link chết biến việc kiểm chứng thành ngõ cụt trong khi vẫn trông như có bằng chứng.
+
+**Vá:** `deepenRelativeLinks()` áp cho CẢ HAI đường archive (`05_TODO` + `06_CHANGES`) — chừa URL
+ngoài, neo, đường tuyệt đối và placeholder của bản mẫu. Dữ liệu cũ vá một lượt: 21 link về đúng,
+2 file chỉ **đổi chỗ** được map lại (`validate.ts`→`docs/`, `settings.ts`→`config/`), `ui-page.ts`
+**không còn tồn tại** nên gỡ link giữ chữ. Kết quả: **24 đúng · 0 gãy**.
+
+**Cổng `archive-links.test.mjs` 2/2:** canh hàm biến đổi **và** canh file thật trên đĩa — hàm đúng
+mà dữ liệu cũ vẫn hỏng thì người đọc vẫn lạc.
+
+## [2026-08-13f] — bịt cái làm PHÉP ĐO nói dối: gate không được chạy khi máy đang bận
+
+**Bệnh:** bộ đầy đủ báo **654 pass / 7 fail**, cả 7 ở `vectors.test.mjs`; chạy lại đúng file đó
+lúc máy rảnh cho **13/13 XANH**. Test embed nạp model ONNX thật, tranh CPU/I-O với job nền của
+daemon ⇒ **đỏ do điều kiện đo**, với thông báo vô nghĩa (`remaining 1 !== 0`, `SQLITE_ERROR`).
+
+**Cái giá thật không phải 22 phút chạy lại, mà là NIỀM TIN vào gate:** một lượt đỏ không nói được
+lý do thì lần nào gặp cũng tốn chừng ấy công để loại trừ — và đỏ-giả lặp vài lần là người ta bắt
+đầu bỏ qua màu đỏ. Lời dặn "tắt daemon trước khi chạy gate" đã có sẵn trong sổ và **bị bỏ qua hai
+lần**, lần sau cùng bởi chính agent viết ra nó ⇒ nay là **phép kiểm, không phải lời dặn**.
+
+**Hai lớp:** ① `npm run preflight` (nối vào `npm run check`) chặn khi daemon đang embed/sync, in
+lý do + ba đường đi tiếp; `ZEMORY_GATE_FORCE=1` để đè, có cảnh báo. ② `skipIfBusy(t)` ở 10 ca
+embed — bận thì bỏ qua CÓ LÝ DO. Đo cùng tình huống: **7 đỏ / 22 phút → fail 0 · skipped 10 /
+~0,5 giây**.
+
+**Bug trong chính bản vá, bắt được lúc thử:** `process.exit()` gọi khi undici còn đang đóng socket
+làm Node trên Windows chết bằng assertion libuv (`exit 127`) — tức phép kiểm canh gate lại là thứ
+làm gate đỏ. Nay đặt `process.exitCode` và để tiến trình tự thoát.
+
+**Giới hạn ghi rõ:** `preflight` chỉ kiểm LÚC BẮT ĐẦU. Lượt gate hôm nay khởi động lúc rảnh, giữa
+chừng daemon tự bật embed ⇒ ca cuối bị bỏ qua. **"Xanh có kèm skipped" ≠ "xanh phủ đủ".**
+
 ## [2026-08-13e] — i18n: từ danh sách triệu chứng thành SỐ ĐO + cổng không-lùi
 
 **Trước:** mục sổ chỉ liệt kê vài chuỗi thấy được khi chụp ảnh UI tiếng Anh. **Nay có số:**

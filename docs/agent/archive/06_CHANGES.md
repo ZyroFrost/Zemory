@@ -3821,7 +3821,7 @@ Lọc trùng lặp khi embed — ý user: "cho agent lọc lại message, nhưng
 
 Thiết kế theo đúng luật "không mất sess gốc" (memory `zemory-optimize-preserve-source`): dedup ở TẦNG DẪN XUẤT, message gốc không đụng một dòng.
 
-- **`vec_hash`** (sha1(content-slice) → rowid chuẩn, bảng dẫn xuất rebuild được) trong [vectors.ts](../../backend/src/memory/vectors.ts): gặp nội dung đã embed → **COPY vector** từ lần đầu thay vì gọi model. Nội dung giống hệt ⇒ model cho ra vector giống hệt ⇒ copy = **0% mất chất lượng** (test chứng minh bit-for-bit). Xử cả trùng trong-cùng-run (twin chờ canonical xong rồi copy) lẫn xuyên-run (tra vec_hash).
+- **`vec_hash`** (sha1(content-slice) → rowid chuẩn, bảng dẫn xuất rebuild được) trong [vectors.ts](../../../backend/src/memory/vectors.ts): gặp nội dung đã embed → **COPY vector** từ lần đầu thay vì gọi model. Nội dung giống hệt ⇒ model cho ra vector giống hệt ⇒ copy = **0% mất chất lượng** (test chứng minh bit-for-bit). Xử cả trùng trong-cùng-run (twin chờ canonical xong rồi copy) lẫn xuyên-run (tra vec_hash).
 - Bảng hash fill lazy từ giờ (không backfill nặng) — hội tụ trong vài ngày; canonical bị `forget` → fallback embed lại bình thường (fail-open).
 - `EmbedPendingResult.deduped` báo số vector copy mỗi pass.
 
@@ -3831,7 +3831,7 @@ Cộng dồn 3 tối ưu embed (skip tool-call −32% · dedup −21% phần cò
 
 Cắt thời gian embed hằng ngày — user chỉ đúng: memory nhận ~2.800 msg/ngày, tốc độ cũ ~60 msg/phút ⇒ ~46 phút embed/ngày là KHÔNG chấp nhận được cho công cụ dùng hằng ngày.
 
-Đo cơ cấu 14 ngày: 32% message là TOOL-CALL (lệnh + args, dài, semantic ~0) — FTS keyword đã phủ đầy đủ. Fix trong [vectors.ts](../../backend/src/memory/vectors.ts):
+Đo cơ cấu 14 ngày: 32% message là TOOL-CALL (lệnh + args, dài, semantic ~0) — FTS keyword đã phủ đầy đủ. Fix trong [vectors.ts](../../../backend/src/memory/vectors.ts):
 - **Mặc định KHÔNG embed tool-call** (`tool_name IS NOT NULL`): embedPending + vectorRemaining cùng filter; env `ZEMORY_EMBED_TOOLS=1` bật lại nếu cần. Backlog còn lại giảm ngay 8.953 → 7.626; khối lượng hằng ngày giảm ~1/3.
 - **batchSize mặc định 4 → 16**: batching ONNX tận dụng CPU tốt hơn.
 - Vector tool-call ĐÃ embed từ trước giữ nguyên (vô hại, vẫn giúp).
@@ -3844,8 +3844,8 @@ Cắt thời gian embed hằng ngày — user chỉ đúng: memory nhận ~2.800
 
 Nối tầng CLI vào chuẩn 2-profile — trước đó chỉ sửa tầng markdown (§7), còn `validate`/`structure` vẫn hardcode chuẩn app (bắt backend/+frontend/, cảnh báo thiếu với repo BI/data).
 
-- **Field mới `profile` trong docs/.harness.json** ([types.ts](../../backend/src/core/types.ts), [config.ts](../../backend/src/core/config.ts)): `"app"` (mặc định, §1–6) | `"non-app"` (§7). Normalize lúc load, project cũ không cần đổi gì.
-- **`zemory validate` theo profile** ([validate.ts](../../backend/src/validate.ts)): non-app → check docs/ + AGENTS.md + ≥1 deliverable (reports/|models/|content/|design/), KHÔNG đòi backend/frontend; app → như cũ + thông minh hơn: repo không có code nhưng CÓ deliverable → gợi ý set `"profile": "non-app"` thay vì cằn nhằn sai; thiếu frontend chỉ cảnh báo khi CÓ code (là app thật).
+- **Field mới `profile` trong docs/.harness.json** ([types.ts](../../../backend/src/core/types.ts), [config.ts](../../../backend/src/core/config.ts)): `"app"` (mặc định, §1–6) | `"non-app"` (§7). Normalize lúc load, project cũ không cần đổi gì.
+- **`zemory validate` theo profile** ([validate.ts](../../../backend/src/docs/validate.ts)): non-app → check docs/ + AGENTS.md + ≥1 deliverable (reports/|models/|content/|design/), KHÔNG đòi backend/frontend; app → như cũ + thông minh hơn: repo không có code nhưng CÓ deliverable → gợi ý set `"profile": "non-app"` thay vì cằn nhằn sai; thiếu frontend chỉ cảnh báo khi CÓ code (là app thật).
 - **`zemory structure`** in cả 2 chuẩn ngay đầu (① APP §1–6 · ② NON-APP §7 + required của từng cái) — agent đọc CLI cũng thấy như đọc .md.
 - **`zemory init --non-app`**: scaffold harness + ghi luôn `"profile": "non-app"` — dùng cho powerbi_sasinflow và các repo deliverable.
 
@@ -3855,18 +3855,18 @@ Nối tầng CLI vào chuẩn 2-profile — trước đó chỉ sửa tầng mar
 
 Thêm chuẩn cấu trúc THỨ HAI cho project NON-APP — lấp vùng trắng "ngoài phạm vi" cho các repo kiểu `powerbi_sasinflow`.
 
-- **§7 mới trong [03_STRUCTURE.md](03_STRUCTURE.md)** (cả docs-template lẫn docs của zemory): chuẩn phụ cho project là SẢN PHẨM/TÀI SẢN (BI/report Power BI·Tableau, data/analytics dbt, docs-only, design). Bắt buộc = **3 vai trò**: `docs/` · `AGENTS.md` · ≥1 deliverable (`reports/`|`models/`|`content/`|`design/`) — không backend/frontend. Từ điển slot phụ: sources/ measures/ queries/ pipelines/ notebooks/ fixtures/ assets/ scripts/ config/ attic/ (+ data/ exports/ .env gitignore). Kèm ví dụ áp powerbi_sasinflow + bảng convention (LFS cho .pbix/.fig, data-thật vs fixtures, dictionary.md).
+- **§7 mới trong [03_STRUCTURE.md](../03_STRUCTURE.md)** (cả docs-template lẫn docs của zemory): chuẩn phụ cho project là SẢN PHẨM/TÀI SẢN (BI/report Power BI·Tableau, data/analytics dbt, docs-only, design). Bắt buộc = **3 vai trò**: `docs/` · `AGENTS.md` · ≥1 deliverable (`reports/`|`models/`|`content/`|`design/`) — không backend/frontend. Từ điển slot phụ: sources/ measures/ queries/ pipelines/ notebooks/ fixtures/ assets/ scripts/ config/ attic/ (+ data/ exports/ .env gitignore). Kèm ví dụ áp powerbi_sasinflow + bảng convention (LFS cho .pbix/.fig, data-thật vs fixtures, dictionary.md).
 - **Note "CÓ 2 CHUẨN" ngay đầu doc** để agent khác đọc là biết: ① APP (code chạy) → §1–6 · ② NON-APP (deliverable) → §7; xác định loại project trước, áp đúng chuẩn. §6 phạm-vi cập nhật tương ứng (non-app hết bị "ngoài phạm vi").
 - **Harness giữ Y HỆT app** — docs/agent/* + plan/ + .harness.json, cùng engine + lệnh zemory; chỉ thêm `docs/dictionary.md` [opt] cho BI/data. Nghĩa là zemory không cần biết project là app hay non-app.
-- Ghi quyết định vào [plan/09 §4](../plan/09_repo_structure.md); DB đã sync (doc 8 section).
+- Ghi quyết định vào [plan/09 §4](../../plan/09_repo_structure.md); DB đã sync (doc 8 section).
 
 ## [2026-07-11] — feat(ui): i18n hoàn chỉnh VI/EN — t() + dict đầy đủ + backend localize, không sót chuỗi
 
 i18n hoàn chỉnh cả 2 ngôn ngữ — không sót chuỗi nào trong VI lẫn EN.
 
-- **`t(key)` + từ điển đầy đủ** ([ui-page.ts](../../backend/src/ui-page.ts)): ~150 key vi/en phủ mọi chuỗi JS-render (rail harness, panel bộ nhớ, nguồn/scope, quét, Drive sync, kết quả tìm, xem trước, session viewer, doc viewer, sort, act). Trước đây chỉ chrome tĩnh (data-i18n) flip; nay toàn bộ JS cũng flip.
+- **`t(key)` + từ điển đầy đủ** (`ui-page.ts`): ~150 key vi/en phủ mọi chuỗi JS-render (rail harness, panel bộ nhớ, nguồn/scope, quét, Drive sync, kết quả tìm, xem trước, session viewer, doc viewer, sort, act). Trước đây chỉ chrome tĩnh (data-i18n) flip; nay toàn bộ JS cũng flip.
 - **applyLang re-render**: đổi ngôn ngữ re-render các view đã cache (renderStatus/renderMemorySummary/renderHits/sort) + hỗ trợ `data-i18n-ph` cho placeholder + option select; `setLangUI` refetch `/status` + `/memory-status` để lấy chuỗi backend đã localize.
-- **Backend localize theo `getLang()`** ([settings.ts](../../backend/src/settings.ts) `tr()`, [status.ts](../../backend/src/status.ts), [checks.ts](../../backend/src/checks.ts)): feature label/help, setup/plan detail, mọi detail của health-check giờ ra đúng ngôn ngữ (áp cho cả doctor CLI).
+- **Backend localize theo `getLang()`** ([settings.ts](../../../backend/src/config/settings.ts) `tr()`, [status.ts](../../../backend/src/status.ts), [checks.ts](../../../backend/src/checks.ts)): feature label/help, setup/plan detail, mọi detail của health-check giờ ra đúng ngôn ngữ (áp cho cả doctor CLI).
 - **Sửa bug**: biến local `const t = memory.totals` trong `renderMemorySummary` che mất hàm `t()` → panel bộ nhớ báo "t is not a function"; đổi tên local thành `tot`.
 
 Verify: 66/66 test; chụp cả VI lẫn EN — panel bộ nhớ, placeholder, mọi filter/select, rail, Drive/sync, kết quả tìm đều flip sạch, không còn chữ lẫn ngôn ngữ ở cả hai chiều.
@@ -3875,10 +3875,10 @@ Verify: 66/66 test; chụp cả VI lẫn EN — panel bộ nhớ, placeholder, m
 
 Làm lại cockpit theo 3 điểm user nêu: chưa có nút Cài đặt thật, ngôn ngữ Anh–Việt lẫn lộn, bố cục quá tải.
 
-- **Nút Cài đặt thật** ([ui-page.ts](../../backend/src/ui-page.ts)): một modal 6 tab (Ngôn ngữ · Nơi lưu · Drive · Tìm kiếm · Kiểm tra · Docs harness) gom mọi cấu hình vốn rải khắp nơi. Di chuyển (không viết lại) các control đã chạy: ô Drive + Link/Sync, ô Nơi lưu + Dời, Capability checks + Re-test, menu Sync/Fresh docs — giữ nguyên id + hàm nên wiring không đứt.
+- **Nút Cài đặt thật** (`ui-page.ts`): một modal 6 tab (Ngôn ngữ · Nơi lưu · Drive · Tìm kiếm · Kiểm tra · Docs harness) gom mọi cấu hình vốn rải khắp nơi. Di chuyển (không viết lại) các control đã chạy: ô Drive + Link/Sync, ô Nơi lưu + Dời, Capability checks + Re-test, menu Sync/Fresh docs — giữ nguyên id + hàm nên wiring không đứt.
 - **Dọn top-bar**: bỏ 2 ô nhập đường dẫn + Link/Sync/Dời; còn lại pill trạng thái (Máy/CLI/🗄 nơi lưu/☁ drive) + một nút ⚙ Cài đặt + làm mới. Bỏ panel Capability checks khỏi rail trái (đưa vào Cài đặt → Kiểm tra).
 - **Thống nhất tiếng Việt + nút VI/EN**: i18n nhẹ (`T` dict vi/en + `applyLang` quét `[data-i18n]`), mặc định tiếng Việt, giữ thuật ngữ kỹ thuật (Recall/Hybrid/Rerank/FTS5/vector/BM25). Toggle trong Cài đặt → Ngôn ngữ, lưu vào config.json qua `/set-lang`. Việt hoá cả chrome JS-render (rail harness, panel bộ nhớ, nguồn, quét).
-- **Backend** ([settings.ts](../../backend/src/settings.ts), [ui.ts](../../backend/src/ui.ts)): thêm `getLang/setLang` (mặc định 'vi'), endpoint `POST /set-lang`, field `lang` trong `dashboardMemory()`.
+- **Backend** ([settings.ts](../../../backend/src/config/settings.ts), [ui.ts](../../../backend/src/ui.ts)): thêm `getLang/setLang` (mặc định 'vi'), endpoint `POST /set-lang`, field `lang` trong `dashboardMemory()`.
 - Sửa bug sẵn: `<\div>` → `</div>` ở khối scope-chips.
 
 Verify: 66/66 test; build sạch; UI thật chụp lại (top-bar gọn, modal Cài đặt 6 tab, panel bộ nhớ + rail tiếng Việt, pill 'đã dời · 938 MB' / '✓ 2 bundle').
@@ -3903,14 +3903,14 @@ Verify: 66/66 test; DB thật migrate v10→v11, recall_savings đã drop; embed
 
 Dọn nốt toàn bộ finding P2/P3 còn treo của đợt audit — app không còn finding mở.
 
-- **UI chống DNS-rebinding/CSRF** ([ui.ts](../../backend/src/ui.ts)): mọi request phải có `Host` loopback và (nếu có) `Origin` loopback, sai → 403. Verify sống bằng curl: Host `evil.com` → 403, Origin lạ POST `/relocate` → 403, trang cockpit → 200.
-- **`changelog import` hết phá dữ liệu** ([changelog.ts](../../backend/src/docs/changelog.ts)): mặc định MERGE — chỉ thêm entry chưa có (khớp date+title), giữ nguyên id/`archived`/`supersedes`; wipe-reseed phải gọi `--replace` tường minh.
-- **Render mirror không nuốt hand-edit** ([plan.ts](../../backend/src/docs/plan.ts), schema v10 `doc.rendered_hash`): render lưu sha1; lần render sau nếu file trên đĩa lệch hash (bị sửa tay) → cứu nguyên bản ra `.hand-edited-<ts>.bak` + cảnh báo, rồi mới ghi đè. `renderChangelog` cũng cứu file không có header GENERATED.
-- **scan-web hết kẹt port 9222** ([scanweb.ts](../../backend/src/memory/scanweb.ts)): nếu 9222 không có CDP mà TCP lại bận (process khác chiếm) → tự lấy port rảnh cho phiên đó thay vì launch browser fail câm.
-- **relocate hết WAL-race** ([relocate.ts](../../backend/src/memory/relocate.ts)): checkpoint → `BEGIN IMMEDIATE` (chặn mọi writer) → xác nhận WAL rỗng → count + copy trong lock; writer chen ngang → retry, 3 lần fail → báo "close other zemory processes".
-- **Con trỏ treo hết tạo memory rỗng âm thầm** ([db.ts](../../backend/src/memory/db.ts)): `location.json` trỏ folder không có DB trong khi `~/.zemory` vẫn còn DB cũ → cảnh báo to 1 lần kèm cách sửa.
-- **CLI hết nổ UnhandledRejection** ([cli.ts](../../backend/src/cli.ts)): bọc toàn bộ dispatch — mọi lỗi in 1 dòng `zemory <cmd>: <message>` + exit 1 (verify: `memory export` path không tồn tại).
-- **Thread 5000-msg hết cắt âm thầm** ([search.ts](../../backend/src/memory/search.ts)): `getSessionThread` trả cờ `truncated`, dialog UI hiện "(hiển thị 5000 đầu — phiên còn dài hơn)".
+- **UI chống DNS-rebinding/CSRF** ([ui.ts](../../../backend/src/ui.ts)): mọi request phải có `Host` loopback và (nếu có) `Origin` loopback, sai → 403. Verify sống bằng curl: Host `evil.com` → 403, Origin lạ POST `/relocate` → 403, trang cockpit → 200.
+- **`changelog import` hết phá dữ liệu** ([changelog.ts](../../../backend/src/docs/changelog.ts)): mặc định MERGE — chỉ thêm entry chưa có (khớp date+title), giữ nguyên id/`archived`/`supersedes`; wipe-reseed phải gọi `--replace` tường minh.
+- **Render mirror không nuốt hand-edit** ([plan.ts](../../../backend/src/docs/plan.ts), schema v10 `doc.rendered_hash`): render lưu sha1; lần render sau nếu file trên đĩa lệch hash (bị sửa tay) → cứu nguyên bản ra `.hand-edited-<ts>.bak` + cảnh báo, rồi mới ghi đè. `renderChangelog` cũng cứu file không có header GENERATED.
+- **scan-web hết kẹt port 9222** ([scanweb.ts](../../../backend/src/memory/scanweb.ts)): nếu 9222 không có CDP mà TCP lại bận (process khác chiếm) → tự lấy port rảnh cho phiên đó thay vì launch browser fail câm.
+- **relocate hết WAL-race** ([relocate.ts](../../../backend/src/memory/relocate.ts)): checkpoint → `BEGIN IMMEDIATE` (chặn mọi writer) → xác nhận WAL rỗng → count + copy trong lock; writer chen ngang → retry, 3 lần fail → báo "close other zemory processes".
+- **Con trỏ treo hết tạo memory rỗng âm thầm** ([db.ts](../../../backend/src/memory/db.ts)): `location.json` trỏ folder không có DB trong khi `~/.zemory` vẫn còn DB cũ → cảnh báo to 1 lần kèm cách sửa.
+- **CLI hết nổ UnhandledRejection** ([cli.ts](../../../backend/src/cli.ts)): bọc toàn bộ dispatch — mọi lỗi in 1 dòng `zemory <cmd>: <message>` + exit 1 (verify: `memory export` path không tồn tại).
+- **Thread 5000-msg hết cắt âm thầm** ([search.ts](../../../backend/src/memory/search.ts)): `getSessionThread` trả cờ `truncated`, dialog UI hiện "(hiển thị 5000 đầu — phiên còn dài hơn)".
 
 **Verify:** 66/66 test (thêm docs-guard.test.mjs: merge-giữ-archived + salvage hand-edit); DB thật migrate v10 sạch; guard UI test sống 4/4.
 
@@ -3918,7 +3918,7 @@ Dọn nốt toàn bộ finding P2/P3 còn treo của đợt audit — app không
 
 Fix 3 finding của đợt audit sau khi dời DB sang D:.
 
-- **P1 privacy — forget/redact bỏ sót `session_digest`** ([privacy.ts](../../backend/src/memory/privacy.ts)): digest TRÍCH NGUYÊN VĂN message (tasks/errors/digest_text) và được index FTS riêng → nội dung đã `forget` vẫn tìm được qua `search --digest`, secret đã `redact` vẫn nằm trong digest. Nay: `forget --force` xóa luôn digest của các session bị đụng (trigger dọn 2 bảng FTS; digest rebuild từ message còn lại), `redact` scrub cả 5 cột text của digest (redact chuỗi JSON an toàn vì mọi pattern chỉ khớp `[A-Za-z0-9_.-]`). CLI in thêm số digest. +2 test.
+- **P1 privacy — forget/redact bỏ sót `session_digest`** ([privacy.ts](../../../backend/src/memory/privacy.ts)): digest TRÍCH NGUYÊN VĂN message (tasks/errors/digest_text) và được index FTS riêng → nội dung đã `forget` vẫn tìm được qua `search --digest`, secret đã `redact` vẫn nằm trong digest. Nay: `forget --force` xóa luôn digest của các session bị đụng (trigger dọn 2 bảng FTS; digest rebuild từ message còn lại), `redact` scrub cả 5 cột text của digest (redact chuỗi JSON an toàn vì mọi pattern chỉ khớp `[A-Za-z0-9_.-]`). CLI in thêm số digest. +2 test.
 - **P1 git — bundle share không bao giờ vào git**: `.gitignore` có `*.zemory.enc` chặn chính `share/global_memory.zemory.enc` mà share/README mô tả là "tracked by Git LFS" → máy khác clone không restore được. Thêm exception `!share/global_memory.zemory.enc`.
 - **P2 — path DB đóng băng lúc load module**: 15 file dùng const `MEMORY_DB`/`MEMORY_DIR` (docs/plan, changelog, digest, search, scope, savings, settings, scanweb, ui, archive, recall, share, vectors, embed, relocate) → server `zemory ui` đang chạy vẫn đọc/ghi vị trí CŨ sau khi relocate. Nay mọi default resolve qua `currentMemoryDb()`/`currentMemoryDir()` (đọc con trỏ mỗi lần gọi); `settings.ts` đổi `CONFIG_PATH` const thành hàm để config.json cũng đi theo.
 
@@ -3928,9 +3928,9 @@ Fix 3 finding của đợt audit sau khi dời DB sang D:.
 
 Hoàn thiện tính năng dời-nơi-lưu để **thật sự đưa dữ liệu nặng khỏi ổ hệ thống**, phát hiện khi dời DB thật (938MB) mà ổ C vẫn còn ~6GB.
 
-- **embed model cache theo MEMORY_DIR** ([embed.ts](../../backend/src/memory/embed.ts)): trước dùng `homedir()` cố định → 598MB model kẹt ở C sau relocate và phình thêm nếu đổi model. Nay `cacheDir = <memory-dir>/models` (env `ZEMORY_MODEL_DIR` vẫn override) → model đi theo DB.
-- **openMemory đọc con trỏ ĐỘNG** ([db.ts](../../backend/src/memory/db.ts) `currentMemoryDb()`): default resolve lại `location.json` mỗi lần mở → tiến trình dài (server `zemory ui`) nhận relocate mà không cần restart cho mọi thao tác đi qua `openMemory`.
-- **relocate mang model theo** ([relocate.ts](../../backend/src/memory/relocate.ts)): sau khi dời DB, best-effort `cpSync` `models/` sang chỗ mới (non-critical; re-cache nếu lỗi).
+- **embed model cache theo MEMORY_DIR** ([embed.ts](../../../backend/src/memory/embed.ts)): trước dùng `homedir()` cố định → 598MB model kẹt ở C sau relocate và phình thêm nếu đổi model. Nay `cacheDir = <memory-dir>/models` (env `ZEMORY_MODEL_DIR` vẫn override) → model đi theo DB.
+- **openMemory đọc con trỏ ĐỘNG** ([db.ts](../../../backend/src/memory/db.ts) `currentMemoryDb()`): default resolve lại `location.json` mỗi lần mở → tiến trình dài (server `zemory ui`) nhận relocate mà không cần restart cho mọi thao tác đi qua `openMemory`.
+- **relocate mang model theo** ([relocate.ts](../../../backend/src/memory/relocate.ts)): sau khi dời DB, best-effort `cpSync` `models/` sang chỗ mới (non-critical; re-cache nếu lỗi).
 
 **Đã thực thi trên máy này:** dời DB `C:\…\.zemory` → `D:\Zyro\Tool\Zemory\data` (937.8MB, 112.400 msg verified) + move model (598MB). `memory where` xác nhận trỏ D.
 
