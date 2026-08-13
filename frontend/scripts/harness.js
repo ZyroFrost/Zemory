@@ -5,13 +5,13 @@
   function stdRenderReal(){
     var tt=zid('stdTitle');if(!tt)return;stdReal=stdReal||{};
     tt.textContent=stdFile.replace('agent/','').replace('plan/','plan / ');
-    zid('stdProfTag').textContent='hệ '+(stdProf==='app'?'APP':'NON-APP');
+    zid('stdProfTag').textContent=t('hn.profile').replace('{p}',stdProf==='app'?'APP':'NON-APP');
     document.querySelectorAll('#stdTree .ti').forEach(function(x){x.classList.toggle('on',x.dataset.f===stdFile);});
     zid('stdApp').classList.toggle('on',stdProf==='app');zid('stdNon').classList.toggle('on',stdProf==='nonapp');
     var prof=stdProf==='app'?'app':'non-app',key=prof+':'+stdFile;
     if(stdReal[key]){zid('stdBody').innerHTML=stdMd(stdReal[key]);return;}
-    zid('stdBody').innerHTML='<div class="muted">đang tải '+stdEsc(stdFile)+'…</div>';
-    zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||t('st.empty');stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">lỗi tải doc</div>';});
+    zid('stdBody').innerHTML='<div class="muted">'+t('st.loadingDoc')+stdEsc(stdFile)+'…</div>';
+    zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||t('st.empty');stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">'+t('st.docErr')+'</div>';});
   }
   // ── Per-project Harness: real docs viewer (this project's docs/agent + plan +
   //    AGENTS.md) · click file → /doc?root=&file= · reuse stdMd markdown renderer.

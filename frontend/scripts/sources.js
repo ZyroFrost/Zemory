@@ -82,8 +82,8 @@
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
         +(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
-        +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="Ghim">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="Gỡ">✕</button></div></div>'
-        +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>Cập nhật '+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
+        +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
+        +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
   }
   document.addEventListener('click',function(e){
@@ -252,7 +252,7 @@
       });}
     else if(act==='drivelink'){var p=zid('driveInput').value.trim();zset('driveState','…');zPost('/set-drive?path='+encodeURIComponent(p)).then(function(d){zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);});}
     else if(act==='drivesync'){zrun('driveState',true);zset('driveState',t('drv.syncingBg'));zPost('/drive-sync').then(function(r){if(r&&r.ok===false){zrun('driveState',false);zset('driveState','✗ '+(r.error||t('drv.err')));return;}pollSync();});}
-    else if(act==='scanproj'||act==='deepscanproj'){zset('scanProjMsg',t('st.scanning'));zPost('/memory-scan'+(act==='deepscanproj'?'?deep=1':'')).then(function(r){zset('scanProjMsg','+'+zN(r&&r.totals&&r.totals.newMessages)+' msg · '+((r&&r.changedFiles)||0)+' file mới');return zGet('/status');}).then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zset('scanProjMsg','lỗi quét');});}
+    else if(act==='scanproj'||act==='deepscanproj'){zset('scanProjMsg',t('st.scanning'));zPost('/memory-scan'+(act==='deepscanproj'?'?deep=1':'')).then(function(r){zset('scanProjMsg','+'+zN(r&&r.totals&&r.totals.newMessages)+' msg · '+((r&&r.changedFiles)||0)+t('src.newFiles'));return zGet('/status');}).then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zset('scanProjMsg',t('st.scanErr'));});}
     // Tên phiên: backend ĐÃ đúng (custom-title của `/title` thắng + khoá, ai-title sau
     // không ghi đè — claude.ts / ingest.ts titleLocked). Thiếu là chỗ LÀM TƯƠI: app chỉ
     // thấy tên mới sau lần scan kế tiếp. Nút này quét lại rồi nạp lại danh sách ngay.
@@ -317,20 +317,20 @@
     var byHost={};
     (cap.projects||[]).forEach(function(p){
       if(String(p.host||'')===localHost&&linked.has(String(p.path).toLowerCase()))return; // đã liên kết → không hiện lại
-      var h=p.host||'(không rõ máy)';(byHost[h]=byHost[h]||[]).push(p);
+      var h=p.host||t('src.unknownHost');(byHost[h]=byHost[h]||[]).push(p);
     });
     var hosts=Object.keys(byHost).sort(function(a,b){return a===localHost?-1:b===localHost?1:String(a).localeCompare(b);});
     if(!hosts.length){box.innerHTML='';return;}
     if(!discTab||hosts.indexOf(discTab)<0)discTab=hosts[0];
-    var tabs='<div class="tabs" style="margin-top:6px;flex-wrap:wrap">'+hosts.map(function(h){return '<button class="'+(h===discTab?'on':'')+'" data-disc-tab="'+stdEsc(h)+'">🖥 '+stdEsc(h===localHost?(h+' · máy này'):h)+' ('+byHost[h].length+')</button>';}).join('')+'</div>';
+    var tabs='<div class="tabs" style="margin-top:6px;flex-wrap:wrap">'+hosts.map(function(h){return '<button class="'+(h===discTab?'on':'')+'" data-disc-tab="'+stdEsc(h)+'">🖥 '+stdEsc(h===localHost?(h+t('src.thisHost')):h)+' ('+byHost[h].length+')</button>';}).join('')+'</div>';
     var isLocalTab=discTab===localHost;
     var rows=(byHost[discTab]||[]).slice(0,80).map(function(p){var pbi=p.profile==='non-app';
       var act=isLocalTab
-        ? '<button class="btn sm" data-add-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto">＋ Add</button><button class="btn sm" data-merge-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto" title="Gộp session folder này vào 1 project đã liên kết">⇢ Gộp</button>'
-        : '<span class="muted" style="font-size:11px;flex:0 0 auto">từ '+stdEsc(discTab)+'</span>';
+        ? '<button class="btn sm" data-add-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto">＋ Add</button><button class="btn sm" data-merge-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto" title="'+t('src.mergeTip')+'">'+t('src.merge')+'</button>'
+        : '<span class="muted" style="font-size:11px;flex:0 0 auto">'+t('src.from')+stdEsc(discTab)+'</span>';
       return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+act+'</div></div>';
     }).join('');
-    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">CHƯA LIÊN KẾT — phân theo máy (tab). Add = zemory quản lý · Gộp = nhập session vào project khác</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>';
+    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>';
   }
   document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('[data-disc-tab]'):null;if(t){discTab=t.dataset.discTab;renderDiscovered((Z.mem&&Z.mem.coverage)||{});}});
   document.addEventListener('click',function(e){var mg=e.target.closest?e.target.closest('[data-merge-proj]'):null;if(!mg)return;

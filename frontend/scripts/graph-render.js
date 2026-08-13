@@ -35,7 +35,7 @@
   function gLayout(nodes,edges){var mode=gMode();if(mode==='cluster')return gLayoutCluster(nodes);if(mode==='layers')return gLayoutLayers(nodes,edges);return gLayoutForce(nodes,edges);}
   // ---- paint graph ----
   function paintProjGraph(data){var box=zid('gcanvas');if(!box)return;var nodes=(data&&data.nodes)||[],edges=(data&&data.edges)||[];gData=data;gState={nodes:nodes,edges:edges};
-    if(!nodes.length){box.innerHTML='<div class="muted" style="padding:20px;max-width:420px">Chưa dựng được graph: code của project này không nằm trên máy này (bộ nhớ xuyên-máy) hoặc không có file nguồn. Graph dựng từ code cục bộ theo đường dẫn project.</div>';gStats(data);return;}
+    if(!nodes.length){box.innerHTML='<div class="muted" style="padding:20px;max-width:420px">'+t('graph.noLocal')+'</div>';gStats(data);return;}
     var orphanOnly=zid('gOrphans')&&zid('gOrphans').checked,orph={};(data.orphans||[]).forEach(function(o){orph[o]=1;});
     gRenderEdgeFilter(data);gRenderLegend(data);
     // Bộ lọc ẩn HẲN khỏi bản vẽ (khác `dim` — dim vẫn chiếm chỗ và vẫn bấm được).
@@ -105,17 +105,24 @@
         +'<input type="checkbox" data-ekind="'+stdEsc(k)+'"'+(gEdgeOff[k]?'':' checked')+'> '
         +stdEsc(k)+' <span class="rel">'+stdEsc(v.rel)+'</span> <span class="muted">'+zN(v.n)+'</span></label>';}).join('');
   }
+  // KHOÁ, không phải nhãn. Giá trị này do BACKEND sinh (`ui.ts`: `type: n.slot ?? "(ngoài
+  // chuẩn)"`) và được dùng làm khoá của `cnt`, `gSlotOff`, `data-slot`. Dịch nó là đổi khoá ⇒
+  // trạng thái bật/tắt slot lệch ngay khi người dùng đổi ngôn ngữ — đúng lỗi vừa phải sửa ở
+  // `system.js` (nhóm bị tách làm hai vì nửa khai key nửa khai giá trị).
+  // Nên: khoá giữ NGUYÊN, chỉ dịch ở đúng chỗ HIỂN THỊ (gSlotLabel).
+  var G_NO_SLOT='(ngoài chuẩn)';
+  function gSlotLabel(s){return s===G_NO_SLOT?t('graph.outOfStd'):s;}
   function gRenderLegend(data){
     var box=zid('gLegend');if(!box)return;var cnt={};
-    ((data&&data.nodes)||[]).forEach(function(n){var s=n.type||n.slot||'(ngoài chuẩn)';cnt[s]=(cnt[s]||0)+1;});
+    ((data&&data.nodes)||[]).forEach(function(n){var s=n.type||n.slot||G_NO_SLOT;cnt[s]=(cnt[s]||0)+1;});
     var keys=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]||a.localeCompare(b);});
     box.innerHTML=keys.map(function(s){
       return '<span class="lg'+(gSlotOff[s]?' off':'')+'" data-slot="'+stdEsc(s)+'" title="'+t('graph.legendTip')+'">'
-        +'<span class="dot" style="background:'+gSlotColor(s==='(ngoài chuẩn)'?'':s)+'"></span>'
-        +stdEsc(s)+' <span class="n">'+cnt[s]+'</span></span>';}).join('');
+        +'<span class="dot" style="background:'+gSlotColor(s===G_NO_SLOT?'':s)+'"></span>'
+        +stdEsc(gSlotLabel(s))+' <span class="n">'+cnt[s]+'</span></span>';}).join('');
   }
   /** Node/cạnh có đang bị bộ lọc ẩn không (dùng chung cho vẽ + đếm). */
-  function gNodeHidden(n){return !!gSlotOff[n.type||n.slot||'(ngoài chuẩn)'];}
+  function gNodeHidden(n){return !!gSlotOff[n.type||n.slot||G_NO_SLOT];}
   function gEdgeHidden(e,hid){return !!gEdgeOff[e.kind||'imports']||hid[e.from]||hid[e.to];}
   document.addEventListener('change',function(ev){var c=ev.target.closest?ev.target.closest('[data-ekind]'):null;if(!c)return;
     var k=c.dataset.ekind;if(c.checked)delete gEdgeOff[k];else gEdgeOff[k]=1;if(gData)paintProjGraph(gData);});
@@ -128,7 +135,7 @@
     var nAll=(data.nodes||[]).length;
     var built=data.builtAt?(' · '+t('graph.builtAt')+' '+String(data.builtAt).slice(11,16)):'';
     el.textContent=(nShown===nAll?zN(nAll):zN(nShown)+'/'+zN(nAll))+' node · '
-      +(eShown===eAll?zN(eAll):zN(eShown)+'/'+zN(eAll))+' cạnh · '+zN(s.slots||0)+' slot · '
+      +(eShown===eAll?zN(eAll):zN(eShown)+'/'+zN(eAll))+t('graph.edges')+zN(s.slots||0)+' slot · '
       +((data.orphans||[]).length)+' orphan'+built;}
     var ins=zid('gInspect');if(ins){var f=data.fitness||{},ms=(f.metrics||[]);
       var chips=ms.map(function(m){var pc=m.metric.indexOf('pct')>=0?'%':'';return '<span class="pill '+(m.passed?'ok':'warn')+'" style="margin:0 4px 4px 0" title="'+stdEsc(m.detail||'')+'">'+(m.passed?'✓':'⚠')+' '+stdEsc(gMetricName(m.metric))+' '+m.value+pc+'</span>';}).join('');
@@ -308,7 +315,7 @@
       // không có số dòng/symbol, nhưng có `src` = chỗ nó được KHAI BÁO trong docs.
       ins.innerHTML='<b style="font-size:14px">'+stdEsc(nd.label)+'</b><div class="muted" style="font-size:11px;margin-bottom:8px">'
         +'<span class="tagx">'+stdEsc(nd.type||'file')+'</span> '+stdEsc(nd.src||nd.dir||'(root)')+'</div>'
-        +'<div class="row"><span class="nm">Fan-in</span><b>'+nd.fanIn+'</b></div><div class="row"><span class="nm">Fan-out</span><b>'+nd.fanOut+'</b></div>'+(nd.loc?'<div class="row"><span class="nm">Dòng</span><b>'+zN(nd.loc)+'</b></div>':'')
+        +'<div class="row"><span class="nm">Fan-in</span><b>'+nd.fanIn+'</b></div><div class="row"><span class="nm">Fan-out</span><b>'+nd.fanOut+'</b></div>'+(nd.loc?'<div class="row"><span class="nm">'+t('graph.lines')+'</span><b>'+zN(nd.loc)+'</b></div>':'')
         +(nd.touchedBy?'<div class="row"><span class="nm">'+t('graph.touchedBy')+'</span><b>'+zN(nd.touchedBy)+'</b></div>':'')
         +'<div class="row" style="border:0"><span class="nm">'+(nd.loc?'File':'ID')+'</span><span class="muted" style="font-size:10.5px;word-break:break-all">'+stdEsc(nd.id)+'</span></div>'+syms
         +gEdgeListHtml(nd.id);
