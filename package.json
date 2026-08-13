@@ -1,6 +1,6 @@
 {
   "name": "zemory",
-  "version": "1.5.10",
+  "version": "1.5.11",
   "description": "Context & memory governance layer for AI agents — one shared core for every project.",
   "author": "Nguyen Duc Huy",
   "type": "module",

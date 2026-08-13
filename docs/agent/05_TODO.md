@@ -260,6 +260,11 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
 - [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
+- [~] **i18n HỤT — 90 → 74 chuỗi (2026-08-13, đã dọn phần RẺ).** 16 chuỗi vốn ĐÃ CÓ key sẵn,
+  code chỉ quên gọi `t()`: `system.js` 11→0 · `gm.js` 2→0 · `harness.js` 5→3 · `sources.js`
+  10→9. **74 còn lại KHÔNG cùng loại — đừng ước lượng như nhau:** 45 là nội dung *tài liệu chuẩn
+  cấu trúc* trong `shell.js` (dịch = viết lại tài liệu), 10 là chữ nhúng trong chuỗi HTML ở
+  `graph-panel.js` (phải tách chữ khỏi markup trước). Trần cổng đã hạ theo số đo.
 - [~] **i18n HỤT — ĐO ĐƯỢC + có cổng KHÔNG-LÙI 2026-08-13.** Trước chỉ có danh sách triệu chứng;
   nay có số: **90 chuỗi tiếng Việt hardcode** trong `frontend/scripts/` (ngoài `chrome.js` — nơi
   giữ hai dict): `shell.js` 45 · `system.js` 11 · `graph-panel.js` 10 · `sources.js` 10 ·

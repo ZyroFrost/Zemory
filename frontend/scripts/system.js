@@ -3,19 +3,19 @@
   // ── SYSTEM screen: full capability inventory + per-feature check/enable ──
   var FEATURES=[
     {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',doc:'f.doc.memory'},
-    {k:'vector',grp:'Lõi nhớ & tìm',n:'Vector index (semantic)',kind:'stat',probe:'vector',doc:'f.doc.vector'},
-    {k:'hybrid',grp:'Lõi nhớ & tìm',n:'Hybrid search',kind:'toggle',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
-    {k:'rerank',grp:'Lõi nhớ & tìm',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank'},
-    {k:'digest',grp:'Lõi nhớ & tìm',n:'Session digest',kind:'stat',doc:'f.doc.digest'},
-    {k:'graph',grp:'Lõi nhớ & tìm',n:'Graph (code · docs)',kind:'nav',to:'projects',doc:'f.doc.graph'},
+    {k:'vector',grp:'f.grpCore',n:'Vector index (semantic)',kind:'stat',probe:'vector',doc:'f.doc.vector'},
+    {k:'hybrid',grp:'f.grpCore',n:'Hybrid search',kind:'toggle',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
+    {k:'rerank',grp:'f.grpCore',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank'},
+    {k:'digest',grp:'f.grpCore',n:'Session digest',kind:'stat',doc:'f.doc.digest'},
+    {k:'graph',grp:'f.grpCore',n:'Graph (code · docs)',kind:'nav',to:'projects',doc:'f.doc.graph'},
     {k:'drive',grp:'f.grpSync',n:'f.drive',kind:'nav',to:'memory',doc:'f.doc.drive'},
-    {k:'scheduler',grp:'Đồng bộ & lưu',n:'f.sched',kind:'auto',auto:'scheduler',doc:'f.doc.scheduler'},
-    {k:'autostart',grp:'Đồng bộ & lưu',n:'f.autostart',kind:'auto',auto:'autostart',doc:'f.doc.autostart'},
-    {k:'autosync',grp:'Đồng bộ & lưu',n:'f.autosync',kind:'auto',auto:'autosync',doc:'f.doc.autosync'},
-    {k:'storage',grp:'Đồng bộ & lưu',n:'f.dbloc',kind:'nav',to:'__settings',doc:'f.doc.storage'},
+    {k:'scheduler',grp:'f.grpSync',n:'f.sched',kind:'auto',auto:'scheduler',doc:'f.doc.scheduler'},
+    {k:'autostart',grp:'f.grpSync',n:'f.autostart',kind:'auto',auto:'autostart',doc:'f.doc.autostart'},
+    {k:'autosync',grp:'f.grpSync',n:'f.autosync',kind:'auto',auto:'autosync',doc:'f.doc.autosync'},
+    {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'nav',to:'__settings',doc:'f.doc.storage'},
     {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',doc:'f.doc.validate'},
-    {k:'grill',grp:'Harness (docs)',n:'Grill',kind:'check',feat:'grill',doc:'f.doc.grill'},
-    {k:'harness',grp:'Harness (docs)',n:'Harness files',kind:'stat',doc:'f.doc.harness'}
+    {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',doc:'f.doc.grill'},
+    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',doc:'f.doc.harness'}
   ];
   function sysStatus(f){
     var m=Z.mem||{},a=Z.auto||{},vec=m.vectors||{},drive=m.drive||{},st=m.storage||{},s=Z.status||{};
@@ -40,7 +40,7 @@
     // Không có nhánh này thì `/check?feature=vector|rerank` chỉ gọi được bằng curl —
     // tức vẫn mồ côi, chỉ đổi chỗ (tự bắt 2026-07-28 ngay sau khi nối backend).
     if(f.probe)return '<button class="btn sm" data-sys-check="'+f.probe+'">↻ '+t('sys.recheck')+'</button>';
-    if(f.kind==='nav')return '<button class="btn sm" data-sys-nav="'+f.to+'">Đi tới</button>';
+    if(f.kind==='nav')return '<button class="btn sm" data-sys-nav="'+f.to+'">'+t('sys.goto')+'</button>';
     return '';
   }
   var sysSel=null;
@@ -73,7 +73,9 @@
     var f=FEATURES.filter(function(x){return x.k===sysSel;})[0];if(!f){box.innerHTML='';return;}
     var s=sysStatus(f);
     box.innerHTML='<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span class="pill '+pillFor(s.on)+'">'+stdEsc(s.txt)+'</span><b style="font-size:15px">'+stdEsc(t(f.n))+'</b></div>'
-      +'<div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">'+stdEsc(f.grp)+'</div>'
+      // t(f.grp) chứ KHÔNG phải f.grp: `grp` là KHOÁ i18n (đã chuẩn hoá 2026-08-13), in thẳng
+      // là hiện chữ thô `f.grpCore` ra màn hình.
+      +'<div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">'+stdEsc(t(f.grp))+'</div>'
       +'<div class="sxa" style="margin-bottom:14px">'+sysAction(f)+'</div>'
       // Kết quả PHÉP KIỂM THẬT (probe model). Không có khối này thì bấm "Kiểm" xong kết quả
       // nằm im trong Z.checks mà không ai thấy — nửa vời đúng nghĩa. `sysStatus` chỉ đọc
@@ -82,7 +84,7 @@
       +'<div class="mdview">'+stdMd(t(f.doc||f.d||''))+'</div>';
   }
   document.addEventListener('click',function(e){var li=e.target.closest?e.target.closest('#sysList [data-sysfeat]'):null;if(li){sysSel=li.dataset.sysfeat;renderSystem();}});
-  document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-sys-digest]'):null;if(!b)return;var o=b.textContent;b.textContent='⏳ Đang build digest… (có thể mất chút)';b.disabled=true;
+  document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-sys-digest]'):null;if(!b)return;var o=b.textContent;b.textContent=t('st.buildingDigest');b.disabled=true;
     zPost('/memory-digest').then(function(r){return zGet('/memory-status?fresh=1').then(function(m){renderMem(m);renderSystem();});}).catch(function(){b.textContent=o;b.disabled=false;});});
   document.addEventListener('click',function(e){var a=e.target.closest?e.target.closest('[data-add-proj]'):null;if(!a)return;var p=a.dataset.addProj;a.textContent='…';zPost('/add-project?root='+encodeURIComponent(p)).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){});});
   document.addEventListener('click',function(e){

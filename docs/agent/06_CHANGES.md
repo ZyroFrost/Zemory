@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-13l] — màn Tính năng vẽ MỖI NHÓM HAI LẦN · UI thôi khuyên bật rerank
+
+**Bug bố cục, tìm ra nhờ đi dọn i18n.** `grp` vừa là **khoá gom nhóm** (`groups[f.grp]`) vừa là
+thứ đem đi dịch — nhưng nửa số dòng khai bằng **key** (`f.grpCore`), nửa kia khai bằng **giá trị
+tiếng Việt** (`'Lõi nhớ & tìm'`). Hai chuỗi khác nhau ⇒ hai nhóm riêng, mà `t()` render cả hai ra
+**cùng một tên**: **6 khoá nhóm → chỉ 3 tên hiển thị**. Tức màn Tính năng đang vẽ *"Lõi nhớ &
+tìm"*, *"Đồng bộ & lưu"*, *"Harness (docs)"* **mỗi cái hai lần**, mỗi lần chứa một nửa tính năng.
+Nay chuẩn hoá 11 chỗ về dạng key ⇒ 3 khoá / 3 tên.
+*Bản vá đầu **tự đẻ lỗi mới**: `renderSysDetail` in thẳng `f.grp`, mà `grp` nay là key ⇒ suýt
+hiện chữ thô `f.grpCore` ra màn hình. Bắt được ngay vì đọc lại chỗ dùng, không chỉ chỗ khai.*
+
+**UI thôi khuyên bật rerank.** Ô mô tả đang nói *"đáng bật khi corpus lớn/nhiễu, câu hỏi khó"*
+trong khi đo trên chính kho này: rerank **thua hybrid ở mọi cột nghiêm** (MRR 0,571 → 0,459), một
+truy vấn thật **2,6 s → 18,8–29,4 s** (~7×), top-10 chỉ trùng **1/10**; và `vecMix` làm đúng việc
+đó với **119 ms**. Nay cả hai bản vi/en nói thẳng số đo + *"trên kho này thì KHÔNG NÊN BẬT"*.
+Cùng họ với ô Last Sync: **bề mặt nói dối người dùng**, chỉ khác là nó nói dối bằng lời khuyên.
+
+**i18n: 90 → 74 chuỗi hardcode.** Dọn đúng phần RẺ — 16 chuỗi vốn **đã có key sẵn** trong dict,
+code chỉ quên gọi `t()` (`system.js` 11→0 · `gm.js` 2→0 · `harness.js` 5→3 · `sources.js` 10→9);
+thêm mỗi một key mới `sys.goto`. **74 chuỗi còn lại KHÔNG cùng loại**: 45 là nội dung *tài liệu
+chuẩn cấu trúc* trong `shell.js` (dịch = viết lại tài liệu), 10 là chữ **nhúng trong chuỗi HTML**
+ở `graph-panel.js` (phải tách chữ khỏi markup trước). Trần trong cổng đã hạ theo đúng số đo.
+
 ## [2026-08-13k] — "Last Sync" lấy từ ĐỒNG BỘ THẬT, thôi đẻ nguồn thứ hai
 
 > **User chốt:** *"sync phải luôn lấy từ thời gian tự động sync thực tế"* · *"nó giống logic bên

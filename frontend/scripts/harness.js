@@ -11,7 +11,7 @@
     var prof=stdProf==='app'?'app':'non-app',key=prof+':'+stdFile;
     if(stdReal[key]){zid('stdBody').innerHTML=stdMd(stdReal[key]);return;}
     zid('stdBody').innerHTML='<div class="muted">đang tải '+stdEsc(stdFile)+'…</div>';
-    zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||'(trống)';stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">lỗi tải doc</div>';});
+    zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||t('st.empty');stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">lỗi tải doc</div>';});
   }
   // ── Per-project Harness: real docs viewer (this project's docs/agent + plan +
   //    AGENTS.md) · click file → /doc?root=&file= · reuse stdMd markdown renderer.
@@ -38,7 +38,7 @@
     var key=phRoot+'|'+rel;
     if(phDoc[key]){body.innerHTML=stdMd(phDoc[key]);return;}
     body.innerHTML='<div class="muted">…</div>';
-    zGet('/doc?root='+encodeURIComponent(phRoot)+'&file='+encodeURIComponent(rel)).then(function(r){var c=(r&&r.content)||'(trống)';phDoc[key]=c;if(phFile===rel)body.innerHTML=stdMd(c);}).catch(function(){body.innerHTML='<div class="muted">'+t('ph.err')+'</div>';});
+    zGet('/doc?root='+encodeURIComponent(phRoot)+'&file='+encodeURIComponent(rel)).then(function(r){var c=(r&&r.content)||t('st.empty');phDoc[key]=c;if(phFile===rel)body.innerHTML=stdMd(c);}).catch(function(){body.innerHTML='<div class="muted">'+t('ph.err')+'</div>';});
   }
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
