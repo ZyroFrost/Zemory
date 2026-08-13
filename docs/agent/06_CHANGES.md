@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-13h] — (⑦) 314 MB weight: mục 🔴 treo 3 ngày hoá ra KHÔNG cần viết lại lịch sử
+
+> 🔄 **Supersede:** thay [2026-08-12e] — "audit 10 mặt sau 1.5.0" — vế *"gỡ = viết lại lịch sử +
+> force-push, làm hỏng clone máy kia"*, và vế *"mọi lần clone đều kéo về ~314 MB"*. **Cả hai sai.**
+
+**Đo:** weight vào git qua ĐÚNG MỘT commit `921354f` (05/08) và **đã bị gỡ khỏi `main` ngay hôm
+đó**: `merge-base --is-ancestor 921354f HEAD` ⇒ KHÔNG · `ls-tree HEAD` ⇒ 0 file. Nó chỉ còn sống
+nhờ **hai ref CỤC BỘ** cùng trỏ `32d5d03`: `refs/original/refs/heads/main` (rác `filter-branch`
+để lại) và tag `pre-lfs-fix-20260805`. **Remote không có cả hai** ⇒ clone từ GitHub không kéo gì.
+
+**Số:** `.git` máy này **661 MB** · clone từ **local** (kéo cả tag) **236 MB** · clone từ GitHub
+không chứa commit đó.
+
+**Vì sao mục này treo 3 ngày ở mức 🔴:** nó được viết bằng suy luận *"blob còn trong pack ⇒ còn
+trong lịch sử ⇒ phải viết lại lịch sử"* — nghe rất hợp lý, và không ai hỏi **ref nào đang giữ**.
+Một câu lệnh `for-each-ref` là đủ để bác. Đúng dạng "chưa xác minh thì chưa phải sự thật": cái
+giá không phải 314 MB mà là **ba ngày mang một việc nguy hiểm giả** (force-push, đổi mọi hash,
+bắt máy kia clone lại) trong danh sách ưu tiên cao nhất.
+
+**Còn lại cho user chốt** — thuần cục bộ, không đụng remote: xoá `refs/original/…` (an toàn, tag
+vẫn giữ điểm lùi) và/hoặc xoá tag rồi `git gc --prune=now` để thu hồi 314 MB, đổi lại mất điểm
+lùi về trước đợt sửa LFS 05/08.
+
 ## [2026-08-13g] — archive dời file xuống sâu một tầng mà bỏ quên link: 26/26 gãy
 
 **Đo:** `docs/agent/archive/06_CHANGES.md` có **26 link nội bộ, gãy cả 26** — không một link nào

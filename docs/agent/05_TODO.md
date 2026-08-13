@@ -29,11 +29,10 @@ tự chạy sau 1.170 s, lượt kế chỉ nối **0,5 MB**) · log nền ra đ
 **MỘT VIỆC ĐỎ CÒN LẠI** *(mục ⑧ đã ĐÓNG 2026-08-13 — xem `06_CHANGES [2026-08-13]`: asset ABI 137
 CÓ thật, thủ phạm là host `github.com` lọt 1/10 lượt; vá bằng `fetch-prebuilds.mjs` + cổng 4/4)*:
 
-1. **(⑦) Gỡ 314 MB model weight khỏi LỊCH SỬ git** — `attic/zemory-lab/models/…onnx_data`
-   294,6 MB + `tokenizer.json` 19,4 MB, trái HP điều 2. **CẦN USER CHỐT TRƯỚC** vì:
-   viết lại lịch sử ⇒ **mọi hash đổi** (kể cả `73420e4` vừa push) ⇒ **clone trên
-   `DESKTOP-PFB157K` hỏng, phải xoá và clone lại**, và phải `--force` (trái `02_RULES §Git` nếu
-   chưa xin). Kiểm `git filter-repo` có sẵn chưa trước khi bắt đầu.
+1. **(⑦) 314 MB weight** — ĐO LẠI 2026-08-13, **nhẹ hơn hẳn mô tả cũ**: lịch sử `main` đã sạch
+   từ 05/08, remote không có, nên **không cần `filter-repo`, không cần force-push, không hash
+   nào đổi, clone máy kia KHÔNG hỏng**. Chỉ còn 2 ref cục bộ níu lại — chi tiết + hai lựa chọn
+   ở mục ⑦ bên dưới.
 
 **Trạng thái máy lúc chốt:** kho **239.778+ tin · `quick_check ok`** · vector **227.688** ·
 `scheduler`/`autosync`/`realtime` đều BẬT · daemon pid 5468 **đang chạy build CŨ (báo v1.4.1)** —
@@ -48,11 +47,23 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
 > daemon tươi · **diễn tập phục hồi ĐÃ LÀM** (merge kho chính vào kho trắng: 239.706 tin ·
 > 226.898 vector · còn phải nhúng 2 tin).
 
-- [ ] 🔴 **(⑦) TRUY RA THỦ PHẠM pack 235 MB** — mục treo từ 11/08 nay có tên:
-  `attic/zemory-lab/models/…/model_quantized.onnx_data` **294,6 MB** + `tokenizer.json`
-  **19,4 MB**, nằm trong **LỊCH SỬ git** (đã xoá khỏi cây nhưng lịch sử giữ). Mọi lần clone đều
-  kéo về ~314 MB rác, và nó **trái HP điều 2** (*weight tải lúc chạy, KHÔNG commit*). Gỡ được
-  chỉ bằng viết lại lịch sử (`filter-repo`) + force-push ⇒ **thao tác một chiều, cần user chốt**.
+- [ ] **(⑦) 314 MB weight — ĐO LẠI 2026-08-13: KHÔNG cần viết lại lịch sử, KHÔNG cần force-push.**
+  > 🔄 **Bác hai khẳng định cũ của chính mục này:** *"mọi lần clone đều kéo về ~314 MB"* và *"gỡ
+  > được chỉ bằng `filter-repo` + force-push ⇒ hỏng clone máy kia"*. **Cả hai đều sai.**
+
+  Sự thật đo được: weight vào git qua **đúng một commit** `921354f` (05/08) và **đã bị gỡ khỏi
+  `main` ngay hôm đó** — `git merge-base --is-ancestor 921354f HEAD` ⇒ **KHÔNG**; `git ls-tree
+  HEAD` ⇒ **0 file**. Lịch sử `main` đã sạch từ 9 ngày trước.
+  Nó chỉ còn sống nhờ **HAI ref CỤC BỘ**, cả hai trỏ cùng `32d5d03`:
+  · `refs/original/refs/heads/main` — **rác `filter-branch` để lại**, lẽ ra xoá sau khi kiểm;
+  · `refs/tags/pre-lfs-fix-20260805` — tag mốc, tạo **có chủ ý**.
+  **Remote KHÔNG có cả hai** (`git ls-remote origin | grep 32d5d03` ⇒ 0) ⇒ **clone từ GitHub
+  không kéo 314 MB**. Số đo: `.git` máy này **661 MB** · clone từ **local** (kéo cả tag) 236 MB.
+
+  **Cần user chốt — chỉ là thao tác CỤC BỘ, không đụng remote, không đổi hash nào:**
+  ① xoá `refs/original/…` (an toàn: tag còn giữ cùng commit nên vẫn lùi được) — **chưa giảm dung
+  lượng** vì tag vẫn níu · ② muốn thu hồi 314 MB thì phải xoá **cả tag** `pre-lfs-fix-20260805`
+  rồi `git gc --prune=now` — đổi lại **mất điểm lùi về trước đợt sửa LFS 05/08**.
 - ✅ **(⑩) LOG CỦA SCHEDULER — ĐÃ VÁ** (`scheduler.ts:65` gọi `daemonLog`, ghi
   `data/logs/daemon.log`). *Sổ ghi 🔴 tới 2026-08-13 trong khi mã đã sửa từ hôm trước — đúng dạng
   "sổ nói khác code" mà luật SOÁT SỔ = ĐO LẠI sinh ra để bắt; bắt được vì kiểm mã, không đọc sổ.*
