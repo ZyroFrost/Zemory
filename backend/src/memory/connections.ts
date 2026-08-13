@@ -30,6 +30,16 @@ export interface ConnectionRow {
   connected: boolean;
   /** Câu giải thích NGẮN, luôn là thứ đo được: đường dẫn store, hoặc lần kiểm cuối. */
   detail?: string;
+  /**
+   * CÙNG câu đó nhưng ở dạng MÃ + THAM SỐ, để UI tự ghép theo ngôn ngữ của nó.
+   *
+   * Vì sao cần: `detail` là câu tiếng Việt đã ghép sẵn ở backend, nên UI **không có cách nào**
+   * dịch — bật `lang=en` là bảng Liên kết vẫn ra tiếng Việt (trái `02_RULES §Ngôn ngữ`).
+   * Thêm MỚI chứ không thay `detail`: mọi thứ đang đọc `detail` vẫn chạy y nguyên, UI nào hiểu
+   * mã thì dùng mã. Ngày không còn ai đọc `detail` nữa thì bỏ nó đi là việc riêng, có kiểm.
+   */
+  detailCode?: "lastChecked" | "neverChecked" | "storePath" | "storeGone" | "noStore";
+  detailArgs?: { at?: string; who?: string; path?: string };
   /** Số tin đang có trong bộ nhớ của nguồn này. */
   messages: number;
   /** Nền web: có phiên sẵn trong trình duyệt thật ⇒ nối lại bằng MỘT bấm, khỏi mật khẩu. */
@@ -112,6 +122,8 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           connected: st?.ok === true,
           unknown: !st,
           detail: st ? `kiểm lần cuối ${ago(st.at)}${st.who ? ` · ${st.who}` : ""}` : "chưa kiểm lần nào",
+          detailCode: st ? "lastChecked" : "neverChecked",
+          detailArgs: st ? { at: st.at, who: st.who } : undefined,
           // Số tin là của cả LANE (mọi tài khoản dồn về một lane) — chỉ ghi ở dòng đầu để
           // không cộng dồn nhìn như nhân đôi.
           messages: acct === "main" ? messages : 0,
@@ -130,6 +142,8 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
       kind: "local",
       connected: alive.length > 0,
       detail: alive.length ? alive[0].root : mine.length ? `store đã biết nhưng không còn trên đĩa: ${mine[0].root}` : "không có store trên máy này (dữ liệu đồng bộ từ máy khác)",
+      detailCode: alive.length ? "storePath" : mine.length ? "storeGone" : "noStore",
+      detailArgs: alive.length ? { path: alive[0].root } : mine.length ? { path: mine[0].root } : undefined,
       messages,
     });
   }

@@ -278,7 +278,14 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
   chỉ lặng lẽ hiện tiếng Việt giữa giao diện tiếng Anh.
   *Vì sao không đặt trần 0 ngay: gate đỏ triền miên là gate bị bỏ qua — đúng luật 7 vừa phải
   sửa cho `guard`.* **CÒN LẠI 90 chuỗi**, gỡ dần rồi hạ trần.
-- [ ] **i18n tầng BACKEND — nặng hơn, chưa làm.** `memory/connections.ts` **sinh thẳng chuỗi
+  ✅ **i18n tầng BACKEND — XONG 2026-08-13.** `connections.ts` nay gửi kèm `detailCode` +
+  `detailArgs` (mã + tham số) **BÊN CẠNH** `detail` — thêm chứ không thay, nên thứ gì đang đọc
+  `detail` vẫn chạy y nguyên. UI ghép câu qua `connDetail()` theo ngôn ngữ đang bật, và dùng
+  lại `relTime()` sẵn có thay vì đẻ cách tính thời gian tương đối thứ hai. Cổng
+  `conn-detail-i18n.test.mjs` 4/4 canh **CẢ HAI ĐẦU** (backend quên gửi mã ⇒ UI lặng lẽ rơi về
+  câu tiếng Việt; UI quên đọc mã ⇒ mã gửi lên chẳng ai dùng — cả hai đều không ném lỗi); đột
+  biến ở từng đầu đều chứng minh đỏ được.
+  ~~**i18n tầng BACKEND — nặng hơn, chưa làm.**~~ `memory/connections.ts` **sinh thẳng chuỗi
   tiếng Việt** rồi gửi lên UI (`${m} phút trước` · `kiểm lần cuối …` · `chưa kiểm lần nào` ·
   `store đã biết nhưng không còn trên đĩa` · `không có store trên máy này`). UI **không có cách
   nào dịch** vì nhận về câu đã ghép. Sửa đúng = trả mã + tham số (`{code, args}`) để UI ghép —

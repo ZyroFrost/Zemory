@@ -5,6 +5,25 @@
 
 ---
 
+## [2026-08-13m] — i18n tầng BACKEND: thôi ghép sẵn câu tiếng Việt rồi bắt UI in nguyên văn
+
+**Tầng sâu hơn frontend.** `connections.ts` ghép thẳng `kiểm lần cuối 7 giờ trước`, `store đã
+biết nhưng không còn trên đĩa: …` rồi gửi lên. UI nhận về một CÂU nên **không có cách nào dịch**
+— bật `lang=en` thì bảng Liên kết vẫn ra tiếng Việt, và không lỗi nào nổ.
+
+**Vá:** gửi kèm `detailCode` + `detailArgs` (mã + tham số) **BÊN CẠNH** `detail` — thêm chứ không
+thay, nên mọi thứ đang đọc `detail` chạy y nguyên (HP: mở rộng, không ghi đè). UI ghép câu trong
+`connDetail()` theo ngôn ngữ đang bật, và **dùng lại `relTime()`** sẵn có thay vì đẻ cách tính
+thời gian tương đối thứ hai.
+
+**Cổng `conn-detail-i18n.test.mjs` 4/4 — canh CẢ HAI ĐẦU**, vì hỏng đầu nào cũng im lặng: backend
+quên gửi mã ⇒ UI lặng lẽ rơi về câu tiếng Việt · UI quên đọc mã ⇒ mã gửi lên chẳng ai dùng. Đột
+biến ở từng đầu đều chứng minh đỏ được (gỡ mã ⇒ 1 đỏ; trả UI về `r.detail` ⇒ thêm 1 đỏ).
+
+**i18n frontend cùng đợt: 90 → 30 chuỗi**, 6 file về 0. Chỗ duy nhất cố ý giữ: `'(ngoài chuẩn)'`
+trong `graph-render.js` là **khoá dữ liệu** do backend sinh (`type: n.slot ?? …`), dịch là lệch
+trạng thái lọc slot — nhãn đã tách qua `gSlotLabel()`.
+
 ## [2026-08-13l] — màn Tính năng vẽ MỖI NHÓM HAI LẦN · UI thôi khuyên bật rerank
 
 **Bug bố cục, tìm ra nhờ đi dọn i18n.** `grp` vừa là **khoá gom nhóm** (`groups[f.grp]`) vừa là
