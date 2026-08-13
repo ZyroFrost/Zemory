@@ -154,7 +154,11 @@ này) · hook capture BẬT · daemon **v1.4.1**. Bộ test **639/639**.
 ⚠ **Daemon phải khởi động lại sau đợt sửa này** — nó nạp code lúc bind cổng, nên bản đang chạy
 vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ ⇒ nó ghi theo lối series CŨ.
 
-- [ ] **(ĐỀ XUẤT `01_CONSTITUTION` — chờ user chốt) Nâng 9 yêu cầu đồng bộ lên tầng hiến pháp.**
+- ✅ **ĐÃ CHỐT RỒI — user duyệt 2026-08-12, thành `01_CONSTITUTION` điều 16** *(«ĐỒNG BỘ CHỞ TRỌN
+  BỘ RAG — MÁY NHẬN KHÔNG BAO GIỜ PHẢI DỰNG LẠI GÌ»)*. `conform` cũng đã nhận ra điều 16. Mục
+  dưới đây là bản đề xuất gốc, giữ để tra lý do; **KHÔNG hỏi lại user lần nữa** — hỏi lại một
+  việc đã chốt là LỖI (`02_RULES §Hành xử`).
+  ~~**(ĐỀ XUẤT `01_CONSTITUTION` — chờ user chốt) Nâng 9 yêu cầu đồng bộ lên tầng hiến pháp.**~~
   Chúng đang nằm ở `plan/08 §8.0` (user chốt 2026-08-12), nhưng bản chất là **bất biến kiến
   trúc**, không phải chi tiết thiết kế: một kho chính · ghi là nối thêm · chở trọn bộ RAG · máy
   mới không nhúng lại gì · mọi thứ lên GM là add-only. Bằng chứng cần nâng tầng: **trong MỘT
@@ -169,7 +173,7 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
    chính phủ hết ⇒ xoá được. **Guard chặn agent xoá `*.enc`** (nhóm secret, không có flag) — user
    tự xoá hoặc bảo agent sửa policy.
 3. **ColBERT** — vẫn kẹt ở model tiếng Việt.
-4. **`tooltest.db` 1,71 GB** trong `zemory-lab` — bản thử 10/08, kho thật đã vượt qua; xoá được.
+4. ~~**`tooltest.db` 1,71 GB**~~ — **KHONG CON tren dia** (do 2026-08-13). Da xoa, khong con cho ai.
 
 **VIỆC KẾ TIẾP đã rõ đường:**
 - 🔴 **Backup tự động ĐÃ KHÔNG CHẠY 4 NGÀY** — bản mới nhất trong `data/backups/` là **08/08
@@ -274,19 +278,17 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
   `store đã biết nhưng không còn trên đĩa` · `không có store trên máy này`). UI **không có cách
   nào dịch** vì nhận về câu đã ghép. Sửa đúng = trả mã + tham số (`{code, args}`) để UI ghép —
   đổi hình dạng payload, cần cổng riêng cho cả hai đầu.
-- [ ] **(⑦) `.git/objects/pack` có 10 file `.idx` KHÔNG có `.pack` tương ứng.** Dấu hiệu một lần
-  `gc`/`filter-branch` bị ngắt giữa chừng (khớp đợt `filter-branch` gỡ model weight 05/08). Không
-  mất dữ liệu — `git count-objects` vẫn đọc được 5.138 object — nhưng là rác và làm mọi lệnh đếm
-  object kêu warning. Dọn bằng `git gc` (cần user gật: nó viết lại vùng object).
-- [ ] **(⑦) Pack repo 233 MiB** — to bất thường cho một repo thuần code+docs. Chưa truy ra blob nào
-  gánh phần lớn (cần `rev-list --objects` + `cat-file --batch-check`, chưa đo). Liên quan mục xoay
-  chìa: `share/share.key` **có thật trong lịch sử** (đo 2026-08-11 trên 1.173 file từng xuất hiện).
-- [ ] **(⑥) `/memory-status` mất 18,5 giây** (các endpoint khác 112–246 ms). Có yếu tố job embed
-  đang tranh I/O, nhưng UI gọi endpoint này lúc mở màn ⇒ người dùng thấy như treo. **Đo lại sau khi
-  job xong** trước khi kết luận là bug thật.
-- [ ] **(⑩) Daemon đang chạy báo `v1.2.0` trong khi `package.json` là 1.3.0** — bản đang chạy là
-  build cũ, nên số version trên UI lạc hậu cho tới lần khởi động lại. Không phải bug, nhưng là bẫy
-  đọc số: đừng lấy version trên UI làm bằng chứng về mã đang có.
+- ✅ **(⑦) 10 file `.idx` mồ côi — HẾT 2026-08-13** (đo: đúng **1 `.idx` / 1 `.pack`**). `git gc`
+  chạy trong đợt dọn weight đã cuốn luôn.
+- ✅ **(⑦) Pack repo 233 MiB — CÒN 22,52 MiB 2026-08-13.** Thủ phạm đã truy ra và dọn xong (xem
+  `06_CHANGES [2026-08-13i]`). *Vế `share.key` có trong lịch sử: **vẫn còn giá trị** — xoay chìa
+  là việc riêng, không dọn được bằng `gc`.*
+- ❌ **(⑥) "`/memory-status` mất 18,5 giây" — SỐ ĐÃ CHẾT.** Đo lại 2026-08-13 lúc máy rảnh:
+  `fresh=1` **6,1 / 4,1 / 4,1 s**, cache ấm **0,003 s**. Mục sống nằm ở `[~] (⑥)` phía trên —
+  đừng đọc hai mục thành hai việc.
+- ❌ **(⑩) "Daemon báo v1.2.0 / package 1.3.0" — SỐ ĐÃ CHẾT** (nay v1.4.1 vs **1.5.10**). *Bài học
+  thì vẫn đúng và đáng giữ: **đừng lấy version trên UI làm bằng chứng về mã đang chạy** — chính
+  bẫy này làm ta tưởng đã restart daemon hôm nay trong khi chưa.*
 - ✅ **(⑩ · luật 7) Guard CHẶN NHẦM lệnh audit — ĐÃ SỬA 2026-08-13.** Nay chỉ soi token **trông
   như tệp đang bị đọc**: có dấu phân cách đường dẫn · đứng ngay sau một lệnh đọc (bỏ qua cờ) ·
   hoặc là token cuối câu. Ba dấu hiệu đó vẫn chặn đủ `cat /etc/ssh/id_rsa` · `cat id_rsa | grep`
@@ -475,8 +477,11 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   nền (`prose` 50%@10 · `tool_result` 25% · `tool_use` 0%). ĐÚNG nếu `tool_use` tiến về ~25% mà
   `prose`/`keyword` không tụt; SAI nếu vẫn ~0% dù đáp án đã có vector ⇒ **đừng chạy job trên kho thật**.
   ⚠ Chạy MỘT MÌNH — bench và embed cùng dùng ONNX một CPU thì cả hai số đều hỏng.
-- [ ] **Backlog embed mặc định ~960 tin** (số cũ 674 đã lỗi thời) — `memory embed` một lượt.
-  Scheduler đang TẮT nên không ai tự xử.
+- ❌ **"Backlog embed ~960 tin" — SỐ CHẾT LẦN THỨ BA.** Đo 2026-08-13 qua `/memory-status`:
+  **remaining 35 · coverage 100%**. Và vế *"scheduler đang TẮT nên không ai tự xử"* cũng hết
+  đúng — scheduler **BẬT** từ 12/08, nó tự xử. *Con số này đã chết ba lượt (674 → 960 → 35): nó
+  là **đại lượng ĐANG CHẢY**, ghi số vào sổ là ghi một ảnh chụp hết hạn ngay khi mực khô. Muốn
+  biết thì gọi `/memory-status`, đừng đọc sổ.*
 - [ ] **Đo lại 2 mục dưới thước TƯƠNG ĐƯƠNG** (chưa làm, thước mới có thể đảo tiếp):
   ① cổng "không biết" — số ca âm không đổi, nhưng "mất bao nhiêu kết quả đang ở top-10" thì đổi.
   ② `vecMix` — bảng 09/08 cho thấy tắt nó thì `tool_result` MRR sập **0,209 → 0,074**, tức lớp đó
@@ -830,9 +835,12 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
 (MRR 0,220 → 0,160) và **11 s/truy vấn** thay vì 0,68 s. Tức mọi lần recall trên máy này đang
 **chậm 16 lần và tệ hơn**. Rất có thể là một phần của triệu chứng "search trả rác".
 
-- [ ] **User tắt rerank** — nút trong UI (⚙), hoặc đổi khoá `rerank` thành `false` trong file
+- ✅ **User ĐÃ TẮT rerank** *(đo 2026-08-13 nguồn ③ chạy thật: `/memory-status` ⇒ `rerank: false`
+  · `hybrid: true`)*. Hai mục con bên dưới ("sau khi tắt: đo lại", "cân nhắc sửa gốc") theo đó
+  mà xét lại — hồ sơ đo giữ nguyên vì nó là bằng chứng cho quyết định.
+  ~~**User tắt rerank** — nút trong UI (⚙), hoặc đổi khoá `rerank` thành `false` trong file
   config cạnh kho (gitignored nên `todo verify` không thấy đường dẫn — đừng viết nó dạng
-  backtick đường dẫn, gate sẽ báo ref chết). KHÔNG tự đổi: đây là setting hiển thị của user.
+  backtick đường dẫn, gate sẽ báo ref chết). KHÔNG tự đổi: đây là setting hiển thị của user.~~
   ⚠ **Soát 2026-08-09 (nguồn ③ chạy thật): VẪN đang `true`** — chưa tắt. **Đo lại end-to-end cuối
   ngày trên một truy vấn thật** (`"vì sao rerank làm recall tệ đi"`): tắt rerank **2,60 s** · bật
   **18,8–29,4 s** (chậm **7,2×**), và **top-10 chỉ trùng 1/10** — giữ hạng 1, xáo sạch 9 hạng sau.
@@ -935,8 +943,7 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
   31/07, thiếu nhánh hooks, chở 4 file bản cũ) nên giữ lại là phát tán bản sai.
   ⇒ **Lối 3 của BOOTSTRAP ("xin người dùng gửi file zip") nay không có gói dựng sẵn** — người
   gửi tự nén từ cây nguồn. Chấp nhận được: lối 1 (tải qua tool web) mới là lối chính, đã đo chạy.
-- [ ] **Khoá mồ côi `D:\huy.nguyen\zemory-lab\cli-write.lock`** giữ pid 13068 đã chết. Vô hại
-  (code phân biệt khoá TƯƠI/MỒ CÔI từ `[2026-08-09]`), nhưng là rác nên dọn khi bỏ thư mục lab.
+- ✅ **Khoá mồ côi trong `zemory-lab` — KHÔNG CÒN** (đo 2026-08-13: file không tồn tại).
 
 - [ ] **Nợ cổng của 4 mặt audit mới (spec: `docs/plan/18_audit_coverage.md`).** Xếp theo "có sự
   cố THẬT mà chưa có cổng nào":
