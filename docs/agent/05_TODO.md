@@ -60,10 +60,14 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
   **Remote KHÔNG có cả hai** (`git ls-remote origin | grep 32d5d03` ⇒ 0) ⇒ **clone từ GitHub
   không kéo 314 MB**. Số đo: `.git` máy này **661 MB** · clone từ **local** (kéo cả tag) 236 MB.
 
-  **Cần user chốt — chỉ là thao tác CỤC BỘ, không đụng remote, không đổi hash nào:**
-  ① xoá `refs/original/…` (an toàn: tag còn giữ cùng commit nên vẫn lùi được) — **chưa giảm dung
-  lượng** vì tag vẫn níu · ② muốn thu hồi 314 MB thì phải xoá **cả tag** `pre-lfs-fix-20260805`
-  rồi `git gc --prune=now` — đổi lại **mất điểm lùi về trước đợt sửa LFS 05/08**.
+  ✅ **ĐÃ DỌN 2026-08-13** (user chốt "giữ log hay xoá?" → chọn **giữ log, bỏ blob**):
+  `size-pack` **234,91 → 22,52 MiB**. Tag dời sang `8bbcba9` + nâng thành **annotated** mang
+  luôn phần log (hash cũ · tên file · ánh xạ tra ngược); bỏ `refs/original`; `gc --prune=now`.
+  `main` y nguyên `7e7d2a8` · 3 tag đủ · `fsck` sạch · 28/28 test + validate + conform ✓ ·
+  **không đụng remote, không force-push** ⇒ clone máy khác không hỏng.
+  ⚠ **Bẫy đã dính, đừng lặp:** `git reflog expire --all` **xoá luôn stash** (stash entry chính
+  là reflog entry của `refs/stash`). Đã cứu được vì ref còn trỏ commit; lần sau chụp
+  `stash list` trước và expire có phạm vi thay vì `--all`.
 - ✅ **(⑩) LOG CỦA SCHEDULER — ĐÃ VÁ** (`scheduler.ts:65` gọi `daemonLog`, ghi
   `data/logs/daemon.log`). *Sổ ghi 🔴 tới 2026-08-13 trong khi mã đã sửa từ hôm trước — đúng dạng
   "sổ nói khác code" mà luật SOÁT SỔ = ĐO LẠI sinh ra để bắt; bắt được vì kiểm mã, không đọc sổ.*

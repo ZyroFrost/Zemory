@@ -5,6 +5,28 @@
 
 ---
 
+## [2026-08-13i] — (⑦) ĐÃ DỌN: pack 234,91 → 22,52 MiB, giữ nguyên mốc lịch sử
+
+**Cách làm — giữ LOG, bỏ BLOB** (user hỏi thẳng: xoá hay để làm log). Thứ đáng giữ là *"ngày
+05/08 đã xảy ra chuyện gì, ở commit nào"*, không phải 314 MB weight tải lại được (HP điều 2).
+Và nội dung **không mất gì**: mỗi commit cũ đều có bản tương ứng đã bóc weight trên `main`
+(`32d5d03`→`8bbcba9` · `921354f`→`d9cf711`, cùng ngày cùng message).
+· tag `pre-lfs-fix-20260805` **dời** sang `8bbcba9` và nâng thành **annotated** — chính nó nay
+  mang phần log: hash cũ, tên hai file weight, lý do, ánh xạ hash để tra ngược.
+· xoá `refs/original/refs/heads/main` (rác `filter-branch`) · `reflog expire` · `gc --prune=now`.
+
+**Số đo:** `size-pack` **234,91 → 22,52 MiB**. `main` **y nguyên** `7e7d2a8`; 3 tag còn đủ; cây
+làm việc sạch; `fsck` sạch; 28/28 test + `validate` + `conform` ✓. **Không đụng remote, không
+force-push, không hash nào của `main` đổi** ⇒ clone máy khác KHÔNG hỏng.
+
+**🔴 SỰ CỐ TỰ GÂY, ghi lại vì đắt:** `git reflog expire --expire=now --all` **xoá luôn stash**.
+`git stash list` đọc **reflog của `refs/stash`** — stash entry CHÍNH LÀ reflog entry, nên "dọn
+reflog" = "xoá danh sách stash". Mất mục stash 04/08 của user (việc chưa commit).
+**Cứu được** vì `refs/stash` vẫn trỏ commit `2986922` và `gc` không đụng (reachable qua ref):
+`update-ref -d refs/stash` rồi `stash store` để dựng lại entry — nội dung khớp y nguyên
+(3 file · +120/−66). **Bài học: `--all` trong lệnh git bao gồm cả những ref mình không nghĩ tới.**
+Lần sau: chụp `for-each-ref` **và** `stash list` trước, và expire có phạm vi thay vì `--all`.
+
 ## [2026-08-13h] — (⑦) 314 MB weight: mục 🔴 treo 3 ngày hoá ra KHÔNG cần viết lại lịch sử
 
 > 🔄 **Supersede:** thay [2026-08-12e] — "audit 10 mặt sau 1.5.0" — vế *"gỡ = viết lại lịch sử +
