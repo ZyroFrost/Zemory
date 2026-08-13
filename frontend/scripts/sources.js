@@ -126,6 +126,28 @@
     rows.forEach(function(w){got+=(w.pulled||0);});
     return ' · '+t('scan.web').replace('{n}',zN(got));
   }
+  /**
+   * Câu giải thích của một dòng Liên kết, ghép TẠI ĐÂY theo ngôn ngữ đang bật.
+   *
+   * Backend gửi kèm `detailCode`+`detailArgs` (mã + tham số) BÊN CẠNH `detail` — vì `detail` là
+   * câu tiếng Việt đã ghép sẵn ở server, bật `lang=en` thì bảng này vẫn ra tiếng Việt. Có mã thì
+   * dùng mã; không có (server cũ) thì rơi về `detail` y như trước, nên không vỡ gì.
+   */
+  function connDetail(r){
+    if(!r||!r.detailCode)return r&&r.detail||'';
+    var a=r.detailArgs||{};
+    if(r.detailCode==='neverChecked')return t('conn.unknown');
+    if(r.detailCode==='storePath')return a.path||'';
+    if(r.detailCode==='storeGone')return t('conn.storeGone').replace('{path}',a.path||'');
+    if(r.detailCode==='noStore')return t('conn.noStore');
+    if(r.detailCode==='lastChecked'){
+      // Dùng chính relTime() của trang chủ ⇒ "7 giờ trước"/"7 h ago" đổi theo ngôn ngữ, và
+      // KHÔNG đẻ thêm một cách tính thời gian tương đối thứ hai.
+      var when=a.at?relTime(a.at).big:'';
+      return t('conn.lastChecked').replace('{ago}',when)+(a.who?' · '+a.who:'');
+    }
+    return r.detail||'';
+  }
   /** Bảng LIÊN KẾT dưới Sources. Thay cho hộp thoại tự nhảy giữa lúc quét — trạng thái
    *  được TRƯNG ra để nhìn, và người dùng bấm nối lại khi họ muốn, không bị hỏi ngang. */
   function renderConn(d){
@@ -140,7 +162,7 @@
         : '';
       var add=(r.kind==='web'&&(r.account||'main')==='main')?'<button class="btn sm" data-addacct="'+stdEsc(r.platform||'')+'" title="'+t('conn.addAcctTip')+'">＋</button>':'';
       return '<div class="set-row" style="padding:6px 0;border:0"><span class="nm" style="font-size:12px">'+mark+' '+stdEsc(r.label)
-        +'<small class="muted" style="display:block">'+stdEsc(note+(r.detail?' · '+r.detail:''))+'</small></span>'
+        +'<small class="muted" style="display:block">'+stdEsc(note+(connDetail(r)?' · '+connDetail(r):''))+'</small></span>'
         +'<span class="scope-n"><span class="muted">'+zN(r.messages||0)+'</span> '+btn+'</span></div>';
     }).join('');
   }
