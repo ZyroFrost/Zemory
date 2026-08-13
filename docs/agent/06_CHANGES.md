@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-08-13k] — "Last Sync" lấy từ ĐỒNG BỘ THẬT, thôi đẻ nguồn thứ hai
+
+> **User chốt:** *"sync phải luôn lấy từ thời gian tự động sync thực tế"* · *"nó giống logic bên
+> cái đã làm thôi"* — tức dùng lại đường đã có, đừng viết thêm một truy vấn nữa.
+
+**Lỗ thứ hai của cùng ô đó** (lỗ thứ nhất: lệch kiểu, xem `[2026-08-13j]`). `lastSyncAt()` tự đẻ
+`SELECT MAX(updated_at) FROM sync_state` — **MAX trên TOÀN bảng**, trong khi bảng ghi watermark
+của MỌI thứ, không riêng đồng bộ Drive. Đo: **11 hàng thì 6 là `.tmp` của phép thử**
+(`timed.tmp` · `probe5.tmp` · `probe4.tmp` · `probe3.tmp` · `probe2.tmp` · `probe-ship.tmp`),
+cộng `keytest.enc` · `test.zemory.enc` · `cli-lean.enc`.
+
+**Hôm nay con số vẫn "đúng" — thuần may:** hàng `drive:SS01-IT-12` tình cờ mới nhất. Chỉ cần một
+phép thử chạy sau lượt sync là ô này hiện giờ của **một lượt test**. Bug ngồi im chờ ngày thứ tự
+đảo lại — kiểu khó thấy nhất, vì lúc kiểm thì nó đang đúng.
+
+**Vá:** bỏ hẳn truy vấn riêng; `lastSync` lấy từ `drive.lastPushAt` — chính hàng `drive:<host>`
+mà panel Drive vốn đã đọc, và `driveSummary()` nay gọi **một lần** dùng cho cả hai ô. Cùng bệnh
+với ô "đã đủ" từng nói dối: hai truy vấn trả lời hai câu khác nhau rồi cùng đổ vào một ô — chữa
+đúng là **bỏ truy vấn thứ hai**, không phải sửa nó cho khéo hơn.
+
+**Cổng:** thêm ca vào `last-sync.test.mjs` (5/5) canh `lastSync` phải đến từ `drive.lastPushAt`
+và cấm quay lại `MAX(updated_at)`; đột biến chứng minh đỏ được. *Ca này đỏ nhầm lần đầu vì soi
+trúng `MAX(updated_at)` nằm trong CHÚ THÍCH giải thích bug — nay bỏ chú thích trước khi soi.*
+
+**Còn lại:** 6 hàng `.tmp` rác trong `sync_state` nay vô hại (không ai đọc tới) nhưng vẫn nên dọn
+— là xoá dữ liệu nên chờ user chốt.
+
 ## [2026-08-13j] — ô "Last Sync" NÓI DỐI: TEXT ISO bị đọc như số epoch, catch nuốt lỗi
 
 **User báo:** card cứ hiện *"never synced"* dù vừa sync xong. Đo lại thấy mâu thuẫn **ngay trong

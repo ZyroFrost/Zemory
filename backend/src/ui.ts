@@ -431,19 +431,17 @@ export function parseSyncTimestamp(raw: string | number | null | undefined): str
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-function lastSyncAt(): string | null {
-  const db = openMemory();
-  try {
-    const r = db.prepare("SELECT MAX(updated_at) AS t FROM sync_state").get() as
-      | { t?: string | number | null }
-      | undefined;
-    return parseSyncTimestamp(r?.t);
-  } catch {
-    return null; // table missing on an old store — genuinely "nothing to report"
-  } finally {
-    db.close();
-  }
-}
+// "Last Sync" đọc đúng MỘT nguồn: hàng `drive:<host>` mà `driveSyncProgress()` vốn đã dùng —
+// tức lượt đồng bộ THẬT của máy này. Xem chỗ gọi trong `dashboardMemory()`.
+//
+// Bản cũ tự đẻ một truy vấn riêng `SELECT MAX(updated_at) FROM sync_state` — MAX trên TOÀN bảng,
+// nên nó nhặt cả những hàng KHÔNG phải đồng bộ thật. Đo 2026-08-13: trong 11 hàng có 6 hàng
+// `.tmp` do phép thử để lại (`timed.tmp` · `probe5.tmp` · `probe4.tmp` …) cộng `keytest.enc`,
+// `test.zemory.enc`, `cli-lean.enc`. Hôm nay hàng `drive:` tình cờ mới nhất nên số nhìn có vẻ
+// đúng — chỉ cần một phép thử chạy sau lượt sync là ô này hiện giờ của MỘT LƯỢT TEST.
+//
+// Đây là cùng một bệnh với ô "đã đủ" hồi trước: HAI truy vấn trả lời HAI câu khác nhau rồi cùng
+// đổ vào một ô. Cách chữa không phải sửa truy vấn thứ hai cho khéo hơn, mà là BỎ nó đi.
 
 /**
  * Gắn metadata đính kèm vào từng hàng có `id` — MỘT lượt truy vấn cho cả lô, không
@@ -930,6 +928,10 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
     };
   }
   const tokensEst = heavy.tokensEst;
+  // MỘT lời gọi, dùng cho CẢ hai ô: panel Drive và ô "Last Sync". Trước đây `lastSync` đi qua
+  // một truy vấn riêng (MAX toàn bảng `sync_state`) nên hai ô có thể nói hai mốc khác nhau về
+  // cùng một sự việc — xem chú thích ở `parseSyncTimestamp()`.
+  const drive = driveSummary();
 
   const payload = {
     ...summary,
@@ -953,8 +955,9 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
     scopeTree: safeScopeTree(),
     scopeExcluded: getScopeExclude().length,
     scopeRules: getScopeExclude(),
-    drive: driveSummary(),
-    lastSync: lastSyncAt(),
+    drive,
+    // Thời điểm ĐỒNG BỘ THẬT của máy này (hàng `drive:<host>`), chuẩn hoá về ISO.
+    lastSync: parseSyncTimestamp(drive.lastPushAt),
     storage: safeStorage(),
     lang: getLang(),
     generatedAt: new Date().toISOString(),
