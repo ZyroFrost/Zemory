@@ -19,8 +19,38 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import { parseSyncTimestamp } from "../../dist/ui.js";
+
+test("Last Sync phải lấy từ lượt ĐỒNG BỘ THẬT, không phải hàng bất kỳ trong sync_state", () => {
+  // User chốt 2026-08-13: *"sync phải luôn lấy từ thời gian tự động sync thực tế"*.
+  //
+  // `sync_state` chứa MỌI thứ từng ghi watermark, không riêng đồng bộ Drive. Đo cùng ngày: 11
+  // hàng thì 6 hàng là `.tmp` do phép thử để lại (`timed.tmp` · `probe5.tmp` · `probe4.tmp` …)
+  // cộng `keytest.enc` · `test.zemory.enc` · `cli-lean.enc`. Bản cũ lấy `MAX(updated_at)` trên
+  // TOÀN bảng ⇒ chỉ cần một phép thử chạy sau lượt sync là ô này hiện giờ của MỘT LƯỢT TEST.
+  // Hôm phát hiện, hàng `drive:` tình cờ mới nhất nên con số nhìn vẫn "đúng" — đúng kiểu bug
+  // ngồi im chờ ngày thứ tự đảo lại.
+  //
+  // Bất biến: `lastSync` dùng CHUNG nguồn với panel Drive (`drive:<host>`), không đẻ truy vấn
+  // thứ hai. Hai truy vấn trả lời hai câu khác nhau rồi cùng đổ vào một ô — đó là cách ô "đã
+  // đủ" từng nói dối trước đây.
+  // Bỏ chú thích TRƯỚC khi soi: chính chú thích giải thích bug lại chứa `MAX(updated_at)`, nên
+  // soi thẳng cả file thì cổng đỏ vì đọc được lời kể về bug chứ không phải bản thân bug.
+  const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  assert.match(
+    src,
+    /lastSync: parseSyncTimestamp\(drive\.lastPushAt\)/u,
+    "lastSync phải lấy từ drive.lastPushAt (lượt sync thật của máy này)",
+  );
+  assert.ok(
+    !/MAX\(updated_at\)/u.test(src),
+    "không được quay lại MAX(updated_at) trên toàn bảng sync_state — nó nhặt cả hàng .tmp của phép thử",
+  );
+});
 
 test("chuỗi ISO trong cột TEXT phải đọc được — đây là dạng schema THẬT đang dùng", () => {
   assert.equal(parseSyncTimestamp("2026-08-13T06:59:26.646Z"), "2026-08-13T06:59:26.646Z");
