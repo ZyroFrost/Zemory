@@ -305,7 +305,21 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
 
 </details>
 
-- [ ] **(③) 20 export không phải kiểu khác** chỉ dùng trong chính file mình ⇒ thừa từ khoá `export`
+  ✅ **(③) Export thừa — DỌN XONG 2026-08-15: bỏ `export` ở 11 hàm** (`loadCorpus` ·
+  `driveFsPrefsPath` · `browserAccounts` · `findSplitProjects` · `setStoragePointer` ·
+  `rareTerms` · `rm3Expand` · `bundleSignature` · `isBundleMerged` · `markBundleMerged` ·
+  `listDriveHosts`). `tsc` + `lint` + gate xanh ⇒ không cái nào đang được dùng ngoài file mình.
+  **GIỮ có chủ đích 2 cái:** `machineBusyReason` (API của `helpers.mjs` cho mọi test) và
+  **`formatCloudReport`** — lint báo "never used" nhưng nó **KHÔNG phải rác**: đó là bản in của
+  lưới đỡ cho sự cố ĐÃ XẢY RA THẬT (04/08 Drive cuốn cả kho lên mây, HP điều 11/14). Thiếu là
+  thiếu **chỗ GỌI**, không phải bản thân nó → xem mục dưới.
+  ⚠ **Ba lần phép đo tự hỏng khi làm việc này, ghi để đừng tin nhầm:** quét sai regex ra
+  **345/345** (vô lý — app sẽ không chạy nổi) · quên tính `backend/test/` ra **53** (báo oan) ·
+  regex thiếu cờ `g` nên `match()` luôn trả 1 ⇒ báo cả 13 cái là "không ai dùng", kể cả hàm tôi
+  BIẾT đang được gọi. **Cách chữa dứt: đếm bằng `split()`, đừng đưa regex qua shell/sed.**
+- [ ] **`formatCloudReport` chưa nối vào CLI/UI** (0 lời gọi, đo 2026-08-15). Cảnh báo *"kho nằm
+  trong vùng đồng bộ đám mây — WAL SẼ hỏng"* hiện chỉ tồn tại dưới dạng hàm, không ai in ra.
+  Nối vào `doctor`/`memory status` là xong; **đừng xoá** — xoá là vứt hiểu biết rồi viết lại.
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
 - [~] **i18n HỤT — 90 → 74 chuỗi (2026-08-13, đã dọn phần RẺ).** 16 chuỗi vốn ĐÃ CÓ key sẵn,
@@ -480,7 +494,10 @@ Con số đáng tin là thước **nghiêm +3 nhãn**, khớp cộng dồn 2 `to
 · Phạm vi chạy kho thật nay là **`Edit,Write,Bash,PowerShell,Artifact`** = **45.059 tin**
   (`Artifact` chỉ 21 tin — thêm vào gần như miễn phí và nó phủ đúng nhãn thứ 14).
 
-- [~] **Job embed kho thật ĐANG CHẠY** (bắt đầu 01:46 ngày 11/08, ~15,7 giờ máy).
+  ✅ **XONG từ 11/08** — job đó kết thúc lâu rồi (kết quả: lớp `tool_use` 0%→21%@10, xem
+  `06_CHANGES`). *`embedRunning: true` hiện nay là job NỀN THƯỜNG NGÀY của scheduler, không phải
+  job này — đừng đọc nhầm thành "vẫn đang chạy".*
+  ~~**Job embed kho thật ĐANG CHẠY** (bắt đầu 01:46 ngày 11/08, ~15,7 giờ máy).~~
   Log `D:\huy.nguyen\zemory-lab\embed-full-real.log`; đo tiến độ bằng SQL trên `messages`
   ⋈ `vec_chunks_rowids`, đừng tin log (lượt trước mất dấu vì không ai ghi).
   **Phóng bằng `.vbs` (`WshShell.Run(cmd,0,False)`) nên nó MỒ CÔI, không chết theo phiên agent** —
@@ -522,7 +539,9 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
 `similarIds` · hình phạt tool **hai mức theo lane** (FTS 0,3 · hybrid 0,7). Đang TẮT: cổng
 "không biết" (`ZEMORY_ABSTAIN=1` để bật — trượt cổng nghiêm, chặn 5/8+4/10, giết oan 0/68).
 
-- [~] **PHÉP THỬ ĐANG CHẠY trên BẢN SAO — nhúng tin tool để kiểm giả thuyết "hai luồng".**
+  ✅ **XONG 11/08 — cổng QUA** (`tool_use` thoát 0%, không lớp nào tụt; đã embed kho thật).
+  Bản sao `tooltest.db` cũng không còn trên đĩa. *Giữ hồ sơ để tra phương pháp A/B.*
+  ~~**PHÉP THỬ ĐANG CHẠY trên BẢN SAO — nhúng tin tool để kiểm giả thuyết "hai luồng".**~~
   > 🔄 **Đổi PHẠM VI và LÝ DO so với mục cũ** (`Edit,Write` 9–16 giờ vì "khớp ngữ nghĩa").
   > Đo 2026-08-09/10: 14 nhãn `tool_use` trỏ vào **Bash 6 · Edit 4 · PowerShell 3 · Artifact 1 ·
   > Write 0** ⇒ `Edit,Write` chỉ phủ **4/14**. Và lý do thật KHÔNG phải ngữ nghĩa mà là **RRF
@@ -723,7 +742,9 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   SHA256 trước khi xoá: trùng khít hai bản trong `data/corrupt-20260803-091106/` ⇒ vật chứng
   còn nguyên. Đây là cách xoá đúng với thứ được đánh dấu "không được xoá": chứng minh nó là
   BẢN SAO trước, đừng tin mỗi tên file.
-- [ ] **Còn hai mục xoá, CHỜ user:** `attic\zemory-lab\lab.db` (1,18 GB, bản lab máy cũ) +
+  ✅ **Hai mục xoá — XONG 2026-08-15, user tự xoá.** Thư mục `zemory-lab` KHÔNG còn trên đĩa
+  (đo: `test -d` ⇒ không tồn tại). *Hồ sơ gốc giữ bên dưới để tra lý do từng khuyến nghị giữ.*
+  ~~**Còn hai mục xoá, CHỜ user:** `attic\zemory-lab\lab.db` (1,18 GB, bản lab máy cũ) +~~
   folder `D:\huy.nguyen\zemory-lab`. ⚠ **Khuyến nghị GIỮ `zemory-lab` thêm vài ngày** — chính
   `lab.db` trong đó là NGUỒN của kho 768 đang chạy; xoá sớm là bỏ mất đường lùi thứ hai khi
   bản lùi 256 đã cũ hơn hiện trạng. Ổ D còn **139 GB**, không có áp lực dung lượng.
@@ -910,7 +931,8 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
   và tốn 10 s/truy vấn · ② **đã có bản thay thế rẻ hơn 270 lần đang chạy mặc định**: trộn cosine
   (`vecMix`) thắng ở đúng chỗ cross-encoder thua, giá 119 ms. Tức bật rerank hiện nay là trả 10 s
   để nhận kết quả tệ hơn thứ đã có sẵn miễn phí.
-- [ ] **Sau khi tắt: đo lại** một truy vấn thật để xác nhận header không còn `rerank` và
+  ✅ **Đã tắt và đã đo** (2026-08-13/15: `/memory-status` ⇒ `rerank: false`, nguồn ③ chạy thật).
+  ~~**Sau khi tắt: đo lại** một truy vấn thật để xác nhận header không còn `rerank` và~~
   thời gian về ~0,7 s.
 - [ ] **Cân nhắc sửa gốc:** giá trị `true` sót lại từ thời mặc-định-sai nên được coi là NỢ và
   dọn một lần (migration nhỏ: config còn bật rerank mà chưa ai bật tay sau ngày vá ⇒ hạ về
@@ -925,7 +947,9 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
   `.endsWith(".enc")` kèm comment nêu rõ lý do; commit **`1cbe86c` (10/08)**. Test khoá cũng có
   rồi: `recall-lane-defaults.test.mjs:88` chốt *"2 bundle series + 1 bundle đời cũ, KHÔNG đếm
   .txt/.md"* — chạy lại 11/08: **5/5 xanh**. Giữ dòng để không ai sửa lần hai.
-- [ ] **UI khuyên SAI về rerank — VẪN CÒN** *(đo lại 2026-08-11: `chrome.js` khoá `f.doc.rerank`
+  ✅ **ĐÃ SỬA 2026-08-15** (`06_CHANGES [2026-08-13l]`): cả hai bản vi/en nay nói thẳng số đo
+  (`MRR 0,571→0,459` · `2,6 s → 18,8–29,4 s` · top-10 trùng 1/10) + *"trên kho này KHÔNG NÊN BẬT"*.
+  ~~**UI khuyên SAI về rerank — VẪN CÒN** *(đo lại 2026-08-11: `chrome.js` khoá `f.doc.rerank`~~
   còn nguyên câu "đáng bật khi corpus lớn/nhiễu, câu hỏi khó")*, trong khi đo trên chính kho này
   nó **tệ hơn + chậm 11,6×**. Cùng loại "UI nói sai thực tế" đã sửa cho 256d/đường kho, nhưng đây
   là LỜI KHUYÊN nên không tự đổi — chờ user.
@@ -972,7 +996,9 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
 
 ## 🆕 Phát sinh 2026-08-07 tối (sau release 1.2.0) — 4 việc
 
-- [ ] **CHẠY 5 FILE TEST CÒN MÙ sau khi embed xong:** `embed` · `rerank` · `vectors` ·
+  ✅ **ĐÃ CHẠY 2026-08-15** — gate đầy đủ **670/670 pass · 0 fail · 0 skipped**, tức 5 file đó
+  đều chạy thật (không ca nào bị `skipIfBusy` bỏ qua).
+  ~~**CHẠY 5 FILE TEST CÒN MÙ sau khi embed xong:** `embed` · `rerank` · `vectors` ·~~
   `memory-search` · `digest`. Ba lượt audit hôm nay CỐ Ý bỏ chúng để không tranh CPU với job
   embed (đo thật: bench chạy song song làm embed tụt về 0 chunk/30 s). Ghi ra đây để **không ai
   đọc "audit xanh" thành "đã soi hết"** — vùng này chưa được soi trong cả ba lượt.
@@ -985,7 +1011,9 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
   ⚠ **Guard chỉ ăn TỪ PHIÊN SAU** (hook nạp lúc mở phiên). Đo 07/08: `.allow-push` vẫn còn
   nguyên sau khi push ⇒ phiên đó guard chưa gác. Từ phiên tới `git push` sẽ bị chặn tới khi
   user duyệt; flag đã tự dọn, KHÔNG để lại sẵn.
-- [ ] **Chưa tạo git tag `v1.2.0`.** Repo mới có tag dạng mốc-trước-refactor, chưa có tag
+  ❌ **SỐ ĐÃ CHẾT** — nay version là **1.5.19**, tag `v1.2.0` không còn nghĩa gì. Repo vẫn chỉ có
+  3 tag mốc-trước-refactor. *Việc thật nếu muốn: đặt tag theo release hiện hành, user quyết.*
+  ~~**Chưa tạo git tag `v1.2.0`.**~~ Repo mới có tag dạng mốc-trước-refactor, chưa có tag
   version nào — không tự tạo tiền lệ mới. Một lệnh là xong nếu user muốn.
 - [ ] **(ĐỪNG "dọn cho đẹp") Index lưu đường theo separator của OS**, không phải posix: 23 doc
   row của repo này đều dạng `docs\agent\…`, và mọi chỗ TRA cũng ghép bằng `join`. Đợt vét 07/08

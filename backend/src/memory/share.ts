@@ -398,7 +398,7 @@ export function writeExportWatermark(bundle: string, lastMessageId: number, dbPa
  * `createdAt` from its plaintext header. It changes whenever the file is
  * rewritten, so the receiver can skip files it has already merged.
  */
-export function bundleSignature(bundlePath: string): string {
+function bundleSignature(bundlePath: string): string {
   const bytes = statSync(bundlePath).size;
   let createdAt = "";
   try {
@@ -410,7 +410,7 @@ export function bundleSignature(bundlePath: string): string {
 }
 
 /** Has this exact bundle file (by signature) already been merged here? */
-export function isBundleMerged(file: string, sig: string, dbPath?: string): boolean {
+function isBundleMerged(file: string, sig: string, dbPath?: string): boolean {
   const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     const row = db.prepare("SELECT sig FROM merged_bundles WHERE file = ?").get(file) as { sig: string } | undefined;
@@ -421,7 +421,7 @@ export function isBundleMerged(file: string, sig: string, dbPath?: string): bool
 }
 
 /** Record that a bundle file (by signature) has been merged here. */
-export function markBundleMerged(file: string, sig: string, dbPath?: string): void {
+function markBundleMerged(file: string, sig: string, dbPath?: string): void {
   const db = openMemory(dbPath ?? currentMemoryDb());
   try {
     db.prepare(
@@ -953,7 +953,7 @@ function listMySeries(dir: string, host: string): { file: string; seq: number }[
 }
 
 /** Mọi host có series trong thư mục Drive, kèm số file + tổng dung lượng. */
-export function listDriveHosts(dir: string): { host: string; files: string[]; bytes: number }[] {
+function listDriveHosts(dir: string): { host: string; files: string[]; bytes: number }[] {
   const byHost = new Map<string, { host: string; files: string[]; bytes: number }>();
   for (const f of readdirSync(dir)) {
     const m = /^global_memory\.(.+?)\.(?:\d+|zemory)\.enc$/.exec(f);

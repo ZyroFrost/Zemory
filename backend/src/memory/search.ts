@@ -283,7 +283,7 @@ export function rareEnabled(force?: boolean): boolean {
  * `RARE_K` từ hiếm nhất của truy vấn (df thấp nhất), bỏ từ quá phổ biến.
  * Truy vấn vốn đã ngắn (≤ RARE_K từ) ⇒ trả rỗng: luồng này sẽ trùng lane OR, thêm chỉ tốn.
  */
-export function rareTerms(db: MemoryDB, terms: string[]): string[] {
+function rareTerms(db: MemoryDB, terms: string[]): string[] {
   if (terms.length <= RARE_K) return [];
   try {
     const scored = terms.map((t) => ({ t, d: docFreq(db, t) })).filter((x) => x.d > 0);
@@ -327,7 +327,7 @@ function docTokens(text: string): string[] {
     .filter((t) => t.length >= 3 && t.length <= 40);
 }
 
-export function rm3Expand(db: MemoryDB, terms: string[], scopedProject?: string): string[] {
+function rm3Expand(db: MemoryDB, terms: string[], scopedProject?: string): string[] {
   try {
     const seedMatch = terms.map((t) => `"${t}"`).join(" OR ");
     const seed = streamRanks(db, "messages_fts", seedMatch, scopedProject).slice(0, RM3_FB);

@@ -176,7 +176,7 @@ export function storageInfo(paths: StoragePaths = livePaths()): StorageInfo {
 }
 
 /** Write (or clear) the bootstrap pointer. Pass null to reset to the home default. */
-export function setStoragePointer(dataDir: string | null, paths: StoragePaths = livePaths()): void {
+function setStoragePointer(dataDir: string | null, paths: StoragePaths = livePaths()): void {
   mkdirSync(paths.home, { recursive: true });
   if (!dataDir) {
     try {

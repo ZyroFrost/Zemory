@@ -111,7 +111,7 @@ export interface NegativeResult {
 
 /** Corpus là module TS (không phải .json) để `tsc` ship nó theo `dist` — repo này không có
  *  bước copy asset, và một fixture đọc từ `backend/src/` sẽ chết khi cài qua npm. */
-export function loadCorpus(): LabeledQuery[] {
+function loadCorpus(): LabeledQuery[] {
   return RECALL_CORPUS;
 }
 

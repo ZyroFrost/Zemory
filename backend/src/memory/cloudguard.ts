@@ -60,7 +60,7 @@ export function isInside(child: string, parent: string): boolean {
 }
 
 /** Đường tới sổ khai root của Google DriveFS (Windows). Tách hàm để test trỏ chỗ khác. */
-export function driveFsPrefsPath(): string {
+function driveFsPrefsPath(): string {
   const localAppData = process.env.LOCALAPPDATA?.trim() || join(homedir(), "AppData", "Local");
   return join(localAppData, "Google", "DriveFS", "root_preference_sqlite.db");
 }
@@ -187,7 +187,14 @@ export function cloudSyncReport(
   return { dir, atRisk: evidence.length > 0, evidence, residue, inconclusive };
 }
 
-/** Bản in cho CLI/UI. Rỗng khi vừa sạch vừa không còn gì đáng nói. */
+/**
+ * Bản in cho CLI/UI. Rỗng khi vừa sạch vừa không còn gì đáng nói.
+ *
+ * ⚠ CHƯA ĐƯỢC NỐI VÀO ĐÂU (đo 2026-08-15: 0 lời gọi trong toàn repo). Giữ `export` CÓ CHỦ ĐÍCH —
+ * đây KHÔNG phải rác: nó là bản in của lưới đỡ cho sự cố ĐÃ XẢY RA THẬT (04/08, Google Drive
+ * cuốn cả `global_memory.db` lên mây, HP điều 11/14). Thứ còn thiếu là chỗ GỌI nó, không phải
+ * bản thân nó. Xoá đi là vứt hiểu biết rồi ngày nào đó viết lại từ đầu — xem `05_TODO`.
+ */
 export function formatCloudReport(r: CloudReport): string {
   const lines: string[] = [];
   if (r.atRisk) {
