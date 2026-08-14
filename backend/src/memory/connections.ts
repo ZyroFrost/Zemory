@@ -157,7 +157,7 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
  * lại nằm ở một tài khoản Claude khác cái đang đăng nhập. Không có khe thì muốn lấy chúng
  * phải đăng xuất cái đang dùng, tức đổi mất phiên này để lấy phiên kia.
  */
-export function browserAccounts(platform: string): string[] {
+function browserAccounts(platform: string): string[] {
   const root = join(currentMemoryDir(), "browser");
   const out = existsSync(join(root, platform)) ? ["main"] : [];
   try {
