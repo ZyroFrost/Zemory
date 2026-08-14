@@ -3,6 +3,36 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-15 — ĐỌC MỤC NÀY TRƯỚC
+
+**Trạng thái máy lúc chốt** (đo thật, không chép sổ): kho **245.419 vector · coverage 99,9% ·
+remaining 321** *(số này DAO ĐỘNG chứ không về 0 khi đang làm việc — hook ghi ~23 tin/phút,
+nhanh hơn tốc độ nhúng; đừng đọc thành lỗi)* · `lastSync` **19:04:40**, Drive **100%** ·
+`rerank` TẮT · `hybrid` BẬT · git **sạch, đã push** (`189fe63`) · **59 mục** chưa đóng.
+
+⚠ **DAEMON ĐANG CHẠY MÃ CŨ:** `/ping` báo **v1.5.14**, đĩa đã **1.5.20**. Ba đợt sửa sau lần
+restart cuối (chip rail · chuẩn `client/` · dọn export) **chưa vào bản đang chạy**. Frontend thì
+Ctrl+R là thấy; backend phải **khởi động lại daemon**.
+
+**Phiên 15/08 làm gì** (chi tiết: `06_CHANGES [2026-08-15]` · `[2026-08-15b]`):
+① chip sức khoẻ ở rail **bấm được** + nói TÊN thứ đang cảnh báo · ② chuẩn **`frontend/api/` →
+`frontend/client/`** + đồng bộ sang 3 repo khác · ③ dọn **11 export thừa** · ④ soát sổ **66 → 59**.
+
+**VIỆC ĐẦU TIÊN của phiên sau:** khởi động lại daemon rồi verify 3 bản vá trên bề mặt thật.
+⚠ Muốn chạy gate sạch thì **tắt `scheduler` tạm** — `preflight` sẽ chặn vì backlog embed gần
+như luôn dương; hoặc chấp nhận `skipIfBusy` bỏ qua ~10 ca embed (**"xanh có kèm skipped" ≠ "xanh
+phủ đủ"**).
+
+**Ba đường cụt đã thử — ĐỪNG đâm lại:**
+· dịch 45 chuỗi `shell.js` → vô ích (bảng dự phòng; nguồn thật là `/standard-spec` đọc
+  `03_STRUCTURE.md`, trả **91 dòng** tiếng Việt) · dùng `services/` cho slot FE → trùng nghĩa
+  `backend/src/services/` · "chờ embed xong rồi làm X" → điều kiện không bao giờ đạt.
+
+**Bẫy phép đo đã trả giá NHIỀU LẦN phiên này** (đọc trước khi tin bất kỳ con số quét nào):
+· đưa regex qua **shell/sed** ⇒ escape bị nuốt — **4 lần** trong một phiên; chữa dứt bằng `split()`
+· quét export quên `backend/test/` ⇒ báo oan 53; thiếu cờ `g` ⇒ báo oan **13/13**
+· chạy gate lúc daemon bận ⇒ **đỏ giả** (`drive-sync` đỏ, chạy riêng thì 8/8).
+
 ## ✅ ĐÃ ĐỒNG BỘ chuẩn `frontend/api/` → `frontend/client/` sang 3 repo khác (user cho phép 2026-08-15)
 
 Chuẩn đổi tên ngày 2026-08-15 (`06_CHANGES`) **KHÔNG tự lan** — mỗi repo giữ bản copy riêng.
