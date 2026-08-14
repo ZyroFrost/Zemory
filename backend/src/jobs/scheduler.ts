@@ -22,6 +22,7 @@
 // scheduler, the UI sync button and a CLI writer never overlap.
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
@@ -103,6 +104,20 @@ function runStep(label: string, args: string[]): Promise<number> {
       return;
     }
     child = c;
+    // NHƯỜNG CPU CHO NGƯỜI DÙNG. Việc nền (embed ONNX · scan · digest) chạy ở ưu tiên THẤP HƠN
+    // bình thường: máy rảnh thì nó vẫn ăn trọn 12 core, còn lúc người dùng đang gõ / chạy test
+    // thì hệ điều hành cắt nhịp cho việc trước mặt. Tốt hơn ghim cứng số core — ghim cứng thì
+    // lúc máy rảnh cũng chỉ dùng được phần đã ghim.
+    //
+    // Vì sao cần (đo 2026-08-13): hook capture ghi ~23 tin/phút trong lúc làm việc, nên backlog
+    // embed gần như LUÔN dương và job nền gần như LUÔN chạy — ở ưu tiên Normal, nó tranh CPU
+    // ngang hàng với chính việc người dùng đang làm.
+    // Fail-open: thiếu quyền đổi ưu tiên thì chạy tiếp như cũ, không được giết job vì chuyện này.
+    try {
+      if (c.pid) setPriority(c.pid, constants.priority.PRIORITY_BELOW_NORMAL);
+    } catch {
+      /* không đổi được ưu tiên — vẫn chạy, chỉ là không nhường */
+    }
     const done = (code: number): void => {
       if (child === c) child = null;
       resolve(code);
