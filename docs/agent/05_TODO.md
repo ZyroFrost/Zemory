@@ -3,21 +3,27 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔴 CHỜ USER — 3 project khác đang dùng chuẩn CŨ (`frontend/api/`), chưa được báo
+## ✅ ĐÃ ĐỒNG BỘ chuẩn `frontend/api/` → `frontend/client/` sang 3 repo khác (user cho phép 2026-08-15)
 
-Chuẩn đổi `frontend/api/` → **`frontend/client/`** ngày 2026-08-15 (`06_CHANGES`). Sửa trong
-zemory + `docs_template/` **KHÔNG tự lan** sang project đã copy chuẩn — mỗi repo giữ bản riêng.
-Dò bằng `project_root` trong GM + đọc file thật (chỉ ĐỌC, không ghi — `02_RULES §Phạm vi project`):
+Chuẩn đổi tên ngày 2026-08-15 (`06_CHANGES`) **KHÔNG tự lan** — mỗi repo giữ bản copy riêng.
+Dò bằng `project_root` trong GM rồi đọc file thật; user chốt từng repo trước khi ghi
+(`02_RULES §Phạm vi project`).
 
-| project | tình trạng | mức |
+| project | đã làm | ghi chú |
 |---|---|---|
-| `D:\huy.nguyen\Tool\SasinHarvest` | **ĐÃ TẠO folder thật** `frontend/api/client.js` | 🔴 lệch chuẩn ngay |
-| `D:\huy.nguyen\Tool\SasinFlow` | chỉ có trong `03_STRUCTURE`, chưa tạo folder | 🟡 sửa docs là xong |
-| `D:\huy.nguyen\Tool\SasinInfra` | chỉ có trong `03_STRUCTURE`, chưa tạo folder | 🟡 sửa docs là xong |
+| `Tool\SasinHarvest` | **đổi tên folder thật** `frontend/api/` → `client/` · sửa 1 import trong `pages/app.js` · sửa 3 chỗ trong `03_STRUCTURE` | `conform` ✓ · **không phải git repo** |
+| `Tool\SasinFlow` | 3 chỗ trong `03_STRUCTURE` | là git repo — **file đang `M`, CHƯA commit** |
+| `Tool\SasinInfra` | 3 chỗ trong `03_STRUCTURE` | **không phải git repo** |
 
-*Ghi chú đáng giá: file trong `SasinHarvest` vốn đã tên `client.js` — tác giả cũng nghĩ tới chữ
-"client", đúng hướng đổi tên này.*
-**Không tự sửa 3 repo đó** — cần user cho phép từng repo (luật cấm ghi chéo project).
+**Hai điều phải nhớ khi đụng lại mấy repo này:** ① `SasinHarvest` và `SasinInfra` **không nằm
+trong git** ⇒ không lùi được bằng `git checkout`, phải tự sao lưu trước khi sửa (lần này đã chép
+`app.js` + folder `api/` ra scratchpad trước khi đổi tên) · ② `SasinHarvest/attic/
+frontend-vanilla-pre-redesign/` **cố ý KHÔNG sửa** — đó là ảnh chụp lịch sử, sửa nó là làm hỏng
+bản ghi (cùng doctrine với luật supersede của changelog).
+
+*Ghi chú: file trong `SasinHarvest` vốn đã tên `client.js` — tác giả cũng nghĩ tới chữ "client",
+đúng hướng đổi tên này. Và `/api/...` trong URL endpoint là **đường HTTP của backend**, KHÔNG
+liên quan tên thư mục FE — đừng đổi nhầm khi thấy grep ra hàng chục dòng.*
 
 ## 🔵 BÀN GIAO 2026-08-14 — ĐỌC MỤC NÀY TRƯỚC
 
