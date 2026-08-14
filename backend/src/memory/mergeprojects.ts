@@ -32,7 +32,7 @@ export interface SplitGroup {
 const key = projectKey;
 
 /** Nhóm nào có ≥2 biến thể viết khác nhau của cùng một thư mục. */
-export function findSplitProjects(dbPath: string = currentMemoryDb()): SplitGroup[] {
+function findSplitProjects(dbPath: string = currentMemoryDb()): SplitGroup[] {
   const db = openMemory(dbPath);
   try {
     const rows = db
