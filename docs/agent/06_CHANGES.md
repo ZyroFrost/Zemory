@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-08-15] — chuẩn: `frontend/api/` → `frontend/client/` (một tên thôi gánh hai chiều)
+
+**Do người ngoài chỉ ra** (giáo viên của user), và đo lại thì đúng — nhưng không đúng theo cách
+đã nói. Ý kiến gốc là *"có `api` ở cả FE lẫn BE là sai"*; **vế đó không đúng**: lớp gom lời gọi ở
+FE là cần thiết (không có nó thì mỗi màn tự `fetch`, đổi một URL phải sửa hàng chục chỗ — chính
+zemory đang trả giá: **71 lời gọi rải khắp 11 file**, riêng `sources.js` 33 chỗ).
+
+**Cái sai thật là TÊN.** Chuẩn tự dựng trục **BIÊN VÀO / BIÊN RA**: `api/` = mình MỞ (vào),
+`integrations/` = mình GỌI dịch vụ ngoài (ra). `frontend/api/` là *"client gọi BACKEND của mình"*
+— tức **chiều RA**, nhưng lại mượn tên của slot chiều VÀO. Một từ gánh hai chiều ngược nhau,
+đúng thứ mà chính chuẩn cấm (*"1 tên chuẩn duy nhất"* cho mỗi concern). Dòng "3 loại kết nối"
+còn tự mâu thuẫn: định nghĩa `api/` = *mình MỞ*, trong khi `frontend/api/` chẳng mở gì.
+
+**Vì sao KHÔNG chọn `services/`** (phương án đầu tiên nghĩ ra, user bắt kiểm trước khi sửa —
+đúng): `backend/src/services/` đã mang nghĩa *"business logic"*. Đổi sang đó là **tái tạo y hệt
+cái bệnh**, chỉ đổi nạn nhân. Quét cả chuẩn: `client/` và `http/` là hai tên còn trống.
+
+**Phân biệt rút ra, giữ để lần sau khỏi cãi lại:** trùng tên mà **cùng nghĩa** là đối xứng TỐT
+(`config/` 3 lần · `util/` 2 · `contracts/` 2 — chuẩn còn ghi thẳng *"đối xứng backend/util"*);
+trùng tên mà **ngược nghĩa** mới là lỗi. `api/` là ca duy nhất thuộc loại sau.
+
+**Sửa đồng thời 4 chỗ** (thiếu một là gate đỏ hoặc hai bản lệch nhau): `SLOT_ROLES`
+(`structure-tree.ts` — gate `structure-sync` parse `frontend/<slot>` rồi đòi có role) ·
+`docs_template/app/` · `docs/agent/03_STRUCTURE.md` · mục graph seam trong `05_TODO`.
+Cổng: `structure-sync` + `template-parity` + `conform` **28/28**, `conform` slot 19/**56**.
+
+⚠ **3 project khác đang dùng chuẩn cũ, CHƯA sửa** (mỗi repo giữ bản copy riêng, sửa ở đây không
+lan): `SasinHarvest` **đã tạo folder thật** `frontend/api/client.js` · `SasinFlow` · `SasinInfra`
+mới có trong docs. Cần user cho phép từng repo — xem `05_TODO §CHỜ USER`.
+
 ## [2026-08-14] — việc nền NHƯỜNG CPU cho người dùng · nghiệm thu 3 bản vá sau khi daemon nạp lại
 
 **Nghiệm thu trên daemon THẬT** (pid mới, `v1.5.13`): ô Last Sync hết nói dối —

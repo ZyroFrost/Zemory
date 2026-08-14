@@ -85,6 +85,13 @@ export const SLOT_ROLES: Record<string, string> = {
   layouts: "page-frame layouts",
   state: "client state (Redux/Zustand)",
   hooks: "React hooks",
+  // Renamed from `api` on 2026-08-15. The standard splits every slot along an INBOUND /
+  // OUTBOUND axis — `api` is the INBOUND edge (endpoints this app exposes), `integrations`
+  // is the OUTBOUND edge (calls to external services). A frontend folder that CALLS the
+  // backend is outbound, so naming it `api` gave one word two opposite meanings — the exact
+  // thing the standard's own "one name per concern" rule forbids. `client` says the role
+  // without colliding: `services` was unavailable (backend business logic already owns it).
+  client: "client calling OUR OWN backend (FE → BE)",
   locales: "UI translations (i18n)",
   public: "static files served as-is (favicon/robots/manifest)",
   types: "types (client-only, or shared under backend/src/shared)",

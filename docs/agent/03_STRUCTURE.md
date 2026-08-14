@@ -110,7 +110,7 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   ├── layouts/      [opt]  layout khung trang
 │   ├── state/        [opt]  state client (Redux/Zustand)
 │   ├── hooks/        [opt]  hook (React)
-│   ├── api/          [opt]  client gọi BACKEND của mình (FE → BE)
+│   ├── client/       [opt]  client gọi BACKEND của mình (FE → BE) — KHÔNG đặt tên `api/`: `api/` là biên VÀO (mình MỞ), đây là biên RA
 │   ├── locales/      [opt]  ngôn ngữ / bản dịch UI (i18n)
 │   ├── config/       [opt]  setting MẶC ĐỊNH ship (default layout/theme) — KHÔNG API-URL/secret
 │   ├── util/         [opt]  helper thuần client (+ lib/) — đối xứng backend/util
@@ -222,7 +222,7 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | token / CSS / định nghĩa 3-size | `frontend/styles/` |
 | trang / route UI | `frontend/pages/` |
 | media UI (logo·icon·background·banner·ảnh·font) | `frontend/assets/` — con theo loại khi có |
-| gọi backend từ FE | `frontend/api/` |
+| gọi backend từ FE | `frontend/client/` |
 | type chỉ dùng client | `frontend/types/` |
 | setting UI mặc định | `frontend/config/` · user chỉnh → `data/settings/` |
 | **đa ngôn ngữ / i18n** (gồm auto-dịch) | chức năng → `backend/src/i18n/` · file dịch: UI → `frontend/locales/`, server → `backend/resources/locales/` |
@@ -256,7 +256,8 @@ Framework ép         framework hardcode quét tên folder (Next pages/, Django 
 Tool ép root         MỌI config tool đọc từ root — folder .<tool>/ (.github/.vscode/.claude/.serena) + file *.config.* / .<tool>rc / .editorconfig / .npmrc / .dockerignore / .nvmrc + Docker/.spec/Makefile — ĐỂ YÊN, refactor KHÔNG dời/dọn/liệt-kê-cứng (là danh sách MỞ)
 Entry ★ (Node-CLI)   entry = run.* HOẶC manifest.bin/main; manifest = root HOẶC backend/. Node-CLI (bin ở root package.json) KHÔNG cần backend/run.* — vẫn đạt ★
 6 LOẠI non-code      assets=media · resources=đóng-gói-tracked · config=file-operator · data=runtime-gitignore · external=code-ngoài · attic=backup
-3 loại "kết nối"     api/=mình MỞ · integrations/=SERVICE ngoài (SaaS) · store/=DATABASE (remote/cloud/nội-bộ). external/=code-họ-clone
+3 loại "kết nối"     api/=mình MỞ (biên VÀO) · integrations/=SERVICE ngoài (SaaS) · store/=DATABASE (remote/cloud/nội-bộ). external/=code-họ-clone
+                     Chiều GỌI ĐI: integrations/=ra ngoài · frontend/client/=về BE của mình. MỘT tên KHÔNG gánh hai chiều
 Cache — 3 chỗ RÕ     lớp cache app (Redis client + policy) → cache/ · file cache runtime → data/cache/ · KHÔNG lẫn vào store/ (primary DB)
 Storage/blob         quản lý upload/transform/ký-URL → storage/ · client S3 (SaaS) → integrations/ · bytes runtime → data/uploads/ · metadata → store/
 Notifications        điều phối gửi (gì/khi nào) → notifications/ · kênh (SendGrid/Twilio/FCM) → integrations/ · template → resources/locales

@@ -3,6 +3,22 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔴 CHỜ USER — 3 project khác đang dùng chuẩn CŨ (`frontend/api/`), chưa được báo
+
+Chuẩn đổi `frontend/api/` → **`frontend/client/`** ngày 2026-08-15 (`06_CHANGES`). Sửa trong
+zemory + `docs_template/` **KHÔNG tự lan** sang project đã copy chuẩn — mỗi repo giữ bản riêng.
+Dò bằng `project_root` trong GM + đọc file thật (chỉ ĐỌC, không ghi — `02_RULES §Phạm vi project`):
+
+| project | tình trạng | mức |
+|---|---|---|
+| `D:\huy.nguyen\Tool\SasinHarvest` | **ĐÃ TẠO folder thật** `frontend/api/client.js` | 🔴 lệch chuẩn ngay |
+| `D:\huy.nguyen\Tool\SasinFlow` | chỉ có trong `03_STRUCTURE`, chưa tạo folder | 🟡 sửa docs là xong |
+| `D:\huy.nguyen\Tool\SasinInfra` | chỉ có trong `03_STRUCTURE`, chưa tạo folder | 🟡 sửa docs là xong |
+
+*Ghi chú đáng giá: file trong `SasinHarvest` vốn đã tên `client.js` — tác giả cũng nghĩ tới chữ
+"client", đúng hướng đổi tên này.*
+**Không tự sửa 3 repo đó** — cần user cho phép từng repo (luật cấm ghi chéo project).
+
 ## 🔵 BÀN GIAO 2026-08-14 — ĐỌC MỤC NÀY TRƯỚC
 
 **Phiên 13–14/08 đóng 13 mục** (chi tiết + số đo: `06_CHANGES [2026-08-13]` → `[2026-08-14]`).
@@ -1438,11 +1454,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   **Bối cảnh:** bài FB nhóm giới thiệu **Grapuco** (SaaS): AST toàn codebase → dependency/call/module graph + flow · **phát hiện phần bị ảnh hưởng khi API/schema/function đổi** · context cho agent qua MCP · chat-with-codebase · security scan · recommendation+priority. Bài toán nó nhắm = **2 người vibecode BE/FE lệch nhau**: BE thêm field / đổi schema → FE chưa cập nhật; FE đổi luồng đăng ký → BE giữ business rule cũ. User muốn hấp thụ **đúng phần mạnh nhất** (contract-impact BE↔FE) vào graph zemory, **KHÔNG** lấy phần LLM (chat/security/recommend — trái điều 6).
   **Insight then chốt (vì sao zemory hợp hơn Grapuco):** Grapuco phải **ĐOÁN** kiến trúc từ code trần; zemory **ĐỌC VAI TRÒ đã khai trong chuẩn 03** → suy cạnh khai báo mà không cần đoán. **Chuẩn 03 chính là "hệ nối" để graph nhìn được luồng BE↔FE** — đây là lợi thế không đối xứng, thứ Grapuco không có.
   **Cạnh mới cần thêm (hạng KHAI BÁO, 0-LLM, fail-open — mở rộng plan 13 §4, KHÔNG tạo capability mới, đúng điều 4/13):**
-   - `frontend/api/` → `backend/src/api/` : seam FE-gọi-BE (slot-level, tất định từ 03 §4).
+   - `frontend/client/` → `backend/src/api/` : seam FE-gọi-BE (slot-level, tất định từ 03 §4).
+     *(slot FE đổi tên `api/`→`client/` ngày 2026-08-15 — xem `06_CHANGES`.)*
    - `backend/src/contracts/` (OpenAPI/proto/GraphQL-SDL) → node `endpoint` + `schema.field`, cạnh `field → endpoint → handler`.
    - `backend/src/store/` + `migrations/` → node `schema.field` (điểm BE đổi field).
    - `backend/src/shared/` (type dùng chung BE↔FE) → cạnh **`resolved`** khi 2 bên import chung type.
-   - Ghép chuỗi: `store.field → contract.endpoint → frontend/api call → component/test` ⇒ `graph impact <field>` trả về **FE nào gãy** khi BE đổi field.
+   - Ghép chuỗi: `store.field → contract.endpoint → frontend/client call → component/test` ⇒ `graph impact <field>` trả về **FE nào gãy** khi BE đổi field.
   **TRẦN — GHI RÕ để agent sau KHÔNG tưởng graph fix triệt để (3 tầng, theo điều 13):**
    1. Luồng **KHAI BÁO** (import · slot-seam · **contract typed**) → tự động, `resolved`/`declared`. Chuẩn 03 + typed contract cho không phần này.
    2. Luồng **SUY LUẬN** (FE gọi `fetch('/api/x')` chuỗi viết tay, KHÔNG codegen) → chỉ `inferred`/`textual`, **GẮN NHÃN**, KHÔNG giả dạng chắc chắn. Đây là **TRẦN, bằng Grapuco** — chuẩn 03 thu hẹp chỗ tìm chứ **không xoá được** việc phải match URL.
