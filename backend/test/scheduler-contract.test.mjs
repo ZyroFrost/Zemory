@@ -116,6 +116,26 @@ test("chuỗi chạy TUẦN TỰ và giữ ĐÚNG MỘT job token cho cả chu�
   );
 });
 
+test("việc nền phải NHƯỜNG CPU cho người dùng (ưu tiên thấp hơn bình thường)", () => {
+  // Đo 2026-08-13: hook capture ghi ~23 tin/phút trong lúc làm việc, nên backlog embed gần như
+  // LUÔN dương ⇒ job nền gần như LUÔN chạy. Ở ưu tiên Normal, nó tranh CPU ngang hàng với đúng
+  // việc người dùng đang làm — máy 12 core mà ONNX ăn hết thì gõ phím cũng khựng.
+  //
+  // Hạ ưu tiên chứ KHÔNG ghim số core: ghim cứng thì lúc máy rảnh cũng chỉ dùng được phần đã
+  // ghim, còn hạ ưu tiên thì máy rảnh vẫn ăn trọn, máy bận thì tự nhường. Đã đo là ăn thật:
+  // PriorityClass đổi Normal → BelowNormal ngay sau `setPriority`.
+  const s = read(SCHED);
+  assert.match(s, /setPriority\(/u, `${SCHED}: job nền phải hạ ưu tiên, không chạy ngang hàng với người dùng`);
+  assert.match(s, /PRIORITY_BELOW_NORMAL/u, `${SCHED}: mức ưu tiên phải là BELOW_NORMAL`);
+  // Fail-open: không có quyền đổi ưu tiên thì vẫn phải chạy tiếp, không được ném.
+  const at = s.indexOf("setPriority(");
+  assert.match(
+    s.slice(Math.max(0, at - 200), at + 200),
+    /try\s*\{/u,
+    `${SCHED}: setPriority phải nằm trong try — thiếu quyền đổi ưu tiên không được giết job`,
+  );
+});
+
 test("BACKUP không được treo vào công tắc của tính năng khác", () => {
   // Lỗi thật 2026-08-08 → 12/08: `rotateBackup()` là bước 4 của `maintainTick`, mà hàm đó
   // return ngay khi `getScheduler()` tắt ⇒ tắt scheduler là TẮT LUÔN BACKUP, im lặng. Bốn
