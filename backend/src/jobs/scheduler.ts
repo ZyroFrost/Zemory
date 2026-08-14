@@ -252,7 +252,9 @@ function syncTick(): void {
     return;
   }
   log("auto-sync — starting background sync job");
-  startSyncJob(() => log("auto-sync: job finished"));
+  // lowPriority: lượt này do MÁY tự chạy. Nút "Đồng bộ ngay" gọi cùng hàm nhưng KHÔNG truyền cờ
+  // — lúc đó người dùng đang ngồi chờ.
+  startSyncJob(() => log("auto-sync: job finished"), { lowPriority: true });
 }
 
 /** Start the background loops. Idempotent — a second call is a no-op. */
