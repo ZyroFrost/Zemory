@@ -3,6 +3,32 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-14 — ĐỌC MỤC NÀY TRƯỚC
+
+**Phiên 13–14/08 đóng 13 mục** (chi tiết + số đo: `06_CHANGES [2026-08-13]` → `[2026-08-14]`).
+Máy lúc chốt: daemon **pid 28192 · v1.5.15** *(đã restart, mọi bản vá backend ĐANG SỐNG)* ·
+`autostart`/`scheduler`/`autosync`/`realtime` đều BẬT · vector **238.623 · coverage 98,6%** ·
+`.git` **661 MB → 22,52 MiB** · git sạch, đã push.
+
+**VIỆC ĐẦU TIÊN — chạy gate ĐẦY ĐỦ (chưa chạy sau 8 commit cuối).**
+Lượt gate cuối chạy ở `1.5.7`; từ đó tới `1.5.15` mới chỉ chạy test lẻ (77/77 + 11/11 + 4/4 xanh).
+⚠ **Không chạy thẳng `npm run check`**: `preflight` sẽ CHẶN vì backlog embed gần như luôn dương
+(hook ghi ~23 tin/phút). Đường đúng: **tắt `scheduler` → `npm run check` → bật lại**; hoặc
+`ZEMORY_GATE_FORCE=1` và chấp nhận vài ca embed bị `skipIfBusy` bỏ qua (đọc dòng `skipped`,
+"xanh có kèm skipped" ≠ "xanh phủ đủ").
+
+**Ba việc CHỜ USER** *(đều là xoá dữ liệu — đã nêu, chưa được chốt)*:
+1. **6 hàng `.tmp` rác** trong `sync_state` (`timed.tmp` · `probe*.tmp`) — sau bản vá Last Sync
+   thì **không ai đọc tới nữa**, xoá chỉ để gọn.
+2. **Tag `pre-lfs-fix-20260805`** hiện đã dời sang commit sạch và mang đủ log; giữ hay bỏ tuỳ user.
+3. ~~`lab.db` 1,46 GB~~ — **user tự xoá 2026-08-14**, thư mục `zemory-lab` không còn.
+
+**Đường cụt đã thử, ĐỪNG đâm lại:**
+· **Dịch 45 chuỗi `shell.js`** — vô ích: bảng `STRUCT`/`ROUTE` chỉ là lưới đỡ, nguồn thật là
+  `/standard-spec` đọc `03_STRUCTURE.md` (đo: backend trả **91 dòng** tiếng Việt, bảng dự phòng
+  **25 dòng**). Muốn màn đó ra tiếng Anh phải làm ở TẦNG TÀI LIỆU.
+· **"Chờ embed xong rồi làm X"** — điều kiện KHÔNG BAO GIỜ đạt khi đang làm việc.
+
 ## 🔵 BÀN GIAO 2026-08-12 (tối) — VIỆC ĐẦU TIÊN CỦA PHIÊN SAU
 
 > ⚠ **Luật mới, áp ngay từ dòng đầu phiên:** `02_RULES §Hành xử` — **HIỆN SUY NGHĨ TỪNG BƯỚC,

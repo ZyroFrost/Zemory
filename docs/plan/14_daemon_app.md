@@ -38,6 +38,17 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
 - **Port CHỐT = 4444** (user 2026-07-18); ghi trong config, đổi được; UI/CLI/hook đều biết tìm ở đâu. Single-instance = lock (port bind + lockfile).
 - **WRITE GATE — lý do tồn tại chính của daemon:** sự cố thật "database is locked" (rebuild plan 12) do 2 tiến trình ghi đồng thời. Khi daemon sống, CLI/hook chuyển ghi qua daemon (HTTP local) → serialize; retry-with-backoff hiện có giữ làm lưới dưới.
 - **Idle scheduler:** embed/scan nền chỉ chạy khi máy rảnh + có backlog; không rebuild graph mỗi thay đổi nhỏ (debounce theo mtime).
+  > **CÁCH HIỆN THỰC "máy rảnh" — chốt 2026-08-14 (khác mô tả ban đầu).** Code KHÔNG tự dò trạng
+  > thái rảnh; nó chạy theo đồng hồ 30 phút và **nhường CPU bằng ĐỘ ƯU TIÊN tiến trình**
+  > (`setPriority` → `BELOW_NORMAL` cho mọi con do `runStep` sinh, và cho auto-sync qua cờ
+  > `lowPriority`). Máy rảnh thì job vẫn ăn trọn 12 core; máy bận thì hệ điều hành tự cắt nhịp.
+  > **Vì sao không tự dò idle:** "có backlog thì mới chạy" hoá ra là điều kiện gần như LUÔN đúng —
+  > đo 2026-08-13, hook capture ghi **~23 tin/phút** trong lúc làm việc, nên backlog embed gần như
+  > không bao giờ về 0. Dò idle rồi hoãn sẽ thành **bỏ đói vĩnh viễn**; hạ ưu tiên thì vừa chạy
+  > được vừa không giành CPU.
+  > **RANH GIỚI bắt buộc:** chỉ hạ việc do MÁY tự chạy. Việc NGƯỜI DÙNG bấm (nút *Đồng bộ ngay* —
+  > cùng hàm `startSyncJob`, *Tìm sâu*, *Quét web*) giữ `Normal`, vì lúc đó người dùng đang ngồi
+  > chờ kết quả. Cổng `scheduler-contract.test.mjs` canh đúng ranh giới này.
 
 ### 3b. Auto-sync memory (setting — tự động hoá plan 08, KHÔNG cơ chế mới)
 - **Phát hiện khác biệt** (daemon check định kỳ + lúc idle, rẻ): ① local có message mới sau lần export cuối (so max rowid/timestamp với marker export) → **tự export** bundle `.enc` ra Drive folder; ② Drive folder có bundle máy khác mới hơn lần merge cuối (mtime + tên host) → **tự `import --merge`** (additive, HP điều 11 — không ghi đè, provenance giữ nguyên).
