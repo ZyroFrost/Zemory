@@ -7,6 +7,7 @@
 // daemon-job token; the UI polls /sync-status.
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { claimDaemonJob, releaseDaemonJob } from "./writegate.js";
@@ -42,7 +43,7 @@ function runnerEntry(): string {
  * Returns the current status either way — the caller treats "already running"
  * as success (the UI just attaches to the ongoing job).
  */
-export function startSyncJob(onDone?: () => void): SyncJobStatus {
+export function startSyncJob(onDone?: () => void, opts: { lowPriority?: boolean } = {}): SyncJobStatus {
   if (status.running) return status;
   if (!claimDaemonJob("sync")) {
     // Scheduler embed pass in flight — report as an error the UI can show;
@@ -60,6 +61,16 @@ export function startSyncJob(onDone?: () => void): SyncJobStatus {
     return status;
   }
   child = c;
+  // Hạ ưu tiên CHỈ khi lượt sync này do MÁY tự chạy (scheduler). Cùng hàm này còn phục vụ nút
+  // "Đồng bộ ngay" — lúc đó người dùng đang NGỒI CHỜ, hạ ưu tiên là bắt họ chờ lâu hơn.
+  // Phân biệt "việc nền" với "việc người dùng xin" quan trọng hơn bản thân mức ưu tiên.
+  if (opts.lowPriority && c.pid) {
+    try {
+      setPriority(c.pid, constants.priority.PRIORITY_BELOW_NORMAL);
+    } catch {
+      /* thiếu quyền đổi ưu tiên — vẫn chạy, chỉ là không nhường */
+    }
+  }
   c.stdout?.on("data", (d: Buffer) => {
     out += String(d);
     if (out.length > 262144) out = out.slice(-262144); // keep the tail — the JSON line is last

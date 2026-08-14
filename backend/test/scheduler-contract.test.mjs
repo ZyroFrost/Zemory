@@ -136,6 +136,38 @@ test("việc nền phải NHƯỜNG CPU cho người dùng (ưu tiên thấp hơ
   );
 });
 
+test("hạ ưu tiên CHỈ cho việc MÁY tự chạy — việc người dùng bấm thì KHÔNG", () => {
+  // Ranh giới này quan trọng hơn bản thân mức ưu tiên. `startSyncJob` phục vụ CẢ HAI đường:
+  // scheduler tự chạy (nền, hạ được) và nút "Đồng bộ ngay" (người dùng đang NGỒI CHỜ). Hạ thẳng
+  // trong hàm là bắt người bấm tay chờ lâu hơn — và không ai báo lỗi, chỉ thấy "sao hôm nay chậm".
+  // Cùng lý do: `deepSearchChild` (Tìm sâu) và `scanweb` là việc người dùng XIN ⇒ giữ Normal.
+  const sync = read(SCHED.replace("scheduler.ts", "syncjob.ts"));
+  assert.match(sync, /opts\.lowPriority/u, "syncjob phải hạ ưu tiên THEO CỜ, không hạ vô điều kiện");
+
+  const sched = read(SCHED);
+  // `[\s\S]*?` chứ KHÔNG phải `[^)]*`: lời gọi thật là
+  // `startSyncJob(() => log("…"), { lowPriority: true })` — `[^)]*` dừng ngay ở dấu `)` của
+  // callback nên báo oan trong khi mã hoàn toàn đúng (đã dính lúc viết ca này).
+  assert.match(
+    sched,
+    /startSyncJob\([\s\S]*?\{\s*lowPriority:\s*true\s*\}/su,
+    "scheduler (máy tự chạy) phải truyền lowPriority",
+  );
+
+  const ui = read(SCHED.replace("jobs/scheduler.ts", "ui.ts"));
+  const call = /startSyncJob\(([\s\S]*?)\);/su.exec(ui);
+  assert.ok(call, "không tìm thấy lời gọi startSyncJob trong ui.ts");
+  assert.ok(
+    !/lowPriority/u.test(call[1]),
+    "nút Đồng bộ ngay KHÔNG được hạ ưu tiên — người dùng đang ngồi chờ kết quả",
+  );
+
+  for (const f of ["searchjob.ts", "scanweb.ts"]) {
+    const p = f === "scanweb.ts" ? SCHED.replace("jobs/scheduler.ts", "memory/scanweb.ts") : SCHED.replace("scheduler.ts", f);
+    assert.ok(!/setPriority\(/u.test(read(p)), `${f}: đây là việc người dùng XIN, không được hạ ưu tiên`);
+  }
+});
+
 test("BACKUP không được treo vào công tắc của tính năng khác", () => {
   // Lỗi thật 2026-08-08 → 12/08: `rotateBackup()` là bước 4 của `maintainTick`, mà hàm đó
   // return ngay khi `getScheduler()` tắt ⇒ tắt scheduler là TẮT LUÔN BACKUP, im lặng. Bốn
