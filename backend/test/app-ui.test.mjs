@@ -507,6 +507,32 @@ test("mọi phép QUÉT TOÀN BẢNG của dashboard phải nằm sau TTL dài, 
   assert.match(heavy, /vectorCoverage\(/, "heavyStats() phải là nơi tính coverage");
 });
 
+test("chip sức khoẻ ở rail phải BẤM ĐƯỢC và nói TÊN thứ đang cảnh báo", () => {
+  // User báo 2026-08-15: *"nó đâu có hiện đủ thông tin, bấm cũng ko trỏ vào đúng trang"*. Đo lại:
+  // `.status-chip` là `<div>` thuần, và grep toàn frontend chỉ thấy MỘT chỗ chạm tới nó —
+  // `setHealthChip()` ghi text. Không một handler click nào ⇒ bấm không đi đâu cả. Dòng phụ thì
+  // luôn là câu chung "needs attention", không nói tính năng nào vàng, nên vẫn phải vào Features
+  // dò 14 dòng.
+  //
+  // Một chip báo động mà không nói động ở đâu và không dẫn tới đó thì chỉ tạo lo lắng. Hai vế
+  // dưới đây là thứ làm nó có ích; cả hai đều hỏng IM LẶNG (không lỗi, không đỏ) nên phải có cổng.
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const chip = /<div class="status-chip"[^>]*>/.exec(html);
+  assert.ok(chip, "không tìm thấy .status-chip");
+  assert.match(
+    chip[0],
+    /data-nav="system"/u,
+    "chip phải mang data-nav='system' — dùng lại cơ chế nav sẵn có, bấm là sang Features",
+  );
+
+  const src = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+  assert.match(src, /warnNames\.push\(/u, "phải thu TÊN tính năng cảnh báo, không chỉ đếm số");
+  assert.match(src, /setHealthChip\(okN,warnN,tot,warnNames\)/u, "tên phải được truyền xuống chip");
+  assert.match(src, /names\[0\]/u, "dòng phụ của chip phải hiện tên, không phải câu chung");
+});
+
 test("đường LẠ phải 404 — không được rơi vào vỏ app rồi trả 200", () => {
   // Audit 2026-08-02 bắt được bằng chính phép quét của mình: gọi `/scope-tree` (KHÔNG tồn
   // tại — dữ liệu đó nằm trong `/memory-status`) và nhận **200 + HTML**, nên bảng kết quả

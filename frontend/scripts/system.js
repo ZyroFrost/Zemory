@@ -49,14 +49,17 @@
     if(!sysSel)sysSel=FEATURES[0].k;
     var groups={},order=[];
     FEATURES.forEach(function(f){if(!groups[f.grp]){groups[f.grp]=[];order.push(f.grp);}groups[f.grp].push(f);});
-    var okN=0,warnN=0,tot=0;
+    // `warnNames` gom TÊN tính năng đang cảnh báo, không chỉ đếm số. Chip ở rail trước đây chỉ
+    // nói "1 ⚠ · needs attention" — báo có chuyện mà không nói chuyện ở đâu, nên người dùng vẫn
+    // phải vào đây dò 14 dòng. Có tên thì chip trả lời được câu "cái gì đang lỗi".
+    var okN=0,warnN=0,tot=0,warnNames=[];
     box.innerHTML=order.map(function(g){
       return '<div class="sys-grp">'+stdEsc(t(g))+'</div>'+groups[g].map(function(f){
-        var s=sysStatus(f);tot++;if(s.on==='on')okN++;else if(s.on==='warn'||s.on==='off')warnN++;
+        var s=sysStatus(f);tot++;if(s.on==='on')okN++;else if(s.on==='warn'||s.on==='off'){warnN++;warnNames.push(t(f.n));}
         return '<div class="sys-li'+(f.k===sysSel?' on':'')+'" data-sysfeat="'+f.k+'"><span class="pill '+pillFor(s.on)+'" style="flex:0 0 auto;min-width:56px;text-align:center">'+stdEsc(s.txt)+'</span><span class="sxn">'+stdEsc(t(f.n))+'</span></div>';
       }).join('');
     }).join('');
-    setHealthChip(okN,warnN,tot); // pill trong màn + chip ở chân rail = CÙNG một roll-up
+    setHealthChip(okN,warnN,tot,warnNames); // pill trong màn + chip ở chân rail = CÙNG một roll-up
     renderSysDetail();
   }
   /** Một dòng kết quả probe cho feature có `probe` (vector/rerank). Rỗng khi chưa bấm. */
@@ -144,13 +147,22 @@
   }
 
   // ── DỜI TỪ graph.js 2026-08-07: sức khoẻ + check, không phải graph
-  function setHealthChip(okN,warnN,tot){
+  function setHealthChip(okN,warnN,tot,warnNames){
     var el=zid('sysSummary');
     if(el){el.className='pill '+(warnN?'warn':'ok');el.textContent=t('sys.health').replace('{ok}',okN).replace('{n}',tot)+(warnN?' · '+warnN+' ⚠':'');}
     var rh=zid('railHealth'),rd=zid('railDot'),rs=zid('railHealthSub');
     if(rh)rh.textContent=warnN?(warnN+' ⚠'):(okN+' OK');
     if(rd)rd.classList.toggle('warn',warnN>0);
-    if(rs){rs.removeAttribute('data-i18n');rs.textContent=warnN?t('rail.needAttn'):t('rail.allGreen');}
+    // Dòng phụ nói TÊN tính năng đang cảnh báo thay vì câu chung "needs attention" — chip mà chỉ
+    // báo "có chuyện" thì người dùng vẫn phải tự đi dò. Nhiều cái cùng cảnh báo thì nêu cái đầu
+    // + "+N" để không kéo dài rail (chip hẹp, tràn chữ còn khó đọc hơn).
+    if(rs){
+      rs.removeAttribute('data-i18n');
+      var names=warnNames||[];
+      rs.textContent=warnN
+        ? (names.length ? names[0]+(names.length>1?' +'+(names.length-1):'') : t('rail.needAttn'))
+        : t('rail.allGreen');
+    }
   }
   // Nạp 3 check thật (/check) rồi vẽ lại inventory — đường duy nhất làm tươi roll-up.
   function refreshChecks(){
