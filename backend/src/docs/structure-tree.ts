@@ -107,6 +107,17 @@ export const SLOT_ROLES: Record<string, string> = {
   design: "design source (.fig/.sketch/.psd)",
 };
 
+/** NON-APP §7: top-level dirs whose CHILDREN are free-form BY THE STANDARD ITSELF —
+ *  `tasks/<case>/` · `pipelines/<domain>/` · `data/<case>/` (all three declared in
+ *  docs_template/nonapp/agent/03_STRUCTURE.md: numbered `NN_` AND plain legacy names
+ *  coexist). `conform` must NOT flag their children as off-standard on a non-app repo —
+ *  measured 2026-08-20 (report from a PBI repo, reproduced on a fixture): the checker
+ *  only exempted the `NN_` prefix, so `pipelines/excel_loader/` was a blocking false
+ *  positive. Scoped to non-app on purpose: the APP standard says the opposite ("inside
+ *  a domain use ONLY dictionary slots"), so a blanket subdir exemption would open a hole
+ *  there. */
+export const NONAPP_FREEFORM_PARENTS = ["tasks", "pipelines", "data"];
+
 /** Top-level roles that differ from the src-slot meaning of the same name. */
 const ROOT_ROLES: Record<string, string> = {
   backend: "server-side: your code + entry (100% yours)",

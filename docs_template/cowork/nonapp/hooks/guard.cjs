@@ -120,21 +120,30 @@ function stripMessages(cmd) {
   return out;
 }
 
+// Nhan dien `git` nhu MOT LENH, khong phai mot manh duong dan (vá 2026-08-20, do tu bao
+// cao repo PBI + tu tai lap: `cat .git/hooks/pre-push` bi doc thanh "git push" => CHAN OAN
+// dung luc nguoi ta lam theo huong dan cua `hook guard`):
+//   (?<!\.)  — `git` di sau dau cham la duong dan/ten (`.git/hooks` · `repo.git`), khong phai lenh
+//   (?![\\/]) — `git` dinh lien `/` hay `\` la duong dan dang di tiep (`.git/hooks/...`)
+// Van bat du 8 ca do 2026-08-20: `git push` · `cd x && git push` · `/usr/bin/git push` ·
+// `sudo git push` · `env A=1 git push`. KHONG dung "token dau cau" — ba ca cuoi se lot.
+const GIT_CMD = "(?<!\\.)\\bgit\\b(?![\\\\/])";
+
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
-  if (/\bgit\b[^\n;|&]*\bpush\b/.test(bare)) {
+  if (new RegExp(GIT_CMD + "[^\\n;|&]*\\bpush\\b").test(bare)) {
     if (!consumeFlag("push", bare)) {
       deny("CHAN (guard lop 1): `git push` - user bao push moi push (02_RULES Git)." +
         "\nUser vua bao? -> tao flag `" + POLICY.flags_dir + "/" + POLICY.flags.push + "` roi chay lai (mot lan).");
     }
   }
 
-  if (/\bgit\b[^\n;|&]*\bcommit\b[^\n;|&]*(--no-verify|\s-n\b)/.test(bare)) {
+  if (new RegExp(GIT_CMD + "[^\\n;|&]*\\bcommit\\b[^\\n;|&]*(--no-verify|\\s-n\\b)").test(bare)) {
     deny("CHAN (guard lop 1): `git commit --no-verify` lach pre-commit - khong co duong vuot.");
   }
 
-  if (/\bgit\b[^\n;|&]*\badd\b[^\n;|&]*(\s-A\b|\s--all\b|\s\.\s*($|;|&|\|))/.test(bare)) {
+  if (new RegExp(GIT_CMD + "[^\\n;|&]*\\badd\\b[^\\n;|&]*(\\s-A\\b|\\s--all\\b|\\s\\.\\s*($|;|&|\\|))").test(bare)) {
     if (!consumeFlag("git_add_all", bare)) {
       deny("CHAN (guard lop 1): `git add -A/.` - chinh lenh nay da dua secret len GitHub (2026-08-04)." +
         "\nLiet ke file tuong minh; that su can ca cay thi xin user tao flag `" +
@@ -142,15 +151,23 @@ function checkBash(cmd) {
     }
   }
 
-  // Secret vao staging/commit - soi `bare` (da bo payload -m) de ten file NHAC TRONG
-  // message khong bi chan oan, nhung `git add "app/x.env"` van bi bat (nhay chi la phan cach).
-  if (/\bgit\b[^\n;|&]*\b(add|commit|mv)\b/.test(bare)) {
-    for (const tok of bare.split(/[\s'";|&]+/)) {
-      const name = tok.replace(/\\/g, "/").split("/").pop();
-      if (!name) continue;
-      if (nameMatches(name, POLICY.secret_allow || [])) continue;
-      if (nameMatches(name, POLICY.secret_names || [])) {
-        deny("CHAN (guard lop 1): `" + name + "` khop mau secret trong lenh git - " + POLICY.secret_reason);
+  // Secret vao staging/commit. Hai ranh gioi co chu dich (sua 2026-08-20):
+  //   · CHI quet token cua DUNG SEGMENT chua lenh git (tach theo ;|&) — ten secret nhac
+  //     trong `echo "example.env staged"` cung cau lenh KHONG bi chan oan nua (truoc quet
+  //     ca dong; nguoi ta se hoc cach thoi viet lenh tu-kiem, do moi la thiet hai).
+  //   · `git add "app/x.env"` VAN bi bat (nhay chi la phan cach trong segment do).
+  //     ⚠ Khang dinh nay tung SAI vi mau thieu `*.env` — nay da do lai voi bo mau moi.
+  const GIT_STAGE = new RegExp(GIT_CMD + "[^\\n;|&]*\\b(add|commit|mv)\\b");
+  if (GIT_STAGE.test(bare)) {
+    for (const seg of bare.split(/[\n;|&]+/)) {
+      if (!GIT_STAGE.test(seg)) continue;
+      for (const tok of seg.split(/[\s'"]+/)) {
+        const name = tok.replace(/\\/g, "/").split("/").pop();
+        if (!name) continue;
+        if (nameMatches(name, POLICY.secret_allow || [])) continue;
+        if (nameMatches(name, POLICY.secret_names || [])) {
+          deny("CHAN (guard lop 1): `" + name + "` khop mau secret trong lenh git - " + POLICY.secret_reason);
+        }
       }
     }
   }
