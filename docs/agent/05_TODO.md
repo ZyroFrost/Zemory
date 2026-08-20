@@ -3,6 +3,59 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔵 BÀN GIAO 2026-08-20 — ĐỌC MỤC NÀY TRƯỚC
+
+**Trạng thái máy lúc chốt** (đo thật, không chép sổ): version đĩa **2.0.0** · git **2 commit**
+(`410a462` = 2.0.0 **ĐÃ push** · `5d7a06d` = vá flag + job dọn nháp **CHƯA push** — user chốt
+*"chưa push vội, chờ embed xong push một lần"*) · cây làm việc **sạch**.
+
+⚠ **DAEMON ĐANG CHẠY MÃ CŨ:** `/ping` báo **v1.5.21**, đĩa đã 2.0.0. Mọi bản vá backend của
+phiên này (guard · context-guard · embed profile · scratchTick) **chưa vào bản đang chạy**.
+Frontend thì Ctrl+R là thấy; backend phải **khởi động lại daemon**.
+
+🔴 **HAI CÔNG TẮC ĐANG TẮT — PHẢI BẬT LẠI SAU KHI TRÁO KHO:** `autosync` **TẮT** · `scheduler`
+**TẮT** (tắt tạm vì hai kho dùng chung `data/` nên chung `cli-write.lock`; autosync 30 phút/lần
+sẽ cản job embed). `realtime` + `autostart` vẫn BẬT; backup vẫn chạy (đồng hồ riêng).
+Bật lại: `POST /set-autosync?on=1` · `POST /set-scheduler?on=1`.
+
+**🔥 VIỆC ĐANG CHẠY — job re-embed BGE-M3 (plan 19 bước ②):**
+kho song song `data/global_memory.bgem3.db` · **202.256 / ~258.000 vector (78%)** · dấu
+`{1024, bge-m3-v1, int8}` · wrapper pid + con embed đang sống (phóng qua `.vbs` nên **sống qua
+lần đổi phiên**, đã chứng minh một lần). Log `data/logs/bge-embed.log`; **tiến độ đo bằng
+`vectorCount(<bản sao>)`, KHÔNG đọc log** (log trễ hơn kho: nó chỉ in khi tiến trình lượt đó thoát).
+45 lượt đã đóng, **tất cả exit 0**. Nhịp chậm dần đều (4 → 75–91 phút/4.000) vì hai lẽ cộng lại:
+embed xử tin NGẮN trước nên đuôi toàn tin dài, và máy chia CPU với repo khác của user.
+**Kho THẬT không bị đụng:** 257.072 vector · `{768, gemma-prompt-v1, fp32}` · daemon phục vụ bình thường.
+
+**VIỆC ĐẦU TIÊN của phiên sau:** ① kiểm job còn sống (`vectorCount` tăng + 3 tiến trình node) ·
+② xong thì sang **plan 19 bước ③** (bench A/B hai kho, 2 thước, theo lớp, 18 ca âm — chạy lúc
+máy rảnh) · ③ user tự gõ so tay bao lâu tuỳ ý · ④ **CHỜ USER KÝ** rồi mới tráo (bước ④).
+
+**Phiên 19–20/08 làm gì** (chi tiết + số đo: `06_CHANGES [2026-08-20]` · `[b]` · `[c]`):
+① chọn BGE-M3 bằng ma trận 6 embedder × 12 lane + bootstrap 2.000 lượt · ② cổng mặt audit ⑧
+(license + clone sạch) · ③ vá guard hở tool `PowerShell` (báo từ repo PBI) · ④ vá cảnh báo
+context 95% sai trên phiên 1M · ⑤ vá flag `.allow-*` bị tiêu thụ khi lệnh không chạy · ⑥ job
+`scratchTick` tự dọn thư mục nháp + luật FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT.
+
+**Bốn bẫy đã trả giá phiên này — đừng dẫm lại:**
+· **Phép thử NHỎ trước job dài không phải nghi lễ:** 20 tin bắt được lỗi hợp đồng `vec_config`
+  bị bỏ qua ⇒ cứu **44 giờ** chạy sai (embed bằng Gemma trong kho đóng dấu BGE, im lặng).
+· **`Buffer.from(base64).buffer` là POOL dùng chung của Node** — đọc `.buffer.slice(0)` ra 16.384
+  số rác/vector; lộ ra vì lane đọc-từ-đĩa tụt về đúng mức NGẪU NHIÊN. Phải cắt
+  `[byteOffset, byteLength)` + copy.
+· **Gọi model THEO LÔ vừa chậm hơn vừa DỊCH vector** (bge 5,6× · gemma 2,3×; cos 0,982/0,962).
+· **Test không được đụng tài nguyên THẬT của repo:** gate flag bản đầu dùng `docs/hooks/.allow-push`
+  thật ⇒ làm ĐỎ một file test chạy song song (`node --test` chạy các file cùng lúc).
+
+**Ba đường cụt / thứ đã LOẠI có số — đừng đề xuất lại:** Qwen3-Embedding (thua cả Gemma trên kho
+này) · Qwen3-Reranker (MRR khá nhưng **29 s/truy vấn**) · **lai hai model** (mọi cặp nằm TRONG
+sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-mix mua được ~hết giá trị với
+1/300 đĩa) · tín hiệu TTL cache để đoán cửa sổ context (cả 6 phiên đều 1h, không tách được).
+
+⚠ **Trần của phép đo, đừng đọc số nhỏ thành thứ hạng:** corpus 68 nhãn chỉ phân biệt được ΔMRR
+≥ ~0,05. Mọi chênh lệch nhỏ hơn thế trong các bảng của phiên này (colbert 0,375 vs bge-dense
+0,378…) đều **nằm trong vùng nhiễu**.
+
 ## 🔵 BÀN GIAO 2026-08-15 — ĐỌC MỤC NÀY TRƯỚC
 
 **Trạng thái máy lúc chốt** (đo thật, không chép sổ): kho **245.419 vector · coverage 99,9% ·
