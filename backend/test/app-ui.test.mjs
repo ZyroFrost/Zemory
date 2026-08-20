@@ -785,3 +785,23 @@ test("nhãn [image:…] bị bỏ ĐÚNG MỘT chỗ, và bỏ TRƯỚC khi cắ
   const html = msgBlock(m, 12);
   assert.ok(!html.includes("[image:"), `nhãn (kể cả mảnh) không được lọt ra: ${html.slice(0, 120)}`);
 });
+
+test("pill Healthy phải TỰ SÁNG khi mở app — không bắt user bấm Recheck oan (2026-08-21)", () => {
+  // Bệnh đo được: zboot xếp refreshChecks() SAU /status → /memory-status, mà lượt LẠNH của
+  // memory-status đo >30s khi máy bận ⇒ 3 pill check treo "…" nhìn như TẮT, user đi bấm
+  // Recheck tay. Ba bất biến dưới hỏng cái nào cũng IM LẶNG (không lỗi, không đỏ) nên phải neo.
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  // ① refreshChecks() phải được gọi TRƯỚC chuỗi /status→/memory-status (song song, không xếp hàng)
+  const iChecks = chrome.indexOf("refreshChecks();");
+  const iStatus = chrome.indexOf("zGet('/status').then(renderStatus)");
+  assert.ok(iChecks > 0 && iStatus > 0, "thiếu neo trong zboot");
+  assert.ok(iChecks < iStatus, "refreshChecks() phải đứng TRƯỚC chuỗi status — xếp sau là pill treo theo lượt lạnh");
+  // ② daemon phải CACHE /check + mồi sẵn lúc lên — cửa sổ mở là có kết quả liền
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /checkCache\.get\(/, "/check phải đọc cache — mỗi cửa sổ đo lại từ đầu là bệnh cũ");
+  assert.match(ui, /\[\s*"memory",\s*"validate",\s*"grill"\s*\]/, "daemon phải MỒI 3 check rẻ lúc khởi động");
+  // ③ nút ↻ Recheck ép ĐO THẬT — cache là cho đường tự động, không được nuốt nghĩa của nút
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  const freshCalls = (sys.match(/\/check\?feature='\+f\+'&fresh=1/g) || []).length;
+  assert.ok(freshCalls >= 2, `nút Recheck (từng cái + all) phải mang fresh=1 — thấy ${freshCalls}/2`);
+});
