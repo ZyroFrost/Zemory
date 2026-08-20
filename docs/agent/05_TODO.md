@@ -28,9 +28,25 @@ lần đổi phiên**, đã chứng minh một lần). Log `data/logs/bge-embed.
 embed xử tin NGẮN trước nên đuôi toàn tin dài, và máy chia CPU với repo khác của user.
 **Kho THẬT không bị đụng:** 257.072 vector · `{768, gemma-prompt-v1, fp32}` · daemon phục vụ bình thường.
 
-**VIỆC ĐẦU TIÊN của phiên sau:** ① kiểm job còn sống (`vectorCount` tăng + 3 tiến trình node) ·
-② xong thì sang **plan 19 bước ③** (bench A/B hai kho, 2 thước, theo lớp, 18 ca âm — chạy lúc
-máy rảnh) · ③ user tự gõ so tay bao lâu tuỳ ý · ④ **CHỜ USER KÝ** rồi mới tráo (bước ④).
+**📋 LỊCH SAU-EMBED — hàng đợi MỘT thứ tự, user chốt 2026-08-21 ("cứ xếp lịch đi"):**
+1. **Kiểm job xong THẬT** — `vectorCount` đứng yên + wrapper tự thoát (nó chỉ dừng khi 2 lượt
+   liên tiếp không thêm vector); đừng tin log, đếm SQL.
+2. **Vá 2 advisory audit 21/08 (user đã gật):** ① nhánh XOÁ của guard quét theo SEGMENT như
+   nhánh git `[2026-08-20d]` (+ ca âm `rm x && echo "…\.env"` vào `guard-tool-matrix`, đột biến
+   chứng minh đỏ) · ② gate NỘI DUNG cho `policy.json` ship cowork (so 2 khoá
+   `secret_names`/`secret_allow` với bộ sinh — KHÔNG so cả file, cowork khác `protected_write`
+   có chủ đích). Làm TRƯỚC lượt gate đầy đủ để gate phủ luôn 2 bản vá; xong sinh lại
+   `hook guard` + chép bản ship (template-parity canh).
+3. **Trả nợ "chưa đo" của audit:** TẮT daemon 4444 (embed test OOM nếu để) → `npm run check`
+   ĐẦY ĐỦ (scheduler đang tắt sẵn) → bật lại daemon → đảo mắt UI bằng mắt người/CDP ·
+   (tuỳ sức: `check:clone` cần mạng · diễn tập phục hồi — nợ plan 18 ⑨).
+4. **Plan 19 bước ③** — bench A/B hai kho (2 thước · theo lớp · 18 ca âm, máy tĩnh).
+5. User tự gõ so tay bao lâu tuỳ ý → **CHỜ USER KÝ** → tráo (bước ④, script một-lần, tag
+   `pre-bgem3-swap`, bản lùi 768 có án tử ~5 ngày).
+6. **Sau tráo:** bật lại `autosync` + `scheduler` (`POST /set-autosync?on=1` ·
+   `/set-scheduler?on=1`) · `scan`+`embed` bù · nhân dịp kho đóng băng đo luôn mục
+   **717 cửa sổ phụ chênh** (dịp miễn phí, đã ghi ở §Audit 12/08) · push đợt version kế
+   (user chốt số) · archive bớt khối ✅ của `05_TODO` (advisory ④ audit 21/08).
 
 **Phiên 19–20/08 làm gì** (chi tiết + số đo: `06_CHANGES [2026-08-20]` → `[e]`):
 ① chọn BGE-M3 bằng ma trận 6 embedder × 12 lane + bootstrap 2.000 lượt · ② cổng mặt audit ⑧
@@ -69,6 +85,51 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 ≥ ~0,05. Mọi chênh lệch nhỏ hơn thế trong các bảng của phiên này (colbert 0,375 vs bge-dense
 0,378…) đều **nằm trong vùng nhiễu**.
 
+## 🔬 Audit toàn diện 2026-08-21 (đêm, Fable — TRONG LÚC job embed chạy) — 10 mặt, 0 blocking, 4 advisory
+
+> **Điều kiện đo phải đọc trước khi tin số:** job re-embed BGE đang chạy ⇒ mặt ① chỉ chạy
+> tsc/lint + test KHÔNG-ONNX; mọi số thời gian là CẬN TRÊN (máy bận I/O). Gate ĐẦY ĐỦ cố ý
+> chưa chạy — xem "chưa đo" cuối mục.
+>
+> **Sạch, đo trong phiên:** tsc 0 lỗi · `npm run lint` 0 lỗi · `conform` ✓ · `validate` ✓ ·
+> `quick_check ok` · FK 0 · **0 tin mồ côi** · digest **2.324/2.324 (100%)** · vector khớp chéo
+> SQL↔API (257.072) · 0 secret tracked · 0 blob mới >1MB từ `410a462` · pack đứng yên 22,93 MiB ·
+> heartbeat daemon tươi (<60s) · write-lock được giữ ĐÚNG bởi con embed (label khớp, mốc tươi) ·
+> app-ui 47/47 · i18n-ratchet + license-gate 6/6 · guard suite 32/32 (ma trận có ca ÂM) ·
+> **6 đột biến trong ngày đều đỏ được** · 2 export mới (`guardDrift` · `NONAPP_FREEFORM_PARENTS`)
+> đều có người gọi · 06_CHANGES 217 dòng < trần 300.
+
+- [ ] **(advisory) Nhánh XOÁ của guard quét CẢ DÒNG — tên `.env` nhắc trong echo bị vạ lây.**
+  Đo: `rm build.log && echo "check prod.env"` ⇒ CHẶN (không flag — nhóm secret); trong khi
+  `rm .env.example` QUA (allow ăn đúng) và `rm build.log` QUA. Cùng họ đúng bug nhánh git đã
+  vá `[2026-08-20d]` — sửa là quét theo SEGMENT như bên git. **User ĐÃ GẬT 2026-08-21 — nằm ở LỊCH SAU-EMBED bước 2, đừng hỏi lại.**
+  *(Ghi nhận không sửa: `rm test.env` bị chặn là chặn phía an toàn có chủ đích — xoá secret là
+  bất khả đảo; giữ.)*
+- [ ] **(advisory) `policy.json` bản ship cowork KHÔNG có cổng NỘI DUNG** — `template-parity`
+  chỉ so byte `guard.cjs` (0 dòng nhắc policy), manifest chỉ đếm dòng (46). Chiều 20/08 nó vừa
+  được sửa TAY — đúng khuôn sự cố guard.cjs 11/08 mà gate byte-parity sinh ra để chống. Đề xuất:
+  so 2 khoá `secret_names`/`secret_allow` với bộ sinh (KHÔNG so cả file — cowork khác
+  `protected_write`/`flags_dir` có chủ đích). **User ĐÃ GẬT 2026-08-21 — LỊCH SAU-EMBED bước 2.**
+- [ ] **(advisory, mục cũ thêm số mới) `/memory-status` lượt LẠNH >30s khi máy bận I/O** — curl
+  timeout 30s ở lượt đầu sau restart + embed đang chạy; lượt ấm 5ms. Không phải bug mới — đúng
+  mục `[~] (⑥)` còn mở; số này là cận trên lúc bận, đừng đọc thành hồi quy.
+- [ ] **(advisory) `05_TODO` đã 2.156 dòng** — nhiều khối ✅ đã đóng có thể `zemory archive`
+  sang `archive/05_TODO.md` cho bộ đọc mỗi phiên nhẹ lại. Chờ dịp chốt phiên.
+
+**Nghi vấn ĐÃ LOẠI — ghi kèm lý do, khỏi đào lại:**
+· *"precommit-guard không honor `secret_allow`"* — **SAI**: đọc nguyên văn PRECOMMIT_SOURCE có
+  dòng `secret_allow → continue`; grep hẹp ban đầu trượt nó (đúng bẫy công-cụ-hỏng-lặng, luật 5).
+· *cờ `todo verify` dòng ~2052* — báo-oan-kỹ-thuật: `harness.ts` sửa 20/08 vì việc doctor,
+  không liên quan mục gate-TODO-thối mà dòng sổ nói.
+· *eslint "treo" 25 phút* — lỗi PHÉP ĐO của agent: gõ `eslint .` thay vì lệnh chuẩn của repo
+  (`eslint backend/src backend/test backend/scripts`) nên bò cả `external/`+`frontend/`+`attic/`.
+  Đường thật: exit 0 trong chưa đầy một phút. *Bài học lặp: đo bằng đúng lệnh production.*
+
+**CHƯA ĐO — không được đọc thành sạch (chạy khi embed xong, TRƯỚC khi tráo kho):**
+① gate ĐẦY ĐỦ `npm run check` (cần tắt scheduler + máy tĩnh) · ⑥ mở app nhìn tận mắt (cần mắt
+người) · ⑧ clone sạch (deps không đổi từ 06/08, lần đo gần nhất 4/4 xanh — không chạy lại đêm
+nay vì cần mạng) · ⑨ diễn tập phục hồi định kỳ (lần cuối 12/08 — vẫn là nợ cổng plan 18).
+
 ## ✅ HAI CỔNG BÁO OAN + MỘT LỖ `*.env` — ĐÃ VÁ 2026-08-20 (báo từ `PBI_SasinFlow_Rebuild`, TỰ ĐO LẠI trước khi sửa)
 
 Báo cáo nêu 2 lỗi, đo lại thì **đúng 1,5/2** — và lộ thêm một lỗ nặng hơn báo cáo không thấy:
@@ -92,9 +153,11 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
 đều đỏ được (git trần ⇒ 1 đỏ · bỏ `*.env` ⇒ 1 đỏ · quét-cả-dòng ⇒ 1 đỏ · tắt nhánh non-app
 ⇒ 1 đỏ · thêm parent lạ ⇒ parity đỏ). Bản ship cowork chép lại + manifest 321→338 · 43→46.
 
-- [ ] **(chờ user) BÁO CÁC REPO ĐÃ CẮM GUARD SINH LẠI LẦN NỮA** — đợt `PowerShell` (20/08 sáng)
-  ai đã sinh lại thì đang giữ bản CÒN lỗi ②③; phải `zemory hook guard` thêm lần nữa (matcher
-  giữ nguyên, không phải sửa `.claude/settings.json`). Không tự sang sửa (`02_RULES §Phạm vi`).
+- [ ] **(chờ user) MỖI REPO KHÁC LÀM MỘT CHUYẾN 3 LỆNH** — `zemory sync` (nhận skill mới `write-style`,
+  gap-fill file thiếu) → `zemory hook guard` (2 đợt vá 20/08: PowerShell + `.git/`-path + `*.env`) →
+  `zemory doctor` (tự kêu nếu guard còn lỗi thời). Repo CÙNG máy làm được NGAY (CLI là junction);
+  máy kia chờ push. ⚠ 2 dòng đăng ký skill (`04_SKILLS`+`AGENTS`) sync KHÔNG tự thêm (file-wins) —
+  `conform` bên đó sẽ nhắc, agent bên đó tự thêm. Không tự sang sửa (`02_RULES §Phạm vi`).
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
