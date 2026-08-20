@@ -17,6 +17,9 @@ import { conform } from "../docs/conform.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
+import { guardDrift } from "../docs/guard-gen.js";
+import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
+import { sweepScratchpads } from "../jobs/scratchpad.js";
 
 export function cmdInit(args: string[]): void {
   if (args.includes("--fresh")) {
@@ -172,7 +175,16 @@ export async function cmdDoctor(): Promise<void> {
         console.log("  guard: ⚠ marker khai `protected` nhưng CHƯA có chốt máy — luật lớp ① đang chỉ có chữ gác");
         console.log("      → chạy `zemory hook guard` để sinh policy + guard từ marker (02_RULES §Guardrail lớp ①)");
       } else if (existsSync(guardPath)) {
-        console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (nối runtime: xem \`zemory hook guard\`)`);
+        // Guard KHÔNG tự làm mới — mỗi lần zemory vá guard, repo đã cắm giữ bản HỞ cho tới
+        // khi ai đó NHỚ chạy lại `hook guard`. Đề xuất 05_TODO, thành máy sau ngày có HAI
+        // vòng vá guard (2026-08-20). Chỉ báo file mang dấu zemory mà lệch bản sinh hôm nay.
+        const stale = guardDrift(s.project.root);
+        if (stale.length) {
+          console.log(`  guard: ⚠ chốt LỖI THỜI so với bản \`hook guard\` hôm nay: ${stale.join(" · ")}`);
+          console.log("      → chạy lại `zemory hook guard` (guard không tự làm mới; matcher giữ nguyên)");
+        } else {
+          console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (nối runtime: xem \`zemory hook guard\`)`);
+        }
       }
     } catch {
       /* marker hỏng — validate/conform đã có chỗ báo, doctor không lặp */
@@ -208,6 +220,35 @@ export async function cmdDoctor(): Promise<void> {
     console.log(`    ${mark} [${f.group}] ${f.label} — ${c.detail}`);
     if (!c.ok) failed = true;
   }
+
+  // Kho ↔ vùng đồng bộ đám mây — BẢN ĐẦY ĐỦ chỉ đường (check `storage-safety` ở trên chỉ
+  // in một dòng). `formatCloudReport` viết sau sự cố 04/08 (Drive cuốn cả kho + chìa lên
+  // mây dạng TRẦN) nhưng nằm mồ côi 0 lời gọi từ đó (đo 2026-08-15 + 20) — lưới đỡ cho sự
+  // cố ĐÃ XẢY RA THẬT mà không ai in ra. Nối tại đây; sạch thì im (không thêm dòng thừa).
+  try {
+    const cloud = formatCloudReport(cloudSyncReport(currentMemoryDir(), { dbPath: currentMemoryDb() }));
+    if (cloud.trim()) for (const line of cloud.split("\n")) console.log(`  ${line}`);
+  } catch {
+    /* fail-open — check storage-safety phía trên đã có chỗ báo lỗi */
+  }
+
+  // Thư mục nháp — người dùng không có chỗ nào NHÌN THẤY nó chiếm bao nhiêu (đo 2026-08-20:
+  // 2,9 GB tích lại trong khi scratchTick chưa chạy vì daemon còn mã cũ). `dryRun` chỉ báo.
+  try {
+    const sw = sweepScratchpads({ dryRun: true });
+    if (sw.root) {
+      const gb = (n: number): string => (n / 1024 ** 3).toFixed(2) + " GB";
+      if (sw.removed.length) {
+        const doomed = sw.removed.reduce((a, r) => a + r.bytes, 0);
+        console.log(`  scratch: ○ ${gb(sw.totalBytes)} ở thư mục nháp — scratchTick sẽ dọn ${sw.removed.length} phiên (${gb(doomed)}) ở nhịp 6 giờ kế`);
+      } else {
+        console.log(`  scratch: ✓ ${gb(sw.totalBytes)} ở thư mục nháp (trong trần)`);
+      }
+    }
+  } catch {
+    /* fail-open — báo cáo phụ, không được làm doctor chết */
+  }
+
   if (failed) process.exitCode = 1;
 }
 

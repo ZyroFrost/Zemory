@@ -478,6 +478,43 @@ process.exit(0);
  * Giu o DAY, canh bo sinh, de danh sach nay va nhanh dispatch trong guard.cjs khong troi lech nhau.
  */
 export const GUARD_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell";
+
+/** Doctor: file chốt ĐÃ SINH nhưng đã TRÔI khỏi bản `hook guard` sẽ sinh hôm nay.
+ *
+ *  Vì sao phải có máy nhắc (đề xuất từ 05_TODO, nóng lên sau NGÀY CÓ HAI vòng vá guard
+ *  2026-08-20 — PowerShell sáng · `.git/`-path + `*.env` chiều): guard KHÔNG tự làm mới,
+ *  `generateGuards` chỉ chạy khi gõ `zemory hook guard`, nên mỗi lần zemory vá guard là mọi
+ *  repo đã cắm giữ bản HỞ cho tới khi có người NHỚ đi sinh lại — mà "nhớ" chính là thứ luật
+ *  guardrail nói không đáng tin. CHỈ soi file mang dấu của zemory (bản user tự sửa: để yên,
+ *  nhắc là nhiễu); thiếu hẳn file thì nhánh doctor sẵn có lo. Fail-open: đọc lỗi ⇒ bỏ qua. */
+export function guardDrift(projectRoot: string): string[] {
+  const hp = harnessPathsAt(projectRoot);
+  const hooksDir = join(hp.agent, "..", "hooks");
+  const hooksRel = relative(projectRoot, hooksDir).replace(/\\/g, "/");
+  const stale: string[] = [];
+  const check = (name: string, expected: string, isOurs: (cur: string) => boolean): void => {
+    const p = join(hooksDir, name);
+    if (!existsSync(p)) return;
+    try {
+      const cur = readFileSync(p, "utf8");
+      if (isOurs(cur) && cur !== expected) stale.push(name);
+    } catch {
+      /* fail-open */
+    }
+  };
+  const oursJs = (c: string): boolean => c.includes("zemory hook guard");
+  check("policy.json", JSON.stringify(buildPolicy(projectRoot, hooksRel), null, 2) + "\n", (c) => {
+    try {
+      return (JSON.parse(c) as { generator?: unknown }).generator === "zemory";
+    } catch {
+      return false;
+    }
+  });
+  check("guard.cjs", GUARD_SOURCE, oursJs);
+  check("precommit-guard.cjs", PRECOMMIT_SOURCE, oursJs);
+  return stale;
+}
+
 export function generateGuards(projectRoot: string): GuardGenResult {
   const hp = harnessPathsAt(projectRoot);
   // hooks/ đặt cạnh agent-dir: `docs/agent` → `docs/hooks` · `harness/agent` → `harness/hooks`

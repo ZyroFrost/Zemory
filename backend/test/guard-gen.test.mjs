@@ -11,7 +11,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { generateGuards } from "../../dist/docs/guard-gen.js";
+import { generateGuards, guardDrift } from "../../dist/docs/guard-gen.js";
 import { tempDir } from "./helpers.mjs";
 
 /** Repo giả kiểu adapt: harness ở harness/, docs/ là của team (protected). */
@@ -155,3 +155,30 @@ test("sinh lại: file của mình làm tươi khi lệch, file KHÔNG mang dấ
   assert.ok(r3.kept.includes("guard.cjs"), "bản riêng của repo phải được giữ nguyên");
   assert.equal(readFileSync(join(r1.hooksDir, "guard.cjs"), "utf8"), "// ban rieng cua repo\n");
 });
+
+test("guardDrift: bản đã sinh trôi khỏi bản hôm nay ⇒ NÊU TÊN; bản riêng của repo ⇒ IM (2026-08-20)", (t) => {
+  // Vì sao có: guard KHÔNG tự làm mới — ngày 2026-08-20 vá guard HAI vòng, mọi repo đã cắm
+  // giữ bản hở cho tới khi ai đó NHỚ chạy `hook guard`. Doctor gọi hàm này để máy nhắc thay người.
+  const root = repo(t);
+  const r = generateGuards(root);
+
+  // vừa sinh xong ⇒ khớp trọn, không nhắc gì
+  assert.deepEqual(guardDrift(root), [], "vừa sinh mà đã kêu lệch = báo oan");
+
+  // guard cũ (vẫn mang dấu zemory) ⇒ phải NÊU TÊN
+  const gp = join(r.hooksDir, "guard.cjs");
+  writeFileSync(gp, readFileSync(gp, "utf8").replace("use strict", "use strict; // ban cu — zemory hook guard"));
+  assert.deepEqual(guardDrift(root), ["guard.cjs"], "bản mang dấu zemory mà lệch thì phải nhắc");
+
+  // marker đổi (thêm secretNames) mà policy chưa sinh lại ⇒ policy.json cũng phải bị nêu
+  const mk = join(root, "harness", ".harness.json");
+  const mj = JSON.parse(readFileSync(mk, "utf8"));
+  mj.secretNames = ["*.pfx"];
+  writeFileSync(mk, JSON.stringify(mj));
+  assert.ok(guardDrift(root).includes("policy.json"), "marker đổi mà policy đứng yên thì phải nhắc");
+
+  // bản RIÊNG của repo (không mang dấu) ⇒ im — nhắc bản user tự viết là nhiễu
+  writeFileSync(gp, "// ban rieng cua repo\n");
+  assert.ok(!guardDrift(root).includes("guard.cjs"), "bản riêng không mang dấu thì không được nhắc");
+});
+
