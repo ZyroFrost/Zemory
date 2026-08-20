@@ -158,6 +158,18 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   `zemory doctor` (tự kêu nếu guard còn lỗi thời). Repo CÙNG máy làm được NGAY (CLI là junction);
   máy kia chờ push. ⚠ 2 dòng đăng ký skill (`04_SKILLS`+`AGENTS`) sync KHÔNG tự thêm (file-wins) —
   `conform` bên đó sẽ nhắc, agent bên đó tự thêm. Không tự sang sửa (`02_RULES §Phạm vi`).
+- [ ] **(ĐỀ XUẤT — chờ user chốt thiết kế) "CHẤM THAN UPDATE" cho mọi repo — pull-based, KHÔNG
+  push-ghi-chéo** (user nêu 2026-08-21: *"mở repo càng lúc càng nhiều, không thể gọi từng con áp
+  được — cần cơ chế check có update, giống dấu chấm than VSCode/SasinFlow"*). Ba tầng, tầng dưới
+  đã có một nửa:
+  ① **`zemory sync --check`** (dry-run) — `copyTree` trong `adopt.ts` đã tính `added/present`,
+    chỉ thiếu chế độ không-ghi; trả "N file template repo này chưa nhận" + gộp `guardDrift()`.
+  ② **Hook mỗi phiên nhắc 1 dòng** — capture hook vốn chạy ở MỌI repo: repo lệch ⇒ in
+    "⚠ harness có bản mới — `zemory sync` + `hook guard`" đúng 1 lần/phiên (marker chống spam,
+    y khuôn context-guard). Fail-open, 0 token. Đây là tầng thay việc "gọi từng con".
+  ③ Badge tab Dự án trên UI daemon — đụng thiết kế UI ⇒ trình duyệt riêng khi làm.
+  **Giữ nguyên luật Phạm vi:** cơ chế chỉ NHẮC; hành động áp vẫn do agent/user BÊN repo đó chạy
+  (hook là lưới đỡ, không phải người quyết). KHÔNG auto-ghi chéo — phiên khác có thể đang làm việc.
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
