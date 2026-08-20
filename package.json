@@ -1,6 +1,6 @@
 {
   "name": "zemory",
-  "version": "1.5.21",
+  "version": "2.0.0",
   "description": "Context & memory governance layer for AI agents — one shared core for every project.",
   "author": "Nguyen Duc Huy",
   "type": "module",
@@ -25,7 +25,8 @@
     "prepack": "npm run check",
     "dev": "tsx backend/src/cli.ts",
     "start": "node dist/cli.js",
-    "preflight": "node backend/scripts/preflight-gate.mjs"
+    "preflight": "node backend/scripts/preflight-gate.mjs",
+    "check:clone": "node backend/scripts/clone-check.mjs"
   },
   "engines": {
     "node": ">=20.11 <25"

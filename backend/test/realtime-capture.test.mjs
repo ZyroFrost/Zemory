@@ -105,6 +105,43 @@ test("windowFor TỰ SỬA khi số đo vượt cửa sổ giả định (phiên
   assert.equal(windowFor("claude-opus-5", 5_000_000), null, "vượt cả bậc cao nhất ⇒ số không đáng tin ⇒ IM, không hét bậy");
 });
 
+test("windowFor HỌC từ bằng chứng: một lần chứng minh 1M thì phiên sau thôi bị hét oan ở 190k", () => {
+  // Lỗ THẬT, báo từ một repo khác rồi đo lại 2026-08-20. Cơ chế tự sửa chỉ nổ SAU khi vượt 200k,
+  // nên dải 190k–200k của MỌI phiên 1M đều bị hét "~95%" — trong khi thực dùng ~19%. Đo trên máy
+  // này cùng ngày: 5/6 phiên gần nhất vượt 200k với CÙNG model id `claude-opus-5`, tức phỏng đoán
+  // 200k sai với thực tế, và transcript không có trường nào khai cửa sổ để mà đọc.
+  //
+  // Giá của báo sai không nằm ở con số: agent nhận cảnh báo sẽ đi chốt sổ / thu hẹp việc sớm hơn cần.
+  const store = new Map();
+  const mem = { get: (m) => store.get(m), learn: (m, w) => store.set(m, w) };
+
+  // chưa học được gì ⇒ vẫn là phỏng đoán cũ (không tự dưng nới cửa cho mọi người)
+  assert.equal(windowFor("claude-opus-5", 190_000, mem), 200_000);
+
+  // một phiên chạm 730k ⇒ CHỨNG MINH cửa sổ là 1M, và điều đó phải được nhớ lại
+  assert.equal(windowFor("claude-opus-5", 730_968, mem), 1_000_000);
+  assert.equal(store.get("claude-opus-5"), 1_000_000, "phải GHI LẠI trần vừa chứng minh, không thì phiên sau lại hét oan");
+
+  // phiên sau, cùng model, mới 190k: giờ biết là 1M ⇒ 19%, KHÔNG còn 95%
+  const w = windowFor("claude-opus-5", 190_000, mem);
+  assert.equal(w, 1_000_000, "đã có bằng chứng thì thôi đoán theo tên");
+  assert.ok((100 * 190_000) / w < 25, "190k trên cửa sổ 1M phải ra ~19%, không phải ~95%");
+});
+
+test("bằng chứng CHỈ ĐI LÊN — một phiên nhỏ không được xoá trần đã chứng minh", () => {
+  // Nếu để ghi đè xuống thì mỗi phiên ngắn lại kéo trần về 200k và cảnh báo oan quay lại —
+  // đúng kiểu "trần treo" mà cổng i18n đã phải học một lần.
+  const store = new Map([["claude-opus-5", 1_000_000]]);
+  const mem = { get: (m) => store.get(m), learn: (m, w) => { if ((store.get(m) ?? 0) < w) store.set(m, w); } };
+  assert.equal(windowFor("claude-opus-5", 50_000, mem), 1_000_000);
+  assert.equal(store.get("claude-opus-5"), 1_000_000);
+});
+
+test("hậu tố tường minh THẮNG bộ nhớ — khai báo rõ ràng không bị số đo cũ đè", () => {
+  const mem = { get: () => 200_000, learn: () => {} };
+  assert.equal(windowFor("claude-opus-5[1m]", 0, mem), 1_000_000);
+});
+
 test("readContextUsage cộng đúng ba phần usage của bản ghi assistant CUỐI", (t) => {
   const { file } = fakeTranscript(t, [
     userMsg("u1", "a"),
