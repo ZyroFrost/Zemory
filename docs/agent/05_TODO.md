@@ -5,9 +5,9 @@
 
 ## 🔵 BÀN GIAO 2026-08-20 — ĐỌC MỤC NÀY TRƯỚC
 
-**Trạng thái máy lúc chốt** (đo thật, không chép sổ): version đĩa **2.0.0** · git **2 commit**
-(`410a462` = 2.0.0 **ĐÃ push** · `5d7a06d` = vá flag + job dọn nháp **CHƯA push** — user chốt
-*"chưa push vội, chờ embed xong push một lần"*) · cây làm việc **sạch**.
+**Trạng thái máy lúc chốt CHIỀU 20/08** (đo thật, không chép sổ): daemon **pid 29564 · 2.0.0**
+(đã restart, mọi bản vá backend ĐANG SỐNG) · cây làm việc sạch · **đã push trọn** (đợt chiều
+gom 4 commit `5d7a06d`→`fc54bb0` + chốt phiên; số version xem `package.json` — user chốt lúc push).
 
 ✅ **DAEMON ĐÃ RESTART 2026-08-20 chiều (user duyệt):** pid 29564 · `/ping` báo **2.0.0** ·
 hai công tắc giữ nguyên TẮT · job embed không hề hấn (tiến trình riêng). `scratchTick` nổ ngay
@@ -19,7 +19,8 @@ sẽ cản job embed). `realtime` + `autostart` vẫn BẬT; backup vẫn chạy
 Bật lại: `POST /set-autosync?on=1` · `POST /set-scheduler?on=1`.
 
 **🔥 VIỆC ĐANG CHẠY — job re-embed BGE-M3 (plan 19 bước ②):**
-kho song song `data/global_memory.bgem3.db` · **202.256 / ~258.000 vector (78%)** · dấu
+kho song song `data/global_memory.bgem3.db` · **209.344 / ~253.900 vector (82%, đo 16:5x
+20/08 — đích ước theo tỉ lệ phủ 94,1% của kho thật, KHÔNG phải 100% số tin)** · dấu
 `{1024, bge-m3-v1, int8}` · wrapper pid + con embed đang sống (phóng qua `.vbs` nên **sống qua
 lần đổi phiên**, đã chứng minh một lần). Log `data/logs/bge-embed.log`; **tiến độ đo bằng
 `vectorCount(<bản sao>)`, KHÔNG đọc log** (log trễ hơn kho: nó chỉ in khi tiến trình lượt đó thoát).
@@ -31,11 +32,15 @@ embed xử tin NGẮN trước nên đuôi toàn tin dài, và máy chia CPU v�
 ② xong thì sang **plan 19 bước ③** (bench A/B hai kho, 2 thước, theo lớp, 18 ca âm — chạy lúc
 máy rảnh) · ③ user tự gõ so tay bao lâu tuỳ ý · ④ **CHỜ USER KÝ** rồi mới tráo (bước ④).
 
-**Phiên 19–20/08 làm gì** (chi tiết + số đo: `06_CHANGES [2026-08-20]` · `[b]` · `[c]`):
+**Phiên 19–20/08 làm gì** (chi tiết + số đo: `06_CHANGES [2026-08-20]` → `[e]`):
 ① chọn BGE-M3 bằng ma trận 6 embedder × 12 lane + bootstrap 2.000 lượt · ② cổng mặt audit ⑧
 (license + clone sạch) · ③ vá guard hở tool `PowerShell` (báo từ repo PBI) · ④ vá cảnh báo
 context 95% sai trên phiên 1M · ⑤ vá flag `.allow-*` bị tiêu thụ khi lệnh không chạy · ⑥ job
-`scratchTick` tự dọn thư mục nháp + luật FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT.
+`scratchTick` tự dọn thư mục nháp + luật FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT · **⑦ (chiều)** vá 2 cổng
+báo oan từ báo cáo PBI (`conform` non-app · guard đọc `.git/hooks/*` thành lệnh git) + lỗ
+`*.env` thiếu trong mẫu secret — báo cáo bên kia đúng 1,5/2, sửa KHÁC cả hai đề nghị của họ
+(`[d]`) · **⑧ (chiều)** restart daemon 2.0.0 + doctor thêm 3 mặt (guard lỗi thời · cloud · rác
+nháp) + đóng mục "số phiên nhảy" bằng GROUP BY (`[e]`).
 
 **Bốn bẫy đã trả giá phiên này — đừng dẫm lại:**
 · **Phép thử NHỎ trước job dài không phải nghi lễ:** 20 tin bắt được lỗi hợp đồng `vec_config`
@@ -46,6 +51,14 @@ context 95% sai trên phiên 1M · ⑤ vá flag `.allow-*` bị tiêu thụ khi 
 · **Gọi model THEO LÔ vừa chậm hơn vừa DỊCH vector** (bge 5,6× · gemma 2,3×; cos 0,982/0,962).
 · **Test không được đụng tài nguyên THẬT của repo:** gate flag bản đầu dùng `docs/hooks/.allow-push`
   thật ⇒ làm ĐỎ một file test chạy song song (`node --test` chạy các file cùng lúc).
+· **(chiều) `node -e` replace trên file CRLF là HỎNG LẶNG:** pattern có `\n` không khớp `\r\n`,
+  script in "đã cập nhật" mà thay 0 chỗ — phải kiểm lại bằng grep sau MỌI lần replace, hoặc dùng
+  công cụ edit thật. Cùng họ với bẫy "regex qua shell bị nuốt escape" (dính lần thứ n+1 trong
+  cùng phiên, khi đột biến guard bằng one-liner).
+· **(chiều) Log của job ghi giờ UTC, máy hiển thị UTC+7** — đọc lướt sẽ thấy "7 giờ không ai
+  chạy" và kết luận job chết trong khi nó đang chạy lượt kế. Đối chiếu mốc bằng epoch/`Z`.
+· **(chiều) NHÃN ca test chứa chuỗi `git …push` cũng bị guard soi như lệnh thật** — chính lệnh
+  đo ma trận bị hook chặn vì tên ca `<git> push`. Ghép mảnh cả NHÃN, không riêng payload.
 
 **Ba đường cụt / thứ đã LOẠI có số — đừng đề xuất lại:** Qwen3-Embedding (thua cả Gemma trên kho
 này) · Qwen3-Reranker (MRR khá nhưng **29 s/truy vấn**) · **lai hai model** (mọi cặp nằm TRONG

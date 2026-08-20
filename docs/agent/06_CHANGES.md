@@ -5,6 +5,27 @@
 
 ---
 
+## [2026-08-20e] — doctor thêm 3 mặt (guard lỗi thời · cloud đầy đủ · rác nháp) + daemon lên 2.0.0
+
+**Restart daemon (user duyệt):** pid 29564 · `/ping` 2.0.0 · hai công tắc giữ nguyên TẮT ·
+job embed không hề hấn. **`scratchTick` trả công ngay phút thứ 2**: log ghi
+`dọn 147 phiên nháp (2.261 MB) → còn 570 MB` — bản vá 20/08 chạy thật lần đầu, và cũng chứng
+minh vì sao trước đó rác tích 2,9 GB: daemon còn mã 1.5.21 nên job dọn chưa hề tồn tại lúc chạy.
+
+**Ba mặt mới của `doctor`** (đều là đề xuất nằm sẵn trong `05_TODO`, user chốt "làm đi"):
+· **guard LỖI THỜI** — `guardDrift()` so cả 3 file chốt (guard · precommit · policy-theo-marker)
+  với bản `hook guard` sinh hôm nay; CHỈ soi file mang dấu zemory, bản riêng của repo thì im.
+  Trị đúng bệnh lộ ra hôm nay: một ngày HAI vòng vá guard mà mọi repo đã cắm phải "nhớ" đi sinh
+  lại — nay máy nhắc thay người. Gate `guard-gen.test.mjs` 8/8, đột biến trả-rỗng ⇒ đỏ.
+· **cloud ĐẦY ĐỦ** — nối `formatCloudReport` (hàm mồ côi từ 04/08, 0 lời gọi suốt) vào doctor;
+  sạch thì im. Lượt chạy đầu lộ ngay dấu vết `*.tmp.driveupload` còn trong `D:\huy.nguyen`.
+· **rác nháp** — dòng `scratch:` từ `sweepScratchpads({dryRun:true})`; đo `0.56 GB (trong trần)`,
+  khớp log sweep của daemon (kiểm bằng đường thứ hai).
+
+**Đóng bằng phép đo, không tốn code:** mục "số phiên nhảy 1.315→2.085" — chạy đúng lượt
+`GROUP BY` sổ đề nghị: 992 phiên cụm 12–15/08 đều `claude-code`, **983 mang host máy kia**
+(về qua merge kho chính Drive, mở đúng 12/08). Không phải lỗi dữ liệu.
+
 ## [2026-08-20d] — vá 2 cổng báo oan + 1 lỗ `*.env` (báo từ repo PBI — tự đo lại, sửa khác đề nghị)
 
 **Nguồn: báo cáo phiên `PBI_SasinFlow_Rebuild`; đo lại thì đúng 1,5/2 — và lộ thêm một lỗ
