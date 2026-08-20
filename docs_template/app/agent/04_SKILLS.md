@@ -29,6 +29,7 @@
 | `audit/` | soi toàn diện trước mốc lớn — verify từng phát hiện rồi mới ghi |
 | `read-office/` | đọc `.xlsx .xls .docx .pptx .pdf` rẻ nhất có thể |
 | `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
+| `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
 
 ## 3. Skill NGOÀI — vendor, KHÔNG chép nội dung
 

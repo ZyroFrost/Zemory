@@ -109,12 +109,12 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 50 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 51 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 118 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 36 |
-| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 41 |
+| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 42 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
@@ -133,8 +133,9 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 22 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
 | 23 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
 | 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
-| 25 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 338 |
-| 26 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 46 |
+| 25 | `.claude/skills/write-style/SKILL.md` | `<RAW>/.claude/skills/write-style/SKILL.md` | 91 |
+| 26 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 338 |
+| 27 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 46 |
 
 **Hai file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
 lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào
