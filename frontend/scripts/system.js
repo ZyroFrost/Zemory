@@ -105,7 +105,7 @@
     if(au){var nm=au.dataset.sysAuto,ao=au.dataset.on==='1';
       if(Z.auto)Z.auto[nm]=ao;renderSystem();
       zPost('/set-'+nm+'?on='+au.dataset.on).then(function(){return zGet('/automation');}).then(function(a){renderAuto(a);renderSystem();}).catch(function(){});return;}
-    if(ck){var f=ck.dataset.sysCheck;ck.textContent='…';zGet('/check?feature='+f).then(function(r){Z.checks[f]=r;renderSystem();}).catch(function(){renderSystem();});return;}
+    if(ck){var f=ck.dataset.sysCheck;ck.textContent='…';zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;renderSystem();}).catch(function(){renderSystem();});return;}
     if(nv){if(nv.dataset.sysNav==='__settings')openSettings();else go(nv.dataset.sysNav);return;}
     var rc=e.target.closest&&e.target.closest('[data-act="sysrecheck"]');
     if(rc){
@@ -117,7 +117,7 @@
         zGet('/status').then(renderStatus).catch(function(){}),
         zGet('/memory-status?fresh=1').then(renderMem).catch(function(){}),
         zGet('/automation').then(renderAuto).catch(function(){}),
-        Promise.all(['memory','validate','grill'].map(function(f){return zGet('/check?feature='+f).then(function(r){Z.checks[f]=r;}).catch(function(){});}))
+        Promise.all(['memory','validate','grill'].map(function(f){return zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;}).catch(function(){});}))
       ]).then(function(){
         renderSystem();
         rc.innerHTML='✓ '+t('sys.rechecked');
