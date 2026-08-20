@@ -9,6 +9,7 @@
   "secret_names": [
     ".env",
     ".env.*",
+    "*.env",
     "*.pem",
     "*.ppk",
     "id_rsa*",
@@ -19,7 +20,9 @@
     "global_memory*.db"
   ],
   "secret_allow": [
-    ".env.example"
+    ".env.example",
+    "example.env",
+    "sample.env"
   ],
   "secret_reason": "secret khong bao gio vao commit — KHONG co flag vuot (gia da tra: secret len GitHub 2026-08-04)",
   "key_read_block": [

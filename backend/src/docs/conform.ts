@@ -20,7 +20,7 @@ import { dirname, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
-import { SLOT_ROLES } from "./structure-tree.js";
+import { NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -124,8 +124,9 @@ export function conform(root: string): ConformReport {
   };
 
   // ① File nằm trong thư mục KHÔNG khớp slot nào của từ điển ⇒ lệch chuẩn thật.
-  //    BỐN MIỄN TRỪ — đều là thứ CHUẨN CHO PHÉP, báo lên là báo oan (đã lộ ra khi chạy thử
-  //    trên 3 repo khác; checker kêu oan thì lần sau không ai đọc nữa):
+  //    SÁU MIỄN TRỪ — đều là thứ CHUẨN CHO PHÉP, báo lên là báo oan (đã lộ ra khi chạy thử
+  //    trên 3 repo khác + báo cáo repo PBI 2026-08-20; checker kêu oan thì lần sau không
+  //    ai đọc nữa):
   //    · gốc repo — "Tool ép root: MỌI config tool đọc từ root = ĐỂ YÊN" (03 §5)
   //    · `backend` · `frontend` · `docs` — là 4 VAI TRÒ bắt buộc, không phải slot
   //    · `NN_<tên>` — thư mục đánh số của hệ non-app (`tasks/NN_` · `pipelines/NN_` · `data/NN_`)
@@ -134,12 +135,29 @@ export function conform(root: string): ConformReport {
   //      ruột nó theo CHUẨN CỦA PROJECT ĐÍCH (bộ Cowork mang cả script tự kiểm `.py` là
   //      thiết kế có chủ đích, 2026-07-29). Soi ruột template bằng thước của repo CHỨA nó
   //      là lấy nhầm thước.
+  //    · profile NON-APP: con của `tasks/` · `pipelines/` · `data/` tên TỰ DO — chuẩn non-app
+  //      tự khai ở BA chỗ (`tasks/<case>/` · `pipelines/<domain>/` · `data/<case>/`, legacy
+  //      KHÔNG đánh số cùng tồn tại). Đo 2026-08-20: `pipelines/excel_loader/` bị chặn
+  //      blocking trong khi doc cho phép — máy chỉ miễn tiền tố `NN_`. CHỈ non-app: chuẩn
+  //      APP nói ngược lại ("trong domain chỉ dùng slot từ CÙNG từ điển"), miễn cả họ
+  //      subdir bên app là mở lỗ.
+  //    · `ignore` trong marker — trước CHỈ nhánh `layout:"foreign"` đọc, repo theo chuẩn
+  //      không có đường khai miễn nào; nay áp cả nhánh chuẩn.
+  const md = (readMarker(root)?.data ?? {}) as { profile?: unknown; ignore?: unknown };
+  const profile = md.profile === "non-app" ? "non-app" : "app";
+  const markerIgnore = (Array.isArray(md.ignore) ? md.ignore : [])
+    .filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+    .map((x) => normDir(x.trim()));
   const exempt = (dir: string): boolean => {
     if (!dir) return true;
     if (dir === "docs_template" || dir.startsWith("docs_template/")) return true;
     const seg = dir.split("/");
     const last = seg[seg.length - 1];
-    return seg.length === 1 && ["backend", "frontend", "docs"].includes(last) ? true : /^\d{2}_/.test(last);
+    if (seg.length === 1 && ["backend", "frontend", "docs"].includes(last)) return true;
+    if (/^\d{2}_/.test(last)) return true;
+    if (profile === "non-app" && NONAPP_FREEFORM_PARENTS.includes(seg[0])) return true;
+    const nd = normDir(dir);
+    return markerIgnore.some((i) => nd === i || nd.startsWith(i + "/"));
   };
   // ①bis — HỆ ADAPT (`layout: "foreign"`): repo có cấu trúc RIÊNG và KHÔNG được nắn (repo bên
   // thứ ba, repo làm nhóm, repo có CI/import khoá cứng theo tên folder). Ở đây câu hỏi ĐỔI:
