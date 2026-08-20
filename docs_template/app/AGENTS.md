@@ -38,6 +38,7 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
 | user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
+| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
 
 > Chạy trong Claude Code: các skill trên được harness **tự nạp theo `description`**; bảng này là đường
 > dự phòng khi cơ chế đó không có (và là chỗ khai báo skill mới — xem `04_SKILLS` §4).

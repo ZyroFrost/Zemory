@@ -63,6 +63,7 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
 | user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
+| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
 
 > ⚠ Skill `reconcile` (nắn repo về chuẩn) **KHÔNG dùng ở hệ này** — nó nắn repo, đúng thứ hệ
 > ADAPT cấm. Cần chỉnh thì chỉnh **bảng ánh xạ**, không chỉnh repo.

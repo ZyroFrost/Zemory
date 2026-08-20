@@ -15,6 +15,7 @@
   Skill chỉ mô tả **cách làm**, và dẫn chiếu luật khi cần.
 - **Skill dài / có tài nguyên → tách file, KHÔNG phình `SKILL.md`**: đặt `reference/*.md` và
   `scripts/*` cạnh nó, thân `SKILL.md` chỉ trỏ tới. Đây là lý do `structure/` và `write-docx/` có
+| `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
   thư mục con.
 
 ## 2. Danh mục — mỗi skill một việc

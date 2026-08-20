@@ -27,6 +27,7 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 | "ghi sổ" · "chốt phiên" · "note lại" · đổi session | `.claude/skills/session-close/SKILL.md` |
 | cần đọc nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` (chữ · ảnh · bảng) | `.claude/skills/write-docx/SKILL.md` |
+| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
 | kéo dữ liệu từ nguồn về | `.claude/skills/pull/SKILL.md` |
 | điền số vào mẫu → xuất sản phẩm giao đi | `.claude/skills/fill/SKILL.md` |
 | đẩy sản phẩm lên đích (BI · Drive · SharePoint) | `.claude/skills/upload/SKILL.md` |
