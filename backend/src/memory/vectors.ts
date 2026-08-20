@@ -146,12 +146,18 @@ function vectorOf(db: Conn, id: number): Buffer | null {
   }
 }
 
+// Every profile the reader accepts. An unknown string reads as "raw" ON PURPOSE — that is what
+// pre-profile indexes are — but a profile we DO ship must be listed here, or its index would
+// read as raw and get mean-pooled by a model that needs CLS: right shape, wrong space, no error.
+const KNOWN_PROFILES: readonly EmbedProfile[] = ["gemma-prompt-v1", "bge-m3-v1"];
+
 /** Profile the existing index was built with; pre-profile indexes are "raw". */
 function storedProfile(db: Conn): EmbedProfile {
   try {
     const row = db.prepare("SELECT * FROM vec_config LIMIT 1").get() as { profile?: unknown } | undefined;
     if (!row) return currentEmbedProfile();
-    return row.profile === "gemma-prompt-v1" ? "gemma-prompt-v1" : "raw";
+    const found = KNOWN_PROFILES.find((p) => p === row.profile);
+    return found ?? "raw";
   } catch {
     return currentEmbedProfile(); // no vec_config yet — a new index gets the current profile
   }
@@ -173,13 +179,15 @@ function storedDtype(db: Conn): string | null {
   }
 }
 
-/** Dims the existing index was built with (Matryoshka-sliced); else the configured target. */
+/** Dims the existing index was built with (Matryoshka-sliced); else the target for ITS profile. */
 function storedDims(db: Conn): number {
   try {
     const row = db.prepare("SELECT dims FROM vec_config LIMIT 1").get() as { dims: number } | undefined;
-    return row?.dims ?? targetEmbedDims();
+    // A brand-new index must be sized for the profile it is about to be built under (BGE 1024,
+    // Gemma 768) — passing no profile here would size every new index the Gemma way.
+    return row?.dims ?? targetEmbedDims(storedProfile(db));
   } catch {
-    return targetEmbedDims(); // no vec_config yet — a new index gets the current target
+    return targetEmbedDims(currentEmbedProfile()); // no vec_config yet
   }
 }
 
@@ -281,11 +289,19 @@ export async function embedPending(
       )
       .all(limit) as { id: number; content: string }[];
 
-    // Documents are embedded under the profile AND dims the index was BUILT
-    // with — never mix spaces. A brand-new index adopts the current config.
-    const profile = has ? storedProfile(db) : currentEmbedProfile();
-    const dimsTarget = has ? storedDims(db) : targetEmbedDims();
-    useEmbedDtype(has ? storedDtype(db) : null);
+    // Documents are embedded under the profile AND dims the index was BUILT with — never mix
+    // spaces. The contract lives in vec_config, so ASK vec_config: the three stored* readers
+    // already fall back to the current config when there is no contract yet.
+    //
+    // These used to be gated on `has` (does the vec_chunks TABLE exist), which quietly ignored
+    // a vec_config that was stamped BEFORE the first embed — exactly how a store is prepared
+    // when switching models (plan 19 §3: drop index → stamp contract → embed). Measured
+    // 2026-08-19 on the parallel BGE store: contract said {1024, bge-m3-v1, int8} while the
+    // run reported dims 768 and used Gemma. A 20-message smoke test caught it; the same bug
+    // in the 44-hour full run would have produced a completely wrong index, silently.
+    const profile = storedProfile(db);
+    const dimsTarget = storedDims(db);
+    useEmbedDtype(storedDtype(db));
 
     let dims: number | null = null;
     let embedded = 0;

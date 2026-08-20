@@ -11,6 +11,7 @@ import { currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
+import { embedConfig, embedProfileSpec } from "../memory/embed.js";
 import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
 import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
@@ -893,8 +894,17 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log("zemory memory embed --rebuild — vector index dropped; re-embedding the whole corpus…");
     }
     const idx = vectorIndexInfo();
+    // Name the model the RUN actually uses, not a hardcoded one. With two profiles in play
+    // (Gemma live, BGE parallel — plan 19) a fixed name turns this line into a lie: it printed
+    // "EmbeddingGemma" while embedding 1024d BGE vectors, which is exactly how a wrong run
+    // gets mistaken for a right one at a glance.
+    // Ask the STORE's profile, not the ambient config: at this point nothing has pinned the
+    // profile yet (that happens inside embedPending), so embedConfig() would still answer with
+    // the default model and print the wrong name for a parallel-store run.
+    const profileModel = embedProfileSpec(idx.profile).model ?? embedConfig().model;
+    const modelName = profileModel.split("/").pop() ?? profileModel;
     console.log(
-      `zemory memory embed — building the vector index (EmbeddingGemma, local, profile ${idx.profile} · ${idx.dims}d · ${idx.dtype})…`,
+      `zemory memory embed — building the vector index (${modelName}, local, profile ${idx.profile} · ${idx.dims}d · ${idx.dtype})…`,
     );
     let total = 0;
     // A long `--all` run shares the DB with other zemory processes (Stop-hook

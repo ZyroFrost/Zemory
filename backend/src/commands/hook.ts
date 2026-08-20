@@ -1,7 +1,7 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
 import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
-import { generateGuards } from "../docs/guard-gen.js";
+import { generateGuards, GUARD_MATCHER } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
 import { readStdin } from "./_shared.js";
 
@@ -54,7 +54,12 @@ export async function cmdHook(args: string[]): Promise<void> {
         : "  chưa khai đường cấm ghi — thêm khoá `protected: [\"...\"]` vào .harness.json rồi chạy lại (mẫu secret vẫn gác).",
     );
     console.log("  Nối vào runtime (user duyệt rồi tự thêm — tool không cắm hộ):");
-    console.log(`    · Claude Code (.claude/settings.json): PreToolUse → node ${rel(r.hooksDir)}/guard.cjs`);
+    // In KEM matcher: guard chi duoc goi cho tool nao co ten trong matcher, nen thieu mot ten
+    // la ho mot cua — do that 2026-08-20: mot repo khai matcher thieu `PowerShell`, va moi lenh
+    // nguy hiem di qua tool do khong bao gio cham toi guard. Nguoi noi khong phai doan nua.
+    console.log(
+      `    · Claude Code (.claude/settings.json): PreToolUse matcher ${GUARD_MATCHER} → node ${rel(r.hooksDir)}/guard.cjs`,
+    );
     console.log(`    · pre-commit: hook local chạy node ${rel(r.hooksDir)}/precommit-guard.cjs`);
     console.log("  Flag một-lần (.allow-*) nằm trong thư mục hooks, đã .gitignore — chỉ tạo khi user nói rõ.");
     return;

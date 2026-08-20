@@ -245,7 +245,16 @@ function main() {
   }
   const tool = payload.tool_name || "";
   const ti = payload.tool_input || {};
-  if (tool === "Write" || tool === "Edit" || tool === "NotebookEdit") {
+  // Nhan dien theo HINH DANG lenh goi, khong theo mot danh sach TEN cung.
+  // Do that 2026-08-20: guard chi biet ten `Bash` nen MOI nhanh gac lenh (git push chua xin,
+  // git add -A, secret vao git, xoa de quy) vuot duoc sach chi bang cach doi sang tool
+  // `PowerShell` - tool terminal CHINH tren Windows, co san trong CUNG mot phien. Regex nhan
+  // dien van dung (nhanh Bash bat ca cu phap PowerShell); chi cai cong TEN la chan sai.
+  // Vi vay: co `command` thi soi nhu mot lenh shell, bat ke tool ten gi - con dung duoc voi
+  // tool tuong lai ma khong phai bump zemory.
+  const isCommandTool = typeof ti.command === "string" && ti.command !== "";
+  const isWriteTool = tool === "Write" || tool === "Edit" || tool === "MultiEdit" || tool === "NotebookEdit";
+  if (isWriteTool) {
     const p = ti.file_path || ti.notebook_path || "";
     if (p) checkWrite(relToRoot(p));
     // GHI DE = mat noi dung cu, ngang mot lan xoa. `Write` thay TRON file; `Edit` thi
@@ -274,8 +283,8 @@ function main() {
     }
   } else if (tool === "Read") {
     if (ti.file_path) checkRead(relToRoot(ti.file_path));
-  } else if (tool === "Bash") {
-    if (ti.command) checkBash(String(ti.command));
+  } else if (isCommandTool) {
+    checkBash(String(ti.command));
   }
   process.exit(0);
 }

@@ -39,17 +39,100 @@ const DEFAULT_MODEL = "onnx-community/embeddinggemma-300m-ONNX";
 // requires `zemory memory embed --rebuild`. New indexes use currentEmbedProfile().
 // ZEMORY_EMBED_PROMPTS=0 forces raw; =1 forces prompts for a non-Gemma model.
 // ---------------------------------------------------------------------------
-export type EmbedProfile = "raw" | "gemma-prompt-v1";
+export type EmbedProfile = "raw" | "gemma-prompt-v1" | "bge-m3-v1";
+
+// BGE-M3 (BAAI, MIT): multilingual 100+ incl. Vietnamese, 1024d, CLS-pooled, NO prompt prefix.
+// Chosen over EmbeddingGemma on measured retrieval quality on this corpus — the one comparison
+// in the whole matrix whose 95% CI excluded zero (ΔMRR −0.086 [−0.168 … −0.005] for Gemma).
+// See docs/plan/19_bge_swap.md for the full measurement record.
+const BGE_MODEL = "onnx-community/bge-m3-ONNX";
+
+/**
+ * A profile is the FULL encoding contract of an index, not just its prompt: model, pooling,
+ * native width and dtype all have to match the vectors already stored, or queries land in a
+ * different space and ranking silently rots. Grouping them here means one stored string
+ * (vec_config.profile) pins every one of them — the same doctrine already proven for dims and
+ * dtype (stored-config-authoritative).
+ *
+ * `model: null` = "whatever embedConfig resolves" — keeps raw/gemma behavior byte-identical to
+ * before this profile existed. BGE pins its model because the profile IS the model choice.
+ */
+interface ProfileSpec {
+  model: string | null;
+  pooling: "mean" | "cls";
+  prompted: boolean;
+  /** Native output width — the dims a NEW index of this profile gets by default. */
+  dims: number;
+  /** Default dtype for a NEW index of this profile (stored dtype still wins afterwards). */
+  dtype: Dtype;
+  /**
+   * Encode documents ONE AT A TIME instead of in one batched model call.
+   *
+   * Measured 2026-08-19 (16 real messages, this CPU): batching is a LOSS on both counts —
+   * 1792 vs 318 ms/message for BGE (5.6x SLOWER, padding the short texts up to the longest
+   * one) AND it moves the vector: batched-vs-single cosine 0.982 mean. Sequential encoding
+   * reproduces the vectors the whole model comparison was measured on, bit for bit (cos
+   * 1.000000), so what ships is what was benchmarked.
+   *
+   * Left OFF for gemma on purpose: the live index was BUILT with batched calls, and changing
+   * how its vectors are produced mid-life would mix two variants inside one index. The same
+   * measurement on gemma (cos 0.962 mean, 0.925 worst — and also 2.3x slower) is written up
+   * as its own finding in 05_TODO; it is a decision about the LIVE store, not part of this swap.
+   */
+  sequential?: boolean;
+}
+
+const PROFILE_SPECS: Record<EmbedProfile, ProfileSpec> = {
+  raw: { model: null, pooling: "mean", prompted: false, dims: 768, dtype: "fp32" },
+  "gemma-prompt-v1": { model: null, pooling: "mean", prompted: true, dims: 768, dtype: "fp32" },
+  // int8, not fp32: measured 637 vs 1388 ms/message on this CPU while the quality difference
+  // stayed INSIDE the noise band (bootstrap 2000x, ΔMRR −0.026 [−0.060 … +0.007]) — i.e. fp32
+  // buys ~50 extra hours of machine time for something the corpus cannot even resolve.
+  "bge-m3-v1": { model: BGE_MODEL, pooling: "cls", prompted: false, dims: 1024, dtype: "int8", sequential: true },
+};
+
+const specOf = (p: EmbedProfile): ProfileSpec => PROFILE_SPECS[p] ?? PROFILE_SPECS.raw;
+
+/**
+ * The encoding contract, readable from outside — so a gate can pin it.
+ *
+ * Why this is exported at all: pooling is the one field whose corruption produces NO symptom a
+ * config test can see. Mutation-tested 2026-08-19 — flipping BGE to mean-pooling left every
+ * behavioral assertion green while the real vectors moved to cos 0.71–0.78 against the
+ * benchmarked ones. A silent 25% move in the vector space is exactly the class of bug that must
+ * not depend on someone re-running a manual probe.
+ */
+export function embedProfileSpec(p: EmbedProfile): Readonly<ProfileSpec> {
+  return specOf(p);
+}
+
+/**
+ * Which profile the ACTIVE pipeline is encoding under. Same mechanism as `dtypeOverride`:
+ * vectors.ts reads the profile out of vec_config and every embed call routes through
+ * embedQuery/embedDocBatch, which pin it here first. Changing it drops the pipeline, because a
+ * different profile can mean a different model file entirely.
+ */
+let activeProfile: EmbedProfile | null = null;
+
+export function useEmbedProfile(p: EmbedProfile | null | undefined): void {
+  const next = p && p in PROFILE_SPECS ? p : null;
+  if (next !== activeProfile) {
+    activeProfile = next;
+    resetEmbed();
+  }
+}
 
 export function currentEmbedProfile(): EmbedProfile {
   const v = process.env.ZEMORY_EMBED_PROMPTS?.trim();
   if (v === "0") return "raw";
   if (v === "1") return "gemma-prompt-v1";
-  return /embeddinggemma/i.test(embedConfig().model) ? "gemma-prompt-v1" : "raw";
+  const model = process.env.ZEMORY_EMBED_MODEL?.trim() || DEFAULT_MODEL;
+  if (/bge-m3/i.test(model)) return "bge-m3-v1";
+  return /embeddinggemma/i.test(model) ? "gemma-prompt-v1" : "raw";
 }
 
 const promptFor = (kind: "query" | "document", text: string, profile: EmbedProfile): string =>
-  profile === "gemma-prompt-v1" ? (kind === "query" ? `task: search result | query: ${text}` : `title: none | text: ${text}`) : text;
+  specOf(profile).prompted ? (kind === "query" ? `task: search result | query: ${text}` : `title: none | text: ${text}`) : text;
 
 // ---------------------------------------------------------------------------
 // Matryoshka dims. EmbeddingGemma is MRL-trained: the FIRST N dims of the 768d
@@ -58,11 +141,18 @@ const promptFor = (kind: "query" | "document", text: string, profile: EmbedProfi
 // in vec_config and are authoritative afterwards; ZEMORY_EMBED_DIMS only
 // applies when a NEW index is created (default 768 = unchanged behavior).
 // ---------------------------------------------------------------------------
-const VALID_DIMS = [128, 256, 512, 768];
+const VALID_DIMS = [128, 256, 512, 768, 1024];
 
-export function targetEmbedDims(): number {
+/**
+ * Native width of a NEW index. Defaults to the ACTIVE profile's width (Gemma 768, BGE 1024) —
+ * hardcoding 768 here would have quietly truncated every BGE index to a Gemma-shaped table.
+ * ZEMORY_EMBED_DIMS still overrides, but only downward: slicing is only valid for MRL-trained
+ * models, and asking for MORE dims than the model emits is a config error, not a resize.
+ */
+export function targetEmbedDims(profile: EmbedProfile = effectiveProfile()): number {
+  const native = specOf(profile).dims;
   const n = Number(process.env.ZEMORY_EMBED_DIMS?.trim());
-  return VALID_DIMS.includes(n) ? n : 768;
+  return VALID_DIMS.includes(n) && n <= native ? n : native;
 }
 
 /** First `dims` components, re-normalized to unit length. Longer→shorter only. */
@@ -75,12 +165,18 @@ export function sliceNormalize(v: number[], dims: number): number[] {
 
 /** Embed a SEARCH QUERY under the given profile (must match the index's stored profile). */
 export async function embedQuery(text: string, profile: EmbedProfile): Promise<number[] | null> {
+  useEmbedProfile(profile); // pins model + pooling too, not just the prompt
   return embed(promptFor("query", text, profile));
 }
 
 /** Embed DOCUMENTS under the given profile (must match the index's stored profile). */
 export async function embedDocBatch(texts: string[], profile: EmbedProfile): Promise<(number[] | null)[]> {
-  return embedBatch(texts.map((t) => promptFor("document", t, profile)));
+  useEmbedProfile(profile);
+  const prompted = texts.map((t) => promptFor("document", t, profile));
+  if (!specOf(profile).sequential) return embedBatch(prompted);
+  const out: (number[] | null)[] = [];
+  for (const t of prompted) out.push(await embed(t));
+  return out;
 }
 
 /**
@@ -110,11 +206,17 @@ export function useEmbedDtype(d: string | null | undefined): void {
   }
 }
 
+/** The profile actually in force: what vectors.ts pinned, else what the env implies. */
+const effectiveProfile = (): EmbedProfile => activeProfile ?? currentEmbedProfile();
+
 export function embedConfig(): EmbedConfig {
   const d = process.env.ZEMORY_EMBED_DTYPE?.trim() as Dtype | undefined;
+  const spec = specOf(effectiveProfile());
   return {
-    model: process.env.ZEMORY_EMBED_MODEL?.trim() || DEFAULT_MODEL,
-    dtype: dtypeOverride ?? (d && DTYPES.includes(d) ? d : DEFAULT_DTYPE),
+    // An explicit env model still wins (experiments, local exports); otherwise the profile
+    // decides, and only profiles that ARE a model choice pin one.
+    model: process.env.ZEMORY_EMBED_MODEL?.trim() || spec.model || DEFAULT_MODEL,
+    dtype: dtypeOverride ?? (d && DTYPES.includes(d) ? d : spec.dtype ?? DEFAULT_DTYPE),
     cacheDir: process.env.ZEMORY_MODEL_DIR?.trim() || join(currentMemoryDir(), "models"),
   };
 }
@@ -144,11 +246,19 @@ export function embedDims(): number | null {
   return lastDims;
 }
 
+/**
+ * Pooling is part of the profile, not a constant: Gemma is mean-pooled, BGE-M3 is CLS-pooled.
+ * Mean-pooling a CLS model produces a plausible-looking vector in the WRONG space — no error,
+ * no warning, just silently worse ranking. That is exactly the failure mode this repo keeps
+ * paying for, so it is pinned by the same stored profile as everything else.
+ */
+const poolingNow = (): "mean" | "cls" => specOf(effectiveProfile()).pooling;
+
 /** Embed one text → unit-normalized vector, or null on failure (fail-open). */
 export async function embed(text: string): Promise<number[] | null> {
   try {
     const pipe = await getPipe();
-    const out = await pipe(text, { pooling: "mean", normalize: true });
+    const out = await pipe(text, { pooling: poolingNow(), normalize: true });
     const vec = Array.from(out.data as ArrayLike<number>);
     lastDims = vec.length;
     return vec;
@@ -168,7 +278,7 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
   if (!texts.length) return [];
   try {
     const pipe = await getPipe();
-    const out = await pipe(texts, { pooling: "mean", normalize: true });
+    const out = await pipe(texts, { pooling: poolingNow(), normalize: true });
     const vectors = tensorToVectors(out.tolist() as unknown[]);
     if (vectors.length !== texts.length) throw new Error("batch embedding shape mismatch");
     if (vectors[0]?.length) lastDims = vectors[0].length;
