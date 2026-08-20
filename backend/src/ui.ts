@@ -39,6 +39,8 @@ import { TEMPLATE_DIR } from "./docs/adopt.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
+// Cache của /check — pill Healthy phải có sẵn khi cửa sổ mở, không bắt user bấm Recheck oan.
+const checkCache = new Map<string, { at: number; r: unknown }>();
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
@@ -1260,7 +1262,18 @@ export async function startUi(): Promise<void> {
     // thao tác DỜI docs cũ đi. Năng lực không mất — `zemory init --fresh` gọi thẳng
     // freshHarness(). Không nên mở một thao tác phá huỷ trên HTTP khi không ai dùng.
     if (p === "/migrate") return json(res, analyzeMigration(target) ?? { error: "no docs dir" });
-    if (p === "/check") return json(res, await runCheck(u.searchParams.get("feature") ?? "", rootP));
+    if (p === "/check") {
+      // Cache 10' phía daemon (2026-08-21): trước đây MỖI cửa sổ mở đo lại từ đầu và pill
+      // check treo "…" tới khi xong — user đọc thành "heal mở lại là tắt". Nay kết quả sống
+      // theo daemon; `fresh=1` (nút ↻ Recheck) mới đo lại thật — nút giữ đúng nghĩa của nó.
+      const feat = u.searchParams.get("feature") ?? "";
+      const key = `${feat}|${rootP ?? ""}`;
+      const hit = checkCache.get(key);
+      if (u.searchParams.get("fresh") !== "1" && hit && Date.now() - hit.at < 600_000) return json(res, hit.r);
+      const r = await runCheck(feat, rootP);
+      checkCache.set(key, { at: Date.now(), r });
+      return json(res, r);
+    }
     if (p === "/status") return json(res, await gatherStatus(rootP));
     // `fresh=1` = the user pressed refresh; the poll takes whatever is cached.
     if (p === "/memory-status") return json(res, dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
@@ -2001,6 +2014,13 @@ export async function startUi(): Promise<void> {
   // reconcile the OS autostart hook and start the idle background scheduler.
   armCrashReport();
   daemonLog(`daemon up on ${url} pid=${process.pid}`);
+  // Mồi 3 check RẺ (FTS query · đọc docs · đọc skill — <1s mỗi cái) để cửa sổ đầu tiên mở ra
+  // là pill sáng liền. CỐ Ý không mồi probe sâu (vector/rerank nạp model 8s+ — giữ thủ công).
+  setTimeout(() => {
+    for (const f of ["memory", "validate", "grill"]) {
+      void runCheck(f).then((r) => checkCache.set(`${f}|`, { at: Date.now(), r })).catch(() => {});
+    }
+  }, 1500);
   // Nhịp tim mỗi 30 s — thứ DUY NHẤT còn lại khi daemon bị giết cứng (xem daemon-log.ts).
   // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
   daemonHeartbeat();

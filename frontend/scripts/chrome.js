@@ -128,8 +128,13 @@
       var rm=zid('railMachine');if(rm)rm.textContent=(p&&p.host?p.host:'local')+' · memory only';
       var rav=zid('railAv');if(rav)rav.textContent=((((p&&p.host)||'?')+'').charAt(0)||'?').toUpperCase();
     }).catch(function(){});
+    // Check Healthy chạy NGAY, song song — không xếp hàng sau /memory-status: lượt LẠNH của
+    // nó đo được >30s khi máy bận (2026-08-21), và suốt lúc đó 3 pill check treo "…" nhìn
+    // như TẮT — user phải bấm Recheck oan (bệnh "heal mở lại là tắt"). Daemon đã mồi + cache
+    // sẵn kết quả nên lời gọi này trả tức thì.
+    refreshChecks();
     zGet('/status').then(renderStatus).catch(function(){}).then(function(){
-      return zGet('/memory-status').then(function(m){renderMem(m);loadConn();return refreshChecks();}).catch(function(){});
+      return zGet('/memory-status').then(function(m){renderMem(m);loadConn();renderSystem();}).catch(function(){});
     });
     zGet('/automation').then(function(a){renderAuto(a);renderSystem();}).catch(function(){});
     loadRecentSessions();
