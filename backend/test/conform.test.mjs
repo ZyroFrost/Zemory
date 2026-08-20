@@ -10,7 +10,7 @@
 // Mỗi ca có một ratchet dưới đây. Sửa conform mà làm tái sinh ca nào ⇒ gate ĐỎ.
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { conform } from "../../dist/docs/conform.js";
@@ -91,6 +91,62 @@ test("BÁO OAN ④: slot chuẩn khai mà repo chưa dùng KHÔNG phải phát h
   for (const it of rep.items) {
     assert.ok(!/chưa có slot nào hiện diện/i.test(it.title), `vẫn còn lane báo slot-chưa-dùng: ${it.check}`);
   }
+});
+
+test("BÁO OAN ⑥ (2026-08-20): NON-APP — con TÊN TỰ DO của tasks/ · pipelines/ · data/ là chuẩn ĐÃ KHAI", (t) => {
+  // Báo từ repo PBI, tái lập được: `pipelines/excel_loader` bị chặn blocking trong khi
+  // chuẩn non-app tự khai ở BA chỗ (`tasks/<case>/` · `pipelines/<domain>/` · `data/<case>/`,
+  // legacy KHÔNG đánh số cùng tồn tại) — máy chỉ miễn tiền tố `NN_`.
+  const root = goodRepo(t, (r) => {
+    write(r, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", profile: "non-app" }));
+    write(r, "pipelines/excel_loader/loader.py", "x = 1\n");
+    write(r, "tasks/ipos_recheck/fix.py", "x = 1\n");
+    write(r, "randomstuff/thing.py", "x = 1\n"); // cấp 1 lạ — cổng VẪN phải nổ được
+  });
+  const rep = conform(root);
+  const off = find(rep, "off-standard-dir");
+  assert.ok(off, "cổng phải còn nổ với thư mục cấp 1 lạ");
+  assert.ok(off.samples.includes("randomstuff"), `randomstuff phải bị bắt: ${JSON.stringify(off.samples)}`);
+  assert.ok(
+    !off.samples.some((s) => s.startsWith("pipelines/") || s.startsWith("tasks/")),
+    `con tự do của slot non-app phải được miễn, nhận: ${JSON.stringify(off.samples)}`,
+  );
+});
+
+test("VẾ NGƯỢC của ⑥: profile APP thì con lạ trong slot VẪN bị bắt — miễn trừ không được tràn sang app", (t) => {
+  // Chuẩn APP nói ngược lại chuẩn non-app: "bên trong một domain chỉ dùng slot từ CÙNG từ
+  // điển, KHÔNG tạo tên mới" (03 §2). Miễn cả họ subdir bên app là mở lỗ — đây là lý do
+  // KHÔNG nhận đề nghị "miễn mọi subdir của slot" trong báo cáo gốc.
+  const root = goodRepo(t, (r) => {
+    write(r, "pipelines/excel_loader/loader.py", "x = 1\n"); // không marker ⇒ profile app
+  });
+  const rep = conform(root);
+  const off = find(rep, "off-standard-dir");
+  assert.ok(off && off.samples.includes("pipelines/excel_loader"), `app phải vẫn nghiêm: ${JSON.stringify(off?.samples)}`);
+});
+
+test("`ignore` trong marker áp được cả nhánh CHUẨN — trước chỉ nhánh layout:foreign đọc", (t) => {
+  const root = goodRepo(t, (r) => {
+    write(r, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", ignore: ["teamdocs"] }));
+    write(r, "teamdocs/tool.py", "x = 1\n");
+  });
+  const rep = conform(root);
+  const off = find(rep, "off-standard-dir");
+  assert.ok(!off || !off.samples.includes("teamdocs"), `đường đã khai ignore phải được miễn: ${JSON.stringify(off?.samples)}`);
+});
+
+test("PARITY: NONAPP_FREEFORM_PARENTS phải còn được CHÍNH template non-app khai chỗ tự do", async () => {
+  // Điều 13 HP: chuẩn (03) và từ điển trong code là hai lăng kính của CÙNG một luật —
+  // giữ khớp bằng gate, không dựa ai nhớ. Ai gỡ dòng `<domain>/`/`<case>/` khỏi template
+  // mà quên thu hẹp const (hoặc thêm parent vào const mà template không khai) ⇒ ĐỎ.
+  const { NONAPP_FREEFORM_PARENTS } = await import("../../dist/docs/structure-tree.js");
+  const tpl = readFileSync(new URL("../../docs_template/nonapp/agent/03_STRUCTURE.md", import.meta.url), "utf8");
+  assert.deepEqual(NONAPP_FREEFORM_PARENTS, ["tasks", "pipelines", "data"], "đổi const thì phải sửa cả test này + template");
+  for (const parent of NONAPP_FREEFORM_PARENTS) {
+    assert.ok(tpl.includes(`${parent}/`), `template không còn khai \`${parent}/\``);
+  }
+  assert.ok(tpl.includes("<domain>/"), "template không còn khai con tự do <domain>/ (pipelines)");
+  assert.ok(tpl.includes("<case>/"), "template không còn khai con tự do <case>/ (tasks/data)");
 });
 
 test("BÁO OAN ⑤: docs_template/** là TEMPLATE (hàng ship đi), không soi bằng thước của repo chứa nó", (t) => {

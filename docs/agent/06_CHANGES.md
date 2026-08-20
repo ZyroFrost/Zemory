@@ -5,6 +5,32 @@
 
 ---
 
+## [2026-08-20d] — vá 2 cổng báo oan + 1 lỗ `*.env` (báo từ repo PBI — tự đo lại, sửa khác đề nghị)
+
+**Nguồn: báo cáo phiên `PBI_SasinFlow_Rebuild`; đo lại thì đúng 1,5/2 — và lộ thêm một lỗ
+nặng hơn mà báo cáo không thấy.** Cả ba đã vá, gate **80/80 · 0 skipped**, 5 đột biến đều đỏ được.
+
+**① `conform` chặn `pipelines/<domain>/` (non-app) — báo oan blocking.** Gốc sâu hơn mô tả:
+`graph.ts:266` gán slot theo `basename` nên MỌI con-của-slot tên lạ đều "vô slot" (zemory xanh
+chỉ vì may — mọi folder lồng trùng tên slot). Vá: `NONAPP_FREEFORM_PARENTS` (tasks·pipelines·
+data) **chỉ miễn profile `non-app`** + gate PARITY neo const vào chính template non-app; `ignore`
+trong marker nay áp cả nhánh chuẩn. **BÁC đề nghị "miễn mọi subdir"** — mở lỗ phía app (03 §2).
+Fixture 2 chiều: non-app chỉ còn `randomstuff` đỏ; đổi profile app thì `excel_loader` đỏ lại.
+
+**② guard đọc `.git/hooks/pre-push` thành `git push` — chặn oan đúng người làm theo tài liệu.**
+Vá `(?<!\.)\bgit\b(?![\\/])` cho cả 4 nhánh git. **BÁC cách vá token-đầu-câu** của báo cáo:
+đo 8 ca thì `/usr/bin/git push` · `sudo git push` · `env A=1 git push` sẽ LỌT.
+
+**③ (nặng nhất, báo cáo không thấy) mẫu secret thiếu `*.env`:** `git add ipos_loader.env`/
+`prod.env` LỌT SẠCH trên mọi repo dùng mặc định — comment trong `guard-gen.ts` còn tự nhận
+"app/x.env vẫn bị bắt" (SAI, đo ra lọt). Vá: `*.env` vào `SECRET_DEFAULTS` + allow `example.env`/
+`sample.env`; nhánh secret CHỈ quét token của đúng SEGMENT chứa lệnh git ⇒ tên `.env` nhắc
+trong `echo` cùng câu lệnh hết bị chặn oan.
+
+Ship: bản cowork chép lại (guard khớp byte + policy đồng bộ 2 khoá), manifest 321→338 · 43→46.
+⚠ **Guard không tự làm mới** — repo đã cắm (kể cả vừa sinh lại đợt PowerShell 20/08 sáng) phải
+chạy `zemory hook guard` LẦN NỮA; matcher giữ nguyên. Hồ sơ + việc chờ: `05_TODO` mục cùng tên.
+
 ## [2026-08-20c] — flag một-lần chịu được MỘT lần thử lại · job tự dọn thư mục nháp
 
 **Flag `.allow-*` bị tiêu thụ ngay cả khi lệnh KHÔNG chạy.** Dính đúng lúc push 2.0.0: hook

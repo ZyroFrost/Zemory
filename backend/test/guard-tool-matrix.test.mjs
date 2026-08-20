@@ -65,6 +65,53 @@ test("matcher khai ra ngoài phải PHỦ ĐỦ các tool đó — guard hiểu 
   }
 });
 
+test("ĐƯỜNG DẪN chứa `.git/` KHÔNG phải lệnh git — phải được cho qua (vá 2026-08-20)", () => {
+  // Báo oan thật, từ repo PBI + tái lập tại đây: `cat .git/hooks/pre-push` bị đọc thành
+  // "git … push" ⇒ CHẶN — đúng lúc người ta cắm pre-commit THEO hướng dẫn của `hook guard`,
+  // tức ai làm theo tài liệu cũng gặp. `git` đi sau dấu chấm / dính `/` `\` là ĐƯỜNG DẪN.
+  const paths = [
+    ["đọc hook pre-push", "cat ." + "git/hooks/pre-push"],
+    ["đọc hook pre-push (backslash)", "cat ." + "git\\hooks\\pre-push"],
+    ["cấp quyền chạy pre-commit", "chmod +x ." + "git/hooks/pre-commit"],
+    ["liệt kê hooks", "ls -l ." + "git/hooks/pre-commit"],
+    ["clone url .git rồi nhắc push ở câu khác", "git clone https://x/y." + "git; echo push done"],
+  ];
+  const chặnNhầm = [];
+  for (const tool of COMMAND_TOOLS) {
+    for (const [nhãn, command] of paths) {
+      if (ask({ tool_name: tool, tool_input: { command } })) chặnNhầm.push(`${tool} + ${nhãn}`);
+    }
+  }
+  assert.deepEqual(chặnNhầm, [], "Đường dẫn bị đọc thành lệnh git:\n  " + chặnNhầm.join("\n  "));
+  // Vế ngược — lý do KHÔNG vá bằng "token đầu câu": ba đường gọi git thật này sẽ lọt nếu
+  // chỉ nhận git ở đầu segment (đo ma trận 8 ca 2026-08-20 trước khi chọn cách vá).
+  for (const command of ["sudo " + PUSH, "/usr/bin/" + PUSH, "env A=1 " + PUSH]) {
+    assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn: ${command}`);
+  }
+});
+
+test("SECRET `*.env`: tên <x>.env trong lệnh git phải bị CHẶN; tên mẫu + tên ở segment khác phải QUA", () => {
+  // Lỗ đo được 2026-08-20: bộ mẫu cũ chỉ có `.env`/`.env.*` nên `git add ipos_loader.env`
+  // LỌT SẠCH — trong khi comment trong guard tự nhận "app/x.env vẫn bị bắt". Đây là đường
+  // bất khả đảo (secret lên git) nên khoá bằng gate, không bằng lời.
+  const block = [
+    ["thêm file .env theo tên", "git " + "add config/ipos_loader" + ".env"],
+    ["đổi chỗ file .env", "cd a && git " + "mv prod" + ".env b/"],
+    ["app/x.env — đúng ca comment cũ hứa", 'git ' + 'add "app/x' + '.env"'],
+  ];
+  for (const [nhãn, command] of block) {
+    assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn (${nhãn}): ${command}`);
+  }
+  const pass = [
+    ["tên mẫu example.env", "git " + "add example" + ".env"],
+    ["tên mẫu .env.example", "git " + "add ." + "env.example"],
+    ["tên .env chỉ NHẮC trong echo ở segment khác", "git " + 'add docs && echo "prod' + '.env staged: 3"'],
+  ];
+  for (const [nhãn, command] of pass) {
+    assert.ok(!ask({ tool_name: "Bash", tool_input: { command } }), `chặn nhầm (${nhãn}): ${command}`);
+  }
+});
+
 test("CA ÂM: lệnh thường ngày qua BẤT KỲ tool nào cũng phải ĐƯỢC CHO QUA", () => {
   const chặnNhầm = [];
   const benign = [

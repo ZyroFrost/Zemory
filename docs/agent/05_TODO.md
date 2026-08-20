@@ -56,6 +56,38 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 ≥ ~0,05. Mọi chênh lệch nhỏ hơn thế trong các bảng của phiên này (colbert 0,375 vs bge-dense
 0,378…) đều **nằm trong vùng nhiễu**.
 
+## ✅ HAI CỔNG BÁO OAN + MỘT LỖ `*.env` — ĐÃ VÁ 2026-08-20 (báo từ `PBI_SasinFlow_Rebuild`, TỰ ĐO LẠI trước khi sửa)
+
+Báo cáo nêu 2 lỗi, đo lại thì **đúng 1,5/2** — và lộ thêm một lỗ nặng hơn báo cáo không thấy:
+· **① `conform` chặn `pipelines/<domain>/`** (non-app) — tái lập được; gốc SÂU hơn mô tả:
+  `graph.ts:266` gán slot theo `basename` nên MỌI con-của-slot tên lạ đều "vô slot" (zemory
+  xanh chỉ vì may — mọi folder lồng trùng tên slot). Vá: `NONAPP_FREEFORM_PARENTS`
+  (`tasks`·`pipelines`·`data`, khai ở `structure-tree.ts`, có gate PARITY neo vào chính
+  template non-app) — **CHỈ miễn profile non-app**; đề nghị gốc "miễn mọi subdir" bị BÁC vì
+  mở lỗ phía app (03 §2 cấm tên mới trong domain). Kèm: `ignore` trong marker nay áp cả
+  nhánh chuẩn (trước chỉ nhánh `layout:"foreign"` đọc — repo theo chuẩn không có đường miễn).
+· **② guard đọc `.git/hooks/pre-push` thành `git push`** — 1/2 ca của báo cáo đúng (ca
+  `cat pre-commit + .env` họ ghi CHẶN, đo trên zemory là QUA). Vá bằng
+  `(?<!\.)\bgit\b(?![\\/])` cho cả 4 nhánh git; **BÁC** cách vá token-đầu-câu của báo cáo —
+  đo 8 ca: `/usr/bin/git push` · `sudo git push` · `env A=1 git push` sẽ LỌT.
+· **③ (báo cáo KHÔNG thấy, nặng nhất) mẫu secret thiếu `*.env`** — `git add ipos_loader.env`
+  /`prod.env` LỌT SẠCH trên mọi repo dùng mặc định; comment trong `guard-gen.ts` còn tự nhận
+  "app/x.env vẫn bị bắt" (SAI, đo ra lọt). Vá: thêm `*.env` + allow `example.env`/`sample.env`;
+  nhánh secret nay CHỈ quét token của đúng SEGMENT chứa lệnh git (trị luôn ca "tên .env nhắc
+  trong `echo`" cùng câu lệnh).
+Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) — **80/80**, 5 đột biến
+đều đỏ được (git trần ⇒ 1 đỏ · bỏ `*.env` ⇒ 1 đỏ · quét-cả-dòng ⇒ 1 đỏ · tắt nhánh non-app
+⇒ 1 đỏ · thêm parent lạ ⇒ parity đỏ). Bản ship cowork chép lại + manifest 321→338 · 43→46.
+
+- [ ] **(chờ user) BÁO CÁC REPO ĐÃ CẮM GUARD SINH LẠI LẦN NỮA** — đợt `PowerShell` (20/08 sáng)
+  ai đã sinh lại thì đang giữ bản CÒN lỗi ②③; phải `zemory hook guard` thêm lần nữa (matcher
+  giữ nguyên, không phải sửa `.claude/settings.json`). Không tự sang sửa (`02_RULES §Phạm vi`).
+- [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
+  `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
+  thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
+  khai qua `ignore` marker (nay đã ăn ở nhánh chuẩn) hoặc mở luật riêng — ĐO trước, đừng
+  miễn tổng quát.
+
 ## 🔵 BÀN GIAO 2026-08-15 — ĐỌC MỤC NÀY TRƯỚC
 
 **Trạng thái máy lúc chốt** (đo thật, không chép sổ): kho **245.419 vector · coverage 99,9% ·
