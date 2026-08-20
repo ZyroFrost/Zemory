@@ -11,7 +11,9 @@
 <body>
 <div class="app">
   <aside class="rail">
-    <div class="brand"><img class="logo" src="/assets/logo-192.png" alt="Zemory"><div><b>Zemory</b><small>AI Memory OS</small></div></div>
+    <!-- Logo kiêm nút thu gọn rail (user chốt 2026-08-21, mượn ý OpenRCA): trỏ chuột vào logo
+         hiện icon ‹/›, bấm là gập/mở. Nút ‹ rời ở rail-foot đã bỏ — một việc một chỗ bấm. -->
+    <div class="brand"><span class="logo-wrap" id="brandLogo" data-i18n-title="rail.collapse" title="Thu gọn / mở rộng menu"><img class="logo" src="/assets/logo-192.png" alt="Zemory"><span class="coll-ico" id="brandCollIco">‹</span></span><div><b>Zemory</b><small>AI Memory OS</small></div></div>
     <nav class="nav" id="nav">
       <a data-s="home" class="on"><span class="ic">⌂</span> <span data-i18n="nav.home">Trang chủ</span></a>
       <a data-s="recall"><span class="ic">🔍</span> <span data-i18n="nav.recall">Recall</span></a>
@@ -23,9 +25,11 @@
       <a data-s="system"><span class="ic">✔</span> <span data-i18n="nav.system">Tính năng</span></a>
     </nav>
     <div class="rail-foot">
+      <!-- Chấm than update (user chốt 2026-08-21): repo trong registry CŨ so với bộ chuẩn hiện
+           hành ⇒ chấm này hiện, ngay TRÊN chip sức khoẻ; bấm sang màn Dự án. Ẩn khi mọi repo khớp. -->
+      <div class="status-chip upd" id="railUpd" data-nav="projects" style="cursor:pointer;display:none" data-i18n-title="rail.updTip" title="Repo cần cập nhật chuẩn — bấm xem"><span class="dot warn"></span><div><b style="font-size:12px" id="railUpdN">—</b><div class="muted" style="font-size:10.5px" id="railUpdSub"></div></div></div>
       <div class="status-chip" data-nav="system" style="cursor:pointer" title="Features"><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
       <div class="machine"><div class="av" id="railAv">—</div><div><b>This machine</b><small id="railMachine">—</small></div></div>
-      <div class="rail-icons"><button id="railToggle" title="Thu gọn menu">‹</button></div>
     </div>
   </aside>
 
