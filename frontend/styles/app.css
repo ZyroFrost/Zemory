@@ -55,6 +55,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    phòng khi ảnh chưa tải. */
 .brand .logo{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--primary);box-shadow:var(--glow)}
 .brand img.logo{border:0;background:var(--logo-plate);object-fit:cover;padding:0}
+/* Logo kiêm nút thu gọn: hover đè icon ‹/› lên logo (2026-08-21, mượn ý OpenRCA) */
+.logo-wrap{position:relative;display:inline-flex;cursor:pointer;flex:0 0 auto}
+.logo-wrap .coll-ico{position:absolute;inset:0;display:none;align-items:center;justify-content:center;border-radius:9px;background:var(--surface);border:1.5px solid var(--primary);color:var(--primary);font-size:18px;line-height:1}
+.logo-wrap:hover .coll-ico{display:flex}
+.status-chip.upd .dot{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 .brand b{font-size:16px;letter-spacing:.02em}
 .brand small{display:block;color:var(--text-faint);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;margin-top:1px}
 .nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}

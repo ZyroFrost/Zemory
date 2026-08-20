@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -22,6 +22,7 @@ import { lastCompactAt, readContextUsage } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
 import { getContextWarnPercent } from "../config/settings.js";
+import { syncCheck } from "../docs/adopt.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -145,22 +146,53 @@ export function handleHook(event: HookEventName, payload: any): string {
 
     // UserPromptSubmit — đồng hồ đo context. Dưới ngưỡng: IM TUYỆT ĐỐI (0 ký tự, 0 token).
     if (event === "prompt") {
+      // "Chấm than update" tầng hook (2026-08-21, user chốt): kiểm ĐÚNG MỘT LẦN mỗi phiên xem
+      // repo đang đứng có CŨ so với bộ chuẩn hiện hành không (file template thiếu / guard lỗi
+      // thời). Repo càng nhiều thì đây là tầng thay việc "gọi từng con áp update": agent mở
+      // phiên là tự thấy. Marker ghi TRƯỚC khi đo — đo nổ cũng không lặp lại mỗi prompt.
+      // CHỈ NHẮC, không tự sync (02_RULES §Phạm vi; hook là lưới đỡ, không phải người quyết).
+      let updNote = "";
+      try {
+        const cwd: string | undefined = payload?.cwd;
+        const sidRaw = String(payload?.session_id ?? payload?.transcript_path ?? "");
+        if (cwd && sidRaw) {
+          const flag = join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.harness`);
+          if (!existsSync(flag)) {
+            mkdirSync(dirname(flag), { recursive: true });
+            writeFileSync(flag, new Date().toISOString());
+            const r = syncCheck(cwd);
+            if (r.connected && (r.missing.length > 0 || r.guardStale.length > 0)) {
+              const parts = [
+                r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
+                r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
+              ].filter(Boolean);
+              updNote =
+                `[zemory] ⚠ Harness repo này CŨ so với bộ chuẩn hiện hành — ${parts.join(" · ")}. ` +
+                `Chạy \`zemory sync\`${r.guardStale.length ? " rồi `zemory hook guard`" : ""} khi tiện (xem \`zemory doctor\`).`;
+            }
+          }
+        }
+      } catch {
+        /* fail-open — lời nhắc không bao giờ được chặn prompt */
+      }
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
-      if (!path) return "";
+      if (!path) return updNote;
       const usage = readContextUsage(path);
-      if (!usage || usage.percent === null || usage.percent < warnAtPercent()) return "";
+      // Mọi lối ra dưới ngưỡng phải mang theo updNote — nuốt nó ở đây là lời nhắc update
+      // không bao giờ tới được ca thường gặp nhất (phiên mới, context còn thấp).
+      if (!usage || usage.percent === null || usage.percent < warnAtPercent()) return updNote;
       const sid: string = String(payload?.session_id ?? path);
-      if (alreadyWarned(sid, path)) return ""; // một lần mỗi CHU KỲ ĐẦY, không lặp mỗi prompt
+      if (alreadyWarned(sid, path)) return updNote; // một lần mỗi CHU KỲ ĐẦY, không lặp mỗi prompt
       const saved = ingestCurrent(payload); // chạm ngưỡng ⇒ chốt sổ NGAY, không đợi nhịp nền
       markWarned(sid);
       const pct = Math.round(usage.percent);
       const savedNote = saved
         ? `Đã lưu phiên vào Global Memory (+${saved.newMessages} tin, ${saved.ms}ms).`
         : "Global Memory sẽ nạp phiên này ở lượt nền kế tiếp.";
-      return (
+      const ctxNote =
         `[zemory] ⚠ Context ~${pct}% (${usage.tokens.toLocaleString("en-US")} token). ${savedNote} ` +
-        "Nên chốt việc đang dở / ghi sổ trước khi bị nén; sau khi nén hãy gọi `memory_context` để dựng lại."
-      );
+        "Nên chốt việc đang dở / ghi sổ trước khi bị nén; sau khi nén hãy gọi `memory_context` để dựng lại.";
+      return updNote ? `${updNote}\n${ctxNote}` : ctxNote;
     }
 
     if (event === "stop" || event === "session-end") {
