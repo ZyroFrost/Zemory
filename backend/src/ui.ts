@@ -10,7 +10,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
-import { templateDir, ensureHarness } from "./docs/adopt.js";
+import { templateDir, ensureHarness, syncCheck } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { scanWeb } from "./memory/scanweb.js";
@@ -36,6 +36,9 @@ import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
 import { TEMPLATE_DIR } from "./docs/adopt.js";
+
+// Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
+let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
@@ -1868,6 +1871,29 @@ export async function startUi(): Promise<void> {
     if (p === "/set-sync-attachments") {
       setSyncAttachments(u.searchParams.get("on") === "1");
       return json(res, { ok: true, syncAttachments: getSyncAttachments() });
+    }
+    if (p === "/harness-updates") {
+      // "Chấm than update" (2026-08-21): repo nào trong registry đang CŨ so với bộ chuẩn
+      // hiện hành (file template thiếu / guard lỗi thời). CHỈ ĐO — hành động áp là việc của
+      // agent/user bên repo đó. Cache 5': phép đo là vài trăm existsSync, rẻ nhưng không free,
+      // và độ tươi từng phút không có giá trị với thứ đổi vài lần một tuần.
+      const now = Date.now();
+      if (!harnessUpdCache || now - harnessUpdCache.at > 300_000) {
+        const stale: Array<{ root: string; name: string; missing: number; guardStale: number }> = [];
+        try {
+          for (const proj of listKnownProjects()) {
+            if (!existsSync(proj.root)) continue;
+            const r = syncCheck(proj.root);
+            if (r.connected && (r.missing.length || r.guardStale.length)) {
+              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length });
+            }
+          }
+        } catch {
+          /* fail-open — bề mặt nhắc, không được chết */
+        }
+        harnessUpdCache = { at: now, stale };
+      }
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

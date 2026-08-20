@@ -16,7 +16,8 @@ import {
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
-import { CONFIG_FILE, findMarker, loadContext } from "../core/config.js";
+import { CONFIG_FILE, findMarker, harnessPathsAt, loadContext, readMarker } from "../core/config.js";
+import { guardDrift } from "./guard-gen.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
 
@@ -380,4 +381,55 @@ export function freshHarness(projectRoot: string): FreshResult {
   }
   const r = ensureHarness(projectRoot);
   return { ...r, renamedTo, renamedPlanTo };
+}
+
+// ── "Chấm than update" — phép đo DRY-RUN dùng chung cho doctor · daemon · hook (2026-08-21).
+//
+// Vì sao tồn tại (user chốt): repo mỗi lúc một nhiều, "gọi từng con áp update" không scale —
+// cần mỗi repo TỰ THẤY mình cũ (pull-based, kiểu chấm than VSCode). Hàm này CHỈ ĐO, không ghi
+// gì — hành động áp vẫn là `zemory sync` + `hook guard` do agent/user BÊN repo đó chạy
+// (02_RULES §Phạm vi project: cấm ghi chéo; hook là lưới đỡ, không phải người quyết).
+// Tiêu chí "thiếu" bám ĐÚNG ngữ nghĩa gap-fill của ensureHarness: file template mà repo chưa
+// có (agent-standard · root entries · skills); file ĐÃ có thì file-wins, không tính.
+
+export interface SyncCheckResult {
+  /** false = repo không có marker — không phải repo harness, đừng nhắc gì. */
+  connected: boolean;
+  /** File của bộ chuẩn hiện hành mà repo này CHƯA có (sync sẽ gap-fill đúng các file này). */
+  missing: string[];
+  /** File chốt lớp ① đã sinh nhưng trôi khỏi bản `hook guard` hôm nay (guardDrift). */
+  guardStale: string[];
+}
+
+export function syncCheck(projectRoot: string): SyncCheckResult {
+  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [] };
+  try {
+    const marker = readMarker(projectRoot);
+    if (!marker) return out;
+    out.connected = true;
+    const profile = (marker.data as { profile?: unknown }).profile === "non-app" ? "non-app" : "app";
+    const tplBase = templateDir(profile);
+    const hp = harnessPathsAt(projectRoot);
+    const agentSrc = join(tplBase, "agent");
+    if (existsSync(agentSrc)) {
+      for (const f of readdirSync(agentSrc)) {
+        if (!existsSync(join(hp.agent, f))) out.missing.push(`agent/${f}`);
+      }
+    }
+    for (const entry of ROOT_ENTRIES) {
+      if (existsSync(join(tplBase, entry)) && !existsSync(join(projectRoot, entry))) out.missing.push(entry);
+    }
+    const walk = (srcDir: string, dstDir: string, prefix: string): void => {
+      if (!existsSync(srcDir)) return;
+      for (const e of readdirSync(srcDir, { withFileTypes: true })) {
+        if (e.isDirectory()) walk(join(srcDir, e.name), join(dstDir, e.name), `${prefix}${e.name}/`);
+        else if (!existsSync(join(dstDir, e.name))) out.missing.push(prefix + e.name);
+      }
+    };
+    walk(join(tplBase, ".claude", "skills"), join(projectRoot, ".claude", "skills"), ".claude/skills/");
+    out.guardStale = guardDrift(projectRoot);
+  } catch {
+    /* fail-open — phép NHẮC không bao giờ được làm chết đường chính */
+  }
+  return out;
 }

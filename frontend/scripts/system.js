@@ -170,3 +170,21 @@
       return zGet('/check?feature='+f).then(function(r){Z.checks[f]=r;}).catch(function(){Z.checks[f]={state:'off',detail:'err'};});
     })).then(function(){renderSystem();});
   }
+
+  // ── Chấm than UPDATE ở rail (2026-08-21, user chốt): repo trong registry CŨ so với bộ chuẩn
+  //    hiện hành ⇒ chip hiện ngay TRÊN chip sức khoẻ, bấm sang màn Dự án. Mọi repo khớp ⇒ ẨN
+  //    HẲN (một chip xanh thường trực chỉ thêm nhiễu). Poll thưa: /harness-updates đã cache 5'
+  //    phía daemon, đây chỉ hỏi lại mỗi 10' + một lần lúc mở app. Fail-open: lỗi ⇒ giữ ẩn.
+  function refreshHarnessUpdates(){
+    return zGet('/harness-updates').then(function(r){
+      var chip=zid('railUpd'),n=zid('railUpdN'),sub=zid('railUpdSub');
+      if(!chip)return;
+      var stale=(r&&r.stale)||[];
+      if(!stale.length){chip.style.display='none';return;}
+      chip.style.display='';
+      if(n)n.textContent=t('rail.updOld').replace('{n}',stale.length)+' ⚠';
+      if(sub)sub.textContent=stale[0].name+(stale.length>1?' +'+(stale.length-1):'');
+    }).catch(function(){});
+  }
+  refreshHarnessUpdates();
+  setInterval(refreshHarnessUpdates,600000);

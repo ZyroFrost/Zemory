@@ -7,7 +7,7 @@ import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { currentProjectRoot, findProjectRoot, harnessPathsAt, loadContext, readMarker } from "../core/config.js";
 import { createRuntime } from "../core/runtime.js";
-import { ensureHarness, entryStates, freshHarness } from "../docs/adopt.js";
+import { ensureHarness, entryStates, freshHarness, syncCheck } from "../docs/adopt.js";
 import { archiveChanges, archiveTodo } from "../docs/archive.js";
 import { runCheck } from "../checks.js";
 import { gatherStatus } from "../status.js";
@@ -93,6 +93,27 @@ export function cmdMigrate(): void {
 
 export function cmdSync(): void {
   const root = currentProjectRoot();
+  // `--check` = DRY-RUN "chấm than update" (2026-08-21): chỉ ĐO repo này cũ chỗ nào so với
+  // bộ chuẩn hiện hành, KHÔNG ghi gì. Cùng một phép đo với hook mỗi-phiên và /harness-updates.
+  if (process.argv.includes("--check")) {
+    const sc = syncCheck(root);
+    console.log(`zemory sync --check — ${root}`);
+    if (!sc.connected) {
+      console.log("  ✗ not connected — no .harness.json found.");
+      process.exitCode = 1;
+      return;
+    }
+    if (sc.missing.length) {
+      console.log(`  ⚠ ${sc.missing.length} file của bộ chuẩn hiện hành CHƯA nhận (chạy \`zemory sync\` để gap-fill):`);
+      for (const f of sc.missing) console.log(`      + ${f}`);
+    }
+    if (sc.guardStale.length) {
+      console.log(`  ⚠ guard LỖI THỜI: ${sc.guardStale.join(" · ")} — chạy lại \`zemory hook guard\``);
+    }
+    if (!sc.missing.length && !sc.guardStale.length) console.log("  ✓ đang khớp bộ chuẩn hiện hành.");
+    else process.exitCode = 1;
+    return;
+  }
   const r = ensureHarness(root);
   console.log(`zemory sync — ${root}`);
   if (r.createdConfig) console.log("  + created .harness.json");
