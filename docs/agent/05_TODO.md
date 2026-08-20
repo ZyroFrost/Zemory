@@ -9,9 +9,9 @@
 (`410a462` = 2.0.0 **ĐÃ push** · `5d7a06d` = vá flag + job dọn nháp **CHƯA push** — user chốt
 *"chưa push vội, chờ embed xong push một lần"*) · cây làm việc **sạch**.
 
-⚠ **DAEMON ĐANG CHẠY MÃ CŨ:** `/ping` báo **v1.5.21**, đĩa đã 2.0.0. Mọi bản vá backend của
-phiên này (guard · context-guard · embed profile · scratchTick) **chưa vào bản đang chạy**.
-Frontend thì Ctrl+R là thấy; backend phải **khởi động lại daemon**.
+✅ **DAEMON ĐÃ RESTART 2026-08-20 chiều (user duyệt):** pid 29564 · `/ping` báo **2.0.0** ·
+hai công tắc giữ nguyên TẮT · job embed không hề hấn (tiến trình riêng). `scratchTick` nổ ngay
+phút thứ 2: **dọn 147 phiên nháp (2.261 MB) → còn 570 MB** — bản vá 20/08 chạy thật lần đầu.
 
 🔴 **HAI CÔNG TẮC ĐANG TẮT — PHẢI BẬT LẠI SAU KHI TRÁO KHO:** `autosync` **TẮT** · `scheduler`
 **TẮT** (tắt tạm vì hai kho dùng chung `data/` nên chung `cli-write.lock`; autosync 30 phút/lần
@@ -146,9 +146,9 @@ chỉ nói CHO QUA — nó không biết lệnh có chạy hay không; guard ăn
 "test không được đụng tài nguyên thật"); đột biến: xoá-ngay ⇒ 2 đỏ, bỏ vân tay ⇒ 1 đỏ.
 Hai test cũ neo vào hành vi cũ đã **cập nhật theo hợp đồng mới**, không gỡ bỏ.
 
-- [ ] **(ĐỀ XUẤT) `doctor` cảnh báo rác nháp** — job đã dọn tự động, nhưng người dùng không có
-  cách nào NHÌN THẤY nó đang chiếm bao nhiêu. Một dòng trong `doctor`/`memory status`
-  (`sweepScratchpads({ dryRun: true })` — hàm đã sẵn) là đủ; chưa làm vì thêm dòng vào bề mặt.
+- ✅ **`doctor` cảnh báo rác nháp — LÀM 2026-08-20 (user duyệt "làm đi")**: dòng `scratch:`
+  trong doctor (`sweepScratchpads({dryRun:true})`), báo tổng + số phiên scratchTick sẽ dọn.
+  Đo thật: `scratch: ✓ 0.56 GB (trong trần)` — khớp log sweep của daemon (đường thứ hai).
 
 ## 🔴 GUARD LỚP ① HỞ NỬA CỬA TRÊN WINDOWS — ĐÃ VÁ 2026-08-20 (báo từ repo `PBI_SasinFlow_Rebuild`)
 
@@ -190,9 +190,10 @@ bỏ `PowerShell` khỏi matcher ⇒ **3 đỏ**.
 chạy lại lệnh đó **và** thêm `PowerShell` vào matcher trong `.claude/settings.json`.
 - [ ] **(chờ user) Báo các repo khác đã cắm guard tự sinh lại** — `PBI_*`, SasinFlow, SasinHarvest,
   SasinInfra… Không tự sang sửa (`02_RULES §Phạm vi project`); repo báo cáo nói phiên bên đó sẽ tự chạy.
-- [ ] **(ĐỀ XUẤT) `doctor` cảnh báo guard LỖI THỜI** — so byte `docs/hooks/guard.cjs` với bản
-  `generateGuards()` sinh ra hôm nay; lệch ⇒ nhắc chạy lại. Không có nó thì mỗi lần vá guard đều
-  phải trông vào việc ai đó nhớ đi sinh lại, mà đó đúng thứ luật guardrail nói là không đáng tin.
+- ✅ **`doctor` cảnh báo guard LỖI THỜI — LÀM 2026-08-20 (user duyệt "làm đi")**: `guardDrift()`
+  so cả 3 file (guard · precommit · policy-theo-marker) với bản sinh hôm nay, CHỈ soi file mang
+  dấu zemory (bản riêng của repo: im — nhắc là nhiễu). Gate `guard-gen.test.mjs` 8/8, đột biến
+  trả-rỗng ⇒ đỏ. Nóng lên đúng hôm có HAI vòng vá guard — máy nhắc thay người nhớ.
 
 ## ✅ CẢNH BÁO CONTEXT 95% SAI TRÊN PHIÊN 1M — ĐÃ VÁ 2026-08-20 (user chốt "làm luôn")
 
@@ -327,9 +328,11 @@ không tồn tại trong transcript. Đây là trần của bài toán, không p
   thật là Bật / đã link / 2.085 digest. Nghi là trạng thái trước-khi-Kiểm (probe sâu 48s đã tách
   cờ riêng) nhưng CHỮ đọc như trạng thái thật — cùng họ "bề mặt nói dối". Chưa xác minh nguyên
   nhân; sửa là đụng thiết kế UI ⇒ trình duyệt trước khi làm.
-- [ ] **Số phiên nhảy 1.315 → 2.085 (+770 trong ~3 ngày)** — mọi phép toàn vẹn sạch (0 mồ côi,
-  digest 100%) nên KHÔNG phải lỗi dữ liệu; nhiều khả năng transcript subagent + merge Drive.
-  Ghi để phiên sau khỏi giật mình; muốn chắc thì `GROUP BY source, date(started_at)` một lượt.
+- ✅ **Số phiên nhảy 1.315 → 2.085 — ĐÃ GIẢI 2026-08-20 bằng đúng lượt `GROUP BY` mục này đề nghị:**
+  992 phiên trong cụm 12–15/08 đều `claude-code`, trong đó **983 mang host `DESKTOP-PFB157K`**
+  (máy kia, về qua merge kho chính Drive — đường một-kho ghi-nối-thêm mở 12/08 chính là ngày
+  cụm bắt đầu). Đúng giả thuyết "merge Drive", KHÔNG phải lỗi dữ liệu. Tổng nay 2.323 phiên,
+  nhịp sau cụm về bình thường (2–6 phiên/ngày).
 - [ ] **`todo verify` giơ 8 cờ advisory** (1 "nghi đã xong" dòng ~360 i18n + 7 "code mới hơn sổ")
   — đa số là dòng lịch sử bị file sửa sau vì việc KHÁC; phán từng dòng khi chốt phiên, đừng xoá vội.
 - ✅ **6 hàng `.tmp` trong `sync_state` — ĐÃ XOÁ 2026-08-15 (user duyệt "bạn tự làm").** Đo
@@ -789,9 +792,10 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
   **345/345** (vô lý — app sẽ không chạy nổi) · quên tính `backend/test/` ra **53** (báo oan) ·
   regex thiếu cờ `g` nên `match()` luôn trả 1 ⇒ báo cả 13 cái là "không ai dùng", kể cả hàm tôi
   BIẾT đang được gọi. **Cách chữa dứt: đếm bằng `split()`, đừng đưa regex qua shell/sed.**
-- [ ] **`formatCloudReport` chưa nối vào CLI/UI** (0 lời gọi, đo 2026-08-15). Cảnh báo *"kho nằm
-  trong vùng đồng bộ đám mây — WAL SẼ hỏng"* hiện chỉ tồn tại dưới dạng hàm, không ai in ra.
-  Nối vào `doctor`/`memory status` là xong; **đừng xoá** — xoá là vứt hiểu biết rồi viết lại.
+- ✅ **`formatCloudReport` — ĐÃ NỐI VÀO `doctor` 2026-08-20 (user duyệt "làm đi")**: khối chi
+  tiết in sau features (check `storage-safety` vẫn giữ dòng ngắn — không trùng logic, cùng gọi
+  `cloudSyncReport`); kho sạch thì im. Trả công ngay lượt chạy đầu: lộ dấu vết
+  `*.tmp.driveupload` còn trong `D:\huy.nguyen` mà trước không bề mặt nào nói.
   (thu hẹp tầm nhìn là dọn dẹp, không gấp). *150/171 mục còn lại là `interface`/`type` — bề mặt
   KIỂU, KHÔNG phải rác; đừng "dọn".*
 - [~] **i18n HỤT — 90 → 74 chuỗi (2026-08-13, đã dọn phần RẺ).** 16 chuỗi vốn ĐÃ CÓ key sẵn,
