@@ -54,12 +54,12 @@ lộ lọt, chết lặng, không mang đi được.
 | mặt | cổng đã có | còn nợ (việc, ghi ở `05_TODO`) |
 |---|---|---|
 | ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud | quét **LỊCH SỬ** git (mới quét cây) · canh file lớn trước khi push |
-| ⑧ | — | kiểm license dependency mới · dựng thử từ clone sạch (CI) |
+| ⑧ | `license-gate` (3 ca, trong `npm run check`) · `npm run check:clone` (dựng từ clone sạch, chạy riêng — cần mạng) *(cả hai 2026-08-15)* | — |
 | ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` | **diễn tập phục hồi định kỳ** · canh bundle đã rời khỏi máy chưa |
 | ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) | ma trận guardrail chạy trong gate chính, không phải chạy tay |
 
-**Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — hiện là ⑧ (chưa
-có cổng nào) và vế *diễn tập phục hồi* của ⑨.
+**Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong
+2026-08-15; nợ nặng nhất còn lại là vế *diễn tập phục hồi định kỳ* của ⑨.
 
 ## 5. Phi-mục-tiêu
 

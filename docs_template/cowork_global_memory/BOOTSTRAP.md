@@ -121,7 +121,7 @@ cảnh — nên nó **cắt bớt cho vừa**. Bản này để `init` rót từ
 | | bộ `cowork/` cũ | bản này |
 |---|---:|---:|
 | `03_STRUCTURE` (từ điển thư mục chuẩn) | 36 dòng | **143 dòng** |
-| `02_RULES` | 68 dòng | **86 dòng** |
+| `02_RULES` | 68 dòng | **112 dòng** |
 | `04_SKILLS` | 41 dòng | **55 dòng** |
 | Chấm độ bám chuẩn | script `check_structure.py` chép kèm | **`zemory conform` thật** |
 | Kho nhớ chung | **không có** | **có** |

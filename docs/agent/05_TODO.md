@@ -18,7 +18,11 @@ Ctrl+R là thấy; backend phải **khởi động lại daemon**.
 ① chip sức khoẻ ở rail **bấm được** + nói TÊN thứ đang cảnh báo · ② chuẩn **`frontend/api/` →
 `frontend/client/`** + đồng bộ sang 3 repo khác · ③ dọn **11 export thừa** · ④ soát sổ **66 → 59**.
 
-**VIỆC ĐẦU TIÊN của phiên sau:** khởi động lại daemon rồi verify 3 bản vá trên bề mặt thật.
+**VIỆC ĐẦU TIÊN của phiên sau:** ✅ **ĐÃ LÀM 2026-08-15 (đêm)** — daemon restart (pid 20820,
+`/ping` báo **v1.5.21**); bản vá ② client/ verify ở tầng chuẩn (`structure-sync` xanh, zemory
+KHÔNG có folder `frontend/client/` là ĐÚNG — chưa có lớp gom lời gọi, không tạo folder rỗng);
+bản vá ③ verify bằng gate xanh; bản vá ① (chip rail) verify Ở TẦNG CODE (key `rail.needAttn`
+có ở cả 2 dict) — **mắt người CHƯA nhìn**, user đảo mắt khi mở app. Chi tiết: §🔬 Audit 15/08 dưới.
 ⚠ Muốn chạy gate sạch thì **tắt `scheduler` tạm** — `preflight` sẽ chặn vì backlog embed gần
 như luôn dương; hoặc chấp nhận `skipIfBusy` bỏ qua ~10 ca embed (**"xanh có kèm skipped" ≠ "xanh
 phủ đủ"**).
@@ -32,6 +36,193 @@ phủ đủ"**).
 · đưa regex qua **shell/sed** ⇒ escape bị nuốt — **4 lần** trong một phiên; chữa dứt bằng `split()`
 · quét export quên `backend/test/` ⇒ báo oan 53; thiếu cờ `g` ⇒ báo oan **13/13**
 · chạy gate lúc daemon bận ⇒ **đỏ giả** (`drive-sync` đỏ, chạy riêng thì 8/8).
+
+## 🔴 GUARD LỚP ① HỞ NỬA CỬA TRÊN WINDOWS — ĐÃ VÁ 2026-08-20 (báo từ repo `PBI_SasinFlow_Rebuild`)
+
+> Báo cáo từ phiên repo khác, **đã tự đo lại và ĐÚNG** — tái lập nguyên vẹn trên chính zemory.
+
+**Lỗ:** `guard.cjs` phân nhánh theo `tool_name` và chỉ biết 5 tên (`Write`·`Edit`·`NotebookEdit`
+·`Read`·`Bash`). Phiên Claude Code trên Windows có SẴN tool **`PowerShell`** làm đúng việc của
+Bash ⇒ **mọi nhánh gác LỆNH vượt được sạch chỉ bằng cách đổi tool.** Đo trước khi vá:
+
+| tool | `rm -rf docs/agent` | `Remove-Item -Recurse` | `git push` | `git add -A` |
+|---|---|---|---|---|
+| `Bash` | CHẶN | CHẶN | CHẶN | CHẶN |
+| **`PowerShell`** | **cho qua** | **cho qua** | **cho qua** | **cho qua** |
+
+**Vì sao không gate nào bắt được:** regex nhận diện VẪN ĐÚNG (nhánh Bash bắt cả cú pháp
+PowerShell) — chỉ cái cổng TÊN chặn sai. Mọi test cũ chỉ gửi `tool_name: "Bash"` nên xanh hết
+trong khi cửa mở toang. *Nghiêm trọng thêm: phiên đang chạy của chính tôi có tool PowerShell và
+đã dùng nhiều lần — lỗ này mở suốt.*
+
+**Đã vá ba tầng:**
+1. **Nhận theo HÌNH DẠNG, không theo tên** — có `tool_input.command` ⇒ soi như lệnh shell, bất kể
+   tool tên gì. Gác theo danh sách tên là cuộc đua không thắng: host thêm tool terminal mới là lỗ
+   mở lại. Kèm `MultiEdit` vào nhánh ghi.
+2. **`GUARD_MATCHER` thành hằng số một-chỗ** (`guard-gen.ts`) và `zemory hook guard` nay **in kèm
+   matcher đầy đủ** — trước chỉ in `PreToolUse → node …/guard.cjs`, người nối phải tự đoán, và
+   repo báo cáo đoán thiếu đúng `PowerShell`. Hai tầng hỏng đều im lặng: guard không hiểu tên ⇒
+   cho qua · matcher thiếu tên ⇒ host không bao giờ gọi guard.
+3. **Bản ship cho bộ cowork** (`docs_template/cowork/nonapp/hooks/guard.cjs`) chép lại từ bản sinh
+   + cập nhật số dòng trong manifest BOOTSTRAP (282 → 291). *Gate `template-parity` đã bắt đúng
+   việc này — nó đỏ ngay khi bản ship trôi khỏi bản sinh.*
+
+**Gate mới `guard-tool-matrix.test.mjs` (4/4)** — soi MA TRẬN `tool × lệnh` thay vì từng regex,
+có ca tool-lạ-chưa-biết-tên, có ca kiểm matcher, và **ca ÂM** (6 lệnh thường ngày × 2 tool phải
+được cho qua — luật 7). Đột biến chứng minh đỏ được: trả guard về chỉ-nhận-`Bash` ⇒ **2 đỏ**;
+bỏ `PowerShell` khỏi matcher ⇒ **3 đỏ**.
+
+⚠ **File guard KHÔNG tự làm mới** — `generateGuards()` chỉ chạy khi gõ `zemory hook guard`
+(`sync`/`doctor`/`init` không gọi). Mọi repo đã cắm guard đang giữ bản HỞ cho tới khi có người
+chạy lại lệnh đó **và** thêm `PowerShell` vào matcher trong `.claude/settings.json`.
+- [ ] **(chờ user) Báo các repo khác đã cắm guard tự sinh lại** — `PBI_*`, SasinFlow, SasinHarvest,
+  SasinInfra… Không tự sang sửa (`02_RULES §Phạm vi project`); repo báo cáo nói phiên bên đó sẽ tự chạy.
+- [ ] **(ĐỀ XUẤT) `doctor` cảnh báo guard LỖI THỜI** — so byte `docs/hooks/guard.cjs` với bản
+  `generateGuards()` sinh ra hôm nay; lệch ⇒ nhắc chạy lại. Không có nó thì mỗi lần vá guard đều
+  phải trông vào việc ai đó nhớ đi sinh lại, mà đó đúng thứ luật guardrail nói là không đáng tin.
+
+## ✅ CẢNH BÁO CONTEXT 95% SAI TRÊN PHIÊN 1M — ĐÃ VÁ 2026-08-20 (user chốt "làm luôn")
+
+**Lỗ:** `windowFor()` đoán cửa sổ theo model id — có `[1m]`/`-1m` ⇒ 1M, còn lại ⇒ 200k. Cơ chế
+tự sửa (`observed > base` ⇒ nhảy bậc) chỉ nổ SAU khi vượt 200k, nên **dải 190k–200k của MỌI phiên
+1M đều bị hét "⚠ context ~95%"** trong khi thực dùng ~19%. Giá không nằm ở con số: agent nhận
+cảnh báo sẽ đi chốt sổ / thu hẹp việc sớm hơn cần thiết.
+
+**Đo trước khi sửa — hai phép, và cả hai đều bác giả định cũ:**
+· Transcript **KHÔNG khai cửa sổ ở đâu cả** (`context_management: null`; không trường nào mang
+  trần) ⇒ không có "nguồn thật" để đọc như hướng gợi ý ban đầu.
+· Quét 6 phiên gần nhất trên máy này: **5/6 đã vượt 200k** (731k · 757k · 474k · 225k · 218k) với
+  **CÙNG một model id `claude-opus-5`** ⇒ phỏng đoán 200k sai với thực tế máy, và tên model về
+  nguyên tắc không phân biệt được 1M với 200k.
+· Tín hiệu phụ đã thử và LOẠI: TTL cache (`ephemeral_1h` vs `5m`) — cả 6 phiên đều 1h, không tách được.
+
+**Cách vá — HỌC TỪ BẰNG CHỨNG thay vì đoán theo tên.** Một phiên không thể dùng quá cửa sổ của
+chính nó, nên mỗi lần thấy `observed` vượt bậc là một lần CHỨNG MINH được trần thật; nay trần đó
+được **ghi nhớ** (`data/context-guard/observed-window.json`, cạnh kho theo HP điều 14, gitignored)
+và phiên sau đọc nó TRƯỚC khi đoán theo tên. Thứ tự: ① hậu tố tường minh · ② trần đã học · ③ mới
+tới phỏng đoán. Bằng chứng **chỉ đi lên** (phiên ngắn không xoá trần đã chứng minh — cùng bài học
+"trần treo" của cổng i18n). Fail-open tuyệt đối: mốc hỏng/không ghi được ⇒ hành xử y như cũ.
+
+**Nghiệm thu trên bề mặt thật:** phiên này 750.775 token ⇒ hook nay báo **75,1%** (trước sẽ là
+375% hoặc 95% tuỳ mốc); mốc đã ghi `{"claude-opus-5": 1000000}`. Gate: 3 ca mới trong
+`realtime-capture.test.mjs` (15/15 xanh), **đột biến chứng minh đỏ được** — bỏ ghi nhớ ⇒ 1 đỏ,
+bỏ đọc bộ nhớ ⇒ 2 đỏ.
+
+⚠ **Giới hạn còn lại, ghi để không ai đọc thành đã kín:** phiên ĐẦU TIÊN trên một máy trắng vẫn
+đoán 200k cho tới khi có phiên nào vượt ngưỡng — không có cách nào biết trước, vì thông tin đó
+không tồn tại trong transcript. Đây là trần của bài toán, không phải chỗ chưa làm.
+## 🔥 TRIỂN KHAI BGE-M3 — user chốt 2026-08-19, spec: `docs/plan/19_bge_swap.md`
+
+> User quyết sau ma trận 6 embedder + bootstrap: **đổi Gemma-768 → BGE-M3 int8-1024, qua KHO
+> SONG SONG (`data/global_memory.bgem3.db`), kho đang xài KHÔNG đụng** cho tới khi bench thắng
+> và user ký tráo. Toàn bộ thiết kế + kỷ luật song song + đường lùi ở plan 19 — ĐỌC plan trước
+> khi làm bất kỳ bước nào.
+
+- 🔴 **PHÁT SINH khi làm ①: GỌI THEO LÔ vừa CHẬM HƠN vừa LỆCH VECTOR — và KHO ĐANG CHẠY dính
+  NẶNG HƠN kho mới.** Đo 2026-08-19 (16 tin thật, cùng máy, cùng model, khác đúng đường gọi):
+  | | từng-cái | theo-lô 16 | lô nhanh hơn? | lệch vector (cos lô-vs-đơn) |
+  |---|---|---|---|---|
+  | bge-m3 int8 | **318 ms/tin** | 1.792 ms/tin | **KHÔNG — chậm 5,6×** | 0,982 (min 0,978) |
+  | **gemma (ĐANG CHẠY)** | **360 ms/tin** | 814 ms/tin | **KHÔNG — chậm 2,3×** | **0,962 (min 0,925)** |
+  **Nghĩa là:** `embedPending` gom lô 16 (`vectors.ts:277`) nên **tài liệu** trong kho thật được
+  mã hoá theo lô, còn **truy vấn** thì mã hoá từng cái (`embedQuery`) ⇒ hai vế lệch nhau ~4%
+  (xấu nhất 7,5%), mà lệch bao nhiêu còn **phụ thuộc các tin CÙNG LÔ** — tức nhiễu ngẫu nhiên
+  theo thứ tự quét. Không lỗi nào nổ, không gate nào đỏ; đúng họ hỏng-lặng.
+  *Đã loại giả thuyết padding:* lô cắt đồng đều 400 ký tự **vẫn lệch** (0,977–0,987).
+  **Đã xử cho kho MỚI:** profile `bge-m3-v1` mang cờ `sequential` ⇒ encode từng cái ⇒ vector
+  production khớp **cos 1,000000** với đúng thứ đã benchmark (trước khi vá: 0,98).
+  **CHỜ USER — KHO ĐANG CHẠY:** cố ý KHÔNG đụng (bạn yêu cầu "không đụng cái đang xài"), và đổi
+  giữa chừng sẽ trộn hai biến thể vector trong CÙNG một chỉ mục. Hai đường: ① kệ — đợt tráo
+  bge sẽ dựng lại toàn bộ bằng đường tuần tự, bệnh tự hết · ② nếu vì lý do gì mà HOÃN tráo lâu,
+  cân nhắc bật `sequential` cho gemma + `embed --rebuild` (43 giờ — không đáng nếu sắp tráo).
+  *Ghi để không ai đọc số cũ mà tưởng vector kho hiện tại là "chuẩn": mọi con số recall đo trên
+  kho thật từ trước tới nay đều mang sẵn khoản lệch này — nó là một phần của mốc nền, không phải
+  hồi quy mới.*
+- ✅ **① (BUILD) — XONG 2026-08-19** (chi tiết + số đo: `06_CHANGES [2026-08-20]`). profile `bge-m3-v1` trong `embed.ts`: nhánh theo
+  `vec_config.profile`. Profile nay gánh **NĂM** thứ (không chỉ prompt): model · pooling **CLS** ·
+  dims **1024** · dtype **int8** · **sequential**. Gate `embed-profile.test.mjs` **5/5**, và
+  **5 đột biến đều ĐỎ được** (bỏ bge khỏi bộ đọc · mean-pool · bỏ tuần tự · dims 768 · dtype fp32).
+  **Nghiệm thu quyết định:** vector do đường PRODUCTION sinh ra khớp **cos 1,000000** với vector
+  của phép đo passD ⇒ mọi số của ma trận áp dụng đúng cho code này (trước khi vá lỗi lô: 0,98).
+  ⚠ Ca đột biến "mean-pool" ban đầu **SỐNG SÓT** mọi test hành vi (chỉ vector thật bắt được) ⇒
+  đã mở `embedProfileSpec()` để gate khoá thẳng hợp đồng — đúng luật 6 của skill audit.
+- [~] **② ĐANG CHẠY từ 2026-08-19 15:43** — kho song song `data/global_memory.bgem3.db`
+  (1.115 MB · **269.769 tin** · dấu `{1024, bge-m3-v1, int8}`), job embed **pid 29624** phóng qua
+  `.vbs` (mồ côi, sống qua phiên), log `data/logs/bge-embed.log`.
+  **Đo lúc phóng:** 742 vector/phút ⇒ ước **~5,3 giờ** *(lạc quan — embed xử tin NGẮN trước,
+  sẽ chậm dần; đừng chốt con số này)*. Tiến độ đo bằng `vectorCount(<bản sao>)`, KHÔNG tin log.
+  **Kho thật KHÔNG bị đụng** (đo cùng lúc: 256.948 vector · `{768, gemma-prompt-v1, fp32}`).
+  ⚠ **ĐÃ TẮT `autosync` + `scheduler`** trong suốt đợt — hai kho dùng CHUNG `data/` nên chung
+  luôn `cli-write.lock`, autosync 30 phút/lần sẽ cản job. **PHẢI BẬT LẠI SAU KHI TRÁO**
+  (`/set-autosync?on=1` · `/set-scheduler?on=1`). Backup vẫn chạy (đồng hồ riêng, không treo
+  vào công tắc nào — bản vá 2026-08-13).
+- 🔴 **PHÁT SINH ở ②: `embed --all` CHẾT VÌ HẾT BỘ NHỚ ở 18.041 vector (~36 phút).** Log:
+  `zemory memory: out of memory`, exit 1. Đợt Gemma 43 giờ trước KHÔNG dính ⇒ khác biệt nằm ở
+  đợt này (model int8 542 MB + đường **tuần tự** gọi pipeline hàng chục nghìn lượt).
+  **Cách vá — KHÔNG chỉ tăng heap** (tăng heap chỉ dời thời điểm chết nếu có rò thật): chạy
+  **THEO LƯỢT, mỗi lượt một TIẾN TRÌNH RIÊNG** (`memory embed --limit 4000` × N lượt, wrapper
+  `bge-embed-loop.mjs` ở scratchpad). Hết lượt là tiến trình thoát ⇒ hệ điều hành thu hồi sạch,
+  rò không tích luỹ. `embedPending` vốn incremental + resumable nên cắt lượt chỉ tốn ~8 s nạp
+  model mỗi lượt. Ngưỡng 4.000 = 1/4,5 mức đã chết. Wrapper chỉ đếm bằng **SQL trên kho**,
+  không đọc log; một lượt lỗi KHÔNG giết cả job (chỉ dừng khi hai lượt liên tiếp không thêm gì).
+  ⚠ Bẫy phụ đã dính: wrapper `appendFileSync` vào chính file mà `.cmd` đang redirect ⇒ **EBUSY**
+  trên Windows, chết ngay khi khởi động. Chỉ được in ra stdout, để redirect lo phần ghi.
+  **Đo sau khi vá:** 1.248 vector/phút (~75k/giờ) ⇒ ước ~3 giờ *(sẽ chậm dần — tin dài về sau)*.
+- ✅ **Vá kèm: dòng CLI in SAI tên model.** `memory embed` in cứng *"EmbeddingGemma"* trong khi
+  đang nhúng BGE 1024d — đúng loại "bề mặt nói dối" khiến một lượt chạy SAI trông như đúng.
+  Nay lấy tên từ **profile của KHO** (`embedProfileSpec(idx.profile).model`), không phải cấu
+  hình môi trường: kho song song in `bge-m3-ONNX · bge-m3-v1 · 1024d · int8`, kho thật in
+  `embeddinggemma-300m-ONNX · gemma-prompt-v1 · 768d · fp32`. *(Lấy `embedConfig()` cũng vẫn
+  sai — lúc in thì profile CHƯA được pin, nó chỉ được pin bên trong `embedPending`.)*
+- 🔴 **PHÁT SINH ở ②, ĐÃ VÁ + CÓ GATE: hợp đồng `vec_config` bị BỎ QUA nếu đóng dấu TRƯỚC lần
+  embed đầu.** `embedPending` lấy *"bảng `vec_chunks` tồn tại chưa"* làm điều kiện đọc hợp đồng
+  ⇒ kho chuẩn bị theo plan 19 §3 (drop index → đóng dấu → embed) bị đọc nhầm sang cấu hình mặc
+  định. **Đo được: vec_config nói `{1024, bge-m3-v1, int8}` mà lượt embed báo `dims 768` và chạy
+  GEMMA.** Phép thử 20 tin bắt được — **cùng lỗi đó trong lượt 44 giờ sẽ cho một chỉ mục sai từ
+  đầu tới cuối, im lặng**. Vá: hỏi thẳng `vec_config` (ba hàm `stored*` vốn đã tự fallback đúng).
+  Gate mới trong `embed-profile.test.mjs` dựng đúng trạng thái đó, đột biến (trả về logic cũ)
+  chứng minh ĐỎ được. *Bài học lặp lại lần thứ n: "bảng đã tồn tại" KHÔNG đồng nghĩa "hợp đồng
+  đã có" — và phép thử nhỏ trước job dài không phải nghi lễ, lần này nó cứu 44 giờ.*
+- [ ] **③** bench A/B hai kho (2 thước · theo lớp · 18 ca âm, máy rảnh) + user tự so tay —
+  cổng đạt: không lớp nào tụt (plan 19 §4).
+- [ ] **④ (CHỜ USER KÝ)** tráo bằng script một-lần (tag `pre-bgem3-swap` · bản lùi 768 có án tử
+  ~5 ngày · scan+embed bù) — plan 19 §5.
+- [ ] **⑤ (NGỦ tới khi có máy kia)** thế hệ 1024 lên Drive + máy kia nhận như máy mới — plan 19 §6.
+
+## 🔬 Audit toàn diện 2026-08-15 (đêm) — 10 mặt, gate xanh trọn, 0 lỗ mới
+
+> **Sạch, đã đo trong phiên này:** gate ĐẦY ĐỦ **671/671 · 0 fail · 0 skipped** (~17 phút, daemon
+> TẮT lúc chạy — không phải "xanh có kèm skipped") · `conform` ✓ (slot 19/56, nhận điều 16) ·
+> `validate` ✓ (0 entry vượt trần) · `quick_check ok` 25,9 s · FK 0 · **258.779 tin / 2.085 phiên**
+> · 0 tin mồ côi · digest **100%** · vector 245.723 · coverage 100% · dims 768d · `lastSync` khớp
+> từng ký tự `drive.lastPushAt` (bản vá 13k sống trên daemon THẬT) · backup local ĐÚNG NHỊP NGÀY
+> (12→13→14/08 ~13:00 — backupTick sau tách công tắc chạy thật) · log nền có dòng `[scheduler]` ·
+> git sạch, size-pack 22,93 MiB, 0 secret tracked, 0 file lớn (max 1,8 MB ảnh), `.gitignore` kín ·
+> guard PreToolUse **chứng minh sống bằng ca thật trong phiên** (chặn lệnh chạm token tên file khoá).
+>
+> **Đo gần nhất, KHÔNG chạy lại đêm nay (đắt, không có thay đổi liên quan):** license cả cây 190
+> gói (13/08) · clone sạch 4/4 (13/08) · diễn tập phục hồi kho trắng (12/08) · ma trận guardrail
+> 28 ca (11/08). **Chưa đo:** mở app nhìn tận mắt (cần mắt người) · 717 cửa sổ phụ chênh (cần kho
+> đóng băng) · đo lạnh `/memory-status` lúc máy rảnh.
+
+- ✅ **Đảo mắt UI — ĐÃ NHÌN TẬN MẮT 2026-08-15 (user giao agent tự làm):** lái Edge headless qua
+  CDP, chụp ảnh THẬT trước/sau khi bấm chip. Chip hiện **"6 OK / Hoạt động tốt"** chấm xanh; bấm
+  → nhảy đúng màn **Tính năng** ("Sức khoẻ 6/14 OK"). Nhánh "nói TÊN thứ cảnh báo" không chụp
+  được vì hệ đang xanh hết — verify tầng code (names[0] + '+N', key đủ 2 dict).
+- [ ] **(advisory, phát hiện khi chụp) Màn Tính năng ở phiên trình duyệt MỚI hiện trạng thái
+  MẶC ĐỊNH như thể là thật:** `Hybrid: Tắt · Drive: chưa link · Digest: chưa build` trong khi đo
+  thật là Bật / đã link / 2.085 digest. Nghi là trạng thái trước-khi-Kiểm (probe sâu 48s đã tách
+  cờ riêng) nhưng CHỮ đọc như trạng thái thật — cùng họ "bề mặt nói dối". Chưa xác minh nguyên
+  nhân; sửa là đụng thiết kế UI ⇒ trình duyệt trước khi làm.
+- [ ] **Số phiên nhảy 1.315 → 2.085 (+770 trong ~3 ngày)** — mọi phép toàn vẹn sạch (0 mồ côi,
+  digest 100%) nên KHÔNG phải lỗi dữ liệu; nhiều khả năng transcript subagent + merge Drive.
+  Ghi để phiên sau khỏi giật mình; muốn chắc thì `GROUP BY source, date(started_at)` một lượt.
+- [ ] **`todo verify` giơ 8 cờ advisory** (1 "nghi đã xong" dòng ~360 i18n + 7 "code mới hơn sổ")
+  — đa số là dòng lịch sử bị file sửa sau vì việc KHÁC; phán từng dòng khi chốt phiên, đừng xoá vội.
+- ✅ **6 hàng `.tmp` trong `sync_state` — ĐÃ XOÁ 2026-08-15 (user duyệt "bạn tự làm").** Đo
+  trước: đủ 6 (`probe-ship` · `probe2-5` · `timed`); xoá đúng 6; còn lại 5 hàng (2 watermark
+  `drive:` + 3 watermark bundle test cũ — NGOÀI phạm vi duyệt, giữ nguyên). Verify sau xoá:
+  `lastSync` vẫn khớp từng ký tự `drive.lastPushAt`.
 
 ## ✅ ĐÃ ĐỒNG BỘ chuẩn `frontend/api/` → `frontend/client/` sang 3 repo khác (user cho phép 2026-08-15)
 
@@ -69,10 +260,11 @@ Lượt gate cuối chạy ở `1.5.7`; từ đó tới `1.5.15` mới chỉ ch�
 `ZEMORY_GATE_FORCE=1` và chấp nhận vài ca embed bị `skipIfBusy` bỏ qua (đọc dòng `skipped`,
 "xanh có kèm skipped" ≠ "xanh phủ đủ").
 
-**Ba việc CHỜ USER** *(đều là xoá dữ liệu — đã nêu, chưa được chốt)*:
-1. **6 hàng `.tmp` rác** trong `sync_state` (`timed.tmp` · `probe*.tmp`) — sau bản vá Last Sync
-   thì **không ai đọc tới nữa**, xoá chỉ để gọn.
-2. **Tag `pre-lfs-fix-20260805`** hiện đã dời sang commit sạch và mang đủ log; giữ hay bỏ tuỳ user.
+**Ba việc CHỜ USER — CẢ BA ĐÃ ĐÓNG 2026-08-15** *(user giao agent tự quyết/làm)*:
+1. ✅ **6 hàng `.tmp` rác** — ĐÃ XOÁ (xem §🔬 Audit 15/08: xoá đúng 6, verify `lastSync` nguyên).
+2. ✅ **Tag `pre-lfs-fix-20260805` — QUYẾT GIỮ.** Nó là tag annotated MANG log tra ngược (hash cũ
+   · tên file weight · ánh xạ), blob 314 MB đã prune nên giữ gần như 0 chi phí (size-pack 22,93
+   MiB); xoá là mất bản ghi, không được lại gì.
 3. ~~`lab.db` 1,46 GB~~ — **user tự xoá 2026-08-14**, thư mục `zemory-lab` không còn.
 
 **Đường cụt đã thử, ĐỪNG đâm lại:**
@@ -160,6 +352,22 @@ khởi động lại để nạp 1.5.0 · Drive: **đúng 1 file** `global_memor
 - [ ] **(⑨) Backup local nằm CÙNG Ổ với kho** (`data/backups/`, 5 bản × ~1,8 GB). Mất ổ D là mất
   cả hai; bù duy nhất là kho chính trên Drive, mà nó **không chở FTS/digest** (dựng lại được,
   vài phút — nên là rủi ro THỜI GIAN, không phải mất dữ liệu). Ghi để đừng tưởng đã có 2 lớp.
+- ✅ **DỌN 2 XÁC KHO CŨ — 2026-08-15, user duyệt từng cái:** ① `global_memory.256d-backup-20260808.db`
+  (1,2 GB — bản lùi đợt tráo 768 đã hết vai: ảnh chụp 08/08, lùi về là mất 1 tuần tin; backup ngày
+  xoay vòng đã thay vai bằng bản tươi hơn) · ② `data/corrupt-20260803-091106/` (2,0 GB vật chứng —
+  điều kiện giữ *"tới khi truy xong nguyên nhân gốc"* đã thoả từ `[2026-08-03h]`). Đo sau xoá:
+  `data/` chỉ còn đúng kho sống 1,8 GB.
+- [ ] **(ĐỀ XUẤT `02_RULES` — chờ user chốt) Bản lùi tráo-kho có HẠN DÙNG.** Mỗi lần tráo kho
+  sinh một bản lùi ⇒ phải ghi NGÀY KHAI TỬ ngay lúc tạo: chết khi hệ mới qua bench trên kho thật
+  + backup ngày xoay đủ vòng phủ nó (~5 ngày). Không có luật này thì mỗi đợt nâng cấp đẻ một xác
+  1–2 GB nằm vĩnh viễn (bằng chứng: xác 256d nằm đúng 7 ngày sau khi hết vai, phải soát tay mới ra).
+- ✅ **Luật "HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG" ĐÃ THÀNH LUẬT CHUNG — 2026-08-15 (user
+  yêu cầu kiểm + phủ):** trước chỉ có ở `02_RULES` của zemory (chốt 12/08); nay thêm bản GENERIC
+  (không mang số đo riêng zemory) vào **cả 3 template** `docs_template/{app,nonapp,adapt}/agent/
+  02_RULES.md` §Hành xử (bộ cowork tự nhận vì bootstrap rót từ nonapp). Gate template 12/12 xanh;
+  bảng số dòng trong BOOTSTRAP cập nhật 86→112. ⚠ **Repo KHÁC đang tồn tại KHÔNG tự nhận** —
+  `sync` chỉ gap-fill file thiếu (file-wins); muốn SasinFlow/Harvest/Infra có luật này phải sang
+  từng repo (xin phép user từng cái, như đợt `client/` 15/08).
 - [ ] **(③) 717 CỬA SỔ PHỤ CHÊNH — CHƯA TRUY RA.** Đo hai lần cách nhau ~30 phút đều ra **đúng
   717**, nên KHÔNG phải nhiễu do kho lớn thêm (giả thuyết cũ của tôi, nay bác). Đã loại: cửa sổ
   mồ côi (**0**), trùng khoá băm (**2**), tổng số khớp khít (220.280 + 7.408 = 227.688). Phần
@@ -250,7 +458,128 @@ vẫn là code TRƯỚC khi đổi lối sync. Chưa restart mà autosync nổ �
    (331 MB) · `SS01-IT-12.000024` + 5 delta. Sau lượt sync ĐẦU TIÊN bằng code mới, chúng bị kho
    chính phủ hết ⇒ xoá được. **Guard chặn agent xoá `*.enc`** (nhóm secret, không có flag) — user
    tự xoá hoặc bảo agent sửa policy.
-3. **ColBERT** — vẫn kẹt ở model tiếng Việt.
+3. 🔄 **ColBERT — MỞ LẠI CÙNG NGÀY (user ra lệnh dò lặp "thử hết cách") và lần đầu QUA ĐỦ 3 RÀO.**
+   > 🔄 Supersede quyết định park viết vài giờ trước — đảo vì DÒ RA ĐƯỜNG MỚI, không phải đổi ý suông.
+   **BGE-M3 (BAAI, MIT)**: đa ngữ 100+ CÓ tiếng Việt · 8192 token · MỘT lần encode ra CẢ BA
+   (dense-1024 + sparse + **colbert multi-vector**). Đã THỬ TAY 2026-08-15 trên chính stack Node
+   của repo (bản ONNX `yuniko-software/bge-m3-onnx` fp32 2,3 GB, chạy `onnxruntime-node` 1.24.3
+   sẵn có, tokenize bằng `@huggingface/transformers`):
+   · **Tokenizer VI SẠCH TUYỆT ĐỐI** — 12 token nguyên chữ có dấu (`đổi | khung | chờ…`), qua
+     được đúng rào đã giết answerai-colbert (BERT-EN băm 24 mảnh mất dấu).
+   · **MaxSim phân biệt đúng thứ tự, biên rộng**: câu hỏi rerank/recall → doc ĐÚNG **0,705** ·
+     GẦN 0,436 · LẠC ĐỀ 0,279. Encode **137–220 ms**/đoạn (fp32, CPU, 13–62 token).
+   · Bản NHẸ có sẵn: `aapot/bge-m3-onnx` fp16/int8 **vẫn giữ đủ 3 đầu** + script export chỉnh
+     được. ⚠ đừng suy tốc độ q8 từ số của EmbeddingGemma — model khác, phải đo (bài học plan 17 §3b).
+   **Trần cũ VẪN ĐỨNG, chép lại để không ảo:** vai rerank dư địa chỉ **6–8/68 câu**, và
+   live-encode top-40 ≈ 8–25 s/truy vấn (chậm ngang cross-encoder) — muốn nhanh phải precompute;
+   vai retriever (đúng chỗ nghẽn pool) cần chỉ mục multi-vector: đo thật **62 token ≈ 254 KB fp32**
+   ⇒ cả kho cỡ ~200 GB nếu không nén (ColBERTv2 nén 128d+int8; bge-m3 KHÔNG có đầu nén sẵn).
+   Engine chỉ mục cho JS đã có ứng viên: `fast-plaid-web` (Rust+WASM) — chưa rà license.
+   ✅ **A/B ĐÃ CHẠY 2026-08-15 (user ra lệnh "thử nghiệm thật") — CỔNG VƯỢT XA, lần đầu một lớp
+   rerank THẮNG trên kho này.** 68/68 nhãn giải được, tham số chép đúng `recallbench.ts:241`,
+   scheduler tắt lúc đo, mọi lane chấm trên CÙNG top-40 của hybrid (khác biệt duy nhất = thứ tự):
+
+   | lane (thước NGHIÊM) | @1 | @3 | @10 | @40 | MRR |
+   |---|---|---|---|---|---|
+   | hybrid nền | 19% | 31% | 35% | 49% | 0,264 |
+   | + colbert THAY HẲN | 28% | 41% | **46%** | 49% | 0,352 (+33%) |
+   | + colbert TRỘN 50/50 | **32%** | 41% | 43% | 49% | **0,374 (+42%)** |
+
+   Tương đương: MRR 0,479 → 0,543 (thay) / **0,583 (trộn)**; `@1` 37% → **53%** (trộn).
+   Theo lớp: **`keyword` MRR 0,246 → 0,500 (+103%, cả hai lane)** — MaxSim chính là khớp từ-mềm,
+   ăn đúng lối gõ từ khoá · `prose` MRR 0,350 → 0,466 (trộn) · `tool_result` 0,188 → 0,250 ·
+   `tool_use` gần như đứng (0,113 → 0,179 thay / đứng nguyên trộn — lớp đó chỉ 21% vào nổi pool).
+   **CỨU/PHÁ quanh ranh top-10:** thay hẳn cứu **9** / phá 2 · trộn cứu 6 / phá **1** — vùng
+   trong-pool-ngoài-top-10 chỉ có ~9,5 câu ⇒ lane thay-hẳn cứu GẦN TRỌN vùng cứu được.
+   So mốc lịch sử: cross-encoder cũ làm `@10` TỤT 35→28%; colbert làm TĂNG 35→46%.
+   **Ba số phải nhớ trước khi ship:**
+   ① `@40` đứng nguyên 49% — trần POOL còn nguyên, rerank không đụng được (đúng dự báo).
+   ② Giá encode fp32: **1.388 ms/đoạn** (cap 1200 ký tự, 3.176 lượt ≈ 73 phút) ⇒ encode-sống
+     top-40 ≈ 55 s/truy vấn — KHÔNG sống nổi ở đường tìm; đường ship thật = **precompute + nén**
+     (1024d fp32 ≈ 1,2 MB/tin là bất khả thi; phải đo cắt chiều/int8/tỉa token TRƯỚC — điều 15,
+     và colbert head của bge-m3 KHÔNG huấn luyện Matryoshka nên cắt chiều phải đo, không suy).
+   ③ MaxSim đầu bảng KHÔNG làm được cổng "không biết": DƯƠNG median 0,644 vs ÂM median 0,516
+     nhưng chồng lấn nặng (ÂM max **0,780** > DƯƠNG median) — đừng thử lại đường ngưỡng đơn.
+   Kết quả thô: `bgem3-bench-result.json` + script ở scratchpad phiên 15/08.
+   ✅ **MA TRẬN ĐẦY ĐỦ 2026-08-15 (user ra lệnh "thử hết các cách") — 4 model · 12 lane · cùng
+   68 nhãn · ~4,5 giờ máy (3 pass có checkpoint, scheduler tắt lúc đo). KẾT LUẬN: BGE-M3 THẮNG
+   CẢ HAI VAI; Qwen3 (cả embedding lẫn reranker) THUA — đóng cửa có số đo.**
+   · **Vai XẾP LẠI top-40** (thước nghiêm): nền MRR 0,264 → **bge-DENSE trộn 0,5 = 0,378, @1
+     19%→34% (+10 câu) — LANE MẠNH NHẤT**, mà chỉ cần MỘT vector/tin (4 KB) · colbert trộn
+     w=0,6 = 0,375 · sparse trộn 0,331 · gemma trộn 0,303 · qwen-dense trộn 0,262 (≈nền) ·
+     Qwen3-Reranker top-10: MRR 0,314 nhưng **2,86 s/cặp = 29 s/truy vấn — chết tốc độ**.
+     ⇒ **Phần lớn cái colbert mua được, dense-1024 của CHÍNH bge-m3 mua được với giá 1/300 đĩa.**
+   · **Vai LẤY ứng viên** (pool 440, so A/B — số tuyệt đối bị thổi): gemma-768 hiện tại MRR
+     0,326 → **bge-m3-1024 = 0,411 (+26%; riêng prose+keyword 0,300→0,426 = +42%)**, @10
+     66%→78%, @40 85%→93% — **đây là đòn vào TRẦN POOL, chỗ mọi rerank bó tay** · qwen3-1024
+     = 0,270 (THUA gemma dù MTEB cao hơn — leaderboard ≠ kho mình) · qwen cắt 512 ≈ nguyên,
+     cắt 256 sập (0,192).
+   · **Bẫy phép đo MỚI, đắt — ghi để không ai dính lại:** `Buffer.from(base64).buffer` là POOL
+     dùng chung của Node — đọc `.buffer.slice(0)` ra **16.384 số rác/vector** và các lần decode
+     đè nhau. Bắt được vì lane đọc-từ-đĩa tụt về ĐÚNG mức ngẫu nhiên trong khi lane tính-sống
+     mạnh (đo hai đường). Đọc đúng: cắt `[byteOffset, byteLength)` + **copy** ra khỏi pool.
+   · **Caveat trung thực:** bge đo fp32, qwen đo q8 (q8 nhanh hơn fp16 2,8× trên Qwen3 — NGƯỢC
+     bài học Gemma, lần 3 xác nhận "đừng suy số giữa hai model"); corpus 1 bộ 68 nhãn; doc cap
+     1200 ký tự; retriever là pool-proxy chưa phải quét cả kho.
+   ✅ **CỔNG 1 ĐÃ CHẠY 2026-08-15/19 (đêm) — INT8 ĐẠT, chờ user chốt dtype + phạm vi:**
+     · Probe dtype (bản dense-only `onnx-community/bge-m3-ONNX`, chạy transformers.js đúng đường
+       production): **int8 = 880 ms/doc-cap-1200 · trên tin thật TB 637 ms** (fp32 thô 1.400 ms)
+       · q4 LOẠI (1.962 ms — chậm hơn cả fp32 VÀ kém hơn, đúng vết Gemma) · fp16/fp32 bản này
+       chưa nạp được (file external-data tải hụt — lỗi tải, chưa kết luận về model).
+     · **Chất lượng ở TẦNG METRIC** (re-encode trọn pool 2.939 văn bản bằng int8, chấm lại đúng
+       2 lane sẽ ship): RERANK trộn MRR **0,364** (fp32 0,378 · nền 0,264 ⇒ **giữ 88% mức tăng**;
+       thước tương đương gần y nguyên 0,572 vs 0,575) · RETRIEVER MRR **0,385** (fp32 0,411 ·
+       gemma 0,326 ⇒ **giữ 69% mức tăng**, @40 pool giữ nguyên 93%).
+     · **Chi phí ước re-embed cả kho (~245k tin có vector):** int8 ≈ **44 giờ** (đúng cỡ đợt 768
+       từng chấp nhận, chạy nền BELOW_NORMAL vài ngày) · fp32 full (bản yuniko 3 đầu ra, mở sẵn
+       đường colbert+sparse) ≈ **95–100 giờ**.
+     · **CHỜ USER CHỐT 2 CÂU:** ① dtype — int8-44h (đủ thắng rõ gemma: retriever +18%, rerank
+       +20% MRR) hay fp32-100h (trọn mức tăng + 3 đầu ra)? · ② phạm vi — cả kho một lần hay
+       khoanh prose+keyword trước? Dữ liệu thô: `passA/B/C/D.json` + script ở scratchpad 15/08.
+   ✅ **VÒNG DÒ THÊM 2026-08-19 — 2 ứng viên mới, ĐỀU THUA BGE-M3; BGE giữ ngôi.** Cùng registry,
+   cùng 68 nhãn (`passE.json`). **gte-multilingual-base** (Apache · 305M · 768d · q8 **324 ms —
+   NHANH NHẤT, gấp 4 gemma**): rerank MRR 0,310 · retriever 0,347 — hơn gemma chút ít, **thua xa
+   bge**. **snowflake-arctic-embed-l-v2.0** (Apache · 568M · 1024d · MRL-256 · q8 688 ms): rerank
+   0,325 · retriever 0,355 (prose+keyword 0,381) — **đứng nhì**, và có một điểm RIÊNG đáng ghi:
+   **@40 = 96%, cao nhất bảng** (bge 93% · gemma 85%) tức nó vớt được nhiều đáp án vào pool nhất;
+   cắt MRL-256 giữ nguyên @40 96% mà chỉ tốn 1/4 đĩa (MRR 0,338). Nhưng ở thước quyết định
+   (@1 · MRR) vẫn thua bge rõ.
+   **Xếp hạng cuối — retriever MRR:** bge-fp32 **0,411** > bge-int8 0,385 > arctic 0,355 > gte
+   0,347 > **gemma 0,326 (hiện tại)** > qwen3 0,270. Rerank MRR: bge-fp32 **0,378** > bge-int8
+   0,364 > arctic 0,325 > gte 0,310 > gemma 0,303 > qwen3 0,262.
+   ⚠ **Bẫy kỹ thuật đã dính + trị:** bản ONNX của gte/arctic trả `sentence_embedding` (ĐÃ pool),
+   không có `last_hidden_state` ⇒ lượt đầu chết cả 5 dtype với *"Cannot read properties of
+   undefined"*. Phải in `Object.keys(output)` ra xem TRƯỚC khi kết luận "model không nạp được".
+   ✅ **LAI HAI MODEL — ĐÃ THỬ 2026-08-19, KHÔNG ĐÁNG: mọi cặp lai nằm TRONG SAI SỐ.** Thử 6 cặp
+   (arctic→bge · gte→bge · bge→arctic · arctic→gemma · gemma→bge, quét w=0,3…1,0). Điểm cao nhất
+   `LẤY bge → XẾP arctic` MRR **0,419** so với **bge-fp32 đơn độc 0,410** — chênh 0,009 ≈ **0,6
+   câu/68**.
+   🔬 **BOOTSTRAP 2.000 LƯỢT (PRNG tất định, lặp lại được) — phép kiểm quyết định, KTC 95% của
+   HIỆU so với bge-fp32 đơn độc:**
+   · `LẤY bge → XẾP arctic` +0,009 [−0,032 … +0,053] ⇒ **TRONG SAI SỐ**
+   · `arctic → bge w=0,7` +0,006 [−0,037 … +0,052] ⇒ **TRONG SAI SỐ**
+   · `gemma → bge` +0,006 [−0,064 … +0,071] ⇒ **TRONG SAI SỐ**
+   · `bge-int8 đơn độc` −0,026 [−0,060 … **+0,007**] ⇒ **TRONG SAI SỐ — int8 KHÔNG phân biệt
+     được với fp32** ⇒ **chọn int8** (một nửa giờ máy, không mua được gì bằng fp32 mà đo thấy)
+   · `arctic đơn độc` −0,055 [−0,132 … +0,023] ⇒ TRONG SAI SỐ
+   · **`gemma đơn độc` −0,086 [−0,168 … −0,005] ⇒ THUA RÕ — kết luận VỮNG DUY NHẤT của cả bảng**
+   ⇒ **Ba hệ quả thi hành:** ① đổi gemma→bge là quyết định CÓ CƠ SỞ THỐNG KÊ (khoảng tin cậy
+   không chứa 0) · ② **KHÔNG lai hai model** — gấp đôi chỉ mục + gấp đôi giờ encode để đổi lấy
+   thứ không phân biệt được với nhiễu · ③ **int8, không fp32** — tiết kiệm ~50 giờ máy mà thước
+   không thấy khác biệt.
+   ⚠ **Trần của phép đo, phải nói ra:** **corpus 68 nhãn đã CHẠM TRẦN PHÂN GIẢI** — nó chỉ phân
+   biệt được khoảng cách cỡ gemma-vs-bge (Δ0,086), không phân biệt nổi Δ<0,05. Muốn quyết những
+   lựa chọn sát nhau hơn thì phải mở rộng corpus TRƯỚC, không phải chạy thêm model. *(Đây cũng là
+   lời cảnh báo cho mọi bảng số trước đó trong mục này: chênh lệch nhỏ giữa các lane rerank
+   (colbert 0,375 vs bge-dense 0,378) cùng nằm trong vùng nhiễu — đừng đọc thành thứ hạng chắc.)*
+   **Dò tiếp cùng đêm — ứng viên cho TRẦN POOL (chỗ colbert không đụng được):**
+   `Qwen3-Embedding-0.6B` — **Apache-2.0 · 100+ ngữ · Matryoshka 32→1024 · 32K context · có bản
+   ONNX chính chủ cho transformers.js** (cùng runtime đang chạy, thay model là chạy) — xếp trên
+   EmbeddingGemma ở MTEB đa ngữ; kèm anh em `Qwen3-Reranker-0.6B` (đúng lỗ "T6 reranker đa ngữ
+   chưa thử được" của plan 17 §3.1). Phép thử rẻ trước khi bàn re-embed: khuôn `dims-test` —
+   pool đóng băng + 68 nhãn, so recall Gemma-768 vs Qwen3 (cắt 768/512/256 trên cùng dãy số).
+   GM nhắc lại: chính user đã chỉ BGE-M3 làm "ứng viên #1" từ 2026-06-25 (`#97147`) — dense +
+   sparse + colbert một model; sparse lane của nó cũng là ứng viên nới pool chưa thử.
 4. ~~**`tooltest.db` 1,71 GB**~~ — **KHONG CON tren dia** (do 2026-08-13). Da xoa, khong con cho ai.
 
 **VIỆC KẾ TIẾP đã rõ đường:**
@@ -721,7 +1050,10 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   một ô trống — phải kèm ví dụ/hướng dẫn tại chỗ, nếu không người dùng gõ bừa là tự làm hỏng kết
   quả của mình. Backend đã sẵn (`/memory-search?also=`). Thêm phần tử UI ⇒ `02_RULES` bắt trình duyệt.
 
-- [ ] **ColBERT — DÒ XONG 2026-08-11, BẾ TẮC Ở MODEL (không phải ở kiến trúc hay giá).**
+- 🔄 **ColBERT — HẾT BẾ TẮC MODEL 2026-08-15: BGE-M3 (MIT, VI sạch, chạy được trong stack).**
+  Xem hồ sơ đo + phép thử kế ở mục 🔄 ColBERT trong «BÀN GIAO 2026-08-12 (chiều) → CHỜ USER».
+  Đường `cc-by-nc` (jina) vẫn loại; bảng dò 2026-08-11 bên dưới giữ làm hồ sơ so sánh.
+  ~~**ColBERT — DÒ XONG 2026-08-11, BẾ TẮC Ở MODEL (không phải ở kiến trúc hay giá).**~~
   Dò 100 model ColBERT phổ biến nhất; **đúng HAI cái biết tiếng Việt**, và chúng chia nhau hai
   nửa của vấn đề:
 
@@ -749,7 +1081,9 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
   top-10 ⇒ ở vai *xếp lại* mọi reranker chỉ có ngần ấy dư địa. Đáng chi chỉ khi dùng ở vai
   **lấy ứng viên** — mà vai đó cần chỉ mục đa-vector, đắt gấp bội.
 
-- [ ] **ColBERT làm LUỒNG SONG SONG để THỬ, bỏ được nếu không ăn (user chốt hướng 2026-08-10).**
+- [ ] ⏸ **ColBERT làm LUỒNG SONG SONG để THỬ (user chốt hướng 2026-08-10) — NGỦ ĐÔNG theo quyết
+  định park 2026-08-15**; kiến trúc luồng-song-song dưới đây vẫn là đường đúng NẾU ngày nào đó mở
+  lại (điều kiện: model VI license sạch + nhắm trần pool).
   Không cần "zemory 2.0": vector vốn là *engine nội bộ của slot `search`* và RRF gộp bao nhiêu
   luồng cũng được (vừa chứng minh — thêm luồng thứ 4 trong ngày). ColBERT = **một bảng chỉ mục
   nữa + một luồng nữa**, `vec_chunks` cũ **không đụng**; thua thì tắt luồng, kho cũ chạy y nguyên
@@ -964,9 +1298,11 @@ ca `plan/05 §4.E` đã ghi: đợt 07-26 chỉ vá GIÁ TRỊ, đợt sau vá M
   ✅ **Đã tắt và đã đo** (2026-08-13/15: `/memory-status` ⇒ `rerank: false`, nguồn ③ chạy thật).
   ~~**Sau khi tắt: đo lại** một truy vấn thật để xác nhận header không còn `rerank` và~~
   thời gian về ~0,7 s.
-- [ ] **Cân nhắc sửa gốc:** giá trị `true` sót lại từ thời mặc-định-sai nên được coi là NỢ và
-  dọn một lần (migration nhỏ: config còn bật rerank mà chưa ai bật tay sau ngày vá ⇒ hạ về
-  false + báo). Chưa làm vì cần user chốt — đụng setting người dùng.
+- ✅ **Cân nhắc sửa gốc — QUYẾT KHÔNG VIẾT MIGRATION (2026-08-15, user giao agent quyết).**
+  Đo: máy này config `rerank: false` (nguồn ③ `/memory-status`); máy mới nhận mặc định ĐÚNG từ
+  ngày vá; máy cũ `SS01-IT-10` đã chết. Migration chỉ phục vụ ca "máy khác còn config cũ" —
+  hiện không có máy nào như vậy đang chạy. Nếu `DESKTOP-PFB157K` (hay máy cũ nào) quay lại:
+  kiểm MỘT lệnh (`/memory-status` → `rerank`) thay vì viết code đón một ca chưa tồn tại.
 
 </details>
 
@@ -1065,9 +1401,14 @@ lời từ chối" thì chưa. Khoá đúng, cửa vẫn mở.
 
 - [ ] **Nợ cổng của 4 mặt audit mới (spec: `docs/plan/18_audit_coverage.md`).** Xếp theo "có sự
   cố THẬT mà chưa có cổng nào":
-  · **⑧ Phụ thuộc & license — chưa có cổng nào**: kiểm license dependency/model mới (HP điều 2 BẮT
-    rà mà không ai kiểm) + dựng thử từ **clone SẠCH** (thứ chạy được trên máy đang có sẵn đồ thì
-    chưa chứng minh được gì — model weight 294,6 MB từng lọt commit làm nghẽn cả push).
+  · ✅ **⑧ Phụ thuộc & license — TRẢ XONG 2026-08-15 (user ra lệnh làm):** ① cổng license
+    `backend/test/license-gate.test.mjs` (3 ca, tự vào `npm run check` qua glob) — quét CẢ CÂY
+    190 gói, parser SPDX xử ĐÚNG OR/AND (ca AND-trap `Apache-2.0 AND LGPL-3.0-or-later` nằm trong
+    bộ tự-kiểm), 2 ngoại lệ đích danh có test canh "ngoại lệ phải còn đúng sự thật"; đột biến
+    chứng minh đỏ được (gỡ Apache-2.0 ⇒ 2 đỏ) · ② `npm run check:clone`
+    (`backend/scripts/clone-check.mjs`, CỐ Ý ngoài gate mặc định — cần mạng, gate chậm là gate bị
+    bỏ qua) — đo thật cùng ngày: clone 2,0s → prebuilds 0,2s → install 23,9s → build 6,7s →
+    smoke `zemory 1.5.21` ⇒ **máy trắng dựng được**. Không pipe qua `tail` (bẫy nuốt exit code).
   · **⑨ Diễn tập phục hồi định kỳ**: "dữ liệu lành" KHÁC "dựng lại được"; mãi 11/08 mới thử lần đầu
     và đúng lần đó lộ ra kênh mang đi vứt sạch lớp vector.
   · **⑦ Quét LỊCH SỬ git** (hiện chỉ quét cây HEAD) + canh file lớn trước khi push.
@@ -1566,8 +1907,12 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
   `global_memory.db` + `share.key` = ĐÃ từng lên Drive dạng trần — chìa nằm cạnh két, điều 7; DB sống
   trong vùng sync, điều 11 — đúng cơ chế hỏng kho 03/08). User gỡ root khỏi Computers; verify bằng
   HÀNH VI (file mồi không bị cuốn sau 35s + hàng đợi chỉ còn xác cũ mtime tháng 7) vì file config ghi trễ.
-  Bản đã lỡ lên mây: **user xác nhận đã xoá**. **Còn 1 đuôi:** cân nhắc **xoay `share.key`**
-  (plan/16, quy trình đã có từ 07-29) sau khi tráo kho — chìa từng nằm trần trên Drive.
+  Bản đã lỡ lên mây: **user xác nhận đã xoá**. **Còn 1 đuôi — xoay `share.key`: QUYẾT HOÃN TỚI
+  LẦN BÀN GIAO MÁY KẾ (2026-08-15, user giao agent quyết).** Lý do: ① mức lộ là Drive CỦA CHÍNH
+  user (bản trần đã xoá), không phải công khai — khác hẳn chìa CŨ trong git · ② xoay bây giờ =
+  re-export trọn kho Drive (~1,4 GB) bằng chìa mới **và phải mang tay chìa sang máy kia** — agent
+  tự xoay là khoá máy kia khỏi kho chung trong im lặng · ③ lần dựng/bàn giao máy kế PHẢI mang chìa
+  tay sẵn ⇒ xoay lúc đó là chuyến xe miễn phí. Quy trình sẵn ở `plan/16 §3`.
 - *(Đề xuất HP điều 14 "bí mật: ngoài git ≠ ngoài repo" — đã nằm ở mục ngay dưới, cũng chờ user.)*
 
 ## Quyết định mở / cần chốt
@@ -1675,4 +2020,7 @@ event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phi
 </details>
 
 - [ ] **Đuôi còn lại của mục trên: XOAY token npm** — token publish từng nằm trần trên Drive
-  (nay ở `~/.npmrc`). Việc của user; không liên quan tới lối cài đã chốt.
+  (nay ở `~/.npmrc`). **Agent KHÔNG tự làm được** (2026-08-15, đã xét khi user giao "tự làm"):
+  revoke + cấp token mới đòi đăng nhập tài khoản npm của user. Việc 2 phút của user:
+  npmjs.com → Access Tokens → revoke token cũ → tạo mới → dán vào `~/.npmrc`. Không gấp —
+  gói chưa publish, token cũ chỉ nguy hiểm nếu tài khoản Drive của user bị lộ.

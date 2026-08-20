@@ -5,6 +5,63 @@
 
 ---
 
+## [2026-08-20b] — guard lớp ① hở nửa cửa trên Windows · cảnh báo context thôi đoán theo tên
+
+**Guard bỏ lọt MỌI lệnh đi qua tool `PowerShell`** (báo từ phiên repo `PBI_SasinFlow_Rebuild`, đã
+tự đo lại và đúng). `guard.cjs` phân nhánh theo `tool_name` và chỉ biết 5 tên; phiên Claude Code
+trên Windows có SẴN tool `PowerShell` ⇒ `git push` chưa xin · `git add -A` · xoá đệ quy · secret
+vào git **vượt sạch chỉ bằng cách đổi tool**. Đo trước vá: 4/4 lệnh nguy hiểm qua `Bash` bị chặn,
+4/4 lệnh y hệt qua `PowerShell` cho qua. Khó thấy vì regex nhận diện VẪN đúng — chỉ cổng TÊN sai,
+nên mọi test cũ (chỉ gửi `tool_name: "Bash"`) đều xanh trong khi cửa mở toang.
+**Vá:** nhận theo HÌNH DẠNG (`có tool_input.command` ⇒ soi như lệnh shell, bất kể tên) thay vì
+theo danh sách tên — gác theo tên là cuộc đua không thắng, host thêm tool mới là lỗ mở lại. Thêm
+`GUARD_MATCHER` một-chỗ và `hook guard` **in kèm matcher** (repo báo cáo nối thiếu đúng
+`PowerShell`; hai tầng hỏng đều im lặng). Bản ship cho bộ cowork chép lại + manifest 282→291.
+Gate `guard-tool-matrix` 4/4 soi MA TRẬN `tool × lệnh` + **ca ÂM** 6 lệnh thường ngày; đột biến:
+trả về chỉ-nhận-`Bash` ⇒ 2 đỏ, bỏ `PowerShell` khỏi matcher ⇒ 3 đỏ.
+⚠ Guard KHÔNG tự làm mới — repo nào đã cắm phải chạy lại `zemory hook guard` **và** thêm
+`PowerShell` vào matcher.
+
+**Cảnh báo context ~95% SAI trên phiên 1M.** Cơ chế tự sửa chỉ nổ SAU khi vượt 200k nên dải
+190k–200k của mọi phiên 1M đều bị hét oan (thực dùng ~19%) — agent đọc xong đi chốt sổ sớm hơn
+cần. Đo: transcript **không khai cửa sổ ở đâu cả** (`context_management: null`), và 5/6 phiên gần
+nhất trên máy này đã vượt 200k với **cùng model id `claude-opus-5`** ⇒ tên model không phân biệt
+được 1M với 200k. Tín hiệu TTL cache đã thử và loại (cả 6 phiên đều 1h).
+**Vá:** HỌC TỪ BẰNG CHỨNG — mỗi lần `observed` vượt bậc là một lần chứng minh trần thật, ghi nhớ
+vào `data/context-guard/observed-window.json` (cạnh kho, gitignored) và phiên sau đọc nó TRƯỚC khi
+đoán theo tên; bằng chứng chỉ đi lên. Nghiệm thu bề mặt thật: phiên 750.775 token nay báo **75,1%**.
+Gate 3 ca; đột biến: bỏ ghi nhớ ⇒ 1 đỏ, bỏ đọc bộ nhớ ⇒ 2 đỏ.
+
+## [2026-08-20] — 2.0.0: đường đổi embedder sang BGE-M3 + cổng mặt audit ⑧
+
+**Vì sao lên số lớn** (user chốt): đây là mốc đổi lớp NHÚNG của cả hệ, không phải một bản vá.
+Đợt này mới THÊM đường — kho thật vẫn chạy Gemma-768, chưa gì phá vỡ tương thích.
+
+**Chọn BGE-M3 bằng đo, không bằng cảm giác.** Ma trận 6 embedder × 12 lane trên cùng 68 nhãn +
+bootstrap 2.000 lượt: Gemma-768 **thua rõ** (ΔMRR −0,086, KTC 95% [−0,168 … −0,005]) — so sánh
+DUY NHẤT trong cả bảng có khoảng tin cậy không chứa 0. BGE-M3 thắng cả hai vai: retriever MRR
+0,326 → 0,411 (@40 pool 85 → 93%), rerank-trộn 0,303 → 0,378. Chọn **int8** (chênh với fp32 nằm
+TRONG sai số, mà nhanh gấp đôi: 637 vs 1.388 ms/tin). **KHÔNG lai hai model** — mọi cặp lai đều
+trong sai số. Qwen3-Embedding/Reranker · gte · arctic · chỉ mục ColBERT: loại, có số. Spec: plan 19.
+
+**Profile nay gánh NĂM thứ, không chỉ prompt**: model · pooling (**CLS** cho BGE) · dims 1024 ·
+dtype int8 · **sequential**. Cái cuối là phát hiện tại chỗ: gọi THEO LÔ vừa chậm hơn (5,6× cho
+BGE, 2,3× cho Gemma) vừa **dịch vector** (cos 0,982 · Gemma 0,962) — kho đang chạy vì thế có tài
+liệu mã hoá theo lô còn truy vấn theo từng cái. Vá cho kho MỚI; kho đang chạy cố ý không đụng.
+Nghiệm thu: vector đường production khớp **cos 1,000000** với vector đã benchmark.
+
+🔴 **Một phép thử 20 tin cứu 44 giờ:** `embedPending` lấy *"bảng vec_chunks tồn tại chưa"* làm
+điều kiện đọc hợp đồng ⇒ kho chuẩn bị theo plan 19 (drop → đóng dấu → embed) bị bỏ qua vec_config:
+hợp đồng ghi `{1024, bge-m3-v1, int8}` mà lượt embed báo `dims 768` và chạy Gemma. Nay hỏi thẳng
+`vec_config`. Gate `embed-profile` 6/6, **6 đột biến đều đỏ được**.
+
+**Cổng mặt audit ⑧ — mặt cuối chưa có máy canh, nay có hai:** `license-gate` (3 ca, trong
+`npm run check`) quét CẢ CÂY 190 gói, parser SPDX xử đúng OR/AND (ca bẫy
+`Apache-2.0 AND LGPL-3.0-or-later` từng lọt lượt rà tay nay nằm trong bộ tự-kiểm); và
+`npm run check:clone` dựng từ clone sạch (clone 2,0s → prebuilds 0,2s → install 23,9s → build
+6,7s → smoke), để ngoài gate mặc định vì cần mạng. Kèm: luật **CẤM CHẠY IM LẶNG** thành luật
+CHUNG — thêm bản generic vào cả 3 template (cowork tự nhận qua bootstrap).
+
 ## [2026-08-15b] — dọn 11 export thừa · và một hàm "chết" hoá ra là lưới đỡ chưa nối
 
 **Dọn:** bỏ `export` ở **11 hàm** chỉ dùng trong chính file mình (`loadCorpus` ·
