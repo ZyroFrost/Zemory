@@ -37,6 +37,34 @@ phủ đủ"**).
 · quét export quên `backend/test/` ⇒ báo oan 53; thiếu cờ `g` ⇒ báo oan **13/13**
 · chạy gate lúc daemon bận ⇒ **đỏ giả** (`drive-sync` đỏ, chạy riêng thì 8/8).
 
+## ✅ RÁC NHÁP + FLAG MỘT-LẦN — ĐÃ VÁ 2026-08-20 (user chốt "thêm luật với hook tự xoá")
+
+**① Thư mục nháp phình vô hạn.** Đo trên đúng MỘT phiên nặng: **3,97 GB** (model ONNX tải để đo ·
+cache HuggingFace · profile trình duyệt · JSON số liệu). Nó KHÔNG nằm trong `git status`, không
+cổng nào soi, nên mọi lượt audit đều đi qua mà không thấy. Nguyên văn user: *"đợi t kiểm thì t
+ko nhớ và cũng lâu mới làm"* ⇒ đúng doctrine **máy canh, đừng dựa ai nhớ**.
+· **Job:** `jobs/scratchpad.ts` + `scratchTick` (mỗi 6 giờ, đồng hồ RIÊNG — không treo vào công
+  tắc tính năng nào, đúng bài học backup chết lặng 4 ngày). Dọn phiên quá 7 ngày hoặc khi tổng
+  vượt 2 GB, **cũ nhất trước, chỉ tới khi về dưới trần**.
+· **Bốn ràng buộc an toàn** (job TỰ XOÁ FILE nên khắt khe hơn thường): chỉ nhận đúng khuôn
+  `<project>/<session>/scratchpad` · không đụng phiên đang chạy · không đụng thư mục vừa ghi
+  trong 6 giờ · fail-open. Gate 7 ca, **quá nửa là ca ÂM**; đột biến: bỏ bảo vệ phiên đang chạy
+  ⇒ 2 đỏ, bỏ kiểm khuôn ⇒ 1 đỏ.
+· **Luật** `FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT` vào `02_RULES` + cả 3 template.
+· Dọn tay ngay trong phiên: **3,97 GB → 79 MB** (giữ dữ liệu đo để còn đối chiếu).
+
+**② Flag `.allow-*` bị tiêu thụ dù lệnh KHÔNG chạy** (dính đúng lúc push 2.0.0). Hook PreToolUse
+chỉ nói CHO QUA — nó không biết lệnh có chạy hay không; guard ăn flag rồi tầng khác của host chặn
+⇒ phải xin user lần nữa cho việc họ vừa đồng ý. Nay flag đóng dấu **vân tay của VIỆC** + cửa sổ
+90 s: cùng việc ⇒ thử lại được · việc khác ⇒ **thu hồi ngay** · quá cửa sổ ⇒ chết hẳn. Gate 3 ca
+(chạy trên repo TẠM — bản đầu dùng flag thật và làm ĐỎ một file test chạy song song, đúng bài học
+"test không được đụng tài nguyên thật"); đột biến: xoá-ngay ⇒ 2 đỏ, bỏ vân tay ⇒ 1 đỏ.
+Hai test cũ neo vào hành vi cũ đã **cập nhật theo hợp đồng mới**, không gỡ bỏ.
+
+- [ ] **(ĐỀ XUẤT) `doctor` cảnh báo rác nháp** — job đã dọn tự động, nhưng người dùng không có
+  cách nào NHÌN THẤY nó đang chiếm bao nhiêu. Một dòng trong `doctor`/`memory status`
+  (`sweepScratchpads({ dryRun: true })` — hàm đã sẵn) là đủ; chưa làm vì thêm dòng vào bề mặt.
+
 ## 🔴 GUARD LỚP ① HỞ NỬA CỬA TRÊN WINDOWS — ĐÃ VÁ 2026-08-20 (báo từ repo `PBI_SasinFlow_Rebuild`)
 
 > Báo cáo từ phiên repo khác, **đã tự đo lại và ĐÚNG** — tái lập nguyên vẹn trên chính zemory.

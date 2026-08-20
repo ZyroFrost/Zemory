@@ -6,6 +6,7 @@
 // exit 2 = CHAN, stderr duoc dua lai cho agent doc.
 "use strict";
 const fs = require("node:fs");
+const crypto = require("node:crypto");
 const path = require("node:path");
 
 const HERE = __dirname;
@@ -15,17 +16,46 @@ const ROOT = path.resolve(HERE, ...POLICY.flags_dir.split("/").map(() => ".."));
 
 function deny(msg) { process.stderr.write(String(msg).trim() + "\n"); process.exit(2); }
 
-function consumeFlag(name) {
-  // Ten flag THIEU trong policy = policy CU di cung guard MOI (bo cowork duoc mang tay
-  // sang may khac nen hai file chac chan co luc lech phien ban). Truoc day cho nay se
-  // `path.join(..., undefined)` => nem loi => guard chet giua chung, ma guard chet thi
-  // khong con ai gac. Nay: thieu ten thi coi nhu KHONG co flag - van CHAN, chi la khong
-  // co duong vuot. Chan nham con hon thung im lang.
+// Cua so cho phep MOT viec duoc thu lai sau khi flag da duoc tieu thu (ms).
+//
+// Vi sao can: hook PreToolUse chi noi CHO QUA - no khong biet lenh co thuc su chay hay khong.
+// Do that 2026-08-20 luc push 2.0.0: guard cho qua (an flag), roi mot tang khac cua host chan
+// lenh lai => lenh KHONG chay ma flag DA MAT, phai xin user tao lai. Huong sai o day la
+// 'phai xin lai' chu khong phai 'lot qua' - an toan, nhung la ma sat that, va no danh dung vao
+// luc user vua dong y xong.
+//
+// 90 giay: du cho mot lan thu lai ngay lap tuc, ngan hon nhieu so voi khoang cach giua hai
+// quyet dinh that cua user. Het cua so la flag chet han.
+const FLAG_RETRY_MS = 90 * 1000;
+
+function consumeFlag(name, subject) {
+  // Ten flag THIEU trong policy = policy CU di cung guard MOI (bo cowork duoc mang tay sang
+  // may khac nen hai file chac chan co luc lech phien ban). Thieu ten thi coi nhu KHONG co
+  // flag - van CHAN, chi la khong co duong vuot. Chan nham con hon thung im lang.
   const file = (POLICY.flags || {})[name];
   if (!file) return false;
   const p = path.join(ROOT, POLICY.flags_dir, file);
-  if (fs.existsSync(p)) { try { fs.unlinkSync(p); } catch {} return true; }
-  return false;
+  if (!fs.existsSync(p)) return false;
+
+  // Dau van tay cua VIEC dang xin phep: flag chi mo cho DUNG viec do, khong phai mo cua trong
+  // 90 giay cho bat cu gi. Doi lenh (push branch khac, xoa thu muc khac) => dau khac => thu hoi.
+  const mark = crypto.createHash("sha1").update(String(subject || name)).digest("hex").slice(0, 16);
+  let prev = "";
+  try { prev = fs.readFileSync(p, "utf8"); } catch {}
+  const m = /ZEMORY-USED ([0-9a-f]+) ([0-9]+)/.exec(prev);
+  if (m) {
+    if (m[1] === mark && Date.now() - Number(m[2]) < FLAG_RETRY_MS) return true; // thu lai dung viec
+    try { fs.unlinkSync(p); } catch {} // khac viec hoac qua han => thu hoi, phai xin lai
+    return false;
+  }
+  // Lan dau: KHONG xoa ngay, chi dong dau da-dung. Flag chet khi het cua so hoac khi co ai
+  // xin mot viec khac - nen no van la 'mot lan cho mot viec', chi thoi phat vi mot lan thu lai.
+  try {
+    fs.writeFileSync(p, "ZEMORY-USED " + mark + " " + Date.now() + "\n");
+  } catch {
+    try { fs.unlinkSync(p); } catch {} // ghi khong duoc => ve hanh vi cu: dung mot lan roi thoi
+  }
+  return true;
 }
 
 // Cau chi duong vuot. Policy CU khong khai ten flag => truoc day in ra
@@ -68,7 +98,7 @@ function checkWrite(rel) {
       ? globToRe(pre).test(rel) || globToRe(pre + "/*").test(rel)
       : rel === pre || rel.startsWith(pre + "/");
     if (hit) {
-      if (consumeFlag("docs_write")) return;
+      if (consumeFlag("docs_write", rel)) return;
       deny("CHAN (guard lop 1): ghi vao `" + prefix + "` - " + POLICY.protected_write_reason +
         "\nUser da duyet trong phien? -> tao flag `" + POLICY.flags_dir + "/" + POLICY.flags.docs_write + "` roi lam lai (flag dung MOT lan).");
     }
@@ -94,7 +124,7 @@ function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
   if (/\bgit\b[^\n;|&]*\bpush\b/.test(bare)) {
-    if (!consumeFlag("push")) {
+    if (!consumeFlag("push", bare)) {
       deny("CHAN (guard lop 1): `git push` - user bao push moi push (02_RULES Git)." +
         "\nUser vua bao? -> tao flag `" + POLICY.flags_dir + "/" + POLICY.flags.push + "` roi chay lai (mot lan).");
     }
@@ -105,7 +135,7 @@ function checkBash(cmd) {
   }
 
   if (/\bgit\b[^\n;|&]*\badd\b[^\n;|&]*(\s-A\b|\s--all\b|\s\.\s*($|;|&|\|))/.test(bare)) {
-    if (!consumeFlag("git_add_all")) {
+    if (!consumeFlag("git_add_all", bare)) {
       deny("CHAN (guard lop 1): `git add -A/.` - chinh lenh nay da dua secret len GitHub (2026-08-04)." +
         "\nLiet ke file tuong minh; that su can ca cay thi xin user tao flag `" +
         POLICY.flags_dir + "/" + POLICY.flags.git_add_all + "` (mot lan).");
@@ -148,7 +178,7 @@ function checkBash(cmd) {
   // khong co duong dan de khop). Chung deu bat kha dao ngang `rm -rf`.
   const MASS_DEL =
     /\bfind\b[^\n]*-delete\b|\bfind\b[^\n]*-exec[^\n]*\brm\b|\bgit\s+clean\b[^\n]*-[a-z]*[fdx]|\brobocopy\b[^\n]*\/(MIR|PURGE)\b|\brmSync\s*\([^)]*recursive|\brmtree\s*\(|\bxargs\b[^\n]*\brm\b|\bGet-ChildItem\b[^\n]*\|[^\n]*\bRemove-Item\b/i;
-  if (MASS_DEL.test(bare) && !consumeFlag("delete")) {
+  if (MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
     deny("CHAN (guard lop 1): xoa HANG LOAT (quet ca cay) - bat kha dao, 02_RULES bat hoi user truoc." +
       flagTip("delete"));
   }
@@ -159,7 +189,7 @@ function checkBash(cmd) {
   // mat han - git khong cuu duoc thu chua bao gio vao git.
   const DISCARD =
     /\bgit\s+reset\b[^\n]*--hard\b|\bgit\s+checkout\b[^\n]*--\s|\bgit\s+checkout\s+\.|\bgit\s+restore\b[^\n]*(\.|--staged)|\bgit\s+stash\s+(drop|clear)\b/;
-  if (DISCARD.test(bare) && !consumeFlag("discard")) {
+  if (DISCARD.test(bare) && !consumeFlag("discard", bare)) {
     deny("CHAN (guard lop 1): lenh HUY viec chua commit - 02_RULES §Git bat hoi user truoc." +
       flagTip("discard"));
   }
@@ -171,7 +201,7 @@ function checkBash(cmd) {
   //   dau ra la thao tac hang ngay, chan la nhieu ngay) va `mv` (doi ten/dep repo la viec
   //   thuong). Muon chan thi phai phan biet "ghi de file DANG CO trong repo" voi "tao file
   //   moi", va do la viec rieng - dung nhet vao day cho du.
-  if (/\btruncate\b[^\n]*-s\s*0\b|\bClear-Content\b/.test(bare) && !consumeFlag("overwrite")) {
+  if (/\btruncate\b[^\n]*-s\s*0\b|\bClear-Content\b/.test(bare) && !consumeFlag("overwrite", bare)) {
     deny("CANH BAO (guard lop 1): lenh XOA TRANG noi dung file - noi dung cu mat han." +
       "\nHOI USER truoc." + flagTip("overwrite"));
   }
@@ -192,7 +222,7 @@ function checkBash(cmd) {
         }
       }
     }
-    if (recursive && !consumeFlag("delete")) {
+    if (recursive && !consumeFlag("delete", bare)) {
       deny("CHAN (guard lop 1): xoa DE QUY - thao tac bat kha dao, 02_RULES bat hoi user truoc." +
         flagTip("delete"));
     }
@@ -275,7 +305,7 @@ function main() {
       } catch {
         sizeNow = 0; // khong stat duoc thi khong phan (fail-open)
       }
-      if (inside && sizeNow > 0 && !consumeFlag("overwrite")) {
+      if (inside && sizeNow > 0 && !consumeFlag("overwrite", rel)) {
         deny("CANH BAO (guard lop 1): GHI DE `" + rel + "` (" + sizeNow + " byte dang co) - " +
           "noi dung cu mat han, khong dao duoc.\nHOI USER truoc." + flagTip("overwrite") +
           "\nSua mot doan thoi thi dung Edit - Edit KHONG bi hoi.");

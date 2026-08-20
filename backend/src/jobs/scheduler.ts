@@ -29,6 +29,7 @@ import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
 import { rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
+import { sweepScratchpads } from "./scratchpad.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
@@ -50,10 +51,14 @@ const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 const IDLE_BACKOFF_MS = 30 * 60_000;
 /** Backup tự kiểm hạn (1 bản/ngày) nên nhịp này chỉ là "có cơ hội để hỏi", rẻ như một readdir. */
 const BACKUP_EVERY_MS = 30 * 60_000;
+// Rác nháp lớn dần theo GIỜ chứ không theo phút — 6 tiếng một lượt là đủ dày mà gần như
+// không tốn gì (một lượt `readdir` + `stat`).
+const SCRATCH_EVERY_MS = 6 * 60 * 60_000;
 
 let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
+let scratchTimer: ReturnType<typeof setInterval> | null = null;
 let child: ChildProcess | null = null;
 let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
@@ -221,6 +226,34 @@ async function backupTick(why: string): Promise<void> {
 }
 
 /**
+ * Dọn thư mục nháp của host (`<temp>/claude/<project>/<session>/scratchpad`).
+ *
+ * Vì sao là JOB chứ không phải một dòng luật: đo 2026-08-20 trên đúng MỘT phiên làm việc nặng —
+ * **3,97 GB** nằm im ở đó (model ONNX tải để đo, cache HuggingFace, profile trình duyệt). Không
+ * ai dọn, không cổng nào kêu, và người dùng chỉ biết khi đĩa đầy. Nguyên văn user: *"đợi t kiểm
+ * thì t ko nhớ và cũng lâu mới làm"*.
+ *
+ * KHÔNG nằm trong token job và KHÔNG hỏi công tắc nào: nó không đụng kho, không tranh ghi với ai
+ * (chỉ đọc/xoá trong thư mục tạm của host), nên treo nó vào công tắc tính năng khác là tái diễn
+ * đúng lỗi đã làm backup chết lặng 4 ngày. Fail-open như mọi lớp phụ (HP điều 9).
+ */
+function scratchTick(): void {
+  try {
+    const r = sweepScratchpads({ keepSession: process.env.CLAUDE_SESSION_ID });
+    if (r.removed.length) {
+      const mb = (n: number): string => (n / 1024 / 1024).toFixed(0);
+      log(
+        `dọn nháp: bỏ ${r.removed.length} phiên (${mb(r.removed.reduce((a, x) => a + x.bytes, 0))} MB) — ` +
+          r.removed.map((x) => `${x.why} ${x.ageDays}d`).join(" · ") +
+          ` · còn ${mb(r.keptBytes)} MB`,
+      );
+    }
+  } catch (e) {
+    log(`dọn nháp bỏ qua: ${(e as Error).message}`);
+  }
+}
+
+/**
  * 🔴 NHƯỜNG THÌ PHẢI QUAY LẠI — nếu không, nhường một lần là nhường mãi mãi.
  *
  * Bản cũ: bị chặn ⇒ `return`, đợi hết chu kỳ 30 phút. Nghe vô hại, nhưng ghép với việc hai
@@ -264,6 +297,8 @@ export function startScheduler(): void {
   // Backup có ĐỒNG HỒ RIÊNG, KHÔNG hỏi `getScheduler()` — xem chú thích ở `backupTick()`.
   // Lệch pha 1/4 chu kỳ để không tới hạn cùng lúc với hai đồng hồ kia (cùng bài học bỏ đói).
   backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
+  scratchTimer = setInterval(scratchTick, SCRATCH_EVERY_MS);
+  setTimeout(scratchTick, 90_000).unref?.(); // mồi một lượt sau khi daemon ổn định
   // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
   // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
   // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.
@@ -276,6 +311,7 @@ export function startScheduler(): void {
   maintainTimer.unref?.();
   syncTimer.unref?.();
   backupTimer.unref?.();
+  scratchTimer?.unref?.();
   // Kick the chain shortly after boot, then on the interval.
   setTimeout(() => void maintainTick(), 15_000).unref?.();
   // Backup được mồi RIÊNG — chuỗi trên có thể không bao giờ chạy (scheduler tắt), mà một máy
@@ -289,7 +325,8 @@ export function stopScheduler(): void {
   if (maintainTimer) clearInterval(maintainTimer);
   if (syncTimer) clearInterval(syncTimer);
   if (backupTimer) clearInterval(backupTimer);
-  maintainTimer = syncTimer = backupTimer = null;
+  if (scratchTimer) clearInterval(scratchTimer);
+  maintainTimer = syncTimer = backupTimer = scratchTimer = null;
   chainRunning = false;
   if (child) {
     try {

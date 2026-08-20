@@ -56,29 +56,43 @@ test("Write vào đường cấm ⇒ exit 2; flag một-lần: tạo→qua→T�
   assert.equal(out.status, 2, "ghi vào docs/ (protected) phải bị chặn");
   assert.match(out.stderr, /\.allow-docs-write/, "câu chặn phải nói cách vượt hợp lệ");
 
-  // ② user duyệt → tạo flag → qua ĐÚNG MỘT lần, flag tự xoá.
+  // ② user duyệt → tạo flag → qua cho ĐÚNG VIỆC ĐÓ.
+  //
+  // Neo cũ ở đây là "flag phải TỰ XOÁ ngay sau một lần dùng" — đã đổi có chủ đích 2026-08-20:
+  // hook PreToolUse không biết lệnh có THỰC SỰ chạy hay không, nên xoá ngay nghĩa là một lần bị
+  // tầng khác của host chặn là user phải duyệt lại cùng một việc. Nay flag đóng dấu vân tay VIỆC
+  // và sống một cửa sổ ngắn: cùng việc ⇒ thử lại được · việc khác ⇒ thu hồi ngay (kiểm ở ③).
   const flag = join(r.hooksDir, ".allow-docs-write");
   writeFileSync(flag, "");
   out = fire(r.hooksDir, "Write", { file_path: target });
   assert.equal(out.status, 0, "có flag phải cho qua");
-  assert.ok(!existsSync(flag), "flag phải TỰ XOÁ sau một lần dùng");
 
-  // ③ lần kế tiếp: chặn lại.
+  // ③ flag KHÔNG được thành cửa mở cho việc khác: ghi sang file khác trong đường cấm ⇒ chặn,
+  //    và flag bị thu hồi khỏi đĩa.
+  out = fire(r.hooksDir, "Write", { file_path: join(root, "docs", "other.md") });
+  assert.equal(out.status, 2, "việc KHÁC mượn flag ⇒ phải chặn");
+  assert.ok(!existsSync(flag), "và flag bị thu hồi, không để lại cửa hé");
+
+  // ④ sau khi thu hồi, chính việc cũ cũng phải xin lại.
   out = fire(r.hooksDir, "Write", { file_path: target });
-  assert.equal(out.status, 2, "flag đã tiêu thụ thì lần sau phải chặn lại");
+  assert.equal(out.status, 2, "flag đã thu hồi thì lần sau phải chặn lại");
 
   // Ghi NGOÀI đường cấm thì không ai đụng tới.
   out = fire(r.hooksDir, "Write", { file_path: join(root, "src", "main.py") });
   assert.equal(out.status, 0, "đường không cấm phải đi qua êm");
 });
 
-test("git push: chặn không flag · qua với flag · flag tiêu thụ một lần", (t) => {
+test("git push: chặn không flag · qua với flag · flag chỉ mở cho ĐÚNG lệnh đã xin", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 2);
   writeFileSync(join(r.hooksDir, ".allow-push"), "");
   assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 0);
-  assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 2, "flag chỉ sống một lần");
+  // Thử lại ĐÚNG lệnh đó vẫn qua — hook không biết lượt trước có chạy thật hay bị chặn ở tầng khác.
+  assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 0, "thử lại cùng lệnh");
+  // Nhưng đẩy nhánh KHÁC thì không được mượn: đó là một quyết định khác, phải xin riêng.
+  assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin release" }).status, 2, "lệnh khác ⇒ chặn");
+  assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 2, "flag đã thu hồi");
 });
 
 test("secret vào git add ⇒ chặn KHÔNG đường vượt; .env.example được tha; tên secret trong -m KHÔNG chặn oan", (t) => {

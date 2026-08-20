@@ -5,6 +5,32 @@
 
 ---
 
+## [2026-08-20c] — flag một-lần chịu được MỘT lần thử lại · job tự dọn thư mục nháp
+
+**Flag `.allow-*` bị tiêu thụ ngay cả khi lệnh KHÔNG chạy.** Dính đúng lúc push 2.0.0: hook
+PreToolUse chỉ nói CHO QUA — nó không biết lệnh có thực sự chạy hay không; guard ăn mất flag rồi
+một tầng khác của host chặn lệnh lại ⇒ phải đi xin user lần nữa cho cùng một việc họ vừa đồng ý.
+Hướng sai là *"phải xin lại"* chứ không phải *"lọt qua"* — an toàn, nhưng bắt user trả lời hai
+lần cho một câu là thứ `02_RULES §Hành xử` gọi thẳng là LỖI.
+**Vá:** flag đóng dấu **vân tay của VIỆC** (sha1 lệnh/đường dẫn) + cửa sổ 90 giây. Cùng việc ⇒
+thử lại được · việc KHÁC mượn ⇒ **thu hồi ngay** · quá cửa sổ ⇒ chết hẳn. Vẫn là "một lần cho
+một việc", chỉ thôi phạt vì một lần thử lại. Gate `guard-flag-retry` 3/3 (repo tạm, không đụng
+flag thật — bản đầu dùng flag thật và làm ĐỎ một file test chạy song song); đột biến: quay lại
+xoá-ngay ⇒ 2 đỏ, bỏ vân tay việc ⇒ 1 đỏ. Hai test cũ neo vào hành vi "tự xoá ngay" đã cập nhật
+theo hợp đồng mới thay vì bị gỡ.
+
+**Thư mục nháp phình vô hạn — nay có job dọn.** Đo trên đúng MỘT phiên làm việc nặng: **3,97 GB**
+nằm im (model ONNX tải để đo · cache HuggingFace · profile trình duyệt · JSON số liệu). Không ai
+dọn, không cổng nào kêu, và nó không nằm trong `git status` nên không lần audit nào thấy.
+**Vá:** `jobs/scratchpad.ts` + `scratchTick` trong scheduler (mỗi 6 giờ, đồng hồ riêng, không
+treo vào công tắc tính năng nào — đúng bài học backup chết lặng 4 ngày): dọn phiên quá 7 ngày
+hoặc khi tổng vượt 2 GB, **cũ nhất trước, chỉ tới khi về dưới trần**.
+Đây là job TỰ XOÁ FILE nên bốn ràng buộc an toàn đều có gate riêng (7 ca, quá nửa là ca ÂM):
+chỉ nhận đúng khuôn `<project>/<session>/scratchpad` · không đụng phiên đang chạy · không đụng
+thư mục vừa ghi trong 6 giờ · fail-open. Đột biến: bỏ bảo vệ phiên đang chạy ⇒ 2 đỏ, bỏ kiểm
+khuôn ⇒ 1 đỏ. Kèm luật **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT** vào `02_RULES` + cả 3 template.
+*(Dọn tay ngay trong phiên: 3,97 GB → 79 MB, giữ lại dữ liệu đo để còn đối chiếu.)*
+
 ## [2026-08-20b] — guard lớp ① hở nửa cửa trên Windows · cảnh báo context thôi đoán theo tên
 
 **Guard bỏ lọt MỌI lệnh đi qua tool `PowerShell`** (báo từ phiên repo `PBI_SasinFlow_Rebuild`, đã
