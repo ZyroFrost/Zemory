@@ -420,6 +420,17 @@ không tồn tại trong transcript. Đây là trần của bài toán, không p
   thủ công như thiết kế cũ) · ③ nút ↻ Recheck mang `fresh=1` — giữ đúng nghĩa "đo lại thật".
   Đo sau vá: 3 check trả **2–3ms** từ cache mồi; `fresh=1` vẫn đo thật (358ms). Gate anchor
   trong `app-ui.test.mjs` (48/48), đột biến xếp-hàng-lại ⇒ đỏ.
+  **Vế 2 cùng ngày (user báo thêm "công tắc tự bật tắt hoài"):** cuộc ĐUA vẽ-đè — payload
+  `/memory-status` bắn TRƯỚC cú bấm toggle, VỀ SAU (lượt lạnh >30s) và vẽ đè trạng thái CŨ lên
+  nút vừa gạt ⇒ nhìn như tự tắt, vòng poll sau tự bật. Vá: toggle đóng dấu `Z.flagsAt`,
+  `renderMem` cho giá trị LOCAL thắng trong 90s rồi server là sự thật. Gate anchor + đột biến
+  gỡ-guard ⇒ đỏ (49/49). Đã BÁC giả thuyết cache-60s bằng đo (set xong đọc lại thấy NGAY —
+  flags đọc tươi, chỉ số nặng mới cache). Trạng thái LƯU thì vốn đúng từ đầu: config cạnh kho
+  ghi bền, hai lần restart daemon hôm nay đều giữ nguyên công tắc.
+  ⚠ **Bằng chứng MỚI cho mục `[~] (⑥)` lượt lạnh:** nó chặn NGUYÊN event loop — đo 2026-08-21:
+  `POST /set-rerank` timeout 8s vì daemon đang tính lượt lạnh. Tức lượt lạnh không chỉ chậm
+  MỘT endpoint mà khựng CẢ daemon. Hướng vá vẫn như sổ ghi (đẩy sang tiến trình con kiểu
+  `deepSearchChild`) — việc lớn, LỊCH SAU-EMBED không bắt buộc, làm khi rảnh tay.
 - ✅ **Số phiên nhảy 1.315 → 2.085 — ĐÃ GIẢI 2026-08-20 bằng đúng lượt `GROUP BY` mục này đề nghị:**
   992 phiên trong cụm 12–15/08 đều `claude-code`, trong đó **983 mang host `DESKTOP-PFB157K`**
   (máy kia, về qua merge kho chính Drive — đường một-kho ghi-nối-thêm mở 12/08 chính là ngày

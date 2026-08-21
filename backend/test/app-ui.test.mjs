@@ -805,3 +805,14 @@ test("pill Healthy phải TỰ SÁNG khi mở app — không bắt user bấm Re
   const freshCalls = (sys.match(/\/check\?feature='\+f\+'&fresh=1/g) || []).length;
   assert.ok(freshCalls >= 2, `nút Recheck (từng cái + all) phải mang fresh=1 — thấy ${freshCalls}/2`);
 });
+
+test("công tắc KHÔNG được 'tự bật tắt': payload memory-status GIÀ không được vẽ đè cú bấm mới (2026-08-21)", () => {
+  // Cuộc đua đo được: lượt LẠNH /memory-status >30s; user bấm toggle giữa chừng; payload cũ
+  // (bắn TRƯỚC cú bấm) về SAU và vẽ đè ⇒ nút nhìn như tự tắt rồi tự bật. Hai neo, đứt một là
+  // bệnh quay lại IM LẶNG (không lỗi, không đỏ — chỉ có user thấy nút nhảy).
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /Z\.flagsAt/u, "renderMem phải đối chiếu mốc cú bấm (Z.flagsAt)");
+  assert.match(gm, /m\[k\]=Z\.mem\[k\]/u, "trong cửa sổ sau cú bấm, giá trị LOCAL phải thắng payload già");
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sys, /Z\.flagsAt\.hybrid=Date\.now\(\)/u, "toggle phải ĐÓNG DẤU cú bấm — thiếu dấu là guard mù");
+});

@@ -78,7 +78,16 @@
 
   // ── DỜI TỪ graph.js 2026-08-07: số liệu Global Memory, không phải graph
   function renderMem(m){
-    Z.mem=m||{};
+    m=m||{};
+    // Chống ĐUA vẽ-đè (2026-08-21, user báo "công tắc tự bật tắt hoài"): một /memory-status
+    // BẮN TRƯỚC lúc bấm toggle có thể VỀ SAU (lượt lạnh đo >30s khi máy bận) và vẽ đè trạng
+    // thái CŨ lên nút vừa bật — nhìn y như nó tự tắt, vòng poll sau lại tự bật. Trong 90s sau
+    // cú bấm, giá trị LOCAL thắng; hết cửa sổ thì server là sự thật (POST hỏng thật thì sau
+    // 90s nút tự quay về đúng trạng thái server — không giấu lỗi vĩnh viễn).
+    try{var fa=Z.flagsAt||{};['hybrid','rerank','scope'].forEach(function(k){
+      if(fa[k]&&Date.now()-fa[k]<90000&&Z.mem&&m[k]!==Z.mem[k])m[k]=Z.mem[k];
+    });}catch(_){}
+    Z.mem=m;
     var tot=m.totals||{},vec=m.vectors||{},cap=m.coverage||{};
     // Trang chủ = 6 ô "at a glance" DUY NHẤT. Bảng số chi tiết (Sections/Digest/Changelog/
     // Doc/Known stores/Tokens) sống ở Global Memory › Tổng quan — trước đây màn Nạp&Đồng bộ
