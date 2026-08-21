@@ -63,6 +63,22 @@ export function edgeId(from: string, to: string, kind: string, rel: string): str
 // set as the graph — tree and graph must never drift (one is the "map", the
 // other the "territory" of the same node set).
 export const SRC_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
+
+/** Ngôn ngữ MỞ RỘNG — detect-then-load (user chốt 2026-08-21: zemory phục vụ cả user ngôn ngữ
+ *  khác, nhưng "không phải kho nào cũng áp một đống ngôn ngữ" ⇒ kho nào tự nạp đúng thứ kho đó
+ *  CÓ; repo thuần ts/js/py không tốn thêm một byte). Node của các ngôn ngữ này có symbol AST
+ *  (grammar prebuilt sẵn trong tree-sitter-wasms, nạp LƯỜI theo nhu cầu) nhưng CHƯA có lớp cạnh
+ *  import ⇒ mang cờ `noImportLayer` và không bị tính vào `isolated_pct` — đo được phép thử
+ *  2026-08-21: isolated đang 29,4/30%, tính cả node chưa-đo-được-cạnh là gate đỏ oan tức thì. */
+export const EXTRA_LANG_EXT: Record<string, string> = {
+  ".sh": "bash",
+  ".bash": "bash",
+  ".java": "java",
+  ".go": "go",
+  ".rs": "rust",
+  ".cs": "c_sharp",
+  ".rb": "ruby", // đo 2026-08-21: grammar ruby LOAD FAIL — giữ làm ca âm sống, fail-open về regex-rỗng
+};
 const IGNORE = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".venv", "__pycache__",
   "data", "generated", ".turbo", ".next", ".cache", "models", "attic", "external",
@@ -83,6 +99,9 @@ export interface GraphNode {
   bytes: number;
   /** top-level symbol names (functions / classes / exported consts) */
   symbols: string[];
+  /** true = ngôn ngữ mở rộng CHƯA có lớp cạnh import — loại khỏi isolated_pct (đừng phạt
+   *  thứ chưa đo được); symbol đến từ AST nếu grammar nạp được, không thì rỗng (fail-open). */
+  noImportLayer?: boolean;
   /** Phase B (graph-symbols.ts): AST-accurate symbols with kind + line span.
    *  Absent when tree-sitter is unavailable — `symbols` (regex) still stands. */
   symbolsDetail?: { name: string; kind: "function" | "class" | "method"; line: number; endLine: number }[];
@@ -129,7 +148,7 @@ function collectFiles(absRoot: string, absDir: string, out: string[], depth: num
       continue;
     }
     if (isDir) collectFiles(absRoot, abs, out, depth + 1);
-    else if (SRC_EXT.has(extname(name))) out.push(abs);
+    else if (SRC_EXT.has(extname(name)) || extname(name) in EXTRA_LANG_EXT) out.push(abs);
   }
 }
 
@@ -260,7 +279,11 @@ export function buildCodeGraph(root: string): CodeGraph {
     } catch {
       continue; // fail-open
     }
-    const { imports, symbols } = parseFile(text, isPy);
+    // Ngôn ngữ mở rộng: regex import/symbol của js/py KHÔNG hiểu cú pháp họ — chạy lên chỉ
+    // đẻ rác. Node vẫn vào graph (đếm được, AST enrich lấp symbol nếu grammar nạp được),
+    // cạnh import để trống + cờ noImportLayer cho fitness biết đường mà không phạt oan.
+    const extraLang = EXTRA_LANG_EXT[extname(id)];
+    const { imports, symbols } = extraLang ? { imports: [] as RawImport[], symbols: [] as string[] } : parseFile(text, isPy);
     const dir = dirname(id) === "." ? "" : dirname(id);
     const folderName = basename(dir || id);
     const slot = SLOT_ROLES[folderName] ? folderName : undefined;
@@ -274,6 +297,7 @@ export function buildCodeGraph(root: string): CodeGraph {
       symbols: symbols.slice(0, 40),
       fanIn: 0,
       fanOut: 0,
+      ...(extraLang ? { noImportLayer: true as const } : {}),
     });
     for (const imp of imports) {
       const to = imp.py ? resolvePy(imp.spec, id, pyIndex) : resolveImport(abs, imp.spec, idSet, root);
@@ -364,7 +388,12 @@ export function graphFitness(g: CodeGraph): GraphFitness {
     .sort((a, b) => b.fanIn - a.fanIn)
     .map((n) => ({ id: n.id, fanIn: n.fanIn }));
   const hubPct = files ? Math.round((hubs.length / files) * 1000) / 10 : 0;
-  const isolatedPct = files ? Math.round((g.orphans.length / files) * 1000) / 10 : 0;
+  // isolated_pct CHỈ tính trên node có LỚP CẠNH IMPORT (2026-08-21): ngôn ngữ mở rộng chưa có
+  // parser import thì "0 cạnh" là giới hạn của phép đo, không phải bệnh của repo — tính cả
+  // vào là mở thêm một ngôn ngữ đỏ oan một lần (đo: 29,4/30% trước khi mở).
+  const eligible = g.nodes.filter((n) => !n.noImportLayer);
+  const isolated = eligible.filter((n) => n.fanIn === 0 && n.fanOut === 0);
+  const isolatedPct = eligible.length ? Math.round((isolated.length / eligible.length) * 1000) / 10 : 0;
 
   const isUtil = (id: string) => {
     const n = g.nodes.find((x) => x.id === id);
@@ -385,7 +414,7 @@ export function graphFitness(g: CodeGraph): GraphFitness {
       value: isolatedPct,
       threshold: FITNESS_GATES.isolatedPct,
       passed: isolatedPct <= FITNESS_GATES.isolatedPct,
-      detail: `${g.orphans.length}/${files} file(s) with no intra-project edges (entries/scripts included)`,
+      detail: `${isolated.length}/${eligible.length} file(s) with no intra-project edges (entries/scripts included; extra-language files without an import layer excluded)`,
     },
     {
       metric: "util_violations",
