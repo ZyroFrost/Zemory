@@ -215,7 +215,14 @@ export function conform(root: string): ConformReport {
       "bảng ánh xạ đã lỗi thời — chạy skill `adopt` để đọc lại cây thật",
     );
   } else {
-    const offDirs = [...new Set(g.nodes.filter((n) => !n.slot && n.dir && !exempt(n.dir)).map((n) => n.dir))].sort();
+    // `noImportLayer` = file ngôn ngữ MỞ RỘNG (bash/java/go/rust…), vừa được nhận vào graph
+    // 2026-08-21. CỐ Ý loại khỏi phép chấm này: mở `SRC_EXT` cho graph mà để nó lan sang cổng
+    // BLOCKING là đổi hành vi conform ngoài phạm vi — đo thật cùng ngày: thư mục `devops/` chỉ
+    // chứa `deploy.sh` bỗng thành off-standard, tức mọi repo pull bản mới có thể ĐỎ ĐỘT NGỘT ở
+    // chỗ hôm qua còn xanh. Gate đỏ oan = gate bị bỏ qua (luật 7). Muốn conform soi cả ngôn ngữ
+    // mở rộng thì đó là QUYẾT ĐỊNH RIÊNG của user (đề xuất đã ghi `05_TODO`), không phải hệ quả
+    // âm thầm của một đợt build graph.
+    const offDirs = [...new Set(g.nodes.filter((n) => !n.slot && n.dir && !n.noImportLayer && !exempt(n.dir)).map((n) => n.dir))].sort();
     push(
       "off-standard-dir",
       "blocking",

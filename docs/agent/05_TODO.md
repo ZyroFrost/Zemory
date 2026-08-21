@@ -218,6 +218,20 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   nhánh rust); zemory tự nó hành vi Y NGUYÊN (không có file ext mới; `external/` vốn IGNORE).
   **Chưa làm, đừng đọc thành có:** cạnh IMPORT cho ngôn ngữ mở rộng (regex một-dòng per-language,
   thêm khi có user thật) · SQL/PowerShell (không có wasm prebuilt — mục riêng ở trên).
+  🔬 **AUDIT NGAY SAU BUILD (user yêu cầu "audit xem có cấn gì") — bắt 2 CẤN, cả hai đã vá:**
+  · **CẤN 1 (nặng): mở `SRC_EXT` LAN sang cổng blocking `conform`.** Đo: thư mục `devops/` chỉ
+    chứa `deploy.sh` bỗng thành `off-standard-dir` ⇒ **mọi repo pull bản mới có thể ĐỎ ĐỘT NGỘT
+    ở chỗ hôm qua còn xanh** — đúng loại báo oan đã vá 2 lần cùng ngày, và là side-effect ngoài
+    phạm vi việc được giao. Vá: `conform` loại node `noImportLayer` (chưa có lớp cạnh ⇒ chưa đủ
+    dữ kiện phán cấu trúc); `.ts` lạ VẪN bắt. Gate `BÁO OAN ⑦`, đột biến ⇒ đỏ.
+  · **CẤN 2: `orphans` và `isolated_pct` nói KHÁC nhau** — fitness đã loại node mở rộng, `orphans`
+    (thứ `graph export` phơi cho consumer) thì chưa ⇒ node `.go` hiện ra như "mồ côi" trong khi
+    sự thật là "chưa đo được cạnh". Vá cả hai + phơi cờ `noImportLayer` ra contract v2. Gate ⑤.
+  · **KHÔNG phải hồi quy (đã kiểm):** enrich 3,8s là chi phí CÓ TỪ TRƯỚC cho ts/js/py, không do
+    đợt này; `/code-graph` lượt lạnh 4,3s → lượt 2 **0,58s** (graph-cache lo). Repo không có file
+    ext mới ⇒ 0 grammar thừa được nạp (`external/` vốn trong IGNORE).
+  · Sweep sau vá: **109/109 test vùng đụng · 0 skipped** · lint/tsc sạch · conform ✓ ·
+    `isolated_pct` 29,6/30% PASS.
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là

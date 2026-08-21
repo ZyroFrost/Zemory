@@ -355,3 +355,21 @@ test("control-char KHÔNG nổ oan với tab / xuống dòng / CRLF / ký tự c
   });
   assert.equal(find(conform(root), "control-char"), undefined, "tab/CRLF/dấu tiếng Việt là hợp lệ — báo là báo oan");
 });
+
+test("BÁO OAN ⑦ (2026-08-21): mở graph sang ngôn ngữ MỞ RỘNG không được làm conform đỏ đột ngột", (t) => {
+  // Audit bắt tại chỗ: đợt "đa ngôn ngữ theo kho" mở `SRC_EXT` cho graph, và nó LAN sang cổng
+  // blocking này — đo thật: thư mục `devops/` chỉ chứa `deploy.sh` bỗng thành off-standard, tức
+  // mọi repo pull bản mới ĐỎ ĐỘT NGỘT ở chỗ hôm qua còn xanh. Ngôn ngữ mở rộng chưa có lớp cạnh
+  // import ⇒ chưa đủ dữ kiện để phán cấu trúc; muốn soi thì phải là quyết định riêng của user.
+  const root = goodRepo(t, (r) => {
+    write(r, "devops/deploy.sh", "echo hi\n");
+    write(r, "tools/main.go", "package main\nfunc main(){}\n");
+    write(r, "weird/x.ts", "export const a = 1;\n"); // ngôn ngữ CÓ lớp import ⇒ VẪN phải bắt
+  });
+  const rep = conform(root);
+  const off = find(rep, "off-standard-dir");
+  assert.ok(off, "thư mục .ts lạ vẫn phải bị bắt — đừng nới quá tay");
+  assert.ok(off.samples.includes("weird"), `ts lạ phải bị bắt: ${JSON.stringify(off.samples)}`);
+  assert.ok(!off.samples.includes("devops"), `bash không được làm đỏ: ${JSON.stringify(off.samples)}`);
+  assert.ok(!off.samples.includes("tools"), `go không được làm đỏ: ${JSON.stringify(off.samples)}`);
+});
