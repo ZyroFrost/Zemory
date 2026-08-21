@@ -206,6 +206,18 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   **Việc còn mở (chờ user chốt có đáng không):** một buổi build-thử wasm SQL + mapping 3 tầng
   + parse thử trên chính 60 file thật, cổng đạt = ERROR-node thấp + fitness không đỏ oan
   (thêm ngôn ngữ mới thì node của nó phải được miễn/điều chỉnh trần isolated). Không gấp.
+- ✅ **ĐA NGÔN NGỮ THEO KHO (detect-then-load) — BUILD 2026-08-21** (user chốt: *"nhiều ngôn ngữ
+  là cho USER KHÁC của zemory; không phải kho nào cũng áp một đống ngôn ngữ"*). Kiến trúc: kho
+  nào tự nạp đúng grammar kho đó CÓ — `EXTRA_LANG_EXT` (bash·java·go·rust·c_sharp·ruby, từ 36
+  grammar sẵn trong `tree-sitter-wasms`, nạp LƯỜI per-key có cache-cả-fail) + node mang cờ
+  `noImportLayer` + **fitness loại cờ đó khỏi `isolated_pct`** (không phạt thứ chưa đo được —
+  29,4/30% mà tính bừa là đỏ oan) + walker thêm 3 nhánh node-type ĐÃ ĐO (method_declaration ·
+  function_item · struct/interface/enum). Go/rust được `calls` miễn phí (chung `call_expression`).
+  Ruby giữ làm ca-âm-sống (grammar LOAD FAIL → fail-open về symbol rỗng). Gate
+  `graph-langs.test.mjs` 4/4 (fixture 7 ngôn ngữ), 2 đột biến đều đỏ (tắt guard fitness · bỏ
+  nhánh rust); zemory tự nó hành vi Y NGUYÊN (không có file ext mới; `external/` vốn IGNORE).
+  **Chưa làm, đừng đọc thành có:** cạnh IMPORT cho ngôn ngữ mở rộng (regex một-dòng per-language,
+  thêm khi có user thật) · SQL/PowerShell (không có wasm prebuilt — mục riêng ở trên).
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
