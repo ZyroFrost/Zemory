@@ -304,7 +304,7 @@ export function cmdArchive(): void {
   }
   const t = archiveTodo(ctx, currentMemoryDb());
   if (t.moved === 0) {
-    console.log(`  05_TODO.md = ${t.activeLines} lines, under threshold — left alone.`);
+    console.log(`  05_TODO.md = ${t.activeLines} lines · 0 mục đã đóng để dời (KHÔNG có ngưỡng cho file này).`);
   } else {
     console.log(`  moved ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
     console.log(`  active 05_TODO.md now ${t.activeLines} lines (open work only).`);
