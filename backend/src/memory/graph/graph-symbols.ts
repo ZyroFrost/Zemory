@@ -22,7 +22,6 @@ export interface SymbolDetail {
 }
 
 // Lazy singletons — init once per process, reuse across enrich calls.
-let ready: Promise<Map<string, unknown> | null> | null = null;
 
 /* The runtime is PINNED to web-tree-sitter@0.20.8: the prebuilt grammars in
  * tree-sitter-wasms 0.1.x are compiled with tree-sitter-cli 0.20.8, and a newer
@@ -36,7 +35,31 @@ interface ParserCtor {
   Language?: { load(path: string): Promise<unknown> };
 }
 
-async function loadLanguages(): Promise<Map<string, unknown> | null> {
+/** key → tên file wasm trong tree-sitter-wasms/out. Nhóm mở rộng (detect-then-load 2026-08-21):
+ *  chỉ nạp khi repo THẬT SỰ có file ngôn ngữ đó — repo ts/js/py không tốn thêm gì. */
+const LANG_WASM: Record<string, string> = {
+  ts: "tree-sitter-typescript.wasm",
+  tsx: "tree-sitter-tsx.wasm",
+  js: "tree-sitter-javascript.wasm",
+  py: "tree-sitter-python.wasm",
+  bash: "tree-sitter-bash.wasm",
+  java: "tree-sitter-java.wasm",
+  go: "tree-sitter-go.wasm",
+  rust: "tree-sitter-rust.wasm",
+  c_sharp: "tree-sitter-c_sharp.wasm",
+  ruby: "tree-sitter-ruby.wasm", // đo 2026-08-21: LOAD FAIL trên runtime 0.20.8 — nằm đây làm ca fail-open
+};
+
+interface TsRuntime {
+  parser: { setLanguage(l: unknown): void; parse(s: string): { rootNode: TNode } | null };
+  Language: { load(path: string): Promise<unknown> };
+  out: string;
+}
+let runtimeReady: Promise<TsRuntime | null> | null = null;
+/** Cache per-key — kể cả FAIL (null) để một grammar hỏng không bị thử lại mỗi file. */
+const langCache = new Map<string, unknown | null>();
+
+async function loadRuntime(): Promise<TsRuntime | null> {
   try {
     const mod = (await import("web-tree-sitter")) as unknown as { default?: ParserCtor; Parser?: ParserCtor; Language?: { load(path: string): Promise<unknown> } };
     const Parser = mod.default ?? mod.Parser;
@@ -47,22 +70,24 @@ async function loadLanguages(): Promise<Map<string, unknown> | null> {
     // Resolve the grammar dir through the package itself, not a hardcoded path.
     const req = createRequire(import.meta.url);
     const out = join(dirname(req.resolve("tree-sitter-wasms/package.json")), "out");
-    const langs = new Map<string, unknown>();
-    for (const [key, file] of [
-      ["ts", "tree-sitter-typescript.wasm"],
-      ["tsx", "tree-sitter-tsx.wasm"],
-      ["js", "tree-sitter-javascript.wasm"],
-      ["py", "tree-sitter-python.wasm"],
-    ] as const) {
-      const wasm = join(out, file);
-      if (existsSync(wasm)) langs.set(key, await Language.load(wasm));
-    }
-    if (!langs.size) return null;
-    langs.set("__parser", new Parser());
-    return langs;
+    return { parser: new Parser() as TsRuntime["parser"], Language, out };
   } catch {
     return null; // wasm unavailable → callers keep regex symbols
   }
+}
+
+async function getLang(rt: TsRuntime, key: string): Promise<unknown | null> {
+  if (langCache.has(key)) return langCache.get(key) ?? null;
+  let lang: unknown | null = null;
+  try {
+    const file = LANG_WASM[key];
+    const wasm = file ? join(rt.out, file) : "";
+    if (wasm && existsSync(wasm)) lang = await rt.Language.load(wasm);
+  } catch {
+    lang = null; // grammar hỏng/ABI lệch (ca ruby) → ngôn ngữ đó ở lại regex baseline
+  }
+  langCache.set(key, lang);
+  return lang;
 }
 
 function langKey(id: string): string | null {
@@ -70,6 +95,12 @@ function langKey(id: string): string | null {
   if (/\.ts$/.test(id)) return "ts";
   if (/\.(js|jsx|mjs|cjs)$/.test(id)) return "js";
   if (/\.py$/.test(id)) return "py";
+  if (/\.(sh|bash)$/.test(id)) return "bash";
+  if (/\.java$/.test(id)) return "java";
+  if (/\.go$/.test(id)) return "go";
+  if (/\.rs$/.test(id)) return "rust";
+  if (/\.cs$/.test(id)) return "c_sharp";
+  if (/\.rb$/.test(id)) return "ruby";
   return null;
 }
 
@@ -160,6 +191,23 @@ function collect(root: TNode, isPy: boolean): { defs: SymbolDetail[]; calls: Cal
         walk(c, null, rec ?? encl);
         continue;
       }
+      // ── Nhóm ngôn ngữ mở rộng (đo node-type thật 2026-08-21, không đoán) ──
+      if (t === "method_declaration" || t === "constructor_declaration") { // java · c_sharp · go method
+        const name = c.childForFieldName("name")?.text;
+        const rec = push(cls && name ? `${cls}.${name}` : name, "method", c);
+        walk(c, null, rec ?? encl);
+        continue;
+      }
+      if (t === "function_item") { // rust — đo: walker cũ khớp 0 với rust vì tên node này
+        const rec = push(c.childForFieldName("name")?.text, "function", c);
+        walk(c, null, rec ?? encl);
+        continue;
+      }
+      if (t === "interface_declaration" || t === "struct_item" || t === "enum_declaration") {
+        if (!encl) push(c.childForFieldName("name")?.text, "class", c);
+        walk(c, cls, encl);
+        continue;
+      }
       if (t === "variable_declarator" && !isPy) {
         const value = c.childForFieldName("value");
         if (value && FN_VALUE.has(value.type) && !encl) {
@@ -182,16 +230,18 @@ function collect(root: TNode, isPy: boolean): { defs: SymbolDetail[]; calls: Cal
  * files were enriched (0 = tree-sitter unavailable → regex names remain).
  */
 export async function enrichGraphSymbols(g: CodeGraph): Promise<number> {
-  ready ??= loadLanguages();
-  const langs = await ready;
-  if (!langs) return 0;
-  const parser = langs.get("__parser") as { setLanguage(l: unknown): void; parse(s: string): { rootNode: TNode } | null };
+  runtimeReady ??= loadRuntime();
+  const rt = await runtimeReady;
+  if (!rt) return 0;
+  const parser = rt.parser;
   let enriched = 0;
   for (const node of g.nodes) {
     const key = langKey(node.id);
-    if (!key || !langs.has(key)) continue;
+    if (!key) continue;
+    const lang = await getLang(rt, key); // nạp LƯỜI theo nhu cầu — repo không có Go thì Go không bao giờ nạp
+    if (!lang) continue;
     try {
-      parser.setLanguage(langs.get(key));
+      parser.setLanguage(lang);
       const tree = parser.parse(readFileSync(join(g.root, node.id), "utf8"));
       if (!tree) continue;
       const { defs, calls } = collect(tree.rootNode, key === "py");
