@@ -78,7 +78,14 @@ export function deepenRelativeLinks(markdown: string): string {
 const TODO_INTRO =
   "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
 
-const ITEM = /^(\s*)-\s*\[([x ~])\]/;
+/* Dấu trạng thái của một mục backlog. `✅` được nhận NGANG `[x]` (2026-08-21): quy ước viết
+ * thật của repo dùng `- ✅ **…**` cho mục đã đóng — đo lúc chốt phiên: **0 mục `[x]` / 59 mục
+ * `✅`**, nên `archive` chưa bao giờ nhặt được gì và `05_TODO` phình 2.327 dòng. Đúng bệnh
+ * "107 mục đã xong chiếm 46% file" mà cơ chế này sinh ra để trị — nó chỉ trị nhánh không ai
+ * dùng. Sổ nói khác code, và ở đây code là thứ phải chạy theo quy ước viết. */
+const ITEM = /^(\s*)-\s*(?:\[([x ~])\]|(✅))/;
+/** Trạng thái đã chốt (mục ra khỏi backlog) — một chỗ hỏi, hai cách viết. */
+const CLOSED = new Set(["x", "✅"]);
 
 /** One backlog item = its `- [x]` line plus every following line that belongs to
  *  it (deeper indent, continuation prose). Stops at the next item of the same or
@@ -105,7 +112,7 @@ function itemBlocks(lines: string[]): Array<{ state: string; start: number; end:
       const m2 = ITEM.exec(n);
       if (m2 && m2[1].length <= indent) break;
     }
-    out.push({ state: m[2], start: i, end: j });
+    out.push({ state: m[2] ?? m[3], start: i, end: j });
     i = j;
   }
   return out;
@@ -145,7 +152,7 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
   // closed — file size has nothing to do with it. Gating on a threshold is what let
   // 107 of them pile up to 46% of the file; and the byte threshold was firing anyway
   // with nothing to move, which is the tell that it was measuring the wrong thing.
-  const closed = itemBlocks(lines).filter((b) => b.state === "x");
+  const closed = itemBlocks(lines).filter((b) => CLOSED.has(b.state));
   if (closed.length === 0) return { moved: 0, activeLines: lines.length, archivePath: null };
 
   const drop = new Set<number>();

@@ -5,6 +5,65 @@
 
 ---
 
+## [2026-08-21b] — hấp thụ từ Graphify: `graph path` + god-nodes + đa ngôn ngữ THEO KHO
+
+**Khảo sát Graphify (108,7k sao — đo bằng GitHub API, không tin marketing).** Nó HƠN ở độ phủ
+ngôn ngữ · bề mặt truy vấn · cộng đồng; NGANG nền (tree-sitter · confidence-tier · incremental);
+THUA đúng 2 đặc sản zemory (cạnh từ CHUẨN 03 · nối episodic `touches`) + kỷ luật 0-LLM cho docs —
+nó LLM-extract docs ⇒ graph không rebuild ổn định, đúng thứ điều 13 cấm. ⚠ **Bẫy đo:** lượt
+WebFetch đầu **BỊA benchmark LOCOMO** (README thô không có); kiểm chéo raw README + API mới ra thật.
+
+**Mượn 2 món nó thắng:** · **`graph path <A> <B>`** — BFS không hướng trên 3 lớp cạnh SẴN CÓ
+(imports · calls · api seam), in LOẠI + HẠNG từng bước (suy luận không giả dạng khai báo, kể cả
+giữa đường đi); lấp lỗ traceability đa-hop plan 13 §1 tự nhận; đo sống `system.js → ui.ts`
+**1 bước qua api seam** (đường import-graph mù hoàn toàn) · **god-nodes theo TỔNG BẬC** trong
+`graph fitness` — lộ ngay `ui.ts (1↓/42↑)` mà bảng hubs chỉ-fan-in không liệt kê; matcher gộp về
+một `matchFileId`. **KHÔNG mượn:** Leiden/wiki (dependency Python, chưa ca dùng) · LLM-extract docs.
+
+**Đa ngôn ngữ THEO KHO — detect-then-load** (user chốt: *"nhiều ngôn ngữ là cho USER KHÁC của
+zemory; không phải kho nào cũng áp một đống ngôn ngữ"*). `EXTRA_LANG_EXT` (bash·java·go·rust·
+c_sharp·ruby) lấy từ **36 grammar đã ship sẵn** trong `tree-sitter-wasms`, **nạp lười per-key có
+cache-cả-fail** ⇒ kho ts/js/py không tốn thêm byte nào. Node mang cờ `noImportLayer`; walker thêm
+3 nhánh node-type ĐÃ ĐO; go/rust được `calls` miễn phí; ruby giữ làm **ca âm sống** (LOAD FAIL →
+fail-open). Phép thử điều 15 trước khi build đã bác hướng "bật cả 40": hỗ trợ một ngôn ngữ là BA
+tầng (quét file · cạnh import · walker), và 36 grammar ∩ nhu cầu thật ≈ ∅ — thứ cần là SQL (60
+file thật) thì **không có wasm prebuilt**. Gate `graph-langs` 5/5 + `graph-path` 5/5, 3 đột biến đỏ.
+
+**Audit ngay sau build bắt 2 CẤN, vá cùng ngày:** ① mở `SRC_EXT` **LAN sang cổng blocking
+`conform`** — `devops/` chỉ chứa `deploy.sh` bỗng off-standard ⇒ mọi repo pull bản mới ĐỎ ĐỘT
+NGỘT; vá bằng loại `noImportLayer` khỏi phép chấm đó (`.ts` lạ vẫn bắt) · ② `orphans` và
+`isolated_pct` **nói khác nhau** ⇒ node `.go` hiện như "mồ côi" trong contract v2; vá cả hai +
+phơi cờ ra export. Gate `BÁO OAN ⑦` + ca ⑤ đột biến đều đỏ. Sweep **109/109 · 0 skipped**.
+
+## [2026-08-21] — chấm than update pull-based · vá 2 bệnh UI "tự tắt" · skill `write-style`
+
+**"Chấm than update" (user chốt "làm luôn, không chờ embed") — MỘT phép đo, BỐN bề mặt.**
+`syncCheck()` (dry-run gap-fill + `guardDrift`) dùng chung cho: `zemory sync --check` (exit 1 khi
+cũ) · **hook nhắc đúng 1 lần/phiên** · `/harness-updates` (cache 5′) · **chip vàng ở rail** ngay
+trên chip sức khoẻ, mọi repo khớp thì ẩn hẳn. Trả lời đúng bài toán user nêu (*"repo càng nhiều,
+không thể gọi từng con áp update"*) mà KHÔNG ghi chéo — luật Phạm vi giữ nguyên: chỉ NHẮC, hành
+động áp là của agent/user bên repo đó. **Nghiệm thu tự chứng minh nhu cầu: 9 repo đang cũ**
+(mỗi cái thiếu `write-style` vừa ship; `PBI_OPS`+`SasinFlow` còn `guardStale:2`). Gate
+`sync-check` 4/4, đột biến bỏ-nhánh-skills ⇒ đỏ.
+
+**Hai bệnh UI user báo, cả hai KHÔNG phải "trạng thái bị mất" mà là VẼ SAI:**
+· *"heal mở lại là tắt, phải bấm Recheck"* — `zboot` xếp `refreshChecks()` SAU chuỗi
+  `/status → /memory-status`, mà lượt LẠNH của nó đo **>30s** khi máy bận ⇒ pill treo "…" nhìn
+  như tắt. Vá 3 tầng: chạy song song ngay đầu boot · daemon **cache `/check` 10′ + mồi 3 check
+  rẻ lúc lên** · nút ↻ Recheck mang `fresh=1` (giữ đúng nghĩa "đo lại thật"). Đo sau vá:
+  **2–3ms** từ cache · fresh 358ms.
+· *"công tắc tự bật tắt hoài"* — cuộc ĐUA vẽ-đè: payload bắn TRƯỚC cú bấm về SAU và vẽ đè trạng
+  thái cũ. Vá: toggle đóng dấu `Z.flagsAt`, local thắng 90s rồi server là sự thật. **Đã BÁC giả
+  thuyết cache-60s bằng đo** (set xong đọc lại thấy ngay). Trạng thái LƯU vốn đúng từ đầu —
+  config cạnh kho ghi bền, ba lần restart daemon trong ngày đều giữ nguyên công tắc.
+· Kèm UI: nút thu gọn rail **tích hợp vào logo** (hover hiện ‹/›), mượn ý OpenRCA; nút rời đã bỏ.
+
+**Skill mới `write-style`** — bộ luật văn phong cho văn bản đưa người đọc, chưng cất từ trang
+`Wikipedia:Signs of AI writing` (dò trang thật, không viết theo trí nhớ) thành **10 điều CẤM** +
+ví dụ tiếng Việt tương đương + quy trình 4 bước. Ship trọn **4 bộ template**, đăng ký đủ 2 chỗ
+mỗi bộ; manifest cowork 321→338 · 43→46 · thêm hàng 25. Harness tự nạp skill ngay trong phiên;
+`conform` tự đếm skill 8→9. Gate `template-parity` 7/7 · `bootstrap-manifest` 8/8.
+
 ## [2026-08-20e] — doctor thêm 3 mặt (guard lỗi thời · cloud đầy đủ · rác nháp) + daemon lên 2.0.0
 
 **Restart daemon (user duyệt):** pid 29564 · `/ping` 2.0.0 · hai công tắc giữ nguyên TẮT ·
