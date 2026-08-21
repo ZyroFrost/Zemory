@@ -188,10 +188,24 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   phủ; đáng cân duy nhất là **grammar SQL** (60 file thật) → đề xuất riêng bên dưới · KHÔNG
   Leiden/communities/wiki (dependency Python-stack, chưa ca dùng) · "LLM đọc + check lại" user
   nêu = ĐÃ LÀ điều 13 «máy dựng · agent kiểm», không cần cơ chế mới.
-- [ ] **(ĐỀ XUẤT — chờ user) grammar tree-sitter SQL cho graph** — estate có 60 file `.sql`
-  (SasinFlow/PBI), hiện graph mù hoàn toàn lớp này. Cần rà bản WASM `tree-sitter-sql` (chất
-  lượng grammar SQL nổi tiếng lởm khởm) + phép thử nhỏ trên chính 60 file thật TRƯỚC khi nhận
-  (điều 15). Không gấp.
+- [ ] **(ĐÃ CHẠY PHÉP THỬ điều 15 — 2026-08-21, user hỏi "40 ngôn ngữ opt thêm được không") —
+  KẾT LUẬN: cơ chế opt-thêm ĐÚNG là rẻ, nhưng 36 grammar sẵn có KHÔNG khớp nhu cầu; SQL bị
+  chặn ở wasm.** Số đo:
+  · `node_modules/tree-sitter-wasms` (Unlicense, đã cài) mang **36 grammar** (50 MB), zemory
+    mới nạp 4. Nạp thử 5: **bash/java/go/rust LOAD OK cùng ABI 0.20.8 · ruby LOAD FAIL** —
+    fail-open đỡ được, đúng trực giác user "không hại chất lượng" ở tầng nạp.
+  · Nhưng "hỗ trợ một ngôn ngữ" là **BA tầng**, grammar chỉ là tầng 3: ① `SRC_EXT` bộ quét
+    file (hiện chỉ ts/js/py — file .java/.sql còn không thành node) · ② cạnh import (regex
+    per-language) · ③ walker symbol (bash/java/go tình cờ khớp tên node hiện tại; **rust khớp
+    0**; mỗi ngôn ngữ cần mapping riêng).
+  · **Rủi ro chất lượng THẬT nếu mở tầng ① mà thiếu tầng ②:** node mới toàn cô lập ⇒
+    `isolated_pct` hiện **29,4% / trần 30%** — đỏ oan gần như chắc chắn.
+  · **Estate đối chiếu:** 36 grammar ∩ nhu cầu thật ≈ ∅ (không java/go/rust); thứ CẦN là
+    **SQL (60 file)** + PS1 (15) thì gói KHÔNG có; `@derekstride/tree-sitter-sql` (MIT) npm
+    **không kèm wasm prebuilt** — muốn dùng phải tự build emscripten + khớp ABI 0.20.8.
+  **Việc còn mở (chờ user chốt có đáng không):** một buổi build-thử wasm SQL + mapping 3 tầng
+  + parse thử trên chính 60 file thật, cổng đạt = ERROR-node thấp + fitness không đỏ oan
+  (thêm ngôn ngữ mới thì node của nó phải được miễn/điều chỉnh trần isolated). Không gấp.
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
