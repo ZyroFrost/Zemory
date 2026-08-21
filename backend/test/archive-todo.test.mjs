@@ -171,3 +171,32 @@ test("both tiers are indexed by the archive itself", async () => {
     s.cleanup();
   }
 });
+
+test("`✅` is a CLOSED marker too — the repo's real writing convention (2026-08-21)", () => {
+  // Measured at session close 21/08 on the live backlog: **0 items written `[x]`, 59 written
+  // `✅`**. So this whole mechanism — built to stop closed items piling up — had never moved a
+  // single one, and 05_TODO had grown to 2,327 lines. The rule was right; it was watching a
+  // spelling nobody uses. Open work must NOT ride along: swallowing it loses the work.
+  const s = scratch(`# TODO
+
+## Nhóm
+- ✅ **xong kiểu tick** — dòng chi tiết đi kèm.
+- [x] **xong kiểu ngoặc**
+- [ ] **CHƯA làm** — phải ở lại
+- [~] **đang làm** — phải ở lại
+`);
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath);
+    assert.equal(r.moved, 2, `both spellings must move, got ${r.moved}`);
+    const left = s.read("05_TODO.md");
+    assert.match(left, /CHƯA làm/, "open item stays");
+    assert.match(left, /đang làm/, "in-progress item stays");
+    assert.ok(!left.includes("xong kiểu tick"), "the ✅ item must leave");
+    const moved = s.read(join("archive", "05_TODO.md"));
+    assert.match(moved, /xong kiểu tick/, "archive must hold the ✅ item");
+    assert.match(moved, /dòng chi tiết đi kèm/, "its continuation line comes along");
+    assert.ok(!moved.includes("CHƯA làm"), "open work must never be swallowed into the archive");
+  } finally {
+    s.cleanup();
+  }
+});
