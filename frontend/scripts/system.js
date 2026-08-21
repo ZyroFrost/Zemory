@@ -99,6 +99,9 @@
       // Optimistic: flip local state + re-render NOW so the button always toggles
       // back (fixed "tắt rồi không bật lại" — was reading a cached /memory-status).
       if(Z.mem){if(/hybrid/.test(ep))Z.mem.hybrid=on;else if(/rerank/.test(ep))Z.mem.rerank=on;else if(/scope/.test(ep))Z.mem.scope=on;}
+      // Đóng dấu cú bấm — renderMem dùng mốc này để payload memory-status GIÀ (bắn trước lúc
+      // bấm, về sau vì lượt lạnh) không vẽ đè trạng thái cũ lên nút vừa gạt.
+      Z.flagsAt=Z.flagsAt||{};if(/hybrid/.test(ep))Z.flagsAt.hybrid=Date.now();else if(/rerank/.test(ep))Z.flagsAt.rerank=Date.now();else if(/scope/.test(ep))Z.flagsAt.scope=Date.now();
       renderSystem();
       var rh=zid('rHybrid'),rr=zid('rRerank');if(rh&&Z.mem)rh.classList.toggle('on',!!Z.mem.hybrid);if(rr&&Z.mem)rr.classList.toggle('on',!!Z.mem.rerank);
       zPost(ep+'?on='+tg.dataset.on).catch(function(){});return;}
