@@ -170,6 +170,28 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   (screenshot). Giữ nguyên luật Phạm vi: chỉ NHẮC, hành động áp là của agent/user bên repo đó.
   **Kèm UI (user chốt cùng lượt, mượn ý OpenRCA):** nút thu gọn rail TÍCH HỢP vào logo (hover
   hiện ‹/›, bấm gập/mở) — nút `‹` rời ở rail-foot đã bỏ. Hover-state mắt người kiểm khi mở app.
+- ✅ **KHẢO SÁT GRAPHIFY (108,7k sao, đo API — không tin marketing) + HẤP THỤ 2 MÓN — 2026-08-21
+  (user chốt "mượn cái nó thắng, 2 hệ hỗ trợ nhau").** So theo thước plan 13: nó HƠN ở độ phủ
+  ngôn ngữ (40 vs 3) + bề mặt truy vấn (path/communities/wiki) + cộng đồng; NGANG nền
+  (tree-sitter · confidence-tier · incremental); THUA zemory đúng 2 đặc sản (cạnh từ CHUẨN 03 ·
+  nối episodic `touches`) + kỷ luật 0-LLM cho docs (nó LLM-extract docs ⇒ không rebuild ổn định
+  — đúng thứ điều 13 cấm). ⚠ Bẫy đo: lượt WebFetch đầu **BỊA benchmark LOCOMO** (README thô
+  không có) — model tóm tắt nhỏ tự chế số; kiểm chéo raw README + GitHub API mới ra sự thật.
+  **Đã hấp thụ (build + gate cùng ngày):** ① **`zemory graph path <A> <B>`** — BFS không hướng
+  trên 3 lớp cạnh sẵn có (imports·calls·api), in LOẠI+HẠNG từng bước, lấp lỗ traceability đa-hop
+  plan 13 §1 tự nhận; đo sống: `system.js → ui.ts` 1 bước qua api seam (import-graph mù ca này) ·
+  ② **god-nodes theo TỔNG BẬC** trong `graph fitness` — lộ ngay `ui.ts (1↓/42↑)` mà bảng hubs
+  chỉ-fan-in không hề thấy. Gate `graph-path.test.mjs` 5/5, đột biến bỏ-chiều-ngược ⇒ đỏ;
+  matcher gộp về MỘT `matchFileId` (impact + path cùng nguồn, hết nguy cơ hai bản lệch).
+  **Phán quyết phần còn lại (có số, đừng mở lại vô cớ):** · KHÔNG chạy đua 40 ngôn ngữ — đo
+  estate 10 repo: py 165 · ts 139 · mjs 107 · **sql 60** · js 32 · ps1 15 · dax 3 — py/ts/js đã
+  phủ; đáng cân duy nhất là **grammar SQL** (60 file thật) → đề xuất riêng bên dưới · KHÔNG
+  Leiden/communities/wiki (dependency Python-stack, chưa ca dùng) · "LLM đọc + check lại" user
+  nêu = ĐÃ LÀ điều 13 «máy dựng · agent kiểm», không cần cơ chế mới.
+- [ ] **(ĐỀ XUẤT — chờ user) grammar tree-sitter SQL cho graph** — estate có 60 file `.sql`
+  (SasinFlow/PBI), hiện graph mù hoàn toàn lớp này. Cần rà bản WASM `tree-sitter-sql` (chất
+  lượng grammar SQL nổi tiếng lởm khởm) + phép thử nhỏ trên chính 60 file thật TRƯỚC khi nhận
+  (điều 15). Không gấp.
 - [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
   `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
   thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là

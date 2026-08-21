@@ -426,19 +426,13 @@ export interface FileImpact {
  *  against graph ids, then report its blast radius. */
 export function fileImpact(g: CodeGraph, query: string): FileImpact {
   const empty: FileImpact = { file: null, candidates: [], fanIn: 0, fanOut: 0, isHub: false, importers: [], imports: [], transitiveImporters: [], symbols: [], loc: 0 };
-  const q = query.replace(/\\/g, "/").replace(/^\.\//, "");
-  const ids = g.nodes.map((n) => n.id);
-  // exact → suffix → basename
-  let matches = ids.filter((id) => id === q);
-  if (!matches.length) matches = ids.filter((id) => id.endsWith("/" + q) || id.endsWith(q));
-  if (!matches.length) {
-    const base = q.split("/").pop() as string;
-    matches = ids.filter((id) => id.split("/").pop() === base);
-  }
-  if (!matches.length) return empty;
-  if (matches.length > 1) return { ...empty, candidates: matches.slice(0, 10) };
+  // Matcher dời ra `matchFileId` (2026-08-21) — `graph path` cần đúng cùng cách hiểu "khớp";
+  // giữ hai bản là thế nào cũng lệch.
+  const m = matchFileId(g, query);
+  if (!m.id && m.candidates.length) return { ...empty, candidates: m.candidates };
+  if (!m.id) return empty;
 
-  const id = matches[0];
+  const id = m.id;
   const node = g.nodes.find((n) => n.id === id) as GraphNode;
   const importers = g.edges.filter((e) => e.to === id).map((e) => e.from).sort();
   const imports = g.edges.filter((e) => e.from === id).map((e) => e.to).sort();
@@ -471,4 +465,86 @@ export function fileImpact(g: CodeGraph, query: string): FileImpact {
     ...(node.symbolsDetail ? { symbolsDetail: node.symbolsDetail } : {}),
     loc: node.loc,
   };
+}
+
+// ── Hấp thụ từ khảo sát Graphify 2026-08-21 (user chốt "2 hệ hỗ trợ nhau, mượn cái nó thắng"):
+//    `path A B` lấp đúng lỗ tự nhận ở §1 plan 13 — "graph chưa trả lời được traceability đa-hop".
+//    Thuần BFS trên cạnh ĐÃ CÓ, 0 dependency, 0 LLM (điều 6/13); Leiden/wiki cố ý KHÔNG mang theo.
+
+/** Matcher file-id dùng chung (exact → suffix → basename) — MỘT nguồn cho impact lẫn path;
+ *  hai bản matcher là hai cách hiểu "khớp" rồi thế nào cũng lệch (bài học nguồn-trùng). */
+export function matchFileId(g: CodeGraph, query: string): { id: string | null; candidates: string[] } {
+  const q = query.replace(/\\/g, "/").replace(/^\.\//, "");
+  const ids = g.nodes.map((n) => n.id);
+  let matches = ids.filter((id) => id === q);
+  if (!matches.length) matches = ids.filter((id) => id.endsWith("/" + q) || id.endsWith(q));
+  if (!matches.length) {
+    const base = q.split("/").pop() as string;
+    matches = ids.filter((id) => id.split("/").pop() === base);
+  }
+  if (!matches.length) return { id: null, candidates: [] };
+  if (matches.length > 1) return { id: null, candidates: matches.slice(0, 10) };
+  return { id: matches[0], candidates: [] };
+}
+
+export interface PathStep {
+  from: string;
+  to: string;
+  type: string;
+  kind: "declared" | "inferred";
+  /** false = cạnh gốc chiều ngược lại (BFS đi hai chiều — "liên quan" không có hướng, nhưng
+   *  bước in ra phải nói thật cạnh thật trỏ chiều nào). */
+  forward: boolean;
+}
+
+/** Đường NGẮN NHẤT giữa hai node qua bộ cạnh đã gộp (imports · calls · api …).
+ *  BFS không hướng, tất định (cạnh duyệt theo thứ tự đầu vào); null = không nối được. */
+export function shortestPathEdges(
+  edges: Array<{ from: string; to: string; type: string; kind: "declared" | "inferred" }>,
+  from: string,
+  to: string,
+): PathStep[] | null {
+  if (from === to) return [];
+  const adj = new Map<string, PathStep[]>();
+  const add = (key: string, step: PathStep): void => {
+    const arr = adj.get(key);
+    if (arr) arr.push(step);
+    else adj.set(key, [step]);
+  };
+  for (const e of edges) {
+    add(e.from, { from: e.from, to: e.to, type: e.type, kind: e.kind, forward: true });
+    add(e.to, { from: e.to, to: e.from, type: e.type, kind: e.kind, forward: false });
+  }
+  const prev = new Map<string, PathStep>();
+  const queue: string[] = [from];
+  const seen = new Set<string>([from]);
+  while (queue.length) {
+    const cur = queue.shift() as string;
+    for (const step of adj.get(cur) ?? []) {
+      if (seen.has(step.to)) continue;
+      seen.add(step.to);
+      prev.set(step.to, step);
+      if (step.to === to) {
+        const path: PathStep[] = [];
+        let at = to;
+        while (at !== from) {
+          const p = prev.get(at) as PathStep;
+          path.unshift(p);
+          at = p.from;
+        }
+        return path;
+      }
+      queue.push(step.to);
+    }
+  }
+  return null;
+}
+
+/** Top "god node" theo tổng bậc (fan-in + fan-out) — bản xếp hạng cho fitness report;
+ *  con số từng node vốn đã có, đây chỉ là BẢN IN người đọc nhanh được. */
+export function topHubs(g: CodeGraph, n = 5): Array<{ id: string; fanIn: number; fanOut: number; slot?: string }> {
+  return [...g.nodes]
+    .sort((a, b) => b.fanIn + b.fanOut - (a.fanIn + a.fanOut))
+    .slice(0, n)
+    .map((x) => ({ id: x.id, fanIn: x.fanIn, fanOut: x.fanOut, slot: x.slot }));
 }

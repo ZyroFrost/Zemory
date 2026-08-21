@@ -2,7 +2,7 @@
 // graph (HP điều 13). Advisory, 0 LLM except the opt-in --semantic overlay.
 import { writeFileSync } from "node:fs";
 import { currentProjectRoot } from "../core/config.js";
-import { buildCodeGraph, fileImpact, graphFitness, stampEdgeIds, HUB_FANIN } from "../memory/graph/graph.js";
+import { buildCodeGraph, fileImpact, graphFitness, matchFileId, shortestPathEdges, stampEdgeIds, topHubs, HUB_FANIN } from "../memory/graph/graph.js";
 import { enrichGraphSymbols, resolveCalls } from "../memory/graph/graph-symbols.js";
 import { buildTouchIndex, touchesFor } from "../memory/graph/graph-memory.js";
 import { buildSeamEdges } from "../memory/graph/graph-seam.js";
@@ -137,8 +137,66 @@ export async function cmdGraph(args: string[]): Promise<void> {
     if (f.hubs.length) {
       console.log(`  hubs: ${f.hubs.slice(0, 5).map((h) => `${h.id} (${h.fanIn})`).join(" · ")}${f.hubs.length > 5 ? " · …" : ""}`);
     }
+    // "God node" theo TỔNG BẬC (fan-in + fan-out) — hấp thụ từ khảo sát Graphify 2026-08-21:
+    // hubs ở trên chỉ xếp theo fan-in (ai bị import nhiều), còn node vừa bị gọi nhiều vừa gọi
+    // nhiều mới là chỗ mọi thứ đi QUA. Số per-node vốn có sẵn; đây chỉ là bản in xếp hạng.
+    const gods = topHubs(g, 5).filter((h) => h.fanIn + h.fanOut > 0);
+    if (gods.length) {
+      console.log(`  god-nodes (tổng bậc): ${gods.map((h) => `${h.id} (${h.fanIn}↓/${h.fanOut}↑)`).join(" · ")}`);
+    }
     console.log(f.passed ? "  PASS" : "  FAIL");
     if (args.includes("--gate") && !f.passed) process.exitCode = 1;
+    return;
+  }
+  if (sub === "path") {
+    // Hấp thụ từ Graphify (user chốt 2026-08-21): "X liên quan Y qua đường nào" — lỗ
+    // traceability đa-hop plan 13 §1 tự nhận. BFS trên đúng 3 lớp cạnh file-level đang có
+    // (imports khai báo · calls suy luận · api seam FE↔BE); mỗi bước in LOẠI + HẠNG cạnh —
+    // giữ luật điều 13: suy luận không bao giờ giả dạng khai báo, kể cả trong một đường đi.
+    const qa = args[1];
+    const qb = args[2];
+    if (!qa || !qb) {
+      console.log("usage: zemory graph path <fileA> <fileB>");
+      console.log("  Đường NGẮN NHẤT nối hai file qua imports · calls · api seam (không hướng, in chiều thật).");
+      return;
+    }
+    const g = buildCodeGraph(root);
+    await enrichGraphSymbols(g);
+    const pick = (q: string): string | null => {
+      const m = matchFileId(g, q);
+      if (m.id) return m.id;
+      if (m.candidates.length) {
+        console.log(`zemory graph path — "${q}" is ambiguous, pick one:`);
+        for (const c of m.candidates) console.log(`  ${c}`);
+      } else {
+        console.log(`zemory graph path — no source file matches "${q}" under ${root}`);
+      }
+      process.exitCode = 1;
+      return null;
+    };
+    const a = pick(qa);
+    if (!a) return;
+    const b = pick(qb);
+    if (!b) return;
+    const calls = resolveCalls(g);
+    const seams = buildSeamEdges(root, g.nodes);
+    const edges = [
+      ...g.edges.map((e) => ({ from: e.from, to: e.to, type: "imports", kind: "declared" as const })),
+      ...calls.map((c) => ({ from: c.fromFile, to: c.toFile, type: "calls", kind: "inferred" as const })),
+      ...seams.map((se) => ({ from: se.from, to: se.to, type: "api", kind: "inferred" as const })),
+    ];
+    const path = shortestPathEdges(edges, a, b);
+    if (path === null) {
+      console.log(`zemory graph path — ${a} và ${b} KHÔNG nối được qua 3 lớp cạnh hiện có (imports · calls · api).`);
+      console.log("  Không nối ≠ không liên quan: quan hệ ngữ nghĩa/route viết động nằm ngoài tầm graph (điều 13).");
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`zemory graph path — ${a} → ${b}  (${path.length} bước)`);
+    for (const s of path) {
+      const arrow = s.forward ? "→" : "←";
+      console.log(`  ${s.from} ${arrow} (${s.type}${s.kind === "inferred" ? " · inferred" : ""}) ${arrow} ${s.to}`);
+    }
     return;
   }
   // ── PHÍA TIÊU THỤ của edge id (plan 13 §4) ─────────────────────────────────
@@ -326,7 +384,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
     }
     return;
   }
-  console.log("usage: zemory graph <impact <file> | callers <symbol> | fitness [--gate] | docs | export [--all] [--out <file.json>]>");
+  console.log("usage: zemory graph <impact <file> | path <fileA> <fileB> | callers <symbol> | fitness [--gate] | docs | export [--all] [--out <file.json>]>");
   console.log("  impact  — advisory blast-radius for one file (importers, transitive reach, hub flag, past sessions)");
   console.log("  callers — who calls this function/method (name-match, confidence-labeled)");
   console.log("  fitness — file-graph health metrics with gates (hub% · isolated% · util purity)");
