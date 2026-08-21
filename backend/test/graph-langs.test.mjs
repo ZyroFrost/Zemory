@@ -69,3 +69,14 @@ test("④ bảng EXTRA_LANG_EXT và bảng wasm phải KHỚP nhau — thêm ext
     assert.ok(["bash", "java", "go", "rust", "c_sharp", "ruby"].includes(lang), `lang lạ chưa khai gate: ${lang}`);
   }
 });
+
+test("⑤ orphans và isolated_pct phải nói MỘT câu — node chưa có lớp import không bị gọi là mồ côi", (t) => {
+  // Audit 2026-08-21 bắt được: fitness đã loại node noImportLayer nhưng `orphans` thì chưa ⇒
+  // hai bề mặt của CÙNG một sự thật nói khác nhau, và consumer đọc `graph export` sẽ thấy
+  // node .go nằm trong orphans (nói dối: "mồ côi" ≠ "chưa đo được cạnh").
+  const g = buildCodeGraph(polyglotRepo(t));
+  const extra = ["src/pull.sh", "src/Loader.java", "src/pull.go", "src/pull.rs", "src/svc.cs", "src/pull.rb"];
+  for (const f of extra) assert.ok(!g.orphans.includes(f), `${f} không được nằm trong orphans`);
+  const iso = graphFitness(g).metrics.find((m) => m.metric === "isolated_pct");
+  assert.equal(iso.value, 0, "hai bề mặt phải khớp: orphans rỗng thì isolated cũng 0%");
+});

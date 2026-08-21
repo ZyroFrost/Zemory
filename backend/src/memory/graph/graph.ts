@@ -315,7 +315,10 @@ export function buildCodeGraph(root: string): CodeGraph {
     n.fanIn = fanIn.get(n.id) ?? 0;
     n.fanOut = fanOut.get(n.id) ?? 0;
   }
-  const orphans = nodes.filter((n) => n.fanIn === 0 && n.fanOut === 0).map((n) => n.id);
+  // `orphans` = 0 cạnh VÀ đã đo được cạnh. Node ngôn ngữ mở rộng chưa có parser import thì
+  // "0 cạnh" là giới hạn phép đo — gọi nó mồ côi là bề mặt nói dối (cùng lý do fitness loại
+  // chúng khỏi isolated_pct; hai bề mặt phải nói MỘT câu, lệch nhau là đọc sai một chỗ).
+  const orphans = nodes.filter((n) => !n.noImportLayer && n.fanIn === 0 && n.fanOut === 0).map((n) => n.id);
   const slots = new Set(nodes.map((n) => n.slot).filter(Boolean));
   const bytes = nodes.reduce((n, x) => n + x.bytes, 0);
   return { root, nodes, edges, orphans, stats: { files: nodes.length, edges: edges.length, slots: slots.size, bytes } };

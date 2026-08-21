@@ -293,6 +293,10 @@ export async function cmdGraph(args: string[]): Promise<void> {
           fanIn: n.fanIn,
           fanOut: n.fanOut,
           symbols: n.symbolsDetail ?? n.symbols.map((s) => ({ name: s, kind: "function", line: 0, endLine: 0 })),
+          // Ngôn ngữ mở rộng CHƯA có lớp cạnh import (2026-08-21): phải phơi ra contract, không
+          // thì consumer thấy fan-in 0 rồi đọc thành "mồ côi" — trong khi sự thật là "chưa đo
+          // được". Đúng loại nói-dối-lặng điều 13 cấm; `orphans` bên dưới cũng loại chúng.
+          ...(n.noImportLayer ? { noImportLayer: true } : {}),
           touchedBy: touchesFor(touch, n.id).sessions,
         })),
         // `eid` đóng dấu SAU khi đã gộp đủ ba lớp (imports · calls · semantic) — đóng ở
