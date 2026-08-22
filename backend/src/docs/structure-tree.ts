@@ -8,8 +8,8 @@
 // (reconcile is agent-driven — 03_STRUCTURE §8).
 
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { extname, join } from "node:path";
-import { SRC_EXT } from "../memory/graph/graph.js";
+import { join } from "node:path";
+import { isSourceLeaf } from "../memory/graph/graph.js";
 
 /**
  * The standard slot dictionary — one line per concern, mirroring 03_STRUCTURE
@@ -198,9 +198,10 @@ function walk(absDir: string, relDir: string, depth: number): TreeNode[] {
       const meta = roleFor(name, depth);
       const children = NO_RECURSE.has(name) ? [] : walk(abs, rel, depth + 1);
       dirs.push({ name, path: rel, ...meta, children });
-    } else if (SRC_EXT.has(extname(name))) {
-      // Source-file leaf — same extension set as the code graph (SRC_EXT), so
-      // every graph node has a matching row here (structure ↔ graph parity).
+    } else if (isSourceLeaf(name)) {
+      // Source-file leaf — same extension set as the code graph (`isSourceLeaf`:
+      // SRC_EXT + EXTRA_LANG_EXT), so every graph node has a matching row here
+      // (structure ↔ graph parity). Đừng inline lại một tập đuôi thứ hai ở đây.
       files.push({ name, path: rel, known: true, isFile: true, children: [] });
     }
   }

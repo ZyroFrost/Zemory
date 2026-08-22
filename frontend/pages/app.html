@@ -35,10 +35,10 @@
 
   <main class="main">
     <div class="topbar">
-      <div class="ttl" id="topTitle"><h1>Home</h1><p>Tổng quan bộ nhớ AI trên máy này</p></div>
+      <div class="ttl" id="topTitle"><h1>Home</h1><p data-i18n="ttl.home">Tổng quan bộ nhớ AI trên máy này</p></div>
       <div class="spacer"></div>
-      <span class="topver" id="topVersion" title="phiên bản">v1.0.0</span>
-      <button class="topgear" id="topSettings" title="Cài đặt" aria-label="Cài đặt">⚙</button>
+      <span class="topver" id="topVersion" data-i18n-title="top.ver" title="phiên bản">v1.0.0</span>
+      <button class="topgear" id="topSettings" data-i18n-title="top.settings" data-i18n-aria="top.settings" title="Cài đặt" aria-label="Cài đặt">⚙</button>
     </div>
     <div class="scroll" id="scroll">
 
@@ -49,10 +49,10 @@
         <div class="grid g6">
           <div class="stat"><div class="lbl"><span class="si">💬</span> Messages<span class="qh" data-i18n-hint="hint.msg">?</span></div><div class="val" id="stMsg">—</div><div class="sub" data-i18n="st.global">toàn cục</div></div>
           <div class="stat"><div class="lbl"><span class="si">🗂</span> Sessions<span class="qh" data-i18n-hint="hint.sess">?</span></div><div class="val" id="stSess">—</div><div class="sub" data-i18n="st.stored">đã lưu</div></div>
-          <div class="stat" data-nav="projects" style="cursor:pointer"><div class="lbl"><span class="si">📁</span> Projects<span class="qh" data-i18n-hint="hint.projects">?</span></div><div class="val" id="stProjects">—</div><div class="sub" id="stProjectsSub">đã liên kết</div></div>
+          <div class="stat" data-nav="projects" style="cursor:pointer"><div class="lbl"><span class="si">📁</span> Projects<span class="qh" data-i18n-hint="hint.projects">?</span></div><div class="val" id="stProjects">—</div><div class="sub" id="stProjectsSub" data-i18n="home.projLinked">đã liên kết</div></div>
           <div class="stat"><div class="lbl"><span class="si">🔄</span> Last Sync<span class="qh" data-i18n-hint="hint.lastsync">?</span></div><div class="val" style="font-size:18px" id="stSync">—</div><div class="sub" id="stSyncSub">—</div></div>
           <div class="stat"><div class="lbl"><span class="si">◇</span> Vectors<span class="qh" data-i18n-hint="hint.vec">?</span></div><div class="val" id="stVec">—</div><div class="sub" id="stVecSub">—</div></div>
-          <div class="stat"><div class="lbl"><span class="si">🖴</span> Storage<span class="qh" data-i18n-hint="hint.store">?</span></div><div class="val" id="stStore">—</div><div class="sub">cục bộ</div></div>
+          <div class="stat"><div class="lbl"><span class="si">🖴</span> Storage<span class="qh" data-i18n-hint="hint.store">?</span></div><div class="val" id="stStore">—</div><div class="sub" data-i18n="home.storeLocal">cục bộ</div></div>
         </div>
         <div class="grid g2 grow">
           <div class="card"><div class="card-h"><div class="t"><span class="ci">📁</span> <span data-i18n="home.recentProj">Dự án gần đây</span></div><a data-nav="projects" data-i18n="home.all">Tất cả →</a></div><div class="card-b" id="homeProjects">
@@ -96,9 +96,9 @@
       <section class="screen" data-s="recall">
         <div class="tabs"><button class="on" data-rc="find">🔍 <span data-i18n="rc.find">Tìm kiếm</span></button><button data-rc="sess">🗂 <span data-i18n="rc.sess">Phiên</span></button></div>
         <div class="sub on" data-rc="find">
-        <div class="recall-in"><span>🔍</span><input id="rq" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall">Tìm ✦</button></div>
+        <div class="recall-in"><span>🔍</span><input id="rq" data-i18n-ph="recall.ph" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall" data-i18n="recall.go">Tìm ✦</button></div>
         <div class="filters">
-          <div class="fchip on" id="rAll" data-rf="all">Cả máy</div>
+          <div class="fchip on" id="rAll" data-rf="all" data-i18n="recall.allMachines">Cả máy</div>
           <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>
           <div class="fchip" id="rHybrid" data-rf="hybrid" data-i18n-title="f.hybridTip" title="Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.">Hybrid</div>
           <div class="fchip" id="rRerank" data-rf="rerank" data-i18n-title="f.rerankTip" title="Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.">Rerank</div>
@@ -199,7 +199,7 @@
                 <option value="layers" data-i18n="glay.layers">Xếp: theo tầng import</option>
               </select>
               <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-dim);cursor:pointer"><input type="checkbox" id="gOrphans"> <span data-i18n="graph.orphans">Chỉ orphan</span></label>
-              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)"><span data-i18n="graph.spacing">Giãn cách</span><input type="range" id="gSpacing" min="0.6" max="2.6" step="0.2" value="1" style="width:80px;accent-color:var(--primary)"><span id="gSpacingVal" class="mono" style="font-size:11px;color:var(--text-faint);min-width:24px">1.0×</span></label>
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)"><span data-i18n="graph.spacing">Giãn cách</span><input type="range" id="gSpacing" min="0.6" max="2.6" step="0.2" value="1" data-i18n-aria="graph.spacing" aria-label="Giãn cách" style="width:80px;accent-color:var(--primary)"><span id="gSpacingVal" class="mono" style="font-size:11px;color:var(--text-faint);min-width:24px">1.0×</span></label>
               <!-- Lọc theo HẠNG CẠNH. `imports` = khai báo (tất định) · `calls` = suy luận
                    (name-match, có confidence) — nhãn phải RÕ, cạnh suy luận không được
                    giả dạng khai báo (HP điều 13). Dựng động trong gRenderEdgeFilter(). -->
@@ -288,7 +288,7 @@
             <div id="scanMsg" class="scanmsg"></div>
             <div class="section-t" data-i18n="mem.autoH">Tự động — daemon tự làm gì khi BẬT</div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.realtime">Lưu tức thì mỗi tin</b><small data-i18n="mem.realtimeD">BẬT: mỗi lượt trả lời xong là phiên được nạp ngay vào bộ nhớ (&lt;1s), không chờ nhịp nền. Kèm cảnh báo khi context gần đầy và tự chốt sổ trước khi bị nén.</small></div><div class="toggle" data-auto="realtime"></div></div>
-            <div class="set-row"><div class="sl"><b data-i18n="mem.ctxWarn">Ngưỡng nhắc context</b><small data-i18n="mem.ctxWarnD">Chạm % này của cửa sổ context là nhắc chốt việc + tự lưu phiên (một lần mỗi chu kỳ). 95% của 200k chừa ~10k token; của 1M chừa ~50k — chỉnh theo mức an toàn bạn muốn.</small></div><div style="display:flex;align-items:center;gap:4px"><input type="number" id="ctxWarnPct" min="50" max="99" step="1" style="width:58px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:12px;outline:none;text-align:right"><span style="font-size:12px;color:var(--text-dim)">%</span></div></div>
+            <div class="set-row"><div class="sl"><b data-i18n="mem.ctxWarn">Ngưỡng nhắc context</b><small data-i18n="mem.ctxWarnD">Chạm % này của cửa sổ context là nhắc chốt việc + tự lưu phiên (một lần mỗi chu kỳ). 95% của 200k chừa ~10k token; của 1M chừa ~50k — chỉnh theo mức an toàn bạn muốn.</small></div><div style="display:flex;align-items:center;gap:4px"><input type="number" id="ctxWarnPct" min="50" max="99" step="1" data-i18n-aria="mem.ctxWarn" aria-label="Ngưỡng nhắc context" style="width:58px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:12px;outline:none;text-align:right"><span style="font-size:12px;color:var(--text-dim)">%</span></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.scheduler">Lưới bù nền</b><small data-i18n="mem.schedulerD">BẬT: mỗi 30 phút daemon quét vét nguồn không có hook, chạy embed cho phần tồn và dựng lại digest; nhường quyền ghi cho CLI.</small></div><div class="toggle" data-auto="scheduler"></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.autostart">Mở cùng PC</b><small data-i18n="mem.autostartD">BẬT: đăng nhập máy là daemon đã chạy nền sẵn ở port 4444 (không phải mở tay).</small></div><div class="toggle" data-auto="autostart"></div></div>
             <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.autosync">Tự sync memory</b><small data-i18n="mem.autosyncD">BẬT: có tin mới → tự export bundle; bundle máy khác mới hơn → tự import --merge. Chỉ đi qua Drive (.enc), không thêm kênh nào.</small></div><div class="toggle" data-auto="autosync"></div></div>
@@ -296,7 +296,7 @@
           <div class="seam" data-seam="mem2"></div>
           <!-- Col 3: Drive Sync + Sao lưu & Riêng tư (đi cùng: đều là "dữ liệu đi ra/vào") -->
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span></div><div class="card-b">
-            <div class="drv-progress" title="% tin nhắn của máy này đã đẩy lên Drive">
+            <div class="drv-progress" data-i18n-title="drv.pushedPct" title="% tin nhắn của máy này đã đẩy lên Drive">
               <div class="donut"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="driveArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="driveDonutPct">—</div></div>
               <div class="drv-progress-txt"><b id="driveSyncedTxt">—</b><small id="driveSyncedSub">—</small></div>
             </div>
@@ -310,7 +310,7 @@
               <div><span data-i18n="drv.counted">Đã đẩy / tổng</span><b id="drvCount">—</b></div>
             </div>
             <div class="muted" style="font-size:11px;margin-bottom:6px" data-i18n="drv.chooseFolder">Chọn folder Drive dùng chung: mỗi máy xuất bundle mã hoá (.enc) vào đây, máy khác merge về. Dán đường dẫn rồi bấm Link.</div>
-            <div style="display:flex;gap:6px"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
+            <div style="display:flex;gap:6px"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
             <div id="driveState" class="scanmsg" style="margin:8px 0">—</div>
             <div style="display:flex;gap:8px"><button class="btn primary sm" style="flex:1" data-act="drivesync" data-i18n="act.syncNow">Đồng bộ ngay</button></div>
             <div class="section-t" data-i18n="mem.syncMode">Chế độ đồng bộ</div>
@@ -350,14 +350,14 @@
               <div class="ti ind" data-f="plan/00_overview.md">📄 00_overview.md</div>
             </div></div>
             <div class="seam" data-seam="hdocs"></div>
-            <div class="card"><div class="card-h"><div class="t" id="stdTitle">AGENTS.md</div><span class="muted" id="stdProfTag">hệ APP</span></div>
+            <div class="card"><div class="card-h"><div class="t" id="stdTitle">AGENTS.md</div><span class="muted" id="stdProfTag" data-i18n="harness.profApp">hệ APP</span></div>
               <div class="card-b"><div class="mdview" id="stdBody"></div></div>
             </div>
           </div>
         </div>
         <div class="sub" data-ht="struct">
           <div class="grid grow rzgrid" style="grid-template-columns:var(--hstruct,1.15fr) 8px 1fr">
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="harness.tree">Cây thư mục chuẩn —</span> <span class="badge-req" style="border-color:var(--primary);color:var(--primary)" data-i18n="harness.required">★ = bắt buộc</span> · <span data-i18n="harness.opt">opt = tạo khi có concern</span></div><span class="muted" id="structProf">hệ APP</span></div><div class="card-b" id="structTree"></div></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="harness.tree">Cây thư mục chuẩn —</span> <span class="badge-req" style="border-color:var(--primary);color:var(--primary)" data-i18n="harness.required">★ = bắt buộc</span> · <span data-i18n="harness.opt">opt = tạo khi có concern</span></div><span class="muted" id="structProf" data-i18n="harness.profApp">hệ APP</span></div><div class="card-b" id="structTree"></div></div>
             <div class="seam" data-seam="hstruct"></div>
             <div class="card"><div class="card-h"><div class="t"><span class="ci">🧭</span> <span data-i18n="harness.routing">Routing — sửa gì → vào đâu</span></div></div><div class="card-b" id="routeTable"></div></div>
           </div>
@@ -373,12 +373,12 @@
 
 <!-- SETTINGS dialog (M · 16:9). Only REAL settings; opened by ⚙ top-right. -->
 <div class="dlg-back" id="settingsDlg">
-  <div class="dlg" role="dialog" aria-label="Cài đặt">
-    <div class="dlg-h"><span class="ci" style="color:var(--primary)">⚙</span><b data-i18n="set.title">Cài đặt</b><span class="muted" style="font-size:11px" id="dlgVer">v1.0.0</span><button class="x" id="settingsClose" aria-label="Đóng">✕</button></div>
+  <div class="dlg" role="dialog" data-i18n-aria="top.settings" aria-label="Cài đặt">
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">⚙</span><b data-i18n="set.title">Cài đặt</b><span class="muted" style="font-size:11px" id="dlgVer">v1.0.0</span><button class="x" id="settingsClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
       <div class="set-row"><div class="sl"><b data-i18n="set.theme">Giao diện</b><small>Dark · Light (gold-on-white)</small></div><div class="filters"><div class="fchip on" id="setDark">Dark</div><div class="fchip" id="setLight">Light</div></div></div>
       <div class="set-row"><div class="sl"><b data-i18n="set.lang">Ngôn ngữ</b><small data-i18n="set.langD">ngôn ngữ giao diện</small></div><div class="filters"><div class="fchip" id="langVi" data-lang="vi">VI</div><div class="fchip" id="langEn" data-lang="en">EN</div></div></div>
-      <div class="set-row"><div class="sl"><b data-i18n="set.dbLoc">Nơi lưu DB</b><small data-i18n="set.dbLocD">dời khỏi ổ hệ thống (WAL an toàn) · giữ bản cũ .bak</small></div><div style="display:flex;gap:6px"><input id="relocInput" placeholder="D:\\zemory-data" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:150px"><button class="btn sm" data-act="browse-reloc" title="Chọn folder…">📁</button><button class="btn sm" data-act="relocate" data-i18n="set.relocate">Dời…</button></div></div>
+      <div class="set-row"><div class="sl"><b data-i18n="set.dbLoc">Nơi lưu DB</b><small data-i18n="set.dbLocD">dời khỏi ổ hệ thống (WAL an toàn) · giữ bản cũ .bak</small></div><div style="display:flex;gap:6px"><input id="relocInput" placeholder="D:\\zemory-data" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:150px"><button class="btn sm" data-act="browse-reloc" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="relocate" data-i18n="set.relocate">Dời…</button></div></div>
       <!-- set-row CUỐI phải border:0 — ngay dưới là khối About có border-top, để border
            của row này thì ra HAI vạch sát nhau (user báo 2026-07-25 "dư line ngang"). -->
       <div class="set-row" style="border:0"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
@@ -398,8 +398,8 @@
 <!-- Add Project dialog (S, compact) — real dialog + native OS folder picker, not
      a browser prompt(). ESC/backdrop/✕ đóng. -->
 <div class="dlg-back" id="addProjDlg">
-  <div class="dlg sm" role="dialog" aria-label="Thêm dự án">
-    <div class="dlg-h"><span class="ci" style="color:var(--primary)">＋</span><b data-i18n="addp.title">Thêm dự án</b><button class="x" id="addProjClose" aria-label="Đóng">✕</button></div>
+  <div class="dlg sm" role="dialog" data-i18n-aria="addp.title" aria-label="Thêm dự án">
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">＋</span><b data-i18n="addp.title">Thêm dự án</b><button class="x" id="addProjClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
       <p class="muted" style="font-size:12px;margin:0 0 10px" data-i18n="addp.desc">Dán đường dẫn folder của dự án, hoặc bấm Chọn folder… để mở hộp thoại hệ điều hành.</p>
       <div style="display:flex;gap:6px">
@@ -420,7 +420,7 @@
      cho mọi .dlg-back.on; bấm nền cũng đóng. -->
 <div class="dlg-back" id="imgDlg">
   <div class="dlg" role="dialog" aria-labelledby="imgDlgTitle">
-    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" aria-label="Đóng">✕</button></div>
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b" id="imgDlgBody"></div>
   </div>
 </div>
@@ -429,12 +429,12 @@
      Body is filled per-call by zDialog(). ESC/backdrop/✕ đóng. -->
 <div class="dlg-back" id="zDlg">
   <div class="dlg sm" role="dialog" aria-labelledby="zDlgTitle">
-    <div class="dlg-h"><span class="ci" id="zDlgIcon" style="color:var(--primary)">?</span><b id="zDlgTitle">—</b><button class="x" id="zDlgX" aria-label="Đóng">✕</button></div>
+    <div class="dlg-h"><span class="ci" id="zDlgIcon" style="color:var(--primary)">?</span><b id="zDlgTitle">—</b><button class="x" id="zDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
       <div id="zDlgBody"></div>
       <div id="zDlgMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-        <button class="btn sm" id="zDlgCancel">Huỷ</button>
+        <button class="btn sm" id="zDlgCancel" data-i18n="act.cancel">Huỷ</button>
         <button class="btn primary sm" id="zDlgOk">OK</button>
       </div>
     </div>

@@ -30,7 +30,15 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
 - **CLI / script output** (nếu có tool/script phụ): **English HOẶC i18n đủ 2 dict** — **0 chuỗi hardcode**. **Thuật ngữ kỹ thuật / chuyên ngành nặng GIỮ NGUYÊN, KHÔNG dịch** (tên công nghệ, API, metric, viết tắt — dịch ra làm sai nghĩa).
 - **code · comment công khai** (script/pipeline/measure): **TIẾNG ANH** — không nhét ngôn ngữ bản địa vào code/comment người khác đọc.
-
+- **CHỮ TRONG SẢN PHẨM GIAO ĐI PHẢI ĐẦY ĐỦ VÀ ĐÚNG — ba ràng buộc, áp lúc VIẾT.**
+  Người đọc nhận sản phẩm, không nhận quy trình; một lỗi chữ thì không cổng nào kêu.
+  · **① Có dấu, đúng chính tả.** Văn bản tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị
+    đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
+  · **② Chú thích ĐỦ.** Mỗi bảng có tiêu đề cột · mỗi hình/biểu đồ có chú thích · **mỗi số có đơn
+    vị + kỳ**. Số trần không đơn vị là số không kiểm được.
+  · **③ Một thuật ngữ MỘT tên** xuyên suốt mọi trang giao đi (đối chiếu từ điển của project nếu có);
+    cùng một thứ gọi hai tên là bắt người đọc tự đoán.
+  *(Cách đo + bẫy báo oan nằm ở `.claude/skills/audit/`.)*
 ## Tài liệu — quy ước cập nhật
 | File | Vai trò | Khi nào cập nhật |
 |---|---|---|

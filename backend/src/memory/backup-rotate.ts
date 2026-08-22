@@ -57,6 +57,45 @@ export function listBackups(dir: string): Existing[] {
   return out.sort((a, b) => b.mtimeMs - a.mtimeMs);
 }
 
+/**
+ * Tuổi bản sao lưu MỚI NHẤT của một kho (ms), `null` = chưa có bản nào.
+ * Tách ra thành hàm THUẦN vì hai bề mặt phải nói CÙNG một số: scheduler (để in lúc nhường) và
+ * `doctor` (để báo đỏ). Trước 2026-08-21 không bề mặt nào biết con số này, nên 27 giờ không có
+ * bản sao lưu vẫn hiện ra là "✓".
+ */
+export function backupAgeMs(dbPath: string = currentMemoryDb(), now: number = Date.now()): number | null {
+  const list = listBackups(backupDir(dbPath));
+  return list.length ? now - list[0].mtimeMs : null;
+}
+
+/** Hệ số "quá hạn": qua 2 chu kỳ mà chưa có bản mới ⇒ không còn là chậm nhịp, là HỎNG. */
+export const BACKUP_STALE_FACTOR = 2;
+
+export interface BackupStaleness {
+  stale: boolean;
+  ageMs: number | null;
+  /** Ngưỡng đã dùng để phán (ms) — in ra để người đọc khỏi phải đoán. */
+  limitMs: number;
+  newest?: string;
+}
+
+/** Kho này có đang thiếu bản sao lưu quá lâu không (fail-open: đọc lỗi ⇒ coi như KHÔNG quá hạn). */
+export function backupStale(
+  dbPath: string = currentMemoryDb(),
+  opts: { policy?: Partial<BackupPolicy>; now?: number } = {},
+): BackupStaleness {
+  const policy = { ...DEFAULT_BACKUP_POLICY, ...opts.policy };
+  const limitMs = policy.everyMs * BACKUP_STALE_FACTOR;
+  try {
+    const list = listBackups(backupDir(dbPath));
+    const ageMs = list.length ? (opts.now ?? Date.now()) - list[0].mtimeMs : null;
+    // CHƯA có bản nào cũng là quá hạn — kho đang chạy mà không có lưới đỡ nào là tin đáng báo.
+    return { stale: ageMs === null || ageMs > limitMs, ageMs, limitMs, newest: list[0]?.path };
+  } catch {
+    return { stale: false, ageMs: null, limitMs };
+  }
+}
+
 export interface RotateResult {
   /** Có chép bản mới lần này không (false = chưa tới hạn). */
   wrote: boolean;

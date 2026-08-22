@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -159,7 +159,11 @@ export function handleHook(event: HookEventName, payload: any): string {
           const flag = join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.harness`);
           if (!existsSync(flag)) {
             mkdirSync(dirname(flag), { recursive: true });
-            writeFileSync(flag, new Date().toISOString());
+            // `writeFileAtomic`, KHÔNG phải `writeFileSync` trần: cổng `fs-atomic` cấm ghi trần
+            // vào file nguồn/cấu hình, và marker này chạy trong hook — tiến trình có thể bị cắt
+            // giữa đường. Đợt "chấm than update" 21/08 lỡ dùng bản trần và gate không ai chạy
+            // (nợ gate đầy đủ từ 15/08) nên nó trôi tới 22/08 mới lộ.
+            writeFileAtomic(flag, new Date().toISOString());
             const r = syncCheck(cwd);
             if (r.connected && (r.missing.length > 0 || r.guardStale.length > 0)) {
               const parts = [

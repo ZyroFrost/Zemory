@@ -33,7 +33,24 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
 - **UI · CLI output**: **English HOẶC i18n đủ 2 dict** (song ngữ, đổi qua nút setting) — **0 chuỗi hardcode** (mọi chuỗi người-dùng-thấy đi qua i18n, có cả 2 bản). **Thuật ngữ kỹ thuật / chuyên ngành nặng GIỮ NGUYÊN, KHÔNG dịch** (tên công nghệ, API, viết tắt kỹ thuật — dịch ra làm sai nghĩa). Chi tiết cổng chất lượng i18n → `03_STRUCTURE §9.D` (nguồn duy nhất, không lặp).
 - **code · comment công khai**: **TIẾNG ANH** — không nhét ngôn ngữ bản địa vào code/comment người khác đọc.
-
+- **CHỮ NGƯỜI DÙNG ĐỌC PHẢI ĐẦY ĐỦ VÀ ĐÚNG — bốn ràng buộc, áp lúc VIẾT.**
+  Luật đứng ở đây vì các mặt của `audit` đều soi MÁY; không mặt nào soi thứ **người đọc nhận**, và
+  một lỗi chữ thì không gate nào kêu — nó chỉ hiện ra trước mặt người dùng.
+  · **① Có dấu, đúng chính tả.** Docs tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị đọc
+    thành Latin-1: `Ã¡` · `â€` · `ï»¿`). Chữ ASCII-không-dấu CHỈ hợp lệ khi buộc phải vậy (vd file
+    in ra console không chắc encoding) — và phải nói rõ lý do tại chỗ.
+  · **② Nhãn ĐỦ, máy đọc được.** Mọi phần tử tương tác (nút · ô nhập · select · link) phải có nhãn
+    mà **công cụ đọc được**: nội dung chữ, hoặc `aria-label`/`title`/`placeholder`; ảnh có `alt`.
+    Nút icon trơn không nhãn là **thiếu**, không phải "gọn".
+  · **③ Song ngữ ĐỦ HAI ĐẦU.** Vế "0 chuỗi hardcode" áp cho **cả chữ nằm thẳng trong HTML/markup**,
+    không riêng chuỗi trong code: text node và cả `title`/`placeholder`/hint phải có móc i18n
+    tương ứng, mọi khoá phải tồn tại ở **cả hai** dict. Chữ nằm trong markup mà thiếu móc = người
+    dùng đổi ngôn ngữ xong **vẫn thấy tiếng cũ**, và không lỗi nào nổ.
+  · **④ UI phải KHỚP CODE, kiểm bằng GRAPH chứ không bằng mắt.** Bề mặt gọi tới đâu thì chỗ đó phải
+    có thật, và ngược lại: cạnh seam `api` đối chiếu route FE gọi với route BE thật ⇒ ① FE gọi
+    route không tồn tại = UI gãy · ② endpoint không ai gọi = bề mặt chết.
+  *(Cách đo + **bẫy báo oan** từng phép nằm ở `.claude/skills/audit/`: luật nói PHẢI ĐÚNG GÌ, skill
+  nói ĐO THẾ NÀO cho khỏi báo oan.)*
 ## Tài liệu — quy ước cập nhật
 | File | Vai trò | Khi nào cập nhật |
 |---|---|---|

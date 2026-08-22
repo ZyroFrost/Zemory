@@ -1250,7 +1250,10 @@ export async function startUi(): Promise<void> {
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
       // `busy` tells the CLI a daemon child (embed/sync) is ALREADY writing, so
       // it can wait instead of colliding (the gate was one-directional before).
-      acquireCliWrite();
+      // `db` = kho CLI sắp ghi. Thiếu nó thì daemon chỉ biết "có ai đang ghi" mà không biết
+      // GHI KHO NÀO, và mọi việc chỉ-đọc trên kho KHÁC (vd backup) phải nhường oan — đo
+      // 2026-08-21: 24 lượt backup nhường liên tiếp cho job ghi kho song song.
+      acquireCliWrite(u.searchParams.get("db") ?? undefined);
       return json(res, { ok: true, held: true, busy: daemonJobBusy() !== null });
     }
     if (req.method === "POST" && p === "/gate-release") {
