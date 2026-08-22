@@ -19,6 +19,7 @@ description: Folder standard and routing table for a non-app project (BI, report
 
 `★` bắt buộc · `◆` deliverable (≥1) · `[opt]` chỉ tạo khi có concern thật.
 Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor có sẵn **giữ nguyên** (`TargetAll.xlsx`, `.pbix`, `.Report/`).
+**MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; hay vi phạm nhất là tên case `tasks/<case>/` và `docs/plan/NN_tên.md`. NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` — luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh·đường dẫn·link, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra.
 
 ```
 <project>/

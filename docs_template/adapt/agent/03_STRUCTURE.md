@@ -17,6 +17,11 @@
    `AGENTS.md` · `CLAUDE.md` · thư mục harness (mặc định `docs/agent/`, đổi được qua
    `.harness.json`) · `docs/plan/` · `.claude/skills/`. Trùng tên với thứ có sẵn → **đổi đường
    harness, KHÔNG đổi thứ của repo.**
+   **Mọi tên file/folder MÌNH thêm viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả
+   có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; chỗ hay vi phạm nhất là `docs/plan/NN_tên.md`.
+   NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` — luật này chỉ nói về TÊN. Lý do: tên bị gõ
+   lại trong lệnh·import·link·URL, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c`
+   Latin) làm ref chết không nhìn ra. Tên CÓ SẴN của repo thì để yên — đó là điều 1 ở trên.
 3. **Bảng ánh xạ ở §3 phải được NGƯỜI DUYỆT rồi mới khoá.** Đây là chỗ dễ hỏng nhất của cả hệ:
    nếu chuẩn tự uốn theo bất cứ thứ gì nó nhìn thấy thì `conform` thành **lời nói vòng** —
    "repo tuân thủ đúng cái repo đang là", luôn xanh, **không gác gì cả**. Một cổng không thể

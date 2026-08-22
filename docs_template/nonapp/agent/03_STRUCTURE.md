@@ -128,6 +128,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 KHÔNG folder rỗng    INDEX = từ điển tên để TRA, KHÔNG checklist. Tạo folder CHỈ khi có file/concern thật; thiếu → bỏ
 1 TÊN / concern      sources/ (KHÔNG src|raw) · measures/ (KHÔNG dax|calc) · tên slot THƯỜNG, nhiều từ → `_`
 Tên THƯỜNG           slot folder viết thường (tasks · sources · templates · extract · adhoc). TÊN có sẵn của người ta GIỮ NGUYÊN: file (TargetAll.xlsx · ..._REPORT.xlsx), vendor/tool ép (.pbix · .Report/ · .SemanticModel/)
+Tên file = TIẾNG ANH MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII. NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` — luật này chỉ nói về TÊN. Lý do: tên là thứ bị gõ lại trong lệnh·import·link·URL, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. Áp cho CẢ tên case (`tasks/<case>/`) và tên stage pipeline — đó là chỗ hay bị đặt theo ngôn ngữ bản địa nhất. ĐỂ YÊN tên KHÔNG phải của mình (file/vendor có sẵn, ở dòng trên)
 adhoc ≠ task         data/adhoc/ = file LẺ check 1 lần, throwaway (chỉ giữ README marker) · cái gì thuộc DELIVERABLE ĐỊNH KỲ → phải nằm dưới tasks/<task>/ + data/<task>/. KHÔNG quăng file định kỳ vào adhoc
 tasks/ đánh số        CHỈ case ĐỊNH KỲ / CHẠY TỰ ĐỘNG mới đánh số: tasks/NN_<cadence>/ (00→ tăng dần: 01_weekly · 02_monthly).
                      Case theo YÊU CẦU (chạy khi có việc, không lịch) = tên THƯỜNG không số: tasks/<tên>/.
