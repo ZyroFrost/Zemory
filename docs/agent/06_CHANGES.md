@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-08-23] — 2.3.0 · đóng 5 lỗ TRÔI CHUẨN zemory↔template + cổng máy canh chúng
+
+**Gốc chung: chuẩn sống ở 5 bản sao, không cơ chế nào giữ khớp** — đúng thứ mặt ③ của chính skill
+`audit` gọi là *"NGUỒN TRÙNG: cùng một sự thật ở ≥2 nơi ⇒ chắc chắn sẽ lệch"*.
+
+**Bác chẩn đoán "git sai / GitHub thiếu":** 0 file trên đĩa mà git không theo · 0 file
+`skip-worktree` · không submodule · **998 = 998** file tracked hai bên · `docs_template` 109 = 109 ·
+`.gitignore` loại 8 mục đều có chủ đích. Git chở đúng thứ nó được giao; **thứ cũ nằm trên đĩa**.
+
+**Năm lỗ đã vá** (phạm vi user chốt: `app`+`nonapp`+`adapt`, KHÔNG cowork): ① `audit` **7→11 mặt** —
+thiếu đúng 4 mặt của `plan/18`, mà `plan/18` biện minh chúng bằng **mọi lần repo này thực sự hỏng**
+và **cả 8 ca đều rơi vào 4 mặt đó** · ② `audit` **+3 luật** (đo hai đường · đột biến hoá · ca âm) ·
+③ skill **`sync-path`** ship 3 bộ + đăng ký `04_SKILLS` + hàng trigger · ④ luật cứng **`Bề mặt CHẾT
+THEO nền`** vào cả 3 bộ (trước **không bộ nào** có) · ⑤ luật **`Tên file = TIẾNG ANH ASCII`** ship 5
+bộ — chính lỗ đẻ ra tên plan tiếng Việt ở repo khác. Kèm 2 câu tự mâu thuẫn: zemory *"6 mặt"* vs
+tiêu đề 11 · cowork *"ba mặt"* vs *"Bốn mặt"*.
+
+**Phụ thuộc TRÍ NHỚ, không phải cổng:** mặt ⑪ thêm 22/08 ship đủ 4 bộ (lượt đó cố ý làm), cụm 4 mặt
+thêm **11/08 chưa bao giờ đi**; `template-parity` cũ chỉ canh byte `guard.cjs` + `pull/fill/upload`.
+
+**Cổng mới `standard-parity` (6/6)** — 5 phép neo vào 5 lỗ thật + **ca tự kiểm** (phép đếm trả 0 thì
+mọi so sánh đều "bằng nhau"). Miễn là **danh sách tường minh kèm lý do**, và **hai bảng miễn do chính
+cổng bắt ra ở hai lượt đầu**: `adapt` thiếu `reconcile` (hệ đó CẤM dời folder, có `adopt/` thay) ·
+`nonapp` gọi `Secret` là `Secret/connection`. **4 đột biến ⇒ 4 lần ĐỎ.** Cổng đọc FILE, không import
+`dist` ⇒ chạy được khi chưa build.
+
+Kiểm trước mốc: tsc 0 · lint 0 · **685/685 test · 0 skipped** (92/101 file; trừ 7 file ONNX vì bench
+đang chạy, trừ `conform-declared` vì cần build) · `conform --gate` ✓ 233 file · `validate` ✓.
+⚠ **Nợ:** gate ĐẦY ĐỦ + `conform-declared` chạy sau khi bench xong rồi build.
+
 ## [2026-08-22d] — conform ĐỌC slot khai trong 03_STRUCTURE §3 (hết báo oan off-standard-dir cho APP domain-first)
 
 *(Khoá đổi `b`→`d` lúc merge hai nhánh cùng ngày: nhánh này đã có `[2026-08-22b]` và nó đang được `05_TODO` trích. Nội dung entry KHÔNG đổi một chữ.)*
