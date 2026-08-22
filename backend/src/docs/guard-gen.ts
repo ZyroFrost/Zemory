@@ -222,11 +222,16 @@ function stripMessages(cmd) {
 // Van bat du 8 ca do 2026-08-20: \`git push\` · \`cd x && git push\` · \`/usr/bin/git push\` ·
 // \`sudo git push\` · \`env A=1 git push\`. KHONG dung "token dau cau" — ba ca cuoi se lot.
 const GIT_CMD = "(?<!\\\\.)\\\\bgit\\\\b(?![\\\\\\\\/])";
+// \`push\` phai la MOT DOI SO, khong phai mot manh cua ten dai hon (va 2026-08-22, do tu chinh
+// phien nay): \`\\\\bpush\\\\b\` khop ca token nam TRONG ten file vi \`-\`/\`.\` la ky tu khong-phai-tu, nen
+// \`git check-ignore -v docs/hooks/.allow-push\` bi chan nhu mot lenh push that — tuc chinh cai
+// lenh de SOI CO cung khong chay duoc. Them (?<![\\w.-]) de chi bat \`push\` dung nghia.
+const PUSH_ARG = "(?<![\\\\w.-])push\\\\b";
 
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
-  if (new RegExp(GIT_CMD + "[^\\\\n;|&]*\\\\bpush\\\\b").test(bare)) {
+  if (new RegExp(GIT_CMD + "[^\\\\n;|&]*" + PUSH_ARG).test(bare)) {
     if (!consumeFlag("push", bare)) {
       deny("CHAN (guard lop 1): \`git push\` - user bao push moi push (02_RULES Git)." +
         "\\nUser vua bao? -> tao flag \`" + POLICY.flags_dir + "/" + POLICY.flags.push + "\` roi chay lai (mot lan).");

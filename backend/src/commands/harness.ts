@@ -295,7 +295,27 @@ export async function cmdDoctor(): Promise<void> {
   if (failed) process.exitCode = 1;
 }
 
-export function cmdArchive(): void {
+/**
+ * `zemory archive [--dry-run]` — dọn hai file sổ.
+ *
+ * 🔴 CỜ LẠ BỊ TỪ CHỐI, KHÔNG BỎ QUA. Trước 2026-08-22 hàm này **không nhận đối số nào**, nên mọi
+ * cờ rơi vào hư không và lệnh CHẠY THẬT — bẫy đúng hai lần trong một phiên: `archive --help` dời
+ * 5 entry + 6 mục (người gõ tưởng đang đọc trợ giúp), rồi `archive --dry-run` in *"moved 2 closed
+ * item(s)"* và **dời thật** (người gõ tưởng đang xem trước). Đây là lệnh DỜI NỘI DUNG giữa hai
+ * file, nên hướng an toàn là **fail-closed**: không hiểu thì đừng làm gì.
+ */
+export function cmdArchive(args: string[] = []): void {
+  const flags = args.filter((a) => a.startsWith("-"));
+  const unknown = flags.filter((f) => f !== "--dry-run");
+  if (unknown.length) {
+    console.log(`zemory archive: cờ không hiểu: ${unknown.join(" ")}`);
+    console.log("  usage: zemory archive [--dry-run]");
+    console.log("  (`--dry-run` = chỉ ĐẾM, không ghi. Lệnh này DỜI NỘI DUNG giữa hai file nên cờ lạ bị TỪ CHỐI");
+    console.log("   thay vì bỏ qua — bỏ qua âm thầm đã khiến `--help` archive thật 5 entry + 6 mục.)");
+    process.exitCode = 1;
+    return;
+  }
+  const dryRun = flags.includes("--dry-run");
   const root = findProjectRoot();
   if (!root) {
     console.log("zemory archive: not connected — run `zemory init` first.");
@@ -303,9 +323,10 @@ export function cmdArchive(): void {
     return;
   }
   const ctx = loadContext(root);
+  if (dryRun) console.log("zemory archive — XEM TRƯỚC (--dry-run): không ghi gì.");
   // Both per-session logs get trimmed: 06_CHANGES by oldest ENTRY, 05_TODO by
   // closed ITEM. They fill up at different rates, so each has its own threshold.
-  const r = archiveChanges(ctx);
+  const r = archiveChanges(ctx, currentMemoryDb(), { dryRun });
   if (r.moved === 0) {
     if (r.skipped === "no-entries") {
       // Do NOT say "under threshold" here — the file is OVER it; the headings are the problem.
@@ -324,7 +345,7 @@ export function cmdArchive(): void {
     console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
     console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
   }
-  const t = archiveTodo(ctx, currentMemoryDb());
+  const t = archiveTodo(ctx, currentMemoryDb(), { dryRun });
   if (t.moved === 0) {
     console.log(`  05_TODO.md = ${t.activeLines} lines · 0 mục đã đóng để dời (KHÔNG có ngưỡng cho file này).`);
   } else {

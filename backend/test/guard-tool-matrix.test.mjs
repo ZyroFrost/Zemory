@@ -90,6 +90,30 @@ test("ĐƯỜNG DẪN chứa `.git/` KHÔNG phải lệnh git — phải đượ
   }
 });
 
+test("TÊN FILE chứa chữ `push` KHÔNG phải lệnh push — phải được cho qua (vá 2026-08-22)", () => {
+  // Báo oan tự dính trong phiên 2026-08-22: `\bpush\b` khớp cả token nằm TRONG tên file, vì `-`
+  // và `.` là ký tự không-phải-từ. Hậu quả trớ trêu: đúng cái lệnh để SOI CỜ
+  // (`docs/hooks/.allow-push`) bị chặn như một lệnh push thật, nên không ai kiểm được cờ nếu
+  // trong câu có chữ `git`. Cùng họ báo oan `.git/hooks/pre-push` đã vá 20/08 — chỉ khác vế.
+  const tênFile = [
+    ["soi cờ push", "git check-ignore -v docs/hooks/.allow-" + "push"],
+    ["xoá cờ sau khi dùng", "git status --short docs/hooks/.allow-" + "push"],
+    ["liệt kê thư mục hooks", "ls -la docs/hooks/.allow-" + "push"],
+    ["nhắc tên cờ trong echo cạnh lệnh git", "git status; echo tao docs/hooks/.allow-" + "push"],
+  ];
+  const chặnNhầm = [];
+  for (const tool of COMMAND_TOOLS) {
+    for (const [nhãn, command] of tênFile) {
+      if (ask({ tool_name: tool, tool_input: { command } })) chặnNhầm.push(`${tool} + ${nhãn}`);
+    }
+  }
+  assert.deepEqual(chặnNhầm, [], "Tên file bị đọc thành lệnh push:\n  " + chặnNhầm.join("\n  "));
+  // VẾ NGƯỢC — bản vá không được làm hở đường push thật, kể cả các dạng dễ lọt.
+  for (const command of [PUSH, "cd x && " + PUSH, "sudo " + PUSH, "git push --force origin main", "git push -u origin HEAD"]) {
+    assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn: ${command}`);
+  }
+});
+
 test("SECRET `*.env`: tên <x>.env trong lệnh git phải bị CHẶN; tên mẫu + tên ở segment khác phải QUA", () => {
   // Lỗ đo được 2026-08-20: bộ mẫu cũ chỉ có `.env`/`.env.*` nên `git add ipos_loader.env`
   // LỌT SẠCH — trong khi comment trong guard tự nhận "app/x.env vẫn bị bắt". Đây là đường
