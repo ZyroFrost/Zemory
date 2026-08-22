@@ -45,8 +45,15 @@ không mặt nào soi thứ **NGƯỜI ĐỌC** nhận.)*
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
    nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.
-3. **Kiến trúc** — export không ai gọi · **NGUỒN TRÙNG** (cùng một sự thật nằm ở ≥2 nơi ⇒ chắc chắn
-   sẽ lệch) · file/thư mục ngoài chuẩn · thao tác ghi vào file nguồn có nguyên tử không.
+3. **Kiến trúc** — export không ai gọi · **cả FILE không ai import** (module chết: khác export chết —
+   file vẫn nằm đó, vẫn được build, vẫn hiện trong grep, nhưng không đường nào tới nó) · **NGUỒN
+   TRÙNG** (cùng một sự thật nằm ở ≥2 nơi ⇒ chắc chắn sẽ lệch) · file/thư mục ngoài chuẩn · thao tác
+   ghi vào file nguồn có nguyên tử không.
+   ⚠ Phép dò mồ côi **rất dễ hỏng lặng** — bắt buộc có **ca tự kiểm**: một export/file CHẮC CHẮN
+   đang được dùng phải hiện ra là "có người gọi". Trượt ca đó thì mọi con số vô nghĩa (đo 2026-08-23:
+   phép dò cho *402/402 mồ côi*, kiểm chéo bằng grep thì thứ đầu tiên đã có 2 lời gọi).
+   Và nhớ ba đường gọi mà phép quét hay bỏ: `await import()` **động** · gọi qua **CLI/HTTP** · tên
+   ghép chuỗi. **Tìm ra thì ĐỀ XUẤT, KHÔNG tự xoá** (`02_RULES §Hành xử`).
 4. **FE ↔ BE** — mọi endpoint có người gọi & ngược lại · i18n đủ cả hai chiều · CSS/id chết ·
    **neo test có trỏ vào file đang chạy không**.
 5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
