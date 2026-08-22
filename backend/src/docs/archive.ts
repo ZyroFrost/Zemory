@@ -14,6 +14,17 @@ import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
 import { importDoc } from "./plan.js";
 
+/**
+ * `dryRun` = ĐẾM rồi trả về, KHÔNG ghi một byte nào (không đụng file sổ, không đụng archive,
+ * không reindex). Thêm 2026-08-22: `zemory archive` trước đó **không nhận đối số nào cả**, nên
+ * `--help`/`--dry-run` bị bỏ qua âm thầm và lệnh CHẠY THẬT — bẫy đúng hai lần trong một phiên
+ * (`--help` dời 5 entry + 6 mục · `--dry-run` in "moved 2…" rồi dời thật). Lệnh DỜI NỘI DUNG
+ * giữa hai file thì phải có đường XEM TRƯỚC, và cờ lạ phải bị TỪ CHỐI (xem `cmdArchive`).
+ */
+export interface ArchiveOptions {
+  dryRun?: boolean;
+}
+
 export interface ArchiveResult {
   moved: number;
   activeLines: number;
@@ -133,7 +144,7 @@ function itemBlocks(lines: string[]): Array<{ state: string; start: number; end:
  *
  *  Both tiers are reindexed here, so a moved item is searchable immediately rather than
  *  whenever someone next remembers to run `reindex`. */
-export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
+export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions = {}): ArchiveResult {
   // dbPath is REQUIRED, deliberately — it used to default to currentMemoryDb(), and on
   // 2026-07-29 a .mjs test that forgot the argument wrote 20 doc + 48 section rows for
   // temp-dir project roots straight into the live database. TypeScript cannot protect a
@@ -162,6 +173,12 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
     deepenRelativeLinks(closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "")) + "\n";
 
   const archivePath = join(harnessPaths(ctx).archive, "05_TODO.md");
+  // XEM TRƯỚC: trả về SỐ mà không ghi gì. Đặt chốt ở đây (sau khi đã đếm, trước byte đầu tiên)
+  // thay vì ở CLI — để mọi người gọi `archiveTodo` đều có đường xem trước, không riêng CLI.
+  if (opts.dryRun) {
+    const kept = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
+    return { moved: closed.length, activeLines: kept.split(/\r?\n/).length, archivePath };
+  }
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(TODO_INTRO) ? prev.slice(TODO_INTRO.length) : prev;
@@ -189,7 +206,11 @@ export function archiveTodo(ctx: Context, dbPath: string): ArchiveResult {
 
 /** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries
  *  to docs/agent/archive/06_CHANGES.md verbatim, keep the newest in place. */
-export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb()): ArchiveResult {
+export function archiveChanges(
+  ctx: Context,
+  dbPath: string = currentMemoryDb(),
+  opts: ArchiveOptions = {},
+): ArchiveResult {
   const mainPath = join(ctx.docsDir, "06_CHANGES.md");
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;
@@ -223,6 +244,8 @@ export function archiveChanges(ctx: Context, dbPath: string = currentMemoryDb())
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
   const archivePath = join(harnessPaths(ctx).archive, "06_CHANGES.md");
+  // XEM TRƯỚC (xem `ArchiveOptions`): đếm xong thì dừng, không ghi byte nào.
+  if (opts.dryRun) return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;

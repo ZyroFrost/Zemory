@@ -77,7 +77,7 @@ switch (cmd) {
     await startUi();
     break;
   case "archive":
-    cmdArchive();
+    cmdArchive(args);
     break;
   case "validate":
     cmdValidate();

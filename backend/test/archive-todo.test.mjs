@@ -93,6 +93,40 @@ test("a backlog with no closed items is left byte-identical", () => {
   }
 });
 
+// ── XEM TRƯỚC + CỜ LẠ ─────────────────────────────────────────────────────────
+// Sinh từ sự cố 2026-08-22: `cmdArchive` **không nhận đối số nào**, nên cờ rơi vào hư không và
+// lệnh CHẠY THẬT — dính đúng hai lần trong một phiên: `archive --help` dời 5 entry + 6 mục
+// (người gõ tưởng đang đọc trợ giúp), rồi `archive --dry-run` in *"moved 2 closed item(s)"* và
+// **dời thật** (người gõ tưởng đang xem trước). Lệnh DỜI NỘI DUNG giữa hai file thì phải
+// fail-closed: không hiểu cờ ⇒ không làm gì.
+test("--dry-run ĐẾM ĐÚNG mà KHÔNG ghi một byte nào", () => {
+  const todo = "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n  dòng con của mục đã xong\n";
+  const s = scratch(todo);
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath, { dryRun: true });
+    assert.equal(r.moved, 1, "xem trước vẫn phải ĐẾM đúng số mục sẽ dời");
+    assert.equal(s.read("05_TODO.md"), todo, "xem trước KHÔNG được ghi vào file sổ");
+    assert.throws(() => s.read("../archive/05_TODO.md"), "xem trước KHÔNG được tạo file archive");
+    // …và lượt THẬT sau đó vẫn dời được (xem trước không được ăn mất việc).
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1, "lượt thật sau xem trước vẫn phải dời");
+    assert.ok(!s.read("05_TODO.md").includes("xong rồi"), "lượt thật mới là lượt ghi");
+  } finally {
+    s.cleanup();
+  }
+});
+
+test("CA ÂM — không truyền cờ thì hành vi giữ NGUYÊN như trước (xem trước không được rò sang lượt thật)", () => {
+  const todo = "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n";
+  const s = scratch(todo);
+  try {
+    assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
+    assert.ok(!s.read("05_TODO.md").includes("xong rồi"), "mặc định vẫn DỜI THẬT, không thành dry-run ngầm");
+    assert.ok(s.read("05_TODO.md").includes("còn mở"), "việc đang mở phải còn nguyên");
+  } finally {
+    s.cleanup();
+  }
+});
+
 test("a closed item inside a fenced block is text, not an item (no false archiving)", () => {
   const fenced = `# TODO\n\n\`\`\`\n- [x] đây là ví dụ trong khối code\n\`\`\`\n\n- [ ] việc thật\n`;
   const s = scratch(fenced);
@@ -169,6 +203,50 @@ test("both tiers are indexed by the archive itself", async () => {
     }
   } finally {
     s.cleanup();
+  }
+});
+
+// Tầng CLI — nơi sự cố THẬT xảy ra: người gõ `--help` và mất 5 entry + 6 mục. Ca này chạy
+// `dist/cli.js` thật trên một repo TẠM (không đụng repo này), rồi đòi hai điều: exit ≠ 0 và
+// **file không đổi một byte**. Thiếu vế thứ hai thì một bản vá chỉ-in-lỗi-rồi-vẫn-ghi vẫn xanh.
+test("CLI: cờ lạ ⇒ TỪ CHỐI (exit≠0) và KHÔNG ghi gì; `--dry-run` cũng không ghi", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const root = mkdtempSync(join(tmpdir(), "zarch-cli-"));
+  const docsDir = join(root, "docs", "agent");
+  mkdirSync(docsDir, { recursive: true });
+  const todo = "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n";
+  writeFileSync(join(docsDir, "05_TODO.md"), todo);
+  writeFileSync(join(docsDir, "06_CHANGES.md"), "# Change Log\n");
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent" }));
+  writeFileSync(join(root, "AGENTS.md"), "# fixture\n");
+  const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
+  const run = (args) => {
+    try {
+      execFileSync(process.execPath, [cli, "archive", ...args], {
+        cwd: root,
+        stdio: "pipe",
+        env: { ...process.env, GLOBAL_MEMORY_DB: join(root, "t.db") },
+      });
+      return 0;
+    } catch (e) {
+      return e.status ?? -1;
+    }
+  };
+
+  try {
+    assert.notEqual(run(["--help"]), 0, "cờ lạ phải làm lệnh THẤT BẠI, không phải im lặng chạy");
+    assert.equal(readFileSync(join(docsDir, "05_TODO.md"), "utf8"), todo, "cờ lạ ⇒ KHÔNG được ghi một byte");
+
+    assert.equal(run(["--dry-run"]), 0, "xem trước là đường hợp lệ");
+    assert.equal(readFileSync(join(docsDir, "05_TODO.md"), "utf8"), todo, "xem trước ⇒ KHÔNG được ghi");
+
+    assert.equal(run([]), 0, "CA ÂM: không cờ thì vẫn chạy như cũ");
+    assert.ok(
+      !readFileSync(join(docsDir, "05_TODO.md"), "utf8").includes("xong rồi"),
+      "không cờ ⇒ dời thật (nếu ca này xanh cả khi bản vá chặn hết thì cổng vô nghĩa)",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
