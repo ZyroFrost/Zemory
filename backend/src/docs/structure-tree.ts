@@ -7,8 +7,9 @@
 // Deterministic, 0 LLM (HP điều 6). It only READS the tree; it never moves files
 // (reconcile is agent-driven — 03_STRUCTURE §8).
 
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { harnessPathsAt } from "../core/config.js";
 import { isSourceLeaf } from "../memory/graph/graph.js";
 
 /**
@@ -133,6 +134,62 @@ const ROOT_ROLES: Record<string, string> = {
   bin: "CLI entry (npm: bin/<name> → dist/cli.js)",
 };
 
+/**
+ * Slots a PROJECT declares in ITS OWN `03_STRUCTURE.md §3` — the per-repo standard
+ * (HP điều 3: file wins; điều 13: a concern is made real by declaring it in 03, then
+ * the machine honours it). `SLOT_ROLES` is the shared BASELINE dictionary; this reads
+ * the extra, project-specific slots a repo has written into its tree (e.g. a Python
+ * repo's `app/`, a FastAPI `schemas/`, a project's own `workspaces/`).
+ *
+ * Parse is deliberately tight: only folder names that appear as an actual TREE ENTRY
+ * (right after a `├──`/`└──` branch, ending in `/`) count — prose mentions and
+ * `<placeholder>/` tokens do NOT. Fail-open to an empty set (điều 9): a repo with no
+ * §3 (or a foreign layout) simply gets no extra slots, i.e. behaves as before.
+ */
+export function declaredSlots(root: string): Set<string> {
+  const out = new Set<string>();
+  try {
+    const md = readFileSync(join(harnessPathsAt(root).agent, "03_STRUCTURE.md"), "utf8");
+    let inSec = false;
+    for (const line of md.split(/\r?\n/)) {
+      if (/^##\s*3\./.test(line)) { inSec = true; continue; }
+      if (inSec && /^##\s/.test(line)) break; // next heading ends §3
+      if (!inSec) continue;
+      const m = line.match(/(?:├──|└──)\s+([A-Za-z][A-Za-z0-9_.-]*)\//);
+      if (m) out.add(m[1]);
+    }
+  } catch {
+    /* fail-open — no §3 ⇒ no extra slots */
+  }
+  return out;
+}
+
+/**
+ * A directory that is NOT a baseline `SLOT_ROLES` slot but is STILL on-standard because
+ * the repo declared it (§3) or it matches a standard convention the checker must know.
+ * Four ways in, none of which loosen the gate for an UNdeclared, meaningless code dir:
+ *   ① declared LEAF slot — last segment ∈ §3 (same last-segment model as `SLOT_ROLES`);
+ *   ① declared FREEFORM parent — a top-level dir declared in §3 that is NOT a standard
+ *      slot/root (e.g. `workspaces/`) owns its whole subtree (children are the repo's
+ *      concern, exactly like the non-app `tasks/<case>/` convention);
+ *   ② Python package ROOT — `backend/<pkg>/` with `__init__.py` is the src-equivalent
+ *      the standard already allows ("Python: backend/<pkg>/"); scoped to depth-2 so a
+ *      badly-named package NESTED inside still falls through to the gate;
+ *   ③ API versioning — `api/vN` (a version dir directly under an `api` slot).
+ */
+export function extraDirOk(relDir: string, root: string, declared: Set<string>): boolean {
+  const nd = relDir.replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  if (!nd) return false;
+  const segs = nd.split("/");
+  const last = segs[segs.length - 1];
+  if (declared.has(last)) return true; // ① declared leaf slot
+  const first = segs[0];
+  if (declared.has(first) && !SLOT_ROLES[first] && !ROOT_ROLES[first]) return true; // ① declared freeform parent
+  if (segs.length === 2 && segs[0] === "backend" && existsSync(join(root, segs[0], segs[1], "__init__.py"))) return true; // ② python pkg root
+  if (/^v\d+$/.test(last) && segs.length >= 2 && segs[segs.length - 2] === "api") return true; // ③ api/vN
+  return false;
+}
+
 /** Directories that are output/noise — never part of the standard tree view. */
 const IGNORE = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".venv", "__pycache__",
@@ -174,7 +231,7 @@ function roleFor(name: string, depth: number): { slot?: string; role?: string; k
   return { known: false };
 }
 
-function walk(absDir: string, relDir: string, depth: number): TreeNode[] {
+function walk(absDir: string, relDir: string, depth: number, root: string, declared: Set<string>): TreeNode[] {
   if (depth > MAX_DEPTH) return [];
   let entries: string[];
   try {
@@ -195,8 +252,13 @@ function walk(absDir: string, relDir: string, depth: number): TreeNode[] {
     }
     const rel = relDir ? relDir + "/" + name : name;
     if (isDir) {
-      const meta = roleFor(name, depth);
-      const children = NO_RECURSE.has(name) ? [] : walk(abs, rel, depth + 1);
+      let meta = roleFor(name, depth);
+      // Not a baseline slot, but declared in §3 (or a standard python/api convention):
+      // honour it so the tree agrees with `conform` (same extraDirOk source of truth).
+      if (!meta.known && extraDirOk(rel, root, declared)) {
+        meta = { slot: name, role: "khai trong 03_STRUCTURE §3 (hoặc pkg Python / api version)", known: true };
+      }
+      const children = NO_RECURSE.has(name) ? [] : walk(abs, rel, depth + 1, root, declared);
       dirs.push({ name, path: rel, ...meta, children });
     } else if (isSourceLeaf(name)) {
       // Source-file leaf — same extension set as the code graph (`isSourceLeaf`:
@@ -221,7 +283,8 @@ export interface FolderTree {
 
 /** Build the annotated folder tree for a project root. */
 export function buildFolderTree(root: string): FolderTree {
-  const tree = existsSync(root) ? walk(root, "", 0) : [];
+  const declared = declaredSlots(root);
+  const tree = existsSync(root) ? walk(root, "", 0, root, declared) : [];
   const used = new Set<string>();
   const unknown: string[] = [];
   const visit = (n: TreeNode) => {
