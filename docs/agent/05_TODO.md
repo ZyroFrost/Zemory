@@ -3,6 +3,28 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔴 `memory embed` VÀ `memory scan` NHẬN CỜ LẠ RỒI CHẠY THẬT — bắt 2026-08-22 (chiều muộn)
+
+**Cùng họ với `archive` vừa vá `[2026-08-22b]`, nhưng ở lệnh ĐẮT HƠN NHIỀU.** Đo trực tiếp: gõ
+`memory embed --help` ⇒ nó **không in trợ giúp** mà khởi động job nhúng thật (bắt được pid 4544
+đang chạy `dist/cli.js memory embed --help`, in đúng dòng *"building the vector index …"*), và
+`memory scan --help` ⇒ **quét + nạp thật** (nạp tin mới vào kho, ghi `cli-write.lock` nhãn
+`scan`). Cờ lạ bị bỏ qua âm thầm thay vì bị từ chối.
+
+**Vì sao nặng hơn ca `archive`:** ① `embed` là job HÀNG GIỜ và nó **giữ `cli-write.lock`** ⇒ một
+lần gõ sai cờ là chiếm khoá, cản job khác và bỏ đói `backupTick` (đúng đường đã gây ra ca BLOCKING
+27 giờ ngày 21/08) · ② cùng bề mặt đó có `--rebuild`, tức lệnh **XOÁ nguyên chỉ mục véc-tơ** —
+một lệnh mà cờ lạ được cho qua thì không có đường "xem trước" nào an toàn · ③ không có `--help`
+thật nên người dùng buộc phải đoán cờ, mà đoán sai là chạy thật.
+
+- [ ] **Vá:** cờ lạ ⇒ usage + `exit 1`, **không ghi byte nào** — đặt chốt ở **tầng hàm** như bản vá
+  `archive` (`ArchiveOptions`, chốt ngay sau khi ĐẾM) để mọi người gọi đều có đường xem trước.
+  Phủ ít nhất `embed` · `scan` · `digest` (ba lệnh heavy-write). Cổng: ca `--help` phải exit≠0 **và**
+  kho không đổi byte · **ca ÂM** (không cờ ⇒ vẫn chạy thật) · ca tầng CLI chạy `dist/cli.js` trên
+  kho tạm. Đột biến: trả về hành vi cũ ⇒ đỏ.
+  ⚠ **KHÔNG vá trong lúc job nhúng đang chạy** — `npm run build` = `clean && tsc`, xoá `dist/`
+  dưới chân job (bẫy đã ghi 12/08). Làm sau khi ma trận bench xong.
+
 ## 🔵 BÀN GIAO 2026-08-22 (chiều) — ĐỌC MỤC NÀY TRƯỚC
 
 **Việc ĐẦU TIÊN của phiên sau — user chốt: "phải TEST FULL hệ mới".** Lượt đo bước ③ hôm nay
