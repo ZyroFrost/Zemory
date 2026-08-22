@@ -68,6 +68,17 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp (bất biến kiến trúc) · `02` luật làm việc · `03` chuẩn cấu trúc folder · `04` sổ đăng ký skill (playbook → `.claude/skills/`) · `05` backlog · `06` changelog. Một nội dung chỉ sống ở ĐÚNG MỘT nhà; file khác cần thì **DẪN CHIẾU** (link + số hiệu), KHÔNG chép lại. Đọc hết 6 file KHÔNG được thấy nội dung trùng — trùng lặp / lạc chỗ = agent đọc bị loạn.
 - **Plan (`docs/plan/`) — chỉ chứa SPECS:** KHÔNG todo (→ `05_TODO`), KHÔNG luật (bất biến/luật riêng → ĐỀ XUẤT vào `01_CONSTITUTION`, plan chỉ dẫn chiếu điều khoản). Chuẩn đặt tên `NN_tên.md` (`00`=overview): xem `03_STRUCTURE §5`.
+- **XONG MỘT VIỆC LÀ ĐÓNG NGAY — KHÔNG đợi chốt phiên (luật cứng).** Ngay khi một mục `05_TODO` xong,
+  làm đủ ba bước **trong cùng lượt đó**: ① **ĐO LẠI** nó theo §Hành xử *"SOÁT SỔ = ĐO LẠI"* (mã ·
+  Global Memory · chạy thật) — *"tôi vừa làm nên tôi biết"* **KHÔNG** phải bằng chứng, và đây đúng
+  chỗ hay sai nhất: phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc · ② ghi sang
+  `06_CHANGES` · ③ **xoá mục khỏi `05_TODO`** (hoặc `zemory archive` dời sang `archive/`).
+  **Vì sao không đợi tới chốt phiên:** một mục đã xong là **đặt sai chỗ kể từ giây nó xong**, mà
+  `05_TODO` được nạp MỌI phiên — đo 2026-07-29: **107 mục đã xong chiếm 46%** một file luôn-nạp.
+  **Vì sao không tin trí nhớ:** đo 2026-08-05, soát 58 mục thì **11 sai (~19%)** — có mục đã build
+  xong vẫn mang dấu `[ ]`, có mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
+  *(Chốt phiên vẫn chạy `archive` như lưới vét cuối — `.claude/skills/session-close/` Bước 3 — nhưng
+  lưới đó là để hứng phần đã dồn, KHÔNG phải chỗ để dồn.)*
 - **Tra log sâu:** việc/lỗi/quyết định ở phiên khác → `zemory memory search "<q>" [--all]` (recall on-demand; đừng tra bừa).
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)

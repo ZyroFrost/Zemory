@@ -1527,3 +1527,123 @@ xong** — quên là capture chết lặng, không ai báo.
 
 **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
 
+<!-- dời từ 05_TODO.md ngày 2026-08-23 — 5 section đã xong, chép NGUYÊN VĂN -->
+
+## ✅ RÁC NHÁP + FLAG MỘT-LẦN — ĐÃ VÁ 2026-08-20 (user chốt "thêm luật với hook tự xoá")
+
+**① Thư mục nháp phình vô hạn.** Đo trên đúng MỘT phiên nặng: **3,97 GB** (model ONNX tải để đo ·
+cache HuggingFace · profile trình duyệt · JSON số liệu). Nó KHÔNG nằm trong `git status`, không
+cổng nào soi, nên mọi lượt audit đều đi qua mà không thấy. Nguyên văn user: *"đợi t kiểm thì t
+ko nhớ và cũng lâu mới làm"* ⇒ đúng doctrine **máy canh, đừng dựa ai nhớ**.
+· **Job:** `jobs/scratchpad.ts` + `scratchTick` (mỗi 6 giờ, đồng hồ RIÊNG — không treo vào công
+  tắc tính năng nào, đúng bài học backup chết lặng 4 ngày). Dọn phiên quá 7 ngày hoặc khi tổng
+  vượt 2 GB, **cũ nhất trước, chỉ tới khi về dưới trần**.
+· **Bốn ràng buộc an toàn** (job TỰ XOÁ FILE nên khắt khe hơn thường): chỉ nhận đúng khuôn
+  `<project>/<session>/scratchpad` · không đụng phiên đang chạy · không đụng thư mục vừa ghi
+  trong 6 giờ · fail-open. Gate 7 ca, **quá nửa là ca ÂM**; đột biến: bỏ bảo vệ phiên đang chạy
+  ⇒ 2 đỏ, bỏ kiểm khuôn ⇒ 1 đỏ.
+· **Luật** `FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT` vào `02_RULES` + cả 3 template.
+· Dọn tay ngay trong phiên: **3,97 GB → 79 MB** (giữ dữ liệu đo để còn đối chiếu).
+
+**② Flag `.allow-*` bị tiêu thụ dù lệnh KHÔNG chạy** (dính đúng lúc push 2.0.0). Hook PreToolUse
+chỉ nói CHO QUA — nó không biết lệnh có chạy hay không; guard ăn flag rồi tầng khác của host chặn
+⇒ phải xin user lần nữa cho việc họ vừa đồng ý. Nay flag đóng dấu **vân tay của VIỆC** + cửa sổ
+90 s: cùng việc ⇒ thử lại được · việc khác ⇒ **thu hồi ngay** · quá cửa sổ ⇒ chết hẳn. Gate 3 ca
+(chạy trên repo TẠM — bản đầu dùng flag thật và làm ĐỎ một file test chạy song song, đúng bài học
+"test không được đụng tài nguyên thật"); đột biến: xoá-ngay ⇒ 2 đỏ, bỏ vân tay ⇒ 1 đỏ.
+Hai test cũ neo vào hành vi cũ đã **cập nhật theo hợp đồng mới**, không gỡ bỏ.
+
+## ✅ CẢNH BÁO CONTEXT 95% SAI TRÊN PHIÊN 1M — ĐÃ VÁ 2026-08-20 (user chốt "làm luôn")
+
+**Lỗ:** `windowFor()` đoán cửa sổ theo model id — có `[1m]`/`-1m` ⇒ 1M, còn lại ⇒ 200k. Cơ chế
+tự sửa (`observed > base` ⇒ nhảy bậc) chỉ nổ SAU khi vượt 200k, nên **dải 190k–200k của MỌI phiên
+1M đều bị hét "⚠ context ~95%"** trong khi thực dùng ~19%. Giá không nằm ở con số: agent nhận
+cảnh báo sẽ đi chốt sổ / thu hẹp việc sớm hơn cần thiết.
+
+**Đo trước khi sửa — hai phép, và cả hai đều bác giả định cũ:**
+· Transcript **KHÔNG khai cửa sổ ở đâu cả** (`context_management: null`; không trường nào mang
+  trần) ⇒ không có "nguồn thật" để đọc như hướng gợi ý ban đầu.
+· Quét 6 phiên gần nhất trên máy này: **5/6 đã vượt 200k** (731k · 757k · 474k · 225k · 218k) với
+  **CÙNG một model id `claude-opus-5`** ⇒ phỏng đoán 200k sai với thực tế máy, và tên model về
+  nguyên tắc không phân biệt được 1M với 200k.
+· Tín hiệu phụ đã thử và LOẠI: TTL cache (`ephemeral_1h` vs `5m`) — cả 6 phiên đều 1h, không tách được.
+
+**Cách vá — HỌC TỪ BẰNG CHỨNG thay vì đoán theo tên.** Một phiên không thể dùng quá cửa sổ của
+chính nó, nên mỗi lần thấy `observed` vượt bậc là một lần CHỨNG MINH được trần thật; nay trần đó
+được **ghi nhớ** (`data/context-guard/observed-window.json`, cạnh kho theo HP điều 14, gitignored)
+và phiên sau đọc nó TRƯỚC khi đoán theo tên. Thứ tự: ① hậu tố tường minh · ② trần đã học · ③ mới
+tới phỏng đoán. Bằng chứng **chỉ đi lên** (phiên ngắn không xoá trần đã chứng minh — cùng bài học
+"trần treo" của cổng i18n). Fail-open tuyệt đối: mốc hỏng/không ghi được ⇒ hành xử y như cũ.
+
+**Nghiệm thu trên bề mặt thật:** phiên này 750.775 token ⇒ hook nay báo **75,1%** (trước sẽ là
+375% hoặc 95% tuỳ mốc); mốc đã ghi `{"claude-opus-5": 1000000}`. Gate: 3 ca mới trong
+`realtime-capture.test.mjs` (15/15 xanh), **đột biến chứng minh đỏ được** — bỏ ghi nhớ ⇒ 1 đỏ,
+bỏ đọc bộ nhớ ⇒ 2 đỏ.
+
+⚠ **Giới hạn còn lại, ghi để không ai đọc thành đã kín:** phiên ĐẦU TIÊN trên một máy trắng vẫn
+đoán 200k cho tới khi có phiên nào vượt ngưỡng — không có cách nào biết trước, vì thông tin đó
+không tồn tại trong transcript. Đây là trần của bài toán, không phải chỗ chưa làm.
+
+## ✅ ĐÃ ĐỒNG BỘ chuẩn `frontend/api/` → `frontend/client/` sang 3 repo khác (user cho phép 2026-08-15)
+
+Chuẩn đổi tên ngày 2026-08-15 (`06_CHANGES`) **KHÔNG tự lan** — mỗi repo giữ bản copy riêng.
+Dò bằng `project_root` trong GM rồi đọc file thật; user chốt từng repo trước khi ghi
+(`02_RULES §Phạm vi project`).
+
+| project | đã làm | ghi chú |
+|---|---|---|
+| `Tool\SasinHarvest` | **đổi tên folder thật** `frontend/api/` → `client/` · sửa 1 import trong `pages/app.js` · sửa 3 chỗ trong `03_STRUCTURE` | `conform` ✓ · **không phải git repo** |
+| `Tool\SasinFlow` | 3 chỗ trong `03_STRUCTURE` | là git repo — **file đang `M`, CHƯA commit** |
+| `Tool\SasinInfra` | 3 chỗ trong `03_STRUCTURE` | **không phải git repo** |
+
+**Hai điều phải nhớ khi đụng lại mấy repo này:** ① `SasinHarvest` và `SasinInfra` **không nằm
+trong git** ⇒ không lùi được bằng `git checkout`, phải tự sao lưu trước khi sửa (lần này đã chép
+`app.js` + folder `api/` ra scratchpad trước khi đổi tên) · ② `SasinHarvest/attic/
+frontend-vanilla-pre-redesign/` **cố ý KHÔNG sửa** — đó là ảnh chụp lịch sử, sửa nó là làm hỏng
+bản ghi (cùng doctrine với luật supersede của changelog).
+
+*Ghi chú: file trong `SasinHarvest` vốn đã tên `client.js` — tác giả cũng nghĩ tới chữ "client",
+đúng hướng đổi tên này. Và `/api/...` trong URL endpoint là **đường HTTP của backend**, KHÔNG
+liên quan tên thư mục FE — đừng đổi nhầm khi thấy grep ra hàng chục dòng.*
+
+## ✅ XONG 2026-08-08 — kho 768 chiều + fp32 ĐÃ TRÁO, đang chạy thật
+
+> **Đo trên daemon 4444 sau khi tráo:** `dbPath` = `data/global_memory.db` · **215.452 tin ·
+> 1.290 phiên** · vector **157.524 · coverage 99,2% · dims 768d** · `quick_check ok`.
+> Kho 256 cũ GIỮ LẠI làm bản lùi: `data/global_memory.256d-backup-20260808.db` (1.234 MB).
+>
+> **Cổng điều 12 đã vượt** — mốc phải thắng là `41%@10`, đo trên lớp `prose` (mốc cũ chính là
+> đo trên corpus toàn prose): **41% → 62%** @10, MRR 0,245 → 0,354. Bảng đầy đủ theo lớp trong
+> `06_CHANGES`. `tool_use` giữ **0%** — đúng như đã cảnh báo trước: đợt này KHÔNG lấp lớp chưa
+> bao giờ có vector.
+>
+> ⚠ **Kỳ vọng từ bảng `dims-test` là QUÁ LẠC QUAN, đừng dùng lại làm mốc:** bảng đó hứa
+> `recall@1` **91%** ở 768; thực đo trên kho thật chỉ **18%**. Không mâu thuẫn — `dims-test`
+> so vector-với-vector trên tập ứng viên hẹp, còn đây là recall thật xuyên 215k tin qua hybrid.
+> Phần THỨ HẠNG TƯƠNG ĐỐI của bảng cũ thì đúng, và đó mới là thứ nó dùng để quyết.
+>
+> ✅ **Rerank: ĐÃ ĐO, KHÔNG được bật mặc định** (mục "rerank chưa đo" bên dưới đóng theo).
+> Ở kho 768: hybrid `41%@10` nhưng hybrid+rerank chỉ `27%@10`, MRR 0,220 → 0,160, và tốn
+> **11 giây/truy vấn** so với 0,68 giây. Nó làm recall TỤT chứ không tăng.
+>
+> ✅ **Đã xoá `global_memory.HONG-20260804-*.db`** (1.026 MB, user duyệt 2026-08-08). An toàn
+> vì SHA256 cho thấy nó TRÙNG KHÍT hai bản trong `data/corrupt-20260803-091106/` — vật chứng
+> vẫn còn đủ hai bản, đúng ràng buộc "không xoá cho tới khi truy xong nguyên nhân gốc".
+
+## ✅ RERANK — ĐÃ TẮT 2026-08-10, đóng bằng số (hồ sơ giữ lại bên dưới)
+
+> **Đo dứt điểm** (bench 68 nhãn, kho thật): thua mọi cột nghiêm (`@10` 35→28% · MRR 0,288→0,204)
+> và chậm **11,6×**. Đã tắt bằng `/set-rerank?on=0`; header lệnh không còn `rerank (cross-encoder)`.
+> ⚠ **Đọc kèm sắc thái, đừng dùng entry này để kết luận "rerank vô dụng":** dưới thước TƯƠNG ĐƯƠNG
+> nó gần như HOÀ (0,413 vs 0,402) — nó xáo giữa các tin tương đương nhau chứ không phá recall.
+> Phán quyết đúng: **không đáng 11,6× thời gian**.
+>
+> **Ba đường CỨU rerank chưa ai thử** (ghi để phiên sau không kết luận vội): ① **reranker ĐA NGỮ** —
+> `bge-reranker-base` là model zh/en trên kho tiếng Việt, tài liệu ngành đo English-only sụp 31% vs
+> 84–90% của bản đa ngữ; chưa kiểm được vì 4 model dò đều không có ONNX nạp được (đường ra: tự
+> chuyển `bge-reranker-v2-m3`) · ② **TRỘN thay vì THAY** — rerank hiện thay HẲN thứ tự, trong khi
+> `vecMix` đã chứng minh *trộn ăn hơn thay hẳn* · ③ **thu cửa sổ** top-40→top-10 (rẻ 4×, ít chỗ phá).
+> **TRẦN cần biết trước:** bench đo chỉ **6–8/68 câu** có đáp án trong pool mà ngoài top-10 ⇒ đó là
+> TOÀN BỘ dư địa của mọi lớp rerank ở kho này. Nghẽn thật nằm ở POOL, không phải ở xếp lại.
+
+<details><summary>Hồ sơ gốc (phát hiện 2026-08-08) — giữ để tra</summary>
