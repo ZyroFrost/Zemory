@@ -104,15 +104,41 @@ test("skill đã ship thì phải được ĐĂNG KÝ ở 04_SKILLS + bảng tri
   }
 });
 
-test("skill audit: số MẶT và số LUẬT của template phải KHỚP bản zemory", () => {
+/** Dấu hiệu phép kiểm CHỈ áp cho app — bộ non-app mang chúng là bắt dự án BI chạy thứ nó không có,
+ *  tức cổng KHÔNG BAO GIỜ nổ được (luật 4 của skill: còn tệ hơn không có). Đo 2026-08-23: template
+ *  nonapp mang cả 4 dấu này vì nó là bản chép nguyên từ app. */
+const APP_ONLY_MARKERS = ["npm run check", "FE ↔ BE", "integrity_check", "CSS/id chết"];
+
+/** Bốn mặt SỐNG SÓT — mọi profile phải có, kể cả non-app: nó vẫn có bí mật, vẫn có pipeline theo
+ *  lịch, vẫn giao văn bản cho người đọc. Đây là vế NGƯỢC của phép trên: bỏ mặt app-only thì dễ
+ *  bỏ luôn mặt sống sót cho "gọn", mà đó đúng là 8 sự cố nặng nhất. */
+const SURVIVAL_FACES = ["Bí mật & phát tán", "Toàn vẹn &", "Vận hành nền & guardrail", "CHỮ & BỀ MẶT NGƯỜI ĐỌC"];
+
+test("skill audit: KHỚP THEO PROFILE — app/adapt bằng zemory, nonapp có bộ riêng nhưng không được cắt mặt sống sót", () => {
   const z = read(".claude/skills/audit/SKILL.md");
   const zf = faceCount(z), zl = lawCount(z);
   assert.equal(zf, 11, `bản zemory đang có ${zf} mặt — nếu đổi có chủ đích thì sửa cả cổng này`);
   assert.ok(zl >= 7, `bản zemory chỉ có ${zl} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
     const t = read(`docs_template/${s}/.claude/skills/audit/SKILL.md`);
-    assert.equal(faceCount(t), zf, `bộ ${s}: audit ${faceCount(t)} mặt vs zemory ${zf} — đúng lỗ 7-vs-11 đã đo`);
-    assert.equal(lawCount(t), zl, `bộ ${s}: audit ${lawCount(t)} luật vs zemory ${zl}`);
+    assert.equal(lawCount(t), zl, `bộ ${s}: audit ${lawCount(t)} luật vs zemory ${zl} — LUẬT thì mọi profile giống nhau`);
+    if (s === "nonapp") {
+      // non-app KHÔNG so số mặt với app (nó bỏ mặt FE↔BE có chủ đích), mà so bằng NGHĨA:
+      assert.ok(faceCount(t) >= 9, `bộ nonapp chỉ còn ${faceCount(t)} mặt — cắt quá tay`);
+      // Chỉ soi phần DANH SÁCH MẶT (từ heading "### … mặt" trở đi). Ghi chú "vì sao khác bản app"
+      // nằm TRƯỚC heading và cố ý nhắc `FE ↔ BE` để giải thích — nên nó phải nằm ngoài phạm vi soi.
+      // Bản đầu của phép này dùng `indexOf` lần đầu ⇒ marker có mặt trong ghi chú là đủ cho một
+      // marker trong MẶT lọt qua. Cắt theo heading thì hết hở, không cần ngoại lệ nào.
+      const facesOnly = t.slice(t.indexOf("### "));
+      for (const m of APP_ONLY_MARKERS) {
+        assert.ok(!facesOnly.includes(m), `bộ nonapp mang phép app-only "${m}" trong danh sách mặt — cổng đó KHÔNG BAO GIỜ nổ được ở dự án BI`);
+      }
+      for (const f of SURVIVAL_FACES) {
+        assert.ok(t.includes(f), `bộ nonapp THIẾU mặt sống sót "${f}" — đúng vùng chứa các sự cố nặng nhất`);
+      }
+    } else {
+      assert.equal(faceCount(t), zf, `bộ ${s}: audit ${faceCount(t)} mặt vs zemory ${zf} — đúng lỗ 7-vs-11 đã đo`);
+    }
   }
 });
 
