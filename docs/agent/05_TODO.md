@@ -163,6 +163,13 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 áp lên mọi bộ harness"*. NORM nay ở `02_RULES §Ngôn ngữ` (4 ràng buộc) + ship **cả 4 bộ template**;
 skill `audit` mặt ⑪ chỉ giữ **cách đo + bẫy báo oan**. Ma trận 4 luật × 5 bộ rule: đủ ✓.
 
+- [ ] **(advisory, mới 2026-08-22) Guard chặn oan MỌI lệnh nhắc tên file cờ `.allow-push`.** Nhánh
+  push là `GIT_CMD [^\n;|&]*\bpush\b`, mà `\bpush\b` khớp cả token nằm TRONG tên file ⇒
+  `git check-ignore -v docs/hooks/.allow-push` bị chặn như một lệnh push thật (đo 2 lần trong phiên).
+  Nghĩa là **chính cái lệnh để soi cờ** cũng không chạy được nếu cùng câu có chữ `git`. Cùng họ bẫy
+  đã ghi 21/08 (*nhãn ca test chứa `git … push`*), nhưng ca này đắt hơn vì nó chặn việc KIỂM cờ.
+  Đường vá gọn: đòi `push` là **đối số đứng riêng** — `(?<![\w.-])push\b`. Chặn phía an toàn nên là
+  advisory; cách tránh hiện tại: đừng để `git` và tên cờ trong cùng một câu lệnh.
 - [ ] **(advisory, mới 2026-08-22) `zemory archive` nhận MỌI cờ lạ rồi CHẠY THẬT — cần `--dry-run`
   + từ chối cờ không biết.** Đo trong phiên: `archive --help` → archive 5 entry + 6 mục ·
   `archive --dry-run` → in *"moved 2 closed item(s)"* và **dời thật 2 mục** (diff `archive/05_TODO.md`
