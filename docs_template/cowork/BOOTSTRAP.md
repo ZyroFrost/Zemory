@@ -118,7 +118,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
-| 10 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 97 |
+| 10 | `.claude/skills/structure/SKILL.md` | `<RAW>/.claude/skills/structure/SKILL.md` | 98 |
 | 11 | `.claude/skills/structure/reference/conventions.md` | `<RAW>/.claude/skills/structure/reference/conventions.md` | 151 |
 | 12 | `.claude/skills/structure/scripts/check_structure.py` | `<RAW>/.claude/skills/structure/scripts/check_structure.py` | 254 |
 | 13 | `.claude/skills/grill/SKILL.md` | `<RAW>/.claude/skills/grill/SKILL.md` | 35 |
