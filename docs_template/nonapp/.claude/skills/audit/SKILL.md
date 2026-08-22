@@ -53,14 +53,10 @@ nặng nhất, không phải mặt phụ.)*
    Repo **không có cổng nào chạy được** thì đó CHÍNH LÀ finding đầu tiên, không phải lý do bỏ mặt này.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
    nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.
-3. **Cấu trúc & NGUỒN TRÙNG** — file/thư mục ngoài chuẩn · **file/script không ai gọi** (stage cũ,
-   query bỏ dùng, launcher chết — chúng vẫn nằm đó và vẫn hiện trong grep, nên người sau tưởng còn
-   dùng) · **định nghĩa metric nằm ở ≥2 nơi** (từ điển `03_STRUCTURE §7` là nhà DUY NHẤT — có
-   `docs/dictionary.md` lạc, hay công thức chép vào nhiều measure không) · số pipeline có **mirror
-   đúng 3 nơi** (`tasks/NN_` ↔ `pipelines/NN_` ↔ `data/NN_`) · ghi vào file nguồn có nguyên tử không.
-   ⚠ Phép dò mồ côi **rất dễ hỏng lặng** — bắt buộc có **ca tự kiểm**: một file CHẮC CHẮN đang dùng
-   phải hiện ra là "có người gọi"; trượt ca đó thì mọi con số vô nghĩa. **Tìm ra thì ĐỀ XUẤT, KHÔNG
-   tự xoá** (`02_RULES §Hành xử`).
+3. **Cấu trúc & NGUỒN TRÙNG** — file/thư mục ngoài chuẩn · script/query không ai gọi · **định nghĩa
+   metric nằm ở ≥2 nơi** (từ điển `03_STRUCTURE §7` là nhà DUY NHẤT — có `docs/dictionary.md` lạc,
+   hay công thức chép vào nhiều measure không) · số pipeline có **mirror đúng 3 nơi**
+   (`tasks/NN_` ↔ `pipelines/NN_` ↔ `data/NN_`) · ghi vào file nguồn có nguyên tử không.
 4. **Dữ liệu & 3 chặng** — có ai GHI vào `01_raw/` không (nó **CHỈ ĐỌC**) · file trung gian có mang
    tiền tố số stage không · deliverable cuối có nằm `03_output/` với tên nghiệp vụ không · `data/adhoc/`
    có bị dùng cho việc **định kỳ** không (nó chỉ dành cho file lẻ throwaway) · kích thước · bản rác.
