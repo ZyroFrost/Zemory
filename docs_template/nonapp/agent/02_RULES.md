@@ -23,6 +23,7 @@
 Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung lượng); như share/*.enc
 Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
 Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
+Bề mặt CHẾT THEO nền  **Mọi bề mặt phụ thuộc một tiến trình chạy nền (launcher đang chờ · pipeline nhiều bước · job theo lịch · cửa sổ tool đang mở) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang chạy.** Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó **NÓI DỐI**: người dùng thấy "đang chạy…" rồi chờ hàng giờ trong khi KHÔNG có gì đang chạy, và không có cách nào phân biệt với chạy-thật. Áp cụ thể ở đây: stage pipeline chết giữa chừng phải trả **mã thoát ≠ 0** và nói rõ chặng nào · cổng readiness thất bại thì **DỪNG chuỗi**, không chạy tiếp rồi xuất file thiếu số · file deliverable ghi dở phải bị coi là LỖI, không để lại bản cụt trông như đã xong
 SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries của app)
 ```
 ## Ngôn ngữ (BẮT BUỘC)
