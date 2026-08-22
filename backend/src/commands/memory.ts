@@ -259,7 +259,12 @@ export async function cmdMemory(args: string[]): Promise<void> {
     port = await daemonPort();
     if (port) {
       const acquire = async (): Promise<{ busy?: boolean }> => {
-        const r = await fetch(`http://127.0.0.1:${port}/gate-acquire`, { method: "POST", signal: AbortSignal.timeout(400) });
+        // Khai luôn KHO mình sắp ghi: daemon cần biết để không bắt việc trên kho KHÁC nhường oan
+        // (vd `backupTick` chép kho thật trong khi job này ghi kho song song).
+        const r = await fetch(
+          `http://127.0.0.1:${port}/gate-acquire?db=${encodeURIComponent(currentMemoryDb())}`,
+          { method: "POST", signal: AbortSignal.timeout(400) },
+        );
         return (await r.json()) as { busy?: boolean };
       };
       try {

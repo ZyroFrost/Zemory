@@ -84,6 +84,78 @@ test("gỡ được thì phải HẠ trần — trần treo cao hơn thực tế
   assert.deepEqual(stale, [], stale.join("\n"));
 });
 
+// ── CHỮ NẰM THẲNG TRONG HTML — vùng cổng này TRƯỚC ĐÂY KHÔNG SOI ────────────────
+// Đo 2026-08-21 (audit mặt ⑪): cổng trên chỉ quét `frontend/scripts/*.js`, nên **16 chỗ** chữ
+// Việt nằm ngay trong `pages/app.html` chưa bao giờ bị đếm — người dùng đổi `lang=en` vẫn thấy
+// «Quét sâu» · «Cả máy» · tooltip «Cài đặt». Không lỗi nào nổ: markup không đi qua `t()`.
+//
+// Chữ Việt trong HTML là ĐÚNG khi phần tử có MÓC i18n — `chrome.js` đè nội dung lúc chạy qua
+// `data-i18n` (text) · `data-i18n-title` · `data-i18n-ph` (placeholder) · `data-i18n-hint`.
+// Chỉ chỗ THIẾU móc mới là lỗi. (Bản dò đầu tiên không biết luật này nên báo oan 156 ca.)
+const HTML_BUDGET = 0; // ⛔ chỉ được HẠ. 16 chỗ ban đầu đã vá cùng ngày ⇒ trần về 0.
+const HTML_FILE = new URL("../../frontend/pages/app.html", import.meta.url);
+
+const VOID_TAGS = new Set(["input", "img", "br", "hr", "meta", "link", "source", "use", "path", "circle", "rect", "col"]);
+
+function htmlGaps(html) {
+  const noComment = html.replace(/<!--[\s\S]*?-->/g, " ");
+  const out = [];
+  // Giữ NGĂN XẾP thẻ mở để biết TỔ TIÊN có móc `data-i18n` chưa: `chrome.js` đặt `innerHTML`
+  // của phần tử mang móc ⇒ mọi thẻ con bị ghi đè theo. Bản dò đầu không biết điều này nên báo
+  // oan `<b>Quét nguồn đã biết</b>` nằm trong `<div data-i18n="mem.scanHint">` — và tôi suýt
+  // "sửa" một chỗ vốn đã đúng.
+  const stack = [];
+  const covered = () => stack.some((f) => f);
+  for (const m of noComment.matchAll(/<\/([a-z][\w-]*)\s*>|<([a-z][\w-]*)\b([^>]*?)(\/?)>([^<]*)/gi)) {
+    if (m[1]) {
+      stack.pop();
+      continue;
+    }
+    const [, , tag, attrs, selfClose, text] = m;
+    const has = (a) => new RegExp(a + "\\s*=", "i").test(attrs);
+    const inherited = covered();
+    if (!selfClose && !VOID_TAGS.has(tag.toLowerCase())) stack.push(has("data-i18n") || inherited);
+    if (VIETNAMESE.test(text) && text.trim().length > 1 && !has("data-i18n") && !inherited) {
+      out.push(`text <${tag}>: ${text.trim().slice(0, 40)}`);
+    }
+    for (const [attr, hook] of [
+      ["title", "data-i18n-title"],
+      ["placeholder", "data-i18n-ph"],
+      ["data-hint", "data-i18n-hint"],
+      // `aria-label` cũng là chữ NGƯỜI DÙNG (trình đọc màn hình đọc nó) nên cũng phải song ngữ.
+      // Móc `data-i18n-aria` thêm 2026-08-21 cùng đợt — trước đó 7 nhãn aria nằm cứng tiếng Việt.
+      ["aria-label", "data-i18n-aria"],
+    ]) {
+      const m = attrs.match(new RegExp(attr + '\\s*=\\s*"([^"]*)"', "i"));
+      if (m && VIETNAMESE.test(m[1]) && !has(hook)) out.push(`${attr} <${tag}>: ${m[1].slice(0, 40)}`);
+    }
+  }
+  return out;
+}
+
+test("chữ Việt nằm thẳng trong HTML phải có MÓC i18n (cổng không-lùi)", () => {
+  const gaps = htmlGaps(readFileSync(HTML_FILE, "utf8"));
+  assert.ok(
+    gaps.length <= HTML_BUDGET,
+    `${gaps.length} chỗ chữ Việt trong app.html thiếu móc i18n (trần ${HTML_BUDGET}) — ` +
+      `thêm data-i18n / -title / -ph / -hint + key ở CẢ HAI dict:\n  ` + gaps.slice(0, 20).join("\n  "),
+  );
+});
+
+test("phép dò HTML phải THẤY được lỗi — ca ÂM + ca DƯƠNG dựng tại chỗ", () => {
+  // Luật 4 của skill audit: hỏi "cái gì làm nó ĐỎ?". Nếu không có ca này thì một hàm dò trả
+  // rỗng vĩnh viễn vẫn cho gate màu xanh — đúng kiểu hỏng câm đã dính nhiều lần.
+  assert.equal(htmlGaps('<div title="Cài đặt"></div>').length, 1, "thiếu móc title phải bị bắt");
+  assert.equal(htmlGaps('<div data-i18n-title="x" title="Cài đặt"></div>').length, 0, "có móc thì KHÔNG được báo");
+  assert.equal(htmlGaps("<b>Quét sâu</b>").length, 1, "text chữ Việt trần phải bị bắt");
+  assert.equal(htmlGaps('<b data-i18n="x">Quét sâu</b>').length, 0, "text có móc thì KHÔNG được báo");
+  assert.equal(htmlGaps("<!-- Quét sâu trong comment --><b>Deep scan</b>").length, 0, "comment KHÔNG tính");
+  // TỔ TIÊN có móc ⇒ con được phủ (chrome.js ghi đè innerHTML của phần tử mang móc).
+  assert.equal(htmlGaps('<div data-i18n="k"><b>Quét sâu</b></div>').length, 0, "con của phần tử có móc KHÔNG được báo");
+  // …nhưng ra khỏi phần tử đó thì hết phủ — nếu không, một móc ở đầu file sẽ che cả trang.
+  assert.equal(htmlGaps('<div data-i18n="k"><b>Quét sâu</b></div><b>Cả máy</b>').length, 1, "hết thẻ cha là hết phủ");
+});
+
 test("mọi key i18n phải có ở CẢ HAI dict — thiếu một bản là rơi ngược về tiếng Việt", () => {
   // `t()` fallback sang dict vi khi thiếu key, nên một key chỉ có bản vi sẽ KHÔNG báo lỗi:
   // nó lặng lẽ hiện tiếng Việt giữa giao diện tiếng Anh. Đúng dạng hỏng câm.

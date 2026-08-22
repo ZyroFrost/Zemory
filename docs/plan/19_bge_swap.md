@@ -102,8 +102,14 @@ bench trên kho thật + backup ngày xoay đủ vòng, ~5 ngày)* → bản sao
   còn gemma-768.
 - Đường đi: sau tráo, xuất **FULL thế hệ 1024** lên Drive (compact kho chính); máy kia làm như
   "máy mới nhận bàn giao" — backup kho cũ của nó rồi nhận bản 1024 (điều 16: máy nhận không
-  nhúng lại gì). Việc này cần USER điều phối (máy kia phải có mặt); chưa có máy thứ hai hoạt
-  động thì bước này NGỦ, không chặn gì.
+  nhúng lại gì). Việc này cần USER điều phối (máy kia phải có mặt).
+  > 🔄 **Bỏ vế *"chưa có máy thứ hai hoạt động thì bước này NGỦ, không chặn gì"* — audit
+  > 2026-08-21 đo ngược:** `global_memory.sync.lock` trên kênh chung mang
+  > `{"host":"DESKTOP-PFB157K","at":"2026-08-21T15:07:24Z"}` và kho chính vừa đổi lúc 21:42 ⇒
+  > **máy kia đang sync ngay lúc đó**. Vậy bước ⑤ KHÔNG còn là việc ngủ: sau tráo, mọi lượt sync
+  > của máy kia vẫn đẩy vector `gemma-768` và bên này sẽ **từ chối** chúng — đúng thiết kế, nhưng
+  > nghĩa là hai máy chạy lệch thế hệ vector cho tới khi máy kia được bàn giao. Phải điều phối
+  > **TRƯỚC hoặc NGAY SAU** bước ④, không để trôi.
 
 ## 7. Phi-mục-tiêu (đợt này)
 
@@ -117,8 +123,8 @@ bench trên kho thật + backup ngày xoay đủ vòng, ~5 ngày)* → bản sao
 
 | bước | việc | loại | trạng thái |
 |---|---|---|---|
-| ① | profile `bge-m3-v1` trong `embed.ts` + gate | build (phiên build) | CHƯA |
-| ② | copy kho + re-embed nền ~44 h | chạy máy | chờ ① |
+| ① | profile `bge-m3-v1` trong `embed.ts` + gate | build (phiên build) | ✅ **XONG 2026-08-19** (xem §2 — kèm phát hiện cờ `sequential`) |
+| ② | copy kho + re-embed nền ~44 h | chạy máy | 🔄 **ĐANG CHẠY** — đo 2026-08-21 22:10: **241.139 / ~253.900 vector**; nhịp đã sụp còn ~11,6 vector/phút ⇒ còn **~18–32 giờ** (sổ: `05_TODO`) |
 | ③ | bench A/B + user so tay | đo | chờ ② |
 | ④ | tráo + bản lùi có án tử | thao tác một-lần | chờ user KÝ sau ③ |
 | ⑤ | thế hệ 1024 lên Drive + máy kia | điều phối user | chờ ④, ngủ tới khi có máy kia |

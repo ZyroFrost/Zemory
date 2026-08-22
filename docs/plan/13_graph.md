@@ -1,7 +1,7 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
 # Plan 13: Graph — app phụ trợ vẽ đồ thị cho MỌI repo theo chuẩn zemory
 
-> Trạng thái: **BUILT 2026-07-20/21** — Phase A→C + docs-graph (references+supersede) + semantic overlay (`--semantic`, inferred) + `graph export` **v2** + cache + cross-project `--all`; điều 13 hiến pháp đã chốt. Còn hoãn: Phase D (tsserver/pyright), MCP mirror. Chi tiết build/verify: `06_CHANGES` + `05_TODO §🧩 Graph`. §5/§8/§9 dưới đây là SPEC gốc — vài chỗ đã lệch code (§5 `graph build`/bảng DB không tồn tại → cache in-memory; contract v1→v2). *(Sử: SPEC DRAFT chốt hướng 2026-07-18.)* Ý tưởng user: một **app phụ trợ dùng chung** — tự nó là 1 app, kết nối với MỌI repo theo chuẩn zemory rồi vẽ graph (node + cạnh có kiểu) để xem cấu trúc + dò quan hệ/ảnh hưởng.
+> Trạng thái: **BUILT 2026-07-20/21** — Phase A→C + docs-graph (references+supersede) + semantic overlay (`--semantic`, inferred) + `graph export` **v2** + cache + cross-project `--all`; điều 13 hiến pháp đã chốt. **Bổ sung 2026-08-21** (hấp thụ từ khảo sát Graphify): `graph path <A> <B>` · god-nodes theo tổng bậc trong `graph fitness` · **đa ngôn ngữ THEO KHO** (detect-then-load, cờ `noImportLayer`) — xem §5 và §9. Còn hoãn: Phase D (tsserver/pyright), MCP mirror. Chi tiết build/verify: `06_CHANGES` + `05_TODO §🧩 Graph`. §5/§8/§9 dưới đây là SPEC gốc — vài chỗ đã lệch code (§5 `graph build`/bảng DB không tồn tại → cache in-memory; contract v1→v2). *(Sử: SPEC DRAFT chốt hướng 2026-07-18.)* Ý tưởng user: một **app phụ trợ dùng chung** — tự nó là 1 app, kết nối với MỌI repo theo chuẩn zemory rồi vẽ graph (node + cạnh có kiểu) để xem cấu trúc + dò quan hệ/ảnh hưởng.
 > Định vị: chuẩn zemory (slot §4 · harness · `.harness.json` · cross-ref `.md` · memory) là **CONTRACT**; graph app là **CONSUMER** của contract — cùng mô hình A.I Center consume zemory (plan/04 §1). Repo nào theo chuẩn → tự động graph được, app không cần biết gì riêng repo đó.
 
 ## 0b. Bề mặt UI — hấp thụ từ "Knowledge Graph Viewer" (user đưa mẫu 2026-07-26)
@@ -185,6 +185,15 @@ làm được taxonomy tương đương, hoàn toàn tất định — đó là 
 ## 5. Bề mặt & contract
 - **`zemory graph build`** — parse chuẩn + memory → dựng bảng graph dẫn xuất (incremental, guard hash như digest).
 - **`zemory graph export --json [--project X | --all]`** — xuất `graph.json` (schema **versioned**): `{ version, nodes:[{id,type,label,ref}], edges:[{src,dst,type,kind:declared|inferred}] }`. Đây là contract cho app + mọi consumer.
+- **`zemory graph path <A> <B>`** *(thêm 2026-08-21, hấp thụ từ khảo sát Graphify)* — BFS KHÔNG
+  HƯỚNG trên ba lớp cạnh SẴN CÓ (`imports` · `calls` · `api` seam), in **LOẠI + HẠNG từng bước**
+  nên cạnh suy luận không giả dạng khai báo kể cả ở giữa đường đi (điều 13). Lấp lỗ traceability
+  đa-hop mà §1 tự nhận là chưa có. Đo sống: `system.js → ui.ts` chỉ **1 bước qua api seam** —
+  đường mà import-graph mù hoàn toàn. Không nối được thì nói thẳng *"không nối được qua 3 lớp cạnh
+  hiện có"* kèm câu *"không nối ≠ không liên quan"*, KHÔNG bịa đường.
+- **`zemory graph fitness`** — ngoài `hub_pct`/`isolated_pct`/`util_violations` nay có **god-nodes
+  theo TỔNG BẬC** (fan-in + fan-out): bảng `hubs` chỉ xếp theo fan-in nên bỏ sót đúng loại node
+  nguy hiểm nhất — đo trên chính repo: `ui.ts (1↓/42↑)` không hề xuất hiện trong `hubs`.
 - **`zemory graph impact <file>`** — CLI advisory blast-radius: in fan-in + danh sách importer/caller của file, agent tự gọi TRƯỚC khi sửa file nóng. **TƯ VẤN, không chặn** — quyền sửa/permission thuộc host (HP điều 10); zemory chỉ đưa dữ kiện để agent tự thận trọng. *(Bề mặt CLI là CHÍNH — xem §9: hệ agent của user lái terminal, không wire MCP.)*
 - **MCP** `graph_neighbors(node, edge_types?, depth?)` / `graph_impact(file)` — bản MIRROR của CLI cho host nào có nối MCP; trả node-ID + nhãn 1 dòng (progressive disclosure). Phụ, không phải đường giao hàng chính.
 - **Viewer** — thuộc **Graph App** (repo riêng); hoặc bản tối giản `docs_visual/graph.html` self-contained cho từng repo (0 token agent) nếu cần nhanh.
@@ -239,4 +248,23 @@ làm được taxonomy tương đương, hoàn toàn tất định — đó là 
 - **Phase B ✅:** thay regex symbol trong `graph.ts` bằng **tree-sitter WASM** (`web-tree-sitter`, MIT — rà license theo HP điều 2) cho TS/JS/Py → node `symbol` chính xác (hàm/class/method + dòng), cạnh `defines`.
 - **Phase C ✅:** cạnh `calls` bằng name-match trong project, **nhãn confidence bắt buộc** (`inferred`; nâng `resolved` chỉ khi có bằng chứng mạnh hơn) → blast-radius cấp hàm. Đây là lớp CALM thắng đo được; bài học từ bug của nó: **test trên code thật nhiều template-literal/SQL trước khi tin parser**.
 - **Phase D ⏸ (chỉ khi đo thấy cần):** tier `resolved` qua tsserver/pyright. Gate vào phase D = decision rule: đếm câu "sửa X đụng ai" mà file-level + name-match trả lời trượt trong 2–4 tuần dùng thật.
-- **KHÔNG làm:** consume MCP CALM · edit-gate/refuse · đa ngôn ngữ ngoài TS/JS/Py (thêm khi có repo thật) · semantic code search riêng (memory search lo phần memory).
+- **KHÔNG làm:** consume MCP CALM · edit-gate/refuse · semantic code search riêng (memory search lo phần memory).
+  > 🔄 **Đảo vế *"KHÔNG làm: đa ngôn ngữ ngoài TS/JS/Py"* — user chốt 2026-08-21.** Điều kiện của vế
+  > cũ (*"thêm khi có repo thật"*) đã thành hiện thực theo hướng khác: zemory phục vụ **user KHÁC**,
+  > nên hướng đúng là **THEO KHO** (detect-then-load), không phải bật cả bảng ngôn ngữ.
+  > `EXTRA_LANG_EXT` (bash · java · go · rust · c_sharp · ruby) lấy từ **36 grammar đã ship sẵn**
+  > trong `tree-sitter-wasms`, **nạp LƯỜI per-key có cache-cả-fail** ⇒ kho thuần ts/js/py không tốn
+  > thêm một byte. Node của chúng mang cờ **`noImportLayer`** (có symbol AST, CHƯA có lớp cạnh
+  > import) nên bị loại khỏi `isolated_pct` **và** khỏi `orphans` — hai bề mặt phải nói MỘT câu,
+  > lệch nhau là đọc sai một chỗ; cờ đó phơi ra contract v2. `ruby` giữ làm **ca ÂM sống** (grammar
+  > LOAD FAIL ⇒ fail-open, điều 9).
+  > **Phép thử điều 15 đã BÁC hướng "bật cả 40 ngôn ngữ":** hỗ trợ một ngôn ngữ là **BA tầng** (quét
+  > file · cạnh import · walker symbol), và 36 grammar ∩ nhu cầu thật ≈ ∅ — thứ thật sự cần là **SQL**
+  > (60 file thật) thì **không có wasm prebuilt**. Chi tiết + việc còn mở: `05_TODO`.
+  > ✅ **Cấn của đợt này, VÁ CÙNG NGÀY:** audit 2026-08-21 đo được cây folder
+  > (`structure-tree.ts`) vẫn chỉ đi `SRC_EXT` ⇒ kho có `.go/.java/.sh` thì graph có node mà cây
+  > KHÔNG có dòng (repo giả: graph 5 · cây 2), trái chính bất biến hai file tự khai. Vá bằng MỘT
+  > hàm dùng chung `isSourceLeaf()` đặt cạnh hai tập đuôi trong `graph.ts` — cả bộ quét của graph
+  > lẫn lá của cây đều gọi nó, nên không còn hai điều kiện ghép tay ở hai nơi để lệch lần nữa.
+  > Cổng: `structure-sync.test.mjs` so HAI TẬP trên repo giả 5 loại đuôi + **ca ÂM** "kho thuần
+  > ts/py không được nhận `.md`/`.json` thành lá"; đột biến chứng minh đỏ được cả hai chiều.

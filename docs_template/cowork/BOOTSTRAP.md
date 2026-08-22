@@ -112,7 +112,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 51 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 31 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 118 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 128 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 36 |
 | 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 42 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
@@ -129,7 +129,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 18 | `.claude/skills/upload/SKILL.md` | `<RAW>/.claude/skills/upload/SKILL.md` | 22 |
 | 19 | `.claude/skills/reconcile/SKILL.md` | `<RAW>/.claude/skills/reconcile/SKILL.md` | 38 |
 | 20 | `.claude/skills/conform/SKILL.md` | `<RAW>/.claude/skills/conform/SKILL.md` | 41 |
-| 21 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 43 |
+| 21 | `.claude/skills/audit/SKILL.md` | `<RAW>/.claude/skills/audit/SKILL.md` | 46 |
 | 22 | `.claude/skills/write-docx/SKILL.md` | `<RAW>/.claude/skills/write-docx/SKILL.md` | 120 |
 | 23 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
 | 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |

@@ -1,6 +1,150 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- ✅ **(BẮT ĐƯỢC + VÁ 2026-08-22) TEST HẸN GIỜ trong `recency.test.mjs` — gate đầy đủ hôm nay
+  ĐANG ĐỎ, không ai biết.** Lượt sweep rộng nhất chạy được (91 file, trừ 7 file cần ONNX) ra đúng
+  **1 đỏ**: *"search(): recency default ON ranks the fresher relevant message first"*.
+  **Không phải do đợt sửa này** — `git log --since=2026-08-15` trên `search.ts`/`recency.ts`: **0
+  commit**. Gốc: 3 ca đầu của file gọi hàm THUẦN nên truyền `NOW` vào được, còn ca này gọi
+  `search()` mà `blendRecency` mặc định đọc **đồng hồ THẬT** (`nowMs = Date.now()`) — trong khi
+  fixture neo mốc cứng `NOW = 2026-07-02`. Số học của điểm lật: `score = 1/(1+i) × recencyFactor`,
+  `older` đứng i=0 ⇒ `fresher` (i=1) chỉ thắng khi `f_fresher > 2 × f_older`; `f_older` đã chạm
+  SÀN 0,15 ⇒ ngưỡng `0.5^(d/30) = 0.30` ⇒ **d = 52,1 ngày**. Fixture để fresher = NOW−1 ngày, mà
+  2026-07-01 → 2026-08-22 đúng **52 ngày** ⇒ nó vừa lật đỏ trong 1–2 ngày qua. Đo khớp: older
+  **0,026667** vs fresher **0,026230**.
+  **Vá:** neo fixture vào đồng hồ THẬT (đúng ý định ca đó là "mới vs cũ"), KHÔNG đổi API
+  production chỉ để test chạy. Đột biến chứng minh còn cắn: tắt nhánh `recencyEnabled` ⇒ **đỏ**.
+  **Soi cùng lớp lỗi ở chỗ khác:** chỉ `realtime-capture.test.mjs` còn mốc cứng, và nó **an toàn**
+  (so mốc với chính chuỗi đó, không so với đồng hồ). ⇒ 1/91 file có bệnh này, đã hết.
+  *Bài học cho cổng: test gọi code đọc `Date.now()` thì fixture phải neo theo `Date.now()`, hoặc
+  code phải cho tiêm đồng hồ. Neo hai mốc khác nhau là hẹn giờ tự nổ — và nó nổ vào một ngày
+  không ai đang sửa gì gần đó.*
+- ✅ **(BẮT ĐƯỢC + VÁ 2026-08-22) `capture-hook.ts` ghi `writeFileSync` TRẦN — vi phạm cổng
+  `fs-atomic`, lọt 1 ngày.** Sweep rộng bắt ca thứ hai: *"các chỗ ghi file nguồn/cấu hình không được
+  dùng writeFileSync trần"*. Truy `git log`: commit **`859225e`** (đợt *chấm than update* 21/08)
+  thêm `writeFileSync(flag, …)` cho marker nhắc-một-lần-mỗi-phiên. Cổng `fs-atomic` có sẵn và
+  `capture-hook.ts` NẰM TRONG danh sách nó canh — nhưng gate đầy đủ chưa chạy từ 15/08 nên không ai
+  thấy. Vá: đổi sang `writeFileAtomic` (file đã import sẵn, dùng ở dòng 88) + gỡ import trần.
+  *Điều đáng ghi hơn cả hai lỗi: **cả hai đều lọt vì CÙNG một lý do** — nợ "chạy gate đầy đủ" từ
+  15/08. Sweep 91 file (trừ 7 file ONNX) rẻ hơn hẳn `npm run check` (không build, không đụng job
+  embed) và nó bắt được cả hai ⇒ nên chạy lượt này SAU MỖI đợt sửa, đừng chờ cửa sổ máy tĩnh.*
+
+- ✅ **(BLOCKING — ĐÃ VÁ + ĐÃ CHỤP BẢN MỚI, 2026-08-21 22:3x) BACKUP BỊ BỎ ĐÓI IM LẶNG — 27,0 giờ
+  không có bản sao lưu, 1.946 tin đang có ĐÚNG MỘT bản.**
+  *(Con số tôi báo miệng lúc đầu là "33 giờ" — SAI mốc; `rotateBackup` trả về `ageMs` thật =
+  **27,0 giờ**. Giữ lại vế đúng, sửa vế sai.)*
+  Đo hai đường, khớp nhau: ① `data/backups/` bản mới nhất là
+  `…2026-08-20T12-32-45Z` (các ngày 16→20/08 đều có, **21/08 KHÔNG**) · ② `daemon.log` **không một
+  dòng backup nào** sau `2026-08-20T12:33:17Z`, trong khi job `dọn nháp` vẫn nổ 21/08 (04:25Z ·
+  10:24Z) ⇒ scheduler SỐNG, chỉ nhịp backup không nổ. Nhịp thật của nó là **neo theo lần backup
+  trước** (19/08: daemon lên 01:41Z mà backup vẫn 12:05Z = +24h) nên đây không phải "đồng hồ reset
+  theo restart".
+  **Gốc (đọc code, không suy diễn):** `scheduler.ts:215` — `if (child || syncJobRunning() ||
+  cliHoldsWrite()) return;` — nhánh này nằm **TRƯỚC `try`** nên không có `log()` nào; còn
+  `cliHoldsWrite()` đọc **MỘT khoá cho cả thư mục** (`writegate.ts:56` →
+  `join(currentMemoryDir(),"cli-write.lock")`, nội dung chỉ `{pid,label,at}` — **không mang danh
+  tính KHO**). Job embed đang ghi `global_memory.bgem3.db` giữ khoá đó liên tục (gia hạn mỗi lượt,
+  stale 15 phút không bao giờ tới) ⇒ backup của **kho THẬT** — một file KHÁC, không ai ghi tranh —
+  bị chặn 44 giờ. Bản 20/08 lọt được là do tick tình cờ rơi vào khe ~8 s giữa hai lượt.
+  **Vì sao nặng:** đây là **cửa thứ BA** của cùng một bệnh mà repo đã trả giá hai lần (backup chết
+  4 ngày vì treo vào công tắc `scheduler`, 08→12/08 · bỏ đói autosync). Bản vá 13/08 cắt phụ thuộc
+  vào *công tắc*, nhưng để lại phụ thuộc vào *"có kẻ khác đang ghi"* — và plan 19 chính là một kẻ
+  ghi 44 giờ. So sánh tại chỗ: `syncTick` (dòng 273) khi nhường có **hẹn quay lại** `SYNC_RETRY_MS`;
+  `backupTick` thì không hẹn gì và **không nói gì**. Phơi nhiễm đo được: **1.946 tin / 6 phiên** sinh
+  sau mốc backup cuối, mà `autosync` cũng TẮT từ 19/08 ⇒ chúng không có cả bản trên Drive.
+  **ĐÃ LÀM (user chốt "chụp backup ngay + vá code"):**
+  · **Chụp ngay một bản** bằng đúng `rotateBackup` (không đẻ đường mới): 2.040.832.000 byte trong
+    **17,2 giây**, dọn 1 bản cũ (giữ 5), và bản mới **kiểm lại lành** — `quick_check ok` ·
+    276.699 tin · 2.325 phiên · 257.072 vector.
+  · **① khoá ghi nay mang ĐƯỜNG KHO** (`CliLock.db`, đóng dấu bằng `currentMemoryDb()` nên job trỏ
+    `GLOBAL_MEMORY_DB` tự khai đúng kho song song) + hàm mới `cliHoldsWriteOn(db)`: kẻ ghi kho KHÁC
+    ⇒ **không xung đột**; khoá đời cũ không khai kho ⇒ vẫn coi là xung đột (an toàn, tự lành khi
+    tiến trình ghi kế tiếp chạy mã mới).
+  · **② nhánh nhường THÔI IM LẶNG** — `backupYields` đếm lượt liên tiếp, log ở lượt ĐẦU rồi mỗi 8
+    lượt (~4 giờ), kèm tuổi bản mới nhất và cờ ⚠ QUÁ HẠN. Trước đây 54 nhịp im trong 27 giờ nhìn
+    y như "mọi thứ ổn".
+  · **③ `doctor` có mặt mới**: `backupStale()` (trần = 2× chu kỳ) ⇒ `backup: ✗ … quá hạn` **và
+    `exitCode=1`**; sạch thì in `backup: ✓ bản mới nhất N giờ tuổi` (nghiệm thu thật: `✓ 0.2 giờ`).
+    Hai bề mặt (scheduler · doctor) dùng CHUNG một hàm, không đẻ hai cách tính tuổi.
+  · **Cổng `backup-starvation.test.mjs` (7 ca, quá nửa là ca ÂM/biên)**: kho khác ⇒ không chặn ·
+    cùng kho ⇒ chặn · hoa-thường + `/` vs `\` · khoá đời cũ ⇒ chặn · không khoá ⇒ không chặn ·
+    quá 2 ngày ⇒ báo · chưa có bản nào ⇒ báo (và tuổi là `null`, KHÔNG bịa 0). Test đặt
+    `GLOBAL_MEMORY_DB` **trước import động** để không đọc khoá THẬT của repo.
+    **Đột biến chứng minh đỏ được:** trả `cliHoldsWriteOn` về hành vi cũ ⇒ **1 đỏ** (đúng ca ÂM) ·
+    bỏ nhánh quá-hạn của `backupStale` ⇒ **3 đỏ**. Hồi quy 219/219 · tsc 0 · lint 0 · conform ✓.
+  **NGHIỆM THU TRÊN DAEMON THẬT** — restart lúc 15:51:15Z (**pid 34156** · 2.1.0 · log
+  `maintain off, auto-sync off, backup luôn bật`; job embed pid 21968 + wrapper 800 **sống
+  nguyên**, hai công tắc vẫn TẮT). Đúng 60 s sau, nhịp mồi in ra dòng mà 27 giờ trước đó KHÔNG
+  hề có:
+  `[scheduler] backup nhường embed — lượt thứ 1 liên tiếp · bản mới nhất 0.3 giờ tuổi`.
+  Nó VẪN nhường là ĐÚNG: khoá hiện tại do lượt embed đang chạy đặt bằng **mã cũ** nên không khai
+  kho ⇒ nhánh bảo toàn. Lượt embed KẾ TIẾP (tiến trình mới, mã mới) sẽ đóng dấu
+  `db=…bgem3.db` và từ đó backup kho thật chạy bình thường — **tự lành, và nay nhìn thấy được**.
+  **CÒN LẠI (chưa làm, cố ý):** `maintainTick`/`syncTick` vẫn dùng `cliHoldsWrite()` cũ — chúng ghi
+  ĐÚNG kho hiện hành nên không sai, nhưng nên dùng chung hàm mới cho một cách nói.
+- ✅ **(advisory — ĐÃ VÁ 2026-08-21 23:0x, user chốt "sao ko làm đi") Cây folder ≠ graph sau khi mở
+  đa ngôn ngữ 21/08 — bất biến do chính code khai, không cổng nào canh.** `graph.ts:151` nhận `SRC_EXT` **∪ `EXTRA_LANG_EXT`**, còn
+  `structure-tree.ts:201` vẫn chỉ `SRC_EXT`. Hai comment tự khai bất biến này: `graph.ts:62`
+  (*"Exported so the folder-tree view walks the EXACT same file set — tree and graph must never
+  drift"*) và `structure-tree.ts:202` (*"same extension set as the code graph … so every graph node
+  has a matching row here"*). **Đo trên repo giả** (`.ts` + `.go` + `.java` + `.sh`): graph 5 node ·
+  cây 2 file ⇒ **3 node CHỈ có trong graph** (`worker.go` · `Tool.java` · `deploy.sh`), cả 3 mang cờ
+  `noImportLayer`. Zemory **không dính** (file `.sh` duy nhất nằm trong `external/`, vốn bị IGNORE)
+  — nhưng nó dính đúng **kho của user khác**, tức lý do tính năng này được build.
+  **ĐÃ VÁ — một hàm, không phải hai điều kiện:** `isSourceLeaf()` đặt NGAY CẠNH hai tập đuôi trong
+  `graph.ts`, rồi **cả** bộ quét của graph (`collectFiles`) **và** lá của cây (`structure-tree.ts`)
+  gọi chung nó. Chọn hướng này thay vì "thêm `EXTRA_LANG_EXT` vào cây" vì cái sai gốc là **hai
+  điều kiện ghép tay ở hai nơi** — vá kiểu kia thì lần thêm ngôn ngữ sau vẫn lệch y vậy. Đặt hàm ở
+  `graph.ts` (nơi hai tập sống) nên KHÔNG sinh chiều phụ thuộc mới; cây vốn đã import từ đó.
+  **KHÔNG lan sang cổng blocking:** đo trước khi sửa — `conform` chấm trên `g.nodes` (`conform.ts`
+  đã loại `noImportLayer` từ 21/08), **không** đọc `buildFolderTree`; consumer duy nhất của cây là
+  `/folder-tree` (UI). Nên bản vá này không thể tái diễn ca "conform đỏ đột ngột".
+  **Cổng:** 2 ca mới trong `structure-sync.test.mjs` (đúng nhà — file đó vốn canh
+  *index ↔ structure ↔ graph*), chạy trên **repo giả** 5 loại đuôi vì repo thật có thể tình cờ
+  không chứa đuôi nào trong `EXTRA_LANG_EXT` (cổng xanh vì "không có dữ liệu để sai" thì không soi
+  gì). Có **ca ÂM**: kho thuần ts/py không được nhận `.md`/`.json` thành lá. Kèm hai assert
+  "cả hai bên phải THẤY ≥5 file" để phép so không xanh giả khi một bên rỗng.
+  **Đột biến chứng minh đỏ được CẢ HAI CHIỀU:** trả cây về chỉ-`SRC_EXT` ⇒ ca parity đỏ ·
+  `isSourceLeaf` nhận mọi đuôi ⇒ **ca ÂM** đỏ. Nghiệm thu bằng đường thứ hai (chính probe đã bắt
+  bug): trước vá 3 node chỉ-có-trong-graph → sau vá **0 lệch cả hai chiều**.
+  Hồi quy 226/226 · tsc 0 · lint 0 (bắt được một `extname` mồ côi do đợt sửa, đã gỡ) · conform ✓.
+- ✅ **(advisory — ĐÃ VÁ 2026-08-21 22:4x) `plan/13` nói ngược code.** Đã thêm `graph path` +
+  god-nodes vào §5, thêm khối 🔄 đảo vế *"KHÔNG làm: đa ngôn ngữ ngoài TS/JS/Py"* ở §9 (kèm lý do
+  detect-then-load + phép thử điều 15 + trần `structure-tree` chưa vá), và sửa dòng trạng thái đầu
+  file. Hồ sơ gốc của phát hiện: `graph path`
+  (có thật: `commands/graph.ts:151`) và god-nodes **không xuất hiện một lần nào** trong plan 13
+  (§5 vẫn liệt kê bề mặt build/export/impact/MCP/viewer); `EXTRA_LANG_EXT` có thật
+  (`graph.ts:73`, 6 ngôn ngữ) trong khi **§9 vẫn ghi *"KHÔNG làm: … đa ngôn ngữ ngoài TS/JS/Py"***.
+  `02_RULES §Tài liệu` bắt "đổi thiết kế → `docs/plan/*`" trong CÙNG thay đổi. Phiên sau đọc plan
+  sẽ kết luận sai về cả bề mặt lẫn phạm vi ngôn ngữ.
+- ✅ **(advisory — ĐÃ VÁ 2026-08-21 22:4x) `plan/19 §8` tự nói ngược mình:** bảng ghi bước ①
+  *"CHƯA"* trong khi §2 ghi *"✅ ĐÃ LÀM 2026-08-19"*. Đã sửa bảng (① XONG · ② ĐANG CHẠY kèm số đo
+  241.139 và ETA thật), **và** bỏ vế *"chưa có máy thứ hai hoạt động ⇒ bước ⑤ NGỦ"* ở §6 — audit đo
+  ngược bằng `sync.lock` của `DESKTOP-PFB157K`.
+- ✅ **(advisory — ĐÃ VÁ 2026-08-21 22:4x) `05_TODO` lặp NGUYÊN KHỐI trong bàn giao 21/08:** khối
+  *"HAI CÔNG TẮC ĐANG TẮT"* xuất hiện hai lần (dòng 28 và 34, chỉ khác dòng ngoặc cuối) — đúng họ
+  bẫy *"`splice` sổ nuốt dòng của mục kế bên"* mà chính bàn giao đó vừa ghi, và trái `02_RULES`
+  (*"đọc hết 6 file KHÔNG được thấy nội dung trùng"*). Đã gộp về MỘT khối, và nhân dịp sửa luôn vế
+  *"backup vẫn chạy"* đã bị chính audit này bác.
+- ✅ **(advisory ④) ĐÃ LÀM tại chốt phiên 21/08** — `archive` dời **59 mục** sang
+  `archive/05_TODO.md`: **2.327 → 1.551 dòng (−33%)**, 60 `[ ]` + 10 `[~]` còn nguyên, 0 việc mở
+  bị nuốt (bản `.bak` ở `attic/harness-bak/`). *Ba con số cũ của mục này (2.156 · 2.308 · 2.327)
+  đều đã chết — muốn biết thì `wc -l`, đừng đọc sổ.*
+
+**Nghi vấn ĐÃ LOẠI — ghi kèm lý do, khỏi đào lại:**
+· *"precommit-guard không honor `secret_allow`"* — **SAI**: đọc nguyên văn PRECOMMIT_SOURCE có
+  dòng `secret_allow → continue`; grep hẹp ban đầu trượt nó (đúng bẫy công-cụ-hỏng-lặng, luật 5).
+· *cờ `todo verify` dòng ~2052* — báo-oan-kỹ-thuật: `harness.ts` sửa 20/08 vì việc doctor,
+  không liên quan mục gate-TODO-thối mà dòng sổ nói.
+· *eslint "treo" 25 phút* — lỗi PHÉP ĐO của agent: gõ `eslint .` thay vì lệnh chuẩn của repo
+  (`eslint backend/src backend/test backend/scripts`) nên bò cả `external/`+`frontend/`+`attic/`.
+  Đường thật: exit 0 trong chưa đầy một phút. *Bài học lặp: đo bằng đúng lệnh production.*
+
+**CHƯA ĐO — không được đọc thành sạch (chạy khi embed xong, TRƯỚC khi tráo kho):**
+① gate ĐẦY ĐỦ `npm run check` (cần tắt scheduler + máy tĩnh) · ⑥ mở app nhìn tận mắt (cần mắt
+người) · ⑧ clone sạch (deps không đổi từ 06/08, lần đo gần nhất 4/4 xanh — không chạy lại đêm
+nay vì cần mạng) · ⑨ diễn tập phục hồi định kỳ (lần cuối 12/08 — vẫn là nợ cổng plan 18).
+
 - ✅ **"CHẤM THAN UPDATE" — ĐÃ BUILD 2026-08-21 (user chốt "làm luôn, không chờ embed"), pull-based,
   KHÔNG push-ghi-chéo.** Một phép đo `syncCheck()` (adopt.ts — dry-run gap-fill + guardDrift), BỐN
   bề mặt cùng ăn: ① `zemory sync --check` (exit 1 khi cũ) · ② hook nhắc ĐÚNG 1 lần/phiên

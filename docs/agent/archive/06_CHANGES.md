@@ -1,6 +1,144 @@
 <!-- Changelog ARCHIVE — entry cũ cắt khỏi 06_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # Change Log — Archive
 
+## [2026-08-20b] — guard lớp ① hở nửa cửa trên Windows · cảnh báo context thôi đoán theo tên
+
+**Guard bỏ lọt MỌI lệnh đi qua tool `PowerShell`** (báo từ phiên repo `PBI_SasinFlow_Rebuild`, đã
+tự đo lại và đúng). `guard.cjs` phân nhánh theo `tool_name` và chỉ biết 5 tên; phiên Claude Code
+trên Windows có SẴN tool `PowerShell` ⇒ `git push` chưa xin · `git add -A` · xoá đệ quy · secret
+vào git **vượt sạch chỉ bằng cách đổi tool**. Đo trước vá: 4/4 lệnh nguy hiểm qua `Bash` bị chặn,
+4/4 lệnh y hệt qua `PowerShell` cho qua. Khó thấy vì regex nhận diện VẪN đúng — chỉ cổng TÊN sai,
+nên mọi test cũ (chỉ gửi `tool_name: "Bash"`) đều xanh trong khi cửa mở toang.
+**Vá:** nhận theo HÌNH DẠNG (`có tool_input.command` ⇒ soi như lệnh shell, bất kể tên) thay vì
+theo danh sách tên — gác theo tên là cuộc đua không thắng, host thêm tool mới là lỗ mở lại. Thêm
+`GUARD_MATCHER` một-chỗ và `hook guard` **in kèm matcher** (repo báo cáo nối thiếu đúng
+`PowerShell`; hai tầng hỏng đều im lặng). Bản ship cho bộ cowork chép lại + manifest 282→291.
+Gate `guard-tool-matrix` 4/4 soi MA TRẬN `tool × lệnh` + **ca ÂM** 6 lệnh thường ngày; đột biến:
+trả về chỉ-nhận-`Bash` ⇒ 2 đỏ, bỏ `PowerShell` khỏi matcher ⇒ 3 đỏ.
+⚠ Guard KHÔNG tự làm mới — repo nào đã cắm phải chạy lại `zemory hook guard` **và** thêm
+`PowerShell` vào matcher.
+
+**Cảnh báo context ~95% SAI trên phiên 1M.** Cơ chế tự sửa chỉ nổ SAU khi vượt 200k nên dải
+190k–200k của mọi phiên 1M đều bị hét oan (thực dùng ~19%) — agent đọc xong đi chốt sổ sớm hơn
+cần. Đo: transcript **không khai cửa sổ ở đâu cả** (`context_management: null`), và 5/6 phiên gần
+nhất trên máy này đã vượt 200k với **cùng model id `claude-opus-5`** ⇒ tên model không phân biệt
+được 1M với 200k. Tín hiệu TTL cache đã thử và loại (cả 6 phiên đều 1h).
+**Vá:** HỌC TỪ BẰNG CHỨNG — mỗi lần `observed` vượt bậc là một lần chứng minh trần thật, ghi nhớ
+vào `data/context-guard/observed-window.json` (cạnh kho, gitignored) và phiên sau đọc nó TRƯỚC khi
+đoán theo tên; bằng chứng chỉ đi lên. Nghiệm thu bề mặt thật: phiên 750.775 token nay báo **75,1%**.
+Gate 3 ca; đột biến: bỏ ghi nhớ ⇒ 1 đỏ, bỏ đọc bộ nhớ ⇒ 2 đỏ.
+
+## [2026-08-20] — 2.0.0: đường đổi embedder sang BGE-M3 + cổng mặt audit ⑧
+
+**Vì sao lên số lớn** (user chốt): đây là mốc đổi lớp NHÚNG của cả hệ, không phải một bản vá.
+Đợt này mới THÊM đường — kho thật vẫn chạy Gemma-768, chưa gì phá vỡ tương thích.
+
+**Chọn BGE-M3 bằng đo, không bằng cảm giác.** Ma trận 6 embedder × 12 lane trên cùng 68 nhãn +
+bootstrap 2.000 lượt: Gemma-768 **thua rõ** (ΔMRR −0,086, KTC 95% [−0,168 … −0,005]) — so sánh
+DUY NHẤT trong cả bảng có khoảng tin cậy không chứa 0. BGE-M3 thắng cả hai vai: retriever MRR
+0,326 → 0,411 (@40 pool 85 → 93%), rerank-trộn 0,303 → 0,378. Chọn **int8** (chênh với fp32 nằm
+TRONG sai số, mà nhanh gấp đôi: 637 vs 1.388 ms/tin). **KHÔNG lai hai model** — mọi cặp lai đều
+trong sai số. Qwen3-Embedding/Reranker · gte · arctic · chỉ mục ColBERT: loại, có số. Spec: plan 19.
+
+**Profile nay gánh NĂM thứ, không chỉ prompt**: model · pooling (**CLS** cho BGE) · dims 1024 ·
+dtype int8 · **sequential**. Cái cuối là phát hiện tại chỗ: gọi THEO LÔ vừa chậm hơn (5,6× cho
+BGE, 2,3× cho Gemma) vừa **dịch vector** (cos 0,982 · Gemma 0,962) — kho đang chạy vì thế có tài
+liệu mã hoá theo lô còn truy vấn theo từng cái. Vá cho kho MỚI; kho đang chạy cố ý không đụng.
+Nghiệm thu: vector đường production khớp **cos 1,000000** với vector đã benchmark.
+
+🔴 **Một phép thử 20 tin cứu 44 giờ:** `embedPending` lấy *"bảng vec_chunks tồn tại chưa"* làm
+điều kiện đọc hợp đồng ⇒ kho chuẩn bị theo plan 19 (drop → đóng dấu → embed) bị bỏ qua vec_config:
+hợp đồng ghi `{1024, bge-m3-v1, int8}` mà lượt embed báo `dims 768` và chạy Gemma. Nay hỏi thẳng
+`vec_config`. Gate `embed-profile` 6/6, **6 đột biến đều đỏ được**.
+
+**Cổng mặt audit ⑧ — mặt cuối chưa có máy canh, nay có hai:** `license-gate` (3 ca, trong
+`npm run check`) quét CẢ CÂY 190 gói, parser SPDX xử đúng OR/AND (ca bẫy
+`Apache-2.0 AND LGPL-3.0-or-later` từng lọt lượt rà tay nay nằm trong bộ tự-kiểm); và
+`npm run check:clone` dựng từ clone sạch (clone 2,0s → prebuilds 0,2s → install 23,9s → build
+6,7s → smoke), để ngoài gate mặc định vì cần mạng. Kèm: luật **CẤM CHẠY IM LẶNG** thành luật
+CHUNG — thêm bản generic vào cả 3 template (cowork tự nhận qua bootstrap).
+
+## [2026-08-15b] — dọn 11 export thừa · và một hàm "chết" hoá ra là lưới đỡ chưa nối
+
+**Dọn:** bỏ `export` ở **11 hàm** chỉ dùng trong chính file mình (`loadCorpus` ·
+`driveFsPrefsPath` · `browserAccounts` · `findSplitProjects` · `setStoragePointer` · `rareTerms` ·
+`rm3Expand` · 4 hàm trong `share.ts`). `tsc` + `lint` + gate xanh ⇒ không cái nào đang được dùng
+từ ngoài. Zemory không phải thư viện (`package.json` không có `main`/`exports`) nên không ai
+import từ ngoài vào — thu hẹp tầm nhìn là an toàn.
+
+**GIỮ có chủ đích 2 cái.** `machineBusyReason` là API của `helpers.mjs` cho mọi test.
+Còn **`formatCloudReport`** thì lint báo thẳng *"defined but never used"* — nhưng **không xoá**:
+đó là bản in của lưới đỡ cho sự cố **đã xảy ra thật** (04/08, Google Drive cuốn cả
+`global_memory.db` lên mây — HP điều 11/14). Nó không chết vì vô dụng, nó chết vì **chưa ai nối
+vào CLI/UI**. Xoá là vứt hiểu biết rồi ngày nào đó viết lại từ đầu ⇒ ghi thành việc trong
+`05_TODO` kèm chú thích tại chỗ, để lần sau không ai "dọn" nhầm.
+
+**Ba lần phép đo TỰ HỎNG khi làm đúng việc này** — đáng ghi hơn cả kết quả:
+· quét sai regex ⇒ **345/345** hàm "không ai gọi" (vô lý: app sẽ không chạy nổi)
+· quên tính `backend/test/` ⇒ **53** (báo oan hàng loạt)
+· regex thiếu cờ `g` nên `match()` luôn trả 1 ⇒ báo cả **13/13** là "không ai dùng", **kể cả hàm
+  tôi biết chắc đang được gọi ngay trong file đó**.
+Cả ba đều là *công cụ hỏng lặng* (luật 5): không lỗi, không cảnh báo, chỉ trả số sai một cách
+tự tin. **Cách chữa dứt điểm: đếm bằng `split()`, đừng đưa regex qua shell/sed** — escape bị
+nuốt 4 lần trong một phiên.
+
+**i18n: không còn gì dọn rẻ.** Đo lại còn **46** chuỗi (số cũ tôi báo "30" là SAI): 45 ở
+`shell.js` là bảng dự phòng `STRUCT`/`ROUTE` — dịch xong UI **vẫn ra tiếng Việt** vì nguồn thật
+là `/standard-spec` đọc `03_STRUCTURE.md`; 1 ở `graph-render.js` là **khoá dữ liệu**. Muốn đi
+tiếp phải làm ở TẦNG TÀI LIỆU, không phải tầng code.
+
+## [2026-08-15] — chuẩn: `frontend/api/` → `frontend/client/` (một tên thôi gánh hai chiều)
+
+**Do người ngoài chỉ ra** (giáo viên của user), đo lại thì đúng — nhưng không đúng theo cách đã
+nói. Ý kiến gốc *"có `api` ở cả FE lẫn BE là sai"*: **vế đó không đúng** — lớp gom lời gọi ở FE là
+cần thiết (thiếu nó thì mỗi màn tự `fetch`; zemory đang trả giá: **71 lời gọi rải 11 file**).
+
+**Cái sai thật là TÊN.** Chuẩn tự dựng trục **BIÊN VÀO / BIÊN RA**: `api/` = mình MỞ (vào),
+`integrations/` = mình GỌI ra ngoài. `frontend/api/` là *"client gọi BACKEND của mình"* — chiều
+**RA**, lại mượn tên slot chiều **VÀO**: một từ gánh hai chiều ngược nhau, đúng thứ chính chuẩn
+cấm (*"1 tên chuẩn duy nhất"*). Dòng "3 loại kết nối" còn tự mâu thuẫn: định nghĩa `api/` = *mình
+MỞ*, trong khi `frontend/api/` chẳng mở gì.
+
+**KHÔNG chọn `services/`** (phương án đầu, user bắt kiểm trước khi sửa — đúng):
+`backend/src/services/` đã mang nghĩa *"business logic"*, đổi sang đó là **tái tạo y hệt cái
+bệnh**. Chỉ `client/` và `http/` còn trống. **Phân biệt rút ra:** trùng tên mà **cùng nghĩa** là
+đối xứng TỐT (`config/` 3 lần · `util/` 2 · `contracts/` 2); trùng tên **ngược nghĩa** mới là lỗi
+— `api/` là ca duy nhất.
+
+**Sửa đồng thời 4 chỗ** (thiếu một là gate đỏ hoặc hai bản lệch): `SLOT_ROLES` (gate
+`structure-sync` parse `frontend/<slot>` rồi đòi có role) · `docs_template/app/` ·
+`docs/agent/03_STRUCTURE.md` · mục graph seam `05_TODO`. Cổng **28/28**, slot 19/**56**.
+
+**Đồng bộ sang 3 repo khác** (user cho phép từng cái): `SasinHarvest` đổi **tên folder thật**
+`frontend/api/` → `client/` + 1 import + docs ⇒ `conform` ✓ · `SasinFlow`, `SasinInfra` chỉ docs.
+Chỉ **2 chỗ** import trong toàn `SasinHarvest`, một nằm ở `attic/` nên **cố ý không đụng** (ảnh
+chụp lịch sử). ⚠ `SasinHarvest` và `SasinInfra` **không nằm trong git** ⇒ đã tự sao lưu ra
+scratchpad trước khi đổi tên; `SasinFlow` để lại file `M` chưa commit cho user tự quyết.
+*Bẫy khi dò: `/api/...` trong URL endpoint là đường HTTP của backend, KHÔNG liên quan tên thư
+mục FE — grep thô ra hàng chục dòng toàn loại đó.*
+
+## [2026-08-14] — việc nền NHƯỜNG CPU cho người dùng · nghiệm thu 3 bản vá sau khi daemon nạp lại
+
+**Nghiệm thu trên daemon THẬT** (pid mới, `v1.5.13`): ô Last Sync hết nói dối —
+`lastSync = 2026-08-14T02:16:04.548Z`, **khớp từng ký tự** với `drive.lastPushAt`; log nền nay có
+dòng `[scheduler]` (bản vá log ra đĩa đang chạy); `coverage 100%`.
+
+**Việc nền thôi tranh CPU ngang hàng với người dùng.** Đo 2026-08-13: hook capture ghi **~23
+tin/phút** khi đang làm việc (2.814 tin/2 giờ, 100% từ `claude-code` — chính phiên đang chạy), nên
+backlog embed **gần như luôn dương** và job nền **gần như luôn chạy**. Ở ưu tiên `Normal` trên máy
+12 core, ONNX ăn hết phần thì việc trước mặt khựng theo.
+Nay `runStep` hạ con xuống `PRIORITY_BELOW_NORMAL`. **Hạ ưu tiên chứ KHÔNG ghim số core**: ghim
+cứng thì lúc máy rảnh cũng chỉ dùng được phần đã ghim; hạ ưu tiên thì máy rảnh vẫn ăn trọn, máy
+bận thì hệ điều hành tự cắt nhịp. Fail-open: thiếu quyền đổi ưu tiên thì chạy tiếp, không giết job.
+Đo thật trước khi tin: `PriorityClass` đổi **Normal → BelowNormal** ngay sau lời gọi.
+
+**Hệ quả phải ghi, vì nó làm hỏng một giả định:** "chờ embed xong rồi mới chạy gate" là điều kiện
+**không bao giờ đạt** khi còn đang làm việc — backlog luôn được nạp thêm. `preflight` (dựng cùng
+ngày) vì thế sẽ chặn gate vĩnh viễn trong phiên dài. Đường đúng: **tắt `scheduler` tạm** → gate
+chạy sạch → bật lại; hoặc `ZEMORY_GATE_FORCE=1` khi biết rõ mình đang làm gì.
+
+Cổng: `scheduler-contract` 10/10, ca mới canh ưu tiên + fail-open, đột biến chứng minh đỏ được.
+
 ## [2026-08-13m] — i18n tầng BACKEND: thôi ghép sẵn câu tiếng Việt rồi bắt UI in nguyên văn
 
 **Tầng sâu hơn frontend.** `connections.ts` ghép thẳng `kiểm lần cuối 7 giờ trước`, `store đã

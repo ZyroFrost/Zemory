@@ -35,8 +35,9 @@ nhầm** không, mà chặn nhầm là đường ngắn nhất tới "gate nhi�
 mình đang xây. Đo 2026-08-11 trên guardrail: bảng 28 ca có ý nghĩa **chính nhờ 6 ca *phải cho qua***;
 thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
 
-### 10 mặt — chạy đủ
-*(6 mặt đầu là bản gốc; **mặt 7–10 thêm 2026-08-11** sau khi đối chiếu 6 mặt với những lần repo
+### 11 mặt — chạy đủ
+*(6 mặt đầu là bản gốc; **mặt 11 thêm 2026-08-21** — chín mặt trước soi MÁY, không mặt nào soi thứ
+NGƯỜI DÙNG ĐỌC: chính tả · dấu · nhãn · song ngữ · UI có khớp code. **mặt 7–10 thêm 2026-08-11** sau khi đối chiếu 6 mặt với những lần repo
 thật sự hỏng — xem `docs/plan/18_audit_coverage.md`. Phát hiện: **mọi sự cố nặng nhất đều rơi vào
 vùng 6 mặt không nhìn tới**.)*
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
@@ -64,6 +65,37 @@ vùng 6 mặt không nhìn tới**.)*
 10. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
    chết cứng không · bề mặt có **chết theo nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó nói dối) ·
    **chạy ma trận guardrail** (ca phải chặn + ca phải cho qua — luật 7).
+11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `02_RULES §Ngôn ngữ`** (*"chữ người dùng đọc phải đầy đủ
+   và đúng"*, 4 ràng buộc, ship cho MỌI bộ harness). Ở đây chỉ có **cách ĐO** — mặt này thêm
+   2026-08-21 vì chín mặt trên soi MÁY, không mặt nào soi thứ người đọc nhận. Năm phép, mỗi phép
+   phải in *đã quét bao nhiêu* để không xanh giả:
+   · **thiếu dấu tiếng Việt** trong docs · **chính tả** (từ lặp liền · mojibake);
+   · **caption/nhãn** — phần tử tương tác có nhãn lập trình đọc được, ảnh có `alt`;
+   · **song ngữ hai đầu** — chuỗi trong `.js` *và* chữ nằm thẳng trong HTML (text node +
+     `title`/`placeholder`/hint); khoá đủ hai dict; khoá chết thì gỡ;
+   · **UI ↔ code** — cạnh seam `api` của graph đối chiếu route FE gọi với route BE thật;
+     `zemory graph path <FE> <BE>` để lần đường khi nghi.
+
+   ⚠ **BỐN TRONG NĂM PHÉP NÀY BÁO OAN NẾU LÀM NGÂY THƠ — đo 2026-08-21, lượt đầu sai gần hết:**
+   · *thiếu dấu*: danh sách phải CHỈ gồm từ mà bản không dấu **không phải từ hợp lệ** (`khong`
+     `duoc` `cua`…). Nhét `minh` · `nhanh` · `song` vào là báo oan — chúng vốn không có dấu
+     («chứng minh»). Bản đầu: **63 hit, 0 thật**.
+   · *từ lặp*: `\b` của JS là **ASCII**, chữ Việt bị coi là ký tự không-phải-từ ⇒ «chứng ngại» cắt
+     thành `ng`+`ng` và báo trùng (128 hit oan). Phải dùng lớp `\p{L}` + **trừ láy đôi** («song
+     song» · «luôn luôn» · «bắt đầu đầu trang») và nhớ rằng bỏ code/đường dẫn có thể **dán hai
+     chữ giống nhau vào cạnh nhau** («scan known/deep scan»). Sau khi vá: 15 hit, kiểm tay
+     **vẫn 0 thật** ⇒ phép này CHƯA đủ chính xác để làm cổng, chỉ dùng để soi tay.
+   · *mojibake*: `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — 192 hit oan. Mẫu đúng:
+     `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`.
+   · *caption*: nhãn thường nằm ở **thẻ CON** (`<a><span>…</span></a>`) hoặc ở `<label>` bọc ngoài
+     ⇒ chỉ đọc text ngay sau thẻ mở là báo oan 20 ca.
+   · *song ngữ*: chữ Việt trong HTML là **ĐÚNG** nếu phần tử có móc i18n (`data-i18n`,
+     `-title`, `-ph`, `-hint`) — bản dịch sẽ đè lúc chạy. Chỉ chỗ **thiếu móc** mới là lỗi.
+     Và khoá i18n truyền qua BIẾN (`doc:'f.doc.x'` rồi `t(item.doc)`) KHÔNG phải khoá chết:
+     phải quét mọi literal, không chỉ `t('…')` — bản đầu báo oan **46 khoá chết**, thật là **0**.
+   · *endpoint chết*: route ghép ĐỘNG (`zPost('/set-'+name)`) làm mọi `/set-*` trông như chết;
+     và endpoint do **CLI gọi qua HTTP** (`/gate-acquire`) không có người gọi trong FE. Kể cả ba
+     nguồn (FE tĩnh · tiền tố động · test/CLI) rồi mới kết luận.
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
 Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.

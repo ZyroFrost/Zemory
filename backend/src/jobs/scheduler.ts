@@ -26,13 +26,13 @@ import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
-import { rotateBackup } from "../memory/backup-rotate.js";
+import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
-import { claimDaemonJob, cliHoldsWrite, releaseDaemonJob } from "./writegate.js";
+import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
 
 // 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
@@ -209,15 +209,44 @@ async function maintainTick(): Promise<void> {
  *  · fail-open — backup hỏng không được giết thứ đang gọi nó (HP điều 9).
  * `rotateBackup` tự kiểm hạn (một bản/ngày, giữ 5) nên gọi mỗi 30 phút vẫn rẻ: một `readdir`.
  */
+/**
+ * Đếm số nhịp backup bị nhường LIÊN TIẾP. Tồn tại vì audit 2026-08-21 đo được: nhánh nhường
+ * nằm TRƯỚC `try` nên nó **không nói gì** — 54 nhịp im lặng trong 27 giờ nhìn y như "mọi thứ ổn".
+ * Một lần nhường là bình thường; nhường mãi là một kiểu HỎNG, và kiểu hỏng đó phải thấy được.
+ */
+let backupYields = 0;
+const BACKUP_YIELD_LOG_EVERY = 8; // ~4 giờ ở nhịp 30 phút — thấy được mà không thành nhiễu
+
 async function backupTick(why: string): Promise<void> {
   const holdsToken = chainRunning; // gọi từ trong chuỗi ⇒ token đã ở trong tay
   if (!holdsToken) {
-    if (child || syncJobRunning() || cliHoldsWrite()) return; // kẻ khác đang ghi — nhịp sau
+    // Nhường theo ĐÚNG KHO mình sắp chép, không phải "có ai đang ghi trong thư mục này".
+    // Trước 2026-08-21 chỗ này gọi `cliHoldsWrite()` — mà khoá là MỘT file cho cả `data/` nên
+    // job re-embed kho SONG SONG (plan 19) giữ khoá 44 giờ đã bỏ đói backup của kho THẬT: hai
+    // file khác nhau, không hề tranh nhau. Xem `writegate.cliHoldsWriteOn`.
+    const target = currentMemoryDb();
+    const blocker = child ? "daemon child" : syncJobRunning() ? "sync job" : cliHoldsWriteOn(target) ? (cliWriteHolder()?.label ?? "CLI") : null;
+    if (blocker) {
+      backupYields++;
+      // Nói ở lượt ĐẦU (để biết vì sao im) rồi định kỳ (để biết nó vẫn đang im).
+      if (backupYields === 1 || backupYields % BACKUP_YIELD_LOG_EVERY === 0) {
+        const age = backupAgeMs(target);
+        log(
+          `backup nhường ${blocker} — lượt thứ ${backupYields} liên tiếp` +
+            (age === null ? " · CHƯA có bản nào" : ` · bản mới nhất ${(age / 3_600_000).toFixed(1)} giờ tuổi`) +
+            (backupStale(target).stale ? " · ⚠ QUÁ HẠN (doctor sẽ báo đỏ)" : ""),
+        );
+      }
+      return;
+    }
     if (!claimDaemonJob("backup")) return;
   }
   try {
     const b = await rotateBackup();
-    if (b.wrote) log(`backup (${why}) → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
+    if (b.wrote) {
+      log(`backup (${why}) → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
+      backupYields = 0;
+    }
   } catch (e) {
     log(`backup bỏ qua: ${(e as Error).message}`); // điều 9: hỏng backup KHÔNG được giết ai
   } finally {

@@ -3,12 +3,53 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-21 — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-22 — ĐỌC MỤC NÀY TRƯỚC
+
+**Trạng thái máy lúc chốt (đo thật, không chép sổ):** daemon **pid 1928 · 2.1.0** (restart 2 lần
+trong phiên — mọi bản vá ĐANG SỐNG) · `autosync` **TẮT** · `scheduler` **TẮT** · `realtime` +
+`autostart` BẬT · kho thật **278.207 tin · 2.327 phiên · 257.072 vector · `quick_check ok`** ·
+kho song song **252.229 vector** · backup mới nhất `2026-08-21T15-35-29Z` · cây làm việc **32 file
+đổi/mới, CHƯA commit** · **11 commit chưa push** · `package.json` **2.1.0**.
+
+**🔥 JOB EMBED VẪN CHẠY** — wrapper pid 800 + con pid 21372 (lượt 58). Đích ước ~253.900 ⇒ còn
+~1.700 vector. Wrapper tự thoát khi 2 lượt liền không thêm gì. **Đừng chạy `npm run check`** (khoá
+`test` kéo `npm run build` = `clean && tsc`, xoá `dist/` dưới chân job). Thay bằng **sweep 91 file**:
+`node --test $(ls backend/test/*.test.mjs | grep -v -E "embed\.test|embed-profile|embed-scope-config|vectors\.test|rerank\.test|memory-search\.test|digest\.test")`
+— **675/675 · 0 skipped** lúc chốt, và chính nó bắt 2 lỗi mà `conform`/`lint` không thấy.
+
+**Phiên này làm gì** (số đo đầy đủ: `06_CHANGES [2026-08-21c]` · `[2026-08-22]`): ① audit 10 mặt →
+1 BLOCKING (backup bỏ đói im lặng **27 giờ**) + 7 advisory · ② vá backup **hai đợt** (khoá mang danh
+tính kho → rồi cờ trong bộ nhớ daemon cũng phải mang) · ③ parity cây folder ↔ graph (`isSourceLeaf`)
+· ④ vá 4 chỗ docs lệch (plan 13 · plan 19 ×2 · sổ lặp khối) · ⑤ **mặt audit ⑪ + luật "chữ người dùng
+đọc"** vào `02_RULES` + 4 bộ template · ⑥ cổng i18n mở sang HTML + vá **21 chỗ** + móc
+`data-i18n-aria` · ⑦ bịt parity luật cho bộ cowork (thiếu 2 luật cứng) · ⑧ vá 2 lỗi CÓ SẴN mà sweep
+bắt được (test hẹn giờ `recency` · `writeFileSync` trần trong `capture-hook`).
+
+⚠ **Ba bẫy đã trả giá phiên này — đừng dẫm lại:**
+· **Đưa regex/escape qua shell bị nuốt — dính 3 LẦN** (`node -e` với `\\`, heredoc, `cd &&`). Chữa
+  dứt: viết script ra FILE bằng tool Write/Edit, đừng nhồi vào `-e`.
+· **`zemory archive` CHẠY THẬT với MỌI cờ — nó không có `--help` LẪN `--dry-run`.** Dính HAI lần
+  trong một phiên: `archive --help` archive 5 entry + 6 mục · `archive --dry-run` in đúng câu
+  *"moved 2 closed item(s)"* rồi **dời thật 2 mục** (kiểm chéo: diff `archive/05_TODO.md` từ 6 lên
+  8 mục `✅`, lượt chạy kế tiếp báo `0 mục để dời`). Cờ lạ bị **bỏ qua âm thầm** thay vì báo lỗi.
+  Muốn xem trước thì chỉ có đường thủ công: `wc -l` + `grep -c "^- ✅"` trước/sau. *(Đã ghi thành
+  mục advisory bên dưới — lệnh DỜI NỘI DUNG giữa hai file thì cờ lạ phải bị TỪ CHỐI, không cho qua.)*
+· **Bộ dò tự viết báo oan là chuyện thường, không phải ngoại lệ:** 4/5 phép kiểm mới báo oan ở lượt
+  đầu (chi tiết ở §MẶT AUDIT ⑪). Luật rút ra: mỗi phép đo phải in *"đã quét bao nhiêu"* và có ca
+  tự-kiểm, nếu không thì "0 hit" đọc thành "sạch" trong khi bộ lọc đang hỏng.
+
+**VIỆC ĐẦU TIÊN của phiên sau:** ① job embed xong ⇒ chạy **gate ĐẦY ĐỦ** `npm run check` (scheduler
+đang tắt sẵn) · ② bench A/B plan 19 bước ③ · ③ tráo kho (chờ user ký) · ④ **bật lại `autosync` +
+`scheduler`** sau tráo · ⑤ điều phối máy thứ hai (`DESKTOP-PFB157K` đang sync — plan 19 §6 đã sửa,
+KHÔNG còn là việc "ngủ").
+
+## 🔵 BÀN GIAO 2026-08-21 — (khối cũ, giữ để tra)
 
 **Trạng thái máy lúc chốt** (đo thật cuối phiên, không chép sổ): daemon **pid 26916 · 2.1.0**
 (restart 3 lần trong ngày, mọi bản vá ĐANG SỐNG) · cây làm việc **sạch** · **10 commit CHƯA push**
 (`7f9977b` → `ca9ddc0`) — user chốt *"chờ embed xong push một lần"*, **số version kế do user chốt**
-· kho thật **275.802 tin · 2.324 phiên · `quick_check ok`** · `05_TODO` 2.308 dòng ·
+· kho thật **275.802 tin · 2.324 phiên · `quick_check ok`** · `05_TODO` 1.551 dòng sau `archive`
+(số 2.308 ghi lúc đầu là mốc TRƯỚC khi archive chạy — đo lại bằng `wc -l`, đừng chép) ·
 `06_CHANGES` 217 dòng (< trần 300).
 
 **Phiên 21/08 làm gì** (chi tiết + số đo: `06_CHANGES [2026-08-21]` · `[b]`): ① chấm than update
@@ -27,14 +68,13 @@ god-nodes · ⑤ đa ngôn ngữ THEO KHO (detect-then-load) · ⑥ audit 2 lư�
 
 🔴 **HAI CÔNG TẮC ĐANG TẮT — PHẢI BẬT LẠI SAU KHI TRÁO KHO:** `autosync` **TẮT** · `scheduler`
 **TẮT** (tắt tạm vì hai kho dùng chung `data/` nên chung `cli-write.lock`; autosync 30 phút/lần
-sẽ cản job embed). `realtime` + `autostart` vẫn BẬT; backup vẫn chạy (đồng hồ riêng).
+sẽ cản job embed). `realtime` + `autostart` vẫn BẬT.
 Bật lại: `POST /set-autosync?on=1` · `POST /set-scheduler?on=1`.
 *(User bật autosync sáng 21/08, tôi tắt lại theo lịch tráo — có hỏi và user đồng ý.)*
-
-🔴 **HAI CÔNG TẮC ĐANG TẮT — PHẢI BẬT LẠI SAU KHI TRÁO KHO:** `autosync` **TẮT** · `scheduler`
-**TẮT** (tắt tạm vì hai kho dùng chung `data/` nên chung `cli-write.lock`; autosync 30 phút/lần
-sẽ cản job embed). `realtime` + `autostart` vẫn BẬT; backup vẫn chạy (đồng hồ riêng).
-Bật lại: `POST /set-autosync?on=1` · `POST /set-scheduler?on=1`.
+> 🔄 **Sửa vế *"backup vẫn chạy (đồng hồ riêng)"* — audit 22:00 cùng ngày ĐO NGƯỢC:** đồng hồ
+> riêng có thật, nhưng `backupTick` nhường **im lặng** cho khoá ghi của cả thư mục `data/` ⇒ chính
+> job embed kho song song đã bỏ đói nó **27,0 giờ**. Đã chụp một bản ngay (17,2 s) và vá cả ba
+> tầng — xem §🔬 Audit 2026-08-21 (22:00) bên dưới.
 
 **🔥 VIỆC ĐANG CHẠY — job re-embed BGE-M3 (plan 19 bước ②):**
 kho song song `data/global_memory.bgem3.db` · **237.904 / ~253.900 vector (93,7%, đo cuối phiên
@@ -115,6 +155,101 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 ≥ ~0,05. Mọi chênh lệch nhỏ hơn thế trong các bảng của phiên này (colbert 0,375 vs bge-dense
 0,378…) đều **nằm trong vùng nhiễu**.
 
+## 🔬 MẶT AUDIT ⑪ + LUẬT "CHỮ NGƯỜI DÙNG ĐỌC" — 2026-08-22 (user nêu 5 phép kiểm còn thiếu)
+
+> Chi tiết + số đo: `06_CHANGES [2026-08-22]`. Ở đây chỉ giữ **việc còn mở** và **thứ đã loại**.
+
+**Đặt sai nhà lần đầu, user chỉnh:** *"cái này tính ra là skill khi gọi chứ cũng ko phải là luật,
+áp lên mọi bộ harness"*. NORM nay ở `02_RULES §Ngôn ngữ` (4 ràng buộc) + ship **cả 4 bộ template**;
+skill `audit` mặt ⑪ chỉ giữ **cách đo + bẫy báo oan**. Ma trận 4 luật × 5 bộ rule: đủ ✓.
+
+- [ ] **(advisory, mới 2026-08-22) `zemory archive` nhận MỌI cờ lạ rồi CHẠY THẬT — cần `--dry-run`
+  + từ chối cờ không biết.** Đo trong phiên: `archive --help` → archive 5 entry + 6 mục ·
+  `archive --dry-run` → in *"moved 2 closed item(s)"* và **dời thật 2 mục** (diff `archive/05_TODO.md`
+  6 → 8 `✅`, lượt sau báo `0 mục để dời`). Đây là lệnh **DỜI NỘI DUNG giữa hai file** nên cờ lạ phải
+  bị TỪ CHỐI (fail-closed), không bỏ qua âm thầm. Đề xuất: ① parse cờ tường minh, cờ không biết ⇒
+  in usage + exit 1 · ② `--dry-run` thật (đếm rồi in, KHÔNG ghi) · ③ ca cổng: cờ lạ ⇒ exit≠0 và
+  **file KHÔNG đổi byte** (ca ÂM: không cờ ⇒ vẫn chạy như cũ). *Đảo được (nội dung sang archive +
+  git) nên là advisory, nhưng nó đã bẫy chính tôi HAI lần trong một phiên.*
+- [ ] **(advisory) Phép "TỪ LẶP LIỀN" chưa đủ chính xác để thành cổng.** Đo 107 file: 15 hit, kiểm
+  tay thì **0 thật** — toàn láy đôi («song song» · «bắt đầu đầu trang»), ô bảng cạnh nhau, hoặc
+  chữ bị **dán liền sau khi bỏ code/đường dẫn** («scan known/deep scan»). Muốn thành cổng phải
+  parse theo Ô BẢNG và có từ điển láy; chưa đáng, giữ ở dạng soi tay trong skill.
+- [ ] **(advisory) `docs_template/*/skills/write-docx/reference/*` cố ý viết ASCII không dấu**
+  (code Python + comment trong khối lệnh). Phép dò mặt ⑪ đếm 18 hit ở đó — **không phải lỗi**,
+  nhưng nếu sau này muốn cổng-hoá phép "thiếu dấu" thì phải khai miễn cho các file đó trước.
+- [ ] **(advisory) Phép "endpoint chết" cần kể CẢ nguồn CLI-gọi-qua-HTTP.** Lượt đo đầu báo
+  `/gate-acquire` · `/gate-release` là "không ai gọi" — sai: chính CLI gọi chúng qua HTTP
+  (`commands/memory.ts`). Đã kể trong script đo; nếu cổng-hoá thì đừng bỏ nguồn này.
+
+**Đã loại (ghi kèm lý do):** · *"156 chỗ chữ Việt trong HTML"* — báo oan: chữ Việt trong markup là
+ĐÚNG khi phần tử có móc i18n · *"46 khoá i18n chết"* — báo oan: khoá truyền qua BIẾN
+(`doc:'f.doc.x'` → `t(item.doc)`), thật ra **0** · *"20 phần tử thiếu nhãn"* — báo oan: nhãn nằm ở
+thẻ CON hoặc `<label>` bọc ngoài; thật ra **2**, đã vá.
+
+## 🔬 Audit toàn diện 2026-08-21 (22:00, sau chốt phiên — job embed VẪN chạy) — 1 BLOCKING, 7 advisory
+
+> **Điều kiện đo:** job re-embed BGE còn sống (wrapper pid 800 + con embed pid 21968) ⇒ **gate đầy
+> đủ vẫn KHÔNG chạy được** (`npm test` kéo `npm run build` = `clean && tsc`, xoá `dist/` dưới chân
+> job). Mọi số thời gian là CẬN TRÊN. Thay vào đó chạy: `typecheck` · `lint` · `conform --gate` ·
+> `validate` · `doctor` · **cụm 33 file test độc-lập-daemon**.
+>
+> **Sạch, đo trong lượt này:** tsc 0 lỗi · lint 0 lỗi · `conform` ✓ (230 file · slot 19/56 · skill 9)
+> · `validate` ✓ · `doctor` ✓ (guard KHÔNG lỗi thời — `guardDrift` im) · **272 test pass / 0 fail /
+> 0 skipped** (33 file: graph 9 · conform/parity 5 · guard 4 · ui/i18n 3 · docs/todo 6 · khác 6) ·
+> **395 export đều có người gọi** (0 mồ côi, phép đo có self-test) · `quick_check ok` · FK 0 ·
+> **0 tin mồ côi** · digest **2.325/2.325** · DDL vector đúng dấu (`float[1024]` kho song song ·
+> `float[768]` kho thật — phép thử kiểu "20 tin cứu 44 giờ") · **0 secret tracked** · blob lịch sử
+> lớn nhất **1,72 MB** (314 MB weight đã sạch thật) · deps khớp lockfile · heartbeat daemon tươi ·
+> **guard chặn THẬT** (nó chặn đúng lệnh của chính tôi khi tôi gõ tên file khoá).
+
+- [ ] **(advisory) Advisory ④ của audit đêm 21/08 ĐÃ LÀM XONG nhưng vẫn mang dấu `[ ]`, kèm 3 số
+  dòng chết.** `archive` đã dời 59 mục ngay tại chốt phiên (ghi ở chính bàn giao: 2.327 → 1.551),
+  nhưng mục *"`05_TODO` đã 2.156 dòng"* vẫn mở, bàn giao vẫn ghi *"2.308 dòng"*, và số THẬT hôm nay
+  là **1.562**. Ba con số cho cùng một đại lượng trong cùng một file — đúng thứ luật *SOÁT SỔ = ĐO
+  LẠI* nhắm tới. (`todo verify` cũng đã lên **11 cờ** advisory, sổ còn ghi 8.)
+- [ ] **(advisory) Job embed 44 giờ chạy ưu tiên `Normal`, và nhịp đã SỤP — ETA thật ~18–32 giờ,
+  không phải "4 lượt".** Đo: `Get-Process 21968` ⇒ **PriorityClass = Normal** (kỷ luật ở `plan/14 §3`
+  + `06_CHANGES [2026-08-14]` là *việc do MÁY tự chạy phải hạ `BELOW_NORMAL`*; job này phóng qua
+  wrapper `.vbs` ở scratchpad nên **không đi qua `runStep`** — nơi duy nhất có luật hạ ưu tiên).
+  Nhịp: lượt 55 mất **595,9 phút/4.000 vector** (cận trên cũ trong sổ là 216 phút); lấy mẫu sống
+  hai lần cách 12,4 phút ⇒ **11,6 vector/phút** ⇒ còn ~12.800 vector ≈ **18 giờ** (theo nhịp lượt 55
+  thì ~32 giờ). Hệ quả cần biết: **cả LỊCH SAU-EMBED bị đẩy ~một ngày**, và backup vẫn bị bỏ đói
+  suốt thời gian đó (mục BLOCKING trên).
+- [ ] **(advisory) Giả định *"chưa có máy thứ hai hoạt động ⇒ plan 19 bước ⑤ NGỦ"* ĐÃ HẾT ĐÚNG.**
+  Đo: `G:\My Drive\Global Memory\global_memory.sync.lock` = `{"host":"DESKTOP-PFB157K","pid":12584,
+  "at":"2026-08-21T15:07:24Z"}` và `global_memory.enc` đổi **21:42 local** ⇒ máy kia **đang sync ngay
+  lúc audit**. Hai hệ quả: ① `autosync` của máy này TẮT 2 ngày nên ta **không nhận** khối của nó ·
+  ② sau khi tráo BGE, kho máy kia còn `gemma-768` nên merge sẽ **từ chối vector** (đúng thiết kế
+  chống kho lai, plan 19 §6) ⇒ bước ⑤ phải được điều phối **TRƯỚC hoặc NGAY SAU** tráo, không để ngủ.
+- [ ] **(ghi số, không phải việc mới) `isolated_pct` = 29,6% / trần 30%** (68/230 file) — làm phép
+  tính: thêm **2 file cô lập** là vượt trần (`(68+k)/(230+k) > 0,30 ⇔ k ≥ 2`). Hiện KHÔNG chặn gate
+  (`npm run check` không chấm fitness trên repo thật; test fitness chạy trên repo giả) — nên đây là
+  thước sức khoẻ sát nóc, không phải gate đỏ. `/memory-status` lượt LẠNH đo lại: **20,3 s** (ấm
+  3,7 ms) — số mới cho mục `[~] (⑥)` đang mở, KHÔNG phải hồi quy.
+
+**Nghi vấn ĐÃ LOẠI — ghi kèm lý do, khỏi đào lại:**
+· *"FE gọi route mà `ui.ts` không có (`/set-`)"* — **báo oan**: `system.js:110` ghép chuỗi
+  `zPost('/set-'+nm+…)`, route thật đủ cả.
+· *"31 neo test trỏ vào đường dẫn không tồn tại"* — **báo oan**: gần hết là fixture dựng trong repo
+  TẠM (`conform.test` · `graph-standard.test`…), và ca `frontend/app.html` nằm trong **COMMENT** của
+  `app-ui.test.mjs:132` — chính comment đó cảnh báo trước cái bẫy này. Neo thật là
+  `../../frontend/pages/app.html`, có tồn tại.
+· *"`policy.json` bản ship cowork đã lệch bộ sinh"* — **đo thì CHƯA lệch**: `secret_names` ·
+  `secret_allow` · `key_read_block` **khớp**; `protected_write`/`flags_dir` khác **có chủ đích**.
+  Cổng nội dung vẫn thiếu (mục cũ còn mở) nhưng hiện KHÔNG có drift.
+· *"chìa lộ trong lịch sử git (`share/share.key`) còn hiệu lực"* — **đã xoay**: dấu tay hiện tại
+  `e6fb0eff` ≠ `41d88e4d` (bản lộ, plan 16 §8).
+· ⚠ **Hai phép đo ĐẦU của chính lượt audit này HỎNG LẶNG** (ghi vì đúng luật 5): bộ lọc đường dẫn
+  của tôi viết `[\\/]frontend[\\/]` nên **không khớp đường bắt đầu bằng `frontend`** ⇒ báo *"0 route
+  FE"* và *"0 neo test"* — nghe như sạch. Vá rồi mới có 49 route / 135 neo. Cùng ngày còn dính
+  **hai lần** nuốt escape khi đưa regex qua shell — đúng bẫy sổ đã ghi, chữa bằng viết script ra file.
+
+**CHƯA ĐO — không được đọc thành sạch:** ① gate ĐẦY ĐỦ `npm run check` (chờ job embed xong) ·
+② mở app nhìn tận mắt (cần mắt người) · ③ `check:clone` (cần mạng) · ④ **diễn tập phục hồi** — lần
+cuối 12/08, nay **9 ngày**, vẫn là nợ nặng nhất của plan 18 mặt ⑨, và mục BLOCKING ở trên làm nó
+đắt hơn · ⑤ bench A/B plan 19 bước ③.
+
 ## 🔬 Audit toàn diện 2026-08-21 (đêm, Fable — TRONG LÚC job embed chạy) — 10 mặt, 0 blocking, 4 advisory
 
 > **Điều kiện đo phải đọc trước khi tin số:** job re-embed BGE đang chạy ⇒ mặt ① chỉ chạy
@@ -143,23 +278,6 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 - [ ] **(advisory, mục cũ thêm số mới) `/memory-status` lượt LẠNH >30s khi máy bận I/O** — curl
   timeout 30s ở lượt đầu sau restart + embed đang chạy; lượt ấm 5ms. Không phải bug mới — đúng
   mục `[~] (⑥)` còn mở; số này là cận trên lúc bận, đừng đọc thành hồi quy.
-- [ ] **(advisory) `05_TODO` đã 2.156 dòng** — nhiều khối ✅ đã đóng có thể `zemory archive`
-  sang `archive/05_TODO.md` cho bộ đọc mỗi phiên nhẹ lại. Chờ dịp chốt phiên.
-
-**Nghi vấn ĐÃ LOẠI — ghi kèm lý do, khỏi đào lại:**
-· *"precommit-guard không honor `secret_allow`"* — **SAI**: đọc nguyên văn PRECOMMIT_SOURCE có
-  dòng `secret_allow → continue`; grep hẹp ban đầu trượt nó (đúng bẫy công-cụ-hỏng-lặng, luật 5).
-· *cờ `todo verify` dòng ~2052* — báo-oan-kỹ-thuật: `harness.ts` sửa 20/08 vì việc doctor,
-  không liên quan mục gate-TODO-thối mà dòng sổ nói.
-· *eslint "treo" 25 phút* — lỗi PHÉP ĐO của agent: gõ `eslint .` thay vì lệnh chuẩn của repo
-  (`eslint backend/src backend/test backend/scripts`) nên bò cả `external/`+`frontend/`+`attic/`.
-  Đường thật: exit 0 trong chưa đầy một phút. *Bài học lặp: đo bằng đúng lệnh production.*
-
-**CHƯA ĐO — không được đọc thành sạch (chạy khi embed xong, TRƯỚC khi tráo kho):**
-① gate ĐẦY ĐỦ `npm run check` (cần tắt scheduler + máy tĩnh) · ⑥ mở app nhìn tận mắt (cần mắt
-người) · ⑧ clone sạch (deps không đổi từ 06/08, lần đo gần nhất 4/4 xanh — không chạy lại đêm
-nay vì cần mạng) · ⑨ diễn tập phục hồi định kỳ (lần cuối 12/08 — vẫn là nợ cổng plan 18).
-
 ## ✅ HAI CỔNG BÁO OAN + MỘT LỖ `*.env` — ĐÃ VÁ 2026-08-20 (báo từ `PBI_SasinFlow_Rebuild`, TỰ ĐO LẠI trước khi sửa)
 
 Báo cáo nêu 2 lỗi, đo lại thì **đúng 1,5/2** — và lộ thêm một lỗ nặng hơn báo cáo không thấy:
