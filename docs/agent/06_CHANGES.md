@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-22b] — vá 2 cổng tự bẫy chính mình: `archive` nuốt cờ lạ · guard đọc tên file thành lệnh
+
+Hai lỗi này **ảnh hưởng cả chuỗi repo** (cùng ship cho mọi repo dùng zemory) nên vá; các mục còn
+lại trong bảng audit chỉ tác động MỘT máy nên giữ nguyên, không đụng.
+
+**① `zemory archive` nhận MỌI cờ lạ rồi CHẠY THẬT** — hàm không nhận đối số nào, nên `--help` dời
+5 entry + 6 mục và `--dry-run` in *"moved 2…"* rồi dời thật (bẫy tôi đúng hai lần trong một phiên).
+Vá: cờ lạ ⇒ usage + **exit 1, không ghi byte nào**; `--dry-run` thật, chốt đặt ở **tầng hàm**
+(`ArchiveOptions`, ngay sau khi ĐẾM) nên mọi người gọi đều có đường xem trước — tham số optional,
+**22 lời gọi cũ không phải sửa**. Cổng: 3 ca (`--dry-run` byte-identical · **ca ÂM** không cờ vẫn
+dời thật · ca **tầng CLI** chạy `dist/cli.js` trên repo tạm, đòi exit≠0 **và** file không đổi byte);
+đột biến ⇒ 1 và 2 đỏ.
+
+**② Guard đọc TÊN FILE thành lệnh push** — `\bpush\b` khớp token trong `.allow-push` (`-` là ký tự
+không-phải-từ) ⇒ `git check-ignore -v docs/hooks/.allow-push` bị chặn, tức **chính lệnh để soi cờ**
+cũng chết. Vá `PUSH_ARG = (?<![\w.-])push\b` ở **nguồn sinh** rồi đi trọn chuỗi: `hook guard` sinh
+lại → chép bản ship cowork → manifest 338→343. Ba bước sau không phải tuỳ chọn: `template-parity`
+và `bootstrap-manifest` bắt đúng bước tôi định bỏ qua. Cổng: 4 lệnh nhắc tên cờ × mọi tool phải QUA
++ **vế ngược** 5 dạng push thật phải CHẶN; đột biến ⇒ đỏ. Nghiệm thu thật: lệnh hôm qua bị chặn nay
+trả `.gitignore:1:.allow-*`, push thật vẫn phải xin phép.
+
+Cổng sau vá: **679/679 · 0 skipped** · tsc 0 · lint 0 · `conform` ✓ · `validate` ✓ · đúng 9 file đổi.
+
 ## [2026-08-22] — mặt audit ⑪ thành LUẬT CHUNG · cổng i18n cho HTML · bản vá backup ăn nửa
 
 **User chỉnh đúng chỗ tôi đặt sai nhà:** 5 phép kiểm (chính tả · thiếu dấu · caption · song ngữ ·
