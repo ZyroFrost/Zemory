@@ -7,6 +7,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { foreignLayout } from "./conform.js";
+import { isClosedItemLine } from "./archive.js";
 
 export interface ValidateIssue {
   level: "error" | "warn" | "info";
@@ -77,7 +78,7 @@ export function validate(ctx: Context): ValidateReport {
     if (done > 0) {
       issues.push({
         level: "info",
-        msg: `${done} mục [x] còn trong 05_TODO.md — chuẩn: xong thì ghi sang 06_CHANGES.md rồi xoá khỏi đây (\`zemory archive\` dọn phần đã dồn)`,
+        msg: `${done} mục ĐÃ XONG (\`[x]\` hoặc \`✅\`) còn trong 05_TODO.md — chuẩn: xong thì ghi sang 06_CHANGES.md rồi xoá khỏi đây (\`zemory archive\` dọn phần đã dồn)`,
       });
     }
   }
@@ -257,8 +258,9 @@ function extractLinks(md: string): string[] {
   return out;
 }
 
-/** Count of `- [x]` backlog items. Fence-aware: a checked box inside a code block is
- *  an example, not a real item. */
+/** Count of CLOSED backlog items — `- [x]` **or** `- ✅`. The marker semantics live in
+ *  `archive.ts` (`isClosedItemLine`) and are shared, not re-implemented: keeping a second
+ *  pattern here is exactly what made this nudge silent for months (see that function's note). */
 export function closedItems(text: string): number {
   let inFence = false;
   let n = 0;
@@ -267,7 +269,7 @@ export function closedItems(text: string): number {
       inFence = !inFence;
       continue;
     }
-    if (!inFence && /^\s*-\s*\[x\]/.test(l)) n++;
+    if (!inFence && isClosedItemLine(l)) n++;
   }
   return n;
 }

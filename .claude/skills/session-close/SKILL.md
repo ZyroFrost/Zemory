@@ -38,7 +38,9 @@ description: Close out a work session correctly - route everything that happened
 **Bước 3 — TỰ DỌN hai file sổ (bắt buộc, đừng chờ ai nhớ gõ lệnh):**
 
 Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng bản chất từng file:
-- **`05_TODO.md` — KHÔNG có ngưỡng.** Mọi mục `[x]` đã xong chuyển sang `docs/agent/archive/05_TODO.md`
+- **`05_TODO.md` — KHÔNG có ngưỡng.** Mọi mục đã xong — dấu `[x]` **hoặc** `✅`, `archive` nhận cả hai
+  (bản vá 2026-08-21: trước đó nó chỉ biết `[x]` nên **chưa bao giờ nhặt được mục nào** ở repo viết
+  `✅`, và sổ phình tới 2.327 dòng trong khi lệnh báo *"nothing to do"* mỗi lần) — chuyển sang `docs/agent/archive/05_TODO.md`
   ngay, vì một mục đã xong là **đặt sai chỗ kể từ giây nó xong**. (Đo 2026-07-29: gác bằng ngưỡng kích
   thước là lý do 107 mục đã xong nằm lại chiếm **46%** một file vốn được nạp MỌI phiên.)
 - **`06_CHANGES.md` — có trần.** Entry **cũ nhất** chuyển đi, giữ bản mới nhất tại chỗ; ngưỡng khai
