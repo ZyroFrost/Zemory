@@ -98,6 +98,20 @@ const ITEM = /^(\s*)-\s*(?:\[([x ~])\]|(✅))/;
 /** Trạng thái đã chốt (mục ra khỏi backlog) — một chỗ hỏi, hai cách viết. */
 const CLOSED = new Set(["x", "✅"]);
 
+/**
+ * Một dòng có phải mục backlog ĐÃ ĐÓNG không. Export để `validate` dùng CHUNG hàm này thay vì
+ * giữ mẫu riêng — chính lỗi đó đã xảy ra và im lặng suốt: bản vá 2026-08-21 dạy `archive` hiểu
+ * `✅`, nhưng để `validate.closedItems()` ở lại với mẫu chỉ-`[x]`. Hệ quả đo được 2026-08-23:
+ * `05_TODO` có **7 mục `✅` / 0 mục `[x]`**, `closedItems()` trả **0**, nên `validate` KHÔNG in
+ * một chữ nhắc archive — cơ chế nhắc duy nhất tự làm mình vô hình. Cùng doctrine HP điều 3:
+ * một sự thật một nhà; hai bản sao của "thế nào là đã đóng" là chắc chắn lệch.
+ */
+export function isClosedItemLine(line: string): boolean {
+  const m = ITEM.exec(line);
+  if (!m) return false;
+  return CLOSED.has(m[2] ?? m[3] ?? "");
+}
+
 /** One backlog item = its `- [x]` line plus every following line that belongs to
  *  it (deeper indent, continuation prose). Stops at the next item of the same or
  *  shallower level, a `##` heading, or a `>` block — those start new structure. */
