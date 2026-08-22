@@ -3,6 +3,67 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔬 Audit toàn diện 2026-08-23 (11 mặt, TRONG LÚC ma trận bench chạy) — 2 blocking, 5 advisory
+
+> **Điều kiện đo — đọc trước khi tin số:** ma trận bench đang ở ô 4/4 ⇒ **không build được**
+> (`npm test` kéo `clean && tsc`, xoá `dist/` dưới chân job) và **daemon TẮT có chủ đích** từ 15:35Z.
+> Mọi mặt cần build / cần bề mặt sống / cần I/O nặng đều ghi **CHƯA ĐO**, không ghi "sạch".
+>
+> **Sạch, đã đo trong lượt này:** tsc `--noEmit` **0 lỗi** (chứng minh merge 2.2.1 dịch được) · lint 0
+> · **685/685 test · 0 skipped** (92/101 file) · `conform --gate` ✓ 233 file · `validate` ✓ ·
+> `todo verify` exit 0 · **git: hash CÂY local = origin** (`20c1d799`), 1002 = 1002 file, 0 commit
+> sót, 0 file untracked · secret cây HEAD **sạch**, chìa dấu tay **e6fb0eff** (≠ `41d88e4d` bản đã
+> lộ) · blob lịch sử lớn nhất **1,72 MB**, size-pack 23,86 MiB · **0 tin mồ côi · 0 vector mồ côi ·
+> FK sạch · digest 100%** ở CẢ HAI kho (2.332/2.332 · 2.330/2.330) · neo test **210 neo, 0 chết** ·
+> `doctor` xanh, kho ngoài mọi phạm vi đồng bộ · **guard chứng minh sống 3 lần trong phiên** (chặn
+> `git add -A`, chặn lệnh grep chạm tên file khoá, cho push qua rồi đóng dấu cờ một-lần).
+
+- 🔴 **(BLOCKING — ĐÃ XỬ NGAY) BACKUP BỎ ĐÓI 27,9 GIỜ, và `doctor` vẫn chấm ✓.** Đo hai đường:
+  bản backup cuối là `2026-08-21 22:35` (chuỗi trước đó đều đặn 17→21/08, rồi **dừng hẳn** — không
+  có bản nào của 22/08 lẫn 23/08); log chứng minh cơ chế: `14:39Z [scheduler] backup nhường embed —
+  bản mới nhất 23.1 giờ tuổi`, tức **job nhúng của chính phiên này** giữ khoá ghi. Rồi 15:35Z daemon
+  bị tắt cho bench ⇒ backup **không còn cả cơ hội thử**. Kho nay 282.500 tin ⇒ ~2.700 tin mới nằm
+  **đúng một bản**. **Đã chụp một bản ngay: 2.082.578.432 byte / 17,3 giây.**
+  **Việc còn lại (đây mới là lỗ thật):** ngưỡng đỏ của `doctor` là **2× chu kỳ** nên trọn một ngày
+  không backup vẫn hiện **✓** — đúng kiểu "bề mặt nói dối" mà `02_RULES` cấm. Đề xuất: >1× chu kỳ ⇒
+  cảnh báo THẤY ĐƯỢC; và ca **daemon TẮT** phải nói riêng (lúc đó backup không phải "chậm", nó
+  **không tồn tại**). Đây là **cửa thứ TƯ** của cùng một bệnh (chết 4 ngày vì treo công tắc · bỏ đói
+  autosync · bỏ đói 27 giờ 21/08 · nay ngưỡng che mất).
+- 🔴 **(BLOCKING) Template `nonapp` bắt dự án BI/report chạy phép kiểm APP-ONLY — lỗi CÓ SẴN, và bản
+  vá 23/08 của tôi GIỮ NGUYÊN nó.** Đo: `docs_template/nonapp/.claude/skills/audit/SKILL.md` nhắc
+  `npm run check` · `FE ↔ BE` endpoint · `integrity_check` · `lockfile`/`dependency`. **Quyết định
+  cắt ĐÃ TỒN TẠI** — bộ `cowork` chỉ còn 4 mặt (Chuẩn & docs · Nguồn trùng · Bề mặt sống · Chữ trong
+  sản phẩm giao đi) đúng vì "3 mặt app-only không áp được cho non-app" — nhưng **chưa bao giờ áp cho
+  template `nonapp`**. Tôi giữ 3 bộ byte-identical để bảo toàn bất biến cũ, và vì thế **nhân cái sai
+  lên** (thêm mặt ⑧ lockfile/dependency + ⑨ write-gate/kho). Đây là finding của mặt ③ **NGUỒN TRÙNG**.
+  **Cần user chốt:** tách bản audit riêng cho `nonapp` (bỏ mặt app-only, giữ ⑦⑨⑩ vì non-app vẫn có
+  bí mật/pipeline/lịch) — và nếu tách thì `standard-parity` phải đổi từ "khớp số mặt" sang "khớp
+  theo PROFILE", không thì cổng vừa dựng sẽ đỏ oan.
+- [ ] **(advisory) `06_CHANGES` 298/300 dòng — thêm MỘT entry nữa là vượt trần.** `archive` phải chạy
+  trước khi ghi entry kế (nó giữ `changes_keep` 180). Kèm: **7 mục `✅` còn nằm trong `05_TODO`**
+  (1.733 dòng, đã phình lại từ 1.551 sau lần archive 21/08) — `archive` nay nhặt được `✅` (bản vá
+  21/08), nên chạy là gọn.
+- [ ] **(advisory — bẫy báo oan MỚI cho mặt ⑪) Bộ dò mojibake báo oan trên chính file DẠY về
+  mojibake.** Đo: 6/245 file trúng, kiểm tay **0 thật** — tất cả là `02_RULES §Ngôn ngữ` nêu ví dụ
+  ``Ã¡ · â€ · ï»¿`` và `skills/audit` khai đúng cái mẫu đó. Muốn cổng-hoá thì phải miễn chuỗi nằm
+  trong backtick. Thêm vào danh sách bẫy của mặt ⑪ (nay là bẫy thứ 6).
+- [ ] **(advisory) Phép dò EXPORT MỒ CÔI của lượt này TRƯỢT ca tự-kiểm HAI LẦN ⇒ mặt ③ vế đó CHƯA
+  ĐO.** Lần đầu cho 402/402 "mồ côi" (vô lý); kiểm chéo bằng grep thì `cmdInit` được gọi 2 lần trong
+  `cli.ts`. Bản sửa vẫn trượt ca tự-kiểm nên tôi **không ghi số nào**. Bản đo hợp lệ gần nhất: 21/08
+  — **395 export đều có người gọi**. *Ghi ra vì đây đúng là giá trị của luật ⑥/⑦: ca tự-kiểm đã chặn
+  tôi khỏi đưa một con số sai vào báo cáo audit, hai lần.*
+- [ ] **(ghi số, không phải việc mới) Chênh dữ liệu hai kho nới lên 2.276 tin** (thật 282.500 vs song
+  song 280.224) vì hook realtime ghi suốt lúc làm việc, còn kho song song đóng băng. Chỉ là đối thủ
+  ở lane FTS (~0,8% kho) và **chỉ lệch một chiều** — phải ghi kèm mọi bảng bench của phiên này.
+
+**CHƯA ĐO — KHÔNG được đọc thành sạch:** ① gate ĐẦY ĐỦ `npm run check` **và** file test
+`conform-declared` của máy kia (chờ bench xong → build; tsc đã chứng minh nguồn dịch được, nên đỏ
+hiện tại là **do chưa build**) · ⑤ `quick_check`/`integrity_check` trên kho + trên bản backup vừa
+chụp (I/O nặng) · ⑥ bề mặt sống: daemon TẮT có chủ đích ⇒ chưa gọi endpoint, **chưa mở app nhìn tận
+mắt** · ⑧ `npm run check:clone` (cần mạng + build) · ⑨ **diễn tập phục hồi — lần cuối 12/08, nay 11
+ngày**, vẫn là nợ nặng nhất của `plan/18` mặt ⑨ · ⑪ nhãn/caption + song ngữ soi bằng mắt (phép
+ad-hoc của tôi hỏng; vế MÁY thì cổng `i18n-ratchet` đã xanh trong 685 test).
+
 ## 🔴 `memory embed` VÀ `memory scan` NHẬN CỜ LẠ RỒI CHẠY THẬT — bắt 2026-08-22 (chiều muộn)
 
 **Cùng họ với `archive` vừa vá `[2026-08-22b]`, nhưng ở lệnh ĐẮT HƠN NHIỀU.** Đo trực tiếp: gõ
