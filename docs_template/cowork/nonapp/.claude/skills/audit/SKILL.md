@@ -5,7 +5,7 @@ description: Run a full review of the project across every dimension, verifying 
 
 # audit — soi toàn diện
 
-> User nói **"audit toàn diện" / "soi hết"** = chạy **đủ ba mặt** dưới, **không cắt bớt cho nhanh**.
+> User nói **"audit toàn diện" / "soi hết"** = chạy **đủ bốn mặt** dưới, **không cắt bớt cho nhanh**.
 
 ## Năm luật
 
