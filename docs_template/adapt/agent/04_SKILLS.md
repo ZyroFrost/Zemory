@@ -27,6 +27,7 @@
 | `adopt/` | **nhận repo có sẵn cấu trúc riêng** — đọc cây thật, đề xuất bảng ánh xạ slot, chờ NGƯỜI DUYỆT rồi khoá vào `.harness.json`. Chạy lại khi cấu trúc gốc đổi. *(Hệ ADAPT KHÔNG có `reconcile` — nắn repo là thứ hệ này cấm.)* |
 | `conform/` | chấm độ bám chuẩn (máy chấm, agent phán) |
 | `audit/` | soi toàn diện trước mốc lớn — verify từng phát hiện rồi mới ghi |
+| `sync-path/` | khai + ĐO đường sang máy thứ hai của mọi thứ vừa dựng (không có kênh = chưa xong) |
 | `read-office/` | đọc `.xlsx .xls .docx .pptx .pdf` rẻ nhất có thể |
 | `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
 | `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |

@@ -6,7 +6,7 @@ description: Run a full review of the project across every dimension, verifying 
 # audit — soi toàn diện
 
 > Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
-> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **6 mặt** dưới.
+> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **11 mặt** dưới.
 
 **Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì test soi thì đúng*, không
 chứng minh nó đang soi thứ đang chạy. Đã dính thật: cả bộ test UI neo vào bản đã bị thay, gate 100%
@@ -20,7 +20,27 @@ checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng lòng tin v�
 **Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
 và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
 
-### 7 mặt — chạy đủ
+**Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật
+(`02_RULES §Hành xử`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
+tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai
+bản chất** (khoá phụ trỏ hụt ⇒ tưởng mồ côi, suýt xoá dữ liệu đang sống) · **sổ nói khác code**.
+Kiểm chéo = đổi công cụ · đổi hướng đếm · hoặc gọi bề mặt thật (kho ↔ API).
+
+**Luật 6 — ĐỘT BIẾN HOÁ trước khi tin bộ test.** Phá từng chỗ code mà test canh, đòi nó phải ĐỎ. Đo
+thật: **2/4 đột biến SỐNG SÓT** — một test chưa bao giờ chạy tới nhánh nguy hiểm, một test bị **bản
+sao logic ở nơi khác gánh thay**. Cả hai đều xanh suốt và không soi gì cả.
+
+**Luật 7 — MỌI CỔNG PHẢI ĐO BẰNG CẢ CA ÂM.** Chỉ chạy ca *phải chặn* thì không biết cổng có **chặn
+NHẦM** không, mà chặn nhầm là đường ngắn nhất tới *"gate nhiễu ⇒ gate bị bỏ qua"* — tự tay phá thứ
+mình đang xây. Đo thật trên guardrail: bảng 28 ca có giá trị **chính nhờ 6 ca *phải cho qua***;
+thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
+
+### 11 mặt — chạy đủ
+*(6 mặt đầu là bản gốc. **Mặt 7–10** thêm sau khi soi ngược **mọi sự cố THẬT** của một repo rồi hỏi
+*"mặt nào lẽ ra bắt được"* — phát hiện: **mọi sự cố nặng nhất đều rơi vào vùng 6 mặt cũ không nhìn
+tới**, vì 6 mặt đó soi *"phần mềm có ĐÚNG không"*, còn chúng thuộc *"phần mềm có SỐNG SÓT không"*:
+mất mát · lộ lọt · chết lặng · không mang đi được. **Mặt 11** thêm vì chín mặt trước đều soi MÁY,
+không mặt nào soi thứ **NGƯỜI ĐỌC** nhận.)*
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
@@ -32,8 +52,28 @@ và một check không nổ được còn tệ hơn không có (nó phát ra l�
 5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
 6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
    từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
+7. **Bí mật & phát tán** — secret trong cây **VÀ trong LỊCH SỬ git** (không chỉ HEAD: khoá lộ rồi thì
+   lộ **vĩnh viễn**, xoá ở HEAD không gỡ được thứ đã đẩy đi) · file lớn/binary lọt git · **đường ra
+   ngoài** rộng hơn `git push`: thư mục đồng bộ đám mây · kênh *backup máy* của trình đồng bộ (thứ
+   người dùng KHÔNG chủ động bật) · máy đích lúc deploy · quyền file khoá. Đây là chỗ mất mát
+   **KHÔNG đảo được** — sai một lần là xong.
+8. **Phụ thuộc & license** — dependency/model mới có license tương thích không · lockfile khớp ·
+   dependency chết · **dựng lại từ CLONE SẠCH có chạy không** (thứ chỉ chạy được trên máy đang có sẵn
+   đồ thì chưa gọi là dựng được). Quét **CẢ CÂY**, không chỉ dependency trực tiếp — license xấu ở
+   tầng sâu vẫn đi kèm sản phẩm. Bẫy đo: `OR` và `AND` trong biểu thức license **không cùng nghĩa**
+   (`OR` = một vế hợp lệ là đủ · `AND` = phải hợp lệ MỌI vế), tách bằng cùng một mẫu là bỏ sót.
+9. **Toàn vẹn & đồng thời** — khoá ghi còn **TỪ CHỐI THẬT** không (khoá đúng mà người gọi bỏ qua lời
+   từ chối thì vẫn thủng) · có kẻ ghi thứ hai nào đang mở kho không · giao dịch có nguyên tử ·
+   **THỬ PHỤC HỒI THẬT** một bản sao lưu ra chỗ tạm rồi ĐẾM — *"dữ liệu lành"* KHÁC *"dựng lại
+   được"*, và kênh mang đi có thể lặng lẽ vứt mất lớp đắt nhất mà không cổng nào đỏ.
+   Kèm: chạy skill `sync-path/`.
+10. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
+   chết cứng không · bề mặt có **CHẾT THEO nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó không báo
+   lỗi, nó **NÓI DỐI**, và người dùng không có cách phân biệt với đang-chạy-thật) · **chạy ma trận
+   guardrail** — cổng chặn có thật sự chặn không, thứ chỉ đo được bằng cách CHẠY, không đọc code ra
+   (ca phải chặn **+ ca phải cho qua**, luật 7).
 
-7. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — NORM ở `02_RULES §Ngôn ngữ` (*"chữ người dùng đọc phải đầy đủ và
+11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — NORM ở `02_RULES §Ngôn ngữ` (*"chữ người dùng đọc phải đầy đủ và
    đúng"*). Đo: **thiếu dấu** · **chính tả** (từ lặp · mojibake) · **nhãn** (phần tử tương tác có
    nhãn máy đọc được, ảnh có `alt`) · **song ngữ HAI ĐẦU** (chuỗi trong code *và* chữ nằm thẳng
    trong markup + `title`/`placeholder`; khoá đủ cả hai dict) · **UI ↔ code** (đối chiếu route bề

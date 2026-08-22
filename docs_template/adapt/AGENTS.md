@@ -61,6 +61,7 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
 | kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
 | user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
+| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/sync-path/SKILL.md` |
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
 | cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
