@@ -18,6 +18,7 @@ import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, wr
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { guardDrift } from "../docs/guard-gen.js";
+import { backupStale } from "../memory/backup-rotate.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 
@@ -265,6 +266,27 @@ export async function cmdDoctor(): Promise<void> {
       } else {
         console.log(`  scratch: ✓ ${gb(sw.totalBytes)} ở thư mục nháp (trong trần)`);
       }
+    }
+  } catch {
+    /* fail-open — báo cáo phụ, không được làm doctor chết */
+  }
+
+  // Tuổi bản sao lưu — mặt CUỐI CÙNG chưa có ai canh (audit 2026-08-21). Đo được ngày đó:
+  // **27,0 giờ** không có bản mới vì job re-embed kho SONG SONG giữ khoá ghi của cả thư mục
+  // `data/`, và `backupTick` nhường im lặng. Không bề mặt nào báo — `doctor` vẫn in toàn ✓.
+  // Nay tuổi > 2 chu kỳ (2 ngày) là ĐỎ, vì lúc đó nó không còn là "chậm nhịp" mà là hỏng.
+  try {
+    const st = backupStale(currentMemoryDb());
+    const hours = st.ageMs === null ? null : (st.ageMs / 3_600_000).toFixed(1);
+    if (st.stale) {
+      failed = true;
+      console.log(
+        `  backup: ✗ ${hours === null ? "CHƯA có bản sao lưu nào" : `bản mới nhất ${hours} giờ tuổi`}` +
+          ` — quá hạn (trần ${(st.limitMs / 3_600_000).toFixed(0)} giờ).` +
+          ` Kẻ ghi kho khác có đang giữ khoá không? Xem \`[scheduler] backup nhường …\` trong logs/daemon.log`,
+      );
+    } else if (hours !== null) {
+      console.log(`  backup: ✓ bản mới nhất ${hours} giờ tuổi`);
     }
   } catch {
     /* fail-open — báo cáo phụ, không được làm doctor chết */

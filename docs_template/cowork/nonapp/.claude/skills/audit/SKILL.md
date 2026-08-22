@@ -19,7 +19,7 @@ description: Run a full review of the project across every dimension, verifying 
 
 **5 — PHÁ THỬ trước khi tin một phép kiểm.** Đừng dừng ở câu trả lời trên giấy: **sửa hỏng đúng thứ nó canh** (đổi một số trong nguồn, xoá một dòng bắt buộc, đổi tên một cột) rồi chạy lại — nó phải ĐỎ. Sống sót ⇒ phép kiểm đó đang canh chỗ khác, hoặc **một bản sao logic ở nơi khác đang gánh thay**. Nhớ hoàn nguyên thứ vừa phá.
 
-## Ba mặt — chạy đủ
+## Bốn mặt — chạy đủ
 
 **① Chuẩn & docs**
 `python .claude/skills/structure/scripts/check_structure.py .` (skill `conform`) · độ dài `05_TODO`/`06_CHANGES` so ngưỡng 300 dòng · `05_TODO` còn mục nào đã xong mà chưa đóng không · entry changelog nào vượt trần 30 dòng.
@@ -29,6 +29,9 @@ Cùng một sự thật nằm ở **≥2 nơi** ⇒ chắc chắn sẽ lệch. S
 
 **③ Bề mặt sống — nhìn tận mắt**
 **Mở deliverable ra xem.** Suy luận từ file nguồn không thay được việc nhìn: đã có lần mọi phép kiểm xanh mà báo cáo vẫn hiển thị sai. Kiểm vài số mốc so với nguồn, kiểm ngày tháng, kiểm bản đang ở đích có đúng bản mới nhất không.
+
+**④ Chữ trong sản phẩm giao đi** — NORM ở `02_RULES §Ngôn ngữ`. Đo: **thiếu dấu** · **chính tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **chú thích đủ** (tiêu đề cột · chú thích hình · **số có đơn vị + kỳ**) · **một thuật ngữ một tên** xuyên suốt.
+⚠ Báo oan nếu làm ngây thơ: danh sách từ-không-dấu chỉ được gồm từ mà bản không dấu KHÔNG hợp lệ (`khong` `duoc` `cua`… — còn `minh`/`nhanh`/`song` vốn không dấu) · dò từ lặp phải **trừ láy đôi** ("song song" · "luôn luôn") và dùng lớp `\p{L}` vì `\b` của JS là ASCII · mẫu mojibake `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ).
 
 ## Đầu ra
 

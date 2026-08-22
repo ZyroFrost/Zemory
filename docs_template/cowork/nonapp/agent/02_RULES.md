@@ -66,7 +66,15 @@ xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, d
 - **Tên thư mục · tên skill · `name:` trong frontmatter**: **tiếng Anh**, chữ thường, nối bằng `-`.
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM.** Câu mệnh lệnh ngắn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không khẩu ngữ, không kể chuyện, không ví dụ hội thoại.
 - **code · comment trong `scripts/`**: **TIẾNG ANH**. Thuật ngữ chuyên ngành GIỮ NGUYÊN, không dịch.
-
+- **CHỮ TRONG SẢN PHẨM GIAO ĐI PHẢI ĐẦY ĐỦ VÀ ĐÚNG — ba ràng buộc, áp lúc VIẾT.**
+  Người đọc nhận sản phẩm, không nhận quy trình; một lỗi chữ thì không cổng nào kêu.
+  · **① Có dấu, đúng chính tả.** Văn bản tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị
+    đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
+  · **② Chú thích ĐỦ.** Mỗi bảng có tiêu đề cột · mỗi hình/biểu đồ có chú thích · **mỗi số có đơn
+    vị + kỳ**. Số trần không đơn vị là số không kiểm được.
+  · **③ Một thuật ngữ MỘT tên** xuyên suốt mọi trang giao đi (đối chiếu từ điển của project nếu có);
+    cùng một thứ gọi hai tên là bắt người đọc tự đoán.
+  *(Cách đo + bẫy báo oan nằm ở `.claude/skills/audit/`.)*
 ## Tài liệu
 - **Docs = FILE là nguồn (FILE WINS):** sửa `.md` trực tiếp, bám chuẩn; **xong là xong**.
 - **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `03` chỗ-để-file + từ điển · `04` sổ đăng ký skill · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một nội dung sống ở ĐÚNG MỘT nhà; nơi khác cần thì **DẪN CHIẾU**, không chép lại.
@@ -94,6 +102,8 @@ Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **ho�
 - KHÔNG `--force`, KHÔNG rewrite lịch sử đã push, KHÔNG `reset --hard`/`clean` lên việc chưa commit của user nếu chưa hỏi.
 
 ## Hành xử
+- **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, **ngay khi làm**, không dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả. **Vì sao:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** — người dùng mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Hệ quả bắt buộc: ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm nguồn đo được · ③ số đo lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc chạy lâu phải báo đang chờ gì.
+- **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT — không thứ gì được phình vô hạn.** Mọi thứ bạn tạo ra để LÀM VIỆC mà không phải sản phẩm giao đi (bản nháp, bản thử, dữ liệu trung gian, ảnh chụp, bản sao để so) phải có chỗ riêng và có đường dọn. Xong một phép thử mà biết chắc không dùng lại ⇒ **dọn ngay trong phiên**; thứ đáng giữ thì giữ nhưng phải NHỎ và nói rõ giữ vì gì. Rác không nằm trong sản phẩm nên không ai thấy nó lớn lên — cho tới lúc thư mục dự án hết dùng được.
 - **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
 - **Yêu cầu không rõ phải được làm rõ TRƯỚC khi thực thi — cơ chế TỰ ĐỘNG, không chờ user gọi.** Kích hoạt khi: đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Mở `.claude/skills/grill/`. KHÔNG tự chọn cách hiểu rộng nhất.
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).

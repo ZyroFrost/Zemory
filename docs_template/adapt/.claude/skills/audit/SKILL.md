@@ -20,7 +20,7 @@ checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng lòng tin v�
 **Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
 và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
 
-### 6 mặt — chạy đủ
+### 7 mặt — chạy đủ
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
@@ -32,6 +32,18 @@ và một check không nổ được còn tệ hơn không có (nó phát ra l�
 5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
 6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
    từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
+
+7. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — NORM ở `02_RULES §Ngôn ngữ` (*"chữ người dùng đọc phải đầy đủ và
+   đúng"*). Đo: **thiếu dấu** · **chính tả** (từ lặp · mojibake) · **nhãn** (phần tử tương tác có
+   nhãn máy đọc được, ảnh có `alt`) · **song ngữ HAI ĐẦU** (chuỗi trong code *và* chữ nằm thẳng
+   trong markup + `title`/`placeholder`; khoá đủ cả hai dict) · **UI ↔ code** (đối chiếu route bề
+   mặt gọi với route thật — dùng cạnh seam `api` của graph, không dùng mắt).
+   ⚠ **Bốn phép này BÁO OAN nếu làm ngây thơ:** danh sách từ-không-dấu chỉ được gồm từ mà bản không
+   dấu KHÔNG hợp lệ (`khong` `duoc`…; `minh`/`nhanh`/`song` vốn không dấu) · dò từ lặp phải dùng
+   `\p{L}` (`\b` của JS là ASCII) và **trừ láy đôi** ("song song") · mẫu mojibake `Â.`/`Ã.` trúng
+   cả chữ Việt hợp lệ (ĐÂY · NGÃ) · nhãn thường nằm ở thẻ CON hoặc `<label>` bọc ngoài · chữ trong
+   markup CÓ móc i18n là đúng (bản dịch đè lúc chạy) · route ghép ĐỘNG và endpoint do CLI gọi qua
+   HTTP đều trông như "chết".
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
 Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.

@@ -38,7 +38,20 @@ test("blendRecency: a barely-relevant deep-tail recent item does NOT leap over t
   assert.equal(out[0].id, "top", "top relevance (even if old) beats a fresh deep-tail item");
 });
 
+// ⏰ TEST HẸN GIỜ — bài học 2026-08-22, ghi ở đây vì chỗ này chính là nơi nó nổ.
+// Ba ca trên là hàm THUẦN nên truyền `NOW` vào được ⇒ tất định mãi mãi. Ca này gọi `search()`,
+// mà `blendRecency` mặc định đọc **đồng hồ THẬT** (`nowMs = Date.now()`) — trong khi fixture lại
+// neo mốc cứng `NOW = 2026-07-02`. Hệ quả: dữ liệu "mới" già dần theo ngày thật, và tới một hôm
+// nó thua luôn.
+// Số học của điểm lật: `score = 1/(1+i) × recencyFactor`, `older` đứng i=0 nên `fresher` (i=1)
+// chỉ thắng khi `f_fresher > 2 × f_older`; `f_older` đã chạm SÀN 0,15 ⇒ ngưỡng là
+// `0.5^(d/30) = 0.30` ⇒ **d = 52,1 ngày**. Fixture cũ để fresher = NOW−1 ngày, nên test xanh
+// tới 2026-08-22 rồi lật đỏ (đo hôm đó: older 0,026667 vs fresher 0,026230 — sát đúng điểm giao).
+// Vá: neo fixture vào ĐỒNG HỒ THẬT, đúng ý định của ca ("mới vs cũ"), và KHÔNG đổi API
+// production chỉ để test chạy được.
 test("search(): recency default ON ranks the fresher relevant message first", (t) => {
+  const REAL_NOW = Date.now();
+  const daysAgo = (n) => new Date(REAL_NOW - n * 86_400_000).toISOString();
   const root = tempDir(t, "zemory-recency-");
   const dbPath = join(root, "memory.db");
   const db = openMemory(dbPath);

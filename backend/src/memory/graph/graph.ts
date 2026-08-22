@@ -79,6 +79,23 @@ export const EXTRA_LANG_EXT: Record<string, string> = {
   ".cs": "c_sharp",
   ".rb": "ruby", // đo 2026-08-21: grammar ruby LOAD FAIL — giữ làm ca âm sống, fail-open về regex-rỗng
 };
+
+/**
+ * MỘT định nghĩa duy nhất cho câu hỏi *"file này có phải lá mã nguồn không"* — dùng bởi CẢ code
+ * graph (`walk` dưới đây) và cây folder chuẩn (`docs/structure-tree.ts`). Hai thứ đó là hai
+ * LĂNG KÍNH của cùng một cấu trúc (HP điều 13) nên tập đuôi phải khớp tuyệt đối.
+ *
+ * Vì sao thành hàm chứ không để mỗi bên tự ghép điều kiện: đợt mở đa ngôn ngữ 2026-08-21 thêm
+ * `EXTRA_LANG_EXT` cho graph mà **quên cây folder**, và audit cùng ngày đo được trên repo giả:
+ * graph 5 node · cây 2 dòng ⇒ **3 node (.go/.java/.sh) có trong graph mà cây không có dòng
+ * nào** — đúng thứ hai comment ở hai file tự khai là "không bao giờ được lệch". Điều kiện ghép
+ * tay ở hai nơi thì lần sau vẫn sẽ lệch; một hàm thì không.
+ * Cổng canh: `structure-sync.test.mjs` so HAI TẬP trên repo giả có đủ 5 loại đuôi.
+ */
+export function isSourceLeaf(name: string): boolean {
+  const ext = extname(name);
+  return SRC_EXT.has(ext) || ext in EXTRA_LANG_EXT;
+}
 const IGNORE = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".venv", "__pycache__",
   "data", "generated", ".turbo", ".next", ".cache", "models", "attic", "external",
@@ -148,7 +165,7 @@ function collectFiles(absRoot: string, absDir: string, out: string[], depth: num
       continue;
     }
     if (isDir) collectFiles(absRoot, abs, out, depth + 1);
-    else if (SRC_EXT.has(extname(name)) || extname(name) in EXTRA_LANG_EXT) out.push(abs);
+    else if (isSourceLeaf(name)) out.push(abs); // MỘT định nghĩa, dùng chung với cây folder
   }
 }
 
