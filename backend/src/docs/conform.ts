@@ -20,7 +20,7 @@ import { dirname, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
-import { NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
+import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -222,7 +222,20 @@ export function conform(root: string): ConformReport {
     // chỗ hôm qua còn xanh. Gate đỏ oan = gate bị bỏ qua (luật 7). Muốn conform soi cả ngôn ngữ
     // mở rộng thì đó là QUYẾT ĐỊNH RIÊNG của user (đề xuất đã ghi `05_TODO`), không phải hệ quả
     // âm thầm của một đợt build graph.
-    const offDirs = [...new Set(g.nodes.filter((n) => !n.slot && n.dir && !n.noImportLayer && !exempt(n.dir)).map((n) => n.dir))].sort();
+    // Slot repo tự KHAI trong `03_STRUCTURE §3` (HP điều 3 file-wins · điều 13: khai vào chuẩn
+    // rồi máy honour) + hai quy ước chuẩn (python `backend/<pkg>/` · `api/vN`). Trước đây off-standard
+    // chỉ tra `SLOT_ROLES` cứng ⇒ báo oan concern đã khai (đo 2026-08-14 trên music_video_flow: 16
+    // mục blocking cho `backend/app` · `api/v1` · `schemas` · `workspaces/*` — không mục nào lệch
+    // thật, tool bảo "thêm slot vào chuẩn nếu là concern thật" rồi phớt lờ chính việc đó). `extraDirOk`
+    // KHÔNG nới cổng: dir tên vô nghĩa CHƯA khai (không phải pkg-root/api-version) vẫn rơi vào đây.
+    const declared = declaredSlots(root);
+    const offDirs = [
+      ...new Set(
+        g.nodes
+          .filter((n) => !n.slot && n.dir && !n.noImportLayer && !exempt(n.dir) && !extraDirOk(n.dir, root, declared))
+          .map((n) => n.dir),
+      ),
+    ].sort();
     push(
       "off-standard-dir",
       "blocking",
