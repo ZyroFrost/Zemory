@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-08-22c] — gate đầy đủ chạy lại được · bench A/B MỘT PHẦN: lớp GỘP làm phép so lệch
+
+**Gate ĐẦY ĐỦ `npm run check`: exit 0** — lần đầu từ 15/08 (job embed đã xong nên `clean && tsc`
+không còn xoá `dist/` dưới chân ai). *Tự nhận: tôi pipe qua `tail -40` nên **mất con số ca test**;
+gate vẫn PASS thật vì chuỗi `&&`, nhưng lần sau đừng pipe.* Job embed kết thúc bình thường:
+log tự chốt `DỪNG: không còn tin nào để nhúng` · **257.006 vector · 0 remaining trong phạm vi**.
+
+🔶 **Bench bước ③ — MỚI MỘT CẤU HÌNH, chưa phải test full** (user chỉ ra: thiếu rerank, thiếu
+đa-truy-vấn, và kho song song còn thiếu ~9.600 tin). Số + phạm vi ở `plan/19 §4b`; **không được
+đọc thành phán quyết về hệ mới**.
+
+**Thứ đáng giá nhất lượt này là tách được BIẾN GÂY NHIỄU:** lớp gộp near-dup dùng vector với ngưỡng
+cosine **cố định 0,85**, nên hai không gian vector khác nhau thì gộp khác nhau ⇒ **bench khi BẬT gộp
+là so lệch**. Bằng chứng: tắt gộp thì lane FTS hai kho **trùng khít** (13/22/26/37 · MRR 0,183) —
+đúng như phải vậy với cùng chỉ mục lexical; còn khi bật gộp, FTS lệch 18 vs 14 câu trong pool.
+
+Ở điều kiện sạch (gộp TẮT): tổng 68 nhãn **gemma 46%/0,295 vs bge 43%/0,268**; theo lớp bge **đổi
+chỗ mạnh** — thắng keyword (50→67%) và tool_result (25→38%), **thua rõ prose** (59→44%, MRR
+0,404→0,259) mà prose là 34/68. ⇒ cổng §4 (*không lớp nào tụt*) **trượt ở cấu hình này**; chưa tráo.
+
+🔴 **Phát hiện phụ có thể giá trị hơn cả đợt tráo — áp cho KHO ĐANG CHẠY:** lớp gộp lấy mất **~11–12
+điểm `@10`** thước nghiêm (35→46) mà chỉ mua lại **+3 điểm** thước tương đương (66→69). Đây là một
+CÔNG TẮC, không phải 44 giờ máy. Đổi mặc định phải qua cổng riêng + user chốt ⇒ **chưa đổi**.
+
 ## [2026-08-22b] — vá 2 cổng tự bẫy chính mình: `archive` nuốt cờ lạ · guard đọc tên file thành lệnh
 
 Hai lỗi này **ảnh hưởng cả chuỗi repo** (cùng ship cho mọi repo dùng zemory) nên vá; các mục còn

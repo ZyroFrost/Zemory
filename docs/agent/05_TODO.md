@@ -3,7 +3,51 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-22 — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-22 (chiều) — ĐỌC MỤC NÀY TRƯỚC
+
+**Việc ĐẦU TIÊN của phiên sau — user chốt: "phải TEST FULL hệ mới".** Lượt đo bước ③ hôm nay
+**chỉ chạy MỘT cấu hình** nên KHÔNG kết luận được; đừng đọc số ở `plan/19 §4b` thành phán quyết.
+Bốn thứ còn thiếu, làm đủ mới gọi là full:
+
+- [ ] **① Bù dữ liệu cho kho song song TRƯỚC KHI so** — nó thiếu **~9.600 tin** (269.769 vs
+  279.363) nên hai kho chưa cùng dữ liệu; số của bge đang được *ưu ái nhẹ* (ít đối thủ hơn).
+  Chạy: `GLOBAL_MEMORY_DB=<bgem3> zemory memory scan` → `… memory embed` (ước ~1,5–2 giờ ở
+  637 ms/tin). **Đừng bench trước bước này** — so trên hai tập dữ liệu khác nhau là so lệch.
+- [ ] **② Ma trận 4 ô × 2 kho**: `{gộp BẬT, gộp TẮT} × {rerank TẮT, rerank BẬT}`. Hôm nay mới
+  đo 2 ô đầu (`--no-rerank`). Lệnh: `memory bench --recall` (có rerank) và `--no-rerank`, biến
+  `ZEMORY_COLLAPSE=0` để tắt gộp. **Máy tĩnh, daemon TẮT** (ONNX tranh CPU là số hỏng).
+- [ ] **③ Đa-truy-vấn (T5)** — đòn mạnh nhất theo `plan/17 §1.1b` mà bench KHÔNG chạy: bench chỉ
+  gửi một truy vấn. Phải dựng probe **sao chép nguyên tham số** `searchHybrid(q,{limit:40,
+  all:true,rerank:false})` rồi thêm `also[]`; probe thiếu `all:true` từng cho **3 kết luận sai**
+  (bẫy 10/08). Cách rẻ nhất: dùng lại `runRecallBench` như script
+  `scratchpad/prose-diag.mjs` của phiên này (nó trả `ranks[]` từng câu).
+- [ ] **④ Ca ÂM + mắt người**: 18 ca âm ở MỖI ô của ma trận (hôm nay: 0/18 chặn ở cả hai kho,
+  không đổi) · daemon thứ hai CHỈ-ĐỌC `ZEMORY_UI_PORT=4445 GLOBAL_MEMORY_DB=<bgem3>` để nhìn
+  tận mắt · user tự gõ so tay (`plan/19 §4`).
+
+**Trạng thái máy lúc chốt (đo thật):** daemon **pid 25608 · 2.2.0** · `autosync`/`scheduler` TẮT ·
+`realtime`/`autostart` BẬT · kho thật **279.363 tin · 257.072 vector · quick_check ok** · kho song
+song **269.769 tin · 257.006 vector · 0 remaining trong phạm vi** · job embed **ĐÃ XONG** (log tự
+chốt `DỪNG: không còn tin nào để nhúng`, cả wrapper lẫn con đã thoát) · cây git sạch · **2 commit
+chưa push** (`ee6a251` · `0613044`) · `package.json` **2.2.0** (đã push mốc 2.2.0 trước đó).
+
+**Phiên này làm gì:** ① audit 3 lượt (1 BLOCKING backup bỏ đói + 7 advisory) · ② vá backup **hai
+đợt** · ③ parity cây↔graph · ④ mặt audit ⑪ + **luật "chữ người dùng đọc"** vào `02_RULES` + 4 bộ
+template · ⑤ cổng i18n mở sang HTML + vá 21 chỗ + móc `data-i18n-aria` · ⑥ vá 2 lỗi CÓ SẴN (test
+hẹn giờ `recency` · `writeFileSync` trần) · ⑦ vá 2 cổng tự bẫy (`archive` nuốt cờ · guard đọc tên
+file thành lệnh push) · ⑧ **gate ĐẦY ĐỦ `npm run check` chạy lại được lần đầu từ 15/08: exit 0** ·
+⑨ bench A/B một phần (§4b).
+
+⚠ **Bẫy đã trả giá phiên này:**
+· **Escape qua shell bị nuốt 4 LẦN** (`node -e` với `\\`, heredoc, `cd &&`, và **bash ăn `$_`/`$p`
+  khi gọi PowerShell lồng trong bash**). Chữa: viết script ra FILE (Write/Edit), và cần PowerShell
+  thì gọi **tool PowerShell**, đừng lồng trong bash.
+· **`npm run check | tail -40` làm mất con số ca test** — gate PASS (exit 0) nhưng không chụp được
+  `pass/fail`. Lần sau đừng pipe qua `tail` khi cần số.
+· **Bench khi BẬT gộp là so lệch giữa hai kho** — lớp gộp dùng vector nên ngưỡng 0,85 hành xử khác
+  nhau ở hai không gian; muốn so model thì phải `ZEMORY_COLLAPSE=0` (bằng chứng: FTS trùng khít).
+
+## 🔵 BÀN GIAO 2026-08-22 (sáng) — (khối cũ, giữ để tra)
 
 **Trạng thái máy lúc chốt (đo thật, không chép sổ):** daemon **pid 1928 · 2.1.0** (restart 2 lần
 trong phiên — mọi bản vá ĐANG SỐNG) · `autosync` **TẮT** · `scheduler` **TẮT** · `realtime` +
@@ -163,32 +207,6 @@ sai số — bootstrap 2.000 lượt) · chỉ mục ColBERT đợt này (dense-
 áp lên mọi bộ harness"*. NORM nay ở `02_RULES §Ngôn ngữ` (4 ràng buộc) + ship **cả 4 bộ template**;
 skill `audit` mặt ⑪ chỉ giữ **cách đo + bẫy báo oan**. Ma trận 4 luật × 5 bộ rule: đủ ✓.
 
-- ✅ **(ĐÃ VÁ 2026-08-22) Guard chặn oan MỌI lệnh nhắc tên file cờ `.allow-push`.** Nhánh
-  push là `GIT_CMD [^\n;|&]*\bpush\b`, mà `\bpush\b` khớp cả token nằm TRONG tên file ⇒
-  `git check-ignore -v docs/hooks/.allow-push` bị chặn như một lệnh push thật (đo 2 lần trong phiên).
-  Nghĩa là **chính cái lệnh để soi cờ** cũng không chạy được nếu cùng câu có chữ `git`. Cùng họ bẫy
-  đã ghi 21/08 (*nhãn ca test chứa `git … push`*), nhưng ca này đắt hơn vì nó chặn việc KIỂM cờ.
-  **Vá:** `PUSH_ARG = (?<![\w.-])push\b` trong **`guard-gen.ts` (NGUỒN SINH)**, rồi đi trọn chuỗi —
-  `zemory hook guard` sinh lại → chép sang bản ship cowork → cập nhật số dòng manifest (338→343).
-  Ba bước sau **không phải tuỳ chọn**: cổng `template-parity` (byte-parity) và `bootstrap-manifest`
-  lần lượt bắt đúng bước tôi định bỏ qua.
-  **Cổng:** ca mới trong `guard-tool-matrix` — 4 lệnh nhắc tên cờ × mọi tool phải **QUA**, kèm
-  **vế ngược** 5 dạng push thật (`sudo` · `cd &&` · `--force` · `-u`) phải **CHẶN**. Đột biến trả
-  `PUSH_ARG` về `\bpush\b` ⇒ **đỏ**. Nghiệm thu bề mặt thật: lệnh hôm qua bị chặn nay chạy và trả
-  `.gitignore:1:.allow-*`; push thật vẫn phải xin phép.
-- ✅ **(ĐÃ VÁ 2026-08-22) `zemory archive` nhận MỌI cờ lạ rồi CHẠY THẬT.** Đo trong phiên: `archive --help` → archive 5 entry + 6 mục ·
-  `archive --dry-run` → in *"moved 2 closed item(s)"* và **dời thật 2 mục** (diff `archive/05_TODO.md`
-  6 → 8 `✅`, lượt sau báo `0 mục để dời`). Đây là lệnh **DỜI NỘI DUNG giữa hai file** nên cờ lạ phải
-  bị TỪ CHỐI (fail-closed), không bỏ qua âm thầm.
-  **Vá:** `cmdArchive(args)` parse cờ tường minh — cờ lạ ⇒ in usage + **exit 1, không ghi byte nào**;
-  `--dry-run` thật, và chốt xem-trước đặt ở **tầng hàm** (`ArchiveOptions.dryRun` trong
-  `archiveTodo`/`archiveChanges`, ngay sau khi ĐẾM và trước byte đầu tiên) chứ không ở CLI — để mọi
-  người gọi đều có đường xem trước. Tham số là optional nên **22 lời gọi cũ không phải sửa gì**.
-  **Cổng:** 3 ca trong `archive-todo` — `--dry-run` đếm đúng mà file **byte-identical** và không tạo
-  file archive · **ca ÂM** không cờ thì vẫn dời thật (chống bản vá biến thành dry-run ngầm) · ca
-  **tầng CLI** chạy `dist/cli.js` thật trên repo TẠM: cờ lạ ⇒ exit≠0 **và** file không đổi byte.
-  Đột biến: bỏ nhánh từ-chối ⇒ 1 đỏ · bỏ nhánh `dryRun` ⇒ 2 đỏ. Đo trên repo này: `--help` ⇒ exit 1,
-  `05_TODO` giữ nguyên 1.687 dòng.
 - [ ] **(advisory) Phép "TỪ LẶP LIỀN" chưa đủ chính xác để thành cổng.** Đo 107 file: 15 hit, kiểm
   tay thì **0 thật** — toàn láy đôi («song song» · «bắt đầu đầu trang»), ô bảng cạnh nhau, hoặc
   chữ bị **dán liền sau khi bỏ code/đường dẫn** («scan known/deep scan»). Muốn thành cổng phải

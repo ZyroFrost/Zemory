@@ -86,6 +86,34 @@ Kỷ luật thí nghiệm song song (chống loạn):
 - Muốn nhìn bằng mắt: daemon thứ hai CHỈ-ĐỌC `ZEMORY_UI_PORT=4445` + `GLOBAL_MEMORY_DB=<bản
   sao>` (tắt capture/scheduler ở instance này — không hai-kẻ-ghi).
 
+### 4b. Lượt đo ĐẦU của bước ③ (2026-08-22) — **MỘT PHẦN, chưa phải test FULL**
+
+> ⚠ Đọc kỹ phạm vi trước khi dùng số: lượt này chỉ chạy **một cấu hình** (`hybrid`,
+> `--no-rerank`, đơn-truy-vấn) trên **kho song song còn thiếu ~9.600 tin**. Nó KHÔNG kết luận
+> được về hệ mới; nó chỉ (a) loại một biến gây nhiễu và (b) chỉ ra lớp cần nhìn.
+
+**Biến gây nhiễu đã tách được — lớp GỘP near-dup.** Lớp này dùng vector với ngưỡng cosine **cố
+định 0,85**, nên hai không gian vector khác nhau thì gộp khác nhau. Bằng chứng: khi TẮT gộp
+(`ZEMORY_COLLAPSE=0`), lane FTS của hai kho **trùng khít** (13/22/26/37 · MRR 0,183) — đúng như
+phải vậy với cùng một chỉ mục lexical. Lượt đo có gộp trước đó cho FTS lệch 18 vs 14 câu trong
+pool, tức **so sánh khi BẬT gộp là so lệch**.
+
+| hybrid, thước NGHIÊM | gemma-768 | bge-m3-1024 |
+|---|---|---|
+| gộp BẬT (mặc định) | @10 35% · MRR 0,257 | @10 31% · MRR 0,222 |
+| gộp TẮT | **@10 46% · MRR 0,295** | **@10 43% · MRR 0,268** |
+
+**Theo lớp, điều kiện sạch (gộp TẮT):** prose (n=34) **59%/0,404 → 44%/0,259** 🔴 · keyword (12)
+50%/0,320 → **67%/0,470** 🟢 · tool_result (8) 25%/0,138 → **38%/0,208** 🟢 · tool_use (14) 21% →
+21%, MRR 0,097 → **0,149**. Tổng 68 nhãn: **46%/0,295 → 43%/0,268**.
+⇒ Ở cấu hình này bge **đổi chỗ mạnh** chứ không tốt hơn: thắng lớp từ-khoá/tool, thua rõ ở prose
+(lớp lớn nhất). Và số của bge còn đang được ưu ái nhẹ vì kho nó thiếu ~9.600 tin ⇒ ít đối thủ hơn.
+
+**Phát hiện phụ, áp cho KHO ĐANG CHẠY (không liên quan tráo):** lớp gộp lấy mất **~11–12 điểm
+`@10`** thước nghiêm (35→46) mà chỉ mua lại **+3 điểm** thước tương đương (66→69). Cán cân nghiêng
+hẳn về phía tắt gộp, và đây là một CÔNG TẮC chứ không phải giờ máy. Đổi mặc định ⇒ phải qua cổng
+riêng (điều 12) + user chốt; chưa làm.
+
 ## 5. Bước ④ — TRÁO (CHỈ sau khi user ký) — tái dùng kịch bản đợt 768
 
 Một script MỘT lần chạy (không để hook chen giữa lúc thay file; chốt "file còn bị giữ sau 30 s
@@ -125,6 +153,6 @@ bench trên kho thật + backup ngày xoay đủ vòng, ~5 ngày)* → bản sao
 |---|---|---|---|
 | ① | profile `bge-m3-v1` trong `embed.ts` + gate | build (phiên build) | ✅ **XONG 2026-08-19** (xem §2 — kèm phát hiện cờ `sequential`) |
 | ② | copy kho + re-embed nền ~44 h | chạy máy | 🔄 **ĐANG CHẠY** — đo 2026-08-21 22:10: **241.139 / ~253.900 vector**; nhịp đã sụp còn ~11,6 vector/phút ⇒ còn **~18–32 giờ** (sổ: `05_TODO`) |
-| ③ | bench A/B + user so tay | đo | chờ ② |
+| ③ | bench A/B + user so tay | đo | 🔶 **ĐANG DỞ — mới đo MỘT cấu hình** (§4b). CHƯA test FULL: thiếu rerank · thiếu đa-truy-vấn · kho song song còn thiếu ~9.600 tin. **Chưa được kết luận về hệ mới.** |
 | ④ | tráo + bản lùi có án tử | thao tác một-lần | chờ user KÝ sau ③ |
 | ⑤ | thế hệ 1024 lên Drive + máy kia | điều phối user | chờ ④, ngủ tới khi có máy kia |

@@ -1,6 +1,33 @@
 <!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->
 # TODO — Archive
 
+- ✅ **(ĐÃ VÁ 2026-08-22) Guard chặn oan MỌI lệnh nhắc tên file cờ `.allow-push`.** Nhánh
+  push là `GIT_CMD [^\n;|&]*\bpush\b`, mà `\bpush\b` khớp cả token nằm TRONG tên file ⇒
+  `git check-ignore -v docs/hooks/.allow-push` bị chặn như một lệnh push thật (đo 2 lần trong phiên).
+  Nghĩa là **chính cái lệnh để soi cờ** cũng không chạy được nếu cùng câu có chữ `git`. Cùng họ bẫy
+  đã ghi 21/08 (*nhãn ca test chứa `git … push`*), nhưng ca này đắt hơn vì nó chặn việc KIỂM cờ.
+  **Vá:** `PUSH_ARG = (?<![\w.-])push\b` trong **`guard-gen.ts` (NGUỒN SINH)**, rồi đi trọn chuỗi —
+  `zemory hook guard` sinh lại → chép sang bản ship cowork → cập nhật số dòng manifest (338→343).
+  Ba bước sau **không phải tuỳ chọn**: cổng `template-parity` (byte-parity) và `bootstrap-manifest`
+  lần lượt bắt đúng bước tôi định bỏ qua.
+  **Cổng:** ca mới trong `guard-tool-matrix` — 4 lệnh nhắc tên cờ × mọi tool phải **QUA**, kèm
+  **vế ngược** 5 dạng push thật (`sudo` · `cd &&` · `--force` · `-u`) phải **CHẶN**. Đột biến trả
+  `PUSH_ARG` về `\bpush\b` ⇒ **đỏ**. Nghiệm thu bề mặt thật: lệnh hôm qua bị chặn nay chạy và trả
+  `.gitignore:1:.allow-*`; push thật vẫn phải xin phép.
+- ✅ **(ĐÃ VÁ 2026-08-22) `zemory archive` nhận MỌI cờ lạ rồi CHẠY THẬT.** Đo trong phiên: `archive --help` → archive 5 entry + 6 mục ·
+  `archive --dry-run` → in *"moved 2 closed item(s)"* và **dời thật 2 mục** (diff `archive/05_TODO.md`
+  6 → 8 `✅`, lượt sau báo `0 mục để dời`). Đây là lệnh **DỜI NỘI DUNG giữa hai file** nên cờ lạ phải
+  bị TỪ CHỐI (fail-closed), không bỏ qua âm thầm.
+  **Vá:** `cmdArchive(args)` parse cờ tường minh — cờ lạ ⇒ in usage + **exit 1, không ghi byte nào**;
+  `--dry-run` thật, và chốt xem-trước đặt ở **tầng hàm** (`ArchiveOptions.dryRun` trong
+  `archiveTodo`/`archiveChanges`, ngay sau khi ĐẾM và trước byte đầu tiên) chứ không ở CLI — để mọi
+  người gọi đều có đường xem trước. Tham số là optional nên **22 lời gọi cũ không phải sửa gì**.
+  **Cổng:** 3 ca trong `archive-todo` — `--dry-run` đếm đúng mà file **byte-identical** và không tạo
+  file archive · **ca ÂM** không cờ thì vẫn dời thật (chống bản vá biến thành dry-run ngầm) · ca
+  **tầng CLI** chạy `dist/cli.js` thật trên repo TẠM: cờ lạ ⇒ exit≠0 **và** file không đổi byte.
+  Đột biến: bỏ nhánh từ-chối ⇒ 1 đỏ · bỏ nhánh `dryRun` ⇒ 2 đỏ. Đo trên repo này: `--help` ⇒ exit 1,
+  `05_TODO` giữ nguyên 1.687 dòng.
+
 - ✅ **(BẮT ĐƯỢC + VÁ 2026-08-22) TEST HẸN GIỜ trong `recency.test.mjs` — gate đầy đủ hôm nay
   ĐANG ĐỎ, không ai biết.** Lượt sweep rộng nhất chạy được (91 file, trừ 7 file cần ONNX) ra đúng
   **1 đỏ**: *"search(): recency default ON ranks the fresher relevant message first"*.
