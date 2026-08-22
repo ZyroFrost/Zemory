@@ -5,6 +5,26 @@
 
 ---
 
+## [2026-08-22b] — conform ĐỌC slot khai trong 03_STRUCTURE §3 (hết báo oan off-standard-dir cho APP domain-first)
+
+**Lỗi:** `off-standard-dir` chỉ tra `SLOT_ROLES` cứng, KHÔNG đọc `03_STRUCTURE.md §3` của chính
+project — trái điều conform tự tuyên bố (HP điều 3 *file wins* · điều 13 *khai vào chuẩn rồi máy
+honour*). Fix-text của nó (*"thêm slot vào chuẩn nếu là concern thật"*) thành lời nói suông: khai
+vào §3 xong vẫn đỏ. Đóng mục `05_TODO "APP domain-first tên tự do chưa có đường khai"` — music_video_flow
+(APP · FastAPI · đã nắn chuẩn 21/08) là ca thật đầu tiên: **16 blocking** cho `backend/app` · `api/v1` ·
+`schemas` · `workspaces/*`, không mục nào lệch thật.
+
+**Vá** (`structure-tree.ts` +73 · `conform.ts` +17): `declaredSlots(root)` parse §3 (CHỈ tree entry
+`├── name/`, bỏ prose/`<placeholder>`) + `extraDirOk(dir)` exempt bốn đường — ① last-seg ∈ §3 khai ·
+① top-level khai KHÔNG-phải-slot/root ⇒ freeform subtree (`workspaces/*`, như `tasks/<case>/` non-app) ·
+② `backend/<pkg>/` có `__init__.py` = package root (scope depth-2) · ③ `api/vN`. Nối cả cổng blocking
+`conform` lẫn cây UI (`roleFor`). Fail-open khi thiếu §3.
+
+**Đo — KHÔNG nới luật:** music_video_flow **16 → ✓ 0**; fixture code-dir tên vô nghĩa CHƯA khai (không
+pkg-root/api-version) **VẪN đỏ** (cổng còn nổ); **51/51** (conform · conform-declared[mới] · conform-foreign
+· structure-sync · graph-standard), cổng parity điều 13 xanh. KHÔNG đổi `SLOT_ROLES` (không đụng repo
+khác) · KHÔNG dùng ADAPT (music_video_flow là APP thuần đã nắn, không phải repo giữ cấu trúc riêng).
+
 ## [2026-08-22] — mặt audit ⑪ thành LUẬT CHUNG · cổng i18n cho HTML · bản vá backup ăn nửa
 
 **User chỉnh đúng chỗ tôi đặt sai nhà:** 5 phép kiểm (chính tả · thiếu dấu · caption · song ngữ ·

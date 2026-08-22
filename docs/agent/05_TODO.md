@@ -324,11 +324,6 @@ Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) �
   **Việc còn mở (chờ user chốt có đáng không):** một buổi build-thử wasm SQL + mapping 3 tầng
   + parse thử trên chính 60 file thật, cổng đạt = ERROR-node thấp + fitness không đỏ oan
   (thêm ngôn ngữ mới thì node của nó phải được miễn/điều chỉnh trần isolated). Không gấp.
-- [ ] **(advisory, ghi để không quên) APP domain-first tên tự do chưa có đường khai:**
-  `backend/src/<domain>/` với domain KHÔNG trùng tên slot sẽ bị `off-standard-dir` (zemory
-  thoát vì mọi domain trùng tên slot). Chưa có ca thật nào báo; nếu gặp thì đường đúng là
-  khai qua `ignore` marker (nay đã ăn ở nhánh chuẩn) hoặc mở luật riêng — ĐO trước, đừng
-  miễn tổng quát.
 
 ## 🔵 BÀN GIAO 2026-08-15 — ĐỌC MỤC NÀY TRƯỚC
 
