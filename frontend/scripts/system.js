@@ -183,6 +183,15 @@
       var chip=zid('railUpd'),n=zid('railUpdN'),sub=zid('railUpdSub');
       if(!chip)return;
       var stale=(r&&r.stale)||[];
+      var app=r&&r.appUpdate;
+      // Hai loại CŨ khác cấp, ưu tiên loại cấp MÁY: `zemory sync` gap-fill từ template của
+      // bản đang cài, nên áp chuẩn bằng một bản cũ là chép lại cái cũ. Báo công cụ trước.
+      if(app){
+        chip.style.display='';
+        if(n)n.textContent=t('rail.updApp').replace('{v}',app.latest)+' ⚠';
+        if(sub)sub.textContent=t('rail.updAppSub').replace('{have}',app.have).replace('{from}',app.from);
+        return;
+      }
       if(!stale.length){chip.style.display='none';return;}
       chip.style.display='';
       if(n)n.textContent=t('rail.updOld').replace('{n}',stale.length)+' ⚠';

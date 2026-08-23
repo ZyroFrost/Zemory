@@ -74,13 +74,17 @@ switch (cmd) {
     await cmdDoctor();
     break;
   case "ui":
-    await startUi();
+    // `--no-window`: dựng daemon + serve, không tự bật cửa sổ (smoke-test / restart bởi agent).
+    await startUi({ window: !args.includes("--no-window") });
     break;
   case "archive":
     cmdArchive(args);
     break;
   case "validate":
     cmdValidate();
+    break;
+  case "selfupdate":
+    (await import("./commands/selfupdate.js")).cmdSelfUpdate(args);
     break;
   case "conform":
     cmdConform(args);

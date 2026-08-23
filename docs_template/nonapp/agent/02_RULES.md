@@ -54,7 +54,31 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `03` chuẩn cấu trúc folder · `04` sổ đăng ký skill (playbook → `.claude/skills/`) · `05` backlog · `06` changelog. Một nội dung chỉ sống ở ĐÚNG MỘT nhà; file khác cần thì **DẪN CHIẾU** (link + số hiệu), KHÔNG chép lại. Đọc hết 6 file KHÔNG được thấy nội dung trùng. **§7 của `03` là nhà DUY NHẤT của từ điển dữ liệu.**
 - **Plan (`docs/plan/`) — chỉ chứa SPECS:** KHÔNG todo (→ `05_TODO`), KHÔNG luật (bất biến/luật riêng → ĐỀ XUẤT vào `01_CONSTITUTION`, plan chỉ dẫn chiếu điều khoản). Chuẩn đặt tên `NN_tên.md` (`00`=overview): xem `03_STRUCTURE`.
-- **XONG MỘT VIỆC LÀ ĐÓNG NGAY — KHÔNG đợi chốt phiên (luật cứng).** Ngay khi một mục `05_TODO` xong,
+- ### SỔ VIỆC `05_TODO` — LUẬT DUY NHẤT, phủ cả cửa VÀO lẫn cửa RA (luật cứng)
+  > Mọi luật về sổ việc sống Ở ĐÂY. File khác cần thì **dẫn chiếu** mục này, KHÔNG chép lại và
+  > KHÔNG đặt thêm luật riêng cho sổ ở chỗ khác — đó chính là cách bộ luật tự đá nhau.
+
+  **① CỬA VÀO — agent KHÔNG tự thêm mục. Phải HỎI, và phải ĐÁNG.**
+  Agent không tự phát sinh: mục `05_TODO` mới · luật/điều khoản mới · cổng test · bộ đếm · bộ đo ·
+  lớp cảnh báo · mục advisory. Thấy cần ⇒ **hỏi MỘT câu kèm đề xuất ngay trong phiên**; user gật
+  thì mới ghi, gật vào đâu ghi vào đó (`01` bất biến · `02` luật làm việc · `05` việc).
+  - **Đề xuất KHÔNG được "đậu" vào sổ chờ duyệt.** Vế cũ *"ghi ĐỀ XUẤT vào `05_TODO` chờ user
+    duyệt"* đã **BÃI BỎ** — nó dạy agent *đậu* thay vì *hỏi*, mà mục đậu thì **không bao giờ đóng
+    được**: nó không phải việc chưa làm, nó là câu hỏi chưa ai trả lời. Đó là cách sổ phình.
+  - **Ngưỡng: THỰC SỰ QUAN TRỌNG.** Lắc nhắc thì bỏ qua — không ghi sổ, không dựng cổng, không
+    thêm dòng cảnh báo. Sổ và bộ gác là **tài sản chung có giá**: mỗi dòng thêm vào là thứ MỌI
+    phiên sau phải đọc *và* phải soát lại.
+  - **Thêm một lớp là thêm một chỗ hỏng.** Bộ đo không làm hệ tốt lên, nó chỉ nói hệ đang thế nào.
+    Kiểu hỏng hay gặp nhất là **bộ gác tự bẫy chính mình**: cổng nhận cờ lạ rồi chạy thật · bộ dò
+    khớp nhầm chính chuỗi nó đi tìm · phép đo báo oan trên đúng file định nghĩa ra nó. Cả ba đều
+    sinh từ một lượt *"thêm cho chắc"*.
+  - **Trước khi thêm bất cứ thứ gì, trả lời đủ ba câu:** ① **gỡ bớt** được cái gì không · ② **gộp**
+    vào cổng/luật đã có được không · ③ **không có nó thì hỏng cái gì**, đo được không.
+    Không trả lời được ③ ⇒ **KHÔNG LÀM**. Hướng đúng là TỐI ƯU, không phải BỒI ĐẮP.
+  - **KHÔNG áp cho:** việc user giao · sửa thứ đang hỏng · nghĩa vụ mà luật SẴN CÓ đã bắt buộc.
+    Ba ca đó cứ làm, không phải xin.
+
+  **② CỬA RA — XONG MỘT VIỆC LÀ ĐÓNG NGAY, không đợi chốt phiên.** Ngay khi một mục `05_TODO` xong,
   làm đủ ba bước **trong cùng lượt đó**: ① **ĐO LẠI** nó theo §Hành xử *"SOÁT SỔ = ĐO LẠI"* — *"tôi
   vừa làm nên tôi biết"* **KHÔNG** phải bằng chứng, và đây đúng chỗ hay sai nhất: phần lớn ca hỏng là
   GIỮA PHIÊN, ngay sau khi vừa xong một việc · ② ghi sang `06_CHANGES` · ③ **xoá mục khỏi

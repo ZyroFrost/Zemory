@@ -170,7 +170,11 @@ function collectFiles(absRoot: string, absDir: string, out: string[], depth: num
 }
 
 // JS/TS: import … from "x" · import "x" · require("x")
-const JS_IMPORT_RE = /(?:import[\s\S]*?from\s*|import\s*|export[\s\S]*?from\s*|require\s*\(\s*)["']([^"']+)["']/g;
+// `import\s*\(` đứng TRƯỚC `import\s*` có chủ đích: bắt import ĐỘNG `await import("x")`.
+// Thiếu nhánh này thì mọi module chỉ được nạp động (lối tắt hook của `cli.ts` nạp gần hết
+// commands/ kiểu đó) thành orphan GIẢ — đo 2026-08-24: `commands/selfupdate.ts` cô lập dù
+// `cli.ts` gọi nó thật, và isolated_pct đội lên vì đúng loại node này.
+const JS_IMPORT_RE = /(?:import[\s\S]*?from\s*|import\s*\(\s*|import\s*|export[\s\S]*?from\s*|require\s*\(\s*)["']([^"']+)["']/g;
 const JS_SYMBOL_RE = /^\s*(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?\s+([A-Za-z0-9_$]+)|class\s+([A-Za-z0-9_$]+)|(?:const|let)\s+([A-Za-z0-9_$]+)\s*=)/;
 // Python: from a.b import c  ·  import a.b  ·  from . import x
 const PY_FROM_RE = /^[ \t]*from[ \t]+([.\w]+)[ \t]+import\b/gm;

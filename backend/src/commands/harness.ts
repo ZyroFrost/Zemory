@@ -19,6 +19,7 @@ import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { guardDrift } from "../docs/guard-gen.js";
 import { backupStale } from "../memory/backup-rotate.js";
+import { uiPort } from "../ui.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 
@@ -104,6 +105,12 @@ export function cmdSync(): void {
       process.exitCode = 1;
       return;
     }
+    if (sc.appUpdate) {
+      console.log(
+        `  ⚠ zemory ${sc.appUpdate.have} — có bản MỚI ${sc.appUpdate.latest} trên kênh chung ` +
+          `(${sc.appUpdate.from} đóng dấu ${sc.appUpdate.at}). Áp: \`zemory selfupdate\``,
+      );
+    }
     if (sc.missing.length) {
       console.log(`  ⚠ ${sc.missing.length} file của bộ chuẩn hiện hành CHƯA nhận (chạy \`zemory sync\` để gap-fill):`);
       for (const f of sc.missing) console.log(`      + ${f}`);
@@ -147,6 +154,20 @@ function warnStrayConfig(): void {
   if (!existsSync(home) || !existsSync(live)) return;
   console.log(`  ⚠ hai file config: đang dùng ${live}`);
   console.log(`      bản mồ côi (KHÔNG được đọc): ${home} — xoá tay nếu không cần`);
+}
+
+/**
+ * Daemon 4444 còn sống không — hỏi bằng chính bề mặt của nó, không suy từ file/lockfile.
+ * Fail-open: dò lỗi ⇒ coi như KHÔNG sống (thà nhắc thừa còn hơn im khi backup thật sự đứng).
+ */
+async function daemonAlive(): Promise<boolean> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${uiPort()}/ping`, { signal: AbortSignal.timeout(600) });
+    const b = (await r.json()) as { app?: string };
+    return b?.app === "zemory";
+  } catch {
+    return false;
+  }
 }
 
 export async function cmdDoctor(): Promise<void> {
@@ -274,19 +295,36 @@ export async function cmdDoctor(): Promise<void> {
   // Tuổi bản sao lưu — mặt CUỐI CÙNG chưa có ai canh (audit 2026-08-21). Đo được ngày đó:
   // **27,0 giờ** không có bản mới vì job re-embed kho SONG SONG giữ khoá ghi của cả thư mục
   // `data/`, và `backupTick` nhường im lặng. Không bề mặt nào báo — `doctor` vẫn in toàn ✓.
-  // Nay tuổi > 2 chu kỳ (2 ngày) là ĐỎ, vì lúc đó nó không còn là "chậm nhịp" mà là hỏng.
+  //
+  // BA MỨC, không phải hai (audit 2026-08-23 — cùng mặt, lỗ khác): bản chỉ-có-✓-hoặc-✗ ở trần
+  // 2 chu kỳ nghĩa là **trọn một ngày không backup vẫn hiện ✓**, tức chính `doctor` nói dối.
+  //   ✓ trong chu kỳ · ○ quá 1 chu kỳ (chậm nhịp, THẤY ĐƯỢC nhưng không đỏ) · ✗ quá 2 (hỏng).
+  // Và ca DAEMON TẮT phải nói riêng: lúc đó backup không "chậm", nó KHÔNG TỒN TẠI — đồng hồ
+  // `backupTick` nằm trong daemon, daemon chết là không còn ai chép, bất kể tuổi bản hiện tại.
   try {
     const st = backupStale(currentMemoryDb());
     const hours = st.ageMs === null ? null : (st.ageMs / 3_600_000).toFixed(1);
+    const age = hours === null ? "CHƯA có bản sao lưu nào" : `bản mới nhất ${hours} giờ tuổi`;
+    const alive = await daemonAlive();
     if (st.stale) {
       failed = true;
       console.log(
-        `  backup: ✗ ${hours === null ? "CHƯA có bản sao lưu nào" : `bản mới nhất ${hours} giờ tuổi`}` +
-          ` — quá hạn (trần ${(st.limitMs / 3_600_000).toFixed(0)} giờ).` +
+        `  backup: ✗ ${age} — quá hạn (trần ${(st.limitMs / 3_600_000).toFixed(0)} giờ).` +
           ` Kẻ ghi kho khác có đang giữ khoá không? Xem \`[scheduler] backup nhường …\` trong logs/daemon.log`,
       );
+    } else if (st.late) {
+      console.log(
+        `  backup: ○ ${age} — trượt nhịp (chu kỳ ${(st.everyMs / 3_600_000).toFixed(0)} giờ).` +
+          ` Chưa tới mức hỏng, nhưng đã có người giữ khoá hoặc daemon vừa nghỉ.`,
+      );
     } else if (hours !== null) {
-      console.log(`  backup: ✓ bản mới nhất ${hours} giờ tuổi`);
+      console.log(`  backup: ✓ ${age}`);
+    }
+    if (!alive) {
+      console.log(
+        "  backup: ○ daemon KHÔNG chạy ⇒ không có đồng hồ nào chép bản mới." +
+          " Tuổi ở trên là ảnh chụp quá khứ, không phải bằng chứng còn được bảo vệ. Bật `zemory ui`.",
+      );
     }
   } catch {
     /* fail-open — báo cáo phụ, không được làm doctor chết */

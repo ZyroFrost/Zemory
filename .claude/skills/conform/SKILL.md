@@ -26,7 +26,7 @@ token**, chỉ rẻ hơn đọc cả repo ~4,8×. Nạp định kỳ là đốt 
    - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE` §3/§4** (đổi chuẩn:
      trình user duyệt trước)
    - folder rỗng → xoá (thao tác xoá phải được user xác nhận trước)
-5. Chạy lại `zemory conform` → xác nhận hết lệch. Ghi việc vào `05_TODO`/`06_CHANGES`.
+5. Chạy lại `zemory conform` → xác nhận hết lệch. Đã sửa → `06_CHANGES`; phần còn lệch → **báo, hỏi trước khi ghi vào `05_TODO`** (`02_RULES` §Sổ việc `05_TODO`).
 
 **Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
 độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs có bám chuẩn đã KHAI không"*.

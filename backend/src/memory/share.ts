@@ -3,6 +3,7 @@
 // keeps the key out-of-band via --key-file or ZEMORY_SHARE_KEY.
 
 import Database from "better-sqlite3";
+import { appVersion } from "../core/config.js";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 import {
   appendFileSync,
@@ -1162,6 +1163,11 @@ export async function syncDrive(opts: {
   // Fail-open: if the model is unavailable, embedPending embeds 0 (FTS fallback).
   const embedded = opts.embed === false ? 0 : (await embedPending({ dbPath: opts.dbPath })).embedded;
 
+  // Đóng dấu phiên bản của máy này lên kênh (chỉ đi lên — xem `publishChannelVersion`).
+  // Đặt ở CUỐI, sau khi lượt sync đã qua phần nặng: tem chỉ nên xuất hiện khi máy này
+  // thật sự chạy trót lọt bản đó, không phải khi nó vừa khởi động.
+  publishChannelVersion(dir, appVersion(), host);
+
   return {
     driveDir: dir,
     scanned: { newMessages: scanReport.totals.newMessages, changedFiles: scanReport.changedFiles },
@@ -1214,6 +1220,77 @@ async function mergeContainer(
     }
   }
   return out;
+}
+
+// ── TEM PHIÊN BẢN TRÊN KÊNH CHUNG ─────────────────────────────────────────────
+//
+// Bài toán: máy A `git pull` + build xong thì các repo TRÊN MÁY A được chip vàng nhắc
+// (`syncCheck`, 2026-08-21) — nhưng máy B **mù hoàn toàn**, không ai báo nó rằng có bản
+// mới. Sổ đã ghi đúng triệu chứng: *"Repo CÙNG máy làm được NGAY; máy kia chờ push."*
+//
+// Vì sao đi qua DRIVE chứ không hỏi GitHub (user chốt 2026-08-23):
+//   · kênh này đã là đường xuyên máy được hiến pháp phê (điều 16), và **mọi máy đã poll
+//     nó 30 phút/lần** qua autosync ⇒ KHÔNG thêm lớp mạng, KHÔNG thêm đồng hồ (điều 1);
+//   · hỏi GitHub thì đụng điều 7 (local-only), thêm phụ thuộc mạng + rate-limit, đổi lấy
+//     đúng một con số.
+// Tệp chỉ chứa SỐ HIỆU — không dữ liệu người dùng — nên KHÔNG mã hoá (khác bundle `.enc`).
+
+/** Tem phiên bản đặt cạnh kho chính: `<driveDir>/version.json`. */
+export interface ChannelVersion {
+  /** Semver CAO NHẤT từng thấy trên kênh. */
+  latest: string;
+  /** Commit đã build ra bản đó (rỗng nếu không tra được — không chặn). */
+  commit?: string;
+  at: string;
+  /** Máy đã đóng dấu — để người đọc biết hỏi ai nếu bản đó hỏng. */
+  host: string;
+}
+
+const VERSION_STAMP = "version.json";
+
+/** So semver. Trả >0 nếu a mới hơn b. Phần không phải số ⇒ coi là 0 (fail-open). */
+export function cmpSemver(a: string, b: string): number {
+  const pa = a.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/** Đọc tem của kênh. Fail-open: thiếu Drive / thiếu file / JSON hỏng ⇒ `null`. */
+export function readChannelVersion(driveDir: string): ChannelVersion | null {
+  try {
+    const f = join(driveDir, VERSION_STAMP);
+    if (!existsSync(f)) return null;
+    const v = JSON.parse(readFileSync(f, "utf8")) as Partial<ChannelVersion>;
+    return typeof v.latest === "string" && v.latest ? { latest: v.latest, commit: v.commit, at: v.at ?? "", host: v.host ?? "?" } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Đóng dấu phiên bản của MÁY NÀY lên kênh — chỉ khi nó MỚI HƠN tem đang có.
+ *
+ * Ràng buộc "chỉ đi lên" là cả thiết kế: một máy còn chạy bản cũ mà ghi đè tem thì nó
+ * **kéo lùi** cảnh báo của mọi máy khác, và bệnh đó im lặng (ai cũng thấy "đã mới nhất").
+ * Cùng doctrine ADDITIVE của điều 11 — kênh chung chỉ được đi tới.
+ *
+ * Fail-open (điều 9): ghi hỏng thì thôi, KHÔNG được làm chết lượt sync.
+ */
+export function publishChannelVersion(driveDir: string, version: string, host: string, commit?: string): ChannelVersion | null {
+  try {
+    if (!version) return null;
+    const cur = readChannelVersion(driveDir);
+    if (cur && cmpSemver(version, cur.latest) <= 0) return cur;
+    const next: ChannelVersion = { latest: version, commit, at: new Date().toISOString(), host };
+    writeFileSync(join(driveDir, VERSION_STAMP), JSON.stringify(next, null, 2) + "\n", "utf8");
+    return next;
+  } catch {
+    return null;
+  }
 }
 
 /**

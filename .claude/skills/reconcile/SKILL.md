@@ -9,7 +9,7 @@ description: Bring a project folder back in line with the standard when files ha
 
 **A. Docs lệch** (doc trùng / thừa / lạc chỗ):
 1. Soi file `.md` trùng/thừa trong `docs/`; **đọc file** TRƯỚC khi quyết (`zemory plan search` nếu cần tìm theo nội dung).
-2. Gộp todo lạc → `05_TODO`. Bỏ bản trùng/obsolete: **xoá thẳng file `.md`** (file wins) — **HỎI user trước nếu doc còn nội dung thật** (luật KHÔNG TỰ Ý XÓA); sau khi xoá file, `zemory reindex` cập nhật lại search index.
+2. Gộp todo lạc → `05_TODO` (gộp thứ ĐÃ tồn tại là dọn, không phải đẻ mới — cửa vào `02_RULES` §Sổ việc chỉ chặn mục agent tự nghĩ ra). Bỏ bản trùng/obsolete: **xoá thẳng file `.md`** (file wins) — **HỎI user trước nếu doc còn nội dung thật** (luật KHÔNG TỰ Ý XÓA); sau khi xoá file, `zemory reindex` cập nhật lại search index.
 3. Gom mọi doc plan (folder `planning`, doc plan lạc ở root/`docs`) về `docs/plan/`, đặt tên `NN_tên.md` đánh số (`00_overview` → `01_` …); plan chỉ chứa specs, todo tách về `05_TODO`.
 
 **B. Cấu trúc folder lệch** (chưa theo khung `backend/` · `frontend/` · `docs/`):

@@ -80,13 +80,17 @@ vùng 6 mặt không nhìn tới**.)*
    · *thiếu dấu*: danh sách phải CHỈ gồm từ mà bản không dấu **không phải từ hợp lệ** (`khong`
      `duoc` `cua`…). Nhét `minh` · `nhanh` · `song` vào là báo oan — chúng vốn không có dấu
      («chứng minh»). Bản đầu: **63 hit, 0 thật**.
+     Miễn luôn `docs_template/*/skills/write-docx/reference/*` — cố ý viết ASCII không dấu
+     (code Python trong khối lệnh; 18 hit ở đó KHÔNG phải lỗi).
    · *từ lặp*: `\b` của JS là **ASCII**, chữ Việt bị coi là ký tự không-phải-từ ⇒ «chứng ngại» cắt
      thành `ng`+`ng` và báo trùng (128 hit oan). Phải dùng lớp `\p{L}` + **trừ láy đôi** («song
      song» · «luôn luôn» · «bắt đầu đầu trang») và nhớ rằng bỏ code/đường dẫn có thể **dán hai
      chữ giống nhau vào cạnh nhau** («scan known/deep scan»). Sau khi vá: 15 hit, kiểm tay
      **vẫn 0 thật** ⇒ phép này CHƯA đủ chính xác để làm cổng, chỉ dùng để soi tay.
    · *mojibake*: `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — 192 hit oan. Mẫu đúng:
-     `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`.
+     `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`. Và phải **miễn chuỗi nằm trong backtick**: file DẠY về mojibake
+     (chính `02_RULES §Ngôn ngữ`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo oan trên đúng tài liệu
+     định nghĩa ra nó (đo 23/08: 6/245 hit, 0 thật).
    · *caption*: nhãn thường nằm ở **thẻ CON** (`<a><span>…</span></a>`) hoặc ở `<label>` bọc ngoài
      ⇒ chỉ đọc text ngay sau thẻ mở là báo oan 20 ca.
    · *song ngữ*: chữ Việt trong HTML là **ĐÚNG** nếu phần tử có móc i18n (`data-i18n`,
@@ -98,6 +102,6 @@ vùng 6 mặt không nhìn tới**.)*
      nguồn (FE tĩnh · tiền tố động · test/CLI) rồi mới kết luận.
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
-Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.
+Việc đã sửa → `06_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại: BÁO trong phiên, KHÔNG tự ghi thành mục `05_TODO`** — user gật cái nào mới ghi cái đó (`02_RULES` §Sổ việc `05_TODO`, cửa vào). Một lượt 11 mặt đẻ ra hàng chục advisory; ghi hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
 
 **Cấm:** cắt bớt mặt nào cho nhanh; ghi finding chưa verify; báo "sạch" khi mới chạy mỗi gate.

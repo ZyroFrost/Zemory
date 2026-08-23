@@ -58,33 +58,62 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 ## Tài liệu — quy ước cập nhật
 | File | Vai trò | Khi nào cập nhật |
 |---|---|---|
-| `01_CONSTITUTION.md` | hiến pháp — bất biến riêng của zemory | CHỈ user chốt; agent đề xuất qua TODO |
+| `01_CONSTITUTION.md` | hiến pháp — bất biến riêng của zemory | CHỈ user chốt; agent HỎI trong phiên (§Sổ việc) |
 | `04_SKILLS.md` | **sổ ĐĂNG KÝ** skill: một dòng mỗi skill + luật dùng. Playbook nằm ở `.claude/skills/<tên>/SKILL.md` | khi thêm/bớt một skill |
-| `05_TODO.md` | backlog | phát sinh việc / đổi ưu tiên; xong → chuyển sang CHANGES |
+| `05_TODO.md` | backlog | **chỉ việc USER đã gật** — luật vào/ra ở §Sổ việc `05_TODO` bên dưới |
 | `06_CHANGES.md` | changelog | mỗi lần sửa code; **chỉ ghi sau khi user xác nhận OK** (viết tay đúng format `## [YYYY-MM-DD] — tiêu đề`) |
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế |
 
 - **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Muốn `plan search`/`changelog search` tươi thì chạy `zemory reindex` (đọc `.md` → dựng lại search index, **KHÔNG ghi ngược file**). Các lệnh ghi DB→md kiểu cũ (render/set/add) **đã gỡ hoàn toàn** — docs chỉ sửa bằng tay. *(HP điều 3 — sửa đổi 2026-07-16)*
 - **Đồng bộ bắt buộc — constitution ↔ rules ↔ todo ↔ change ↔ plan luôn khớp:** mỗi thay đổi → TODO phản ánh việc, CHANGES ghi log (sau khi OK), plan cập nhật nếu đổi thiết kế. Không để lệch nhau (đây là khớp NỘI DUNG giữa các FILE, không phải chạy sync).
 - **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp (bất biến kiến trúc) · `02` luật làm việc · `03` chuẩn cấu trúc folder · `04` sổ đăng ký skill (playbook → `.claude/skills/`) · `05` backlog · `06` changelog. Một nội dung chỉ sống ở ĐÚNG MỘT nhà; file khác cần thì **DẪN CHIẾU** (link + số hiệu), KHÔNG chép lại. Đọc hết 6 file KHÔNG được thấy nội dung trùng — trùng lặp / lạc chỗ = agent đọc bị loạn.
-- **Plan (`docs/plan/`) — chỉ chứa SPECS:** KHÔNG todo (→ `05_TODO`), KHÔNG luật (bất biến/luật riêng → ĐỀ XUẤT vào `01_CONSTITUTION`, plan chỉ dẫn chiếu điều khoản). Chuẩn đặt tên `NN_tên.md` (`00`=overview): xem `03_STRUCTURE §5`.
-- **XONG MỘT VIỆC LÀ ĐÓNG NGAY — KHÔNG đợi chốt phiên (luật cứng).** Ngay khi một mục `05_TODO` xong,
-  làm đủ ba bước **trong cùng lượt đó**: ① **ĐO LẠI** nó theo §Hành xử *"SOÁT SỔ = ĐO LẠI"* (mã ·
-  Global Memory · chạy thật) — *"tôi vừa làm nên tôi biết"* **KHÔNG** phải bằng chứng, và đây đúng
-  chỗ hay sai nhất: phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc · ② ghi sang
+- **Plan (`docs/plan/`) — chỉ chứa SPECS:** KHÔNG todo (→ `05_TODO`, qua cửa vào ở §Sổ việc), KHÔNG luật (bất biến/luật riêng → **HỎI user**; plan chỉ dẫn chiếu điều khoản). Chuẩn đặt tên `NN_tên.md` (`00`=overview): xem `03_STRUCTURE §5`.
+- ### SỔ VIỆC `05_TODO` — LUẬT DUY NHẤT, phủ cả cửa VÀO lẫn cửa RA (luật cứng)
+  > Mọi luật về sổ việc sống Ở ĐÂY. File khác cần thì **dẫn chiếu** mục này, KHÔNG chép lại và
+  > KHÔNG đặt thêm luật riêng cho sổ ở chỗ khác — đó chính là cách bộ luật tự đá nhau.
+
+  **① CỬA VÀO — agent KHÔNG tự thêm mục. Phải HỎI, và phải ĐÁNG.** *(user chốt 2026-08-23)*
+  Agent không tự phát sinh: mục `05_TODO` mới · luật/điều khoản mới · cổng test · bộ đếm · bộ đo ·
+  lớp cảnh báo · mục advisory. Thấy cần ⇒ **hỏi MỘT câu kèm đề xuất ngay trong phiên**; user gật
+  thì mới ghi, gật vào đâu ghi vào đó (`01` luật · `02` luật làm việc · `05` việc).
+  - **Đề xuất KHÔNG được "đậu" vào sổ chờ duyệt.** Đây là vế bị **BÃI BỎ** — xem 🔄 bên dưới.
+  - **Ngưỡng: THỰC SỰ QUAN TRỌNG.** Lắc nhắc thì bỏ qua — không ghi sổ, không dựng cổng, không
+    thêm dòng cảnh báo. Sổ và bộ gác là **tài sản chung có giá**: mỗi dòng thêm vào là thứ MỌI
+    phiên sau phải đọc *và* phải soát lại.
+  - **Thêm một lớp là thêm một chỗ hỏng.** Bộ đo không làm hệ tốt lên, nó chỉ nói hệ đang thế nào.
+    Ba ca thật của repo này đều sinh từ một lượt *"thêm cho chắc"*: `archive` nuốt cờ lạ rồi chạy
+    thật · guard đọc TÊN FILE thành lệnh push nên chặn luôn chính lệnh đi soi cờ · bộ dò mojibake
+    báo oan trên đúng file dạy về mojibake. **Bộ gác tự bẫy chính mình.**
+  - **Trước khi thêm bất cứ thứ gì, trả lời đủ ba câu:** ① **gỡ bớt** được cái gì không · ② **gộp**
+    vào cổng/luật đã có được không · ③ **không có nó thì hỏng cái gì**, đo được không.
+    Không trả lời được ③ ⇒ **KHÔNG LÀM**. (Hướng đúng là TỐI ƯU, không phải BỒI ĐẮP — HP điều 1.)
+  - **KHÔNG áp cho:** việc user giao · sửa thứ đang hỏng · nghĩa vụ mà luật SẴN CÓ đã bắt buộc
+    (vd HP điều 12 đòi gate trước khi bật mặc định). Ba ca đó cứ làm, không phải xin.
+
+  **② CỬA RA — XONG MỘT VIỆC LÀ ĐÓNG NGAY, không đợi chốt phiên.** Ngay khi một mục xong, làm đủ
+  ba bước **trong cùng lượt đó**: ① **ĐO LẠI** theo §Hành xử *"SOÁT SỔ = ĐO LẠI"* (mã · Global
+  Memory · chạy thật) — *"tôi vừa làm nên tôi biết"* **KHÔNG** phải bằng chứng, và đây đúng chỗ hay
+  sai nhất: phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc · ② ghi sang
   `06_CHANGES` · ③ **xoá mục khỏi `05_TODO`** (hoặc `zemory archive` dời sang `archive/`).
-  **Vì sao không đợi tới chốt phiên:** một mục đã xong là **đặt sai chỗ kể từ giây nó xong**, mà
-  `05_TODO` được nạp MỌI phiên — đo 2026-07-29: **107 mục đã xong chiếm 46%** một file luôn-nạp.
-  **Vì sao không tin trí nhớ:** đo 2026-08-05, soát 58 mục thì **11 sai (~19%)** — có mục đã build
-  xong vẫn mang dấu `[ ]`, có mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
-  *(Chốt phiên vẫn chạy `archive` như lưới vét cuối — `.claude/skills/session-close/` Bước 3 — nhưng
-  lưới đó là để hứng phần đã dồn, KHÔNG phải chỗ để dồn.)*
+  *(Chốt phiên vẫn chạy `archive` như lưới vét cuối — `.claude/skills/session-close/` Bước 3 —
+  nhưng lưới đó để hứng phần đã dồn, KHÔNG phải chỗ để dồn.)*
+
+  **Số đo — vì sao cả hai cửa đều cần luật:** cửa ra đo 2026-07-29 **107 mục đã xong chiếm 46%**
+  một file luôn-nạp; soát 2026-08-05 **11/58 mục sai (~19%)**. Cửa vào đo 2026-08-23: **89 mục còn
+  mở · 1.658 dòng · 104 file test**, trong đó **18 mục "ĐỀ XUẤT" chờ user** — loại này **không bao
+  giờ đóng được bằng cửa ra**, vì chúng không phải việc chưa làm, chúng là câu hỏi chưa ai trả lời.
+  Có cửa ra mà không có cửa vào thì sổ chỉ có một chiều: phình.
+
+  > 🔄 **BÃI BỎ vế *"agent ghi ĐỀ XUẤT vào `05_TODO` chờ user duyệt"*** (từng nằm ở
+  > `01_CONSTITUTION §Sửa đổi hiến pháp`, §Chốt phiên bên dưới, và skill `audit`/`session-close`).
+  > Vế đó **chính là cỗ máy** đẻ ra 18 mục treo: nó dạy agent *đậu* thay vì *hỏi*, mà đậu thì không
+  > có đường ra. Nay: **hỏi trong phiên, user gật mới ghi.** Không gật ⇒ không tồn tại dòng nào.
 - **Tra log sâu:** việc/lỗi/quyết định ở phiên khác → `zemory memory search "<q>" [--all]` (recall on-demand; đừng tra bừa).
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
 **Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
 
-**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt** — quy trình đầy đủ (đọc lại 3 nguồn: FULL phiên hiện tại + FULL `docs/plan/*` + FULL `docs/agent/*` → định tuyến từng thứ về đúng file → chuẩn "không bỏ sót" → bước cuối `zemory validate`) ở skill **`.claude/skills/session-close/`**. Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO` (kể cả chẩn đoán sai / đường cụt); đổi thiết kế → `docs/plan/*`; luật riêng → ĐỀ XUẤT `05_TODO` chờ user chốt. Không tự `git push` (§Git).
+**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt** — quy trình đầy đủ (đọc lại 3 nguồn: FULL phiên hiện tại + FULL `docs/plan/*` + FULL `docs/agent/*` → định tuyến từng thứ về đúng file → chuẩn "không bỏ sót" → bước cuối `zemory validate`) ở skill **`.claude/skills/session-close/`**. Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO`; đổi thiết kế → `docs/plan/*`. **Chẩn đoán sai · đường cụt · luật riêng phát sinh: NÓI trong báo cáo phiên, KHÔNG tự ghi thành mục** — muốn vào sổ thì hỏi (§Sổ việc `05_TODO`, cửa vào). Không tự `git push` (§Git).
 
 - **Global Memory là NGUỒN của phiên (BẮT BUỘC verify):** episodic sống sót qua context-trim, còn trí nhớ trong context thì bị lược → khi ĐỔI SESSION / ghi docs / audit / báo cáo, PHẢI dò Global Memory (`zemory memory search`/`digest <session>`) + đối chiếu code THẬT để **verify TỪNG mục TRƯỚC khi ghi hay khẳng định** — không ghi/báo theo trí nhớ tóm tắt hay kết quả subagent chưa kiểm. Đây là chốt chặn "đổi session là sót/lệch". Chi tiết: `.claude/skills/session-close/` Bước 0.
 
@@ -160,6 +189,18 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần.
 - **CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT — KHÔNG BỊA, KHÔNG SUY DIỄN (luật cứng).** Áp cho **mọi khẳng định**, không riêng con số: trạng thái hệ thống · nguyên nhân · "cái gì đang xảy ra" · "đã xong chưa". Mỗi khẳng định phải truy được về **nguồn kiểm được** (đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài). **Tra không ra ⇒ nói thẳng "không biết / chưa xác minh được"** và nêu đã thử đường nào — cấm lấp bằng suy đoán nghe hợp lý, vì *nghe hợp lý* chính là thứ làm nó lọt. Ba lần trả giá 2026-07-29: đoán cửa sổ "minimize" (thật ra user bấm X) rồi tự bung lên · đoán cú click đã ăn (thật ra `SetForegroundWindow` bị từ chối, click rơi sang app khác) · đoán chỗ hỏng của `parseChangelog` trước khi đọc code (sai một nửa).
   Trước khi ① báo cáo một con số · ② kết luận "đã xong / chưa xong" · ③ xoá bất cứ thứ gì — còn phải đo lại bằng **đường thứ hai, khác cơ chế** với đường thứ nhất. Chạy đúng một lệnh rồi tin luôn là nguồn của gần như MỌI lần báo sai. Bốn dạng đã trả giá thật: công cụ trả rỗng vì **hỏng lặng** (`grep -qP` cho âm tính giả ⇒ kết luận "sạch") · **báo oan** do phép so lỏng (`LIKE` không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (`message_id` chết ⇒ tưởng mồ côi, suýt xoá 87 ảnh đang sống) · **sổ nói khác code** (mục đã xong vẫn ghi "chưa làm"). Kiểm chéo = đổi công cụ (grep ↔ script đọc byte), đổi hướng (đếm xuôi ↔ đếm ngược), hoặc gọi bề mặt thật (DB ↔ HTTP).
+- **BA LUẬT ĐO — riêng repo này, sinh từ ba lần trả giá thật (user chốt 2026-08-24):**
+  · **① Probe tự dựng phải SAO CHÉP THAM SỐ của thước chính thức.** Dựng probe thiếu `all: true`
+    (bench luôn có) đã đẻ **3 kết luận sai** trong một phiên (`TOOL_DEMOTE` · `vecMix` · gộp-trùng).
+    Vế "đừng đo bằng bề mặt hẹp hơn" sẵn có KHÔNG chặn được ca này — probe trông giống hệt thước,
+    chỉ lệch một tham số mặc định.
+  · **② N phép thử cùng thất bại theo CÙNG MỘT HƯỚNG ⇒ nghi cái THƯỚC, không nghi N thiết kế.**
+    Đã chạy **tám** giả thuyết, diễn giải tám lần như tám vấn đề kỹ thuật riêng, trước khi hỏi
+    thước có đếm đúng không (hoá ra thước nhãn-đơn-uuid phạt oan — sinh ra thước tương đương).
+  · **③ Số đo phải khớp THỜI GIAN CÔNG VIỆC đáng lẽ phải tốn.** Test nhúng ONNX mà xong trong
+    26 ms là XANH GIẢ, không phải nhanh — đã bắt được hai lần trong hai ngày (kho `.db` rỗng làm
+    lệnh chết vì lý do khác · `skipIfBusy` thiếu `await` làm mọi ca thoát ngay). Trước khi tin
+    một con số đẹp bất thường, đối chiếu nó với chi phí vật lý của việc đó.
 - **📋 SOÁT SỔ = ĐO LẠI TỪNG MỤC, KHÔNG ĐỌC RỒI CHÉP LẠI (luật cứng — user chốt 2026-08-05 sau khi lỗi này TÁI DIỄN SUỐT MỘT THÁNG).**
   **ÁP MỌI LÚC — KHÔNG chờ chốt phiên.** Kích hoạt ngay khi user nói *"check todo"* · *"còn gì chưa làm"* · *"liệt kê ra"* · *"soát lại"* · *"plan/change tới đâu rồi"*, hay khi agent tự mở sổ giữa chừng. Phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc — đúng lúc dễ tưởng mình đang nhớ rõ nhất.
   - **Vì sao:** mỗi mục trong `05_TODO` là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI** ("chưa làm", "chờ duyệt", "còn N tin") — mà khẳng định thì phải **truy được về nguồn kiểm được** (luật ngay trên). File `.md` là nguồn của *nội dung* (FILE WINS), **KHÔNG phải nguồn của sự thật hệ thống**. Đọc sổ rồi báo lại y nguyên = báo cáo chưa xác minh, dù chữ nằm trong file của chính mình.

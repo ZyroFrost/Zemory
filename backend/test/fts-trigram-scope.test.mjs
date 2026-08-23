@@ -61,13 +61,17 @@ test("lane WORD index TẤT CẢ — tool-dump vẫn tìm được bằng từ k
   db.close();
 });
 
-test("lane TRIGRAM BỎ tool_result (cả khi tool_name NULL)", (t) => {
+// v22 ĐẢO v17 (2026-08-23, user chốt sau A/B trên bản sao). v17 cắt `tool_result` khỏi trigram để
+// tiết kiệm đĩa; đo lại thì lớp đó là lớp YẾU NHẤT (`@10` 20% · MRR 0,060) trong khi chiếm ~31%
+// kho, và nó chỉ còn HAI luồng. Cấp cho nó luồng thứ ba: `@1` 0→12% · `@10` 20→28% · MRR
+// 0,060→0,167, prose y nguyên. Giá: +262 MB đĩa · +23% độ trễ.
+// Ca này khoá chiều MỚI — thêm lại bất kỳ điều kiện loại `[tool_result]` nào vào trigger là đỏ.
+test("v22: lane TRIGRAM PHỦ tool_result (chuỗi-con giữa từ cũng khớp)", (t) => {
   const db = seed(t);
-  assert.equal(hits(db, "messages_fts_tri", "oaduynha"), 0, "chuỗi-con của tool_result KHÔNG được có trong trigram");
-  assert.equal(hits(db, "messages_fts_tri", "angluo"), 0, "kể cả chuỗi khác trong cùng dump");
-  // v17: dump có tool_name NULL cũng phải bị loại (v16 bỏ sót đúng ca này)
-  assert.equal(hits(db, "messages_fts_tri", "hongcotoolname"), 0, "tool_result dù tool_name NULL vẫn phải ngoài trigram");
-  assert.equal(hits(db, "messages_fts", "khongcotoolname"), 1, "nhưng lane word vẫn phải có");
+  assert.equal(hits(db, "messages_fts_tri", "oaduynha"), 1, "chuỗi-con của tool_result PHẢI vào trigram");
+  assert.equal(hits(db, "messages_fts_tri", "angluo"), 1, "mọi chuỗi trong cùng dump đều khớp được");
+  assert.equal(hits(db, "messages_fts_tri", "hongcotoolname"), 1, "tool_result tool_name NULL cũng phải có");
+  assert.equal(hits(db, "messages_fts", "khongcotoolname"), 1, "lane word giữ nguyên vai — v22 chỉ THÊM");
   db.close();
 });
 
@@ -115,15 +119,20 @@ test("DELETE hàng tool KHÔNG làm hỏng trigram", (t) => {
   db.close();
 });
 
-test("UPDATE đổi PHÍA: prose→tool_result rời trigram; tool_result→prose vào lại", (t) => {
+// v22 bỏ khái niệm "PHÍA": trigram nay phủ mọi hàng, nên không còn chuyện rời/vào theo loại.
+// Nhưng bất biến ĐẮT NHẤT của trigger UPDATE thì GIỮ NGUYÊN: gỡ posting CŨ rồi thêm posting MỚI,
+// đúng thứ tự, không mất và không nhân đôi. Chính ca này từng làm prose rơi khỏi trigram VĨNH
+// VIỄN (bug thứ tự trigger, vá 2026-08-12), và `redact()` chạy UPDATE trên tin thật nên đây là
+// đường đi hằng ngày chứ không phải ca hiếm.
+test("v22: UPDATE thay nội dung — posting CŨ gỡ, posting MỚI vào, mọi loại hàng", (t) => {
   const db = seed(t);
   db.prepare("UPDATE messages SET tool_name='Read', content='[tool_result] chuoimoicuatool' WHERE uuid='u1'").run();
-  assert.equal(hits(db, "messages_fts_tri", "in chà"), 0, "nội dung cũ phải rời trigram");
-  assert.equal(hits(db, "messages_fts_tri", "oimoicua"), 0, "nội dung mới KHÔNG được vào trigram vì giờ là tool_result");
-  assert.equal(hits(db, "messages_fts", "chuoimoicuatool"), 1, "nhưng lane word vẫn có");
+  assert.equal(hits(db, "messages_fts_tri", "in chà"), 0, "nội dung CŨ phải rời trigram");
+  assert.equal(hits(db, "messages_fts_tri", "oimoicua"), 1, "nội dung MỚI phải vào — v22 không loại tool_result nữa");
+  assert.equal(hits(db, "messages_fts", "chuoimoicuatool"), 1, "lane word vẫn có");
 
   db.prepare("UPDATE messages SET tool_name=NULL, content='giờ là văn xuôi bình thường' WHERE uuid='u3'").run();
-  assert.equal(hits(db, "messages_fts_tri", "văn xu"), 1, "hàng vừa thành prose phải vào trigram");
+  assert.equal(hits(db, "messages_fts_tri", "văn xu"), 1, "hàng đổi sang prose vẫn phải có posting");
   db.close();
 });
 
@@ -154,8 +163,8 @@ test("v21: UPDATE prose→prose GIỮ được posting (lỗi thứ tự trigger
 // v20 = sessions.pinned (ghim MỘT phiên cho memory_context) — cột RIÊNG, cố ý không mượn
 // `project_pinned` vốn đang gánh nghĩa "cấm scan ghi đè project_root".
 // v21 = trigram nhận lại tool_use (đo A/B/C ở đầu file), dựng lại postings theo chính sách mới.
-test("DB mới chạy hết migration và dừng ở schema v21", (t) => {
+test("DB mới chạy hết migration và dừng ở schema v22", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 21);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 22);
   db.close();
 });

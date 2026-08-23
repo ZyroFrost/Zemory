@@ -230,7 +230,13 @@ function checkBash(cmd) {
 
   if (ANY_DEL.test(bare)) {
     const recursive = RECURSIVE_DEL.test(bare);
-    for (const tok of bare.split(/[\s'";|&]+/)) {
+    // CHI quet token cua DUNG SEGMENT chua lenh xoa (tach ;|&) — cung khuon + cung ly do
+    // voi nhanh git o tren (sua 2026-08-24, user gat 21/08): rm build.log && echo check-prod.env
+    // tung bi CHAN OAN vi ten .env nhac trong echo. Quet ca dong thi nguoi ta hoc cach
+    // thoi viet lenh tu-kiem — do moi la thiet hai. RECURSIVE_DEL van xet CA lenh.
+    for (const seg of bare.split(/[\n;|&]+/)) {
+      if (!ANY_DEL.test(seg)) continue;
+      for (const tok of seg.split(/[\s'"]+/)) {
       if (!tok || tok.startsWith("-") || tok.startsWith("/")) continue;
       const rel = tok.replace(/\\/g, "/").replace(/^\.\//, "");
       const name = rel.split("/").pop();
@@ -242,6 +248,7 @@ function checkBash(cmd) {
           deny("CHAN (guard lop 1): xoa trong duong da khai protected `" + prefix + "` - " +
             POLICY.protected_write_reason);
         }
+      }
       }
     }
     if (recursive && !consumeFlag("delete", bare)) {

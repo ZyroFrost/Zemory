@@ -116,6 +116,9 @@ riêng (điều 12) + user chốt; chưa làm.
 
 ## 5. Bước ④ — TRÁO (CHỈ sau khi user ký) — tái dùng kịch bản đợt 768
 
+> ⛔ **KHÔNG THI HÀNH — bước này đã ĐÓNG 2026-08-23: cổng §4 TRƯỢT ⇒ KHÔNG TRÁO (xem §8b).**
+> Giữ nguyên kịch bản dưới làm hồ sơ: nó dùng lại được nếu sau này có đợt đổi embedder khác.
+
 Một script MỘT lần chạy (không để hook chen giữa lúc thay file; chốt "file còn bị giữ sau 30 s
 ⇒ DỪNG"): `git tag pre-bgem3-swap` → tắt daemon → kho thật đổi tên
 `global_memory.768d-backup-<ngày>.db` *(án tử theo luật bản-lùi-có-hạn-dùng: xoá khi hệ mới qua
@@ -152,7 +155,32 @@ bench trên kho thật + backup ngày xoay đủ vòng, ~5 ngày)* → bản sao
 | bước | việc | loại | trạng thái |
 |---|---|---|---|
 | ① | profile `bge-m3-v1` trong `embed.ts` + gate | build (phiên build) | ✅ **XONG 2026-08-19** (xem §2 — kèm phát hiện cờ `sequential`) |
-| ② | copy kho + re-embed nền ~44 h | chạy máy | 🔄 **ĐANG CHẠY** — đo 2026-08-21 22:10: **241.139 / ~253.900 vector**; nhịp đã sụp còn ~11,6 vector/phút ⇒ còn **~18–32 giờ** (sổ: `05_TODO`) |
-| ③ | bench A/B + user so tay | đo | 🔶 **ĐANG DỞ — mới đo MỘT cấu hình** (§4b). CHƯA test FULL: thiếu rerank · thiếu đa-truy-vấn · kho song song còn thiếu ~9.600 tin. **Chưa được kết luận về hệ mới.** |
-| ④ | tráo + bản lùi có án tử | thao tác một-lần | chờ user KÝ sau ③ |
-| ⑤ | thế hệ 1024 lên Drive + máy kia | điều phối user | chờ ④, ngủ tới khi có máy kia |
+| ② | copy kho + re-embed nền ~44 h | chạy máy | ✅ **XONG 2026-08-22** — job tự chốt `DỪNG: không còn tin nào để nhúng`; parity đo bằng khoá bền `(session_id, uuid)`: chỉ-bge 49 · chỉ-gemma 166 trên 252,5k khoá |
+| ③ | bench A/B + user so tay | đo | ✅ **XONG 2026-08-23 — test FULL** (4 ô × 3 lane + 18 ca âm mỗi ô + 2 probe đa-truy-vấn, 4,6 giờ máy tĩnh). Số đầy đủ: `06_CHANGES [2026-08-23b]` |
+| ④ | tráo + bản lùi có án tử | thao tác một-lần | 🔴 **KHÔNG TRÁO — cổng §4 TRƯỢT** (xem §8b). Bước này ĐÓNG, không chờ chữ ký nào |
+| ⑤ | thế hệ 1024 lên Drive + máy kia | điều phối user | ⛔ **KHÔNG CÒN** — hệ quả của ④. Máy kia giữ nguyên `gemma-768`, không có lệch thế hệ nào phải điều phối |
+
+### 8b. Phán quyết cuối — KHÔNG TRÁO (2026-08-23)
+
+🔴 **Cổng §4 (*"không LỚP nào tụt ở cả hai thước"*) TRƯỢT.** Thước nghiêm, gộp TẮT: gemma `@10`
+**46%**/0,292 vs bge 40%/0,267. Theo lớp bge **đổi chỗ** chứ không tốt hơn — thắng `keyword`
+50→67% · `tool_result` 25→38% · `tool_use` MRR 0,050→0,149, nhưng **`prose` 59→38%** (MRR
+0,418→0,263) mà prose là 34/68 nhãn. Kèm giá: bge **1,8× chậm** đường tìm thường ngày (3.247 vs
+1.743 ms), rerank 59,2 vs 43,5 s.
+
+**Phát hiện phương pháp, giá trị hơn cả kết luận tráo:** thước **TƯƠNG ĐƯƠNG KHÔNG so được xuyên
+kho** — nó chấm bằng cosine ≥0,85 trên vector *của chính kho đó*, tức một ngưỡng cố định áp lên hai
+không gian khác nhau. Bằng chứng sạch: ở gộp TẮT, lane `fts` hai kho trả **cùng tài liệu** (nghiêm
+trùng khít 13/22/26/37) nhưng tương đương chấm **43% vs 34%**. ⇒ phép so hợp lệ duy nhất giữa hai
+model là thước **NGHIÊM**. Hệ quả cho `plan/17 §1.2b`: *"tương đương cầm lái"* đúng TRONG một kho,
+sai khi so hai kho.
+
+**T5 (đa-truy-vấn) không bật mặc định:** cả hai kho tụt ở nghiêm (gemma MRR 0,291→0,241 · bge
+0,267→0,217), chỉ `@40` tương đương tăng.
+
+**Kho song song `data/global_memory.bgem3.db` GIỮ vô thời hạn** (user chốt) — hồ sơ để mở lại nếu
+lối dùng đổi sang nhiều từ khoá, vốn là đúng chỗ bge thắng. Nó là file CHẾT: không hook, không
+scheduler, không daemon ghi. Muốn mở lại thì đọc §8b này trước, đừng đo lại từ đầu.
+
+**Đừng đề xuất lại BGE-M3 khi chưa có dữ kiện mới** — `05_TODO §⭐ NGÃ RẼ RECALL` xếp nó vào nhóm
+"ĐÃ LOẠI bằng số".

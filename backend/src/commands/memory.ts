@@ -5,14 +5,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, salvageVectors, vectorDimsOf, verifyMemory } from "../memory/salvage.js";
-import { currentMemoryDb } from "../memory/db.js";
+import { currentMemoryDb, openMemory } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { embedConfig, embedProfileSpec } from "../memory/embed.js";
-import { dropVectorIndex, embedPending, vectorCount, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
+import { dropVectorIndex, embedPending, vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
 import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
@@ -164,6 +164,41 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[]): void {
 // safety nets. Kept advisory (no delegation) so a multi-hour `embed --all` never
 // hits an HTTP timeout.
 const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync"]);
+
+/**
+ * CỜ LẠ BỊ TỪ CHỐI — không "bỏ qua âm thầm rồi chạy thật".
+ *
+ * Ba lệnh dưới đều GHI vào kho và không lệnh nào có `--help`, nên gõ sai một cờ là chạy
+ * job thật thay vì in trợ giúp. Đã dính đúng hai lần ngày 2026-08-22: `memory embed --help`
+ * khởi động job nhúng (giữ `cli-write.lock` hàng giờ, bỏ đói backup) và `memory scan --help`
+ * quét + nạp thật. Nặng hơn ca `zemory archive` đã vá `[2026-08-22b]` vì cùng bề mặt còn có
+ * `--rebuild` — lệnh XOÁ nguyên chỉ mục véc-tơ, mà cờ lạ được cho qua thì không còn đường
+ * "xem thử" nào an toàn.
+ *
+ * Chốt đặt TRƯỚC write-gate có chủ đích: từ chối phải xảy ra khi chưa ghi byte nào và chưa
+ * giữ khoá. Đặt sau đó thì lệnh vẫn chiếm khoá rồi mới báo lỗi.
+ */
+const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
+  scan: { allow: new Set(["--deep"]), usage: "zemory memory scan [--deep]" },
+  embed: {
+    allow: new Set(["--all", "--rebuild", "--limit"]),
+    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>]",
+  },
+  digest: { allow: new Set(["--all"]), usage: "zemory memory digest [<session-id>] [--all]" },
+};
+
+/** true ⇒ đã in usage + đặt exit code; NGƯỜI GỌI PHẢI DỪNG, không chạy gì. */
+export function rejectUnknownFlags(sub: string, args: string[]): boolean {
+  const spec = HEAVY_FLAGS[sub];
+  if (!spec) return false;
+  const bad = args.slice(1).filter((a) => a.startsWith("--") && !spec.allow.has(a));
+  if (bad.length === 0) return false;
+  console.log(`zemory memory ${sub}: unknown flag ${bad.join(" ")}`);
+  console.log(`  usage: ${spec.usage}`);
+  console.log("  (lệnh này GHI vào kho nên cờ lạ bị TỪ CHỐI — không chạy gì, không giữ khoá.)");
+  process.exitCode = 1;
+  return true;
+}
 async function daemonPort(): Promise<number | null> {
   const port = uiPort();
   try {
@@ -176,6 +211,8 @@ async function daemonPort(): Promise<number | null> {
 }
 export async function cmdMemory(args: string[]): Promise<void> {
   const sub = args[0];
+  // Cờ lạ ⇒ dừng NGAY, trước cả write-gate (xem `rejectUnknownFlags`).
+  if (rejectUnknownFlags(sub, args)) return;
   // Write gate: hold the daemon's scheduler off while a heavy write runs here.
   // Shape matters (audit 2026-07-21): the old version wrapped the RUN in the
   // same try as the acquire, so an inner error was swallowed and the whole
@@ -1031,6 +1068,37 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // No session id → (re)build digests (hash-guarded; unchanged are skipped).
     const r = digestBackfill();
     console.log(`zemory memory digest — built/updated ${r.built} of ${r.scanned} session(s) [extractive]`);
+    return;
+  }
+  if (sub === "stats") {
+    // Bốn phép quét TOÀN BẢNG của bảng số — tách thành lệnh riêng để daemon gọi ở TIẾN TRÌNH
+    // CON. better-sqlite3 chạy đồng bộ, nên gọi thẳng trong daemon là khoá event loop: đo
+    // 2026-08-23 lượt LẠNH **16,7 giây** (ấm 0,06 s), và trong 16,7 s đó MỌI endpoint khác
+    // đứng hình ⇒ chip ở rail treo "…" nhìn như đã tắt. Chỉ ĐỌC, không xin write-gate.
+    let tokensEst = 0;
+    try {
+      const db = openMemory();
+      try {
+        tokensEst = Math.round(
+          Number((db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get() as { c: number }).c) / 4,
+        );
+      } finally {
+        db.close();
+      }
+    } catch {
+      /* best-effort */
+    }
+    let count = 0, remaining = 0, covered = 0, embeddable = 0;
+    try {
+      count = vectorCount();
+      remaining = vectorRemaining();
+      const cov = vectorCoverage();
+      covered = cov.covered;
+      embeddable = cov.embeddable;
+    } catch {
+      /* lane vector là tuỳ chọn — fail open (HP điều 9) */
+    }
+    console.log(JSON.stringify({ tokensEst, count, remaining, covered, embeddable }));
     return;
   }
   if (sub === "info") {

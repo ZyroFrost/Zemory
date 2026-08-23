@@ -1,5 +1,5 @@
 <!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
-<!-- HIẾN PHÁP riêng của zemory — CHỈ USER được chốt/sửa; agent đề xuất qua TODO, không tự đổi -->
+<!-- HIẾN PHÁP riêng của zemory — CHỈ USER được chốt/sửa; agent HỎI trong phiên, không tự đổi và không đậu đề xuất vào TODO (02_RULES §Sổ việc) -->
 # zemory — Hiến pháp (bất biến kiến trúc)
 
 > **Tầng TỐI CAO của harness — đọc TRƯỚC mọi file khác.** Mọi plan / code / quyết định phải đối chiếu về đây; **vi phạm = bug thiết kế**, kể cả khi code chạy được.
@@ -70,5 +70,5 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
     - *Vì sao thành điều khoản: trong MỘT phiên (2026-08-12) agent đi sai **bốn lần** đúng những điểm này — series theo máy (13 file/2,9 GB cho cùng một kho) · định ghi đè nguyên gói mỗi lượt · bỏ 11.233 tin không-uuid (đẩy 3,9 giờ nhúng lại sang máy mới) · bỏ 7.381 cửa sổ phụ vì "chỉ 2,6%". Mẫu số chung: **agent tự thêm ràng buộc an toàn/đơn giản mà user không đặt**. Đặc tả đầy đủ ở `plan/08 §8.0`.*
 
 ## Sửa đổi hiến pháp
-- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
+- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → **HỎI user ngay trong phiên**, user gật mới ghi; KHÔNG tự sửa file này. *(Luật đầy đủ về cửa vào — kể cả vế BÃI BỎ "đậu đề xuất vào `05_TODO` chờ duyệt" — nằm ở `02_RULES` §Sổ việc `05_TODO`. Không lặp ở đây.)*
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).

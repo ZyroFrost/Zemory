@@ -164,8 +164,17 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
 - **Lệch `vec_config` ⇒ TỪ CHỐI kèm lý do**, tin vẫn vào đủ. Trộn hai không gian vector (256 vs
   768, q8 vs fp32) là hỏng recall im lặng — thà không có còn hơn có bậy.
 - Kho đích **chưa từng nhúng** ⇒ nhận và đóng dấu cấu hình bên gửi, để không đẻ kho lai.
-- **Phạm vi hẹp có chủ ý:** chỉ vector CHÍNH của mỗi tin. Cửa sổ phụ của tin dài (`vec_map`,
-  2,6%) cần rowid tổng hợp riêng ở máy nhận ⇒ không chở; máy nhận tự nhúng phần đuôi.
+- > 🔄 **BÃI BỎ vế *"phạm vi hẹp: chỉ vector CHÍNH, cửa sổ phụ không chở"*** (viết 2026-08-12).
+  > Vế đó sống đúng MỘT ngày: nó là một trong **bốn lần đi sai** mà `§8.0` ghi tên — *"bỏ 7.381
+  > cửa sổ phụ vì chỉ 2,6%, không đáng"* ⇒ máy nhận mất phần ĐUÔI của tin dài mà không cổng nào
+  > thấy. Đúng thứ HP điều 16 cấm. **Vá 2026-08-13** (release 1.5.0, `vecship.ts`): bundle mang
+  > thêm bảng `vector_ship_chunk` khoá `(session_id, msg_uuid, seq)`, máy nhận dựng lại rowid
+  > tổng hợp của chính nó. Nay gói chở **TRỌN** bộ RAG: vector chính **và** cửa sổ phụ.
+- **Cửa sổ phụ ĐƯỢC CHỞ** — `vector_ship_chunk`, tra `vec_map` chứ không tra thẳng id tin (id là
+  AUTOINCREMENT cục bộ). Đo trên kho hiện tại: **4.459 tin dài · 8.906 cửa sổ phụ**; thiếu chúng
+  thì hỏi về đoạn CUỐI một tin dài là trượt, dù tin vẫn nằm nguyên trong kho.
+  ⚠ **Đường này CHƯA có cổng nào canh** (đo 2026-08-23: 0 file test nhắc `vector_ship_chunk`) —
+  mà nó đã hỏng im lặng một lần rồi. Xem `05_TODO` mục "717 cửa sổ phụ".
 
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
