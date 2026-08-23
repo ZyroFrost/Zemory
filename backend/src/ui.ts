@@ -10,7 +10,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
-import { templateDir, ensureHarness, syncCheck } from "./docs/adopt.js";
+import { templateDir, channelUpdate, ensureHarness, syncCheck } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { scanWeb } from "./memory/scanweb.js";
@@ -88,6 +88,7 @@ import {
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, uninstallHooks } from "./memory/capture-hook.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
+import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
 // daemon serves those files as-is — no bundler, no TS template. Read per request
 // so editing a .css/.js + reloading shows it with no rebuild.
@@ -852,7 +853,7 @@ function invalidateDashboardSoft(): void {
  * instead of every 300s, for a number that moves just as slowly as its neighbours. That was most
  * of the "/memory-status takes seconds" report: one uncached scan hidden among cached ones.
  */
-function heavyStats(): {
+function heavyStatsSync(): {
   tokensEst: number;
   count: number;
   remaining: number;
@@ -895,7 +896,46 @@ function heavyStats(): {
   return value;
 }
 
-function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
+/**
+ * Lấy bốn số nặng mà KHÔNG khoá event loop của daemon.
+ *
+ * Bản đồng bộ ở trên mất **16,7 giây** lượt lạnh (đo 2026-08-23, kho 284k tin) — và trong 16,7
+ * giây đó mọi endpoint khác đứng hình, nên chip ở rail treo "…" nhìn như đã tắt. Nay:
+ *   · còn hạn TTL ⇒ trả cache, y như cũ;
+ *   · hết hạn mà ĐÃ có số cũ ⇒ **trả số cũ NGAY**, tính lại ở tiến trình con phía sau;
+ *   · chưa có số nào (lượt lạnh đầu tiên) ⇒ chờ con, nhưng event loop vẫn rảnh cho request khác.
+ * Đúng một lượt tính chạy tại một thời điểm (`heavyInFlight`) — hai request cùng lúc không được
+ * đẻ hai lượt quét toàn bảng.
+ *
+ * `dashCache` (60 s) vẫn nằm trên, nên đường thường ngày không đụng tới đây.
+ */
+let heavyInFlight: Promise<HeavyStats | null> | null = null;
+async function heavyStatsAsync(): Promise<{ tokensEst: number; count: number; remaining: number; covered: number; embeddable: number }> {
+  const now = Date.now();
+  if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
+  if (!heavyInFlight) {
+    heavyInFlight = heavyStatsChild().finally(() => {
+      heavyInFlight = null;
+    });
+  }
+  const pending = heavyInFlight;
+  // Có số cũ thì KHÔNG chờ: số nặng đổi rất chậm, và một bảng hơi cũ tốt hơn một giao diện đứng.
+  if (heavyCache) {
+    void pending.then((v) => {
+      if (v) heavyCache = { at: Date.now(), value: v };
+    });
+    return heavyCache.value;
+  }
+  const v = await pending;
+  if (v) {
+    heavyCache = { at: Date.now(), value: v };
+    return v;
+  }
+  // Con hỏng ⇒ rơi về đường đồng bộ (fail-open, HP điều 9): thà chậm một lượt còn hơn trả rỗng.
+  return heavyStatsSync();
+}
+
+async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown> {
   const now = Date.now();
   if (!opts.fresh && dashCache && now - dashCache.at < DASH_TTL_MS) {
     return { ...dashCache.value, cached: true, cachedAgeMs: now - dashCache.at };
@@ -903,7 +943,7 @@ function dashboardMemory(opts: { fresh?: boolean } = {}): unknown {
   if (opts.fresh) invalidateDashboard();
   const summary = memorySummary();
   const info = memoryInfo();
-  const heavy = heavyStats();
+  const heavy = await heavyStatsAsync();
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
   try {
     let dimsLabel = "";
@@ -1192,7 +1232,18 @@ async function probeZemoryUi(port: number): Promise<{ pid: number } | null | "bu
   }
 }
 
-export async function startUi(): Promise<void> {
+/** `window: false` = dựng daemon + serve nhưng KHÔNG tự bật cửa sổ (cờ `--no-window`).
+ *
+ *  Vì sao (user chốt 2026-08-24): `zemory ui` luôn ném một cửa sổ thật lên desktop — đúng cho
+ *  người dùng, sai cho smoke-test/tự động hoá (sự cố 3 cửa sổ rỗng đêm 06/08, và mỗi lần agent
+ *  restart daemon là một cửa sổ nhảy vào mặt user). Cờ này chỉ tắt các lượt mở TỰ ĐỘNG; nút
+ *  "Open" trên tray vẫn mở như thường — đó là hành động người dùng bấm, không phải máy tự tiện. */
+export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
+  const showWindow = opts.window !== false;
+  const autoOpen = (url: string): void => {
+    if (showWindow) openWindow(url);
+    else console.log(`zemory ui — --no-window: not opening a window (serve only) -> ${url}`);
+  };
   const root = () => currentProjectRoot();
   const json = (res: ServerResponse, obj: unknown) => {
     res.writeHead(200, { "content-type": "application/json" });
@@ -1279,7 +1330,7 @@ export async function startUi(): Promise<void> {
     }
     if (p === "/status") return json(res, await gatherStatus(rootP));
     // `fresh=1` = the user pressed refresh; the poll takes whatever is cached.
-    if (p === "/memory-status") return json(res, dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
+    if (p === "/memory-status") return json(res, await dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
     if (p === "/sync-pulse") {
       // NHỊP NHANH: chỉ những con số mà một lần quét vừa làm đổi — Drive còn thiếu bao
       // nhiêu, và cây Sources. Toàn truy vấn rẻ (đo: ~0,2 s tổng), KHÔNG đụng gì tới
@@ -1909,7 +1960,9 @@ export async function startUi(): Promise<void> {
         }
         harnessUpdCache = { at: now, stale };
       }
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale });
+      // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn kênh chung), KHÔNG cache theo
+      // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.
@@ -1989,12 +2042,12 @@ export async function startUi(): Promise<void> {
       // daemon on a fallback port — that is how two writers on one DB happened.
       console.log(`zemory ui — port ${wanted} is held and not responding (busy daemon?).`);
       console.log(`  Not starting a rival instance. Open ${url}, or stop that process and retry.`);
-      openWindow(url);
+      autoOpen(url);
       server.close();
       return;
     }
     console.log(`zemory ui — already running (pid ${running.pid}) -> ${url}`);
-    openWindow(url);
+    autoOpen(url);
     server.close();
     return;
   }
@@ -2030,7 +2083,7 @@ export async function startUi(): Promise<void> {
   setInterval(daemonHeartbeat, 30_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
-  openWindow(url);
+  autoOpen(url);
   // System-tray presence (fail-open, HP điều 9): Open re-focuses the window, Quit
   // stops the daemon. Only the instance that WON the port reaches here — the
   // attach paths above already returned — so there is never a second icon.

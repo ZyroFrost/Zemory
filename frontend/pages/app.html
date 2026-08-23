@@ -97,6 +97,11 @@
         <div class="tabs"><button class="on" data-rc="find">🔍 <span data-i18n="rc.find">Tìm kiếm</span></button><button data-rc="sess">🗂 <span data-i18n="rc.sess">Phiên</span></button></div>
         <div class="sub on" data-rc="find">
         <div class="recall-in"><span>🔍</span><input id="rq" data-i18n-ph="recall.ph" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall" data-i18n="recall.go">Tìm ✦</button></div>
+        <!-- Ô "cách nói khác" (T5 cho NGƯỜI dùng, user chốt 2026-08-24). CHỈ hiện khi Tìm sâu
+             bật — `also` đi đường sâu, lộ thường trực thì một lượt tìm thường bỗng chậm 20s.
+             KHÔNG được là ô trống: biến thể MƠ HỒ làm kết quả TỆ HƠN không gõ gì (đo 10/08:
+             MRR 0,407→0,189) — placeholder là VÍ DỤ cụ thể, title nói thẳng rủi ro. -->
+        <div class="recall-in" id="rAlsoRow" style="display:none"><span>↔</span><input id="rAlso" data-i18n-ph="recall.alsoPh" data-i18n-title="recall.alsoTip" placeholder="Cách nói KHÁC của cùng câu hỏi — cụ thể ngang câu gốc (vd: lỗi khoá ghi cli-write.lock khi embed)" title="Chỉ dùng với Tìm sâu. Biến thể CỤ THỂ giúp tìm trúng hơn (@10 50→71%); biến thể MƠ HỒ làm tệ hơn không gõ gì (MRR 0,407→0,189). Không chắc thì để trống." value=""></div>
         <div class="filters">
           <div class="fchip on" id="rAll" data-rf="all" data-i18n="recall.allMachines">Cả máy</div>
           <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>

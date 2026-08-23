@@ -16,10 +16,12 @@ import {
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
-import { CONFIG_FILE, findMarker, harnessPathsAt, loadContext, readMarker } from "../core/config.js";
+import { CONFIG_FILE, findMarker, harnessPathsAt, loadContext, readMarker, appVersion } from "../core/config.js";
 import { guardDrift } from "./guard-gen.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
+import { cmpSemver, readChannelVersion } from "../memory/share.js";
+import { getDriveDir } from "../config/settings.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's
@@ -399,10 +401,35 @@ export interface SyncCheckResult {
   missing: string[];
   /** File chốt lớp ① đã sinh nhưng trôi khỏi bản `hook guard` hôm nay (guardDrift). */
   guardStale: string[];
+  /**
+   * Có bản zemory MỚI HƠN trên kênh chung không (tem `<Drive>/version.json`).
+   *
+   * Khác hai trường trên ở CẤP: `missing`/`guardStale` nói *repo này* cũ so với bản zemory
+   * đang cài; `appUpdate` nói *chính máy này* cũ so với máy khác. Trước 2026-08-23 không ai
+   * đo vế thứ hai ⇒ máy A pull+build thì repo trên máy A được nhắc, còn **máy B mù hoàn
+   * toàn**. Không có Drive / chưa ai đóng dấu / bản này đã mới nhất ⇒ `undefined` (fail-open).
+   */
+  appUpdate?: { have: string; latest: string; from: string; at: string };
+}
+
+/** Máy này có đang chạy bản cũ hơn kênh chung không. Fail-open: mọi trục trặc ⇒ undefined.
+ *  Export vì `/harness-updates` cần nó ngay cả khi registry KHÔNG có project nào — đây là
+ *  sự thật cấp MÁY, không phải cấp repo. */
+export function channelUpdate(): SyncCheckResult["appUpdate"] {
+  try {
+    const dir = getDriveDir();
+    if (!dir) return undefined;
+    const stamp = readChannelVersion(dir);
+    const have = appVersion();
+    if (!stamp || !have) return undefined;
+    return cmpSemver(stamp.latest, have) > 0 ? { have, latest: stamp.latest, from: stamp.host, at: stamp.at } : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function syncCheck(projectRoot: string): SyncCheckResult {
-  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [] };
+  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [], appUpdate: channelUpdate() };
   try {
     const marker = readMarker(projectRoot);
     if (!marker) return out;

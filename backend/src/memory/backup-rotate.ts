@@ -73,9 +73,20 @@ export const BACKUP_STALE_FACTOR = 2;
 
 export interface BackupStaleness {
   stale: boolean;
+  /**
+   * Quá MỘT chu kỳ nhưng chưa quá hai — đã trượt nhịp, chưa tới mức hỏng.
+   *
+   * Vì sao cần mức giữa (audit 2026-08-23): chỉ có `stale` ở 2 chu kỳ nghĩa là **trọn một ngày
+   * không backup vẫn hiện ✓** — đúng kiểu "bề mặt nói dối" mà `02_RULES` cấm. Đo ngày đó: bản
+   * mới nhất 27,9 giờ tuổi, `doctor` vẫn chấm ✓. Mức này KHÔNG làm đỏ gate (nó là chậm nhịp,
+   * không phải hỏng) nhưng phải THẤY ĐƯỢC.
+   */
+  late: boolean;
   ageMs: number | null;
   /** Ngưỡng đã dùng để phán (ms) — in ra để người đọc khỏi phải đoán. */
   limitMs: number;
+  /** Chu kỳ chép (ms) — mốc của mức "chậm nhịp". */
+  everyMs: number;
   newest?: string;
 }
 
@@ -90,9 +101,17 @@ export function backupStale(
     const list = listBackups(backupDir(dbPath));
     const ageMs = list.length ? (opts.now ?? Date.now()) - list[0].mtimeMs : null;
     // CHƯA có bản nào cũng là quá hạn — kho đang chạy mà không có lưới đỡ nào là tin đáng báo.
-    return { stale: ageMs === null || ageMs > limitMs, ageMs, limitMs, newest: list[0]?.path };
+    const stale = ageMs === null || ageMs > limitMs;
+    return {
+      stale,
+      late: !stale && ageMs !== null && ageMs > policy.everyMs,
+      ageMs,
+      limitMs,
+      everyMs: policy.everyMs,
+      newest: list[0]?.path,
+    };
   } catch {
-    return { stale: false, ageMs: null, limitMs };
+    return { stale: false, late: false, ageMs: null, limitMs, everyMs: policy.everyMs };
   }
 }
 

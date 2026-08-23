@@ -503,8 +503,21 @@ test("mọi phép QUÉT TOÀN BẢNG của dashboard phải nằm sau TTL dài, 
       `dashboardMemory() gọi thẳng ${scan} — phép quét toàn bảng phải đi qua heavyStats() (TTL dài)`,
     );
   }
-  const heavy = src.slice(src.indexOf("function heavyStats("));
-  assert.match(heavy, /vectorCoverage\(/, "heavyStats() phải là nơi tính coverage");
+  // 2026-08-23: bốn phép quét này DỜI HẲN sang tiến trình con (`statsjob.heavyStatsChild`) — đo
+  // được lượt LẠNH **16,7 giây** mà better-sqlite3 chạy đồng bộ, tức 16,7 giây daemon đứng hình.
+  // Bất biến KHÔNG đổi (quét toàn bảng không được nằm trên đường payload), chỉ đổi CHỖ ĐÚNG của
+  // chúng: trước là `heavyStats()`, nay là tiến trình con. Neo test phải đi theo bản viết lại —
+  // để nguyên neo cũ thì cổng soi một cái tên đã chết.
+  assert.match(src, /heavyStatsChild\(/, "phép quét nặng phải đi qua TIẾN TRÌNH CON, không chạy trên event loop");
+  assert.match(
+    src,
+    /const heavy = await heavyStatsAsync\(\)/,
+    "dashboardMemory phải LẤY số qua lớp bất đồng bộ; gọi bản đồng bộ là khoá lại event loop",
+  );
+  // Bản đồng bộ GIỮ LẠI có chủ đích làm đường lui khi con hỏng (fail-open, HP điều 9) — nhưng
+  // nó chỉ được dùng ở nhánh lui đó, không được quay lại đường chính.
+  const asyncFn = src.slice(src.indexOf("async function heavyStatsAsync("));
+  assert.match(asyncFn.slice(0, asyncFn.indexOf("\n}")), /heavyStatsSync\(\)/, "phải có đường lui khi tiến trình con hỏng");
 });
 
 test("chip sức khoẻ ở rail phải BẤM ĐƯỢC và nói TÊN thứ đang cảnh báo", () => {

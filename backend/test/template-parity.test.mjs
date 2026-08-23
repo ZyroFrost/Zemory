@@ -56,6 +56,29 @@ test("bo cowork mang DUNG ban guard da sinh (chep tay se troi, dem dong khong ba
   );
 });
 
+// #12 (user gat 2026-08-21, lam 2026-08-24): policy.json ship cowork co cong NOI DUNG.
+// Guard.cjs da co gate so BYTE o tren; policy.json thi chi duoc dem DONG trong manifest —
+// chieu 20/08 no vua bi sua TAY ma khong cong nao thay (dung khuon su co guard.cjs 11/08).
+// So DUNG HAI KHOA voi bo sinh — KHONG so ca file: cowork khac `protected_write`/`flags_dir`
+// CO CHU DICH (protected_write cua no la data/*/01_raw · docs/agent).
+test("policy.json ship cowork: secret_names + secret_allow phai KHOP bo sinh", async () => {
+  const { SECRET_DEFAULTS, SECRET_ALLOW_DEFAULTS } = await import("../../dist/docs/guard-gen.js");
+  const shipped = JSON.parse(
+    readFileSync(new URL("../../docs_template/cowork/nonapp/hooks/policy.json", import.meta.url), "utf8"),
+  );
+  for (const [key, gen] of [
+    ["secret_names", SECRET_DEFAULTS],
+    ["secret_allow", SECRET_ALLOW_DEFAULTS],
+  ]) {
+    const have = shipped[key] || [];
+    for (const pat of gen) {
+      assert.ok(have.includes(pat), `policy.json cowork thieu mau "${pat}" o ${key} — bo sinh da co, ban ship troi`);
+    }
+  }
+  // TU KIEM phep do: bo sinh phai khac RONG — rong thi vong for tren la vong rong, test vo nghia.
+  assert.ok(SECRET_DEFAULTS.length >= 5 && SECRET_ALLOW_DEFAULTS.length >= 2, "bo mau sinh rong — phep do dang mu");
+});
+
 test("both template trees carry the full standard set (agent 01–06 + AGENTS + plan overview)", () => {
   for (const profile of PROFILES) {
     for (const rel of STANDARD) {

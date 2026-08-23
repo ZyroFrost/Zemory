@@ -21,9 +21,14 @@
   // định mỗi lần mở là lớp rẻ (FTS + bộ lọc, ~0,4s). Lớp ngữ nghĩa 20–60s nên phải là thứ
   // người dùng chủ động xin, không phải thứ họ vô tình để bật từ hôm trước.
   function deepOn(){var d=zid('rDeep');return !!(d&&d.classList.contains('on'));}
+  // Ô "cách nói khác" sống chết theo chip Tìm sâu — `also` chỉ có tác dụng ở đường sâu.
+  function syncAlsoRow(){var r=zid('rAlsoRow');if(r)r.style.display=deepOn()?'':'none';}
+  var _rd=zid('rDeep'); if(_rd)_rd.addEventListener('click',function(){setTimeout(syncAlsoRow,0);});
+  syncAlsoRow();
   function recallParams(){
     var p='all='+(zid('rAll').classList.contains('on')?1:0),f;
     if(deepOn())p+='&deep=1';
+    if(deepOn()){var av=(zid('rAlso')&&zid('rAlso').value||'').trim();if(av)p+='&also='+encodeURIComponent(av);}
     if((f=zid('fTime'))&&f.value!=='0')p+='&days='+f.value;
     if((f=zid('fType'))&&f.value)p+='&role='+f.value;
     if((f=zid('fOrigin'))&&f.value)p+='&origin='+encodeURIComponent(f.value);
