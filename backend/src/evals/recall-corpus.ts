@@ -160,6 +160,21 @@ export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "chạy lại launcher nq của repo PBI_SasinFlow_Maintain ở bước điền, xem còn sinh rác ở gốc không", lang: "vi", kind: "tool_use", session: "5ccc6d83-f120-4b37-8f6c-086b526c4e43", uuid: "f283b2b6-0b0e-4802-bd02-41731dd23f1d" },
   { q: "dừng hết tiến trình robocopy rồi đếm lại còn sót cái nào không", lang: "vi", kind: "tool_use", session: "7ddd9210-e3a7-42d3-ba10-5e5bcbe34099", uuid: "f9b81a50-20db-46e9-945e-a0e35300cbac" },
 
+  // ── `tool_use` MỞ RỘNG (2026-08-23) — 14 → 26 nhãn. Cùng lý do và cùng công thức lấy mẫu
+  // như khối `tool_result` mở rộng bên dưới: 14 nhãn không phân giải nổi mức lãi/lỗ cần đo.
+  { q: "sửa css trong ui.ts của zemory, thêm lớp brow xếp hai đầu bằng flex ngay sau khối #msg", lang: "vi", kind: "tool_use", session: "916c729c-b563-45d1-83ed-9b1f753ba95d", uuid: "ea7998ed-c786-4120-96c2-a2b3af6b470f" },
+  { q: "lệnh liệt kê frost_wing_symphony ở cả hai workspace source và runtime của zflow", lang: "vi", kind: "tool_use", session: "2e52398e-2391-4647-b752-549081e91052", uuid: "697c98a0-2a8c-44a7-88b5-6ee62469ac05" },
+  { q: "đổi nhãn if_else trong node_kinds.ts từ If/Else sang Switch, đổi luôn ký hiệu và gợi ý thành route nhiều nhánh", lang: "vi", kind: "tool_use", session: "4aad88c6-ebdd-4064-8ad9-b3a6197f1f36", uuid: "34508d8b-ba05-4c69-be3f-658a06e97e62" },
+  { q: "xoá container auto-flow-local cũ rồi build lại, dựng lên và kiểm trạng thái", lang: "vi", kind: "tool_use", session: "bcf31e4c-2040-44b8-ab2e-182a22998933", uuid: "2a1d00d3-9cf5-4211-a0ec-6a70a91370b3" },
+  { q: "thêm inputsSchema vào danh sách tham số của BaseNode.tsx", lang: "vi", kind: "tool_use", session: "e3e74a01-cd63-4b6b-9bfb-ee7a98565773", uuid: "7f12bbf3-ad47-46e7-84a4-b68c87dcccd5" },
+  { q: "danh sách việc: viết lại phần loading thành thẻ popup căn giữa, sửa lề QProgressDialog, rồi build và kiểm trên docker", lang: "vi", kind: "tool_use", session: "deebd4b4-a816-4837-9997-1e19a4a5ac7e", uuid: "7c296539-015e-46a9-90ea-e76ecbe5c31f" },
+  { q: "chạy uvicorn cho save_server ở cổng 8787 ngay tiền cảnh để bắt lỗi", lang: "vi", kind: "tool_use", session: "07fc73ab-4bc8-4b73-abb6-8aefadf661a9", uuid: "f5ffc7d4-8321-43be-aa3d-260b49a6c6ad" },
+  { q: "danh sách việc xoá track: logic sao lưu ở projects.py, endpoint DELETE, rồi hàm gọi api và hook bên frontend", lang: "vi", kind: "tool_use", session: "0b85fe4d-a2c8-4f7e-bd55-98046ea7d0be", uuid: "77fd35be-2b81-4ab5-9d63-a50ca820aa45" },
+  { q: "chạy thử hàm sinh hậu tố từ khoá tiêu đề trong container auto-flow-local với tám tên track mẫu", lang: "vi", kind: "tool_use", session: "bcb1d50a-3be6-4c01-8bab-67e76fdf82bb", uuid: "7bf169f5-f8d0-4786-83f2-30973583c90a" },
+  { q: "viết tệp kiến trúc cho Frost Wing Symphony, nêu hai repo dùng chung và vai trò từng phần", lang: "vi", kind: "tool_use", session: "e7cdcd51-e6a1-4e48-86ea-b8d603707fe8", uuid: "ab992c36-7d8f-47df-af05-806a8106bc8c" },
+  { q: "dò xem Microsoft Edge cài ở đâu bằng cách thử hai đường ProgramFiles", lang: "vi", kind: "tool_use", session: "3136b173-6191-40a4-8c5d-a684e8dd708f", uuid: "0b7b3900-53bb-4779-94f6-782e0680edaa" },
+  { q: "sửa docstring đầu telemetry_loader.py của OpenRCA — chỗ nói đang dùng dữ liệu giả", lang: "vi", kind: "tool_use", session: "6cec1a84-6cf6-41cc-a536-1116a06cd162", uuid: "175f16ec-7989-4260-b924-5df8ca4bc1b4" },
+
   // ── LỚP `tool_result` (2026-08-07) — 28,3% kho, CÓ vector, ăn ~40% công embed ────────
   // Nhãn CHỈ chọn kết quả có NỘI DUNG THẬT. Cố ý bỏ khối văn bản lặp ("Command running in
   // background with ID…" — 3/12 mẫu rút ngẫu nhiên): không ai đi tìm lại một câu boilerplate,
@@ -173,6 +188,32 @@ export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "khối thẻ giao diện hiển thị danh sách nguồn hàng đầu, có khoá dịch và ô chờ nạp", lang: "vi", kind: "tool_result", session: "88015817-4be1-4817-8f05-1d9e34786b4f", uuid: "8e719970-fa37-48cb-bd32-53f1585c816d" },
   { q: "bản đếm khoá app đọc được và kích thước ui.json, kèm danh sách còn lại trong hồ sơ người dùng", lang: "vi", kind: "tool_result", session: "381f6d09-1cea-46ab-9474-cd8fab5bd94f", uuid: "31bc78d2-ecfd-4dd7-9062-15b20e5fc3c6" },
   { q: "báo đã tạo xong tệp model_cover.ps1 trong thư mục tạm của phiên bên repo bảo trì Power BI", lang: "vi", kind: "tool_result", session: "ebaa7b66-963a-4edb-9642-7ad757f2574b", uuid: "e34baae5-9c7e-4fa5-8131-7f3cfe95dd98" },
+
+  // ── `tool_result` MỞ RỘNG (2026-08-23) — 8 → 25 nhãn ────────────────────────────────
+  // Vì sao thêm: cổng quyết định công tắc GỘP near-dup TRƯỢT không phải vì lớp gộp tệ, mà vì
+  // corpus KHÔNG ĐỦ SỨC PHÂN GIẢI ở mức lớp — `tool_result` chỉ có 8 nhãn nên MỘT câu lật đã là
+  // 12,5 điểm phần trăm, lớn hơn cả mức lãi/lỗ cần đo. Nới lỗ hổng đó chính là món nợ `plan/17 §4`.
+  // Cách lấy mẫu (lặp lại được): rải theo BƯỚC ID cố định trên toàn dải (KHÔNG lấy đuôi mới nhất —
+  // lấy đuôi thì corpus đo mấy phiên gần đây chứ không đo cái kho, đúng lỗi bản `keyword` đầu tiên),
+  // mỗi phiên nhiều nhất MỘT câu, tối đa 4 câu/project, tin TRƯỚC 2026-08-18 (để nhãn dùng được cả
+  // trên kho song song), bỏ boilerplate và bỏ tin chứa secret.
+  { q: "bảng liệt kê các stack docker đang chạy kèm đường dẫn compose: crypto_pipeline_binance, difyai, music_workflow", lang: "vi", kind: "tool_result", session: "ab4fb93f-851b-4633-b6e1-1aa0244ea284", uuid: "4e990bb6-293a-44d9-9123-1a6571fcd4fd" },
+  { q: "kết quả gọi brain-search với từ trigram: hai hit, cái đầu là tin số 32979, rồi mở nó ra xem", lang: "vi", kind: "tool_result", session: "916c729c-b563-45d1-83ed-9b1f753ba95d", uuid: "adfffcc0-2b75-4774-a448-7f69d9e3125c" },
+  { q: "đoạn mã xác định loại node từ effectiveKind rồi trả về id, type, vị trí và parentId trong zflow", lang: "vi", kind: "tool_result", session: "2e52398e-2391-4647-b752-549081e91052", uuid: "207bb4f2-474f-4b29-b190-9766680a8d9b" },
+  { q: "kết quả dò cổng 4402: tệp .env và config khai 8000, còn lệnh chạy container lại truyền cổng khác", lang: "vi", kind: "tool_result", session: "bcf31e4c-2040-44b8-ab2e-182a22998933", uuid: "9eaf9f8f-e7f1-43b2-a05a-16e1ab2d61c9" },
+  { q: "log dựng ảnh docker auto-flow-local hoàn tất, có bước đặt tên rồi giải nén", lang: "vi", kind: "tool_result", session: "e3e74a01-cd63-4b6b-9bfb-ee7a98565773", uuid: "052ff8f6-4f7b-42d8-b09f-0d56ef0e7c35" },
+  { q: "khối mã Qt tạo nhãn báo đang tải cho phần áp model, kèm bộ hẹn giờ và chỗ đặt vào layout", lang: "vi", kind: "tool_result", session: "deebd4b4-a816-4837-9997-1e19a4a5ac7e", uuid: "ede62e96-a3e7-42ed-a435-a6123a74bd2c" },
+  { q: "nhật ký cửa sổ ứng dụng: renderer nạp xong, cửa sổ hiện rồi được focus nhiều lần, cuối cùng app sắp thoát", lang: "vi", kind: "tool_result", session: "61d582e5-2858-4f82-a255-9299ea2ab9f0", uuid: "9ab3beff-2bb7-48e2-8b95-ce18799b301f" },
+  { q: "log uvicorn khởi động ở cổng 8787 và một lượt gọi trang docs trả về 200", lang: "vi", kind: "tool_result", session: "0f7194d8-3a59-49bc-b425-810d382d1299", uuid: "11fd8af0-7bf0-40ef-8b21-45d0dd02b98f" },
+  { q: "kết quả tìm ba hàm xử lý video: chọn tệp mp4 theo tên audio, dựng video bằng ffmpeg, và kiểm luồng bằng ffprobe", lang: "vi", kind: "tool_result", session: "f09ecdfe-96a7-42c9-b882-00e2952f34f1", uuid: "bb25caa8-e0f8-4ffb-8729-d8ae2342f164" },
+  { q: "đoạn mã nạp cấu hình dự án rồi đọc phần input_panel: ngày gốc, giờ phát hành, các khung lịch đã lưu", lang: "vi", kind: "tool_result", session: "0b85fe4d-a2c8-4f7e-bd55-98046ea7d0be", uuid: "89d4b940-714f-4eba-a8e2-7f7e4a3d78b7" },
+  { q: "hàm dựng ngữ cảnh cho một track: gom project_id, run_id và các thư mục vào-ra vào một từ điển", lang: "vi", kind: "tool_result", session: "4ef25efd-064a-4b1f-b54a-df4868a8ed47", uuid: "afe2ce95-4eac-4b51-9d32-344a292a5f32" },
+  { q: "tệp dựng ảnh hai chặng: chặng đầu build frontend bằng node alpine, chặng sau chạy python slim rồi cài ffmpeg với libsndfile", lang: "vi", kind: "tool_result", session: "86757abe-0548-4a32-9d52-d529d1a09fe1", uuid: "13c1e1d4-7bd6-4d2a-9c30-50f881bf2281" },
+  { q: "hai lượt liệt kê thư mục workspaces đều báo không có đường dẫn đó", lang: "vi", kind: "tool_result", session: "de508902-2266-4b65-a72d-aa1c19cf20bb", uuid: "d4ca26ef-d526-4f4b-a16b-d55d5f325995" },
+  { q: "đầu tệp store zustand của zflow: khai hướng layout, vị trí node và trạng thái hiển thị có bề rộng cao với cờ mở rộng", lang: "vi", kind: "tool_result", session: "542eb44f-d160-48ba-aee7-94bc4ef0eab4", uuid: "477895d3-2b3e-468f-aef8-50c04fc7f7b1" },
+  { q: "liệt kê chi tiết thư mục gốc music_video_flow: có backend, data, docker-compose, Dockerfile và một script sửa prompt", lang: "vi", kind: "tool_result", session: "5cff7a9c-c149-4f05-8141-1d185d9be488", uuid: "63cbedf8-793b-493e-92b0-d2b390d3c80f" },
+  { q: "thông báo đã dừng một tác vụ nền, kèm nguyên lệnh đo dung lượng npm cache và thử mklink junction", lang: "vi", kind: "tool_result", session: "1db4b86f-283f-4b68-9c11-5a55712409ab", uuid: "22a76121-c86a-41ab-b978-869a906e7e10" },
+  { q: "đầu module PROCESS của OpenRCA: hàm chấm điểm bất thường theo kiểu điểm-đổi-chiều, có nhắc thêm hướng phát hiện gian lận", lang: "vi", kind: "tool_result", session: "62507baa-08aa-4afa-9880-99479ef18004", uuid: "4c948270-c59b-4d01-b8d4-76425d1a2be2" },
 
   // ── LỚP `keyword` (2026-08-09) — lối tìm PHỔ BIẾN NHẤT, corpus từng MÙ HOÀN TOÀN ───────
   //
@@ -203,6 +244,26 @@ export const RECALL_CORPUS: LabeledQuery[] = [
   { q: "headroom_memory memory_backend enable_memory", lang: "en", kind: "keyword", session: "98b4d9bf-69b2-476c-8c87-d322cc4d2c26", uuid: "75e522fd-281b-461d-8382-9496c9360c6e" },
   { q: "claude-plugins-official anthropics installlocation", lang: "en", kind: "keyword", session: "a90f54d0-a483-4c3d-8872-f8bac2579e46", uuid: "0059262f-5c6c-498e-9b9e-c8e4788ddbda" },
   { q: "flowstore.ts movenode positions", lang: "en", kind: "keyword", session: "22836668-7408-49ac-998d-c13b0f0a8278", uuid: "d7358bba-f375-4007-a724-221b0691f734" },
+
+  // ── `keyword` MỞ RỘNG (2026-08-23) — 12 → 23 nhãn ──────────────────────────────────
+  // Sinh theo ĐÚNG công thức của khối trên (rải bước id · một câu/phiên · 3 token có tần số tài
+  // liệu 2–400 · lane AND trả 1–60 ứng viên), có ca tự kiểm: token lấy từ chính tin đó thì lane
+  // AND phải trả ≥1. Con số trong ngoặc là (tần số tài liệu / số ứng viên lane AND) lúc sinh —
+  // ghi lại để ai đo lại biết câu này đang gác vùng nào, và để phát hiện khi kho đổi làm nó lệch.
+  // ⚠ ĐÃ LOẠI có chủ đích: token là mã task / mảnh uuid lấy từ khối `<task-notification>`
+  // (`bkn18008e` · `bcxjxa95h`…). Không ai gõ mấy chuỗi đó để đi tìm ⇒ nhãn như thế đo một lối
+  // dùng KHÔNG CÓ THẬT, cùng họ với boilerplate mà khối trên đã cấm.
+  { q: "fetch_live_candle fetch_task retry_delay", lang: "en", kind: "keyword", session: "e071a00b-f587-44ec-a178-f76cedc1b9b9", uuid: "ae23bab3-021d-4818-a2e9-7ee80f5da349" }, // df 8/26/27 · AND 7
+  { q: "test_proxy_cache_ttl_metrics.py cache_by_agent cache_write_tokens", lang: "en", kind: "keyword", session: "ec248e0d-82f5-4a2e-b573-ac8f922d7761", uuid: "ca08416e-27a6-4676-a754-60c4ed45226b" }, // df 12/29/32 · AND 2
+  { q: "align_lengths default_balance altered", lang: "en", kind: "keyword", session: "34436cf7-ed82-469e-895b-8e5d00849eea", uuid: "efca244f-dacb-4850-81b7-6f2ac2eee0c2" }, // df 4/4/11 · AND 4
+  { q: "setencoding istty payload.cwd", lang: "en", kind: "keyword", session: "916c729c-b563-45d1-83ed-9b1f753ba95d", uuid: "13f457fe-829a-4e68-bb44-c74fafa71170" }, // df 11/15/23 · AND 4
+  { q: "backgroundvariant.dots prooptions hideattribution", lang: "en", kind: "keyword", session: "2adc7fff-390a-4782-aba5-05215feeaeb3", uuid: "1725fed7-7bb2-4aed-beae-f45c15b29195" }, // df 8/11/11 · AND 2
+  { q: "basenodeprops add_row_h var_type_icon", lang: "en", kind: "keyword", session: "2e52398e-2391-4647-b752-549081e91052", uuid: "b2edd75d-9a1e-416a-9c7f-d738da197ec5" }, // df 25/52/54 · AND 10
+  { q: "runtimeconfig steps_dir node_timeout_seconds", lang: "en", kind: "keyword", session: "3d210844-cf4f-4446-b793-fc681295202e", uuid: "d2ead5c2-38b4-4f7a-9884-6f68fc8a0c40" }, // df 20/57/84 · AND 1
+  { q: "scrollbarpolicy scrollbaralwaysoff pointinghandcursor", lang: "en", kind: "keyword", session: "deebd4b4-a816-4837-9997-1e19a4a5ac7e", uuid: "f4621dc5-cd24-4816-8183-fea3f9df937e" }, // df 2/2/6 · AND 1
+  { q: "chrome_100_percent.pak chrome_200_percent.pak d3dcompiler_47.dll", lang: "en", kind: "keyword", session: "61d582e5-2858-4f82-a255-9299ea2ab9f0", uuid: "d0b9e20c-43f9-483f-b580-5fd693b78f38" }, // df 4/4/8 · AND 4
+  { q: "show_streams show_format print_format", lang: "en", kind: "keyword", session: "07fc73ab-4bc8-4b73-abb6-8aefadf661a9", uuid: "807c01c9-9325-444c-888a-ceecb4a4c104" }, // df 23/25/33 · AND 20
+  { q: "generatevideorequest output_filename ffmpeg_path", lang: "en", kind: "keyword", session: "0f7194d8-3a59-49bc-b425-810d382d1299", uuid: "c7e5986a-6390-4362-847f-73a72a599412" }, // df 51/64/73 · AND 29
 ];
 
 /** Truy vấn theo lớp — `kind` khuyết nghĩa là `prose` (34 câu viết trước khi phân lớp). */

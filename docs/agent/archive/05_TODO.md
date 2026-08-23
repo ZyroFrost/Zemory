@@ -1647,3 +1647,139 @@ liên quan tên thư mục FE — đừng đổi nhầm khi thấy grep ra hàng
 > TOÀN BỘ dư địa của mọi lớp rerank ở kho này. Nghẽn thật nằm ở POOL, không phải ở xếp lại.
 
 <details><summary>Hồ sơ gốc (phát hiện 2026-08-08) — giữ để tra</summary>
+
+<!-- dời từ 05_TODO.md 2026-08-23 (chốt phiên) — 3 section đã xong, mục còn mở đã tách ra trước -->
+
+## ✅ HAI CỔNG BÁO OAN + MỘT LỖ `*.env` — ĐÃ VÁ 2026-08-20 (báo từ `PBI_SasinFlow_Rebuild`, TỰ ĐO LẠI trước khi sửa)
+
+Báo cáo nêu 2 lỗi, đo lại thì **đúng 1,5/2** — và lộ thêm một lỗ nặng hơn báo cáo không thấy:
+· **① `conform` chặn `pipelines/<domain>/`** (non-app) — tái lập được; gốc SÂU hơn mô tả:
+  `graph.ts:266` gán slot theo `basename` nên MỌI con-của-slot tên lạ đều "vô slot" (zemory
+  xanh chỉ vì may — mọi folder lồng trùng tên slot). Vá: `NONAPP_FREEFORM_PARENTS`
+  (`tasks`·`pipelines`·`data`, khai ở `structure-tree.ts`, có gate PARITY neo vào chính
+  template non-app) — **CHỈ miễn profile non-app**; đề nghị gốc "miễn mọi subdir" bị BÁC vì
+  mở lỗ phía app (03 §2 cấm tên mới trong domain). Kèm: `ignore` trong marker nay áp cả
+  nhánh chuẩn (trước chỉ nhánh `layout:"foreign"` đọc — repo theo chuẩn không có đường miễn).
+· **② guard đọc `.git/hooks/pre-push` thành `git push`** — 1/2 ca của báo cáo đúng (ca
+  `cat pre-commit + .env` họ ghi CHẶN, đo trên zemory là QUA). Vá bằng
+  `(?<!\.)\bgit\b(?![\\/])` cho cả 4 nhánh git; **BÁC** cách vá token-đầu-câu của báo cáo —
+  đo 8 ca: `/usr/bin/git push` · `sudo git push` · `env A=1 git push` sẽ LỌT.
+· **③ (báo cáo KHÔNG thấy, nặng nhất) mẫu secret thiếu `*.env`** — `git add ipos_loader.env`
+  /`prod.env` LỌT SẠCH trên mọi repo dùng mặc định; comment trong `guard-gen.ts` còn tự nhận
+  "app/x.env vẫn bị bắt" (SAI, đo ra lọt). Vá: thêm `*.env` + allow `example.env`/`sample.env`;
+  nhánh secret nay CHỈ quét token của đúng SEGMENT chứa lệnh git (trị luôn ca "tên .env nhắc
+  trong `echo`" cùng câu lệnh).
+Gate: matrix +2 test · conform +4 test (cả VẾ NGƯỢC app-vẫn-nghiêm) — **80/80**, 5 đột biến
+đều đỏ được (git trần ⇒ 1 đỏ · bỏ `*.env` ⇒ 1 đỏ · quét-cả-dòng ⇒ 1 đỏ · tắt nhánh non-app
+⇒ 1 đỏ · thêm parent lạ ⇒ parity đỏ). Bản ship cowork chép lại + manifest 321→338 · 43→46.
+
+- [ ] **(chờ user) MỖI REPO KHÁC LÀM MỘT CHUYẾN 3 LỆNH** — `zemory sync` (nhận skill mới `write-style`,
+  gap-fill file thiếu) → `zemory hook guard` (2 đợt vá 20/08: PowerShell + `.git/`-path + `*.env`) →
+  `zemory doctor` (tự kêu nếu guard còn lỗi thời). Repo CÙNG máy làm được NGAY (CLI là junction);
+  máy kia chờ push. ⚠ 2 dòng đăng ký skill (`04_SKILLS`+`AGENTS`) sync KHÔNG tự thêm (file-wins) —
+  `conform` bên đó sẽ nhắc, agent bên đó tự thêm. Không tự sang sửa (`02_RULES §Phạm vi`).
+- [ ] **(ĐÃ CHẠY PHÉP THỬ điều 15 — 2026-08-21, user hỏi "40 ngôn ngữ opt thêm được không") —
+  KẾT LUẬN: cơ chế opt-thêm ĐÚNG là rẻ, nhưng 36 grammar sẵn có KHÔNG khớp nhu cầu; SQL bị
+  chặn ở wasm.** Số đo:
+  · `node_modules/tree-sitter-wasms` (Unlicense, đã cài) mang **36 grammar** (50 MB), zemory
+    mới nạp 4. Nạp thử 5: **bash/java/go/rust LOAD OK cùng ABI 0.20.8 · ruby LOAD FAIL** —
+    fail-open đỡ được, đúng trực giác user "không hại chất lượng" ở tầng nạp.
+  · Nhưng "hỗ trợ một ngôn ngữ" là **BA tầng**, grammar chỉ là tầng 3: ① `SRC_EXT` bộ quét
+    file (hiện chỉ ts/js/py — file .java/.sql còn không thành node) · ② cạnh import (regex
+    per-language) · ③ walker symbol (bash/java/go tình cờ khớp tên node hiện tại; **rust khớp
+    0**; mỗi ngôn ngữ cần mapping riêng).
+  · **Rủi ro chất lượng THẬT nếu mở tầng ① mà thiếu tầng ②:** node mới toàn cô lập ⇒
+    `isolated_pct` hiện **29,4% / trần 30%** — đỏ oan gần như chắc chắn.
+  · **Estate đối chiếu:** 36 grammar ∩ nhu cầu thật ≈ ∅ (không java/go/rust); thứ CẦN là
+    **SQL (60 file)** + PS1 (15) thì gói KHÔNG có; `@derekstride/tree-sitter-sql` (MIT) npm
+    **không kèm wasm prebuilt** — muốn dùng phải tự build emscripten + khớp ABI 0.20.8.
+  **Việc còn mở (chờ user chốt có đáng không):** một buổi build-thử wasm SQL + mapping 3 tầng
+  + parse thử trên chính 60 file thật, cổng đạt = ERROR-node thấp + fitness không đỏ oan
+  (thêm ngôn ngữ mới thì node của nó phải được miễn/điều chỉnh trần isolated). Không gấp.
+
+## ✅ PHÉP THỬ NHÚNG LỚP TOOL — ĐÃ ĐO 2026-08-11, CỔNG QUA, đang embed kho thật
+
+> 🔄 **Supersede mục "VIỆC ĐẦU TIÊN CỦA PHIÊN SAU" viết cùng file.** Sổ ghi job dừng ở
+> **24.073 (53,8%) · 7/14 nhãn** — đo lại bằng DB thì đã là **26.479 (59,2%) · 12/14 nhãn**.
+> Lượt chạy thứ hai (15:30 10/08 → 01:18 11/08) không ai ghi log nên sổ đứng ở mốc cũ.
+
+**A/B cùng mã, cùng ngày, cùng 68 nhãn** — đối chứng chạy trên kho thật (chưa có vector tool),
+không so chéo với con số 10/08:
+
+| lớp | kho thật (không vector tool) | bản sao (có vector tool) |
+|---|---|---|
+| `tool_use` @10 | **0%** · MRR 0,000 | **14%** · MRR 0,048 |
+| `keyword` @10 | 42% · MRR 0,314 | **50%** · MRR 0,336 |
+| `prose` @10 | 50% · MRR 0,393 | 50% · MRR 0,392 |
+| `tool_result` @10 | 25% | 25% |
+| hybrid nghiêm @10 | 35% · MRR 0,274 | **40%** · MRR 0,287 |
+| hybrid tương đương @10 | 53% · @40 65% | **66%** · @40 **74%** |
+
+**Cổng QUA:** `tool_use` thoát 0% (nhánh SAI là *vẫn ~0%*), không lớp nào tụt.
+⚠ Mức nhảy của thước **tương đương** (+13đ) **không phải toàn bộ là hệ tốt lên** — thước đó cần
+vector mới chấm được "gần trùng", nên trước đây tin tool *không thể* được tính tương đương.
+Con số đáng tin là thước **nghiêm +3 nhãn**, khớp cộng dồn 2 `tool_use` + 1 `keyword`.
+
+**Sửa hai chỗ SAI trong mốc bằng chứng cũ:**
+· **14/14 KHÔNG đạt được** với phạm vi `Edit,Write,Bash,PowerShell` — một nhãn trỏ vào tool
+  **`Artifact`**, nằm ngoài danh sách ⇒ trần thật là 13/14. Dòng "28.705 ⇒ 14/14" đã chết.
+· Phạm vi chạy kho thật nay là **`Edit,Write,Bash,PowerShell,Artifact`** = **45.059 tin**
+  (`Artifact` chỉ 21 tin — thêm vào gần như miễn phí và nó phủ đúng nhãn thứ 14).
+
+  ✅ **XONG từ 11/08** — job đó kết thúc lâu rồi (kết quả: lớp `tool_use` 0%→21%@10, xem
+  `06_CHANGES`). *`embedRunning: true` hiện nay là job NỀN THƯỜNG NGÀY của scheduler, không phải
+  job này — đừng đọc nhầm thành "vẫn đang chạy".*
+  ~~**Job embed kho thật ĐANG CHẠY** (bắt đầu 01:46 ngày 11/08, ~15,7 giờ máy).~~
+  Log `D:\huy.nguyen\zemory-lab\embed-full-real.log`; đo tiến độ bằng SQL trên `messages`
+  ⋈ `vec_chunks_rowids`, đừng tin log (lượt trước mất dấu vì không ai ghi).
+  **Phóng bằng `.vbs` (`WshShell.Run(cmd,0,False)`) nên nó MỒ CÔI, không chết theo phiên agent** —
+  đây là đường thay cho câu cũ "lệnh dài phải do user chạy ở cửa sổ riêng".
+  Xong ⇒ chạy lại `memory bench --recall --no-rerank` trên kho thật, so đúng bảng trên.
+
+- [ ] **Neo đo tiến độ — ghi ra để đừng đếm sai lần nữa:** trong bảng bóng `vec_chunks_rowids`,
+  **`rowid` mới là id tin**, cột `id` bỏ trống (NULL). Đếm bằng `vec_map` chỉ ra tin bị CHUNK
+  (5.874 hàng), không phải toàn kho. Tự kiểm đúng: 180.697 hàng chính + 5.874 chunk = 186.571.
+
+## 🔓 COWORK ĐỌC ĐƯỢC — ✅ ĐÃ BUILD XONG (soát lại 2026-08-07); còn đúng 1 CÂU HỎI chờ user
+> ⚠ **Sổ đã nói khác code — heading cũ ghi *"chỉ còn viết adapter"*, SAI.** Đo đủ ba nguồn 2026-08-07:
+> ① **MÃ** — `backend/src/memory/adapters/cowork.ts` (parse event → tin, giữ khối tool) **và** đường KÉO
+> trong `backend/src/memory/scanweb.ts` (`PLATFORMS.cowork`, `/v1/code/sessions`, đi cùng cửa sổ claude.ai)
+> + test `backend/test/cowork.test.mjs`; commit `1e151de`. ② **GM/git** — lane ship cùng đợt "thu hội thoại
+> web nhiều tài khoản". ③ **CHẠY THẬT** — daemon 4444 báo source `claude-cowork`: **1 phiên · 63 tin**
+> (16/07) đã nằm trong kho. ⇒ Adapter KHÔNG còn là việc; **gate `todo verify` xanh vẫn không bắt được ca
+> này** (nó chỉ phủ 20/58 mục có tên tra được), nên ghi ra đây để phiên sau khỏi build lại lần hai.
+> *(Vẫn đúng: 3 phiên user cần — "Harness AI" v.v. — CHƯA có trong kho, mới 1 phiên; xem câu hỏi bên dưới.)*
+
+> 🔄 **Đảo kết luận cũ.** `06_CHANGES [2026-07-30d]` ghi *"phiên Cowork không phơi qua claude.ai"*
+> vì 3 endpoint đoán mò (`cowork_sessions` · `tasks` · `sync/mcp`) đều 404. **Sai vì đoán sai chỗ:**
+> Cowork KHÔNG nằm dưới `/api/organizations/…` mà ở **`/v1/code/sessions`**. Tìm ra bằng cách cắm móc
+> vào `fetch` của trang rồi mở thật một phiên (`Page.addScriptToEvaluateOnNewDocument` để móc sống qua
+> lần tải lại) — đoán URL 6 lần đều trượt, móc một lần là ra.
+
+**Công thức (đã gọi thật, 200):**
+```
+GET /v1/code/sessions?tags=cowork-remote&limit=100&include_trigger_sessions=true   → {data[], resume_token}
+GET /v1/code/sessions/<cse_id>/events?limit=500                                    → {data[], resume_cursor}
+headers BẮT BUỘC (thiếu ⇒ 400, kể cả khi đã đăng nhập):
+  anthropic-version: 2023-06-01 · anthropic-beta: ccr-byoc-2025-07-29
+  anthropic-client-feature: ccr · anthropic-client-platform: web_claude_ai
+  x-organization-uuid: <org có caps 'chat'>
+```
+**Shape:** session `{id: cse_… , title, created_at, last_event_at, status, user_message_count, tags}` ·
+event `{event_id, event_type, created_at, sequence_num, payload}`. Đo trên phiên *"Claude-swap setup"*:
+**218 event** → `user` 30 (payload.message.content là **CHUỖI**) + `assistant` 50 (content là **MẢNG block**
+`{text}`) = **80 tin thật**; phần còn lại (`system` 61 · `control_request/response` 36 · `env_manager_log` 26
+· `result` · `active_goal` · `prompt_suggestion` · `rate_limit_event`) là điều khiển/log.
+
+- [ ] **CÂU HỎI đang chờ chính 3 phiên đó trả lời — bộ chuẩn Cowork có bị CẮT QUÁ TAY?**
+  Nguyên văn user (`GM #2136043`, 2026-07-30): *"bộ cowork rút gọn là lúc t làm việc bên cowork của
+  claude, bên đó bàn là để **tiết kiệm token khi load**, mới loại bỏ khá nhiều, vì **cowork ko có bộ não
+  global như hệ claudecode** nên nó ko chứa nhiều thông tin để nén dc… nhưng **tui ko nghĩ là nó lại cắt
+  quá nhiều như vậy**… t cần bạn tra gm để kiểm tra **đã nói gì và đã quyết định ntn**"*.
+  **Nghi vấn cụ thể nhất:** bộ cowork **không có `03_STRUCTURE`** (chỉ `01_CONSTITUTION`·`02_RULES`·
+  `05_TODO`·`06_CHANGES` — đo `GM #2136037`), trong khi user khẳng định (`#2136034`) *"logic ban đầu của
+  tui chính là để 03 làm luôn công việc của dictionary… ý định ban đầu là hợp nhất vào 1 file"* và 03
+  vốn **vừa là cây thư mục vừa là mô tả từng dòng** (`#2136039`·`#2136041`).
+  ⇒ Cần **quyết định gốc** (cắt gì · vì sao) để chấm "cắt này có lý do token thật hay quá tay".
+  *(2026-07-31: user sẽ COPY THẲNG nội dung từ Cowork sang thay vì chờ capture.)*
+
