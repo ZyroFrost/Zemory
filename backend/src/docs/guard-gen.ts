@@ -37,8 +37,10 @@ export interface GuardGenResult {
  *  `prod.env` LỌT SẠCH trên mọi repo dùng mặc định (đo tái lập từ báo cáo repo PBI) —
  *  trong khi comment nhánh secret lại tự nhận "app/x.env vẫn bị bắt". File `<tên>.env`
  *  là hình dạng secret phổ biến nhất; tên mẫu (example/sample) đi qua secret_allow. */
-const SECRET_DEFAULTS = [".env", ".env.*", "*.env", "*.pem", "*.ppk", "id_rsa*", "id_ed25519*", "*.key"];
-const SECRET_ALLOW_DEFAULTS = [".env.example", "example.env", "sample.env"];
+// EXPORT để cổng nội dung của `template-parity` so bản ship cowork với đúng bộ mẫu này —
+// policy.json ship từng bị sửa TAY (20/08) mà không cổng nào thấy (#12, user gật 21/08).
+export const SECRET_DEFAULTS = [".env", ".env.*", "*.env", "*.pem", "*.ppk", "id_rsa*", "id_ed25519*", "*.key"];
+export const SECRET_ALLOW_DEFAULTS = [".env.example", "example.env", "sample.env"];
 
 /** policy.json sinh từ marker — marker là nguồn, file này là DẪN XUẤT sinh lại được. */
 function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
@@ -324,7 +326,13 @@ function checkBash(cmd) {
 
   if (ANY_DEL.test(bare)) {
     const recursive = RECURSIVE_DEL.test(bare);
-    for (const tok of bare.split(/[\\s'";|&]+/)) {
+    // CHI quet token cua DUNG SEGMENT chua lenh xoa (tach ;|&) — cung khuon + cung ly do
+    // voi nhanh git o tren (sua 2026-08-24, user gat 21/08): rm build.log && echo check-prod.env
+    // tung bi CHAN OAN vi ten .env nhac trong echo. Quet ca dong thi nguoi ta hoc cach
+    // thoi viet lenh tu-kiem — do moi la thiet hai. RECURSIVE_DEL van xet CA lenh.
+    for (const seg of bare.split(/[\\n;|&]+/)) {
+      if (!ANY_DEL.test(seg)) continue;
+      for (const tok of seg.split(/[\\s'"]+/)) {
       if (!tok || tok.startsWith("-") || tok.startsWith("/")) continue;
       const rel = tok.replace(/\\\\/g, "/").replace(/^\\.\\//, "");
       const name = rel.split("/").pop();
@@ -336,6 +344,7 @@ function checkBash(cmd) {
           deny("CHAN (guard lop 1): xoa trong duong da khai protected \`" + prefix + "\` - " +
             POLICY.protected_write_reason);
         }
+      }
       }
     }
     if (recursive && !consumeFlag("delete", bare)) {

@@ -72,6 +72,6 @@
   rồi chờ" sẽ chôn mất thứ thật sự đang chặn.*
 
 ## Sửa đổi hiến pháp
-- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → ghi đề xuất vào `05_TODO.md` chờ duyệt, KHÔNG tự sửa file này.
+- **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → **HỎI user ngay trong phiên**, user gật mới ghi; KHÔNG tự sửa file này. *(Luật đầy đủ về cửa vào — kể cả vế BÃI BỎ "đậu đề xuất vào `05_TODO` chờ duyệt" — ở `02_RULES` §Sổ việc `05_TODO`. Không lặp ở đây.)*
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
 - **Mục đích còn "(chưa chốt)" = harness chưa xong** — hỏi user chốt sớm; mọi điều khoản chỉ có nghĩa khi biết project phục vụ cái gì.

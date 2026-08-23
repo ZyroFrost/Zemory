@@ -165,15 +165,26 @@ export function handleHook(event: HookEventName, payload: any): string {
             // (nợ gate đầy đủ từ 15/08) nên nó trôi tới 22/08 mới lộ.
             writeFileAtomic(flag, new Date().toISOString());
             const r = syncCheck(cwd);
+            const notes: string[] = [];
+            // Bản THÂN CÔNG CỤ cũ — nói TRƯỚC, vì `zemory sync` gap-fill từ template của
+            // bản đang cài: áp chuẩn bằng một bản cũ là chép lại cái cũ.
+            if (r.appUpdate) {
+              notes.push(
+                `[zemory] ⚠ zemory ${r.appUpdate.have} — có bản MỚI ${r.appUpdate.latest} ` +
+                  `(${r.appUpdate.from} đóng dấu ${r.appUpdate.at}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`,
+              );
+            }
             if (r.connected && (r.missing.length > 0 || r.guardStale.length > 0)) {
               const parts = [
                 r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
                 r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
               ].filter(Boolean);
-              updNote =
+              notes.push(
                 `[zemory] ⚠ Harness repo này CŨ so với bộ chuẩn hiện hành — ${parts.join(" · ")}. ` +
-                `Chạy \`zemory sync\`${r.guardStale.length ? " rồi `zemory hook guard`" : ""} khi tiện (xem \`zemory doctor\`).`;
+                  `Chạy \`zemory sync\`${r.guardStale.length ? " rồi `zemory hook guard`" : ""} khi tiện (xem \`zemory doctor\`).`,
+              );
             }
+            if (notes.length) updNote = notes.join("\n");
           }
         }
       } catch {

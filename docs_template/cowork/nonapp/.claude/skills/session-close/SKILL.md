@@ -26,7 +26,7 @@ description: Close out a work session correctly - route everything that happened
 | Việc đã xong / sản phẩm đã sửa | `06_CHANGES.md` (**sau khi user OK**) và **xoá khỏi** `05_TODO.md` |
 | Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ **đã tới đâu, bước kế tiếp là gì** |
 | Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` · `03_STRUCTURE` §2 nếu là định nghĩa metric |
-| Luật riêng phát sinh | **ĐỀ XUẤT** vào `05_TODO.md` chờ user chốt — **KHÔNG tự sửa `01_CONSTITUTION.md`** |
+| Luật riêng phát sinh | **HỎI user ngay trong phiên**, gật mới ghi — **KHÔNG tự sửa `01_CONSTITUTION.md`**, KHÔNG đậu vào `05_TODO` chờ duyệt |
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO`. **Chẩn đoán sai và đường cụt cũng phải ghi** — để phiên sau khỏi đâm lại.
 

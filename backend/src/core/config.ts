@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
 import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
 
@@ -19,6 +20,24 @@ export const MARKER_CANDIDATES = [
   join("docs", ".harness.json"),
   ".harness.json",
 ] as const;
+
+/**
+ * Số hiệu bản zemory đang chạy — MỘT nguồn cho mọi bề mặt (`/ping`, UI, tem kênh chung).
+ *
+ * Trước đây `package.json` bị đọc rời ở hai chỗ; thêm chỗ thứ ba là đúng kiểu "nguồn trùng"
+ * mà mặt ③ của `audit` gọi tên. `cli.ts` CỐ Ý giữ bản đọc riêng của nó: nó chạy trước mọi
+ * import tĩnh để giữ lối tắt hook (~340ms → ~70ms), nhập module này vào đó là phá lối tắt.
+ *
+ * Fail-open: đọc hỏng ⇒ chuỗi rỗng, người gọi tự hiểu là "không tra được".
+ */
+export function appVersion(): string {
+  try {
+    const p = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "package.json");
+    return (JSON.parse(readFileSync(p, "utf8")) as { version?: string }).version ?? "";
+  } catch {
+    return "";
+  }
+}
 
 /** Marker THẬT của một project root — đường tuyệt đối, hoặc null nếu chưa nối harness.
  *  Đây là phép thử "đã nối harness chưa" DUY NHẤT; đừng tự ghép `join(root, CONFIG_FILE)`

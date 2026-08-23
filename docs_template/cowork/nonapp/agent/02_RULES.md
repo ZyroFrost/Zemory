@@ -79,12 +79,14 @@ xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, d
 - **Docs = FILE là nguồn (FILE WINS):** sửa `.md` trực tiếp, bám chuẩn; **xong là xong**.
 - **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `03` chỗ-để-file + từ điển · `04` sổ đăng ký skill · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một nội dung sống ở ĐÚNG MỘT nhà; nơi khác cần thì **DẪN CHIẾU**, không chép lại.
 - **Đồng bộ bắt buộc — `01` ↔ `02` ↔ `03` ↔ `04` ↔ `05` ↔ `06` ↔ `plan/` luôn KHỚP nhau.** Mỗi thay đổi: `05_TODO` phản ánh việc, `06_CHANGES` ghi log (sau khi user OK), `03` cập nhật nếu đụng cấu trúc/định nghĩa, `04` cập nhật nếu thêm/bớt skill, `plan/` cập nhật nếu đổi thiết kế. Sổ nói khác thực tế là dạng sai khó phát hiện nhất — không cổng nào bắt được.
-- **`docs/plan/` chỉ chứa SPECS** — KHÔNG todo (→ `05_TODO`), KHÔNG luật (→ đề xuất vào `01_CONSTITUTION`).
+- **`docs/plan/` chỉ chứa SPECS** — KHÔNG todo (→ `05_TODO`, qua cửa vào bên dưới), KHÔNG luật (→ **HỎI user**).
+- **SỔ VIỆC `05_TODO` — CỬA VÀO: agent KHÔNG tự thêm mục.** Không tự phát sinh mục `05_TODO` · luật mới · cổng kiểm · bộ đếm · bộ đo · advisory. Thấy cần ⇒ **hỏi MỘT câu kèm đề xuất ngay trong phiên**; user gật mới ghi, gật vào đâu ghi vào đó. **Đề xuất KHÔNG được "đậu" vào sổ chờ duyệt** — mục đậu thì không bao giờ đóng được (nó là câu hỏi chưa ai trả lời, không phải việc chưa làm), và đó chính là cách sổ phình. Ngưỡng: **thực sự quan trọng** — lắc nhắc thì bỏ qua. Trước khi thêm, trả lời đủ ba câu: ① gỡ bớt được gì · ② gộp vào cái đã có được không · ③ **không có nó thì hỏng cái gì, đo được không** — không trả lời được ③ thì KHÔNG LÀM. KHÔNG áp cho: việc user giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có đã bắt buộc.
+- **CỬA RA: xong một mục là đóng ngay** — đo lại, ghi `06_CHANGES`, **xoá khỏi `05_TODO`**; không đợi chốt phiên.
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
 **Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
 → Mở `.claude/skills/session-close/`. **TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.**
-Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO` — kể cả chẩn đoán sai và đường cụt.
+Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **hoặc** `05_TODO`. Chẩn đoán sai · đường cụt: gộp vào entry `06_CHANGES` của chính việc đó, **KHÔNG đẻ mục `05_TODO` riêng** (cửa vào ở trên).
 
 ## Phạm vi (BẮT BUỘC — luật cứng)
 - **CHỈ làm việc trong thư mục đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng thư mục dự án khác khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp" hay "tiện tay sửa luôn"**.

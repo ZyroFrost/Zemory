@@ -98,6 +98,23 @@ test("GHI DE file dang co thi HOI; Edit thi KHONG hoi", () => {
   assert.equal(e.blocked, false, `Edit sua mot doan thi KHONG duoc hoi:\n${e.say}`);
 });
 
+// Sua 2026-08-24 (user gat 21/08): nhanh xoa quet token theo DUNG SEGMENT chua lenh xoa,
+// cung khuon nhanh git. Truoc do `rm build.log && echo "check prod.env"` bi CHAN OAN — ten
+// secret nhac trong echo cua CUNG cau lenh. Ca duong (xoa secret that) giu nguyen o tren.
+test("CA AM (segment): ten secret o segment KHAC segment xoa KHONG bi va lay", () => {
+  for (const cmd of [
+    'rm build.log && echo "check prod' + '.env"',
+    "type prod" + ".env && rm build.log",
+    "rm out.txt; cat ." + "env.example",
+  ]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, cmd + " — secret o segment khac phai duoc CHO QUA (chan oan = nguoi ta thoi viet lenh tu-kiem): " + r.say);
+  }
+  // va ca DUONG ngay canh de dot bien khong lach: secret o DUNG segment xoa van CHAN
+  const bad = ask(bash("echo ok && rm ." + "env"));
+  assert.equal(bad.blocked, true, "xoa secret o segment xoa van phai CHAN");
+});
+
 test("KHONG NHIEU: xoa mot file thuong van cho qua", () => {
   for (const cmd of ["rm backend/src/ui.ts", "Remove-Item backend/src/ui.ts", "rm /tmp/x.txt"]) {
     const r = ask(bash(cmd));

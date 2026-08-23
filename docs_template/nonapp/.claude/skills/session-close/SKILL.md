@@ -29,7 +29,7 @@ description: Close out a work session correctly - route everything that happened
 | Việc đã xong / deliverable-measure-pipeline đã sửa | `06_CHANGES.md` (sau khi user OK) **và xoá khỏi** `05_TODO.md` |
 | Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ `[~]`, **đã tới đâu, bước kế tiếp là gì** |
 | Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → `03_STRUCTURE` §7 (+ supersede ở changelog nếu đảo quyết định cũ) |
-| Luật / bất biến riêng phát sinh | **ĐỀ XUẤT** vào `05_TODO.md` chờ user chốt — KHÔNG tự sửa `01_CONSTITUTION.md` |
+| Luật / bất biến riêng phát sinh | **HỎI user ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_CONSTITUTION.md`, và KHÔNG đậu vào `05_TODO` chờ duyệt (vế đó đã BÃI BỎ) |
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm phải tìm được ở CHANGES **hoặc** TODO. Chẩn đoán sai / đường cụt **cũng phải ghi** (để phiên sau khỏi đâm lại).
 

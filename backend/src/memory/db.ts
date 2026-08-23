@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -355,13 +355,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts_tri USING fts5(content, content=
 CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts(rowid, content)     VALUES (new.id, COALESCE(new.content, ''));
 END;
-CREATE TRIGGER IF NOT EXISTS messages_ai_tri AFTER INSERT ON messages WHEN COALESCE(new.content,'') NOT LIKE '[tool_result]%' BEGIN
+CREATE TRIGGER IF NOT EXISTS messages_ai_tri AFTER INSERT ON messages BEGIN
   INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
   INSERT INTO messages_fts(messages_fts, rowid, content)     VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
-CREATE TRIGGER IF NOT EXISTS messages_ad_tri AFTER DELETE ON messages WHEN COALESCE(old.content,'') NOT LIKE '[tool_result]%' BEGIN
+CREATE TRIGGER IF NOT EXISTS messages_ad_tri AFTER DELETE ON messages BEGIN
   INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
 END;
 CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
@@ -382,12 +382,8 @@ END;
 -- Dùng INSERT … SELECT … WHERE để mỗi câu tự mang điều kiện riêng (thân trigger không có IF).
 -- Lane word ở trên vốn đã là một trigger hai câu — nay hai lane cùng một khuôn.
 CREATE TRIGGER IF NOT EXISTS messages_au_tri AFTER UPDATE ON messages BEGIN
-  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content)
-    SELECT 'delete', old.id, COALESCE(old.content, '')
-    WHERE COALESCE(old.content, '') NOT LIKE '[tool_result]%';
-  INSERT INTO messages_fts_tri(rowid, content)
-    SELECT new.id, COALESCE(new.content, '')
-    WHERE COALESCE(new.content, '') NOT LIKE '[tool_result]%';
+  INSERT INTO messages_fts_tri(messages_fts_tri, rowid, content) VALUES('delete', old.id, COALESCE(old.content, ''));
+  INSERT INTO messages_fts_tri(rowid, content) VALUES (new.id, COALESCE(new.content, ''));
 END;
 `;
 
@@ -673,6 +669,37 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // nhiều segment rời — người dùng gặp một lượt tìm chậm bất thường mà không hiểu vì sao.
     db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('optimize')");
     version = 21;
+  }
+  if (version < 22) {
+    // v22 ĐẢO v17: lane trigram nhận LẠI `tool_result`.
+    //
+    // v17 cắt nó để tiết kiệm đĩa (trigram 435 -> 309 MB). Nhưng lớp đó hoá ra là lớp YẾU
+    // NHẤT của recall trong khi chiếm ~31% kho, và nó chỉ còn HAI luồng (word + vector) —
+    // mà quan hệ "số luồng -> recall" là đơn điệu và đã đo nhiều lần (plan/17 §3c).
+    //
+    // Đo A/B trên BẢN SAO trước khi làm (HP điều 15), corpus 108 nhãn, hybrid, --no-rerank:
+    //   tool_result  @1 0% -> 12% · @10 20% -> 28% · MRR 0,060 -> 0,167  (+178%)
+    //   prose        y NGUYÊN (26/41/47/59 · 0,349 -> 0,350)
+    //   tool_use     MRR 0,152 -> 0,171
+    //   keyword      MRR 0,250 -> 0,201  <- TỤT, nằm đúng ngưỡng nhiễu của n=23
+    //   tổng nghiêm  MRR 0,214 -> 0,233 · tương đương 0,435 -> 0,451  (cả hai thước LÊN)
+    // Giá: kho 2.042 -> 2.304 MB (+262 MB) · truy vấn 1.333 -> 1.645 ms (+23%).
+    // Cổng "không lớp nào tụt" TRƯỢT ở keyword ⇒ **user chốt** đánh đổi này (điều 12), vì
+    // phần được ở lớp yếu nhất vượt xa nhiễu còn phần mất thì không.
+    //
+    // Chỉ NẠP BÙ phần thiếu, KHÔNG 'rebuild': rebuild nạp lại toàn bộ (~200 MB công vô ích).
+    for (const t of ["messages_ai_tri", "messages_ad_tri", "messages_au_tri"]) {
+      db.exec(`DROP TRIGGER IF EXISTS ${t}`);
+    }
+    db.exec(MESSAGES_FTS_SQL);
+    db.exec(
+      "INSERT INTO messages_fts_tri(rowid, content) SELECT id, COALESCE(content, '') FROM messages " +
+        "WHERE COALESCE(content, '') LIKE '[tool_result]%'",
+    );
+    // Gộp segment ngay: nạp một phát 89k hàng đẻ rất nhiều segment rời, để nguyên thì lượt
+    // tìm đầu tiên chậm bất thường mà không ai hiểu vì sao (cùng bài học v21).
+    db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('optimize')");
+    version = 22;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
