@@ -1,6 +1,6 @@
 // `zemory memory <scan|scan-web|search|embed|scope|hosts|digest|sync|export|
-//  import|forget|redact|backup|restore|relocate|vacuum|bench>` — the global
-// Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
+//  import|forget|redact|backup|restore|relocate|vacuum|bench|promote>` — the
+// global Memory: ingest, hybrid recall, vectors, provenance scope, sync, privacy.
 import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
@@ -18,7 +18,7 @@ import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, storageInfo } from "../memory/relocate.js";
-import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybrid, searchMulti } from "../memory/search.js";
+import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybridChecked, searchMulti } from "../memory/search.js";
 import {
   exportMemoryBundle,
   importMemoryBundle,
@@ -35,6 +35,8 @@ import {
   writeExportWatermark,
 } from "../memory/share.js";
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
+import { uplinkReport } from "../memory/uplinkguard.js";
+import { promotionReport } from "../memory/promote.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
@@ -139,10 +141,17 @@ function printScanReport(r: ScanReport): void {
   }
 }
 
-function printHits(query: string, scopeLabel: string, hits: SearchHit[]): void {
+function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstained?: boolean): void {
   console.log(`zemory memory search — "${query}"  (${scopeLabel})`);
   if (!hits.length) {
-    console.log("  no matches.");
+    // "Nothing there" and "something is there but nothing close enough" are DIFFERENT answers.
+    // Printing one sentence for both is the surface lying about what it knows.
+    console.log(
+      abstained
+        ? "  nothing close enough — the memory has candidates but none matched well (the 'don't know' gate fired).\n" +
+          "    → see them anyway: ZEMORY_ABSTAIN=0 zemory memory search ..."
+        : "  no matches.",
+    );
     return;
   }
   for (const h of hits) {
@@ -525,11 +534,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // Rerank rides the hybrid pipeline; on the plain FTS path it has no effect.
     const useRerank = useHybrid && rerankEnabled(rerankOpt);
     const sOpts = { project, all, origin: originOpt, rerank: rerankOpt, recency: recencyOpt, limit };
-    const hits = alsoQueries.length
-      ? await searchMulti([query, ...alsoQueries], sOpts)
-      : useHybrid
-        ? await searchHybrid(query, sOpts)
-        : search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
+    // Đường một-truy-vấn hybrid đi qua bản CÓ LÝ DO để phân biệt được "rỗng vì không có gì" với
+    // "rỗng vì cổng không-biết nổ". Hai đường còn lại không sinh phán quyết đó.
+    let abstained = false;
+    let hits: SearchHit[];
+    if (alsoQueries.length) {
+      hits = await searchMulti([query, ...alsoQueries], sOpts);
+    } else if (useHybrid) {
+      const r = await searchHybridChecked(query, sOpts);
+      hits = r.hits;
+      abstained = Boolean(r.abstained);
+    } else {
+      hits = search(query, { project, all, origin: originOpt, recency: recencyOpt, limit });
+    }
     // `--json`: đường máy-đọc, cho daemon gọi tìm-sâu ở TIẾN TRÌNH CON thay vì tự chạy ONNX
     // trên event loop của mình (xem jobs/searchjob.ts). In THUẦN JSON, không thêm chữ nào.
     if (rest.includes("--json")) {
@@ -544,6 +561,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         (useRerank ? " · rerank (cross-encoder)" : "") +
         (recencyOpt === false ? "" : " · recency"),
       hits,
+      abstained,
     );
     return;
   }
@@ -742,6 +760,24 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         // pass embedded NOTHING (embedded === 0 → model likely down; FTS still works).
         const why = r.embedded === 0 ? " (model unavailable? — recall vẫn chạy qua FTS)" : "";
         console.log(`  ${r.vectorRemaining} message(s) chưa embed → chạy \`zemory memory embed --all\` để vector hoá nốt${why}`);
+      }
+      // "Exported" only means the bytes reached the Drive FOLDER — not the cloud. The
+      // 2026-08-11 incident had this very command print success for 3 days while the
+      // client's upload queue was stuck and the other machine received nothing. Read the
+      // client's own journal (read-only, fail-open) and say so RIGHT HERE, at the moment
+      // the user is looking. Only OLD stuck bundles warn — the one we just wrote is young.
+      try {
+        const up = uplinkReport(driveDir);
+        if (up.stuck.length) {
+          const worst = up.stuck[0];
+          console.log(
+            `  ⚠ ${up.stuck.length} bundle từ các lượt TRƯỚC vẫn CHƯA rời khỏi máy` +
+              ` (cũ nhất ${(worst.ageMs / 3_600_000).toFixed(1)} giờ: ${worst.file}).` +
+              ` Client Drive đang kẹt hàng đợi — máy kia chưa nhận được gì. Kiểm/khởi động lại client.`,
+          );
+        }
+      } catch {
+        /* fail-open — advisory next to a successful sync, never fail the sync for it */
       }
     } catch (error) {
       console.log(`  error: ${error instanceof Error ? error.message : "sync failed"}`);
@@ -1113,6 +1149,46 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     );
     return;
   }
+  if (sub === "promote") {
+    // #12 memory promotion — REPORT ONLY. Finds user corrections/decisions repeated
+    // across sessions and proposes promoting them to a durable rule. zemory never
+    // writes the rule (điều 3): the user approves, the agent edits the docs.
+    const flags = args.slice(1).filter((a) => a.startsWith("--"));
+    const bad = flags.filter((f) => !["--json", "--limit", "--min"].includes(f));
+    if (bad.length) {
+      console.log(`zemory memory promote: unknown flag ${bad.join(" ")}`);
+      console.log("  usage: zemory memory promote [--limit N] [--min N] [--json]");
+      process.exitCode = 1;
+      return;
+    }
+    const limit = Number(flagValue(args, "--limit")) || undefined;
+    const minRepeat = Number(flagValue(args, "--min")) || undefined;
+    const rep = promotionReport({ limit, minRepeat });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(rep, null, 2));
+      return;
+    }
+    console.log("zemory memory promote — repeated corrections/decisions not yet written as rules (PROPOSAL only)");
+    console.log(`  scanned ${rep.scanned} candidate message(s) · ${rep.withVector} with vector · ${rep.clusters} cluster(s)`);
+    for (const n of rep.notes) console.log(`  ℹ ${n}`);
+    if (!rep.candidates.length) {
+      console.log("  · no cluster passed the repeat threshold (≥3 messages across ≥2 sessions).");
+      return;
+    }
+    let i = 0;
+    for (const c of rep.candidates) {
+      i++;
+      const head = c.representative.content.replace(/\s+/g, " ").slice(0, 110);
+      console.log(`  ${String(i).padStart(2)}. "${head}${c.representative.content.length > 110 ? "…" : ""}"`);
+      console.log(
+        `      ${c.count}×  · ${c.sessions} session(s) · ${c.projects.length || "?"} project(s) · last ${c.lastSeen?.slice(0, 10) ?? "?"}` +
+          ` · anchors: ${c.anchors.slice(0, 6).map((a) => `#${a}`).join(" ")}${c.anchors.length > 6 ? " …" : ""}`,
+      );
+      if (c.covered) console.log(`      ✓ already curated: "${c.covered.title}" (sim ${c.covered.sim.toFixed(2)})`);
+    }
+    console.log("  → approve one and the agent writes the rule/memory doc; zemory does not write it (drill down: zemory memory show <#id>).");
+    return;
+  }
   if (sub === "show") {
     const id = Number(args[1]);
     if (!id) {
@@ -1214,6 +1290,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  audit             soi ký tự điều hướng ẩn trong nội dung đã lưu (chỉ đọc, không sửa).",
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",
+      "  promote [--limit N] [--min N] [--json]",
+      "                    PROPOSE promotions: user corrections repeated across sessions",
+      "                    that never became a rule (report only — nothing is written).",
       "  info              table row-counts of global_memory.db.",
       "  where             show where the memory DB lives (folder + size + pointer).",
       "  relocate <dir>    move the memory DB off C:\\ into <dir> (verified; keeps a .bak).",
