@@ -173,7 +173,17 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
 - **Cửa sổ phụ ĐƯỢC CHỞ** — `vector_ship_chunk`, tra `vec_map` chứ không tra thẳng id tin (id là
   AUTOINCREMENT cục bộ). Đo trên kho hiện tại: **4.459 tin dài · 8.906 cửa sổ phụ**; thiếu chúng
   thì hỏi về đoạn CUỐI một tin dài là trượt, dù tin vẫn nằm nguyên trong kho.
-  ✅ **ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
+  🔴 **LỖ MỚI, đo 2026-08-25 bằng diễn tập phục hồi (`plan/18 §4b`): vector nhúng SAU không được
+  chở.** `shipVectorsInto(…, sinceMessageId)` lọc `messages.id > watermark`, nên vector chỉ đi ké
+  đợt tin mới. Nhúng chạy sau tin ~30 phút (scheduler) ⇒ khi vector có thì id tin đã nằm dưới
+  watermark, và nó **không bao giờ lên kênh**. Đo: kho dựng từ kênh thiếu **~22.000 vector** so
+  với kho thật ⇒ máy nhận phải nhúng lại **27.035 tin (~12 giờ)** — trái HP điều 16. Đối chiếu
+  chéo 300/300 tin `prose` của chính máy này: có vector tại chỗ, không có trong gói.
+  **Hướng vá (chưa làm, chờ user chốt):** tách watermark RIÊNG cho vector (`vec_chunks.rowid`
+  tăng đều theo thứ tự nhúng) thay vì dùng chung watermark tin — cùng khuôn `sync_state` đã có.
+  Giá: bù một lần ~27k vector ≈ 81 MB, sau đó incremental như cũ.
+
+  ✅ **Cửa sổ phụ ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
   2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
   khi cổng ship. Mục `05_TODO` "717 cửa sổ phụ" nó trỏ tới đã đóng, nay nằm ở `archive/05_TODO.md`.)*
 

@@ -55,11 +55,37 @@ lộ lọt, chết lặng, không mang đi được.
 |---|---|---|
 | ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud · `git-history-secrets` (2 ca, 2026-08-24: quét `rev-list --objects --all` + chặn blob >50 MB, mỗi phép có tự-kiểm chống đo mù) | — |
 | ⑧ | `license-gate` (3 ca, trong `npm run check`) · `npm run check:clone` (dựng từ clone sạch, chạy riêng — cần mạng) *(cả hai 2026-08-15)* | — |
-| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) | **diễn tập phục hồi định kỳ** |
+| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) · **diễn tập phục hồi CHẠY THẬT 2026-08-25** (§4b) | biến diễn tập thành ĐỊNH KỲ (mới chạy một lần, bằng tay) |
 | ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) · `guard-tool-matrix` (26 ca, TRONG gate chính — 2026-08-24) | — |
 
 **Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong
 2026-08-15; nợ nặng nhất còn lại là vế *diễn tập phục hồi định kỳ* của ⑨.
+
+### 4b. Diễn tập phục hồi ĐẦU TIÊN — chạy 2026-08-25, và nó bắt được một lỗ thật
+
+**Cách chạy (0 code mới, chỉ lệnh sẵn có):** `memory import <kênh>/global_memory.enc --merge
+--db <kho TẠM>` — đúng kịch bản *"máy mới nhận bàn giao"* của HP điều 16. Kho thật KHÔNG đụng;
+đường kho do chính lệnh in ra để kiểm chứng. Kiểm khoá `global_memory.sync.lock` trước khi đọc
+(không có ⇒ không ai đang ghi).
+
+**Kết quả — đường lùi CÒN SỐNG:** 7 phút 42 giây dựng được **2.340 phiên · 300.421 tin** từ gói
+1.639 MB; kho tạm 2.063 MB; `EXIT=0`.
+
+🔴 **Nhưng nó lộ ra lỗ CHỞ VECTOR — vi phạm HP điều 16.** Kho dựng từ kênh có **NHIỀU tin hơn**
+kho thật (300.421 vs 295.543 — gồm dữ liệu máy kia) mà **ÍT vector hơn ~22.000** (259.401 vs
+281.380) ⇒ máy mới sẽ phải nhúng lại **27.035 tin (~12 giờ)**, đúng thứ điều 16 cấm.
+
+**Truy nguyên, có đối chiếu chéo:** lấy 300 tin `prose` **của chính máy này** (`SS01-IT-12`) thiếu
+vector trong bản-từ-kênh, tra ngược kho thật ⇒ **300/300 CÓ vector tại chỗ**. Vậy không phải "máy
+kia chưa nhúng kịp" mà là **vector có rồi nhưng không đi theo gói**.
+**Cơ chế:** `shipVectorsInto(…, sinceMessageId)` chọn vector theo `messages.id > watermark` — tức
+vector đi KÉ theo đợt tin mới. Nhúng lại chạy SAU (scheduler 30 phút), lúc đó id của tin đã nằm
+dưới watermark ⇒ vector sinh sau **không bao giờ được chở**. Cùng họ với lỗi "cửa sổ phụ bị bỏ"
+mà `plan/08 §8b` đã ghi: mất mà **không hiện ra trong "còn phải nhúng"** của máy gửi.
+
+*Bài học cho chính mặt ⑨: `uplinkguard` trả lời "gói đã rời máy chưa", `backup-staleness` trả lời
+"bản sao lưu có tươi không" — KHÔNG cổng nào trả lời "dựng lại thì có ĐỦ không". Chỉ có dựng thật
+mới thấy.*
 
 ## 5. Phi-mục-tiêu
 
