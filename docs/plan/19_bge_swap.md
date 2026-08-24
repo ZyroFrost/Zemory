@@ -114,6 +114,27 @@ pool, tức **so sánh khi BẬT gộp là so lệch**.
 hẳn về phía tắt gộp, và đây là một CÔNG TẮC chứ không phải giờ máy. Đổi mặc định ⇒ phải qua cổng
 riêng (điều 12) + user chốt; chưa làm.
 
+> 🔄 **ĐÃ QUA CỔNG 2026-08-25 — kết quả: GIỮ GỘP BẬT. Vế *"cán cân nghiêng hẳn về phía tắt gộp"*
+> ở trên BỊ BÁC.** Đo A/B trên kho thật, corpus **108 nhãn**, đổi đúng một biến `ZEMORY_COLLAPSE`,
+> lane `hybrid --no-rerank`:
+>
+> | | nghiêm @10 / MRR | **tương đương** @10 / @40 / MRR |
+> |---|---|---|
+> | gộp BẬT | 32% / 0,229 | **67%** / **76%** / **0,443** |
+> | gộp TẮT | **45%** / **0,264** | 66% / 72% / 0,436 |
+>
+> **Vì sao 13 điểm nghiêm KHÔNG phải lý do tắt:** gộp trả **đại diện** cụm ⇒ đúng-uuid được đánh
+> dấu bị thay bằng bản tương đương. Đó CHÍNH LÀ thứ thước tương đương sinh ra để không phạt oan
+> (§1.2b của `plan/17`). Ở thước cầm lái, tắt gộp **không mua được gì** ở @10 (chênh 1 câu = nhiễu)
+> và **mất** ở pool sâu. Quyết theo thước nghiêm là lặp lại đúng lỗi đã trả giá tám lần.
+>
+> **Tốc độ KHÔNG phải yếu tố:** lượt đầu đo 6.409 ms (BẬT) vs 4.098 (TẮT), nhưng chạy lại lượt BẬT
+> ở vị trí thứ hai ra **3.669 ms** ⇒ chênh lệch là **cache nóng**, không phải gộp. Lane FTS cũng
+> nhanh lên tương tự dù gộp không đụng FTS — dấu hiệu để nhận ra biến nhiễu này.
+>
+> Ca âm **không đổi** (14/18 trả rỗng · 8,9 kết quả · cùng điểm đầu ở cả hai) ⇒ gộp không đụng cổng
+> "không biết". Số đo lặp lại tất định: chạy BẬT hai lần ra bộ số trùng khít.
+
 ## 5. Bước ④ — TRÁO (CHỈ sau khi user ký) — tái dùng kịch bản đợt 768
 
 > ⛔ **KHÔNG THI HÀNH — bước này đã ĐÓNG 2026-08-23: cổng §4 TRƯỢT ⇒ KHÔNG TRÁO (xem §8b).**

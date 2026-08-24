@@ -118,6 +118,15 @@ hiểu việc**, không phải hệ trích dẫn đúng một uuid.
 
 Theo lớp (tương đương): `prose@40` 76% → **82%** · `tool_result@10` 63% → **75%**.
 
+✅ **XÁC NHẬN LẠI 2026-08-25 trên corpus ĐÃ LỚN GẤP RƯỠI (108 nhãn) — quyết định GIỮ NGUYÊN.**
+`plan/19 §4b` từng nêu ngược (*"cán cân nghiêng hẳn về phía tắt gộp"*) dựa trên thước NGHIÊM;
+chạy lại A/B đổi đúng một biến `ZEMORY_COLLAPSE` cho thấy vế đó không đứng được: tương đương
+`@10` **67% (bật) vs 66% (tắt)** — chênh MỘT câu — còn `@40` **76% vs 72%** và MRR **0,443 vs
+0,436** đều nghiêng về BẬT. Thước nghiêm vẫn nói ngược (32% vs 45%) đúng như đoạn trên đã tiên
+liệu: gộp trả **đại diện** cụm nên bị phạt oan theo đúng định nghĩa. Ca âm **không đổi** ở cả hai
+cấu hình. **Tốc độ không phải yếu tố** — chênh 6.409 vs 4.098 ms của lượt đầu là **cache nóng**
+(chạy lại lượt BẬT ở vị trí sau ra 3.669 ms). Xem `plan/19 §4b` để có bảng đầy đủ.
+
 **Cơ chế để agent tự leo thang, KHÔNG phải đoán (user hỏi đúng chỗ này):**
 1. mặc định gộp — mỗi đại diện mang `similar` (đã gom mấy bản) **và `similarIds`** (id của chúng);
 2. cần xem bản khác ⇒ `memory_show` đúng id đó, **không phải tìm lại**. *(Bản đầu chỉ có số đếm
