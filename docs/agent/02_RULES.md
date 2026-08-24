@@ -27,6 +27,7 @@ Test                 KHÔNG bắt buộc — chạy chính app = phép kiểm th
 Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 06_CHANGES=log. KHÔNG folder versions/ chép tay. **Bump RELEASE-BASED (như SasinFlow): số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG bump per-commit/per-feature; USER quyết số (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = `package.json`(Node)/`__version__`(Py) — 1 chỗ; release-notes = `06_CHANGES`**
 2 KIỂU version-up     ① TỰ ĐỘNG (app tự check+tải+apply) → backend/src/update/ (phối attic/+dist/+migrations/). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → dist/ build → backend/scripts/deploy.* → backup bản đang chạy về attic/ TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới
 Bề mặt CHẾT THEO nền  **Mọi bề mặt phụ thuộc một tiến trình nền (cửa sổ app · tab · panel · CLI chờ) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang sống** (user chốt 2026-08-10 sau ca daemon chết mà cửa sổ vẫn mở: mọi nút bấm gửi request vào chỗ trống, vòng xoay "đang sync…" quay MÃI, user đọc thành "kẹt" và chờ hàng giờ trong khi KHÔNG có gì đang chạy). Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó NÓI DỐI, và người dùng không có cách nào phân biệt với đang-chạy-thật. Cách làm: nhịp tim định kỳ tới nền; chịu lỗi có chủ đích (chỉ đếm SAU khi đã thấy nền sống ít nhất một lần, và phải trượt LIÊN TIẾP N nhịp mới kết luận — nền bận một nhịp ≠ nền chết); hết N nhịp thì đóng/ báo. Đối xứng với luật fail-open (HP điều 9): lớp phụ hỏng thì rơi về lớp dưới **và nói ra**, không giả vờ vẫn chạy
+Separator của INDEX   ⛔ ĐỪNG "dọn cho đẹp": chỉ mục docs lưu đường theo separator của OS (`docs\agent\05_TODO.md`), KHÔNG posix — đo 2026-08-24: **51/51 doc row dùng `\`**, và mọi chỗ TRA cũng ghép bằng `join`. Đợt vét 07/08 từng chuẩn hoá sang `/`, hậu quả đo được: `plan ls` IM LẶNG báo "index rỗng" dù chỉ mục đủ, và `reindex` lần sau đẻ doc row TRÙNG. Muốn đổi = một MIGRATION riêng (đổi index cũ + mọi chỗ tra trong CÙNG một bước), không phải việc dọn dẹp lẻ
 Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp attic/ local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về attic/ local. Cùng nguyên lý additive-merge của memory sync/share.ts
 ```
 ## Ngôn ngữ (BẮT BUỘC)
@@ -183,6 +184,17 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
   dọn phiên quá 7 ngày hoặc khi tổng vượt 2 GB (cũ nhất trước). Bốn ràng buộc an toàn có gate
   riêng: chỉ nhận đúng khuôn `<project>/<session>/scratchpad` · không đụng phiên đang chạy ·
   không đụng thư mục vừa ghi trong 6 giờ · fail-open.
+- **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
+  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
+  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
+    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
+  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
+    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
+  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
+  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
+  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
+  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
+  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
 - **Chỉ làm đúng cái được yêu cầu.** Đụng logic/khác → **hỏi trước**, không tự sửa rồi báo.
 - **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi — cơ chế TỰ ĐỘNG, KHÔNG chờ user gọi "grill".** Kích hoạt khi: yêu cầu đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Chạy skill **`.claude/skills/grill/`** (dừng · cái nào đọc code/docs ra được thì đọc · hỏi mỗi lần MỘT câu kèm đề xuất · chốt đủ rõ mới build). KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn; chỉ áp cho input user chưa đủ để thực thi đúng. (User gõ "grill" = ép chạy thủ công.)
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi user yêu cầu rõ).

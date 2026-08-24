@@ -215,6 +215,72 @@ thì truy vấn kiểu từ khoá ngắn sẽ bị bóp oan. Nổ ⇒ trả rỗ
 **Mặc định: TẮT cho tới khi có bộ âm tính GIỮ RIÊNG** (§4.1) — θ hiện tại hiệu chỉnh trên chính 8 ca
 âm dùng để chấm nó, tức fit trên tập test. Bật mặc định trước khi có tập giữ riêng là vi phạm điều 12.
 
+### 1.3b T1 ĐO LẠI 2026-08-24 — **QUA CỔNG**, và vế "đồng thuận" bị BÁC
+
+> 🔄 **Supersede phán quyết "cổng nghiêm TRƯỢT" của §1.3.** Vế đó đúng với dữ kiện 09/08 (corpus
+> 68 nhãn · 18 ca âm). Đo lại trên corpus **108 nhãn dương · 8 ca âm cũ · 20 ca âm GIỮ RIÊNG**
+> (10 ca viết mới 24/08, chưa từng tham gia chọn tham số) thì kết luận đảo.
+
+**Hai món nợ §4.1/§4.2 đã TRẢ XONG** — đó là thứ cho phép đo lại: bộ âm giữ riêng 10 → **20 ca**,
+lớp nhãn `keyword` 12 → **23 nhãn**.
+
+**Phép đo:** probe sao chép ĐÚNG tham số thước chính thức (`all:true` · limit 40 · pool 60 ·
+margin đúng công thức `fusedSearch`) — luật đo ① của `02_RULES`. 136 truy vấn × (nhúng ONNX +
+3 lane), **660 s**; thời gian khớp khối lượng nên không phải xanh giả (luật đo ③).
+
+**Cấu hình chốt `θ > 0,84`, MỘT tín hiệu duy nhất:**
+
+| | chặn âm cũ | chặn GIỮ RIÊNG | giết oan | mất kết quả đang ở top-10 |
+|---|---|---|---|---|
+| luật cũ `θ>0,86 & margin<0,05` | 4/8 | 10/20 (50%) | 1 | 0 |
+| **`θ>0,84` (chốt)** | **7/8 (88%)** | **17/20 (85%)** | 3 | **0** |
+
+⇒ **Qua cổng §5 bước 3** (≥7/8 âm cũ · ≥75% giữ riêng · mất 0 kết quả top-10) — lần đầu tiên.
+Ba câu dương bị chặn **đều thuộc lớp `keyword` và ĐANG TRƯỢT SẴN** (thứ hạng đáp án 0 · 0 · 33),
+tức cổng đổi một lượt trả-40-rác-tự-tin lấy một câu "không biết" trung thực, không cướp kết quả
+nào đang dùng được.
+
+**Vì sao θ hạ được từ 0,86 xuống 0,84 mà không bóp oan:** đo trần THẬT theo lớp —
+`prose 0,812 · tool_result 0,778 · tool_use 0,764`; chỉ `keyword` chạm **0,864** (đúng cảnh báo
+§4.2 "từ khoá nằm xa một cách hợp lệ"), và ba câu chạm đó là ba câu hệ vốn không trả lời được.
+
+**🔴 BÁC — `margin` là GÁNH NẶNG, không phải tín hiệu.** Nó là thứ duy nhất sống sót vòng 09/08,
+nhưng trên corpus lớn: cùng θ=0,84, thêm `margin<0,06` kéo chặn **7/8 → 5/8** âm cũ và
+**17/20 → 15/20** giữ riêng mà **không cứu được câu dương nào** (oan y nguyên 3). Đã gỡ khỏi luật.
+
+**🔴 BÁC — ĐỘ ĐỒNG THUẬN GIỮA CÁC LANE: cộng thêm ĐÚNG SỐ KHÔNG. Đừng dựng lại.** Đây chính là
+"hướng chưa thử" mục này từng đề xuất. Phép **ablation**: `θ>0,84` một mình và `θ>0,84 & ov10<=2`
+cho **bộ số trùng khít** (7/8 · 17/20 · oan 3 · cùng thứ hạng). Lý do cơ học: độ chồng nhau
+FTS↔vector ở top-10 có **trung vị 0 cho CẢ câu dương lẫn câu lạc đề** — hai lane vốn hiếm khi
+trùng nhau nên "không trùng" chẳng phân biệt được gì. Dùng một mình (`ov10<=1`) thì chặn đẹp
+20/20 nhưng **giết oan 101/108** câu thật. Cùng số phận: `top1Lanes` (dương và âm cùng dải 1–2).
+
+**Phần CÒN HỞ, nói thẳng:** 4/28 ca âm vẫn lọt ở θ=0,84 — khoảng cách 0,806–0,839
+("trồng rau mầm", "tiền điện bậc thang", "tốt phong hậu", "tuổi Thìn khai trương"). Muốn bịt nốt
+phải hạ θ xuống 0,82, mà mức đó bắt đầu ăn vào câu dương (oan@10 = 1) ⇒ **không đáng**.
+
+**Trạng thái ship: ✅ MẶC ĐỊNH BẬT — user chốt 2026-08-24** sau khi nghe cả phần rủi ro còn lại.
+Tắt bằng `ZEMORY_ABSTAIN=0` (đường lùi có test khoá riêng — bài học rerank: thứ cứu được một mặc
+định sai phải là một biến môi trường, không phải một bản vá). Bề mặt CLI nay phân biệt *"không có
+gì"* với *"có nhưng không đủ gần"* — trước đó cả hai in chung câu "no matches", tức bề mặt nói dối
+về thứ nó biết.
+
+**🚨 SÀN KÍCH THƯỚC — bắt buộc, audit 2026-08-24 bắt được sau khi bật mặc định.** Ngưỡng
+TUYỆT ĐỐI chỉ có nghĩa khi chỉ mục đủ DÀY. Đo trên kho dựng từ nội dung thật, cùng một truy vấn:
+**N=3 → 0,9925 · N=20 → 0,9681 · N=60 → 0,9215 · N=150 → 0,9162**, trong khi kho thật 278k vector
+cho câu dương p50 **0,717**. Ở kho thưa, *"hàng xóm gần nhất ở xa"* chỉ nói *kho còn ít điểm*,
+KHÔNG nói *kho không có đáp án*. Thiếu sàn thì kho 3 tin trả **0 kết quả** dù FTS có 2 hit và đáp
+án nằm trong kho — tức máy mới cài câm với mọi câu. Vá: `ABSTAIN_MIN_VECTORS` (mặc định 10.000),
+đếm CHỈ khi khoảng cách đã vượt ngưỡng, đếm lỗi ⇒ không chặn.
+⚠ Sàn này **chưa hiệu chỉnh** — vùng 150…278k vector chưa ai đo; nó chỉ bảo đảm phía an toàn.
+Muốn hạ sàn thì phải đo topDist theo kích thước kho trên corpus CÓ NHÃN trước.
+
+⚠ **Rủi ro đã khai báo lúc chốt** (ghi để phiên sau biết soi đâu nếu có ai báo *"tìm không ra"*):
+cổng chấm bằng **khoảng cách VECTOR**, nên về nguyên tắc một truy vấn kiểu từ khoá mà **FTS tìm ra
+được nhưng vector chấm xa** vẫn có thể bị chặn. Đo trên 23 nhãn `keyword`: 3 câu vượt ngưỡng, cả 3
+ĐANG trượt sẵn ⇒ chưa mất gì — nhưng 23 nhãn là bằng chứng MỎNG cho riêng lớp đó. Có ca thật ngược
+lại ⇒ mở rộng nhãn `keyword` rồi cân lại θ, đừng vá vội.
+
 ### 1.4 Hiệu chỉnh lại HÌNH PHẠT TIN TOOL — ✅ đã ship, thắng KHÔNG đánh đổi (2026-08-09)
 **Bệnh: một hằng số đúng lúc chọn, sai dần khi các lớp quanh nó mạnh lên.** `TOOL_DEMOTE = 0,3`
 chọn 2026-07-27 khi tin tool chiếm **8/20 = 40%** kết quả đầu. Đo lại ở chính mức 0,3 hôm nay:
@@ -476,12 +542,12 @@ sinh ra để cứu. Bản đầu còn cộng tf thô nên **một dump dài chi
 
 ## 4. NỢ ĐO LƯỜNG — phải trả trước khi bật T1 mặc định
 
-### 4.1 Bộ âm tính GIỮ RIÊNG (chặn T1 khỏi bật mặc định)
+### 4.1 Bộ âm tính GIỮ RIÊNG (chặn T1 khỏi bật mặc định) — ✅ **ĐÃ TRẢ 2026-08-24: 20 ca**
 θ=0,82 đang hiệu chỉnh trên **chính 8 ca âm dùng để chấm nó** = fit trên tập test. Cần thêm ~8–12 ca
 âm mới, **không dùng để chọn θ**, chỉ để nghiệm thu. Chủ đề vẫn phải ngoài hẳn phạm vi kho (kho là
 hội thoại kỹ thuật/BI của một người Việt) để không "vô tình đúng".
 
-### 4.2 Truy vấn kiểu TỪ KHOÁ — vùng trắng hoàn toàn
+### 4.2 Truy vấn kiểu TỪ KHOÁ — ✅ **ĐÃ TRẢ: 23 nhãn `keyword`** (bản dưới là hiện trạng cũ)
 **Cả 64 câu hiện có đều `ftsAnd = 0`** (lane AND đòi đủ mọi từ, câu tự nhiên dài không bao giờ khớp
 hết). Nghĩa là corpus **không kiểm được lối dùng phổ biến nhất**: gõ 2–3 từ khoá / một đường dẫn /
 một mảnh lệnh. Với loại đó độ tương đồng ngữ nghĩa có thể XA mà kết quả vẫn đúng ⇒ T1 chỉ-xét-vector
@@ -500,7 +566,7 @@ Cải thiện recall dương mà thổi phồng "tự tin sai" là cân một ch
    hệt** trước (tương thích ngược) · 3 truy vấn đạt `@10 ≥ 48%` trên corpus.
 2. **T3** — gộp cụm ở tầng trả kết quả, θ=0,85, có đường mở "N bản tương tự". Gate: `MRR ≥ 0,32`
    một-truy-vấn · ghép với T5 đạt `@10 ≥ 60%` · tin không vector vẫn ra (fail-open).
-3. **T1** — cổng hai điều kiện, **mặc định TẮT**. Gate: chặn ≥7/8 ca âm bộ CŨ **và** ≥6/8 bộ GIỮ
+3. ~~**T1** — cổng hai điều kiện, **mặc định TẮT**.~~ ✅ **XONG 24/08: cổng MỘT điều kiện, MẶC ĐỊNH BẬT** (§1.3b). Gate: chặn ≥7/8 ca âm bộ CŨ **và** ≥6/8 bộ GIỮ
    RIÊNG · mất **0** kết quả đang ở top-10 · có ca test cho truy vấn từ khoá.
 4. **Đo lại toàn bộ** bằng `memory bench --recall` (thước chính thức) rồi so bảng §0.
 5. **T6** theo đường ③ trước (rerank bằng embedder, 0 model mới).
@@ -512,5 +578,7 @@ mà chưa qua gate của chính nó (điều 12).
 - KHÔNG cho lõi tự gọi LLM sinh truy vấn/ngữ cảnh (điều 6) — T5 để agent liên kết sinh.
 - KHÔNG bật rerank mặc định dù model mới thắng: lane sâu opt-in (chip 🔬 đã có).
 - KHÔNG embed cả lớp `tool_use` "cho đủ" — 69% lớp đó là token literal.
-- KHÔNG bật T1 mặc định trước khi trả nợ §4.1 và §4.2.
+- ~~KHÔNG bật T1 mặc định trước khi trả nợ §4.1 và §4.2.~~ **Hai nợ đã trả 2026-08-24 và cấu
+  hình mới QUA cổng (§1.3b); nay điều kiện duy nhất còn lại là USER CHỐT** — đổi mặc định là
+  đổi hành vi mọi lượt recall.
 - KHÔNG tính ngưỡng T1 trên biến thể của T5 (§1.3).

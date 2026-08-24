@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import { openMemory } from "../../dist/memory/db.js";
-import { abstainEnabled, collapseEnabled, recallChecked, search, searchMulti, vecMixEnabled } from "../../dist/memory/search.js";
+import { abstainEnabled, collapseEnabled, recallChecked, search, searchMulti, shouldAbstain, vecMixEnabled } from "../../dist/memory/search.js";
 import { tempDir } from "./helpers.mjs";
 
 test("project search applies scope before the global candidate limit", (t) => {
@@ -147,13 +147,20 @@ test("gộp near-dup: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
   }
 });
 
-// Cổng "không biết" (plan 17 §1.3): TRƯỢT cổng nghiêm (chặn 5/8 ca âm cũ · 4/10 bộ giữ riêng)
-// nên mặc định TẮT. Khoá lại vì repo đã trả giá đúng lỗi mặc-định-sai với rerank một lần.
-test("cổng không-biết: MẶC ĐỊNH TẮT, chỉ bật qua env/opts", () => {
+// Cổng "không biết" (plan 17 §1.3b): hiệu chỉnh lại 2026-08-24 trên corpus 108 nhãn + 20 ca âm
+// GIỮ RIÊNG ⇒ QUA cổng nghiệm thu (7/8 âm cũ · 17/20 giữ riêng · mất 0 kết quả top-10), user
+// chốt BẬT MẶC ĐỊNH. Khoá cả hai chiều: mặc định đúng chiều, VÀ đường tắt phải còn sống —
+// repo đã trả giá đúng lỗi mặc-định-sai với rerank một lần (recall chậm 6,3× suốt hai tháng),
+// nên thứ cứu được ca đó là một biến môi trường tắt được ngay, không phải một bản vá.
+test("cổng không-biết: MẶC ĐỊNH BẬT (user chốt 24/08), tắt được qua env/opts", () => {
   const prev = process.env.ZEMORY_ABSTAIN;
   try {
     delete process.env.ZEMORY_ABSTAIN;
-    assert.equal(abstainEnabled(), false, "không khai gì ⇒ phải TẮT");
+    assert.equal(abstainEnabled(), true, "không khai gì ⇒ phải BẬT");
+    process.env.ZEMORY_ABSTAIN = "0";
+    assert.equal(abstainEnabled(), false, "ZEMORY_ABSTAIN=0 tắt được — đây là đường lùi");
+    process.env.ZEMORY_ABSTAIN = "off";
+    assert.equal(abstainEnabled(), false, "ZEMORY_ABSTAIN=off tắt được");
     process.env.ZEMORY_ABSTAIN = "on";
     assert.equal(abstainEnabled(), true, "ZEMORY_ABSTAIN=on bật được");
     assert.equal(abstainEnabled(false), false, "tham số mỗi lời gọi thắng env");
@@ -161,6 +168,46 @@ test("cổng không-biết: MẶC ĐỊNH TẮT, chỉ bật qua env/opts", () =
     if (prev === undefined) delete process.env.ZEMORY_ABSTAIN;
     else process.env.ZEMORY_ABSTAIN = prev;
   }
+});
+
+// HÌNH DẠNG LUẬT — khoá cả hai vế đã bị BÁC bằng đo 2026-08-24, để không ai lặng lẽ gắn lại:
+//   · `margin` từng là tín hiệu duy nhất sống sót vòng 09/08, nhưng trên corpus lớn nó KÉO TỤT
+//     chặn (7/8 → 5/8 âm cũ) mà không cứu câu dương nào ⇒ đã gỡ khỏi luật.
+//   · độ ĐỒNG THUẬN giữa lane (ov10) cộng thêm đúng số không (phép ablation: bộ số trùng khít).
+// Ngưỡng θ=0,84 chọn theo trần THẬT của câu dương đo theo lớp: prose 0,812 · tool_result 0,778 ·
+// tool_use 0,764; chỉ `keyword` chạm 0,864 và 3 câu chạm đó ĐANG trượt sẵn (hạng 0 · 0 · 33).
+test("cổng không-biết: luật là KHOẢNG CÁCH THUẦN — margin không còn được tính", () => {
+  // Hai bên ngưỡng mặc định 0,84.
+  assert.equal(shouldAbstain(0.85, 0.001, true), true, "xa hơn ngưỡng ⇒ chặn");
+  assert.equal(shouldAbstain(0.83, 0.001, true), false, "gần hơn ngưỡng ⇒ KHÔNG chặn");
+  // Cùng một khoảng cách, margin trải từ cực nhỏ tới cực lớn ⇒ phán quyết KHÔNG được đổi.
+  for (const m of [0, 0.01, 0.05, 0.2, 1, undefined]) {
+    assert.equal(shouldAbstain(0.9, m, true), true, `margin=${m} không được đổi phán quyết (xa)`);
+    assert.equal(shouldAbstain(0.7, m, true), false, `margin=${m} không được đổi phán quyết (gần)`);
+  }
+  // Trần đo được của ba lớp KHÔNG phải keyword đều dưới ngưỡng ⇒ không lớp nào bị bóp oan.
+  for (const d of [0.812, 0.778, 0.764]) {
+    assert.equal(shouldAbstain(d, 0.03, true), false, `trần lớp ${d} phải nằm dưới ngưỡng`);
+  }
+  assert.equal(shouldAbstain(undefined, 0.01, true), false, "không có số đo ⇒ không chặn (điều 9)");
+  assert.equal(shouldAbstain(0.99, 0.001, false), false, "cổng tắt ⇒ không bao giờ chặn");
+});
+
+// SÀN KÍCH THƯỚC — ca này do AUDIT 2026-08-24 bắt được, và nó là ca ÂM quan trọng nhất của cổng:
+// ngưỡng tuyệt đối 0,84 hiệu chỉnh trên kho 278k vector, nhưng đo trên kho nhỏ dựng từ nội dung
+// THẬT thì topDist gần như luôn vượt ngưỡng (N=3 → 0,9925 · N=20 → 0,9681 · N=60 → 0,9215 ·
+// N=150 → 0,9162). Thiếu sàn thì MÁY VỪA CÀI XONG sẽ câm với mọi câu hỏi — đo được: kho 3 tin trả
+// 0 kết quả trong khi FTS tìm ra 2 hit và đáp án nằm ngay trong kho.
+test("cổng không-biết: kho MỎNG thì KHÔNG BAO GIỜ chặn, dù khoảng cách xa tới đâu", () => {
+  const FAR = 0.99; // xa hơn mọi ngưỡng
+  assert.equal(shouldAbstain(FAR, 0.01, true, 3), false, "kho 3 vector: chặn là giết recall của máy mới cài");
+  assert.equal(shouldAbstain(FAR, 0.01, true, 150), false, "kho 150 vector vẫn dưới sàn — vùng này đo được là topDist luôn ~0,92");
+  assert.equal(shouldAbstain(FAR, 0.01, true, 9_999), false, "ngay dưới sàn ⇒ vẫn không chặn");
+  // Kho đủ dày thì cổng phải làm việc, nếu không thì cả tính năng thành đồ trang trí.
+  assert.equal(shouldAbstain(FAR, 0.01, true, 10_000), true, "đủ sàn ⇒ chặn được");
+  assert.equal(shouldAbstain(0.7, 0.01, true, 300_000), false, "kho dày nhưng hit GẦN ⇒ không chặn");
+  // Không truyền kích thước = người gọi chưa đo ⇒ giữ hành vi cũ (chỉ xét khoảng cách).
+  assert.equal(shouldAbstain(FAR, 0.01, true), true, "thiếu số đo kích thước ⇒ tầng khoảng cách tự quyết");
 });
 
 // Fail-open (điều 9): không có chỉ mục vector ⇒ không có khoảng cách để phán ⇒ TUYỆT ĐỐI không

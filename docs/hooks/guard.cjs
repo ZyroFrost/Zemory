@@ -86,17 +86,25 @@ function nameMatches(rel, patterns) {
   return patterns.some((p) => globToRe(p).test(name));
 }
 
+// MOT hàm khop duy nhat cho CA HAI nhanh (ghi + xoa).
+// Khop TIEN TO (duong co dinh) HOAC GLOB (co `*`) - glob de dien dat duoc thu ma tien to
+// khong noi noi: `data/*/01_raw` (dau vao goc cua MOI case, ten case khong biet truoc).
+// Thieu glob thi hoac phai liet ke tay tung case (khong ai bao tri noi), hoac chan ca `data`
+// (chan luon 02_processing ma agent ghi suot => gate bi bo qua).
+//
+// VI SAO PHAI DUNG CHUNG: truoc 2026-08-24 nhanh GHI co glob con nhanh XOA chi so tien to, nen
+// khai `data/*/01_raw` thi chan duoc ghi ma KHONG chan duoc xoa - dung loai lo im lang. Hai ban
+// sao cua cung mot phep khop chac chan se lech nhau; nay chi con mot nguon.
+function underProtected(rel, prefix) {
+  const pre = String(prefix).replace(/\/+$/, "");
+  if (pre.includes("*")) return globToRe(pre).test(rel) || globToRe(pre + "/*").test(rel);
+  return rel === pre || rel.startsWith(pre + "/");
+}
+
 function checkWrite(rel) {
   if (nameMatches(rel, POLICY.secret_allow || [])) return;
   for (const prefix of POLICY.protected_write || []) {
-    const pre = prefix.replace(/\/+$/, "");
-    // Khop TIEN TO (duong co dinh) HOAC GLOB (co `*`) - glob de dien dat duoc thu ma tien
-    // to khong noi noi: `data/*/01_raw` (dau vao goc cua MOI case, ten case khong biet
-    // truoc). Thieu no thi hoac phai liet ke tay tung case (khong ai bao tri noi), hoac
-    // chan ca `data` (chan luon 02_processing ma agent ghi suot => gate bi bo qua).
-    const hit = pre.includes("*")
-      ? globToRe(pre).test(rel) || globToRe(pre + "/*").test(rel)
-      : rel === pre || rel.startsWith(pre + "/");
+    const hit = underProtected(rel, prefix);
     if (hit) {
       if (consumeFlag("docs_write", rel)) return;
       deny("CHAN (guard lop 1): ghi vao `" + prefix + "` - " + POLICY.protected_write_reason +
@@ -244,7 +252,8 @@ function checkBash(cmd) {
         deny("CHAN (guard lop 1): lenh xoa cham file secret `" + name + "` - " + POLICY.secret_reason);
       }
       for (const prefix of POLICY.protected_write || []) {
-        if (rel === prefix || rel.startsWith(prefix.replace(/\/$/, "") + "/")) {
+        // CUNG ham voi nhanh ghi - xem `underProtected`. Truoc day cho nay chi so tien to.
+        if (underProtected(rel, prefix)) {
           deny("CHAN (guard lop 1): xoa trong duong da khai protected `" + prefix + "` - " +
             POLICY.protected_write_reason);
         }

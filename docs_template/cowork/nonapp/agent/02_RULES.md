@@ -106,6 +106,17 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 ## Hành xử
 - **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, **ngay khi làm**, không dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả. **Vì sao:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** — người dùng mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Hệ quả bắt buộc: ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm nguồn đo được · ③ số đo lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc chạy lâu phải báo đang chờ gì.
 - **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT — không thứ gì được phình vô hạn.** Mọi thứ bạn tạo ra để LÀM VIỆC mà không phải sản phẩm giao đi (bản nháp, bản thử, dữ liệu trung gian, ảnh chụp, bản sao để so) phải có chỗ riêng và có đường dọn. Xong một phép thử mà biết chắc không dùng lại ⇒ **dọn ngay trong phiên**; thứ đáng giữ thì giữ nhưng phải NHỎ và nói rõ giữ vì gì. Rác không nằm trong sản phẩm nên không ai thấy nó lớn lên — cho tới lúc thư mục dự án hết dùng được.
+- **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
+  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
+  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
+    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
+  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
+    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
+  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
+  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
+  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
+  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
+  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
 - **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
 - **Yêu cầu không rõ phải được làm rõ TRƯỚC khi thực thi — cơ chế TỰ ĐỘNG, không chờ user gọi.** Kích hoạt khi: đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Mở `.claude/skills/grill/`. KHÔNG tự chọn cách hiểu rộng nhất.
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).

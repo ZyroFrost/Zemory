@@ -5,189 +5,168 @@
 
 ---
 
-## [2026-08-24d] — chốt phiên: user gạch 6 mục cuối · sổ 1.658 dòng → 101 · kế hoạch 2.4.0
+## [2026-08-24l] — vá 5 lỗ CHUẨN do thực địa báo (estate 6 repo non-app) — sửa ở TEMPLATE
 
-**User gạch nốt 6 mục** (mỗi mục lý do ghi trong archive): Cowork cắt-quá-tay (*"đã giải quyết
-rồi"*) · đường tải Cowork (*"chạy nhiều máy bình thường"*) · F2 RAG data chính (*"repo khác,
-không liên quan"*) · Graph Phase D + seam `resolved` (graph đã hấp thụ đủ CALM 21/07 + Graphify
-21/08; hai đuôi điều-kiện chưa bao giờ kích hoạt, spec vẫn ở `plan/13`) · reranker đa ngữ (trần
-15/108 câu, giá 43–59 s). **Gật:** cổng "bundle đã rời khỏi máy" — làm phiên sau.
+Báo cáo từ `PBI_SasinFlow_Maintain`, mỗi mục kèm số đo; đây là lỗ của BẢN CHUẨN nên sửa ở template.
 
-**Sổ sau hai ngày dọn: 1.658 dòng · 89 mục (23/08) → 101 dòng · 7 mục (24/08).** 20 section lịch
-sử không còn mục mở dời archive NGUYÊN VĂN; khối BÀN GIAO 24/08 mới thay khối cũ. 7 mục còn lại:
-bàn-giao-4-bước · menu recall (cổng "không biết") · áp-chuẩn-8-repo · cổng bundle (đã gật) ·
-biển cấm separator · model-routing (ý user, giữ nguyên trạng thái) · cặp #12+#13 (2.5).
+**① Launcher `.cmd` rời GỐC → slot `bin/`** + luật **GỐC REPO SẠCH**. Chuẩn cũ ĐÃ BIẾT cơ chế này
+đẻ rác (có sẵn dòng cảnh báo) nhưng xử bằng cách trông chờ người NHỚ. Đo: **5 file rỗng 0 byte** ở
+gốc, **2 đã lọt git**.
 
-**Kế hoạch phiên sau (user chốt *"giữ quyết định này sang session sau bắt đầu chạy toàn bộ"*):**
-① push **2.4.0** → ② áp chuẩn 8 repo MỘT LẦN → ③ cổng bundle-rời-máy → ④ #13 ingest curated
-rồi #12 memory promotion. Gate lượt cuối trước chốt: **777/777 · 0 fail · 0 skipped** ·
-`conform` ✓ · `validate` 0 vượt trần · daemon `--no-window` pid 22572, 4 công tắc BẬT.
+**② Luật DỌN RÁC + cổng máy.** Đo một repo: 5 file nháp `.tmp_*` sót · `data/extract/` **3.096 MB**
+(venv **201 MB/13.830 file** bulk-copy + `.rar` **1,34 GB** trùng folder đã giải nén cạnh nó) ⇒ dọn
+**1,56 GB/~13.850 file**. Luật vào `02_RULES` **5 bản**: nháp ra ngoài repo, buộc trong thì `_scratch_*`
+và xoá NGAY LƯỢT ĐÓ · **`.gitignore` là GIẤU, KHÔNG phải DỌN**. Cổng vào `session-close` **Bước 3b**
+(chỗ duy nhất chắc chắn chạy cuối phiên): file lạ + nháp sót · dung lượng thư mục gitignore · file
+thực thi còn ở gốc.
 
-## [2026-08-24c] — trả nốt 4 việc user gật + tổng dọn sổ: 89 mục → 13
+**③ Bỏ `NN_` khỏi TÊN CASE** (template `03_STRUCTURE` + skill `case`). Repo mới init 2.4.0 vẫn sinh
+ra đã sai — sửa tay **3 lần trong một ngày**. `NN_` nay giữ **đúng một nghĩa: thứ tự STAGE**; case
+mirror theo TÊN xuyên `tasks/` ↔ `pipelines/` ↔ `data/`.
 
-**① Guard nhánh XOÁ quét theo SEGMENT** (user gật 21/08, nằm quên 3 ngày). `rm build.log && echo
-"check prod.env"` từng bị CHẶN OAN — quét cả dòng thì người ta thôi viết lệnh tự-kiểm. Nay cùng
-khuôn nhánh git; hành vi thật 6/6 (oan QUA · xoá secret thật vẫn CHẶN); ca ÂM mới trong
-`guard-delete` (9/9), **đột biến bỏ lọc segment ⇒ đỏ**; ship cowork chép lại + manifest 343→350.
-⚠ Trả giá dọc đường: bản sinh đầu **VỠ SYNTAX** (escape trong template literal — `\n` thiếu một
-lớp) ⇒ guard chặn TẤT; lộ ngay vì `rm build.log` cũng CHẶN. Escape qua công cụ trung gian: lần n+2.
+**④ `guard.cjs` nhánh XOÁ nay hiểu GLOB** như nhánh GHI. Trước đó khai `data/*/01_raw` chặn được
+GHI mà **không chặn XOÁ** — người khai tưởng đã rào, cửa sau vẫn mở. Vá bằng **một hàm khớp duy
+nhất** `underProtected()` cho cả hai nhánh (diệt luôn nguồn trùng).
 
-**② `policy.json` ship cowork có cổng NỘI DUNG** (user gật 21/08): so `secret_names`/`secret_allow`
-với bộ sinh (export `SECRET_DEFAULTS`), KHÔNG so cả file — cowork khác `protected_write` có chủ
-đích. 8/8 · **đột biến bỏ `*.env` ⇒ đỏ** · có ca tự kiểm bộ-mẫu-khác-rỗng.
+**⑤ NGƯỠNG GỘP SLOT ≥3 file** (3 bản `03_STRUCTURE`). Luật cũ chỉ cấm folder RỖNG: đo **4 folder
+cho 7 file**, gốc 11 folder, **0 vi phạm chuẩn cũ**. `conform` **nhắc, KHÔNG chặn**.
 
-**③ Cổng quét LỊCH SỬ git** — nợ cuối của `plan/18` (⑦). HEAD sạch không cứu được thứ ĐÃ PUSH
-(chìa lộ 04/08 đúng kiểu đó). Hai phép trên toàn lịch sử (6.099 object, ~120 ms): tên khớp mẫu
-secret phải nằm trong ALLOWLIST tường minh (1 vết đã biết: `share/share.key`, chìa đã xoay) ·
-blob >50 MB ⇒ đỏ. Tự kiểm >1000 object; **đột biến bỏ allowlist ⇒ đỏ** (vết cũ tự làm chứng).
+**Nghiệm thu:** `guard-delete` **11/11** (2 ca mới, có ca ÂM) · **đột biến** trả nhánh xoá về
+so-tiền-tố ⇒ **ĐỎ** · gate bắt thêm 2 lỗ sổ sách của chính đợt này (manifest cowork 130→141 ·
+59→82; app+adapt phải mang đủ luật cứng ⇒ thêm `Separator của INDEX` vào 3 bộ) ⇒ **49/49**.
 
-**④ `/memory-status` lạnh — CHỨNG MINH XONG, không cần reboot**: đuổi kho khỏi page cache bằng
-cách đọc ~9 GB file khác, đo lượt lạnh THẬT **17,66 s** mà `/ping` song song **0,024–0,114 s**
-(trước vá: ping bị chặn 13,5 s). Event loop không còn bị bảng số khoá.
+⚠ `zemory sync` KHÔNG ghi đè `03_STRUCTURE`/`02_RULES` (file-wins) ⇒ vá này chỉ giúp repo sinh SAU;
+**6 repo đang có phải sửa tay**. Đề nghị *sync báo "lệch template"* CHƯA làm: so diff ngây thơ sẽ
+báo lệch ở MỌI repo (docs vốn sửa tay — đúng thiết kế), cần tín hiệu theo MARKER. Chờ user chốt.
 
-**⑤ Tổng dọn sổ theo lệnh user** (*"làm rồi đóng hết, cũ/đổi hướng thì bỏ"*): 24 mục đóng thêm —
-5 bẫy báo oan CHÉP VÀO skill `audit` mặt ⑪ rồi đóng (thêm 2 vế thiếu: miễn backtick cho mojibake ·
-miễn `write-docx/reference`) · 4 việc trên · 15 mục cũ/trùng/tầm-nhìn-không-ai-cần (mỗi mục ghi lý
-do trong archive). **Sổ: 89 mục (23/08) → 13 mục · 1.658 → 462 dòng**; 13 mục còn lại đều có chủ:
-2 menu recall · áp-chuẩn-8-repo · 4 chờ user/điều kiện · 2 `[~]` chờ ngoài · biển cấm · 3 ý user.
+## [2026-08-24k] — AUDIT bắt hồi quy do chính đợt trước đẻ ra: cổng "không biết" bóp chết kho NHỎ
 
-## [2026-08-24b] — thi hành 12 quyết định của user: đóng 11 mục · ô "cách nói khác" · `--no-window` · graph thấy import động
+**Lượt audit 11 mặt trước khi push đã làm đúng việc của nó.** Mặt ① đỏ **2 test** trong
+`vectors.test` — cả hai đều là *hybrid trả về RỖNG* — ngay sau khi cổng abstain lên mặc định.
+⚠ Thông báo nền in **"exit code 0"** trong khi log ghi `fail 2`; chỉ tin số trong log là thứ cứu
+lượt này (bẫy đã ghi trong sổ bàn giao 23/08, nay tái diễn đúng y).
 
-**User gạch 12 câu treo trong một lượt** — mỗi câu là một mục sổ đã đóng/cập nhật:
-① **áp chuẩn 8 repo: MỘT LẦN, SAU khi repo này xong + 2.4 đã push** (rồi tự nhận qua chấm than
-`[2026-08-23f]`; gộp mục "báo repo sinh lại guard") · ③ **kho `bgem3.db` GIỮ làm backup, không
-xài/không embed** — đo: mtime đứng 22/08, 0 code trỏ tới = file chết; luật bản-lùi thành moot ·
-④⑥ **ba luật ĐO vào `02_RULES §Hành xử`** (riêng repo này): probe sao chép tham số thước ·
-N-thử-cùng-hướng ⇒ nghi thước · số đo khớp thời-gian-công-việc · ⑦ guard 650ms giữ nguyên, đuôi
-v1.2.0 chết ⇒ đóng · ⑧ `/session-raw` bỏ · ⑨ 9 entry SasinFlow đóng (FILE WINS) · ⑪ không gộp
-hiến pháp (70 trích dẫn) · ⑫ graph (a) — **đã có đủ từ trước** (validate link gãy · conform
-dangling-ref · fitness orphan) ⇒ không build gì.
+**Bệnh — đo trực tiếp, không suy luận.** Ngưỡng tuyệt đối 0,84 hiệu chỉnh trên kho **278k vector**;
+dựng kho nhỏ bằng nội dung THẬT rồi đo cùng một truy vấn:
 
-**⑤ Ô "cách nói khác" trên màn Recall — LÀM, kèm hướng dẫn tại chỗ (điều kiện user đặt).**
-Chỉ hiện khi chip **Tìm sâu** bật (`also` đi đường sâu — lộ thường trực thì lượt tìm thường bỗng
-chậm 20s không hiểu vì sao); placeholder là VÍ DỤ cụ thể; title nói thẳng số đo hai chiều
-(`@10` 50→71% nếu cụ thể · MRR 0,407→0,189 nếu mơ hồ — tệ hơn không gõ). i18n đủ 2 dict.
-Nghiệm thu sống: `/memory-search?deep=1&also=…` trả 12 hit, có hit trúng `cli-write.lock`.
+| số vector | 3 | 20 | 60 | 150 | kho thật 278k |
+|---|---|---|---|---|---|
+| topDist | 0,9925 | 0,9681 | 0,9215 | 0,9162 | câu dương p50 **0,717** (trần 0,864) |
 
-**⑩ `zemory ui --no-window`** — dựng daemon + serve, KHÔNG tự bật cửa sổ. Chỉ tắt 3 lượt mở
-TỰ ĐỘNG; nút Open trên tray giữ nguyên (đó là người bấm). Nghiệm thu: daemon sống, **0 cửa sổ**.
-Sự cố gốc: 3 cửa sổ rỗng đêm 06/08 + mỗi lần agent restart daemon là một cửa sổ nhảy vào mặt user.
+Ở kho thưa, *"hàng xóm gần nhất ở xa"* chỉ nói *kho còn ít điểm*, KHÔNG nói *kho không có đáp án*.
+Hậu quả đo: kho 3 tin ⇒ **0 kết quả** dù FTS có 2 hit và đáp án nằm trong kho ⇒ **máy vừa cài xong
+recall câm với MỌI câu** — kiểu hỏng tệ nhất vì trông y hệt "kho không có gì".
 
-**Audit lại đợt build (user dặn) — bắt 1 ĐỎ thật:** `isolated_pct` **31,1%/trần 30%**. Hai gốc,
-sửa KHÔNG nới trần: ① `JS_IMPORT_RE` mù import ĐỘNG (`await import()` ⇒ orphan GIẢ — thêm nhánh
-`import\s*\(`, +10 cạnh) · ② 2 test tự chế mkdtemp+rmSync → dùng `tempDir` chung. **31,1% → 29,5%**.
-doctor/validate/cloudguard sạch với `version.json` trên Drive (ngoài repo).
+**Vá:** thêm SÀN `ABSTAIN_MIN_VECTORS` (mặc định 10.000, đổi được qua env). Chỉ mục dưới sàn ⇒
+**không bao giờ chặn**. Phép đếm chỉ chạy khi khoảng cách ĐÃ vượt ngưỡng, nên đường tìm thường
+ngày không trả thêm phí; đếm lỗi ⇒ coi như kho mỏng ⇒ không chặn (fail-open, điều 9).
 
-Sổ sau lượt: **50 mục mở · 747 dòng** (đầu phiên 23/08: 89 mục · 1.658 dòng).
+⚠ **Nói thẳng phần chưa biết:** sàn 10k là chọn **THẬN TRỌNG, chưa hiệu chỉnh** — vùng
+150…278k vector chưa ai đo. Nó chỉ bảo đảm phía an toàn (thà không chặn còn hơn chặn oan). Muốn
+siết cho đúng thì phải đo topDist theo kích thước kho trên corpus CÓ NHÃN rồi mới hạ sàn.
 
-## [2026-08-24] — đóng ca "717 cửa sổ phụ" · trigram nhận lại tool_result (v22) · dọn 40% sổ
+**Nghiệm thu:** `memory-search` **16/16** · **đột biến 2 hướng ĐỎ** (bỏ sàn · hạ sàn xuống 1) ·
+hai test từng đỏ nay xanh với thời gian chạy THẬT (5,7 s/ca — đúng chi phí nhúng ONNX, không phải
+xanh giả 26 ms) · kho thật vẫn chặn đúng câu lạc đề và vẫn trả 12 kết quả cho câu thật.
 
-**① Ca "717 cửa sổ phụ" — mục THỐI.** Git nói: audit 12/08 tối đo thiếu 717; `73420e4` (13/08)
-thêm `vector_ship_chunk` ⇒ vá NGAY HÔM SAU, không ai đóng mục — nằm 11 ngày. Gốc là một trong bốn
-lần đi sai `plan/08 §8.0`: *"bỏ 7.381 cửa sổ phụ vì chỉ 2,6%"* — agent tự thêm ràng buộc user không đặt.
+⚠ Bẫy: lượt chạy lại đầu báo `skipped 10` vì daemon **tự bật lại** rồi chạy embed ⇒ `skipIfBusy`
+bỏ qua đúng hai ca cần kiểm. **Skip KHÔNG phải pass.**
 
-**Đường này CHƯA có cổng nào canh** (đo: 0 file test nhắc `vector_ship_chunk`) — một đường đã hỏng
-im lặng một lần, được vá, rồi bỏ đó. Nay có `vecship-chunks` (2 ca, **vòng khép kín thật**: nhúng →
-`shipVectorsInto` → `receiveVectorsFrom` → đếm `vec_map` hai đầu), kèm ca fail-open cho bundle đời
-cũ. **Đột biến** (trả `maps=[]` về hành vi 12/08) ⇒ **đỏ**. Đây cũng là một lượt **diễn tập phục
-hồi** — nợ nặng nhất của `plan/18` mặt ⑨, lần cuối 12/08.
+## [2026-08-24j] — user đóng 2 mục cuối: model-routing BỎ · biển cấm separator về nhà vĩnh viễn — **sổ về 0 mục mở**
 
-⚠ **Tự nhận — lượt đầu XANH GIẢ:** `skipIfBusy(t)` thiếu `await` ⇒ mọi ca thoát ngay (26 ms
-"pass"). Lộ vì 26 ms không thể nhúng ONNX (chạy tay 20,4 s); sửa xong ca thật 17–20 s. Lần thứ
-hai trong hai ngày — cả hai đều bắt bằng đối chiếu thời-gian-chạy với công việc phải tốn.
+**① Model-routing — BỎ (user chốt), theo hướng (b): để CLI/agent tự lo, zemory không đụng.** Lý do
+là một RANH GIỚI KIẾN TRÚC, không phải một cái tick — chép nguyên văn vì ai định mở lại phải đọc
+nó trước: *"second brain nó phải nằm bên project A.I Center; t sợ mở quá nhiều ở zemory thì nó ko
+còn là hệ RAG nữa, nó thành AI ops"*. Mục này treo từ 23/07, từng được nới lý do chặn khi điều 6
+đổi sang *"HẠN CHẾ gọi LLM"* (02/08) — nay đóng bằng phạm vi, không bằng luật.
 
-**Kèm: `plan/08 §8b` nói NGƯỢC code** (*"cửa sổ phụ KHÔNG chở"* — sai từ 13/08) — đã gắn dấu
-bãi bỏ, ghi số thật: **4.459 tin dài · 8.906 cửa sổ phụ**.
+**② Biển cấm "separator của index" — DỜI khỏi sổ việc về `02_RULES §Luật khi VIẾT`.** Nó là LUẬT
+nổ lúc viết code (`conform` không kiểm được), không phải việc chưa làm; nằm trong `05_TODO` thì mọi
+phiên phải đọc rồi soát lại một dòng vĩnh viễn không bao giờ đóng được — đúng thứ §Sổ việc cửa VÀO
+sinh ra để chặn. Nội dung giữ nguyên, đo lại số cho tươi: **51/51 doc row dùng `\`** (sổ cũ ghi 23).
 
-**② Trigram nhận lại `tool_result` (migration v22, đảo v17).** Số + lý do ở `[2026-08-23e]` phần
-migration; áp lên kho thật: `schema v22` · **2.042 → 2.313 MB** · mẫu 20 tin `tool_result` thì
-**20/20** tìm được bằng trigram (trước: 0). Ba cổng cũ canh hành vi v17 đỏ đúng lúc ⇒ nắn neo theo
-bản viết lại, **giữ nguyên bất biến UPDATE**; `fts-trigram-scope` 12/12.
+**Sổ: 7 mục (đầu 24/08) → 0 mục mở.** Mọi việc còn lại đều đã có nhà: đã làm ⇒ `06_CHANGES` ·
+là luật ⇒ `02_RULES` · bị bỏ ⇒ ghi lý do rồi đóng.
 
-**③ Dọn sổ + chẩn đoán:** `archive` chỉ nhặt MỤC, mà **72% file (1.003/1.386 dòng) KHÔNG phải
-mục** — bàn giao cũ, báo cáo audit. Dời **22 section 0-mục-mở** (560 dòng) sang `archive/` nguyên
-văn (giữ bàn giao hiện hành + `NGUỒN ĐỒNG BỘ GM`). Kết quả **1.658 → 822 dòng · 89 → 61 mục**,
-**0 mục mở bị nuốt** (đếm trước/sau).
+⚠ **Bẫy tự dính BA LẦN trong phiên, ghi để lần sau khỏi mất công:** viết chuỗi chứa dấu gạch ngược qua heredoc rồi vào python thì tầng escape ăn mất — lần một biến ký tự xuống-dòng-thoát thành xuống dòng THẬT (vỡ syntax TS); lần hai biến đường dẫn Windows `docs\agent\05_TODO.md` thành `docsgent_TODO.md` (`\a` = bell, `\05` = octal) và nhét ký tự điều khiển VÔ HÌNH vào file, khiến `Edit` sau đó không khớp nổi chuỗi; lần ba dính ngay trong chính đoạn văn đang CẢNH BÁO về nó (`\x00` thành NUL thật) — đúng kiểu *bộ gác tự bẫy chính mình* mà `02_RULES §Sổ việc` đã ghi. Cách làm đúng: dựng dấu gạch ngược bằng `chr(92)`, hoặc sửa thẳng bằng công cụ sửa file, rồi **quét lại dải điều khiển** để chắc.
 
-## [2026-08-23f] — chấm than update CẤP MÁY: tem phiên bản trên kênh chung + `zemory selfupdate`
+## [2026-08-24i] — cổng "KHÔNG BIẾT" QUA CỔNG lần đầu: chặn 4/8 → 7/8 · giữ riêng 50% → 85%
 
-**Lỗ:** `syncCheck` (21/08) so repo với bản zemory **đang cài trên MÁY NÀY** — nên máy A pull+build
-thì repo trên máy A được chip vàng nhắc, còn **máy B mù hoàn toàn**. Đo: grep
-`github|ls-remote|git fetch|releases/latest` trong `backend/src/` ⇒ **0 hit**, chưa từng có ai đo vế
-"máy này cũ hơn máy khác". Đúng triệu chứng sổ đã ghi: *"Repo CÙNG máy làm được NGAY; máy kia chờ push."*
+**Đợt đo cuối của kế hoạch 24/08.** Hai nợ đo lường chặn mục này từ 09/08 nay đã trả: bộ âm GIỮ
+RIÊNG 10 → **20 ca** (10 ca viết mới hôm nay, chưa từng dùng chọn tham số) · lớp nhãn `keyword`
+12 → **23**. Probe sao chép ĐÚNG tham số thước (luật đo ①); 136 truy vấn/660 s — khớp khối lượng
+nên không phải xanh giả (luật đo ③).
 
-**Đi qua DRIVE, không hỏi GitHub** (user chốt): kênh chung đã được hiến pháp phê (điều 16) và **mọi
-máy đã poll nó 30′/lần** qua autosync ⇒ **0 lớp mạng mới, 0 đồng hồ mới** (điều 1). Hỏi GitHub thì
-đụng điều 7 (local-only) + thêm phụ thuộc mạng/rate-limit để đổi lấy đúng một con số.
-`<Drive>/version.json` chỉ chứa SỐ HIỆU, không dữ liệu người dùng ⇒ không mã hoá.
+**Luật mới `θ > 0,84`, một tín hiệu duy nhất:** chặn **7/8 âm cũ · 17/20 giữ riêng (85%)** ·
+**mất 0 kết quả đang ở top-10**. Luật cũ `θ>0,86 & margin<0,05` chỉ được 4/8 · 10/20. Ba câu dương
+bị chặn đều lớp `keyword` và **đang trượt sẵn** (hạng 0 · 0 · 33) ⇒ cổng đổi *"40 kết quả rác tự
+tin"* lấy *"không biết"* trung thực, không cướp kết quả nào đang dùng được. θ hạ được vì đo trần
+THẬT theo lớp: prose 0,812 · tool_result 0,778 · tool_use 0,764, chỉ keyword chạm 0,864.
 
-**Bất biến khoá bằng cổng: TEM CHỈ ĐI LÊN.** Máy còn chạy bản cũ mà ghi đè tem sẽ **kéo lùi cảnh báo
-của mọi máy khác**, và bệnh đó im lặng (ai cũng thấy "đã mới nhất") — cùng doctrine ADDITIVE điều 11.
+**Hai vế bị BÁC bằng đo — ghi để không ai dựng lại:** ① `margin` (tín hiệu duy nhất sống sót vòng
+09/08) hoá ra là **gánh nặng**: cùng θ, thêm nó kéo chặn 7/8→5/8 và 17/20→15/20 mà không cứu câu
+dương nào · ② **ĐỘ ĐỒNG THUẬN giữa lane — đúng "hướng chưa thử" plan/17 đề xuất — cộng thêm ĐÚNG
+SỐ KHÔNG**: ablation cho bộ số trùng khít, vì độ chồng FTS↔vector top-10 có trung vị **0 ở CẢ hai
+phía**; dùng một mình thì giết oan 101/108.
 
-**Nối vào ĐÚNG 4 bề mặt đã có** (`syncCheck.appUpdate`): `sync --check` · hook nhắc 1 lần/phiên
-(nói TRƯỚC lời nhắc harness — áp chuẩn bằng bản cũ là chép lại cái cũ) · `/harness-updates` ·
-chip vàng ở rail (i18n đủ 2 dict).
+**Kèm: bề mặt thôi nói dối.** CLI trước in "no matches" cho CẢ hai ca khác nhau; nay tách *"không
+có gì"* với *"có ứng viên nhưng không đủ gần (cổng nổ)"* + chỉ đường xem tiếp (`searchHybridChecked`).
 
-**`zemory selfupdate`** — một lệnh thay bốn, hai chốt: ① **cây bẩn ⇒ DỪNG** + liệt kê file ·
-② `git pull --ff-only` (nhánh rẽ thì dừng). **KHÔNG tự chạy** (user chốt) — tự pull vào cây
-người khác đụng `§Phạm vi project`.
+**✅ USER CHỐT BẬT MẶC ĐỊNH (24/08)**, đường lùi `ZEMORY_ABSTAIN=0` có test khoá riêng. Rủi ro
+đã khai lúc chốt (cổng chấm bằng khoảng cách VECTOR ⇒ câu từ-khoá FTS tìm được vẫn có thể bị chặn;
+23 nhãn là bằng chứng mỏng): `plan/17 §1.3b`.
 
-**Gộp nguồn trùng nhân tiện:** `appVersion()` ở `core/config.ts` thay 2 chỗ đọc rời
-`package.json` (`cli.ts` cố ý giữ bản riêng — lối tắt hook chạy trước mọi import tĩnh).
+**Nghiệm thu:** `memory-search` 15/15 · **đột biến 4 hướng ĐỎ** (gắn lại margin · θ về 0,86 ·
+mặc-định-TẮT · bỏ đường lùi) · chạy thật: câu lạc đề ⇒ *"không biết"* · câu thật ⇒ 12 kết quả
+nguyên vẹn · `ZEMORY_ABSTAIN=0` ⇒ 12 rác như cũ.
 
-**Nghiệm thu:** `channel-version` **6/6** (ca ÂM · fail-open · bẫy so-chuỗi 2.10-vs-2.9);
-**đột biến bỏ chỉ-đi-lên ⇒ ĐỎ**. Chạy thật: tem lên kênh (`{2.3.0, SS01-IT-12}`), `sync --check`
-im đúng; `/harness-updates` trả `appUpdate` + 8 repo cũ; `selfupdate` cây bẩn/cờ lạ đều exit 1.
+## [2026-08-24h] — #12 memory promotion: `zemory memory promote` (đề xuất, 0 ghi, 0 LLM)
 
-## [2026-08-23e] — vá 2 lệnh HEAVY-WRITE nuốt cờ lạ · `doctor` thôi chấm ✓ cho backup quá hạn
+**Cái cầu còn thiếu của Phase 2 (ý 18/07):** correction/decision user LẶP LẠI qua nhiều phiên mà
+chưa ai viết thành luật. `promote.ts`: lọc marker chỉnh/chốt (VN+EN) trên tin role=user giọng
+NGƯỜI (loại tool_result + text HOST bơm) → gom cụm cosine trên **vector ĐÃ CÓ** (greedy tất định
+theo id — cùng kho luôn ra cùng cụm) → chỉ giữ cụm **≥3 tin qua ≥2 PHIÊN** (nhắc 3 lần trong một
+cuộc là một sự vụ, không phải pattern) → đối chiếu lane curated #13: cụm đã khớp fact chưng cất
+(cos ≥0,8) gắn `covered`. **CHỈ ĐỀ XUẤT** — user gật thì agent ghi luật, zemory không ghi (điều 3).
 
-**① `memory embed|scan|digest` nhận cờ lạ rồi CHẠY THẬT.** Đã dính hai lần 22/08: `memory embed
---help` khởi động job nhúng (giữ `cli-write.lock` hàng giờ, bỏ đói backup) · `memory scan --help`
-quét + nạp thật. Cùng bề mặt còn có `--rebuild` (XOÁ nguyên chỉ mục véc-tơ) ⇒ không có đường
-"xem thử" an toàn nào. **Vá:** bảng cờ hợp lệ cho ba lệnh, cờ lạ ⇒ usage + `exit 1`. Chốt đặt
-**TRƯỚC write-gate** có chủ đích — từ chối phải xảy ra khi chưa ghi byte nào và **chưa giữ khoá**.
-Nghiệm thu thật: `embed --help` · `scan --help` nay in usage, `exit 1`, **không để lại lock**.
+**Chạy thật:** 841 ứng viên → 174 cụm → **15 đề xuất**; đầu bảng là câu user chỉnh
+**192× qua 148 phiên · 45 project** chưa từng thành luật — đúng loại lỗ hệ này sinh ra để bịt.
+Lượt đầu lộ 2 bệnh, vá ngay: ① text host bơm (`<local-command-caveat>` 252×, `<ide_opened_file>`,
+khối `# AGENTS.md instructions`) mang "DO NOT…" gom thành cụm to thứ nhì ⇒ lọc prefix tag ·
+② note "curated lane empty" NÓI DỐI — 153 fact có trong kho nhưng **chưa embed** (scheduler chưa
+tới) ⇒ tách hai câu "không có fact" vs "fact chưa có vector".
 
-**② `doctor` chấm ✓ khi backup đã 27,9 giờ tuổi** — ngưỡng đỏ là 2× chu kỳ nên trọn một ngày không
-backup vẫn hiện ✓, đúng kiểu "bề mặt nói dối". Nay **ba mức**: ✓ trong chu kỳ · ○ quá 1 chu kỳ
-(thấy được, KHÔNG đỏ — gate đỏ triền miên là gate bị bỏ qua) · ✗ quá 2. Thêm dòng riêng cho ca
-**daemon TẮT**: lúc đó backup không "chậm", nó **không tồn tại** (đồng hồ `backupTick` nằm trong
-daemon). Đã kiểm CẢ HAI nhánh bằng bề mặt thật.
+**Nghiệm thu:** `memory-promote` **5/5** · đột biến 2 hướng ĐỎ (bỏ ngưỡng ≥2 phiên · bỏ sàn độ
+dài) · lint sạch · fail-open: kho không có lớp vector ⇒ notes nói thẳng, không trả rỗng giả sạch.
+Nhiễu còn lại có chủ đích chấp nhận (paste code/shell lọt marker) — báo cáo cho NGƯỜI đọc duyệt,
+lọc quá tay là rơi tín hiệu thật; siết thêm chỉ khi có số đo mới.
 
-**Cổng:** `heavy-write-flags` 4/4 · `backup-staleness` 6/6; **đột biến ⇒ 3 đỏ**. ⚠ Lượt đột biến
-đầu bắt được ca CLI của tôi **XANH GIẢ** (kho `.db` rỗng làm lệnh chết vì lý do khác, không phải vì
-cờ bị từ chối) — đã sửa phép đo: nay dựng kho thật trước và đòi thấy đúng chuỗi `unknown flag`.
+## [2026-08-24g] — #13 ingest BỘ NHỚ CURATED của agent: adapter `claude-code-memory`
 
-**Kèm `plan/19 §8` nắn về khớp changelog:** bảng trạng thái còn ghi ③ *"đang dở"* · ④ *"chờ user
-KÝ"* trong khi `[2026-08-23b]` đã chốt **TRƯỢT cổng ⇒ KHÔNG TRÁO**. Nay ②③ ✅ · ④ 🔴 đóng · ⑤ ⛔
-không còn; thêm §8b chốt phán quyết, §5 gắn dấu không-thi-hành.
+**Lane mới, 0 migration.** Adapter `claudemem.ts` quét `~/.claude/projects/<enc>/memory/*.md`
+(kể cả `MEMORY.md`) — thứ agent ĐÃ chưng cất — vào Global Memory qua đúng đường `scan()` sẵn có:
+**1 file = 1 session** (một fact = một đơn vị recall), role `memory`, `tool_name NULL` (vào đủ
+3 lane word/trigram/vector, không dính hình phạt tool), redact + digest + scope-exclude hưởng
+sẵn từ engine. Chạy thật: **153 fact / 153 phiên** từ mọi project trên máy, +435 tin trong lượt
+scan; scheduler 30′ tự giữ tươi (file đổi ⇒ whole-replace).
 
-## [2026-08-23d] — GỘP luật sổ việc về MỘT nhà: `05_TODO` có cửa VÀO, không chỉ cửa ra
+**Ba câu "Cần chốt" của mục sổ — chốt bằng thiết kế, lý do ghi tại chỗ:**
+· ① `kind=curated` **KHÔNG thêm cột** — lane = `source='claude-code-memory'` trên cột sẵn có
+  (đúng doctrine plan/07 §3: một cột provenance, không store thứ hai); scope-tree lọc được ngay.
+· ② map `<enc>` → project root bằng cách **mã hoá ngược mọi root trong registry** rồi so khớp
+  (mã hoá là lossy nên decode thẳng là bất khả; không khớp ⇒ `(unknown)`, **cấm đoán** — đo:
+  26/153 là project cũ ngoài registry). Global `~/.claude/CLAUDE.md` v1 CHƯA quét (ngoài phạm vi
+  `projects/*/memory/`). Session id mang **hostname** — hai máy không lẫn phiên (điều 11).
+· ③ Claude Code trước (đúng đề xuất); Codex/Cursor cần format riêng, làm khi có nhu cầu.
+**Recall "xếp cao hơn" CHƯA làm** — mọi thay đổi xếp hạng phải qua corpus có nhãn (điều 12/15),
+để cặp với #12.
 
-**Bệnh: bộ harness có cửa RA mà không có cửa VÀO.** Đo được **sáu** chỗ ra lệnh cho agent ghi vào
-sổ, không chỗ nào đặt ngưỡng, không chỗ nào bắt hỏi: `01_CONSTITUTION` header + §Sửa đổi (*"ghi đề
-xuất vào `05_TODO` chờ duyệt"*) · `02_RULES` §Chốt phiên (*"kể cả chẩn đoán sai / đường cụt"* +
-*"luật riêng → ĐỀ XUẤT `05_TODO`"*) · §Plan (*"KHÔNG todo → `05_TODO`"*) · skill `audit`
-(*"nghi vấn đã loại cũng ghi"*) · `session-close` (*"việc phát sinh"* + *"luật phát sinh → ĐỀ
-XUẤT"*) · `conform` (*"ghi việc vào `05_TODO`"*). Đối lại chỉ có **một** luật chiều ra
-(*"XONG LÀ ĐÓNG NGAY"*) — mà nó chỉ đóng được mục ĐÃ XONG, còn mục "ĐỀ XUẤT" thì **không bao giờ
-xong được**: chúng không phải việc chưa làm, chúng là câu hỏi chưa ai trả lời.
+**Nghiệm thu:** `curated-memory` **7/7** · **đột biến 2 hướng ĐỎ** (bỏ ràng buộc thư-mục-memory ⇒
+6 đỏ · decode đoán bừa ⇒ 2 đỏ) · bất biến giữ đủ: read-only (mtime file nguồn đứng yên qua scan),
+secret `sk-ant-…` bị redact trong kho còn file nguồn nguyên vẹn, lane exclude chặn từ cửa nạp có
+báo `skippedLanes`.
 
-**Số đo:** 89 mục mở · 1.658 dòng · 104 file test · **18 mục "ĐỀ XUẤT" treo** — sổ nạp MỌI phiên ⇒ chi phí ngữ cảnh thường trực (điều 1).
-
-**Cách sửa — SỬA LÊN CÁI CŨ, KHÔNG ĐẺ MỚI** (user chốt: *"cứ đẻ mới luật sẽ đọc sót"* ·
-*"gộp lại những cái nào liên quan tới nhau, ko ghi ở trước 1 luật rồi phía sau lại đá chính luật
-đó, làm phí token đọc và loãng context"*). Mở rộng **chính** bullet *"XONG LÀ ĐÓNG NGAY"* sẵn có
-thành **§Sổ việc `05_TODO`** — một luật phủ cả hai đầu vòng đời: **① cửa vào** (không tự thêm mục ·
-ngưỡng *thực sự quan trọng* · cấm tự đẻ cổng/bộ đếm/bộ đo/advisory · ba câu ①gỡ-②gộp-③không-có-thì-
-hỏng-gì) và **② cửa ra** (nguyên văn cũ, không đổi một chữ).
-
-> 🔄 **BÃI BỎ vế *"agent ghi ĐỀ XUẤT vào `05_TODO` chờ user duyệt"*** ở cả 6 chỗ trên. Nay:
-> **hỏi trong phiên, user gật mới ghi** — không gật thì không tồn tại dòng nào. Vế cũ chính là cỗ
-> máy đẻ ra 18 mục treo: nó dạy agent *đậu* thay vì *hỏi*, mà đậu thì không có đường ra.
-
-**Tự nhận — chính tôi vừa phạm đúng thứ này:** lượt đầu tôi ghi luật thành **một điều khoản hiến pháp mới, số 17**
-(đẻ mới), đặt cạnh `§Sửa đổi hiến pháp` vốn ra lệnh ngược lại, cách nhau **8 dòng cùng một file**.
-Đã **gỡ điều khoản đó**, hiến pháp về đúng **16 điều**; luật sống ở `02_RULES` vì đây là luật LÀM VIỆC
-(hiến pháp là bất biến KIẾN TRÚC per-app) — và `02_RULES` là file **ship cho mọi repo**.
-`zemory conform` bắt được tham chiếu chết tới điều khoản vừa gỡ tôi để lại trong chính entry này.
+⚠ Bẫy thước tự dính trong lượt nghiệm thu, ghi để khỏi lặp: `zemory … | Select-Object -First N`
+trong PowerShell **cắt pipeline sớm ⇒ node ăn EPIPE ⇒ exit −1 GIẢ** — tưởng CLI hỏng, stash cả
+cây đo lại mới thấy exit 0 qua cmd. Muốn cắt output thì `-Last`/`Select-String` (nuốt trọn) hoặc
+đo exit qua `cmd /c`.

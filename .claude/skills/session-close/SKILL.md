@@ -50,4 +50,26 @@ Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng
 **Chép NGUYÊN VĂN, KHÔNG tóm tắt** — archive là để TRA LẠI. Cả hai tầng được reindex nên mục vừa chuyển
 tra được ngay (`zemory changelog search` · `zemory memory search`).
 
+**Bước 3b — QUÉT RÁC (bắt buộc; luật `02_RULES` *".gitignore là GIẤU, không phải DỌN"*):**
+Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép quét đặt ở đây. Ba phép, in số ra
+rồi mới kết luận — im lặng không tính là sạch:
+- **① file lạ ở gốc + file nháp còn sót:** liệt kê untracked NGOÀI các đường gitignore hợp lệ
+  (`data/` · `exports/` · két bí mật), và MỌI file khớp `_scratch_*` · `.tmp*` bất kể ở đâu.
+  Có ⇒ xoá (hỏi user nếu file có vẻ là sản phẩm), KHÔNG để lại "dọn sau".
+- **② thư mục gitignore có phình không:** đo dung lượng từng thư mục dữ liệu; vượt ngưỡng repo tự
+  đặt (mặc định gợi ý **2 GB**) ⇒ BÁO kèm 3 thư mục con to nhất. Đây đúng chỗ đã nuốt **3 GB**
+  (một venv 13.830 file + một `.rar` 1,34 GB trùng với folder đã giải nén cạnh nó) mà không cổng
+  nào thấy, vì nó nằm dưới đường đã gitignore.
+- **③ gốc repo có file thực thi không:** `.cmd`/`.sh`/`.bat` ở gốc ⇒ sai chuẩn, phải nằm `bin/`
+  (`03_STRUCTURE §5` *Gốc repo sạch*). Đo thật: cơ chế launcher-ở-gốc đã đẻ 5 file rỗng 0 byte,
+  2 file lọt vào git.
+
+Gợi ý lệnh (Windows PowerShell — đổi theo repo):
+```
+git status --porcelain | Select-String '^\?\?'          # ① file lạ
+Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① nháp còn sót
+Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }
+Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ gốc
+```
+
 **Bước cuối:** `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (`02_RULES §Git`).

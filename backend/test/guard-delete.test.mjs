@@ -147,3 +147,67 @@ test("policy CU + guard MOI: van chan, KHONG duoc nem loi", () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// GLOB phai an o CA HAI nhanh (ghi + xoa) - lo do thuc dia bao 2026-08-24.
+//
+// Truoc do: nhanh GHI co glob, nhanh XOA chi so TIEN TO. Nen mot repo khai
+// `protected: ["data/*/01_raw"]` thi chan duoc GHI ma KHONG chan duoc XOA - dung loai lo
+// im lang: nguoi khai tuong da rao, thuc te cua sau van mo. He qua o estate that: moi repo
+// phai liet ke TAY tung duong `data/<case>/01_raw`, them case moi la phai nho sua - ma
+// "chot phai nho tay" thi se muc.
+//
+// Ca AM o day quan trong ngang ca duong (luat 7 skill audit): glob khong duoc phinh ra chan
+// ca nhung duong LANG GIENG (`02_processing` la cho agent ghi suot).
+function guardWithPolicy(protectedWrite) {
+  const dir = mkdtempSync(join(tmpdir(), "zemory-guard-glob-"));
+  const hooks = join(dir, "docs", "hooks");
+  mkdirSync(hooks, { recursive: true });
+  cpSync(GUARD, join(hooks, "guard.cjs"));
+  writeFileSync(
+    join(hooks, "policy.json"),
+    JSON.stringify({
+      protected_write: protectedWrite,
+      protected_write_reason: "test",
+      secret_names: [],
+      secret_allow: [],
+      flags_dir: "docs/hooks",
+      flags: { push: ".allow-push", delete: ".allow-delete", docs_write: ".allow-docs-write" },
+    }),
+  );
+  return { guard: join(hooks, "guard.cjs"), root: dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+test("glob trong protected chan CA nhanh XOA, khong chi nhanh GHI", () => {
+  const g = guardWithPolicy(["data/*/01_raw"]);
+  try {
+    // DUONG: xoa trong duong glob -> phai CHAN (truoc ban va: LOT)
+    for (const cmd of ["rm data/case_x/01_raw/f.csv", "del data/mot_case_khac/01_raw/f.csv"]) {
+      const r = ask(bash(cmd), g.guard);
+      assert.equal(r.blocked, true, `glob phai chan XOA: ${cmd}
+${r.say}`);
+    }
+    // Nhanh GHI van chan nhu truoc (khong lam hong thu dang chay)
+    const w = ask({ tool_name: "Write", tool_input: { file_path: join(g.root, "data", "case_x", "01_raw", "f.csv") } }, g.guard);
+    assert.equal(w.blocked, true, `glob phai chan GHI:
+${w.say}`);
+
+    // AM: hang xom cua duong glob KHONG duoc chan - day la cho agent ghi/xoa hang ngay
+    for (const cmd of ["rm data/case_x/02_processing/tmp.csv", "rm build.log", "rm docs/note.md"]) {
+      const r = ask(bash(cmd), g.guard);
+      assert.equal(r.blocked, false, `KHONG duoc chan oan: ${cmd}
+${r.say}`);
+    }
+  } finally {
+    g.cleanup();
+  }
+});
+
+test("tien to thuong van chay y nhu cu sau khi gop mot ham khop", () => {
+  const g = guardWithPolicy(["data"]);
+  try {
+    assert.equal(ask(bash("rm data/x/y.csv"), g.guard).blocked, true, "tien to phai chan duong con");
+    assert.equal(ask(bash("rm database.md"), g.guard).blocked, false, "khong duoc chan `database.md` chi vi bat dau bang `data`");
+  } finally {
+    g.cleanup();
+  }
+});
