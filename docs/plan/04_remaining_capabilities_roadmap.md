@@ -22,7 +22,7 @@ Provider mặc định `memory` tiếp tục sở hữu ingest và episodic reca
 - [ ] source-transcript privacy/tombstone nếu cần bảo đảm dữ liệu đã forget không bị whole-file adapter re-ingest từ transcript gốc;
 - [ ] retention theo dung lượng/quota đĩa nếu memory/artifact store phình quá lớn;
 - [ ] provenance cho mỗi message, adapter version và trạng thái ingest chi tiết hơn;
-- [ ] promotion có chủ đích từ session sang quyết định curated, không tự sinh kho ghi chú thứ hai.
+- [x] **promotion có chủ đích từ session sang quyết định curated — XONG 2026-08-24** (`zemory memory promote`): phát hiện lặp → xếp hạng → TRÌNH user, user gật agent mới ghi. KHÔNG tự sinh kho ghi chú thứ hai (đúng HP điều 3). Xem `06_CHANGES [2026-08-24h]`.
 ## 3. Slot `search`: keyword, semantic và hợp nhất kết quả
 
 `keyword` vẫn là baseline bắt buộc vì nhanh, local và giải thích được. Provider semantic là lựa chọn thay thế hoặc engine nội bộ của một provider hợp nhất, không đăng ký song song cùng slot.

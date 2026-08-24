@@ -423,9 +423,15 @@ vector thì vô vọng. Lớp nhãn `keyword` (§4.2) chính là thứ cho phép
 vì cả 62.284 tin (gấp ~3 lần công cho phần lớn là đường dẫn `Read` và lệnh shell). Tên tool được
 lọc còn ký tự an toàn trước khi ghép SQL. **Backlog đo thật: 20.196 tin** (mặc định chỉ 527).
 
-**Còn lại là quyết định GIỜ MÁY:** ~9–16 giờ + ~60 MB. Lệnh sẵn sàng:
-`ZEMORY_EMBED_TOOLS=Edit,Write node dist/cli.js memory embed --all`. Nên chạy MỘT MÌNH (write-gate
-đã chặn được kẻ ghi thứ hai, nhưng đừng bật app trong lúc chạy — sự cố 08/08).
+~~**Còn lại là quyết định GIỜ MÁY:** ~9–16 giờ + ~60 MB.~~ ✅ **ĐÃ CHẠY, và phạm vi thành MẶC ĐỊNH
+SHIP** — `EMBED_TOOLS_DEFAULT = ["Edit","Write","Bash","PowerShell","Artifact"]` trong
+`config/settings.ts`, không còn là env bật tay. Đo trên kho thật 2026-08-25: Bash **33.588** ·
+Edit **21.534** · PowerShell **9.588** · Write **5.425** đều có vector; `Read`/`Grep` = **0** đúng
+thiết kế (token literal, FTS word khớp tốt hơn). Phủ vector theo lớp: prose 99,7% · tool_result
+99,5% · **tool_use 75,6%** · tổng 92,1%.
+⚠ **Cổng nghiệm thu của §3c chưa thấy ghi lại** — không có entry nào trong `06_CHANGES` đo `@10`
+của `tool_use` SAU khi nhúng. Tức việc đã làm, còn *"nó có đưa `tool_use` về mức `tool_result`
+không"* vẫn **chưa đo**. Đừng đọc con số phủ vector thành kết quả recall.
 
 **Trigram cho `tool_use`:** trigger hiện loại theo `WHEN new.tool_name IS NULL AND content NOT LIKE
 '[tool_result]%'` ⇒ mở ra là MIGRATION riêng + dựng lại bảng trigram (từng chiếm 42% cả DB). Chỉ bàn
@@ -512,8 +518,9 @@ một luồng. Quan hệ đơn điệu, đo trên cùng một lượt bench:
 
 ⇒ **Giá trị của việc nhúng lớp này là "cấp cho nó luồng thứ hai", KHÔNG phải "khớp ngữ nghĩa".**
 Phạm vi đúng theo nhãn: `Edit,Write,Bash,PowerShell` = **44.747 tin ≈ 15,7 giờ**; phủ đủ 14 nhãn
-cần 28.705 tin (**~10 giờ**). Phép thử đang chạy trên BẢN SAO (điều 15) với cổng nghiệm thu định
-trước: `tool_use` tiến về mức `tool_result` (~25%@10) mà `prose`/`keyword` không tụt.
+cần 28.705 tin (**~10 giờ**). ✅ **Đã nhúng thật** (xem §3.2 — phủ `tool_use` 75,6% trên kho chính,
+đúng bốn tool này). **Cổng nghiệm thu định trước vẫn CHƯA ĐO:** `tool_use` có tiến về mức
+`tool_result` (~25%@10) mà `prose`/`keyword` không tụt hay không — chưa có lượt bench nào trả lời.
 
 **Đường thứ hai chưa thử, có thể RẺ HƠN nhiều giờ máy:** cho `tool_use` một luồng thứ hai bằng
 **trigram** thay vì vector — tức đảo điều kiện trigger đã loại nó. Giá là dung lượng (trigram

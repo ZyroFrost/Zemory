@@ -173,8 +173,9 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
 - **Cửa sổ phụ ĐƯỢC CHỞ** — `vector_ship_chunk`, tra `vec_map` chứ không tra thẳng id tin (id là
   AUTOINCREMENT cục bộ). Đo trên kho hiện tại: **4.459 tin dài · 8.906 cửa sổ phụ**; thiếu chúng
   thì hỏi về đoạn CUỐI một tin dài là trượt, dù tin vẫn nằm nguyên trong kho.
-  ⚠ **Đường này CHƯA có cổng nào canh** (đo 2026-08-23: 0 file test nhắc `vector_ship_chunk`) —
-  mà nó đã hỏng im lặng một lần rồi. Xem `05_TODO` mục "717 cửa sổ phụ".
+  ✅ **ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
+  2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
+  khi cổng ship. Mục `05_TODO` "717 cửa sổ phụ" nó trỏ tới đã đóng, nay nằm ở `archive/05_TODO.md`.)*
 
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.

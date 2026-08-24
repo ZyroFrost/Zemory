@@ -53,10 +53,10 @@ lộ lọt, chết lặng, không mang đi được.
 
 | mặt | cổng đã có | còn nợ (việc, ghi ở `05_TODO`) |
 |---|---|---|
-| ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud | quét **LỊCH SỬ** git (mới quét cây) · canh file lớn trước khi push |
+| ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud · `git-history-secrets` (2 ca, 2026-08-24: quét `rev-list --objects --all` + chặn blob >50 MB, mỗi phép có tự-kiểm chống đo mù) | — |
 | ⑧ | `license-gate` (3 ca, trong `npm run check`) · `npm run check:clone` (dựng từ clone sạch, chạy riêng — cần mạng) *(cả hai 2026-08-15)* | — |
-| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` | **diễn tập phục hồi định kỳ** · canh bundle đã rời khỏi máy chưa |
-| ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) | ma trận guardrail chạy trong gate chính, không phải chạy tay |
+| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) | **diễn tập phục hồi định kỳ** |
+| ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) · `guard-tool-matrix` (26 ca, TRONG gate chính — 2026-08-24) | — |
 
 **Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong
 2026-08-15; nợ nặng nhất còn lại là vế *diễn tập phục hồi định kỳ* của ⑨.
