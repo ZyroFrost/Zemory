@@ -5,7 +5,7 @@
 // scope = the current project; pass all=true for cross-project recall.
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
-import { vectorProbe, vectorsByRowid } from "./vectors.js";
+import { vectorCount, vectorProbe, vectorsByRowid } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
@@ -541,49 +541,90 @@ export function collapseEnabled(force?: boolean): boolean {
 // kết quả, và ĐIỂM ĐẦU gần bằng ca có đáp án thật ⇒ người đọc không phân biệt được thật với
 // rác. Đây đúng triệu chứng user báo ("search trả kết quả lạc repo, không liên quan").
 //
-// Tín hiệu tách được rất sạch — ca dương khoảng cách cosine top-1 cao nhất **0,812**, ca âm
-// thấp nhất **0,844**: θ=0,82 chặn 8/8 ca âm, giết oan **0/56**, và trên pipeline đa-truy-vấn
-// **mất 0 kết quả đang ở top-10**.
-// θ và M đo 2026-08-09 trên 68 nhãn dương + 8 ca âm cũ + 10 ca âm GIỮ RIÊNG (chưa từng dùng
-// để chọn tham số). Cấu hình chốt: chặn 5/8 ca âm cũ · 4/10 giữ riêng · **giết oan 0/68**.
-const ABSTAIN_DIST = Number(process.env.ZEMORY_ABSTAIN_DIST) || 0.86;
-// MARGIN = khoảng cách của hit thứ 10 trừ hit đầu, trên chính pool vector đã lấy.
+// ⚙ **HIỆU CHỈNH LẠI 2026-08-24 trên corpus ĐÃ LỚN GẤP RƯỠI** (108 nhãn dương · 8 ca âm cũ ·
+// **20 ca âm GIỮ RIÊNG**, trong đó 10 ca viết mới hôm nay chưa từng tham gia chọn tham số).
+// Hai thay đổi, cả hai đều do SỐ ĐO ép:
 //
-// Vì sao margin mà không phải khoảng cách tuyệt đối: câu hỏi ĐÚNG CHỦ ĐỀ có một hit NỔI TRỘI
-// khỏi nhóm; câu lạc đề thì mọi ứng viên đều tầm tầm như nhau nên hit đầu gần như không hơn
-// hit thứ mười. Margin không phụ thuộc thang đo — đúng chỗ khoảng cách tuyệt đối thất bại, vì
-// truy vấn kiểu từ khoá NẰM XA một cách hợp lệ (lớp `keyword` chạm 0,856 trong khi ca âm giữ
-// riêng tụt tới 0,806 ⇒ hai phân bố chồng nhau, không θ nào tách nổi).
-const ABSTAIN_MARGIN = Number(process.env.ZEMORY_ABSTAIN_MARGIN) || 0.05;
+//   ① θ 0,86 → **0,84**. Ngưỡng cũ chọn khi corpus mới 68 nhãn; đo lại theo LỚP thì trần thật
+//      của câu dương nằm ở **prose 0,812 · tool_result 0,778 · tool_use 0,764** — chỉ lớp
+//      `keyword` chạm 0,864, và đó là lớp §4.2 vốn cảnh báo "nằm xa một cách HỢP LỆ".
+//   ② **BỎ HẲN vế `margin`.** Nó là tín hiệu DUY NHẤT sống sót vòng đo 2026-08-09, nhưng trên
+//      corpus lớn nó là gánh nặng: cùng θ=0,84, thêm `margin<0,06` kéo chặn **7/8 → 5/8** ca âm
+//      cũ và **17/20 → 15/20** giữ riêng, mà KHÔNG cứu được câu dương nào (oan y nguyên 3).
+//
+// Số của cấu hình chốt `θ>0,84` một mình: chặn **7/8 ca âm cũ · 17/20 GIỮ RIÊNG (85%)** ·
+// **mất 0 kết quả đang ở top-10**. Ba câu dương bị chặn đều thuộc lớp `keyword` và **đang trượt
+// sẵn** (thứ hạng đáp án 0 · 0 · 33) ⇒ cổng biến một lượt trả-rác-tự-tin thành một câu "không
+// biết" trung thực, không cướp đi kết quả nào người dùng đang dùng được.
+//
+// 🔴 **ĐỘ ĐỒNG THUẬN GIỮA CÁC LANE — ĐÃ THỬ, VÔ DỤNG. Đừng dựng lại.** Đây chính là "hướng chưa
+// thử" mà `plan/17 §1.3` đề xuất. Đo phép ABLATION: `θ>0,84` một mình và `θ>0,84 & ov10<=2` cho
+// **BỘ SỐ TRÙNG KHÍT** (7/8 · 17/20 · oan 3 · cùng thứ hạng), tức vế đồng thuận không gánh một
+// chút việc nào. Lý do cơ học: độ chồng nhau FTS↔vector ở top-10 có trung vị **0 cho CẢ câu
+// dương lẫn câu lạc đề** — hai lane vốn hiếm khi trùng nhau, nên "không trùng" không phân biệt
+// được gì. Dùng nó một mình (`ov10<=1`) thì chặn đẹp 20/20 nhưng giết oan **101/108 câu thật**.
+const ABSTAIN_DIST = Number(process.env.ZEMORY_ABSTAIN_DIST) || 0.84;
+
+// 🔴 SÀN KÍCH THƯỚC — audit 2026-08-24 bắt được: ngưỡng TUYỆT ĐỐI ở trên chỉ có nghĩa khi chỉ mục
+// đủ DÀY. Đo trên kho dựng từ nội dung THẬT, cùng một truy vấn:
+//     N=3 → topDist 0,9925 · N=20 → 0,9681 · N=60 → 0,9215 · N=150 → 0,9162
+// trong khi trên kho thật 278k vector, câu DƯƠNG có p50 **0,717** và trần 0,864. Nghĩa là ở kho
+// nhỏ, "hàng xóm gần nhất ở xa" KHÔNG nói *kho không có đáp án* — nó chỉ nói *kho còn thưa*.
+// Hậu quả nếu thiếu sàn (đã đo, không phải suy đoán): kho 3 tin ⇒ cổng nổ ⇒ **0 kết quả** dù FTS
+// tìm được 2 hit và đáp án đúng NẰM TRONG kho. Tức máy vừa cài xong thì recall câm với MỌI câu —
+// kiểu hỏng tệ nhất vì nó trông y như "kho không có gì".
+//
+// ⚠ Sàn này là CHỌN THẬN TRỌNG, **chưa hiệu chỉnh**: vùng 150…278k vector chưa ai đo, nên con số
+// dưới đây chỉ bảo đảm phía an toàn (thà không chặn còn hơn chặn oan — cùng chiều fail-open điều 9).
+// Muốn siết cho đúng thì phải đo topDist theo kích thước kho trên corpus CÓ NHÃN, rồi mới hạ sàn.
+const ABSTAIN_MIN_VECTORS = Number(process.env.ZEMORY_ABSTAIN_MIN_VECTORS) || 10_000;
 
 /**
- * Cổng "không biết" — **MẶC ĐỊNH TẮT** cho tới khi trả xong nợ đo lường (plan 17 §4.1/§4.2):
- * θ hiện tại hiệu chỉnh trên CHÍNH 8 ca âm dùng để chấm nó (fit trên tập test), và corpus
- * chưa có truy vấn kiểu từ khoá để kiểm điều kiện ②. Bật: `ZEMORY_ABSTAIN=1`.
+ * Cổng "không biết" — **MẶC ĐỊNH BẬT từ 2026-08-24 (user chốt)**; tắt bằng `ZEMORY_ABSTAIN=0`.
+ *
+ * Đường tới mặc định đi ĐÚNG cửa điều 12: hai món nợ đo lường của `plan/17 §4.1/§4.2` (bộ âm GIỮ
+ * RIÊNG → 20 ca · lớp nhãn `keyword` → 23 nhãn) trả xong, rồi cấu hình mới QUA cổng nghiệm thu
+ * của chính plan đó — chặn **7/8 ca âm cũ · 17/20 giữ riêng (85%)** · **mất 0 kết quả đang ở
+ * top-10**. User chốt bật sau khi nghe cả phần rủi ro còn lại (xem `plan/17 §1.3b`).
+ *
+ * ⚠ Rủi ro đã KHAI BÁO khi chốt, để phiên sau biết chỗ mà soi nếu có ai báo "tìm không ra":
+ * cổng chấm bằng KHOẢNG CÁCH VECTOR, nên về nguyên tắc một truy vấn kiểu từ khoá mà FTS tìm ra
+ * được nhưng vector chấm xa vẫn có thể bị chặn. Đo trên 23 nhãn `keyword`: 3 câu vượt ngưỡng và
+ * cả 3 ĐANG trượt sẵn (hạng 0 · 0 · 33) ⇒ chưa mất gì, nhưng 23 nhãn là bằng chứng MỎNG cho
+ * riêng lớp đó. Có ca thật ngược lại thì đường lùi là một biến môi trường, không phải một bản vá.
  */
 export function abstainEnabled(force?: boolean): boolean {
   if (force !== undefined) return force;
   const v = process.env.ZEMORY_ABSTAIN?.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "on";
+  if (v === "0" || v === "false" || v === "off") return false;
+  if (v === "1" || v === "true" || v === "on") return true;
+  return true; // mặc định BẬT (user chốt 2026-08-24)
 }
 
 /**
- * Có nên nói "kho không có gì đủ khớp" không: hit đầu vừa XA vừa KHÔNG nổi trội khỏi nhóm.
+ * Có nên nói "kho không có gì đủ khớp" không: hit vector gần nhất vẫn XA hơn ngưỡng.
  *
- * 🔴 Hai điều kiện ② trước đó đã bị BÁC bằng đo, ghi lại để không ai dựng lại:
- *   · *"lane AND rỗng"* — tưởng là dấu hiệu câu hỏi tự nhiên dài. Thực đo: lane AND **không
- *     bao giờ rỗng**, nó trả 1–3 ứng viên cho cả câu "công thức nấu phở bò gia truyền Nam
- *     Định". Trong 215k tin có tin đủ dài để chứa mọi từ thông dụng ⇒ cửa không bao giờ mở.
- *   · *"truy vấn không mang từ hiếm"* — tưởng câu tán gẫu chỉ có từ thông dụng. Thực đo NGƯỢC:
- *     ca âm mang từ HIẾM HƠN ca dương (`minDF` trung vị 19 so với 213) vì câu lạc đề chứa từ
- *     vựng kho gần như không có ("arabica", "plank", "vali"). Tín hiệu ngược dấu.
+ * 🔴 BA điều kiện phụ đã bị BÁC bằng đo — ghi lại để không ai dựng lại:
+ *   · *"lane AND rỗng"* — lane AND **không bao giờ rỗng**: nó trả 1–3 ứng viên cho cả câu
+ *     "công thức nấu phở bò gia truyền Nam Định". Cửa không bao giờ mở.
+ *   · *"truy vấn không mang từ hiếm"* — NGƯỢC DẤU: ca âm mang từ HIẾM HƠN ca dương (`minDF`
+ *     trung vị 19 so với 213), vì câu lạc đề chứa từ vựng kho gần như không có.
+ *   · *"margin"* và *"đồng thuận giữa các lane"* — xem khối ghi chú ngay trên: margin làm TỤT
+ *     tỉ lệ chặn, đồng thuận cộng thêm đúng số không.
  *
- * Còn lại margin, và nó không phụ thuộc thang đo nên sống được ở chỗ hai cái kia chết.
+ * Còn lại đúng MỘT tín hiệu, và nó là tín hiệu đơn giản nhất: khoảng cách tuyệt đối.
  */
-function shouldAbstain(topDist: number | undefined, margin: number | undefined, force?: boolean): boolean {
+export function shouldAbstain(
+  topDist: number | undefined,
+  _margin: number | undefined,
+  force?: boolean,
+  indexSize?: number,
+): boolean {
   if (!abstainEnabled(force)) return false;
-  if (topDist === undefined || margin === undefined) return false; // không có số đo ⇒ KHÔNG chặn (điều 9)
-  return topDist > ABSTAIN_DIST && margin < ABSTAIN_MARGIN;
+  // Kho chưa đủ dày ⇒ KHÔNG chặn, dù khoảng cách có xa tới đâu (xem ABSTAIN_MIN_VECTORS).
+  if (indexSize !== undefined && indexSize < ABSTAIN_MIN_VECTORS) return false;
+  if (topDist === undefined) return false; // không có số đo ⇒ KHÔNG chặn (điều 9)
+  return topDist > ABSTAIN_DIST;
 }
 
 function cosine(a: Float32Array, b: Float32Array): number {
@@ -841,7 +882,19 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
     if (vec.length) streams.push({ ranks: vec, w: W_VEC });
     let ranked = rrf(streams);
     if (!ranked.length) return { hits: [], topDistance };
-    if (shouldAbstain(topDistance, margin, opts.abstain)) return { hits: [], abstained: true, topDistance };
+    // Cổng "không biết" — hai tầng. Tầng khoảng cách chấm trước (rẻ, đã có sẵn số), CHỈ khi nó
+    // đã vượt ngưỡng mới đi đếm chỉ mục: đường tìm thường ngày không phải trả phí đếm này.
+    if (shouldAbstain(topDistance, margin, opts.abstain)) {
+      let indexSize = 0; // đếm lỗi ⇒ coi như kho mỏng ⇒ KHÔNG chặn (fail-open, điều 9)
+      try {
+        indexSize = vectorCount(opts.dbPath ?? currentMemoryDb());
+      } catch {
+        /* chỉ mục không đọc được thì thà trả kết quả còn hơn câm */
+      }
+      if (shouldAbstain(topDistance, margin, opts.abstain, indexSize)) {
+        return { hits: [], abstained: true, topDistance };
+      }
+    }
     ranked = await maybeRerank(db, ranked, query, opts.rerank);
     // SAU rerank, TRƯỚC recency — cùng vị trí như ở search() để hai đường cho cùng
     // thứ tự. Bỏ sót đây là bỏ sót đường CHÍNH: hybrid bật mặc định, UI đi lối này.
@@ -886,6 +939,16 @@ export async function recallChecked(query: string, opts: SearchOptions = {}): Pr
  */
 export async function searchHybrid(query: string, opts: SearchOptions = {}): Promise<SearchHit[]> {
   return (await fusedSearch(query, opts, true)).hits;
+}
+
+/**
+ * Như `searchHybrid` nhưng KÈM LÝ DO rỗng. Bề mặt nào in kết quả cho người đọc phải dùng đường
+ * này: *"không tìm thấy gì"* và *"có ứng viên nhưng không cái nào đủ gần nên tôi không trả"* là
+ * hai sự thật khác nhau, và gộp chúng thành một câu "no matches" là để bề mặt nói dối — đúng thứ
+ * `02_RULES` cấm (bề mặt CHẾT THEO nền / không vỏ rỗng).
+ */
+export async function searchHybridChecked(query: string, opts: SearchOptions = {}): Promise<RecallResult> {
+  return fusedSearch(query, opts, true);
 }
 
 /**

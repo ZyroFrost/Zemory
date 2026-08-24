@@ -24,6 +24,7 @@ Nhị phân nặng        .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo d
 Data thật vs mẫu     nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được deliverable → fixtures/ (tracked)
 Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
 Bề mặt CHẾT THEO nền  **Mọi bề mặt phụ thuộc một tiến trình chạy nền (launcher đang chờ · pipeline nhiều bước · job theo lịch · cửa sổ tool đang mở) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang chạy.** Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó **NÓI DỐI**: người dùng thấy "đang chạy…" rồi chờ hàng giờ trong khi KHÔNG có gì đang chạy, và không có cách nào phân biệt với chạy-thật. Áp cụ thể ở đây: stage pipeline chết giữa chừng phải trả **mã thoát ≠ 0** và nói rõ chặng nào · cổng readiness thất bại thì **DỪNG chuỗi**, không chạy tiếp rồi xuất file thiếu số · file deliverable ghi dở phải bị coi là LỖI, không để lại bản cụt trông như đã xong
+Separator của INDEX   ⛔ ĐỪNG "dọn cho đẹp": chỉ mục docs lưu đường theo separator của OS (`docs\agent\05_TODO.md`), KHÔNG posix — và mọi chỗ TRA cũng ghép bằng `join`. Từng có đợt chuẩn hoá sang `/`, hậu quả đo được: `plan ls` IM LẶNG báo "index rỗng" dù chỉ mục đủ, và `reindex` lần sau đẻ doc row TRÙNG. Muốn đổi = một MIGRATION riêng (đổi index cũ + mọi chỗ tra trong CÙNG một bước)
 SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries của app)
 ```
 ## Ngôn ngữ (BẮT BUỘC)
@@ -142,6 +143,17 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
   · Thứ đáng giữ (dữ liệu đo còn dùng để đối chiếu) thì giữ, nhưng phải NHỎ và nói rõ giữ vì gì.
   · **Máy canh, đừng dựa ai nhớ** (cùng doctrine `conform`/`structure-sync`): người dùng nói
     thẳng *"đợi t kiểm thì t ko nhớ và cũng lâu mới làm"*.
+- **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
+  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
+  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
+    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
+  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
+    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
+  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
+  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
+  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
+  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
+  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
 - **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
 - **Yêu cầu không rõ ràng phải được làm rõ trước khi thực thi — cơ chế TỰ ĐỘNG, KHÔNG chờ user gọi "grill".** Kích hoạt khi: yêu cầu đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Chạy skill **`.claude/skills/grill/`** (dừng · cái nào đọc được thì đọc · hỏi mỗi lần MỘT câu kèm đề xuất · chốt đủ rõ mới làm). KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn. (User gõ "grill" = ép chạy thủ công.)
 - **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).

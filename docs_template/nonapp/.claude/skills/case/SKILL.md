@@ -29,7 +29,7 @@ phải nhắc. Tra trước, luôn luôn.
 
 ## MỞ case
 
-1. `tasks/<tên_case>/` — tên thường không số. **Số `NN_` CHỈ cho case định kỳ / chạy tự động.**
+1. `tasks/<tên_case>/` — **tên THƯỜNG, KHÔNG đánh số**, kể cả case định kỳ. Quy ước đặt tên là của repo (estate PowerBI dùng `<MÃ PHÒNG>_<NHỊP>_<TênViệc>`, vd `IT_Tuan_TonKho`); chuẩn không ép tên, chỉ ép **không có số thứ tự**. ⚠ Bãi bỏ vế cũ *“số `NN_` cho case định kỳ”*: số trên tên case là số chết (case không chạy theo thứ tự, thêm/bỏ là đánh số lại cả dãy) và nó lẫn với số STAGE trong `pipelines/` vốn có nghĩa thật.
 2. `spec.md` **viết TRƯỚC khi dò**, đủ 5 mục: **Trạng thái** · **Gọi case** *(user nói gì
    thì vào đây)* · **Mục lục file** · **Việc còn mở** · **§Mở lại case khi nào**.
 3. Dò → findings `<ngày>_<slug>.md` · fix script `<ngày>_<slug>.sql` (**ĐỀ XUẤT**, user tự

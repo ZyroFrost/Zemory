@@ -21,6 +21,8 @@ import { guardDrift } from "../docs/guard-gen.js";
 import { backupStale } from "../memory/backup-rotate.js";
 import { uiPort } from "../ui.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
+import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
+import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 
 export function cmdInit(args: string[]): void {
@@ -328,6 +330,35 @@ export async function cmdDoctor(): Promise<void> {
     }
   } catch {
     /* fail-open — báo cáo phụ, không được làm doctor chết */
+  }
+
+  // Bundle đã RỜI KHỎI MÁY chưa — sự cố 2026-08-11: client Drive kẹt hàng đợi, gói 317 MB +
+  // bản bàn giao 1,63 GB nằm im 3 NGÀY trong khi `memory sync` vẫn báo "đã xuất" thành công.
+  // "Đã ghi vào thư mục Drive" ≠ "đã lên mây"; khoảng giữa hai câu đó hỏng im lặng nên phải
+  // có người canh (plan/18 mặt ⑨). Đọc SỔ của client (chỉ-đọc, fail-open) — user gật 24/08.
+  try {
+    const dd = getDriveDir();
+    if (dd) {
+      const up = uplinkReport(dd);
+      const hrs = (ms: number): string => (ms / 3_600_000).toFixed(1);
+      if (up.stuck.length) {
+        failed = true;
+        const worst = up.stuck[0];
+        console.log(
+          `  uplink: ✗ ${up.stuck.length} bundle CHƯA rời khỏi máy quá ${(uplinkStaleMs() / 60_000).toFixed(0)} phút` +
+            ` — cũ nhất ${hrs(worst.ageMs)} giờ: ${worst.file} (${(worst.sizeBytes / 1024 ** 2).toFixed(1)} MB).` +
+            ` Client đồng bộ đang kẹt hàng đợi; máy kia KHÔNG nhận được gì. Mở client Drive kiểm/khởi động lại.`,
+        );
+      } else if (!up.journalFound) {
+        console.log(`  uplink: ○ chưa kiểm được — ${up.inconclusive[0] ?? "không đọc được sổ DriveFS"}`);
+      } else if (up.pending.length) {
+        console.log(`  uplink: ○ ${up.pending.length} bundle đang lên mây (trẻ hơn ngưỡng — bình thường)`);
+      } else if (up.departed > 0) {
+        console.log(`  uplink: ✓ mọi bundle trên Drive đã lên mây (${up.departed} file xác nhận bằng sổ client)`);
+      }
+    }
+  } catch {
+    /* fail-open — sổ là của client, đọc lỗi không được làm doctor chết */
   }
 
   if (failed) process.exitCode = 1;

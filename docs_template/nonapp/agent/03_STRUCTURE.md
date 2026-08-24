@@ -8,6 +8,7 @@
 - Mô tả theo **VAI TRÒ (role)** — áp BI / data / docs-only / design gần như không đổi cấu trúc.
 - **1 TÊN duy nhất cho mỗi concern**; chỉ khi công cụ ÉP CỨNG tên (vd Power BI Project `.pbip`/`.Report`/`.SemanticModel`, dbt `models/`) mới theo nó.
 - **INDEX = TỪ ĐIỂN TÊN để TRA, KHÔNG phải danh sách folder phải tạo.** Slot dưới đây là *tên có sẵn để tra cứu* — **CHỈ tạo folder khi CÓ concern THẬT**, **TUYỆT ĐỐI KHÔNG tạo folder rỗng** cho "đủ bộ". Một dự án non-app điển hình chỉ hiện diện 3–8 slot.
+- **NGƯỠNG GỘP SLOT — chống PHÂN MẢNH (luật, thêm 2026-08-24 từ thực địa).** Luật “không folder rỗng” ở trên chặn được folder RỖNG nhưng KHÔNG chặn folder 1–2 file, mà phân mảnh mới là thứ làm gốc repo không đọc được. Đo thật một repo estate: **4 folder cho 7 file** (`config/` 1 · `content/` 1 · `measures/` 2 · `scripts/` 3) ⇒ **11 folder ở gốc, 0 vi phạm dòng nào của chuẩn cũ**. **Luật:** một slot chỉ được ĐỨNG RIÊNG khi có **≥3 file** hoặc khi **công cụ ép vị trí**. Dưới ngưỡng ⇒ gộp vào slot gần nghĩa nhất và ghi MỘT DÒNG trong `03_STRUCTURE` nói nó nằm đâu (từ điển tên vẫn tra được). `zemory conform` **nhắc** khi một slot tracked có <3 file — **advisory, KHÔNG chặn**: ngưỡng này là chuyện gu đọc, gate đỏ vì nó sẽ thành gate bị bỏ qua.
 - **Nguồn = ĐẦU VÀO** (định nghĩa nguồn · measure · template điền · deliverable · spec) = git **tracked**. **File THẬT nặng / PII / kéo-về / render-ra = ĐẦU RA** = **gitignore** (`data/` · `exports/` · `.env`).
 - **BẮT BUỘC = 3 VAI TRÒ** (thay cho 4 của app): `docs/` · `AGENTS.md` · **≥1 folder DELIVERABLE** (`reports/` | `models/` | `content/` | `design/` — chọn theo loại). KHÔNG có `backend/` + `frontend/` (không có code-app).
 
@@ -38,8 +39,8 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │   │                     mục lục · việc mở · mở lại khi nào) + findings `<ngày>_<slug>.md` + fix script
 │   │                     ĐỀ XUẤT + query CHỈ case đó dùng. Data THẬT → `data/<case>/` (gitignore,
 │   │                     mirror ĐÚNG TÊN). Case ĐÓNG mở lại được — folder là hồ sơ sống, không xoá.
-│   │ ┄┄ case ĐỊNH KỲ / tự động → đánh số `NN_` ┄┄
-│   ├── 01_weekly/  [opt]    vd report tuần — pipeline `pipelines/01_weekly/`, launcher `weekly.cmd`
+│   │ ┄┄ MỌI case đặt tên THƯỜNG, KHÔNG đánh số (số `NN_` chỉ dành cho STAGE trong pipeline) ┄┄
+│   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Tuan_TonKho` — pipeline `pipelines/<cùng tên>/`, launcher `bin/<tên>.cmd`
 │   │ ┄┄ case theo YÊU CẦU (điều tra · sự cố · dim phải chăm đi chăm lại) → tên thường, KHÔNG số ┄┄
 │   └── <case>/     [opt]    mỗi vấn đề một mạch việc quay lại nhiều lần — ngang hàng case định kỳ
 ├── templates/      [opt]  FILE MẪU để ĐIỀN tự động (report/sheet TRỐNG chờ đổ số) — KHÁC `fixtures/` (data mẫu)
@@ -47,14 +48,17 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 ├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn — chỗ automation "KÉO" đọc
 ├── measures/       [opt]  thư viện DAX/tính toán đặt tên + chú thích (trích ra để review/tái dùng)
 ├── queries/        [opt]  SQL/DAX/M đặt tên, gọi theo tên — KHÔNG rải inline (đối xứng store/queries.* của app)
-├── pipelines/      [opt]  PIPELINE thực thi. Task đánh số → `NN_<tên>/` MIRROR ĐÚNG tasks/ (§4 "Pipeline đánh số"):
-│   ├── 01_weekly/  [opt]    ├ common.py = helper chung (tên KHÔNG số → import được)
+├── pipelines/      [opt]  PIPELINE thực thi, MIRROR ĐÚNG TÊN tasks/ (§4 “Pipeline mirror theo TÊN”):
+│   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Tuan_TonKho` — pipeline `pipelines/<cùng tên>/`, launcher `bin/<tên>.cmd`
 │   │                        └ 00_ready.py 01_pull.py 02_fill.py … = mỗi STAGE 1 file, số phẳng theo thứ tự chạy
 │   └── <domain>/   [opt]    script gom theo nguồn/domain (fast · haravan · pos…) — legacy KHÔNG đánh số, cùng tồn tại
 ├── notebooks/      [opt]  phân tích thăm dò .ipynb (research/analytics)
 ├── fixtures/       [opt]  DATA MẪU NHỎ (tracked) để mở report/model KHỎI cần nguồn thật
 ├── assets/         [opt]  theme .json · logo · icon · bảng màu cho report/design
 ├── scripts/        [opt]  TỰ ĐỘNG HOÁ: kéo (pull) · điền (fill) · publish/upload — script THIN, agent gọi (§5)
+├── bin/            [opt]  LAUNCHER gõ tay (`.cmd`/`.sh`) — vd `bin/weekly.cmd`: `<tên> <stage>` dispatch ·
+│                        `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. **THUẦN ASCII**
+│                        (dấu tiếng Việt làm cmd.exe vỡ parse). ĐẶT Ở ĐÂY, KHÔNG ở gốc — xem §5 “Gốc repo”
 ├── config/         [opt]  profile workspace/connection (operator): *.example.* tracked · real→gitignore
 ├── attic/          [opt]  bản cũ deliverable / snapshot TRƯỚC publish (rollback). Tracked
 ├── share/          [opt]  bundle sync mã hóa xuyên máy (chỉ khi cần) — như app
@@ -62,7 +66,6 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
 │
 ├── README.md · LICENSE · .gitignore · .gitattributes   (manifest) giới thiệu/giấy phép/ignore/eol-lfs
-├── <tên>.cmd        [opt]  LAUNCHER task đánh số ở gốc (vd `weekly.cmd`): `<tên> <stage>` dispatch · `<tên> auto` = chạy cổng 00 (exit-code gate) rồi chuỗi stage nếu đủ. **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse)
 ├── .github/ · .vscode/ · .idea/   [opt] config CI/editor — ĐỂ YÊN ở root
 │
 │ ═════════ ③ GITIGNORE — KHÔNG commit (file thật / bí mật / theo máy) ═════════
@@ -83,15 +86,15 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | Có gì / cần làm | → Slot |
 |---|---|
 | báo cáo / model / nội dung / thiết kế giao đi | `reports/` \| `models/` \| `content/` \| `design/` (deliverable ◆) |
-| **CASE ĐỊNH KỲ / tự động** (report tuần, target quý) | `tasks/NN_<tên>/` · data thật → `data/<case>/` |
+| **CASE ĐỊNH KỲ / tự động** (report tuần, target quý) | `tasks/<tên>/` · data thật → `data/<case>/` (mirror ĐÚNG TÊN) |
 | **CASE theo yêu cầu** (điều tra 1 vấn đề, sự cố, dim phải chăm đi chăm lại) | `tasks/<tên>/` **không số** · data thật → `data/<case>/` |
 | **findings / bằng chứng / số đo của một case** | `tasks/<case>/<ngày>_<slug>.md` — KHÔNG để rời ở `content/` |
 | **fix script ĐỀ XUẤT** (user tự chạy) | `tasks/<case>/<ngày>_<slug>.sql` |
 | **query check CHỈ 1 case dùng** | `tasks/<case>/check_*.sql` |
 | **query check NHIỀU case dùng chung** | `queries/check_*.sql` (ngoại lệ của luật 1-case-1-folder) |
 | **index tra nhanh "có case nào"** | `content/README.md` |
-| **pipeline thực thi task** (stage đánh số) | `pipelines/NN_<tên>/` MIRROR tasks/ · `common.py` (helper) + `00_/01_/02_…` (stage) |
-| **launcher chạy task** | `<tên>.cmd` ở GỐC repo (`<tên> <stage>` · `<tên> auto`) — ASCII thuần |
+| **pipeline thực thi task** (stage đánh số) | `pipelines/<cùng tên case>/` · `common.py` (helper) + `00_/01_/02_…` (STAGE) |
+| **launcher chạy task** | `bin/<tên>.cmd` (`<tên> <stage>` · `<tên> auto`) — ASCII thuần, KHÔNG ở gốc |
 | **file GỐC người ta gửi / kéo từ nguồn cho 1 case** | `data/<case>/01_raw/` — 🔴 chỉ đọc, KHÔNG ghi đè |
 | **file trung gian pipeline sinh** (.csv, nháp, `_state.json`) | `data/<case>/02_processing/` — xoá đi chạy lại phải dựng lại được |
 | **bản GIAO ĐI / đẩy lên đích** | `data/<case>/03_output/` — mail · SharePoint · BI; tên nghiệp vụ (KHÔNG prefix số) |
@@ -130,17 +133,18 @@ KHÔNG folder rỗng    INDEX = từ điển tên để TRA, KHÔNG checklist. T
 Tên THƯỜNG           slot folder viết thường (tasks · sources · templates · extract · adhoc). TÊN có sẵn của người ta GIỮ NGUYÊN: file (TargetAll.xlsx · ..._REPORT.xlsx), vendor/tool ép (.pbix · .Report/ · .SemanticModel/)
 Tên file = TIẾNG ANH MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII. NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` — luật này chỉ nói về TÊN. Lý do: tên là thứ bị gõ lại trong lệnh·import·link·URL, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. Áp cho CẢ tên case (`tasks/<case>/`) và tên stage pipeline — đó là chỗ hay bị đặt theo ngôn ngữ bản địa nhất. ĐỂ YÊN tên KHÔNG phải của mình (file/vendor có sẵn, ở dòng trên)
 adhoc ≠ task         data/adhoc/ = file LẺ check 1 lần, throwaway (chỉ giữ README marker) · cái gì thuộc DELIVERABLE ĐỊNH KỲ → phải nằm dưới tasks/<task>/ + data/<task>/. KHÔNG quăng file định kỳ vào adhoc
-tasks/ đánh số        CHỈ case ĐỊNH KỲ / CHẠY TỰ ĐỘNG mới đánh số: tasks/NN_<cadence>/ (00→ tăng dần: 01_weekly · 02_monthly).
+tasks/ KHÔNG SỐ     Case đặt tên THƯỜNG, mô tả việc — KHÔNG đánh số thứ tự. Estate thực tế dùng `<MÃ PHÒNG>_<NHỊP>_<TênViệc>` (vd `IT_Tuan_TonKho`), và đó là quy ước của repo, chuẩn KHÔNG ép. ⚠ Bãi bỏ quy ước cũ `tasks/NN_<cadence>/`: số thứ tự trên TÊN CASE là số chết — case không chạy theo thứ tự, thêm/bỏ case là phải đánh số lại cả dãy, và nó lẫn với số STAGE vốn có nghĩa thật
                      Case theo YÊU CẦU (chạy khi có việc, không lịch) = tên THƯỜNG không số: tasks/<tên>/.
                      Cả hai loại: data/<case>/ mirror ĐÚNG TÊN. Khác data/adhoc/ = file 1 lần, throwaway, KHÔNG có spec
 3 CHẶNG DATA        data/<case>/ chia 01_raw/ (đầu vào ngoài, CHỈ ĐỌC) · 02_processing/ (trung gian, dựng lại được) · 03_output/ (bản giao đi).
                      Phép thử xếp file: **xoá đi có dựng lại được không?** — KHÔNG ⇒ 01_raw · CÓ, và không ai ngoài thấy ⇒ 02_processing · CÓ, và đem giao/đẩy đi ⇒ 03_output.
                      Pipeline khai đường bằng HẰNG trong common.py (RAW/PROC/OUT), KHÔNG nối chuỗi đường dẫn trong từng stage.
                      data/adhoc/ + data/extract/ KHÔNG chia chặng
-Pipeline đánh số     task lặp = pipeline đánh số, MIRROR số xuyên 3 nơi: `tasks/NN_<tên>/spec.md` ↔ `pipelines/NN_<tên>/` ↔ `data/NN_<tên>/` (cùng NN, KHÔNG lệch). Stage phẳng `NN_mô-tả.py` (00=cổng/readiness thường KHÔNG xuất data · 01,02…=bước); chạy standalone; logic dùng chung → `common.py` (tên KHÔNG số mới import được)
+Pipeline mirror TÊN  task lặp = một pipeline, MIRROR theo TÊN xuyên 3 nơi: `tasks/<tên>/spec.md` ↔ `pipelines/<tên>/` ↔ `data/<tên>/` (CÙNG TÊN, không lệch). Bên trong pipeline, STAGE mới đánh số phẳng `NN_mô-tả.py` (00=cổng/readiness thường KHÔNG xuất data · 01,02…=bước); chạy standalone; logic dùng chung → `common.py` (tên KHÔNG số mới import được). **`NN_` chỉ có ĐÚNG MỘT nghĩa: thứ tự STAGE.**
 Output khớp số       file trung gian mang tiền tố số stage (`01_pull.py` → `data/<case>/02_processing/01_pull_*.csv`). ⚠ NGOẠI LỆ file DELIVERABLE cuối: nằm `data/<case>/03_output/`, GIỮ TÊN NGHIỆP VỤ (vd `YYYYMMDD_..._REPORT.xlsx`), KHÔNG prefix số — vì đó là file giao/nộp
 Right-size stage     chỉ tạo stage task THẬT cần (2–4 là thường), KHÔNG chẻ vụn cho "đủ bộ". Script domain cũ (fast/haravan/pos…) KHÔNG bắt đánh số — cùng tồn tại
-Launcher .cmd        `<tên>.cmd` ở gốc: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. File .cmd **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse). ⚠ KHÔNG đặt dấu `>` trong dòng `rem` — cmd VẪN redirect ⇒ sinh file rỗng ở gốc repo
+Launcher (bin/)      Launcher gõ tay đặt ở `bin/` — `bin/<tên>.cmd`: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse). ⚠ KHÔNG đặt dấu `>` trong dòng `rem` — cmd VẪN redirect ⇒ sinh file rỗng
+GỐC REPO SẠCH (LUẬT) Gốc repo CHỈ chứa file mà CÔNG CỤ ÉP phải nằm đó: `AGENTS.md` · `CLAUDE.md` · `README.md` · `LICENSE` · `.gitignore` · `.gitattributes` · `.claude/` · `.github/` · `.vscode/`. **Mọi thứ khác PHẢI có folder** — launcher → `bin/`, script → `scripts/`, config → `config/`. Vì sao thành luật: gốc là chỗ DUY NHẤT không ai sở hữu, nên rác rơi vào đó không ai nhận; đo thật ở một repo estate — **5 file rỗng 0 byte** do `.cmd` redirect nhầm nằm ngay gốc, **2 file đã lọt vào git**. Đánh đổi có ý thức: gõ `bin\nq pull` thay vì `nq pull`
 templates ≠ fixtures  templates/ = file TRỐNG chờ ĐIỀN (đổ số ra deliverable) · fixtures/ = data MẪU nhỏ để mở deliverable khỏi cần nguồn thật
 Luật khi VIẾT        đã dời sang `02_RULES §Luật khi VIẾT` (luật nổ lúc viết code, `conform` không kiểm được).
 Từ điển dữ liệu      §7 của file này là nhà DUY NHẤT — định nghĩa metric/cột = nguồn sự thật, chống mỗi report tính 1 kiểu. KHÔNG tạo docs/dictionary.md (một dự án một từ điển; tách ra là chắc chắn lệch)
