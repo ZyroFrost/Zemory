@@ -5,6 +5,49 @@
 
 ---
 
+## [2026-08-25d] — HÀNG ĐỢI ghi kho chung: đợi tới lượt, có nhịp tim, kiểm hai đầu
+
+> 🔄 **Supersede** vế *"Tranh chấp thì BÁO, không cố chống"* (`plan/08 §8`, agent viết 2026-08-12).
+> User đọc lại và bác: *"t nói là 1 file duy nhất, 2 máy cùng ghi vào — chứ KHÔNG hề nói là 2 cái
+> ghi sai nhau"*. Vế cũ lấy giới hạn của Drive làm cớ dừng ở mức thấp hơn ý đã chốt.
+
+**Sự cố sinh ra nó (đo cùng ngày):** lượt merge đọc kênh ở **0,55 MB/s** nên giữ khoá **~1 giờ** —
+quá ngưỡng mồ côi 15 phút ⇒ máy kia **hợp lệ** nối khối lúc 13:08 ngay giữa lúc máy này đang đọc ⇒
+`UNKNOWN: unknown error, read`, hỏng CẢ lượt sync lẫn lượt bù vector.
+
+**Bốn thứ đổi** (spec đầy đủ: `plan/08 §8c`):
+- **Hàng đợi thật** — gặp khoá còn sống thì **ĐỢI** (nới rộng dần, trần 30 s/nhịp), in *"đang chờ
+  máy X"*. Không cướp, không bỏ cuộc. Trước đây: ném lỗi bắt người dùng tự bấm lại.
+- **Nhịp tim** — chủ khoá chạm lại `at` mỗi 30 s; lỡ **3 nhịp** mới coi là chết. Việc chạy lâu vì
+  vậy không còn bị hiểu nhầm là máy chết.
+- **Tương thích ngược** — khoá của bản CŨ không có cờ `beat` ⇒ vẫn đọc bằng ngưỡng 15 phút. Không
+  làm vậy thì ta cướp khoá của máy chạy bản cũ, tức tái tạo đúng lỗi đang vá, chỉ đổi chiều.
+- **Kiểm hai đầu quanh lúc nối** — trước khi ghi: số khối đổi so với lúc liệt kê ⇒ **DỪNG**, để
+  lượt sau merge rồi ghi (Drive đồng bộ theo CẢ FILE: nối lên bản cache cũ = **xoá khối của máy
+  kia mà không ai báo**). Sau khi ghi: đếm lại khối, lệch ⇒ báo lỗi rõ thay vì báo "đã đẩy".
+
+**Kèm — VÙNG TỚI HẠN TỐI THIỂU, và một chi phí ẩn to hơn cả bài toán khoá.** Merge nay chạy NGOÀI
+khoá (khoá chỉ ôm phần ghi; merge lượt hai trong khoá bắt phần máy khác vừa nối). Trong lúc làm lộ
+ra: `mergeContainer` **giải nén MỌI khối ra file tạm** rồi mới hỏi "đã merge chưa" ⇒ mỗi lượt sync
+chép lại nguyên container — đo được **2,4 GB đọc / ~1 giờ** chỉ để kết luận KHÔNG có gì mới. Nay
+chữ ký khối đọc **tại chỗ** (header là plaintext ở đầu khối) ⇒ khối đã biết bỏ qua gần như miễn phí.
+
+**Cổng:** `drive-single-file.test.mjs` — ca ÂM *"khoá còn sống KHÔNG được cướp"* (đúng ca đã hỏng)
++ ca *"khoá chết thật thì máy sau vào được"* (không để một máy tắt làm kẹt cả hệ) + ca *"không có
+gì mới thì không chép lại container"* + ca *"đoạn GHI vẫn phải có khoá"*. Ba đột biến, mỗi cái đỏ
+đúng ca của nó.
+⚠ **Cổng "cửa chặn rẻ" bản ĐẦU là TRANG TRÍ** — gỡ cửa chặn mà test vẫn xanh, vì "bỏ qua" và "chép
+ra rồi mới bỏ qua" cho kết quả nhìn y hệt. Chỉ lộ khi chạy đột biến. Phải trưng cờ `cheap` ở kết
+quả merge thì cổng mới đo được thứ nó khai là đang canh — đúng luật *"test mới phải chứng minh
+mình ĐỎ ĐƯỢC"*.
+⚠ Ca thứ hai gắn `timeout: 60s` có chủ đích: hỏng theo chiều *"không bao giờ coi là chết"* thì test
+**TREO** chứ không đỏ — và treo trong gate là kiểu hỏng tệ hơn đỏ (hôm nay đã ngốn 15 phút im lặng
+đúng vì một ca treo).
+
+**Chưa đo, ghi rõ:** hành vi *"Drive đẻ conflicted copy"* và *"nối lên bản cũ làm mất khối"* nêu
+theo cách Drive hoạt động, **chưa dựng phép thử hai máy thật**. Kèm một lỗ đã biết: nếu Drive đẻ
+file trùng tên khác, code chỉ nhìn `global_memory.enc` ⇒ dữ liệu bản kia nằm chết, không ai báo.
+
 ## [2026-08-25c] — TIN VÀ VECTOR ĐI CÙNG CHUYẾN: vá lỗ chở vector (HP điều 16)
 
 Diễn tập phục hồi đầu tiên (`plan/18 §4b`) dựng kho từ kênh chung: đường lùi CÒN SỐNG (7m42s ·

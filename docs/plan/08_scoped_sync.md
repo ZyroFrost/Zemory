@@ -226,6 +226,97 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
   2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
   khi cổng ship. Mục `05_TODO` "717 cửa sổ phụ" nó trỏ tới đã đóng, nay nằm ở `archive/05_TODO.md`.)*
 
+### 8c. HÀNG ĐỢI GHI KHO CHUNG — khoá hiện tại KHÔNG phải hàng đợi (spec 2026-08-25)
+
+> **Ý user, nguyên văn khi soi lại thiết kế:** *"cái t sợ là 2 máy cùng ghi vào 1 file → thì có thể
+> chỉ có 1 máy được mở .db và ghi 1 lúc thôi… nếu có vấn đề này thì phải thiết kế dạng hàng đợi,
+> các máy phải đợi nhau"*. Và khi đọc lại §8: *"t nói là 1 file duy nhất, 2 máy cùng ghi vào, chứ
+> KHÔNG hề nói là 2 cái ghi sai nhau"*.
+>
+> ⇒ Vế *"Tranh chấp thì BÁO, không cố chống"* ở §8 là **chữ của agent**, không phải yêu cầu của
+> user. Nó lấy giới hạn của Drive làm cớ để dừng ở mức thấp hơn ý đã chốt. Mục này thay vế đó.
+
+**Ranh giới kỹ thuật, nói trước cho khỏi bàn lại:** trên kênh chung KHÔNG có `.db` sống nào — hai
+máy không bao giờ cùng mở một SQLite (WAL + khoá theo tiến trình; kho đã hỏng HAI LẦN vì hai kẻ
+ghi, sinh ra HP điều 11). Thứ nằm trên Drive là container mã hoá gồm các khối niêm phong, và việc
+duy nhất cần độc quyền là **lúc NỐI khối**. Bài toán vì vậy KHÔNG phải "cho hai máy cùng ghi một
+DB" mà là **xếp hàng cho thao tác nối**.
+
+#### Bốn lỗ đo được (mỗi lỗ một sự cố hoặc một dòng code cụ thể)
+
+| # | lỗ | bằng chứng |
+|---|---|---|
+| ① | **vùng tới hạn quá DÀI** — khoá ôm trọn cả lượt merge 1,6 GB, trong khi phần cần độc quyền chỉ vài giây | `syncDrive` lấy khoá trước vòng merge rồi mới `pushAppend`; đo 2026-08-25: giữ khoá **~1 giờ** vì kênh đọc ở 0,55 MB/s |
+| ② | **khoá không có NHỊP TIM** ⇒ việc chạy lâu bị hiểu là chết | `acquireDriveLock` ghi khoá **một lần** (`share.ts` ~950), `LOCK_STALE_MS` = 15 phút. Hậu quả thật: máy kia coi khoá là mồ côi, nối khối lúc 13:08 **đúng lúc máy này đang đọc** ⇒ `UNKNOWN: unknown error, read`, hỏng CẢ lượt sync lẫn lượt bù |
+| ③ | **đọc-rồi-ghi không nguyên tử** | đọc khoá → (không kiểm lại) → ghi khoá của mình. Hai máy cùng thấy trống là cùng vào; Drive còn đồng bộ trễ nên khoá máy kia có thể **chưa hiện ra** |
+| ④ | **gặp khoá thì BỎ CUỘC, không xếp hàng** · **nối xong không kiểm lại** | khoá bận ⇒ ném lỗi *"chờ nó xong rồi sync lại"*, người dùng phải tự bấm. Và Drive không bảo đảm nguyên tử khi hai bên cùng ghi, mà hiện KHÔNG có phép đọc lại xác nhận khối của mình còn đó |
+
+#### Thiết kế
+
+**① Thu nhỏ vùng tới hạn — ✅ XONG (2026-08-25, cùng 2.7.0).** Merge chạy NGOÀI khoá; sau khi cầm
+khoá thì merge lượt hai (rẻ) để bắt phần máy khác vừa nối, rồi mới ghi. Kèm một phát hiện làm đổi
+hẳn chi phí: `mergeContainer` cũ **giải nén MỌI khối ra file tạm** rồi mới hỏi "đã merge chưa" ⇒ mỗi
+lượt sync chép lại nguyên container (đo: đọc **2,4 GB**, ~1 giờ, chỉ để kết luận KHÔNG có gì mới).
+Nay chữ ký khối đọc **tại chỗ** (64 KB ở đầu khối, header là plaintext) ⇒ khối đã biết bỏ qua với
+chi phí gần bằng 0.
+Cổng: hai ca — *"không có gì mới thì không chép lại container"* (đo bằng cờ `cheap` trưng ra ở kết
+quả merge) và *"đoạn GHI vẫn phải có khoá"*.
+⚠ Bản ĐẦU của cổng thứ nhất là **TRANG TRÍ**: gỡ cửa chặn rẻ mà test vẫn xanh, vì "bỏ qua" và
+"chép ra rồi mới bỏ qua" nhìn y hệt nhau ở kết quả. Chỉ lộ ra khi chạy đột biến. Phải trưng cờ
+`cheap` thì cổng mới đo được thứ nó khai là đang canh.
+⚠ Đổi lại: bản chụp có thể CŨ hơn kênh vào lúc nối. Xử bằng ④ (kiểm lại đuôi): thấy có khối lạ
+xuất hiện sau lúc chụp ⇒ merge phần đó rồi nối, không nối đè lên hiểu biết cũ.
+
+**② Nhịp tim cho khoá.** Máy đang giữ khoá **chạm lại mỗi 30 giây** (ghi `at` mới). Ngưỡng mồ côi
+tính theo **lần chạm cuối**, không theo lúc lấy khoá: lỡ 3 nhịp liên tiếp (~2 phút) mới coi là chết.
+Chịu lỗi có chủ đích, cùng khuôn luật *"Bề mặt CHẾT THEO nền"* của `02_RULES`: một nhịp lỡ vì máy
+bận KHÔNG phải là chết.
+
+**③ Hàng đợi thật — ĐỢI TỚI LƯỢT, không bỏ cuộc.** *(User chốt: "thấy máy kia đang ghi thì máy
+mình phải đợi, chạy sau, sync sau".)*
+- Khoá **còn sống** (nhịp tim đều) ⇒ **ĐỢI**, nới rộng dần (1s → 2 → 4 … trần 30s), in *"đang chờ
+  máy X"* để người dùng thấy nó xếp hàng chứ không treo. **KHÔNG cướp, KHÔNG bỏ.**
+- Chỉ khi khoá **chết thật** (lỡ 3 nhịp) mới được vào — không thì một máy tắt giữa chừng làm **kẹt
+  cả hệ vĩnh viễn**.
+- **Tương thích ngược bắt buộc:** máy chạy bản CŨ không đập nhịp. Khoá của nó phải được đọc bằng
+  ngưỡng CŨ (15 phút), không phải ngưỡng nhịp-tim — nếu không, ta sẽ cướp khoá của nó giữa chừng,
+  tức tái tạo đúng lỗi đang đi vá, chỉ đổi chiều. Phân biệt bằng một cờ trong chính file khoá.
+
+**⑤ KÉO VỀ TRƯỚC KHI NỐI — chống MẤT IM LẶNG.** Đây là lớp quan trọng nhất, vì khoá **không cứu
+được** ca này: Drive đồng bộ theo **cả file**, nên nối 76 MB = tạo một phiên bản mới của **cả file
+1,7 GB**. Nối lên bản cache **cũ** ⇒ bản đẩy lên là *cũ + khối mình* ⇒ **khối của máy kia biến mất
+mà không ai báo**.
+- Ngay TRƯỚC khi nối (đã cầm khoá): đọc lại container, so số khối/kích thước với lúc chụp. Có khối
+  lạ ⇒ **merge chúng trước**, rồi mới nối.
+- Nối xong: đọc lại đuôi, xác nhận khối của mình **có mặt, đúng độ dài, chữ ký khớp**. Không thấy
+  ⇒ nối lại, tối đa 3 lần rồi báo lỗi rõ ràng.
+- **Lượt GỘP nguy hiểm nhất** vì nó *ghi đè* cả file: chạy trên bản cũ là xoá sạch phần máy kia vừa
+  nối. Gộp phải qua đúng hai phép kiểm trên, không có ngoại lệ.
+
+⚠ **Chưa ĐO trên máy thật:** hành vi "Drive đẻ conflicted copy" và "nối lên bản cũ làm mất khối"
+nêu theo cách Drive hoạt động, **chưa dựng phép thử hai máy** để xác nhận. Ai làm tiếp thì đo trước
+khi dựa vào. Kèm một lỗ đã biết: nếu Drive đẻ file trùng tên khác, code hiện **chỉ nhìn**
+`global_memory.enc` ⇒ dữ liệu trong bản kia nằm chết, không ai merge, không ai báo.
+
+**④ Kiểm sau khi nối.** Nối xong, đọc lại đuôi container: khối của mình phải có mặt, đúng độ dài,
+chữ ký khớp. Không thấy (Drive nuốt do ghi chồng) ⇒ nối lại, tối đa 3 lần rồi báo lỗi rõ.
+Đây là lớp DUY NHẤT thật sự chống được ca hai bên cùng ghi — ①②③ chỉ làm nó hiếm đi.
+
+#### Phi mục tiêu
+- KHÔNG biến kênh chung thành DB dùng chung (HP điều 11) · KHÔNG tự chế khung mã hoá mới ·
+  KHÔNG ghi đè khối của máy khác trong mọi trường hợp (HP điều 16: *ghi là nối thêm*).
+- KHÔNG dựng lại "series theo tên máy" — đã bãi bỏ 2026-08-12 vì đẻ 667 MB trùng lặp.
+
+#### Cổng nghiệm thu
+- Ca **hai máy cùng nối** (giả lập hai host trên hai thư mục tạm trỏ cùng container): cả hai khối
+  phải có mặt, không khối nào mất.
+- Ca **khoá còn sống nhưng chủ đang bận**: bên kia phải CHỜ rồi vào được, KHÔNG cướp.
+- Ca **chủ khoá chết thật** (không chạm nữa): sau ngưỡng, bên kia vào được — nếu không thì một máy
+  chết làm kẹt cả hệ.
+- Ca **ÂM bắt buộc**: một lượt chạy lâu (giả lập bằng nhịp tim đều) **KHÔNG được** bị cướp khoá —
+  đây đúng là ca đã hỏng hôm nay.
+- Mỗi ca kèm đột biến chứng minh đỏ được.
+
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
   - ~~**Còn lại:** `syncDrive` vẫn đẩy lean baseline (1 file/máy, ghi đè)…~~ **ĐÓNG 2026-08-12 —
