@@ -146,10 +146,16 @@ export async function rotateBackup(
   const r = await backupMemory({ dbPath });
 
   // Dọn SAU khi bản mới đã ghi xong — không bao giờ có lúc tay trắng.
+  //
+  // XOÁ CẢ FILE PHỤ `-shm`/`-wal` (sửa 2026-08-25). Trước đó vòng xoay chỉ xoá `.db`, nên mỗi
+  // lần xoay lại bỏ lại một cặp sidecar MỒ CÔI — đo trên kho thật: 6 file của 3 bản đã bị xoay
+  // đi từ 26/07 · 03/08 · 04/08 vẫn nằm đó. Rác nhỏ (32 KB mỗi cái) nhưng nó tích vĩnh viễn và
+  // làm thư mục sao lưu đọc không ra bản nào còn sống — đúng loại "không ai thấy nó lớn lên".
   const pruned: string[] = [];
   for (const old of listBackups(dir).slice(Math.max(1, policy.keep))) {
     try {
       rmSync(old.path, { force: true });
+      for (const side of ["-shm", "-wal"]) rmSync(old.path + side, { force: true });
       pruned.push(old.path);
     } catch {
       /* đang bị giữ ⇒ để lượt sau; giữ thừa một bản không hại ai */

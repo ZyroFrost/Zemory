@@ -27,7 +27,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
-import { embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
+import { embedFrontierId, embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
@@ -67,6 +67,12 @@ export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
    * the earlier rows.
    */
   sinceMessageId?: number;
+  /**
+   * GÓI BÙ VECTOR: id tin CŨ cần chở vector dù tin không nằm trong gói. Dùng cho
+   * `memory vectors-catchup` — bù phần kho chung còn thiếu bằng cách NỐI THÊM một khối nhỏ,
+   * KHÔNG ghi đè kho chung (HP điều 16). Gói khi đó có thể 0 tin mà vẫn có ích.
+   */
+  vectorCatchUpIds?: number[];
 }
 
 export interface ExportMemoryBundleResult {
@@ -214,7 +220,7 @@ interface RowsStats {
  */
 function buildRowsSnapshot(
   sourcePath: string,
-  opts: { excludeLanes?: ScopeLane[]; since?: number; attachments?: boolean },
+  opts: { excludeLanes?: ScopeLane[]; since?: number; until?: number; attachments?: boolean },
 ): { path: string; cleanup: () => void; stats: RowsStats } {
   const dir = mkdtempSync(join(tmpdir(), "zemory-memory-rows-"));
   const out = join(dir, "global_memory.rows.db");
@@ -239,11 +245,19 @@ function buildRowsSnapshot(
         : { match: "", params: [] as unknown[] };
       const notExcluded = (col: string) =>
         excl.match ? ` AND ${col} NOT IN (SELECT id FROM src.sessions s WHERE ${excl.match})` : "";
-      const deltaSessions = since > 0 ? " AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?)" : "";
+      // CHẶN TRÊN = ranh giới đã nhúng (`embedFrontierId`): tin chưa có vector thì để chuyến
+      // sau đi CÙNG vector của nó (HP điều 16). Số nội suy thẳng vì nó là `number` đã ép kiểu —
+      // cùng nếp `vecship.ts`, không rải chuỗi ngoài vào SQL.
+      const untilSql = opts.until !== undefined ? ` AND id <= ${Number(opts.until)}` : "";
+      const deltaSessions =
+        since > 0 ? ` AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?${untilSql})` : "";
 
       const stats: RowsStats = { sessions: 0, messages: 0, since, maxMessageId: 0, attachments: 0 };
       db.transaction(() => {
-        stats.maxMessageId = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM src.messages").get() as { m: number }).m;
+        const maxInStore = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM src.messages").get() as { m: number }).m;
+        // Watermark = id CAO NHẤT ĐÃ GỬI, không phải id cao nhất trong kho. Lấy nhầm cái sau
+        // thì phần bị chặn lại (tin chưa có vector) bị đánh dấu "đã gửi" và mất vĩnh viễn.
+        stats.maxMessageId = opts.until !== undefined ? Math.min(maxInStore, opts.until) : maxInStore;
         db.exec("INSERT INTO main.schema_version SELECT * FROM src.schema_version");
         db.prepare(
           `INSERT INTO main.sessions SELECT * FROM src.sessions WHERE 1=1${deltaSessions}${notExcluded("id")}`,
@@ -253,7 +267,7 @@ function buildRowsSnapshot(
         db.prepare(
           `INSERT INTO main.messages (session_id, uuid, role, content, tool_name, timestamp)
              SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages
-             WHERE id > ?${notExcluded("session_id")}`,
+             WHERE id > ?${untilSql}${notExcluded("session_id")}`,
         ).run(since, ...excl.params);
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
         // L3: chỉ chở khi máy này BẬT công tắc. Bám đúng tập message vừa chở (delta +
@@ -268,7 +282,7 @@ function buildRowsSnapshot(
                FROM src.attachment_link al
                JOIN src.attachment a ON a.id = al.attachment_id
                JOIN src.messages m   ON m.id = al.message_id
-              WHERE m.id > ?${notExcluded("m.session_id")}`,
+              WHERE m.id > ?${untilSql.replace(/ AND id /, " AND m.id ")}${notExcluded("m.session_id")}`,
           ).run(since, ...excl.params);
           stats.attachments = (
             db.prepare("SELECT COUNT(*) c FROM main.attachment_ship").get() as { c: number }
@@ -305,9 +319,25 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
   // "rows" is the default: ship only what merge consumes. "full" (byte snapshot)
   // stays available for a disaster-restore copy.
   const payload: BundlePayload = opts.sinceMessageId ? "rows" : (opts.payload ?? "rows");
+  // TIN VÀ VECTOR ĐI CÙNG CHUYẾN (HP điều 16): dừng gói ngay TRƯỚC tin đầu tiên chưa nhúng.
+  // Không có gì phải chờ ⇒ `null` ⇒ hành vi y như cũ. Xem `embedFrontierId` để biết vì sao.
+  //
+  // 🔴 CHỈ ÁP CHO DELTA (`sinceMessageId > 0`). Với `since = 0` — baseline, **GỘP container**,
+  // bàn giao máy — gói là bản THAY THẾ chứ không phải phần thêm: gộp ghi đè kho chung, nên cắt
+  // ở ranh giới đã nhúng sẽ **xoá khỏi kênh** những tin nằm trên ranh giới mà container cũ đang
+  // có. Tin không mất khỏi máy (còn cả trong `.bak`) nhưng kênh hụt cho tới lượt sync sau, và
+  // máy nào merge trúng cửa sổ đó thì nhận thiếu. Giữa "kênh thiếu VECTOR" và "kênh thiếu TIN",
+  // thiếu tin nặng hơn — vector còn bù được bằng `vectors-catchup`, tin thì không.
+  const frontier = payload === "rows" && opts.sinceMessageId ? embedFrontierId(sourcePath) : null;
+  const until = frontier && frontier > 0 ? frontier - 1 : undefined;
   const snapshot =
     payload === "rows"
-      ? buildRowsSnapshot(sourcePath, { excludeLanes: opts.excludeLanes, since: opts.sinceMessageId, attachments: getSyncAttachments() })
+      ? buildRowsSnapshot(sourcePath, {
+          excludeLanes: opts.excludeLanes,
+          since: opts.sinceMessageId,
+          until,
+          attachments: getSyncAttachments(),
+        })
       : await snapshotSqlite(sourcePath);
   const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
   try {
@@ -315,7 +345,8 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
     // đủ chữ mà recall rơi về FTS cho tới khi nhúng lại xong (đo: FTS-thuần @10 26% nghiêm /
     // 50% tương đương, so với hybrid 38% / 71% — mất hơn một nửa, đúng phần "hiểu ý câu hỏi").
     // Chỉ áp cho payload "rows": bản "full" vốn đã là ảnh chụp nguyên kho, có sẵn vector.
-    const shipped = payload === "rows" ? shipVectorsInto(snapshot.path, sourcePath, opts.sinceMessageId) : null;
+    const shipped =
+      payload === "rows" ? shipVectorsInto(snapshot.path, sourcePath, opts.sinceMessageId, opts.vectorCatchUpIds) : null;
     if (payload === "full" && opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
     const sourceBytes = statSync(snapshot.path).size;
     const salt = randomBytes(16);
@@ -1098,6 +1129,9 @@ export async function syncDrive(opts: {
   /** Build vectors for new rows at the end (default true). Off in tests that
    *  exercise the sync protocol, not the embedder. */
   embed?: boolean;
+  /** ÉP GỘP kho chung ngay lượt này thay vì chờ đủ ngưỡng khối (`--compact`).
+   *  Dùng khi kho chung đã lệch và cần chốt "lấy kho của MÁY NÀY" — xem `pushAppend`. */
+  compact?: boolean;
 }): Promise<DriveSyncResult> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
@@ -1149,7 +1183,7 @@ export async function syncDrive(opts: {
     push =
       level === "full"
         ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath })
-        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath });
+        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, compact: opts.compact });
   } finally {
     release();
   }
@@ -1309,12 +1343,21 @@ async function pushAppend(o: {
   excludeLanes: ScopeLane[];
   keyFile?: string;
   dbPath?: string;
+  /** Ép gộp kho chung NGAY lượt này (`memory sync --compact`), không chờ đủ ngưỡng khối. */
+  compact?: boolean;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, excludeLanes, keyFile, dbPath } = o;
   const mainPath = join(dir, MAIN_BUNDLE);
   const wmKey = `drive:${host}`;
   const chunks = existsSync(mainPath) && isChunkContainer(mainPath) ? listChunks(mainPath) : [];
-  const compacting = chunks.length >= MAIN_COMPACT_CHUNKS;
+  // ÉP GỘP (`--compact`): viết lại kho chung NGAY từ kho máy này thay vì chờ đủ ngưỡng khối.
+  //
+  // Vì sao là thao tác vận hành THẬT, không phải mẹo một lần: gộp xuất `since=0` nên container
+  // mới chở TRỌN vector của máy chạy nó. Đó là cách duy nhất làm kho chung ĐỦ trở lại sau khi
+  // nó đã lệch — mà lệch thì có thật (đo 2026-08-25: thiếu ~22.000 vector do vector nhúng-sau
+  // không được chở, xem `plan/08 §8b`). Chờ ngưỡng 48 khối cũng gộp, nhưng **máy nào chạm
+  // ngưỡng thì lấy kho máy đó**; khi cần chốt "lấy kho của MÁY NÀY" thì phải ép được.
+  const compacting = o.compact === true || chunks.length >= MAIN_COMPACT_CHUNKS;
   const since = compacting || chunks.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
@@ -1540,4 +1583,132 @@ export function shareKeyStatus(projectRoot: string, dbDir = currentMemoryDir()):
   const env = process.env.ZEMORY_SHARE_KEY?.trim();
   if (env) return { found: true, fingerprint: shareKeyFingerprint(env), source: "env" };
   return { found: false, source: "none", path: shareKeyPath(dbDir) };
+}
+
+/**
+ * BÙ VECTOR CHO KHO CHUNG — nối thêm MỘT khối chở đúng phần vector còn thiếu.
+ *
+ * 🔴 Vì sao tồn tại: vector nhúng SAU lúc tin được gửi thì không lượt nào quay lại chở (đã vá
+ * chiều xuôi bằng `embedFrontierId`, nhưng phần TỒN thì vá đó không lo được). Đo 2026-08-25:
+ * kho chung thiếu **~22.000 vector** ⇒ máy nhận phải nhúng lại ~12 giờ, trái HP điều 16.
+ *
+ * Vì sao NỐI THÊM chứ không gộp: gộp cũng chữa được (nó xuất `since=0`) nhưng phải viết lại cả
+ * container 1,6 GB và ĐÈ lên kho chung của mọi máy. Khối bù chỉ ~3 KB/vector và **không đụng
+ * một byte cũ nào** — đúng HP điều 16 (*"ghi là NỐI THÊM, không ghi đè"*).
+ *
+ * Cách biết kênh thiếu gì (KHÔNG đoán): dựng lại kho chung vào một file TẠM đúng như máy mới sẽ
+ * nhận, rồi so bằng khoá BỀN `(session_id, uuid)` — không dùng `messages.id` vì id là số cục bộ
+ * của từng máy. Tin nào bên đó thiếu vector mà bên này có ⇒ vào danh sách bù.
+ */
+export async function vectorCatchUp(opts: {
+  driveDir: string;
+  keyFile?: string;
+  dbPath?: string;
+  /** Chỉ ĐO rồi báo, không đụng kho chung. */
+  dryRun?: boolean;
+}): Promise<{ container: string; missing: number; shipped: number; bytes: number; pushed: boolean }> {
+  const dir = opts.driveDir.trim();
+  if (!dir) throw new Error("No Drive folder linked.");
+  const container = join(dir, MAIN_BUNDLE);
+  if (!existsSync(container)) throw new Error(`Kho chung chưa có: ${container}`);
+  const dbPath = opts.dbPath ?? currentMemoryDb();
+
+  const tmp = mkdtempSync(join(tmpdir(), "zemory-catchup-"));
+  const probe = join(tmp, "probe.db");
+  try {
+    // ① Dựng lại kho chung y như một máy mới sẽ nhận được.
+    await mergeMemoryBundle({ bundlePath: container, dbPath: probe, keyFile: opts.keyFile });
+
+    // ② So bằng khoá BỀN. `vec_chunks` là bảng ảo vec0 nên đọc qua bảng bóng `..._rowids`
+    //    (bảng thường) — cùng cách `vectorCoverage` tránh quét bảng ảo cho mỗi hàng.
+    // Bảng bóng của vec0 CÓ THỂ KHÔNG TỒN TẠI: kho chung chưa từng chở vector nào thì kho dựng
+    // ra cũng không có bảng — đúng ca đang phải chữa. Hỏi trước, đừng để SQLITE_ERROR (bản đầu
+    // của tôi quên, và test bắt được ngay).
+    const hasVecTable = (d: Database.Database): boolean =>
+      !!d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'").get();
+
+    const missingKeys = new Set<string>();
+    const p = new Database(probe, { readonly: true });
+    try {
+      const none = !hasVecTable(p);
+      for (const r of p
+        .prepare(
+          `SELECT m.session_id s, m.uuid u FROM messages m
+            WHERE m.uuid IS NOT NULL` +
+            (none ? "" : " AND NOT EXISTS (SELECT 1 FROM vec_chunks_rowids v WHERE v.rowid = m.id)"),
+        )
+        .iterate() as Iterable<{ s: string; u: string }>) {
+        missingKeys.add(`${r.s}|${r.u}`);
+      }
+    } finally {
+      p.close();
+    }
+
+    const ids: number[] = [];
+    const src = new Database(dbPath, { readonly: true });
+    try {
+      // Máy này chưa nhúng gì ⇒ không có gì để bù (fail-open, điều 9).
+      if (hasVecTable(src)) {
+        for (const r of src
+          .prepare(
+            `SELECT m.id i, m.session_id s, m.uuid u FROM messages m
+              WHERE m.uuid IS NOT NULL
+                AND EXISTS (SELECT 1 FROM vec_chunks_rowids v WHERE v.rowid = m.id)`,
+          )
+          .iterate() as Iterable<{ i: number; s: string; u: string }>) {
+          if (missingKeys.has(`${r.s}|${r.u}`)) ids.push(r.i);
+        }
+      }
+    } finally {
+      src.close();
+    }
+
+    if (!ids.length || opts.dryRun) {
+      return { container, missing: ids.length, shipped: 0, bytes: 0, pushed: false };
+    }
+
+    // ③ Gói CHỈ CÓ VECTOR: `sinceMessageId` đặt quá đỉnh kho ⇒ 0 tin, nhưng danh sách bù vẫn
+    //    được chở. Máy nhận tra id CỦA MÌNH theo (session_id, uuid) nên gắn không thể lệch.
+    const top = (() => {
+      const d = openMemory(dbPath);
+      try {
+        return (d.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+      } finally {
+        d.close();
+      }
+    })();
+    const part = join(tmp, "catchup.enc");
+    const r = await exportMemoryBundle({
+      outPath: part,
+      dbPath,
+      keyFile: opts.keyFile,
+      force: true,
+      sinceMessageId: top,
+      vectorCatchUpIds: ids,
+    });
+
+    // KHOÁ KÊNH như mọi lượt ghi khác. Bản đầu của tôi nối thẳng — hai máy nối cùng lúc là
+    // container rách, đúng thứ `acquireDriveLock` sinh ra để thu hẹp.
+    const host = hostname();
+    const release = acquireDriveLock(dir, host);
+    let bytes = 0;
+    try {
+      bytes = appendChunk(container, part);
+      // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE (cùng lý do như `pushAppend`): nội dung lấy từ
+      // kho local, merge lại vào chính nó là việc thừa 100% — mà không đánh dấu thì lượt sync
+      // sau phải GIẢI MÃ lại nguyên khối 66 MB chỉ để phát hiện "0 dòng mới".
+      const after = listChunks(container);
+      const mine = after[after.length - 1];
+      if (mine) {
+        const copy = join(tmp, "mine.enc");
+        await extractChunk(container, mine, copy);
+        markBundleMerged(`${MAIN_BUNDLE}#${mine.index}`, bundleSignature(copy), dbPath);
+      }
+    } finally {
+      release();
+    }
+    return { container, missing: ids.length, shipped: r.vectorsShipped ?? 0, bytes, pushed: true };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }

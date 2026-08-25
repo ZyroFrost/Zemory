@@ -31,6 +31,7 @@ import {
   shareKeyPath,
   shareKeyStatus,
   syncDrive,
+  vectorCatchUp,
   writeMemoryShareKey,
   writeExportWatermark,
 } from "../memory/share.js";
@@ -694,10 +695,39 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     if (r.backupPath) console.log(`  previous DB backup: ${r.backupPath}`);
     return;
   }
+  // BÙ VECTOR cho kho chung — NỐI THÊM một khối, không ghi đè (HP điều 16). Tách khỏi `sync`
+  // vì nó phải DỰNG LẠI kho chung vào file tạm để biết bên đó thiếu gì (vài phút), không phải
+  // việc chạy mỗi 30 phút.
+  if (sub === "vectors-catchup") {
+    const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
+    if (!driveDir) {
+      console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run]");
+      console.log("  Dựng lại kho chung vào file TẠM, so bằng khoá bền (session_id, uuid), rồi NỐI THÊM");
+      console.log("  một khối chở đúng phần vector kho chung còn thiếu. Không đụng byte cũ, không ghi đè.");
+      return;
+    }
+    const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
+    const dryRun = args.includes("--dry-run");
+    console.log(`zemory memory vectors-catchup — ${driveDir}${dryRun ? "  (DRY-RUN)" : ""}`);
+    console.log("  ⏳ dựng lại kho chung vào file tạm để đo (vài phút, không đụng kho thật)…");
+    try {
+      const r = await vectorCatchUp({ driveDir, keyFile, dryRun });
+      const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
+      console.log(`  kho chung thiếu ${r.missing} vector mà máy này ĐANG CÓ.`);
+      if (!r.missing) console.log("  ✓ không thiếu gì — kho chung đã đủ vector.");
+      else if (!r.pushed) console.log(`  (DRY-RUN) chạy lại không kèm --dry-run để nối khối bù (~${mb(r.missing * 3072)}).`);
+      else console.log(`  ↑ đã NỐI THÊM khối bù: ${r.shipped} vector, ${mb(r.bytes)} — kho chung không bị ghi đè.`);
+    } catch (error) {
+      console.log(`  ⚠ ${error instanceof Error ? error.message : "catch-up failed"}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (sub === "sync") {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
-      console.log("usage: zemory memory sync [--dir <folder>] [--key-file <path>] [--full]");
+      console.log("usage: zemory memory sync [--dir <folder>] [--key-file <path>] [--full] [--compact]");
+      console.log("  --compact: viết LẠI kho chung ngay từ kho máy này (chở trọn vector) thay vì chờ đủ ngưỡng khối.");
       console.log("         zemory memory sync --prune-host <host> [--apply]   (dọn series của máy đã bỏ)");
       console.log("  Push this machine's bundle to the synced Drive FOLDER + merge every other machine's bundle there.");
       console.log("  Depth: LEAN by default (source rows; the sync-level setting picks it). --full ships a whole-DB snapshot.");
@@ -737,7 +767,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const keyFile = resolveShareKey(root, flagValue(args, "--key-file"));
     console.log(`zemory memory sync — ${driveDir}`);
     try {
-      const r = await syncDrive({ driveDir, keyFile, level: args.includes("--full") ? "full" : undefined });
+      const compact = args.includes("--compact");
+      if (compact) {
+        console.log("  ⚙ --compact: viết LẠI kho chung từ kho MÁY NÀY (một khối, since=0) — chở trọn vector.");
+      }
+      const r = await syncDrive({ driveDir, keyFile, level: args.includes("--full") ? "full" : undefined, compact });
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
       console.log(`  ↻ scanned this machine — +${r.scanned.newMessages} new message(s) captured before export`);
       if (r.push.kind === "none") {

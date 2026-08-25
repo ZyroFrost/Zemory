@@ -3,43 +3,45 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-24 — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-25 — ĐỌC MỤC NÀY TRƯỚC
 
-**Kế hoạch user chốt 2026-08-24 ("chạy toàn bộ") — ①② ĐÃ XONG 24/08 (xem `06_CHANGES
-[2026-08-24e]`), còn lại theo thứ tự:**
-1. ~~PUSH 2.4.0~~ ✅ (commit `4761125`, gate 777/777, đã lên `origin/main`).
-2. ~~ÁP CHUẨN 8 REPO~~ ✅ (thực đo 9 repo stale, cả 9 xong; `/harness-updates` trả `stale: []`).
-3. ~~Cổng "bundle đã rời khỏi máy"~~ ✅ (`uplinkguard` — 9/9 test, đột biến 2 hướng đỏ, chạy
-   thật khớp chéo; xem `06_CHANGES [2026-08-24f]`).
-4. ~~#13 ingest bộ nhớ CURATED~~ ✅ + ~~#12 memory promotion~~ ✅ (`zemory memory promote`,
-   chạy thật ra 15 đề xuất — xem `06_CHANGES [2026-08-24g]` + `[2026-08-24h]`).
-5. **Cổng "KHÔNG BIẾT"** (⭐ bên dưới) — đợt đo riêng trên bản sao, đề xuất đã được user gật
-   ("còn lại làm theo đề xuất", cuối phiên 23–24/08).
+**SỔ TRỐNG — 0 mục mở.** Không có việc nào đang dở. Dưới đây là TRẠNG THÁI để phiên sau khỏi đo lại.
 
-**Trạng thái máy sau mốc 2.4.0 (đo 24/08):** daemon **pid 9500 · 2.4.0 · --no-window** · 4 công
-tắc `autostart/autosync/scheduler/realtime` **đều BẬT** · cây git SẠCH, đồng bộ `origin/main` ·
-backup trước migration v22 còn ở `data/backups/`.
+### Phiên 24–25/08 đã làm gì (số đo đầy đủ ở `06_CHANGES`, đọc từ `[2026-08-25b]` xuống `[2026-08-24e]`)
+Push **2.4.0** rồi **2.5.0** · `uplinkguard` (bundle đã rời máy chưa) · **#13** adapter
+`claude-code-memory` (153 fact) · **#12** `zemory memory promote` · cổng **"không biết" mặc định
+BẬT** + sàn kích thước · vá 5 lỗ chuẩn thực địa · **gỡ lại luật ⑤** (sai) · thêm `external/` +
+pipeline-vào-trong-case cho non-app · **thi hành xuống 14 repo, refactor vật lý 4 repo**.
 
-**Phiên 23–24/08 làm gì** (số đo: `06_CHANGES [2026-08-23d]`→`[2026-08-24d]`): luật §Sổ việc
-(cửa VÀO + cửa RA, ship 4 bộ template) · chấm than update CẤP MÁY (tem `version.json` trên kênh
-chung + `zemory selfupdate`) · `/memory-status` sang tiến trình con (**chứng minh: lạnh 17,66 s
-mà `/ping` 0,03 s**) · `doctor` 3 mức backup · cờ lạ trên `embed/scan/digest` bị từ chối ·
-**migration v22** trigram nhận lại `tool_result` (A/B trên bản sao: MRR lớp đó 0,060→0,167, prose
-y nguyên, giá +262 MB/+23 % độ trễ — user chốt) · cổng vòng-khép-kín cửa sổ phụ (ca 717) · guard
-xoá quét theo SEGMENT · cổng nội dung `policy.json` cowork · cổng quét LỊCH SỬ git · `--no-window`
-· ô "cách nói khác" (chỉ hiện khi Tìm sâu) · graph thấy import động · **tổng dọn sổ 89 mục → 7**.
+### Trạng thái máy lúc chốt (ĐO, không nhớ)
+- **zemory 2.5.0** trên `origin/main` (`b125975`). Sau đó có **6 file sửa CHƯA commit**:
+  `backup-rotate.ts` + test của nó · `03_STRUCTURE` (zemory + app + nonapp) · `06_CHANGES` · `05_TODO`.
+- **Gate ĐÃ XANH sau MỌI thay đổi: `803/803 · 0 fail · 0 skipped`** (32 phút, chạy một mình) ·
+  `conform` ✓ không lệch chuẩn · `todo verify` ✓ 0 lệch. Tức 6 file kia đã được kiểm, chỉ còn commit.
+- Daemon **TẮT** (tắt để chạy gate). Bật lại: `zemory ui --no-window`.
+- Kho: **295k tin · 281k vector** · backup 5 bản/10 GB (đúng `keep:5`) · 6 sidecar mồ côi đã dọn.
+- **14/14 repo estate đạt chuẩn** (luật + folder + guard glob); `pipelines/` chỉ còn ở
+  `PBI_SasinFlow_Rebuild` và đó là ĐÚNG (repo tổ chức theo NGUỒN).
+- **KHÔNG commit ở repo nào ngoài zemory** — diff để phiên bên đó xem. Sao lưu:
+  `scratchpad/refactor-bak/` · `bak-removed/` · `maintain-bak/` · `launcher-bak/`.
 
-⚠ **Bẫy đã trả giá phiên này — đừng dẫm lại:**
-· **PowerShell gọi QUA bash ⇒ `$p` bị bash nuốt ⇒ kill "thành công" GIẢ** — thao tác tiến trình
-  đi thẳng tool PowerShell, đừng lồng trong bash.
-· **Test xanh vì lý do khác, HAI lần:** kho `.db` rỗng làm lệnh chết trước khi tới chốt ·
-  `skipIfBusy` thiếu `await` làm mọi ca thoát 26 ms. Chữa: đối chiếu THỜI GIAN CHẠY với công việc
-  đáng lẽ phải tốn (đã thành luật đo ③, `02_RULES §Hành xử`).
-· **Escape trong TEMPLATE LITERAL thiếu một lớp ⇒ guard.cjs sinh ra VỠ SYNTAX, chặn TẤT** — lộ
-  ngay vì `rm build.log` cũng bị chặn; sửa gì trong `guard-gen.ts` phải `node --check` bản sinh.
-· **Hai gate `npm run check` chạy CHỒNG nhau ⇒ vectors.test OOM đỏ giả** — gate chạy MỘT MÌNH.
-· **Thông báo nền báo "exit 0" trong khi log ghi fail** — chỉ tin số trong log, không tin banner.
+### Việc đầu tiên của phiên sau
+1. **Commit 6 file** (gate đã xanh, không phải chạy lại nếu chưa sửa thêm gì). **Hỏi user số
+   version** vì lượt này ĐỔI CHUẨN (⑤⑥⑦), không chỉ sửa lỗi — rồi mới push.
+2. **`zemory memory scan`** — daemon tắt gần hết phiên nên transcript phiên này chưa vào GM đủ.
+3. Bật lại daemon.
 
+### Bẫy đã trả giá — đừng dẫm lại
+· **Escape gạch ngược qua heredoc→python: DÍNH 6 LẦN.** `\n` thành xuống dòng thật · `\a`/`\05`
+  thành bell/octal · `\x00` thành NUL · `\v` thành 0x0B. Cách đúng: dựng bằng `chr(92)`, hoặc sửa
+  bằng công cụ sửa file, **rồi quét lại dải điều khiển**. Phiên PBI_OPS cũng dính y hệt.
+· **Banner nền báo "exit 0" mà gate CHƯA HỀ CHẠY** (preflight chặn vì daemon đang embed) — và một
+  lần khác banner "exit 0" trong khi log ghi `fail 2`. **Chỉ tin số trong log.**
+· **`skipped` KHÔNG phải `pass`** — daemon tự bật lại làm `skipIfBusy` bỏ qua đúng 2 ca cần kiểm.
+· **Đột biến trượt regex ⇒ test vẫn xanh** = xanh GIẢ. Phải kiểm đột biến CÓ ÁP ĐƯỢC không.
+· **`| Select-Object -First N` cắt pipeline ⇒ node ăn EPIPE ⇒ exit −1 giả.** Dùng `-Last` hoặc `cmd /c`.
+· **Ghi file qua tầng text (`utf-8-sig`) làm thêm BOM + đổi line-ending** ⇒ diff phình 2→37 dòng.
+  Sửa file người khác thì ghi ở mức **BYTE**.
 
 ## ⭐ NGÃ RẼ RECALL — "còn cách nào nữa không" (dựng 2026-08-23 để trả lời câu user sẽ hỏi)
 

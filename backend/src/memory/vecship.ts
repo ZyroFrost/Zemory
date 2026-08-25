@@ -88,7 +88,18 @@ function readVecMeta(db: Database.Database): VecMeta | null {
  * Trả số vector đã nhét. Fail-open tuyệt đối: kho nguồn chưa nhúng, thiếu extension, trang
  * hỏng… đều chỉ làm giảm số lượng chở được, KHÔNG được làm hỏng lượt xuất bundle.
  */
-export function shipVectorsInto(snapshotPath: string, sourcePath: string, sinceMessageId?: number): ShipResult {
+export function shipVectorsInto(
+  snapshotPath: string,
+  sourcePath: string,
+  sinceMessageId?: number,
+  /**
+   * GÓI BÙ VECTOR (`memory vectors-catchup`): id tin CŨ cần chở vector, dù tin đó KHÔNG nằm
+   * trong gói. Hợp lệ vì `vector_ship` khoá theo `(session_id, mkey)` và máy nhận tra id CỦA
+   * MÌNH — tin đã nằm sẵn bên đó từ gói trước. Nhờ vậy bù được phần thiếu bằng cách NỐI THÊM
+   * một khối ~66 MB, không phải ghi đè cả kho chung 1,6 GB (HP điều 16: *ghi là nối thêm*).
+   */
+  catchUpIds?: number[],
+): ShipResult {
   let src: Database.Database | null = null;
   let snap: Database.Database | null = null;
   try {
@@ -120,19 +131,22 @@ export function shipVectorsInto(snapshotPath: string, sourcePath: string, sinceM
     }>) {
       inSnapshot.add(`${r.session_id}\u0000${messageKey(r.uuid, r.timestamp, r.content)}`);
     }
-    if (!inSnapshot.size) return { shipped: 0, rejected: 0 };
+    const catchUp = new Set<number>(catchUpIds ?? []);
+    if (!inSnapshot.size && !catchUp.size) return { shipped: 0, rejected: 0 };
 
     const targets = (
       src
         .prepare(
           `SELECT id, session_id, uuid, timestamp, content FROM messages
-            WHERE 1=1${sinceMessageId ? " AND id > " + Number(sinceMessageId) : ""}
+            WHERE 1=1${sinceMessageId && !catchUp.size ? " AND id > " + Number(sinceMessageId) : ""}
             ORDER BY id`,
         )
         .all() as { id: number; session_id: string; uuid: string | null; timestamp: string | null; content: string | null }[]
     )
       .map((t) => ({ id: t.id, session_id: t.session_id, mkey: messageKey(t.uuid, t.timestamp, t.content) }))
-      .filter((t) => inSnapshot.has(`${t.session_id}\u0000${t.mkey}`));
+      // Tin CÓ trong gói ⇒ chở như thường. Tin trong danh sách BÙ ⇒ chở dù KHÔNG có trong gói
+      // (máy nhận đã có tin đó từ khối trước, chỉ thiếu vector).
+      .filter((t) => catchUp.has(t.id) || inSnapshot.has(`${t.session_id}\u0000${t.mkey}`));
     if (!targets.length) return { shipped: 0, rejected: 0 };
 
     src.defaultSafeIntegers(true);

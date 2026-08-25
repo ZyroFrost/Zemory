@@ -245,3 +245,234 @@ test("kho nguồn chưa nhúng ⇒ gói không có vector, merge vẫn chạy đ
   assert.equal(r.messagesAdded, 1);
   assert.equal(r.vectorsApplied ?? 0, 0, "không có gì để chở thì thôi, không được vỡ");
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RANH GIỚI ĐÃ NHÚNG — tin và vector phải đi CÙNG CHUYẾN (HP điều 16).
+//
+// Lỗ đã đo 2026-08-25 bằng diễn tập phục hồi: gói chở vector KÈM đợt tin mới (cùng dải
+// `id > watermark`), mà nhúng chạy SAU tin ~30 phút ⇒ lúc gói đi tin chưa có vector, khi
+// vector có thì id đã nằm dưới watermark và KHÔNG lượt nào quay lại chở. Kho dựng từ kênh
+// chung thiếu **~22.000 vector** so với kho gốc ⇒ máy nhận phải nhúng lại 27.035 tin (~12
+// giờ). Bệnh từng cắn thật: 13/08 máy kia merge xong còn 137.063 tin cần nhúng.
+//
+// Vá: gói DỪNG ngay trước tin đầu tiên chưa nhúng. Hai ca ÂM ở dưới quan trọng ngang ca
+// dương — chặn nhầm ở đây làm đường sync ĐỨNG HẲN, tệ hơn cả lỗi đang vá.
+
+/** Kho có `n` tin với dấu thời gian tự chọn; nhúng đúng những tin trong `embed`. */
+function seedPartial(path, msgs, meta = { dims: DIMS, profile: "gemma-prompt-v1", dtype: "fp32" }) {
+  const db = openMemory(path);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "PC");
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  for (const m of msgs) ins.run("s1", m.uuid, "user", m.text, m.ts);
+  const ids = db.prepare("SELECT id, uuid FROM messages ORDER BY id").all();
+  db.close();
+
+  const raw = new Database(path);
+  sqliteVec.load(raw);
+  raw.defaultSafeIntegers(true);
+  raw.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${meta.dims}])`);
+  raw.exec("CREATE TABLE IF NOT EXISTS vec_config (dims INTEGER, profile TEXT, dtype TEXT)");
+  raw.prepare("INSERT INTO vec_config (dims, profile, dtype) VALUES (?,?,?)").run(meta.dims, meta.profile, meta.dtype);
+  const put = raw.prepare("INSERT OR REPLACE INTO vec_chunks(rowid, embedding) VALUES (?, ?)");
+  for (const [i, r] of ids.entries()) {
+    if (!msgs[i].embedded) continue;
+    const v = new Float32Array(meta.dims).fill(0);
+    v[i % meta.dims] = 1;
+    put.run(BigInt(r.id), Buffer.from(v.buffer));
+  }
+  raw.close();
+  return ids;
+}
+
+const nowIso = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString();
+
+test("tin MỚI chưa nhúng thì gói DỪNG lại trước nó — không gửi chữ bỏ rơi vector", async (t) => {
+  const root = tempDir(t, "zemory-vecship-frontier-");
+  const A = join(root, "a.db");
+  const B = join(root, "b.db");
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+
+  seedPartial(A, [
+    { uuid: "u1", text: "tin mot da nhung", ts: nowIso(3000), embedded: true },
+    { uuid: "u2", text: "tin hai da nhung", ts: nowIso(2000), embedded: true },
+    { uuid: "u3", text: "tin ba CHUA nhung", ts: nowIso(1000), embedded: false },
+  ]);
+
+  // DELTA (`sinceMessageId > 0`) — đây là đường sync thường ngày, và là chỗ DUY NHẤT chặn-trên
+  // được phép áp. Gói THAY THẾ (`since = 0`) có ca riêng bên dưới: nó phải chở ĐỦ.
+  const bundle = join(root, "b1.enc");
+  const e = await exportMemoryBundle({ outPath: bundle, dbPath: A, keyFile: keyPath, force: true, sinceMessageId: 1 });
+  assert.equal(e.rows?.messages, 1, "chỉ tin #2 (đã nhúng) được đi; tin #3 phải chờ vector của nó");
+  assert.equal(e.rows?.maxMessageId, 2, "watermark chỉ được nhảy tới ID ĐÃ GỬI — nhảy quá là bỏ rơi tin #3 vĩnh viễn");
+
+  const r = await mergeMemoryBundle({ bundlePath: bundle, dbPath: B, keyFile: keyPath });
+  assert.equal(r.messagesAdded, 1);
+  assert.equal(r.vectorsApplied, 1, "tin đi kèm đúng vector của mình");
+});
+
+test("CA ÂM: tin CŨ chưa nhúng KHÔNG được chặn — chặn là đường sync đứng vĩnh viễn", async (t) => {
+  const root = tempDir(t, "zemory-vecship-stale-");
+  const A = join(root, "a.db");
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+
+  seedPartial(A, [
+    { uuid: "u1", text: "tin cu KHONG nhung noi", ts: "2026-01-01T00:00:00Z", embedded: false },
+    { uuid: "u2", text: "tin moi da nhung", ts: nowIso(1000), embedded: true },
+  ]);
+
+  const bundle = join(root, "b1.enc");
+  const e = await exportMemoryBundle({ outPath: bundle, dbPath: A, keyFile: keyPath, force: true });
+  assert.equal(e.rows?.messages, 2, "tin cũ quá cửa sổ phải cho đi, không được giam cả gói vì nó");
+});
+
+test("CA ÂM: kho chưa từng nhúng thì KHÔNG chặn gì (máy không chạy embed vẫn gửi được)", async (t) => {
+  const root = tempDir(t, "zemory-vecship-novec-");
+  const A = join(root, "a.db");
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+
+  seedPartial(A, [
+    { uuid: "u1", text: "tin mot", ts: nowIso(2000), embedded: false },
+    { uuid: "u2", text: "tin hai", ts: nowIso(1000), embedded: false },
+  ]);
+
+  const bundle = join(root, "b1.enc");
+  const e = await exportMemoryBundle({ outPath: bundle, dbPath: A, keyFile: keyPath, force: true });
+  assert.equal(e.rows?.messages, 2, "0 vector trong kho ⇒ chờ cũng vô ích, phải gửi bình thường");
+});
+
+// BÙ VECTOR CHO KHO CHUNG (`memory vectors-catchup`) — NỐI THÊM, không ghi đè.
+//
+// Tình huống thật đang tái hiện: tin được gửi lên kho chung TRƯỚC khi kịp nhúng (đúng thứ mà
+// van 24 giờ của `embedFrontierId` cố ý cho qua để sync không đứng), nên khối đó chở chữ mà
+// không chở vector. Máy nhận vì thế phải tự nhúng lại — đo trên kho thật 2026-08-25: thiếu
+// ~22.000 vector ⇒ ~12 giờ máy. Lệnh bù phải vá được đúng phần đó mà KHÔNG đụng byte cũ.
+test("bù vector cho kho chung: nối thêm một khối, máy nhận nhận đủ vector (không ghi đè)", async (t) => {
+  sandboxHome(t);
+  const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
+  const { openMemory: open } = await import("../../dist/memory/db.js");
+  const root = tempDir(t, "zemory-catchup-");
+  const A = join(root, "a.db");
+  const B = join(root, "b.db");
+  const drive = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync, statSync } = await import("node:fs");
+  mkdirSync(drive, { recursive: true });
+  writeMemoryShareKey(keyPath);
+
+  // ① Kho A có tin nhưng CHƯA nhúng → đẩy lên kho chung: khối này chở chữ, 0 vector.
+  const db = open(A);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "PC");
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  ins.run("s1", "u1", "user", "tin mot", "2026-01-01T00:00:00Z");
+  ins.run("s1", "u2", "user", "tin hai", "2026-01-01T00:01:00Z");
+  db.close();
+  const push = await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  assert.equal(push.push.messages, 2, "khối đầu chở đủ chữ");
+
+  const containerBefore = statSync(join(drive, "global_memory.enc")).size;
+
+  // ② Máy A nhúng SAU (đúng nhịp thật: scheduler chạy sau lượt sync).
+  seedVectorsFor(A);
+
+  // ③ Bù: phải thấy đúng 2 vector thiếu và NỐI THÊM chứ không ghi đè.
+  const r = await vectorCatchUp({ driveDir: drive, keyFile: keyPath, dbPath: A });
+  assert.equal(r.missing, 2, "phải dò ra đúng phần kho chung còn thiếu");
+  assert.equal(r.shipped, 2, "và chở đúng ngần ấy vector");
+  const containerAfter = statSync(join(drive, "global_memory.enc")).size;
+  assert.ok(containerAfter > containerBefore, "container phải DÀI RA (nối thêm), không co lại");
+
+  // ④ Máy mới dựng từ kho chung: phải có đủ cả chữ lẫn vector.
+  const merged = await mergeMemoryBundle({ bundlePath: join(drive, "global_memory.enc"), dbPath: B, keyFile: keyPath });
+  assert.equal(merged.messagesAdded, 2, "chữ vẫn đủ");
+  assert.equal(merged.vectorsApplied, 2, "vector nay cũng đủ — đây là cả mục đích của lệnh bù");
+  for (const uuid of ["u1", "u2"]) assert.deepEqual(vectorOf(B, uuid), vectorOf(A, uuid), `vector ${uuid} phải khớp máy nguồn`);
+});
+
+test("CA ÂM: kho chung đã đủ vector ⇒ KHÔNG nối khối rác", async (t) => {
+  sandboxHome(t);
+  const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
+  const root = tempDir(t, "zemory-catchup-noop-");
+  const A = join(root, "a.db");
+  const drive = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync, statSync } = await import("node:fs");
+  mkdirSync(drive, { recursive: true });
+  writeMemoryShareKey(keyPath);
+
+  seedStore(A, [{ uuid: "u1", text: "tin mot" }, { uuid: "u2", text: "tin hai" }]);
+  await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  const before = statSync(join(drive, "global_memory.enc")).size;
+
+  const r = await vectorCatchUp({ driveDir: drive, keyFile: keyPath, dbPath: A });
+  assert.equal(r.missing, 0, "không thiếu gì thì phải báo 0");
+  assert.equal(r.pushed, false, "và TUYỆT ĐỐI không nối khối nào — kho chung không được phình vì lệnh chạy không");
+  assert.equal(statSync(join(drive, "global_memory.enc")).size, before, "kích thước container phải y nguyên");
+});
+
+/** Nhúng vector cho kho ĐÃ CÓ TIN (tái hiện nhịp thật: tin đi trước, nhúng chạy sau). */
+function seedVectorsFor(path, meta = { dims: DIMS, profile: "gemma-prompt-v1", dtype: "fp32" }) {
+  const db = openMemory(path);
+  const ids = db.prepare("SELECT id FROM messages ORDER BY id").all();
+  db.close();
+  const raw = new Database(path);
+  sqliteVec.load(raw);
+  raw.defaultSafeIntegers(true);
+  raw.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${meta.dims}])`);
+  raw.exec("CREATE TABLE IF NOT EXISTS vec_config (dims INTEGER, profile TEXT, dtype TEXT)");
+  if (!raw.prepare("SELECT count(*) c FROM vec_config").get().c) {
+    raw.prepare("INSERT INTO vec_config (dims, profile, dtype) VALUES (?,?,?)").run(meta.dims, meta.profile, meta.dtype);
+  }
+  const put = raw.prepare("INSERT OR REPLACE INTO vec_chunks(rowid, embedding) VALUES (?, ?)");
+  for (const [i, r] of ids.entries()) {
+    const v = new Float32Array(meta.dims).fill(0);
+    v[i % meta.dims] = 1;
+    put.run(BigInt(r.id), Buffer.from(v.buffer));
+  }
+  raw.close();
+}
+
+/** Cô lập HOME: `syncDrive` có gọi `scan()`, không cô lập là nó đi quét transcript THẬT của máy
+ *  (đo: một lượt test treo hơn 8 phút vì lý do đó). Chép khuôn từ `memory-share.test.mjs`. */
+function sandboxHome(t) {
+  const home = tempDir(t, "zemory-vecship-home-");
+  const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB };
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  process.env.APPDATA = home;
+  process.env.XDG_CONFIG_HOME = home;
+  delete process.env.GLOBAL_MEMORY_DB;
+  t.after(() => {
+    for (const k of Object.keys(save)) {
+      if (save[k] === undefined) delete process.env[k];
+      else process.env[k] = save[k];
+    }
+  });
+  return home;
+}
+
+// 🔴 CA MẤT DỮ LIỆU — chặn-trên KHÔNG được áp cho gói THAY THẾ (`since = 0`).
+//
+// Lỗi tôi tự đẻ ra khi vá chặn-trên, bắt được lúc soi lại diff: gộp container đặt `since = 0`
+// và GHI ĐÈ kho chung. Nếu chặn-trên cắt ở ranh giới đã nhúng thì container mới THIẾU những tin
+// nằm trên ranh giới mà container cũ đang có ⇒ kênh hụt tin cho tới lượt sync sau, máy nào merge
+// trúng cửa sổ đó thì nhận thiếu. Giữa "kênh thiếu VECTOR" và "kênh thiếu TIN": thiếu tin nặng
+// hơn — vector bù được bằng `vectors-catchup`, tin thì không.
+test("CA MẤT DỮ LIỆU: gói THAY THẾ (since=0) phải chở ĐỦ tin, kể cả tin chưa nhúng", async (t) => {
+  const root = tempDir(t, "zemory-vecship-baseline-");
+  const A = join(root, "a.db");
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+
+  seedPartial(A, [
+    { uuid: "u1", text: "tin mot da nhung", ts: nowIso(3000), embedded: true },
+    { uuid: "u2", text: "tin hai CHUA nhung", ts: nowIso(1000), embedded: false },
+  ]);
+
+  const bundle = join(root, "b1.enc");
+  const e = await exportMemoryBundle({ outPath: bundle, dbPath: A, keyFile: keyPath, force: true });
+  assert.equal(e.rows?.messages, 2, "gói thay thế KHÔNG được cắt bớt — thiếu tin ở đây là mất dữ liệu trên kênh");
+  assert.equal(e.rows?.maxMessageId, 2, "watermark của gói thay thế phải phủ hết kho");
+});

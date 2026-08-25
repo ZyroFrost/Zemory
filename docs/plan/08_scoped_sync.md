@@ -152,6 +152,27 @@ sổ và biến một lần giẫm chân im lặng thành câu báo lỗi. Chấ
 **Gộp:** quá `MAIN_COMPACT_CHUNKS` (48) khối ⇒ viết container mới một khối (`since=0`) ra file tạm
 rồi đổi tên đè; bản trước lùi thành `global_memory.bak.enc` (giữ đúng MỘT thế hệ).
 
+**BÙ VECTOR — `zemory memory vectors-catchup` (thêm 2026-08-25, ĐƯỜNG CHÍNH).** Khi kho chung đã
+lệch, thứ cần làm là **nối thêm** đúng phần thiếu, KHÔNG viết lại cả kho (HP điều 16: *"ghi là NỐI
+THÊM, không ghi đè"*). Lệnh: dựng lại kho chung vào file TẠM (đúng thứ máy mới sẽ nhận) → so bằng
+khoá BỀN `(session_id, uuid)`, không dùng `messages.id` vì id là số cục bộ → nối MỘT khối chở đúng
+số vector còn thiếu. Đo trên kho thật: thiếu ~22.000 vector ⇒ khối bù ~66 MB, so với 1,6 GB nếu
+gộp. Không đụng một byte cũ nào, nên máy khác đang đọc kho chung không bị ảnh hưởng.
+Cổng: ca dương (kênh thiếu vector ⇒ bù xong máy nhận nhận đủ, container DÀI RA chứ không co) +
+**ca ÂM** (kênh đã đủ ⇒ `pushed=false`, kích thước container y nguyên — lệnh chạy không được phép
+làm kho chung phình). Hai đột biến riêng chứng minh từng ca đỏ được.
+*Bẫy đã dính khi làm: kho dựng từ kênh CHƯA từng có vector nên bảng bóng `vec_chunks_rowids`
+không tồn tại ⇒ `SQLITE_ERROR`. Phải hỏi bảng có không trước khi tra — đúng ca mà lệnh này sinh
+ra để chữa, nên nó là ca thường gặp nhất chứ không phải ngoại lệ.*
+
+**ÉP GỘP — `zemory memory sync --compact` (thêm 2026-08-25, đường DỌN GỌN).** Gộp xuất `since=0` nên container mới
+chở **TRỌN vector của máy chạy nó** ⇒ đây là cách làm kho chung ĐỦ trở lại sau khi đã lệch. Chờ
+ngưỡng 48 khối thì cũng gộp, nhưng **máy nào chạm ngưỡng thì lấy kho máy đó** — khi cần chốt "lấy
+kho của MÁY NÀY" (máy đủ vector nhất) thì phải ép được. Cổng: `memory-share.test.mjs` — ca dương
+(có cờ ⇒ `kind=compact`, gấp lại khối cũ, chở lại toàn bộ tin) + **ca ÂM** (không cờ ⇒ chỉ `delta`,
+`removed=0`); hai đột biến ngược chiều đều chứng minh đỏ được. Ca âm là bắt buộc vì gộp **ghi đè
+kho chung của mọi máy** — tự tiện gộp là xoá dữ liệu người khác.
+
 ### 8b. Vector đi cùng gói (cùng đợt)
 
 Trước đó gói chỉ chở nguồn ⇒ máy nhận có đủ chữ mà recall rơi về FTS: đo `@10` **26%/50%**
@@ -179,9 +200,27 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
   watermark, và nó **không bao giờ lên kênh**. Đo: kho dựng từ kênh thiếu **~22.000 vector** so
   với kho thật ⇒ máy nhận phải nhúng lại **27.035 tin (~12 giờ)** — trái HP điều 16. Đối chiếu
   chéo 300/300 tin `prose` của chính máy này: có vector tại chỗ, không có trong gói.
-  **Hướng vá (chưa làm, chờ user chốt):** tách watermark RIÊNG cho vector (`vec_chunks.rowid`
-  tăng đều theo thứ tự nhúng) thay vì dùng chung watermark tin — cùng khuôn `sync_state` đã có.
-  Giá: bù một lần ~27k vector ≈ 81 MB, sau đó incremental như cũ.
+  ✅ **ĐÃ VÁ 2026-08-25 (user chốt: *"sync là phải sync đủ trọn gói RAG của tin mới, không được
+  thiếu"*).** Cách vá KHÔNG phải watermark thứ hai (hướng nháp đầu, đã bỏ vì cần sổ sách mới) mà
+  là **CHẶN TRÊN theo ranh giới đã nhúng**: `embedFrontierId()` trả id nhỏ nhất của tin đáng-nhúng
+  chưa có vector, gói dừng ngay TRƯỚC nó ⇒ tin và vector luôn đi **cùng chuyến**. Watermark chỉ
+  nhảy tới id ĐÃ GỬI (`min(max, until)`) — nhảy quá là đánh dấu "đã gửi" cho tin bị giữ lại và mất
+  nó vĩnh viễn.
+  🔴 **CHỈ áp cho gói DELTA.** Gói THAY THẾ (`since=0` — baseline · **gộp container** · bàn giao
+  máy) phải chở ĐỦ: gộp ghi đè kho chung, nên cắt ở ranh giới sẽ **xoá khỏi kênh** những tin nằm
+  trên ranh giới mà container cũ đang có. Giữa *kênh thiếu VECTOR* và *kênh thiếu TIN*, thiếu tin
+  nặng hơn — vector bù được bằng `vectors-catchup`, tin thì không. Lỗi này do chính lượt vá đẻ ra
+  và chỉ lộ khi soi lại diff; nay có cổng riêng (`CA MẤT DỮ LIỆU`) kèm đột biến.
+  **Hai chốt fail-open, vì cổng này chắn đường đồng bộ** (điều 9): kho **chưa có vector nào** ⇒
+  không chặn gì (máy không chạy nhúng vẫn gửi được); chỉ tin trong **24 giờ** mới được chặn (một
+  tin cũ không nhúng nổi mà chặn vĩnh viễn thì cả đường sync đứng — lỗ đó bù ở lượt gộp container
+  kế tiếp, vốn xuất `since=0` nên chở đủ vector).
+  Cổng: `vector-ship.test.mjs` +3 ca (1 dương · **2 ÂM**), mỗi ca chứng minh đỏ được bằng một đột
+  biến RIÊNG (bỏ ranh giới · bỏ cửa sổ 24 h · bỏ chốt kho-chưa-nhúng) — một-đối-một, không ca nào
+  là trang trí. ⚠ Lượt đột biến đầu **trượt regex nên không tiêm được**, và 8/8 "xanh" khi đó là
+  xanh GIẢ; phải đọc bản dịch thật rồi cắt theo DÒNG mới tái hiện được.
+  **Phần TỒN của kho hiện tại** (~22k vector đã lỡ đi thiếu) KHÔNG tự lành bằng vá này — nó biến
+  mất ở lượt **gộp container** kế tiếp hoặc khi có người đẩy một gói đầy đủ.
 
   ✅ **Cửa sổ phụ ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
   2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
