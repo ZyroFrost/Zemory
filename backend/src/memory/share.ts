@@ -808,7 +808,11 @@ export interface DriveSyncResult {
     /** Old delta files removed by a compaction (their rows live on in the baseline). */
     removed: number;
   };
-  merged: { file: string; sessionsAdded?: number; messagesAdded?: number; skipped?: boolean; error?: string }[];
+  merged: { file: string; sessionsAdded?: number; messagesAdded?: number; skipped?: boolean; error?: string;
+    /** Bỏ qua bằng CHỮ KÝ ĐỌC TẠI CHỖ, KHÔNG chép khối ra ngoài (`plan/08 §8c` ①). Trưng ra để
+     *  cổng test đo được — không có cờ này thì "đã bỏ qua" và "đã chép rồi mới bỏ qua" nhìn y hệt
+     *  nhau, và cổng canh nó thành trang trí (đột biến 2026-08-25 bắt đúng ca đó). */
+    cheap?: boolean }[];
   /** New vectors built at the end of sync (this machine's + merged messages). */
   embedded: number;
   vectorRemaining: number;
@@ -879,7 +883,29 @@ interface DriveLock {
   host: string;
   pid: number;
   at: string;
+  /** v2: chủ khoá có ĐẬP NHỊP (chạm lại `at` mỗi `LOCK_BEAT_MS`). Thiếu cờ = bản CŨ, phải đọc
+   *  bằng ngưỡng mồ côi RỘNG — xem `lockStaleMs()`. */
+  beat?: boolean;
 }
+
+/** Nhịp tim: chủ khoá chạm lại `at` mỗi 30 giây khi còn đang làm việc. */
+const LOCK_BEAT_MS = 30_000;
+/** Lỡ 3 nhịp mới coi là chết. Một nhịp lỡ vì máy bận KHÔNG phải là chết (cùng doctrine
+ *  `02_RULES` §Bề mặt CHẾT THEO nền: phải trượt LIÊN TIẾP N nhịp mới kết luận). */
+const LOCK_BEAT_MISSES = 3;
+/** Chờ tới lượt: nới rộng dần, trần mỗi nhịp chờ. KHÔNG có trần TỔNG — user chốt "thấy máy kia
+ *  đang ghi thì đợi, chạy sau"; bỏ cuộc là quay lại đúng hành vi cũ. */
+const LOCK_WAIT_STEP_MAX_MS = 30_000;
+
+/**
+ * Ngưỡng coi khoá là MỒ CÔI, phụ thuộc chủ khoá có đập nhịp hay không.
+ *
+ * 🔴 Vì sao KHÔNG dùng một ngưỡng chung: máy chạy bản cũ (≤2.6.0) ghi khoá MỘT LẦN rồi làm việc
+ * hàng chục phút. Áp ngưỡng nhịp-tim (90 s) lên nó là **cướp khoá giữa chừng** — tái tạo đúng lỗi
+ * đang đi vá, chỉ đổi chiều. Đo 2026-08-25: máy kia nối khối lúc 13:08 khi khoá của máy này đã quá
+ * 15 phút, làm hỏng cả lượt sync lẫn lượt bù vector.
+ */
+const lockStaleMs = (l: DriveLock): number => (l.beat ? LOCK_BEAT_MS * LOCK_BEAT_MISSES : LOCK_STALE_MS);
 
 interface ChunkRef {
   index: number;
@@ -937,6 +963,34 @@ function appendChunk(containerPath: string, bundlePath: string): number {
 }
 
 /** Cắt một khối ra file rời để đi qua đúng đường merge sẵn có. */
+/**
+ * Chữ ký của MỘT KHỐI, đọc THẲNG trong container — không chép khối ra ngoài.
+ *
+ * 🔴 Vì sao cần: `mergeContainer` bản đầu giải nén **mọi** khối ra file tạm rồi mới hỏi "đã merge
+ * chưa". Với container 1,7 GB thì mỗi lượt sync chép lại nguyên bằng ấy byte **chỉ để phát hiện
+ * KHÔNG có gì mới** — đo 2026-08-25: một lượt sync đọc **2,4 GB** và mất ~1 giờ trên kênh
+ * 0,55 MB/s, trong khi phần thật sự mới chỉ là một khối vài trăm KB.
+ *
+ * Chữ ký = `<độ dài>:<createdAt trong header>`, mà header là **plaintext nằm ở đầu khối** ⇒ đọc
+ * 64 KB tại `chunk.offset` là đủ. Khối đã biết ⇒ bỏ qua với chi phí gần bằng 0.
+ */
+function chunkSignature(containerPath: string, chunk: ChunkRef): string {
+  const fd = openSync(containerPath, "r");
+  try {
+    const probe = Buffer.alloc(Math.min(64 * 1024, chunk.len));
+    readSync(fd, probe, 0, probe.length, chunk.offset);
+    const firstNl = probe.indexOf(10, 0);
+    const secondNl = firstNl >= 0 ? probe.indexOf(10, firstNl + 1) : -1;
+    if (firstNl < 0 || secondNl < 0) return `${chunk.len}:`;
+    const header = JSON.parse(probe.subarray(firstNl + 1, secondNl).toString("utf8")) as BundleHeader;
+    return `${chunk.len}:${header.createdAt ?? ""}`;
+  } catch {
+    return `${chunk.len}:`; // header lạ ⇒ rơi về độ dài (vẫn phát hiện được khối bị viết lại)
+  } finally {
+    closeSync(fd);
+  }
+}
+
 async function extractChunk(containerPath: string, chunk: ChunkRef, outPath: string): Promise<void> {
   await pipeline(
     createReadStream(containerPath, { start: chunk.offset, end: chunk.offset + chunk.len - 1 }),
@@ -947,24 +1001,72 @@ async function extractChunk(containerPath: string, chunk: ChunkRef, outPath: str
 /** Giành quyền ghi kho chính. Trả hàm nhả khoá; ném lỗi RÕ khi máy khác đang giữ.
  *  KHÔNG phải khoá thật (Drive không có khoá file) — nó chỉ thu hẹp cửa sổ tranh chấp và,
  *  quan trọng hơn, biến một lần giẫm chân im lặng thành một câu báo lỗi đọc được. */
-function acquireDriveLock(dir: string, host: string): () => void {
-  const path = join(dir, SYNC_LOCK);
+function readDriveLock(path: string): DriveLock | null {
   try {
     const cur = JSON.parse(readFileSync(path, "utf8")) as DriveLock;
-    const age = Date.now() - Date.parse(cur.at);
-    if (cur.host !== host && age < LOCK_STALE_MS) {
-      throw new Error(
-        `Kho chính trên Drive đang được máy "${cur.host}" ghi (${Math.round(age / 1000)}s trước). ` +
-          `Chờ nó xong rồi sync lại — kho của máy này vẫn đủ, không mất gì.`,
-      );
-    }
-  } catch (e) {
-    // Không đọc được khoá = chưa có khoá (hoặc rác) ⇒ đi tiếp. Nhưng lỗi TỪ CHỐI ở trên phải
-    // ném ra ngoài, không được nuốt chung với "file không tồn tại".
-    if (e instanceof Error && e.message.startsWith("Kho chính trên Drive")) throw e;
+    return cur && typeof cur.host === "string" && typeof cur.at === "string" ? cur : null;
+  } catch {
+    return null; // chưa có khoá, hoặc rác — cả hai đều là "không ai giữ"
   }
-  writeFileSync(path, JSON.stringify({ host, pid: process.pid, at: new Date().toISOString() } satisfies DriveLock));
-  return () => rmSync(path, { force: true });
+}
+
+/**
+ * HÀNG ĐỢI GHI KHO CHUNG (`plan/08 §8c`, user chốt 2026-08-25:
+ * *"thấy máy kia đang ghi thì máy mình phải đợi, chạy sau, sync sau"*).
+ *
+ * Bản trước KHÔNG phải hàng đợi: gặp khoá là **ném lỗi** bảo người dùng tự bấm lại, và khoá ghi
+ * MỘT LẦN nên việc chạy lâu bị hiểu là chết. Hậu quả đo được 2026-08-25: lượt merge đọc ở
+ * 0,55 MB/s giữ khoá ~1 giờ ⇒ quá ngưỡng mồ côi 15 phút ⇒ máy kia **hợp lệ** nối khối vào giữa
+ * lúc máy này đang đọc ⇒ `UNKNOWN: unknown error, read`, hỏng cả lượt sync lẫn lượt bù vector.
+ *
+ * Nay: ĐỢI tới lượt (nới rộng dần) · ĐẬP NHỊP khi đang giữ · chỉ vào khi chủ cũ **chết thật**.
+ *
+ * `onWait` để bề mặt gọi in ra *"đang chờ máy X"* — xếp hàng phải NHÌN THẤY, không thì người dùng
+ * đọc thành treo (`02_RULES`: vỏ rỗng là kiểu hỏng tệ nhất vì nó không báo lỗi, nó nói dối).
+ */
+async function acquireDriveLock(
+  dir: string,
+  host: string,
+  opts: { onWait?: (holder: string, waitedMs: number) => void; signal?: { aborted: boolean } } = {},
+): Promise<() => void> {
+  const path = join(dir, SYNC_LOCK);
+  const started = Date.now();
+  let step = 1_000;
+
+  for (;;) {
+    if (opts.signal?.aborted) throw new Error("Đã huỷ khi đang chờ tới lượt ghi kho chung.");
+    const cur = readDriveLock(path);
+    const mine = !cur || cur.host === host;
+    const dead = cur ? Date.now() - Date.parse(cur.at) >= lockStaleMs(cur) : true;
+
+    if (mine || dead) {
+      const claim: DriveLock = { host, pid: process.pid, at: new Date().toISOString(), beat: true };
+      writeFileSync(path, JSON.stringify(claim));
+      // ĐỌC LẠI để xác nhận mình thật sự là chủ. Hai máy cùng thấy "trống" thì cùng ghi; bên ghi
+      // sau thắng, bên kia phải biết mình THUA thay vì tưởng đang giữ. Không triệt tiêu được đua
+      // (Drive không có ghi nguyên tử) nhưng thu hẹp cửa sổ xuống một lượt đọc.
+      const back = readDriveLock(path);
+      if (back && back.host === host && back.pid === process.pid) {
+        const beat = setInterval(() => {
+          try {
+            writeFileSync(path, JSON.stringify({ ...claim, at: new Date().toISOString() } satisfies DriveLock));
+          } catch {
+            /* nhịp lỡ không được làm chết lượt đang chạy — bên kia còn 2 nhịp nữa mới kết luận */
+          }
+        }, LOCK_BEAT_MS);
+        if (typeof beat.unref === "function") beat.unref();
+        return () => {
+          clearInterval(beat);
+          rmSync(path, { force: true });
+        };
+      }
+      // thua cuộc đua ⇒ rơi xuống nhánh chờ như mọi máy khác
+    }
+
+    opts.onWait?.(cur?.host ?? "?", Date.now() - started);
+    await new Promise((r) => setTimeout(r, step));
+    step = Math.min(step * 2, LOCK_WAIT_STEP_MAX_MS);
+  }
 }
 
 const sanitizeHost = (): string => (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
@@ -1132,6 +1234,9 @@ export async function syncDrive(opts: {
   /** ÉP GỘP kho chung ngay lượt này thay vì chờ đủ ngưỡng khối (`--compact`).
    *  Dùng khi kho chung đã lệch và cần chốt "lấy kho của MÁY NÀY" — xem `pushAppend`. */
   compact?: boolean;
+  /** Cắt vòng CHỜ TỚI LƯỢT (`plan/08 §8c` ③). Hàng đợi cố ý không có trần tổng — đợi là đợi —
+   *  nên phải có đường huỷ tường minh cho người dùng (và cho test). */
+  lockSignal?: { aborted: boolean };
 }): Promise<DriveSyncResult> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
@@ -1148,18 +1253,24 @@ export async function syncDrive(opts: {
   // cũ còn sót) vào kho local TRƯỚC, rồi mới xuất kho local đè lên kho chính. Làm
   // ngược lại thì gói mình ghi lên thiếu phần của máy kia ⇒ ghi đè là mất thật.
   // Ghi xong, kho chính = HỢP của cả hai bên, nên máy kia merge về cũng đủ.
-  const release = level === "full" ? () => {} : acquireDriveLock(dir, host);
   const merged: DriveSyncResult["merged"] = [];
   let push: DriveSyncResult["push"];
-  try {
-    // Merge MỌI gói trong thư mục: kho chính (container nhiều khối) VÀ mọi file `.enc`
-    // đời cũ còn sót — người dùng không phải dọn tay trước khi đổi sang lối một-file.
-    // KHÔNG loại gói của chính máy này nữa: ở lối một-file, tên gói không còn nói "của
-    // ai"; dedup theo CHỮ KÝ nội dung lo phần đó, và merge vốn idempotent.
+
+  // ── VÙNG TỚI HẠN TỐI THIỂU (`plan/08 §8c` ①) ────────────────────────────────
+  // Merge là phần NẶNG (đo 2026-08-25: ~1 giờ trên kênh 0,55 MB/s). Giữ khoá suốt cả lượt đó
+  // nghĩa là máy kia xếp hàng đúng nhưng **chờ cả tiếng**. Nay: merge chạy NGOÀI khoá; khoá chỉ
+  // ôm phần ghi. Lượt merge THỨ HAI ngay sau khi cầm khoá bắt phần máy khác vừa nối trong lúc
+  // mình đang merge — rẻ gần bằng 0 nhờ `chunkSignature` (không chép khối đã biết).
+  const mergeAll = async (record: "all" | "changed-only"): Promise<void> => {
     for (const f of readdirSync(dir).filter((f) => f.endsWith(".enc"))) {
       const full = join(dir, f);
+      // Lượt thứ hai (trong khoá) chỉ ghi nhận thứ THẬT SỰ mới — không thì bảng kết quả đầy
+      // dòng "skipped" trùng, đọc thành như merge hai lần.
+      const keep = (e: DriveSyncResult["merged"][number]): void => {
+        if (record === "all" || !e.skipped) merged.push(e);
+      };
       if (isChunkContainer(full)) {
-        merged.push(...(await mergeContainer(full, f, { dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes })));
+        for (const e of await mergeContainer(full, f, { dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes })) keep(e);
         continue;
       }
       let sig: string;
@@ -1169,17 +1280,39 @@ export async function syncDrive(opts: {
         continue; // vanished mid-listing → skip
       }
       if (isBundleMerged(f, sig, opts.dbPath)) {
-        merged.push({ file: f, skipped: true });
+        keep({ file: f, skipped: true });
         continue;
       }
       try {
         const r = await mergeMemoryBundle({ bundlePath: full, dbPath: opts.dbPath, keyFile: opts.keyFile, excludeLanes });
         markBundleMerged(f, sig, opts.dbPath);
-        merged.push({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
+        keep({ file: f, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
       } catch (error) {
-        merged.push({ file: f, error: error instanceof Error ? error.message : "merge failed" });
+        keep({ file: f, error: error instanceof Error ? error.message : "merge failed" });
       }
     }
+  };
+
+  // Merge MỌI gói trong thư mục: kho chính (container nhiều khối) VÀ mọi file `.enc` đời cũ còn
+  // sót — người dùng không phải dọn tay khi đổi sang lối một-file. KHÔNG loại gói của chính máy
+  // này: ở lối một-file tên gói không còn nói "của ai"; dedup theo CHỮ KÝ lo phần đó.
+  await mergeAll("all"); // ← NGOÀI khoá: phần nặng, máy khác vẫn ghi được trong lúc này
+  const release =
+    level === "full"
+      ? () => {}
+      : await acquireDriveLock(dir, host, {
+          signal: opts.lockSignal,
+          // Xếp hàng phải NHÌN THẤY: im lặng thì người dùng đọc thành treo. In mỗi ~30 s một lần,
+          // không mỗi vòng — vòng đầu nới rộng dần từ 1 s nên in mỗi vòng sẽ thành spam.
+          onWait: (holder, waited) => {
+            if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
+            console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
+          },
+        });
+  try {
+    // GỘP TRƯỚC, GHI SAU — bất biến của lối một-file: ghi đè khi chưa có phần máy kia là mất thật.
+    // Lượt này bắt đúng phần xuất hiện trong lúc mình merge ngoài khoá.
+    await mergeAll("changed-only");
     push =
       level === "full"
         ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath })
@@ -1234,9 +1367,16 @@ async function mergeContainer(
   const out: DriveSyncResult["merged"] = [];
   const chunks = listChunks(containerPath);
   for (const chunk of chunks) {
+    const label = `${displayName}#${chunk.index}`;
+    // CỬA CHẶN RẺ: hỏi "đã merge chưa" bằng chữ ký đọc TẠI CHỖ, trước khi chép byte nào.
+    // Trước đây phải giải nén khối rồi mới hỏi ⇒ mỗi lượt sync chép lại cả container (đo
+    // 2026-08-25: đọc 2,4 GB / ~1 giờ chỉ để kết luận "không có gì mới").
+    if (isBundleMerged(label, chunkSignature(containerPath, chunk), o.dbPath)) {
+      out.push({ file: label, skipped: true, cheap: true });
+      continue;
+    }
     const tmp = mkdtempSync(join(tmpdir(), "zemory-chunk-"));
     const part = join(tmp, "chunk.enc");
-    const label = `${displayName}#${chunk.index}`;
     try {
       await extractChunk(containerPath, chunk, part);
       const sig = bundleSignature(part);
@@ -1374,6 +1514,16 @@ async function pushAppend(o: {
     if (!r.rows || r.rows.messages === 0) {
       return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
     }
+    // 🔴 KIỂM LẠI TRƯỚC KHI GHI (`plan/08 §8c` ⑤). Drive đồng bộ theo CẢ FILE: nối 76 MB = tạo
+    // một phiên bản mới của cả container. Nếu bản cục bộ đã CŨ (máy kia vừa nối mà mình chưa kéo
+    // về) thì bản mình đẩy lên là *cũ + khối mình* ⇒ **khối của máy kia biến mất, không ai báo**.
+    // Khoá KHÔNG cứu được ca này — nó chỉ chặn hai bên ghi cùng lúc, không chặn ghi đè bản cũ.
+    const chunksNow = existsSync(mainPath) && isChunkContainer(mainPath) ? listChunks(mainPath) : [];
+    if (chunksNow.length !== chunks.length) {
+      // Có khối lạ xuất hiện sau lúc mình liệt kê ⇒ DỪNG, để lượt sync sau merge chúng rồi ghi.
+      // Thà bỏ một lượt còn hơn nuốt mất khối của máy khác (kho THẬT nằm ở từng máy — điều 16).
+      return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
+    }
     let removed = 0;
     let written = 0; // byte THẬT SỰ ghi thêm lượt này — xem chú thích ở `bytes` bên dưới
     if (compacting) {
@@ -1395,7 +1545,18 @@ async function pushAppend(o: {
     // thừa 100%. Không đánh dấu thì mỗi lượt sync sau phải GIẢI MÃ lại nguyên khối chỉ để
     // phát hiện "0 dòng mới" — với khối cỡ 336 MB thì đó là vài chục giây và một lượt đọc
     // cả file, đúng thứ lối nối-thêm sinh ra để tránh. (Bắt được nhờ ca `receiver dedup`.)
+    // 🔴 KIỂM SAU KHI GHI (`plan/08 §8c` ④). Drive không bảo đảm nguyên tử; nếu khối của mình
+    // biến mất (bị bản khác đè) thì phải BIẾT, chứ không được báo "đã đẩy" rồi thôi — đó đúng là
+    // kiểu "bề mặt nói dối" mà `02_RULES` cấm. Không có gì để sửa tự động ở đây (ghi lại có thể
+    // đè tiếp bản mới), nên nói thẳng và để lượt sync sau làm lại.
     const after = listChunks(mainPath);
+    const expected = compacting ? 1 : chunks.length + 1;
+    if (after.length !== expected) {
+      throw new Error(
+        `Kho chung đổi ngay sau khi ghi (${after.length} khối, chờ ${expected}) — khối vừa nối có thể đã bị đè. ` +
+          `Kho của máy này vẫn đủ; chạy \`zemory memory sync\` lại để nối lại.`,
+      );
+    }
     const mine = after[after.length - 1];
     if (mine) {
       const tmp2 = mkdtempSync(join(tmpdir(), "zemory-mark-"));
@@ -1690,7 +1851,12 @@ export async function vectorCatchUp(opts: {
     // KHOÁ KÊNH như mọi lượt ghi khác. Bản đầu của tôi nối thẳng — hai máy nối cùng lúc là
     // container rách, đúng thứ `acquireDriveLock` sinh ra để thu hẹp.
     const host = hostname();
-    const release = acquireDriveLock(dir, host);
+    const release = await acquireDriveLock(dir, host, {
+      onWait: (holder, waited) => {
+        if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
+        console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
+      },
+    });
     let bytes = 0;
     try {
       bytes = appendChunk(container, part);
