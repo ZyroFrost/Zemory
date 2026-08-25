@@ -25,18 +25,24 @@ nhãn ⇒ **giữ mặc định BẬT**, bác vế "nghiêng về tắt" của `
 ### Trạng thái máy lúc chốt (ĐO, không nhớ)
 - **zemory 2.7.0** trên `origin/main` (`09ddc24`). Cây làm việc sạch sau commit.
 - **Gate: `813/813 · 0 fail · 0 skipped` · `EXIT=0`** · `conform` ✓ · `todo verify` ✓.
-- **Daemon TẮT** — tắt để build được (`clean` không xoá được `dist/` khi daemon đang chạy từ đó).
-  Bật lại: `zemory ui --no-window`. Autostart đang BẬT nên nó cũng tự lên khi đăng nhập lại.
-- Kho local: **299.180 tin** · ~284,5k vector · phủ 92%.
-- Kho chung: **31 khối · 1.764 MB**, đã đủ vector (nghiệm thu độc lập: còn thiếu **3**).
+- **Daemon ĐANG CHẠY** (`pid 25420`, v2.7.0) — scheduler + autosync + autostart đều BẬT.
+- Kho local: **299.371 tin** · ~285k vector · phủ 92% · `quick_check` **ok** · 0 hàng mồ côi.
+- Kho chung: **31 khối · 1.773 MB**, đã đủ vector (nghiệm thu độc lập: còn thiếu **3** — là tin
+  daemon nhúng sau lúc đo). Lượt sync 16:51→17:19 `EXIT=0`, đẩy 1.602 tin / 9,1 MB, **watermark
+  đã nhảy** (5.791.430 → 5.793.032).
 
 ### Việc đầu tiên của phiên sau
-1. **Bật lại daemon** nếu chưa lên.
-2. **Chạy `zemory memory sync` một lượt** — lượt 16:28 hôm nay nối khối xong nhưng **chết trước khi
-   ghi watermark** (ổ G treo 2 phút, `UNKNOWN: unknown error, write`), nên máy này sẽ **gửi lại
-   khối ~9 MB đó**. Merge idempotent ⇒ không sai dữ liệu, chỉ phí băng thông một lần.
-3. Nhân lượt đó **đo tốc độ sync** — số cũ: 2,4 GB đọc / ~1 giờ. Cửa-chặn-rẻ phải kéo nó xuống
-   còn vài phút. **CHƯA có phép đo sạch nào trên kênh thật** vì lượt đo bị Drive treo cắt ngang.
+**KHÔNG có việc bắt buộc.** Repo đóng ở trạng thái sạch: sổ 0 mục · gate 813/813 · `origin/main`
+`4d13cb4` khớp local từng byte. Cứ để autosync chạy.
+
+Ba thứ CHƯA CHỨNG MINH ĐƯỢC (nêu để không ai đọc "đã xong" thành "đã kiểm hết") — **không phải
+việc phải làm**, chỉ mở ra khi có triệu chứng thật:
+- **Máy kia chưa lên 2.7.0.** Tới lúc đó hàng đợi chỉ chạy một chiều: máy này nhường đúng, máy kia
+  vẫn có thể cướp khoá sau 15 phút vì bản cũ không biết đọc nhịp tim.
+- **Chưa test HAI MÁY thật cùng sync** — cần máy kia mới đo được.
+- Hành vi *"Drive đẻ conflicted copy"* và *"nối lên bản cache cũ làm mất khối"* nêu theo cách Drive
+  hoạt động, **chưa dựng phép thử**. Kèm lỗ đã biết: Drive đẻ file trùng tên khác thì code chỉ nhìn
+  `global_memory.enc` ⇒ dữ liệu bản kia nằm chết, không ai báo.
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
 · **Gate bị cắt 4 LẦN** (2 lần tôi tự dừng để sửa code · 1 lần môi trường · 1 lần preflight chặn vì
