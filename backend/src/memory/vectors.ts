@@ -623,6 +623,53 @@ export function vectorCoverage(dbPath: string = currentMemoryDb()): { covered: n
   }
 }
 
+/**
+ * RANH GIỚI ĐÃ NHÚNG — id nhỏ nhất của một tin ĐÁNG NHÚNG mà chưa có vector, tính trong cửa
+ * sổ GẦN ĐÂY. `null` = không có gì phải chờ.
+ *
+ * 🔴 Vì sao cần: gói đồng bộ chở vector KÈM đợt tin mới (`shipVectorsInto` lọc theo cùng dải
+ * `messages.id > watermark`). Nhưng nhúng chạy SAU tin ~30 phút (scheduler), nên lúc gói đi
+ * thì tin chưa có vector; khi vector có thì id tin đã nằm dưới watermark và **không lượt nào
+ * quay lại chở nó**. Đo 2026-08-25 bằng diễn tập phục hồi: kho dựng từ kênh chung thiếu
+ * **~22.000 vector** so với kho gốc ⇒ máy nhận phải nhúng lại 27.035 tin (~12 giờ), trái
+ * HP điều 16 (*"một tin lên kho chung là mang theo TRỌN bộ RAG của chính nó"*). Bệnh này đã
+ * cắn thật: 13/08 máy kia merge xong còn **137.063 tin cần nhúng**, chỉ thoát nhờ có người
+ * đẩy tay một gói full.
+ *
+ * Cách chặn: xuất gói DỪNG ngay trước tin này — tin và vector của nó đi CÙNG chuyến sau.
+ *
+ * Hai ràng buộc fail-open (điều 9), vì cổng này nằm chắn đường đồng bộ:
+ * · **Kho chưa có vector nào ⇒ `null`.** Máy không chạy nhúng (thiếu model, tắt có chủ đích)
+ *   thì chờ cũng vô ích — chặn ở đây sẽ làm nó KHÔNG BAO GIỜ gửi được gì.
+ * · **Chỉ tin trong `recentWindowMs` mới được chặn.** Một tin cũ không nhúng nổi (nội dung
+ *   hỏng, từng lỗi model) mà chặn vĩnh viễn thì cả đường sync đứng — đúng kiểu "thêm một lớp
+ *   là thêm một chỗ hỏng". Quá cửa sổ ⇒ cho đi, lỗ đó bù ở lượt gộp container kế tiếp.
+ */
+export function embedFrontierId(
+  dbPath: string = currentMemoryDb(),
+  recentWindowMs = 24 * 60 * 60 * 1000,
+): number | null {
+  const db = vecConnect(dbPath);
+  try {
+    if (!tableExists(db)) return null; // kho chưa từng nhúng — không có gì để chờ
+    if ((db.prepare("SELECT count(*) c FROM vec_chunks").get() as { c: number }).c === 0) return null;
+    const cutoff = new Date(Date.now() - recentWindowMs).toISOString();
+    const row = db
+      .prepare(
+        `SELECT MIN(id) m FROM messages
+          WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}
+            AND timestamp >= ?
+            AND id NOT IN (SELECT rowid FROM vec_chunks WHERE rowid < ${SYNTH_BASE})`,
+      )
+      .get(cutoff) as { m: number | null };
+    return row?.m ?? null;
+  } catch {
+    return null; // mọi trục trặc ⇒ KHÔNG chặn đường sync
+  } finally {
+    db.close();
+  }
+}
+
 export function vectorRemaining(dbPath: string = currentMemoryDb()): number {
   const db = vecConnect(dbPath);
   try {

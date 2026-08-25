@@ -324,3 +324,52 @@ test("importing a rows bundle yields a complete, searchable memory", async (t) =
     db.close();
   }
 });
+
+// ÉP GỘP (`memory sync --compact`) — viết LẠI kho chung từ kho máy này, không chờ ngưỡng khối.
+//
+// Vì sao có cờ này: gộp xuất `since=0` nên container mới chở TRỌN vector của máy chạy nó — đó
+// là cách duy nhất làm kho chung ĐỦ trở lại sau khi đã lệch (đo 2026-08-25: thiếu ~22.000
+// vector). Chờ ngưỡng 48 khối cũng gộp, nhưng máy nào chạm ngưỡng thì lấy kho máy đó.
+//
+// CA ÂM quan trọng ngang ca dương: KHÔNG có cờ thì tuyệt đối không được tự gộp — gộp là GHI ĐÈ
+// kho chung của mọi máy, tự tiện làm là mất dữ liệu của người khác.
+test("--compact ép gộp NGAY; không có cờ thì chỉ nối thêm (ca ÂM)", async (t) => {
+  sandboxHome(t);
+  const { syncDrive } = await import("../../dist/memory/share.js");
+  const root = tempDir(t, "zemory-compact-");
+  const dbPath = join(root, "memory.db");
+  const driveDir = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(driveDir, { recursive: true });
+
+  const db = openMemory(dbPath);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "PC");
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  ins.run("s1", "m1", "user", "tin mot", "2026-01-01T00:00:00Z");
+  db.close();
+
+  writeMemoryShareKey(keyPath);
+  process.env.ZEMORY_SHARE_KEY = readFileSync(keyPath, "utf8").trim();
+  t.after(() => delete process.env.ZEMORY_SHARE_KEY);
+
+  const first = await syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false });
+  assert.equal(first.push.kind, "baseline", "lượt đầu là baseline (kho chung còn trống)");
+
+  // Tin thứ hai → lượt sync thường phải là DELTA (nối thêm), KHÔNG được tự gộp.
+  const db2 = openMemory(dbPath);
+  db2.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)").run("s1", "m2", "user", "tin hai", "2026-01-01T00:01:00Z");
+  db2.close();
+  const second = await syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false });
+  assert.equal(second.push.kind, "delta", "CA ÂM: không có cờ ⇒ chỉ nối thêm, tuyệt đối không tự ghi đè kho chung");
+  assert.equal(second.push.removed, 0, "CA ÂM: không được nuốt khối nào khi chưa ai xin gộp");
+
+  // Tin thứ ba + cờ --compact → phải gộp thật: một khối duy nhất, các khối cũ bị gấp lại.
+  const db3 = openMemory(dbPath);
+  db3.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)").run("s1", "m3", "user", "tin ba", "2026-01-01T00:02:00Z");
+  db3.close();
+  const third = await syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false, compact: true });
+  assert.equal(third.push.kind, "compact", "có cờ ⇒ phải GỘP, không phải nối thêm");
+  assert.ok(third.push.removed >= 2, `phải gấp lại các khối cũ (gấp ${third.push.removed})`);
+  assert.equal(third.push.messages, 3, "khối gộp xuất since=0 ⇒ chở LẠI toàn bộ tin, đây là cả mục đích");
+});
