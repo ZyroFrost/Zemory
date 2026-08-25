@@ -3338,3 +3338,14 @@ cứ gì** — hai thước có thể nói NGƯỢC nhau, và dùng lẫn chúng
 > Thu hội thoại web vào memory. ChatGPT ✓ · claude.ai ✓. Prototype cũ ở `attic/web-capture/`.
 > **Quyết định đã chốt (plan 07 §14):** origin = 1 cột · v2b browser-connector (v1 file fallback) · re-pull full replace idempotent · GPT trước · password KHÔNG nhập vào zemory · KHÔNG commit file data thật (PII).
 
+
+## 🆕 Phát sinh 2026-08-07 tối (sau release 1.2.0) — dời từ 05_TODO 2026-08-25
+
+
+  ✅ **ĐÃ CHẠY 2026-08-15** — gate đầy đủ **670/670 pass · 0 fail · 0 skipped**, tức 5 file đó
+  đều chạy thật (không ca nào bị `skipIfBusy` bỏ qua).
+  ~~**CHẠY 5 FILE TEST CÒN MÙ sau khi embed xong:** `embed` · `rerank` · `vectors` ·~~
+  `memory-search` · `digest`. Ba lượt audit hôm nay CỐ Ý bỏ chúng để không tranh CPU với job
+  embed (đo thật: bench chạy song song làm embed tụt về 0 chunk/30 s). Ghi ra đây để **không ai
+  đọc "audit xanh" thành "đã soi hết"** — vùng này chưa được soi trong cả ba lượt.
+  Chạy CÙNG DỊP hai lượt bench, không cần lượt audit riêng.
