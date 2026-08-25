@@ -9,10 +9,10 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { backupStale, DEFAULT_BACKUP_POLICY, BACKUP_STALE_FACTOR } from "../../dist/memory/backup-rotate.js";
+import { backupStale, listBackups, rotateBackup, DEFAULT_BACKUP_POLICY, BACKUP_STALE_FACTOR } from "../../dist/memory/backup-rotate.js";
 
 const HOUR = 3_600_000;
 
@@ -89,4 +89,47 @@ test("fail-open: thư mục kho không đọc được ⇒ KHÔNG phán bừa l�
   const r = backupStale(join(tmpdir(), "zbak-khong-ton-tai-" + Date.now(), "x.db"));
   assert.equal(r.stale, true, "không có thư mục backups = không có bản nào = đáng báo");
   assert.equal(r.late, false);
+});
+
+// VONG XOAY phai xoa CA file phu `-shm`/`-wal`, khong chi `.db`.
+//
+// Do 2026-08-25 tren kho that: 6 file sidecar MO COI cua 3 ban da bi xoay di tu 26/07 · 03/08 ·
+// 04/08 van nam trong `data/backups/`. Moi lan xoay lai bo lai mot cap => rac tich VINH VIEN,
+// va thu muc sao luu doc khong ra ban nao con song. Ca AM quan trong ngang: sidecar cua ban CON
+// SONG khong duoc dung toi.
+test("xoay backup: xoa .db thi xoa CA -shm/-wal cua no, KHONG dung sidecar cua ban con song", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "zbak-rot-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const dataDir = join(root, "data");
+  const bk = join(dataDir, "backups");
+  mkdirSync(bk, { recursive: true });
+  const dbPath = join(dataDir, "global_memory.db");
+  writeFileSync(dbPath, "");
+
+  // 3 ban cu + sidecar cua tung ban; keep=1 => 2 ban cu nhat phai bi xoay di
+  const stamps = ["2026-01-01T00-00-00-000Z", "2026-01-02T00-00-00-000Z", "2026-01-03T00-00-00-000Z"];
+  stamps.forEach((st, i) => {
+    const f = join(bk, `global_memory-${st}.db`);
+    writeFileSync(f, "");
+    writeFileSync(f + "-shm", "");
+    writeFileSync(f + "-wal", "");
+    const t0 = (Date.now() - (10 - i) * HOUR) / 1000;
+    utimesSync(f, t0, t0);
+  });
+
+  await rotateBackup({ dbPath, policy: { everyMs: 0, keep: 1 } });
+
+  const left = listBackups(bk).map((x) => x.path);
+  assert.ok(left.length <= 2, `keep=1 (+ban vua ghi) ma con ${left.length} ban`);
+  for (const st of stamps) {
+    const f = join(bk, `global_memory-${st}.db`);
+    if (existsSync(f)) {
+      // ca AM: ban CON SONG phai giu nguyen sidecar cua no
+      assert.ok(existsSync(f + "-shm"), `sidecar cua ban CON SONG bi xoa oan: ${st}`);
+      continue;
+    }
+    // ban da bi xoay di => sidecar KHONG duoc con lai
+    assert.ok(!existsSync(f + "-shm"), `-shm mo coi con lai sau khi xoay: ${st}`);
+    assert.ok(!existsSync(f + "-wal"), `-wal mo coi con lai sau khi xoay: ${st}`);
+  }
 });

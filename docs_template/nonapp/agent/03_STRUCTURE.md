@@ -8,7 +8,6 @@
 - Mô tả theo **VAI TRÒ (role)** — áp BI / data / docs-only / design gần như không đổi cấu trúc.
 - **1 TÊN duy nhất cho mỗi concern**; chỉ khi công cụ ÉP CỨNG tên (vd Power BI Project `.pbip`/`.Report`/`.SemanticModel`, dbt `models/`) mới theo nó.
 - **INDEX = TỪ ĐIỂN TÊN để TRA, KHÔNG phải danh sách folder phải tạo.** Slot dưới đây là *tên có sẵn để tra cứu* — **CHỈ tạo folder khi CÓ concern THẬT**, **TUYỆT ĐỐI KHÔNG tạo folder rỗng** cho "đủ bộ". Một dự án non-app điển hình chỉ hiện diện 3–8 slot.
-- **NGƯỠNG GỘP SLOT — chống PHÂN MẢNH (luật, thêm 2026-08-24 từ thực địa).** Luật “không folder rỗng” ở trên chặn được folder RỖNG nhưng KHÔNG chặn folder 1–2 file, mà phân mảnh mới là thứ làm gốc repo không đọc được. Đo thật một repo estate: **4 folder cho 7 file** (`config/` 1 · `content/` 1 · `measures/` 2 · `scripts/` 3) ⇒ **11 folder ở gốc, 0 vi phạm dòng nào của chuẩn cũ**. **Luật:** một slot chỉ được ĐỨNG RIÊNG khi có **≥3 file** hoặc khi **công cụ ép vị trí**. Dưới ngưỡng ⇒ gộp vào slot gần nghĩa nhất và ghi MỘT DÒNG trong `03_STRUCTURE` nói nó nằm đâu (từ điển tên vẫn tra được). `zemory conform` **nhắc** khi một slot tracked có <3 file — **advisory, KHÔNG chặn**: ngưỡng này là chuyện gu đọc, gate đỏ vì nó sẽ thành gate bị bỏ qua.
 - **Nguồn = ĐẦU VÀO** (định nghĩa nguồn · measure · template điền · deliverable · spec) = git **tracked**. **File THẬT nặng / PII / kéo-về / render-ra = ĐẦU RA** = **gitignore** (`data/` · `exports/` · `.env`).
 - **BẮT BUỘC = 3 VAI TRÒ** (thay cho 4 của app): `docs/` · `AGENTS.md` · **≥1 folder DELIVERABLE** (`reports/` | `models/` | `content/` | `design/` — chọn theo loại). KHÔNG có `backend/` + `frontend/` (không có code-app).
 
@@ -43,6 +42,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Tuan_TonKho` — pipeline `pipelines/<cùng tên>/`, launcher `bin/<tên>.cmd`
 │   │ ┄┄ case theo YÊU CẦU (điều tra · sự cố · dim phải chăm đi chăm lại) → tên thường, KHÔNG số ┄┄
 │   └── <case>/     [opt]    mỗi vấn đề một mạch việc quay lại nhiều lần — ngang hàng case định kỳ
+│       └── pipeline/ [opt]    script chạy CỦA CHÍNH case: `common.py` + `00_/01_/02_…` (§5)
 ├── templates/      [opt]  FILE MẪU để ĐIỀN tự động (report/sheet TRỐNG chờ đổ số) — KHÁC `fixtures/` (data mẫu)
 │ ┄┄ ĐẦU VÀO / XỬ LÝ ┄┄
 ├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn — chỗ automation "KÉO" đọc
@@ -60,6 +60,9 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │                        `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. **THUẦN ASCII**
 │                        (dấu tiếng Việt làm cmd.exe vỡ parse). ĐẶT Ở ĐÂY, KHÔNG ở gốc — xem §5 “Gốc repo”
 ├── config/         [opt]  profile workspace/connection (operator): *.example.* tracked · real→gitignore
+├── external/      [opt]  repo/CODE NGOÀI clone THAM CHIẾU — code HỌ (ETL hệ cũ · script phòng khác ·
+│                        model của người ta): chỉ ĐỌC/gọi/extend, KHÔNG sửa thành của mình, KHÔNG nhét
+│                        vào `pipelines/` hay `scripts/`. Thứ không có nhà thì sẽ chui vào nhà người khác
 ├── attic/          [opt]  bản cũ deliverable / snapshot TRƯỚC publish (rollback). Tracked
 ├── share/          [opt]  bundle sync mã hóa xuyên máy (chỉ khi cần) — như app
 │
@@ -93,7 +96,9 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | **query check CHỈ 1 case dùng** | `tasks/<case>/check_*.sql` |
 | **query check NHIỀU case dùng chung** | `queries/check_*.sql` (ngoại lệ của luật 1-case-1-folder) |
 | **index tra nhanh "có case nào"** | `content/README.md` |
-| **pipeline thực thi task** (stage đánh số) | `pipelines/<cùng tên case>/` · `common.py` (helper) + `00_/01_/02_…` (STAGE) |
+| **pipeline thực thi task** (stage đánh số) | `tasks/<case>/pipeline/` · `common.py` (helper) + `00_/01_/02_…` (STAGE) |
+| **code NGOÀI clone về tham chiếu** (ETL hệ cũ · script phòng khác) | `external/` — KHÔNG nhét vào `pipelines/`/`scripts/` |
+| **pipeline gom theo NGUỒN** (repo không theo case) | `pipelines/<domain>/` — hình dạng thứ hai, hợp lệ |
 | **launcher chạy task** | `bin/<tên>.cmd` (`<tên> <stage>` · `<tên> auto`) — ASCII thuần, KHÔNG ở gốc |
 | **file GỐC người ta gửi / kéo từ nguồn cho 1 case** | `data/<case>/01_raw/` — 🔴 chỉ đọc, KHÔNG ghi đè |
 | **file trung gian pipeline sinh** (.csv, nháp, `_state.json`) | `data/<case>/02_processing/` — xoá đi chạy lại phải dựng lại được |
@@ -121,6 +126,13 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | skill / playbook (grill · chốt phiên · reconcile · pull/fill/upload) | `docs/agent/04_SKILLS.md` |
 
 ## 4. Quyết định & Convention
+
+> **Thứ này để đâu? — hỏi ĐÚNG MỘT câu: nó thuộc MỘT case, hay dùng chung?**
+> · thuộc một case ⇒ `tasks/<case>/` (spec · findings · SQL · `pipeline/`) + `data/<case>/` (file nặng)
+> · dùng chung nhiều case ⇒ `scripts/` · `sources/` · `queries/` · `measures/` theo vai trò
+> · **code của NGƯỜI KHÁC** clone về ⇒ `external/` — kể cả khi nó trông giống pipeline
+> *(KHÔNG gom mấy slot dùng-chung vào một thư mục cha: ranh giới phòng ban ĐÃ LÀ ranh giới REPO —
+> tên repo chính là tên phòng ban — nên một tầng nữa chỉ vẽ lại thứ đã có.)*
 ```
 3 vai trò bắt buộc   docs/ · AGENTS.md · ≥1 deliverable (reports/|models/|content/|design/). KHÔNG backend/frontend.
                      Repo nặng ĐIỀU TRA: deliverable = hồ sơ `tasks/<case>/`, content/ giữ README.md = INDEX case
@@ -140,7 +152,8 @@ tasks/ KHÔNG SỐ     Case đặt tên THƯỜNG, mô tả việc — KHÔNG đ
                      Phép thử xếp file: **xoá đi có dựng lại được không?** — KHÔNG ⇒ 01_raw · CÓ, và không ai ngoài thấy ⇒ 02_processing · CÓ, và đem giao/đẩy đi ⇒ 03_output.
                      Pipeline khai đường bằng HẰNG trong common.py (RAW/PROC/OUT), KHÔNG nối chuỗi đường dẫn trong từng stage.
                      data/adhoc/ + data/extract/ KHÔNG chia chặng
-Pipeline mirror TÊN  task lặp = một pipeline, MIRROR theo TÊN xuyên 3 nơi: `tasks/<tên>/spec.md` ↔ `pipelines/<tên>/` ↔ `data/<tên>/` (CÙNG TÊN, không lệch). Bên trong pipeline, STAGE mới đánh số phẳng `NN_mô-tả.py` (00=cổng/readiness thường KHÔNG xuất data · 01,02…=bước); chạy standalone; logic dùng chung → `common.py` (tên KHÔNG số mới import được). **`NN_` chỉ có ĐÚNG MỘT nghĩa: thứ tự STAGE.**
+Pipeline THUỘC case  Case-based ⇒ pipeline nằm **TRONG chính case**: `tasks/<tên>/pipeline/` (spec · findings · script cùng một chỗ — đơn vị công việc là CASE, mở một folder là thấy). Stage đánh số phẳng `NN_mô-tả.py` (00=cổng/readiness thường KHÔNG xuất data · 01,02…=bước); logic dùng chung → `common.py` (tên KHÔNG số mới import được). `data/<tên>/` VẪN nằm riêng (file nặng, gitignore) — đó là ngoại lệ có chủ đích, không phải quên. **`NN_` chỉ có ĐÚNG MỘT nghĩa: thứ tự STAGE.** ⚠ Case ĐANG CÓ ở `pipelines/<tên>/` thì dời **khi nào chạm tới case đó** (chạy test của chính nó làm lưới đỡ), KHÔNG dời hàng loạt
+pipelines/ (nguồn)   GIỮ cho repo tổ chức theo NGUỒN chứ không theo case (`pipelines/<domain>/`: excel_loader · ipos_loader…) — repo loại này có thể KHÔNG có `tasks/` nào. Đây là hình dạng thứ hai hợp lệ, đừng ép nó thành case
 Output khớp số       file trung gian mang tiền tố số stage (`01_pull.py` → `data/<case>/02_processing/01_pull_*.csv`). ⚠ NGOẠI LỆ file DELIVERABLE cuối: nằm `data/<case>/03_output/`, GIỮ TÊN NGHIỆP VỤ (vd `YYYYMMDD_..._REPORT.xlsx`), KHÔNG prefix số — vì đó là file giao/nộp
 Right-size stage     chỉ tạo stage task THẬT cần (2–4 là thường), KHÔNG chẻ vụn cho "đủ bộ". Script domain cũ (fast/haravan/pos…) KHÔNG bắt đánh số — cùng tồn tại
 Launcher (bin/)      Launcher gõ tay đặt ở `bin/` — `bin/<tên>.cmd`: `<tên> <stage>` dispatch + `<tên> auto` = cổng 00 (exit-code gate) → chuỗi stage nếu đủ. **THUẦN ASCII** (dấu tiếng Việt làm cmd.exe vỡ parse). ⚠ KHÔNG đặt dấu `>` trong dòng `rem` — cmd VẪN redirect ⇒ sinh file rỗng
