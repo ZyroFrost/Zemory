@@ -3,45 +3,53 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-25 — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-25 (phiên chiều) — ĐỌC MỤC NÀY TRƯỚC
 
-**SỔ TRỐNG — 0 mục mở.** Không có việc nào đang dở. Dưới đây là TRẠNG THÁI để phiên sau khỏi đo lại.
+**SỔ TRỐNG — 0 mục mở.** Dưới đây là TRẠNG THÁI đã ĐO, để phiên sau khỏi đo lại.
 
-### Phiên 24–25/08 đã làm gì (số đo đầy đủ ở `06_CHANGES`, đọc từ `[2026-08-25b]` xuống `[2026-08-24e]`)
-Push **2.4.0** rồi **2.5.0** · `uplinkguard` (bundle đã rời máy chưa) · **#13** adapter
-`claude-code-memory` (153 fact) · **#12** `zemory memory promote` · cổng **"không biết" mặc định
-BẬT** + sàn kích thước · vá 5 lỗ chuẩn thực địa · **gỡ lại luật ⑤** (sai) · thêm `external/` +
-pipeline-vào-trong-case cho non-app · **thi hành xuống 14 repo, refactor vật lý 4 repo**.
+### Phiên này làm gì (số đo đầy đủ: `06_CHANGES` từ `[2026-08-25d]` xuống `[2026-08-25b1]`)
+Push **2.6.0** rồi **2.7.0**. Ba việc lớn, cả ba đều sinh từ **một lượt diễn tập phục hồi**:
+- **Diễn tập phục hồi LẦN ĐẦU** (`plan/18 §4b`) — dựng kho từ kênh chung: đường lùi CÒN SỐNG, và
+  nó **bắt được lỗ chở vector**: kho dựng ra thiếu ~22.000 vector ⇒ máy nhận phải nhúng lại ~12 giờ.
+- **Vá lỗ đó** (`embedFrontierId` — tin và vector đi cùng chuyến) + **lệnh bù**
+  `zemory memory vectors-catchup` (nối thêm, KHÔNG ghi đè). Đã chạy thật: kênh thiếu
+  **16.624 → 3** vector (3 cái là tin daemon nhúng sau lúc đo).
+- **Hàng đợi ghi kho chung** (`plan/08 §8c`) — user bác vế cũ *"tranh chấp thì báo, không cố
+  chống"*: nay ĐỢI tới lượt · nhịp tim 30 s · kiểm hai đầu quanh lúc nối · merge ra NGOÀI khoá.
+  Kèm phát hiện lớn: `mergeContainer` cũ chép lại **cả container mỗi lượt sync** (2,4 GB / ~1 giờ
+  chỉ để kết luận "không có gì mới") — nay chữ ký khối đọc tại chỗ.
+
+Ngoài ra: soát plan bằng CODE ⇒ **8 dòng "chưa làm" hoá ra đã xong** · đo A/B lớp gộp trên 108
+nhãn ⇒ **giữ mặc định BẬT**, bác vế "nghiêng về tắt" của `plan/19`.
 
 ### Trạng thái máy lúc chốt (ĐO, không nhớ)
-- **zemory 2.5.0** trên `origin/main` (`b125975`). Sau đó có **6 file sửa CHƯA commit**:
-  `backup-rotate.ts` + test của nó · `03_STRUCTURE` (zemory + app + nonapp) · `06_CHANGES` · `05_TODO`.
-- **Gate ĐÃ XANH sau MỌI thay đổi: `803/803 · 0 fail · 0 skipped`** (32 phút, chạy một mình) ·
-  `conform` ✓ không lệch chuẩn · `todo verify` ✓ 0 lệch. Tức 6 file kia đã được kiểm, chỉ còn commit.
-- Daemon **TẮT** (tắt để chạy gate). Bật lại: `zemory ui --no-window`.
-- Kho: **295k tin · 281k vector** · backup 5 bản/10 GB (đúng `keep:5`) · 6 sidecar mồ côi đã dọn.
-- **14/14 repo estate đạt chuẩn** (luật + folder + guard glob); `pipelines/` chỉ còn ở
-  `PBI_SasinFlow_Rebuild` và đó là ĐÚNG (repo tổ chức theo NGUỒN).
-- **KHÔNG commit ở repo nào ngoài zemory** — diff để phiên bên đó xem. Sao lưu:
-  `scratchpad/refactor-bak/` · `bak-removed/` · `maintain-bak/` · `launcher-bak/`.
+- **zemory 2.7.0** trên `origin/main` (`09ddc24`). Cây làm việc sạch sau commit.
+- **Gate: `813/813 · 0 fail · 0 skipped` · `EXIT=0`** · `conform` ✓ · `todo verify` ✓.
+- **Daemon TẮT** — tắt để build được (`clean` không xoá được `dist/` khi daemon đang chạy từ đó).
+  Bật lại: `zemory ui --no-window`. Autostart đang BẬT nên nó cũng tự lên khi đăng nhập lại.
+- Kho local: **299.180 tin** · ~284,5k vector · phủ 92%.
+- Kho chung: **31 khối · 1.764 MB**, đã đủ vector (nghiệm thu độc lập: còn thiếu **3**).
 
 ### Việc đầu tiên của phiên sau
-1. **Commit 6 file** (gate đã xanh, không phải chạy lại nếu chưa sửa thêm gì). **Hỏi user số
-   version** vì lượt này ĐỔI CHUẨN (⑤⑥⑦), không chỉ sửa lỗi — rồi mới push.
-2. **`zemory memory scan`** — daemon tắt gần hết phiên nên transcript phiên này chưa vào GM đủ.
-3. Bật lại daemon.
+1. **Bật lại daemon** nếu chưa lên.
+2. **Chạy `zemory memory sync` một lượt** — lượt 16:28 hôm nay nối khối xong nhưng **chết trước khi
+   ghi watermark** (ổ G treo 2 phút, `UNKNOWN: unknown error, write`), nên máy này sẽ **gửi lại
+   khối ~9 MB đó**. Merge idempotent ⇒ không sai dữ liệu, chỉ phí băng thông một lần.
+3. Nhân lượt đó **đo tốc độ sync** — số cũ: 2,4 GB đọc / ~1 giờ. Cửa-chặn-rẻ phải kéo nó xuống
+   còn vài phút. **CHƯA có phép đo sạch nào trên kênh thật** vì lượt đo bị Drive treo cắt ngang.
 
-### Bẫy đã trả giá — đừng dẫm lại
-· **Escape gạch ngược qua heredoc→python: DÍNH 6 LẦN.** `\n` thành xuống dòng thật · `\a`/`\05`
-  thành bell/octal · `\x00` thành NUL · `\v` thành 0x0B. Cách đúng: dựng bằng `chr(92)`, hoặc sửa
-  bằng công cụ sửa file, **rồi quét lại dải điều khiển**. Phiên PBI_OPS cũng dính y hệt.
-· **Banner nền báo "exit 0" mà gate CHƯA HỀ CHẠY** (preflight chặn vì daemon đang embed) — và một
-  lần khác banner "exit 0" trong khi log ghi `fail 2`. **Chỉ tin số trong log.**
-· **`skipped` KHÔNG phải `pass`** — daemon tự bật lại làm `skipIfBusy` bỏ qua đúng 2 ca cần kiểm.
-· **Đột biến trượt regex ⇒ test vẫn xanh** = xanh GIẢ. Phải kiểm đột biến CÓ ÁP ĐƯỢC không.
-· **`| Select-Object -First N` cắt pipeline ⇒ node ăn EPIPE ⇒ exit −1 giả.** Dùng `-Last` hoặc `cmd /c`.
-· **Ghi file qua tầng text (`utf-8-sig`) làm thêm BOM + đổi line-ending** ⇒ diff phình 2→37 dòng.
-  Sửa file người khác thì ghi ở mức **BYTE**.
+### Bẫy đã trả giá trong phiên này — đừng dẫm lại
+· **Gate bị cắt 4 LẦN** (2 lần tôi tự dừng để sửa code · 1 lần môi trường · 1 lần preflight chặn vì
+  daemon tự bật chạy embed). Số dở dang **không phải kết quả**: có lượt 386 ✔ mà không có `EXIT=`.
+  Cách đúng: phóng gate dạng **mồ côi** qua `.vbs` rồi canh dòng `EXIT=` trong log.
+· **Đột biến TRƯỢT regex ⇒ test vẫn xanh** = xanh giả. Phải đọc bản dịch thật rồi cắt theo DÒNG.
+· **Cổng có thể là TRANG TRÍ mà vẫn xanh**: ca "cửa chặn rẻ" bản đầu không phân biệt được "bỏ qua"
+  với "chép ra rồi mới bỏ qua" — chỉ lộ khi chạy đột biến. Phải trưng cờ ra kết quả mới đo được.
+· **Bẫy escape qua shell, dính 2 lần nữa**: `"C:\p"` thành `"C:\p"` (lint bắt, test vẫn chạy vì JS
+  nuốt `\p`) và **bash nuốt phần trong dấu huyền** khi ghi docs qua `node -e` (mất 3 từ). Sửa file
+  bằng công cụ sửa file, và **quét lại** thay vì nhìn mắt.
+· **Test gọi `syncDrive` mà quên cô lập HOME** ⇒ đi quét transcript THẬT, treo hơn 8 phút.
+· **Ca test có thể TREO thay vì đỏ** — treo trong gate tệ hơn đỏ. Ca chờ-khoá phải gắn `timeout`.
 
 ## ⭐ NGÃ RẼ RECALL — "còn cách nào nữa không" (dựng 2026-08-23 để trả lời câu user sẽ hỏi)
 
