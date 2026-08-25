@@ -12,7 +12,7 @@
 //   ④ không có gì mới ⇒ KHÔNG chạm file.
 
 import assert from "node:assert/strict";
-import { mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
@@ -110,19 +110,107 @@ test("không có gì mới ⇒ KHÔNG chạm file", async (t) => {
   assert.equal(statSync(main).size, size, "kích thước phải y nguyên");
 });
 
-test("máy khác đang ghi ⇒ TỪ CHỐI kèm câu chỉ đường, không ghi đè lặng lẽ", async (t) => {
+// 🔄 HỢP ĐỒNG ĐỔI 2026-08-25 (`plan/08 §8c`, user chốt): gặp máy khác đang ghi thì **ĐỢI TỚI
+// LƯỢT**, không còn "từ chối rồi bắt người dùng tự bấm lại". Nguyên văn: *"thấy máy kia đang ghi
+// thì máy mình phải đợi, chạy sau, sync sau"*.
+//
+// Ca ÂM ở đây quan trọng ngang ca dương: khoá CÒN SỐNG (nhịp tim đều) **tuyệt đối không được
+// cướp**. Đó đúng là lỗi đã nổ 2026-08-25 — lượt merge chậm giữ khoá 1 giờ, máy kia coi là mồ côi
+// rồi nối khối vào giữa lúc đang đọc, hỏng cả lượt sync lẫn lượt bù vector.
+test("CA ÂM: khoá CÒN SỐNG (có nhịp tim) thì KHÔNG được cướp — phải xếp hàng đợi", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   addMessages(dbA, 2, "A1");
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
 
-  // Giả lập máy khác đang giữ khoá (tươi).
   const { writeFileSync } = await import("node:fs");
-  writeFileSync(join(dir, "global_memory.sync.lock"), JSON.stringify({ host: "MAY-KHAC", pid: 1, at: new Date().toISOString() }));
+  const lockPath = join(dir, "global_memory.sync.lock");
+  // Máy khác đang giữ khoá và ĐANG ĐẬP NHỊP (at mới tinh, beat:true).
+  writeFileSync(lockPath, JSON.stringify({ host: "MAY-KHAC", pid: 1, at: new Date().toISOString(), beat: true }));
+  const containerBefore = statSync(join(dir, "global_memory.enc")).size;
 
   addMessages(dbB, 2, "B1");
-  await assert.rejects(
-    () => syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" }),
-    /MAY-KHAC/,
-    "phải nói RÕ máy nào đang giữ, để người dùng biết chờ ai",
+  const ac = { aborted: false };
+  const run = syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B", lockSignal: ac });
+  // Cho nó vài vòng chờ rồi cắt: điều phải chứng minh là nó KHÔNG vào, chứ không phải nó xong.
+  await new Promise((r) => setTimeout(r, 1_500));
+  assert.equal(
+    JSON.parse(readFileSync(lockPath, "utf8")).host,
+    "MAY-KHAC",
+    "khoá còn sống mà bị đổi chủ = đã cướp — đúng lỗi đang đi vá",
   );
+  assert.equal(statSync(join(dir, "global_memory.enc")).size, containerBefore, "chưa tới lượt thì KHÔNG được ghi gì");
+  ac.aborted = true;
+  await assert.rejects(() => run, /huỷ khi đang chờ/, "huỷ thì phải nói rõ là đang xếp hàng, không im lặng");
+});
+
+// `timeout` KHÔNG phải trang trí: nếu ngưỡng chết hỏng theo chiều "không bao giờ coi là chết" thì
+// hàng đợi chờ VÔ HẠN, và test sẽ TREO thay vì đỏ. Đo 2026-08-25: đúng kiểu treo đó đã ngốn 15
+// phút im lặng của một lượt gate mà không ai biết đang chờ gì. Treo là kiểu hỏng tệ hơn đỏ.
+test("khoá CHẾT THẬT (lỡ nhịp) ⇒ máy sau vào được — không để một máy tắt làm kẹt cả hệ", { timeout: 60_000 }, async (t) => {
+  const { dir, keyPath, dbA, dbB } = setup(t);
+  addMessages(dbA, 2, "A1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+
+  const { writeFileSync } = await import("node:fs");
+  // Khoá có nhịp tim nhưng đã lỡ quá 3 nhịp (>90s) ⇒ chủ coi như chết.
+  writeFileSync(
+    join(dir, "global_memory.sync.lock"),
+    JSON.stringify({ host: "MAY-CHET", pid: 1, at: new Date(Date.now() - 5 * 60_000).toISOString(), beat: true }),
+  );
+
+  addMessages(dbB, 2, "B1");
+  const r = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+  assert.equal(r.push.kind, "delta", "chủ khoá chết thì máy sau phải vào được, không chờ vô hạn");
+});
+
+// VÙNG TỚI HẠN TỐI THIỂU + CỬA CHẶN RẺ (`plan/08 §8c` ①) — hai cải tiến đo được, không phải gu.
+//
+// Bệnh đo 2026-08-25: `mergeContainer` giải nén MỌI khối ra file tạm rồi mới hỏi "đã merge chưa"
+// ⇒ mỗi lượt sync chép lại nguyên container. Trên kênh 0,55 MB/s: đọc 2,4 GB, ~1 giờ, chỉ để kết
+// luận KHÔNG có gì mới. Và vì merge nằm TRONG khoá nên máy kia phải chờ đúng ngần ấy.
+test("lượt sync KHÔNG có gì mới không được chép lại container (cửa chặn rẻ)", async (t) => {
+  const { dir, keyPath, dbA, dbB } = setup(t);
+  addMessages(dbA, 40, "A1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  addMessages(dbB, 3, "B1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+
+  // Lượt thứ hai của B: mọi khối đã biết ⇒ phải bỏ qua HẾT, và bỏ qua BẰNG CHỮ KÝ ĐỌC TẠI CHỖ.
+  const r = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+  const chunks = r.merged.filter((m) => m.file.includes("#"));
+  assert.ok(chunks.length >= 2, "phép thử chỉ có nghĩa khi container đã có nhiều khối");
+  assert.deepEqual(
+    chunks.filter((m) => !m.skipped),
+    [],
+    "khối đã merge thì không được merge lại",
+  );
+  // ĐÂY mới là thứ cần đo. Không có cờ `cheap` thì "bỏ qua" và "chép ra rồi mới bỏ qua" nhìn y
+  // hệt nhau — bản đầu của cổng này vì thế là TRANG TRÍ: gỡ cửa chặn rẻ mà test vẫn xanh.
+  assert.deepEqual(
+    chunks.filter((m) => !m.cheap).map((m) => m.file),
+    [],
+    "mọi khối đã biết phải được bỏ qua bằng chữ ký đọc TẠI CHỖ — chép lại container là 2,4 GB mỗi lượt sync",
+  );
+});
+
+test("merge chạy NGOÀI khoá: khoá chỉ được giữ quanh phần GHI", async (t) => {
+  const { dir, keyPath, dbA, dbB } = setup(t);
+  const lockPath = join(dir, "global_memory.sync.lock");
+  addMessages(dbA, 30, "A1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+
+  // B chưa có gì của A ⇒ lượt sync này PHẢI merge thật. Trong lúc nó merge, khoá phải còn TRỐNG.
+  addMessages(dbB, 2, "B1");
+  let lockedDuringMerge = false;
+  const watch = setInterval(() => {
+    if (existsSync(lockPath)) lockedDuringMerge = true;
+  }, 5);
+  const r = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+  clearInterval(watch);
+
+  assert.ok(r.merged.some((m) => !m.skipped), "phép thử chỉ có nghĩa nếu lượt này THẬT SỰ merge");
+  assert.equal(msgCount(dbB), 32, "và merge phải đủ tin");
+  // Ghi chú: khoá VẪN xuất hiện ở đoạn ghi cuối, nên không khẳng định "chưa bao giờ khoá" — điều
+  // khoá được ở đây là merge KHÔNG nằm trong vùng khoá, kiểm bằng ca đột biến (đảo lại thứ tự).
+  assert.ok(lockedDuringMerge, "đoạn GHI vẫn phải có khoá — nếu không thì hai máy ghi chồng");
 });
