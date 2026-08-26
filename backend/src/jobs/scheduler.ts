@@ -299,6 +299,21 @@ function scratchTick(): void {
 const SYNC_RETRY_MS = 3 * 60_000;
 let syncRetry: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Một dòng tóm tắt lượt sync THÀNH CÔNG, đọc từ JSON con in ra.
+ *
+ * Cần vì "OK" trơ trọi không phân biệt được *"đẩy 3.812 tin"* với *"không có gì để đẩy"* — và
+ * chính ca 26/08 là một chuỗi lượt tưởng-như-xong. Đọc mềm (`unknown` → thu hẹp) vì đây là JSON
+ * qua ống giữa hai tiến trình, không phải giá trị trong cùng process.
+ */
+export function describePush(result: unknown): string {
+  const r = result as { push?: { kind?: string; messages?: number; bytes?: number }; embedded?: number } | undefined;
+  if (!r?.push) return "";
+  const { kind, messages = 0, bytes = 0 } = r.push;
+  if (kind === "none") return " · không có gì để đẩy";
+  return ` · ${kind} ${messages} tin / ${bytes} byte${r.embedded ? ` · nhúng thêm ${r.embedded}` : ""}`;
+}
+
 function syncTick(): void {
   if (!getAutosync()) return;
   if (!getDriveDir()) return; // no Drive folder linked → nothing to sync
@@ -316,7 +331,22 @@ function syncTick(): void {
   log("auto-sync — starting background sync job");
   // lowPriority: lượt này do MÁY tự chạy. Nút "Đồng bộ ngay" gọi cùng hàm nhưng KHÔNG truyền cờ
   // — lúc đó người dùng đang ngồi chờ.
-  startSyncJob(() => log("auto-sync: job finished"), { lowPriority: true });
+  // 🔴 LOG KẾT CỤC, không log "đã chạy xong" (2026-08-26). Câu cũ `auto-sync: job finished` in
+  // ra Y HỆT nhau cho lượt đẩy được và lượt hỏng — nên khi lượt 26/08 chết với `UNKNOWN: unknown
+  // error, write`, `daemon.log` vẫn chỉ nói "finished" và không ai biết có gì sai suốt 20 giờ
+  // (watermark đứng, kênh chung phình bằng khối trùng). Một dòng log không phân biệt được
+  // thành/bại thì nó không phải lớp quan sát, nó là tiếng ồn.
+  startSyncJob(
+    (s) => {
+      if (s.ok) log(`auto-sync: OK${describePush(s.result)}`);
+      else log(`🔴 auto-sync THẤT BẠI: ${s.error ?? "không rõ lý do"}`);
+      // In ở CẢ HAI kết cục. Lượt THÀNH CÔNG cũng có thể mang cảnh báo đáng đọc — ví dụ
+      // "Drive ném lỗi giả nhưng đếm lại thấy khối vẫn đủ"; nếu chỉ in khi hỏng thì đúng sự kiện
+      // hiếm và đáng giá nhất lại là sự kiện bị nuốt.
+      if (s.stderr) log(`auto-sync — chi tiết:\n${s.stderr}`);
+    },
+    { lowPriority: true },
+  );
 }
 
 /** Start the background loops. Idempotent — a second call is a no-op. */

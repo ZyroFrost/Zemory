@@ -719,6 +719,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       else console.log(`  ↑ đã NỐI THÊM khối bù: ${r.shipped} vector, ${mb(r.bytes)} — kho chung không bị ghi đè.`);
     } catch (error) {
       console.log(`  ⚠ ${error instanceof Error ? error.message : "catch-up failed"}`);
+      // 🔴 STACK RA STDERR (2026-08-26). Lượt hỏng đầu tiên chỉ để lại `⚠ UNKNOWN: unknown error,
+      // read` — không đủ để biết phép đọc NÀO ném, nên chẩn đoán phải chạy lại bằng một script
+      // riêng chỉ để lấy stack. Cùng lỗ đã vá ở `jobs/syncrun.ts`; đường CLI thì bỏ sót.
+      // `console.log` là bề mặt người dùng đọc, `console.error` là kênh chẩn đoán — tách hai.
+      if (error instanceof Error && error.stack) console.error(error.stack);
       process.exitCode = 1;
     }
     return;

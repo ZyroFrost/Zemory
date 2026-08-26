@@ -221,6 +221,10 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
   xanh GIẢ; phải đọc bản dịch thật rồi cắt theo DÒNG mới tái hiện được.
   **Phần TỒN của kho hiện tại** (~22k vector đã lỡ đi thiếu) KHÔNG tự lành bằng vá này — nó biến
   mất ở lượt **gộp container** kế tiếp hoặc khi có người đẩy một gói đầy đủ.
+  ✅ **ĐÃ TRẢ XONG 2026-08-26.** Đo lại thì nợ chỉ còn **2.767** chứ không phải ~22k — `embedFrontierId`
+  đã bịt phần lớn, phần còn lại theo các lượt sync sau chảy sang. `vectors-catchup` đẩy **2.790
+  vector / 12,5 MB**; nghiệm thu ba phép khác cơ chế: 41→42 khối · khối mới bắt đầu ĐÚNG tại EOF cũ
+  (byte 1.921.443.041) ⇒ **0 byte cũ bị ghi đè** · chạy lại dry-run ra `thiếu 0`.
 
   ✅ **Cửa sổ phụ ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
   2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
@@ -301,6 +305,8 @@ khi dựa vào. Kèm một lỗ đã biết: nếu Drive đẻ file trùng tên 
 **④ Kiểm sau khi nối.** Nối xong, đọc lại đuôi container: khối của mình phải có mặt, đúng độ dài,
 chữ ký khớp. Không thấy (Drive nuốt do ghi chồng) ⇒ nối lại, tối đa 3 lần rồi báo lỗi rõ.
 Đây là lớp DUY NHẤT thật sự chống được ca hai bên cùng ghi — ①②③ chỉ làm nó hiếm đi.
+✅ **ĐÃ BUILD ĐỦ 2026-08-26.** Trước đó chỉ có vế KIỂM; vế **"nối lại, tối đa 3 lần"** chưa bao giờ
+được viết, nên một cú trượt là hỏng cả lượt. Xem §8d.
 
 #### Phi mục tiêu
 - KHÔNG biến kênh chung thành DB dùng chung (HP điều 11) · KHÔNG tự chế khung mã hoá mới ·
@@ -316,6 +322,50 @@ chữ ký khớp. Không thấy (Drive nuốt do ghi chồng) ⇒ nối lại, t
 - Ca **ÂM bắt buộc**: một lượt chạy lâu (giả lập bằng nhịp tim đều) **KHÔNG được** bị cướp khoá —
   đây đúng là ca đã hỏng hôm nay.
 - Mỗi ca kèm đột biến chứng minh đỏ được.
+
+### 8d. Ổ ĐÁM MÂY CHẬP — ngoại lệ KHÔNG phải trọng tài (chốt 2026-08-26)
+
+> Sự cố sinh ra mục này: auto-sync 26/08 chết với `UNKNOWN: unknown error, write`, watermark đứng
+> **20 giờ**, và mỗi lượt kế lại nối một khối TRÙNG lên kênh. GM cho thấy nó đã nổ **25/08** rồi
+> (`UNKNOWN … write` sau 6 phút 40) và chỉ được chữa bằng cách chạy lại. Đây là lỗi TÁI DIỄN.
+
+**`UNKNOWN` là gì.** Mã libuv trả về khi Windows đưa ra một mã lỗi nó **không map nổi** — đúng thứ
+Google Drive File Stream sinh ra. Ba phép đo cùng buổi loại hẳn giả thuyết *"kênh hỏng hoặc chậm"*:
+đọc tuần tự trọn 1.832 MB mất **42,9 s · 42,74 MB/s · 0 lỗi** · `vectors-catchup` chết ở phút 5:42
+rồi chạy lại **y nguyên lệnh** thì xong · khối bị nghi "ghi hỏng" hoá ra **nằm đủ trên kênh**.
+⇒ Kênh **CHẬP**, không hỏng. Thiết kế phải chịu được chập, không được coi mỗi cú chập là thảm hoạ.
+
+**Luật ①: ở chiều GHI, SỐ KHỐI ĐẾM ĐƯỢC phán, không phải ngoại lệ.** `appendVerdict(threw, đếm,
+chờ)` — `đếm đủ ⇒ THÀNH, kể cả khi ném` · `đếm thiếu ⇒ BẠI, kể cả khi không ném`. Tin lời ngoại lệ
+là vứt một khối đã ghi được rồi nối lại bản trùng: đo được **#37≡#39** (22.270.367 B / 3.812 tin)
+và **#30≡#31**, tổng **30,4 MB** rác sinh ra đúng theo cơ chế này.
+
+**Luật ②: trượt thì CẮT VỀ chiều dài cũ rồi mới thử lại — kể cả lần thử CUỐI.** Một lượt nối dở để
+lại byte thừa ở đuôi, mà `listChunks` gặp byte thừa là DỪNG ⇒ mọi khối nối tiếp sau đó **vô hình
+với MỌI máy**. Bản đầu của chính lượt vá này chỉ cắt khi còn lượt thử tiếp, và cổng bắt được (để
+lại 17 byte rác). Cắt chỉ lùi về phần MÌNH vừa ghi — **không tự chữa đuôi rác có sẵn**, vì bytes
+không parse được có thể là của máy khác (`02_RULES §Hành xử`: xoá phải hỏi).
+
+**Luật ③: watermark nhích NGAY khi khối chứng minh được có mặt.** Trước đây nó nằm sau bước đánh
+dấu-đã-merged, nên một lỗi ở bước TỐI ƯU ăn mất luôn sự thật *"đã đẩy tới đâu"* — chính là cơ chế
+của 20 giờ đứng im. Bước đánh dấu nay là fail-open có báo: hỏng thì lượt sau giải mã lại một lần.
+
+**Luật ④: chiều ĐỌC thử lại, chiều GHI đo lại.** Đọc không có gì để đếm nên đường duy nhất là thử
+lại — `withDriveRetry` (3 lần, lùi 500 ms→1 s) bọc `extractChunk`. Nhận nhóm mã CHẬP
+(`UNKNOWN · EBUSY · EIO · EAGAIN · ETIMEDOUT · EPERM`), **cố ý KHÔNG nhận** `ENOENT`/`EACCES` — đó
+là sự thật bền, thử lại chỉ làm chậm rồi cũng báo đúng lỗi đó, và che mất lỗi cấu hình thật.
+⚠ **Phạm vi có hạn, nói thẳng:** chỉ `extractChunk` được bọc vì nó là đường đọc nặng nhất — **không
+phải vì đã chứng minh nó là chỗ ném**. Lượt hỏng đầu không để lại stack. Nay CLI đã in stack.
+
+**Luật ⑤: một dòng log không phân biệt được thành/bại là tiếng ồn.** `auto-sync: job finished` in y
+hệt cho lượt đẩy được lẫn lượt hỏng — đó là lý do 20 giờ trôi qua không ai biết. Và stderr của con
+bị `stdio: ["ignore","pipe","ignore"]` vứt thẳng, nên lỗi chỉ còn bốn chữ. Nay: giữ 8 KB đuôi khi
+hỏng **hoặc** khi có dấu `[sync]` — vế sau bắt được lúc soi diff, vì sự kiện đáng giá nhất
+(*"Drive ném lỗi giả, đếm lại thấy khối vẫn đủ"*) chỉ xảy ra ở lượt **THÀNH CÔNG**.
+
+**Cổng:** `sync-observability` 4 ca · `sync-append-retry` 5 · `sync-read-retry` 5; **9 đột biến**
+đỏ một-đối-một. Mối nối `ZEMORY_SYNC_RUNNER` cho phép cổng phóng một runner GIẢ để soi HÀNH VI
+(lượt sync thật cần kênh + chìa + hàng chục phút, không đưa vào gate được).
 
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
