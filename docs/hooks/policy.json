@@ -44,5 +44,5 @@
     "discard": ".allow-discard",
     "overwrite": ".allow-overwrite"
   },
-  "flags_comment": "Flag = user duyet MOT lan: guard cho qua roi TU XOA. Agent chi duoc tao flag sau khi user noi ro trong phien."
+  "flags_comment": "Flag = user duyet MOT viec. Guard cho qua roi DONG DAU `ZEMORY-USED <van tay lenh> <thoi diem>` vao chinh file flag — KHONG xoa ngay. Trong 90 giay, DUNG lenh do duoc thu lai (hook PreToolUse khong biet lenh co thuc su chay hay khong; mot tang khac cua host chan lai thi flag da mat oan). Xin viec KHAC hoac qua 90 giay => flag bi THU HOI, phai xin lai. Agent chi duoc tao flag sau khi user noi ro trong phien."
 }

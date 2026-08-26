@@ -5,6 +5,53 @@
 
 ---
 
+## [2026-08-26] — guard: khớp TOKEN ở VỊ TRÍ LỆNH · soi GHI/DỜI qua lệnh · nói đúng về flag
+
+Ba lỗ do repo phòng ban báo về (user chuyển 2026-08-26), vá ở **máy sinh** `guard-gen.ts` rồi
+sinh lại cả hai bản (`docs/hooks/` + `docs_template/cowork/nonapp/hooks/`).
+
+**② (b) BÁO OAN — tên lệnh nằm trong VĂN BẢN cũng bị chặn.** Dính **3 lần trong một phiên thật**:
+`echo "=== git remote (chua push) ==="` · `echo "thu nghiem rm -rf"`. Chặn nhầm đi thẳng tới
+*"gate nhiễu ⇒ gate bị bỏ qua"*. Nay khớp **token ở vị trí lệnh**: cắt câu thành segment (bỏ qua
+dấu phân cách nằm trong nháy), lấy TỪ ĐẦU làm tên lệnh, bỏ env-assign và `sudo`/`env`/`nohup`.
+**Ngoại lệ bắt buộc:** gặp interpreter (`bash -c` · `node -e` · `python -c`) thì nội dung trong
+nháy CHÍNH LÀ lệnh ⇒ quay về soi cả câu — thiếu vế này là mở toang `bash -c "git push"`.
+
+**② (a) LỌT — ghi vào protected bằng shell/script.** `checkWrite` chỉ chạy cho tool Write/Edit,
+nên ghi bằng lệnh thì không nhánh nào soi. Đo trên **policy thật của `PBI_OPS`** (khai
+`docs/agent/01_CONSTITUTION.md` · `data/*/01_raw` · `reports/*.pbix` · `../*`): bốn đường
+`echo >>` · `python -c open().write()` · ghi ra NGOÀI repo · `mv` — **LỌT hết** ở bản cũ, **chặn
+hết** ở bản mới. Nhánh mới soi: chuyển hướng `>`/`>>` · `mv`/`cp`/`Move-Item` · payload
+interpreter **có đường protected VÀ có động từ ghi** (điều kiện kép để `python -c "print(open(
+…).read())"` không bị chặn oan).
+
+**③ `mv` ra khỏi protected không bị coi là xoá.** Nay với `mv`/`move`/`rename`: **nguồn** trong
+protected ⇒ chặn (mất khỏi vùng bảo vệ, hậu quả y hệt xoá) · **đích** trong protected ⇒ chặn.
+
+⚠ **GIỚI HẠN ghi thẳng vào comment** thay vì để người đọc tưởng guard phủ hết: tầng này chỉ thấy
+ĐƯỜNG DẪN VIẾT THẲNG trong câu lệnh. Đường dẫn dựng lúc chạy (nối chuỗi, đọc từ biến/file/stdin)
+thì KHÔNG thấy và không thể thấy — muốn chặn thật phải ở tầng hệ điều hành.
+
+**Câu mô tả flag SAI — sửa 6 chỗ** (`policy.json` ở máy sinh · bản cowork · `02_RULES` của zemory
+· 3 template adapt/app/nonapp). Câu cũ *"guard cho qua rồi tự xoá"* không đúng hành vi: flag bị
+**ĐÓNG DẤU** `ZEMORY-USED <vân tay lệnh> <thời điểm>`, giữ 90 giây cho ĐÚNG lệnh đó thử lại (hook
+`PreToolUse` chỉ nói *cho qua*, không biết lệnh có chạy thật — tầng khác chặn lại là flag mất
+oan), xin việc KHÁC hoặc quá hạn thì **thu hồi**. Câu sai đó đã làm một agent tưởng có lỗ và suýt
+ghi lỗ ma vào chuẩn dùng chung của cả estate.
+
+**Cổng:** `guard-tool-matrix` +3 ca — ca ÂM *"tên lệnh trong văn bản KHÔNG được chặn"* · ca dương
+*"không được hở lệnh thật, kể cả bọc interpreter"* · ca *"ghi/dời qua lệnh"* kèm 4 ca âm
+(đọc-không-phải-ghi · chỗ thường · mv giữa hai chỗ thường · đọc file trong protected).
+Ba đột biến riêng, đỏ đúng một-đối-một. Gate **816/816 · 0 fail · 0 skipped**.
+
+⚠ **Ba lần TỰ SAI trong lượt vá, ghi vì cả ba đều suýt thành kết luận sai:**
+· hồi quy tự gây: cắt segment tại `|` làm `Get-ChildItem -Recurse | Remove-Item` LỌT — mẫu đó bắc
+  QUA dấu ống. Sửa: vị-trí-lệnh quyết định *có soi hay không*, còn soi thì soi CẢ CÂU.
+· probe nói "bản mới cũng lọt" — **sai vì probe chạy với cwd = zemory**, đường dẫn tương đối giải
+  về repo khác. Luật đo ① (sao chép tham số của thước thật) — tham số bị quên ở đây là **cwd**.
+· `BOOTSTRAP.md` của bộ cowork khai `guard.cjs = 359 dòng`; file mới **487** ⇒ cổng `cowork` đỏ.
+  Manifest đếm dòng là thứ mọi lần sửa guard đều phải cập nhật.
+
 ## [2026-08-25d] — HÀNG ĐỢI ghi kho chung: đợi tới lượt, có nhịp tim, kiểm hai đầu
 
 > 🔄 **Supersede** vế *"Tranh chấp thì BÁO, không cố chống"* (`plan/08 §8`, agent viết 2026-08-12).
