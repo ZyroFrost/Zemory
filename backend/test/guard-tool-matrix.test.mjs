@@ -153,3 +153,78 @@ test("CA ÂM: lệnh thường ngày qua BẤT KỲ tool nào cũng phải ĐƯ�
   }
   assert.deepEqual(chặnNhầm, [], "Guard chặn NHẦM việc thường ngày — gate nhiễu là gate bị bỏ qua:\n  " + chặnNhầm.join("\n  "));
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LỖ ② — guard chỉ soi CHUỖI, hỏng theo CẢ HAI chiều (user báo 2026-08-26, dính 3 lần
+// trong một phiên làm việc thật ở repo PBI).
+//
+//   (b) BÁO OAN: tên lệnh nằm trong một đoạn VĂN BẢN cũng bị chặn —
+//       `echo "=== git remote (chua push) ==="` · `echo "thu nghiem rm -rf"`.
+//       Chặn nhầm dẫn thẳng tới "gate nhiễu ⇒ gate bị bỏ qua" (luật 7).
+//   (a) LỌT: ghi vào đường protected bằng shell/script thì không nhánh nào soi, vì
+//       `checkWrite` chỉ chạy cho tool Write/Edit.
+//
+// Cách vá: khớp TOKEN ở VỊ TRÍ LỆNH (từ đầu mỗi segment, bỏ env-assign và sudo/env/…),
+// KHÔNG khớp chuỗi ở bất kỳ đâu. Ngoại lệ bắt buộc: interpreter (`bash -c` · `node -e` ·
+// `python -c`) thì nội dung trong nháy CHÍNH LÀ lệnh ⇒ quay về soi cả câu.
+const ECHO_PUSH = 'echo "=== git remote (chua ' + 'push) ==="';
+const ECHO_RM = 'echo "thu nghiem rm -' + 'rf"';
+
+test("VỊ TRÍ LỆNH: tên lệnh nằm trong VĂN BẢN thì KHÔNG được chặn (ca âm — báo oan thật 26/08)", () => {
+  const chặnNhầm = [];
+  for (const tool of COMMAND_TOOLS) {
+    for (const [nhãn, command] of [
+      ["echo nhắc chữ push", ECHO_PUSH],
+      ["echo nhắc rm -rf", ECHO_RM],
+      ["grep tìm chuỗi lệnh trong docs", 'grep -rn "rm -' + 'rf docs" docs/'],
+      ["in ra hướng dẫn có git add -A", 'printf "dung git ' + 'add -A nhe"'],
+    ]) {
+      if (ask({ tool_name: tool, tool_input: { command } })) chặnNhầm.push(`${tool} + ${nhãn}`);
+    }
+  }
+  assert.deepEqual(chặnNhầm, [], "Văn bản bị đọc thành lệnh:\n  " + chặnNhầm.join("\n  "));
+});
+
+test("VỊ TRÍ LỆNH: bản vá KHÔNG được làm hở lệnh thật, kể cả khi bọc trong interpreter", () => {
+  const phảiChặn = [
+    ["push thật", PUSH],
+    ["push sau &&", "cd x && " + PUSH],
+    ["sudo", "sudo " + PUSH],
+    ["đường dẫn tuyệt đối", "/usr/bin/" + PUSH],
+    ["env A=1", "env A=1 " + PUSH],
+    ["bọc trong bash -c", 'bash -c "' + PUSH + '"'],
+    ["xoá đệ quy", RM],
+    ["xoá hàng loạt qua ống", "Get-ChildItem -Recurse | Remove-" + "Item -Force"],
+  ];
+  for (const [nhãn, command] of phảiChặn) {
+    assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn (${nhãn}): ${command}`);
+  }
+});
+
+// LỖ ②(a) + LỖ ③ — GHI và DỜI qua LỆNH.
+// ② (a): ghi vào protected bằng chuyển hướng hoặc script — đã ghi được vào 01_CONSTITUTION
+//        và ra NGOÀI repo dù cả hai nằm trong protected.
+// ③   : `mv <protected>/x /tmp` có hậu quả Y HỆT xoá mà lọt sạch — chỉ khác cái tên thao tác.
+test("GHI/DỜI qua LỆNH: chuyển hướng · script · mv ra khỏi protected đều phải bị soi", () => {
+  const phảiChặn = [
+    ["ghi nối vào protected", "echo x >> data/note.txt"],
+    ["ghi đè vào protected", "echo x > data/note.txt"],
+    ["ghi qua python", "python -c \"open('data/x.txt','w').write(1)\""],
+    ["mv RA KHỎI protected", "mv data/kho.db /tmp/kho.db"],
+    ["mv VÀO protected", "mv /tmp/kho.db data/kho.db"],
+  ];
+  for (const [nhãn, command] of phảiChặn) {
+    assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn (${nhãn}): ${command}`);
+  }
+  // CA ÂM — đọc KHÔNG phải ghi, và chỗ thường KHÔNG phải protected. Thiếu vế này thì bản vá
+  // biến mọi lệnh có dấu `>` thành phải-xin-phép, và gate lại thành nhiễu.
+  const phảiQua = [
+    ["đọc bằng python", "python -c \"print(open('data/x.txt').read())\""],
+    ["chuyển hướng ra thư mục tạm", "echo x > /tmp/out.txt"],
+    ["mv giữa hai chỗ thường", "mv a.txt b.txt"],
+    ["đọc file trong protected", "cat data/note.txt"],
+  ];
+  for (const [nhãn, command] of phảiQua) {
+    assert.ok(!ask({ tool_name: "Bash", tool_input: { command } }), `phải CHO QUA (${nhãn}): ${command}`);
+  }
+});

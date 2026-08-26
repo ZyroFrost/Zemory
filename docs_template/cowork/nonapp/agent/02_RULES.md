@@ -44,7 +44,7 @@ CHAN ghi     data/*/01_raw   dau vao GOC moi case — mat la mat luon, phai xin 
 CHAN xoa     xoa DE QUY (rm -r · Remove-Item -Recurse · del /S) — mot lenh quet ca cay
              xoa cham file secret (.env · *.key · *.pem …)
 CHO QUA      02_processing/ · 03_output/ · file tam — agent ghi suot o day
-Vuot mot lan flag hooks/.allow-* (user duyet trong phien; guard tu xoa sau khi dung)
+Vuot MOT VIEC bang flag hooks/.allow-* (user duyet trong phien). Guard cho qua roi DONG DAU vao file flag, khong xoa ngay: dung lenh do duoc thu lai trong 90 giay; xin viec khac hoac qua han thi flag bi thu hoi
 ```
 
 **Chốt chặn ≠ chốt chặt.** Danh sách trên cố ý KHÔNG chặn xoá một file thường: gate nhiễu là

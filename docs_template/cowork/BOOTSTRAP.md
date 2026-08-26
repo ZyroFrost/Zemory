@@ -134,7 +134,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 23 | `.claude/skills/write-docx/reference/pagination-toc.md` | `<RAW>/.claude/skills/write-docx/reference/pagination-toc.md` | 118 |
 | 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
 | 25 | `.claude/skills/write-style/SKILL.md` | `<RAW>/.claude/skills/write-style/SKILL.md` | 91 |
-| 26 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 359 |
+| 26 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 487 |
 | 27 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 46 |
 
 **Hai file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
