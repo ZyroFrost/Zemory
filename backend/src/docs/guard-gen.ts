@@ -489,7 +489,11 @@ function checkBash(cmd) {
     //    tranh chan oan \`python -c "print(open('data/x').read())"\` (doc, khong ghi).
     if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
       for (const tok of seg.split(/[\\s'"(),]+/)) {
-        if (!tok || !tok.includes("/")) continue;
+        // KHONG doi token phai co dau \`/\`: duong protected thuong la TEN TRAN o goc repo
+        // (\`.vault\` · \`attic\` · \`data\`) — do 2026-08-26 tren 7/9 repo PBI, ban dau lot sach
+        // vi dieu kien "phai co /". \`underProtected\` moi la nguoi quyet dinh; token vo nghia
+        // (\`w\` · \`1\`) khong khop duong nao nen khong de ra bao oan.
+        if (!tok || tok.startsWith("-")) continue;
         flagWritePath(tok, "ghi (qua " + word + ") vao");
       }
     }

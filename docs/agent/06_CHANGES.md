@@ -44,7 +44,20 @@ ghi lỗ ma vào chuẩn dùng chung của cả estate.
 (đọc-không-phải-ghi · chỗ thường · mv giữa hai chỗ thường · đọc file trong protected).
 Ba đột biến riêng, đỏ đúng một-đối-một. Gate **816/816 · 0 fail · 0 skipped**.
 
-⚠ **Ba lần TỰ SAI trong lượt vá, ghi vì cả ba đều suýt thành kết luận sai:**
+**LAN RA 9 REPO `PBI_*` — và lượt lan lộ thêm một lỗ mà repo zemory KHÔNG dính.**
+Áp lượt đầu (bản 487) rồi nghiệm thu bằng **marker của chính từng repo** ⇒ **7/9 repo vẫn thủng**:
+nhánh interpreter chỉ soi token **có dấu `/`**, nên đường protected là **TÊN TRẦN ở gốc repo**
+(`.vault` · `attic`) thì lọt. Zemory không dính vì `protected` của nó (`data` · `share` · `attic` ·
+`external`) luôn được viết kèm đường con trong lệnh thật. Đây đúng loại lỗ **chỉ hiện khi áp lên
+cấu hình thật của người khác**. Vá: bỏ điều kiện `/`, để `underProtected` quyết định (token vô
+nghĩa như `w`/`1` không khớp đường nào nên không đẻ báo oan). Áp LẠI cả 9 repo ⇒ **9/9 · 8/8 ca**,
+guard **491 dòng**, khớp từng byte với bản zemory. `policy.json` mỗi repo chỉ đổi ĐÚNG một dòng
+(câu mô tả flag); `protected_write` giữ nguyên. **Không commit ở repo nào ngoài zemory.**
+
+⚠ **Bốn lần TỰ SAI trong lượt vá, ghi vì cả bốn đều suýt thành kết luận sai:**
+· probe nghiệm thu 9 repo dựng ca theo marker của **PBI_OPS** rồi áp cho mọi repo ⇒ báo "6 repo
+  trượt". Sai: guard cho qua là ĐÚNG, vì nó chỉ bảo vệ đường repo TỰ KHAI. Phải dựng ca **từ
+  chính policy từng repo** mới lòi ra lỗ `.vault` thật.
 · hồi quy tự gây: cắt segment tại `|` làm `Get-ChildItem -Recurse | Remove-Item` LỌT — mẫu đó bắc
   QUA dấu ống. Sửa: vị-trí-lệnh quyết định *có soi hay không*, còn soi thì soi CẢ CÂU.
 · probe nói "bản mới cũng lọt" — **sai vì probe chạy với cwd = zemory**, đường dẫn tương đối giải

@@ -3,59 +3,49 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-25 (phiên chiều) — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-26 — ĐỌC MỤC NÀY TRƯỚC
 
-**SỔ TRỐNG — 0 mục mở.** Dưới đây là TRẠNG THÁI đã ĐO, để phiên sau khỏi đo lại.
+**SỔ TRỐNG — 0 mục mở.** Dưới đây là TRẠNG THÁI đã ĐO.
 
-### Phiên này làm gì (số đo đầy đủ: `06_CHANGES` từ `[2026-08-25d]` xuống `[2026-08-25b1]`)
-Push **2.6.0** rồi **2.7.0**. Ba việc lớn, cả ba đều sinh từ **một lượt diễn tập phục hồi**:
-- **Diễn tập phục hồi LẦN ĐẦU** (`plan/18 §4b`) — dựng kho từ kênh chung: đường lùi CÒN SỐNG, và
-  nó **bắt được lỗ chở vector**: kho dựng ra thiếu ~22.000 vector ⇒ máy nhận phải nhúng lại ~12 giờ.
-- **Vá lỗ đó** (`embedFrontierId` — tin và vector đi cùng chuyến) + **lệnh bù**
-  `zemory memory vectors-catchup` (nối thêm, KHÔNG ghi đè). Đã chạy thật: kênh thiếu
-  **16.624 → 3** vector (3 cái là tin daemon nhúng sau lúc đo).
-- **Hàng đợi ghi kho chung** (`plan/08 §8c`) — user bác vế cũ *"tranh chấp thì báo, không cố
-  chống"*: nay ĐỢI tới lượt · nhịp tim 30 s · kiểm hai đầu quanh lúc nối · merge ra NGOÀI khoá.
-  Kèm phát hiện lớn: `mergeContainer` cũ chép lại **cả container mỗi lượt sync** (2,4 GB / ~1 giờ
-  chỉ để kết luận "không có gì mới") — nay chữ ký khối đọc tại chỗ.
-
-Ngoài ra: soát plan bằng CODE ⇒ **8 dòng "chưa làm" hoá ra đã xong** · đo A/B lớp gộp trên 108
-nhãn ⇒ **giữ mặc định BẬT**, bác vế "nghiêng về tắt" của `plan/19`.
+### Phiên này làm gì (số đo đầy đủ: `06_CHANGES [2026-08-26]`)
+Vá **3 lỗ của `guard.cjs`** do repo phòng ban báo về, rồi **lan ra 9 repo `PBI_*`**:
+- **Khớp TOKEN ở VỊ TRÍ LỆNH** thay vì khớp chuỗi ở bất kỳ đâu — hết cảnh `echo "… git push …"`
+  bị chặn (dính 3 lần trong một phiên thật). Ngoại lệ bắt buộc: interpreter (`bash -c` · `node -e`
+  · `python -c`) thì nội dung trong nháy CHÍNH LÀ lệnh ⇒ soi cả câu.
+- **Soi GHI/DỜI qua LỆNH**: chuyển hướng `>`/`>>` · `mv`/`cp` · payload interpreter. Trước đây
+  `checkWrite` chỉ chạy cho tool Write/Edit nên ghi bằng shell/script thì không ai soi.
+- **`mv` ra khỏi protected** nay bị coi như xoá (hậu quả y hệt, chỉ khác tên thao tác).
+- **Sửa câu mô tả flag ở 6 chỗ** — flag bị ĐÓNG DẤU chứ không xoá ngay; 90 giây cho ĐÚNG lệnh đó
+  thử lại; xin việc khác thì thu hồi.
 
 ### Trạng thái máy lúc chốt (ĐO, không nhớ)
-- **zemory 2.7.0** trên `origin/main` (`09ddc24`). Cây làm việc sạch sau commit.
-- **Gate: `813/813 · 0 fail · 0 skipped` · `EXIT=0`** · `conform` ✓ · `todo verify` ✓.
-- **Daemon ĐANG CHẠY** (`pid 25420`, v2.7.0) — scheduler + autosync + autostart đều BẬT.
-- Kho local: **299.371 tin** · ~285k vector · phủ 92% · `quick_check` **ok** · 0 hàng mồ côi.
-- Kho chung: **31 khối · 1.773 MB**, đã đủ vector (nghiệm thu độc lập: còn thiếu **3** — là tin
-  daemon nhúng sau lúc đo). Lượt sync 16:51→17:19 `EXIT=0`, đẩy 1.602 tin / 9,1 MB, **watermark
-  đã nhảy** (5.791.430 → 5.793.032).
+- **zemory 2.7.0**. `origin/main` = `da0a300` (bản guard **487 dòng**).
+- 🔴 **CÒN LỆCH: đĩa + 9 repo đang là bản 491, git mới có 487.** Bốn file chưa commit:
+  `guard-gen.ts` · `docs/hooks/guard.cjs` · `docs_template/cowork/nonapp/hooks/guard.cjs` ·
+  `docs_template/cowork/BOOTSTRAP.md` (manifest 487→491).
+- **9/9 repo `PBI_*`** đã nhận guard **491 dòng**, khớp từng byte với bản zemory, nghiệm thu
+  **8/8 ca** mỗi repo bằng marker của CHÍNH repo đó. `policy.json` mỗi repo chỉ đổi 1 dòng.
+  **KHÔNG commit ở repo nào ngoài zemory** — diff để phiên bên đó xem.
+- Daemon đang chạy (autostart BẬT). Kho local ~299k tin.
 
 ### Việc đầu tiên của phiên sau
-**KHÔNG có việc bắt buộc.** Repo đóng ở trạng thái sạch: sổ 0 mục · gate 813/813 · `origin/main`
-`4d13cb4` khớp local từng byte. Cứ để autosync chạy.
-
-Ba thứ CHƯA CHỨNG MINH ĐƯỢC (nêu để không ai đọc "đã xong" thành "đã kiểm hết") — **không phải
-việc phải làm**, chỉ mở ra khi có triệu chứng thật:
-- **Máy kia chưa lên 2.7.0.** Tới lúc đó hàng đợi chỉ chạy một chiều: máy này nhường đúng, máy kia
-  vẫn có thể cướp khoá sau 15 phút vì bản cũ không biết đọc nhịp tim.
-- **Chưa test HAI MÁY thật cùng sync** — cần máy kia mới đo được.
-- Hành vi *"Drive đẻ conflicted copy"* và *"nối lên bản cache cũ làm mất khối"* nêu theo cách Drive
-  hoạt động, **chưa dựng phép thử**. Kèm lỗ đã biết: Drive đẻ file trùng tên khác thì code chỉ nhìn
-  `global_memory.enc` ⇒ dữ liệu bản kia nằm chết, không ai báo.
+1. **Xem gate cho bản 491** (`npm run check`, phải tắt daemon trước). Xanh ⇒ **commit + push** để
+   git bắt kịp 9 repo. Đây là việc DUY NHẤT còn bắt buộc.
+2. Nếu gate đỏ: bản 491 chỉ khác 487 ở **một điều kiện** trong nhánh interpreter (bỏ yêu cầu token
+   phải có dấu `/`) + manifest. Đường lùi là `git checkout docs/hooks/guard.cjs` rồi chạy lại
+   `zemory hook guard`.
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
-· **Gate bị cắt 4 LẦN** (2 lần tôi tự dừng để sửa code · 1 lần môi trường · 1 lần preflight chặn vì
-  daemon tự bật chạy embed). Số dở dang **không phải kết quả**: có lượt 386 ✔ mà không có `EXIT=`.
-  Cách đúng: phóng gate dạng **mồ côi** qua `.vbs` rồi canh dòng `EXIT=` trong log.
-· **Đột biến TRƯỢT regex ⇒ test vẫn xanh** = xanh giả. Phải đọc bản dịch thật rồi cắt theo DÒNG.
-· **Cổng có thể là TRANG TRÍ mà vẫn xanh**: ca "cửa chặn rẻ" bản đầu không phân biệt được "bỏ qua"
-  với "chép ra rồi mới bỏ qua" — chỉ lộ khi chạy đột biến. Phải trưng cờ ra kết quả mới đo được.
-· **Bẫy escape qua shell, dính 2 lần nữa**: `"C:\p"` thành `"C:\p"` (lint bắt, test vẫn chạy vì JS
-  nuốt `\p`) và **bash nuốt phần trong dấu huyền** khi ghi docs qua `node -e` (mất 3 từ). Sửa file
-  bằng công cụ sửa file, và **quét lại** thay vì nhìn mắt.
-· **Test gọi `syncDrive` mà quên cô lập HOME** ⇒ đi quét transcript THẬT, treo hơn 8 phút.
-· **Ca test có thể TREO thay vì đỏ** — treo trong gate tệ hơn đỏ. Ca chờ-khoá phải gắn `timeout`.
+· **Sửa guard là phải cập nhật MANIFEST đếm dòng** của bộ cowork (`BOOTSTRAP.md` dòng 26). Dính
+  hai lần: 359→487 rồi 487→491, mỗi lần một lượt gate đỏ.
+· **Nghiệm thu đa-repo phải dựng ca từ marker CỦA TỪNG REPO.** Dùng marker của một repo áp cho
+  mọi repo ⇒ báo "6 repo trượt" trong khi guard hành xử đúng; và che mất lỗ `.vault` thật.
+· **Lỗ chỉ hiện trên cấu hình của người khác:** nhánh interpreter đòi token có dấu `/` nên đường
+  protected là TÊN TRẦN (`.vault` · `attic`) thì lọt — 7/9 repo dính, zemory không dính.
+· **Probe phải chạy đúng CWD.** Chạy guard với cwd = zemory làm đường dẫn tương đối giải về repo
+  khác ⇒ probe báo "bản mới cũng lọt", sai hoàn toàn.
+· **Đột biến phải tiêm được mới tính.** Escape trong template literal của máy sinh (`\$`) vừa làm
+  lint đỏ vừa dễ làm regex sinh ra sai — đọc bản ĐÃ SINH rồi mới tin.
 
 ## ⭐ NGÃ RẼ RECALL — "còn cách nào nữa không" (dựng 2026-08-23 để trả lời câu user sẽ hỏi)
 
