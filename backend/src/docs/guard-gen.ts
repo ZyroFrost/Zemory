@@ -89,7 +89,12 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       // là cổng HỎI, không phải cổng cấm.
       overwrite: ".allow-overwrite",
     },
-    flags_comment: "Flag = user duyet MOT lan: guard cho qua roi TU XOA. Agent chi duoc tao flag sau khi user noi ro trong phien.",
+    flags_comment:
+      "Flag = user duyet MOT viec. Guard cho qua roi DONG DAU `ZEMORY-USED <van tay lenh> <thoi diem>` " +
+      "vao chinh file flag — KHONG xoa ngay. Trong 90 giay, DUNG lenh do duoc thu lai (hook PreToolUse " +
+      "khong biet lenh co thuc su chay hay khong; mot tang khac cua host chan lai thi flag da mat oan). " +
+      "Xin viec KHAC hoac qua 90 giay => flag bi THU HOI, phai xin lai. Agent chi duoc tao flag sau khi " +
+      "user noi ro trong phien.",
   };
 }
 
@@ -238,21 +243,86 @@ const GIT_CMD = "(?<!\\\\.)\\\\bgit\\\\b(?![\\\\\\\\/])";
 // lenh de SOI CO cung khong chay duoc. Them (?<![\\w.-]) de chi bat \`push\` dung nghia.
 const PUSH_ARG = "(?<![\\\\w.-])push\\\\b";
 
+// ── VI TRI LENH: khop TOKEN dung o cho ra lenh, khong khop chuoi o bat cu dau ──────────
+//
+// Lo do 2026-08-26 (dinh 3 lan trong MOT phien lam viec that): guard chi soi CHUOI, nen ten
+// lenh nam trong mot doan VAN BAN cung bi chan:
+//     echo "=== git remote (chua push) ==="   -> chan vi luat git push
+//     echo "thu nghiem rm -rf"                -> chan vi luat xoa de quy
+// Chan nham dan thang toi "gate nhieu => gate bi bo qua" (luat 7, .claude/skills/audit).
+//
+// Cach vá: tach cau thanh SEGMENT (ngoai nhay), lay TU DAU cua moi segment lam ten lenh, roi
+// chi soi nhung segment ma ten lenh DUNG la lenh dang xet. \`echo\` khong bao gio la \`git\`.
+//
+// 🔴 NGOAI LE BAT BUOC — INTERPRETER: \`bash -c "…"\` · \`node -e "…"\` · \`python -c "…"\` thi
+// noi dung TRONG NHAY chinh la lenh that. Gap interpreter (o BAT KY segment nao, ke ca cuoi
+// duong ong nhu \`echo x | bash\`) thi quay ve soi CA CAU nhu cu — tha chan nham con hon thung.
+const SEG_WRAPPER = /^(sudo|doas|env|command|nohup|time|nice|exec)$/i;
+const SEG_INTERP = /^(bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|node|nodejs|python|python3|py|perl|ruby|deno|bun)$/i;
+
+// Tach theo ; | & va xuong dong, NHUNG bo qua dau phan cach nam trong nhay.
+function splitSegments(cmd) {
+  const out = [];
+  let cur = "";
+  let q = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (q) {
+      cur += c;
+      if (c === q && cmd[i - 1] !== "\\\\") q = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { q = c; cur += c; continue; }
+    if (c === ";" || c === "\\n" || c === "&" || c === "|") { out.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  out.push(cur);
+  return out.filter((s) => s.trim());
+}
+
+// Ten lenh cua mot segment: bo gan bien moi truong (A=1), bo wrapper (sudo/env/…), lay
+// basename va bo nhay. \`/usr/bin/git\` -> \`git\`; \`env A=1 sudo git\` -> \`git\`.
+function cmdWordOf(seg) {
+  for (const raw of seg.trim().split(/\\s+/)) {
+    const tok = raw.replace(/^["']|["']$/g, "");
+    if (!tok) continue;
+    if (/^[A-Za-z_][\\w]*=/.test(tok)) continue;
+    const name = tok.replace(/\\\\/g, "/").split("/").pop() || "";
+    if (SEG_WRAPPER.test(name)) continue;
+    return name.toLowerCase();
+  }
+  return "";
+}
+
+// Vung CAN SOI cho mot luat. Co interpreter ⇒ ca cau. Khong thi chi nhung segment dung ten.
+function zonesFor(cmd, nameRe) {
+  const segs = splitSegments(cmd);
+  if (segs.some((s) => SEG_INTERP.test(cmdWordOf(s)))) return [cmd];
+  return segs.filter((s) => nameRe.test(cmdWordOf(s)));
+}
+const hitsIn = (cmd, nameRe, re) => zonesFor(cmd, nameRe).some((z) => re.test(z));
+
+// Co segment nao dat ten lenh do o VI TRI LENH khong. Dung cho luat mà mẫu BAC QUA dau ong
+// (\`Get-ChildItem -Recurse | Remove-Item\`): cat segment tai \`|\` thi khong nua nao khop ca —
+// hoi quy do duoc ngay khi vá 2026-08-26. Nen: vi tri lenh quyet dinh CO SOI HAY KHONG, con
+// soi thi soi CA CAU.
+const anyCmdIs = (cmd, nameRe) => splitSegments(cmd).some((s) => nameRe.test(cmdWordOf(s)));
+
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
-  if (new RegExp(GIT_CMD + "[^\\\\n;|&]*" + PUSH_ARG).test(bare)) {
+  if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\\\n;|&]*" + PUSH_ARG))) {
     if (!consumeFlag("push", bare)) {
       deny("CHAN (guard lop 1): \`git push\` - user bao push moi push (02_RULES Git)." +
         "\\nUser vua bao? -> tao flag \`" + POLICY.flags_dir + "/" + POLICY.flags.push + "\` roi chay lai (mot lan).");
     }
   }
 
-  if (new RegExp(GIT_CMD + "[^\\\\n;|&]*\\\\bcommit\\\\b[^\\\\n;|&]*(--no-verify|\\\\s-n\\\\b)").test(bare)) {
+  if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\\\n;|&]*\\\\bcommit\\\\b[^\\\\n;|&]*(--no-verify|\\\\s-n\\\\b)"))) {
     deny("CHAN (guard lop 1): \`git commit --no-verify\` lach pre-commit - khong co duong vuot.");
   }
 
-  if (new RegExp(GIT_CMD + "[^\\\\n;|&]*\\\\badd\\\\b[^\\\\n;|&]*(\\\\s-A\\\\b|\\\\s--all\\\\b|\\\\s\\\\.\\\\s*($|;|&|\\\\|))").test(bare)) {
+  if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\\\n;|&]*\\\\badd\\\\b[^\\\\n;|&]*(\\\\s-A\\\\b|\\\\s--all\\\\b|\\\\s\\\\.\\\\s*($|;|&|\\\\|))"))) {
     if (!consumeFlag("git_add_all", bare)) {
       deny("CHAN (guard lop 1): \`git add -A/.\` - chinh lenh nay da dua secret len GitHub (2026-08-04)." +
         "\\nLiet ke file tuong minh; that su can ca cay thi xin user tao flag \`" +
@@ -304,7 +374,8 @@ function checkBash(cmd) {
   // khong co duong dan de khop). Chung deu bat kha dao ngang \`rm -rf\`.
   const MASS_DEL =
     /\\bfind\\b[^\\n]*-delete\\b|\\bfind\\b[^\\n]*-exec[^\\n]*\\brm\\b|\\bgit\\s+clean\\b[^\\n]*-[a-z]*[fdx]|\\brobocopy\\b[^\\n]*\\/(MIR|PURGE)\\b|\\brmSync\\s*\\([^)]*recursive|\\brmtree\\s*\\(|\\bxargs\\b[^\\n]*\\brm\\b|\\bGet-ChildItem\\b[^\\n]*\\|[^\\n]*\\bRemove-Item\\b/i;
-  if (MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
+  const MASS_CMDS = /^(find|git|robocopy|xargs|get-childitem|gci|ls|dir|remove-item|ri|rm)$/;
+  if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
     deny("CHAN (guard lop 1): xoa HANG LOAT (quet ca cay) - bat kha dao, 02_RULES bat hoi user truoc." +
       flagTip("delete"));
   }
@@ -315,7 +386,7 @@ function checkBash(cmd) {
   // mat han - git khong cuu duoc thu chua bao gio vao git.
   const DISCARD =
     /\\bgit\\s+reset\\b[^\\n]*--hard\\b|\\bgit\\s+checkout\\b[^\\n]*--\\s|\\bgit\\s+checkout\\s+\\.|\\bgit\\s+restore\\b[^\\n]*(\\.|--staged)|\\bgit\\s+stash\\s+(drop|clear)\\b/;
-  if (DISCARD.test(bare) && !consumeFlag("discard", bare)) {
+  if (hitsIn(bare, /^git$/, DISCARD) && !consumeFlag("discard", bare)) {
     deny("CHAN (guard lop 1): lenh HUY viec chua commit - 02_RULES §Git bat hoi user truoc." +
       flagTip("discard"));
   }
@@ -327,13 +398,15 @@ function checkBash(cmd) {
   //   dau ra la thao tac hang ngay, chan la nhieu ngay) va \`mv\` (doi ten/dep repo la viec
   //   thuong). Muon chan thi phai phan biet "ghi de file DANG CO trong repo" voi "tao file
   //   moi", va do la viec rieng - dung nhet vao day cho du.
-  if (/\\btruncate\\b[^\\n]*-s\\s*0\\b|\\bClear-Content\\b/.test(bare) && !consumeFlag("overwrite", bare)) {
+  if (hitsIn(bare, /^(truncate|clear-content)$/, /\\btruncate\\b[^\\n]*-s\\s*0\\b|\\bClear-Content\\b/) && !consumeFlag("overwrite", bare)) {
     deny("CANH BAO (guard lop 1): lenh XOA TRANG noi dung file - noi dung cu mat han." +
       "\\nHOI USER truoc." + flagTip("overwrite"));
   }
 
-  if (ANY_DEL.test(bare)) {
-    const recursive = RECURSIVE_DEL.test(bare);
+  // Ten lenh XOA that su (khong ke \`echo\`/\`grep\` co nhac chu "rm"). \`unlink\` co ca hai dang.
+  const DEL_CMDS = /^(rm|remove-item|ri|rmdir|rd|del|erase|unlink)$/;
+  if (hitsIn(bare, DEL_CMDS, ANY_DEL)) {
+    const recursive = hitsIn(bare, DEL_CMDS, RECURSIVE_DEL);
     // CHI quet token cua DUNG SEGMENT chua lenh xoa (tach ;|&) — cung khuon + cung ly do
     // voi nhanh git o tren (sua 2026-08-24, user gat 21/08): rm build.log && echo check-prod.env
     // tung bi CHAN OAN vi ten .env nhac trong echo. Quet ca dong thi nguoi ta hoc cach
@@ -359,6 +432,66 @@ function checkBash(cmd) {
     if (recursive && !consumeFlag("delete", bare)) {
       deny("CHAN (guard lop 1): xoa DE QUY - thao tac bat kha dao, 02_RULES bat hoi user truoc." +
         flagTip("delete"));
+    }
+  }
+
+  // ── GHI / DOI qua LENH (khong chi qua tool Write/Edit) ────────────────────────────────
+  //
+  // Lo do 2026-08-26: \`checkWrite\` chi chay cho tool Write/Edit/MultiEdit, nen ghi vao duong
+  // protected bang SHELL thi khong ai soi. Do that: ghi duoc vao \`01_CONSTITUTION\` va ra
+  // NGOAI repo du ca hai deu nam trong protected.
+  //     echo x >> docs/agent/05_TODO.md        (chuyen huong)
+  //     python -c "open('data/x','w').write()" (script)
+  // Va lo ③ cung ho: \`mv <protected>/x /tmp\` co hau qua Y HET xoa ma lot sach — file bien
+  // khoi duong duoc bao ve, chi khac cai ten thao tac.
+  //
+  // 🔴 GIOI HAN — DUNG doc thanh "guard phu het":
+  // Tang nay chi thay DUONG DAN VIET THANG trong cau lenh. Duong dan dung luc chay (noi
+  // chuoi, doc tu bien, tu file, tu stdin) thi KHONG THAY, va khong the thay — mot hook doc
+  // chuoi lenh khong the biet script se ghi vao dau. Muon chan that phai o tang he dieu hanh
+  // (quyen file / ACL), khong phai o day. Nhanh nay chi bit duong DE DI NHAT.
+  const REDIRECT = /(?:^|[\\s;&|])>{1,2}\\s*(["']?)([^\\s"'|;&]+)\\1/g;
+  const MOVERS = /^(mv|move|move-item|mi|rename|ren|cp|copy|copy-item|robocopy|rsync)$/;
+  const WRITE_VERB = /\\b(open\\s*\\(|write|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\\b/i;
+
+  const flagWritePath = (raw, how) => {
+    const tok = String(raw).replace(/^["']|["']$/g, "");
+    if (!tok || tok.startsWith("-")) return;
+    const rel = relToRoot(tok.replace(/\\\\/g, "/").replace(/^\\.\\//, ""));
+    for (const prefix of POLICY.protected_write || []) {
+      if (!underProtected(rel, prefix)) continue;
+      if (consumeFlag("docs_write", rel)) return;
+      deny("CHAN (guard lop 1): " + how + " \`" + rel + "\` nam trong duong protected \`" + prefix +
+        "\` - " + POLICY.protected_write_reason +
+        "\\nUser da duyet trong phien? -> tao flag \`" + POLICY.flags_dir + "/" + POLICY.flags.docs_write +
+        "\` roi lam lai (flag dung MOT lan).");
+    }
+  };
+
+  for (const seg of splitSegments(bare)) {
+    const word = cmdWordOf(seg);
+    // ① chuyen huong \`>\`/\`>>\` — dich la file bi ghi de/noi them, bat ke lenh gi o dau cau.
+    let m;
+    REDIRECT.lastIndex = 0;
+    while ((m = REDIRECT.exec(seg))) flagWritePath(m[2], "ghi (chuyen huong) vao");
+    // ② lenh DOI CHO / CHEP: NGUON nam trong protected = mat khoi vung duoc bao ve (lo ③);
+    //    DICH nam trong protected = ghi vao vung do.
+    if (MOVERS.test(word)) {
+      const args = seg.trim().split(/\\s+/).slice(1).filter((t) => t && !t.startsWith("-"));
+      const removes = /^(mv|move|move-item|mi|rename|ren)$/.test(word);
+      args.forEach((a, i) => {
+        const last = i === args.length - 1;
+        if (last) flagWritePath(a, "ghi (dich cua " + word + ") vao");
+        else if (removes) flagWritePath(a, "DOI RA KHOI (nguon cua " + word + ")");
+      });
+    }
+    // ③ interpreter: chi phan khi payload vua co duong protected VUA co dong tu ghi — nham
+    //    tranh chan oan \`python -c "print(open('data/x').read())"\` (doc, khong ghi).
+    if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
+      for (const tok of seg.split(/[\\s'"(),]+/)) {
+        if (!tok || !tok.includes("/")) continue;
+        flagWritePath(tok, "ghi (qua " + word + ") vao");
+      }
     }
   }
 
