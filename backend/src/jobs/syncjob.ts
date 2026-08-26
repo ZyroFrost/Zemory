@@ -20,7 +20,28 @@ export interface SyncJobStatus {
   error?: string;
   /** the syncDrive result object (parsed from the child's JSON line) */
   result?: unknown;
+  /**
+   * Tail of the child's stderr, kept ONLY for a failed run.
+   *
+   * 🔴 Vì sao có (2026-08-26): bản cũ dùng `stdio: ["ignore","pipe","ignore"]` ⇒ stderr của con
+   * bị **bỏ thẳng vào hư không**, và `daemon.log` chỉ ghi `auto-sync: job finished`. Lượt sync
+   * 26/08 hỏng để lại đúng bốn chữ `UNKNOWN: unknown error, write`, không stack, không dòng nào
+   * nói phép ghi nào ném — nên chẩn đoán phải suy từ trạng thái đĩa thay vì đọc lỗi. Đó đúng là
+   * kiểu "làm sai trong im lặng" mà `02_RULES §Hành xử` cấm. Chỉ giữ ĐUÔI (8 KB) vì phần đáng
+   * đọc là chỗ ném.
+   *
+   * Giữ khi lượt HỎNG, **hoặc** khi stderr có dòng đánh dấu `[sync]`. Vế thứ hai bắt được lúc
+   * soi lại diff của chính lượt vá này: sự kiện đáng giá nhất — *"Drive ném lỗi giả, đếm lại
+   * thấy khối vẫn đủ"* — chỉ xảy ra ở lượt **THÀNH CÔNG**, nên điều kiện "chỉ giữ khi hỏng" sẽ
+   * vứt đúng thứ cần giữ. Tiến độ thường (`merging chunk 3/41`) không mang dấu này nên vẫn bị bỏ.
+   */
+  stderr?: string;
 }
+
+/** Giữ đuôi stderr, không giữ đầu: chỗ ném nằm ở cuối. */
+const STDERR_TAIL = 8192;
+/** Dấu của một sự kiện ĐÁNG GIỮ do lớp sync tự in ra, kể cả khi lượt chạy thành công. */
+const NOTABLE = /\[sync\]/;
 
 let status: SyncJobStatus = { running: false, startedAt: 0 };
 let child: ChildProcess | null = null;
@@ -33,8 +54,17 @@ export function syncJobStatus(): SyncJobStatus {
   return status;
 }
 
-/** dist/jobs/syncjob.js → sibling dist/jobs/syncrun.js. */
+/**
+ * dist/jobs/syncjob.js → sibling dist/jobs/syncrun.js.
+ *
+ * `ZEMORY_SYNC_RUNNER` thay được đường này. Nó tồn tại để **cổng soi HÀNH VI thay vì soi chữ
+ * trong mã**: thứ đáng canh ở đây là *"lượt hỏng có giữ được stderr không"* và *"ống stderr có
+ * ai hút không"*, mà cả hai chỉ đo được bằng một tiến trình con thật. Chạy lượt sync THẬT trong
+ * gate là không khả thi (cần kênh Drive + chìa + hàng chục phút), nên con giả là đường duy nhất.
+ */
 function runnerEntry(): string {
+  const override = process.env.ZEMORY_SYNC_RUNNER;
+  if (override) return override;
   return join(dirname(fileURLToPath(import.meta.url)), "syncrun.js");
 }
 
@@ -43,7 +73,10 @@ function runnerEntry(): string {
  * Returns the current status either way — the caller treats "already running"
  * as success (the UI just attaches to the ongoing job).
  */
-export function startSyncJob(onDone?: () => void, opts: { lowPriority?: boolean } = {}): SyncJobStatus {
+export function startSyncJob(
+  onDone?: (s: SyncJobStatus) => void,
+  opts: { lowPriority?: boolean } = {},
+): SyncJobStatus {
   if (status.running) return status;
   if (!claimDaemonJob("sync")) {
     // Scheduler embed pass in flight — report as an error the UI can show;
@@ -52,9 +85,11 @@ export function startSyncJob(onDone?: () => void, opts: { lowPriority?: boolean 
   }
   status = { running: true, startedAt: Date.now() };
   let out = "";
+  let err = "";
   let c: ChildProcess;
   try {
-    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "ignore"], windowsHide: true });
+    // stderr là "pipe", KHÔNG "ignore" — xem chú thích ở `SyncJobStatus.stderr`.
+    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   } catch (e) {
     releaseDaemonJob();
     status = { running: false, startedAt: status.startedAt, ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -75,6 +110,12 @@ export function startSyncJob(onDone?: () => void, opts: { lowPriority?: boolean 
     out += String(d);
     if (out.length > 262144) out = out.slice(-262144); // keep the tail — the JSON line is last
   });
+  // PHẢI hút stderr, không chỉ mở nó: ống không ai đọc thì đầy 64 KB là con TREO ở `write` —
+  // biến một lớp chẩn đoán thành một kiểu hỏng mới (đúng luật "thêm một lớp là thêm một chỗ hỏng").
+  c.stderr?.on("data", (d: Buffer) => {
+    err += String(d);
+    if (err.length > STDERR_TAIL) err = err.slice(-STDERR_TAIL);
+  });
   const finish = (ok: boolean, error?: string) => {
     if (child === c) child = null;
     releaseDaemonJob();
@@ -89,14 +130,18 @@ export function startSyncJob(onDone?: () => void, opts: { lowPriority?: boolean 
         /* not the JSON line */
       }
     }
+    const good = parsed ? parsed.ok !== false && ok : ok;
     status = {
       running: false,
       startedAt: status.startedAt,
-      ok: parsed ? parsed.ok !== false && ok : ok,
+      ok: good,
       ...(parsed ? { result: parsed } : {}),
       ...(parsed && parsed.ok === false ? { error: parsed.error } : !ok && error ? { error } : {}),
+      // Lượt hỏng ⇒ giữ (cần stack). Lượt chạy được ⇒ chỉ giữ nếu có dấu `[sync]`, vì tiến độ
+      // thường thì giữ lại chỉ làm log phình — xem chú thích ở `SyncJobStatus.stderr`.
+      ...(err.trim() && (!good || NOTABLE.test(err)) ? { stderr: err.trim() } : {}),
     };
-    onDone?.();
+    onDone?.(status);
   };
   c.on("exit", (code) => finish(code === 0, code === 0 ? undefined : `sync exited ${code ?? "?"}`));
   c.on("error", (e) => finish(false, e instanceof Error ? e.message : String(e)));
