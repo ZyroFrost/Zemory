@@ -20,11 +20,13 @@ import {
   renameSync,
   rmSync,
   statSync,
+  truncateSync,
   writeFileSync,
 } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedFrontierId, embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
@@ -962,6 +964,82 @@ function appendChunk(containerPath: string, bundlePath: string): number {
   return bytes.length;
 }
 
+/** Số lần thử nối trước khi chịu thua (`plan/08 §8c` ④ — vế "tối đa 3 lần", trước nay chưa build). */
+const APPEND_ATTEMPTS = 3;
+
+/**
+ * Một lượt nối là THÀNH hay BẠI — quyết bằng SỐ KHỐI ĐẾM ĐƯỢC, không bằng việc có ném hay không.
+ *
+ * Tách thành hàm thuần vì đây là chỗ ĐẢO NGƯỢC so với bản cũ, và là chỗ duy nhất đáng canh bằng
+ * cổng: bản cũ để ngoại lệ phán, nên lượt 26/08 bị coi là hỏng dù khối đã nằm đủ trên kênh.
+ * `threw && đếm đủ ⇒ "ok"` chính là ca đó, viết thẳng ra để không ai vô tình lật lại.
+ */
+export function appendVerdict(threw: boolean, afterCount: number, expected: number): "ok" | "ok-despite-error" | "retry" {
+  if (afterCount !== expected) return "retry"; // đếm sai ⇒ bại, kể cả khi KHÔNG ném
+  return threw ? "ok-despite-error" : "ok"; // đếm đủ ⇒ thành, kể cả khi CÓ ném
+}
+
+/**
+ * Nối một khối rồi **ĐẾM LẠI KHỐI** để phán thành/bại — không hỏi ngoại lệ.
+ *
+ * 🔴 NGOẠI LỆ KHÔNG PHẢI TRỌNG TÀI, TRẠNG THÁI CONTAINER MỚI LÀ (2026-08-26). Lượt auto-sync
+ * 05:45 ném `UNKNOWN: unknown error, write` — libuv không map nổi mã lỗi Windows mà Google Drive
+ * File Stream trả về — **trong khi khối đã nằm ĐỦ trên kênh**: đo lại thấy 40 khối, 0 byte rác,
+ * khối cuối đúng độ dài. Tin lời ngoại lệ là vứt một khối đã ghi được, rồi lượt sau xuất lại
+ * đúng dải đó và nối thêm bản TRÙNG — đo được: khối #37 và #39 khớp từng byte (22.270.367 byte
+ * / 3.812 tin), kênh chung phình bằng bản sao chứ không phải dữ liệu mới.
+ *
+ * Vì sao phải CẮT trước khi thử lại: một lượt nối dở để lại byte thừa ở đuôi, mà `listChunks`
+ * gặp byte thừa là DỪNG ⇒ nối tiếp lên đó sẽ **chôn sống mọi khối phía sau**. Cắt về đúng chiều
+ * dài trước lúc nối là cách duy nhất để lần thử sau không đẻ ra một kiểu hỏng tệ hơn cái đang vá.
+ */
+export function appendChunkVerified(containerPath: string, bundlePath: string, expected: number): number {
+  const sizeBefore = existsSync(containerPath) ? statSync(containerPath).size : 0;
+  let written = 0;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= APPEND_ATTEMPTS; attempt++) {
+    try {
+      written = appendChunk(containerPath, bundlePath);
+      lastErr = null;
+    } catch (e) {
+      lastErr = e; // giữ lại để báo nếu ĐẾM cũng nói hỏng — nhưng chưa kết luận gì
+    }
+    // Đường đo THỨ HAI, khác cơ chế với lời của `appendFileSync` (`02_RULES §Hành xử`).
+    const after = existsSync(containerPath) ? listChunks(containerPath) : [];
+    const tail = after[after.length - 1];
+    const verdict = appendVerdict(lastErr !== null, after.length, expected);
+    if (verdict !== "retry" && tail) {
+      if (verdict === "ok-despite-error") {
+        // Ghi ra để lượt sau còn biết chuyện này CÓ xảy ra — stderr của con nay được giữ lại.
+        console.error(
+          `[sync] nối khối ném "${lastErr instanceof Error ? lastErr.message : String(lastErr)}" ` +
+            `nhưng đếm lại thấy ĐỦ ${after.length} khối ⇒ coi là ĐÃ NỐI (kênh Drive báo lỗi giả).`,
+        );
+      }
+      return written || tail.len;
+    }
+    // CẮT SAU MỌI LẦN TRƯỢT — kể cả lần CUỐI. Bản đầu của chính lượt vá này chỉ cắt khi còn lượt
+    // thử tiếp, nên lần thử thứ ba để lại nguyên phần mình vừa ghi trên kênh chung (cổng bắt
+    // được: container 149 byte thay vì 132). Đó đúng là thứ đang đi vá: byte thừa ở đuôi làm
+    // `listChunks` dừng sớm, và mọi khối nối sau nó trở thành vô hình với MỌI máy.
+    console.error(`[sync] nối khối trượt (thấy ${after.length} khối, chờ ${expected}) — cắt về ${sizeBefore} byte.`);
+    try {
+      truncateSync(containerPath, sizeBefore);
+    } catch (e) {
+      throw new Error(
+        `Nối khối trượt và KHÔNG cắt lại được đuôi container (${e instanceof Error ? e.message : String(e)}). ` +
+          `Kho của máy này vẫn đủ; đừng sync tiếp cho tới khi soi lại ${containerPath}.`,
+        { cause: e },
+      );
+    }
+  }
+  throw new Error(
+    `Nối khối lên kho chung trượt sau ${APPEND_ATTEMPTS} lần` +
+      `${lastErr ? `: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}` : ""}. ` +
+      `Kho của máy này vẫn đủ; chạy \`zemory memory sync\` lại.`,
+  );
+}
+
 /** Cắt một khối ra file rời để đi qua đúng đường merge sẵn có. */
 /**
  * Chữ ký của MỘT KHỐI, đọc THẲNG trong container — không chép khối ra ngoài.
@@ -991,11 +1069,62 @@ function chunkSignature(containerPath: string, chunk: ChunkRef): string {
   }
 }
 
+/** Số lần thử một phép ĐỌC trên kênh chung trước khi chịu thua. */
+const DRIVE_READ_ATTEMPTS = 3;
+
+/**
+ * Mã lỗi CHẬP CHỜN của ổ đám mây — thử lại là qua, không phải hỏng thật.
+ *
+ * `UNKNOWN` là mã libuv trả về khi Windows đưa ra một mã lỗi nó **không map nổi** — đúng thứ
+ * Google Drive File Stream sinh ra. Đo 2026-08-26: `vectors-catchup` chết ở phút 5:42 với
+ * `UNKNOWN: unknown error, read`, chạy lại **y nguyên lệnh đó thì xong**, và một lượt đọc tuần
+ * tự trọn 1.832 MB cùng buổi mất 42,9 s **không một lỗi** (42,7 MB/s). Ba dữ kiện đó cộng lại
+ * loại hẳn giả thuyết "kênh hỏng/chậm": nó CHẬP.
+ *
+ * Cố ý KHÔNG nhận `ENOENT`/`EACCES`: file không có hoặc không có quyền là sự thật bền, thử lại
+ * chỉ làm chậm rồi cũng báo đúng lỗi đó — và che mất lỗi cấu hình thật.
+ */
+const TRANSIENT_FS_CODES = new Set(["UNKNOWN", "EBUSY", "EIO", "EAGAIN", "ETIMEDOUT", "EPERM"]);
+
+export function isTransientFsError(e: unknown): boolean {
+  const code = (e as NodeJS.ErrnoException | null)?.code;
+  return typeof code === "string" && TRANSIENT_FS_CODES.has(code);
+}
+
+/**
+ * Thử lại một phép ĐỌC trên kênh chung khi ổ đám mây chập.
+ *
+ * Đối xứng với `appendChunkVerified` ở chiều GHI: chiều ghi tự đo lại bằng số khối, chiều đọc
+ * không có gì để đo nên đường duy nhất là **thử lại**. Thiếu lớp này thì một cú chập duy nhất
+ * giết cả lượt sync — mà lượt sync có thể đã chạy vài phút.
+ */
+export async function withDriveRetry<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  let wait = 500;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= DRIVE_READ_ATTEMPTS || !isTransientFsError(e)) throw e;
+      const code = (e as NodeJS.ErrnoException).code;
+      // `[sync]` là dấu để lớp trên GIỮ dòng này lại kể cả khi lượt chạy thành công — một cú
+      // chập được nuốt lặng thì lần sau không ai biết kênh đang có vấn đề (xem `jobs/syncjob.ts`).
+      console.error(`[sync] ${what}: lỗi chập chờn ${code} — thử lại ${attempt + 1}/${DRIVE_READ_ATTEMPTS} sau ${wait} ms.`);
+      await sleep(wait);
+      wait *= 2;
+    }
+  }
+}
+
 async function extractChunk(containerPath: string, chunk: ChunkRef, outPath: string): Promise<void> {
-  await pipeline(
-    createReadStream(containerPath, { start: chunk.offset, end: chunk.offset + chunk.len - 1 }),
-    createWriteStream(outPath, { flags: "wx" }),
-  );
+  await withDriveRetry(`đọc khối #${chunk.index}`, async () => {
+    // Lượt trước có thể để lại file dở; cờ "wx" sẽ ném EEXIST và biến một cú chập đọc thành
+    // một lỗi khác hẳn. Dọn trước khi thử lại.
+    rmSync(outPath, { force: true });
+    await pipeline(
+      createReadStream(containerPath, { start: chunk.offset, end: chunk.offset + chunk.len - 1 }),
+      createWriteStream(outPath, { flags: "wx" }),
+    );
+  });
 }
 
 /** Giành quyền ghi kho chính. Trả hàm nhả khoá; ném lỗi RÕ khi máy khác đang giữ.
@@ -1526,6 +1655,7 @@ async function pushAppend(o: {
     }
     let removed = 0;
     let written = 0; // byte THẬT SỰ ghi thêm lượt này — xem chú thích ở `bytes` bên dưới
+    const expected = compacting ? 1 : chunks.length + 1;
     if (compacting) {
       // Container MỚI chỉ một khối; bản cũ giữ đúng MỘT thế hệ làm đường lùi.
       const fresh = join(tmp, "fresh.enc");
@@ -1538,25 +1668,33 @@ async function pushAppend(o: {
       renameSync(fresh, mainPath);
       removed = chunks.length;
     } else {
-      written = appendChunk(mainPath, part);
+      // Nối THẲNG lên kênh ⇒ đây là chỗ Drive ném lỗi giả, nên phải đếm lại mới dám kết luận.
+      // (Nhánh gộp ở trên ghi ra file tạm LOCAL rồi `rename`, không đi qua đường đó.)
+      written = appendChunkVerified(mainPath, part, expected);
     }
-    // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE.
-    // Nội dung khối này lấy ra từ kho local, nên merge lại nó vào chính kho đó là việc
-    // thừa 100%. Không đánh dấu thì mỗi lượt sync sau phải GIẢI MÃ lại nguyên khối chỉ để
-    // phát hiện "0 dòng mới" — với khối cỡ 336 MB thì đó là vài chục giây và một lượt đọc
-    // cả file, đúng thứ lối nối-thêm sinh ra để tránh. (Bắt được nhờ ca `receiver dedup`.)
     // 🔴 KIỂM SAU KHI GHI (`plan/08 §8c` ④). Drive không bảo đảm nguyên tử; nếu khối của mình
     // biến mất (bị bản khác đè) thì phải BIẾT, chứ không được báo "đã đẩy" rồi thôi — đó đúng là
     // kiểu "bề mặt nói dối" mà `02_RULES` cấm. Không có gì để sửa tự động ở đây (ghi lại có thể
     // đè tiếp bản mới), nên nói thẳng và để lượt sync sau làm lại.
     const after = listChunks(mainPath);
-    const expected = compacting ? 1 : chunks.length + 1;
     if (after.length !== expected) {
       throw new Error(
         `Kho chung đổi ngay sau khi ghi (${after.length} khối, chờ ${expected}) — khối vừa nối có thể đã bị đè. ` +
           `Kho của máy này vẫn đủ; chạy \`zemory memory sync\` lại để nối lại.`,
       );
     }
+    // 🔴 WATERMARK NHÍCH NGAY KHI KHỐI ĐÃ CHỨNG MINH CÓ MẶT — trước mọi việc tối ưu (2026-08-26).
+    // Trước đây nó nằm SAU bước đánh dấu bên dưới, nên một lỗi ở bước tối ưu ăn mất luôn sự thật
+    // "đã đẩy tới đâu". Đó chính là cơ chế của ca 26/08: khối #39 nối xong lúc 05:46:26, lượt job
+    // chết sau đó, watermark đứng nguyên ở mốc 25/08 09:54 suốt **20 giờ** — và mỗi lượt kế tiếp
+    // lại xuất đúng dải cũ rồi nối thêm một khối TRÙNG. Thứ tự đúng: chứng minh xong là ghi nhận,
+    // rồi mới tối ưu. Một lớp tối ưu KHÔNG được phép làm mất một sự thật đã đo được.
+    writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
+    // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE — thuần TỐI ƯU, hỏng thì chịu chứ không kéo ai theo.
+    // Nội dung khối này lấy ra từ kho local, nên merge lại nó vào chính kho đó là việc
+    // thừa 100%. Không đánh dấu thì mỗi lượt sync sau phải GIẢI MÃ lại nguyên khối chỉ để
+    // phát hiện "0 dòng mới" — với khối cỡ 336 MB thì đó là vài chục giây và một lượt đọc
+    // cả file, đúng thứ lối nối-thêm sinh ra để tránh. (Bắt được nhờ ca `receiver dedup`.)
     const mine = after[after.length - 1];
     if (mine) {
       const tmp2 = mkdtempSync(join(tmpdir(), "zemory-mark-"));
@@ -1564,11 +1702,17 @@ async function pushAppend(o: {
         const copy = join(tmp2, "mine.enc");
         await extractChunk(mainPath, mine, copy);
         markBundleMerged(`${MAIN_BUNDLE}#${mine.index}`, bundleSignature(copy), dbPath);
+      } catch (e) {
+        // Fail-open (điều 9) nhưng KHÔNG im: giá phải trả là lượt sync sau giải mã lại khối này
+        // một lần. Nuốt lặng thì lần sau chậm mà không ai biết vì sao.
+        console.error(
+          `[sync] không đánh dấu được khối của chính mình (${e instanceof Error ? e.message : String(e)}) — ` +
+            `lượt sync sau sẽ giải mã lại nó một lần. Không mất dữ liệu.`,
+        );
       } finally {
         rmSync(tmp2, { recursive: true, force: true });
       }
     }
-    writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
     return {
       kind: compacting ? "compact" : chunks.length === 0 ? "baseline" : "delta",
       file: MAIN_BUNDLE,
