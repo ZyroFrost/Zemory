@@ -3,29 +3,39 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-27 — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-27 (phiên tối) — ĐỌC MỤC NÀY TRƯỚC
 
-**1 mục mở** (§Bộ tool điều khiển, cuối khối này). Dưới đây là TRẠNG THÁI đã ĐO.
+**5 mục mở**: 2 việc user GIAO cho phiên sau (bàn kỹ rồi mới làm) + 3 tool MCP. Trạng thái dưới đây là ĐO.
 
-### Phiên này làm gì (số đo: `06_CHANGES [2026-08-27]` · thiết kế: `plan/20`)
-**Phát hiện lớn: Cowork ĐỌC ĐƯỢC kho chung qua MCP.** Vế cũ *"Cowork không dùng được MCP"* nằm
-trong code là SAI, và nó sai vì **một lỗi đường dẫn**: bản Claude Desktop cài từ Microsoft Store
-(MSIX) chuyển hướng AppData, nên `setup mcp` dò ở `%APPDATA%\Claude\` thì thấy trống và báo
-"chưa cài" trên chính máy đang chạy Desktop. Từ lỗi đó đẻ ra cả một bộ template riêng cho máy ảo.
-- Vá `mcpsetup.ts` (glob tiền tố `Claude_`, ưu tiên trước `%APPDATA%`) + `harness.ts`.
-- Nắn `cowork_global_memory/BOOTSTRAP.md`: §0 tự cài Node/git thay vì bỏ cuộc · §4 hỏi nguồn +
-  `scan-web` · §4b `embed` BẮT BUỘC · **§5b nối MCP + nghiệm thu** (trước thiếu hẳn).
+### Hai việc USER GIAO 2026-08-27 — CHƯA BÀN CHI TIẾT, phiên sau bàn trước rồi mới đụng
+- [ ] **Đặt tên chuẩn lại các bộ `docs_template/`** theo prefix số (`01_` · `02_` …) và tên đúng chuẩn —
+      hiện 5 bộ tên rời (`app` · `nonapp` · `adapt` · `cowork` · `cowork_global_memory`). Nguyên văn user:
+      *"đặt tên chuẩn lại các bộ template, phân theo số prefix 01_ 02_ này kia … chi tiết qua session sau
+      sẽ bàn rõ"*. Đụng: `adopt.ts` (`TEMPLATE_DIR` + profile → thư mục), `standard-parity`/`template-parity`
+      test, `04_SKILLS`/`AGENTS` trỏ đường, bootstrap cowork.
+- [ ] **Cấu trúc lại TÊN + BỐ CỤC toàn bộ folder phòng ban** — user nghĩ theo hướng `Agent_FIN` · `Agent_IT`…
+      thay `PBI_*`, và *"phân lại toàn bộ cấu trúc folder"*. Nguyên văn: *"việc này cũng sẽ bàn với session
+      mới"*. Đụng registry project của daemon (16 đường tuyệt đối), `project_root` trong kho (recall theo dự
+      án), graph cache, `docs/.harness.json` từng repo. Là việc đổi tên hàng loạt ngoài repo ⇒ `02_RULES
+      §Phạm vi project`: từng bước hỏi trước.
+
+### Phiên này làm gì (số đo: `06_CHANGES [2026-08-27b]` · plan `08 §8b` · `18 §4`)
+Audit 11 mặt → 3 lỗ blocking vá xong (con maintain chạy mù · kênh thiếu 16.405 vector · bản trùng NULL) ·
+**schema v23 `vec_shipped`** · gate chạy trong **lồng Job Object 4 GB + ưu tiên thấp**, 12 file nặng từng ca
+một tiến trình (7 phút thay 42). Commit `2993d77` + phần gate/2.8.0 (xem `git log`).
 
 ### Trạng thái máy lúc chốt (ĐO)
-- **zemory 2.7.2**. Gate đầy đủ gần nhất **835/835 · 0 fail · EXIT=0** (chạy trước khi sửa docs).
-- Kho local **~304k tin**. Desktop đã nối MCP: config ở
-  `…\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
-  (có `.bak-20260827-001214` để lùi).
-- Đã commit + push trong phiên (xem `git log`).
+- **zemory 2.8.0** (bump, chờ push). Gate trong lồng: **845/845 · 0 fail · 537 s**; đỉnh cả cây chạm 4.096 —
+  đang đo đỉnh từng ca để biết ca nào sát mép (`memory-privacy` · `vecship-chunks` · `vector-write-atomic`).
+- Kho local **308.014 tin · 2.626 phiên**, schema **v23**, `vec_shipped` 283.766. Kênh Drive: 2 khối (baseline
+  DESKTOP 1,8 GB + khối bù 49 MB), dry-run bù **thiếu 0**. **DESKTOP-PFB157K còn 2.7.0** — pull + build bên đó,
+  kho nó mang 10.271 bản trùng NULL (merge bên nhận nay khử được).
+- Daemon: phải **tắt** khi chạy gate (preflight chặn); bật lại bằng `wscript …\Startup\zemory.vbs`.
 
-### Việc đầu tiên của phiên sau
+### Bộ ba tool điều khiển qua MCP (giữ từ phiên sáng)
 **Dựng bộ ba tool điều khiển zemory qua MCP** — user chốt khung: *"mọi chức năng đã có sẵn trên
-zemory hết rồi, MCP chỉ là điều khiển và quản lý"*. Không đẻ chức năng mới, chỉ mở cửa:
+zemory hết rồi, MCP chỉ là điều khiển và quản lý"*. Không đẻ chức năng mới, chỉ mở cửa. Cấn đã dò:
+`scanWebPlatforms` chưa export (private trong `ui.ts:387`).
 
 - [ ] `memory_scan { deep?, web?, platform? }` — gọi `scan()` + `scanWebPlatforms()` sẵn có; trả
       số phiên/tin, hoặc `need-login` (đừng đứng im, phải nói cửa sổ đang chờ).
@@ -47,6 +57,13 @@ Cả ba đi qua write-gate; đang có job khác ghi thì trả *"đang bận"* t
   `%LOCALAPPDATA%\Packages\<gói>\LocalCache\Roaming\`.
 · **Preflight chặn gate khi daemon đang chạy job** — tắt daemon trước `npm run check`, và nhớ
   daemon **tự bật lại** theo autostart.
+· **(tối) Bộ đo `Get-Process node | Measure-Object -Sum` NHIỄM** worker của file trước chưa thoát — báo 1,9 GB
+  cho file thật 58 MB. Đo RAM từng file/ca chỉ tin `gate-cage.ps1` (Job Object đếm đúng cây).
+· **(tối) Tắt arena ONNX làm RAM phình NHANH HƠN** (12 GB/125 s vs 6 GB/18 phút) — knob nghe hợp lý, đo ra sai hướng.
+· **(tối) Escape inline (`node -e`, heredoc) nuốt backslash → regex thành byte thô, script đột biến chết lúc nạp**
+  mà đầu ra bị `tail` cắt nên tưởng đã vá. Vá nhiều dòng = Write script ra file rồi `node <file>`.
+· **(tối) Cổng partition soi CHỮ trong test bắt oan 11 file** chỉ *nhắc* API graph; phải đối chiếu **số đo** —
+  nay có `LIGHT_DESPITE_MATCH` kèm MB, cổng canh ba chiều.
 
 ## ⭐ NGÃ RẼ RECALL — "còn cách nào nữa không" (dựng 2026-08-23 để trả lời câu user sẽ hỏi)
 

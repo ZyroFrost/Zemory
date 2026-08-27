@@ -55,7 +55,7 @@ lộ lọt, chết lặng, không mang đi được.
 |---|---|---|
 | ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud · `git-history-secrets` (2 ca, 2026-08-24: quét `rev-list --objects --all` + chặn blob >50 MB, mỗi phép có tự-kiểm chống đo mù) | — |
 | ⑧ | `license-gate` (3 ca, trong `npm run check`) · `npm run check:clone` (dựng từ clone sạch, chạy riêng — cần mạng) *(cả hai 2026-08-15)* | — |
-| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) · **diễn tập phục hồi CHẠY THẬT 2026-08-25** (§4b) | biến diễn tập thành ĐỊNH KỲ (mới chạy một lần, bằng tay) |
+| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) · **diễn tập phục hồi CHẠY THẬT 2026-08-25** (§4b) · **lần hai 2026-08-27** — lại bắt được lỗ (16.405 vector, 3 gốc, vá cùng ngày — `plan/08 §8b` 🔄 2026-08-27); hai lần chạy, hai lần ra lỗ ⇒ đây là phép đo đắt nhất nhưng đáng nhất của mặt này | biến diễn tập thành ĐỊNH KỲ (hai lần đều bằng tay); kèm **cổng RAM cho gate** đã ship 2026-08-27 (`gate-cage.ps1` Job Object 4 GB — gate từng tràn 16 GB làm chết phiên hai lần) |
 | ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) · `guard-tool-matrix` (26 ca, TRONG gate chính — 2026-08-24) | — |
 
 **Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong

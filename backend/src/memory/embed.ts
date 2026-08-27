@@ -221,6 +221,23 @@ export function embedConfig(): EmbedConfig {
   };
 }
 
+/**
+ * Tuỳ chọn phiên ONNX dùng chung cho embed + rerank, đọc từ env — mặc định KHÔNG đặt gì (giữ
+ * hành vi production). Vì sao có (2026-08-27): gate tràn 16 GB làm sập phiên hai lần; gate nay chạy
+ * nhóm nạp model với `ZEMORY_ONNX_THREADS=4` để nhường CPU cho người dùng và phiên khác cùng máy.
+ * ⚠ `ZEMORY_ONNX_MEM_ARENA=0` có ở đây để THÍ NGHIỆM, KHÔNG dùng cho gate: đo trên `vectors.test`,
+ * tắt arena làm RAM phình NHANH HƠN (12 GB trong 125 s) so với arena bật (6,1 GB / 18 phút) — thứ
+ * ăn RAM không phải arena. Không đặt env ⇒ `undefined` ⇒ runtime tự chọn như trước.
+ */
+export function ortSessionOptions(): { enableCpuMemArena?: boolean; intraOpNumThreads?: number } | undefined {
+  const arena = process.env.ZEMORY_ONNX_MEM_ARENA?.trim();
+  const threads = Number(process.env.ZEMORY_ONNX_THREADS?.trim());
+  const o: { enableCpuMemArena?: boolean; intraOpNumThreads?: number } = {};
+  if (arena === "0") o.enableCpuMemArena = false;
+  if (Number.isInteger(threads) && threads > 0) o.intraOpNumThreads = threads;
+  return Object.keys(o).length ? o : undefined;
+}
+
 let pipePromise: Promise<FeatureExtractionPipeline> | null = null;
 let lastDims: number | null = null;
 
@@ -230,7 +247,8 @@ async function getPipe(): Promise<FeatureExtractionPipeline> {
       const { pipeline, env } = await import("@huggingface/transformers");
       const cfg = embedConfig();
       env.cacheDir = cfg.cacheDir; // weights live here, not in the repo
-      return pipeline("feature-extraction", cfg.model, { dtype: cfg.dtype });
+      const session_options = ortSessionOptions();
+      return pipeline("feature-extraction", cfg.model, { dtype: cfg.dtype, ...(session_options ? { session_options } : {}) });
     })();
   }
   return pipePromise;

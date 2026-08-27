@@ -10,28 +10,26 @@
 **Audit đầy đủ** (gate 835/835 · conform ✓ · quick_check ok · drill phục hồi 6′32″ 315.103 tin) lộ ba lỗ
 blocking, đều thuộc họ *bề mặt nền câm* hoặc *HP điều 16*; vá trong cùng phiên, mỗi vá có đột biến đỏ.
 
-**① Con maintain chạy mù.** `scheduler.ts` phóng scan/embed/digest với `stdio:"ignore"` — con `embed --all`
-20 phút, 730 s CPU, 0 hàng, từ ngoài không phân biệt được "chậm" với "kẹt". Nay pipe + hút hai ống + giữ đuôi
-8 KB; thoát lỗi ghi stderr ra `daemon.log`; dòng `finished` kèm tiến độ cuối. Nghiệm thật:
-`scan: finished (exit 0) · total now: 2626 session(s) · 308014 message(s)…`. 4 đột biến đỏ.
-
-**② Kênh chung thiếu 16.405 vector máy này ĐANG CÓ** (diễn tập dựng lại từ kênh; 300/300 mẫu có vector tại
-chỗ) — hai gốc: (a) `vectorCatchUp` lọc `uuid IS NOT NULL` cả hai phía ⇒ 10.271 tin không-uuid không bao
-giờ được bù, dù `vector_ship` có khoá dự phòng `messageKey`; (b) vector nhúng SAU khi tin đã lên kênh không
-còn chuyến nào chở (frontier chỉ giữ tin mới ≤24 h) — 6.121 tin, dồn 25–27/08. Vá: (a) khoá bền
-`messageKey` ở cả hai truy vấn; (b) **schema v23 `vec_shipped`** — sổ vector đã chở, gieo bằng vector đang
-có; mỗi delta chở kèm vector chưa ghi sổ qua `vectorCatchUpIds` sẵn có, lượt 0-tin-mới vẫn đi. Test: uuid
-NULL được bù · nhúng-sau đi lượt kế · ca ÂM không đẻ khối · migration 22→23 + ca âm kho chưa nhúng.
-6 đột biến đỏ một-đối-một. Kho thật: catch-up nối +10.973 vector (49,2 MB).
-
-**③ Bản trùng NULL trên kênh.** Dựng lại kênh ra **21.502** hàng uuid NULL / **11.231** khoá — `UNIQUE`
-không khử NULL, và merge chỉ khử so với hàng ĐÃ CÓ, không khử TRONG gói tới ⇒ baseline của máy khác
-(DESKTOP-PFB157K, còn 2.7.0) chở 10.271 bản trùng; thước bù đếm chúng thành "thiếu" và nối 49 MB vô
-ích mỗi lượt. Vá: merge giữ `MIN(rowid)` trong gói; 2 test (merge + đầu-cuối), đột biến đỏ cả hai.
-Một lớp thử thêm (đếm thiếu theo khoá) **gỡ** vì sau vá này không còn đường chạy tới — đột biến sống sót.
-
-**Kèm:** 4 entry vượt trần 30 dòng cắt về ≤25 · `write-docx §10` thêm đường đo trang WPS COM, áp 15 repo ·
-`preflight-gate` chặn cả khi daemon **sống** — gate 4 worker ONNX + daemon/embed ~4 GB đã tràn 16 GB, phiên chết.
+**① Con maintain chạy mù.** `scheduler.ts` phóng scan/embed/digest với `stdio:"ignore"` — con `embed --all` 20 phút,
+730 s CPU, 0 hàng, không phân biệt được "chậm" với "kẹt". Nay hút hai ống, giữ đuôi 8 KB, thoát lỗi ghi stderr,
+dòng `finished` kèm tiến độ cuối (`+500 embedded · remaining 1127`). 4 đột biến đỏ.
+**② Kênh chung thiếu 16.405 vector máy này ĐANG CÓ** (diễn tập dựng lại; 300/300 mẫu có vector tại chỗ). Hai gốc:
+`vectorCatchUp` lọc `uuid IS NOT NULL` ⇒ 10.271 tin không-uuid không bao giờ được bù dù `vector_ship` có khoá dự
+phòng; vector nhúng SAU khi tin đã lên kênh không còn chuyến chở (6.121, dồn 25–27/08). Vá: khoá bền `messageKey`
+hai truy vấn; **schema v23 `vec_shipped`** gieo bằng vector đang có, mỗi delta chở kèm vector chưa ghi sổ, lượt
+0-tin vẫn đi. 6 đột biến đỏ. Kho thật: catch-up +10.973 vector, dry-run sau đó **thiếu 0**.
+**③ Bản trùng NULL trên kênh.** Dựng lại ra 21.502 hàng / 11.231 khoá — `UNIQUE` không khử NULL, merge chỉ khử so
+với hàng đã có ⇒ baseline DESKTOP chở 10.271 bản trùng, thước bù nối 49 MB vô ích mỗi lượt. Vá: merge giữ
+`MIN(rowid)` trong gói; 2 test, đột biến đỏ cả hai. Lớp "đếm thiếu theo khoá" **gỡ** — đột biến sống sót.
+**Gate nhường máy** (user chốt: trần 4 GB cả cây · ưu tiên thấp · chậm cũng được). Gate từng tràn 16 GB làm chết
+phiên hai lần. Đo bằng Job Object: RAM tích luỹ QUA CÁC CA trong một tiến trình — `vectors.test` cả file **>12 GB**
+(q8 vẫn vượt; tắt arena ONNX còn tệ hơn), ca nặng nhất chạy riêng **3,3 GB**; 5 file graph nạp grammar tree-sitter
+1,3–2,9 GB/file. Nay `npm test` → `gate.mjs` → lồng Job Object 4 GB + `BelowNormal` (`gate-cage.ps1`) →
+`run-tests.mjs`: nhóm nhẹ 2 worker, **12 file nặng chạy từng ca một tiến trình** (`test-groups.mjs` khai danh
+sách + miễn-kèm-số-đo; cổng `test-partition` canh ba chiều). `preflight` chặn cả khi daemon sống.
+Nghiệm thu cuối trong lồng: **845/845 · đỉnh cả cây 3.306 MB / 4.096 · 6 phút** (gate cũ 42 phút — phần chậm là
+paging). Ca sát mép duy nhất (`vector-write-atomic`, 4.088 MB) hạ fixture 2→1 tin dài ⇒ 3.033 MB.
+**Kèm:** 4 entry vượt trần cắt về ≤25 · `write-docx §10` thêm đường đo trang WPS COM, áp 15 repo.
 **Còn hở:** `/nav-cost` 0 FE gọi · daemon nghẽn `/ping` ~4 phút sau khởi động (chưa chốt cơ chế) · DESKTOP
 cần lên 2.7.x và dọn 10.271 bản trùng · guard lớp ① báo oan token `"data"` trong `.on("data")`.
 

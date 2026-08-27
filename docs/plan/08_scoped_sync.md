@@ -226,6 +226,19 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
   vector / 12,5 MB**; nghiệm thu ba phép khác cơ chế: 41→42 khối · khối mới bắt đầu ĐÚNG tại EOF cũ
   (byte 1.921.443.041) ⇒ **0 byte cũ bị ghi đè** · chạy lại dry-run ra `thiếu 0`.
 
+  🔄 **2026-08-27 — vế *"tồn không tự lành bằng vá này, đợi gộp"* ở trên BỊ THAY (v2.8.0).** Diễn tập
+  phục hồi lần hai (dựng kênh vào kho tạm 6′32″, 315.103 tin) đo kênh thiếu **16.405 vector máy này đang có**
+  (300/300 mẫu có vector tại chỗ): 6.121 tin có uuid nhúng SAU khi đã lên kênh (frontier chỉ giữ tin ≤24 h),
+  10.271 tin **uuid NULL** mà `vectorCatchUp` bỏ qua vì lọc `uuid IS NOT NULL` ở cả hai truy vấn dù
+  `vector_ship` đã có khoá dự phòng `messageKey`. Vá ba chỗ: ① catch-up dùng `messageKey` hai phía ·
+  ② **schema v23 `vec_shipped(message_id)`** — sổ vector đã chở, gieo bằng mọi vector chính đang có lúc nâng
+  cấp (không gieo thì lượt sync đầu chở lại ~290k vector); mỗi delta chở kèm vector có ở kho mà chưa ghi sổ
+  qua chính `vectorCatchUpIds`, lượt 0-tin-mới vẫn đi, ghi sổ SAU khi khối chứng minh có mặt (cùng lý lẽ với
+  watermark) · ③ merge khử trùng tin NULL **ngay trong gói tới** (`MIN(rowid)`) — dựng lại kênh từng ra 21.502
+  hàng NULL / 11.231 khoá vì baseline của DESKTOP mang bản trùng, và thước bù đếm bản trùng thành "thiếu" rồi
+  nối 49 MB vô ích mỗi lượt. Nghiệm thu trên kênh thật: catch-up +10.973 vector, dry-run sau đó **thiếu 0**.
+  Cổng: `vector-ship.test` +4 ca (uuid NULL được bù · nhúng-sau đi lượt kế + ca ÂM không đẻ khối · trùng trong
+  gói · đầu-cuối bản trùng ở khối đầu), `db-migrate-vecshipped.test` 2 ca; mỗi ca có đột biến đỏ riêng.
   ✅ **Cửa sổ phụ ĐÃ CÓ CỔNG từ 2.4.0** — `backend/test/vecship-chunks.test.mjs`. *(Câu cũ ở đây, viết
   2026-08-23: "chưa có cổng nào canh, 0 file test nhắc `vector_ship_chunk`" — đúng lúc đó, sai từ
   khi cổng ship. Mục `05_TODO` "717 cửa sổ phụ" nó trỏ tới đã đóng, nay nằm ở `archive/05_TODO.md`.)*
