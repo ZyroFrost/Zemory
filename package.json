@@ -1,6 +1,6 @@
 {
   "name": "zemory",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "description": "Context & memory governance layer for AI agents — one shared core for every project.",
   "author": "Nguyen Duc Huy",
   "type": "module",
@@ -18,7 +18,7 @@
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint backend/src backend/test backend/scripts eslint.config.js",
-    "test": "npm run build && node --test --test-concurrency=4 \"backend/test/*.test.mjs\"",
+    "test": "npm run build && node backend/scripts/gate.mjs",
     "check": "npm run preflight && npm run typecheck && npm run lint && npm test && npm run conform && npm run todo",
     "conform": "node dist/cli.js conform --gate",
     "todo": "node dist/cli.js todo verify",

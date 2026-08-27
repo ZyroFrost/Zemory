@@ -19,6 +19,7 @@
 
 import { join } from "node:path";
 import { currentMemoryDir } from "./db.js";
+import { ortSessionOptions } from "./embed.js";
 
 const DTYPES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"] as const;
 type Dtype = (typeof DTYPES)[number];
@@ -66,8 +67,10 @@ async function getCrossEncoder(): Promise<CrossEncoder> {
         text: string[],
         opts: Record<string, unknown>,
       ) => Promise<Record<string, unknown>>;
+      const session_options = ortSessionOptions(); // cùng knob RAM/CPU với embedder (xem embed.ts)
       const model = (await AutoModelForSequenceClassification.from_pretrained(cfg.model, {
         dtype: cfg.dtype,
+        ...(session_options ? { session_options } : {}),
       })) as unknown as (inputs: Record<string, unknown>) => Promise<{ logits: { tolist: () => unknown } }>;
       return { tokenizer, model };
     })();

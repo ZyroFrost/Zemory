@@ -49,12 +49,24 @@ test("embedConfig defaults to EmbeddingGemma · fp32 · <memory-dir>/models", ()
   // fp32, not q8 — measured 2026-08-05 on real corpus chunks: fp32 1.61 s/chunk vs
   // q8 3.09 (and q4 5.45). Quantizing this 300M model LOSES on CPU: the 4-bit paths
   // dequantize before every matmul and parallelize worse. q8 bought only disk.
-  const c = embedConfig();
-  assert.match(c.model, /embeddinggemma/i);
-  assert.equal(c.dtype, "fp32");
-  // cacheDir follows the memory data dir (so it relocates off C:\ with the DB),
-  // not a fixed home path — just assert it lives in a `models` folder.
-  assert.match(c.cacheDir, /[\\/]models$/);
+  //
+  // Ca này kiểm MẶC ĐỊNH, nên phải tự gỡ env trước: gate chạy nhóm nạp model với env riêng
+  // (`test-groups.mjs › HEAVY_ENV`, ví dụ dtype nhẹ để vừa trần RAM 4 GB) — không gỡ thì ca này
+  // đỏ oan vì đọc nhầm env của gate thành "mặc định".
+  const saved = { dtype: process.env.ZEMORY_EMBED_DTYPE, model: process.env.ZEMORY_EMBED_MODEL };
+  delete process.env.ZEMORY_EMBED_DTYPE;
+  delete process.env.ZEMORY_EMBED_MODEL;
+  try {
+    const c = embedConfig();
+    assert.match(c.model, /embeddinggemma/i);
+    assert.equal(c.dtype, "fp32");
+    // cacheDir follows the memory data dir (so it relocates off C:\ with the DB),
+    // not a fixed home path — just assert it lives in a `models` folder.
+    assert.match(c.cacheDir, /[\\/]models$/);
+  } finally {
+    if (saved.dtype !== undefined) process.env.ZEMORY_EMBED_DTYPE = saved.dtype;
+    if (saved.model !== undefined) process.env.ZEMORY_EMBED_MODEL = saved.model;
+  }
 });
 
 test("stored dtype WINS over the default and over env — an index keeps the dtype it was built with", () => {
