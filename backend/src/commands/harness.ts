@@ -530,7 +530,16 @@ function cmdSetupMcp(args: string[]): void {
     console.log("  mỗi lần ghi làm HAI việc: khai server + cài LỜI DẶN khi nào gọi trí nhớ (`--no-protocol` để bỏ vế sau)");
     console.log("  luôn sao lưu .bak trước khi ghi · KHÔNG đụng server khác trong file");
     console.log("  chưa khai tự động được (khai tay): " + UNSUPPORTED.map((u) => `${u.id} — ${u.why}`).join(" · "));
-    console.log("  ⓘ Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory` trên máy thật.");
+    // 🔄 ĐẢO 2026-08-27 — đo trên máy thật thì vế cũ SAI.
+    // Câu cũ: "Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory`
+    // trên máy thật." Nó viết CÙNG LÚC với lỗ đường dẫn MSIX (`mcpsetup.ts`), nên chưa bao giờ
+    // thử được — và không ai thử lại. Nghiệm thu 27/08: nối MCP vào Claude Desktop (bản Store)
+    // rồi hỏi trong một phiên COWORK ⇒ nó liệt kê đủ `mcp__zemory__memory_*` và `memory_stats`
+    // trả về ĐÚNG kho chung: `messages` 303.977 — khớp tuyệt đối với số đo cùng thời điểm ở
+    // máy thật, trong khi số đo 30 phút trước là 303.434. Trùng đúng con số ĐANG THAY ĐỔI là
+    // bằng chứng nó đọc kho SỐNG, không phải bản sao.
+    console.log("  ⓘ Cowork DÙNG ĐƯỢC MCP qua Claude Desktop (nghiệm thu 2026-08-27): nối `claude-desktop`");
+    console.log("    là phiên Cowork thấy `mcp__zemory__memory_*` và đọc ĐÚNG kho chung, không phải bản sao.");
     return;
   }
   const target = targets.find((t) => t.id === pick);
