@@ -30,7 +30,8 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { scan } from "./ingest.js";
 import { embedFrontierId, embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
-import { receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
+import { messageKey, receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
+import { markVectorsShipped, unshippedVectorIds } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 
@@ -88,6 +89,8 @@ export interface ExportMemoryBundleResult {
   /** Vector chở kèm trong gói (HP điều 16). Trưng ra để một lượt chở HỤT lộ ngay ở bề mặt —
    *  lỗ 75% ngày 2026-08-12 sống sót được chính vì con số này không đi tới đâu cả. */
   vectorsShipped?: number;
+  /** Id tin (kho nguồn) có vector chính đã vào gói — bên gọi ghi `vec_shipped` SAU khi nối xong. */
+  vectorShippedIds?: number[];
   /** Hàng bị SQLite từ chối lúc nhét vào gói. Khác 0 là có chuyện, đừng bỏ qua. */
   vectorsRejected?: number;
 }
@@ -391,7 +394,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
       bundleBytes: statSync(opts.outPath).size,
       payload,
       ...(rows ? { rows } : {}),
-      ...(shipped ? { vectorsShipped: shipped.shipped, vectorsRejected: shipped.rejected } : {}),
+      ...(shipped ? { vectorsShipped: shipped.shipped, vectorsRejected: shipped.rejected, vectorShippedIds: shipped.shippedIds } : {}),
     };
   } finally {
     snapshot.cleanup();
@@ -713,6 +716,14 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
                  SELECT 1 FROM messages m
                  WHERE m.session_id = s.session_id AND m.uuid IS NULL
                    AND m.role IS s.role AND m.timestamp IS s.timestamp AND m.content IS s.content
+               )
+               -- Khử trùng NGAY TRONG gói tới: NOT EXISTS ở trên chỉ so với hàng ĐÃ CÓ, nên hai bản
+               -- giống nhau trong cùng một gói đều được chèn (đo 2026-08-27: kho chung mang 10.271 bản
+               -- trùng NULL từ một máy, dựng lại ra 21.502 hàng). Giữ bản có rowid nhỏ nhất.
+               AND s.rowid = (
+                 SELECT MIN(d.rowid) FROM src.messages d
+                 WHERE d.session_id = s.session_id AND d.uuid IS NULL
+                   AND d.role IS s.role AND d.timestamp IS s.timestamp AND d.content IS s.content
                )${notExcluded("s.session_id")}`,
           ).run(...excl.params);
           db.exec(
@@ -1632,6 +1643,12 @@ async function pushAppend(o: {
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
   const part = join(tmp, "part.enc");
   try {
+    // VECTOR NHÚNG SAU KHI TIN ĐÃ LÊN KÊNH (v23, 2026-08-27): delta chỉ chở vector của tin
+    // id > watermark, nên tin đã đi rồi mới được nhúng thì không còn chuyến nào chở nó — diễn tập
+    // phục hồi đo thiếu 16.405 vector dù kho này có đủ (HP điều 16). Nay mỗi lượt kèm theo vector
+    // có ở kho mà CHƯA ghi sổ `vec_shipped` (đường `vectorCatchUpIds` của lệnh bù, tái dùng
+    // nguyên). Gộp (since = 0) chở trọn nên không cần.
+    const lateIds = since ? unshippedVectorIds(dbPath, since) : [];
     const r = await exportMemoryBundle({
       outPath: part,
       dbPath,
@@ -1639,8 +1656,10 @@ async function pushAppend(o: {
       force: true,
       excludeLanes,
       ...(since ? { sinceMessageId: since } : {}),
+      ...(lateIds.length ? { vectorCatchUpIds: lateIds } : {}),
     });
-    if (!r.rows || r.rows.messages === 0) {
+    // Lượt KHÔNG có tin mới nhưng CÓ vector nhúng-sau vẫn phải đi — đó chính là ca đang vá.
+    if (!r.rows || (r.rows.messages === 0 && !(r.vectorsShipped ?? 0))) {
       return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
     }
     // 🔴 KIỂM LẠI TRƯỚC KHI GHI (`plan/08 §8c` ⑤). Drive đồng bộ theo CẢ FILE: nối 76 MB = tạo
@@ -1690,6 +1709,8 @@ async function pushAppend(o: {
     // lại xuất đúng dải cũ rồi nối thêm một khối TRÙNG. Thứ tự đúng: chứng minh xong là ghi nhận,
     // rồi mới tối ưu. Một lớp tối ưu KHÔNG được phép làm mất một sự thật đã đo được.
     writeExportWatermark(wmKey, r.rows.maxMessageId, dbPath);
+    // GHI SỔ vector đã lên kênh — SAU khi khối chứng minh có mặt, cùng lý do với watermark ở trên.
+    markVectorsShipped(dbPath, r.vectorShippedIds ?? []);
     // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE — thuần TỐI ƯU, hỏng thì chịu chứ không kéo ai theo.
     // Nội dung khối này lấy ra từ kho local, nên merge lại nó vào chính kho đó là việc
     // thừa 100%. Không đánh dấu thì mỗi lượt sync sau phải GIẢI MÃ lại nguyên khối chỉ để
@@ -1936,14 +1957,17 @@ export async function vectorCatchUp(opts: {
     const p = new Database(probe, { readonly: true });
     try {
       const none = !hasVecTable(p);
+      // Khoá BỀN = `messageKey` (uuid, hoặc timestamp+content khi uuid NULL) — CÙNG khoá mà
+      // `vector_ship` dùng. Bản đầu lọc `uuid IS NOT NULL` ở đây ⇒ 10.271 vector của tin
+      // không-uuid (đo diễn tập 2026-08-27) không bao giờ được bù, dù `shipVectorsInto` chở được.
       for (const r of p
         .prepare(
-          `SELECT m.session_id s, m.uuid u FROM messages m
-            WHERE m.uuid IS NOT NULL` +
+          `SELECT m.session_id s, m.uuid u, m.timestamp ts, m.content c FROM messages m
+            WHERE 1=1` +
             (none ? "" : " AND NOT EXISTS (SELECT 1 FROM vec_chunks_rowids v WHERE v.rowid = m.id)"),
         )
-        .iterate() as Iterable<{ s: string; u: string }>) {
-        missingKeys.add(`${r.s}|${r.u}`);
+        .iterate() as Iterable<{ s: string; u: string | null; ts: string | null; c: string | null }>) {
+        missingKeys.add(`${r.s}|${messageKey(r.u, r.ts, r.c)}`);
       }
     } finally {
       p.close();
@@ -1956,12 +1980,11 @@ export async function vectorCatchUp(opts: {
       if (hasVecTable(src)) {
         for (const r of src
           .prepare(
-            `SELECT m.id i, m.session_id s, m.uuid u FROM messages m
-              WHERE m.uuid IS NOT NULL
-                AND EXISTS (SELECT 1 FROM vec_chunks_rowids v WHERE v.rowid = m.id)`,
+            `SELECT m.id i, m.session_id s, m.uuid u, m.timestamp ts, m.content c FROM messages m
+              WHERE EXISTS (SELECT 1 FROM vec_chunks_rowids v WHERE v.rowid = m.id)`,
           )
-          .iterate() as Iterable<{ i: number; s: string; u: string }>) {
-          if (missingKeys.has(`${r.s}|${r.u}`)) ids.push(r.i);
+          .iterate() as Iterable<{ i: number; s: string; u: string | null; ts: string | null; c: string | null }>) {
+          if (missingKeys.has(`${r.s}|${messageKey(r.u, r.ts, r.c)}`)) ids.push(r.i);
         }
       }
     } finally {
@@ -2004,6 +2027,7 @@ export async function vectorCatchUp(opts: {
     let bytes = 0;
     try {
       bytes = appendChunk(container, part);
+      markVectorsShipped(dbPath, r.vectorShippedIds ?? []); // sổ v23 — lệnh bù cũng là một chuyến chở
       // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE (cùng lý do như `pushAppend`): nội dung lấy từ
       // kho local, merge lại vào chính nó là việc thừa 100% — mà không đánh dấu thì lượt sync
       // sau phải GIẢI MÃ lại nguyên khối 66 MB chỉ để phát hiện "0 dòng mới".

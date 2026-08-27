@@ -26,6 +26,8 @@ export interface ShipResult {
   /** Số hàng bị chính SQLite từ chối. Trả RA NGOÀI chứ không nuốt: một con số đếm mà không
    *  ai đọc thì y như không đếm — đó là cách một lỗ rò 75% từng sống sót qua cả một phiên. */
   rejected: number;
+  /** Id tin (kho NGUỒN) có vector CHÍNH đã vào gói — để bên gọi ghi sổ `vec_shipped`. */
+  shippedIds: number[];
 }
 
 export interface VecMeta {
@@ -69,7 +71,7 @@ CREATE TABLE IF NOT EXISTS vector_ship_chunk (
  * Cách giải: băm thứ ĐI THEO GÓI và không đổi giữa các máy — mốc thời gian + nội dung. Cùng
  * một tin ở hai máy cho cùng một khoá, nên gắn vector không thể lệch hàng.
  */
-function messageKey(uuid: string | null, timestamp: string | null, content: string | null): string {
+export function messageKey(uuid: string | null, timestamp: string | null, content: string | null): string {
   if (uuid) return uuid;
   return "h:" + createHash("sha256").update(`${timestamp ?? ""}\n${content ?? ""}`, "utf8").digest("hex").slice(0, 32);
 }
@@ -106,7 +108,7 @@ export function shipVectorsInto(
     src = new Database(sourcePath, { readonly: true });
     sqliteVec.load(src);
     const meta = readVecMeta(src);
-    if (!meta) return { shipped: 0, rejected: 0 };
+    if (!meta) return { shipped: 0, rejected: 0, shippedIds: [] };
 
     snap = new Database(snapshotPath);
     snap.exec(SHIP_DDL);
@@ -132,7 +134,7 @@ export function shipVectorsInto(
       inSnapshot.add(`${r.session_id}\u0000${messageKey(r.uuid, r.timestamp, r.content)}`);
     }
     const catchUp = new Set<number>(catchUpIds ?? []);
-    if (!inSnapshot.size && !catchUp.size) return { shipped: 0, rejected: 0 };
+    if (!inSnapshot.size && !catchUp.size) return { shipped: 0, rejected: 0, shippedIds: [] };
 
     const targets = (
       src
@@ -147,7 +149,8 @@ export function shipVectorsInto(
       // Tin CÓ trong gói ⇒ chở như thường. Tin trong danh sách BÙ ⇒ chở dù KHÔNG có trong gói
       // (máy nhận đã có tin đó từ khối trước, chỉ thiếu vector).
       .filter((t) => catchUp.has(t.id) || inSnapshot.has(`${t.session_id}\u0000${t.mkey}`));
-    if (!targets.length) return { shipped: 0, rejected: 0 };
+    if (!targets.length) return { shipped: 0, rejected: 0, shippedIds: [] };
+    const shippedIds: number[] = [];
 
     src.defaultSafeIntegers(true);
     const ins = snap.prepare("INSERT OR REPLACE INTO vector_ship (session_id, mkey, embedding) VALUES (?,?,?)");
@@ -185,6 +188,8 @@ export function shipVectorsInto(
           .filter((x): x is { session_id: string; mkey: string; embedding: unknown } => x !== null);
         put(out);
         shipped += out.length;
+        const got = new Set(rows.map((r) => String(r.rowid)));
+        for (const t of slice) if (got.has(String(t.id))) shippedIds.push(t.id);
       } catch {
         // Lô nằm trên trang hỏng hoặc tin chưa có vector ⇒ bỏ lô, đi tiếp.
       }
@@ -232,9 +237,9 @@ export function shipVectorsInto(
     } catch {
       /* không có vec_map (kho chưa từng chunk) → bỏ qua, fail-open */
     }
-    return { shipped, rejected };
+    return { shipped, rejected, shippedIds };
   } catch {
-    return { shipped: 0, rejected: 0 };
+    return { shipped: 0, rejected: 0, shippedIds: [] };
   } finally {
     src?.close();
     snap?.close();
