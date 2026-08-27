@@ -476,3 +476,163 @@ test("CA MẤT DỮ LIỆU: gói THAY THẾ (since=0) phải chở ĐỦ tin, k�
   assert.equal(e.rows?.messages, 2, "gói thay thế KHÔNG được cắt bớt — thiếu tin ở đây là mất dữ liệu trên kênh");
   assert.equal(e.rows?.maxMessageId, 2, "watermark của gói thay thế phải phủ hết kho");
 });
+
+// TIN uuid=NULL CŨNG PHẢI ĐƯỢC BÙ (đo diễn tập phục hồi 2026-08-27).
+//
+// 11.233 tin trong kho có `uuid = NULL` (di sản adapter cũ). `vector_ship` chở chúng được bằng
+// khoá dự phòng `messageKey` (timestamp+content), nhưng `vectorCatchUp` lọc `uuid IS NOT NULL` ở
+// CẢ HAI phía so ⇒ 10.271 vector của chúng không bao giờ được bù — máy mới phải nhúng lại, đúng
+// thứ HP điều 16 cấm. Ca này: một tin có uuid + một tin KHÔNG uuid, cả hai đều phải sang đủ.
+test("bù vector: tin uuid=NULL cũng được dò thiếu và chở sang — không bị bỏ rơi ngoài khoá", async (t) => {
+  sandboxHome(t);
+  const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
+  const { openMemory: open } = await import("../../dist/memory/db.js");
+  const root = tempDir(t, "zemory-catchup-nouuid-");
+  const A = join(root, "a.db");
+  const B = join(root, "b.db");
+  const drive = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(drive, { recursive: true });
+  writeMemoryShareKey(keyPath);
+
+  const db = open(A);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "H", );
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  ins.run("s1", "u1", "user", "tin có uuid", "2026-01-01T00:00:00Z");
+  ins.run("s1", null, "user", "tin KHÔNG uuid", "2026-01-01T00:01:00Z");
+  db.close();
+  const push = await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  assert.equal(push.push.messages, 2, "khối đầu chở đủ chữ, kể cả tin không uuid");
+
+  seedVectorsFor(A); // nhúng SAU khi đã lên kênh — đúng nhịp thật
+
+  const r = await vectorCatchUp({ driveDir: drive, keyFile: keyPath, dbPath: A });
+  assert.equal(r.missing, 2, "phải dò ra CẢ HAI thiếu — bản cũ chỉ thấy 1 vì lọc uuid IS NOT NULL");
+  assert.equal(r.shipped, 2, "và chở đủ cả hai");
+
+  const merged = await mergeMemoryBundle({ bundlePath: join(drive, "global_memory.enc"), dbPath: B, keyFile: keyPath });
+  assert.equal(merged.messagesAdded, 2, "chữ đủ");
+  assert.equal(merged.vectorsApplied, 2, "vector đủ cho CẢ tin không uuid — đây là điểm đã hỏng");
+});
+
+// VECTOR NHÚNG SAU KHI TIN ĐÃ LÊN KÊNH PHẢI ĐI Ở LƯỢT KẾ (v23 `vec_shipped`, 2026-08-27).
+//
+// Nhịp thật: sync đẩy tin trước, scheduler nhúng sau 30 phút. Delta chỉ chở vector của tin
+// id > watermark ⇒ vector nhúng-sau không còn chuyến nào chở. Diễn tập phục hồi 27/08 đo kho
+// chung thiếu 16.405 vector mà kho này ĐANG CÓ — máy mới phải nhúng lại, trái HP điều 16.
+// Nay mỗi lượt delta kèm vector có ở kho mà chưa ghi sổ `vec_shipped`, KỂ CẢ khi 0 tin mới.
+test("vector nhúng SAU khi tin đã lên kênh: lượt sync kế phải chở nó dù KHÔNG có tin mới", async (t) => {
+  sandboxHome(t);
+  const { syncDrive } = await import("../../dist/memory/share.js");
+  const root = tempDir(t, "zemory-late-vec-");
+  const A = join(root, "a.db");
+  const B = join(root, "b.db");
+  const drive = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync, statSync } = await import("node:fs");
+  mkdirSync(drive, { recursive: true });
+  writeMemoryShareKey(keyPath);
+
+  // ① tin lên kênh TRƯỚC, chưa có vector
+  {
+    const { openMemory: open } = await import("../../dist/memory/db.js");
+    const db = open(A);
+    db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "H");
+    const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+    ins.run("s1", "u1", "user", "tin mot", "2026-01-01T00:00:00Z");
+    ins.run("s1", "u2", "user", "tin hai", "2026-01-01T00:01:00Z");
+    db.close();
+  }
+  const first = await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  assert.equal(first.push.messages, 2, "khối đầu chở chữ");
+  const sizeAfterFirst = statSync(join(drive, "global_memory.enc")).size;
+
+  // ② nhúng SAU
+  seedVectorsFor(A);
+
+  // ③ lượt sync kế: 0 tin mới — bản cũ trả `none` và vector nằm lại vĩnh viễn
+  const second = await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  assert.notEqual(second.push.kind, "none", "phải có chuyến chở vector nhúng-sau, dù 0 tin mới");
+  assert.ok(statSync(join(drive, "global_memory.enc")).size > sizeAfterFirst, "container phải DÀI RA (nối thêm khối vector)");
+
+  // ④ máy mới dựng từ kênh: đủ vector, KHÔNG phải nhúng lại
+  const merged = await mergeMemoryBundle({ bundlePath: join(drive, "global_memory.enc"), dbPath: B, keyFile: keyPath });
+  assert.equal(merged.messagesAdded, 2, "chữ đủ");
+  assert.equal(merged.vectorsApplied, 2, "vector đủ — máy nhận không nhúng lại gì (HP điều 16)");
+
+  // ⑤ CA ÂM: mọi vector đã ghi sổ ⇒ lượt sau KHÔNG nối gì — sổ mà không ghi thì mỗi lượt lại chở cả kho
+  const sizeBefore = statSync(join(drive, "global_memory.enc")).size;
+  const third = await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+  assert.equal(third.push.kind, "none", "không có gì mới thì không được đẻ khối");
+  assert.equal(statSync(join(drive, "global_memory.enc")).size, sizeBefore, "kích thước container y nguyên");
+});
+
+// TIN uuid=NULL TRÙNG NHAU — hai lỗ đo được 2026-08-27 trên kho chung thật (21.502 hàng / 11.231 khoá).
+//
+// F2: merge chỉ khử trùng NULL so với hàng ĐÃ CÓ, nên hai bản giống nhau trong CÙNG một gói đều
+// được chèn — máy nhận mang gấp đôi. F1: thước bù đếm theo HÀNG, thấy bản trùng không vector là
+// "thiếu" và nối một khối 49 MB vô ích MỖI LƯỢT, dù bản kia đã có vector.
+test("F2: gói mang hai tin NULL y hệt ⇒ máy nhận chỉ giữ MỘT (khử trùng ngay trong gói)", async (t) => {
+  sandboxHome(t);
+  const { openMemory: open } = await import("../../dist/memory/db.js");
+  const root = tempDir(t, "zemory-dupnull-");
+  const A = join(root, "a.db");
+  const B = join(root, "b.db");
+  const bundle = join(root, "a.enc");
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+
+  const db = open(A);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "codex", "local", "C:/p", "H");
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  ins.run("s1", null, "user", "tin trùng", "2026-01-01T00:00:00Z");
+  ins.run("s1", null, "user", "tin trùng", "2026-01-01T00:00:00Z"); // bản trùng — UNIQUE không khử NULL
+  ins.run("s1", null, "user", "tin khác", "2026-01-01T00:00:01Z");
+  db.close();
+  await exportMemoryBundle({ outPath: bundle, dbPath: A, keyFile: keyPath, force: true });
+
+  const r = await mergeMemoryBundle({ bundlePath: bundle, dbPath: B, keyFile: keyPath });
+  assert.equal(r.messagesAdded, 2, "hai tin PHÂN BIỆT vào, bản trùng bị khử ngay trong gói");
+  const b = open(B);
+  assert.equal(b.prepare("SELECT count(*) c FROM messages WHERE uuid IS NULL").get().c, 2);
+  b.close();
+});
+
+test("F2 (đầu-cuối): máy khác mang bản NULL trùng TRONG kho nó ⇒ thước bù từ máy này báo thiếu 0, KHÔNG nối khối", async (t) => {
+  sandboxHome(t);
+  const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
+  const { openMemory: open } = await import("../../dist/memory/db.js");
+  const root = tempDir(t, "zemory-dupnull-catchup-");
+  const A = join(root, "a.db");
+  const drive = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  const { mkdirSync, statSync } = await import("node:fs");
+  mkdirSync(drive, { recursive: true });
+  writeMemoryShareKey(keyPath);
+
+  // Kho C (máy khác, bản cũ): CHÍNH NÓ mang HAI bản trùng của tin đó (UNIQUE không khử NULL) → nối lên kênh TRƯỚC: đây là KHỐI ĐẦU, gộp vào kho trống nên NOT EXISTS không cứu được.
+  const C = join(root, "c.db");
+  const cdb = open(C);
+  cdb.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "codex", "local", "C:/p", "H2");
+  const cins = cdb.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  cins.run("s1", null, "user", "tin NULL", "2026-01-01T00:00:00Z");
+  cins.run("s1", null, "user", "tin NULL", "2026-01-01T00:00:00Z");
+  cdb.close();
+  await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: C, embed: false });
+
+  // Kho A: một tin NULL đã có vector → lên kênh SAU (chở vector; máy nhận gắn vào bản còn lại).
+  const db = open(A);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "codex", "local", "C:/p", "H");
+  db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)").run("s1", null, "user", "tin NULL", "2026-01-01T00:00:00Z");
+  db.close();
+  seedVectorsFor(A);
+  await syncDrive({ driveDir: drive, keyFile: keyPath, dbPath: A, embed: false });
+
+  // Dựng lại kênh (như máy mới) KHÔNG được ra hai hàng; và thước bù KHÔNG được thấy "thiếu" ảo.
+  const before = statSync(join(drive, "global_memory.enc")).size;
+  const r = await vectorCatchUp({ driveDir: drive, keyFile: keyPath, dbPath: A });
+  assert.equal(r.missing, 0, "bản trùng đã bị khử khi dựng lại ⇒ không còn hàng trống để đếm thành thiếu (ca thật 27/08: 10.270 phantom, 49 MB/lượt)");
+  assert.equal(r.pushed, false, "và không nối khối nào");
+  assert.equal(statSync(join(drive, "global_memory.enc")).size, before, "container y nguyên");
+});

@@ -238,3 +238,21 @@ test("hai đồng hồ cùng chu kỳ phải LỆCH PHA — không được cùn
   const start = src.slice(src.indexOf("export function startScheduler"), src.indexOf("export function stopScheduler"));
   assert.match(start, /SYNC_EVERY_MS\s*\/\s*2/, "phải đặt sync lệch nửa chu kỳ so với chuỗi bảo trì");
 });
+
+// 🔴 CON MAINTAIN KHÔNG ĐƯỢC CHẠY MÙ (đo 2026-08-27).
+//
+// `runStep` từng phóng scan/embed/digest với `stdio: "ignore"` ⇒ mọi lời con in — tiến độ lẫn
+// lỗi — rơi vào hư không, `daemon.log` chỉ có "running embed". Đo thật: con `embed --all` chạy
+// 20 phút (730 s CPU) không ghi một hàng, và từ ngoài KHÔNG cách nào phân biệt "khởi động chậm"
+// với "kẹt". Sync đã được vá đúng lỗ này ngày 26/08 (`syncjob.ts`); chuỗi maintain thì chưa.
+// Ba vế phải cùng đúng: không "ignore" · HÚT cả hai ống (ống không ai đọc thì đầy 64 KB là con
+// treo ở `write`) · lúc thoát lỗi phải nói RA stderr.
+test("runStep KHÔNG phóng con bằng stdio 'ignore' — và phải HÚT cả stdout lẫn stderr", () => {
+  const src = read(SCHED);
+  const body = src.slice(src.indexOf("function runStep("), src.indexOf("async function maintainTick"));
+  assert.ok(body.length > 200, `${SCHED}: không cắt được thân runStep`);
+  assert.doesNotMatch(body, /stdio:\s*"ignore"/u, "con maintain chạy mù — mọi lời nó in rơi vào hư không (ca embed 20 phút câm 27/08)");
+  assert.match(body, /stdout\?\.on\("data"/u, "mở ống stdout mà không hút thì đầy 64 KB là con TREO");
+  assert.match(body, /stderr\?\.on\("data"/u, "mở ống stderr mà không hút thì đầy 64 KB là con TREO");
+  assert.match(body, /stderr\s*·/u, "thoát lỗi phải ghi stderr ra daemon.log — không để lại bốn chữ 'exit 1'");
+});

@@ -77,7 +77,7 @@ Người đọc thấy TRANG, không thấy XML. Bốn việc, chi tiết ở [`
 
 - **Ngắt trang:** `<w:keepNext/>` cho tiêu đề và đoạn ngay trên ảnh/bảng · `<w:keepLines/>` chống
   xé đoạn · `<w:pageBreakBefore/>` cho Heading 1 **nhưng KHÔNG ép cho mọi mục** — mục ngắn hơn
-  một trang thì ép break là bỏ trắng nửa trang. **Render bằng `x2t` của ONLYOFFICE rồi ĐO** phần
+  một trang thì ép break là bỏ trắng nửa trang. **Render bằng `x2t` của ONLYOFFICE — hoặc WPS COM (`KWPS.Application` → `ComputeStatistics(2)`) khi x2t thiếu `AllFonts.js` — rồi ĐO** phần
   trống đáy mỗi trang; bỏ break ở mục gây trống > 1/3, xong thử thêm ngược lại. Chỉ miễn TRANG BÌA
   — miễn cả trang cuối thì bỏ sót bản xấu hơn (đo thật: 12 trang đầy 97% vs 13 trang trống 76%).
 - **Khoảng cách:** đoạn có `<w:spacing />` rỗng sẽ dán sát đoạn trên — soát MỌI tiêu đề.

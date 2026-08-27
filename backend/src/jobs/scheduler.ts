@@ -22,6 +22,9 @@
 // scheduler, the UI sync button and a CLI writer never overlap.
 
 import { spawn, type ChildProcess } from "node:child_process";
+
+/** Đuôi stdout/stderr giữ lại của mỗi con maintain — cùng cỡ với `syncjob.ts`. */
+const CHILD_TAIL = 8192;
 import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95,8 +98,13 @@ function runStep(label: string, args: string[]): Promise<number> {
     try {
       // ZEMORY_DAEMON_CHILD: the child skips the CLI write-gate — THIS daemon
       // already holds the job token for it (gating made it wait on itself).
+      // stdout/stderr là "pipe", KHÔNG "ignore". Đo 2026-08-27: con `embed --all` chạy 20 phút
+      // (730 s CPU) không ghi một hàng nào, và từ ngoài KHÔNG CÁCH NÀO biết nó đang khởi động
+      // chậm hay kẹt — mọi lời nó in đều rơi vào hư không, `daemon.log` chỉ có "running embed".
+      // Sync đã được vá đúng lỗ này ngày 26/08 (`syncjob.ts`), scan/embed/digest thì chưa.
+      // Chỉ giữ ĐUÔI (8 KB) — phần đáng đọc là chỗ ném hoặc dòng tiến độ cuối.
       c = spawn(process.execPath, [cliEntry(), ...args], {
-        stdio: "ignore",
+        stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
         // ZEMORY_DAEMON_PID: để con phân biệt khoá CỦA MÌNH (daemon giữ hộ) với khoá của
         // một CLI NGOÀI đang ghi. Thiếu nó thì con không có cách nào biết, và sẽ ghi đè —
@@ -123,12 +131,30 @@ function runStep(label: string, args: string[]): Promise<number> {
     } catch {
       /* không đổi được ưu tiên — vẫn chạy, chỉ là không nhường */
     }
+    // PHẢI hút cả hai ống, không chỉ mở: ống không ai đọc thì đầy 64 KB là con TREO ở `write` —
+    // biến một lớp chẩn đoán thành một kiểu hỏng mới.
+    let out = "";
+    let err = "";
+    c.stdout?.on("data", (d: Buffer) => {
+      out += String(d);
+      if (out.length > CHILD_TAIL) out = out.slice(-CHILD_TAIL);
+    });
+    c.stderr?.on("data", (d: Buffer) => {
+      err += String(d);
+      if (err.length > CHILD_TAIL) err = err.slice(-CHILD_TAIL);
+    });
     const done = (code: number): void => {
       if (child === c) child = null;
       resolve(code);
     };
     c.on("exit", (code) => {
-      log(`${label}: finished (exit ${code ?? "?"})`);
+      // Dòng tiến độ cuối của con (CLI in `\r` để ghi đè tại chỗ ⇒ tách cả `\r`).
+      const last = out.split(/[\r\n]+/u).map((l) => l.trim()).filter(Boolean).pop();
+      log(`${label}: finished (exit ${code ?? "?"})${last ? " · " + last : ""}`);
+      // Lỗi thì nói RA lỗi gì — không để lại bốn chữ "exit 1" như ca sync 26/08.
+      if ((code ?? -1) !== 0 && err.trim()) {
+        for (const line of err.trim().split(/\r?\n/u).slice(-20)) log(`${label}: stderr · ${line}`);
+      }
       done(code ?? -1);
     });
     c.on("error", (e) => {
