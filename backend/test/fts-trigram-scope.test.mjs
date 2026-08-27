@@ -163,8 +163,10 @@ test("v21: UPDATE prose→prose GIỮ được posting (lỗi thứ tự trigger
 // v20 = sessions.pinned (ghim MỘT phiên cho memory_context) — cột RIÊNG, cố ý không mượn
 // `project_pinned` vốn đang gánh nghĩa "cấm scan ghi đè project_root".
 // v21 = trigram nhận lại tool_use (đo A/B/C ở đầu file), dựng lại postings theo chính sách mới.
-test("DB mới chạy hết migration và dừng ở schema v22", (t) => {
+// v23 (2026-08-27): thêm sổ `vec_shipped` — xem `db-migrate-vecshipped.test.mjs`. Đổi số ở đây là
+// đổi CÓ CHỦ ĐÍCH: cổng này tồn tại để một migration mới không lọt vào mà không ai nhìn.
+test("DB mới chạy hết migration và dừng ở schema v23", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 22);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 23);
   db.close();
 });

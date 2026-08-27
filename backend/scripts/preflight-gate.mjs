@@ -44,6 +44,12 @@ const [auto, sync] = await Promise.all([ask("/automation"), ask("/sync-status")]
 const busy = [];
 if (auto?.embedRunning) busy.push("embed");
 if (sync?.running) busy.push("sync");
+// Daemon SỐNG (dù rảnh) cũng chặn — không riêng lúc nó chạy job. Đo 2026-08-27: gate chạy 4 worker,
+// nhóm test nhúng mỗi worker nạp model ONNX ~1 GB, cộng daemon + con embed giữ ~4 GB (tắt xong
+// RAM trống nhảy 352 → 4.414 MB) ⇒ máy 16 GB tràn, phiên agent chết giữa gate — lần thứ hai. Và
+// scheduler của daemon có thể phóng job GIỮA lúc gate đang chạy, tức "rảnh lúc kiểm" không bảo đảm
+// "rảnh suốt gate". Tắt daemon trước, chạy gate, bật lại — hoặc ZEMORY_GATE_FORCE=1 nếu chấp nhận.
+if (auto && !busy.length) busy.push("daemon sống (rảnh, nhưng giữ RAM và có thể phóng job giữa gate)");
 
 // exitCode (không phải process.exit): gọi exit trong lúc undici còn đang đóng socket làm Node
 // trên Windows chết bằng assertion của libuv và trả 127 — tức chính phép kiểm canh gate lại là

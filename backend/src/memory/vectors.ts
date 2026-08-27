@@ -782,3 +782,51 @@ export function pruneOrphanVectors(dbPath: string): void {
     db.close();
   }
 }
+
+/**
+ * Vector CHÍNH có ở kho nhưng CHƯA ghi sổ `vec_shipped`, giới hạn tin id ≤ `upTo` (tin đã lên
+ * kênh — tin mới hơn đi theo delta như thường). Trả về danh sách id để `exportMemoryBundle`
+ * chở kèm qua `vectorCatchUpIds`. Có TRẦN để một lượt sync không phình vô hạn; phần dư đi lượt sau.
+ * Fail-open: kho chưa nhúng / chưa có sổ ⇒ [].
+ */
+export function unshippedVectorIds(dbPath: string = currentMemoryDb(), upTo?: number, cap = 20000): number[] {
+  const db = vecConnect(dbPath);
+  try {
+    if (!tableExists(db)) return [];
+    const hasLog = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_shipped'").get();
+    if (!hasLog) return [];
+    const rows = db
+      .prepare(
+        `SELECT v.rowid id FROM vec_chunks_rowids v
+          WHERE v.rowid < ${SYNTH_BASE}${upTo ? " AND v.rowid <= " + Number(upTo) : ""}
+            AND NOT EXISTS (SELECT 1 FROM vec_shipped s WHERE s.message_id = v.rowid)
+          ORDER BY v.rowid LIMIT ${Math.max(1, cap)}`,
+      )
+      .all() as { id: number | bigint }[];
+    return rows.map((r) => Number(r.id));
+  } catch {
+    return [];
+  } finally {
+    db.close();
+  }
+}
+
+/** Ghi sổ: các vector này ĐÃ lên kho chung (gọi SAU khi khối chứng minh được có mặt). */
+export function markVectorsShipped(dbPath: string = currentMemoryDb(), ids: number[]): number {
+  if (!ids.length) return 0;
+  const db = vecConnect(dbPath);
+  try {
+    db.exec("CREATE TABLE IF NOT EXISTS vec_shipped (message_id INTEGER PRIMARY KEY)");
+    const ins = db.prepare("INSERT OR IGNORE INTO vec_shipped (message_id) VALUES (?)");
+    const tx = db.transaction((xs: number[]) => {
+      let n = 0;
+      for (const x of xs) n += ins.run(x).changes;
+      return n;
+    });
+    return tx(ids);
+  } catch {
+    return 0; // sổ là lớp tối ưu: mất một lần ghi thì lượt sau chở lại, không sai kết quả
+  } finally {
+    db.close();
+  }
+}

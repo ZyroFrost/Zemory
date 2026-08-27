@@ -60,10 +60,15 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
+-- v23 (2026-08-27): SỔ vector ĐÃ CHỞ lên kho chung — per-máy, KHÔNG đi theo bundle (như sync_state).
+-- Vì sao: delta chỉ chở vector của tin id > watermark; tin đã lên kênh rồi mới được nhúng thì
+-- không còn chuyến nào chở nó ⇒ diễn tập phục hồi 27/08 đo thiếu 16.405 vector (HP điều 16).
+-- Mỗi lượt đẩy: vector có ở kho mà CHƯA có trong sổ ⇒ chở kèm (đường vectorCatchUpIds sẵn có).
+CREATE TABLE IF NOT EXISTS vec_shipped (message_id INTEGER PRIMARY KEY);
 
 -- One row per agent session (a single conversation/transcript file).
 CREATE TABLE IF NOT EXISTS sessions (
@@ -700,6 +705,19 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // tìm đầu tiên chậm bất thường mà không ai hiểu vì sao (cùng bài học v21).
     db.exec("INSERT INTO messages_fts_tri(messages_fts_tri) VALUES('optimize')");
     version = 22;
+  }
+  if (version < 23) {
+    // v23: sổ `vec_shipped`. GIEO bằng mọi vector ĐANG CÓ (chỉ hàng chính, rowid < 2^40 — cửa sổ
+    // phụ đi theo tin của nó): giả định kho chung đã đủ tới hôm nâng cấp. Giả định đó SAI cho
+    // phần đã rò trước đó — vì thế lượt `memory vectors-catchup` đầu tiên sau nâng cấp là bước
+    // nghiệm thu bắt buộc (nó dò thiếu bằng cách dựng lại kênh, không tin sổ). Không gieo thì lượt
+    // sync đầu chở lại TOÀN BỘ ~290k vector (~900 MB) — một khối rác đúng nghĩa.
+    db.exec("CREATE TABLE IF NOT EXISTS vec_shipped (message_id INTEGER PRIMARY KEY)");
+    const hasVec = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'").get();
+    if (hasVec) {
+      db.exec("INSERT OR IGNORE INTO vec_shipped (message_id) SELECT rowid FROM vec_chunks_rowids WHERE rowid < 1099511627776");
+    }
+    version = 23;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }
