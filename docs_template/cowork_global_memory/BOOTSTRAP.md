@@ -4,9 +4,15 @@
 
 > **File này để agent đọc và thi hành**, không phải để người đọc.
 >
-> Khác bộ `cowork/` cũ: bộ cũ **chép từng file** bộ chuẩn về vì giả định máy ảo không gọi được
-> `zemory`. Bản này **dựng hẳn một bản zemory chạy được** — bộ chuẩn đầy đủ · **kho nhớ riêng
-> (Global Memory)** · quét dữ liệu từ các nguồn · và giao diện. Dò không đạt thì quay về bộ cũ.
+> **Đối tượng dùng: người KHÔNG rành kỹ thuật.** Họ dán đúng một câu, rồi không gõ gì nữa. Mọi
+> thứ dưới đây — cài Node, tải mã nguồn, dựng, quét, nhúng, nối — **là việc của BẠN**. Thấy máy
+> thiếu gì thì cài nấy; tuyệt đối không liệt kê một danh sách yêu cầu rồi ngồi chờ họ làm.
+>
+> Kết quả: máy họ có **zemory chạy được** + **kho nhớ riêng của họ** + trợ lý **đọc được kho đó**.
+> Khác bộ `cowork/` cũ: bộ cũ chỉ **chép file** bộ chuẩn, không có kho nhớ — giữ làm đường lùi cho
+> máy không cài được Node.
+
+---
 
 ## Cách khởi động (người dùng)
 Mở một phiên Cowork với thư mục làm việc đã gắn — ở ô chat bấm **Project or folder**, rồi chọn
@@ -19,26 +25,81 @@ Mở một phiên Cowork với thư mục làm việc đã gắn — ở ô chat
 
 ---
 
-## §0. DÒ TRƯỚC — ba lệnh, rồi mới quyết đi tiếp hay quay về bộ cũ
+## §A. DỪNG LẠI — kiểm xem bạn ĐÃ CÓ trí nhớ chưa (làm TRƯỚC mọi thứ)
 
-**Đừng giả định năng lực của máy ảo.** Nó khác nhau theo từng máy, và **cả hai chiều giả định đều
-đã từng sai**: bản `cowork/` cũ khẳng định *"không cài gì, không gọi `zemory`, máy ảo chỉ ra được
-domain Anthropic"* — đo lại trên một máy thật thì **có** `node`, **có** `npm`, `npm ping` ra được
-registry, và đọc được cả thư mục của máy thật. Nhưng máy đó vốn đã cài sẵn và đã mount sẵn; máy
-mở Cowork lần đầu thì trắng.
+> 🔄 **Đảo hướng 2026-08-27.** Cả bộ này dựng trên tiền đề *"Cowork không với tới `zemory` trên
+> máy thật, nên phải cài một bản riêng với kho riêng"*. **Tiền đề đó SAI**, và nó sai vì một lỗi
+> đường dẫn chứ không phải vì giới hạn của máy ảo: `zemory setup mcp` dò cấu hình Claude Desktop
+> ở `%APPDATA%\Claude\`, trong khi bản cài từ Microsoft Store (MSIX) **chuyển hướng** sang
+> `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\`. Nên trên máy ĐANG CHẠY Desktop
+> nó vẫn báo "chưa cài", và người dùng kết luận nhầm là Desktop không đọc được kho.
+>
+> **Nghiệm thu 2026-08-27, trong một phiên Cowork thật:** nối MCP vào Claude Desktop rồi hỏi
+> trong Cowork ⇒ nó liệt kê đủ `mcp__zemory__memory_search` · `memory_show` · `memory_stats` ·
+> `memory_context` · `memory_conflicts` · `memory_doctor`, và `memory_stats` trả về **đúng kho
+> chung của máy thật**: `messages` = **303.977**, khớp tuyệt đối với số đo cùng lúc ở máy thật
+> (số 30 phút trước đó là 303.434). Trùng đúng một con số **đang thay đổi** là bằng chứng nó đọc
+> kho SỐNG, không phải bản sao.
+
+**Việc đầu tiên: nhìn danh sách tool của chính bạn.**
+
+Có tool nào tên `mcp__zemory__memory_*` không?
+
+| | làm gì |
+|---|---|
+| **CÓ** | ✅ **DỪNG. Không dựng gì cả.** Bạn đã nối thẳng vào kho nhớ chung của máy thật — đủ và tốt hơn mọi thứ bộ này dựng ra. Gọi `memory_stats` để xác nhận `dbPath`, báo người dùng, rồi làm việc bình thường: cần nhớ gì thì gọi `memory_search`. Phần còn lại của file này **không áp dụng**. |
+| **KHÔNG** | Đọc tiếp §B rồi mới xuống §0. |
+
+## §B. Chưa có tool — kiểm xem máy đã cài zemory chưa, rồi mới quyết
 
 ```bash
-node -v; npm -v            # ① có runtime không
-npm ping                   # ② ra được npm registry không
-ls <thư-mục-đã-gắn>        # ③ thấy được gì của máy thật
+zemory --version
 ```
 
-| ① và ② | làm gì |
+| | làm gì |
 |---|---|
-| cả hai **xanh** | đi tiếp §1 |
-| ① hoặc ② **đỏ** | **DỪNG bản này**, chuyển sang `docs_template/cowork/BOOTSTRAP.md` (lối chép file). Đừng cố cài. |
+| **in ra số hiệu** | zemory có rồi, chỉ **chưa nối**. Nhảy thẳng **§5b** — một lệnh là xong, **đừng dựng lại từ đầu**. |
+| **không có lệnh** | máy trắng. Đi tuần tự **§0 → §5b**. Đó là đường chính của bộ này. |
 
-**In số ra cho người dùng thấy.** Đừng báo "đã dò" mà không in kết quả.
+Không hỏi người dùng ở bước này. Họ đã chọn khi dán câu gọi bạn; việc còn lại là của bạn.
+
+---
+
+## §0. DÒ — rồi TỰ CÀI thứ còn thiếu. Đừng bắt người dùng gõ gì.
+
+> ⚠ **Chỉ tới đây khi §A không thấy tool `mcp__zemory__memory_*`.** Có rồi thì đã xong, đừng dựng đè.
+
+**Người dùng đã làm xong phần của họ khi dán câu lệnh gọi bạn.** Từ đây trở đi là việc của bạn:
+thiếu gì thì **cài nấy**, không thông báo một danh sách yêu cầu rồi ngồi chờ. Họ không rành kỹ
+thuật — đó là lý do bộ này tồn tại.
+
+```bash
+node -v ; npm -v ; git --version      # ① máy có sẵn gì
+npm ping                              # ② ra được registry không
+```
+
+**Thiếu `node` hoặc `git` ⇒ CÀI, không bỏ cuộc.** Windows 10 (1809+) và 11 đều có sẵn `winget`:
+
+```bash
+winget --version                                   # có winget không
+winget install -e --id OpenJS.NodeJS  --silent --accept-package-agreements --accept-source-agreements
+winget install -e --id Git.Git        --silent --accept-package-agreements --accept-source-agreements
+```
+
+Cài xong **mở một shell mới** rồi đo lại `node -v` — tiến trình đang chạy không thấy `PATH` vừa đổi.
+
+Không có `winget` (Windows quá cũ · macOS · Linux) thì theo bảng này, vẫn là việc của bạn:
+
+| nền | cách |
+|---|---|
+| macOS | `brew install node git` — chưa có brew thì cài brew trước |
+| Linux | trình quản lý gói của bản phân phối (`apt` · `dnf` · `pacman`) |
+| Windows không winget | tải bộ cài Node LTS bản `.msi` rồi chạy im lặng: `msiexec /i <file> /qn` |
+
+**Chỉ khi đã THỬ CÀI mà vẫn hỏng** mới chuyển sang `docs_template/cowork/BOOTSTRAP.md` (lối chép
+file, không cần Node). Nói rõ đã thử cách nào và hỏng ở đâu — đừng lặng lẽ đổi đường.
+
+**In số đo ra.** Đừng báo "đã dò" mà không in kết quả; và đừng báo "đã cài" khi chưa đo lại.
 
 ## §1. HỎI NGƯỜI DÙNG — kho nhớ đặt ở đâu
 
@@ -58,11 +119,10 @@ ls -a <thư-mục-cha>        # có .tmp.driveupload / .dropbox / tên chứa On
 # fsutil hardlink list "<đường-dẫn-kho>"   → ra NHIỀU HƠN một dòng = có kẻ khác đang đụng vào
 ```
 
-**Luật 2 — kho nhớ này là kho RIÊNG, KHÔNG trỏ vào kho của máy thật.**
-Nếu máy thật đã dùng zemory, nó có kho riêng và **đang mở kho đó** (tiến trình nền, móc chạy sau
-mỗi lượt trò chuyện). Trỏ chung vào một tệp = **hai bên cùng ghi mà không thấy nhau** — khoá ghi
-dựa trên **pid** nên **không phủ qua ranh giới máy ảo**. Muốn gộp dữ liệu về sau thì dùng đường
-xuất/nhập gói ở §6, **không phải** dùng chung tệp.
+**Luật 2 — MỘT máy chỉ có MỘT kho.**
+Tới được §1 nghĩa là §B đã xác nhận máy **chưa có** zemory (có rồi thì §B đã đưa bạn thẳng sang
+§5b). Nên đừng dựng thêm kho thứ hai cạnh một kho đã có: hai kho là hai nửa ký ức, tìm bên này
+không thấy bên kia. Lỡ phát hiện máy đã có kho ⇒ **DỪNG, quay lại §B**.
 
 Chốt xong thì ghi lại đường dẫn đó — mọi bước sau dùng nó.
 
@@ -136,24 +196,58 @@ lược bớt, không phải diễn giải lại. Mọi quy trình (`fill` · `p
 
 ## §4. Quét dữ liệu vào kho — như bản zemory gốc
 
+**HỎI người dùng lấy từ đâu — MỘT câu, kèm đề xuất của bạn.** Đừng quét câm rồi báo "xong".
+
+> *"Tôi lấy ký ức từ những nguồn nào? Đề xuất: lấy hết những nguồn bạn có."*
+>
+> | nguồn | là gì |
+> |---|---|
+> | trên máy | trợ lý lập trình đã cài sẵn (Claude Code · Codex · Continue · LM Studio) |
+> | ChatGPT | hội thoại trên chatgpt.com — mở một cửa sổ để bạn đăng nhập một lần |
+> | Claude.ai | hội thoại trên claude.ai — cũng đăng nhập một lần |
+
 ```bash
-zemory memory scan            # nhanh: các vị trí đã biết
-zemory memory scan --deep     # nếu quét nhanh không thấy gì: dò rộng hơn
-zemory memory search "<thử một từ khoá>"
+zemory memory scan                          # nguồn trên máy (nhanh, incremental)
+zemory memory scan --deep                   # quét nhanh ra 0 thì dò rộng hơn
+zemory memory scan-web --platform chatgpt   # chỉ khi người dùng chọn
+zemory memory scan-web --platform claude    # chỉ khi người dùng chọn
 ```
 
-**In ra cho người dùng: quét được bao nhiêu phiên, bao nhiêu tin, từ ngày nào đến ngày nào.**
-Quét ra **0 tin** là chuyện bình thường ở máy ảo trắng — **nói thẳng như vậy**, đừng im lặng bỏ
-qua và cũng đừng báo "đã quét xong" như thể có dữ liệu.
+**`scan-web` mở cửa sổ trình duyệt để đăng nhập.** Mật khẩu gõ trên trang thật của nền đó, **không
+bao giờ nhập vào zemory**. Lệnh trả `need-login` thì **nói cho người dùng biết cửa sổ đang chờ họ**
+— đừng đứng im, và tuyệt đối đừng báo "đã quét xong".
 
-Tuỳ chọn, chỉ khi người dùng muốn tra được bằng ngữ nghĩa (không chỉ đúng từ khoá):
-```bash
-zemory memory embed --all     # CHẠY LÂU (hàng giờ với kho lớn). Hỏi trước khi chạy.
-```
+**In ra: bao nhiêu phiên · bao nhiêu tin · từ ngày nào đến ngày nào.** Quét ra **0 tin** thì nói
+thẳng là 0 và nêu vì sao (máy chưa có trợ lý nào, hoặc chưa chọn nguồn web).
 
 > ⛔ **`scan` · `embed` · `reindex` · `sync` · `hook` đều là lệnh GHI.** Kho này là kho riêng ở
 > §1 nên ghi vào là an toàn — **nhưng nếu vì lý do nào đó kho đang trỏ vào kho của máy thật thì
 > DỪNG NGAY và hỏi người dùng.** Kiểm lại bằng `zemory memory verify` và đường dẫn ở §1.
+
+## §4b. NHÚNG — BẮT BUỘC, không phải tuỳ chọn
+
+Quét xong mới có **một nửa**: tìm bằng **từ khoá** chạy được ngay (chỉ mục chữ cập nhật ngay lúc
+nạp), nhưng tìm bằng **ý nghĩa** thì chưa. Thiếu nó là mất lane đắt nhất của recall — hỏi "hôm nọ
+bàn gì về X" mà diễn đạt khác chữ đã lưu là không ra.
+
+```bash
+zemory memory embed --all
+```
+
+**Chạy LÂU** — cỡ **58 tin/phút**, nên 1.000 tin ≈ 17 phút, một kho ChatGPT vài chục nghìn tin là
+nhiều giờ. Vì vậy:
+
+- **Đừng ngồi chờ nó xong rồi mới nói gì.** Khởi động, rồi báo người dùng con số ước lượng.
+- **Nói bằng thời gian, không bằng thuật ngữ**: *"đang dựng kho tra cứu cho 1.240 mẩu, khoảng 20
+  phút nữa là tìm theo ý nghĩa được; từ giờ tìm theo từ khoá đã dùng được rồi."*
+- Máy có **daemon nền** (§5) thì nó **tự nhúng tiếp** theo nhịp, không cần ai canh. Kiểm còn tồn
+  bao nhiêu bằng dòng `remaining` của:
+
+```bash
+zemory memory info
+```
+
+⛔ **Đừng báo "đã xong" khi `remaining` còn khác 0.** Đó là lời nói dối dễ mắc nhất ở bước này.
 
 ## §5. Giao diện
 
@@ -167,6 +261,31 @@ Nó chạy một máy chủ cục bộ và mở cửa sổ. **Trong máy ảo, c
 - **báo thẳng cho người dùng là không xem được từ đây**, đừng khẳng định "đã mở";
 - mọi việc vẫn làm được bằng dòng lệnh — giao diện chỉ là một cách nhìn khác của cùng dữ liệu;
 - muốn xem thì mở giao diện **trên máy thật**, trỏ vào kho ở §1 (nếu máy thật với tới được).
+
+## §5b. NỐI MCP — bước làm cho mọi thứ vừa dựng trở nên DÙNG ĐƯỢC
+
+> Thiếu bước này thì kho đầy dữ liệu mà trợ lý **không đọc được** — dựng xong để đó.
+> Bộ này trước đây thiếu hẳn nó, vì lệnh dò nhầm đường cấu hình nên tưởng Desktop chưa cài.
+
+```bash
+zemory setup mcp claude-desktop
+```
+
+Lệnh tự sao lưu `.bak`, chỉ thêm khoá `zemory`, **không đụng** server khác đã có.
+
+**Rồi bảo người dùng THOÁT HẲN Claude Desktop và mở lại** — chuột phải biểu tượng khay hệ thống →
+Quit. Đóng cửa sổ suông là chưa đủ: tiến trình còn sống thì không nạp lại cấu hình.
+
+**Nghiệm thu — bắt buộc, đừng bỏ:** mở lại rồi hỏi trong phiên mới:
+
+> *"Bạn có tool nào tên bắt đầu bằng `memory_` không? Gọi `memory_stats` và cho tôi biết `dbPath`
+> cùng số dòng bảng `messages`."*
+
+| kết quả | nghĩa |
+|---|---|
+| liệt kê được `memory_*` và `dbPath` trỏ đúng kho ở §1 | ✅ xong — báo người dùng rồi dừng |
+| không có tool nào | ⚠ chưa nạp — kiểm đã thoát HẲN chưa, rồi chạy lại `setup mcp` |
+| có tool nhưng `dbPath` khác | 🔴 đang trỏ nhầm kho — **DỪNG**, đối chiếu lại §1 |
 
 ## §6. Đồng bộ Drive — ĐỂ SAU, đừng dựng bây giờ
 
@@ -215,11 +334,16 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | mục | phải in |
 |---|---|
-| Dò năng lực | số hiệu `node` · `npm` · kết quả `npm ping` |
+| Dò năng lực | số hiệu `node` · `npm` · `git` · **thứ nào BẠN vừa cài thêm** |
 | zemory | số hiệu · cài mới hay đã có sẵn |
-| **Kho nhớ** | **đường dẫn** · ai chốt · `verify` lành/hỏng · **có nằm trong thư mục đồng bộ đám mây không** · **có phải kho riêng không** |
+| **Kho nhớ** | **đường dẫn** · ai chốt · `verify` lành/hỏng · **có nằm trong thư mục đồng bộ đám mây không** |
 | Bộ chuẩn | loại dự án đã chọn · `doctor` xanh/đỏ · `conform` chấm bao nhiêu |
-| Quét dữ liệu | bao nhiêu phiên · bao nhiêu tin · từ ngày nào đến ngày nào (**0 thì nói thẳng là 0**) |
+| Quét dữ liệu | **nguồn nào người dùng chọn** · bao nhiêu phiên · bao nhiêu tin · từ ngày nào đến ngày nào (**0 thì nói thẳng là 0**) |
+| **Nhúng** | đã khởi động chưa · `remaining` còn bao nhiêu · **ước còn bao nhiêu phút** · ai nhúng tiếp (daemon nền hay không ai) |
+| **Nối trợ lý (§5b)** | `setup mcp` chạy chưa · người dùng đã khởi động lại Desktop chưa · **nghiệm thu: có thấy `memory_*` không, `dbPath` có trỏ đúng kho ở §1 không** |
 | Giao diện | mở được hay không — **không mở được thì nói không mở được** |
 | Đã GHI gì | liệt kê từng lệnh + ai cho phép. Không ghi gì thì nói "không ghi gì" |
-| Còn treo | đồng bộ Drive · việc chưa làm được và vì sao |
+| Còn treo | đồng bộ nhiều máy · việc chưa làm được và vì sao |
+
+⛔ **Hai câu cấm nói khi chưa đúng:** *"đã xong"* lúc `remaining` còn khác 0 · *"trợ lý đọc được
+kho rồi"* lúc chưa nghiệm thu §5b bằng một lời gọi `memory_stats` thật.

@@ -3,37 +3,50 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔵 BÀN GIAO 2026-08-26 (chiều) — ĐỌC MỤC NÀY TRƯỚC
+## 🔵 BÀN GIAO 2026-08-27 — ĐỌC MỤC NÀY TRƯỚC
 
-**1 mục mở** (§Bảng kê 2 tháng thử việc, cuối file). Dưới đây là TRẠNG THÁI đã ĐO, không phải nhớ.
+**1 mục mở** (§Bộ tool điều khiển, cuối khối này). Dưới đây là TRẠNG THÁI đã ĐO.
 
-### Phiên này làm gì (số đo đầy đủ: `06_CHANGES [2026-08-26b]` · thiết kế: `plan/08 §8d`)
-Vá **sync chịu được cú CHẬP của ổ đám mây**, sau khi soi docs bắt được lượt auto-sync đang đỏ:
-- **Chiều GHI** — số khối ĐẾM ĐƯỢC phán thành/bại, không phải ngoại lệ; retry 3 lần có cắt về
-  chiều dài cũ; watermark nhích ngay khi khối chứng minh được có mặt.
-- **Chiều ĐỌC** — `withDriveRetry` bọc `extractChunk`, nhận nhóm mã chập, không nhận `ENOENT`.
-- **Quan sát** — stderr của con sync thôi bị vứt; log phân biệt được thành/bại.
-- **Trả nợ vector kênh chung**: đẩy 2.790 vector / 12,5 MB, nghiệm thu 3 phép khác cơ chế.
+### Phiên này làm gì (số đo: `06_CHANGES [2026-08-27]` · thiết kế: `plan/20`)
+**Phát hiện lớn: Cowork ĐỌC ĐƯỢC kho chung qua MCP.** Vế cũ *"Cowork không dùng được MCP"* nằm
+trong code là SAI, và nó sai vì **một lỗi đường dẫn**: bản Claude Desktop cài từ Microsoft Store
+(MSIX) chuyển hướng AppData, nên `setup mcp` dò ở `%APPDATA%\Claude\` thì thấy trống và báo
+"chưa cài" trên chính máy đang chạy Desktop. Từ lỗi đó đẻ ra cả một bộ template riêng cho máy ảo.
+- Vá `mcpsetup.ts` (glob tiền tố `Claude_`, ưu tiên trước `%APPDATA%`) + `harness.ts`.
+- Nắn `cowork_global_memory/BOOTSTRAP.md`: §0 tự cài Node/git thay vì bỏ cuộc · §4 hỏi nguồn +
+  `scan-web` · §4b `embed` BẮT BUỘC · **§5b nối MCP + nghiệm thu** (trước thiếu hẳn).
 
 ### Trạng thái máy lúc chốt (ĐO)
-- **zemory 2.7.1** (bump lúc push, user chốt) · gate **830/830 · 0 fail · 0 skipped · EXIT=0**.
-  `npm test` nay chạy `--test-concurrency=4` — 12 tiến trình song song đã làm tràn RAM hai lần.
-- Kênh chung **42 khối · 1.934.599.820 byte** · `vectors-catchup --dry-run` ra **thiếu 0**.
-- Kho local **301.513 tin · 287.096 vector** (phủ 99,4%, 768d). Daemon chạy, autostart + autosync BẬT.
-- 30,4 MB khối trùng (#30≡#31 · #37≡#39) **cố ý để yên** — ngưỡng gộp tự động 48 khối, nay 42.
+- **zemory 2.7.2**. Gate đầy đủ gần nhất **835/835 · 0 fail · EXIT=0** (chạy trước khi sửa docs).
+- Kho local **~304k tin**. Desktop đã nối MCP: config ở
+  `…\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
+  (có `.bak-20260827-001214` để lùi).
+- Đã commit + push trong phiên (xem `git log`).
+
+### Việc đầu tiên của phiên sau
+**Dựng bộ ba tool điều khiển zemory qua MCP** — user chốt khung: *"mọi chức năng đã có sẵn trên
+zemory hết rồi, MCP chỉ là điều khiển và quản lý"*. Không đẻ chức năng mới, chỉ mở cửa:
+
+- [ ] `memory_scan { deep?, web?, platform? }` — gọi `scan()` + `scanWebPlatforms()` sẵn có; trả
+      số phiên/tin, hoặc `need-login` (đừng đứng im, phải nói cửa sổ đang chờ).
+- [ ] `memory_embed {}` — **khởi động rồi TRẢ NGAY**, không chờ. ~58 tin/phút nên 1.000 tin ≈ 17
+      phút; lời gọi MCP không sống tới đó.
+- [ ] `memory_jobs {}` — zemory đang làm gì · còn bao nhiêu chờ nhúng · ai giữ khoá · daemon sống
+      không. Bốn nguồn ĐÃ CÓ: `vectorRemaining` · `schedulerChildRunning` · `syncJobRunning` ·
+      `cliWriteHolder`. Đây là tool đáng giá nhất — chính phiên này đã phải tự đi đo tay ba lần.
+
+Cả ba đi qua write-gate; đang có job khác ghi thì trả *"đang bận"* thay vì tranh khoá.
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
-· **`✕ another background job is writing the memory` KHÔNG phải lỗi sync.** Đó là WRITE GATE chạy
-  đúng (embed đang giữ token). Lỗi thật nằm ở `/sync-status`, và nó bị câu kia che mất.
-· **Ổ đám mây ném lỗi GIẢ.** `UNKNOWN` là mã libuv khi Windows đưa mã nó không map nổi. Khối vẫn
-  nằm đủ trên kênh dù `appendFileSync` đã ném. Đo trạng thái đĩa, đừng tin lời ngoại lệ.
-· **Gate `npm test` chạy song song theo số CPU (12 tiến trình / 113 file).** Nhóm nạp ONNX vì vậy
-  lúc thì tràn RAM (máy 15,7 GB), lúc thì dồn vào một tiến trình chạy 11 phút. Chạy gate lúc máy
-  còn bận là tự chuốc — đã làm tràn RAM của user hai lần.
-· **`.CPU` trong PowerShell đọc lại giá trị SỐNG mỗi lần truy cập** ⇒ `$p.CPU - $p.CPU` luôn ra 0,
-  và tôi đã báo nhầm một tiến trình đang chạy là "treo". Lấy hai mẫu vào hai biến rồi mới trừ.
-· **Cổng bắt 3 lỗi trong chính bản vá** — lần thử cuối không cắt · `throw` thiếu `cause` · dòng
-  `[sync]` đáng giữ nhất bị điều kiện "chỉ giữ khi hỏng" vứt (nó chỉ hiện ở lượt THÀNH CÔNG).
+· **ĐỌC KỸ MỤC ĐÍCH TRƯỚC KHI BÀN GIẢI PHÁP.** Tôi hiểu sai bối cảnh bộ cowork **ba lần** (tưởng
+  dựng trong máy ảo · tưởng máy đích đã có zemory · tưởng người dùng phải tự cài Node) trong khi
+  chính file ghi rõ *"để agent đọc và thi hành"* và đối tượng là **người không rành kỹ thuật**.
+· **Một dòng khẳng định sai sống lâu hơn bug.** *"Cowork không dùng được MCP"* viết cùng lúc với
+  lỗ đường dẫn, không ai thử lại, và nó lái cả một kiến trúc đi sai suốt 3 tuần.
+· **Bản MSIX chuyển hướng AppData** — mọi phép dò cấu hình app Store phải tính tới
+  `%LOCALAPPDATA%\Packages\<gói>\LocalCache\Roaming\`.
+· **Preflight chặn gate khi daemon đang chạy job** — tắt daemon trước `npm run check`, và nhớ
+  daemon **tự bật lại** theo autostart.
 
 ## ⭐ NGÃ RẼ RECALL — "còn cách nào nữa không" (dựng 2026-08-23 để trả lời câu user sẽ hỏi)
 
@@ -82,34 +95,3 @@ hình dung: phát hiện lặp → xếp hạng → trình user, user gật agen
 ship, 3 câu "Cần chốt" chốt bằng thiết kế có lý do, xem `06_CHANGES [2026-08-24g]`. Vế còn để
 ngỏ có chủ đích: Codex/Cursor adapter khi có nhu cầu · global `~/.claude/CLAUDE.md` · recall
 xếp curated cao hơn — vế cuối phải qua corpus có nhãn, để cặp với #12.)*
-
-## 📋 BẢNG KÊ 2 THÁNG THỬ VIỆC — user giao 2026-08-26
-
-- [ ] **Dựng bảng kê ĐẦY ĐỦ mọi việc user đã làm từ 29/06/2026 → nay**, phủ **cả hệ CŨ lẫn hệ MỚI**.
-  Việc này KHÔNG liên quan tới bản thân app zemory — nó là **phép dùng** Global Memory đúng lý do
-  hệ này tồn tại (HP điều 1: agent nhớ được việc phiên trước thay vì bắt user kể lại).
-
-  **Nguồn — Global Memory là nguồn CHÍNH, không phải trí nhớ phiên:**
-  · `zemory memory search "<chủ đề>" --all` (xuyên project VÀ xuyên máy — kho có 3 host:
-    `SS01-IT-12` · `SS01-IT-10` · `DESKTOP-PFB157K`, và cả `chatgpt-web` từ 02/2025).
-  · `zemory memory digest <session>` cho từng phiên trong dải ngày — digest là lớp mỏng, đọc
-    trước rồi mới đào xuống tin thật bằng anchor (điều 8).
-  · Đối chiếu **`06_CHANGES` + `archive/06_CHANGES` của TỪNG repo** — mỗi repo có changelog riêng,
-    và `zemory changelog search` phủ cả tầng archive.
-  · Git log của từng repo (ngày + tên commit) làm đường đo THỨ HAI cho phần có code.
-
-  **Phạm vi repo đã biết** (rà lại bằng registry, đừng tin danh sách này là đủ): 9 repo `PBI_*`
-  (`HR · IC · IT · MKT · OPS · PUR · SALE · SasinFlow_Maintain · SasinFlow_Rebuild`) ·
-  `SasinFlow` · `SasinHarvest` · `SasinInfra` · `OpenRCA_3BoysAI` · `zemory`.
-
-  **Ràng buộc khi làm:**
-  · **Chia rõ HỆ CŨ vs HỆ MỚI** — user nêu đích danh hai nhóm này.
-  · Mỗi mục phải có **ngày + nguồn tra được** (id tin GM · khoá ngày changelog · hash commit).
-    Việc không truy được về nguồn ⇒ ghi "chưa xác minh được", KHÔNG bịa cho đủ (điều 12).
-  · Đây là **văn bản đưa người đọc** (hồ sơ đánh giá thử việc) ⇒ áp `.claude/skills/write-style/`.
-  · Đọc ra file, KHÔNG nhét vào docs harness của zemory — nó không phải tài sản của repo này.
-    Hỏi user muốn đặt ở đâu trước khi ghi.
-
-  **Bẫy đã biết:** dải 29/06 → nay nằm vắt qua **nhiều máy**; phiên trên `SS01-IT-10` và
-  `DESKTOP-PFB157K` chỉ có trong kho nếu đã sync về — kiểm `memory scope ls` trước khi kết luận
-  "tháng đó không làm gì".

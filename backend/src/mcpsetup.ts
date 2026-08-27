@@ -12,7 +12,7 @@
 //     (trừ `--force`), và luôn sao lưu `.bak` trước khi ghi.
 //   · Không đoán đường dẫn: file không tồn tại thì TẠO, nhưng thư mục cha phải có sẵn —
 //     agent chưa cài mà tự dựng cây thư mục của nó là rác trên máy user.
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -63,6 +63,32 @@ export function agentTargets(projectRoot: string): AgentTarget[] {
       : os === "darwin"
         ? join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
         : join(home, ".config", "Claude", "claude_desktop_config.json");
+  // 🔴 BẢN MSIX (cài từ Microsoft Store) CHUYỂN HƯỚNG AppData — 2026-08-27.
+  //
+  // Gói MSIX chạy trong container: mọi phép ghi vào `%APPDATA%` bị lái sang
+  // `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Roaming\…`. Nên trên một máy ĐANG
+  // CHẠY Claude Desktop, đường `%APPDATA%\Claude\` vẫn TRỐNG và lệnh này báo "chưa cài" —
+  // đo được trên máy thật: tiến trình `Claude.exe` chạy từ
+  // `C:\Program Files\WindowsApps\Claude_1.37937.1.0_x64__pzs8sxrjxfjjc\`, còn config thật nằm ở
+  // `…\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`.
+  //
+  // Cái giá của lỗ này KHÔNG phải một dòng báo sai: user kết luận "Desktop không đọc được kho"
+  // rồi đi dựng cả một bộ template riêng cho máy ảo — xem `plan/20`.
+  //
+  // Dò bằng GLOB theo tiền tố `Claude_` chứ không ghim đúng một PackageFamilyName: phần đuôi
+  // (`pzs8sxrjxfjjc`) là mã publisher, đổi theo kênh phát hành. Ghim cứng là vá cho đúng MỘT máy.
+  const msixDesktop: string[] = [];
+  if (os === "win32") {
+    const pkgRoot = join(process.env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "Packages");
+    try {
+      for (const dir of readdirSync(pkgRoot)) {
+        if (!dir.startsWith("Claude_")) continue;
+        msixDesktop.push(join(pkgRoot, dir, "LocalCache", "Roaming", "Claude", "claude_desktop_config.json"));
+      }
+    } catch {
+      /* không đọc được thư mục Packages ⇒ coi như không có bản MSIX (fail-open) */
+    }
+  }
   // Khai server = agent CÓ tool. Dặn trong file chỉ dẫn = agent BIẾT LÚC NÀO gọi. Thiếu vế
   // sau thì tool nằm đó không ai đụng — đo trên chính repo này trước 2026-08-02: 0 dòng cài
   // chỉ dẫn. Hai vế đi cùng nhau trong MỘT lệnh, không bắt user nhớ làm bước hai.
@@ -83,7 +109,8 @@ export function agentTargets(projectRoot: string): AgentTarget[] {
     {
       id: "claude-desktop",
       label: "Claude Desktop",
-      candidates: [desktop],
+      // MSIX TRƯỚC: máy cài từ Store thì `%APPDATA%\Claude` trống, ghi vào đó là ghi vào hư không.
+      candidates: [...msixDesktop, desktop],
       key: "mcpServers",
       scope: "user",
       memoCandidates: [],

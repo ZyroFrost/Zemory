@@ -5,6 +5,39 @@
 
 ---
 
+## [2026-08-27] — Cowork ĐỌC ĐƯỢC kho chung qua MCP: một đường dẫn sai đẻ ra một kiến trúc thừa
+
+> 🔄 **Supersede** vế *"Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới
+> `zemory` trên máy thật"* — in ở `setup mcp`, và là **tiền đề của cả bộ**
+> `docs_template/cowork_global_memory/`. Vế đó viết CÙNG LÚC với lỗ đường dẫn dưới đây nên chưa
+> bao giờ thử được, và không ai thử lại.
+
+**Gốc: bản MSIX chuyển hướng AppData.** Desktop cài từ Microsoft Store chạy trong container ⇒ ghi
+vào `%APPDATA%` bị lái sang `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\`. Nên trên máy
+**đang chạy** Desktop, `setup mcp` vẫn báo *"chưa cài"* — và từ đó đẻ ra cả một bộ template riêng
+cho máy ảo (13 file · kho cô lập · §6 treo vô hạn).
+
+**Nghiệm thu trong phiên Cowork THẬT** — bằng chứng là con số **đang trôi**, thứ bản sao không giả
+được: máy thật đo 30 phút trước **303.434** tin · Cowork báo **303.977** · đo lại ngay sau đó
+**303.977**. Cowork liệt kê đủ `mcp__zemory__memory_*`, `dbPath` đúng kho chung.
+
+**Đổi ở code:** `mcpsetup.ts` dò đường MSIX bằng **glob tiền tố `Claude_`** (không ghim
+`PackageFamilyName` — đuôi đổi theo kênh phát hành), ưu tiên TRƯỚC `%APPDATA%` · `harness.ts` thay
+dòng khẳng định sai.
+
+**Nắn cả bootstrap** sau khi user đính chính phạm vi: bộ này cài lên **MÁY THẬT của người KHÔNG
+rành kỹ thuật**, **agent tự làm hết** — không phải dựng kho trong máy ảo như agent hiểu nhầm ba
+lần. MCP vì vậy **không thay** bootstrap mà là **bước CUỐI** của nó. Bốn lỗ vá: §0 *"dò không đạt
+thì quay về bộ cũ"* ⇒ bỏ cuộc đúng lúc máy nontech nào cũng rơi vào (thiếu Node) ⇒ nay **tự cài** ·
+§4 không hỏi nguồn, thiếu `scan-web` ⇒ máy trắng quét ra **0 tin** · §4b `embed` từ *"tuỳ chọn"*
+lên **BẮT BUỘC** · **§5b nối MCP + nghiệm thu** — trước thiếu hẳn, nên dựng xong vẫn không đọc được.
+
+**Cổng:** `mcp-msix.test.mjs` 5 ca soi HÀNH VI trên HOME giả · 2 đột biến (bỏ nhánh MSIX ⇒ 3 đỏ ·
+ghim cứng PFN ⇒ đúng 1 đỏ). Máy thật: `setup mcp` in `✓ đã khai claude-desktop`. Template 41/41.
+
+**Còn hở:** chỉ đo Windows + một bản MSIX · mới chứng minh **ĐỌC**, chưa đo GHI · chưa đo ra lệnh
+việc nặng · bootstrap mới **chưa chạy thử trên máy trắng thật**. Thiết kế đầy đủ: `plan/20`.
+
 ## [2026-08-26b] — sync chịu được cú CHẬP của ổ đám mây: ngoại lệ KHÔNG phải trọng tài
 
 **Triệu chứng.** UI báo `✕ another background job is writing the memory` — đó là WRITE GATE chạy
