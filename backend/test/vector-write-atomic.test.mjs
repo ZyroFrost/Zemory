@@ -61,7 +61,9 @@ function orphans(p) {
 
 test("embed xong: không dòng vec_map/vec_hash nào trỏ vào vector không tồn tại", async (t) => {
   const dir = tempDir(t, "zemory-vecatomic-");
-  const p = seed(dir);
+  // MỘT tin dài là đủ để ép tách chunk (điều ca này cần). Hai tin dài từng làm ca này đỉnh 4.088 MB —
+  // đúng ca chạm trần 4 GB của lồng gate (đo Job Object 2026-08-27); một tin ≈ 2 GB, cùng ca 2 bên dưới.
+  const p = seed(dir, 1, 2);
 
   const r = await embedPending({ dbPath: p, limit: 50 });
   assert.ok(r.embedded > 0, `phải embed được gì đó, thấy ${r.embedded}`);
