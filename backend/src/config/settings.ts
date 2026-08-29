@@ -21,6 +21,10 @@ export interface ScopeLane {
   origin?: string;
   host?: string;
   source?: string;
+  /** v24 — KHE TAI KHOAN cua nguon web. Hoi thoai nam theo TAI KHOAN chu khong theo nen, nen
+   *  mot nen co the co nhieu lane con; thieu chieu nay thi o tick theo tai khoan khong loc
+   *  duoc gi (user bat 2026-08-28). NULL trong kho (phien cu) => lane khong ro. */
+  account?: string;
 }
 
 interface ZConfig {
@@ -55,6 +59,14 @@ interface ZConfig {
   syncAttachments?: boolean;
   /** Kết quả kiểm đăng nhập gần nhất của từng nền web — xem getWebAuth. */
   webAuth?: Record<string, { ok: boolean; at: string; who?: string }>;
+  /**
+   * Kết cục lượt KÉO gần nhất của từng lane web — xem getWebPull.
+   *
+   * Tách khỏi `webAuth` vì đây là hai sự thật khác nhau: *"đăng nhập còn sống không"* và
+   * *"lượt kéo vừa rồi ra sao"*. Gộp lại thì không phân biệt nổi **chưa bao giờ chạy** với
+   * **chạy rồi và hỏng** — mà đó đúng là hai thứ người dùng cần đọc khác nhau.
+   */
+  webPull?: Record<string, { at: string; ok: boolean; status: string; pulled?: number; error?: string }>;
   /** Tên các tool mà tin `tool_use` của chúng ĐƯỢC nhúng vector — xem getEmbedTools. */
   embedTools?: string[];
 }
@@ -269,7 +281,27 @@ export function getWebAuth(): Record<string, { ok: boolean; at: string; who?: st
 }
 export function setWebAuth(platform: string, ok: boolean, who?: string): void {
   const c = read();
-  c.webAuth = { ...(c.webAuth ?? {}), [platform]: { ok, at: new Date().toISOString(), ...(who ? { who } : {}) } };
+  // GIỮ danh tính cũ khi lượt kiểm không mang `who` (mất phiên ⇒ `ok:false` không biết email). Bản cũ xoá
+  // `who` ⇒ email không tra ra khe nào ⇒ bấm "Liên kết" trên hàng zyrofrost mở KHE MỚI `chatgpt#2` thay vì
+  // khe main đang giữ lịch sử (đo 2026-08-29 06:15Z). Mất phiên là đổi TRẠNG THÁI, không đổi NGƯỜI.
+  const prev = c.webAuth?.[platform];
+  const keep = who ?? prev?.who;
+  c.webAuth = { ...(c.webAuth ?? {}), [platform]: { ok, at: new Date().toISOString(), ...(keep ? { who: keep } : {}) } };
+  write(c);
+}
+
+export function getWebPull(): Record<string, { at: string; ok: boolean; status: string; pulled?: number; error?: string }> {
+  return read().webPull ?? {};
+}
+
+/**
+ * Ghi kết cục một lượt kéo. **Ghi CẢ khi hỏng** — đó là toàn bộ lý do bảng này tồn tại
+ * (user chốt 2026-08-28: *"bất cứ source nào check vào mà nó lỗi ko kéo dc là phải báo"*).
+ * Chỉ ghi lúc thành công thì một nguồn chết trông y hệt một nguồn chưa tới lượt.
+ */
+export function setWebPull(lane: string, v: { ok: boolean; status: string; pulled?: number; error?: string }): void {
+  const c = read();
+  c.webPull = { ...(c.webPull ?? {}), [lane]: { at: new Date().toISOString(), ...v } };
   write(c);
 }
 

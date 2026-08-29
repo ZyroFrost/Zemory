@@ -120,7 +120,9 @@ test("nút Liên kết làm TRỌN việc: tự dò nguồn → mượn → kéo
   assert.ok(/liveConnections\(\)/.test(branch), "trả trạng thái MỚI (đã kiểm lại thật) để bảng tự cập nhật, khỏi bắt bấm lại");
 
   const js = readAppJs();
-  assert.ok(/r\.canBorrow/.test(js), "bảng phải phân biệt 'mượn được' với 'phải đăng nhập'…");
+  // Neo theo TÊN TRƯỜNG, không theo tên biến: bảng "Liên kết" tách rời đã gỡ 2026-08-28, trạng thái
+  // nay nằm ở hộp chi tiết của hàng nguồn (`c.canBorrow` trong `openSrcDetail`) — cùng phân biệt đó.
+  assert.ok(/\.canBorrow/.test(js), "bề mặt phải phân biệt 'mượn được' với 'phải đăng nhập'…");
   assert.ok(/\/connect\?platform=/.test(js), "…và bấm là gọi thẳng endpoint, không in ra lệnh cho người ta gõ");
   assert.ok(!/borrow-cookies --platform/.test(js), "UI KHÔNG được bảo người dùng chạy lệnh CLI");
 });

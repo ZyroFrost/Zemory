@@ -10,7 +10,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { claimDaemonJob, releaseDaemonJob } from "./writegate.js";
+import { claimDaemonJob, releaseDaemonJob, yieldDaemonJob } from "./writegate.js";
 
 export interface SyncJobStatus {
   running: boolean;
@@ -68,6 +68,30 @@ function runnerEntry(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "syncrun.js");
 }
 
+/** Nhịp và số lượt thử lại sau khi đã bảo chuỗi bảo trì nhường. 8 × 750 ms = 6 giây —
+ *  dư cho một tiến trình con chết và chuỗi chạy tới `finally`, mà vẫn đủ ngắn để người bấm
+ *  nút thấy nó khởi động chứ không thấy im lặng. */
+const PREEMPT_SETTLE_MS = 750;
+const PREEMPT_TRIES = 8;
+
+/**
+ * Sau khi nhường: thử giành token theo nhịp, KHÔNG chờ bận.
+ *
+ * Hết lượt mà vẫn không vào được thì phải NÓI RA (`status`), vì đây là đường của một cú bấm
+ * nút — im lặng ở đây là để người dùng nhìn một vòng xoay không bao giờ dừng, đúng thứ
+ * `02_RULES §Bề mặt CHẾT THEO nền` gọi là kiểu hỏng tệ nhất.
+ */
+function scheduleClaimRetry(onDone: ((s: SyncJobStatus) => void) | undefined, opts: { lowPriority?: boolean }, left: number): void {
+  setTimeout(() => {
+    if (status.running) return; // ai đó đã khởi động rồi
+    const s = startSyncJob(onDone, { ...opts, preempt: false });
+    if (s.running) return;
+    if (left > 1) return scheduleClaimRetry(onDone, opts, left - 1);
+    status = { running: false, startedAt: 0, ok: false, error: "could not take the memory after yielding — something else grabbed it; try again" };
+    onDone?.(status);
+  }, PREEMPT_SETTLE_MS).unref?.();
+}
+
 /**
  * Start a sync child unless one (or another daemon job) already runs.
  * Returns the current status either way — the caller treats "already running"
@@ -75,13 +99,37 @@ function runnerEntry(): string {
  */
 export function startSyncJob(
   onDone?: (s: SyncJobStatus) => void,
-  opts: { lowPriority?: boolean } = {},
+  opts: { lowPriority?: boolean; preempt?: boolean } = {},
 ): SyncJobStatus {
   if (status.running) return status;
   if (!claimDaemonJob("sync")) {
-    // Scheduler embed pass in flight — report as an error the UI can show;
-    // the user can simply retry when the spinner clears.
-    return { running: false, startedAt: 0, ok: false, error: "another background job is writing the memory — try again shortly" };
+    // 🔴 KHÔNG còn từ chối cụt (user chốt 2026-08-28: *"muốn schedule với cả bấm sync now"*).
+    //
+    // Câu cũ ở đây là *"the user can simply retry when the spinner clears"* — một giả định
+    // SAI mà không ai kiểm: nó chỉ đúng nếu con kia chạy vài phút. Đo log thật 27–28/08:
+    // embed chạy **30 phút → 3 tiếng** mỗi lượt, và daemon bị khởi động lại trước khi nó xong
+    // ⇒ trong **19 giờ** auto-sync KHÔNG THỬ nổi một lần, watermark đứng, 5.266 tin ứ lại.
+    // "Cứ bấm lại đi" là lời khuyên không dùng được, và cái nút thành cửa cụt.
+    //
+    // Nay tách theo NGƯỜI GỌI, đúng thứ tự ưu tiên `plan/14 §3` (người bấm > máy tự chạy):
+    //  · `preempt` (nút Đồng bộ ngay) ⇒ bảo chuỗi bảo trì NHƯỜNG rồi vào — người đang ngồi chờ;
+    //  · không cờ (auto-sync của scheduler) ⇒ nhường lượt, `syncTick` đã tự hẹn lại sau 3 phút.
+    if (!opts.preempt) {
+      return { running: false, startedAt: 0, ok: false, error: "another background job is writing the memory — queued, it will run on its own shortly" };
+    }
+    if (!yieldDaemonJob("Đồng bộ ngay")) {
+      // Không phải chuỗi bảo trì đang giữ (vd một CLI ngoài) — thứ đó KHÔNG cắt được: nó là
+      // tiến trình của người khác, và giết nó là thao tác bất khả đảo trên việc mình không sở hữu.
+      return { running: false, startedAt: 0, ok: false, error: "another writer holds the memory (not the maintenance chain) — try again shortly" };
+    }
+    // Chuỗi nhả token ở `finally`, tức vài vòng event loop SAU khi con chết. KHÔNG chờ bận
+    // trong handler HTTP — khoá event loop của daemon là đúng lỗi đã đo hôm nay (một lời gọi
+    // nặng bỏ đói mọi lời gọi sau nó). Nên: trả "đang nhường" ngay, rồi thử lại theo nhịp.
+    //
+    // Phải thử NHIỀU lần: con embed chết không tức thời, và bản nháp đầu chỉ thử MỘT lần nên
+    // trượt là hỏng hẳn — đúng kiểu lỗi câm mà cả trang này sinh ra để diệt.
+    scheduleClaimRetry(onDone, opts, PREEMPT_TRIES);
+    return { running: false, startedAt: 0, ok: false, error: "yielding the maintenance job — sync starts in a moment" };
   }
   status = { running: true, startedAt: Date.now() };
   let out = "";

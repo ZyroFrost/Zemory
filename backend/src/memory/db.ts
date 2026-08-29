@@ -60,7 +60,7 @@ export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
-const SCHEMA_VERSION = 23;
+const SCHEMA_VERSION = 25;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   title         TEXT,
   host          TEXT,               -- machine that ingested it (os.hostname()); null/'unknown' = pre-v4
   origin        TEXT NOT NULL DEFAULT 'local', -- 'local' = agent transcript on disk; 'web' = web-chat (chatgpt-web/…)
+  account       TEXT,               -- v24: KHE TÀI KHOẢN của nguồn web ('main','2',…). NULL = phiên cũ hoặc nguồn local; bề mặt đọc là "(không rõ)", KHÔNG đoán thành 'main'
   started_at    TEXT,               -- ISO timestamp of first message
   ended_at      TEXT,               -- ISO timestamp of last message
   message_count INTEGER NOT NULL DEFAULT 0
@@ -718,6 +719,37 @@ function migrate(db: MemoryDB, fromVersion: number): void {
       db.exec("INSERT OR IGNORE INTO vec_shipped (message_id) SELECT rowid FROM vec_chunks_rowids WHERE rowid < 1099511627776");
     }
     version = 23;
+  }
+  if (version < 24) {
+    // v24 (2026-08-28): TÀI KHOẢN của phiên web.
+    //
+    // Vì sao cần một CỘT chứ không suy từ chỗ khác: hội thoại nằm theo TÀI KHOẢN, nhưng mọi
+    // tài khoản của cùng một nền đổ chung vào một `source` (`claude-web`). Trước v24 kho
+    // KHÔNG có chiều nào phân biệt chúng ⇒ bày ô tick theo tài khoản là bày một ô không lọc
+    // được gì — đúng thứ "ô tick nói sai về chính nó" mà user bắt 2026-08-28.
+    //
+    // **CỐ Ý để NULL cho phiên cũ, KHÔNG đoán.** Suy "chắc là main" thì gán sai cho mọi hội
+    // thoại đã kéo từ tài khoản phụ, mà sai kiểu đó thì không ai phát hiện được nữa (điều 12).
+    // Bề mặt hiển thị NULL là "(không rõ)" — một sự thật đọc được, hơn một phỏng đoán im lặng.
+    // Idempotent: kho dựng MỚI đã có cột từ DDL; ép version lùi rồi migrate lại (cổng
+    // `db-migrate-vecshipped` làm đúng thế) mà ALTER mù là `SQLITE_ERROR duplicate column`
+    // — bắt được 2026-08-28 ngay lượt đầu, nhờ cổng cũ chạy QUA v24 chứ không dừng ở v23.
+    const hasAccount = (db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]).some((c) => c.name === "account");
+    if (!hasAccount) db.exec("ALTER TABLE sessions ADD COLUMN account TEXT");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_sessions_account ON sessions(account)");
+    version = 24;
+  }
+  if (version < 25) {
+    // v25 (2026-08-28, cùng ngày): phiên WEB cũ (account NULL) ⇒ 'main'.
+    //
+    // v24 cố ý để NULL "không đoán". Đo lại trên sổ thì đây KHÔNG phải đoán: trước v24 khe
+    // duy nhất từng đăng nhập ĐƯỢC là `main` — mọi khe phụ có bản ghi đều `ok:false`
+    // (`claude#2`), và khe phụ đầu tiên đăng nhập được (`claude#3`) xuất hiện SAU khi v24 đã
+    // đóng dấu mọi lượt nạp mới. Tin NULL vì thế chỉ có thể do `main` kéo về. Còn để NULL thì
+    // cây đẻ một hàng "(không rõ)" lặp lại số của cha — user: *"tự nhiên có ko rõ… là vớ vẩn"*.
+    // Nguồn LOCAL không đụng: chúng không có khái niệm tài khoản, NULL là đúng.
+    db.exec("UPDATE sessions SET account='main' WHERE COALESCE(origin,'local')='web' AND account IS NULL");
+    version = 25;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

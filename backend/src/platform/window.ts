@@ -87,27 +87,47 @@ async function main(): Promise<void> {
   // giết cửa sổ lúc daemon còn đang khởi động), và phải trượt LIÊN TIẾP `MAX_MISS`
   // lần mới đóng — daemon bận một nhịp (quét/embed) không phải là chết.
   const HEARTBEAT_MS = 5000;
-  const MAX_MISS = 3; // ~15 s im lặng liên tiếp mới coi là chết
+  const MAX_MISS = 3; // ~15 s cổng ĐÓNG liên tiếp mới coi là chết
+  // 🔴 BẬN ≠ CHẾT (2026-08-28). Bản cũ gộp mọi lỗi thành một bộ đếm, nên daemon còn sống
+  // nhưng đang nghẽn cũng bị tính là chết sau 15 s — mà đo được ngay sau khởi động `/ping`
+  // nghẽn **12,3 s** (embed + `/memory-status` lượt lạnh khoá event loop), tức cửa sổ có thể
+  // tự đóng đúng lúc daemon đang khởi động bận nhất. User: *"app UI lâu lâu cứ tự ẩn trong
+  // khi t ko làm gì hết"*. Nay tách hai bộ đếm theo THỨ ĐO ĐƯỢC:
+  //   · cổng bị TỪ CHỐI (ECONNREFUSED) ⇒ tiến trình không còn nghe ⇒ đếm CHẾT, 3 nhịp;
+  //   · HẾT GIỜ (timeout) ⇒ tiến trình còn nghe nhưng bận ⇒ đếm BẬN, chịu tới ~3 phút.
+  // 3 phút là mốc "kẹt thật" chứ không phải "đang bận": nghẽn dài nhất đo được là 12 s, còn
+  // job nặng thì chạy ở tiến trình CON nên không khoá event loop của daemon.
+  const MAX_BUSY = 36; // 36 × 5 s = 3 phút hết giờ liên tiếp
   let seenAlive = false;
   let miss = 0;
+  let busy = 0;
   const beat = setInterval(() => {
     void (async () => {
-      let alive: boolean;
+      let alive = false;
+      let refused = false;
       try {
         const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(3000) });
         alive = res.ok;
-      } catch {
-        alive = false;
+      } catch (e) {
+        // undici bọc lỗi socket trong `cause`; hết giờ là TimeoutError/AbortError không có cause.
+        const code = (e as { cause?: { code?: string } })?.cause?.code ?? "";
+        refused = code === "ECONNREFUSED" || code === "ECONNRESET";
       }
       if (alive) {
         seenAlive = true;
         miss = 0;
+        busy = 0;
         return;
       }
       if (!seenAlive) return; // chưa từng thấy sống ⇒ đang khởi động, chờ tiếp
-      if (++miss < MAX_MISS) return;
+      if (refused) {
+        if (++miss < MAX_MISS) return;
+        console.error(`[zemory window] cổng daemon bị từ chối ${MAX_MISS} nhịp liên tiếp — daemon đã tắt, đóng cửa sổ`);
+      } else {
+        if (++busy < MAX_BUSY) return;
+        console.error(`[zemory window] daemon không trả lời ${MAX_BUSY} nhịp liên tiếp (~3 phút) — coi là kẹt, đóng cửa sổ`);
+      }
       clearInterval(beat);
-      console.error(`[zemory window] daemon không phản hồi ${MAX_MISS} nhịp liên tiếp — đóng cửa sổ`);
       bye();
     })();
   }, HEARTBEAT_MS);

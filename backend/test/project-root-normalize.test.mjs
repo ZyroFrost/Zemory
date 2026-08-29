@@ -110,3 +110,18 @@ test("importChangelog writes ONE project_root for two spellings of the same fold
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── canonProjectRoot: chữ ổ đĩa cho CỘT `sessions.project_root`/`cwd` (2026-08-29) ──────────
+// Fix 07-29 chắn ở sổ docs/project nhưng đường nạp transcript vẫn ghi cwd thô ⇒ 79 phiên `d:\…`
+// chẻ đôi nhóm project. Hàm này KHÔNG `resolve` vì cột chứa cả TÊN project web ("Tarot study").
+test("canonProjectRoot: chỉ viết hoa chữ ổ đĩa Windows, mọi giá trị khác giữ nguyên", async () => {
+  const { canonProjectRoot } = await import("../../dist/core/config.js");
+  assert.equal(canonProjectRoot(String.raw`d:\huy.nguyen\Tool\Zemory`), String.raw`D:\huy.nguyen\Tool\Zemory`);
+  assert.equal(canonProjectRoot("c:/x/y"), "C:/x/y");
+  assert.equal(canonProjectRoot(String.raw`D:\already`), String.raw`D:\already`);
+  assert.equal(canonProjectRoot("Tarot study"), "Tarot study", "tên project web không phải đường dẫn — không đụng");
+  assert.equal(canonProjectRoot("/home/u/repo"), "/home/u/repo");
+  assert.equal(canonProjectRoot("d:relative"), "d:relative", "thiếu dấu phân cách sau ổ thì không chắc là đường dẫn");
+  assert.equal(canonProjectRoot(null), null);
+  assert.equal(canonProjectRoot(undefined), undefined);
+});

@@ -165,8 +165,11 @@ test("v21: UPDATE prose→prose GIỮ được posting (lỗi thứ tự trigger
 // v21 = trigram nhận lại tool_use (đo A/B/C ở đầu file), dựng lại postings theo chính sách mới.
 // v23 (2026-08-27): thêm sổ `vec_shipped` — xem `db-migrate-vecshipped.test.mjs`. Đổi số ở đây là
 // đổi CÓ CHỦ ĐÍCH: cổng này tồn tại để một migration mới không lọt vào mà không ai nhìn.
-test("DB mới chạy hết migration và dừng ở schema v23", (t) => {
+// v24 (2026-08-28): `sessions.account` (khe → nay là DANH TÍNH email, xem `scope-account.test.mjs`).
+// v25 (2026-08-28): backfill phiên web `account NULL` ⇒ 'main'. Hai bậc này lọt qua cổng đúng như
+// cổng cảnh báo: đợt 28/08 chỉ chạy gate vùng đụng; gate đầy đủ 29/08 mới bắt.
+test("DB mới chạy hết migration và dừng ở schema v25", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 23);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 25);
   db.close();
 });

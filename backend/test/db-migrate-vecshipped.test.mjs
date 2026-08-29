@@ -42,7 +42,7 @@ test("v22→v23: gieo vec_shipped bằng đúng các vector CHÍNH đang có, b�
   const ids = buildV22WithVectors(dbPath, 5);
 
   const db = openMemory(dbPath); // chạy migrate 22→23
-  assert.equal(db.prepare("SELECT version FROM schema_version LIMIT 1").get().version, 23);
+  assert.ok(db.prepare("SELECT version FROM schema_version LIMIT 1").get().version >= 23, "migrate phải chạy QUA v23 — ghim cứng =23 là neo giòn, đỏ mỗi lần thêm schema (v24/v25 cùng ngày 2026-08-28)");
   const seeded = db.prepare("SELECT message_id FROM vec_shipped ORDER BY message_id").all().map((r) => r.message_id);
   assert.deepEqual(seeded, ids, "sổ phải chứa đúng 5 id tin có vector chính");
   assert.ok(!seeded.some((x) => x >= SYNTH_BASE), "cửa sổ phụ KHÔNG được vào sổ");
@@ -58,7 +58,7 @@ test("CA ÂM: kho v22 CHƯA từng nhúng ⇒ migrate không ném, sổ rỗng",
   db0.close();
 
   const db = openMemory(dbPath);
-  assert.equal(db.prepare("SELECT version FROM schema_version LIMIT 1").get().version, 23);
+  assert.ok(db.prepare("SELECT version FROM schema_version LIMIT 1").get().version >= 23, "migrate phải chạy QUA v23 — ghim cứng =23 là neo giòn, đỏ mỗi lần thêm schema (v24/v25 cùng ngày 2026-08-28)");
   assert.equal(db.prepare("SELECT count(*) c FROM vec_shipped").get().c, 0, "không có vector thì sổ rỗng — không được bịa");
   db.close();
 });
