@@ -233,3 +233,25 @@ export function daemonJobBusyExternal(): boolean {
 export function daemonJobBusy(): string | null {
   return daemonJob;
 }
+
+// ── Nhường token cho việc NGƯỜI vừa bấm ──────────────────────────────────────
+// Móc đặt Ở ĐÂY chứ không gọi thẳng scheduler, vì `scheduler.ts` đã import `syncjob.ts`
+// ⇒ chiều ngược lại là import VÒNG TRÒN. `writegate` là nơi sở hữu token và là thứ CẢ HAI
+// đã phụ thuộc, nên đảo phụ thuộc qua đây là chỗ rẻ nhất và không đẻ module mới.
+
+type Yielder = (reason: string) => boolean;
+let yielder: Yielder | null = null;
+
+/** Scheduler tự khai "tôi nhường được" lúc khởi động. Không ai khai ⇒ không ai nhường (fail-open). */
+export function registerJobYielder(fn: Yielder | null): void {
+  yielder = fn;
+}
+
+/**
+ * Bảo kẻ đang giữ token rút lui. `false` = không có ai nhường được (token đang do một tiến
+ * trình KHÁC giữ, hoặc scheduler chưa đăng ký) — người gọi phải chấp nhận chờ, KHÔNG được
+ * giật: giết việc của tiến trình khác là thao tác bất khả đảo trên thứ mình không sở hữu.
+ */
+export function yieldDaemonJob(reason: string): boolean {
+  return yielder ? yielder(reason) : false;
+}

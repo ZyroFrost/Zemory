@@ -38,7 +38,7 @@ import {
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { uplinkReport } from "../memory/uplinkguard.js";
 import { promotionReport } from "../memory/promote.js";
-import { getDriveDir, getScopeExclude, setScopeExclude, type ScopeLane } from "../config/settings.js";
+import { getDriveDir, getScopeExclude, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
@@ -375,8 +375,18 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
-    console.log(`zemory memory scan-web — ${platform} (web-chat capture, origin=web)`);
-    const r = await scanWeb({ platform, refresh, limit, delayMs, onNeedLogin: loginPrompt() }, (m) => console.log("  " + m));
+    // --account <khe>: khe tài khoản của nền (main · 2 · 3…). Thiếu cờ này (tới 2026-08-28) thì
+    // mọi lượt CLI đều bám khe main — một lần đo "khe 4" đã đọc nhầm sang cửa sổ main vì thế.
+    const account = flagValue(args, "--account") ?? undefined;
+    console.log(`zemory memory scan-web — ${platform}${account && account !== "main" ? `#${account}` : ""} (web-chat capture, origin=web)`);
+    const r = await scanWeb({ platform, account, refresh, limit, delayMs, onNeedLogin: loginPrompt() }, (m) => console.log("  " + m));
+    // CLI cũng là một đường kéo ⇒ cũng phải ghi sổ nối + sổ kéo, không thì cây trên app nói
+    // "chưa kéo lần nào" về đúng lane vừa kéo xong ở terminal (đo 2026-08-29).
+    {
+      const laneKey = !account || account === "main" ? platform : `${platform}#${account}`;
+      if (r.status === "done" || r.status === "need-login") setWebAuth(laneKey, r.status === "done", r.email ?? undefined);
+      if (r.status === "done") setWebPull(laneKey, { ok: true, status: r.status, pulled: r.pulled });
+    }
     if (r.status === "no-browser") {
       console.log("  ✗ no Edge/Chrome found. Set ZEMORY_BROWSER=<path to msedge.exe/chrome.exe> and retry.");
       process.exitCode = 1;

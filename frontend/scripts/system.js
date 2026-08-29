@@ -5,7 +5,9 @@
     {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',doc:'f.doc.memory'},
     {k:'vector',grp:'f.grpCore',n:'Vector index (semantic)',kind:'stat',probe:'vector',doc:'f.doc.vector'},
     {k:'hybrid',grp:'f.grpCore',n:'Hybrid search',kind:'toggle',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
-    {k:'rerank',grp:'f.grpCore',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank'},
+    // `hidden`: engine còn (CLI/MCP/env ZEMORY_RERANK vẫn bật được) nhưng KHÔNG bày trên UI — user 2026-08-29:
+    // *"rerank ko xài, ẩn nó luôn"*. Giữ entry để cổng `checks-probes` và `/check?feature=rerank` còn nguyên.
+    {k:'rerank',grp:'f.grpCore',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank',hidden:true},
     {k:'digest',grp:'f.grpCore',n:'Session digest',kind:'stat',doc:'f.doc.digest'},
     {k:'graph',grp:'f.grpCore',n:'Graph (code · docs)',kind:'nav',to:'projects',doc:'f.doc.graph'},
     {k:'drive',grp:'f.grpSync',n:'f.drive',kind:'nav',to:'memory',doc:'f.doc.drive'},
@@ -48,7 +50,7 @@
     var box=zid('sysList');if(!box)return;
     if(!sysSel)sysSel=FEATURES[0].k;
     var groups={},order=[];
-    FEATURES.forEach(function(f){if(!groups[f.grp]){groups[f.grp]=[];order.push(f.grp);}groups[f.grp].push(f);});
+    FEATURES.forEach(function(f){if(f.hidden)return;if(!groups[f.grp]){groups[f.grp]=[];order.push(f.grp);}groups[f.grp].push(f);});
     // `warnNames` gom TÊN tính năng đang cảnh báo, không chỉ đếm số. Chip ở rail trước đây chỉ
     // nói "1 ⚠ · needs attention" — báo có chuyện mà không nói chuyện ở đâu, nên người dùng vẫn
     // phải vào đây dò 14 dòng. Có tên thì chip trả lời được câu "cái gì đang lỗi".

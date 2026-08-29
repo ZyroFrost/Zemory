@@ -106,7 +106,7 @@
           <div class="fchip on" id="rAll" data-rf="all" data-i18n="recall.allMachines">Cả máy</div>
           <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>
           <div class="fchip" id="rHybrid" data-rf="hybrid" data-i18n-title="f.hybridTip" title="Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.">Hybrid</div>
-          <div class="fchip" id="rRerank" data-rf="rerank" data-i18n-title="f.rerankTip" title="Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.">Rerank</div>
+          <div class="fchip" id="rRerank" data-rf="rerank" hidden data-i18n-title="f.rerankTip" title="Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.">Rerank</div>
           <div class="fchip" id="rImg" data-rf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
           <select id="fTime" class="rsel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
           <!-- "user" = NGƯỜI thật gõ (backend đã loại tool_result nằm trong lượt user);
@@ -158,16 +158,12 @@
       <!-- PROJECTS (list -> detail: Harness|Graph|Checks) -->
       <section class="screen" data-s="projects">
         <div id="projList" class="grow" style="display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+          <!-- HAI TAB LỚN (user 2026-08-29, cùng khuôn với Tìm kiếm | Phiên): "Dự án" = danh sách đã liên kết;
+               "Thêm dự án" = nút thêm/quét/dọn + phần chưa liên kết. Repo nhiều nên tách để danh sách sạch. -->
+          <div class="tabs"><button class="on" data-pj="list">📁 <span data-i18n="pj.tabList">Dự án</span></button><button data-pj="add">＋ <span data-i18n="pj.tabAdd">Thêm dự án</span></button></div>
+          <div class="sub on" data-pj="list" style="overflow-y:auto">
           <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto">
-            <button class="btn primary sm" data-act="addproj">＋ <span data-i18n="act.addProject">Thêm dự án</span></button>
-            <button class="btn sm" data-act="scanproj">🔍 <span data-i18n="act.scanKnown">Quét nguồn đã biết</span></button>
-            <button class="btn sm" data-act="deepscanproj">⛁ <span data-i18n="act.deepScan">Quét sâu</span></button>
-            <!-- Nút này TỪNG có ở cockpit cũ (changelog 07-22 §G) rồi rơi mất khi rewrite
-                 app.html: endpoint `/prune-projects` vẫn sống mà FE không còn chỗ nào gọi
-                 (audit 2026-07-26 bắt được). Trả lại đây, cạnh 2 nút quét. -->
-            <button class="btn sm" data-act="pruneproj" data-i18n-title="act.pruneTip" title="Gỡ khỏi danh sách những project mà folder không còn tồn tại">🧹 <span data-i18n="act.prune">Dọn dự án đã mất</span></button>
             <span class="fchip muted" id="projCount" style="border:0">—</span>
-            <span id="scanProjMsg" class="muted" style="font-size:11px"></span>
             <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
               <input id="pjSearch" data-i18n-ph="proj.searchPh" placeholder="Tìm project…" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;width:150px">
               <select id="pjType" class="rsel"><option value="" data-i18n="proj.typeAll">Loại: mọi</option><option value="app">APP</option><option value="non">NON-APP</option></select>
@@ -178,7 +174,20 @@
           <div class="grid g3" id="projGrid" style="align-content:start;align-items:start;grid-auto-rows:max-content">
             <div class="muted" data-i18n="st.loading">…</div>
           </div>
-          <div id="projDiscovered"></div>
+          </div>
+          <div class="sub" data-pj="add" style="overflow-y:auto">
+            <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap">
+            <button class="btn primary sm" data-act="addproj">＋ <span data-i18n="act.addProject">Thêm dự án</span></button>
+            <button class="btn sm" data-act="scanproj" data-i18n-title="act.rescanTip" title="Quét lại các nguồn đã biết để danh sách bên dưới có repo vừa tạo (cùng phép quét với Global Memory)">↻ <span data-i18n="act.rescan">Quét lại</span></button>
+                        <!-- Nút này TỪNG có ở cockpit cũ (changelog 07-22 §G) rồi rơi mất khi rewrite
+                 app.html: endpoint `/prune-projects` vẫn sống mà FE không còn chỗ nào gọi
+                 (audit 2026-07-26 bắt được). Trả lại đây, cạnh 2 nút quét. -->
+            <button class="btn sm" data-act="pruneproj" data-i18n-title="act.pruneTip" title="Gỡ khỏi danh sách những project mà folder không còn tồn tại">🧹 <span data-i18n="act.prune">Dọn dự án đã mất</span></button>
+            <span id="scanProjMsg" class="muted" style="font-size:11px"></span>
+            </div>
+            <div id="projDiscovered"></div>
+            <div class="muted" style="font-size:11.5px;margin-top:8px"><span data-i18n="proj.deepHint">Repo nằm ngoài các nguồn đã biết?</span> <a data-goto="gmem:sync" style="cursor:pointer" data-i18n="proj.deepLink">Quét sâu ở Global Memory →</a></div>
+          </div>
         </div>
         <div id="projDetail" class="grow" style="display:none;flex-direction:column;gap:12px">
           <!-- Tên project + nút back nằm CÙNG HÀNG với tab, đẩy sang phải (user 2026-07-27):
@@ -278,12 +287,33 @@
         <div class="sub" data-gm="sync">
         <div class="grid grow rzgrid" style="grid-template-columns:var(--mem1,1.1fr) 8px var(--mem2,1fr) 8px 1fr">
           <!-- Col 1: Sources (scope) — thuộc nhóm sync, KHÔNG phải số liệu -->
-          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.sources">Sources — bao gồm / loại trừ</div></div><div class="card-b">
+          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.sources">Sources — bao gồm / loại trừ</div>
+            <span class="zpop-wrap"><button type="button" class="zhelp" id="srcLegendBtn" data-i18n-title="src.legendBtn" title="Chú giải các dấu trạng thái" aria-expanded="false">?</button>
+              <div class="zpop" id="srcLegend" role="dialog" aria-label="legend" hidden>
+                <div class="zpop-t" data-i18n="src.legendT">Dấu trạng thái</div>
+                <div class="zpop-s" data-i18n="src.legendWeb">WEB</div>
+                <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendWebOk">còn liên kết — kéo bình thường</span></div>
+                <div class="zpop-r"><span class="zbadge scope-bad">⚠</span><span data-i18n="src.legendWebBad">mất liên kết — bấm dấu để nối lại</span></div>
+                <div class="zpop-s" data-i18n="src.legendLocal">LOCAL — máy này</div>
+                <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendLocalOk">kho còn trên đĩa, được quét mỗi nhịp</span></div>
+                <div class="zpop-r"><span class="zbadge scope-bad">⚠</span><span data-i18n="src.legendLocalBad">kho từng có nhưng không còn trên đĩa</span></div>
+                <div class="zpop-s" data-i18n="src.legendRemote">LOCAL — máy khác (đồng bộ về)</div>
+                <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendRemoteOk">máy đó vẫn đang dùng — có tin mới trong 30 ngày</span></div>
+                <div class="zpop-r"><span class="zbadge scope-dim">✓</span><span data-i18n="src.legendRemoteRetired">máy đã ngưng / đã dời — kho lưu trữ, không cần làm gì</span></div>
+                <div class="zpop-s" data-i18n="src.legendOther">CHUNG</div>
+                <div class="zpop-r"><span class="zbadge scope-dim">•</span><span data-i18n="src.legendUnknown">chưa kiểm lần nào</span></div>
+                <div class="zpop-r"><span class="zbadge">—</span><span data-i18n="src.legendParent">hàng nguồn / hàng máy gộp từ các hàng con: một con ⚠ ⇒ cha ⚠</span></div>
+              </div></span></div><div class="card-b">
             <div class="muted" style="font-size:11.5px;margin-bottom:6px" data-i18n="mem.sourcesD">Bỏ tick lane để loại khỏi sync + recall (bộ lọc, không xoá).</div>
             <div id="mScope"><div class="muted">…</div></div>
-            <div class="section-t" data-i18n="conn.title">Liên kết</div>
-            <div class="muted" style="font-size:11.5px;margin-bottom:6px" data-i18n="conn.desc">Nguồn nào còn nối thì ✓; đứt thì ⚠ kèm nút nối lại. Nguồn web kiểm bằng cách mở trình duyệt nên chỉ hiện kết quả lần kiểm gần nhất.</div>
-            <div id="mConn"><div class="muted">…</div></div>
+            <!-- ＋ Thêm nguồn (user chốt 2026-08-28): NGAY DƯỚI panel, không phải Settings —
+                 nguồn sống ở đây thì thêm nguồn cũng ở đây (luật IA plan/15: một việc một chỗ).
+                 Trả lại đường "thêm tài khoản" bị làm rơi khi gỡ bảng Liên kết. -->
+            <div style="margin-top:8px"><button class="btn sm" id="mAddSrc" data-i18n="src.add">＋ Thêm nguồn</button></div>
+            <!-- Khối "Liên kết" ĐÃ GỠ 2026-08-28. Nó lặp lại đúng những hàng cây ở trên đã
+                 có — user: *"gộp lên thì ở dưới phải mất chứ sao còn"*. Trạng thái nay là một
+                 badge trên chính hàng nguồn (`srcBadge`), bấm ra hộp chi tiết. `/connections`
+                 GIỮ NGUYÊN: cây đọc nó qua `scopeTree` để hai bề mặt không bao giờ lệch nhau. -->
           </div></div>
           <div class="seam" data-seam="mem1"></div>
           <!-- Col 2: This Machine + tự động -->

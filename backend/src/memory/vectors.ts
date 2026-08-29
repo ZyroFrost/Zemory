@@ -30,7 +30,23 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentMemoryDb } from "./db.js";
-import { getEmbedTools } from "../config/settings.js";
+import { getEmbedTools, getScopeExclude } from "../config/settings.js";
+import { laneSqlClause } from "./scope.js";
+
+/**
+ * Loại tin của lane BỎ TICK khỏi hàng đợi embed — cùng bộ chọn với scan (ingest) · recall · sync.
+ * User chốt 2026-08-29: *"cái nào check tức là source đó được phép lên GM và được embed"* — trước đây
+ * bỏ tick chỉ ngăn NẠP; tin đã có trong kho của lane đó vẫn được nhúng vector (tốn giờ máy cho thứ
+ * người dùng đã bảo không lấy). Trả `""` khi không loại gì. Dùng ở CẢ chọn-để-nhúng lẫn đếm-còn-lại,
+ * không thì bộ đếm "còn N" không bao giờ về 0 và vòng embed chạy mãi.
+ */
+export function SCOPE_EXCLUDE_SQL(): { sql: string; params: unknown[] } {
+  const lanes = getScopeExclude();
+  if (!lanes.length) return { sql: "", params: [] };
+  const c = laneSqlClause("s", lanes);
+  if (!c.match) return { sql: "", params: [] };
+  return { sql: ` AND NOT EXISTS (SELECT 1 FROM sessions s WHERE s.id = messages.session_id AND (${c.match}))`, params: c.params };
+}
 import {
   currentEmbedProfile,
   embedConfig,
@@ -280,14 +296,15 @@ export async function embedPending(
     const has = tableExists(db);
     // "Pending" is keyed on the chunk-0 row (rowid = message id) — the invariant
     // every count/query in this file shares.
+    const ex = SCOPE_EXCLUDE_SQL();
     const rows = db
       .prepare(
         `SELECT id, content FROM messages
-         WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}
+         WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}${ex.sql}
            ${has ? "AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)" : ""}
          ORDER BY length(content) ASC, id ASC LIMIT ?`,
       )
-      .all(limit) as { id: number; content: string }[];
+      .all(...ex.params, limit) as { id: number; content: string }[];
 
     // Documents are embedded under the profile AND dims the index was BUILT with — never mix
     // spaces. The contract lives in vec_config, so ASK vec_config: the three stored* readers
@@ -673,13 +690,14 @@ export function embedFrontierId(
 export function vectorRemaining(dbPath: string = currentMemoryDb()): number {
   const db = vecConnect(dbPath);
   try {
+    const ex = SCOPE_EXCLUDE_SQL();
     if (!tableExists(db)) {
-      return (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`).get() as { c: number }).c;
+      return (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${ex.sql}`).get(...ex.params) as { c: number }).c;
     }
     return (
       db
-        .prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()} AND id NOT IN (SELECT rowid FROM vec_chunks)`)
-        .get() as { c: number }
+        .prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${ex.sql} AND id NOT IN (SELECT rowid FROM vec_chunks)`)
+        .get(...ex.params) as { c: number }
     ).c;
   } finally {
     db.close();

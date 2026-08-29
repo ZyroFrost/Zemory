@@ -28,14 +28,17 @@ const CHILD_TAIL = 8192;
 import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getAutosync, getDriveDir, getScheduler } from "../config/settings.js";
+import { hostname } from "node:os";
+import { getAutosync, getDriveDir, getScheduler, getScopeExclude, getWebPull, setWebPull } from "../config/settings.js";
+import { PLATFORMS, platformsInUse, pullableAccountsOf, scanWeb } from "../memory/scanweb.js";
+import { isExcluded } from "../memory/scope.js";
 import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
-import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, releaseDaemonJob } from "./writegate.js";
+import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, registerJobYielder, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, syncJobRunning } from "./syncjob.js";
 
 // 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
@@ -62,9 +65,21 @@ let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
 let scratchTimer: ReturnType<typeof setInterval> | null = null;
+let webTimer: ReturnType<typeof setInterval> | null = null;
+/** Nhịp HỎI "lane nào tới lượt" — rẻ (đọc settings). Việc tới lượt hay chưa do `webDue` phán,
+ *  nên đồng hồ này dày hơn chu kỳ kéo mà không làm tăng số lần mở trình duyệt. */
+const WEB_TICK_EVERY_MS = 20 * 60_000;
 let child: ChildProcess | null = null;
 let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
+/**
+ * Cờ NHƯỜNG: một việc do NGƯỜI bấm cần kho, chuỗi bảo trì phải rút lui.
+ *
+ * Vì sao cần cờ chứ không chỉ `child.kill()`: token job được giữ cho CẢ chuỗi
+ * (scan→embed→digest→backup), nên giết mỗi con đang chạy chỉ làm chuỗi bước sang bước KẾ —
+ * token vẫn bị giữ, và kẻ bấm nút vẫn bị từ chối. Phải có chỗ cho chuỗi biết đường dừng hẳn.
+ */
+let chainAbort = false;
 
 function log(msg: string): void {
   // 🔴 GHI RA ĐĨA, không chỉ stderr (2026-08-12).
@@ -85,6 +100,43 @@ function cliEntry(): string {
 /** True while THIS module's maintain child is alive. */
 export function schedulerChildRunning(): boolean {
   return child !== null;
+}
+
+/**
+ * NHƯỜNG chuỗi bảo trì cho một việc NGƯỜI vừa bấm (user chốt 2026-08-28: *"muốn schedule với
+ * cả bấm sync now"*).
+ *
+ * Vì sao ĐƯỢC PHÉP cắt ngang — ba căn cứ, không phải cảm giác:
+ *  · **Luật đã có**: `plan/14 §3` chốt *"chỉ hạ việc do MÁY tự chạy; việc NGƯỜI DÙNG bấm giữ
+ *    Normal, vì lúc đó người dùng đang ngồi chờ kết quả"*. Ở đây chỉ là mở rộng cùng thứ tự ưu
+ *    tiên từ CPU sang quyền vào kho.
+ *  · **Embed dựng lại được**: nó ghi theo transaction TỪNG TIN (`vectors.ts insTx`), và
+ *    `embedPending` luôn chọn phần CÒN THIẾU ⇒ cắt ngang mất nhiều nhất một tin, lượt sau nhúng lại.
+ *  · **Đã đo thực địa, không phải suy luận**: log daemon 80 lượt embed khởi động / 48 lượt có
+ *    dòng `finished` ⇒ **32 lượt đã bị giết giữa chừng** bởi các lần restart daemon, mà
+ *    `verifyMemory` đầu mỗi chuỗi chưa lần nào báo `⛔ KHO HỎNG`.
+ *
+ * KHÔNG cắt `scan`: nó là bước DUY NHẤT đưa tin mới vào, và nó ngắn (đo: 50–90 s). Cắt nó để
+ * tiết kiệm một phút là đổi lấy nguy cơ đẩy một gói THIẾU tin lên kênh chung — sai đúng thứ
+ * HP điều 16 canh.
+ *
+ * @returns `true` nếu thật sự có chuỗi để nhường (người gọi phải CHỜ nó nhả token).
+ */
+export function yieldMaintainFor(reason: string): boolean {
+  if (!chainRunning) return false;
+  chainAbort = true;
+  const c = child;
+  if (c) {
+    log(`nhường cho ${reason} — dừng con đang chạy (embed/digest nhúng lại được ở nhịp sau)`);
+    try {
+      c.kill();
+    } catch {
+      /* con đã tự thoát — cờ abort vẫn làm chuỗi dừng ở chốt kế tiếp */
+    }
+  } else {
+    log(`nhường cho ${reason} — chuỗi đang giữa hai bước, dừng ở chốt kế tiếp`);
+  }
+  return true;
 }
 
 /**
@@ -147,12 +199,17 @@ function runStep(label: string, args: string[]): Promise<number> {
       if (child === c) child = null;
       resolve(code);
     };
-    c.on("exit", (code) => {
+    c.on("exit", (code, signal) => {
       // Dòng tiến độ cuối của con (CLI in `\r` để ghi đè tại chỗ ⇒ tách cả `\r`).
       const last = out.split(/[\r\n]+/u).map((l) => l.trim()).filter(Boolean).pop();
-      log(`${label}: finished (exit ${code ?? "?"})${last ? " · " + last : ""}`);
+      // Bị GIẾT khác CHẾT VÌ LỖI. Từ 2026-08-28 việc nhường cho nút người dùng bấm là đường
+      // BÌNH THƯỜNG, nên in `exit ?` cho nó là dạy người đọc log nghi ngờ một thứ đang chạy
+      // đúng — và làm loãng đúng dấu hiệu họ cần thấy khi có lỗi thật.
+      const how = code === null ? `bị dừng${signal ? ` (${signal})` : ""}` : `exit ${code}`;
+      log(`${label}: finished (${how})${last ? " · " + last : ""}`);
       // Lỗi thì nói RA lỗi gì — không để lại bốn chữ "exit 1" như ca sync 26/08.
-      if ((code ?? -1) !== 0 && err.trim()) {
+      // Con BỊ GIẾT thì stderr của nó không phải lỗi của nó ⇒ không đổ ra (nhiễu).
+      if (code !== null && code !== 0 && err.trim()) {
         for (const line of err.trim().split(/\r?\n/u).slice(-20)) log(`${label}: stderr · ${line}`);
       }
       done(code ?? -1);
@@ -184,7 +241,10 @@ async function maintainTick(): Promise<void> {
     }
     // 1. scan — ingest new/changed transcripts. Incremental (dedup by uuid), and
     //    it is the ONLY step that brings new messages in, so it never backs off.
+    //    KHÔNG có chốt nhường trước bước này: xem `yieldMaintainFor` — scan ngắn, và bỏ nó
+    //    làm gói sync sau đó THIẾU tin.
     await runStep("scan", ["memory", "scan"]);
+    if (chainAbort) return; // `finally` nhả token cho việc người dùng vừa bấm
 
     // 2. embed — only when there is a vector backlog. Counting is a full
     //    anti-join (hundreds of ms on a 595MB memory), so when the backlog was
@@ -201,21 +261,30 @@ async function maintainTick(): Promise<void> {
         lastEmptyAt = 0;
         log(`embed backlog ${remaining} — running embed (--all)`);
         await runStep("embed", ["memory", "embed", "--all"]);
+        if (chainAbort) return;
       } else {
         lastEmptyAt = Date.now();
       }
     }
+    if (chainAbort) return;
 
     // 3. digest — cheap when nothing changed (content-hash guard skips sessions
     //    already summarised), so it can run every chain.
     await runStep("digest", ["memory", "digest", "--all"]);
+    if (chainAbort) return;
 
     // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
     //    chuỗi này làm backup chết theo công tắc `scheduler`.
     await backupTick("sau chuỗi bảo trì");
   } finally {
+    // Nhả TRƯỚC khi hạ cờ: kẻ đang chờ token phải thấy nó trống, và một lượt `maintainTick`
+    // mới không được vào lại giữa hai câu lệnh này rồi ăn mất lượt của người dùng.
     chainRunning = false;
     releaseDaemonJob();
+    if (chainAbort) {
+      chainAbort = false;
+      log("đã nhường xong — chuỗi bảo trì sẽ chạy lại ở nhịp sau");
+    }
   }
 }
 
@@ -308,6 +377,146 @@ function scratchTick(): void {
   }
 }
 
+// ── Tự kéo NỀN WEB ───────────────────────────────────────────────────────────
+// 🔄 ĐẢO luật cũ *"scheduler nền KHÔNG được tự kéo web"* (cổng `scanweb-platforms.test.mjs`,
+// lý do khi đó: *"10 phút một lần tự mở trình duyệt là sai"*).
+//
+// **User chốt 2026-08-28, và lý lẽ là của BỀ MẶT, không phải của code:** panel trái tab
+// *Sync & Backup* bày `Web chat` thành các ô TICK, ngay cạnh khối *"AUTOMATION — what the
+// daemon does when on"*. Đã tick mà 24 ngày không về thì bề mặt đang hứa một đằng làm một nẻo
+// — đúng thứ `02_RULES §Bề mặt CHẾT THEO nền` gọi là NÓI DỐI. Nguyên văn: *"mọi source đã
+// check là nó phải tự động vào kho chạy hết, ko dc thiếu mới đúng"*.
+//
+// Lý do CŨ không sai — nó chỉ hết đúng: cái sai là *cửa sổ nhảy vào mặt người dùng*, và điều
+// đó nay giải được bằng `hidden` (Chrome thật, đẩy ra ngoài màn hình; đo 2026-08-28: kéo
+// thành công 914 hội thoại được liệt kê, `status:done`, không cửa sổ nào hiện).
+//
+// Hai ràng buộc KHÔNG được bỏ:
+//  · **ô KHÔNG tick ⇒ không đụng tới** — `scanWeb` tự trả `excluded`, và ở đây lọc TRƯỚC để
+//    không tốn một lần mở trình duyệt cho lane người ta đã tắt;
+//  · **hỏng là phải BÁO** (user: *"bất cứ source nào check vào mà nó lỗi ko kéo dc là phải
+//    báo"*) ⇒ mọi kết cục ghi vào `setWebPull`, kể cả kết cục hỏng.
+
+/** Phiên hết hạn thì lùi HẲN, đừng thử lại mỗi nhịp: kéo web cần NGƯỜI đăng nhập, nên thử
+ *  lại dày chỉ tốn máy và đẻ cửa sổ ngầm, không bao giờ tự khỏi. */
+const WEB_RETRY_AFTER_FAIL_MS = 6 * 60 * 60_000;
+/** Lane đang khoẻ vẫn phải hỏi lại theo nhịp — nhưng thưa hơn maintain, vì mỗi lượt là một
+ *  lần mở trình duyệt thật (đo: ~1 phút chỉ để khởi động + liệt kê). */
+const WEB_EVERY_MS = 3 * 60 * 60_000;
+let webRunning = false;
+
+export function webLaneKey(platform: string, account: string): string {
+  return account === "main" ? platform : `${platform}#${account}`;
+}
+
+/** Lane này tới lượt chưa? Hỏng gần đây ⇒ lùi; vừa chạy xong ⇒ chờ. */
+export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date.now()): boolean {
+  if (!prev) return true; // chưa chạy lần nào
+  const age = now - Date.parse(prev.at);
+  if (!Number.isFinite(age)) return true; // dấu thời gian hỏng ⇒ coi như tới lượt, đừng kẹt vĩnh viễn
+  return age >= (prev.ok ? WEB_EVERY_MS : WEB_RETRY_AFTER_FAIL_MS);
+}
+
+/**
+ * Lane web nào ĐÁNG kéo lượt này — hàm THUẦN, để cổng đo được HÀNH VI.
+ *
+ * Tách ra vì bản đầu để logic này nằm trong `webTick` và cổng chỉ còn cách grep chữ trong
+ * `scheduler.ts`. Chạy đột biến thì lộ ngay: sửa `dist` mà cổng vẫn xanh — nó soi FILE NGUỒN
+ * chứ không soi hành vi, tức đúng loại "cổng trang trí" mà `02_RULES` bắt phải chứng minh
+ * đỏ-được. Hàm thuần thì một đột biến vào chính nó làm cổng đỏ thật.
+ *
+ * Hai luật, mỗi luật trị một kiểu sai:
+ *  · **ô KHÔNG tick ⇒ loại NGAY, trước cả khi hỏi tới lượt chưa** — `scanWeb` cũng tự loại,
+ *    nhưng tới đó thì đã tốn một lần mở trình duyệt cho lane người ta đã tắt;
+ *  · **hỏng thì lùi lâu hơn** — kéo web cần NGƯỜI đăng nhập, thử lại dày không bao giờ tự khỏi.
+ */
+export function webPullTargets(
+  platforms: string[],
+  accountsFor: (p: string) => string[],
+  sourceOf: (p: string) => string | undefined,
+  host: string,
+  excludes: Parameters<typeof isExcluded>[1],
+  pulled: Record<string, { at: string; ok: boolean }>,
+  now = Date.now(),
+): { platform: string; account: string; lane: string }[] {
+  const out: { platform: string; account: string; lane: string }[] = [];
+  for (const platform of platforms) {
+    const source = sourceOf(platform);
+    if (source && isExcluded({ origin: "web", host, source }, excludes)) continue;
+    for (const account of accountsFor(platform)) {
+      const lane = webLaneKey(platform, account);
+      if (webDue(pulled[lane], now)) out.push({ platform, account, lane });
+    }
+  }
+  return out;
+}
+
+/**
+ * 🔴 NHƯỜNG THÌ PHẢI HẸN QUAY LẠI — lần thứ BA repo này trả giá cho cùng một hình dạng lỗi.
+ *
+ * Bản đầu của `webTick` (viết 2026-08-28) chỉ `return` khi gặp kẻ ghi khác, đợi hết chu kỳ
+ * 20 phút. Bắt được NGAY trong lượt nghiệm thu đầu tiên: daemon khởi động → chuỗi bảo trì
+ * chạy embed (30 phút → 3 giờ) → `webTick` bắn ở phút thứ 3, thấy `child`, bỏ lượt. Với nhịp
+ * 20 phút và embed dài hàng giờ thì nó **không bao giờ tới lượt** — đúng thứ vừa làm auto-sync
+ * đứng 19 giờ, và trước đó làm nó đứng 2,5 giờ hồi 12/08.
+ *
+ * Ghi ra đây vì bài học không phải "nhớ thêm retry": nó là **mọi việc nền phải giả định kẻ
+ * chặn KHÔNG có lúc nghỉ**. Chống bỏ đói bằng "đợi chu kỳ sau" chỉ ăn khi máy có lúc rảnh —
+ * mà đo thật thì backlog embed gần như không bao giờ về 0 (`plan/14 §3`).
+ */
+const WEB_RETRY_MS = 4 * 60_000;
+let webRetry: ReturnType<typeof setTimeout> | null = null;
+
+async function webTick(): Promise<void> {
+  if (!getScheduler()) return;
+  if (webRunning || chainRunning || child || syncJobRunning() || cliHoldsWrite()) {
+    if (!webRetry) {
+      webRetry = setTimeout(() => {
+        webRetry = null;
+        void webTick();
+      }, WEB_RETRY_MS);
+      webRetry.unref?.();
+    }
+    return;
+  }
+  // Danh sách việc dựng TRƯỚC khi giành token: nếu chẳng có lane nào tới lượt thì đừng đụng
+  // vào cổng ghi — một lượt claim/release rỗng vẫn làm `memory_jobs` báo "đang bận".
+  const todo = webPullTargets(
+    platformsInUse(),
+    pullableAccountsOf,
+    (p) => PLATFORMS[p]?.source,
+    hostname() || "unknown",
+    getScopeExclude(),
+    getWebPull(),
+  );
+  if (!todo.length) return;
+  if (!claimDaemonJob("web-pull")) return;
+  webRunning = true;
+  try {
+    for (const j of todo) {
+      if (chainAbort) break; // nút người dùng bấm — nhường ngay, phần còn lại để nhịp sau
+      try {
+        const r = await scanWeb({ platform: j.platform, account: j.account, hidden: true }, (m) => log(`web ${j.lane}: ${m}`));
+        const ok = r.status === "done";
+        setWebPull(j.lane, { ok, status: r.status, pulled: r.pulled });
+        log(
+          ok
+            ? `web ${j.lane}: kéo xong · +${r.pulled ?? 0} hội thoại (bỏ qua ${r.skipped ?? 0} · lỗi ${r.failed ?? 0})`
+            : `🔴 web ${j.lane}: KHÔNG kéo được — ${r.status}${r.status === "need-login" ? " (cần đăng nhập lại; bảng Nguồn sẽ hiện ⚠)" : ""}`,
+        );
+      } catch (e) {
+        const error = e instanceof Error ? e.message.slice(0, 200) : String(e);
+        setWebPull(j.lane, { ok: false, status: "error", error });
+        log(`🔴 web ${j.lane}: lỗi — ${error}`);
+      }
+    }
+  } finally {
+    webRunning = false;
+    releaseDaemonJob();
+    if (chainAbort) chainAbort = false;
+  }
+}
+
 /**
  * 🔴 NHƯỜNG THÌ PHẢI QUAY LẠI — nếu không, nhường một lần là nhường mãi mãi.
  *
@@ -378,7 +587,16 @@ function syncTick(): void {
 /** Start the background loops. Idempotent — a second call is a no-op. */
 export function startScheduler(): void {
   if (maintainTimer || syncTimer || backupTimer) return;
+  // Khai với write-gate rằng chuỗi bảo trì NHƯỜNG được, để nút "Đồng bộ ngay" cắt vào giữa
+  // một lượt embed dài thay vì bị từ chối. Đăng ký qua write-gate (không gọi thẳng) vì
+  // `scheduler → syncjob` đã có sẵn, chiều ngược lại là import vòng tròn.
+  registerJobYielder(yieldMaintainFor);
   maintainTimer = setInterval(() => void maintainTick(), MAINTAIN_EVERY_MS);
+  // Nhịp kéo web: lệch pha để không tới hạn cùng lúc với maintain (cùng bài học bỏ đói ở
+  // `syncTick`). Mồi một lượt sau 3 phút để máy vừa bật là nguồn web đã bắt đầu về, chứ
+  // không phải chờ hết chu kỳ đầu.
+  webTimer = setInterval(() => void webTick(), WEB_TICK_EVERY_MS);
+  setTimeout(() => void webTick(), 3 * 60_000).unref?.();
   // Backup có ĐỒNG HỒ RIÊNG, KHÔNG hỏi `getScheduler()` — xem chú thích ở `backupTick()`.
   // Lệch pha 1/4 chu kỳ để không tới hạn cùng lúc với hai đồng hồ kia (cùng bài học bỏ đói).
   backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
@@ -411,7 +629,8 @@ export function stopScheduler(): void {
   if (syncTimer) clearInterval(syncTimer);
   if (backupTimer) clearInterval(backupTimer);
   if (scratchTimer) clearInterval(scratchTimer);
-  maintainTimer = syncTimer = backupTimer = scratchTimer = null;
+  if (webTimer) clearInterval(webTimer);
+  maintainTimer = syncTimer = backupTimer = scratchTimer = webTimer = null;
   chainRunning = false;
   if (child) {
     try {

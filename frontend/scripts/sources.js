@@ -22,8 +22,181 @@
     if(Object.keys(d).length)zScopeDelta=d;
     return zScopeDelta;
   }
+  /** Nền của một nguồn web: `chatgpt-web`→`chatgpt`, `claude-cowork`→`claude`. */
+  function webPlat(src){return String(src||'').replace(/-(web|cowork)$/,'');}
+
+  // Hàng đã vẽ, tra theo khoá lane — hộp chi tiết cần dữ liệu của ĐÚNG hàng vừa bấm mà
+  // không phải gọi lại máy chủ (một cú bấm xem không đáng một vòng mạng).
+  var NODE_BY_KEY={};
+
+  /** Một dòng "nhãn: giá trị" trong hộp chi tiết. Bỏ qua khi không có giá trị — dòng trống
+   *  chỉ làm hộp dài ra mà không nói gì. */
+  function detRow(k,v){return v==null||v===''?'':'<div style="display:flex;gap:8px;padding:3px 0"><span class="muted" style="min-width:120px">'+stdEsc(k)+'</span><span>'+stdEsc(String(v))+'</span></div>';}
+
+  /**
+   * CHI TIẾT LIÊN KẾT của một nguồn — mở khi bấm badge.
+   *
+   * Đây là chỗ chứa thứ trước kia phơi thẳng ra hàng (và làm vỡ dòng): trạng thái, lý do,
+   * lần kiểm cuối, đường kho. Hành động (nối lại / mượn phiên) nằm Ở ĐÂY chứ không phải trên
+   * hàng — bấm badge là để XEM, còn LÀM là một quyết định riêng, có bối cảnh trước mắt.
+   */
+  function openSrcDetail(key){
+    var n=NODE_BY_KEY[key];if(!n||!n.conn)return;
+    var c=n.conn,web=c.kind==='web';
+    var stateTxt=c.linked===false?t('scope.detNotLinked'):(c.linked===null?t('scope.detUnchecked'):t('scope.detLinked'));
+    var pullTxt=c.state==='ok'?t('scope.detPullOk'):(c.state==='fail'?t('scope.detPullFail').replace('{s}',c.status||''):t('scope.webNever'));
+    var body='<div style="font-size:12.5px;line-height:1.6">'
+      +detRow(t('scope.detSource'),n.label)
+      +detRow(t('scope.detKind'),t(web?'scope.detKindWeb':'scope.detKindLocal'))
+      +(web&&c.who?detRow(t('scope.detWho'),c.who):'')
+      +(web&&c.account?detRow(t('scope.detAccount'),c.account):'')
+      +detRow(t('scope.detState'),stateTxt)
+      +(web?detRow(t('scope.detPull'),pullTxt):'')
+      +(c.at?detRow(t('scope.detLastPull'),String(c.at).slice(0,16).replace('T',' ')):'')
+      +(c.staleDays!=null?detRow(t('scope.detStale'),c.staleDays):'')
+      +(c.detail?detRow(t('scope.detWhere'),c.detail):'')
+      +detRow(t('scope.detMessages'),zN(n.messages||0))
+      +'</div>';
+    // Chỉ mời hành động khi CÓ việc để làm: nguồn đang nối tốt thì hộp này thuần thông tin.
+    var act=web&&c.linked===false;
+    zDialog({icon:c.linked===false?'⚠':'🔗',title:t('scope.detTitle'),bodyHtml:body,
+      okLabel:act?t(c.canBorrow?'conn.borrow':'conn.link'):t('scope.detClose'),
+      onOk:act?function(){
+        // Hộp giữ mở trong lúc chờ ⇒ nút OK bấm được lần hai = một `/connect` thứ hai chạy
+        // chồng lượt đầu. Khoá nút cho tới khi có kết quả.
+        var okb=zid('zDlgOk');if(okb)okb.disabled=true;
+        zDlgMsg(t('conn.linking'));
+        // Đường này TRƯỚC ĐÂY vẽ lại đúng MỘT lần rồi thôi ⇒ người dùng đăng nhập xong (daemon đã
+        // nhận, kho đã đổi) mà cây vẫn ⚠ — "app đơ" (user 2026-08-29). Nay: đăng ký chờ y như
+        // đường nút "Đăng nhập" (`connPoll`): vẽ lại mỗi 5 s tới 15 phút, nối xong thì toast.
+        var plat=c.platform||'';
+        connPending[plat]=true;
+        zPost('/connect?platform='+encodeURIComponent(plat)+'&account='+encodeURIComponent(c.account||'main'))
+          .then(function(r){
+            zDlgClose();CONN_ROWS=(r&&r.rows)||CONN_ROWS;
+            zGet('/memory-status?fresh=1').then(renderMem);
+            var row=(r&&r.rows||[]).filter(function(x){return x.platform===plat&&x.connected&&(!c.who||x.detail&&x.detail.indexOf(c.who)>=0);})[0];
+            if(row){delete connPending[plat];zToast(t('conn.done').replace('{p}',plat));}
+            else connPoll(180);
+          })
+          .catch(function(){zDlgMsg(t('scope.detLinkFailed'));if(okb)okb.disabled=false;});
+        return true; // giữ hộp mở: đăng nhập là việc của NGƯỜI, đóng ngay là cắt ngang họ
+      }:null});
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('[data-srcdet]'):null;if(!b)return;
+    e.preventDefault();e.stopPropagation(); // đừng để cú bấm lọt xuống ô tick của hàng
+    openSrcDetail(b.getAttribute('data-srcdet'));
+  });
+  /**
+   * MỘT badge duy nhất cho một hàng nguồn — user chốt 2026-08-28: *"nó chỉ hiện badge thôi
+   * ko dc full chữ, chữ là pop hiện text ra phụ… khi bấm vào nó phải ra chi tiết liên kết"*.
+   *
+   * Ba luật rút từ đúng ba lỗi bản trước:
+   *  · **MỘT ký hiệu, không phải câu.** Bản trước phơi cả `⚠ mất phiên — bấm để nối lại` +
+   *    `chưa kéo lần nào` + `chưa có dữ liệu` lên một hàng ⇒ nhãn "tài khoản 2" bị đẩy vỡ
+   *    thành hai dòng. Chữ chuyển hết vào `title` (tooltip).
+   *  · **KHÔNG có ✓ "cho vui".** ✓ đứng cạnh "chưa kéo lần nào" đọc thành *"ổn cả"* trong
+   *    khi thực ra chưa có gì về — user bắt đúng chỗ này. Nay ✓ CHỈ hiện khi đã nối VÀ đã
+   *    kéo được ít nhất một lần; nối-mà-chưa-kéo là dấu `•` trung tính.
+   *  · **Bấm là XEM, không phải LÀM.** Badge mở hộp chi tiết; hành động nằm trong hộp.
+   */
+  function srcBadge(n){
+    var c=n.conn;if(!c)return '';
+    // Hàng "(không rõ)" là RỔ chứa phiên cũ chưa đóng dấu, KHÔNG phải một tài khoản nối được
+    // ⇒ không gắn trạng thái liên kết cho nó (gắn vào là bịa cho nó một danh tính không có).
+    if((n.lane||{}).account==='')return '';
+    // HAI HỆ DẤU (user chốt 2026-08-29), không dùng chung thang:
+    //  · WEB — nhị phân: ✓ xanh còn liên kết · ⚠ đỏ mất liên kết (bấm nối lại). KHÔNG có "cam".
+    //  · LOCAL máy này: ✓ kho còn trên đĩa · ⚠ kho từng có mà mất.
+    //  · LOCAL máy khác (`remote`): không soi đĩa được, chấm theo "còn đổ dữ liệu về không" —
+    //    ✓ xanh có tin ≤30 ngày · ✓ XÁM máy đã ngưng/đã dời (kho lưu trữ, không cần làm gì).
+    //  · Hàng CHA (nguồn · máy) gộp từ con: `bad/kids` con đang ⚠ ⇒ cha ⚠.
+    var mark,cls,tip,RETIRED=30;
+    if(c.kids&&c.bad){ mark='⚠'; cls='scope-bad'; tip=t('scope.tipAggBad').replace('{n}',c.bad).replace('{m}',c.kids); }
+    else if(c.linked===false){ mark='⚠'; cls='scope-bad'; tip=t(c.kind==='web'?'scope.tipNeedLogin':'scope.tipStoreGone'); }
+    else if(c.linked===null){ mark='•'; cls='scope-dim'; tip=t('scope.tipNeverChecked'); }
+    else if(c.remote){
+      if(c.staleDays!=null&&c.staleDays>=RETIRED){ mark='✓'; cls='scope-dim'; tip=t('scope.tipRemoteRetired').replace('{d}',c.staleDays); }
+      else { mark='✓'; cls='conn-ok'; tip=t('scope.tipRemoteFresh').replace('{d}',c.staleDays==null?'?':c.staleDays); }
+    }
+    else if(c.kind==='local'){ mark='✓'; cls='conn-ok'; tip=t(c.kids?'scope.tipAggOk':'scope.tipStoreOk'); }
+    else if(c.state==='fail'){ mark='⚠'; cls='scope-bad'; tip=t('scope.tipPullFailed').replace('{s}',c.status||''); }
+    else { mark='✓'; cls='conn-ok'; tip=t(c.kids?'scope.tipAggOk':'scope.tipOk'); }
+    return '<button class="zbadge '+cls+'" data-srcdet="'+stdEsc(n.key)+'" title="'+stdEsc(tip)+'">'+mark+'</button> ';
+  }
+  // Nhánh Web của cây lần vẽ gần nhất — hộp "Thêm nguồn" đọc từ đây để khỏi gọi lại máy chủ.
+  var WEB_TREE=null;
+
+  /**
+   * HỘP "THÊM NGUỒN" — nút ＋ dưới panel Sources (user chốt 2026-08-28: đặt dưới panel,
+   * không phải Settings — nguồn sống ở đây thì thêm nguồn cũng ở đây).
+   *
+   * Mỗi nền web một hàng: đã nối ⇒ email + "＋ tài khoản nữa" (mở profile MỚI, không đụng
+   * phiên đang có) · chưa nối ⇒ "Đăng nhập". Nút dùng đúng hai data-attr sẵn có
+   * (`data-addacct` / `data-conn`) nên toàn bộ luồng gọi + chờ đăng nhập (`connPoll`) chạy
+   * y như cũ — hộp chỉ là chỗ ĐẶT nút, không phải một luồng mới.
+   *
+   * Nguồn LOCAL cố ý KHÔNG có trong hộp: chúng được Quét sâu tự tìm — bày ô "thêm Codex"
+   * ở đây là hứa một việc tay mà máy đã tự làm.
+   */
+  // Hàng `/connections` lần đọc gần nhất — hộp "Thêm nguồn" đọc cờ `watching` (daemon đang canh
+  // cửa sổ đăng nhập) từ đây, và vẽ lại khi hàng đổi (đăng nhập xong ⇒ email + "＋ tài khoản nữa").
+  var CONN_ROWS=[];
+  function connWatching(p){return CONN_ROWS.some(function(x){return x.kind==='web'&&x.platform===p&&(x.account||'main')==='main'&&x.watching;});}
+  function refreshAddSource(){var d=zid('zDlg');if(d&&d.classList.contains('on')&&zid('zDlgTitle')&&zid('zDlgTitle').textContent===t('src.addTitle'))openAddSource();}
+  function openAddSource(){
+    var NAME={chatgpt:'ChatGPT',claude:'Claude.ai'};
+    var plats={};
+    ((WEB_TREE&&WEB_TREE.children)||[]).forEach(function(n){
+      var c=n.conn,p=webPlat((n.lane||{}).source||'');if(!p)return;
+      var cur=plats[p]||{linked:null,who:''};
+      // Một nền có thể đẻ nhiều nguồn (claude → claude-web + claude-cowork): giữ bản "tốt nhất".
+      if(c){if(c.linked===true)cur.linked=true;else if(c.linked===false&&cur.linked!==true)cur.linked=false;if(c.who)cur.who=c.who;}
+      plats[p]=cur;
+    });
+    var rows=Object.keys(plats).map(function(p){
+      var v=plats[p];
+      var st=v.who?'<span class="muted" style="font-size:11px">'+stdEsc(v.who)+'</span>'
+                  :'<span class="muted" style="font-size:11px">'+stdEsc(t('src.addNotLinked'))+'</span>';
+      var btn=v.linked===true
+        ? '<button class="btn sm" data-addacct="'+stdEsc(p)+'">'+stdEsc(t('src.addMore'))+'</button>'
+        : connWatching(p)
+          ? '<button class="btn sm primary" disabled>'+stdEsc(t('conn.waiting'))+'</button>'
+          : '<button class="btn sm primary" data-conn="'+stdEsc(p)+'" data-acct="main">'+stdEsc(t('src.addLogin'))+'</button>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="min-width:80px;font-weight:600">'+stdEsc(NAME[p]||p)+'</span>'+st+'<span style="flex:1"></span>'+btn+'</div>';
+    }).join('');
+    var body='<div style="font-size:12.5px">'+rows
+      +'<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><span style="min-width:80px;font-weight:600">Gemini</span><span class="muted" style="font-size:11px">'+stdEsc(t('src.addSoon'))+'</span></div>'
+      +'<div class="muted" style="font-size:11px;margin-top:8px">'+stdEsc(t('src.addLocalHint'))+'</div></div>';
+    zDialog({icon:'＋',title:t('src.addTitle'),bodyHtml:body,okLabel:t('scope.detClose')});
+  }
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='mAddSrc')openAddSource();});
+
+  // Popover chú giải dấu (nút ? cạnh tiêu đề panel). Bấm ? mở/đóng; bấm ra ngoài hoặc ESC đóng.
+  function legendSet(on){var p=zid('srcLegend'),b=zid('srcLegendBtn');if(!p||!b)return;p.hidden=!on;b.setAttribute('aria-expanded',on?'true':'false');}
+  document.addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('#srcLegendBtn'):null;
+    if(b){legendSet(zid('srcLegend').hidden);return;}
+    var inside=e.target.closest?e.target.closest('#srcLegend'):null;
+    if(!inside)legendSet(false);
+  });
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){var p=zid('srcLegend');if(p&&!p.hidden){legendSet(false);e.stopPropagation();}}},true);
+
+  // Nhóm đang thu gọn: {laneKey:1}. Nhớ qua phiên; sai khuôn thì coi như không thu gì.
+  var FOLD={};try{FOLD=JSON.parse(localStorage.getItem('zemory.scopeFold')||'{}')||{};}catch(x){FOLD={};}
+  function foldSet(key,on){if(on)FOLD[key]=1;else delete FOLD[key];try{localStorage.setItem('zemory.scopeFold',JSON.stringify(FOLD));}catch(x){}}
+  document.addEventListener('click',function(e){
+    var f=e.target.closest?e.target.closest('[data-fold]'):null;if(!f)return;
+    if(e.target.closest('.zscope')||e.target.closest('.zbadge'))return; // tick/badge có việc riêng
+    var key=f.getAttribute('data-fold'),kids=document.querySelector('.scope-kids[data-kids="'+key.replace(/"/g,'\\"')+'"]');if(!kids)return;
+    var fold=!kids.hidden;kids.hidden=fold;foldSet(key,fold);
+    var btn=document.querySelector('.zcaret[data-fold="'+key.replace(/"/g,'\\"')+'"]');
+    if(btn){btn.textContent=fold?'▸':'▾';btn.setAttribute('aria-expanded',fold?'false':'true');btn.title=t(fold?'scope.expand':'scope.collapse');}
+  });
   function renderScope(nodes){
     if(!nodes||!nodes.length)return '<div class="muted">none</div>';
+    WEB_TREE=(nodes||[]).find(function(n){return (n.lane||{}).origin==='web';})||null;
     var dl=scopeDiff(nodes);
     function walk(n,dep){
       var checked=!n.effectiveExcluded,dis=n.effectiveExcluded&&!n.excluded;
@@ -31,9 +204,29 @@
       // Nguồn zemory HỖ TRỢ nhưng chưa nạp gì: vẫn hiện, nói rõ là chưa có dữ liệu và
       // chỉ luôn lệnh nạp. Ẩn đi thì thành vòng luẩn quẩn — muốn có dữ liệu phải tick,
       // muốn tick phải có dữ liệu (user 2026-07-27).
-      if(n.empty)badge='<span class="scope-e" title="'+stdEsc(t('scope.howTo'))+'">'+stdEsc(t('scope.noData'))+'</span>';
-      var h='<div class="set-row" style="padding:5px 0 5px '+(dep*14+2)+'px;border:0"><span class="nm" style="font-size:12px"><input type="checkbox" class="zscope"'+(checked?' checked':'')+(dis?' disabled':'')+' data-lane="'+stdEsc(JSON.stringify(n.lane||{}))+'" style="margin-right:7px;vertical-align:-2px"> '+stdEsc(n.label)+'</span><span class="scope-n">'+badge+'<span class="muted">'+zN(n.messages)+'</span></span></div>';
-      (n.children||[]).forEach(function(c){h+=walk(c,dep+1);});return h;
+      // KHÔNG còn badge chữ "chưa có dữ liệu" (user 2026-08-28: *"nhìn 0 là biết rồi cần
+      // chó gì hiện chữ"*). Con số 0 đã nói điều đó; lời hướng dẫn nạp chuyển vào tooltip
+      // của chính con số — chữ là lớp phụ, hiện khi rê chuột, không chiếm chỗ trên hàng.
+      var cntTip=n.empty?' title="'+stdEsc(t('scope.noData')+' — '+t('scope.howTo'))+'"':'';
+      // SỨC KHOẺ nguồn web đã tick. Trước đây hàng này chỉ có ô tick + số tin, nên một nguồn
+      // ngừng về 24 ngày trông y hệt nguồn đang chạy — user bắt đúng chỗ này ("luôn xanh mà
+      // ko báo gì"). Luật: đã tick mà không kéo được thì PHẢI báo, và bấm được để nối lại.
+      if(n.conn)badge=srcBadge(n)+badge;
+      NODE_BY_KEY[n.key]=n; // để hộp chi tiết tra lại hàng vừa bấm mà khỏi hỏi máy chủ
+      // TÊN TÀI KHOẢN đã nối ghi THẲNG sau nhãn (user chốt 2026-08-28: *"cái nào liên kết tk
+      // web thì ghi luôn tk đó"*) — định danh thì hiện, chỉ TRẠNG THÁI mới thu vào badge/tooltip.
+      // Hàng tài khoản đã LẤY tên làm nhãn ⇒ không lặp lại tên sau dấu chấm nữa.
+      var who=(n.conn&&n.conn.who&&n.conn.who!==n.label)?' <span class="muted" style="font-size:10.5px">· '+stdEsc(n.conn.who)+'</span>':'';
+      // THU GỌN THEO NHÓM (user 2026-08-29): hàng có con mang mũi tên ▾/▸; bấm mũi tên hoặc
+      // tên hàng để thu/bung; ô tick vẫn là ô tick. Trạng thái nhớ qua phiên (localStorage).
+      var hasKids=!!(n.children&&n.children.length),folded=hasKids&&FOLD[n.key]===1;
+      var caret=hasKids
+        ?'<button type="button" class="zcaret" data-fold="'+stdEsc(n.key)+'" aria-expanded="'+(folded?'false':'true')+'" title="'+stdEsc(t(folded?'scope.expand':'scope.collapse'))+'">'+(folded?'▸':'▾')+'</button>'
+        :'<span class="zcaret zcaret-empty"></span>';
+      var nameAttr=hasKids?' data-fold="'+stdEsc(n.key)+'" style="cursor:pointer"':'';
+      var h='<div class="set-row" style="padding:5px 0 5px '+(dep*14+2)+'px;border:0"><span class="nm" style="font-size:12px">'+caret+'<input type="checkbox" class="zscope"'+(checked?' checked':'')+(dis?' disabled':'')+' data-lane="'+stdEsc(JSON.stringify(n.lane||{}))+'" style="margin-right:7px;vertical-align:-2px"> <span'+nameAttr+'>'+stdEsc(n.label)+'</span>'+who+'</span><span class="scope-n">'+badge+'<span class="muted"'+cntTip+'>'+zN(n.messages)+'</span></span></div>';
+      if(hasKids){h+='<div class="scope-kids"'+(folded?' hidden':'')+' data-kids="'+stdEsc(n.key)+'">';(n.children||[]).forEach(function(c){h+=walk(c,dep+1);});h+='</div>';}
+      return h;
     }
     return nodes.map(function(n){return walk(n,0);}).join('');
   }
@@ -148,24 +341,16 @@
     }
     return r.detail||'';
   }
-  /** Bảng LIÊN KẾT dưới Sources. Thay cho hộp thoại tự nhảy giữa lúc quét — trạng thái
-   *  được TRƯNG ra để nhìn, và người dùng bấm nối lại khi họ muốn, không bị hỏi ngang. */
-  function renderConn(d){
-    var el=zid('mConn');if(!el)return;
-    var rows=(d&&d.rows)||[];
-    if(!rows.length){el.innerHTML='<div class="muted">'+t('conn.none')+'</div>';return;}
-    el.innerHTML=rows.map(function(r){
-      var mark=r.connected?'<span class="conn-ok">✓</span>':(r.unknown?'<span class="conn-unk">•</span>':'<span class="conn-bad">⚠</span>');
-      var note=r.connected?t('conn.on'):(r.unknown?t('conn.unknown'):t('conn.off'));
-      var btn=(!r.connected&&r.kind==='web')
-        ? '<button class="btn sm" data-conn="'+stdEsc(r.platform||'')+'" data-acct="'+stdEsc(r.account||'main')+'">'+t(r.canBorrow?'conn.borrow':'conn.link')+'</button>'
-        : '';
-      var add=(r.kind==='web'&&(r.account||'main')==='main')?'<button class="btn sm" data-addacct="'+stdEsc(r.platform||'')+'" title="'+t('conn.addAcctTip')+'">＋</button>':'';
-      return '<div class="set-row" style="padding:6px 0;border:0"><span class="nm" style="font-size:12px">'+mark+' '+stdEsc(r.label)
-        +'<small class="muted" style="display:block">'+stdEsc(note+(connDetail(r)?' · '+connDetail(r):''))+'</small></span>'
-        +'<span class="scope-n"><span class="muted">'+zN(r.messages||0)+'</span> '+btn+'</span></div>';
-    }).join('');
-  }
+  /**
+   * Khối "Liên kết" ĐÃ GỠ 2026-08-28 — trạng thái nay là badge trên CHÍNH hàng nguồn
+   * (`srcBadge`), bấm ra hộp chi tiết. Hàm này KHÔNG bị xoá vì bốn luồng vẫn gọi nó sau khi
+   * trạng thái đổi (nối lại · mượn phiên · thêm tài khoản · quét xong); biến nó thành hàm câm
+   * là để badge đứng im sau mỗi thao tác — đúng kiểu hỏng lặng mà `02_RULES` cấm.
+   *
+   * Nay nó LÀM TƯƠI CÂY: một lượt `/memory-status?fresh=1` dựng lại scopeTree kèm trạng thái
+   * liên kết mới. Vẫn nhận `d` để `connPoll` dùng `d.rows` phán "ai còn đang chờ đăng nhập".
+   */
+  function renderConn(){ return zGet('/memory-status?fresh=1').then(renderMem).then(refreshAddSource).catch(function(){}); }
   function loadConn(){return zGet('/connections').then(renderConn).catch(function(){});}
   // Sau khi bấm Liên kết, cửa sổ đăng nhập mở ra — và người dùng đăng nhập xong thì
   // KHÔNG có ai kiểm lại, bảng đứng nguyên ở ⚠. Nên ở đây CHỜ: hỏi lại mỗi 5s (phép hỏi
@@ -180,11 +365,14 @@
         renderConn(d);
         var pend=(d&&d.rows||[]).filter(function(x){return x.kind==='web'&&!x.connected;});
         var fresh=(d&&d.rows||[]).filter(function(x){return x.kind==='web'&&x.connected&&connPending[x.platform];});
+        // Đăng nhập xong: DAEMON đã nhận và đang kéo (nó canh khe này sau `need-login`) — UI chỉ
+        // báo + vẽ lại. Bản trước UI tự bắn `/connect` để kéo: chạy chồng lượt của daemon, và
+        // chỉ chạy khi cửa sổ app còn mở.
         fresh.forEach(function(x){
           delete connPending[x.platform];
-          zPost('/connect?platform='+encodeURIComponent(x.platform)).then(function(r){
-            renderConn(r);zGet('/memory-status?fresh=1').then(renderMem);zToast(t('conn.done').replace('{p}',x.platform));});
+          zToast(t('conn.done').replace('{p}',x.platform));
         });
+        CONN_ROWS=(d&&d.rows)||CONN_ROWS;refreshAddSource();
         if(pend.length)connPoll(left-1);
       }).catch(function(){connPoll(left-1);});
     },5000);
@@ -209,16 +397,21 @@
     var p=c.dataset.conn,acct=c.dataset.acct||'main';
     if(connWait)clearTimeout(connWait);
     c.textContent=t('conn.linking');c.disabled=true;
+    connPending[p]=true; // để lúc daemon báo đã nối, UI có toast — bản trước quên đặt ở đường này
     zPost('/connect?platform='+encodeURIComponent(p)+'&account='+encodeURIComponent(acct)).then(function(r){
+      CONN_ROWS=(r&&r.rows)||CONN_ROWS;
       renderConn(r);
       if(r&&r.ok===false)zToast('✗ '+(r.error||''));
       zGet('/memory-status?fresh=1').then(renderMem);
-      var row=(r&&r.rows||[]).filter(function(x){return x.platform===p;})[0];
+      var row=(r&&r.rows||[]).filter(function(x){return x.platform===p&&(x.account||'main')===acct;})[0];
+      if(row&&row.connected)delete connPending[p];
       if(row&&!row.connected){
         // Vẫn chưa vào được ⇒ cửa sổ đăng nhập đang mở, bắt đầu chờ.
         var b=document.querySelector('[data-conn="'+p+'"]');
         if(b){b.textContent=t('conn.waiting');b.disabled=true;}
-        connPoll(p,36);
+        // Bản trước gọi `connPoll(p,36)`: tham số đầu là CHUỖI ⇒ `left-1` = NaN ⇒ `NaN<=0`
+        // sai mãi ⇒ hỏi `/connections` 5 s/lượt VĨNH VIỄN, mỗi lượt là một probe CDP.
+        connPoll(180); // 15 phút — khớp thời gian daemon canh khe (LOGIN_WATCH_MS)
       }
     }).catch(function(){loadConn();});
   });
@@ -274,7 +467,7 @@
       });}
     else if(act==='drivelink'){var p=zid('driveInput').value.trim();zset('driveState','…');zPost('/set-drive?path='+encodeURIComponent(p)).then(function(d){zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);});}
     else if(act==='drivesync'){zrun('driveState',true);zset('driveState',t('drv.syncingBg'));zPost('/drive-sync').then(function(r){if(r&&r.ok===false){zrun('driveState',false);zset('driveState','✗ '+(r.error||t('drv.err')));return;}pollSync();});}
-    else if(act==='scanproj'||act==='deepscanproj'){zset('scanProjMsg',t('st.scanning'));zPost('/memory-scan'+(act==='deepscanproj'?'?deep=1':'')).then(function(r){zset('scanProjMsg','+'+zN(r&&r.totals&&r.totals.newMessages)+' msg · '+((r&&r.changedFiles)||0)+t('src.newFiles'));return zGet('/status');}).then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zset('scanProjMsg',t('st.scanErr'));});}
+    else if(act==='scanproj'||act==='deepscanproj'){zset('scanProjMsg',t('st.scanning'));var sm2=zid('scanMsg');if(sm2){sm2.className='scanmsg run';sm2.textContent=t('scan.running');}zPost('/memory-scan'+(act==='deepscanproj'?'?deep=1':'')).then(function(r){zset('scanProjMsg','+'+zN(r&&r.totals&&r.totals.newMessages)+' msg · '+((r&&r.changedFiles)||0)+t('src.newFiles'));return zGet('/status');}).then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zset('scanProjMsg',t('st.scanErr'));});}
     // Tên phiên: backend ĐÃ đúng (custom-title của `/title` thắng + khoá, ai-title sau
     // không ghi đè — claude.ts / ingest.ts titleLocked). Thiếu là chỗ LÀM TƯƠI: app chỉ
     // thấy tên mới sau lần scan kế tiếp. Nút này quét lại rồi nạp lại danh sách ngay.

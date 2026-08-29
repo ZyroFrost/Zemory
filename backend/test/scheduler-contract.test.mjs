@@ -176,7 +176,15 @@ test("BACKUP không được treo vào công tắc của tính năng khác", () 
   // riêng và KHÔNG được hỏi bất kỳ công tắc tính năng nào.
   const s = read(SCHED);
   assert.match(s, /backupTimer = setInterval\(/u, `${SCHED}: backup phải có đồng hồ RIÊNG`);
-  const tick = s.slice(s.indexOf("async function backupTick("), s.indexOf("function syncTick("));
+  // Cắt ĐÚNG thân `backupTick`, không cắt "từ đây tới hàm X". Bản cũ cắt tới `syncTick` và
+  // báo oan ngay khi có hàm mới chen vào giữa (2026-08-28: `webTick` — nó hỏi `getScheduler()`
+  // hợp lệ, còn `backupTick` thì không hề đổi). Neo theo VỊ TRÍ TƯƠNG ĐỐI giữa hai hàm là giả
+  // định "sẽ không ai chèn gì vào đây" — một giả định không có gì bảo vệ.
+  const from = s.indexOf("async function backupTick(");
+  assert.ok(from >= 0, `${SCHED}: không tìm thấy backupTick`);
+  const after = s.slice(from + 10);
+  const nextFn = after.search(/^(?:async )?function \w+\(/mu);
+  const tick = nextFn < 0 ? s.slice(from) : s.slice(from, from + 10 + nextFn);
   assert.ok(tick.length > 0, `${SCHED}: không tìm thấy thân backupTick`);
   assert.ok(
     !/getScheduler\(\)/u.test(tick),
