@@ -11,12 +11,13 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 import { templateDir, channelUpdate, ensureHarness, syncCheck } from "./docs/adopt.js";
+import { generateGuards } from "./docs/guard-gen.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
 import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
 import { listConnections, webProfileDir } from "./memory/connections.js";
-import { currentMemoryDir, openMemory } from "./memory/db.js";
+import { currentMemoryDb, currentMemoryDir, openMemory } from "./memory/db.js";
 import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
 import type { AttachmentMeta } from "./memory/attachments.js";
 // `recall` (hybrid+rerank) KHÔNG còn được gọi từ daemon nữa — nó là lớp đắt, nay chạy ở
@@ -29,7 +30,7 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { currentProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
+import { appVersion, currentProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -83,6 +84,8 @@ import {
   setSyncLevel,
   getSyncAttachments,
   setSyncAttachments,
+  getRepoStdCheck,
+  setRepoStdCheck,
   getWebAuth,
   setWebAuth,
   setWebPull,
@@ -776,6 +779,9 @@ function captureCoverage(limit = 10): {
       // are genuinely unknowable; the UI hides the badge instead of guessing).
       ...p,
       profile: p.host === localHost && isConnected(p.path) ? projectProfile(p.path) : null,
+      // `gone` = folder không còn trên MÁY NÀY (chỉ đo được cho host local). UI gom các root này vào
+      // nhóm "folder đã mất" thay vì bày lẫn với repo đang sống (user 2026-08-29: nút Dọn "không làm gì").
+      ...(p.host === localHost && /^[A-Za-z]:[\\/]/.test(String(p.path)) ? { gone: !existsSync(String(p.path)) } : {}),
     }));
     const totals = db
       .prepare(
@@ -1628,9 +1634,103 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const ok = forgetProject(u.searchParams.get("root") ?? "");
       return json(res, { ok, knownProjects: listKnownProjects() });
     }
+    if (req.method === "POST" && p === "/harness-apply") {
+      // Nút "Cập nhật repo" trong hộp cập nhật (user 2026-08-29: *"có cập nhật luôn được không"*). Ghi vào repo KHÁC —
+      // được phép vì chính cú bấm của người dùng là lời cho phép, cho ĐÚNG repo đó, ĐÚNG lượt đó (02_RULES §Phạm vi).
+      // Làm y hệt `zemory sync` + `zemory hook guard` chạy bên trong repo: bù file harness THIẾU (file có sẵn giữ nguyên —
+      // file wins) + sinh lại bộ guard từ marker. Không sửa nội dung docs của họ, không cắm hook vào runtime của họ.
+      const root = u.searchParams.get("root") ?? "";
+      const known = listKnownProjects().find((k) => k.root.toLowerCase() === root.toLowerCase());
+      if (!known) return json(res, { ok: false, error: "not a linked project" });
+      if (!existsSync(known.root)) return json(res, { ok: false, error: "folder is gone" });
+      try {
+        const r = ensureHarness(known.root);
+        let guard = false;
+        try {
+          generateGuards(known.root);
+          guard = true;
+        } catch (e) {
+          daemonLog(`[harness-apply] guard ${known.root}: ${e instanceof Error ? e.message : e}`);
+        }
+        harnessUpdCache = null; // đo lại ngay ở lượt /harness-updates kế
+        daemonLog(`[harness-apply] ${known.root}: +${r.added.length} file · guard ${guard ? "ok" : "skipped"}`);
+        return json(res, { ok: true, added: r.added, kept: r.present.length, needsReconcile: r.needsReconcile, guard });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (req.method === "POST" && p === "/selfupdate") {
+      // Nút "Cập nhật ngay" trong hộp cập nhật (user 2026-08-29: kiểu VS Code — có bản mới thì bấm, tự kéo về).
+      // Cùng bốn bước và cùng CHỐT với `zemory selfupdate`: cây mã có sửa chưa commit ⇒ DỪNG, không đè.
+      // Dựng xong thì tự phóng daemon mới (detached) rồi thoát — cửa sổ app nối lại theo nhịp tim.
+      const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+      const run = (cmd: string, args: string[]): { ok: boolean; out: string } => {
+        try {
+          return { ok: true, out: String(execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: "pipe", timeout: 15 * 60_000 })).trim() };
+        } catch (e) {
+          const err = e as { stdout?: string; stderr?: string; message?: string };
+          return { ok: false, out: (String(err.stdout ?? "") + String(err.stderr ?? "")).trim() || (err.message ?? "failed") };
+        }
+      };
+      if (!existsSync(join(root, ".git"))) return json(res, { ok: false, error: "not a source install (no .git)" });
+      const st = run("git", ["status", "--porcelain"]);
+      if (!st.ok) return json(res, { ok: false, error: `git status: ${st.out.slice(0, 200)}` });
+      if (st.out.split(/\r?\n/).filter(Boolean).length) return json(res, { ok: false, dirty: true });
+      const have = appVersion();
+      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+      for (const [cmd, a] of [["git", ["pull", "--ff-only"]], [npm, ["install"]], [npm, ["run", "build"]]] as [string, string[]][]) {
+        const r = run(cmd, a);
+        daemonLog(`[selfupdate] ${cmd} ${a.join(" ")} → ${r.ok ? "ok" : "FAIL"}`);
+        if (!r.ok) return json(res, { ok: false, error: `${cmd} ${a.join(" ")}: ${r.out.split(/\r?\n/).slice(-6).join(" | ").slice(0, 400)}` });
+      }
+      const latest = channelUpdate()?.latest ?? have;
+      json(res, { ok: true, have, latest });
+      // Phóng daemon MỚI rồi thoát — không dùng autostart (chỉ chạy lúc đăng nhập).
+      setTimeout(() => {
+        try {
+          spawn(process.execPath, [join(root, "dist", "cli.js"), "ui"], { detached: true, stdio: "ignore", cwd: root }).unref();
+        } catch (e) {
+          daemonLog(`[selfupdate] relaunch failed: ${e instanceof Error ? e.message : e}`);
+        }
+        shutdown("selfupdate");
+      }, 800);
+      return;
+    }
     if (req.method === "POST" && p === "/prune-projects") {
-      const removed = pruneDeadProjects();
-      return json(res, { ok: true, removed, knownProjects: listKnownProjects() });
+      // "Dọn dự án đã mất" — HAI lớp (user chốt 2026-08-29): ① registry (dự án đã liên kết mà folder mất) như cũ;
+      // ② root "chưa liên kết" của MÁY NÀY mà folder không còn: cùng TÊN folder với một dự án đang liên kết ⇒
+      // GỘP (trỏ lại project_root + ghim, không xoá — cùng phép với project_merge); không có đích ⇒ để UI gom vào
+      // nhóm "folder đã mất". `?dry=1` chỉ liệt kê để hộp xác nhận in từng dòng trước khi làm.
+      const dry = u.searchParams.get("dry") === "1";
+      const host = hostname();
+      const linked = listKnownProjects().filter((k) => existsSync(k.root));
+      const byName = new Map(linked.map((k) => [basename(k.root).toLowerCase(), k.root]));
+      const linkedKeys = new Set(linked.map((k) => k.root.toLowerCase()));
+      const db = openMemory(currentMemoryDb());
+      const merges: { from: string; to: string; n: number }[] = [];
+      const gone: { root: string; n: number }[] = [];
+      try {
+        const roots = db
+          .prepare("SELECT project_root AS r, COUNT(*) AS n FROM sessions WHERE host = ? AND project_root IS NOT NULL AND project_root <> '' GROUP BY project_root")
+          .all(host) as { r: string; n: number }[];
+        for (const x of roots) {
+          if (!/^[A-Za-z]:[\\/]/.test(x.r) || linkedKeys.has(x.r.toLowerCase()) || existsSync(x.r)) continue;
+          const to = byName.get(basename(x.r).toLowerCase());
+          if (to && to.toLowerCase() !== x.r.toLowerCase()) merges.push({ from: x.r, to, n: x.n });
+          else gone.push({ root: x.r, n: x.n });
+        }
+        const regDead = listKnownProjects().filter((k) => !existsSync(k.root)).length;
+        if (dry) return json(res, { ok: true, dry: true, removeReg: regDead, merges, gone });
+        const upd = db.prepare("UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE project_root = ? AND host = ?");
+        let merged = 0;
+        db.transaction(() => { for (const m of merges) merged += upd.run(m.to, m.from, host).changes; })();
+        const removed = pruneDeadProjects();
+        invalidateDashboard();
+        daemonLog(`prune-projects: removed ${removed} · merged ${merged} session(s) across ${merges.length} root(s) · gone ${gone.length}`);
+        return json(res, { ok: true, removed, merged, mergedRoots: merges.length, grouped: gone.length, knownProjects: listKnownProjects() });
+      } finally {
+        db.close();
+      }
     }
     if (req.method === "POST" && p === "/memory-scan") {
       const r = scan({ deep: u.searchParams.get("deep") === "1" });
@@ -1955,16 +2055,23 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       setSyncAttachments(u.searchParams.get("on") === "1");
       return json(res, { ok: true, syncAttachments: getSyncAttachments() });
     }
+    if (p === "/set-repo-std-check") {
+      setRepoStdCheck(u.searchParams.get("on") === "1");
+      harnessUpdCache = null;
+      return json(res, { ok: true, repoStdCheck: getRepoStdCheck() });
+    }
     if (p === "/harness-updates") {
       // "Chấm than update" (2026-08-21): repo nào trong registry đang CŨ so với bộ chuẩn
       // hiện hành (file template thiếu / guard lỗi thời). CHỈ ĐO — hành động áp là việc của
       // agent/user bên repo đó. Cache 5': phép đo là vài trăm existsSync, rẻ nhưng không free,
       // và độ tươi từng phút không có giá trị với thứ đổi vài lần một tuần.
       const now = Date.now();
-      if (!harnessUpdCache || now - harnessUpdCache.at > 300_000) {
+      // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
+      if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
         const stale: Array<{ root: string; name: string; missing: number; guardStale: number }> = [];
         try {
-          for (const proj of listKnownProjects()) {
+          // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
+          for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
             if (!existsSync(proj.root)) continue;
             const r = syncCheck(proj.root);
             if (r.connected && (r.missing.length || r.guardStale.length)) {
@@ -1978,7 +2085,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       }
       // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn kênh chung), KHÔNG cache theo
       // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate() });
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

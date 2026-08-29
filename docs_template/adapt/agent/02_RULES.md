@@ -34,7 +34,7 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
 - **UI · CLI output**: **English HOẶC i18n đủ 2 dict** (song ngữ, đổi qua nút setting) — **0 chuỗi hardcode** (mọi chuỗi người-dùng-thấy đi qua i18n, có cả 2 bản). **Thuật ngữ kỹ thuật / chuyên ngành nặng GIỮ NGUYÊN, KHÔNG dịch** (tên công nghệ, API, viết tắt kỹ thuật — dịch ra làm sai nghĩa). Chi tiết cổng chất lượng i18n → `03_STRUCTURE §9.D` (nguồn duy nhất, không lặp).
-- **code · comment công khai**: **TIẾNG ANH** — không nhét ngôn ngữ bản địa vào code/comment người khác đọc.
+- **code · comment: TIẾNG ANH TOÀN BỘ** — comment · docstring · tên biến/hàm · log/thông điệp kỹ thuật · commit message. Một file một ngôn ngữ. **Ba thứ KHÔNG phải comment — KHÔNG dịch:** ① **chuỗi RENDER ra tài liệu / bề mặt người đọc** (desc·note sinh vào `docs/`, nhãn UI qua i18n) theo luật của docs/UI ở trên, không theo luật code · ② **tên do người khác đặt** (tên cột Excel · trường API · tên file nguồn) giữ NGUYÊN từng ký tự dù trông như "mất dấu": đổi là loader không tìm thấy · ③ **thuật ngữ chuyên ngành** giữ nguyên. Comment bản địa cũ: sửa khi **đang đụng file đó**, KHÔNG mở chiến dịch dịch hàng loạt.
 - **CHỮ NGƯỜI DÙNG ĐỌC PHẢI ĐẦY ĐỦ VÀ ĐÚNG — bốn ràng buộc, áp lúc VIẾT.**
   Luật đứng ở đây vì các mặt của `audit` đều soi MÁY; không mặt nào soi thứ **người đọc nhận**, và
   một lỗi chữ thì không gate nào kêu — nó chỉ hiện ra trước mặt người dùng.

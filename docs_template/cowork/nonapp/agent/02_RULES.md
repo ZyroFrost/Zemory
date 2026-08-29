@@ -65,7 +65,7 @@ xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, d
 - **docs (`docs/agent` + `docs/plan`) và thân `SKILL.md`**: tiếng Việt có dấu.
 - **Tên thư mục · tên skill · `name:` trong frontmatter**: **tiếng Anh**, chữ thường, nối bằng `-`.
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM.** Câu mệnh lệnh ngắn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không khẩu ngữ, không kể chuyện, không ví dụ hội thoại.
-- **code · comment trong `scripts/`**: **TIẾNG ANH**. Thuật ngữ chuyên ngành GIỮ NGUYÊN, không dịch.
+- **code · comment trong `scripts/`: TIẾNG ANH TOÀN BỘ** — comment · docstring · tên biến/hàm · log. Một file một ngôn ngữ. **Ba thứ KHÔNG phải comment — KHÔNG dịch:** ① **chuỗi RENDER ra tài liệu / bề mặt người đọc** (desc·note sinh vào `docs/`) theo luật docs ở trên · ② **tên do người khác đặt** (tên cột Excel · trường API · tên file nguồn) giữ NGUYÊN từng ký tự dù trông như "mất dấu": đổi là loader không tìm thấy · ③ **thuật ngữ chuyên ngành** giữ nguyên. Comment bản địa cũ: sửa khi đang đụng file đó, KHÔNG dịch hàng loạt.
 - **CHỮ TRONG SẢN PHẨM GIAO ĐI PHẢI ĐẦY ĐỦ VÀ ĐÚNG — ba ràng buộc, áp lúc VIẾT.**
   Người đọc nhận sản phẩm, không nhận quy trình; một lỗi chữ thì không cổng nào kêu.
   · **① Có dấu, đúng chính tả.** Văn bản tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị
