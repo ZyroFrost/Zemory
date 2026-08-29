@@ -97,12 +97,12 @@ standard workspace.
 | 🏗️ **App harness & standard** | A ~40‑slot architecture standard + curated docs (constitution ↔ rules ↔ structure ↔ skills ↔ TODO ↔ changelog ↔ numbered plans) that scaffolds *any* app — from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). `.md` is the source (file wins); the DB is a derived index. |
 | 🧠 **Global Memory** | Every Claude / Codex / Continue / LM Studio session in one local SQLite DB, deduped, secret‑redacted, digested. |
 | 🔎 **Hybrid recall** | FTS5 keyword (word **+ trigram**, so substrings & non‑Latin work) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python/GPU) via RRF, with optional cross‑encoder rerank. Every stage **fails open** to FTS. |
-| 🌐 **Web‑chat capture** | Pull your **ChatGPT web** history into the memory via a login‑once browser window — no password ever touches zemory. |
+| 🌐 **Web‑chat capture** | Pull **ChatGPT**, **claude.ai** and Claude **Cowork** history through a login‑once browser window — no password ever touches zemory. Several accounts per platform, each shown under its own e‑mail; the daemon watches the login window, pulls as soon as you are in, and turns that tab into a "✓ linked" page. Background pulls run off‑screen. |
 | 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent) — one column, not a second store. Filter, roll up, and **exclude** lanes. |
 | 🕸️ **Code & docs graph** | On‑demand import graph (TS/JS + Python), tree‑sitter symbols, `graph impact` (blast radius), `graph fitness`, `graph export --json`. A **derived** layer — declared vs inferred edges never mix. |
 | 🖥️ **Background daemon** | A single instance on fixed port **4444** that opens in a **native app window with its own taskbar icon** (falls back to an Edge app window), a system‑tray icon, optional start‑with‑OS, an idle scheduler (scan → embed → digest), and a write‑gate that serializes DB writes. |
 | 🔐 **Cross‑machine sync** | Merge machines through an **encrypted delta bundle** on a Drive folder — additive, never destructive, provenance preserved. |
-| 🔌 **MCP server** | Expose recall to any MCP client (`memory_search`, `memory_show`, `plan_search`, `plan_show`). |
+| 🔌 **MCP server** | 17 tools for any MCP client: recall (`memory_search` · `memory_show` · `memory_context`), specs (`plan_search` · `plan_show`), graph (`graph_impact` · `graph_neighbors`), and control (`memory_jobs` · `memory_scan` · `memory_embed` · `project_merge` · `session_pin`). Control tools only delegate to what the CLI already does; a busy write‑gate answers "busy" with the holder's name instead of racing it. |
 | 🕵️ **Privacy tools** | Forget, re‑redact, back up, and restore — all local, dry‑run by default, backed up before deleting. |
 | 🛡️ **Layer‑1 guardrails** | `zemory hook guard` generates real machine locks (PreToolUse + pre‑commit) from your `protected` / `secretNames` markers: recursive & mass deletes, discarding uncommitted work, secrets reaching a commit, overwriting a file that has content. One‑shot `.allow-*` flags, self‑consuming. **A safety net for when the agent forgets a rule — not permission to skip asking you.** |
 | 📐 **Gates, not promises** | `conform` (standard drift) · `validate` (docs) · `todo verify` (re‑measures every backlog item against the code) · `graph fitness --gate` · a 10‑dimension audit playbook. The repo's own doctrine: *what stops drift is code, not a rule someone must remember.* |
@@ -207,11 +207,19 @@ unreadable, not message length.
 
 ![Projects](docs_visual/ui/03-projects.png)
 
-Linked projects appear as cards (App / Non-app badge, sessions, messages, agents, last update)
-with **pin** and **remove** — removing only drops it from the picker; the folder, its docs and its
-memory are untouched. Below, everything zemory has *seen but not linked*, **tabbed by machine**,
-each row offering **Add** (zemory manages it) or **Merge** (fold its sessions into another project).
-That second list is why the picker stays clean: discovery is separated from adoption.
+Two tabs, the same shape as Recall's *Find | Sessions*. **Projects** holds the linked cards (App /
+Non-app badge, sessions, messages, agents, last update) with a search box, type filter, sort, **pin**
+and **remove** — removing only drops a card from the picker; the folder, its docs and its memory are
+untouched. A card whose harness is behind the current standard carries an **⚠ outdated** mark, the
+same measurement the rail chip uses.
+
+**Add project** holds everything zemory has *seen but not linked*, **tabbed by machine**, each row
+offering **Add** (zemory manages it) or **Merge** (fold its sessions into another project), plus one
+**Rescan** button (the same scan as Global Memory; Deep Scan lives only there) and **Prune missing**.
+Prune shows what it will do before it does it: drop linked projects whose folder is gone, **merge**
+old roots into the linked project with the same folder name (a repo you moved or renamed), and fold
+the rest into a collapsed *folders gone* group. Sessions are never deleted — a root is only
+re‑pointed and pinned so the next scan does not split it again.
 
 ### 4 · Global Memory — the numbers, and the two ways data moves
 
@@ -219,8 +227,15 @@ That second list is why the picker stays clean: discovery is separated from adop
 
 Sub-tab **Memory** holds the statistics; **Sync & Backup** holds every action that moves data:
 
-- **Sources** — the provenance tree (Local → machine → agent, Web → platform) with live counts.
-  Untick a lane to leave it out of **both** sync and recall. It is a *filter, never a delete*.
+- **Sources** — the provenance tree (Local → machine → agent, Web → platform → **account**) with
+  live counts, collapsible groups and a **?** legend. A tick means *this lane may enter the memory
+  and be embedded*; untick it and zemory stops pulling it, leaves its existing rows out of the embed
+  queue, and drops it from sync and recall. It is a *filter, never a delete*. Web accounts are keyed
+  by the **e‑mail the site reports at login**, never by browser slot — sign a second account in and
+  it becomes its own row with its own history. Status marks follow two rules: web is binary (✓ linked
+  · ⚠ signed out — click to reconnect); local on this machine is ✓ store on disk · ⚠ store gone;
+  local from another machine is ✓ still syncing in, greyed once that machine has been quiet for 30
+  days. Parent rows roll their children up. The tree refreshes itself every minute.
 - **This Machine** — *Scan Known* vs *Deep Scan*, and the automation switches with their real
   behaviour spelled out: realtime capture per message, the context-warning threshold, the
   background sweep, start-with-OS, auto-sync.
@@ -253,10 +268,26 @@ service or an LLM agent app.
 
 ![Features](docs_visual/ui/07-features.png)
 
-Fourteen capabilities with live status (`Health 11/14 OK`), grouped by concern. Click one and the
-right pane explains **what it is · how it works · the details that bite**, in plain language. This
-screen exists because a feature list that cannot be *checked* is a promise, not a status — each row
-has a **Check** button that re-measures instead of repeating what a config file claims.
+Thirteen capabilities with live status (`Health 13/13 OK`), grouped by concern. Every badge uses
+one vocabulary — **On / Off** for switches, **Healthy / Warning / Off** for everything else — and
+figures such as `1,449 pending · auto-embedding` or `2,729 sessions` sit in grey after the name, not
+inside the badge. The vector index counts as healthy while the background scheduler is on, however
+long the queue is: a store that receives messages all day never reaches zero, so the question worth
+asking is *is something draining it*, not *is it empty*. Click a row and the right pane explains
+**what it is · how it works · the details that bite**, in plain language. Each row has a **Check**
+button that re-measures instead of repeating what a config file claims.
+
+The update chip at the bottom of the rail is the same idea for the tool itself. It is always visible:
+green with *Up to date · v2.10.0 · repos on standard* when nothing needs doing, orange when another
+machine has stamped a newer zemory on the shared channel or a linked repo has fallen behind the
+standard. Clicking it opens an **Update** box. The top half shows the two versions and an **Update
+now** button that pulls, rebuilds and restarts the daemon (it refuses while the source tree has
+uncommitted changes). The bottom half lists the repos behind the standard with a checkbox each and an
+**Update selected** button that applies the same gap‑fill `zemory sync` and `zemory hook guard` would
+run inside that repo — missing harness files are added, existing files are left alone, the guard is
+regenerated, nothing is wired into that repo's runtime. Writing into another project is otherwise
+forbidden; here your click is the permission, for those repos, this once. A switch at the bottom turns
+the repo check off for machines that only use zemory as memory.
 
 Any region with two or more adjacent panels has a **drag-to-resize** seam; sizes persist across
 sessions. The markdown docs remain the **source** — edit the `.md` directly (file wins); the DB is
@@ -390,7 +421,9 @@ In the cockpit, the **Graph** sub‑tab lights up imports and folder‑tree node
 # Memory
 zemory memory scan [--deep]              Ingest agent transcripts (deep = walk the disk)
 zemory memory scan-web --platform X      Capture web chat (chatgpt | claude), login-once browser
+zemory memory scan-web ... --account 2   Pull a second account of the same platform (its own slot)
 zemory memory borrow-cookies --platform  Reuse the session already signed in in your own browser
+zemory memory promote                    Find repeated corrections in episodic memory; proposes, never writes
 zemory memory search "q" [--all]         Recall (this project | everywhere)
 zemory memory search "q" --also "..."    Add a rephrasing — fused by RRF (see the warning below)
 zemory memory embed [--all] [--rebuild]  Build/refresh the semantic vector index
@@ -402,7 +435,8 @@ zemory memory sync --dir <folder>        Cross-machine sync via a Drive folder (
 zemory memory export <f.enc> [--full]    Encrypted bundle out (--full also carries the vector index)
 zemory memory import <f.enc> [--merge]   In: default REPLACES the DB; --merge only ADDS source rows
 zemory memory keygen | key show|set|path Share key = your identity; `key show` prints only a fingerprint
-zemory memory forget / redact            Privacy: forget rows / re-apply redaction
+zemory memory forget [--session id]      Privacy: forget rows (dry-run by default, backup on --force)
+zemory memory redact                     Re-apply redaction to rows already stored
 zemory memory backup / restore           Raw local SQLite backup / restore
 zemory memory salvage <db> <out>         Rescue readable rows out of a corrupted store
 zemory memory relocate <dir>             Move the live DB off the system drive
@@ -428,7 +462,8 @@ zemory archive                          Trim an over-long changelog into the DB 
 
 # Interfaces
 zemory ui                               Background daemon + cockpit (port 4444, single-instance)
-zemory mcp                              MCP stdio server for recall tools
+zemory mcp                              MCP stdio server (17 tools: recall · specs · graph · control)
+zemory selfupdate [--dry-run]           Pull + rebuild this install; stops if the tree is dirty
 zemory hook install                     Install the 0-token capture hooks (Stop / prompt / pre-compact)
 zemory hook guard                       Generate the layer-1 machine locks (you wire them yourself)
 ```
@@ -453,16 +488,34 @@ zemory memory scan-web --platform claude  # claude.ai (+ Cowork sessions)
 zemory memory scan-web --limit 5          # pull just the newest 5 (quick verify)
 ```
 
-If the session expires mid-run, zemory opens the window, **asks**, and resumes where it stopped
-rather than counting the rest as failures. Without a TTY (daemon/pipe) it opens the window, reports
-`need-login` and exits instead of hanging on a question nobody can answer.
-
-Zemory opens a dedicated browser profile (`<repo>/data/browser/<platform>`), you log
-in on the real site (id/password/2FA go to OpenAI, **never** to zemory), and
-zemory drives that logged‑in tab over CDP to read the site's own conversation API
-— running inside the real browser so it passes Cloudflare. Pulls are **batched
-and resume‑safe** and paced to ease rate limits. Captured chats land in the same
+Zemory opens a dedicated browser profile (`<repo>/data/browser/<platform>`, in your machine's
+default browser — Chrome, Edge or Brave), you log in on the real site (id/password/2FA go to
+OpenAI or Anthropic, **never** to zemory), and zemory drives that logged‑in tab over CDP to read
+the site's own conversation API — running inside the real browser so it passes Cloudflare. Pulls
+are **batched and resume‑safe** and paced to ease rate limits. Captured chats land in the same
 memory under `origin=web` and are fully searchable.
+
+**Signing in is a two‑step loop, and the daemon closes it.** From the cockpit, click the ⚠ mark on
+a web row (or *Add source → Sign in*): a window opens on the login page, the daemon polls it every
+5 seconds for up to 15 minutes, and the moment you are in it records the account, pulls the
+conversations, and navigates that same tab to a **"✓ linked as you@example.com — pulled N of M"**
+page so you know it worked. The poll only reads; it never closes tabs (an earlier version did, and
+killed the browser mid‑OAuth). Automatic pulls — the 20‑minute background tick, the *Scan* buttons,
+the MCP `memory_scan` tool — run in an **off‑screen** window that closes when done; the only time a
+visible window appears is when you asked to link an account.
+
+**Accounts are identities, not browser slots.** Each session is stamped with the e‑mail the site
+reports, so a second account of the same platform gets its own row and its own history, and a slot
+that is later signed in with a different account cannot "take over" the old one. Claude accounts
+that belong to several organisations are enumerated across every org that has chat enabled — the
+first org in the list is frequently an empty one. When an old conversation reappears in a fresh
+listing it is re‑attached to the account that listed it, which is how history moves to the right
+row after a re‑login; conversations already deleted on the site stay in an *unassigned* row until
+you decide.
+
+If the session expires mid-run from the CLI, zemory opens the window, **asks**, and resumes where
+it stopped rather than counting the rest as failures. Without a TTY (daemon/pipe) it reports
+`need-login`, marks the row ⚠, and leaves the click to you.
 
 > ⚠️ Captured conversation files contain real personal data and are **never
 > committed** — only code and docs live in this repo.
@@ -661,22 +714,19 @@ design bug even when the code runs. In brief:
 ## Roadmap
 
 **Shipped since this list was last written** — kept visible so the roadmap does not quietly claim
-work that is already done: claude.ai (+ Cowork) capture · scope applied at **ingest** time, not
-just sync/recall · MCP `graph_impact` / `graph_neighbors` mirrors · opt-in attachment/image sync ·
-the 768d/fp32 index · layer-1 guardrails.
+work that is already done: claude.ai (+ Cowork) capture · scope applied at **ingest** time and to the
+embed queue, not just sync/recall · MCP `graph_impact` / `graph_neighbors` mirrors and the three
+control tools · opt-in attachment/image sync · the 768d/fp32 index · layer-1 guardrails · the
+"I don't know" gate (on by default since 2026-08-24) · a vector lane for `tool_use` messages ·
+per-account web capture with the daemon-driven login loop · `memory promote` · `selfupdate` and the
+in-app update box · project merge for renamed folders.
 
 **Actually open:**
 
 - **Gemini web capture** — the last platform; the `scan-web --platform` frame already exists.
-- **A second retrieval lane for `tool_use` messages.** They currently reach only *one* lane, and
-  RRF rewards agreement *between* lanes — so a top-ranked hit in a single lane still gets buried
-  (measured: 3 lanes → 50%@10, 2 → 25%, 1 → **0%**). Two candidate fixes, one costing machine
-  hours (embed them) and one costing disk (open the trigram index to them); the cheap one is
-  untested.
-- **An "I don't know" gate.** Today every query returns ~40 results even when the store holds no
-  answer, with a top score close to a genuine hit — confidently wrong, and the reader cannot tell.
-  Distance alone proved too weak a signal; the untried idea is scoring **agreement across all
-  three lanes**.
+- **Flagging throw-away sessions** (a few typed characters, a chat sent to the wrong project) so
+  they stop surfacing in recall. The rule would be mechanical and would *flag*, never delete; the
+  running agent reviews the candidates with you. Not started — the first step is to count them.
 - **Late interaction / ColBERT** to lift the candidate-pool ceiling — blocked on a model, not on
   the architecture: of 100 surveyed, exactly two understand Vietnamese, and each fails a different
   requirement (licence vs runtime support).

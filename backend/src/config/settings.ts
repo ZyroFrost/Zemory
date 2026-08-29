@@ -57,6 +57,9 @@ interface ZConfig {
   syncLevel?: SyncLevel;
   /** L3: chở blob đính kèm trong bundle sync (mặc định TẮT — xem getSyncAttachments). */
   syncAttachments?: boolean;
+  /** Chip cập nhật có KIỂM các repo khác trong registry còn khớp chuẩn không (mặc định có). Tắt ⇒ chip chỉ báo
+   *  bản zemory mới trên kênh chung — cho máy chỉ dùng zemory làm bộ nhớ, không quản chuẩn repo (user 2026-08-29). */
+  repoStdCheck?: boolean;
   /** Kết quả kiểm đăng nhập gần nhất của từng nền web — xem getWebAuth. */
   webAuth?: Record<string, { ok: boolean; at: string; who?: string }>;
   /**
@@ -265,6 +268,15 @@ export function getSyncAttachments(): boolean {
 export function setSyncAttachments(on: boolean): void {
   const c = read();
   c.syncAttachments = on;
+  write(c);
+}
+
+export function getRepoStdCheck(): boolean {
+  return read().repoStdCheck !== false;
+}
+export function setRepoStdCheck(on: boolean): void {
+  const c = read();
+  c.repoStdCheck = on;
   write(c);
 }
 

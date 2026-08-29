@@ -271,10 +271,13 @@
       return oi(a)-oi(b);});
     box.innerHTML=ps.map(function(p){
       var km=pinMap[String(p.path).toLowerCase()]||{},pinned=!!km.pinned,root=km.root||p.path,pbi=p.profile==='non-app';
-      return '<div class="proj-card'+(pinned?' pinned':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
+      // Dấu "chuẩn cũ" trên ĐÚNG thẻ — cùng nguồn với chấm cam ở rail (`/harness-updates`, lưu ở Z.updStale).
+      var us=(Z.updStale||[]).find(function(x){return String(x.root||'').toLowerCase()===String(root).toLowerCase();});
+      var old=us?'<span class="ptype is-old" title="'+stdEsc(t('proj.stdOldTip').replace('{m}',us.missing||0).replace('{g}',us.guardStale||0))+'">'+stdEsc(t('proj.stdOld'))+'</span>':'';
+      return '<div class="proj-card'+(pinned?' pinned':'')+(us?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
-        +(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
+        +old+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
         +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
@@ -479,15 +482,25 @@
     // Dọn project mà folder không còn tồn tại. Thao tác GỠ khỏi danh sách ⇒ phải hỏi
     // trước (02_RULES: xoá/thu hẹp luôn cần xác nhận). Folder/docs/memory KHÔNG bị đụng.
     else if(act==='pruneproj'){
-      zConfirm({title:t('prune.title'),body:t('prune.body'),okLabel:t('prune.ok'),onOk:function(){
-        zset('scanProjMsg',t('prune.running'));
-        zPost('/prune-projects').then(function(r){
-          var n=(r&&(r.removed!=null?r.removed:(r.pruned!=null?r.pruned:0)))||0;
-          zset('scanProjMsg',t('prune.done').replace('{n}',zN(n)));
-          if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;
-          return zGet('/status').then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);});
-        }).catch(function(){zset('scanProjMsg','✗ '+t('q.err'));});
-      }});}
+      // Hộp xác nhận in TỪNG DÒNG sẽ làm (dry-run trước) — nút "dọn" mà không nói dọn gì là nút im lặng.
+      zset('scanProjMsg',t('prune.running'));
+      zPost('/prune-projects?dry=1').then(function(d){
+        d=d||{};var lines=[];
+        if(d.removeReg)lines.push(t('prune.reg').replace('{n}',zN(d.removeReg)));
+        (d.merges||[]).forEach(function(m){lines.push(t('prune.merge').replace('{from}',m.from).replace('{to}',zProjName(m.to)).replace('{n}',zN(m.n)));});
+        (d.gone||[]).forEach(function(g){lines.push(t('prune.group').replace('{root}',g.root).replace('{n}',zN(g.n)));});
+        if(!lines.length){zset('scanProjMsg',t('prune.nothing'));return;}
+        zset('scanProjMsg','');
+        zConfirm({title:t('prune.title'),body:t('prune.dry')+'\n• '+lines.join('\n• '),okLabel:t('prune.ok'),onOk:function(){
+          zset('scanProjMsg',t('prune.running'));
+          zPost('/prune-projects').then(function(r){
+            r=r||{};zset('scanProjMsg',t('prune.done2').replace('{r}',zN(r.removed||0)).replace('{m}',zN(r.mergedRoots||0)).replace('{g}',zN(r.grouped||0)));
+            if(r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;
+            return zGet('/status').then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);});
+          }).catch(function(){zset('scanProjMsg','✗ '+t('q.err'));});
+        }});
+      }).catch(function(){zset('scanProjMsg','✗ '+t('q.err'));});
+    }
     else if(act==='addproj'){openAddProjDlg();}
     else if(act==='browse-drive'){gPickFolder('driveInput');}
     else if(act==='browse-reloc'){gPickFolder('relocInput');}
@@ -539,13 +552,17 @@
     if(!discTab||hosts.indexOf(discTab)<0)discTab=hosts[0];
     var tabs='<div class="tabs" style="margin-top:6px;flex-wrap:wrap">'+hosts.map(function(h){return '<button class="'+(h===discTab?'on':'')+'" data-disc-tab="'+stdEsc(h)+'">🖥 '+stdEsc(h===localHost?(h+t('src.thisHost')):h)+' ('+byHost[h].length+')</button>';}).join('')+'</div>';
     var isLocalTab=discTab===localHost;
-    var rows=(byHost[discTab]||[]).slice(0,80).map(function(p){var pbi=p.profile==='non-app';
+    // Folder đã mất (chỉ đo được cho máy này): gom xuống nhóm thu gọn cuối danh sách — phiên vẫn trong kho,
+    // nhưng không bày lẫn với repo đang sống (user 2026-08-29).
+    var all=(byHost[discTab]||[]),live=all.filter(function(p){return !p.gone;}),gone=all.filter(function(p){return p.gone;});
+    var goneHtml=gone.length?'<details class="disc-gone" style="margin-top:10px"><summary class="muted" style="font-size:11.5px;cursor:pointer">'+stdEsc(t('src.goneHdr').replace('{n}',gone.length))+'</summary>'+gone.map(function(p){return '<div class="disc-row muted" style="font-size:11.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(p.path)+'</span><span>'+zN(p.sessions)+' sess</span></div>';}).join('')+'</details>':'';
+    var rows=live.slice(0,80).map(function(p){var pbi=p.profile==='non-app';
       var act=isLocalTab
         ? '<button class="btn sm" data-add-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto">＋ Add</button><button class="btn sm" data-merge-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto" title="'+t('src.mergeTip')+'">'+t('src.merge')+'</button>'
         : '<span class="muted" style="font-size:11px;flex:0 0 auto">'+t('src.from')+stdEsc(discTab)+'</span>';
       return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+act+'</div></div>';
     }).join('');
-    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>';
+    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>'+goneHtml;
   }
   document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('[data-disc-tab]'):null;if(t){discTab=t.dataset.discTab;renderDiscovered((Z.mem&&Z.mem.coverage)||{});}});
   document.addEventListener('click',function(e){var mg=e.target.closest?e.target.closest('[data-merge-proj]'):null;if(!mg)return;
