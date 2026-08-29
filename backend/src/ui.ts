@@ -13,7 +13,7 @@ const execFileP = promisify(execFile);
 import { templateDir, channelUpdate, ensureHarness, syncCheck } from "./docs/adopt.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
-import { scanWeb } from "./memory/scanweb.js";
+import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
 import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
 import { listConnections, webProfileDir } from "./memory/connections.js";
 import { currentMemoryDir, openMemory } from "./memory/db.js";
@@ -29,7 +29,7 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { currentProjectRoot, harnessPathsAt, isConnected } from "./core/config.js";
+import { currentProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -50,7 +50,7 @@ import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
-import { schedulerChildRunning, startScheduler, stopScheduler } from "./jobs/scheduler.js";
+import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
@@ -83,8 +83,11 @@ import {
   setSyncLevel,
   getSyncAttachments,
   setSyncAttachments,
+  getWebAuth,
   setWebAuth,
+  setWebPull,
 } from "./config/settings.js";
+import { slotOfIdentity } from "./memory/webslots.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, uninstallHooks } from "./memory/capture-hook.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
@@ -278,68 +281,30 @@ function driveSummary(): DriveSummary {
   return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...driveSyncProgress() };
 }
 
-/** Một dòng kết quả kéo web cho MỘT nền, đủ để UI quyết định có phải hỏi đăng nhập không. */
-export interface WebScanRow {
-  platform: string;
-  /** Khe tài khoản ("main", "2", …) — cùng một nền có thể có nhiều tài khoản, và hội
-   *  thoại nằm theo TÀI KHOẢN chứ không theo nền. */
-  account?: string;
-  status: string;
-  url?: string;
-  pulled?: number;
-  skipped?: number;
-  failed?: number;
-  /** Mất phiên GIỮA lúc kéo (khác "chưa đăng nhập bao giờ") — phần đã kéo vẫn được lưu. */
-  authExpired?: boolean;
-  /** Có phiên ĐANG đăng nhập sẵn trong trình duyệt thật ⇒ mượn được, khỏi gõ mật khẩu.
-   *  Chỉ gắn khi thật sự có cookie: mời mượn rồi báo "trình duyệt cũng đăng xuất" thì
-   *  tệ hơn là không mời. */
-  canBorrow?: { from: string; label: string; profile: string; cookies: number } | null;
-  error?: string;
-}
-
-/** Các nền web-chat nút Quét biết tới. */
-const WEB_PLATFORMS = ["chatgpt", "claude"];
-
-/**
- * Nền nào ĐANG DÙNG trên máy này = đã có profile trình duyệt của zemory.
- *
- * Không có công tắc "kèm web chat" nữa (user chốt 2026-07-30: *"đéo cần phải nút check
- * scan web làm gì hết… 1 nút scan, tự động dò thằng nào thiếu rồi hiện ra đăng nhập"*).
- * Nhưng cũng KHÔNG quét mù mọi nền: máy chưa từng dùng ChatGPT mà bấm Quét lại bị bật
- * hai cửa sổ trình duyệt là một kiểu phiền khác. Đã dùng rồi ⇒ có profile ⇒ quét.
- */
-function platformsInUse(): string[] {
-  const root = join(currentMemoryDir(), "browser");
-  return WEB_PLATFORMS.filter((k) => existsSync(join(root, k)));
-}
-
-/**
- * Các KHE TÀI KHOẢN đang có của một nền: `main` + mọi `<platform>-<account>`.
- *
- * Hội thoại nằm theo TÀI KHOẢN chứ không theo nền — đo 2026-07-31: 3 phiên Cowork user
- * cần nằm ở một tài khoản Claude khác cái đang đăng nhập. Không có khe thì muốn lấy chúng
- * phải đăng xuất cái đang dùng.
- */
-function accountsOf(platform: string): string[] {
-  const root = join(currentMemoryDir(), "browser");
-  const out = existsSync(join(root, platform)) ? ["main"] : [];
-  try {
-    for (const d of readdirSync(root)) {
-      const m = new RegExp(`^${platform}-(.+)$`).exec(d);
-      if (m) out.push(m[1]);
-    }
-  } catch {
-    /* chưa có thư mục nào */
-  }
-  return out.length ? out : ["main"];
-}
+// `WebScanRow` · `WEB_PLATFORMS` · `platformsInUse` · `accountsOf` · `scanWebPlatforms`
+// đã DỜI xuống `memory/scanweb.ts` (2026-08-28) — nghiệp vụ thuộc domain, surface chỉ
+// wire (`03_STRUCTURE §4`). Chúng được import ở đầu file; ở đây chỉ còn phần thuộc UI.
 
 /** Khe trống kế tiếp — nút "thêm tài khoản" không bắt người dùng tự đặt tên. */
 function nextAccountSlot(platform: string): string {
   const have = new Set(accountsOf(platform));
   for (let i = 2; i < 20; i++) if (!have.has(String(i))) return String(i);
   return "20";
+}
+
+/**
+ * Khe để đăng nhập MỘT tài khoản chưa có khe: dùng lại khe phụ đang TRỐNG (chưa từng nối được)
+ * trước, hết mới đẻ khe mới. Đo 2026-08-28: mỗi lần bấm hàng "chưa nối" là một khe mới (2·3·4·5)
+ * — bốn thư mục profile, bốn cổng CDP, không cái nào đăng nhập được; người dùng bấm lại vì
+ * lần trước chưa xong, không phải vì muốn thêm tài khoản.
+ */
+function freeAccountSlot(platform: string): string {
+  const auth = getWebAuth();
+  for (const a of accountsOf(platform)) {
+    if (a === "main") continue;
+    if (auth[`${platform}#${a}`]?.ok !== true) return a;
+  }
+  return nextAccountSlot(platform);
 }
 
 /**
@@ -362,8 +327,59 @@ function nextAccountSlot(platform: string): string {
  * hỏi lại tất cả — `probeOnly` nên nó KHÔNG mở cửa sổ và không kéo gì; cửa sổ nào không
  * sống thì giữ nguyên kết quả lần kiểm trước.
  */
+/**
+ * CANH ĐĂNG NHẬP — daemon là người nhận, không phải UI (user 2026-08-28: *"đăng nhập xong web
+ * claude nó phải trả lại đăng nhập xong… rồi app nhận đăng nhập mới đúng"*).
+ *
+ * Đo ca hỏng: `/connect` mở cửa sổ, trả `need-login` sau ~73 s rồi BUÔNG. Người dùng đăng nhập
+ * xong (backend probe sau đó thấy `connected=true`), nhưng không ai KÉO và không ai BÁO — kho vẫn
+ * 0 phiên claude-web mới từ 16/07, hộp "Thêm nguồn" đứng ở "đang chờ…". Trước đây phần canh nằm ở
+ * UI (`connPoll`), tức chỉ chạy khi cửa sổ app còn mở và chỉ 3 phút; cờ `connPending` lại không
+ * được đặt ở đường nút "Đăng nhập" nên có thấy cũng không kéo.
+ *
+ * Nay: sau mỗi `need-login`, daemon probe khe đó 5 s/lượt tới 15 phút; thấy đăng nhập ⇒ ghi
+ * `webAuth`, KÉO ngay qua chính cửa sổ đang mở (`scanWebPlatforms` — attach, không mở thêm cửa sổ
+ * nhờ luật MỘT KHE = MỘT CỬA SỔ), ghi `webPull`, làm tươi dashboard. UI chỉ vẽ lại theo `/connections`.
+ */
+const loginWatch = new Map<string, { since: number }>();
+const LOGIN_WATCH_MS = 15 * 60_000;
+const LOGIN_WATCH_EVERY_MS = 5_000;
+function startLoginWatch(platform: string, account: string | undefined): void {
+  const acct = account ?? "main";
+  const lane = webLaneKey(platform, acct);
+  if (loginWatch.has(lane)) return; // một khe một người canh
+  loginWatch.set(lane, { since: Date.now() });
+  const tick = async (): Promise<void> => {
+    if (Date.now() - (loginWatch.get(lane)?.since ?? 0) > LOGIN_WATCH_MS) {
+      loginWatch.delete(lane);
+      return;
+    }
+    try {
+      const probe = await scanWeb({ platform, account: acct, probeOnly: true });
+      if (probe.status === "done") {
+        setWebAuth(lane, true, probe.email ?? undefined);
+        invalidateDashboard();
+        loginWatch.delete(lane);
+        const web = await scanWebPlatforms([platform], acct);
+        const r = web[0];
+        if (r) setWebPull(lane, { ok: r.status === "done", status: r.status, pulled: r.pulled, error: r.error });
+        invalidateDashboard();
+        // Bước 2 của vòng đăng nhập: trang "✓ Đã liên kết" ngay trong cửa sổ vừa đăng nhập.
+        const q = new URLSearchParams({ platform, who: probe.email ?? "", pulled: String(r?.pulled ?? 0), total: String((r?.pulled ?? 0) + (r?.skipped ?? 0)) });
+        void showLinkedPage(platform, acct, `http://127.0.0.1:${uiPort()}/linked?${q.toString()}`);
+        return;
+      }
+    } catch {
+      /* fail-open: lượt probe hỏng thì thử lại nhịp sau */
+    }
+    setTimeout(() => void tick(), LOGIN_WATCH_EVERY_MS).unref?.();
+  };
+  setTimeout(() => void tick(), LOGIN_WATCH_EVERY_MS).unref?.();
+}
+
 async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
   const rows = listConnections();
+  for (const r of rows) if (r.kind === "web" && r.platform) r.watching = loginWatch.has(webLaneKey(r.platform, r.account ?? "main"));
   await Promise.all(
     rows.map(async (r) => {
       if (r.kind !== "web" || !r.platform || r.connected) return;
@@ -382,37 +398,6 @@ async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
     }),
   );
   return rows;
-}
-
-async function scanWebPlatforms(only?: string[], account?: string): Promise<WebScanRow[]> {
-  const list = (only ?? platformsInUse()).filter((k) => WEB_PLATFORMS.includes(k));
-  const out: WebScanRow[] = [];
-  for (const platform of list) {
-    // Không truyền khe cụ thể ⇒ quét MỌI tài khoản của nền đó. Bỏ sót khe nào là hội
-    // thoại của tài khoản đó không bao giờ vào bộ nhớ.
-    for (const acct of account ? [account] : accountsOf(platform)) {
-    try {
-      const r = await scanWeb({ platform, account: acct });
-      // Ghi lại kết quả kiểm để bảng "Liên kết" có cái THẬT mà hiện — nó không tự mở
-      // trình duyệt đi kiểm mỗi lần vẽ được.
-      setWebAuth(acct === "main" ? platform : `${platform}#${acct}`, r.status === "done", r.email ?? undefined);
-      out.push({
-        platform,
-        account: acct,
-        status: r.status,
-        url: r.url,
-        pulled: r.pulled,
-        skipped: r.skipped,
-        failed: r.failed,
-        authExpired: r.authExpired,
-        canBorrow: r.status === "need-login" ? findBorrowSource(platform) : undefined,
-      });
-    } catch (e) {
-      out.push({ platform, account: acct, status: "error", error: e instanceof Error ? e.message : String(e) });
-    }
-    }
-  }
-  return out;
 }
 
 /**
@@ -1181,12 +1166,10 @@ function openWindow(url: string): void {
 
 /** The UI home address. One fixed port so it is bookmarkable and the
  *  browser keeps per-origin state; override with ZEMORY_UI_PORT when 4444 clashes. */
-export const DEFAULT_UI_PORT = 4444;
-
-export function uiPort(): number {
-  const raw = Number(process.env.ZEMORY_UI_PORT);
-  return Number.isInteger(raw) && raw > 0 && raw < 65536 ? raw : DEFAULT_UI_PORT;
-}
+// `DEFAULT_UI_PORT` + `uiPort()` đã DỜI sang `core/config.ts` (2026-08-28) — cấu hình mọi
+// bề mặt cần, không phải nghiệp vụ của máy chủ. Re-export để nơi gọi cũ không phải đổi.
+export { DEFAULT_UI_PORT } from "./core/config.js";
+export { uiPort };
 
 function listenOn(server: ReturnType<typeof createServer>, port: number): Promise<void> {
   return new Promise((ok, fail) => {
@@ -1656,7 +1639,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // người dùng vẫn phải nhận được kết quả quét đĩa trong mọi trường hợp. Chạy KHÔNG
       // tương tác: `scanWeb` mở sẵn cửa sổ rồi trả 'need-login', UI hỏi bằng dialog (giữ
       // request HTTP mở để chờ người đăng nhập là treo cả daemon).
-      const webResults = u.searchParams.get("web") === "0" ? undefined : await scanWebPlatforms();
+      // NGẦM: nút Quét không được bật cửa sổ trình duyệt vào mặt người dùng (user 2026-08-29). Khe mất
+      // phiên ⇒ `need-login` ghi sổ, cây hiện ⚠, người dùng bấm nối mới có cửa sổ — không mở form ở đây.
+      const webResults = u.searchParams.get("web") === "0" ? undefined : await scanWebPlatforms(undefined, undefined, { hidden: true });
       invalidateDashboard();
       return json(res, { ...r, web: webResults });
     }
@@ -1671,6 +1656,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       invalidateDashboard();
       return json(res, { ok: true, account, web, rows: await liveConnections() });
     }
+    if (p === "/linked") {
+      // Trang tĩnh một màn, hiện trong CHÍNH cửa sổ đăng nhập sau khi daemon nhận + kéo xong
+      // (user chốt 2026-08-29: vòng đăng nhập phải có bước "đã đăng nhập", không trả về trang chủ).
+      // Song ngữ trên một trang (cửa sổ này không có công tắc ngôn ngữ của app); không nút bấm.
+      const who = u.searchParams.get("who") ?? "";
+      const plat = u.searchParams.get("platform") ?? "";
+      const pulled = Number(u.searchParams.get("pulled") ?? 0);
+      const total = Number(u.searchParams.get("total") ?? 0);
+      const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
+      const name = plat === "chatgpt" ? "ChatGPT" : plat === "claude" ? "Claude.ai" : esc(plat);
+      const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Zemory — linked</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1115;color:#e6e6e6;font:15px/1.6 system-ui,Segoe UI,sans-serif}
+.card{max-width:520px;padding:32px 36px;border:1px solid #2a2f3a;border-radius:14px;background:#151922;text-align:center}
+.ok{font-size:44px;color:#3ddc84;line-height:1}h1{font-size:20px;margin:14px 0 6px}.who{font-weight:700}.n{color:#9aa4b2;font-size:13.5px;margin-top:10px}.en{color:#8a93a0;font-size:13px;margin-top:18px;border-top:1px solid #2a2f3a;padding-top:12px}</style></head>
+<body><div class="card"><div class="ok">✓</div><h1>Đã liên kết ${name}</h1><div class="who">${esc(who)}</div>
+<div class="n">Đã kéo ${pulled} hội thoại mới · ${total} hội thoại trên tài khoản. Bạn có thể đóng cửa sổ này và quay lại Zemory.</div>
+<div class="en">${name} linked as <b>${esc(who)}</b> — pulled ${pulled} new of ${total} conversations. You can close this window and return to Zemory.</div></div></body></html>`;
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end(html);
+    }
     if (p === "/connections") {
       // Bảng "Liên kết" cạnh Sources: nguồn nào đang nối, nguồn nào đứt + nút nối lại.
       return json(res, { ok: true, rows: await liveConnections() });
@@ -1679,7 +1684,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Nút "Liên kết" của một nguồn web: có phiên sẵn trong trình duyệt thật thì MƯỢN
       // (không gõ mật khẩu); không thì mở cửa sổ đăng nhập rồi kiểm lại.
       const platform = u.searchParams.get("platform") ?? "";
-      const account = u.searchParams.get("account") ?? undefined;
+      // `account` có thể là DANH TÍNH (email của một hàng tài khoản trên cây): tra khe đang giữ
+      // nó; không khe nào ⇒ mở KHE MỚI để đăng nhập tài khoản đó, không đè lên khe của người khác.
+      const rawAccount = u.searchParams.get("account") ?? undefined;
+      const account =
+        rawAccount === "new"
+          ? freeAccountSlot(platform) // hàng "chưa gắn tài khoản": đăng nhập tài khoản chủ vào khe trống
+          : rawAccount && rawAccount.includes("@")
+            ? (slotOfIdentity(getWebAuth(), platform, rawAccount) ?? freeAccountSlot(platform))
+            : rawAccount;
       const src = account && account !== "main" ? null : findBorrowSource(platform);
       let backup: string | undefined;
       if (src) {
@@ -1696,10 +1709,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         else {
           restoreProfile(webProfileDir(platform, account), backup);
           const after = await scanWebPlatforms([platform], account);
+          if (after[0]?.status === "need-login") startLoginWatch(platform, account);
           invalidateDashboard();
           return json(res, { ok: true, borrowed: null, borrowFailed: true, web: after, rows: await liveConnections() });
         }
       }
+      // Cửa sổ đăng nhập đang mở ⇒ daemon canh tiếp; UI không phải giữ vòng hỏi nào.
+      if (web[0]?.status === "need-login") startLoginWatch(platform, account);
       invalidateDashboard();
       return json(res, { ok: true, borrowed: src ? { ...src } : null, web, rows: await liveConnections() });
     }
@@ -1994,8 +2010,16 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // return immediately; the page polls /sync-status.
       if (!getDriveDir()) return json(res, { ok: false, error: "no Drive folder linked" });
       if (cliHoldsWrite()) return json(res, { ok: false, error: "a CLI write is running — try again shortly" });
-      const st = startSyncJob(() => invalidateDashboard());
-      if (!st.running && st.ok === false) return json(res, { ok: false, error: st.error ?? "could not start sync" });
+      // `preempt`: đây là NGƯỜI bấm, không phải máy tự chạy ⇒ chuỗi bảo trì phải nhường
+      // (user chốt 2026-08-28). Auto-sync của scheduler KHÔNG truyền cờ này — nó xếp hàng.
+      const st = startSyncJob(() => invalidateDashboard(), { preempt: true });
+      if (!st.running && st.ok === false) {
+        // `yielding…` KHÔNG phải lỗi: chuỗi bảo trì đang rút lui và sync sẽ tự khởi động sau
+        // vài giây. Trả `ok:true` để bề mặt hiện "đang chờ tới lượt" thay vì một câu đỏ cụt —
+        // báo hỏng cho một việc đang chạy đúng kế hoạch là cách nhanh nhất làm người dùng bấm loạn.
+        if (st.error?.startsWith("yielding")) return json(res, { ok: true, running: false, pending: true, note: st.error });
+        return json(res, { ok: false, error: st.error ?? "could not start sync" });
+      }
       return json(res, { ok: true, running: true, startedAt: st.startedAt });
     }
     if (p === "/sync-status") {

@@ -96,3 +96,22 @@ Lệnh (không thuộc `memory scan` quét đĩa):
   - Còn lại của nền này: `project_root` vẫn là **uuid thô** vì API không trả tên folder — cách giải giống ChatGPT (`_projects.json`), làm khi cần.
 - ❌ **Gemini: CHƯA làm** — Takeout là log lossy → muốn fidelity cao phải qua browser-connector/extension. Là nền web **cuối cùng** còn thiếu.
 - Khung `scan-web --platform` đã có sẵn (ChatGPT + Claude.ai) → thêm Gemini dùng chung khung.
+
+## 16. TÀI KHOẢN — danh tính, khe, đăng nhập, dấu trạng thái (chốt 2026-08-28/29)
+- **Khe ≠ tài khoản.** Khe (`main` · `2` · …) = thư mục profile trình duyệt + cổng CDP (`accountPort`) — chi tiết
+  kỹ thuật. Tài khoản = **email web trả về lúc đăng nhập** (`/api/account`→`/api/bootstrap`; ChatGPT `/api/auth/session`).
+  `sessions.account` ghi **email** (`accountKey`), khe chỉ là đường lùi khi chưa biết. Không suy danh tính từ tên org,
+  từ sổ cũ, hay từ khe đang đăng nhập (user chốt: *"chỉ lấy thông tin chính thức của web nhận về"*).
+- **Gắn lại lịch sử bằng LIỆT KÊ của web:** sau mỗi lượt liệt kê, mọi hội thoại nền trả về (kể cả đã có trong kho)
+  được `restampAccount` gắn email đang đăng nhập; hàng đã có email khác không bị đè. Hội thoại đã xoá trên web thì
+  không gắn được — nằm ở hàng "(chưa gắn tài khoản)", nút của nó mở khe trống (`freeAccountSlot`).
+- **Một tài khoản, nhiều org chat** (đo: `Global` 0 hội thoại đứng trước org có hội thoại): `CLAUDE_ORG_JS` trả `orgs`
+  (mọi org có `chat`), liệt kê/projects/cowork duyệt hết; sổ `globalThis.__zmOrgOf` nhớ org của từng id để lời gọi chi
+  tiết đi đúng org (lùi: thử lần lượt). Danh sách rỗng thật ⇒ `done·0`, không phải `no-tab`.
+- **Vòng đăng nhập 2 bước, DAEMON là người nhận:** `/connect` mở cửa sổ; trả `need-login` ⇒ `startLoginWatch` probe
+  5 s/lượt tới 15 phút; thấy đăng nhập ⇒ `webAuth` ⇒ kéo ngay qua chính cửa sổ ⇒ `webPull`. **Probe CHỈ ĐỌC** — không
+  đóng tab, không spawn (đóng tab lúc OAuth mở trang phụ = giết cửa sổ đúng khi đăng nhập xong). UI đọc `watching`.
+- **Hai hệ dấu trên cây Nguồn:** web nhị phân ✓ còn liên kết / ⚠ mất (bấm nối lại) · local máy này ✓ kho trên đĩa / ⚠
+  kho mất · local máy khác ✓ xanh có tin ≤30 ngày / ✓ xám "đã ngưng, kho lưu trữ" (không bao giờ ⚠) · hàng cha gộp con.
+- **Đóng dấu chỉ lên phiên của nguồn web vừa kéo** (`webSessionIds`) — `scan()` nạp toàn kho, phiên local nạp cùng lượt
+  không được mang tài khoản web.

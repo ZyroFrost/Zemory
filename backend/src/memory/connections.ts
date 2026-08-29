@@ -12,10 +12,13 @@
 //     ở đây chỉ hiện kết quả của lần kiểm GẦN NHẤT kèm thời điểm — không bịa "đang nối"
 //     từ việc có sẵn thư mục profile. Bấm nút mới đi kiểm thật.
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { currentMemoryDir, openMemory } from "./db.js";
+import { allAdapters } from "./adapters/index.js";
 import { findBorrowSource } from "./borrowcookies.js";
+import { accountsOf } from "./webslots.js";
 import { getWebAuth } from "../config/settings.js";
 
 export interface ConnectionRow {
@@ -28,6 +31,9 @@ export interface ConnectionRow {
   /** Khe tài khoản của nền đó ("main", "2", …). */
   account?: string;
   connected: boolean;
+  /** Daemon đang CANH cửa sổ đăng nhập của khe này (sau một cú "Đăng nhập"): người dùng đăng
+   *  nhập xong là daemon tự nhận + tự kéo, UI chỉ cần vẽ lại. */
+  watching?: boolean;
   /** Câu giải thích NGẮN, luôn là thứ đo được: đường dẫn store, hoặc lần kiểm cuối. */
   detail?: string;
   /**
@@ -51,6 +57,11 @@ export interface ConnectionRow {
 const WEB_LABEL: Record<string, { label: string; platform: string }> = {
   "chatgpt-web": { label: "ChatGPT (web)", platform: "chatgpt" },
   "claude-web": { label: "Claude.ai (web)", platform: "claude" },
+  // `claude-cowork` là LANE PHỤ của cùng nền claude.ai (`PLATFORMS.claude.sub`), không phải
+  // nguồn local. Thiếu dòng này nó rơi xuống nhánh local vì có thư mục `imports/cowork` trên
+  // đĩa ⇒ bày ra như một "kho local đang nối", TRÙNG TÊN với chính nó ở cây Web chat. Đo
+  // 2026-08-28: đúng cái tên `claude-cowork` hiện HAI LẦN trên một màn — thứ user đang bắt.
+  "claude-cowork": { label: "Cowork (claude.ai)", platform: "claude" },
   "gemini-web": { label: "Gemini (web)", platform: "gemini" },
 };
 
@@ -134,7 +145,15 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
     }
     // Local: nối = còn thư mục store trên đĩa. Máy khác đồng bộ sang thì không có store
     // ở đây — đó KHÔNG phải đứt liên kết, chỉ là dữ liệu của máy khác.
-    const mine = stores.filter((s) => s.source === source);
+    // Sổ `known_stores` không có hàng cho nguồn này ⇒ lùi về đường MẶC ĐỊNH của adapter
+    // (`~/<signature>`). Đo 2026-08-29: `claude-code-memory` đọc chung `.claude/projects` với
+    // claude-code nên chưa từng có hàng riêng trong sổ ⇒ bảng phán "không có kho trên máy này"
+    // ngay trên máy đang có 224 tin của nó. Thiếu sổ ≠ thiếu kho.
+    let mine = stores.filter((s) => s.source === source);
+    if (!mine.length) {
+      const sig = allAdapters().find((a) => a.source === source)?.signature;
+      if (sig) mine = [{ root: join(homedir(), sig), source }];
+    }
     const alive = mine.filter((s) => existsSync(s.root));
     out.push({
       source,
@@ -157,19 +176,13 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
  * lại nằm ở một tài khoản Claude khác cái đang đăng nhập. Không có khe thì muốn lấy chúng
  * phải đăng xuất cái đang dùng, tức đổi mất phiên này để lấy phiên kia.
  */
-function browserAccounts(platform: string): string[] {
-  const root = join(currentMemoryDir(), "browser");
-  const out = existsSync(join(root, platform)) ? ["main"] : [];
-  try {
-    for (const d of readdirSync(root)) {
-      const m = new RegExp("^" + platform + "-(.+)$").exec(d);
-      if (m) out.push(m[1]);
-    }
-  } catch {
-    /* chưa có thư mục browser nào */
-  }
-  return out.length ? out : ["main"];
-}
+// 🔴 BẢN SAO ĐÃ GỠ (2026-08-28). Hàm này từng chép nguyên logic của `accountsOf` bên
+// `memory/scanweb.ts` — cùng một sự thật ở HAI nơi, đúng thứ mặt ③ của `audit` gọi là
+// **NGUỒN TRÙNG**. Cái giá đo được ngay hôm nay: bản vá lọc thư mục sao lưu (`…bak-…`) áp
+// vào `accountsOf` nhưng KHÔNG phủ đường này, nên bảng "Liên kết" vẫn bày hai khe ma
+// (`tài khoản 2.chrome-bak-…`) kèm nút Link — trên đúng bề mặt người dùng nhìn.
+// Nay gọi thẳng bản gốc: một chỗ sửa, mọi bề mặt ăn theo.
+const browserAccounts = accountsOf;
 
 /** Thư mục profile trình duyệt của một khe tài khoản. */
 export function webProfileDir(platform: string, account?: string): string {

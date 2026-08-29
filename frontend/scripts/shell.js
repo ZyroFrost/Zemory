@@ -13,7 +13,7 @@
     gmem:['Global Memory','ttl.gmem'],
     harness:['Harness','ttl.harness']};
   // screen → attribute của sub-tab trong màn đó (cho data-goto="screen:sub")
-  var SUBATTR={recall:'data-rc',gmem:'data-gm',harness:'data-ht'};
+  var SUBATTR={recall:'data-rc',gmem:'data-gm',harness:'data-ht',projects:'data-pj'};
   var scrollEl=document.getElementById('scroll'); // đổi tên: window.scroll là hàm builtin, de-IIFE mà giữ tên cũ là ghi đè nó
   function go(s){
     document.querySelectorAll('.nav a').forEach(function(a){a.classList.toggle('on',a.dataset.s===s);});
@@ -43,7 +43,7 @@
   function subOf(screen){var a=SUBATTR[screen];if(!a)return null;
     var b=document.querySelector('.screen[data-s="'+screen+'"] .tabs button['+a+'].on');return b?b.getAttribute(a):null;}
   // data-pt KHÔNG persist: mở 1 project luôn về sub-tab Harness (showProjDetail reset).
-  var PERSIST={'data-rc':'recall','data-gm':'gmem','data-ht':'harness'};
+  var PERSIST={'data-rc':'recall','data-gm':'gmem','data-ht':'harness','data-pj':'projects'};
   function subSet(attr,v){if(!subApply(attr,v))return;
     var k=PERSIST[attr];if(k){try{localStorage.setItem('zemory.sub.'+k,v);}catch(_){}}
     subLoad(attr,v);
@@ -59,7 +59,15 @@
       subSet(attr,b.getAttribute(attr));
     });
   }
-  subtabs('data-pt');subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');
+  subtabs('data-pt');subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');subtabs('data-pj'); // data-pj: Projects → Dự án | Thêm dự án (user 2026-08-29)
+  // Cây Nguồn TỰ TƯƠI khi đang mở Global Memory: nhịp nền/watcher kéo xong là daemon xoá cache, nhưng FE
+  // trước đây chỉ vẽ lại theo cú bấm ⇒ user thấy ⚠ + số cũ 10 phút sau khi kho đã đổi (2026-08-29, ảnh
+  // "linked rồi mà vẫn chấm đỏ"). Đọc bản cache (~40 ms) mỗi 60 s, chỉ khi màn đó đang hiện.
+  setInterval(function(){
+    if(document.hidden)return;
+    if(!document.querySelector('.screen.on[data-s="gmem"]'))return;
+    zGet('/memory-status').then(function(m){if(typeof renderMem==='function')renderMem(m);}).catch(function(){});
+  },60000);
   // data-goto="screen:sub" — nhảy màn + mở đúng sub-tab (thay cho việc đẻ tab nav mới)
   document.addEventListener('click',function(e){
     var g=e.target.closest&&e.target.closest('[data-goto]');if(!g)return;

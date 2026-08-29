@@ -57,6 +57,11 @@ test("MCP tool list exposes recall tools", async () => {
     "project_merge",
     "plan_search",
     "plan_show",
+    // Ba tool ĐIỀU KHIỂN (plan 14) — nối 2026-08-28. Chúng chỉ mở cửa cho năng lực đã có
+    // (`scan()` · CLI embed · bốn nguồn trạng thái), không đẻ chức năng mới.
+    "memory_jobs",
+    "memory_scan",
+    "memory_embed",
     // Graph mirror (plan 13 §5) — nối 2026-08-06, đóng khoảng trống "mcp.ts 0 match graph".
     "graph_impact",
     "graph_neighbors",

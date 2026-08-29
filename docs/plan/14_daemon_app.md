@@ -49,6 +49,26 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
   > **RANH GIỚI bắt buộc:** chỉ hạ việc do MÁY tự chạy. Việc NGƯỜI DÙNG bấm (nút *Đồng bộ ngay* —
   > cùng hàm `startSyncJob`, *Tìm sâu*, *Quét web*) giữ `Normal`, vì lúc đó người dùng đang ngồi
   > chờ kết quả. Cổng `scheduler-contract.test.mjs` canh đúng ranh giới này.
+  >
+  > **MỞ RỘNG 2026-08-28 — cùng thứ tự ưu tiên, nhưng cho QUYỀN VÀO KHO chứ không chỉ CPU.**
+  > Ranh giới trên mới chỉ nói về nhịp CPU; token ghi kho thì vẫn "ai tới trước giữ tới xong", nên
+  > một chuỗi bảo trì dài **chặn cứng** nút người dùng bấm. Nay:
+  > · **người bấm** (`startSyncJob({preempt:true})`) ⇒ chuỗi bảo trì phải **NHƯỜNG** — cờ `chainAbort`
+  >   + giết con đang chạy; chuỗi dừng ở chốt kế tiếp và nhả token ở `finally`;
+  > · **máy tự chạy** ⇒ **xếp hàng** như cũ (`syncTick` hẹn lại 3 phút), KHÔNG cắt ngang ai;
+  > · **token do tiến trình KHÁC giữ** (CLI ngoài) ⇒ **không giật** — bất khả đảo trên việc không sở hữu;
+  > · **`scan` KHÔNG bị cắt**: nó là bước duy nhất đưa tin mới vào, cắt nó là đẩy một gói THIẾU tin
+  >   lên kênh chung (trái HP điều 16). Chỉ `embed`/`digest` — hai thứ dựng lại được — mới nhường.
+  >
+  > **Vì sao cắt `embed` an toàn (ĐO, không phải cảm giác):** ghi theo transaction TỪNG TIN
+  > (`vectors.ts insTx`) và `embedPending` luôn chọn phần CÒN THIẾU ⇒ mất nhiều nhất một tin. Bằng
+  > chứng thực địa: log daemon **80 lượt embed khởi động / 48 lượt có `finished`** ⇒ **32 lượt đã bị
+  > giết giữa chừng** bởi các lần restart, `verifyMemory` chưa lần nào báo kho hỏng.
+  >
+  > **Cái giá của việc KHÔNG có luật này, đo 27–28/08:** auto-sync thử lần cuối 27/08 07:11Z rồi
+  > **19 giờ · 8 lần restart · 0 lượt thử**, watermark đứng, **5.266 tin ứ**. Cơ chế chống bỏ đói
+  > 12/08 vẫn chạy đúng — nó nhường rồi hẹn lại 3 phút — nhưng cửa sổ trống không bao giờ tới.
+  > **Chống bỏ đói bằng "hẹn quay lại" chỉ ăn khi kẻ chặn có lúc nghỉ.**
 
 ### 3b. Auto-sync memory (setting — tự động hoá plan 08, KHÔNG cơ chế mới)
 - **Phát hiện khác biệt** (daemon check định kỳ + lúc idle, rẻ): ① local có message mới sau lần export cuối (so max rowid/timestamp với marker export) → **tự export** bundle `.enc` ra Drive folder; ② Drive folder có bundle máy khác mới hơn lần merge cuối (mtime + tên host) → **tự `import --merge`** (additive, HP điều 11 — không ghi đè, provenance giữ nguyên).
@@ -123,3 +143,43 @@ Mỗi giai đoạn qua gate test/migration/fallback rồi mới bật mặc đ�
    phút; không có tin mới thì **không chạm file**. Vế "auto-embed phần mới sau merge" cũng hết
    là câu hỏi: máy gửi nhúng phần của nó rồi chở kèm, nên máy nhận **không phải nhúng lại**
    (HP điều 16).
+
+## 8. Bề mặt ĐIỀU KHIỂN qua MCP — ba tool, và bốn cách một bề mặt tự khai sai (chốt 2026-08-28)
+
+> User chốt 2026-08-27: *"mọi chức năng đã có sẵn trên zemory hết rồi, MCP chỉ là điều khiển và quản
+> lý"*. Đó là ràng buộc thiết kế, không phải lời giới thiệu: ba tool này **không được** cài logic nạp
+> hay nhúng của riêng chúng. `memory_scan` gọi `scan()` + `scanWebPlatforms()`; `memory_embed` phóng
+> đúng CLI `memory embed --all`; `memory_jobs` chỉ đọc trạng thái đã có. Đẻ chức năng ở tầng này là
+> sinh ra một bản sao thứ hai của cùng một nghiệp vụ (trái HP điều 1 và điều 3).
+
+**Ba tool.** `memory_jobs {deep?}` — daemon sống không · job nào đang chạy · còn bao nhiêu chờ nhúng ·
+ai giữ khoá. `memory_scan {deep?, web?, platform?}` — chạy INLINE, `need-login` phải được NÓI RA (cửa
+sổ trình duyệt đang chờ NGƯỜI, và tool là chỗ duy nhất biết điều đó). `memory_embed {}` — **phóng job
+RỜI rồi trả ngay**; ~58 tin/phút nên không lời gọi MCP nào sống tới lúc nó xong. Cả ba qua write-gate:
+bận ⇒ trả `busy` kèm TÊN chủ khoá, **không tranh khoá** (hai kẻ ghi đã hỏng kho hai lần — HP điều 11).
+
+**Bốn cái bẫy của một bề mặt ĐIỀU KHIỂN chạy ở TIẾN TRÌNH KHÁC.** Cả bốn đều lọt qua trình biên dịch
+và lọt qua mắt; chỉ lộ khi ĐO. Ai làm bề mặt điều khiển tiếp theo nên đọc mục này trước:
+
+1. **Biến trong bộ nhớ daemon KHÔNG đọc được từ ngoài.** `schedulerChildRunning()`/`syncJobRunning()`
+   trả `false` cho mọi tiến trình không phải daemon — dùng thẳng là dựng sẵn một bề mặt nói dối. Thứ
+   xuyên tiến trình được chỉ có **khoá FILE** (`cli-write.lock`) và **marker FILE** (`daemon-job.lock`);
+   phần còn lại phải HỎI qua HTTP, và hỏi không được thì trả `unknown`.
+2. **`unknown` ≠ `false`.** Daemon im mà báo "không có gì chạy" là đúng kiểu vỏ-rỗng-trông-như-đang-sống
+   mà `02_RULES §Bề mặt CHẾT THEO nền` cấm. Và phải phân biệt **hai** kiểu không-biết: *daemon chết* với
+   *daemon sống nhưng trả chậm* — gộp lại thì người đọc không biết tin dòng nào.
+3. **Không trả lời ≠ đã chết.** Marker job còn tươi mà `/ping` im ⇒ daemon gần như chắc chắn đang BẬN.
+   Đo 2026-08-28 ngay sau khởi động: `/ping` **12.347 → 1.496 → 131 ms**. Ngưỡng chặt biến "bận" thành
+   "chết" — và in ra `alive:false` ngay cạnh `daemonJobRunning:true` là tự mâu thuẫn trong một câu.
+4. **THỨ TỰ HỎI là một phần của phép đo.** `/memory-status` lượt lạnh mất 7,4 s và KHOÁ event loop của
+   daemon, nên mọi endpoint hỏi SAU nó bị bỏ đói rồi báo "daemon not responding" — trong khi curl cùng
+   lúc ping được trong 110 ms. **Chính phép đo tạo ra thứ nó đo.** Luật: hỏi RẺ trước, NẶNG cuối.
+
+**Giá của mỗi đường, đo trên kho thật (309k tin · 2,5 GB):** `vectorRemaining()` **15,7 s** (anti-join
+toàn bảng) · `/memory-status` **107 ms** ấm, 7,4 s lạnh · `/ping` 85–183 ms lúc rảnh. Nên đường mặc
+định của `memory_jobs` là đọc cache của daemon; `deep:true` mới trả tiền đếm thẳng. Kho RIÊNG
+(`env.dbPath`) thì LUÔN đếm thẳng — cache của daemon là số của kho MẶC ĐỊNH, trả nó cho người đang hỏi
+kho khác là đưa số của kho người ta.
+
+**Còn hở:** chưa đo ba tool này TỪ một phiên Cowork thật (xem `plan/20 §7`) · cơ chế nghẽn `/ping` sau
+khởi động mới có SỐ, chưa có bản vá.

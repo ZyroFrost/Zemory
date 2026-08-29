@@ -119,8 +119,18 @@ test("nhiều TÀI KHOẢN cho cùng một nền: profile riêng + cổng riêng
 
 test("app quét MỌI tài khoản, và có nút thêm tài khoản (bỏ sót khe = mất cả tài khoản đó)", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
-  assert.ok(/function accountsOf\(/.test(ui), "phải liệt kê được các khe");
-  assert.ok(/for \(const acct of account \? \[account\] : accountsOf\(platform\)\)/.test(ui), "quét phải lặp qua mọi khe khi không chỉ định khe");
+  // Phép quét theo khe DỜI sang `memory/scanweb.ts` 2026-08-28 (nghiệp vụ thuộc domain,
+  // `ui.ts` chỉ còn endpoint) — neo phải theo, không thì cổng soi một file đã hết code.
+  const slots = readFileSync(new URL("../src/memory/webslots.ts", import.meta.url), "utf8");
+  const sw = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
+  assert.ok(/export function accountsOf\(/.test(slots), "phải liệt kê được các khe");
+  // 🔄 Đảo vế cũ *"quét phải lặp qua MỌI khe"* (user chốt 2026-08-28). Lặp mọi thư mục profile
+  // ⇒ mỗi khe đã mất phiên bị mở một cửa sổ ĐĂNG NHẬP không ai yêu cầu — đo: `accountsOf`
+  // trả 3 khe nên một lượt Quét bật 3 cửa sổ, user chụp hai cái "Sign in - Claude" cạnh nhau.
+  // Bất biến THẬT vẫn giữ: không được bỏ sót khe ĐANG NỐI (bỏ sót = mất cả tài khoản đó).
+  assert.ok(/export function pullableAccountsOf\(/.test(slots), "phải có phép lọc khe ĐÁNG KÉO");
+  assert.ok(/a === "main" \|\| auth\[/.test(slots), "khe đáng kéo = main + khe đang NỐI (auth.ok)");
+  assert.ok(/for \(const acct of account \? \[account\] : pullableAccountsOf\(platform\)\)/.test(sw), "quét lặp qua khe ĐÁNG KÉO, không phải mọi thư mục profile");
   assert.ok(ui.includes('p === "/add-account"'), "phải có đường thêm tài khoản");
   const js = readAppJs();
   assert.ok(/data-addacct=/.test(js) && /\/add-account\?platform=/.test(js), "UI phải có nút thêm tài khoản và gọi đúng endpoint");

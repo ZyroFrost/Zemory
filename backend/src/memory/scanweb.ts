@@ -15,9 +15,12 @@ import { createServer as createNetServer } from "node:net";
 import { hostname } from "node:os";
 import { basename, join } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
-import { type ScanReport, scan } from "./ingest.js";
+import { type ScanReport, restampAccount, scan, stampAccount } from "./ingest.js";
 import { isExcluded } from "./scope.js";
-import { getScopeExclude } from "../config/settings.js";
+import { WEB_PLATFORMS, accountKey, accountsOf, isEmail, platformsInUse, pullableAccountsOf } from "./webslots.js";
+import { findBorrowSource } from "./borrowcookies.js";
+import { getScopeExclude, getWebAuth, setWebAuth, setWebPull } from "../config/settings.js";
+import { daemonLog } from "../logging/daemon-log.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
 
@@ -153,19 +156,52 @@ const CHATGPT_PROJECTS = `(async()=>{
 // Đường lui: nếu KHÔNG org nào khai `capabilities` (shape API khác/cũ) thì mới lấy
 // phần tử đầu; có `capabilities` mà không org nào có 'chat' thì báo LỖI RÕ, không
 // lặng lẽ dùng org sai rồi đổ vỏ cho "chưa đăng nhập".
+// 🔴 MỘT TÀI KHOẢN CÓ THỂ CÓ NHIỀU ORG 'chat' (đo 2026-08-28 trên tài khoản công ty): `Global`
+// (caps chat·raven, **0 hội thoại**) đứng TRƯỚC `huy.nguyen@sasin.vn's Organization` (nơi có
+// hội thoại). Bản cũ lấy org chat ĐẦU TIÊN ⇒ liệt kê ra rỗng ⇒ "conversation list not ready ×5"
+// ⇒ báo `no-tab` — trong khi người dùng vừa đăng nhập xong và tab đang mở ngay đó. Cùng họ với
+// lỗi `o[0]` ở trên, chỉ dịch đi một bậc: chọn theo capability đúng, nhưng vẫn chọn MỘT.
+// Nay: `orgs` = MỌI org có 'chat'; `org` = cái đầu (tương thích chỗ chỉ cần một); sổ `_bag`
+// (globalThis, sống theo tab) ghi "hội thoại X thuộc org nào" để lời gọi chi tiết đi đúng org.
 const CLAUDE_ORG_JS =
   "const _r=await fetch('/api/organizations');" +
   "if(!_r.ok) return _no('HTTP '+_r.status);" +
   "const _o=await _r.json(); const _l=Array.isArray(_o)?_o:[];" +
   "const _caps=_l.some(function(x){return x&&Array.isArray(x.capabilities);});" +
-  "const _org=_l.find(function(x){return x&&Array.isArray(x.capabilities)&&x.capabilities.indexOf('chat')>=0;})||(_caps?null:(_l[0]||null));" +
-  "if(!_org||!_org.uuid) return _no(_caps?'no organization with the chat capability':'no organization');" +
-  "const org=_org.uuid;";
+  "const _chat=_l.filter(function(x){return x&&x.uuid&&Array.isArray(x.capabilities)&&x.capabilities.indexOf('chat')>=0;});" +
+  "const _all=_chat.length?_chat:(_caps?[]:(_l[0]&&_l[0].uuid?[_l[0]]:[]));" +
+  "if(!_all.length) return _no(_caps?'no organization with the chat capability':'no organization');" +
+  "const orgs=_all.map(function(x){return x.uuid;}); const _org=_all[0]; const org=_org.uuid;" +
+  "const _bag=(globalThis.__zmOrgOf=globalThis.__zmOrgOf||{});" +
+  "const _cands=function(k){return [_bag[k]].concat(orgs).filter(function(x,i,a){return x&&a.indexOf(x)===i;});};";
 
 const CLAUDE_AUTH = `(async()=>{const _no=function(m){return {token:false,err:m};};
   try{
     ${CLAUDE_ORG_JS}
-    return {token:true, email:(_org.name||null)};
+    // TÀI KHOẢN (email), KHÔNG phải TÊN ORG. Bản cũ trả \`_org.name\` nên hàng nguồn ghi
+    // "zyrofrost@gmail.com's Organization" / "Global" — user 2026-08-28: *"ko ghi nguồn với
+    // tên tk"*. Thử hai endpoint account của claude.ai; không có thì rơi về tên org và NÓI RÕ
+    // đó là org (tiền tố), không giả dạng email.
+    let _who=null;
+    for (const _u of ['/api/account','/api/bootstrap','/api/auth/current_account']) {
+      try { const _a=await fetch(_u); if(!_a.ok) continue; const _j=await _a.json();
+        // Dò SÂU: email nằm ở nhiều hình dạng tuỳ endpoint (email_address ·
+        // account.email_address · data.email…). Quét cây JSON tìm khoá nào chứa email —
+        // rẻ (payload nhỏ) và không phải đoán trước shape của từng endpoint.
+        // (KHÔNG dùng dấu backtick trong chú thích ở đây: cả khối này nằm TRONG một template
+        //  literal, một backtick lẻ là kết thúc chuỗi — đã dính đúng lỗi đó lượt trước.)
+        const _seek=function(o,d){ if(!o||d>4) return null;
+          if(typeof o==='string') return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(o)?o:null;
+          if(typeof o!=='object') return null;
+          for(const _k of Object.keys(o)){ if(!/mail/i.test(_k)) continue; const _v=_seek(o[_k],d+1); if(_v) return _v; }
+          for(const _k of Object.keys(o)){ const _v=_seek(o[_k],d+1); if(_v) return _v; }
+          return null; };
+        _who=_seek(_j,0); if(_who) break; } catch(_e){}
+    }
+    // Đường lùi: EMAIL ĐÃ NẰM TRONG tên org của tài khoản cá nhân — Claude đặt
+    // "<email>'s Organization". Rút ra thay vì bày cả câu đó lên hàng nguồn.
+    if(!_who && _org.name){ const _m=/^([^\\s@]+@[^\\s@]+\\.[^\\s@]+)/.exec(String(_org.name)); if(_m) _who=_m[1]; }
+    return {token:true, email:(_who||(_org.name?('org: '+_org.name):null))};
   }catch(e){ return {token:false, err:String(e)}; }
 })()`;
 
@@ -182,17 +218,18 @@ const CLAUDE_AUTH = `(async()=>{const _no=function(m){return {token:false,err:m}
 const CLAUDE_LIST = `(async()=>{const _no=function(){return [];};
   try{
     ${CLAUDE_ORG_JS}
-    const ids=[]; let off=0;
+    const ids=[];
+    for(const _g of orgs){ let off=0;
     for(let p=0;p<300;p++){
-      const r = await fetch('/api/organizations/'+org+'/chat_conversations?limit=100&offset='+off);
+      const r = await fetch('/api/organizations/'+_g+'/chat_conversations?limit=100&offset='+off);
       if(!r.ok) break;
       const j = await r.json();
       const items = Array.isArray(j) ? j : ((j && j.data) || []);
-      for(const c of items){ if(c && c.uuid) ids.push({id:c.uuid, updated:c.updated_at}); }
+      for(const c of items){ if(c && c.uuid){ ids.push({id:c.uuid, updated:c.updated_at}); _bag[c.uuid]=_g; } }
       off += items.length;
       if(items.length < 100) break;
       await new Promise(res=>setTimeout(res,200));
-    }
+    } }
     // Trả MẢNG CHUỖI, không phải mảng object — hợp đồng THẬT là mảng chuỗi (xem
     // CHATGPT_LIST: ids.push(c.id)), dù comment của interface Platform ghi ngược lại.
     // Bản đầu tôi tin comment nên URL thành .../[object Object] và HTTP 400, fail 2/2.
@@ -210,9 +247,10 @@ const CLAUDE_LIST = `(async()=>{const _no=function(){return [];};
 const CLAUDE_PROJECTS = `(async()=>{const _no=function(){return {};};
   try{
     ${CLAUDE_ORG_JS}
-    const map={}; let off=0;
+    const map={};
+    for(const _g of orgs){ let off=0;
     for(let p=0;p<50;p++){
-      const r = await fetch('/api/organizations/'+org+'/projects?limit=100&offset='+off);
+      const r = await fetch('/api/organizations/'+_g+'/projects?limit=100&offset='+off);
       if(!r.ok) break;
       const j = await r.json();
       const items = Array.isArray(j) ? j : ((j && j.data) || []);
@@ -221,7 +259,7 @@ const CLAUDE_PROJECTS = `(async()=>{const _no=function(){return {};};
       off += items.length;
       if(items.length < 100 || !fresh) break;
       await new Promise(res=>setTimeout(res,200));
-    }
+    } }
     return map;
   }catch(e){ return {}; }
 })()`;
@@ -246,12 +284,14 @@ const COWORK_HEADERS =
 const COWORK_LIST = `(async()=>{const _no=function(){return [];};
   try{
     ${CLAUDE_ORG_JS}
-    const H=${COWORK_HEADERS};
-    const r=await fetch('/v1/code/sessions?tags=cowork-remote&limit=100&include_trigger_sessions=true',{headers:H});
-    if(!r.ok) return [];
-    const j=await r.json(); const items=(j&&j.data)||[];
+    const _H=function(org){return ${COWORK_HEADERS};};
     const out=[];
-    for(const s of items){ if(s&&s.id) out.push({id:s.id, updated:(s.last_event_at||s.updated_at||s.created_at), title:(s.title||s.name||null)}); }
+    for(const _g of orgs){
+    const r=await fetch('/v1/code/sessions?tags=cowork-remote&limit=100&include_trigger_sessions=true',{headers:_H(_g)});
+    if(!r.ok) continue;
+    const j=await r.json(); const items=(j&&j.data)||[];
+    for(const s of items){ if(s&&s.id){ out.push({id:s.id, updated:(s.last_event_at||s.updated_at||s.created_at), title:(s.title||s.name||null)}); _bag['cw:'+s.id]=_g; } }
+    }
     return out;
   }catch(e){ return []; }
 })()`;
@@ -261,13 +301,14 @@ const COWORK_LIST = `(async()=>{const _no=function(){return [];};
 const coworkConv = (id: string): string =>
   `(async()=>{const _no=function(m){throw new Error(m);};` +
   CLAUDE_ORG_JS +
-  `const H=${COWORK_HEADERS};` +
+  `const _H=function(org){return ${COWORK_HEADERS};};` +
+  // Đúng org của phiên (sổ `_bag` do COWORK_LIST ghi); không có trong sổ thì thử lần lượt mọi org chat.
+  `let H=null, r=null; for(const _g of _cands('cw:${id}')){ H=_H(_g); r=await fetch('/v1/code/sessions/${id}/events?limit=500',{headers:H}); if(r.ok) break; }` +
+  `if(!r||!r.ok) throw new Error('HTTP '+(r?r.status:0));` +
   `const m=await fetch('/v1/code/sessions/${id}',{headers:H});` +
   `const meta=m.ok?await m.json():{};` +
   // Cũng MỘT lời gọi: `resume_cursor` là con trỏ của luồng theo dõi, không phải trang kế
   // — dùng nó để phân trang là rơi vào cùng cái bẫy long-poll của danh sách phiên.
-  `const r=await fetch('/v1/code/sessions/${id}/events?limit=500',{headers:H});` +
-  `if(!r.ok) throw new Error('HTTP '+r.status);` +
   `const j=await r.json(); const out=(j&&j.data)||[];` +
   `return {id:'${id}', title:(meta&&(meta.title||meta.name))||null, created_at:(meta&&meta.created_at)||null, last_event_at:(meta&&meta.last_event_at)||null, events:out};})()`;
 
@@ -277,8 +318,9 @@ const claudeConv = (id: string): string =>
   // `_no` NÉM ở đây (khác các expr trên): fetchConv dựa vào exception để retry/backoff.
   `(async()=>{const _no=function(m){throw new Error(m);};` +
   CLAUDE_ORG_JS +
-  `const r=await fetch('/api/organizations/'+org+'/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true');` +
-  `if(!r.ok) throw new Error('HTTP '+r.status); return r.json();})()`;
+  // Org của CHÍNH hội thoại này (sổ `_bag` do CLAUDE_LIST ghi) đi trước; thiếu sổ thì thử lần lượt.
+  `let r=null; for(const _g of _cands('${id}')){ r=await fetch('/api/organizations/'+_g+'/chat_conversations/${id}?tree=True&rendering_mode=messages&render_all_tools=true'); if(r.ok) break; }` +
+  `if(!r||!r.ok) throw new Error('HTTP '+(r?r.status:0)); return r.json();})()`;
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v : undefined);
 
@@ -348,11 +390,22 @@ const CHROME_PATHS = [
  * Firefox is deliberately NOT a candidate: this drives the window over CDP, which
  * Firefox does not speak the same way. A Firefox default falls back to the normal order.
  */
+// Brave — Chromium, nói CDP y như Chrome/Edge. Thêm 2026-08-28: máy user mặc định Brave
+// (`BraveHTML`) mà bộ dò chỉ biết hai hãng kia ⇒ rơi về Edge, và Edge với profile mới tinh
+// bật ngay hộp "syncing your browsing data" của tài khoản Microsoft — đúng thứ user vừa chụp.
+// Nguyên văn: *"m phải mở tk ng ta đã cài mặc định… m đi mở mặc định edge là rất ngu"*.
+const BRAVE_PATHS = [
+  "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+  "C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+  join(process.env.LOCALAPPDATA ?? "", "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+];
+
 export function orderByProgId(progId: string | null | undefined): string[] {
   const id = (progId ?? "").toLowerCase();
-  if (id.includes("chrome")) return [...CHROME_PATHS, ...EDGE_PATHS];
-  if (id.includes("edge") || id.includes("msedge")) return [...EDGE_PATHS, ...CHROME_PATHS];
-  return [...EDGE_PATHS, ...CHROME_PATHS];
+  if (id.includes("brave")) return [...BRAVE_PATHS, ...CHROME_PATHS, ...EDGE_PATHS];
+  if (id.includes("chrome")) return [...CHROME_PATHS, ...EDGE_PATHS, ...BRAVE_PATHS];
+  if (id.includes("edge") || id.includes("msedge")) return [...EDGE_PATHS, ...CHROME_PATHS, ...BRAVE_PATHS];
+  return [...EDGE_PATHS, ...CHROME_PATHS, ...BRAVE_PATHS];
 }
 
 /** The default-browser ProgId from the user's URL association, or null off-Windows. */
@@ -406,7 +459,8 @@ export function accountPort(base: number, account?: string): number {
  * So: an EXISTING profile keeps its browser (marker file), and only a NEW profile picks
  * the machine's default. Switching on purpose = delete the profile dir (and log in once).
  */
-function profileBrowser(profileDir: string, override?: string): string | null {
+/** @param keepSession profile này có phiên đăng nhập đáng giữ không (xem chú thích trong thân). */
+function profileBrowser(profileDir: string, override?: string, keepSession = false, log: (m: string) => void = () => {}): string | null {
   const exe = override && existsSync(override) ? override : findBrowser(override);
   if (!exe) return null;
   const marker = join(profileDir, BRAND_FILE);
@@ -422,11 +476,25 @@ function profileBrowser(profileDir: string, override?: string): string | null {
       /* thư mục chưa tồn tại — profile mới tinh */
     }
   }
-  // Trình duyệt của MÁY thắng (user chốt 2026-07-30: máy mặc định Chrome thì đừng bật
-  // Edge). Nhưng KHÔNG mở profile của hãng khác — hai profile Chromium không thay thế
-  // được cho nhau, mở chéo là hỏng profile. Dời bản cũ sang một bên (giữ lại, không
-  // xoá) rồi dựng profile mới cho đúng hãng.
+  // 🔴 MÁY MẶC ĐỊNH THẮNG — kể cả khi profile cũ đang có phiên (chốt lại 2026-08-28 sau khi
+  // thử cả hai chiều trong một buổi).
+  //
+  // Lượt trước tôi đảo thành "profile có phiên thắng" để cứu cookie. Sai ở chỗ nó **khoá
+  // người dùng vào hãng cũ vĩnh viễn**: khe `claude` main có phiên ⇒ mãi mãi mở Edge, dù máy
+  // mặc định Brave — user: *"nó vẫn mở edge chứ ra chrome đâu"*. Đổi hãng là việc MỘT LẦN,
+  // giá là đăng nhập lại một lượt; khoá vĩnh viễn thì không có đường ra.
+  //
+  // Cái sai THẬT của lần đầu không phải luật này, mà là làm nó **im lặng giữa một việc khác**
+  // (thêm Brave vào bộ dò ⇒ mất phiên Claude, không ai được báo). Nên hai ràng buộc ở đây:
+  //  · profile cũ **dời sang bên, KHÔNG xoá** — luôn lùi lại được;
+  //  · **NÓI RA** rằng khe này phải đăng nhập lại một lần, đừng để người dùng tự đoán.
   if (built && basename(built).toLowerCase() !== basename(exe).toLowerCase()) {
+    if (keepSession) {
+      log(
+        `  đổi trình duyệt cho profile này: ${basename(built)} → ${basename(exe)} (mặc định của máy). ` +
+          `Phiên đăng nhập cũ được GIỮ trong bản dời sang bên, nhưng khe này cần ĐĂNG NHẬP LẠI một lần.`,
+      );
+    }
     try {
       renameSync(profileDir, `${profileDir}.${basename(built).replace(/\.exe$/i, "")}-bak-${Date.now()}`);
     } catch {
@@ -476,14 +544,189 @@ function freePort(): Promise<number> {
   });
 }
 
-function launchBrowser(exe: string, profileDir: string, port: number, url: string): void {
-  const child = spawn(
-    exe,
-    [`--remote-debugging-port=${port}`, `--user-data-dir=${profileDir}`, "--no-first-run", "--no-default-browser-check", "--new-window", url],
-    { detached: true, stdio: "ignore" },
-  );
-  child.unref();
+/**
+ * Tham số dòng lệnh mở trình duyệt. Tách thành hàm THUẦN để cổng kiểm đo được HÀNH VI
+ * (mảng tham số thật) thay vì soi CHỮ trong file — bản đầu của cổng grep `--headless` trên
+ * cả nguồn và báo oan chính đoạn chú thích giải thích *vì sao không dùng headless*.
+ *
+ * **KÉO NGẦM đẩy cửa sổ ra ngoài màn hình, KHÔNG chạy chế độ không-giao-diện.** Cả năng lực
+ * này sống được là nhờ chạy trong trình duyệt THẬT — `plan/07 §5` đo rõ *"fetch backend-api
+ * từ Node thuần: Cloudflare chặn 403"*. Chế độ không-giao-diện là đúng thứ các lớp
+ * chống-tự-động-hoá soi đầu tiên, nên đổi lấy nó là đem chính cái đang chạy được ra đánh cược.
+ * Toạ độ âm giữ nguyên một Chrome bình thường, chỉ là bạn không thấy nó.
+ */
+/** Đóng dấu khe tài khoản lên các phiên vừa nạp — xem `ingest.stampAccount`. Im lặng bỏ qua
+ *  khi lượt nạp không đẻ phiên nào (fail-open: thiếu dấu không được làm hỏng lượt kéo). */
+function stampWebAccount(dbPath: string, report: ScanReport | undefined, account: string, sources: (string | undefined)[]): void {
+  const ids = webSessionIds(report, sources);
+  if (ids.length) stampAccount(dbPath, ids, account);
 }
+
+/**
+ * CHỈ phiên của chính nguồn web vừa kéo. `scan()` là lượt nạp TOÀN kho: transcript Claude Code
+ * mới nằm trên đĩa cũng nạp cùng lượt và cũng có trong `report.sessions`. Bản cũ đóng dấu
+ * hết ⇒ 9 phiên LOCAL trên máy này mang `main`/email ⇒ cây Local tách `claude-code` thành
+ * BA hàng (user 2026-08-28: *"éo gì 3 cái claude code khác nhau vậy"*). Phiên local không có
+ * tài khoản web — dấu đó là sai dữ liệu, không phải thừa.
+ */
+export function webSessionIds(report: ScanReport | undefined, sources: (string | undefined)[]): string[] {
+  const ok = new Set(sources.filter((s): s is string => !!s));
+  return (report?.sessions ?? []).filter((s) => ok.has(s.source)).map((s) => s.id);
+}
+
+/**
+ * Chờ tab về ĐÚNG nguồn gốc của nền trước khi chạy lời gọi dùng URL tương đối.
+ *
+ * `false` = quá hạn (tab vẫn không tới được site) — người gọi coi như "chưa xác minh được",
+ * KHÔNG được đọc thành "chưa đăng nhập": hai câu đó dẫn tới hai hành động khác nhau, và đọc
+ * lẫn chính là lỗi vừa vá (mở cửa sổ đăng nhập cho tài khoản đang đăng nhập).
+ */
+/**
+ * Nối CDP khi tab của nền đã SẴN SÀNG — hỏi lại mỗi giây, tối đa `secs`.
+ *
+ * Thay cho khuôn "ngủ N giây rồi thử một lần": trình duyệt lạnh dựng cổng CDP chậm hơn mọi
+ * con số cố định ta dám đặt, và cái giá của việc đoán sai là **mở thêm một cửa sổ nữa**.
+ * Chờ theo trạng thái thì chậm cũng chỉ là chậm, không đẻ ra cửa sổ thừa.
+ */
+async function connectWhenReady(port: number, tabRe: RegExp, secs: number): Promise<Cdp | null> {
+  for (let i = 0; i < secs; i++) {
+    const c = await Cdp.connect(port, tabRe);
+    if (c) return c;
+    await sleep(1000);
+  }
+  return null;
+}
+
+async function awaitOrigin(cdp: Cdp, siteUrl: string, log: (m: string) => void, tries = 20): Promise<boolean> {
+  const want = new URL(siteUrl).origin;
+  for (let i = 0; i < tries; i++) {
+    let here: string | null = null;
+    try {
+      here = await cdp.evaluate<string>("location.origin");
+    } catch {
+      /* context đang đổi — thử lại nhịp sau */
+    }
+    if (here === want) return true;
+    await sleep(1000);
+  }
+  log(`  trang chưa về ${want} sau ${tries}s — KHÔNG kết luận là chưa đăng nhập`);
+  return false;
+}
+
+export function browserArgs(profileDir: string, port: number, url: string, hidden = false): string[] {
+  return [
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profileDir}`,
+    "--no-first-run",
+    "--no-default-browser-check",
+    // Chặn hộp "…closed unexpectedly / Restore". Nó nổ mỗi khi lượt trước KHÔNG thoát sạch —
+    // mà zemory đóng cửa sổ ngầm bằng `taskkill /T /F`, tức lần nào cũng là "crash" dưới mắt
+    // Chromium. Hộp đó CHE trang đăng nhập, nên nó không phải phiền vặt: nó chặn đúng việc
+    // duy nhất người dùng cần làm ở cửa sổ này (đo 2026-08-28, user chụp màn hình).
+    "--hide-crash-restore-bubble",
+    "--disable-session-crashed-bubble",
+    ...(hidden ? ["--window-position=-32000,-32000", "--window-size=1,1"] : []),
+    "--new-window",
+    url,
+  ];
+}
+
+function launchBrowser(exe: string, profileDir: string, port: number, url: string, hidden = false): number | undefined {
+  const child = spawn(exe, browserArgs(profileDir, port, url, hidden), { detached: true, stdio: "ignore" });
+  child.unref();
+  return child.pid;
+}
+
+// ── MỘT KHE = MỘT CỬA SỔ ──────────────────────────────────────────────────────────────────
+//
+// Đo 2026-08-28 (user chụp hai cửa sổ "Sign in - Claude", CDP liệt kê **3** tab `/login` trong
+// CÙNG một tiến trình Brave): Chromium là single-instance theo profile — `spawn` lần hai vào
+// profile đang chạy KHÔNG dựng tiến trình mới, nó **chuyển giao URL cho tiến trình cũ và mở
+// thêm một cửa sổ**. Nên mọi nhánh "mở lại" (chưa thấy tab · cần đăng nhập · CDP rớt) mà gọi
+// spawn trong khi trình duyệt còn sống đều đẻ cửa sổ thừa, bất kể nhánh đó cẩn thận tới đâu.
+//
+// Luật rút ra, làm thành CODE chứ không thành chú thích ở từng nhánh:
+//   ① trình duyệt còn sống ⇒ KHÔNG spawn. Thiếu tab thì mở TAB (`/json/new`), không mở cửa sổ.
+//   ② sau khi nối được CDP ⇒ nếu có >1 tab cùng nền, ĐÓNG tab thừa (`/json/close`). Lưới này
+//      bắt cả ca không kiểm soát được từ trong tiến trình: CLI + daemon cùng spawn, hai request
+//      HTTP tới cùng lúc, người dùng bấm hai lần.
+//   ③ hai lượt không-probe cho CÙNG khe chạy đồng thời ⇒ dùng chung một lượt (`coalesceByKey`).
+
+/** Tab đang mở trên cổng CDP, chỉ giữ hai trường cần cho phép quyết. */
+export interface CdpPage {
+  id: string;
+  url: string;
+  type?: string;
+}
+
+async function listPages(port: number): Promise<CdpPage[]> {
+  try {
+    const t = (await (await g.fetch(`http://127.0.0.1:${port}/json`)).json()) as CdpPage[];
+    return Array.isArray(t) ? t : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Tab THỪA của một nền: mọi tab khớp `tabRe` trừ tab đầu danh sách (DevTools xếp tab đang
+ *  hoạt động lên đầu). Tab của nền khác/không phải page thì không đụng — hàm THUẦN để cổng đo. */
+export function extraPageIds(pages: CdpPage[], tabRe: RegExp): string[] {
+  const mine = pages.filter((t) => (t.type ?? "page") === "page" && tabRe.test(t.url || ""));
+  return mine.slice(1).map((t) => t.id);
+}
+
+/**
+ * Quyết định mở cửa sổ — hàm THUẦN.
+ *   `spawn` : trình duyệt chưa chạy ⇒ mở tiến trình mới (cửa sổ đầu tiên, hợp lệ);
+ *   `tab`   : đang chạy nhưng không có tab của nền ⇒ mở TAB trong cửa sổ có sẵn;
+ *   `none`  : đang chạy và đã có tab ⇒ không làm gì (spawn ở đây = cửa sổ trùng).
+ */
+export function launchPlan(alive: boolean, hasTab: boolean): "spawn" | "tab" | "none" {
+  if (!alive) return "spawn";
+  return hasTab ? "none" : "tab";
+}
+
+async function openTab(port: number, url: string): Promise<boolean> {
+  try {
+    const r = await g.fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`, { method: "PUT" });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Đóng tab trùng của nền này; trả số tab đã đóng. Fail-open: đóng không được thì thôi. */
+async function closeExtraPages(port: number, tabRe: RegExp, log: (m: string) => void): Promise<number> {
+  const ids = extraPageIds(await listPages(port), tabRe);
+  let closed = 0;
+  for (const id of ids) {
+    try {
+      const r = await g.fetch(`http://127.0.0.1:${port}/json/close/${id}`);
+      if (r.ok) closed++;
+    } catch {
+      /* tab đã tự đóng — không sao */
+    }
+  }
+  if (closed) log(`  đóng ${closed} tab trùng (một khe chỉ giữ MỘT cửa sổ đăng nhập)`);
+  return closed;
+}
+
+/**
+ * Gộp lượt theo khoá: lời gọi thứ hai tới khi lượt đầu chưa xong thì DÙNG CHUNG promise của
+ * lượt đầu, không chạy song song. Dọn khoá khi settle để lượt kế chạy thật. Hàm THUẦN về mặt
+ * I/O để cổng đo được (chạy đúng một lần cho N lời gọi đồng thời).
+ */
+export function coalesceByKey<T>(bag: Map<string, Promise<T>>, key: string, run: () => Promise<T>): { p: Promise<T>; shared: boolean } {
+  const have = bag.get(key);
+  if (have) return { p: have, shared: true };
+  const p = run().finally(() => {
+    if (bag.get(key) === p) bag.delete(key);
+  });
+  bag.set(key, p);
+  return { p, shared: false };
+}
+
+const inflight = new Map<string, Promise<ScanWebResult>>();
 
 // Không còn một TAB_RE dùng chung: mỗi nền tự khai `tabRe` (xem interface Platform).
 // Bản dùng chung khớp MỌI trang web-chat, nên nền này bám nhầm cửa sổ nền kia — đo
@@ -526,6 +769,16 @@ class Cdp {
 
   get dead(): boolean {
     return this._dead;
+  }
+
+  /** Điều hướng tab sang URL khác (trang "✓ Đã liên kết" sau đăng nhập). Fail-open: lỗi thì thôi. */
+  async navigate(url: string): Promise<boolean> {
+    try {
+      await this.send("Page.navigate", { url });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   static async connect(port: number, urlRe: RegExp): Promise<Cdp | null> {
@@ -627,6 +880,16 @@ export interface ScanWebOptions {
    *  Dùng cho vòng chờ sau khi người dùng bấm Liên kết — hỏi lại mỗi vài giây thì tuyệt
    *  đối không được đẻ thêm cửa sổ mỗi lần hỏi. */
   probeOnly?: boolean;
+  /**
+   * KÉO NGẦM: mở cửa sổ ra NGOÀI màn hình thay vì bật vào mặt người dùng.
+   *
+   * Dành cho nhịp tự động của daemon (user chốt 2026-08-28: *"mọi source đã check là nó phải
+   * tự động vào kho"*). Không có nó thì tự-động-kéo = cứ 30 phút bật một cửa sổ Chrome —
+   * đúng lý do trước đây năng lực này bị cấm chạy nền.
+   *
+   * KHÔNG dùng `--headless`: xem chú thích ở `launchBrowser`.
+   */
+  hidden?: boolean;
   /** Delay between per-conversation fetches (rate-limit friendly). */
   delayMs?: number;
   /** Re-pull conversations already in the memory (default false = resume/skip). */
@@ -712,13 +975,13 @@ async function fetchConv(cdp: Cdp, p: Platform, id: string): Promise<any | null>
  *  not just a socket blip), relaunch it — the persistent profile stays logged in
  *  — so a long backfill survives a browser crash/close, not only a dropped
  *  socket. `relaunch` reopens the window; omit it to only re-attach. */
-async function reconnect(port: number, tabRe: RegExp, log: (m: string) => void, relaunch?: () => void): Promise<Cdp | null> {
+async function reconnect(port: number, tabRe: RegExp, log: (m: string) => void, relaunch?: () => void | Promise<void>): Promise<Cdp | null> {
   for (let attempt = 0; attempt < 4; attempt++) {
     await sleep(2000 * (attempt + 1)); // 2s, 4s, 6s, 8s
     log(`  CDP dropped — reconnecting (attempt ${attempt + 1}/4)…`);
     if (relaunch && !(await portUp(port))) {
       log("  browser gone — relaunching window…");
-      relaunch();
+      await relaunch();
       await sleep(6000);
     }
     const c = await Cdp.connect(port, tabRe);
@@ -735,9 +998,58 @@ async function reconnect(port: number, tabRe: RegExp, log: (m: string) => void, 
  * the login window (returns 'need-login'); after the user signs in, re-running
  * pulls + ingests. Resumes by skipping conversations already in the memory.
  */
+/**
+ * Vỏ bọc: chạy lượt quét, và ở chế độ NGẦM thì ĐÓNG cửa sổ mình đã mở — trên MỌI đường thoát.
+ *
+ * Vì sao là vỏ bọc chứ không nhét vào thân hàm: thân có **tám** điểm `return` khác nhau
+ * (`no-browser` · `no-tab` · `need-login` · `done` …). Rải lệnh đóng vào từng chỗ thì chỉ cần
+ * thêm một nhánh thoát mới là rò một tiến trình Chrome ẩn — thứ không ai nhìn thấy để mà báo.
+ * `finally` ở một chỗ là bất biến giữ được khi code lớn lên.
+ *
+ * Chỉ đóng cửa sổ do CHÍNH lượt này mở (`owned.pid`): cửa sổ người dùng đang tự đăng nhập
+ * KHÔNG được đụng tới.
+ */
 export async function scanWeb(
   opts: ScanWebOptions = {},
   log: (msg: string) => void = () => {},
+): Promise<ScanWebResult> {
+  // Hai lượt KHÔNG-probe cho cùng khe chạy chồng nhau là đúng cách đẻ hai cửa sổ (cả hai
+  // thấy cổng chưa lên ⇒ cả hai spawn). Probe không mở gì nên không cần xếp hàng.
+  if (opts.probeOnly) return scanWebOnce(opts, log);
+  const key = accountSlot(opts.platform ?? "chatgpt", opts.account);
+  const { p, shared } = coalesceByKey(inflight, key, () => scanWebOnce(opts, log));
+  if (shared) log(`  khe ${key} đang có một lượt khác chạy — dùng chung kết quả, không mở thêm cửa sổ`);
+  return p;
+}
+
+async function scanWebOnce(opts: ScanWebOptions, log: (msg: string) => void): Promise<ScanWebResult> {
+  const owned: { pid?: number } = {};
+  try {
+    return await scanWebInner(opts, log, owned);
+  } finally {
+    if (opts.hidden && owned.pid) closeBrowserTree(owned.pid, log);
+  }
+}
+
+/** Đóng cây tiến trình trình duyệt đã mở ngầm. Fail-open: đóng không được thì chỉ ghi log. */
+function closeBrowserTree(pid: number, log: (msg: string) => void): void {
+  try {
+    if (process.platform === "win32") {
+      // Chrome đẻ một cây tiến trình con (renderer/gpu/utility) — giết mỗi tiến trình cha
+      // để lại cả đàn con mồ côi. `/T` mới dọn hết.
+      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", timeout: 8000 });
+    } else {
+      process.kill(-pid, "SIGTERM");
+    }
+  } catch (e) {
+    log(`  không đóng được cửa sổ ngầm (pid ${pid}): ${e instanceof Error ? e.message.slice(0, 80) : e}`);
+  }
+}
+
+async function scanWebInner(
+  opts: ScanWebOptions,
+  log: (msg: string) => void,
+  owned: { pid?: number },
 ): Promise<ScanWebResult> {
   const p = PLATFORMS[opts.platform ?? "chatgpt"];
   if (!p) return { status: "no-browser", platform: opts.platform ?? "?" };
@@ -745,10 +1057,23 @@ export async function scanWeb(
   // một lane đã bị loại nằm trong kho — chưa kể ở đây còn tốn cả một phiên trình duyệt và
   // hàng trăm request. Chặn TRƯỚC khi mở cửa sổ là rẻ nhất và đúng ý "không lấy lane này".
   const lanes = getScopeExclude();
-  if (lanes.length && isExcluded({ origin: "web", host: hostname() || "unknown", source: p.source }, lanes)) {
-    log(`lane ${p.source} đang bị loại khỏi phạm vi (memory scope) — bỏ qua, không mở trình duyệt.`);
+  // Cả hàng NGUỒN lẫn hàng TÀI KHOẢN (khoá = email đã ghi ở `webAuth` của khe này): bỏ tick một tài khoản
+  // là tài khoản đó KHÔNG được kéo/nạp/embed (user chốt 2026-08-29: *"cái nào check tức là source đó được
+  // phép lên GM và được embed"*). Khe chưa có email ⇒ chỉ xét được cấp nguồn.
+  const slot0 = accountSlot(p.key, opts.account);
+  const who0 = getWebAuth()[slot0 === p.key ? p.key : slot0.replace(`${p.key}-`, `${p.key}#`)]?.who;
+  const laneHere = { origin: "web", host: hostname() || "unknown", source: p.source, ...(isEmail(who0) ? { account: who0 } : {}) };
+  if (lanes.length && (isExcluded({ origin: "web", host: laneHere.host, source: p.source }, lanes) || isExcluded(laneHere, lanes))) {
+    log(`lane ${p.source}${who0 ? ` · ${who0}` : ""} đang bị loại khỏi phạm vi (memory scope) — bỏ qua, không mở trình duyệt.`);
     return { status: "excluded", platform: p.key, source: p.source, url: p.url };
   }
+  // Khe này có PHIÊN ĐÁNG GIỮ không — đọc từ chính sổ `webAuth` mà bảng trạng thái đọc, nên
+  // hai bề mặt không thể nói khác nhau. Quyết định nó chi phối: có phiên ⇒ giữ nguyên hãng
+  // trình duyệt đã dựng profile (cookie là toàn bộ giá trị của thư mục đó); không có phiên ⇒
+  // dựng lại theo trình duyệt MẶC ĐỊNH của máy.
+  const authSlot = !opts.account || opts.account === "main" ? p.key : `${p.key}#${opts.account}`;
+  const hasSession = getWebAuth()[authSlot]?.ok === true;
+
   // Per-platform default port so a rerun reuses THIS platform's window. Sharing one
   // port across platforms was the bug: the second window cannot bind it, so the first
   // one answers and the run drives the wrong site. When no CDP answers there AND
@@ -772,34 +1097,68 @@ export async function scanWeb(
 
   // Reopen the window on a browser crash/close mid-run (persistent profile stays
   // logged in) so a long backfill self-heals instead of aborting at the socket.
-  const relaunch = () => {
-    const exe = profileBrowser(profileDir, opts.browser);
-    if (exe) launchBrowser(exe, profileDir, port, p.url);
+  // Cửa sổ do CHÍNH lượt này mở — nhịp nền phải đóng lại khi xong, không thì mỗi lượt để
+  // lại một Chrome ẩn và sau một ngày là hàng chục tiến trình không ai thấy.
+  // MỘT KHE = MỘT CỬA SỔ (xem khối chú thích trên `extraPageIds`): đây là ĐƯỜNG DUY NHẤT
+  // được spawn, và nó chỉ spawn khi trình duyệt của khe CHƯA chạy. Còn chạy mà thiếu tab thì
+  // mở TAB; đã có tab thì không làm gì. Mọi nhánh "mở lại" bên dưới đều đi qua đây.
+  const relaunch = async (): Promise<void> => {
+    const alive = await portUp(port);
+    const hasTab = alive && extraPageIds([{ id: "x", url: "" }, ...(await listPages(port))], p.tabRe).length > 0;
+    // `hasTab` đọc bằng chính hàm đếm tab thừa với một tab giả chèn đầu: có ≥1 tab thật
+    // khớp ⇒ nó bị đếm là "thừa" ⇒ có tab. Một thước cho hai câu hỏi, không lệch nhau được.
+    switch (launchPlan(alive, hasTab)) {
+      case "spawn": {
+        const exe = profileBrowser(profileDir, opts.browser, hasSession, log);
+        if (exe) owned.pid = launchBrowser(exe, profileDir, port, p.url, opts.hidden) ?? owned.pid;
+        return;
+      }
+      case "tab":
+        log(`  trình duyệt của khe đang chạy — mở TAB ${p.url} trong cửa sổ sẵn có, không mở cửa sổ mới`);
+        if (!(await openTab(port, p.url))) log("  không mở được tab qua CDP — giữ nguyên, không spawn (spawn lúc này là cửa sổ trùng)");
+        return;
+      case "none":
+        return;
+    }
   };
 
   if (!(await portUp(port))) {
     // Vòng chờ đăng nhập hỏi lại liên tục — cửa sổ chưa sống thì trả lời "chưa" chứ
     // KHÔNG mở thêm cửa sổ, không thì mỗi nhịp hỏi lại bật một cửa sổ mới.
     if (opts.probeOnly) return { status: "need-login", platform: p.key, source: p.source, url: p.url };
-    const exe = profileBrowser(profileDir, opts.browser);
+    const exe = profileBrowser(profileDir, opts.browser, hasSession, log);
     if (!exe) return { status: "no-browser", platform: p.key, source: p.source, url: p.url };
     // Name the browser: on a machine whose default is Chrome, an unexplained Edge
     // window reads as "the tool is doing something odd" (reported 2026-07-30).
     log(`opening ${p.key} window in ${basename(exe)} (log in there once)…`);
-    relaunch();
-    await sleep(6000);
+    await relaunch();
   }
 
   // Only ever attach to a tab of THIS platform. The port can be up while holding some
   // other window (a stale run, the other platform); reusing it drives the wrong site.
-  let first = await Cdp.connect(port, p.tabRe);
+  //
+  // 🔴 CHỜ TAB XUẤT HIỆN, đừng ngủ rồi mở thêm (vá 2026-08-28). Bản cũ: `sleep(6000)` → thử
+  // nối → hụt → **`relaunch()` lần nữa**. Trình duyệt lạnh mất hơn 6 giây để dựng xong cổng
+  // CDP, nên lượt nào cũng rơi vào nhánh đó và bật **HAI cửa sổ** cho cùng một khe — user
+  // chụp đúng hai cửa sổ "Sign in - Claude - Brave". Chờ theo trạng thái thì cửa sổ thứ hai
+  // không còn lý do tồn tại; và nếu 25 s vẫn không có tab thì mới đáng mở lại một lần.
+  let first = await connectWhenReady(port, p.tabRe, 25);
   if (!first && !opts.probeOnly) {
-    log(`  no ${p.key} tab on port ${port} — opening one…`);
-    relaunch();
-    await sleep(6000);
-    first = await Cdp.connect(port, p.tabRe);
+    log(`  ${p.key}: chưa thấy tab sau 25s — mở lại một lần nữa`);
+    await relaunch();
+    first = await connectWhenReady(port, p.tabRe, 25);
   }
   if (!first) return { status: "no-tab", platform: p.key, source: p.source, url: p.url };
+  // Lưới tự lành: dù ai spawn trùng (CLI + daemon · hai request tới cùng lúc · bấm hai lần),
+  // tới đây một khe chỉ còn ĐÚNG MỘT tab của nền.
+  // 🔴 PROBE KHÔNG ĐƯỢC ĐÓNG GÌ (đảo vế cũ *"Probe cũng dọn — nó là lượt chạy dày nhất"*, 2026-08-29).
+  // Probe chạy 5 s/lượt suốt lúc người dùng ĐANG đăng nhập; Google OAuth của Claude mở thêm một
+  // trang claude.ai ⇒ probe thấy "2 tab" ⇒ đóng một — trúng tab duy nhất của cửa sổ chính ⇒ cả
+  // trình duyệt thoát ĐÚNG lúc đăng nhập vừa xong. Đo: 4 profile (khe 2·4·5·main) đều chết kiểu
+  // `exit_type: Normal` trong 1–3 phút sau khi mở, sổ chưa lần nào thấy đăng nhập; user: *"đăng
+  // nhập xong nó xoay xong app ko thấy thay đổi gì"*. Một lượt chỉ-đọc mà ghi/đóng là bề mặt
+  // tự phá thứ nó đang đo — dọn tab là việc của lượt KÉO, sau khi đã đăng nhập.
+  if (!opts.probeOnly) await closeExtraPages(port, p.tabRe, log);
   // Typed non-nullable on purpose: the reconnect paths below reassign it, and a
   // `Cdp | null` would widen back to nullable inside the closures that use it.
   let cdp: Cdp = first;
@@ -815,6 +1174,18 @@ export async function scanWeb(
         if (!rc) return false;
         cdp = rc;
       }
+      // 🔴 CHỜ TRANG VỀ ĐÚNG NGUỒN GỐC, đừng chờ đồng hồ (vá 2026-08-28).
+      //
+      // `authExpr` gọi bằng URL TƯƠNG ĐỐI (`/api/organizations`), nên nó chỉ đúng khi tab đã
+      // ở trên chính site đó. Trước đây sau khi mở cửa sổ chỉ `sleep(6000)` rồi eval — với
+      // Edge lạnh / profile vừa dựng lại thì 6 s KHÔNG đủ, tab còn `about:blank` và lỗi ra là
+      // `Failed to parse URL from /api/organizations`, mà lỗi đó bị đọc thành **"chưa đăng
+      // nhập"** ⇒ mở thêm cửa sổ đăng nhập cho một tài khoản ĐANG đăng nhập. Đo được đúng ca
+      // này trên khe `claude#3` (tài khoản công ty): hai lượt liên tiếp báo need-login sai.
+      //
+      // Chờ theo TRẠNG THÁI (đã tới origin chưa) thay vì theo THỜI GIAN — cùng doctrine với
+      // `02_RULES §Hành xử`: đo cái mình cần biết, đừng đoán bằng một con số thời gian.
+      if (!(await awaitOrigin(cdp, p.url, log))) return false;
       try {
         const a = await cdp.evaluate<{ token: boolean; email: string | null; err?: string }>(p.authExpr);
         if (a?.token) {
@@ -832,8 +1203,24 @@ export async function scanWeb(
      *  process exits code 0 in ~70ms) and a new window appears — CDP on the port stays
      *  intact. Whether the OS raises that window to the front was not measured, so the
      *  wording to the user stays "a window is open at …", not "in front of you". */
+    // 🔴 KHÔNG mở cửa sổ thứ hai khi cửa sổ ĐẦU đã ở trên site (vá 2026-08-28).
+    //
+    // Đường thường: `scanWeb` vừa mở một cửa sổ trỏ `p.url`, auth trả 403 (chưa đăng nhập) ⇒
+    // trang đang hiện CHÍNH form đăng nhập. `relaunch()` ở đây bật thêm một cửa sổ nữa cho
+    // đúng thứ đã có — user chụp được hai cửa sổ "Sign in - Claude - Brave" cạnh nhau. Hai
+    // cửa sổ giống hệt còn tệ hơn phiền: người dùng không biết phải gõ vào cái nào.
+    //
+    // Chỉ mở khi thật sự KHÔNG có cửa sổ thấy được: chế độ NGẦM (cửa sổ ở ngoài màn hình,
+    // người dùng không tới được) hoặc CDP đã chết (cửa sổ đã bị đóng).
+    // 🔄 2026-08-28 (tối): cờ `loginShown` bản trước chỉ chặn lần gọi ĐẦU — lần hai (phiên hết
+    // hạn GIỮA lúc kéo) rơi thẳng xuống spawn ⇒ cửa sổ trùng. Nay không cần cờ: `relaunch()` tự
+    // biết trình duyệt còn sống thì không spawn (luật ① ở `extraPageIds`).
     const openLogin = async (): Promise<void> => {
-      relaunch();
+      if (!opts.hidden && !cdp.dead) {
+        log("  cửa sổ đăng nhập ĐANG MỞ sẵn — đăng nhập vào đó, không mở thêm cửa sổ");
+        return;
+      }
+      await relaunch();
       await sleep(4000);
     };
     const askLogin = (expired: boolean) =>
@@ -905,14 +1292,26 @@ export async function scanWeb(
           ids = raw.map(asItem).filter((x): x is { id: string; at: number; title?: string } => x !== null);
           break;
         }
+        // Mảng RỖNG thật ở lượt cuối = tài khoản không có hội thoại nào (đo 2026-08-28: org
+        // `Global` 0 hội thoại). Đó là kết quả, KHÔNG phải "tab chưa sẵn sàng" — báo `no-tab`
+        // ở đây là bề mặt nói dối về một cửa sổ đang mở ngay trước mặt người dùng.
+        if (Array.isArray(raw) && attempt === 4) ids = [];
       } catch {
         /* transient (execution context destroyed / socket blip) — retry */
       }
+      if (ids) break;
       log(`  conversation list not ready — retrying (${attempt + 1}/5)…`);
       await sleep(2500 * (attempt + 1));
     }
     if (!ids) return { status: "no-tab", platform: p.key, source: p.source, url: p.url };
     log(`enumerated ${ids.length} loose conversation(s)`);
+    // Phiên nào nền LIỆT KÊ ra là của tài khoản ĐANG đăng nhập — đóng dấu danh tính lên cả
+    // phiên đã có trong kho (sẽ bị bỏ qua lúc kéo). Phiên khe này từng kéo cho tài khoản KHÁC
+    // thì không nằm trong danh sách ⇒ giữ nguyên, không bị "đổi chủ" (xem `webslots.accountKey`).
+    if (isEmail(email)) {
+      const n = restampAccount(dbPath, ids.map((x) => `${p.sessionPrefix}${x.id}`), email);
+      if (n) log(`  gắn ${n} phiên đã có vào tài khoản ${email}`);
+    }
 
     // Project ("folder") map: gizmo id → name. Used both to LABEL pulled chats
     // (→ project_root) and to enumerate each project's chats below. Non-fatal —
@@ -1001,6 +1400,7 @@ export async function scanWeb(
       if (!batch.length) return;
       writeFileSync(partFile, JSON.stringify(batch), "utf8");
       lastScan = scan({ dbPath });
+      stampWebAccount(dbPath, lastScan, accountKey(email, opts.account ?? "main"), [p.source, p.sub?.source]);
       // Sổ mốc đi cùng nhịp ingest: crash giữa chừng thì phần đã nạp không bị kéo lại.
       try {
         writeFileSync(pulledFile, JSON.stringify(pulledAt), "utf8");
@@ -1110,6 +1510,7 @@ export async function scanWeb(
         const rawSub = await cdp.evaluate<unknown>(sub.listExpr);
         const subIds = Array.isArray(rawSub) ? rawSub.map(asItem).filter((x): x is { id: string; at: number; title?: string } => x !== null) : [];
         log(`  ${sub.key}: enumerated ${subIds.length} session(s)`);
+        if (isEmail(email)) restampAccount(dbPath, subIds.map((x) => `${sub.sessionPrefix}${x.id}`), email);
         const subHave = new Map<string, number>();
         if (!opts.refresh) {
           const db = openMemory(dbPath);
@@ -1144,6 +1545,7 @@ export async function scanWeb(
         if (subBatch.length) {
           writeFileSync(join(subDir, "scan-web-part.json"), JSON.stringify(subBatch), "utf8");
           lastScan = scan({ dbPath });
+      stampWebAccount(dbPath, lastScan, accountKey(email, opts.account ?? "main"), [p.source, p.sub?.source]);
           log(`  ${sub.key}: ingested ${subBatch.length} session(s)`);
         }
       } catch (e) {
@@ -1155,4 +1557,102 @@ export async function scanWeb(
   } finally {
     cdp.close();
   }
+}
+
+// ── Quét MỌI nền/tài khoản web đang dùng trên máy ────────────────────────────
+// Dời từ `ui.ts` xuống đây 2026-08-28. Vì sao: đây là NGHIỆP VỤ (nền nào đang dùng, khe
+// tài khoản nào, ghi lại kết quả xác thực), mà `03_STRUCTURE §4` nói daemon/`ui.ts` là
+// "surface mỏng… nghiệp vụ vẫn ở domain" và `tools/` "CHỈ khai báo + nối, thực thi
+// delegate slot sẵn có". Để nguyên trong surface thì tool MCP muốn quét web phải kéo cả
+// máy chủ HTTP vào tiến trình của nó — nhân cái lệch chuẩn lên thay vì nắn nó.
+
+/** Một dòng kết quả kéo web cho MỘT nền, đủ để bề mặt quyết định có phải hỏi đăng nhập không. */
+export interface WebScanRow {
+  platform: string;
+  /** Khe tài khoản ("main", "2", …) — cùng một nền có thể có nhiều tài khoản, và hội
+   *  thoại nằm theo TÀI KHOẢN chứ không theo nền. */
+  account?: string;
+  status: string;
+  url?: string;
+  pulled?: number;
+  skipped?: number;
+  failed?: number;
+  /** Mất phiên GIỮA lúc kéo (khác "chưa đăng nhập bao giờ") — phần đã kéo vẫn được lưu. */
+  authExpired?: boolean;
+  /** Có phiên ĐANG đăng nhập sẵn trong trình duyệt thật ⇒ mượn được, khỏi gõ mật khẩu.
+   *  Chỉ gắn khi thật sự có cookie: mời mượn rồi báo "trình duyệt cũng đăng xuất" thì
+   *  tệ hơn là không mời. */
+  canBorrow?: { from: string; label: string; profile: string; cookies: number } | null;
+  error?: string;
+}
+
+// `WEB_PLATFORMS` · `platformsInUse` · `accountsOf` đã DỜI sang `webslots.ts` (2026-08-28):
+// bốn nơi cần chúng (scanweb · connections · scheduler · scope), mà `scanweb → scope` đã có
+// sẵn nên `scope → scanweb` là import VÒNG TRÒN. Re-export để nơi gọi cũ không phải đổi.
+export { WEB_PLATFORMS, accountsOf, platformsInUse, pullableAccountsOf };
+
+/**
+ * Kết vòng đăng nhập 2 bước (user chốt 2026-08-29): sau khi daemon xác nhận đăng nhập + kéo xong,
+ * điều hướng CHÍNH tab đăng nhập sang trang "✓ Đã liên kết" của zemory — người dùng có tín hiệu rõ
+ * ngay trong cửa sổ vừa dùng, thay vì bị Claude/ChatGPT trả về trang chủ như chưa có gì xảy ra.
+ * Lượt kéo kế tiếp tự mở lại tab nền (`launchPlan` → "tab") nên tab này không cản gì. Fail-open.
+ */
+export async function showLinkedPage(platform: string, account: string | undefined, url: string): Promise<boolean> {
+  const p = PLATFORMS[platform];
+  if (!p) return false;
+  const cdp = await Cdp.connect(accountPort(p.port, account), p.tabRe);
+  if (!cdp) return false;
+  try {
+    return await cdp.navigate(url);
+  } finally {
+    cdp.close();
+  }
+}
+
+/**
+ * `opts.hidden`: kéo NGẦM (cửa sổ ngoài màn hình, đóng khi xong) — cho mọi đường KHÔNG phải người dùng
+ * bấm "Liên kết": nút Quét, nhịp nền. Đo 2026-08-29 (user: *"tui ko bấm gì để mở đăng nhập mà sao nó
+ * cứ tự mở trang brave của claude"*): `/memory-scan` gọi hàm này KHÔNG ẩn ⇒ mỗi lần Quét là một cửa sổ
+ * Brave HIỆN cho từng khe (`browser gone — relaunching window` trong log lúc 04:10), và khe mất phiên
+ * còn mở luôn form đăng nhập không ai xin. Cửa sổ hiện chỉ được mở khi người dùng bấm nối (`/connect`).
+ */
+export async function scanWebPlatforms(only?: string[], account?: string, opts: { hidden?: boolean } = {}): Promise<WebScanRow[]> {
+  const list = (only ?? platformsInUse()).filter((k) => WEB_PLATFORMS.includes(k));
+  const out: WebScanRow[] = [];
+  for (const platform of list) {
+    // Không truyền khe cụ thể ⇒ quét MỌI tài khoản của nền đó. Bỏ sót khe nào là hội
+    // thoại của tài khoản đó không bao giờ vào bộ nhớ.
+    // Khe ĐÁNG KÉO thôi — xem `pullableAccountsOf`. Lặp mọi thư mục profile là mở một cửa
+    // sổ đăng nhập cho mỗi khe đã mất phiên, thứ người dùng không hề yêu cầu.
+    for (const acct of account ? [account] : pullableAccountsOf(platform)) {
+      try {
+        // Log về `daemon.log`: đường này chạy trong daemon (nút Liên kết · watcher · webTick),
+        // bản trước nuốt log ⇒ cửa sổ mở cổng nào, vì sao "need-login" — không ai biết (28/08).
+        const r = await scanWeb({ platform, account: acct, hidden: opts.hidden }, (m) => daemonLog(`[web ${platform}#${acct}${opts.hidden ? " ngầm" : ""}] ${m.trim()}`));
+        // Ghi lại kết quả kiểm để bảng "Liên kết" có cái THẬT mà hiện — nó không tự mở
+        // trình duyệt đi kiểm mỗi lần vẽ được.
+        const laneKey = acct === "main" ? platform : `${platform}#${acct}`;
+        setWebAuth(laneKey, r.status === "done", r.email ?? undefined);
+        // Sổ KÉO ghi ở MỌI đường kéo, không riêng nhịp nền. Trước đây chỉ `webTick`/watcher ghi
+        // ⇒ lane kéo bằng nút/CLI mang dấu "•  chưa kéo lần nào" vĩnh viễn dù đã có 31.803 tin
+        // (user 2026-08-29: *"mấy cái ko check là sao"*). Chỉ ghi khi lượt này THỰC SỰ kéo
+        // (done/hỏng lúc kéo) — `need-login`/`no-browser` là chuyện nối, đã có `webAuth` nói.
+        if (r.status === "done") setWebPull(laneKey, { ok: true, status: r.status, pulled: r.pulled });
+        out.push({
+          platform,
+          account: acct,
+          status: r.status,
+          url: r.url,
+          pulled: r.pulled,
+          skipped: r.skipped,
+          failed: r.failed,
+          authExpired: r.authExpired,
+          canBorrow: r.status === "need-login" ? findBorrowSource(platform) : undefined,
+        });
+      } catch (e) {
+        out.push({ platform, account: acct, status: "error", error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+  }
+  return out;
 }

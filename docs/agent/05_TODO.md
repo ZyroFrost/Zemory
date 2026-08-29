@@ -3,6 +3,18 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
+## 🔴 BÀN GIAO 2026-08-29 — ĐỌC TRƯỚC
+
+*(Ba mục bàn giao 28/08 đã ĐÓNG 2026-08-29 — xem `06_CHANGES [2026-08-29]`: "hai cửa sổ" gốc là probe đóng
+tab lúc đăng nhập · tài khoản công ty `huy.nguyen@sasin.vn` đã nối ở khe main, zyrofrost ở khe 2 · gate đầy đủ
+chạy lại cuối phiên 29/08 — kết quả ghi ở entry đó.)*
+
+### Một đề xuất ĐÃ TRÌNH, user CHƯA gật — không tự làm, không phải việc mở
+Lọc "phiên bấm nhầm" (vài ký tự · chat sai phiên): đề xuất luật cơ học gắn cờ `junk` (KHÔNG xoá) + agent đang chạy
+duyệt như `promote`, không LLM trong lõi (HP điều 6); bước đầu là ĐO đếm ứng viên trên 2.771 phiên, chưa viết gì.
+*(Ba đề xuất còn lại — trang "✓ Đã liên kết" · xoá 3 profile trống · gộp 3 root đổi tên — user gật 2026-08-29 và đã
+làm, xem `06_CHANGES [2026-08-29]`.)*
+
 ## 🔵 BÀN GIAO 2026-08-27 (phiên tối) — ĐỌC MỤC NÀY TRƯỚC
 
 **5 mục mở**: 2 việc user GIAO cho phiên sau (bàn kỹ rồi mới làm) + 3 tool MCP. Trạng thái dưới đây là ĐO.
@@ -13,6 +25,9 @@
       *"đặt tên chuẩn lại các bộ template, phân theo số prefix 01_ 02_ này kia … chi tiết qua session sau
       sẽ bàn rõ"*. Đụng: `adopt.ts` (`TEMPLATE_DIR` + profile → thư mục), `standard-parity`/`template-parity`
       test, `04_SKILLS`/`AGENTS` trỏ đường, bootstrap cowork.
+      **User nhắc lại 2026-08-28 tối** (*"cái này cũng cần làm"*) — vẫn mở, vẫn 5 bộ tên rời trên đĩa.
+      Chưa bàn được hôm nay vì cả phiên dồn cho panel Nguồn + tự kéo web; phiên sau mở bằng câu hỏi
+      SƠ ĐỒ TÊN trước (số thứ tự theo gì: theo loại project · theo mức độ · theo thứ tự đọc?).
 - [ ] **Cấu trúc lại TÊN + BỐ CỤC toàn bộ folder phòng ban** — user nghĩ theo hướng `Agent_FIN` · `Agent_IT`…
       thay `PBI_*`, và *"phân lại toàn bộ cấu trúc folder"*. Nguyên văn: *"việc này cũng sẽ bàn với session
       mới"*. Đụng registry project của daemon (16 đường tuyệt đối), `project_root` trong kho (recall theo dự
@@ -32,20 +47,13 @@ một tiến trình (7 phút thay 42). Commit `2993d77` + phần gate/2.8.0 (xem
   kho nó mang 10.271 bản trùng NULL (merge bên nhận nay khử được).
 - Daemon: phải **tắt** khi chạy gate (preflight chặn); bật lại bằng `wscript …\Startup\zemory.vbs`.
 
-### Bộ ba tool điều khiển qua MCP (giữ từ phiên sáng)
-**Dựng bộ ba tool điều khiển zemory qua MCP** — user chốt khung: *"mọi chức năng đã có sẵn trên
-zemory hết rồi, MCP chỉ là điều khiển và quản lý"*. Không đẻ chức năng mới, chỉ mở cửa. Cấn đã dò:
-`scanWebPlatforms` chưa export (private trong `ui.ts:387`).
-
-- [ ] `memory_scan { deep?, web?, platform? }` — gọi `scan()` + `scanWebPlatforms()` sẵn có; trả
-      số phiên/tin, hoặc `need-login` (đừng đứng im, phải nói cửa sổ đang chờ).
-- [ ] `memory_embed {}` — **khởi động rồi TRẢ NGAY**, không chờ. ~58 tin/phút nên 1.000 tin ≈ 17
-      phút; lời gọi MCP không sống tới đó.
-- [ ] `memory_jobs {}` — zemory đang làm gì · còn bao nhiêu chờ nhúng · ai giữ khoá · daemon sống
-      không. Bốn nguồn ĐÃ CÓ: `vectorRemaining` · `schedulerChildRunning` · `syncJobRunning` ·
-      `cliWriteHolder`. Đây là tool đáng giá nhất — chính phiên này đã phải tự đi đo tay ba lần.
-
-Cả ba đi qua write-gate; đang có job khác ghi thì trả *"đang bận"* thay vì tranh khoá.
+*(Mục "Bộ ba tool điều khiển qua MCP" đã ĐÓNG 2026-08-28 — `memory_jobs` · `memory_scan` ·
+`memory_embed` ship đủ, 17 tool trên bề mặt MCP. Xem `06_CHANGES [2026-08-28]`. Hai vế của
+thiết kế gốc phải SỬA khi làm, giữ lại vì chúng là bài học: ① `schedulerChildRunning`/
+`syncJobRunning` là biến trong bộ nhớ DAEMON nên tiến trình MCP đọc luôn ra `false` — phải hỏi
+qua `/automation`, và daemon im thì trả `unknown` chứ không trả `false` · ② `vectorRemaining()`
+đo được **15,7 s** trên kho thật nên không đặt được ở đường mặc định — đọc cache của daemon
+(107 ms), `deep:true` mới đếm thẳng.)*
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
 · **ĐỌC KỸ MỤC ĐÍCH TRƯỚC KHI BÀN GIẢI PHÁP.** Tôi hiểu sai bối cảnh bộ cowork **ba lần** (tưởng

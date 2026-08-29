@@ -403,3 +403,30 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .conn-ok{color:var(--success);font-weight:700}
 .conn-bad{color:var(--warn);font-weight:700}
 .conn-unk{color:var(--text-faint)}
+
+/* Badge trạng thái nguồn trên hàng cây (2026-08-28). MỘT ký hiệu, chữ nằm ở `title` —
+   phơi cả câu ra hàng làm vỡ dòng nhãn (đo trên "tài khoản 2"). Dùng token màu sẵn có,
+   0 literal (`03_STRUCTURE §5`: token-first). */
+.zbadge{background:none;border:0;cursor:pointer;font-size:12px;line-height:1;padding:1px 4px;border-radius:5px}
+.zbadge:hover{background:var(--wash)}
+.zbadge.scope-bad{color:var(--danger);font-weight:700}
+.zbadge.scope-dim{color:var(--text-faint)}
+.zbadge.scope-stale{color:var(--warn)}
+
+/* Popover chú giải dấu trạng thái (nút ? cạnh tiêu đề panel Nguồn — user 2026-08-29). */
+.card-h{position:relative}
+.zpop-wrap{position:relative;display:inline-flex;margin-left:6px}
+.zhelp{width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:none;color:var(--text-dim);font-size:11px;font-weight:700;line-height:1;cursor:pointer;padding:0}
+.zhelp:hover,.zhelp[aria-expanded="true"]{background:var(--wash);color:var(--text)}
+.zpop{position:absolute;top:24px;left:0;z-index:30;min-width:300px;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:10px 12px;font-size:12px;line-height:1.5}
+.zpop[hidden]{display:none}
+.zpop-t{font-weight:700;margin-bottom:6px}
+.zpop-s{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin:8px 0 3px}
+.zpop-r{display:flex;gap:8px;align-items:baseline}
+.zpop-r .zbadge{cursor:default;min-width:16px;text-align:center}
+
+/* Thu gọn nhóm trong cây Nguồn (user 2026-08-29). */
+.zcaret{display:inline-block;width:14px;margin-right:2px;border:0;background:none;color:var(--text-faint);font-size:11px;line-height:1;cursor:pointer;padding:0;vertical-align:-1px}
+.zcaret:hover{color:var(--text)}
+.zcaret-empty{cursor:default}
+.scope-kids[hidden]{display:none}

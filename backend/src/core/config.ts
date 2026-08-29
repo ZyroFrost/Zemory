@@ -39,6 +39,21 @@ export function appVersion(): string {
   }
 }
 
+/**
+ * Cổng daemon — CHỐT 4444 (plan 14 §3, user 2026-07-18), đổi được qua `ZEMORY_UI_PORT`.
+ *
+ * Ở đây chứ không ở `ui.ts` vì cùng lý lẽ với `appVersion()`: đây là **cấu hình mọi bề mặt
+ * cần biết**, không phải nghiệp vụ của máy chủ HTTP. Đo 2026-08-28: `tools/index.ts` cần
+ * biết cổng để hỏi daemon *"anh đang làm gì"*, mà nhập `ui.js` vào đó là kéo NGUYÊN máy chủ
+ * (kèm scheduler · tray · autostart) vào tiến trình MCP stdio — thứ chỉ cần đọc một số.
+ */
+export const DEFAULT_UI_PORT = 4444;
+
+export function uiPort(): number {
+  const raw = Number(process.env.ZEMORY_UI_PORT);
+  return Number.isInteger(raw) && raw > 0 && raw < 65536 ? raw : DEFAULT_UI_PORT;
+}
+
 /** Marker THẬT của một project root — đường tuyệt đối, hoặc null nếu chưa nối harness.
  *  Đây là phép thử "đã nối harness chưa" DUY NHẤT; đừng tự ghép `join(root, CONFIG_FILE)`
  *  ở chỗ khác, vì làm vậy là mù với hai bậc kia của thang. */
@@ -107,6 +122,22 @@ function assertConfig(value: unknown, markerRel: string): HarnessConfig {
 export function normalizeRoot(path: string): string {
   const abs = resolve(path);
   return process.platform === "win32" ? abs.replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`) : abs;
+}
+
+/**
+ * Chuẩn hoá CHỮ Ổ ĐĨA cho giá trị ghi vào `sessions.project_root` / `sessions.cwd` — KHÔNG `resolve`.
+ *
+ * Khác `normalizeRoot`: cột này chứa cả đường dẫn Windows (`d:\huy.nguyen\Tool\Zemory`) lẫn TÊN
+ * project của nguồn web (`Tarot study`) — `resolve("Tarot study")` sẽ biến tên thành một đường
+ * dẫn tuyệt đối vô nghĩa. Nên chỉ đụng đúng mẫu `<chữ>:\` hoặc `<chữ>:/`; mọi giá trị khác trả
+ * nguyên. Vì sao cần (đo 2026-08-29): fix `[2026-07-29d]` chắn ở sổ docs/project nhưng đường nạp
+ * transcript vẫn ghi cwd thô ⇒ **79 phiên `d:\…` + 172 `cwd`** chẻ đôi nhóm project trên UI/digest,
+ * và vẫn sinh mới mỗi ngày. Không phụ thuộc platform: bundle từ máy Windows merge trên máy khác
+ * cũng phải ra cùng một khoá.
+ */
+export function canonProjectRoot<T extends string | null | undefined>(v: T): T {
+  if (typeof v !== "string") return v;
+  return v.replace(/^([a-z]):(?=[\\/])/, (_m, d: string) => `${d.toUpperCase()}:`) as T;
 }
 
 /**

@@ -48,7 +48,27 @@ const orgRoute = (list = ORGS) => [/\/api\/organizations$/, () => ok(list)];
 test("claude auth: chọn org theo caps 'chat', KHÔNG theo thứ tự mảng", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [orgRoute()]);
   assert.equal(value.token, true);
-  assert.equal(value.email, "Work Org", "phải là org có caps 'chat', không phải org đầu tiên");
+  // Không có endpoint account ⇒ rơi về tên org, và PHẢI nói rõ đó là org (tiền tố) — bản cũ trả
+  // trần "Work Org" nên hàng nguồn ghi tên org như thể là tài khoản (user bắt 2026-08-28).
+  assert.equal(value.email, "org: Work Org", "phải là org có caps 'chat', không phải org đầu tiên — và ghi rõ là org");
+});
+
+test("claude auth: có /api/account ⇒ TÀI KHOẢN (email) thắng tên org", async () => {
+  // Đây là thứ hàng nguồn phải ghi: *"cái nào liên kết tk web thì ghi luôn tk đó"*. Tên org
+  // ("zyrofrost@gmail.com's Organization" · "Global") không phải tài khoản.
+  const { value, calls } = await runExpr(PLATFORMS.claude.authExpr, [
+    orgRoute(),
+    [/\/api\/account$/, () => ok({ email_address: "huy@example.com" })],
+  ]);
+  assert.equal(value.token, true);
+  assert.equal(value.email, "huy@example.com");
+  assert.ok(calls.some((u) => u.includes("/api/account")), "phải hỏi endpoint account");
+  // Đường lùi thứ hai: `/api/bootstrap` bọc account trong `account`.
+  const boot = await runExpr(PLATFORMS.claude.authExpr, [
+    orgRoute(),
+    [/\/api\/bootstrap$/, () => ok({ account: { email_address: "boot@example.com" } })],
+  ]);
+  assert.equal(boot.value.email, "boot@example.com");
 });
 
 test("claude list + conv: URL mang uuid của org 'chat'", async () => {
@@ -79,7 +99,7 @@ test("claude auth: có caps mà KHÔNG org nào có 'chat' ⇒ báo lỗi rõ, k
 test("claude auth: shape không khai capabilities ⇒ rơi về org đầu (không phá tài khoản lạ)", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [orgRoute([{ uuid: "solo", name: "Solo" }])]);
   assert.equal(value.token, true);
-  assert.equal(value.email, "Solo");
+  assert.equal(value.email, "org: Solo", "không có account endpoint ⇒ tên org, ghi rõ là org");
 });
 
 test("claude auth: chưa đăng nhập (401) ⇒ token=false", async () => {
@@ -247,7 +267,8 @@ test("app.js gọi endpoint nào thì ui.ts phải có endpoint đó (bảng Li�
 // không bắt chọn. Ba luật dưới khoá đúng ba cách bản này có thể trượt về kiểu cũ.
 test("MỘT nút Quét: luôn kéo web, không qua công tắc nào", () => {
   const scanBranch = UI_TS.slice(UI_TS.indexOf('p === "/memory-scan"'), UI_TS.indexOf('p === "/connections"'));
-  assert.ok(/await scanWebPlatforms\(\)/.test(scanBranch), "nút Quét phải tự kéo web");
+  // 2026-08-29: nút Quét kéo web NGẦM (`hidden: true`) — cửa sổ hiện chỉ khi người dùng bấm Liên kết.
+  assert.ok(/await scanWebPlatforms\(undefined, undefined, \{ hidden: true \}\)/.test(scanBranch), "nút Quét phải tự kéo web, và kéo NGẦM");
   assert.ok(!/getScanWeb|scanWeb\(\)\s*\?/.test(scanBranch), "không được phụ thuộc công tắc nào nữa");
   assert.ok(!/data-auto="scanweb"/.test(FE_HTML), "công tắc 'kèm web chat' phải bị gỡ khỏi giao diện");
   assert.ok(!/set-scan-web|getScanWeb/.test(UI_TS + FE_JS), "và không để lại endpoint/hàm chết");
@@ -255,22 +276,48 @@ test("MỘT nút Quét: luôn kéo web, không qua công tắc nào", () => {
 
 // User chốt 2026-07-30: bỏ hộp thoại nhảy giữa lúc quét, trạng thái liên kết phải
 // TRƯNG ra cạnh Sources, đứt thì có nút nối lại.
-test("bảng Liên kết: có bề mặt thật, và KHÔNG còn hộp thoại tự nhảy khi quét", () => {
-  assert.ok(/id="mConn"/.test(FE_HTML), "phải có chỗ vẽ bảng Liên kết trong panel Sources");
-  assert.ok(UI_TS.includes('p === "/connections"') && UI_TS.includes('p === "/connect"'), "ui.ts phải có cả endpoint đọc lẫn endpoint nối lại");
-  assert.ok(/function renderConn\(/.test(FE_JS) && /\/connect\?platform=/.test(FE_JS), "app.js phải vẽ bảng và bấm được nút nối");
+// 🔄 ĐẢO ca cũ *"bảng Liên kết: có bề mặt thật"* (user chốt 2026-08-28: gộp trạng thái lên
+// CHÍNH hàng nguồn — *"mấy cái check link phải nằm ngay sau mấy cái check source"*, và *"gộp
+// lên thì ở dưới phải mất"*). Bảng `#mConn` bị gỡ CÓ CHỦ ĐÍCH; bất biến THẬT — trạng thái đo
+// được + bấm nối lại được + không hộp thoại tự nhảy — nay sống ở badge trên hàng + hộp chi tiết.
+test("trạng thái liên kết nằm TRÊN HÀNG nguồn: badge + hộp chi tiết + nút Thêm nguồn", () => {
+  assert.ok(!/id="mConn"/.test(FE_HTML), "bảng Liên kết cũ phải mất hẳn — hai chỗ cùng nói một chuyện là chỗ đẻ lệch");
+  assert.ok(UI_TS.includes('p === "/connections"') && UI_TS.includes('p === "/connect"'), "ui.ts vẫn phải có cả endpoint đọc lẫn endpoint nối lại (cây đọc qua scopeTree)");
+  assert.ok(/function srcBadge\(/.test(FE_JS), "mỗi hàng nguồn phải có badge trạng thái");
+  assert.ok(/data-srcdet=/.test(FE_JS) && /function openSrcDetail\(/.test(FE_JS), "bấm badge phải ra hộp chi tiết liên kết");
+  assert.ok(/\/connect\?platform=/.test(FE_JS), "trong hộp phải bấm nối lại được");
+  assert.ok(/id="mAddSrc"/.test(FE_HTML) && /function openAddSource\(/.test(FE_JS), "nút ＋ Thêm nguồn nằm dưới panel, mở hộp chọn nền");
+  assert.ok(/data-addacct=/.test(FE_JS), "hộp Thêm nguồn phải có đường thêm tài khoản (đã từng bị làm rơi khi gỡ bảng cũ)");
   assert.ok(!/webLoginAsk/.test(FE_JS), "hộp thoại tự nhảy phải bị gỡ hẳn — nó hỏi đúng lúc không ai hỏi");
-  assert.ok(/loadConn\(\)/.test(FE_JS), "quét xong phải làm tươi bảng thay vì im lặng");
+  assert.ok(/conn\.who/.test(FE_JS), "nguồn đã nối phải ghi TÊN tài khoản ngay trên hàng");
 });
 
 test("chỉ quét nền ĐANG DÙNG — máy chưa từng dùng nền nào thì không tự bật trình duyệt", () => {
-  assert.ok(/function platformsInUse\(\)/.test(UI_TS), "phải có phép lọc nền đang dùng");
-  assert.ok(/scanWebPlatforms\(only\?: string\[\], account\?: string\)[\s\S]{0,200}platformsInUse\(\)/.test(UI_TS), "mặc định phải là nền đang dùng, không phải mọi nền");
+  // Neo đã dời HAI lần trong một ngày: `ui.ts` → `scanweb.ts` (surface mỏng, nghiệp vụ ở
+  // domain) → `webslots.ts` (bốn nơi cùng cần, tránh import vòng). Bất biến KHÔNG hề đổi —
+  // và đó chính là điểm yếu của neo soi CHỮ: nó đỏ vì code DỜI NHÀ, không vì hành vi sai.
+  const slots = readFileSync(new URL("../src/memory/webslots.ts", import.meta.url), "utf8");
+  const sw = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
+  assert.ok(/export function platformsInUse\(\)/.test(slots), "phải có phép lọc nền đang dùng");
+  assert.ok(/scanWebPlatforms\(only\?: string\[\], account\?: string, opts[^)]*\)[\s\S]{0,200}platformsInUse\(\)/.test(sw), "mặc định phải là nền đang dùng, không phải mọi nền");
 });
 
-test("scheduler nền KHÔNG được tự kéo web (10 phút một lần tự mở trình duyệt là sai)", () => {
+// 🔄 ĐẢO ca cũ *"scheduler nền KHÔNG được tự kéo web"* (user chốt 2026-08-28).
+//
+// Ca cũ đúng với dữ kiện của nó: lúc đó kéo web = **bật một cửa sổ vào mặt người dùng**, nên
+// chạy nền là sai. Nay có chế độ NGẦM (đo: kéo được, không cửa sổ nào hiện), và bề mặt thì
+// bày `Web chat` thành ô TICK cạnh khối "AUTOMATION" ⇒ đã tick mà không về là bề mặt nói dối.
+// Nguyên văn user: *"mọi source đã check là nó phải tự động vào kho chạy hết, ko dc thiếu"*.
+//
+// Ca MỚI canh đúng ba ràng buộc thay thế — mất ràng buộc nào cũng là quay lại một kiểu sai:
+test("scheduler tự kéo web — nhưng NGẦM, theo ô tick, và hỏng thì GHI SỔ", () => {
   const sched = readFileSync(new URL("../src/jobs/scheduler.ts", import.meta.url), "utf8");
-  assert.ok(!/scan-web|scanWeb/.test(sched), "scheduler chỉ chạy `memory scan` (quét đĩa)");
+  assert.ok(/scanWeb\(/.test(sched), "nay scheduler PHẢI tự kéo web (ô đã tick = phải vào kho)");
+  assert.ok(/hidden:\s*true/.test(sched), "phải kéo NGẦM — bật cửa sổ mỗi nhịp là lý do luật cũ tồn tại");
+  assert.ok(/isExcluded\(/.test(sched), "ô KHÔNG tick thì tuyệt đối không đụng tới");
+  assert.ok(/setWebPull\(/.test(sched), "mọi kết cục phải ghi sổ — hỏng mà im lặng là lỗi đang đi vá");
+  // Hỏng thì phải LÙI: thử lại mỗi nhịp cho một thứ cần NGƯỜI đăng nhập là đốt máy vô ích.
+  assert.ok(/WEB_RETRY_AFTER_FAIL_MS/.test(sched), "phiên hết hạn phải lùi nhịp, không thử lại dày");
 });
 
 // ── trình duyệt mở ra phải là trình duyệt user DÙNG ──────────────────────────
@@ -280,6 +327,10 @@ test("chọn trình duyệt theo mặc định của máy, không cứng Edge-fi
   assert.ok(/msedge\.exe$/i.test(orderByProgId("MSEdgeHTM")[0]), "máy mặc định Edge ⇒ dò Edge trước");
   assert.ok(/msedge\.exe$/i.test(orderByProgId(null)[0]), "không đọc được registry ⇒ giữ thứ tự cũ, không rơi về rỗng");
   assert.ok(/msedge\.exe$/i.test(orderByProgId("FirefoxURL")[0]), "Firefox không nói CDP ⇒ KHÔNG được chọn, rơi về Chromium");
+  // Brave (2026-08-28): máy user mặc định Brave mà bộ dò không biết ⇒ mở Edge, Edge profile
+  // mới bật hộp Microsoft sync vào mặt người dùng. Brave là Chromium, nói CDP như hai hãng kia.
+  assert.ok(/brave\.exe$/i.test(orderByProgId("BraveHTML")[0]), "máy mặc định Brave ⇒ dò Brave trước");
+  assert.ok(orderByProgId("ChromeHTML").some((p) => /brave\.exe$/i.test(p)), "Brave phải nằm trong danh sách rơi về của mọi máy");
   for (const id of ["ChromeHTML", "MSEdgeHTM", null, "FirefoxURL"]) {
     const l = orderByProgId(id);
     assert.equal(new Set(l).size, l.length, "không được lặp đường dẫn");
@@ -384,4 +435,78 @@ test("awaitLogin: trả lời 'xong' mà vẫn chưa đăng nhập ⇒ dừng sa
   });
   assert.equal(back, false);
   assert.equal(asked, 3, "phải hỏi đúng maxRounds lần rồi bỏ, không hỏi mãi");
+});
+
+// ── ⑤ MỘT tài khoản, NHIỀU org 'chat' (đo 2026-08-28 trên tài khoản công ty) ──────────────
+// `Global` (chat, 0 hội thoại) đứng TRƯỚC org có hội thoại. Bản cũ lấy org chat đầu ⇒ danh sách
+// rỗng ⇒ "not ready ×5" ⇒ `no-tab` — ngay sau khi người dùng đăng nhập xong. Hai bất biến:
+// liệt kê phải là HỢP của mọi org chat, và lời gọi chi tiết phải đi đúng org của hội thoại đó.
+const TWO_CHAT_ORGS = [
+  { uuid: "org-global", name: "Global", capabilities: ["chat", "raven"] },
+  { uuid: "org-work", name: "Work", capabilities: ["chat"] },
+  { uuid: "org-api", name: "Individual Org", capabilities: ["api", "api_individual"] },
+];
+
+test("claude list: nhiều org 'chat' ⇒ HỢP hội thoại của mọi org, không dừng ở org đầu (dù nó rỗng)", async () => {
+  delete globalThis.__zmOrgOf;
+  const { value, calls } = await runExpr(PLATFORMS.claude.listExpr, [
+    orgRoute(TWO_CHAT_ORGS),
+    [/org-global\/chat_conversations/, () => ok([])],
+    [/org-work\/chat_conversations/, () => ok([{ uuid: "w1" }, { uuid: "w2" }])],
+  ]);
+  assert.deepEqual(value.map((x) => x.id).sort(), ["w1", "w2"], "hội thoại nằm ở org thứ hai phải được thấy");
+  assert.ok(calls.some((u) => u.includes("/org-work/chat_conversations")), "phải hỏi cả org thứ hai");
+  assert.ok(!calls.some((u) => u.includes("org-api")), "org 'api' vẫn không được gọi");
+});
+
+test("claude conv: lời gọi chi tiết đi ĐÚNG org của hội thoại đó (sổ do list ghi), không phải org đầu", async () => {
+  delete globalThis.__zmOrgOf;
+  await runExpr(PLATFORMS.claude.listExpr, [
+    orgRoute(TWO_CHAT_ORGS),
+    [/org-global\/chat_conversations/, () => ok([])],
+    [/org-work\/chat_conversations/, () => ok([{ uuid: "w1" }])],
+  ]);
+  const conv = await runExpr(PLATFORMS.claude.convExpr("w1"), [
+    orgRoute(TWO_CHAT_ORGS),
+    [/org-work\/chat_conversations\/w1/, () => ok({ uuid: "w1", chat_messages: [] })],
+    [/org-global\/chat_conversations\/w1/, () => httpErr(404)],
+  ]);
+  assert.equal(conv.value.uuid, "w1");
+  assert.ok(conv.calls.some((u) => u.includes("/org-work/chat_conversations/w1")), "phải lấy từ org-work");
+  assert.ok(!conv.calls.some((u) => u.includes("/org-global/chat_conversations/w1")), "có sổ thì KHÔNG dò org đầu — mỗi lần dò sai là một request 404 vô ích");
+});
+
+test("claude conv: KHÔNG có sổ (tab mới, chưa list) ⇒ thử lần lượt mọi org chat cho tới khi 200", async () => {
+  delete globalThis.__zmOrgOf;
+  const conv = await runExpr(PLATFORMS.claude.convExpr("w9"), [
+    orgRoute(TWO_CHAT_ORGS),
+    [/org-global\/chat_conversations\/w9/, () => httpErr(404)],
+    [/org-work\/chat_conversations\/w9/, () => ok({ uuid: "w9", chat_messages: [] })],
+  ]);
+  assert.equal(conv.value.uuid, "w9", "org đầu 404 thì phải sang org kế, không ném ngay");
+});
+
+test("claude projects: gom project của MỌI org chat", async () => {
+  const { value } = await runExpr(PLATFORMS.claude.projectsExpr, [
+    orgRoute(TWO_CHAT_ORGS),
+    [/org-global\/projects/, () => ok([{ uuid: "pg", name: "G" }])],
+    [/org-work\/projects/, () => ok([{ uuid: "pw", name: "W" }])],
+  ]);
+  assert.deepEqual(value, { pg: "G", pw: "W" });
+});
+
+// ── ⑥ Đóng dấu tài khoản CHỈ lên phiên của nguồn web vừa kéo ────────────────────────────
+// `scan()` nạp toàn kho; transcript Claude Code mới trên đĩa cũng có trong report. Bản cũ đóng
+// dấu hết ⇒ 9 phiên local mang `main`/email ⇒ cây Local tách claude-code thành BA hàng (28/08).
+test("webSessionIds: phiên local trong cùng lượt scan KHÔNG được đóng dấu tài khoản web", async () => {
+  const { webSessionIds } = await import("../../dist/memory/scanweb.js");
+  const report = { sessions: [
+    { id: "claudeweb-1", source: "claude-web" },
+    { id: "cowork-1", source: "claude-cowork" },
+    { id: "local-1", source: "claude-code" },
+    { id: "gpt-1", source: "chatgpt-web" },
+  ] };
+  assert.deepEqual(webSessionIds(report, ["claude-web", "claude-cowork"]).sort(), ["claudeweb-1", "cowork-1"]);
+  assert.deepEqual(webSessionIds(report, ["chatgpt-web", undefined]), ["gpt-1"], "sub không có (undefined) không được phá bộ lọc");
+  assert.deepEqual(webSessionIds(undefined, ["claude-web"]), []);
 });

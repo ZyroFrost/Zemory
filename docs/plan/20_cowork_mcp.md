@@ -126,5 +126,12 @@ TRƯỚC `%APPDATA%` khi có cả hai · bản cài thường không bị phá �
   sau này có, phải đo lại chứ đừng suy.
 - **Chưa đo Cowork GHI vào kho** — mới chứng minh ĐỌC. Các tool ghi (`session_pin`, `project_merge`)
   chưa thử qua đường Cowork; trước khi mở phải cân lại chuyện hai kẻ ghi.
-- **Chưa đo Cowork ra lệnh cho zemory làm việc nặng** (`memory scan-web` kéo dữ liệu nền web). Đó là
-  việc kế tiếp user đã giao.
+- **Cowork ra lệnh cho zemory làm việc nặng — CỬA ĐÃ MỞ 2026-08-28, nhưng CHƯA đo TỪ Cowork.**
+  Ba tool điều khiển đã ship (`memory_jobs` · `memory_scan {deep,web,platform}` · `memory_embed`;
+  xem `06_CHANGES [2026-08-28]`), nghiệm thu qua `zemory mcp` stdio trên máy thật. Phần còn thiếu là
+  đúng vế *"từ Cowork"*: chưa có lượt nào gọi chúng trong một phiên Cowork thật. Hai điều phải nhìn
+  khi đo — ① `memory_scan {web:true}` mở **trình duyệt trên MÁY THẬT**, nên người dùng ở phía Cowork
+  phải được báo là cửa sổ đang chờ họ (tool đã trả `action_required`, nhưng chưa ai kiểm nó hiện ra
+  thế nào bên kia) · ② ba tool này GHI, mà §7 dòng trên vẫn đúng: **chưa cân chuyện hai kẻ ghi qua
+  đường Cowork**. Write-gate chặn theo khoá file nên nó phủ cả ca đó về mặt cơ chế — nhưng "về mặt
+  cơ chế" không phải một phép đo.

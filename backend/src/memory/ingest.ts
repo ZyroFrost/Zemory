@@ -5,6 +5,7 @@
 
 import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { canonProjectRoot } from "../core/config.js";
 import { homedir, hostname } from "node:os";
 import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
@@ -82,6 +83,34 @@ export interface ScanOptions {
   roots?: string[];
   /** Lane bị loại NGAY LÚC NẠP. Bỏ trống ⇒ lấy danh sách đã lưu (`getScopeExclude`). */
   excludeLanes?: ScopeLane[];
+}
+
+/**
+ * Đóng dấu KHE TÀI KHOẢN lên các phiên vừa nạp (v24).
+ *
+ * Vì sao là một bước RIÊNG sau `scan()` chứ không luồn qua adapter: đường web ghi hội thoại
+ * ra file rồi mới gọi `scan()`, nên tài khoản phải đi qua **định dạng file + adapter + parser**
+ * mới tới được `writeSession` — ba lớp phải đổi cho một cột. Ở đây `scanWeb` đã biết CẢ hai
+ * (khe nào, và `ScanReport` trả về đúng id phiên vừa nạp), nên một `UPDATE` theo id là đường
+ * ngắn nhất mà vẫn chính xác — không đoán, không đụng adapter nào.
+ *
+ * Chỉ ghi khi ô đang trống: lượt kéo lại một phiên cũ không được đổi dấu tài khoản của nó.
+ */
+export function stampAccount(dbPath: string, sessionIds: string[], account: string): number {
+  if (!sessionIds.length) return 0;
+  const db = openMemory(dbPath);
+  try {
+    const st = db.prepare("UPDATE sessions SET account=? WHERE id=? AND account IS NULL");
+    let n = 0;
+    db.transaction((ids: string[]) => {
+      for (const id of ids) n += st.run(account, id).changes;
+    })(sessionIds);
+    return n;
+  } catch {
+    return 0; // fail-open (điều 9): thiếu dấu tài khoản không được làm hỏng lượt kéo
+  } finally {
+    db.close();
+  }
 }
 
 /** Run a full scan over every known agent and ingest into the memory. */
@@ -579,6 +608,9 @@ interface WriteSessionArgs {
   /** Grouping folder → project_root (falls back to cwd when absent). */
   project?: string;
   title?: string;
+  /** v24 — KHE TÀI KHOẢN của nguồn web ('main','2',…). Bỏ trống ⇒ giữ nguyên dấu đã có,
+   *  KHÔNG đoán: một lượt nạp không biết tài khoản không được xoá dấu của lượt biết. */
+  account?: string;
   msgs: PendingMsg[];
   wholeReplace: boolean;
 }
@@ -590,8 +622,8 @@ interface WriteSessionArgs {
  */
 function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
   db.prepare(
-    `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host)
-     VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
+    `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host, account)
+     VALUES (@id, @source, @origin, @project, @cwd, @title, @host, @account)
      ON CONFLICT(id) DO UPDATE SET
        origin       = excluded.origin,
        -- a user-merged (pinned) project_root is kept; otherwise track the transcript's cwd
@@ -599,8 +631,11 @@ function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
                           ELSE COALESCE(excluded.project_root, sessions.project_root) END,
        cwd          = COALESCE(excluded.cwd, sessions.cwd),
        title        = COALESCE(excluded.title, sessions.title),
-       host         = excluded.host`,
-  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: a.project ?? a.cwd ?? null, cwd: a.cwd ?? null, title: a.title ?? null, host: HOST });
+       host         = excluded.host,
+       -- COALESCE, KHÔNG ghi đè: lượt nạp không biết tài khoản (đường local, bundle từ máy
+       -- khác) không được xoá dấu tài khoản mà một lượt kéo web trước đó đã đóng đúng.
+       account      = COALESCE(excluded.account, sessions.account)`,
+  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: canonProjectRoot(a.project ?? a.cwd ?? null), cwd: canonProjectRoot(a.cwd ?? null), title: a.title ?? null, host: HOST, account: a.account ?? null });
 
   const before = a.wholeReplace
     ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(a.sessionId) as { c: number }).c
@@ -752,7 +787,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
          cwd          = COALESCE(excluded.cwd, sessions.cwd),
          title        = COALESCE(excluded.title, sessions.title),
          host         = excluded.host`,
-    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: cwd ?? null, cwd: cwd ?? null, title: title ?? null, host: HOST });
+    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: HOST });
 
     const before = wholeReplace
       ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(sessionId) as { c: number }).c
@@ -881,4 +916,26 @@ function maxDate(a: string | null, b: string | null): string | null {
   if (!a) return b;
   if (!b) return a;
   return a > b ? a : b;
+}
+
+/**
+ * Đổi nhãn tài khoản từ KHE sang DANH TÍNH cho các phiên vừa LIỆT KÊ được trên nền (kể cả phiên
+ * đã có trong kho và bị bỏ qua lúc kéo). Chỉ đụng hàng còn mang khe/NULL — hàng đã có email là
+ * của một người khác, không được ghi đè. Trả số hàng đổi.
+ */
+export function restampAccount(dbPath: string, sessionIds: string[], identity: string): number {
+  if (!sessionIds.length || !identity.includes("@")) return 0;
+  const db = openMemory(dbPath);
+  try {
+    const st = db.prepare("UPDATE sessions SET account=? WHERE id=? AND (account IS NULL OR account NOT LIKE '%@%')");
+    let n = 0;
+    db.transaction((ids: string[]) => {
+      for (const id of ids) n += st.run(identity, id).changes;
+    })(sessionIds);
+    return n;
+  } catch {
+    return 0; // fail-open (điều 9)
+  } finally {
+    db.close();
+  }
 }

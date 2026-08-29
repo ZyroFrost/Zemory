@@ -4,7 +4,14 @@
 // JSON-RPC surface that ships these over stdio lives in ../mcp.ts — keep wire
 // framing OUT of here and tool knowledge OUT of the surface.
 
-import { findProjectRoot, normalizeRoot } from "../core/config.js";
+import { spawn } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { findProjectRoot, normalizeRoot, uiPort } from "../core/config.js";
+import { scan } from "../memory/ingest.js";
+import { scanWebPlatforms } from "../memory/scanweb.js";
+import { vectorRemaining } from "../memory/vectors.js";
+import { acquireCliWriteLock, cliWriteHolder, daemonJobBusyExternal, releaseCliWriteLock } from "../jobs/writegate.js";
 import { getCodeGraph } from "../memory/graph/graph-cache.js";
 import { fileImpact } from "../memory/graph/graph.js";
 import { getMessage, getMessageContext, searchHybrid, searchMulti } from "../memory/search.js";
@@ -67,6 +74,92 @@ export function doctorFeatureKeys(base: string[], deep: boolean): string[] {
 
 function toolResult(value: unknown) {
   return { content: [{ type: "text", text: typeof value === "string" ? value : jsonText(value) }] };
+}
+
+// ── Hạ tầng dùng chung cho ba tool ĐIỀU KHIỂN ────────────────────────────────
+
+/**
+ * Ai đang ghi kho, hay `null` khi rảnh.
+ *
+ * Hai nguồn, và phải là hai nguồn ĐỌC ĐƯỢC TỪ TIẾN TRÌNH KHÁC: máy chủ MCP là một tiến
+ * trình RIÊNG, nên `daemonJobBusy()` / `schedulerChildRunning()` (biến trong bộ nhớ daemon)
+ * ở đây **luôn** trả false — dùng chúng là tự dựng một bề mặt nói dối. Khoá FILE và marker
+ * FILE mới là thứ xuyên tiến trình.
+ */
+function writeBusy(): string | null {
+  const held = cliWriteHolder();
+  if (held) return `${held.label} (pid ${held.pid})`;
+  if (daemonJobBusyExternal()) return "a daemon background job";
+  return null;
+}
+
+/** Hỏi daemon một endpoint. `null` = daemon không trả lời — KHÔNG suy ra "không có gì chạy". */
+async function askDaemon<T>(path: string, ms = 800): Promise<T | null> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${uiPort()}${path}`, { signal: AbortSignal.timeout(ms) });
+    return r.ok ? ((await r.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Đường tới CLI đã dựng — cùng phép tính với `scheduler.ts` (cả hai ở `dist/<slot>/`). */
+function cliEntry(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
+}
+
+/**
+ * Số tin còn chờ nhúng — HỎI DAEMON TRƯỚC, đếm thẳng là đường CUỐI.
+ *
+ * Đo 2026-08-28 trên kho thật (309k tin · 2,5 GB): `vectorRemaining()` là anti-join toàn
+ * bảng mất **15,7 giây**, trong khi daemon đã cache đúng con số đó và trả trong **107 ms**
+ * (7,4 s lượt lạnh). Bản đầu của `memory_jobs` gọi thẳng `vectorRemaining()` và vì thế
+ * KHÔNG kịp trả lời trong 6 giây — mô tả tool khi đó ghi "read-only and cheap", tức bề mặt
+ * tự khai sai về chính mình. `ui.ts heavyStatsSync` đã ghi cùng bài học từ 08-23 (16,7 s
+ * lượt lạnh làm đứng cả daemon); không có lý do để đi lại con đường đó ở tiến trình khác.
+ *
+ * Trả kèm `source` để người đọc biết con số TƯƠI tới đâu — cache của daemon có tuổi, và
+ * trình bày số cũ như số mới là đúng thứ điều 12 cấm.
+ */
+async function embedBacklog(dbPath: string | undefined, forceDirect = false): Promise<{ value: number | string; source: string }> {
+  // Kho RIÊNG ⇒ luôn đếm thẳng: daemon cache số của kho MẶC ĐỊNH, trả nó cho người đang hỏi
+  // một kho khác là đưa số của kho người ta. Suy ở ĐÂY chứ không bắt nơi gọi nhớ — hai nơi
+  // gọi hiện tại đều truyền đúng, nhưng "đúng vì có người nhớ" là chỗ hỏng của lần thứ ba.
+  const direct = forceDirect || Boolean(dbPath);
+  if (!direct) {
+    // 6 s: đo 2026-08-28 — lượt ẤM 107 ms, lượt LẠNH 7,4 s. Ngưỡng 3 s của bản đầu bắt được
+    // lượt ấm nhưng trượt mọi lượt lạnh, mà lượt lạnh chính là lúc người ta cần con số nhất
+    // (vừa mở máy). Lạnh chỉ xảy ra một lần mỗi đời daemon: `heavyStats` sau đó trả số cũ
+    // NGAY rồi tính lại ở tiến trình con (`ui.ts §heavyStats`), nên đây không phải giá thường kỳ.
+    const st = await askDaemon<{ vectors?: { remaining?: number }; cachedAgeMs?: number }>("/memory-status", 6000);
+    const v = st?.vectors?.remaining;
+    if (typeof v === "number") {
+      return { value: v, source: `daemon cache (${Math.round((st?.cachedAgeMs ?? 0) / 1000)}s old)` };
+    }
+  }
+  if (!direct) {
+    return {
+      value: "not counted — costs ~16s on a store this size; the daemon (which caches it) is not answering",
+      source: "skipped",
+    };
+  }
+  try {
+    return { value: vectorRemaining(dbPath), source: "direct count (full anti-join)" };
+  } catch (e) {
+    // Điều 9 + điều 12: hỏng thì NÓI hỏng, đừng trả 0 (0 đọc ra là "đã nhúng xong hết").
+    return { value: `unknown — could not count (${e instanceof Error ? e.message : "read failed"})`, source: "failed" };
+  }
+}
+
+/** Câu trả lời chung khi có kẻ khác đang ghi. Từ chối RÕ, không tranh khoá (plan 14 §C). */
+function busyResult(tool: string, who: string) {
+  return toolResult({
+    ok: false,
+    busy: true,
+    heldBy: who,
+    note: `${tool} did not run: ${who} is writing the memory store right now. Nothing was changed. `
+      + "Wait and retry, or call memory_jobs to watch it finish — do NOT try to force it.",
+  });
 }
 
 function errorResult(message: string) {
@@ -288,6 +381,61 @@ export const TOOLS = [
       additionalProperties: false,
     },
   },
+  // ── Điều khiển (plan 14) — ba tool MỞ CỬA, không đẻ chức năng ────────────────
+  // User chốt 2026-08-27: *"mọi chức năng đã có sẵn trên zemory hết rồi, MCP chỉ là điều
+  // khiển và quản lý"*. Nên cả ba chỉ delegate: `scan()` · CLI `memory embed --all` ·
+  // bốn nguồn trạng thái đã có. Không tool nào cài thêm logic nạp/nhúng.
+  {
+    name: "memory_jobs",
+    description:
+      "What zemory is doing RIGHT NOW: daemon alive, background job running, embed backlog, who holds the write "
+      + "lock. WHEN TO CALL: before memory_scan/memory_embed (they refuse while another writer holds the store, and "
+      + "this says who) · when a search returns less than expected and you suspect ingest is behind · when the user "
+      + "asks why zemory feels slow. Read-only, and fast because it reads the daemon's cached numbers (~100ms) "
+      + "rather than recounting. Facts only the daemon knows come back as \"unknown\" when the daemon is down — that "
+      + "is NOT the same as \"nothing is running\", and this tool will never pretend it is. Same for the embed "
+      + "backlog: with the daemon down it is reported as not-counted rather than guessed, because counting it "
+      + "directly is a full table scan (measured ~16s on a 300k-message store). Pass deep=true to pay that cost.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        deep: { type: "boolean", description: "Count the embed backlog directly instead of reading the daemon's cache. Accurate but slow (~16s on a large store)." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "memory_scan",
+    description:
+      "Ingest new conversations into the store: agent transcripts on disk, and optionally web chats (ChatGPT / "
+      + "Claude.ai). WHEN TO CALL: when the user says something recent is missing from memory, or right before a "
+      + "recall that must include today's work — the daemon already scans on its own about every 30 minutes, so do "
+      + "NOT call this routinely. Runs INLINE and can take a while (deep=true walks the whole machine). REFUSES with "
+      + "`busy` instead of fighting for the lock when another writer is active — call memory_jobs to see who. "
+      + "web=true may need the user: if a platform comes back `need-login`, a browser window is ALREADY OPEN waiting "
+      + "for them — say so immediately and name the platform, do not sit silent or report it as a failure.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        deep: { type: "boolean", description: "Walk the whole machine for agent stores, not just known ones. Much slower; first run only." },
+        web: { type: "boolean", description: "Also pull web chats for platforms already set up on this machine. Opens a browser window; may return need-login." },
+        platform: { type: "string", description: "Limit the web pass to one platform ('chatgpt' or 'claude'). Ignored unless web=true." },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "memory_embed",
+    description:
+      "START the semantic (vector) indexing of messages that do not have one yet, then RETURN IMMEDIATELY — it "
+      + "does not wait, because at roughly 58 messages/minute a backlog of a few thousand runs for an hour and no "
+      + "tool call survives that. WHEN TO CALL: after a large memory_scan or import, when memory_jobs shows a big "
+      + "embed backlog and the user wants semantic recall to cover it now. Otherwise leave it alone: the daemon "
+      + "already drains the backlog on its own schedule. Returns the job pid and an ETA; poll memory_jobs to watch "
+      + "the backlog fall. REFUSES with `busy` when another writer is active — two embed passes on one store is a "
+      + "known way to corrupt it, so this never starts a second one.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
   {
     name: "graph_impact",
     description:
@@ -489,6 +637,154 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     if (!Number.isFinite(id) || id <= 0) return errorResult("plan_show requires a positive numeric id.");
     const section = showSection(id, env.dbPath);
     return section ? toolResult(section) : errorResult(`No plan section #${id}.`);
+  }
+
+  // ── Ba tool ĐIỀU KHIỂN (plan 14) ───────────────────────────────────────────
+
+  if (name === "memory_jobs") {
+    // Đọc-thuần, KHÔNG qua write-gate: đây chính là thứ NÓI cho người gọi biết gate đang
+    // bận hay rảnh. Bắt nó xin gate thì lúc bận nhất lại là lúc không hỏi được.
+    // THỨ TỰ CÓ CHỦ ĐÍCH: hỏi `/ping` (rẻ) TRƯỚC `/memory-status` (có thể nặng).
+    //
+    // Bản đầu làm ngược và tự bắn vào chân mình — đo 2026-08-28: `/memory-status` lượt lạnh
+    // mất 7,4 s và KHOÁ event loop của daemon suốt thời gian đó, nên `/ping` gửi ngay sau
+    // xếp hàng phía sau rồi hết giờ ⇒ tool báo "daemon không trả lời" trong khi curl cùng
+    // lúc ping được trong 110 ms. Nghĩa là chính phép đo đã tạo ra thứ nó đo.
+    //
+    // 2 s chứ không 600 ms: `/ping` đo được 85–183 ms lúc rảnh, nhưng daemon đang chạy job
+    // nặng thì trả chậm hẳn — `06_CHANGES [2026-08-27b]` còn ghi một ca nghẽn ~4 phút sau
+    // khởi động. Ngưỡng chặt biến "đang bận" thành "đã chết".
+    const ping = await askDaemon<{ pid: number; version: string; host: string }>("/ping", 2000);
+    const alive = ping !== null;
+    const jobFresh = daemonJobBusyExternal();
+    // Ba sự thật CHỈ daemon biết. Daemon chết ⇒ "unknown", KHÔNG phải false — luật
+    // `02_RULES §Hành xử`: chưa xác minh được thì nói chưa xác minh được. Trả false ở đây
+    // là đúng kiểu "vỏ rỗng trông như đang sống" mà luật §Bề mặt CHẾT THEO nền cấm.
+    //
+    // Hai endpoint RẺ này phải chạy TRƯỚC `embedBacklog` (đường `/memory-status`, lượt lạnh
+    // 7,4 s và khoá event loop): đo 2026-08-28, đặt sau nó thì cả hai bị bỏ đói và tool in
+    // "daemon not responding" ngay dưới dòng `alive:true`. Cùng một bài học hai lần trong
+    // một lượt — thứ tự hỏi LÀ một phần của phép đo, không phải chi tiết sắp xếp.
+    const automation = alive ? await askDaemon<{ embedRunning: boolean; scheduler: boolean; autosync: boolean }>("/automation", 2000) : null;
+    const sync = alive ? await askDaemon<Record<string, unknown>>("/sync-status", 2000) : null;
+    const backlog = await embedBacklog(env.dbPath, Boolean(args.deep));
+    const held = cliWriteHolder();
+    // Phân biệt HAI kiểu không-biết. Gộp chúng lại là nói dối một nửa: "daemon not
+    // responding" in ra cạnh `alive:true` thì người đọc không biết tin dòng nào.
+    const UNKNOWN = alive ? "unknown — daemon is alive but did not answer in time" : "unknown — daemon not responding";
+    return toolResult({
+      // KHÔNG trả lời ≠ ĐÃ CHẾT. Marker job của daemon còn tươi mà `/ping` im thì suy ra
+      // "daemon chết" là một câu SAI và tự mâu thuẫn với chính dòng `daemonJobRunning:true`
+      // ngay dưới — đo được đúng cặp đó lúc nghiệm thu 2026-08-28, và nó là lý do có nhánh
+      // thứ ba này thay vì một cờ nhị phân.
+      daemon: alive
+        ? { alive: true, pid: ping.pid, version: ping.version, host: ping.host }
+        : { alive: jobFresh ? "unknown — not answering, but a background job marker is fresh (busy, not dead)" : false },
+      writeLock: held ? { holder: held.label, pid: held.pid, store: held.db, since: new Date(held.at).toISOString() } : null,
+      daemonJobRunning: jobFresh,
+      embedBacklog: backlog.value,
+      embedBacklogSource: backlog.source,
+      embedRunning: automation ? automation.embedRunning : UNKNOWN,
+      scheduler: automation ? automation.scheduler : UNKNOWN,
+      autosync: automation ? automation.autosync : UNKNOWN,
+      sync: sync ?? UNKNOWN,
+      canWriteNow: writeBusy() === null,
+      note: alive
+        ? undefined
+        : (jobFresh
+            ? "The daemon did not answer within 2s but a background job marker is fresh — it is most likely ALIVE and "
+              + "busy, not dead. Treat its fields as unknown, not as zero. "
+            : "The daemon is not answering, so anything only it knows is reported as unknown rather than guessed. ")
+          + "Scans/embeds still work from here (they fall back to direct access), and `writeLock` + "
+          + "`daemonJobRunning` are read from files so they stay trustworthy.",
+    });
+  }
+
+  if (name === "memory_scan") {
+    const busy = writeBusy();
+    if (busy) return busyResult("memory_scan", busy);
+    // Khoá XUYÊN TIẾN TRÌNH: hai kẻ ghi cùng kho là nguyên nhân hỏng kho HAI LẦN (03+04/08,
+    // sinh ra HP điều 11). `acquireCliWriteLock` TỪ CHỐI khi tiến trình khác đang giữ —
+    // khác hẳn `acquireCliWrite` đời cũ vốn không bao giờ từ chối.
+    const lock = acquireCliWriteLock("mcp memory_scan");
+    if (!lock.ok) return busyResult("memory_scan", `${lock.heldBy?.label} (pid ${lock.heldBy?.pid})`);
+    try {
+      const report = scan({ deep: Boolean(args.deep), dbPath: env.dbPath });
+      // Quét đĩa TRƯỚC rồi mới tới web — phần web mở trình duyệt và có thể dừng hỏi đăng
+      // nhập, nhưng kết quả quét đĩa thì người dùng phải nhận được trong MỌI trường hợp.
+      const platform = asString(args.platform).trim();
+      // Agent gọi qua MCP ⇒ kéo NGẦM: không có người ngồi trước màn hình để đăng nhập, mở cửa sổ là mở vào khoảng không.
+      const web = args.web ? await scanWebPlatforms(platform ? [platform] : undefined, undefined, { hidden: true }) : undefined;
+      const needLogin = (web ?? []).filter((r) => r.status === "need-login");
+      return toolResult({
+        ok: true,
+        deep: report.deep,
+        scannedFiles: report.scannedFiles,
+        changedFiles: report.changedFiles,
+        totals: report.totals,
+        // Lane bị loại phải HIỆN RA — cắt âm thầm là cách bộ nhớ thiếu mà không ai biết.
+        skippedLanes: report.skippedLanes,
+        unknownStores: report.unknown,
+        web,
+        // Không đứng im khi trình duyệt đang chờ: đây là việc của NGƯỜI, và tool là chỗ
+        // duy nhất biết cửa sổ đã mở. Không nói ra thì user ngồi đợi một thứ đang đợi họ.
+        action_required: needLogin.length
+          ? `A browser window is OPEN and waiting for the user to sign in: ${needLogin
+              .map((r) => `${r.platform}${r.account && r.account !== "main" ? `#${r.account}` : ""}`)
+              .join(" · ")}. Tell them NOW, then call memory_scan again with web=true once they are signed in.`
+          : undefined,
+      });
+    } finally {
+      releaseCliWriteLock();
+    }
+  }
+
+  if (name === "memory_embed") {
+    const busy = writeBusy();
+    if (busy) return busyResult("memory_embed", busy);
+    // Cache của daemon là đủ để quyết "có việc hay không": nó cũ nhiều nhất vài phút, còn
+    // đếm thẳng mất ~16 s cho một quyết định nhị phân. Không hỏi được daemon ⇒ mới đếm thật,
+    // vì ở đây con số PHẢI có: phóng một job giữ khoá ghi hàng giờ mà không có việc là chặn
+    // mọi lượt quét để đổi lấy con số không.
+    const backlog = await embedBacklog(env.dbPath);
+    const remaining = typeof backlog.value === "number" ? backlog.value : await embedBacklog(env.dbPath, true).then((b) => b.value);
+    if (typeof remaining !== "number") return errorResult(`memory_embed could not count the backlog: ${remaining}`);
+    if (remaining === 0) {
+      return toolResult({ ok: true, started: false, remaining: 0, source: backlog.source, note: "Nothing to embed — every message already has a vector." });
+    }
+    // PHÓNG RỒI TRẢ NGAY. Ba ràng buộc, mỗi cái có lý do đã trả giá:
+    //  · KHÔNG cầm khoá ở đây — con là một CLI bình thường, nó tự xin khoá; cầm hộ là để
+    //    nó chờ chính mình (đúng bug `ZEMORY_DAEMON_CHILD` sinh ra để tránh).
+    //  · `detached` + `unref` ⇒ job sống qua phiên agent (plan 19 §3: hai job dài từng
+    //    chết theo console ngày 10/08).
+    //  · `stdio: ignore` vì không ai đọc — tiến độ đọc bằng `memory_jobs`, không bằng log.
+    let pid: number | undefined;
+    try {
+      const child = spawn(process.execPath, [cliEntry(), "memory", "embed", "--all"], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+        env: { ...process.env, ...(env.dbPath ? { GLOBAL_MEMORY_DB: env.dbPath } : {}) },
+      });
+      child.unref();
+      pid = child.pid;
+    } catch (e) {
+      return errorResult(`memory_embed could not start the job: ${e instanceof Error ? e.message : "spawn failed"}`);
+    }
+    // ~58 tin/phút đo trên máy này. Nêu ước lượng để agent biết đây là hàng GIỜ, không phải
+    // hàng giây — và nói rõ nó là ước lượng, không phải cam kết (điều 12).
+    const etaMin = Math.max(1, Math.round(remaining / 58));
+    return toolResult({
+      ok: true,
+      started: true,
+      pid,
+      remaining,
+      etaMinutes: etaMin,
+      note: `Embedding ${remaining} message(s) in a detached background job — this call did NOT wait for it. `
+        + `Rough estimate ${etaMin} minute(s) at ~58 messages/minute measured on this machine; treat it as an `
+        + "order of magnitude, not a promise. Call memory_jobs to watch `embedBacklog` fall. The job survives "
+        + "this session, and it takes the write lock itself, so scans will report busy while it runs.",
+    });
   }
 
   // ── Graph (plan 13 §5) — bản MIRROR của `zemory graph impact` cho host nói MCP.
