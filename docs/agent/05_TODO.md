@@ -5,9 +5,14 @@
 
 ## 🔴 BÀN GIAO 2026-08-29 — ĐỌC TRƯỚC
 
+**Trạng thái lúc chốt (ĐO):** zemory **2.10.0** đã push (`0e0f322`), cây sạch. Gate đầy đủ 890/890 · conform ✓ · phục hồi
+backup ok (đo trước hai đợt UI cuối; hai đợt đó chạy cổng vùng đụng 49–62/… xanh, chưa chạy gate đầy đủ lại — **phiên sau:
+tắt daemon → `npm run check`** như thường lệ). Kho v25 · 2.729 phiên · 317.969 tin. **DESKTOP-PFB157K còn bản cũ** — bên
+đó: bấm chip cập nhật (xanh/cam ở chân rail) → *Cập nhật ngay*, hoặc `zemory selfupdate`. Khe `chatgpt` main là vỏ rỗng
+(khe 2 mới sống) — vô hại, dọn khi tiện. Chi tiết mọi việc đã làm: `06_CHANGES [2026-08-29]` + `[2026-08-29b]`.
+
 *(Ba mục bàn giao 28/08 đã ĐÓNG 2026-08-29 — xem `06_CHANGES [2026-08-29]`: "hai cửa sổ" gốc là probe đóng
-tab lúc đăng nhập · tài khoản công ty `huy.nguyen@sasin.vn` đã nối ở khe main, zyrofrost ở khe 2 · gate đầy đủ
-chạy lại cuối phiên 29/08 — kết quả ghi ở entry đó.)*
+tab lúc đăng nhập · tài khoản công ty `huy.nguyen@sasin.vn` đã nối ở khe main, zyrofrost ở khe 2.)*
 
 ### Một đề xuất ĐÃ TRÌNH, user CHƯA gật — không tự làm, không phải việc mở
 Lọc "phiên bấm nhầm" (vài ký tự · chat sai phiên): đề xuất luật cơ học gắn cờ `junk` (KHÔNG xoá) + agent đang chạy
