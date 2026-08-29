@@ -27,7 +27,9 @@
     <div class="rail-foot">
       <!-- Chấm than update (user chốt 2026-08-21): repo trong registry CŨ so với bộ chuẩn hiện
            hành ⇒ chấm này hiện, ngay TRÊN chip sức khoẻ; bấm sang màn Dự án. Ẩn khi mọi repo khớp. -->
-      <div class="status-chip upd" id="railUpd" data-nav="projects" style="cursor:pointer;display:none" data-i18n-title="rail.updTip" title="Repo cần cập nhật chuẩn — bấm xem"><span class="dot warn"></span><div><b style="font-size:12px" id="railUpdN">—</b><div class="muted" style="font-size:10.5px" id="railUpdSub"></div></div></div>
+      <!-- 2026-08-29: chip KHÔNG nhảy màn nữa — bấm mở hộp Cập nhật tại chỗ (bản zemory mới trên kênh chung → nút
+           Cập nhật, kiểu VS Code; repo cũ chuẩn liệt kê bên dưới). Nhảy sang Dự án là hiểu sai mục đích gốc (entry 23/08). -->
+      <div class="status-chip upd" id="railUpd" style="cursor:pointer;display:none" data-i18n-title="rail.updTip" title="Có bản cập nhật — bấm xem"><span class="dot warn"></span><div><b style="font-size:12px" id="railUpdN">—</b><div class="muted" style="font-size:10.5px" id="railUpdSub"></div></div></div>
       <div class="status-chip" data-nav="system" style="cursor:pointer" title="Features"><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
       <div class="machine"><div class="av" id="railAv">—</div><div><b>This machine</b><small id="railMachine">—</small></div></div>
     </div>
