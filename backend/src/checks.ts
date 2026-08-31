@@ -89,6 +89,80 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     }
   }
 
+  if (feature === "profile-reclaim") {
+    // Phép kiểm ĐO ĐĨA THẬT, không đọc cấu hình: câu hỏi là *"còn bao nhiêu rác đang nằm đó"*,
+    // và một công tắc bật không chứng minh được rác đã được dọn. Ba kết cục, mỗi cái nói ra SỐ:
+    //  · không còn bản nào quá hạn ⇒ `on` (vòng dọn đang theo kịp — hoặc chưa từng có gì để dọn);
+    //  · còn bản quá hạn ⇒ `warn` kèm số MB + tuổi bản cũ nhất; lượt quét 6 giờ sẽ lượm, nên đây
+    //    là "chưa tới lượt", KHÔNG phải hỏng ⇒ không được làm `doctor` đỏ (điều 9, fail-open).
+    // Tuyệt đối không đếm khe đang sống vào con số này — `listSetAside` lọc theo `-bak-`, thứ
+    // duy nhất chứng minh được là do `scanweb.borrowCookies` sinh ra.
+    try {
+      const { listSetAside, setAsideToReclaim, DEFAULT_BROWSER_KEEP_MS } = await import("./memory/browser-rotate.js");
+      const all = listSetAside();
+      const now = Date.now();
+      const overdue = setAsideToReclaim(all, now, DEFAULT_BROWSER_KEEP_MS);
+      const days = (ms: number): number => Math.floor(ms / 86_400_000);
+      const mb = (bytes: number): number => Math.round(bytes / 1048576);
+      const sizeOf = async (dir: string): Promise<number> => {
+        const { readdirSync, statSync } = await import("node:fs");
+        const { join: j } = await import("node:path");
+        let total = 0;
+        const stack = [dir];
+        while (stack.length) {
+          const d = stack.pop()!;
+          let entries: string[];
+          try {
+            entries = readdirSync(d);
+          } catch {
+            continue;
+          }
+          for (const e of entries) {
+            const p = j(d, e);
+            try {
+              const st = statSync(p);
+              if (st.isDirectory()) stack.push(p);
+              else total += st.size;
+            } catch {
+              /* biến mất giữa chừng */
+            }
+          }
+        }
+        return total;
+      };
+      if (!all.length) {
+        return { feature, ok: true, state: "on", detail: tr("không có bản dời sang bên nào", "no set-aside copies") };
+      }
+      if (!overdue.length) {
+        const oldest = days(now - all[all.length - 1].mtimeMs);
+        return {
+          feature,
+          ok: true,
+          state: "on",
+          detail: tr(
+            `${all.length} bản trong cửa sổ lùi 7 ngày (cũ nhất ${oldest}d) — chưa có gì quá hạn`,
+            `${all.length} copy/copies inside the 7-day rollback window (oldest ${oldest}d) — nothing overdue`,
+          ),
+        };
+      }
+      let bytes = 0;
+      for (const o of overdue) bytes += await sizeOf(o.path);
+      const oldest = days(now - overdue[overdue.length - 1].mtimeMs);
+      return {
+        feature,
+        ok: true, // "chưa tới lượt quét" KHÔNG phải lỗi — không được làm doctor đỏ
+        state: "warn",
+        detail: tr(
+          `${overdue.length} bản quá 7 ngày (~${mb(bytes)} MB, cũ nhất ${oldest}d) — lượt quét 6 giờ sẽ thu hồi`,
+          `${overdue.length} copy/copies past 7 days (~${mb(bytes)} MB, oldest ${oldest}d) — the 6-hour sweep will reclaim them`,
+        ),
+      };
+    } catch (e) {
+      // Fail-open: phép đo hỏng KHÔNG được biến thành "tính năng tắt" (điều 9).
+      return { feature, ok: true, state: "warn", detail: tr(`chưa đo được: ${(e as Error).message}`, `could not measure: ${(e as Error).message}`) };
+    }
+  }
+
   if (feature === "storage-safety") {
     // Phép kiểm tồn tại vì kho THẬT đã hỏng hai lần và không lệnh nào kêu trước đó: cả
     // hai lần đều do Google Drive đồng bộ chính file DB, mà đường dẫn thì không mang chữ
