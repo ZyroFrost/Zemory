@@ -70,8 +70,8 @@ import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
-import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, registerJobYielder, releaseDaemonJob } from "./writegate.js";
-import { startSyncJob, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
+import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
+import { startSyncJob, type SyncJobStatus, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
 
 // 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
 // thật). Vòng này TEO thành LƯỚI BÙ cho ba thứ per-message không làm được:
@@ -619,12 +619,32 @@ export function describePush(result: unknown): string {
  * thêm chỉ là *nói ra* kẻ nào. Một câu "đang chờ" không kèm tên thì người đọc vẫn phải đi mò
  * log của ba thứ khác nhau — tức vẫn là im lặng, chỉ dài hơn.
  */
-export function syncBlockedBy(s: { maintainChain: boolean; syncRunning: boolean; cliHolder: string | null }): string | null {
+export function syncBlockedBy(s: {
+  maintainChain: boolean;
+  syncRunning: boolean;
+  cliHolder: string | null;
+  /**
+   * Nhãn của kẻ đang giữ khe job DAEMON (`claimDaemonJob`), nếu có — `null` là rảnh.
+   *
+   * 🔴 Vì sao phải có chiều này (bug đo 2026-08-31): ba chiều trên KHÔNG phủ hết kẻ giữ token.
+   * `web-pull` (scheduler §web) cũng `claimDaemonJob`, nhưng nó không phải `child` của chuỗi bảo
+   * trì, không phải sync, không phải CLI ⇒ cổng này trả `null` = "rảnh" trong khi token đã bị
+   * giữ. Hậu quả đo được trên log thật: 08:24:56 cổng cho "vào lượt" → scheduler tiêu mốc lịch,
+   * mở sổ `autosyncRunAt`, in "starting background sync job" → rồi `claimDaemonJob("sync")` mới
+   * thất bại vì `web-pull` đang giữ. Hai lượt (08:24:56 · 08:25:56) "starting" mà KHÔNG lượt nào
+   * chạy, không kết cục nào được ghi, sổ kẹt mở ⇒ card Drive Sync báo đỏ "bị cắt giữa lượt" cho
+   * một lượt CHƯA TỪNG khởi động. Đèn đỏ nói dối là đèn đỏ mất giá.
+   */
+  jobHolder?: string | null;
+}): string | null {
   if (s.maintainChain) return "chuỗi bảo trì (scan/embed/digest)";
   if (s.syncRunning) return "một lượt sync đang chạy";
   // `"?"` = biết CÓ kẻ giữ nhưng không biết tên: cờ hold trong bộ nhớ daemon không mang nhãn, chỉ
   // khoá FILE mới có. Nói "không rõ tên" thật thà hơn là bịa một cái tên nghe cho gọn.
   if (s.cliHolder) return s.cliHolder === "?" ? "một lệnh CLI đang ghi kho (không rõ tên)" : `lệnh CLI ${s.cliHolder}`;
+  // Xét CUỐI: ba chiều trên nói được câu CỤ THỂ hơn cho cùng một kẻ giữ (vd `sync` đã thành "một
+  // lượt sync đang chạy"), nên chỉ khi không chiều nào nhận mới rơi về nhãn thô của token.
+  if (s.jobHolder && s.jobHolder !== "sync") return `job ${s.jobHolder} đang giữ kho`;
   return null;
 }
 
@@ -660,6 +680,7 @@ function syncTick(): SyncTickVerdict {
     maintainChain: !!child,
     syncRunning: syncJobRunning(),
     cliHolder: cliWriteHolder()?.label ?? (cliHoldsWrite() ? "?" : null),
+    jobHolder: daemonJobBusy(),
   });
   if (holder) {
     // Nhường kẻ đang ghi, nhưng HẸN QUAY LẠI sớm thay vì đợi hết chu kỳ.
@@ -682,6 +703,38 @@ function syncTick(): SyncTickVerdict {
     log(`auto-sync — kẻ chặn đã xong sau ${Math.round((Date.now() - waitingSince) / 60_000)}′, vào lượt`);
     waitingSince = 0;
   }
+  // 🔴 KHÔNG tiêu mốc / KHÔNG mở sổ / KHÔNG in "starting" TRƯỚC KHI BIẾT LƯỢT CÓ CHẠY (vá 2026-08-31).
+  //
+  // Bản cũ làm cả ba việc đó ở đây rồi mới gọi `startSyncJob`, mà hàm đó còn một cửa thất bại NỮA
+  // sau cổng trên: `claimDaemonJob("sync")` có thể trượt vì một job daemon khác đang giữ token —
+  // và ở nhánh không-preempt nó THOÁT SỚM, **không gọi `onDone`**, tức `setAutosyncRunAt(null)`
+  // không bao giờ chạy. Ba hậu quả cùng lúc, đo trên log thật 2026-08-31:
+  //   ① sổ `autosyncRunAt` KẸT MỞ ⇒ lần daemon lên sau in 🔴 "bị cắt giữa lượt" cho một lượt CHƯA
+  //      TỪNG khởi động, và card Drive Sync báo đỏ oan (chính cái làm user phải hỏi "lỗi này là sao");
+  //   ② `autosyncLastAt` bị tiêu ⇒ MẤT SUẤT: đúng lỗi ② mà đợt 2026-08-30 đã vá cho nhánh `holder`,
+  //      còn nhánh này bị bỏ sót — cùng một bug, hai đường vào, chỉ một đường được bịt;
+  //   ③ log in "starting background sync job" hai lần (08:24:56 · 08:25:56) cho hai lượt KHÔNG chạy
+  //      ⇒ dòng log đó nói dối, và nó là dòng người ta dựa vào để tin auto-sync còn sống.
+  // Nay: gọi trước, chỉ ghi sổ khi `running` là THẬT. Callback của `startSyncJob` chạy từ event
+  // 'exit'/'close' của con, tức KHÔNG THỂ bắn trước khi lời gọi này trả về, nên không có cửa sổ
+  // đua nào mà callback đóng sổ rồi ta mở lại.
+  const started = startSyncJob(onSyncOutcome, { lowPriority: true });
+  if (!started.running) {
+    // Không phải LỖI — là nhường. Nói ra (im lặng đúng là cách ca 26/08 trôi 20 giờ) và GIỮ suất:
+    // `syncTick` hẹn lại, mốc lịch chưa tiêu nên lượt kế vẫn tới.
+    if (!syncRetry) {
+      syncRetry = setTimeout(() => {
+        syncRetry = null;
+        void syncTick();
+      }, SYNC_RETRY_MS);
+      syncRetry.unref?.();
+    }
+    if (!waitingSince) {
+      waitingSince = Date.now();
+      log(`auto-sync — chưa giành được kho (${started.error ?? "không rõ"}); thử lại mỗi ${Math.round(SYNC_RETRY_MS / 60_000)}′ (không mất lượt)`);
+    }
+    return "blocked";
+  }
   // Mốc tiêu Ở ĐÂY, không ở `syncGate` — xem ② trên.
   setAutosyncLastAt(Date.now());
   // Sổ "đang chạy": còn sót lúc daemon lên = lượt này đã chết mà không kịp báo (xem `startScheduler`).
@@ -694,23 +747,22 @@ function syncTick(): SyncTickVerdict {
   // error, write`, `daemon.log` vẫn chỉ nói "finished" và không ai biết có gì sai suốt 20 giờ
   // (watermark đứng, kênh chung phình bằng khối trùng). Một dòng log không phân biệt được
   // thành/bại thì nó không phải lớp quan sát, nó là tiếng ồn.
-  startSyncJob(
-    (s) => {
-      setAutosyncRunAt(null); // có kết cục ⇒ đóng sổ "đang chạy"
-      // Kết cục vào SỔ BỀN cho card Drive Sync đọc — log là cho người đi soi, sổ là cho
-      // dashboard: user chỉ nhìn dashboard, gãy tầng nào cũng phải hiện ở ĐÓ (user 2026-08-30).
-      if (s.ok) setAutosyncLastResult({ ok: true, detail: describePush(s.result).replace(/^ · /, "") });
-      else setAutosyncLastResult({ ok: false, kind: "fail", detail: s.error ?? "unknown" });
-      if (s.ok) log(`auto-sync: OK${describePush(s.result)}`);
-      else log(`🔴 auto-sync THẤT BẠI: ${s.error ?? "không rõ lý do"}`);
-      // In ở CẢ HAI kết cục. Lượt THÀNH CÔNG cũng có thể mang cảnh báo đáng đọc — ví dụ
-      // "Drive ném lỗi giả nhưng đếm lại thấy khối vẫn đủ"; nếu chỉ in khi hỏng thì đúng sự kiện
-      // hiếm và đáng giá nhất lại là sự kiện bị nuốt.
-      if (s.stderr) log(`auto-sync — chi tiết:\n${s.stderr}`);
-    },
-    { lowPriority: true },
-  );
   return "started";
+}
+
+/** Kết cục một lượt tự sync — tách khỏi `syncTick` để lời gọi `startSyncJob` đứng TRƯỚC phần ghi sổ. */
+function onSyncOutcome(s: SyncJobStatus): void {
+  setAutosyncRunAt(null); // có kết cục ⇒ đóng sổ "đang chạy"
+  // Kết cục vào SỔ BỀN cho card Drive Sync đọc — log là cho người đi soi, sổ là cho
+  // dashboard: user chỉ nhìn dashboard, gãy tầng nào cũng phải hiện ở ĐÓ (user 2026-08-30).
+  if (s.ok) setAutosyncLastResult({ ok: true, detail: describePush(s.result).replace(/^ · /, "") });
+  else setAutosyncLastResult({ ok: false, kind: "fail", detail: s.error ?? "unknown" });
+  if (s.ok) log(`auto-sync: OK${describePush(s.result)}`);
+  else log(`🔴 auto-sync THẤT BẠI: ${s.error ?? "không rõ lý do"}`);
+  // In ở CẢ HAI kết cục. Lượt THÀNH CÔNG cũng có thể mang cảnh báo đáng đọc — ví dụ
+  // "Drive ném lỗi giả nhưng đếm lại thấy khối vẫn đủ"; nếu chỉ in khi hỏng thì đúng sự kiện
+  // hiếm và đáng giá nhất lại là sự kiện bị nuốt.
+  if (s.stderr) log(`auto-sync — chi tiết:\n${s.stderr}`);
 }
 
 /** Start the background loops. Idempotent — a second call is a no-op. */

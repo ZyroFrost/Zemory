@@ -71,6 +71,47 @@ CLI `zemory …`  → nếu daemon sống: gọi qua daemon (hết "database is 
   > **Chống bỏ đói bằng "hẹn quay lại" chỉ ăn khi kẻ chặn có lúc nghỉ.**
 
 ### 3b. Auto-sync memory (setting — tự động hoá plan 08, KHÔNG cơ chế mới)
+
+🔴 **BA CỬA THOÁT GIỮA "TỚI HẠN" VÀ "LƯỢT CHẠY THẬT" — đo 2026-08-31, cả ba từng cùng nổ một lúc.**
+Đường đi của một lượt tự sync là `syncGate → syncTick → startSyncJob → con syncrun.js`. Giữa chỗ
+GHI SỔ và chỗ CHẠY THẬT có nhiều cửa thoát hơn người viết tưởng, và mỗi cửa bỏ sót là một lần dashboard
+nói dối. Chuỗi nhân quả thật (nguyên văn từ `daemon.log`):
+
+| Mốc | Việc |
+|---|---|
+| `08:24:56.030` | `web-pull` (khe chatgpt#2) giành token: `claimDaemonJob("web-pull")` |
+| `08:24:56.120` | `syncBlockedBy` trả `null` = **"rảnh"** → log *"kẻ chặn đã xong sau 17′, vào lượt"* |
+| `08:24:56.168` | `syncTick` tiêu mốc lịch · mở sổ bền · in *"starting background sync job"* |
+| ngay sau | `startSyncJob` gọi `claimDaemonJob("sync")` → **TRƯỢT** (web-pull đang giữ) |
+| — | nhánh không-`preempt` **thoát sớm, KHÔNG gọi `onDone`** ⇒ `setAutosyncRunAt(null)` không chạy |
+| `08:25:56` | lặp lại y hệt, sổ bị ghi đè bằng mốc mới, lại rò |
+
+**Đo được:** 2 dòng "starting" · **0** lượt chạy · **0** kết cục · sổ kẹt mở · **2** suất lịch bị tiêu ⇒
+card Drive Sync báo 🔴 *"bị cắt giữa lượt"* cho lượt **chưa từng khởi động**. Đèn đỏ nói dối là đèn đỏ
+mất giá — cùng cái giá mà `preflight-gate.mjs` (lý do ①) tồn tại để tránh.
+
+**Ba khiếm khuyết và vì sao vá như vậy:**
+1. **`syncBlockedBy` thiếu chiều "ai giữ token".** Nó soi `maintainChain: !!child` · `syncRunning` ·
+   `cliHolder` — ba thứ này KHÔNG phủ `web-pull`, vốn cũng `claimDaemonJob`. Thêm `jobHolder`
+   (đọc `daemonJobBusy()`), xét **CUỐI** để ba chiều cũ giữ câu cụ thể hơn cho cùng một kẻ giữ, và
+   nhãn `"sync"` bị loại tường minh để không sinh kẻ chặn ma. **Fail-open khi vắng khoá** (điều 9 —
+   cổng này chắn đường đồng bộ, thà cho qua còn hơn dựng tường trên một khoá thiếu).
+2. **Ghi sổ TRƯỚC khi biết lượt chạy nổi.** Nay `startSyncJob` gọi TRƯỚC; chỉ khi `running` là thật
+   mới `setAutosyncLastAt` + `setAutosyncRunAt` + in "starting". Claim trượt ⇒ xử như **NHƯỜNG**:
+   nói ra tên lý do, hẹn lại 3′, **không tiêu suất**. An toàn vì callback của `startSyncJob` bắn từ
+   event `exit`/`close` của con ⇒ không thể chạy trước khi lời gọi đồng bộ đó trả về, nên không có
+   cửa sổ đua "callback đóng sổ rồi ta mở lại".
+3. **Callback nằm inline nên không thể đảo thứ tự.** Tách thành `onSyncOutcome`.
+
+⚠ **Vế CỐ Ý KHÔNG sửa:** `startSyncJob` vẫn thoát sớm không gọi `onDone` khi claim trượt. Gọi
+`onDone` ở đó sẽ ghi một **kết cục THẤT BẠI** vào sổ bền cho một việc chỉ là *nhường* — biến một
+lượt hoãn bình thường thành đèn đỏ. Chỗ đúng để xử lý là NGƯỜI GỌI (vế 2), vì chỉ người gọi biết
+"không chạy" nghĩa là hoãn hay là lỗi.
+
+📌 **Luật rút ra, áp cho mọi vá kiểu "khi X thì đừng tiêu suất":** đếm **MỌI** cửa thoát giữa chỗ ghi
+sổ và chỗ chạy thật, không chỉ cửa vừa gặp. Đợt `[2026-08-30b]` bịt nhánh `holder` và tưởng xong;
+nhánh claim-trượt nằm ngay sau đó, cùng một bug, và sống thêm một ngày.
+
 - **Phát hiện khác biệt** (daemon check định kỳ + lúc idle, rẻ): ① local có message mới sau lần export cuối (so max rowid/timestamp với marker export) → **tự export** bundle `.enc` ra Drive folder; ② Drive folder có bundle máy khác mới hơn lần merge cuối (mtime + tên host) → **tự `import --merge`** (additive, HP điều 11 — không ghi đè, provenance giữ nguyên).
 - **Chỉ dùng đường plan 08 sẵn có** (export/import bundle mã hóa) — auto-sync = tự BẤM cái nút user đang bấm tay, không thêm kênh truyền nào khác (HP điều 7: vẫn chỉ bundle `.enc`; setting bật = "user chủ động" ở dạng consent bền, mặc định **OFF**).
 - Guard: không export khi đang có write nặng (rebuild/embed --all); debounce (vd tối thiểu N phút giữa 2 lần); log kết quả vào UI (panel Drive sync sẵn có); lỗi → báo tray, KHÔNG retry điên (fail-open, điều 9).
