@@ -36,22 +36,93 @@ export interface SyncJobStatus {
    * vứt đúng thứ cần giữ. Tiến độ thường (`merging chunk 3/41`) không mang dấu này nên vẫn bị bỏ.
    */
   stderr?: string;
+  /** BƯỚC đang chạy (mã ngắn: `scan` · `merge` · `lock-wait:<ai>` · `export` · `write` · `verify`
+   *  · `embed` · `done`) — CHỈ có khi `running:true`. Xem `share.ts::onProgress`. */
+  phase?: string;
 }
 
 /** Giữ đuôi stderr, không giữ đầu: chỗ ném nằm ở cuối. */
 const STDERR_TAIL = 8192;
 /** Dấu của một sự kiện ĐÁNG GIỮ do lớp sync tự in ra, kể cả khi lượt chạy thành công. */
 const NOTABLE = /\[sync\]/;
+/** Tiền tố dòng BƯỚC trên stderr con — xem `syncrun.ts`. */
+const PHASE_PREFIX = "[phase] ";
+
+/**
+ * Trích BƯỚC mới nhất từ một khối stderr vừa tới. Hàm THUẦN để cổng đo (tách khỏi closure của
+ * `startSyncJob`) — user 2026-08-30: *"phải hiện tiến trình sync đang bước nào"*.
+ *
+ * `data` event của Node cắt luồng byte tuỳ ý, KHÔNG theo ranh giới dòng — một dòng `[phase] write`
+ * có thể tới làm hai lượt gọi (`"[phase] wr"` rồi `"ite\n"`). `prevBuf` giữ phần dở của lượt trước;
+ * chỉ dòng ĐỦ `\n` mới được tính. Nhiều dòng `[phase]` trong cùng một khối ⇒ lấy dòng CUỐI (mới nhất).
+ */
+export function extractPhase(prevBuf: string, chunk: string, prevPhase: string): { phase: string; buf: string } {
+  const lines = (prevBuf + chunk).split("\n");
+  const buf = lines.pop() ?? "";
+  let phase = prevPhase;
+  for (const line of lines) if (line.startsWith(PHASE_PREFIX)) phase = line.slice(PHASE_PREFIX.length).trim();
+  return { phase, buf };
+}
 
 let status: SyncJobStatus = { running: false, startedAt: 0 };
 let child: ChildProcess | null = null;
+
+// ── WATCHDOG — một lượt sync KHÔNG được phép kẹt vĩnh viễn (vá 2026-08-30) ──────────────────
+// Ca thật cùng ngày, HAI lần: Google Drive File Stream đơ ở tầng OS ⇒ syscall của con sync treo
+// không trả về cũng không ném ⇒ `status.running` đứng `true` MÃI MÃI ⇒ mọi lượt tự sync sau
+// nhường vô hạn ("đang chờ một lượt sync đang chạy") — sync chết mà không ai biết, phải tay
+// người giết. Mọi lớp retry (26/08) chỉ trị lỗi NÉM; đây là lỗi TREO, chỉ có giết-tiến-trình
+// mới gỡ được (đã kiểm chứng trên chính cú treo thật: TerminateProcess ăn, syscall trong-tiến-
+// trình thì không ngắt được).
+//
+// VÌ SAO GIẾT LÀ AN TOÀN (đo, không phải cảm giác): mọi bước ghi của lượt sync đều idempotent —
+// watermark chỉ nhích khi khối CHỨNG MINH có mặt (`appendVerdict`), merge dedup theo chữ ký
+// khối, embed ghi transaction từng tin. Giết oan một lượt dài hợp lệ chỉ tốn MỘT lượt làm lại
+// ở nhịp kế; để kẹt thì mất sync VĨNH VIỄN. Trần 90′: lượt nặng nhất đo được ~40′ (đẩy bù ~500
+// tin); baseline/gộp hiếm hoi có thể dài hơn — chấp nhận trả giá một lượt retry cho ca hiếm đó.
+const SYNC_WATCHDOG_MS = 90 * 60_000;
+/**
+ * Trần RIÊNG cho bước `embed` — 180′. Vì sao phải tách theo BƯỚC (báo oan thật, đo 14:27 cùng
+ * ngày): một lượt embed 56′ bị đèn gọi là "nghi kẹt (Drive hang?)" trong khi con đang cày
+ * 3.552 s CPU — embed là việc LOCAL (Drive không treo được nó), trần 500 tin/lượt nhưng tin
+ * tool-dump dài chunk thành nhiều cửa sổ nên 30–60′ là hợp lệ. Giết nó ở 90′ là giết oan việc
+ * thật; các bước ĐỤNG DRIVE (scan/merge/export/write/verify/lock-wait) thì 45–90′ đã là chết chắc.
+ */
+/** Export cho `syncHealthOf` (ui.ts) — đèn đỏ "runStuck" của bước embed phải nổ ĐÚNG mốc
+ *  watchdog giết, không được là một con số chép tay thứ hai để rồi trôi khỏi nhau. */
+export const SYNC_WATCHDOG_EMBED_MS = 180 * 60_000;
+/** Đặt NGAY TRƯỚC khi giết — để `finish()` gắn đúng lý do thay vì "sync exited null" vô hồn. */
+let watchdogReason: string | null = null;
+
+/** Hàm thuần cho cổng đo: lượt chạy từ `startedAt` tới `now` đã quá trần chưa — trần THEO BƯỚC. */
+export function syncWatchdogDue(startedAt: number, now: number, curPhase: string = ""): boolean {
+  const maxMs = curPhase === "embed" ? SYNC_WATCHDOG_EMBED_MS : SYNC_WATCHDOG_MS;
+  return startedAt > 0 && now - startedAt > maxMs;
+}
+
+/** Giết lượt sync kẹt quá trần. Trả `true` nếu vừa giết — người gọi (scheduler) log một dòng. */
+export function watchdogSyncJob(now: number = Date.now()): boolean {
+  if (!status.running || !child) return false;
+  if (!syncWatchdogDue(status.startedAt, now, phase)) return false;
+  watchdogReason = `watchdog: run exceeded ${Math.round((now - status.startedAt) / 60_000)}′ (phase ${phase || "?"}) — likely a hung cloud drive; killed so the next cycle retries`;
+  try {
+    child.kill();
+  } catch {
+    /* already gone — exit handler sẽ dọn */
+  }
+  return true;
+}
+/** BƯỚC hiện tại, đọc theo thời gian thực từ dòng `[phase] ...` mới nhất trên stderr con. */
+let phase = "";
+/** Đuôi chưa xuống dòng của kênh phase — `data` event có thể cắt ngang một dòng. */
+let phaseBuf = "";
 
 export function syncJobRunning(): boolean {
   return status.running;
 }
 
 export function syncJobStatus(): SyncJobStatus {
-  return status;
+  return { ...status, ...(status.running && phase ? { phase } : {}) };
 }
 
 /**
@@ -132,6 +203,8 @@ export function startSyncJob(
     return { running: false, startedAt: 0, ok: false, error: "yielding the maintenance job — sync starts in a moment" };
   }
   status = { running: true, startedAt: Date.now() };
+  phase = "";
+  phaseBuf = "";
   let out = "";
   let err = "";
   let c: ChildProcess;
@@ -161,12 +234,23 @@ export function startSyncJob(
   // PHẢI hút stderr, không chỉ mở nó: ống không ai đọc thì đầy 64 KB là con TREO ở `write` —
   // biến một lớp chẩn đoán thành một kiểu hỏng mới (đúng luật "thêm một lớp là thêm một chỗ hỏng").
   c.stderr?.on("data", (d: Buffer) => {
-    err += String(d);
+    const s = String(d);
+    err += s;
     if (err.length > STDERR_TAIL) err = err.slice(-STDERR_TAIL);
+    // Kênh phase đọc RIÊNG khỏi đuôi `err` (đuôi đó bị CẮT ở 8 KB, phase có thể rơi ra ngoài).
+    const r = extractPhase(phaseBuf, s, phase);
+    phase = r.phase;
+    phaseBuf = r.buf;
   });
   const finish = (ok: boolean, error?: string) => {
     if (child === c) child = null;
     releaseDaemonJob();
+    // Bị watchdog giết ⇒ lý do thật là "kẹt quá trần", không phải mã thoát vô hồn của cú kill.
+    if (watchdogReason) {
+      ok = false;
+      error = watchdogReason;
+      watchdogReason = null;
+    }
     // The child prints its result as the LAST JSON line on stdout.
     let parsed: { ok?: boolean; error?: string } | null = null;
     const lines = out.trim().split("\n");

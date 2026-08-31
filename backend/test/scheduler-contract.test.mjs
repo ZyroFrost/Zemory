@@ -241,10 +241,22 @@ test("syncTick BỊ CHẶN thì hẹn quay lại — không được đợi tr�
   );
 });
 
-test("hai đồng hồ cùng chu kỳ phải LỆCH PHA — không được cùng nổ một khoảnh khắc", () => {
+// 🔄 2026-08-29: đồng hồ sync KHÔNG còn là setInterval cùng chu kỳ với chuỗi bảo trì (vế "lệch pha nửa chu kỳ" hết
+// lý do tồn tại). Nay là CỔNG 60 s hỏi lịch (`autosyncDue`) trên mốc BỀN trong config — đo: 28 lần restart/ngày làm
+// mốc-trong-tiến-trình về 0 liên tục ⇒ 8 giờ không lượt tự sync. Bất biến mới: cổng 60 s + mốc đọc từ config.
+test("đồng hồ sync = cổng 60 s hỏi lịch trên mốc BỀN — không phải setInterval cùng chu kỳ, không phải biến tiến trình", () => {
   const src = read(SCHED);
   const start = src.slice(src.indexOf("export function startScheduler"), src.indexOf("export function stopScheduler"));
-  assert.match(start, /SYNC_EVERY_MS\s*\/\s*2/, "phải đặt sync lệch nửa chu kỳ so với chuỗi bảo trì");
+  assert.match(start, /setInterval\(syncGate,\s*60_000\)/, "phải là cổng 60 s (syncGate), không đặt lịch cứng theo SYNC_EVERY_MS");
+  assert.ok(!/setInterval\(syncTick/.test(start), "không còn setInterval(syncTick, …) cùng chu kỳ với maintain");
+  const gate = src.slice(src.indexOf("function syncGate"), src.indexOf("function syncGate") + 900);
+  assert.match(gate, /getAutosyncLastAt\(\)/, "mốc lượt trước phải đọc từ config (bền qua restart)");
+  // 🔄 2026-08-30: vế cũ ở đây đòi `setAutosyncLastAt(` NGAY TRONG `syncGate` — và chính vế đó khoá
+  // lỗ ②: mốc tiêu TRƯỚC khi biết lượt có chạy được không, nên một lượt bị chặn cũng ăn mất suất 30′.
+  // Nay mốc do `syncTick` ghi, và chỉ khi lượt THẬT SỰ khởi động (hoặc khi không còn gì để làm).
+  // Neo đảo chiều: `syncGate` KHÔNG được đụng mốc. Vế "mốc vẫn bền" nay do `autosync-schedule.test.mjs`
+  // đo bằng HÀNH VI (bị chặn ⇒ mốc giữ nguyên · không có gì để làm ⇒ mốc tiêu), mạnh hơn grep chữ.
+  assert.doesNotMatch(gate, /setAutosyncLastAt\(/, "ghi mốc ở syncGate = lượt bị chặn cũng tiêu mất suất 30′ (lỗ ②, vá 30/08)");
 });
 
 // 🔴 CON MAINTAIN KHÔNG ĐƯỢC CHẠY MÙ (đo 2026-08-27).

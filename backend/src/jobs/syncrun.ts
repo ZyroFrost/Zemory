@@ -15,7 +15,10 @@ import { getDriveDir } from "../config/settings.js";
       process.exitCode = 1;
       return;
     }
-    const r = await syncDrive({ driveDir, keyFile: resolveShareKey(process.cwd()) });
+    // `[phase] <mã>` qua stderr — kênh RIÊNG với dòng JSON kết quả trên stdout, để daemon (đã hút
+    // cả hai ống từ trước) đọc được BƯỚC ĐANG CHẠY theo thời gian thực (`syncjob.ts`), không phải
+    // đợi tới khi con thoát mới biết. Mã ngắn ổn định, FE tự dịch — xem `share.ts::onProgress`.
+    const r = await syncDrive({ driveDir, keyFile: resolveShareKey(process.cwd()), onProgress: (phase) => console.error(`[phase] ${phase}`) });
     console.log(JSON.stringify({ ok: true, ...r }));
   } catch (e) {
     // 🔴 STACK RA STDERR, không chỉ `message` vào JSON (2026-08-26). Lỗi thật của lượt sync

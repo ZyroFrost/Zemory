@@ -319,7 +319,7 @@
           </div></div>
           <div class="seam" data-seam="mem1"></div>
           <!-- Col 2: This Machine + tự động -->
-          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.thisMachine">Máy này</div><span class="pill ok" data-i18n="st.op">ổn</span></div><div class="card-b">
+          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.thisMachine">Máy này</div><span style="display:flex;gap:8px;align-items:center"><span class="pill ok" data-i18n="st.op">ổn</span><button type="button" class="zhelp" id="asGear" data-i18n-title="as.gear" title="Đặt lịch tự sync">⚙</button></span></div><div class="card-b">
             <div style="display:flex;gap:8px"><button class="btn sm" style="flex:1" data-act="scan" data-i18n="act.scanKnown">Quét nguồn đã biết</button><button class="btn primary sm" style="flex:1" data-act="deepscan" data-i18n="act.deepScan">Quét sâu</button></div>
             <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="mem.scanHint"><b>Quét nguồn đã biết</b>: quét lại các store agent đã biết (nhanh). · <b>Quét sâu</b>: dò toàn ổ tìm agent/máy mới.</div>
             <div id="scanMsg" class="scanmsg"></div>
@@ -328,14 +328,14 @@
             <div class="set-row"><div class="sl"><b data-i18n="mem.ctxWarn">Ngưỡng nhắc context</b><small data-i18n="mem.ctxWarnD">Chạm % này của cửa sổ context là nhắc chốt việc + tự lưu phiên (một lần mỗi chu kỳ). 95% của 200k chừa ~10k token; của 1M chừa ~50k — chỉnh theo mức an toàn bạn muốn.</small></div><div style="display:flex;align-items:center;gap:4px"><input type="number" id="ctxWarnPct" min="50" max="99" step="1" data-i18n-aria="mem.ctxWarn" aria-label="Ngưỡng nhắc context" style="width:58px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--text);font-size:12px;outline:none;text-align:right"><span style="font-size:12px;color:var(--text-dim)">%</span></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.scheduler">Lưới bù nền</b><small data-i18n="mem.schedulerD">BẬT: mỗi 30 phút daemon quét vét nguồn không có hook, chạy embed cho phần tồn và dựng lại digest; nhường quyền ghi cho CLI.</small></div><div class="toggle" data-auto="scheduler"></div></div>
             <div class="set-row"><div class="sl"><b data-i18n="mem.autostart">Mở cùng PC</b><small data-i18n="mem.autostartD">BẬT: đăng nhập máy là daemon đã chạy nền sẵn ở port 4444 (không phải mở tay).</small></div><div class="toggle" data-auto="autostart"></div></div>
-            <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.autosync">Tự sync memory</b><small data-i18n="mem.autosyncD">BẬT: có tin mới → tự export bundle; bundle máy khác mới hơn → tự import --merge. Chỉ đi qua Drive (.enc), không thêm kênh nào.</small></div><div class="toggle" data-auto="autosync"></div></div>
+            <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.autosync">Tự sync memory</b><small data-i18n="mem.autosyncD">BẬT: có tin mới → tự export bundle; bundle máy khác mới hơn → tự import --merge. Chỉ đi qua Drive (.enc), không thêm kênh nào.</small></div><span class="muted" id="asSummary" style="font-size:11px;margin-right:8px;flex:0 0 auto"></span><div class="toggle" data-auto="autosync"></div></div>
           </div></div>
           <div class="seam" data-seam="mem2"></div>
           <!-- Col 3: Drive Sync + Sao lưu & Riêng tư (đi cùng: đều là "dữ liệu đi ra/vào") -->
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span></div><div class="card-b">
             <div class="drv-progress" data-i18n-title="drv.pushedPct" title="% tin nhắn của máy này đã đẩy lên Drive">
               <div class="donut"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="driveArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="driveDonutPct">—</div></div>
-              <div class="drv-progress-txt"><b id="driveSyncedTxt">—</b><small id="driveSyncedSub">—</small></div>
+              <div class="drv-progress-txt"><b id="driveSyncedTxt">—</b><small id="driveSyncedSub">—</small><small id="drvHealth" class="drv-health" hidden></small></div>
             </div>
             <!-- MỐC THỜI GIAN để lời "đã đủ" có thể KIỂM CHỨNG (user 2026-07-27: card này
                  luôn kêu đã đủ trong khi panel quét báo có tin mới). Hai panel trả lời hai
@@ -478,7 +478,7 @@
   </div>
 </div>
 
-<div id="zToast" class="ztoast" role="status" aria-live="polite"></div>
+<div id="zToasts" class="ztoasts" aria-live="polite"></div>
 <div id="qtip" role="tooltip"></div>
 
 <!-- (Đã gỡ dialog "Full session" — nó là viewer THỨ HAI trùng với sub-tab Recall › Phiên.

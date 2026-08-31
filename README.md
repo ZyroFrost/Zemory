@@ -238,7 +238,9 @@ Sub-tab **Memory** holds the statistics; **Sync & Backup** holds every action th
   days. Parent rows roll their children up. The tree refreshes itself every minute.
 - **This Machine** — *Scan Known* vs *Deep Scan*, and the automation switches with their real
   behaviour spelled out: realtime capture per message, the context-warning threshold, the
-  background sweep, start-with-OS, auto-sync.
+  background sweep, start-with-OS, auto-sync. Auto-sync has a ⚙ schedule: every N minutes or
+  hours (30 min by default), or at fixed times of day, each firing once a day. *Sync now* ignores
+  the schedule.
 - **Drive Sync** — bundle count, a `pushed / total` watermark, the shared folder path, and the
   depth selector: **Lean (−74%)** vs **Full (restore)** vs **With images**.
   Backup · Restore · Forget · Redact sit in the same column.

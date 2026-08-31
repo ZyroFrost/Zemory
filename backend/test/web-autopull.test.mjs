@@ -20,7 +20,7 @@ process.env.GLOBAL_MEMORY_DB = join(HOME, "global_memory.db");
 
 const { accountsOf, browserArgs } = await import("../../dist/memory/scanweb.js");
 const { getWebPull, setWebPull } = await import("../../dist/config/settings.js");
-const { webDue, webPullTargets } = await import("../../dist/jobs/scheduler.js");
+const { deadMainLane, webDue, webPullTargets } = await import("../../dist/jobs/scheduler.js");
 
 // ── ① khe THẬT vs thư mục sao lưu ───────────────────────────────────────────
 
@@ -115,6 +115,73 @@ test("hỏng thì LÙI LÂU, khoẻ thì hỏi lại thưa — thử lại dày 
 test("webDue: chưa chạy lần nào ⇒ tới lượt · dấu thời gian hỏng ⇒ tới lượt (không kẹt vĩnh viễn)", () => {
   assert.equal(webDue(undefined), true);
   assert.equal(webDue({ at: "không-phải-ngày", ok: true }), true, "sổ hỏng không được làm lane câm mãi mãi");
+});
+
+// ── ⑤ KHE `main` CHẾT HẲN — dừng vòng tự thử, KHÔNG chỉ lùi (vá 2026-08-31) ─────────────────
+// Ca thật: khe `chatgpt` (main) hỏng từ 2026-08-29, 0/0 lần kéo thành công trong suốt log, tự
+// mở Brave ẩn mỗi ~6 giờ mãi mãi vì `accountsOf()` CỐ TÌNH luôn liệt kê `main` bất kể lịch sử.
+// User: *"app lại tự động gọi browser đăng nhập liên tục là bị gì"*.
+
+test("deadMainLane: need-login + khe SỐ đã phủ (ok:true) ⇒ main coi là CHẾT", () => {
+  assert.equal(
+    deadMainLane("chatgpt", { chatgpt: { ok: false, status: "need-login" }, "chatgpt#2": { ok: true, status: "done" } }),
+    true,
+  );
+});
+
+test("deadMainLane: BỐN CA ÂM — main còn sống hoặc chưa đủ bằng chứng thì KHÔNG được tắt", () => {
+  // main đang khoẻ (đúng ca `claude` thật: cả main lẫn #2 cùng kéo tốt) ⇒ không được đụng.
+  assert.equal(deadMainLane("claude", { claude: { ok: true, status: "done" }, "claude#2": { ok: true, status: "done" } }), false);
+  // main hỏng nhưng KHÔNG có khe số nào phủ ⇒ vẫn phải tự thử (đây có thể là tài khoản DUY NHẤT).
+  assert.equal(deadMainLane("chatgpt", { chatgpt: { ok: false, status: "need-login" } }), false);
+  // main hỏng vì lý do THOÁNG QUA (CDP rớt/không thấy tab) — KHÔNG phải "cần người đăng nhập"
+  // — lượt sau có thể tự qua, không được quy là chết.
+  assert.equal(
+    deadMainLane("chatgpt", { chatgpt: { ok: false, status: "no-tab" }, "chatgpt#2": { ok: true, status: "done" } }),
+    false,
+  );
+  // main CHƯA TỪNG chạy (vắng mặt trong sổ) ⇒ chưa có bằng chứng gì để kết luận chết.
+  assert.equal(deadMainLane("chatgpt", { "chatgpt#2": { ok: true, status: "done" } }), false);
+  // KHÔNG được lẫn NỀN KHÁC: "gpt" hỏng, không có khe số riêng của NÓ — dù trong cùng sổ có
+  // một khe SỐ của nền HOÀN TOÀN KHÁC ("other#2") đang khoẻ, đó KHÔNG phải bằng chứng gpt được phủ.
+  assert.equal(
+    deadMainLane("gpt", { gpt: { ok: false, status: "need-login" }, "other#2": { ok: true, status: "done" } }),
+    false,
+    "khớp tiền tố lỏng lẻo sẽ đè nhầm khe main của một nền hoàn toàn khác",
+  );
+});
+
+test("webPullTargets: main CHẾT ⇒ vắng mặt DÙ hỏng rất lâu rồi (nếu còn sống thì chắc chắn tới lượt)", () => {
+  const now = Date.parse("2026-08-31T00:00:00Z");
+  const at = (h) => new Date(now - h * 3600_000).toISOString();
+  const got = webPullTargets(
+    ["chatgpt"],
+    () => ["main", "2"],
+    (p) => SRC[p],
+    "MAY-A",
+    [],
+    {
+      chatgpt: { at: at(1000), ok: false, status: "need-login" }, // hỏng 1000h rồi — sống thì CHẮC CHẮN tới lượt
+      "chatgpt#2": { at: at(1), ok: true, status: "done" }, // #2 mới kéo 1h trước ⇒ CHƯA tới lượt của riêng nó
+    },
+    now,
+  ).map((t) => t.lane);
+  assert.deepEqual(got, [], "main không được lọt qua dù đủ điều kiện thời gian — nó bị loại TRƯỚC bước hỏi webDue");
+});
+
+test("webPullTargets: main CHẾT nhưng khe số ĐÃ tới lượt riêng của nó ⇒ khe số vẫn được kéo", () => {
+  const now = Date.parse("2026-08-31T00:00:00Z");
+  const at = (h) => new Date(now - h * 3600_000).toISOString();
+  const got = webPullTargets(
+    ["chatgpt"],
+    () => ["main", "2"],
+    (p) => SRC[p],
+    "MAY-A",
+    [],
+    { chatgpt: { at: at(100), ok: false, status: "need-login" }, "chatgpt#2": { at: at(4), ok: true, status: "done" } },
+    now,
+  ).map((t) => t.lane);
+  assert.deepEqual(got, ["chatgpt#2"], "main không được lẫn vào — CHỈ khe số hợp lệ mới xuất hiện");
 });
 
 test("NHƯỜNG THÌ PHẢI HẸN QUAY LẠI — nhịp kéo web không được đợi hết chu kỳ", () => {

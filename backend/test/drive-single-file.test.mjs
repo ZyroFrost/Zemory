@@ -4,6 +4,11 @@
 // đo trên Drive thật: 13 file / 2,9 GB, trong đó hai baseline 331 MB + 336 MB gần như trùng
 // nội dung. Lối mới: đúng MỘT file, mỗi lượt sync nối thêm một khối nhỏ vào cuối.
 //
+// 🔄 2026-08-30 (user chốt, HP điều 16 sửa đổi — `plan/08 §8e`): kho chính = MỘT DÃY KHÚC tuần
+// tự. Bất biến ① nới thành "một DÃY khúc chung mọi máy" — vẫn cấm series-theo-máy/rải rác. Trần
+// khúc mặc định 256 MB nên các ca dưới (bundle vài KB) không bao giờ tràn ⇒ hành vi một-file cũ
+// GIỮ NGUYÊN; nhóm ca KHO CHIA KHÚC ở cuối file ép trần nhỏ bằng `ZEMORY_SEGMENT_MAX` để đo roll.
+//
 // Bốn bất biến khoá ở đây, và cái thứ ba là cái đắt nhất nếu sai:
 //   ① thư mục Drive luôn chỉ có MỘT file kho chính;
 //   ② hai máy ghi xen kẽ thì KHÔNG bên nào mất tin;
@@ -213,4 +218,95 @@ test("merge chạy NGOÀI khoá: khoá chỉ được giữ quanh phần GHI", a
   // Ghi chú: khoá VẪN xuất hiện ở đoạn ghi cuối, nên không khẳng định "chưa bao giờ khoá" — điều
   // khoá được ở đây là merge KHÔNG nằm trong vùng khoá, kiểm bằng ca đột biến (đảo lại thứ tự).
   assert.ok(lockedDuringMerge, "đoạn GHI vẫn phải có khoá — nếu không thì hai máy ghi chồng");
+});
+
+test("NHÚNG TRƯỚC XUẤT SAU (2026-08-30): dòng phase phải có 'embed' đứng TRƯỚC 'export'", async (t) => {
+  // Vì sao khoá thứ tự này: export bị `embedFrontierId` cắt ở tin đầu tiên CHƯA nhúng (điều 16 —
+  // tin và vector cùng chuyến). Embed nằm SAU export (bản cũ) thì mỗi lượt chỉ chở phần lượt
+  // TRƯỚC đã nhúng — đo trên kho thật 30/08: lượt auto chở 0 tin, watermark đứng yên ở 6504552
+  // trong khi 5.926 tin xếp hàng. Đảo lại thì hết trễ-một-nhịp. Test này đỏ nếu ai dời embed về cuối.
+  const { dir, keyPath, dbA } = setup(t);
+  addMessages(dbA, 2, "PH");
+  const phases = [];
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A", onProgress: (p) => phases.push(p) });
+  const iEmbed = phases.indexOf("embed");
+  const iExport = phases.indexOf("export");
+  assert.ok(iEmbed >= 0 && iExport >= 0, `phải có cả hai phase, đo được: ${phases.join(" → ")}`);
+  assert.ok(iEmbed < iExport, `embed phải TRƯỚC export (frontier tiến rồi mới cắt gói), đo được: ${phases.join(" → ")}`);
+});
+
+// ── KHO CHIA KHÚC (user chốt 2026-08-30 — HP điều 16 sửa đổi, `plan/08 §8e`) ─────────────────
+// Gốc bệnh: Drive không upload delta ⇒ nối 0,3 MB vào file 2 GB là re-upload CẢ 2 GB, DriveFS
+// treo cứng 2 lần/giờ (đo cùng ngày). Khúc đầy thì NIÊM PHONG (bất biến — Drive không bao giờ
+// upload lại), lượt sau mở khúc kế. Ép trần bằng ZEMORY_SEGMENT_MAX để đo roll với bundle bé.
+
+function tinySegments(t, bytes) {
+  process.env.ZEMORY_SEGMENT_MAX = String(bytes);
+  t.after(() => {
+    delete process.env.ZEMORY_SEGMENT_MAX;
+  });
+}
+
+test("KHÚC ĐẦY thì NIÊM PHONG, mở khúc kế — byte khúc cũ không đổi một ly", async (t) => {
+  const { dir, keyPath, dbA, dbB } = setup(t);
+  tinySegments(t, 1); // mọi khúc ĐÃ TỒN TẠI coi như đầy ⇒ mỗi lượt ghi mở khúc mới
+
+  addMessages(dbA, 4, "S1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  assert.deepEqual(encFiles(dir), ["global_memory.enc"], "khúc 1 giữ TÊN CŨ — tương thích ngược");
+  const seg1 = readFileSync(join(dir, "global_memory.enc"));
+
+  addMessages(dbA, 3, "S2");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  assert.deepEqual(encFiles(dir), ["global_memory.002.enc", "global_memory.enc"], "khúc 1 đầy ⇒ lượt sau phải mở khúc .002");
+  assert.deepEqual(readFileSync(join(dir, "global_memory.enc")), seg1, "khúc NIÊM PHONG phải bất biến từng byte — Drive không bao giờ upload lại nó");
+
+  // Máy B mới toanh: merge phải quét ĐỦ MỌI khúc, không riêng khúc 1.
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+  assert.equal(msgCount(dbB), 7, "máy mới phải nhận đủ tin nằm rải trên CẢ HAI khúc");
+});
+
+test("hai máy ghi xen kẽ QUA RANH GIỚI khúc — không bên nào mất tin", async (t) => {
+  const { dir, keyPath, dbA, dbB } = setup(t);
+  tinySegments(t, 1);
+
+  addMessages(dbA, 2, "XA");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  addMessages(dbB, 2, "XB");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" }); // mở .002
+  addMessages(dbA, 2, "XA2");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" }); // mở .003
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbB, host: "MAY-B" });
+  assert.equal(msgCount(dbA), 6, "A đủ 6 tin");
+  assert.equal(msgCount(dbB), 6, "B đủ 6 tin — dãy khúc là THỨ TỰ TOÀN CỤC chung, không phải file riêng của máy nào");
+});
+
+test("--compact gộp MỌI khúc về MỘT khúc 1 tươi + bak; khúc thừa bị xoá", async (t) => {
+  const { dir, keyPath, dbA } = setup(t);
+  tinySegments(t, 1);
+
+  addMessages(dbA, 3, "C1");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  addMessages(dbA, 3, "C2");
+  await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  assert.ok(encFiles(dir).length >= 2, "tiền đề: đã mọc ≥2 khúc");
+
+  addMessages(dbA, 1, "C3");
+  const r = await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A", compact: true });
+  assert.equal(r.push.kind, "compact");
+  assert.deepEqual(
+    encFiles(dir).sort(),
+    ["global_memory.bak.enc", "global_memory.enc"],
+    "sau gộp: đúng khúc 1 tươi + MỘT bản lùi — khúc .002+ phải biến mất",
+  );
+});
+
+test("CA ÂM — trần mặc định 256 MB: bundle bé KHÔNG bao giờ mở khúc mới (hành vi cũ nguyên vẹn)", async (t) => {
+  const { dir, keyPath, dbA } = setup(t);
+  // KHÔNG đặt ZEMORY_SEGMENT_MAX — đây chính là điều kiện chạy thật hôm nay.
+  for (const tag of ["N1", "N2", "N3"]) {
+    addMessages(dbA, 2, tag);
+    await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
+  }
+  assert.deepEqual(encFiles(dir), ["global_memory.enc"], "3 lượt sync bé vẫn một file — roll chỉ xảy ra khi khúc THẬT SỰ đầy");
 });
