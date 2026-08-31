@@ -5,7 +5,7 @@
 
 ---
 
-## [2026-08-31b] — 5 bộ `docs_template/` đặt tên chuẩn theo prefix số + độ phức tạp cho user
+## [2026-08-31b] — 2.12.0: 5 bộ `docs_template/` đặt tên chuẩn theo prefix số + độ phức tạp cho user
 
 **Đổi:** `app→05_app` · `nonapp→03_nonapp` · `adapt→04_adapt` · `cowork→01_cowork_basic` ·
 `cowork_global_memory→02_cowork_memory`. Thứ tự xếp theo độ phức tạp CHO NGƯỜI DÙNG cuối, không
@@ -56,9 +56,13 @@ biến đỏ riêng. Gate đầy đủ **932/932**. Đo máy thật: sync đẩy
 `global_memory.002.enc` (7,6→9,2 MB) thay vì re-upload 2 GB; web tick sau vá chỉ mở `chatgpt#2`,
 main hết bị gọi — xác nhận trên hành vi thật, không riêng test.
 
-⚠ **Chưa chốt:** hụt ~4.141 vector đo qua diễn tập phục hồi — `vectors-catchup --dry-run` treo 2
-lần trên khúc lớn (I/O chậm), phải kill. Phép thử nhỏ (xuất 400/400 · nhận đủ) cho thấy đường
-xuất/nhận hôm nay lành; nhiều khả năng hụt từ trước bản chia khúc, tự bù ở gói kế (`plan/08 §8b`).
+**Vector "hụt" — KHÔNG phải việc mở** (đo lại cùng ngày, lúc release 2.12.0). Số ~4.141 ở bản ghi
+đầu là số ĐỌC DỞ (`--dry-run` treo 2 lần phải kill, chưa từng xác nhận). Đo thẳng bằng đúng truy vấn
+của lệnh bù: vector chính local **302.047** · sổ `vec_shipped` **306.058** · **chưa lên kênh 497** ·
+cửa sổ phụ 11.130. "Hụt" = **có ở máy, chưa đẩy lên kênh** (không mất gì) và **tự bù** theo từng delta
+từ v23 — khớp log: `delta 345 tin · nhúng thêm 70` · `delta 106 tin · nhúng thêm 106`. Không mở mục
+`05_TODO` cho việc này (user chốt: sổ việc chỉ chứa việc phải làm). Cơ chế + **giới hạn của phép đo**
+(497 là giới hạn DƯỚI; 4.508 dòng sổ mồ côi chưa giải thích được): `plan/08 §8b`.
 
 ## [2026-08-30b] — NHÚNG TRƯỚC, XUẤT SAU: sync hết trễ-một-nhịp (lượt auto chở 0 tin dù 5.926 tin xếp hàng)
 **User bắt hai lần cùng buổi sáng** (*"vẫn chưa thấy tự động sync"* · *"để máy lâu rồi có tự động được đâu"*) — đo ra
