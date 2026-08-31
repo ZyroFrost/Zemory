@@ -17,27 +17,20 @@ tin**, `quick_check` **ok**, `foreign_key_check` **0**, **0** tin mồ côi. Bac
 **Chưa push (cục bộ):** phần dọn rác + tính năng `profile-reclaim`. User đã bác việc bump version
 cho từng đợt nhỏ (*"cái gì up quài"*) — luật Version là release-based, **gom vào version kế**.
 
-### ⚠ MỘT ADVISORY CÓ TỪ TRƯỚC, chưa xử — đọc trước khi tin gate
-`zemory graph fitness` **ĐANG ĐỎ**: `isolated_pct = 32,1%` (87/271 file, trần 30%) — có từ trước
-phiên này. **Đã ĐO RA: con số này là RÁC, không có file chết nào.** Phân 87 file: **64** `backend/test`
-(không ai import file test — theo định nghĩa) · **12** `frontend/scripts` (nạp bằng thẻ `<script>`,
-không phải ES import) · **5** `backend/scripts` + **2** `docs/hooks` + **1** `eslint.config.js` (điểm
-vào) · **2** `docs_template` · **1** `backend/src/platform/window.ts` — **cũng là điểm vào**, chạy như
-tiến trình riêng (`node dist/platform/window.js <url>`). Chính output của cổng tự thú
-*"entries/scripts included"*.
-⇒ **Không có gì để sửa**: 32% không hạ được bằng cách dọn code chết vì không có code chết. Cổng đang
-đo sai thứ nó định đo. **KHÔNG được nối vào `npm run check`** — gate đỏ vĩnh viễn không lý do là đúng
-bẫy `02_RULES`: *"gate nhiễu ⇒ gate bị bỏ qua"*. Đường đúng nếu muốn nó có ích: **loại điểm vào khỏi
-mẫu số** (test/script/hook/config), rồi mới đặt trần. Chưa làm — chờ user quyết có đáng làm không.
+*(Hai mục tôi nêu là "cần chốt" đã ĐÓNG 2026-08-31 — user bác đúng: **cả hai đã xử lý rồi, tôi
+lấy thông tin cũ**.
 
-### Hai thứ CHƯA đo được, nói ra thay vì để trống
-· **Diễn tập phục hồi** — ĐÃ chạy thật **25/08** và **27/08** (lần hai bắt 16.405 vector thiếu, vá cùng
-  ngày), cộng 29/08 mở backup đếm lại. Phiên NÀY không chạy lại. Việc còn mở đúng như `plan/18 §⑨`
-  ghi là **biến nó thành ĐỊNH KỲ** — cả hai lần đều làm TAY. (Câu cũ ở đây viết "chưa chạy", đọc ra
-  thành "chưa từng làm" — sai, user bắt được 31/08.)
-· **Một lượt kéo web THẬT sau lượt dọn profile** — chưa có nhịp web nào chạy từ 09:12. Bằng chứng
-  gián tiếp đủ mạnh (chỉ đụng `-bak-`, 4 khe sống còn nguyên, sổ đăng nhập không đổi) nhưng chưa
-  phải bằng chứng trực tiếp. Bắn thử = mở cửa sổ trình duyệt, nên chờ user.
+· **`graph fitness` đỏ** — KHÔNG phải việc. Đo ra: 87 file "isolated" thì **87 đều là điểm vào**
+  (64 `backend/test` — không ai import file test, theo định nghĩa · 12 `frontend/scripts` — nạp bằng
+  thẻ `<script>` · 5 `backend/scripts` + 2 `docs/hooks` + 1 `eslint.config.js` · 2 `docs_template` ·
+  1 `backend/src/platform/window.ts` — chạy như tiến trình riêng). **0 file chết.** Chính output của
+  cổng tự thú *"entries/scripts included"*. Con số 32% không hạ được vì không có gì để dọn ⇒ để
+  advisory, **KHÔNG nối vào `npm run check`** (gate đỏ vĩnh viễn không lý do = bẫy *"gate nhiễu ⇒
+  gate bị bỏ qua"* của `02_RULES`).
+
+· **Diễn tập phục hồi** — ĐÃ CHẠY: **25/08** và **27/08** (lần hai bắt 16.405 vector thiếu, vá cùng
+  ngày — `plan/08 §8b` 🔄 2026-08-27), cộng 29/08 mở backup đếm lại. Tôi viết "chưa chạy" khi ý chỉ
+  là "phiên này không chạy lại" — đọc ra thành "chưa từng làm". Không mở lại mục nào.)*
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
 · **Suy từ TÊN FILE rồi ghi vào docs như sự thật.** Tôi viết *"lớp migration chép ra"* cho
