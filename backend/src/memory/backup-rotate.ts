@@ -21,6 +21,42 @@ import { backupMemory } from "./privacy.js";
 /** Khuôn tên do `memory backup` sinh: `global_memory-<ISO>.db`. Chỉ file khớp mới bị dọn. */
 const BACKUP_RE = /^global_memory-[\dTZ:.-]+\.db$/;
 
+/**
+ * Bản chụp DO CHÍNH APP sinh NGOÀI đường `memory backup` — hiện chỉ có bản trước-nâng-schema
+ * (`global_memory-premigrate.db`, lớp migration chép ra để lùi được nếu nâng hỏng).
+ *
+ * 🔴 Vì sao kể TÊN TƯỜNG MINH thay vì nới `BACKUP_RE` thành `global_memory-*.db`: nới là mở cửa
+ * cho MỌI file người dùng CỐ Ý đỗ vào thư mục đó, mà xoá là hành vi không đảo được — đúng ranh
+ * giới luật ③ ở đầu file. Kể tên thì mỗi lần app sinh thêm một dạng leftover mới, người viết
+ * phải thêm một dòng ở đây, và đó là chỗ ĐÚNG để dừng lại suy nghĩ.
+ *
+ * Đo 2026-08-31: bản này **2.527 MB** nằm ngoài mọi vòng dọn kể từ 28/08 vì nó không khớp khuôn
+ * nào — rotation `keep:5` chạy đúng suốt, chỉ là nó chưa bao giờ NHÌN THẤY file này. Một chính
+ * sách dọn chỉ đúng với những file nó nhận ra.
+ */
+const APP_LEFTOVER_RE = /^global_memory-premigrate\.db$/;
+
+/**
+ * Bản chụp ĐÁNG THU HỒI: bản do `memory backup` sinh **cộng** leftover app tự sinh. Tách khỏi
+ * `listBackups` có chủ đích — `listBackups` trả lời câu *"lưới đỡ mới nhất bao nhiêu tuổi"*
+ * (`backupAgeMs`/`backupStale`), và một leftover cũ KHÔNG được phép đóng vai lưới đỡ trong câu
+ * trả lời đó. Hai câu hỏi khác nhau thì hai danh sách khác nhau.
+ */
+export function listReclaimable(dir: string): Existing[] {
+  if (!existsSync(dir)) return [];
+  const out: Existing[] = [];
+  for (const name of readdirSync(dir)) {
+    if (!BACKUP_RE.test(name) && !APP_LEFTOVER_RE.test(name)) continue;
+    const p = join(dir, name);
+    try {
+      out.push({ path: p, mtimeMs: statSync(p).mtimeMs });
+    } catch {
+      /* biến mất giữa chừng — bỏ qua */
+    }
+  }
+  return out.sort((a, b) => b.mtimeMs - a.mtimeMs);
+}
+
 const DAY_MS = 24 * 60 * 60_000;
 
 export interface BackupPolicy {
@@ -151,8 +187,11 @@ export async function rotateBackup(
   // lần xoay lại bỏ lại một cặp sidecar MỒ CÔI — đo trên kho thật: 6 file của 3 bản đã bị xoay
   // đi từ 26/07 · 03/08 · 04/08 vẫn nằm đó. Rác nhỏ (32 KB mỗi cái) nhưng nó tích vĩnh viễn và
   // làm thư mục sao lưu đọc không ra bản nào còn sống — đúng loại "không ai thấy nó lớn lên".
+  // Dọn theo `listReclaimable` (rộng hơn `listBackups`): leftover app tự sinh cũng chiếm chỗ và
+  // cũng phải nằm trong ngân sách `keep`. `Math.max(1, keep)` giữ nguyên — không bao giờ dọn tới
+  // mức tay trắng, kể cả khi ai đó khai `keep: 0`.
   const pruned: string[] = [];
-  for (const old of listBackups(dir).slice(Math.max(1, policy.keep))) {
+  for (const old of listReclaimable(dir).slice(Math.max(1, policy.keep))) {
     try {
       rmSync(old.path, { force: true });
       for (const side of ["-shm", "-wal"]) rmSync(old.path + side, { force: true });

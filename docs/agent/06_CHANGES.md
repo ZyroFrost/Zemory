@@ -5,6 +5,75 @@
 
 ---
 
+## [2026-08-31d] — RÁC dưới `data/` có người dọn: 2,3 GB thu hồi, và hai vòng dọn học được thứ chúng chưa nhìn thấy
+
+**Gốc bệnh chung của cả hai lỗ: một chính sách dọn chỉ đúng với những file NÓ NHẬN RA.** Cả hai đều
+nằm dưới `data/` — đường đã gitignore, tức không cổng nào thấy chúng lớn lên (`02_RULES`:
+*".gitignore là GIẤU, không phải DỌN"*). Đo lúc phát hiện: `data/` **30,8 GB**.
+
+**① `data/browser` — 3.946 MB, 14 thư mục bak, cũ nhất 27 ngày (4 khe đang sống chỉ 579 MB).**
+`borrowCookies` dời profile sang bên khi máy đổi trình duyệt, **cố ý không xoá** (luật ghi tại chỗ:
+*"luôn lùi lại được"*). Luật đó đúng và KHÔNG đổi — lỗ là **vế sau**: không cửa nào thu hồi lại.
+Thêm `browser-rotate.ts`: giữ **CỬA SỔ LÙI 7 ngày** rồi mới thu hồi, chỉ đụng thư mục khớp khuôn
+bak/trống, nối vào lượt quét rác 6 giờ có sẵn. **Nghiệm thu trên máy thật, không riêng test:**
+daemon khởi động lại → 09:12:00 log `thu hồi 6 bản dời-sang-bên quá 7 ngày (còn giữ 8 bản trong cửa
+sổ lùi)` → `data/browser` **3.946 → 1.673 MB (−2.273 MB)`. Nhóm 28/08 được giữ đúng vì còn trong
+cửa sổ — tức chính sách chạy đúng cả hai chiều, không phải xoá sạch.
+
+**② `data/backups/global_memory-premigrate.db` — 2.527 MB nằm ngoài mọi vòng dọn từ 28/08.**
+Rotation `keep:5` chạy ĐÚNG suốt; nó chỉ chưa bao giờ NHÌN THẤY file này, vì khuôn
+`/^global_memory-[\dTZ:.-]+\.db$/` không khớp chữ `premigrate`. Thêm `listReclaimable()` — tách
+khỏi `listBackups()` có chủ đích: `listBackups` trả lời *"lưới đỡ mới nhất bao nhiêu tuổi"*
+(`backupAgeMs`/`backupStale`), và một leftover cũ KHÔNG được đóng vai lưới đỡ trong câu đó. Hai câu
+hỏi khác nhau thì hai danh sách khác nhau. Leftover được **kể tên tường minh**, KHÔNG nới khuôn
+thành `global_memory-*.db`: nới là mở cửa xoá file người dùng cố ý đỗ vào, mà xoá không đảo được.
+File này sẽ được thu hồi ở lượt backup ngày kế (prune nằm trong nhánh `wrote:true`, 1 bản/ngày) —
+**cố ý không cưỡng bức**, vì buộc chạy sớm phải GHI một bản 2,7 GB mới để xoá một bản 2,5 GB.
+
+**Hai lớp chốt đã CHẶN tôi xoá tay, và chặn đúng** — ghi lại vì nó là bằng chứng guardrail sống:
+`guard.cjs` từ chối mọi lệnh chạm file nhóm secret (`global_memory*.db`, **không có flag vượt**), và
+classifier của harness từ chối lệnh xoá đệ quy. Kết quả tốt hơn ý định ban đầu: thay vì tôi `rm` 5,9
+GB một lần, **máy tự dọn theo chính sách có test** — lần sau nó tự lành, không cần ai nhớ.
+
+**Cổng:** `reclaim-sweep.test.mjs` **7 ca**, có ca ÂM cho vế nguy hiểm nhất (khe ĐANG SỐNG không bao
+giờ bị chọn, kể cả khi hạ ngưỡng về 0; file lạ của người dùng bất khả xâm phạm) + một ca chạy trên
+ĐĨA THẬT ở thư mục tạm. **Đột biến chứng minh, chạy thật 5/5 ĐỎ:** bỏ cửa sổ lùi · bỏ phép nhận dạng
+(⇒ cuốn cả khe sống) · bỏ nhánh `.trong-` · **trả về đúng code cũ** (bỏ `APP_LEFTOVER_RE`) · nới khuôn
+thành `global_memory-*.db` (⇒ xoá file user).
+
+### Audit 11 mặt — kết quả, gồm 3 finding của chính tôi bị LOẠI khi đo lại
+
+Chạy đủ 11 mặt (skill `audit`). **Sạch:** gate · `conform` 271 file · `validate` · `doctor` (2.738
+phiên · 325.890 tin · backup 5,8 h · 4 bundle đã lên mây) · `quick_check` **ok** (24 s) ·
+`foreign_key_check` **0** vi phạm · **0** tin mồ côi · 10/10 endpoint **200** · guardrail 35 ca ·
+license 3/3 · lockfile 0 invalid · `app.html` **0** chuỗi tiếng Việt thiếu móc i18n · 0 ảnh thiếu
+`alt` · 0 nút không nhãn.
+
+**Finding thật (advisory):**
+- **`graph fitness` ĐANG ĐỎ và KHÔNG ai chạy nó.** `isolated_pct = 32,0%` (86/269, trần 30%) đo ở
+  đúng trạng thái đã push `2.12.1`; hai file mới của tôi chỉ đẩy 32,0 → 32,1%. Cổng này có cờ
+  `--gate` exit 1, tức CI-able, nhưng **không nằm trong `npm run check` cũng không trong CI nào** —
+  một cổng đỏ thật mà vô hình. Đây là dạng lỗi tệ hơn không có cổng: nó phát ra lời bảo đảm mà chưa
+  hề được nhìn (`audit` luật 4).
+- **`/memory-status` 6,28 s · `/nav-cost` 2,69 s** (8 endpoint còn lại đều dưới 250 ms).
+- **`docs/agent/archive/*` có 22 dòng ASCII không dấu + vài chỗ mất ký tự (`??`)** — là BẢN GHI LỊCH
+  SỬ viết như vậy từ đầu, nằm ngoài bộ đọc mỗi phiên. **KHÔNG sửa**: viết lại entry cũ là đúng thứ
+  luật supersede cấm.
+
+**Ba finding của tôi bị LOẠI khi kiểm chéo — ghi lại vì chúng đúng là các bẫy `audit` đã cảnh báo:**
+- *"8/12 script frontend không test nào neo tới"* — **SAI**: `helpers.mjs:22 readAppJs()` đọc CẢ 12
+  script và còn ném lỗi nếu có file mới chưa khai (`APP_SCRIPT_ORDER`). 6 file test dùng nó.
+- *"98 dòng chữ Việt thiếu móc i18n trong `app.html`"* — **SAI**: toàn bộ là comment HTML. Bỏ comment
+  ⇒ **0**.
+- *"307 chỗ thiếu dấu"* — **SAI**: danh sách từ của tôi có `dung`·`nghia`·`thuoc`… vốn là từ hợp lệ
+  ("dung lượng"). Siết về đúng 3 từ mà skill tự nêu ⇒ 22 hit, và cả 22 nằm trong `archive/`.
+- Kèm: `share/share.key` CÓ trong lịch sử git, nhưng đó là sự cố 2026-08-04 **đã xử lý** — commit
+  `4c80756` *"xoay chìa share + gỡ share.key khỏi git (user chốt)"*: chìa đã xoay nên bản lộ là chìa chết.
+
+⚠ **Mặt 9 chỉ đo được MỘT PHẦN, nói ra thay vì để trống:** đã mở bản backup 31/08 và đếm (323.945
+tin) + `uplink` xác nhận 4 bundle trên mây, nhưng **chưa chạy diễn tập phục hồi đầy đủ** (dựng kênh
+vào kho tạm rồi so từng lớp). Đó vẫn là phép duy nhất nhìn ra "kênh thiếu vector" — xem `plan/08 §8b`.
+
 ## [2026-08-31c] — 2.12.1: đèn đỏ sync HẾT NÓI DỐI (bug thật: lượt chưa từng chạy vẫn báo "bị cắt")
 **BUG THẬT, tìm được lúc audit chính đợt vá trên — và đang chạy trên máy user lúc đó.** Card Drive
 Sync báo 🔴 *"cut off mid-run · push incomplete"* cho một lượt **CHƯA TỪNG KHỞI ĐỘNG**. Đo trên

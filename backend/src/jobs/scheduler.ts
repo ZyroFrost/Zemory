@@ -68,6 +68,7 @@ import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
+import { sweepBrowserProfiles } from "../memory/browser-rotate.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
@@ -406,6 +407,19 @@ function scratchTick(): void {
     }
   } catch (e) {
     log(`dọn nháp bỏ qua: ${(e as Error).message}`);
+  }
+  // Cùng nhịp 6 giờ, cùng bản chất "rác lớn dần theo GIỜ, nằm dưới đường đã gitignore nên không
+  // cổng nào thấy". Bắt riêng try: một lượt hỏng ở đây không được cướp lượt dọn nháp ở trên.
+  try {
+    const b = sweepBrowserProfiles();
+    if (b.reclaimed.length) {
+      log(
+        `dọn profile trình duyệt: thu hồi ${b.reclaimed.length} bản dời-sang-bên quá ${Math.round(b.keepMs / 86_400_000)} ngày` +
+          ` (còn giữ ${b.kept} bản trong cửa sổ lùi)`,
+      );
+    }
+  } catch (e) {
+    log(`dọn profile trình duyệt bỏ qua: ${(e as Error).message}`);
   }
 }
 
