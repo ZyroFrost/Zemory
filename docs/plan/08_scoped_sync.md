@@ -226,6 +226,25 @@ trỏ vào tin của người ta (đúng khuôn `attachment_ship` §7 đã giả
   vector / 12,5 MB**; nghiệm thu ba phép khác cơ chế: 41→42 khối · khối mới bắt đầu ĐÚNG tại EOF cũ
   (byte 1.921.443.041) ⇒ **0 byte cũ bị ghi đè** · chạy lại dry-run ra `thiếu 0`.
 
+  📏 **2026-08-31 (2.12.0) — ĐO LẠI, và ghi rõ SỔ NÀY ĐO ĐƯỢC CÁI GÌ.** Bản ghi 31/08 nêu "hụt
+  ~4.141 vector"; đó là số **đọc dở** — `vectors-catchup --dry-run` treo 2 lần trên khúc lớn phải
+  kill, không lượt nào chạy hết. Đo thẳng bằng chính truy vấn của lệnh bù (`unshippedVectorIds`,
+  `vectors.ts`): vector CHÍNH ở kho local **302.047** · sổ `vec_shipped` **306.058** · **chưa lên
+  kênh 497** · cửa sổ phụ 11.130. Nên "hụt" ở đây nghĩa là *có ở máy, chưa đẩy lên kênh* — không
+  mất gì — và nó **tự bù** theo cơ chế sổ đã dựng ở trên, không cần ai can thiệp.
+  🔴 **Giới hạn của sổ `vec_shipped`, phải đọc trước khi tin con số 497.** Lúc nâng v23 sổ được
+  **GIEO bằng toàn bộ vector đang có** (cố ý: không gieo thì lượt sync đầu chở lại ~290k vector).
+  Hệ quả nguyên lý: sổ **không thể phát hiện** phần hụt có từ TRƯỚC v23 — vector nào vừa có ở local
+  vừa bị gieo sai vào sổ thì mãi mãi bị coi là "đã chở". Vì vậy **497 là giới hạn DƯỚI, không phải
+  con số thật**. Thứ duy nhất nhìn ra sự thật là **diễn tập phục hồi** (dựng kênh vào kho tạm rồi
+  so) — đúng phép đã bắt được 22k rồi 16.405 ở hai lượt trước. Ai muốn chốt "kênh đủ vector" thì
+  phải chạy lại diễn tập, đừng đọc sổ rồi kết luận.
+  ❓ **Một số LẠ chưa giải thích được, ghi để không ai ghép bừa:** **4.508 dòng trong `vec_shipped`
+  trỏ tới vector KHÔNG còn ở local**, và **0/4.508 còn tin gốc** (`messages`) ⇒ tin đã xoá/prune,
+  sổ còn dấu. Vô hại (không có gì để chở, không mất gì). Nó **ngược chiều** với con số 4.141 (4.141
+  là *kênh thiếu cái local có*; 4.508 là *sổ có cái local không có*), nên **KHÔNG** được dùng để
+  giải thích 4.141 — hai lớp khác nhau, ghép lại là dựng một lời giải nghe hợp lý mà sai.
+
   🔄 **2026-08-27 — vế *"tồn không tự lành bằng vá này, đợi gộp"* ở trên BỊ THAY (v2.8.0).** Diễn tập
   phục hồi lần hai (dựng kênh vào kho tạm 6′32″, 315.103 tin) đo kênh thiếu **16.405 vector máy này đang có**
   (300/300 mẫu có vector tại chỗ): 6.121 tin có uuid nhúng SAU khi đã lên kênh (frontier chỉ giữ tin ≤24 h),
