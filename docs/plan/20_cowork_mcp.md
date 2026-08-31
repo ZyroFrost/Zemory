@@ -11,7 +11,7 @@
 máy ảo, không cần kho thứ hai, không cần đường xuất/nhập để gộp.
 
 Vế bị đảo — từng nằm trong code (`commands/harness.ts`) và là tiền đề của cả bộ
-`docs_template/cowork_global_memory/`:
+`docs_template/02_cowork_memory/` *(đổi tên 2026-08-31, trước là `cowork_global_memory/`)*:
 
 > *"Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory` trên máy thật."*
 

@@ -32,20 +32,15 @@ làm, xem `06_CHANGES [2026-08-29]`.)*
 
 **5 mục mở**: 2 việc user GIAO cho phiên sau (bàn kỹ rồi mới làm) + 3 tool MCP. Trạng thái dưới đây là ĐO.
 
-### Hai việc USER GIAO 2026-08-27 — CHƯA BÀN CHI TIẾT, phiên sau bàn trước rồi mới đụng
-- [ ] **Đặt tên chuẩn lại các bộ `docs_template/`** theo prefix số (`01_` · `02_` …) và tên đúng chuẩn —
-      hiện 5 bộ tên rời (`app` · `nonapp` · `adapt` · `cowork` · `cowork_global_memory`). Nguyên văn user:
-      *"đặt tên chuẩn lại các bộ template, phân theo số prefix 01_ 02_ này kia … chi tiết qua session sau
-      sẽ bàn rõ"*. Đụng: `adopt.ts` (`TEMPLATE_DIR` + profile → thư mục), `standard-parity`/`template-parity`
-      test, `04_SKILLS`/`AGENTS` trỏ đường, bootstrap cowork.
-      **User nhắc lại 2026-08-28 tối** (*"cái này cũng cần làm"*) — vẫn mở, vẫn 5 bộ tên rời trên đĩa.
-      Chưa bàn được hôm nay vì cả phiên dồn cho panel Nguồn + tự kéo web; phiên sau mở bằng câu hỏi
-      SƠ ĐỒ TÊN trước (số thứ tự theo gì: theo loại project · theo mức độ · theo thứ tự đọc?).
-- [ ] **Cấu trúc lại TÊN + BỐ CỤC toàn bộ folder phòng ban** — user nghĩ theo hướng `Agent_FIN` · `Agent_IT`…
-      thay `PBI_*`, và *"phân lại toàn bộ cấu trúc folder"*. Nguyên văn: *"việc này cũng sẽ bàn với session
-      mới"*. Đụng registry project của daemon (16 đường tuyệt đối), `project_root` trong kho (recall theo dự
-      án), graph cache, `docs/.harness.json` từng repo. Là việc đổi tên hàng loạt ngoài repo ⇒ `02_RULES
-      §Phạm vi project`: từng bước hỏi trước.
+*(Mục "Đặt tên chuẩn lại các bộ `docs_template/`" đã ĐÓNG 2026-08-31 — xem `06_CHANGES [2026-08-31b]`.
+5 bộ đổi tên theo prefix số + độ phức tạp cho user: `01_cowork_basic` · `02_cowork_memory`
+(trước `cowork`/`cowork_global_memory`) · `03_nonapp` · `04_adapt` · `05_app`. Gate đầy đủ xanh.)*
+*(Mục "Cấu trúc lại TÊN + BỐ CỤC toàn bộ folder phòng ban" đã ĐÓNG — làm ở project khác (estate
+`D:\huy.nguyen\WorkSpace`), KHÔNG phải trong một phiên của repo này. Đo 2026-08-31 qua 3 nguồn:
+Global Memory (nhiều phiên `Dept_IT`/`Dept_OPS`/`Dept_HR`/`Dept_SALE` 24–29/08 đổi `PBI_*`→`Dept_*`
++ sửa link chéo) · registry zemory (`data/projects.json`: đủ 8 phòng ban `Dept_*`, `lastSeen`
+29/08, **0** `PBI_*` còn sót) · không còn gì để chạy thật thêm. Mục này bị đọc nhầm thành "còn mở"
+trong bản ghi 27/08→31/08 vì không ai soát lại theo 3 nguồn trước khi báo — đúng lỗi "TODO thối".)*
 
 ### Phiên này làm gì (số đo: `06_CHANGES [2026-08-27b]` · plan `08 §8b` · `18 §4`)
 Audit 11 mặt → 3 lỗ blocking vá xong (con maintain chạy mù · kênh thiếu 16.405 vector · bản trùng NULL) ·

@@ -17,7 +17,7 @@ nguyên văn, không phải sửa gì:
 > Dựng bộ khung làm việc cho dự án trong thư mục tôi đã gắn.
 > Thư mục đó có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
 > theo đúng những gì trong đó.
-> `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
+> `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/01_cowork_basic/BOOTSTRAP.md`
 
 Trước khi dán, ở ô chat đổi **Auto → Skip all approvals** cho khỏi phải bấm duyệt từng lệnh — luật
 trong bộ chuẩn (không ghi đè · không tự xoá/dời · việc hệ trọng phải trình rồi chờ gật) mới là thứ bắt
@@ -103,7 +103,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 ### 1b. MANIFEST
 
-`<RAW>` = `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/nonapp`
+`<RAW>` = `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/01_cowork_basic/nonapp`
 
 Đường dẫn ghi ra **giống hệt** đường dẫn nguồn, trừ hai file `docs/` (bộ chuẩn nằm dưới `docs/`).
 
@@ -159,7 +159,7 @@ Lấy thêm **một file nữa** — công cụ tự kiểm:
 |---|---|---|
 | — | `check_install.py` (để tạm ở thư mục làm việc) | `<COWORK>/check_install.py` |
 
-`<COWORK>` = `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork`
+`<COWORK>` = `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/01_cowork_basic`
 Có sẵn bản trên đĩa thì chép từ đó, khỏi tải.
 
 Rồi chạy:

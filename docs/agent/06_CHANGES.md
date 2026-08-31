@@ -5,6 +5,29 @@
 
 ---
 
+## [2026-08-31b] — 5 bộ `docs_template/` đặt tên chuẩn theo prefix số + độ phức tạp cho user
+
+**Đổi:** `app→05_app` · `nonapp→03_nonapp` · `adapt→04_adapt` · `cowork→01_cowork_basic` ·
+`cowork_global_memory→02_cowork_memory`. Thứ tự xếp theo độ phức tạp CHO NGƯỜI DÙNG cuối, không
+theo agent thực thi: khe không cần Global Memory (basic) → khe có GM+MCP (memory) → BI/dữ liệu
+(nonapp) → dev có repo sẵn cần duyệt ánh xạ (adapt) → dev xây app mới, chuẩn đầy đủ (app).
+
+**Sửa chẩn đoán sai lúc đầu:** `cowork_global_memory` KHÔNG phải "đường lùi" của `cowork` như
+đọc lần đầu từ `plan/20` — nó là bản NÂNG CẤP (commit `3c1dda6`, 27/08 sửa 159 dòng
+`BOOTSTRAP.md`), "cowork 2.0" theo đúng lời user. Hai bộ phục vụ hai nhu cầu khác nhau (có/không
+Global Memory), tồn tại song song vĩnh viễn — đề xuất gộp ban đầu bị bác đúng, không gộp.
+
+**Đụng:** `adopt.ts`/`ui.ts` (2 chỗ code thật, `StructureProfile` giữ nguyên `"app"|"non-app"`,
+chỉ đổi thư mục đích) · 5 test (`bootstrap-manifest`·`conform`·`read-set-contract`·
+`template-parity`·`standard-parity` — file thứ 5 chỉ lộ khi chạy gate đầy đủ, vì nó ghép path
+qua biến chứ không phải chuỗi literal) · URL tự tham chiếu trong `BOOTSTRAP.md`/`README.md`/2
+`GUIDE.docx` của cả hai bộ cowork (sửa qua script XML theo đúng luật `write-docx`, đo trước/sau
+9 bảng/12 ảnh không đổi) · `plan/20`. Thêm ghi chú "đổi tên từ đâu" đầu README cả hai bộ cowork.
+
+**0 chỗ cần sửa ở repo khác** — cowork không đi qua `zemory init`/registry của project nào, chỉ
+là file tĩnh copy thủ công qua bootstrap. Gate đầy đủ chạy 2 lần (lần 1 bắt 5 lỗi từ file test
+thứ 5, đã vá): **932/932 · EXIT=0**.
+
 ## [2026-08-31] — Sync hết câm, kho chia KHÚC, khe web chết vĩnh viễn thôi tự mở browser
 
 **Sync lùi trong im lặng — bốn lỗ cùng họ "gãy mà không ai biết"** (user: *"gãy ở drive cũng phải

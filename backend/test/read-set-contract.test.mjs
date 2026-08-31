@@ -20,14 +20,14 @@ import { join } from "node:path";
 const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
-const AGENTS = ["AGENTS.md", "docs_template/app/AGENTS.md", "docs_template/nonapp/AGENTS.md"];
+const AGENTS = ["AGENTS.md", "docs_template/05_app/AGENTS.md", "docs_template/03_nonapp/AGENTS.md"];
 
 // Rules that fire while WRITING, not while creating folders. conform is blind to all of
 // them (its checks are off-standard-dir · empty-slot-dir · harness-missing · hp-uncited ·
 // skill-roster-drift · dangling-ref), so they must sit in the always-loaded 02_RULES.
 const WRITE_TIME = {
-  app: ["SQL — 1 CÁCH", "Panel resize", "Dialog / modal", "Backup deploy", "2 KIỂU version-up", "Sync bundle qua git"],
-  nonapp: ["Secret/connection", "SQL/DAX/M", "Nhị phân nặng", "Data thật vs mẫu"],
+  "05_app": ["SQL — 1 CÁCH", "Panel resize", "Dialog / modal", "Backup deploy", "2 KIỂU version-up", "Sync bundle qua git"],
+  "03_nonapp": ["Secret/connection", "SQL/DAX/M", "Nhị phân nặng", "Data thật vs mẫu"],
 };
 
 test("AGENTS.md không liệt kê 03_STRUCTURE trong danh sách ĐỌC HẾT", () => {
@@ -80,9 +80,9 @@ test("luật KHÔNG BỊA có ở mọi bản 02_RULES, và chỉ MỘT bản (k
   // hai đầu: phải CÓ luật, và KHÔNG được có bản thứ hai cùng nghĩa.
   const FILES = [
     "docs/agent/02_RULES.md",
-    "docs_template/app/agent/02_RULES.md",
-    "docs_template/nonapp/agent/02_RULES.md",
-    "docs_template/cowork/nonapp/agent/02_RULES.md",
+    "docs_template/05_app/agent/02_RULES.md",
+    "docs_template/03_nonapp/agent/02_RULES.md",
+    "docs_template/01_cowork_basic/nonapp/agent/02_RULES.md",
   ];
   for (const f of FILES) {
     const t = read(f);
@@ -118,7 +118,7 @@ test("luật khi VIẾT nằm ở 02_RULES, KHÔNG còn ở 03_STRUCTURE", () =>
 test("repo zemory cũng theo đúng hợp đồng đó", () => {
   const rules = read("docs/agent/02_RULES.md");
   const structure = read("docs/agent/03_STRUCTURE.md");
-  for (const n of WRITE_TIME.app) {
+  for (const n of WRITE_TIME["05_app"]) {
     assert.ok(rules.includes(n), `02_RULES thiếu luật "${n}"`);
     assert.ok(!structure.split(/\r?\n/).some((l) => l.startsWith(n)), `03_STRUCTURE còn giữ "${n}"`);
   }
@@ -127,7 +127,7 @@ test("repo zemory cũng theo đúng hợp đồng đó", () => {
 
 test("03_STRUCTURE để lại con trỏ tới nơi luật đã dời đến", () => {
   // Người đọc 03 tìm luật SQL/dialog phải được chỉ đường, không gặp khoảng trống.
-  for (const p of ["docs/agent/03_STRUCTURE.md", "docs_template/app/agent/03_STRUCTURE.md", "docs_template/nonapp/agent/03_STRUCTURE.md"]) {
+  for (const p of ["docs/agent/03_STRUCTURE.md", "docs_template/05_app/agent/03_STRUCTURE.md", "docs_template/03_nonapp/agent/03_STRUCTURE.md"]) {
     if (!existsSync(join(ROOT, p))) continue;
     assert.match(read(p), /Luật khi VIẾT[^\n]*02_RULES/u, `${p}: thiếu con trỏ tới 02_RULES §Luật khi VIẾT`);
   }
@@ -136,7 +136,7 @@ test("03_STRUCTURE để lại con trỏ tới nơi luật đã dời đến", (
 test("template KHÔNG trích số điều hiến pháp (hiến pháp là per-project)", () => {
   // Bản mẫu 01_CONSTITUTION chỉ có 1 điều placeholder, nên mọi câu "điều 13" trong
   // template làm `conform` của project VỪA INIT đỏ ngay — lỗi do bản mẫu, không do user.
-  for (const p of ["app", "nonapp"]) {
+  for (const p of ["05_app", "03_nonapp"]) {
     for (const f of ["02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"]) {
       const path = `docs_template/${p}/agent/${f}`;
       if (!existsSync(join(ROOT, path))) continue;
