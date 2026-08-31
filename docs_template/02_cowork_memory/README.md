@@ -2,6 +2,11 @@
      Bản mẫu TRẮNG: không nêu tên dự án, công ty hay cá nhân cụ thể. -->
 # Bộ chuẩn cho Claude Cowork — bản nối thẳng bộ nhớ
 
+> **Đổi tên 2026-08-31:** thư mục này trước đây tên `docs_template/cowork_global_memory/`. Tên
+> mới `02_cowork_memory` — ngắn hơn, cùng nghĩa. Bộ `01_cowork_basic` (không có Global Memory)
+> là một lựa chọn KHÁC, không phải bản cũ của bộ này. Nội dung và cách dùng không đổi gì; chỉ
+> đường dẫn/URL đổi.
+
 Dựng **bộ chuẩn làm việc** cho dự án, **và** nối trợ lý vào **kho nhớ** — nơi giữ lại mọi phiên
 làm việc trước để lần sau tra lại được, thay vì phải kể lại từ đầu.
 
@@ -28,7 +33,7 @@ Không biết đã cài chưa thì cứ dùng câu ①: nó tự kiểm, có s�
 ```
 Dựng bộ khung làm việc và kho nhớ cho dự án trong thư mục tôi đã gắn.
 Đọc hướng dẫn ở đây rồi làm theo đúng những gì trong đó, không bỏ bước:
-https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork_global_memory/BOOTSTRAP.md
+https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/02_cowork_memory/BOOTSTRAP.md
 Nhớ: hỏi tôi kho nhớ đặt ở thư mục nào TRƯỚC khi cài gì, và hỏi tôi dự án
 này thuộc loại nào trước khi dựng bộ chuẩn.
 Chưa cài thì cài TỪ MÃ NGUỒN (git clone → npm install → npm run build →
@@ -36,7 +41,7 @@ npm link). Đừng dùng `npm i -g zemory`, gói chưa có trên npm.
 ```
 
 Trợ lý sẽ: dò xem máy chạy được không → **hỏi bạn kho nhớ đặt ở đâu** → cài công cụ → dựng bộ
-chuẩn → quét dữ liệu → báo cáo. Dò không đạt thì nó tự chuyển sang bộ `cowork/` (bản không cần
+chuẩn → quét dữ liệu → báo cáo. Dò không đạt thì nó tự chuyển sang bộ `01_cowork_basic/` (bản không cần
 cài gì) và nói cho bạn biết.
 
 ## ② Máy ĐÃ cài zemory và đã có kho nhớ — dùng câu này
@@ -46,7 +51,7 @@ Dự án trong thư mục tôi đã gắn cần dựng bộ khung làm việc. M
 zemory và ĐÃ có kho nhớ rồi.
 Đọc hướng dẫn ở đây rồi làm theo, nhưng BỎ QUA phần cài đặt và TUYỆT ĐỐI
 KHÔNG dời kho nhớ đang có:
-https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork_global_memory/BOOTSTRAP.md
+https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/02_cowork_memory/BOOTSTRAP.md
 Chạy `zemory memory verify` trước để chắc kho còn lành, rồi hỏi tôi dự án
 này thuộc loại nào, rồi mới dựng bộ chuẩn.
 ```

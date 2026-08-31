@@ -21,7 +21,7 @@ Mở một phiên Cowork với thư mục làm việc đã gắn — ở ô chat
 > Dựng bộ khung làm việc và kho nhớ cho dự án trong thư mục tôi đã gắn.
 > Thư mục đó có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
 > theo đúng những gì trong đó.
-> `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork_global_memory/BOOTSTRAP.md`
+> `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/02_cowork_memory/BOOTSTRAP.md`
 
 ---
 
@@ -96,7 +96,7 @@ Không có `winget` (Windows quá cũ · macOS · Linux) thì theo bảng này, 
 | Linux | trình quản lý gói của bản phân phối (`apt` · `dnf` · `pacman`) |
 | Windows không winget | tải bộ cài Node LTS bản `.msi` rồi chạy im lặng: `msiexec /i <file> /qn` |
 
-**Chỉ khi đã THỬ CÀI mà vẫn hỏng** mới chuyển sang `docs_template/cowork/BOOTSTRAP.md` (lối chép
+**Chỉ khi đã THỬ CÀI mà vẫn hỏng** mới chuyển sang `docs_template/01_cowork_basic/BOOTSTRAP.md` (lối chép
 file, không cần Node). Nói rõ đã thử cách nào và hỏng ở đâu — đừng lặng lẽ đổi đường.
 
 **In số đo ra.** Đừng báo "đã dò" mà không in kết quả; và đừng báo "đã cài" khi chưa đo lại.

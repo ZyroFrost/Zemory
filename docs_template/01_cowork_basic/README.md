@@ -3,6 +3,11 @@
      Văn phong: MÔ TẢ — không ví dụ ẩn dụ, không kể chuyện. Hạn chế viết tắt và thuật ngữ. -->
 # Bộ chuẩn làm việc — mô tả
 
+> **Đổi tên 2026-08-31:** thư mục này trước đây tên `docs_template/cowork/` (không có bộ nhớ
+> riêng). Tên mới `01_cowork_basic` để phân biệt rõ với bộ `02_cowork_memory` (có Global Memory
+> + nối MCP) — hai bộ phục vụ hai nhu cầu khác nhau, không cái nào thay thế cái kia. Nội dung
+> và cách dùng không đổi gì; chỉ đường dẫn/URL đổi.
+>
 > Tài liệu này mô tả bộ chuẩn cho **người** đọc: gồm những gì, mỗi phần giữ vai trò nào,
 > và nó thay đổi cách làm việc ra sao.
 > Bản dành cho trợ lý thi hành là [`BOOTSTRAP.md`](BOOTSTRAP.md) — người dùng không cần mở.
@@ -180,7 +185,7 @@ Không cần học câu lệnh, không cần cài phần mềm, không cần nh�
    > Dựng bộ khung làm việc cho dự án trong thư mục tôi đã gắn.
    > Thư mục đó có file BOOTSTRAP.md thì đọc bản đó, không có thì tải bản dưới đây — rồi làm
    > theo đúng những gì trong đó.
-   > `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/cowork/BOOTSTRAP.md`
+   > `https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/01_cowork_basic/BOOTSTRAP.md`
 
 Trợ lý tạo bộ chuẩn, đọc toàn bộ thư mục để nắm hiện trạng, trình bảng đề xuất sắp xếp,
 rồi hỏi những phần nó không tự xác định được.

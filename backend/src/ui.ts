@@ -1535,7 +1535,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const prof2: StructureProfile = u.searchParams.get("profile") === "non-app" ? "non-app" : "app";
       // Nguồn = docs của CHÍNH repo template tương ứng (bản mẫu trắng), không phải repo
       // đang mở — màn Harness hiển thị CHUẨN DÙNG CHUNG, không phải docs của project.
-      const dir = join(TEMPLATE_DIR, prof2 === "non-app" ? "nonapp" : "app");
+      const dir = join(TEMPLATE_DIR, prof2 === "non-app" ? "03_nonapp" : "05_app");
       return json(res, readStandardSpec(dir, join("agent", "03_STRUCTURE.md")));
     }
     if (p === "/standard-doc") {

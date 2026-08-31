@@ -19,8 +19,11 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const SETS = ["app", "nonapp", "adapt"]; // cowork CỐ Ý ngoài phạm vi: bộ rút gọn cho môi trường
-//                                          không có CLI + ngữ cảnh ngắn (user chốt 2026-08-22)
+const SETS = ["05_app", "03_nonapp", "04_adapt"]; // cowork CỐ Ý ngoài phạm vi: bộ rút gọn cho môi
+//                trường không có CLI + ngữ cảnh ngắn (user chốt 2026-08-22)
+// Đổi tên bộ 2026-08-31 (user chốt): app→05_app · nonapp→03_nonapp · adapt→04_adapt ·
+// cowork→01_cowork_basic · cowork_global_memory→02_cowork_memory (hai bộ cowork vẫn NGOÀI
+// phạm vi cổng này, chỉ đổi số + chữ trong tên).
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 const zSkillDir = join(ROOT, ".claude/skills");
@@ -34,7 +37,7 @@ const ZEMORY_ONLY_SKILLS = {
 
 /** Skill mà MỘT bộ cố ý không mang, vì luật của chính bộ đó cấm việc skill ấy làm. */
 const SET_DROPS = {
-  adapt: {
+  "04_adapt": {
     reconcile:
       "hệ adapt CẤM dời/đổi tên/xoá folder của repo (`03_STRUCTURE §0.1`) — nắn repo là việc bị cấm ở đó; " +
       "nó có `adopt/` thay thế: ánh xạ cấu trúc SẴN CÓ sang slot, không đụng cây thư mục",
@@ -122,7 +125,7 @@ test("skill audit: KHỚP THEO PROFILE — app/adapt bằng zemory, nonapp có b
   for (const s of SETS) {
     const t = read(`docs_template/${s}/.claude/skills/audit/SKILL.md`);
     assert.equal(lawCount(t), zl, `bộ ${s}: audit ${lawCount(t)} luật vs zemory ${zl} — LUẬT thì mọi profile giống nhau`);
-    if (s === "nonapp") {
+    if (s === "03_nonapp") {
       // non-app KHÔNG so số mặt với app (nó bỏ mặt FE↔BE có chủ đích), mà so bằng NGHĨA:
       assert.ok(faceCount(t) >= 9, `bộ nonapp chỉ còn ${faceCount(t)} mặt — cắt quá tay`);
       // Chỉ soi phần DANH SÁCH MẶT (từ heading "### … mặt" trở đi). Ghi chú "vì sao khác bản app"
@@ -159,9 +162,9 @@ test("luật cứng §Luật khi VIẾT: app + adapt mang ĐỦ, nonapp chỉ đ
   assert.ok(z.length >= 10, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
     const t = ruleLabels(`docs_template/${s}/agent/02_RULES.md`);
-    const has = (r) => t.includes(r) || (s === "nonapp" && NONAPP_ALIAS[r] && t.includes(NONAPP_ALIAS[r]));
+    const has = (r) => t.includes(r) || (s === "03_nonapp" && NONAPP_ALIAS[r] && t.includes(NONAPP_ALIAS[r]));
     const missing = z.filter((r) => !has(r));
-    if (s === "nonapp") {
+    if (s === "03_nonapp") {
       const unjustified = missing.filter((r) => !(r in NONAPP_DROPS));
       assert.deepEqual(unjustified, [], `bộ nonapp thiếu luật KHÔNG có lý do miễn: ${unjustified.join(" | ")}`);
     } else {

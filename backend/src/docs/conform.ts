@@ -351,7 +351,7 @@ export function conform(root: string): ConformReport {
   //    4–10 slot hiện diện". Bản đầu tôi báo 48 mục như vậy: đúng kiểu nhiễu làm người
   //    đọc mất tin vào báo cáo, và tự mâu thuẫn với chính ghi chú đầu file này.
   //    "Rỗng" = KHÔNG có file nào (mọi loại), không phải "không có file source": `docs/`,
-  //    `docs_template/app/agent/`, `backend/resources/` đầy `.md`/resource — báo chúng là
+  //    `docs_template/05_app/agent/`, `backend/resources/` đầy `.md`/resource — báo chúng là
   //    rỗng thì sai hẳn (bản đầu dính đúng lỗi này vì đo bằng node của code-graph).
   const hasAnyFile = (rel: string, depth = 0): boolean => {
     if (depth > 4) return true; // quá sâu thì coi như có, thà bỏ sót còn hơn báo oan

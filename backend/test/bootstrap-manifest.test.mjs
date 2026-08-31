@@ -1,12 +1,12 @@
-// The Cowork BOOTSTRAP carries a COPY of facts that live in docs_template/cowork/nonapp/:
+// The Cowork BOOTSTRAP carries a COPY of facts that live in docs_template/01_cowork_basic/nonapp/:
 // which files make up the Cowork standard, and how many lines each one has. A copy that
 // nobody checks goes stale silently — and the failure is nasty, because the stale
 // number lands in BOOTSTRAP's own self-check step (check_install.py) and makes every
 // machine report a false ✗ on a file that is actually fine.
 //
-// NOTE the source moved on 2026-07-29: the Cowork set used to overlay docs_template/nonapp/
+// NOTE the source moved on 2026-07-29: the Cowork set used to overlay docs_template/03_nonapp/
 // (the master template that `zemory init --non-app` scaffolds from), so the whole set was
-// moved under docs_template/cowork/nonapp/ and the master template was pinned untouched.
+// moved under docs_template/01_cowork_basic/nonapp/ and the master template was pinned untouched.
 //
 // SUPERSEDED 2026-07-31 (Phase 3, see docs/agent/06_CHANGES): the user ruled the skills
 // architecture goes onto the master templates too. So this gate no longer pins "masters
@@ -15,7 +15,7 @@
 // always-read set), while each stays its own variant. The separation still pinned is the
 // one that matters: BOOTSTRAP must scaffold from cowork/nonapp, never from the master.
 //
-//   - every file in docs_template/cowork/nonapp/ must appear in the manifest (no silent gap)
+//   - every file in docs_template/01_cowork_basic/nonapp/ must appear in the manifest (no silent gap)
 //   - every declared line count must equal the real file's line count
 //   - the target path must mirror the source path (.claude/** verbatim, agent/plan under docs/)
 // Break any of those and the gate goes red instead of the user's session.
@@ -26,10 +26,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TEMPLATE = fileURLToPath(new URL("../../docs_template/cowork/nonapp/", import.meta.url));
-const MASTER = fileURLToPath(new URL("../../docs_template/nonapp/", import.meta.url));
-const MASTER_APP = fileURLToPath(new URL("../../docs_template/app/", import.meta.url));
-const BOOTSTRAP = fileURLToPath(new URL("../../docs_template/cowork/BOOTSTRAP.md", import.meta.url));
+const TEMPLATE = fileURLToPath(new URL("../../docs_template/01_cowork_basic/nonapp/", import.meta.url));
+const MASTER = fileURLToPath(new URL("../../docs_template/03_nonapp/", import.meta.url));
+const MASTER_APP = fileURLToPath(new URL("../../docs_template/05_app/", import.meta.url));
+const BOOTSTRAP = fileURLToPath(new URL("../../docs_template/01_cowork_basic/BOOTSTRAP.md", import.meta.url));
 const md = readFileSync(BOOTSTRAP, "utf8");
 
 /** Line count the way `wc -l` counts it: number of newline-terminated lines. */
@@ -64,7 +64,7 @@ test("BOOTSTRAP manifest covers every file of the Cowork standard (nothing ships
   assert.deepEqual(
     declared,
     templateFiles(),
-    "docs_template/cowork/BOOTSTRAP.md manifest and docs_template/cowork/nonapp/ disagree — " +
+    "docs_template/01_cowork_basic/BOOTSTRAP.md manifest and docs_template/01_cowork_basic/nonapp/ disagree — " +
       "a file was added or removed from the standard without updating the manifest, so Cowork would " +
       "scaffold an incomplete harness",
   );
@@ -106,14 +106,14 @@ test("manifest target paths mirror the source paths (harness lands where the sta
 test("BOOTSTRAP points at the COWORK standard, not the master template", () => {
   assert.match(
     md,
-    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/cowork\/nonapp/,
-    "the <RAW> base must resolve to docs_template/cowork/nonapp — the master nonapp template is a " +
+    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/01_cowork_basic\/nonapp/,
+    "the <RAW> base must resolve to docs_template/01_cowork_basic/nonapp — the master nonapp template is a " +
       "DIFFERENT standard (03_STRUCTURE/04_SKILLS based) and scaffolding it into Cowork mixes the two",
   );
   assert.doesNotMatch(
     md,
-    /docs_template\/nonapp/,
-    "no reference may point at docs_template/nonapp — that is the zemory-CLI master template, " +
+    /docs_template\/03_nonapp/,
+    "no reference may point at docs_template/03_nonapp — that is the zemory-CLI master template, " +
       "kept separate by user ruling (2026-07-29)",
   );
   assert.match(
@@ -128,7 +128,7 @@ test("all three sets carry the skills architecture (Phase 3 — no profile left 
   // 211-233 line file inside the always-read set. The point of the move is that a skill
   // is only paid for when it is used, so what has to be pinned is the SHAPE: skills live
   // as their own files, and 04_SKILLS is a registry thin enough to stay cheap.
-  for (const [label, root] of [["cowork", TEMPLATE], ["master nonapp", MASTER], ["master app", MASTER_APP]]) {
+  for (const [label, root] of [["01_cowork_basic", TEMPLATE], ["master nonapp", MASTER], ["master app", MASTER_APP]]) {
     const files = templateFiles(root, "");
     const skills = files.filter((f) => /^\.claude\/skills\/[a-z0-9-]+\/SKILL\.md$/.test(f));
     assert.ok(skills.length >= 7, `${label}: only ${skills.length} skill file(s) — playbooks must live in .claude/skills/`);
@@ -165,7 +165,7 @@ test("all three sets carry the skills architecture (Phase 3 — no profile left 
 });
 
 test("the human explainer exists and the two docs point at each other (neither gets orphaned)", () => {
-  const readme = readFileSync(fileURLToPath(new URL("../../docs_template/cowork/README.md", import.meta.url)), "utf8");
+  const readme = readFileSync(fileURLToPath(new URL("../../docs_template/01_cowork_basic/README.md", import.meta.url)), "utf8");
   assert.match(
     md,
     /\[`README\.md`\]\(README\.md\)/,
@@ -177,7 +177,7 @@ test("the human explainer exists and the two docs point at each other (neither g
     "README must name the machine-facing file, so a reader knows which one they are NOT supposed to read",
   );
   assert.ok(
-    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/cowork\/BOOTSTRAP\.md/.test(readme),
+    /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/01_cowork_basic\/BOOTSTRAP\.md/.test(readme),
     "README's start instruction must carry a working BOOTSTRAP URL — that one line is the whole entry point",
   );
 });

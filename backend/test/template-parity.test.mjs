@@ -1,5 +1,5 @@
 // The harness ships TWO complete, standalone-readable template trees —
-// docs_template/app/ (runnable code) and docs_template/nonapp/ (BI/data/docs/
+// docs_template/05_app/ (runnable code) and docs_template/03_nonapp/ (BI/data/docs/
 // design deliverables). Most files legitimately differ (02_RULES drops UI,
 // 03_STRUCTURE is a different standard, 04_SKILLS adds pull/fill/upload). But the
 // SHARED SHELLS must stay byte-identical so the common harness never drifts
@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-const PROFILES = ["app", "nonapp"];
+const PROFILES = ["05_app", "03_nonapp"];
 const STANDARD = [
   "AGENTS.md",
   "CLAUDE.md",
@@ -48,11 +48,11 @@ test("bo cowork mang DUNG ban guard da sinh (chep tay se troi, dem dong khong ba
   // duy nhat canh no la so dong trong MANIFEST cua BOOTSTRAP, tuc hai ban lech noi dung ma
   // trung so dong thi LOT. Gate nay so tung byte.
   const gen = readFileSync(new URL("../../docs/hooks/guard.cjs", import.meta.url), "utf8");
-  const shipped = readFileSync(new URL("../../docs_template/cowork/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
+  const shipped = readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
   assert.equal(
     shipped.replace(/\r\n/g, "\n"),
     gen.replace(/\r\n/g, "\n"),
-    "docs_template/cowork/nonapp/hooks/guard.cjs da troi khoi ban sinh — chay `zemory hook guard` roi chep lai",
+    "docs_template/01_cowork_basic/nonapp/hooks/guard.cjs da troi khoi ban sinh — chay `zemory hook guard` roi chep lai",
   );
 });
 
@@ -64,7 +64,7 @@ test("bo cowork mang DUNG ban guard da sinh (chep tay se troi, dem dong khong ba
 test("policy.json ship cowork: secret_names + secret_allow phai KHOP bo sinh", async () => {
   const { SECRET_DEFAULTS, SECRET_ALLOW_DEFAULTS } = await import("../../dist/docs/guard-gen.js");
   const shipped = JSON.parse(
-    readFileSync(new URL("../../docs_template/cowork/nonapp/hooks/policy.json", import.meta.url), "utf8"),
+    readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"),
   );
   for (const [key, gen] of [
     ["secret_names", SECRET_DEFAULTS],
@@ -90,9 +90,9 @@ test("both template trees carry the full standard set (agent 01–06 + AGENTS + 
 test("shared harness shells are byte-identical across app and non-app (no drift)", () => {
   for (const rel of SHARED) {
     assert.equal(
-      read("app", rel),
-      read("nonapp", rel),
-      `${rel} must be byte-identical between docs_template/app/ and docs_template/nonapp/`,
+      read("05_app", rel),
+      read("03_nonapp", rel),
+      `${rel} must be byte-identical between docs_template/05_app/ and docs_template/03_nonapp/`,
     );
   }
 });
@@ -114,7 +114,7 @@ test("AGENTS.md: the router half stays byte-identical, only the trigger table di
 test("AGENTS.md makes every agent ASK app-vs-non-app before applying the standard", () => {
   // User 2026-07-23: any agent opening a fresh repo must ask the user which
   // profile, then explain both — so it never guesses the wrong structure.
-  const agents = read("app", "AGENTS.md"); // shared → same in both
+  const agents = read("05_app", "AGENTS.md"); // shared → same in both
   assert.match(agents, /HỎI USER TRƯỚC[\s\S]*APP hay NON-APP/, "must instruct the agent to ask app/non-app");
   assert.match(agents, /zemory init --non-app/, "must show the non-app init path");
   assert.match(agents, /LÀM & BẢO TRÌ một app/, "must explain what APP means");
@@ -123,21 +123,21 @@ test("AGENTS.md makes every agent ASK app-vs-non-app before applying the standar
 
 test("non-app standard drops UI rules and adds the file-automation model", () => {
   // Non-app = 0 UI rules: reading/filling a .pbix is not app development.
-  const appRules = read("app", "agent/02_RULES.md");
-  const nonappRules = read("nonapp", "agent/02_RULES.md");
+  const appRules = read("05_app", "agent/02_RULES.md");
+  const nonappRules = read("03_nonapp", "agent/02_RULES.md");
   assert.match(appRules, /thiết kế UI\/UX phải TRÌNH DUYỆT/, "app rules keep the UI-design-approval rule");
   assert.doesNotMatch(nonappRules, /thiết kế UI\/UX phải TRÌNH DUYỆT/, "non-app rules must NOT carry the app UI rule");
   // The non-app structure standard documents pull/fill/upload + tasks/adhoc.
-  const nonappStruct = read("nonapp", "agent/03_STRUCTURE.md");
+  const nonappStruct = read("03_nonapp", "agent/03_STRUCTURE.md");
   assert.match(nonappStruct, /KÉO \/ ĐIỀN \/ UPLOAD/, "non-app structure must document pull/fill/upload");
   assert.match(nonappStruct, /adhoc ≠ task/, "non-app structure must state the adhoc-vs-task rule");
   // The non-app tree carries the automation playbooks — as skill FILES since Phase 3,
   // and named in the registry, because a playbook nobody registered never gets opened.
-  const nonappRegistry = read("nonapp", "agent/04_SKILLS.md");
-  const appRegistry = read("app", "agent/04_SKILLS.md");
+  const nonappRegistry = read("03_nonapp", "agent/04_SKILLS.md");
+  const appRegistry = read("05_app", "agent/04_SKILLS.md");
   for (const s of ["pull", "fill", "upload"]) {
     assert.doesNotThrow(
-      () => read("nonapp", `.claude/skills/${s}/SKILL.md`),
+      () => read("03_nonapp", `.claude/skills/${s}/SKILL.md`),
       `non-app must ship .claude/skills/${s}/SKILL.md`,
     );
     assert.ok(nonappRegistry.includes(`\`${s}/\``), `non-app registry must list the ${s} skill`);
@@ -146,7 +146,7 @@ test("non-app standard drops UI rules and adds the file-automation model", () =>
 });
 
 test("the app structure standard no longer inlines the non-app §7 (it moved out)", () => {
-  const appStruct = read("app", "agent/03_STRUCTURE.md");
+  const appStruct = read("05_app", "agent/03_STRUCTURE.md");
   assert.match(appStruct, /## 7\. Chuẩn NON-APP — đã TÁCH/, "app §7 is now a pointer stub");
   assert.doesNotMatch(appStruct, /## 7\. Chuẩn phụ NON-APP/, "the full §7 body must be gone from the app tree");
 });

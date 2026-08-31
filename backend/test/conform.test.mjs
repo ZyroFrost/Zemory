@@ -140,7 +140,7 @@ test("PARITY: NONAPP_FREEFORM_PARENTS phải còn được CHÍNH template non-a
   // giữ khớp bằng gate, không dựa ai nhớ. Ai gỡ dòng `<domain>/`/`<case>/` khỏi template
   // mà quên thu hẹp const (hoặc thêm parent vào const mà template không khai) ⇒ ĐỎ.
   const { NONAPP_FREEFORM_PARENTS } = await import("../../dist/docs/structure-tree.js");
-  const tpl = readFileSync(new URL("../../docs_template/nonapp/agent/03_STRUCTURE.md", import.meta.url), "utf8");
+  const tpl = readFileSync(new URL("../../docs_template/03_nonapp/agent/03_STRUCTURE.md", import.meta.url), "utf8");
   assert.deepEqual(NONAPP_FREEFORM_PARENTS, ["tasks", "pipelines", "data"], "đổi const thì phải sửa cả test này + template");
   for (const parent of NONAPP_FREEFORM_PARENTS) {
     assert.ok(tpl.includes(`${parent}/`), `template không còn khai \`${parent}/\``);
@@ -150,13 +150,13 @@ test("PARITY: NONAPP_FREEFORM_PARENTS phải còn được CHÍNH template non-a
 });
 
 test("BÁO OAN ⑤: docs_template/** là TEMPLATE (hàng ship đi), không soi bằng thước của repo chứa nó", (t) => {
-  // Lộ ra 2026-07-29 khi bộ Cowork vào docs_template/cowork/ mang theo script tự kiểm
+  // Lộ ra 2026-07-29 khi bộ Cowork vào docs_template/01_cowork_basic/ mang theo script tự kiểm
   // `.py` (check_install.py + check_structure.py — thiết kế có chủ đích): conform báo
-  // `docs_template/cowork` là "thư mục chứa code không khớp slot". Ruột template theo
+  // `docs_template/01_cowork_basic` là "thư mục chứa code không khớp slot". Ruột template theo
   // CHUẨN CỦA PROJECT ĐÍCH; soi nó bằng chuẩn của repo chứa là lấy nhầm thước.
   const root = goodRepo(t, (r) => {
-    write(r, "docs_template/cowork/check_install.py", "x = 1\n");
-    write(r, "docs_template/cowork/nonapp/.claude/skills/structure/scripts/check_structure.py", "x = 2\n");
+    write(r, "docs_template/01_cowork_basic/check_install.py", "x = 1\n");
+    write(r, "docs_template/01_cowork_basic/nonapp/.claude/skills/structure/scripts/check_structure.py", "x = 2\n");
   });
   const rep = conform(root);
   const off = find(rep, "off-standard-dir");
