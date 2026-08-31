@@ -66,7 +66,8 @@
   setInterval(function(){
     if(document.hidden)return;
     if(!document.querySelector('.screen.on[data-s="gmem"]'))return;
-    zGet('/memory-status').then(function(m){if(typeof renderMem==='function')renderMem(m);}).catch(function(){});
+    zGet('/memory-status').then(function(m){if(typeof renderMem==='function')renderMem(m);if(typeof gmPollOk==='function')gmPollOk();})
+      .catch(function(){if(typeof gmPollFailed==='function')gmPollFailed();}); // two silent polls in a row -> red stale-data light
   },60000);
   // data-goto="screen:sub" — nhảy màn + mở đúng sub-tab (thay cho việc đẻ tab nav mới)
   document.addEventListener('click',function(e){
@@ -138,7 +139,7 @@
     zPost('/add-project?root='+encodeURIComponent(p)).then(function(r){
       if(!r||r.ok===false){zset('addProjMsg','✗ '+((r&&r.error)||t('q.err')));return;}
       if(r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;
-      closeAddProjDlg();
+      closeAddProjDlg();zToast(t('toast.added').replace('{p}',zProjName(p)),'ok');
       zGet('/memory-status?fresh=1').then(renderMem);
     }).catch(function(){zset('addProjMsg','✗ '+t('q.err'));});
   }

@@ -122,6 +122,23 @@
       var sc=zid('mScope');if(sc&&d.scopeTree)sc.innerHTML=renderScope(d.scopeTree);
     }).catch(function(){});
   }
+  // ── ĐÈN SỨC KHOẺ SYNC (user chốt 2026-08-30: "nó gãy ở drive thì cũng phải báo sync vấn đề,
+  //    user chỉ nhìn dashboard") — backend gộp mọi tầng thành {level, code, mins, detail};
+  //    FE chỉ dịch code qua i18n. Level ok + code 'ok' ⇒ ẩn dòng (không chiếm chỗ khi lành).
+  function renderDrvHealth(h){
+    var el=zid('drvHealth');if(!el)return;
+    if(!h||h.code==='ok'){el.hidden=true;el.className='drv-health';return;}
+    var msg=t('drv.h.'+h.code)||h.code;
+    msg=msg.replace('{m}',h.mins!=null?zN(h.mins):'?').replace('{d}',h.detail||'').replace('{p}',h.code==='running'&&h.detail?(' · '+h.detail):'');
+    el.textContent=msg;el.hidden=false;
+    el.className='drv-health'+(h.level==='error'?' err':h.level==='warn'?' warn':'');
+  }
+  // Daemon CÂM cũng là một trạng thái phải hiện — không được để dashboard thành ảnh tĩnh
+  // (đo 2026-08-30: ổ G: đơ kéo daemon đông cứng 2 giờ, UI hiện số cũ như thể mọi thứ ổn).
+  // 2 lượt /memory-status hỏng LIÊN TIẾP mới báo (một lượt lạnh >30s là bình thường).
+  var memFails=0;
+  function gmPollFailed(){if(++memFails>=2)renderDrvHealth({level:'error',code:'noData'});}
+  function gmPollOk(){memFails=0;}
   var DONUT_C=2*Math.PI*16;
   function renderDriveDonut(d){
     var arc=zid('driveArc'),lbl=zid('driveDonutPct');if(!arc||!lbl)return;
@@ -133,6 +150,7 @@
     var txt=zid('driveSyncedTxt'),sub=zid('driveSyncedSub'),pend=(d&&d.pendingMessages)||0;
     if(txt)txt.textContent=pend?(t('drv.pendN').replace('{n}',zN(pend))):t('drv.upToDate');
     if(sub)sub.textContent=pend?t('drv.pendSub'):t('drv.upToDateSub');
+    renderDrvHealth(d&&d.health);
     // Mốc kiểm chứng: "đủ" chỉ đáng tin khi lần đẩy KHÔNG cũ hơn tin mới nhất. Nếu cũ hơn
     // thì có tin mới chưa nạp vào DB ⇒ nói thẳng, đừng để card báo an toàn giả.
     var nw=d&&d.newestAt,lp=d&&d.lastPushAt;

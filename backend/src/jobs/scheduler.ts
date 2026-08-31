@@ -29,7 +29,39 @@ import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hostname } from "node:os";
-import { getAutosync, getDriveDir, getScheduler, getScopeExclude, getWebPull, setWebPull } from "../config/settings.js";
+import { type AutosyncSchedule, getAutosync, getAutosyncLastAt, getAutosyncRunAt, getAutosyncSchedule, getDriveDir, getScheduler, getScopeExclude, getWebPull, setAutosyncLastAt, setAutosyncLastResult, setAutosyncRunAt, setWebPull } from "../config/settings.js";
+
+/**
+ * LỊCH tự sync — hàm THUẦN để cổng đo (user chốt 2026-08-29: chọn "sau mỗi N phút/giờ" hoặc "theo khung giờ trong ngày").
+ *  · `interval`: tới hạn khi đã qua `everyMin` phút kể từ lượt tự sync trước (chưa có lượt nào ⇒ tới hạn ngay).
+ *  · `times`: tới hạn khi giờ máy HH:MM trùng một mốc và mốc đó CHƯA bắn hôm nay (`fired` giữ khoá `YYYY-MM-DD HH:MM`).
+ * Trả khoá mốc đã bắn (để người gọi ghi vào `fired`) hoặc `null` khi chưa tới hạn. Nhịp gọi 60 s ⇒ không lỡ mốc phút.
+ */
+export function autosyncDue(s: AutosyncSchedule, lastAt: number | null, now: number, fired: Set<string>): string | null {
+  if (s.mode === "interval") return lastAt === null || now - lastAt >= s.everyMin * 60_000 ? "interval" : null;
+  const d = new Date(now);
+  const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (!s.times.includes(hhmm)) return null;
+  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hhmm}`;
+  return fired.has(key) ? null : key;
+}
+const firedTimes = new Set<string>();
+/** Export để cổng gõ đúng cửa mà lỗ ② từng nằm — mốc bị tiêu Ở ĐÂY hay không. */
+export function syncGate(): void {
+  // Watchdog chạy TRƯỚC cả lịch: một lượt kẹt (Drive treo — 2 ca thật 30/08) chặn mọi lượt sau
+  // vô hạn nếu không ai giết nó. Kết cục "watchdog killed" đi qua đúng đường onDone ⇒ vào sổ
+  // bền ⇒ đèn đỏ trên card; lượt kế tự thử lại — mọi bước ghi idempotent nên giết là an toàn.
+  if (watchdogSyncJob()) log("🔴 auto-sync watchdog: lượt sync kẹt quá trần — đã dừng con để nhịp kế tự chạy lại (nghi Drive treo)");
+  // Mốc lượt trước đọc từ CONFIG (bền qua restart) — không phải biến tiến trình. Đo 2026-08-29: 28 lần restart trong
+  // ngày, mỗi lần đồng hồ về 0 rồi nhường embed 30′ ⇒ 8 giờ không lượt tự sync nào dù công tắc bật và lịch "mỗi 30′".
+  const key = autosyncDue(getAutosyncSchedule(), getAutosyncLastAt(), Date.now(), firedTimes);
+  if (!key) return;
+  if (key !== "interval") firedTimes.add(key);
+  if (firedTimes.size > 64) firedTimes.clear(); // sổ nhỏ, chỉ cần nhớ hôm nay
+  // Mốc KHÔNG ghi ở đây nữa (vá 2026-08-30) — `syncTick` ghi khi lượt thật sự khởi động. Ghi ở
+  // đây thì một lượt bị chặn cũng tiêu mất suất 30′, mà hẹn-lại-3-phút không sống qua restart.
+  syncTick();
+}
 import { PLATFORMS, platformsInUse, pullableAccountsOf, scanWeb } from "../memory/scanweb.js";
 import { isExcluded } from "../memory/scope.js";
 import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
@@ -39,7 +71,7 @@ import { sweepScratchpads } from "./scratchpad.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, registerJobYielder, releaseDaemonJob } from "./writegate.js";
-import { startSyncJob, syncJobRunning } from "./syncjob.js";
+import { startSyncJob, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
 
 // 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
 // thật). Vòng này TEO thành LƯỚI BÙ cho ba thứ per-message không làm được:
@@ -409,6 +441,34 @@ export function webLaneKey(platform: string, account: string): string {
   return account === "main" ? platform : `${platform}#${account}`;
 }
 
+/**
+ * Khe `main` CHẾT VĨNH VIỄN — dừng tự thử, KHÔNG phải "lùi lâu hơn" (vá 2026-08-31).
+ *
+ * Vì sao khe `main` cần luật riêng: `accountsOf()` (webslots.ts) CỐ TÌNH luôn liệt kê `main`
+ * dù thư mục profile của nó có tồn tại hay không — mọi khe KHÁC chỉ được kéo sau khi từng
+ * đăng nhập thành công (`pullableAccountsOf`), riêng `main` thì không, vì nó là khe MẶC ĐỊNH
+ * đầu tiên trước khi user biết tới khe số. Hệ quả đo được: khe `chatgpt` (main) hỏng từ
+ * 2026-08-29, **0/0 lần kéo thành công** trong suốt log, và cứ mỗi ~6 giờ lại tự mở một cửa sổ
+ * Brave (ẩn ngoài màn hình) rồi thất bại — mãi mãi, vì không dòng luật nào cho nó DỪNG.
+ *
+ * Điều kiện dừng, cả hai PHẢI đúng — hẹp có chủ đích, để không đụng khe `main` đang sống
+ * (ví dụ `claude` main vẫn kéo được bình thường, KHÔNG được vá này chạm tới):
+ *  ① kết cục GẦN NHẤT của `main` là `need-login` — tín hiệu DỨT KHOÁT "cần NGƯỜI đăng nhập lại",
+ *    khác hẳn lỗi thoáng qua (`no-tab`/CDP rớt) mà lượt sau có thể tự qua;
+ *  ② một khe SỐ của CÙNG nền đang có kết cục `ok:true` — chứng minh nền đó ĐÃ được phủ, `main`
+ *    là bản trùng chết, không phải "chưa ai đăng nhập bao giờ".
+ *
+ * KHÔNG khoá vĩnh viễn theo nghĩa tuyệt đối: bấm Link/+ Thêm nguồn trên UI vẫn gọi thẳng
+ * `scanWeb` (đường `probeOnly`/`/connect`), không đi qua `webPullTargets` — user tự tay đăng
+ * nhập lại lúc nào cũng được, cái bị tắt chỉ là VÒNG TỰ THỬ NGẦM.
+ */
+export function deadMainLane(platform: string, pulled: Record<string, { ok: boolean; status: string }>): boolean {
+  const own = pulled[platform];
+  if (!own || own.status !== "need-login") return false;
+  const prefix = `${platform}#`;
+  return Object.entries(pulled).some(([lane, r]) => lane.startsWith(prefix) && r.ok === true);
+}
+
 /** Lane này tới lượt chưa? Hỏng gần đây ⇒ lùi; vừa chạy xong ⇒ chờ. */
 export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date.now()): boolean {
   if (!prev) return true; // chưa chạy lần nào
@@ -425,10 +485,12 @@ export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date
  * chứ không soi hành vi, tức đúng loại "cổng trang trí" mà `02_RULES` bắt phải chứng minh
  * đỏ-được. Hàm thuần thì một đột biến vào chính nó làm cổng đỏ thật.
  *
- * Hai luật, mỗi luật trị một kiểu sai:
+ * Ba luật, mỗi luật trị một kiểu sai:
  *  · **ô KHÔNG tick ⇒ loại NGAY, trước cả khi hỏi tới lượt chưa** — `scanWeb` cũng tự loại,
  *    nhưng tới đó thì đã tốn một lần mở trình duyệt cho lane người ta đã tắt;
- *  · **hỏng thì lùi lâu hơn** — kéo web cần NGƯỜI đăng nhập, thử lại dày không bao giờ tự khỏi.
+ *  · **hỏng thì lùi lâu hơn** — kéo web cần NGƯỜI đăng nhập, thử lại dày không bao giờ tự khỏi;
+ *  · **`main` chết hẳn khi khe số đã phủ (`deadMainLane`) ⇒ loại KHỎI vòng tự thử ngầm** — lùi
+ *    6 giờ vẫn là lùi, không phải dừng; khe này sẽ tự thử tới vô tận nếu không có luật riêng.
  */
 export function webPullTargets(
   platforms: string[],
@@ -436,7 +498,7 @@ export function webPullTargets(
   sourceOf: (p: string) => string | undefined,
   host: string,
   excludes: Parameters<typeof isExcluded>[1],
-  pulled: Record<string, { at: string; ok: boolean }>,
+  pulled: Record<string, { at: string; ok: boolean; status: string }>,
   now = Date.now(),
 ): { platform: string; account: string; lane: string }[] {
   const out: { platform: string; account: string; lane: string }[] = [];
@@ -444,6 +506,7 @@ export function webPullTargets(
     const source = sourceOf(platform);
     if (source && isExcluded({ origin: "web", host, source }, excludes)) continue;
     for (const account of accountsFor(platform)) {
+      if (account === "main" && deadMainLane(platform, pulled)) continue;
       const lane = webLaneKey(platform, account);
       if (webDue(pulled[lane], now)) out.push({ platform, account, lane });
     }
@@ -549,10 +612,56 @@ export function describePush(result: unknown): string {
   return ` · ${kind} ${messages} tin / ${bytes} byte${r.embedded ? ` · nhúng thêm ${r.embedded}` : ""}`;
 }
 
-function syncTick(): void {
-  if (!getAutosync()) return;
-  if (!getDriveDir()) return; // no Drive folder linked → nothing to sync
-  if (child || syncJobRunning() || cliHoldsWrite()) {
+/**
+ * AI đang giữ kho — hàm THUẦN để cổng đo được, và để câu báo gọi ĐÚNG TÊN kẻ chặn.
+ *
+ * Thứ tự xét giữ nguyên ngữ nghĩa cũ (`child || syncJobRunning() || cliHoldsWrite()`); phần
+ * thêm chỉ là *nói ra* kẻ nào. Một câu "đang chờ" không kèm tên thì người đọc vẫn phải đi mò
+ * log của ba thứ khác nhau — tức vẫn là im lặng, chỉ dài hơn.
+ */
+export function syncBlockedBy(s: { maintainChain: boolean; syncRunning: boolean; cliHolder: string | null }): string | null {
+  if (s.maintainChain) return "chuỗi bảo trì (scan/embed/digest)";
+  if (s.syncRunning) return "một lượt sync đang chạy";
+  // `"?"` = biết CÓ kẻ giữ nhưng không biết tên: cờ hold trong bộ nhớ daemon không mang nhãn, chỉ
+  // khoá FILE mới có. Nói "không rõ tên" thật thà hơn là bịa một cái tên nghe cho gọn.
+  if (s.cliHolder) return s.cliHolder === "?" ? "một lệnh CLI đang ghi kho (không rõ tên)" : `lệnh CLI ${s.cliHolder}`;
+  return null;
+}
+
+/** Đang trong một đợt chờ (đã in câu "đang chờ") — để không in lại câu đó mỗi 3 phút. */
+let waitingSince = 0;
+
+/**
+ * 🔴 NHƯỜNG PHẢI NÓI RA, VÀ NHƯỜNG KHÔNG ĐƯỢC TIÊU MẤT SUẤT (vá 2026-08-30).
+ *
+ * Hai lỗ đo được cùng lượt, cùng một họ *"lùi trong im lặng"*:
+ *  ① nhánh nhường `return` CÂM — không một dòng nào. Bằng chứng: `autosyncLastAt` chỉ tới
+ *    06:00:50Z mà `daemon.log` KHÔNG có dòng `starting` nào ở mốc đó ⇒ cổng đã bắn, đã nhường,
+ *    và người dùng đọc log thì thấy y như *"auto-sync không hề chạy"* (nguyên văn user:
+ *    *"giờ tui chỉ thấy sync tay thôi"*).
+ *  ② `syncGate` ghi mốc TRƯỚC khi biết lượt có chạy được không ⇒ nhường một cái là **ăn mất
+ *    một suất 30′**. Cái cứu là `syncRetry` 3 phút, nhưng nó là biến TRONG TIẾN TRÌNH: daemon
+ *    khởi động lại là mất hẹn, trong khi mốc thì đã bền hoá. Nay mốc chỉ tiêu khi lượt THẬT SỰ
+ *    khởi động (hoặc khi không còn gì để làm), nên nhường bao lâu cũng không mất lượt.
+ *
+ * Trả verdict để `syncGate` và cổng test đọc được HÀNH VI, không phải đọc chữ trong log.
+ */
+type SyncTickVerdict = "started" | "blocked" | "off";
+
+function syncTick(): SyncTickVerdict {
+  // "off" cũng TIÊU suất, khác hẳn "blocked": công tắc tắt / chưa nối Drive là sự thật BỀN —
+  // hỏi lại sau 60 s chỉ tốn một lượt đọc config mà không đổi được gì. Không tiêu ở đây thì
+  // cổng 60 s quay vòng vô hạn. Kẻ chặn thì ngược lại: nó SẼ xong, nên suất phải giữ nguyên.
+  if (!getAutosync() || !getDriveDir()) {
+    setAutosyncLastAt(Date.now());
+    return "off"; // no Drive folder linked → nothing to sync
+  }
+  const holder = syncBlockedBy({
+    maintainChain: !!child,
+    syncRunning: syncJobRunning(),
+    cliHolder: cliWriteHolder()?.label ?? (cliHoldsWrite() ? "?" : null),
+  });
+  if (holder) {
     // Nhường kẻ đang ghi, nhưng HẸN QUAY LẠI sớm thay vì đợi hết chu kỳ.
     if (!syncRetry) {
       syncRetry = setTimeout(() => {
@@ -561,8 +670,22 @@ function syncTick(): void {
       }, SYNC_RETRY_MS);
       syncRetry.unref?.();
     }
-    return;
+    // In MỘT lần cho mỗi đợt chờ, không phải mỗi 3 phút — tiếng ồn làm người ta bỏ qua log,
+    // mà bỏ qua log đúng là cách ca 26/08 trôi 20 giờ.
+    if (!waitingSince) {
+      waitingSince = Date.now();
+      log(`auto-sync — đang chờ ${holder}; thử lại mỗi ${Math.round(SYNC_RETRY_MS / 60_000)}′ (không mất lượt)`);
+    }
+    return "blocked";
   }
+  if (waitingSince) {
+    log(`auto-sync — kẻ chặn đã xong sau ${Math.round((Date.now() - waitingSince) / 60_000)}′, vào lượt`);
+    waitingSince = 0;
+  }
+  // Mốc tiêu Ở ĐÂY, không ở `syncGate` — xem ② trên.
+  setAutosyncLastAt(Date.now());
+  // Sổ "đang chạy": còn sót lúc daemon lên = lượt này đã chết mà không kịp báo (xem `startScheduler`).
+  setAutosyncRunAt(Date.now());
   log("auto-sync — starting background sync job");
   // lowPriority: lượt này do MÁY tự chạy. Nút "Đồng bộ ngay" gọi cùng hàm nhưng KHÔNG truyền cờ
   // — lúc đó người dùng đang ngồi chờ.
@@ -573,6 +696,11 @@ function syncTick(): void {
   // thành/bại thì nó không phải lớp quan sát, nó là tiếng ồn.
   startSyncJob(
     (s) => {
+      setAutosyncRunAt(null); // có kết cục ⇒ đóng sổ "đang chạy"
+      // Kết cục vào SỔ BỀN cho card Drive Sync đọc — log là cho người đi soi, sổ là cho
+      // dashboard: user chỉ nhìn dashboard, gãy tầng nào cũng phải hiện ở ĐÓ (user 2026-08-30).
+      if (s.ok) setAutosyncLastResult({ ok: true, detail: describePush(s.result).replace(/^ · /, "") });
+      else setAutosyncLastResult({ ok: false, kind: "fail", detail: s.error ?? "unknown" });
       if (s.ok) log(`auto-sync: OK${describePush(s.result)}`);
       else log(`🔴 auto-sync THẤT BẠI: ${s.error ?? "không rõ lý do"}`);
       // In ở CẢ HAI kết cục. Lượt THÀNH CÔNG cũng có thể mang cảnh báo đáng đọc — ví dụ
@@ -582,6 +710,7 @@ function syncTick(): void {
     },
     { lowPriority: true },
   );
+  return "started";
 }
 
 /** Start the background loops. Idempotent — a second call is a no-op. */
@@ -605,9 +734,10 @@ export function startScheduler(): void {
   // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
   // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
   // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.
-  syncTimer = setInterval(syncTick, SYNC_EVERY_MS);
-  const stagger = setTimeout(syncTick, SYNC_EVERY_MS / 2);
-  stagger.unref?.();
+  // Đồng hồ sync nay là CỔNG 60 s hỏi lịch (`autosyncDue`): mặc định `interval 30′` = đúng nhịp cũ, tính từ mốc BỀN
+  // trong config — restart không làm đồng hồ về 0. Tới hạn mà máy đang bận (scan/embed) thì `syncTick` tự hẹn lại 3′.
+  syncTimer = setInterval(syncGate, 60_000);
+  void SYNC_EVERY_MS;
   const backupStagger = setTimeout(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS / 4);
   backupStagger.unref?.();
   // The HTTP server keeps the process alive; don't let these timers do it.
@@ -621,6 +751,29 @@ export function startScheduler(): void {
   // vừa khởi động lại sau nhiều ngày thì đó đúng là lúc cần hỏi "bản gần nhất cũ chưa?".
   setTimeout(() => void backupTick("mồi sau khởi động"), 60_000).unref?.();
   log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"}, backup luôn bật)`);
+  // 🔴 Lượt trước chết mà không kịp báo thì PHẢI nói ra ở đây — đây là chỗ DUY NHẤT còn nói được.
+  const note = interruptedRunNote(getAutosyncRunAt(), Date.now());
+  if (note) {
+    log(note);
+    // Lượt bị cắt cũng là một KẾT CỤC — vào sổ bền cho dashboard, không chỉ vào log.
+    setAutosyncLastResult({ ok: false, kind: "interrupted" });
+    setAutosyncRunAt(null); // báo xong thì đóng sổ, không để nó kêu lại mỗi lần khởi động
+  }
+}
+
+/**
+ * Câu báo cho một lượt tự sync KHÔNG có kết cục — hàm THUẦN để cổng đo.
+ *
+ * Kết cục của lượt sync nằm trong callback của `startSyncJob`, tức sống trong tiến trình daemon.
+ * Daemon bị giết giữa chừng ⇒ callback không bao giờ chạy ⇒ `daemon.log` chỉ còn một dòng
+ * "starting" rồi im. Đo 2026-08-30 trên log thật: **7/11 lượt câm đúng kiểu đó**, và mỗi lượt câm
+ * đọc y hệt một lượt chưa từng chạy. Sổ bền `autosyncRunAt` là thứ duy nhất bắc được cầu qua
+ * ranh giới tiến trình để lần khởi động sau nói được câu này.
+ */
+export function interruptedRunNote(runAt: number | null, now: number): string | null {
+  if (runAt === null) return null;
+  const mins = Math.max(0, Math.round((now - runAt) / 60_000));
+  return `🔴 auto-sync: lượt bắt đầu ${new Date(runAt).toISOString()} (${mins}′ trước) KHÔNG để lại kết cục — gần như chắc chắn bị cắt bởi lần khởi động lại này. Lượt kế sẽ đẩy bù phần còn thiếu.`;
 }
 
 /** Stop the loops and any running child (tests / shutdown). */

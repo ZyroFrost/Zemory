@@ -90,8 +90,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .btn.danger:hover{border-color:var(--danger);filter:brightness(1.08)}
 .zdi{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none}
 .zdi:focus{border-color:var(--primary)}
-.ztoast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface-3);border:1px solid var(--border-strong);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12.5px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s;z-index:200;max-width:80vw}
-.ztoast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .btn.sm{padding:6px 10px;font-size:12px}
 .search{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;min-width:240px;color:var(--text-dim)}
 .search input{background:none;border:0;color:var(--text);outline:none;flex:1;font-size:13px}
@@ -326,6 +324,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .drv-progress-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
 .drv-progress-txt b{font-size:13px;font-weight:600;line-height:1.35}
 .drv-progress-txt small{color:var(--text-faint);font-size:11px}
+/* Đèn sức khoẻ sync — gộp mọi tầng (job hỏng · bị cắt · kẹt · ứ lâu · daemon câm). Màu qua token. */
+.drv-health.warn{color:var(--warn)}
+.drv-health.err{color:var(--danger);font-weight:600}
 .section-t{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin:6px 0 2px}
 .muted{color:var(--text-faint)}
 /* Resize seam (§5): kéo chỉnh cột · dblclick reset · lưu localStorage. */
@@ -369,6 +370,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .scanmsg.none{color:var(--text-dim)}
 @keyframes zspin{to{transform:rotate(360deg)}}
 .scanmsg.hit{color:var(--primary);font-weight:600;background:var(--wash);border:1px solid var(--primary-dim);border-radius:7px;padding:5px 9px}
+.scanmsg.err{color:var(--danger);font-weight:600}
 /* Mốc kiểm chứng của Drive: nhãn trái, số phải; đỏ lên khi lần đẩy cũ hơn tin mới nhất. */
 .drv-facts{display:flex;flex-direction:column;gap:3px;margin:8px 0 10px;font-size:11.5px}
 .drv-facts>div{display:flex;justify-content:space-between;gap:10px}
@@ -438,3 +440,23 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* Thẻ dự án cũ chuẩn (cùng nguồn với chấm cam ở rail): nhãn cảnh báo + viền nhạt để nhìn ra ngay khi bấm chấm sang. */
 .ptype.is-old{color:var(--warn);border-color:var(--warn);margin-right:6px}
 .proj-card.is-old{border-color:var(--warn)}
+
+/* Chip nguồn trên hàng "chưa liên kết": biết root này do agent nào/nền web nào góp phiên trước khi bấm Add. */
+.srcchip{font-size:9.5px;letter-spacing:.03em;padding:1px 6px;border-radius:5px;border:1px solid var(--primary-dim);color:var(--primary);flex:0 0 auto} /* user chốt 2026-08-29: mọi chip nguồn CÙNG kiểu vàng */
+/* Chip nguồn: MỘT kiểu cho mọi nguồn — màu chỉ dành cho trạng thái (user 2026-08-29); web đã lộ qua tên "-web". */
+
+/* Toast xếp chồng góc phải (kiểu Streamlit): ~5 s, có nút tắt, rê chuột vào thì đứng lại. */
+.ztoasts{position:fixed;top:64px;right:18px;z-index:120;display:flex;flex-direction:column;gap:8px;pointer-events:none;max-width:min(420px,calc(100vw - 36px))}
+.ztoast{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;background:var(--surface-3);border:1px solid var(--border-strong);border-left:3px solid var(--primary);color:var(--text);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.28);opacity:0;transform:translateX(16px);transition:opacity .18s,transform .18s}
+.ztoast.on{opacity:1;transform:translateX(0)}
+.ztoast.out{opacity:0;transform:translateX(16px)}
+.ztoast.ok{border-left-color:var(--success)}.ztoast.warn{border-left-color:var(--warn)}.ztoast.err{border-left-color:var(--danger)}
+.ztoast .zt-msg{flex:1;min-width:0;word-break:break-word}
+.ztoast .zt-x{background:none;border:0;color:var(--text-faint);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
+.ztoast .zt-x:hover{color:var(--text)}
+
+/* Cụm nút trên hàng "chưa liên kết": đều nhau, cách đều, căn phải (user 2026-08-29). Nhãn "project trên web" chiếm đúng
+   một ô nút để cột nút thẳng hàng giữa các dòng. */
+.disc-row .sxa{display:flex;gap:6px;align-items:center;flex:0 0 auto;margin-left:auto}
+.disc-row .sxa .btn{min-width:88px;justify-content:center;text-align:center}
+.disc-row .sxa .muted{min-width:88px;text-align:center}

@@ -116,6 +116,77 @@ export function lastCompactAt(transcriptPath: string): number {
   }
 }
 
+/**
+ * TRẦN CỬA SỔ THẬT — đọc từ chính lệnh `/context` của host, KHÔNG đoán (user chốt 2026-08-30:
+ * *"nó có /context để hiện số mà, ko lấy chính xác số của lệnh người ta đã cung cấp được à?"*).
+ *
+ * Vì sao `windowFor()` (đoán theo tên model) SAI CÓ HỆ THỐNG: transcript ghi `message.model` là
+ * CHUỖI TRẦN (`"claude-opus-5"`), không hề mang dấu `[1m]` dù phiên đang chạy ở chế độ 1M hay
+ * 200k — đo trực tiếp trên phiên đang chạy lệnh vá này: model field = `"claude-sonnet-5"`, không
+ * một ký tự nào nói cửa sổ là bao nhiêu. `windowFor()` phải ĐOÁN qua bộ nhớ học theo TÊN MODEL
+ * (`observed-window.json`) — và vì hai chế độ CHIA SẺ CÙNG MỘT TÊN, học được 1M một lần (từ một
+ * phiên `[1m]`) là NHIỄM VĨNH VIỄN sang mọi phiên sau cùng tên, kể cả phiên thật đang chạy 200k
+ * (`realtime-capture.test.mjs` dòng *"windowFor HỌC..."* tự khoá đúng hành vi này làm ĐÚNG) —
+ * khớp triệu chứng user báo: *"đa phần đều ko báo"* (200k thật bị tưởng nhầm 1M, không bao giờ
+ * chạm ngưỡng) VÀ *"báo sớm sai số"* (model mới toanh rơi về mặc định 200k trong khi thật ra 1M).
+ *
+ * Khi người dùng từng gõ `/context` trong CHÍNH phiên này, host tự in ra transcript một khối
+ * `local_command` mang đúng câu `**Tokens:** 645k / 1m (64%)` — đây là SỰ THẬT do host tính,
+ * không phải suy diễn. Hàm này chỉ lấy con số CỬA SỔ (mẫu số) từ khối gần nhất; tử số (token
+ * hiện tại) vẫn lấy từ bản ghi `usage` MỚI NHẤT như cũ — vì cửa sổ ổn định suốt phiên còn
+ * token thì đổi mỗi lượt. Không có `/context` nào trong phiên ⇒ null, `readContextUsage` tự
+ * rơi về `windowFor()` như trước — đây là lớp THÊM, không thay, đúng luật fail-open (điều 9).
+ */
+export function parseContextWindowTokens(text: string): number | null {
+  // "645k / 1m" · "190k / 200k" · "12,345 / 200,000" (đường lùi nếu host đổi định dạng bỏ viết tắt).
+  const m = /\*\*Tokens:\*\*\s*[\d.,]+[km]?\s*\/\s*([\d.,]+)\s*([km]?)/i.exec(text);
+  if (!m) return null;
+  const num = Number(m[1].replace(/,/g, ""));
+  if (!Number.isFinite(num) || num <= 0) return null;
+  const mult = m[2].toLowerCase() === "m" ? 1_000_000 : m[2].toLowerCase() === "k" ? 1_000 : 1;
+  return Math.round(num * mult);
+}
+
+/**
+ * Cửa sổ THẬT gần nhất mà chính phiên này đã tự in ra qua `/context` — đọc đuôi transcript, tìm
+ * khối `local_command` chứa `**Tokens:**` GẦN CUỐI NHẤT (duyệt ngược, dừng ở khối đầu tiên khớp).
+ * Cùng kiểu đọc-đuôi-giới-hạn với `readContextUsage`/`lastCompactAt` (transcript có thể hàng
+ * chục MB) — 2 MB đủ phủ một phiên dài mà `/context` được gõ cách đây hàng trăm lượt.
+ */
+export function lastContextCommandWindow(transcriptPath: string): number | null {
+  let fd: number;
+  try {
+    fd = openSync(transcriptPath, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const size = fstatSync(fd).size;
+    const span = Math.min(size, 2 * 1024 * 1024);
+    const buf = Buffer.alloc(span);
+    readSync(fd, buf, 0, span, size - span);
+    const lines = buf.toString("utf8").split("\n");
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (!line.startsWith("{") || !line.includes("local_command") || !line.includes("Tokens:")) continue;
+      let rec: { type?: string; subtype?: string; content?: string } | undefined;
+      try {
+        rec = JSON.parse(line);
+      } catch {
+        continue; // dòng cụt ở đầu lát cắt — bỏ qua, không đoán
+      }
+      if (rec?.type !== "system" || rec?.subtype !== "local_command" || typeof rec.content !== "string") continue;
+      const w = parseContextWindowTokens(rec.content);
+      if (w) return w;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
 export interface ContextUsage {
   /** Token đang chiếm cửa sổ = cache_read + cache_creation + input (không tính output). */
   tokens: number;
@@ -207,7 +278,10 @@ export function readContextUsage(transcriptPath: string, memory: WindowMemory = 
         (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
       if (!tokens) continue;
       const model: string | undefined = rec?.message?.model ?? rec?.model;
-      const window = windowFor(model, tokens, memory);
+      // ƯU TIÊN cửa sổ THẬT (`/context` của chính phiên này) trước khi rơi về đoán theo tên —
+      // xem chú thích ở `lastContextCommandWindow`. Đọc thêm một lần đuôi transcript (≤2 MB,
+      // cùng cấp phí với `lastCompactAt`), không phải lời gọi model, không tính lại token.
+      const window = lastContextCommandWindow(transcriptPath) ?? windowFor(model, tokens, memory);
       return { tokens, model, window, percent: window ? (100 * tokens) / window : null };
     }
     return null;

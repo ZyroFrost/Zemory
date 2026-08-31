@@ -380,6 +380,31 @@ hỏng **hoặc** khi có dấu `[sync]` — vế sau bắt được lúc soi di
 đỏ một-đối-một. Mối nối `ZEMORY_SYNC_RUNNER` cho phép cổng phóng một runner GIẢ để soi HÀNH VI
 (lượt sync thật cần kênh + chìa + hàng chục phút, không đưa vào gate được).
 
+### 8e. KHO CHIA KHÚC — dãy segment tuần tự thay một file độc khối (user chốt 2026-08-30)
+
+> Sửa đổi HP điều 16 cùng ngày. Gốc bệnh ĐO ĐƯỢC: Drive không upload delta ⇒ nối 0,3 MB vào
+> file 2.066 MB là DriveFS re-upload **cả 2 GB**, 10–20 lượt/ngày ≈ 20–40 GB qua tầng ổ ảo
+> (+ AV quét lại mỗi phiên bản) ⇒ DriveFS treo cứng tầng OS **2 lần trong 1 giờ** (30/08),
+> kéo daemon chết theo. Chia khúc đưa mỗi lượt append về đúng kích thước khúc ĐANG MỞ (≤256 MB,
+> thường vài chục MB) ⇒ tải upload giảm ~40×.
+
+- **Bố cục:** khúc 1 giữ tên cũ `global_memory.enc` (tương thích ngược); khúc kế
+  `global_memory.002.enc` · `.003.enc`… Khúc cuối là khúc ĐANG MỞ; đầy `SEGMENT_MAX` (256 MB,
+  override `ZEMORY_SEGMENT_MAX` cho cổng test) ⇒ **niêm phong**, lượt ghi sau mở khúc kế.
+  Khúc đã niêm phong là **bất biến** — Drive không bao giờ phải upload lại nó.
+- **Chiều đọc KHÔNG đổi:** vòng merge vốn quét mọi `.enc` trong thư mục và dedup theo
+  `tên-file#khối` + chữ ký khối ⇒ nhiều khúc = nhiều container, code cũ đọc được nguyên trạng.
+- **Gộp tự động BÃI BỎ** (ngưỡng 48 khối cũ): gộp = viết lại cả kho = chính tải gây đơ. Máy mới
+  không thiệt — mọi khối vẫn phải giải mã đúng một lần bất kể nằm ở file nào, và khối đã biết
+  bị bỏ qua bằng chữ ký tại chỗ (§8c ①). `--compact` TAY giữ nguyên: gộp mọi khúc về một
+  khúc 1 tươi + `global_memory.bak.enc` (một thế hệ), xoá khúc ≥2.
+- **Tương thích ngược:** máy chạy bản CŨ chỉ thấy khúc 1 — vẫn đọc/ghi được phần đó, nhưng
+  MÙ với khúc ≥2 ⇒ máy kia phải `selfupdate` trước khi kho mọc khúc 2 (chip cập nhật đã có).
+  Ghi của máy cũ nối vào khúc 1 đã niêm phong: vô hại — chiều đọc quét mọi khối ở mọi file.
+- **Không đổi:** khoá + nhịp tim (một khoá cho cả thư mục) · khuôn khối `ZCHUNK` · watermark ·
+  `vec_shipped` · mọi phép kiểm trước/sau khi ghi (§8c ④⑤) — chỉ đổi ĐÍCH ghi từ file cố định
+  sang khúc đang mở.
+
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
   - ~~**Còn lại:** `syncDrive` vẫn đẩy lean baseline (1 file/máy, ghi đè)…~~ **ĐÓNG 2026-08-12 —

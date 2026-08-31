@@ -3,7 +3,15 @@
 > `[ ]` chưa làm · `[~]` đang làm · xong → ghi sang `06_CHANGES.md` (sửa file trực tiếp) và xoá khỏi đây.
 > Lịch sử việc đã xong: `archive/05_TODO.md` (ngoài bộ đọc mỗi phiên, tra bằng `zemory plan search`).
 
-## 🔴 BÀN GIAO 2026-08-29 — ĐỌC TRƯỚC
+*(Mục "KIỂM LẠI AUTO-SYNC" (giao 2026-08-30) đã ĐÓNG 2026-08-31 — xem `06_CHANGES [2026-08-31]`. Ba
+nguồn khớp: mã (gate 932/932) · Global Memory (đã ghi nhận) · chạy thật (watermark = MAX(id), lượt
+02:05→02:21 tự bắn `OK · delta 576 tin`, không ai bấm tay). Đo được XA HƠN yêu cầu gốc: gốc bệnh
+không phải lỗi logic auto-sync mà là **Drive File Stream đơ tầng OS** khi kho còn một file 2 GB —
+đã vá bằng bốn lớp (đèn sức khoẻ gộp mọi tầng · watchdog lượt kẹt · probe Drive tách tiến trình con
+· kho chia KHÚC, HP điều 16 sửa đổi). Kèm đóng luôn "khe `chatgpt` main vỏ rỗng" (note 29/08 dưới
+đây, "dọn khi tiện") — `deadMainLane` đã tắt vòng tự thử ngầm của nó.)*
+
+## BÀN GIAO 2026-08-29 (đã xử phần lớn trong ngày 29–30)
 
 **Trạng thái lúc chốt (ĐO):** zemory **2.10.0** đã push (`0e0f322`), cây sạch. Gate đầy đủ 890/890 · conform ✓ · phục hồi
 backup ok (đo trước hai đợt UI cuối; hai đợt đó chạy cổng vùng đụng 49–62/… xanh, chưa chạy gate đầy đủ lại — **phiên sau:

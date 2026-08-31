@@ -8,7 +8,20 @@
   // OK; return true to KEEP the dialog open (validation error / async in progress),
   // otherwise it closes. Async flows show progress via zDlgMsg() then zDlgClose().
   var zToastT=null;
-  function zToast(x){var el=zid('zToast');if(!el)return;el.textContent=x||'';el.classList.add('on');clearTimeout(zToastT);zToastT=setTimeout(function(){el.classList.remove('on');},2600);}
+  // TOAST góc phải, XẾP CHỒNG, sống ~5 s, có nút tắt — kiểu thẻ thông báo của Streamlit (user chốt 2026-08-29:
+  // *"mọi hoạt động đều có popup thông báo nhảy ra bên phải"*). Bản cũ: một dòng ở đáy giữa, 2,6 s, không tắt được,
+  // thông báo sau ĐÈ thông báo trước ⇒ hành động chậm (ignore · prune · scan) nhìn như không có gì xảy ra.
+  // `kind`: '' | 'ok' | 'warn' | 'err' — chỉ đổi viền/icon; chữ là nội dung.
+  function zToast(x,kind,ms){var box=zid('zToasts');if(!box)return;
+    var el=document.createElement('div');el.className='ztoast'+(kind?' '+kind:'');el.setAttribute('role','status');
+    el.innerHTML='<span class="zt-msg"></span><button type="button" class="zt-x" aria-label="close" title="×">×</button>';
+    el.querySelector('.zt-msg').textContent=x||'';
+    var kill=function(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},220);};
+    el.querySelector('.zt-x').addEventListener('click',kill);
+    box.appendChild(el);requestAnimationFrame(function(){el.classList.add('on');});
+    var t=setTimeout(kill,ms||5000);el.addEventListener('mouseenter',function(){clearTimeout(t);});el.addEventListener('mouseleave',function(){t=setTimeout(kill,2000);});
+    while(box.children.length>5)box.removeChild(box.firstChild); // không để thác thông báo phủ màn
+    return el;}
   var zDlgOnOk=null;
   function zDlgMsg(x){zset('zDlgMsg',x||'');}
   function zDlgClose(){var d=zid('zDlg');if(d)d.classList.remove('on');zDlgOnOk=null;}
