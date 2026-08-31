@@ -83,3 +83,31 @@ test("kết quả probe được HIỂN THỊ, không nằm im trong Z.checks", 
   assert.match(APPJS, /\+probeLine\(f\)/, "và renderSysDetail phải GỌI nó — định nghĩa suông thì vẫn vô hình");
   assert.match(APPJS, /probeLine[\s\S]{0,400}Z\.checks/, "probeLine phải đọc kết quả từ Z.checks");
 });
+
+// ── check `profile-reclaim` (thêm 2026-08-31) ────────────────────────────────────────────────
+// Vì sao mục này cần cổng riêng: nó là tính năng DUY NHẤT trong danh sách có hành vi XOÁ, và một
+// dòng "✓" nói sai ở đây nghĩa là người đọc tin rằng rác đã dọn (hoặc tin rằng không có gì bị
+// xoá) trong khi sự thật ngược lại. Ba ràng buộc dưới đây đều là chỗ bản đầu của tính năng này
+// ĐÃ SAI trong ngày và phải sửa lại.
+test("check `profile-reclaim` ĐO ĐĨA THẬT, không đọc công tắc", () => {
+  assert.match(SRC, /feature === "profile-reclaim"/, "phải có nhánh check");
+  const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
+  assert.match(branch, /listSetAside\(\)/, "phải đọc thư mục thật; một công tắc bật KHÔNG chứng minh rác đã dọn");
+  assert.match(branch, /setAsideToReclaim\(/, "phải dùng đúng hàm quyết định mà vòng dọn dùng — không đếm bằng luật riêng");
+  assert.doesNotMatch(branch, /getScheduler\(\)|getAutosync\(\)/, "KHÔNG được suy trạng thái từ công tắc scheduler");
+});
+
+test("check `profile-reclaim`: 'chưa tới lượt quét' KHÔNG được làm doctor ĐỎ (điều 9)", () => {
+  const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
+  // Mọi kết cục của nhánh này phải ok:true — còn rác quá hạn là "sẽ dọn ở lượt 6 giờ",
+  // là trạng thái BÌNH THƯỜNG, không phải hỏng. Một cổng chặn đường vì lý do đó là gate nhiễu.
+  assert.doesNotMatch(branch, /ok:\s*false/, "không kết cục nào được trả ok:false");
+  assert.match(branch, /state:\s*"warn"/, "còn rác quá hạn ⇒ warn (thấy được) chứ không phải off");
+  assert.match(branch, /catch/, "phép đo hỏng phải fail-open, không biến thành 'tính năng tắt'");
+});
+
+test("check `profile-reclaim` phải in SỐ, không nói chung chung", () => {
+  const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
+  assert.match(branch, /MB/, "phải in dung lượng — 'còn vài bản' là câu không dùng được");
+  assert.match(branch, /oldest|cũ nhất/, "phải in tuổi bản cũ nhất");
+});
