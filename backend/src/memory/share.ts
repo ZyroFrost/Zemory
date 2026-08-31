@@ -888,9 +888,54 @@ const LOCK_STALE_MS = 15 * 60_000;
  */
 const CHUNKS_MAGIC = "ZEMORY-MEMORY-CHUNKS v1\n";
 const CHUNK_PREFIX = "ZCHUNK ";
-/** Bao nhiêu khối thì gộp lại thành một. Gộp = viết lại nguyên file (đắt), nên để thưa;
- *  nhưng cũng không để vô hạn vì bên nhận phải giải mã lần lượt từng khối chưa merge. */
-const MAIN_COMPACT_CHUNKS = 48;
+// ── KHO CHIA KHÚC (user chốt 2026-08-30 — HP điều 16 sửa đổi, spec `plan/08 §8e`) ───────────
+// Gốc bệnh ĐO ĐƯỢC: Drive không upload delta ⇒ nối 0,3 MB vào file 2.066 MB là DriveFS
+// re-upload CẢ 2 GB, 10–20 lượt/ngày ≈ 20–40 GB qua tầng ổ ảo ⇒ DriveFS treo cứng tầng OS
+// 2 lần/giờ (30/08), kéo daemon chết theo. Chia khúc: khúc 1 giữ tên cũ `global_memory.enc`
+// (tương thích ngược), đầy `SEGMENT_MAX` thì NIÊM PHONG và mở `global_memory.002.enc`… —
+// mỗi lượt append chỉ đụng khúc ĐANG MỞ (≤256 MB), khúc niêm phong là BẤT BIẾN, Drive không
+// bao giờ upload lại nó. Chiều ĐỌC không đổi: vòng merge vốn quét mọi `.enc` và dedup theo
+// `tên-file#khối` + chữ ký. Dãy khúc là thứ tự TOÀN CỤC chung mọi máy — KHÔNG phải series
+// theo máy (thứ điều 16 cấm và vẫn cấm).
+function segmentMaxBytes(): number {
+  const v = Number(process.env.ZEMORY_SEGMENT_MAX ?? "");
+  return Number.isFinite(v) && v > 0 ? v : 256 * 1024 * 1024;
+}
+const SEGMENT_RE = /^global_memory\.(\d{3})\.enc$/;
+function segmentName(n: number): string {
+  return n <= 1 ? MAIN_BUNDLE : `global_memory.${String(n).padStart(3, "0")}.enc`;
+}
+/** Mọi khúc đang có, theo thứ tự — khúc 1 là `global_memory.enc`, kế là `.002`, `.003`… */
+function listSegments(dir: string): { path: string; n: number }[] {
+  const out: { path: string; n: number }[] = [];
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  if (names.includes(MAIN_BUNDLE)) out.push({ path: join(dir, MAIN_BUNDLE), n: 1 });
+  for (const f of names) {
+    const m = SEGMENT_RE.exec(f);
+    if (m) out.push({ path: join(dir, f), n: Number(m[1]) });
+  }
+  return out.sort((a, b) => a.n - b.n);
+}
+/** Khúc sẽ NHẬN lượt ghi kế: khúc cuối nếu còn chỗ, không thì khúc kế (chưa tồn tại). */
+function activeSegment(dir: string): { path: string; name: string; fresh: boolean } {
+  const segs = listSegments(dir);
+  if (segs.length === 0) return { path: join(dir, MAIN_BUNDLE), name: MAIN_BUNDLE, fresh: true };
+  const last = segs[segs.length - 1];
+  let full = false;
+  try {
+    full = statSync(last.path).size >= segmentMaxBytes();
+  } catch {
+    /* biến mất giữa chừng — coi như chưa đầy, appendChunkVerified sẽ tự dựng */
+  }
+  if (!full) return { path: last.path, name: basename(last.path), fresh: false };
+  const name = segmentName(last.n + 1);
+  return { path: join(dir, name), name, fresh: true };
+}
 
 interface DriveLock {
   host: string;
@@ -1004,6 +1049,32 @@ export function appendVerdict(threw: boolean, afterCount: number, expected: numb
  * gặp byte thừa là DỪNG ⇒ nối tiếp lên đó sẽ **chôn sống mọi khối phía sau**. Cắt về đúng chiều
  * dài trước lúc nối là cách duy nhất để lần thử sau không đẻ ra một kiểu hỏng tệ hơn cái đang vá.
  */
+/**
+ * Đọc-để-đếm khối, CHỊU ĐƯỢC CHẬP — bọc `listChunks` bằng thử-lại đồng bộ cho đúng họ lỗi transient.
+ *
+ * Vì sao phải có (đo 2026-08-30, lượt 04:18Z): ghi XONG, embed XONG (backlog về 0 lần đầu trong ngày),
+ * nhưng cú ĐỌC LẠI để xác minh dính `UNKNOWN: unknown error, read` của Google Drive File Stream và ném
+ * XUYÊN ra ngoài — cả lượt sync 40 phút chết vì một cú đọc chập, watermark không nhích, 6.054 tin phải
+ * xếp hàng chờ lượt sau. Chiều ghi đã có 3 lần thử (`appendChunkVerified`), chiều đọc-merge đã có
+ * `withDriveRetry` — đúng MỘT phép đọc này lọt lưới. Sleep đồng bộ bằng `Atomics.wait` (hàm gọi là sync,
+ * đổi sang async là đổi chữ ký lan ra cả test); chờ ngắn 300ms→1200ms vì transient của Drive thường
+ * qua trong dưới một giây (đo các lượt withDriveRetry trước).
+ */
+function listChunksRetry(path: string, what: string): ChunkRef[] {
+  let wait = 300;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return listChunks(path);
+    } catch (e) {
+      if (attempt >= DRIVE_READ_ATTEMPTS || !isTransientFsError(e)) throw e;
+      const code = (e as NodeJS.ErrnoException).code;
+      console.error(`[sync] ${what}: đọc-đếm khối chập (${code}) — thử lại ${attempt + 1}/${DRIVE_READ_ATTEMPTS} sau ${wait} ms.`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);
+      wait *= 2;
+    }
+  }
+}
+
 export function appendChunkVerified(containerPath: string, bundlePath: string, expected: number): number {
   const sizeBefore = existsSync(containerPath) ? statSync(containerPath).size : 0;
   let written = 0;
@@ -1016,7 +1087,7 @@ export function appendChunkVerified(containerPath: string, bundlePath: string, e
       lastErr = e; // giữ lại để báo nếu ĐẾM cũng nói hỏng — nhưng chưa kết luận gì
     }
     // Đường đo THỨ HAI, khác cơ chế với lời của `appendFileSync` (`02_RULES §Hành xử`).
-    const after = existsSync(containerPath) ? listChunks(containerPath) : [];
+    const after = existsSync(containerPath) ? listChunksRetry(containerPath, "xác minh sau khi nối") : [];
     const tail = after[after.length - 1];
     const verdict = appendVerdict(lastErr !== null, after.length, expected);
     if (verdict !== "retry" && tail) {
@@ -1320,7 +1391,7 @@ export function pruneDriveHost(o: {
   // Từ 2026-08-12 đường phát của máy này là KHO CHÍNH (container nối thêm), không còn là
   // series mang tên host. Vẫn chấp nhận hai hình dạng cũ để repo đang dùng dở không kẹt.
   const mySeries = listMySeries(dir, self);
-  const publishes = mySeries.length > 0 || existsSync(join(dir, legacyName(self))) || existsSync(join(dir, MAIN_BUNDLE));
+  const publishes = mySeries.length > 0 || existsSync(join(dir, legacyName(self))) || listSegments(dir).length > 0;
   if (!publishes) {
     blockers.push(`máy này (${self}) chưa có bundle nào trong thư mục — chạy \`zemory memory sync\` trước để nội dung máy cũ có đường đi tiếp`);
   } else {
@@ -1377,12 +1448,22 @@ export async function syncDrive(opts: {
   /** Cắt vòng CHỜ TỚI LƯỢT (`plan/08 §8c` ③). Hàng đợi cố ý không có trần tổng — đợi là đợi —
    *  nên phải có đường huỷ tường minh cho người dùng (và cho test). */
   lockSignal?: { aborted: boolean };
+  /**
+   * Báo BƯỚC ĐANG CHẠY — mã ngắn ổn định (`"scan"` · `"merge"` · `"lock-wait:<ai>"` · `"export"` ·
+   * `"write"` · `"verify"` · `"embed"`), KHÔNG phải câu người đọc (FE tự dịch qua i18n theo mã).
+   * User chốt 2026-08-30: *"phải hiện tiến trình sync đang bước nào"* — trước đây `/sync-status`
+   * chỉ có `running:true/false`, cả một lượt sync dài coi như một khối đen, và khi nó "xong" mà
+   * số chưa đổi thì không cách nào phân biệt "chưa xong thật" với "xong mà không có gì để đẩy".
+   */
+  onProgress?: (phase: string) => void;
 }): Promise<DriveSyncResult> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
   if (!existsSync(dir) || !statSync(dir).isDirectory()) throw new Error(`Drive folder not found: ${dir}`);
+  const onProgress = opts.onProgress ?? (() => {});
   // Capture THIS machine's latest transcripts into the DB FIRST, so the bundle
   // we upload can never miss the newest chat lines when switching machines.
+  onProgress("scan");
   const scanReport = scan({ dbPath: opts.dbPath });
   const excludeLanes = getScopeExclude(); // scoped sync: same list both directions
   const host = opts.host ? opts.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
@@ -1436,7 +1517,19 @@ export async function syncDrive(opts: {
   // Merge MỌI gói trong thư mục: kho chính (container nhiều khối) VÀ mọi file `.enc` đời cũ còn
   // sót — người dùng không phải dọn tay khi đổi sang lối một-file. KHÔNG loại gói của chính máy
   // này: ở lối một-file tên gói không còn nói "của ai"; dedup theo CHỮ KÝ lo phần đó.
+  onProgress("merge");
   await mergeAll("all"); // ← NGOÀI khoá: phần nặng, máy khác vẫn ghi được trong lúc này
+  // ── NHÚNG TRƯỚC, XUẤT SAU (đảo thứ tự 2026-08-30) ───────────────────────────
+  // Trước đây embed nằm CUỐI lượt, còn export bị `embedFrontierId` cắt ở tin đầu tiên CHƯA nhúng
+  // (tin và vector đi cùng chuyến — điều 16). Hệ quả đo được trên kho thật sáng 30/08: mỗi lượt chỉ
+  // chở được phần lượt TRƯỚC đã nhúng — luôn trễ một nhịp; lượt auto 03:56Z export lúc frontier còn
+  // kẹt ⇒ **chở 0 tin** rồi mới nhúng, watermark đứng yên (6504552) trong khi 5.926 tin xếp hàng.
+  // Nhúng TRƯỚC export thì frontier tiến ngay trong lượt này và gói chở được chính phần vừa nhúng.
+  // Vẫn: một lô có trần (giữ lượt sync không phình vô hạn) · NGOÀI khoá (nhúng 9 phút mà ôm khoá là
+  // bắt máy kia chờ — plan/08 §8c ①) · fail-open (thiếu model ⇒ 0, FTS gánh) · phủ cả tin vừa merge
+  // từ máy khác (mergeAll chạy xong ngay trên).
+  onProgress("embed");
+  const embedded = opts.embed === false ? 0 : (await embedPending({ dbPath: opts.dbPath })).embedded;
   const release =
     level === "full"
       ? () => {}
@@ -1447,28 +1540,22 @@ export async function syncDrive(opts: {
           onWait: (holder, waited) => {
             if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
             console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
+            onProgress(`lock-wait:${holder}`);
           },
         });
   try {
     // GỘP TRƯỚC, GHI SAU — bất biến của lối một-file: ghi đè khi chưa có phần máy kia là mất thật.
     // Lượt này bắt đúng phần xuất hiện trong lúc mình merge ngoài khoá.
+    onProgress("merge");
     await mergeAll("changed-only");
     push =
       level === "full"
-        ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath })
-        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, compact: opts.compact });
+        ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, onProgress })
+        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, compact: opts.compact, onProgress });
   } finally {
     release();
   }
-  // Build the semantic vector index for messages that still lack one — this
-  // machine's freshly scanned lines AND the ones just merged from other machines.
-  // Vectors are per-machine (keyed by local ids) so they never travel in a bundle;
-  // embedding here keeps recall on THIS machine complete right after sync.
-  // ONE bounded batch so the sync call stays responsive — a steady-state sync
-  // (a handful of new messages) is fully covered; a large one-time backlog is
-  // finished by `zemory memory embed --all` (vectorRemaining reports the rest).
-  // Fail-open: if the model is unavailable, embedPending embeds 0 (FTS fallback).
-  const embedded = opts.embed === false ? 0 : (await embedPending({ dbPath: opts.dbPath })).embedded;
+  onProgress("done");
 
   // Đóng dấu phiên bản của máy này lên kênh (chỉ đi lên — xem `publishChannelVersion`).
   // Đặt ở CUỐI, sau khi lượt sync đã qua phần nặng: tem chỉ nên xuất hiện khi máy này
@@ -1625,20 +1712,29 @@ async function pushAppend(o: {
   dbPath?: string;
   /** Ép gộp kho chung NGAY lượt này (`memory sync --compact`), không chờ đủ ngưỡng khối. */
   compact?: boolean;
+  onProgress?: (phase: string) => void;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, excludeLanes, keyFile, dbPath } = o;
-  const mainPath = join(dir, MAIN_BUNDLE);
+  const onProgress = o.onProgress ?? (() => {});
+  const segs = listSegments(dir);
+  const active = activeSegment(dir);
   const wmKey = `drive:${host}`;
-  const chunks = existsSync(mainPath) && isChunkContainer(mainPath) ? listChunks(mainPath) : [];
-  // ÉP GỘP (`--compact`): viết lại kho chung NGAY từ kho máy này thay vì chờ đủ ngưỡng khối.
+  // Khối đếm trên khúc ĐANG MỞ — guard trước/sau khi ghi so trên CÙNG file này (khúc niêm
+  // phong là bất biến, không cần canh).
+  const chunks = !active.fresh && isChunkContainer(active.path) ? listChunks(active.path) : [];
+  // ÉP GỘP (`--compact`): gộp MỌI khúc về một khúc 1 tươi chở trọn kho máy này (since=0).
   //
   // Vì sao là thao tác vận hành THẬT, không phải mẹo một lần: gộp xuất `since=0` nên container
   // mới chở TRỌN vector của máy chạy nó. Đó là cách duy nhất làm kho chung ĐỦ trở lại sau khi
   // nó đã lệch — mà lệch thì có thật (đo 2026-08-25: thiếu ~22.000 vector do vector nhúng-sau
-  // không được chở, xem `plan/08 §8b`). Chờ ngưỡng 48 khối cũng gộp, nhưng **máy nào chạm
-  // ngưỡng thì lấy kho máy đó**; khi cần chốt "lấy kho của MÁY NÀY" thì phải ép được.
-  const compacting = o.compact === true || chunks.length >= MAIN_COMPACT_CHUNKS;
-  const since = compacting || chunks.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
+  // không được chở, xem `plan/08 §8b`).
+  //
+  // 🔄 NGƯỠNG GỘP TỰ ĐỘNG 48 KHỐI **BÃI BỎ** (2026-08-30, cùng đợt chia khúc — HP điều 16 sửa
+  // đổi): gộp = viết lại CẢ kho = đúng tải re-upload 2 GB làm DriveFS treo, thứ chia khúc sinh
+  // ra để giết. Máy mới không thiệt: mọi khối vẫn giải mã đúng MỘT lần bất kể nằm file nào,
+  // khối đã biết bị bỏ qua bằng chữ ký tại chỗ (§8c ①). Gộp chỉ còn là lệnh TAY.
+  const compacting = o.compact === true;
+  const since = compacting || segs.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
   const part = join(tmp, "part.enc");
@@ -1649,6 +1745,7 @@ async function pushAppend(o: {
     // có ở kho mà CHƯA ghi sổ `vec_shipped` (đường `vectorCatchUpIds` của lệnh bù, tái dùng
     // nguyên). Gộp (since = 0) chở trọn nên không cần.
     const lateIds = since ? unshippedVectorIds(dbPath, since) : [];
+    onProgress("export");
     const r = await exportMemoryBundle({
       outPath: part,
       dbPath,
@@ -1666,7 +1763,7 @@ async function pushAppend(o: {
     // một phiên bản mới của cả container. Nếu bản cục bộ đã CŨ (máy kia vừa nối mà mình chưa kéo
     // về) thì bản mình đẩy lên là *cũ + khối mình* ⇒ **khối của máy kia biến mất, không ai báo**.
     // Khoá KHÔNG cứu được ca này — nó chỉ chặn hai bên ghi cùng lúc, không chặn ghi đè bản cũ.
-    const chunksNow = existsSync(mainPath) && isChunkContainer(mainPath) ? listChunks(mainPath) : [];
+    const chunksNow = !active.fresh && isChunkContainer(active.path) ? listChunks(active.path) : [];
     if (chunksNow.length !== chunks.length) {
       // Có khối lạ xuất hiện sau lúc mình liệt kê ⇒ DỪNG, để lượt sync sau merge chúng rồi ghi.
       // Thà bỏ một lượt còn hơn nuốt mất khối của máy khác (kho THẬT nằm ở từng máy — điều 16).
@@ -1674,28 +1771,39 @@ async function pushAppend(o: {
     }
     let removed = 0;
     let written = 0; // byte THẬT SỰ ghi thêm lượt này — xem chú thích ở `bytes` bên dưới
-    const expected = compacting ? 1 : chunks.length + 1;
+    // Khúc TƯƠI (vừa mở / kho trống) khởi đầu bằng magic ⇒ sau khi nối có đúng 1 khối.
+    const expected = compacting || active.fresh ? 1 : chunks.length + 1;
+    const target = compacting ? join(dir, MAIN_BUNDLE) : active.path;
+    onProgress("write");
     if (compacting) {
-      // Container MỚI chỉ một khối; bản cũ giữ đúng MỘT thế hệ làm đường lùi.
+      // GỘP: mọi khúc gấp về MỘT khúc 1 tươi; bản khúc-1 cũ giữ đúng một thế hệ làm đường lùi;
+      // khúc ≥2 xoá (nội dung đã nằm trong khúc tươi — export since=0 SAU khi merge đủ).
       const fresh = join(tmp, "fresh.enc");
       writeFileSync(fresh, CHUNKS_MAGIC);
       written = appendChunk(fresh, part);
-      if (existsSync(mainPath)) {
+      for (const s of segs) removed += isChunkContainer(s.path) ? listChunks(s.path).length : 0;
+      if (existsSync(target)) {
         rmSync(join(dir, MAIN_BAK), { force: true });
-        renameSync(mainPath, join(dir, MAIN_BAK));
+        renameSync(target, join(dir, MAIN_BAK));
       }
-      renameSync(fresh, mainPath);
-      removed = chunks.length;
+      for (const s of segs) if (s.n > 1) rmSync(s.path, { force: true });
+      renameSync(fresh, target);
     } else {
+      // Khúc tươi: dựng vỏ magic TẠI CHỖ rồi nối — appendChunkVerified đếm lại như thường.
+      if (active.fresh && !existsSync(target)) writeFileSync(target, CHUNKS_MAGIC);
       // Nối THẲNG lên kênh ⇒ đây là chỗ Drive ném lỗi giả, nên phải đếm lại mới dám kết luận.
       // (Nhánh gộp ở trên ghi ra file tạm LOCAL rồi `rename`, không đi qua đường đó.)
-      written = appendChunkVerified(mainPath, part, expected);
+      written = appendChunkVerified(target, part, expected);
     }
+    // ĐÚNG chỗ kẹt thật đo được 2026-08-29: ghi (`appendChunk`) thường xong trong vài giây, còn
+    // ĐỌC LẠI để đếm khối trên ổ Drive đang chập có thể treo rất lâu — badge phải nói "đang xác
+    // minh", không phải im lặng để người dùng tưởng máy đứng hình ở bước ghi.
+    onProgress("verify");
     // 🔴 KIỂM SAU KHI GHI (`plan/08 §8c` ④). Drive không bảo đảm nguyên tử; nếu khối của mình
     // biến mất (bị bản khác đè) thì phải BIẾT, chứ không được báo "đã đẩy" rồi thôi — đó đúng là
     // kiểu "bề mặt nói dối" mà `02_RULES` cấm. Không có gì để sửa tự động ở đây (ghi lại có thể
     // đè tiếp bản mới), nên nói thẳng và để lượt sync sau làm lại.
-    const after = listChunks(mainPath);
+    const after = listChunksRetry(target, "kiểm sau khi ghi");
     if (after.length !== expected) {
       throw new Error(
         `Kho chung đổi ngay sau khi ghi (${after.length} khối, chờ ${expected}) — khối vừa nối có thể đã bị đè. ` +
@@ -1721,8 +1829,10 @@ async function pushAppend(o: {
       const tmp2 = mkdtempSync(join(tmpdir(), "zemory-mark-"));
       try {
         const copy = join(tmp2, "mine.enc");
-        await extractChunk(mainPath, mine, copy);
-        markBundleMerged(`${MAIN_BUNDLE}#${mine.index}`, bundleSignature(copy), dbPath);
+        await extractChunk(target, mine, copy);
+        // Khoá theo TÊN KHÚC THẬT — chiều merge dedup bằng `<tên file>#<khối>`; ghi cứng
+        // MAIN_BUNDLE thì khối nằm ở khúc .002 trở đi không bao giờ được đánh dấu.
+        markBundleMerged(`${basename(target)}#${mine.index}`, bundleSignature(copy), dbPath);
       } catch (e) {
         // Fail-open (điều 9) nhưng KHÔNG im: giá phải trả là lượt sync sau giải mã lại khối này
         // một lần. Nuốt lặng thì lần sau chậm mà không ai biết vì sao.
@@ -1735,8 +1845,8 @@ async function pushAppend(o: {
       }
     }
     return {
-      kind: compacting ? "compact" : chunks.length === 0 ? "baseline" : "delta",
-      file: MAIN_BUNDLE,
+      kind: compacting ? "compact" : segs.length === 0 ? "baseline" : "delta",
+      file: basename(target),
       // Byte GHI THÊM lượt này, KHÔNG phải kích thước cả kho chính. Đây là con số người
       // dùng cần: nó nói lượt sync vừa rồi tốn bao nhiêu. Báo kích thước cả file thì mỗi
       // lượt sync đều hiện ~336 MB và cảm giác "nối thêm rẻ" biến mất khỏi màn hình dù
@@ -1776,11 +1886,13 @@ async function pushToDrive(o: {
   excludeLanes: ScopeLane[];
   keyFile?: string;
   dbPath?: string;
+  onProgress?: (phase: string) => void;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, level, excludeLanes, keyFile, dbPath } = o;
 
   if (level === "full") {
     // Disaster-restore snapshot: one self-contained file, overwritten each sync.
+    o.onProgress?.("export");
     const name = legacyName(host);
     const r = await exportMemoryBundle({ outPath: join(dir, name), dbPath, keyFile, force: true, excludeLanes, payload: "full" });
     // A prior lean series is now redundant (the full snapshot carries everything).
@@ -1935,15 +2047,19 @@ export async function vectorCatchUp(opts: {
 }): Promise<{ container: string; missing: number; shipped: number; bytes: number; pushed: boolean }> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
-  const container = join(dir, MAIN_BUNDLE);
-  if (!existsSync(container)) throw new Error(`Kho chung chưa có: ${container}`);
+  // Kho chia khúc (§8e): DỰNG probe từ MỌI khúc, nhưng khối bù NỐI vào khúc ĐANG MỞ —
+  // nối vào khúc 1 đã niêm phong là bắt Drive re-upload cả khúc lớn, đúng tải đang giết.
+  const segsAll = listSegments(dir);
+  if (segsAll.length === 0) throw new Error(`Kho chung chưa có: ${join(dir, MAIN_BUNDLE)}`);
+  const container = activeSegment(dir).path;
   const dbPath = opts.dbPath ?? currentMemoryDb();
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-catchup-"));
   const probe = join(tmp, "probe.db");
   try {
-    // ① Dựng lại kho chung y như một máy mới sẽ nhận được.
-    await mergeMemoryBundle({ bundlePath: container, dbPath: probe, keyFile: opts.keyFile });
+    // ① Dựng lại kho chung y như một máy mới sẽ nhận được — MỌI khúc, không riêng khúc đang mở
+    //    (máy mới merge cả dãy; đo thiếu trên một khúc là đo thiếu sai).
+    for (const s of segsAll) await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
 
     // ② So bằng khoá BỀN. `vec_chunks` là bảng ảo vec0 nên đọc qua bảng bóng `..._rowids`
     //    (bảng thường) — cùng cách `vectorCoverage` tránh quét bảng ảo cho mỗi hàng.
@@ -2026,6 +2142,8 @@ export async function vectorCatchUp(opts: {
     });
     let bytes = 0;
     try {
+      // Khúc đang mở có thể là khúc TƯƠI chưa tồn tại (khúc trước vừa đầy) — dựng vỏ magic trước.
+      if (!existsSync(container)) writeFileSync(container, CHUNKS_MAGIC);
       bytes = appendChunk(container, part);
       markVectorsShipped(dbPath, r.vectorShippedIds ?? []); // sổ v23 — lệnh bù cũng là một chuyến chở
       // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE (cùng lý do như `pushAppend`): nội dung lấy từ
@@ -2036,7 +2154,7 @@ export async function vectorCatchUp(opts: {
       if (mine) {
         const copy = join(tmp, "mine.enc");
         await extractChunk(container, mine, copy);
-        markBundleMerged(`${MAIN_BUNDLE}#${mine.index}`, bundleSignature(copy), dbPath);
+        markBundleMerged(`${basename(container)}#${mine.index}`, bundleSignature(copy), dbPath);
       }
     } finally {
       release();

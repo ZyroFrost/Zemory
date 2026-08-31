@@ -106,7 +106,12 @@ async function main(): Promise<void> {
       let alive = false;
       let refused = false;
       try {
-        const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(3000) });
+        // 20 s chứ không phải 3 s (user 2026-08-30: *"đang sync mà sao UI tự tắt?"*): daemon gánh
+        // sync+embed trả `/ping` trong **12–16 s** (đo cùng ngày) — chờ 3 s thì NHỊP NÀO CŨNG hết
+        // giờ, 36 nhịp × 5 s = 3 phút là cửa sổ tự đóng giữa một lượt sync 40 phút, trong khi daemon
+        // SỐNG và đang làm việc. BẬN ≠ CHẾT (02_RULES §Bề mặt chết theo nền): vỏ rỗng thật (treo
+        // cứng, không trả nổi byte nào trong 20 s × 36 nhịp) vẫn bị giết như cũ.
+        const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(20_000) });
         alive = res.ok;
       } catch (e) {
         // undici bọc lỗi socket trong `cause`; hết giờ là TimeoutError/AbortError không có cause.

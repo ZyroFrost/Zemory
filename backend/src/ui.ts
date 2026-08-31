@@ -52,7 +52,8 @@ import { edgeId } from "./memory/graph/graph.js";
 import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
-import { startSyncJob, stopSyncJob, syncJobStatus } from "./jobs/syncjob.js";
+import { startSyncJob, stopSyncJob, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
+import type { DriveProbe } from "./jobs/driveprobe.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
@@ -86,6 +87,11 @@ import {
   setSyncAttachments,
   getRepoStdCheck,
   setRepoStdCheck,
+  getAutosyncSchedule,
+  setAutosyncSchedule,
+  getAutosyncLastResult,
+  getIgnoredRoots,
+  setIgnoredRoot,
   getWebAuth,
   setWebAuth,
   setWebPull,
@@ -193,6 +199,8 @@ interface DriveSummary {
   lastPushAt: string | null;
   /** Thời điểm của tin MỚI NHẤT trong bộ nhớ — để đối chiếu "đã đủ" có thật là mới nhất không. */
   newestAt: string | null;
+  /** Đèn sức khoẻ sync gộp mọi tầng (job hỏng · bị cắt · kẹt · ứ lâu) — xem `syncHealthOf`. */
+  health: { level: "ok" | "warn" | "error"; code: string; mins?: number; detail?: string };
 }
 
 /**
@@ -209,6 +217,77 @@ interface DriveSummary {
  * "luôn kêu đã đủ" trong khi panel quét bảo có tin mới; hai panel trả lời hai câu
  * khác nhau (nạp vào DB ≠ đẩy lên Drive) nên phải hiện mốc thời gian mới đối chiếu được.
  */
+/**
+ * Phần trăm đã đẩy — 100 là LỜI KHẲNG ĐỊNH, không phải phép làm tròn (user chốt 2026-08-30:
+ * *"hụt mấy trăm mess thì không bao giờ được tính là 100%"*). Bản cũ `Math.round` cho
+ * 321.320/321.818 (thiếu 498 tin) ra tròn **"100%"** — donut xanh đặc nói "đủ" trong khi kênh
+ * đang hụt, và người dùng nhìn donut để quyết có cần bấm Sync hay không. Nay: chỉ khi đẩy ĐỦ
+ * TỪNG TIN mới là 100; còn thiếu thì floor + trần 99 — thà báo thiếu 1% oan còn hơn báo đủ điêu.
+ * Hàm thuần, export cho cổng đo (`last-sync.test.mjs`).
+ */
+export function syncPercentOf(synced: number, total: number): number {
+  if (total <= 0 || synced >= total) return 100;
+  return Math.min(99, Math.floor((Math.max(0, synced) / total) * 100));
+}
+
+/**
+ * MỘT ĐÈN SỨC KHOẺ SYNC gộp mọi tầng — user chốt 2026-08-30 sau ca ổ G: đơ cả buổi mà dashboard
+ * im re: *"nó gãy ở drive thì cũng phải báo sync vấn đề… user chỉ nhìn thông số và dashboard,
+ * chứ ai cần biết vấn đề nằm ở đâu"*. Trước đó mỗi tầng hỏng một kiểu và KHÔNG tầng nào lên UI:
+ * lượt hỏng chỉ vào `daemon.log` · lượt bị cắt không để lại gì · con sync kẹt syscall thì chạy
+ * "mãi mãi" · tin ứ + lần đẩy cũ dần mà donut vẫn xanh. Hàm THUẦN để cổng đo (`last-sync.test`).
+ *
+ * Trả `code` (khoá i18n phía UI) + tham số — KHÔNG trả câu chữ, vì UI phải song ngữ đủ hai dict.
+ * Thứ tự xét = mức nguy giảm dần; `detail` là nội dung động (câu lỗi của lượt hỏng), passthrough.
+ */
+export function syncHealthOf(s: {
+  pending: number;
+  lastPushAt: string | null;
+  now: number;
+  autosyncOn: boolean;
+  intervalMin: number;
+  lastResult: { at: string; ok: boolean; kind?: string; detail?: string } | null;
+  runningForMs: number | null;
+  phase?: string | null;
+}): { level: "ok" | "warn" | "error"; code: string; mins?: number; detail?: string } {
+  const mins = (ms: number): number => Math.max(0, Math.round(ms / 60_000));
+  // ① Lượt đang chạy quá lâu = nghi kẹt (hai ca thật: 29/08 kẹt 55′, 30/08 kẹt ~70′ vì ổ G: đơ —
+  //   cả hai đều "đang chạy" mãi mãi mà không ai báo). Trần THEO BƯỚC (báo oan thật 14:27 cùng
+  //   ngày: embed 56′ đang cày 3.552 s CPU mà đèn hô "Drive hang?" — embed là việc LOCAL, tin
+  //   tool-dump dài làm 500 tin/lượt tốn 30–60′ hợp lệ): bước đụng DRIVE quá 45′ = đỏ; `embed`
+  //   quá 45′ chỉ VÀNG "đang nhúng lô lớn", quá 180′ mới đỏ (đồng bộ với trần watchdog).
+  if (s.runningForMs !== null && s.runningForMs > 45 * 60_000) {
+    const m = mins(s.runningForMs);
+    if (s.phase !== "embed") return { level: "error", code: "runStuck", mins: m };
+    if (s.runningForMs > SYNC_WATCHDOG_EMBED_MS) return { level: "error", code: "runStuck", mins: m };
+    return { level: "warn", code: "embedLong", mins: m };
+  }
+  // ② Đang chạy bình thường ⇒ nói "đang chạy, phút thứ mấy, bước nào" — chưa xong thì KHÔNG được
+  //   im như đã xong (user: "chưa chạy xong… đéo có được nói là xong").
+  if (s.runningForMs !== null) return { level: "ok", code: "running", mins: mins(s.runningForMs), detail: s.phase ?? undefined };
+  // ③ Lượt gần nhất hỏng/bị cắt VÀ vẫn còn tin chờ (chưa có lượt nào chuộc lại) ⇒ đỏ.
+  if (s.lastResult && !s.lastResult.ok && s.pending > 0) {
+    const pushedAfter = s.lastPushAt !== null && Date.parse(s.lastPushAt) > Date.parse(s.lastResult.at);
+    if (!pushedAfter) {
+      return {
+        level: "error",
+        code: s.lastResult.kind === "interrupted" ? "interrupted" : "lastFail",
+        mins: mins(s.now - Date.parse(s.lastResult.at)),
+        detail: s.lastResult.detail,
+      };
+    }
+  }
+  // ④ Tin ứ mà lịch tự sync bật và lần đẩy cuối đã quá 3 chu kỳ (sàn 90′) ⇒ tự sync đang
+  //   KHÔNG tới lượt — vàng. (Tự sync tắt = user chủ động sync tay, số pending hiện sẵn, không báo.)
+  if (s.pending > 0 && s.autosyncOn) {
+    const staleMs = Math.max(3 * s.intervalMin * 60_000, 90 * 60_000);
+    if (s.lastPushAt === null) return { level: "warn", code: "neverPushed" };
+    const sincePush = s.now - Date.parse(s.lastPushAt);
+    if (sincePush > staleMs) return { level: "warn", code: "pushStale", mins: mins(sincePush) };
+  }
+  return { level: "ok", code: "ok" };
+}
+
 function driveSyncProgress(): {
   syncPercent: number;
   syncedMessages: number;
@@ -227,7 +306,7 @@ function driveSyncProgress(): {
     const total = (db.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
     const synced = (db.prepare("SELECT COUNT(*) c FROM messages WHERE id <= ?").get(wm) as { c: number }).c;
     const pending = Math.max(0, total - synced);
-    const percent = total > 0 ? Math.round((synced / total) * 100) : 100;
+    const percent = syncPercentOf(synced, total);
     const newest = db.prepare("SELECT MAX(timestamp) t FROM messages").get() as { t: string | null };
     return {
       syncPercent: percent,
@@ -243,45 +322,89 @@ function driveSyncProgress(): {
 }
 
 /** Probe a Drive sync folder: exists? writable? how many bundles inside? */
-function probeDrive(dir: string): Omit<DriveSummary, "level" | "atts" | "syncPercent" | "syncedMessages" | "totalMessages" | "pendingMessages" | "lastPushAt" | "newestAt"> {
+// ── PROBE DRIVE — KHÔNG BAO GIỜ sờ ổ đám mây trên event loop của daemon (vá 2026-08-30) ─────
+// Logic thật DỜI sang `jobs/driveprobe.ts` và chạy trong TIẾN TRÌNH CON có trần giờ. Vì sao:
+// Google Drive File Stream đơ HAI LẦN trong một giờ (đo cùng ngày) — syscall trên G: không trả
+// về cũng không ném, và mỗi lượt poll /memory-status gọi probe đồng bộ ⇒ event loop đông cứng,
+// nhịp tim đứng 13′, /ping chết, dashboard thành ảnh tĩnh không một dòng đỏ. Syscall treo
+// trong-tiến-trình không ngắt được, nhưng tiến trình CON thì GIẾT được (execFile timeout —
+// đã kiểm chứng trên chính cú treo thật). Daemon chỉ đọc CACHE; con tự làm tươi ở nền.
+// Shape của probe IMPORT từ driveprobe.ts — một nguồn, không chép tay bản thứ hai để rồi lệch.
+const PROBE_TTL_MS = 30_000;
+const PROBE_TIMEOUT_MS = 8_000;
+let probeCache: { at: number; dir: string; v: DriveProbe } | null = null;
+let probeInFlight = false;
+
+function driveprobeEntry(): string {
+  return fileURLToPath(new URL("./jobs/driveprobe.js", import.meta.url));
+}
+
+/** Kết quả probe khi ổ KHÔNG trả lời — nói thẳng, không đoán "folder not found". */
+function probeHungResult(dir: string): DriveProbe {
+  return { path: dir.trim(), linked: !!dir.trim(), exists: false, writable: false, bundles: 0, error: "drive not responding (cloud drive hung?)" };
+}
+
+function kickProbe(dir: string): void {
+  if (probeInFlight) return;
+  probeInFlight = true;
+  execFile(process.execPath, [driveprobeEntry(), dir], { timeout: PROBE_TIMEOUT_MS, windowsHide: true }, (err, stdout) => {
+    probeInFlight = false;
+    if (!err) {
+      try {
+        probeCache = { at: Date.now(), dir, v: JSON.parse(String(stdout)) as DriveProbe };
+        return;
+      } catch {
+        /* stdout hỏng — rơi xuống nhánh lỗi */
+      }
+    }
+    // Con bị giết vì quá giờ / chết bất thường ⇒ ổ đang treo. Đây là THÔNG TIN, không phải lỗi
+    // cần giấu: card Drive hiện "✗ drive not responding" — đúng yêu cầu "gãy ở drive phải báo".
+    probeCache = { at: Date.now(), dir, v: probeHungResult(dir) };
+  });
+}
+
+/** Bản cache — trả NGAY (không sờ G:), tự làm tươi ở nền khi quá TTL. */
+function probeDrive(dir: string): DriveProbe {
+  const now = Date.now();
+  if (!probeCache || probeCache.dir !== dir || now - probeCache.at > PROBE_TTL_MS) kickProbe(dir);
+  if (probeCache && probeCache.dir === dir) return probeCache.v;
+  // Chưa từng có số cho đường này (vừa đổi path / vừa khởi động): nói "đang dò", KHÔNG chặn.
   const path = dir.trim();
-  if (!path) return { path: "", linked: false, exists: false, writable: false, bundles: 0, error: null };
-  if (/^https?:\/\//i.test(path)) {
-    return { path, linked: true, exists: false, writable: false, bundles: 0, error: "web URL — use the LOCAL synced folder (Google Drive Desktop), e.g. G:\\My Drive\\zemory" };
-  }
+  return { path, linked: !!path, exists: false, writable: false, bundles: 0, error: path ? "probing…" : null };
+}
+
+/** Probe TƯƠI cho cú bấm Link — user vừa gõ đường mới, cần phán ngay; chặn CÓ TRẦN 8 s. */
+function probeDriveFresh(dir: string): DriveProbe {
   try {
-    if (!statSync(path).isDirectory()) return { path, linked: true, exists: true, writable: false, bundles: 0, error: "not a folder" };
+    const out = execFileSync(process.execPath, [driveprobeEntry(), dir], { timeout: PROBE_TIMEOUT_MS, windowsHide: true, encoding: "utf8" });
+    const v = JSON.parse(String(out)) as DriveProbe;
+    probeCache = { at: Date.now(), dir, v };
+    return v;
   } catch {
-    return { path, linked: true, exists: false, writable: false, bundles: 0, error: "folder not found" };
+    const v = probeHungResult(dir);
+    probeCache = { at: Date.now(), dir, v };
+    return v;
   }
-  let writable = false;
-  const probe = join(path, ".zemory-write-probe");
-  try {
-    writeFileSync(probe, "ok");
-    rmSync(probe, { force: true });
-    writable = true;
-  } catch {
-    /* not writable */
-  }
-  let bundles = 0;
-  try {
-    // ĐẾM MỌI `.enc`, KHÔNG chỉ hậu tố đời cũ `.zemory.enc`.
-    //
-    // Bug đo được 2026-08-09: Drive có 3 bundle thật (634 MB) mà ô này hiện **0**. Hậu tố
-    // `.zemory.enc` chính là thứ `share.ts:714` tự gọi là `legacyName`; bộ ghi/đọc series
-    // hiện tại sinh `global_memory.<host>.<seq>.enc` và khớp bằng `.enc` (`share.ts:721`,
-    // `:894`). Nên máy nào đã lên định dạng series thì ô đếm **vĩnh viễn ra 0** — sai lệch
-    // im lặng, không cổng nào đỏ, và nó khiến người dùng tưởng chưa từng sync (đúng ca
-    // user báo hôm đó). Chỉ sai HIỂN THỊ: merge và ghi series vốn khớp đúng.
-    bundles = readdirSync(path).filter((f) => f.endsWith(".enc")).length;
-  } catch {
-    /* ignore */
-  }
-  return { path, linked: true, exists: true, writable, bundles, error: writable ? null : "not writable" };
+}
+
+/** Đèn sức khoẻ sync tại thời điểm gọi — gom số kho + sổ kết cục + job đang chạy vào `syncHealthOf`. */
+function driveHealthNow(prog: ReturnType<typeof driveSyncProgress>): ReturnType<typeof syncHealthOf> {
+  const st = syncJobStatus();
+  return syncHealthOf({
+    pending: prog.pendingMessages,
+    lastPushAt: prog.lastPushAt,
+    now: Date.now(),
+    autosyncOn: getAutosync(),
+    intervalMin: getAutosyncSchedule().everyMin,
+    lastResult: getAutosyncLastResult(),
+    runningForMs: st.running && st.startedAt ? Date.now() - st.startedAt : null,
+    phase: (st as { phase?: string }).phase ?? null,
+  });
 }
 
 function driveSummary(): DriveSummary {
-  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...driveSyncProgress() };
+  const prog = driveSyncProgress();
+  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
 }
 
 // `WebScanRow` · `WEB_PLATFORMS` · `platformsInUse` · `accountsOf` · `scanWebPlatforms`
@@ -660,7 +783,11 @@ function queryRecentSessions(limit: number): unknown[] {
 /** Export để test soi ĐÚNG hàm đang chạy — hai bề mặt này hỏng ở tầng TRÌNH BÀY (cây file
  *  rỗng, mọi file "not found") nên không cổng nào bắt được, mà test chép lại logic thì canh
  *  bản sao chứ không canh bản thật (bài học audit: bộ test từng neo vào bản đã bị thay). */
-export { listHarnessFiles as listHarnessFilesForTest, probeDrive as probeDriveForTest, readDoc as readProjectDocForTest };
+// `probeDriveForTest` trỏ vào BẢN ĐO THẬT (`probeDriveFs` — logic đếm/stat sống ở driveprobe.ts từ
+// 2026-08-30); `probeDrive` trong file này nay là lớp CACHE + tiến trình con, lượt đầu cố ý trả
+// "probing…" nên test đếm bundle mà gọi nó là đo nhầm lớp.
+export { probeDriveFs as probeDriveForTest } from "./jobs/driveprobe.js";
+export { listHarnessFiles as listHarnessFilesForTest, readDoc as readProjectDocForTest };
 
 function readDoc(projectRoot: string, rel: string): { ok: boolean; file: string; content: string } {
   const root = resolve(projectRoot);
@@ -738,7 +865,9 @@ const CANON_ROOT =
 
 function captureCoverage(limit = 10): {
   stores: { source: string; root: string; foundAt: string | null }[];
-  projects: { host: string; path: string; sessions: number; messages: number; agents: number; last: string | null; profile: "app" | "non-app" | null }[];
+  /** `sources` = các nguồn góp phiên (vd `claude-code` · `chatgpt-web`) — để danh sách "chưa liên kết" phân biệt REPO
+   *  thật (agent local) với TÊN PROJECT trên web (ChatGPT/Claude project), thứ không có folder để Add (user 2026-08-29). */
+  projects: { host: string; path: string; sessions: number; messages: number; agents: number; sources?: string; last: string | null; profile: "app" | "non-app" | null; gone?: boolean; ignored?: boolean }[];
   totals: { stores: number; projectFolders: number };
   /** THIS machine's hostname — lets the UI mark the local group and split
    *  linked (registry) projects from merely-scanned ones (user 2026-07-21). */
@@ -757,6 +886,7 @@ function captureCoverage(limit = 10): {
     // One layer up: group by MACHINE (host) as well as canonical project, so the
     // Projects tab shows each machine and the repos worked on it (user 2026-07-21).
     const localHost = hostname();
+    const ignored = new Set(getIgnoredRoots().map((r) => r.toLowerCase()));
     const projects = (
       db
         .prepare(
@@ -765,6 +895,7 @@ function captureCoverage(limit = 10): {
                 COUNT(*) AS sessions,
                 COALESCE(SUM(message_count), 0) AS messages,
                 COUNT(DISTINCT source) AS agents,
+                GROUP_CONCAT(DISTINCT source) AS sources,
                 MAX(COALESCE(ended_at, started_at, '')) AS last
            FROM sessions
           WHERE project_root IS NOT NULL AND project_root <> ''
@@ -782,6 +913,8 @@ function captureCoverage(limit = 10): {
       // `gone` = folder không còn trên MÁY NÀY (chỉ đo được cho host local). UI gom các root này vào
       // nhóm "folder đã mất" thay vì bày lẫn với repo đang sống (user 2026-08-29: nút Dọn "không làm gì").
       ...(p.host === localHost && /^[A-Za-z]:[\\/]/.test(String(p.path)) ? { gone: !existsSync(String(p.path)) } : {}),
+      // `ignored` = người dùng bảo bỏ qua (danh sách chọn ẩn nó, nhóm "Đã bỏ qua" giữ đường khôi phục).
+      ...(ignored.has(String(p.path).toLowerCase()) ? { ignored: true } : {}),
     }));
     const totals = db
       .prepare(
@@ -1331,7 +1464,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // thấy số nhảy ("kẹt rất lâu mới lên"). Đã tối ưu coverage 38 s → 0,58 s, nhưng vẫn
       // KHÔNG nên bắt một cập nhật tức thời đi qua cả gói nặng: cái nào phải tức thời thì
       // phải có đường riêng, không phụ thuộc thứ nặng nhất trong gói.
-      return json(res, { drive: driveSyncProgress(), scopeTree: safeScopeTree() });
+      {
+        // Kèm đèn sức khoẻ — /sync-pulse là đường TƯƠI của card Drive, thiếu đèn ở đây thì
+        // đúng lúc cần báo nhất (vừa quét/vừa sync xong) card lại vẽ bản không có đèn.
+        const prog = driveSyncProgress();
+        return json(res, { drive: { ...prog, health: driveHealthNow(prog) }, scopeTree: safeScopeTree() });
+      }
     }
     if (p === "/set-lang") {
       // Do NOT invalidate the dashboard cache here. tr() (server-side i18n) is used
@@ -1381,7 +1519,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/set-drive") {
       const path = (u.searchParams.get("path") ?? "").trim();
       setDriveDir(path);
-      return json(res, probeDrive(path));
+      // Cú bấm Link cần phán TƯƠI (user vừa gõ đường mới) — chặn có trần 8 s, không vô hạn.
+      return json(res, probeDriveFresh(path));
     }
     if (p === "/doc") {
       return json(res, readDoc(target, u.searchParams.get("file") ?? ""));
@@ -2055,6 +2194,22 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       setSyncAttachments(u.searchParams.get("on") === "1");
       return json(res, { ok: true, syncAttachments: getSyncAttachments() });
     }
+    if (p === "/set-project-ignore") {
+      // "Bỏ qua" / "Khôi phục" một root chưa liên kết. Bộ lọc của danh sách chọn, KHÔNG đụng kho.
+      const root = u.searchParams.get("root") ?? "";
+      if (!root) return json(res, { ok: false, error: "root required" });
+      const list = setIgnoredRoot(root, u.searchParams.get("on") !== "0");
+      invalidateDashboardSoft();
+      return json(res, { ok: true, ignoredRoots: list });
+    }
+    if (p === "/set-autosync-schedule") {
+      // ⚙ panel Auto-sync: `mode=interval&every=30` hoặc `mode=times&times=12:00,18:00`.
+      const mode = u.searchParams.get("mode") === "times" ? "times" : "interval";
+      const every = Number(u.searchParams.get("every") ?? "");
+      const times = (u.searchParams.get("times") ?? "").split(",").map((s) => s.trim()).filter((s) => /^\d{2}:\d{2}$/.test(s));
+      setAutosyncSchedule({ mode, ...(Number.isFinite(every) && every >= 5 ? { everyMin: Math.round(every) } : {}), ...(mode === "times" ? { times } : {}) });
+      return json(res, { ok: true, autosyncSchedule: getAutosyncSchedule() });
+    }
     if (p === "/set-repo-std-check") {
       setRepoStdCheck(u.searchParams.get("on") === "1");
       harnessUpdCache = null;
@@ -2090,7 +2245,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.
       return json(res, {
-        autostart: getAutostart(), autosync: getAutosync(), scheduler: getScheduler(),
+        autostart: getAutostart(), autosync: getAutosync(), scheduler: getScheduler(), autosyncSchedule: getAutosyncSchedule(),
         // `realtime` = ý định; `realtimeWired` = SỰ THẬT (hook có trong settings của host
         // không). Phơi cả hai vì chúng lệch được: user sửa tay settings.json, hoặc cài trên
         // máy chưa có Claude Code. Chỉ hiện cờ config là hứa suông.

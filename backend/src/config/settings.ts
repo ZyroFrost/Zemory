@@ -60,6 +60,17 @@ interface ZConfig {
   /** Chip cập nhật có KIỂM các repo khác trong registry còn khớp chuẩn không (mặc định có). Tắt ⇒ chip chỉ báo
    *  bản zemory mới trên kênh chung — cho máy chỉ dùng zemory làm bộ nhớ, không quản chuẩn repo (user 2026-08-29). */
   repoStdCheck?: boolean;
+  /** Lịch tự sync — xem getAutosyncSchedule. */
+  autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
+  /** Root "chưa liên kết" người dùng bảo BỎ QUA (không đưa lên danh sách chọn). Chỉ là bộ lọc của danh sách —
+   *  phiên vẫn trong kho, vẫn recall/sync. Khôi phục được từ nhóm "Đã bỏ qua" (user chốt 2026-08-29). */
+  ignoredRoots?: string[];
+  /** Mốc tự sync gần nhất (ms epoch) — xem getAutosyncLastAt. */
+  autosyncLastAt?: number;
+  /** Mốc lượt tự sync ĐANG chạy (ms epoch), xoá khi có kết cục — xem getAutosyncRunAt. */
+  autosyncRunAt?: number | null;
+  /** Kết cục lượt tự sync GẦN NHẤT — xem getAutosyncLastResult. */
+  autosyncLastResult?: { at: string; ok: boolean; kind?: string; detail?: string };
   /** Kết quả kiểm đăng nhập gần nhất của từng nền web — xem getWebAuth. */
   webAuth?: Record<string, { ok: boolean; at: string; who?: string }>;
   /**
@@ -269,6 +280,94 @@ export function setSyncAttachments(on: boolean): void {
   const c = read();
   c.syncAttachments = on;
   write(c);
+}
+
+/**
+ * LỊCH tự sync (user chốt 2026-08-29: ⚙ ở panel Auto-sync → hộp chọn). Hai kiểu, một lúc một kiểu:
+ *  · `interval` — sau mỗi `everyMin` phút (mặc định 30 = hành vi cũ, không đổi gì nếu chưa chỉnh);
+ *  · `times` — vào các mốc giờ trong ngày (`"12:00"` · `"18:00"`, giờ máy), mỗi mốc bắn một lần/ngày.
+ * Nút "Đồng bộ ngay" không bị lịch này ràng.
+ */
+export interface AutosyncSchedule {
+  mode: "interval" | "times";
+  everyMin: number;
+  times: string[];
+}
+export function getAutosyncSchedule(): AutosyncSchedule {
+  const s = read().autosyncSchedule;
+  const everyMin = Number(s?.everyMin);
+  return {
+    mode: s?.mode === "times" ? "times" : "interval",
+    everyMin: Number.isFinite(everyMin) && everyMin >= 5 ? Math.round(everyMin) : 30,
+    times: Array.isArray(s?.times) ? s.times.filter((t) => /^\d{2}:\d{2}$/.test(String(t))).slice(0, 12) : [],
+  };
+}
+export function setAutosyncSchedule(v: Partial<AutosyncSchedule>): void {
+  const c = read();
+  c.autosyncSchedule = { ...getAutosyncSchedule(), ...v };
+  write(c);
+}
+
+/** Mốc lượt TỰ sync gần nhất — LƯU BỀN, không phải biến trong tiến trình (đo 2026-08-29: 28 lần daemon khởi động lại
+ *  trong ngày, mỗi lần đồng hồ sync về 0 rồi nhường embed ⇒ 8 giờ không một lượt tự sync nào, 5.896 tin chưa đẩy). */
+export function getAutosyncLastAt(): number | null {
+  const v = read().autosyncLastAt;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+export function setAutosyncLastAt(ms: number): void {
+  const c = read();
+  c.autosyncLastAt = ms;
+  write(c);
+}
+
+/**
+ * Mốc lượt tự sync ĐANG chạy — đặt lúc phóng job, xoá lúc có kết cục.
+ *
+ * Còn sót lại lúc daemon khởi động = lượt đó chết mà KHÔNG kịp báo gì (callback kết cục sống
+ * trong tiến trình daemon, daemon chết là nó chết theo). Đo 2026-08-30: 11 lượt tự sync kể từ
+ * lúc có log kết cục (27/08) thì **7 lượt CÂM** — không OK, không FAIL, chỉ một dòng "starting"
+ * rồi im, vì lần khởi động lại kế tiếp cắt ngang. Phải LƯU BỀN mới nói được câu đó ở phiên sau.
+ */
+export function getAutosyncRunAt(): number | null {
+  const v = read().autosyncRunAt;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+export function setAutosyncRunAt(ms: number | null): void {
+  const c = read();
+  c.autosyncRunAt = ms;
+  write(c);
+}
+
+/**
+ * Kết cục lượt tự sync GẦN NHẤT — để UI đọc được, không riêng `daemon.log`.
+ *
+ * Vì sao phải LƯU BỀN (user chốt 2026-08-30, nguyên văn: *"nó gãy ở drive thì cũng phải báo
+ * sync vấn đề… user chỉ nhìn thông số và dashboard"*): kết cục trước đây chỉ đi vào log, mà
+ * người dùng không đọc log — họ nhìn card Drive Sync. Một lượt hỏng (Drive chập · bị restart
+ * cắt) không được hiển thị ở đâu ⇒ dashboard hiện số CŨ như thể mọi thứ ổn. `kind`:
+ * `"fail"` = chạy xong và hỏng · `"interrupted"` = chết không kịp báo (phát hiện lúc daemon lên).
+ */
+export function getAutosyncLastResult(): { at: string; ok: boolean; kind?: string; detail?: string } | null {
+  const v = read().autosyncLastResult;
+  return v && typeof v.at === "string" && typeof v.ok === "boolean" ? v : null;
+}
+export function setAutosyncLastResult(v: { ok: boolean; kind?: string; detail?: string }): void {
+  const c = read();
+  c.autosyncLastResult = { at: new Date().toISOString(), ...v };
+  write(c);
+}
+
+export function getIgnoredRoots(): string[] {
+  const v = read().ignoredRoots;
+  return Array.isArray(v) ? v.filter((x) => typeof x === "string" && x) : [];
+}
+/** Thêm/bỏ một root khỏi danh sách bỏ qua — so không phân biệt hoa/thường (đường Windows). */
+export function setIgnoredRoot(root: string, on: boolean): string[] {
+  const c = read();
+  const cur = getIgnoredRoots().filter((r) => r.toLowerCase() !== root.toLowerCase());
+  c.ignoredRoots = on ? [...cur, root] : cur;
+  write(c);
+  return c.ignoredRoots;
 }
 
 export function getRepoStdCheck(): boolean {

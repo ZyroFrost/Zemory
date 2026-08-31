@@ -422,7 +422,26 @@
   // `realtime` hiện theo SỰ THẬT (`realtimeWired` = hook có trong settings của host) chứ không
   // theo cờ config: hai thứ lệch được (user sửa tay settings.json, hoặc máy chưa cài Claude
   // Code), và một công tắc sáng đèn trong khi không có gì chạy là lời hứa suông.
-  function renderAuto(a){Z.auto=a=a||{};setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
+  // Tóm tắt lịch tự sync cạnh công tắc ("mỗi 30 phút" · "lúc 12:00 · 18:00").
+  function asFmt(m){return m%60===0?t('as.hour').replace('{n}',m/60):t('as.min').replace('{n}',m);}
+  function asSummary(s){s=s||{};if(s.mode==='times')return (s.times&&s.times.length)?t('as.sumTimes').replace('{t}',s.times.join(' · ')):t('as.sumNone');return t('as.sumInterval').replace('{t}',asFmt(s.everyMin||30));}
+  function openAsDialog(){
+    var s=(Z.auto&&Z.auto.autosyncSchedule)||{mode:'interval',everyMin:30,times:[]};
+    var evs=[15,30,60,120,180,360,720],hours=[];for(var h=0;h<24;h++)hours.push((h<10?'0':'')+h+':00');
+    var body='<div style="font-size:13px;display:flex;flex-direction:column;gap:10px">'
+      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="interval"'+(s.mode!=='times'?' checked':'')+'> '+stdEsc(t('as.modeInterval'))+' <select id="asEvery" class="rsel">'+evs.map(function(m){return '<option value="'+m+'"'+(m===(s.everyMin||30)?' selected':'')+'>'+stdEsc(asFmt(m))+'</option>';}).join('')+'</select></label>'
+      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="times"'+(s.mode==='times'?' checked':'')+'> '+stdEsc(t('as.modeTimes'))+'</label>'
+      +'<div id="asTimes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px 10px;padding-left:24px;font-size:12px">'+hours.map(function(hh){return '<label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" class="asT" value="'+hh+'"'+((s.times||[]).indexOf(hh)>=0?' checked':'')+'>'+hh+'</label>';}).join('')+'</div>'
+      +'<div class="muted" style="font-size:11px">'+stdEsc(t('as.note'))+'</div></div>';
+    zDialog({icon:'⏱',title:t('as.title'),bodyHtml:body,okLabel:t('as.save'),onOk:function(){
+      var mode=(document.querySelector('input[name=asMode]:checked')||{}).value||'interval';
+      var every=(zid('asEvery')||{}).value||'30';
+      var times=Array.prototype.slice.call(document.querySelectorAll('.asT:checked')).map(function(c){return c.value;});
+      zPost('/set-autosync-schedule?mode='+mode+'&every='+encodeURIComponent(every)+'&times='+encodeURIComponent(times.join(','))).then(function(){return zGet('/automation');}).then(renderAuto);
+    }});
+  }
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='asGear')openAsDialog();});
+  function renderAuto(a){Z.auto=a=a||{};zset('asSummary',asSummary(a.autosyncSchedule));setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
     // Ngưỡng nhắc context — chỉ đổ giá trị khi user KHÔNG đang gõ dở (renderAuto chạy lại
     // sau mỗi lần bật/tắt công tắc khác; đè lên ô đang focus là nuốt mất số người ta gõ).
     var cw=zid('ctxWarnPct');if(cw&&document.activeElement!==cw&&a.contextWarnPercent)cw.value=a.contextWarnPercent;}
@@ -495,6 +514,7 @@
           zset('scanProjMsg',t('prune.running'));
           zPost('/prune-projects').then(function(r){
             r=r||{};zset('scanProjMsg',t('prune.done2').replace('{r}',zN(r.removed||0)).replace('{m}',zN(r.mergedRoots||0)).replace('{g}',zN(r.grouped||0)));
+            zToast(t('toast.pruned').replace('{r}',zN(r.removed||0)).replace('{m}',zN(r.mergedRoots||0)).replace('{g}',zN(r.grouped||0)),'ok');
             if(r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;
             return zGet('/status').then(function(s){if(s)Z.status=s;return zGet('/memory-status?fresh=1').then(renderMem);});
           }).catch(function(){zset('scanProjMsg','✗ '+t('q.err'));});
@@ -529,11 +549,24 @@
           return true;}});}
     else if(act==='mredact'){zConfirm({title:t('rd.title'),body:t('rd.body'),okLabel:t('rd.ok'),onOk:function(){zset('drvMsg',t('rd.running'));zPost('/memory-redact').then(function(r){zset('drvMsg',r&&r.ok?'✓ '+t('rd.done'):('✗ '+((r&&r.error)||t('q.err'))));});}});}
   });
+  // BƯỚC → chữ hiện — mã từ backend (`share.ts::onProgress`), FE tự dịch qua i18n (user 2026-08-30:
+  // "phải hiện tiến trình sync đang bước nào"). `lock-wait:<ai>` mang theo tên máy giữ khoá.
+  function phaseText(ph){if(!ph)return t('drv.syncing');
+    if(ph.indexOf('lock-wait:')===0)return t('drv.phase.lock-wait').replace('{h}',ph.slice(10));
+    return t('drv.phase.'+ph)||t('drv.syncing');}
   function pollSync(){zGet('/sync-status').then(function(st){
-    if(st&&st.running){zrun('driveState',true);zset('driveState',t('drv.syncing'));setTimeout(pollSync,2000);return;}
-    zrun('driveState',false);zset('driveState','✓ '+t('drv.syncDone'));
-    syncPulse();                                   // số Drive về đúng NGAY khi đẩy xong
-    zGet('/memory-status?fresh=1').then(renderMem); // phần nặng làm tươi sau
+    if(st&&st.running){zrun('driveState',true);zset('driveState',phaseText(st.phase));setTimeout(pollSync,1500);return;}
+    // KHÔNG còn suy "hết running ⇒ xong tốt" (user 2026-08-30: "xoay xong sync ko có gì thay đổi
+    // là ko đúng" — lượt 29/08 chết vì Drive chập, `ok:false`, mà UI cũ vẫn báo "✓ sync xong").
+    // Lỗi thì BÁO LỖI, đứng yên cho người đọc thấy — không tự tắt sau vài giây rồi im.
+    if(st&&st.ok===false){zrun('driveState',false);var m=zid('driveState');if(m)m.classList.add('err');
+      zset('driveState','✗ '+(st.error||t('drv.err')));zToast(t('toast.syncFail').replace('{e}',st.error||''),'err');return;}
+    // THÀNH: vẫn XOAY tiếp trong lúc chờ số thật về — dừng xoay mà số cũ còn nguyên là đúng lỗi
+    // user vừa bắt. `syncPulse` (rẻ) trước, `/memory-status?fresh=1` (số Drive thật) sau; hết cả
+    // hai mới tắt xoay + báo xong.
+    zset('driveState',t('drv.finishing'));
+    syncPulse();
+    zGet('/memory-status?fresh=1').then(function(m){renderMem(m);zrun('driveState',false);var el=zid('driveState');if(el)el.classList.remove('err');zset('driveState','✓ '+t('drv.syncDone'));zToast(t('drv.syncDone'),'ok');});
   }).catch(function(){setTimeout(pollSync,2000);});}
 
   // ── DỜI TỪ graph.js 2026-08-07: nguồn đã dò, không phải graph
@@ -554,16 +587,45 @@
     var isLocalTab=discTab===localHost;
     // Folder đã mất (chỉ đo được cho máy này): gom xuống nhóm thu gọn cuối danh sách — phiên vẫn trong kho,
     // nhưng không bày lẫn với repo đang sống (user 2026-08-29).
-    var all=(byHost[discTab]||[]),live=all.filter(function(p){return !p.gone;}),gone=all.filter(function(p){return p.gone;});
-    var goneHtml=gone.length?'<details class="disc-gone" style="margin-top:10px"><summary class="muted" style="font-size:11.5px;cursor:pointer">'+stdEsc(t('src.goneHdr').replace('{n}',gone.length))+'</summary>'+gone.map(function(p){return '<div class="disc-row muted" style="font-size:11.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(p.path)+'</span><span>'+zN(p.sessions)+' sess</span></div>';}).join('')+'</details>':'';
+    // "Bỏ qua" (user chốt 2026-08-29): root bị bỏ qua RỜI danh sách sống, xuống nhóm thu gọn "Đã bỏ qua (N)" có nút
+    // Khôi phục — danh sách đó chính là undo, và là câu trả lời "repo nào đang không được track". Chỉ là bộ lọc của
+    // danh sách chọn: phiên vẫn trong kho, vẫn recall/sync.
+    var all0=(byHost[discTab]||[]),ign=all0.filter(function(p){return p.ignored;}),all=all0.filter(function(p){return !p.ignored;});
+    // Nút "Đã bỏ qua (N)" neo PHẢI, cùng hàng tab máy (user 2026-08-29) — mở hộp danh sách có Khôi phục. Đếm mọi máy.
+    IGN_ALL=(cap.projects||[]).filter(function(p){return p.ignored;});
+    tabs=tabs.replace(/<\/div>\s*$/,'<span style="flex:1"></span><button type="button" class="btn sm" id="ignList" style="align-self:center;margin:2px 0" title="'+stdEsc(t('src.ignoredTip'))+'">'+stdEsc(t('src.ignoredBtn').replace('{n}',IGN_ALL.length))+'</button></div>');
+    var live=all.filter(function(p){return !p.gone;}),gone=all.filter(function(p){return p.gone;});
+    var goneHtml=gone.length?'<details class="disc-gone" style="margin-top:10px"><summary class="muted" style="font-size:11.5px;cursor:pointer">'+stdEsc(t('src.goneHdr').replace('{n}',gone.length))+'</summary>'+gone.map(function(p){return '<div class="disc-row muted" style="font-size:11.5px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(p.path)+'</span><span>'+zN(p.sessions)+' sess</span><button class="btn sm" data-ignore-proj="'+stdEsc(p.path)+'" data-on="1" title="'+stdEsc(t('src.ignoreTip'))+'">'+stdEsc(t('src.ignore'))+'</button></div>';}).join('')+'</details>':'';
+    var ignHtml='';
     var rows=live.slice(0,80).map(function(p){var pbi=p.profile==='non-app';
       var act=isLocalTab
         ? '<button class="btn sm" data-add-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto">＋ Add</button><button class="btn sm" data-merge-proj="'+stdEsc(p.path)+'" style="flex:0 0 auto" title="'+t('src.mergeTip')+'">'+t('src.merge')+'</button>'
         : '<span class="muted" style="font-size:11px;flex:0 0 auto">'+t('src.from')+stdEsc(discTab)+'</span>';
-      return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+act+'</div></div>';
+      // NGUỒN của từng root (user 2026-08-29: "hiện nguồn của nó để biết có nên add không"): chip theo nguồn góp phiên.
+      // Root không phải đường dẫn đĩa = TÊN PROJECT trên web (ChatGPT/Claude project) ⇒ không có folder để Add — ẩn nút Add,
+      // giữ Merge (gộp vào một dự án đã liên kết vẫn có nghĩa).
+      var srcs=String(p.sources||'').split(',').filter(Boolean);
+      var isPath=/^[A-Za-z]:[\\/]|^\//.test(String(p.path));
+      var chips=srcs.map(function(s){return '<span class="srcchip'+(/-web$|-cowork$/.test(s)?' is-web':'')+'">'+stdEsc(s)+'</span>';}).join('');
+      var rowAct=isPath?act:(isLocalTab?act.replace(/<button class="btn sm" data-add-proj="[^"]*"[^>]*>＋ Add<\/button>/,'<span class="muted" style="font-size:10.5px;flex:0 0 auto" title="'+stdEsc(t('src.webProjTip'))+'">'+stdEsc(t('src.webProj'))+'</span>'):act);
+      rowAct+='<button class="btn sm" data-ignore-proj="'+stdEsc(p.path)+'" data-on="1" style="flex:0 0 auto" title="'+stdEsc(t('src.ignoreTip'))+'">'+stdEsc(t('src.ignore'))+'</button>';
+      return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+chips+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+rowAct+'</div></div>';
     }).join('');
-    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>'+goneHtml;
+    box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>'+goneHtml+ignHtml;
   }
+  var IGN_ALL=[];
+  function openIgnoredList(){
+    var rows=IGN_ALL.length?IGN_ALL.map(function(p){return '<div class="disc-row" style="font-size:12px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="'+stdEsc(p.path)+'">'+stdEsc(p.path)+'</span><span class="muted" style="flex:0 0 auto">'+stdEsc(p.host||'')+' · '+zN(p.sessions)+' sess</span><button class="btn sm" data-ignore-proj="'+stdEsc(p.path)+'" data-on="0" style="flex:0 0 auto">'+stdEsc(t('src.restore'))+'</button></div>';}).join(''):'<div class="muted">'+stdEsc(t('src.ignoredNone'))+'</div>';
+    zDialog({icon:'🚫',title:t('src.ignoredTitle').replace('{n}',IGN_ALL.length),bodyHtml:'<div class="muted" style="font-size:11.5px;margin-bottom:8px">'+stdEsc(t('src.ignoreTip'))+'</div>'+rows,okLabel:t('scope.detClose')});
+  }
+  document.addEventListener('click',function(e){if(e.target&&e.target.id==='ignList')openIgnoredList();});
+  document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-ignore-proj]'):null;if(!b)return;
+    e.stopPropagation();b.disabled=true;var on=b.dataset.on!=='0',path=b.dataset.ignoreProj,name=zProjName(path);
+    // Báo NGAY (toast) rồi mới vẽ lại: /memory-status có thể mất vài giây, im lặng lúc đó là "bấm không thấy gì".
+    zToast(t(on?'toast.ignoring':'toast.restoring').replace('{p}',name));
+    zPost('/set-project-ignore?root='+encodeURIComponent(path)+'&on='+(on?'1':'0')).then(function(){return zGet('/memory-status');}).then(function(m){renderMem(m);zToast(t(on?'toast.ignored':'toast.restored').replace('{p}',name),'ok');
+      var d=zid('zDlg');if(d&&d.classList.contains('on')&&zid('zDlgTitle')&&/🚫|Đã bỏ qua|Ignored/.test(zid('zDlgIcon').textContent+zid('zDlgTitle').textContent))openIgnoredList();
+    }).catch(function(){b.disabled=false;zToast(t('q.err'),'err');});});
   document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('[data-disc-tab]'):null;if(t){discTab=t.dataset.discTab;renderDiscovered((Z.mem&&Z.mem.coverage)||{});}});
   document.addEventListener('click',function(e){var mg=e.target.closest?e.target.closest('[data-merge-proj]'):null;if(!mg)return;
     var from=mg.dataset.mergeProj,ks=(Z.status&&Z.status.knownProjects)||[];
