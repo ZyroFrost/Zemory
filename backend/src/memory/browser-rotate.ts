@@ -9,6 +9,9 @@
 // Nó nằm dưới `data/` vốn đã gitignore nên KHÔNG cổng nào thấy nó lớn lên — đúng chỗ mà
 // `02_RULES` gọi tên: *".gitignore là GIẤU, không phải DỌN"*, và đúng chỗ từng nuốt 3 GB trước đó.
 //
+// ⚠ CHỈ dọn thứ APP TỰ SINH (`-bak-` của `borrowCookies`). Bản do người/agent làm tay —
+// `.trong-<epoch>` chẳng hạn — KHÔNG bao giờ bị đụng: xem ghi chú ở `isSetAsideProfile`.
+//
 // Chính sách, cố ý giữ tinh thần của luật gốc thay vì đảo nó:
 //   ① CỬA SỔ LÙI — bản mới hơn `keepMs` (mặc định 7 ngày) KHÔNG bị đụng. Lùi được là mục đích
 //      ban đầu; thu hồi ngay hôm sau là lấy mất chính thứ luật kia bảo vệ.
@@ -31,16 +34,22 @@ export function browserDir(): string {
 }
 
 /**
- * Tên thư mục này có phải bản DỜI SANG BÊN (không phải khe đang sống)?
+ * Tên thư mục này có phải bản DỜI SANG BÊN **DO CHÍNH APP TẠO** (không phải khe đang sống)?
  *
- * Hai dạng đã thấy trên đĩa, và phép nhận dạng phải bắt cả hai:
- *  · `<khe>.<trình duyệt>-bak-<epoch>` — dạng hiện nay (`claude.msedge-bak-1787906707220`);
- *  · `<khe>.trong-<epoch>` — profile bị làm trống (`claude.trong-1787902837`);
- *  · và dạng MẤT DẤU CHẤM đời cũ (`claude-2chrome-bak-1786354307845`) — nên phép `bak-` phải
- *    đứng độc lập với phép dấu chấm, y như `isRealSlot` đã phải học ở `webslots.ts`.
+ * 🔴 RANH GIỚI KHÔNG ĐƯỢC VƯỢT: chỉ nhận dạng thứ app tự sinh, tức `-bak-` do
+ * `scanweb.borrowCookies` đặt (`renameSync(profileDir, ...-bak-${Date.now()})`, `scanweb.ts`).
+ * Bắt cả dạng MẤT DẤU CHẤM đời cũ (`claude-2chrome-bak-1786354307845`) nên phép `bak-` đứng độc
+ * lập với phép dấu chấm, y như `isRealSlot` đã phải học ở `webslots.ts`.
+ *
+ * ⚠ **`.trong-<epoch>` CỐ Ý KHÔNG nằm trong đây** (sửa 2026-08-31, cùng ngày với bản đầu). Bản
+ * đầu của hàm này bắt cả `.trong-` vì tôi thấy nó trên đĩa và SUY RA từ cái tên rằng app tạo nó.
+ * Tra lại: **không dòng code nào sinh `.trong-`** — hai hit `grep` duy nhất là chữ
+ * "trong-tiến-trình" trong comment. Tức `claude.trong-1787902837` là bản một phiên agent LÀM TAY.
+ * Tự động xoá thứ người ta chủ động đỗ lại là việc vòng dọn không được phép làm, dù tên nó trông
+ * như rác. Ranh giới đúng là AI TẠO RA NÓ, không phải TÊN NÓ TRÔNG NHƯ GÌ.
  */
 export function isSetAsideProfile(name: string): boolean {
-  return /bak-/i.test(name) || /\.trong-/i.test(name);
+  return /bak-/i.test(name);
 }
 
 export interface SetAside {
