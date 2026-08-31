@@ -36,7 +36,7 @@ export function cmdInit(args: string[]): void {
     return;
   }
   // Decide the profile BEFORE scaffolding: it picks which template TREE we copy
-  // (docs_template/app vs nonapp). ensureHarness persists profile:"non-app" into
+  // (docs_template/05_app vs 03_nonapp). ensureHarness persists profile:"non-app" into
   // the config (app stays the implicit default). --non-app follows the NON-APP
   // standard (BI/data/docs/design — deliverables, no backend/frontend).
   const profile = args.includes("--non-app") ? "non-app" : undefined;

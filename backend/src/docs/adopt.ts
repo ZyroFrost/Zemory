@@ -25,18 +25,23 @@ import { getDriveDir } from "../config/settings.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** The shared harness STANDARD, shipped with zemory (separate from any project's
- *  docs/). Split by profile: docs_template/app/ (code apps) and docs_template/
- *  nonapp/ (BI/data/docs/design deliverables). Each tree is complete + read
+ *  docs/). Split by profile: docs_template/05_app/ (code apps) and docs_template/
+ *  03_nonapp/ (BI/data/docs/design deliverables). Each tree is complete + read
  *  standalone; the files that MUST match are locked byte-identical by a parity
- *  test (template-parity.test.mjs) so the shared shells never drift. */
+ *  test (template-parity.test.mjs) so the shared shells never drift. Bundle
+ *  folders carry a numeric prefix (01–05, ordered by complexity for the END
+ *  USER — user chốt 2026-08-31) purely for navigation; it is NOT a version or
+ *  a load-order dependency, so callers below still hardcode the two names this
+ *  function actually needs. */
 export const TEMPLATE_DIR = join(HERE, "..", "..", "docs_template");
 
 /** The template subtree for a profile (defaults to app). `init`/`sync` scaffold
  *  from here and the UI loads it for reference. The profile value "non-app" (with
- *  the hyphen the type uses) maps to the folder `nonapp` (slot names carry no
- *  hyphen — 03_STRUCTURE convention). */
+ *  the hyphen the type uses) maps to the folder `03_nonapp` (slot names carry no
+ *  hyphen — 03_STRUCTURE convention; the LEADING digit here is the bundle-order
+ *  prefix, unrelated). */
 export function templateDir(profile: StructureProfile = "app"): string {
-  return join(TEMPLATE_DIR, profile === "non-app" ? "nonapp" : "app");
+  return join(TEMPLATE_DIR, profile === "non-app" ? "03_nonapp" : "05_app");
 }
 
 export interface AdoptResult {

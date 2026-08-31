@@ -110,7 +110,7 @@ export const SLOT_ROLES: Record<string, string> = {
 
 /** NON-APP §7: top-level dirs whose CHILDREN are free-form BY THE STANDARD ITSELF —
  *  `tasks/<case>/` · `pipelines/<domain>/` · `data/<case>/` (all three declared in
- *  docs_template/nonapp/agent/03_STRUCTURE.md: numbered `NN_` AND plain legacy names
+ *  docs_template/03_nonapp/agent/03_STRUCTURE.md: numbered `NN_` AND plain legacy names
  *  coexist). `conform` must NOT flag their children as off-standard on a non-app repo —
  *  measured 2026-08-20 (report from a PBI repo, reproduced on a fixture): the checker
  *  only exempted the `NN_` prefix, so `pipelines/excel_loader/` was a blocking false

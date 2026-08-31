@@ -84,7 +84,7 @@ export function validate(ctx: Context): ValidateReport {
   }
 
   // 3. Repo structure vs the standard (docs/agent/03_STRUCTURE.md). TWO standards:
-  //    profile "app" (docs_template/app) vs "non-app" (its OWN 03_STRUCTURE —
+  //    profile "app" (docs_template/05_app) vs "non-app" (its OWN 03_STRUCTURE —
 //    BI/data/docs/design). "§7" used to mean "the non-app standard" back when it
 //    was a section inside the app file; it is a separate file now, and each file
 //    numbers its own sections, so messages below name the section per profile.
