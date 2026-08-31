@@ -63,6 +63,31 @@ test("syncBlockedBy: rảnh ⇒ null; bận ⇒ nêu ĐÚNG kẻ chặn, theo đ
   );
 });
 
+// ── ①b KẺ GIỮ TOKEN JOB MÀ BA CHIỀU CŨ KHÔNG THẤY (bug đo 2026-08-31) ───────────────────────
+// Ca ĐÃ HỎNG THẬT: `web-pull` cũng `claimDaemonJob`, nhưng nó không phải `child` của chuỗi bảo trì,
+// không phải sync, không phải CLI ⇒ cổng trả `null` = "rảnh" trong khi token ĐÃ bị giữ. Log thật:
+// 08:24:56 "kẻ chặn đã xong, vào lượt" → tiêu mốc, mở sổ, in "starting" → rồi `claimDaemonJob("sync")`
+// mới trượt. Hai lượt "starting" mà không lượt nào chạy, sổ kẹt mở ⇒ card báo đỏ "bị cắt giữa lượt"
+// cho một lượt CHƯA TỪNG khởi động.
+test("syncBlockedBy: job daemon khác giữ kho (web-pull) ⇒ PHẢI nhận ra, không được báo rảnh", () => {
+  const free = { maintainChain: false, syncRunning: false, cliHolder: null };
+  assert.equal(syncBlockedBy({ ...free, jobHolder: null }), null, "token rảnh ⇒ vẫn phải là null");
+  const note = syncBlockedBy({ ...free, jobHolder: "web-pull" });
+  assert.ok(note, "web-pull giữ token ⇒ KHÔNG được trả null (đây chính là bug)");
+  assert.match(note, /web-pull/, "phải nêu ĐÚNG TÊN kẻ giữ, để người đọc soi đúng chỗ");
+
+  // `sync` tự giữ token đã được chiều `syncRunning` gọi tên cụ thể hơn; nhãn thô không được lấn.
+  assert.equal(syncBlockedBy({ ...free, jobHolder: "sync" }), null, "nhãn 'sync' không tự sinh kẻ chặn ma");
+  assert.match(syncBlockedBy({ ...free, syncRunning: true, jobHolder: "sync" }), /một lượt sync đang chạy/);
+
+  // Xét CUỐI: ba chiều cũ nói câu cụ thể hơn cho cùng một kẻ giữ.
+  assert.match(syncBlockedBy({ ...free, maintainChain: true, jobHolder: "maintain" }), /bảo trì/);
+  assert.match(syncBlockedBy({ ...free, cliHolder: "memory embed", jobHolder: "web-pull" }), /memory embed/);
+
+  // Thiếu hẳn khoá (người gọi cũ chưa truyền) KHÔNG được nổ — cổng này chắn đường đồng bộ (điều 9).
+  assert.equal(syncBlockedBy(free), null, "vắng jobHolder ⇒ fail-open như trước");
+});
+
 // ── ② BỊ CHẶN THÌ KHÔNG ĐƯỢC TIÊU SUẤT ──────────────────────────────────────────────────────
 // Ca ĐÃ HỎNG THẬT: `syncGate` cũ ghi mốc rồi mới gọi `syncTick`, nên một lượt bị chặn cũng ăn mất
 // suất 30′. Cái cứu là hẹn-lại-3-phút, mà nó là biến TRONG TIẾN TRÌNH ⇒ restart là mất hẹn, trong
