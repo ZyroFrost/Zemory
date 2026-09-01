@@ -99,6 +99,7 @@ import {
 import { slotOfIdentity } from "./memory/webslots.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
+import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
@@ -2146,18 +2147,105 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       //    hội thoại đó chạy model nào, cửa sổ bao nhiêu. Nên trả token, TUYỆT ĐỐI không trả %:
       //    đổi nó thành % là phải bịa mẫu số. (Và `chars/4` đếm HỤT với tiếng Việt, nên bề mặt
       //    phải luôn kèm dấu "~".)
+      // TRẦN 40 id/lượt, và FE tự chia lô. Vì sao có trần: `readContextUsage` là I/O ĐỒNG BỘ
+      // (~11,5 ms/phiên), chạy thẳng trên event loop của daemon. 40 phiên ≈ 460 ms — chấp nhận
+      // được; 120 phiên là ~1,4 s và trong 1,4 s đó MỌI endpoint khác đứng hình, đúng lỗi đã trả
+      // giá 2026-08-23 (lượt lạnh 16,7 s làm chip ở rail treo "…" nhìn như app đã tắt).
       const ids = (u.searchParams.get("ids") || "")
         .split(",")
         .map((x) => x.trim())
         .filter(Boolean)
-        .slice(0, 300);
+        .slice(0, 40);
       if (!ids.length) return json(res, { items: {} });
       const items: Record<string, unknown> = {};
+      const warnPct = getContextWarnPercent();
+      // ① Sổ bền do hook `stop` ghi — nguồn TƯƠI nhất, có cho phiên đang chạy.
       for (const id of ids) {
         const st = readContextState(id);
-        if (st) items[id] = { kind: "measured", percent: st.percent, tokens: st.tokens, window: st.window, threshold: st.threshold, over: st.over, at: st.at };
+        if (st) items[id] = { kind: "measured", percent: st.percent, tokens: st.tokens, window: st.window, threshold: st.threshold, over: st.over, at: st.at, compactions: st.compactions ?? 0, totalTokens: st.totalTokens ?? st.tokens };
       }
-      // Phần còn lại: ước tính từ nội dung. Một truy vấn nhóm cho cả lô, không N+1.
+      // ② ĐỌC THẲNG TRANSCRIPT cho phiên CŨ — nguồn số ĐO, không phải ước tính.
+      //
+      // 🔴 Vì sao phải có nhánh này (user bắt được 2026-09-02: *"sao có mấy cái nó ko hiện %"*):
+      // bản đầu chỉ đọc sổ `.ctx.json`, mà sổ chỉ tồn tại từ lúc bản vá `stop` chạy ⇒ MỌI phiên
+      // trước đó rơi về `estimate` dù transcript của chúng còn nguyên trên đĩa và mang `usage` do
+      // host tự khai. Tức endpoint đọc thiếu một nguồn, không phải zemory không đo được.
+      //
+      // `ingest_state` đã giữ `file_path` ↔ `session_id` nên chỉ cần MỘT truy vấn (đo: 7 ms/40 id).
+      // Hai bẫy đã đo và phải xử: · một session id có thể có NHIỀU `file_path` (cùng phiên ingest
+      // từ nhiều đường — sau khi dời thư mục, hoặc từ máy khác) ⇒ chọn đường TỒN TẠI tại chỗ ·
+      // 16/52 đường là của MÁY KHÁC (đo trên kho này) ⇒ không đọc được, phải rơi về ước tính chứ
+      // không được im.
+      const needMeasure = ids.filter((id) => !items[id]);
+      if (needMeasure.length) {
+        try {
+          const db = openMemory();
+          try {
+            const ph = needMeasure.map(() => "?").join(",");
+            const rows = db
+              .prepare(`SELECT session_id, file_path FROM ingest_state WHERE session_id IN (${ph})`)
+              .all(...needMeasure) as { session_id: string; file_path: string }[];
+            const byId = new Map<string, string>();
+            for (const r of rows) {
+              // Đường đã chọn mà vẫn tồn tại thì giữ; chỉ thay khi đường mới tồn tại mà cũ không.
+              if (!r.file_path || !existsSync(r.file_path)) continue;
+              if (!byId.has(r.session_id)) byId.set(r.session_id, r.file_path);
+            }
+            // NGÂN SÁCH BYTE cho phần quét nén: `scanCompactions` phải đọc CẢ file (bản ghi
+            // `compact_boundary` nằm rải, không đọc đuôi được) — đo 66 ms/file, 40 file là 2,6 s
+            // đứng hình mọi endpoint khác. Nên: quét cho tới khi hết ngân sách, phần dư để lượt
+            // sau. Chỉ 2/40 phiên từng nén nên thực tế ngân sách gần như không bị dùng hết.
+            let scanBudget = 40 * 1024 * 1024;
+            for (const [id, fp] of byId) {
+              const usage = readContextUsage(fp);
+              if (!usage || usage.percent === null || usage.window === null) continue;
+              let at: string | undefined;
+              try {
+                // Mốc là mtime của TRANSCRIPT, không phải "lúc tôi đọc": FE dùng mốc này để phân
+                // biệt phiên ĐANG CHẠY (● ) vs ĐÃ ĐÓNG (◐). Lấy `Date.now()` là mọi phiên cũ đều
+                // hiện như đang chạy — bề mặt nói dối.
+                at = new Date(statSync(fp).mtimeMs).toISOString();
+              } catch {
+                /* không lấy được mtime ⇒ để trống, FE coi là đã đóng */
+              }
+              // Cộng dồn nén cho phiên CŨ (chưa có sổ). Hết ngân sách ⇒ trả 0 lần nén thay vì
+              // đoán: "chưa đo được" phải im, không được hiện thành "chưa nén lần nào" sai lệch —
+              // nên FE chỉ hiện phần cộng dồn khi `compactions > 0`.
+              let compactions = 0;
+              let totalTokens = usage.tokens;
+              try {
+                const sz = statSync(fp).size;
+                if (sz <= scanBudget) {
+                  scanBudget -= sz;
+                  const sc = scanCompactions(fp, 0);
+                  if (sc) {
+                    compactions = sc.count;
+                    totalTokens = sc.preTokensSum + usage.tokens;
+                  }
+                }
+              } catch {
+                /* fail-open: không đo được phần nén thì vẫn trả % hiện tại */
+              }
+              items[id] = {
+                kind: "measured",
+                percent: usage.percent,
+                tokens: usage.tokens,
+                window: usage.window,
+                threshold: warnPct,
+                over: usage.percent >= warnPct,
+                at,
+                compactions,
+                totalTokens,
+              };
+            }
+          } finally {
+            db.close();
+          }
+        } catch {
+          /* fail-open (điều 9): rơi về ước tính còn hơn gãy danh sách */
+        }
+      }
+      // ③ Còn lại: ước tính từ nội dung. Một truy vấn nhóm cho cả lô, không N+1.
       const rest = ids.filter((id) => !items[id]);
       if (rest.length) {
         try {
@@ -2175,7 +2263,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           /* fail-open (điều 9): thiếu badge còn hơn gãy danh sách */
         }
       }
-      return json(res, { items, warnPercent: getContextWarnPercent() });
+      return json(res, { items, warnPercent: warnPct });
     }
     if (p === "/insights") {
       return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));

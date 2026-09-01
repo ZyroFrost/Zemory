@@ -18,7 +18,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { scan, scanOneFile } from "./ingest.js";
 import { recallCard } from "./recall.js";
-import { lastCompactAt, readContextUsage } from "./context-guard.js";
+import { lastCompactAt, readContextUsage, scanCompactions } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
 import { getContextWarnPercent } from "../config/settings.js";
@@ -133,6 +133,20 @@ export interface ContextState {
   over: boolean;
   /** Mốc ghi (ISO). */
   at: string;
+  /**
+   * Số lần phiên ĐÃ BỊ NÉN, cộng dồn qua các lượt (0 = chưa nén lần nào).
+   *
+   * Vì sao phải có: `percent` là mức HIỆN TẠI, mà nén xong context tụt về ~30% — nên một phiên
+   * đã nén 3 lần vẫn hiện "45%" và con số đó nói dối về độ lớn thật. Đo transcript thật:
+   * `preTokens` mỗi lần nén ≈ 1M, tức phiên đầy gần TRỌN cửa sổ trước mỗi lần.
+   */
+  compactions?: number;
+  /** Tổng `preTokens` của các lần nén — token đã tiêu rồi bị nén đi. */
+  preTokensSum?: number;
+  /** Tổng token phiên đã TIÊU = `preTokensSum` + `tokens` hiện tại. Đây là "độ lớn thật". */
+  totalTokens?: number;
+  /** Đã quét tới byte nào của transcript (để lượt sau chỉ đọc phần mới). */
+  scannedTo?: number;
 }
 
 function contextStatePath(sessionId: string): string {
@@ -288,6 +302,13 @@ export function handleHook(event: HookEventName, payload: any): string {
             const threshold = warnAtPercent();
             const over = usage.percent >= threshold;
             const sid = String(payload?.session_id ?? path);
+            // CỘNG DỒN số lần nén: đọc sổ cũ rồi chỉ quét phần transcript MỚI (66 ms/file nếu
+            // quét lại từ đầu — xem `scanCompactions`). Nén xong context tụt về ~30%, nên không
+            // cộng dồn thì badge của một phiên nén 3 lần nói dối về độ lớn thật của nó.
+            const prev = readContextState(sid);
+            const sc = scanCompactions(path, prev?.scannedTo ?? 0);
+            const compactions = (prev?.compactions ?? 0) + (sc?.count ?? 0);
+            const preTokensSum = (prev?.preTokensSum ?? 0) + (sc?.preTokensSum ?? 0);
             writeContextState(sid, {
               percent: usage.percent,
               tokens: usage.tokens,
@@ -295,6 +316,10 @@ export function handleHook(event: HookEventName, payload: any): string {
               threshold,
               over,
               at: new Date().toISOString(),
+              compactions,
+              preTokensSum,
+              totalTokens: preTokensSum + usage.tokens,
+              scannedTo: sc?.scannedTo ?? prev?.scannedTo ?? 0,
             });
             // Vượt ngưỡng ⇒ CHỐT SỔ NGAY, không đợi user gõ lượt sau. Đây là nửa còn lại của
             // bug: lượt `prompt` mới chốt sổ, nên phiên đầy rồi tắt là mất phần chưa nạp.
