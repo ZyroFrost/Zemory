@@ -5,6 +5,59 @@
 
 ---
 
+## [2026-09-02] — cảnh báo context HẾT BỎ SÓT 7/8, và context lên được BỀ MẶT
+
+**User báo *"t ko thấy nó cảnh báo, hiếm lắm hầu như ko"*. Đo ra là BUG THẬT, không phải ngưỡng.**
+Trên 40 phiên thật của máy: **8 phiên vượt ngưỡng 90%, chỉ 1 có cờ `.warned` — bỏ sót 7**. Loại trừ
+được lời giải thích dễ dãi ("cờ bị xoá khi nén"): **không phiên nào từng bị nén**, và cả 7 đều CÓ cờ
+`.harness` ⇒ hook chạy bình thường. Tỉ lệ cờ tự nói: **46 `.harness` / 11 `.warned`**.
+
+**Gốc rễ:** phép kiểm context CHỈ nằm ở nhánh `prompt` (`UserPromptSubmit`) — mà context phình
+**TRONG lượt của assistant** (tool call, đọc file), không phải lúc người ta gõ. Hệ quả cơ học: phiên
+chạm ngưỡng rồi KẾT THÚC mà user không gõ thêm ⇒ **không bao giờ báo**. Nhánh `stop` (bắn sau MỖI
+lượt, tức chỗ duy nhất bắt được lúc vượt) trước bản này **không đo gì cả**.
+
+**Vá — và ràng buộc phải tôn trọng.** Dòng đầu `capture-hook.ts` khoá `Stop` là hook **write-only,
+0 token, no context change** (HP điều 10), nên KHÔNG được bê đoạn cảnh báo sang đó. Cách vá:
+`stop` **ĐO + ghi sổ bền** `<sid>.ctx.json` (percent · tokens · window · threshold · over · at) và
+**chốt sổ ngay** khi vượt ngưỡng — vẫn trả chuỗi RỖNG. Phần chữ giữ nguyên ở `prompt` (đã đúng, tự
+gọi `readContextUsage` mỗi lượt — **không sửa gì**, không đẻ việc). Ca "đầy rồi tắt máy" do BỀ MẶT
+phủ: hook không có đường nào tới người dùng trong ca đó.
+
+**Badge context lên màn Sessions (user chỉ đúng hai chỗ đặt).** Endpoint `/session-context` (lô ≤300
+id) + badge ở hàng list và trên dòng meta panel chi tiết. Điền ở **lượt thứ hai**, không chặn render:
+đo được **141 ms/80 phiên** (ước tính token, có index `idx_messages_session`) + **~11,5 ms/phiên**
+cho phần đọc đuôi transcript ⇒ ~1,4 s cho một trang; bắt người dùng chờ vì một con số phụ là sai
+đánh đổi. Phân biệt **`●` phiên đang chạy** ("đang là bấy nhiêu") vs **`◐` đã đóng** ("kết thúc ở mức
+đó") — hai thứ khác nghĩa. Màu lấy **đúng ngưỡng user đặt**, không đẻ ngưỡng thứ hai.
+
+**HAI LOẠI SỐ, CỐ Ý KHÔNG TRỘN** (user chốt: *"đừng tự tạo khung đoán riêng"*, và bác đúng câu tôi
+nói sai lúc đầu rằng phiên web "không có context" — *"tất cả mọi agent đều có context"*):
+- **`measured`** — chỉ `claude-code`: host tự khai `usage` trong transcript ⇒ có **cả tử số và mẫu
+  số** ⇒ nói được PHẦN TRĂM.
+- **`estimate`** — web/codex/…: `SUM(LENGTH(content))/4` từ nội dung đã lưu. Là số THẬT về độ lớn
+  hội thoại, nhưng **không có mẫu số** (zemory không biết phiên đó chạy model nào) ⇒ trả **token,
+  TUYỆT ĐỐI không %**. Quy ra % là bịa mẫu số. Đo thật: chatgpt-web tới **185.199** token.
+  ⚠ `chars/4` **đếm hụt với tiếng Việt** ⇒ bề mặt luôn kèm dấu `~` và nhãn "est.".
+
+**Một chẩn đoán của tôi bị BÁC bằng số, ghi lại:** tôi định đề nghị hạ ngưỡng 95%→85% và gọi đó là
+cách sửa. User bác: *"ngưỡng là do setting user đặt, việc của bạn là phải code sao nó nhận đúng ngưỡng
+đó"* — đúng, và nếu tôi dừng ở đó thì bug 7/8 kia vẫn còn nguyên. (Ngưỡng thật đang là **90**, không
+phải 95 như ảnh chụp cũ; config và daemon khớp nhau.)
+
+**Cổng:** `context-stop-state.test.mjs` **8 ca** — ① `stop` phải ghi sổ · ② `stop` phải IM kể cả khi
+VƯỢT ngưỡng (canh bất biến 0-token, trước bản này **không cổng nào canh**) · ③ không biết cửa sổ ⇒
+KHÔNG ghi (`window: null` mà vẫn ghi thì UI chỉ còn cách đoán) · fail-open transcript thiếu · sổ rác
+⇒ null · 3 ca hợp đồng endpoint (`estimate` không được mang `percent`/`window` · `measured` phải đủ 5
+trường · một truy vấn NHÓM, không N+1). i18n thêm 6 khoá **đủ hai dict**.
+**Đột biến chứng minh, chạy thật 5/5 ĐỎ:** *trả về đúng code cũ* (bỏ hẳn phép đo ở `stop`) · phun chữ
+ra `stop` khi vượt ngưỡng · bỏ chốt `window !== null` · cho `estimate` mang `percent` · bỏ `threshold`
+khỏi `measured`.
+
+**Bẫy trả giá:** đặt `process.env.GLOBAL_MEMORY_DB` trong thân từng test là **vô tác dụng** —
+`memory/db.ts` đọc env ĐÚNG MỘT LẦN lúc nạp module, nên phải trỏ kho tạm TRƯỚC rồi mới `import` động
+(cùng bẫy `autosync-schedule.test.mjs` và `writegate.test.mjs` đã ghi).
+
 ## [2026-08-31d] — RÁC dưới `data/` có người dọn: 2,3 GB thu hồi, và hai vòng dọn học được thứ chúng chưa nhìn thấy
 
 **Gốc bệnh chung của cả hai lỗ: một chính sách dọn chỉ đúng với những file NÓ NHẬN RA.** Cả hai đều
