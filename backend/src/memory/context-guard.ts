@@ -291,3 +291,80 @@ export function readContextUsage(transcriptPath: string, memory: WindowMemory = 
     closeSync(fd);
   }
 }
+
+/**
+ * Số lần phiên ĐÃ BỊ NÉN + tổng token đã tiêu trước mỗi lần nén — QUÉT TĂNG DẦN từ `fromByte`.
+ *
+ * 🔴 Vì sao cần (user chốt 2026-09-02): *"phải tính cộng dồn nếu có lần nào nó chạy compact, vì
+ * compact là nó nén 1 lần rồi sẽ ko chính xác nữa"*. Đúng: `readContextUsage` trả mức HIỆN TẠI,
+ * mà nén xong context tụt về ~30% — nên một phiên đã nén 3 lần vẫn hiện "45%" và con số đó **nói
+ * dối về độ lớn thật của phiên**. Đo trên transcript thật của máy này: `preTokens` = 1.001.459 ·
+ * 1.003.431 · 1.004.700 · 999.318 — mỗi lần nén là phiên đã đầy gần TRỌN cửa sổ 1M. Một phiên nén
+ * 3 lần đã tiêu ~3M+, không phải 45% của 1M.
+ *
+ * 🔴 Vì sao TĂNG DẦN chứ không quét lại từ đầu: bản ghi `compact_boundary` nằm RẢI khắp file nên
+ * không đọc đuôi được như `readContextUsage`. Đo 40 transcript mới nhất: **220 MB, 2.630 ms** để
+ * đọc hết (66 ms/file) — quá đắt để trả mỗi lượt, và **chỉ 2/40 phiên từng nén** nên trả giá đó
+ * cho mọi phiên là vô ích. Người gọi giữ `scannedTo` rồi lượt sau chỉ đọc phần MỚI.
+ *
+ * `fromByte` lớn hơn kích thước file (transcript bị thay/rút) ⇒ quét lại từ 0, vì `scannedTo` cũ
+ * không còn nói được gì về nội dung hiện tại.
+ */
+export interface CompactionScan {
+  /** Số lần nén ĐẾM ĐƯỢC trong khoảng đã quét. */
+  count: number;
+  /** Tổng `preTokens` của các lần nén đó — token đã tiêu rồi bị nén đi. */
+  preTokensSum: number;
+  /** Đã quét tới byte nào; truyền lại ở lượt sau để chỉ đọc phần mới. */
+  scannedTo: number;
+}
+
+export function scanCompactions(transcriptPath: string, fromByte = 0): CompactionScan | null {
+  let fd: number;
+  try {
+    fd = openSync(transcriptPath, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const size = fstatSync(fd).size;
+    // File nhỏ đi / bị thay ⇒ mốc cũ vô nghĩa, quét lại từ đầu.
+    let start = fromByte > size ? 0 : Math.max(0, fromByte);
+    if (start >= size) return { count: 0, preTokensSum: 0, scannedTo: size };
+    // Lùi lại một chút để không cắt ngang bản ghi ở đúng mép `fromByte` — dòng bị cắt sẽ không
+    // parse được và một lần nén sẽ bị NUỐT. Người gọi luôn đặt `scannedTo` ở ranh giới dòng nên
+    // phần lùi này chỉ là lưới an toàn; trùng lặp không xảy ra vì ta bỏ dòng đầu không nguyên vẹn.
+    const OVERLAP = 64 * 1024;
+    const rewound = start > 0;
+    if (rewound) start = Math.max(0, start - OVERLAP);
+    const span = size - start;
+    const buf = Buffer.alloc(span);
+    readSync(fd, buf, 0, span, start);
+    const lines = buf.toString("utf8").split("\n");
+    // Lùi thì dòng ĐẦU gần như chắc chắn bị cắt — bỏ nó đi.
+    if (rewound) lines.shift();
+    let count = 0;
+    let preTokensSum = 0;
+    for (const line of lines) {
+      if (!line.includes("compact_boundary")) continue;
+      try {
+        const rec = JSON.parse(line.trim()) as { type?: string; subtype?: string; compactMetadata?: { preTokens?: unknown } };
+        if (rec?.subtype !== "compact_boundary") continue;
+        count++;
+        const pre = rec?.compactMetadata?.preTokens;
+        if (typeof pre === "number" && Number.isFinite(pre) && pre > 0) preTokensSum += pre;
+      } catch {
+        /* dòng dở (đang ghi) ⇒ bỏ; lượt sau `scannedTo` chưa qua nó nên không mất */
+      }
+    }
+    // `scannedTo` đặt ở ranh giới DÒNG cuối cùng nguyên vẹn, không phải EOF: dòng cuối có thể
+    // đang được ghi dở, và nhận nó là đã-quét thì lần sau bỏ qua một bản ghi thật.
+    const lastNl = buf.lastIndexOf(0x0a);
+    const scannedTo = lastNl >= 0 ? start + lastNl + 1 : start;
+    return { count, preTokensSum, scannedTo };
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}

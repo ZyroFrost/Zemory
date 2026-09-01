@@ -31,6 +31,31 @@ cho phần đọc đuôi transcript ⇒ ~1,4 s cho một trang; bắt người d
 đánh đổi. Phân biệt **`●` phiên đang chạy** ("đang là bấy nhiêu") vs **`◐` đã đóng** ("kết thúc ở mức
 đó") — hai thứ khác nghĩa. Màu lấy **đúng ngưỡng user đặt**, không đẻ ngưỡng thứ hai.
 
+**CỘNG DỒN KHI CÓ NÉN — user chốt, và số đo cho thấy sai lệch một BẬC ĐỘ LỚN.** Nguyên văn:
+*"phải tính cộng dồn nếu có lần nào nó chạy compact, vì compact là nó nén 1 lần rồi sẽ ko chính xác
+nữa"*. Đúng: `readContextUsage` trả mức HIỆN TẠI, mà nén xong context tụt về ~30% rồi đầy lại. Đo
+trên transcript thật:
+
+| Phiên | Nén | % hiện tại | **Tổng đã tiêu** |
+|---|---|---|---|
+| `95074025` | **3 lần** | 50,8% | **3.516.281** |
+| `56efaed7` | 2 lần | 92,5% | **2.930.289** |
+
+Badge cũ nói "50,8%" cho một phiên đã tiêu **3,5 triệu** token. Nay phiên **đã nén** hiện
+`◐ 3,516,281 ⟳3` (tổng + số lần), `%` chuyển vào tooltip kèm lý do; phiên **chưa nén** giữ nguyên
+`%` — đó là ca phổ biến (đo 40 phiên, **chỉ 2** từng nén).
+
+Nguồn số là `compactMetadata.preTokens` của bản ghi `compact_boundary` (~1M mỗi lần ⇒ phiên đầy gần
+TRỌN cửa sổ trước mỗi lần nén). 🔴 Phải **QUÉT TĂNG DẦN**: bản ghi nằm RẢI khắp file nên không đọc
+đuôi được như `readContextUsage` — đọc cả 40 transcript mới nhất là **220 MB / 2.630 ms** (66 ms/file),
+quá đắt để trả mỗi lượt. Nên sổ bền giữ `scannedTo`, lượt sau chỉ đọc byte MỚI; `scannedTo` đặt ở
+ranh giới DÒNG (dòng cuối có thể đang ghi dở) và có 64 KB lùi an toàn để không cắt ngang bản ghi.
+Nghiệm thu: quét lại từ `scannedTo` ra **0 lần mới** — không cộng trùng. File ngắn lại (bị thay) ⇒
+quét lại từ 0. Endpoint có **ngân sách 40 MB/lượt** cho phần quét này.
+
+**Màu: xám → XANH** (`--success`); **cam và đỏ giữ nguyên** (user: *"số xám ko thấy gì hết, để màu
+xanh đi"* · *"2 cái cam và đỏ thì để nguyên"*).
+
 **HAI LOẠI SỐ, CỐ Ý KHÔNG TRỘN** (user chốt: *"đừng tự tạo khung đoán riêng"*, và bác đúng câu tôi
 nói sai lúc đầu rằng phiên web "không có context" — *"tất cả mọi agent đều có context"*):
 - **`measured`** — chỉ `claude-code`: host tự khai `usage` trong transcript ⇒ có **cả tử số và mẫu
@@ -39,6 +64,20 @@ nói sai lúc đầu rằng phiên web "không có context" — *"tất cả m�
   hội thoại, nhưng **không có mẫu số** (zemory không biết phiên đó chạy model nào) ⇒ trả **token,
   TUYỆT ĐỐI không %**. Quy ra % là bịa mẫu số. Đo thật: chatgpt-web tới **185.199** token.
   ⚠ `chars/4` **đếm hụt với tiếng Việt** ⇒ bề mặt luôn kèm dấu `~` và nhãn "est.".
+
+**Bản đầu của badge CHỈ hiện % cho phiên MỚI — user bắt được ngay (*"sao có mấy cái nó ko hiện %"*).**
+Vì nó chỉ đọc sổ `.ctx.json`, mà sổ chỉ tồn tại từ lúc bản vá `stop` chạy ⇒ mọi phiên trước đó rơi
+về `estimate` **dù transcript còn nguyên trên đĩa và mang `usage` do host tự khai**. Tức endpoint đọc
+THIẾU MỘT NGUỒN, không phải zemory không đo được. Thêm nhánh **đọc thẳng transcript**: tra đường qua
+`ingest_state` (đã giữ `file_path` ↔ `session_id`, đo **7 ms/40 id**, không quét thư mục). Kết quả
+đo lại: **12/12 phiên đều có %**, gồm phiên cũ 88,25% · 86,12% · 85,06%; 458 ms cho 12 id.
+Hai bẫy đã đo và phải xử: · một id có **nhiều `file_path`** (ingest từ nhiều đường sau khi dời thư
+mục, hoặc từ máy khác) ⇒ chọn đường TỒN TẠI tại chỗ · **16/52 đường là của MÁY KHÁC** ⇒ không đọc
+được, phải rơi về ước tính chứ không được im.
+🔴 Mốc `at` lấy **mtime của transcript**, KHÔNG phải `Date.now()`: FE dùng mốc đó để phân biệt `●`
+đang chạy vs `◐` đã đóng, nên lấy giờ hiện tại là **mọi phiên cũ đều hiện như đang chạy**. Và endpoint
+có **TRẦN 40 id/lượt** + FE chia lô tuần tự, vì `readContextUsage` là I/O ĐỒNG BỘ (~11,5 ms/phiên)
+chạy trên event loop daemon — 120 id là ~1,4 s đứng hình mọi endpoint khác (lỗi đã trả giá 26/08/23).
 
 **Một chẩn đoán của tôi bị BÁC bằng số, ghi lại:** tôi định đề nghị hạ ngưỡng 95%→85% và gọi đó là
 cách sửa. User bác: *"ngưỡng là do setting user đặt, việc của bạn là phải code sao nó nhận đúng ngưỡng
