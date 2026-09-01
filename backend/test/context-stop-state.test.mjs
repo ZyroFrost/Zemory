@@ -20,7 +20,7 @@
 // ca dùng một `session_id` riêng để không đụng nhau.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -117,7 +117,7 @@ test("readContextState: sổ hỏng / không có ⇒ null, không ném", () => {
 // có mẫu số nào — zemory không biết hội thoại đó chạy model gì, cửa sổ bao nhiêu. Trả token là
 // thật; quy ra % là bịa. Cổng soi NGUỒN vì hành vi này là một quyết định về ngữ nghĩa, không phải
 // một giá trị runtime.
-import { readFileSync as _read } from "node:fs";
+const _read = readFileSync;
 const UI = _read(new URL("../src/ui.ts", import.meta.url), "utf8");
 
 test("`/session-context`: nhánh `estimate` KHÔNG được mang percent/window (không bịa mẫu số)", () => {
@@ -149,4 +149,146 @@ test("`/session-context`: một truy vấn NHÓM cho cả lô, không N+1", () =
   // Một `prepare` trong vòng lặp qua ids là dấu hiệu N+1 — 80 phiên thành 80 lượt mở câu.
   const loopThenPrepare = /for \([^)]*of rest[^]*?\.prepare\(/.test(branch);
   assert.equal(loopThenPrepare, false, "không được prepare trong vòng lặp theo id");
+});
+
+// ── Nhánh ĐỌC THẲNG TRANSCRIPT cho phiên cũ (thêm 2026-09-02, user bắt được) ──────────────
+// Bản đầu của endpoint CHỈ đọc sổ `.ctx.json` — mà sổ chỉ tồn tại từ lúc bản vá `stop` chạy ⇒
+// mọi phiên trước đó hiện `~token` thay vì `%` dù transcript còn nguyên trên đĩa và mang `usage`
+// do host tự khai. User: *"sao có mấy cái nó ko hiện %"*. Bốn ràng buộc dưới đây là bốn chỗ dễ
+// làm sai của nhánh vá, và mỗi cái đều đo được từ nguồn.
+test("`/session-context`: tra đường transcript qua `ingest_state`, KHÔNG quét thư mục", () => {
+  const i = UI.indexOf('p === "/session-context"');
+  const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
+  assert.match(branch, /FROM ingest_state WHERE session_id IN/, "phải dùng bảng đã có ánh xạ id↔đường dẫn");
+  assert.ok(!/readdirSync/.test(branch), "KHÔNG được quét thư mục: 7 ms một truy vấn vs quét cả cây");
+});
+
+test("`/session-context`: một id có NHIỀU đường ⇒ chỉ nhận đường TỒN TẠI tại chỗ", () => {
+  const i = UI.indexOf('p === "/session-context"');
+  const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
+  // Đo trên kho thật: 40 id trả 52 hàng `ingest_state`, và 16/52 đường là của MÁY KHÁC.
+  assert.match(branch, /existsSync\(r\.file_path\)/, "phải kiểm tồn tại trước khi đọc");
+  assert.match(branch, /if \(!byId\.has\(r\.session_id\)\)/, "phải giữ đường đầu tiên HỢP LỆ, không ghi đè bừa");
+});
+
+test("`/session-context`: mốc `at` lấy MTIME transcript, KHÔNG phải Date.now()", () => {
+  const i = UI.indexOf('p === "/session-context"');
+  const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
+  const measured = branch.slice(branch.indexOf("② ĐỌC THẲNG TRANSCRIPT"));
+  assert.match(measured, /statSync\(fp\)\.mtimeMs/, "mốc phải là lần transcript ghi cuối");
+  assert.ok(
+    !/at:\s*new Date\(\)\.toISOString\(\)/.test(measured),
+    "lấy Date.now() là MỌI phiên cũ đều hiện như đang chạy (● thay vì ◐) — bề mặt nói dối",
+  );
+});
+
+test("`/session-context`: TRẦN id/lượt để không khoá event loop của daemon", () => {
+  const i = UI.indexOf('p === "/session-context"');
+  const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
+  const m = /\.slice\(0,\s*(\d+)\)/.exec(branch);
+  assert.ok(m, "phải có trần số id");
+  const cap = Number(m[1]);
+  // `readContextUsage` là I/O ĐỒNG BỘ ~11,5 ms/phiên. 40 ⇒ ~460 ms: chấp nhận được.
+  // 120 ⇒ ~1,4 s và trong 1,4 s đó mọi endpoint khác đứng hình (lỗi đã trả giá 2026-08-23).
+  assert.ok(cap > 0 && cap <= 60, `trần phải trong khoảng an toàn, thấy ${cap}`);
+});
+
+// ── CỘNG DỒN NÉN (user chốt 2026-09-02) ───────────────────────────────────────────────────
+// *"phải tính cộng dồn nếu có lần nào nó chạy compact, vì compact là nó nén 1 lần rồi sẽ ko chính
+// xác nữa"*. Đúng: nén xong context tụt về ~30%, nên `percent` một mình NÓI DỐI về độ lớn phiên.
+// Đo trên transcript thật của máy này: phiên `95074025` nén **3 lần**, hiện tại 50,8%, nhưng TỔNG
+// đã tiêu **3.516.281** token. Badge chỉ hiện "50,8%" là sai lệch một bậc độ lớn.
+const { scanCompactions } = await import("../../dist/memory/context-guard.js");
+
+function writeWithCompactions(name, pres, tailTokens) {
+  const p = join(ROOT, name);
+  const lines = [];
+  for (const pre of pres) {
+    lines.push(JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { trigger: "auto", preTokens: pre } }));
+    lines.push(JSON.stringify({ type: "user", message: { role: "user", content: "tiep" } }));
+  }
+  lines.push(JSON.stringify({
+    type: "assistant",
+    message: { role: "assistant", model: "claude-opus-5", content: [{ type: "text", text: "ok" }], usage: { input_tokens: tailTokens, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } },
+  }));
+  writeFileSync(p, lines.join("\n") + "\n");
+  return p;
+}
+
+test("scanCompactions: ĐẾM đúng số lần + CỘNG đúng preTokens", () => {
+  const p = writeWithCompactions("c1.jsonl", [1_001_459, 1_003_431, 999_318], 508_420);
+  const sc = scanCompactions(p, 0);
+  assert.equal(sc.count, 3, "phải đếm đủ 3 lần nén");
+  assert.equal(sc.preTokensSum, 3_004_208, "phải cộng đúng preTokens, không làm tròn/bỏ sót");
+  assert.ok(sc.scannedTo > 0);
+});
+
+test("scanCompactions: TĂNG DẦN — quét lại từ `scannedTo` ra 0, KHÔNG cộng trùng", () => {
+  const p = writeWithCompactions("c2.jsonl", [1_000_000, 1_000_000], 300_000);
+  const first = scanCompactions(p, 0);
+  assert.equal(first.count, 2);
+  const again = scanCompactions(p, first.scannedTo);
+  assert.equal(again.count, 0, "cộng trùng là con số phình vô hạn theo số lượt stop");
+  assert.equal(again.preTokensSum, 0);
+});
+
+test("scanCompactions: nén MỚI thêm vào sau ⇒ lượt sau chỉ đếm phần MỚI", () => {
+  const p = writeWithCompactions("c3.jsonl", [1_000_000], 100_000);
+  const first = scanCompactions(p, 0);
+  assert.equal(first.count, 1);
+  // Thêm một lần nén nữa vào cuối file (phiên chạy tiếp).
+  const extra = JSON.stringify({ type: "system", subtype: "compact_boundary", compactMetadata: { preTokens: 777_000 } }) + "\n";
+  writeFileSync(p, readFileSync(p, "utf8") + extra);
+  const second = scanCompactions(p, first.scannedTo);
+  assert.equal(second.count, 1, "chỉ phần mới");
+  assert.equal(second.preTokensSum, 777_000);
+});
+
+test("scanCompactions: file NGẮN lại (bị thay) ⇒ quét lại từ 0 thay vì tin mốc cũ", () => {
+  const p = writeWithCompactions("c4.jsonl", [1_000_000, 1_000_000], 50_000);
+  const big = scanCompactions(p, 0);
+  // Thay bằng file ngắn hơn, chỉ 1 lần nén.
+  writeWithCompactions("c4.jsonl", [500_000], 10_000);
+  const after = scanCompactions(p, big.scannedTo);
+  assert.equal(after.count, 1, "mốc cũ vượt kích thước file ⇒ phải quét lại từ đầu, không trả 0");
+});
+
+test("scanCompactions: file không tồn tại ⇒ null, không ném", () => {
+  assert.equal(scanCompactions(join(ROOT, "khong-co-that.jsonl"), 0), null);
+});
+
+test("`stop` CỘNG DỒN qua nhiều lượt, và `totalTokens` = preTokensSum + tokens hiện tại", () => {
+  const p = writeWithCompactions("c5.jsonl", [1_000_000, 1_000_000], 400_000);
+  handleHook("stop", { session_id: "sid-congdon", transcript_path: p, cwd: ROOT });
+  const st1 = readContextState("sid-congdon", GUARD);
+  assert.ok(st1, "phải có sổ");
+  assert.equal(st1.compactions, 2, "đếm được 2 lần nén");
+  assert.equal(st1.preTokensSum, 2_000_000);
+  assert.equal(st1.totalTokens, 2_400_000, "tổng = đã nén đi + đang dùng");
+
+  // Lượt stop THỨ HAI trên cùng file: KHÔNG được cộng trùng.
+  handleHook("stop", { session_id: "sid-congdon", transcript_path: p, cwd: ROOT });
+  const st2 = readContextState("sid-congdon", GUARD);
+  assert.equal(st2.compactions, 2, "lượt sau không được đếm lại 2 lần nén cũ");
+  assert.equal(st2.preTokensSum, 2_000_000);
+});
+
+test("FE: mức an toàn dùng --success (XANH), cam/đỏ giữ nguyên", () => {
+  const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
+  const i = FE.indexOf("function ctxBadge");
+  const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
+  assert.match(branch, /var\(--success\)/, "xám không thấy gì trên nền tối (user chốt) ⇒ phải là xanh");
+  assert.ok(!/'var\(--text-faint\)'\)/.test(branch.split("var col=")[1].split(";")[0] + ")"), "không còn xám ở nhánh an toàn");
+  assert.match(branch, /var\(--warn\)/, "cam giữ nguyên");
+  assert.match(branch, /var\(--danger\)/, "đỏ giữ nguyên");
+});
+
+test("FE: đã nén ⇒ badge hiện TỔNG + số lần, không hiện % một mình", () => {
+  const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
+  const i = FE.indexOf("function ctxBadge");
+  const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
+  assert.match(branch, /c\.compactions/, "phải đọc số lần nén");
+  assert.match(branch, /zN\(tot\)/, "phải hiện TỔNG đã tiêu");
+  // % vẫn phải còn trong tooltip — bỏ hẳn là mất thông tin về chu kỳ hiện tại.
+  assert.match(branch, /ctx\.compactT/, "phải có tooltip giải thích vì sao không dùng %");
 });

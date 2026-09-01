@@ -57,11 +57,22 @@
     var w=(typeof warnPct==='number'?warnPct:c.threshold)||90;
     // Mau lay DUNG nguong nguoi dung dat — khong de nguong thu hai, de badge va hook luon
     // noi cung mot cau.
-    var col=pct>=w?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--text-faint)');
+    // Xam khong thay gi tren nen toi (user chot 2026-09-02) => dung XANH cho muc an toan.
+    // Cam va do giu NGUYEN.
+    var col=pct>=w?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--success)');
     // Phien con ghi so trong 15 phut = DANG CHAY (dot dac, "dang la bay nhieu"); cu hon = DA
     // DONG (dot rong, "ket thuc o muc do"). Hai thu khac nghia, khong duoc hien giong nhau.
     var live=c.at&&(Date.now()-Date.parse(c.at))<15*60*1000;
     var tip=t('ctx.measuredT')+' — '+(live?t('ctx.liveT'):t('ctx.doneT'))+(pct>=w?' '+t('ctx.overT'):'');
+    // DA NEN => % chi noi ve CHU KY hien tai, khong noi duoc do lon phien. Nen phan chinh doi
+    // sang TONG da tieu + so lan nen; % van con trong tooltip. Chua nen thi giu nguyen % (ca
+    // pho bien: do 40 phien that, chi 2 tung nen).
+    var nc=c.compactions||0;
+    if(nc>0){
+      var tot=c.totalTokens||c.tokens;
+      tip=t('ctx.compactT').replace('{n}',nc).replace('{tot}',zN(tot)).replace('{pct}',pct)+' — '+tip;
+      return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+zN(tot)+' ⟳'+nc+'</span>';
+    }
     return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+pct+'%</span>';
   }
   function paintCtxBadges(warnPct){
@@ -73,14 +84,25 @@
     var need=[];
     for(var i=0;i<rows.length;i++){var id=rows[i].sessionId;if(id&&!(id in svCtx))need.push(id);}
     if(!need.length){paintCtxBadges(svWarnPct);return;}
-    zGet('/session-context?ids='+encodeURIComponent(need.join(','))).then(function(r){
-      if(!r)return;
-      if(typeof r.warnPercent==='number')svWarnPct=r.warnPercent;
-      // Ghi ca ca KHONG co so (null) de khong hoi lai mai cung mot id.
-      for(var k=0;k<need.length;k++)svCtx[need[k]]=(r.items&&r.items[need[k]])||null;
-      paintCtxBadges(svWarnPct);
-      if(svCur)svCtxInfo(svCur);
-    }).catch(function(){});
+    // CHIA LO 40 va goi TUAN TU. Endpoint doc transcript bang I/O dong bo (~11,5 ms/phien) tren
+    // event loop cua daemon; ban song song 120 id la khoa moi endpoint khac vai giay — dung loi
+    // da tra gia 2026-08-23. Tuan tu thi moi luot ~460 ms va badge hien dan tu tren xuong.
+    var CHUNK=40;
+    function next(from){
+      if(from>=need.length)return;
+      var lot=need.slice(from,from+CHUNK);
+      zGet('/session-context?ids='+encodeURIComponent(lot.join(','))).then(function(r){
+        if(r){
+          if(typeof r.warnPercent==='number')svWarnPct=r.warnPercent;
+          // Ghi ca ca KHONG co so (null) de khong hoi lai mai cung mot id.
+          for(var k=0;k<lot.length;k++)svCtx[lot[k]]=(r.items&&r.items[lot[k]])||null;
+          paintCtxBadges(svWarnPct);
+          if(svCur)svCtxInfo(svCur);
+        }
+        next(from+CHUNK);
+      }).catch(function(){next(from+CHUNK);});
+    }
+    next(0);
   }
   // Dong meta cua panel chi tiet: them context SAU khi svInfo da dat text co ban.
   function svCtxInfo(sid){
@@ -90,7 +112,11 @@
     if(base===null){base=el.textContent||'';el.setAttribute('data-base',base);}
     var add='';
     if(c.kind==='estimate')add='~'+zN(c.tokens)+' token ('+t('ctx.label')+', est.)';
-    else if(typeof c.percent==='number')add=Math.round(c.percent)+'% '+t('ctx.label')+' ('+zN(c.tokens)+' / '+zN(c.window)+')';
+    else if(typeof c.percent==='number'){
+      add=Math.round(c.percent)+'% '+t('ctx.label')+' ('+zN(c.tokens)+' / '+zN(c.window)+')';
+      // Da nen => noi ro TONG da tieu, vi % o tren chi la chu ky hien tai.
+      if(c.compactions>0)add+=' · '+t('ctx.compactShort').replace('{n}',c.compactions).replace('{tot}',zN(c.totalTokens||c.tokens));
+    }
     el.textContent=add?base+' · '+add:base;
   }
   // ── Render MỘT message trong viewer (user chốt 2026-07-26): prose hiện FULL TEXT y như
