@@ -104,6 +104,65 @@ function clearWarned(sessionId: string): void {
   }
 }
 
+/**
+ * Sổ bền "phiên này đang ở bao nhiêu % context" — ghi ở `stop`, đọc bởi UI và bởi `prompt`.
+ *
+ * 🔴 VÌ SAO PHẢI CÓ (bug đo 2026-09-02, user báo *"t ko thấy nó cảnh báo, hiếm lắm hầu như ko"*):
+ * phép kiểm context CHỈ nằm ở nhánh `prompt` (`UserPromptSubmit`), mà context phình **trong lượt
+ * của assistant** (tool call, đọc file) chứ không phải lúc người ta gõ. Hệ quả: phiên chạm ngưỡng
+ * rồi KẾT THÚC mà user không gõ thêm ⇒ **không bao giờ báo**. Đo trên 40 phiên thật của máy này:
+ * **8 phiên vượt ngưỡng 90%, chỉ 1 có cờ `.warned` — bỏ sót 7**. Không phiên nào từng bị nén nên
+ * cờ không bị xoá oan, và cả 7 đều CÓ cờ `.harness` ⇒ hook chạy bình thường, chỉ là nhánh context
+ * không có ở đó. Tỉ lệ cờ tự nói: **46 `.harness` / 11 `.warned`**.
+ *
+ * 🔴 VÌ SAO GHI SỔ CHỨ KHÔNG PHUN CHỮ Ở `stop`: dòng đầu file khoá `Stop` là hook **write-only,
+ * 0 token, no context change** (HP điều 10). Bê đoạn cảnh báo sang đó là phá đúng bất biến đó.
+ * Nên `stop` chỉ ĐO + ghi sổ; phần chữ vẫn đi qua `prompt`, và ca "kết thúc phiên không gõ nữa"
+ * do BỀ MẶT (badge trong app) phủ — hook không có đường nào tới người dùng trong ca đó.
+ */
+export interface ContextState {
+  /** % context lúc ghi. */
+  percent: number;
+  /** Token đang dùng. */
+  tokens: number;
+  /** Cửa sổ đã dùng làm mẫu số. */
+  window: number;
+  /** Ngưỡng lúc ghi — giữ lại để UI không phải đoán ngưỡng nào đã áp. */
+  threshold: number;
+  /** Đã vượt ngưỡng hay chưa. */
+  over: boolean;
+  /** Mốc ghi (ISO). */
+  at: string;
+}
+
+function contextStatePath(sessionId: string): string {
+  return join(currentMemoryDir(), "context-guard", `${sessionId.replace(/[^\w.-]/g, "_")}.ctx.json`);
+}
+
+/** Ghi sổ trạng thái context. Fail-open: sổ là lớp quan sát, mất nó không được làm hỏng lượt nạp. */
+function writeContextState(sessionId: string, s: ContextState): void {
+  try {
+    const p = contextStatePath(sessionId);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileAtomic(p, JSON.stringify(s));
+  } catch {
+    /* fail-open (điều 9) */
+  }
+}
+
+/** Đọc sổ trạng thái context của một phiên; không có / hỏng ⇒ null. */
+export function readContextState(sessionId: string, dir?: string): ContextState | null {
+  try {
+    const base = dir ?? join(currentMemoryDir(), "context-guard");
+    const p = join(base, `${sessionId.replace(/[^\w.-]/g, "_")}.ctx.json`);
+    if (!existsSync(p)) return null;
+    const s = JSON.parse(readFileSync(p, "utf8")) as ContextState;
+    return typeof s?.percent === "number" && Number.isFinite(s.percent) ? s : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Run a hook handler. Returns text to write to stdout (may be ""). */
 export function handleHook(event: HookEventName, payload: any): string {
   try {
@@ -214,7 +273,38 @@ export function handleHook(event: HookEventName, payload: any): string {
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
-      if (!ingestCurrent(payload) && !path && !daemonJobBusyExternal()) scan();
+      const ingested = ingestCurrent(payload);
+      if (!ingested && !path && !daemonJobBusyExternal()) scan();
+      // ĐO context ở ĐÂY — chỗ duy nhất bắn sau MỖI lượt assistant, tức chỗ duy nhất bắt được
+      // lúc vượt ngưỡng (context phình trong lượt trả lời, không phải lúc user gõ). Chỉ GHI SỔ,
+      // KHÔNG trả chữ: `Stop` là hook write-only, 0 token (xem `writeContextState`).
+      if (path) {
+        try {
+          const usage = readContextUsage(path);
+          // Đòi CẢ percent VÀ window: `percent` suy từ `window`, nhưng ghi sổ một mẫu số `null`
+          // thì UI chỉ còn cách đoán — mà "không biết cửa sổ" phải hiện là KHÔNG BIẾT, không
+          // được hiện thành một con số.
+          if (usage && usage.percent !== null && usage.window !== null) {
+            const threshold = warnAtPercent();
+            const over = usage.percent >= threshold;
+            const sid = String(payload?.session_id ?? path);
+            writeContextState(sid, {
+              percent: usage.percent,
+              tokens: usage.tokens,
+              window: usage.window,
+              threshold,
+              over,
+              at: new Date().toISOString(),
+            });
+            // Vượt ngưỡng ⇒ CHỐT SỔ NGAY, không đợi user gõ lượt sau. Đây là nửa còn lại của
+            // bug: lượt `prompt` mới chốt sổ, nên phiên đầy rồi tắt là mất phần chưa nạp.
+            // `ingestCurrent` đã chạy ở trên nên chỉ gọi lại khi lượt đó bị bỏ qua (gate bận).
+            if (over && !ingested) ingestCurrent(payload);
+          }
+        } catch {
+          /* fail-open: phép đo không bao giờ được làm hỏng lượt nạp (điều 9) */
+        }
+      }
       return "";
     }
     return "";

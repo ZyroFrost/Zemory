@@ -39,7 +39,59 @@
     // "N phiên" là số KHỚP THẬT trên toàn bộ DB; nếu danh sách bị cắt ở 120 thì nói rõ
     // đang hiện bao nhiêu — thà thừa một con số còn hơn để người đọc tưởng đã thấy hết.
     zset('sCount',rows.length<svTotal?zN(rows.length)+'/'+zN(svTotal)+' '+t('f.sessions'):zN(svTotal)+' '+t('f.sessions'));
-    box.innerHTML=rows.length?rows.map(function(s){var ti=(s.title&&String(s.title).trim())||t('sess.untitled');return '<div class="sys-li'+(svCur===s.sessionId?' on':'')+'" data-sess="'+stdEsc(s.sessionId)+'" style="align-items:flex-start"><span class="sxn" style="white-space:normal">'+stdEsc(String(ti).slice(0,64))+(s.atts?' <span class="att-n">🖼'+s.atts+'</span>':'')+'<div class="muted" style="font-size:10.5px;margin-top:1px">'+stdEsc(zProjName(s.project))+' · '+stdEsc(s.source||'')+' · '+zN(s.messages)+' msg</div></span><span style="font-size:10px;color:var(--text-faint);flex:0 0 auto;margin-left:6px">'+relTime(s.endedAt).big+'</span></div>';}).join(''):'<div class="muted" style="font-size:12px">'+t('sess.none')+'</div>';
+    box.innerHTML=rows.length?rows.map(function(s){var ti=(s.title&&String(s.title).trim())||t('sess.untitled');return '<div class="sys-li'+(svCur===s.sessionId?' on':'')+'" data-sess="'+stdEsc(s.sessionId)+'" style="align-items:flex-start"><span class="sxn" style="white-space:normal">'+stdEsc(String(ti).slice(0,64))+(s.atts?' <span class="att-n">🖼'+s.atts+'</span>':'')+'<div class="muted" style="font-size:10.5px;margin-top:1px">'+stdEsc(zProjName(s.project))+' · '+stdEsc(s.source||'')+' · '+zN(s.messages)+' msg</div></span><span style="font-size:10px;color:var(--text-faint);flex:0 0 auto;margin-left:6px;text-align:right">'+relTime(s.endedAt).big+'<span class="ctx-b" data-ctxfor="'+stdEsc(s.sessionId)+'" style="display:block;margin-top:2px"></span></span></div>';}).join(''):'<div class="muted" style="font-size:12px">'+t('sess.none')+'</div>';
+    fillCtxBadges(rows);
+  }
+  // ── Badge CONTEXT ─────────────────────────────────
+  // Dien o LUOT THU HAI, khong chan render: gia do duoc la 141 ms cho 80 phien (uoc tinh
+  // token) + ~11,5 ms/phien cho phan doc duoi transcript. Bat nguoi dung cho 1,4 s truoc khi
+  // thay danh sach chi vi mot con so phu la sai danh doi.
+  var svCtx={},svWarnPct=null;
+  function ctxBadge(c,warnPct){
+    if(!c)return '';
+    // HAI LOAI SO, KHONG TRON. measured co mau so do host khai => noi %; estimate chi co tu so
+    // => noi token kem "~". Quy estimate ra % la bia mau so (user chot 2026-09-02).
+    if(c.kind==='estimate')return '<span title="'+stdEsc(t('ctx.estimateT'))+'" style="color:var(--text-faint)">~'+zN(c.tokens)+'</span>';
+    if(typeof c.percent!=='number')return '';
+    var pct=Math.round(c.percent);
+    var w=(typeof warnPct==='number'?warnPct:c.threshold)||90;
+    // Mau lay DUNG nguong nguoi dung dat — khong de nguong thu hai, de badge va hook luon
+    // noi cung mot cau.
+    var col=pct>=w?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--text-faint)');
+    // Phien con ghi so trong 15 phut = DANG CHAY (dot dac, "dang la bay nhieu"); cu hon = DA
+    // DONG (dot rong, "ket thuc o muc do"). Hai thu khac nghia, khong duoc hien giong nhau.
+    var live=c.at&&(Date.now()-Date.parse(c.at))<15*60*1000;
+    var tip=t('ctx.measuredT')+' — '+(live?t('ctx.liveT'):t('ctx.doneT'))+(pct>=w?' '+t('ctx.overT'):'');
+    return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+pct+'%</span>';
+  }
+  function paintCtxBadges(warnPct){
+    var els=document.querySelectorAll('[data-ctxfor]');
+    for(var i=0;i<els.length;i++)els[i].innerHTML=ctxBadge(svCtx[els[i].getAttribute('data-ctxfor')],warnPct);
+  }
+  function fillCtxBadges(rows){
+    if(!rows||!rows.length)return;
+    var need=[];
+    for(var i=0;i<rows.length;i++){var id=rows[i].sessionId;if(id&&!(id in svCtx))need.push(id);}
+    if(!need.length){paintCtxBadges(svWarnPct);return;}
+    zGet('/session-context?ids='+encodeURIComponent(need.join(','))).then(function(r){
+      if(!r)return;
+      if(typeof r.warnPercent==='number')svWarnPct=r.warnPercent;
+      // Ghi ca ca KHONG co so (null) de khong hoi lai mai cung mot id.
+      for(var k=0;k<need.length;k++)svCtx[need[k]]=(r.items&&r.items[need[k]])||null;
+      paintCtxBadges(svWarnPct);
+      if(svCur)svCtxInfo(svCur);
+    }).catch(function(){});
+  }
+  // Dong meta cua panel chi tiet: them context SAU khi svInfo da dat text co ban.
+  function svCtxInfo(sid){
+    var el=zid('sessVInfo');if(!el)return;
+    var c=svCtx[sid];if(!c)return;
+    var base=el.getAttribute('data-base');
+    if(base===null){base=el.textContent||'';el.setAttribute('data-base',base);}
+    var add='';
+    if(c.kind==='estimate')add='~'+zN(c.tokens)+' token ('+t('ctx.label')+', est.)';
+    else if(typeof c.percent==='number')add=Math.round(c.percent)+'% '+t('ctx.label')+' ('+zN(c.tokens)+' / '+zN(c.window)+')';
+    el.textContent=add?base+' · '+add:base;
   }
   // ── Render MỘT message trong viewer (user chốt 2026-07-26): prose hiện FULL TEXT y như
   //    lúc chat (pre-wrap, KHÔNG cắt chữ), còn KHỐI CODE và tool_use/tool_result thì THU
@@ -138,6 +190,10 @@
     var n=meta.messages!=null?meta.messages:(s.messages?s.messages.length:null);
     el.textContent=[zProjName(meta.project||s.project||'')||'',meta.source||s.source||'',meta.origin||'',meta.host||'',
       n==null?'':zN(n)+' messages',String(meta.startedAt||'').slice(0,16).replace('T',' ')].filter(Boolean).join(' · ');
+    // data-base phai duoc dat LAI moi lan doi phien, khong thi context cua phien truoc dinh
+    // vao dong meta cua phien sau.
+    el.removeAttribute('data-base');
+    if(svCur)svCtxInfo(svCur);
   }
   function openSess(sid){
     svCur=sid;renderSessList();

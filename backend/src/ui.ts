@@ -98,7 +98,7 @@ import {
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
-import { hooksInstalled, installHooks, uninstallHooks } from "./memory/capture-hook.js";
+import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
@@ -2128,6 +2128,54 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           withAtt: u.searchParams.get("withAtt") === "1",
         }),
       );
+    }
+    if (p === "/session-context") {
+      // Context của từng phiên — LƯỢT ĐIỀN THỨ HAI cho danh sách + panel chi tiết.
+      //
+      // Vì sao tách endpoint riêng thay vì nhồi vào `/sessions`: giá đo được là 141 ms cho 80
+      // phiên (ước tính token, có index `idx_messages_session`) cộng ~11,5 ms/phiên cho phần đọc
+      // đuôi transcript. Nhồi vào `/sessions` là bắt người dùng chờ trước khi thấy danh sách;
+      // tách ra thì list vẽ ngay, badge hiện sau. Tự nguyên tắc: đừng chặn bề mặt vì một con số
+      // trang trí.
+      //
+      // HAI LOẠI SỐ, KHÔNG ĐƯỢC TRỘN (user chốt 2026-09-02 — *"đừng tự tạo khung đoán riêng"*):
+      //  · `measured` — chỉ có ở phiên `claude-code`: sổ `<sid>.ctx.json` do hook `stop` ghi từ
+      //    `usage` mà HOST tự khai. Có cả tử số và mẫu số ⇒ nói được PHẦN TRĂM.
+      //  · `estimate` — mọi nguồn khác (web, codex…): `SUM(LENGTH(content))/4` từ nội dung đã
+      //    lưu. Đây là số THẬT về độ lớn hội thoại, nhưng **không có mẫu số** — zemory không biết
+      //    hội thoại đó chạy model nào, cửa sổ bao nhiêu. Nên trả token, TUYỆT ĐỐI không trả %:
+      //    đổi nó thành % là phải bịa mẫu số. (Và `chars/4` đếm HỤT với tiếng Việt, nên bề mặt
+      //    phải luôn kèm dấu "~".)
+      const ids = (u.searchParams.get("ids") || "")
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 300);
+      if (!ids.length) return json(res, { items: {} });
+      const items: Record<string, unknown> = {};
+      for (const id of ids) {
+        const st = readContextState(id);
+        if (st) items[id] = { kind: "measured", percent: st.percent, tokens: st.tokens, window: st.window, threshold: st.threshold, over: st.over, at: st.at };
+      }
+      // Phần còn lại: ước tính từ nội dung. Một truy vấn nhóm cho cả lô, không N+1.
+      const rest = ids.filter((id) => !items[id]);
+      if (rest.length) {
+        try {
+          const db = openMemory();
+          try {
+            const ph = rest.map(() => "?").join(",");
+            const rows = db
+              .prepare(`SELECT session_id, CAST(ROUND(SUM(LENGTH(content)) / 4.0) AS INTEGER) tok FROM messages WHERE session_id IN (${ph}) GROUP BY session_id`)
+              .all(...rest) as { session_id: string; tok: number }[];
+            for (const r of rows) if (r.tok > 0) items[r.session_id] = { kind: "estimate", tokens: r.tok };
+          } finally {
+            db.close();
+          }
+        } catch {
+          /* fail-open (điều 9): thiếu badge còn hơn gãy danh sách */
+        }
+      }
+      return json(res, { items, warnPercent: getContextWarnPercent() });
     }
     if (p === "/insights") {
       return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));
