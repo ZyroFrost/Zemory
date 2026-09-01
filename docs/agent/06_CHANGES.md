@@ -41,9 +41,26 @@ trên transcript thật:
 | `95074025` | **3 lần** | 50,8% | **3.516.281** |
 | `56efaed7` | 2 lần | 92,5% | **2.930.289** |
 
-Badge cũ nói "50,8%" cho một phiên đã tiêu **3,5 triệu** token. Nay phiên **đã nén** hiện
-`◐ 3,516,281 ⟳3` (tổng + số lần), `%` chuyển vào tooltip kèm lý do; phiên **chưa nén** giữ nguyên
-`%` — đó là ca phổ biến (đo 40 phiên, **chỉ 2** từng nén).
+Badge cũ nói "50,8%" cho một phiên đã tiêu **3,5 triệu** token.
+
+**Cách hiển thị — user sửa hai lần, bản cuối là ý user và nó tốt hơn bản tôi đề xuất.** Tôi làm bản
+đầu là *thay* `%` bằng số tổng (`◐ 3,516,281 ⟳3`); user hỏi ngay *"sao có cái hiện số ko phải %"* —
+đúng, cả cột là `%` mà chen một số 7 chữ số vào giữa thì mất khả năng so sánh bằng mắt. Tôi đề xuất
+`36% ⟳1` (giữ % chu kỳ). User sửa tiếp, và đây là ý hay hơn cả hai: *"kiểu là vượt 100% chính xác bao
+nhiêu để biết là nén"* ⇒ **badge hiện % CỘNG DỒN trên cửa sổ**:
+
+| Phiên | Badge | Chu kỳ hiện tại |
+|---|---|---|
+| `95074025` (nén 3) | **352% ⟳3** | 50,8% |
+| `56efaed7` (nén 2) | **293% ⟳2** | 92,5% |
+| `Dept_OPS` (nén 1) | **136% ⟳1** | 36,4% |
+| chưa nén | **97%** | 96,5% |
+
+MỘT con số, cả cột so sánh được, và nó **tự nói**: vượt 100% nghĩa là đã nén. Phiên chưa nén thì
+`totalTokens === tokens` nên badge **không đổi gì** — đó là ca phổ biến (đo 40 phiên, **chỉ 2** từng nén).
+🔴 **MÀU vẫn lấy theo chu kỳ HIỆN TẠI**, không theo % cộng dồn: màu là cảnh báo *"sắp bị nén"*, còn %
+cộng dồn là thước đo *độ lớn*. Trộn hai thứ thì phiên nén 3 lần lúc nào cũng đỏ dù hiện tại mới 50%,
+và cảnh báo mất nghĩa. Có cổng riêng canh đúng vế này.
 
 Nguồn số là `compactMetadata.preTokens` của bản ghi `compact_boundary` (~1M mỗi lần ⇒ phiên đầy gần
 TRỌN cửa sổ trước mỗi lần nén). 🔴 Phải **QUÉT TĂNG DẦN**: bản ghi nằm RẢI khắp file nên không đọc
