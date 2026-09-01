@@ -283,12 +283,41 @@ test("FE: mức an toàn dùng --success (XANH), cam/đỏ giữ nguyên", () =>
   assert.match(branch, /var\(--danger\)/, "đỏ giữ nguyên");
 });
 
-test("FE: đã nén ⇒ badge hiện TỔNG + số lần, không hiện % một mình", () => {
+test("FE: badge dùng % CỘNG DỒN — vượt 100% chính là dấu hiệu đã nén", () => {
+  // User chốt 2026-09-02: *"kiểu là vượt 100% chính xác bao nhiêu để biết là nén"*. Một con số duy
+  // nhất giữ cả cột so sánh được, và nó TỰ NÓI: 136% = nén 1 lần · 352% = nén 3 lần. Phiên chưa
+  // nén thì `totalTokens === tokens` nên con số này TRÙNG % hiện tại ⇒ badge không đổi gì.
   const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
   const i = FE.indexOf("function ctxBadge");
   const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
   assert.match(branch, /c\.compactions/, "phải đọc số lần nén");
-  assert.match(branch, /zN\(tot\)/, "phải hiện TỔNG đã tiêu");
-  // % vẫn phải còn trong tooltip — bỏ hẳn là mất thông tin về chu kỳ hiện tại.
-  assert.match(branch, /ctx\.compactT/, "phải có tooltip giải thích vì sao không dùng %");
+  assert.match(
+    branch,
+    /totalPct\s*=\s*c\.window\s*\?\s*Math\.round\(100\s*\*\s*tot\s*\/\s*c\.window\)/,
+    "% phải tính từ TỔNG đã tiêu, không phải token của chu kỳ hiện tại",
+  );
+  // Cả hai lối ra của badge phải in `totalPct`, không phải `pct` — nếu còn `pct` thì phiên đã nén
+  // vẫn hiện % chu kỳ và toàn bộ mục đích của lượt này mất.
+  const returns = branch.match(/return '<span title[^;]+;/g) || [];
+  assert.ok(returns.length >= 2, `phải có ít nhất 2 lối ra badge, thấy ${returns.length}`);
+  for (const r of returns) {
+    if (!/%/.test(r)) continue;
+    assert.match(r, /totalPct/, "lối ra badge phải dùng totalPct");
+    assert.ok(!/\+\s*pct\s*\+\s*'%/.test(r), "không được in pct (chu kỳ hiện tại) làm số chính");
+  }
+  // Số 7 chữ số KHÔNG được nằm trong badge — cả cột là %, chen số dài vào là mất so sánh bằng mắt.
+  for (const r of returns) assert.ok(!/zN\(tot\)/.test(r), "tổng token thuộc tooltip, không thuộc badge");
+  assert.match(branch, /ctx\.compactT/, "tooltip phải giải thích + mang con số tổng");
+});
+
+test("FE: MÀU lấy theo chu kỳ HIỆN TẠI, không theo % cộng dồn", () => {
+  // Màu là cảnh báo "sắp bị nén" (chu kỳ hiện tại); % cộng dồn là thước đo ĐỘ LỚN. Trộn hai thứ
+  // thì một phiên đã nén 3 lần lúc nào cũng đỏ dù hiện tại mới 50% — cảnh báo mất nghĩa.
+  const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
+  const i = FE.indexOf("function ctxBadge");
+  const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
+  const colLine = /var col=([^;]+);/.exec(branch);
+  assert.ok(colLine, "phải có dòng tính màu");
+  assert.match(colLine[1], /\bpct\b/, "màu phải dùng pct (chu kỳ hiện tại)");
+  assert.ok(!/totalPct/.test(colLine[1]), "màu KHÔNG được dùng % cộng dồn");
 });
