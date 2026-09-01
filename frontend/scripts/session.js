@@ -67,13 +67,20 @@
     // DA NEN => % chi noi ve CHU KY hien tai, khong noi duoc do lon phien. Nen phan chinh doi
     // sang TONG da tieu + so lan nen; % van con trong tooltip. Chua nen thi giu nguyen % (ca
     // pho bien: do 40 phien that, chi 2 tung nen).
+    // % CONG DON tren cua so: VUOT 100% chinh la dau hieu da nen (user chot 2026-09-02 — "kieu
+    // la vuot 100% chinh xac bao nhieu de biet la nen"). Mot con so duy nhat, ca cot so sanh duoc,
+    // va no tu noi: 136% = da nen 1 lan · 352% = da nen 3 lan. Phien CHUA nen thi totalTokens ==
+    // tokens nen so nay TRUNG voi % hien tai — badge khong doi gi.
     var nc=c.compactions||0;
+    var tot=c.totalTokens||c.tokens;
+    var totalPct=c.window?Math.round(100*tot/c.window):pct;
     if(nc>0){
-      var tot=c.totalTokens||c.tokens;
+      // Mau van lay theo CHU KY HIEN TAI, khong theo % cong don: mau la canh bao "sap bi nen",
+      // con % cong don la thuoc do DO LON. Tron hai thu lam ca hai het nghia.
       tip=t('ctx.compactT').replace('{n}',nc).replace('{tot}',zN(tot)).replace('{pct}',pct)+' — '+tip;
-      return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+zN(tot)+' ⟳'+nc+'</span>';
+      return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+totalPct+'% ⟳'+nc+'</span>';
     }
-    return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+pct+'%</span>';
+    return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+totalPct+'%</span>';
   }
   function paintCtxBadges(warnPct){
     var els=document.querySelectorAll('[data-ctxfor]');
