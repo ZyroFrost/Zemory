@@ -336,6 +336,9 @@
     if(r.detailCode==='storePath')return a.path||'';
     if(r.detailCode==='storeGone')return t('conn.storeGone').replace('{path}',a.path||'');
     if(r.detailCode==='noStore')return t('conn.noStore');
+    // MAT KET NOI: noi thang viec phai lam. Vong tu keo da thoi dung khe nay (may khong duoc tu
+    // bat khung dang nhap — user chot 2026-09-02), nen chi con duong NGUOI bam.
+    if(r.detailCode==='needLogin')return t('conn.needLogin').replace('{ago}',a.at?relTime(a.at).big:'');
     if(r.detailCode==='lastChecked'){
       // Dùng chính relTime() của trang chủ ⇒ "7 giờ trước"/"7 h ago" đổi theo ngôn ngữ, và
       // KHÔNG đẻ thêm một cách tính thời gian tương đối thứ hai.

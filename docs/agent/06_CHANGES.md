@@ -66,6 +66,38 @@ cam ≥ ngưỡng−10 · xanh còn lại) — không đẻ ngưỡng thứ hai.
 nên đột biến *"bỏ hẳn nhánh đỏ theo ngưỡng"* vẫn xanh. Siết thành `/pct>=w(?![w-])/` mới bắt được.
 Bài học cũ lặp lại: một phép soi CHỮ mà không kiểm bằng đột biến thì không biết nó có soi gì không.
 
+### 🔴 LỖI TÍNH NĂNG: máy TỰ BẬT khung đăng nhập — không ai cho phép
+
+User bắt, nguyên văn: *"t đâu có cho phép UI tự động bật đăng nhập đâu má, lỗi tính năng rõ ràng,
+chỉ bật đăng nhập khi user chọn thôi chứ ai cho phép tự mở khung đăng nhập"* và *"nếu cần đăng nhập
+thì hiện cảnh báo dấu than mất kết nối, rồi user bấm vào mới mở ra"*. Đúng, và ranh giới này là
+nguyên tắc chứ không phải sở thích: **kéo NGẦM là việc máy tự làm được; bật một khung đăng nhập là
+đòi sự chú ý của NGƯỜI**, và máy không được tự quyết điều đó.
+
+**Cơ chế đã đo:** máy đổi trình duyệt mặc định **Brave → Edge** ⇒ `borrowCookies` dời cả 4 profile
+sang bên ⇒ **cả 4 khe `need-login` cùng lúc**. `WEB_RETRY_AFTER_FAIL_MS` = 6 giờ, và mỗi lần thử lại
+**mở một cửa sổ trình duyệt THẬT** ⇒ **4 cửa sổ / 6 giờ, vô hạn**. Dấu vết khớp: 15:58 · 16:01 · 16:01
+· 02:14 · 02:16 · 02:19 · 04:03. `deadMainLane` (2.11.0) không cứu được vì nó chỉ dập `main` KHI khe
+số cùng nền còn sống — ở đây **không khe nào sống**.
+
+**Vá ① — thôi tự mở:** `needsLoginLane()` loại khe `need-login` KHỎI vòng tự kéo, **dừng hẳn** chứ
+không lùi lâu hơn: `need-login` **không bao giờ tự khỏi**, nên lùi 6 giờ hay 60 giờ đều là đổi nhịp
+của cùng một việc vô ích — và mỗi lần vô ích là một cửa sổ đập vào mặt người dùng. Chỉ chặn ĐÚNG
+`need-login`; `no-browser` (có thể tự khỏi khi cài lại trình duyệt) vẫn được thử lại.
+
+**Vá ② — BẮT BUỘC, không phải tuỳ chọn:** nếu chỉ làm ① thì khe **chết IM LẶNG**. `/connections` đọc
+`webAuth` (kết quả lần KIỂM cuối) chứ không đọc `webPull` (kết quả lần KÉO cuối) — đo được: `webAuth`
+còn `ok:true` từ **29/08** trong khi cả 4 khe `need-login` từ **02/09**, tức **UI báo "đã nối" cho khe
+đã chết**. Nay so MỐC giữa hai nguồn, **bằng chứng mới nhất thắng** (không ưu tiên cứng: một lượt kiểm
+vừa chạy PHẢI thắng một lượt kéo hỏng hôm kia), và hiện `⚠ mất kết nối {ago} — bấm để đăng nhập lại`.
+Bấm vào đi đường `/connect`, tức do NGƯỜI khởi xướng. Nghiệm thu máy thật: cả 4 khe chuyển từ
+"đã nối" sang **MẤT KẾT NỐI** kèm câu chỉ việc phải làm.
+
+**Cổng:** `web-autopull.test.mjs` +7 ca (`needsLoginLane` · khe need-login bị loại · khe hỏng lý do
+KHÁC vẫn thử · khe lành không bị chặn oan · `/connections` đọc cả hai nguồn · so mốc · mã `needLogin`
+có đủ hai dict). **Đột biến 4/4 ĐỎ**, gồm hai đột biến *trả về đúng code cũ*: bỏ chặn khe need-login ·
+`connected` chỉ đọc `webAuth`.
+
 ### Cửa sổ trình duyệt bỏ lại — 3 icon Edge trên taskbar (user bắt, kèm ảnh)
 
 **Không phải do tôi restart daemon.** Daemon khởi động lần cuối `01/09 19:47Z`; ba cửa sổ mở lúc

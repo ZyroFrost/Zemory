@@ -19,7 +19,7 @@ import { currentMemoryDir, openMemory } from "./db.js";
 import { allAdapters } from "./adapters/index.js";
 import { findBorrowSource } from "./borrowcookies.js";
 import { accountsOf } from "./webslots.js";
-import { getWebAuth } from "../config/settings.js";
+import { getWebAuth, getWebPull } from "../config/settings.js";
 
 export interface ConnectionRow {
   /** `source` như trong Sources/scope tree: `codex` · `claude-code` · `chatgpt-web`… */
@@ -44,7 +44,7 @@ export interface ConnectionRow {
    * Thêm MỚI chứ không thay `detail`: mọi thứ đang đọc `detail` vẫn chạy y nguyên, UI nào hiểu
    * mã thì dùng mã. Ngày không còn ai đọc `detail` nữa thì bỏ nó đi là việc riêng, có kiểm.
    */
-  detailCode?: "lastChecked" | "neverChecked" | "storePath" | "storeGone" | "noStore";
+  detailCode?: "lastChecked" | "neverChecked" | "needLogin" | "storePath" | "storeGone" | "noStore";
   detailArgs?: { at?: string; who?: string; path?: string };
   /** Số tin đang có trong bộ nhớ của nguồn này. */
   messages: number;
@@ -112,6 +112,13 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
   const seen = new Set(rows.map((r) => r.source));
   for (const s of Object.keys(WEB_LABEL)) if (s !== "gemini-web") seen.add(s); // web luôn hiện: đó là thứ cần nối
   const auth = getWebAuth();
+  // 🔴 BẰNG CHỨNG MỚI NHẤT THẮNG (bug đo 2026-09-02). `webAuth` là kết quả lần KIỂM cuối — có thể
+  // đã nhiều ngày tuổi; `webPull` là kết quả lần KÉO cuối. Khi máy đổi trình duyệt mặc định
+  // (Brave → Edge) thì `borrowCookies` dời profile sang bên và cả 4 khe mất phiên NGAY, nhưng
+  // `webAuth` vẫn giữ `ok:true` từ 29/08 ⇒ bề mặt báo "đã nối" cho khe đang `need-login` từ 02/09.
+  // Đúng thứ `02_RULES` gọi là bề mặt NÓI DỐI, và nó còn nguy hơn từ khi vòng tự kéo thôi mở cửa
+  // sổ đăng nhập: không có cảnh báo thì khe chết IM LẶNG, không ai biết mà bấm nối lại.
+  const pull = getWebPull();
 
   const out: ConnectionRow[] = [];
   for (const source of [...seen].sort()) {
@@ -124,17 +131,30 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
       for (const acct of browserAccounts(web.platform)) {
         const key = acct === "main" ? web.platform : `${web.platform}#${acct}`;
         const st = auth[key];
+        const pl = pull[key];
+        // Lượt KÉO gần nhất nói `need-login` và nó MỚI HƠN lượt kiểm ⇒ khe đang MẤT KẾT NỐI,
+        // bất kể `webAuth` còn nói gì. So mốc chứ không ưu tiên cứng một nguồn: một lượt kiểm
+        // vừa chạy xong PHẢI thắng một lượt kéo hỏng từ hôm kia.
+        const lostAt = pl && pl.ok === false && pl.status === "need-login" ? Date.parse(pl.at) : NaN;
+        const checkedAt = st ? Date.parse(st.at) : NaN;
+        const lost = Number.isFinite(lostAt) && (!Number.isFinite(checkedAt) || lostAt > checkedAt);
         out.push({
           source,
           label: acct === "main" ? web.label : `${web.label} · tài khoản ${acct}`,
           kind: "web",
           platform: web.platform,
           account: acct,
-          connected: st?.ok === true,
-          unknown: !st,
-          detail: st ? `kiểm lần cuối ${ago(st.at)}${st.who ? ` · ${st.who}` : ""}` : "chưa kiểm lần nào",
-          detailCode: st ? "lastChecked" : "neverChecked",
-          detailArgs: st ? { at: st.at, who: st.who } : undefined,
+          connected: !lost && st?.ok === true,
+          unknown: !st && !pl,
+          // Mất kết nối thì NÓI RA việc phải làm, đừng bắt người dùng đoán: vòng tự kéo đã thôi
+          // đụng khe này (không được tự bật khung đăng nhập), nên chỉ còn đường người bấm.
+          detail: lost
+            ? `mất kết nối ${ago(pl.at)} — bấm để đăng nhập lại`
+            : st
+              ? `kiểm lần cuối ${ago(st.at)}${st.who ? ` · ${st.who}` : ""}`
+              : "chưa kiểm lần nào",
+          detailCode: lost ? "needLogin" : st ? "lastChecked" : "neverChecked",
+          detailArgs: lost ? { at: pl.at } : st ? { at: st.at, who: st.who } : undefined,
           // Số tin là của cả LANE (mọi tài khoản dồn về một lane) — chỉ ghi ở dòng đầu để
           // không cộng dồn nhìn như nhân đôi.
           messages: acct === "main" ? messages : 0,
