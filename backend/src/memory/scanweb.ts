@@ -631,6 +631,7 @@ export function browserArgs(profileDir: string, port: number, url: string, hidde
   ];
 }
 
+
 function launchBrowser(exe: string, profileDir: string, port: number, url: string, hidden = false): number | undefined {
   const child = spawn(exe, browserArgs(profileDir, port, url, hidden), { detached: true, stdio: "ignore" });
   child.unref();
@@ -769,6 +770,30 @@ class Cdp {
 
   get dead(): boolean {
     return this._dead;
+  }
+
+  /**
+   * KÉO CỬA SỔ RA TRƯỚC MẶT — cho lượt do NGƯỜI bấm.
+   *
+   * 🔴 User bắt 2026-09-02: *"bấm vào link nó mở web mà nó ko tự bung ra trước mặt thì sao mà
+   * thấy"*. Đúng: cửa sổ mở sau lưng app thì việc "mở cửa sổ để bạn đăng nhập" coi như không
+   * xảy ra.
+   *
+   * Bản đầu tôi thử `WScript.Shell.AppActivate(pid)` — **đo ra KHÔNG ĂN**: Chromium tự sinh cây
+   * tiến trình, nên **pid ta `spawn` thường KHÔNG phải pid sở hữu cửa sổ**; vòng chờ 6 giây không
+   * bao giờ thấy `MainWindowHandle`. Đường đúng là bảo CHÍNH trình duyệt tự nâng mình lên:
+   * `Page.bringToFront` của CDP nâng cả tab lẫn cửa sổ chứa nó, không phụ thuộc pid, không đụng
+   * khoá tiền cảnh của Windows. Và ta ĐÃ nối CDP sẵn ở đây — không thêm hạ tầng nào.
+   *
+   * Fail-open (điều 9): nâng không được thì cửa sổ vẫn mở, người dùng vẫn bấm vào taskbar được.
+   */
+  async bringToFront(): Promise<boolean> {
+    try {
+      await this.send("Page.bringToFront");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Điều hướng tab sang URL khác (trang "✓ Đã liên kết" sau đăng nhập). Fail-open: lỗi thì thôi. */
@@ -1182,6 +1207,11 @@ async function scanWebInner(
     first = await connectWhenReady(port, p.tabRe, 25);
   }
   if (!first) return { status: "no-tab", platform: p.key, source: p.source, url: p.url };
+  // KÉO RA TRƯỚC MẶT — chỉ khi cửa sổ này DÀNH CHO NGƯỜI (`!opts.hidden`). Lượt ngầm mà nhảy ra
+  // trước mặt là đúng thứ vừa bị bắt lỗi ở lượt trước: máy không được tự đòi sự chú ý.
+  // Đặt SAU khi CDP nối được, vì lúc đó cửa sổ chắc chắn đã tồn tại — nâng sớm hơn là nâng vào
+  // hư không (đúng lý do `AppActivate` theo pid không ăn: pid ta spawn không sở hữu cửa sổ).
+  if (!opts.hidden) await first.bringToFront();
   // Lưới tự lành: dù ai spawn trùng (CLI + daemon · hai request tới cùng lúc · bấm hai lần),
   // tới đây một khe chỉ còn ĐÚNG MỘT tab của nền.
   // 🔴 PROBE KHÔNG ĐƯỢC ĐÓNG GÌ (đảo vế cũ *"Probe cũng dọn — nó là lượt chạy dày nhất"*, 2026-08-29).

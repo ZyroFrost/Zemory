@@ -316,3 +316,72 @@ test("nút nối lại KHÔNG hiện trên hàng gộp — hàng cha không bi�
   const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   assert.equal((DICT.match(/'scope\.detPickAcct':/g) || []).length, 2, "khoá i18n đủ HAI dict");
 });
+
+// ── ⑦ CỬA SỔ NGƯỜI CẦN THẤY PHẢI BUNG RA TRƯỚC MẶT ───────────────────────────────────────
+// User bắt 2026-09-02: *"bấm vào link nó mở web mà nó ko tự bung ra trước mặt thì sao mà thấy"*.
+// Cửa sổ mở sau lưng app thì việc "mở cửa sổ để bạn đăng nhập" coi như không xảy ra.
+//
+// ⚠ Bản đầu tôi dùng `WScript.Shell.AppActivate(pid)` và **đo ra KHÔNG ĂN**: Chromium tự sinh cây
+// tiến trình nên pid ta `spawn` thường KHÔNG sở hữu cửa sổ — vòng chờ 6 giây không bao giờ thấy
+// `MainWindowHandle`. Đường đúng là bảo CHÍNH trình duyệt tự nâng: `Page.bringToFront` của CDP
+// nâng cả tab lẫn cửa sổ, không phụ thuộc pid, không đụng khoá tiền cảnh của Windows.
+const SW2 = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
+
+test("bringToFront đi qua CDP `Page.bringToFront`, KHÔNG qua pid", () => {
+  assert.match(SW2, /Page\.bringToFront/, "phải dùng lệnh CDP");
+  // Bỏ COMMENT trước khi soi: chữ `AppActivate` vẫn còn trong chú thích giải thích VÌ SAO nó
+  // không ăn — cấm cả chú thích là bắt oan, và là đúng bẫy "soi CHỮ" mà `audit` đã ghi.
+  const code = SW2.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/AppActivate/.test(code), "AppActivate theo pid đã đo là KHÔNG ăn — không được quay lại");
+});
+
+test("chỉ nâng cửa sổ cho lượt NGƯỜI bấm, tuyệt đối không cho lượt ngầm", () => {
+  const i = SW2.indexOf("await first.bringToFront()");
+  assert.ok(i > 0, "phải gọi sau khi CDP nối được");
+  const line = SW2.slice(SW2.lastIndexOf("\n", i - 1), i + 40);
+  assert.match(line, /!opts\.hidden/, "lượt ngầm mà nhảy ra trước mặt là đúng lỗi vừa sửa ở ④");
+});
+
+test("nâng SAU khi CDP nối được — nâng sớm là nâng vào hư không", () => {
+  const iConn = SW2.indexOf('if (!first) return { status: "no-tab"');
+  const iFront = SW2.indexOf("await first.bringToFront()");
+  assert.ok(iConn > 0 && iFront > iConn, "phải nằm sau chốt `!first` (lúc đó cửa sổ chắc chắn có thật)");
+});
+
+// ── ⑧ MƯỢN COOKIE: Brave phải nằm trong nguồn, và KHOÁ ≠ KHÔNG CÓ ────────────────────────
+// User bắt 2026-09-02: *"vẫn chưa fix được việc mở browser đó thì lấy chính cookie web đã có"*.
+// Đo ra hai lỗ: ① `cookieSources()` chỉ có Chrome + Edge trong khi **trình duyệt mặc định của máy
+// là Brave** — và chính zemory cũng mở Brave (log `opening … in brave.exe`) ⇒ phiên thật nằm ở
+// Brave mà bộ mượn không bao giờ nhìn tới · ② Chromium giữ khoá độc quyền kho cookie khi đang
+// chạy (đo: đọc thẳng ném `unable to open database file`, `copyFileSync` ném **EBUSY**) và bản cũ
+// NUỐT lỗi đó rồi báo "không có trình duyệt nào còn phiên" — sai, và không chỉ được việc phải làm.
+const BC = readFileSync(new URL("../src/memory/borrowcookies.ts", import.meta.url), "utf8");
+
+test("cookieSources: có Brave — trình duyệt mặc định của máy và là thứ zemory tự mở", () => {
+  assert.match(BC, /key: "brave"/, "thiếu Brave thì phiên thật không bao giờ mượn được");
+  assert.match(BC, /BraveSoftware/, "phải trỏ đúng thư mục User Data của Brave");
+  for (const k of ["chrome", "edge"]) assert.match(BC, new RegExp(`key: "${k}"`), `không được bỏ ${k}`);
+});
+
+test("KHOÁ ≠ KHÔNG CÓ: hai câu hỏi ⇒ hai hàm, không nhồi cờ ngầm vào một kiểu trả về", () => {
+  assert.match(BC, /export function borrowBlockedBy/, "phải có hàm trả lời 'đang bị khoá bởi ai'");
+  // `findBorrowSource` bị nhồi một object 'khoá' sẽ lặng lẽ thành `canBorrow: true` ở nơi gọi
+  // (`Boolean(findBorrowSource(...))`) ⇒ UI mời "Mượn" rồi thất bại.
+  // ⚠ Bỏ COMMENT trước khi soi. Đây là LẦN THỨ HAI trong cùng phiên tôi mắc lỗi này (lần đầu:
+  // cấm chuỗi `AppActivate`): phép soi CHỮ trên cả file luôn bắt oan chính chú thích giải thích
+  // VÌ SAO không dùng thứ đó. Chú thích là nơi ĐÚNG để giữ lý do; cấm nó là phạt việc ghi lại.
+  const bcCode = BC.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\*.*$/gm, "").replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(!/cookies: -1/.test(bcCode), "không được dùng giá trị đặc biệt làm cờ ngầm");
+  const i = BC.indexOf("export function findBorrowSource");
+  const fn = BC.slice(i, BC.indexOf("\n}", i));
+  assert.ok(!/label: locked/.test(fn), "findBorrowSource chỉ trả nguồn ĐỌC ĐƯỢC");
+});
+
+test("bị khoá thì phải NÓI VIỆC PHẢI LÀM, không im", () => {
+  const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
+  assert.match(CONN, /borrowBlocked: borrowBlockedBy\(/, "server phải bày lý do ra hàng");
+  const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  assert.match(FE, /c\.borrowBlocked/, "UI phải hiện nó");
+  const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.equal((DICT.match(/'conn\.borrowBlocked':/g) || []).length, 2, "khoá i18n đủ HAI dict");
+});
