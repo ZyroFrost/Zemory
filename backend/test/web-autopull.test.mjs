@@ -20,6 +20,8 @@ process.env.GLOBAL_MEMORY_DB = join(HOME, "global_memory.db");
 
 const { accountsOf, browserArgs } = await import("../../dist/memory/scanweb.js");
 const { getWebPull, setWebPull } = await import("../../dist/config/settings.js");
+// `needsLoginLane` đã được khai ở nhóm ⑦ bên dưới (module-scope) — callback test chạy sau khi
+// module nạp xong nên dùng được, khai lần hai là lỗi cú pháp.
 const { deadMainLane, webDue, webPullTargets } = await import("../../dist/jobs/scheduler.js");
 
 // ── ① khe THẬT vs thư mục sao lưu ───────────────────────────────────────────
@@ -154,6 +156,38 @@ test("deadMainLane: BỐN CA ÂM — main còn sống hoặc chưa đủ bằng 
     false,
     "khớp tiền tố lỏng lẻo sẽ đè nhầm khe main của một nền hoàn toàn khác",
   );
+});
+
+// ── ⑫ KHE `need-login` PHẢI TỰ KHỎI KHI NGƯỜI ĐÃ ĐĂNG NHẬP ─────────────────────────────────
+// User bắt 2026-09-02 bằng hai ảnh cạnh nhau: cửa sổ ChatGPT ĐĂNG NHẬP ĐẦY ĐỦ, và hộp zemory báo
+// *"NOT linked — signed out"*. Đo: `chatgpt#2` có `webAuth ok:true` 08:27 nhưng `webPull need-login`
+// 15:53, và 16 phút sau vẫn treo. Cơ chế: khe `need-login` bị loại VĨNH VIỄN khỏi vòng tự kéo, còn
+// `startLoginWatch` chỉ canh 15 phút VÀ sống trong RAM daemon (restart là mất). ⇒ người đăng nhập
+// tay xong thì không còn gì kiểm lại — bề mặt nói dối theo chiều ngược với hai ca đã vá cùng ngày.
+test("needsLoginLane: phiên ĐÃ CÓ lại ⇒ phán quyết cũ hết hiệu lực; đọc không được ⇒ giữ nguyên", () => {
+  const needLogin = { ok: false, status: "need-login", at: "2026-09-02T15:53:09Z" };
+
+  assert.equal(needsLoginLane(needLogin, () => true), false, "kho cookie đã có phiên ⇒ THÔI bỏ qua, cho kéo lại");
+  assert.equal(needsLoginLane(needLogin, () => false), true, "vẫn signed out thật ⇒ vẫn bỏ qua (không tự mở cửa sổ)");
+  // `null` = Chromium giữ khoá vì cửa sổ đang MỞ — đúng trạng thái lúc user chụp ảnh. Không đoán.
+  assert.equal(needsLoginLane(needLogin, () => null), true, "không đọc được ⇒ giữ hành vi cũ, tuyệt đối không đoán");
+  assert.equal(needsLoginLane(needLogin, () => { throw new Error("locked"); }), true, "phép dò ném ⇒ fail-safe");
+  assert.equal(needsLoginLane(needLogin), true, "không truyền phép dò ⇒ y như trước bản vá (tương thích ngược)");
+
+  // Ca ÂM: khe KHÔNG ở trạng thái need-login thì phép dò không được đổi gì.
+  assert.equal(needsLoginLane(undefined, () => true), false, "chưa kéo lần nào thì không phải need-login");
+  assert.equal(needsLoginLane({ ok: true, status: "done" }, () => false), false, "khe lành không bị chặn oan");
+});
+
+test("webPullTargets: khe need-login ĐƯỢC KÉO LẠI khi kho cookie đã có phiên", () => {
+  const now = Date.parse("2026-09-02T16:30:00Z");
+  const pulled = { chatgpt: { at: "2026-09-02T15:53:09Z", ok: false, status: "need-login" } };
+  const run = (probe) =>
+    webPullTargets(["chatgpt"], () => ["main"], (p) => SRC[p], "MAY-A", [], pulled, now, probe).map((t) => t.lane);
+
+  assert.deepEqual(run(() => true), ["chatgpt"], "người đã đăng nhập lại ⇒ khe trở lại vòng kéo NGẦM");
+  assert.deepEqual(run(() => false), [], "còn signed out ⇒ vẫn nằm ngoài, máy không tự bật khung đăng nhập");
+  assert.deepEqual(run(() => null), [], "cửa sổ đang mở nên khoá jar ⇒ chờ, không đoán");
 });
 
 test("webPullTargets: main CHẾT ⇒ vắng mặt DÙ hỏng rất lâu rồi (nếu còn sống thì chắc chắn tới lượt)", () => {
