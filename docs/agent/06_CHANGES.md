@@ -11,42 +11,25 @@
 chết**. Mẫu số bị chi phối bởi **65 file test + 17 script**, nên cổng **đỏ thêm mỗi lần thêm một
 test** — phạt đúng việc tốt, và một cổng không bao giờ xanh được thì sớm muộn bị bỏ qua.
 
-**Vá (user chốt "làm luôn"):** `isEntryClassFile()` loại lớp ĐIỂM VÀO khỏi phép đo — thứ theo CẤU
-TRÚC không thể có cạnh import: file test · script · hook `hooks/` (host gọi lúc chạy) · tài sản
-`docs_template/` · `*.config.js`. Cùng doctrine với `noImportLayer` đã có: *đừng phạt thứ không đo
-được cạnh*. Số bị loại được **IN RA**, không loại âm thầm.
+**Vá (user chốt):** `isEntryClassFile()` loại lớp ĐIỂM VÀO — thứ theo CẤU TRÚC không thể có cạnh
+import (test · script · `hooks/` · `docs_template/` · `*.config.js`); cùng doctrine `noImportLayer`.
+Số bị loại được IN RA. **Đo trước rồi mới chọn ngưỡng:** nền mới **1/116 = 0,9%** (đúng
+`platform/window.ts` — entry daemon **spawn** bằng đường dẫn, cố ý KHÔNG đặc cách vì loại theo
+`platform/` sẽ loại luôn `tray.ts` được import thật; cổng NÊU TÊN để người đọc phán). Trần **30% →
+4%** ⇒ đỏ khi có 5 module chết. `graph fitness` nay **PASS**.
 
-**Đo TRƯỚC rồi mới chọn ngưỡng** (không chọn trước rồi nắn số): nền mới **1/116 = 0,9%**, đúng
-`platform/window.ts` — entry mà daemon **spawn** bằng đường dẫn. **Cố ý KHÔNG đặc cách nó**: loại
-theo đường dẫn `platform/` sẽ loại luôn `platform/tray.ts` vốn được import thật; thay vào đó cổng
-**NÊU TÊN** file cô lập để người đọc tự phán. Trần **30% → 4%**: đỏ khi có **5** module chết
-(5/116 = 4,3%), dư địa 4 so với nền. Toàn bộ `graph fitness` nay **PASS**.
+🔴 **SÀN ĐẾM — gate bắt lỗi của chính bản vá này:** siết trần làm **ĐỎ OAN** fixture repo-nhỏ của
+`graph.test.mjs` (**1/3 = 33%**). Tỉ lệ trên mẫu bé là nhiễu — doctrine đã trả giá ở `plan/17 §1.3b`
+(`ABSTAIN_MIN_VECTORS`). `ISOLATED_MIN_COUNT = 3`: đỏ đòi **đủ SỐ ĐẾM VÀ vượt tỉ lệ**. Sàn theo
+ĐẾM chứ không theo cỡ repo — sàn-theo-cỡ tha một repo 20 file có 5 module chết (25%).
 
-⚠ **Đánh đổi nói thẳng:** phép đo thôi nhìn thấy "test không ai chạy" / "script không ai gọi".
-Chấp nhận được vì trình chạy test quét cả thư mục, script gọi từ `package.json`, và riêng script
-frontend đã có cổng khác canh (`helpers.mjs readAppJs()` ném lỗi nếu có file chưa khai trong
-`APP_SCRIPT_ORDER`). Còn **module chết thì không cơ chế nào khác bắt** — đó là thứ cổng này giữ.
+⚠ **Đánh đổi:** phép đo thôi thấy "test/script không ai gọi". Chấp nhận được (runner quét thư mục;
+script frontend đã có `helpers.mjs readAppJs()` canh) — còn module chết thì không cơ chế nào khác bắt.
 
-🔴 **SÀN ĐẾM — gate đầy đủ bắt được lỗi của chính bản vá này.** Siết trần 30%→4% làm **ĐỎ OAN**
-fixture *"repo nhỏ lành mạnh"* của `graph.test.mjs`: **1 file cô lập / 3 file = 33%**. Bài học là
-tỉ lệ trên mẫu bé là **nhiễu**, không phải bằng chứng — đúng doctrine đã trả giá ở `plan/17 §1.3b`
-(`ABSTAIN_MIN_VECTORS`: *"ngưỡng TUYỆT ĐỐI chỉ có nghĩa khi chỉ mục đủ DÀY"*). Thêm
-`ISOLATED_MIN_COUNT = 3`: đỏ đòi **ĐỦ HAI** — đủ SỐ ĐẾM và vượt tỉ lệ.
-**Chọn sàn theo SỐ ĐẾM, không theo cỡ repo** (cân hai hướng rồi mới chốt): sàn-theo-cỡ sẽ tha một
-repo 20 file có 5 module chết (25%!), sàn-theo-đếm vẫn bắt (5 ≥ 3 **và** 25% > 4%). Câu `detail`
-chỉ nhắc tới sàn khi nó **thật sự đang cứu** — nói cả khi tỉ lệ vốn đã đạt thì đọc ra thành "cổng
-bị tắt", lại một câu lệch nghĩa.
-
-**Cổng:** `fitness-entry-class.test.mjs` **5 ca**, gồm **ca ÂM** (module nguồn thật KHÔNG được loại ·
-`transcripts/` không được khớp `scripts/`) · ca đối chứng cùng số file (10 test mồ côi ⇒ 0% xanh ·
-10 module nguồn mồ côi ⇒ 90,9% ĐỎ) · ca sàn (1–2 file vượt tỉ lệ vẫn KHÔNG bị phán và phải NÓI RA
-là dưới sàn; chạm đúng sàn ⇒ phán ngay, để sàn không thành cửa hậu). **Đột biến 8/8 ĐỎ** qua hai
-lượt: *trả về đúng code cũ* · loại luôn module nguồn ⇒ cổng thành trang trí · bỏ phần nêu tên ·
-nới trần về 30% · bỏ sàn (**tái hiện đúng fixture đỏ oan**) · sàn thành cửa hậu · nới sàn lên 99 ·
-bỏ câu nói về sàn.
-**Và phân nhóm test:** file mới khớp regex "nạp runtime nặng" (vì import `memory/graph/`), nên đã
-**ĐO bằng `gate-cage`: đỉnh 47 MB** ⇒ khai vào `LIGHT_DESPITE_MATCH` kèm số — đúng luật của cổng đó
-(*"là một QUYẾT ĐỊNH có số đo, không phải chỗ nhét cho cổng khỏi đỏ"*), không phải đoán.
+**Cổng:** `fitness-entry-class.test.mjs` 5 ca (2 ca ÂM · đối chứng cùng số file: 10 test mồ côi 0%
+xanh vs 10 module mồ côi 90,9% ĐỎ · ca sàn). **Đột biến 8/8 ĐỎ**, gồm *trả về đúng code cũ* và
+*tái hiện fixture đỏ oan*. File test mới khớp regex nặng ⇒ **đo `gate-cage`: 47 MB** rồi khai
+`LIGHT_DESPITE_MATCH` kèm số, không đoán.
 
 ## [2026-09-02j] — doctor phán "daemon KHÔNG chạy" trong khi nó đang chạy
 
@@ -80,34 +63,27 @@ với `now` lấy ở ĐẦU hàm, tức mốc **request vào**. Lượt tính l
 cache sinh ra **đã quá hạn** ⇒ lượt kế tính lại từ đầu ⇒ toàn bộ chuỗi tối ưu ở `dashboardMemory`
 (hai tầng TTL · tách `/sync-pulse` · coverage 38 s → 0,58 s) bị vô hiệu **đúng trên kho lớn — nơi
 nó tồn tại để bảo vệ**. `heavyCache` cùng lỗi (TTL 300 s nên chưa lộ).
-**Bằng chứng đây là SÓT chứ không phải chủ ý:** nhánh `heavyStatsAsync` đã dùng `Date.now()` lúc
-hoàn tất từ trước, ở HAI chỗ; chỉ hai đường đồng bộ còn dùng mốc vào.
-**Hệ quả đã cắn thật trong phiên này:** 74 s đó chạy đồng bộ trên event loop nên `/connections`
-gọi ngay sau khi khởi động daemon **timeout hai lần** (45 s rồi 240 s).
+**Bằng chứng đây là SÓT, không phải chủ ý:** `heavyStatsAsync` đã dùng `Date.now()` lúc hoàn tất từ
+trước, ở HAI chỗ; chỉ hai đường đồng bộ còn dùng mốc vào. **Hệ quả thật:** 74 s đó chạy đồng bộ trên
+event loop nên `/connections` gọi ngay sau khởi động **timeout hai lần** (45 s rồi 240 s).
 
-⚠ **CHƯA ĐO SẠCH được mức cải thiện, nói thẳng thay vì trưng số đẹp.** Lượt đo sau khi vá ra
-cold 10,2 s · warm 36,2 s · warm 3,1 s — **nhiễu**, vì `/automation` cho thấy `embedRunning: true`:
-daemon đang nhúng nền, vừa tranh I/O vừa tự làm mất hiệu lực cache (14 chỗ gọi `invalidateDashboard`).
-Phần **chứng minh được không phụ thuộc tải**: đóng dấu lúc-vào khiến cache KHÔNG THỂ phục vụ khi
-thời gian tính vượt TTL (số học), và bản vá chỉ có thể NỚI hiệu lực cache, không bao giờ thu hẹp.
-Muốn con số end-to-end thật thì phải đo lúc scheduler im — chưa làm.
+⚠ **CHƯA ĐO SẠCH mức cải thiện, nói thẳng thay vì trưng số đẹp.** Sau khi vá: cold 10,2 s · warm
+36,2 · warm 3,1 — **nhiễu**, vì `/automation` cho `embedRunning: true` (nhúng nền vừa tranh I/O vừa
+tự làm mất hiệu lực cache — 14 chỗ gọi `invalidateDashboard`). Phần **chứng minh được, không phụ
+thuộc tải**: mốc-vào khiến cache không thể phục vụ khi thời gian tính vượt TTL (số học), và bản vá
+chỉ NỚI hiệu lực cache, không bao giờ thu hẹp. Số end-to-end thật cần đo lúc scheduler im — chưa làm.
 
-**Cổng:** `dash-cache-stamp.test.mjs` 3 ca — số học của luật (mốc-vào chết · mốc-xong sống · vẫn
-phải hết hạn đúng lúc, không thành vĩnh viễn) · mã sản xuất dùng `Date.now()` ở **cả hai** đường ·
-TTL vẫn lớn hơn nhịp poll 30 s của client. **Đột biến 3/3 ĐỎ** (hai đột biến *trả về đúng code cũ*).
+**Cổng:** `dash-cache-stamp.test.mjs` 3 ca (số học của luật · cả hai đường dùng `Date.now()` · TTL
+vẫn lớn hơn nhịp poll 30 s). **Đột biến 3/3 ĐỎ**, hai cái *trả về đúng code cũ*.
 
 ### `graph fitness` đỏ oan: câu nó in ra không phải thứ nó đếm
 
-`isolated_pct = 32,4%` (88/272, trần 30%) đỏ suốt nhiều tuần và không nằm trong CI. Soi ra: nó đếm
-**CHỈ lớp `imports`** trong khi câu `detail` in *"no intra-project edges"*. Đo: `imports` 445 cạnh ⇒
-88 cô lập; thêm `calls` (**4.482** cạnh) ⇒ còn **6 (2,2%)**. Soi tay đủ 88 file: **65 test · 17
-script** · `platform/window.ts` (daemon **spawn** nó bằng đường dẫn — xác minh hai đường: header
-file tự khai + chỗ ghép path ở `ui.ts`) · 2 hook `guard.cjs` (host gọi lúc chạy) · 2 tài sản
-template · `eslint.config.js` ⇒ **0 code chết**.
-⇒ Con số bị chi phối bởi SỐ FILE TEST, nên nó **chỉ đỏ thêm mỗi lần thêm test** — một cổng không
-bao giờ xanh được thì wire vào CI là dựng gate nhiễu (thứ `02_RULES` cấm). Sửa **câu chữ** cho đúng
-sự thật (nó đếm cạnh IMPORT, và cố ý không đếm `calls` vì đó là cạnh SUY LUẬN — để nó bịt miệng tín
-hiệu code-chết là trái điều 13). **Đổi ĐỊNH NGHĨA/ngưỡng là việc của user** — chưa làm.
+`isolated_pct = 32,4%` (88/272) đỏ nhiều tuần, không nằm trong CI. Nó đếm **CHỈ lớp `imports`** trong
+khi `detail` in *"no intra-project edges"*. Đo: `imports` 445 cạnh ⇒ 88 cô lập; thêm `calls` (4.482)
+⇒ còn **6 (2,2%)**. Soi tay đủ 88 file ⇒ **0 code chết** (65 test · 17 script · `platform/window.ts`
+daemon **spawn** bằng đường dẫn — xác minh hai đường · 2 hook · 2 template · `eslint.config.js`).
+Sửa **câu chữ** cho đúng; cố ý không đếm `calls` vì đó là cạnh SUY LUẬN — để nó bịt miệng tín hiệu
+code-chết là trái điều 13. Đổi định nghĩa/ngưỡng ⇒ xem `[2026-09-02k]`.
 
 ## [2026-09-02h] — phản biện BÁC đường "dọn sớm bản rỗng"; và vá chỗ `restoreProfile` phá trước khi kiểm
 
@@ -148,22 +124,17 @@ khe, một bản rỗng ruột. Đo trên đĩa thật (17 bản app tạo · 1.
 | `claude-3.msedge-bak-1787905538196` | **có** | **khe không còn tồn tại** | xoá sau ~44 h |
 | `claude.msedge-bak-1787906707220` (505 MB) | có | **có** (vừa hồi) | xoá — ĐÚNG, bản dư |
 
-Hai bản đầu là đường về DUY NHẤT của khe đó; mất là người dùng phải đăng nhập tay. Tức vòng dọn
-rác biến thành vòng mất dữ liệu — đúng thứ `[2026-08-31d]` đã rút thành luật rồi vẫn tái diễn theo
-một trục khác. Bản `chatgpt` chính là phiên `05_TODO` đang ghi là cần để khe đó hồi.
+Hai bản đầu là đường về DUY NHẤT của khe đó; mất là phải đăng nhập tay — vòng dọn rác thành vòng
+mất dữ liệu, đúng thứ `[2026-08-31d]` đã rút thành luật rồi vẫn tái diễn theo trục khác.
 
 **Vá — chính sách ④ "đường về cuối cùng thì không xoá, bất kể tuổi":** bản CÓ phiên
 (`jarHasSession === true`) mà khe sống KHÔNG chứng minh được là đang có phiên ⇒ **giữ**. Hướng an
-toàn MỘT CHIỀU: chỉ giữ thêm, không bao giờ xoá thêm, nên tự nó không thể đẻ mất mát. Khe live đăng
-nhập lại ⇒ bản cũ thành dư ⇒ hết bảo vệ, rơi về cửa sổ 7 ngày như trước. Nghiêm ngặt `=== true` ở vế
-bản dời (để bề mặt dựng entry tay không bật bảo vệ tràn lan) nhưng LỎNG `!== true` ở vế khe sống
-(chưa chứng minh được thì cứ giữ). Kèm `slotOfSetAside`/`platformOfSlot` — dạng mất-dấu-chấm đời cũ
-trả `null` thay vì đoán bừa, và `sweepBrowserProfiles` nay **đếm ra** số bản được giữ (`protected`):
-một bản quá hạn mà không bị xoá là chuyện người đọc log CẦN biết.
-
-**Kèm sửa một dòng help NÓI SAI:** `status.ts` khẳng định *"Không dòng code nào lấy lại bản dời"* —
-sai từ lúc `restoreShelvedSession` ship cùng ngày (`[2026-09-02c]`). Bản dời không còn là
-"rác-từ-lúc-sinh"; nó là bản lùi có giá trị.
+toàn MỘT CHIỀU: chỉ giữ thêm, không bao giờ xoá thêm ⇒ tự nó không thể đẻ mất mát. Khe live đăng
+nhập lại ⇒ bản cũ thành dư ⇒ hết bảo vệ, rơi về cửa sổ 7 ngày. Nghiêm `=== true` ở vế bản dời (để
+bề mặt dựng entry tay không bật bảo vệ tràn lan), LỎNG `!== true` ở vế khe sống. `slotOfSetAside`
+trả `null` cho dạng mất-dấu-chấm đời cũ thay vì đoán; `sweepBrowserProfiles` **đếm ra** số bản được
+giữ (`protected`). Kèm sửa dòng help `status.ts` nói sai (*"không dòng code nào lấy lại bản dời"* —
+sai từ khi `restoreShelvedSession` ship cùng ngày).
 
 **Cổng:** `reclaim-sweep.test.mjs` 5 → 10 ca, gồm **7 ca ÂM** (khe sống miễn nhiễm mọi ngưỡng ·
 `null`/`undefined` không được coi là có phiên · khe live đã có phiên thì bản cũ hết bảo vệ · parse
