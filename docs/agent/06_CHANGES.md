@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-09-02k] — `isolated_pct` thôi đo SỐ FILE TEST, bắt đầu đo CODE CHẾT (user chốt)
+
+**Vấn đề (đo `[2026-09-02i]`):** cổng đỏ **88/272 = 32,4%** nhưng soi tay đủ 88 file ⇒ **0 code
+chết**. Mẫu số bị chi phối bởi **65 file test + 17 script**, nên cổng **đỏ thêm mỗi lần thêm một
+test** — phạt đúng việc tốt, và một cổng không bao giờ xanh được thì sớm muộn bị bỏ qua.
+
+**Vá (user chốt "làm luôn"):** `isEntryClassFile()` loại lớp ĐIỂM VÀO khỏi phép đo — thứ theo CẤU
+TRÚC không thể có cạnh import: file test · script · hook `hooks/` (host gọi lúc chạy) · tài sản
+`docs_template/` · `*.config.js`. Cùng doctrine với `noImportLayer` đã có: *đừng phạt thứ không đo
+được cạnh*. Số bị loại được **IN RA**, không loại âm thầm.
+
+**Đo TRƯỚC rồi mới chọn ngưỡng** (không chọn trước rồi nắn số): nền mới **1/116 = 0,9%**, đúng
+`platform/window.ts` — entry mà daemon **spawn** bằng đường dẫn. **Cố ý KHÔNG đặc cách nó**: loại
+theo đường dẫn `platform/` sẽ loại luôn `platform/tray.ts` vốn được import thật; thay vào đó cổng
+**NÊU TÊN** file cô lập để người đọc tự phán. Trần **30% → 4%**: đỏ khi có **5** module chết
+(5/116 = 4,3%), dư địa 4 so với nền. Toàn bộ `graph fitness` nay **PASS**.
+
+⚠ **Đánh đổi nói thẳng:** phép đo thôi nhìn thấy "test không ai chạy" / "script không ai gọi".
+Chấp nhận được vì trình chạy test quét cả thư mục, script gọi từ `package.json`, và riêng script
+frontend đã có cổng khác canh (`helpers.mjs readAppJs()` ném lỗi nếu có file chưa khai trong
+`APP_SCRIPT_ORDER`). Còn **module chết thì không cơ chế nào khác bắt** — đó là thứ cổng này giữ.
+
+**Cổng:** `fitness-entry-class.test.mjs` 4 ca, gồm **ca ÂM** (module nguồn thật KHÔNG được loại ·
+`transcripts/` không được khớp `scripts/`) + ca đối chứng cùng số file (10 test mồ côi ⇒ 0% xanh ·
+10 module nguồn mồ côi ⇒ 90,9% ĐỎ). **Đột biến 4/4 ĐỎ** (*trả về đúng code cũ* · loại luôn module
+nguồn ⇒ cổng thành trang trí · bỏ phần nêu tên · nới trần về 30%).
+
 ## [2026-09-02j] — doctor phán "daemon KHÔNG chạy" trong khi nó đang chạy
 
 **Lượt kiểm cuối của audit tự bắt được.** `doctor` in *"daemon KHÔNG chạy ⇒ … Bật `zemory ui`"*
