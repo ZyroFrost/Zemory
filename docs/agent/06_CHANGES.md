@@ -5,6 +5,37 @@
 
 ---
 
+## [2026-09-02f] — audit bắt được 3 lỗi do CHÍNH bản vá SSO đẻ ra, + 1 bug chữ lòi ra màn hình
+
+**Lượt audit gọi `/connections` THẬT sau khi ship `[2026-09-02d]` và thấy khe chatgpt lại hiện
+`borrow: chrome/1`** — đúng hình dạng bug vừa sửa. Đo jar mới phân định được: KHÔNG phải hồi quy —
+`chrome` có `googleSession=1` nên qualify bằng nhánh SSO đúng thiết kế. Nhưng nó phơi ba lỗi thật:
+
+🔴 **① THỨ TỰ SAI (nặng nhất).** Vòng quét trả về nguồn qualify ĐẦU TIÊN, mà thứ tự cứng là
+chrome→edge→brave ⇒ `chrome` (0 phiên ChatGPT, chỉ có phiên Google) **thắng** `brave` đang giữ phiên
+nền thật. Bề mặt mời đường YẾU HƠN (còn phải bấm qua trang OAuth) và giấu đường mạnh. Vá: hai hạng —
+gặp phiên NỀN trả NGAY, nguồn SSO chỉ được nhớ làm ĐƯỜNG LÙI; `BorrowSource` mang thêm `via:
+"platform"|"sso"` để nơi gọi phân biệt được, thay vì đoán từ con số `cookies`.
+
+🔴 **② Câu "đóng Brave" bị CHE.** `borrowBlocked` chỉ đặt khi `!findBorrowSource(...)`; chrome qualify
+nên hint biến mất — tức mất luôn chỉ dẫn tới đường đăng nhập THẲNG. Nay chỉ `via === "platform"` mới
+được che nó. Kèm dọn: một hàng gọi `findBorrowSource` **một** lần thay vì hai (hai lời gọi có thể
+trả khác nhau nếu trình duyệt đóng/mở giữa chừng ⇒ một hàng tự mâu thuẫn).
+
+🔴 **③ BUG CHỮ, người dùng đang đọc thấy:** `conn.borrowBlocked` có `{b}` **hai** lần nhưng FE dùng
+`.replace('{b}', …)` — JS chỉ thay lần ĐẦU ⇒ trên màn hình lòi nguyên chữ *"Đóng {b} rồi mở lại"*.
+Vá bằng `/\{b\}/g`. Thêm khoá `conn.borrowSsoOnly` (đủ HAI dict) vì khi vừa có nút Mượn vừa có hint
+thì câu cũ ("không mượn được vì bị khoá") tự mâu thuẫn với chính cái nút.
+
+⚠ **Một chẩn đoán của tôi bị BÁC khi đo lại, ghi vì nó là bẫy quen:** tôi báo "UI hiện *Mượn (0
+cookie)* vô nghĩa" — **SAI**, đọc `sources.js` thì FE dùng `canBorrow` thuần như boolean, con số
+KHÔNG bao giờ ra màn hình. Tôi suy từ payload API chứ chưa đọc bề mặt.
+
+**Cổng:** +3 ca (phiên nền thắng SSO dù SSO đứng trước · chỉ `platform` được che hint + một-lời-gọi ·
+chữ: thay hết `{b}`, có câu riêng, đủ hai dict). **Đột biến 4/4 ĐỎ**, gồm *trả về đúng code cũ* và
+*tái hiện bug placeholder*. Nghiệm thu máy thật: khe chatgpt nay mang ĐỒNG THỜI `canBorrow via=sso`
++ `borrowBlocked: Brave`, daemon báo đúng `2.13.0` (bản chạy trước đó còn compile-in `2.12.1`).
+
 ## [2026-09-02e] — cửa sổ đăng nhập mở ĐỦ RỘNG (1200×900), hết bé xíu
 
 User chụp: cửa sổ login zemory mở ra **bé xíu**, không thấy trọn form. Gốc: lượt HIỆN của

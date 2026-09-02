@@ -58,7 +58,12 @@
       +detRow(t('scope.detMessages'),zN(n.messages||0))
       +(web&&c.linked===false&&c.kids?'<div class="muted" style="margin-top:6px">'+stdEsc(t('scope.detPickAcct').replace('{n}',c.bad||1))+'</div>':'')
       // Mượn cookie khong duoc VI TRINH DUYET DANG MO — co viec de lam, phai noi ra.
-      +(c.borrowBlocked?'<div class="muted" style="margin-top:6px">'+stdEsc(t('conn.borrowBlocked').replace('{b}',c.borrowBlocked))+'</div>':'')
+      // 🔴 THAY MỌI chỗ giữ chỗ, không chỉ chỗ đầu: câu này có {b} HAI lần ("nhưng {b} đang mở …
+      // Đóng {b} rồi …") mà `.replace('{b}',…)` của JS chỉ thay lần ĐẦU ⇒ người dùng đọc thấy
+      // nguyên chữ "Đóng {b}" trên màn hình (đo 2026-09-02).
+      // Và chọn ĐÚNG câu: còn nút Mượn (nguồn chỉ có phiên SSO) thì "không mượn được" là SAI —
+      // mượn được, chỉ là được ít hơn; câu phải nói rõ đóng trình duyệt kia để vào THẲNG.
+      +(c.borrowBlocked?'<div class="muted" style="margin-top:6px">'+stdEsc(t(c.canBorrow?'conn.borrowSsoOnly':'conn.borrowBlocked').replace(/\{b\}/g,c.borrowBlocked))+'</div>':'')
       +'</div>';
     // Chỉ mời hành động khi CÓ việc để làm: nguồn đang nối tốt thì hộp này thuần thông tin.
     //
