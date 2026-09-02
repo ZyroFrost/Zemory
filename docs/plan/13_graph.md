@@ -194,6 +194,21 @@ làm được taxonomy tương đương, hoàn toàn tất định — đó là 
 - **`zemory graph fitness`** — ngoài `hub_pct`/`isolated_pct`/`util_violations` nay có **god-nodes
   theo TỔNG BẬC** (fan-in + fan-out): bảng `hubs` chỉ xếp theo fan-in nên bỏ sót đúng loại node
   nguy hiểm nhất — đo trên chính repo: `ui.ts (1↓/42↑)` không hề xuất hiện trong `hubs`.
+  > 🔄 **ĐỔI ĐỊNH NGHĨA `isolated_pct` — 2026-09-02, user chốt.** Nó đo **CODE CHẾT**, nên mẫu đếm
+  > nay loại thêm **lớp ĐIỂM VÀO** — thứ theo cấu trúc không thể có cạnh import (test · script ·
+  > `hooks/` · `docs_template/` · `*.config.js`), cùng doctrine với `noImportLayer` sẵn có. Trước
+  > đó nó đo **88/272 = 32,4% với 0 code chết** (65 test + 17 script chi phối mẫu số) ⇒ cổng **đỏ
+  > thêm mỗi lần thêm một test**, tức phạt đúng việc tốt. Nền mới **1/116 = 0,9%**, và cổng **NÊU
+  > TÊN** file cô lập để người đọc tự phán. Nó **cố ý KHÔNG đếm `calls`**: đó là cạnh SUY LUẬN, để
+  > nó bịt miệng tín hiệu code-chết là trái **điều 13**.
+  > **Một phép cho HAI bề mặt:** `countsForImportHealth()` dùng chung bởi `isolated_pct` **và**
+  > `orphans` — bản đầu chỉ sửa fitness và quên `orphans`, đúng thứ bất biến ở §9 cấm (bản vá
+  > cùng ngày; `orphans` hiện lên UI thật nên lệch là thấy ngay).
+  > ⚠ **Đọc trend `graph_fitness` phải cắt tại mốc này:** bảng lịch sử (schema v18) **không có cột
+  > phiên bản định nghĩa**, nên cú tụt 32,4% → 0,9% sẽ vẽ ra như *"code lành hẳn"* trong khi chỉ là
+  > **đổi thước**. Ngưỡng cũng đổi: **30% → 4%**, kèm **sàn số đếm** `ISOLATED_MIN_COUNT = 3` (tỉ lệ
+  > trên mẫu bé là nhiễu — cùng doctrine `ABSTAIN_MIN_VECTORS`, `plan/17 §1.3b`). Số · cổng:
+  > `06_CHANGES [2026-09-02k]` · `[2026-09-02m]`.
 - **`zemory graph impact <file>`** — CLI advisory blast-radius: in fan-in + danh sách importer/caller của file, agent tự gọi TRƯỚC khi sửa file nóng. **TƯ VẤN, không chặn** — quyền sửa/permission thuộc host (HP điều 10); zemory chỉ đưa dữ kiện để agent tự thận trọng. *(Bề mặt CLI là CHÍNH — xem §9: hệ agent của user lái terminal, không wire MCP.)*
 - **MCP** `graph_neighbors(node, edge_types?, depth?)` / `graph_impact(file)` — bản MIRROR của CLI cho host nào có nối MCP; trả node-ID + nhãn 1 dòng (progressive disclosure). Phụ, không phải đường giao hàng chính.
 - **Viewer** — thuộc **Graph App** (repo riêng); hoặc bản tối giản `docs_visual/graph.html` self-contained cho từng repo (0 token agent) nếu cần nhanh.

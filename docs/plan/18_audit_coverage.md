@@ -55,11 +55,12 @@ lộ lọt, chết lặng, không mang đi được.
 |---|---|---|
 | ⑦ | `no-data-in-git` (5 ca) · `precommit-guard` · cảnh báo cloud · `git-history-secrets` (2 ca, 2026-08-24: quét `rev-list --objects --all` + chặn blob >50 MB, mỗi phép có tự-kiểm chống đo mù) | — |
 | ⑧ | `license-gate` (3 ca, trong `npm run check`) · `npm run check:clone` (dựng từ clone sạch, chạy riêng — cần mạng) *(cả hai 2026-08-15)* | — |
-| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) · **diễn tập phục hồi CHẠY THẬT 2026-08-25** (§4b) · **lần hai 2026-08-27** — lại bắt được lỗ (16.405 vector, 3 gốc, vá cùng ngày — `plan/08 §8b` 🔄 2026-08-27); hai lần chạy, hai lần ra lỗ ⇒ đây là phép đo đắt nhất nhưng đáng nhất của mặt này | biến diễn tập thành ĐỊNH KỲ (hai lần đều bằng tay); kèm **cổng RAM cho gate** đã ship 2026-08-27 (`gate-cage.ps1` Job Object 4 GB — gate từng tràn 16 GB làm chết phiên hai lần) |
+| ⑨ | khoá ghi CLI + ca test "phải bị từ chối" · `integrity_check` · `uplinkguard` (bundle đã rời máy chưa — 2026-08-24) · **diễn tập phục hồi CHẠY THẬT 2026-08-25** (§4b) · **lần hai 2026-08-27** — lại bắt được lỗ (16.405 vector, 3 gốc, vá cùng ngày — `plan/08 §8b` 🔄 2026-08-27); hai lần chạy, hai lần ra lỗ ⇒ đây là phép đo đắt nhất nhưng đáng nhất của mặt này | ✅ **ĐÓNG 2026-09-02 — BÁC vế "biến diễn tập thành ĐỊNH KỲ (hai lần đều bằng tay)", chuyển sang chạy theo SỰ KIỆN: §4c**; kèm **cổng RAM cho gate** đã ship 2026-08-27 (`gate-cage.ps1` Job Object 4 GB — gate từng tràn 16 GB làm chết phiên hai lần) |
 | ⑩ | nhịp tim daemon · bề mặt chết theo nền · `guard-delete` (6 ca) · `guard-tool-matrix` (26 ca, TRONG gate chính — 2026-08-24) | — |
 
 **Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong
 2026-08-15; nợ nặng nhất còn lại là vế *diễn tập phục hồi định kỳ* của ⑨.
+🔄 **SỬA 2026-09-02:** vế đó KHÔNG còn là nợ — nó bị **bác** (§4c) ⇒ bảng §4 nay **không còn ô nợ nào mở**.
 
 ### 4b. Diễn tập phục hồi ĐẦU TIÊN — chạy 2026-08-25, và nó bắt được một lỗ thật
 
@@ -86,6 +87,28 @@ mà `plan/08 §8b` đã ghi: mất mà **không hiện ra trong "còn phải nh�
 *Bài học cho chính mặt ⑨: `uplinkguard` trả lời "gói đã rời máy chưa", `backup-staleness` trả lời
 "bản sao lưu có tươi không" — KHÔNG cổng nào trả lời "dựng lại thì có ĐỦ không". Chỉ có dựng thật
 mới thấy.*
+
+### 4c. Diễn tập phục hồi: KHÔNG ĐỊNH KỲ — chạy theo SỰ KIỆN (chốt 2026-09-02)
+
+**Vế nợ "biến diễn tập thành ĐỊNH KỲ" của mặt ⑨ (§4) — BÁC, đóng tại đây.** Thứ diễn tập canh
+(đường chở vector lên kênh) đổi theo SỰ KIỆN chứ không theo đồng hồ; và kết quả một lượt hết hiệu
+lực ngay lượt sync kế ⇒ lịch định kỳ chỉ thêm lượt đo mà vẫn phải đo lại đúng lúc cần dùng.
+
+**Hai sự kiện BẮT BUỘC chạy — 0 code mới:** `memory import <kênh>/global_memory.enc --merge --db
+<kho tạm>` rồi so phiên · tin · vector với kho thật, đúng phép §4b. ① Trước khi **bàn giao kho cho
+máy mới** · ② sau khi **sửa đường ship vector / sync**.
+
+**Giá một lượt (đo thật):** 7′42″ (25/08) · 6′32″ (27/08) máy chạy · ~2,06 GB đĩa tạm; kho thật
+KHÔNG bị đụng.
+
+**Không sổ nào thay được nó:** `vec_shipped` bị GIEO bằng toàn bộ vector đang có lúc nâng v23 nên
+cấu trúc mù với phần hụt có TRƯỚC v23 (`plan/08 §8b`) ⇒ "sổ báo thiếu 0" KHÔNG phải bằng chứng
+"kênh đủ vector".
+
+⚠ **Khe hở còn lại, nêu ra chứ không tự bịt:** `plan/08 §8b` chốt fail-open *"chỉ tin trong 24 giờ
+mới được chặn"* và nói phần lọt được *"bù ở lượt gộp container kế tiếp"* — một sự kiện **không ai
+lên lịch**. Muốn bịt thì cần sự kiện thứ BA (*sau lượt gộp `since=0`*), nhưng đó là **thêm luật** ⇒
+user chốt, không phải việc của phiên chốt sổ.
 
 ## 5. Phi-mục-tiêu
 

@@ -8,13 +8,15 @@
 
 ## BÀN GIAO 2026-09-02 — trạng thái ĐO lúc chốt
 
-**Đã push:** tới `2.13.0` (đợt web-connect). **CHƯA PUSH: 8 commit** của đợt AUDIT sau đó
-(`1e04a9a` … `5910b9d`) — changelog `[2026-09-02f]` … `[2026-09-02k]`. Đẩy chúng là một mốc phát
-hành mới ⇒ **cần user chốt số version** (luật Version release-based; đề xuất `2.13.1` patch: cả 8
-commit là fix + một đổi định nghĩa phép đo, không thêm năng lực người dùng thấy).
+**Đã push:** `2.13.0` (đợt web-connect) → **`2.13.1`** (đợt AUDIT + chốt phiên, user chốt số).
+Changelog `[2026-09-02f]` … `[2026-09-02m]`, phần cũ đã vào `archive/06_CHANGES.md`.
 
-**Gate đầy đủ lần cuối (sau commit cuối): 935 test · 0 fail · 0 skip-vì-bận · conform 273 file sạch
-· todo verify sạch · RAM đỉnh 3.286/4.096 MB · exit 0.** Nghiệm thu sống: daemon `2.13.0`,
+**Đợt `2.13.1` gồm:** thứ tự nguồn mượn (phiên nền > SSO) · bug chữ `{b}` lòi ra UI ·
+`restoreProfile` phá đích trước khi kiểm · vòng dọn sắp xoá phiên cuối cùng của khe · cache dashboard
+tự sát (đóng dấu lúc VÀO) · doctor phán daemon chết khi nó đang chạy · `isolated_pct` đo số-file-test
+thay vì code-chết (+ sàn đếm) · khe `need-login` treo vĩnh viễn dù đã đăng nhập · backup `keep 5→3`.
+
+**Gate đầy đủ lần cuối:** xem commit của `2.13.1`. Nghiệm thu sống trước khi push: daemon `2.13.1`,
 `graph fitness` **PASS** (`isolated_pct 0,9%`), doctor backup ✓ và **hết** dòng "daemon KHÔNG chạy".
 
 ### Trạng thái web lúc chốt (ĐO 2026-09-02)
@@ -25,12 +27,10 @@ Hai đường, đều là LẦN CUỐI vì profile nay bền (`restoreShelvedSes
 ⚠ Prompt 2FA Google không tới điện thoại user là đường Google→thiết bị, ngoài tầm zemory.
 
 ### Việc CHỜ USER (không phải việc mở — đừng tự làm)
-· **Diễn tập phục hồi kênh** — đã cân và **KHÔNG khuyến nghị làm định kỳ**: nó canh thứ đổi theo SỰ
-  KIỆN chứ không theo thời gian, giá 7 phút máy + 2 GB đĩa tạm mỗi lượt. Chạy đúng hai lúc, bằng
-  lệnh SẴN CÓ (`memory import <kênh> --merge --db <kho tạm>`), **không cần viết code**: ① trước khi
-  bàn giao máy mới · ② sau khi sửa đường ship vector/sync. *(Sổ `vec_shipped` KHÔNG thay được nó —
-  nó bị gieo bằng toàn bộ vector đang có lúc nâng v23 nên cấu trúc không thấy được phần hụt trước
-  v23; xem `plan/08 §8b`.)*
+· **Hai bản backup làm tay** `premigrate.db` + `premove2-…db` (**5,2 GB**) — vòng dọn CỐ Ý không
+  đụng thứ người/agent đỗ lại; xoá hay giữ là quyết định của user.
+· **Sự kiện thứ BA cho diễn tập phục hồi** (*sau lượt gộp container `since=0`*) — `plan/18 §4c` nêu
+  khe hở này nhưng thêm nó là **thêm luật**, chờ user chốt.
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
 · **QUÊN BẬT LẠI UI sau khi tắt daemon để chạy gate** — user phải nhắc ba lần, lần cuối là bực. Luật

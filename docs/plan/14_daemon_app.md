@@ -222,5 +222,23 @@ toàn bảng) · `/memory-status` **107 ms** ấm, 7,4 s lạnh · `/ping` 85–
 (`env.dbPath`) thì LUÔN đếm thẳng — cache của daemon là số của kho MẶC ĐỊNH, trả nó cho người đang hỏi
 kho khác là đưa số của kho người ta.
 
+> 🔄 **SỬA 2026-09-02 — mô hình giá "ấm / lạnh" ở trên chỉ đúng KHI cache giữ được, và trên kho lớn
+> nó KHÔNG giữ.** `dashboardMemory()` và `heavyStatsSync()` đóng dấu hàng cache bằng mốc **request
+> VÀO**, nên mọi lượt tính lâu hơn TTL sinh ra hàng **quá hạn ngay lúc vừa ghi** ⇒ không tồn tại lượt
+> "ấm", mọi lượt đều LẠNH. Đo kho 2.732 MB: `/memory-status` **74 s** trong khi `DASH_TTL_MS` chỉ
+> 60 s. Nay cả hai đóng dấu bằng `Date.now()` LÚC XONG.
+> 📌 **Luật, cùng họ với bốn bẫy trên:** đóng dấu cache **LÚC XONG**, không phải lúc VÀO — mốc-vào vô
+> hiệu hoá cache đúng trên kho mà nó tồn tại để bảo vệ, và làm mất tiền đề của vế *"đường mặc định
+> của `memory_jobs` là đọc cache của daemon"*. Mức cải thiện end-to-end **CHƯA đo sạch** (nhúng nền
+> vừa tranh I/O vừa tự làm mất hiệu lực cache) — số · cổng: `06_CHANGES [2026-09-02i]`.
+
 **Còn hở:** chưa đo ba tool này TỪ một phiên Cowork thật (xem `plan/20 §7`) · cơ chế nghẽn `/ping` sau
 khởi động mới có SỐ, chưa có bản vá.
+
+> 🔄 **SỬA 2026-09-02 — vế "chưa có bản vá" của `/ping` đúng một NỬA: đã vá NGƯỜI ĐỌC, chưa vá CƠ
+> CHẾ.** `zemory doctor` từng đọc `/ping` bằng trần **600 ms** và gộp mọi lỗi thành "không sống" ⇒ in
+> *"daemon KHÔNG chạy … Bật `zemory ui`"* trong khi `/ping` đang trả `pid`. Nay `daemonLiveness()`
+> trả **`alive` | `absent` | `unknown`** — chỉ `ECONNREFUSED` mới là `absent`, trần **3.000 ms**, ba
+> trạng thái in ba câu, nhánh `unknown` **KHÔNG** khuyên bật lại daemon. Tức mục ② và ③ nay có bản áp
+> trên bề mặt **CLI**, không chỉ trên MCP. **Vẫn HỞ đúng như câu trên:** độ trễ `/ping` lượt lạnh
+> không giảm một ms — đợt này chỉ dạy người đọc đừng phán bừa. Số · cổng: `06_CHANGES [2026-09-02j]`.

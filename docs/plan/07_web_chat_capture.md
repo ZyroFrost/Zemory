@@ -27,6 +27,18 @@
 - **v2b — BROWSER-CONNECTOR (CHỌN):** zemory mở **cửa sổ trình duyệt riêng** (profile `~/.zemory/browser/<platform>`), **user đăng nhập 1 lần** vào trang thật của nền (id/pass/2FA nhập vào OpenAI, KHÔNG vào zemory). Sau đó zemory **điều khiển cửa sổ đó qua CDP (`--remote-debugging-port`)**, gọi API nội bộ của site bằng phiên đã login để kéo hội thoại. Profile lưu cookie → lần sau tự chạy, chỉ login lại khi phiên hết hạn.
   - Password **không bao giờ đi qua zemory**; chỉ "mượn" phiên. Đây là cách sạch — đối lập với copy cookie (đã bị guard chặn) và OAuth (OpenAI KHÔNG mở API đọc lịch sử — đã xác minh).
   - Chạy trong browser thật nên **qua được Cloudflare** (điều mà fetch từ Node thuần bị chặn).
+  - **🔄 SỬA 2026-09-02 (user chốt):** vế *"đối lập với copy cookie (đã bị guard chặn)"* ở trên — và
+    mục (b) của §5 — chỉ còn đúng một nửa. Có đường THỨ HAI để **gieo phiên** vào profile của khe:
+    **Mượn** (`memory/borrowcookies.ts`) chép **FILE** kho cookie của trình duyệt user (`VACUUM INTO`
+    để gộp cả WAL) + `Local State`. Ranh giới giữ nguyên tinh thần điều 7: **chỉ soi TÊN cookie,
+    KHÔNG BAO GIỜ đọc giá trị**, không chép `Login Data`. Sau khi chép thì **cắt sạch mọi host** trừ
+    nền (`PLATFORM_HOSTS`) **và nhà cung cấp danh tính** (`AUTH_HOSTS`: accounts.google.com ·
+    google.com · login.microsoftonline.com · login.live.com · appleid.apple.com) — để trang OAuth
+    hiện sẵn tài khoản. ⚠ Hệ quả phải nói thẳng: **phiên SSO của user nằm trong
+    `<kho>/data/browser/<khe>`**, nên **HP điều 14** (cấm git · cấm mọi nguồn online/đám mây · cấm
+    đẩy sang VM) áp NGUYÊN vào thư mục đó. Hai giới hạn §5 đo được vẫn đúng và **không vá được ở
+    mức quyền user**: chỉ **cùng hãng · cùng máy** mới giải mã (App-Bound Encryption), và kho đang
+    bị trình duyệt giữ khoá thì không đọc được.
 
 ## 5. KẾT QUẢ TEST (2026-07-02/03) — feasibility CONFIRMED
 > **✅ ĐÃ SHIP (2026-07-08):** cơ chế này giờ là `backend/src/memory/scanweb.ts` — **859 hội thoại ChatGPT** đã bắt (kể cả Project chats qua gizmo endpoints, có pace/backoff/resume). Phần dưới là kết quả TEST prototype ban đầu (giữ làm lịch sử).
@@ -35,6 +47,8 @@ Prototype (scripts giờ ở `attic/web-capture/`): mở Edge debug + login-once
 - Tài khoản test `zyrofrost@gmail.com`: **enumerate đủ 752 hội thoại**; **kéo thành công 219** (6.636 message) với đúng nội dung; **533 fail = rate-limit 429** (sau ~200 request liên tục, không backoff) — đã fix bằng pace/backoff/resume ở bản ship.
 - Search thử nội dung (không chỉ title): tìm chủ đề "chính trị" → 38 hội thoại khớp, có trích đoạn thật ⇒ **lấy được + tìm được + đọc được content thật**.
 - Điều KHÔNG làm được (đã xác minh, để khỏi thử lại): (a) **OAuth đọc lịch sử** — OpenAI không có. (b) **Copy cookie/DPAPI** từ profile Edge sẵn — guard chặn + App-Bound Encryption. (c) **fetch backend-api từ Node thuần** — Cloudflare chặn 403.
+> 🔄 **Mục (b) ĐÃ ĐẢO một phần (2026-09-02):** chép FILE kho cookie **được** — với điều kiện **cùng
+> hãng · cùng máy · trình duyệt đã đóng**. Ranh giới đầy đủ ở **§4** (bullet Mượn). (a) và (c) vẫn đúng nguyên.
 ## 6. Format ChatGPT — đã verify bằng file thật (chatgpt-web)
 - Export/pull ra **MẢNG** hội thoại. Mỗi hội thoại keys thật: `title`, `create_time`, `update_time`, `conversation_id`, **`gizmo_id`/`gizmo_type`** (thuộc Project nào), `is_archived`, `default_model_slug`, **`mapping`**, **`current_node`**...
 - `mapping` = OBJECT `nodeId → { message:{ author.role, content:{content_type, parts[]}, create_time }, parent, children[] }` → **cây** (edit/regen tạo nhánh).
@@ -111,6 +125,14 @@ Lệnh (không thuộc `memory scan` quét đĩa):
 - **Vòng đăng nhập 2 bước, DAEMON là người nhận:** `/connect` mở cửa sổ; trả `need-login` ⇒ `startLoginWatch` probe
   5 s/lượt tới 15 phút; thấy đăng nhập ⇒ `webAuth` ⇒ kéo ngay qua chính cửa sổ ⇒ `webPull`. **Probe CHỈ ĐỌC** — không
   đóng tab, không spawn (đóng tab lúc OAuth mở trang phụ = giết cửa sổ đúng khi đăng nhập xong). UI đọc `watching`.
+- **Khe `need-login` RA KHỎI vòng tự kéo — khung đăng nhập CHỈ do NGƯỜI mở** (user chốt 2026-09-02:
+  *"chỉ bật đăng nhập khi user chọn thôi"*). Vòng ngầm bỏ qua khe có lượt kéo cuối là `need-login`;
+  bề mặt trưng ⚠ mất kết nối, user bấm mới đi `/connect`. **Đường TRỞ LẠI không dựa `startLoginWatch`**
+  (nó chỉ canh 15 phút và sống trong RAM daemon — hết giờ hoặc restart là mất): trước khi bỏ qua,
+  vòng **ĐỌC kho cookie của chính khe** (`jarHasSession` — một phép đọc file, không mở cửa sổ nào) ·
+  `true` ⇒ phán quyết cũ hết hiệu lực, khe vào lại vòng và **tới lượt NGAY** (không chờ hết 6 giờ
+  backoff) · `false` ⇒ vẫn signed out, giữ nguyên bỏ qua · `null` (jar bị cửa sổ đang mở khoá) ⇒
+  **bỏ qua, KHÔNG đoán**. Lượt kéo sau khi hồi vẫn NGẦM (cửa sổ đẩy khuất).
 - **Hai hệ dấu trên cây Nguồn:** web nhị phân ✓ còn liên kết / ⚠ mất (bấm nối lại) · local máy này ✓ kho trên đĩa / ⚠
   kho mất · local máy khác ✓ xanh có tin ≤30 ngày / ✓ xám "đã ngưng, kho lưu trữ" (không bao giờ ⚠) · hàng cha gộp con.
 - **Đóng dấu chỉ lên phiên của nguồn web vừa kéo** (`webSessionIds`) — `scan()` nạp toàn kho, phiên local nạp cùng lượt

@@ -37,6 +37,20 @@ test("chu kỳ mặc định là 24 giờ và trần hỏng là 2 chu kỳ — m
   assert.equal(BACKUP_STALE_FACTOR, 2);
 });
 
+// `keep` là hằng số NHÂN VỚI KÍCH THƯỚC KHO, nên nó âm thầm đắt lên theo thời gian: số 5 chọn hồi
+// kho 595 MB, tới 2026-09-02 kho **2.738 MB** ⇒ `data/backups` đo được **18,5 GB**, trong đó 13,3 GB
+// là 5 bản luân phiên (đúng chính sách, không phải bug — nhưng nằm dưới đường gitignore nên không
+// cổng nào thấy nó lớn lên). User chốt **giữ 3 bản** ⇒ ~8,2 GB.
+// Chốt số này vì trước đó KHÔNG cổng nào neo `keep` (chỉ neo `everyMs`) — một mặc định không ai canh
+// là mặc định sẽ trôi, đúng ca `getRerankSetting()` từng bật lại và làm recall chậm 6,3×.
+test("giữ ĐÚNG 3 bản — mặc định phải có người canh, không thì nó trôi ngược", () => {
+  assert.equal(DEFAULT_BACKUP_POLICY.keep, 3, "user chốt 2026-09-02: giữ 3 bản");
+  // Ràng buộc bản chất: phải ≥2 để luôn còn một thế hệ để lùi khi bản mới nhất hỏng, và đủ nhỏ để
+  // không nhân với kho lớn thành hàng chục GB.
+  assert.ok(DEFAULT_BACKUP_POLICY.keep >= 2, "1 bản là không có đường lùi nào khi bản đó hỏng");
+  assert.ok(DEFAULT_BACKUP_POLICY.keep <= 3, "kho 2,7 GB thì mỗi bản thêm là +2,7 GB — đừng nới im lặng");
+});
+
 test("ba mức phân biệt đúng: trong chu kỳ ✓ · quá 1 chu kỳ ○ · quá 2 chu kỳ ✗", () => {
   const cases = [
     // tuổi(giờ), stale, late, vì sao
