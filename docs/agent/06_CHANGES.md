@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-09-02c] — profile bền như app chuẩn: đổi hãng khứ hồi TỰ TRẢ PHIÊN, hết đăng nhập lại
+
+**User đòi đúng chuẩn ngành:** *"phải mở lên nhận được dù có đang mở brave… thiết kế web và app cơ
+bản người ta vẫn làm được mà"*. Đúng: app giữ phiên chuẩn (Electron/Playwright) đăng nhập MỘT lần
+rồi không bao giờ vứt profile của chính nó. zemory đang vứt: luật "máy mặc định THẮNG" (28/08) dời
+profile sang bên mỗi khi Windows đổi trình duyệt mặc định mà KHÔNG có đường ngược — đúng lỗ
+`[2026-08-31d]` đã ghi (*"không dòng code nào lấy lại bản -bak-"*). Đo 01–02/09: mặc định nhảy
+**Brave→Edge→Brave trong một ngày** (lúc đo: `BraveHTML`) ⇒ 4 khe mất phiên dù mọi bản dời còn
+nguyên trên đĩa. Hai màn Google trắng user chụp là hệ quả: profile mới tinh thì Google không biết ai.
+
+**Vá — `restoreShelvedSession` (scanweb, chạy trước mỗi spawn):** profile sống KHÔNG có phiên
+(`jarHasSession === false`) ⇒ trả bản `-bak-` MỚI NHẤT **cùng hãng** và **có phiên** về làm profile
+sống; vỏ sống cũ dời sang bên, không xoá gì. `null` (jar bị cửa sổ đang mở khoá) = không đụng.
+Fail-open toàn phần. Luật "mặc định thắng" GIỮ NGUYÊN — đây là đối xứng còn thiếu của nó, không
+phải đảo nó; ranh cùng-hãng là ABE (cookie hãng khác không giải mã được, trả về chỉ đổi vỏ lấy vỏ).
+
+**Vì sao không đi đường khác (trả lời "dò app lớn"):** OAuth-handoff kiểu VS Code/GitHub Desktop
+mượn được trình duyệt thật vì họ chỉ cần token — ChatGPT/Claude không có API lịch sử chat nên
+zemory cần PHIÊN trong profile điều khiển được; còn đọc jar lúc Brave đang chạy là bất khả ở mức
+user (khoá độc quyền + ABE — cả họ tool cookies-from-browser cùng kẹt từ Chrome 127).
+
+**Đo trên đĩa thật trước khi ship:** 3/4 khe có brave-bak còn phiên (`chatgpt-2` · `claude` ·
+`claude-2` — dời đi 01/09 23:01) ⇒ tự hồi; `chatgpt` main chỉ còn phiên trong msedge-bak (khoá
+Edge) ⇒ đăng nhập tay MỘT lần cuối. **Cổng:** +3 ca hành vi (bak cùng hãng mới nhất CÓ phiên thắng
+vỏ rỗng mới hơn · ba ca âm: có phiên không đụng / khác hãng không trả / không bak không ném · nối
+đủ HAI đường spawn). **Đột biến 3/3 ĐỎ** (bỏ chốt phiên-sống · trả vỏ rỗng · phá lọc cùng-hãng).
+
 ## [2026-09-02b] — mượn cookie: "CÓ COOKIE" ≠ "CÓ PHIÊN" — thôi mời mượn jar rác
 
 **User bắt bằng ảnh:** bấm đăng nhập lại mà Google hiện form TRẮNG — *"vào đăng nhập t bấm vào nó
