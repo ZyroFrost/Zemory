@@ -451,6 +451,27 @@ test("borrowCookies: nguồn không có phiên ⇒ TỪ CHỐI kèm lý do thậ
   assert.equal(ok.dropped, 1, "cookie site khác phải bị vứt — mượn MỘT site, không mượn cả jar");
 });
 
+test("SSO-only: nền hết phiên nhưng CÒN đăng nhập Google ⇒ vẫn mượn được để login hiện account chooser", { skip: !onWin }, () => {
+  // User chốt 2026-09-02 ("Có — chép cả phiên SSO"). Chatgpt.com hết phiên, nhưng Google còn
+  // ⇒ mượn để OAuth hiện sẵn tài khoản, một cú bấm thay vì gõ email.
+  const root = mkdtempSync(join(tmpdir(), "zemory-sso-"));
+  const ssoOnly = fakeSource(root, "bravesso", [
+    ["chatgpt.com", "oai-did"], // KHÔNG có token phiên chatgpt
+    ["accounts.google.com", "__Secure-1PSID"], // nhưng CÓ phiên Google
+  ]);
+  assert.equal(findBorrowSource("chatgpt", [ssoOnly])?.from, "bravesso", "còn Google là còn mượn được");
+  const r = borrowCookies({ platform: "chatgpt", from: "bravesso", sources: [ssoOnly], browserRoot: join(root, "zb3") });
+  assert.equal(r.ok, true, r.error ?? "");
+  const db = new Database(join(root, "zb3", "chatgpt", "Default", "Network", "Cookies"), { readonly: true });
+  const hosts = db.prepare("SELECT DISTINCT host_key FROM cookies").all().map((x) => x.host_key).sort();
+  db.close();
+  assert.ok(hosts.includes("accounts.google.com"), "cookie Google phải theo về để account chooser hiện");
+
+  // Không phiên NÀO (chatgpt lẫn Google đều rác) ⇒ vẫn từ chối, không đẻ profile chết.
+  const dead = fakeSource(root, "bravedead", [["chatgpt.com", "oai-did"], ["accounts.google.com", "NID"]]);
+  assert.equal(findBorrowSource("chatgpt", [dead]), null, "cookie Google rác (không phải __Secure-1PSID) không tính là phiên");
+});
+
 // ── ⑩ ĐỔI HÃNG KHỨ HỒI: bản dời-sang-bên phải TRẢ VỀ được ────────────────────────────────
 // User chốt 2026-09-02 (*"phải mở lên nhận được dù có đang mở brave"*). Đo 01–02/09: Windows đổi
 // mặc định Brave → Edge → Brave trong MỘT ngày; mỗi cú đổi, luật "máy mặc định thắng" dời profile

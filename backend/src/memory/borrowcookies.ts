@@ -9,8 +9,11 @@
 //   · never reads a cookie VALUE. It copies the file, then DELETES the rows that do not
 //     belong to the target site. Decryption happens only inside the browser, as always.
 //   · never touches passwords. `Login Data` is not copied; nothing here can read one.
-//   · borrows ONE site's cookies, not the jar. Copying the whole store would park the
-//     user's bank/mail sessions inside zemory's profile — worse than one login prompt.
+//   · borrows the PLATFORM's cookies + the identity providers it logs in through (Google/
+//     Microsoft/Apple — see AUTH_HOSTS), so a fresh OAuth shows the account chooser instead of
+//     a blank form. Still NOT the whole jar: bank/mail/arbitrary sites are pruned out. The SSO
+//     widening is a user-approved tradeoff (2026-09-02) — the Google session then lives in
+//     zemory's local profile. Before that it copied ONE site only.
 //
 // LIMITS, measured or documented, so nobody is sold magic:
 //   · the source profile must ACTUALLY be signed in. A cookie is a session, not a
@@ -101,6 +104,32 @@ const SESSION_COOKIE_LIKE: Record<string, string> = {
   chatgpt: "__Secure-next-auth.session-token%",
   claude: "sessionKey",
 };
+
+/**
+ * Identity-provider hosts kept ALONGSIDE the platform during borrow, so the OAuth login shows
+ * the account chooser instead of a blank email form.
+ *
+ * 🔴 WIDER than one site ON PURPOSE — user chose this 2026-09-02 (*"phải nó có cookie hiện lên web
+ * khi đăng nhập"*), knowing the tradeoff: the Google/Microsoft SSO session (the master key to
+ * Gmail/Drive) then lives in zemory's LOCAL profile under `data/browser/` (gitignored, encrypted
+ * per-machine — HP điều 14). This overrides the original header rule "borrows ONE site's cookies,
+ * not the jar". Still narrow: only these identity providers, never bank/mail/arbitrary sites.
+ */
+const AUTH_HOSTS = ["accounts.google.com", "google.com", "login.microsoftonline.com", "login.live.com", "appleid.apple.com"];
+
+/** Whether an identity provider in AUTH_HOSTS holds a LIVE session (names only). */
+function hasAuthSession(dbPath: string): boolean {
+  if (!existsSync(dbPath)) return false;
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    const hostLike = AUTH_HOSTS.map(() => "host_key LIKE ?").join(" OR ");
+    // __Secure-1PSID = Google signed-in · ESTSAUTHPERSISTENT = Microsoft signed-in.
+    const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE name IN ('__Secure-1PSID','ESTSAUTHPERSISTENT') AND (${hostLike})`).get(...AUTH_HOSTS.map((h) => `%${h}`)) as { n: number };
+    return (row?.n ?? 0) > 0;
+  } finally {
+    db.close();
+  }
+}
 
 /**
  * Does this Chromium jar hold a LIVE session for the platform?
@@ -198,7 +227,10 @@ export function findBorrowSource(platform: string, sources?: CookieSource[]): Bo
         const n = hostCounts(jar, hosts);
         // "Has cookies" is NOT "is signed in": a jar must hold the SESSION cookie to be offered.
         // Offering a junk-cookie source sends the user to an empty login form (see SESSION_COOKIE_LIKE).
-        if (n > 0 && (!sessionLike || sessionCount(jar, hosts, sessionLike) > 0)) return { from: src.key, label: src.label, profile, cookies: n };
+        const platSession = n > 0 && (!sessionLike || sessionCount(jar, hosts, sessionLike) > 0);
+        // Offer also when the platform session is gone but the SSO provider is still signed in —
+        // borrowing that gives a one-click OAuth login instead of a blank form (user chose 2026-09-02).
+        if (platSession || hasAuthSession(jar)) return { from: src.key, label: src.label, profile, cookies: n };
       } catch {
         // Hồ sơ bị khoá/không đọc được ⇒ thử hồ sơ kế. Việc NÓI RA "đang khoá" là của
         // `borrowBlockedBy` — trộn vào đây thì một giá trị trả về phải mang hai nghĩa.
@@ -262,30 +294,24 @@ export function borrowCookies(opts: BorrowOptions): BorrowResult {
   const srcLocalState = join(src.userData, "Local State");
   if (!existsSync(srcCookies)) return { ok: false, platform, source: src.key, error: `no cookie store at ${srcCookies}` };
 
-  // Nothing to borrow if the source is signed out too — say so instead of producing an
-  // empty profile that fails later with a confusing "please log in".
+  // Nothing to borrow if the source is signed out of BOTH the platform and its SSO providers —
+  // say so instead of producing an empty profile that fails later with a confusing "please log in".
+  const sessionLike = SESSION_COOKIE_LIKE[platform];
+  let platSess: boolean;
+  let authSess: boolean;
   let available: number;
   try {
     available = hostCounts(srcCookies, hosts);
+    platSess = sessionLike ? sessionCount(srcCookies, hosts, sessionLike) > 0 : available > 0;
+    authSess = hasAuthSession(srcCookies);
   } catch (e) {
     return { ok: false, platform, source: src.key, error: `cannot read the source cookie store (browser may hold it open): ${e instanceof Error ? e.message : e}` };
   }
-  if (!available) {
-    return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' has no ${hosts[0]} cookies — sign in there first, or pick another --profile` };
-  }
-  // Stray cookies without the session token borrow into a signed-out profile — refuse with the
-  // real reason instead of "borrowing" something that fails later as a confusing login prompt.
-  const sessionLike = SESSION_COOKIE_LIKE[platform];
-  if (sessionLike) {
-    let sess: number;
-    try {
-      sess = sessionCount(srcCookies, hosts, sessionLike);
-    } catch (e) {
-      return { ok: false, platform, source: src.key, error: `cannot read the source cookie store (browser may hold it open): ${e instanceof Error ? e.message : e}` };
-    }
-    if (!sess) {
-      return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' has ${available} ${hosts[0]} cookie(s) but no live session — sign in there first, or pick another --profile` };
-    }
+  // Neither a live platform session NOR a signed-in SSO provider ⇒ borrowing yields a signed-out
+  // profile. Refuse with the real reason instead of a confusing "please log in" later.
+  if (!platSess && !authSess) {
+    const has = available ? `has ${available} ${hosts[0]} cookie(s) but no live session` : `has no ${hosts[0]} cookies and is not signed into Google/Microsoft`;
+    return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' ${has} — sign in there first, or pick another --profile` };
   }
 
   const target = join(opts.browserRoot ?? join(currentMemoryDir(), "browser"), platform);
@@ -327,15 +353,17 @@ export function borrowCookies(opts: BorrowOptions): BorrowResult {
     return { ok: false, platform, source: src.key, error: `copy failed (close ${src.label} and retry): ${e instanceof Error ? e.message : e}` };
   }
 
-  // PRUNE: keep only the target site. This is the step that makes the feature defensible
-  // — zemory's profile ends up holding one site's session, not the user's whole life.
+  // PRUNE: keep the target site + its identity providers (AUTH_HOSTS), drop everything else.
+  // This is the step that keeps the feature defensible — zemory's profile ends up holding the
+  // platform session and the SSO login it flows through, not the user's whole life (bank, mail…).
   let kept: number;
   let dropped: number;
   try {
     const db = new Database(join(target, "Default", "Network", "Cookies"));
     try {
-      const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
-      const args = hosts.map((h) => `%${h}`);
+      const keepHosts = [...hosts, ...AUTH_HOSTS];
+      const like = keepHosts.map(() => "host_key LIKE ?").join(" OR ");
+      const args = keepHosts.map((h) => `%${h}`);
       const before = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;
       db.prepare(`DELETE FROM cookies WHERE NOT (${like})`).run(...args);
       kept = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;

@@ -5,6 +5,38 @@
 
 ---
 
+## [2026-09-02d] — Mượn chở CẢ phiên SSO ⇒ trang login hiện sẵn tài khoản, hết form trắng
+
+**User chốt (AskUserQuestion, sau khi nghe rõ đánh đổi):** *"phải nó có cookie hiện lên web khi
+đăng nhập"* → chọn **"Có — chép cả phiên SSO"**. Trang Google trắng bạn chụp là vì profile khe
+**sạch, không có cookie đăng nhập Google** ⇒ Google không biết ai ⇒ form trống. Trước bản này Mượn
+CỐ Ý cắt sạch mọi host trừ nền (header file: *"borrows ONE site's cookies, not the jar"*), nên kể
+cả mượn được cũng không có gì để Google nhận ra người dùng.
+
+**Vá — mở rộng Mượn có kiểm soát:** thêm `AUTH_HOSTS` (accounts.google.com · google.com ·
+login.microsoftonline.com · login.live.com · appleid.apple.com). Prune giờ giữ **nền + các nhà
+cung cấp SSO**, vẫn cắt sạch bank/mail/nền khác (KHÔNG phải cả jar). Và `findBorrowSource` +
+`borrowCookies` nay mượn được cả khi **nền hết phiên nhưng CÒN đăng nhập Google/Microsoft**
+(`hasAuthSession`: `__Secure-1PSID`/`ESTSAUTHPERSISTENT`) ⇒ OAuth hiện account chooser, một cú bấm
+thay vì gõ email.
+
+🔴 **Đánh đổi user đã nhận rõ khi chốt (ghi để minh bạch, đảo header rule cũ):** phiên SSO — chìa
+của cả Gmail/Drive — nay nằm trong profile local của zemory (`data/browser/`, gitignored, mã hoá
+per-máy theo App-Bound Encryption). Rủi ro gia tăng THẤP vì profile Brave thật của user vốn đã giữ
+chính phiên đó trên CÙNG đĩa gitignored; đây là chép cùng-hãng cùng-máy, không rời máy (HP điều 7:
+không transmit; điều 14: bí mật trong cây repo, cấm git/cloud/VM).
+
+⚠ **Giới hạn cứng KHÔNG vá được, nói thẳng:** vẫn phải **đóng Brave ~20 giây MỘT lần** để lấy —
+Chromium khoá độc quyền kho cookie khi đang chạy (đo: EBUSY) + App-Bound Encryption từ v127; không
+tool nào ở quyền user đọc được cookie sống của trình duyệt đang mở. "Hiện tài khoản khi Brave vẫn
+mở" cho login MỚI là bất khả ở mức user; 3/4 khe tự hồi được (`[2026-09-02c]`) là nhờ file profile
+đã dời sang bên, không phải đọc kho sống.
+
+**Cổng:** ca cũ "chỉ chở ĐÚNG nền" đổi thành "chở nền + SSO, vứt bank/nền khác" (kept 3 · dropped 2);
++1 ca SSO-only (nền hết phiên + còn Google ⇒ mượn được + cookie Google theo về · cả hai rác ⇒ vẫn
+từ chối). **Đột biến 3/3 ĐỎ** (prune bỏ AUTH_HOSTS · findBorrowSource bỏ nhánh SSO · borrow bỏ điều
+kiện authSess).
+
 ## [2026-09-02c] — profile bền như app chuẩn: đổi hãng khứ hồi TỰ TRẢ PHIÊN, hết đăng nhập lại
 
 **User đòi đúng chuẩn ngành:** *"phải mở lên nhận được dù có đang mở brave… thiết kế web và app cơ
