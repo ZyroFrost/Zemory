@@ -14,6 +14,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import Database from "better-sqlite3";
 import { mkdirSync, mkdtempSync, utimesSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -95,5 +96,83 @@ test("sweepBrowserProfiles: thư mục không tồn tại ⇒ im lặng, không 
   const r = sweepBrowserProfiles({ dir: join(tmpdir(), "zemory-khong-ton-tai-" + Date.now()), now: NOW });
   assert.deepEqual(r.reclaimed, []);
   assert.equal(r.kept, 0);
+});
+
+// ── ④ ĐƯỜNG VỀ CUỐI CÙNG THÌ KHÔNG XOÁ, BẤT KỂ TUỔI ─────────────────────────────────────────
+// Audit 2026-09-02 đo được: luật 7 ngày sắp xoá `chatgpt.msedge-bak-1787976590023` (103 MB) —
+// PHIÊN ChatGPT-main DUY NHẤT còn lưu, trong khi khe live đang signed-out — và
+// `claude-3.msedge-bak-1787905538196` (122 MB) mà khe live `claude-3` KHÔNG CÒN TỒN TẠI. Tuổi là
+// proxy TỆ cho giá trị: cùng 122 MB, một bản giữ phiên cuối, một bản rỗng ruột.
+const { slotOfSetAside, platformOfSlot, isLastWayBack } = await import("../../dist/memory/browser-rotate.js");
+
+test("slotOfSetAside: suy đúng khe sống, và trả null thay vì ĐOÁN BỪA", () => {
+  assert.equal(slotOfSetAside("chatgpt-2.brave-bak-1788315274768"), "chatgpt-2");
+  assert.equal(slotOfSetAside("chatgpt.bak-40iedbds3g"), "chatgpt", "dạng base36 của borrowCookies");
+  assert.equal(slotOfSetAside("claude-3.msedge-bak-1787905538196"), "claude-3");
+  // Dạng MẤT dấu chấm đời cũ: KHÔNG suy được khe ⇒ null. Đoán ở đây là phán sai cả vế bảo vệ.
+  assert.equal(slotOfSetAside("claude-2chrome-bak-1786354307845"), null);
+  assert.equal(slotOfSetAside("claude"), null, "khe sống không phải bản dời");
+  assert.equal(slotOfSetAside(".bak-1"), null, "không có phần đầu ⇒ null");
+});
+
+test("platformOfSlot: khớp đúng ranh giới '-', không khớp tiền tố lỏng", () => {
+  assert.equal(platformOfSlot("chatgpt"), "chatgpt");
+  assert.equal(platformOfSlot("chatgpt-2"), "chatgpt");
+  assert.equal(platformOfSlot("claude-3"), "claude");
+  assert.equal(platformOfSlot("claudex"), null, "tiền tố mà KHÔNG có dấu '-' ⇒ không phải khe của nền đó");
+  assert.equal(platformOfSlot("chatgpt2"), null, "accountSlot luôn chèn '-', nên dạng này không hợp lệ");
+  assert.equal(platformOfSlot("gemini-2"), null, "nền chưa hỗ trợ ⇒ null, không đoán");
+});
+
+test("isLastWayBack: chỉ CHỨNG MINH ĐƯỢC mới bảo vệ; khe sống đã có phiên thì bản cũ hết được bảo vệ", () => {
+  const e = (session, laneSession) => ({ name: "claude.msedge-bak-1", path: "/x", mtimeMs: 0, session, laneSession });
+  assert.equal(isLastWayBack(e(true, false)), true, "có phiên + khe sống KHÔNG có ⇒ đường về cuối cùng");
+  assert.equal(isLastWayBack(e(true, null)), true, "khe sống không đọc được ⇒ chưa chứng minh được là còn phiên ⇒ GIỮ");
+  assert.equal(isLastWayBack(e(true, undefined)), true, "chưa dò khe sống ⇒ vẫn giữ (hướng an toàn)");
+  assert.equal(isLastWayBack(e(true, true)), false, "khe sống ĐÃ đăng nhập lại ⇒ bản cũ là dư, hết bảo vệ");
+  // Ba ca ÂM của vế 'session': chỉ `=== true` mới bật bảo vệ, để một bề mặt dựng entry bằng tay
+  // không vô tình bật chế độ giữ-mãi cho mọi thứ.
+  assert.equal(isLastWayBack(e(false, false)), false, "bản rỗng KHÔNG được bảo vệ");
+  assert.equal(isLastWayBack(e(null, false)), false, "không đọc được bản dời ⇒ rơi về luật tuổi như CŨ (không hồi quy)");
+  assert.equal(isLastWayBack(e(undefined, false)), false, "entry dựng tay ⇒ hành vi y như trước bản vá");
+});
+
+test("setAsideToReclaim: bản quá hạn 20 ngày vẫn ĐƯỢC GIỮ nếu là đường về cuối cùng", () => {
+  const entries = [
+    { name: "chatgpt.msedge-bak-1", path: "/x/keep", mtimeMs: NOW - 20 * DAY, session: true, laneSession: false },
+    { name: "claude.msedge-bak-2", path: "/x/drop", mtimeMs: NOW - 20 * DAY, session: true, laneSession: true },
+    { name: "claude-2.brave-bak-3", path: "/x/empty", mtimeMs: NOW - 20 * DAY, session: false, laneSession: false },
+  ];
+  const names = setAsideToReclaim(entries, NOW, DEFAULT_BROWSER_KEEP_MS).map((d) => d.name).sort();
+  assert.deepEqual(names, ["claude-2.brave-bak-3", "claude.msedge-bak-2"], "chỉ bản DƯ và bản RỖNG bị thu hồi");
+  assert.ok(!names.includes("chatgpt.msedge-bak-1"), "PHIÊN CUỐI CÙNG của khe không bao giờ bị xoá vì hết hạn");
+});
+
+test("sweepBrowserProfiles trên ĐĨA THẬT: phiên cuối sống sót cả khi ngưỡng = 0, và được ĐẾM ra", () => {
+  const dir = mkdtempSync(join(tmpdir(), "zemory-lastway-"));
+  /** Dựng profile có/không cookie phiên claude (`sessionKey`). */
+  const mkProfile = (name, withSession, ageDays) => {
+    const p = join(dir, name, "Default", "Network");
+    mkdirSync(p, { recursive: true });
+    const db = new Database(join(p, "Cookies"));
+    db.exec("CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT)");
+    db.prepare("INSERT INTO cookies VALUES (?,?,'x')").run(".claude.ai", withSession ? "sessionKey" : "cf_clearance");
+    db.close();
+    const t = (NOW - ageDays * DAY) / 1000;
+    utimesSync(join(dir, name), t, t);
+    return join(dir, name);
+  };
+  const lastWay = mkProfile("claude-3.msedge-bak-111", true, 20); // phiên cuối, khe live KHÔNG tồn tại
+  const empty = mkProfile("claude-3.msedge-bak-222", false, 20); // rỗng, cùng khe
+  mkProfile("claude", false, 20); // khe SỐNG, chưa đăng nhập
+  const redundant = mkProfile("claude.msedge-bak-333", true, 20); // có phiên NHƯNG khe live... chưa có
+
+  // Ngưỡng 0 = mọi thứ quá hạn ⇒ chỉ vế ④ mới cứu được.
+  const r = sweepBrowserProfiles({ dir, now: NOW, keepMs: 0 });
+  assert.ok(existsSync(lastWay), "phiên cuối của claude-3 (khe live không tồn tại) PHẢI sống sót");
+  assert.ok(!existsSync(empty), "bản rỗng cùng khe vẫn bị thu hồi");
+  assert.ok(existsSync(redundant), "khe 'claude' live đang KHÔNG có phiên ⇒ bản này cũng là đường về, giữ");
+  assert.ok(existsSync(join(dir, "claude")), "khe SỐNG không bao giờ bị đụng");
+  assert.equal(r.protected, 2, "phải ĐẾM RA số bản được vế ④ giữ lại, không im lặng");
 });
 
