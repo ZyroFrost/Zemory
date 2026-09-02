@@ -121,3 +121,31 @@ export function slotOfIdentity(
   }
   return fallback;
 }
+
+/**
+ * Khe web này CÒN NỐI không — MỘT nguồn sự thật cho MỌI bề mặt.
+ *
+ * 🔴 Vì sao phải là hàm dùng chung (trả giá 2026-09-02): hai bề mặt đọc cùng câu hỏi này —
+ * bảng "Liên kết" (`connections.ts`) và cây Nguồn (`scope.ts`) — và cả hai đều tự đọc
+ * `webAuth` riêng. Tôi vá `connections.ts` cho nó biết đọc thêm `webPull`, quên `scope.ts`,
+ * và HAI BỀ MẶT LỆCH NHAU NGAY: hộp chi tiết hiện `Link: linked` ngay bên trên dòng
+ * `Last pull: could NOT run (need-login)`. Comment ở `scope.ts` viết sẵn *"đọc từ cùng sổ …
+ * để hai bề mặt KHÔNG BAO GIỜ nói khác nhau"* — đúng thứ tôi vừa phá. Nguồn TRÙNG thì sớm
+ * muộn cũng lệch; một hàm thì không.
+ *
+ * Luật: **bằng chứng MỚI NHẤT thắng.**
+ *  · `webAuth` = kết quả lần KIỂM đăng nhập cuối (có thể nhiều ngày tuổi).
+ *  · `webPull` = kết quả lần KÉO cuối. `need-login` ở đây là bằng chứng đứt.
+ * So MỐC chứ không ưu tiên cứng một nguồn: một lượt kiểm vừa chạy xong PHẢI thắng một lượt
+ * kéo hỏng từ hôm kia, và ngược lại. Chưa có gì ⇒ `null` = "chưa biết", KHÁC "biết là đứt":
+ * chỉ câu sau mới đáng bày nút nối lại màu cảnh báo.
+ */
+export function webLaneLinked(
+  auth: { ok: boolean; at: string } | undefined,
+  pull: { ok: boolean; status: string; at: string } | undefined,
+): boolean | null {
+  const lostAt = pull && pull.ok === false && pull.status === "need-login" ? Date.parse(pull.at) : NaN;
+  const checkedAt = auth ? Date.parse(auth.at) : NaN;
+  if (Number.isFinite(lostAt) && (!Number.isFinite(checkedAt) || lostAt > checkedAt)) return false;
+  return auth ? auth.ok === true : null;
+}

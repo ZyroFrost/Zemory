@@ -56,9 +56,16 @@
       +(c.staleDays!=null?detRow(t('scope.detStale'),c.staleDays):'')
       +(c.detail?detRow(t('scope.detWhere'),c.detail):'')
       +detRow(t('scope.detMessages'),zN(n.messages||0))
+      +(web&&c.linked===false&&c.kids?'<div class="muted" style="margin-top:6px">'+stdEsc(t('scope.detPickAcct').replace('{n}',c.bad||1))+'</div>':'')
       +'</div>';
     // Chỉ mời hành động khi CÓ việc để làm: nguồn đang nối tốt thì hộp này thuần thông tin.
-    var act=web&&c.linked===false;
+    //
+    // 🔴 VÀ chỉ khi biết NỐI VÀO ĐÂU (user bắt 2026-09-02: *"sao link lại nằm ở dòng hiển thị web
+    // tổng, account nào hư thì hiện liên kết ở đó chứ, link ở đây rồi nó biết link vào đâu"*).
+    // Hàng CHA gộp từ nhiều khe con (`c.kids`) không mang một khe cụ thể — `account` của nó rơi
+    // về 'main' theo mặc định, nên bấm Link ở đó là **âm thầm nối khe main** dù khe hỏng có thể là
+    // khe 2. Nay hàng cha chỉ BÁO, việc nối nằm ở đúng hàng tài khoản đang hỏng.
+    var act=web&&c.linked===false&&!c.kids;
     zDialog({icon:c.linked===false?'⚠':'🔗',title:t('scope.detTitle'),bodyHtml:body,
       okLabel:act?t(c.canBorrow?'conn.borrow':'conn.link'):t('scope.detClose'),
       onOk:act?function(){
