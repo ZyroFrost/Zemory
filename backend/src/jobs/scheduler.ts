@@ -64,6 +64,8 @@ export function syncGate(): void {
 }
 import { PLATFORMS, platformsInUse, pullableAccountsOf, scanWeb } from "../memory/scanweb.js";
 import { isExcluded } from "../memory/scope.js";
+import { webProfileDir } from "../memory/connections.js";
+import { jarHasSession } from "../memory/borrowcookies.js";
 import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
@@ -522,14 +524,54 @@ export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date
  * taskbar. `deadMainLane` không cứu được vì nó chỉ dập `main` KHI khe số cùng nền còn sống —
  * ở đây không khe nào sống.
  *
- * Vì sao là DỪNG HẲN chứ không phải lùi lâu hơn: `need-login` **không bao giờ tự khỏi**. Không
- * có con người thì lùi 6 giờ hay 60 giờ đều chỉ là đổi nhịp của cùng một việc vô ích — và mỗi
+ * Vì sao là DỪNG HẲN chứ không phải lùi lâu hơn: `need-login` không tự khỏi **KHI KHÔNG CÓ NGƯỜI**.
+ * Không có con người thì lùi 6 giờ hay 60 giờ đều chỉ là đổi nhịp của cùng một việc vô ích — và mỗi
  * lần vô ích đó là một cửa sổ đập vào mặt người dùng. Trạng thái này đã nằm trong `webPull` nên
  * UI hiện được dấu than "mất kết nối"; user bấm vào đó là đi đường `/connect` (do NGƯỜI khởi
  * xướng) và khe sống lại.
+ *
+ * 🔴 **NHƯNG KHI CÓ NGƯỜI THÌ NÓ TỰ KHỎI — và bản đầu của luật này làm khe TREO VĨNH VIỄN.**
+ * Vế *"không bao giờ tự khỏi"* ở trên là chữ của tôi và nó SAI đúng ở ca thường gặp nhất: người
+ * dùng đăng nhập TAY vào cửa sổ đang mở. Lúc đó phiên có thật, nhưng:
+ *   · khe đã bị loại khỏi vòng tự kéo (dòng dưới) ⇒ không lượt nào kiểm lại;
+ *   · `startLoginWatch` chỉ canh **15 phút** và sống trong RAM daemon ⇒ hết giờ, hoặc daemon khởi
+ *     động lại, là mất luôn người canh.
+ * ⇒ Bề mặt trưng "mất kết nối" cho một khe ĐANG đăng nhập, mãi mãi. Đo thật 2026-09-02 (user chụp
+ * ảnh ChatGPT đăng nhập đầy đủ cạnh hộp báo *"NOT linked — signed out"*): khe `chatgpt#2` có
+ * `webAuth ok:true` 08:27 nhưng `webPull need-login` 15:53, và 16 phút sau vẫn treo — cửa sổ ĐANG
+ * mở và đã đăng nhập. Cùng một họ lỗi "bề mặt nói dối" như hai ca đã vá cùng ngày, chỉ ngược chiều.
+ *
+ * **Cách thoát, không phá luật "máy không tự mở khung đăng nhập":** trước khi bỏ qua, ĐỌC kho
+ * cookie của chính khe đó (`jarHasSession`) — một phép đọc file, **không mở cửa sổ nào**:
+ *   · `true`  ⇒ phán quyết cũ đã CŨ, cho khe trở lại vòng kéo (kéo ngầm là việc máy được làm);
+ *   · `false` ⇒ vẫn signed out thật ⇒ giữ nguyên: bỏ qua;
+ *   · `null`  ⇒ không đọc được (Chromium giữ khoá vì cửa sổ đang mở) ⇒ **bỏ qua**, không đoán.
+ *     Ca `null` tự khỏi ngay khi người dùng đóng cửa sổ: nhịp web kế đọc được jar và khe hồi.
  */
-export function needsLoginLane(prev: { ok: boolean; status: string } | undefined): boolean {
-  return !!prev && prev.ok === false && prev.status === "need-login";
+/**
+ * Kho cookie của một khe web CÓ phiên đăng nhập không — CHỈ ĐỌC, không mở cửa sổ nào.
+ * `null` = không kết luận được (Chromium giữ khoá vì cửa sổ đang mở · nền chưa khai tên cookie phiên).
+ */
+export function webLaneSessionOnDisk(platform: string, account: string): boolean | null {
+  try {
+    const jar = join(webProfileDir(platform, account), "Default", "Network", "Cookies");
+    return jarHasSession(jar, platform);
+  } catch {
+    return null; // fail-safe: không đọc được thì đừng phán, giữ hành vi cũ
+  }
+}
+
+export function needsLoginLane(
+  prev: { ok: boolean; status: string } | undefined,
+  laneHasSession?: () => boolean | null,
+): boolean {
+  if (!(!!prev && prev.ok === false && prev.status === "need-login")) return false;
+  // Chỉ `true` mới huỷ phán quyết cũ — `null`/lỗi giữ nguyên hành vi cũ (fail-safe, điều 9).
+  try {
+    return laneHasSession?.() !== true;
+  } catch {
+    return true;
+  }
 }
 export function webPullTargets(
   platforms: string[],
@@ -539,6 +581,8 @@ export function webPullTargets(
   excludes: Parameters<typeof isExcluded>[1],
   pulled: Record<string, { at: string; ok: boolean; status: string }>,
   now = Date.now(),
+  /** Khe này CÓ phiên trên đĩa không — chỉ đọc, không mở cửa sổ. Tiêm được để cổng đo khỏi cần đĩa. */
+  laneHasSession: (platform: string, account: string) => boolean | null = webLaneSessionOnDisk,
 ): { platform: string; account: string; lane: string }[] {
   const out: { platform: string; account: string; lane: string }[] = [];
   for (const platform of platforms) {
@@ -547,10 +591,17 @@ export function webPullTargets(
     for (const account of accountsFor(platform)) {
       if (account === "main" && deadMainLane(platform, pulled)) continue;
       const lane = webLaneKey(platform, account);
+      const prev = pulled[lane];
       // Cần đăng nhập ⇒ RA KHỎI vòng tự kéo. Máy không được tự bật khung đăng nhập; UI hiện dấu
-      // than "mất kết nối", user bấm mới mở (xem `needsLoginLane`).
-      if (needsLoginLane(pulled[lane])) continue;
-      if (webDue(pulled[lane], now)) out.push({ platform, account, lane });
+      // than "mất kết nối", user bấm mới mở. NHƯNG nếu kho cookie của khe đã CÓ phiên trở lại
+      // (người dùng vừa đăng nhập tay) thì phán quyết cũ là CŨ — xem khối chú thích `needsLoginLane`.
+      if (needsLoginLane(prev, () => laneHasSession(platform, account))) continue;
+      // Lọt qua được dòng trên DÙ sổ ghi `need-login` ⇒ phiên đã trở lại thật. Cho tới lượt NGAY,
+      // đừng bắt chờ hết `WEB_RETRY_AFTER_FAIL_MS` (6 giờ) của lượt hỏng cũ: người dùng vừa đăng
+      // nhập và đang NHÌN bề mặt, mà bề mặt thì đang nói sai. Lượt kéo này vẫn NGẦM (cửa sổ đẩy
+      // khuất) nên không vi phạm luật "máy không tự đòi sự chú ý của người".
+      const healedFromNeedLogin = !!prev && prev.ok === false && prev.status === "need-login";
+      if (healedFromNeedLogin || webDue(prev, now)) out.push({ platform, account, lane });
     }
   }
   return out;

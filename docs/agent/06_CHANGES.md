@@ -5,6 +5,35 @@
 
 ---
 
+## [2026-09-02l] — khe "mất đăng nhập" TREO VĨNH VIỄN dù người đã đăng nhập lại
+
+**User bắt bằng hai ảnh cạnh nhau:** cửa sổ ChatGPT **đăng nhập đầy đủ** (sidebar, Projects, chat
+đủ) và hộp zemory báo *"NOT linked — signed out"*. Câu hỏi đúng: *"cái này là bị báo giả à"* —
+**đúng, báo giả.**
+
+**Đo ba nguồn cho khe `chatgpt#2`:** `webAuth ok:true` (08:27) · `webPull need-login` (**15:53**, mới
+hơn nên nó thắng theo luật bằng-chứng-mới-nhất) · jar trên đĩa `jarHasSession = null` vì **cửa sổ
+đang MỞ** (Chromium giữ khoá). 16 phút sau vẫn treo.
+
+🔴 **Cơ chế — và vế sai là CHỮ CỦA TÔI trong bản vá sáng cùng ngày.** `[2026-09-02]` vá ① loại khe
+`need-login` khỏi vòng tự kéo, lý lẽ ghi *"`need-login` **không bao giờ tự khỏi**"*. Vế đó **sai đúng
+ở ca thường gặp nhất**: người dùng đăng nhập TAY vào cửa sổ đang mở. Khi đó phiên có thật, nhưng
+① khe đã ra khỏi vòng kéo ⇒ không lượt nào kiểm lại · ② `startLoginWatch` chỉ canh **15 phút** và
+sống trong **RAM daemon** ⇒ hết giờ, hoặc daemon khởi động lại (tôi restart nhiều lần hôm nay), là
+mất luôn người canh. ⇒ bề mặt trưng "mất kết nối" cho một khe ĐANG đăng nhập, **mãi mãi**. Cùng họ
+"bề mặt nói dối" với hai ca đã vá cùng ngày, chỉ **ngược chiều**.
+
+**Vá — một phép ĐỌC FILE, không mở cửa sổ nào:** trước khi bỏ qua, `needsLoginLane` đọc kho cookie
+của chính khe đó (`webLaneSessionOnDisk` → `jarHasSession`): `true` ⇒ phán quyết cũ hết hiệu lực,
+khe trở lại vòng kéo NGẦM · `false` ⇒ vẫn signed out thật, giữ nguyên · `null` (jar bị khoá vì cửa
+sổ đang mở) ⇒ **bỏ qua, không đoán** — ca này tự khỏi ngay khi người dùng đóng cửa sổ.
+Kèm: khe vừa thoát `need-login` thì **tới lượt NGAY**, không chờ hết 6 giờ backoff của lượt hỏng cũ
+— người dùng vừa đăng nhập và đang NHÌN bề mặt đang nói sai. Lượt kéo vẫn ngầm (cửa sổ đẩy khuất).
+
+**Cổng:** +2 ca / 10 phép, gồm **5 ca ÂM** (`false`/`null`/ném lỗi/không truyền phép dò đều giữ hành
+vi cũ · khe lành không bị chặn oan). **Đột biến 3/3 ĐỎ**: *trả về đúng code cũ* (khe treo lại) · coi
+`null` là có-phiên (máy tự mở cửa sổ) · bỏ "tới lượt ngay" (UI còn báo sai tới 6 giờ).
+
 ## [2026-09-02k] — `isolated_pct` thôi đo SỐ FILE TEST, bắt đầu đo CODE CHẾT (user chốt)
 
 **Vấn đề (đo `[2026-09-02i]`):** cổng đỏ **88/272 = 32,4%** nhưng soi tay đủ 88 file ⇒ **0 code
