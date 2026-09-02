@@ -5,6 +5,30 @@
 
 ---
 
+## [2026-09-02j] — doctor phán "daemon KHÔNG chạy" trong khi nó đang chạy
+
+**Lượt kiểm cuối của audit tự bắt được.** `doctor` in *"daemon KHÔNG chạy ⇒ … Bật `zemory ui`"*
+trong khi `/ping` trả `{"app":"zemory","pid":9144}` **ngay trước và ngay sau** lượt đó. Gốc:
+`daemonAlive()` dùng trần **600 ms** và gộp MỌI lỗi thành "không sống" — mà `plan/14 §8` đã ĐO
+`/ping` lượt lạnh **12.347 ms** (→1.496→131). Nên bất cứ lúc nào doctor chạy sớm sau khởi động
+hoặc lúc daemon bận, nó khẳng định sai **và khuyên sai việc** (bật một thứ đang chạy).
+
+**Nghịch lý trong cùng repo — đó là bằng chứng luật đã có, chỉ chưa áp đủ:** `ui.ts probeZemoryUi`
+VỐN làm đúng (trần 2.500 ms, **ba** trạng thái, chú thích ghi thẳng *"Timeout ≠ absent"*) — vì ở đó
+đoán sai nghĩa là dựng daemon thứ hai và **hỏng kho** (HP điều 11). Cùng một sự thật thì hai bề mặt
+phải nói cùng một câu.
+
+**Vá:** `daemonLiveness()` trả **`alive` | `absent` | `unknown`**; chỉ **ECONNREFUSED** (không ai
+lắng nghe) mới là `absent`, hết giờ/lỗi khác ⇒ `unknown`. Trần 600 ms → **3.000 ms**. Ba trạng thái
+in **ba câu khác nhau**; nhánh `unknown` nói *"KHÔNG TRẢ LỜI trong 3s — có thể đang BẬN, không phải
+bằng chứng đã chết"* và **không** khuyên bật lại daemon. Đây đúng đòi hỏi `plan/14 §8` mục ②
+(*"`unknown` ≠ `false`"*) mà mục đó tự ghi là còn hở.
+
+**Cổng:** `daemon-liveness.test.mjs` 4 ca (ba trạng thái · trần ≥ 2.500 ms · ba câu phải KHÁC nhau
+và câu 'bận' không được khuyên bật lại · `ui.ts` vẫn giữ luật gốc). **Đột biến 3/3 ĐỎ** (*trả về
+đúng code cũ*: hết-giờ⇒absent · trần 600 ms · gộp nhánh 'unknown'). Nghiệm thu máy thật: daemon
+đang chạy ⇒ doctor nay chỉ in `backup: ✓ bản mới nhất 9.9 giờ tuổi`, hết dòng sai.
+
 ## [2026-09-02i] — cache dashboard TỰ SÁT: đóng dấu lúc VÀO nên sinh ra đã quá hạn
 
 **Đo trên kho thật 2.732 MB: `/memory-status` lượt LẠNH 74 giây**, lượt ngay sau vẫn **9,5 s** thay

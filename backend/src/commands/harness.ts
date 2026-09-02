@@ -159,16 +159,33 @@ function warnStrayConfig(): void {
 }
 
 /**
- * Daemon 4444 còn sống không — hỏi bằng chính bề mặt của nó, không suy từ file/lockfile.
- * Fail-open: dò lỗi ⇒ coi như KHÔNG sống (thà nhắc thừa còn hơn im khi backup thật sự đứng).
+ * Daemon 4444 đang ở trạng thái nào — hỏi bằng chính bề mặt của nó, không suy từ file/lockfile.
+ *
+ * 🔴 BA trạng thái, KHÔNG phải hai (vá 2026-09-02). Bản cũ trả `boolean` với timeout **600 ms** và
+ * gộp mọi lỗi thành "không sống" ⇒ doctor in *"daemon KHÔNG chạy … Bật `zemory ui`"* **trong khi
+ * daemon đang chạy thật** (quan sát 2026-09-02: `/ping` trả `pid 9144` ngay trước và ngay sau lượt
+ * doctor đó). Lời khuyên sai còn tệ hơn im lặng.
+ * Vì sao 600 ms chắc chắn trượt: `plan/14 §8` đã ĐO `/ping` lượt lạnh **12.347 ms** → 1.496 → 131.
+ * Chính repo này đã viết đúng luật ở `ui.ts probeZemoryUi` (*"Timeout ≠ absent"*, trần 2.500 ms, ba
+ * trạng thái) — vì ở ĐÓ đoán sai nghĩa là dựng daemon thứ hai và hỏng kho. Cùng một sự thật thì
+ * phải cùng một câu, nên đường doctor nay theo cùng luật.
+ * `absent` chỉ khi CHỐI KẾT NỐI (không ai lắng nghe — sự thật chắc chắn); hết giờ/lỗi khác ⇒
+ * `unknown` (không biết), và bề mặt phải nói "không biết" chứ không được phán "đã chết".
  */
-async function daemonAlive(): Promise<boolean> {
+type DaemonLiveness = "alive" | "absent" | "unknown";
+
+const PING_TIMEOUT_MS = 3_000;
+
+async function daemonLiveness(): Promise<DaemonLiveness> {
   try {
-    const r = await fetch(`http://127.0.0.1:${uiPort()}/ping`, { signal: AbortSignal.timeout(600) });
+    const r = await fetch(`http://127.0.0.1:${uiPort()}/ping`, { signal: AbortSignal.timeout(PING_TIMEOUT_MS) });
     const b = (await r.json()) as { app?: string };
-    return b?.app === "zemory";
-  } catch {
-    return false;
+    return b?.app === "zemory" ? "alive" : "unknown";
+  } catch (error) {
+    // CHỐI KẾT NỐI = không ai lắng nghe cổng đó ⇒ vắng mặt THẬT. Hết giờ / lỗi khác ⇒ có thể có
+    // ai đó ở đó nhưng đang bận; gọi nó là "đã chết" chính là bề mặt nói dối.
+    const code = (error as { cause?: { code?: string } })?.cause?.code;
+    return code === "ECONNREFUSED" ? "absent" : "unknown";
   }
 }
 
@@ -307,7 +324,7 @@ export async function cmdDoctor(): Promise<void> {
     const st = backupStale(currentMemoryDb());
     const hours = st.ageMs === null ? null : (st.ageMs / 3_600_000).toFixed(1);
     const age = hours === null ? "CHƯA có bản sao lưu nào" : `bản mới nhất ${hours} giờ tuổi`;
-    const alive = await daemonAlive();
+    const live = await daemonLiveness();
     if (st.stale) {
       failed = true;
       console.log(
@@ -322,10 +339,17 @@ export async function cmdDoctor(): Promise<void> {
     } else if (hours !== null) {
       console.log(`  backup: ✓ ${age}`);
     }
-    if (!alive) {
+    // BA CÂU cho BA trạng thái. "Không trả lời" KHÔNG được nói thành "không chạy": lời khuyên
+    // *Bật `zemory ui`* cho một daemon đang chạy là sai việc, và nó dạy người đọc nghi ngờ doctor.
+    if (live === "absent") {
       console.log(
-        "  backup: ○ daemon KHÔNG chạy ⇒ không có đồng hồ nào chép bản mới." +
+        "  backup: ○ daemon KHÔNG chạy (cổng chối kết nối) ⇒ không có đồng hồ nào chép bản mới." +
           " Tuổi ở trên là ảnh chụp quá khứ, không phải bằng chứng còn được bảo vệ. Bật `zemory ui`.",
+      );
+    } else if (live === "unknown") {
+      console.log(
+        `  backup: ○ daemon KHÔNG TRẢ LỜI trong ${(PING_TIMEOUT_MS / 1000).toFixed(0)}s — có thể đang BẬN, không phải bằng chứng đã chết` +
+          " (đo `plan/14 §8`: /ping lượt lạnh 12,3s). Chưa kết luận được là còn ai chép bản mới hay không.",
       );
     }
   } catch {
