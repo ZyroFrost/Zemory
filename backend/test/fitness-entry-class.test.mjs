@@ -11,7 +11,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { isEntryClassFile, graphFitness, FITNESS_GATES } = await import("../../dist/memory/graph/graph.js");
+const { isEntryClassFile, graphFitness, FITNESS_GATES, ISOLATED_MIN_COUNT } = await import(
+  "../../dist/memory/graph/graph.js"
+);
 
 test("isEntryClassFile: nhận đúng thứ KHÔNG THỂ có cạnh import", () => {
   for (const p of [
@@ -77,6 +79,29 @@ test("fitness: test/script mồ côi KHÔNG làm đỏ; module nguồn mồ côi
   assert.equal(m2.value, 90.9, "10/11 module nguồn không ai import = bệnh thật");
   assert.equal(m2.passed, false, "và cổng PHẢI đỏ — đây là thứ nó tồn tại để bắt");
   assert.match(m2.detail, /backend\/src\/dead0\.ts/, "phải nêu TÊN để người đọc phán được, không chỉ con số");
+});
+
+// SÀN ĐẾM — sinh ra từ một fixture ĐỎ OAN, nên phải có cổng để đừng mất lại.
+// Siết trần 30%→4% làm đỏ luôn fixture "repo nhỏ lành mạnh" của `graph.test.mjs`: 1 file cô lập
+// trên 3 file = 33%. Tỉ lệ trên mẫu bé là nhiễu (cùng doctrine `ABSTAIN_MIN_VECTORS`, `plan/17`).
+test("sàn đếm: repo BÉ có 1–2 file cô lập KHÔNG bị phán, nhưng đủ SỐ thì phán ngay", () => {
+  const tiny = (dead) =>
+    mk([
+      ...Array.from({ length: dead }, (_, i) => ({ id: `backend/src/dead${i}.ts` })),
+      { id: "backend/src/a.ts", fanIn: 1 },
+    ]);
+
+  for (const n of [1, 2]) {
+    const m = graphFitness(tiny(n)).metrics.find((x) => x.metric === "isolated_pct");
+    assert.ok(m.value > FITNESS_GATES.isolatedPct, `${n}/${n + 1} file phải VƯỢT tỉ lệ (đó là bản chất mẫu bé)`);
+    assert.equal(m.passed, true, `nhưng ${n} < sàn ${ISOLATED_MIN_COUNT} ⇒ KHÔNG phán — tỉ lệ trên mẫu bé là nhiễu`);
+    assert.match(m.detail, /under the floor of/i, "và phải NÓI RA là đã bỏ qua vì dưới sàn, không im lặng");
+  }
+
+  // Chạm sàn + vượt tỉ lệ ⇒ đỏ. Đây là vế phải giữ, không thì sàn thành cửa hậu tha mọi thứ.
+  const at = graphFitness(tiny(ISOLATED_MIN_COUNT)).metrics.find((x) => x.metric === "isolated_pct");
+  assert.equal(at.passed, false, `${ISOLATED_MIN_COUNT} file cô lập là chạm sàn ⇒ phải phán`);
+  assert.ok(!/under the floor of/i.test(at.detail), "chạm sàn rồi thì không được nói là dưới sàn");
 });
 
 test("ngưỡng còn ĐỎ ĐƯỢC: 5 module chết trên nền 116 file là vượt trần", () => {
