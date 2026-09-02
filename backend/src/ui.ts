@@ -1017,7 +1017,8 @@ function heavyStatsSync(): {
     /* vector lane is optional — fail open (HP điều 9) */
   }
   const value = { tokensEst, count, remaining, covered, embeddable };
-  heavyCache = { at: now, value };
+  // ĐÓNG DẤU LÚC XONG, không phải lúc BẮT ĐẦU (vá 2026-09-02) — xem khối chú thích ở `dashCache`.
+  heavyCache = { at: Date.now(), value };
   return value;
 }
 
@@ -1132,7 +1133,18 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
     lang: getLang(),
     generatedAt: new Date().toISOString(),
   };
-  dashCache = { at: now, value: payload };
+  // 🔴 ĐÓNG DẤU LÚC XONG, KHÔNG PHẢI LÚC BẮT ĐẦU (vá 2026-09-02, đo được).
+  //
+  // `now` ở đầu hàm là mốc REQUEST VÀO. Đóng dấu bằng nó thì một lượt tính lâu hơn TTL sinh ra
+  // một hàng cache **đã quá hạn ngay khi vừa ghi** ⇒ lượt kế lại tính lại ⇒ cache CHẾT đúng trên
+  // những kho mà nó tồn tại để bảo vệ. Đo trên kho thật 2.732 MB: `/memory-status` lượt lạnh
+  // **74 s** (DASH_TTL_MS chỉ 60 s), và lượt NGAY SAU vẫn **9,5 s** thay vì ~40 ms như chú thích
+  // phía trên hứa — tức chuỗi tối ưu công phu ở đây bị vô hiệu bởi đúng một chữ.
+  // Hệ quả thật, đã cắn trong phiên 2026-09-02: 74 s đó chặn event loop nên `/connections` gọi
+  // ngay sau khi khởi động daemon **timeout hai lần** (45 s rồi 240 s).
+  // Bằng chứng nội tại rằng đây là SÓT, không phải chủ ý: nhánh async ở `heavyStatsAsync` đã dùng
+  // `Date.now()` lúc hoàn tất từ trước (hai chỗ), chỉ hai đường đồng bộ này còn dùng mốc vào.
+  dashCache = { at: Date.now(), value: payload };
   return { ...payload, cached: false, cachedAgeMs: 0 };
 }
 

@@ -438,7 +438,16 @@ export function graphFitness(g: CodeGraph): GraphFitness {
       value: isolatedPct,
       threshold: FITNESS_GATES.isolatedPct,
       passed: isolatedPct <= FITNESS_GATES.isolatedPct,
-      detail: `${isolated.length}/${eligible.length} file(s) with no intra-project edges (entries/scripts included; extra-language files without an import layer excluded)`,
+      // 🔴 NÓI ĐÚNG THỨ NÓ ĐẾM (sửa 2026-09-02): câu cũ là "no intra-project edges" — SAI, và
+      // chính nó làm audit đọc lệch. `fanIn/fanOut` chỉ dựng từ **lớp IMPORT**; hai lớp kia của
+      // graph không được tính. Đo trên repo này: `imports` 445 cạnh ⇒ 88/272 cô lập (32,4%), mà
+      // thêm `calls` (4.482 cạnh) vào là còn **6/272 (2,2%)**. Cố ý KHÔNG đếm `calls` — nó là cạnh
+      // SUY LUẬN (name-match), để nó bịt miệng một tín hiệu code-chết là trái điều 13.
+      // Và soi tay đủ 88 file: 65 test · 17 script · `platform/window.ts` (daemon SPAWN nó bằng
+      // đường dẫn, không import) · 2 hook `guard.cjs` (host gọi lúc chạy) · 2 tài sản template ·
+      // `eslint.config.js` ⇒ **0 code chết**. Tức con số này đang bị chi phối bởi SỐ FILE TEST,
+      // nên nó chỉ đỏ thêm mỗi lần thêm test — xem `05_TODO` nếu muốn đổi định nghĩa (việc của user).
+      detail: `${isolated.length}/${eligible.length} file(s) with no IMPORT edge (test/script entries counted; extra-language files without an import layer excluded — 'calls'/'api' layers deliberately not counted)`,
     },
     {
       metric: "util_violations",
