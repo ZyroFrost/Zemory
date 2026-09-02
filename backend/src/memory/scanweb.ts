@@ -670,7 +670,11 @@ export function browserArgs(profileDir: string, port: number, url: string, hidde
     // duy nhất người dùng cần làm ở cửa sổ này (đo 2026-08-28, user chụp màn hình).
     "--hide-crash-restore-bubble",
     "--disable-session-crashed-bubble",
-    ...(hidden ? ["--window-position=-32000,-32000", "--window-size=1,1"] : []),
+    // KÍCH THƯỚC cửa sổ. Lượt HIỆN (người đăng nhập) phải đủ RỘNG để thấy trọn form — user chụp
+    // 2026-09-02: cửa sổ ra bé xíu vì profile mới tinh không có kích thước đã nhớ, Chromium mở
+    // mặc định hẹp. Ép 1200×900 + căn ~góc trên trái có lề, đủ cho account chooser của Google.
+    // Lượt NGẦM thì đẩy khuất + thu nhỏ (không ai nhìn, càng nhỏ càng ít tốn vẽ).
+    ...(hidden ? ["--window-position=-32000,-32000", "--window-size=1,1"] : ["--window-size=1200,900", "--window-position=120,80"]),
     "--new-window",
     url,
   ];

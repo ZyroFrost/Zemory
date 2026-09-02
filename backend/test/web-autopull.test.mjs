@@ -58,6 +58,11 @@ test("kéo ngầm: đẩy cửa sổ khuất, và KHÔNG chạy chế độ khô
   );
   assert.ok(hid.includes("--new-window") && hid.at(-1) === "https://x", "vẫn là một cửa sổ thật, mở đúng trang");
 
+  // Lượt HIỆN phải mở ĐỦ RỘNG để thấy trọn form đăng nhập (user chụp 2026-09-02: cửa sổ bé xíu).
+  assert.ok(vis.includes("--window-size=1200,900"), "cửa sổ đăng nhập phải đủ rộng, không bé xíu");
+  assert.ok(!vis.includes("--window-size=1,1"), "kích thước 1×1 chỉ dành cho lượt ngầm");
+  assert.ok(hid.includes("--window-size=1,1") && !hid.includes("--window-size=1200,900"), "lượt ngầm thu nhỏ, không mở to");
+
   const src = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   // Cửa sổ do lượt nền mở PHẢI được đóng — mỗi lượt rò một Chrome ẩn thì sau một ngày là
   // hàng chục tiến trình không ai nhìn thấy để mà báo.

@@ -5,6 +5,15 @@
 
 ---
 
+## [2026-09-02e] — cửa sổ đăng nhập mở ĐỦ RỘNG (1200×900), hết bé xíu
+
+User chụp: cửa sổ login zemory mở ra **bé xíu**, không thấy trọn form. Gốc: lượt HIỆN của
+`browserArgs` không có tham số kích thước nào ⇒ Chromium mở theo mặc định/nhớ cũ, mà profile mới
+tinh thì không có gì để nhớ. Vá: lượt hiện ép `--window-size=1200,900 --window-position=120,80`
+(đủ cho account chooser của Google); lượt NGẦM giữ nguyên `1,1` + đẩy khuất. Cổng: +3 phép trong
+ca `browserArgs` sẵn có (hiện đủ rộng · không dính 1×1 · ngầm không mở to) — đo thẳng mảng tham số,
+không cần login sống.
+
 ## [2026-09-02d] — Mượn chở CẢ phiên SSO ⇒ trang login hiện sẵn tài khoản, hết form trắng
 
 **User chốt (AskUserQuestion, sau khi nghe rõ đánh đổi):** *"phải nó có cookie hiện lên web khi
