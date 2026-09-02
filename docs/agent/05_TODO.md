@@ -8,16 +8,13 @@
 
 ## BÀN GIAO 2026-09-02 — trạng thái ĐO lúc chốt
 
-**Đã push:** `2.12.0` (`ec4d33c`) · `2.12.1` (`01d47f1`). **CHƯA push: 11 commit cục bộ** — lượt cuối
-(mượn cookie + `bringToFront`) commit 2026-09-02 sau khi gate xanh; **không còn gì chưa commit**.
-Version giữ `2.12.1` — user bác việc bump từng đợt nhỏ (*"cái gì up quài"*), luật Version là
-release-based, gom vào version kế.
+**Đã push:** tới `2.13.0` — đợt web-connect ĐÓNG. Gồm tính năng mới (Mượn chở phiên SSO · profile
+bền tự trả phiên khi đổi trình duyệt) + fix (jar≠phiên · cửa sổ login 1200×900 · `bringToFront` ·
+`webLaneLinked`). User chốt số `2.13.0` (minor — có năng lực mới). Changelog: `06_CHANGES`
+`[2026-09-02]` … `[2026-09-02e]`.
 
-**Gate đầy đủ chạy trọn 2026-09-02 TRÊN đúng phần mượn cookie + `bringToFront`: exit 0 · 0 fail ·
-0 skip-vì-bận · conform sạch · todo verify sạch.** (Lượt đầu cùng ngày exit 1 KHÔNG phải test hỏng:
-giữa gate có daemon + job `embed --all` đang chạy — ai khởi động chưa xác minh, có thể autostart —
-⇒ nhóm nặng skip-vì-bận; tắt cả hai rồi chạy lại là trọn.) `config.ts` sửa dở từ trước hoá ra chỉ là
-**1 dòng comment** đổi đường dẫn ví dụ theo vị trí repo mới — đã gộp vào commit này.
+**Gate đầy đủ:** lượt cuối trước bump exit 0 · 0 fail (2 ca embed skip-vì-bận do autostart bật lại
+daemon giữa gate — KHÔNG liên quan thay đổi, đã chạy xanh ở gate liền trước). conform + todo sạch.
 
 ### Trạng thái web lúc chốt (ĐO 2026-09-02 sau `restoreShelvedSession` — xem `06_CHANGES [2026-09-02c]`)
 **3/4 khe ĐÃ HỒI không cần đăng nhập** (phiên trả về từ bản brave-bak, Brave vẫn đang mở):
