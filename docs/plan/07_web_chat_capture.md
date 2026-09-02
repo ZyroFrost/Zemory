@@ -39,6 +39,12 @@
     đẩy sang VM) áp NGUYÊN vào thư mục đó. Hai giới hạn §5 đo được vẫn đúng và **không vá được ở
     mức quyền user**: chỉ **cùng hãng · cùng máy** mới giải mã (App-Bound Encryption), và kho đang
     bị trình duyệt giữ khoá thì không đọc được.
+  - **CHỐT PHẠM VI — user quyết 2026-09-03: KHÔNG sửa `01_CONSTITUTION`, ranh giới này ghi Ở ĐÂY.**
+    Câu hỏi đã đặt: điều 7 viết *"chỉ mượn phiên"*, mà "phiên" nay gồm cả nhà cung cấp danh tính
+    (`AUTH_HOSTS`) — có nên nêu thẳng vào điều 7? **Không.** Điều 7 KHÔNG bị phá: vẫn không nhập
+    password/2FA vào zemory, vẫn chỉ soi TÊN cookie, vẫn không transmit đi đâu. Phần mở rộng là chi
+    tiết THI HÀNH của "mượn phiên", nên nó thuộc spec chứ không thuộc bất biến.
+    ⛔ **Đừng hỏi lại user câu này** — đã chốt; hỏi lại một việc đã chốt là lỗi (`02_RULES §Hành xử`).
 
 ## 5. KẾT QUẢ TEST (2026-07-02/03) — feasibility CONFIRMED
 > **✅ ĐÃ SHIP (2026-07-08):** cơ chế này giờ là `backend/src/memory/scanweb.ts` — **859 hội thoại ChatGPT** đã bắt (kể cả Project chats qua gizmo endpoints, có pace/backoff/resume). Phần dưới là kết quả TEST prototype ban đầu (giữ làm lịch sử).
