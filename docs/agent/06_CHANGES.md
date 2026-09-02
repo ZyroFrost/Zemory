@@ -98,6 +98,53 @@ KHÁC vẫn thử · khe lành không bị chặn oan · `/connections` đọc c
 có đủ hai dict). **Đột biến 4/4 ĐỎ**, gồm hai đột biến *trả về đúng code cũ*: bỏ chặn khe need-login ·
 `connected` chỉ đọc `webAuth`.
 
+### MƯỢN COOKIE: thiếu Brave, và "khoá" bị báo thành "không có"
+
+User: *"vẫn chưa fix được việc mở browser đó thì lấy chính cookie web đã có để lưu"*. Đo ra **hai lỗ**:
+
+**① `cookieSources()` chỉ có Chrome + Edge — THIẾU BRAVE**, trong khi trình duyệt mặc định của máy
+này là Brave và **chính zemory cũng mở Brave** (`opening … in brave.exe` trong log). Nên phiên thật
+của người dùng nằm ở Brave mà bộ mượn **không bao giờ nhìn tới** — nó báo *"không có trình duyệt nào
+còn phiên"* trong khi phiên đang nằm ngay đó.
+
+**② KHOÁ bị báo thành KHÔNG CÓ.** Chromium giữ khoá độc quyền kho cookie khi đang chạy — đo trên máy
+này: đọc thẳng ném `unable to open database file`, và `copyFileSync` ném **EBUSY**, tức **không có
+đường đọc nào** khi trình duyệt còn mở. `findBorrowSource` **nuốt** lỗi đó rồi trả `null` ⇒ bề mặt nói
+sai VÀ không chỉ được việc phải làm (đóng trình duyệt).
+
+**Vá:** thêm Brave vào nguồn · tách `borrowBlockedBy()` thành **hàm riêng** thay vì nhồi cờ ngầm
+(`cookies: -1`) vào kiểu trả về của `findBorrowSource` — nơi gọi đang làm `Boolean(findBorrowSource())`
+nên một object "khoá" sẽ lặng lẽ thành `canBorrow: true` ⇒ UI mời **Mượn** rồi thất bại. Hai câu hỏi
+khác nhau thì hai hàm. UI hiện: *"💡 Có thể mượn phiên đăng nhập sẵn có, nhưng Brave đang mở nên kho
+cookie bị khoá. Đóng Brave rồi mở lại hộp này."*
+
+Đo sau khi vá: `chatgpt` → **mượn được (Chrome/Default, 1 cookie)** · `claude` → **BỊ KHOÁ, đóng Brave**
+(trước đó cả hai đều im).
+
+**Cổng:** +3 ca. **Đột biến 2/2 ĐỎ**: *trả về đúng code cũ* (bỏ Brave khỏi nguồn) · bỏ hẳn
+`borrowBlockedBy` (quay lại im lặng).
+
+⚠ **Ngoài tầm zemory, ghi để khỏi ai đi tìm bug:** user không nhận được prompt 2FA của Google trên
+điện thoại. Đó là đường Google → thiết bị, zemory không nằm trên đó và không sửa được từ đây.
+### Cửa sổ đăng nhập phải BUNG RA TRƯỚC MẶT (user bắt)
+
+*"bấm vào link nó mở web mà nó ko tự bung ra trước mặt thì sao mà thấy"*. Đúng — cửa sổ mở sau lưng
+app thì việc "mở cửa sổ để bạn đăng nhập" coi như **không xảy ra**.
+
+⚠ **Bản đầu của tôi SAI và đã đo ra:** dùng `WScript.Shell.AppActivate(pid)` — **không ăn**, vì
+Chromium tự sinh cây tiến trình nên **pid ta `spawn` thường KHÔNG sở hữu cửa sổ**; vòng chờ 6 giây
+không bao giờ thấy `MainWindowHandle` (chạy thử trên một cửa sổ Brave thật: không ra gì). Đường đúng
+là bảo **chính trình duyệt tự nâng mình**: `Page.bringToFront` của CDP nâng cả tab lẫn cửa sổ, không
+phụ thuộc pid, không đụng khoá tiền cảnh của Windows — và **CDP đã nối sẵn** ở đó, không thêm hạ tầng.
+
+Đặt **SAU** chốt `!first` (lúc đó cửa sổ chắc chắn tồn tại) và **chỉ khi `!opts.hidden`**: lượt ngầm
+mà nhảy ra trước mặt là đúng lỗi vừa sửa ở mục trên — máy không được tự đòi sự chú ý.
+
+**Cổng:** +3 ca. **Đột biến 3/3 ĐỎ**: bỏ hẳn việc nâng · nâng cả lượt ngầm · quay lại `AppActivate`.
+⚠ Một phép của tôi **bắt oan lượt đầu**: cấm chuỗi `AppActivate` trong CẢ FILE, mà chữ đó còn nằm
+trong chú thích giải thích vì sao nó không ăn. Phải bỏ comment trước khi soi — đúng bẫy "soi CHỮ" mà
+`audit` đã ghi.
+
 ### Hai lỗi hộp "Connection details" — user bắt, và lỗi ĐẦU do chính lượt vá trên đẻ ra
 
 **① `Link: linked` nằm NGAY TRÊN `Last pull: could NOT run (need-login)` — cùng một hộp, hai câu

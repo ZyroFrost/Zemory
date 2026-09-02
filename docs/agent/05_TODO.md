@@ -6,57 +6,45 @@
 **0 mục `[ ]` đang mở.** Lịch sử việc đã xong đã dời sang `archive/05_TODO.md` ngày 2026-08-31
 (tra bằng `zemory plan search`) — sổ này chỉ chứa việc PHẢI LÀM, không chứa ghi chú "đã đóng".
 
-## BÀN GIAO 2026-08-31 — trạng thái ĐO lúc chốt
+## BÀN GIAO 2026-09-02 — trạng thái ĐO lúc chốt
 
-**Đã push:** `2.12.0` (`ec4d33c`) · `2.12.1` (`01d47f1`). Cây sạch. Kho **2.738 phiên · ~326.060
-tin**, `quick_check` **ok**, `foreign_key_check` **0**, **0** tin mồ côi. Backup mới nhất < 6 h,
-`uplink` xác nhận **4 bundle đã lên mây**. Sổ đăng nhập web: `claude` ✓ · `claude#2` ✓ ·
-`chatgpt#2` ✓ · **`chatgpt` main ✗ — chết từ 29/08, trước mọi việc của phiên này** (đã có
-`deadMainLane` ở 2.11.0 để nó thôi tự mở browser).
+**Đã push:** `2.12.0` (`ec4d33c`) · `2.12.1` (`01d47f1`). **CHƯA push: 11 commit cục bộ** — lượt cuối
+(mượn cookie + `bringToFront`) commit 2026-09-02 sau khi gate xanh; **không còn gì chưa commit**.
+Version giữ `2.12.1` — user bác việc bump từng đợt nhỏ (*"cái gì up quài"*), luật Version là
+release-based, gom vào version kế.
 
-**Chưa push (cục bộ):** phần dọn rác + tính năng `profile-reclaim`. User đã bác việc bump version
-cho từng đợt nhỏ (*"cái gì up quài"*) — luật Version là release-based, **gom vào version kế**.
+**Gate đầy đủ chạy trọn 2026-09-02 TRÊN đúng phần mượn cookie + `bringToFront`: exit 0 · 0 fail ·
+0 skip-vì-bận · conform sạch · todo verify sạch.** (Lượt đầu cùng ngày exit 1 KHÔNG phải test hỏng:
+giữa gate có daemon + job `embed --all` đang chạy — ai khởi động chưa xác minh, có thể autostart —
+⇒ nhóm nặng skip-vì-bận; tắt cả hai rồi chạy lại là trọn.) `config.ts` sửa dở từ trước hoá ra chỉ là
+**1 dòng comment** đổi đường dẫn ví dụ theo vị trí repo mới — đã gộp vào commit này.
 
-*(Hai mục tôi nêu là "cần chốt" đã ĐÓNG 2026-08-31 — user bác đúng: **cả hai đã xử lý rồi, tôi
-lấy thông tin cũ**.
-
-· **`graph fitness` đỏ** — KHÔNG phải việc. Đo ra: 87 file "isolated" thì **87 đều là điểm vào**
-  (64 `backend/test` — không ai import file test, theo định nghĩa · 12 `frontend/scripts` — nạp bằng
-  thẻ `<script>` · 5 `backend/scripts` + 2 `docs/hooks` + 1 `eslint.config.js` · 2 `docs_template` ·
-  1 `backend/src/platform/window.ts` — chạy như tiến trình riêng). **0 file chết.** Chính output của
-  cổng tự thú *"entries/scripts included"*. Con số 32% không hạ được vì không có gì để dọn ⇒ để
-  advisory, **KHÔNG nối vào `npm run check`** (gate đỏ vĩnh viễn không lý do = bẫy *"gate nhiễu ⇒
-  gate bị bỏ qua"* của `02_RULES`).
-
-· **Diễn tập phục hồi** — ĐÃ CHẠY: **25/08** và **27/08** (lần hai bắt 16.405 vector thiếu, vá cùng
-  ngày — `plan/08 §8b` 🔄 2026-08-27), cộng 29/08 mở backup đếm lại. Tôi viết "chưa chạy" khi ý chỉ
-  là "phiên này không chạy lại" — đọc ra thành "chưa từng làm". Không mở lại mục nào.)*
+### Trạng thái web lúc chốt (ĐO)
+Cả **4 khe** `chatgpt` · `chatgpt#2` · `claude` · `claude#2` đang **`need-login`** — gốc: máy đổi trình
+duyệt mặc định **Brave → Edge** nên `borrowCookies` dời cả 4 profile sang bên, mất phiên đồng loạt.
+Vòng tự kéo **đã thôi đụng** các khe này (máy không được tự bật khung đăng nhập); UI báo *mất kết nối*
+kèm nút nối lại ở đúng hàng tài khoản. Đường nhanh nhất để hồi phục: **đóng Brave** → mở hộp
+Connection details → **Mượn** (khỏi đăng nhập, khỏi 2FA).
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
-· **Suy từ TÊN FILE rồi ghi vào docs như sự thật.** Tôi viết *"lớp migration chép ra"* cho
-  `global_memory-premigrate.db` mà chưa `grep` — hoá ra **0 dòng code sinh nó**, nó là bản một
-  phiên agent chép tay. Suýt dạy vòng dọn của app tự xoá file người ta lưu. **Ranh giới của một
-  vòng dọn tự động là AI TẠO RA FILE, không phải TÊN FILE TRÔNG NHƯ GÌ.** Lỗi cùng họ ở `.trong-`.
-  Người tìm ra là USER, bằng một câu hỏi (*"cái này là db nào nữa mà xoá?"*).
-· **Vượt phạm vi.** User giao "xác minh + audit để đóng case" (việc còn lại: 1 cú push). Tôi đẻ
-  thêm một chuỗi việc + 3 lần bump version. Nguyên văn: *"m lại đi đẻ 1 đống việc trong khi bên
-  kia đã hết việc rồi???"*
-· **Ba finding audit của tôi báo OAN, loại khi kiểm chéo** — đúng các bẫy `audit` đã ghi:
-  "8/12 script frontend không test nào neo" (sai: `helpers.mjs readAppJs()` đọc cả 12 + ném lỗi
-  nếu thiếu khai) · "98 dòng thiếu móc i18n" (sai: toàn bộ là comment HTML ⇒ 0) · "307 chỗ thiếu
-  dấu" (sai: danh sách từ có `dung`·`nghia` vốn hợp lệ).
-· **Bộ canh đặt `--max-time` 8 s báo daemon chết oan** khi nó đang cày embed (trả lời chậm tới
-  28 s theo số đo có sẵn). Ngưỡng của bộ canh phải lấy từ số đo, không từ cảm giác.
-· **`awk '$0 >= "2026-08-31T07:30"'` lọc log SAI**: so sánh CHUỖI nên dòng stderr bắt đầu bằng
-  `[` / `Error` (ASCII > `2`) lọt hết bất kể ngày ⇒ tôi đọc log 30/08 tưởng là 31/08 và suýt báo
-  một lỗ không tồn tại. Lọc log theo ngày phải neo `^`.
-· **Heredoc ăn một tầng backslash** ⇒ bộ lọc `[\\/]data[\\/]` không chặn được `data/`, quét cả
-  30 GB profile browser. Đúng bẫy đã ghi; vá nhiều dòng = Write script ra file rồi `node <file>`.
-· **Gate KHÔNG lưu log tổng ở đâu cả.** `tail -60` output là mất luôn dòng số ca, phải chạy lại
-  9 phút. Ghi ra file trước, cắt sau.
-· **Gộp "tạo flag" và "git push" trong MỘT lệnh thì guard chặn** — lúc nó kiểm, flag chưa tồn tại.
-· **Here-string PowerShell `@'…'@` dùng trong Bash** ⇒ subject commit thành `@ docs: …`, phải
-  `--amend -F <file>`.
+· **QUÊN BẬT LẠI UI sau khi tắt daemon để chạy gate** — user phải nhắc ba lần, lần cuối là bực. Luật
+  đã có từ lâu. Bật lại là **phần cuối bắt buộc** của mọi lượt đụng code, không phải bước tuỳ chọn.
+· **Vá một bề mặt, quên bề mặt kia.** `/connections` và `scope.ts` cùng trả lời *"khe còn nối không"*;
+  vá một bên là hộp chi tiết hiện `Link: linked` ngay trên `need-login`. Nguồn TRÙNG thì sớm muộn cũng
+  lệch ⇒ rút thành MỘT hàm (`webLaneLinked`) + cổng cấm bên nào tự phán lại.
+· **Phép cổng soi CHỮ trên CẢ FILE bắt oan chú thích** — mắc **HAI LẦN** cùng phiên (`AppActivate`,
+  `cookies: -1`): chuỗi bị cấm nằm trong comment giải thích VÌ SAO không dùng nó. Bỏ comment trước khi soi.
+· **Cổng thành XANH GIẢ sau khi đổi code**: `assert.match(/zN\(tot\)/)` vẫn xanh vì chuỗi đó chuyển vào
+  tooltip — nó không còn canh gì mà vẫn phát ra lời bảo đảm. Đổi hành vi thì phải soát lại cổng của nó.
+· **Đột biến KHÔNG ÁP ĐƯỢC = KHÔNG PHẢI bằng chứng.** Hai lượt "fail 0" của tôi là do neo lệch (ký tự
+  `⟳` ghi thật, không phải escape `\u27f3`), không phải do cổng bắt được.
+· **Heredoc ăn một tầng backslash — lần thứ BA trong phiên.** Regex thành rác, file test lỗi cú pháp.
+  Vá nhiều dòng = `Write` script ra file rồi `node <file>`, dùng `String.raw` cho regex.
+· **Đừng gọi `node dist/cli.js …` khi gate đang chạy** — gate làm `clean && tsc`, dist bị xoá giữa chừng,
+  lệnh chết với lỗi chẳng liên quan.
+· **`AppActivate(pid)` KHÔNG nâng được cửa sổ Chromium** — nó tự sinh cây tiến trình nên pid ta spawn
+  không sở hữu cửa sổ. Đường đúng: `Page.bringToFront` của CDP.
+· **`webAuth` là lần KIỂM, `webPull` là lần KÉO** — hai sổ khác nhau, và cái mới hơn mới là sự thật.
 
 ### Một đề xuất ĐÃ TRÌNH, user CHƯA gật — không tự làm, không phải việc mở
 Lọc "phiên bấm nhầm" (vài ký tự · chat sai phiên): đề xuất luật cơ học gắn cờ `junk` (KHÔNG xoá) + agent đang chạy

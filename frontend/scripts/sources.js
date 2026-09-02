@@ -57,6 +57,8 @@
       +(c.detail?detRow(t('scope.detWhere'),c.detail):'')
       +detRow(t('scope.detMessages'),zN(n.messages||0))
       +(web&&c.linked===false&&c.kids?'<div class="muted" style="margin-top:6px">'+stdEsc(t('scope.detPickAcct').replace('{n}',c.bad||1))+'</div>':'')
+      // Mượn cookie khong duoc VI TRINH DUYET DANG MO — co viec de lam, phai noi ra.
+      +(c.borrowBlocked?'<div class="muted" style="margin-top:6px">'+stdEsc(t('conn.borrowBlocked').replace('{b}',c.borrowBlocked))+'</div>':'')
       +'</div>';
     // Chỉ mời hành động khi CÓ việc để làm: nguồn đang nối tốt thì hộp này thuần thông tin.
     //
