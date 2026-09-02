@@ -42,24 +42,27 @@ test("nền không khai ⇒ từ chối, không đụng gì", skip, () => {
   assert.match(r.error, /unknown platform/);
 });
 
-test("chỉ chở cookie của ĐÚNG nền — mọi dòng khác bị XOÁ, không nằm lại trong profile", skip, (t) => {
+test("chở cookie nền + nhà cung cấp SSO (Google) — bank/nền khác bị XOÁ", skip, (t) => {
+  // ĐỔI 2026-09-02 (user chốt "Có — chép cả phiên SSO"): profile giờ giữ CẢ cookie đăng nhập
+  // Google/Microsoft/Apple để OAuth hiện account chooser, KHÔNG chỉ chatgpt.com. Vẫn cắt sạch
+  // bank/nền khác — không phải cả jar.
   const b = fakeBrowser(t, [
     [".chatgpt.com", "__Secure-next-auth.session-token"],
     [".openai.com", "oai-did"],
-    [".mybank.example", "SESSION"],
-    ["accounts.google.com", "SID"],
-    [".claude.ai", "sessionKey"],
+    [".mybank.example", "SESSION"], // phải bị xoá
+    ["accounts.google.com", "__Secure-1PSID"], // GIỮ — SSO login
+    [".claude.ai", "sessionKey"], // nền khác — phải bị xoá
   ]);
   const r = borrowCookies({ platform: "chatgpt", browserRoot: b.browserRoot, sources: [{ key: "fake", label: "Fake", userData: b.ud, exe: process.execPath }] });
   assert.equal(r.ok, true, r.error);
-  assert.equal(r.kept, 2, "giữ đúng 2 dòng chatgpt.com + openai.com");
-  assert.equal(r.dropped, 3, "3 dòng còn lại phải bị xoá");
+  assert.equal(r.kept, 3, "giữ chatgpt.com + openai.com + accounts.google.com");
+  assert.equal(r.dropped, 2, "bank + nền khác phải bị xoá");
 
   const db = new Database(join(b.browserRoot, "chatgpt", "Default", "Network", "Cookies"), { readonly: true });
   const hosts = db.prepare("SELECT DISTINCT host_key FROM cookies").all().map((x) => x.host_key);
   db.close();
-  assert.deepEqual(hosts.sort(), [".chatgpt.com", ".openai.com"]);
-  for (const bad of [".mybank.example", "accounts.google.com", ".claude.ai"]) {
+  assert.deepEqual(hosts.sort(), [".chatgpt.com", ".openai.com", "accounts.google.com"]);
+  for (const bad of [".mybank.example", ".claude.ai"]) {
     assert.ok(!hosts.includes(bad), `${bad} KHÔNG được nằm trong profile của zemory`);
   }
 });
