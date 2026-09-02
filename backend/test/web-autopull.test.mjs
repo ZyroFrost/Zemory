@@ -11,7 +11,7 @@
 //      chết trông y hệt một nguồn chưa tới lượt — đúng "vỏ rỗng" mà `02_RULES` cấm.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -449,4 +449,64 @@ test("borrowCookies: nguồn không có phiên ⇒ TỪ CHỐI kèm lý do thậ
   assert.equal(ok.ok, true, ok.error ?? "");
   assert.equal(ok.kept, 2, "giữ đúng cookie của nền");
   assert.equal(ok.dropped, 1, "cookie site khác phải bị vứt — mượn MỘT site, không mượn cả jar");
+});
+
+// ── ⑩ ĐỔI HÃNG KHỨ HỒI: bản dời-sang-bên phải TRẢ VỀ được ────────────────────────────────
+// User chốt 2026-09-02 (*"phải mở lên nhận được dù có đang mở brave"*). Đo 01–02/09: Windows đổi
+// mặc định Brave → Edge → Brave trong MỘT ngày; mỗi cú đổi, luật "máy mặc định thắng" dời profile
+// sang bên và tạo mới tinh ⇒ 4 khe mất phiên hai lần dù MỌI bản dời còn nguyên trên đĩa. Đối xứng
+// còn thiếu: quay về hãng cũ thì trả bản bak mới nhất CÓ PHIÊN của đúng hãng đó về làm profile sống.
+const { restoreShelvedSession } = await import("../../dist/memory/scanweb.js");
+const { jarHasSession } = await import("../../dist/memory/borrowcookies.js");
+
+/** Profile zemory giả: jar cookie với đúng các hàng cho trước. */
+function profileJar(dir, rows) {
+  mkdirSync(join(dir, "Default", "Network"), { recursive: true });
+  const db = new Database(join(dir, "Default", "Network", "Cookies"));
+  db.exec("CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT)");
+  const ins = db.prepare("INSERT INTO cookies (host_key, name, value) VALUES (?,?,'x')");
+  for (const [host, name] of rows) ins.run(host, name);
+  db.close();
+}
+const jarOf = (dir) => join(dir, "Default", "Network", "Cookies");
+
+test("khôi phục: bản bak CÙNG HÃNG mới nhất CÓ PHIÊN được trả về; vỏ rỗng mới hơn bị bỏ qua", () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-restore-"));
+  const live = join(root, "chatgpt");
+  profileJar(live, [["chatgpt.com", "oai-did"]]); // vỏ: có cookie rác, KHÔNG có phiên
+  profileJar(join(root, "chatgpt.brave-bak-111"), [["chatgpt.com", "__Secure-next-auth.session-token"]]);
+  profileJar(join(root, "chatgpt.brave-bak-222"), [["chatgpt.com", "oai-did"]]); // vỏ MỚI HƠN — bẫy
+
+  assert.equal(restoreShelvedSession(live, "C:\\x\\brave.exe", "chatgpt"), true);
+  assert.equal(jarHasSession(jarOf(live), "chatgpt"), true, "profile sống phải mang phiên từ bản bak về");
+  const baks = readdirSync(root).filter((n) => /brave-bak-/.test(n));
+  assert.equal(baks.length, 2, `vỏ 222 giữ nguyên + vỏ sống cũ được dời sang bên (không xoá gì): ${baks.join(" | ")}`);
+  assert.ok(baks.includes("chatgpt.brave-bak-222"), "vỏ rỗng không được lấy làm phiên — đổi vỏ lấy vỏ là vô nghĩa");
+});
+
+test("khôi phục KHÔNG nổ khi: profile sống ĐANG có phiên · bak khác hãng (ABE) · không có bak", () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-restore-"));
+  const live = join(root, "chatgpt");
+  profileJar(live, [["chatgpt.com", "__Secure-next-auth.session-token"], ["chatgpt.com", "keep-me"]]);
+  profileJar(join(root, "chatgpt.brave-bak-111"), [["chatgpt.com", "__Secure-next-auth.session-token"]]);
+  assert.equal(restoreShelvedSession(live, "C:\\x\\brave.exe", "chatgpt"), false, "có phiên rồi thì TUYỆT ĐỐI không đụng");
+  const db = new Database(jarOf(live), { readonly: true });
+  const n = db.prepare("SELECT COUNT(1) n FROM cookies WHERE name='keep-me'").get().n;
+  db.close();
+  assert.equal(n, 1, "jar sống phải còn nguyên");
+
+  const live2 = join(root, "claude");
+  profileJar(live2, [["claude.ai", "cf_clearance"]]);
+  profileJar(join(root, "claude.msedge-bak-111"), [["claude.ai", "sessionKey"]]);
+  assert.equal(restoreShelvedSession(live2, "C:\\x\\brave.exe", "claude"), false, "cookie hãng khác không giải mã được (ABE) — không trả về");
+
+  const live3 = join(root, "chatgpt-2");
+  profileJar(live3, [["chatgpt.com", "oai-did"]]);
+  assert.equal(restoreShelvedSession(live3, "C:\\x\\brave.exe", "chatgpt"), false, "không có bak thì thôi, không ném");
+});
+
+test("khôi phục được NỐI vào cả hai đường spawn — thiếu một đường là lỗ đúng nửa số lượt mở", () => {
+  const sw = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
+  const wired = (sw.match(/restoreShelvedSession\(profileDir, exe, p\.key/g) || []).length;
+  assert.equal(wired, 2, "cả nhánh relaunch lẫn nhánh mở-lạnh đều phải gọi khôi phục");
 });
