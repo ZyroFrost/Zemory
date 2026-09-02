@@ -58,9 +58,34 @@ nhiêu để biết là nén"* ⇒ **badge hiện % CỘNG DỒN trên cửa s�
 
 MỘT con số, cả cột so sánh được, và nó **tự nói**: vượt 100% nghĩa là đã nén. Phiên chưa nén thì
 `totalTokens === tokens` nên badge **không đổi gì** — đó là ca phổ biến (đo 40 phiên, **chỉ 2** từng nén).
-🔴 **MÀU vẫn lấy theo chu kỳ HIỆN TẠI**, không theo % cộng dồn: màu là cảnh báo *"sắp bị nén"*, còn %
-cộng dồn là thước đo *độ lớn*. Trộn hai thứ thì phiên nén 3 lần lúc nào cũng đỏ dù hiện tại mới 50%,
-và cảnh báo mất nghĩa. Có cổng riêng canh đúng vế này.
+🔴 **MÀU: vượt 100% LUÔN ĐỎ** (user chốt: *"vượt 100% thì phải màu đỏ mới đúng"*) — đã vượt trọn một
+cửa sổ nghĩa là phiên **đã bị nén ít nhất một lần**, sự thật đó đắt hơn mọi ngưỡng và phải đọc được
+ngay từ MÀU chứ không bắt người ta đọc số. Dưới 100% vẫn theo **đúng ngưỡng user đặt** (đỏ ≥ ngưỡng ·
+cam ≥ ngưỡng−10 · xanh còn lại) — không đẻ ngưỡng thứ hai.
+⚠ **Một cổng của tôi LỌT đột biến ở lượt này, ghi lại:** phép `/pct>=w/` khớp NHẦM vào `pct>=w-10`,
+nên đột biến *"bỏ hẳn nhánh đỏ theo ngưỡng"* vẫn xanh. Siết thành `/pct>=w(?![w-])/` mới bắt được.
+Bài học cũ lặp lại: một phép soi CHỮ mà không kiểm bằng đột biến thì không biết nó có soi gì không.
+
+### Cửa sổ trình duyệt bỏ lại — 3 icon Edge trên taskbar (user bắt, kèm ảnh)
+
+**Không phải do tôi restart daemon.** Daemon khởi động lần cuối `01/09 19:47Z`; ba cửa sổ mở lúc
+`02/09 02:14–02:19Z` — **6,5 giờ sau**, tức nhịp web 20′ tự chạy. Nguyên nhân MỞ là đúng thiết kế:
+trình duyệt mặc định của máy đổi **Brave → Edge**, nên `borrowCookies` dời profile sang bên và mở cửa
+sổ đăng nhập lại (có báo ra log).
+
+**Lỗi thật là chúng KHÔNG ĐÓNG ĐƯỢC.** `closeBrowserTree` dùng `execFileSync` trần **8 giây** và
+ETIMEDOUT thật: `taskkill /T /F` phải dọn cây Edge **34 tiến trình**. Log có đúng 3 lần
+`spawnSync taskkill ETIMEDOUT` (02:15 · 02:18 · 02:23) và **pid 20512 · 25144 khớp chính xác** hai cửa
+sổ còn trên taskbar. Mỗi lượt web gặp `need-login` bỏ lại thêm một cửa sổ, không có gì dọn.
+
+**Vá ba vế:** ① `execFileSync` → `execFile` **bất đồng bộ** — bản cũ còn chặn event loop daemon 8 s
+mỗi lần, nên nới trần mà vẫn sync là biến một lỗi rác thành một lỗi treo · ② trần **8 s → 30 s** ·
+③ **thử lại một lần** (taskkill trượt lần đầu lúc trình duyệt đang bận ghi profile là chuyện thường).
+Vẫn fail-open: hết cách thì ghi log, không ném — đóng cửa sổ là dọn dẹp, không được làm hỏng lượt kéo
+đã thành công. Cổng 3 ca, đột biến **3/3 ĐỎ** (trả về trần 8000 · bỏ thử lại · trả về `execFileSync`).
+
+⚠ **KHÔNG tự đóng 3 cửa sổ đang treo:** cả ba là trang **"Sign in"**, và 3 khe web đó đang `need-login`
+— user đăng nhập vào đó thì chúng sống lại; đóng đi là lấy mất cơ hội đó.
 
 Nguồn số là `compactMetadata.preTokens` của bản ghi `compact_boundary` (~1M mỗi lần ⇒ phiên đầy gần
 TRỌN cửa sổ trước mỗi lần nén). 🔴 Phải **QUÉT TĂNG DẦN**: bản ghi nằm RẢI khắp file nên không đọc

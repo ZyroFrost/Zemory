@@ -55,28 +55,25 @@
     if(typeof c.percent!=='number')return '';
     var pct=Math.round(c.percent);
     var w=(typeof warnPct==='number'?warnPct:c.threshold)||90;
-    // Mau lay DUNG nguong nguoi dung dat — khong de nguong thu hai, de badge va hook luon
-    // noi cung mot cau.
-    // Xam khong thay gi tren nen toi (user chot 2026-09-02) => dung XANH cho muc an toan.
-    // Cam va do giu NGUYEN.
-    var col=pct>=w?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--success)');
+    var nc=c.compactions||0;
+    var tot=c.totalTokens||c.tokens;
+    // % CONG DON tren cua so: VUOT 100% chinh la dau hieu da nen (user chot 2026-09-02 — "kieu
+    // la vuot 100% chinh xac bao nhieu de biet la nen"). Mot con so duy nhat, ca cot so sanh
+    // duoc, va no tu noi: 136% = da nen 1 lan · 352% = da nen 3 lan. Phien CHUA nen thi
+    // totalTokens == tokens nen so nay TRUNG voi % hien tai — badge khong doi gi.
+    var totalPct=c.window?Math.round(100*tot/c.window):pct;
+    // Mau lay DUNG nguong nguoi dung dat — khong de nguong thu hai, de badge va hook luon noi
+    // cung mot cau. Xam khong thay gi tren nen toi (user chot) => XANH cho muc an toan.
+    // RIENG >=100% thi LUON DO (user chot 2026-09-02: "vuot 100% thi phai mau do moi dung"):
+    // da vuot tron mot cua so nghia la phien DA BI NEN it nhat mot lan — su that do dat hon moi
+    // nguong, va no phai doc duoc ngay tu MAU chu khong bat nguoi ta doc so.
+    var col=(totalPct>=100||pct>=w)?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--success)');
     // Phien con ghi so trong 15 phut = DANG CHAY (dot dac, "dang la bay nhieu"); cu hon = DA
     // DONG (dot rong, "ket thuc o muc do"). Hai thu khac nghia, khong duoc hien giong nhau.
     var live=c.at&&(Date.now()-Date.parse(c.at))<15*60*1000;
     var tip=t('ctx.measuredT')+' — '+(live?t('ctx.liveT'):t('ctx.doneT'))+(pct>=w?' '+t('ctx.overT'):'');
-    // DA NEN => % chi noi ve CHU KY hien tai, khong noi duoc do lon phien. Nen phan chinh doi
-    // sang TONG da tieu + so lan nen; % van con trong tooltip. Chua nen thi giu nguyen % (ca
-    // pho bien: do 40 phien that, chi 2 tung nen).
-    // % CONG DON tren cua so: VUOT 100% chinh la dau hieu da nen (user chot 2026-09-02 — "kieu
-    // la vuot 100% chinh xac bao nhieu de biet la nen"). Mot con so duy nhat, ca cot so sanh duoc,
-    // va no tu noi: 136% = da nen 1 lan · 352% = da nen 3 lan. Phien CHUA nen thi totalTokens ==
-    // tokens nen so nay TRUNG voi % hien tai — badge khong doi gi.
-    var nc=c.compactions||0;
-    var tot=c.totalTokens||c.tokens;
-    var totalPct=c.window?Math.round(100*tot/c.window):pct;
     if(nc>0){
-      // Mau van lay theo CHU KY HIEN TAI, khong theo % cong don: mau la canh bao "sap bi nen",
-      // con % cong don la thuoc do DO LON. Tron hai thu lam ca hai het nghia.
+      // Tooltip mang con so TONG + so lan nen; badge chi mang % cong don cho gon.
       tip=t('ctx.compactT').replace('{n}',nc).replace('{tot}',zN(tot)).replace('{pct}',pct)+' — '+tip;
       return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+totalPct+'% ⟳'+nc+'</span>';
     }

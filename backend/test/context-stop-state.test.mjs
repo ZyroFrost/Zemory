@@ -310,14 +310,62 @@ test("FE: badge dùng % CỘNG DỒN — vượt 100% chính là dấu hiệu đ
   assert.match(branch, /ctx\.compactT/, "tooltip phải giải thích + mang con số tổng");
 });
 
-test("FE: MÀU lấy theo chu kỳ HIỆN TẠI, không theo % cộng dồn", () => {
-  // Màu là cảnh báo "sắp bị nén" (chu kỳ hiện tại); % cộng dồn là thước đo ĐỘ LỚN. Trộn hai thứ
-  // thì một phiên đã nén 3 lần lúc nào cũng đỏ dù hiện tại mới 50% — cảnh báo mất nghĩa.
+test("FE: MÀU — vượt 100% LUÔN ĐỎ, dưới đó theo ngưỡng của chu kỳ hiện tại", () => {
+  // User chốt 2026-09-02: *"vượt 100% thì phải màu đỏ mới đúng"*. Đã vượt trọn một cửa sổ nghĩa
+  // là phiên ĐÃ BỊ NÉN ít nhất một lần — sự thật đó đắt hơn mọi ngưỡng, và nó phải đọc được ngay
+  // từ MÀU chứ không bắt người ta đọc số.
+  // Dưới 100% thì màu vẫn theo NGƯỠNG NGƯỜI DÙNG ĐẶT trên chu kỳ hiện tại — đó là cảnh báo
+  // "sắp bị nén", và nó phải khớp đúng con số trong Settings, không đẻ ngưỡng thứ hai.
   const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
   const i = FE.indexOf("function ctxBadge");
   const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
   const colLine = /var col=([^;]+);/.exec(branch);
   assert.ok(colLine, "phải có dòng tính màu");
-  assert.match(colLine[1], /\bpct\b/, "màu phải dùng pct (chu kỳ hiện tại)");
-  assert.ok(!/totalPct/.test(colLine[1]), "màu KHÔNG được dùng % cộng dồn");
+  const expr = colLine[1];
+  assert.match(expr, /totalPct\s*>=\s*100/, "vượt 100% phải vào nhánh đỏ");
+  assert.match(expr, /var\(--danger\)/, "phải có đỏ");
+  assert.match(expr, /var\(--warn\)/, "cam giữ nguyên");
+  assert.match(expr, /var\(--success\)/, "xanh cho mức an toàn");
+  // `w-10` cũng chứa `w` nên phép ngây thơ /pct>=w/ khớp NHẦM vào nhánh CAM — đo được bằng
+  // đột biến "bỏ so với ngưỡng": nó LỌT. Phải đòi `w` đứng MỘT MÌNH (không `-10` theo sau).
+  assert.match(expr, /pcts*>=s*w(?![w-])/, "dưới 100% vẫn phải so ĐỎ với ngưỡng người dùng đặt");
+  // `totalPct` phải được tính TRƯỚC dòng màu — nếu nằm sau thì màu đọc undefined và mọi phiên
+  // đã nén lặng lẽ rơi về nhánh xanh, đúng thứ lượt này sinh ra để sửa.
+  const iTotal = branch.indexOf("var totalPct=");
+  const iCol = branch.indexOf("var col=");
+  assert.ok(iTotal > 0 && iTotal < iCol, "totalPct phải được tính trước khi dùng để chọn màu");
+});
+
+// ── Đóng cửa sổ trình duyệt ngầm (bug user bắt 2026-09-02, kèm ảnh 3 icon Edge) ───────────
+// `closeBrowserTree` cũ dùng `execFileSync` trần 8 s và ETIMEDOUT THẬT: `taskkill /T /F` phải dọn
+// cây Edge 34 tiến trình. Log chứng minh 3 lần liên tiếp `spawnSync taskkill ETIMEDOUT` ở 02:15 ·
+// 02:18 · 02:23 — đúng 3 cửa sổ còn nằm lại trên taskbar. Mỗi lượt web gặp `need-login` bỏ lại
+// thêm một cửa sổ, không có gì dọn.
+const SW = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
+
+test("closeBrowserTree: BẤT ĐỒNG BỘ — không khoá event loop daemon", () => {
+  const i = SW.indexOf("async function closeBrowserTree");
+  assert.ok(i > 0, "phải là async: bản sync chặn daemon 8s mỗi lần đóng");
+  const fn = SW.slice(i, SW.indexOf("\n}", i));
+  assert.ok(!/execFileSync\(/.test(fn), "KHÔNG được dùng execFileSync — nới trần mà vẫn sync là biến lỗi rác thành lỗi treo");
+  assert.match(fn, /execFile\(/, "phải dùng execFile bất đồng bộ");
+  assert.match(SW, /await closeBrowserTree\(/, "nơi gọi phải await, không thì tiến trình thoát trước khi giết xong");
+});
+
+test("closeBrowserTree: trần ĐỦ LỚN + THỬ LẠI một lần", () => {
+  const i = SW.indexOf("async function closeBrowserTree");
+  const fn = SW.slice(i, SW.indexOf("\n}\n", i));
+  const m = /timeout:\s*([\d_]+)/.exec(fn);
+  assert.ok(m, "phải có trần thời gian");
+  const ms = Number(String(m[1]).replace(/_/g, ""));
+  assert.ok(ms >= 20_000, `trần phải đủ cho cây 34 tiến trình, thấy ${ms} ms (bản cũ 8000 đã ETIMEDOUT thật)`);
+  // Thử lại: `taskkill` trượt lần đầu lúc trình duyệt đang bận ghi profile là chuyện thường.
+  assert.match(fn, /await kill\(\)[\s\S]*await kill\(\)/, "phải thử lại một lần trước khi chịu thua");
+});
+
+test("closeBrowserTree: vẫn FAIL-OPEN — hết cách thì ghi log, không ném (điều 9)", () => {
+  const i = SW.indexOf("async function closeBrowserTree");
+  const fn = SW.slice(i, SW.indexOf("\n}\n", i));
+  assert.match(fn, /không đóng được cửa sổ ngầm/, "phải ghi log nêu rõ pid + lý do");
+  assert.ok(!/throw /.test(fn), "đóng cửa sổ là dọn dẹp — không được làm hỏng lượt kéo đã thành công");
 });

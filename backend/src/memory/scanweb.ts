@@ -9,7 +9,7 @@
 // Runs the fetches INSIDE the real browser tab (via Runtime.evaluate), so they
 // carry the live session and pass Cloudflare — a plain Node fetch is blocked.
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { createServer as createNetServer } from "node:net";
 import { hostname } from "node:os";
@@ -1027,22 +1027,55 @@ async function scanWebOnce(opts: ScanWebOptions, log: (msg: string) => void): Pr
   try {
     return await scanWebInner(opts, log, owned);
   } finally {
-    if (opts.hidden && owned.pid) closeBrowserTree(owned.pid, log);
+    if (opts.hidden && owned.pid) await closeBrowserTree(owned.pid, log);
   }
 }
 
-/** Đóng cây tiến trình trình duyệt đã mở ngầm. Fail-open: đóng không được thì chỉ ghi log. */
-function closeBrowserTree(pid: number, log: (msg: string) => void): void {
-  try {
-    if (process.platform === "win32") {
+/**
+ * Đóng cây tiến trình trình duyệt đã mở ngầm. Fail-open: đóng không được thì chỉ ghi log.
+ *
+ * 🔴 CỬA SỔ BỎ LẠI LÀ RÁC NGƯỜI DÙNG NHÌN THẤY (bug user bắt 2026-09-02, kèm ảnh thanh taskbar
+ * có 3 icon Edge). Bản cũ dùng `execFileSync` với trần **8 giây** và nó ETIMEDOUT thật: đo trên
+ * máy này `taskkill /T /F` phải dọn cây Edge **34 tiến trình**, 8 s không đủ. Log chứng minh —
+ * 3 lần liên tiếp `spawnSync taskkill ETIMEDOUT` ở 02:15 · 02:18 · 02:23, đúng 3 cửa sổ còn nằm
+ * lại. Mỗi lượt web gặp `need-login` là bỏ lại thêm một cửa sổ, không có gì dọn.
+ *
+ * Ba thay đổi, mỗi cái trị một vế:
+ *  ① **BẤT ĐỒNG BỘ** (`execFile` thay `execFileSync`) — bản cũ chặn event loop của daemon suốt
+ *     8 giây mỗi lần; nới trần mà vẫn đồng bộ là biến một lỗi rác thành một lỗi treo.
+ *  ② **Trần 30 s** thay 8 s — đủ cho cây tiến trình lớn.
+ *  ③ **THỬ LẠI một lần** rồi mới chịu thua: `taskkill` trượt lần đầu lúc trình duyệt đang bận
+ *     ghi profile là chuyện thường, và lần hai gần như luôn ăn.
+ * Vẫn fail-open: hết cách thì ghi log rõ ràng chứ không ném — đóng cửa sổ là việc dọn dẹp, không
+ * được phép làm hỏng lượt kéo đã thành công.
+ */
+async function closeBrowserTree(pid: number, log: (msg: string) => void): Promise<void> {
+  const kill = (): Promise<void> =>
+    new Promise((resolve, reject) => {
+      if (process.platform !== "win32") {
+        try {
+          process.kill(-pid, "SIGTERM");
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+        return;
+      }
       // Chrome đẻ một cây tiến trình con (renderer/gpu/utility) — giết mỗi tiến trình cha
       // để lại cả đàn con mồ côi. `/T` mới dọn hết.
-      execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", timeout: 8000 });
-    } else {
-      process.kill(-pid, "SIGTERM");
+      execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { timeout: 30_000 }, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  try {
+    await kill();
+  } catch {
+    try {
+      await kill(); // lần hai: trượt lần đầu lúc trình duyệt đang bận ghi profile là chuyện thường
+    } catch (e) {
+      log(`  không đóng được cửa sổ ngầm (pid ${pid}): ${e instanceof Error ? e.message.slice(0, 80) : e}`);
     }
-  } catch (e) {
-    log(`  không đóng được cửa sổ ngầm (pid ${pid}): ${e instanceof Error ? e.message.slice(0, 80) : e}`);
   }
 }
 
