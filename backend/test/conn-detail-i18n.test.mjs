@@ -17,7 +17,11 @@ import { readFileSync } from "node:fs";
 
 import { listConnections } from "../../dist/memory/connections.js";
 
-const CODES = new Set(["lastChecked", "neverChecked", "storePath", "storeGone", "noStore"]);
+// `needLogin` thêm 2026-09-02: khe web mất phiên (máy đổi trình duyệt mặc định) — bề mặt phải
+// nói MẤT KẾT NỐI kèm việc phải làm, vì vòng tự kéo đã thôi đụng khe đó (máy không được tự bật
+// khung đăng nhập). Cổng này bắt được ngay lượt thêm mã: mã mới mà quên khai ⇒ UI rơi về câu
+// tiếng Việt ghép sẵn ở server, đúng thứ nó sinh ra để chặn.
+const CODES = new Set(["lastChecked", "neverChecked", "needLogin", "storePath", "storeGone", "noStore"]);
 
 test("mọi dòng Liên kết đều mang detailCode hợp lệ", () => {
   const rows = listConnections();
@@ -56,7 +60,10 @@ test("UI phải ĐỌC mã, không in thẳng detail của server", () => {
 test("cả hai dict có đủ key của bảng Liên kết", () => {
   const dict = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   const en = dict.indexOf("en:{");
-  for (const k of ["conn.lastChecked", "conn.storeGone", "conn.noStore", "conn.unknown"]) {
+  // ⚠ Danh sách CỨNG ⇒ khoá mới mà quên khai ở đây là điểm mù IM LẶNG. Đo 2026-09-02: thêm
+  // `conn.needLogin` xong cổng vẫn xanh vì nó không nằm trong danh sách. Thêm khoá mới thì thêm
+  // vào đây, hoặc đổi phép này thành quét mọi `conn.*` mà `connDetail` thật sự dùng.
+  for (const k of ["conn.lastChecked", "conn.storeGone", "conn.noStore", "conn.unknown", "conn.needLogin"]) {
     assert.ok(dict.slice(0, en).includes(`'${k}'`), `dict vi thiếu ${k}`);
     assert.ok(dict.slice(en).includes(`'${k}'`), `dict en thiếu ${k}`);
   }
