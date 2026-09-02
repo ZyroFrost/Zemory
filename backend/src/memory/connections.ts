@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { currentMemoryDir, openMemory } from "./db.js";
 import { allAdapters } from "./adapters/index.js";
 import { findBorrowSource } from "./borrowcookies.js";
-import { accountsOf } from "./webslots.js";
+import { accountsOf, webLaneLinked } from "./webslots.js";
 import { getWebAuth, getWebPull } from "../config/settings.js";
 
 export interface ConnectionRow {
@@ -132,12 +132,9 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
         const key = acct === "main" ? web.platform : `${web.platform}#${acct}`;
         const st = auth[key];
         const pl = pull[key];
-        // Lượt KÉO gần nhất nói `need-login` và nó MỚI HƠN lượt kiểm ⇒ khe đang MẤT KẾT NỐI,
-        // bất kể `webAuth` còn nói gì. So mốc chứ không ưu tiên cứng một nguồn: một lượt kiểm
-        // vừa chạy xong PHẢI thắng một lượt kéo hỏng từ hôm kia.
-        const lostAt = pl && pl.ok === false && pl.status === "need-login" ? Date.parse(pl.at) : NaN;
-        const checkedAt = st ? Date.parse(st.at) : NaN;
-        const lost = Number.isFinite(lostAt) && (!Number.isFinite(checkedAt) || lostAt > checkedAt);
+        // MỘT hàm dùng chung với cây Nguồn (`webLaneLinked`) — nguồn TRÙNG thì sớm muộn cũng
+        // lệch, và nó đã lệch thật một lượt trong ngày (xem chú thích ở `webLaneLinked`).
+        const lost = webLaneLinked(st, pl) === false;
         out.push({
           source,
           label: acct === "main" ? web.label : `${web.label} · tài khoản ${acct}`,

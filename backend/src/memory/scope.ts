@@ -9,7 +9,7 @@ import { hostname } from "node:os";
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { allAdapters } from "./adapters/index.js";
 import { getScopeExclude, getWebAuth, getWebPull, type ScopeLane } from "../config/settings.js";
-import { accountsOf, isEmail, slotOfIdentity } from "./webslots.js";
+import { accountsOf, isEmail, slotOfIdentity, webLaneLinked } from "./webslots.js";
 import { findBorrowSource } from "./borrowcookies.js";
 import { type ConnectionRow, listConnections } from "./connections.js";
 
@@ -550,11 +550,11 @@ function webHealth(
   const last = mine.map(([, v]) => v).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0];
   const staleDays = newest ? Math.floor((Date.now() - Date.parse(newest)) / 86_400_000) : undefined;
 
-  // ĐÃ NỐI chưa — đọc từ cùng sổ mà bảng "Liên kết" vẫn đọc (`webAuth`), để hai bề mặt
-  // KHÔNG BAO GIỜ nói khác nhau. Chưa kiểm lần nào ⇒ `null`, không phải `false`: "chưa biết"
-  // và "biết là đứt" là hai câu khác nhau, và chỉ câu sau mới đáng bày nút nối lại màu cảnh báo.
+  // ĐÃ NỐI chưa — qua ĐÚNG MỘT hàm dùng chung với bảng "Liên kết" (`webLaneLinked`), để hai
+  // bề mặt KHÔNG BAO GIỜ nói khác nhau. Trước 2026-09-02 mỗi bên tự đọc `webAuth` và chúng đã
+  // lệch thật: hộp chi tiết hiện `Link: linked` ngay trên `Last pull: need-login`.
   const auth = slot ? getWebAuth()[slot] : undefined;
-  const linked = auth ? auth.ok === true : null;
+  const linked = webLaneLinked(auth, slot ? pull[slot] : undefined);
   // `account` trả về cho nút nối lại: khe thật khi đã tra được, danh tính khi chỉ biết email.
   const acct = slotName === "" || slotName === undefined || slotName === null ? "main" : slotName;
 
