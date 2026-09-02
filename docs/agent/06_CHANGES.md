@@ -5,6 +5,42 @@
 
 ---
 
+## [2026-09-02g] — vòng dọn sắp xoá ĐÚNG phiên đăng nhập cuối cùng: chặn lại trước 40 giờ
+
+**Audit tìm ra một mất dữ liệu CÓ HẸN GIỜ.** Vòng thu hồi profile (`[2026-08-31d]`) quyết định bằng
+TUỔI, mà tuổi là proxy tệ cho GIÁ TRỊ: cùng 122 MB, một bản giữ phiên đăng nhập cuối cùng của một
+khe, một bản rỗng ruột. Đo trên đĩa thật (17 bản app tạo · 1.488 MB):
+
+| bản | phiên | khe SỐNG | luật cũ |
+|---|---|---|---|
+| `chatgpt.msedge-bak-1787976590023` | **có** | **không** (khe signed-out) | xoá sau ~40 h |
+| `claude-3.msedge-bak-1787905538196` | **có** | **khe không còn tồn tại** | xoá sau ~44 h |
+| `claude.msedge-bak-1787906707220` (505 MB) | có | **có** (vừa hồi) | xoá — ĐÚNG, bản dư |
+
+Hai bản đầu là đường về DUY NHẤT của khe đó; mất là người dùng phải đăng nhập tay. Tức vòng dọn
+rác biến thành vòng mất dữ liệu — đúng thứ `[2026-08-31d]` đã rút thành luật rồi vẫn tái diễn theo
+một trục khác. Bản `chatgpt` chính là phiên `05_TODO` đang ghi là cần để khe đó hồi.
+
+**Vá — chính sách ④ "đường về cuối cùng thì không xoá, bất kể tuổi":** bản CÓ phiên
+(`jarHasSession === true`) mà khe sống KHÔNG chứng minh được là đang có phiên ⇒ **giữ**. Hướng an
+toàn MỘT CHIỀU: chỉ giữ thêm, không bao giờ xoá thêm, nên tự nó không thể đẻ mất mát. Khe live đăng
+nhập lại ⇒ bản cũ thành dư ⇒ hết bảo vệ, rơi về cửa sổ 7 ngày như trước. Nghiêm ngặt `=== true` ở vế
+bản dời (để bề mặt dựng entry tay không bật bảo vệ tràn lan) nhưng LỎNG `!== true` ở vế khe sống
+(chưa chứng minh được thì cứ giữ). Kèm `slotOfSetAside`/`platformOfSlot` — dạng mất-dấu-chấm đời cũ
+trả `null` thay vì đoán bừa, và `sweepBrowserProfiles` nay **đếm ra** số bản được giữ (`protected`):
+một bản quá hạn mà không bị xoá là chuyện người đọc log CẦN biết.
+
+**Kèm sửa một dòng help NÓI SAI:** `status.ts` khẳng định *"Không dòng code nào lấy lại bản dời"* —
+sai từ lúc `restoreShelvedSession` ship cùng ngày (`[2026-09-02c]`). Bản dời không còn là
+"rác-từ-lúc-sinh"; nó là bản lùi có giá trị.
+
+**Cổng:** `reclaim-sweep.test.mjs` 5 → 10 ca, gồm **7 ca ÂM** (khe sống miễn nhiễm mọi ngưỡng ·
+`null`/`undefined` không được coi là có phiên · khe live đã có phiên thì bản cũ hết bảo vệ · parse
+khe trả null thay vì đoán) + 1 ca ĐĨA THẬT với jar SQLite thật ở ngưỡng 0. **Đột biến: 4 ĐỎ**
+(gồm *trả về đúng code cũ*) **+ 1 XANH có chủ đích** (đổi thứ tự hai phép tương đương nghĩa — ghi
+ra để không ai tưởng cổng canh cú pháp). Nghiệm thu đĩa thật: đúng **2** bản được bảo vệ, `claude`
+505 MB không được bảo vệ (đúng ý), `would reclaim NOW = 0`.
+
 ## [2026-09-02f] — audit bắt được 3 lỗi do CHÍNH bản vá SSO đẻ ra, + 1 bug chữ lòi ra màn hình
 
 **Lượt audit gọi `/connections` THẬT sau khi ship `[2026-09-02d]` và thấy khe chatgpt lại hiện
