@@ -339,7 +339,7 @@ export function buildCodeGraph(root: string): CodeGraph {
   // `orphans` = 0 cạnh VÀ đã đo được cạnh. Node ngôn ngữ mở rộng chưa có parser import thì
   // "0 cạnh" là giới hạn phép đo — gọi nó mồ côi là bề mặt nói dối (cùng lý do fitness loại
   // chúng khỏi isolated_pct; hai bề mặt phải nói MỘT câu, lệch nhau là đọc sai một chỗ).
-  const orphans = nodes.filter((n) => !n.noImportLayer && n.fanIn === 0 && n.fanOut === 0).map((n) => n.id);
+  const orphans = nodes.filter((n) => countsForImportHealth(n) && n.fanIn === 0 && n.fanOut === 0).map((n) => n.id);
   const slots = new Set(nodes.map((n) => n.slot).filter(Boolean));
   const bytes = nodes.reduce((n, x) => n + x.bytes, 0);
   return { root, nodes, edges, orphans, stats: { files: nodes.length, edges: edges.length, slots: slots.size, bytes } };
@@ -418,6 +418,22 @@ export const ISOLATED_MIN_COUNT = 3;
  * gọi". Chấp nhận được vì trình chạy test quét cả thư mục và script được gọi từ `package.json`
  * hoặc bằng tay — còn module chết thì KHÔNG có cơ chế nào khác bắt.
  */
+/**
+ * Node này có nằm trong DIỆN ĐO sức khoẻ lớp import không — dùng CHUNG cho `orphans` VÀ
+ * `isolated_pct`.
+ *
+ * 🔴 MỘT phép cho HAI bề mặt, vì bất biến đã ghi ngay tại `orphans` (và ở `plan/13 §9`):
+ * *"hai bề mặt phải nói MỘT câu, lệch nhau là đọc sai một chỗ"*. Bản đầu của phép loại lớp
+ * điểm-vào (2026-09-02) chỉ áp cho `graphFitness` và QUÊN `orphans` ⇒ cùng một file test vừa bị
+ * loại khỏi `isolated_pct` vừa nằm trong `orphans`, mà `orphans` hiện lên UI thật (bộ lọc
+ * "chỉ orphan" + số đếm ở `graph-render.js`) ⇒ UI báo ~82 mồ côi trong khi cổng nói 1. Đúng lỗi
+ * "vá một bề mặt, quên bề mặt kia" đã trả giá cùng ngày ở `webLaneLinked`. Nguồn TRÙNG thì sớm
+ * muộn cũng lệch; một hàm thì không.
+ */
+export function countsForImportHealth(n: { id: string; noImportLayer?: boolean }): boolean {
+  return !n.noImportLayer && !isEntryClassFile(n.id);
+}
+
 export function isEntryClassFile(id: string): boolean {
   const p = id.replace(/\\/g, "/").toLowerCase();
   return (
@@ -460,8 +476,8 @@ export function graphFitness(g: CodeGraph): GraphFitness {
   // vào là mở thêm một ngôn ngữ đỏ oan một lần (đo: 29,4/30% trước khi mở).
   // …và KHÔNG tính lớp ĐIỂM VÀO (2026-09-02, user chốt): xem `isEntryClassFile`. Trước bản này
   // 65 file test + 17 script chiếm 82/88 "cô lập", tức cổng đo SỐ FILE TEST chứ không đo code chết.
-  const excluded = g.nodes.filter((n) => n.noImportLayer || isEntryClassFile(n.id));
-  const eligible = g.nodes.filter((n) => !n.noImportLayer && !isEntryClassFile(n.id));
+  const excluded = g.nodes.filter((n) => !countsForImportHealth(n));
+  const eligible = g.nodes.filter((n) => countsForImportHealth(n));
   const isolated = eligible.filter((n) => n.fanIn === 0 && n.fanOut === 0);
   const isolatedPct = eligible.length ? Math.round((isolated.length / eligible.length) * 1000) / 10 : 0;
 

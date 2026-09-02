@@ -79,4 +79,40 @@ test("⑤ orphans và isolated_pct phải nói MỘT câu — node chưa có l�
   for (const f of extra) assert.ok(!g.orphans.includes(f), `${f} không được nằm trong orphans`);
   const iso = graphFitness(g).metrics.find((m) => m.metric === "isolated_pct");
   assert.equal(iso.value, 0, "hai bề mặt phải khớp: orphans rỗng thì isolated cũng 0%");
+
+});
+
+// ⚠ TÁI DIỄN 2026-09-02, hạng KHÁC: phép loại LỚP ĐIỂM VÀO (test/script/hook/template/config) được
+// thêm vào `graphFitness` mà QUÊN `orphans` ⇒ cùng một file test vừa bị loại khỏi `isolated_pct`
+// vừa nằm trong `orphans`, mà `orphans` hiện lên UI THẬT (bộ lọc "chỉ orphan" + số đếm ở
+// `graph-render.js`). Nay cả hai đi qua MỘT phép `countsForImportHealth`.
+//
+// 🔴 Bản ĐẦU của ca này là TRANG TRÍ: nó dựng graph GIẢ bằng cách chèn node vào `g.nodes`, mà
+// `orphans` được tính TRONG `buildCodeGraph` ⇒ assertion không bao giờ soi tới `orphans`. Đột biến
+// *"trả `orphans` về lọc cũ"* vẫn XANH. Phải dựng REPO THẬT trên đĩa mới đo được cả hai bề mặt.
+test("⑤b lớp ĐIỂM VÀO cũng phải bị loại ở CẢ HAI bề mặt — đo trên repo THẬT, không graph giả", (t) => {
+  const root = tempDir(t, "zemory-entryclass-");
+  mkdirSync(join(root, "backend", "src"), { recursive: true });
+  mkdirSync(join(root, "backend", "test"), { recursive: true });
+  mkdirSync(join(root, "backend", "scripts"), { recursive: true });
+  // Cặp có cạnh import thật (để repo không rỗng cạnh).
+  writeFileSync(join(root, "backend", "src", "a.ts"), 'import { b } from "./b.js";\nexport const a = b;\n');
+  writeFileSync(join(root, "backend", "src", "b.ts"), "export const b = 1;\n");
+  // Lớp ĐIỂM VÀO, 0 cạnh — theo cấu trúc không thể có cạnh import.
+  writeFileSync(join(root, "backend", "test", "x.test.mjs"), "// khong import gi trong project\n");
+  writeFileSync(join(root, "backend", "scripts", "y.mjs"), "// script doc lap\n");
+  writeFileSync(join(root, "eslint.config.js"), "export default [];\n");
+  // Module NGUỒN chết thật — ca ÂM giữ sức cho cổng.
+  writeFileSync(join(root, "backend", "src", "dead.ts"), "export const dead = 1;\n");
+
+  const g2 = buildCodeGraph(root);
+  for (const f of ["backend/test/x.test.mjs", "backend/scripts/y.mjs", "eslint.config.js"]) {
+    assert.ok(g2.nodes.some((n) => n.id === f), `${f} phải là node (nếu không thì ca này không đo gì)`);
+    assert.ok(!g2.orphans.includes(f), `${f} là lớp ĐIỂM VÀO — không được nằm trong orphans (UI đọc số này)`);
+  }
+  assert.ok(g2.orphans.includes("backend/src/dead.ts"), "module nguồn chết PHẢI nằm trong orphans");
+
+  const iso = graphFitness(g2).metrics.find((m) => m.metric === "isolated_pct");
+  assert.match(iso.detail, /backend\/src\/dead\.ts/, "và fitness phải nêu TÊN nó — hai bề mặt nói MỘT câu");
+  assert.equal(iso.detail.includes("x.test.mjs"), false, "fitness không được đếm file test");
 });

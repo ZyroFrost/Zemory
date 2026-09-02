@@ -30,7 +30,19 @@ export interface BackupPolicy {
   keep: number;
 }
 
-export const DEFAULT_BACKUP_POLICY: BackupPolicy = { everyMs: DAY_MS, keep: 5 };
+/**
+ * `keep: 5 → 3` (user chốt 2026-09-02: *"giữ 3 bản thôi"*).
+ *
+ * Vì sao đổi: `keep` là hằng số nhân với KÍCH THƯỚC KHO, mà kho đã lớn gấp ~4,6 lần kể từ lúc số 5
+ * được chọn (595 MB thời rebuild 256d → **2.738 MB** hôm nay). Chốt phiên đo `data/backups` ra
+ * **18,5 GB / 9 file**, trong đó **13,3 GB là 5 bản luân phiên** — đúng chính sách, không phải bug,
+ * nhưng là một khoản phình lặng nằm dưới đường đã gitignore (thứ `02_RULES` gọi tên: *".gitignore là
+ * GIẤU, không phải DỌN"*). 3 bản ≈ 8,2 GB, tức thu về ~5,3 GB và vẫn còn ba thế hệ để lùi.
+ * ⚠ KHÔNG đụng tới file NGƯỜI/AGENT đỗ tay (`premigrate.db` · `premove2-…`, 5,2 GB): `BACKUP_RE`
+ * cố ý chỉ khớp khuôn `memory backup` tự sinh — xoá thứ người ta chủ động lưu là việc của user,
+ * không phải của vòng dọn (bài học `[2026-08-31d]`).
+ */
+export const DEFAULT_BACKUP_POLICY: BackupPolicy = { everyMs: DAY_MS, keep: 3 };
 
 export function backupDir(dbPath: string = currentMemoryDb()): string {
   return join(dbPath.replace(/[/\\][^/\\]+$/, ""), "backups");
