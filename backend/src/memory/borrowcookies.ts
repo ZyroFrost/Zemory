@@ -84,6 +84,36 @@ const PLATFORM_HOSTS: Record<string, string[]> = {
   claude: ["claude.ai", "anthropic.com"],
 };
 
+/**
+ * Cookie NAME that proves a LIVE session (SQL LIKE pattern; names only, values never read).
+ *
+ * 🔴 Why "any cookie counts" was a real bug (user hit it 2026-09-02): Chrome held ONE stray
+ * chatgpt.com cookie, so the UI offered "borrow from Chrome" — while the actual session sat in
+ * Brave, whose locked store was never mentioned. Borrowing the stray cookie produced a signed-out
+ * profile, ChatGPT bounced to Google OAuth, and the user faced an EMPTY login form and rightly
+ * asked why their account was not there. One junk cookie is not a session.
+ *
+ * chatgpt: NextAuth token — chunked variants are `…session-token.0/.1`, hence the trailing `%`.
+ * claude: `sessionKey`. If a platform is missing here the check is skipped (fail-open): better
+ * to offer a maybe-stale borrow than to silently disable the feature on a renamed cookie.
+ */
+const SESSION_COOKIE_LIKE: Record<string, string> = {
+  chatgpt: "__Secure-next-auth.session-token%",
+  claude: "sessionKey",
+};
+
+/** Rows whose NAME marks a live session for this platform. Names only — values are never read. */
+function sessionCount(dbPath: string, hosts: string[], nameLike: string): number {
+  const db = new Database(dbPath, { readonly: true });
+  try {
+    const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
+    const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE name LIKE ? AND (${like})`).get(nameLike, ...hosts.map((h) => `%${h}`)) as { n: number };
+    return row?.n ?? 0;
+  } finally {
+    db.close();
+  }
+}
+
 export interface BorrowResult {
   ok: boolean;
   platform: string;
@@ -138,14 +168,18 @@ export interface BorrowSource {
  * The UI asks this before offering "borrow" — offering a button that then fails with
  * "your browser is signed out too" is worse than not offering it. Counts rows only.
  */
-export function findBorrowSource(platform: string): BorrowSource | null {
+export function findBorrowSource(platform: string, sources?: CookieSource[]): BorrowSource | null {
   const hosts = PLATFORM_HOSTS[platform];
   if (!hosts || !WIN) return null;
-  for (const src of cookieSources()) {
+  const sessionLike = SESSION_COOKIE_LIKE[platform];
+  for (const src of sources ?? cookieSources()) {
     for (const profile of listSourceProfiles(src)) {
       try {
-        const n = hostCounts(join(src.userData, profile, "Network", "Cookies"), hosts);
-        if (n > 0) return { from: src.key, label: src.label, profile, cookies: n };
+        const jar = join(src.userData, profile, "Network", "Cookies");
+        const n = hostCounts(jar, hosts);
+        // "Has cookies" is NOT "is signed in": a jar must hold the SESSION cookie to be offered.
+        // Offering a junk-cookie source sends the user to an empty login form (see SESSION_COOKIE_LIKE).
+        if (n > 0 && (!sessionLike || sessionCount(jar, hosts, sessionLike) > 0)) return { from: src.key, label: src.label, profile, cookies: n };
       } catch {
         // Hồ sơ bị khoá/không đọc được ⇒ thử hồ sơ kế. Việc NÓI RA "đang khoá" là của
         // `borrowBlockedBy` — trộn vào đây thì một giá trị trả về phải mang hai nghĩa.
@@ -173,10 +207,10 @@ export function findBorrowSource(platform: string): BorrowSource | null {
  * lại*. Bản cũ nuốt lỗi và báo 'không có trình duyệt nào còn phiên' — sai, và không chỉ được
  * việc phải làm.
  */
-export function borrowBlockedBy(platform: string): string | null {
+export function borrowBlockedBy(platform: string, sources?: CookieSource[]): string | null {
   const hosts = PLATFORM_HOSTS[platform];
   if (!hosts || !WIN) return null;
-  for (const src of cookieSources()) {
+  for (const src of sources ?? cookieSources()) {
     for (const profile of listSourceProfiles(src)) {
       const p = join(src.userData, profile, "Network", "Cookies");
       try {
@@ -219,6 +253,20 @@ export function borrowCookies(opts: BorrowOptions): BorrowResult {
   }
   if (!available) {
     return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' has no ${hosts[0]} cookies — sign in there first, or pick another --profile` };
+  }
+  // Stray cookies without the session token borrow into a signed-out profile — refuse with the
+  // real reason instead of "borrowing" something that fails later as a confusing login prompt.
+  const sessionLike = SESSION_COOKIE_LIKE[platform];
+  if (sessionLike) {
+    let sess: number;
+    try {
+      sess = sessionCount(srcCookies, hosts, sessionLike);
+    } catch (e) {
+      return { ok: false, platform, source: src.key, error: `cannot read the source cookie store (browser may hold it open): ${e instanceof Error ? e.message : e}` };
+    }
+    if (!sess) {
+      return { ok: false, platform, source: src.key, sourceProfile: profile, error: `${src.label} profile '${profile}' has ${available} ${hosts[0]} cookie(s) but no live session — sign in there first, or pick another --profile` };
+    }
   }
 
   const target = join(opts.browserRoot ?? join(currentMemoryDir(), "browser"), platform);
