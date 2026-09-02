@@ -208,6 +208,15 @@ export interface BorrowSource {
   label: string;
   profile: string;
   cookies: number;
+  /**
+   * WHY this source is offered — the count above does NOT say it, and a surface that shows only
+   * a number reads as nonsense in the SSO case ("borrow from Chrome (0 cookies)"), which is the
+   * exact confusion the junk-cookie fix was meant to end.
+   * · `platform` = holds the platform's own live session ⇒ borrowing logs straight in.
+   * · `sso`      = only the identity provider is signed in ⇒ borrowing gives a ONE-CLICK OAuth
+   *                login (account chooser), not a direct one.
+   */
+  via: "platform" | "sso";
 }
 
 /**
@@ -220,6 +229,13 @@ export function findBorrowSource(platform: string, sources?: CookieSource[]): Bo
   const hosts = PLATFORM_HOSTS[platform];
   if (!hosts || !WIN) return null;
   const sessionLike = SESSION_COOKIE_LIKE[platform];
+  // 🔴 PHIÊN NỀN THẮNG PHIÊN SSO — thứ tự này LOAD-BEARING, không phải sở thích.
+  // Nguồn có phiên NỀN cho đăng nhập THẲNG; nguồn chỉ có SSO chỉ cho một cú bấm ở trang OAuth.
+  // Quét một lượt "ai qualify trước thì thắng" là để THỨ TỰ THƯ MỤC quyết định, mà thứ tự đó là
+  // chrome→edge→brave. Đo 2026-09-02 trên máy thật: chrome chỉ có phiên Google (0 phiên ChatGPT)
+  // vẫn THẮNG brave đang giữ phiên nền thật ⇒ bề mặt mời đúng đường YẾU HƠN và giấu đường mạnh.
+  // Nên: gặp phiên nền là trả NGAY; nguồn SSO chỉ được nhớ làm ĐƯỜNG LÙI.
+  let ssoFallback: BorrowSource | null = null;
   for (const src of sources ?? cookieSources()) {
     for (const profile of listSourceProfiles(src)) {
       try {
@@ -227,10 +243,14 @@ export function findBorrowSource(platform: string, sources?: CookieSource[]): Bo
         const n = hostCounts(jar, hosts);
         // "Has cookies" is NOT "is signed in": a jar must hold the SESSION cookie to be offered.
         // Offering a junk-cookie source sends the user to an empty login form (see SESSION_COOKIE_LIKE).
-        const platSession = n > 0 && (!sessionLike || sessionCount(jar, hosts, sessionLike) > 0);
-        // Offer also when the platform session is gone but the SSO provider is still signed in —
-        // borrowing that gives a one-click OAuth login instead of a blank form (user chose 2026-09-02).
-        if (platSession || hasAuthSession(jar)) return { from: src.key, label: src.label, profile, cookies: n };
+        if (n > 0 && (!sessionLike || sessionCount(jar, hosts, sessionLike) > 0)) {
+          return { from: src.key, label: src.label, profile, cookies: n, via: "platform" };
+        }
+        // Platform session gone but the SSO provider still signed in ⇒ borrowing gives a one-click
+        // OAuth login instead of a blank form (user chose 2026-09-02). Keep the FIRST such source.
+        if (!ssoFallback && hasAuthSession(jar)) {
+          ssoFallback = { from: src.key, label: src.label, profile, cookies: n, via: "sso" };
+        }
       } catch {
         // Hồ sơ bị khoá/không đọc được ⇒ thử hồ sơ kế. Việc NÓI RA "đang khoá" là của
         // `borrowBlockedBy` — trộn vào đây thì một giá trị trả về phải mang hai nghĩa.
@@ -238,6 +258,7 @@ export function findBorrowSource(platform: string, sources?: CookieSource[]): Bo
       }
     }
   }
+  if (ssoFallback) return ssoFallback;
   // Không tìm được nguồn ĐỌC ĐƯỢC. Nếu có nguồn bị khoá thì đó là câu trả lời KHÁC hẳn
   // ("cửa đang khoá") và người gọi phải phân biệt được — xem `borrowBlockedBy`.
   return null;

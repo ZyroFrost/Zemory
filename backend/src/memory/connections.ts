@@ -137,6 +137,10 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
         // MỘT hàm dùng chung với cây Nguồn (`webLaneLinked`) — nguồn TRÙNG thì sớm muộn cũng
         // lệch, và nó đã lệch thật một lượt trong ngày (xem chú thích ở `webLaneLinked`).
         const lost = webLaneLinked(st, pl) === false;
+        // MỘT lời gọi, dùng lại hai chỗ. Bản cũ gọi `findBorrowSource` HAI lần cho cùng một hàng —
+        // tốn gấp đôi phép đọc jar, và về nguyên tắc hai lời gọi có thể trả khác nhau (trình duyệt
+        // đóng/mở giữa chừng) ⇒ một hàng tự mâu thuẫn.
+        const borrow = acct === "main" && st?.ok !== true ? findBorrowSource(web.platform) : undefined;
         out.push({
           source,
           label: acct === "main" ? web.label : `${web.label} · tài khoản ${acct}`,
@@ -157,10 +161,13 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           // Số tin là của cả LANE (mọi tài khoản dồn về một lane) — chỉ ghi ở dòng đầu để
           // không cộng dồn nhìn như nhân đôi.
           messages: acct === "main" ? messages : 0,
-          canBorrow: st?.ok === true || acct !== "main" ? undefined : findBorrowSource(web.platform),
+          canBorrow: borrow,
           // Mượn không được VÌ TRÌNH DUYỆT ĐANG MỞ là một câu khác hẳn "không có phiên nào" —
           // và nó có việc để làm (đóng trình duyệt), nên phải tới được người dùng.
-          ...(lost && acct === "main" && !findBorrowSource(web.platform)
+          // 🔴 Câu này phải sống sót cả khi ĐÃ CÓ đường mượn chỉ-SSO. Đo 2026-09-02: chrome qualify
+          // bằng phiên Google ⇒ chỉ dẫn "đóng Brave" bị che, trong khi Brave mới là nơi giữ phiên
+          // ChatGPT thật (đường đăng nhập THẲNG). Chỉ đường mượn `platform` mới được phép che nó.
+          ...(lost && acct === "main" && borrow?.via !== "platform"
             ? { borrowBlocked: borrowBlockedBy(web.platform) ?? undefined }
             : {}),
         });
