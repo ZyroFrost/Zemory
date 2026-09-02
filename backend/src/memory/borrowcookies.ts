@@ -55,6 +55,17 @@ export function cookieSources(): CookieSource[] {
       userData: join(LOCAL, "Microsoft", "Edge", "User Data"),
       exe: ["C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe", "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"].find((p) => existsSync(p)) ?? "",
     },
+    {
+      // 🔴 THIẾU TỪ ĐẦU, user bắt 2026-09-02 (*"mở browser đó thì lấy chính cookie web đã có"*).
+      // Danh sách này chỉ có Chrome + Edge, trong khi **trình duyệt mặc định của máy này là Brave**
+      // — và chính zemory cũng mở Brave (`opening chatgpt window in brave.exe` trong log). Nên
+      // phiên thật của người dùng nằm ở Brave mà bộ mượn **không bao giờ nhìn tới**: nó báo
+      // "không có trình duyệt nào còn phiên" trong khi phiên đang nằm ngay đó.
+      key: "brave",
+      label: "Brave",
+      userData: join(LOCAL, "BraveSoftware", "Brave-Browser", "User Data"),
+      exe: ["C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe", "C:\\Program Files (x86)\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"].find((p) => existsSync(p)) ?? "",
+    },
   ].filter((s) => existsSync(s.userData) && s.exe);
 }
 
@@ -136,7 +147,42 @@ export function findBorrowSource(platform: string): BorrowSource | null {
         const n = hostCounts(join(src.userData, profile, "Network", "Cookies"), hosts);
         if (n > 0) return { from: src.key, label: src.label, profile, cookies: n };
       } catch {
-        /* locked/unreadable profile — try the next one */
+        // Hồ sơ bị khoá/không đọc được ⇒ thử hồ sơ kế. Việc NÓI RA "đang khoá" là của
+        // `borrowBlockedBy` — trộn vào đây thì một giá trị trả về phải mang hai nghĩa.
+        continue;
+      }
+    }
+  }
+  // Không tìm được nguồn ĐỌC ĐƯỢC. Nếu có nguồn bị khoá thì đó là câu trả lời KHÁC hẳn
+  // ("cửa đang khoá") và người gọi phải phân biệt được — xem `borrowBlockedBy`.
+  return null;
+}
+
+/**
+ * Có nguồn cookie nào ĐANG BỊ KHOÁ vì trình duyệt còn mở không — trả về TÊN nguồn, hoặc null.
+ *
+ * Tách khỏi `findBorrowSource` thay vì nhồi một giá trị đặc biệt (`cookies: -1`) vào cùng kiểu
+ * trả về: người gọi hiện đang làm `Boolean(findBorrowSource(...))`, nên một object 'khoá' sẽ
+ * lặng lẽ thành `canBorrow: true` ⇒ UI mời **Mượn** rồi thất bại. Hai câu hỏi khác nhau —
+ * "mượn được không" và "có phải đang khoá không" — thì hai hàm, không phải một kiểu trả về
+ * mang cờ ngầm.
+ *
+ * Đo trên máy này 2026-09-02: Chromium giữ khoá độc quyền trên kho cookie khi đang chạy — đọc
+ * thẳng ném `unable to open database file`, và `copyFileSync` ném **EBUSY**. Tức khi trình duyệt
+ * còn mở thì KHÔNG có đường đọc nào; câu duy nhất dùng được cho người dùng là *đóng nó rồi thử
+ * lại*. Bản cũ nuốt lỗi và báo 'không có trình duyệt nào còn phiên' — sai, và không chỉ được
+ * việc phải làm.
+ */
+export function borrowBlockedBy(platform: string): string | null {
+  const hosts = PLATFORM_HOSTS[platform];
+  if (!hosts || !WIN) return null;
+  for (const src of cookieSources()) {
+    for (const profile of listSourceProfiles(src)) {
+      const p = join(src.userData, profile, "Network", "Cookies");
+      try {
+        hostCounts(p, hosts);
+      } catch {
+        return src.label;
       }
     }
   }

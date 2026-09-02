@@ -127,7 +127,7 @@ export function normalizeRoot(path: string): string {
 /**
  * Chuẩn hoá CHỮ Ổ ĐĨA cho giá trị ghi vào `sessions.project_root` / `sessions.cwd` — KHÔNG `resolve`.
  *
- * Khác `normalizeRoot`: cột này chứa cả đường dẫn Windows (`d:\huy.nguyen\Tool\Zemory`) lẫn TÊN
+ * Khác `normalizeRoot`: cột này chứa cả đường dẫn Windows (`d:\huy.nguyen\Project\Personal\Zemory`) lẫn TÊN
  * project của nguồn web (`Tarot study`) — `resolve("Tarot study")` sẽ biến tên thành một đường
  * dẫn tuyệt đối vô nghĩa. Nên chỉ đụng đúng mẫu `<chữ>:\` hoặc `<chữ>:/`; mọi giá trị khác trả
  * nguyên. Vì sao cần (đo 2026-08-29): fix `[2026-07-29d]` chắn ở sổ docs/project nhưng đường nạp

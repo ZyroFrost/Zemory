@@ -17,7 +17,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { currentMemoryDir, openMemory } from "./db.js";
 import { allAdapters } from "./adapters/index.js";
-import { findBorrowSource } from "./borrowcookies.js";
+import { borrowBlockedBy, findBorrowSource } from "./borrowcookies.js";
 import { accountsOf, webLaneLinked } from "./webslots.js";
 import { getWebAuth, getWebPull } from "../config/settings.js";
 
@@ -45,6 +45,8 @@ export interface ConnectionRow {
    * mã thì dùng mã. Ngày không còn ai đọc `detail` nữa thì bỏ nó đi là việc riêng, có kiểm.
    */
   detailCode?: "lastChecked" | "neverChecked" | "needLogin" | "storePath" | "storeGone" | "noStore";
+  /** Tên trình duyệt đang GIỮ KHOÁ kho cookie — mượn được nếu đóng nó. */
+  borrowBlocked?: string;
   detailArgs?: { at?: string; who?: string; path?: string };
   /** Số tin đang có trong bộ nhớ của nguồn này. */
   messages: number;
@@ -156,6 +158,11 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           // không cộng dồn nhìn như nhân đôi.
           messages: acct === "main" ? messages : 0,
           canBorrow: st?.ok === true || acct !== "main" ? undefined : findBorrowSource(web.platform),
+          // Mượn không được VÌ TRÌNH DUYỆT ĐANG MỞ là một câu khác hẳn "không có phiên nào" —
+          // và nó có việc để làm (đóng trình duyệt), nên phải tới được người dùng.
+          ...(lost && acct === "main" && !findBorrowSource(web.platform)
+            ? { borrowBlocked: borrowBlockedBy(web.platform) ?? undefined }
+            : {}),
         });
       }
       continue;
