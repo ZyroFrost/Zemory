@@ -477,6 +477,52 @@ test("SSO-only: nền hết phiên nhưng CÒN đăng nhập Google ⇒ vẫn m�
   assert.equal(findBorrowSource("chatgpt", [dead]), null, "cookie Google rác (không phải __Secure-1PSID) không tính là phiên");
 });
 
+// ── ⑪ PHIÊN NỀN phải THẮNG phiên SSO, và câu "đóng trình duyệt" không được bị che ────────
+// Đo trên máy thật 2026-09-02 NGAY SAU khi ship vế SSO: `chrome` chỉ có phiên Google (0 phiên
+// ChatGPT) mà vẫn THẮNG `brave` đang giữ phiên nền thật, vì vòng quét trả về nguồn qualify ĐẦU
+// TIÊN và thứ tự cứng là chrome→edge→brave. Hệ quả kép: bề mặt mời đường YẾU HƠN (còn phải bấm
+// qua trang OAuth) VÀ `borrowBlocked` bị che nên mất luôn câu chỉ việc "đóng Brave để vào thẳng".
+test("findBorrowSource: nguồn có PHIÊN NỀN thắng nguồn chỉ có SSO, dù SSO đứng TRƯỚC trong danh sách", { skip: !onWin }, () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-rank-"));
+  const ssoFirst = fakeSource(root, "chromesso", [["accounts.google.com", "__Secure-1PSID"]]);
+  const platLater = fakeSource(root, "bravereal", [["chatgpt.com", "__Secure-next-auth.session-token"]]);
+
+  const got = findBorrowSource("chatgpt", [ssoFirst, platLater]);
+  assert.equal(got.from, "bravereal", "phiên nền cho đăng nhập THẲNG — phải thắng dù đứng sau");
+  assert.equal(got.via, "platform", "và phải tự khai là đường mạnh");
+
+  // Ca ÂM: không có nguồn nền nào ⇒ mới được rơi về SSO, và phải tự khai là đường yếu.
+  const only = findBorrowSource("chatgpt", [ssoFirst]);
+  assert.equal(only.from, "chromesso");
+  assert.equal(only.via, "sso", "đường lùi phải nói rõ nó chỉ là SSO — nơi gọi dựa vào đó để chọn câu");
+});
+
+test("/connections: đường mượn chỉ-SSO KHÔNG được che câu 'đóng trình duyệt'; đường phiên nền thì được", () => {
+  const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
+  // Chốt canh ĐÚNG cơ chế: chỉ `via === "platform"` mới được phép che hint.
+  assert.match(CONN, /borrow\?\.via !== "platform"/, "chỉ đường mượn MẠNH mới được che chỉ dẫn đóng trình duyệt");
+  // Và chỉ gọi findBorrowSource MỘT lần cho mỗi hàng (hai lời gọi có thể trả khác nhau ⇒ hàng tự mâu thuẫn).
+  const body = CONN.slice(CONN.indexOf("for (const acct of browserAccounts("), CONN.indexOf("// Local: nối ="));
+  assert.equal((body.match(/findBorrowSource\(/g) || []).length, 1, "một hàng = một lời gọi dò nguồn");
+});
+
+test("chữ người dùng đọc: {b} phải được thay HẾT, và có câu riêng cho ca chỉ-SSO (đủ hai dict)", () => {
+  const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  // `.replace('{b}', x)` của JS chỉ thay chỗ ĐẦU — mà câu này có {b} hai lần ⇒ lòi placeholder ra UI.
+  assert.ok(!/t\('conn\.borrowBlocked'\)\.replace\('\{b\}'/.test(FE), "thay-một-lần là bug: câu có {b} hai lần");
+  assert.match(FE, /replace\(\/\\\{b\\\}\/g/, "phải thay TOÀN BỘ chỗ giữ chỗ");
+  assert.match(FE, /c\.canBorrow\?'conn\.borrowSsoOnly':'conn\.borrowBlocked'/, "còn nút Mượn thì phải dùng câu chỉ-SSO");
+
+  const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["conn.borrowBlocked", "conn.borrowSsoOnly"]) {
+    assert.equal((DICT.match(new RegExp("'" + k.replace(".", "\\.") + "':", "g")) || []).length, 2, `${k} phải có ĐỦ HAI dict`);
+  }
+  // Không chuỗi nào được để lại {b} chưa thay vì thiếu đối số — cả hai câu đều PHẢI mang {b}.
+  for (const m of DICT.matchAll(/'conn\.borrowSsoOnly':'([^']*)'/g)) {
+    assert.ok(m[1].includes("{b}"), "câu chỉ-SSO phải nêu TÊN trình duyệt đang khoá, không nói chung chung");
+  }
+});
+
 // ── ⑩ ĐỔI HÃNG KHỨ HỒI: bản dời-sang-bên phải TRẢ VỀ được ────────────────────────────────
 // User chốt 2026-09-02 (*"phải mở lên nhận được dù có đang mở brave"*). Đo 01–02/09: Windows đổi
 // mặc định Brave → Edge → Brave trong MỘT ngày; mỗi cú đổi, luật "máy mặc định thắng" dời profile
