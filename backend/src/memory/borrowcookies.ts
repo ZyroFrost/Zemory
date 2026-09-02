@@ -404,8 +404,19 @@ export function borrowCookies(opts: BorrowOptions): BorrowResult {
   return { ok: true, platform, source: src.key, sourceProfile: profile, kept, dropped, browser: src.exe, backup };
 }
 
-/** Trả profile về trạng thái trước khi mượn (mượn không ăn thì không được để lại hậu quả). */
+/**
+ * Trả profile về trạng thái trước khi mượn (mượn không ăn thì không được để lại hậu quả).
+ *
+ * 🔴 KIỂM BẢN LÙI CÒN ĐÓ TRƯỚC KHI PHÁ ĐÍCH (vá 2026-09-02, phản biện audit chỉ ra).
+ * Thứ tự cũ là `rmSync(target)` rồi `renameSync(backup, target)` — cả hai trong MỘT `try` nuốt lỗi.
+ * Bản lùi biến mất vì bất kỳ lý do (vòng dọn 6 giờ chạy trúng lúc `/connect` còn đang chờ
+ * `scanWebPlatforms` mở trình duyệt · lỗi đĩa · người dùng xoá tay) ⇒ `rmSync` xoá THÀNH CÔNG
+ * profile sống, `renameSync` ném, `catch` nuốt ⇒ **khe mất trắng cả profile mà không một dòng báo**.
+ * Đây là kiểu hỏng tệ nhất theo `02_RULES`: nó không báo lỗi, nó phá rồi im.
+ * Không còn bản lùi ⇒ THÔI, giữ nguyên hiện trạng: profile mượn-hụt vẫn tệ hơn không có gì.
+ */
 export function restoreProfile(target: string, backup: string): void {
+  if (!existsSync(backup)) return;
   try {
     rmSync(target, { recursive: true, force: true });
     renameSync(backup, target);

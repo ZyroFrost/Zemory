@@ -5,6 +5,33 @@
 
 ---
 
+## [2026-09-02h] — phản biện BÁC đường "dọn sớm bản rỗng"; và vá chỗ `restoreProfile` phá trước khi kiểm
+
+**Cửa phản biện đã ăn tiền.** Lượt audit đề xuất thêm tầng dọn NHANH cho bản dời "rỗng phiên"
+(6 giờ thay vì 7 ngày, tính được ~758 MB). Phép phản biện độc lập **BÁC** (`holdsUp: false`), và tôi
+tự đọc code xác minh lại thì đúng:
+
+🔴 **Tiền đề chịu lực của nó SAI:** *"bản `session === false` không ai dùng tới"* — có **người đọc
+thứ BA** mà nó bỏ sót: `restoreProfile` (`borrowcookies.ts`), gọi từ `/connect` (`ui.ts`), và đường
+đó tồn tại ĐÚNG cho bản KHÔNG có phiên nền (mượn là vì khe đã signed-out). Thêm nữa CLI
+`memory borrow-cookies --replace` để bản lùi lại trên đĩa làm **đường undo DUY NHẤT**, không bao giờ
+gọi `dropBackup`. Hai bản `.bak-<base36>` trên đĩa này (141 MB) đúng hình dạng đó và đều `session=false`
+⇒ tầng 6 giờ sẽ **xoá đường undo có tài liệu** trong khi tự khai "không thể mất gì".
+🔴 **Và nó mở một đường mất trắng:** bản lùi sống xuyên `await scanWebPlatforms` (mở trình duyệt,
+tính bằng giây/phút) trong khi vòng dọn chạy ở **tiến trình khác**; hạ trần xuống 6 giờ là nới cửa
+sổ trúng đích **28×**. ⇒ **KHÔNG LÀM. Đừng đề xuất lại khi chưa có dữ kiện mới.**
+*(Phần đo của nó vẫn dùng được và đã kiểm chéo bằng driver khác: 17 bản · 3 có phiên · 11 rỗng đọc
+được · 3 không jar · 0 null. Riêng "ceiling 14 bản" là SAI — 11 bản, vì 3 bản không-jar chính guard
+của nó đã loại và chúng 0 MB.)*
+
+**Vá thật sự đáng làm, lộ ra từ chính phản biện:** `restoreProfile` làm `rmSync(target)` **rồi mới**
+`renameSync(backup, target)`, cả hai trong MỘT `try` nuốt lỗi ⇒ bản lùi biến mất vì bất kỳ lý do là
+`rmSync` xoá thành công profile sống, `renameSync` ném, `catch` nuốt ⇒ **khe mất trắng, không một
+dòng báo** — đúng kiểu hỏng `02_RULES` gọi là tệ nhất (phá rồi im). Nay chốt `existsSync(backup)`
+TRƯỚC khi phá; không còn bản lùi ⇒ giữ nguyên hiện trạng.
+**Cổng:** +2 ca (bản lùi mất ⇒ đích còn nguyên · bản lùi còn ⇒ lùi đúng như cũ). **Đột biến 1 ĐỎ**
+(*trả về đúng thứ tự cũ*). 61/61 ca của ba file liên quan xanh.
+
 ## [2026-09-02g] — vòng dọn sắp xoá ĐÚNG phiên đăng nhập cuối cùng: chặn lại trước 40 giờ
 
 **Audit tìm ra một mất dữ liệu CÓ HẸN GIỜ.** Vòng thu hồi profile (`[2026-08-31d]`) quyết định bằng
