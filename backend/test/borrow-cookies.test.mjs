@@ -173,6 +173,35 @@ test("mượn hụt phải LÙI ĐƯỢC: profile cũ được dời sang bên, 
   assert.ok(!existsSync(r.backup), "và bản lùi được dọn sau khi trả về chỗ cũ");
 });
 
+// Phản biện audit 2026-09-02 chỉ ra: `restoreProfile` phá đích TRƯỚC khi biết bản lùi còn đó, và
+// cả hai bước nằm trong MỘT try nuốt lỗi ⇒ bản lùi biến mất là khe mất trắng profile, im lặng.
+test("restoreProfile: bản lùi KHÔNG còn ⇒ KHÔNG được phá profile đang có (không thì mất trắng, im lặng)", skip, (t) => {
+  const root = tempDir(t, "zemory-restore-");
+  const target = join(root, "chatgpt");
+  mkdirSync(target, { recursive: true });
+  writeFileSync(join(target, "Local State"), "profile mượn-hụt nhưng vẫn là một profile");
+
+  restoreProfile(target, join(root, "chatgpt.bak-khong-ton-tai"));
+
+  assert.ok(existsSync(target), "bản lùi mất thì phải GIỮ NGUYÊN hiện trạng, tuyệt đối không xoá đích");
+  assert.equal(readFileSync(join(target, "Local State"), "utf8"), "profile mượn-hụt nhưng vẫn là một profile");
+});
+
+test("restoreProfile: bản lùi CÒN thì vẫn lùi đúng như cũ (không hồi quy)", skip, (t) => {
+  const root = tempDir(t, "zemory-restore-");
+  const target = join(root, "chatgpt");
+  const backup = join(root, "chatgpt.bak-1");
+  mkdirSync(target, { recursive: true });
+  mkdirSync(backup, { recursive: true });
+  writeFileSync(join(target, "Local State"), "bản mượn");
+  writeFileSync(join(backup, "Local State"), "phiên đang sống");
+
+  restoreProfile(target, backup);
+
+  assert.equal(readFileSync(join(target, "Local State"), "utf8"), "phiên đang sống", "phải trả bản lùi về chỗ cũ");
+  assert.ok(!existsSync(backup), "và dọn bản lùi sau khi đã trả về");
+});
+
 test("/connect tự lùi khi mượn không mở được phiên", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   const branch = ui.slice(ui.indexOf('p === "/connect"'), ui.indexOf('p === "/set-sync-level"'));
