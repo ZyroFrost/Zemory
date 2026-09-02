@@ -34,6 +34,13 @@ Kèm: khe vừa thoát `need-login` thì **tới lượt NGAY**, không chờ h�
 vi cũ · khe lành không bị chặn oan). **Đột biến 3/3 ĐỎ**: *trả về đúng code cũ* (khe treo lại) · coi
 `null` là có-phiên (máy tự mở cửa sổ) · bỏ "tới lượt ngay" (UI còn báo sai tới 6 giờ).
 
+⚠ **CHƯA NGHIỆM THU END-TO-END — đính chính, đừng đọc lẫn.** Khe `chatgpt#2` đã xanh lúc **16:11:45**
+(`auth ok` + `pull done`), nhưng đó là **cú Link user bấm** hoàn tất (~2 phút; hai lượt đo của tôi
+16:09:51 và 16:10:33 trúng lúc nó đang bay nên vẫn thấy treo) — **KHÔNG phải nhờ bản vá này**, lúc
+đó nó còn chưa build. Bản vá phủ ca người dùng **KHÔNG bấm** (hết 15 phút canh / daemon restart), và
+ca đó chỉ có **unit test + đột biến**, chưa có lượt tự-khỏi THẬT nào chứng kiến. Ai gặp lại: đóng cửa
+sổ khe đó rồi xem nhịp web kế (≤20′) có tự kéo và chuyển xanh không — đó mới là phép đo end-to-end.
+
 ## [2026-09-02k] — `isolated_pct` thôi đo SỐ FILE TEST, bắt đầu đo CODE CHẾT (user chốt)
 
 **Vấn đề (đo `[2026-09-02i]`):** cổng đỏ **88/272 = 32,4%** nhưng soi tay đủ 88 file ⇒ **0 code
