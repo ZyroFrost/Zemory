@@ -385,7 +385,36 @@ export function sourceSignature(root: string): string {
 /** A file is a HUB when this many files import it — a change there fans wide. */
 export const HUB_FANIN = 8;
 /** Gate thresholds (percentages). Deliberately loose to start; tighten with data. */
-export const FITNESS_GATES = { hubPct: 20, isolatedPct: 30, utilViolations: 0 };
+export const FITNESS_GATES = { hubPct: 20, isolatedPct: 4, utilViolations: 0 };
+
+/**
+ * File thuộc lớp ĐIỂM VÀO — thứ mà theo CẤU TRÚC không bao giờ có cạnh import trong project.
+ *
+ * 🔴 Vì sao loại khỏi `isolated_pct` (user chốt 2026-09-02, sau khi audit đo ra cổng này đỏ OAN).
+ * Mục đích của phép đo là bắt **module chết** — module có thật mà không ai import. Nhưng bản cũ
+ * đếm cả những thứ KHÔNG THỂ được import: file test (chỉ trình chạy test gọi, và chúng nạp từ
+ * `dist/` chứ không từ `src/`), script độc lập, hook do host gọi lúc chạy, tài sản template, file
+ * cấu hình do công cụ đọc. Đo 2026-09-02: **88/272 cô lập (32,4% > trần 30%) nhưng 0 code chết** —
+ * 65 test · 17 script · 2 hook · 2 template · `eslint.config.js` · `platform/window.ts` (daemon
+ * SPAWN nó bằng đường dẫn). Hệ quả tệ hơn cả con số sai: mẫu số bị chi phối bởi SỐ FILE TEST, nên
+ * cổng **đỏ thêm mỗi lần thêm một test** — nó phạt đúng việc tốt, và một cổng không bao giờ xanh
+ * được thì sớm muộn bị bỏ qua (`02_RULES`: gate nhiễu ⇒ gate bị bỏ qua).
+ * Cùng doctrine với `noImportLayer` đã có: *đừng phạt thứ chưa/không đo được cạnh*.
+ * ⚠ Đánh đổi nói thẳng: loại ra thì phép đo THÔI nhìn thấy "test không ai chạy" / "script không ai
+ * gọi". Chấp nhận được vì trình chạy test quét cả thư mục và script được gọi từ `package.json`
+ * hoặc bằng tay — còn module chết thì KHÔNG có cơ chế nào khác bắt.
+ */
+export function isEntryClassFile(id: string): boolean {
+  const p = id.replace(/\\/g, "/").toLowerCase();
+  return (
+    /(^|\/)tests?\//.test(p) || // backend/test/…
+    /\.test\.(mjs|cjs|js|ts|tsx)$/.test(p) || // …/x.test.mjs ở bất kỳ đâu
+    /(^|\/)scripts?\//.test(p) || // backend/scripts/… — điểm vào chạy tay/npm
+    /(^|\/)hooks\//.test(p) || // docs/hooks/guard.cjs — host gọi lúc chạy
+    /(^|\/)docs_template\//.test(p) || // tài sản bản mẫu, không thuộc cây import của repo
+    /\.config\.(js|mjs|cjs|ts)$/.test(p) // eslint.config.js — công cụ đọc, không ai import
+  );
+}
 
 export interface FitnessMetric {
   metric: string;
@@ -415,7 +444,10 @@ export function graphFitness(g: CodeGraph): GraphFitness {
   // isolated_pct CHỈ tính trên node có LỚP CẠNH IMPORT (2026-08-21): ngôn ngữ mở rộng chưa có
   // parser import thì "0 cạnh" là giới hạn của phép đo, không phải bệnh của repo — tính cả
   // vào là mở thêm một ngôn ngữ đỏ oan một lần (đo: 29,4/30% trước khi mở).
-  const eligible = g.nodes.filter((n) => !n.noImportLayer);
+  // …và KHÔNG tính lớp ĐIỂM VÀO (2026-09-02, user chốt): xem `isEntryClassFile`. Trước bản này
+  // 65 file test + 17 script chiếm 82/88 "cô lập", tức cổng đo SỐ FILE TEST chứ không đo code chết.
+  const excluded = g.nodes.filter((n) => n.noImportLayer || isEntryClassFile(n.id));
+  const eligible = g.nodes.filter((n) => !n.noImportLayer && !isEntryClassFile(n.id));
   const isolated = eligible.filter((n) => n.fanIn === 0 && n.fanOut === 0);
   const isolatedPct = eligible.length ? Math.round((isolated.length / eligible.length) * 1000) / 10 : 0;
 
@@ -447,7 +479,11 @@ export function graphFitness(g: CodeGraph): GraphFitness {
       // đường dẫn, không import) · 2 hook `guard.cjs` (host gọi lúc chạy) · 2 tài sản template ·
       // `eslint.config.js` ⇒ **0 code chết**. Tức con số này đang bị chi phối bởi SỐ FILE TEST,
       // nên nó chỉ đỏ thêm mỗi lần thêm test — xem `05_TODO` nếu muốn đổi định nghĩa (việc của user).
-      detail: `${isolated.length}/${eligible.length} file(s) with no IMPORT edge (test/script entries counted; extra-language files without an import layer excluded — 'calls'/'api' layers deliberately not counted)`,
+      detail:
+        `${isolated.length}/${eligible.length} source file(s) with no IMPORT edge` +
+        `${isolated.length ? `: ${isolated.slice(0, 5).map((n) => n.id).join(", ")}${isolated.length > 5 ? ", …" : ""}` : ""}` +
+        ` · ${excluded.length} excluded as entry-class (test/script/hook/template/config) or without an import layer` +
+        ` · 'calls'/'api' edge layers deliberately not counted`,
     },
     {
       metric: "util_violations",
