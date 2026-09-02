@@ -19,12 +19,14 @@ giữa gate có daemon + job `embed --all` đang chạy — ai khởi động ch
 ⇒ nhóm nặng skip-vì-bận; tắt cả hai rồi chạy lại là trọn.) `config.ts` sửa dở từ trước hoá ra chỉ là
 **1 dòng comment** đổi đường dẫn ví dụ theo vị trí repo mới — đã gộp vào commit này.
 
-### Trạng thái web lúc chốt (ĐO)
-Cả **4 khe** `chatgpt` · `chatgpt#2` · `claude` · `claude#2` đang **`need-login`** — gốc: máy đổi trình
-duyệt mặc định **Brave → Edge** nên `borrowCookies` dời cả 4 profile sang bên, mất phiên đồng loạt.
-Vòng tự kéo **đã thôi đụng** các khe này (máy không được tự bật khung đăng nhập); UI báo *mất kết nối*
-kèm nút nối lại ở đúng hàng tài khoản. Đường nhanh nhất để hồi phục: **đóng Brave** → mở hộp
-Connection details → **Mượn** (khỏi đăng nhập, khỏi 2FA).
+### Trạng thái web lúc chốt (ĐO 2026-09-02 sau `restoreShelvedSession` — xem `06_CHANGES [2026-09-02c]`)
+**3/4 khe ĐÃ HỒI không cần đăng nhập** (phiên trả về từ bản brave-bak, Brave vẫn đang mở):
+`claude` · `claude#2` · `chatgpt#2` đều `connected: true`, đã kéo lại được. **Còn MỘT khe
+`chatgpt` (main) `need-login`** — phiên lưu duy nhất của nó khoá theo Edge (ABE, không mở được
+dưới Brave). Hai đường, đều là LẦN CUỐI vì profile nay bền: ① đăng nhập tay trong cửa sổ đang mở ·
+② đóng Brave ~30 giây → hộp Connection details → **Mượn** (lấy phiên thật từ jar Brave) → mở lại Brave.
+⚠ Nhắc lại từ changelog: prompt 2FA Google không tới điện thoại user là đường Google→thiết bị,
+ngoài tầm zemory.
 
 ### Bẫy đã trả giá trong phiên này — đừng dẫm lại
 · **QUÊN BẬT LẠI UI sau khi tắt daemon để chạy gate** — user phải nhắc ba lần, lần cuối là bực. Luật
