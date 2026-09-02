@@ -196,3 +196,82 @@ test("NHƯỜNG THÌ PHẢI HẸN QUAY LẠI — nhịp kéo web không được
   const tick = /const WEB_TICK_EVERY_MS = (\d+) \* 60_000/.exec(sched);
   assert.ok(Number(ms[1]) < Number(tick[1]), "hẹn lại phải NGẮN HƠN chu kỳ, không thì hẹn lại vô nghĩa");
 });
+
+// ── ④ MÁY KHÔNG ĐƯỢC TỰ BẬT KHUNG ĐĂNG NHẬP (user chốt 2026-09-02) ───────────────────────
+// Nguyên văn: *"t đâu có cho phép UI tự động bật đăng nhập đâu… chỉ bật đăng nhập khi user chọn
+// thôi chứ ai cho phép tự mở khung đăng nhập"*. Kéo NGẦM là việc máy tự làm được; **bật một khung
+// đăng nhập là đòi sự chú ý của người**, và không ai cho phép máy tự làm việc đó.
+//
+// Cái giá đo được: máy đổi trình duyệt mặc định Brave → Edge ⇒ `borrowCookies` dời cả 4 profile
+// sang bên ⇒ **cả 4 khe `need-login` cùng lúc**. Với `WEB_RETRY_AFTER_FAIL_MS` = 6 giờ, mỗi khe
+// mở MỘT CỬA SỔ THẬT mỗi 6 tiếng ⇒ 4 cửa sổ / 6 giờ, vô hạn. Log có đúng dấu vết đó (15:58 · 16:01
+// · 16:01 · 02:14 · 02:16 · 02:19 · 04:03) và user chụp 3 icon Edge trên taskbar. `deadMainLane`
+// không cứu được: nó chỉ dập `main` KHI khe số cùng nền còn sống — ở đây không khe nào sống.
+const { needsLoginLane, webPullTargets: wpt2 } = await import("../../dist/jobs/scheduler.js");
+
+test("needsLoginLane: CHỈ đúng khi lượt kéo cuối nói need-login", () => {
+  assert.equal(needsLoginLane(undefined), false, "chưa kéo lần nào ⇒ phải được thử");
+  assert.equal(needsLoginLane({ ok: true, status: "ok" }), false);
+  assert.equal(needsLoginLane({ ok: false, status: "no-browser" }), false, "hỏng vì lý do KHÁC vẫn nên thử lại");
+  assert.equal(needsLoginLane({ ok: false, status: "need-login" }), true);
+});
+
+test("webPullTargets: khe need-login BỊ LOẠI — máy thôi tự mở cửa sổ đăng nhập", () => {
+  const now = Date.parse("2026-09-02T12:00:00Z");
+  const old = "2026-09-01T00:00:00Z"; // quá 6 giờ ⇒ `webDue` nói TỚI LƯỢT
+  const pulled = {
+    claude: { at: old, ok: false, status: "need-login" },
+    "claude#2": { at: old, ok: false, status: "need-login" },
+  };
+  const targets = wpt2(["claude"], () => ["main", "2"], () => "claude-web", "H", [], pulled, now);
+  assert.deepEqual(targets, [], "cả hai khe cần đăng nhập ⇒ KHÔNG khe nào được kéo");
+});
+
+test("webPullTargets: khe hỏng vì lý do KHÁC vẫn được thử lại (không chặn oan)", () => {
+  const now = Date.parse("2026-09-02T12:00:00Z");
+  const pulled = { claude: { at: "2026-09-01T00:00:00Z", ok: false, status: "no-browser" } };
+  const targets = wpt2(["claude"], () => ["main"], () => "claude-web", "H", [], pulled, now);
+  assert.equal(targets.length, 1, "`no-browser` có thể tự khỏi (cài lại trình duyệt) ⇒ vẫn thử");
+});
+
+test("webPullTargets: khe LÀNH vẫn kéo bình thường — không chặn cả làng", () => {
+  const now = Date.parse("2026-09-02T12:00:00Z");
+  const pulled = {
+    claude: { at: "2026-09-01T00:00:00Z", ok: false, status: "need-login" },
+    "claude#2": { at: "2026-09-01T00:00:00Z", ok: true, status: "ok" },
+  };
+  const targets = wpt2(["claude"], () => ["main", "2"], () => "claude-web", "H", [], pulled, now);
+  assert.deepEqual(targets.map((x) => x.account), ["2"], "chỉ khe cần đăng nhập bị loại");
+});
+
+// ── ⑤ BỀ MẶT PHẢI NÓI THẬT: mất kết nối thì hiện MẤT KẾT NỐI ─────────────────────────────
+// Nếu chỉ dừng vòng tự kéo (④) mà không sửa chỗ này thì khe CHẾT IM LẶNG: `/connections` đọc
+// `webAuth` (kết quả lần KIỂM cuối, có thể nhiều ngày tuổi) chứ không đọc `webPull` (kết quả lần
+// KÉO cuối). Đo 2026-09-02: `webAuth` còn `ok:true` từ 29/08 trong khi cả 4 khe `need-login` từ
+// 02/09 ⇒ UI báo "đã nối" cho khe đã chết. Đúng thứ `02_RULES` gọi là bề mặt NÓI DỐI — và nguy
+// hơn hẳn từ khi máy thôi tự mở cửa sổ, vì không còn gì nhắc người dùng.
+const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
+
+test("/connections: đọc CẢ `webPull`, không chỉ `webAuth`", () => {
+  assert.match(CONN, /getWebPull\(\)/, "phải đọc kết quả lần KÉO cuối");
+  assert.match(CONN, /getWebAuth\(\)/, "vẫn đọc lần KIỂM cuối");
+});
+
+test("/connections: BẰNG CHỨNG MỚI NHẤT thắng — so MỐC, không ưu tiên cứng một nguồn", () => {
+  const i = CONN.indexOf("const lostAt");
+  assert.ok(i > 0, "phải có phép so mốc");
+  const blk = CONN.slice(i, i + 600);
+  assert.match(blk, /lostAt > checkedAt/, "kéo hỏng chỉ thắng khi nó MỚI HƠN lượt kiểm");
+  // Không được ưu tiên cứng: một lượt kiểm vừa chạy xong PHẢI thắng một lượt kéo hỏng hôm kia.
+  assert.ok(!/lost = .*pl\.ok === false;?\s*$/m.test(blk), "không được coi 'có pull hỏng' là mất kết nối bất kể mốc");
+  assert.match(CONN, /connected: !lost && st\?\.ok === true/, "mất kết nối ⇒ connected phải là false");
+});
+
+test("/connections: mất kết nối phải NÓI VIỆC PHẢI LÀM, không bắt đoán", () => {
+  assert.match(CONN, /detailCode: lost \? "needLogin"/, "phải có mã riêng để UI dịch được");
+  const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  assert.match(FE, /detailCode==='needLogin'/, "UI phải xử mã đó, không rơi về chuỗi thô");
+  const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  const hits = DICT.match(/'conn\.needLogin':/g) || [];
+  assert.equal(hits.length, 2, "khoá i18n phải có ĐỦ HAI dict");
+});

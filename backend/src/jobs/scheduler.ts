@@ -506,6 +506,31 @@ export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date
  *  · **`main` chết hẳn khi khe số đã phủ (`deadMainLane`) ⇒ loại KHỎI vòng tự thử ngầm** — lùi
  *    6 giờ vẫn là lùi, không phải dừng; khe này sẽ tự thử tới vô tận nếu không có luật riêng.
  */
+/**
+ * Khe này đang CẦN NGƯỜI ĐĂNG NHẬP — vòng tự kéo phải BỎ QUA, vĩnh viễn, cho tới khi user tự
+ * bấm nối lại.
+ *
+ * 🔴 LỖI TÍNH NĂNG, user bắt 2026-09-02: *"t đâu có cho phép UI tự động bật đăng nhập đâu…
+ * chỉ bật đăng nhập khi user chọn thôi chứ ai cho phép tự mở khung đăng nhập"*. Đúng: kéo NGẦM
+ * là việc máy tự làm được; **bật một khung đăng nhập là đòi sự chú ý của người**, và không ai
+ * cho phép máy tự làm việc đó.
+ *
+ * Đo được cái giá: máy đổi trình duyệt mặc định Brave → Edge ⇒ `borrowCookies` dời cả 4 profile
+ * sang bên ⇒ **cả 4 khe `need-login` cùng lúc**. Với `WEB_RETRY_AFTER_FAIL_MS` = 6 giờ, mỗi khe
+ * lại mở MỘT CỬA SỔ THẬT mỗi 6 tiếng ⇒ **4 cửa sổ / 6 giờ, vô hạn**. Log có đúng dấu vết đó:
+ * 15:58 · 16:01 · 16:01 rồi 02:14 · 02:16 · 02:19 rồi 04:03, và user chụp 3 icon Edge trên
+ * taskbar. `deadMainLane` không cứu được vì nó chỉ dập `main` KHI khe số cùng nền còn sống —
+ * ở đây không khe nào sống.
+ *
+ * Vì sao là DỪNG HẲN chứ không phải lùi lâu hơn: `need-login` **không bao giờ tự khỏi**. Không
+ * có con người thì lùi 6 giờ hay 60 giờ đều chỉ là đổi nhịp của cùng một việc vô ích — và mỗi
+ * lần vô ích đó là một cửa sổ đập vào mặt người dùng. Trạng thái này đã nằm trong `webPull` nên
+ * UI hiện được dấu than "mất kết nối"; user bấm vào đó là đi đường `/connect` (do NGƯỜI khởi
+ * xướng) và khe sống lại.
+ */
+export function needsLoginLane(prev: { ok: boolean; status: string } | undefined): boolean {
+  return !!prev && prev.ok === false && prev.status === "need-login";
+}
 export function webPullTargets(
   platforms: string[],
   accountsFor: (p: string) => string[],
@@ -522,6 +547,9 @@ export function webPullTargets(
     for (const account of accountsFor(platform)) {
       if (account === "main" && deadMainLane(platform, pulled)) continue;
       const lane = webLaneKey(platform, account);
+      // Cần đăng nhập ⇒ RA KHỎI vòng tự kéo. Máy không được tự bật khung đăng nhập; UI hiện dấu
+      // than "mất kết nối", user bấm mới mở (xem `needsLoginLane`).
+      if (needsLoginLane(pulled[lane])) continue;
       if (webDue(pulled[lane], now)) out.push({ platform, account, lane });
     }
   }
