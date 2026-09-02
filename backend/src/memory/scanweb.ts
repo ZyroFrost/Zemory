@@ -13,12 +13,12 @@ import { execFile, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { createServer as createNetServer } from "node:net";
 import { hostname } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { type ScanReport, restampAccount, scan, stampAccount } from "./ingest.js";
 import { isExcluded } from "./scope.js";
 import { WEB_PLATFORMS, accountKey, accountsOf, isEmail, platformsInUse, pullableAccountsOf } from "./webslots.js";
-import { findBorrowSource } from "./borrowcookies.js";
+import { findBorrowSource, jarHasSession } from "./borrowcookies.js";
 import { getScopeExclude, getWebAuth, setWebAuth, setWebPull } from "../config/settings.js";
 import { daemonLog } from "../logging/daemon-log.js";
 
@@ -459,6 +459,51 @@ export function accountPort(base: number, account?: string): number {
  * So: an EXISTING profile keeps its browser (marker file), and only a NEW profile picks
  * the machine's default. Switching on purpose = delete the profile dir (and log in once).
  */
+/**
+ * TRẢ PHIÊN TỪ BẢN DỜI-SANG-BÊN — đối xứng còn thiếu của cú `renameSync … -bak-` bên dưới.
+ *
+ * Vì sao (user chốt 2026-09-02, *"phải mở lên nhận được dù có đang mở brave"*): luật "máy mặc
+ * định THẮNG" dời profile sang bên mỗi khi Windows đổi trình duyệt mặc định — nhưng không có
+ * đường NGƯỢC LẠI, nên một cú đổi khứ-hồi (đo 01–02/09: Brave → Edge → Brave trong MỘT ngày)
+ * giết phiên của mọi khe hai lần dù bản dời nào cũng còn nguyên trên đĩa. App giữ phiên chuẩn
+ * (Electron/Playwright) không bao giờ vứt profile của chính nó; đây là đưa zemory về chuẩn đó.
+ *
+ * Ba điều kiện, mỗi cái một lý do:
+ *  · chỉ bản bak CÙNG HÃNG với exe sắp mở — cookie hãng khác không giải mã được (App-Bound
+ *    Encryption), trả về chỉ đổi vỏ lấy vỏ;
+ *  · chỉ khi profile sống KHÔNG có phiên (`jarHasSession === false`) — có phiên, hoặc KHÔNG
+ *    ĐỌC ĐƯỢC (cửa sổ đang mở giữ khoá ⇒ `null`), đều không đụng;
+ *  · chỉ bản bak CÓ phiên — bản mới nhất trước, vỏ rỗng bị bỏ qua.
+ * Fail-open toàn phần: khôi phục là tối ưu hoá, không bao giờ được chặn việc mở cửa sổ.
+ */
+export function restoreShelvedSession(profileDir: string, exe: string, platformKey: string, log: (m: string) => void = () => {}): boolean {
+  try {
+    if (jarHasSession(join(profileDir, "Default", "Network", "Cookies"), platformKey) !== false) return false;
+    const brand = basename(exe).replace(/\.exe$/i, "").toLowerCase();
+    const base = basename(profileDir);
+    const pref = `${base}.${brand}-bak-`.toLowerCase();
+    const stamp = (n: string) => Number(/-bak-(\d+)$/.exec(n)?.[1] ?? 0);
+    const cands = readdirSync(dirname(profileDir))
+      .filter((n) => n.toLowerCase().startsWith(pref))
+      .sort((a, b) => stamp(b) - stamp(a));
+    for (const name of cands) {
+      const bak = join(dirname(profileDir), name);
+      if (jarHasSession(join(bak, "Default", "Network", "Cookies"), platformKey) !== true) continue;
+      try {
+        if (existsSync(profileDir)) renameSync(profileDir, `${profileDir}.${brand}-bak-${Date.now()}`);
+        renameSync(bak, profileDir);
+      } catch {
+        return false; // một trong hai dir đang bị giữ — để nguyên, lượt sau thử lại
+      }
+      log(`  restored ${platformKey} session from set-aside profile ${name} — no re-login needed`);
+      return true;
+    }
+  } catch {
+    /* fail-open — see the doc block */
+  }
+  return false;
+}
+
 /** @param keepSession profile này có phiên đăng nhập đáng giữ không (xem chú thích trong thân). */
 function profileBrowser(profileDir: string, override?: string, keepSession = false, log: (m: string) => void = () => {}): string | null {
   const exe = override && existsSync(override) ? override : findBrowser(override);
@@ -1168,7 +1213,10 @@ async function scanWebInner(
     switch (launchPlan(alive, hasTab)) {
       case "spawn": {
         const exe = profileBrowser(profileDir, opts.browser, hasSession, log);
-        if (exe) owned.pid = launchBrowser(exe, profileDir, port, p.url, opts.hidden) ?? owned.pid;
+        if (exe) {
+          restoreShelvedSession(profileDir, exe, p.key, log);
+          owned.pid = launchBrowser(exe, profileDir, port, p.url, opts.hidden) ?? owned.pid;
+        }
         return;
       }
       case "tab":
@@ -1186,6 +1234,7 @@ async function scanWebInner(
     if (opts.probeOnly) return { status: "need-login", platform: p.key, source: p.source, url: p.url };
     const exe = profileBrowser(profileDir, opts.browser, hasSession, log);
     if (!exe) return { status: "no-browser", platform: p.key, source: p.source, url: p.url };
+    restoreShelvedSession(profileDir, exe, p.key, log);
     // Name the browser: on a machine whose default is Chrome, an unexplained Edge
     // window reads as "the tool is doing something odd" (reported 2026-07-30).
     log(`opening ${p.key} window in ${basename(exe)} (log in there once)…`);

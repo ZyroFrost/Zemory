@@ -102,6 +102,25 @@ const SESSION_COOKIE_LIKE: Record<string, string> = {
   claude: "sessionKey",
 };
 
+/**
+ * Does this Chromium jar hold a LIVE session for the platform?
+ * `false` = readable and definitely no session (missing jar counts) · `true` = session cookie
+ * present · `null` = cannot tell (jar locked by a running window, or platform has no known
+ * session-cookie name) — callers must treat `null` as "hands off", not as "no".
+ * Names only — values are never read.
+ */
+export function jarHasSession(dbPath: string, platform: string): boolean | null {
+  const hosts = PLATFORM_HOSTS[platform];
+  const like = SESSION_COOKIE_LIKE[platform];
+  if (!hosts || !like) return null;
+  if (!existsSync(dbPath)) return false;
+  try {
+    return sessionCount(dbPath, hosts, like) > 0;
+  } catch {
+    return null;
+  }
+}
+
 /** Rows whose NAME marks a live session for this platform. Names only — values are never read. */
 function sessionCount(dbPath: string, hosts: string[], nameLike: string): number {
   const db = new Database(dbPath, { readonly: true });
