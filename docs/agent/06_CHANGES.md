@@ -5,6 +5,43 @@
 
 ---
 
+## [2026-09-02i] — cache dashboard TỰ SÁT: đóng dấu lúc VÀO nên sinh ra đã quá hạn
+
+**Đo trên kho thật 2.732 MB: `/memory-status` lượt LẠNH 74 giây**, lượt ngay sau vẫn **9,5 s** thay
+vì ~40 ms như chú thích trong chính file hứa. Gốc rễ là đúng MỘT chữ: `dashCache = { at: now … }`
+với `now` lấy ở ĐẦU hàm, tức mốc **request vào**. Lượt tính lâu hơn `DASH_TTL_MS` (60 s) ⇒ hàng
+cache sinh ra **đã quá hạn** ⇒ lượt kế tính lại từ đầu ⇒ toàn bộ chuỗi tối ưu ở `dashboardMemory`
+(hai tầng TTL · tách `/sync-pulse` · coverage 38 s → 0,58 s) bị vô hiệu **đúng trên kho lớn — nơi
+nó tồn tại để bảo vệ**. `heavyCache` cùng lỗi (TTL 300 s nên chưa lộ).
+**Bằng chứng đây là SÓT chứ không phải chủ ý:** nhánh `heavyStatsAsync` đã dùng `Date.now()` lúc
+hoàn tất từ trước, ở HAI chỗ; chỉ hai đường đồng bộ còn dùng mốc vào.
+**Hệ quả đã cắn thật trong phiên này:** 74 s đó chạy đồng bộ trên event loop nên `/connections`
+gọi ngay sau khi khởi động daemon **timeout hai lần** (45 s rồi 240 s).
+
+⚠ **CHƯA ĐO SẠCH được mức cải thiện, nói thẳng thay vì trưng số đẹp.** Lượt đo sau khi vá ra
+cold 10,2 s · warm 36,2 s · warm 3,1 s — **nhiễu**, vì `/automation` cho thấy `embedRunning: true`:
+daemon đang nhúng nền, vừa tranh I/O vừa tự làm mất hiệu lực cache (14 chỗ gọi `invalidateDashboard`).
+Phần **chứng minh được không phụ thuộc tải**: đóng dấu lúc-vào khiến cache KHÔNG THỂ phục vụ khi
+thời gian tính vượt TTL (số học), và bản vá chỉ có thể NỚI hiệu lực cache, không bao giờ thu hẹp.
+Muốn con số end-to-end thật thì phải đo lúc scheduler im — chưa làm.
+
+**Cổng:** `dash-cache-stamp.test.mjs` 3 ca — số học của luật (mốc-vào chết · mốc-xong sống · vẫn
+phải hết hạn đúng lúc, không thành vĩnh viễn) · mã sản xuất dùng `Date.now()` ở **cả hai** đường ·
+TTL vẫn lớn hơn nhịp poll 30 s của client. **Đột biến 3/3 ĐỎ** (hai đột biến *trả về đúng code cũ*).
+
+### `graph fitness` đỏ oan: câu nó in ra không phải thứ nó đếm
+
+`isolated_pct = 32,4%` (88/272, trần 30%) đỏ suốt nhiều tuần và không nằm trong CI. Soi ra: nó đếm
+**CHỈ lớp `imports`** trong khi câu `detail` in *"no intra-project edges"*. Đo: `imports` 445 cạnh ⇒
+88 cô lập; thêm `calls` (**4.482** cạnh) ⇒ còn **6 (2,2%)**. Soi tay đủ 88 file: **65 test · 17
+script** · `platform/window.ts` (daemon **spawn** nó bằng đường dẫn — xác minh hai đường: header
+file tự khai + chỗ ghép path ở `ui.ts`) · 2 hook `guard.cjs` (host gọi lúc chạy) · 2 tài sản
+template · `eslint.config.js` ⇒ **0 code chết**.
+⇒ Con số bị chi phối bởi SỐ FILE TEST, nên nó **chỉ đỏ thêm mỗi lần thêm test** — một cổng không
+bao giờ xanh được thì wire vào CI là dựng gate nhiễu (thứ `02_RULES` cấm). Sửa **câu chữ** cho đúng
+sự thật (nó đếm cạnh IMPORT, và cố ý không đếm `calls` vì đó là cạnh SUY LUẬN — để nó bịt miệng tín
+hiệu code-chết là trái điều 13). **Đổi ĐỊNH NGHĨA/ngưỡng là việc của user** — chưa làm.
+
 ## [2026-09-02h] — phản biện BÁC đường "dọn sớm bản rỗng"; và vá chỗ `restoreProfile` phá trước khi kiểm
 
 **Cửa phản biện đã ăn tiền.** Lượt audit đề xuất thêm tầng dọn NHANH cho bản dời "rỗng phiên"
