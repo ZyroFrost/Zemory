@@ -11,7 +11,7 @@
 //      chết trông y hệt một nguồn chưa tới lượt — đúng "vỏ rỗng" mà `02_RULES` cấm.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -384,4 +384,69 @@ test("bị khoá thì phải NÓI VIỆC PHẢI LÀM, không im", () => {
   assert.match(FE, /c\.borrowBlocked/, "UI phải hiện nó");
   const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   assert.equal((DICT.match(/'conn\.borrowBlocked':/g) || []).length, 2, "khoá i18n đủ HAI dict");
+});
+
+// ── ⑨ "CÓ COOKIE" ≠ "CÓ PHIÊN" — mượn phải nhìn TOKEN PHIÊN, không đếm cookie ────────────
+// User dính 2026-09-02: Chrome còn ĐÚNG MỘT cookie chatgpt.com lạc lại ⇒ UI mời "Mượn từ
+// Chrome" trong khi phiên thật nằm ở Brave đang khoá — mượn xong profile vẫn chưa đăng nhập,
+// ChatGPT đá sang Google OAuth và người dùng nhìn một form trắng trơn hỏi "tài khoản cũ đâu".
+// Luật mới: nguồn chỉ được MỜI khi jar có cookie PHIÊN (soi TÊN — `__Secure-next-auth.
+// session-token*` · `sessionKey` — không bao giờ đọc giá trị). Ca chạy THẬT trên jar giả,
+// không soi chữ.
+const { borrowCookies, findBorrowSource } = await import("../../dist/memory/borrowcookies.js");
+const Database = (await import("better-sqlite3")).default;
+const onWin = process.platform === "win32";
+
+/** Một "trình duyệt" giả: User Data + Local State + jar cookie với đúng các hàng cho trước. */
+function fakeSource(root, key, rows) {
+  const userData = join(root, key, "User Data");
+  mkdirSync(join(userData, "Default", "Network"), { recursive: true });
+  writeFileSync(join(userData, "Local State"), "{}", "utf8");
+  const db = new Database(join(userData, "Default", "Network", "Cookies"));
+  db.exec("CREATE TABLE cookies (host_key TEXT, name TEXT, value TEXT)");
+  const ins = db.prepare("INSERT INTO cookies (host_key, name, value) VALUES (?,?,?)");
+  for (const [host, name] of rows) ins.run(host, name, "x");
+  db.close();
+  return { key, label: key, userData, exe: join(root, `${key}.exe`) };
+}
+
+test("findBorrowSource: nguồn chỉ có cookie RÁC bị NHẢY QUA; nguồn có token phiên mới được mời", { skip: !onWin }, () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
+  const junk = fakeSource(root, "chromejunk", [["chatgpt.com", "oai-did"]]);
+  const live = fakeSource(root, "bravelive", [
+    ["chatgpt.com", "oai-did"],
+    ["chatgpt.com", "__Secure-next-auth.session-token"],
+  ]);
+  const got = findBorrowSource("chatgpt", [junk, live]);
+  assert.ok(got, "nguồn có token phiên phải được mời");
+  assert.equal(got.from, "bravelive", "nguồn rác đứng TRƯỚC không được thắng chỉ vì đứng trước — đúng ca Chrome-1-cookie");
+  assert.equal(findBorrowSource("chatgpt", [junk]), null, "chỉ còn nguồn rác ⇒ KHÔNG mời — mời là đưa người dùng vào form đăng nhập trắng");
+});
+
+test("token phiên CHUNKED (…session-token.0) và sessionKey của claude đều được nhận", { skip: !onWin }, () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
+  const chunked = fakeSource(root, "edgechunk", [["chatgpt.com", "__Secure-next-auth.session-token.0"]]);
+  assert.equal(findBorrowSource("chatgpt", [chunked])?.from, "edgechunk", "NextAuth cắt token dài thành .0/.1 — vẫn là phiên");
+  const claudeJunk = fakeSource(root, "cjunk", [["claude.ai", "cf_clearance"]]);
+  const claudeLive = fakeSource(root, "clive", [["claude.ai", "sessionKey"]]);
+  assert.equal(findBorrowSource("claude", [claudeJunk]), null, "cf_clearance là cookie Cloudflare, không phải phiên");
+  assert.equal(findBorrowSource("claude", [claudeJunk, claudeLive])?.from, "clive");
+});
+
+test("borrowCookies: nguồn không có phiên ⇒ TỪ CHỐI kèm lý do thật; nguồn có phiên ⇒ mượn + prune đúng host", { skip: !onWin }, () => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
+  const junk = fakeSource(root, "chromejunk", [["chatgpt.com", "oai-did"]]);
+  const no = borrowCookies({ platform: "chatgpt", from: "chromejunk", sources: [junk], browserRoot: join(root, "zb1") });
+  assert.equal(no.ok, false, "mượn jar không phiên là mượn về một profile chưa-đăng-nhập");
+  assert.match(no.error, /no live session/, "câu lỗi phải nói thẳng 'chưa có phiên', không phải một lỗi mơ hồ về sau");
+
+  const live = fakeSource(root, "bravelive", [
+    ["chatgpt.com", "__Secure-next-auth.session-token"],
+    ["chatgpt.com", "oai-did"],
+    ["example.com", "tracker"],
+  ]);
+  const ok = borrowCookies({ platform: "chatgpt", from: "bravelive", sources: [live], browserRoot: join(root, "zb2") });
+  assert.equal(ok.ok, true, ok.error ?? "");
+  assert.equal(ok.kept, 2, "giữ đúng cookie của nền");
+  assert.equal(ok.dropped, 1, "cookie site khác phải bị vứt — mượn MỘT site, không mượn cả jar");
 });

@@ -73,7 +73,9 @@ test("nguồn cũng chưa đăng nhập ⇒ nói thẳng, KHÔNG đẻ profile r
 });
 
 test("profile zemory đang có phiên ⇒ KHÔNG đè khi chưa --replace (xoá phiên là bất khả đảo)", skip, (t) => {
-  const b = fakeBrowser(t, [[".chatgpt.com", "session"]]);
+  // Fixture phải là nguồn CÓ PHIÊN THẬT (tên token NextAuth) — từ 2026-09-02 jar chỉ có cookie
+  // rác bị từ chối TRƯỚC khi chạm tới hành vi ca này canh ("có cookie" ≠ "có phiên").
+  const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]);
   const target = join(b.browserRoot, "chatgpt");
   mkdirSync(target, { recursive: true });
   writeFileSync(join(target, "Local State"), "phiên đang sống");
@@ -96,7 +98,7 @@ test("ghi dấu trình duyệt NGUỒN — khoá app-bound chỉ mở được b
 });
 
 test("KHÔNG chở file mật khẩu — chỉ Local State + Cookies", skip, (t) => {
-  const b = fakeBrowser(t, [[".chatgpt.com", "session"]]);
+  const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]); // nguồn có phiên thật — xem ca --replace
   writeFileSync(join(b.ud, "Default", "Login Data"), "mật khẩu đã lưu");
   writeFileSync(join(b.ud, "Default", "Web Data"), "thẻ thanh toán");
   const r = borrowCookies({ platform: "chatgpt", browserRoot: b.browserRoot, sources: [{ key: "fake", label: "Fake", userData: b.ud, exe: process.execPath }] });
@@ -154,7 +156,7 @@ test("chép cookie qua VACUUM INTO — copy file trần bỏ mất phần WAL (c
 // phiên (App-Bound Encryption) — mà lần thử đó đã XOÁ profile claude đang đăng nhập tốt.
 // Một nút "thử mượn" tuyệt đối không được để lại hậu quả khi nó thất bại.
 test("mượn hụt phải LÙI ĐƯỢC: profile cũ được dời sang bên, không bị xoá", skip, (t) => {
-  const b = fakeBrowser(t, [[".chatgpt.com", "session"]]);
+  const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]); // nguồn có phiên thật — xem ca --replace
   const target = join(b.browserRoot, "chatgpt");
   mkdirSync(target, { recursive: true });
   writeFileSync(join(target, "Local State"), "phiên đang sống");
