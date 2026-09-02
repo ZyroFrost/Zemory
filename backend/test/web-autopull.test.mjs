@@ -257,16 +257,14 @@ test("/connections: đọc CẢ `webPull`, không chỉ `webAuth`", () => {
   assert.match(CONN, /getWebAuth\(\)/, "vẫn đọc lần KIỂM cuối");
 });
 
-test("/connections: BẰNG CHỨNG MỚI NHẤT thắng — so MỐC, không ưu tiên cứng một nguồn", () => {
-  const i = CONN.indexOf("const lostAt");
-  assert.ok(i > 0, "phải có phép so mốc");
-  const blk = CONN.slice(i, i + 600);
-  assert.match(blk, /lostAt > checkedAt/, "kéo hỏng chỉ thắng khi nó MỚI HƠN lượt kiểm");
-  // Không được ưu tiên cứng: một lượt kiểm vừa chạy xong PHẢI thắng một lượt kéo hỏng hôm kia.
-  assert.ok(!/lost = .*pl\.ok === false;?\s*$/m.test(blk), "không được coi 'có pull hỏng' là mất kết nối bất kể mốc");
+test("/connections: KHÔNG tự phán — uỷ cho hàm chung `webLaneLinked`", () => {
+  // Luật "bằng chứng mới nhất thắng" đã dời vào `webLaneLinked` (xem ca ⑥). Cổng này canh phần
+  // còn lại của hợp đồng: `connections.ts` phải UỶ chứ không giữ bản sao — giữ bản sao là đúng
+  // cách hai bề mặt lệch nhau lần trước.
+  assert.match(CONN, /webLaneLinked\(st, pl\)/, "phải uỷ cho hàm chung, truyền cả hai nguồn");
   assert.match(CONN, /connected: !lost && st\?\.ok === true/, "mất kết nối ⇒ connected phải là false");
+  assert.ok(!/lostAt > checkedAt/.test(CONN), "không được giữ bản sao của luật so mốc");
 });
-
 test("/connections: mất kết nối phải NÓI VIỆC PHẢI LÀM, không bắt đoán", () => {
   assert.match(CONN, /detailCode: lost \? "needLogin"/, "phải có mã riêng để UI dịch được");
   const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
@@ -274,4 +272,47 @@ test("/connections: mất kết nối phải NÓI VIỆC PHẢI LÀM, không b�
   const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   const hits = DICT.match(/'conn\.needLogin':/g) || [];
   assert.equal(hits.length, 2, "khoá i18n phải có ĐỦ HAI dict");
+});
+
+// ── ⑥ MỘT NGUỒN SỰ THẬT cho "khe này còn nối không" ──────────────────────────────────────
+// Trả giá 2026-09-02: hai bề mặt (bảng Liên kết + cây Nguồn) mỗi bên tự đọc `webAuth`. Vá một
+// bên, quên bên kia ⇒ hộp chi tiết hiện `Link: linked` NGAY TRÊN `Last pull: need-login`. Chính
+// `scope.ts` có sẵn comment *"để hai bề mặt KHÔNG BAO GIỜ nói khác nhau"* — nguồn TRÙNG thì sớm
+// muộn cũng lệch, một hàm thì không.
+const { webLaneLinked } = await import("../../dist/memory/webslots.js");
+
+test("webLaneLinked: BẰNG CHỨNG MỚI NHẤT thắng, cả hai chiều", () => {
+  const older = "2026-09-01T00:00:00Z";
+  const newer = "2026-09-02T00:00:00Z";
+  assert.equal(webLaneLinked(undefined, undefined), null, "chưa biết gì ⇒ null, KHÁC 'biết là đứt'");
+  assert.equal(webLaneLinked({ ok: true, at: newer }, undefined), true);
+  // Kéo hỏng MỚI HƠN lượt kiểm ⇒ đứt.
+  assert.equal(webLaneLinked({ ok: true, at: older }, { ok: false, status: "need-login", at: newer }), false);
+  // Lượt kiểm MỚI HƠN kéo hỏng ⇒ vẫn nối (user vừa đăng nhập lại xong).
+  assert.equal(webLaneLinked({ ok: true, at: newer }, { ok: false, status: "need-login", at: older }), true);
+  // Hỏng vì lý do KHÁC không phải bằng chứng đứt liên kết.
+  assert.equal(webLaneLinked({ ok: true, at: older }, { ok: false, status: "no-browser", at: newer }), true);
+});
+
+test("hai bề mặt phải gọi CÙNG hàm — không bên nào tự đọc `webAuth` rồi tự phán", () => {
+  const scope = readFileSync(new URL("../src/memory/scope.ts", import.meta.url), "utf8");
+  const conn = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
+  assert.match(scope, /webLaneLinked\(/, "cây Nguồn phải dùng hàm chung");
+  assert.match(conn, /webLaneLinked\(/, "bảng Liên kết phải dùng hàm chung");
+  assert.ok(!/const linked = auth \? auth\.ok === true : null;/.test(scope), "scope.ts không được tự phán lại");
+  assert.ok(!/lostAt > checkedAt/.test(conn), "connections.ts không được giữ bản sao của luật so mốc");
+});
+
+test("nút nối lại KHÔNG hiện trên hàng gộp — hàng cha không biết nối vào khe nào", () => {
+  // User: *"link ở đây rồi nó biết link vào đâu"*. Hàng cha gộp nhiều khe con nên `account` của
+  // nó rơi về 'main' theo mặc định ⇒ bấm Link ở đó là ÂM THẦM nối khe main dù khe hỏng là khe 2.
+  const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  const i = FE.indexOf("var act=web&&c.linked===false");
+  assert.ok(i > 0, "phải có điều kiện bày hành động");
+  const line = FE.slice(i, FE.indexOf("\n", i));
+  assert.match(line, /!c\.kids/, "hàng gộp (có kids) KHÔNG được bày nút nối lại");
+  // Và phải chỉ đường: mở nhóm ra, bấm đúng tài khoản hỏng.
+  assert.match(FE, /scope\.detPickAcct/, "hàng cha phải nói rõ phải bấm vào đâu");
+  const DICT = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.equal((DICT.match(/'scope\.detPickAcct':/g) || []).length, 2, "khoá i18n đủ HAI dict");
 });

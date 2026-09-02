@@ -98,6 +98,28 @@ KHÁC vẫn thử · khe lành không bị chặn oan · `/connections` đọc c
 có đủ hai dict). **Đột biến 4/4 ĐỎ**, gồm hai đột biến *trả về đúng code cũ*: bỏ chặn khe need-login ·
 `connected` chỉ đọc `webAuth`.
 
+### Hai lỗi hộp "Connection details" — user bắt, và lỗi ĐẦU do chính lượt vá trên đẻ ra
+
+**① `Link: linked` nằm NGAY TRÊN `Last pull: could NOT run (need-login)` — cùng một hộp, hai câu
+ngược nhau.** Gốc: `scope.ts` (cây Nguồn) đọc **chỉ `webAuth`**, y như `/connections` trước khi vá.
+Tôi vá một bề mặt, quên bề mặt kia ⇒ chúng lệch nhau ngay. Trớ trêu: comment ở ĐÚNG dòng đó đã viết
+sẵn *"đọc từ cùng sổ mà bảng Liên kết vẫn đọc, để hai bề mặt KHÔNG BAO GIỜ nói khác nhau"* — tôi phá
+đúng thứ nó cảnh báo.
+
+⇒ Không vá hai chỗ nữa mà rút thành **MỘT hàm dùng chung** `webLaneLinked(auth, pull)` ở
+`webslots.ts`, cả `scope.ts` lẫn `connections.ts` cùng gọi. **Nguồn TRÙNG thì sớm muộn cũng lệch;
+một hàm thì không** — và có cổng canh *"không bên nào tự đọc `webAuth` rồi tự phán"*, để lần sau ai
+đó copy luật ra chỗ mới là đỏ ngay.
+
+**② Nút "Link" nằm ở hàng WEB TỔNG** (user: *"account nào hư thì hiện liên kết ở đó chứ, link ở đây
+rồi nó biết link vào đâu, lại thiết kế ngu"*). Đúng: hàng cha gộp nhiều khe con nên `account` của nó
+**rơi về `'main'` theo mặc định** ⇒ bấm Link ở đó là **âm thầm nối khe `main`** dù khe hỏng có thể là
+khe 2. Nay hàng cha **chỉ BÁO**, kèm câu chỉ đường *"N tài khoản đang mất kết nối — mở nhóm này ra và
+bấm vào ĐÚNG tài khoản đó"*; nút nối lại chỉ nằm ở hàng tài khoản thật (`!c.kids`).
+
+**Cổng:** +3 ca. **Đột biến 4/4 ĐỎ**: `webLaneLinked` bỏ qua `webPull` · ưu tiên cứng thay vì so mốc ·
+**trả về đúng code cũ** của `scope.ts` · cho hàng gộp bày lại nút Link.
+
 ### Cửa sổ trình duyệt bỏ lại — 3 icon Edge trên taskbar (user bắt, kèm ảnh)
 
 **Không phải do tôi restart daemon.** Daemon khởi động lần cuối `01/09 19:47Z`; ba cửa sổ mở lúc
