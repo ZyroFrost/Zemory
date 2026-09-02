@@ -26,6 +26,9 @@ export const HEAVY = [
  */
 export const LIGHT_DESPITE_MATCH = {
   "audit-fixes.test.mjs": 129,
+  // Đo bằng gate-cage 2026-09-02: chỉ import API `graphFitness`/`isEntryClassFile` rồi chấm trên
+  // graph GIẢ dựng bằng tay — không gọi `buildCodeGraph` nên không nạp grammar tree-sitter.
+  "fitness-entry-class.test.mjs": 47,
   "graph-docs.test.mjs": 129,
   "graph-edge-id.test.mjs": 129,
   "graph-path.test.mjs": 129,
