@@ -27,10 +27,26 @@ Chấp nhận được vì trình chạy test quét cả thư mục, script gọ
 frontend đã có cổng khác canh (`helpers.mjs readAppJs()` ném lỗi nếu có file chưa khai trong
 `APP_SCRIPT_ORDER`). Còn **module chết thì không cơ chế nào khác bắt** — đó là thứ cổng này giữ.
 
-**Cổng:** `fitness-entry-class.test.mjs` 4 ca, gồm **ca ÂM** (module nguồn thật KHÔNG được loại ·
-`transcripts/` không được khớp `scripts/`) + ca đối chứng cùng số file (10 test mồ côi ⇒ 0% xanh ·
-10 module nguồn mồ côi ⇒ 90,9% ĐỎ). **Đột biến 4/4 ĐỎ** (*trả về đúng code cũ* · loại luôn module
-nguồn ⇒ cổng thành trang trí · bỏ phần nêu tên · nới trần về 30%).
+🔴 **SÀN ĐẾM — gate đầy đủ bắt được lỗi của chính bản vá này.** Siết trần 30%→4% làm **ĐỎ OAN**
+fixture *"repo nhỏ lành mạnh"* của `graph.test.mjs`: **1 file cô lập / 3 file = 33%**. Bài học là
+tỉ lệ trên mẫu bé là **nhiễu**, không phải bằng chứng — đúng doctrine đã trả giá ở `plan/17 §1.3b`
+(`ABSTAIN_MIN_VECTORS`: *"ngưỡng TUYỆT ĐỐI chỉ có nghĩa khi chỉ mục đủ DÀY"*). Thêm
+`ISOLATED_MIN_COUNT = 3`: đỏ đòi **ĐỦ HAI** — đủ SỐ ĐẾM và vượt tỉ lệ.
+**Chọn sàn theo SỐ ĐẾM, không theo cỡ repo** (cân hai hướng rồi mới chốt): sàn-theo-cỡ sẽ tha một
+repo 20 file có 5 module chết (25%!), sàn-theo-đếm vẫn bắt (5 ≥ 3 **và** 25% > 4%). Câu `detail`
+chỉ nhắc tới sàn khi nó **thật sự đang cứu** — nói cả khi tỉ lệ vốn đã đạt thì đọc ra thành "cổng
+bị tắt", lại một câu lệch nghĩa.
+
+**Cổng:** `fitness-entry-class.test.mjs` **5 ca**, gồm **ca ÂM** (module nguồn thật KHÔNG được loại ·
+`transcripts/` không được khớp `scripts/`) · ca đối chứng cùng số file (10 test mồ côi ⇒ 0% xanh ·
+10 module nguồn mồ côi ⇒ 90,9% ĐỎ) · ca sàn (1–2 file vượt tỉ lệ vẫn KHÔNG bị phán và phải NÓI RA
+là dưới sàn; chạm đúng sàn ⇒ phán ngay, để sàn không thành cửa hậu). **Đột biến 8/8 ĐỎ** qua hai
+lượt: *trả về đúng code cũ* · loại luôn module nguồn ⇒ cổng thành trang trí · bỏ phần nêu tên ·
+nới trần về 30% · bỏ sàn (**tái hiện đúng fixture đỏ oan**) · sàn thành cửa hậu · nới sàn lên 99 ·
+bỏ câu nói về sàn.
+**Và phân nhóm test:** file mới khớp regex "nạp runtime nặng" (vì import `memory/graph/`), nên đã
+**ĐO bằng `gate-cage`: đỉnh 47 MB** ⇒ khai vào `LIGHT_DESPITE_MATCH` kèm số — đúng luật của cổng đó
+(*"là một QUYẾT ĐỊNH có số đo, không phải chỗ nhét cho cổng khỏi đỏ"*), không phải đoán.
 
 ## [2026-09-02j] — doctor phán "daemon KHÔNG chạy" trong khi nó đang chạy
 

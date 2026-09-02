@@ -388,6 +388,20 @@ export const HUB_FANIN = 8;
 export const FITNESS_GATES = { hubPct: 20, isolatedPct: 4, utilViolations: 0 };
 
 /**
+ * SÀN SỐ LƯỢNG cho `isolated_pct` — dưới mức này thì PHẦN TRĂM không có nghĩa, không phán.
+ *
+ * Bắt được nhờ gate 2026-09-02: siết trần 30%→4% làm ĐỎ luôn fixture "repo nhỏ lành mạnh" của
+ * `graph.test.mjs` — 1 file cô lập trên 3 file = 33%, mà đó là một repo 3 file có điểm vào, không
+ * phải code mục. Một tỉ lệ trên mẫu bé là nhiễu, không phải bằng chứng.
+ * Cùng doctrine đã trả giá ở `plan/17 §1.3b` (`ABSTAIN_MIN_VECTORS`): *"ngưỡng TUYỆT ĐỐI chỉ có
+ * nghĩa khi chỉ mục đủ DÀY"* — ở đó kho thưa làm mọi hàng xóm trông "xa", ở đây mẫu bé làm mọi
+ * điểm vào trông như "rác".
+ * Chọn SÀN THEO SỐ ĐẾM, không theo cỡ repo: sàn-theo-cỡ sẽ tha cho một repo 20 file có 5 module
+ * chết (25%!), còn sàn-theo-đếm vẫn bắt (5 ≥ 3 và 25% > 4%). Đỏ đòi ĐỦ HAI: đủ nhiều VÀ đủ tỉ lệ.
+ */
+export const ISOLATED_MIN_COUNT = 3;
+
+/**
  * File thuộc lớp ĐIỂM VÀO — thứ mà theo CẤU TRÚC không bao giờ có cạnh import trong project.
  *
  * 🔴 Vì sao loại khỏi `isolated_pct` (user chốt 2026-09-02, sau khi audit đo ra cổng này đỏ OAN).
@@ -469,7 +483,8 @@ export function graphFitness(g: CodeGraph): GraphFitness {
       metric: "isolated_pct",
       value: isolatedPct,
       threshold: FITNESS_GATES.isolatedPct,
-      passed: isolatedPct <= FITNESS_GATES.isolatedPct,
+      // Đỏ đòi ĐỦ HAI điều kiện: đủ NHIỀU (sàn đếm — xem `ISOLATED_MIN_COUNT`) VÀ vượt tỉ lệ.
+      passed: isolated.length < ISOLATED_MIN_COUNT || isolatedPct <= FITNESS_GATES.isolatedPct,
       // 🔴 NÓI ĐÚNG THỨ NÓ ĐẾM (sửa 2026-09-02): câu cũ là "no intra-project edges" — SAI, và
       // chính nó làm audit đọc lệch. `fanIn/fanOut` chỉ dựng từ **lớp IMPORT**; hai lớp kia của
       // graph không được tính. Đo trên repo này: `imports` 445 cạnh ⇒ 88/272 cô lập (32,4%), mà
@@ -483,6 +498,11 @@ export function graphFitness(g: CodeGraph): GraphFitness {
         `${isolated.length}/${eligible.length} source file(s) with no IMPORT edge` +
         `${isolated.length ? `: ${isolated.slice(0, 5).map((n) => n.id).join(", ")}${isolated.length > 5 ? ", …" : ""}` : ""}` +
         ` · ${excluded.length} excluded as entry-class (test/script/hook/template/config) or without an import layer` +
+        // Chỉ nói tới sàn khi nó THẬT SỰ đang cứu (tỉ lệ đã vượt trần mà số đếm chưa tới sàn).
+        // Nói cả khi tỉ lệ vốn đã đạt thì đọc ra thành "cổng bị tắt", tức lại một câu lệch nghĩa.
+        (isolatedPct > FITNESS_GATES.isolatedPct && isolated.length < ISOLATED_MIN_COUNT
+          ? ` · over the ratio but UNDER the floor of ${ISOLATED_MIN_COUNT} isolated file(s), so the ratio is not judged (a ratio on a tiny population is noise)`
+          : "") +
         ` · 'calls'/'api' edge layers deliberately not counted`,
     },
     {
