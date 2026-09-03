@@ -29,6 +29,10 @@ export interface HeavyStats {
   remaining: number;
   covered: number;
   embeddable: number;
+  /** Tin CỐ Ý nằm ngoài phạm vi nhúng — chưa có vector và sẽ không bao giờ có, chừng nào phạm vi
+   *  chưa đổi. Phải đi CÙNG `remaining`: một mình `remaining 0 · coverage 100%` là con số nói dối
+   *  (đo 2026-09-03: 23.221 tin không vector trong khi bề mặt trưng đủ 100%). */
+  outOfScope: number;
 }
 
 /** Tính bốn số nặng ở tiến trình con. Fail-open: lỗi/timeout ⇒ `null`, người gọi giữ số cũ. */
@@ -80,6 +84,7 @@ export function heavyStatsChild(): Promise<HeavyStats | null> {
           remaining: v.remaining ?? 0,
           covered: v.covered ?? 0,
           embeddable: v.embeddable ?? 0,
+          outOfScope: v.outOfScope ?? 0,
         });
       } catch {
         resolve(null);

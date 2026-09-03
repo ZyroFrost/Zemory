@@ -12,7 +12,7 @@ import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { embedConfig, embedProfileSpec } from "../memory/embed.js";
-import { dropVectorIndex, embedPending, vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "../memory/vectors.js";
+import { dropVectorIndex, embedPending, vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
 import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
@@ -723,6 +723,35 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     try {
       const r = await vectorCatchUp({ driveDir, keyFile, dryRun });
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
+      // 🔴 VẾ "CÓ HỤT KHÔNG" — in TRƯỚC vế vector, vì nó nặng hơn và vì con số vector một mình
+      // ĐÃ TỪNG NÓI DỐI: 2026-09-03 kênh mất hẳn khúc 1 (2,22 GB / 48 khối) mà lệnh này vẫn báo
+      // "thiếu 6.551", nghe như lành. Kênh càng CỤT thì kho tạm càng ít tin ⇒ số vector thiếu
+      // càng NHỎ. Nên phải in cả hai, và phải in cái này trước.
+      // Hạng NẶNG NHẤT, in trước cả số đếm: khúc không giải mã được. Máy mới dựng lại sẽ CHẾT
+      // ngay ở đó, không phải chỉ nhận thiếu. Đo 2026-09-03 trên kênh thật: khúc 1 bị một lượt
+      // gộp trượt để lại 0 byte ⇒ bản trước của lệnh này NÉM ngay tại vòng dựng và không in nổi
+      // một con số nào — công cụ chẩn đoán câm đúng lúc cần nó nhất.
+      for (const u of r.unreadable) console.log(`  🔴 KHÚC KHÔNG ĐỌC ĐƯỢC: ${u.file} — ${u.error}`);
+      if (r.unreadable.length) {
+        console.log(`     Máy mới nhận kênh sẽ hỏng ở đúng khúc này. Kiểm nó trước mọi con số bên dưới.`);
+        console.error(`KHÚC KHÔNG ĐỌC ĐƯỢC trên kho chung: ${r.unreadable.map((u) => u.file).join(", ")}`);
+        process.exitCode = 1;
+      }
+      console.log(`  dựng lại từ kênh: ${r.probeSessions} phiên · ${r.probeMessages} tin   (kho máy này: ${r.localSessions} phiên · ${r.localMessages} tin)`);
+      // Kênh giữ dữ liệu của MỌI máy nên bình thường nó phải ≥ kho máy này; thiếu chút là do delta
+      // chưa đẩy (bị chặn theo ranh giới đã nhúng). Hụt NHIỀU nghĩa là kênh mất khúc — thứ không
+      // lượt sync nào tự chữa. Sàn ĐẾM để kho bé không kêu oan (cùng doctrine ISOLATED_MIN_COUNT).
+      const shortBy = r.localMessages - r.probeMessages;
+      if (r.localMessages >= 1000 && shortBy > r.localMessages * 0.05) {
+        console.log(`  🔴 KÊNH HỤT ${shortBy} tin so với kho máy này (>5%) — gần như chắc chắn MẤT KHÚC, không phải trễ delta.`);
+        console.log(`     Soi thư mục kênh: phải có \`global_memory.enc\` (khúc 1) đọc được, rồi \`.002.enc\`, \`.003.enc\`…`);
+        console.log(`     Con số "thiếu vector" bên dưới KHÔNG dùng được khi kênh đang cụt — nó chỉ soi phần kênh đang có.`);
+        // RA STDERR + EXIT ≠ 0, không phải để "báo lỗi lệnh" mà để phát hiện này ĐI ĐƯỢC TỚI
+        // `daemon.log`: `runStep` chỉ log DÒNG CUỐI của stdout (nên dòng trên sẽ mất), nhưng nó
+        // đổ tới 20 dòng stderr khi exit ≠ 0. Dùng đúng đường sẵn có thay vì thêm một kênh báo mới.
+        console.error(`KÊNH HỤT ${shortBy} tin (kênh ${r.probeMessages} / kho ${r.localMessages}) — nghi mất khúc; kiểm khúc 1 của kho chung.`);
+        process.exitCode = 1;
+      }
       console.log(`  kho chung thiếu ${r.missing} vector mà máy này ĐANG CÓ.`);
       if (!r.missing) console.log("  ✓ không thiếu gì — kho chung đã đủ vector.");
       else if (!r.pushed) console.log(`  (DRY-RUN) chạy lại không kèm --dry-run để nối khối bù (~${mb(r.missing * 3072)}).`);
@@ -1183,7 +1212,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     } catch {
       /* lane vector là tuỳ chọn — fail open (HP điều 9) */
     }
-    console.log(JSON.stringify({ tokensEst, count, remaining, covered, embeddable }));
+    console.log(JSON.stringify({ tokensEst, count, remaining, covered, embeddable, outOfScope: vectorOutOfScope() }));
     return;
   }
   if (sub === "info") {
@@ -1193,8 +1222,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  ${t.name.padEnd(13)} ${String(t.rows).padStart(7)}${t.detail ? "   · " + t.detail : ""}`);
     }
     const remaining = vectorRemaining();
+    // `remaining` một mình NÓI DỐI: nó đếm bằng chính bộ lọc chọn tin, nên tin nằm NGOÀI phạm vi
+    // nhúng không lọt vào con số nào — đo 2026-09-03 trên kho thật: `remaining 0` trong khi
+    // **23.221 tin** không có vector. Nói cả hai thì "cố ý bỏ" mới phân biệt được với "chưa kịp
+    // làm"; im về vế thứ hai là để người đọc tin kho đã phủ 100%. Xem `vectors.ts vectorOutOfScope()`.
+    const outOfScope = vectorOutOfScope();
     console.log(
-      `  ${"vec_chunks".padEnd(13)} ${String(vectorCount()).padStart(7)}   · semantic embeddings (RAG)${remaining ? ` · ${remaining} remaining` : ""}`,
+      `  ${"vec_chunks".padEnd(13)} ${String(vectorCount()).padStart(7)}   · semantic embeddings (RAG)${remaining ? ` · ${remaining} remaining` : ""}` +
+        (outOfScope ? ` · ${outOfScope} cố ý ngoài phạm vi nhúng (đổi bằng ZEMORY_EMBED_TOOLS)` : ""),
     );
     return;
   }
@@ -1326,6 +1361,20 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    show = dấu tay + đường dẫn (KHÔNG in chìa) · set = nhập chìa ĐANG CÓ",
       "                    từ stdin (máy THỨ HAI) · path = đường chuẩn. Chìa là DANH TÍNH:",
       "                    zemory local-only nên không có server nhận diện — người mang chìa vào.",
+      "  sync [--dir <folder>] [--key-file <path>] [--full] [--compact]",
+      "                    ĐỒNG BỘ HAI CHIỀU qua thư mục chung (Drive): gộp mọi gói của máy khác",
+      "                    vào kho này, rồi NỐI THÊM phần mới của máy này lên kho chung — không",
+      "                    ghi đè byte cũ. --compact: viết LẠI kho chung từ kho máy này.",
+      "  vectors-catchup [--dir <folder>] [--dry-run]",
+      "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
+      "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",
+      "  verify [--db <path>]",
+      "                    kho có lành không (integrity). Hỏng → chỉ đường salvage + reopen + scan.",
+      "  reopen [--all] [--reconcile]",
+      "                    mở lại đường nạp cho phiên bị thủng, để scan kéo lại từ transcript GỐC.",
+      "  salvage [out.db] [--force]",
+      "                    cứu những bảng còn đọc được từ một kho đã hỏng sang một file mới.",
+      "  stats             in một dòng JSON các số nặng (daemon dùng; người đọc thì xem info).",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
       "  restore <backup.db> [--force]",
       "                    restore a raw local SQLite backup; renames the previous DB aside.",
