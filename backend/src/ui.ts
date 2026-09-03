@@ -28,7 +28,7 @@ import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from 
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
-import { vectorCount, vectorCoverage, vectorIndexInfo, vectorRemaining } from "./memory/vectors.js";
+import { vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
@@ -951,7 +951,7 @@ const HEAVY_TTL_MS = 300_000;
 let dashCache: { at: number; value: Record<string, unknown> } | null = null;
 let heavyCache: {
   at: number;
-  value: { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number };
+  value: { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number };
 } | null = null;
 
 /** Drop cached stats after anything that actually changes the memory. */
@@ -984,6 +984,7 @@ function heavyStatsSync(): {
   remaining: number;
   covered: number;
   embeddable: number;
+  outOfScope: number;
 } {
   const now = Date.now();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
@@ -1007,16 +1008,20 @@ function heavyStatsSync(): {
   let remaining = 0;
   let covered = 0;
   let embeddable = 0;
+  // TIN CỐ Ý BỎ NGOÀI PHẠM VI NHÚNG — phải đo CÙNG CHỖ với coverage (cũng là một anti-join
+  // toàn bảng, và phải chia cùng một TTL để hai con số không bao giờ lệch nhịp nhau).
+  let outOfScope = 0;
   try {
     count = vectorCount();
     remaining = vectorRemaining();
     const cov = vectorCoverage();
     covered = cov.covered;
     embeddable = cov.embeddable;
+    outOfScope = vectorOutOfScope();
   } catch {
     /* vector lane is optional — fail open (HP điều 9) */
   }
-  const value = { tokensEst, count, remaining, covered, embeddable };
+  const value = { tokensEst, count, remaining, covered, embeddable, outOfScope };
   // ĐÓNG DẤU LÚC XONG, không phải lúc BẮT ĐẦU (vá 2026-09-02) — xem khối chú thích ở `dashCache`.
   heavyCache = { at: Date.now(), value };
   return value;
@@ -1036,7 +1041,7 @@ function heavyStatsSync(): {
  * `dashCache` (60 s) vẫn nằm trên, nên đường thường ngày không đụng tới đây.
  */
 let heavyInFlight: Promise<HeavyStats | null> | null = null;
-async function heavyStatsAsync(): Promise<{ tokensEst: number; count: number; remaining: number; covered: number; embeddable: number }> {
+async function heavyStatsAsync(): Promise<{ tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number }> {
   const now = Date.now();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
   if (!heavyInFlight) {
@@ -1070,7 +1075,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
   const summary = memorySummary();
   const info = memoryInfo();
   const heavy = await heavyStatsAsync();
-  let vectors: { count: number; remaining: number; coverage: number | null; dims: string; error?: string };
+  let vectors: { count: number; remaining: number; coverage: number | null; dims: string; outOfScope: number; error?: string };
   try {
     let dimsLabel = "";
     try {
@@ -1088,6 +1093,14 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
       remaining: heavy.remaining,
       coverage: heavy.embeddable ? Number(((heavy.covered / heavy.embeddable) * 100).toFixed(1)) : null,
       dims: dimsLabel,
+      // 🔴 `coverage 100% · remaining 0` MỘT MÌNH LÀ CON SỐ NÓI DỐI (audit 2026-09-03).
+      // `vectorRemaining()` đếm bằng CHÍNH bộ lọc dùng để chọn tin, nên thứ nằm ngoài phạm vi
+      // không xuất hiện trong bất kỳ con số nào — đo trên kho thật: **23.221 tin** không có
+      // vector (7,0% kho) mà bề mặt vẫn trưng `remaining 0 · coverage 100%`. `vectorOutOfScope()`
+      // được viết ĐÚNG để chữa việc đó từ 12/08 và test của nó assert *"phải NHÌN THẤY được"* —
+      // nhưng nó chưa từng có người gọi ngoài test, nên số đó chưa bao giờ lên bề mặt nào.
+      // Hai con số cạnh nhau thì "cố ý bỏ" mới phân biệt được với "chưa kịp làm".
+      outOfScope: heavy.outOfScope,
     };
   } catch (error) {
     vectors = {
@@ -1095,6 +1108,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
       remaining: 0,
       coverage: null,
       dims: "unknown",
+      outOfScope: 0,
       error: error instanceof Error ? error.message : "vector status unavailable",
     };
   }

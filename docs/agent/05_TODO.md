@@ -6,7 +6,58 @@
 **0 mục `[ ]` đang mở.** Lịch sử việc đã xong đã dời sang `archive/05_TODO.md` ngày 2026-08-31
 (tra bằng `zemory plan search`) — sổ này chỉ chứa việc PHẢI LÀM, không chứa ghi chú "đã đóng".
 
+## BÀN GIAO 2026-09-03 — trạng thái ĐO lúc chốt
+
+**Gate 1030/1030 · 0 fail.** Chưa push, chưa bump version — `2.13.1` vẫn là bản trên kênh.
+Đã sửa 4 lỗi + help thiếu 7 lệnh + `plan/00` tự đá nhau; chi tiết `06_CHANGES [2026-09-03]`.
+
+🔴 **KÊNH CHUNG ĐANG THIẾU KHÚC 1 — và CỐ Ý chưa sửa. Đọc hết trước khi định "dọn cho gọn".**
+Hiện trạng đo 2026-09-03: `global_memory.enc` **0 byte** · `.002.enc` 37 khối · `bak.enc` 48 khối /
+2,22 GB · thêm một file `global_memory.enc.broken-0byte-20260903` (0 byte, tôi dời sang, chờ user
+quyết xoá).
+· **Không mất dữ liệu, hệ chạy bình thường:** `syncDrive` quét MỌI `*.enc` kể cả `bak.enc` ⇒ hai máy
+  vẫn hội tụ; recall/scan/embed/backup đều xanh. Thứ hỏng chỉ là hai công cụ CHẨN ĐOÁN.
+· **Vì sao chưa sửa:** máy `DESKTOP-PFB157K` đang chạy bản **< 2.11.0**, còn nguyên tự-động-gộp ở
+  **48 khối** (`MAIN_COMPACT_CHUNKS`, bỏ ở `69b89d2`) **và** còn nguyên lỗi EXDEV. Lượt sửa kênh
+  19:06Z đặt đúng 48 khối vào khúc 1 ⇒ chạm đúng ngưỡng ⇒ máy kia gộp bằng code lỗi và phá lại
+  (bằng chứng: `bak.enc` mtime 01:56Z — chỉ nhánh gộp ghi file đó; `.002.enc` KHÔNG bị xoá vì bản
+  cũ không biết khúc ≥2 tồn tại; khoá kênh mang `host: DESKTOP-PFB157K`, `beat:true`).
+· **Nghịch lý phải nhớ:** khúc 1 đang 0 khối nên ngưỡng 48 KHÔNG chạm được ⇒ trạng thái trông-như-
+  hỏng này đang KHOÁ cái bẫy lại. Sửa kênh trước khi máy kia update = tự gỡ chốt.
+· **Thứ tự đúng:** ① `zemory selfupdate` trên `DESKTOP-PFB157K` → ② rename `bak.enc` →
+  `global_memory.enc` → ③ `zemory memory vectors-catchup --dry-run` xác nhận. Không gấp.
+
+### Việc CHỜ USER quyết (KHÔNG phải việc mở — đừng tự làm)
+· **`selfupdate` máy `DESKTOP-PFB157K`** — điều kiện tiên quyết của mọi bước sửa kênh.
+· **Xoá hay giữ** `global_memory.enc.broken-0byte-20260903` (0 byte) trên kênh.
+· **Xoá hay giữ** hai bản backup tay `premigrate.db` + `premove2-…db` (**5,2 GB**) trong
+  `data/backups` — vòng dọn CỐ Ý không đụng thứ người/agent đỗ lại.
+· **Advisory audit #4–#10 đã TRÌNH, user chưa chọn** — nêu tên để phiên sau khỏi đo lại: 2 cổng
+  chỉ regex trên CHUỖI SOURCE (`daemon-liveness` · `dash-cache-stamp`) + `webLaneSessionOnDisk`
+  chưa có ca nào · 2 endpoint không ai gọi (`POST /sync` · `GET /nav-cost`) · `graph export` thiếu
+  `type` và cả tầng chuẩn · `gate-cage.ps1` in mojibake kép (file không BOM, PS 5.1 đọc theo ANSI) ·
+  `plan/13 §0b.1` số node đã cũ (khai `hp_dieu ×13`, thực tế **16**; 288 node → **460**).
+
+### Bẫy đã trả giá trong phiên 2026-09-03 — đừng dẫm lại
+· **Fixture lệch production ĐÚNG chiều có ý nghĩa.** Cổng `--compact` cũ đặt thư mục Drive trong
+  `tempDir()` ⇒ cùng volume ⇒ nhánh EXDEV **không tồn tại trong test**, xanh vĩnh viễn. Tôi tái
+  phạm cùng họ ngay trong phiên: ca ③ dùng `rmSync` (khúc BIẾN MẤT) trong khi thực địa là khúc
+  RỖNG — gate xanh 4/4, đột biến 3/3 đỏ, mà **vô dụng trên kênh thật**. Thứ bắt được nó không phải
+  gate, là lượt chạy trên sự cố thật.
+· **Số quá đẹp = nghi thước, không nghi hệ.** Probe đếm export chết trả **721/721 = 100%** — do
+  heredoc ăn một tầng backslash làm `\b` thành ký tự BACKSPACE. Sanity-anchor bắt được; đo lại còn 13.
+· **"Đường thứ hai" phải KHÁC CƠ CHẾ, không phải suy diễn từ cùng công cụ.** Tôi suy *"6.310 ⇒ kênh
+  đủ"* rồi nói ra như khẳng định — sai, vì `vectors-catchup` không đo độ đầy của kênh.
+· **`npm run build` khi có job đang chạy bằng `dist/`** — cùng họ với bẫy "gọi dist khi gate chạy"
+  đã ghi, chiều ngược lại. Lần này may là job còn đang chờ khoá nên không chết.
+· **Heredoc/`${}` trong script sinh code**: `${ c: number }` bị Node hiểu thành substitution; quote
+  lồng nhau vỡ. Vá nhiều dòng ⇒ dùng `Edit`, đừng qua shell.
+
 ## BÀN GIAO 2026-09-02 — trạng thái ĐO lúc chốt
+
+> ⤴ **KHỐI LỊCH SỬ — trạng thái HIỆN HÀNH ở khối 2026-09-03 bên trên.** Giữ lại vì mục *"Bẫy đã trả
+> giá"* còn nguyên giá trị. Mục *"Việc CHỜ USER"* của khối này **đã gộp lên khối mới** — đọc khối
+> mới, đừng đọc hai chỗ rồi tưởng là hai danh sách khác nhau.
 
 **Đã push:** `2.13.0` (đợt web-connect) → **`2.13.1`** (đợt AUDIT + chốt phiên, user chốt số).
 Changelog `[2026-09-02f]` … `[2026-09-02m]`, phần cũ đã vào `archive/06_CHANGES.md`.

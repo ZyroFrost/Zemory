@@ -11,6 +11,7 @@ export function cmdHelp(): void {
       "  ui        open a small status window (app-mode; --no-window = serve only)",
       "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
+      "  conform   score how closely this repo follows the declared folder standard (--gate)",
       "  selfupdate  pull + rebuild this zemory install (stops if the tree is dirty)",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
       "  todo      todo verify: re-measure every 05_TODO item against the code, print drift",

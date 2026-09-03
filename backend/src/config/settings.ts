@@ -67,6 +67,8 @@ interface ZConfig {
   ignoredRoots?: string[];
   /** Mốc tự sync gần nhất (ms epoch) — xem getAutosyncLastAt. */
   autosyncLastAt?: number;
+  /** Mốc lượt ĐỐI CHIẾU KÊNH gần nhất (ms epoch) — xem getVecReconcileLastAt. */
+  vecReconcileLastAt?: number;
   /** Mốc lượt tự sync ĐANG chạy (ms epoch), xoá khi có kết cục — xem getAutosyncRunAt. */
   autosyncRunAt?: number | null;
   /** Kết cục lượt tự sync GẦN NHẤT — xem getAutosyncLastResult. */
@@ -317,6 +319,27 @@ export function getAutosyncLastAt(): number | null {
 export function setAutosyncLastAt(ms: number): void {
   const c = read();
   c.autosyncLastAt = ms;
+  write(c);
+}
+
+/**
+ * Mốc lượt ĐỐI CHIẾU KÊNH gần nhất — dựng lại kho chung vào kho tạm rồi so vector (`vectors-catchup`).
+ *
+ * Vì sao phải có một mốc RIÊNG, không dùng chung với `autosyncLastAt`: hai việc trả lời hai câu
+ * khác nhau. Lượt sync hỏi CUỐN SỔ (`vec_shipped`) *"tôi đã gửi cái này chưa"*; lượt đối chiếu hỏi
+ * CHÍNH KÊNH *"cái này có thật sự nằm trên đó không"*. Sổ được **gieo** bằng toàn bộ vector đang có
+ * lúc nâng schema v23, nên nó mù cấu trúc với phần hụt có TRƯỚC mốc đó (`plan/08 §8b`) — nghĩa là
+ * đường sync sẽ KHÔNG BAO GIỜ tự phát hiện, dù chạy bao nhiêu lượt.
+ * LƯU BỀN chứ không phải biến trong tiến trình: daemon khởi động lại hàng chục lần mỗi ngày (đo
+ * 2026-08-29: 28 lần), mốc trong RAM sẽ về 0 mỗi lần và biến nhịp 7 ngày thành "mỗi lần khởi động".
+ */
+export function getVecReconcileLastAt(): number | null {
+  const v = read().vecReconcileLastAt;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+export function setVecReconcileLastAt(ms: number): void {
+  const c = read();
+  c.vecReconcileLastAt = ms;
   write(c);
 }
 

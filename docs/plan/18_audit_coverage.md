@@ -61,6 +61,14 @@ lộ lọt, chết lặng, không mang đi được.
 **Nguyên tắc xếp thứ tự nợ:** ưu tiên mặt nào có sự cố THẬT mà vẫn chưa có cổng — ⑧ đã trả xong
 2026-08-15; nợ nặng nhất còn lại là vế *diễn tập phục hồi định kỳ* của ⑨.
 🔄 **SỬA 2026-09-02:** vế đó KHÔNG còn là nợ — nó bị **bác** (§4c) ⇒ bảng §4 nay **không còn ô nợ nào mở**.
+🔴 **ĐÍNH CHÍNH 2026-09-03: câu trên đúng về vế ĐỊNH KỲ, nhưng đọc thành "hết nợ" thì SAI.** Bác lịch
+định kỳ KHÔNG xoá nghĩa vụ theo SỰ KIỆN ở §4c. Sự kiện ② (*sau khi sửa đường ship vector / sync*) đã
+NỔ ngày **31/08** khi `plan/08 §8e` đổi đích ghi sang kho chia khúc — và **không ai chạy**; diễn tập
+kế tiếp mãi 03/09 mới chạy, đúng lúc audit. Nó lập tức lộ ra kênh đang mất khúc 1. Bài học: một
+nghĩa vụ "theo sự kiện" mà **không có gì canh sự kiện** thì trên thực tế là không có nghĩa vụ — và
+một dòng khai "không còn ô nợ nào mở" biến chỗ hở đó thành vô hình. Nay có một lớp canh MÁY: bước
+đối chiếu kênh 7 ngày trong chuỗi bảo trì (`scheduler.reconcileTick`, user chốt 03/09) — nó KHÔNG
+thay diễn tập theo sự kiện, chỉ bảo đảm khoảng mù không bao giờ dài quá một tuần.
 
 ### 4b. Diễn tập phục hồi ĐẦU TIÊN — chạy 2026-08-25, và nó bắt được một lỗ thật
 

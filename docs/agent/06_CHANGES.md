@@ -5,6 +5,40 @@
 
 ---
 
+## [2026-09-03] — audit 11 mặt: gộp kho chung PHÁ kênh thật, và ba bề mặt nói dối
+
+Gate vào phiên **1019/1019 xanh**, code y hệt `2.13.1` ⇒ lỗi KHÔNG ở code mới; cả bốn thứ dưới đây
+thuộc họ *"không báo lỗi, mà nói dối"* và không cổng nào với tới, vì kênh chung nằm NGOÀI repo.
+
+🔴 **① Gộp kho chung PHÁ kênh — đo trên kênh ĐANG CHẠY.** Nhánh `compacting` dựng khúc tươi ở
+`os.tmpdir()` (C:) rồi `renameSync` sang Drive (G:, filesystem khác) ⇒ **EXDEV, đích không tồn tại**
+— mà mọi bước PHÁ đã chạy TRƯỚC, không try/catch. Đo: khúc 1 **0 byte**, cả **48 khối / 2,22 GB**
+chỉ còn ở `bak.enc` — file mà lượt gộp kế tiếp `rmSync` ngay dòng đầu. Cổng cũ không thể nổ: fixture
+đặt `driveDir` trong `tempDir()` ⇒ CÙNG volume. Cơ chế + vá: `plan/08 §8e`; cổng
+`compact-atomic.test.mjs` 3 ca (1 ÂM), **đột biến 3/3 ĐỎ**.
+
+🔴 **② Lỗi merge kênh bị hấp thụ.** Entry `error` chỉ nằm trong `merged[]`, lượt sync vẫn trả
+`ok:true` và log `auto-sync: OK` ⇒ một file KHÔNG giải mã được ở MỌI lượt, suốt 20 giờ, không dòng
+nào kêu (`§8d` luật ⑤). Nay lên log kèm dấu `[sync]`; fail-open giữ nguyên (điều 9).
+
+🔴 **③ `coverage 100% · remaining 0` là con số nói dối — 23.226 tin không vector** (7,0% kho; hai
+đường đo độc lập cùng một số; **0** trong đó là prose). `vectorOutOfScope()` viết 12/08 đúng để chữa
+việc này và test của nó assert *"phải NHÌN THẤY được"* — mà **0 lời gọi ngoài test**. Nay lên
+`/memory-status` · `memory stats` · `memory info`.
+
+🔴 **④ Công cụ chẩn đoán ném vỡ đúng lúc cần nhất.** `vectors-catchup` chỉ đếm *"tin ĐANG CÓ trên
+kênh mà thiếu vector"* ⇒ kênh càng cụt số càng ĐẸP: đo thật **117**, trong khi kênh chỉ dựng lại
+được **11.605/333.152 tin**; và nó NÉM ở khúc đầu không đọc được nên không in nổi số nào. Nay: khúc
+hỏng ghi TÊN rồi đi tiếp · so phiên/tin để báo HỤT · exit ≠ 0 + stderr. `surface-truth.test.mjs`
+5 ca, **đột biến 4/4 ĐỎ**.
+
+**Kèm:** đối chiếu kênh 7 ngày trong chuỗi bảo trì (user chốt) · help thiếu **7 lệnh**, nay khớp code
+hai chiều · `plan/00` tự đá nhau về Stop hook. Gate **1019 → 1030**, 0 fail.
+
+⚠ **Hai chẩn đoán SAI của tôi, đều là suy diễn từ CÙNG MỘT công cụ rồi trưng như đo được:** ① *"6.310
+⇒ kênh dựng lại được end-to-end"* — số đó không đo độ đầy của kênh · ② *"đường bàn giao máy mới
+hỏng"* — `plan/16 §3` dùng `memory sync` (quét mọi `.enc`) nên máy mới vẫn nhận đủ.
+
 ## [2026-09-02m] — chốt phiên: `keep 5→3`, và phép loại lớp điểm-vào QUÊN mất bề mặt thứ hai
 
 **① Backup `keep: 5 → 3` (user chốt: *"giữ 3 bản thôi"*).** Quét rác lúc chốt phiên đo

@@ -424,6 +424,28 @@ hỏng **hoặc** khi có dấu `[sync]` — vế sau bắt được lúc soi di
   `vec_shipped` · mọi phép kiểm trước/sau khi ghi (§8c ④⑤) — chỉ đổi ĐÍCH ghi từ file cố định
   sang khúc đang mở.
 
+🔴 **LƯỢT GỘP TỪNG PHÁ KÊNH THẬT — đo 2026-09-03, vá cùng ngày.** Nhánh `compacting` của
+`pushAppend` dựng khúc tươi ở `os.tmpdir()` rồi `renameSync` sang thư mục kênh. Thư mục kênh gần
+như KHÔNG BAO GIỜ cùng volume với temp của hệ (đo: temp `C:` ntfs · Drive `G:` vfat) ⇒ **EXDEV, và
+Node để đích KHÔNG TỒN TẠI** — trong khi mọi bước PHÁ đã chạy trước đó, không try/catch. Hậu quả
+trên kênh thật: khúc 1 **0 byte**, cả 48 khối / 2,22 GB chỉ còn ở `global_memory.bak.enc`, tức bản
+lùi thành bản DUY NHẤT — mà lượt gộp kế tiếp mở đầu bằng `rmSync(MAIN_BAK)`. Vá: chép sang thư mục
+ĐÍCH dưới tên tạm → đếm lại khối tại đó → mới phá → rename cùng volume; trượt ⇒ hoàn nguyên.
+Cổng `compact-atomic.test.mjs` (mối nối `ZEMORY_COMPACT_FAULT` để tiêm ca trượt, vì ca thật chỉ nổ
+khi hai volume khác nhau — không dựng lại được cho mọi máy).
+⚠ **Máy chạy bản < 2.11.0 vẫn còn lỗi này VÀ còn `MAIN_COMPACT_CHUNKS` (tự gộp ở 48 khối)** — nên
+kênh có khúc 1 đủ 48 khối là nó tự gộp và tự phá. Đã xảy ra thật ngày 03/09. Bản vá ở đây KHÔNG
+cứu được máy đó; nó phải `selfupdate`.
+
+🔴 **HAI ĐƯỜNG NHẬN ĐỌC HAI TẬP FILE KHÁC NHAU — dữ kiện, chưa chốt hướng xử.** `mergeAll` (đường
+`syncDrive` đi) quét **mọi** `*.enc` trong thư mục, nên nó ĐỌC CẢ `global_memory.bak.enc`. Còn
+`listSegments` (đường `vectorCatchUp` và mọi phép đếm khúc đi) **loại** `bak.enc`. Hệ quả đo được
+03/09: kênh mất khúc 1 mà sync vẫn hội tụ đủ — vì nó đang **im lặng dựa vào bản lùi** để chạy đúng.
+Đó là trạng thái không ai thiết kế: `bak` được khai là *bản lùi giữ đúng một thế hệ*, mà thực tế
+đang là hàng SỐNG, và lượt gộp kế tiếp xoá nó ngay dòng đầu. Cần user chốt một trong hai: `bak` là
+hàng sống ⇒ `listSegments` phải thấy nó; hoặc `bak` chỉ là bản lùi ⇒ `mergeAll` không được dựa vào
+nó để hội tụ. **Chưa làm gì** — đây là quyết định thiết kế, không phải bug để agent tự vá.
+
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.
   - ~~**Còn lại:** `syncDrive` vẫn đẩy lean baseline (1 file/máy, ghi đè)…~~ **ĐÓNG 2026-08-12 —
