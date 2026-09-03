@@ -8,6 +8,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync }
 import {
   appendFileSync,
   closeSync,
+  copyFileSync,
   createReadStream,
   createWriteStream,
   existsSync,
@@ -1488,6 +1489,15 @@ export async function syncDrive(opts: {
       // Lượt thứ hai (trong khoá) chỉ ghi nhận thứ THẬT SỰ mới — không thì bảng kết quả đầy
       // dòng "skipped" trùng, đọc thành như merge hai lần.
       const keep = (e: DriveSyncResult["merged"][number]): void => {
+        // 🔴 LỖI KHÔNG ĐƯỢC IM (audit 2026-09-03). Trước đây entry `error` chỉ nằm trong
+        // `merged[]` rồi lượt sync vẫn trả `ok:true` và log in `auto-sync: OK` — nên một file
+        // trên kho chung KHÔNG GIẢI MÃ ĐƯỢC ở MỌI lượt, suốt 20 giờ, mà không dòng nào kêu
+        // (đo: khúc 1 bị một lượt `--compact` để lại 0 byte ⇒ hai entry
+        // `"Invalid zemory memory bundle header."` mỗi lượt). Đúng thứ `§8d luật ⑤` sinh ra để
+        // chặn: *một dòng log không phân biệt được thành/bại là tiếng ồn*.
+        // KHÔNG làm cả lượt sync thất bại (fail-open, điều 9 — một file lạ không được chặn đường
+        // đồng bộ); chỉ bắt buộc NÓI RA. Dấu `[sync]` là thứ `syncjob` giữ lại 8 KB đuôi theo.
+        if (e.error) console.error(`[sync] kho chung: KHÔNG merge được "${e.file}" — ${e.error}`);
         if (record === "all" || !e.skipped) merged.push(e);
       };
       if (isChunkContainer(full)) {
@@ -1778,16 +1788,60 @@ async function pushAppend(o: {
     if (compacting) {
       // GỘP: mọi khúc gấp về MỘT khúc 1 tươi; bản khúc-1 cũ giữ đúng một thế hệ làm đường lùi;
       // khúc ≥2 xoá (nội dung đã nằm trong khúc tươi — export since=0 SAU khi merge đủ).
+      //
+      // 🔴 BẢN TRƯỚC PHÁ KÊNH THẬT (audit 2026-09-03). Nó dựng khúc tươi ở `tmp` — tức
+      // `os.tmpdir()`, ổ `C:` — rồi `renameSync(fresh, target)` sang thư mục Drive (`G:`, một
+      // filesystem KHÁC) ⇒ **EXDEV**, và Node để đích KHÔNG TỒN TẠI. Chú thích cũ ngay đây khai
+      // *"rename là nguyên tử trong cùng ổ đĩa"*, nhưng thư mục kênh gần như không bao giờ cùng ổ
+      // với temp của hệ. Tệ hơn: mọi bước PHÁ (xoá bản lùi · dời khúc 1 sang bản lùi · xoá khúc
+      // ≥2) chạy TRƯỚC bước có thể trượt, và không có try/catch ⇒ một lượt `--compact` để kênh
+      // mất hẳn khúc 1, toàn bộ lịch sử chỉ còn ở `global_memory.bak.enc` — một lệnh gộp nữa là
+      // `rmSync(MAIN_BAK)` xoá luôn bản đầy đủ duy nhất. Đo được trên kênh thật: khúc 1 **0 byte
+      // / 0 khối**, `bak.enc` **48 khối / 2,22 GB**, và MỌI lượt sync trả
+      // `"Invalid zemory memory bundle header."` cho khúc 1.
+      // Cổng cũ không thể nổ: fixture đặt `driveDir` ngay trong `tempDir()` ⇒ cùng volume.
+      //
+      // Nay: ① dựng khúc tươi ở LOCAL (nhanh, không đánh thức DriveFS) → ② chép sang THƯ MỤC
+      // ĐÍCH dưới tên tạm rồi ĐẾM LẠI khối ở đó (bản thay thế phải chứng minh có mặt và đọc được
+      // TRƯỚC khi phá bất cứ gì) → ③ mới dời khúc 1 sang bản lùi → ④ rename CÙNG VOLUME vào chỗ.
+      // Trượt ở bất kỳ đâu ⇒ đưa bản lùi về chỗ khúc 1, kênh trở lại đúng hiện trạng cũ.
       const fresh = join(tmp, "fresh.enc");
       writeFileSync(fresh, CHUNKS_MAGIC);
       written = appendChunk(fresh, part);
       for (const s of segs) removed += isChunkContainer(s.path) ? listChunks(s.path).length : 0;
-      if (existsSync(target)) {
-        rmSync(join(dir, MAIN_BAK), { force: true });
-        renameSync(target, join(dir, MAIN_BAK));
+      // Tên tạm nằm TRONG thư mục kênh: đó là điều kiện để bước rename cuối cùng KHÔNG qua volume.
+      // Có pid để hai máy gộp cùng lúc không giẫm lên file tạm của nhau.
+      const staged = join(dir, `.${MAIN_BUNDLE}.staged-${process.pid}`);
+      const bak = join(dir, MAIN_BAK);
+      let movedToBak = false;
+      try {
+        copyFileSync(fresh, staged);
+        // ĐẾM LẠI TRÊN ĐÍCH, không tin bản local: đây là chỗ Drive chập (§8d) và cũng là phép
+        // duy nhất chứng minh bản thay thế đọc được trước khi ta phá bản đang có.
+        const stagedChunks = listChunksRetry(staged, "kiểm bản gộp vừa chép sang kênh");
+        if (stagedChunks.length !== expected) {
+          throw new Error(`Bản gộp chép sang kênh không đọc đủ khối (${stagedChunks.length}, chờ ${expected}) — KHÔNG phá kho chung.`);
+        }
+        if (existsSync(target)) {
+          rmSync(bak, { force: true });
+          renameSync(target, bak);
+          movedToBak = true;
+        }
+        // Mối nối TIÊM LỖI cho cổng test (cùng khuôn `ZEMORY_SYNC_RUNNER` · `ZEMORY_SEGMENT_MAX`):
+        // ca "bước cuối trượt" là ca ĐÃ XẢY RA THẬT nhưng chỉ nổ khi thư mục kênh nằm ở volume
+        // khác temp của hệ — không dựng lại được trong test cho mọi máy. Không có mối nối này thì
+        // đường PHỤC HỒI ngay dưới là code không cổng nào đo được, tức đúng loại "cổng trang trí"
+        // mà bản vá này đang đi chữa.
+        if (process.env.ZEMORY_COMPACT_FAULT === "rename") throw new Error("EXDEV (tiêm lỗi cho cổng test)");
+        renameSync(staged, target); // cùng volume ⇒ nguyên tử, không EXDEV
+        for (const s of segs) if (s.n > 1) rmSync(s.path, { force: true });
+      } catch (e) {
+        // PHỤC HỒI: kênh không được phép ở trạng thái "mất khúc 1". Đưa bản lùi về chỗ cũ rồi mới
+        // ném lỗi lên — thà một lượt gộp thất bại còn hơn một kho chung không dựng lại được.
+        rmSync(staged, { force: true });
+        if (movedToBak && !existsSync(target) && existsSync(bak)) renameSync(bak, target);
+        throw e;
       }
-      for (const s of segs) if (s.n > 1) rmSync(s.path, { force: true });
-      renameSync(fresh, target);
     } else {
       // Khúc tươi: dựng vỏ magic TẠI CHỖ rồi nối — appendChunkVerified đếm lại như thường.
       if (active.fresh && !existsSync(target)) writeFileSync(target, CHUNKS_MAGIC);
@@ -2044,7 +2098,22 @@ export async function vectorCatchUp(opts: {
   dbPath?: string;
   /** Chỉ ĐO rồi báo, không đụng kho chung. */
   dryRun?: boolean;
-}): Promise<{ container: string; missing: number; shipped: number; bytes: number; pushed: boolean }> {
+}): Promise<{
+  container: string;
+  missing: number;
+  shipped: number;
+  bytes: number;
+  pushed: boolean;
+  /** Phiên/tin ĐẾM ĐƯỢC trong kho dựng lại TỪ KÊNH — vế "kênh có hụt không". */
+  probeSessions: number;
+  probeMessages: number;
+  /** Cùng hai con số ở kho THẬT của máy này, để so. */
+  localSessions: number;
+  localMessages: number;
+  /** Khúc trên kênh KHÔNG giải mã được (tên file + lý do). Hạng báo động NẶNG NHẤT — nặng hơn
+   *  "hụt tin", vì máy mới dựng lại sẽ chết ngay ở đó chứ không phải chỉ nhận thiếu. */
+  unreadable: { file: string; error: string }[];
+}> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
   // Kho chia khúc (§8e): DỰNG probe từ MỌI khúc, nhưng khối bù NỐI vào khúc ĐANG MỞ —
@@ -2059,7 +2128,20 @@ export async function vectorCatchUp(opts: {
   try {
     // ① Dựng lại kho chung y như một máy mới sẽ nhận được — MỌI khúc, không riêng khúc đang mở
     //    (máy mới merge cả dãy; đo thiếu trên một khúc là đo thiếu sai).
-    for (const s of segsAll) await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
+    // 🔴 MỘT KHÚC HỎNG KHÔNG ĐƯỢC GIẾT CẢ PHÉP ĐO (vá 2026-09-03, sau khi chạy thật trên kênh
+    // đang hỏng). Bản trước gọi thẳng `mergeMemoryBundle` trong vòng lặp, nên khúc 1 bị một lượt
+    // gộp trượt để lại 0 byte làm lệnh NÉM ngay tại đây — và chết TRƯỚC cả phép đếm "kênh có hụt
+    // không" ở dưới. Tức đúng lúc kênh hỏng nặng nhất thì công cụ chẩn đoán lại câm.
+    // Nay: hỏng khúc nào GHI TÊN khúc đó rồi đi tiếp; phần đọc được vẫn dựng và vẫn đếm được.
+    // Đây KHÔNG phải nuốt lỗi — `unreadable` là hạng báo động nặng nhất mà người gọi phải in ra.
+    const unreadable: { file: string; error: string }[] = [];
+    for (const s of segsAll) {
+      try {
+        await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
+      } catch (e) {
+        unreadable.push({ file: basename(s.path), error: e instanceof Error ? e.message : String(e) });
+      }
+    }
 
     // ② So bằng khoá BỀN. `vec_chunks` là bảng ảo vec0 nên đọc qua bảng bóng `..._rowids`
     //    (bảng thường) — cùng cách `vectorCoverage` tránh quét bảng ảo cho mỗi hàng.
@@ -2070,8 +2152,20 @@ export async function vectorCatchUp(opts: {
       !!d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'").get();
 
     const missingKeys = new Set<string>();
+    // 🔴 ĐẾM TIN/PHIÊN CỦA KÊNH — vế "CÓ HỤT KHÔNG", khác hẳn vế "thiếu vector" ở dưới.
+    //
+    // Vì sao phải có: `missing` bên dưới chỉ soi *"trong những tin ĐANG CÓ trên kênh, tin nào
+    // thiếu vector"*. Nên kênh càng CỤT thì kho tạm càng ít tin ⇒ con số đó càng NHỎ. Trả giá thật
+    // 2026-09-03: kênh mất hẳn khúc 1 (2,22 GB / 48 khối) mà lệnh này vẫn báo *"thiếu 6.551"* —
+    // nghe như lành, trong khi một máy mới nhận kênh sẽ hụt gần như toàn bộ kho. Một con số nhỏ
+    // ở đây KHÔNG BAO GIỜ được đọc thành "kênh đủ".
+    // Phép đếm này gần như miễn phí: kho tạm đã dựng xong ở bước ①, chỉ thêm hai câu COUNT.
+    let probeSessions = 0;
+    let probeMessages = 0;
     const p = new Database(probe, { readonly: true });
     try {
+      probeSessions = (p.prepare("SELECT count(*) c FROM sessions").get() as { c: number }).c;
+      probeMessages = (p.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
       const none = !hasVecTable(p);
       // Khoá BỀN = `messageKey` (uuid, hoặc timestamp+content khi uuid NULL) — CÙNG khoá mà
       // `vector_ship` dùng. Bản đầu lọc `uuid IS NOT NULL` ở đây ⇒ 10.271 vector của tin
@@ -2090,8 +2184,13 @@ export async function vectorCatchUp(opts: {
     }
 
     const ids: number[] = [];
+    let localSessions = 0;
+    let localMessages = 0;
     const src = new Database(dbPath, { readonly: true });
     try {
+      // Mốc so cho vế "có hụt không" — đọc ở đây vì `src` đã mở sẵn, không tốn lượt mở kho nào.
+      localSessions = (src.prepare("SELECT count(*) c FROM sessions").get() as { c: number }).c;
+      localMessages = (src.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
       // Máy này chưa nhúng gì ⇒ không có gì để bù (fail-open, điều 9).
       if (hasVecTable(src)) {
         for (const r of src
@@ -2108,7 +2207,7 @@ export async function vectorCatchUp(opts: {
     }
 
     if (!ids.length || opts.dryRun) {
-      return { container, missing: ids.length, shipped: 0, bytes: 0, pushed: false };
+      return { container, missing: ids.length, shipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable };
     }
 
     // ③ Gói CHỈ CÓ VECTOR: `sinceMessageId` đặt quá đỉnh kho ⇒ 0 tin, nhưng danh sách bù vẫn
@@ -2159,7 +2258,7 @@ export async function vectorCatchUp(opts: {
     } finally {
       release();
     }
-    return { container, missing: ids.length, shipped: r.vectorsShipped ?? 0, bytes, pushed: true };
+    return { container, missing: ids.length, shipped: r.vectorsShipped ?? 0, bytes, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

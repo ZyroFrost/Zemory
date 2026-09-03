@@ -29,7 +29,7 @@ import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hostname } from "node:os";
-import { type AutosyncSchedule, getAutosync, getAutosyncLastAt, getAutosyncRunAt, getAutosyncSchedule, getDriveDir, getScheduler, getScopeExclude, getWebPull, setAutosyncLastAt, setAutosyncLastResult, setAutosyncRunAt, setWebPull } from "../config/settings.js";
+import { type AutosyncSchedule, getAutosync, getAutosyncLastAt, getAutosyncRunAt, getAutosyncSchedule, getDriveDir, getScheduler, getScopeExclude, getVecReconcileLastAt, getWebPull, setAutosyncLastAt, setAutosyncLastResult, setAutosyncRunAt, setVecReconcileLastAt, setWebPull } from "../config/settings.js";
 
 /**
  * LỊCH tự sync — hàm THUẦN để cổng đo (user chốt 2026-08-29: chọn "sau mỗi N phút/giờ" hoặc "theo khung giờ trong ngày").
@@ -311,6 +311,10 @@ async function maintainTick(): Promise<void> {
     // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
     //    chuỗi này làm backup chết theo công tắc `scheduler`.
     await backupTick("sau chuỗi bảo trì");
+    if (chainAbort) return;
+
+    // 5. ĐỐI CHIẾU KÊNH — thưa (7 ngày). Xem `reconcileTick`.
+    await reconcileTick();
   } finally {
     // Nhả TRƯỚC khi hạ cờ: kẻ đang chờ token phải thấy nó trống, và một lượt `maintainTick`
     // mới không được vào lại giữa hai câu lệnh này rồi ăn mất lượt của người dùng.
@@ -345,6 +349,59 @@ async function maintainTick(): Promise<void> {
  * Một lần nhường là bình thường; nhường mãi là một kiểu HỎNG, và kiểu hỏng đó phải thấy được.
  */
 let backupYields = 0;
+/**
+ * ĐỐI CHIẾU KÊNH — nhịp 7 NGÀY. Vì sao cần bước này, và vì sao đúng con số đó:
+ *
+ * Đường sync thường ngày chở vector theo CUỐN SỔ `vec_shipped` (`unshippedVectorIds`): nó hỏi
+ * *"tôi đã gửi cái này chưa"*. Nhưng sổ đó được **GIEO** bằng toàn bộ vector đang có lúc nâng
+ * schema v23 — cố ý, vì không gieo thì lượt sync đầu chở lại ~290.000 vector. Cái giá: vector nào
+ * lúc ấy có ở máy mà CHƯA thật sự lên kênh thì bị đóng dấu "đã gửi", và **không lượt sync nào còn
+ * nhìn thấy nó nữa**, chạy bao nhiêu lượt cũng vậy. `plan/08 §8b` tự khai điều này và nói thẳng
+ * con số của sổ chỉ là *giới hạn DƯỚI*. Đo 2026-09-03: sổ báo thiếu 497, dựng lại kênh thật ra
+ * thiếu **6.310**.
+ *
+ * Chỉ có MỘT phép nhìn ra: dựng lại kho chung vào kho TẠM rồi so bằng khoá bền — đúng thứ
+ * `vectors-catchup` làm, và cũng đúng phép của diễn tập phục hồi (`plan/18 §4b`).
+ *
+ * **7 ngày, không phải mỗi nhịp bảo trì:** phép này giải mã CẢ kênh (~2,3 GB, đo 6 phút). Chạy
+ * mỗi 30 phút là đọc 2,3 GB × 48 lượt/ngày qua ổ ảo Drive — đúng tải đã làm DriveFS treo cứng hai
+ * lần trong một giờ ngày 30/08 và đẻ ra cả lối chia khúc (`plan/08 §8e`). Bảy ngày ≈ 6 phút đọc
+ * mỗi tuần: đủ thưa để vô hình, đủ dày để một lượt bàn giao máy mới không bao giờ cũ quá một tuần.
+ *
+ * **Vì sao nằm TRONG chuỗi bảo trì chứ không phải một `setInterval` riêng** (`02_RULES §Sổ việc`
+ * hỏi: *gộp vào cái đã có được không*): chuỗi này đã giữ token daemon, đã có `chainAbort` để nhường
+ * việc người dùng bấm, đã chạy con ở ưu tiên thấp. Thêm một tick riêng là thêm một đường claim, một
+ * đường tranh khoá và một chỗ hỏng mới — cho một việc chạy mỗi tuần một lần.
+ *
+ * **KHÁC diễn tập phục hồi ở `plan/18 §4c`**, nơi vế "định kỳ" đã bị BÁC — nói rõ để không ai đọc
+ * thành mâu thuẫn: ở đó diễn tập là một phép ĐO để báo cáo, nên *"kết quả hết hiệu lực ngay lượt
+ * sync kế"* làm lịch định kỳ thành vô nghĩa. Ở đây nó là phép TỰ CHỮA: thấy lệch thì VÁ ngay trong
+ * cùng lượt, nên kết quả hết hạn không quan trọng — thứ quan trọng là kênh HỘI TỤ.
+ */
+const RECONCILE_EVERY_MS = 7 * 24 * 60 * 60_000;
+
+export function reconcileDue(lastAt: number | null, now = Date.now()): boolean {
+  if (!getDriveDir()) return false; // chưa nối kênh thì không có gì để đối chiếu
+  if (lastAt === null) return true; // chưa chạy lần nào ⇒ chạy lượt đầu
+  return now - lastAt >= RECONCILE_EVERY_MS;
+}
+
+async function reconcileTick(): Promise<void> {
+  if (!reconcileDue(getVecReconcileLastAt())) return;
+  log("đối chiếu kênh (7 ngày/lượt) — dựng lại kho chung vào kho tạm để so vector…");
+  // Ghi mốc TRƯỚC khi chạy: một lượt trượt không được biến thành vòng lặp thử lại mỗi 30 phút
+  // trên một phép đọc 2,3 GB. Trượt thì tuần sau thử lại.
+  setVecReconcileLastAt(Date.now());
+  const code = await runStep("reconcile", ["memory", "vectors-catchup"]);
+  // Hai câu KHÁC NHAU cho hai kết cục (`plan/08 §8d` luật ⑤: một dòng log không phân biệt được
+  // thành/bại là tiếng ồn). Fail-open: trượt KHÔNG kéo chuỗi bảo trì theo (HP điều 9).
+  // Exit ≠ 0 mang HAI nghĩa và không được gộp: ① lệnh trượt thật (Drive chập…) · ② lệnh chạy xong
+  // và PHÁT HIỆN kênh hụt tin. Cả hai đều in lý do ra stderr, mà `runStep` đổ 20 dòng stderr khi
+  // exit ≠ 0 ⇒ dòng ngay dưới trong `daemon.log` nói rõ là cái nào. Đừng đoán hộ người đọc.
+  if (code === 0) log("đối chiếu kênh: xong — kênh không hụt tin, và đủ vector (hoặc phần thiếu vừa được nối bù).");
+  else log("🔴 đối chiếu kênh: exit " + code + " — HOẶC lệnh trượt, HOẶC phát hiện kênh HỤT TIN. Đọc dòng `reconcile: stderr ·` ngay dưới. Chạy tay: zemory memory vectors-catchup --dry-run");
+}
+
 const BACKUP_YIELD_LOG_EVERY = 8; // ~4 giờ ở nhịp 30 phút — thấy được mà không thành nhiễu
 
 async function backupTick(why: string): Promise<void> {
