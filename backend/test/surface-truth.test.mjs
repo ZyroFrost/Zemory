@@ -17,7 +17,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { openMemory } from "../../dist/memory/db.js";
 import { writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
@@ -203,6 +203,78 @@ test("③ mất khúc 1 ⇒ phép đo phải thấy kênh HỤT TIN, không ch�
     bad.localMessages - bad.probeMessages > bad.localMessages * 0.05,
     `mất khúc 1 phải lộ ra là HỤT TIN (kênh ${bad.probeMessages} / kho ${bad.localMessages}) — ca này xanh nghĩa là phép đo lại đang tụt về phía yên tâm đúng lúc kênh hỏng`,
   );
+});
+
+// ⑤ KHO CHUNG SỐNG NHỜ BẢN LÙI — phải NÓI RA, vì bản lùi có án tử.
+//
+//    `mergeAll` quét MỌI `*.enc` nên nó đọc cả `global_memory.bak.enc`. Điều đó đúng và phải giữ
+//    (fail-open). Nhưng nó có giá đã trả thật 03/09: một lượt gộp trượt để lại khúc 1 **0 byte**,
+//    cả 48 khối chỉ còn ở bản lùi, và vì merge vẫn đọc bản lùi nên sync **vẫn hội tụ, mọi số vẫn
+//    đẹp** — không ai biết kho chính đã rỗng suốt 20 giờ. Cái hỏng chưa bao giờ là "nó hội tụ",
+//    mà là **hội tụ trong im lặng khi đang hỏng**. Và bản lùi là thứ lượt gộp KẾ TIẾP xoá ngay
+//    dòng đầu (`rmSync(MAIN_BAK)`) ⇒ sống nhờ nó là sống trên một file đã có án tử.
+test("⑤ khúc chính hụt hơn bản lùi ⇒ phải LÊN LOG, không được hội tụ trong im lặng", async (t) => {
+  const { syncDrive } = await import("../../dist/memory/share.js");
+  const home = tempDir(t, "zemory-bak-home-");
+  const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB, ZEMORY_SEGMENT_MAX: process.env.ZEMORY_SEGMENT_MAX };
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  process.env.APPDATA = home;
+  delete process.env.GLOBAL_MEMORY_DB;
+  process.env.ZEMORY_SEGMENT_MAX = "2048"; // để lượt sync thứ hai mở khúc 2
+  t.after(() => {
+    for (const k of Object.keys(save)) {
+      if (save[k] === undefined) delete process.env[k];
+      else process.env[k] = save[k];
+    }
+  });
+
+  const root = tempDir(t, "zemory-bak-");
+  const dbPath = join(root, "memory.db");
+  const driveDir = join(root, "drive");
+  const keyPath = join(root, "share.key");
+  mkdirSync(driveDir, { recursive: true });
+  const db = openMemory(dbPath);
+  db.prepare("INSERT INTO sessions (id, source, origin, project_root, host, message_count) VALUES (?,?,?,?,?,0)").run("s1", "claude-code", "local", "C:/p", "PC");
+  const ins = db.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
+  db.transaction(() => {
+    for (let i = 0; i < 400; i++) ins.run("s1", "m" + i, "user", "noi dung so " + i, "2026-01-01T00:00:00Z");
+  })();
+  db.close();
+  writeMemoryShareKey(keyPath);
+  process.env.ZEMORY_SHARE_KEY = readFileSync(keyPath, "utf8").trim();
+  t.after(() => delete process.env.ZEMORY_SHARE_KEY);
+
+  const say = [];
+  const real = console.error;
+  const capture = async (fn) => {
+    console.error = (...a) => say.push(a.join(" "));
+    try { return await fn(); } finally { console.error = real; }
+  };
+  const warned = () => say.some((l) => l.includes("[sync]") && l.includes("SỐNG NHỜ BẢN LÙI"));
+
+  await capture(() => syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false }));
+  const db2 = openMemory(dbPath);
+  db2.prepare("INSERT INTO messages (session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)").run("s1", "mZ", "user", "tin cuoi", "2026-01-02T00:00:00Z");
+  db2.close();
+  say.length = 0;
+  await capture(() => syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false })); // mở khúc 2
+  assert.ok(existsSync(join(driveDir, "global_memory.002.enc")), "ca này cần khúc 2 mới có nghĩa");
+  assert.equal(warned(), false, "CA ÂM 1: chưa có bản lùi ⇒ không được kêu");
+
+  // CA ÂM 2 — BẮT BUỘC, và bản đầu của tôi THIẾU nó nên đột biến "kêu cả khi kênh lành" sống sót:
+  // ca âm 1 không có `bak.enc` nên phép dò còn chưa chạy tới, tức nó chưa canh gì. Đây là hình
+  // dạng LÀNH thật sau một lượt gộp thành công: khúc 1 tươi + bản lùi là thế hệ trước.
+  copyFileSync(join(driveDir, "global_memory.enc"), join(driveDir, "global_memory.bak.enc"));
+  say.length = 0;
+  await capture(() => syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false }));
+  assert.equal(warned(), false, "CA ÂM 2: có bản lùi mà khúc 1 vẫn lành ⇒ TUYỆT ĐỐI không được kêu");
+
+  // Đúng hiện trạng đã đo: khúc 1 sang bản lùi, kênh chính chỉ còn khúc 2.
+  renameSync(join(driveDir, "global_memory.enc"), join(driveDir, "global_memory.bak.enc"));
+  say.length = 0;
+  await capture(() => syncDrive({ driveDir, keyFile: keyPath, dbPath, embed: false }));
+  assert.ok(warned(), `bản lùi nhiều khối hơn dãy khúc chính ⇒ PHẢI kêu. Đã in:\n${say.join("\n") || "(không in gì)"}`);
 });
 
 // ④ KHÚC KHÔNG ĐỌC ĐƯỢC — hạng nặng hơn "hụt", và là ca đã làm chính bản vá ③ trở nên vô dụng.

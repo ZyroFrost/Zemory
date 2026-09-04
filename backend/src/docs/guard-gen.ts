@@ -407,6 +407,11 @@ function checkBash(cmd) {
   const DEL_CMDS = /^(rm|remove-item|ri|rmdir|rd|del|erase|unlink)$/;
   if (hitsIn(bare, DEL_CMDS, ANY_DEL)) {
     const recursive = hitsIn(bare, DEL_CMDS, RECURSIVE_DEL);
+    // Hoi flag DUNG MOT LAN cho ca cau lenh roi nho lai: \`consumeFlag\` co tac dung phu (dong
+    // dau / thu hoi), goi lai cho tung token la vua ton I/O vua kho doc. Cung mot flag phuc vu
+    // ca nhanh protected VA nhanh xoa de quy - nguoi dung khong phai xin hai lan cho mot lenh.
+    let delFlagMemo = null;
+    const delFlagOk = () => (delFlagMemo === null ? (delFlagMemo = consumeFlag("delete", bare)) : delFlagMemo);
     // CHI quet token cua DUNG SEGMENT chua lenh xoa (tach ;|&) — cung khuon + cung ly do
     // voi nhanh git o tren (sua 2026-08-24, user gat 21/08): rm build.log && echo check-prod.env
     // tung bi CHAN OAN vi ten .env nhac trong echo. Quet ca dong thi nguoi ta hoc cach
@@ -423,13 +428,28 @@ function checkBash(cmd) {
       for (const prefix of POLICY.protected_write || []) {
         // CUNG ham voi nhanh ghi - xem \`underProtected\`. Truoc day cho nay chi so tien to.
         if (underProtected(rel, prefix)) {
-          deny("CHAN (guard lop 1): xoa trong duong da khai protected \`" + prefix + "\` - " +
-            POLICY.protected_write_reason);
+          // 🔴 CHAN ROI XIN PHEP LA DUOC (user chot 2026-09-04). Truoc day cho nay \`deny()\`
+          // TUYET DOI, khong mot duong co nao - ke ca \`.allow-delete\`. Hai le do la sai:
+          //   ① KHONG NHAT QUAN voi chinh nhanh ngay duoi: \`mv <protected>/x /tmp\` co hau qua
+          //      Y HET xoa (chinh chu thich cua nhanh do viet vay) ma no LAI CO duong co.
+          //      Hai duong cung hau qua, hai cong khac nhau => nguoi ta hoc cach di duong \`mv\`.
+          //   ② Trai doctrine \`02_RULES §Guardrail\`: *chu la tang QUYET DINH, may la tang DO
+          //      HUT*. Mot cong khong co duong cho user duyet la may dang lam NGUOI QUYET.
+          // Dung co \`delete\` chu KHONG dung \`docs_write\`: mot luot user duyet GHI vao duong
+          // protected khong duoc phep bien thanh duyet XOA. Van tay theo LENH nen mot co phu
+          // tron lenh xoa do (cung khuon vua vá cho nhanh doi ten).
+          // ⚠ KHONG dung \`return\` o day: no thoat CA ham guard, bo qua luon phep kiem secret
+          // cua cac token con lai, phep kiem xoa DE QUY, va ca nhanh \`mv\`/chuyen huong ben
+          // duoi - tuc mot co xoa se mo cua cho moi thu khac trong cung cau lenh.
+          if (!delFlagOk()) {
+            deny("CHAN (guard lop 1): xoa trong duong da khai protected \`" + prefix + "\` - " +
+              POLICY.protected_write_reason + flagTip("delete"));
+          }
         }
       }
       }
     }
-    if (recursive && !consumeFlag("delete", bare)) {
+    if (recursive && !delFlagOk()) {
       deny("CHAN (guard lop 1): xoa DE QUY - thao tac bat kha dao, 02_RULES bat hoi user truoc." +
         flagTip("delete"));
     }
@@ -454,13 +474,29 @@ function checkBash(cmd) {
   const MOVERS = /^(mv|move|move-item|mi|rename|ren|cp|copy|copy-item|robocopy|rsync)$/;
   const WRITE_VERB = /\\b(open\\s*\\(|write|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\\b/i;
 
+  // 🔴 VAN TAY THEO LENH, KHONG THEO TUNG DUONG (sua 2026-09-04, bao tu repo Dept_OPS).
+  // Truoc day cho nay goi \`consumeFlag("docs_write", rel)\` — dau van tay tinh tren MOT duong.
+  // Nhung \`mv A B\` cham HAI duong, va neu ca hai nam trong protected thi moi luot chay:
+  //   ① xet NGUON A -> flag chua co dau -> dong dau sha1(A) -> CHO QUA
+  //   ② xet DICH  B -> thay dau sha1(A) != sha1(B) -> XOA FLAG -> CHAN
+  // Luot sau cap flag moi thi NGUON lai tieu thu no truoc, dich lai trang tay => VONG LAP
+  // KHONG THOAT DUOC, user cap co bao nhieu lan cung vo ich. Cua so \`FLAG_RETRY_MS\` khong
+  // cuu duoc: no cho thu lai CUNG mot subject da tieu thu, con o day nguon tieu thu mot flag
+  // MOI moi luot nen khong bao gio roi vao trang thai do.
+  // Day la BUG chu khong phai chinh sach: chinh thong bao ben duoi moi user tao flag, tuc
+  // thiet ke CO Y cho user duyet la qua duoc — ma voi doi ten thi loi moi do khong bao gio
+  // thuc hien duoc. Va mot cong hua mo ma khong mo noi thi day nguoi ta di go luon duong khoi
+  // \`protected\` — mat nhieu hon duoc.
+  // Nay: mot flag phu TRON MOT LENH (\`bare\`), dung khuon moi nhanh khac trong file nay da
+  // dung (\`push\`/\`delete\`/\`discard\`/\`git_add_all\` deu van tay theo lenh). Van la "mot lan
+  // cho mot viec": doi lenh => dau khac => thu hoi.
   const flagWritePath = (raw, how) => {
     const tok = String(raw).replace(/^["']|["']$/g, "");
     if (!tok || tok.startsWith("-")) return;
     const rel = relToRoot(tok.replace(/\\\\/g, "/").replace(/^\\.\\//, ""));
     for (const prefix of POLICY.protected_write || []) {
       if (!underProtected(rel, prefix)) continue;
-      if (consumeFlag("docs_write", rel)) return;
+      if (consumeFlag("docs_write", bare)) return;
       deny("CHAN (guard lop 1): " + how + " \`" + rel + "\` nam trong duong protected \`" + prefix +
         "\` - " + POLICY.protected_write_reason +
         "\\nUser da duyet trong phien? -> tao flag \`" + POLICY.flags_dir + "/" + POLICY.flags.docs_write +
