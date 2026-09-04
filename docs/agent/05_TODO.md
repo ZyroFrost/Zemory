@@ -27,6 +27,22 @@ quyết xoá).
 · **Thứ tự đúng:** ① `zemory selfupdate` trên `DESKTOP-PFB157K` → ② rename `bak.enc` →
   `global_memory.enc` → ③ `zemory memory vectors-catchup --dry-run` xác nhận. Không gấp.
 
+### 🔴 LUẬT KHÔNG TỰ LAN ĐƯỢC — `sync` là GAP-FILL (đo 2026-09-04)
+`sync_all.ps1 -Apply` chỉ chạy `zemory sync` ở từng repo, mà `sync` **chỉ bổ file còn THIẾU**
+(`adopt.ts:115` `if (!existsSync(abs)) return …`) — nó **không bao giờ ghi đè** `02_RULES` ·
+`03_STRUCTURE` đã có (đúng FILE WINS, HP điều 3). ⇒ **Sửa một dòng luật trong template chỉ tới
+được repo MỚI; repo đang có sẽ KHÔNG BAO GIỜ nhận.** Chỉ file hoàn toàn mới (một skill mới) mới
+thật sự tới đích.
+· `DEPT_STANDARD §5` của `_DWC` đang khai *"template harness đẩy bằng `sync_all.ps1`"* — câu đó
+  **gây hiểu sai** vì nghĩa gap-fill. Sửa nó là sửa file repo đó khai `protected` ⇒ **chờ user**.
+· Đợt 2026-09-04 vì vậy phải **sửa TAY từng repo**: luật `protected`-trỏ-vào-thứ-chỉ-đọc **14/17**
+  · luật config-của-một-case (non-app) **11/11**. Ba repo thiếu (`SasinHarvest` · `SasinHub` ·
+  `SasinInfra`) **không có mục `§Guardrail`** nên không có nhà cho luật, và cả ba khai
+  `protected: []` nên luật không có gì để cai — cố ý bỏ, không phải sót.
+· ⚠ **Các sửa đó CHƯA COMMIT ở 14 repo**: mọi repo đều đang có 1–31 file việc dở khác, chèn một
+  dòng của mình vào bộ thay đổi của người khác là sai. File đã ghi; phiên của từng repo commit
+  cùng việc của nó.
+
 ### Việc CHỜ USER quyết (KHÔNG phải việc mở — đừng tự làm)
 · **`selfupdate` máy `DESKTOP-PFB157K`** — điều kiện tiên quyết của mọi bước sửa kênh.
 · **Xoá hay giữ** `global_memory.enc.broken-0byte-20260903` (0 byte) trên kênh.
