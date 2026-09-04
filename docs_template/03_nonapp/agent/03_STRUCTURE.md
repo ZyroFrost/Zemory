@@ -94,6 +94,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | **findings / bằng chứng / số đo của một case** | `tasks/<case>/<ngày>_<slug>.md` — KHÔNG để rời ở `content/` |
 | **fix script ĐỀ XUẤT** (user tự chạy) | `tasks/<case>/<ngày>_<slug>.sql` |
 | **query check CHỈ 1 case dùng** | `tasks/<case>/check_*.sql` |
+| **config của MỘT case** (mẫu `*.example.*` tracked + bản thật `*.local.*` gitignore) | **gốc `tasks/<case>/`** — KHÔNG vào `pipeline/` (chỗ đó chỉ chứa script có số chặng; `NN_` chỉ giữ được nghĩa khi không có gì khác nằm cùng), và KHÔNG vào `config/` cấp repo (slot đó là của config DÙNG CHUNG). Ca thật 2026-09-04: cặp `mail_*.example.yaml`/`.local.yaml` của một task nằm ở `sources/` — slot dùng chung — nên không ai biết nó của việc nào |
 | **query check NHIỀU case dùng chung** | `queries/check_*.sql` (ngoại lệ của luật 1-case-1-folder) |
 | **index tra nhanh "có case nào"** | `content/README.md` |
 | **pipeline thực thi task** (stage đánh số) | `tasks/<case>/pipeline/` · `common.py` (helper) + `00_/01_/02_…` (STAGE) |
