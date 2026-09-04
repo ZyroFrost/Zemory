@@ -5,6 +5,24 @@
 
 ---
 
+## [2026-09-04c] — chuẩn non-app: config của MỘT case ở gốc `tasks/<case>/`, không phải `pipeline/`
+
+**Sinh từ một ca thật ở repo phòng ban** (`sources/` thành bãi phẳng, không biết file nào của việc
+nào). Chuẩn vốn đã trả lời — nó chia theo **PHẠM VI DÙNG**, không theo task: thuộc một case ⇒
+`tasks/<case>/`; dùng chung ⇒ `sources/`. Nên `sources/<task>/` là trái chuẩn, và cách sửa đúng là
+đưa file của một case RA KHỎI `sources/`. Đo trên repo đó: **5/6 file** chỉ một case dùng.
+
+**Chỗ chuẩn CHƯA nói, nay thêm một dòng routing:** config của MỘT case (`*.example.*` tracked +
+`*.local.*` gitignore) ⇒ **gốc `tasks/<case>/`** · KHÔNG vào `pipeline/` (chỗ đó chỉ chứa script có
+số chặng — `NN_` chỉ giữ được nghĩa khi không có gì khác nằm cùng) · KHÔNG vào `config/` cấp repo
+(slot của config dùng chung).
+
+⚠ **Vì sao KHÔNG ghi vào `DEPT_STANDARD.md` của repo trung tâm** — dù user hỏi đúng chỗ đó: chính §5
+của chuẩn ấy vạch ranh *"template harness (`02_RULES` · `03_STRUCTURE` · skills) thuộc project
+zemory — KHÔNG nhét luật phòng ban vào đó, nó là chuẩn rộng hơn, dùng cả ngoài công ty"*. Ranh giới
+đó chạy **cả hai chiều**: *"`pipeline/` được chứa cái gì"* là ngữ nghĩa slot của zemory, không phải
+luật công ty. Nên nó vào `docs_template/03_nonapp/` rồi lan bằng `sync_all.ps1`.
+
 ## [2026-09-04b] — xoá trong protected: chặn rồi XIN PHÉP được · và bản lùi thôi che kho chính hụt
 
 **Hai vế user chốt sau khi đọc bản vá `[2026-09-04]`.**
