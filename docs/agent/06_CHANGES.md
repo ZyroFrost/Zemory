@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-09-04f] — luật **EOL: ĐỌC SAO GHI VẬY** vào §Luật khi VIẾT — sinh từ ca ghi-lại-cả-file làm rơi bài của phiên khác
+
+**ĐÚNG HAI FILE bị ghi lại cả file** (repo `_DataWarehouse_Central`, 2026-09-04) — ghi đủ đường dẫn vì
+`03_STRUCTURE.md` thì repo NÀY cũng có 5 bản (docs riêng + 4 template), dễ tưởng là file của mình:
+· `_DataWarehouse_Central/content/standard/DEPT_STANDARD.md` — CRLF→LF, `git diff` kêu **255/251** dòng;
+  trả EOL về CRLF thì còn **5/1**. Lượt ghi đó còn **LÀM RƠI** 3 dòng luật phiên khác vừa chèn (ghi từ
+  bản đọc TRƯỚC đó — lost update, không lệnh nào báo lỗi).
+· `_DataWarehouse_Central/docs/agent/03_STRUCTURE.md` — CRLF→LF, diff kêu cả file; sau khi sửa còn **14/0**.
+**Không có file thứ ba.** Nền: repo đó 47 file `.md` vốn đã lẫn **15 CRLF / 32 LF**, `core.autocrlf=false`,
+`.gitattributes` không có luật `text` ⇒ EOL của một file = **ai ghi cuối cùng**, không ai gác.
+
+**Thêm 1 dòng luật** vào khối `§Luật khi VIẾT`, đặt cạnh luật cùng họ *"đừng dọn cho đẹp"* của separator
+INDEX: `docs/agent/02_RULES.md` · `docs_template/03_nonapp` · `04_adapt` · `05_app`. Nội dung: **đọc dạng
+BYTE, thấy CRLF thì ghi lại CRLF**; và vế quan trọng hơn — **sửa theo TỪNG ĐOẠN, đừng đọc-cả-file-rồi-
+ghi-lại**, đó mới là thứ làm rơi bài của nhau.
+📌 Bỏ `01_cowork_basic/nonapp` có lý do: bản gọn đó không mang khối `§Luật khi VIẾT`.
+
+**Vì sao là luật CHỮ, không phải vá code** (đo, không đoán): code repo này **không** nhắc `DEPT_STANDARD`
+ở đâu, và `sync` là **gap-fill** nên bỏ qua file đã tồn tại ⇒ lượt ghi đến từ **agent ghi tay cả file**.
+⬜ **Chờ chốt — một lỗi thật, nhỏ:** `docs/archive.ts` đã dò `eol` đúng cho file sổ chính, nhưng còn **4
+chỗ gõ cứng ký tự LF** (dòng 187 · 199 · 256 · 266) nên file *archive* ra **EOL lẫn** trên repo CRLF. Vá
+`writeFileAtomic()` chỉ là lưới đỡ: **13 chỗ gọi / 4 file**, riêng `docs/archive.ts` ghi markdown, còn
+**60 chỗ `writeFileSync` thô** nằm ngoài helper. `npm run typecheck` đo được **11,1 giây**.
+
+⚠ Ghi từ phiên `_DataWarehouse_Central`, user cho phép rõ trong phiên (*"bạn tự làm bên đó cho t"*);
+không đụng file nào phiên bên này đang mở.
+🔴 **Hai lỗi của chính lượt chèn này, tự bắt tự sửa:** escape CR/LF trong câu luật bị **rút gọn thành ký
+tự thật** ⇒ 1 dòng vỡ thành **4 dòng** + nhét CRLF vào file (thứ `§B7` cấm); và mã `\u` gõ tay ra sai chính
+tả. Sửa: viết **chữ thật**, gọi CRLF/LF bằng TÊN. Nghiệm thu: `1 0` mỗi file, **0** ký tự điều khiển, LF.
+
 ## [2026-09-04e] — một quyết định ghi ĐÚNG ở changelog mà SPEC không nhận, nên nó bị hỏi lại
 
 **Ca thật, và nó tốn của user một lượt bực.** User hỏi *"còn gì làm"*; tôi đọc hết docs rồi trình
