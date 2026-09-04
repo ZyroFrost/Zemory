@@ -8,15 +8,26 @@
 
 ## BÀN GIAO 2026-09-03 — trạng thái ĐO lúc chốt
 
-**Gate 1030/1030 · 0 fail.** Chưa push, chưa bump version — `2.13.1` vẫn là bản trên kênh.
-Đã sửa 4 lỗi + help thiếu 7 lệnh + `plan/00` tự đá nhau; chi tiết `06_CHANGES [2026-09-03]`.
+**Gate 1030/1030 · 0 fail.** Đã sửa 4 lỗi + help thiếu 7 lệnh + `plan/00` tự đá nhau; chi tiết
+`06_CHANGES [2026-09-03]`.
+> ⤴ **Câu cũ ở đây — *"chưa push, chưa bump version, `2.13.1` vẫn là bản trên kênh"* — đã LỖI THỜI
+> từ 04/09:** `2.14.0` đã bump + push (`715f4eb` → `9d04fdd`), cây sạch, ngang `origin/main`.
+> Tem `<Drive>/version.json` còn khai `2.13.1` là ĐÚNG NHỊP, không phải lỗi — `publishChannelVersion`
+> chỉ đóng dấu ở CUỐI một lượt sync trót lọt, mà lượt OK cuối là 04:57Z, trước lúc bump. Tự lành ở
+> lượt sync kế.
 
 🔴 **KÊNH CHUNG ĐANG THIẾU KHÚC 1 — và CỐ Ý chưa sửa. Đọc hết trước khi định "dọn cho gọn".**
-Hiện trạng đo 2026-09-03: `global_memory.enc` **0 byte** · `.002.enc` 37 khối · `bak.enc` 48 khối /
-2,22 GB · thêm một file `global_memory.enc.broken-0byte-20260903` (0 byte, tôi dời sang, chờ user
-quyết xoá).
+Hiện trạng **đo lại 2026-09-04** (đọc header khối tại chỗ, không giải mã): `global_memory.enc`
+**0 byte** · `.002.enc` **59 khối / 153,6 MB** (03/09 là 37) · `bak.enc` **48 khối / 2,22 GB**.
+Kênh nay đúng **4 file** — `global_memory.enc.broken-0byte-20260903` đã **XOÁ 04/09** (user chốt:
+*"hư thì xóa"*).
 · **Không mất dữ liệu, hệ chạy bình thường:** `syncDrive` quét MỌI `*.enc` kể cả `bak.enc` ⇒ hai máy
-  vẫn hội tụ; recall/scan/embed/backup đều xanh. Thứ hỏng chỉ là hai công cụ CHẨN ĐOÁN.
+  vẫn hội tụ; recall/scan/embed/backup đều xanh. Thứ hỏng chỉ là hai công cụ CHẨN ĐOÁN. Khúc 2 mọc
+  22 khối trong một ngày ⇒ đường ghi vẫn thông, đúng thiết kế khúc-đang-mở.
+· **`bak.enc` LÀ BẢN LÙI — CHỐT RỒI, đừng trình lại như việc đang chờ.** User chốt 04/09 (*"này t
+  nhớ là backup"*), vá ở `06_CHANGES [2026-09-04b]` ②: `mergeAll` đọc nó là fail-open ĐÚNG, giữ
+  nguyên; thứ phải sửa là sự IM LẶNG, nên nay có dòng `[sync] kho chung ĐANG SỐNG NHỜ BẢN LÙI`.
+  *(Phiên 04/09 vẫn hỏi lại câu này vì `plan/08 §8e` còn để nguyên khối "chưa chốt" — đã nắn.)*
 · **Vì sao chưa sửa:** máy `DESKTOP-PFB157K` đang chạy bản **< 2.11.0**, còn nguyên tự-động-gộp ở
   **48 khối** (`MAIN_COMPACT_CHUNKS`, bỏ ở `69b89d2`) **và** còn nguyên lỗi EXDEV. Lượt sửa kênh
   19:06Z đặt đúng 48 khối vào khúc 1 ⇒ chạm đúng ngưỡng ⇒ máy kia gộp bằng code lỗi và phá lại
@@ -45,9 +56,9 @@ thật sự tới đích.
 
 ### Việc CHỜ USER quyết (KHÔNG phải việc mở — đừng tự làm)
 · **`selfupdate` máy `DESKTOP-PFB157K`** — điều kiện tiên quyết của mọi bước sửa kênh.
-· **Xoá hay giữ** `global_memory.enc.broken-0byte-20260903` (0 byte) trên kênh.
-· **Xoá hay giữ** hai bản backup tay `premigrate.db` + `premove2-…db` (**5,2 GB**) trong
-  `data/backups` — vòng dọn CỐ Ý không đụng thứ người/agent đỗ lại.
+· **Xoá hay giữ** hai bản backup tay `premigrate.db` + `premove2-…db` (đo lại 04/09: **5,08 GiB**)
+  trong `data/backups` — vòng dọn CỐ Ý không đụng thứ người/agent đỗ lại. *(3 bản luân phiên bên
+  cạnh đúng chính sách `keep=3`; cả `data/backups` là 13,5 GB.)*
 · **Advisory audit #4–#10 đã TRÌNH, user chưa chọn** — nêu tên để phiên sau khỏi đo lại: 2 cổng
   chỉ regex trên CHUỖI SOURCE (`daemon-liveness` · `dash-cache-stamp`) + `webLaneSessionOnDisk`
   chưa có ca nào · 2 endpoint không ai gọi (`POST /sync` · `GET /nav-cost`) · `graph export` thiếu

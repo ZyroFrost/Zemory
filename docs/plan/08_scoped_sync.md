@@ -437,14 +437,26 @@ khi hai volume khác nhau — không dựng lại được cho mọi máy).
 kênh có khúc 1 đủ 48 khối là nó tự gộp và tự phá. Đã xảy ra thật ngày 03/09. Bản vá ở đây KHÔNG
 cứu được máy đó; nó phải `selfupdate`.
 
-🔴 **HAI ĐƯỜNG NHẬN ĐỌC HAI TẬP FILE KHÁC NHAU — dữ kiện, chưa chốt hướng xử.** `mergeAll` (đường
-`syncDrive` đi) quét **mọi** `*.enc` trong thư mục, nên nó ĐỌC CẢ `global_memory.bak.enc`. Còn
-`listSegments` (đường `vectorCatchUp` và mọi phép đếm khúc đi) **loại** `bak.enc`. Hệ quả đo được
-03/09: kênh mất khúc 1 mà sync vẫn hội tụ đủ — vì nó đang **im lặng dựa vào bản lùi** để chạy đúng.
-Đó là trạng thái không ai thiết kế: `bak` được khai là *bản lùi giữ đúng một thế hệ*, mà thực tế
-đang là hàng SỐNG, và lượt gộp kế tiếp xoá nó ngay dòng đầu. Cần user chốt một trong hai: `bak` là
-hàng sống ⇒ `listSegments` phải thấy nó; hoặc `bak` chỉ là bản lùi ⇒ `mergeAll` không được dựa vào
-nó để hội tụ. **Chưa làm gì** — đây là quyết định thiết kế, không phải bug để agent tự vá.
+✅ **`bak.enc` LÀ BẢN LÙI — CHỐT, đừng hỏi lại** *(user chốt 2026-09-04: "này t nhớ là backup";
+nhắc lại 2026-09-04 khi phiên sau vẫn trình nó như việc đang chờ)*. Hai đường đọc hai tập file là
+**đúng thiết kế, không phải mâu thuẫn**: `mergeAll` quét **mọi** `*.enc` nên nó đọc cả bản lùi —
+giữ nguyên, đó là fail-open (điều 9); `listSegments` **loại** `bak.enc` — cũng giữ nguyên, vì bản
+lùi không phải một khúc của dãy.
+
+**Thứ hỏng chưa bao giờ là *"nó hội tụ nhờ bản lùi"* mà là hội tụ TRONG IM LẶNG khi đang hỏng.**
+Đo 03/09: khúc 1 còn 0 byte, cả 48 khối chỉ nằm ở bản lùi, mà sync vẫn báo `OK` suốt 20 giờ — trên
+một file mà lượt gộp kế tiếp `rmSync` ngay dòng đầu. ⇒ Vá đúng chỗ đó: `syncDrive` báo
+`[sync] kho chung ĐANG SỐNG NHỜ BẢN LÙI` khi khúc 1 vắng mặt/không đọc được, **hoặc** khi dãy khúc
+chính ít khối hơn bản lùi. Ship 2026-09-04, số + cổng: `06_CHANGES [2026-09-04b]` ②.
+
+⚠ **Bài học về CHỖ ĐẶT quyết định, không phải về sync.** Quyết định này ghi ở `06_CHANGES` từ
+04/09, nhưng khối cũ ở đây vẫn viết *"cần user chốt một trong hai — chưa làm gì"*, nên phiên sau
+đọc plan rồi **trình lại y nguyên như việc đang chờ**. Changelog nói *đã đổi gì*; spec phải nói
+*hiện đang thế nào*. Đổi một quyết định mà chỉ ghi changelog là để lại một câu hỏi đã chết nằm
+trong file mà mọi phiên đều đọc.
+
+🗑 `global_memory.enc.broken-0byte-20260903` (0 byte, dời sang 03/09) — **đã xoá 2026-09-04**
+(user chốt: *"hư thì xóa"*). Kênh nay đúng 4 file: khúc 1 · `.002` · `bak` · `version.json`.
 
 ## Còn lại (backlog thật)
 - [x] ~~**Export gọn + DELTA**~~ **HOÀN TẤT 2026-07-19** — xem `06_CHANGES`. Phát hiện then chốt: `mergeMemoryBundle` VỐN chỉ đọc `sessions`/`messages`/`known_stores`; mọi lớp dẫn xuất trong bundle là **hàng chết được chở đi vô ích**. Nay bundle mặc định là **payload `rows`** (chỉ 3 bảng nguồn, DDL copy verbatim từ source nên schema đổi không phải sửa); `--full` giữ lại cho disaster-restore. `sinceMessageId` → **delta**; watermark per-bundle ở bảng `sync_state` (schema **v13**, per-máy, KHÔNG đi theo bundle). **Đo thật trên DB 709.1MB: lean 184.6MB (−74%, 4s) · delta ~1.6k msg = 1.8MB (0.2s).** Round-trip verify: 1173 session / 144.396 msg khớp tuyệt đối, **FTS dựng lại đúng** (13.946 hit `zemory`, khớp nguồn), re-merge +0/+0.

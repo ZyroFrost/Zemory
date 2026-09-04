@@ -5,6 +5,36 @@
 
 ---
 
+## [2026-09-04e] — một quyết định ghi ĐÚNG ở changelog mà SPEC không nhận, nên nó bị hỏi lại
+
+**Ca thật, và nó tốn của user một lượt bực.** User hỏi *"còn gì làm"*; tôi đọc hết docs rồi trình
+**`bak.enc` là hàng sống hay bản lùi** như một mục **chờ user chốt**. Sai: quyết định đó đã chốt và
+đã ghi ở `[2026-09-04b]` ② kèm nguyên văn user (*"này t nhớ là backup"*), vá cũng đã ship. Thứ làm
+tôi trình lại là `plan/08 §8e` vẫn để nguyên khối *"cần user chốt một trong hai — **chưa làm gì**"*.
+
+📌 **Luật rút ra: changelog nói *ĐÃ ĐỔI GÌ*, spec nói *HIỆN ĐANG THẾ NÀO*.** Ghi một quyết định vào
+`06_CHANGES` mà không nắn spec là để lại một câu hỏi ĐÃ CHẾT trong file **mọi phiên đều đọc** — mà
+câu hỏi đã chết thì không phân biệt được với câu hỏi đang sống. Cùng họ với luật supersede, chỉ khác
+là ở đây nó chết ở changelog mà sống ở spec. ⇒ `plan/08 §8e` nay khai thẳng: `bak.enc` **là bản lùi**;
+`mergeAll` đọc nó là fail-open ĐÚNG (điều 9), `listSegments` loại nó cũng ĐÚNG (nó không phải khúc);
+thứ đã vá là **sự im lặng**, không phải hai tập file.
+
+**Xoá `global_memory.enc.broken-0byte-20260903`** khỏi kênh (user chốt: *"hư thì xóa"*) — kiểm 0 byte
+trước khi xoá; kênh còn đúng 4 file.
+
+**Soát sổ bằng ba nguồn, ra ba chỗ sổ nói khác thực địa** (`02_RULES §SOÁT SỔ = ĐO LẠI`):
+· `05_TODO` còn khai *"chưa push, `2.13.1` vẫn là bản trên kênh"* — thực tế **`2.14.0` đã push**
+  (`9d04fdd`), cây sạch. Tem `version.json` còn `2.13.1` là ĐÚNG NHỊP: `publishChannelVersion` chỉ
+  đóng dấu ở cuối một lượt sync trót lọt, mà lượt OK cuối (04:57Z) chạy trước lúc bump.
+· Kênh: `.002.enc` **37 → 59 khối / 153,6 MB**, `bak.enc` 48 khối / 2,22 GB, khúc 1 vẫn 0 byte
+  (đọc header tại chỗ, không giải mã) ⇒ đường ghi vẫn thông qua khúc đang mở.
+· Hai backup tay đo lại **5,08 GiB** (sổ ghi 5,2 GB); `data/backups` tổng 13,5 GB, 3 bản luân phiên
+  đúng `keep=3`.
+
+**Đo lúc chốt:** `conform` 0 lệch (278 file · 19/56 slot · **16 điều**) · `validate` sạch · `doctor`
+xanh toàn bộ (2.815 phiên · 341.658 tin · backup 0,5 giờ · uplink 5 file đã lên mây). Gate
+`npm run check` **KHÔNG chạy lại** phiên này — phiên này chỉ đụng docs; số 1030/1030 vẫn là của 03/09.
+
 ## [2026-09-04d] — một LUẬT ĐÃ SỬA không đi được bằng `sync`; và tôi xoá trắng đúng file mình đang vá
 
 🔴 **`sync` là GAP-FILL, nên nó KHÔNG BAO GIỜ mang được một luật đã sửa.** `adopt.ts` bỏ qua file
