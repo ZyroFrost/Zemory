@@ -155,6 +155,7 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
   flag `.allow-*` chỉ được tạo SAU khi user nói rõ trong phiên.
   Cùng doctrine với `§Hành xử` (*"thao tác xoá phải được user xác nhận trước"*): **chữ là tầng
   QUYẾT ĐỊNH, máy là tầng ĐỠ HỤT** — bỏ một tầng thì tầng kia không gánh thay được.
+- **Đường `protected` trỏ vào thứ CHỈ ĐỌC — ĐỪNG trỏ vào sản phẩm mà chính repo đang tạo ra** (2026-09-04, sinh từ một ca thật). Đúng chỗ cho nó: **đầu vào gốc** (`data/*/01_raw`) · **hiến pháp** · **két bí mật** — thứ harness/agent không có việc gì phải sửa. Trỏ vào **deliverable đang được xây** (báo cáo · model · nội dung) thì mọi lượt sửa thường ngày đều phải xin flag, và **một cổng kêu suốt là cổng sắp bị gỡ** (*gate nhiễu ⇒ gate bị bỏ qua*) — mất nhiều hơn được. Muốn chống sửa nhầm sản phẩm thì dùng **git** (đảo được), không dùng chốt lớp ① (dựng ra để gác thứ BẤT KHẢ ĐẢO). *Ca thật: một repo khai `reports/*.pbix` là `protected`, rồi đổi tên một báo cáo bị chặn VĨNH VIỄN — cộng thêm bug vân tay-theo-đường (đã vá cùng ngày) thì user cấp flag bao nhiêu lần cũng vô ích. Cổng đúng, chỗ đặt sai.*
 - **`protected_write` nhận GLOB, không chỉ tiền tố** (2026-08-10): `data/*/01_raw` diễn đạt được "đầu vào gốc của MỌI case" — thứ tiền tố không nói nổi vì tên case không biết trước. Thiếu nó thì hoặc liệt kê tay từng case (không ai bảo trì nổi), hoặc chặn cả `data` (chặn luôn chỗ agent ghi suốt ⇒ gate bị bỏ qua).
 
 ## Hành xử

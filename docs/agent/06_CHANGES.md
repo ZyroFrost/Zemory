@@ -5,6 +5,70 @@
 
 ---
 
+## [2026-09-04b] — xoá trong protected: chặn rồi XIN PHÉP được · và bản lùi thôi che kho chính hụt
+
+**Hai vế user chốt sau khi đọc bản vá `[2026-09-04]`.**
+
+🔴 **① Xoá trong `protected` giờ có đường cờ** (*"chặn rồi xin phép là được"*). Trước đó là `deny()`
+tuyệt đối, không cờ nào ăn — trong khi `mv <protected>/x /tmp` **cùng hậu quả** lại CÓ cờ, nên người
+ta học cách đi đường `mv`. Và một cổng không có đường cho user duyệt là **máy đang làm NGƯỜI QUYẾT**,
+trái `02_RULES §Guardrail` (*chữ là tầng quyết định, máy là tầng đỡ hụt*). Dùng cờ **`delete`** chứ
+KHÔNG dùng `docs_write`: một lượt duyệt GHI không được biến thành duyệt XOÁ.
+⚠ Bản nháp đầu của tôi dùng `return` → thoát CẢ hàm guard, bỏ qua luôn phép kiểm secret của token
+còn lại, phép kiểm xoá đệ quy và cả nhánh `mv`. Nay memo hoá một lần cho cả câu lệnh.
+**Cổng:** `guard-flag-retry` 10 ca (**4 ca ÂM**: cờ ghi ≠ cờ xoá · không dùng ké lệnh khác · cờ xoá
+không che token secret). **Đột biến 3/3 ĐỎ**, đỏ 2/3/1 ca khác nhau ⇒ các ca không trùng.
+
+🔴 **② `bak.enc` là BACKUP — thôi để nó che kho chính đang hụt** (*"này t nhớ là backup"*). `mergeAll`
+quét mọi `*.enc` nên nó đọc cả bản lùi; điều đó ĐÚNG và giữ nguyên (fail-open). Cái hỏng chưa bao giờ
+là *"nó hội tụ"* mà là **hội tụ trong im lặng khi đang hỏng**: 03/09 khúc 1 còn **0 byte**, cả 48 khối
+chỉ nằm ở bản lùi, mà sync vẫn `OK` và mọi số vẫn đẹp suốt 20 giờ — trên một file mà lượt gộp kế tiếp
+`rmSync` ngay dòng đầu. Nay `syncDrive` báo `[sync] kho chung ĐANG SỐNG NHỜ BẢN LÙI` khi khúc 1 vắng
+mặt/không đọc được, **hoặc** dãy khúc chính ít khối hơn bản lùi.
+⚠ Bản nháp đầu chỉ có vế *số khối* ⇒ fixture 1-vs-1 không nổ dù khúc 1 đã VẮNG MẶT. Và ca ÂM đầu của
+tôi **hụt**: nó chạy khi chưa có `bak.enc` nên phép dò còn chưa tới — đột biến *"kêu cả khi kênh lành"*
+**sống sót**. Thêm ca ÂM 2 (có bản lùi + khúc 1 lành, đúng hình dạng sau một lượt gộp thành công) thì
+**3/3 ĐỎ**.
+
+**Áp lại:** `guard.cjs` sinh lại **16/16 repo** · bản ship cowork byte-identical · MANIFEST 507 → **527**.
+
+## [2026-09-04] — guard chặn VĨNH VIỄN thao tác đổi tên, dù user cấp cờ bao nhiêu lần
+
+**Báo từ repo `WorkSpace/Dept_OPS`.** Không thể `mv`/đổi tên một file trong đường
+`protected_write`, cấp cờ bao nhiêu lần cũng vô ích.
+
+🔴 **Cơ chế.** `flagWritePath` đóng vân tay theo **TỪNG ĐƯỜNG** (`consumeFlag("docs_write", rel)`),
+mà `mv A B` chạm **HAI** đường: ① nguồn `A` đóng dấu `sha1(A)` → cho qua · ② đích `B` thấy dấu khác
+→ **xoá cờ** → CHẶN. Lượt sau nguồn lại ăn cờ mới trước ⇒ **vòng lặp không thoát**. Cửa sổ 90 giây
+không cứu được: nó cho thử lại *cùng một subject đã tiêu thụ*, còn ở đây nguồn tiêu thụ một cờ MỚI
+mỗi lượt. Đây là BUG chứ không phải chính sách — chính thông báo của guard **mời** user tạo cờ, tức
+thiết kế CÓ Ý cho user duyệt là qua được; và một cổng hứa mở mà không mở nổi thì đẩy người ta đi gỡ
+luôn đường khỏi `protected`.
+
+**Bằng chứng đây là SÓT, không phải chủ ý:** 4 nhánh còn lại trong cùng file (`push` · `delete` ·
+`discard` · `git_add_all`) **đều** vân tay theo LỆNH (`bare`). Chỉ nhánh này lệch.
+
+**Vá (phương án 1 của báo cáo):** một cờ phủ **trọn một lệnh** — bớt một khái niệm thay vì thêm cờ
+`.allow-rename` riêng, và đưa nhánh này về đúng khuôn 4 nhánh kia. Vẫn là *một lần cho một việc*:
+đổi lệnh ⇒ dấu khác ⇒ thu hồi. Cổng: `guard-flag-retry.test.mjs` +3 ca (**2 ca ÂM**), **đột biến
+2/2 ĐỎ** (trả về `rel` ⇒ đỏ 2 ca; bỏ hẳn vân tay ⇒ đỏ 1 ca).
+⚠ Lượt đầu 3 ca của tôi ĐỎ vì **test sai, không phải sản phẩm sai**: `blocked()` không đặt `cwd`,
+mà guard đổi đường bằng `path.relative(ROOT, tok)` — cwd ở ổ D: còn ROOT ở ổ C: thì `path.relative`
+qua hai ổ trả đường TUYỆT ĐỐI, không khớp đường protected nào ⇒ mọi ca đường-dẫn lọt sạch. Lỗ này
+nằm đó lâu mà không ai thấy vì các ca cũ chỉ test `git push` — không đụng đường dẫn.
+
+**Đã áp lên MỌI repo đang dính: 16/16** (`zemory hook guard` sinh lại từ generator đã vá) — 0 repo
+còn bản cũ · 1 bỏ qua (chưa từng cài guard) · `policy.json`/`precommit-guard.cjs`/`.gitignore`
+**giữ nguyên** ở mọi repo, `put()` chỉ làm mới file còn dấu generator.
+
+**Luật kèm (user chốt), ship cả 3 template:** *đường `protected` trỏ vào thứ CHỈ ĐỌC — đừng trỏ vào
+sản phẩm chính repo đang tạo ra*. Ca thật: repo đó khai `reports/*.pbix` là `protected`, tức mọi lượt
+sửa báo cáo thường ngày đều phải xin cờ. Cổng đúng, **chỗ đặt sai**.
+
+⚠ **CÒN HỞ, chưa vá vì là quyết định của user:** xoá trong `protected` là `deny()` **tuyệt đối,
+không có `consumeFlag` nào** — trong khi comment ngay trên đó tự viết `mv <protected>/x /tmp` *"có
+hậu quả Y HẾT xoá"*, mà nhánh `mv` **lại có** đường cờ. Hai đường cùng hậu quả, hai cổng khác nhau.
+
 ## [2026-09-03] — audit 11 mặt: gộp kho chung PHÁ kênh thật, và ba bề mặt nói dối
 
 Gate vào phiên **1019/1019 xanh**, code y hệt `2.13.1` ⇒ lỗi KHÔNG ở code mới; cả bốn thứ dưới đây

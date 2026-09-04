@@ -1529,6 +1529,50 @@ export async function syncDrive(opts: {
   // này: ở lối một-file tên gói không còn nói "của ai"; dedup theo CHỮ KÝ lo phần đó.
   onProgress("merge");
   await mergeAll("all"); // ← NGOÀI khoá: phần nặng, máy khác vẫn ghi được trong lúc này
+
+  // 🔴 BẢN LÙI LÀ BACKUP, KHÔNG PHẢI KHO CHÍNH — nói ra khi kho chung đang SỐNG NHỜ nó
+  // (user chốt 2026-09-04: *"này t nhớ là backup"*).
+  //
+  // `mergeAll` quét MỌI `*.enc` nên nó đọc cả `global_memory.bak.enc`. Điều đó ĐÚNG và phải giữ
+  // (fail-open — không bao giờ bỏ dữ liệu đọc được). Nhưng nó có một cái giá đã trả thật ngày
+  // 03/09: một lượt gộp trượt để lại khúc 1 **0 byte**, toàn bộ 48 khối chỉ còn ở bản lùi, và
+  // vì merge vẫn đọc bản lùi nên **sync vẫn hội tụ, mọi số vẫn đẹp** — không ai biết kho chính
+  // đã rỗng suốt 20 giờ. Cái hỏng chưa bao giờ là "nó hội tụ", mà là **hội tụ trong im lặng khi
+  // đang hỏng**. Và bản lùi là thứ lượt gộp KẾ TIẾP xoá ngay dòng đầu (`rmSync(MAIN_BAK)`), nên
+  // sống nhờ nó là sống trên một file đã có án tử.
+  //
+  // Phép dò RẺ: chỉ đọc tiền tố độ dài + header 64 byte của từng khối (không giải mã) — cùng
+  // đường `chunkSignature` đã dùng ở §8c ①. So SỐ KHỐI: bản lùi nhiều hơn cả dãy khúc chính
+  // ⇒ khúc chính đang hụt, và đó là điều duy nhất phép này khẳng định.
+  // HAI dấu hiệu, và dấu ĐẦU mới là thứ đã xảy ra thật:
+  //   ① KHÚC 1 vắng mặt / không đọc được, mà bản lùi LẠI là container hợp lệ ⇒ kênh đang sống
+  //      nhờ bản lùi. Đây đúng hiện trạng 03/09 và là dấu rõ ràng nhất.
+  //   ② khúc 1 còn đó nhưng cả dãy khúc chính ÍT khối hơn bản lùi ⇒ kho chính đã bị cắt bớt.
+  // Phép so *số khối* một mình KHÔNG đủ: bản nháp đầu của tôi chỉ có vế ②, và cổng bắt ngay —
+  // fixture 1 khối vs 1 khối không nổ, trong khi khúc 1 đã VẮNG MẶT hoàn toàn. Số đếm bằng nhau
+  // không có nghĩa là lành.
+  try {
+    const bakPath = join(dir, MAIN_BAK);
+    if (existsSync(bakPath) && isChunkContainer(bakPath)) {
+      const bakChunks = listChunks(bakPath).length;
+      const segs = listSegments(dir);
+      const mainOk = segs.some((s) => basename(s.path) === MAIN_BUNDLE && isChunkContainer(s.path));
+      let segChunks = 0;
+      for (const s of segs) {
+        if (isChunkContainer(s.path)) segChunks += listChunks(s.path).length;
+      }
+      if (!mainOk || bakChunks > segChunks) {
+        console.error(
+          `[sync] kho chung ĐANG SỐNG NHỜ BẢN LÙI: ${MAIN_BAK} có ${bakChunks} khối` +
+            (mainOk ? `, cả dãy khúc chính chỉ ${segChunks}` : `, còn ${MAIN_BUNDLE} (khúc 1) VẮNG MẶT hoặc không đọc được`) +
+            `. Bản lùi là BACKUP và lượt gộp kế tiếp XOÁ nó — khúc chính phải được dựng lại TRƯỚC khi gộp. ` +
+            `Soi: \`zemory memory vectors-catchup --dry-run\`.`,
+        );
+      }
+    }
+  } catch {
+    /* phép dò phụ — hỏng thì im, KHÔNG được chặn đường đồng bộ (điều 9) */
+  }
   // ── NHÚNG TRƯỚC, XUẤT SAU (đảo thứ tự 2026-08-30) ───────────────────────────
   // Trước đây embed nằm CUỐI lượt, còn export bị `embedFrontierId` cắt ở tin đầu tiên CHƯA nhúng
   // (tin và vector đi cùng chuyến — điều 16). Hệ quả đo được trên kho thật sáng 30/08: mỗi lượt chỉ
