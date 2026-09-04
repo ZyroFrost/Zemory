@@ -5,6 +5,34 @@
 
 ---
 
+## [2026-09-04g] — docs-only thì KHÔNG bump: chốt một mệnh đề trừ, thay vì để luật đá thông lệ
+
+**Câu hỏi của user (*"docs thì cần thì push version?"*) chỉ ra một chỗ luật tự đá nhau.** `§Git`
+viết *"MỖI LẦN PUSH = MỘT LẦN LÊN VERSION … KHÔNG push với số cũ"*, còn `§Luật khi VIẾT` chốt bump
+**RELEASE-BASED** — số chỉ tăng khi phát hành một *bản build*. Đọc theo nghĩa đen thì `§Git` cấm cả
+những lượt push đã làm rồi.
+
+**Đo trước khi chốt** (đường thứ hai, không suy từ chữ): duyệt 15 commit gần nhất kèm `version` của
+`package.json` từng commit ⇒ sau `715f4eb` (2.14.0) có **4 commit docs-only đã push mà không bump**
+(`daa5ee4` · `67e858c` · `62427ee` · `9d04fdd`). Thông lệ và `§Luật khi VIẾT` khớp nhau; chỉ chữ ở
+`§Git` là lệch.
+
+**Và bump cho docs có giá THẬT, không chỉ là chuyện chữ nghĩa:** `publishChannelVersion` đóng dấu
+`appVersion()` lên `<Drive>/version.json` ở cuối mỗi lượt sync trót lọt ⇒ bump docs là báo cho
+`DESKTOP-PFB157K` rằng có bản mới trong khi `dist/` **byte-identical**, làm nhiễu đúng cái tín hiệu
+`selfupdate` đang cần để kéo máy đó lên ≥2.11.0.
+
+⇒ Thêm **một mệnh đề trừ** vào `§Git` (user chốt: *"khỏi đi, mấy cái fix ko liên quan gì app"*):
+đợt chỉ đụng docs thì đẩy thẳng, không bump; đụng `backend/`·`frontend/`·`package.json` là quay về
+luật gốc, phải hỏi số. **Chỉ sửa `02_RULES` của repo này** — đo được luật này KHÔNG có trong 3 bản
+`docs_template`, nên không phát sinh chuyện lan tay 16 repo (`[2026-09-04d]`).
+📌 Ghi thẳng vào `§Git` chứ không chỉ vào đây, vì đó đúng bài học của `[2026-09-04e]`: quyết định chỉ
+nằm ở changelog thì spec vẫn hỏi lại câu đã chết. Lần này áp ngay trong cùng phiên.
+
+**Đợt push:** 3 commit `93a98c8` · `8ef0b5f` · `5e0b663` → `9d04fdd..5e0b663`, không bump, `2.14.0`
+giữ nguyên. ⚠ Guard zemory cho qua nhưng **tầng quyền của Claude Code chặn lượt đầu** — không phải
+lỗi repo; lượt sau qua.
+
 ## [2026-09-04f] — luật **EOL: ĐỌC SAO GHI VẬY** vào §Luật khi VIẾT — sinh từ ca ghi-lại-cả-file làm rơi bài của phiên khác
 
 **ĐÚNG HAI FILE bị ghi lại cả file** (repo `_DataWarehouse_Central`, 2026-09-04) — ghi đủ đường dẫn vì
