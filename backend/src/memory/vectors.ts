@@ -79,6 +79,30 @@ function tableExists(db: Conn, name = "vec_chunks"): boolean {
   return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
 }
 
+/**
+ * "This message has no vector yet" — as a WHERE fragment that is CHEAP per row.
+ *
+ * Never ask the vec0 virtual table itself whether a rowid exists. vec0 answers a point lookup by
+ * loading the whole vector chunk (~1,024 vectors × 768 × 4 B ≈ 3 MB) that holds the rowid, even
+ * for `SELECT 1`. Measured 2026-09-07 on the live store (347k messages): the correlated
+ * `NOT EXISTS (… FROM vec_chunks WHERE rowid = messages.id)` read **456 GB** and took **346 s**
+ * for ONE pending-selection pass; the embed child had read 292 GB before loading the model, and
+ * `embed --all` runs that query twice per pass. When the page cache holds the vectors this is the
+ * "15.7 s vectorRemaining()" plan/14 §8 recorded; under memory pressure it became disk reads at
+ * 420 MB/s — 18 minutes per pass. Same lesson as `coverage()` learned 2026-07-27 (23 s → 0.5 s),
+ * applied to the two queries that had been left out.
+ *
+ * `vec_chunks_rowids` is vec0's shadow table (`rowid INTEGER PRIMARY KEY`): one indexed lookup
+ * per row — same query, 13.3 s. Same set by construction (462 = 462 on the live store). The shadow
+ * table can be absent on a store that never embedded (plan/08 §8b trap), so fall back to the
+ * virtual table rather than throw (điều 9).
+ */
+export function noVectorYetSql(db: Conn, idExpr = "messages.id"): string {
+  return tableExists(db, "vec_chunks_rowids")
+    ? ` AND NOT EXISTS (SELECT 1 FROM vec_chunks_rowids r WHERE r.rowid = ${idExpr})`
+    : ` AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = ${idExpr})`;
+}
+
 // Tool CALLS (tool_name set — a command + its args) carry almost no semantic
 // value but are long and numerous (~1/3 of daily volume), so by default they are
 // NOT embedded — FTS keyword search still covers them fully, and skipping them
@@ -301,7 +325,7 @@ export async function embedPending(
       .prepare(
         `SELECT id, content FROM messages
          WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}${ex.sql}
-           ${has ? "AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)" : ""}
+           ${has ? noVectorYetSql(db) : ""}
          ORDER BY length(content) ASC, id ASC LIMIT ?`,
       )
       .all(...ex.params, limit) as { id: number; content: string }[];
@@ -451,7 +475,7 @@ export async function embedPending(
       remaining = (
         db
           .prepare(
-            `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()} AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = messages.id)`,
+            `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${noVectorYetSql(db)}`,
           )
           .get() as { c: number }
       ).c;

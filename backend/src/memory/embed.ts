@@ -74,17 +74,23 @@ interface ProfileSpec {
    * reproduces the vectors the whole model comparison was measured on, bit for bit (cos
    * 1.000000), so what ships is what was benchmarked.
    *
-   * Left OFF for gemma on purpose: the live index was BUILT with batched calls, and changing
-   * how its vectors are produced mid-life would mix two variants inside one index. The same
-   * measurement on gemma (cos 0.962 mean, 0.925 worst — and also 2.3x slower) is written up
-   * as its own finding in 05_TODO; it is a decision about the LIVE store, not part of this swap.
+   * ON for gemma too since 2026-09-07. It was left off because the live index was built with
+   * batched calls and the 2026-08-19 note claimed batching MOVES gemma's vectors (cos 0.962),
+   * so switching would mix two variants. Re-measured on the same stack (transformers 4.2.0,
+   * ort 1.24.3 — unchanged since 2026-07-01), 32 real texts, one process, ruler checked with a
+   * negative anchor (two different texts: cos 0.51): batch-16 vs single differ by 3e-13 —
+   * float noise. There are no two variants; the old number did not reproduce. What batching
+   * DID cost, measured on 326 real windows: RSS peak 4,256 MB vs 966 MB (4.4x — every text in
+   * the batch is padded to the longest one, and the ORT arena never shrinks) and it was 19%
+   * SLOWER (4,158 vs 3,495 ms/window). That 4 GB child, spawned every 30 minutes by the sync
+   * round, is what pushed a 16 GB machine into paging.
    */
   sequential?: boolean;
 }
 
 const PROFILE_SPECS: Record<EmbedProfile, ProfileSpec> = {
-  raw: { model: null, pooling: "mean", prompted: false, dims: 768, dtype: "fp32" },
-  "gemma-prompt-v1": { model: null, pooling: "mean", prompted: true, dims: 768, dtype: "fp32" },
+  raw: { model: null, pooling: "mean", prompted: false, dims: 768, dtype: "fp32", sequential: true },
+  "gemma-prompt-v1": { model: null, pooling: "mean", prompted: true, dims: 768, dtype: "fp32", sequential: true },
   // int8, not fp32: measured 637 vs 1388 ms/message on this CPU while the quality difference
   // stayed INSIDE the noise band (bootstrap 2000x, ΔMRR −0.026 [−0.060 … +0.007]) — i.e. fp32
   // buys ~50 extra hours of machine time for something the corpus cannot even resolve.

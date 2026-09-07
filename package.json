@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "clean": "node backend/scripts/clean.mjs",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && node backend/scripts/make-exe.mjs",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint backend/src backend/test backend/scripts eslint.config.js",
@@ -38,6 +38,7 @@
     "@types/node": "^22.0.0",
     "eslint": "^10.5.0",
     "globals": "^17.6.0",
+    "rcedit": "^5.0.2",
     "tsx": "^4.19.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1"

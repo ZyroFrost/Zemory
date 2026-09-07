@@ -7,7 +7,7 @@
 // the UI can show "not supported here" instead of crashing.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,9 +31,30 @@ function cliEntry(): string {
   return join(here, "..", "cli.js");
 }
 
-/** The command that should run at login: node <cli.js> ui. */
+/**
+ * Which runtime the launchers should start.
+ *
+ * `dist/zemory.exe` (built by `backend/scripts/make-exe.mjs`) is node.exe carrying Zemory's
+ * version resource + icon. Task Manager names, icons and GROUPS processes by the .exe, so the
+ * daemon started from it — and every child spawned via `process.execPath` — shows as one
+ * "Zemory" group instead of "Node.js JavaScript Runtime (6)" (user, 2026-09-07). Pure: the
+ * gate feeds it platform + existence. Falls back to the current node.exe when the branded exe
+ * is missing (non-Windows, or a build that skipped it) — the app must never fail to start over
+ * cosmetics.
+ */
+export function launcherExe(opts: { platform: string; brandedExe: string; exists: (p: string) => boolean; fallback: string }): string {
+  return opts.platform === "win32" && opts.exists(opts.brandedExe) ? opts.brandedExe : opts.fallback;
+}
+
+/** dist/platform/autostart.js → its sibling dist/zemory.exe. */
+function brandedExePath(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "zemory.exe");
+}
+
+/** The command that should run at login: <zemory.exe | node> <cli.js> ui. */
 function launchParts(): { exe: string; args: string } {
-  return { exe: process.execPath, args: `"${cliEntry()}" ui` };
+  const exe = launcherExe({ platform: process.platform, brandedExe: brandedExePath(), exists: existsSync, fallback: process.execPath });
+  return { exe, args: `"${cliEntry()}" ui` };
 }
 
 /** Escape a value for a PowerShell single-quoted string (double the quotes) —
@@ -341,9 +362,37 @@ export function setDesktopShortcut(on: boolean): ShortcutStatus {
 }
 
 /** Reconcile the OS hook with the saved config flag (called on daemon start). */
+/**
+ * A launcher already on disk names a runtime other than the one we would write today — e.g. it
+ * still starts node.exe after dist/zemory.exe appeared (2026-09-07). `enabled` alone cannot see
+ * this: the file exists, so the on/off reconcile is satisfied and the stale command survives
+ * every restart. Pure for the gate: content in, verdict out.
+ */
+export function launcherStale(content: string | null, exe: string): boolean {
+  return content !== null && !content.includes(exe);
+}
+
+function readIfExists(p: string): string | null {
+  try {
+    return existsSync(p) ? readFileSync(p, "utf8") : null;
+  } catch {
+    return null;
+  }
+}
+
 export function reconcileAutostart(wanted: boolean): void {
   try {
-    if (autostartStatus().enabled !== wanted) setAutostart(wanted);
+    const st = autostartStatus();
+    if (st.enabled !== wanted) {
+      setAutostart(wanted);
+      return;
+    }
+    if (!wanted || platform() !== "win32") return;
+    // On, and wanted on — but is the FILE still pointing at today's runtime? Rewrite both the
+    // Startup entry and the shortcut launcher when either names a different exe.
+    const { exe } = launchParts();
+    if (st.path && launcherStale(readIfExists(st.path), exe)) setAutostart(true);
+    if (desktopShortcutStatus().exists && launcherStale(readIfExists(winLauncherVbs()), exe)) winWriteLauncher();
   } catch {
     /* best-effort */
   }

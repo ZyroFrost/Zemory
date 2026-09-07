@@ -70,6 +70,7 @@ import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
+import { backgroundChildEnv } from "./childenv.js";
 import { sweepBrowserProfiles } from "../memory/browser-rotate.js";
 import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
@@ -196,7 +197,8 @@ function runStep(label: string, args: string[]): Promise<number> {
         // ZEMORY_DAEMON_PID: để con phân biệt khoá CỦA MÌNH (daemon giữ hộ) với khoá của
         // một CLI NGOÀI đang ghi. Thiếu nó thì con không có cách nào biết, và sẽ ghi đè —
         // đúng ca 2026-08-08 (hai `embed --all` cùng kho).
-        env: { ...process.env, ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: String(process.pid) },
+        // runStep children are always machine-started ⇒ background thread cap (see childenv.ts).
+        env: { ...backgroundChildEnv(process.env, true), ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: String(process.pid) },
       });
     } catch (e) {
       log(`${label}: could not spawn (${e instanceof Error ? e.message : e})`);
@@ -755,11 +757,14 @@ let syncRetry: ReturnType<typeof setTimeout> | null = null;
  * qua ống giữa hai tiến trình, không phải giá trị trong cùng process.
  */
 export function describePush(result: unknown): string {
-  const r = result as { push?: { kind?: string; messages?: number; bytes?: number }; embedded?: number } | undefined;
+  const r = result as { push?: { kind?: string; messages?: number; bytes?: number }; embedded?: number; phases?: string } | undefined;
   if (!r?.push) return "";
   const { kind, messages = 0, bytes = 0 } = r.push;
-  if (kind === "none") return " · không có gì để đẩy";
-  return ` · ${kind} ${messages} tin / ${bytes} byte${r.embedded ? ` · nhúng thêm ${r.embedded}` : ""}`;
+  // `phases` = per-phase seconds from the child (`syncrun.ts`), so a slow round can be blamed on
+  // the phase that was slow instead of on "sync". Older children do not send it — then nothing.
+  const phases = r.phases ? ` · ${r.phases}` : "";
+  if (kind === "none") return ` · không có gì để đẩy${phases}`;
+  return ` · ${kind} ${messages} tin / ${bytes} byte${r.embedded ? ` · nhúng thêm ${r.embedded}` : ""}${phases}`;
 }
 
 /**
