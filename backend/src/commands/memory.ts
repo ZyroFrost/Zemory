@@ -885,11 +885,17 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   if (sub === "verify") {
     const db = flagValue(args, "--db") ?? currentMemoryDb();
     const r = verifyMemory(db);
-    console.log(`zemory memory verify — ${db}\n  ${r.ok ? (r.fresh ? `· ${r.detail}` : "✓ lành") : `✗ HỎNG: ${r.detail}`}`);
-    if (!r.ok) {
-      console.log("  → cứu: `zemory memory salvage` rồi `memory reopen` + `memory scan` (nguồn thật là transcript trên đĩa).");
-      process.exitCode = 1;
+    // `--json`: machine-facing line for the daemon, which runs this in a CHILD so `PRAGMA
+    // quick_check` on a multi-GB store never blocks its event loop (measured 2026-09-07: 59–301 s
+    // frozen per start, ~137 GB read/day at the old every-30-min cadence — scheduler.ts
+    // `VERIFY_EVERY_MS`). Exit 2 = corrupt in BOTH modes: the scheduler reads exactly 2 as
+    // "corrupt" and any other non-zero as "could not check" (fail-open, điều 9).
+    if (args.includes("--json")) console.log(JSON.stringify(r));
+    else {
+      console.log(`zemory memory verify — ${db}\n  ${r.ok ? (r.fresh ? `· ${r.detail}` : "✓ lành") : `✗ HỎNG: ${r.detail}`}`);
+      if (!r.ok) console.log("  → cứu: `zemory memory salvage` rồi `memory reopen` + `memory scan` (nguồn thật là transcript trên đĩa).");
     }
+    if (!r.ok) process.exitCode = 2;
     return;
   }
   // `reopen` — mở lại đường nạp cho phiên bị thủng để `scan` kéo lại từ transcript GỐC.
@@ -1368,8 +1374,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  vectors-catchup [--dir <folder>] [--dry-run]",
       "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
       "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",
-      "  verify [--db <path>]",
-      "                    kho có lành không (integrity). Hỏng → chỉ đường salvage + reopen + scan.",
+      "  verify [--db <path>] [--json]",
+      "                    kho có lành không (integrity). Hỏng → exit 2 + chỉ đường salvage + reopen + scan.",
+      "                    --json: một dòng JSON cho máy — daemon chạy nó trong CON (start-up · trước",
+      "                    mỗi backup · mỗi ngày) để quick_check kho vài GB không đóng băng daemon.",
       "  reopen [--all] [--reconcile]",
       "                    mở lại đường nạp cho phiên bị thủng, để scan kéo lại từ transcript GỐC.",
       "  salvage [out.db] [--force]",
