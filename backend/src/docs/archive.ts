@@ -43,6 +43,20 @@ const DATED_HEAD = /^## \[[^\]]+\]/;
 const ARCHIVE_INTRO =
   "<!-- Changelog ARCHIVE — entry cũ cắt khỏi 06_CHANGES.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# Change Log — Archive\n\n";
 
+/** ĐỌC SAO GHI VẬY (`02_RULES §Luật khi VIẾT`): đưa MỌI xuống dòng về EOL của file NGUỒN.
+ *
+ *  Cần vì file archive được ghép từ ba mảnh có EOL khác nhau: phần cắt ra (`join(eol)` — đúng),
+ *  hằng số INTRO ở trên (nhúng LF cứng, 3 chỗ mỗi hằng), và dấu nối `"\n" + prevBody`. Trên repo
+ *  CRLF, cái ra là một file EOL LẪN — vài dòng LF nằm giữa một file CRLF.
+ *  Đo 2026-09-04 trên `KhoDuLieuTrungTam` (47 file .md: 15 CRLF / 32 LF): một lượt ghi làm
+ *  đảo EOL cả file đủ để `git diff` kêu 255/251 dòng trong khi thay đổi thật là 3 — thay đổi thật
+ *  chìm trong nhiễu và blame theo dòng mất sạch. Đây là bản nhỏ của cùng lỗi đó.
+ *  Chuẩn theo file NGUỒN, không theo file archive: một họ hai file thì đi cùng một kiểu, và nguồn
+ *  là thứ người ta đọc mỗi phiên.                                                                */
+function toEol(text: string, eol: string): string {
+  return eol === "\r\n" ? text.replace(/\r?\n/g, "\r\n") : text.replace(/\r\n/g, "\n");
+}
+
 /** Line indices where dated changelog entries begin (fence-aware; file order = newest first). */
 function entryHeads(lines: string[]): number[] {
   const heads: number[] = [];
@@ -196,7 +210,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(TODO_INTRO) ? prev.slice(TODO_INTRO.length) : prev;
-  writeFileAtomic(archivePath, TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
+  writeFileAtomic(archivePath, toEol(TODO_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""), eol));
   // Truncating the SOURCE backlog is destructive — keep a .bak so it can be undone.
   // It goes to attic/, NOT next to the file: docs/agent/ is the folder the agent is told
   // to read in full, so a .bak parked there reads as stray rubbish (it was mistaken for
@@ -263,7 +277,7 @@ export function archiveChanges(
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;
-  writeFileAtomic(archivePath, ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""));
+  writeFileAtomic(archivePath, toEol(ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""), eol));
   // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được,
   // nhưng đặt ở attic/ chứ không cạnh file (xem bakDir).
   writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
