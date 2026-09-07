@@ -109,11 +109,12 @@ test("chuỗi chạy TUẦN TỰ và giữ ĐÚNG MỘT job token cho cả chu�
   assert.ok(releaseInFinally, `${SCHED}: releaseDaemonJob phải nằm trong finally — một bước lỗi là token kẹt vĩnh viễn`);
   // Backup gọi từ TRONG chuỗi thì KHÔNG được claim lồng (token đã ở trong tay) — claim lồng
   // là tự khoá chính mình, đúng kiểu bế tắc mà write-gate sinh ra để tránh.
-  assert.match(
-    s,
-    /const holdsToken = chainRunning/u,
-    `${SCHED}: backupTick phải biết token đã ở trong tay khi được gọi từ trong chuỗi`,
-  );
+  // Neo cũ ghim `const holdsToken = chainRunning` — SUY RA từ cờ toàn cục. Đo 2026-09-07: một
+  // tick TIMER nổ giữa lúc chuỗi đang chạy cũng thấy chainRunning=true ⇒ tự cho là "đang trong
+  // chuỗi", bỏ kiểm kẻ chặn, spawn thêm một `memory verify` cạnh con của chuỗi. Nay chuỗi NÓI RÕ
+  // (`backupTick(…, true)`); bất biến giữ nguyên — vẫn không claim lồng — chỉ đổi cách biết.
+  assert.match(s, /const holdsToken = fromChain;/u, `${SCHED}: backupTick nhận 'đang trong chuỗi' TƯỜNG MINH, không suy từ chainRunning`);
+  assert.match(chain, /backupTick\("sau chuỗi bảo trì", true\)/u, `${SCHED}: lần gọi trong chuỗi phải nói rõ để không claim lồng`);
 });
 
 test("việc nền phải NHƯỜNG CPU cho người dùng (ưu tiên thấp hơn bình thường)", () => {

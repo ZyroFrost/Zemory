@@ -66,13 +66,12 @@ import { PLATFORMS, platformsInUse, pullableAccountsOf, scanWeb } from "../memor
 import { isExcluded } from "../memory/scope.js";
 import { webProfileDir } from "../memory/connections.js";
 import { jarHasSession } from "../memory/borrowcookies.js";
-import { backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
+import { DEFAULT_BACKUP_POLICY, backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
 import { backgroundChildEnv } from "./childenv.js";
 import { sweepBrowserProfiles } from "../memory/browser-rotate.js";
-import { verifyMemory } from "../memory/salvage.js";
 import { vectorRemaining } from "../memory/vectors.js";
 import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, type SyncJobStatus, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
@@ -108,6 +107,41 @@ const WEB_TICK_EVERY_MS = 20 * 60_000;
 let child: ChildProcess | null = null;
 let chainRunning = false; // a maintain chain is between claim and release
 let lastEmptyAt = 0; // when vectorRemaining() last returned 0
+/** When the store last passed `memory verify` (0 = never in this daemon's life ⇒ due at start). */
+let lastVerifyAt = 0;
+/**
+ * How often the maintenance chain re-verifies the store. Was EVERY chain (30 min) — and in-process.
+ * Measured 2026-09-07: `PRAGMA quick_check` walks the whole 2.86 GB file, so that was ~137 GB of
+ * reads a day and the daemon's event loop frozen 59–301 s after every start (12 starts in the log),
+ * with /ping, /sync-status and the window all unanswered meanwhile — the "vỏ rỗng" family
+ * 02_RULES forbids, and the un-sourced "/ping 12 s cold" number in plan/14 §8. The check now runs
+ * in a CHILD (`memory verify`) at start-up, right before each backup (the moment a corrupt store
+ * could overwrite a good copy — previously unguarded), and otherwise once a day. Trade-off the user
+ * accepted: corruption is noticed within 24 h instead of 30 min, but no good backup is ever
+ * overwritten by a bad store. User chốt 2026-09-07.
+ */
+const VERIFY_EVERY_MS = 24 * 60 * 60_000;
+/** A verify this recent is reused instead of re-running (chain end → backup, seconds apart). */
+const VERIFY_FRESH_MS = 5 * 60_000;
+
+/** Pure for the gate: is a verify due? Never verified ⇒ yes (start-up); else once per `everyMs`. */
+export function verifyDue(lastAt: number, now: number, everyMs: number = VERIFY_EVERY_MS): boolean {
+  return lastAt === 0 || now - lastAt >= everyMs;
+}
+
+/**
+ * Run `memory verify` in a child. `ok` stamps `lastVerifyAt`; `corrupt` is exit 2 from the CLI;
+ * anything else (spawn failure, killed) is `unknown` — fail-open (điều 9): a guard that could not
+ * run must not stop maintenance, only a guard that said NO does.
+ */
+async function verifyStore(): Promise<"ok" | "corrupt" | "unknown"> {
+  const code = await runStep("verify", ["memory", "verify", "--json"]);
+  if (code === 0) {
+    lastVerifyAt = Date.now();
+    return "ok";
+  }
+  return code === 2 ? "corrupt" : "unknown";
+}
 /**
  * Cờ NHƯỜNG: một việc do NGƯỜI bấm cần kho, chuỗi bảo trì phải rút lui.
  *
@@ -269,12 +303,15 @@ async function maintainTick(): Promise<void> {
   try {
     // 0. KHO CÓ LÀNH KHÔNG — hỏi TRƯỚC khi ghi thêm gì.
     //    Sự cố 2026-08-03: kho hỏng lúc nào không ai biết, chỉ lộ ra vì tình cờ chạy bench.
-    //    Mỗi ngày chậm phát hiện là bản sao lưu gần nhất càng cũ. Hỏng thì DỪNG cả chuỗi:
-    //    ghi tiếp vào một file đã hỏng chỉ làm hỏng thêm và đè lên bản sao lưu còn tốt.
-    const health = verifyMemory(currentMemoryDb());
-    if (!health.ok) {
-      log(`⛔ KHO HỎNG (${health.detail}) — dừng chuỗi bảo trì. Chạy \`zemory memory salvage\` rồi \`memory reopen\` + \`memory scan\`.`);
-      return;
+    //    Hỏng thì DỪNG cả chuỗi: ghi tiếp vào một file đã hỏng chỉ làm hỏng thêm.
+    //    Trong CON và theo nhịp (start-up · daily) — xem `VERIFY_EVERY_MS` vì sao không còn mỗi 30′.
+    if (verifyDue(lastVerifyAt, Date.now())) {
+      const v = await verifyStore();
+      if (v === "corrupt") {
+        log("⛔ KHO HỎNG — dừng chuỗi bảo trì. Chạy `zemory memory salvage` rồi `memory reopen` + `memory scan`.");
+        return;
+      }
+      if (chainAbort) return;
     }
     // 1. scan — ingest new/changed transcripts. Incremental (dedup by uuid), and
     //    it is the ONLY step that brings new messages in, so it never backs off.
@@ -312,7 +349,7 @@ async function maintainTick(): Promise<void> {
 
     // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
     //    chuỗi này làm backup chết theo công tắc `scheduler`.
-    await backupTick("sau chuỗi bảo trì");
+    await backupTick("sau chuỗi bảo trì", true);
     if (chainAbort) return;
 
     // 5. ĐỐI CHIẾU KÊNH — thưa (7 ngày). Xem `reconcileTick`.
@@ -406,15 +443,20 @@ async function reconcileTick(): Promise<void> {
 
 const BACKUP_YIELD_LOG_EVERY = 8; // ~4 giờ ở nhịp 30 phút — thấy được mà không thành nhiễu
 
-async function backupTick(why: string): Promise<void> {
-  const holdsToken = chainRunning; // gọi từ trong chuỗi ⇒ token đã ở trong tay
+async function backupTick(why: string, fromChain = false): Promise<void> {
+  // `fromChain` is passed EXPLICITLY by the chain-end call. It used to be inferred from
+  // `chainRunning`, which is also true when a TIMER fires while a chain is mid-flight — measured
+  // 2026-09-07: the start-up primer at +60 s "held the token", skipped the blocker check and spawned
+  // a second `memory verify` beside the chain's own (two 3 GB quick_checks at once, `child`
+  // clobbered). A timer tick during a chain must yield like it does for any other writer.
+  const holdsToken = fromChain;
   if (!holdsToken) {
     // Nhường theo ĐÚNG KHO mình sắp chép, không phải "có ai đang ghi trong thư mục này".
     // Trước 2026-08-21 chỗ này gọi `cliHoldsWrite()` — mà khoá là MỘT file cho cả `data/` nên
     // job re-embed kho SONG SONG (plan 19) giữ khoá 44 giờ đã bỏ đói backup của kho THẬT: hai
     // file khác nhau, không hề tranh nhau. Xem `writegate.cliHoldsWriteOn`.
     const target = currentMemoryDb();
-    const blocker = child ? "daemon child" : syncJobRunning() ? "sync job" : cliHoldsWriteOn(target) ? (cliWriteHolder()?.label ?? "CLI") : null;
+    const blocker = chainRunning ? "maintain chain" : child ? "daemon child" : syncJobRunning() ? "sync job" : cliHoldsWriteOn(target) ? (cliWriteHolder()?.label ?? "CLI") : null;
     if (blocker) {
       backupYields++;
       // Nói ở lượt ĐẦU (để biết vì sao im) rồi định kỳ (để biết nó vẫn đang im).
@@ -431,6 +473,20 @@ async function backupTick(why: string): Promise<void> {
     if (!claimDaemonJob("backup")) return;
   }
   try {
+    // Never copy a store that has not been checked recently: a backup of a corrupt file rotates
+    // the last good copy out (keep=3). This is the ONE moment the verify actually protects, and
+    // before 2026-09-07 it was unguarded — the chain's check could be up to 30 minutes stale.
+    // Only when a backup is actually DUE: this tick fires every 30 min but `rotateBackup` writes
+    // once per `everyMs` (a day) — verifying on every tick would be the 137 GB/day back again.
+    const age = backupAgeMs(currentMemoryDb());
+    const backupDue = age === null || age >= DEFAULT_BACKUP_POLICY.everyMs;
+    if (backupDue && Date.now() - lastVerifyAt > VERIFY_FRESH_MS) {
+      const v = await verifyStore();
+      if (v === "corrupt") {
+        log(`⛔ KHO HỎNG — KHÔNG backup (${why}): chép kho hỏng là đè mất bản lùi còn tốt. Chạy \`zemory memory salvage\`.`);
+        return;
+      }
+    }
     const b = await rotateBackup();
     if (b.wrote) {
       log(`backup (${why}) → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
