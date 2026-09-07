@@ -89,7 +89,8 @@
           .then(function(r){
             zDlgClose();CONN_ROWS=(r&&r.rows)||CONN_ROWS;
             zGet('/memory-status?fresh=1').then(renderMem);
-            var row=(r&&r.rows||[]).filter(function(x){return x.platform===plat&&x.connected&&(!c.who||x.detail&&x.detail.indexOf(c.who)>=0);})[0];
+            // Khớp theo `detailArgs.who` (mã + tham số), không dò chuỗi `detail` — server không còn ghép câu chữ cho web (2026-09-07).
+            var row=(r&&r.rows||[]).filter(function(x){return x.platform===plat&&x.connected&&(!c.who||(x.detailArgs&&x.detailArgs.who===c.who));})[0];
             if(row){delete connPending[plat];zToast(t('conn.done').replace('{p}',plat));}
             else connPoll(180);
           })

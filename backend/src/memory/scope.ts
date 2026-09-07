@@ -434,8 +434,7 @@ function sum(rows: LaneRow[], k: "sessions" | "messages"): number {
  * có tin mới ⇒ coi máy đã ngưng/đã dời — ✓ xám, tooltip nói là kho lưu trữ; không bao giờ ⚠
  * vì không có gì để người dùng bấm ở đây. Không có mốc nào ⇒ chưa biết.
  */
-export const REMOTE_RETIRED_DAYS = 30;
-export function remoteHealth(newest: string | undefined, now = Date.now()): NonNullable<ScopeNode["conn"]> {
+function remoteHealth(newest: string | undefined, now = Date.now()): NonNullable<ScopeNode["conn"]> {
   if (!newest) return { kind: "local", remote: true, linked: null, state: "never" };
   const staleDays = Math.max(0, Math.floor((now - Date.parse(newest)) / 86_400_000));
   return { kind: "local", remote: true, linked: true, state: "ok", staleDays };
@@ -446,7 +445,7 @@ export function remoteHealth(newest: string | undefined, now = Date.now()): NonN
  * không con nào ⚠ và có ít nhất một con ✓ ⇒ ✓; toàn con chưa biết ⇒ chưa biết.
  * Cha KHÔNG tự đo: cha nói khác con là đúng loại "hai bề mặt hai sự thật" đã trả giá.
  */
-export function aggregateConn(children: ScopeNode[]): NonNullable<ScopeNode["conn"]> | undefined {
+function aggregateConn(children: ScopeNode[]): NonNullable<ScopeNode["conn"]> | undefined {
   const cs = children.map((c) => c.conn).filter((c): c is NonNullable<ScopeNode["conn"]> => !!c);
   if (!cs.length) return undefined;
   const kind = cs.every((c) => c.kind === "web") ? "web" : "local";

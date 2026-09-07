@@ -57,7 +57,7 @@ function resolveMemoryDir(): string {
 
 /** True while an env override is pinning the DB location (pointer is ignored). */
 export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
-export const MEMORY_DIR = resolveMemoryDir();
+const MEMORY_DIR = resolveMemoryDir();
 export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
 
 const SCHEMA_VERSION = 25;

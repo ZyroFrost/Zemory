@@ -42,7 +42,7 @@ import { WEB_PLATFORMS } from "./webslots.js";
 /** Cửa sổ lùi mặc định: 7 ngày. Đủ để phát hiện "khe này mất phiên" rồi lùi, không đủ để phình. */
 export const DEFAULT_BROWSER_KEEP_MS = 7 * 24 * 60 * 60_000;
 
-export function browserDir(): string {
+function browserDir(): string {
   return join(currentMemoryDir(), "browser");
 }
 

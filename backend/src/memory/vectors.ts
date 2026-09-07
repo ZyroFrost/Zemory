@@ -40,7 +40,7 @@ import { laneSqlClause } from "./scope.js";
  * người dùng đã bảo không lấy). Trả `""` khi không loại gì. Dùng ở CẢ chọn-để-nhúng lẫn đếm-còn-lại,
  * không thì bộ đếm "còn N" không bao giờ về 0 và vòng embed chạy mãi.
  */
-export function SCOPE_EXCLUDE_SQL(): { sql: string; params: unknown[] } {
+function SCOPE_EXCLUDE_SQL(): { sql: string; params: unknown[] } {
   const lanes = getScopeExclude();
   if (!lanes.length) return { sql: "", params: [] };
   const c = laneSqlClause("s", lanes);
@@ -470,17 +470,21 @@ export async function embedPending(
       if (d.seq === 0) tick(d.messageId);
     }
 
+    // SAME filter as the SELECT above (incl. the scope exclude): this count and `vectorRemaining()`
+    // both answer "how many are still waiting", and until 2026-09-07 this one alone ignored
+    // `ex.sql` — so with an excluded lane the CLI would print a remaining that the selection can
+    // never drain (one truth, two numbers; caught by the audit's duplicate-source pass).
     let remaining = 0;
     if (tableExists(db)) {
       remaining = (
         db
           .prepare(
-            `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${noVectorYetSql(db)}`,
+            `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${ex.sql}${noVectorYetSql(db)}`,
           )
-          .get() as { c: number }
+          .get(...ex.params) as { c: number }
       ).c;
     } else {
-      remaining = (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}`).get() as { c: number }).c;
+      remaining = (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${ex.sql}`).get(...ex.params) as { c: number }).c;
     }
     return { embedded, deduped, remaining, dims };
   } finally {

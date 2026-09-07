@@ -57,7 +57,7 @@ const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
 const jsonText = (value: unknown): string => JSON.stringify(value, null, 2);
 
 /** Engine chỉ probe được bằng cách NẠP MODEL — đắt, nên chỉ chạy khi gọi `deep`. */
-export const DEEP_ONLY_CHECKS = ["vector", "rerank"] as const;
+const DEEP_ONLY_CHECKS = ["vector", "rerank"] as const;
 
 /**
  * Những capability `memory_doctor` sẽ probe.

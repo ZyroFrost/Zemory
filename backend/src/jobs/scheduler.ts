@@ -192,7 +192,7 @@ export function schedulerChildRunning(): boolean {
  *
  * @returns `true` nếu thật sự có chuỗi để nhường (người gọi phải CHỜ nó nhả token).
  */
-export function yieldMaintainFor(reason: string): boolean {
+function yieldMaintainFor(reason: string): boolean {
   if (!chainRunning) return false;
   chainAbort = true;
   const c = child;
@@ -667,7 +667,7 @@ export function webDue(prev: { at: string; ok: boolean } | undefined, now = Date
  * Kho cookie của một khe web CÓ phiên đăng nhập không — CHỈ ĐỌC, không mở cửa sổ nào.
  * `null` = không kết luận được (Chromium giữ khoá vì cửa sổ đang mở · nền chưa khai tên cookie phiên).
  */
-export function webLaneSessionOnDisk(platform: string, account: string): boolean | null {
+function webLaneSessionOnDisk(platform: string, account: string): boolean | null {
   try {
     const jar = join(webProfileDir(platform, account), "Default", "Network", "Cookies");
     return jarHasSession(jar, platform);

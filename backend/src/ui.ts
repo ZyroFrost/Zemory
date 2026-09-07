@@ -16,7 +16,7 @@ import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
 import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
-import { listConnections, webProfileDir } from "./memory/connections.js";
+import { listConnections, probeDue, webProfileDir } from "./memory/connections.js";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./memory/db.js";
 import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
 import type { AttachmentMeta } from "./memory/attachments.js";
@@ -49,7 +49,6 @@ import { buildStandardGraph } from "./memory/graph/graph-standard.js";
 import { buildSeamEdges } from "./memory/graph/graph-seam.js";
 import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
-import { buildNavCost } from "./memory/graph/nav-cost.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
@@ -81,7 +80,6 @@ import {
   setRerankSetting,
   setSchedulerSetting,
   setScopeExclude,
-  setScopeSetting,
   setSyncLevel,
   getSyncAttachments,
   setSyncAttachments,
@@ -504,12 +502,22 @@ function startLoginWatch(platform: string, account: string | undefined): void {
   setTimeout(() => void tick(), LOGIN_WATCH_EVERY_MS).unref?.();
 }
 
+/** Last browser probe per web lane (`platform#account`) — see `probeDue` in connections.ts. (Distinct from PROBE_TTL_MS: that one is the Drive probe.) */
+const lastProbeAt = new Map<string, number>();
+const LANE_PROBE_TTL_MS = 10 * 60_000;
+
 async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
   const rows = listConnections();
   for (const r of rows) if (r.kind === "web" && r.platform) r.watching = loginWatch.has(webLaneKey(r.platform, r.account ?? "main"));
   await Promise.all(
     rows.map(async (r) => {
       if (r.kind !== "web" || !r.platform || r.connected) return;
+      // One browser probe per lane per PROBE_TTL_MS, not one per Sources-panel load (measured
+      // 2026-09-07: 29–30 s per load with one disconnected lane). The user's explicit "Link"
+      // click goes through /connect, which never consults this memo.
+      const laneKey = webLaneKey(r.platform, r.account ?? "main");
+      if (!probeDue(lastProbeAt.get(laneKey), Date.now(), LANE_PROBE_TTL_MS)) return;
+      lastProbeAt.set(laneKey, Date.now());
       try {
         const probe = await scanWeb({ platform: r.platform, account: r.account, probeOnly: true });
         if (probe.status === "done") {
@@ -1444,7 +1452,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     const target = rootP ?? root();
     // Identity probe: lets a second `zemory ui` tell "our UI already owns
     // this port" from "some other app grabbed 4444" — cheap, no work done.
-    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname() });
+    // `lang` rides on /ping — the FIRST and cheapest call the shell makes — so the UI can fix its
+    // language before any widget renders. It used to arrive only with /memory-status (7–74 s cold),
+    // while the rail chip and Drive card had already painted through t() in the default 'vi' and
+    // were never repainted: every cold start showed Vietnamese on an English screen (2026-09-07).
+    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), lang: getLang() });
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
@@ -1460,7 +1472,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       releaseCliWrite();
       return json(res, { ok: true, held: false });
     }
-    if (req.method === "POST" && p === "/sync") return json(res, ensureHarness(target));
     // /init-fresh đã gỡ 2026-07-27 (audit F2): 0 người gọi ở cả FE lẫn CLI, mà nó là
     // thao tác DỜI docs cũ đi. Năng lực không mất — `zemory init --fresh` gọi thẳng
     // freshHarness(). Không nên mở một thao tác phá huỷ trên HTTP khi không ai dùng.
@@ -1515,10 +1526,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/set-rerank") {
       setRerankSetting(u.searchParams.get("on") === "1");
       return json(res, { ok: true, rerank: getRerankSetting() });
-    }
-    if (p === "/set-scope") {
-      setScopeSetting(u.searchParams.get("on") === "1");
-      return json(res, { ok: true, scope: getScopeSetting() });
     }
     // /ui-state + /set-ui-state đã nghỉ hưu cùng cockpit cũ (2026-07-27). Chúng tồn
     // tại vì cockpit bind cổng ngẫu nhiên mỗi lần chạy nên localStorage (khoá theo
@@ -1692,11 +1699,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         touchDigests: digests,
         standard: stdStats,
       });
-    }
-    if (p === "/nav-cost") {
-      // What the harness index + graph + memory buy, in tokens: sweep vs routed.
-      // Shares the cached graph with /code-graph (no second full build).
-      return json(res, buildNavCost(target, { graph: (await getCodeGraph(target)).graph }));
     }
     if (req.method === "POST" && p === "/pick-folder") {
       // Native OS folder-browse dialog (Windows: WinForms FolderBrowserDialog via
