@@ -254,7 +254,11 @@
   function renderHomeProjects(cap){
     var box=zid('homeProjects');if(!box)return;
     var linked=new Set(((Z.status&&Z.status.knownProjects)||[]).map(function(k){return String(k.root||'').toLowerCase();}));
-    var ps=(cap.projects||[]).filter(function(p){return p.host===cap.localHost&&linked.has(String(p.path).toLowerCase());}).slice(0,6);
+    // No row cap: `.card-b` is `overflow-y:auto; flex:1` inside a `grow` grid, so the panel height
+    // already follows the window. A fixed slice(0,6) left half the card empty when maximised and
+    // hid 11 of the 17 linked projects (user 2026-09-07). Render every eligible project and let the
+    // panel decide how many are on screen; "See all →" still leads to the full grid.
+    var ps=(cap.projects||[]).filter(function(p){return p.host===cap.localHost&&linked.has(String(p.path).toLowerCase());});
     if(!ps.length){box.innerHTML='<div class="muted">'+t('home.noProjects')+'</div>';return;}
     box.innerHTML=ps.map(function(p){var pbi=p.profile==='non-app';return '<div class="row" data-open-proj="'+stdEsc(p.path)+'" style="cursor:pointer"><div class="l"><div class="ico">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div><div><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="meta">'+(pbi?'Non-app':'App')+' · '+zN(p.sessions)+' sessions · '+zN(p.messages)+' msg</div></div></div><span class="meta">'+(p.last?String(p.last).slice(0,10):'')+'</span></div>';}).join('');
   }
