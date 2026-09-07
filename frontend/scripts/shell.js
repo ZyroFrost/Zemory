@@ -251,7 +251,10 @@
   // ── DỜI TỪ graph.js 2026-08-07: màn Home, không phải graph
   function loadRecentSessions(){
     var box=zid('homeSessions');if(!box)return;
-    zGet('/recent-sessions?limit=6').then(function(list){
+    // 20 = the ceiling `/recent-sessions` enforces, and the query returns at most one session per
+    // project (17 linked here), so this asks for everything there is. The card scrolls, so the rows
+    // on screen follow the window height instead of a fixed count — same fix as Recent Projects.
+    zGet('/recent-sessions?limit=20').then(function(list){
       if(!list||!list.length){box.innerHTML='<div class="muted">'+t('home.noSessions')+'</div>';return;}
       // KHÔNG đoán App/Non-app từ TÊN project ở đây. Bản cũ dùng regex /PBI|powerbi/ —
       // đúng cái "badge đoán bừa" đã bị gỡ khỏi card project (changelog 2026-07-25), nhưng
