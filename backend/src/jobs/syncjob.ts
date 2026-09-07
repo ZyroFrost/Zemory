@@ -11,6 +11,7 @@ import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { claimDaemonJob, releaseDaemonJob, yieldDaemonJob } from "./writegate.js";
+import { backgroundChildEnv } from "./childenv.js";
 
 export interface SyncJobStatus {
   running: boolean;
@@ -104,7 +105,16 @@ export function syncWatchdogDue(startedAt: number, now: number, curPhase: string
 export function watchdogSyncJob(now: number = Date.now()): boolean {
   if (!status.running || !child) return false;
   if (!syncWatchdogDue(status.startedAt, now, phase)) return false;
-  watchdogReason = `watchdog: run exceeded ${Math.round((now - status.startedAt) / 60_000)}′ (phase ${phase || "?"}) — likely a hung cloud drive; killed so the next cycle retries`;
+  // Name the likely cause BY PHASE. Before 2026-09-07 every kill said "likely a hung cloud
+  // drive" — including 2 of the 5 kills that week, which died in `embed` (the ONNX child had
+  // grown to 4 GB and the machine was paging). Blaming Drive for an embed stall sent the
+  // diagnosis in the wrong direction; the phase is the one fact the daemon actually has.
+  const mins = Math.round((now - status.startedAt) / 60_000);
+  const why =
+    phase === "embed"
+      ? "embed pass over budget (backlog or memory pressure — check the child's RSS), not the drive"
+      : "likely a hung cloud drive";
+  watchdogReason = `watchdog: run exceeded ${mins}′ (phase ${phase || "?"}) — ${why}; killed so the next cycle retries`;
   try {
     child.kill();
   } catch {
@@ -210,7 +220,8 @@ export function startSyncJob(
   let c: ChildProcess;
   try {
     // stderr là "pipe", KHÔNG "ignore" — xem chú thích ở `SyncJobStatus.stderr`.
-    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    // Thread cap ONLY for the machine-started round (same boundary as the priority drop below).
+    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, !!opts.lowPriority) });
   } catch (e) {
     releaseDaemonJob();
     status = { running: false, startedAt: status.startedAt, ok: false, error: e instanceof Error ? e.message : String(e) };

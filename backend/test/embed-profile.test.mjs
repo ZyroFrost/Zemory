@@ -60,11 +60,16 @@ test("POOLING bị khoá cứng theo model — đổi nó không nổ ra lỗi n
   assert.equal(embedProfileSpec("bge-m3-v1").prompted, false);
   assert.equal(embedProfileSpec("gemma-prompt-v1").prompted, true);
 
-  // Tuần tự: BGE phải encode từng cái. Đo 2026-08-19: gọi theo lô vừa CHẬM HƠN 5,6× vừa dịch
-  // vector (cos 0.982) khỏi đúng thứ đã benchmark. Gemma cố ý KHÔNG bật — kho nó đã dựng bằng
-  // lối gọi theo lô, đổi giữa chừng là trộn hai biến thể trong cùng một chỉ mục.
+  // Sequential for EVERY profile. BGE since 2026-08-19 (batching 5.6x slower, cos 0.982 drift).
+  // Gemma was pinned OFF here on the claim that batching moves its vectors (cos 0.962), so
+  // flipping would mix two variants in the live index. Re-measured 2026-09-07 on the same stack:
+  // batch-16 vs single differ by 3e-13 — identical vectors, nothing to mix. What batching cost
+  // instead: RSS 4,256 MB vs 966 MB (padding to the longest text) and 19% slower — the 4 GB
+  // sync child every 30 minutes that paged the machine. The mutation this guards: someone
+  // "optimizing" embedPending back to batched calls because a batch looks faster on paper.
   assert.equal(embedProfileSpec("bge-m3-v1").sequential, true);
-  assert.notEqual(embedProfileSpec("gemma-prompt-v1").sequential, true);
+  assert.equal(embedProfileSpec("gemma-prompt-v1").sequential, true, "gemma batched = 4 GB child every sync round (measured 2026-09-07)");
+  assert.equal(embedProfileSpec("raw").sequential, true);
 });
 
 test("kho đóng dấu bge-m3-v1 phải ĐỌC RA bge-m3-v1 (đọc nhầm thành raw = mean-pool một model CLS)", () => {
