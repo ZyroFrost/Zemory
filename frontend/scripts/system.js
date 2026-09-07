@@ -227,7 +227,9 @@
       if(sub)sub.textContent=stale[0].name+(stale.length>1?' +'+(stale.length-1):'');
     }).catch(function(){});
   }
-  refreshHarnessUpdates();
+  // Lượt ĐẦU do zboot gọi SAU khi /ping về (ngôn ngữ + version thật). Gọi ở đây lúc nạp script thì chip
+  // vẽ với LANG mặc định 'vi' và đọc #topVersion còn là placeholder "v1.0.0" — ảnh headless 2026-09-07:
+  // "Đã cập nhật · v1.0.0 · repo khớp chuẩn" trên màn EN của bản 2.15.0. Nhịp 10′ giữ nguyên.
   setInterval(refreshHarnessUpdates,600000);
   // Bấm chấm cập nhật ⇒ HỘP tại chỗ (không nhảy màn — mục đích gốc 23/08 là "có bản mới → bấm cập nhật", kiểu VS Code):
   // trên = bản zemory (đang chạy / mới trên kênh chung / nút Cập nhật); dưới = repo cũ chuẩn (liệt kê + cách áp).

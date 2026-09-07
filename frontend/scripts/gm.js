@@ -98,7 +98,7 @@
     var ls=relTime(m.lastSync);zset('stSync',ls.big);zset('stSyncSub',ls.sub);
     if(zid('mScope'))zid('mScope').innerHTML=renderScope(m.scopeTree||[]);
     var rh=zid('rHybrid'),rr=zid('rRerank');if(rh)rh.classList.toggle('on',!!m.hybrid);if(rr)rr.classList.toggle('on',!!m.rerank);
-    var d=m.drive||{};zset('driveBundles',d.linked?(zN(d.bundles)+' bundle'):t('drv.notLinkedShort'));
+    var d=m.drive||{};zset('driveBundles',d.linked?(d.error?'—':(zN(d.bundles)+' bundle')):t('drv.notLinkedShort'));
     if(zid('driveInput')&&document.activeElement!==zid('driveInput'))zid('driveInput').value=d.path||'';
     zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);
     renderDriveDonut(d);
@@ -112,7 +112,11 @@
   // #5: discovered (chưa liên kết) projects grouped by machine + Add per project.
 
   // ── DỜI TỪ graph.js 2026-08-07: Drive sync (IA: sync đi với Global Memory)
-  function driveMsg(d){if(!d||!d.linked)return t('drv.notLinked');if(!d.exists)return '✗ '+t('drv.noFolder');if(!d.writable)return '✗ '+t('drv.readOnly');return '✓ '+t('drv.linked').replace('{n}',zN(d.bundles));}
+  // `error` TRƯỚC `exists`: probe Drive chạy trong con có trần 8 s — Drive bận (đang upload lại một khúc
+  // lớn) thì probe trượt và trả exists:false + error "not responding". Đọc `exists` trước biến "không trả
+  // lời" thành "✗ folder does not exist · 0 bundle" trên một thư mục có thật (ảnh headless 2026-09-07,
+  // đo probe trực tiếp 313 ms exists:true ngay sau đó) — vỏ rỗng nói dối, đúng thứ 02_RULES cấm.
+  function driveMsg(d){if(!d||!d.linked)return t('drv.notLinked');if(d.error==='probing…')return '… '+t('drv.probing');if(d.error)return '⚠ '+t('drv.probeErr');if(!d.exists)return '✗ '+t('drv.noFolder');if(!d.writable)return '✗ '+t('drv.readOnly');return '✓ '+t('drv.linked').replace('{n}',zN(d.bundles));}
   // Làm tươi TỨC THÌ hai thứ mà một lần quét vừa làm đổi: Drive còn thiếu bao nhiêu, và
   // cây Sources. Đường riêng, rẻ — không đi qua gói /memory-status nặng.
   function syncPulse(){

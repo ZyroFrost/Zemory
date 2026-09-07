@@ -75,15 +75,15 @@ const LOCAL_LABEL: Record<string, string> = {
   cowork: "Cowork",
 };
 
-/** Bao lâu rồi, dạng người đọc được. */
-function ago(iso: string): string {
-  const ms = Date.now() - Date.parse(iso);
-  if (!Number.isFinite(ms) || ms < 0) return iso.slice(0, 16).replace("T", " ");
-  const m = Math.round(ms / 60000);
-  if (m < 60) return `${m} phút trước`;
-  const h = Math.round(m / 60);
-  if (h < 48) return `${h} giờ trước`;
-  return `${Math.round(h / 24)} ngày trước`;
+/**
+ * Should `liveConnections` spend a browser probe on this lane now? Probing is a CDP round-trip
+ * into a real browser profile — measured 2026-09-07: `/connections` took 29–30 s because every
+ * disconnected web lane was probed on EVERY load of the Sources panel (async, so /ping stayed at
+ * 60–230 ms, but 30 s per open is still 30 s the user waits). A probe result is reused for
+ * `ttlMs`; `/connect` (the user's explicit click) never consults this — it always tries.
+ */
+export function probeDue(lastAt: number | undefined, now: number, ttlMs: number): boolean {
+  return lastAt === undefined || now - lastAt >= ttlMs;
 }
 
 /**
@@ -151,11 +151,11 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           unknown: !st && !pl,
           // Mất kết nối thì NÓI RA việc phải làm, đừng bắt người dùng đoán: vòng tự kéo đã thôi
           // đụng khe này (không được tự bật khung đăng nhập), nên chỉ còn đường người bấm.
-          detail: lost
-            ? `mất kết nối ${ago(pl.at)} — bấm để đăng nhập lại`
-            : st
-              ? `kiểm lần cuối ${ago(st.at)}${st.who ? ` · ${st.who}` : ""}`
-              : "chưa kiểm lần nào",
+          // Chỉ MÃ + tham số — chữ người đọc do FE dịch (`connDetail`, hai dict). Bản cũ còn ghép
+          // sẵn một câu tiếng Việt vào `detail` làm đường lùi cho "server cũ"; audit 2026-09-07 đo
+          // được câu đó lọt ra hàng "Where" của cây Nguồn bất kể ngôn ngữ — backend ghép chữ cho
+          // UI là trái luật 0-hardcode (`02_RULES §Ngôn ngữ`). `detail` nay chỉ còn ở lane local
+          // (đường kho — không phải chữ, không phải dịch).
           detailCode: lost ? "needLogin" : st ? "lastChecked" : "neverChecked",
           detailArgs: lost ? { at: pl.at } : st ? { at: st.at, who: st.who } : undefined,
           // Số tin là của cả LANE (mọi tài khoản dồn về một lane) — chỉ ghi ở dòng đầu để

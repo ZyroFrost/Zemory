@@ -18,7 +18,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { handleMcpRequest } from "./mcp.js";
 import { checkLoopback } from "./util/loopback.js";
 
-export const DEFAULT_MCP_HTTP_PORT = 4445; // 4444 là daemon UI; cạnh nhau cho dễ nhớ
+const DEFAULT_MCP_HTTP_PORT = 4445; // 4444 là daemon UI; cạnh nhau cho dễ nhớ
 
 const MAX_BODY = 1_000_000; // JSON-RPC của MCP là tin nhắn nhỏ; chặn ở đây để không ai nhồi RAM
 

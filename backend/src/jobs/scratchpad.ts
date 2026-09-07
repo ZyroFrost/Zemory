@@ -86,7 +86,7 @@ function newestMtime(dir: string): number {
 }
 
 /** Thư mục nháp gốc của host, hoặc null nếu máy này không có. */
-export function scratchpadRoot(): string | null {
+function scratchpadRoot(): string | null {
   const root = join(tmpdir(), "claude");
   try {
     return statSync(root).isDirectory() ? root : null;

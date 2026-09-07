@@ -235,7 +235,7 @@ export function setSchedulerSetting(on: boolean): void {
 }
 
 /** Mặc định ngưỡng cảnh báo context (%). Xem `getContextWarnPercent`. */
-export const CONTEXT_WARN_PERCENT_DEFAULT = 95;
+const CONTEXT_WARN_PERCENT_DEFAULT = 95;
 
 /**
  * Ngưỡng % cửa sổ context mà hook `UserPromptSubmit` chốt sổ + nhắc MỘT lần.

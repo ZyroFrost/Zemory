@@ -50,7 +50,7 @@
     'drv.syncing':'đang sync…','drv.syncingBg':'đang sync (chạy ẩn)…','drv.syncDone':'sync xong','drv.err':'lỗi','drv.finishing':'đang cập nhật số liệu…',
     'drv.phase.scan':'đang quét transcript mới…','drv.phase.merge':'đang gộp bundle từ máy khác…','drv.phase.lock-wait':'đang chờ máy "{h}" ghi xong kho chung…','drv.phase.export':'đang xuất + mã hoá tin mới…','drv.phase.write':'đang ghi lên kho chung…','drv.phase.verify':'đang xác minh (đọc lại kho chung)…','drv.phase.embed':'đang nhúng vector cho tin mới…','drv.phase.done':'đang hoàn tất…',
     'toast.syncFail':'Sync thất bại: {e}',
-    'drv.notLinked':'chưa link Drive','drv.notLinkedShort':'chưa link','drv.noFolder':'folder không tồn tại','drv.readOnly':'chỉ đọc','drv.linked':'đã link · {n} bundle',
+    'drv.notLinked':'chưa link Drive','drv.probeErr':'Drive không trả lời (ổ đám mây treo?) — số bên dưới là bản đọc gần nhất','drv.probing':'đang kiểm Drive…','drv.notLinkedShort':'chưa link','drv.noFolder':'folder không tồn tại','drv.readOnly':'chỉ đọc','drv.linked':'đã link · {n} bundle',
     'conn.title':'Cảnh báo nguồn','conn.desc':'Những nguồn cây trên không biểu diễn được: kho trên đĩa, tài khoản phụ của một nền, và kho đã biết nhưng không còn. ✓ còn nối · ⚠ cần xử lý.','conn.none':'chưa có nguồn nào','conn.on':'đang liên kết','conn.off':'KHÔNG có liên kết','conn.unknown':'chưa kiểm lần nào','conn.link':'Liên kết','conn.borrow':'Mượn phiên có sẵn','conn.linking':'đang nối…','conn.addAcctTip':'Thêm tài khoản khác cho nền này (hội thoại nằm theo tài khoản)','conn.acctAdded':'đã mở cửa sổ cho tài khoản {n} — đăng nhập vào đó','conn.waiting':'đang chờ bạn đăng nhập…','conn.done':'✓ đã nối lại {p}',
     'pj.back':'Danh sách','drv.newest':'Tin mới nhất','drv.lastPush':'Đẩy lần cuối','drv.counted':'Đã đẩy / tổng','drv.never':'chưa từng','drv.pendN':'Còn {n} tin mới chưa đẩy lên Drive','drv.pendSub':'theo watermark máy này · bấm Đồng bộ ngay để đẩy nốt','drv.upToDate':'Đã đồng bộ đủ lên Drive','drv.upToDateSub':'lần đẩy mới hơn tin mới nhất — không còn gì chờ','drv.staleSub':'⚠ có tin mới hơn lần đẩy — chạy Quét nguồn rồi Đồng bộ ngay','drv.h.running':'đang đồng bộ… phút {m}{p}','drv.h.runStuck':'🔴 lượt sync chạy đã {m}′ chưa xong — nghi kẹt (Drive treo?), kiểm tra Drive rồi Đồng bộ lại','drv.h.embedLong':'⏳ đang nhúng lô lớn — phút {m}, chưa phải kẹt (tin dài nhúng lâu); watchdog vẫn canh','drv.h.lastFail':'🔴 lượt tự sync gần nhất HỎNG ({m}′ trước): {d}','drv.h.interrupted':'🔴 lượt tự sync gần nhất bị CẮT giữa chừng ({m}′ trước) — chưa đẩy xong, lượt kế sẽ đẩy bù','drv.h.pushStale':'⚠ tin chờ đã {m}′ chưa đẩy được — tự sync đang không tới lượt','drv.h.neverPushed':'⚠ có tin chờ mà chưa từng đẩy được lượt nào','drv.h.noData':'🔴 daemon không phản hồi — số liệu đang CŨ, sync có thể đang gặp vấn đề','scan.running':'đang quét…','scan.found':'+{n} tin mới · {f} file đổi','scan.none':'không có tin mới',
     'scan.web':'web chat: +{n}',
@@ -134,7 +134,7 @@
     'drv.syncing':'syncing…','drv.syncingBg':'syncing (in background)…','drv.syncDone':'sync complete','drv.err':'error','drv.finishing':'updating numbers…',
     'drv.phase.scan':'scanning new transcripts…','drv.phase.merge':'merging bundles from other machines…','drv.phase.lock-wait':'waiting for "{h}" to finish writing the shared store…','drv.phase.export':'exporting + encrypting new messages…','drv.phase.write':'writing to the shared store…','drv.phase.verify':'verifying (reading the shared store back)…','drv.phase.embed':'embedding vectors for new messages…','drv.phase.done':'finishing up…',
     'toast.syncFail':'Sync failed: {e}',
-    'drv.notLinked':'Drive not linked','drv.notLinkedShort':'not linked','drv.noFolder':'folder does not exist','drv.readOnly':'read-only','drv.linked':'linked · {n} bundle',
+    'drv.notLinked':'Drive not linked','drv.probeErr':'Drive not responding (cloud drive hung?) — figures below are the last good read','drv.probing':'checking Drive…','drv.notLinkedShort':'not linked','drv.noFolder':'folder does not exist','drv.readOnly':'read-only','drv.linked':'linked · {n} bundle',
     'conn.title':'Source warnings','conn.desc':'Sources the tree above cannot show: on-disk stores, extra accounts of a platform, and stores that are known but gone. ✓ linked · ⚠ needs attention.','conn.none':'no sources yet','conn.on':'linked','conn.off':'NOT linked','conn.unknown':'never checked','conn.link':'Link','conn.borrow':'Borrow existing session','conn.linking':'linking…','conn.addAcctTip':'Add another account for this platform (conversations live per account)','conn.acctAdded':'opened a window for account {n} — sign in there','conn.waiting':'waiting for you to sign in…','conn.done':'✓ {p} linked again',
     'pj.back':'All projects','drv.newest':'Newest message','drv.lastPush':'Last push','drv.counted':'Pushed / total','drv.never':'never','drv.pendN':'{n} new messages not pushed to Drive yet','drv.pendSub':'per this machine watermark · hit Sync now to push them','drv.upToDate':'Fully synced to Drive','drv.upToDateSub':'last push is newer than the newest message — nothing waiting','drv.staleSub':'⚠ messages newer than the last push — run Scan sources, then Sync now','drv.h.running':'syncing… minute {m}{p}','drv.h.runStuck':'🔴 sync run going {m}′ without finishing — likely stuck (Drive hang?), check Drive then Sync again','drv.h.embedLong':'⏳ embedding a large batch — minute {m}, not stuck (long messages embed slowly); watchdog still armed','drv.h.lastFail':'🔴 last auto-sync FAILED ({m}′ ago): {d}','drv.h.interrupted':'🔴 last auto-sync was CUT OFF mid-run ({m}′ ago) — push incomplete, next run will catch up','drv.h.pushStale':'⚠ messages waiting for {m}′ — auto-sync is not getting a turn','drv.h.neverPushed':'⚠ messages waiting but no push has ever succeeded','drv.h.noData':'🔴 daemon not responding — numbers are STALE, sync may be in trouble','scan.running':'scanning…','scan.found':'+{n} new messages · {f} files changed','scan.none':'no new messages',
     'scan.web':'web chat: +{n}',
@@ -207,20 +207,29 @@
   function zboot(){
     initSeams();
     // Real version + host from the daemon (was hardcoded v1.0.0 / "local · memory only").
+    // NGÔN NGỮ TRƯỚC, MỌI THỨ KHÁC SAU. LANG mặc định 'vi' và trước đây chỉ được sửa khi
+    // /memory-status về (lượt lạnh 7–74 s), trong khi rail chip (system.js) và card Drive (gm.js)
+    // đã vẽ bằng t() theo fetch riêng của chúng — applyI18n chỉ áp lại data-i18n*, không vẽ lại
+    // chữ đã render ⇒ mỗi lần mở lạnh, màn EN lộ tiếng Việt (ảnh headless 2026-09-07). /ping là
+    // lời gọi rẻ nhất (~100 ms) và nay mang `lang`, nên chờ nó xong rồi mới phát các fetch còn lại:
+    // trả giá ≤200 ms ở lần vẽ đầu, đổi lấy không widget nào vẽ trước khi biết ngôn ngữ.
     zGet('/ping').then(function(p){
       if(p&&p.version){var vs='v'+p.version;var tv=zid('topVersion');if(tv)tv.textContent=vs;var dv=zid('dlgVer');if(dv)dv.textContent=vs;}
       var rm=zid('railMachine');if(rm)rm.textContent=(p&&p.host?p.host:'local')+' · memory only';
       var rav=zid('railAv');if(rav)rav.textContent=((((p&&p.host)||'?')+'').charAt(0)||'?').toUpperCase();
-    }).catch(function(){});
-    // Check Healthy chạy NGAY, song song — không xếp hàng sau /memory-status: lượt LẠNH của
-    // nó đo được >30s khi máy bận (2026-08-21), và suốt lúc đó 3 pill check treo "…" nhìn
-    // như TẮT — user phải bấm Recheck oan (bệnh "heal mở lại là tắt"). Daemon đã mồi + cache
-    // sẵn kết quả nên lời gọi này trả tức thì.
-    refreshChecks();
-    zGet('/status').then(renderStatus).catch(function(){}).then(function(){
-      return zGet('/memory-status').then(function(m){renderMem(m);loadConn();renderSystem();if(typeof gmPollOk==='function')gmPollOk();}).catch(function(){if(typeof gmPollFailed==='function')gmPollFailed();});
+      if(p&&p.lang)applyI18n(p.lang);
+    }).catch(function(){}).then(function(){
+      // Check Healthy chạy NGAY, song song — không xếp hàng sau /memory-status: lượt LẠNH của
+      // nó đo được >30s khi máy bận (2026-08-21), và suốt lúc đó 3 pill check treo "…" nhìn
+      // như TẮT — user phải bấm Recheck oan (bệnh "heal mở lại là tắt"). Daemon đã mồi + cache
+      // sẵn kết quả nên lời gọi này trả tức thì.
+      refreshChecks();
+      refreshHarnessUpdates(); // rail chip: cần LANG + #topVersion thật (cả hai vừa có từ /ping) — xem system.js
+      zGet('/status').then(renderStatus).catch(function(){}).then(function(){
+        return zGet('/memory-status').then(function(m){renderMem(m);loadConn();renderSystem();if(typeof gmPollOk==='function')gmPollOk();}).catch(function(){if(typeof gmPollFailed==='function')gmPollFailed();});
+      });
+      zGet('/automation').then(function(a){renderAuto(a);renderSystem();}).catch(function(){});
+      loadRecentSessions();
+      loadRecent();
     });
-    zGet('/automation').then(function(a){renderAuto(a);renderSystem();}).catch(function(){});
-    loadRecentSessions();
-    loadRecent();
   }

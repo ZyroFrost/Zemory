@@ -6,7 +6,7 @@
 // guards is someone rewriting the filter back to `FROM vec_chunks WHERE rowid = …`.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -45,6 +45,19 @@ test("with a vec0 index present, the filter uses the shadow table and the plan i
     db.close();
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("embedPending's `remaining` count applies the SAME scope filter as its selection (one truth, one number)", () => {
+  // Audit 2026-09-07 (duplicate-source pass): the selection and vectorRemaining() applied
+  // SCOPE_EXCLUDE_SQL, the remaining count did not — with an excluded lane the CLI would report a
+  // backlog its own selection could never drain.
+  const src = readFileSync(new URL("../src/memory/vectors.ts", import.meta.url), "utf8");
+  const fn = src.slice(src.indexOf("export async function embedPending"), src.indexOf("export interface VecRank"));
+  const rem = fn.slice(fn.indexOf("let remaining = 0"));
+  const counts = rem.match(/SELECT count\(\*\) c FROM messages[^`]*`/g) ?? [];
+  assert.ok(counts.length >= 2, `expected both remaining queries, saw ${counts.length}`);
+  for (const q of counts) assert.match(q, /\$\{ex\.sql\}/, `remaining query without the scope filter: ${q.slice(0, 80)}…`);
+  assert.match(rem, /\.get\(\.\.\.ex\.params\)/, "and it must bind the filter's params");
 });
 
 test("shadow table absent (store that never embedded) → falls back to the virtual table, does not throw", () => {

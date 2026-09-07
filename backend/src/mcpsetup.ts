@@ -223,7 +223,7 @@ export const UNSUPPORTED: { id: string; why: string }[] = [
 ];
 
 /** Khối server zemory được khai vào file cấu hình của agent. */
-export const SERVER_ENTRY = { command: "zemory", args: ["mcp"] };
+const SERVER_ENTRY = { command: "zemory", args: ["mcp"] };
 
 export interface MergeResult {
   next: Record<string, unknown>;
