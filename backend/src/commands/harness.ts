@@ -14,6 +14,7 @@ import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
+import { pathsCheck, pathsSummary } from "../docs/paths.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
@@ -454,6 +455,57 @@ export function cmdArchive(args: string[] = []): void {
  * chuẩn đã KHAI không. Máy chấm miễn phí, ra bảng lệch ngắn để agent đọc (~vài trăm token)
  * thay vì nạp cả graph (~56k token). `--gate` → exit 1 khi có mục `blocking`, dùng cho CI.
  */
+/** `zemory paths check [--gate] [--json] [--root <dir>]` — plan/21. Same shape as `conform`:
+ *  text by default, `--json` for machines, `--gate` flips the exit code — but ONLY on `dead`.
+ *  `history` and `unresolved` are printed with counts and never change the exit code. */
+export function cmdPaths(args: string[]): void {
+  if (args[0] !== "check") {
+    console.log("usage: zemory paths check [--gate] [--json] [--root <dir>]");
+    process.exitCode = 1;
+    return;
+  }
+  const ri = args.indexOf("--root");
+  const root = ri >= 0 && args[ri + 1] ? resolve(args[ri + 1]) : findProjectRoot();
+  if (!root) {
+    console.log("zemory paths check: not connected — run `zemory init` first (or pass --root <dir>).");
+    process.exitCode = 1;
+    return;
+  }
+  const rep = pathsCheck(loadContext(root));
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(rep, null, 2));
+    if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+    return;
+  }
+  console.log(`zemory paths check — dead paths in docs/config (${root})`);
+  console.log(`  ${pathsSummary(rep)}`);
+  console.log(`  roots judged: ${rep.roots.used.length}/${rep.roots.declared.length}` + (rep.roots.absent.length ? ` · absent here (skipped, not dead): ${rep.roots.absent.join(" · ")}` : ""));
+  const CAP = 60;
+  if (rep.dead.length) {
+    console.log(`\n  ✗ DEAD (${rep.dead.length}) — under a declared root, target does not exist:`);
+    for (const h of rep.dead.slice(0, CAP)) console.log(`      ${h.file}:${h.line}  ${h.text}`);
+    if (rep.dead.length > CAP) console.log(`      … +${rep.dead.length - CAP}`);
+  } else {
+    console.log("\n  ✓ no dead paths.");
+  }
+  if (rep.history.length) {
+    console.log(`\n  · historical (${rep.history.length}) — archive/attic/changelog/dated lines; a record, not a defect:`);
+    for (const h of rep.history.slice(0, 8)) console.log(`      ${h.file}:${h.line}  ${h.text}`);
+    if (rep.history.length > 8) console.log(`      … +${rep.history.length - 8}`);
+  }
+  if (rep.unresolved.length) {
+    const byReason = new Map<string, number>();
+    for (const h of rep.unresolved) byReason.set(h.reason ?? "?", (byReason.get(h.reason ?? "?") ?? 0) + 1);
+    const parts = [...byReason.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`);
+    console.log(`\n  · unresolved (${rep.unresolved.length}) — no verdict, by reason: ${parts.join(" · ")}`);
+    for (const [reason] of [...byReason.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)) {
+      const ex = rep.unresolved.filter((h) => h.reason === reason).slice(0, 2);
+      for (const h of ex) console.log(`      [${reason}] ${h.file}:${h.line}  ${h.text || "(unreadable file)"}`);
+    }
+  }
+  if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+}
+
 export function cmdConform(args: string[]): void {
   const root = findProjectRoot();
   if (!root) {

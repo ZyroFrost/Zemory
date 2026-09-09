@@ -60,6 +60,10 @@ export interface HarnessConfig {
   profile?: StructureProfile;
   /** Brownfield role mapping: role -> existing file (optional). */
   roles?: Record<string, string>;
+  /** plan/21 — dead-path check. `roots` = the only places a path is JUDGED under (positive filter;
+   *  everything else is listed as "unresolved", never "dead"). Absent ⇒ roots = [project root].
+   *  Named `pathCheck`, not `paths`: `paths` above is ADAPT v2's harness-location table. */
+  pathCheck?: { roots?: string[]; exclude?: string[]; maxFileKB?: number };
 }
 
 /** Shared context handed to every module call. */

@@ -50,6 +50,7 @@ const {
   cmdArchive,
   cmdValidate,
   cmdConform,
+  cmdPaths,
   cmdSetup,
   cmdStructure,
   cmdGrill,
@@ -88,6 +89,9 @@ switch (cmd) {
     break;
   case "conform":
     cmdConform(args);
+    break;
+  case "paths":
+    cmdPaths(args);
     break;
   case "reindex":
     cmdReindex();
