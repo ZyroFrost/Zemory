@@ -14,7 +14,8 @@ import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
-import { pathsCheck, pathsSummary } from "../docs/paths.js";
+import { monitorPaths, monitorSummary, pathsSummary } from "../docs/paths.js";
+import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
@@ -455,12 +456,16 @@ export function cmdArchive(args: string[] = []): void {
  * chuẩn đã KHAI không. Máy chấm miễn phí, ra bảng lệch ngắn để agent đọc (~vài trăm token)
  * thay vì nạp cả graph (~56k token). `--gate` → exit 1 khi có mục `blocking`, dùng cho CI.
  */
-/** `zemory paths check [--gate] [--json] [--root <dir>]` — plan/21. Same shape as `conform`:
- *  text by default, `--json` for machines, `--gate` flips the exit code — but ONLY on `dead`.
- *  `history` and `unresolved` are printed with counts and never change the exit code. */
+/** `zemory paths check [--gate] [--strict] [--json] [--root <dir>] [--reset-baseline]` and
+ *  `zemory paths sweep [--root <dir>]… [--json]` — plan/21.
+ *  `check`: one project, full report + monitor. `--gate` flips the exit code on NEWLY dead (what the
+ *  official UI row reports); `--strict` on any dead. `history`/`unresolved` never change the exit code.
+ *  `sweep`: every connected project in the registry (or the given roots), monitor only, never exits ≠0 —
+ *  this is what the scheduler runs every maintain chain so rot is caught when it happens. */
 export function cmdPaths(args: string[]): void {
+  if (args[0] === "sweep") return cmdPathsSweep(args.slice(1));
   if (args[0] !== "check") {
-    console.log("usage: zemory paths check [--gate] [--json] [--root <dir>]");
+    console.log("usage: zemory paths check [--gate|--strict] [--json] [--root <dir>] [--reset-baseline]\n       zemory paths sweep [--root <dir>]... [--json]");
     process.exitCode = 1;
     return;
   }
@@ -471,14 +476,20 @@ export function cmdPaths(args: string[]): void {
     process.exitCode = 1;
     return;
   }
-  const rep = pathsCheck(loadContext(root));
+  const rep = monitorPaths(loadContext(root), { resetBaseline: args.includes("--reset-baseline") });
+  const red = (args.includes("--gate") && rep.monitor.newlyDead.length > 0) || (args.includes("--strict") && !rep.ok);
   if (args.includes("--json")) {
     console.log(JSON.stringify(rep, null, 2));
-    if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+    if (red) process.exitCode = 1;
     return;
   }
   console.log(`zemory paths check — dead paths in docs/config (${root})`);
   console.log(`  ${pathsSummary(rep)}`);
+  console.log(`  monitor: ${monitorSummary(rep)}`);
+  if (rep.monitor.newlyDead.length) {
+    console.log(`\n  ✗ NEWLY DEAD (${rep.monitor.newlyDead.length}) — alive at the baseline, dead now (this is the rot signal):`);
+    for (const h of rep.monitor.newlyDead.slice(0, 60)) console.log(`      ${h.file}:${h.line}  ${h.text}`);
+  }
   console.log(`  roots judged: ${rep.roots.used.length}/${rep.roots.declared.length}` + (rep.roots.absent.length ? ` · absent here (skipped, not dead): ${rep.roots.absent.join(" · ")}` : ""));
   const CAP = 60;
   if (rep.dead.length) {
@@ -503,7 +514,32 @@ export function cmdPaths(args: string[]): void {
       for (const h of ex) console.log(`      [${reason}] ${h.file}:${h.line}  ${h.text || "(unreadable file)"}`);
     }
   }
-  if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+  if (red) process.exitCode = 1;
+}
+
+function cmdPathsSweep(args: string[]): void {
+  const roots: string[] = [];
+  for (let i = 0; i < args.length; i++) if (args[i] === "--root" && args[i + 1]) roots.push(resolve(args[++i]));
+  const targets = roots.length ? roots : listKnownProjects().map((p) => p.root);
+  const out: Array<{ root: string; newlyDead: number; dead: number; files: number; baselined: boolean; error?: string }> = [];
+  for (const root of targets) {
+    try {
+      const r = monitorPaths(loadContext(root));
+      out.push({ root, newlyDead: r.monitor.newlyDead.length, dead: r.dead.length, files: r.scanned.files, baselined: r.monitor.baselined });
+    } catch (e) {
+      // One broken project must not stop the sweep of the others (điều 9).
+      out.push({ root, newlyDead: 0, dead: 0, files: 0, baselined: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(out, null, 2));
+    return;
+  }
+  console.log(`zemory paths sweep — ${out.length} project(s)`);
+  for (const o of out) {
+    const tag = o.error ? `✗ ${o.error}` : o.baselined ? `baseline · ${o.dead} legacy dead` : o.newlyDead ? `⚠ ${o.newlyDead} newly dead` : `✓ 0 newly dead`;
+    console.log(`  ${tag.padEnd(28)} ${o.root}  (${o.files} files)`);
+  }
 }
 
 export function cmdConform(args: string[]): void {

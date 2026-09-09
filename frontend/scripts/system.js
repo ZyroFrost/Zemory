@@ -17,7 +17,11 @@
     {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'nav',to:'__settings',doc:'f.doc.storage'},
     {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',doc:'f.doc.validate'},
     {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',doc:'f.doc.grill'},
-    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',doc:'f.doc.harness'}
+    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',doc:'f.doc.harness'},
+    // plan/21 — hàng CHÍNH THỨC từ 2026-09-09. Màu theo "MỚI chết kể từ baseline", không theo tổng
+    // số chết: prose kể về thiết kế đã bác chết từ lúc sinh, không phải mục ruỗng. Warning = có đường
+    // vừa chết sau baseline = có folder vừa bị dời/đổi tên mà docs còn trỏ tên cũ.
+    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',doc:'f.doc.paths'}
   ];
   /** Từ trên badge — MỘT bộ từ vựng: công tắc/tự động ⇒ On/Off · còn lại ⇒ Healthy/Warning/Off (pillTxt của core). */
   function badgeWord(state,f){
@@ -178,7 +182,7 @@
   // MỘT danh sách phép kiểm cho MỌI đường làm tươi (lúc nạp · nút "Kiểm lại tất cả" · nhịp tự động).
   // Chép danh sách này ra nhiều chỗ thì sớm muộn cũng lệch — một bên thêm phép kiểm mới, bên kia
   // quên, và người đọc không có cách nào biết bảng đang xem tươi tới đâu.
-  var SYS_CHECKS=['memory','validate','grill'];
+  var SYS_CHECKS=['memory','validate','grill','paths'];
   /** Nạp các check thật (/check) rồi vẽ lại inventory. `fresh` = bỏ qua cache 10′ của daemon —
    *  đúng nghĩa nút ↻; đường nạp thường vẫn ăn cache để mở cửa sổ không phải đo lại từ đầu. */
   function refreshChecks(fresh){

@@ -347,6 +347,13 @@ async function maintainTick(): Promise<void> {
     await runStep("digest", ["memory", "digest", "--all"]);
     if (chainAbort) return;
 
+    // 3b. paths — plan/21 §5: monitor every connected project for paths that died since its
+    //     baseline (a folder moved/renamed ⇒ docs still point at the old name). ~0.5 s per repo,
+    //     read-only on the repos, writes one derived state file under data/. In a CHILD like the
+    //     others: 17 repos × fs walks would otherwise stall the daemon's event loop for seconds.
+    await runStep("paths", ["paths", "sweep"]);
+    if (chainAbort) return;
+
     // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
     //    chuỗi này làm backup chết theo công tắc `scheduler`.
     await backupTick("sau chuỗi bảo trì", true);

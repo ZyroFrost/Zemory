@@ -12,7 +12,7 @@ export function cmdHelp(): void {
       "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  conform   score how closely this repo follows the declared folder standard (--gate)",
-      "  paths     paths check: file paths in docs/config that no longer exist, judged only under declared roots (--gate)",
+      "  paths     paths check: dead file paths in docs/config, judged only under declared roots (--gate = newly dead) · paths sweep",
       "  selfupdate  pull + rebuild this zemory install (stops if the tree is dirty)",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
       "  todo      todo verify: re-measure every 05_TODO item against the code, print drift",
