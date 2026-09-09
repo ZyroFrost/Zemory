@@ -182,11 +182,10 @@ export function getScopeSetting(): boolean {
   return read().scope ?? true;
 }
 
-export function setScopeSetting(on: boolean): void {
-  const c = read();
-  c.scope = on;
-  write(c);
-}
+// `setScopeSetting` GỠ 2026-09-09 (audit mặt ③): không một lời gọi nào, kể cả test. Nó mất người
+// gọi khi route `/set-scope` bị xoá ở 2.15.1 (FE dùng `/set-scope-exclude`); từ đó cờ `scope` chỉ
+// còn ĐỌC (`getScopeSetting` → payload `/memory-status`). Giữ một setter không ai với tới được là
+// giữ một lời hứa sai: đọc code tưởng cờ này chỉnh được, mà thực tế không có đường nào chỉnh.
 
 /** Start-with-OS toggle (the config flag; the actual OS hook is in autostart.ts). */
 export function getAutostart(): boolean {
