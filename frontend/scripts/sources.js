@@ -464,6 +464,10 @@
   }
   document.addEventListener('click',function(e){if(e.target&&e.target.id==='asGear')openAsDialog();});
   function renderAuto(a){Z.auto=a=a||{};zset('asSummary',asSummary(a.autosyncSchedule));setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
+    // Tự kiểm lại (2026-09-09): công tắc + chu kỳ. Chu kỳ đổ vào ô CẢ KHI đang tắt — người dùng chọn
+    // trước rồi mới bật là lối dùng bình thường, và ô trống trông như tính năng chưa có cấu hình.
+    setTog('checks',!!(a.checksAuto&&a.checksAuto.on));
+    var ce=zid('ckEvery');if(ce&&a.checksAuto&&document.activeElement!==ce)ce.value=String(a.checksAuto.everyMin||30);
     // Ngưỡng nhắc context — chỉ đổ giá trị khi user KHÔNG đang gõ dở (renderAuto chạy lại
     // sau mỗi lần bật/tắt công tắc khác; đè lên ô đang focus là nuốt mất số người ta gõ).
     var cw=zid('ctxWarnPct');if(cw&&document.activeElement!==cw&&a.contextWarnPercent)cw.value=a.contextWarnPercent;}
@@ -475,7 +479,13 @@
     zPost('/set-context-warn?percent='+v).then(function(r){if(r&&r.contextWarnPercent)e.target.value=r.contextWarnPercent;zToast(t('mem.ctxWarnSaved'));}).catch(function(){});
   });
   // Một BẢNG, không phải chuỗi if lồng nhau: thêm công tắc mới = thêm một dòng dữ liệu.
-  var AUTO_URL={scheduler:'/set-scheduler',realtime:'/set-realtime',autostart:'/set-autostart',autosync:'/set-autosync',shortcut:'/set-shortcut'};
+  var AUTO_URL={scheduler:'/set-scheduler',realtime:'/set-realtime',autostart:'/set-autostart',autosync:'/set-autosync',shortcut:'/set-shortcut',checks:'/set-checks-auto'};
+  // Đổi chu kỳ tự kiểm: gửi khi rời ô (change), KHÔNG kèm `on` — bật/tắt là việc của công tắc, và
+  // gửi lẫn hai thứ thì một cú đổi chu kỳ sẽ âm thầm bật tính năng người ta đang để tắt.
+  document.addEventListener('change',function(e){
+    if(!e.target||e.target.id!=='ckEvery')return;
+    zPost('/set-checks-auto?every='+encodeURIComponent(e.target.value)).then(function(){return zGet('/automation');}).then(renderAuto).catch(function(){});
+  });
   document.addEventListener('click',function(e){
     var t=e.target.closest?e.target.closest('[data-auto]'):null;if(!t)return;
     var name=t.dataset.auto,on=!t.classList.contains('on');

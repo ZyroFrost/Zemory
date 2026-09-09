@@ -62,6 +62,8 @@ interface ZConfig {
   repoStdCheck?: boolean;
   /** Lịch tự sync — xem getAutosyncSchedule. */
   autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
+  /** Tự kiểm lại màn Tính năng theo chu kỳ — xem getChecksAuto. */
+  checksAuto?: { on?: boolean; everyMin?: number };
   /** Root "chưa liên kết" người dùng bảo BỎ QUA (không đưa lên danh sách chọn). Chỉ là bộ lọc của danh sách —
    *  phiên vẫn trong kho, vẫn recall/sync. Khôi phục được từ nhóm "Đã bỏ qua" (user chốt 2026-08-29). */
   ignoredRoots?: string[];
@@ -307,6 +309,30 @@ export function getAutosyncSchedule(): AutosyncSchedule {
 export function setAutosyncSchedule(v: Partial<AutosyncSchedule>): void {
   const c = read();
   c.autosyncSchedule = { ...getAutosyncSchedule(), ...v };
+  write(c);
+}
+
+/**
+ * TỰ KIỂM LẠI các phép kiểm của màn Tính năng (user 2026-09-09). Mặc định TẮT, cùng lý lẽ với
+ * autostart/autosync: thứ tự chạy theo đồng hồ phải là lựa chọn có ý thức, không phải mặc định.
+ * `everyMin` kẹp [5, 1440] — dưới 5 phút là gõ cửa daemon vô ích (kết quả `/check` vốn đã có cache
+ * 10 phút phía daemon), trên một ngày thì không còn là "định kỳ" nữa.
+ */
+export interface ChecksAuto {
+  on: boolean;
+  everyMin: number;
+}
+export function getChecksAuto(): ChecksAuto {
+  const s = read().checksAuto;
+  const everyMin = Number(s?.everyMin);
+  return {
+    on: s?.on === true,
+    everyMin: Number.isFinite(everyMin) ? Math.min(1440, Math.max(5, Math.round(everyMin))) : 30,
+  };
+}
+export function setChecksAuto(v: Partial<ChecksAuto>): void {
+  const c = read();
+  c.checksAuto = { ...getChecksAuto(), ...v };
   write(c);
 }
 

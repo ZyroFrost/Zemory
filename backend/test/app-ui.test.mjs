@@ -815,8 +815,14 @@ test("pill Healthy phải TỰ SÁNG khi mở app — không bắt user bấm Re
   assert.match(ui, /\[\s*"memory",\s*"validate",\s*"grill"\s*\]/, "daemon phải MỒI 3 check rẻ lúc khởi động");
   // ③ nút ↻ Recheck ép ĐO THẬT — cache là cho đường tự động, không được nuốt nghĩa của nút
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  // NEO ĐỔI 2026-09-09 — cùng ý nghĩa, khác cách đo. Bản cũ ĐẾM chuỗi `&fresh=1` và đòi ≥2 vì hồi
+  // đó hai nút tự ghép URL riêng. Nay "Kiểm lại tất cả" đi qua `refreshChecks(true)` (gộp hai bản
+  // sao của danh sách phép kiểm về một chỗ), nên đếm-chuỗi ra 1 và neo đỏ dù hành vi KHÔNG đổi.
+  // Đếm cách viết là neo giòn; ba neo dưới kiểm ĐÚNG hai đường phải ép đo thật + chỗ dịch cờ ra URL.
   const freshCalls = (sys.match(/\/check\?feature='\+f\+'&fresh=1/g) || []).length;
-  assert.ok(freshCalls >= 2, `nút Recheck (từng cái + all) phải mang fresh=1 — thấy ${freshCalls}/2`);
+  assert.ok(freshCalls >= 1, `nút ↻ của TỪNG feature phải mang fresh=1 — thấy ${freshCalls}`);
+  assert.match(sys, /refreshChecks\(true\)/, "nút 'Kiểm lại tất cả' phải ép đo thật qua refreshChecks(true)");
+  assert.match(sys, /fresh\?'&fresh=1':''/, "refreshChecks phải dịch cờ fresh thành &fresh=1 — thiếu là nút mất nghĩa");
 });
 
 test("công tắc KHÔNG được 'tự bật tắt': payload memory-status GIÀ không được vẽ đè cú bấm mới (2026-08-21)", () => {

@@ -9,7 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export interface AutostartStatus {
@@ -55,6 +55,23 @@ function brandedExePath(): string {
 function launchParts(): { exe: string; args: string } {
   const exe = launcherExe({ platform: process.platform, brandedExe: brandedExePath(), exists: existsSync, fallback: process.execPath });
   return { exe, args: `"${cliEntry()}" ui` };
+}
+
+/** The repo this build runs from — `dist/platform/autostart.js` → up two. The launchers set it as
+ *  their WORKING DIRECTORY: Startup otherwise hands the daemon `C:\WINDOWS\System32`, and every
+ *  per-project surface then reports on a folder that is not a project (measured 2026-09-09:
+ *  `/status` said `C:\WINDOWS\System32`, Features showed "Harness files 0/6" and validate Off).
+ *  `ui.ts root()` is the safety net for daemons started some other way; this is the cause. */
+function launchCwd(): string {
+  return resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+}
+
+/** ĐÚNG MỘT chỗ dựng dòng đặt thư mục làm việc — cả hai launcher GHI nó và `reconcileAutostart` SO
+ *  bằng nó. Phải là cả dòng, không phải mỗi đường dẫn: exe nằm TRONG repo (`<repo>\dist\zemory.exe`)
+ *  nên tìm đường dẫn trần trong nội dung launcher thì lúc nào cũng thấy — kể cả ở bản CŨ chưa có
+ *  dòng này — và phép so sẽ báo "còn tươi" vĩnh viễn. Cổng bắt được đúng ca đó. */
+function cwdDirective(): string {
+  return `sh.CurrentDirectory = "${launchCwd()}"`;
 }
 
 /** Escape a value for a PowerShell single-quoted string (double the quotes) —
@@ -109,6 +126,7 @@ function winEnable(): AutostartStatus {
     path,
     `' zemory — mo daemon nen luc dang nhap, TACH HAN console (xem autostart.ts)\r\n` +
       `Set sh = CreateObject("WScript.Shell")\r\n` +
+      `${cwdDirective()}\r\n` +
       `sh.Run "${cmd}", 0, False\r\n`,
     "utf8",
   );
@@ -281,7 +299,12 @@ function winWriteLauncher(): string {
   const vbs = winLauncherVbs();
   const { exe } = launchParts();
   mkdirSync(dirname(vbs), { recursive: true });
-  writeFileSync(vbs, `CreateObject("WScript.Shell").Run """${exe}"" ""${cliEntry()}"" ui", 0, False\r\n`);
+  writeFileSync(
+    vbs,
+    `Set sh = CreateObject("WScript.Shell")\r\n` +
+      `${cwdDirective()}\r\n` +
+      `sh.Run """${exe}"" ""${cliEntry()}"" ui", 0, False\r\n`,
+  );
   return vbs;
 }
 
@@ -368,8 +391,14 @@ export function setDesktopShortcut(on: boolean): ShortcutStatus {
  * this: the file exists, so the on/off reconcile is satisfied and the stale command survives
  * every restart. Pure for the gate: content in, verdict out.
  */
-export function launcherStale(content: string | null, exe: string): boolean {
-  return content !== null && !content.includes(exe);
+export function launcherStale(content: string | null, exe: string, cwdLine?: string): boolean {
+  if (content === null) return false;
+  // Two reasons to rewrite. The second exists because of how this check is written: comparing the
+  // exe ALONE means a launcher naming today's exe is "fresh" forever, so the working-directory line
+  // added 2026-09-09 would never reach a machine that already has one — the fix would ship and
+  // change nothing. `cwdLine` is the whole DIRECTIVE, not the bare path: the exe lives inside the
+  // repo, so a path substring is already present in launchers that lack the directive entirely.
+  return !content.includes(exe) || (cwdLine !== undefined && !content.includes(cwdLine));
 }
 
 function readIfExists(p: string): string | null {
@@ -391,8 +420,9 @@ export function reconcileAutostart(wanted: boolean): void {
     // On, and wanted on — but is the FILE still pointing at today's runtime? Rewrite both the
     // Startup entry and the shortcut launcher when either names a different exe.
     const { exe } = launchParts();
-    if (st.path && launcherStale(readIfExists(st.path), exe)) setAutostart(true);
-    if (desktopShortcutStatus().exists && launcherStale(readIfExists(winLauncherVbs()), exe)) winWriteLauncher();
+    const cwd = cwdDirective();
+    if (st.path && launcherStale(readIfExists(st.path), exe, cwd)) setAutostart(true);
+    if (desktopShortcutStatus().exists && launcherStale(readIfExists(winLauncherVbs()), exe, cwd)) winWriteLauncher();
   } catch {
     /* best-effort */
   }

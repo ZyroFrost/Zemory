@@ -130,16 +130,7 @@
     var rc=e.target.closest&&e.target.closest('[data-act="sysrecheck"]');
     if(rc){
       var ro=rc.innerHTML;rc.disabled=true;rc.innerHTML='⏳ '+t('sys.rechecking');
-      // Re-pull EVERY source the System list reads from — incl. /status (harness
-      // files + knownProjects), which the old recheck skipped so those rows never
-      // refreshed. Visible feedback so it never reads as a dead button.
-      Promise.all([
-        zGet('/status').then(renderStatus).catch(function(){}),
-        zGet('/memory-status?fresh=1').then(renderMem).catch(function(){}),
-        zGet('/automation').then(renderAuto).catch(function(){}),
-        Promise.all(['memory','validate','grill'].map(function(f){return zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;}).catch(function(){});}))
-      ]).then(function(){
-        renderSystem();
+      sysRecheckAll().then(function(){
         rc.innerHTML='✓ '+t('sys.rechecked');
         setTimeout(function(){rc.disabled=false;rc.innerHTML=ro;},1600);
       });
@@ -184,10 +175,19 @@
         : t('rail.allGreen');
     }
   }
-  // Nạp 3 check thật (/check) rồi vẽ lại inventory — đường duy nhất làm tươi roll-up.
-  function refreshChecks(){
-    return Promise.all(['memory','validate','grill'].map(function(f){
-      return zGet('/check?feature='+f).then(function(r){Z.checks[f]=r;}).catch(function(){Z.checks[f]={state:'off',detail:'err'};});
+  // MỘT danh sách phép kiểm cho MỌI đường làm tươi (lúc nạp · nút "Kiểm lại tất cả" · nhịp tự động).
+  // Chép danh sách này ra nhiều chỗ thì sớm muộn cũng lệch — một bên thêm phép kiểm mới, bên kia
+  // quên, và người đọc không có cách nào biết bảng đang xem tươi tới đâu.
+  var SYS_CHECKS=['memory','validate','grill'];
+  /** Nạp các check thật (/check) rồi vẽ lại inventory. `fresh` = bỏ qua cache 10′ của daemon —
+   *  đúng nghĩa nút ↻; đường nạp thường vẫn ăn cache để mở cửa sổ không phải đo lại từ đầu. */
+  function refreshChecks(fresh){
+    return Promise.all(SYS_CHECKS.map(function(f){
+      return zGet('/check?feature='+f+(fresh?'&fresh=1':'')).then(function(r){Z.checks[f]=r;})
+        // Lỗi mạng/daemon bận: chỉ đánh dấu khi CHƯA có kết quả nào. Đè 'off' lên một kết quả đang
+        // đúng sẽ biến một cú trượt tạm thời thành đèn đỏ sai — đúng kiểu bề mặt nói dối mà
+        // `02_RULES §Bề mặt CHẾT THEO nền` cấm; giữ số cũ rồi để lượt sau sửa là trung thực hơn.
+        .catch(function(){if(!Z.checks[f])Z.checks[f]={state:'off',detail:'err'};});
     })).then(function(){renderSystem();});
   }
 
@@ -197,47 +197,78 @@
   //    phía daemon, đây chỉ hỏi lại mỗi 10' + một lần lúc mở app. Fail-open: lỗi ⇒ giữ ẩn.
   function refreshHarnessUpdates(){
     return zGet('/harness-updates').then(function(r){
-      var chip=zid('railUpd'),n=zid('railUpdN'),sub=zid('railUpdSub');
-      if(!chip)return;
+      var appChip=zid('railApp'),appN=zid('railAppN'),appSub=zid('railAppSub');
+      var stdChip=zid('railStd'),stdN=zid('railStdN'),stdSub=zid('railStdSub');
+      if(!appChip||!stdChip)return;
       var stale=(r&&r.stale)||[];
       // Lưu để màn Dự án gắn dấu lên ĐÚNG thẻ repo cũ chuẩn — chấm cam ở rail mà bấm sang không thấy
       // thẻ nào khác thẻ nào là "nhảy vào mà không báo gì" (user 2026-08-29).
       Z.updStale=stale;
       var app=r&&r.appUpdate;UPD_APP=app||null;UPD_CHECK=!(r&&r.repoStdCheck===false);
-      // Hai loại CŨ khác cấp, ưu tiên loại cấp MÁY: `zemory sync` gap-fill từ template của
-      // bản đang cài, nên áp chuẩn bằng một bản cũ là chép lại cái cũ. Báo công cụ trước.
-      // Chip LUÔN hiện (user 2026-08-29: *"ai nói là ẩn, nó phải xanh khi không còn bị gì"*): cam khi có việc
-      // (bản zemory mới · repo cũ chuẩn), XANH khi tất cả khớp — bấm vẫn mở hộp Cập nhật để xem chi tiết.
-      chip.style.display='';
-      var dot=chip.querySelector('.dot');
-      if(app){
-        if(dot)dot.className='dot warn';
-        if(n)n.textContent=t('rail.updApp').replace('{v}',app.latest)+' ⚠';
-        if(sub)sub.textContent=t('rail.updAppSub').replace('{have}',app.have).replace('{from}',app.from);
-        return;
+      // HAI SỰ THẬT ĐỘC LẬP, HAI CHIP — không `return` sớm nữa. Bản cũ ưu tiên "bản zemory mới" rồi
+      // thoát, nên khi vừa có bản mới VỪA có repo cũ chuẩn thì vế repo BIẾN MẤT khỏi rail; user gặp
+      // đúng ca đó trên máy PC và không biết mình đang cần cập nhật cái nào (2026-09-09). Cả hai chip
+      // LUÔN hiện (user 2026-08-29: *"nó phải xanh khi không còn bị gì"*), cam khi có việc.
+      function paint(chip,nEl,subEl,warn,title,sub){
+        chip.style.display='';
+        chip.classList.toggle('warn',!!warn); // icon đổi màu theo — rail thu gọn chỉ còn icon
+        var d=chip.querySelector('.dot');if(d)d.className=warn?'dot warn':'dot';
+        if(nEl)nEl.textContent=title+(warn?' ⚠':'');
+        if(subEl)subEl.textContent=sub;
       }
-      if(!stale.length){
-        if(dot)dot.className='dot';
-        if(n)n.textContent=t('rail.updOk');
-        if(sub)sub.textContent=((zid('topVersion')||{}).textContent||'')+(UPD_CHECK?t('rail.updOkSub'):t('rail.updOkSubNoRepo'));
-        return;
-      }
-      if(dot)dot.className='dot warn';
-      if(n)n.textContent=t('rail.updOld').replace('{n}',stale.length)+' ⚠';
-      if(sub)sub.textContent=stale[0].name+(stale.length>1?' +'+(stale.length-1):'');
+      // ① BẢN ZEMORY (cấp máy) — chỉ nói về công cụ đang chạy.
+      paint(appChip,appN,appSub,!!app,
+        app?t('rail.updApp').replace('{v}',app.latest):t('rail.appOk'),
+        app?t('rail.updAppSub').replace('{have}',app.have).replace('{from}',app.from)
+           :((zid('topVersion')||{}).textContent||''));
+      // ② CHUẨN REPO (cấp project) — nói về các repo trong registry, KHÔNG dính gì tới bản app.
+      // Tắt công tắc kiểm repo ⇒ nói thẳng "không kiểm", không giả vờ xanh vì không đo (điều 12).
+      paint(stdChip,stdN,stdSub,!!stale.length,
+        !UPD_CHECK?t('rail.stdOff'):(stale.length?t('rail.updOld').replace('{n}',stale.length):t('rail.stdOk')),
+        !UPD_CHECK?'':(stale.length?stale[0].name+(stale.length>1?' +'+(stale.length-1):'')
+                                  :t('rail.stdOkSub').replace('{n}',((Z.status&&Z.status.knownProjects)||[]).length)));
     }).catch(function(){});
   }
   // Lượt ĐẦU do zboot gọi SAU khi /ping về (ngôn ngữ + version thật). Gọi ở đây lúc nạp script thì chip
   // vẽ với LANG mặc định 'vi' và đọc #topVersion còn là placeholder "v1.0.0" — ảnh headless 2026-09-07:
   // "Đã cập nhật · v1.0.0 · repo khớp chuẩn" trên màn EN của bản 2.15.0. Nhịp 10′ giữ nguyên.
   setInterval(refreshHarnessUpdates,600000);
+  /** MỘT đường chạy lại mọi phép kiểm của màn Tính năng — nút "Kiểm lại tất cả" và nhịp tự động
+   *  cùng gọi hàm này. Tách ra vì hai đường chép cùng logic thì sớm muộn cũng lệch: một bên thêm
+   *  nguồn mới, bên kia quên, và người đọc không có cách nào biết bảng nào tươi hơn.
+   *  Kéo lại ĐỦ mọi nguồn danh sách này đọc — kể cả `/status` (harness files + knownProjects). */
+  function sysRecheckAll(){
+    return Promise.all([
+      zGet('/status').then(renderStatus).catch(function(){}),
+      zGet('/memory-status?fresh=1').then(renderMem).catch(function(){}),
+      zGet('/automation').then(renderAuto).catch(function(){}),
+      refreshChecks(true)
+    ]).then(function(){renderSystem();});
+  }
+  // TỰ KIỂM ĐỊNH KỲ (user 2026-09-09). Nhịp canh 60 s, còn chu kỳ THẬT là `checksAuto.everyMin` —
+  // đổi chu kỳ trong ⚙ là ăn ngay, không phải mở lại cửa sổ. Ba chốt có chủ đích:
+  //  · `document.hidden` ⇒ BỎ QUA, không phải hoãn: cửa sổ khuất thì không ai đọc bảng, mà mỗi lượt
+  //    là 3 endpoint + 3 phép kiểm `fresh=1` (bỏ qua cache 10′ của daemon) — đúng loại việc nền lặng
+  //    lẽ mà `02_RULES` gọi là tự thêm một chỗ hỏng.
+  //  · chỉ chạy khi CÔNG TẮC bật; mặc định TẮT, cùng lý lẽ autostart/autosync.
+  //  · một lượt đang chạy thì không phóng lượt thứ hai (`ckBusy`) — daemon đã có write-gate, nhưng
+  //    xếp chồng lượt đo lên nhau chỉ làm số về sau đè số về trước.
+  var ckAt=0,ckBusy=false;
+  setInterval(function(){
+    if(document.hidden||ckBusy)return;
+    var c=(Z.auto||{}).checksAuto;if(!c||!c.on)return;
+    var every=Math.max(5,Number(c.everyMin)||30)*60000;
+    if(Date.now()-ckAt<every)return;
+    ckBusy=true;ckAt=Date.now();
+    sysRecheckAll().then(function(){ckBusy=false;}).catch(function(){ckBusy=false;});
+  },60000);
   // Bấm chấm cập nhật ⇒ HỘP tại chỗ (không nhảy màn — mục đích gốc 23/08 là "có bản mới → bấm cập nhật", kiểu VS Code):
   // trên = bản zemory (đang chạy / mới trên kênh chung / nút Cập nhật); dưới = repo cũ chuẩn (liệt kê + cách áp).
   var UPD_APP=null,UPD_CHECK=true;
   // Đếm lại nhãn nút theo số ô đang tick.
   document.addEventListener('change',function(e){
     if(e.target&&e.target.classList&&e.target.classList.contains('upd-pick')){var n=document.querySelectorAll('.upd-pick:checked').length,b=zid('updApplySel');if(b){b.textContent=t('upd.applySel').replace('{n}',n);b.disabled=!n;}return;}
-    if(e.target&&e.target.id==='updCheckRepos'){var on=e.target.checked;zPost('/set-repo-std-check?on='+(on?'1':'0')).then(function(){UPD_CHECK=on;return zGet('/harness-updates?fresh=1');}).then(function(){refreshHarnessUpdates().then(function(){zDlgClose();var c=zid('railUpd');if(c&&c.style.display!=='none')c.click();});});}
+    if(e.target&&e.target.id==='updCheckRepos'){var on=e.target.checked;zPost('/set-repo-std-check?on='+(on?'1':'0')).then(function(){UPD_CHECK=on;return zGet('/harness-updates?fresh=1');}).then(function(){refreshHarnessUpdates().then(function(){zDlgClose();var c=zid('railStd');if(c&&c.style.display!=='none')c.click();});});}
   });
   // "Cập nhật đã chọn": áp tuần tự từng repo đã tick (mỗi cú bấm của người dùng = lời cho phép cho ĐÚNG các repo đó).
   document.addEventListener('click',function(e){
@@ -262,25 +293,17 @@
     }
     next();
   });
-  document.addEventListener('click',function(e){
-    if(!(e.target.closest&&e.target.closest('#railUpd')))return;
-    var st=Z.updStale||[],app=UPD_APP;
-    var top=app
+  // HAI hộp thoại RIÊNG cho hai việc riêng (user 2026-09-09: *"cái thông báo repo đã theo chuẩn là
+  // khác mà"*). Gộp chung thì hộp phải kể hai câu chuyện khác cấp trong một khung, và người đọc
+  // không biết nút "Cập nhật ngay" đang cập nhật CÁI GÌ — công cụ hay các repo.
+  /** ① Bản zemory trên MÁY này: đang chạy gì · kênh chung có gì mới · nút tự cập nhật. */
+  function updDialogApp(){
+    var app=UPD_APP;
+    var body=app
       ?'<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="muted">'+stdEsc(t('upd.appHave'))+'</span><b>'+stdEsc(app.have)+'</b><span class="muted">→ '+stdEsc(t('upd.appLatest'))+'</span><b>'+stdEsc(app.latest)+'</b></div>'
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.appFrom').replace('{from}',app.from||'?').replace('{at}',String(app.at||'').slice(0,16).replace('T',' ')))+'</div>'
       :'<div>'+stdEsc(t('upd.appOk').replace('{v}',((zid('topVersion')||{}).textContent||'').replace(/^v/,'')))+'</div>';
-    // Mỗi repo một nút "Cập nhật repo": cú bấm của người dùng LÀ lời cho phép ghi vào repo đó (02_RULES
-    // §Phạm vi cấm ghi chéo KHI CHƯA ĐƯỢC PHÉP). Làm đúng việc `zemory sync` + `hook guard` làm, không hơn.
-    // Repo cũ chuẩn: ô TICK từng repo (mặc định tick) + một nút "Cập nhật đã chọn (n)"; công tắc "Kiểm các repo khác
-    // dùng chuẩn" ở đáy hộp (user 2026-08-29) — tắt thì chip chỉ còn báo bản zemory.
-    var repos=!UPD_CHECK
-      ?''
-      :st.length
-      ?'<div class="sys-grp" style="margin-top:14px">'+stdEsc(t('upd.repoHdr').replace('{n}',st.length))+'</div><div style="font-size:12.5px">'+st.map(function(x){return '<label class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'" checked> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
-        +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel">'+stdEsc(t('upd.applySel').replace('{n}',st.length))+'</button><span class="muted" style="font-size:11px">'+stdEsc(t('upd.repoHint'))+'</span></div>'
-      :'<div class="muted" style="margin-top:14px;font-size:12px">'+stdEsc(t('upd.repoNone'))+'</div>';
-    repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
-    zDialog({icon:'⬆',title:t('upd.title'),bodyHtml:'<div style="font-size:13px">'+top+repos+'</div>',
+    zDialog({iconHtml:ZICON.app,title:t('upd.appTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
       okLabel:app?t('upd.btn'):t('scope.detClose'),
       onOk:app?function(){
         var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.running'));
@@ -292,4 +315,31 @@
         }).catch(function(){zDlgMsg(t('upd.done').replace('{have}',app.have).replace('{latest}',app.latest));}); // daemon thoát giữa response = đã đi dựng lại
         return true;
       }:null});
+  }
+  /** ② Chuẩn harness của CÁC REPO: repo nào còn cũ, tick để áp, và công tắc có kiểm vòng repo không. */
+  function updDialogStd(){
+    var st=Z.updStale||[];
+    var body=buildRepoBlock(st);
+    zDialog({iconHtml:ZICON.std,title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
+      okLabel:t('scope.detClose'),onOk:null});
+  }
+  document.addEventListener('click',function(e){
+    if(!e.target.closest)return;
+    if(e.target.closest('#railApp')){updDialogApp();return;}
+    if(e.target.closest('#railStd')){updDialogStd();return;}
   });
+  /** Thân hộp ② — chỉ nói về CÁC REPO. Không chèn một chữ nào về bản zemory: đó là hộp ①. */
+  function buildRepoBlock(st){
+    // Mỗi repo một nút "Cập nhật repo": cú bấm của người dùng LÀ lời cho phép ghi vào repo đó (02_RULES
+    // §Phạm vi cấm ghi chéo KHI CHƯA ĐƯỢC PHÉP). Làm đúng việc `zemory sync` + `hook guard` làm, không hơn.
+    // Repo cũ chuẩn: ô TICK từng repo (mặc định tick) + một nút "Cập nhật đã chọn (n)"; công tắc "Kiểm các repo khác
+    // dùng chuẩn" ở đáy hộp (user 2026-08-29) — tắt thì chip chỉ còn báo bản zemory.
+    var repos=!UPD_CHECK
+      ?''
+      :st.length
+      ?'<div class="sys-grp" style="margin-top:0">'+stdEsc(t('upd.repoHdr').replace('{n}',st.length))+'</div><div style="font-size:12.5px">'+st.map(function(x){return '<label class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'" checked> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel">'+stdEsc(t('upd.applySel').replace('{n}',st.length))+'</button><span class="muted" style="font-size:11px">'+stdEsc(t('upd.repoHint'))+'</span></div>'
+      :'<div class="muted" style="margin-top:2px;font-size:12px">'+stdEsc(t('upd.repoNone'))+'</div>';
+    repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
+    return repos;
+  }

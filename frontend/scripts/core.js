@@ -25,8 +25,47 @@
   var zDlgOnOk=null;
   function zDlgMsg(x){zset('zDlgMsg',x||'');}
   function zDlgClose(){var d=zid('zDlg');if(d)d.classList.remove('on');zDlgOnOk=null;}
+  // ── Icon nhận diện — MỘT nguồn, dùng cho chip ở rail lẫn tiêu đề hộp thoại ──────────────────
+  // SVG nét đơn sắc, KHÔNG emoji: emoji có màu CỐ ĐỊNH (📘 không nhận `color`) nên chip không tô
+  // được theo trạng thái, mỗi nền lại vẽ một kiểu, và ở cỡ nhỏ trông như dán tạm — user gọi đúng
+  // tên là "không chuyên nghiệp" (2026-09-09). SVG ăn theo `currentColor`, sắc ở mọi cỡ.
+  var ZICON={
+    app:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.8v7"/><path d="M5.2 5.6 8 2.8l2.8 2.8"/><path d="M3.2 11.2v1.4c0 .5.4.9.9.9h7.8c.5 0 .9-.4.9-.9v-1.4"/></svg>',
+    std:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.6h5.2L12 5.4v8H4z"/><path d="M9.2 2.6v2.8H12"/><path d="M6 9.6l1.3 1.3 2.7-2.9"/></svg>',
+    health:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.9"/><path d="M5.4 8.2l1.9 1.9 3.4-3.9"/></svg>',
+    expand:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 2.6h3.8v3.8"/><path d="M13.4 2.6 9.2 6.8"/><path d="M6.4 13.4H2.6V9.6"/><path d="M2.6 13.4l4.2-4.2"/></svg>'
+  };
+  /** MỞ FULL một panel: bê CHÍNH nội dung đã render sang hộp lớn — KHÔNG gọi lại API, KHÔNG dựng
+   *  viewer thứ hai. Repo đã một lần gỡ `#sessDlg` vì nó render lại y hệt viewer chính (recall.js
+   *  §đầu file): hai bộ dựng cho một nội dung thì sớm muộn cũng lệch, và người đọc không biết bản
+   *  nào mới hơn. Ở đây hộp chỉ là một KHUNG TO HƠN cho cùng một DOM. */
+  function zExpandPanel(bodyId,title){
+    var b=zid(bodyId);if(!b)return;
+    var html=b.innerHTML;
+    if(!html||!html.trim()){zToast(t('panel.expandEmpty'),'warn');return;}
+    zDialog({iconHtml:ZICON.expand,title:title||'',size:'lg',bodyHtml:'<div class="zexpand">'+html+'</div>',
+      okLabel:t('scope.detClose'),onOk:null});
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('[data-expand]'):null;if(!b)return;
+    e.stopPropagation();
+    // Tiêu đề hộp lấy từ CHÍNH tiêu đề panel (`data-expand-from`) nên hai chỗ không bao giờ lệch
+    // tên; không có thì để trống chứ không bịa.
+    var src=zid(b.getAttribute('data-expand-from')||'');
+    zExpandPanel(b.getAttribute('data-expand'),src?src.textContent:'');
+  });
+  // Đổ vào mọi chỗ KHAI `data-icon` — markup chỉ nói "chỗ này icon gì", không chứa bản vẽ.
+  document.querySelectorAll('[data-icon]').forEach(function(el){var k=el.getAttribute('data-icon');if(ZICON[k])el.innerHTML=ZICON[k];});
   function zDialog(o){var d=zid('zDlg');if(!d)return;o=o||{};
-    zset('zDlgIcon',o.icon||'?');zset('zDlgTitle',o.title||'');
+    // KÍCH THƯỚC theo đúng ba nấc đã chốt (`03_STRUCTURE §5`: S 40% · M 60% · L 90%, CÙNG tỉ lệ
+    // 16:9). Mặc định giữ nguyên nấc S của hộp dùng chung; `size:'lg'` cho nội dung dài như một
+    // hội thoại đầy đủ — S không đủ thì CHỌN NẤC TO HƠN, không kéo méo khung.
+    var box=d.querySelector('.dlg');
+    if(box){box.classList.toggle('lg',o.size==='lg');box.classList.toggle('sm',o.size!=='lg');}
+    // `iconHtml` cho hộp thoại dùng CÙNG bộ icon với chip — hai chỗ nói về một việc thì phải cùng
+    // một hình. Không có thì vẫn nhận ký tự như cũ (tương thích ngược, mọi lời gọi cũ giữ nguyên).
+    var ic=zid('zDlgIcon');if(ic){if(o.iconHtml)ic.innerHTML=o.iconHtml;else ic.textContent=o.icon||'?';}
+    zset('zDlgTitle',o.title||'');
     zid('zDlgBody').innerHTML=o.bodyHtml||'';zset('zDlgMsg','');
     var ok=zid('zDlgOk');ok.textContent=o.okLabel||'OK';ok.className='btn sm '+(o.danger?'danger':'primary');ok.disabled=false;
     zset('zDlgCancel',o.cancelLabel||t('addp.cancel'));
