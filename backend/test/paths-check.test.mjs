@@ -12,7 +12,8 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { classify, extractCandidates, isDictionaryFile, isHistoryFile, isHistoryLine, pathsCheck } from "../../dist/docs/paths.js";
+import { classify, extractCandidates, isDictionaryFile, isHistoryFile, isHistoryLine, loadPathsState, monitorPaths, pathsCheck } from "../../dist/docs/paths.js";
+import { rmSync } from "node:fs";
 import { validate } from "../../dist/docs/validate.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -132,6 +133,7 @@ test("rổ: file TỪ ĐIỂN (01–04 · docs_template · skills) ⇒ chuỗi t
   assert.ok(r.dead[0].text.endsWith("gone-abs.ts"), "chuỗi TUYỆT ĐỐI trong template vẫn bị phán — đó là mùi thật");
   assert.ok(r.unresolved.filter((h) => h.reason === "dictionary").length >= 3);
   assert.ok(isDictionaryFile("docs/agent/04_SKILLS.md") && isDictionaryFile(".claude/skills/audit/SKILL.md"));
+  assert.ok(isDictionaryFile("AGENTS.md"), "AGENTS.md là router chuẩn ship từ template — nêu slot có SAU (Dept_IC: 2 báo oan đều từ đây)");
   assert.ok(!isDictionaryFile("docs/agent/05_TODO.md") && !isDictionaryFile("docs/plan/08_x.md"), "sổ và spec KHÔNG phải từ điển — chúng trỏ thật");
 });
 
@@ -171,20 +173,144 @@ test("validate(): đúng MỘT issue `paths:` và nó ở mức info — kể c�
 });
 
 // ── CLI: dispatch · help · --gate chỉ đỏ vì dead ─────────────────────────────
-test("CLI: `paths check --gate` exit≠0 khi có dead; exit 0 khi CHỈ có lịch sử; help có lệnh", (t) => {
+test("CLI: `paths check --strict` exit≠0 khi có dead tuyệt đối; exit 0 khi CHỈ có lịch sử; help có lệnh", (t) => {
+  // `--strict` = cổng theo CHẾT tuyệt đối (ý gốc của ca này). `--gate` nay theo MỚI CHẾT — ca riêng bên dưới.
+  // Cô lập trạng thái vào thư mục tạm: thiếu dòng này, ca test ghi root tạm vào data/paths-state.json THẬT.
+  const env = { ...process.env, GLOBAL_MEMORY_DB: join(tempDir(t, "zemory-pdata-"), "global_memory.db") };
   const root = repo(t);
   plan(root, "# p\nmở `backend/src/gone.ts`\n");
-  const red = spawnSync(process.execPath, [CLI, "paths", "check", "--gate", "--json"], { cwd: root, encoding: "utf8" });
+  const red = spawnSync(process.execPath, [CLI, "paths", "check", "--strict", "--json"], { cwd: root, encoding: "utf8", env });
   assert.equal(red.status, 1, red.stdout.slice(0, 300));
   const j = JSON.parse(red.stdout);
   assert.equal(j.dead.length, 1);
 
   const root2 = repo(t);
   md(root2, "docs/agent/06_CHANGES.md", "# c\n`backend/src/old.ts`\n");
-  const green = spawnSync(process.execPath, [CLI, "paths", "check", "--gate", "--json"], { cwd: root2, encoding: "utf8" });
+  const green = spawnSync(process.execPath, [CLI, "paths", "check", "--strict", "--json"], { cwd: root2, encoding: "utf8", env });
   assert.equal(green.status, 0, green.stdout.slice(0, 300));
   assert.equal(JSON.parse(green.stdout).history.length, 1);
 
   const help = spawnSync(process.execPath, [CLI, "help"], { encoding: "utf8" });
   assert.match(help.stdout, /^\s+paths\s+paths check/m, "help phải liệt kê lệnh mới (cổng help-đủ-lệnh)");
+});
+
+// ── MONITOR: baseline + MỚI CHẾT dính (plan/21 §2.3) — thứ duy nhất được đổi màu ───────
+test("monitor: lần đầu = baseline (0 mới) · file mất SAU baseline ⇒ 1 mới chết · DÍNH qua lượt sau · hồi lại ⇒ 0", (t) => {
+  const root = repo(t);
+  const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
+  // Một đường chết SẴN (văn xuôi/di sản) và một đường đang SỐNG mà lát nữa sẽ mất.
+  plan(root, "# p\ndi sản: `backend/src/gone-forever.ts` · đang sống: `backend/src/real.ts`\n");
+  const r1 = monitorPaths(ctxOf(root), { stateFile: state });
+  assert.equal(r1.monitor.baselined, true);
+  assert.equal(r1.monitor.newlyDead.length, 0, "baseline không được báo gì — chết sẵn là di sản");
+  assert.equal(r1.dead.length, 1, "rổ CHẾT tuyệt đối vẫn đếm đủ");
+  assert.ok(loadPathsState(state).projects && Object.keys(loadPathsState(state).projects).length === 1, "trạng thái phải được LƯU");
+
+  rmSync(join(root, "backend", "src", "real.ts")); // ← đổi tên/dời folder trong đời thật
+  const r2 = monitorPaths(ctxOf(root), { stateFile: state });
+  assert.equal(r2.monitor.baselined, false);
+  assert.deepEqual(r2.monitor.newlyDead.map((h) => h.text), ["backend/src/real.ts"], "đúng MỘT đường mới chết, di sản không lẫn vào");
+
+  const r3 = monitorPaths(ctxOf(root), { stateFile: state });
+  assert.equal(r3.monitor.newlyDead.length, 1, "DÍNH: chưa sửa thì lượt sau vẫn báo, không được loé một lần rồi tắt");
+
+  writeFileSync(join(root, "backend", "src", "real.ts"), "back");
+  const r4 = monitorPaths(ctxOf(root), { stateFile: state });
+  assert.equal(r4.monitor.newlyDead.length, 0, "hồi lại là hết báo");
+});
+
+test("monitor: trạng thái TỰ DỌN entry của root không còn trên đĩa (data/ là protected — không ai phải xoá tay)", (t) => {
+  const root = repo(t);
+  const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
+  const ghost = join(root, "..", `zemory-ghost-${process.pid}`); // root không tồn tại
+  writeFileSync(state, JSON.stringify({ version: 1, projects: { [ghost.toLowerCase()]: { baselineAt: "x", baseline: [], lastAt: "x", lastDead: [], firstSeen: {} } } }));
+  monitorPaths(ctxOf(root), { stateFile: state });
+  const keys = Object.keys(loadPathsState(state).projects);
+  assert.equal(keys.length, 1, `chỉ còn repo thật, entry ma phải rơi — thấy ${keys.join(" | ")}`);
+});
+
+test("REPO CÓ GIT THẬT: file đổi tên trên đĩa còn trong index ⇒ vẫn phải là MỚI CHẾT (bug bắt được khi thử thật)", (t) => {
+  // Mọi fixture trên đây KHÔNG có git ⇒ đi nhánh đi-bộ-cây, nên nhánh production (`git ls-files`) chưa từng
+  // được thử — và đó đúng là nhánh có bug: index liệt file đã mất khỏi đĩa, khớp đuôi thấy nó ⇒ `ok`.
+  // Thử thật 2026-09-09 trên zemory: đổi tên file mà `newlyDead = 0`. Ca này giữ nhánh git có cổng.
+  const root = repo(t);
+  const git = (...a) => spawnSync("git", a, { cwd: root, encoding: "utf8" });
+  git("init", "-q");
+  git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A");
+  git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "fixture");
+  assert.match(git("ls-files").stdout, /backend\/src\/real\.ts/, "tiền đề: file nằm trong index");
+  const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
+  plan(root, "# p\n`backend/src/real.ts`\n");
+  monitorPaths(ctxOf(root), { stateFile: state }); // baseline (plan chưa commit — nhưng paths.ts đi bộ? KHÔNG: repo có git ⇒ ls-files)
+  // plan/10_x.md chưa được add ⇒ không nằm trong `git ls-files` ⇒ phải add để nó được quét.
+  git("-c", "user.email=t@t", "-c", "user.name=t", "add", "-A");
+  monitorPaths(ctxOf(root), { stateFile: state, resetBaseline: true });
+  rmSync(join(root, "backend", "src", "real.ts")); // đổi tên/xoá trên đĩa, index vẫn còn
+  assert.match(git("ls-files").stdout, /backend\/src\/real\.ts/, "tiền đề: index VẪN liệt file đã mất");
+  const r = monitorPaths(ctxOf(root), { stateFile: state });
+  assert.deepEqual(r.monitor.newlyDead.map((h) => h.text), ["backend/src/real.ts"], "index nói còn, đĩa nói mất ⇒ đĩa thắng");
+});
+
+test("monitor: `--reset-baseline` nhận hết cái đang chết làm di sản ⇒ 0 mới", (t) => {
+  const root = repo(t);
+  const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
+  plan(root, "# p\n`backend/src/real.ts`\n");
+  monitorPaths(ctxOf(root), { stateFile: state });
+  rmSync(join(root, "backend", "src", "real.ts"));
+  assert.equal(monitorPaths(ctxOf(root), { stateFile: state }).monitor.newlyDead.length, 1);
+  assert.equal(monitorPaths(ctxOf(root), { stateFile: state, resetBaseline: true }).monitor.newlyDead.length, 0);
+});
+
+test("CLI: `paths check --gate` đỏ theo MỚI chết, `--strict` đỏ theo mọi chết; `paths sweep --root` quét nhiều repo, không bao giờ exit≠0", (t) => {
+  // Trạng thái đi qua GLOBAL_MEMORY_DB của tiến trình con ⇒ trỏ vào thư mục tạm, KHÔNG đụng data/ thật.
+  const dataDir = tempDir(t, "zemory-pdata-");
+  const env = { ...process.env, GLOBAL_MEMORY_DB: join(dataDir, "global_memory.db") };
+  const root = repo(t);
+  plan(root, "# p\n`backend/src/real.ts` · di sản `backend/src/never.ts`\n");
+  const run = (...a) => spawnSync(process.execPath, [CLI, "paths", ...a], { cwd: root, encoding: "utf8", env });
+  assert.equal(run("check", "--gate", "--json").status, 0, "lượt baseline: --gate không đỏ dù có 1 chết sẵn");
+  assert.equal(run("check", "--strict", "--json").status, 1, "--strict thì đỏ vì có chết tuyệt đối");
+  rmSync(join(root, "backend", "src", "real.ts"));
+  const red = run("check", "--gate", "--json");
+  assert.equal(red.status, 1, "sau khi một đường sống chết đi, --gate phải đỏ");
+  assert.equal(JSON.parse(red.stdout).monitor.newlyDead.length, 1);
+
+  const root2 = repo(t);
+  const sw = spawnSync(process.execPath, [CLI, "paths", "sweep", "--root", root, "--root", root2, "--json"], { encoding: "utf8", env });
+  assert.equal(sw.status, 0, "sweep là theo dõi — không bao giờ đỏ");
+  const rows = JSON.parse(sw.stdout);
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((x) => x.root === root).newlyDead, 1);
+  assert.equal(rows.find((x) => x.root === root2).baselined, true, "repo chưa có baseline thì sweep ghi baseline cho nó");
+});
+
+test("check 'paths' (hàng CHÍNH THỨC): baseline ⇒ on · có mới chết ⇒ warn · ok luôn true (không phải lỗi hệ)", async (t) => {
+  const dataDir = tempDir(t, "zemory-pdata-");
+  const prev = process.env.GLOBAL_MEMORY_DB;
+  process.env.GLOBAL_MEMORY_DB = join(dataDir, "global_memory.db");
+  try {
+    const { runCheck } = await import(`../../dist/checks.js?t=${Date.now()}`);
+    const root = repo(t);
+    plan(root, "# p\n`backend/src/real.ts`\n");
+    const c1 = await runCheck("paths", root);
+    assert.equal(c1.state, "on");
+    assert.equal(c1.ok, true);
+    rmSync(join(root, "backend", "src", "real.ts"));
+    const c2 = await runCheck("paths", root);
+    assert.equal(c2.state, "warn", "một đường vừa chết ⇒ pill Warning");
+    assert.equal(c2.ok, true, "warn nhưng KHÔNG off — phép kiểm chạy được, chỉ là có mục ruỗng");
+    assert.match(c2.detail, /1 (mới chết|newly dead)/);
+  } finally {
+    if (prev === undefined) delete process.env.GLOBAL_MEMORY_DB;
+    else process.env.GLOBAL_MEMORY_DB = prev;
+  }
+});
+
+test("FE: hàng `paths` nằm ở HARNESS (DOCS), là kind check, và có trong danh sách SYS_CHECKS", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sys, /\{k:'paths',grp:'f\.grpHarness',n:'f\.paths',kind:'check',feat:'paths'/, "hàng chính thức phải là check trong nhóm harness");
+  assert.match(sys, /SYS_CHECKS=\['memory','validate','grill','paths'\]/, "nút Kiểm lại tất cả + nhịp tự kiểm phải bao gồm paths");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["f.paths", "f.doc.paths"]) assert.equal((chrome.match(new RegExp(`'${k.replace(".", "\\.")}':`, "g")) || []).length, 2, `${k} phải có ở CẢ HAI từ điển`);
 });

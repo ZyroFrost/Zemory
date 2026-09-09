@@ -10,6 +10,7 @@ import { memorySummary } from "./memory/ingest.js";
 import { openMemory } from "./memory/db.js";
 import { search } from "./memory/search.js";
 import { validate } from "./docs/validate.js";
+import { monitorPaths } from "./docs/paths.js";
 import { tr } from "./i18n/index.js";
 import { embedDims, embedProbe } from "./memory/embed.js";
 import { rerankProbe } from "./memory/rerank.js";
@@ -296,6 +297,24 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
   const ctx = loadContext(root);
 
   switch (feature) {
+    case "paths": {
+      // plan/21 §2.3 — the OFFICIAL row. Colour follows NEWLY dead only: prose that was dead at the
+      // baseline (a rejected design, a hypothetical viewer) is legacy, not rot. The first run writes the
+      // baseline and is green by definition; from then on amber means "something died since".
+      const r = monitorPaths(ctx);
+      const n = r.monitor.newlyDead.length;
+      const since = r.monitor.baselineAt ? r.monitor.baselineAt.slice(0, 10) : "";
+      return {
+        feature,
+        ok: true,
+        state: n > 0 ? "warn" : "on",
+        detail: r.monitor.baselined
+          ? tr(`baseline vừa ghi · ${r.dead.length} đường chết cũ · quét ${r.scanned.files} file`, `baseline written · ${r.dead.length} legacy dead · ${r.scanned.files} files scanned`)
+          : n > 0
+            ? tr(`${n} mới chết kể từ ${since} · ${r.dead.length} chết tổng`, `${n} newly dead since ${since} · ${r.dead.length} dead total`)
+            : tr(`0 mới chết kể từ ${since} · ${r.dead.length} chết cũ`, `0 newly dead since ${since} · ${r.dead.length} legacy dead`),
+      };
+    }
     case "validate": {
       const rep = validate(ctx);
       const warns = rep.issues.filter((i) => i.level !== "info").length;

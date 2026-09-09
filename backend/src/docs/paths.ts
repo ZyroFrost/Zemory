@@ -25,6 +25,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Context } from "../core/types.js";
+import { currentMemoryDir } from "../memory/db.js";
+import { writeJsonAtomic } from "../util/fs-atomic.js";
 
 export interface PathHit {
   /** repo-relative (posix) path of the file that contains the string */
@@ -74,6 +76,9 @@ const LOCKFILE = /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lo
 export function isDictionaryFile(relPath: string): boolean {
   const p = posix(relPath);
   return (
+    // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/agent/archive/`,
+    // `attic/dead-plans/`). Measured 2026-09-09 on Dept_IC — hand-count 0, machine said 2, both from here.
+    /^AGENTS\.md$/.test(p) ||
     /(^|\/)docs\/agent\/0[1-4]_[^/]+\.md$/.test(p) ||
     /(^|\/)docs_template\//.test(p) ||
     /(^|\/)\.claude\/skills\//.test(p) ||
@@ -264,8 +269,17 @@ export function pathsCheck(ctx: Context): PathsReport {
   // present root. Both go through the same exclude/extension/size filter.
   const files = new Set<string>();
   const fromGit = tracked(root);
-  if (fromGit) for (const f of fromGit) files.add(f);
-  else {
+  // `git ls-files` lists the INDEX, not the disk: a file renamed or deleted on disk stays listed until
+  // someone commits. Without this filter the suffix match "found" a file that no longer existed and the
+  // real-world trial (rename a file a live spec points to) reported 0 newly dead — while the unit
+  // fixtures, having no git, took the walk branch and passed. Measured 2026-09-09.
+  // Braces on purpose: the first cut wrote `if (fromGit) for (...) if (existsSync(f)) add; else { walk }` and
+  // the `else` bound to the INNER `if` — the walk branch (non-git repos, every unit fixture) never ran, 11 of
+  // 17 tests went red, and neither tsc nor eslint said a word. The mutation table caught it: every mutation
+  // "failed 11" (tests already red), only the one that removed the filter "failed 1".
+  if (fromGit) {
+    for (const f of fromGit) if (existsSync(f)) files.add(f);
+  } else {
     const acc: string[] = [];
     walk(root, exclude, acc);
     for (const f of acc) files.add(f);
@@ -333,4 +347,95 @@ export function pathsCheck(ctx: Context): PathsReport {
 export function pathsSummary(r: PathsReport): string {
   const absent = r.roots.absent.length ? ` · roots absent on this machine: ${r.roots.absent.length}` : "";
   return `paths: ${r.dead.length} dead · ${r.history.length} historical · ${r.unresolved.length} unresolved (scanned ${r.scanned.files} files, ${r.scanned.strings} strings${absent})`;
+}
+
+// ── MONITOR: "newly dead" since a baseline (plan/21 §2.3) ─────────────────────
+// Scanning and judging once is noisy by nature — prose that names a rejected design is "dead" every
+// single run. What the user actually needs to know is the MOMENT rot happens: the folder was renamed
+// 30 minutes ago and N docs now point at the old name. So the first run records a BASELINE (whatever is
+// dead today is assumed legacy/prose), and from then on only paths that die AFTER the baseline count.
+// Sticky by construction: a newly-dead path stays counted until it resolves or is removed — a flash
+// that disappears on the next tick would be a warning nobody sees. The state is a DERIVED file under the
+// zemory data dir (HP điều 3): delete it and the next run simply starts a new baseline.
+
+export interface PathsProjectState {
+  baselineAt: string;
+  /** keys (lower-cased posix text) that were dead when the baseline was taken */
+  baseline: string[];
+  lastAt: string;
+  lastDead: string[];
+  /** key → ISO time first seen dead after the baseline */
+  firstSeen: Record<string, string>;
+}
+export interface PathsState {
+  version: 1;
+  projects: Record<string, PathsProjectState>;
+}
+export interface PathsMonitor {
+  /** dead now AND not in the baseline — the only thing allowed to change a colour */
+  newlyDead: PathHit[];
+  baselineAt: string | null;
+  /** true on the run that (re)wrote the baseline */
+  baselined: boolean;
+}
+export type MonitoredReport = PathsReport & { monitor: PathsMonitor };
+
+export function pathsStateFile(): string {
+  return join(currentMemoryDir(), "paths-state.json");
+}
+const hitKey = (h: PathHit): string => posix(h.text).toLowerCase();
+
+export function loadPathsState(file: string): PathsState {
+  try {
+    const v = JSON.parse(readFileSync(file, "utf8")) as Partial<PathsState>;
+    if (v && v.version === 1 && v.projects && typeof v.projects === "object") return v as PathsState;
+  } catch {
+    /* missing or unreadable → fresh state (fail-open, điều 9) */
+  }
+  return { version: 1, projects: {} };
+}
+
+/** Run the check and diff it against the stored baseline for this project. `stateFile` is injectable so
+ *  tests never touch the real data dir. `resetBaseline` re-takes the baseline from today's dead set. */
+export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBaseline?: boolean } = {}): MonitoredReport {
+  const report = pathsCheck(ctx);
+  const file = opts.stateFile ?? pathsStateFile();
+  const state = loadPathsState(file);
+  // Self-cleaning: a project whose root is gone from this disk (unlinked repo, a test fixture's temp dir)
+  // must not linger in derived state forever — and `data/` is `protected`, so nobody should have to
+  // delete the file by hand to tidy it.
+  for (const k of Object.keys(state.projects)) if (!existsSync(k)) delete state.projects[k];
+  const key = canon(report.root);
+  const now = new Date().toISOString();
+  const deadKeys = new Set(report.dead.map(hitKey));
+  let entry = state.projects[key];
+  let baselined = false;
+  if (!entry || opts.resetBaseline) {
+    entry = { baselineAt: now, baseline: [...deadKeys], lastAt: now, lastDead: [...deadKeys], firstSeen: {} };
+    baselined = true;
+  }
+  const base = new Set(entry.baseline);
+  const newlyDead = report.dead.filter((h) => !base.has(hitKey(h)));
+  const firstSeen: Record<string, string> = {};
+  for (const h of newlyDead) {
+    const k = hitKey(h);
+    firstSeen[k] = entry.firstSeen[k] ?? now; // keep the first date; drop keys that resolved
+  }
+  entry.firstSeen = firstSeen;
+  entry.lastAt = now;
+  entry.lastDead = [...deadKeys];
+  state.projects[key] = entry;
+  try {
+    writeJsonAtomic(file, state);
+  } catch {
+    /* cannot persist → still return today's verdict; next run re-baselines (fail-open) */
+  }
+  return { ...report, monitor: { newlyDead, baselineAt: entry.baselineAt, baselined } };
+}
+
+export function monitorSummary(r: MonitoredReport): string {
+  const since = r.monitor.baselineAt ? r.monitor.baselineAt.slice(0, 10) : "?";
+  return r.monitor.baselined
+    ? `baseline written today · ${r.dead.length} legacy dead · scanned ${r.scanned.files} files`
+    : `${r.monitor.newlyDead.length} newly dead since ${since} · ${r.dead.length} dead total · scanned ${r.scanned.files} files`;
 }
