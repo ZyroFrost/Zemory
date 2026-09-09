@@ -29,8 +29,15 @@
            hành ⇒ chấm này hiện, ngay TRÊN chip sức khoẻ; bấm sang màn Dự án. Ẩn khi mọi repo khớp. -->
       <!-- 2026-08-29: chip KHÔNG nhảy màn nữa — bấm mở hộp Cập nhật tại chỗ (bản zemory mới trên kênh chung → nút
            Cập nhật, kiểu VS Code; repo cũ chuẩn liệt kê bên dưới). Nhảy sang Dự án là hiểu sai mục đích gốc (entry 23/08). -->
-      <div class="status-chip upd" id="railUpd" style="cursor:pointer;display:none" data-i18n-title="rail.updTip" title="Có bản cập nhật — bấm xem"><span class="dot warn"></span><div><b style="font-size:12px" id="railUpdN">—</b><div class="muted" style="font-size:10.5px" id="railUpdSub"></div></div></div>
-      <div class="status-chip" data-nav="system" style="cursor:pointer" title="Features"><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
+      <!-- BA chip, BA việc khác nhau — KHÔNG gộp (user 2026-09-09). Bản cũ nhét "có bản zemory mới"
+           và "repo cũ chuẩn" vào MỘT chip với `return` sớm, nên khi cả hai cùng đúng thì tín hiệu
+           repo bị giấu hẳn; user gặp đúng ca đó trên máy PC. Mỗi chip mang MỘT icon nhận diện +
+           MỘT chấm trạng thái: rail thu gọn ẩn hết chữ nên nếu chỉ có chấm thì ba chip giống hệt
+           nhau, không biết cái nào thuộc chức năng nào. Icon lấy từ bộ nav sẵn có (📘 Harness ·
+           ✔ Tính năng) để chip và màn nó dẫn tới nói cùng một ngôn ngữ. -->
+      <div class="status-chip upd" id="railApp" style="cursor:pointer;display:none" data-i18n-title="rail.appTip" title="Bản zemory — bấm xem"><span class="cic" data-icon="app"></span><span class="dot"></span><div><b style="font-size:12px" id="railAppN">—</b><div class="muted" style="font-size:10.5px" id="railAppSub"></div></div></div>
+      <div class="status-chip upd" id="railStd" style="cursor:pointer;display:none" data-i18n-title="rail.stdTip" title="Chuẩn repo — bấm xem"><span class="cic" data-icon="std"></span><span class="dot"></span><div><b style="font-size:12px" id="railStdN">—</b><div class="muted" style="font-size:10.5px" id="railStdSub"></div></div></div>
+      <div class="status-chip" id="railHealthChip" data-nav="system" style="cursor:pointer" title="Features"><span class="cic" data-icon="health"></span><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
       <div class="machine"><div class="av" id="railAv">—</div><div><b>This machine</b><small id="railMachine">—</small></div></div>
     </div>
   </aside>
@@ -123,7 +130,7 @@
             <div class="muted" data-i18n="st.loading">…</div>
           </div></div>
           <div class="seam" data-seam="recall"></div>
-          <div class="card"><div class="card-h"><div class="t" id="rPreviewTitle" data-i18n="recall.preview">Xem trước</div><a id="rCopy" style="cursor:pointer" data-i18n="recall.copy">Sao chép</a></div><div class="card-b" id="rPreview">
+          <div class="card"><div class="card-h"><div class="t" id="rPreviewTitle" data-i18n="recall.preview">Xem trước</div><div style="display:flex;align-items:center;gap:10px"><a id="rCopy" style="cursor:pointer" data-i18n="recall.copy">Sao chep</a><button type="button" class="cbtn" data-icon="expand" data-expand="rPreview" data-expand-from="rPreviewTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div><div class="card-b" id="rPreview">
             <div class="muted" data-i18n="recall.previewEmpty">Chọn một kết quả để xem các message lân cận ngay tại đây.</div>
           </div></div>
         </div>
@@ -149,7 +156,7 @@
               <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
             </div>
             <div class="seam" data-seam="sess"></div>
-            <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a></div>
+            <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><div style="display:flex;align-items:center;gap:10px"><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a><button type="button" class="cbtn" data-icon="expand" data-expand="sessVBody" data-expand-from="sessVTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div>
               <div id="sessVInfo" class="muted" style="font-size:11px;flex:0 0 auto;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:6px"></div>
               <div class="card-b" id="sessVBody"><div class="muted" data-i18n="sess.pick">Chọn một phiên bên trái để xem toàn bộ hội thoại.</div></div>
             </div>
@@ -418,7 +425,11 @@
       <div class="set-row"><div class="sl"><b data-i18n="set.dbLoc">Nơi lưu DB</b><small data-i18n="set.dbLocD">dời khỏi ổ hệ thống (WAL an toàn) · giữ bản cũ .bak</small></div><div style="display:flex;gap:6px"><input id="relocInput" placeholder="D:\\zemory-data" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:150px"><button class="btn sm" data-act="browse-reloc" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="relocate" data-i18n="set.relocate">Dời…</button></div></div>
       <!-- set-row CUỐI phải border:0 — ngay dưới là khối About có border-top, để border
            của row này thì ra HAI vạch sát nhau (user báo 2026-07-25 "dư line ngang"). -->
-      <div class="set-row" style="border:0"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
+      <div class="set-row"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
+      <!-- Ở ⚙ chứ KHÔNG ở khối "Tự động" của Global Memory: khối đó tự khai "daemon tự làm gì khi
+           BẬT", mà việc này chạy trong CỬA SỔ (nhịp của trang, tắt cửa sổ là ngừng) — xếp cạnh các
+           việc nền của daemon là nói sai thứ nó làm, và user đi tìm ở ⚙ không thấy (2026-09-09). -->
+      <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.checksAuto">Tự kiểm lại tính năng</b><small data-i18n="mem.checksAutoD">BẬT: màn Tính năng tự chạy lại các phép kiểm theo chu kỳ, khỏi bấm “Kiểm lại tất cả”. Chỉ chạy khi cửa sổ đang mở.</small></div><select id="ckEvery" class="rsel" data-i18n-aria="mem.checksAutoEvery" aria-label="Chu kỳ tự kiểm" style="margin-right:8px;flex:0 0 auto"><option value="15">15′</option><option value="30">30′</option><option value="60">60′</option><option value="180">3h</option></select><div class="toggle" data-auto="checks"></div></div>
       <div id="setMsg" class="muted" style="font-size:11.5px;min-height:1em;margin-top:8px"></div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <b style="font-size:12.5px" data-i18n="set.about">Giới thiệu</b>

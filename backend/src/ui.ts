@@ -30,7 +30,7 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { appVersion, currentProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
+import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { gatherStatus } from "./status.js";
@@ -86,6 +86,8 @@ import {
   getRepoStdCheck,
   setRepoStdCheck,
   getAutosyncSchedule,
+  getChecksAuto,
+  setChecksAuto,
   setAutosyncSchedule,
   getAutosyncLastResult,
   getIgnoredRoots,
@@ -1401,7 +1403,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (showWindow) openWindow(url);
     else console.log(`zemory ui — --no-window: not opening a window (serve only) -> ${url}`);
   };
-  const root = () => currentProjectRoot();
+  // The daemon is a MACHINE-level service, not a cwd-bound command: Startup launches it with the
+  // working directory Windows hands out (`C:\WINDOWS\System32`), so a purely cwd-based project root
+  // leaves every per-project surface pointing at a folder that is not a project. Measured 2026-09-09:
+  // `/status` reported `project.root = C:\WINDOWS\System32` with `connected:false`, which is why the
+  // Features screen showed "Harness files 0/6" (the not-connected branch of status.ts, NOT a missing
+  // file) and "Docs harness (validate)" Off — and why "Recheck all" could never clear them: each press
+  // re-ran the same checks against the same wrong root.
+  //
+  // Fall back to the repo this build runs from, and ONLY when that repo really is a connected project
+  // — never invent a root. cwd still WINS when it is a project, so `zemory ui` from another repo keeps
+  // reporting on that repo. CLI commands are untouched: they keep pure `currentProjectRoot()` because
+  // for them cwd is the user's explicit choice of what to write to.
+  const installRoot = () => resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const root = () => daemonProjectRoot(currentProjectRoot(), installRoot(), isConnected);
   const json = (res: ServerResponse, obj: unknown) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end(JSON.stringify(obj));
@@ -1481,14 +1496,19 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // check treo "…" tới khi xong — user đọc thành "heal mở lại là tắt". Nay kết quả sống
       // theo daemon; `fresh=1` (nút ↻ Recheck) mới đo lại thật — nút giữ đúng nghĩa của nó.
       const feat = u.searchParams.get("feature") ?? "";
-      const key = `${feat}|${rootP ?? ""}`;
+      // Key by the RESOLVED root, not the raw query: two callers that mean the same project (one
+      // passing `?root=`, one relying on the default) must share a cache entry, and a fallback that
+      // changes the root must not serve the previous root's verdict.
+      const key = `${feat}|${target}`;
       const hit = checkCache.get(key);
       if (u.searchParams.get("fresh") !== "1" && hit && Date.now() - hit.at < 600_000) return json(res, hit.r);
-      const r = await runCheck(feat, rootP);
+      const r = await runCheck(feat, target);
       checkCache.set(key, { at: Date.now(), r });
       return json(res, r);
     }
-    if (p === "/status") return json(res, await gatherStatus(rootP));
+    // `target`, not `rootP`: with no `?root=` these two must still land on the daemon's project
+    // (see `root()` above), otherwise they answer about whatever folder Startup happened to use.
+    if (p === "/status") return json(res, await gatherStatus(target));
     // `fresh=1` = the user pressed refresh; the poll takes whatever is cached.
     if (p === "/memory-status") return json(res, await dashboardMemory({ fresh: u.searchParams.get("fresh") === "1" }));
     if (p === "/sync-pulse") {
@@ -2374,6 +2394,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       setAutosyncSchedule({ mode, ...(Number.isFinite(every) && every >= 5 ? { everyMin: Math.round(every) } : {}), ...(mode === "times" ? { times } : {}) });
       return json(res, { ok: true, autosyncSchedule: getAutosyncSchedule() });
     }
+    if (p === "/set-checks-auto") {
+      // ⚙ ⚡ Tự động → "Tự kiểm lại": `on=1` bật/tắt, `every=<phút>` đổi chu kỳ. Hai tham số ĐỘC LẬP
+      // nhau có chủ đích — người dùng đổi chu kỳ khi đang tắt thì con số vẫn được nhớ cho lần bật sau,
+      // và bật/tắt không được âm thầm đặt lại chu kỳ họ vừa chọn. Kẹp [5,1440] nằm ở settings.
+      const every = Number(u.searchParams.get("every") ?? "");
+      setChecksAuto({
+        ...(u.searchParams.has("on") ? { on: u.searchParams.get("on") === "1" } : {}),
+        ...(Number.isFinite(every) && every > 0 ? { everyMin: every } : {}),
+      });
+      return json(res, { ok: true, checksAuto: getChecksAuto() });
+    }
     if (p === "/set-repo-std-check") {
       setRepoStdCheck(u.searchParams.get("on") === "1");
       harnessUpdCache = null;
@@ -2410,6 +2441,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // State for the ⚙ automation panel: config flags + real autostart status.
       return json(res, {
         autostart: getAutostart(), autosync: getAutosync(), scheduler: getScheduler(), autosyncSchedule: getAutosyncSchedule(),
+        // Tự kiểm lại màn Tính năng theo chu kỳ (user 2026-09-09). Đi chung payload với các công tắc
+        // tự động khác vì nó CÙNG loại: một việc chạy theo đồng hồ mà người dùng bật/tắt được.
+        checksAuto: getChecksAuto(),
         // `realtime` = ý định; `realtimeWired` = SỰ THẬT (hook có trong settings của host
         // không). Phơi cả hai vì chúng lệch được: user sửa tay settings.json, hoặc cài trên
         // máy chưa có Claude Code. Chỉ hiện cờ config là hứa suông.

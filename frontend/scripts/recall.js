@@ -67,7 +67,10 @@
     zset('rPreviewTitle',t('recall.preview')+' #'+id);if(zid('rPreview'))zid('rPreview').innerHTML='<div class="muted">'+t('recall.loadingCtx')+'</div>';
     zGet('/memory-context?id='+id).then(function(ctx){
       if(!ctx||!ctx.messages){zid('rPreview').innerHTML='<div class="muted">'+t('recall.noCtx')+'</div>';return;}
-      zid('rPreview').innerHTML='<button class="btn sm" data-openfull="'+stdEsc(ctx.sessionId||'')+'" style="margin-bottom:10px">⤢ '+t('recall.openFull')+'</button><div class="thread">'+ctx.messages.map(function(m){return msgBlock(m,m.isHit?1200:390);}).join('')+'</div>';
+      // Nút "⤢ mở full session" từng nằm Ở ĐÂY, trong THÂN panel. Nay hành động mở-to là ICON ở
+      // GÓC thanh tiêu đề panel (`data-expand`, user 2026-09-09) — chỗ cố định, không trôi theo nội
+      // dung, và đối xứng với panel Phiên. Đường "nhảy sang viewer Phiên" vẫn còn: ⤢ trên TỪNG hit.
+      zid('rPreview').innerHTML='<div class="thread">'+ctx.messages.map(function(m){return msgBlock(m,m.isHit?1200:390);}).join('')+'</div>';
     }).catch(function(){zid('rPreview').innerHTML='<div class="muted">'+t('recall.ctxErr')+'</div>';});
   }
   // Copy the preview thread text to clipboard (was a dead link before).

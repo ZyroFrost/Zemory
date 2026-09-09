@@ -72,6 +72,29 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .status-chip,.machine{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);flex:0 0 auto}
 .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+/* Icon NHẬN DIỆN của chip trạng thái: chấm nói TRẠNG THÁI (xanh/cam), icon nói THUỘC CHỨC NĂNG NÀO.
+   Thiếu nó thì rail xếp ba chip giống hệt nhau — và ở rail THU GỌN, nơi mọi chữ bị ẩn, ba chấm xanh
+   không phân biệt được cái nào là bản app, cái nào là chuẩn repo, cái nào là sức khoẻ (user 2026-09-09). */
+.status-chip .cic{line-height:0;flex:0 0 auto;color:var(--text-faint)}
+.status-chip .cic svg{width:14px;height:14px;display:block}
+.status-chip.warn .cic{color:var(--warn)}
+#zDlgIcon svg{width:15px;height:15px;display:block}
+/* Nút icon ở GÓC panel (mở full). Cùng cỡ chạm với link chữ cạnh nó, không viền — để nó là một
+   công cụ của thanh tiêu đề chứ không phải một nút hành động cạnh tranh với nội dung. */
+.cbtn{background:none;border:0;padding:0;line-height:0;color:var(--text-dim);cursor:pointer;flex:0 0 auto}
+.cbtn:hover{color:var(--primary)}
+.cbtn svg{width:15px;height:15px;display:block}
+.zexpand{font-size:13px}
+/* Rail thu gọn: chữ đã bị ẩn, chấm bỏ luôn — icon nói CHỨC NĂNG, VIỀN nói TRẠNG THÁI.
+   Trạng thái đi bằng viền chứ KHÔNG bằng màu icon vì một trong ba icon (📘) là emoji có màu cố
+   định — `color` không đổi được nó, nên tô icon thì chip đó mất tín hiệu trạng thái ở đúng chế độ
+   này (đo bằng ảnh 2026-09-09). Viền áp đồng đều cho cả ba, kể cả icon emoji. */
+.railcoll .status-chip .dot{display:none}
+.railcoll .status-chip .cic svg{width:17px;height:17px}
+.railcoll .status-chip .cic{color:var(--success)}
+.railcoll .status-chip.warn .cic{color:var(--warn)}
+.railcoll .status-chip{border-color:var(--success)}
+.railcoll .status-chip.warn{border-color:var(--warn)}
 .machine .av{width:26px;height:26px;border-radius:7px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;font-size:12px}
 .machine b{font-size:12.5px;display:block}.machine small{color:var(--text-faint);font-size:10.5px}
 .rail-icons{display:flex;gap:4px}

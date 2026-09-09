@@ -177,6 +177,26 @@ export function currentProjectRoot(): string {
   return findProjectRoot() ?? normalizeRoot(process.cwd());
 }
 
+/**
+ * Which project a MACHINE-level surface (the daemon) should report on.
+ *
+ * A CLI command is cwd-bound on purpose — cwd is the user saying which repo to write to. The daemon
+ * is not: Startup launches it with the working directory Windows hands out, so `currentProjectRoot()`
+ * resolves to `C:\WINDOWS\System32` and every per-project surface answers about a folder that is not
+ * a project (measured 2026-09-09: `/status` `connected:false`, Features "Harness files 0/6" from the
+ * not-connected branch of status.ts, validate Off — and "Recheck all" re-ran the same wrong root, so
+ * it could never clear them).
+ *
+ * `here` WINS whenever it is a real project, so `zemory ui` from another repo still reports on that
+ * repo. `own` (the repo this build runs from) is used only as a fallback, and only when it too is a
+ * connected project — the point is to stop answering about a non-project, never to invent a root.
+ * Dependency injected so the decision is testable without a filesystem.
+ */
+export function daemonProjectRoot(here: string, own: string, connected: (p: string) => boolean): string {
+  if (connected(here)) return here;
+  return connected(own) ? own : here;
+}
+
 /** Load the project context (config + resolved docs dir) from a project root. */
 export function loadContext(projectRoot: string): Context {
   const markerPath = findMarker(projectRoot) ?? join(projectRoot, CONFIG_FILE);
