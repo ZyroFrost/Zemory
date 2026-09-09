@@ -8,6 +8,7 @@ import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { foreignLayout } from "./conform.js";
 import { isClosedItemLine } from "./archive.js";
+import { pathsCheck, pathsSummary, type PathsReport } from "./paths.js";
 
 export interface ValidateIssue {
   level: "error" | "warn" | "info";
@@ -16,6 +17,8 @@ export interface ValidateIssue {
 export interface ValidateReport {
   issues: ValidateIssue[];
   ok: boolean;
+  /** plan/21 — dead-path check, ADVISORY. Optional so every existing consumer keeps its shape. */
+  paths?: PathsReport;
 }
 
 export function validate(ctx: Context): ValidateReport {
@@ -92,7 +95,22 @@ export function validate(ctx: Context): ValidateReport {
   //    agent-assisted (docs/agent/03_STRUCTURE.md §8); zemory never moves files.
   for (const i of checkStructure(projectRoot, ctx.config.profile ?? "app")) issues.push(i);
 
-  return { issues, ok: !issues.some((i) => i.level === "error") };
+  // 4. Dead paths (plan/21) — exactly ONE issue, and only ever at level "info". That level is the
+  //    contract with the three consumers of this report: checks.ts colours the Features pill from
+  //    `issues.filter(level !== "info")`, harness-docs.check() counts the same way, and the CLI
+  //    exits non-zero only on `ok === false` (errors). Anything above "info" here would turn the
+  //    Features screen amber on every repo with one stale path — the exact regression this check
+  //    must not cause. Details live in `zemory paths check`; `--gate` is opt-in there.
+  //    Fail-open (điều 9): a failing scan becomes an info line, never a thrown validate().
+  let paths: PathsReport | undefined;
+  try {
+    paths = pathsCheck(ctx);
+    issues.push({ level: "info", msg: `${pathsSummary(paths)} — \`zemory paths check\` for the list` });
+  } catch (e) {
+    issues.push({ level: "info", msg: `paths: check did not run (${(e as Error)?.message ?? String(e)})` });
+  }
+
+  return { issues, ok: !issues.some((i) => i.level === "error"), ...(paths ? { paths } : {}) };
 }
 
 /** The deliverable folders that satisfy the non-app standard (its 03_STRUCTURE §1). */
