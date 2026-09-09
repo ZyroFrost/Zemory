@@ -27,6 +27,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { currentMemoryDir } from "../memory/db.js";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
+import { standardNames } from "./structure-tree.js";
 
 export interface PathHit {
   /** repo-relative (posix) path of the file that contains the string */
@@ -46,6 +47,8 @@ export type UnresolvedReason =
   | "not-a-path"
   | "shape-ambiguous"
   | "dictionary"
+  | "slot-name"
+  | "excluded-target"
   | "io-error";
 
 export interface PathsReport {
@@ -159,6 +162,10 @@ interface Judge {
   roots: { declared: string[]; present: string[] };
   /** posix, root-relative paths of EVERY listed file (before the extension filter) — for suffix matching */
   files?: string[];
+  /** every NAME the standard declares (SLOT_ROLES + root roles + this repo's 03 §3 tree) — see `standardNames` */
+  names?: Set<string>;
+  /** the scan's own `exclude` list — pointers INTO those dirs are not judged either (see `excluded-target`) */
+  exclude?: string[];
 }
 
 type Verdict = { kind: "ok" } | { kind: "dead" } | { kind: "unresolved"; reason: UnresolvedReason };
@@ -167,6 +174,9 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
   let s = c.text;
   if (!c.delimited) return { kind: "unresolved", reason: "undelimited" };
   if (/^HK[A-Z]{2,4}:/i.test(s) || /^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return { kind: "unresolved", reason: "not-a-path" };
+  // `origin/master..HEAD` is a git RANGE, not a file: two dots INSIDE a segment (not the `..` parent segment).
+  // Found by the first real sweep (DuAnA 05_TODO, 2026-09-09) — `.HEAD` looked like an extension.
+  if (/[^.\\/]\.\.[^.\\/]/.test(s)) return { kind: "unresolved", reason: "not-a-path" };
   // `%APPDATA%`, `$HOME`, `${var}` are environment placeholders, not folders (plan/20 names the MSIX path that way).
   if (/[<>{}…*?]/.test(s) || /%[^%\\/]+%/.test(s) || /\$[A-Za-z_{]/.test(s) || /(^|[\\/])N{1,2}([\\/_]|$)/.test(s)) return { kind: "unresolved", reason: "placeholder" };
   if (/^[A-Za-z]:\\[nrt0abfv](?![\\/])/.test(s) && s.split(/[\\/]/).length < 3) return { kind: "unresolved", reason: "escape" };
@@ -199,10 +209,23 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
       const suf = posix(s).replace(/^\.\//, "").replace(/\/+$/, "");
       if (judge.files.some((f) => f === suf || f.endsWith("/" + suf) || f.startsWith(suf + "/") || f.includes("/" + suf + "/"))) return { kind: "ok" };
     }
+    // Pointers INTO an excluded dir (`dist/` · `data/` · `node_modules/`) are not judged: those trees are
+    // build/runtime output whose presence depends on the machine, not on the docs — `dist\\App\\sync\\` in a
+    // build script is right on the machine that built and "dead" on the one that did not (DuAnA, 2026-09-09).
+    // Same contract as the scan set: what we do not walk, we do not judge.
+    if (!explicit && judge.exclude && excluded(posix(s).replace(/^\.\//, ""), judge.exclude)) return { kind: "unresolved", reason: "excluded-target" };
     // Prose uses "/" as "or": `KHÔNG backend/frontend/` names two top-level folders, not a nested path.
     // If EVERY segment is itself an existing entry at the repo root, that is what it is — abstain.
     // (Checked only after real resolution failed, so a genuine `docs/agent/` still resolves as `ok`.)
     if (!explicit && segs.length >= 2 && segs.every((g) => existsSync(join(judge.root, g)))) return { kind: "unresolved", reason: "shape-ambiguous" };
+    // Slot NAMES are dictionary words, not pointers — wherever they appear (plan/21 §4.3). `frontend/config/`
+    // in a spec says where a concern WOULD live, not that this repo has that folder; 4 of zemory's 9
+    // "legacy dead" were exactly this (2026-09-09). Deterministic and POSITIVE: the set is what the
+    // standard itself declares (`standardNames`), no denylist. Only when EVERY segment is a name — a file
+    // leaf (`docs/dictionary.md`) or a moved file (`backend/src/settings.ts`) is still judged, and
+    // `frontend/zzz/` (one segment not a name) is still dead. Explicit `./` pointers are never exempt.
+    // Runs AFTER the "/"-as-"or" rule: `backend/docs/` (both real root entries) keeps its more specific reason.
+    if (!explicit && judge.names && segs.every((g) => judge.names!.has(g))) return { kind: "unresolved", reason: "slot-name" };
     // Neither resolved: judged as dead only if the resolution stays under a present root.
     abs = under(fromFile, judge.root) ? fromFile : fromRoot;
   } else {
@@ -301,7 +324,7 @@ export function pathsCheck(ctx: Context): PathsReport {
     ok: true,
   };
   const sorted = [...files].sort();
-  const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))) };
+  const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))), names: standardNames(root), exclude };
 
   for (const abs of sorted) {
     const rel = posix(relative(root, abs));
