@@ -135,6 +135,32 @@ const ROOT_ROLES: Record<string, string> = {
 };
 
 /**
+ * Every NAME the standard declares, for "is this string a slot name or a pointer?" (paths check,
+ * plan/21 §4.3 `slot-name`). Union of: the shared slot dictionary, the root roles, and every
+ * `name/` token on a §3 TREE line of this repo's own 03_STRUCTURE (including multi-slot lines like
+ * `state/ cache/ settings/`, which `declaredSlots` deliberately takes only the first of — that one
+ * feeds conform, where the tight parse is the point). Description text after the `[opt]`/★ column
+ * is NOT read: "trạng thái/cache/setting-user" is prose, not names. Fail-open to the static sets.
+ */
+export function standardNames(root: string): Set<string> {
+  const out = new Set<string>([...Object.keys(SLOT_ROLES), ...Object.keys(ROOT_ROLES)]);
+  try {
+    const md = readFileSync(join(harnessPathsAt(root).agent, "03_STRUCTURE.md"), "utf8");
+    let inSec = false;
+    for (const line of md.split(/\r?\n/)) {
+      if (/^##\s*3\./.test(line)) { inSec = true; continue; }
+      if (inSec && /^##\s/.test(line)) break;
+      if (!inSec || !/[├└│]/.test(line)) continue;
+      const head = line.replace(/^[\s│├└─]+/, "").split(/\s{2,}|\[|★/)[0] ?? "";
+      for (const m of head.matchAll(/(?:^|\s)([A-Za-z][A-Za-z0-9_.-]*)\//g)) out.add(m[1]);
+    }
+  } catch {
+    /* fail-open — static dictionary only */
+  }
+  return out;
+}
+
+/**
  * Slots a PROJECT declares in ITS OWN `03_STRUCTURE.md §3` — the per-repo standard
  * (HP điều 3: file wins; điều 13: a concern is made real by declaring it in 03, then
  * the machine honours it). `SLOT_ROLES` is the shared BASELINE dictionary; this reads

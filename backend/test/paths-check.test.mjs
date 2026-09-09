@@ -146,6 +146,29 @@ test("rổ: kiểu viết tắt `memory/share.ts` khớp ĐUÔI file có thật 
   assert.deepEqual(r.dead.map((h) => h.text), ["backend/src/settings.ts"], "khớp đuôi KHÔNG được cứu file đã dời — đuôi `src/settings.ts` không còn");
 });
 
+test("rổ: TÊN SLOT của chuẩn (`frontend/config/` · `backend/infra/` · tên trên dòng cây §3 của repo) ⇒ slot-name, không dead; folder lạ cùng hình dạng · lá file · chữ mô tả trong cây ⇒ vẫn dead", (t) => {
+  const root = repo(t);
+  // 03 §3 của repo: dòng cây NHIỀU slot (`sql/ seed/ locales/` — `sql`/`seed` không có trong SLOT_ROLES, chỉ có nhờ đọc cây)
+  // + cột MÔ TẢ có token `mota/` đứng sau khoảng trắng — mô tả KHÔNG được đọc thành tên. (Không dùng `data/…`: thư mục
+  // exclude rơi vào `excluded-target` trước, xem ca riêng.)
+  md(root, "docs/agent/03_STRUCTURE.md", "# 03\n## 3. Cây\n```\n├── backend/\n│   ├── resources/     [opt]  tài nguyên đóng gói\n│   │   ├── sql/ seed/ locales/   [opt]  mô tả có mota/ và log/ trong cột chữ\n```\n## 4. Routing\n");
+  plan(root, "# p\nsetting mặc định `frontend/config/` · seed `backend/resources/seed/` · IaC `backend/infra/` · lạ `frontend/zzz_not_a_slot/` · lá `docs/dictionary.md` · mô tả `backend/resources/mota/`\n");
+  const r = pathsCheck(ctxOf(root));
+  const slot = r.unresolved.filter((h) => h.reason === "slot-name").map((h) => h.text).sort();
+  assert.deepEqual(slot, ["backend/infra/", "backend/resources/seed/", "frontend/config/"], "mọi đoạn đều là tên chuẩn ⇒ slot-name");
+  assert.deepEqual(r.dead.map((h) => h.text).sort(), ["backend/resources/mota/", "docs/dictionary.md", "frontend/zzz_not_a_slot/"], "một đoạn không phải tên chuẩn ⇒ vẫn dead (kể cả chữ lấy từ phần mô tả của cây)");
+});
+
+test("báo oan THỰC ĐỊA 2026-09-09: khoảng git `a..b` ⇒ not-a-path · trỏ vào thư mục exclude (dist/ · data/) ⇒ excluded-target; `../` thật vẫn phán", (t) => {
+  const root = repo(t);
+  plan(root, "# p\ncommit `origin/master..HEAD` · build ra `dist/App/sync/` · kho `data/x.db` · cha `../not_here/spec.md` · lồng `backend/node_modules/pkg/`\n");
+  const r = pathsCheck(ctxOf(root));
+  const by = (reason) => r.unresolved.filter((h) => h.reason === reason).map((h) => h.text).sort();
+  assert.deepEqual(by("not-a-path").filter((t) => t.includes("..")), ["origin/master..HEAD"], "hai chấm TRONG đoạn = khoảng git, không phải đường");
+  assert.deepEqual(by("excluded-target"), ["backend/node_modules/pkg/", "data/x.db", "dist/App/sync/"], "trỏ vào thư mục exclude ⇒ không phán");
+  assert.deepEqual(r.dead.map((h) => h.text), ["../not_here/spec.md"], "`../` tường minh vẫn bị phán như cũ");
+});
+
 test("rổ: chuỗi tương đối MƠ HỒ (vi/en · 16/9 · a/b không đuôi) không bị phán; lockfile không được quét", (t) => {
   const root = repo(t);
   // `backend/docs/` = gạch chéo nghĩa "HOẶC" trong văn xuôi (plan/09:52 thật: "KHÔNG backend/frontend/") —
