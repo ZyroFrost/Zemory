@@ -418,6 +418,33 @@ export function loadPathsState(file: string): PathsState {
   return { version: 1, projects: {} };
 }
 
+export interface DeadPathsRepo {
+  root: string;
+  name: string;
+  /** keys dead now and NOT in the baseline — the sticky set the colour follows */
+  newlyDead: number;
+  /** first few keys (lower-cased posix text) — enough to recognise the rot; exact lines via `paths check --root` */
+  sample: string[];
+  /** earliest first-seen time among them */
+  since: string | null;
+}
+/** Per-repo NEWLY-dead counts read straight from the sweep's state — NO scan. Feeds the rail chip
+ *  "Repos on standard", its dialog and the Projects cards (user chose to reuse that surface, 2026-09-10):
+ *  the sweep watches every linked repo but the Features row only speaks for the daemon's project, so a
+ *  genuinely new dead path elsewhere (Dept_OPS, first real sweep) was invisible on the UI. */
+export function deadPathsSummary(state: PathsState, projects: Array<{ root: string; name: string }>): DeadPathsRepo[] {
+  const out: DeadPathsRepo[] = [];
+  for (const p of projects) {
+    const e = state.projects[canon(p.root)];
+    if (!e) continue;
+    const keys = Object.keys(e.firstSeen ?? {});
+    if (!keys.length) continue;
+    const since = keys.map((k) => e.firstSeen[k]).filter(Boolean).sort()[0] ?? null;
+    out.push({ root: p.root, name: p.name, newlyDead: keys.length, sample: keys.slice(0, 3), since });
+  }
+  return out.sort((a, b) => b.newlyDead - a.newlyDead || a.name.localeCompare(b.name));
+}
+
 /** Run the check and diff it against the stored baseline for this project. `stateFile` is injectable so
  *  tests never touch the real data dir. `resetBaseline` re-takes the baseline from today's dead set. */
 export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBaseline?: boolean } = {}): MonitoredReport {

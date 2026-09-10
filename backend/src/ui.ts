@@ -33,6 +33,7 @@ import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
+import { deadPathsSummary, loadPathsState, pathsStateFile } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
@@ -2435,7 +2436,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       }
       // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn kênh chung), KHÔNG cache theo
       // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck() });
+      // Per-repo NEWLY-dead paths from the sweep's state (plan/21 §2.3) — one small JSON read, no scan, and
+      // independent of the repo-std switch: the sweep runs regardless, so its verdict is shown regardless.
+      let deadPaths: ReturnType<typeof deadPathsSummary> = [];
+      try {
+        deadPaths = deadPathsSummary(loadPathsState(pathsStateFile()), listKnownProjects());
+      } catch {
+        /* fail-open — a reminder surface must not die */
+      }
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck(), deadPaths });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.
