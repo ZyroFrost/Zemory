@@ -84,7 +84,7 @@
     // thái CŨ lên nút vừa bật — nhìn y như nó tự tắt, vòng poll sau lại tự bật. Trong 90s sau
     // cú bấm, giá trị LOCAL thắng; hết cửa sổ thì server là sự thật (POST hỏng thật thì sau
     // 90s nút tự quay về đúng trạng thái server — không giấu lỗi vĩnh viễn).
-    try{var fa=Z.flagsAt||{};['hybrid','rerank','scope','pathsWatch'].forEach(function(k){
+    try{var fa=Z.flagsAt||{};['hybrid','rerank','scope','pathsWatch','lang'].forEach(function(k){
       if(fa[k]&&Date.now()-fa[k]<90000&&Z.mem&&m[k]!==Z.mem[k])m[k]=Z.mem[k];
     });}catch(_){}
     Z.mem=m;
@@ -102,8 +102,7 @@
     if(zid('driveInput')&&document.activeElement!==zid('driveInput'))zid('driveInput').value=d.path||'';
     zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);
     renderDriveDonut(d);
-    var lv=zid('langVi'),le=zid('langEn');if(lv)lv.classList.toggle('on',(m.lang||'vi')==='vi');if(le)le.classList.toggle('on',m.lang==='en');
-    applyI18n(m.lang||'vi');
+    applyI18n(m.lang||'vi'); // nút VI/EN tô trong applyI18n; `lang` được lưới flagsAt 90 s che khỏi payload cũ (ở trên)
     var fa=zid('fAgent');if(fa){var fac=fa.value;fa.innerHTML='<option value="" data-i18n="f.agentAny">'+t('f.agentAny')+'</option>'+((m.agents||[]).map(function(a){return '<option value="'+stdEsc(a.source)+'">'+stdEsc(a.source)+'</option>';}).join(''));fa.value=fac;}
     fillSessFilters(m); // 2 select riêng của tab Phiên, cùng nguồn dữ liệu — không endpoint mới
     renderHomeProjects(cap);renderProjGrid(cap);renderDiscovered(cap);renderGmem();
