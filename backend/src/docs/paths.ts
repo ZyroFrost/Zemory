@@ -21,7 +21,7 @@
 // a file that cannot be read becomes one `unresolved: io-error`, never an exception.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Context } from "../core/types.js";
@@ -60,6 +60,8 @@ export interface PathsReport {
   unresolved: PathHit[];
   /** true ⇔ dead.length === 0 — the only thing `--gate` looks at */
   ok: boolean;
+  /** posix, root-relative paths of every listed file — the set `proposeFixes` searches (not printed by the CLI) */
+  files?: string[];
 }
 
 /** Phase 1 file set: docs + config/runbook. Code strings are phase 2 (plan/21 §4.1). */
@@ -325,6 +327,7 @@ export function pathsCheck(ctx: Context): PathsReport {
   };
   const sorted = [...files].sort();
   const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))), names: standardNames(root), exclude };
+  report.files = judge.files;
 
   for (const abs of sorted) {
     const rel = posix(relative(root, abs));
@@ -377,6 +380,87 @@ export function pathsSummary(r: PathsReport): string {
 // single run. What the user actually needs to know is the MOMENT rot happens: the folder was renamed
 // 30 minutes ago and N docs now point at the old name. So the first run records a BASELINE (whatever is
 // dead today is assumed legacy/prose), and from then on only paths that die AFTER the baseline count.
+// ── repair proposals (plan/21 §5.6, user 2026-09-10) ─────────────────────────
+export interface PathFixProposal {
+  file: string;
+  line: number;
+  from: string;
+  /** replacement (same separator style as `from`), or null when there is no UNIQUE candidate */
+  to: string | null;
+  reason: "unique-name" | "ambiguous" | "no-candidate" | "absolute";
+  candidates?: string[];
+}
+/** posix relative path from a root-relative DIR to a root-relative target (no node:path — inputs are already posix). */
+function relPosix(fromDir: string, to: string): string {
+  const a = fromDir.split("/").filter(Boolean);
+  const b = to.split("/").filter(Boolean);
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return [...Array<string>(a.length - i).fill(".."), ...b.slice(i)].join("/") || ".";
+}
+/** Deterministic repair proposals for DEAD hits: the last segment exists at exactly ONE tracked location outside the
+ *  excluded dirs and `attic/` ⇒ propose it, keeping the pointer's style (`../` stays relative to its file, `\\` stays
+ *  `\\`). Anything else — absolute, ambiguous, no candidate — is reported as such and left to a human. Measured on the
+ *  five real cases of 2026-09-10: 2 proposable, 0 safe to apply blind — hence proposals, never silent rewrites. */
+export function proposeFixes(hits: PathHit[], files: string[], exclude: string[] = DEFAULT_EXCLUDE): PathFixProposal[] {
+  const live = files.filter((f) => !excluded(f, exclude) && !/(^|\/)attic\//.test(f));
+  const dirs = new Set<string>();
+  for (const f of live) {
+    const segs = f.split("/");
+    for (let i = 1; i < segs.length; i++) dirs.add(segs.slice(0, i).join("/"));
+  }
+  return hits.map((h): PathFixProposal => {
+    const s = h.text;
+    const base = { file: h.file, line: h.line, from: s };
+    if (ABS_WIN.test(s) || UNC.test(s) || /^~[\\/]/.test(s) || (isAbsolute(s) && !s.startsWith("."))) return { ...base, to: null, reason: "absolute" };
+    const win = s.includes("\\");
+    const norm = posix(s).replace(/^\.\//, "");
+    const trailing = /\/$/.test(norm);
+    const core = norm.replace(/\/+$/, "");
+    const name = core.split("/").pop() ?? "";
+    if (!name) return { ...base, to: null, reason: "no-candidate" };
+    const pool = trailing ? [...dirs] : live;
+    const uniq = [...new Set(pool.filter((f) => f === name || f.endsWith("/" + name)))].filter((c) => c !== core);
+    if (uniq.length !== 1) return { ...base, to: null, reason: uniq.length ? "ambiguous" : "no-candidate", candidates: uniq.slice(0, 5) };
+    let to = uniq[0] + (trailing ? "/" : "");
+    if (/^\.\.\//.test(norm)) to = relPosix(h.file.split("/").slice(0, -1).join("/"), to); // keep it relative to ITS file
+    if (win) to = to.replace(/\//g, "\\");
+    return { ...base, to, reason: "unique-name" };
+  });
+}
+export interface PathFixResult {
+  file: string;
+  line: number;
+  ok: boolean;
+  error?: string;
+}
+/** Rewrite ONE string on ONE line. Reads and writes the file's own EOL (02_RULES §Luật khi VIẾT — EOL: read bytes, write
+ *  the same kind back); replaces the FIRST occurrence on that line only; refuses if the string is no longer there
+ *  (the proposal went stale) or the file is outside the root. `to` is inserted literally — no `// Sticky by construction: a newly-dead path stays counted until it resolves or is removed` expansion. */
+export function applyFix(root: string, fix: { file: string; line: number; from: string; to: string }): PathFixResult {
+  const abs = resolve(root, fix.file);
+  const out = { file: fix.file, line: fix.line };
+  if (!under(abs, resolve(root))) return { ...out, ok: false, error: "outside root" };
+  let buf: string;
+  try {
+    buf = readFileSync(abs, "utf8");
+  } catch {
+    return { ...out, ok: false, error: "unreadable" };
+  }
+  const eol = buf.includes("\r\n") ? "\r\n" : "\n";
+  const lines = buf.split(/\r?\n/);
+  const i = fix.line - 1;
+  if (i < 0 || i >= lines.length) return { ...out, ok: false, error: "line out of range" };
+  if (!lines[i].includes(fix.from)) return { ...out, ok: false, error: "string not on that line any more" };
+  lines[i] = lines[i].replace(fix.from, () => fix.to);
+  try {
+    writeFileSync(abs, lines.join(eol), "utf8");
+  } catch {
+    return { ...out, ok: false, error: "write failed" };
+  }
+  return { ...out, ok: true };
+}
+
 // Sticky by construction: a newly-dead path stays counted until it resolves or is removed — a flash
 // that disappears on the next tick would be a warning nobody sees. The state is a DERIVED file under the
 // zemory data dir (HP điều 3): delete it and the next run simply starts a new baseline.
@@ -481,6 +565,13 @@ export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBase
     /* cannot persist → still return today's verdict; next run re-baselines (fail-open) */
   }
   return { ...report, monitor: { newlyDead, baselineAt: entry.baselineAt, baselined } };
+}
+
+/** Monitor + proposals in one go, for the dialog (newly dead only) and the CLI (`--all` = every dead hit). */
+export function pathsFixProposals(ctx: Context, opts: { newlyOnly?: boolean; stateFile?: string } = {}): MonitoredReport & { proposals: PathFixProposal[] } {
+  const rep = monitorPaths(ctx, { stateFile: opts.stateFile });
+  const hits = opts.newlyOnly === false ? rep.dead : rep.monitor.newlyDead;
+  return { ...rep, proposals: proposeFixes(hits, rep.files ?? [], ctx.config.pathCheck?.exclude ?? DEFAULT_EXCLUDE) };
 }
 
 export function monitorSummary(r: MonitoredReport): string {
