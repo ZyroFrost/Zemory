@@ -173,6 +173,9 @@
   }};
   function t(k){var d=I18N[LANG]||I18N.vi;return (d&&d[k]!=null)?d[k]:(I18N.vi[k]!=null?I18N.vi[k]:k);}
   function applyI18n(lang){if(lang)LANG=(lang==='en'?'en':'vi');
+    // Nút VI/EN sáng theo LANG ngay tại đây — trước chỉ tô trong renderMem, tức chờ /memory-status (lượt lạnh 7–74 s)
+    // trong khi /ping đã mang lang từ ~100 ms đầu ⇒ "mở lên rất lâu nút mới sáng" (user 2026-09-10).
+    var lv=zid('langVi'),le=zid('langEn');if(lv)lv.classList.toggle('on',LANG==='vi');if(le)le.classList.toggle('on',LANG==='en');
     document.querySelectorAll('[data-i18n]').forEach(function(el){var k=el.getAttribute('data-i18n');var v=t(k);if(v!=null)el.innerHTML=v;});
     document.querySelectorAll('[data-i18n-title]').forEach(function(el){var k=el.getAttribute('data-i18n-title');el.title=t(k);});
     document.querySelectorAll('[data-i18n-ph]').forEach(function(el){var k=el.getAttribute('data-i18n-ph');el.placeholder=t(k);});

@@ -63,7 +63,7 @@ test("mọi bề mặt đều đi qua công tắc: scheduler bỏ sweep · /harn
   assert.doesNotMatch(sys, /return '<button class="btn sm" data-sys-auto=/, "panel chi tiết không còn nút On/Off cho auto");
   assert.match(sys, /closest\('\.sys-sw'\)\)return;var li=/, "bấm switch không được chọn hàng");
   assert.match(sys, /paths-watch\/\.test\(ep\)\)Z\.flagsAt\.pathsWatch=Date\.now\(\)/, "cú gạt phải được đóng dấu để payload cũ không đè");
-  assert.match(SRC("frontend/scripts/gm.js"), /\['hybrid','rerank','scope','pathsWatch'\]/, "renderMem phải giữ giá trị local trong 90 s cho pathsWatch");
+  assert.match(SRC("frontend/scripts/gm.js"), /\['hybrid','rerank','scope','pathsWatch'(,'[a-zA-Z]+')*\]/, "renderMem phải giữ giá trị local trong 90 s cho pathsWatch");
   const chrome = SRC("frontend/scripts/chrome.js");
   assert.match(chrome, /'fix\.noCand':'không có đích duy nhất — sửa tay hoặc giao A\.I sửa'/);
   assert.match(chrome, /'fix\.noCand':'no unique target — fix by hand or let the A\.I do it'/);

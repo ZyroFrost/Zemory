@@ -497,7 +497,15 @@
   });
   document.addEventListener('click',function(e){
     var lg=e.target.closest?e.target.closest('[data-lang]'):null;
-    if(lg){applyI18n(lg.dataset.lang);zPost('/set-lang?lang='+lg.dataset.lang).then(function(){zGet('/memory-status?fresh=1').then(renderMem);});return;}
+    if(lg){var L=lg.dataset.lang;applyI18n(L);
+      // Đóng dấu cú bấm + giữ giá trị local: payload /memory-status đang bay (poll bắn TRƯỚC lúc bấm, mang lang cũ) không
+      // được đè lên — đúng ca "bấm VN mà vẫn dính EN" (user 2026-09-10). Cùng lưới với hybrid/rerank/scope/pathsWatch.
+      if(Z.mem)Z.mem.lang=L;Z.flagsAt=Z.flagsAt||{};Z.flagsAt.lang=Date.now();
+      // Vẽ lại widget đã render bằng t() từ dữ liệu ĐANG CÓ — KHÔNG fetch /memory-status?fresh=1: backend nói rõ payload đó
+      // không có gì được dịch phía server, mà lượt lạnh của nó là 7–74 s ⇒ chính là "bấm load rất lâu".
+      if(Z.mem)renderMem(Z.mem);renderSystem();refreshHarnessUpdates();
+      // Thứ THẬT SỰ dịch phía server (tr()): /status + /check — refetch đúng hai cái đó, fresh để bỏ cache theo ngôn ngữ cũ.
+      zPost('/set-lang?lang='+L).then(function(){zGet('/status').then(renderStatus).catch(function(){});refreshChecks(true);}).catch(function(){});return;}
     var lv=e.target.closest?e.target.closest('[data-lvl]'):null;
     if(lv){
       // 'att' là CÔNG TẮC độc lập (bật/tắt kèm ảnh), không phải mức thứ ba của Gọn/Đầy đủ.
