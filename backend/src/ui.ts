@@ -98,6 +98,7 @@ import {
   setWebPull,
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
+import { getPathsWatch, setPathsWatch } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
@@ -1147,6 +1148,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
     },
     hybrid: getHybridSetting(),
     rerank: getRerankSetting(),
+    pathsWatch: getPathsWatch(),
     scope: getScopeSetting(),
     scopeTree: safeScopeTree(),
     scopeExcluded: getScopeExclude().length,
@@ -2442,6 +2444,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       });
       return json(res, { ok: true, checksAuto: getChecksAuto() });
     }
+    if (p === "/set-paths-watch") {
+      // Công tắc theo dõi đường dẫn chết (plan/21 §5.7). Tắt ⇒ hàng Off · chip/badge im · daemon bỏ bước sweep.
+      setPathsWatch(u.searchParams.get("on") === "1");
+      checkCache.delete("paths|" + root());
+      return json(res, { ok: true, pathsWatch: getPathsWatch() });
+    }
     if (p === "/set-repo-std-check") {
       setRepoStdCheck(u.searchParams.get("on") === "1");
       harnessUpdCache = null;
@@ -2476,11 +2484,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // independent of the repo-std switch: the sweep runs regardless, so its verdict is shown regardless.
       let deadPaths: ReturnType<typeof deadPathsSummary> = [];
       try {
-        deadPaths = deadPathsSummary(loadPathsState(pathsStateFile()), listKnownProjects());
+        // Watch OFF ⇒ nothing here: the chip and the Projects badges read this field, and OFF means quiet.
+        if (getPathsWatch()) deadPaths = deadPathsSummary(loadPathsState(pathsStateFile()), listKnownProjects());
       } catch {
         /* fail-open — a reminder surface must not die */
       }
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck(), deadPaths });
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck(), deadPaths, pathsWatch: getPathsWatch() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

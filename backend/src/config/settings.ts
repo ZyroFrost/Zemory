@@ -60,6 +60,8 @@ interface ZConfig {
   /** Chip cập nhật có KIỂM các repo khác trong registry còn khớp chuẩn không (mặc định có). Tắt ⇒ chip chỉ báo
    *  bản zemory mới trên kênh chung — cho máy chỉ dùng zemory làm bộ nhớ, không quản chuẩn repo (user 2026-08-29). */
   repoStdCheck?: boolean;
+  /** plan/21 §5.7 — watch dead paths across linked repos (row · chip · badge · daemon sweep). Default ON. */
+  pathsWatch?: boolean;
   /** Lịch tự sync — xem getAutosyncSchedule. */
   autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
   /** Tự kiểm lại màn Tính năng theo chu kỳ — xem getChecksAuto. */
@@ -424,6 +426,17 @@ export function getRepoStdCheck(): boolean {
 export function setRepoStdCheck(on: boolean): void {
   const c = read();
   c.repoStdCheck = on;
+  write(c);
+}
+
+/** Dead-path watch (plan/21 §5.7). OFF ⇒ the Features row says Off, /harness-updates carries no deadPaths (chip + badge
+ *  go quiet), the daemon skips the `paths` sweep. The CLI (`paths check|sweep|fix`) still runs — typing it is intent. */
+export function getPathsWatch(): boolean {
+  return read().pathsWatch !== false;
+}
+export function setPathsWatch(on: boolean): void {
+  const c = read();
+  c.pathsWatch = on;
   write(c);
 }
 

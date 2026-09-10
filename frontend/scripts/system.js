@@ -21,7 +21,9 @@
     // plan/21 — hàng CHÍNH THỨC từ 2026-09-09. Màu theo "MỚI chết kể từ baseline", không theo tổng
     // số chết: prose kể về thiết kế đã bác chết từ lúc sinh, không phải mục ruỗng. Warning = có đường
     // vừa chết sau baseline = có folder vừa bị dời/đổi tên mà docs còn trỏ tên cũ.
-    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',doc:'f.doc.paths'}
+    // `watch`: công tắc theo dõi (user 2026-09-10: "thêm nút toggle bật tắt cho toàn bộ tính năng dò này") — tắt ⇒ hàng
+    // Off, ra khỏi Health, chip/badge im, daemon bỏ sweep; CLI gõ tay vẫn chạy. Mẫu chung cho hàng kiểm có công tắc.
+    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',watch:{ep:'/set-paths-watch',key:'pathsWatch'},doc:'f.doc.paths'}
   ];
   /** Từ trên badge — MỘT bộ từ vựng: công tắc/tự động ⇒ On/Off · còn lại ⇒ Healthy/Warning/Off (pillTxt của core). */
   function badgeWord(state,f){
@@ -33,7 +35,7 @@
     var m=Z.mem||{},a=Z.auto||{},vec=m.vectors||{},drive=m.drive||{},st=m.storage||{},s=Z.status||{};
     if(f.kind==='toggle')return {on:f.get(m)?'on':'dim',txt:f.get(m)?t('sys.on'):t('sys.off')};
     if(f.kind==='auto')return {on:a[f.auto]?'on':'dim',txt:a[f.auto]?t('sys.on'):t('sys.off')};
-    if(f.kind==='check'){var c=(Z.checks||{})[f.feat];return c?{on:c.state,txt:pillTxt(c.state)}:{on:'dim',txt:'…'};}
+    if(f.kind==='check'){if(f.watch&&m[f.watch.key]===false)return {on:'dim',txt:t('sys.off')};var c=(Z.checks||{})[f.feat];return c?{on:c.state,txt:pillTxt(c.state)}:{on:'dim',txt:'…'};}
     // SỨC KHOẺ vector = "có gì tự nhúng backlog không", KHÔNG phải "backlog = 0" (user 2026-08-29: kho nhận
     // tin liên tục nên backlog không bao giờ về 0 — đo là đèn ⚠ vĩnh viễn, và đèn luôn đỏ thì không ai nhìn nữa).
     // ⚠ CHỈ khi còn tin chờ mà scheduler (maintain) đang TẮT — lúc đó không ai sẽ nhúng chúng.
@@ -50,15 +52,28 @@
   function sysAction(f){
     if(f.k==='digest'){var m=Z.mem||{},d=((m.info&&m.info.tables)||[]).find(function(x){return x.name==='session_digest';}),has=d&&d.rows>0;
       return '<button class="btn '+(has?'sm':'primary sm')+'" data-sys-digest="1">'+(has?'↻ '+t('sys.buildMissing'):'⚙ '+t('sys.buildNow'))+'</button>';}
-    if(f.kind==='toggle'){var on=f.get(Z.mem||{});return '<button class="btn sm" data-sys-toggle="'+f.ep+'" data-on="'+(on?'0':'1')+'">'+(on?t('sys.off'):t('sys.on'))+'</button>';}
-    if(f.kind==='auto'){var o2=(Z.auto||{})[f.auto];return '<button class="btn sm" data-sys-auto="'+f.auto+'" data-on="'+(o2?'0':'1')+'">'+(o2?t('sys.off'):t('sys.on'))+'</button>';}
-    if(f.kind==='check')return '<button class="btn sm" data-sys-check="'+f.feat+'">↻ '+t('sys.recheck')+'</button>';
+    // Công tắc KHÔNG còn ở đây (user 2026-09-10: *"mấy cái toggle sẽ hiện thẳng luôn lề phải của panel list… thay luôn nút on
+    // ở panel chi tiết"*) — xem `sysSwitch()`. Hai nơi cùng điều khiển một trạng thái là hai nơi để lệch.
+    if(f.kind==='toggle'||f.kind==='auto')return '';
+    if(f.kind==='check'){var w=f.watch?((Z.mem||{})[f.watch.key]!==false):null;
+      return w===false?'':'<button class="btn sm" data-sys-check="'+f.feat+'">↻ '+t('sys.recheck')+'</button>';}
     // `probe`: feature có PHÉP KIỂM THẬT ở backend nhưng hành động chính là toggle/stat.
     // Không có nhánh này thì `/check?feature=vector|rerank` chỉ gọi được bằng curl —
     // tức vẫn mồ côi, chỉ đổi chỗ (tự bắt 2026-07-28 ngay sau khi nối backend).
     if(f.probe)return '<button class="btn sm" data-sys-check="'+f.probe+'">↻ '+t('sys.recheck')+'</button>';
     if(f.kind==='nav')return '<button class="btn sm" data-sys-nav="'+f.to+'">'+t('sys.goto')+'</button>';
     return '';
+  }
+  /** Công tắc ở MÉP PHẢI hàng — cùng khuôn `.toggle` của Settings (một hình cho một việc). Chỉ hàng có gì để bật/tắt:
+   *  `toggle` (hybrid…) · `auto` (scheduler/autostart/autosync) · `check` có `watch` (dead paths). Hàng lõi (kiểm/số) không có.
+   *  Mang đúng data-attr mà handler cũ đã hiểu (`data-sys-toggle`/`data-sys-auto` + `data-on` = trạng thái ĐÍCH). */
+  function sysSwitch(f){
+    var on,attr;
+    if(f.kind==='toggle'){on=!!f.get(Z.mem||{});attr='data-sys-toggle="'+f.ep+'"';}
+    else if(f.kind==='auto'){on=!!(Z.auto||{})[f.auto];attr='data-sys-auto="'+f.auto+'"';}
+    else if(f.kind==='check'&&f.watch){on=(Z.mem||{})[f.watch.key]!==false;attr='data-sys-toggle="'+f.watch.ep+'"';}
+    else return '';
+    return '<span class="toggle sys-sw'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="'+stdEsc(t(f.n))+' · '+(on?t('sys.on'):t('sys.off'))+'" title="'+(on?t('sys.on'):t('sys.off'))+'" '+attr+' data-on="'+(on?'0':'1')+'" style="margin-left:auto;transform:scale(.85)"></span>';
   }
   var sysSel=null;
   function renderSystem(){
@@ -77,7 +92,7 @@
         // *"on với healthy thôi, số vector hay embed là thông tin phụ"*). Số liệu/chi tiết (pending · sessions ·
         // linked · 6/6) chuyển thành chữ xám nhỏ SAU tên — thông tin phụ đứng ở chỗ phụ.
         var word=badgeWord(s.on,f),info=(s.txt&&s.txt!==word)?'<span class="sxi">'+stdEsc(s.txt)+'</span>':'';
-        return '<div class="sys-li'+(f.k===sysSel?' on':'')+'" data-sysfeat="'+f.k+'"><span class="pill '+pillFor(s.on)+'" style="flex:0 0 auto;min-width:56px;text-align:center">'+stdEsc(word)+'</span><span class="sxn">'+stdEsc(t(f.n))+info+'</span></div>';
+        return '<div class="sys-li'+(f.k===sysSel?' on':'')+'" data-sysfeat="'+f.k+'"><span class="pill '+pillFor(s.on)+'" style="flex:0 0 auto;min-width:56px;text-align:center">'+stdEsc(word)+'</span><span class="sxn">'+stdEsc(t(f.n))+info+'</span>'+sysSwitch(f)+'</div>';
       }).join('');
     }).join('');
     setHealthChip(okN,warnN,tot,warnNames); // pill trong màn + chip ở chân rail = CÙNG một roll-up
@@ -107,7 +122,7 @@
       +probeLine(f)
       +'<div class="mdview">'+stdMd(t(f.doc||f.d||''))+'</div>';
   }
-  document.addEventListener('click',function(e){var li=e.target.closest?e.target.closest('#sysList [data-sysfeat]'):null;if(li){sysSel=li.dataset.sysfeat;renderSystem();}});
+  document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.sys-sw'))return;var li=e.target.closest?e.target.closest('#sysList [data-sysfeat]'):null;if(li){sysSel=li.dataset.sysfeat;renderSystem();}});
   document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-sys-digest]'):null;if(!b)return;var o=b.textContent;b.textContent=t('st.buildingDigest');b.disabled=true;
     zPost('/memory-digest').then(function(r){return zGet('/memory-status?fresh=1').then(function(m){renderMem(m);renderSystem();});}).catch(function(){b.textContent=o;b.disabled=false;});});
   document.addEventListener('click',function(e){var a=e.target.closest?e.target.closest('[data-add-proj]'):null;if(!a)return;var p=a.dataset.addProj;a.textContent='…';zPost('/add-project?root='+encodeURIComponent(p)).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){});});
@@ -119,10 +134,12 @@
     if(tg){var ep=tg.dataset.sysToggle,on=tg.dataset.on==='1';
       // Optimistic: flip local state + re-render NOW so the button always toggles
       // back (fixed "tắt rồi không bật lại" — was reading a cached /memory-status).
-      if(Z.mem){if(/hybrid/.test(ep))Z.mem.hybrid=on;else if(/rerank/.test(ep))Z.mem.rerank=on;else if(/scope/.test(ep))Z.mem.scope=on;}
+      if(Z.mem){if(/hybrid/.test(ep))Z.mem.hybrid=on;else if(/rerank/.test(ep))Z.mem.rerank=on;else if(/scope/.test(ep))Z.mem.scope=on;else if(/paths-watch/.test(ep))Z.mem.pathsWatch=on;}
       // Đóng dấu cú bấm — renderMem dùng mốc này để payload memory-status GIÀ (bắn trước lúc
       // bấm, về sau vì lượt lạnh) không vẽ đè trạng thái cũ lên nút vừa gạt.
-      Z.flagsAt=Z.flagsAt||{};if(/hybrid/.test(ep))Z.flagsAt.hybrid=Date.now();else if(/rerank/.test(ep))Z.flagsAt.rerank=Date.now();else if(/scope/.test(ep))Z.flagsAt.scope=Date.now();
+      Z.flagsAt=Z.flagsAt||{};if(/hybrid/.test(ep))Z.flagsAt.hybrid=Date.now();else if(/rerank/.test(ep))Z.flagsAt.rerank=Date.now();else if(/scope/.test(ep))Z.flagsAt.scope=Date.now();else if(/paths-watch/.test(ep))Z.flagsAt.pathsWatch=Date.now();
+      // Công tắc theo dõi đường dẫn: chip rail + badge thẻ đọc /harness-updates ⇒ hỏi lại ngay sau khi gạt, đừng chờ 10′.
+      if(/paths-watch/.test(ep)){renderSystem();zPost(ep+'?on='+tg.dataset.on).then(function(){return zGet('/harness-updates?fresh=1');}).then(function(){refreshHarnessUpdates();}).catch(function(){});return;}
       renderSystem();
       var rh=zid('rHybrid'),rr=zid('rRerank');if(rh&&Z.mem)rh.classList.toggle('on',!!Z.mem.hybrid);if(rr&&Z.mem)rr.classList.toggle('on',!!Z.mem.rerank);
       zPost(ep+'?on='+tg.dataset.on).catch(function(){});return;}
