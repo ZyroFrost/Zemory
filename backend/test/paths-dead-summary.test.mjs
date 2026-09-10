@@ -33,14 +33,16 @@ test("FE tiêu thụ đủ ba chỗ: chip+hộp thoại (system.js) · thẻ D�
   const sys = FE("system.js"), src = FE("sources.js"), chrome = FE("chrome.js");
   assert.match(sys, /r\.deadPaths/, "system.js phải đọc deadPaths từ /harness-updates");
   assert.match(sys, /Z\.updDead=/, "system.js phải lưu Z.updDead cho hộp thoại + thẻ");
-  assert.match(sys, /t\('upd\.deadHdr'\)/, "hộp thoại phải có khối đường dẫn mới chết");
+  assert.match(sys, /'upd\.deadHdr'/, "hộp thoại phải có khối đường dẫn mới chết");
   assert.match(src, /Z\.updDead/, "sources.js phải gắn badge từ cùng nguồn Z.updDead");
   assert.match(src, /t\('proj\.deadOld'\)/, "thẻ Dự án phải có badge ⚠ N đường chết");
   assert.match(src, /\+deadB\+/, "badge phải được NỐI vào markup thẻ — khai biến rồi bỏ quên là vỏ rỗng (đột biến m3 bắt được)");
   const cut = chrome.indexOf("},en:{");
   assert.ok(cut > 0, "neo hai dict");
   const vi = chrome.slice(0, cut), en = chrome.slice(cut);
-  for (const k of ["rail.deadOld", "rail.deadSub", "upd.deadHdr", "upd.deadNone", "upd.deadHint", "proj.deadOld", "proj.deadOldTip"]) {
+  assert.match(sys, /'upd\.stdHdr'/, "mục ① phải có tiêu đề riêng — hai mục, hai tiêu đề (user 2026-09-10)");
+  assert.match(sys, /t\('upd\.deadRow'\)/, "hàng repo phải nói con số là gì, không để số trơ");
+  for (const k of ["rail.deadOld", "rail.deadSub", "upd.stdHdr", "upd.stdOff", "upd.deadHdr", "upd.deadStatus", "upd.deadRow", "upd.deadSince", "upd.deadNone", "upd.deadHint", "proj.deadOld", "proj.deadOldTip"]) {
     assert.ok(vi.includes(`'${k}':`), `vi thiếu ${k}`);
     assert.ok(en.includes(`'${k}':`), `en thiếu ${k}`);
   }

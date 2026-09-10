@@ -347,20 +347,27 @@
     // §Phạm vi cấm ghi chéo KHI CHƯA ĐƯỢC PHÉP). Làm đúng việc `zemory sync` + `hook guard` làm, không hơn.
     // Repo cũ chuẩn: ô TICK từng repo (mặc định tick) + một nút "Cập nhật đã chọn (n)"; công tắc "Kiểm các repo khác
     // dùng chuẩn" ở đáy hộp (user 2026-08-29) — tắt thì chip chỉ còn báo bản zemory.
-    var repos=!UPD_CHECK
-      ?''
+    // HAI MỤC TÁCH RỜI, mỗi mục một tiêu đề + một dòng trạng thái (user 2026-09-10: khối trên không tiêu đề, khối dưới có,
+    // hàng repo chỉ một con số trơ ⇒ "báo cáo không rõ"). Mục ① chuẩn harness · mục ② đường dẫn mới chết; kẻ ngăn giữa.
+    var known=((Z.status&&Z.status.knownProjects)||[]).length;
+    var hdr=function(key,n,first){return '<div class="sys-grp" style="margin-top:'+(first?'0':'14px')+(first?'':';padding-top:10px;border-top:1px solid var(--border)')+'">'+stdEsc(t(key).replace('{n}',n))+'</div>';};
+    var line=function(txt,cls){return '<div class="'+(cls||'muted')+'" style="margin-top:2px;font-size:12px">'+stdEsc(txt)+'</div>';};
+    // ① CHUẨN HARNESS
+    var repos=hdr('upd.stdHdr',known,true);
+    repos+=!UPD_CHECK
+      ?line(t('upd.stdOff'))
       :st.length
-      ?'<div class="sys-grp" style="margin-top:0">'+stdEsc(t('upd.repoHdr').replace('{n}',st.length))+'</div><div style="font-size:12.5px">'+st.map(function(x){return '<label class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'" checked> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
+      ?line(t('upd.repoHdr').replace('{n}',st.length))+'<div style="font-size:12.5px">'+st.map(function(x){return '<label class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'" checked> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
         +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel">'+stdEsc(t('upd.applySel').replace('{n}',st.length))+'</button><span class="muted" style="font-size:11px">'+stdEsc(t('upd.repoHint'))+'</span></div>'
-      :'<div class="muted" style="margin-top:2px;font-size:12px">'+stdEsc(t('upd.repoNone'))+'</div>';
-    // Khối 2: đường dẫn MỚI CHẾT theo repo (đọc từ state của sweep — không quét). Chỉ liệt kê + chỉ đường xem dòng cụ thể;
-    // sửa nguồn là việc của agent/user bên repo đó (plan/21 §8: không tự sửa đường dẫn trong nguồn).
+      :line('✓ '+t('upd.repoNone'));
+    // ② ĐƯỜNG DẪN MỚI CHẾT (đọc từ state của sweep — không quét). Chỉ liệt kê + chỉ đường xem dòng cụ thể; sửa nguồn là việc
+    // của agent/user bên repo đó (plan/21 §8). Hàng nói đủ: tên repo · N đường mới chết · mẫu · từ ngày.
     var dd=Z.updDead||[];
-    repos+='<div class="sys-grp" style="margin-top:12px">'+stdEsc(t('upd.deadHdr').replace('{n}',dd.length))+'</div>'
-      +(dd.length
-        ?'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0">⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted" style="font-size:11px">'+stdEsc(String(x.newlyDead))+'</span> <span class="muted" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="'+stdEsc(smp)+'">'+stdEsc(smp)+'</span></div>';}).join('')+'</div>'
-          +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.deadHint'))+'</div>'
-        :'<div class="muted" style="margin-top:2px;font-size:12px">'+stdEsc(t('upd.deadNone'))+'</div>');
+    repos+=hdr('upd.deadHdr',dd.length,false);
+    repos+=dd.length
+      ?line(t('upd.deadStatus').replace('{n}',dd.length),'')+'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚠ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.deadRow').replace('{n}',x.newlyDead))+(x.since?' · '+stdEsc(t('upd.deadSince').replace('{d}',String(x.since).slice(0,10))):'')+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div></div>';}).join('')+'</div>'
+        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.deadHint'))+'</div>'
+      :line('✓ '+t('upd.deadNone'));
     repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
     return repos;
   }
