@@ -42,7 +42,20 @@ test("UI hứa lưới bù có đủ ba việc (quét vét · embed · digest) �
   // Panel doc dài hơn và vẫn mô tả chuỗi đầy đủ — nó giải thích CƠ CHẾ, không phải nhịp.
   const j = ui.indexOf("'f.doc.scheduler':");
   assert.ok(j > 0, `${I18N}: thiếu f.doc.scheduler`);
-  assert.match(ui.slice(j, j + 900), /scan\s*→\s*embed\s*→\s*digest/u, "f.doc.scheduler phải còn mô tả chuỗi thật");
+  // Chuỗi THẬT có 7 bước (`jobs/scheduler.ts maintainTick`), không phải 3. Cổng cũ ghim đúng cụm
+  // "scan → embed → digest" nên nó khoá một lời hứa THIẾU: mô tả nêu đủ 7 bước vẫn bị coi là sai.
+  // Nay đòi mô tả nêu tên TỪNG bước (thứ tự do chính `maintainTick` quyết định, đã có ca riêng ở trên).
+  const chain = ui.slice(j, j + 1400);
+  for (const [what, re] of [
+    ["verify", /verify/iu],
+    ["scan", /scan/iu],
+    ["embed", /embed/iu],
+    ["digest", /digest/iu],
+    ["paths sweep", /paths sweep|quét vét|sweep/iu],
+    ["backup", /backup|sao lưu/iu],
+  ]) {
+    assert.match(chain, re, `f.doc.scheduler: mô tả thiếu bước "${what}" trong khi scheduler vẫn chạy nó`);
+  }
 });
 
 test("UI hứa realtime thì hook PHẢI được khai — và đúng 4 sự kiện của lời hứa", () => {

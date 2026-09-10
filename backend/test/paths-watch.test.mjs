@@ -3,9 +3,9 @@
 // sweep (skipped). Default ON. The CLI is deliberately NOT gated (typing the command is intent).
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { tempDir } from "./helpers.mjs";
+import { runInMemoryChild, tempDir } from "./helpers.mjs";
 
 const SRC = (rel) => readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");
 
@@ -20,30 +20,24 @@ function repo(t) {
   return root;
 }
 
-test("check 'paths': watch OFF ⇒ state off · ok true · KHÔNG chạy monitor (không ghi state); ON lại ⇒ on như cũ; mặc định là ON", async (t) => {
+test("check 'paths': watch OFF ⇒ state off · ok true · KHÔNG chạy monitor (không ghi state); ON lại ⇒ on như cũ; mặc định là ON", (t) => {
   const root = repo(t);
-  const prev = process.env.GLOBAL_MEMORY_DB;
-  process.env.GLOBAL_MEMORY_DB = join(root, "data", "global_memory.db"); // settings + paths-state sống dưới data/ của fixture
-  try {
-    const stamp = Date.now();
-    const { runCheck } = await import(`../../dist/checks.js?t=${stamp}`);
-    const { getPathsWatch, setPathsWatch } = await import(`../../dist/config/settings.js?t=${stamp}`);
-    assert.equal(getPathsWatch(), true, "mặc định BẬT — không ai cài xong mà bị tắt sẵn");
-    setPathsWatch(false);
-    const off = await runCheck("paths", root);
-    assert.equal(off.state, "off");
-    assert.equal(off.ok, true, "tắt là lựa chọn, không phải lỗi hệ");
-    assert.match(off.detail, /OFF|TẮT/);
-    const { existsSync } = await import("node:fs");
-    assert.equal(existsSync(join(root, "data", "paths-state.json")), false, "tắt thì KHÔNG monitor ⇒ không sinh state");
-    setPathsWatch(true);
-    const on = await runCheck("paths", root);
-    assert.equal(on.state, "on");
-    assert.equal(existsSync(join(root, "data", "paths-state.json")), true, "bật lại ⇒ monitor chạy, baseline ghi");
-  } finally {
-    if (prev === undefined) delete process.env.GLOBAL_MEMORY_DB;
-    else process.env.GLOBAL_MEMORY_DB = prev;
-  }
+  const steps = runInMemoryChild(root, `
+    out.push({ step: "default", watch: S.getPathsWatch() });
+    S.setPathsWatch(false);
+    out.push({ step: "off", check: await runCheck("paths", process.env.Z_ROOT) });
+    S.setPathsWatch(true);
+    out.push({ step: "on", check: await runCheck("paths", process.env.Z_ROOT) });
+  `);
+  const byStep = Object.fromEntries(steps.map((s) => [s.step, s]));
+  assert.equal(byStep.default.watch, true, "mặc định BẬT — không ai cài xong mà bị tắt sẵn");
+  assert.equal(byStep.off.check.state, "off");
+  assert.equal(byStep.off.check.ok, true, "tắt là lựa chọn, không phải lỗi hệ");
+  assert.match(byStep.off.check.detail, /OFF|TẮT/);
+  assert.equal(byStep.on.check.state, "on");
+  assert.equal(existsSync(join(root, "data", "paths-state.json")), true, "bật lại ⇒ monitor chạy, baseline ghi");
+  // Cô lập THẬT: cấu hình của kho thật không được đụng tới bởi ca này.
+  assert.equal(existsSync(join(root, "data", "config.json")), true, "con phải ghi settings vào kho FIXTURE, không phải kho thật");
 });
 
 test("mọi bề mặt đều đi qua công tắc: scheduler bỏ sweep · /harness-updates không trả deadPaths · FE có nút + guard payload cũ · chữ 'sửa tay HOẶC giao A.I'", () => {

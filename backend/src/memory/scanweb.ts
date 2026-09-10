@@ -63,6 +63,18 @@ interface Platform {
    *  cannot bind the same port, so the second one silently comes up with no CDP while
    *  the first one answers — that is how a run ends up driving the wrong site. */
   port: number;
+  /** Nền **CHỈ NỐI ĐƯỢC** — đăng nhập/kiểm phiên chạy đủ, nhưng đường KÉO hội thoại chưa mở.
+   *
+   *  Vì sao có hạng này (user chỉ ra 2026-09-10: *"chỉ nối vào endpoint để nó nối vào mà, đâu cần có data"*):
+   *  hai việc độc lập nhau. **Nối** cần đúng ba thứ — URL, một cửa sổ, và một phép kiểm "đã đăng nhập chưa,
+   *  là ai" — mà phép kiểm đó đọc DOM/meta của chính trang, không cần biết API nội bộ. **Kéo** thì cần
+   *  `listExpr`/`convExpr` thật, và viết chúng khi chưa có phiên đăng nhập để dò thì chỉ là phỏng đoán
+   *  (`plan/07 §1` cấm). Nên nền mới vào ở hạng này: đăng nhập được ngay, kéo mở sau khi dò.
+   *
+   *  Hệ quả bắt buộc, để bề mặt KHÔNG nói dối: lượt quét dừng NGAY sau khi xác thực và trả `login-only`
+   *  — không phải `done · 0 hội thoại` (đọc thành "đã kéo, không có gì" là sai sự thật). Nền hạng này cũng
+   *  RA KHỎI vòng tự kéo của scheduler: mở cửa sổ mỗi 20 phút cho một nền chưa kéo được là phiền vô ích. */
+  loginOnly?: true;
   /** LANE PHỤ trên CÙNG một trang. claude.ai chở hai thứ khác nhau: chat thường
    *  (`chat_conversations`) và phiên Cowork (`/v1/code/sessions`). Đó là hai bộ sưu tập,
    *  KHÔNG phải hai nền — nên chúng dùng chung cửa sổ, chung cổng, chung phiên đăng nhập;
@@ -324,6 +336,53 @@ const claudeConv = (id: string): string =>
 
 const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v : undefined);
 
+// ── Gemini (gemini.google.com) ────────────────────────────────────────────────
+// Kiểm đăng nhập KHÔNG qua API nội bộ. Đo 2026-09-10 (cửa sổ dò 300 s): Gemini không có REST nào cho
+// lịch sử — mọi thứ đi qua `POST /_/BardChatUi/data/batchexecute`, và `rpcid` của nó đổi theo bản
+// deploy. Nhưng câu "đã đăng nhập chưa" thì trang tự trả lời được: chưa đăng nhập ⇒ Google đưa sang
+// `accounts.google.com` (hoặc hiện nút Sign in); đã đăng nhập ⇒ có ô nhập prompt và menu tài khoản.
+// Email: quét `WIZ_global_data` tìm chuỗi hình dạng email (cùng lối "dò sâu" của CLAUDE_AUTH), không
+// ghim khoá — khoá trong WIZ là số, đổi theo build.
+const GEMINI_AUTH = `(async()=>{try{
+  if(/accounts\\.google\\.com|ServiceLogin/.test(location.href)) return {token:false};
+  // 🔴 DẤU ĐĂNG NHẬP và DANH TÍNH là HAI câu hỏi — đừng suy cái này từ cái kia. Lượt chạy THẬT đầu
+  // (2026-09-10) báo "đã nối" trên một profile chưa ai đăng nhập, chỉ vì bộ dò email bắt được một
+  // chuỗi HÌNH email trong WIZ_global_data. Nay token CHỈ dựa vào bằng chứng giao diện của một phiên
+  // đang sống (menu tài khoản Google, hoặc ô nhập prompt), và email là thông tin PHỤ đọc SAU đó.
+  var EMAIL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}$/;
+  var acct = document.querySelector('a[href*="SignOutOptions"],a[aria-label*="Google Account"],a[aria-label*="Tài khoản Google"]');
+  var box = document.querySelector('rich-textarea,[contenteditable="true"][role="textbox"]');
+  var askLogin = /\\b(sign in|log in|đăng nhập)\\b/i.test((document.body.innerText||'').slice(0,3000));
+  if(!((!!acct || !!box) && !askLogin)) return {token:false};
+  // Bộ lọc NGHIÊM: lớp [^\\s@]+ cũ nhận cả nháy, phẩy, ngoặc và gạch chéo — đó là cách một URL nội bộ
+  // của Google (default-bard-run-dev.corp.goog) lọt vào và trở thành danh tính đóng dấu lên phiên.
+  var email=null, w=(window.WIZ_global_data||{});
+  for (var k in w) { var v=w[k]; if (typeof v==='string' && v.length<255 && EMAIL.test(v)) { email=v; break; } }
+  if(!email){ var el=document.querySelector('a[aria-label*="@"],[data-email]');
+    if(el){ var t=(el.getAttribute('data-email')||el.getAttribute('aria-label')||'');
+      var mm=/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}/.exec(t); if(mm) email=mm[0]; } }
+  return {token:true, email: email};
+}catch(e){ return {token:false, err:String(e)}; }})()`;
+
+// ── GitHub Copilot (github.com/copilot) ──────────────────────────────────────
+// `meta[name="user-login"]` là dấu đăng nhập RẺ NHẤT và bền nhất của github.com — có mặt trên mọi
+// trang khi còn phiên, mất khi hết phiên. Không có email (GitHub không phơi email lên trang), nên
+// danh tính ở đây là **tên đăng nhập**; `accountKey()` thấy không phải email thì tự dùng tên khe,
+// còn hàng nguồn vẫn hiện được "ai" — cùng cách CLAUDE_AUTH xử ca chỉ biết tên org.
+const COPILOT_AUTH = `(async()=>{try{
+  var m = document.querySelector('meta[name="user-login"]');
+  var who = m && m.content ? m.content : null;
+  if (who) return {token:true, email:who};
+  if (/^\\/(login|session|sessions)/.test(location.pathname)) return {token:false};
+  return {token:false};
+}catch(e){ return {token:false, err:String(e)}; }})()`;
+
+/** Nền hạng CHỈ-NỐI chưa có đường kéo: hai biểu thức này KHÔNG BAO GIỜ được gọi (nhánh `loginOnly`
+ *  thoát trước). Đặt giá trị vô hại + tên nói rõ, để nếu một ngày ai đó gọi tới thì nó trả rỗng
+ *  chứ không ném — và cổng `scanweb-loginonly.test` canh đúng việc "không bao giờ tới đây". */
+const LOGIN_ONLY_LIST = "(async()=>[])()";
+const loginOnlyConv = (): string => "(async()=>null)()";
+
 export const PLATFORMS: Record<string, Platform> = {
   chatgpt: {
     key: "chatgpt",
@@ -366,6 +425,34 @@ export const PLATFORMS: Record<string, Platform> = {
       listExpr: COWORK_LIST,
       convExpr: coworkConv,
     },
+  },
+  // ── Hai nền hạng CHỈ-NỐI (user giao 2026-09-10) ──────────────────────────────
+  // Cổng riêng: 9224 · 9225 — mỗi nền một cổng, không dùng chung (xem chú thích `port`).
+  gemini: {
+    key: "gemini",
+    url: "https://gemini.google.com/app",
+    source: "gemini-web",
+    authExpr: GEMINI_AUTH,
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "geminiweb-",
+    tabRe: /gemini\.google\.com/,
+    port: 9224,
+    loginOnly: true,
+  },
+  copilot: {
+    key: "copilot",
+    url: "https://github.com/copilot",
+    source: "copilot-web",
+    authExpr: COPILOT_AUTH,
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "copilotweb-",
+    // CHỈ trang copilot của github.com — `tabRe` lỏng (cả github.com) sẽ bắt bất kỳ tab GitHub nào
+    // đang mở và chạy eval ở đó, đúng lỗi mà chú thích `tabRe` cảnh báo.
+    tabRe: /github\.com\/copilot/,
+    port: 9225,
+    loginOnly: true,
   },
 };
 
@@ -976,7 +1063,7 @@ export interface ScanWebOptions {
 }
 
 export interface ScanWebResult {
-  status: "need-login" | "done" | "no-browser" | "no-tab" | "excluded";
+  status: "need-login" | "done" | "login-only" | "no-browser" | "no-tab" | "excluded";
   platform: string;
   /** The memory lane this platform ingests into (`claude-web`, `chatgpt-web`). Reported
    *  so the caller quotes THIS lane's totals: it used to print the first `*-web` agent
@@ -1350,6 +1437,14 @@ async function scanWebInner(
       log(`not signed in to ${p.url} (or the session expired) — opening the login window`);
       const ok = await awaitLogin({ checkAuth, openWindow: openLogin, ask: askLogin(false), log });
       if (!ok) return { status: "need-login", platform: p.key, source: p.source, url: p.url };
+    }
+
+    // Nền hạng CHỈ-NỐI: xác thực xong là HẾT việc của lượt này. Dừng ở đây thay vì đi tiếp và trả
+    // `done · 0` — "đã kéo, không có gì" và "chưa mở được đường kéo" là hai sự thật khác nhau, và
+    // bề mặt không được phép nói cái sai (`02_RULES §Bề mặt CHẾT THEO nền`).
+    if (p.loginOnly) {
+      log(`${p.key}: đã nối${email ? ` (${email})` : ""} — nền này chưa mở đường KÉO hội thoại (xem plan/07 §17)`);
+      return { status: "login-only", platform: p.key, source: p.source, url: p.url, email, total: 0, pulled: 0, skipped: 0, failed: 0 };
     }
 
     // Resume. TRƯỚC ĐÂY: "id đã có trong bộ nhớ ⇒ bỏ qua" — nên một hội thoại CŨ mà bạn
