@@ -61,7 +61,7 @@
     // 16:9). Mặc định giữ nguyên nấc S của hộp dùng chung; `size:'lg'` cho nội dung dài như một
     // hội thoại đầy đủ — S không đủ thì CHỌN NẤC TO HƠN, không kéo méo khung.
     var box=d.querySelector('.dlg');
-    if(box){box.classList.toggle('lg',o.size==='lg');box.classList.toggle('sm',o.size!=='lg');}
+    if(box){box.classList.toggle('lg',o.size==='lg');box.classList.toggle('sm',o.size!=='lg'&&o.size!=='md');} // 'md' = nấc gốc .dlg (60%)
     // `iconHtml` cho hộp thoại dùng CÙNG bộ icon với chip — hai chỗ nói về một việc thì phải cùng
     // một hình. Không có thì vẫn nhận ký tự như cũ (tương thích ngược, mọi lời gọi cũ giữ nguyên).
     var ic=zid('zDlgIcon');if(ic){if(o.iconHtml)ic.innerHTML=o.iconHtml;else ic.textContent=o.icon||'?';}

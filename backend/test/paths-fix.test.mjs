@@ -94,9 +94,12 @@ test("FE: hộp thoại hỏi /paths-fix, nút .fix-apply gọi /paths-fix-apply
   assert.match(sys, /\/paths-fix\?root=/);
   assert.match(sys, /\/paths-fix-apply\?root=/);
   assert.match(sys, /fix-pick/);
+  assert.match(sys, /ZICON\.std,size:'md'/, "hộp Repo standard ở nấc M (user 2026-09-10)");
+  assert.match(sys, /t\('fix\.old'\)[\s\S]{0,200}t\('fix\.new'\)/, "đề xuất phải ghi rõ hai path cũ/mới ở hai dòng có nhãn");
+  assert.match(FE("core.js"), /o\.size!=='lg'&&o\.size!=='md'/, "zDialog phải biết nấc md, không rơi về sm");
   const cut = chrome.indexOf("},en:{");
   const vi = chrome.slice(0, cut), en = chrome.slice(cut);
-  for (const k of ["fix.loading", "fix.noneRows", "fix.noCand", "fix.ambiguous", "fix.apply", "fix.consent", "fix.applied", "fix.fail"]) {
+  for (const k of ["fix.loading", "fix.noneRows", "fix.noCand", "fix.ambiguous", "fix.apply", "fix.consent", "fix.applied", "fix.fail", "fix.old", "fix.new"]) {
     assert.ok(vi.includes(`'${k}':`), "vi thiếu " + k);
     assert.ok(en.includes(`'${k}':`), "en thiếu " + k);
   }
