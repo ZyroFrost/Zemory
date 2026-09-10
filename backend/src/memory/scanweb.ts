@@ -1828,7 +1828,16 @@ export async function showLinkedPage(platform: string, account: string | undefin
  * còn mở luôn form đăng nhập không ai xin. Cửa sổ hiện chỉ được mở khi người dùng bấm nối (`/connect`).
  */
 export async function scanWebPlatforms(only?: string[], account?: string, opts: { hidden?: boolean } = {}): Promise<WebScanRow[]> {
-  const list = (only ?? platformsInUse()).filter((k) => WEB_PLATFORMS.includes(k));
+  // 🔴 CHỈ NỐI KHI ĐƯỢC GỌI TÊN (user chốt 2026-09-10: "chưa nối vào thật nha, chỉ khi t bấm mới nối vào").
+  // Nền hạng `loginOnly` chưa mở đường kéo, nên đưa nó vào một lượt quét GỘP thì không được gì mà lại bật
+  // một cửa sổ đăng nhập người dùng không yêu cầu — đúng cái phiền mà chú thích của `platformsInUse()` cảnh
+  // báo, và cùng doctrine với khe `need-login` bị loại khỏi vòng tự kéo (2026-09-02: "chỉ bật đăng nhập khi
+  // user chọn thôi"). `only` có nêu tên = cú bấm/lệnh tường minh cho ĐÚNG nền đó ⇒ chạy; `only` rỗng (nút
+  // Quét chung, nhịp nền) ⇒ bỏ qua. Một profile trống do lượt dò để lại KHÔNG được biến thành lời mời đăng nhập.
+  const named = new Set(only ?? []);
+  const list = (only ?? platformsInUse())
+    .filter((k) => WEB_PLATFORMS.includes(k))
+    .filter((k) => named.has(k) || !PLATFORMS[k]?.loginOnly);
   const out: WebScanRow[] = [];
   for (const platform of list) {
     // Không truyền khe cụ thể ⇒ quét MỌI tài khoản của nền đó. Bỏ sót khe nào là hội
@@ -1843,7 +1852,8 @@ export async function scanWebPlatforms(only?: string[], account?: string, opts: 
         // Ghi lại kết quả kiểm để bảng "Liên kết" có cái THẬT mà hiện — nó không tự mở
         // trình duyệt đi kiểm mỗi lần vẽ được.
         const laneKey = acct === "main" ? platform : `${platform}#${acct}`;
-        setWebAuth(laneKey, r.status === "done", r.email ?? undefined);
+        // `login-only` = ĐÃ NỐI (chỉ chưa mở đường kéo). Ghi false ở đây là hàng nguồn báo mất phiên oan.
+        setWebAuth(laneKey, r.status === "done" || r.status === "login-only", r.email ?? undefined);
         // Sổ KÉO ghi ở MỌI đường kéo, không riêng nhịp nền. Trước đây chỉ `webTick`/watcher ghi
         // ⇒ lane kéo bằng nút/CLI mang dấu "•  chưa kéo lần nào" vĩnh viễn dù đã có 31.803 tin
         // (user 2026-08-29: *"mấy cái ko check là sao"*). Chỉ ghi khi lượt này THỰC SỰ kéo

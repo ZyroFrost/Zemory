@@ -121,7 +121,10 @@ test("platformOfSlot: khớp đúng ranh giới '-', không khớp tiền tố l
   assert.equal(platformOfSlot("claude-3"), "claude");
   assert.equal(platformOfSlot("claudex"), null, "tiền tố mà KHÔNG có dấu '-' ⇒ không phải khe của nền đó");
   assert.equal(platformOfSlot("chatgpt2"), null, "accountSlot luôn chèn '-', nên dạng này không hợp lệ");
-  assert.equal(platformOfSlot("gemini-2"), null, "nền chưa hỗ trợ ⇒ null, không đoán");
+  assert.equal(platformOfSlot("gemini-2"), "gemini", "gemini là nền THẬT từ 2026-09-10");
+  assert.equal(platformOfSlot("copilot-2"), "copilot", "copilot cũng vậy");
+  // Ví dụ âm phải là tên KHÔNG BAO GIỜ thành nền — mượn tên một nền sắp có là tự hẹn giờ cho gate đỏ.
+  assert.equal(platformOfSlot("khong-phai-nen-that-2"), null, "nền không khai ⇒ null, không đoán");
 });
 
 test("isLastWayBack: chỉ CHỨNG MINH ĐƯỢC mới bảo vệ; khe sống đã có phiên thì bản cũ hết được bảo vệ", () => {
