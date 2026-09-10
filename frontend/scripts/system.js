@@ -333,7 +333,8 @@
   function updDialogStd(){
     var st=Z.updStale||[];
     var body=buildRepoBlock(st);
-    zDialog({iconHtml:ZICON.std,title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
+    // Nấc M (user 2026-09-10): hộp S bóp dòng "cũ → mới" của đề xuất sửa thành 3 dòng chữ dính nhau.
+    zDialog({iconHtml:ZICON.std,size:'md',title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
       okLabel:t('scope.detClose'),onOk:null});
     loadFixProposals();
   }
@@ -351,7 +352,8 @@
           var loc=stdEsc(p.file+':'+p.line);
           if(!p.to){return '<div class="fix-row" style="padding:2px 0">· '+loc+' <code>'+stdEsc(p.from)+'</code> — '+stdEsc(t('fix.noCand'))+((p.candidates&&p.candidates.length)?' · '+stdEsc(t('fix.ambiguous').replace('{n}',p.candidates.length)):'')+'</div>';}
           n++;
-          return '<label class="fix-row" style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;cursor:pointer"><input type="checkbox" class="fix-pick" checked data-fix="'+encodeURIComponent(JSON.stringify({file:p.file,line:p.line,from:p.from,to:p.to}))+'"> <span class="fix-st" style="word-break:break-all">'+loc+' <code>'+stdEsc(p.from)+'</code> → <code>'+stdEsc(p.to)+'</code></span></label>';
+          // Hai path RÕ hai dòng "cũ:" / "mới:" (user 2026-09-10) — một dòng "cũ → mới" gãy chữ thì không đọc ra được đang đổi gì.
+          return '<label class="fix-row" style="display:flex;gap:6px;align-items:flex-start;padding:3px 0;cursor:pointer"><input type="checkbox" class="fix-pick" checked style="margin-top:2px" data-fix="'+encodeURIComponent(JSON.stringify({file:p.file,line:p.line,from:p.from,to:p.to}))+'"> <span class="fix-st" style="display:grid;grid-template-columns:auto 1fr;gap:1px 8px;word-break:break-all;min-width:0"><span style="grid-column:1/3">'+loc+'</span><span class="muted">'+stdEsc(t('fix.old'))+'</span><code>'+stdEsc(p.from)+'</code><span class="muted">'+stdEsc(t('fix.new'))+'</span><code>'+stdEsc(p.to)+'</code></span></label>';
         }).join('')+(n?'<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><button class="btn sm primary fix-apply" data-fixroot="'+encodeURIComponent(root)+'">'+stdEsc(t('fix.apply').replace('{n}',n))+'</button><span class="muted">'+stdEsc(t('fix.consent'))+'</span></div>':'');
         box.classList.remove('muted');
       }).catch(function(){box.textContent=t('fix.fail');});
