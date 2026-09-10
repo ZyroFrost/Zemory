@@ -293,10 +293,13 @@
       // Dấu "chuẩn cũ" trên ĐÚNG thẻ — cùng nguồn với chấm cam ở rail (`/harness-updates`, lưu ở Z.updStale).
       var us=(Z.updStale||[]).find(function(x){return String(x.root||'').toLowerCase()===String(root).toLowerCase();});
       var old=us?'<span class="ptype is-old" title="'+stdEsc(t('proj.stdOldTip').replace('{m}',us.missing||0).replace('{g}',us.guardStale||0))+'">'+stdEsc(t('proj.stdOld'))+'</span>':'';
-      return '<div class="proj-card'+(pinned?' pinned':'')+(us?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
+      // Dấu "đường dẫn mới chết" trên ĐÚNG thẻ — cùng nguồn với chip rail (Z.updDead từ /harness-updates, plan/21 §2.3).
+      var dp=(Z.updDead||[]).find(function(x){return String(x.root||'').toLowerCase()===String(root).toLowerCase();});
+      var deadB=dp?'<span class="ptype is-old" title="'+stdEsc(t('proj.deadOldTip').replace('{n}',dp.newlyDead).replace('{s}',(dp.sample||[]).join(' · ')))+'">'+stdEsc(t('proj.deadOld').replace('{n}',dp.newlyDead))+'</span>':'';
+      return '<div class="proj-card'+(pinned?' pinned':'')+((us||dp)?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
-        +old+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
+        +old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
         +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
