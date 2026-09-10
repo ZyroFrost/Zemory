@@ -14,7 +14,7 @@ import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
-import { monitorPaths, monitorSummary, pathsSummary } from "../docs/paths.js";
+import { applyFix, monitorPaths, monitorSummary, pathsFixProposals, pathsSummary } from "../docs/paths.js";
 import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
@@ -464,8 +464,9 @@ export function cmdArchive(args: string[] = []): void {
  *  this is what the scheduler runs every maintain chain so rot is caught when it happens. */
 export function cmdPaths(args: string[]): void {
   if (args[0] === "sweep") return cmdPathsSweep(args.slice(1));
+  if (args[0] === "fix") return cmdPathsFix(args.slice(1));
   if (args[0] !== "check") {
-    console.log("usage: zemory paths check [--gate|--strict] [--json] [--root <dir>] [--reset-baseline]\n       zemory paths sweep [--root <dir>]... [--json]");
+    console.log("usage: zemory paths check [--gate|--strict] [--json] [--root <dir>] [--reset-baseline]\n       zemory paths sweep [--root <dir>]... [--json]\n       zemory paths fix [--root <dir>] [--all] [--apply] [--json]   (default: dry-run, newly dead only)");
     process.exitCode = 1;
     return;
   }
@@ -515,6 +516,38 @@ export function cmdPaths(args: string[]): void {
     }
   }
   if (red) process.exitCode = 1;
+}
+
+/** `paths fix`: PROPOSE repairs (unique basename); write only with `--apply`. Dry-run is the default because a wrong
+ *  rewrite is worse than a report — the same reason the UI needs a tick + click (plan/21 §5.6). */
+function cmdPathsFix(args: string[]): void {
+  const ri = args.indexOf("--root");
+  const root = ri >= 0 && args[ri + 1] ? resolve(args[ri + 1]) : findProjectRoot();
+  if (!root) {
+    console.log("zemory paths fix: not connected — run `zemory init` first (or pass --root <dir>).");
+    process.exitCode = 1;
+    return;
+  }
+  const r = pathsFixProposals(loadContext(root), { newlyOnly: !args.includes("--all") });
+  const apply = args.includes("--apply");
+  const fixable = r.proposals.filter((p) => p.to);
+  const results = apply ? fixable.map((p) => applyFix(root, { file: p.file, line: p.line, from: p.from, to: p.to as string })) : [];
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ root, proposals: r.proposals, applied: results }, null, 2));
+    return;
+  }
+  console.log(`zemory paths fix — ${apply ? "APPLIED" : "dry-run"} (${root}) · ${args.includes("--all") ? "all dead" : "newly dead"}: ${r.proposals.length} · proposable ${fixable.length}`);
+  for (const p of r.proposals) {
+    const tag = p.to ? "→" : "—";
+    console.log(`  ${p.to ? "✎" : "·"} ${p.file}:${p.line}  ${p.from}  ${tag}  ${p.to ?? p.reason + (p.candidates?.length ? " (" + p.candidates.join(" · ") + ")" : "")}`);
+  }
+  if (apply) {
+    const ok = results.filter((x) => x.ok).length;
+    console.log(`  applied ${ok}/${results.length}` + results.filter((x) => !x.ok).map((x) => `\n  ✗ ${x.file}:${x.line} ${x.error}`).join(""));
+    if (ok !== results.length) process.exitCode = 1;
+  } else if (fixable.length) {
+    console.log("  (dry-run — pass --apply to write these; only that string on that line is replaced, EOL kept)");
+  }
 }
 
 function cmdPathsSweep(args: string[]): void {

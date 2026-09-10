@@ -335,7 +335,48 @@
     var body=buildRepoBlock(st);
     zDialog({iconHtml:ZICON.std,title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
       okLabel:t('scope.detClose'),onOk:null});
+    loadFixProposals();
   }
+  // ĐỀ XUẤT SỬA đường dẫn chết (plan/21 §5.6, user 2026-09-10: "đề xuất + tick + Áp dụng"): mỗi hộp .fixbox hỏi
+  // /paths-fix?root= (chạy monitor ~0,5 s/repo, nên chỉ hỏi khi mở hộp thoại, chỉ repo đang có mới chết). Đích duy nhất
+  // ⇒ dòng "cũ → mới" + ô tick (mặc định tick); không có ⇒ nói thẳng "sửa tay". Cú bấm Áp dụng = lời cho phép ghi.
+  function loadFixProposals(){
+    Array.prototype.slice.call(document.querySelectorAll('.fixbox[data-fixroot]')).forEach(function(box){
+      var root=decodeURIComponent(box.getAttribute('data-fixroot')||'');
+      zGet('/paths-fix?root='+encodeURIComponent(root)).then(function(r){
+        var ps=(r&&r.ok&&r.proposals)||[];
+        if(!ps.length){box.textContent=r&&r.ok?t('fix.noneRows'):t('fix.fail');return;}
+        var n=0;
+        box.innerHTML=ps.map(function(p){
+          var loc=stdEsc(p.file+':'+p.line);
+          if(!p.to){return '<div class="fix-row" style="padding:2px 0">· '+loc+' <code>'+stdEsc(p.from)+'</code> — '+stdEsc(t('fix.noCand'))+((p.candidates&&p.candidates.length)?' · '+stdEsc(t('fix.ambiguous').replace('{n}',p.candidates.length)):'')+'</div>';}
+          n++;
+          return '<label class="fix-row" style="display:flex;gap:6px;align-items:flex-start;padding:2px 0;cursor:pointer"><input type="checkbox" class="fix-pick" checked data-fix="'+encodeURIComponent(JSON.stringify({file:p.file,line:p.line,from:p.from,to:p.to}))+'"> <span class="fix-st" style="word-break:break-all">'+loc+' <code>'+stdEsc(p.from)+'</code> → <code>'+stdEsc(p.to)+'</code></span></label>';
+        }).join('')+(n?'<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><button class="btn sm primary fix-apply" data-fixroot="'+encodeURIComponent(root)+'">'+stdEsc(t('fix.apply').replace('{n}',n))+'</button><span class="muted">'+stdEsc(t('fix.consent'))+'</span></div>':'');
+        box.classList.remove('muted');
+      }).catch(function(){box.textContent=t('fix.fail');});
+    });
+  }
+  document.addEventListener('change',function(e){
+    if(!(e.target&&e.target.classList&&e.target.classList.contains('fix-pick')))return;
+    var box=e.target.closest('.fixbox');if(!box)return;
+    var n=box.querySelectorAll('.fix-pick:checked').length,b=box.querySelector('.fix-apply');
+    if(b){b.textContent=t('fix.apply').replace('{n}',n);b.disabled=!n;}
+  });
+  document.addEventListener('click',function(e){
+    var btn=e.target&&e.target.closest?e.target.closest('.fix-apply'):null;if(!btn)return;
+    var box=btn.closest('.fixbox'),root=decodeURIComponent(btn.getAttribute('data-fixroot')||'');
+    var picks=Array.prototype.slice.call(box.querySelectorAll('.fix-pick:checked'));
+    var fixes=picks.map(function(c){return JSON.parse(decodeURIComponent(c.getAttribute('data-fix')));});
+    if(!fixes.length)return;
+    btn.disabled=true;btn.textContent='…';
+    zPost('/paths-fix-apply?root='+encodeURIComponent(root)+'&fixes='+encodeURIComponent(JSON.stringify(fixes))).then(function(r){
+      r=r||{};var rs=r.results||[];var ok=rs.filter(function(x){return x.ok;}).length;
+      picks.forEach(function(c,i){var res=rs[i]||{};var st=c.parentNode.querySelector('.fix-st');c.disabled=true;if(res.ok){c.checked=false;if(st)st.innerHTML='✓ '+st.innerHTML;}else if(st){st.innerHTML=st.innerHTML+' <span class="muted">✗ '+stdEsc(res.error||t('fix.fail'))+'</span>';}});
+      btn.textContent=t('fix.applied').replace('{n}',ok).replace('{m}',rs.length);
+      zGet('/harness-updates?fresh=1').then(function(){refreshHarnessUpdates();});
+    }).catch(function(){btn.textContent=t('fix.fail');btn.disabled=false;});
+  });
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
     if(e.target.closest('#railApp')){updDialogApp();return;}
@@ -365,7 +406,7 @@
     var dd=Z.updDead||[];
     repos+=hdr('upd.deadHdr',dd.length,false);
     repos+=dd.length
-      ?line(t('upd.deadStatus').replace('{n}',dd.length),'')+'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚠ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.deadRow').replace('{n}',x.newlyDead))+(x.since?' · '+stdEsc(t('upd.deadSince').replace('{d}',String(x.since).slice(0,10))):'')+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div></div>';}).join('')+'</div>'
+      ?line(t('upd.deadStatus').replace('{n}',dd.length),'')+'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚠ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.deadRow').replace('{n}',x.newlyDead))+(x.since?' · '+stdEsc(t('upd.deadSince').replace('{d}',String(x.since).slice(0,10))):'')+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div><div class="fixbox muted" data-fixroot="'+encodeURIComponent(x.root)+'" style="font-size:11px;padding-left:22px;margin-top:3px">'+stdEsc(t('fix.loading'))+'</div></div>';}).join('')+'</div>'
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.deadHint'))+'</div>'
       :line('✓ '+t('upd.deadNone'));
     repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';

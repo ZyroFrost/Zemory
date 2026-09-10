@@ -30,10 +30,10 @@ import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
 import { vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
-import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, uiPort } from "./core/config.js";
+import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
-import { deadPathsSummary, loadPathsState, pathsStateFile } from "./docs/paths.js";
+import { applyFix, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
@@ -1822,6 +1822,42 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // its memory data are untouched (use `memory forget` to drop memory).
       const ok = forgetProject(u.searchParams.get("root") ?? "");
       return json(res, { ok, knownProjects: listKnownProjects() });
+    }
+    if (p === "/paths-fix") {
+      // Repair PROPOSALS for one linked repo's newly-dead paths (plan/21 §5.6). Runs the monitor for that root (≈0,5 s),
+      // so it is fetched lazily when the dialog opens, per repo that has something — not on every /harness-updates.
+      const root = u.searchParams.get("root") ?? "";
+      const known = listKnownProjects().find((k) => k.root.toLowerCase() === root.toLowerCase());
+      if (!known) return json(res, { ok: false, error: "not a linked project" });
+      try {
+        const r = pathsFixProposals(loadContext(known.root), { newlyOnly: true });
+        return json(res, { ok: true, root: known.root, proposals: r.proposals, newlyDead: r.monitor.newlyDead.length });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (req.method === "POST" && p === "/paths-fix-apply") {
+      // The click IS the consent to write into THAT repo, for THOSE lines (same doctrine as /harness-apply). Each fix is
+      // re-checked against the live line (`applyFix` refuses stale proposals); then the monitor re-runs so the chip and
+      // the state file reflect the repair immediately instead of at the next 30′ sweep.
+      const root = u.searchParams.get("root") ?? "";
+      const known = listKnownProjects().find((k) => k.root.toLowerCase() === root.toLowerCase());
+      if (!known) return json(res, { ok: false, error: "not a linked project" });
+      let fixes: Array<{ file: string; line: number; from: string; to: string }> = [];
+      try {
+        const raw = JSON.parse(u.searchParams.get("fixes") ?? "[]") as unknown;
+        if (Array.isArray(raw)) fixes = raw.filter((f): f is { file: string; line: number; from: string; to: string } => !!f && typeof f === "object" && typeof (f as { file?: unknown }).file === "string" && typeof (f as { to?: unknown }).to === "string");
+      } catch {
+        return json(res, { ok: false, error: "bad fixes payload" });
+      }
+      const results = fixes.map((f) => applyFix(known.root, f));
+      let newlyDead: number | null = null;
+      try {
+        newlyDead = monitorPaths(loadContext(known.root)).monitor.newlyDead.length;
+      } catch {
+        /* fail-open: the writes happened; the next sweep refreshes the state */
+      }
+      return json(res, { ok: results.every((r) => r.ok), results, newlyDead });
     }
     if (req.method === "POST" && p === "/harness-apply") {
       // Nút "Cập nhật repo" trong hộp cập nhật (user 2026-08-29: *"có cập nhật luôn được không"*). Ghi vào repo KHÁC —
