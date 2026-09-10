@@ -12,7 +12,7 @@ import { currentMemoryDir } from "./db.js";
 import { getWebAuth } from "../config/settings.js";
 
 /** Các nền web-chat mà nút/lệnh Quét biết tới. */
-export const WEB_PLATFORMS = ["chatgpt", "claude"];
+export const WEB_PLATFORMS = ["chatgpt", "claude", "gemini", "copilot"];
 
 /**
  * Nền nào ĐANG DÙNG trên máy này = đã có profile trình duyệt của zemory.

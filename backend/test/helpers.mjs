@@ -1,6 +1,38 @@
+import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+/**
+ * Chạy một đoạn mã ESM trong TIẾN TRÌNH CON, với kho (và do đó `config.json`) trỏ vào `<root>/data`.
+ *
+ * 🔴 Vì sao phải là con, không phải import động: `ENV_DB` ở `memory/db.ts` là HẰNG MODULE — nó đọc
+ * `GLOBAL_MEMORY_DB` LÚC NẠP. Set env rồi cache-bust riêng `settings.js` KHÔNG đủ, vì `settings` import
+ * `db` và `db` giữ giá trị cũ ⇒ mọi hàm đọc/ghi settings đi vào kho THẬT của người dùng. Đã trả giá 2026-09-10:
+ * một ca test ghi `pathsWatch=false` vào `data/config.json` thật, làm bẩn máy và làm ĐỎ một test khác.
+ * Con nhận env trước khi nạp bất cứ module nào, nên cô lập là thật.
+ *
+ * `body` là mã ESM, được nối vào sau hai biến sẵn có: `runCheck` (từ `dist/checks.js`) và `S`
+ * (`dist/config/settings.js`), cùng mảng `out` — đẩy gì vào `out` thì hàm này trả về cái đó.
+ * Đường kho ở `process.env.Z_ROOT`.
+ */
+export function runInMemoryChild(root, body) {
+  // Nối chuỗi, KHÔNG template literal: một `${…}` trong template sẽ nội suy ở tiến trình TEST (nơi
+  // biến chưa tồn tại) chứ không phải trong con — bản đầu dính đúng lỗi đó.
+  const code =
+    'const { runCheck } = await import("file://" + process.env.Z_DIST + "/checks.js");\n' +
+    'const S = await import("file://" + process.env.Z_DIST + "/config/settings.js");\n' +
+    "const out = [];\n" +
+    body +
+    "\nprocess.stdout.write(JSON.stringify(out));\n";
+  const dist = new URL("../../dist", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
+  const r = spawnSync(process.execPath, ["--input-type=module", "-e", code], {
+    encoding: "utf8",
+    env: { ...process.env, GLOBAL_MEMORY_DB: join(root, "data", "global_memory.db"), Z_DIST: dist, Z_ROOT: root },
+  });
+  if (r.status !== 0) throw new Error("con lỗi: " + String(r.stderr).slice(0, 700));
+  return JSON.parse(r.stdout);
+}
 
 export function tempDir(t, prefix) {
   const path = mkdtempSync(join(tmpdir(), prefix));

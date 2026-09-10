@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { classify, extractCandidates, isDictionaryFile, isHistoryFile, isHistoryLine, loadPathsState, monitorPaths, pathsCheck } from "../../dist/docs/paths.js";
 import { rmSync } from "node:fs";
 import { validate } from "../../dist/docs/validate.js";
-import { tempDir } from "./helpers.mjs";
+import { runInMemoryChild, tempDir } from "./helpers.mjs";
 
 const CLI = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
 
@@ -307,26 +307,28 @@ test("CLI: `paths check --gate` đỏ theo MỚI chết, `--strict` đỏ theo m
   assert.equal(rows.find((x) => x.root === root2).baselined, true, "repo chưa có baseline thì sweep ghi baseline cho nó");
 });
 
-test("check 'paths' (hàng CHÍNH THỨC): baseline ⇒ on · có mới chết ⇒ warn · ok luôn true (không phải lỗi hệ)", async (t) => {
+// Chạy trong TIẾN TRÌNH CON (`runInMemoryChild` ở helpers): từ 2026-09-10 `runCheck("paths")` còn đọc
+// công tắc `pathsWatch`, mà settings sống CẠNH KHO. Bản cũ set env rồi import động — KHÔNG cô lập được
+// (`ENV_DB` ở `memory/db.ts` là hằng module, đọc env lúc nạp) ⇒ ca này thật ra đọc config THẬT và màu
+// của nó phụ thuộc việc người dùng có tắt công tắc hay không. Xanh-vì-máy-đang-bật là xanh giả.
+// Cả hai lượt `runCheck` + cú xoá file ở giữa nằm trong MỘT con, để file trạng thái sống qua hai lượt.
+test("check 'paths' (hàng CHÍNH THỨC): baseline ⇒ on · có mới chết ⇒ warn · ok luôn true (không phải lỗi hệ)", (t) => {
   const dataDir = tempDir(t, "zemory-pdata-");
-  const prev = process.env.GLOBAL_MEMORY_DB;
-  process.env.GLOBAL_MEMORY_DB = join(dataDir, "global_memory.db");
-  try {
-    const { runCheck } = await import(`../../dist/checks.js?t=${Date.now()}`);
-    const root = repo(t);
-    plan(root, "# p\n`backend/src/real.ts`\n");
-    const c1 = await runCheck("paths", root);
-    assert.equal(c1.state, "on");
-    assert.equal(c1.ok, true);
-    rmSync(join(root, "backend", "src", "real.ts"));
-    const c2 = await runCheck("paths", root);
-    assert.equal(c2.state, "warn", "một đường vừa chết ⇒ pill Warning");
-    assert.equal(c2.ok, true, "warn nhưng KHÔNG off — phép kiểm chạy được, chỉ là có mục ruỗng");
-    assert.match(c2.detail, /1 (mới chết|newly dead)/);
-  } finally {
-    if (prev === undefined) delete process.env.GLOBAL_MEMORY_DB;
-    else process.env.GLOBAL_MEMORY_DB = prev;
-  }
+  const root = repo(t);
+  plan(root, "# p\n`backend/src/real.ts`\n");
+  const R = JSON.stringify(root);
+  const victim = JSON.stringify(join(root, "backend", "src", "real.ts"));
+  const [c1, c2] = runInMemoryChild(dataDir, [
+    'const fs = await import("node:fs");',
+    `out.push(await runCheck("paths", ${R}));`,
+    `fs.rmSync(${victim});`,
+    `out.push(await runCheck("paths", ${R}));`,
+  ].join("\n"));
+  assert.equal(c1.state, "on");
+  assert.equal(c1.ok, true);
+  assert.equal(c2.state, "warn", "một đường vừa chết ⇒ pill Warning");
+  assert.equal(c2.ok, true, "warn nhưng KHÔNG off — phép kiểm chạy được, chỉ là có mục ruỗng");
+  assert.match(c2.detail, /1 (mới chết|newly dead)/);
 });
 
 test("FE: hàng `paths` nằm ở HARNESS (DOCS), là kind check, và có trong danh sách SYS_CHECKS", async () => {

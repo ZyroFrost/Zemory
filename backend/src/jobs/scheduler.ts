@@ -763,7 +763,7 @@ async function webTick(): Promise<void> {
   // Danh sách việc dựng TRƯỚC khi giành token: nếu chẳng có lane nào tới lượt thì đừng đụng
   // vào cổng ghi — một lượt claim/release rỗng vẫn làm `memory_jobs` báo "đang bận".
   const todo = webPullTargets(
-    platformsInUse(),
+    platformsInUse().filter((k) => !PLATFORMS[k]?.loginOnly),
     pullableAccountsOf,
     (p) => PLATFORMS[p]?.source,
     hostname() || "unknown",
@@ -778,7 +778,9 @@ async function webTick(): Promise<void> {
       if (chainAbort) break; // nút người dùng bấm — nhường ngay, phần còn lại để nhịp sau
       try {
         const r = await scanWeb({ platform: j.platform, account: j.account, hidden: true }, (m) => log(`web ${j.lane}: ${m}`));
-        const ok = r.status === "done";
+        // `login-only` là KẾT CỤC TỐT cho nền chưa mở đường kéo: khe đã nối, không có gì để kéo.
+        // Xếp nó là thất bại thì hàng nguồn treo ⚠ vĩnh viễn cho một trạng thái hoàn toàn bình thường.
+        const ok = r.status === "done" || r.status === "login-only";
         setWebPull(j.lane, { ok, status: r.status, pulled: r.pulled });
         log(
           ok

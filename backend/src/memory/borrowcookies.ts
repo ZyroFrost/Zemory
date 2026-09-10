@@ -85,6 +85,11 @@ export function listSourceProfiles(src: CookieSource): string[] {
 const PLATFORM_HOSTS: Record<string, string[]> = {
   chatgpt: ["chatgpt.com", "openai.com"],
   claude: ["claude.ai", "anthropic.com"],
+  // Nền hạng CHỈ-NỐI (2026-09-10). Gemini đăng nhập BẰNG phiên Google, nên host của nền chính là
+  // `google.com` — trùng với AUTH_HOSTS, và đó là lý do đường Mượn hợp lý ở đây: người dùng đã đăng
+  // nhập Google trong trình duyệt của họ thì không phải gõ lại gì.
+  gemini: ["gemini.google.com", "google.com"],
+  copilot: ["github.com"],
 };
 
 /**
@@ -103,6 +108,11 @@ const PLATFORM_HOSTS: Record<string, string[]> = {
 const SESSION_COOKIE_LIKE: Record<string, string> = {
   chatgpt: "__Secure-next-auth.session-token%",
   claude: "sessionKey",
+  // Tên cookie phải CHỨNG MINH có phiên, không phải cookie vãng lai (bài học 2026-09-02: một cookie
+  // lạc của chatgpt.com làm bề mặt mời mượn từ nguồn KHÔNG có phiên). `__Secure-1PSID` = Google đã
+  // đăng nhập · `user_session` = GitHub đã đăng nhập.
+  gemini: "__Secure-1PSID",
+  copilot: "user_session",
 };
 
 /**
