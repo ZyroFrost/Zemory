@@ -37,7 +37,10 @@ function fakeBrowser(t, rows) {
 const skip = process.platform !== "win32" ? { skip: "Windows-only path" } : {};
 
 test("nền không khai ⇒ từ chối, không đụng gì", skip, () => {
-  const r = borrowCookies({ platform: "gemini" });
+  // Dùng một tên KHÔNG BAO GIỜ là nền thật. Trước đây ca này dùng "gemini" làm ví dụ âm — tới
+  // 2026-09-10 gemini thành nền THẬT và ca này đỏ: ví dụ âm mượn một tên có thể thành dương là
+  // một quả bom hẹn giờ, không phải một phép kiểm.
+  const r = borrowCookies({ platform: "khong-phai-nen-that" });
   assert.equal(r.ok, false);
   assert.match(r.error, /unknown platform/);
 });
