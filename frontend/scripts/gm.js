@@ -84,7 +84,7 @@
     // thái CŨ lên nút vừa bật — nhìn y như nó tự tắt, vòng poll sau lại tự bật. Trong 90s sau
     // cú bấm, giá trị LOCAL thắng; hết cửa sổ thì server là sự thật (POST hỏng thật thì sau
     // 90s nút tự quay về đúng trạng thái server — không giấu lỗi vĩnh viễn).
-    try{var fa=Z.flagsAt||{};['hybrid','rerank','scope'].forEach(function(k){
+    try{var fa=Z.flagsAt||{};['hybrid','rerank','scope','pathsWatch'].forEach(function(k){
       if(fa[k]&&Date.now()-fa[k]<90000&&Z.mem&&m[k]!==Z.mem[k])m[k]=Z.mem[k];
     });}catch(_){}
     Z.mem=m;

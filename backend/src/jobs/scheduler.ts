@@ -29,7 +29,7 @@ import { constants, setPriority } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { hostname } from "node:os";
-import { type AutosyncSchedule, getAutosync, getAutosyncLastAt, getAutosyncRunAt, getAutosyncSchedule, getDriveDir, getScheduler, getScopeExclude, getVecReconcileLastAt, getWebPull, setAutosyncLastAt, setAutosyncLastResult, setAutosyncRunAt, setVecReconcileLastAt, setWebPull } from "../config/settings.js";
+import { type AutosyncSchedule, getAutosync, getAutosyncLastAt, getAutosyncRunAt, getAutosyncSchedule, getDriveDir, getScheduler, getScopeExclude, getPathsWatch, getVecReconcileLastAt, getWebPull, setAutosyncLastAt, setAutosyncLastResult, setAutosyncRunAt, setVecReconcileLastAt, setWebPull } from "../config/settings.js";
 
 /**
  * LỊCH tự sync — hàm THUẦN để cổng đo (user chốt 2026-08-29: chọn "sau mỗi N phút/giờ" hoặc "theo khung giờ trong ngày").
@@ -351,8 +351,11 @@ async function maintainTick(): Promise<void> {
     //     baseline (a folder moved/renamed ⇒ docs still point at the old name). ~0.5 s per repo,
     //     read-only on the repos, writes one derived state file under data/. In a CHILD like the
     //     others: 17 repos × fs walks would otherwise stall the daemon's event loop for seconds.
-    await runStep("paths", ["paths", "sweep"]);
-    if (chainAbort) return;
+    //     Watch OFF (plan/21 §5.7) ⇒ no sweep: the user asked for silence, so nothing may keep writing state either.
+    if (getPathsWatch()) {
+      await runStep("paths", ["paths", "sweep"]);
+      if (chainAbort) return;
+    }
 
     // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
     //    chuỗi này làm backup chết theo công tắc `scheduler`.

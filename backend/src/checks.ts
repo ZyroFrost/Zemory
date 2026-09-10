@@ -14,7 +14,7 @@ import { monitorPaths } from "./docs/paths.js";
 import { tr } from "./i18n/index.js";
 import { embedDims, embedProbe } from "./memory/embed.js";
 import { rerankProbe } from "./memory/rerank.js";
-import { getRerankSetting } from "./config/settings.js";
+import { getPathsWatch, getRerankSetting } from "./config/settings.js";
 import { vectorIndexInfo } from "./memory/vectors.js";
 import { cloudSyncReport } from "./memory/cloudguard.js";
 import { currentMemoryDb, currentMemoryDir } from "./memory/db.js";
@@ -301,6 +301,8 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
       // plan/21 §2.3 — the OFFICIAL row. Colour follows NEWLY dead only: prose that was dead at the
       // baseline (a rejected design, a hypothetical viewer) is legacy, not rot. The first run writes the
       // baseline and is green by definition; from then on amber means "something died since".
+      // Watch OFF (plan/21 §5.7): the row says so and stays out of the Health roll-up. Not a failure — a choice.
+      if (!getPathsWatch()) return { feature, ok: true, state: "off", detail: tr("theo dõi đang TẮT — bật lại bằng nút bên phải", "watch is OFF — turn it back on with the button on the right") };
       const r = monitorPaths(ctx);
       const n = r.monitor.newlyDead.length;
       const since = r.monitor.baselineAt ? r.monitor.baselineAt.slice(0, 10) : "";
