@@ -44,19 +44,19 @@ seeded.close();
 
 after(() => rmSync(DIR, { recursive: true, force: true }));
 
-test("config RỖNG ⇒ phạm vi nhúng tool vẫn là bộ ĐÃ ĐO (không rơi về rỗng)", () => {
+test("an EMPTY config still leaves the tool embed scope at the MEASURED set (it does not fall back to empty)", () => {
   assert.deepEqual(getEmbedTools(), EMBED_TOOLS_DEFAULT);
   assert.ok(getEmbedTools().includes("Bash"), "Bash phủ 6/14 nhãn tool_use — bỏ nó là bỏ lớp lớn nhất");
   assert.ok(!getEmbedTools().includes("Read"), "Read là đường dẫn thuần — nhúng 768 chiều gần như vô nghĩa");
 });
 
-test("KHÔNG có biến môi trường: tin tool trong phạm vi VẪN được đếm là tồn đọng", () => {
+test("with NO environment variable, in-scope tool messages are STILL counted as backlog", () => {
   // m1 (prose) + m2 (Bash) + m4 (Edit) = 3 tin chờ nhúng; m3 (Read) nằm ngoài.
   assert.equal(vectorRemaining(), 3, "tin tool trong phạm vi phải nằm trong số tồn đọng — đây chính là chỗ từng rò");
   assert.equal(vectorOutOfScope(), 1, "tin ngoài phạm vi phải đếm RIÊNG, không được lẫn vào 0");
 });
 
-test("đổi phạm vi trong config là hai con số đổi theo (một lần chỉnh, mọi tiến trình thấy)", () => {
+test("changing the scope in the config changes both numbers (one edit, every process sees it)", () => {
   setEmbedTools(["Edit"]); // thu hẹp: chỉ còn Edit
   try {
     assert.equal(vectorRemaining(), 2, "còn prose + Edit");

@@ -69,7 +69,7 @@ const oldWay = (dbPath) => {
   return { chars, embeddable: cov.embeddable, covered: cov.covered, remaining: vectorRemaining(dbPath), outOfScope: vectorOutOfScope(dbPath) };
 };
 
-test("GỘP = RỜI trên kho đã nhúng, kể cả ca tin chỉ có CỬA SỔ PHỤ", () => {
+test("MERGED = SEPARATE on an embedded store, including messages that only have a SIDE WINDOW", () => {
   const dbPath = seed();
   assert.deepEqual(memoryStats(dbPath), oldWay(dbPath), "năm con số phải khớp tuyệt đối");
   // Neo ca lệch định nghĩa: nếu `covered` bị hạ xuống dùng chung phép với `remaining` thì tin 6
@@ -79,13 +79,13 @@ test("GỘP = RỜI trên kho đã nhúng, kể cả ca tin chỉ có CỬA SỔ
   assert.equal(s.remaining, 2, "tin 2 và tin 6 chưa có vector ở chính id ⇒ vẫn nằm trong hàng đợi nhúng");
 });
 
-test("GỘP = RỜI trên kho CHƯA TỪNG NHÚNG — fail-open phải giống hệt bản cũ (điều 9)", () => {
+test("MERGED = SEPARATE on a store that NEVER embedded - fail-open must match the old build exactly (constitution 9)", () => {
   const dbPath = seed({ withVectors: false });
   assert.deepEqual(memoryStats(dbPath), oldWay(dbPath), "không có bảng vector ⇒ vẫn phải trả số, không ném");
   assert.equal(memoryStats(dbPath).covered, 0, "chưa nhúng gì thì tử số là 0");
 });
 
-test("`chars` đếm TOÀN BỘ nội dung, không lọc theo phạm vi nhúng", () => {
+test("`chars` counts ALL content, unfiltered by embed scope", () => {
   const dbPath = seed();
   const db = new Database(dbPath);
   const all = Number(db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get().c);
@@ -97,7 +97,7 @@ test("`chars` đếm TOÀN BỘ nội dung, không lọc theo phạm vi nhúng",
 // ba ca trên vẫn xanh — máy chạy test không có lane nào bị loại nên `notExcluded` luôn là `(1=1)`,
 // tức nhánh đó chưa từng bị soi. Bộ lọc phải chạy trong TIẾN TRÌNH CON: `getScopeExclude()` đọc
 // `config.json` cạnh kho, mà kho mặc định là kho THẬT của người dùng (bẫy đã ghi 2026-09-10).
-test("`remaining` PHẢI trừ lane bị bỏ tick — `covered`/`outOfScope` thì KHÔNG (giữ đúng bản cũ)", (t) => {
+test("`remaining` MUST subtract the un-ticked lane - `covered`/`outOfScope` must NOT (old behaviour preserved)", (t) => {
   const root = tempDir(t, "zemory-stats-scope-");
   mkdirSync(join(root, "data"), { recursive: true });
   const steps = runInMemoryChild(root, `
@@ -123,7 +123,7 @@ test("`remaining` PHẢI trừ lane bị bỏ tick — `covered`/`outOfScope` th
   assert.equal(by.after.stats.outOfScope, by.after.outOfScope, "`outOfScope` cũng không đụng bộ lọc lane");
 });
 
-test("phép 'đã có vector' hỏi BẢNG BÓNG, và hai vị ngữ là phủ định của nhau", () => {
+test("the 'already has a vector' test asks the SHADOW TABLE, and the two predicates are negations of each other", () => {
   const dbPath = seed();
   const db = vecConnect(dbPath);
   try {

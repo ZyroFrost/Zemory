@@ -68,7 +68,7 @@ function vectorOf(path, uuid) {
   }
 }
 
-test("vector đi cùng gói và gắn ĐÚNG tin ở máy nhận (id hai máy lệch nhau)", async (t) => {
+test("vectors travel with the bundle and attach to the RIGHT message on the receiver (the two machines' ids differ)", async (t) => {
   const root = tempDir(t, "zemory-vecship-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -108,7 +108,7 @@ test("vector đi cùng gói và gắn ĐÚNG tin ở máy nhận (id hai máy l�
 // chỉ chở **51.349/208.612 = 25%**, `rejected=0`, không log nào báo.
 // Ba ca kia KHÔNG bắt được vì ở quy mô nhỏ id nguồn (1,2,3) TÌNH CỜ trùng id snapshot (1,2,3).
 // Ca này phá đúng sự trùng hợp đó: ép id nguồn bắt đầu từ 5000.
-test("id trong gói là ID GIẢ — vector vẫn phải sang đủ khi id nguồn KHÔNG trùng id gói", async (t) => {
+test("the ids inside the bundle are SYNTHETIC - vectors must still arrive in full when the source id does NOT match the bundle id", async (t) => {
   const root = tempDir(t, "zemory-vecship-id-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -148,7 +148,7 @@ test("id trong gói là ID GIẢ — vector vẫn phải sang đủ khi id ngu�
 // chở khai `msg_uuid NOT NULL`, mà lại ghi theo LÔ 500 trong MỘT giao dịch ⇒ đúng một tin NULL
 // giết cả lô. Hai bài học nằm trong một ca: bỏ tin không định danh được, VÀ đừng để một hàng
 // hỏng kéo cả lô đi.
-test("một tin uuid=NULL KHÔNG được làm mất vector của những tin khác cùng lô", async (t) => {
+test("one message with uuid=NULL must NOT cost the other messages in the batch their vectors", async (t) => {
   const root = tempDir(t, "zemory-vecship-null-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -207,7 +207,7 @@ test("một tin uuid=NULL KHÔNG được làm mất vector của những tin kh
   assert.deepEqual(vecAt(B, idOf(B)), vecAt(A, idOf(A)), "vector của tin không-uuid phải khớp, không được lệch hàng");
 });
 
-test("lệch cấu hình nhúng ⇒ TỪ CHỐI vector kèm lý do, tin vẫn vào đủ", async (t) => {
+test("a mismatched embed configuration REFUSES the vectors with a reason, while the messages still arrive in full", async (t) => {
   const root = tempDir(t, "zemory-vecship-cfg-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -227,7 +227,7 @@ test("lệch cấu hình nhúng ⇒ TỪ CHỐI vector kèm lý do, tin vẫn v�
   assert.equal(vectorOf(B, "u1"), null, "tin mới không được mang vector lạ");
 });
 
-test("kho nguồn chưa nhúng ⇒ gói không có vector, merge vẫn chạy đủ (fail-open)", async (t) => {
+test("a source store that never embedded produces a bundle with no vectors, and the merge still completes (fail-open)", async (t) => {
   const root = tempDir(t, "zemory-vecship-none-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -286,7 +286,7 @@ function seedPartial(path, msgs, meta = { dims: DIMS, profile: "gemma-prompt-v1"
 
 const nowIso = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString();
 
-test("tin MỚI chưa nhúng thì gói DỪNG lại trước nó — không gửi chữ bỏ rơi vector", async (t) => {
+test("when a NEW message is not embedded yet the bundle STOPS before it - never ship text that abandons its vector", async (t) => {
   const root = tempDir(t, "zemory-vecship-frontier-");
   const A = join(root, "a.db");
   const B = join(root, "b.db");
@@ -311,7 +311,7 @@ test("tin MỚI chưa nhúng thì gói DỪNG lại trước nó — không gử
   assert.equal(r.vectorsApplied, 1, "tin đi kèm đúng vector của mình");
 });
 
-test("CA ÂM: tin CŨ chưa nhúng KHÔNG được chặn — chặn là đường sync đứng vĩnh viễn", async (t) => {
+test("NEGATIVE CASE: an OLD un-embedded message must NOT block - blocking would stall the sync path forever", async (t) => {
   const root = tempDir(t, "zemory-vecship-stale-");
   const A = join(root, "a.db");
   const keyPath = join(root, "share.key");
@@ -327,7 +327,7 @@ test("CA ÂM: tin CŨ chưa nhúng KHÔNG được chặn — chặn là đườ
   assert.equal(e.rows?.messages, 2, "tin cũ quá cửa sổ phải cho đi, không được giam cả gói vì nó");
 });
 
-test("CA ÂM: kho chưa từng nhúng thì KHÔNG chặn gì (máy không chạy embed vẫn gửi được)", async (t) => {
+test("NEGATIVE CASE: a store that never embedded blocks nothing (a machine that does not run embed can still send)", async (t) => {
   const root = tempDir(t, "zemory-vecship-novec-");
   const A = join(root, "a.db");
   const keyPath = join(root, "share.key");
@@ -349,7 +349,7 @@ test("CA ÂM: kho chưa từng nhúng thì KHÔNG chặn gì (máy không chạy
 // van 24 giờ của `embedFrontierId` cố ý cho qua để sync không đứng), nên khối đó chở chữ mà
 // không chở vector. Máy nhận vì thế phải tự nhúng lại — đo trên kho thật 2026-08-25: thiếu
 // ~22.000 vector ⇒ ~12 giờ máy. Lệnh bù phải vá được đúng phần đó mà KHÔNG đụng byte cũ.
-test("bù vector cho kho chung: nối thêm một khối, máy nhận nhận đủ vector (không ghi đè)", async (t) => {
+test("vector top-up for the shared channel: one extra block is appended and the receiver gets every vector (no overwrite)", async (t) => {
   sandboxHome(t);
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const { openMemory: open } = await import("../../dist/memory/db.js");
@@ -391,7 +391,7 @@ test("bù vector cho kho chung: nối thêm một khối, máy nhận nhận đ�
   for (const uuid of ["u1", "u2"]) assert.deepEqual(vectorOf(B, uuid), vectorOf(A, uuid), `vector ${uuid} phải khớp máy nguồn`);
 });
 
-test("CA ÂM: kho chung đã đủ vector ⇒ KHÔNG nối khối rác", async (t) => {
+test("NEGATIVE CASE: a shared channel already holding every vector must NOT get a junk block appended", async (t) => {
   sandboxHome(t);
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const root = tempDir(t, "zemory-catchup-noop-");
@@ -460,7 +460,7 @@ function sandboxHome(t) {
 // nằm trên ranh giới mà container cũ đang có ⇒ kênh hụt tin cho tới lượt sync sau, máy nào merge
 // trúng cửa sổ đó thì nhận thiếu. Giữa "kênh thiếu VECTOR" và "kênh thiếu TIN": thiếu tin nặng
 // hơn — vector bù được bằng `vectors-catchup`, tin thì không.
-test("CA MẤT DỮ LIỆU: gói THAY THẾ (since=0) phải chở ĐỦ tin, kể cả tin chưa nhúng", async (t) => {
+test("DATA-LOSS CASE: a REPLACEMENT bundle (since=0) must carry EVERY message, including the un-embedded ones", async (t) => {
   const root = tempDir(t, "zemory-vecship-baseline-");
   const A = join(root, "a.db");
   const keyPath = join(root, "share.key");
@@ -483,7 +483,7 @@ test("CA MẤT DỮ LIỆU: gói THAY THẾ (since=0) phải chở ĐỦ tin, k�
 // khoá dự phòng `messageKey` (timestamp+content), nhưng `vectorCatchUp` lọc `uuid IS NOT NULL` ở
 // CẢ HAI phía so ⇒ 10.271 vector của chúng không bao giờ được bù — máy mới phải nhúng lại, đúng
 // thứ HP điều 16 cấm. Ca này: một tin có uuid + một tin KHÔNG uuid, cả hai đều phải sang đủ.
-test("bù vector: tin uuid=NULL cũng được dò thiếu và chở sang — không bị bỏ rơi ngoài khoá", async (t) => {
+test("vector top-up: a uuid=NULL message is also detected as missing and carried over - never left outside the key", async (t) => {
   sandboxHome(t);
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const { openMemory: open } = await import("../../dist/memory/db.js");
@@ -522,7 +522,7 @@ test("bù vector: tin uuid=NULL cũng được dò thiếu và chở sang — kh
 // id > watermark ⇒ vector nhúng-sau không còn chuyến nào chở. Diễn tập phục hồi 27/08 đo kho
 // chung thiếu 16.405 vector mà kho này ĐANG CÓ — máy mới phải nhúng lại, trái HP điều 16.
 // Nay mỗi lượt delta kèm vector có ở kho mà chưa ghi sổ `vec_shipped`, KỂ CẢ khi 0 tin mới.
-test("vector nhúng SAU khi tin đã lên kênh: lượt sync kế phải chở nó dù KHÔNG có tin mới", async (t) => {
+test("a vector embedded AFTER its message reached the channel: the next sync must carry it even with NO new messages", async (t) => {
   sandboxHome(t);
   const { syncDrive } = await import("../../dist/memory/share.js");
   const root = tempDir(t, "zemory-late-vec-");
@@ -573,7 +573,7 @@ test("vector nhúng SAU khi tin đã lên kênh: lượt sync kế phải chở 
 // F2: merge chỉ khử trùng NULL so với hàng ĐÃ CÓ, nên hai bản giống nhau trong CÙNG một gói đều
 // được chèn — máy nhận mang gấp đôi. F1: thước bù đếm theo HÀNG, thấy bản trùng không vector là
 // "thiếu" và nối một khối 49 MB vô ích MỖI LƯỢT, dù bản kia đã có vector.
-test("F2: gói mang hai tin NULL y hệt ⇒ máy nhận chỉ giữ MỘT (khử trùng ngay trong gói)", async (t) => {
+test("F2: a bundle holding two identical NULL messages leaves the receiver with only ONE (deduplicated inside the bundle)", async (t) => {
   sandboxHome(t);
   const { openMemory: open } = await import("../../dist/memory/db.js");
   const root = tempDir(t, "zemory-dupnull-");
@@ -599,7 +599,7 @@ test("F2: gói mang hai tin NULL y hệt ⇒ máy nhận chỉ giữ MỘT (kh�
   b.close();
 });
 
-test("F2 (đầu-cuối): máy khác mang bản NULL trùng TRONG kho nó ⇒ thước bù từ máy này báo thiếu 0, KHÔNG nối khối", async (t) => {
+test("F2 (end to end): another machine holding duplicate NULL copies IN ITS OWN store makes this machine's top-up measure 0 missing and append NO block", async (t) => {
   sandboxHome(t);
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const { openMemory: open } = await import("../../dist/memory/db.js");

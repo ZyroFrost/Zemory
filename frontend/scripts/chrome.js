@@ -180,7 +180,7 @@
     document.querySelectorAll('[data-i18n-title]').forEach(function(el){var k=el.getAttribute('data-i18n-title');el.title=t(k);});
     document.querySelectorAll('[data-i18n-ph]').forEach(function(el){var k=el.getAttribute('data-i18n-ph');el.placeholder=t(k);});
     document.querySelectorAll('[data-i18n-hint]').forEach(function(el){var k=el.getAttribute('data-i18n-hint');el.setAttribute('data-hint',t(k));});
-    // aria-label cung la chu NGUOI DUNG (doc man hinh) nen phai song ngu — 02_RULES §Ngon ngu.
+    // An aria-label is USER-FACING text too (screen readers), so it must be bilingual — 02_RULES S Language.
     document.querySelectorAll('[data-i18n-aria]').forEach(function(el){var k=el.getAttribute('data-i18n-aria');el.setAttribute('aria-label',t(k));});
   }
   // ---- "?" hint tooltip: fixed-position popup on body (never clipped by cards) ----

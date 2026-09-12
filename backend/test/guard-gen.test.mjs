@@ -34,7 +34,7 @@ function fire(hooksDir, toolName, toolInput) {
   });
 }
 
-test("sinh đủ bộ 4 file, policy mang dấu zemory + đường cấm từ marker", (t) => {
+test("it generates all 4 files, with the policy carrying the zemory mark and the protected paths from the marker", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   for (const f of ["policy.json", "guard.cjs", "precommit-guard.cjs", ".gitignore"]) {
@@ -46,7 +46,7 @@ test("sinh đủ bộ 4 file, policy mang dấu zemory + đường cấm từ ma
   assert.ok(policy.secret_names.includes(".env"), "bộ mẫu secret mặc định phải có mặt");
 });
 
-test("Write vào đường cấm ⇒ exit 2; flag một-lần: tạo→qua→TỰ XOÁ→chặn lại (§5.6)", (t) => {
+test("a Write into a protected path exits 2; the one-shot flag: create, pass, SELF-DELETE, block again (S5.6)", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   const target = join(root, "docs", "report.md");
@@ -82,7 +82,7 @@ test("Write vào đường cấm ⇒ exit 2; flag một-lần: tạo→qua→T�
   assert.equal(out.status, 0, "đường không cấm phải đi qua êm");
 });
 
-test("git push: chặn không flag · qua với flag · flag chỉ mở cho ĐÚNG lệnh đã xin", (t) => {
+test("git push: blocked without a flag, passes with one, and the flag only opens for the EXACT command requested", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 2);
@@ -95,7 +95,7 @@ test("git push: chặn không flag · qua với flag · flag chỉ mở cho ĐÚ
   assert.equal(fire(r.hooksDir, "Bash", { command: "git push origin main" }).status, 2, "flag đã thu hồi");
 });
 
-test("secret vào git add ⇒ chặn KHÔNG đường vượt; .env.example được tha; tên secret trong -m KHÔNG chặn oan", (t) => {
+test("a secret in git add is blocked with NO way around; .env.example is spared; a secret name inside -m is not falsely blocked", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
 
@@ -113,7 +113,7 @@ test("secret vào git add ⇒ chặn KHÔNG đường vượt; .env.example đư
   assert.equal(fire(r.hooksDir, "Bash", { command: "git add -A" }).status, 2, "git add -A bị chặn (lệnh đã gây sự cố 04/08)");
 });
 
-test("đọc file key: chặn qua Read lẫn qua shell; guard hỏng input thì KHÔNG chặn bừa", (t) => {
+test("reading a key file is blocked through Read and through the shell; on malformed input the guard does NOT block blindly", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   assert.equal(fire(r.hooksDir, "Read", { file_path: join(root, "id_rsa") }).status, 2);
@@ -124,7 +124,7 @@ test("đọc file key: chặn qua Read lẫn qua shell; guard hỏng input thì 
   assert.equal(junk.status, 0, "guard không parse được input thì phải đứng sang một bên");
 });
 
-test("precommit-guard: secret trong staging ⇒ exit 1 nêu tên; staging sạch ⇒ exit 0", (t) => {
+test("precommit-guard: a secret in staging exits 1 naming it; clean staging exits 0", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
   const git = (...a) => spawnSync("git", a, { cwd: root, encoding: "utf8" });
@@ -142,7 +142,7 @@ test("precommit-guard: secret trong staging ⇒ exit 1 nêu tên; staging sạch
   assert.match(out.stderr, /\.env/, "phải nêu tên file phạm luật");
 });
 
-test("sinh lại: file của mình làm tươi khi lệch, file KHÔNG mang dấu thì giữ nguyên (N1)", (t) => {
+test("regeneration: our own files are refreshed when they drift, files without our mark are left alone (N1)", (t) => {
   const root = repo(t);
   const r1 = generateGuards(root);
   assert.equal(r1.added.length, 4);
@@ -156,7 +156,7 @@ test("sinh lại: file của mình làm tươi khi lệch, file KHÔNG mang dấ
   assert.equal(readFileSync(join(r1.hooksDir, "guard.cjs"), "utf8"), "// ban rieng cua repo\n");
 });
 
-test("guardDrift: bản đã sinh trôi khỏi bản hôm nay ⇒ NÊU TÊN; bản riêng của repo ⇒ IM (2026-08-20)", (t) => {
+test("guardDrift: a generated copy that drifted from today's build is NAMED; a repo's own copy stays SILENT (2026-08-20)", (t) => {
   // Vì sao có: guard KHÔNG tự làm mới — ngày 2026-08-20 vá guard HAI vòng, mọi repo đã cắm
   // giữ bản hở cho tới khi ai đó NHỚ chạy `hook guard`. Doctor gọi hàm này để máy nhắc thay người.
   const root = repo(t);

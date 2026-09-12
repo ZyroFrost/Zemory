@@ -12,14 +12,14 @@ import { readFileSync } from "node:fs";
 
 const SRC = readFileSync(new URL("../src/checks.ts", import.meta.url), "utf8");
 
-test("check `vector` + `rerank` tồn tại và đi qua PROBE thật, không đọc công tắc", () => {
+test("the `vector` and `rerank` checks exist and go through a real PROBE rather than reading a switch", () => {
   assert.match(SRC, /feature === "vector"/, "phải có nhánh check vector");
   assert.match(SRC, /feature === "rerank"/, "phải có nhánh check rerank");
   assert.match(SRC, /await embedProbe\(\)/, "vector phải gọi embedProbe (kiểm model THẬT)");
   assert.match(SRC, /await rerankProbe\(\)/, "rerank phải gọi rerankProbe");
 });
 
-test("dims lấy từ vec_config (stored-dims-authoritative), KHÔNG phải dims model", () => {
+test("dims come from vec_config (stored-dims-authoritative), NOT from the model dims", () => {
   assert.match(SRC, /vectorIndexInfo\(\)\.dims/, "phải đọc dims đã build; in dims model là nói sai với người dùng");
   const branch = SRC.slice(SRC.indexOf('feature === "vector"'), SRC.indexOf('feature === "rerank"'));
   const storedAt = branch.indexOf("vectorIndexInfo");
@@ -27,18 +27,18 @@ test("dims lấy từ vec_config (stored-dims-authoritative), KHÔNG phải dims
   assert.ok(storedAt >= 0 && nativeAt > storedAt, "dims đã build phải được ưu tiên TRƯỚC dims model");
 });
 
-test("rerank TẮT vẫn ok=true — opt-in là trạng thái đúng, không phải lỗi (plan/05 §4.E)", () => {
+test("rerank OFF still means ok=true - opt-in is a correct state, not a fault (plan/05 S4.E)", () => {
   const branch = SRC.slice(SRC.indexOf('feature === "rerank"'));
   assert.match(branch, /getRerankSetting\(\)/, "phải đọc công tắc để phân biệt tắt-có-chủ-đích với hỏng");
   assert.match(branch, /ok: true,\s*state: "off"/, "tắt ⇒ ok=true state=off, KHÔNG được báo đỏ");
 });
 
-test("`/automation` phơi cờ job nền (thứ đã làm mọi endpoint chậm 2–9× mà UI im lặng)", () => {
+test("`/automation` exposes the background job flag (the thing that made every endpoint 2-9x slower while the UI stayed silent)", () => {
   const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   assert.match(UI, /embedRunning: schedulerChildRunning\(\)/, "payload automation phải có embedRunning");
 });
 
-test("`doctor` cảnh báo khi tồn tại HAI file config.json", () => {
+test("`doctor` warns when TWO config.json files exist", () => {
   const H = readFileSync(new URL("../src/commands/harness.ts", import.meta.url), "utf8");
   assert.match(H, /function warnStrayConfig\(\)/, "phải có hàm cảnh báo");
   assert.match(H, /warnStrayConfig\(\);/, "và doctor phải GỌI nó — định nghĩa suông thì vô dụng");
@@ -47,7 +47,7 @@ test("`doctor` cảnh báo khi tồn tại HAI file config.json", () => {
     "CHỈ báo, không được tự xoá file của người dùng");
 });
 
-test("CSS `.bell` đã gỡ và không phần tử nào dùng", () => {
+test("the CSS `.bell` is gone and no element uses it", () => {
   const CSS = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
   const MK = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8")
     + readAppJs();
@@ -65,7 +65,7 @@ test("CSS `.bell` đã gỡ và không phần tử nào dùng", () => {
 import { readAppJs } from "./helpers.mjs";
 const APPJS = readAppJs();
 
-test("vector + rerank khai `probe` ⇒ có nút Kiểm trong UI", () => {
+test("vector and rerank declare `probe`, so the UI gets a Check button", () => {
   // KHÔNG dùng [^}]* — entry rerank có hàm lồng `get:function(m){…}` nên nó dừng sớm
   // (test đỏ oan lần đầu). Cắt theo mốc entry kế tiếp mới đúng.
   const entry = (k) => {
@@ -78,7 +78,7 @@ test("vector + rerank khai `probe` ⇒ có nút Kiểm trong UI", () => {
   assert.match(APPJS, /if\(f\.probe\)return '<button class="btn sm" data-sys-check/, "phải render nút cho feature có probe");
 });
 
-test("kết quả probe được HIỂN THỊ, không nằm im trong Z.checks", () => {
+test("probe results are DISPLAYED rather than sitting unused in Z.checks", () => {
   assert.match(APPJS, /function probeLine\(f\)/, "phải có hàm vẽ kết quả probe");
   assert.match(APPJS, /\+probeLine\(f\)/, "và renderSysDetail phải GỌI nó — định nghĩa suông thì vẫn vô hình");
   assert.match(APPJS, /probeLine[\s\S]{0,400}Z\.checks/, "probeLine phải đọc kết quả từ Z.checks");
@@ -89,7 +89,7 @@ test("kết quả probe được HIỂN THỊ, không nằm im trong Z.checks", 
 // dòng "✓" nói sai ở đây nghĩa là người đọc tin rằng rác đã dọn (hoặc tin rằng không có gì bị
 // xoá) trong khi sự thật ngược lại. Ba ràng buộc dưới đây đều là chỗ bản đầu của tính năng này
 // ĐÃ SAI trong ngày và phải sửa lại.
-test("check `profile-reclaim` ĐO ĐĨA THẬT, không đọc công tắc", () => {
+test("the `profile-reclaim` check MEASURES REAL DISK instead of reading a switch", () => {
   assert.match(SRC, /feature === "profile-reclaim"/, "phải có nhánh check");
   const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
   assert.match(branch, /listSetAside\(\)/, "phải đọc thư mục thật; một công tắc bật KHÔNG chứng minh rác đã dọn");
@@ -97,7 +97,7 @@ test("check `profile-reclaim` ĐO ĐĨA THẬT, không đọc công tắc", () =
   assert.doesNotMatch(branch, /getScheduler\(\)|getAutosync\(\)/, "KHÔNG được suy trạng thái từ công tắc scheduler");
 });
 
-test("check `profile-reclaim`: 'chưa tới lượt quét' KHÔNG được làm doctor ĐỎ (điều 9)", () => {
+test("the `profile-reclaim` check: 'not scanned yet' must NOT turn doctor RED (constitution 9)", () => {
   const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
   // Mọi kết cục của nhánh này phải ok:true — còn rác quá hạn là "sẽ dọn ở lượt 6 giờ",
   // là trạng thái BÌNH THƯỜNG, không phải hỏng. Một cổng chặn đường vì lý do đó là gate nhiễu.
@@ -106,7 +106,7 @@ test("check `profile-reclaim`: 'chưa tới lượt quét' KHÔNG được làm 
   assert.match(branch, /catch/, "phép đo hỏng phải fail-open, không biến thành 'tính năng tắt'");
 });
 
-test("check `profile-reclaim` phải in SỐ, không nói chung chung", () => {
+test("the `profile-reclaim` check must print a NUMBER, not a vague phrase", () => {
   const branch = SRC.slice(SRC.indexOf('feature === "profile-reclaim"'), SRC.indexOf('feature === "storage-safety"'));
   assert.match(branch, /MB/, "phải in dung lượng — 'còn vài bản' là câu không dùng được");
   assert.match(branch, /oldest|cũ nhất/, "phải in tuổi bản cũ nhất");

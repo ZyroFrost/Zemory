@@ -47,7 +47,7 @@ const chunkRows = (path) => {
   }
 };
 
-test("cửa sổ phụ đi TRỌN qua bundle: máy nhận có đúng số cửa như máy gửi", async (t) => {
+test("side windows travel WHOLE through the bundle: the receiving machine has the same window count as the sender", async (t) => {
   if (await skipIfBusy(t)) return;
   const src = tmp("src");
   seed(src);
@@ -76,7 +76,7 @@ test("cửa sổ phụ đi TRỌN qua bundle: máy nhận có đúng số cửa 
   );
 });
 
-test("bundle đời CŨ (không có bảng chunk) vẫn merge được — fail-open, không ném", async (t) => {
+test("an OLD-generation bundle (no chunk table) still merges - fail-open, no throw", async (t) => {
   if (await skipIfBusy(t)) return;
   // Máy gửi cũ chỉ chở vector chính. Máy nhận mới không được chết vì thiếu bảng — nó phải nhận
   // phần có và bỏ qua phần không, đúng HP điều 9.

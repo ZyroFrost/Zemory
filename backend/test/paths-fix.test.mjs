@@ -12,7 +12,7 @@ import { tempDir } from "./helpers.mjs";
 const CLI = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
 const FE = (f) => readFileSync(new URL(`../../frontend/scripts/${f}`, import.meta.url), "utf8");
 
-test("proposeFixes: tên duy nhất ⇒ đích · attic/ và exclude không bao giờ là đích · 2 bản cùng tên ⇒ ambiguous · ../ giữ tương đối theo FILE · thư mục ⇒ thư mục", () => {
+test("proposeFixes: a unique name becomes the target; attic/ and excluded folders are never a target; two files of the same name are ambiguous; `../` stays relative to the FILE; a folder maps to a folder", () => {
   const files = ["backend/src/config/settings.ts", "docs/plan/10_x.md", "content/README.md", "attic/frontend-cockpit/pages/cockpit.html",
     "docs_template/a/agent/03_STRUCTURE.md", "docs_template/b/agent/03_STRUCTURE.md", "tasks/IC_Case/spec.md", "tasks/IC_Case/notes.md", "dist/App/sync/x.js"];
   const hit = (file, text, line = 3) => ({ file, line, text });
@@ -37,7 +37,7 @@ test("proposeFixes: tên duy nhất ⇒ đích · attic/ và exclude không bao 
   assert.equal(r[6].reason, "absolute");
 });
 
-test("applyFix: giữ CRLF · chỉ đúng dòng · chèn NGUYÊN VĂN ($& không nở) · chuỗi đã đổi ⇒ từ chối · ngoài root ⇒ từ chối", (t) => {
+test("applyFix: it preserves CRLF, touches only the right line, inserts VERBATIM (a dollar-ampersand must not expand), refuses a string already changed, and refuses a target outside the root", (t) => {
   const root = tempDir(t, "zemory-fix-");
   mkdirSync(join(root, "docs"));
   const f = join(root, "docs", "a.md");
@@ -63,7 +63,7 @@ function repo(t) {
 }
 const ctxOf = (root) => ({ projectRoot: root, docsDir: join(root, "docs", "agent"), config: { docs: "docs/agent", adapters: {}, thresholds: {} }, log() {} });
 
-test("pathsFixProposals: --all lấy mọi dead · newlyOnly theo baseline · CLI `paths fix` mặc định KHÔNG ghi, --apply mới ghi · help nêu verb", (t) => {
+test("pathsFixProposals: --all takes every dead path; newlyOnly follows the baseline; the CLI `paths fix` writes NOTHING by default and only writes with --apply; help lists the verb", (t) => {
   const root = repo(t);
   // State + kho phải nằm dưới data/ như máy thật: data/ là exclude nên file state KHÔNG bị quét. Bản đầu để ở gốc ⇒ chính
   // paths-state.json bị coi là file cấu hình chứa đường chết và --apply SỬA LUÔN file state (bắt được 2026-09-10).
@@ -89,7 +89,7 @@ test("pathsFixProposals: --all lấy mọi dead · newlyOnly theo baseline · CL
   assert.match(help.stdout + help.stderr, /paths fix/, "help phải nêu verb mới");
 });
 
-test("FE: hộp thoại hỏi /paths-fix, nút .fix-apply gọi /paths-fix-apply, i18n đủ hai dict", () => {
+test("FE: the dialog asks /paths-fix, the .fix-apply button calls /paths-fix-apply, and i18n covers both dictionaries", () => {
   const sys = FE("system.js"), chrome = FE("chrome.js");
   assert.match(sys, /\/paths-fix\?root=/);
   assert.match(sys, /\/paths-fix-apply\?root=/);

@@ -21,19 +21,19 @@ const { parseContextWindowTokens, lastContextCommandWindow, readContextUsage } =
 const REAL_CONTEXT_OUTPUT =
   "<local-command-stdout>## Context Usage\n\n**Model:** claude-opus-5  \n**Tokens:** 645k / 1m (64%)\n\n### Estimated usage by category\n\n| Category | Tokens | Percentage |\n|----------|--------|------------|\n| Messages | 608.9k | 60.9% |\n";
 
-test("parseContextWindowTokens: đọc đúng mẫu số THẬT từ chuỗi /context thật", () => {
+test("parseContextWindowTokens: reads the REAL denominator from a real /context string", () => {
   assert.equal(parseContextWindowTokens(REAL_CONTEXT_OUTPUT), 1_000_000);
 });
 
-test("parseContextWindowTokens: cả tử số lẫn mẫu số cùng đơn vị k", () => {
+test("parseContextWindowTokens: numerator and denominator both in k units", () => {
   assert.equal(parseContextWindowTokens("**Tokens:** 190k / 200k (95%)"), 200_000);
 });
 
-test("parseContextWindowTokens: đường lùi số trần không viết tắt", () => {
+test("parseContextWindowTokens: the fallback path for plain unabbreviated numbers", () => {
   assert.equal(parseContextWindowTokens("**Tokens:** 12,345 / 200,000 (6%)"), 200_000);
 });
 
-test("parseContextWindowTokens: không khớp mẫu ⇒ null, không đoán bậy", () => {
+test("parseContextWindowTokens: no pattern match yields null, never a guess", () => {
   assert.equal(parseContextWindowTokens("không có gì liên quan ở đây"), null);
   assert.equal(parseContextWindowTokens(""), null);
 });
@@ -45,7 +45,7 @@ function tmpTranscript(lines) {
   return file;
 }
 
-test("lastContextCommandWindow: đọc được cửa sổ thật từ khối local_command thật trong transcript", () => {
+test("lastContextCommandWindow: reads the real window from a real local_command block in a transcript", () => {
   const file = tmpTranscript([
     { type: "user", message: { content: "hello" } },
     { type: "system", subtype: "local_command", content: REAL_CONTEXT_OUTPUT },
@@ -54,7 +54,7 @@ test("lastContextCommandWindow: đọc được cửa sổ thật từ khối lo
   assert.equal(lastContextCommandWindow(file), 1_000_000);
 });
 
-test("lastContextCommandWindow: NHIỀU lần /context trong phiên ⇒ lấy lần GẦN NHẤT (mới nhất)", () => {
+test("lastContextCommandWindow: SEVERAL /context runs in one session yields the MOST RECENT", () => {
   const file = tmpTranscript([
     { type: "system", subtype: "local_command", content: "**Tokens:** 50k / 200k (25%)" },
     { type: "assistant", message: {} },
@@ -63,7 +63,7 @@ test("lastContextCommandWindow: NHIỀU lần /context trong phiên ⇒ lấy l�
   assert.equal(lastContextCommandWindow(file), 1_000_000, "phải lấy lần SAU (đổi model/mode giữa phiên là có thật)");
 });
 
-test("lastContextCommandWindow: chữ 'Tokens:' xuất hiện ở subtype KHÁC (vd trong nội dung chat) không được khớp nhầm", () => {
+test("lastContextCommandWindow: the word 'Tokens:' appearing under a DIFFERENT subtype (e.g. inside chat content) must not match", () => {
   const file = tmpTranscript([
     { type: "system", subtype: "compact_boundary", content: "bàn về **Tokens:** 999k / 999m — không phải khối /context thật", compactMetadata: {} },
     { type: "assistant", message: { model: "claude-opus-5", usage: { input_tokens: 5 } } },
@@ -71,7 +71,7 @@ test("lastContextCommandWindow: chữ 'Tokens:' xuất hiện ở subtype KHÁC 
   assert.equal(lastContextCommandWindow(file), null, "chỉ khối subtype='local_command' mới được tin, không phải mọi chỗ có chữ Tokens:");
 });
 
-test("lastContextCommandWindow: subtype SAI dù dòng thô có lọt qua bộ lọc rẻ (chứa cả hai chữ) vẫn phải bị JSON loại", () => {
+test("lastContextCommandWindow: a WRONG subtype that slips past the cheap filter (it holds both words) must still be rejected by JSON", () => {
   // Bộ lọc rẻ ở đây chỉ soi CHUỖI THÔ (`includes("local_command")`) trước khi parse JSON — dòng
   // này cố tình nhắc chữ "local_command" trong nội dung để lọt qua bộ lọc đó, buộc phép so sánh
   // `subtype !== "local_command"` ở tầng JSON phải là thứ CHẶN THẬT, không phải bộ lọc rẻ chặn hộ.
@@ -82,12 +82,12 @@ test("lastContextCommandWindow: subtype SAI dù dòng thô có lọt qua bộ l�
   assert.equal(lastContextCommandWindow(file), null, "subtype khác 'local_command' phải bị JSON-level loại, không được đọc nhầm 777m");
 });
 
-test("lastContextCommandWindow: chưa từng /context trong phiên ⇒ null (readContextUsage tự rơi về đoán)", () => {
+test("lastContextCommandWindow: no /context in the session yields null (readContextUsage falls back to estimating)", () => {
   const file = tmpTranscript([{ type: "assistant", message: { model: "claude-opus-5", usage: { input_tokens: 5 } } }]);
   assert.equal(lastContextCommandWindow(file), null);
 });
 
-test("readContextUsage: có /context thật trong phiên ⇒ percent tính theo cửa sổ THẬT, không theo đoán", () => {
+test("readContextUsage: with a real /context in the session, percent is computed from the REAL window, not a guess", () => {
   const file = tmpTranscript([
     { type: "system", subtype: "local_command", content: "**Tokens:** 300k / 1m (30%)" },
     { type: "assistant", message: { model: "claude-opus-5", usage: { input_tokens: 0, cache_read_input_tokens: 190_000, cache_creation_input_tokens: 0 } } },

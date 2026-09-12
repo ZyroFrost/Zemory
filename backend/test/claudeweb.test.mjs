@@ -41,7 +41,7 @@ const CONV = {
   ],
 };
 
-test("parse đúng: vai human→user, thứ tự phẳng, project lấy từ tên folder", (t) => {
+test("parses correctly: role human becomes user, flat ordering, project taken from the folder name", (t) => {
   const out = claudeWebAdapter.parseFileMulti(dump(t, [CONV]));
   assert.equal(out.length, 1);
   const s = out[0];
@@ -54,7 +54,7 @@ test("parse đúng: vai human→user, thứ tự phẳng, project lấy từ tê
 
 // Lớp FULL: khối tool được GIỮ và gắn nhãn giống adapter Claude Code, để roleMatches()
 // và việc hạ điểm tin tool nhận ra chúng. Cắt bớt ở đây là phá lớp full (điều 3).
-test("giữ NGUYÊN VẸN mọi khối, gắn nhãn tool đúng quy ước", (t) => {
+test("every block is kept INTACT, with tool labels following the convention", (t) => {
   const out = claudeWebAdapter.parseFileMulti(dump(t, [CONV]));
   const a = out[0].messages[1].content;
   assert.ok(a.includes("[thinking]"), "thinking phải được giữ");
@@ -66,21 +66,21 @@ test("giữ NGUYÊN VẸN mọi khối, gắn nhãn tool đúng quy ước", (t)
 
 // Anthropic thêm loại khối mới lúc nào cũng được. Rơi mất nguyên message vì một khối lạ
 // là mất dữ liệu thật — phải có đường lui về `text` phẳng.
-test("khối lạ ⇒ rơi về text phẳng, KHÔNG mất message", (t) => {
+test("an unknown block falls back to flat text WITHOUT losing the message", (t) => {
   const f = dump(t, [{ uuid: "c2", chat_messages: [{ uuid: "x", sender: "human", text: "bản phẳng còn đây", content: [{ type: "loai_moi_2027" }] }] }]);
   const out = claudeWebAdapter.parseFileMulti(f);
   assert.equal(out[0].messages.length, 1);
   assert.equal(out[0].messages[0].content, "bản phẳng còn đây");
 });
 
-test("chấp nhận cả mảng trần lẫn {conversations:[…]}", (t) => {
+test("both a bare array and {conversations:[...]} are accepted", (t) => {
   const a = claudeWebAdapter.parseFileMulti(dump(t, [CONV]));
   const b = claudeWebAdapter.parseFileMulti(dump(t, { conversations: [CONV] }));
   assert.equal(a.length, 1);
   assert.equal(b.length, 1, "dạng bọc trong {conversations} cũng phải đọc được");
 });
 
-test("file hỏng / hội thoại rỗng ⇒ null, không ném (fail-open)", (t) => {
+test("a broken file or an empty conversation yields null and does not throw (fail-open)", (t) => {
   const dir = tempDir(t, "zemory-cweb-bad-");
   const bad = join(dir, "x.json");
   writeFileSync(bad, "{ khong phai json");
@@ -88,7 +88,7 @@ test("file hỏng / hội thoại rỗng ⇒ null, không ném (fail-open)", (t)
   assert.equal(claudeWebAdapter.parseFileMulti(dump(t, [{ uuid: "empty", chat_messages: [] }])), null);
 });
 
-test("adapter khai đúng lane: source=claude-web · origin=web · whole-replace", () => {
+test("the adapter declares the right lane: source=claude-web - origin=web - whole-replace", () => {
   assert.equal(claudeWebAdapter.source, "claude-web");
   assert.equal(claudeWebAdapter.origin, "web", "phải nằm lane web để scope-tree tách khỏi transcript local");
   assert.equal(claudeWebAdapter.mode, "whole", "re-pull là thay TOÀN BỘ, idempotent — giống chatgpt");

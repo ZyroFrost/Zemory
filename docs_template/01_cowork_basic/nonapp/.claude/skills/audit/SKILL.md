@@ -5,7 +5,7 @@ description: Run a full review of the project across every dimension, verifying 
 
 # audit — soi toàn diện
 
-> User nói **"audit toàn diện" / "soi hết"** = chạy **đủ bốn mặt** dưới, **không cắt bớt cho nhanh**.
+> User nói **"audit toàn diện" / "soi hết"** = chạy **đủ năm mặt** dưới, **không cắt bớt cho nhanh**.
 
 ## Năm luật
 
@@ -19,7 +19,7 @@ description: Run a full review of the project across every dimension, verifying 
 
 **5 — PHÁ THỬ trước khi tin một phép kiểm.** Đừng dừng ở câu trả lời trên giấy: **sửa hỏng đúng thứ nó canh** (đổi một số trong nguồn, xoá một dòng bắt buộc, đổi tên một cột) rồi chạy lại — nó phải ĐỎ. Sống sót ⇒ phép kiểm đó đang canh chỗ khác, hoặc **một bản sao logic ở nơi khác đang gánh thay**. Nhớ hoàn nguyên thứ vừa phá.
 
-## Bốn mặt — chạy đủ
+## Năm mặt — chạy đủ
 
 **① Chuẩn & docs**
 `python .claude/skills/structure/scripts/check_structure.py .` (skill `conform`) · độ dài `05_TODO`/`06_CHANGES` so ngưỡng 300 dòng · `05_TODO` còn mục nào đã xong mà chưa đóng không · entry changelog nào vượt trần 30 dòng.
@@ -32,6 +32,9 @@ Cùng một sự thật nằm ở **≥2 nơi** ⇒ chắc chắn sẽ lệch. S
 
 **④ Chữ trong sản phẩm giao đi** — NORM ở `02_RULES §Ngôn ngữ`. Đo: **thiếu dấu** · **chính tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **chú thích đủ** (tiêu đề cột · chú thích hình · **số có đơn vị + kỳ**) · **một thuật ngữ một tên** xuyên suốt.
 ⚠ Báo oan nếu làm ngây thơ: danh sách từ-không-dấu chỉ được gồm từ mà bản không dấu KHÔNG hợp lệ (`khong` `duoc` `cua`… — còn `minh`/`nhanh`/`song` vốn không dấu) · dò từ lặp phải **trừ láy đôi** ("song song" · "luôn luôn") và dùng lớp `\p{L}` vì `\b` của JS là ASCII · mẫu mojibake `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ).
+
+**⑤ NGÔN NGỮ CỦA MÃ** — NORM ở `02_RULES §Ngôn ngữ`. Ba phép: **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong `scripts/`** (biến · hàm · khoá config) chỉ ASCII tiếng Anh — thứ DUY NHẤT được tiếng Việt trong mã là **chú thích**; tên do NGUỒN đặt (cột Excel · trường API) giữ nguyên từng ký tự · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** (plan · docs · chú thích · tên test · chuỗi sinh máy): hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU.
+⚠ Báo oan: phải **bóc chú thích và chuỗi** trước khi quét định danh (một lượt đo: 4 hit oan mà vẫn sót 9 định danh thật), và phải trừ **đồng âm Anh–Việt** (`do · so · can · ten · van`) kẻo bắt oan cả câu tiếng Anh thuần.
 
 ## Đầu ra
 

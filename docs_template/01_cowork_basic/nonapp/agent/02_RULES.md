@@ -39,12 +39,12 @@ của host** (Claude Code: `.claude/settings.json` → `PreToolUse` → `node ho
 Host không có cơ chế đó ⇒ file nằm im, **vô hại**, và ăn ngay ngày host có.
 
 ```
-CHAN ghi     data/*/01_raw   dau vao GOC moi case — mat la mat luon, phai xin lai nguoi gui
-             docs/agent      hien phap + luat
-CHAN xoa     xoa DE QUY (rm -r · Remove-Item -Recurse · del /S) — mot lenh quet ca cay
-             xoa cham file secret (.env · *.key · *.pem …)
-CHO QUA      02_processing/ · 03_output/ · file tam — agent ghi suot o day
-Vuot MOT VIEC bang flag hooks/.allow-* (user duyet trong phien). Guard cho qua roi DONG DAU vao file flag, khong xoa ngay: dung lenh do duoc thu lai trong 90 giay; xin viec khac hoac qua han thi flag bi thu hoi
+CHẶN ghi     data/*/01_raw   đầu vào GỐC mỗi case — mất là mất luôn, phải xin lại người gửi
+             docs/agent      hiến pháp + luật
+CHẶN xoá     xoá ĐỆ QUY (rm -r · Remove-Item -Recurse · del /S) — một lệnh quét cả cây
+             xoá chạm file secret (.env · *.key · *.pem …)
+CHO QUA      02_processing/ · 03_output/ · file tạm — agent ghi suốt ở đây
+Vượt MỘT VIỆC bằng flag hooks/.allow-* (user duyệt trong phiên). Guard cho qua rồi ĐÓNG DẤU vào file flag, không xoá ngay: đúng lệnh đó được thử lại trong 90 giây; xin việc khác hoặc quá hạn thì flag bị thu hồi
 ```
 
 **Chốt chặn ≠ chốt chặt.** Danh sách trên cố ý KHÔNG chặn xoá một file thường: gate nhiễu là
@@ -61,15 +61,27 @@ xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, d
 
 **Không nối được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên** — *xoá là bất khả đảo, phải hỏi trước*.
 
-## Ngôn ngữ (BẮT BUỘC)
+## Ngôn ngữ (mặc định — **user bật/tắt được**)
+
+> ⚙ **Bộ cowork dùng CHUNG cho nhiều kiểu dự án, nên mục này là MẶC ĐỊNH GỢI Ý, không phải luật cứng.**
+> Dự án nào thấy chặt quá — ví dụ nhóm quen đặt tên cột/biến theo tiếng Việt, hoặc tài liệu giao đi
+> viết bằng ngôn ngữ khác — thì **user chốt bỏ hoặc nới**, rồi **ghi quyết định đó vào
+> `01_CONSTITUTION.md`** (một dòng là đủ: giữ vế nào, bỏ vế nào, vì sao). Agent theo bản đã chốt ở
+> đó, KHÔNG tự nới và cũng KHÔNG tự siết. Chưa ai chốt gì ⇒ theo mặc định dưới đây.
+> *(Vế duy nhất nên giữ kể cả khi nới hết: **đừng viết tiếng Việt MẤT DẤU** — nó vừa khó đọc vừa làm
+> mọi bộ dò chính tả mù. Không muốn bỏ dấu thì viết tiếng Anh.)*
+
 - **docs (`docs/agent` + `docs/plan`) và thân `SKILL.md`**: tiếng Việt có dấu.
 - **Tên thư mục · tên skill · `name:` trong frontmatter**: **tiếng Anh**, chữ thường, nối bằng `-`.
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM.** Câu mệnh lệnh ngắn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không khẩu ngữ, không kể chuyện, không ví dụ hội thoại.
 - **code · comment trong `scripts/`: TIẾNG ANH TOÀN BỘ** — comment · docstring · tên biến/hàm · log. Một file một ngôn ngữ. **Ba thứ KHÔNG phải comment — KHÔNG dịch:** ① **chuỗi RENDER ra tài liệu / bề mặt người đọc** (desc·note sinh vào `docs/`) theo luật docs ở trên · ② **tên do người khác đặt** (tên cột Excel · trường API · tên file nguồn) giữ NGUYÊN từng ký tự dù trông như "mất dấu": đổi là loader không tìm thấy · ③ **thuật ngữ chuyên ngành** giữ nguyên. Comment bản địa cũ: sửa khi đang đụng file đó, KHÔNG dịch hàng loạt.
+- **ĐỊNH DANH · TÊN FILE = ASCII TIẾNG ANH. TRONG MÃ, THỨ DUY NHẤT ĐƯỢC PHÉP LÀ TIẾNG VIỆT CHÍNH LÀ CHÚ THÍCH** *(luật thiết kế chung MỌI app)*. Phủ hết: tên biến · hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · **tên file · tên thư mục** · tên nhánh git. Cấm **cả hai** dạng — có dấu (`chặnNhầm` · `tênFile`) và mất dấu ghép lại (`THAN_TOI_DA` · `soLuongBanGhi`). *Vì sao là luật chứ không phải gu: định danh là thứ MÁY khớp — grep · refactor · import · đường dẫn trong lệnh shell đều gãy hoặc trượt trên chữ ngoài ASCII, mà đổi tên về sau thì đụng mọi chỗ gọi.* Ba miễn trừ ở vế trên giữ nguyên (tên do người khác đặt · thuật ngữ chuyên ngành · chuỗi render cho người đọc) — đó là DỮ LIỆU, không phải định danh. Máy soi: `node .claude/skills/audit/scripts/lang-scan.mjs .`
 - **CHỮ TRONG SẢN PHẨM GIAO ĐI PHẢI ĐẦY ĐỦ VÀ ĐÚNG — ba ràng buộc, áp lúc VIẾT.**
   Người đọc nhận sản phẩm, không nhận quy trình; một lỗi chữ thì không cổng nào kêu.
-  · **① Có dấu, đúng chính tả.** Văn bản tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị
-    đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
+  · **① Có dấu, đúng chính tả — TUYỆT ĐỐI KHÔNG CÓ TIẾNG VIỆT MẤT DẤU Ở BẤT CỨ ĐÂU** (mọi file, không
+    trừ file nào: plan · docs · chú thích script · tên test · chuỗi sinh máy). Đúng **HAI** lựa chọn:
+    **① tiếng Anh · ② tiếng Việt CÓ DẤU.** Sợ encoding console thì viết **TIẾNG ANH**, đừng viết Việt
+    mất dấu. Và không mang mojibake (UTF-8 bị đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
   · **② Chú thích ĐỦ.** Mỗi bảng có tiêu đề cột · mỗi hình/biểu đồ có chú thích · **mỗi số có đơn
     vị + kỳ**. Số trần không đơn vị là số không kiểm được.
   · **③ Một thuật ngữ MỘT tên** xuyên suốt mọi trang giao đi (đối chiếu từ điển của project nếu có);

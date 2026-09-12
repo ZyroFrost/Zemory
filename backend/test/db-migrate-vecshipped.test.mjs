@@ -36,7 +36,7 @@ function buildV22WithVectors(dbPath, n) {
   return ids;
 }
 
-test("v22→v23: gieo vec_shipped bằng đúng các vector CHÍNH đang có, bỏ cửa sổ phụ", (t) => {
+test("v22 to v23: seed vec_shipped from exactly the MAIN vectors present, skipping side windows", (t) => {
   const dir = tempDir(t, "zemory-mig23-");
   const dbPath = join(dir, "m.db");
   const ids = buildV22WithVectors(dbPath, 5);
@@ -49,7 +49,7 @@ test("v22→v23: gieo vec_shipped bằng đúng các vector CHÍNH đang có, b�
   db.close();
 });
 
-test("CA ÂM: kho v22 CHƯA từng nhúng ⇒ migrate không ném, sổ rỗng", (t) => {
+test("NEGATIVE CASE: a v22 store that never embedded migrates without throwing, with an empty ledger", (t) => {
   const dir = tempDir(t, "zemory-mig23-novec-");
   const dbPath = join(dir, "m.db");
   const db0 = openMemory(dbPath);

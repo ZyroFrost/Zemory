@@ -21,7 +21,7 @@ function scratch(t) {
   return { dir: tempDir(t, "zver-"), cleanup: () => {} };
 }
 
-test("cmpSemver so đúng theo từng bậc, không so chuỗi", () => {
+test("cmpSemver compares level by level, not as strings", () => {
   assert.ok(cmpSemver("2.4.0", "2.3.0") > 0);
   assert.ok(cmpSemver("2.10.0", "2.9.0") > 0, "10 > 9 — so chuỗi sẽ ra NGƯỢC, đây là bẫy kinh điển");
   assert.ok(cmpSemver("2.3.1", "2.3.0") > 0);
@@ -32,7 +32,7 @@ test("cmpSemver so đúng theo từng bậc, không so chuỗi", () => {
   assert.ok(cmpSemver("1.0.0", "abc") > 0);
 });
 
-test("chưa có tem ⇒ đóng dấu mới; đọc lại ra đúng thứ vừa ghi", (t) => {
+test("with no stamp it writes a new one; reading it back returns exactly what was written", (t) => {
   const s = scratch(t);
   try {
     assert.equal(readChannelVersion(s.dir), null, "kênh trắng ⇒ null, không được ném");
@@ -48,7 +48,7 @@ test("chưa có tem ⇒ đóng dấu mới; đọc lại ra đúng thứ vừa g
   }
 });
 
-test("TEM CHỈ ĐI LÊN — máy chạy bản CŨ không được kéo lùi tem của kênh", (t) => {
+test("THE STAMP ONLY GOES UP - a machine on an OLD build must not drag the channel stamp backwards", (t) => {
   const s = scratch(t);
   try {
     publishChannelVersion(s.dir, "2.4.0", "MAY-A");
@@ -67,7 +67,7 @@ test("TEM CHỈ ĐI LÊN — máy chạy bản CŨ không được kéo lùi tem
   }
 });
 
-test("fail-open: thư mục không tồn tại · JSON hỏng · tem thiếu trường ⇒ null, KHÔNG ném", (t) => {
+test("fail-open: missing folder - broken JSON - a stamp missing fields yields null and does NOT throw", (t) => {
   const s = scratch(t);
   try {
     assert.equal(readChannelVersion(join(s.dir, "khong-co")), null);
@@ -83,7 +83,7 @@ test("fail-open: thư mục không tồn tại · JSON hỏng · tem thiếu tr�
   }
 });
 
-test("CA ÂM: version rỗng không được đóng dấu (không đẻ tem rác lên kênh dùng chung)", (t) => {
+test("NEGATIVE CASE: an empty version must not be stamped (no junk stamp on a shared channel)", (t) => {
   const s = scratch(t);
   try {
     assert.equal(publishChannelVersion(s.dir, "", "MAY-A"), null);
@@ -93,7 +93,7 @@ test("CA ÂM: version rỗng không được đóng dấu (không đẻ tem rác
   }
 });
 
-test("tem là JSON đọc được bằng mắt (người phải soi được kênh khi nghi ngờ)", (t) => {
+test("the stamp is JSON a human can read (a person must be able to inspect the channel when in doubt)", (t) => {
   const s = scratch(t);
   try {
     publishChannelVersion(s.dir, "2.4.0", "MAY-A", "deadbee");

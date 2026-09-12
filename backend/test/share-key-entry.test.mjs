@@ -24,7 +24,7 @@ function scratch() {
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-test("shareKeyPath trả về đường CẠNH DB, không phải trong repo", () => {
+test("shareKeyPath returns a path NEXT TO the DB, not inside the repo", () => {
   // "chìa ở data/" là câu nói SAI trên máy chưa relocate DB — ở đó DB nằm ~/.zemory/.
   const s = scratch();
   try {
@@ -34,19 +34,19 @@ test("shareKeyPath trả về đường CẠNH DB, không phải trong repo", ()
   }
 });
 
-test("dấu tay: cùng chìa ra cùng dấu tay, khác 1 ký tự là khác hẳn", () => {
+test("fingerprint: the same key yields the same fingerprint, one character apart yields a completely different one", () => {
   assert.equal(shareKeyFingerprint(GOOD), shareKeyFingerprint(GOOD));
   assert.equal(shareKeyFingerprint(GOOD), shareKeyFingerprint(`  ${GOOD}\n`), "phải trim trước khi băm");
   assert.notEqual(shareKeyFingerprint(GOOD), shareKeyFingerprint(`${GOOD}8`));
   assert.match(shareKeyFingerprint(GOOD), /^[0-9a-f]{8}$/);
 });
 
-test("dấu tay KHÔNG được chứa chìa (nó là thứ đem đi so, không phải bí mật)", () => {
+test("the fingerprint must NOT contain the key (it is for comparing, not a secret)", () => {
   const fp = shareKeyFingerprint(GOOD);
   assert.ok(!GOOD.includes(fp) && !fp.includes(GOOD.slice(0, 8)), "dấu tay không được là tiền tố của chìa");
 });
 
-test("key set ghi chìa vào đường chuẩn, mode 0600, trả dấu tay khớp", () => {
+test("key set writes the key to the standard path with mode 0600 and returns a matching fingerprint", () => {
   const s = scratch();
   try {
     const r = setShareKey(GOOD, { dbDir: s.dir });
@@ -62,7 +62,7 @@ test("key set ghi chìa vào đường chuẩn, mode 0600, trả dấu tay khớ
   }
 });
 
-test("ĐÃ có chìa mà không --force thì KHÔNG được đè", () => {
+test("an EXISTING key must NOT be overwritten without --force", () => {
   // Đè chìa là làm mọi bundle cũ không giải được nữa — phải là hành động có ý thức.
   const s = scratch();
   try {
@@ -78,7 +78,7 @@ test("ĐÃ có chìa mà không --force thì KHÔNG được đè", () => {
   }
 });
 
-test("chặn chìa rỗng · quá ngắn · có khoảng trắng", () => {
+test("it rejects an empty key, one that is too short, and one containing whitespace", () => {
   const s = scratch();
   try {
     assert.throws(() => setShareKey("", { dbDir: s.dir }), /rỗng/u);
@@ -91,7 +91,7 @@ test("chặn chìa rỗng · quá ngắn · có khoảng trắng", () => {
   }
 });
 
-test("chìa nhập ở máy A và máy B khớp dấu tay ⇒ giải được bundle của nhau", () => {
+test("a key entered on machine A and machine B with matching fingerprints can decrypt each other's bundles", () => {
   // Đây là bất biến của toàn bộ luồng đa máy: THỨ DUY NHẤT phải giống nhau là chuỗi chìa.
   // (zemory lưu salt TRONG bundle, nên không cần salt cố định như DuAnA phải làm.)
   const a = scratch();
@@ -107,7 +107,7 @@ test("chìa nhập ở máy A và máy B khớp dấu tay ⇒ giải được bu
   }
 });
 
-test("câu lỗi 'chưa có chìa' phải CHỈ ĐƯỜNG, không chỉ kể tên cờ", () => {
+test("the 'no key yet' error must POINT THE WAY, not merely name a flag", () => {
   // Câu cũ: "Missing share key. Use --key-file <path> or set ZEMORY_SHARE_KEY." — kể 2 cờ mà
   // không nói chìa nằm ở đâu, nên ở máy thứ hai không ai biết bước kế tiếp.
   const src = readFileSync(new URL("../src/memory/share.ts", import.meta.url), "utf8");
@@ -119,7 +119,7 @@ test("câu lỗi 'chưa có chìa' phải CHỈ ĐƯỜNG, không chỉ kể tê
   assert.match(block, /shareKeyPath\(\)/u, "phải in ĐƯỜNG chuẩn, không để người dùng đoán");
 });
 
-test("CLI không nhận chìa qua ĐỐI SỐ (đối số vào history + transcript)", () => {
+test("the CLI does not accept the key as an ARGUMENT (arguments land in history and in the transcript)", () => {
   const cli = readFileSync(new URL("../src/commands/memory.ts", import.meta.url), "utf8");
   const i = cli.indexOf('if (action === "set")');
   assert.ok(i > 0, "phải có nhánh `key set`");
@@ -131,7 +131,7 @@ test("CLI không nhận chìa qua ĐỐI SỐ (đối số vào history + transc
   );
 });
 
-test("`key show` chỉ in dấu tay — mã nguồn không được in giá trị chìa", () => {
+test("`key show` prints only the fingerprint - the source must never print the key value", () => {
   const cli = readFileSync(new URL("../src/commands/memory.ts", import.meta.url), "utf8");
   const i = cli.indexOf('if (action === "show"');
   const block = cli.slice(i, cli.indexOf('if (action === "path")'));

@@ -22,7 +22,7 @@ function measured() {
     .sort();
 }
 
-test("mọi file khớp regex nặng phải được PHÂN LOẠI tường minh: HEAVY, hoặc miễn kèm số đo ≤ 500 MB", () => {
+test("every file matching the heavy regex must be CLASSIFIED explicitly: HEAVY, or exempt with a measurement of 500 MB or less", () => {
   const matched = measured();
   assert.ok(matched.length >= 3, `phép đo tự kiểm: chỉ thấy ${matched.length} file khớp — regex hỏng?`);
   const exempt = Object.keys(LIGHT_DESPITE_MATCH);
@@ -41,7 +41,7 @@ test("mọi file khớp regex nặng phải được PHÂN LOẠI tường minh:
   }
 });
 
-test("nhóm nặng chạy ĐÚNG 1 worker — đây là toàn bộ lý do tách nhóm", () => {
+test("the heavy group runs with EXACTLY 1 worker - that is the entire reason for the split", () => {
   assert.equal(HEAVY_CONCURRENCY, 1, "đỉnh RAM chỉ ghim được khi nhóm nạp model chạy tuần tự");
   const runner = readFileSync("backend/scripts/run-tests.mjs", "utf8");
   assert.match(runner, /HEAVY_CONCURRENCY/u, "runner phải DÙNG hằng số này, không hardcode số riêng");
@@ -49,7 +49,7 @@ test("nhóm nặng chạy ĐÚNG 1 worker — đây là toàn bộ lý do tách 
 
 // User chốt 2026-08-27: gate phải NHƯỜNG máy — ưu tiên thấp, arena ONNX tắt cho nhóm model, và trên
 // Windows chạy trong lồng Job Object 4 GB. Ba vế đó nằm ở ba file; cổng này giữ chúng không rơi lẻ.
-test("gate nhường máy: runner hạ ưu tiên + truyền HEAVY_ENV; cửa vào đi qua lồng RAM trên Windows", () => {
+test("the gate yields the machine: the runner lowers priority and passes HEAVY_ENV; the entry point goes through the RAM cage on Windows", () => {
   const runner = readFileSync("backend/scripts/run-tests.mjs", "utf8");
   assert.match(runner, /setPriority\(process\.pid, os\.constants\.priority\.PRIORITY_BELOW_NORMAL\)/u, "runner phải tự hạ ưu tiên để con kế thừa");
   assert.match(runner, /runHeavyIsolated\(heavy, HEAVY_ENV\)/u, "nhóm nạp model phải nhận HEAVY_ENV — thiếu là ONNX ăn hết lõi");

@@ -37,7 +37,7 @@ function git(cwd, args, date) {
   execFileSync("git", args, { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
 }
 
-test("BẮT ca write-gate THẬT — bằng trục THỜI GIAN, thứ duy nhất bắt nổi nó", (t) => {
+test("it CATCHES the real write-gate case - through the TIME axis, the only thing that can catch it", (t) => {
   // Ca thật KHÔNG bắt được bằng chữ nghĩa: sổ ghi "chưa sửa" và nêu tên hàm CŨ
   // (`acquireCliWrite`), còn bản vá landing dưới tên MỚI (`acquireCliWriteLock`) mà sổ
   // không hề nhắc — không có mâu thuẫn nào giữa chữ trong sổ và chữ trong code. Nhưng git
@@ -65,7 +65,7 @@ test("BẮT ca write-gate THẬT — bằng trục THỜI GIAN, thứ duy nhất
   assert.match(f[0].detail, /2026-08-05/, "phải nói RÕ code đổi ngày nào để người đọc tự đo lại");
 });
 
-test("trục thời gian KHÔNG kêu khi sổ được cập nhật cùng đợt với code", (t) => {
+test("the time axis stays quiet when the ledger is updated in the same batch as the code", (t) => {
   const root = fakeRepo(t, "- [ ] Sửa `jobs/writegate.ts` cho đúng.", {
     "backend/src/jobs/writegate.ts": "export const x = 1;",
   });
@@ -79,7 +79,7 @@ test("trục thời gian KHÔNG kêu khi sổ được cập nhật cùng đợt
   );
 });
 
-test("BẮT ca tray: sổ ghi 'chưa chốt' mà file đã có", (t) => {
+test("it CATCHES the tray case: the ledger says 'not decided' while the file already exists", (t) => {
   const root = fakeRepo(
     t,
     "- [ ] **(plan 14 §7) Chưa chốt:** ① tray bằng gì trên Node — xem `platform/tray.ts`, chưa có bản nào.",
@@ -90,7 +90,7 @@ test("BẮT ca tray: sổ ghi 'chưa chốt' mà file đã có", (t) => {
   assert.match(f[0].detail, /tray\.ts/);
 });
 
-test("ĐO LẠI phép đo '0 match' thay vì chỉ hỏi file có tồn tại", (t) => {
+test("it RE-MEASURES a '0 match' measurement instead of merely asking whether the file exists", (t) => {
   const root = fakeRepo(
     t,
     "- [ ] **MCP mirror** — CHƯA wire (`mcp.ts` 0 match `graph`).",
@@ -105,7 +105,7 @@ test("ĐO LẠI phép đo '0 match' thay vì chỉ hỏi file có tồn tại", 
   assert.equal(verifyTodo(ok).findings.length, 0, "phép đo còn đúng mà kêu là báo oan");
 });
 
-test("KHÔNG báo oan: mục nói 'X CHƯA làm' và X thật sự không có ⇒ sổ ĐÚNG, phải im", (t) => {
+test("NO false positive: an item saying 'X is NOT done' while X really is absent means the ledger is RIGHT and must stay quiet", (t) => {
   // Bản đầu gắn nhãn ngược hẳn ý người viết: `/session-raw` bị gọi là "sổ khẳng định có,
   // repo không có" trong khi sổ ghi rõ CHƯA làm. Luật phải bất đối xứng theo GIỌNG của câu.
   const root = fakeRepo(t, "- [ ] **`/session-raw` (đọc transcript gốc) — CHƯA làm, chờ user quyết**.", {
@@ -114,7 +114,7 @@ test("KHÔNG báo oan: mục nói 'X CHƯA làm' và X thật sự không có �
   assert.deepEqual(verifyTodo(root).findings, [], "sổ nói chưa có, code cũng chưa có ⇒ khớp, không phải lệch");
 });
 
-test("BẮT ref chết: mục nhắc một đường như thứ đang có, repo không có", (t) => {
+test("it CATCHES a dead reference: an item citing a path as existing that the repo does not have", (t) => {
   const root = fakeRepo(t, "- [ ] Sửa lại `commands/khong-ton-tai.ts` cho đúng.", {
     "backend/src/commands/memory.ts": "export const x = 1;",
   });
@@ -123,21 +123,21 @@ test("BẮT ref chết: mục nhắc một đường như thứ đang có, repo 
   assert.match(f[0].detail, /khong-ton-tai\.ts/);
 });
 
-test("mục đã HOÃN theo user thì không soi", (t) => {
+test("an item the user DEFERRED is not inspected", (t) => {
   const root = fakeRepo(t, "- [ ] ⏸ **Codex** — `platform/tray.ts` chưa có gì.", {
     "backend/src/platform/tray.ts": "export function startTray(){}",
   });
   assert.deepEqual(verifyTodo(root).findings, [], "user chốt gác lại thì không phải nợ");
 });
 
-test("cắt câu phải gỡ dấu nhấn markdown, không thì phủ định rỉ sang câu sau", () => {
+test("sentence splitting must strip markdown emphasis, otherwise a negation bleeds into the next sentence", () => {
   const s = markdownSentences("**Edge id chưa ai TIÊU THỤ.** Mới có phía phát (payload `/code-graph`).");
   assert.equal(s.length, 2, "`**` chen giữa dấu chấm từng làm hai câu dính làm một");
   assert.match(s[0], /chưa ai TIÊU THỤ/);
   assert.ok(!/chưa/.test(s[1]), "câu sau KHÔNG được mang phủ định của câu trước");
 });
 
-test("parseTodoItems đọc đúng trạng thái + gom dòng nối tiếp", () => {
+test("parseTodoItems reads the state correctly and joins continuation lines", () => {
   const items = parseTodoItems(["- [ ] mở", "  nối tiếp", "- [~] đang làm", "- [x] xong", "- ✅ xong kiểu khác"].join("\n"));
   assert.deepEqual(items.map((i) => i.status), ["open", "doing", "done", "done"]);
   assert.match(items[0].body, /nối tiếp/);

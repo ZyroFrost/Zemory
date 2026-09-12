@@ -8,7 +8,7 @@ import { matchFileId, shortestPathEdges, topHubs } from "../../dist/memory/graph
 
 const E = (from, to, type, kind = "declared") => ({ from, to, type, kind });
 
-test("đường NGẮN NHẤT: chọn đường 2 bước thay vì 3, giữ nguyên loại + hạng từng cạnh", () => {
+test("SHORTEST path: it picks the 2-hop route over the 3-hop one, preserving each edge's kind and class", () => {
   const edges = [
     E("a", "b", "imports"), E("b", "c", "imports"), E("c", "d", "imports"), // đường dài 3
     E("a", "x", "imports"), E("x", "d", "calls", "inferred"),               // đường ngắn 2
@@ -20,19 +20,19 @@ test("đường NGẮN NHẤT: chọn đường 2 bước thay vì 3, giữ nguy
   assert.equal(p[1].kind, "inferred", "hạng cạnh phải đi theo từng bước — suy luận không được giả dạng (điều 13)");
 });
 
-test("BFS đi HAI CHIỀU nhưng phải nói thật chiều gốc của cạnh (forward=false)", () => {
+test("BFS walks BOTH directions but must report an edge's true original direction (forward=false)", () => {
   // b imports a; hỏi đường a→b vẫn phải ra (liên quan không có hướng) nhưng bước phải khai ngược.
   const p = shortestPathEdges([E("b", "a", "imports")], "a", "b");
   assert.ok(p && p.length === 1);
   assert.equal(p[0].forward, false, "cạnh gốc trỏ b→a — in xuôi là nói dối chiều");
 });
 
-test("không nối được ⇒ null (đừng bịa đường); cùng node ⇒ đường rỗng", () => {
+test("no connection yields null (never invent a path); the same node yields an empty path", () => {
   assert.equal(shortestPathEdges([E("a", "b", "imports")], "a", "z"), null);
   assert.deepEqual(shortestPathEdges([], "a", "a"), []);
 });
 
-test("matchFileId: exact → suffix → basename, nhiều ứng viên thì TRẢ DANH SÁCH chứ không đoán", () => {
+test("matchFileId: exact then suffix then basename, and with several candidates it RETURNS THE LIST rather than guessing", () => {
   const g = { nodes: [{ id: "backend/src/ui.ts" }, { id: "frontend/scripts/ui.ts" }, { id: "backend/src/cli.ts" }] };
   assert.equal(matchFileId(g, "backend/src/cli.ts").id, "backend/src/cli.ts");
   assert.equal(matchFileId(g, "cli.ts").id, "backend/src/cli.ts");
@@ -42,7 +42,7 @@ test("matchFileId: exact → suffix → basename, nhiều ứng viên thì TRẢ
   assert.equal(matchFileId(g, "khong-ton-tai.ts").id, null);
 });
 
-test("topHubs xếp theo TỔNG BẬC — node fan-out cao không được vô hình như bảng chỉ-fan-in", () => {
+test("topHubs ranks by TOTAL degree - a high fan-out node must not be invisible the way a fan-in-only table makes it", () => {
   // Ca thật đo trên repo 2026-08-21: ui.ts (fanIn 1, fanOut 42) đứng #2 tổng bậc mà bảng
   // hubs cũ (fan-in) không hề liệt kê. Fixture tái tạo đúng hình dạng đó.
   const g = { nodes: [

@@ -77,7 +77,7 @@ async function runOnce(runner) {
 const NOISE = 256 * 1024;
 
 test(
-  "lượt HỎNG giữ được ĐUÔI stderr — và ống stderr có người hút",
+  "a FAILED run keeps the stderr TAIL - and the stderr pipe is drained by someone",
   { timeout: 30_000 },
   async () => {
     const runner = fakeRunner(
@@ -105,7 +105,7 @@ test(
 // Vế thứ hai của cùng sự cố: `daemon.log` ghi `auto-sync: job finished` cho MỌI kết cục. Một
 // dòng log không phân biệt được "đẩy 3.812 tin" với "không có gì để đẩy" thì nó không nói được
 // điều gì — và đó là lý do watermark đứng 20 giờ mà không ai thấy. Đây là hàm dựng dòng đó.
-test("dòng log phân biệt được ĐẨY ĐƯỢC với KHÔNG CÓ GÌ ĐỂ ĐẨY", async () => {
+test("the log line distinguishes PUSHED SOMETHING from NOTHING TO PUSH", async () => {
   const { describePush } = await import("../../dist/jobs/scheduler.js");
 
   assert.match(describePush({ push: { kind: "delta", messages: 3812, bytes: 22270367 } }), /3812 tin/);
@@ -120,7 +120,7 @@ test("dòng log phân biệt được ĐẨY ĐƯỢC với KHÔNG CÓ GÌ ĐỂ
   assert.equal(describePush({}), "");
 });
 
-test("lượt CHẠY ĐƯỢC không giữ stderr — log không phình vì tiến độ bình thường", async () => {
+test("a SUCCESSFUL run does not keep stderr - the log must not swell with ordinary progress", async () => {
   const runner = fakeRunner(
     "ok",
     `process.stderr.write("merging chunk 1/40\\nmerging chunk 2/40\\n");\n` +
@@ -135,7 +135,7 @@ test("lượt CHẠY ĐƯỢC không giữ stderr — log không phình vì ti�
 // Bắt được lúc soi lại diff của chính lượt vá này, KHÔNG phải do cổng nào kêu: sự kiện đáng giá
 // nhất mà lớp sync in ra — *"Drive ném lỗi giả, đếm lại thấy khối vẫn ĐỦ"* — chỉ xảy ra ở lượt
 // THÀNH CÔNG. Điều kiện "chỉ giữ stderr khi hỏng" vì vậy vứt đúng thứ cần giữ nhất.
-test("lượt CHẠY ĐƯỢC mà có cảnh báo [sync] thì VẪN phải giữ", async () => {
+test("a SUCCESSFUL run that produced a [sync] warning must STILL keep it", async () => {
   const runner = fakeRunner(
     "ok-notable",
     `process.stderr.write("merging chunk 3/41\\n");\n` +

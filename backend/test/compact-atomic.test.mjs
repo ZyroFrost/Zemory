@@ -80,7 +80,7 @@ async function seed(t, label) {
   return { syncDrive, driveDir, dbPath, keyPath, main: join(driveDir, "global_memory.enc"), bak: join(driveDir, "global_memory.bak.enc") };
 }
 
-test("CA HỎNG: bước cuối của gộp trượt ⇒ kênh phải TRỞ LẠI đọc được, không mất khúc 1", async (t) => {
+test("FAILURE CASE: the last compaction step slips, so the channel must RETURN readable with segment 1 intact", async (t) => {
   const s = await seed(t, "zemory-compact-fault-");
 
   await s.syncDrive({ driveDir: s.driveDir, keyFile: s.keyPath, dbPath: s.dbPath, embed: false });
@@ -102,7 +102,7 @@ test("CA HỎNG: bước cuối của gộp trượt ⇒ kênh phải TRỞ LẠ
   assert.equal(countChunks(s.main), before, `khúc 1 phải đọc được và đủ ${before} khối như trước lượt gộp`);
 });
 
-test("CA HỎNG: trượt rồi thì KHÔNG được để lại file tạm nào trên kênh", async (t) => {
+test("FAILURE CASE: after a slip no temp file may be left on the channel", async (t) => {
   const s = await seed(t, "zemory-compact-litter-");
   await s.syncDrive({ driveDir: s.driveDir, keyFile: s.keyPath, dbPath: s.dbPath, embed: false });
 
@@ -115,7 +115,7 @@ test("CA HỎNG: trượt rồi thì KHÔNG được để lại file tạm nào
   assert.deepEqual(litter, [], `không được để lại bản chép dở: ${litter.join(", ")}`);
 });
 
-test("CA ÂM: không tiêm lỗi ⇒ gộp vẫn phải chạy đúng như cũ (một khối, có bản lùi)", async (t) => {
+test("NEGATIVE CASE: with no fault injected, compaction still runs exactly as before (one block, with a backup)", async (t) => {
   const s = await seed(t, "zemory-compact-ok-");
   await s.syncDrive({ driveDir: s.driveDir, keyFile: s.keyPath, dbPath: s.dbPath, embed: false });
 

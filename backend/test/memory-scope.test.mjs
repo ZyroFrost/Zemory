@@ -160,7 +160,7 @@ test("laneKey is stable and field-order independent enough for toggles", () => {
 // (vd claude-web) VÔ HÌNH cho tới khi capture được lần đầu — mà muốn capture thì user
 // phải biết nó tồn tại đã. User bác đúng: *"nếu không hiện thì sao check vào để nó
 // scan ra được"*. Vòng luẩn quẩn. Test này khoá lại để lần refactor sau không ẩn lại.
-test("cây Sources liệt kê ĐỦ bộ adapter, kể cả nguồn chưa nạp gì", (t) => {
+test("the Sources tree lists the FULL adapter set, including sources with nothing ingested", (t) => {
   const root = tempDir(t, "zemory-scope-roster-");
   const p = join(root, "memory.db");
   const db = openMemory(p);
@@ -201,7 +201,7 @@ test("cây Sources liệt kê ĐỦ bộ adapter, kể cả nguồn chưa nạp 
 // biết nền web nào đang dùng, mà sổ đó sống cạnh KHO MẶC ĐỊNH: chạy in-process thì nó đọc config
 // THẬT của người dùng (đang có claude · chatgpt · gemini · copilot) và ca này xanh/đỏ theo việc
 // máy ai đã nối gì — xanh-vì-máy-đang-nối là xanh giả. Đúng bẫy `helpers.mjs` đã ghi.
-test("nền WEB chưa từng nối KHÔNG được tự mọc lên cây (kho sạch, webAuth rỗng)", (t) => {
+test("a WEB platform never linked must NOT sprout in the tree (clean store, empty webAuth)", (t) => {
   const root = tempDir(t, "zemory-scope-web-");
   mkdirSync(join(root, "data"), { recursive: true });
   const [out] = runInMemoryChild(root, `

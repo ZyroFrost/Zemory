@@ -27,7 +27,7 @@ function seedDigest(dbPath, sessionId, projectRoot, paths) {
   }
 }
 
-test("touches: khớp CHÍNH XÁC được gắn nhãn exact", (t) => {
+test("touches: an EXACT match is labelled exact", (t) => {
   const dbPath = join(tempDir(t, "ztouch-"), "m.db");
   const root = "D:/proj/app";
   seedDigest(dbPath, "s-exact", root, [root, `${root}/backend/src/cli.ts`]);
@@ -38,7 +38,7 @@ test("touches: khớp CHÍNH XÁC được gắn nhãn exact", (t) => {
   assert.equal(hit.match, "exact");
 });
 
-test("touches: đường của BỐ CỤC CŨ vẫn nối được, nhưng nhãn phải là `moved`", (t) => {
+test("touches: a path from the OLD LAYOUT still connects, but must be labelled `moved`", (t) => {
   const dbPath = join(tempDir(t, "ztouch-"), "m.db");
   const root = "D:/proj/app";
   // Phiên cũ ghi `src/cli.ts` — repo nay đã dời sang `backend/src/cli.ts`.
@@ -55,7 +55,7 @@ test("touches: đường của BỐ CỤC CŨ vẫn nối được, nhưng nhãn
   assert.equal(strict.match, "none");
 });
 
-test("touches: khớp đuôi phải cắt đúng ranh giới thư mục, không khớp bừa", (t) => {
+test("touches: suffix matching must cut on a folder boundary, never loosely", (t) => {
   const dbPath = join(tempDir(t, "ztouch-"), "m.db");
   const root = "D:/proj/app";
   seedDigest(dbPath, "s-1", root, [root, `${root}/rc/cli.ts`]);
@@ -65,7 +65,7 @@ test("touches: khớp đuôi phải cắt đúng ranh giới thư mục, không 
   assert.equal(touchesFor(idx, "backend/src/cli.ts").count, 0, "trùng ký tự cuối KHÔNG phải trùng đường");
 });
 
-test("touches: cùng repo trên máy KHÁC (đường tuyệt đối khác) vẫn khớp qua tên folder", (t) => {
+test("touches: the same repo on ANOTHER machine (different absolute path) still matches via the folder name", (t) => {
   const dbPath = join(tempDir(t, "ztouch-"), "m.db");
   // Digest sinh ra ở máy cũ, đường hoàn toàn khác — chỉ tên folder cuối là chung.
   seedDigest(dbPath, "s-other", "D:/Zyro/Tool/app", ["D:/Zyro/Tool/app", "D:/Zyro/Tool/app/backend/src/cli.ts"]);

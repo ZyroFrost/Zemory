@@ -59,7 +59,7 @@ function rig() {
   };
 }
 
-test("ca ĐỎ: bundle trên đĩa mang định danh local- già hơn ngưỡng ⇒ stuck, cũ nhất xếp đầu", () => {
+test("RED case: a bundle on disk carrying a local- id older than the threshold is stuck, oldest first", () => {
   const r = rig();
   try {
     r.addRow("global_memory.enc", "local-777");
@@ -77,7 +77,7 @@ test("ca ĐỎ: bundle trên đĩa mang định danh local- già hơn ngưỡng 
   }
 });
 
-test("ca ÂM báo-oan (đo thật trên sổ sống): hàng local- của file ĐÃ RỜI ĐĨA không được tính", () => {
+test("NEGATIVE false-positive case (measured on a live ledger): a local- row whose file has LEFT DISK must not count", () => {
   const r = rig();
   try {
     // 17 hàng .zemory-write-probe của sổ thật: local-, size 0, KHÔNG còn trên đĩa.
@@ -94,7 +94,7 @@ test("ca ÂM báo-oan (đo thật trên sổ sống): hàng local- của file Đ
   }
 });
 
-test("ca ÂM: cloud id = đã rời máy · local- còn TRẺ = pending, không đỏ", () => {
+test("NEGATIVE case: a cloud id means it left the machine; a YOUNG local- is pending, not red", () => {
   const r = rig();
   try {
     r.addRow("old.enc", "cloud-ok");
@@ -112,7 +112,7 @@ test("ca ÂM: cloud id = đã rời máy · local- còn TRẺ = pending, không 
   }
 });
 
-test("thế hệ cũ trashed=1 không che hàng sống: lấy hàng stable_id LỚN NHẤT trong các hàng sống", () => {
+test("an old generation with trashed=1 must not mask a live row: take the LARGEST stable_id among live rows", () => {
   const r = rig();
   try {
     // Đo thật 2026-08-24: 5/6 hàng `global_memory.enc` là thế hệ cũ trashed=1 (compact đè tên).
@@ -129,7 +129,7 @@ test("thế hệ cũ trashed=1 không che hàng sống: lấy hàng stable_id L�
   }
 });
 
-test("fail-open ①: không có sổ nào ⇒ journalFound=false + nói ra, KHÔNG đoán, KHÔNG ném", () => {
+test("fail-open 1: no ledger at all yields journalFound=false and says so - no guessing, no throwing", () => {
   const r = rig();
   try {
     r.addFile("global_memory.enc", 90 * 24 * HOUR);
@@ -143,7 +143,7 @@ test("fail-open ①: không có sổ nào ⇒ journalFound=false + nói ra, KHÔ
   }
 });
 
-test("fail-open ②: file trên đĩa mà sổ chưa có hàng ⇒ inconclusive, không xếp vào đâu", () => {
+test("fail-open 2: a file on disk with no ledger row yet is inconclusive, filed nowhere", () => {
   const r = rig();
   try {
     r.done();
@@ -156,13 +156,13 @@ test("fail-open ②: file trên đĩa mà sổ chưa có hàng ⇒ inconclusive,
   }
 });
 
-test("fail-open ③: thư mục Drive không đọc được ⇒ inconclusive, không ném", () => {
+test("fail-open 3: an unreadable Drive folder is inconclusive and does not throw", () => {
   const rep = uplinkReport(join(tmpdir(), "zuplink-khong-co-" + Date.now()), { staleMs: STALE });
   assert.equal(rep.stuck.length, 0);
   assert.ok(rep.inconclusive.length >= 1);
 });
 
-test("ngưỡng mặc định 60 phút, đổi được qua ZEMORY_UPLINK_STALE_MIN", () => {
+test("the default threshold is 60 minutes, overridable through ZEMORY_UPLINK_STALE_MIN", () => {
   const prev = process.env.ZEMORY_UPLINK_STALE_MIN;
   try {
     delete process.env.ZEMORY_UPLINK_STALE_MIN;
@@ -177,7 +177,7 @@ test("ngưỡng mặc định 60 phút, đổi được qua ZEMORY_UPLINK_STALE_
   }
 });
 
-test("phụ tùng: isLocalOnlyId + driveFsJournals chỉ nhận thư mục toàn chữ số có sổ", () => {
+test("helpers: isLocalOnlyId plus driveFsJournals accepting only all-digit folders that hold a ledger", () => {
   assert.equal(isLocalOnlyId("local-248369"), true);
   assert.equal(isLocalOnlyId("1W8P9I5H8UnHdDZYJDj"), false);
   assert.equal(isLocalOnlyId(null), false);

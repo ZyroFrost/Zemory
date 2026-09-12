@@ -43,37 +43,37 @@
     fillCtxBadges(rows);
   }
   // ── Badge CONTEXT ─────────────────────────────────
-  // Dien o LUOT THU HAI, khong chan render: gia do duoc la 141 ms cho 80 phien (uoc tinh
-  // token) + ~11,5 ms/phien cho phan doc duoi transcript. Bat nguoi dung cho 1,4 s truoc khi
-  // thay danh sach chi vi mot con so phu la sai danh doi.
+  // Filled in on a SECOND PASS so the render is not blocked: the measured cost is 141 ms for 80 sessions (token
+  // estimate) plus about 11.5 ms per session for the part that reads the transcript. Making the user wait 1.4 s before
+  // seeing the list just for one secondary number is the wrong trade.
   var svCtx={},svWarnPct=null;
   function ctxBadge(c,warnPct){
     if(!c)return '';
-    // HAI LOAI SO, KHONG TRON. measured co mau so do host khai => noi %; estimate chi co tu so
-    // => noi token kem "~". Quy estimate ra % la bia mau so (user chot 2026-09-02).
+    // TWO KINDS OF NUMBER, NEVER MIXED. A measured one has a denominator declared by the host => report a %; an estimate has only a numerator
+    // => report tokens with a "~". Turning an estimate into a % invents the denominator (user ruling 2026-09-02).
     if(c.kind==='estimate')return '<span title="'+stdEsc(t('ctx.estimateT'))+'" style="color:var(--text-faint)">~'+zN(c.tokens)+'</span>';
     if(typeof c.percent!=='number')return '';
     var pct=Math.round(c.percent);
     var w=(typeof warnPct==='number'?warnPct:c.threshold)||90;
     var nc=c.compactions||0;
     var tot=c.totalTokens||c.tokens;
-    // % CONG DON tren cua so: VUOT 100% chinh la dau hieu da nen (user chot 2026-09-02 — "kieu
-    // la vuot 100% chinh xac bao nhieu de biet la nen"). Mot con so duy nhat, ca cot so sanh
-    // duoc, va no tu noi: 136% = da nen 1 lan · 352% = da nen 3 lan. Phien CHUA nen thi
-    // totalTokens == tokens nen so nay TRUNG voi % hien tai — badge khong doi gi.
+    // A CUMULATIVE % over the window: going PAST 100% is precisely the sign of a compaction (user ruling 2026-09-02 — "the point
+    // is how far past 100% it went, so you know it compacted"). One single number, comparable down the column,
+    // and it speaks for itself: 136% = compacted once · 352% = compacted three times. In a session that has NOT compacted,
+    // totalTokens == tokens, so this number MATCHES the current % — the badge does not change at all.
     var totalPct=c.window?Math.round(100*tot/c.window):pct;
-    // Mau lay DUNG nguong nguoi dung dat — khong de nguong thu hai, de badge va hook luon noi
-    // cung mot cau. Xam khong thay gi tren nen toi (user chot) => XANH cho muc an toan.
-    // RIENG >=100% thi LUON DO (user chot 2026-09-02: "vuot 100% thi phai mau do moi dung"):
-    // da vuot tron mot cua so nghia la phien DA BI NEN it nhat mot lan — su that do dat hon moi
-    // nguong, va no phai doc duoc ngay tu MAU chu khong bat nguoi ta doc so.
+    // The colour follows EXACTLY the threshold the user set — no second threshold, so the badge and the hook always tell
+    // the same story. Grey is invisible on a dark background (user ruling) => GREEN for the safe level.
+    // 100% AND ABOVE IS ALWAYS RED (user ruling 2026-09-02: "past 100% has to be red to be right"):
+    // passing a whole window means the session HAS BEEN COMPACTED at least once — that truth outweighs every
+    // threshold, and it must be readable from the COLOUR rather than forcing anyone to read the number.
     var col=(totalPct>=100||pct>=w)?'var(--danger)':(pct>=w-10?'var(--warn)':'var(--success)');
-    // Phien con ghi so trong 15 phut = DANG CHAY (dot dac, "dang la bay nhieu"); cu hon = DA
-    // DONG (dot rong, "ket thuc o muc do"). Hai thu khac nghia, khong duoc hien giong nhau.
+    // A session still writing within the last 15 minutes is RUNNING (solid dot, "it is at this much right now"); older is
+    // CLOSED (hollow dot, "it ended at this much"). Two different meanings, and they must not look the same.
     var live=c.at&&(Date.now()-Date.parse(c.at))<15*60*1000;
     var tip=t('ctx.measuredT')+' — '+(live?t('ctx.liveT'):t('ctx.doneT'))+(pct>=w?' '+t('ctx.overT'):'');
     if(nc>0){
-      // Tooltip mang con so TONG + so lan nen; badge chi mang % cong don cho gon.
+      // The tooltip carries the TOTAL plus the compaction count; the badge carries only the cumulative % to stay compact.
       tip=t('ctx.compactT').replace('{n}',nc).replace('{tot}',zN(tot)).replace('{pct}',pct)+' — '+tip;
       return '<span title="'+stdEsc(tip)+'" style="color:'+col+'">'+(live?'●':'◐')+' '+totalPct+'% ⟳'+nc+'</span>';
     }
@@ -88,9 +88,9 @@
     var need=[];
     for(var i=0;i<rows.length;i++){var id=rows[i].sessionId;if(id&&!(id in svCtx))need.push(id);}
     if(!need.length){paintCtxBadges(svWarnPct);return;}
-    // CHIA LO 40 va goi TUAN TU. Endpoint doc transcript bang I/O dong bo (~11,5 ms/phien) tren
-    // event loop cua daemon; ban song song 120 id la khoa moi endpoint khac vai giay — dung loi
-    // da tra gia 2026-08-23. Tuan tu thi moi luot ~460 ms va badge hien dan tu tren xuong.
+    // BATCHES OF 40, called SEQUENTIALLY. The endpoint reads transcripts with synchronous I/O (~11.5 ms per session) on
+    // the daemon event loop; firing 120 ids in parallel locks every other endpoint for seconds — a mistake
+    // already paid for 2026-08-23. Sequentially each round is about 460 ms and the badges appear top-down.
     var CHUNK=40;
     function next(from){
       if(from>=need.length)return;
@@ -98,7 +98,7 @@
       zGet('/session-context?ids='+encodeURIComponent(lot.join(','))).then(function(r){
         if(r){
           if(typeof r.warnPercent==='number')svWarnPct=r.warnPercent;
-          // Ghi ca ca KHONG co so (null) de khong hoi lai mai cung mot id.
+          // Record even the cases with NO number (null), so the same id is not asked about forever.
           for(var k=0;k<lot.length;k++)svCtx[lot[k]]=(r.items&&r.items[lot[k]])||null;
           paintCtxBadges(svWarnPct);
           if(svCur)svCtxInfo(svCur);
@@ -108,7 +108,7 @@
     }
     next(0);
   }
-  // Dong meta cua panel chi tiet: them context SAU khi svInfo da dat text co ban.
+  // The meta line of the detail panel: context is appended AFTER svInfo has set the base text.
   function svCtxInfo(sid){
     var el=zid('sessVInfo');if(!el)return;
     var c=svCtx[sid];if(!c)return;
@@ -118,7 +118,7 @@
     if(c.kind==='estimate')add='~'+zN(c.tokens)+' token ('+t('ctx.label')+', est.)';
     else if(typeof c.percent==='number'){
       add=Math.round(c.percent)+'% '+t('ctx.label')+' ('+zN(c.tokens)+' / '+zN(c.window)+')';
-      // Da nen => noi ro TONG da tieu, vi % o tren chi la chu ky hien tai.
+      // Compacted => state the TOTAL consumed, because the % above covers only the current cycle.
       if(c.compactions>0)add+=' · '+t('ctx.compactShort').replace('{n}',c.compactions).replace('{tot}',zN(c.totalTokens||c.tokens));
     }
     el.textContent=add?base+' · '+add:base;
@@ -220,8 +220,8 @@
     var n=meta.messages!=null?meta.messages:(s.messages?s.messages.length:null);
     el.textContent=[zProjName(meta.project||s.project||'')||'',meta.source||s.source||'',meta.origin||'',meta.host||'',
       n==null?'':zN(n)+' messages',String(meta.startedAt||'').slice(0,16).replace('T',' ')].filter(Boolean).join(' · ');
-    // data-base phai duoc dat LAI moi lan doi phien, khong thi context cua phien truoc dinh
-    // vao dong meta cua phien sau.
+    // data-base must be set AGAIN on every session change, otherwise the previous session's context sticks
+    // to the next session's meta line.
     el.removeAttribute('data-base');
     if(svCur)svCtxInfo(svCur);
   }

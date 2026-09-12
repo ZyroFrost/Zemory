@@ -27,7 +27,7 @@ const PROMISED = ["scan", "embed", "digest"];
 // BÙ. Lời hứa trên UI đổi theo, nên phép kiểm cũng phải đổi — nhưng THỨ nó canh thì giữ
 // nguyên: *UI hứa việc gì thì code phải làm đúng việc đó*. Panel giờ hứa hai thứ tách nhau,
 // nên có hai phép kiểm: lưới bù (dưới) và realtime (test kế).
-test("UI hứa lưới bù có đủ ba việc (quét vét · embed · digest) — đổi lời hứa thì đổi cả code", () => {
+test("the UI promises the catch-up grid holds all three jobs (sweep scan, embed, digest) - changing the promise changes the code", () => {
   const ui = read(I18N);
   const i = ui.indexOf("'mem.schedulerD':");
   assert.ok(i > 0, `${I18N}: không tìm thấy chỗ định nghĩa khoá i18n mem.schedulerD`);
@@ -58,7 +58,7 @@ test("UI hứa lưới bù có đủ ba việc (quét vét · embed · digest) �
   }
 });
 
-test("UI hứa realtime thì hook PHẢI được khai — và đúng 4 sự kiện của lời hứa", () => {
+test("when the UI promises realtime the hooks MUST be declared - and exactly the 4 events promised", () => {
   // Lời hứa mới trên panel: "mỗi lượt trả lời xong là phiên được nạp ngay (<1s)" + "cảnh báo
   // khi context gần đầy" + "tự chốt sổ trước khi bị nén". Ba vế đó ĐÚNG BẰNG ba móc; thiếu
   // móc nào là hứa suông — đúng loại lỗ mà file này sinh ra để canh.
@@ -82,7 +82,7 @@ test("UI hứa realtime thì hook PHẢI được khai — và đúng 4 sự ki�
   assert.match(hook, /scanOneFile\(/u, "đường per-message phải dùng scanOneFile");
 });
 
-test("scheduler THẬT SỰ chạy mọi bước UI đã hứa — không chỉ một phần", () => {
+test("the scheduler REALLY runs every step the UI promised, not just some of them", () => {
   const s = read(SCHED);
   for (const step of PROMISED) {
     // Bước phải được spawn như một lệnh CLI thật: ["memory", "<step>", …]
@@ -95,7 +95,7 @@ test("scheduler THẬT SỰ chạy mọi bước UI đã hứa — không chỉ 
   }
 });
 
-test("chuỗi chạy TUẦN TỰ và giữ ĐÚNG MỘT job token cho cả chuỗi", () => {
+test("the chain runs SEQUENTIALLY and holds EXACTLY ONE job token for the whole chain", () => {
   // Song song thì embed đọc trước khi scan ghi xong; nhiều token thì một CLI
   // writer chen được vào giữa chuỗi.
   const s = read(SCHED);
@@ -130,7 +130,7 @@ test("chuỗi chạy TUẦN TỰ và giữ ĐÚNG MỘT job token cho cả chu�
   assert.match(chain, /backupTick\("sau chuỗi bảo trì", true\)/u, `${SCHED}: lần gọi trong chuỗi phải nói rõ để không claim lồng`);
 });
 
-test("việc nền phải NHƯỜNG CPU cho người dùng (ưu tiên thấp hơn bình thường)", () => {
+test("background work must YIELD CPU to the user (below-normal priority)", () => {
   // Đo 2026-08-13: hook capture ghi ~23 tin/phút trong lúc làm việc, nên backlog embed gần như
   // LUÔN dương ⇒ job nền gần như LUÔN chạy. Ở ưu tiên Normal, nó tranh CPU ngang hàng với đúng
   // việc người dùng đang làm — máy 12 core mà ONNX ăn hết thì gõ phím cũng khựng.
@@ -150,7 +150,7 @@ test("việc nền phải NHƯỜNG CPU cho người dùng (ưu tiên thấp hơ
   );
 });
 
-test("hạ ưu tiên CHỈ cho việc MÁY tự chạy — việc người dùng bấm thì KHÔNG", () => {
+test("priority is lowered ONLY for MACHINE-initiated work - never for work the user clicked", () => {
   // Ranh giới này quan trọng hơn bản thân mức ưu tiên. `startSyncJob` phục vụ CẢ HAI đường:
   // scheduler tự chạy (nền, hạ được) và nút "Đồng bộ ngay" (người dùng đang NGỒI CHỜ). Hạ thẳng
   // trong hàm là bắt người bấm tay chờ lâu hơn — và không ai báo lỗi, chỉ thấy "sao hôm nay chậm".
@@ -182,7 +182,7 @@ test("hạ ưu tiên CHỈ cho việc MÁY tự chạy — việc người dùng
   }
 });
 
-test("BACKUP không được treo vào công tắc của tính năng khác", () => {
+test("BACKUP must not hang off another feature's switch", () => {
   // Lỗi thật 2026-08-08 → 12/08: `rotateBackup()` là bước 4 của `maintainTick`, mà hàm đó
   // return ngay khi `getScheduler()` tắt ⇒ tắt scheduler là TẮT LUÔN BACKUP, im lặng. Bốn
   // ngày không có bản sao lưu, và không ai biết vì job có hỏng đâu — nó không được gọi.
@@ -210,7 +210,7 @@ test("BACKUP không được treo vào công tắc của tính năng khác", () 
   );
 });
 
-test("scan KHÔNG bị chặn bởi backoff của vector backlog", () => {
+test("scan is NOT blocked by the vector backlog backoff", () => {
   // Backoff sinh ra để khỏi đếm anti-join mỗi 5 phút — nó chỉ được phép bỏ qua
   // EMBED. Đem nó chặn cả scan là quay lại đúng lỗi: không tin nào được nạp.
   const s = read(SCHED);
@@ -220,7 +220,7 @@ test("scan KHÔNG bị chặn bởi backoff của vector backlog", () => {
   assert.ok(iBackoff > iScan, `${SCHED}: backoff phải xét SAU khi scan đã chạy, không được chặn scan`);
 });
 
-test("daemon vẫn nhường quyền ghi cho CLI và cho sync job", () => {
+test("the daemon still yields write rights to the CLI and to the sync job", () => {
   const s = read(SCHED);
   // Phải soi ĐÚNG câu điều kiện thoát sớm của maintainTick. Đột biến 2026-07-30
   // gỡ `cliHoldsWrite() ||` khỏi guard mà test vẫn xanh, vì chữ đó còn nằm ở dòng
@@ -244,7 +244,7 @@ test("daemon vẫn nhường quyền ghi cho CLI và cho sync job", () => {
 // KHÔNG lỗi, KHÔNG log (log của scheduler đi vào stderr mà cách phóng daemon không hứng).
 // Trước đó autosync chạy đều CHỈ VÌ scheduler đang TẮT — tức bật một tính năng làm chết một
 // tính năng khác, và không cổng nào thấy. Hai phép kiểm dưới canh đúng hai vế của bản vá.
-test("syncTick BỊ CHẶN thì hẹn quay lại — không được đợi trọn chu kỳ (chống bỏ đói)", () => {
+test("a BLOCKED syncTick schedules a return - it must not wait a whole cycle (starvation defence)", () => {
   const src = read(SCHED);
   const body = src.slice(src.indexOf("function syncTick"), src.indexOf("export function startScheduler"));
   assert.match(body, /syncRetry/, "phải có đường hẹn lại khi bị chặn");
@@ -258,7 +258,7 @@ test("syncTick BỊ CHẶN thì hẹn quay lại — không được đợi tr�
 // 🔄 2026-08-29: đồng hồ sync KHÔNG còn là setInterval cùng chu kỳ với chuỗi bảo trì (vế "lệch pha nửa chu kỳ" hết
 // lý do tồn tại). Nay là CỔNG 60 s hỏi lịch (`autosyncDue`) trên mốc BỀN trong config — đo: 28 lần restart/ngày làm
 // mốc-trong-tiến-trình về 0 liên tục ⇒ 8 giờ không lượt tự sync. Bất biến mới: cổng 60 s + mốc đọc từ config.
-test("đồng hồ sync = cổng 60 s hỏi lịch trên mốc BỀN — không phải setInterval cùng chu kỳ, không phải biến tiến trình", () => {
+test("the sync clock is a 60 s gate asking the schedule against a DURABLE mark - not a setInterval on the same cycle, not a process variable", () => {
   const src = read(SCHED);
   const start = src.slice(src.indexOf("export function startScheduler"), src.indexOf("export function stopScheduler"));
   assert.match(start, /setInterval\(syncGate,\s*60_000\)/, "phải là cổng 60 s (syncGate), không đặt lịch cứng theo SYNC_EVERY_MS");
@@ -281,7 +281,7 @@ test("đồng hồ sync = cổng 60 s hỏi lịch trên mốc BỀN — không 
 // với "kẹt". Sync đã được vá đúng lỗ này ngày 26/08 (`syncjob.ts`); chuỗi maintain thì chưa.
 // Ba vế phải cùng đúng: không "ignore" · HÚT cả hai ống (ống không ai đọc thì đầy 64 KB là con
 // treo ở `write`) · lúc thoát lỗi phải nói RA stderr.
-test("runStep KHÔNG phóng con bằng stdio 'ignore' — và phải HÚT cả stdout lẫn stderr", () => {
+test("runStep does NOT spawn with stdio 'ignore' - it must DRAIN both stdout and stderr", () => {
   const src = read(SCHED);
   const body = src.slice(src.indexOf("function runStep("), src.indexOf("async function maintainTick"));
   assert.ok(body.length > 200, `${SCHED}: không cắt được thân runStep`);

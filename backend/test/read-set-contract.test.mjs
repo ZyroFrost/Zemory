@@ -30,7 +30,7 @@ const WRITE_TIME = {
   "03_nonapp": ["Secret/connection", "SQL/DAX/M", "Nhị phân nặng", "Data thật vs mẫu"],
 };
 
-test("AGENTS.md không liệt kê 03_STRUCTURE trong danh sách ĐỌC HẾT", () => {
+test("AGENTS.md does not list 03_STRUCTURE in the READ-EVERYTHING set", () => {
   for (const f of AGENTS) {
     const line = read(f)
       .split(/\r?\n/)
@@ -54,7 +54,7 @@ test("AGENTS.md không liệt kê 03_STRUCTURE trong danh sách ĐỌC HẾT", (
   }
 });
 
-test("AGENTS.md nêu RÕ trigger phải mở 03_STRUCTURE", () => {
+test("AGENTS.md states CLEARLY the triggers that require opening 03_STRUCTURE", () => {
   // Bỏ khỏi bộ đọc mà không nói khi nào mở = agent không bao giờ mở, và chuẩn thành
   // giấy lộn. Trigger phải nằm ngay trong file điều hướng.
   for (const f of AGENTS) {
@@ -65,7 +65,7 @@ test("AGENTS.md nêu RÕ trigger phải mở 03_STRUCTURE", () => {
   }
 });
 
-test("conform được nối vào gate, không phải chạy tay", () => {
+test("conform is wired into the gate rather than run by hand", () => {
   // Trước 2026-07-29 conform không nằm trong gate lẫn hook nào: chuẩn chỉ được kiểm khi
   // có người nhớ gõ. Bỏ 03 khỏi bộ đọc trong lúc đó = không còn ai canh.
   const pkg = JSON.parse(read("package.json"));
@@ -73,7 +73,7 @@ test("conform được nối vào gate, không phải chạy tay", () => {
   assert.match(pkg.scripts.conform ?? "", /--gate/, "script conform phải dùng --gate (exit 1 khi lệch)");
 });
 
-test("luật KHÔNG BỊA có ở mọi bản 02_RULES, và chỉ MỘT bản (không đẻ luật trùng)", () => {
+test("the do-not-invent rule exists in every 02_RULES, and exactly ONE copy of it (no duplicate rules)", () => {
   // 2026-07-30: luật cũ chỉ phủ CON SỐ ("một phép đo chưa kiểm chéo"), nên các khẳng định
   // phi-số vẫn lọt — agent đoán trạng thái cửa sổ, đoán click đã ăn, đoán chỗ hỏng của
   // parser, cả ba đều sai. Nới đúng bullet đã có thay vì thêm bullet mới; gate này khoá cả
@@ -100,7 +100,7 @@ test("luật KHÔNG BỊA có ở mọi bản 02_RULES, và chỉ MỘT bản (k
   }
 });
 
-test("luật khi VIẾT nằm ở 02_RULES, KHÔNG còn ở 03_STRUCTURE", () => {
+test("the writing-time rules live in 02_RULES and are NO LONGER in 03_STRUCTURE", () => {
   for (const [profile, names] of Object.entries(WRITE_TIME)) {
     const base = `docs_template/${profile}/agent`;
     const rules = read(`${base}/02_RULES.md`);
@@ -115,7 +115,7 @@ test("luật khi VIẾT nằm ở 02_RULES, KHÔNG còn ở 03_STRUCTURE", () =>
   }
 });
 
-test("repo zemory cũng theo đúng hợp đồng đó", () => {
+test("the zemory repo itself honours that same contract", () => {
   const rules = read("docs/agent/02_RULES.md");
   const structure = read("docs/agent/03_STRUCTURE.md");
   for (const n of WRITE_TIME["05_app"]) {
@@ -125,7 +125,7 @@ test("repo zemory cũng theo đúng hợp đồng đó", () => {
   assert.match(rules, /## Luật khi VIẾT/u, "02_RULES phải có mục §Luật khi VIẾT");
 });
 
-test("03_STRUCTURE để lại con trỏ tới nơi luật đã dời đến", () => {
+test("03_STRUCTURE leaves a pointer to where the rules moved", () => {
   // Người đọc 03 tìm luật SQL/dialog phải được chỉ đường, không gặp khoảng trống.
   for (const p of ["docs/agent/03_STRUCTURE.md", "docs_template/05_app/agent/03_STRUCTURE.md", "docs_template/03_nonapp/agent/03_STRUCTURE.md"]) {
     if (!existsSync(join(ROOT, p))) continue;
@@ -133,7 +133,7 @@ test("03_STRUCTURE để lại con trỏ tới nơi luật đã dời đến", (
   }
 });
 
-test("template KHÔNG trích số điều hiến pháp (hiến pháp là per-project)", () => {
+test("the template does NOT cite constitution article numbers (the constitution is per-project)", () => {
   // Bản mẫu 01_CONSTITUTION chỉ có 1 điều placeholder, nên mọi câu "điều 13" trong
   // template làm `conform` của project VỪA INIT đỏ ngay — lỗi do bản mẫu, không do user.
   for (const p of ["05_app", "03_nonapp"]) {

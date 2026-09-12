@@ -12,7 +12,7 @@ const ROOT = process.cwd(); // chính repo này — graph thật, không phải 
 
 const textOf = (r) => r.content.map((c) => c.text).join("\n");
 
-test("hai tool graph có mặt trong danh mục MCP, kèm mô tả nói RÕ khi nào gọi", () => {
+test("both graph tools appear in the MCP catalogue, with descriptions that say CLEARLY when to call them", () => {
   const names = TOOLS.map((t) => t.name);
   assert.ok(names.includes("graph_impact"), "mcp.ts từng 0 match `graph` — đó là khoảng trống thật");
   assert.ok(names.includes("graph_neighbors"));
@@ -21,7 +21,7 @@ test("hai tool graph có mặt trong danh mục MCP, kèm mô tả nói RÕ khi 
   assert.match(impact.description, /ADVISORY|never blocks/i, "phải nói rõ nó KHÔNG chặn sửa file (HP điều 10)");
 });
 
-test("graph_impact trả fan-in/fan-out THẬT của một file trong repo này", async () => {
+test("graph_impact returns the REAL fan-in and fan-out of a file in this repo", async () => {
   const r = await callMcpTool("graph_impact", { file: "memory/db.ts", project: ROOT });
   assert.ok(!r.isError, textOf(r));
   const out = JSON.parse(textOf(r));
@@ -30,20 +30,20 @@ test("graph_impact trả fan-in/fan-out THẬT của một file trong repo này"
   assert.ok(Array.isArray(out.importers) && out.importers.length > 0);
 });
 
-test("tên MƠ HỒ ⇒ trả CANDIDATES, tuyệt đối không đoán bừa một file", async () => {
+test("an AMBIGUOUS name returns CANDIDATES and never guesses a file", async () => {
   // `index.ts` có nhiều bản trong repo. Đoán đại một cái là đưa agent đi sửa nhầm file.
   const r = await callMcpTool("graph_impact", { file: "index.ts", project: ROOT });
   assert.ok(r.isError, "mơ hồ mà trả một kết quả chắc nịch là tệ hơn trả lỗi");
   assert.match(textOf(r), /ambiguous/i);
 });
 
-test("không có file nào khớp ⇒ nói thẳng, không trả rỗng như thể file đó cô lập", async () => {
+test("no matching file says so plainly instead of returning empty as if the file were isolated", async () => {
   const r = await callMcpTool("graph_impact", { file: "khong-he-ton-tai-abc.ts", project: ROOT });
   assert.ok(r.isError);
   assert.match(textOf(r), /No file matching/i);
 });
 
-test("graph_neighbors lọc theo hướng và tôn trọng limit", async () => {
+test("graph_neighbors filters by direction and honours the limit", async () => {
   const both = JSON.parse(textOf(await callMcpTool("graph_neighbors", { file: "memory/db.ts", project: ROOT })));
   assert.ok("importedBy" in both && "imports" in both, "mặc định là cả hai chiều");
 
@@ -56,7 +56,7 @@ test("graph_neighbors lọc theo hướng và tôn trọng limit", async () => {
   assert.ok(capped.fanIn >= capped.importedBy.length, "fanIn là số THẬT, không bị limit cắt theo");
 });
 
-test("thiếu file ⇒ báo lỗi rõ, không ném vỡ phiên MCP", async () => {
+test("a missing file reports a clear error instead of throwing and breaking the MCP session", async () => {
   const r = await callMcpTool("graph_impact", { project: ROOT });
   assert.ok(r.isError);
   assert.match(textOf(r), /non-empty file/i);

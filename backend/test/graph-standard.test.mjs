@@ -92,7 +92,7 @@ const FILES = [
 const byType = (g, type) => g.nodes.filter((n) => n.type === type);
 const edgesOf = (g, kind) => g.edges.filter((e) => e.kind === kind);
 
-test("hp_dieu CHỈ lấy từ §Điều khoản — list đánh số ở §Mục đích không được thành điều", (t) => {
+test("hp_dieu is taken ONLY from the Articles section - a numbered list under Purpose must not become an article", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const hp = byType(g, "hp_dieu");
   assert.equal(hp.length, 3, "phải đúng 3 điều, không dính 2 mục của §Mục đích");
@@ -104,14 +104,14 @@ test("hp_dieu CHỈ lấy từ §Điều khoản — list đánh số ở §Mụ
   assert.ok(!hp.some((n) => /Global Memory/.test(n.label)), "không được lấy mục của §Mục đích");
 });
 
-test("section bị cắt đúng: parser KHÔNG trả rỗng (bẫy split(/^##/)[0])", (t) => {
+test("the section is cut correctly: the parser does NOT return empty (the split(/^##/)[0] trap)", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   // Cả hai lane này từng ra 0 vì phần tử [0] của split luôn rỗng.
   assert.ok(byType(g, "hp_dieu").length > 0, "hp_dieu không được rỗng");
   assert.ok(byType(g, "concern").length > 0, "concern không được rỗng");
 });
 
-test("concern + routing chỉ lấy trong §4, bỏ header/separator và bảng ở section khác", (t) => {
+test("concern and routing come only from S4, dropping headers, separators and tables from other sections", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const concerns = byType(g, "concern");
   assert.equal(concerns.length, 3, "3 hàng dữ liệu của §4");
@@ -124,7 +124,7 @@ test("concern + routing chỉ lấy trong §4, bỏ header/separator và bảng 
   assert.ok(routing.some((e) => e.to === "slot:config"));
 });
 
-test("slot vs slot_unused: chỉ slot CÓ file mới là `slot`", (t) => {
+test("slot vs slot_unused: only a slot WITH files counts as a `slot`", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const used = byType(g, "slot").map((n) => n.id).sort();
   const unused = byType(g, "slot_unused").map((n) => n.id).sort();
@@ -132,7 +132,7 @@ test("slot vs slot_unused: chỉ slot CÓ file mới là `slot`", (t) => {
   assert.deepEqual(unused, ["slot:config", "slot:store"], "khai trong routing mà repo chưa dùng");
 });
 
-test("contains: slot → đúng những file nằm trong slot đó", (t) => {
+test("contains: a slot maps to exactly the files inside that slot", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const api = edgesOf(g, "contains").filter((e) => e.from === "slot:api");
   assert.equal(api.length, 2);
@@ -141,7 +141,7 @@ test("contains: slot → đúng những file nằm trong slot đó", (t) => {
   assert.ok(!g.edges.some((e) => e.to === "backend/src/weird/x.ts"));
 });
 
-test("skill lấy theo dòng tự khai của file, bỏ section LUẬT chung", (t) => {
+test("skills are read from the file's own self-declaring line, skipping the shared RULES section", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const sk = byType(g, "skill");
   assert.equal(sk.length, 2, "roster khai đúng 2 skill");
@@ -149,7 +149,7 @@ test("skill lấy theo dòng tự khai của file, bỏ section LUẬT chung", (
   assert.deepEqual(sk.map((n) => n.id).sort(), ["skill:grill", "skill:soi-chuan"]);
 });
 
-test("plan_spec chỉ nhận NN_tên.md; references điều N khử trùng lặp", (t) => {
+test("plan_spec accepts only NN_name.md; references to article N are deduplicated", (t) => {
   const g = buildStandardGraph(scaffold(t), FILES);
   const plans = byType(g, "plan_spec").map((n) => n.id).sort();
   assert.deepEqual(plans, ["plan:00_overview.md", "plan:13_graph.md"], "notes.md không đánh số → loại");
@@ -164,7 +164,7 @@ test("plan_spec chỉ nhận NN_tên.md; references điều N khử trùng lặp
   assert.ok(!refs.some((e) => e.to === "hp:13"), "không tạo cạnh tới điều không tồn tại");
 });
 
-test("thiếu file harness thì fail-open, không ném", (t) => {
+test("a missing harness file fails open rather than throwing", (t) => {
   const root = tempDir(t, "zemory-gstd-empty-");
   const g = buildStandardGraph(root, []);
   assert.equal(g.nodes.length, 0);
@@ -177,7 +177,7 @@ test("thiếu file harness thì fail-open, không ném", (t) => {
 // `dist/` `external/` `frontend/`… đẻ ra 13 node `slot:*` sai hạng và thổi phồng
 // `slot_unused`. Lộ ra khi một check conform dựa trên phép phân loại này báo oan đúng
 // 13 mục đó. Sửa xong lại tự dính thêm hai bẫy — cả hai bị khoá ở đây.
-test("routing §4 tách đúng SLOT với TẦNG (không gọi tầng là slot)", (t) => {
+test("the S4 routing separates SLOT from LAYER correctly (a layer is never called a slot)", (t) => {
   const root = tempDir(t, "zemory-route-");
   mkdirSync(join(root, "docs", "agent"), { recursive: true });
   writeFileSync(join(root, "AGENTS.md"), "# App\n");

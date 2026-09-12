@@ -54,9 +54,9 @@ export async function cmdHook(args: string[]): Promise<void> {
         : "  chưa khai đường cấm ghi — thêm khoá `protected: [\"...\"]` vào .harness.json rồi chạy lại (mẫu secret vẫn gác).",
     );
     console.log("  Nối vào runtime (user duyệt rồi tự thêm — tool không cắm hộ):");
-    // In KEM matcher: guard chi duoc goi cho tool nao co ten trong matcher, nen thieu mot ten
-    // la ho mot cua — do that 2026-08-20: mot repo khai matcher thieu `PowerShell`, va moi lenh
-    // nguy hiem di qua tool do khong bao gio cham toi guard. Nguoi noi khong phai doan nua.
+    // Print the matcher TOO: the guard is only invoked for tools named in the matcher, so a missing name
+    // is an open door — measured 2026-08-20: one repo declared a matcher without `PowerShell`, and every dangerous
+    // command going through that tool never reached the guard. Say it out loud rather than leaving it to be guessed.
     console.log(
       `    · Claude Code (.claude/settings.json): PreToolUse matcher ${GUARD_MATCHER} → node ${rel(r.hooksDir)}/guard.cjs`,
     );

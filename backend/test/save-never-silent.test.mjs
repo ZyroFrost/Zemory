@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 const FE = (f) => readFileSync(new URL(`../../frontend/scripts/${f}`, import.meta.url), "utf8");
 const CORE = FE("core.js");
 
-test("zSave bắt ĐỦ BA kiểu 'không lưu được' — thiếu kiểu nào là còn một đường nói dối", () => {
+test("zSave catches ALL THREE kinds of 'could not save' - a missing kind leaves one path to lie on", () => {
   const body = /function zSave\(url,revert\)\{([\s\S]*?)\n {2}\}/.exec(CORE);
   assert.ok(body, "phải có zSave trong core.js");
   assert.match(body[1], /if\(!r\.ok\)throw/, "② HTTP ngoài 2xx phải tính là hỏng");
@@ -27,12 +27,12 @@ test("zSave bắt ĐỦ BA kiểu 'không lưu được' — thiếu kiểu nào
   assert.match(body[1], /return null;/, "luôn resolve (null = không lưu được) — không ném, để chỗ gọi khỏi bọc catch rỗng");
 });
 
-test("khoá i18n 'save.failed' có ở CẢ HAI từ điển", () => {
+test("the i18n key 'save.failed' exists in BOTH dictionaries", () => {
   const chrome = FE("chrome.js");
   assert.equal((chrome.match(/'save\.failed':/g) || []).length, 2, "thiếu một đầu = đổi ngôn ngữ xong vẫn thấy tiếng cũ");
 });
 
-test("MỌI công tắc lưu-thiết-lập đều đi qua zSave — không còn đường nào tự gửi rồi nuốt", () => {
+test("EVERY settings toggle goes through zSave - no path posts and swallows the result", () => {
   const sites = [
     ["system.js", /zSave\(ep\+'\?on='\+tg\.dataset\.on,undo\)/, "công tắc Hybrid · Dead paths ở màn Tính năng"],
     ["system.js", /zSave\('\/set-'\+nm\+'\?on='\+au\.dataset\.on,/, "công tắc Scheduler · Autostart · Auto-sync"],
@@ -46,7 +46,7 @@ test("MỌI công tắc lưu-thiết-lập đều đi qua zSave — không còn 
   for (const [file, re, what] of sites) assert.match(FE(file), re, `${what} phải lưu qua zSave`);
 });
 
-test("KHÔNG công tắc nào còn tự gọi zPost tới /set-* rồi tự lo lấy", () => {
+test("NO toggle still calls zPost to /set-* and handles it on its own", () => {
   // Ô nhập giá trị (lịch tự sync · chu kỳ tự kiểm · ngôn ngữ · đường Drive · bỏ qua project) là hình
   // dạng khác, chưa thuộc đợt này — liệt kê tên ra đây để lần sau đụng thì biết đã cố ý chừa cái nào.
   const ALLOWED = ["/set-autosync-schedule", "/set-checks-auto", "/set-lang", "/set-drive", "/set-project-ignore"];
@@ -57,7 +57,7 @@ test("KHÔNG công tắc nào còn tự gọi zPost tới /set-* rồi tự lo l
   }
 });
 
-test("ô ngưỡng context không được báo 'Đã lưu' cho một lượt server TỪ CHỐI", () => {
+test("the context threshold box must not report 'Saved' for a round the server REFUSED", () => {
   const src = FE("sources.js");
   const h = /if\(!e\.target\|\|e\.target\.id!=='ctxWarnPct'\)return;([\s\S]*?)\n {2}\}\);/.exec(src);
   assert.ok(h, "phải tìm được handler ctxWarnPct");

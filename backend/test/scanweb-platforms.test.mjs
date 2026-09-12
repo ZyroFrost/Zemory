@@ -45,7 +45,7 @@ const orgRoute = (list = ORGS) => [/\/api\/organizations$/, () => ok(list)];
 
 // ── ① chọn org theo CAPABILITY ────────────────────────────────────────────────
 
-test("claude auth: chọn org theo caps 'chat', KHÔNG theo thứ tự mảng", async () => {
+test("claude auth: it picks the org by the 'chat' capability, NOT by array order", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [orgRoute()]);
   assert.equal(value.token, true);
   // Không có endpoint account ⇒ rơi về tên org, và PHẢI nói rõ đó là org (tiền tố) — bản cũ trả
@@ -53,7 +53,7 @@ test("claude auth: chọn org theo caps 'chat', KHÔNG theo thứ tự mảng", 
   assert.equal(value.email, "org: Work Org", "phải là org có caps 'chat', không phải org đầu tiên — và ghi rõ là org");
 });
 
-test("claude auth: có /api/account ⇒ TÀI KHOẢN (email) thắng tên org", async () => {
+test("claude auth: with /api/account present the ACCOUNT (email) beats the org name", async () => {
   // Đây là thứ hàng nguồn phải ghi: *"cái nào liên kết tk web thì ghi luôn tk đó"*. Tên org
   // ("tai.khoan@canhan.example's Organization" · "Global") không phải tài khoản.
   const { value, calls } = await runExpr(PLATFORMS.claude.authExpr, [
@@ -71,7 +71,7 @@ test("claude auth: có /api/account ⇒ TÀI KHOẢN (email) thắng tên org", 
   assert.equal(boot.value.email, "boot@example.com");
 });
 
-test("claude list + conv: URL mang uuid của org 'chat'", async () => {
+test("claude list + conv: the URL carries the uuid of the 'chat' org", async () => {
   const list = await runExpr(PLATFORMS.claude.listExpr, [
     orgRoute(),
     [/chat_conversations/, () => ok([{ uuid: "c1" }])],
@@ -90,19 +90,19 @@ test("claude list + conv: URL mang uuid của org 'chat'", async () => {
   assert.ok(conv.calls.some((u) => u.includes("tree=True")), "phải giữ tham số tree=True");
 });
 
-test("claude auth: có caps mà KHÔNG org nào có 'chat' ⇒ báo lỗi rõ, không im lặng dùng org sai", async () => {
+test("claude auth: capabilities present but NO org with 'chat' reports a clear error rather than silently using the wrong org", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [orgRoute([ORGS[0]])]);
   assert.equal(value.token, false);
   assert.match(String(value.err), /chat capability/i, "câu lỗi phải chỉ ra vấn đề là capability");
 });
 
-test("claude auth: shape không khai capabilities ⇒ rơi về org đầu (không phá tài khoản lạ)", async () => {
+test("claude auth: a shape that declares no capabilities falls back to the first org (no breaking unfamiliar accounts)", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [orgRoute([{ uuid: "solo", name: "Solo" }])]);
   assert.equal(value.token, true);
   assert.equal(value.email, "org: Solo", "không có account endpoint ⇒ tên org, ghi rõ là org");
 });
 
-test("claude auth: chưa đăng nhập (401) ⇒ token=false", async () => {
+test("claude auth: not signed in (401) yields token=false", async () => {
   const { value } = await runExpr(PLATFORMS.claude.authExpr, [[/\/api\/organizations$/, () => httpErr(401)]]);
   assert.equal(value.token, false);
   assert.match(String(value.err), /401/);
@@ -113,7 +113,7 @@ test("claude auth: chưa đăng nhập (401) ⇒ token=false", async () => {
 // `…/projects/<pid>/conversations` ⇒ 0 id thiếu). Đây là lý do claude KHÔNG cần
 // `projectConvsExpr`; test khoá lại để không ai "vá" bằng một vòng enumerate vô ích.
 
-test("claude list: KHÔNG bỏ chat có project_uuid, và chở theo mốc cập nhật", async () => {
+test("claude list: it does NOT drop chats with a project_uuid, and it carries the update mark", async () => {
   const { value } = await runExpr(PLATFORMS.claude.listExpr, [
     orgRoute(),
     [
@@ -127,7 +127,7 @@ test("claude list: KHÔNG bỏ chat có project_uuid, và chở theo mốc cập
   assert.ok(value.every((v) => typeof v.updated === "string"), "mỗi mục phải mang mốc cập nhật của nền");
 });
 
-test("claude list: phân trang theo offset cho tới trang ngắn (không tin trường tổng)", async () => {
+test("claude list: it pages by offset until a short page (never trusting a total field)", async () => {
   const page1 = Array.from({ length: 100 }, (_, i) => ({ uuid: "a" + i }));
   const { value } = await runExpr(PLATFORMS.claude.listExpr, [
     orgRoute(),
@@ -143,7 +143,7 @@ test("claude list: phân trang theo offset cho tới trang ngắn (không tin tr
 // Bug đo 2026-07-30: resume bỏ qua theo "id đã biết" ⇒ hội thoại CŨ mà chat thêm thì
 // không bao giờ được kéo lại, mọi lần quét đều "+0 tin mới". 5/25 hội thoại mới nhất của
 // tài khoản thật đang ở tình trạng đó.
-test("quyết định bỏ qua phải dựa trên MỐC CẬP NHẬT, không phải 'đã biết id'", () => {
+test("the skip decision must rest on the UPDATE MARK, not on 'we already know this id'", () => {
   const src = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   assert.ok(!/if \(have\.has\(sid\)\) \{\s*\n\s*skipped\+\+;/.test(src), "không được bỏ qua chỉ vì đã biết id");
   assert.ok(/ids\[i\]\.at <= held/.test(src), "phải so mốc trên nền với mốc đang giữ");
@@ -157,7 +157,7 @@ test("quyết định bỏ qua phải dựa trên MỐC CẬP NHẬT, không ph�
 
 // ── nhãn Project ─────────────────────────────────────────────────────────────
 
-test("claude projects: map uuid→tên", async () => {
+test("claude projects: it maps uuid to name", async () => {
   const { value } = await runExpr(PLATFORMS.claude.projectsExpr, [
     orgRoute(),
     [/\/projects\?/, () => ok([{ uuid: "p1", name: "VU-Project" }])],
@@ -165,7 +165,7 @@ test("claude projects: map uuid→tên", async () => {
   assert.deepEqual(value, { p1: "VU-Project" });
 });
 
-test("claude projects: server BỎ QUA offset ⇒ vẫn dừng, không quay vô hạn", async () => {
+test("claude projects: a server IGNORING offset still terminates instead of looping forever", async () => {
   const full = Array.from({ length: 100 }, (_, i) => ({ uuid: "p" + i, name: "P" + i }));
   const { value, calls } = await runExpr(PLATFORMS.claude.projectsExpr, [
     orgRoute(),
@@ -175,7 +175,7 @@ test("claude projects: server BỎ QUA offset ⇒ vẫn dừng, không quay vô 
   assert.ok(calls.filter((u) => u.includes("/projects?")).length <= 3, `phải dừng sớm, đã gọi ${calls.length} lần`);
 });
 
-test("projectKeyOf: chatgpt đọc gizmo_id · claude đọc project_uuid", () => {
+test("projectKeyOf: chatgpt reads gizmo_id, claude reads project_uuid", () => {
   assert.equal(PLATFORMS.chatgpt.projectKeyOf({ gizmo_id: "g-p-1" }), "g-p-1");
   assert.equal(PLATFORMS.chatgpt.projectKeyOf({ conversation_template_id: "g-p-2" }), "g-p-2", "đường lui của ChatGPT");
   assert.equal(PLATFORMS.claude.projectKeyOf({ project_uuid: "p1" }), "p1");
@@ -187,7 +187,7 @@ test("projectKeyOf: chatgpt đọc gizmo_id · claude đọc project_uuid", () =
 // Đây là phép so PARITY (chạy adapter rồi đối chiếu), không phải chép lại hằng số —
 // chép hằng số thì hai bên vẫn lệch được mà test vẫn xanh.
 
-test("sessionPrefix khớp id thật của adapter (bug resume hardcode 'chatgpt-')", (t) => {
+test("sessionPrefix matches the adapter's real id (the resume bug that hardcoded 'chatgpt-')", (t) => {
   const dir = tempDir(t, "zemory-swp-");
   mkdirSync(dir, { recursive: true });
 
@@ -212,7 +212,7 @@ test("sessionPrefix khớp id thật của adapter (bug resume hardcode 'chatgpt
   assert.equal(cwOut[0].sessionId, `${PLATFORMS.claude.sessionPrefix}UID`);
 });
 
-test("adapter claude: nhãn project theo thứ tự stamp → _projects.json → uuid", (t) => {
+test("the claude adapter: the project label follows stamp, then _projects.json, then uuid", (t) => {
   const dir = tempDir(t, "zemory-swp-proj-");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "_projects.json"), JSON.stringify({ p1: "VU-Project" }));
@@ -245,7 +245,7 @@ const FE_HTML = readFileSync(new URL("../../frontend/pages/app.html", import.met
 const FE_JS = readAppJs();
 const UI_TS = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 
-test("mọi công tắc data-auto có URL trong app.js VÀ handler trong ui.ts (không công tắc chết)", () => {
+test("every data-auto toggle has a URL in app.js AND a handler in ui.ts (no dead toggles)", () => {
   const toggles = [...new Set([...FE_HTML.matchAll(/data-auto="([a-zA-Z]+)"/g)].map((m) => m[1]))];
   const map = FE_JS.match(/var AUTO_URL\s*=\s*\{([^}]*)\}/);
   assert.ok(map, "AUTO_URL phải là MỘT bảng dùng chung, không phải chuỗi if lồng nhau");
@@ -256,7 +256,7 @@ test("mọi công tắc data-auto có URL trong app.js VÀ handler trong ui.ts (
   }
 });
 
-test("app.js gọi endpoint nào thì ui.ts phải có endpoint đó (bảng Liên kết + nút nối)", () => {
+test("every endpoint app.js calls must exist in ui.ts (the Link table plus the connect buttons)", () => {
   for (const ep of ["/connections", "/connect"]) {
     assert.ok(FE_JS.includes(ep), `app.js phải dùng ${ep}`);
     assert.ok(UI_TS.includes(`p === "${ep}"`), `ui.ts thiếu handler ${ep}`);
@@ -265,7 +265,7 @@ test("app.js gọi endpoint nào thì ui.ts phải có endpoint đó (bảng Li�
 
 // User chốt 2026-07-30: MỘT nút Quét, tự dò nền nào thiếu đăng nhập — không công tắc,
 // không bắt chọn. Ba luật dưới khoá đúng ba cách bản này có thể trượt về kiểu cũ.
-test("MỘT nút Quét: luôn kéo web, không qua công tắc nào", () => {
+test("ONE Scan button: it always pulls the web, gated by no toggle", () => {
   const scanBranch = UI_TS.slice(UI_TS.indexOf('p === "/memory-scan"'), UI_TS.indexOf('p === "/connections"'));
   // 2026-08-29: nút Quét kéo web NGẦM (`hidden: true`) — cửa sổ hiện chỉ khi người dùng bấm Liên kết.
   assert.ok(/await scanWebPlatforms\(undefined, undefined, \{ hidden: true \}\)/.test(scanBranch), "nút Quét phải tự kéo web, và kéo NGẦM");
@@ -280,7 +280,7 @@ test("MỘT nút Quét: luôn kéo web, không qua công tắc nào", () => {
 // CHÍNH hàng nguồn — *"mấy cái check link phải nằm ngay sau mấy cái check source"*, và *"gộp
 // lên thì ở dưới phải mất"*). Bảng `#mConn` bị gỡ CÓ CHỦ ĐÍCH; bất biến THẬT — trạng thái đo
 // được + bấm nối lại được + không hộp thoại tự nhảy — nay sống ở badge trên hàng + hộp chi tiết.
-test("trạng thái liên kết nằm TRÊN HÀNG nguồn: badge + hộp chi tiết + nút Thêm nguồn", () => {
+test("link state sits ON THE SOURCE ROW: badge, detail box and Add source button", () => {
   assert.ok(!/id="mConn"/.test(FE_HTML), "bảng Liên kết cũ phải mất hẳn — hai chỗ cùng nói một chuyện là chỗ đẻ lệch");
   assert.ok(UI_TS.includes('p === "/connections"') && UI_TS.includes('p === "/connect"'), "ui.ts vẫn phải có cả endpoint đọc lẫn endpoint nối lại (cây đọc qua scopeTree)");
   assert.ok(/function srcBadge\(/.test(FE_JS), "mỗi hàng nguồn phải có badge trạng thái");
@@ -292,7 +292,7 @@ test("trạng thái liên kết nằm TRÊN HÀNG nguồn: badge + hộp chi ti�
   assert.ok(/conn\.who/.test(FE_JS), "nguồn đã nối phải ghi TÊN tài khoản ngay trên hàng");
 });
 
-test("chỉ quét nền ĐANG DÙNG — máy chưa từng dùng nền nào thì không tự bật trình duyệt", () => {
+test("it scans only platforms IN USE - a machine that never used one must not launch a browser", () => {
   // Neo đã dời HAI lần trong một ngày: `ui.ts` → `scanweb.ts` (surface mỏng, nghiệp vụ ở
   // domain) → `webslots.ts` (bốn nơi cùng cần, tránh import vòng). Bất biến KHÔNG hề đổi —
   // và đó chính là điểm yếu của neo soi CHỮ: nó đỏ vì code DỜI NHÀ, không vì hành vi sai.
@@ -317,7 +317,7 @@ test("chỉ quét nền ĐANG DÙNG — máy chưa từng dùng nền nào thì 
 // Nguyên văn user: *"mọi source đã check là nó phải tự động vào kho chạy hết, ko dc thiếu"*.
 //
 // Ca MỚI canh đúng ba ràng buộc thay thế — mất ràng buộc nào cũng là quay lại một kiểu sai:
-test("scheduler tự kéo web — nhưng NGẦM, theo ô tick, và hỏng thì GHI SỔ", () => {
+test("the scheduler pulls the web by itself - but QUIETLY, per ticked box, and it RECORDS failures", () => {
   const sched = readFileSync(new URL("../src/jobs/scheduler.ts", import.meta.url), "utf8");
   assert.ok(/scanWeb\(/.test(sched), "nay scheduler PHẢI tự kéo web (ô đã tick = phải vào kho)");
   assert.ok(/hidden:\s*true/.test(sched), "phải kéo NGẦM — bật cửa sổ mỗi nhịp là lý do luật cũ tồn tại");
@@ -329,7 +329,7 @@ test("scheduler tự kéo web — nhưng NGẦM, theo ô tick, và hỏng thì G
 
 // ── trình duyệt mở ra phải là trình duyệt user DÙNG ──────────────────────────
 
-test("chọn trình duyệt theo mặc định của máy, không cứng Edge-first", () => {
+test("the browser follows the machine default rather than a hardcoded Edge-first order", () => {
   assert.ok(/chrome\.exe$/i.test(orderByProgId("ChromeHTML")[0]), "máy mặc định Chrome ⇒ dò Chrome trước");
   assert.ok(/msedge\.exe$/i.test(orderByProgId("MSEdgeHTM")[0]), "máy mặc định Edge ⇒ dò Edge trước");
   assert.ok(/msedge\.exe$/i.test(orderByProgId(null)[0]), "không đọc được registry ⇒ giữ thứ tự cũ, không rơi về rỗng");
@@ -348,13 +348,13 @@ test("chọn trình duyệt theo mặc định của máy, không cứng Edge-fi
 // Đo 2026-07-30: quét claude bám vào cửa sổ chatgpt (chung cổng 9222, bộ lọc tab khớp
 // mọi nền) ⇒ bắn `/api/organizations` vào chatgpt.com ⇒ 404 ⇒ báo "chưa đăng nhập" và
 // mở một trang nhập mật khẩu Google. Hai luật dưới đây chặn đúng chỗ đó.
-test("mỗi nền một CỔNG riêng — hai cửa sổ không thể cùng bind một cổng", () => {
+test("each platform gets its own PORT - two windows cannot bind the same port", () => {
   const ports = Object.values(PLATFORMS).map((p) => p.port);
   assert.ok(ports.every((n) => Number.isInteger(n) && n > 1024), "mọi nền phải khai cổng");
   assert.equal(new Set(ports).size, ports.length, `cổng trùng nhau ⇒ nền sau mất CDP, bám nhầm cửa sổ nền trước: ${ports}`);
 });
 
-test("bộ lọc tab của một nền KHÔNG được khớp trang của nền khác", () => {
+test("one platform's tab filter must NOT match another platform's page", () => {
   const all = Object.values(PLATFORMS);
   for (const p of all) {
     assert.ok(p.tabRe instanceof RegExp, `${p.key} phải khai tabRe`);
@@ -369,7 +369,7 @@ test("bộ lọc tab của một nền KHÔNG được khớp trang của nền 
   assert.ok(!/const TAB_RE\s*=/.test(src), "TAB_RE phải bị gỡ hẳn, không để ai vô tình dùng lại");
 });
 
-test("trình duyệt MẶC ĐỊNH của máy thắng; profile hãng khác được DỜI chứ không mở chéo", () => {
+test("the machine's DEFAULT browser wins; a profile from another vendor is MOVED rather than opened cross-vendor", () => {
   const src = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   assert.ok(/function profileBrowser\(/.test(src), "phải có lớp quyết định browser THEO PROFILE");
   assert.ok(/\.zemory-browser/.test(src), "và phải ghi dấu lại, không đoán mỗi lần chạy");
@@ -387,7 +387,7 @@ test("trình duyệt MẶC ĐỊNH của máy thắng; profile hãng khác đư�
 
 // ── ③ vòng ĐĂNG NHẬP LẠI ─────────────────────────────────────────────────────
 
-test("awaitLogin: mở cửa sổ TRƯỚC khi hỏi, rồi kiểm lại auth", async () => {
+test("awaitLogin: it opens the window BEFORE asking, then rechecks auth", async () => {
   const order = [];
   let signedIn = false;
   const back = await awaitLogin({
@@ -408,14 +408,14 @@ test("awaitLogin: mở cửa sổ TRƯỚC khi hỏi, rồi kiểm lại auth", 
   assert.deepEqual(order, ["open", "ask", "check"], "cửa sổ phải mở TRƯỚC câu hỏi — nếu không thì lời hứa 'window is open' là bịa");
 });
 
-test("awaitLogin: không có ask (không TTY / daemon) ⇒ mở cửa sổ rồi trả false NGAY, không treo", async () => {
+test("awaitLogin: with no ask available (no TTY, daemon) it opens the window and returns false AT ONCE rather than hanging", async () => {
   let opened = 0;
   const back = await awaitLogin({ openWindow: () => opened++, checkAuth: async () => assert.fail("không được kiểm auth khi không ai trả lời được") });
   assert.equal(back, false);
   assert.equal(opened, 1, "vẫn phải mở cửa sổ để lần chạy sau người dùng đã có chỗ đăng nhập");
 });
 
-test("awaitLogin: người dùng chọn DỪNG ⇒ false, không kiểm thêm", async () => {
+test("awaitLogin: a user choosing STOP yields false with no further checks", async () => {
   let checks = 0;
   const back = await awaitLogin({
     openWindow: () => {},
@@ -429,7 +429,7 @@ test("awaitLogin: người dùng chọn DỪNG ⇒ false, không kiểm thêm", 
   assert.equal(checks, 0);
 });
 
-test("awaitLogin: trả lời 'xong' mà vẫn chưa đăng nhập ⇒ dừng sau maxRounds, KHÔNG vòng vô hạn", async () => {
+test("awaitLogin: answering 'done' while still signed out stops after maxRounds, never looping forever", async () => {
   let asked = 0;
   const back = await awaitLogin({
     openWindow: () => {},
@@ -454,7 +454,7 @@ const TWO_CHAT_ORGS = [
   { uuid: "org-api", name: "Individual Org", capabilities: ["api", "api_individual"] },
 ];
 
-test("claude list: nhiều org 'chat' ⇒ HỢP hội thoại của mọi org, không dừng ở org đầu (dù nó rỗng)", async () => {
+test("claude list: several 'chat' orgs means the UNION of every org's conversations, not stopping at the first (even when it is empty)", async () => {
   delete globalThis.__zmOrgOf;
   const { value, calls } = await runExpr(PLATFORMS.claude.listExpr, [
     orgRoute(TWO_CHAT_ORGS),
@@ -466,7 +466,7 @@ test("claude list: nhiều org 'chat' ⇒ HỢP hội thoại của mọi org, k
   assert.ok(!calls.some((u) => u.includes("org-api")), "org 'api' vẫn không được gọi");
 });
 
-test("claude conv: lời gọi chi tiết đi ĐÚNG org của hội thoại đó (sổ do list ghi), không phải org đầu", async () => {
+test("claude conv: the detail call goes to THAT conversation's org (recorded by list), not to the first org", async () => {
   delete globalThis.__zmOrgOf;
   await runExpr(PLATFORMS.claude.listExpr, [
     orgRoute(TWO_CHAT_ORGS),
@@ -483,7 +483,7 @@ test("claude conv: lời gọi chi tiết đi ĐÚNG org của hội thoại đ�
   assert.ok(!conv.calls.some((u) => u.includes("/org-global/chat_conversations/w1")), "có sổ thì KHÔNG dò org đầu — mỗi lần dò sai là một request 404 vô ích");
 });
 
-test("claude conv: KHÔNG có sổ (tab mới, chưa list) ⇒ thử lần lượt mọi org chat cho tới khi 200", async () => {
+test("claude conv: with NO record (a fresh tab, no list yet) it tries each chat org in turn until a 200", async () => {
   delete globalThis.__zmOrgOf;
   const conv = await runExpr(PLATFORMS.claude.convExpr("w9"), [
     orgRoute(TWO_CHAT_ORGS),
@@ -493,7 +493,7 @@ test("claude conv: KHÔNG có sổ (tab mới, chưa list) ⇒ thử lần lư�
   assert.equal(conv.value.uuid, "w9", "org đầu 404 thì phải sang org kế, không ném ngay");
 });
 
-test("claude projects: gom project của MỌI org chat", async () => {
+test("claude projects: it gathers projects from EVERY chat org", async () => {
   const { value } = await runExpr(PLATFORMS.claude.projectsExpr, [
     orgRoute(TWO_CHAT_ORGS),
     [/org-global\/projects/, () => ok([{ uuid: "pg", name: "G" }])],
@@ -505,7 +505,7 @@ test("claude projects: gom project của MỌI org chat", async () => {
 // ── ⑥ Đóng dấu tài khoản CHỈ lên phiên của nguồn web vừa kéo ────────────────────────────
 // `scan()` nạp toàn kho; transcript Claude Code mới trên đĩa cũng có trong report. Bản cũ đóng
 // dấu hết ⇒ 9 phiên local mang `main`/email ⇒ cây Local tách claude-code thành BA hàng (28/08).
-test("webSessionIds: phiên local trong cùng lượt scan KHÔNG được đóng dấu tài khoản web", async () => {
+test("webSessionIds: a local session in the same scan round must NOT be stamped with a web account", async () => {
   const { webSessionIds } = await import("../../dist/memory/scanweb.js");
   const report = { sessions: [
     { id: "claudeweb-1", source: "claude-web" },

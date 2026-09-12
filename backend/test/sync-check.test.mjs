@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { ensureHarness, syncCheck } from "../../dist/docs/adopt.js";
 import { tempDir } from "./helpers.mjs";
 
-test("repo KHÔNG marker ⇒ connected=false, không nhắc gì (đừng làm phiền repo thường)", (t) => {
+test("a repo with NO marker yields connected=false and says nothing (do not pester an ordinary repo)", (t) => {
   const root = tempDir(t, "zemory-synccheck-");
   writeFileSync(join(root, "README.md"), "# x\n");
   const r = syncCheck(root);
@@ -18,7 +18,7 @@ test("repo KHÔNG marker ⇒ connected=false, không nhắc gì (đừng làm ph
   assert.deepEqual(r.missing, []);
 });
 
-test("repo vừa scaffold ⇒ khớp trọn (vừa sync xong mà đã kêu cũ = báo oan)", (t) => {
+test("a freshly scaffolded repo matches fully (complaining right after a sync would be a false positive)", (t) => {
   const root = tempDir(t, "zemory-synccheck-");
   ensureHarness(root);
   const r = syncCheck(root);
@@ -26,7 +26,7 @@ test("repo vừa scaffold ⇒ khớp trọn (vừa sync xong mà đã kêu cũ =
   assert.deepEqual(r.missing, [], `vừa scaffold mà thiếu: ${JSON.stringify(r.missing)}`);
 });
 
-test("template có file repo chưa nhận ⇒ NÊU TÊN đúng file đó; nhận rồi ⇒ hết kêu", (t) => {
+test("a template file the repo has not taken NAMES that exact file; once taken it goes quiet", (t) => {
   // Mô phỏng đúng ca thật 2026-08-21: skill `write-style` mới vào bộ chuẩn, repo cũ chưa có.
   const root = tempDir(t, "zemory-synccheck-");
   ensureHarness(root);
@@ -43,7 +43,7 @@ test("template có file repo chưa nhận ⇒ NÊU TÊN đúng file đó; nhận
   assert.deepEqual(syncCheck(root).missing, [], "trả file lại rồi mà vẫn kêu = chấm than kẹt");
 });
 
-test("file ĐÃ có nội dung riêng ⇒ KHÔNG bị tính thiếu (file-wins — check không được xui ghi đè)", (t) => {
+test("a file that ALREADY has its own content is NOT counted as missing (file-wins - the check must not invite an overwrite)", (t) => {
   const root = tempDir(t, "zemory-synccheck-");
   ensureHarness(root);
   writeFileSync(join(root, "docs", "agent", "02_RULES.md"), "# luật riêng của repo\n");

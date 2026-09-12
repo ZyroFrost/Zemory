@@ -23,7 +23,7 @@ import { listConnections } from "../../dist/memory/connections.js";
 // tiếng Việt ghép sẵn ở server, đúng thứ nó sinh ra để chặn.
 const CODES = new Set(["lastChecked", "neverChecked", "needLogin", "storePath", "storeGone", "noStore"]);
 
-test("mọi dòng Liên kết đều mang detailCode hợp lệ", () => {
+test("every Link row carries a valid detailCode", () => {
   const rows = listConnections();
   assert.ok(rows.length > 0, "không có dòng nào để kiểm — kho rỗng?");
   const bad = rows.filter((r) => !CODES.has(r.detailCode));
@@ -34,7 +34,7 @@ test("mọi dòng Liên kết đều mang detailCode hợp lệ", () => {
   );
 });
 
-test("tham số đi kèm mã — không có tham số thì UI ghép ra câu cụt", () => {
+test("parameters travel with the code - without them the UI builds a truncated sentence", () => {
   for (const r of listConnections()) {
     if (r.detailCode === "lastChecked") {
       assert.ok(r.detailArgs?.at, `${r.source}: lastChecked mà thiếu 'at' ⇒ UI hiện "kiểm lần cuối " rỗng`);
@@ -45,7 +45,7 @@ test("tham số đi kèm mã — không có tham số thì UI ghép ra câu cụ
   }
 });
 
-test("UI phải ĐỌC mã, không in thẳng detail của server", () => {
+test("the UI must READ the code rather than printing the server's raw detail", () => {
   const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
@@ -57,7 +57,7 @@ test("UI phải ĐỌC mã, không in thẳng detail của server", () => {
   );
 });
 
-test("cả hai dict có đủ key của bảng Liên kết", () => {
+test("both dictionaries hold every key of the Link table", () => {
   const dict = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   const en = dict.indexOf("en:{");
   // ⚠ Danh sách CỨNG ⇒ khoá mới mà quên khai ở đây là điểm mù IM LẶNG. Đo 2026-09-02: thêm

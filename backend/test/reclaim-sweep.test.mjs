@@ -27,7 +27,7 @@ const DAY = 24 * 60 * 60_000;
 const NOW = Date.parse("2026-08-31T09:00:00Z");
 
 // ── ② PROFILE TRÌNH DUYỆT ────────────────────────────────────────────────────────────────────
-test("isSetAsideProfile: chỉ nhận thứ APP TẠO (-bak-, cả dạng mất dấu chấm) — không khe sống, không bản làm tay", () => {
+test("isSetAsideProfile: it accepts only what the APP CREATED (-bak-, including the dot-less form) - not a live slot, not a hand-made copy", () => {
   // Dạng thật đọc từ đĩa 2026-08-31 — `-bak-` do `scanweb.borrowCookies` đặt.
   assert.ok(isSetAsideProfile("claude.msedge-bak-1787906707220"), "dạng hiện nay");
   // `.trong-` KHÔNG do app sinh (tra 2026-08-31: 0 dòng code tạo nó) ⇒ vòng dọn PHẢI bỏ qua.
@@ -44,7 +44,7 @@ test("isSetAsideProfile: chỉ nhận thứ APP TẠO (-bak-, cả dạng mất 
   assert.equal(isSetAsideProfile("chatgpt-3"), false);
 });
 
-test("setAsideToReclaim: CỬA SỔ LÙI được tôn trọng — bản mới KHÔNG bị đụng", () => {
+test("setAsideToReclaim: the ROLLBACK WINDOW is honoured - recent copies are NOT touched", () => {
   const entries = [
     { name: "claude.msedge-bak-1", path: "/x/a", mtimeMs: NOW - 27 * DAY }, // cũ nhất thật
     { name: "claude.trong-2", path: "/x/b", mtimeMs: NOW - 8 * DAY }, // LÀM TAY, cũ 8 ngày — vẫn phải giữ
@@ -59,7 +59,7 @@ test("setAsideToReclaim: CỬA SỔ LÙI được tôn trọng — bản mới K
   assert.ok(!names.includes("claude-2"), "khe SỐNG không bao giờ bị chọn, dù mtime cũ 99 ngày");
 });
 
-test("setAsideToReclaim: cửa sổ lùi 0 vẫn KHÔNG được cuốn khe sống theo", () => {
+test("setAsideToReclaim: even a rollback window of 0 must not sweep a live slot along with it", () => {
   const entries = [
     { name: "claude.msedge-bak-1", path: "/x/a", mtimeMs: NOW - 1 },
     { name: "claude", path: "/x/live", mtimeMs: NOW - 1 },
@@ -69,7 +69,7 @@ test("setAsideToReclaim: cửa sổ lùi 0 vẫn KHÔNG được cuốn khe số
   assert.deepEqual(doomed.map((d) => d.name), ["claude.msedge-bak-1"], "khe sống VÀ bản làm tay đều miễn nhiễm với mọi ngưỡng");
 });
 
-test("sweepBrowserProfiles: chạy trên ĐĨA THẬT (thư mục tạm) — xoá đúng, giữ đúng", () => {
+test("sweepBrowserProfiles: run on REAL DISK (a temp folder) - it deletes the right things and keeps the right things", () => {
   const dir = mkdtempSync(join(tmpdir(), "zemory-browser-"));
   const mk = (name, ageDays) => {
     const p = join(dir, name);
@@ -92,7 +92,7 @@ test("sweepBrowserProfiles: chạy trên ĐĨA THẬT (thư mục tạm) — xo�
   assert.deepEqual(readdirSync(dir).sort(), ["claude-2", "claude.msedge-bak-fresh"]);
 });
 
-test("sweepBrowserProfiles: thư mục không tồn tại ⇒ im lặng, không ném (fail-open, điều 9)", () => {
+test("sweepBrowserProfiles: a missing folder is silent and does not throw (fail-open, constitution 9)", () => {
   const r = sweepBrowserProfiles({ dir: join(tmpdir(), "zemory-khong-ton-tai-" + Date.now()), now: NOW });
   assert.deepEqual(r.reclaimed, []);
   assert.equal(r.kept, 0);
@@ -105,7 +105,7 @@ test("sweepBrowserProfiles: thư mục không tồn tại ⇒ im lặng, không 
 // proxy TỆ cho giá trị: cùng 122 MB, một bản giữ phiên cuối, một bản rỗng ruột.
 const { slotOfSetAside, platformOfSlot, isLastWayBack } = await import("../../dist/memory/browser-rotate.js");
 
-test("slotOfSetAside: suy đúng khe sống, và trả null thay vì ĐOÁN BỪA", () => {
+test("slotOfSetAside: it infers the live slot correctly, and returns null rather than GUESSING", () => {
   assert.equal(slotOfSetAside("chatgpt-2.brave-bak-1788315274768"), "chatgpt-2");
   assert.equal(slotOfSetAside("chatgpt.bak-40iedbds3g"), "chatgpt", "dạng base36 của borrowCookies");
   assert.equal(slotOfSetAside("claude-3.msedge-bak-1787905538196"), "claude-3");
@@ -115,7 +115,7 @@ test("slotOfSetAside: suy đúng khe sống, và trả null thay vì ĐOÁN BỪ
   assert.equal(slotOfSetAside(".bak-1"), null, "không có phần đầu ⇒ null");
 });
 
-test("platformOfSlot: khớp đúng ranh giới '-', không khớp tiền tố lỏng", () => {
+test("platformOfSlot: it matches on the '-' boundary, not on a loose prefix", () => {
   assert.equal(platformOfSlot("chatgpt"), "chatgpt");
   assert.equal(platformOfSlot("chatgpt-2"), "chatgpt");
   assert.equal(platformOfSlot("claude-3"), "claude");
@@ -127,7 +127,7 @@ test("platformOfSlot: khớp đúng ranh giới '-', không khớp tiền tố l
   assert.equal(platformOfSlot("khong-phai-nen-that-2"), null, "nền không khai ⇒ null, không đoán");
 });
 
-test("isLastWayBack: chỉ CHỨNG MINH ĐƯỢC mới bảo vệ; khe sống đã có phiên thì bản cũ hết được bảo vệ", () => {
+test("isLastWayBack: only a PROVABLE way back is protected; once the live slot has a session the old copy loses protection", () => {
   const e = (session, laneSession) => ({ name: "claude.msedge-bak-1", path: "/x", mtimeMs: 0, session, laneSession });
   assert.equal(isLastWayBack(e(true, false)), true, "có phiên + khe sống KHÔNG có ⇒ đường về cuối cùng");
   assert.equal(isLastWayBack(e(true, null)), true, "khe sống không đọc được ⇒ chưa chứng minh được là còn phiên ⇒ GIỮ");
@@ -140,7 +140,7 @@ test("isLastWayBack: chỉ CHỨNG MINH ĐƯỢC mới bảo vệ; khe sống đ
   assert.equal(isLastWayBack(e(undefined, false)), false, "entry dựng tay ⇒ hành vi y như trước bản vá");
 });
 
-test("setAsideToReclaim: bản quá hạn 20 ngày vẫn ĐƯỢC GIỮ nếu là đường về cuối cùng", () => {
+test("setAsideToReclaim: a copy 20 days overdue is still KEPT when it is the last way back", () => {
   const entries = [
     { name: "chatgpt.msedge-bak-1", path: "/x/keep", mtimeMs: NOW - 20 * DAY, session: true, laneSession: false },
     { name: "claude.msedge-bak-2", path: "/x/drop", mtimeMs: NOW - 20 * DAY, session: true, laneSession: true },
@@ -151,7 +151,7 @@ test("setAsideToReclaim: bản quá hạn 20 ngày vẫn ĐƯỢC GIỮ nếu l�
   assert.ok(!names.includes("chatgpt.msedge-bak-1"), "PHIÊN CUỐI CÙNG của khe không bao giờ bị xoá vì hết hạn");
 });
 
-test("sweepBrowserProfiles trên ĐĨA THẬT: phiên cuối sống sót cả khi ngưỡng = 0, và được ĐẾM ra", () => {
+test("sweepBrowserProfiles on REAL DISK: the last session survives even with the threshold at 0, and it is COUNTED", () => {
   const dir = mkdtempSync(join(tmpdir(), "zemory-lastway-"));
   /** Dựng profile có/không cookie phiên claude (`sessionKey`). */
   const mkProfile = (name, withSession, ageDays) => {

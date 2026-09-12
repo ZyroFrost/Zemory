@@ -22,7 +22,7 @@ import { runInMemoryChild, tempDir } from "./helpers.mjs";
 const SRC = (rel) => readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");
 const FLAGS = ["hybrid", "rerank", "pathsWatch", "scope"];
 
-test("liveFlags() là NGUỒN DUY NHẤT của bốn công tắc + lang, và nó đọc thẳng settings (không qua cache)", () => {
+test("liveFlags() is the SINGLE SOURCE of the four switches plus lang, and it reads settings directly (not through the cache)", () => {
   const ui = SRC("backend/src/ui.ts");
   const body = /function liveFlags\(\): Record<string, unknown> \{([\s\S]*?)\n\}/.exec(ui);
   assert.ok(body, "phải có hàm liveFlags()");
@@ -31,7 +31,7 @@ test("liveFlags() là NGUỒN DUY NHẤT của bốn công tắc + lang, và nó
   }
 });
 
-test("ĐƯỜNG CACHE: liveFlags() trải SAU dashCache.value — trước là vô nghĩa, gói cũ vẫn thắng", () => {
+test("THE CACHE PATH: liveFlags() is spread AFTER dashCache.value - before it is meaningless, the stale bundle still wins", () => {
   const ui = SRC("backend/src/ui.ts");
   assert.match(
     ui,
@@ -40,7 +40,7 @@ test("ĐƯỜNG CACHE: liveFlags() trải SAU dashCache.value — trước là v
   );
 });
 
-test("ĐƯỜNG TÍNH MỚI: payload dùng chung liveFlags(), KHÔNG khai lại cờ lần thứ hai", () => {
+test("THE FRESH-COMPUTE PATH: the payload shares liveFlags() and does NOT redeclare the flags a second time", () => {
   const ui = SRC("backend/src/ui.ts");
   const payload = /const payload = \{([\s\S]*?)\n {2}\};/.exec(ui);
   assert.ok(payload, "phải tìm được khối payload của /memory-status");
@@ -51,14 +51,14 @@ test("ĐƯỜNG TÍNH MỚI: payload dùng chung liveFlags(), KHÔNG khai lại 
   }
 });
 
-test("/ping mang cờ: đây là lượt gọi ĐẦU của FE, nên nó quyết định lần vẽ đầu đúng hay sai", () => {
+test("/ping carries the flags: it is the FE's FIRST call, so it decides whether the first paint is right or wrong", () => {
   const ui = SRC("backend/src/ui.ts");
   const ping = /if \(p === "\/ping"\) return json\(res, \{([^}]*)\}\);/.exec(ui);
   assert.ok(ping, "phải tìm được handler /ping");
   assert.match(ping[1], /\.\.\.liveFlags\(\)/, "/ping phải mang cờ — không thì FE vẫn phải chờ gói 152 s");
 });
 
-test("FE gieo cờ từ /ping vào CHÍNH Z.mem rồi vẽ lại — không đẻ nguồn thứ hai", () => {
+test("the FE seeds the /ping flags into Z.mem ITSELF and repaints - it does not create a second source", () => {
   const chrome = SRC("frontend/scripts/chrome.js");
   const seed = /Z\.mem=Z\.mem\|\|\{\};\[([^\]]*)\]\.forEach\(function\(k\)\{if\(p\[k\]!==undefined\)Z\.mem\[k\]=p\[k\];\}\)/.exec(chrome);
   assert.ok(seed, "zboot phải gieo cờ của /ping vào Z.mem");
@@ -68,7 +68,7 @@ test("FE gieo cờ từ /ping vào CHÍNH Z.mem rồi vẽ lại — không đ�
   assert.match(chrome, /rh\.classList\.toggle\('on',!!Z\.mem\.hybrid\)/, "chip Hybrid ở màn Recall cũng phải sáng theo");
 });
 
-test("BỀN QUA TIẾN TRÌNH: giá trị gạt xong đọc lại được ở một tiến trình MỚI (đây là vế user nghi ngờ)", (t) => {
+test("DURABLE ACROSS PROCESSES: a toggled value reads back in a NEW process (the half the user doubted)", (t) => {
   const root = tempDir(t, "zemory-tog-");
   mkdirSync(join(root, "data"), { recursive: true });
   const steps = runInMemoryChild(root, `

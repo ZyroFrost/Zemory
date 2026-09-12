@@ -1,11 +1,13 @@
 {
   "generator": "zemory",
-  "comment": "Luat lop 1 cho bo COWORK — SHIP SAN, khong can CLI zemory. guard.cjs canh file nay doc no. Sua luat = sua truc tiep file nay (bo cowork khong co lenh sinh lai).",
+  "comment": "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`) — edit the marker, then run `zemory hook guard` to regenerate.",
   "protected_write": [
-    "data/*/01_raw",
-    "docs/agent"
+    "data",
+    "share",
+    "attic",
+    "external"
   ],
-  "protected_write_reason": "dau vao goc (01_raw) + hien phap/luat — mat la khong dung lai duoc, phai di xin lai nguoi gui",
+  "protected_write_reason": "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
   "secret_names": [
     ".env",
     ".env.*",
@@ -24,7 +26,7 @@
     "example.env",
     "sample.env"
   ],
-  "secret_reason": "secret khong bao gio vao commit — KHONG co flag vuot (gia da tra: secret len GitHub 2026-08-04)",
+  "secret_reason": "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
   "key_read_block": [
     "*.pem",
     "*.ppk",
@@ -32,8 +34,8 @@
     "id_ed25519*",
     "*.key"
   ],
-  "key_read_reason": "noi dung file key khong bao gio duoc doc/tra/ghi log; duong dan key chi la DUONG DAN",
-  "flags_dir": "hooks",
+  "key_read_reason": "the contents of a key file must never be read, returned or logged; the key PATH is only a path",
+  "flags_dir": "docs/hooks",
   "flags": {
     "push": ".allow-push",
     "docs_write": ".allow-docs-write",
@@ -42,5 +44,5 @@
     "discard": ".allow-discard",
     "overwrite": ".allow-overwrite"
   },
-  "flags_comment": "Flag = user duyet MOT VIEC. Guard cho qua roi DONG DAU `ZEMORY-USED <van tay lenh> <thoi diem>` vao chinh file flag — KHONG xoa ngay. Trong 90 giay, DUNG lenh do duoc thu lai (hook PreToolUse khong biet lenh co thuc su chay hay khong; mot tang khac cua host chan lai thi flag da mat oan). Xin viec KHAC hoac qua 90 giay => flag bi THU HOI, phai xin lai. Agent chi duoc tao flag sau khi user noi ro trong phien."
+  "flags_comment": "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` into the flag file itself — it is NOT deleted at once. Within 90 seconds THAT SAME command may be retried (a PreToolUse hook cannot know whether the command really ran; another host layer blocking it would cost the flag for nothing). Asking for a DIFFERENT job, or going past 90 seconds, REVOKES the flag and it must be requested again. An agent may only create a flag after the user has said so explicitly in the session."
 }

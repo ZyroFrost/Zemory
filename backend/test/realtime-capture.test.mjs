@@ -51,7 +51,7 @@ const assistantMsg = (uuid, text, usage) => ({
   message: { role: "assistant", model: "claude-opus-5[1m]", content: [{ type: "text", text }], usage },
 });
 
-test("scanOneFile nạp ĐÚNG một file, incremental, idempotent", (t) => {
+test("scanOneFile ingests EXACTLY one file, incrementally and idempotently", (t) => {
   const { file } = fakeTranscript(t, [userMsg("u1", "câu hỏi đầu"), assistantMsg("a1", "trả lời đầu")]);
   const dbPath = join(tempDir(t, "zrtdb-"), "m.db");
 
@@ -77,7 +77,7 @@ test("scanOneFile nạp ĐÚNG một file, incremental, idempotent", (t) => {
   }
 });
 
-test("đường lạ / không adapter nào nhận ⇒ KHÔNG rơi về quét cả kho", (t) => {
+test("an unknown path that no adapter claims does NOT fall back to scanning the whole store", (t) => {
   const dbPath = join(tempDir(t, "zrtdb2-"), "m.db");
   const stray = join(tempDir(t, "zstray-"), "somewhere.jsonl");
   writeFileSync(stray, JSON.stringify(userMsg("x", "lạc")) + "\n");
@@ -88,14 +88,14 @@ test("đường lạ / không adapter nào nhận ⇒ KHÔNG rơi về quét c�
   assert.equal(gone.ingested, false, "file không tồn tại cũng phải trả về gọn, không ném");
 });
 
-test("windowFor: bản 1M và bản 200k không được lẫn; model lạ ⇒ null", () => {
+test("windowFor: the 1M and the 200k builds must not be confused; an unknown model yields null", () => {
   assert.equal(windowFor("claude-opus-5[1m]"), 1_000_000);
   assert.equal(windowFor("claude-opus-5"), 200_000);
   assert.equal(windowFor("gpt-4o"), null, "model lạ ⇒ không biết cửa sổ ⇒ KHÔNG được đoán");
   assert.equal(windowFor(undefined), null);
 });
 
-test("windowFor TỰ SỬA khi số đo vượt cửa sổ giả định (phiên 1M ghi model id 200k)", () => {
+test("windowFor CORRECTS ITSELF when the measurement exceeds the assumed window (a 1M session logging a 200k model id)", () => {
   // Lỗi THẬT bắt được lúc chạy bề mặt sống 2026-08-02: transcript ghi `claude-opus-5`
   // (không có hậu tố 1M) trong khi phiên chạy cửa sổ 1M ⇒ hook hét "Context ~295%".
   // Một phiên không thể dùng quá cửa sổ của chính nó, nên số vượt 100% là bằng chứng
@@ -105,7 +105,7 @@ test("windowFor TỰ SỬA khi số đo vượt cửa sổ giả định (phiên
   assert.equal(windowFor("claude-opus-5", 5_000_000), null, "vượt cả bậc cao nhất ⇒ số không đáng tin ⇒ IM, không hét bậy");
 });
 
-test("windowFor HỌC từ bằng chứng: một lần chứng minh 1M thì phiên sau thôi bị hét oan ở 190k", () => {
+test("windowFor LEARNS from evidence: once 1M is proven, later sessions stop being falsely alarmed at 190k", () => {
   // Lỗ THẬT, báo từ một repo khác rồi đo lại 2026-08-20. Cơ chế tự sửa chỉ nổ SAU khi vượt 200k,
   // nên dải 190k–200k của MỌI phiên 1M đều bị hét "~95%" — trong khi thực dùng ~19%. Đo trên máy
   // này cùng ngày: 5/6 phiên gần nhất vượt 200k với CÙNG model id `claude-opus-5`, tức phỏng đoán
@@ -128,7 +128,7 @@ test("windowFor HỌC từ bằng chứng: một lần chứng minh 1M thì phi�
   assert.ok((100 * 190_000) / w < 25, "190k trên cửa sổ 1M phải ra ~19%, không phải ~95%");
 });
 
-test("bằng chứng CHỈ ĐI LÊN — một phiên nhỏ không được xoá trần đã chứng minh", () => {
+test("evidence ONLY GOES UP - one small session must not erase a proven ceiling", () => {
   // Nếu để ghi đè xuống thì mỗi phiên ngắn lại kéo trần về 200k và cảnh báo oan quay lại —
   // đúng kiểu "trần treo" mà cổng i18n đã phải học một lần.
   const store = new Map([["claude-opus-5", 1_000_000]]);
@@ -137,12 +137,12 @@ test("bằng chứng CHỈ ĐI LÊN — một phiên nhỏ không được xoá 
   assert.equal(store.get("claude-opus-5"), 1_000_000);
 });
 
-test("hậu tố tường minh THẮNG bộ nhớ — khai báo rõ ràng không bị số đo cũ đè", () => {
+test("an explicit suffix BEATS the memory - a clear declaration is not overridden by an old measurement", () => {
   const mem = { get: () => 200_000, learn: () => {} };
   assert.equal(windowFor("claude-opus-5[1m]", 0, mem), 1_000_000);
 });
 
-test("readContextUsage cộng đúng ba phần usage của bản ghi assistant CUỐI", (t) => {
+test("readContextUsage sums the three usage parts of the LAST assistant record correctly", (t) => {
   const { file } = fakeTranscript(t, [
     userMsg("u1", "a"),
     assistantMsg("a1", "b", { input_tokens: 1, cache_read_input_tokens: 100, cache_creation_input_tokens: 10, output_tokens: 5 }),
@@ -156,7 +156,7 @@ test("readContextUsage cộng đúng ba phần usage của bản ghi assistant C
   assert.equal(readContextUsage(file + ".khongco"), null, "file không đọc được ⇒ null, không ném");
 });
 
-test("đồng hồ context IM khi dưới ngưỡng, và chỉ kêu MỘT lần cho cả phiên", (t) => {
+test("the context clock stays SILENT below the threshold, and speaks only ONCE per session", (t) => {
   const low = fakeTranscript(t, [
     userMsg("u1", "a"),
     assistantMsg("a1", "b", { input_tokens: 1, cache_read_input_tokens: 100_000, cache_creation_input_tokens: 0 }),
@@ -182,7 +182,7 @@ test("đồng hồ context IM khi dưới ngưỡng, và chỉ kêu MỘT lần 
   );
 });
 
-test("nén xong thì MỞ LẠI quyền cảnh báo — một lần mỗi CHU KỲ ĐẦY, không phải mỗi phiên", (t) => {
+test("after a compaction the warning right is RESTORED - once per FULL CYCLE, not once per session", (t) => {
   // Đo transcript thật trên máy này (30 lần nén): 7/19 phiên bị nén NHIỀU HƠN MỘT LẦN, cá
   // biệt một phiên 6 lần. Giữ cờ theo phiên ⇒ từ lần nén thứ hai trở đi im lặng, đúng lúc
   // cần nhắc nhất.
@@ -214,7 +214,7 @@ test("nén xong thì MỞ LẠI quyền cảnh báo — một lần mỗi CHU K�
   assert.match(handleHook("prompt", arg), /Context ~/, "sau khi nén THẬT: phải cảnh báo lại cho chu kỳ mới");
 });
 
-test("dấu nén phải là bản ghi THẬT — chữ 'compact_boundary' trong nội dung chat không tính", (t) => {
+test("the compaction mark must be a REAL record - the words 'compact_boundary' in chat content do not count", (t) => {
   // Đã dính đúng bẫy này lúc đo thống kê: phiên đang BÀN về compact bị đếm thành lần nén.
   const { file } = fakeTranscript(t, [
     userMsg("u1", "bàn về compact_boundary trong transcript"),
@@ -228,7 +228,7 @@ test("dấu nén phải là bản ghi THẬT — chữ 'compact_boundary' trong 
   assert.equal(lastCompactAt(file), Date.parse("2026-08-02T10:00:00.000Z"), "bản ghi thật thì phải nhận");
 });
 
-test("SessionStart chỉ nói khi source=compact; phiên bình thường phải IM", (t) => {
+test("SessionStart speaks only when source=compact; a normal session must stay SILENT", (t) => {
   const { home, file } = fakeTranscript(t, [userMsg("u1", "a"), assistantMsg("a1", "b", { input_tokens: 1 })]);
   assert.equal(handleHook("session-start", { cwd: home, transcript_path: file }), "", "phiên mở bình thường ⇒ im (điều 8)");
   assert.equal(handleHook("session-start", { cwd: home, source: "resume" }), "", "resume cũng im");
@@ -239,14 +239,14 @@ test("SessionStart chỉ nói khi source=compact; phiên bình thường phải 
   assert.match(payload.hookSpecificOutput.additionalContext, /memory_context/);
 });
 
-test("Stop hook nạp qua transcript_path (không đụng scan cả kho)", (t) => {
+test("the Stop hook ingests through transcript_path (it never touches a full-store scan)", (t) => {
   const { home, file } = fakeTranscript(t, [userMsg("u1", "xin chào"), assistantMsg("a1", "chào", { input_tokens: 1 })]);
   // Không ném, không in gì — và quan trọng: có đường transcript thì KHÔNG gọi scan().
   assert.equal(handleHook("stop", { cwd: home, transcript_path: file }), "");
   assert.equal(handleHook("pre-compact", { cwd: home, transcript_path: file }), "");
 });
 
-test("mọi móc KHAI ra phải dispatch được — hai danh sách không được lệch nhau", () => {
+test("every DECLARED hook must be dispatchable - the two lists must not drift apart", () => {
   // `ZEMORY_HOOKS` (khai vào settings của host) và bộ sự kiện `cmdHook` chấp nhận là HAI
   // danh sách rời nhau. Lệch một cái là host gọi rồi CLI in "usage:" — hook hỏng LẶNG, và
   // triệu chứng duy nhất là bộ nhớ thiếu tin mà không ai biết vì sao (audit 2026-08-02).
@@ -263,7 +263,7 @@ test("mọi móc KHAI ra phải dispatch được — hai danh sách không đư
   }
 });
 
-test("công tắc realtime phải khai hook THẬT — và tắt thì gỡ sạch, giữ hook của user", (t) => {
+test("the realtime switch must declare REAL hooks - and switching it off removes them cleanly, keeping the user's own", (t) => {
   const dir = tempDir(t, "zhooks-");
   const settings = join(dir, "settings.json");
   writeFileSync(settings, JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "user-riêng" }] }] } }, null, 2));

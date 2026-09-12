@@ -13,27 +13,27 @@ import assert from "node:assert/strict";
 import { closedItems } from "../../dist/docs/validate.js";
 import { isClosedItemLine } from "../../dist/docs/archive.js";
 
-test("closedItems đếm CẢ `[x]` lẫn `✅` (ca đã làm im lặng suốt: repo viết `✅`)", () => {
+test("closedItems counts BOTH `[x]` and a check mark (the case that stayed silent: the repo writes a check mark)", () => {
   assert.equal(closedItems("- [x] xong kiểu cũ"), 1, "`- [x]` phải được đếm");
   assert.equal(closedItems("- ✅ **xong kiểu repo này viết**"), 1, "`- ✅` phải được đếm");
   assert.equal(closedItems("- [x] a\n- ✅ b\n- [x] c"), 3, "đếm lẫn hai dấu");
 });
 
-test("CA ÂM — dấu CHƯA đóng không được đếm (thiếu vế này thì phép đếm nào cũng 'qua')", () => {
+test("NEGATIVE CASE - an unclosed marker must not be counted (without this, any counter 'passes')", () => {
   assert.equal(closedItems("- [ ] chưa làm"), 0, "`[ ]` KHÔNG phải đã đóng");
   assert.equal(closedItems("- [~] đang làm"), 0, "`[~]` KHÔNG phải đã đóng");
   assert.equal(closedItems("## ✅ tiêu đề khối, không phải mục"), 0, "heading không phải mục backlog");
   assert.equal(closedItems("text ✅ giữa câu"), 0, "dấu giữa câu không phải mục");
 });
 
-test("fence-aware: ví dụ trong khối mã KHÔNG phải mục thật", () => {
+test("fence-aware: an example inside a code block is NOT a real item", () => {
   const md = ["- ✅ mục thật", "```", "- [x] ví dụ trong fence", "- ✅ ví dụ trong fence", "```", "- [x] mục thật 2"].join("\n");
   assert.equal(closedItems(md), 2, "chỉ đếm 2 mục ngoài fence");
 });
 
-test("MỘT NGUỒN: `closedItems` và `isClosedItemLine` không được nói khác nhau", () => {
+test("ONE SOURCE: `closedItems` and `isClosedItemLine` must never disagree", () => {
   // Hai bên trôi lệch chính là bug gốc, nên đối chiếu trực tiếp trên cùng tập dòng.
-  const lines = ["- [x] a", "- ✅ b", "- [ ] c", "- [~] d", "  - ✅ e (thụt lề)", "## ✅ f", "- ✅", "khong phai muc"];
+  const lines = ["- [x] a", "- ✅ b", "- [ ] c", "- [~] d", "  - ✅ e (thụt lề)", "## ✅ f", "- ✅", "not an item line"];
   for (const l of lines) {
     assert.equal(
       closedItems(l),

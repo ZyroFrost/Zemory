@@ -1,14 +1,14 @@
-// Chup anh 6 man cockpit cho README — MAY chup, khong bat nguoi chup tay.
+// Capture the 6 cockpit screens for the README — BY MACHINE, so nobody has to shoot them by hand.
 //
-// Vi sao co script nay: anh trong README la TAI LIEU, ma tai lieu chi dung khi no theo kip giao
-// dien. Anh chup tay thi lan doi UI sau se khong ai chup lai, va README bat dau NOI DOI ve san
-// pham — cung loai loi "so noi khac code". Chup bang may thi lam tuoi lai chi la chay mot lenh.
+// Why this script exists: the README images are DOCUMENTATION, and documentation is only right while it keeps up with the
+// interface. Hand-shot images never get retaken after a UI change, and the README starts LYING about the
+// product — the same fault family as "the numbers say something different from the code". By machine, refreshing them is one command.
 //
 //   node backend/scripts/shoot-ui.mjs [--port 4444] [--out docs_visual/ui]
 //
-// Dung Edge/Chrome o che do headless qua CDP (cung loi `memory scan-web` da dung), doi UI nap
-// xong roi bam vao tung muc nav. Router cua app luu man dang xem vao localStorage chu khong dung
-// hash, nen phai CLICK that chu khong the nap thang URL.
+// It drives Edge/Chrome headless over CDP (the same path `memory scan-web` already uses), waits for the UI to load,
+// then clicks each nav item. The app router keeps the current screen in localStorage rather than in the
+// hash, so it must really CLICK - a URL cannot be loaded straight into a screen.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -24,14 +24,14 @@ const CDP_PORT = 9333;
 const W = 1840;
 const H = 1080;
 
-/** Man hinh can chup: [ten file, muc nav, sub-tab (neu co), cho them ms] */
-// Thoi gian cho DAI co chu dich. Do 2026-08-11: `/memory-status` mat 18,5 giay (endpoint khac
-// 112-246 ms), nen chup som la duoc mot tam anh dang TAI — o so lieu con dau gach, danh sach con
-// "...". Anh nhu vay con te hon khong co anh: no ta san pham nhu do dang.
-// [ten file, muc nav, [thuoc-tinh-sub, gia-tri] hoac null, cho them ms]
-// Ten thuoc tinh doc TU HTML (`data-rc` recall · `data-ht` harness · `data-gm` global memory) —
-// lan dau to doan "sessions"/"tree" va anh ra SAI tab ma script van bao xanh, vi no chi kiem cu
-// click NAV. Nay co buoc xac nhan sub-tab da 'on' that.
+/** Screens to capture: [file name, nav item, sub-tab (if any), extra wait in ms] */
+// The LONG waits are deliberate. Measured 2026-08-11: `/memory-status` takes 18.5 s (other endpoints
+// run 112-246 ms), so shooting early captures a page still LOADING — dashes in the number tiles, lists still showing
+// "...". Such an image is worse than no image: it paints the product as half finished.
+// [file name, nav item, [sub-attribute, value] or null, extra wait in ms]
+// The attribute names are read FROM THE HTML (`data-rc` recall · `data-ht` harness · `data-gm` global memory) —
+// the first build hardcoded "sessions"/"tree" and shot the WRONG tab while the script still reported green, because it only checked the
+// clicked the NAV. This build adds a step confirming the sub-tab really is 'on'.
 const SHOTS = [
   ["01-home", "home", null, 4000],
   ["02-recall", "recall", ["rc", "sess"], 5000],
@@ -58,12 +58,12 @@ async function cdpTargets() {
 async function main() {
   const ping = await fetch(`http://127.0.0.1:${PORT}/ping`).catch(() => null);
   if (!ping || !ping.ok) {
-    console.error(`Daemon khong tra loi o cong ${PORT} — chay \`zemory ui\` truoc.`);
+    console.error(`The daemon did not answer on port ${PORT} — run \`zemory ui\` first.`);
     process.exit(1);
   }
   const exe = BROWSERS.find((p) => existsSync(p));
   if (!exe) {
-    console.error("Khong tim thay Edge/Chrome — khong chup duoc.");
+    console.error("No Edge or Chrome found — cannot capture.");
     process.exit(1);
   }
   mkdirSync(OUT, { recursive: true });
@@ -93,7 +93,7 @@ async function main() {
   }
   if (!ws) {
     child.kill();
-    console.error("Trinh duyet khong mo duoc cong CDP.");
+    console.error("The browser did not open the CDP port.");
     process.exit(1);
   }
 
@@ -118,58 +118,58 @@ async function main() {
 
   await send("Page.enable", {});
 
-  // DIEU HUONG LAI cho chac. Edge tren may da dang nhap tai khoan cong ty chen mot trang quang
-  // ba "we've signed you in / syncing your browsing data" DE LEN tab dau tien, nen URL truyen
-  // luc mo trinh duyet khong phai thu dang hien. Do that 2026-08-12: cho 150 giay van thay
-  // trang quang ba chu khong thay app. `Page.navigate` de len no.
-  // EP kich thuoc qua CDP, dung tin `--window-size`: trong headless co truong hop khung that
-  // ve con 500x450 (do duoc 2026-08-12) => anh bi bop, cot doi cho nhau, doc khong ra gi.
+  // NAVIGATE AGAIN to be sure. Edge on this machine is signed into a corporate account and injects an
+  // advertising page ("we've signed you in / syncing your browsing data") OVER the first tab, so the URL passed
+  // at launch is not what ends up displayed. Measured 2026-08-12: after 150 seconds it still showed
+  // the ad page rather than the app. `Page.navigate` overrides it.
+  // FORCE the size over CDP, do not trust `--window-size`: headless sometimes gives a real frame
+  // of 500x450 (measured 2026-08-12) => the image is squashed, columns swap places, nothing is readable.
   await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: false });
   await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/` });
   await sleep(2000);
 
-  // CHO THEO DIEU KIEN, KHONG theo dong ho. Hai lan chup hong deu vi cho co dinh roi doan la
-  // xong: lan 1 o so lieu con dau gach, lan 2 giao dien con nguyen tieng Viet du da doi sang en.
-  // Cung MOT goc: client ap ca so lieu LAN ngon ngu tu payload `/memory-status`, ma endpoint do
-  // mat ~18,5 giay — chua ve toi thi trang van o trang thai mac dinh.
-  console.log("  cho /memory-status ve (thuong ~20 giay, toi da 150)…");
+  // WAIT ON A CONDITION, NOT ON THE CLOCK. Two failed capture runs both waited a fixed time then assumed it was
+  // done: the first left dashes in the number tiles, the second left the interface in Vietnamese although it had been switched to en.
+  // SAME root cause: the client applies both the numbers AND the language from the `/memory-status` payload, and that endpoint
+  // takes about 18.5 s — before it lands, the page sits in its default state.
+  console.log("  waiting for /memory-status (usually ~20 s, at most 150)…");
   let ready = false;
   for (let i = 0; i < 150 && !ready; i++) {
     await sleep(1000);
     const r = await send("Runtime.evaluate", {
-      // So co dau phay = tile da co du lieu that (vd "238,495"), khong con "—".
+      // A comma in the number means the tile holds real data (e.g. "238,495") rather than a dash.
       expression: `/\\d,\\d{3}/.test(document.body.innerText)`,
       returnByValue: true,
     });
     ready = r?.result?.result?.value === true;
   }
   if (!ready) {
-    // In ra THAY GI thay vi chi bao "khong dat" — mot lan that bai cam nin la mot lan phai
-    // dung script rieng di do lai tu dau.
+    // Print WHAT IT SAW instead of only "not ready" — one silent failure means one separate
+    // script written later just to measure it again from scratch.
     const d = await send("Runtime.evaluate", {
       expression: `JSON.stringify({len:document.body.innerText.length, head:document.body.innerText.slice(0,200).replace(/\\s+/g,' ')})`,
       returnByValue: true,
     });
-    console.log("  ✗ so lieu KHONG ve sau 150 giay — KHONG chup anh dang tai.");
-    console.log("    trang dang co:", d?.result?.result?.value ?? "(khong doc duoc)");
+    console.log("  x the numbers did NOT arrive within 150 s — NOT capturing a loading page.");
+    console.log("    the page currently holds:", d?.result?.result?.value ?? "(unreadable)");
     sock.close();
     child.kill();
     process.exit(1);
   }
-  await sleep(1500); // cho ve xong not phan con lai
+  await sleep(1500); // let the rest of the page finish painting
 
   let bad = 0;
   for (const [name, nav, sub, wait] of SHOTS) {
     const sel = sub ? `.screen[data-s="${nav}"] [data-${sub[0]}="${sub[1]}"]` : null;
-    const click = `(()=>{const a=document.querySelector('.nav a[data-s="${nav}"]');if(!a)return 'khong thay muc nav';a.click();${
-      sub ? `const b=document.querySelector('${sel}');if(!b)return 'khong thay sub-tab ${sub[0]}=${sub[1]}';b.click();` : ""
+    const click = `(()=>{const a=document.querySelector('.nav a[data-s="${nav}"]');if(!a)return 'nav item not found';a.click();${
+      sub ? `const b=document.querySelector('${sel}');if(!b)return 'sub-tab not found ${sub[0]}=${sub[1]}';b.click();` : ""
     }return 'ok';})()`;
     const r = await send("Runtime.evaluate", { expression: click, returnByValue: true });
     let state = r?.result?.result?.value;
     await sleep(wait);
 
-    // XAC NHAN sau khi cho: man dung chua, va sub-tab co that su dang 'on' khong.
-    // Thieu buoc nay thi mot cu click truot van cho ra anh SAI TAB ma script bao xanh.
+    // CONFIRM after waiting: is the right screen up, and is the sub-tab really 'on'.
+    // Without this step one missed click still produces a WRONG-TAB image while the script reports green.
     if (state === "ok") {
       const check = `(()=>{const s=document.querySelector('.screen[data-s="${nav}"]');if(!s||!s.classList.contains('on'))return 'man khong mo';${
         sub ? `const b=document.querySelector('${sel}');if(!b||!b.classList.contains('on'))return 'sub-tab khong an';` : ""
@@ -181,19 +181,19 @@ async function main() {
     const shot = await send("Page.captureScreenshot", { format: "png" });
     const data = shot?.result?.data;
     if (!data) {
-      console.log(`  ✗ ${name}: khong chup duoc`);
+      console.log(`  x ${name}: could not capture`);
       bad++;
       continue;
     }
     if (state !== "ok") {
-      console.log(`  ✗ ${name}: ${state} — KHONG ghi file (anh se sai tab)`);
+      console.log(`  x ${name}: ${state} — NOT writing the file (the image would show the wrong tab)`);
       bad++;
       continue;
     }
     writeFileSync(join(OUT, `${name}.png`), Buffer.from(data, "base64"));
     console.log(`  ✓ ${name}.png`);
   }
-  if (bad) console.log(`\n⚠ ${bad}/${SHOTS.length} man KHONG chup duoc — xem ly do o tren.`);
+  if (bad) console.log(`\n⚠ ${bad}/${SHOTS.length} screens could NOT be captured — see the reasons above.`);
 
   sock.close();
   child.kill();
@@ -201,10 +201,10 @@ async function main() {
   try {
     rmSync(profile, { recursive: true, force: true });
   } catch {
-    /* profile tam - khong sao */
+    /* a throwaway profile - nothing to keep */
   }
   console.log(`\nXong. Anh o: ${OUT}`);
-  console.log("Kiem bang MAT truoc khi commit: man nao con dang tai thi chup lai voi thoi gian cho lau hon.");
+  console.log("Check them BY EYE before committing: any screen still loading should be recaptured with a longer wait.");
 }
 
 main();

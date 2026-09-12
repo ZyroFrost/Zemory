@@ -6,7 +6,7 @@ description: Run a full review of the project across every dimension, verifying 
 # audit — soi toàn diện
 
 > Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
-> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **11 mặt** dưới.
+> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **12 mặt** dưới.
 
 **Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì test soi thì đúng*, không
 chứng minh nó đang soi thứ đang chạy. Đã dính thật: cả bộ test UI neo vào bản đã bị thay, gate 100%
@@ -35,7 +35,7 @@ NHẦM** không, mà chặn nhầm là đường ngắn nhất tới *"gate nhi�
 mình đang xây. Đo thật trên guardrail: bảng 28 ca có giá trị **chính nhờ 6 ca *phải cho qua***;
 thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
 
-### 11 mặt — chạy đủ
+### 12 mặt — chạy đủ
 *(6 mặt đầu là bản gốc. **Mặt 7–10** thêm sau khi soi ngược **mọi sự cố THẬT** của một repo rồi hỏi
 *"mặt nào lẽ ra bắt được"* — phát hiện: **mọi sự cố nặng nhất đều rơi vào vùng 6 mặt cũ không nhìn
 tới**, vì 6 mặt đó soi *"phần mềm có ĐÚNG không"*, còn chúng thuộc *"phần mềm có SỐNG SÓT không"*:
@@ -84,6 +84,19 @@ không mặt nào soi thứ **NGƯỜI ĐỌC** nhận.)*
    cả chữ Việt hợp lệ (ĐÂY · NGÃ) · nhãn thường nằm ở thẻ CON hoặc `<label>` bọc ngoài · chữ trong
    markup CÓ móc i18n là đúng (bản dịch đè lúc chạy) · route ghép ĐỘNG và endpoint do CLI gọi qua
    HTTP đều trông như "chết".
+
+12. **NGÔN NGỮ CỦA MÃ** — NORM ở `02_RULES §Ngôn ngữ`. Máy chạy:
+   `node .claude/skills/audit/scripts/lang-scan.mjs .` — nó in *đã quét bao nhiêu* để một lượt sạch
+   không bị đọc thành "chưa soi gì".
+   · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh** (biến · hằng · hàm · lớp · kiểu ·
+     khoá config) chỉ ASCII tiếng Anh — trong mã, thứ DUY NHẤT được tiếng Việt là **chú thích**;
+   · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
+     chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba;
+   · **Ⓓ song ngữ** — cân dict hai chiều (thiếu một bên thì hàm dịch lặng lẽ rơi về ngôn ngữ gốc, KHÔNG
+     lỗi nào nổ) · khoá dùng mà chưa khai · khoá chết · chữ Việt trong markup thiếu móc i18n.
+   ⚠ **Ba bẫy, đều đã trả giá thật:** ① không bóc chú thích/chuỗi trước khi quét ⇒ vừa báo oan vừa
+   **bỏ sót** (một lượt đo: 4 hit oan, sót 9 định danh thật) · ② đồng âm Anh–Việt (`do · so · can ·
+   ten · van`) bắt oan cả câu tiếng Anh thuần · ③ nhãn nằm ở thẻ CON của phần tử ĐÃ có móc i18n.
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
 Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.

@@ -16,7 +16,7 @@ import { tempDir } from "./helpers.mjs";
 
 const ORIGINAL = "NỘI DUNG GỐC — không được mất\n";
 
-test("ghi bình thường thay được nội dung, và backupDir giữ bản cũ", (t) => {
+test("a normal write replaces the content, and backupDir keeps the old copy", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "06_CHANGES.md");
   const bak = join(dir, "attic", "harness-bak");
@@ -26,7 +26,7 @@ test("ghi bình thường thay được nội dung, và backupDir giữ bản c�
   assert.equal(readFileSync(join(bak, "06_CHANGES.md.bak"), "utf8"), ORIGINAL, ".bak phải giữ nội dung CŨ — đường lùi duy nhất");
 });
 
-test("bản lùi KHÔNG được đọng cạnh file nguồn", (t) => {
+test("the backup must NOT pile up next to the source file", (t) => {
   // Đây là lý do đổi từ cờ `backup: true` sang `backupDir`: `docs/agent/` là thư mục luật
   // bắt agent ĐỌC HẾT, nên một `.bak` nằm đó vừa tốn ngữ cảnh vừa trông như rác lọt.
   const dir = tempDir(t, "zemory-atomic-");
@@ -37,7 +37,7 @@ test("bản lùi KHÔNG được đọng cạnh file nguồn", (t) => {
   assert.equal(existsSync(join(dir, "attic", "harness-bak", "05_TODO.md.bak")), true);
 });
 
-test("không truyền backupDir thì KHÔNG đẻ bản lùi nào", (t) => {
+test("without backupDir NO backup is created", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "a.md");
   writeFileSync(f, ORIGINAL);
@@ -47,7 +47,7 @@ test("không truyền backupDir thì KHÔNG đẻ bản lùi nào", (t) => {
 });
 
 // Đây là lý do tồn tại của cả module. Nếu test này đỏ thì mọi thứ khác vô nghĩa.
-test("lỗi giữa chừng: đích còn NGUYÊN VẸN và không sót file tạm", (t) => {
+test("a mid-write failure leaves the target INTACT with no temp file left behind", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "06_CHANGES.md");
   writeFileSync(f, ORIGINAL);
@@ -69,7 +69,7 @@ test("lỗi giữa chừng: đích còn NGUYÊN VẸN và không sót file tạm
   );
 });
 
-test("file tạm nằm CÙNG thư mục đích (rename chỉ nguyên tử trong cùng volume)", (t) => {
+test("the temp file sits in the SAME folder as the target (rename is only atomic within a volume)", (t) => {
   // Repo ở D:, %TEMP% ở C: — để file tạm ở %TEMP% là dính EXDEV. Kiểm bằng cách ghi vào
   // một thư mục con và xác nhận thao tác thành công + không có rác ở đâu khác.
   const dir = tempDir(t, "zemory-atomic-");
@@ -80,7 +80,7 @@ test("file tạm nằm CÙNG thư mục đích (rename chỉ nguyên tử trong 
   assert.deepEqual(readdirSync(sub).filter((x) => x.includes(".tmp")), []);
 });
 
-test("writeJsonAtomic ra JSON hợp lệ, có newline cuối (giữ đúng dạng cũ)", (t) => {
+test("writeJsonAtomic emits valid JSON with a trailing newline (same shape as before)", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "config.json");
   writeJsonAtomic(f, { dataDir: "D:\\Zyro\\Tool\\Zemory\\data", lang: "vi" });
@@ -89,7 +89,7 @@ test("writeJsonAtomic ra JSON hợp lệ, có newline cuối (giữ đúng dạn
   assert.deepEqual(JSON.parse(raw), { dataDir: "D:\\Zyro\\Tool\\Zemory\\data", lang: "vi" });
 });
 
-test("không backup thì KHÔNG đẻ ra .bak (đừng rác hoá thư mục người dùng)", (t) => {
+test("with no backup requested it does NOT create a .bak (do not litter the user's folder)", (t) => {
   const dir = tempDir(t, "zemory-atomic-");
   const f = join(dir, "config.json");
   writeFileSync(f, "cũ");
@@ -99,7 +99,7 @@ test("không backup thì KHÔNG đẻ ra .bak (đừng rác hoá thư mục ngư
 
 // RATCHET: những chỗ ghi vào file NGUỒN / cấu hình phải đi qua helper này. Thêm một
 // `writeFileSync` trần vào các file dưới đây là mở lại đúng lỗ hổng vừa vá.
-test("các chỗ ghi file nguồn/cấu hình không được dùng writeFileSync trần", () => {
+test("source and config write sites must not use a bare writeFileSync", () => {
   const guarded = [
     "../src/docs/archive.ts",
     "../src/config/settings.ts",

@@ -37,7 +37,7 @@ function isolate(t) {
   return LOCK;
 }
 
-test("tiến trình KHÁC đang giữ ⇒ TỪ CHỐI (bản cũ luôn cho qua)", (t) => {
+test("ANOTHER process holding it means REFUSE (the old build always let it through)", (t) => {
   const lock = isolate(t);
   // mô phỏng một tiến trình KHÁC còn sống.
   writeFileSync(lock, JSON.stringify({ pid: OTHER_PID, label: "embed", at: Date.now() }));
@@ -48,7 +48,7 @@ test("tiến trình KHÁC đang giữ ⇒ TỪ CHỐI (bản cũ luôn cho qua)"
   assert.equal(cliHoldsWrite(), true, "scheduler phải thấy là có người ghi");
 });
 
-test("chủ khoá đã chết ⇒ chiếm lại được", (t) => {
+test("a dead lock owner can be taken over", (t) => {
   const lock = isolate(t);
   // pid chắc chắn không tồn tại (trên Windows lẫn POSIX).
   writeFileSync(lock, JSON.stringify({ pid: 0x7ffffff0, label: "embed", at: Date.now() }));
@@ -58,14 +58,14 @@ test("chủ khoá đã chết ⇒ chiếm lại được", (t) => {
   assert.equal(cliWriteHolder()?.pid, process.pid);
 });
 
-test("khoá quá hạn ⇒ chiếm lại được", (t) => {
+test("an expired lock can be taken over", (t) => {
   const lock = isolate(t);
   writeFileSync(lock, JSON.stringify({ pid: OTHER_PID, label: "embed", at: Date.now() - 60 * 60_000 }));
   assert.equal(cliWriteHolder(), null, "quá 15 phút thì không tính, dù pid còn sống");
   assert.equal(acquireCliWriteLock("scan").ok, true);
 });
 
-test("gọi lại khi CHÍNH MÌNH đang giữ = gia hạn, không tự chặn", (t) => {
+test("calling again while WE hold it renews rather than blocking ourselves", (t) => {
   isolate(t);
   assert.equal(acquireCliWriteLock("embed").ok, true);
   const first = cliWriteHolder().at;
@@ -73,7 +73,7 @@ test("gọi lại khi CHÍNH MÌNH đang giữ = gia hạn, không tự chặn",
   assert.ok(cliWriteHolder().at >= first, "phải gia hạn mốc thời gian");
 });
 
-test("chỉ CHỦ khoá mới nhả được — không giật khoá của tiến trình khác", (t) => {
+test("only the OWNER may release it - no stealing another process's lock", (t) => {
   const lock = isolate(t);
   writeFileSync(lock, JSON.stringify({ pid: OTHER_PID, label: "embed", at: Date.now() }));
 
@@ -84,7 +84,7 @@ test("chỉ CHỦ khoá mới nhả được — không giật khoá của tiế
   assert.equal(acquireCliWriteLock("scan").ok, false, "và vẫn phải bị từ chối");
 });
 
-test("nhả xong thì người sau vào được", (t) => {
+test("after release the next caller gets in", (t) => {
   isolate(t);
   assert.equal(acquireCliWriteLock("embed").ok, true);
   releaseCliWriteLock();

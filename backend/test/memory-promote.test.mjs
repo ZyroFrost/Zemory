@@ -24,7 +24,7 @@ function unit(x, y, z) {
   return new Float32Array([x / n, y / n, z / n]);
 }
 
-test("marker: bắt câu chỉnh/chốt VN + EN, bỏ qua câu trung tính (ca ÂM)", () => {
+test("marker: it catches correction and decision phrasing in VN and EN, skipping neutral sentences (negative case)", () => {
   const yes = [
     "đừng tự push code lên git nữa",
     "tuyệt đối không ghi vào project khác",
@@ -42,7 +42,7 @@ test("marker: bắt câu chỉnh/chốt VN + EN, bỏ qua câu trung tính (ca �
   for (const s of no) assert.ok(!CORRECTION_RE.test(s), `không được bắt: ${s}`);
 });
 
-test("gom cụm cosine: hai nhóm diễn đạt + một nhiễu ⇒ 3 cụm, và TẤT ĐỊNH (chạy 2 lần y nhau)", () => {
+test("cosine clustering: two phrasings plus one noise item yield 3 clusters, DETERMINISTICALLY (two runs, same result)", () => {
   const items = [
     { key: 1, vec: unit(1, 0, 0) },
     { key: 2, vec: unit(0.95, 0.05, 0) },
@@ -90,7 +90,7 @@ function rigDb() {
   };
 }
 
-test("correctionCandidates: lấy đúng giọng NGƯỜI sửa sai, loại tool_result và lane curated", (t) => {
+test("correctionCandidates: it takes exactly the HUMAN corrective voice, dropping tool_result and the curated lane", (t) => {
   const r = rigDb();
   t.after(() => r.cleanup());
   r.add("s1", "P1", "đừng tự push code lên git khi chưa hỏi");
@@ -112,7 +112,7 @@ test("correctionCandidates: lấy đúng giọng NGƯỜI sửa sai, loại tool
   assert.equal(cands[0].project, "P1");
 });
 
-test("fail-open: kho KHÔNG có lớp vector ⇒ notes nói thẳng, không trả rỗng giả dạng sạch", (t) => {
+test("fail-open: a store with NO vector layer says so in the notes rather than returning empty as if clean", (t) => {
   const r = rigDb();
   t.after(() => r.cleanup());
   r.add("s1", "P1", "đừng tự push code lên git khi chưa hỏi");
@@ -124,7 +124,7 @@ test("fail-open: kho KHÔNG có lớp vector ⇒ notes nói thẳng, không tr�
   assert.ok(rep.notes.length >= 1, "không đo được thì phải NÓI (điều 9), không im lặng");
 });
 
-test("buildCandidates: 3 tin MỘT phiên bị chặn (ca ÂM cốt lõi) · 3 tin HAI phiên thì đề xuất, kèm covered", () => {
+test("buildCandidates: 3 messages in ONE session are blocked (the core negative case); 3 messages across TWO sessions are proposed, with covered", () => {
   const msg = (id, sess) => [id, { id, content: `đừng tự push (${id})`, sessionId: sess, project: "P", ts: `2026-08-0${id}T00:00:00Z` }];
   const cfg = { coveredSim: 0.8, minRepeat: 3, minSessions: 2 };
   const vA = unit(1, 0, 0);

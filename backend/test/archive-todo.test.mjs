@@ -99,7 +99,7 @@ test("a backlog with no closed items is left byte-identical", () => {
 // (người gõ tưởng đang đọc trợ giúp), rồi `archive --dry-run` in *"moved 2 closed item(s)"* và
 // **dời thật** (người gõ tưởng đang xem trước). Lệnh DỜI NỘI DUNG giữa hai file thì phải
 // fail-closed: không hiểu cờ ⇒ không làm gì.
-test("--dry-run ĐẾM ĐÚNG mà KHÔNG ghi một byte nào", () => {
+test("--dry-run COUNTS CORRECTLY while writing not a single byte", () => {
   const todo = "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n  dòng con của mục đã xong\n";
   const s = scratch(todo);
   try {
@@ -115,7 +115,7 @@ test("--dry-run ĐẾM ĐÚNG mà KHÔNG ghi một byte nào", () => {
   }
 });
 
-test("CA ÂM — không truyền cờ thì hành vi giữ NGUYÊN như trước (xem trước không được rò sang lượt thật)", () => {
+test("NEGATIVE CASE - without the flag behaviour stays EXACTLY as before (the preview must not leak into the real run)", () => {
   const todo = "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n";
   const s = scratch(todo);
   try {
@@ -209,7 +209,7 @@ test("both tiers are indexed by the archive itself", async () => {
 // Tầng CLI — nơi sự cố THẬT xảy ra: người gõ `--help` và mất 5 entry + 6 mục. Ca này chạy
 // `dist/cli.js` thật trên một repo TẠM (không đụng repo này), rồi đòi hai điều: exit ≠ 0 và
 // **file không đổi một byte**. Thiếu vế thứ hai thì một bản vá chỉ-in-lỗi-rồi-vẫn-ghi vẫn xanh.
-test("CLI: cờ lạ ⇒ TỪ CHỐI (exit≠0) và KHÔNG ghi gì; `--dry-run` cũng không ghi", async () => {
+test("CLI: an unknown flag is REFUSED (exit != 0) and writes nothing; `--dry-run` writes nothing either", async () => {
   const { execFileSync } = await import("node:child_process");
   const root = mkdtempSync(join(tmpdir(), "zarch-cli-"));
   const docsDir = join(root, "docs", "agent");

@@ -25,14 +25,14 @@ const { acquireCliWrite, releaseCliWrite } = await import("../../dist/jobs/write
 
 const at = (h, m) => new Date(2026, 7, 29, h, m, 0).getTime();
 
-test("interval: chưa có lượt nào ⇒ tới hạn ngay; sau đó phải đủ N phút", () => {
+test("interval: with no run yet it is due immediately; after that it needs the full N minutes", () => {
   const s = { mode: "interval", everyMin: 30, times: [] };
   assert.equal(autosyncDue(s, null, at(9, 0), new Set()), "interval");
   assert.equal(autosyncDue(s, at(9, 0), at(9, 29), new Set()), null, "29 phút — chưa tới");
   assert.equal(autosyncDue(s, at(9, 0), at(9, 30), new Set()), "interval");
 });
 
-test("times: chỉ bắn khi HH:MM trùng mốc, và mỗi mốc một lần/ngày", () => {
+test("times: it fires only when HH:MM matches a slot, and once per slot per day", () => {
   const s = { mode: "times", everyMin: 30, times: ["12:00", "18:00"] };
   const fired = new Set();
   assert.equal(autosyncDue(s, null, at(11, 59), fired), null);
@@ -45,7 +45,7 @@ test("times: chỉ bắn khi HH:MM trùng mốc, và mỗi mốc một lần/ng�
 });
 
 // ── ① NHƯỜNG PHẢI GỌI TÊN KẺ CHẶN ───────────────────────────────────────────────────────────
-test("syncBlockedBy: rảnh ⇒ null; bận ⇒ nêu ĐÚNG kẻ chặn, theo đúng thứ tự ưu tiên", () => {
+test("syncBlockedBy: idle yields null; busy names the EXACT blocker, in priority order", () => {
   const free = { maintainChain: false, syncRunning: false, cliHolder: null };
   assert.equal(syncBlockedBy(free), null, "không ai giữ kho ⇒ không có gì để chờ");
 
@@ -69,7 +69,7 @@ test("syncBlockedBy: rảnh ⇒ null; bận ⇒ nêu ĐÚNG kẻ chặn, theo đ
 // 08:24:56 "kẻ chặn đã xong, vào lượt" → tiêu mốc, mở sổ, in "starting" → rồi `claimDaemonJob("sync")`
 // mới trượt. Hai lượt "starting" mà không lượt nào chạy, sổ kẹt mở ⇒ card báo đỏ "bị cắt giữa lượt"
 // cho một lượt CHƯA TỪNG khởi động.
-test("syncBlockedBy: job daemon khác giữ kho (web-pull) ⇒ PHẢI nhận ra, không được báo rảnh", () => {
+test("syncBlockedBy: another daemon job holding the store (web-pull) MUST be recognised, never reported as idle", () => {
   const free = { maintainChain: false, syncRunning: false, cliHolder: null };
   assert.equal(syncBlockedBy({ ...free, jobHolder: null }), null, "token rảnh ⇒ vẫn phải là null");
   const note = syncBlockedBy({ ...free, jobHolder: "web-pull" });
@@ -93,7 +93,7 @@ test("syncBlockedBy: job daemon khác giữ kho (web-pull) ⇒ PHẢI nhận ra,
 // suất 30′. Cái cứu là hẹn-lại-3-phút, mà nó là biến TRONG TIẾN TRÌNH ⇒ restart là mất hẹn, trong
 // khi mốc thì đã bền hoá. Bằng chứng thực địa: `autosyncLastAt` nhích tới 06:00:50Z mà `daemon.log`
 // không có dòng `starting` nào ở mốc đó.
-test("syncGate: TỚI HẠN mà đang bị chặn ⇒ mốc GIỮ NGUYÊN (không mất lượt)", () => {
+test("syncGate: DUE but blocked leaves the marker UNCHANGED (no run is lost)", () => {
   setAutosyncSetting(true);
   setAutosyncSchedule({ mode: "interval", everyMin: 30, times: [] });
   const before = at(9, 0); // đủ cũ để chắc chắn tới hạn
@@ -114,7 +114,7 @@ test("syncGate: TỚI HẠN mà đang bị chặn ⇒ mốc GIỮ NGUYÊN (khôn
 
 // Ca ÂM của chính bất biến trên — bắt buộc, vì "không bao giờ tiêu mốc" là một cách vá SAI khác:
 // nó làm cổng 60 s quay vòng vô hạn khi không có gì để làm.
-test("syncGate: TỚI HẠN mà KHÔNG có gì để làm (chưa nối Drive) ⇒ mốc PHẢI tiêu", () => {
+test("syncGate: DUE with NOTHING to do (Drive not linked) MUST consume the marker", () => {
   setAutosyncSetting(true);
   setAutosyncSchedule({ mode: "interval", everyMin: 30, times: [] });
   const before = at(9, 0);
@@ -126,7 +126,7 @@ test("syncGate: TỚI HẠN mà KHÔNG có gì để làm (chưa nối Drive) �
 });
 
 // ── ③ LƯỢT CHẾT KHÔNG KỊP BÁO ───────────────────────────────────────────────────────────────
-test("interruptedRunNote: không có sổ ⇒ im; có sổ ⇒ nói rõ lượt nào, cách đây bao lâu", () => {
+test("interruptedRunNote: no ledger means silence; with a ledger it names the run and how long ago it was", () => {
   assert.equal(interruptedRunNote(null, at(10, 0)), null, "không có lượt treo ⇒ KHÔNG được báo oan");
 
   const note = interruptedRunNote(at(9, 30), at(10, 0));

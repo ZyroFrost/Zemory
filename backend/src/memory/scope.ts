@@ -22,7 +22,7 @@ export interface ScopeSession {
   origin: string;
   host: string | null;
   source: string;
-  /** v24 — khe tai khoan; null = phien cu chua dong dau. */
+  /** v24 — the account slot; null = an older session with no stamp yet. */
   account?: string | null;
 }
 
@@ -59,8 +59,8 @@ export function laneMatches(lane: ScopeLane, s: ScopeSession): boolean {
     any = true;
   }
   if (lane.account !== undefined) {
-    // Lane account="" la nhom "(khong ro)" — khop dung phien CHUA dong dau (NULL). Day la
-    // lane THAT, khong phai ky tu dai dien: gop no voi 'main' la gan bua cho du lieu cu.
+    // The lane account="" is the "(unknown)" group — it matches exactly the sessions NOT yet stamped (NULL). This is a
+    // REAL lane, not a wildcard: folding it into 'main' would mislabel old data.
     if (lane.account !== (s.account ?? "")) return false;
     any = true;
   }

@@ -1,4 +1,4 @@
-// Plan 12 buoc 4: messages_fts/_tri switch from STANDALONE fts5 tables (each
+// Plan 12 step 4: messages_fts/_tri switch from STANDALONE fts5 tables (each
 // keeping its own verbatim copy of message content, ~246MB measured) to
 // EXTERNAL CONTENT tables that read text from `messages` on demand. This
 // covers the v11→v12 migration path on a hand-built pre-migration DB, and the

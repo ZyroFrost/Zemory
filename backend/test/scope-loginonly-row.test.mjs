@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 const SRC = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
 const SCOPE = SRC("backend/src/memory/scope.ts");
 
-test("① hàng giữ chỗ của nguồn CHƯA CÓ TIN không được thành một 'tài khoản'", () => {
+test("1 a placeholder row for a source with NO MESSAGES must not become an 'account'", () => {
   assert.match(SCOPE, /if \(slots\.get\(""\)\?\.sessions === 0\) slots\.delete\(""\);/,
     "phải bỏ khoá rỗng KHI VÀ CHỈ KHI nó 0 phiên");
   // Ràng buộc ngược, quan trọng ngang: phiên đời cũ CHƯA đóng dấu danh tính (account rỗng nhưng
@@ -29,7 +29,7 @@ test("① hàng giữ chỗ của nguồn CHƯA CÓ TIN không được thành m
   assert.match(SCOPE, /"\(chưa gắn tài khoản\)"/, "nhãn cho phiên chưa gắn danh tính phải còn nguyên");
 });
 
-test("①b DANH TÍNH không nhất thiết là EMAIL — GitHub trả TÊN ĐĂNG NHẬP", () => {
+test("1b IDENTITY is not necessarily an EMAIL - GitHub returns a USERNAME", () => {
   // User báo 2026-09-11: đăng nhập GitHub Copilot xong hàng vẫn "(chưa gắn tài khoản)" + ⚠, dù
   // kho ghi `webAuth.copilot {ok:true, who:"ZyroFrost"}` và daemon log *"copilot: đã nối (ZyroFrost)"*.
   // `isEmail` viết hồi chỉ có ChatGPT/Claude ⇒ mọi danh tính không-phải-email rơi vào nhánh
@@ -54,7 +54,7 @@ test("①b DANH TÍNH không nhất thiết là EMAIL — GitHub trả TÊN ĐĂ
   assert.ok(we && /@/.test(we[0]), "isEmail phải VẪN chỉ nhận email — nới nó là biến tên khe thành danh tính");
 });
 
-test("①c KÉO ĐƯỢC DỮ LIỆU KHÔNG ĐƯỢC LÀM HÀNG CHUYỂN SANG ⚠ (nền danh tính không-email)", () => {
+test("1c A SUCCESSFUL PULL MUST NOT FLIP THE ROW TO A WARNING (platforms with non-email identity)", () => {
   // User nhìn ra bằng mắt 2026-09-11: `m365copilot-web` **6 phiên · 116 tin** mà mang ⚠ và nhãn
   // *"(chưa gắn tài khoản)"*, trong khi kho ghi `webAuth.m365copilot={ok:true,who:"Nguyễn Đức Huy
   // - CNTT"}`. Cơ chế: danh tính không phải email ⇒ `accountKey` lùi về TÊN KHE ⇒ phiên đóng dấu
@@ -71,7 +71,7 @@ test("①c KÉO ĐƯỢC DỮ LIỆU KHÔNG ĐƯỢC LÀM HÀNG CHUYỂN SANG �
   assert.match(SCOPE, /!isEmail\(rec\.who\) && slots\.has\(a\)/, "điều kiện phải có vế !isEmail — thiếu nó là nới sang nền email");
 });
 
-test("② `login-only` là một HẠNG RIÊNG, không phải lượt kéo hỏng", () => {
+test("2 `login-only` is its OWN CLASS, not a failed pull", () => {
   assert.match(SCOPE, /state: "ok" \| "fail" \| "never" \| "loginOnly"/, "kiểu phải khai hạng mới");
   assert.match(SCOPE, /if \(!last\.ok && last\.status === "login-only"\) return \{ \.\.\.base, state: "loginOnly" as const/,
     "phải chặn TRƯỚC phép chấm ok/fail");
@@ -80,14 +80,14 @@ test("② `login-only` là một HẠNG RIÊNG, không phải lượt kéo hỏn
   assert.doesNotMatch(SCOPE, /status === "login-only"\) return \{ \.\.\.base, state: "ok"/, "cũng KHÔNG được gộp vào ok");
 });
 
-test("③ hàng CHA chỉ đỏ khi có con thật sự hỏng — `loginOnly` không tính là hỏng", () => {
+test("3 the PARENT row goes red only when a child really failed - `loginOnly` does not count as failed", () => {
   const agg = /function aggregateConn\(children: ScopeNode\[\]\)[\s\S]*?\n\}/.exec(SCOPE);
   assert.ok(agg, "phải tìm được aggregateConn");
   assert.match(agg[0], /c\.linked === false \|\| c\.state === "fail"/, "phép đếm 'con xấu' chỉ nhận linked:false hoặc state fail");
   assert.doesNotMatch(agg[0], /loginOnly/, "loginOnly không được lọt vào phép đếm con xấu");
 });
 
-test("④ UI vẽ ✓ cho `loginOnly` nhưng NÓI RÕ là chưa kéo được gì", () => {
+test("4 the UI draws a tick for `loginOnly` but SAYS CLEARLY that nothing was pulled yet", () => {
   const fe = SRC("frontend/scripts/sources.js");
   const branch = /else if\(c\.state==='loginOnly'\)\{([^}]*)\}/.exec(fe);
   assert.ok(branch, "phải có nhánh vẽ riêng cho loginOnly");
@@ -101,7 +101,7 @@ test("④ UI vẽ ✓ cho `loginOnly` nhưng NÓI RÕ là chưa kéo được g�
   assert.equal((SRC("frontend/scripts/chrome.js").match(/'scope\.tipLoginOnly':/g) || []).length, 2, "nhãn phải có ở CẢ HAI từ điển");
 });
 
-test("⑤ HỘP CHI TIẾT nói cùng câu với badge — hai bề mặt một sự thật", () => {
+test("5 the DETAIL BOX tells the same story as the badge - two surfaces, one truth", () => {
   // Bài học đã trả giá 2026-09-02: `/connections` và `scope.ts` cùng trả lời *"khe còn nối không"*,
   // vá một bên thì hộp hiện `Link: linked` ngay trên `need-login`. Cùng cái bẫy ở đây: badge có
   // nhánh riêng cho loginOnly mà hộp chi tiết thì không ⇒ bấm vào ✓ lại đọc "chưa kéo lần nào".

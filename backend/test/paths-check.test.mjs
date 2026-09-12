@@ -47,7 +47,7 @@ const md = (root, rel, body) => writeFileSync(join(root, rel), body);
 const plan = (root, body) => md(root, "docs/plan/10_x.md", body);
 
 // ── ① bóc chuỗi ───────────────────────────────────────────────────────────────
-test("bóc: có phân cách ⇒ đúng biên KỂ CẢ khi có dấu cách; trần ⇒ undelimited", () => {
+test("extraction: with delimiters the boundary is right EVEN WITH spaces; bare strings become undelimited", () => {
   const c = extractCandidates("xem `C:\\Program Files\\App\\x.exe` và C:\\Program Files\\App\\y.exe rồi", { linkTargets: true });
   const del = c.find((x) => x.delimited);
   const bare = c.find((x) => !x.delimited);
@@ -57,7 +57,7 @@ test("bóc: có phân cách ⇒ đúng biên KỂ CẢ khi có dấu cách; tr�
   assert.deepEqual(classify(bare, "D:\\r\\a.md", j), { kind: "unresolved", reason: "undelimited" });
 });
 
-test("bóc: escape · placeholder · registry/scheme đi thẳng vào KHÔNG KẾT LUẬN với lý do đúng", () => {
+test("extraction: escapes, placeholders and registry/scheme strings go straight to NO VERDICT with the right reason", () => {
   const j = { root: "D:\\r", roots: { declared: ["D:\\r"], present: ["D:\\r"] } };
   const k = (s) => classify({ text: s, delimited: true }, "D:\\r\\a.md", j);
   assert.deepEqual(k("d:\\n"), { kind: "unresolved", reason: "escape" }, "d:\\n là escape trong f-string, không phải ổ D");
@@ -69,7 +69,7 @@ test("bóc: escape · placeholder · registry/scheme đi thẳng vào KHÔNG K�
 });
 
 // ── ② roots ───────────────────────────────────────────────────────────────────
-test("roots: ngoài root ⇒ outside-roots · root vắng (CỤC BỘ) ⇒ root-absent · khoá vắng ⇒ roots = gốc repo", (t) => {
+test("roots: outside a root yields outside-roots; a missing (LOCAL) root yields root-absent; a missing key makes roots the repo root", (t) => {
   const root = repo(t);
   const absentLocal = join(root, "..", `zemory-absent-${process.pid}`); // cùng ổ, chắc chắn không tồn tại, KHÔNG đụng ổ mạng
   plan(root, [
@@ -90,7 +90,7 @@ test("roots: ngoài root ⇒ outside-roots · root vắng (CỤC BỘ) ⇒ root-
   assert.equal(r2.dead.length, 1, "vế chết thật vẫn chết");
 });
 
-test("ca ÂM: đường CÓ THẬT với dấu cách trong backtick ⇒ 0 dead · `~/` nở về home · `%VAR%` là placeholder (luật 7 skill audit)", (t) => {
+test("negative case: a REAL path with spaces in backticks yields 0 dead; `~/` expands to home; `%VAR%` is a placeholder (audit skill rule 7)", (t) => {
   const root = repo(t);
   plan(root, `# p\nmở \`${join(root, "dir with space", "ok.txt")}\` và \`dir with space/ok.txt\`\n`);
   const r = pathsCheck(ctxOf(root));
@@ -105,7 +105,7 @@ test("ca ÂM: đường CÓ THẬT với dấu cách trong backtick ⇒ 0 dead �
 });
 
 // ── ③ ba rổ ───────────────────────────────────────────────────────────────────
-test("rổ: file archive/attic/06_CHANGES/có-ngày và DÒNG có ngày/🔄 ⇒ lịch sử, không dead", (t) => {
+test("buckets: archive/attic/06_CHANGES/dated files and lines carrying a date or the supersede mark count as history, not dead", (t) => {
   const root = repo(t);
   md(root, "docs/agent/archive/05_TODO.md", "`backend/src/old1.ts`\n");
   md(root, "docs/agent/06_CHANGES.md", "# c\n`backend/src/old2.ts`\n");
@@ -123,7 +123,7 @@ test("rổ: file archive/attic/06_CHANGES/có-ngày và DÒNG có ngày/🔄 ⇒
   assert.ok(!isHistoryLine("làm từng bước, sửa code cũ"), "từ tiếng Việt KHÔNG được coi là dấu lịch sử (báo oan ngược chiều)");
 });
 
-test("rổ: file TỪ ĐIỂN (01–04 · docs_template · skills) ⇒ chuỗi tương đối là `dictionary`, tuyệt đối vẫn bị phán", (t) => {
+test("buckets: DICTIONARY files (01-04, docs_template, skills) make relative strings `dictionary`, while absolute ones are still judged", (t) => {
   const root = repo(t);
   md(root, "docs/agent/03_STRUCTURE.md", "# s\n│   ├── `backend/src/api/` [opt]\n`backend/src/nothere/`\n");
   mkdirSync(join(root, "docs_template", "05_app", "agent"), { recursive: true });
@@ -137,7 +137,7 @@ test("rổ: file TỪ ĐIỂN (01–04 · docs_template · skills) ⇒ chuỗi t
   assert.ok(!isDictionaryFile("docs/agent/05_TODO.md") && !isDictionaryFile("docs/plan/08_x.md"), "sổ và spec KHÔNG phải từ điển — chúng trỏ thật");
 });
 
-test("rổ: kiểu viết tắt `memory/share.ts` khớp ĐUÔI file có thật ⇒ ok; file đã DỜI ⇒ vẫn dead", (t) => {
+test("buckets: the shorthand `memory/share.ts` matching a real file SUFFIX is ok; a file that MOVED is still dead", (t) => {
   const root = repo(t);
   plan(root, "# p\nsửa `memory/share.ts` · và `backend/src/settings.ts` (đã dời vào config/)\n");
   mkdirSync(join(root, "backend", "src", "config"), { recursive: true });
@@ -146,7 +146,7 @@ test("rổ: kiểu viết tắt `memory/share.ts` khớp ĐUÔI file có thật 
   assert.deepEqual(r.dead.map((h) => h.text), ["backend/src/settings.ts"], "khớp đuôi KHÔNG được cứu file đã dời — đuôi `src/settings.ts` không còn");
 });
 
-test("rổ: TÊN SLOT của chuẩn (`frontend/config/` · `backend/infra/` · tên trên dòng cây §3 của repo) ⇒ slot-name, không dead; folder lạ cùng hình dạng · lá file · chữ mô tả trong cây ⇒ vẫn dead", (t) => {
+test("buckets: standard SLOT NAMES (`frontend/config/`, `backend/infra/`, names on the repo's S3 tree lines) are slot-name rather than dead; a lookalike stray folder, a leaf file, or descriptive prose in the tree are still dead", (t) => {
   const root = repo(t);
   // 03 §3 của repo: dòng cây NHIỀU slot (`sql/ seed/ locales/` — `sql`/`seed` không có trong SLOT_ROLES, chỉ có nhờ đọc cây)
   // + cột MÔ TẢ có token `mota/` đứng sau khoảng trắng — mô tả KHÔNG được đọc thành tên. (Không dùng `data/…`: thư mục
@@ -159,7 +159,7 @@ test("rổ: TÊN SLOT của chuẩn (`frontend/config/` · `backend/infra/` · t
   assert.deepEqual(r.dead.map((h) => h.text).sort(), ["backend/resources/mota/", "docs/dictionary.md", "frontend/zzz_not_a_slot/"], "một đoạn không phải tên chuẩn ⇒ vẫn dead (kể cả chữ lấy từ phần mô tả của cây)");
 });
 
-test("báo oan THỰC ĐỊA 2026-09-09: khoảng git `a..b` ⇒ not-a-path · trỏ vào thư mục exclude (dist/ · data/) ⇒ excluded-target; `../` thật vẫn phán", (t) => {
+test("FIELD false positives 2026-09-09: a git range `a..b` is not-a-path; a target inside an excluded folder (dist/, data/) is excluded-target; a real `../` is still judged", (t) => {
   const root = repo(t);
   plan(root, "# p\ncommit `origin/master..HEAD` · build ra `dist/App/sync/` · kho `data/x.db` · cha `../not_here/spec.md` · lồng `backend/node_modules/pkg/`\n");
   const r = pathsCheck(ctxOf(root));
@@ -169,7 +169,7 @@ test("báo oan THỰC ĐỊA 2026-09-09: khoảng git `a..b` ⇒ not-a-path · t
   assert.deepEqual(r.dead.map((h) => h.text), ["../not_here/spec.md"], "`../` tường minh vẫn bị phán như cũ");
 });
 
-test("rổ: chuỗi tương đối MƠ HỒ (vi/en · 16/9 · a/b không đuôi) không bị phán; lockfile không được quét", (t) => {
+test("buckets: AMBIGUOUS relative strings (vi/en, 16/9, a/b with no extension) are not judged; lockfiles are not scanned", (t) => {
   const root = repo(t);
   // `backend/docs/` = gạch chéo nghĩa "HOẶC" trong văn xuôi (plan/09:52 thật: "KHÔNG backend/frontend/") —
   // cả hai đoạn đều là thư mục gốc có thật ⇒ mơ hồ, không phải đường lồng nhau đã chết.
@@ -183,7 +183,7 @@ test("rổ: chuỗi tương đối MƠ HỒ (vi/en · 16/9 · a/b không đuôi)
 });
 
 // ── validate: hợp đồng mức info ──────────────────────────────────────────────
-test("validate(): đúng MỘT issue `paths:` và nó ở mức info — kể cả khi có đường chết", (t) => {
+test("validate(): exactly ONE `paths:` issue, at info level - even when dead paths exist", (t) => {
   const root = repo(t);
   plan(root, "# p\nmở `backend/src/gone.ts`\n");
   const rep = validate(ctxOf(root));
@@ -196,7 +196,7 @@ test("validate(): đúng MỘT issue `paths:` và nó ở mức info — kể c�
 });
 
 // ── CLI: dispatch · help · --gate chỉ đỏ vì dead ─────────────────────────────
-test("CLI: `paths check --strict` exit≠0 khi có dead tuyệt đối; exit 0 khi CHỈ có lịch sử; help có lệnh", (t) => {
+test("CLI: `paths check --strict` exits non-zero on an absolute dead path; exits 0 when there is ONLY history; help lists the command", (t) => {
   // `--strict` = cổng theo CHẾT tuyệt đối (ý gốc của ca này). `--gate` nay theo MỚI CHẾT — ca riêng bên dưới.
   // Cô lập trạng thái vào thư mục tạm: thiếu dòng này, ca test ghi root tạm vào data/paths-state.json THẬT.
   const env = { ...process.env, GLOBAL_MEMORY_DB: join(tempDir(t, "zemory-pdata-"), "global_memory.db") };
@@ -218,7 +218,7 @@ test("CLI: `paths check --strict` exit≠0 khi có dead tuyệt đối; exit 0 k
 });
 
 // ── MONITOR: baseline + MỚI CHẾT dính (plan/21 §2.3) — thứ duy nhất được đổi màu ───────
-test("monitor: lần đầu = baseline (0 mới) · file mất SAU baseline ⇒ 1 mới chết · DÍNH qua lượt sau · hồi lại ⇒ 0", (t) => {
+test("monitor: the first run is the baseline (0 new); a file lost AFTER the baseline yields 1 newly dead; it STICKS on the next run; restored yields 0", (t) => {
   const root = repo(t);
   const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
   // Một đường chết SẴN (văn xuôi/di sản) và một đường đang SỐNG mà lát nữa sẽ mất.
@@ -242,7 +242,7 @@ test("monitor: lần đầu = baseline (0 mới) · file mất SAU baseline ⇒ 
   assert.equal(r4.monitor.newlyDead.length, 0, "hồi lại là hết báo");
 });
 
-test("monitor: trạng thái TỰ DỌN entry của root không còn trên đĩa (data/ là protected — không ai phải xoá tay)", (t) => {
+test("monitor: the state SELF-CLEANS entries whose root is no longer on disk (data/ is protected - nobody has to delete by hand)", (t) => {
   const root = repo(t);
   const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
   const ghost = join(root, "..", `zemory-ghost-${process.pid}`); // root không tồn tại
@@ -252,7 +252,7 @@ test("monitor: trạng thái TỰ DỌN entry của root không còn trên đĩa
   assert.equal(keys.length, 1, `chỉ còn repo thật, entry ma phải rơi — thấy ${keys.join(" | ")}`);
 });
 
-test("REPO CÓ GIT THẬT: file đổi tên trên đĩa còn trong index ⇒ vẫn phải là MỚI CHẾT (bug bắt được khi thử thật)", (t) => {
+test("A REAL GIT REPO: a file renamed on disk but still in the index must still count as NEWLY DEAD (a bug caught by trying it for real)", (t) => {
   // Mọi fixture trên đây KHÔNG có git ⇒ đi nhánh đi-bộ-cây, nên nhánh production (`git ls-files`) chưa từng
   // được thử — và đó đúng là nhánh có bug: index liệt file đã mất khỏi đĩa, khớp đuôi thấy nó ⇒ `ok`.
   // Thử thật 2026-09-09 trên zemory: đổi tên file mà `newlyDead = 0`. Ca này giữ nhánh git có cổng.
@@ -274,7 +274,7 @@ test("REPO CÓ GIT THẬT: file đổi tên trên đĩa còn trong index ⇒ v�
   assert.deepEqual(r.monitor.newlyDead.map((h) => h.text), ["backend/src/real.ts"], "index nói còn, đĩa nói mất ⇒ đĩa thắng");
 });
 
-test("monitor: `--reset-baseline` nhận hết cái đang chết làm di sản ⇒ 0 mới", (t) => {
+test("monitor: `--reset-baseline` adopts everything currently dead as legacy, yielding 0 new", (t) => {
   const root = repo(t);
   const state = join(tempDir(t, "zemory-pstate-"), "paths-state.json");
   plan(root, "# p\n`backend/src/real.ts`\n");
@@ -284,7 +284,7 @@ test("monitor: `--reset-baseline` nhận hết cái đang chết làm di sản �
   assert.equal(monitorPaths(ctxOf(root), { stateFile: state, resetBaseline: true }).monitor.newlyDead.length, 0);
 });
 
-test("CLI: `paths check --gate` đỏ theo MỚI chết, `--strict` đỏ theo mọi chết; `paths sweep --root` quét nhiều repo, không bao giờ exit≠0", (t) => {
+test("CLI: `paths check --gate` goes red on NEWLY dead, `--strict` on anything dead; `paths sweep --root` scans many repos and never exits non-zero", (t) => {
   // Trạng thái đi qua GLOBAL_MEMORY_DB của tiến trình con ⇒ trỏ vào thư mục tạm, KHÔNG đụng data/ thật.
   const dataDir = tempDir(t, "zemory-pdata-");
   const env = { ...process.env, GLOBAL_MEMORY_DB: join(dataDir, "global_memory.db") };
@@ -312,7 +312,7 @@ test("CLI: `paths check --gate` đỏ theo MỚI chết, `--strict` đỏ theo m
 // (`ENV_DB` ở `memory/db.ts` là hằng module, đọc env lúc nạp) ⇒ ca này thật ra đọc config THẬT và màu
 // của nó phụ thuộc việc người dùng có tắt công tắc hay không. Xanh-vì-máy-đang-bật là xanh giả.
 // Cả hai lượt `runCheck` + cú xoá file ở giữa nằm trong MỘT con, để file trạng thái sống qua hai lượt.
-test("check 'paths' (hàng CHÍNH THỨC): baseline ⇒ on · có mới chết ⇒ warn · ok luôn true (không phải lỗi hệ)", (t) => {
+test("the 'paths' check (the OFFICIAL row): baseline yields on; newly dead yields warn; ok stays true (it is not a system fault)", (t) => {
   const dataDir = tempDir(t, "zemory-pdata-");
   const root = repo(t);
   plan(root, "# p\n`backend/src/real.ts`\n");
@@ -331,7 +331,7 @@ test("check 'paths' (hàng CHÍNH THỨC): baseline ⇒ on · có mới chết �
   assert.match(c2.detail, /1 (mới chết|newly dead)/);
 });
 
-test("FE: hàng `paths` nằm ở HARNESS (DOCS), là kind check, và có trong danh sách SYS_CHECKS", async () => {
+test("FE: the `paths` row sits under HARNESS (DOCS), is of kind check, and appears in SYS_CHECKS", async () => {
   const { readFileSync } = await import("node:fs");
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   assert.match(sys, /\{k:'paths',grp:'f\.grpHarness',n:'f\.paths',kind:'check',feat:'paths'/, "hàng chính thức phải là check trong nhóm harness");

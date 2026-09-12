@@ -17,7 +17,7 @@ import { tempDir } from "./helpers.mjs";
 
 const rel = (root, p) => p.slice(root.length + 1).replace(/\\/g, "/");
 
-test("thứ tự thang đúng như đã khai: harness/ → docs/ → gốc", () => {
+test("the ladder order is exactly as declared: harness/ then docs/ then the root", () => {
   assert.deepEqual(
     MARKER_CANDIDATES.map((p) => p.replace(/\\/g, "/")),
     ["harness/.harness.json", "docs/.harness.json", ".harness.json"],
@@ -25,7 +25,7 @@ test("thứ tự thang đúng như đã khai: harness/ → docs/ → gốc", () 
   );
 });
 
-test("CÓ CẢ HAI marker (repo đang chuyển nếp) ⇒ harness/ THẮNG docs/", (t) => {
+test("with BOTH markers present (a repo mid-migration) harness/ BEATS docs/", (t) => {
   const root = tempDir(t, "zemory-ladder-both-");
   mkdirSync(join(root, "harness"), { recursive: true });
   mkdirSync(join(root, "docs"), { recursive: true });
@@ -36,7 +36,7 @@ test("CÓ CẢ HAI marker (repo đang chuyển nếp) ⇒ harness/ THẮNG docs/
   assert.equal(loadContext(root).config.docs, "harness/agent", "phải đọc marker của bậc CAO hơn, không phải nếp cũ");
 });
 
-test("CHỈ có nếp cũ docs/ ⇒ vẫn nhận (bậc ②, repo 1.1.0 không phải sửa gì)", (t) => {
+test("with ONLY the old docs/ layout it is still accepted (rung 2, a 1.1.0 repo needs no change)", (t) => {
   const root = tempDir(t, "zemory-ladder-legacy-");
   mkdirSync(join(root, "docs"), { recursive: true });
   writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
@@ -45,7 +45,7 @@ test("CHỈ có nếp cũ docs/ ⇒ vẫn nhận (bậc ②, repo 1.1.0 không p
   assert.equal(loadContext(root).config.docs, "docs/agent");
 });
 
-test("bậc ③: marker ở GỐC dạng con trỏ {home} ⇒ đi theo con trỏ đúng một bước", (t) => {
+test("rung 3: a root marker in the {home} pointer form is followed for exactly one hop", (t) => {
   // Ca N4: tên `harness/` bị repo chiếm nên harness phải đổi tên, con trỏ ở gốc chỉ đường.
   const root = tempDir(t, "zemory-ladder-pointer-");
   mkdirSync(join(root, "zemory"), { recursive: true });
@@ -56,7 +56,7 @@ test("bậc ③: marker ở GỐC dạng con trỏ {home} ⇒ đi theo con trỏ
   assert.equal(loadContext(root).config.docs, "zemory/agent", "phải đi theo con trỏ tới marker thật");
 });
 
-test("con trỏ trỏ vào chỗ KHÔNG có marker ⇒ không im lặng nhận sai, và không ném vỡ lệnh", (t) => {
+test("a pointer aimed where there is NO marker must not silently accept the wrong home, and must not throw", (t) => {
   const root = tempDir(t, "zemory-ladder-badptr-");
   writeFileSync(join(root, ".harness.json"), JSON.stringify({ home: "khong-ton-tai", docs: "docs/agent", adapters: {}, thresholds: {} }));
   // Con trỏ chết ⇒ rơi về chính nội dung file gốc (nó có `docs`), KHÔNG được ném.
@@ -64,7 +64,7 @@ test("con trỏ trỏ vào chỗ KHÔNG có marker ⇒ không im lặng nhận s
   assert.equal(loadContext(root).config.docs, "docs/agent");
 });
 
-test("con trỏ trỏ RA NGOÀI cây repo ⇒ PHẢI chặn (không cho harness thoát ra ngoài)", (t) => {
+test("a pointer aimed OUTSIDE the repo tree MUST be blocked (the harness may not escape the tree)", (t) => {
   const root = tempDir(t, "zemory-ladder-escape-");
   writeFileSync(join(root, ".harness.json"), JSON.stringify({ home: "../../ngoai-repo" }));
   assert.throws(() => loadContext(root), /phải nằm trong cây project/i);

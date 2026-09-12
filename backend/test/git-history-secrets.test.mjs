@@ -33,7 +33,7 @@ const ALLOW_NAME = /(^|\/)(\.env\.example|example\.env|sample\.env)$/;
 
 const MAX_BLOB = 50 * 1024 * 1024; // GitHub chặn 100 MB; 50 là mức "phải hỏi trước khi push"
 
-test("LỊCH SỬ git: tên khớp mẫu secret chỉ được là vết ĐÃ BIẾT trong allowlist", () => {
+test("git HISTORY: a name matching a secret pattern may only be a KNOWN trace in the allowlist", () => {
   const lines = git("rev-list", "--objects", "--all").split("\n").filter(Boolean);
   // TỰ KIỂM: lệnh trả quá ít object = phép đo hỏng, "0 hit" sẽ đọc thành "sạch" oan.
   assert.ok(lines.length > 1000, `rev-list chỉ trả ${lines.length} object — phép đo đang mù`);
@@ -54,7 +54,7 @@ test("LỊCH SỬ git: tên khớp mẫu secret chỉ được là vết ĐÃ BI
   );
 });
 
-test("LỊCH SỬ git: không blob nào vượt 50 MB (weight 294,6 MB từng nghẽn cả push)", () => {
+test("git HISTORY: no blob over 50 MB (a 294.6 MB weight once jammed the whole push)", () => {
   const out = git("cat-file", "--batch-all-objects", "--batch-check=%(objecttype) %(objectsize) %(objectname)");
   const rows = out.split("\n").filter((l) => l.startsWith("blob "));
   assert.ok(rows.length > 500, `chỉ thấy ${rows.length} blob — phép đo đang mù`);

@@ -57,7 +57,7 @@ function setup(t) {
   return { dir, keyPath, dbA: join(root, "a.db"), dbB: join(root, "b.db") };
 }
 
-test("hai máy ghi xen kẽ vào ĐÚNG MỘT file, không bên nào mất tin", async (t) => {
+test("two machines writing alternately into EXACTLY ONE file, neither losing a message", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
 
   addMessages(dbA, 5, "A1");
@@ -82,7 +82,7 @@ test("hai máy ghi xen kẽ vào ĐÚNG MỘT file, không bên nào mất tin",
   assert.deepEqual(encFiles(dir), ["global_memory.enc"], "vẫn đúng một file sau 5 lượt sync");
 });
 
-test("NỐI THÊM thật: byte của khối cũ không đổi, file chỉ dài ra", async (t) => {
+test("a real APPEND: the bytes of older blocks do not change, the file only grows", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   const main = join(dir, "global_memory.enc");
 
@@ -102,7 +102,7 @@ test("NỐI THÊM thật: byte của khối cũ không đổi, file chỉ dài r
   );
 });
 
-test("không có gì mới ⇒ KHÔNG chạm file", async (t) => {
+test("nothing new means the file is NOT touched", async (t) => {
   const { dir, keyPath, dbA } = setup(t);
   const main = join(dir, "global_memory.enc");
 
@@ -122,7 +122,7 @@ test("không có gì mới ⇒ KHÔNG chạm file", async (t) => {
 // Ca ÂM ở đây quan trọng ngang ca dương: khoá CÒN SỐNG (nhịp tim đều) **tuyệt đối không được
 // cướp**. Đó đúng là lỗi đã nổ 2026-08-25 — lượt merge chậm giữ khoá 1 giờ, máy kia coi là mồ côi
 // rồi nối khối vào giữa lúc đang đọc, hỏng cả lượt sync lẫn lượt bù vector.
-test("CA ÂM: khoá CÒN SỐNG (có nhịp tim) thì KHÔNG được cướp — phải xếp hàng đợi", async (t) => {
+test("NEGATIVE CASE: a LIVE lock (with a heartbeat) must not be stolen - you queue and wait", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   addMessages(dbA, 2, "A1");
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
@@ -151,7 +151,7 @@ test("CA ÂM: khoá CÒN SỐNG (có nhịp tim) thì KHÔNG được cướp �
 // `timeout` KHÔNG phải trang trí: nếu ngưỡng chết hỏng theo chiều "không bao giờ coi là chết" thì
 // hàng đợi chờ VÔ HẠN, và test sẽ TREO thay vì đỏ. Đo 2026-08-25: đúng kiểu treo đó đã ngốn 15
 // phút im lặng của một lượt gate mà không ai biết đang chờ gì. Treo là kiểu hỏng tệ hơn đỏ.
-test("khoá CHẾT THẬT (lỡ nhịp) ⇒ máy sau vào được — không để một máy tắt làm kẹt cả hệ", { timeout: 60_000 }, async (t) => {
+test("a REALLY DEAD lock (missed heartbeat) lets the next machine in - one machine off must not jam the system", { timeout: 60_000 }, async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   addMessages(dbA, 2, "A1");
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
@@ -173,7 +173,7 @@ test("khoá CHẾT THẬT (lỡ nhịp) ⇒ máy sau vào được — không đ
 // Bệnh đo 2026-08-25: `mergeContainer` giải nén MỌI khối ra file tạm rồi mới hỏi "đã merge chưa"
 // ⇒ mỗi lượt sync chép lại nguyên container. Trên kênh 0,55 MB/s: đọc 2,4 GB, ~1 giờ, chỉ để kết
 // luận KHÔNG có gì mới. Và vì merge nằm TRONG khoá nên máy kia phải chờ đúng ngần ấy.
-test("lượt sync KHÔNG có gì mới không được chép lại container (cửa chặn rẻ)", async (t) => {
+test("a sync round with nothing new must not recopy the container (the cheap gate)", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   addMessages(dbA, 40, "A1");
   await syncDrive({ driveDir: dir, keyFile: keyPath, embed: false, dbPath: dbA, host: "MAY-A" });
@@ -198,7 +198,7 @@ test("lượt sync KHÔNG có gì mới không được chép lại container (c
   );
 });
 
-test("merge chạy NGOÀI khoá: khoá chỉ được giữ quanh phần GHI", async (t) => {
+test("merge runs OUTSIDE the lock: the lock is only held around the WRITE", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   const lockPath = join(dir, "global_memory.sync.lock");
   addMessages(dbA, 30, "A1");
@@ -220,7 +220,7 @@ test("merge chạy NGOÀI khoá: khoá chỉ được giữ quanh phần GHI", a
   assert.ok(lockedDuringMerge, "đoạn GHI vẫn phải có khoá — nếu không thì hai máy ghi chồng");
 });
 
-test("NHÚNG TRƯỚC XUẤT SAU (2026-08-30): dòng phase phải có 'embed' đứng TRƯỚC 'export'", async (t) => {
+test("EMBED BEFORE EXPORT (2026-08-30): the phase line must have 'embed' BEFORE 'export'", async (t) => {
   // Vì sao khoá thứ tự này: export bị `embedFrontierId` cắt ở tin đầu tiên CHƯA nhúng (điều 16 —
   // tin và vector cùng chuyến). Embed nằm SAU export (bản cũ) thì mỗi lượt chỉ chở phần lượt
   // TRƯỚC đã nhúng — đo trên kho thật 30/08: lượt auto chở 0 tin, watermark đứng yên ở 6504552
@@ -247,7 +247,7 @@ function tinySegments(t, bytes) {
   });
 }
 
-test("KHÚC ĐẦY thì NIÊM PHONG, mở khúc kế — byte khúc cũ không đổi một ly", async (t) => {
+test("a FULL segment is SEALED and the next one opened - the old segment's bytes do not shift an inch", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   tinySegments(t, 1); // mọi khúc ĐÃ TỒN TẠI coi như đầy ⇒ mỗi lượt ghi mở khúc mới
 
@@ -266,7 +266,7 @@ test("KHÚC ĐẦY thì NIÊM PHONG, mở khúc kế — byte khúc cũ không �
   assert.equal(msgCount(dbB), 7, "máy mới phải nhận đủ tin nằm rải trên CẢ HAI khúc");
 });
 
-test("hai máy ghi xen kẽ QUA RANH GIỚI khúc — không bên nào mất tin", async (t) => {
+test("two machines writing alternately ACROSS a segment boundary - neither loses a message", async (t) => {
   const { dir, keyPath, dbA, dbB } = setup(t);
   tinySegments(t, 1);
 
@@ -281,7 +281,7 @@ test("hai máy ghi xen kẽ QUA RANH GIỚI khúc — không bên nào mất tin
   assert.equal(msgCount(dbB), 6, "B đủ 6 tin — dãy khúc là THỨ TỰ TOÀN CỤC chung, không phải file riêng của máy nào");
 });
 
-test("--compact gộp MỌI khúc về MỘT khúc 1 tươi + bak; khúc thừa bị xoá", async (t) => {
+test("--compact merges EVERY segment into ONE fresh segment 1 plus a backup; the extra segments are deleted", async (t) => {
   const { dir, keyPath, dbA } = setup(t);
   tinySegments(t, 1);
 
@@ -301,7 +301,7 @@ test("--compact gộp MỌI khúc về MỘT khúc 1 tươi + bak; khúc thừa 
   );
 });
 
-test("CA ÂM — trần mặc định 256 MB: bundle bé KHÔNG bao giờ mở khúc mới (hành vi cũ nguyên vẹn)", async (t) => {
+test("NEGATIVE CASE - the 256 MB default cap: a small bundle NEVER opens a new segment (old behaviour intact)", async (t) => {
   const { dir, keyPath, dbA } = setup(t);
   // KHÔNG đặt ZEMORY_SEGMENT_MAX — đây chính là điều kiện chạy thật hôm nay.
   for (const tag of ["N1", "N2", "N3"]) {

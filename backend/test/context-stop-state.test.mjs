@@ -50,7 +50,7 @@ function writeTranscript(dir, name, tokens, model = "claude-opus-5") {
   return p;
 }
 
-test("① `stop` GHI SỔ context — chỗ lỗ nằm: trước bản này nhánh stop không đo gì", () => {
+test("1 `stop` RECORDS the context - that was the hole: before this build the stop branch measured nothing", () => {
   const tp = writeTranscript(ROOT, "s1.jsonl", 300_000);
 
   const out = handleHook("stop", { session_id: "sid-ghi-so", transcript_path: tp, cwd: ROOT });
@@ -65,7 +65,7 @@ test("① `stop` GHI SỔ context — chỗ lỗ nằm: trước bản này nhá
   assert.equal(out, "", "và vẫn không phun chữ — xem ca ②");
 });
 
-test("② `stop` KHÔNG BAO GIỜ phun chữ (0 token, no context change — HP điều 10)", () => {
+test("2 `stop` NEVER emits text (0 tokens, no context change - constitution 10)", () => {
   // Kể cả khi VƯỢT ngưỡng — đây đúng là lúc dễ bị cám dỗ phun cảnh báo ra.
   const tp = writeTranscript(ROOT, "s2.jsonl", 990_000);
 
@@ -77,7 +77,7 @@ test("② `stop` KHÔNG BAO GIỜ phun chữ (0 token, no context change — HP 
   assert.equal(st.over, true, "990k/1M ⇒ phải đánh dấu đã vượt ngưỡng");
 });
 
-test("③ không biết cửa sổ ⇒ KHÔNG ghi sổ (không được bịa mẫu số)", () => {
+test("3 an unknown window means NO record (the denominator must not be invented)", () => {
   // Model lạ ⇒ `windowFor` trả null ⇒ percent null ⇒ không có gì đáng ghi.
   const tp = writeTranscript(ROOT, "s3.jsonl", 50_000, "mot-model-chua-tung-thay");
 
@@ -91,7 +91,7 @@ test("③ không biết cửa sổ ⇒ KHÔNG ghi sổ (không được bịa m�
   );
 });
 
-test("fail-open: transcript không tồn tại ⇒ không ném, không ghi sổ (điều 9)", () => {
+test("fail-open: a missing transcript does not throw and records nothing (constitution 9)", () => {
   const missing = join(ROOT, "khong-he-ton-tai.jsonl");
 
   let out;
@@ -102,7 +102,7 @@ test("fail-open: transcript không tồn tại ⇒ không ném, không ghi sổ 
   assert.equal(existsSync(join(GUARD, "sid-thieu-file.ctx.json")), false);
 });
 
-test("readContextState: sổ hỏng / không có ⇒ null, không ném", () => {
+test("readContextState: a broken or missing record yields null and does not throw", () => {
   const dir = GUARD;
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "sid-rac.ctx.json"), "{ khong phai json");
@@ -120,7 +120,7 @@ test("readContextState: sổ hỏng / không có ⇒ null, không ném", () => {
 const _read = readFileSync;
 const UI = _read(new URL("../src/ui.ts", import.meta.url), "utf8");
 
-test("`/session-context`: nhánh `estimate` KHÔNG được mang percent/window (không bịa mẫu số)", () => {
+test("`/session-context`: the `estimate` branch must NOT carry percent or window (no invented denominator)", () => {
   const i = UI.indexOf('p === "/session-context"');
   assert.ok(i > 0, "phải có endpoint /session-context");
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
@@ -131,7 +131,7 @@ test("`/session-context`: nhánh `estimate` KHÔNG được mang percent/window 
   assert.ok(!obj.includes("window"), "estimate KHÔNG được trả window: zemory không biết cửa sổ");
 });
 
-test("`/session-context`: nhánh `measured` phải mang ĐỦ tử số + mẫu số + ngưỡng", () => {
+test("`/session-context`: the `measured` branch must carry numerator, denominator AND threshold", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   const mea = branch.slice(branch.indexOf('kind: "measured"'));
@@ -141,7 +141,7 @@ test("`/session-context`: nhánh `measured` phải mang ĐỦ tử số + mẫu 
   }
 });
 
-test("`/session-context`: một truy vấn NHÓM cho cả lô, không N+1", () => {
+test("`/session-context`: one GROUPED query for the whole batch, no N+1", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   assert.match(branch, /GROUP BY session_id/, "phải nhóm trong SQL");
@@ -156,14 +156,14 @@ test("`/session-context`: một truy vấn NHÓM cho cả lô, không N+1", () =
 // mọi phiên trước đó hiện `~token` thay vì `%` dù transcript còn nguyên trên đĩa và mang `usage`
 // do host tự khai. User: *"sao có mấy cái nó ko hiện %"*. Bốn ràng buộc dưới đây là bốn chỗ dễ
 // làm sai của nhánh vá, và mỗi cái đều đo được từ nguồn.
-test("`/session-context`: tra đường transcript qua `ingest_state`, KHÔNG quét thư mục", () => {
+test("`/session-context`: transcript paths come from `ingest_state`, never from a directory scan", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   assert.match(branch, /FROM ingest_state WHERE session_id IN/, "phải dùng bảng đã có ánh xạ id↔đường dẫn");
   assert.ok(!/readdirSync/.test(branch), "KHÔNG được quét thư mục: 7 ms một truy vấn vs quét cả cây");
 });
 
-test("`/session-context`: một id có NHIỀU đường ⇒ chỉ nhận đường TỒN TẠI tại chỗ", () => {
+test("`/session-context`: when one id has SEVERAL paths, only the one that EXISTS locally is accepted", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   // Đo trên kho thật: 40 id trả 52 hàng `ingest_state`, và 16/52 đường là của MÁY KHÁC.
@@ -171,7 +171,7 @@ test("`/session-context`: một id có NHIỀU đường ⇒ chỉ nhận đư�
   assert.match(branch, /if \(!byId\.has\(r\.session_id\)\)/, "phải giữ đường đầu tiên HỢP LỆ, không ghi đè bừa");
 });
 
-test("`/session-context`: mốc `at` lấy MTIME transcript, KHÔNG phải Date.now()", () => {
+test("`/session-context`: the `at` mark takes the transcript MTIME, not Date.now()", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   const measured = branch.slice(branch.indexOf("② ĐỌC THẲNG TRANSCRIPT"));
@@ -182,7 +182,7 @@ test("`/session-context`: mốc `at` lấy MTIME transcript, KHÔNG phải Date.
   );
 });
 
-test("`/session-context`: TRẦN id/lượt để không khoá event loop của daemon", () => {
+test("`/session-context`: id and round CAPS so the daemon event loop is never blocked", () => {
   const i = UI.indexOf('p === "/session-context"');
   const branch = UI.slice(i, UI.indexOf('p === "/insights"', i));
   const m = /\.slice\(0,\s*(\d+)\)/.exec(branch);
@@ -215,7 +215,7 @@ function writeWithCompactions(name, pres, tailTokens) {
   return p;
 }
 
-test("scanCompactions: ĐẾM đúng số lần + CỘNG đúng preTokens", () => {
+test("scanCompactions: COUNTS the runs correctly and SUMS preTokens correctly", () => {
   const p = writeWithCompactions("c1.jsonl", [1_001_459, 1_003_431, 999_318], 508_420);
   const sc = scanCompactions(p, 0);
   assert.equal(sc.count, 3, "phải đếm đủ 3 lần nén");
@@ -223,7 +223,7 @@ test("scanCompactions: ĐẾM đúng số lần + CỘNG đúng preTokens", () =
   assert.ok(sc.scannedTo > 0);
 });
 
-test("scanCompactions: TĂNG DẦN — quét lại từ `scannedTo` ra 0, KHÔNG cộng trùng", () => {
+test("scanCompactions: INCREMENTAL - rescanning from `scannedTo` yields 0 and never double-counts", () => {
   const p = writeWithCompactions("c2.jsonl", [1_000_000, 1_000_000], 300_000);
   const first = scanCompactions(p, 0);
   assert.equal(first.count, 2);
@@ -232,7 +232,7 @@ test("scanCompactions: TĂNG DẦN — quét lại từ `scannedTo` ra 0, KHÔNG
   assert.equal(again.preTokensSum, 0);
 });
 
-test("scanCompactions: nén MỚI thêm vào sau ⇒ lượt sau chỉ đếm phần MỚI", () => {
+test("scanCompactions: a NEW compaction appended later means the next pass counts only the NEW part", () => {
   const p = writeWithCompactions("c3.jsonl", [1_000_000], 100_000);
   const first = scanCompactions(p, 0);
   assert.equal(first.count, 1);
@@ -244,7 +244,7 @@ test("scanCompactions: nén MỚI thêm vào sau ⇒ lượt sau chỉ đếm ph
   assert.equal(second.preTokensSum, 777_000);
 });
 
-test("scanCompactions: file NGẮN lại (bị thay) ⇒ quét lại từ 0 thay vì tin mốc cũ", () => {
+test("scanCompactions: a file that got SHORTER (replaced) is rescanned from 0 instead of trusting the old mark", () => {
   const p = writeWithCompactions("c4.jsonl", [1_000_000, 1_000_000], 50_000);
   const big = scanCompactions(p, 0);
   // Thay bằng file ngắn hơn, chỉ 1 lần nén.
@@ -253,11 +253,11 @@ test("scanCompactions: file NGẮN lại (bị thay) ⇒ quét lại từ 0 thay
   assert.equal(after.count, 1, "mốc cũ vượt kích thước file ⇒ phải quét lại từ đầu, không trả 0");
 });
 
-test("scanCompactions: file không tồn tại ⇒ null, không ném", () => {
+test("scanCompactions: a missing file yields null and does not throw", () => {
   assert.equal(scanCompactions(join(ROOT, "khong-co-that.jsonl"), 0), null);
 });
 
-test("`stop` CỘNG DỒN qua nhiều lượt, và `totalTokens` = preTokensSum + tokens hiện tại", () => {
+test("`stop` ACCUMULATES across runs, and `totalTokens` = preTokensSum + current tokens", () => {
   const p = writeWithCompactions("c5.jsonl", [1_000_000, 1_000_000], 400_000);
   handleHook("stop", { session_id: "sid-congdon", transcript_path: p, cwd: ROOT });
   const st1 = readContextState("sid-congdon", GUARD);
@@ -273,7 +273,7 @@ test("`stop` CỘNG DỒN qua nhiều lượt, và `totalTokens` = preTokensSum 
   assert.equal(st2.preTokensSum, 2_000_000);
 });
 
-test("FE: mức an toàn dùng --success (XANH), cam/đỏ giữ nguyên", () => {
+test("FE: the safe level uses --success (GREEN), amber and red unchanged", () => {
   const FE = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
   const i = FE.indexOf("function ctxBadge");
   const branch = FE.slice(i, FE.indexOf("function paintCtxBadges", i));
@@ -283,7 +283,7 @@ test("FE: mức an toàn dùng --success (XANH), cam/đỏ giữ nguyên", () =>
   assert.match(branch, /var\(--danger\)/, "đỏ giữ nguyên");
 });
 
-test("FE: badge dùng % CỘNG DỒN — vượt 100% chính là dấu hiệu đã nén", () => {
+test("FE: the badge uses the CUMULATIVE % - passing 100% is precisely the sign of a compaction", () => {
   // User chốt 2026-09-02: *"kiểu là vượt 100% chính xác bao nhiêu để biết là nén"*. Một con số duy
   // nhất giữ cả cột so sánh được, và nó TỰ NÓI: 136% = nén 1 lần · 352% = nén 3 lần. Phiên chưa
   // nén thì `totalTokens === tokens` nên con số này TRÙNG % hiện tại ⇒ badge không đổi gì.
@@ -310,7 +310,7 @@ test("FE: badge dùng % CỘNG DỒN — vượt 100% chính là dấu hiệu đ
   assert.match(branch, /ctx\.compactT/, "tooltip phải giải thích + mang con số tổng");
 });
 
-test("FE: MÀU — vượt 100% LUÔN ĐỎ, dưới đó theo ngưỡng của chu kỳ hiện tại", () => {
+test("FE: COLOUR - above 100% is ALWAYS RED, below that it follows the current cycle's thresholds", () => {
   // User chốt 2026-09-02: *"vượt 100% thì phải màu đỏ mới đúng"*. Đã vượt trọn một cửa sổ nghĩa
   // là phiên ĐÃ BỊ NÉN ít nhất một lần — sự thật đó đắt hơn mọi ngưỡng, và nó phải đọc được ngay
   // từ MÀU chứ không bắt người ta đọc số.
@@ -343,7 +343,7 @@ test("FE: MÀU — vượt 100% LUÔN ĐỎ, dưới đó theo ngưỡng của c
 // thêm một cửa sổ, không có gì dọn.
 const SW = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
 
-test("closeBrowserTree: BẤT ĐỒNG BỘ — không khoá event loop daemon", () => {
+test("closeBrowserTree: ASYNCHRONOUS - it must not block the daemon event loop", () => {
   const i = SW.indexOf("async function closeBrowserTree");
   assert.ok(i > 0, "phải là async: bản sync chặn daemon 8s mỗi lần đóng");
   const fn = SW.slice(i, SW.indexOf("\n}", i));
@@ -352,7 +352,7 @@ test("closeBrowserTree: BẤT ĐỒNG BỘ — không khoá event loop daemon", 
   assert.match(SW, /await closeBrowserTree\(/, "nơi gọi phải await, không thì tiến trình thoát trước khi giết xong");
 });
 
-test("closeBrowserTree: trần ĐỦ LỚN + THỬ LẠI một lần", () => {
+test("closeBrowserTree: a LARGE ENOUGH cap plus one retry", () => {
   const i = SW.indexOf("async function closeBrowserTree");
   const fn = SW.slice(i, SW.indexOf("\n}\n", i));
   const m = /timeout:\s*([\d_]+)/.exec(fn);
@@ -363,7 +363,7 @@ test("closeBrowserTree: trần ĐỦ LỚN + THỬ LẠI một lần", () => {
   assert.match(fn, /await kill\(\)[\s\S]*await kill\(\)/, "phải thử lại một lần trước khi chịu thua");
 });
 
-test("closeBrowserTree: vẫn FAIL-OPEN — hết cách thì ghi log, không ném (điều 9)", () => {
+test("closeBrowserTree: still FAIL-OPEN - out of options it logs instead of throwing (constitution 9)", () => {
   const i = SW.indexOf("async function closeBrowserTree");
   const fn = SW.slice(i, SW.indexOf("\n}\n", i));
   assert.match(fn, /không đóng được cửa sổ ngầm/, "phải ghi log nêu rõ pid + lý do");

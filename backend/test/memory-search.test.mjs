@@ -50,7 +50,7 @@ function seed(t, rows) {
   return p;
 }
 
-test("tin tool bị hạ xuống dưới văn xuôi, nhưng KHÔNG bị loại khỏi kết quả", (t) => {
+test("tool messages rank below prose but are NOT dropped from the results", (t) => {
   const p = seed(t, [
     { role: "user", content: "[tool_result] fitness fitness fitness dump fitness" },
     { role: "user", content: "[tool_result] fitness fitness fitness khác fitness" },
@@ -66,12 +66,12 @@ test("tin tool bị hạ xuống dưới văn xuôi, nhưng KHÔNG bị loại k
 });
 
 // Trường hợp xấu nhất: câu trả lời CHỈ nằm trong tool output. Hạ điểm không được nuốt nó.
-test("khi tool là nguồn DUY NHẤT, kết quả vẫn ra", (t) => {
+test("when tools are the ONLY source, results still come back", (t) => {
   const p = seed(t, [{ role: "user", content: "[tool_result] mã lỗi hiếm zqx9910 chỉ có ở đây" }]);
   assert.equal(search("zqx9910", { dbPath: p, all: true }).length, 1, "không có văn xuôi cạnh tranh ⇒ tin tool vẫn phải ra");
 });
 
-test("hỏi thẳng role=tool thì không bị phạt", (t) => {
+test("asking explicitly for role=tool carries no penalty", (t) => {
   const p = seed(t, [{ role: "user", content: "[tool_result] enoentxyz trong output công cụ" }]);
   assert.equal(search("enoentxyz", { dbPath: p, all: true, role: "tool" }).length, 1);
 });
@@ -80,7 +80,7 @@ test("hỏi thẳng role=tool thì không bị phạt", (t) => {
 // Đo trên corpus 56 nhãn: ba cách diễn đạt nâng `@10` 39% → 50%, `prose@40` 68% → 94%.
 // Ở đây không có model nên vector rỗng và mọi thứ chạy bằng FTS — đủ để khoá HỢP ĐỒNG:
 // một truy vấn phải y như cũ, và một tin CHỈ tìm được bằng lối nói thứ hai phải nổi lên.
-test("searchMulti: một truy vấn cho kết quả y hệt đường cũ (tương thích ngược)", async (t) => {
+test("searchMulti: a single query gives exactly the old path's results (backward compatible)", async (t) => {
   const p = seed(t, [
     { role: "user", content: "khoá ngoại ngày của bảng dữ kiện không thiếu dòng" },
     { role: "assistant", content: "chuyện khác hẳn về hộp thoại" },
@@ -94,7 +94,7 @@ test("searchMulti: một truy vấn cho kết quả y hệt đường cũ (tươ
   );
 });
 
-test("searchMulti: tin chỉ khớp lối nói THỨ HAI vẫn được lấy về", async (t) => {
+test("searchMulti: a message matching only the SECOND phrasing is still retrieved", async (t) => {
   const p = seed(t, [
     { role: "user", content: "bản ghi nói về khoá ngoại ngày" },
     { role: "assistant", content: "bản ghi nói về foreign key của bảng fact" },
@@ -105,7 +105,7 @@ test("searchMulti: tin chỉ khớp lối nói THỨ HAI vẫn được lấy v�
   assert.equal(both.length, 2, "gộp hai lối nói phải thấy CẢ HAI tin");
 });
 
-test("searchMulti: truy vấn rỗng/toàn khoảng trắng bị bỏ, không nổ", async (t) => {
+test("searchMulti: empty or whitespace-only queries are dropped without throwing", async (t) => {
   const p = seed(t, [{ role: "user", content: "một tin có chữ needle" }]);
   assert.equal((await searchMulti(["needle", "   ", ""], { dbPath: p, all: true })).length, 1);
   assert.equal((await searchMulti([], { dbPath: p, all: true })).length, 0, "không có truy vấn nào ⇒ rỗng, không throw");
@@ -115,7 +115,7 @@ test("searchMulti: truy vấn rỗng/toàn khoảng trắng bị bỏ, không n�
 // Ở đây KHÔNG có sqlite-vec/model, nên `vectorsByRowid` trả Map rỗng. Đó chính là ca
 // FAIL-OPEN cần khoá: thiếu vector thì mọi tin phải ĐỨNG RIÊNG. Nếu code suy "không đo
 // được ⇒ coi như giống nhau" thì nó sẽ âm thầm nuốt kết quả, và test này bắt đúng chỗ đó.
-test("gộp near-dup: thiếu vector ⇒ mọi tin đứng riêng, KHÔNG mất kết quả (fail-open)", (t) => {
+test("near-dup merging: with no vectors every message stands alone and NO result is lost (fail-open)", (t) => {
   const p = seed(t, [
     { role: "user", content: "needle bản một" },
     { role: "assistant", content: "needle bản hai" },
@@ -133,7 +133,7 @@ test("gộp near-dup: thiếu vector ⇒ mọi tin đứng riêng, KHÔNG mất 
 // một lần với rerank: đợt 07-26 chỉ vá GIÁ TRỊ trong config, mặc định vẫn bật nên nó quay lại.
 // MẶC ĐỊNH BẬT (user chốt 2026-08-09) sau khi thước TƯƠNG ĐƯƠNG đảo phán quyết: gộp thua trên
 // thước nghiêm (MRR 0,319→0,288) nhưng THẮNG trên thước tương đương (0,407→0,413, @10 49→54%).
-test("gộp near-dup: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
+test("near-dup merging: ON BY DEFAULT, switchable off through env/opts", () => {
   const prev = process.env.ZEMORY_COLLAPSE;
   try {
     delete process.env.ZEMORY_COLLAPSE;
@@ -152,7 +152,7 @@ test("gộp near-dup: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
 // chốt BẬT MẶC ĐỊNH. Khoá cả hai chiều: mặc định đúng chiều, VÀ đường tắt phải còn sống —
 // repo đã trả giá đúng lỗi mặc-định-sai với rerank một lần (recall chậm 6,3× suốt hai tháng),
 // nên thứ cứu được ca đó là một biến môi trường tắt được ngay, không phải một bản vá.
-test("cổng không-biết: MẶC ĐỊNH BẬT (user chốt 24/08), tắt được qua env/opts", () => {
+test("the do-not-know gate: ON BY DEFAULT (user ruling 24/08), switchable off through env/opts", () => {
   const prev = process.env.ZEMORY_ABSTAIN;
   try {
     delete process.env.ZEMORY_ABSTAIN;
@@ -176,7 +176,7 @@ test("cổng không-biết: MẶC ĐỊNH BẬT (user chốt 24/08), tắt đư�
 //   · độ ĐỒNG THUẬN giữa lane (ov10) cộng thêm đúng số không (phép ablation: bộ số trùng khít).
 // Ngưỡng θ=0,84 chọn theo trần THẬT của câu dương đo theo lớp: prose 0,812 · tool_result 0,778 ·
 // tool_use 0,764; chỉ `keyword` chạm 0,864 và 3 câu chạm đó ĐANG trượt sẵn (hạng 0 · 0 · 33).
-test("cổng không-biết: luật là KHOẢNG CÁCH THUẦN — margin không còn được tính", () => {
+test("the do-not-know gate: the rule is PURE DISTANCE - margin no longer counts", () => {
   // Hai bên ngưỡng mặc định 0,84.
   assert.equal(shouldAbstain(0.85, 0.001, true), true, "xa hơn ngưỡng ⇒ chặn");
   assert.equal(shouldAbstain(0.83, 0.001, true), false, "gần hơn ngưỡng ⇒ KHÔNG chặn");
@@ -198,7 +198,7 @@ test("cổng không-biết: luật là KHOẢNG CÁCH THUẦN — margin không 
 // THẬT thì topDist gần như luôn vượt ngưỡng (N=3 → 0,9925 · N=20 → 0,9681 · N=60 → 0,9215 ·
 // N=150 → 0,9162). Thiếu sàn thì MÁY VỪA CÀI XONG sẽ câm với mọi câu hỏi — đo được: kho 3 tin trả
 // 0 kết quả trong khi FTS tìm ra 2 hit và đáp án nằm ngay trong kho.
-test("cổng không-biết: kho MỎNG thì KHÔNG BAO GIỜ chặn, dù khoảng cách xa tới đâu", () => {
+test("the do-not-know gate: a THIN store NEVER blocks, however far the distance", () => {
   const FAR = 0.99; // xa hơn mọi ngưỡng
   assert.equal(shouldAbstain(FAR, 0.01, true, 3), false, "kho 3 vector: chặn là giết recall của máy mới cài");
   assert.equal(shouldAbstain(FAR, 0.01, true, 150), false, "kho 150 vector vẫn dưới sàn — vùng này đo được là topDist luôn ~0,92");
@@ -212,7 +212,7 @@ test("cổng không-biết: kho MỎNG thì KHÔNG BAO GIỜ chặn, dù khoản
 
 // Fail-open (điều 9): không có chỉ mục vector ⇒ không có khoảng cách để phán ⇒ TUYỆT ĐỐI không
 // được chặn. Bật cổng trên DB không vector mà mất kết quả là biến fail-open thành fail-closed.
-test("cổng không-biết: thiếu vector ⇒ không bao giờ chặn (fail-open)", async (t) => {
+test("the do-not-know gate: with no vectors it never blocks (fail-open)", async (t) => {
   const p = seed(t, [{ role: "user", content: "một tin có chữ needle" }]);
   const r = await recallChecked("needle", { dbPath: p, all: true, abstain: true });
   assert.equal(r.hits.length, 1, "không đo được thì phải TRẢ kết quả");
@@ -222,7 +222,7 @@ test("cổng không-biết: thiếu vector ⇒ không bao giờ chặn (fail-ope
 // Trộn cosine (rerank rẻ, plan 17 §3.1 đường ③) — MẶC ĐỊNH BẬT vì nó thắng net (MRR 0,258 →
 // 0,282 ở 119 ms). Hai bất biến phải khoá: mặc định đúng chiều, và thiếu vector thì KHÔNG được
 // mất kết quả — không có vector là ca thường ngày (lớp `tool_use` không có vector nào cả).
-test("trộn cosine: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
+test("cosine blending: ON BY DEFAULT, switchable off through env/opts", () => {
   const prev = process.env.ZEMORY_VECMIX;
   try {
     delete process.env.ZEMORY_VECMIX;
@@ -236,7 +236,7 @@ test("trộn cosine: MẶC ĐỊNH BẬT, tắt được qua env/opts", () => {
   }
 });
 
-test("trộn cosine: thiếu vector ⇒ giữ nguyên thứ tự, không mất kết quả", (t) => {
+test("cosine blending: with no vectors the order is unchanged and no result is lost", (t) => {
   const p = seed(t, [
     { role: "user", content: "needle một" },
     { role: "assistant", content: "needle hai" },
@@ -248,7 +248,7 @@ test("trộn cosine: thiếu vector ⇒ giữ nguyên thứ tự, không mất k
   assert.deepEqual(on.map((h) => h.id), off.map((h) => h.id), "không đo được thì KHÔNG được đổi thứ tự");
 });
 
-test("gộp near-dup: tôn trọng limit và tắt được qua opts", (t) => {
+test("near-dup merging: it honours the limit and is switchable off through opts", (t) => {
   const p = seed(t, Array.from({ length: 8 }, (_, i) => ({ role: "user", content: `needle số ${i}` })));
   assert.equal(search("needle", { dbPath: p, all: true, perSession: 10, limit: 3 }).length, 3, "gộp không được vượt limit");
   assert.equal(

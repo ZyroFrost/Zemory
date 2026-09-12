@@ -59,7 +59,7 @@ function orphans(p) {
   }
 }
 
-test("embed xong: không dòng vec_map/vec_hash nào trỏ vào vector không tồn tại", async (t) => {
+test("after an embed: no vec_map or vec_hash row points at a vector that does not exist", async (t) => {
   const dir = tempDir(t, "zemory-vecatomic-");
   // MỘT tin dài là đủ để ép tách chunk (điều ca này cần). Hai tin dài từng làm ca này đỉnh 4.088 MB —
   // đúng ca chạm trần 4 GB của lồng gate (đo Job Object 2026-08-27); một tin ≈ 2 GB, cùng ca 2 bên dưới.
@@ -73,7 +73,7 @@ test("embed xong: không dòng vec_map/vec_hash nào trỏ vào vector không t�
   assert.equal(o.hash, 0, `${o.hash} dòng vec_hash trỏ vào vector không có`);
 });
 
-test("lượt dedup (chép lại, không gọi model) cũng không để lại dòng mồ côi", async (t) => {
+test("a dedup round (copy back, no model call) leaves no orphan row either", async (t) => {
   const dir = tempDir(t, "zemory-vecatomic-");
   const p = seed(dir, 1, 1);
   await embedPending({ dbPath: p, limit: 50 });

@@ -35,22 +35,22 @@ function container(dir, name, n) {
 
 // ── Phần 1: phép PHÁN QUYẾT (hàm thuần — chỗ logic bị đảo ngược) ────────────────────────────
 
-test("ném nhưng ĐẾM ĐỦ ⇒ coi là ĐÃ NỐI (đúng ca 26/08)", () => {
+test("it throws but the COUNT IS COMPLETE, so it counts as APPENDED (the real 26/08 case)", () => {
   assert.equal(appendVerdict(true, 40, 40), "ok-despite-error");
 });
 
-test("ĐẾM THIẾU ⇒ thử lại, kể cả khi KHÔNG ném (lỗi câm còn nguy hơn lỗi ném)", () => {
+test("an INCOMPLETE count means retry, even when nothing was thrown (a silent failure is worse than a thrown one)", () => {
   assert.equal(appendVerdict(false, 39, 40), "retry");
   assert.equal(appendVerdict(true, 39, 40), "retry");
 });
 
-test("đường bình thường: không ném, đếm đủ ⇒ ok", () => {
+test("the normal path: nothing thrown, count complete, ok", () => {
   assert.equal(appendVerdict(false, 40, 40), "ok");
 });
 
 // ── Phần 2: HÀNH VI thật trên container ─────────────────────────────────────────────────────
 
-test("nối được thì container DÀI RA đúng một khối", (t) => {
+test("a successful append makes the container GROW by exactly one block", (t) => {
   const dir = tempDir(t, "zemory-append-ok-");
   const c = container(dir, "main.enc", 2);
   const before = statSync(c).size;
@@ -65,7 +65,7 @@ test("nối được thì container DÀI RA đúng một khối", (t) => {
   assert.match(readFileSync(c, "latin1"), /khoi-moi-q+$/);
 });
 
-test("container có ĐUÔI RÁC ⇒ BÁO LỖI, tuyệt đối không âm thầm chôn khối mới", (t) => {
+test("a container with a JUNK TAIL raises an ERROR - it must never silently bury the new block", (t) => {
   const dir = tempDir(t, "zemory-append-torn-");
   const c = container(dir, "main.enc", 1);
   // Một lượt nối dở của ai đó để lại byte thừa. `listChunks` gặp nó là DỪNG ⇒ mọi thứ nối tiếp

@@ -48,7 +48,7 @@ test("adding a source file changes the signature and the next call rebuilds with
 // của user (đo được 15 hàng rác `zemory-gcache-*` sau một vòng gate). Một hàm đọc
 // graph không được phép mutate trạng thái toàn cục — nơi ghi đúng là endpoint
 // /code-graph của daemon, chỗ duy nhất quan sát được "project này vừa đổi code".
-test("getCodeGraph KHÔNG ghi gì vào memory DB (thuần đọc; sig trả ra để nơi khác chống trùng)", async (t) => {
+test("getCodeGraph writes NOTHING to the memory DB (read-only; it returns the sig so others can dedupe)", async (t) => {
   const src = readFileSync(new URL("../src/memory/graph/graph-cache.ts", import.meta.url), "utf8")
     .replace(/\/\/[^\n]*/g, "");
   assert.ok(!/recordFitness|openMemory|INSERT\s+INTO/i.test(src), "graph-cache phải không đụng tới DB");

@@ -24,17 +24,17 @@ const HERE = "C:\\WINDOWS\\System32";
 const OWN = "D:\\repo\\Zemory";
 const only = (...ok) => (p) => ok.includes(p);
 
-test("daemon root: cwd KHÔNG phải project ⇒ rơi về repo của chính bản build", () => {
+test("daemon root: a cwd that is NOT a project falls back to the build's own repo", () => {
   assert.equal(daemonProjectRoot(HERE, OWN, only(OWN)), OWN);
 });
 
-test("daemon root: cwd LÀ project thì cwd THẮNG — `ui` mở từ repo khác vẫn báo về repo đó", () => {
+test("daemon root: when the cwd IS a project the cwd WINS - `ui` opened from another repo still reports on that repo", () => {
   // Ca này là thứ ngăn bản vá đi quá tay: một fallback "luôn dùng repo của mình" sẽ làm mọi
   // người dùng khác của zemory nhìn thấy harness của ZEMORY thay vì của họ.
   assert.equal(daemonProjectRoot("D:\\repo\\DuAnA", OWN, only("D:\\repo\\DuAnA", OWN)), "D:\\repo\\DuAnA");
 });
 
-test("daemon root: KHÔNG bên nào là project ⇒ giữ nguyên cwd, không bịa root", () => {
+test("daemon root: with NEITHER side a project it keeps the cwd and invents no root", () => {
   assert.equal(daemonProjectRoot(HERE, OWN, () => false), HERE);
 });
 
@@ -44,7 +44,7 @@ const CWD = "D:\\repo\\Zemory";
 const LINE = `sh.CurrentDirectory = "${CWD}"`;
 const vbs = (body) => `Set sh = CreateObject("WScript.Shell")\r\n${body}`;
 
-test("launcher stale: đúng exe nhưng THIẾU dòng thư mục làm việc ⇒ phải ghi lại", () => {
+test("launcher stale: the right exe but MISSING the working-directory line must be rewritten", () => {
   // Đây chính là ca làm bản vá thành vô nghĩa nếu quên: launcher cũ nêu đúng exe của hôm nay,
   // nên phép so chỉ-nhìn-exe kết luận "còn tươi" và không bao giờ nhận dòng cwd mới.
   const old = vbs(`sh.Run """${EXE}"" ""D:\\repo\\Zemory\\dist\\cli.js"" ui", 0, False\r\n`);
@@ -52,7 +52,7 @@ test("launcher stale: đúng exe nhưng THIẾU dòng thư mục làm việc ⇒
   assert.equal(launcherStale(old, EXE, LINE), true, "phép so MỚI phải thấy");
 });
 
-test("launcher stale: so bằng CẢ DÒNG, không bằng đường dẫn trần", () => {
+test("launcher stale: it compares the WHOLE LINE, not the bare path", () => {
   // Bản vá đầu của chính đợt này so `content.includes(cwd)` và ca trên ĐỎ: exe nằm TRONG repo
   // (`<repo>\dist\zemory.exe`) nên đường dẫn repo đã có mặt sẵn trong launcher cũ. So đường dẫn
   // trần ⇒ không launcher cũ nào bị coi là cũ ⇒ bản vá ship ra mà không tới được máy nào.
@@ -61,14 +61,14 @@ test("launcher stale: so bằng CẢ DÒNG, không bằng đường dẫn trần
   assert.equal(launcherStale(old, EXE, LINE), true);
 });
 
-test("launcher stale: có đủ exe + thư mục làm việc ⇒ KHÔNG ghi lại (ca ÂM)", () => {
+test("launcher stale: exe and working directory both present means NO rewrite (negative case)", () => {
   // Không có ca âm thì một hàm `return true` cũng qua được ca dương ở trên, và launcher sẽ bị
   // ghi lại ở MỌI lượt daemon khởi động.
   const fresh = vbs(`${LINE}\r\nsh.Run """${EXE}"" ""x"" ui", 0, False\r\n`);
   assert.equal(launcherStale(fresh, EXE, LINE), false);
 });
 
-test("launcher stale: không có file ⇒ không có gì để làm tươi", () => {
+test("launcher stale: with no file there is nothing to refresh", () => {
   assert.equal(launcherStale(null, EXE, LINE), false);
 });
 
@@ -88,13 +88,13 @@ async function withSettings(fn) {
   }
 }
 
-test("tự kiểm: mặc định TẮT, chu kỳ 30 phút", async () => {
+test("self-check: OFF by default, 30-minute cycle", async () => {
   await withSettings(async ({ getChecksAuto }) => {
     assert.deepEqual(getChecksAuto(), { on: false, everyMin: 30 });
   });
 });
 
-test("tự kiểm: chu kỳ bị KẸP [5,1440] — 1 phút là gõ cửa daemon vô ích, 3 ngày thì hết là định kỳ", async () => {
+test("self-check: the cycle is CLAMPED to [5,1440] - 1 minute is pointless knocking, 3 days is no longer periodic", async () => {
   await withSettings(async ({ getChecksAuto, setChecksAuto }) => {
     setChecksAuto({ everyMin: 1 });
     assert.equal(getChecksAuto().everyMin, 5);
@@ -103,7 +103,7 @@ test("tự kiểm: chu kỳ bị KẸP [5,1440] — 1 phút là gõ cửa daemon
   });
 });
 
-test("tự kiểm: bật/tắt KHÔNG đặt lại chu kỳ, và đổi chu kỳ KHÔNG tự bật", async () => {
+test("self-check: toggling must NOT reset the cycle, and changing the cycle must NOT switch it on", async () => {
   // Hai tham số độc lập là điều kiện để cái ⚙ dùng được: người ta chọn chu kỳ trước rồi mới bật,
   // và bật/tắt không được nuốt con số vừa chọn.
   await withSettings(async ({ getChecksAuto, setChecksAuto }) => {
@@ -117,7 +117,7 @@ test("tự kiểm: bật/tắt KHÔNG đặt lại chu kỳ, và đổi chu kỳ
 });
 
 // ── ④ bề mặt: nút bấm và nhịp tự động phải dùng CHUNG một đường ──────────────
-test("FE: chỉ có MỘT chỗ chạy lại toàn bộ phép kiểm (nút và nhịp cùng gọi)", async () => {
+test("FE: exactly ONE place reruns the whole check set (button and timer call the same path)", async () => {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   // Chuỗi endpoint kiểm chỉ được xuất hiện MỘT lần: hai bản sao thì sớm muộn cũng lệch nhau
@@ -130,7 +130,7 @@ test("FE: chỉ có MỘT chỗ chạy lại toàn bộ phép kiểm (nút và n
   assert.match(src, /document\.hidden\|\|ckBusy/, "nhịp tự động phải bỏ qua khi cửa sổ khuất / đang chạy");
 });
 
-test("FE: 'bản zemory mới' và 'repo cũ chuẩn' là HAI chip — không cái nào giấu cái nào", async () => {
+test("FE: 'a new zemory build' and 'an old repo on the standard' are TWO chips - neither hides the other", async () => {
   // Bug thật (user gặp trên máy PC 2026-09-09): một chip xử ba trạng thái bằng `return` sớm —
   // có bản zemory mới thì vẽ xong RỒI THOÁT, nên vế "N repo cũ chuẩn" biến mất đúng lúc cả hai
   // cùng đúng. Hai sự thật khác CẤP (công cụ trên máy ↔ chuẩn của các repo) mà chung một đèn thì
@@ -157,7 +157,7 @@ test("FE: 'bản zemory mới' và 'repo cũ chuẩn' là HAI chip — không c�
     "thân hộp chuẩn repo còn lẫn nội dung bản zemory");
 });
 
-test("FE: mỗi chip trạng thái mang MỘT icon nhận diện, và icon sống ở rail thu gọn", async () => {
+test("FE: each status chip carries ONE identifying icon, and the icon survives on the collapsed rail", async () => {
   // Rail thu gọn ẩn toàn bộ chữ (`.railcoll .status-chip>div{display:none}`), nên nếu chỉ có chấm
   // thì ba chip là ba chấm giống hệt — đúng thứ user chụp lại. Icon là thứ DUY NHẤT phân biệt được
   // ở chế độ đó, nên nó phải khác nhau từng chip VÀ phải được giữ lại khi thu gọn.
@@ -181,7 +181,7 @@ test("FE: mỗi chip trạng thái mang MỘT icon nhận diện, và icon sốn
   assert.match(css, /\.railcoll \.status-chip\.warn\{border-color:var\(--warn\)\}/, "thu gọn: viền cam khi có việc");
 });
 
-test("FE: cả Tìm kiếm lẫn Phiên đều có nút MỞ FULL ở góc panel, dùng chung một đường", async () => {
+test("FE: both Search and Sessions have an OPEN FULL button in the panel corner, sharing one path", async () => {
   // User 2026-09-09: panel Phiên không có nút mở full, còn bên Tìm kiếm nút lại nằm TRONG thân
   // panel nên trôi theo nội dung. Nay cả hai là icon ở GÓC thanh tiêu đề, đi qua CÙNG một hàm.
   const { readFileSync } = await import("node:fs");
@@ -201,7 +201,7 @@ test("FE: cả Tìm kiếm lẫn Phiên đều có nút MỞ FULL ở góc panel
   assert.match(fn, /size:'lg'/, "nội dung dài phải mở ở nấc L, không kéo méo khung S");
 });
 
-test("FE: công tắc tự kiểm nằm trong ⚙, KHÔNG nằm trong khối 'daemon tự làm gì'", async () => {
+test("FE: the self-check toggle lives in the gear menu, NOT in the 'what the daemon does on its own' block", async () => {
   // Đặt sai chỗ có hai cái giá, cả hai đã trả trong cùng một phiên: user mở ⚙ tìm không thấy, và
   // khối kia tự khai "daemon tự làm gì khi BẬT" trong khi nhịp này chạy TRONG CỬA SỔ — nhãn nói
   // một đằng, việc làm một nẻo. Neo theo VỊ TRÍ vì không lỗi nào nổ khi ai đó dời nó về chỗ cũ.

@@ -18,7 +18,7 @@ function scaffold(t, { crlf = false } = {}) {
   const eol = crlf ? "\r\n" : "\n";
   writeFileSync(
     join(root, "docs", "agent", "02_RULES.md"),
-    ["# Rules", "Xem [structure](03_STRUCTURE.md) va [plan](../plan/13_graph.md#§4).", "Link ngoai: [x](https://example.com) va [missing](nope.md)."].join(eol),
+    ["# Rules", "See [structure](03_STRUCTURE.md) and [plan](../plan/13_graph.md#§4).", "External link: [x](https://example.com) and [missing](nope.md)."].join(eol),
   );
   writeFileSync(join(root, "docs", "agent", "03_STRUCTURE.md"), ["# Structure", "Nguoc lai: [rules](02_RULES.md)."].join(eol));
   writeFileSync(join(root, "docs", "plan", "13_graph.md"), ["# Plan 13", "Than plan."].join(eol));

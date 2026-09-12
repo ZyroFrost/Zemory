@@ -20,7 +20,7 @@ const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 /** Đúng phép so mà `dashboardMemory` dùng để quyết định còn tươi hay không. */
 const fresh = (stampedAt, now, ttl) => now - stampedAt < ttl;
 
-test("số học: lượt tính LÂU HƠN TTL ⇒ mốc-VÀO cho cache chết, mốc-XONG cho cache sống", () => {
+test("arithmetic: a computation LONGER than the TTL means a start-stamp kills the cache while an end-stamp keeps it alive", () => {
   const TTL = 60_000; // DASH_TTL_MS
   const started = 1_000_000;
   const computeMs = 74_000; // đo thật
@@ -34,7 +34,7 @@ test("số học: lượt tính LÂU HƠN TTL ⇒ mốc-VÀO cho cache chết, m
   assert.equal(fresh(finished, finished + TTL + 1, TTL), false, "quá TTL kể từ lúc xong thì phải tính lại");
 });
 
-test("mã sản xuất: mọi đường TÍNH đều đóng dấu bằng Date.now() lúc hoàn tất", () => {
+test("production code: every COMPUTE path stamps with Date.now() at completion", () => {
   for (const name of ["dashCache", "heavyCache"]) {
     const assigns = [...UI.matchAll(new RegExp(`${name}\\s*=\\s*\\{\\s*at:\\s*([^,]+),`, "g"))].map((m) => m[1].trim());
     assert.ok(assigns.length > 0, `${name} phải có chỗ ghi cache`);
@@ -59,14 +59,14 @@ test("mã sản xuất: mọi đường TÍNH đều đóng dấu bằng Date.no
   assert.ok(load && /heavyCache = \{ at: raw\.at,/.test(load[1]), "và nó phải nằm trong loadHeavyCache()");
 });
 
-test("TTL vẫn phải LỚN HƠN nhịp poll của client, không thì mỗi lượt poll đều tính lại", () => {
+test("the TTL must stay LARGER than the client poll interval, otherwise every poll recomputes", () => {
   // Chú thích trong `ui.ts` nêu rõ ràng buộc này (poll 30 s) — giữ nó thành phép đo, không phải lời hứa.
   const ttl = Number(/const DASH_TTL_MS = ([\d_]+)/.exec(UI)?.[1]?.replace(/_/g, ""));
   assert.ok(Number.isFinite(ttl), "phải đọc được DASH_TTL_MS");
   assert.ok(ttl > 30_000, `DASH_TTL_MS=${ttl} phải lớn hơn nhịp poll 30 s của client`);
 });
 
-test("làm tươi CÂY NGUỒN không được đi qua gói nặng, và TUYỆT ĐỐI không được `fresh=1`", () => {
+test("refreshing the SOURCE TREE must not go through the heavy bundle, and must NEVER pass `fresh=1`", () => {
   // 🔴 Đo 2026-09-11 sau khi user hỏi *"đăng nhập xong reload lại trang để nó nhận đúng được không"*:
   // `renderConn` gọi `/memory-status?fresh=1` — ba cái sai chồng nhau.
   //   · giá: `/sync-pulse` 7,9–12,5 s · `/connections` 3,3 s · `/memory-status?fresh=1` ~60 s;

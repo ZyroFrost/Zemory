@@ -26,9 +26,9 @@ KNOWN_SLOTS = {
     "data", "exports", "share",
 }
 DELIVERABLES = ["reports", "models", "content", "design"]
-# Bon muc BAT BUOC trong tasks/NN_*/spec.md (khuon o reference/conventions.md).
-# Khop LONG: bo dau roi tim tu khoa trong cac dong tieu de. Khong doi dung chu, va
-# khong doi co dau - agent moi nguoi dat tieu de mot kieu, khoa chat la bao oan.
+# The four MANDATORY sections of tasks/NN_*/spec.md (the shape lives in reference/conventions.md).
+# LOOSE matching: fold the diacritics away, then look for keywords in the heading lines. It does not demand exact
+# wording, and it does not demand diacritics - everyone writes headings differently, and a strict key raises false alarms.
 SPEC_SECTIONS = [
     ("Nhip", r"nhip|cadence|tan suat"),
     ("Cau dat lich", r"dat lich|cau lenh lich|schedule prompt"),
@@ -38,12 +38,12 @@ SPEC_SECTIONS = [
 
 
 def fold(s):
-    """Bo dau tieng Viet + ha chu thuong, de khop tieu de ma khong ep phai co dau."""
+    """Strip Vietnamese diacritics and lower-case, so headings match without being forced to carry diacritics."""
     import unicodedata
 
     out = unicodedata.normalize("NFD", s).lower()
     out = "".join(c for c in out if not unicodedata.combining(c))
-    return out.replace("đ", "d")  # 'd' gach ngang khong tach duoc bang NFD
+    return out.replace("đ", "d")  # a crossed d does not decompose under NFD
 REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"]
 MUST_IGNORE = ["data/", "exports/", ".env"]
 # Tooling and OS folders that legitimately sit at the root.
@@ -67,36 +67,36 @@ def subdirs(path):
 def check_required_roles(root):
     """Three roles are mandatory: AGENTS.md, docs/, at least one deliverable."""
     if not os.path.isfile(os.path.join(root, "AGENTS.md")):
-        add("BLOCK", "vai tro", "thieu AGENTS.md o goc")
+        add("BLOCK", "role", "AGENTS.md is missing at the root")
     if not os.path.isdir(os.path.join(root, "docs")):
-        add("BLOCK", "vai tro", "thieu thu muc docs/")
+        add("BLOCK", "role", "the docs/ folder is missing")
     present = [d for d in DELIVERABLES if os.path.isdir(os.path.join(root, d))]
     if not present:
         add("BLOCK", "vai tro",
-            "khong co folder deliverable nao (can >=1 trong: %s)" % " | ".join(DELIVERABLES))
+            "there is no deliverable folder (at least 1 of: %s)" % " | ".join(DELIVERABLES))
 
 
 def check_docs(root):
     agent = os.path.join(root, "docs", "agent")
     if not os.path.isdir(agent):
-        add("BLOCK", "docs", "thieu docs/agent/")
+        add("BLOCK", "docs", "docs/agent/ is missing")
         return
     for name in REQUIRED_DOCS:
         if not os.path.isfile(os.path.join(agent, name)):
-            add("BLOCK", "docs", "thieu docs/agent/%s" % name)
+            add("BLOCK", "docs", "docs/agent/%s is missing" % name)
     harness = os.path.join(root, "docs", ".harness.json")
     if not os.path.isfile(harness):
-        add("BLOCK", "docs", "thieu docs/.harness.json")
+        add("BLOCK", "docs", "docs/.harness.json is missing")
         return
     try:
         # utf-8-sig: editors on Windows often save this file with a BOM.
         with open(harness, encoding="utf-8-sig") as fh:
             cfg = json.load(fh)
     except (OSError, ValueError) as exc:
-        add("BLOCK", "docs", ".harness.json khong doc duoc: %s" % exc)
+        add("BLOCK", "docs", ".harness.json is unreadable: %s" % exc)
         return
     if cfg.get("profile") != "non-app":
-        add("INFO", "docs", "profile trong .harness.json la '%s', khong phai 'non-app'"
+        add("INFO", "docs", "the profile in .harness.json is '%s', not 'non-app'"
             % cfg.get("profile"))
 
 
@@ -107,9 +107,9 @@ def check_empty_and_unknown(root):
             continue
         path = os.path.join(root, name)
         if not os.listdir(path):
-            add("BLOCK", "rong", "thu muc rong: %s/ - chuan cam tao folder rong" % name)
+            add("BLOCK", "empty", "empty folder: %s/ - the standard forbids empty folders" % name)
         elif name not in KNOWN_SLOTS:
-            add("INFO", "la", "thu muc khong khop slot nao: %s/ - dat sai cho, hay la concern that?" % name)
+            add("INFO", "stray", "this folder matches no slot: %s/ - is it misplaced, or a real concern?" % name)
 
 
 def check_task_mirror(root):
@@ -123,15 +123,15 @@ def check_task_mirror(root):
         return out
 
     tasks, pipes, datas = numbered("tasks"), numbered("pipelines"), numbered("data")
-    # Lich THAT nam o tac vu dinh ky cua Cowork, khong nam trong repo. Neu repo khong
-    # ghi lai thi khong ai doc ra duoc du an dang chay lich gi, va nguoi sau khong biet
-    # cau nao da dan. Doi xung voi quy trinh: quy trinh la file VA co mot dong trong
-    # danh muc. Nen tasks/SCHEDULE.md la BAT BUOC khi da co viec dinh ky, va moi task
-    # phai co mot dong trong do.
+    # The REAL schedule lives in Cowork's recurring tasks, not in the repo. If the repo does not
+    # record it, nobody can tell which schedules the project is running, and whoever comes next will not know
+    # which prompt was used. Symmetric with a workflow: a workflow is a file AND a row in the
+    # index. So tasks/SCHEDULE.md is MANDATORY once recurring work exists, and every task
+    # must have a row in it.
     if tasks:
         sched = os.path.join(root, "tasks", "SCHEDULE.md")
         if not os.path.isfile(sched):
-            add("BLOCK", "task", "tasks/ co viec dinh ky nhung thieu tasks/SCHEDULE.md (danh muc lich)")
+            add("BLOCK", "task", "tasks/ holds recurring work but tasks/SCHEDULE.md (the schedule index) is missing")
         else:
             try:
                 with open(sched, encoding="utf-8") as fh:
@@ -140,18 +140,18 @@ def check_task_mirror(root):
                 roster = ""
             for nn, name in sorted(tasks.items()):
                 if name not in roster:
-                    add("BLOCK", "task", "tasks/SCHEDULE.md khong co dong cho tasks/%s" % name)
+                    add("BLOCK", "task", "tasks/SCHEDULE.md has no row for tasks/%s" % name)
             for m in re.finditer(r"^\s*\|\s*([0-9]{2}_[A-Za-z0-9_\-]+)\s*\|", roster, re.M):
                 if m.group(1) not in tasks.values():
-                    add("INFO", "task", "tasks/SCHEDULE.md co dong '%s' ma khong co thu muc tuong ung" % m.group(1))
+                    add("INFO", "task", "tasks/SCHEDULE.md has a row '%s' with no matching folder" % m.group(1))
     for nn, name in sorted(tasks.items()):
         spec = os.path.join(root, "tasks", name, "spec.md")
         if not os.path.isfile(spec):
-            add("BLOCK", "task", "tasks/%s/ thieu spec.md" % name)
+            add("BLOCK", "task", "tasks/%s/ is missing spec.md" % name)
         else:
-            # Lich dinh ky chay mot phien TRANG: spec.md phai tu chua du de lam xong
-            # viec, va cau dat lich chi la mot dong tro vao no. Thieu bat cu muc nao
-            # trong bon muc duoi la phien dinh ky phai DOAN -> chan luon.
+            # A recurring schedule runs in a BLANK session: spec.md must hold enough to finish the
+            # job on its own, and the scheduling prompt is only a line pointing at it. Missing any of
+            # the four sections below means the recurring session has to GUESS -> block it.
             try:
                 with open(spec, encoding="utf-8") as fh:
                     heads = [ln for ln in fh.read().splitlines() if ln.lstrip().startswith("#")]
@@ -160,14 +160,14 @@ def check_task_mirror(root):
             blob = fold("\n".join(heads))
             for label, pat in SPEC_SECTIONS:
                 if not re.search(pat, blob):
-                    add("BLOCK", "task", "tasks/%s/spec.md thieu muc '%s'" % (name, label))
+                    add("BLOCK", "task", "tasks/%s/spec.md is missing the section '%s'" % (name, label))
         if pipes and nn not in pipes:
-            add("INFO", "mirror", "tasks/%s khong co pipelines/%s_* tuong ung" % (name, nn))
+            add("INFO", "mirror", "tasks/%s has no matching pipelines/%s_*" % (name, nn))
         if datas and nn in datas and datas[nn] != name:
             add("INFO", "mirror", "so %s lech ten: tasks/%s vs data/%s" % (nn, name, datas[nn]))
     for nn, name in sorted(pipes.items()):
         if nn not in tasks:
-            add("INFO", "mirror", "pipelines/%s khong co tasks/%s_* tuong ung" % (name, nn))
+            add("INFO", "mirror", "pipelines/%s has no matching tasks/%s_*" % (name, nn))
 
 
 def check_gitignore(root):
@@ -175,7 +175,7 @@ def check_gitignore(root):
     if not os.path.isdir(os.path.join(root, ".git")):
         return  # not a git repo - nothing to enforce
     if not os.path.isfile(path):
-        add("BLOCK", "gitignore", "co .git/ nhung khong co .gitignore")
+        add("BLOCK", "gitignore", "there is a .git/ but no .gitignore")
         return
     with open(path, encoding="utf-8", errors="replace") as fh:
         body = fh.read()
@@ -185,24 +185,24 @@ def check_gitignore(root):
         if not os.path.exists(os.path.join(root, target)):
             continue
         if target not in lines:
-            add("BLOCK", "gitignore", "%s ton tai nhung khong nam trong .gitignore" % entry)
+            add("BLOCK", "gitignore", "%s exists but is not in .gitignore" % entry)
 
 
 def check_adhoc_marker(root):
     adhoc = os.path.join(root, "data", "adhoc")
     if os.path.isdir(adhoc) and not os.path.isfile(os.path.join(adhoc, "README.md")):
-        add("INFO", "adhoc", "data/adhoc/ thieu README.md lam marker")
+        add("INFO", "adhoc", "data/adhoc/ is missing a README.md marker")
 
 
 STAGES = ("01_raw", "02_processing", "03_output")
 
 
 def check_data_stages(root):
-    """data/<task>/ phai chia 3 chang; adhoc/ thi KHONG (file le, vut di duoc).
+    """data/<task>/ must be split into 3 stages; adhoc/ must NOT be (loose files, disposable).
 
-    Ba chang co ba VONG DOI khac nhau: dau vao khong dung lai duoc · trung gian
-    dung lai duoc · ban giao di phai giu de doi chieu. Do chung mot cho thi luc
-    don khong ai dam xoa gi, va chi mot lan ghi de nham len dau vao la mat that.
+    The three stages have three different LIFETIMES: the input cannot be recreated · the intermediate
+    can · what was handed over must be kept for comparison. Piled in one place, nobody dares delete
+    anything at tidy-up time, and one wrong overwrite onto the input loses it for real.
     """
     data = os.path.join(root, "data")
     if not os.path.isdir(data):
@@ -214,16 +214,16 @@ def check_data_stages(root):
         have = [s for s in STAGES if os.path.isdir(os.path.join(d, s))]
         if not have:
             add("INFO", "data-3-chang",
-                "data/%s/ chua chia 3 chang (01_raw · 02_processing · 03_output)" % name)
+                "data/%s/ is not split into 3 stages (01_raw · 02_processing · 03_output)" % name)
         elif len(have) < len(STAGES):
             add("INFO", "data-3-chang",
-                "data/%s/ thieu chang: %s" % (name, " ".join(s for s in STAGES if s not in have)))
+                "data/%s/ is missing stages: %s" % (name, " ".join(s for s in STAGES if s not in have)))
 
 
 def main():
     root = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
     if not os.path.isdir(root):
-        print("Khong tim thay thu muc: %s" % root)
+        print("Folder not found: %s" % root)
         return 2
 
     for check in (check_required_roles, check_docs, check_empty_and_unknown,
@@ -231,10 +231,10 @@ def main():
                   check_data_stages):
         check(root)
 
-    print("Kiem chuan thu muc — %s" % root)
+    print("Folder standard check — %s" % root)
     print("-" * 72)
     if not findings:
-        print("  OK — khong lech chuan.")
+        print("  OK — no drift from the standard.")
         return 0
 
     blocking = [f for f in findings if f[0] == "BLOCK"]
@@ -242,11 +242,11 @@ def main():
         mark = "PHAI SUA" if sev == "BLOCK" else "xem xet "
         print("  [%s] %-10s %s" % (mark, area, msg))
     print("-" * 72)
-    print("  %d phai sua · %d dang xem xet" % (len(blocking), len(findings) - len(blocking)))
+    print("  %d to fix · %d to consider" % (len(blocking), len(findings) - len(blocking)))
     print()
-    print("  Ghi chu: 'xem xet' KHONG phai loi — chi may bao la khong khop slot nao.")
-    print("  Nguoi/agent quyet dinh no thuoc slot nao, hay la concern that can them vao chuan.")
-    print("  TUYET DOI khong tu di chuyen/xoa dua tren bang nay — de xuat, cho user gat.")
+    print("  Note: 'consider' is NOT an error — the machine is only saying it matches no slot.")
+    print("  A person or the agent decides which slot it belongs to, or whether it is a real concern to add to the standard.")
+    print("  NEVER move or delete anything on the strength of this table — propose it, and wait for the user to agree.")
     return 1 if blocking else 0
 
 

@@ -75,7 +75,7 @@ function accountRows(tree, source) {
   return out;
 }
 
-test("danh tính KHÔNG phải email (M365 · GitHub): hàng có phiên phải mang TÊN và KHÔNG ⚠", () => {
+test("a non-email identity (M365, GitHub): a row with a session must carry the NAME and no warning", () => {
   const tree = treeFor({ source: "m365copilot-web", account: "main", who: "Nguyễn Đức Huy - CNTT", sessions: 2 });
   const rows = accountRows(tree, "m365copilot-web");
   assert.ok(rows.length, "phải có hàng tài khoản");
@@ -86,7 +86,7 @@ test("danh tính KHÔNG phải email (M365 · GitHub): hàng có phiên phải m
   assert.notEqual(withData.linked, false, "khe đang nối mà báo linked:false là dấu ⚠ oan");
 });
 
-test("ca ÂM — nền trả EMAIL: phiên còn sót dưới khoá TÊN KHE vẫn là 'chưa gắn tài khoản'", () => {
+test("NEGATIVE CASE - a platform returning an EMAIL: sessions left under the SLOT NAME key still read as 'no account attached'", () => {
   // Ở nền email, `restampAccount` đã dời phiên của tài khoản hiện tại sang hàng email; phần còn
   // lại dưới `main` là phiên nền KHÔNG liệt kê (đã xoá / của tài khoản trước). Dán email người
   // đang đăng nhập lên đó là bịa danh tính — user cấm 2026-08-28.

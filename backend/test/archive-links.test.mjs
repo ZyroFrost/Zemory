@@ -20,7 +20,7 @@ import { deepenRelativeLinks } from "../../dist/docs/archive.js";
 
 const REPO = new URL("../../", import.meta.url).pathname.replace(/^\//, "");
 
-test("thêm đúng một tầng cho link tương đối, chừa link tuyệt đối/ngoài/placeholder", () => {
+test("exactly one level is added to relative links, leaving absolute, external and placeholder links alone", () => {
   assert.equal(deepenRelativeLinks("[a](../../backend/src/ui.ts)"), "[a](../../../backend/src/ui.ts)");
   assert.equal(deepenRelativeLinks("[a](03_STRUCTURE.md)"), "[a](../03_STRUCTURE.md)");
   assert.equal(deepenRelativeLinks("[a](./x.md)"), "[a](../x.md)");
@@ -31,7 +31,7 @@ test("thêm đúng một tầng cho link tương đối, chừa link tuyệt đ�
   }
 });
 
-test("file archive THẬT trên đĩa: 0 link nội bộ gãy", () => {
+test("the REAL archive files on disk: 0 broken internal links", () => {
   // Vế này canh dữ liệu, không canh hàm: hàm đúng mà file cũ vẫn hỏng thì người đọc vẫn lạc.
   for (const rel of ["docs/agent/archive/06_CHANGES.md", "docs/agent/archive/05_TODO.md"]) {
     const file = resolve(REPO, rel);

@@ -84,7 +84,7 @@ test("embedPending builds vectors; vectorRanks finds the semantically closest me
   assert.equal(ranks[0].rowid, 1, `top hit should be the db-password message, got #${ranks[0].rowid}`);
 });
 
-test("searchHybrid finds a semantic match that FTS-only misses (Giai đoạn C)", async (t) => {
+test("searchHybrid finds a semantic match that FTS-only misses (phase C)", async (t) => {
   if (await skipIfBusy(t)) return;
   const dbPath = seedDb();
   const r = await embedPending({ dbPath });
@@ -160,7 +160,7 @@ test("embedPending dedups exact-duplicate content: vector COPIED bit-for-bit, no
   assert.equal(r2.deduped, 1, "cross-run duplicate copied via vec_hash");
 });
 
-test("RAG gate: hybrid recall@3 >= FTS recall@3 on the paraphrase corpus (Giai đoạn D)", async (t) => {
+test("RAG gate: hybrid recall@3 >= FTS recall@3 on the paraphrase corpus (phase D)", async (t) => {
   if (await skipIfBusy(t)) return;
   const dbPath = join(mkdtempSync(join(tmpdir(), "zemory-bench-")), "b.db");
   const r = await runRagBench({ dbPath });

@@ -74,10 +74,10 @@ const MIME_EXT: Record<string, string> = {
  * và gọi đúng tên nó là tên dự phòng, KHÔNG giả vờ đó là tên gốc. Ngày lấy từ tin ĐẦU TIÊN
  * mang đính kèm (mốc có nghĩa với người dùng), không phải lúc nạp.
  */
-/** Ky tu cam trong ten file (Windows/POSIX) + moi ky tu DIEU KHIEN: ten nay di thang vao
- *  header `Content-Disposition`, mot byte dieu khien lot vao la che doi header. Duyet theo
- *  MA KY TU thay vi regex — viet dai dieu khien trong class regex vua kho doc vua de nuot
- *  nham (lint da bat dung ca do). */
+/** Characters forbidden in a file name (Windows/POSIX) plus every CONTROL character: this name goes straight into
+ *  the `Content-Disposition` header, and one control byte slipping in splits the header. Walk by CHARACTER
+ *  CODE rather than by regex — writing a control range inside a regex class is both hard to read and easy to get
+ *  wrong (the linter caught exactly that). */
 const ILLEGAL_NAME_CHARS = new Set([...'\\/:*?"<>|']);
 
 function safeFileName(raw: string): string {

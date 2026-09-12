@@ -30,7 +30,7 @@ function quiet(fn) {
   }
 }
 
-test("tầng hàm: cờ lạ trên embed/scan/digest bị TỪ CHỐI, kèm usage và exit≠0", () => {
+test("function layer: an unknown flag on embed/scan/digest is REFUSED, with usage and a non-zero exit", () => {
   for (const [sub, bad] of [
     ["embed", "--help"],
     ["scan", "--help"],
@@ -48,7 +48,7 @@ test("tầng hàm: cờ lạ trên embed/scan/digest bị TỪ CHỐI, kèm usag
   }
 });
 
-test("CA ÂM: cờ hợp lệ và lệnh không cờ phải ĐI TIẾP (chặn nhầm = gate nhiễu = gate bị bỏ qua)", () => {
+test("NEGATIVE CASE: valid flags and a flagless command must GO THROUGH (false blocking = noisy gate = ignored gate)", () => {
   for (const args of [
     ["embed"],
     ["embed", "--all"],
@@ -65,7 +65,7 @@ test("CA ÂM: cờ hợp lệ và lệnh không cờ phải ĐI TIẾP (chặn n
   }
 });
 
-test("lệnh KHÔNG thuộc nhóm heavy-write không bị bộ chốt này đụng tới", () => {
+test("commands outside the heavy-write group are untouched by this check", () => {
   // Chốt cố ý hẹp: chỉ ba lệnh GHI nặng. Mở rộng sang mọi lệnh là đổi hành vi của cả CLI
   // trong một bản vá không ai xin — và `search`/`show` vốn nhận nhiều cờ tự do.
   for (const args of [["search", "--all"], ["info", "--gì-đó"], ["show", "--context"]]) {
@@ -80,7 +80,7 @@ test("lệnh KHÔNG thuộc nhóm heavy-write không bị bộ chốt này đụ
 // nên lệnh thất bại vì "file is not a database" chứ không phải vì cờ bị từ chối — đột biến trả
 // bản vá về hành vi cũ mà ca vẫn xanh. Nay kho được DỰNG THẬT trước (`memory info` tạo schema),
 // và phép đo bắt buộc phải thấy ĐÚNG CÂU TỪ CHỐI, không chỉ nhìn exit code.
-test("CLI: `memory embed --help` từ chối bằng usage, không ghi byte, không giữ khoá", async () => {
+test("CLI: `memory embed --help` refuses with usage, writes no byte and holds no lock", async () => {
   const { execFileSync } = await import("node:child_process");
   const root = mkdtempSync(join(tmpdir(), "zflag-cli-"));
   const dataDir = join(root, "data");

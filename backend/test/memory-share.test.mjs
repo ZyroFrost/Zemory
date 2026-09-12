@@ -333,7 +333,7 @@ test("importing a rows bundle yields a complete, searchable memory", async (t) =
 //
 // CA ÂM quan trọng ngang ca dương: KHÔNG có cờ thì tuyệt đối không được tự gộp — gộp là GHI ĐÈ
 // kho chung của mọi máy, tự tiện làm là mất dữ liệu của người khác.
-test("--compact ép gộp NGAY; không có cờ thì chỉ nối thêm (ca ÂM)", async (t) => {
+test("--compact forces a merge NOW; without the flag it only appends (negative case)", async (t) => {
   sandboxHome(t);
   const { syncDrive } = await import("../../dist/memory/share.js");
   const root = tempDir(t, "zemory-compact-");

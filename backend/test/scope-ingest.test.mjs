@@ -39,7 +39,7 @@ const countMessages = (dbPath) => {
   }
 };
 
-test("scan: lane bị loại thì KHÔNG có gì vào kho (không phải lọc-sau)", (t) => {
+test("scan: an excluded lane puts NOTHING in the store (this is not filter-afterwards)", (t) => {
   const home = tempDir(t, "zscope-home-");
   const dbPath = join(tempDir(t, "zscope-db-"), "m.db");
   seedTranscript(home, "aaaaaaaa-1111-2222-3333-444444444444", [msg("u1", "xin chào"), msg("u2", "tin thứ hai")]);
@@ -58,7 +58,7 @@ test("scan: lane bị loại thì KHÔNG có gì vào kho (không phải lọc-s
   assert.ok(r.skippedLanes[0].files > 0);
 });
 
-test("bỏ qua KHÔNG ghi ingest_state ⇒ lấy lại lane thì lần quét sau nạp đủ", (t) => {
+test("skipping does NOT write ingest_state, so re-including the lane makes the next scan ingest everything", (t) => {
   const home = tempDir(t, "zscope-home-");
   const dbPath = join(tempDir(t, "zscope-db-"), "m.db");
   seedTranscript(home, "bbbbbbbb-1111-2222-3333-444444444444", [msg("u1", "một"), msg("u2", "hai")]);
@@ -72,7 +72,7 @@ test("bỏ qua KHÔNG ghi ingest_state ⇒ lấy lại lane thì lần quét sau
   assert.deepEqual(back.skippedLanes, []);
 });
 
-test("scanOneFile (đường hook per-message) áp CÙNG bộ lọc — không thì cửa nóng nhất vẫn hở", (t) => {
+test("scanOneFile (the per-message hook path) applies the SAME filter - otherwise the hottest door stays open", (t) => {
   const home = tempDir(t, "zscope-home-");
   const dbPath = join(tempDir(t, "zscope-db-"), "m.db");
   const file = seedTranscript(home, "cccccccc-1111-2222-3333-444444444444", [msg("u1", "một")]);
@@ -86,7 +86,7 @@ test("scanOneFile (đường hook per-message) áp CÙNG bộ lọc — không t
   assert.equal(countMessages(dbPath), 1);
 });
 
-test("lane KHÁC không bị vạ lây", (t) => {
+test("OTHER lanes are not caught in the crossfire", (t) => {
   const home = tempDir(t, "zscope-home-");
   const dbPath = join(tempDir(t, "zscope-db-"), "m.db");
   seedTranscript(home, "dddddddd-1111-2222-3333-444444444444", [msg("u1", "một")]);

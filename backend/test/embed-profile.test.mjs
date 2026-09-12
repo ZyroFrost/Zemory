@@ -28,7 +28,7 @@ function stampedDb(profile, dims, dtype) {
   return dbPath;
 }
 
-test("profile quyết định CẢ BỐN: model · dims · dtype (và không rò sang profile kia)", () => {
+test("the profile decides ALL FOUR: model - dims - dtype (and does not leak into the other profile)", () => {
   useEmbedProfile("bge-m3-v1");
   const bge = embedConfig();
   assert.match(bge.model, /bge-m3/i, "profile bge phải ghim model bge — không mượn model của gemma");
@@ -48,7 +48,7 @@ test("profile quyết định CẢ BỐN: model · dims · dtype (và không rò
   useEmbedProfile(null);
 });
 
-test("POOLING bị khoá cứng theo model — đổi nó không nổ ra lỗi nào, chỉ dịch cả không gian vector", () => {
+test("POOLING is pinned hard to the model - changing it raises no error, it just shifts the whole vector space", () => {
   // Ca này sinh ra từ một lượt đột biến hoá THẤT BẠI: lật BGE sang mean-pooling mà mọi khẳng
   // định hành vi ở file này VẪN XANH, trong khi vector thật rơi xuống cos 0.71–0.78 so với bản
   // đã benchmark (đo tay 2026-08-19). Không có gate nào bắt được ⇒ phải khoá thẳng hợp đồng.
@@ -72,7 +72,7 @@ test("POOLING bị khoá cứng theo model — đổi nó không nổ ra lỗi n
   assert.equal(embedProfileSpec("raw").sequential, true);
 });
 
-test("kho đóng dấu bge-m3-v1 phải ĐỌC RA bge-m3-v1 (đọc nhầm thành raw = mean-pool một model CLS)", () => {
+test("a store stamped bge-m3-v1 must READ BACK as bge-m3-v1 (misreading it as raw means mean-pooling a CLS model)", () => {
   const bgePath = stampedDb("bge-m3-v1", 1024, "int8");
   const info = vectorIndexInfo(bgePath);
   assert.equal(info.profile, "bge-m3-v1", "bộ đọc không biết tên profile ⇒ rơi về raw ⇒ hỏng LẶNG");
@@ -88,7 +88,7 @@ test("kho đóng dấu bge-m3-v1 phải ĐỌC RA bge-m3-v1 (đọc nhầm thàn
   assert.equal(vectorIndexInfo(legacyPath).profile, "raw");
 });
 
-test("HỢP ĐỒNG đóng dấu TRƯỚC lần embed đầu phải được TÔN TRỌNG (kho chuẩn bị để đổi model)", async () => {
+test("a CONTRACT stamped BEFORE the first embed must be HONOURED (a store prepared for a model change)", async () => {
   // Đây là ca thật đã suýt đốt 44 giờ máy (2026-08-19). Khi đổi embedder, kho song song được
   // chuẩn bị theo plan 19 §3: bỏ chỉ mục cũ → ĐÓNG DẤU hợp đồng mới vào vec_config → rồi mới
   // embed. Ở trạng thái đó `vec_chunks` CHƯA tồn tại, và bản cũ lấy chính sự tồn tại của bảng
@@ -112,7 +112,7 @@ test("HỢP ĐỒNG đóng dấu TRƯỚC lần embed đầu phải được TÔ
   assert.equal(vectorIndexInfo(dbPath).dims, 1024);
 });
 
-test("ZEMORY_EMBED_DIMS chỉ cắt XUỐNG, không nống LÊN quá bề rộng model", () => {
+test("ZEMORY_EMBED_DIMS only cuts DOWN, it never stretches beyond the model width", () => {
   // Cắt xuống là hợp lệ với model MRL; đòi NHIỀU hơn model sinh ra là lỗi cấu hình, và nếu
   // chiều theo nó thì vec0 dựng bảng rộng hơn vector thật ⇒ hỏng ngay lúc ghi.
   process.env.ZEMORY_EMBED_DIMS = "256";
@@ -131,7 +131,7 @@ test("ZEMORY_EMBED_DIMS chỉ cắt XUỐNG, không nống LÊN quá bề rộng
   }
 });
 
-test("chọn model bge qua env thì profile tự nhận ra (không phải nhớ set thêm biến thứ hai)", () => {
+test("choosing the bge model through env is picked up by the profile (no need to remember a second variable)", () => {
   useEmbedProfile(null);
   process.env.ZEMORY_EMBED_MODEL = "onnx-community/bge-m3-ONNX";
   try {

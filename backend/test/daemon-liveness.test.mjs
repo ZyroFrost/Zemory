@@ -15,20 +15,20 @@ import { readFileSync } from "node:fs";
 const H = readFileSync(new URL("../src/commands/harness.ts", import.meta.url), "utf8");
 const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 
-test("phép dò của doctor trả BA trạng thái, không phải boolean", () => {
+test("the doctor probe returns THREE states, not a boolean", () => {
   assert.match(H, /type DaemonLiveness = "alive" \| "absent" \| "unknown"/, "phải có hạng 'unknown' riêng");
   assert.ok(!/async function daemonAlive\(\): Promise<boolean>/.test(H), "boolean gộp mất trạng thái 'không biết'");
   // Chỉ CHỐI KẾT NỐI mới được kết luận vắng mặt.
   assert.match(H, /ECONNREFUSED"\s*\?\s*"absent"\s*:\s*"unknown"/, "hết giờ phải là 'unknown', không phải 'absent'");
 });
 
-test("trần chờ phải đủ cho lượt LẠNH đã đo (12,3s) — 600ms là chắc chắn trượt", () => {
+test("the wait cap must cover the measured COLD run (12.3s) - 600ms is a guaranteed miss", () => {
   const ms = Number(/const PING_TIMEOUT_MS = ([\d_]+)/.exec(H)?.[1]?.replace(/_/g, ""));
   assert.ok(Number.isFinite(ms), "phải đọc được PING_TIMEOUT_MS");
   assert.ok(ms >= 2_500, `trần ${ms}ms phải >= trần 2.500ms mà probeZemoryUi đã dùng cho cùng phép dò`);
 });
 
-test("BA câu khác nhau — nếu 'không biết' dùng chung câu với 'đã chết' thì hạng đó là trang trí", () => {
+test("THREE distinct sentences - if 'unknown' shares wording with 'dead', that level is decoration", () => {
   const absent = /live === "absent"/.test(H);
   const unknown = /live === "unknown"/.test(H);
   assert.ok(absent && unknown, "cả hai nhánh phải được xử lý riêng");
@@ -39,7 +39,7 @@ test("BA câu khác nhau — nếu 'không biết' dùng chung câu với 'đã 
   assert.match(branch, /BẬN|bận/, "phải nói rõ có thể đang bận");
 });
 
-test("hai bề mặt cùng luật: ui.ts vẫn giữ 'timeout ≠ absent'", () => {
+test("both surfaces follow one rule: ui.ts still holds 'timeout != absent'", () => {
   assert.match(UI, /Timeout ≠ absent/, "chú thích nguồn của luật phải còn đó");
   assert.match(UI, /"busy"/, "probeZemoryUi vẫn phải có trạng thái thứ ba");
 });

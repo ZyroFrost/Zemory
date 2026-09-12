@@ -42,26 +42,26 @@ const SHARED = [
 const read = (profile, rel) =>
   readFileSync(new URL(`../../docs_template/${profile}/${rel}`, import.meta.url), "utf8");
 
-test("bo cowork mang DUNG ban guard da sinh (chep tay se troi, dem dong khong bat duoc)", () => {
-  // Bo cowork la bo DUY NHAT ship san `hooks/guard.cjs` (khong co CLI de sinh tai cho), nen
-  // ban do phai la BAN CHEP cua ban `zemory hook guard` sinh ra. Hom nay chep TAY — va cong
-  // duy nhat canh no la so dong trong MANIFEST cua BOOTSTRAP, tuc hai ban lech noi dung ma
-  // trung so dong thi LOT. Gate nay so tung byte.
+test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, and a line count cannot catch it)", () => {
+  // The cowork set is the ONLY one that ships `hooks/guard.cjs` ready-made (there is no CLI to generate it on site), so
+  // that copy must be a BYTE COPY of what `zemory hook guard` produces. Today it is copied BY HAND — and the only
+  // gate watching it was the line count in the BOOTSTRAP MANIFEST, meaning two files differing in content but
+  // matching in line count would SLIP THROUGH. This gate compares every byte.
   const gen = readFileSync(new URL("../../docs/hooks/guard.cjs", import.meta.url), "utf8");
   const shipped = readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
   assert.equal(
     shipped.replace(/\r\n/g, "\n"),
     gen.replace(/\r\n/g, "\n"),
-    "docs_template/01_cowork_basic/nonapp/hooks/guard.cjs da troi khoi ban sinh — chay `zemory hook guard` roi chep lai",
+    "docs_template/01_cowork_basic/nonapp/hooks/guard.cjs has drifted from the generated build — run `zemory hook guard` and copy it again",
   );
 });
 
-// #12 (user gat 2026-08-21, lam 2026-08-24): policy.json ship cowork co cong NOI DUNG.
-// Guard.cjs da co gate so BYTE o tren; policy.json thi chi duoc dem DONG trong manifest —
-// chieu 20/08 no vua bi sua TAY ma khong cong nao thay (dung khuon su co guard.cjs 11/08).
-// So DUNG HAI KHOA voi bo sinh — KHONG so ca file: cowork khac `protected_write`/`flags_dir`
+// #12 (user approved 2026-08-21, done 2026-08-24): the cowork policy.json gets a CONTENT gate.
+// guard.cjs already has the BYTE gate above; policy.json only had its LINES counted in the manifest —
+// and on the afternoon of 20/08 it was edited BY HAND with no gate noticing (the same shape as the guard.cjs incident on 11/08).
+// Compare EXACTLY TWO KEYS against the generated set — NOT the whole file: cowork differs in `protected_write`/`flags_dir`
 // CO CHU DICH (protected_write cua no la data/*/01_raw · docs/agent).
-test("policy.json ship cowork: secret_names + secret_allow phai KHOP bo sinh", async () => {
+test("the cowork policy.json: secret_names + secret_allow must MATCH the generated set", async () => {
   const { SECRET_DEFAULTS, SECRET_ALLOW_DEFAULTS } = await import("../../dist/docs/guard-gen.js");
   const shipped = JSON.parse(
     readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"),
@@ -75,7 +75,7 @@ test("policy.json ship cowork: secret_names + secret_allow phai KHOP bo sinh", a
       assert.ok(have.includes(pat), `policy.json cowork thieu mau "${pat}" o ${key} — bo sinh da co, ban ship troi`);
     }
   }
-  // TU KIEM phep do: bo sinh phai khac RONG — rong thi vong for tren la vong rong, test vo nghia.
+  // SELF-CHECK of the measurement: the generated set must be non-empty — an empty one makes the loop above a no-op and the test meaningless.
   assert.ok(SECRET_DEFAULTS.length >= 5 && SECRET_ALLOW_DEFAULTS.length >= 2, "bo mau sinh rong — phep do dang mu");
 });
 

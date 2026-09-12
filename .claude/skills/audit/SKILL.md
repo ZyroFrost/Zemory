@@ -6,7 +6,7 @@ description: Run a full review of the project across every dimension, verifying 
 # audit — soi toàn diện
 
 > Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
-> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **11 mặt** dưới.
+> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **12 mặt** dưới.
 
 **Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì test soi thì đúng*, không
 chứng minh nó đang soi thứ đang chạy. Đã dính thật: cả bộ test UI neo vào bản đã bị thay, gate 100%
@@ -35,11 +35,11 @@ nhầm** không, mà chặn nhầm là đường ngắn nhất tới "gate nhi�
 mình đang xây. Đo 2026-08-11 trên guardrail: bảng 28 ca có ý nghĩa **chính nhờ 6 ca *phải cho qua***;
 thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
 
-### 11 mặt — chạy đủ
-*(6 mặt đầu là bản gốc; **mặt 11 thêm 2026-08-21** — chín mặt trước soi MÁY, không mặt nào soi thứ
-NGƯỜI DÙNG ĐỌC: chính tả · dấu · nhãn · song ngữ · UI có khớp code. **mặt 7–10 thêm 2026-08-11** sau khi đối chiếu 6 mặt với những lần repo
-thật sự hỏng — xem `docs/plan/18_audit_coverage.md`. Phát hiện: **mọi sự cố nặng nhất đều rơi vào
-vùng 6 mặt không nhìn tới**.)*
+### 12 mặt — chạy đủ
+*(6 mặt đầu là bản gốc. **⑫ thêm 2026-09-12**: ⑪ soi chữ NGƯỜI DÙNG đọc, không mặt nào soi ngôn ngữ
+của chính MÃ — tên file · định danh · chú thích. **⑪ thêm 2026-08-21**: chín mặt trước soi MÁY, không
+mặt nào soi thứ người đọc nhận. **⑦–⑩ thêm 2026-08-11** sau khi đối chiếu 6 mặt với những lần repo
+thật sự hỏng — xem `docs/plan/18_audit_coverage.md`: **mọi sự cố nặng nhất đều rơi vào vùng không nhìn tới**.)*
 1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
@@ -101,7 +101,20 @@ vùng 6 mặt không nhìn tới**.)*
      và endpoint do **CLI gọi qua HTTP** (`/gate-acquire`) không có người gọi trong FE. Kể cả ba
      nguồn (FE tĩnh · tiền tố động · test/CLI) rồi mới kết luận.
 
+12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `02_RULES §Ngôn ngữ`** (luật thiết kế chung mọi app, user chốt
+   2026-09-12). Bốn phép, **cách đo + bẫy báo oan + số nền ở [`reference/lang.md`](reference/lang.md)**;
+   máy chạy: `node .claude/skills/audit/scripts/lang-scan.mjs . [--all]`.
+   · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh** (biến · hằng · hàm · lớp · kiểu ·
+     khoá config) chỉ ASCII tiếng Anh — trong mã, thứ DUY NHẤT được tiếng Việt là **chú thích**;
+   · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
+     chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba;
+   · **Ⓓ song ngữ UI** — cân dict vi↔en · khoá dùng mà chưa khai · khoá chết · chữ Việt trong markup
+     thiếu móc i18n. (Vế *người đọc* của song ngữ vẫn ở mặt ⑪; ở đây là vế **đếm khoá**.)
+   ⚠ **Ba bẫy chết người, đều đã đo:** ① không bóc chú thích/chuỗi trước khi quét ⇒ vừa báo oan vừa
+   **bỏ sót** (lượt đầu: 4 hit oan, sót 9 định danh thật) · ② đồng âm Anh–Việt (`do · so · can · ten`)
+   bắt oan cả câu tiếng Anh thuần · ③ nhãn nằm ở thẻ CON của phần tử đã có móc i18n (2/2 hit oan).
+
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
-Việc đã sửa → `06_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại: BÁO trong phiên, KHÔNG tự ghi thành mục `05_TODO`** — user gật cái nào mới ghi cái đó (`02_RULES` §Sổ việc `05_TODO`, cửa vào). Một lượt 11 mặt đẻ ra hàng chục advisory; ghi hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
+Việc đã sửa → `06_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại: BÁO trong phiên, KHÔNG tự ghi thành mục `05_TODO`** — user gật cái nào mới ghi cái đó (`02_RULES` §Sổ việc `05_TODO`, cửa vào). Một lượt 12 mặt đẻ ra hàng chục advisory; ghi hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
 
 **Cấm:** cắt bớt mặt nào cho nhanh; ghi finding chưa verify; báo "sạch" khi mới chạy mỗi gate.

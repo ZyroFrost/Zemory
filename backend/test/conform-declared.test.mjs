@@ -66,7 +66,7 @@ function repo(t) {
   return root;
 }
 
-test("declaredSlots đọc đúng slot khai trong §3 (chỉ tree entry, không nuốt prose)", (t) => {
+test("declaredSlots reads the slots declared in S3 (tree entries only, no prose swallowed)", (t) => {
   const root = repo(t);
   const d = declaredSlots(root);
   for (const s of ["backend", "app", "api", "v1", "schemas", "services", "workspaces"]) {
@@ -75,7 +75,7 @@ test("declaredSlots đọc đúng slot khai trong §3 (chỉ tree entry, không 
   assert.ok(!d.has("junkzone"), "junkzone KHÔNG khai trong §3 ⇒ không được có trong declaredSlots");
 });
 
-test("extraDirOk: khai/quy ước ⇒ true; bừa ⇒ false (không nới)", (t) => {
+test("extraDirOk: declared or conventional means true; arbitrary means false (no loosening)", (t) => {
   const root = repo(t);
   const d = declaredSlots(root);
   // ① leaf khai
@@ -91,7 +91,7 @@ test("extraDirOk: khai/quy ước ⇒ true; bừa ⇒ false (không nới)", (t)
   assert.ok(!extraDirOk("backend/app/junkzone", root, d), "junkzone bừa ⇒ KHÔNG được exempt");
 });
 
-test("conform: concern đã khai HẾT đỏ; dir bừa VẪN ĐỎ (cổng còn nổ được)", (t) => {
+test("conform: a fully declared concern goes green; an arbitrary dir STAYS RED (the gate can still fire)", (t) => {
   const root = repo(t);
   const off = conform(root).items.find((i) => i.check === "off-standard-dir");
   const samples = off ? off.samples : [];

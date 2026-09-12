@@ -39,7 +39,7 @@ const runCli = (dir, args, env = {}) =>
     timeout: 120_000,
   });
 
-test("CLI thường: khoá TƯƠI của tiến trình khác ⇒ DỪNG, không ghi đè", (t) => {
+test("an ordinary CLI: a FRESH lock held by another process means STOP, never overwrite", (t) => {
   const dir = lockedStore(t);
   const r = runCli(dir, ["memory", "digest"]);
   const out = `${r.stdout}${r.stderr}`;
@@ -49,14 +49,14 @@ test("CLI thường: khoá TƯƠI của tiến trình khác ⇒ DỪNG, không g
   assert.doesNotMatch(out, /chạy tiếp|chạy luôn/i, "không được tự cho phép chạy đè khi khoá còn tươi");
 });
 
-test("CLI thường + --force: người dùng ép thì được chạy (đường vượt CÓ Ý THỨC)", (t) => {
+test("an ordinary CLI with --force: a user forcing it may run (a DELIBERATE bypass)", (t) => {
   const dir = lockedStore(t);
   const r = runCli(dir, ["memory", "digest", "--force"]);
   const out = `${r.stdout}${r.stderr}`;
   assert.doesNotMatch(out, /DỪNG/i, `--force phải đi qua được, nhận:\n${out.slice(0, 300)}`);
 });
 
-test("con của DAEMON: cũng phải nhường CLI ngoài (đây là lỗ gốc)", (t) => {
+test("a DAEMON child must also yield to an external CLI (this was the original hole)", (t) => {
   const dir = lockedStore(t);
   // Giả lập đúng cách scheduler sinh con, với pid daemon KHÁC pid đang giữ khoá.
   const r = runCli(dir, ["memory", "digest"], { ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: "999999" });
@@ -64,7 +64,7 @@ test("con của DAEMON: cũng phải nhường CLI ngoài (đây là lỗ gốc)
   assert.match(out, /BỎ QUA|CLI khác đang ghi/i, `job nền phải nhường, nhận:\n${out.slice(0, 400)}`);
 });
 
-test("con của daemon KHÔNG tự chặn mình: khoá do CHÍNH daemon giữ thì vẫn chạy", (t) => {
+test("a daemon child does not block itself: a lock held by the daemon ITSELF still runs", (t) => {
   const dir = tempDir(t, "zemory-gate-own-");
   mkdirSync(dir, { recursive: true });
   // Khoá mang pid của "daemon" — con phải nhận ra đó là khoá của mình mà đi tiếp.

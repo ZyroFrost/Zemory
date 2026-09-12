@@ -28,7 +28,7 @@ const rpc = (url, body, headers = {}) =>
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 
-test("HTTP ship ĐÚNG bộ tool của stdio — không transport nào được đi riêng", async () => {
+test("HTTP ships EXACTLY the stdio tool set - no transport may drift off on its own", async () => {
   await withServer(async (url) => {
     const res = await rpc(url, { jsonrpc: "2.0", id: 1, method: "tools/list" });
     assert.equal(res.status, 200);
@@ -42,7 +42,7 @@ test("HTTP ship ĐÚNG bộ tool của stdio — không transport nào được 
   });
 });
 
-test("initialize trả đúng danh tính server", async () => {
+test("initialize returns the right server identity", async () => {
   await withServer(async (url) => {
     const body = await (await rpc(url, { jsonrpc: "2.0", id: 7, method: "initialize" })).json();
     assert.equal(body.id, 7);
@@ -68,7 +68,7 @@ const rawPost = (port, headers, body) =>
     req.end(JSON.stringify(body));
   });
 
-test("Host không phải loopback ⇒ 403 (chống DNS-rebinding)", async () => {
+test("a non-loopback Host yields 403 (DNS-rebinding defence)", async () => {
   await withServer(async (_url, port) => {
     const sane = await rawPost(port, {}, { jsonrpc: "2.0", id: 1, method: "ping" });
     assert.equal(sane.status, 200, "đường bình thường phải chạy — không thì phép thử dưới vô nghĩa");
@@ -77,14 +77,14 @@ test("Host không phải loopback ⇒ 403 (chống DNS-rebinding)", async () => 
   });
 });
 
-test("request cross-site ⇒ 403 kể cả khi Host hợp lệ", async () => {
+test("a cross-site request yields 403 even with a valid Host", async () => {
   await withServer(async (url) => {
     const res = await rpc(url, { jsonrpc: "2.0", id: 1, method: "tools/list" }, { "sec-fetch-site": "cross-site" });
     assert.equal(res.status, 403);
   });
 });
 
-test("JSON hỏng ⇒ lỗi JSON-RPC đúng khuôn, KHÔNG sập server", async () => {
+test("broken JSON yields a well-formed JSON-RPC error and does NOT crash the server", async () => {
   await withServer(async (url) => {
     const body = await (await rpc(url, "{ khong phai json")).json();
     assert.equal(body.error.code, -32700);
@@ -94,14 +94,14 @@ test("JSON hỏng ⇒ lỗi JSON-RPC đúng khuôn, KHÔNG sập server", async 
   });
 });
 
-test("notification không có phản hồi ⇒ 202, không trả body rỗng kiểu 200", async () => {
+test("a notification with no response yields 202, not an empty 200 body", async () => {
   await withServer(async (url) => {
     const res = await rpc(url, { jsonrpc: "2.0", method: "notifications/initialized" });
     assert.equal(res.status, 202, "200 với body rỗng làm client báo lỗi parse");
   });
 });
 
-test("GET /ping nhận diện được tiến trình", async () => {
+test("GET /ping identifies the process", async () => {
   await withServer(async (url) => {
     const body = await (await fetch(`${url}/ping`)).json();
     assert.equal(body.app, "zemory-mcp");
@@ -110,7 +110,7 @@ test("GET /ping nhận diện được tiến trình", async () => {
   });
 });
 
-test("gọi thật một tool qua HTTP", async () => {
+test("really calling a tool over HTTP", async () => {
   await withServer(async (url) => {
     const body = await (
       await rpc(url, { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "project_current", arguments: {} } })

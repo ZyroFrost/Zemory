@@ -60,7 +60,7 @@
       +(c.detail?detRow(t('scope.detWhere'),c.detail):'')
       +detRow(t('scope.detMessages'),zN(n.messages||0))
       +(web&&c.linked===false&&c.kids?'<div class="muted" style="margin-top:6px">'+stdEsc(t('scope.detPickAcct').replace('{n}',c.bad||1))+'</div>':'')
-      // Mượn cookie khong duoc VI TRINH DUYET DANG MO — co viec de lam, phai noi ra.
+      // Mượn cookie không được VÌ TRÌNH DUYỆT ĐANG MỞ — có việc để làm, phải nói ra.
       // 🔴 THAY MỌI chỗ giữ chỗ, không chỉ chỗ đầu: câu này có {b} HAI lần ("nhưng {b} đang mở …
       // Đóng {b} rồi …") mà `.replace('{b}',…)` của JS chỉ thay lần ĐẦU ⇒ người dùng đọc thấy
       // nguyên chữ "Đóng {b}" trên màn hình (đo 2026-09-02).
@@ -409,8 +409,8 @@
     if(r.detailCode==='storePath')return a.path||'';
     if(r.detailCode==='storeGone')return t('conn.storeGone').replace('{path}',a.path||'');
     if(r.detailCode==='noStore')return t('conn.noStore');
-    // MAT KET NOI: noi thang viec phai lam. Vong tu keo da thoi dung khe nay (may khong duoc tu
-    // bat khung dang nhap — user chot 2026-09-02), nen chi con duong NGUOI bam.
+    // CONNECTION LOST: state the action required. The auto-pull loop has stopped using this slot (the machine may not open a
+    // sign-in window by itself — user ruling 2026-09-02), so the only road left is a PERSON clicking.
     if(r.detailCode==='needLogin')return t('conn.needLogin').replace('{ago}',a.at?relTime(a.at).big:'');
     if(r.detailCode==='lastChecked'){
       // Dùng chính relTime() của trang chủ ⇒ "7 giờ trước"/"7 h ago" đổi theo ngôn ngữ, và

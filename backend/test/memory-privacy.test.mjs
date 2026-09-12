@@ -240,7 +240,7 @@ test("memory redact scrubs secrets quoted inside session digests too", async (t)
 // "ignore previous instructions" đều 0 hit, còn mọi tín hiệu khác 0 (BOM, U+200B,
 // "system prompt") đều là báo oan 100%. Nhóm ký tự dưới đây không có công dụng hợp lệ
 // nào ⇒ nhiễu bằng 0 theo cấu tạo.
-test("bắt được ký tự điều hướng ẩn, và KHÔNG sửa gì nội dung gốc", (t) => {
+test("it catches hidden directional characters WITHOUT altering the original content", (t) => {
   const root = tempDir(t, "zemory-hidden-");
   const p = join(root, "memory.db");
   const db = openMemory(p);
@@ -269,7 +269,7 @@ test("bắt được ký tự điều hướng ẩn, và KHÔNG sửa gì nội 
   }
 });
 
-test("BOM và U+200B KHÔNG bị báo oan (đo thật: 43/43 ca trong DB đều hợp lệ)", (t) => {
+test("a BOM and U+200B raise NO false positive (measured: 43/43 cases in the DB are legitimate)", (t) => {
   const root = tempDir(t, "zemory-hidden2-");
   const p = join(root, "memory.db");
   const db = openMemory(p);

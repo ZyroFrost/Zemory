@@ -28,14 +28,14 @@ after(() => {
   }
 });
 
-test("syncWatchdogDue: trần 90′ cho bước thường — quá thì tới hạn, chưa quá thì không, chưa chạy thì không", () => {
+test("syncWatchdogDue: a 90 min cap for ordinary steps - over it is due, under it is not, never run is not", () => {
   const t0 = Date.parse("2026-08-30T10:50:00Z");
   assert.equal(syncWatchdogDue(t0, t0 + 89 * 60_000), false, "89′ — lượt đẩy bù dài hợp lệ, KHÔNG được giết");
   assert.equal(syncWatchdogDue(t0, t0 + 91 * 60_000), true, "91′ — quá trần, phải giết");
   assert.equal(syncWatchdogDue(0, t0), false, "startedAt=0 (chưa từng chạy) — không có gì để giết");
 });
 
-test("syncWatchdogDue: bước EMBED có trần riêng 180′ — giết embed 90′ là giết oan việc local đang cày", () => {
+test("syncWatchdogDue: the EMBED step has its own 180 min cap - killing an embed at 90 min kills honest local work", () => {
   // Ca báo oan thật 14:27 30/08: embed phút 56, CPU 3.552 s đang chạy hết cỡ — trần 90′ cũ sẽ
   // giết nó lúc 15:01 trong khi nó là việc LOCAL, Drive không treo được.
   const t0 = Date.parse("2026-08-30T13:31:31Z");
@@ -44,7 +44,7 @@ test("syncWatchdogDue: bước EMBED có trần riêng 180′ — giết embed 9
   assert.equal(syncWatchdogDue(t0, t0 + 95 * 60_000, "write"), true, "write 95′ — Drive treo, giết như cũ");
 });
 
-test("HÀNH VI: con treo quá trần ⇒ watchdog giết, kết cục mang lý do 'watchdog', running về false", async () => {
+test("BEHAVIOUR: a child hanging past the cap is killed by the watchdog, the outcome carries reason 'watchdog', and running returns to false", async () => {
   let done = null;
   const wait = new Promise((ok) => {
     startSyncJob((s) => {
