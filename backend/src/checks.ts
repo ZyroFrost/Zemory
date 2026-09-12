@@ -17,6 +17,7 @@ import { rerankProbe } from "./memory/rerank.js";
 import { getPathsWatch, getRerankSetting } from "./config/settings.js";
 import { vectorIndexInfo } from "./memory/vectors.js";
 import { cloudSyncReport } from "./memory/cloudguard.js";
+import { UI_SWEEP_MIN_AGE_MS, sweepOrphanBrowsers } from "./platform/browsersweep.js";
 import { currentMemoryDb, currentMemoryDir } from "./memory/db.js";
 
 export interface CheckResult {
@@ -315,6 +316,29 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
           : n > 0
             ? tr(`${n} mới chết kể từ ${since} · ${r.dead.length} chết tổng`, `${n} newly dead since ${since} · ${r.dead.length} dead total`)
             : tr(`0 mới chết kể từ ${since} · ${r.dead.length} chết cũ`, `0 newly dead since ${since} · ${r.dead.length} legacy dead`),
+      };
+    }
+    // TIẾN TRÌNH THỪA — hàng chính thức từ 2026-09-12 (user: *"thêm chức năng dọn tiến trình thừa đi"*).
+    //
+    // Vì sao xứng một hàng riêng chứ không để im trong vòng dọn 6 giờ: rác dạng TIẾN TRÌNH không
+    // nằm trong `git status`, không chiếm chỗ thấy được, và người dùng chỉ phát hiện khi mở Task
+    // Manager thấy đầy tiến trình lạ (đo 2026-09-12: **75** tiến trình Edge headless sống từ sáng).
+    // Thứ không ai NHÌN THẤY thì không ai dọn — cho nó một hàng là biến nó thành thấy được.
+    //
+    // Hàng này CHỈ ĐẾM (`dryRun`), không bao giờ tự đóng cái gì: đóng là việc của vòng dọn nền hoặc
+    // của cú bấm *Dọn ngay*. Một hàng kiểm mà tự ý giết tiến trình là cổng vượt quyền.
+    case "procs": {
+      const r = sweepOrphanBrowsers({ profileRoot: join(currentMemoryDir(), "browser"), dryRun: true, minAgeMs: UI_SWEEP_MIN_AGE_MS });
+      if (r.skipped) return { feature, ok: true, state: "on", detail: tr(`bỏ lượt: ${r.skipped}`, `skipped: ${r.skipped}`) };
+      const n = r.candidates.length;
+      return {
+        feature,
+        ok: true,
+        state: n > 0 ? "warn" : "on",
+        detail:
+          n > 0
+            ? tr(`${n} tiến trình trình duyệt mồ côi — bấm Dọn ngay`, `${n} orphan browser process(es) — press Clean now`)
+            : tr("không có tiến trình thừa", "no leftover processes"),
       };
     }
     case "validate": {

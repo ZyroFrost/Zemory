@@ -8,9 +8,73 @@
 // `msedge --app`, so a missing prebuilt binary / no WebView2 never breaks "open
 // the UI" — it just loses the custom icon.
 
-import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/**
+ * MỘT APP = MỘT CỬA SỔ (user chốt 2026-09-12: *"mở app lại mà app UI cũ vẫn còn, không biết cái nào
+ * mới đúng"*).
+ *
+ * Sổ đăng ký là MỘT file `<kho>/cockpit/window.pid`. Trước đây **chỉ `ui.ts` ghi** nó lúc spawn, nên
+ * cửa sổ mở bằng đường khác (lối tắt, tray, gõ tay) KHÔNG được ghi sổ ⇒ lượt mở sau không biết mà
+ * đóng. Nay CHÍNH CỬA SỔ tự ghi sổ: nó đóng cửa sổ cũ còn ghi trong sổ rồi mới ghi tên mình vào.
+ * Ai mở cũng vậy, không phụ thuộc người gọi nhớ làm đúng.
+ *
+ * Đường sổ: đối số thứ 4 → env `ZEMORY_WINDOW_PID` → suy từ `WEBVIEW2_USER_DATA_FOLDER`
+ * (`ui.ts` trỏ nó vào `<kho>/cockpit/webview`, nên thư mục cha chính là `<kho>/cockpit`).
+ */
+function pidFilePath(): string | null {
+  const fromArg = process.argv[4];
+  if (fromArg) return fromArg;
+  const fromEnv = process.env.ZEMORY_WINDOW_PID;
+  if (fromEnv) return fromEnv;
+  const wv = process.env.WEBVIEW2_USER_DATA_FOLDER;
+  return wv ? join(dirname(wv), "window.pid") : null;
+}
+
+/** Đóng cửa sổ đang ghi trong sổ (nếu có) rồi ghi tên mình vào. Best-effort — không bao giờ
+ *  chặn việc mở cửa sổ mới (fail-open, HP điều 9). */
+function claimSingleWindow(file: string): void {
+  try {
+    if (existsSync(file)) {
+      const [pidRaw, image = ""] = readFileSync(file, "utf8").trim().split("|");
+      const prev = Number(pidRaw);
+      if (Number.isInteger(prev) && prev > 0 && prev !== process.pid) {
+        if (process.platform === "win32") {
+          const args = ["/F", "/T", "/FI", `PID eq ${prev}`];
+          // Lọc theo TÊN ẢNH để một pid đã được hệ dùng lại thành vô hại thay vì bị giết oan.
+          if (image) args.push("/FI", `IMAGENAME eq ${image}`);
+          try { spawn("taskkill", args, { stdio: "ignore" }).unref(); } catch { /* đã tắt */ }
+        } else {
+          try { process.kill(prev); } catch { /* đã tắt */ }
+        }
+      }
+    }
+  } catch {
+    /* sổ hỏng/không đọc được — cứ mở cửa sổ mới */
+  }
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${process.pid}|${basename(process.execPath)}|Zemory`);
+  } catch {
+    /* không ghi được sổ thì lượt sau không đóng được — vẫn hơn là không mở nổi cửa sổ */
+  }
+}
+
+/** Xoá tên mình khỏi sổ khi đóng — để lượt mở sau không đi giết một pid đã chết (hoặc pid được
+ *  hệ dùng lại cho tiến trình khác). */
+function releaseWindow(file: string | null): void {
+  if (!file) return;
+  try {
+    if (!existsSync(file)) return;
+    const [pidRaw] = readFileSync(file, "utf8").trim().split("|");
+    if (Number(pidRaw) === process.pid) rmSync(file, { force: true });
+  } catch {
+    /* ignore */
+  }
+}
 
 async function main(): Promise<void> {
   const url = process.argv[2];
@@ -63,8 +127,16 @@ async function main(): Promise<void> {
     }
   }
   win.loadUrl(url);
-  win.onClose(() => process.exit(0));
+  // Ghi sổ SAU khi cửa sổ dựng được: hỏng trước đó thì `ui.ts` rơi về `msedge --app`, và một cái
+  // sổ trỏ tới tiến trình vừa chết chỉ làm lượt mở sau đi giết nhầm.
+  const pidFile = pidFilePath();
+  if (pidFile) claimSingleWindow(pidFile);
+  win.onClose(() => {
+    releaseWindow(pidFile);
+    process.exit(0);
+  });
   const bye = (): void => {
+    releaseWindow(pidFile);
     try {
       win.close();
     } catch {
@@ -101,6 +173,16 @@ async function main(): Promise<void> {
   let seenAlive = false;
   let miss = 0;
   let busy = 0;
+  // 🔴 BÁM THEO ĐÚNG TIẾN TRÌNH DAEMON, KHÔNG PHẢI CỔNG (vá 2026-09-12).
+  //
+  // Nhịp tim cũ chỉ hỏi *"cổng 4444 còn trả lời không"* — mà một daemon MỚI cũng nghe đúng cổng đó.
+  // Nên khi daemon bị tắt rồi bật lại (mỗi lần build là một lần như vậy), cửa sổ CŨ thấy ping vẫn
+  // OK ⇒ sống tiếp, trong khi daemon mới mở thêm cửa sổ của nó. Kết quả: HAI cửa sổ cùng "chạy
+  // được", người dùng không biết cái nào là bản mới — user báo đúng ca này 2026-09-12.
+  // `/ping` vốn đã trả `pid` của daemon, nên chỉ cần nhớ nó: pid đổi = nền đã bị thay ⇒ cửa sổ này
+  // là vỏ của một nền không còn tồn tại ⇒ tự đóng. Đây cũng chính là luật §Bề mặt CHẾT THEO nền,
+  // chỉ là đo cho đúng thứ cần đo.
+  let daemonPid: number | null = null;
   const beat = setInterval(() => {
     void (async () => {
       let alive = false;
@@ -113,6 +195,19 @@ async function main(): Promise<void> {
         // cứng, không trả nổi byte nào trong 20 s × 36 nhịp) vẫn bị giết như cũ.
         const res = await fetch(new URL("/ping", url), { signal: AbortSignal.timeout(20_000) });
         alive = res.ok;
+        if (alive) {
+          const body = (await res.json().catch(() => null)) as { pid?: unknown } | null;
+          const pid = typeof body?.pid === "number" ? body.pid : null;
+          if (pid !== null) {
+            if (daemonPid === null) daemonPid = pid;
+            else if (pid !== daemonPid) {
+              console.error(`[zemory window] daemon đã được thay (pid ${daemonPid} → ${pid}) — cửa sổ này thuộc bản cũ, tự đóng`);
+              clearInterval(beat);
+              bye();
+              return;
+            }
+          }
+        }
       } catch (e) {
         // undici bọc lỗi socket trong `cause`; hết giờ là TimeoutError/AbortError không có cause.
         const code = (e as { cause?: { code?: string } })?.cause?.code ?? "";

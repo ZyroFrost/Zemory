@@ -93,6 +93,9 @@ switch (cmd) {
   case "paths":
     cmdPaths(args);
     break;
+  case "sweep":
+    (await import("./commands/sweep.js")).cmdSweep(args);
+    break;
   case "reindex":
     cmdReindex();
     break;

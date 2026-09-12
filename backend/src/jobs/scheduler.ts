@@ -67,7 +67,8 @@ import { isExcluded } from "../memory/scope.js";
 import { webProfileDir } from "../memory/connections.js";
 import { jarHasSession } from "../memory/borrowcookies.js";
 import { DEFAULT_BACKUP_POLICY, backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
-import { currentMemoryDb } from "../memory/db.js";
+import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
+import { sweepOrphanBrowsers, sweepOrphanTempProfiles } from "../platform/browsersweep.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { sweepScratchpads } from "./scratchpad.js";
 import { backgroundChildEnv } from "./childenv.js";
@@ -547,6 +548,27 @@ function scratchTick(): void {
     }
   } catch (e) {
     log(`dọn profile trình duyệt bỏ qua: ${(e as Error).message}`);
+  }
+  // Cùng nhịp, và là MẢNH CÒN THIẾU của chính vòng này: hai lượt trên dọn **THƯ MỤC**, không ai dọn
+  // **TIẾN TRÌNH**. Đo 2026-09-12: 75 tiến trình Edge headless còn sống từ sáng, mỗi cửa sổ giữ một
+  // profile tạm — không hiện trong `git status`, không cổng nào soi, người dùng chỉ thấy Task
+  // Manager đầy tiến trình lạ (user: *"cái này phải tự dọn chứ, sao để nó đẻ ra quài dc"*).
+  // Ràng buộc an toàn nằm trong `sweepOrphanBrowsers`; ở đây chỉ đưa thêm sự thật mà nó không tự
+  // biết: **có job web đang chạy hay không**. Đang chạy ⇒ không đụng gì.
+  try {
+    // Chặn đúng thứ có thể ĐANG SỞ HỮU một trình duyệt: lượt kéo web của chính daemon
+    // (`webRunning`), hoặc một job web/scan đang giữ token (kể cả do CLI ngoài chạy). Nhúng vector
+    // hay backup KHÔNG liên quan — chặn theo chúng là biến vòng dọn thành không bao giờ tới lượt.
+    const job = daemonJobBusy();
+    const busy = webRunning || job === "web-pull" || job === "scan" || cliHoldsWrite();
+    const b = sweepOrphanBrowsers({ profileRoot: join(currentMemoryDir(), "browser"), busy });
+    if (b.killed.length) {
+      log(`dọn trình duyệt mồ côi: đóng ${b.killed.length} tiến trình headless${b.dirs.length ? ` · xoá ${b.dirs.length} profile tạm` : ""}`);
+    }
+    const gone = sweepOrphanTempProfiles();
+    if (gone.length) log(`dọn profile tạm không ai giữ: ${gone.length} thư mục`);
+  } catch (e) {
+    log(`dọn trình duyệt mồ côi bỏ qua: ${(e as Error).message}`);
   }
 }
 
