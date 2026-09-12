@@ -149,9 +149,9 @@ for (const f of files) {
       const re = ext === '.py' ? /(?:#|^\s*"""|^\s*''')\s*(.*)$/ : /(?:\/\/|\/\*|^\s*\*)\s*(.*)$/
       const c = raw.match(re)
       // Matching only the line that OPENS a block read the first line of a docstring and dropped
-      // the rest of it. `build_access_xlsx.py` line 7 - "QUYEN 1 dong = (workspace x nguoi) - bang
-      // goc" - sat four lines inside a module docstring and was invisible. `inBlock` carries the
-      // state down, so the body of a docstring or a /* */ comment is read as prose too.
+      // the rest of it: `build_access_xlsx.py:7` sat four lines inside a module docstring and was
+      // invisible. `inBlock` carries the state down, so the body of a docstring or a /* */ comment
+      // is read as prose too.
       const wasInside = inBlock
       if (ext === '.py') {
         if (((raw.match(/"""|'''/g) || []).length) % 2) inBlock = !inBlock
