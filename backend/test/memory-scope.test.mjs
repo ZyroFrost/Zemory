@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { openMemory } from "../../dist/memory/db.js";
@@ -6,7 +7,7 @@ import { isExcluded, laneMatches, laneKey, scopeTree, toggleLane } from "../../d
 import { allAdapters } from "../../dist/memory/adapters/index.js";
 import { search } from "../../dist/memory/search.js";
 import { exportMemoryBundle, importMemoryBundle, mergeMemoryBundle, writeMemoryShareKey } from "../../dist/memory/share.js";
-import { tempDir } from "./helpers.mjs";
+import { runInMemoryChild, tempDir } from "./helpers.mjs";
 
 // Seed a memory; message_count is set to the real count so scopeTree rolls up.
 function seedMemory(dbPath, sessions) {
@@ -177,14 +178,47 @@ test("cây Sources liệt kê ĐỦ bộ adapter, kể cả nguồn chưa nạp 
   })(scopeTree(p, []));
 
   const bySource = new Map(flat.map((n) => [n.label, n]));
+  // 🔄 LUẬT ĐỔI 2026-09-11 (user chốt sau khi đòi hai lần: *"cái này t phải bấm add nguồn mới ra
+  // chứ, sao cứ tự nối quài vậy"*). Trước: cây bày MỌI adapter kể cả chưa có dữ liệu. Nay tách vai:
+  //   · LOCAL  — `memory scan` tự tìm thấy ⇒ vẫn bày sẵn, giữ nguyên vế cũ;
+  //   · WEB    — chỉ tồn tại sau khi NGƯỜI DÙNG chọn và đăng nhập ⇒ chưa nối thì KHÔNG bày.
+  // Vòng luẩn quẩn cũ ("muốn thấy phải có dữ liệu, muốn có dữ liệu phải thấy") không quay lại: chỗ
+  // KHÁM PHÁ nay là hộp "＋ Thêm nguồn", dựng từ `/connections` nên hiện đủ mọi nền được hỗ trợ.
   for (const a of allAdapters()) {
-    assert.ok(bySource.has(a.source), `adapter '${a.source}' phải có mặt trong cây dù chưa có dữ liệu`);
+    if ((a.origin ?? "local") === "web") continue;
+    assert.ok(bySource.has(a.source), `adapter local '${a.source}' phải có mặt trong cây dù chưa có dữ liệu`);
   }
-  // Nguồn có dữ liệu KHÔNG được gắn cờ rỗng; nguồn chưa nạp thì PHẢI gắn.
+  // Nguồn có dữ liệu KHÔNG được gắn cờ rỗng; nguồn local chưa nạp thì PHẢI gắn.
   assert.equal(bySource.get("claude-code").empty, false, "nguồn có dữ liệu không được coi là rỗng");
   assert.equal(bySource.get("claude-code").sessions, 1);
-  const web = bySource.get("claude-web");
-  assert.ok(web, "claude-web phải hiện");
-  assert.equal(web.empty, true, "phải gắn cờ để UI nói rõ 'chưa có dữ liệu' thay vì im lặng");
-  assert.equal(web.sessions, 0);
+  const localEmpty = bySource.get("codex");
+  assert.ok(localEmpty, "nguồn LOCAL chưa nạp gì vẫn phải hiện (quét đĩa tự tìm ra nó)");
+  assert.equal(localEmpty.empty, true, "phải gắn cờ để UI nói rõ 'chưa có dữ liệu' thay vì im lặng");
+  assert.equal(localEmpty.sessions, 0);
+});
+
+// Vế NGƯỢC của luật trên — và nó PHẢI chạy ở TIẾN TRÌNH CON. `scopeTree` nay hỏi sổ `webAuth` để
+// biết nền web nào đang dùng, mà sổ đó sống cạnh KHO MẶC ĐỊNH: chạy in-process thì nó đọc config
+// THẬT của người dùng (đang có claude · chatgpt · gemini · copilot) và ca này xanh/đỏ theo việc
+// máy ai đã nối gì — xanh-vì-máy-đang-nối là xanh giả. Đúng bẫy `helpers.mjs` đã ghi.
+test("nền WEB chưa từng nối KHÔNG được tự mọc lên cây (kho sạch, webAuth rỗng)", (t) => {
+  const root = tempDir(t, "zemory-scope-web-");
+  mkdirSync(join(root, "data"), { recursive: true });
+  const [out] = runInMemoryChild(root, `
+    const { openMemory } = await import("file://" + process.env.Z_DIST + "/memory/db.js");
+    const { scopeTree } = await import("file://" + process.env.Z_DIST + "/memory/scope.js");
+    const db = openMemory();
+    db.prepare("INSERT INTO sessions (id, source, origin, host, project_root, message_count) VALUES ('s1','claude-code','local','PC-A','C:\\\\p',3)").run();
+    db.close();
+    const flat = [];
+    (function walk(ns){ for (const n of ns ?? []) { flat.push(n.label); walk(n.children); } })(scopeTree());
+    out.push({ labels: flat });
+  `);
+  const labels = new Set(out.labels);
+  for (const s of ["claude-web", "gemini-web", "copilot-web", "mscopilot-web", "m365copilot-web"]) {
+    assert.ok(!labels.has(s), `nền web '${s}' chưa nối mà vẫn bày trên cây — đúng thứ user gọi là "tự nối"`);
+  }
+  // Và LOCAL vẫn phải bày như cũ — luật chỉ siết nhánh web, siết cả hai là đi quá.
+  assert.ok(labels.has("claude-code"), "nguồn local có dữ liệu phải còn");
+  assert.ok(labels.has("codex"), "nguồn local chưa nạp gì vẫn phải hiện (quét đĩa tự tìm ra)");
 });

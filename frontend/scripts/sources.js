@@ -44,7 +44,10 @@
     var n=NODE_BY_KEY[key];if(!n||!n.conn)return;
     var c=n.conn,web=c.kind==='web';
     var stateTxt=c.linked===false?t('scope.detNotLinked'):(c.linked===null?t('scope.detUnchecked'):t('scope.detLinked'));
-    var pullTxt=c.state==='ok'?t('scope.detPullOk'):(c.state==='fail'?t('scope.detPullFail').replace('{s}',c.status||''):t('scope.webNever'));
+    // `loginOnly` phải có câu RIÊNG ở đây nữa. Rơi vào ô "chưa kéo lần nào" thì đúng chữ mà thiếu
+    // nghĩa: người dùng đọc thành "chưa ai bấm kéo" và đi bấm, trong khi lý do thật là ĐƯỜNG KÉO
+    // CHƯA DỰNG — bấm bao nhiêu lần cũng vậy. Badge và hộp chi tiết phải nói CÙNG một câu.
+    var pullTxt=c.state==='loginOnly'?t('scope.tipLoginOnly'):(c.state==='ok'?t('scope.detPullOk'):(c.state==='fail'?t('scope.detPullFail').replace('{s}',c.status||''):t('scope.webNever')));
     var body='<div style="font-size:12.5px;line-height:1.6">'
       +detRow(t('scope.detSource'),n.label)
       +detRow(t('scope.detKind'),t(web?'scope.detKindWeb':'scope.detKindLocal'))
@@ -136,6 +139,9 @@
       else { mark='✓'; cls='conn-ok'; tip=t('scope.tipRemoteFresh').replace('{d}',c.staleDays==null?'?':c.staleDays); }
     }
     else if(c.kind==='local'){ mark='✓'; cls='conn-ok'; tip=t(c.kids?'scope.tipAggOk':'scope.tipStoreOk'); }
+    // Nền hạng CHỈ-NỐI (`plan/07 §17`): đăng nhập XONG, đường kéo chưa dựng. Đã nối ⇒ ✓, nhưng
+    // tooltip nói thẳng là chưa kéo được gì — ✓ mà im về vế đó thì lại hứa suông chiều ngược lại.
+    else if(c.state==='loginOnly'){ mark='✓'; cls='conn-ok'; tip=t('scope.tipLoginOnly'); }
     else if(c.state==='fail'){ mark='⚠'; cls='scope-bad'; tip=t('scope.tipPullFailed').replace('{s}',c.status||''); }
     else { mark='✓'; cls='conn-ok'; tip=t(c.kids?'scope.tipAggOk':'scope.tipOk'); }
     return '<button class="zbadge '+cls+'" data-srcdet="'+stdEsc(n.key)+'" title="'+stdEsc(tip)+'">'+mark+'</button> ';
@@ -160,14 +166,56 @@
   var CONN_ROWS=[];
   function connWatching(p){return CONN_ROWS.some(function(x){return x.kind==='web'&&x.platform===p&&(x.account||'main')==='main'&&x.watching;});}
   function refreshAddSource(){var d=zid('zDlg');if(d&&d.classList.contains('on')&&zid('zDlgTitle')&&zid('zDlgTitle').textContent===t('src.addTitle'))openAddSource();}
+  /**
+   * Mở hộp "＋ Thêm nguồn" — LẤY DỮ LIỆU XONG RỒI MỚI DỰNG, không dựng trước rồi mở lại.
+   *
+   * 🔴 Hộp này là bề mặt KHÁM PHÁ (mọi nền zemory hỗ trợ) và nguồn của nó là `/connections`. Mở
+   * lúc `CONN_ROWS` còn rỗng là một CUỘC ĐUA: nó rơi về danh sách lấy từ CÂY, mà cây nay chỉ bày
+   * nền ĐÃ nối ⇒ bề mặt khám phá chỉ còn đúng những thứ đã có. Đo 2026-09-11: `Microsoft Copilot`
+   * biến mất khỏi hộp dù `/connections` có đủ hàng của nó.
+   *
+   * Bản vá ĐẦU của tôi là "dựng ngay rồi refresh khi dữ liệu về" — sai: `refreshAddSource` gọi lại
+   * chính hàm dựng, nên hộp mở chồng lên mình rồi biến mất (đo: `KHONG CO DIALOG`). Chờ một nhịp
+   * rồi dựng MỘT lần thì hết cả hai bệnh.
+   */
   function openAddSource(){
-    var NAME={chatgpt:'ChatGPT',claude:'Claude.ai'};
+    if(CONN_ROWS&&CONN_ROWS.length)return buildAddSource();
+    return zGet('/connections')
+      .then(function(d){CONN_ROWS=(d&&d.rows)||CONN_ROWS;buildAddSource();})
+      .catch(function(){buildAddSource();}); // hỏng vẫn phải mở được — hộp rỗng còn hơn không mở
+  }
+  function buildAddSource(){
+    // Tên bày ra cho người đọc. Thiếu một nền là hàng đó hiện KHOÁ THÔ (`gemini` · `copilot`) —
+    // đo 2026-09-11 trên app thật, đúng hai nền thêm hôm 10/09 mà không ai bổ sung tên.
+    var NAME={chatgpt:'ChatGPT',claude:'Claude.ai',gemini:'Gemini',copilot:'GitHub Copilot',mscopilot:'Microsoft Copilot',m365copilot:'Microsoft 365 Copilot',
+      grok:'Grok',deepseek:'DeepSeek',perplexity:'Perplexity',mistral:'Le Chat (Mistral)',qwen:'Qwen Chat',kimi:'Kimi'};
+    // 🔴 NGUỒN của hộp này là `/connections`, KHÔNG phải cây (đổi 2026-09-11). Từ hôm nay cây chỉ
+    // bày nền ĐÃ dùng (user: *"cái này t phải bấm add nguồn mới ra chứ"*), nên dựng hộp Add từ cây
+    // là nó chỉ mời được đúng những nền đã có rồi — tức bề mặt KHÁM PHÁ mất sạch thứ để khám phá.
+    // Hai bề mặt hai vai: cây = *"tôi đang có gì"*, hộp này = *"zemory hỗ trợ những gì"*.
     var plats={};
+    (CONN_ROWS||[]).forEach(function(r){
+      if(r.kind!=='web'||!r.platform)return;
+      var cur=plats[r.platform]||{linked:null,who:''};
+      if(r.connected)cur.linked=true;else if(cur.linked!==true)cur.linked=false;
+      var w=(r.detailArgs&&r.detailArgs.who)||r.who;
+      if(w)cur.who=cur.who?(cur.who.indexOf(w)>=0?cur.who:cur.who+' · '+w):w;
+      plats[r.platform]=cur;
+    });
     ((WEB_TREE&&WEB_TREE.children)||[]).forEach(function(n){
       var c=n.conn,p=webPlat((n.lane||{}).source||'');if(!p)return;
       var cur=plats[p]||{linked:null,who:''};
       // Một nền có thể đẻ nhiều nguồn (claude → claude-web + claude-cowork): giữ bản "tốt nhất".
       if(c){if(c.linked===true)cur.linked=true;else if(c.linked===false&&cur.linked!==true)cur.linked=false;if(c.who)cur.who=c.who;}
+      // 🔴 `who` KHÔNG SỐNG QUA PHÉP GỘP. Hàng NGUỒN có con thì `conn` của nó do `aggregateConn`
+      // dựng, mà hàm đó chỉ mang kind/linked/state/bad/kids — KHÔNG mang `who`. Nên hộp này đọc
+      // hàng nguồn rồi in "chưa nối" cho cả ChatGPT · Claude · Gemini đang nối tốt, ngay cạnh nút
+      // "＋ Thêm tài khoản" — một hàng tự đá nhau (đo 2026-09-11). Danh tính nằm ở hàng CON.
+      (n.children||[]).forEach(function(kid){
+        var kc=kid.conn;if(!kc)return;
+        if(kc.linked===true)cur.linked=true;
+        if(kc.who)cur.who=cur.who?(cur.who.indexOf(kc.who)>=0?cur.who:cur.who+' · '+kc.who):kc.who;
+      });
       plats[p]=cur;
     });
     var rows=Object.keys(plats).map(function(p){
@@ -181,8 +229,11 @@
           : '<button class="btn sm primary" data-conn="'+stdEsc(p)+'" data-acct="main">'+stdEsc(t('src.addLogin'))+'</button>';
       return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="min-width:80px;font-weight:600">'+stdEsc(NAME[p]||p)+'</span>'+st+'<span style="flex:1"></span>'+btn+'</div>';
     }).join('');
+    // Dòng "Gemini — chưa hỗ trợ" ĐÃ GỠ (2026-09-11): nó hardcode từ thời chưa làm nền này, và từ
+    // 10/09 Gemini là một hàng THẬT dựng từ cây ⇒ hộp bày Gemini HAI LẦN, hai dòng nói ngược nhau.
+    // Bài học: chữ "sắp có" phải chết cùng lúc thứ nó hứa ra đời, không thì nó thành lời nói dối
+    // tồn tại lâu hơn cả lý do sinh ra nó.
     var body='<div style="font-size:12.5px">'+rows
-      +'<div style="display:flex;align-items:center;gap:10px;padding:7px 0"><span style="min-width:80px;font-weight:600">Gemini</span><span class="muted" style="font-size:11px">'+stdEsc(t('src.addSoon'))+'</span></div>'
       +'<div class="muted" style="font-size:11px;margin-top:8px">'+stdEsc(t('src.addLocalHint'))+'</div></div>';
     zDialog({icon:'＋',title:t('src.addTitle'),bodyHtml:body,okLabel:t('scope.detClose')});
   }
@@ -375,11 +426,30 @@
    * trạng thái đổi (nối lại · mượn phiên · thêm tài khoản · quét xong); biến nó thành hàm câm
    * là để badge đứng im sau mỗi thao tác — đúng kiểu hỏng lặng mà `02_RULES` cấm.
    *
-   * Nay nó LÀM TƯƠI CÂY: một lượt `/memory-status?fresh=1` dựng lại scopeTree kèm trạng thái
-   * liên kết mới. Vẫn nhận `d` để `connPoll` dùng `d.rows` phán "ai còn đang chờ đăng nhập".
+   * Nay nó LÀM TƯƠI CÂY qua `/sync-pulse` — đường RẺ trả đúng hai thứ đổi sau một lượt đăng nhập
+   * (`scopeTree` + `drive`). Vẫn nhận `d` để `connPoll` dùng `d.rows` phán "ai còn đang chờ".
+   *
+   * 🔴 Trước 2026-09-11 hàm này gọi `/memory-status?fresh=1`, và đó là ba cái sai chồng nhau:
+   *  · **đắt gấp 8×** — đo cùng ngày: `/sync-pulse` 7,9–12,5 s · `/connections` 3,3 s ·
+   *    `/memory-status?fresh=1` ~60 s (ép tính lại toàn bộ bảng số, thứ một lượt đăng nhập
+   *    không hề đụng tới);
+   *  · **`fresh=1` XOÁ CACHE** ⇒ mỗi lượt làm tươi cây lại giết luôn bảng số vừa tính xong;
+   *  · **`connPoll` gọi nó mỗi 5 GIÂY** suốt 15 phút canh đăng nhập ⇒ hàng chục lượt tính toàn
+   *    bảng chồng lên nhau, và người dùng đọc thành *"đăng nhập xong app không nhận, phải F5"*.
+   *    Kèm một lãng phí lúc mở app: `zboot` gọi `/memory-status` rồi `loadConn()` bắn NGAY một
+   *    `fresh=1` thứ hai — hai lượt tính đầy đủ, lượt sau xoá cache của lượt trước.
    */
-  function renderConn(){ return zGet('/memory-status?fresh=1').then(renderMem).then(refreshAddSource).catch(function(){}); }
-  function loadConn(){return zGet('/connections').then(renderConn).catch(function(){});}
+  function renderConn(){
+    return zGet('/sync-pulse').then(function(d){
+      if(d&&d.drive)renderDriveDonut(d.drive);
+      var sc=zid('mScope');if(sc&&d&&d.scopeTree)sc.innerHTML=renderScope(d.scopeTree); // renderScope tự cập nhật WEB_TREE
+      refreshAddSource();
+    }).catch(function(){});
+  }
+  // GIỮ LẠI hàng `/connections` vừa lấy: từ 2026-09-11 hộp "＋ Thêm nguồn" dựng từ chúng (bề mặt
+  // khám phá = mọi nền zemory hỗ trợ). Bản cũ vứt `d` đi vì `renderConn` không cần — nhưng khi
+  // lượt nạp đầu là đường DUY NHẤT gọi `/connections`, vứt nó là hộp Add mở ra rỗng.
+  function loadConn(){return zGet('/connections').then(function(d){CONN_ROWS=(d&&d.rows)||CONN_ROWS;return renderConn(d);}).catch(function(){});}
   // Sau khi bấm Liên kết, cửa sổ đăng nhập mở ra — và người dùng đăng nhập xong thì
   // KHÔNG có ai kiểm lại, bảng đứng nguyên ở ⚠. Nên ở đây CHỜ: hỏi lại mỗi 5s (phép hỏi
   // rẻ, không mở thêm cửa sổ) tối đa 3 phút, thấy đăng nhập được là tự kéo luôn.
@@ -479,7 +549,11 @@
   document.addEventListener('change',function(e){
     if(!e.target||e.target.id!=='ctxWarnPct')return;
     var v=parseInt(e.target.value,10);if(isNaN(v)){zGet('/automation').then(renderAuto);return;}
-    zPost('/set-context-warn?percent='+v).then(function(r){if(r&&r.contextWarnPercent)e.target.value=r.contextWarnPercent;zToast(t('mem.ctxWarnSaved'));}).catch(function(){});
+    // Bản cũ toast "Đã lưu" mọi lúc request RESOLVE — kể cả khi server trả `{ok:false}` vì số không
+    // hợp lệ. Báo đã lưu cho một thứ chưa lưu là kiểu nói dối tệ nhất trong họ này. `zSave` phân biệt
+    // được, và hỏng thì đổ lại giá trị THẬT vào ô thay vì để số người ta vừa gõ đứng đó như đã ăn.
+    zSave('/set-context-warn?percent='+v,function(){zGet('/automation').then(renderAuto);})
+      .then(function(r){if(!r)return;if(r.contextWarnPercent)e.target.value=r.contextWarnPercent;zToast(t('mem.ctxWarnSaved'),'ok');});
   });
   // Một BẢNG, không phải chuỗi if lồng nhau: thêm công tắc mới = thêm một dòng dữ liệu.
   var AUTO_URL={scheduler:'/set-scheduler',realtime:'/set-realtime',autostart:'/set-autostart',autosync:'/set-autosync',shortcut:'/set-shortcut',checks:'/set-checks-auto'};
@@ -493,7 +567,10 @@
     var t=e.target.closest?e.target.closest('[data-auto]'):null;if(!t)return;
     var name=t.dataset.auto,on=!t.classList.contains('on');
     var url=AUTO_URL[name];
-    if(!url)return;setTog(name,on);zPost(url+'?on='+(on?1:0)).then(function(){zGet('/automation').then(renderAuto);});
+    // Lưu hỏng ⇒ gạt nút VỀ CHỖ CŨ + báo (xem `zSave` ở core.js). Bản cũ không có cả `.catch`, nên
+    // `/set-realtime` trả `{ok:false}` vì không cắm được hook vào host cũng hiện y như đã lưu.
+    if(!url)return;setTog(name,on);
+    zSave(url+'?on='+(on?1:0),function(){setTog(name,!on);}).then(function(j){if(!j)return;zGet('/automation').then(renderAuto);});
   });
   document.addEventListener('click',function(e){
     var lg=e.target.closest?e.target.closest('[data-lang]'):null;
@@ -509,8 +586,11 @@
     var lv=e.target.closest?e.target.closest('[data-lvl]'):null;
     if(lv){
       // 'att' là CÔNG TẮC độc lập (bật/tắt kèm ảnh), không phải mức thứ ba của Gọn/Đầy đủ.
-      if(lv.dataset.lvl==='att'){var on=!lv.classList.contains('on');lv.classList.toggle('on',on);zPost('/set-sync-attachments?on='+(on?1:0));return;}
-      setLvl(lv.dataset.lvl);zPost('/set-sync-level?level='+lv.dataset.lvl);return;
+      if(lv.dataset.lvl==='att'){var on=!lv.classList.contains('on');lv.classList.toggle('on',on);
+        zSave('/set-sync-attachments?on='+(on?1:0),function(){lv.classList.toggle('on',!on);});return;}
+      // Mức đồng bộ cũng là một lựa chọn được LƯU ⇒ cùng luật: hỏng thì trả chip về mức thật.
+      var prevLvl=((Z.mem||{}).drive||{}).level==='full'?'full':'lean';
+      setLvl(lv.dataset.lvl);zSave('/set-sync-level?level='+lv.dataset.lvl,function(){setLvl(prevLvl);});return;
     }
     var a=e.target.closest?e.target.closest('[data-act]'):null;if(!a)return;
     var act=a.dataset.act;

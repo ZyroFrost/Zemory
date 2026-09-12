@@ -299,7 +299,14 @@ test("chỉ quét nền ĐANG DÙNG — máy chưa từng dùng nền nào thì 
   const slots = readFileSync(new URL("../src/memory/webslots.ts", import.meta.url), "utf8");
   const sw = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   assert.ok(/export function platformsInUse\(\)/.test(slots), "phải có phép lọc nền đang dùng");
-  assert.ok(/scanWebPlatforms\(only\?: string\[\], account\?: string, opts[^)]*\)[\s\S]{0,200}platformsInUse\(\)/.test(sw), "mặc định phải là nền đang dùng, không phải mọi nền");
+  // 🔴 BỎ CHÚ THÍCH TRƯỚC KHI SOI — luật đã có (`05_TODO` 02/09: *"phép cổng soi CHỮ trên CẢ FILE
+  // bắt oan chú thích"*), và ca này chính là nạn nhân tiếp theo: đợt `[2026-09-10h]` thêm một khối
+  // giải thích 6 dòng ngay dưới chữ ký, đẩy `platformsInUse()` từ trong tầm 200 ký tự ra **434** ⇒
+  // cổng ĐỎ ở HEAD trong khi hành vi không đổi một dòng nào. Đúng điểm yếu mà chú thích ngay trên
+  // đã tự cảnh báo: *"nó đỏ vì code DỜI NHÀ, không vì hành vi sai"*. Nới cửa sổ số chỉ hoãn được
+  // tới khối chú thích sau; bỏ chú thích thì phép đo mới đo đúng thứ nó khai là đang đo.
+  const code = sw.replace(/^\s*\/\/.*$/gm, "");
+  assert.ok(/scanWebPlatforms\(only\?: string\[\], account\?: string, opts[^)]*\)[\s\S]{0,200}platformsInUse\(\)/.test(code), "mặc định phải là nền đang dùng, không phải mọi nền");
 });
 
 // 🔄 ĐẢO ca cũ *"scheduler nền KHÔNG được tự kéo web"* (user chốt 2026-08-28).

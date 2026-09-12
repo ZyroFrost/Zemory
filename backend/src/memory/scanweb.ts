@@ -364,6 +364,92 @@ const GEMINI_AUTH = `(async()=>{try{
   return {token:true, email: email};
 }catch(e){ return {token:false, err:String(e)}; }})()`;
 
+// ── Gemini (gemini.google.com) — ĐƯỜNG KÉO, đo 2026-09-11 trên phiên đã đăng nhập ────────────
+//
+// `plan/07 §17.2` đã đo đúng phần khó: Gemini KHÔNG có REST cho lịch sử, mọi thứ đi qua một RPC
+// nội bộ `POST /_/BardChatUi/data/batchexecute`, và **`rpcid` đổi theo bản deploy** nên ghim nó là
+// dựng một parser sẽ vỡ IM LẶNG. Đợt này dò được cả hai đầu trên phiên thật:
+//   · danh sách  `MaZiqc`  args `[<giới hạn>,null,[0,null,1]]` → 101 hội thoại (id `c_…` · tiêu đề · epoch)
+//   · chi tiết   `hNvQHb`  args `[<id>,100,null,1,[0],[4],null,1]` → các LƯỢT, mỗi lượt:
+//        `t[0][1]`          = id bền của lượt (`r_…`) — khoá dedup
+//        `t[2][0][0]`       = chữ NGƯỜI hỏi
+//        `t[3][0][0][1][0]` = câu trả lời ĐẦY ĐỦ của Gemini
+//        (`t[3][12]…` chỉ là bản dựng lại của chính câu đó theo khối — KHÔNG lấy, sẽ thành trùng)
+//     Xác nhận 8/8 lượt trên 3 hội thoại có đủ cả hai đầu.
+//
+// Ba phép đo phụ, ghi ra để phiên sau khỏi dò lại: tham số đầu của `MaZiqc` là **giới hạn**, không
+// phải số trang (`29→30` · `100→101` · `500→101` ⇒ hết kho ở 101) · `hNvQHb` với limit 10 và 100 ra
+// **cùng 6 lượt** ⇒ 100 là đủ rộng · **29/30** mục trong danh sách có mốc epoch (mục thiếu ⇒ `at=0`,
+// rơi về hành vi cũ "đã có thì bỏ qua").
+//
+// 🔴 LƯỢT TRẢ VỀ THEO THỨ TỰ MỚI NHẤT TRƯỚC (epoch giảm dần) và adapter phải đảo lại. Đây là lý do
+// khoá dedup KHÔNG được dùng chỉ số thứ tự: thêm một lượt mới là mọi chỉ số lệch một bậc ⇒ nạp lại
+// toàn bộ hội thoại thành tin trùng. Dùng `r_…` của chính nền.
+const GEMINI_CALL = `const _zc=async function(rpc,args){
+    const w=window.WIZ_global_data||{};
+    const b=new URLSearchParams();
+    b.set('f.req', JSON.stringify([[[rpc, JSON.stringify(args), null, 'generic']]]));
+    if(w.SNlM0e) b.set('at', w.SNlM0e);
+    const u='/_/BardChatUi/data/batchexecute?rpcids='+rpc+'&source-path=%2Fapp&bl='+(w.cfb2h||'')+
+      '&f.sid='+(w.FdrFJe||'')+'&hl=vi&_reqid='+Math.floor(Math.random()*900000)+'&rt=c';
+    const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:b.toString()});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return await r.text();
+  };
+  // Bóc khung batchexecute: bỏ tiền tố chống-XSSI rồi lấy các khối ["wrb.fr","<rpc>","<json chuỗi>"].
+  // Đọc theo DÒNG + JSON.parse thay vì regex: bản mã có cả ký tự xuống dòng escape, regex cắt nhầm.
+  const _zu=function(txt,rpc){
+    const out=[];
+    const body=String(txt).replace(/^\\)\\]\\}'\\s*/,'');
+    for(const line of body.split('\\n')){
+      const s=line.trim(); if(s.charAt(0)!=='[') continue;
+      let a; try{ a=JSON.parse(s); }catch(e){ continue; }
+      (function walk(x){ if(!Array.isArray(x)) return;
+        if(x[0]==='wrb.fr' && x[1]===rpc && typeof x[2]==='string'){ try{ out.push(JSON.parse(x[2])); }catch(e){} }
+        for(const y of x) walk(y); })(a);
+    }
+    return out;
+  };`;
+
+const GEMINI_LIST = `(async()=>{
+  try{
+    ${GEMINI_CALL}
+    const blocks=_zu(await _zc('MaZiqc',[300,null,[0,null,1]]),'MaZiqc');
+    const seen={}, out=[];
+    (function walk(x,d){
+      if(!Array.isArray(x)||d>8) return;
+      if(typeof x[0]==='string' && /^c_[0-9a-f]{6,}/.test(x[0]) && !seen[x[0]]){
+        seen[x[0]]=1;
+        const strs=x.filter(function(y){ return typeof y==='string' && y!==x[0] && !/^rc?_[0-9a-f]{6,}$/.test(y); });
+        const eps=[]; (function n(y,dd){ if(typeof y==='number'&&y>1600000000&&y<2000000000) eps.push(y);
+          if(Array.isArray(y)&&dd<5) for(const z of y) n(z,dd+1); })(x,0);
+        // Mốc trả về dạng CHUỖI ISO: \`asItem\` nhân 1000 cho mọi SỐ (hợp đồng theo ChatGPT vốn trả
+        // giây) — trả epoch giây thô vẫn đúng, nhưng ISO thì không phụ thuộc hợp đồng đó.
+        out.push({id:x[0], title:(strs[0]||null), updated:(eps.length?new Date(eps[0]*1000).toISOString():null)});
+      }
+      for(const y of x) walk(y,d+1);
+    })(blocks,0);
+    return out;
+  }catch(e){ return []; }
+})()`;
+
+const geminiConv = (id: string): string => `(async()=>{
+  ${GEMINI_CALL}
+  const blocks=_zu(await _zc('hNvQHb',[${JSON.stringify(id)},100,null,1,[0],[4],null,1]),'hNvQHb');
+  const turns=(blocks[0]&&blocks[0][0])||[];
+  const out=[];
+  for(const t of turns){
+    const rid=(t&&t[0]&&t[0][1])||null;
+    const user=(t&&t[2]&&t[2][0]&&t[2][0][0])||null;
+    const model=(t&&t[3]&&t[3][0]&&t[3][0][0]&&t[3][0][0][1]&&t[3][0][0][1][0])||null;
+    const eps=[]; (function n(y,dd){ if(typeof y==='number'&&y>1600000000&&y<2000000000) eps.push(y);
+      if(Array.isArray(y)&&dd<5) for(const z of y) n(z,dd+1); })(t,0);
+    if(user||model) out.push({rid:rid, at:(eps.length?eps[0]:null), user:user, model:model});
+  }
+  if(!out.length) throw new Error('khong doc duoc luot nao');
+  return {conversationId:${JSON.stringify(id)}, turns:out};
+})()`;
+
 // ── GitHub Copilot (github.com/copilot) ──────────────────────────────────────
 // `meta[name="user-login"]` là dấu đăng nhập RẺ NHẤT và bền nhất của github.com — có mặt trên mọi
 // trang khi còn phiên, mất khi hết phiên. Không có email (GitHub không phơi email lên trang), nên
@@ -377,11 +463,227 @@ const COPILOT_AUTH = `(async()=>{try{
   return {token:false};
 }catch(e){ return {token:false, err:String(e)}; }})()`;
 
+/**
+ * GitHub Copilot — ĐƯỜNG KÉO, đo 2026-09-11 trên phiên `ZyroFrost`.
+ *
+ * Ba dữ kiện, mỗi cái là một cách hỏng nếu không biết:
+ *  ① Token: `POST github.com/github-copilot/chat/token` cần **CẢ HAI** header `GitHub-Verified-Fetch:
+ *    true` và `Accept: application/json` — đo được: thiếu cả hai ⇒ **422**, chỉ có verified ⇒ **400**,
+ *    đủ hai ⇒ **200** `{token, expiration, ssoOrgIDs}`.
+ *  ② Scheme là **`GitHub-Bearer`**, KHÔNG phải `Bearer` — nền nói thẳng khi sai:
+ *    `400 bad request: Authorization header is badly formatted`. Tìm ra bằng phép đo số học chứ
+ *    không phải đoán: header trang gửi dài 122 ký tự, token 108, chênh đúng 14 = `"GitHub-Bearer "`.
+ *  ③ Kèm `copilot-integration-id: copilot-chat` và `X-GitHub-Api-Version: 2025-05-01`.
+ *
+ * 🔴 **HÌNH DẠNG MỘT HỘI THOẠI CHƯA ĐO ĐƯỢC — và đó là lý do `copilotConv` KHÔNG đoán.** Tài khoản
+ * này trả `{threads: []}` (đo lại hai lần, 09-11 và 09-12: rỗng thật, `orgs_failed_to_load:false`),
+ * nên không có mẫu nào để dựng parser; `plan/07 §1` cấm viết bằng phỏng đoán. Lane vẫn MỞ vì mở thì
+ * bề mặt mới nói đúng sự thật *"đã kéo, kho nền rỗng"* thay vì *"chưa có đường kéo"*; và ngày người
+ * dùng chat câu đầu tiên, lượt kéo sẽ **báo lỗi rõ ràng** (xem `copilotConv`) chứ không nhét dữ liệu
+ * méo vào kho. Lỗi đó chính là tín hiệu để đi đo — không phải sự cố.
+ */
+const COPILOT_TOKEN = `const _tok=async function(){
+    const r=await fetch('/github-copilot/chat/token',{method:'POST',headers:{'GitHub-Verified-Fetch':'true','Accept':'application/json'}});
+    if(!r.ok) throw new Error('token HTTP '+r.status);
+    const j=await r.json();
+    if(!j || !j.token) throw new Error('token rong');
+    return j.token;
+  };
+  const _api='https://api.individual.githubcopilot.com';
+  const _H=function(t){ return {Authorization:'GitHub-Bearer '+t,'copilot-integration-id':'copilot-chat','X-GitHub-Api-Version':'2025-05-01'}; };`;
+
+const COPILOT_LIST = `(async()=>{
+  try{
+    ${COPILOT_TOKEN}
+    const t=await _tok();
+    const r=await fetch(_api+'/github/chat/threads',{headers:_H(t)});
+    if(!r.ok) return [];
+    const j=await r.json();
+    const arr=Array.isArray(j)?j:((j&&(j.threads||j.data||j.items))||[]);
+    return arr.map(function(x){
+      if(!x||!x.id) return null;
+      const u=x.updated_at||x.last_updated_at||x.created_at||null;
+      return {id:String(x.id), title:(x.name||x.title||null), updated:u};
+    }).filter(Boolean);
+  }catch(e){ return []; }
+})()`;
+
+const copilotConv = (id: string): string => `(async()=>{
+  ${COPILOT_TOKEN}
+  const t=await _tok();
+  // Hai đường ứng viên; lấy cái nào trả JSON. KHÔNG đoán hình dạng bên trong — trả NGUYÊN payload
+  // kèm nhãn đường đã dùng, để lượt đo đầu tiên có vật thật mà xem.
+  const tried=[];
+  for(const p of ['/github/chat/threads/${id}/messages','/github/chat/threads/${id}']){
+    try{
+      const r=await fetch(_api+p,{headers:_H(t)});
+      tried.push(p+' → '+r.status);
+      if(!r.ok) continue;
+      const j=await r.json();
+      return {threadId:'${id}', from:p, raw:j};
+    }catch(e){ tried.push(p+' → '+String(e)); }
+  }
+  throw new Error('chua doc duoc hoi thoai GitHub Copilot: '+tried.join(' | '));
+})()`;
+
+/**
+ * Phép kiểm đăng nhập cho hai nền Copilot của MICROSOFT (khác hẳn GitHub Copilot — `plan/07 §17.3`).
+ *
+ * 🔴 Viết THẬN TRỌNG theo đúng bài học `[2026-09-10h]`: bản đầu của Gemini suy `token` từ *"tìm thấy
+ * một chuỗi hình email"*, và một URL nội bộ của Google đã thành danh tính đóng dấu lên phiên. Nên ở
+ * đây `token` CHỈ dựa vào bằng chứng phiên SỐNG (có ô soạn tin trên trang, và không đang ở trang đăng
+ * nhập), còn danh tính thì tìm TRONG ĐÚNG vùng điều khiển tài khoản — không quét cả trang.
+ *
+ * ⚠ Selector chưa đo được trên phiên thật (chưa ai đăng nhập). Đây là hạng `loginOnly`, nên cái giá
+ * của việc đoán sai là *"báo chưa đăng nhập dù đã đăng nhập"* — nhìn thấy ngay và sửa bằng một lượt
+ * dò, chứ không phải ghi bậy vào kho. Thà vậy còn hơn đòi có phiên trước khi dựng thứ cho phép
+ * đăng nhập — đúng vòng luẩn quẩn user đã chỉ ra hôm 2026-09-10.
+ */
+// 🔴 Nhận CHUỖI mẫu rồi dựng regex TRONG trang bằng `new RegExp`, KHÔNG nội suy `source` trần.
+// Bản đầu viết `if (${re.source}.test(...))` ⇒ mã tới trang là `if (login\.live\.com|... .test(…))`
+// — không phải regex, mà là LỖI CÚ PHÁP, nên cả biểu thức ném và luôn trả "chưa đăng nhập". Đo
+// 2026-09-11: user đăng nhập M365 xong, trang có đủ ô soạn tin, zemory vẫn báo chưa nối. Đây đúng
+// họ bẫy "regex trong template literal" mà `05_TODO` đã ghi hai lần (`\s` bị JS ăn backslash).
+const msAuth = (loginHostPattern: string): string => `(async()=>{try{
+  if (new RegExp(${JSON.stringify(loginHostPattern)}, 'i').test(location.hostname)) return {token:false};
+  if (/^\\/(login|signin|oauth2|common)/i.test(location.pathname)) return {token:false};
+  // Bằng chứng phiên SỐNG: ô soạn tin dựng được. Đo trên phiên thật của M365 (2026-09-11):
+  // 1 phần tử [role="textbox"], 0 textarea — nên thứ tự chọn đặt role lên trước.
+  if (!document.querySelector('[role="textbox"], [contenteditable="true"], textarea')) return {token:false};
+  // DANH TÍNH: Microsoft không phơi email trên trang (đo được: 0 chuỗi email trong body). Thứ có
+  // thật là nhãn của nút tài khoản — đo được "Nguyễn Đức Huy - CNTT, Work account". Lấy ĐÚNG nhãn
+  // đó rồi cắt đuôi "…, Work/Personal account"; KHÔNG quét email cả trang (bẫy 2026-09-10: một URL
+  // nội bộ lọt qua lớp email và thành danh tính đóng dấu lên phiên).
+  var who = null;
+  var lab = [].slice.call(document.querySelectorAll('[aria-label]'))
+    .map(function(x){ return x.getAttribute('aria-label') || ''; })
+    .filter(function(s){ return /\\baccount\\b/i.test(s) && s.length < 120; })[0];
+  if (lab) who = lab.replace(/,?\\s*(work|personal|school)\\s+account\\s*$/i, '').trim() || null;
+  return who ? {token:true, email:who} : {token:true};
+}catch(e){ return {token:false, err:String(e)}; }})()`;
+
+const MSCOPILOT_AUTH = msAuth("login\\.live\\.com|login\\.microsoftonline\\.com");
+
+/**
+ * M365 Copilot: bằng chứng phiên là **LỜI GỌI DỮ LIỆU**, không phải giao diện đã vẽ xong.
+ *
+ * 🔴 Vì sao đổi khỏi `msAuth` (đo 2026-09-11, lượt chạy THẬT): bản dựa vào `[role="textbox"]` báo
+ * *"chưa đăng nhập"* trên một profile CÓ ĐỦ cookie phiên — `checkAuth` eval ngay sau khi trang về
+ * đúng origin, mà SPA của Microsoft cần ~30 giây mới dựng xong ô soạn tin. **Chưa vẽ ≠ chưa đăng
+ * nhập**, nhưng hậu quả thì y như nhau: lượt kéo dừng và đòi người dùng đăng nhập lại một tài khoản
+ * đang đăng nhập. Cùng họ với bẫy `awaitOrigin` đã vá 2026-08-28 — chỉ khác là chờ DOM thay vì chờ URL.
+ *
+ * Nay hỏi đúng thứ lượt kéo sẽ dùng: `POST /chat` (RefreshNavPane). Còn phiên ⇒ 200 + JSON, tức
+ * KHÔNG phải suy đoán mà là chính năng lực ta cần. Mất phiên ⇒ Microsoft đưa về `login.*` (chặn ở
+ * dòng đầu) hoặc trả HTML/4xx ⇒ không qua cửa `content-type: json`.
+ * Ô soạn tin GIỮ LÀM ĐƯỜNG LUI cho ngày Microsoft đổi khuôn lời gọi — mất một lớp thì còn lớp kia.
+ * Danh tính đọc SAU và được phép rỗng: `{token:true}` không kèm email vẫn là "đã nối", bề mặt có
+ * nhãn riêng cho ca đó (*"đã nối · chưa rõ tài khoản"*, cổng `scope-loginonly-row` ①b).
+ */
+const M365COPILOT_AUTH = `(async()=>{try{
+  if (new RegExp('login\\\\.microsoftonline\\\\.com|login\\\\.live\\\\.com', 'i').test(location.hostname)) return {token:false};
+  if (/^\\/(login|signin|oauth2|common)/i.test(location.pathname)) return {token:false};
+  var live = false;
+  try{
+    var r = await fetch('/chat', {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({action:'RefreshNavPane',conversationHistoryFilter:null,skipNotebooks:false,skipAgentListCache:true,enableLastMessage:false})});
+    live = r.ok && /json/i.test(r.headers.get('content-type') || '');
+  }catch(e){}
+  if (!live) live = !!document.querySelector('[role="textbox"], [contenteditable="true"], textarea');
+  if (!live) return {token:false};
+  var who = null;
+  var lab = [].slice.call(document.querySelectorAll('[aria-label]'))
+    .map(function(x){ return x.getAttribute('aria-label') || ''; })
+    .filter(function(s){ return /\\baccount\\b/i.test(s) && s.length < 120; })[0];
+  if (lab) who = lab.replace(/,?\\s*(work|personal|school)\\s+account\\s*$/i, '').trim() || null;
+  return who ? {token:true, email:who} : {token:true};
+}catch(e){ return {token:false, err:String(e)}; }})()`;
+
 /** Nền hạng CHỈ-NỐI chưa có đường kéo: hai biểu thức này KHÔNG BAO GIỜ được gọi (nhánh `loginOnly`
  *  thoát trước). Đặt giá trị vô hại + tên nói rõ, để nếu một ngày ai đó gọi tới thì nó trả rỗng
  *  chứ không ném — và cổng `scanweb-loginonly.test` canh đúng việc "không bao giờ tới đây". */
 const LOGIN_ONLY_LIST = "(async()=>[])()";
 const loginOnlyConv = (): string => "(async()=>null)()";
+
+/**
+ * Phép kiểm đăng nhập DÙNG CHUNG cho nền hạng CHỈ-NỐI mới (2026-09-12).
+ *
+ * Ràng buộc của user khi giao việc: *"chỉ tạo đường nối chứ ko nối sẵn, vì t ko có tk, chỉ tạo để
+ * user có thì nối thôi"*. Nên cả sáu nền dưới đây được dựng mà KHÔNG có một phiên nào để dò — và
+ * điều đó quyết định hình dạng hàm này:
+ *
+ * · **KHÔNG đọc danh tính.** Trả `{token:true}` trơn. Đây là chỗ đã trả giá 2026-09-10: bản Gemini
+ *   đầu suy danh tính từ *"tìm thấy một chuỗi hình email"* và một URL nội bộ của Google thành danh
+ *   tính đóng dấu lên phiên. Một biểu thức chung chạy trên sáu trang lạ mà đi mò nhãn tài khoản thì
+ *   chắc chắn tái diễn — `msAuth` lấy `aria-label` chứa chữ *account* là hợp lý cho Microsoft, còn
+ *   ở trang khác nó sẽ nhặt đúng chuỗi *"Your account settings"* làm tên người. Bề mặt đã có nhãn
+ *   cho ca này (*"đã nối · chưa rõ tài khoản"*), nên im lặng về danh tính là đáp án ĐÚNG, không
+ *   phải thiếu sót.
+ * · **Bằng chứng phiên = ô soạn tin dựng được**, sau khi loại trang đăng nhập. Chiều sai duy nhất
+ *   có thể xảy ra là *"báo chưa đăng nhập dù đã đăng nhập"* (SPA dựng chậm — bài học M365
+ *   2026-09-11). Với hạng CHỈ-NỐI cái giá đó THẤY ĐƯỢC NGAY và sửa bằng một lượt dò trên phiên
+ *   thật; chiều ngược lại (báo đã nối khi chưa) mới là thứ ghi bậy vào sổ.
+ *
+ * 🔴 Regex dựng TRONG trang bằng `new RegExp` trên một chuỗi, KHÔNG nội suy `.source` trần — nội suy
+ * đẻ ra lỗi cú pháp im lặng khiến biểu thức luôn trả "chưa đăng nhập" (đo 2026-09-11 trên M365).
+ */
+const loginOnlyAuth = (loginHostPattern?: string): string => `(async()=>{try{
+  ${loginHostPattern ? `if (new RegExp(${JSON.stringify(loginHostPattern)}, 'i').test(location.hostname)) return {token:false};` : "/* đăng nhập nằm CÙNG miền — không có host riêng để loại */"}
+  if (/^\\/(login|signin|sign-in|signup|auth|oauth|account\\/login)/i.test(location.pathname)) return {token:false};
+  if (!document.querySelector('[role="textbox"], [contenteditable="true"], textarea')) return {token:false};
+  return {token:true};
+}catch(e){ return {token:false, err:String(e)}; }})()`;
+
+// ── Microsoft 365 Copilot (m365.cloud.microsoft) ─────────────────────────────
+// ĐO 2026-09-11 trên phiên công ty đã đăng nhập (`plan/07 §17.5` — dò TRƯỚC, viết SAU).
+// Kết quả trái với dự đoán bi quan của `plan/07 §17.3` ③ (*"lịch sử ở Substrate, phải qua Graph +
+// admin consent"*): bề mặt web đọc lịch sử bằng ĐÚNG hai lời gọi CÙNG ORIGIN, xác thực bằng
+// COOKIE của chính trang — không cần token MSAL, không cần quyền quản trị.
+//
+//   liệt kê  POST /chat            body {action:"RefreshNavPane", …}  → store.conversationPageHistoryList.chats
+//            GET  /chat/all        Accept: application/json          → store.chatLandingPageHistoryList.chats
+//   chi tiết GET  /chat/conversation/<id>  Accept: application/json  → store.rawConversationResponse.messages[]
+//
+// 🔴 `Accept: application/json` là BẮT BUỘC ở đường chi tiết: thiếu nó cùng URL trả HTML **549 KB**
+// (đo: `json=false`), tức parser sẽ nhận một trang web và kết luận "không có tin".
+//
+// Hai vế đã đo và KHÔNG có, ghi ra để phiên sau khỏi dò lại: **không có phân trang** (thử
+// `count=200` · `top=200` · `page=2` · `conversationHistoryFilter:'all'` — cả bốn trả y hệt 6 mục)
+// và `action:'GetChatHistory'` trả rỗng. Danh sách vì vậy là HỢP của hai đường trên, dedup theo
+// `conversationId`; nền trả gì thì lấy đó, không bịa thêm vòng lặp trang.
+const M365_LIST = `(async()=>{
+  try{
+    const seen={}, out=[];
+    // Tin dùng được là tin có id VÀ có khoá 'chatName' — đó là dấu phân biệt một mục HỘI THOẠI
+    // với các object khác cũng mang 'conversationId' rải trong payload (vd trạng thái panel).
+    const add=function(c){ if(!c||!c.conversationId||seen[c.conversationId]) return; seen[c.conversationId]=1;
+      var ms=Number(c.updateTimeUtc||c.createTimeUtc||0);
+      // 🔴 MỐC LÀ MILI-GIÂY, và \`asItem\` nhân 1000 cho mọi số (hợp đồng cũ theo ChatGPT vốn trả
+      // GIÂY). Trả số thô ở đây là đẩy mốc đi ~56.000 năm ⇒ mọi hội thoại luôn "mới hơn bản đang
+      // giữ" ⇒ kéo lại toàn bộ mỗi lượt quét. Nên trả CHUỖI ISO: \`asItem\` đọc chuỗi bằng Date.parse.
+      out.push({id:c.conversationId, updated:(ms>0?new Date(ms).toISOString():null), title:(c.chatName||null)}); };
+    const dig=function(j){ (function walk(x,d){ if(!x||d>8) return;
+      if(Array.isArray(x)){ for(var i=0;i<x.length;i++) walk(x[i],d+1); return; }
+      if(typeof x==='object'){ if(x.conversationId && x.chatName!==undefined) add(x);
+        for(var k in x){ if(Object.prototype.hasOwnProperty.call(x,k)) walk(x[k],d+1); } } })(j,0); };
+    try{
+      const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body:JSON.stringify({action:'RefreshNavPane',conversationHistoryFilter:null,skipNotebooks:false,skipAgentListCache:true,enableLastMessage:false})});
+      if(r.ok) dig(await r.json());
+    }catch(e){}
+    try{ const r2=await fetch('/chat/all',{headers:{'Accept':'application/json'}}); if(r2.ok) dig(await r2.json()); }catch(e){}
+    return out;
+  }catch(e){ return []; }
+})()`;
+
+// MỘT DÒNG như \`claudeConv\` (bài học cùng file: bản nhiều dòng của claude fail 2/2 trong khi cùng
+// URL dò tay thì 200). Ném khi không 2xx — \`fetchConv\` dựa vào exception để retry/backoff.
+const m365Conv = (id: string): string =>
+  `(async()=>{const r=await fetch('/chat/conversation/${id}',{headers:{'Accept':'application/json'}});` +
+  `if(!r.ok) throw new Error('HTTP '+r.status);` +
+  `const j=await r.json(); const rc=j&&j.store&&j.store.rawConversationResponse;` +
+  `if(!rc) throw new Error('khong co rawConversationResponse');` +
+  `return {conversationId:(rc.conversationId||'${id}'), chatName:(rc.chatName||null), createTimeUtc:(rc.createTimeUtc||null), updateTimeUtc:(rc.updateTimeUtc||null), messages:(rc.messages||[])};})()`;
 
 export const PLATFORMS: Record<string, Platform> = {
   chatgpt: {
@@ -428,30 +730,146 @@ export const PLATFORMS: Record<string, Platform> = {
   },
   // ── Hai nền hạng CHỈ-NỐI (user giao 2026-09-10) ──────────────────────────────
   // Cổng riêng: 9224 · 9225 — mỗi nền một cổng, không dùng chung (xem chú thích `port`).
+  // ĐƯỜNG KÉO MỞ 2026-09-11 (đo trên phiên thật — xem khối `GEMINI_CALL`): nền này KHÔNG còn
+  // `loginOnly`, nó có `listExpr`/`convExpr` đo được như chatgpt/claude.
   gemini: {
     key: "gemini",
     url: "https://gemini.google.com/app",
     source: "gemini-web",
     authExpr: GEMINI_AUTH,
-    listExpr: LOGIN_ONLY_LIST,
-    convExpr: loginOnlyConv,
+    listExpr: GEMINI_LIST,
+    convExpr: geminiConv,
     sessionPrefix: "geminiweb-",
     tabRe: /gemini\.google\.com/,
     port: 9224,
-    loginOnly: true,
   },
+  // ĐƯỜNG KÉO MỞ 2026-09-12 (user: *"mọi kết nối phải lấy data thật, không có đăng nhập xong để 0"*).
+  // Tài khoản này đang **0 hội thoại** (đo hai lần), nên lane sẽ báo `done · 0` — đó là sự thật của
+  // NỀN, khác hẳn `login-only` (sự thật của zemory). Xem khối `COPILOT_TOKEN` cho phần chưa đo được.
   copilot: {
     key: "copilot",
     url: "https://github.com/copilot",
     source: "copilot-web",
     authExpr: COPILOT_AUTH,
-    listExpr: LOGIN_ONLY_LIST,
-    convExpr: loginOnlyConv,
+    listExpr: COPILOT_LIST,
+    convExpr: copilotConv,
     sessionPrefix: "copilotweb-",
     // CHỈ trang copilot của github.com — `tabRe` lỏng (cả github.com) sẽ bắt bất kỳ tab GitHub nào
     // đang mở và chạy eval ở đó, đúng lỗi mà chú thích `tabRe` cảnh báo.
     tabRe: /github\.com\/copilot/,
     port: 9225,
+  },
+  // ── BA nền tên Copilot, BA hệ khác nhau (user chốt 2026-09-11: *"phải tách 3 cái riêng"*) ──
+  // Khoá `copilot` GIỮ NGUYÊN nghĩa GitHub Copilot — đổi tên khoá là mất phiên đăng nhập đang có
+  // (`webAuth.copilot` + `data/browser/copilot`). Hai nền Microsoft mang khoá RIÊNG, cổng riêng.
+  mscopilot: {
+    key: "mscopilot",
+    url: "https://copilot.microsoft.com",
+    source: "mscopilot-web",
+    authExpr: MSCOPILOT_AUTH,
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "mscopilotweb-",
+    tabRe: /copilot\.microsoft\.com/,
+    port: 9226,
+    loginOnly: true,
+  },
+  // ĐƯỜNG KÉO ĐÃ MỞ 2026-09-11 (đo trên phiên thật — xem khối `M365_LIST`). Nền này KHÔNG còn
+  // `loginOnly`: nó có `listExpr`/`convExpr` đo được, nên vào vòng kéo như chatgpt/claude.
+  m365copilot: {
+    key: "m365copilot",
+    // Cổng vào của M365 Copilot; nó tự đưa sang trang đăng nhập của tổ chức khi chưa có phiên.
+    url: "https://m365.cloud.microsoft/chat",
+    source: "m365copilot-web",
+    authExpr: M365COPILOT_AUTH,
+    listExpr: M365_LIST,
+    convExpr: m365Conv,
+    sessionPrefix: "m365copilotweb-",
+    // Hai tên miền cùng phục vụ bề mặt này; `tabRe` phải nhận cả hai, nhưng KHÔNG được nới tới
+    // `*.microsoft.com` — lỏng là chạy eval nhầm trên một tab Microsoft bất kỳ đang mở.
+    tabRe: /m365\.cloud\.microsoft|copilot\.cloud\.microsoft/,
+    port: 9227,
+  },
+
+  // ── NỀN HẠNG CHỈ-NỐI thêm 2026-09-12 ──────────────────────────────────────────────────────
+  // User giao: *"thêm vào các nguồn đầy đủ của các con AI người ta hay xài, cả web lẫn local"*, và
+  // chốt ngay phạm vi: *"chỉ tạo đường nối chứ ko nối sẵn, vì t ko có tk, chỉ tạo để user có thì
+  // nối thôi"*. Sáu nền dưới đây vì vậy dừng ở đúng vế NỐI: có URL, có cửa sổ, có phép kiểm phiên.
+  // Đường KÉO chưa đo được (không có tài khoản để dò `listExpr`/`convExpr`) ⇒ `loginOnly: true`,
+  // và hạng đó tự lo hai việc: lượt quét trả `login-only` chứ KHÔNG phải `done · 0` (hai câu khác
+  // nghĩa hẳn), và nền RA KHỎI vòng tự kéo nên không có cửa sổ nào tự bật.
+  // ⚠ Nền nào cũng chỉ vào lượt quét khi được GỌI TÊN (`only`) — luật 2026-09-10h, chính là thứ
+  // bảo đảm "ko nối sẵn": nút Quét chung và nhịp nền bỏ qua hết.
+  grok: {
+    key: "grok",
+    url: "https://grok.com",
+    source: "grok-web",
+    authExpr: loginOnlyAuth("accounts\\.x\\.com|x\\.com/i/flow"),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "grokweb-",
+    tabRe: /grok\.com/,
+    port: 9228,
+    loginOnly: true,
+  },
+  deepseek: {
+    key: "deepseek",
+    url: "https://chat.deepseek.com",
+    source: "deepseek-web",
+    authExpr: loginOnlyAuth(),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "deepseekweb-",
+    tabRe: /chat\.deepseek\.com/,
+    port: 9229,
+    loginOnly: true,
+  },
+  perplexity: {
+    key: "perplexity",
+    url: "https://www.perplexity.ai",
+    source: "perplexity-web",
+    authExpr: loginOnlyAuth(),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "perplexityweb-",
+    tabRe: /perplexity\.ai/,
+    port: 9230,
+    loginOnly: true,
+  },
+  mistral: {
+    key: "mistral",
+    url: "https://chat.mistral.ai",
+    source: "mistral-web",
+    authExpr: loginOnlyAuth("auth\\.mistral\\.ai"),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "mistralweb-",
+    tabRe: /chat\.mistral\.ai/,
+    port: 9231,
+    loginOnly: true,
+  },
+  qwen: {
+    key: "qwen",
+    url: "https://chat.qwen.ai",
+    source: "qwen-web",
+    authExpr: loginOnlyAuth(),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "qwenweb-",
+    tabRe: /chat\.qwen\.ai/,
+    port: 9232,
+    loginOnly: true,
+  },
+  kimi: {
+    key: "kimi",
+    url: "https://www.kimi.com",
+    source: "kimi-web",
+    authExpr: loginOnlyAuth(),
+    listExpr: LOGIN_ONLY_LIST,
+    convExpr: loginOnlyConv,
+    sessionPrefix: "kimiweb-",
+    tabRe: /kimi\.com/,
+    port: 9233,
     loginOnly: true,
   },
 };
@@ -602,8 +1020,22 @@ function profileBrowser(profileDir: string, override?: string, keepSession = fal
   } catch {
     // Không có dấu mà thư mục đã có nội dung ⇒ profile dựng từ trước khi có cơ chế này,
     // và thời đó thứ tự là Edge-first ⇒ coi như Edge.
+    //
+    // 🔴 TRỪ KHI KHE ĐANG CÓ PHIÊN (vá 2026-09-11, sau khi lỗi này cắn HAI LẦN trong một buổi —
+    // M365 rồi Gemini, mỗi lần dời nguyên một phiên đang sống sang `…-bak-` rồi báo "chưa đăng nhập").
+    //
+    // **Thiếu dấu là thiếu BẰNG CHỨNG, không phải bằng chứng đã đổi hãng.** Suy đoán "chắc là Edge"
+    // vốn chỉ nhằm đoán đúng cho profile đời cũ; nhưng khi đoán SAI thì cái giá rơi đúng vào thứ
+    // người dùng quý nhất ở đây — phiên đăng nhập (đo trên máy này: profile do Brave dựng, không có
+    // dấu, và bị xử như profile Edge). Đổi hãng là việc CÓ THẬT và vẫn được phép; nó chỉ cần một
+    // bằng chứng thật: cái dấu do chính zemory ghi.
+    //
+    // Sai theo hướng nào cũng chỉ mất một lượt: nếu profile thật sự của hãng khác, trình duyệt mặc
+    // định mở nó ra không giải mã được cookie ⇒ trang báo chưa đăng nhập ⇒ người dùng đăng nhập một
+    // lần — ĐÚNG BẰNG cái giá của nhánh cũ, nhưng không phá một profile đang chạy được.
     try {
-      if (readdirSync(profileDir).some((f) => f !== BRAND_FILE)) built = EDGE_PATHS.find((x) => existsSync(x)) ?? null;
+      const coNoiDung = readdirSync(profileDir).some((f) => f !== BRAND_FILE);
+      if (coNoiDung && !keepSession) built = EDGE_PATHS.find((x) => existsSync(x)) ?? null;
     } catch {
       /* thư mục chưa tồn tại — profile mới tinh */
     }
@@ -1286,8 +1718,18 @@ async function scanWebInner(
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const profileDir = join(currentMemoryDir(), "browser", slot);
   const importDir = join(currentMemoryDir(), "imports", p.key);
-  mkdirSync(profileDir, { recursive: true });
-  mkdirSync(importDir, { recursive: true });
+  // 🔴 LƯỢT DÒ KHÔNG ĐƯỢC ĐỂ LẠI DẤU CHÂN (user 2026-09-11: *"sao cứ tự nối quài vậy"*).
+  // Hai `mkdirSync` này vốn chạy vô điều kiện ở dòng đầu, kể cả khi `probeOnly` chỉ định hỏi
+  // *"khe này còn đăng nhập không"* rồi thoát. Nhưng thư mục profile KHÔNG phải rác vô hại:
+  // `platformsInUse()` định nghĩa "nền đang dùng" = **có thư mục** ⇒ một lượt dò tự phong cho
+  // nền đó tư cách đang-dùng, và các lượt quét GỘP sau nhận nó vào. Đo được: hai nền Microsoft
+  // vừa khai xong, mở app một lần là có ngay `browser/mscopilot` · `browser/m365copilot` ·
+  // hai thư mục `imports/` — không ai bấm gì.
+  // Dò thì CHỈ ĐỌC; chỉ lượt làm việc thật mới được tạo thư mục.
+  if (!opts.probeOnly) {
+    mkdirSync(profileDir, { recursive: true });
+    mkdirSync(importDir, { recursive: true });
+  }
 
   // Reopen the window on a browser crash/close mid-run (persistent profile stays
   // logged in) so a long backfill self-heals instead of aborting at the socket.
@@ -1659,6 +2101,10 @@ async function scanWebInner(
         // so without this map the label is a raw uuid.
         const pkey = p.projectKeyOf?.(c);
         if (pkey && projects[pkey]) (c as { __zemory_project?: string }).__zemory_project = projects[pkey];
+        // TIÊU ĐỀ chỉ có ở DANH SÁCH trên một số nền — payload chi tiết không mang nó (đo 2026-09-11
+        // trên Gemini: `hNvQHb` trả các lượt, không trả tên hội thoại). Dập vào đây, đúng khuôn lane
+        // phụ Cowork đã dùng từ 07-31; phiên không tên thì recall khó dùng.
+        if (ids[i].title && !(c as { title?: unknown }).title) (c as { title?: string }).title = ids[i].title;
         batch.push(c);
         pulled++;
         consecFail = 0;
@@ -1827,17 +2273,31 @@ export async function showLinkedPage(platform: string, account: string | undefin
  * Brave HIỆN cho từng khe (`browser gone — relaunching window` trong log lúc 04:10), và khe mất phiên
  * còn mở luôn form đăng nhập không ai xin. Cửa sổ hiện chỉ được mở khi người dùng bấm nối (`/connect`).
  */
-export async function scanWebPlatforms(only?: string[], account?: string, opts: { hidden?: boolean } = {}): Promise<WebScanRow[]> {
-  // 🔴 CHỈ NỐI KHI ĐƯỢC GỌI TÊN (user chốt 2026-09-10: "chưa nối vào thật nha, chỉ khi t bấm mới nối vào").
-  // Nền hạng `loginOnly` chưa mở đường kéo, nên đưa nó vào một lượt quét GỘP thì không được gì mà lại bật
-  // một cửa sổ đăng nhập người dùng không yêu cầu — đúng cái phiền mà chú thích của `platformsInUse()` cảnh
-  // báo, và cùng doctrine với khe `need-login` bị loại khỏi vòng tự kéo (2026-09-02: "chỉ bật đăng nhập khi
-  // user chọn thôi"). `only` có nêu tên = cú bấm/lệnh tường minh cho ĐÚNG nền đó ⇒ chạy; `only` rỗng (nút
-  // Quét chung, nhịp nền) ⇒ bỏ qua. Một profile trống do lượt dò để lại KHÔNG được biến thành lời mời đăng nhập.
+/**
+ * Nền nào được vào một lượt quét — 🔴 **CHỈ NỐI KHI ĐƯỢC GỌI TÊN** (user chốt 2026-09-10:
+ * *"chưa nối vào thật nha, chỉ khi t bấm mới nối vào"*; nhắc lại 2026-09-12 khi giao thêm sáu nền:
+ * *"chỉ tạo đường nối chứ ko nối sẵn"*).
+ *
+ * Nền hạng `loginOnly` chưa mở đường kéo, nên đưa nó vào một lượt quét GỘP thì không được gì mà lại
+ * bật một cửa sổ đăng nhập người dùng không yêu cầu — cùng doctrine với khe `need-login` bị loại
+ * khỏi vòng tự kéo (2026-09-02: *"chỉ bật đăng nhập khi user chọn thôi"*). `only` nêu tên = cú
+ * bấm/lệnh tường minh cho ĐÚNG nền đó ⇒ chạy; `only` rỗng (nút Quét chung, nhịp nền) ⇒ bỏ qua. Một
+ * profile trống do lượt dò để lại KHÔNG được biến thành lời mời đăng nhập.
+ *
+ * Hàm THUẦN và tách riêng có chủ đích: luật này là thứ giữ lời hứa "không tự nối", nên nó phải đo
+ * được bằng HÀNH VI. Bản trước nằm inline trong một hàm async mở trình duyệt ⇒ cổng chỉ soi được
+ * CHỮ trong mã nguồn, mà chính repo này đã ghi điểm yếu đó: *"nó đỏ vì code DỜI NHÀ, không vì hành
+ * vi sai"* (`scanweb-platforms.test`).
+ */
+export function platformsForScan(only: string[] | undefined, inUse: string[]): string[] {
   const named = new Set(only ?? []);
-  const list = (only ?? platformsInUse())
+  return (only ?? inUse)
     .filter((k) => WEB_PLATFORMS.includes(k))
     .filter((k) => named.has(k) || !PLATFORMS[k]?.loginOnly);
+}
+
+export async function scanWebPlatforms(only?: string[], account?: string, opts: { hidden?: boolean } = {}): Promise<WebScanRow[]> {
+  const list = platformsForScan(only, platformsInUse());
   const out: WebScanRow[] = [];
   for (const platform of list) {
     // Không truyền khe cụ thể ⇒ quét MỌI tài khoản của nền đó. Bỏ sót khe nào là hội

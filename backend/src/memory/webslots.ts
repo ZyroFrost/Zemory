@@ -11,8 +11,23 @@ import { join } from "node:path";
 import { currentMemoryDir } from "./db.js";
 import { getWebAuth } from "../config/settings.js";
 
-/** Các nền web-chat mà nút/lệnh Quét biết tới. */
-export const WEB_PLATFORMS = ["chatgpt", "claude", "gemini", "copilot"];
+/** Các nền web-chat mà nút/lệnh Quét biết tới.
+ *  Sáu nền cuối thêm 2026-09-12 ở hạng CHỈ-NỐI (`PLATFORMS[k].loginOnly`): có mặt để người dùng CÓ
+ *  tài khoản bấm nối được, KHÔNG tự nối và không vào lượt quét gộp (`plan/07 §17`). */
+export const WEB_PLATFORMS = [
+  "chatgpt",
+  "claude",
+  "gemini",
+  "copilot",
+  "mscopilot",
+  "m365copilot",
+  "grok",
+  "deepseek",
+  "perplexity",
+  "mistral",
+  "qwen",
+  "kimi",
+];
 
 /**
  * Nền nào ĐANG DÙNG trên máy này = đã có profile trình duyệt của zemory.

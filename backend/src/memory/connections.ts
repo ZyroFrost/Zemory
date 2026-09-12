@@ -65,6 +65,22 @@ const WEB_LABEL: Record<string, { label: string; platform: string }> = {
   // 2026-08-28: đúng cái tên `claude-cowork` hiện HAI LẦN trên một màn — thứ user đang bắt.
   "claude-cowork": { label: "Cowork (claude.ai)", platform: "claude" },
   "gemini-web": { label: "Gemini (web)", platform: "gemini" },
+  // BA nền tên Copilot, BA hệ khác nhau (plan/07 §17.3) — nhãn phải nói rõ cái nào, không để
+  // trơ chữ "copilot". Thiếu dòng nào ở đây thì lane đó KHÔNG hiện trên /connections: đo
+  // 2026-09-11 là copilot-web vắng mặt hẳn khỏi 11 hàng, đúng kiểu hỏng mà chú thích
+  // claude-cowork phía trên đã cảnh báo.
+  "copilot-web": { label: "GitHub Copilot", platform: "copilot" },
+  "mscopilot-web": { label: "Microsoft Copilot", platform: "mscopilot" },
+  "m365copilot-web": { label: "Microsoft 365 Copilot", platform: "m365copilot" },
+  // Hạng CHỈ-NỐI thêm 2026-09-12. Nhãn là TÊN NỀN, không kèm chữ "(chưa kéo được)": trạng thái là
+  // việc của cột trạng thái (`login-only`), nhét nó vào tên là một sự thật bị đóng băng sai chỗ
+  // — ngày đường kéo mở thì cái tên vẫn nói dối.
+  "grok-web": { label: "Grok", platform: "grok" },
+  "deepseek-web": { label: "DeepSeek", platform: "deepseek" },
+  "perplexity-web": { label: "Perplexity", platform: "perplexity" },
+  "mistral-web": { label: "Le Chat (Mistral)", platform: "mistral" },
+  "qwen-web": { label: "Qwen Chat", platform: "qwen" },
+  "kimi-web": { label: "Kimi", platform: "kimi" },
 };
 
 const LOCAL_LABEL: Record<string, string> = {
@@ -112,7 +128,13 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
 
   const byMessages = new Map(rows.map((r) => [r.source, r.n]));
   const seen = new Set(rows.map((r) => r.source));
-  for (const s of Object.keys(WEB_LABEL)) if (s !== "gemini-web") seen.add(s); // web luôn hiện: đó là thứ cần nối
+  // Web LUÔN hiện ở đây: `/connections` là nguồn của hộp "＋ Thêm nguồn", tức bề mặt KHÁM PHÁ —
+  // nó phải bày đủ mọi nền zemory hỗ trợ kèm trạng thái thật. (Cây Nguồn thì ngược lại, chỉ bày
+  // nền ĐÃ dùng — hai bề mặt hai vai, xem khối "BỘ CHUẨN" ở `scope.ts`.)
+  // 🔴 Ngoại lệ cứng `s !== "gemini-web"` ĐÃ GỠ 2026-09-11: nó là vết của thời Gemini chưa được
+  // hỗ trợ, và từ 10/09 thì Gemini đã nối được thật — để nguyên là nền duy nhất đã đăng nhập mà
+  // vắng mặt khỏi bảng Liên kết lẫn hộp Thêm nguồn. Cùng họ với việc `copilot-web` thiếu nhãn.
+  for (const s of Object.keys(WEB_LABEL)) seen.add(s);
   const auth = getWebAuth();
   // 🔴 BẰNG CHỨNG MỚI NHẤT THẮNG (bug đo 2026-09-02). `webAuth` là kết quả lần KIỂM cuối — có thể
   // đã nhiều ngày tuổi; `webPull` là kết quả lần KÉO cuối. Khi máy đổi trình duyệt mặc định
@@ -157,7 +179,12 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           // UI là trái luật 0-hardcode (`02_RULES §Ngôn ngữ`). `detail` nay chỉ còn ở lane local
           // (đường kho — không phải chữ, không phải dịch).
           detailCode: lost ? "needLogin" : st ? "lastChecked" : "neverChecked",
-          detailArgs: lost ? { at: pl.at } : st ? { at: st.at, who: st.who } : undefined,
+          // 🔴 `pl` CÓ THỂ VẮNG khi `lost` đúng. `lost` = `webLaneLinked(st,pl) === false`, mà hàm
+          // đó trả false chỉ cần `st.ok === false` — không đòi có sổ KÉO. Bản cũ đọc thẳng `pl.at`
+          // nên khe "đã thử nối, hỏng, chưa kéo lần nào" làm `listConnections` NÉM, kéo sập cả
+          // `/connections`. Nằm im được lâu vì khe duy nhất từng `ok:false` (chatgpt main) tình cờ
+          // cũng có sổ kéo `need-login`; lộ ra 2026-09-11 khi `m365copilot` rơi đúng ca đó.
+          detailArgs: lost ? { at: pl?.at ?? st?.at } : st ? { at: st.at, who: st.who } : undefined,
           // Số tin là của cả LANE (mọi tài khoản dồn về một lane) — chỉ ghi ở dòng đầu để
           // không cộng dồn nhìn như nhân đôi.
           messages: acct === "main" ? messages : 0,

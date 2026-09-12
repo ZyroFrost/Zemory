@@ -11,6 +11,7 @@
 //   to DISCOVER locations, then fast-scan routinely.
 
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { join, sep } from "node:path";
 import { isDir, safeReaddir, safeStat } from "./adapters/_shared.js";
 import type { Adapter, TranscriptFile } from "./adapters/types.js";
@@ -64,12 +65,34 @@ const IGNORE_TAILS = [
   join("ms-vscode.powershell", "sessions"),
 ].map((t) => sep + t.toLowerCase());
 
+/**
+ * Roots the FAST scan joins each adapter signature onto.
+ *
+ * 🔴 Sửa 2026-09-12: bản cũ bỏ `%APPDATA%`/`%LOCALAPPDATA%` khi chúng nằm DƯỚI home — mà trên
+ * Windows chúng LUÔN nằm dưới home (`C:\Users\<u>\AppData\Roaming`), nên thực tế fast scan chỉ
+ * còn đúng một root. Không ai thấy suốt một năm vì mọi adapter tới nay đều cất kho thẳng dưới
+ * home (`.claude` · `.codex` · `.continue` · `.lmstudio`). Adapter đầu tiên có kho trong
+ * `%APPDATA%` (Copilot Chat của VS Code) lộ ngay: `memory scan` báo "scanned 323 file(s)" và
+ * KHÔNG hề đụng tới nó — hỏng LẶNG, lệnh vẫn xanh.
+ *
+ * Phép lọc cũ là tối ưu đặt sai chỗ: fast scan chỉ `join(root, signature)` + một `isDir` cho mỗi
+ * cặp (adapter, root) — thêm hai root là thêm vài chục lời gọi stat, không phải một lượt đi bộ.
+ * Trùng lặp vẫn vô hại: `recordStore` khử theo đường và `seen` khử theo file.
+ *
+ * 🔴 Và CHỈ khi đang quét home THẬT. Người gọi truyền `home` khác nghĩa là họ muốn một gốc CÔ LẬP
+ * (test, hồ sơ người dùng khác) — kéo `%APPDATA%` của máy vào đó là nhiễm bẩn. Bản trước lỗi đúng
+ * chiều ngược lại (`!startsWith`) nên *im lặng* làm cả hai điều sai: quét thật thì thiếu root, quét
+ * cô lập thì thừa root. Cổng `scope-ingest` bắt được vế thứ hai ngay khi có adapter đầu tiên cất kho
+ * trong `%APPDATA%` — trước đó nó nhiễm bẩn mà không hàng nào rơi vào nên không ai thấy.
+ * So sánh với `homedir()` thay vì đoán theo tiền tố: hồ sơ roaming của công ty trỏ `%APPDATA%` ra
+ * ngoài home vẫn phải được quét.
+ */
 function defaultRoots(home: string): string[] {
   const roots = [home];
-  const appdata = process.env.APPDATA;
-  const local = process.env.LOCALAPPDATA;
-  if (appdata && !appdata.startsWith(home)) roots.push(appdata);
-  if (local && !local.startsWith(home)) roots.push(local);
+  if (home.toLowerCase() !== homedir().toLowerCase()) return roots;
+  for (const p of [process.env.APPDATA, process.env.LOCALAPPDATA]) {
+    if (p && !roots.some((r) => r.toLowerCase() === p.toLowerCase())) roots.push(p);
+  }
   return roots;
 }
 
