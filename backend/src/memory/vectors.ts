@@ -97,10 +97,15 @@ function tableExists(db: Conn, name = "vec_chunks"): boolean {
  * table can be absent on a store that never embedded (plan/08 §8b trap), so fall back to the
  * virtual table rather than throw (điều 9).
  */
-export function noVectorYetSql(db: Conn, idExpr = "messages.id"): string {
+export function hasVectorSql(db: Conn, idExpr = "messages.id"): string {
   return tableExists(db, "vec_chunks_rowids")
-    ? ` AND NOT EXISTS (SELECT 1 FROM vec_chunks_rowids r WHERE r.rowid = ${idExpr})`
-    : ` AND NOT EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = ${idExpr})`;
+    ? `EXISTS (SELECT 1 FROM vec_chunks_rowids r WHERE r.rowid = ${idExpr})`
+    : `EXISTS (SELECT 1 FROM vec_chunks WHERE vec_chunks.rowid = ${idExpr})`;
+}
+
+/** Phủ định của `hasVectorSql`, dạng MẢNH `WHERE` nối được (giữ nguyên chữ ký cũ — nhiều nơi gọi). */
+export function noVectorYetSql(db: Conn, idExpr = "messages.id"): string {
+  return ` AND NOT ${hasVectorSql(db, idExpr)}`;
 }
 
 // Tool CALLS (tool_name set — a command + its args) carry almost no semantic
@@ -752,6 +757,73 @@ export function vectorOutOfScope(dbPath: string = currentMemoryDb()): number {
     const base = `SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!='' AND ${notInScope}`;
     const sql = tableExists(db) ? `${base} AND id NOT IN (SELECT rowid FROM vec_chunks)` : base;
     return (db.prepare(sql).get() as { c: number }).c;
+  } finally {
+    db.close();
+  }
+}
+
+/** Năm con số của dashboard, lấy trong MỘT lượt quét. Xem `memoryStats()`. */
+export interface MemoryStats {
+  /** `SUM(LENGTH(content))` trên toàn bảng — nguyên liệu cho ô Tokens (≈ chars/4). */
+  chars: number;
+  /** Tin đáng nhúng (mẫu số của coverage). */
+  embeddable: number;
+  /** Tin đáng nhúng ĐÃ có vector (tử số) — tính cả tin dài chỉ có cửa sổ phụ. */
+  covered: number;
+  /** Tin đáng nhúng, lane chưa bị bỏ tick, CHƯA có vector. */
+  remaining: number;
+  /** Tin CỐ Ý nằm ngoài phạm vi nhúng và chưa có vector. */
+  outOfScope: number;
+}
+
+/**
+ * NĂM CON SỐ, MỘT LƯỢT QUÉT — thay cho bốn lượt đi bộ riêng qua cùng một bảng.
+ *
+ * 🔴 Vì sao (đo 2026-09-10, kho 3.092 MB · 355.462 vector): `/memory-status` mất **137,3 s**, và
+ * bốn phép dưới đây chiếm **129 s (94%)** — `vectorCoverage` 48,7 · `vectorRemaining` 38,2 ·
+ * `SUM(LENGTH(content))` 22,8 · `vectorOutOfScope` 18,8. Cả bốn quét CÙNG bảng `messages`, mỗi
+ * cái mở một kết nối riêng và tự dựng lại tập vector từ đầu. Người dùng đọc cái giá đó thành
+ * *"mở app đứng 2–3 phút"*, và vì cờ công tắc từng đi ké gói này nên còn đọc thành *"setting
+ * không lưu"*. Việc tìm kiếm THẬT không dính dáng: đo cùng ngày, recall hybrid **1,8–3,2 s**.
+ *
+ * **Ngữ nghĩa giữ NGUYÊN VẸN, không nhân dịp gộp mà nắn lại.** Hai chỗ dễ nắn nhầm:
+ * · `covered` tính cả tin chỉ có cửa sổ phụ (`vec_map`), `remaining`/`outOfScope` thì KHÔNG.
+ *   Đo được hai định nghĩa lệch **đúng 2 hàng** trên 6.740 tin bị chunk — nhỏ, nhưng thật, nên
+ *   hàm này giữ hai biểu thức riêng thay vì gộp thành một cho gọn.
+ * · Bộ lọc lane bỏ-tick chỉ áp cho `remaining` (đúng như bản cũ), không áp cho ba số kia.
+ *
+ * Rẻ hơn nhờ hai điều, không nhờ mẹo nào khác: một lượt đi bộ thay vì bốn, và phép *"hàng này
+ * có vector chưa"* hỏi **bảng bóng `vec_chunks_rowids`** (`rowid INTEGER PRIMARY KEY` — một tra
+ * cứu chỉ mục) thay vì bảng ảo vec0, vốn trả lời một phép tra bằng cách nạp cả khối ~3 MB.
+ * Cùng bài học `coverage()` học ngày 27/07 và `embedPending` học 07/09.
+ */
+export function memoryStats(dbPath: string = currentMemoryDb()): MemoryStats {
+  const db = vecConnect(dbPath);
+  try {
+    const inScope = EMBEDDABLE();
+    const ex = SCOPE_EXCLUDE_SQL();
+    const nonEmpty = "content IS NOT NULL AND content!=''";
+    const scoped = `(1=1${inScope})`;
+    const notExcluded = `(1=1${ex.sql})`;
+    // Kho chưa từng nhúng ⇒ không có bảng nào để hỏi. Rơi về ĐÚNG hành vi của bốn hàm gốc:
+    // `covered` = 0, còn `remaining`/`outOfScope` đếm mà không lọc vector (điều 9).
+    const has = tableExists(db);
+    const hasBase = has ? hasVectorSql(db) : "0";
+    // `covered` cộng thêm tin dài chỉ hiện diện qua cửa sổ phụ. `vec_map(message_id)` có index.
+    const hasAny = has ? `(${hasBase} OR EXISTS (SELECT 1 FROM vec_map m WHERE m.message_id = messages.id))` : "0";
+    const sum = (cond: string) => `COALESCE(SUM(CASE WHEN ${cond} THEN 1 ELSE 0 END),0)`;
+    const row = db
+      .prepare(
+        `SELECT COALESCE(SUM(LENGTH(content)),0) AS chars,
+                ${sum(`${nonEmpty} AND ${scoped}`)} AS embeddable,
+                ${sum(`${nonEmpty} AND ${scoped} AND ${hasAny}`)} AS covered,
+                ${sum(`${nonEmpty} AND ${scoped} AND ${notExcluded} AND NOT (${hasBase})`)} AS remaining,
+                ${sum(`${nonEmpty} AND NOT ${scoped} AND NOT (${hasBase})`)} AS outOfScope
+         FROM messages`,
+      )
+      .get(...ex.params) as MemoryStats;
+    // Phạm vi = tất cả ⇒ không có gì bị bỏ ngoài (bản cũ thoát sớm trả 0; giữ y hệt).
+    return { ...row, outOfScope: inScope ? row.outOfScope : 0 };
   } finally {
     db.close();
   }

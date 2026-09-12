@@ -93,8 +93,13 @@
       // Lọc thuần phía truy vấn (`withAtt=1`), KHÔNG phải setting lưu ở server như
       // hybrid/rerank — nên chỉ bật/tắt tại chỗ rồi chạy lại.
       else if(k==='img'){rf.classList.toggle('on');doRecall();}
-      else if(k==='hybrid'){var on=!rf.classList.contains('on');rf.classList.toggle('on',on);zPost('/set-hybrid?on='+(on?1:0)).then(function(){if(zid('rq').value.trim().length>=2)doRecall();});}
-      else if(k==='rerank'){var o2=!rf.classList.contains('on');rf.classList.toggle('on',o2);zPost('/set-rerank?on='+(o2?1:0)).then(function(){if(zid('rq').value.trim().length>=2)doRecall();});}
+      // Hai chip này ghi ĐÚNG cùng khoá với công tắc ở màn Tính năng ⇒ cùng luật: lưu hỏng thì gạt
+      // chip về chỗ cũ + báo, và KHÔNG chạy lại truy vấn (chạy lại là trưng kết quả của một cấu hình
+      // chưa hề được ghi). Xem `zSave` ở core.js.
+      else if(k==='hybrid'){var on=!rf.classList.contains('on');rf.classList.toggle('on',on);
+        zSave('/set-hybrid?on='+(on?1:0),function(){rf.classList.toggle('on',!on);}).then(function(j){if(!j)return;if(Z.mem)Z.mem.hybrid=on;if(zid('rq').value.trim().length>=2)doRecall();});}
+      else if(k==='rerank'){var o2=!rf.classList.contains('on');rf.classList.toggle('on',o2);
+        zSave('/set-rerank?on='+(o2?1:0),function(){rf.classList.toggle('on',!o2);}).then(function(j){if(!j)return;if(Z.mem)Z.mem.rerank=o2;if(zid('rq').value.trim().length>=2)doRecall();});}
       return;
     }
     if(e.target.closest('[data-act="recall"]'))doRecall();
