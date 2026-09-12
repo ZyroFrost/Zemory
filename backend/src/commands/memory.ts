@@ -16,6 +16,7 @@ import { dropVectorIndex, embedPending, memoryStats, vectorCount, vectorIndexInf
 import { runRagBench } from "../evals/ragbench.js";
 import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
+import { WEB_PLATFORMS } from "../memory/webslots.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, storageInfo } from "../memory/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybridChecked, searchMulti } from "../memory/search.js";
@@ -1345,7 +1346,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  scan              ingest agent transcripts from known locations into the",
       "                    global memory (<repo>/data/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
-      "  scan-web [--platform chatgpt|claude|m365copilot|gemini|copilot|mscopilot] [--limit N] [--refresh]",
+      // Danh sách SINH RA từ `WEB_PLATFORMS`, không gõ tay: bản cũ liệt kê sáu nền và đứng im khi
+      // đợt 2026-09-12 thêm sáu nền nữa — người gõ `--help` thấy một nửa năng lực đang có. Cùng họ
+      // với `WEB_LABEL` thiếu `copilot-web` (10/09) làm cả một lane vắng mặt khỏi `/connections`:
+      // một danh sách chép tay là một chỗ chắc chắn sẽ lệch.
+      `  scan-web [--platform ${WEB_PLATFORMS.join("|")}] [--limit N] [--refresh]`,
       "                    capture web-chat (ChatGPT · claude.ai · Microsoft 365 Copilot) via a login-once browser",
       "                    window (origin=web). Ingests in batches + resumes; --limit N pulls",
       "                    the N newest for a quick verify. Session expired or signed out →",

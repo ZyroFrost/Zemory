@@ -27,7 +27,7 @@
 //     update — that is the cost of this route, and it is the user's call to take it.
 
 import Database from "better-sqlite3";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { currentMemoryDir } from "./db.js";
@@ -171,6 +171,12 @@ const AUTH_HOSTS = ["accounts.google.com", "google.com", "login.microsoftonline.
 /** Whether an identity provider in AUTH_HOSTS holds a LIVE session (names only). */
 function hasAuthSession(dbPath: string): boolean {
   if (!existsSync(dbPath)) return false;
+  // Câu hỏi này KHÔNG phụ thuộc nền — mọi nền hỏi y hệt nhau, nên trước khi có đệm nó bị lặp
+  // đúng N-nền lần trên cùng một kho. Đây là phần đắt nhất của lượt quét.
+  return jarCached(dbPath, "auth", () => hasAuthSessionRaw(dbPath));
+}
+
+function hasAuthSessionRaw(dbPath: string): boolean {
   const db = new Database(dbPath, { readonly: true });
   try {
     const hostLike = AUTH_HOSTS.map(() => "host_key LIKE ?").join(" OR ");
@@ -202,15 +208,103 @@ export function jarHasSession(dbPath: string, platform: string): boolean | null 
 }
 
 /** Rows whose NAME marks a live session for this platform. Names only — values are never read. */
-function sessionCount(dbPath: string, hosts: string[], nameLike: string): number {
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
-    const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE name LIKE ? AND (${like})`).get(nameLike, ...hosts.map((h) => `%${h}`)) as { n: number };
-    return row?.n ?? 0;
-  } finally {
-    db.close();
+/**
+ * Đệm kết quả đọc kho cookie theo (đường kho · mốc sửa · câu hỏi).
+ *
+ * 🔴 Vì sao cần — ĐO 2026-09-12 trong lượt audit: `/connections` mất **10–12 giây** ở lượt ẤM, và
+ * truy xuống thì chi phí không nằm ở việc đọc (ba kho cộng lại chỉ **0,6 MB**) mà ở việc **MỞ** file
+ * SQLite đang bị chính trình duyệt của người dùng giữ: một lượt quét ba kho mất **1.455 ms**. Mà
+ * `listConnections` hỏi lại đúng ba kho đó cho TỪNG nền — `hostCounts` · `sessionCount` ·
+ * `hasAuthSession` — nên 12 nền thành ~17 s. Đo A/B một biến: 6 nền cũ 7,3 s · 12 nền 16,2 s. Tức
+ * đợt thêm sáu nền CHỈ-NỐI đã nhân đôi một chi phí vốn đã đắt sẵn.
+ *
+ * Đệm theo **mốc sửa file**, không chỉ theo thời gian: người dùng đăng nhập vào trình duyệt là kho
+ * cookie đổi ⇒ khoá đệm tự lệch ⇒ lượt sau đọc lại thật. Trần 30 giây là lưới thứ hai cho ca
+ * Chromium còn giữ thay đổi trong WAL mà chưa chạm file chính. Cửa sổ cũ nhất có thể thấy vì vậy là
+ * 30 giây, và thứ nó ảnh hưởng chỉ là GỢI Ý *"mượn được từ Chrome"* — không phải quyết định ghi.
+ */
+const JAR_TTL_MS = 30_000;
+const jarCache = new Map<string, { at: number; mtimeMs: number; v: number | boolean }>();
+/** Kho MỞ KHÔNG ĐƯỢC, nhớ theo lượt — xem `jarCached`. */
+const jarUnreadable = new Map<string, number>();
+
+/** Số lượt THẬT SỰ chạm vào kho, và số lượt được đệm cứu. Chỉ để ĐO — xem `jarProbeCounters`. */
+const jarProbe = { opened: 0, skipped: 0 };
+
+/**
+ * Đếm lượt chạm kho, cho cổng đo được thứ bản vá hứa.
+ *
+ * Vì sao phải phơi ra: hiệu quả ở đây là **không làm một việc**, mà "không làm" thì không quan sát
+ * được từ kết quả trả về — hai bản (có đệm và không) trả y hệt nhau, chỉ khác thời gian. Neo cổng
+ * vào thời gian thì nó chập chờn theo máy; neo vào bộ đếm thì nó đo đúng cơ chế. Không có nó,
+ * bản vá này mục đi mà mọi cổng vẫn xanh — đúng cách `/connections` tụt xuống 16 giây mà không ai
+ * biết (audit 2026-09-12).
+ */
+export function jarProbeCounters(): { opened: number; skipped: number } {
+  return { ...jarProbe };
+}
+
+/** Test seam: bỏ đệm để một ca dựng kho rồi đọc lại trong cùng tiến trình không thấy giá trị cũ. */
+export function clearJarCache(): void {
+  jarCache.clear();
+  jarUnreadable.clear();
+  jarProbe.opened = 0;
+  jarProbe.skipped = 0;
+}
+
+/**
+ * 🔴 CHỖ ĐẮT THẬT SỰ, đo 2026-09-12: **một kho KHÔNG mở được**. Trình duyệt đang chạy giữ khoá
+ * `Cookies` của nó, và một lượt `new Database(...)` trượt mất **1.448 ms** mới chịu ném — trong khi
+ * hai kho mở được chỉ tốn **0–1 ms**. Code cũ thử lại đúng kho bị giữ đó cho TỪNG nền, nên
+ * `/connections` = số nền × 1,45 s: đo 12 nền **17,4 s**, và `findBorrowSource` 12 nền **16,2 s**.
+ * Sáu nền thêm hôm nay không tạo ra chi phí này — chúng chỉ nhân đôi nó (6 nền: 7,3 s).
+ *
+ * Nên đệm ở đây gồm HAI phần: kết quả đọc được (theo mốc sửa file — người dùng đăng nhập là kho
+ * đổi, khoá tự lệch, đọc lại thật) **và** sự kiện *"kho này mở không được"*. Vế thứ hai mới là vế
+ * cứu thời gian: nhớ một lần rồi ném NGAY, thay vì chờ hết 1,45 s cho mỗi nền.
+ * Hành vi phía ngoài KHÔNG đổi — vẫn ném đúng như trước, người gọi vẫn `try/catch` như cũ.
+ * Cái giá: đóng trình duyệt xong thì tối đa 30 giây zemory mới thấy kho mở được. Chấp nhận được,
+ * vì thứ bị ảnh hưởng chỉ là GỢI Ý *"mượn được từ Chrome"*, không phải một phép ghi.
+ */
+function jarCached<T extends number | boolean>(dbPath: string, question: string, read: () => T): T {
+  const now = Date.now();
+  const failedAt = jarUnreadable.get(dbPath);
+  if (failedAt !== undefined && now - failedAt < JAR_TTL_MS) {
+    jarProbe.skipped++;
+    throw new Error(`cookie store is held open by the browser: ${dbPath}`);
   }
+  let mtimeMs: number;
+  try {
+    mtimeMs = statSync(dbPath).mtimeMs;
+  } catch {
+    return read(); // không stat được thì đừng đệm — đọc thẳng, fail-open
+  }
+  const key = `${dbPath}|${question}`;
+  const hit = jarCache.get(key);
+  if (hit && hit.mtimeMs === mtimeMs && now - hit.at < JAR_TTL_MS) return hit.v as T;
+  let v: T;
+  jarProbe.opened++;
+  try {
+    v = read();
+  } catch (e) {
+    jarUnreadable.set(dbPath, now);
+    throw e;
+  }
+  jarCache.set(key, { at: now, mtimeMs, v });
+  return v;
+}
+
+function sessionCount(dbPath: string, hosts: string[], nameLike: string): number {
+  return jarCached(dbPath, `sess|${nameLike}|${hosts.join(",")}`, () => {
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
+      const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE name LIKE ? AND (${like})`).get(nameLike, ...hosts.map((h) => `%${h}`)) as { n: number };
+      return row?.n ?? 0;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export interface BorrowResult {
@@ -244,14 +338,16 @@ export interface BorrowOptions {
 
 /** Count rows per host in a cookie DB. Names only — values are never read. */
 function hostCounts(dbPath: string, hosts: string[]): number {
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
-    const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE ${like}`).get(...hosts.map((h) => `%${h}`)) as { n: number };
-    return row?.n ?? 0;
-  } finally {
-    db.close();
-  }
+  return jarCached(dbPath, `hosts|${hosts.join(",")}`, () => {
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const like = hosts.map(() => "host_key LIKE ?").join(" OR ");
+      const row = db.prepare(`SELECT COUNT(1) n FROM cookies WHERE ${like}`).get(...hosts.map((h) => `%${h}`)) as { n: number };
+      return row?.n ?? 0;
+    } finally {
+      db.close();
+    }
+  });
 }
 
 export interface BorrowSource {

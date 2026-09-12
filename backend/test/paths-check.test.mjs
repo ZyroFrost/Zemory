@@ -335,7 +335,15 @@ test("FE: hàng `paths` nằm ở HARNESS (DOCS), là kind check, và có trong 
   const { readFileSync } = await import("node:fs");
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   assert.match(sys, /\{k:'paths',grp:'f\.grpHarness',n:'f\.paths',kind:'check',feat:'paths'/, "hàng chính thức phải là check trong nhóm harness");
-  assert.match(sys, /SYS_CHECKS=\['memory','validate','grill','paths'\]/, "nút Kiểm lại tất cả + nhịp tự kiểm phải bao gồm paths");
+  // 🔴 Neo theo THÀNH VIÊN, không theo TOÀN BỘ danh sách. Bản cũ ghim nguyên mảng
+  // `['memory','validate','grill','paths']`, nên đợt 2026-09-12b thêm hàng `procs` vào SYS_CHECKS
+  // làm ca này ĐỎ — trong khi `paths` (thứ nó tồn tại để canh) vẫn nằm nguyên đó. Cổng đo sai thứ
+  // nó khai là đang đo: thêm một hàng kiểm MỚI là việc tốt, mà nó lại phạt. Và vì phiên đó chưa
+  // chạy `npm run check` lượt nào, cổng đứng đỏ từ 12/09 tới khi audit 2026-09-12 bắt được.
+  const arr = /SYS_CHECKS=\[([^\]]*)\]/u.exec(sys);
+  assert.ok(arr, "phải có danh sách SYS_CHECKS");
+  const members = [...arr[1].matchAll(/'([^']+)'/gu)].map((m) => m[1]);
+  assert.ok(members.includes("paths"), `nút Kiểm lại tất cả + nhịp tự kiểm phải bao gồm paths — thấy: ${members.join(", ")}`);
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   for (const k of ["f.paths", "f.doc.paths"]) assert.equal((chrome.match(new RegExp(`'${k.replace(".", "\\.")}':`, "g")) || []).length, 2, `${k} phải có ở CẢ HAI từ điển`);
 });
