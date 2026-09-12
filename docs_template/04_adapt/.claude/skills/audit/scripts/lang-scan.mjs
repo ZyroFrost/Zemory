@@ -140,6 +140,7 @@ for (const f of files) {
     }
   }
 
+  let inBlock = false // inside a docstring or a /* */ block, carried line to line
   lines.forEach((raw, i) => {
     let text = raw
     if (CODE_EXT.has(ext)) {
@@ -147,8 +148,17 @@ for (const f of files) {
       // as a comment marker read `$$('#sc-tree .sc-i')` as prose.
       const re = ext === '.py' ? /(?:#|^\s*"""|^\s*''')\s*(.*)$/ : /(?:\/\/|\/\*|^\s*\*)\s*(.*)$/
       const c = raw.match(re)
-      if (!c) return
-      text = c[1]
+      // Matching only the line that OPENS a block read the first line of a docstring and dropped
+      // the rest of it: `build_access_xlsx.py:7` sat four lines inside a module docstring and was
+      // invisible. `inBlock` carries the state down, so the body of a docstring or a /* */ comment
+      // is read as prose too.
+      const wasInside = inBlock
+      if (ext === '.py') {
+        if (((raw.match(/"""|'''/g) || []).length) % 2) inBlock = !inBlock
+      } else if (/\/\*/.test(raw) && !/\*\//.test(raw)) inBlock = true
+      else if (/\*\//.test(raw)) inBlock = false
+      if (!c && !wasInside) return
+      text = c ? c[1] : raw
     }
     // A line is NOT exempt just because it carries one mark. `console.css:1764` mixed
     // "MOT BEN chiu trach nhiem khoang cach" with "ĐI SAU" on the same line and stayed invisible
