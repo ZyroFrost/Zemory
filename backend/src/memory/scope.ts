@@ -178,8 +178,10 @@ export interface ScopeNode {
     who?: string;
     /** Có phiên sẵn trong trình duyệt thật ⇒ mượn được, khỏi gõ mật khẩu. */
     canBorrow?: boolean;
-    /** Lượt kéo tự động gần nhất: `ok` xong xuôi · `fail` đã thử và trượt · `never` chưa lần nào. */
-    state: "ok" | "fail" | "never";
+    /** Lượt kéo tự động gần nhất: `ok` xong xuôi · `fail` đã thử và trượt · `never` chưa lần nào ·
+     *  `loginOnly` nền hạng CHỈ-NỐI (`plan/07 §17`) — đã đăng nhập, đường kéo chưa dựng. Hạng cuối
+     *  phải RIÊNG: gộp vào `fail` là vu cho người dùng đăng nhập hỏng, gộp vào `ok` là hứa đã kéo. */
+    state: "ok" | "fail" | "never" | "loginOnly";
     /** Lý do khi trượt (`need-login` · `no-browser` · `error`…) — để bề mặt nói ĐÚNG việc phải làm. */
     status?: string;
     /** Lần kéo gần nhất (ISO), bất kể thành hay bại. */
@@ -233,10 +235,27 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
   // dựng từ `GROUP BY sessions` nên một adapter mới (vd claude-web) vô hình cho tới khi
   // capture được lần đầu — mà muốn capture thì user phải biết nó tồn tại đã. Vòng luẩn
   // quẩn. Nay lane rỗng vẫn hiện, gắn cờ `empty` để UI nói rõ "chưa có dữ liệu".
+  //
+  // 🔴 GIỚI HẠN 2026-09-11 (user chốt sau khi đòi hai lần: *"cái này t phải bấm add nguồn mới
+  // ra chứ"*): vế trên chỉ đúng cho nguồn **LOCAL** — chúng được `memory scan` tự tìm thấy, nên
+  // bày sẵn là hợp lý. Với nguồn **WEB** thì không: một nền web chỉ tồn tại sau khi NGƯỜI DÙNG
+  // chọn và đăng nhập. Bày sẵn mọi nền zemory hỗ trợ khiến cây trông như đã nối sẵn những thứ
+  // họ chưa hề đụng — và càng thêm nền thì cây càng chật vì thứ chưa ai dùng (khai thêm hai
+  // Copilot của Microsoft là thấy ngay).
+  //
+  // Vòng luẩn quẩn ("muốn thấy phải có dữ liệu, muốn có dữ liệu phải thấy") KHÔNG quay lại: chỗ
+  // KHÁM PHÁ nay là hộp **＋ Thêm nguồn** — nó dựng danh sách từ `WEB_PLATFORMS` nên hiện ĐỦ mọi
+  // nền kèm trạng thái thật. Hai bề mặt, hai vai: cây = *"bộ nhớ tôi đang có gì"*, hộp Add =
+  // *"zemory hỗ trợ những gì"*. Nền web chưa đụng tới thì không có gì để tick, bày ra chỉ tổ chật.
+  // "Đang dùng" đo bằng SỔ `webAuth` (đã từng nối), KHÔNG bằng sự tồn tại thư mục profile:
+  // chính thư mục là thứ một lượt dò tạo ra được, nên lấy nó làm thước thì thước tự bẩn.
+  const usedPlat = new Set(Object.keys(getWebAuth()).map((k) => k.split("#")[0]));
   const seen = new Set(rows.map((r) => `${r.origin}|${r.source}`));
   for (const a of allAdapters()) {
     const origin = a.origin ?? "local";
     if (seen.has(`${origin}|${a.source}`)) continue;
+    // Nền web chưa từng nối và chưa có tin ⇒ KHÔNG dựng hàng. (Local vẫn bày như cũ.)
+    if (origin === "web" && !usedPlat.has(a.source.replace(/-(web|cowork)$/u, ""))) continue;
     // host rỗng: nguồn chưa có dữ liệu thì chưa gắn với máy nào cả.
     rows.push({ origin, host: "", source: a.source, account: "", sessions: 0, messages: 0 } as LaneRow);
   }
@@ -341,6 +360,14 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
           a.messages += r.messages;
           slots.set(r.account, a);
         }
+        // 🔴 BỎ hàng giữ chỗ của nguồn CHƯA CÓ DỮ LIỆU (user báo 2026-09-10: đăng nhập Gemini xong
+        // thấy đẻ ra "một tk ảo no name"). Khối §BỘ CHUẨN ở trên cố ý đẩy vào một hàng
+        // `{account:"", sessions:0}` cho mọi adapter chưa có tin — để nguồn MỚI không vô hình.
+        // Đúng ở tầng NGUỒN, nhưng nó không được rơi xuống tầng TÀI KHOẢN: "(chưa gắn tài khoản)"
+        // nghĩa là *có phiên cũ chưa kịp đóng dấu danh tính*, mà ở đây không có phiên nào cả.
+        // Hậu quả đo được: `gemini-web` đẻ một con rỗng mang `linked:false` ⇒ ⚠ vĩnh viễn, và
+        // hàng cha gộp `bad:2/kids:2` nên cũng ⚠ — báo "chưa nối" cho một tài khoản ĐANG nối.
+        if (slots.get("")?.sessions === 0) slots.delete("");
         // 🔴 CHỈ khe THẬT mới được thành hàng — khe THẬT = **đã đăng nhập được ít nhất một
         // lần** (`webAuth[..].ok`), hoặc **đang có dữ liệu** trong kho.
         //
@@ -357,11 +384,43 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
         // email đó đã có hàng (dữ liệu cũ) thì KHÔNG đẻ hàng thứ hai. Ngược lại, dữ liệu của
         // một email không còn khe nào đăng nhập vẫn giữ hàng riêng, hiện "chưa nối" — đó là
         // "hiện song song các tài khoản" mà user yêu cầu 2026-08-28.
+        // Khoá hàng nào do CHÍNH lượt đăng nhập này đẻ ra (khe đã nối nhưng chưa có tin). Phải nhớ
+        // lại, không suy ngược: một khoá là tên khe (`main`) có thể tới từ HAI nguồn hoàn toàn khác
+        // nhau — khe vừa đăng nhập (BIẾT là ai), hoặc phiên đời cũ chưa đóng dấu danh tính (KHÔNG
+        // biết là ai). Nhìn vào chuỗi thì hai ca giống hệt; chỉ nguồn gốc phân biệt được.
+        // 🔴 VÀ khoá là tên khe THÌ KHE ĐÓ CHÍNH LÀ NGUỒN GỐC — kể cả khi hàng đã tồn tại sẵn từ
+        // phiên (vá 2026-09-11, user nhìn ra bằng mắt trên cây Nguồn).
+        //
+        // Lỗi đo được: nền có danh tính KHÔNG PHẢI EMAIL (M365 trả tên hiển thị *"Nguyễn Đức Huy -
+        // CNTT"*, GitHub trả tên đăng nhập) thì `accountKey` lùi về TÊN KHE, nên phiên kéo về đóng
+        // dấu `account='main'`. Vòng dưới đây gặp `slots.has("main")` ⇒ **bỏ qua** ⇒ `fromAuth`
+        // không bao giờ chứa `main` ⇒ nhãn rơi vào *"(chưa gắn tài khoản)"* và `known=false` ⇒
+        // `linked:false` ⇒ **⚠**. Tức: KÉO ĐƯỢC DỮ LIỆU LẠI LÀM HÀNG CHUYỂN SANG BÁO ĐỘNG —
+        // đo thật 09-11: `m365copilot-web` 6 phiên · 116 tin mang ⚠, trong khi kho ghi
+        // `webAuth.m365copilot = {ok:true, who:"Nguyễn Đức Huy - CNTT"}`.
+        //
+        // Vì sao đánh dấu hàng CÓ SẴN là an toàn, không phá luật *"đừng dán chủ hiện tại lên dữ liệu
+        // không rõ chủ"* (user chốt 2026-08-28): hàng "không rõ chủ" mang khoá **RỖNG** (`""`, nhãn
+        // *"(chưa gắn tài khoản)"*, xử riêng ở trên), còn khoá là TÊN KHE chỉ sinh ra từ đúng một
+        // đường — chính lượt kéo của khe đó đóng dấu qua `accountKey(who, slot)`. Chủ của nó là
+        // "ai đang đăng nhập ở khe này", và đó đúng là thứ `webAuth` ghi.
+        const fromAuth = new Set<string>();
         for (const a of webSlotsOf(source)) {
           const rec = auth[a === "main" ? plat : `${plat}#${a}`];
           if (rec?.ok !== true) continue;
           const key = isEmail(rec.who) ? rec.who : a;
-          if (!slots.has(key) && !slots.has(a)) slots.set(key, { sessions: 0, messages: 0 });
+          if (!slots.has(key) && !slots.has(a)) {
+            slots.set(key, { sessions: 0, messages: 0 });
+            fromAuth.add(key);
+          } else if (!isEmail(rec.who) && slots.has(a)) {
+            // Danh tính KHÔNG PHẢI email ⇒ tên khe LÀ khoá chính thức của hàng (không có khoá nào
+            // khác để phiên đậu vào), nên hàng có sẵn cũng thuộc về khe này.
+            // ⛔ Cố ý KHÔNG áp cho nền trả EMAIL: ở đó `restampAccount` đã dời mọi phiên của tài
+            // khoản hiện tại sang hàng email, nên phần còn lại dưới khoá tên-khe là phiên KHÔNG
+            // được nền liệt kê (đã xoá, hoặc của tài khoản trước) — dán tên người đang đăng nhập
+            // lên đó đúng là "bịa danh tính" mà user cấm 2026-08-28.
+            fromAuth.add(a);
+          }
         }
         // MỘT KHUÔN cho mọi nguồn web: hàng nguồn → hàng TÀI KHOẢN bên dưới, kể cả khi chỉ có
         // một. (Bản chiều 2026-08-28 chỉ bung khi ≥2 ⇒ chatgpt dính email lên hàng nguồn còn
@@ -382,13 +441,42 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
                 // trên Claude: mỗi tài khoản một hàng; mất nối ⇒ nút. Phiên đời cũ chưa có danh tính ⇒ MỘT
                 // hàng "chưa gắn tài khoản" + nút liên kết mở khe MỚI; đăng nhập xong, web liệt kê hội thoại
                 // của tài khoản đó ⇒ `restampAccount` gắn ⇒ hàng này tự hết. Không đoán chủ cũ từ sổ.
-                const known = isEmail(account);
+                // 🔴 DANH TÍNH KHÔNG PHẢI LÚC NÀO CŨNG LÀ EMAIL (user báo 2026-09-11: đăng nhập
+                // GitHub Copilot xong hàng vẫn "(chưa gắn tài khoản)" + ⚠). GitHub trả về TÊN ĐĂNG
+                // NHẬP — đo được `webAuth.copilot = {ok:true, who:"ZyroFrost"}` và daemon đã log
+                // *"copilot: đã nối (ZyroFrost)"*. Phép `isEmail` viết hồi chỉ có ChatGPT/Claude,
+                // nên mọi danh tính không-phải-email rơi hết vào nhánh "chưa biết là ai" ⇒ bề mặt
+                // nói ngược lại chính cái kho vừa ghi.
+                //
+                // Cách chữa KHÔNG phải nới `isEmail` cho nhận cả chuỗi thường: khoá hàng có thể là
+                // TÊN KHE (`main` · `2`), mà `main` trông y như một tên đăng nhập hợp lệ ⇒ nới ra là
+                // biến khe thành danh tính. Thay vì ĐOÁN từ hình dạng chuỗi, HỎI sổ: khe này web
+                // vừa trả về tên gì. Email thì khoá hàng chính là email; ngược lại khoá là tên khe
+                // và tên hiển thị tra từ `webAuth`.
+                // ⚠ CHỈ hàng do lượt đăng nhập đẻ ra mới được lấy tên từ `webAuth`. Hàng của PHIÊN
+                // ĐỜI CŨ (khoá cũng là tên khe) thì TUYỆT ĐỐI không — user chốt 2026-08-28: *"đéo
+                // phải lấy lại cái cũ đã chế bị sai"*; gán chủ hiện tại cho dữ liệu không rõ chủ là
+                // bịa danh tính. Bản đầu của chính bản vá này bỏ qua vế đó và cổng `scope-account`
+                // bắt được: hàng "(chưa gắn tài khoản)" bị dán nhãn `new@x.com`.
+                const slotWho = isEmail(account)
+                  ? account
+                  : fromAuth.has(account)
+                    ? auth[account === "main" ? plat : `${plat}#${account}`]?.who
+                    : undefined;
+                const known = isEmail(account) || !!slotWho;
                 const h = km.effectiveExcluded
                   ? undefined
                   : known
                     ? webHealth(source, pull, newest[source], account)
                     : ({ kind: "web", linked: false, platform: plat, account: "new", state: "never" } as const);
-                const label = known ? account : "(chưa gắn tài khoản)";
+                // BA trạng thái, BA câu — gộp hai cái sau là nói dối một trong hai:
+                //  · biết là ai            ⇒ tên/email
+                //  · ĐÃ NỐI mà chưa rõ ai  ⇒ nói đúng vậy (M365 Copilot: `token:true` chắc chắn,
+                //    nhưng nhãn nút tài khoản render thất thường — đo 2026-09-11: một lượt thấy
+                //    "Nguyễn Đức Huy - CNTT, Work account", ba lượt sau rỗng). Dán
+                //    "(chưa gắn tài khoản)" lên đây là bảo người ta chưa nối, trong khi họ đã nối.
+                //  · chưa nối / phiên đời cũ chưa đóng dấu ⇒ "(chưa gắn tài khoản)"
+                const label = slotWho ?? (fromAuth.has(account) ? "(đã nối · chưa rõ tài khoản)" : "(chưa gắn tài khoản)");
                 return {
                   key: laneKey(kl),
                   label,
@@ -575,6 +663,14 @@ function webHealth(
   // kéo cũ không ghi). Nói "chưa kéo lần nào" cạnh 31.803 tin là bề mặt nói ngược dữ liệu.
   if (!last && newest) return { ...base, state: "ok" as const };
   if (!last) return { ...base, state: "never" as const };
+  // 🔴 `login-only` KHÔNG PHẢI lượt kéo hỏng — nó là kết cục ĐÚNG THIẾT KẾ của nền hạng
+  // `loginOnly` (`plan/07 §17`): xác thực xong thì DỪNG, vì đường kéo (`listExpr`/`convExpr`)
+  // chưa dựng. Chấm nó là `fail` tức bảo người dùng *"đăng nhập hỏng"* ngay sau khi họ vừa
+  // đăng nhập thành công — đo 2026-09-10: `webAuth.gemini {ok:true, who:tai.khoan@canhan.example}`
+  // mà hàng vẫn ⚠. Đây đúng lỗi mà `[2026-09-10h]` đã vá ở sổ `webAuth` ("ghi false là hàng
+  // nguồn báo mất phiên oan") nhưng bỏ sót ở sổ `webPull` — cùng một bệnh, hai cuốn sổ.
+  // Trạng thái RIÊNG chứ không gộp vào `ok`: "đã nối, chưa mở đường kéo" khác "đã kéo xong".
+  if (!last.ok && last.status === "login-only") return { ...base, state: "loginOnly" as const, status: last.status, at: last.at };
   return { ...base, state: last.ok ? ("ok" as const) : ("fail" as const), status: last.status, at: last.at };
 }
 

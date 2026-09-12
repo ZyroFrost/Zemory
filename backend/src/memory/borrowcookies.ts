@@ -90,6 +90,20 @@ const PLATFORM_HOSTS: Record<string, string[]> = {
   // nhập Google trong trình duyệt của họ thì không phải gõ lại gì.
   gemini: ["gemini.google.com", "google.com"],
   copilot: ["github.com"],
+  // Hai nền Copilot của Microsoft: phiên nằm ở chính miền của chúng; AUTH_HOSTS sẵn có lo
+  // phần đăng nhập Microsoft nên không cần nhét login.* vào đây.
+  mscopilot: ["copilot.microsoft.com"],
+  m365copilot: ["m365.cloud.microsoft", "copilot.cloud.microsoft"],
+  // Nền hạng CHỈ-NỐI thêm 2026-09-12. Giữ HẸP — đúng miền của nền, không kéo theo miền mẹ: `grok`
+  // đăng nhập qua X nhưng nhét `x.com` vào đây là chép cả phiên mạng xã hội của người dùng sang
+  // profile của zemory, rộng hơn hẳn thứ việc này cần. Ai đã đăng nhập X sẵn thì `AUTH_HOSTS` không
+  // phủ — họ đăng nhập một lần trong cửa sổ, đúng đường mặc định của hạng này.
+  grok: ["grok.com"],
+  deepseek: ["deepseek.com"],
+  perplexity: ["perplexity.ai"],
+  mistral: ["mistral.ai"],
+  qwen: ["qwen.ai"],
+  kimi: ["kimi.com"],
 };
 
 /**
@@ -105,7 +119,7 @@ const PLATFORM_HOSTS: Record<string, string[]> = {
  * claude: `sessionKey`. If a platform is missing here the check is skipped (fail-open): better
  * to offer a maybe-stale borrow than to silently disable the feature on a renamed cookie.
  */
-const SESSION_COOKIE_LIKE: Record<string, string> = {
+const SESSION_COOKIE_LIKE: Record<string, string | null> = {
   chatgpt: "__Secure-next-auth.session-token%",
   claude: "sessionKey",
   // Tên cookie phải CHỨNG MINH có phiên, không phải cookie vãng lai (bài học 2026-09-02: một cookie
@@ -113,6 +127,33 @@ const SESSION_COOKIE_LIKE: Record<string, string> = {
   // đăng nhập · `user_session` = GitHub đã đăng nhập.
   gemini: "__Secure-1PSID",
   copilot: "user_session",
+  // ⚠ `mscopilot` VẪN CHƯA ĐO (máy này không có tài khoản Microsoft cá nhân — user chốt 2026-09-11
+  // *"ko cần, t ko có tk này"*). Giữ tên theo tài liệu công khai; sai thì hậu quả là KHÔNG mời mượn
+  // (bỏ sót), không phải mời nhầm một nguồn rỗng — hướng an toàn hơn.
+  mscopilot: "%ESTSAUTH%",
+  // 🔴 `m365copilot` ĐÃ ĐO 2026-09-11 và tên cũ (`%ESTSAUTH%`) SAI — sai theo kiểu tệ nhất: hàm này
+  // đòi cookie nằm trên HOST CỦA NỀN, mà `ESTSAUTH` sống ở `login.microsoftonline.com` (nhà cung cấp
+  // danh tính), không ở `m365.cloud.microsoft`. Kết quả: `jarHasSession` trả **false** cho một khe
+  // ĐANG đăng nhập — đo được trên chính profile vừa đọc ra 11 hội thoại thật. Hai thứ hỏng theo:
+  // `restoreShelvedSession` không bao giờ trả phiên về (nó đòi bak có `true`), và vòng tự kéo đọc
+  // "khe này mất phiên" rồi bỏ qua vĩnh viễn.
+  // Tên ĐO ĐƯỢC trên host của nền: `OhpAuth` (cookie PHIÊN, 3.498 byte, `m365.cloud.microsoft`) —
+  // cùng jar còn `OhpToken` bền trên `.m365.cloud.microsoft`. Lấy `Ohp%` để phủ cả hai mà không
+  // đụng cookie vãng lai (`CS` · `NavSS` · `SSREnabled` đều không mang chữ Ohp).
+  m365copilot: "Ohp%",
+  // ── Nền hạng CHỈ-NỐI thêm 2026-09-12: `null` = **CHƯA ĐO**, và đó là một khẳng định có chủ đích,
+  // không phải chỗ bỏ trống. Máy dựng chúng không có tài khoản nào (user: *"t ko có tk"*), nên tên
+  // cookie phiên không đo được — mà ĐOÁN thì đã trả giá đúng ở chỗ này: `m365copilot` từng khai
+  // `%ESTSAUTH%` theo tài liệu công khai và tên đó SAI, khiến `jarHasSession` trả `false` cho một
+  // khe ĐANG đăng nhập rồi kéo theo hai lớp hỏng. `null` đi vào nhánh "không kết luận được" sẵn có
+  // của `jarHasSession` (trả `null` = *hands off*) và của hai đường Mượn — tức mất phép lọc nguồn
+  // rác, KHÔNG mất chức năng. Đo được tên thật thì điền vào đây, đừng bỏ trống.
+  grok: null,
+  deepseek: null,
+  perplexity: null,
+  mistral: null,
+  qwen: null,
+  kimi: null,
 };
 
 /**
