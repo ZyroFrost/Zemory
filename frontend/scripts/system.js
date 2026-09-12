@@ -23,7 +23,13 @@
     // vừa chết sau baseline = có folder vừa bị dời/đổi tên mà docs còn trỏ tên cũ.
     // `watch`: công tắc theo dõi (user 2026-09-10: "thêm nút toggle bật tắt cho toàn bộ tính năng dò này") — tắt ⇒ hàng
     // Off, ra khỏi Health, chip/badge im, daemon bỏ sweep; CLI gõ tay vẫn chạy. Mẫu chung cho hàng kiểm có công tắc.
-    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',watch:{ep:'/set-paths-watch',key:'pathsWatch'},doc:'f.doc.paths'}
+    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',watch:{ep:'/set-paths-watch',key:'pathsWatch'},doc:'f.doc.paths'},
+    // 2026-09-12 (user: *"thêm chức năng dọn tiến trình thừa đi"*). Rác dạng TIẾN TRÌNH không nằm
+    // trong `git status`, không chiếm chỗ thấy được — người dùng chỉ phát hiện khi mở Task Manager
+    // thấy đầy tiến trình lạ (đo hôm đó: 75 tiến trình Edge headless sống từ sáng). Vòng dọn nền 6
+    // giờ đã có, nhưng thứ không ai NHÌN THẤY thì không ai biết nó có chạy hay không ⇒ cho nó một
+    // hàng: số đếm + nút dọn ngay. Hàng CHỈ ĐẾM, đóng là do cú bấm (hoặc vòng nền).
+    {k:'procs',grp:'f.grpSync',n:'f.procs',kind:'check',feat:'procs',act:'sweep',doc:'f.doc.procs'}
   ];
   /** Từ trên badge — MỘT bộ từ vựng: công tắc/tự động ⇒ On/Off · còn lại ⇒ Healthy/Warning/Off (pillTxt của core). */
   function badgeWord(state,f){
@@ -56,7 +62,11 @@
     // ở panel chi tiết"*) — xem `sysSwitch()`. Hai nơi cùng điều khiển một trạng thái là hai nơi để lệch.
     if(f.kind==='toggle'||f.kind==='auto')return '';
     if(f.kind==='check'){var w=f.watch?((Z.mem||{})[f.watch.key]!==false):null;
-      return w===false?'':'<button class="btn sm" data-sys-check="'+f.feat+'">↻ '+t('sys.recheck')+'</button>';}
+      if(w===false)return '';
+      var re='<button class="btn sm" data-sys-check="'+f.feat+'">↻ '+t('sys.recheck')+'</button>';
+      // Hàng có việc để LÀM (không chỉ để xem) thì có thêm nút làm. Nút dọn đứng TRƯỚC nút kiểm lại
+      // vì nó là việc chính của hàng; kiểm lại chỉ là cách xem số mới.
+      return f.act==='sweep'?'<button class="btn primary sm" data-sys-sweep="1">🧹 '+t('sys.sweepNow')+'</button> '+re:re;}
     // `probe`: feature có PHÉP KIỂM THẬT ở backend nhưng hành động chính là toggle/stat.
     // Không có nhánh này thì `/check?feature=vector|rerank` chỉ gọi được bằng curl —
     // tức vẫn mồ côi, chỉ đổi chỗ (tự bắt 2026-07-28 ngay sau khi nối backend).
@@ -125,6 +135,15 @@
   document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.sys-sw'))return;var li=e.target.closest?e.target.closest('#sysList [data-sysfeat]'):null;if(li){sysSel=li.dataset.sysfeat;renderSystem();}});
   document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-sys-digest]'):null;if(!b)return;var o=b.textContent;b.textContent=t('st.buildingDigest');b.disabled=true;
     zPost('/memory-digest').then(function(r){return zGet('/memory-status?fresh=1').then(function(m){renderMem(m);renderSystem();});}).catch(function(){b.textContent=o;b.disabled=false;});});
+  // 🧹 Dọn tiến trình thừa (2026-09-12). Cú bấm = lời cho phép ĐÓNG; máy tự quyết "đang bận thì thôi"
+  // (xem `/sweep-procs`), bề mặt KHÔNG được truyền `busy` xuống — để bề mặt quyết là mở đường cho một
+  // cú bấm cắt ngang lượt quét web đang chạy. Kết quả nói NGAY trên nút: đóng mấy cái, hay vì sao không.
+  document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-sys-sweep]'):null;if(!b)return;
+    var o=b.textContent;b.textContent=t('sys.sweeping');b.disabled=true;
+    zPost('/sweep-procs').then(function(r){
+      b.textContent=r&&r.skipped?t('sys.sweepBusy'):(t('sys.sweepDone').replace('{n}',(r&&r.killed)||0));
+      return zGet('/check?feature=procs&fresh=1').then(function(c){if(c&&c.feature){Z.checks=Z.checks||{};Z.checks.procs=c;renderSystem();}});
+    }).catch(function(){b.textContent=o;}).then(function(){setTimeout(function(){b.textContent=o;b.disabled=false;},2500);});});
   document.addEventListener('click',function(e){var a=e.target.closest?e.target.closest('[data-add-proj]'):null;if(!a)return;var p=a.dataset.addProj;a.textContent='…';zPost('/add-project?root='+encodeURIComponent(p)).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){});});
   document.addEventListener('click',function(e){
     var tg=e.target.closest?e.target.closest('[data-sys-toggle]'):null;
@@ -132,20 +151,30 @@
     var ck=e.target.closest?e.target.closest('[data-sys-check]'):null;
     var nv=e.target.closest?e.target.closest('[data-sys-nav]'):null;
     if(tg){var ep=tg.dataset.sysToggle,on=tg.dataset.on==='1';
+      // Tên khoá trong Z.mem của công tắc này — MỘT phép ánh xạ, dùng cho cả lật, đóng dấu và HOÀN NGUYÊN.
+      // Trước đây cùng chuỗi `if/else` này được chép ra hai chỗ; thêm chỗ thứ ba để hoàn nguyên là mời lệch.
+      var mk=/hybrid/.test(ep)?'hybrid':/rerank/.test(ep)?'rerank':/scope/.test(ep)?'scope':/paths-watch/.test(ep)?'pathsWatch':null;
       // Optimistic: flip local state + re-render NOW so the button always toggles
       // back (fixed "tắt rồi không bật lại" — was reading a cached /memory-status).
-      if(Z.mem){if(/hybrid/.test(ep))Z.mem.hybrid=on;else if(/rerank/.test(ep))Z.mem.rerank=on;else if(/scope/.test(ep))Z.mem.scope=on;else if(/paths-watch/.test(ep))Z.mem.pathsWatch=on;}
+      var prev=mk&&Z.mem?Z.mem[mk]:undefined;
+      if(Z.mem&&mk)Z.mem[mk]=on;
       // Đóng dấu cú bấm — renderMem dùng mốc này để payload memory-status GIÀ (bắn trước lúc
       // bấm, về sau vì lượt lạnh) không vẽ đè trạng thái cũ lên nút vừa gạt.
-      Z.flagsAt=Z.flagsAt||{};if(/hybrid/.test(ep))Z.flagsAt.hybrid=Date.now();else if(/rerank/.test(ep))Z.flagsAt.rerank=Date.now();else if(/scope/.test(ep))Z.flagsAt.scope=Date.now();else if(/paths-watch/.test(ep))Z.flagsAt.pathsWatch=Date.now();
+      Z.flagsAt=Z.flagsAt||{};if(mk)Z.flagsAt[mk]=Date.now();
+      // Lưu HỎNG ⇒ trả nút về đúng sự thật + gỡ dấu (giữ dấu là để payload thật bị chặn 90 s bởi một
+      // giá trị chưa bao giờ được ghi). Xem `zSave` ở core.js để biết vì sao không được nuốt lỗi.
+      var undo=function(){if(Z.mem&&mk)Z.mem[mk]=prev;if(mk&&Z.flagsAt)delete Z.flagsAt[mk];renderSystem();
+        var h=zid('rHybrid'),k=zid('rRerank');if(h&&Z.mem)h.classList.toggle('on',!!Z.mem.hybrid);if(k&&Z.mem)k.classList.toggle('on',!!Z.mem.rerank);};
       // Công tắc theo dõi đường dẫn: chip rail + badge thẻ đọc /harness-updates ⇒ hỏi lại ngay sau khi gạt, đừng chờ 10′.
-      if(/paths-watch/.test(ep)){renderSystem();zPost(ep+'?on='+tg.dataset.on).then(function(){return zGet('/harness-updates?fresh=1');}).then(function(){refreshHarnessUpdates();}).catch(function(){});return;}
+      if(/paths-watch/.test(ep)){renderSystem();zSave(ep+'?on='+tg.dataset.on,undo).then(function(j){if(!j)return;return zGet('/harness-updates?fresh=1').then(function(){refreshHarnessUpdates();});}).catch(function(){});return;}
       renderSystem();
       var rh=zid('rHybrid'),rr=zid('rRerank');if(rh&&Z.mem)rh.classList.toggle('on',!!Z.mem.hybrid);if(rr&&Z.mem)rr.classList.toggle('on',!!Z.mem.rerank);
-      zPost(ep+'?on='+tg.dataset.on).catch(function(){});return;}
+      zSave(ep+'?on='+tg.dataset.on,undo);return;}
     if(au){var nm=au.dataset.sysAuto,ao=au.dataset.on==='1';
+      var aprev=!!(Z.auto||{})[nm];
       if(Z.auto)Z.auto[nm]=ao;renderSystem();
-      zPost('/set-'+nm+'?on='+au.dataset.on).then(function(){return zGet('/automation');}).then(function(a){renderAuto(a);renderSystem();}).catch(function(){});return;}
+      zSave('/set-'+nm+'?on='+au.dataset.on,function(){if(Z.auto)Z.auto[nm]=aprev;renderSystem();})
+        .then(function(j){if(!j)return;return zGet('/automation').then(function(a){renderAuto(a);renderSystem();});}).catch(function(){});return;}
     if(ck){var f=ck.dataset.sysCheck;ck.textContent='…';zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;renderSystem();}).catch(function(){renderSystem();});return;}
     if(nv){if(nv.dataset.sysNav==='__settings')openSettings();else go(nv.dataset.sysNav);return;}
     var rc=e.target.closest&&e.target.closest('[data-act="sysrecheck"]');
@@ -199,7 +228,7 @@
   // MỘT danh sách phép kiểm cho MỌI đường làm tươi (lúc nạp · nút "Kiểm lại tất cả" · nhịp tự động).
   // Chép danh sách này ra nhiều chỗ thì sớm muộn cũng lệch — một bên thêm phép kiểm mới, bên kia
   // quên, và người đọc không có cách nào biết bảng đang xem tươi tới đâu.
-  var SYS_CHECKS=['memory','validate','grill','paths'];
+  var SYS_CHECKS=['memory','validate','grill','paths','procs'];
   /** Nạp các check thật (/check) rồi vẽ lại inventory. `fresh` = bỏ qua cache 10′ của daemon —
    *  đúng nghĩa nút ↻; đường nạp thường vẫn ăn cache để mở cửa sổ không phải đo lại từ đầu. */
   function refreshChecks(fresh){
@@ -298,7 +327,10 @@
   // Đếm lại nhãn nút theo số ô đang tick.
   document.addEventListener('change',function(e){
     if(e.target&&e.target.classList&&e.target.classList.contains('upd-pick')){var n=document.querySelectorAll('.upd-pick:checked').length,b=zid('updApplySel');if(b){b.textContent=t('upd.applySel').replace('{n}',n);b.disabled=!n;}return;}
-    if(e.target&&e.target.id==='updCheckRepos'){var on=e.target.checked;zPost('/set-repo-std-check?on='+(on?'1':'0')).then(function(){UPD_CHECK=on;return zGet('/harness-updates?fresh=1');}).then(function(){refreshHarnessUpdates().then(function(){zDlgClose();var c=zid('railStd');if(c&&c.style.display!=='none')c.click();});});}
+    if(e.target&&e.target.id==='updCheckRepos'){var on=e.target.checked,box=e.target;
+      // Ô tick cũng là một thiết lập được LƯU ⇒ hỏng thì bỏ tick về chỗ cũ + báo, đừng để nó đứng
+      // đó như đã lưu (cùng luật với mọi công tắc — xem `zSave` ở core.js).
+      zSave('/set-repo-std-check?on='+(on?'1':'0'),function(){box.checked=!on;}).then(function(j){if(!j)return;UPD_CHECK=on;return zGet('/harness-updates?fresh=1').then(function(){refreshHarnessUpdates().then(function(){zDlgClose();var c=zid('railStd');if(c&&c.style.display!=='none')c.click();});});});}
   });
   // "Cập nhật đã chọn": áp tuần tự từng repo đã tick (mỗi cú bấm của người dùng = lời cho phép cho ĐÚNG các repo đó).
   document.addEventListener('click',function(e){

@@ -15,7 +15,14 @@ const SOURCES = readFileSync(new URL("../../frontend/scripts/sources.js", import
 
 test("#2 /ping carries lang — the cheapest call is the one the shell must learn the language from", () => {
   const ping = UI.slice(UI.indexOf('p === "/ping"'), UI.indexOf('p === "/ping"') + 400);
-  assert.match(ping, /lang:\s*getLang\(\)/, "measured: lang used to arrive only with /memory-status (7–74 s cold)");
+  // `lang` moved INTO `liveFlags()` on 2026-09-10 when three more user toggles joined it for the
+  // same reason (they were riding /memory-status: 152–181 s cold, so the switches painted OFF while
+  // config said ON). The invariant is unchanged — /ping must carry it — so this anchor follows the
+  // rewrite instead of going red on it. Asserted in two halves so it cannot pass on a `liveFlags()`
+  // that has quietly dropped `lang`: the handler spreads it, AND the helper still reads getLang().
+  assert.match(ping, /\.\.\.liveFlags\(\)|lang:\s*getLang\(\)/, "measured: lang used to arrive only with /memory-status (7–74 s cold)");
+  const flags = /function liveFlags\(\): Record<string, unknown> \{([\s\S]*?)\n\}/.exec(UI);
+  if (flags) assert.match(flags[1], /lang:\s*getLang\(\)/, "liveFlags() must still be the thing that carries lang");
 });
 
 test("#2 shell applies lang from /ping BEFORE it fires the fetches whose widgets render through t()", () => {
@@ -82,7 +89,12 @@ test("#4 probeDue: first time yes, inside the TTL no, after the TTL yes", () => 
 });
 
 test("#4 liveConnections consults the memo and stamps it before probing", () => {
-  const live = UI.slice(UI.indexOf("async function liveConnections"), UI.indexOf("async function liveConnections") + 1800);
+  // Bỏ chú thích TRƯỚC khi soi, và cắt theo HÀM chứ không theo số ký tự cố định: một khối giải
+  // thích thêm vào là đẩy `probeOnly` ra ngoài cửa sổ 1800 ký tự và cổng đỏ vì code DỜI CHỖ,
+  // không vì thứ tự sai (dính 2026-09-11). Cùng cách đã chốt cho `scanweb-platforms`.
+  const noCmt = UI.replace(/^\s*\/\/.*$/gmu, "");
+  const from = noCmt.indexOf("async function liveConnections");
+  const live = noCmt.slice(from, noCmt.indexOf("\n}", from));
   const iDue = live.indexOf("probeDue(lastProbeAt.get(laneKey)");
   const iStamp = live.indexOf("lastProbeAt.set(laneKey, Date.now())");
   const iProbe = live.indexOf("probeOnly: true");

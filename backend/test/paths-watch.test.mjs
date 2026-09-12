@@ -56,7 +56,12 @@ test("mọi bề mặt đều đi qua công tắc: scheduler bỏ sweep · /harn
   assert.doesNotMatch(sys, /return '<button class="btn sm" data-sys-toggle=/, "panel chi tiết không còn nút On/Off cho toggle");
   assert.doesNotMatch(sys, /return '<button class="btn sm" data-sys-auto=/, "panel chi tiết không còn nút On/Off cho auto");
   assert.match(sys, /closest\('\.sys-sw'\)\)return;var li=/, "bấm switch không được chọn hàng");
-  assert.match(sys, /paths-watch\/\.test\(ep\)\)Z\.flagsAt\.pathsWatch=Date\.now\(\)/, "cú gạt phải được đóng dấu để payload cũ không đè");
+  // 2026-09-10: ba bản chép của cùng chuỗi if/else gom thành một bảng `mk`, nên neo bám tên khoá
+  // lẻ đã hết chỗ bám. Bất biến KHÔNG đổi ⇒ soi đúng hai vế của nó: bảng có `pathsWatch`, và con
+  // dấu dùng chính bảng đó. Kèm vế MỚI của cùng cú gạt: lưu hỏng thì phải hoàn nguyên (`zSave`).
+  assert.match(sys, /var mk=[^;]*'pathsWatch'/, "bảng ánh xạ khoá phải phủ pathsWatch");
+  assert.match(sys, /Z\.flagsAt\[mk\]=Date\.now\(\)/, "cú gạt phải được đóng dấu để payload cũ không đè");
+  assert.match(sys, /zSave\(ep\+'\?on='\+tg\.dataset\.on,undo\)/, "gạt mà lưu hỏng thì phải trả nút về chỗ cũ, không nuốt lỗi");
   assert.match(SRC("frontend/scripts/gm.js"), /\['hybrid','rerank','scope','pathsWatch'(,'[a-zA-Z]+')*\]/, "renderMem phải giữ giá trị local trong 90 s cho pathsWatch");
   const chrome = SRC("frontend/scripts/chrome.js");
   assert.match(chrome, /'fix\.noCand':'không có đích duy nhất — sửa tay hoặc giao A\.I sửa'/);

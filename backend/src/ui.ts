@@ -3,6 +3,7 @@
 
 import { execFile, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { writeJsonAtomic } from "./util/fs-atomic.js";
 import { createServer } from "node:http";
 import { hostname } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -28,7 +29,7 @@ import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from 
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
-import { vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "./memory/vectors.js";
+import { memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
@@ -57,6 +58,7 @@ import type { DriveProbe } from "./jobs/driveprobe.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
+import { UI_SWEEP_MIN_AGE_MS, sweepOrphanBrowsers, sweepOrphanTempProfiles } from "./platform/browsersweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
 import { armCrashReport, daemonHeartbeat, daemonLog } from "./logging/daemon-log.js";
 import {
@@ -516,10 +518,22 @@ async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
   await Promise.all(
     rows.map(async (r) => {
       if (r.kind !== "web" || !r.platform || r.connected) return;
+      const laneKey = webLaneKey(r.platform, r.account ?? "main");
+      // 🔴 KHE CHƯA TỪNG NỐI ⇒ KHÔNG DÒ (user 2026-09-11: *"sao cứ tự nối quài vậy"*).
+      // Dò là để KIỂM LẠI một phiên đã từng có, không phải để đi thử một nền người dùng chưa
+      // hề chọn. Và nó không hề vô hại: `scanWebInner` tạo thư mục profile + `imports/` NGAY
+      // dòng đầu, nên một lượt dò "chỉ đọc" để lại dấu chân vĩnh viễn — mà `platformsInUse()`
+      // lại định nghĩa "nền đang dùng" = CÓ THƯ MỤC. Tức một lượt dò tự phong cho nền đó tư
+      // cách đang-dùng, rồi các lượt quét gộp sau nhận nó vào.
+      // Đo 2026-09-11: thêm hai nền Microsoft Copilot xong, mở app một lần là `/connections`
+      // đẻ ngay `browser/mscopilot` + `browser/m365copilot` + hai thư mục imports — 24 giây sau
+      // khi daemon khởi động, không một dòng log, không ai bấm gì. Đúng thứ chú thích
+      // `scanWebPlatforms` đã cảnh báo: *"một profile trống do lượt dò để lại KHÔNG được biến
+      // thành lời mời đăng nhập"* — cảnh báo đó đúng, chỉ là chưa ai chặn ở ĐÂY.
+      if (!getWebAuth()[laneKey]) return;
       // One browser probe per lane per PROBE_TTL_MS, not one per Sources-panel load (measured
       // 2026-09-07: 29–30 s per load with one disconnected lane). The user's explicit "Link"
       // click goes through /connect, which never consults this memo.
-      const laneKey = webLaneKey(r.platform, r.account ?? "main");
       if (!probeDue(lastProbeAt.get(laneKey), Date.now(), LANE_PROBE_TTL_MS)) return;
       lastProbeAt.set(laneKey, Date.now());
       try {
@@ -966,10 +980,74 @@ let heavyCache: {
   value: { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number };
 } | null = null;
 
+/** Nơi ướp `heavyCache` qua các lần khởi động. Lớp DẪN XUẤT thuần (điều 3) — xoá lúc nào cũng được. */
+function heavyCacheFile(): string {
+  return join(currentMemoryDir(), "dash-stats.json");
+}
+
+/**
+ * ƯỚP BẢNG SỐ QUA CÁC LẦN KHỞI ĐỘNG — vì `heavyCache` chỉ sống trong RAM daemon.
+ *
+ * 🔴 Vì sao (đo 2026-09-10): restart là mất sạch cache, nên lượt `/memory-status` ĐẦU TIÊN sau mỗi
+ * lần bật lại trả nguyên hoá đơn quét toàn bảng — **66,8 s** ngay cả sau khi đã gộp một-lượt-quét
+ * (trước khi gộp là 152–181 s). Mà "vừa mở app" đúng là lúc người dùng nhìn vào bảng số. Lượt thứ
+ * hai chỉ 203 ms, tức cái giá này rơi trọn vào ấn tượng đầu tiên.
+ *
+ * Cơ chế "có số cũ thì trả ngay, tính lại ở con phía sau" ĐÃ CÓ trong `heavyStatsAsync` — chỗ này
+ * chỉ cho nó một điểm khởi đầu thay vì bắt đầu từ trống. Không đổi hành vi nào khác: số nạp từ đĩa
+ * đi đúng nhánh "cache quá hạn" sẵn có, nên nó luôn được làm tươi ở nền ngay lượt đầu.
+ *
+ * KHÔNG phải nguồn sự thật (điều 3): file hỏng/thiếu/cũ ⇒ bỏ qua im lặng, tính lại như trước
+ * (điều 9). Và `at` được ướp theo để `statsAt` trên payload nói ĐÚNG số này đo lúc nào — trưng số
+ * cũ mà giấu tuổi của nó là đúng thứ điều 12 cấm.
+ */
+/**
+ * CHỈ đọc đĩa MỘT LẦN mỗi tiến trình — và đây là phần cốt lõi của thiết kế, không phải tối ưu vặt.
+ *
+ * 🔴 Bản đầu để `invalidateDashboard()` XOÁ file, và nó tự vô hiệu hoá lớp ướp: hàm đó chạy sau mỗi
+ * lượt scan/sync, nên bản ướp vừa ghi xong là bị xoá ngay — đo được, lượt-đầu-sau-khởi-động-lại vẫn
+ * **54,6 s** y như chưa vá. (Cổng tôi viết lúc đó còn bắt buộc PHẢI có `rmSync` — tức nó khẳng định
+ * đúng cái sai; đã sửa.)
+ *
+ * Nay: đĩa chỉ được đọc ở lượt heavy ĐẦU TIÊN của tiến trình, đúng chỗ nó có giá. Từ đó về sau RAM
+ * là sự thật, nên `invalidateDashboard()` và `?fresh=1` giữ NGUYÊN hành vi cũ (null ⇒ tính lại), và
+ * không có đường nào để một con số đã bị tuyên bố hết hiệu lực quay lại trong cùng phiên.
+ * Bản trên đĩa vẫn được ghi đè mỗi lần tính xong, nên nó luôn là số đo GẦN NHẤT của máy này.
+ */
+let heavyDiskLoaded = false;
+
+function loadHeavyCache(): void {
+  if (heavyCache || heavyDiskLoaded) return;
+  heavyDiskLoaded = true;
+  try {
+    const raw = JSON.parse(readFileSync(heavyCacheFile(), "utf8")) as { at?: number; value?: unknown };
+    const v = raw.value as { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number };
+    if (typeof raw.at === "number" && v && typeof v.tokensEst === "number" && typeof v.count === "number") {
+      heavyCache = { at: raw.at, value: v };
+    }
+  } catch {
+    /* chưa có / hỏng ⇒ tính lại như trước (điều 9) */
+  }
+}
+
+/** Ghi kèm mỗi lần `heavyCache` đổi. Best-effort: hỏng thì phiên này vẫn chạy, chỉ mất lớp ướp. */
+function saveHeavyCache(): void {
+  if (!heavyCache) return;
+  try {
+    writeJsonAtomic(heavyCacheFile(), heavyCache);
+  } catch {
+    /* ướp là tiện nghi, không phải nghĩa vụ */
+  }
+}
+
 /** Drop cached stats after anything that actually changes the memory. */
 function invalidateDashboard(): void {
   dashCache = null;
   heavyCache = null;
+  // KHÔNG xoá bản ướp trên đĩa. Hàm này chạy sau MỖI lượt scan/sync, nên xoá ở đây là xoá đúng thứ
+  // vừa ghi ⇒ lớp ướp không bao giờ sống tới lần khởi động sau (đo: vẫn 54,6 s, y như chưa vá).
+  // Không cần xoá vẫn đúng: `loadHeavyCache()` chỉ đọc đĩa một lần mỗi tiến trình, nên `heavyCache
+  // = null` ở trên là đủ để lượt sau tính lại — xem `heavyDiskLoaded`.
 }
 
 /**
@@ -999,43 +1077,42 @@ function heavyStatsSync(): {
   outOfScope: number;
 } {
   const now = Date.now();
+  loadHeavyCache();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
-  // Honest token stat: total captured content ≈ chars/4. A REAL number (how much
-  // context the memory holds), NOT a "saved" claim — capture itself costs 0 extra
-  // tokens (hooks read transcript files, no model call).
+  // MỘT LƯỢT QUÉT cho cả năm con số (`memoryStats`, 2026-09-10) — trước đây là BỐN lượt đi bộ
+  // riêng qua cùng bảng `messages` 3 GB: `SUM(LENGTH(content))` 22,8 s · `vectorCoverage` 48,7 s
+  // · `vectorRemaining` 38,2 s · `vectorOutOfScope` 18,8 s = **129 s trên tổng 137 s** của
+  // `/memory-status`. Ngữ nghĩa từng số giữ nguyên vẹn và đã đối chứng khớp — xem `memoryStats()`.
+  //
+  // `tokensEst` vẫn là con số THẬT (kho đang chứa bao nhiêu chữ ≈ chars/4), KHÔNG phải lời khoe
+  // "đã tiết kiệm N" mà điều 12 cấm — capture không tốn token nào (hook đọc file transcript).
   let tokensEst = 0;
-  try {
-    const db = openMemory();
-    try {
-      tokensEst = Math.round(
-        Number((db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get() as { c: number }).c) / 4,
-      );
-    } finally {
-      db.close();
-    }
-  } catch {
-    /* best-effort */
-  }
   let count = 0;
   let remaining = 0;
   let covered = 0;
   let embeddable = 0;
-  // TIN CỐ Ý BỎ NGOÀI PHẠM VI NHÚNG — phải đo CÙNG CHỖ với coverage (cũng là một anti-join
-  // toàn bảng, và phải chia cùng một TTL để hai con số không bao giờ lệch nhịp nhau).
+  // TIN CỐ Ý BỎ NGOÀI PHẠM VI NHÚNG — phải đo CÙNG CHỖ với coverage (cùng một lượt quét, nên
+  // hai con số không bao giờ lệch nhịp nhau nữa; trước chỉ chia chung TTL).
   let outOfScope = 0;
   try {
-    count = vectorCount();
-    remaining = vectorRemaining();
-    const cov = vectorCoverage();
-    covered = cov.covered;
-    embeddable = cov.embeddable;
-    outOfScope = vectorOutOfScope();
+    const s = memoryStats();
+    tokensEst = Math.round(s.chars / 4);
+    embeddable = s.embeddable;
+    covered = s.covered;
+    remaining = s.remaining;
+    outOfScope = s.outOfScope;
   } catch {
     /* vector lane is optional — fail open (HP điều 9) */
+  }
+  try {
+    count = vectorCount();
+  } catch {
+    /* đếm hàng trong vec_chunks là bảng KHÁC, hỏng riêng — không kéo bốn số trên chết theo */
   }
   const value = { tokensEst, count, remaining, covered, embeddable, outOfScope };
   // ĐÓNG DẤU LÚC XONG, không phải lúc BẮT ĐẦU (vá 2026-09-02) — xem khối chú thích ở `dashCache`.
   heavyCache = { at: Date.now(), value };
+  saveHeavyCache();
   return value;
 }
 
@@ -1055,6 +1132,7 @@ function heavyStatsSync(): {
 let heavyInFlight: Promise<HeavyStats | null> | null = null;
 async function heavyStatsAsync(): Promise<{ tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number }> {
   const now = Date.now();
+  loadHeavyCache();
   if (heavyCache && now - heavyCache.at < HEAVY_TTL_MS) return heavyCache.value;
   if (!heavyInFlight) {
     heavyInFlight = heavyStatsChild().finally(() => {
@@ -1065,23 +1143,49 @@ async function heavyStatsAsync(): Promise<{ tokensEst: number; count: number; re
   // Có số cũ thì KHÔNG chờ: số nặng đổi rất chậm, và một bảng hơi cũ tốt hơn một giao diện đứng.
   if (heavyCache) {
     void pending.then((v) => {
-      if (v) heavyCache = { at: Date.now(), value: v };
+      if (v) { heavyCache = { at: Date.now(), value: v }; saveHeavyCache(); }
     });
     return heavyCache.value;
   }
   const v = await pending;
   if (v) {
     heavyCache = { at: Date.now(), value: v };
+    saveHeavyCache();
     return v;
   }
   // Con hỏng ⇒ rơi về đường đồng bộ (fail-open, HP điều 9): thà chậm một lượt còn hơn trả rỗng.
   return heavyStatsSync();
 }
 
+/**
+ * CÔNG TẮC người dùng gạt — đọc TƯƠI, không bao giờ đi qua cache.
+ *
+ * 🔴 Vì sao tách khỏi payload (đo 2026-09-10): bốn cờ này là `config.json`, đọc mất ~0 ms, nhưng
+ * chúng đang đi ké gói NẶNG NHẤT của app. Hai hậu quả đo được, cả hai đều hiện ra thành *"gạt
+ * xong không lưu"*:
+ * · **Lượt lạnh 152.253 ms** trên kho này ⇒ suốt 2,5 phút sau khi mở app, `Z.mem` còn rỗng nên
+ *   màn Tính năng vẽ Hybrid = Off dù `config.json` ghi `true`. Cùng bệnh với nút VI/EN đã vá ở
+ *   `[2026-09-10e]` — lần đó chỉ chuyển `lang` sang `/ping`, ba cờ còn lại bị bỏ quên.
+ * · **`dashCache` (TTL 60 s) đóng băng luôn cả cờ**, mà `/set-hybrid` không xoá cache ⇒ một
+ *   payload đúc trước cú bấm vẫn mang trạng thái CŨ và vẽ đè lên nút vừa gạt.
+ *
+ * Trải lên hàng cache ở MỌI đường trả về, nên gói có cũ tới đâu thì cờ vẫn là sự thật hiện tại.
+ * Cùng bộ này đi kèm `/ping` để bề mặt sáng đúng ngay lượt vẽ đầu.
+ */
+function liveFlags(): Record<string, unknown> {
+  return {
+    hybrid: getHybridSetting(),
+    rerank: getRerankSetting(),
+    pathsWatch: getPathsWatch(),
+    scope: getScopeSetting(),
+    lang: getLang(),
+  };
+}
+
 async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown> {
   const now = Date.now();
   if (!opts.fresh && dashCache && now - dashCache.at < DASH_TTL_MS) {
-    return { ...dashCache.value, cached: true, cachedAgeMs: now - dashCache.at };
+    return { ...dashCache.value, ...liveFlags(), cached: true, cachedAgeMs: now - dashCache.at };
   }
   if (opts.fresh) invalidateDashboard();
   const summary = memorySummary();
@@ -1146,10 +1250,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
       snippetChars: SNIPPET_MAX_CHARS,
       tokensApprox: Math.round((DEFAULT_SEARCH_LIMIT * SNIPPET_MAX_CHARS) / 4),
     },
-    hybrid: getHybridSetting(),
-    rerank: getRerankSetting(),
-    pathsWatch: getPathsWatch(),
-    scope: getScopeSetting(),
+    ...liveFlags(),
     scopeTree: safeScopeTree(),
     scopeExcluded: getScopeExclude().length,
     scopeRules: getScopeExclude(),
@@ -1157,7 +1258,11 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
     // Thời điểm ĐỒNG BỘ THẬT của máy này (hàng `drive:<host>`), chuẩn hoá về ISO.
     lastSync: parseSyncTimestamp(drive.lastPushAt),
     storage: safeStorage(),
-    lang: getLang(),
+    // `lang` KHÔNG lặp ở đây — nó nằm trong `liveFlags()` phía trên (một chỗ khai, một chỗ đọc).
+    // TUỔI THẬT của khối số nặng (tokens · vector · coverage). Tách khỏi `generatedAt` vì hai
+    // mốc khác nhau: gói được đúc BÂY GIỜ, nhưng bốn số nặng có thể là bản ướp từ lần chạy trước
+    // (xem `loadHeavyCache`). Gộp một mốc là để người đọc tưởng số nặng cũng vừa đo (điều 12).
+    statsAt: heavyCache ? new Date(heavyCache.at).toISOString() : null,
     generatedAt: new Date().toISOString(),
   };
   // 🔴 ĐÓNG DẤU LÚC XONG, KHÔNG PHẢI LÚC BẮT ĐẦU (vá 2026-09-02, đo được).
@@ -1310,10 +1415,17 @@ function openWindow(url: string): void {
     openWindowMsedge(url);
     return;
   }
-  const child = spawn(process.execPath, [script, url, appIcon()], {
+  // Đường SỔ đi kèm: cửa sổ tự ghi tên nó vào đó và tự đóng cửa sổ cũ còn ghi trong sổ (xem
+  // `platform/window.ts` §MỘT APP = MỘT CỬA SỔ). Trước đây chỉ CHỖ NÀY ghi sổ, nên cửa sổ mở bằng
+  // đường khác không được ghi ⇒ lượt mở sau không biết mà đóng, và người dùng thấy hai cửa sổ.
+  const child = spawn(process.execPath, [script, url, appIcon(), windowPidFile()], {
     detached: true,
     stdio: "ignore",
-    env: { ...process.env, WEBVIEW2_USER_DATA_FOLDER: join(currentMemoryDir(), "cockpit", "webview") },
+    env: {
+      ...process.env,
+      WEBVIEW2_USER_DATA_FOLDER: join(currentMemoryDir(), "cockpit", "webview"),
+      ZEMORY_WINDOW_PID: windowPidFile(),
+    },
   });
   let settled = false;
   const fallback = (): void => {
@@ -1474,7 +1586,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // language before any widget renders. It used to arrive only with /memory-status (7–74 s cold),
     // while the rail chip and Drive card had already painted through t() in the default 'vi' and
     // were never repainted: every cold start showed Vietnamese on an English screen (2026-09-07).
-    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), lang: getLang() });
+    // `...liveFlags()` mang theo cả `lang` (đường cũ, giữ nguyên tên khoá) lẫn ba công tắc
+    // hybrid/rerank/scope/pathsWatch. Đây là lời gọi RẺ NHẤT của app (~100 ms) và là lượt đầu
+    // tiên FE phát ra, nên công tắc sáng đúng ngay lần vẽ đầu thay vì chờ `/memory-status`.
+    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), ...liveFlags() });
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
@@ -2449,6 +2564,28 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       setPathsWatch(u.searchParams.get("on") === "1");
       checkCache.delete("paths|" + root());
       return json(res, { ok: true, pathsWatch: getPathsWatch() });
+    }
+    if (p === "/sweep-procs") {
+      // CÚ BẤM = LỜI CHO PHÉP ĐÓNG (cùng doctrine `/paths-fix-apply`): vòng dọn nền chạy mỗi 6 giờ,
+      // nhưng khi người dùng NHÌN THẤY con số thì họ phải dọn được ngay, không phải chờ.
+      //
+      // `busy` KHÔNG phải tham số của người gọi: nó là sự thật của máy, đọc từ khoá job. Để bề mặt
+      // truyền vào là mở đường cho một cú bấm cắt ngang lượt quét web đang chạy.
+      //
+      // 🔴 CHẶN ĐÚNG THỨ CẦN CHẶN, không chặn mọi thứ. Bản đầu dùng `daemonJobBusy() !== null` —
+      // tức bất kỳ job nào (nhúng vector · digest · backup) cũng làm nút thành vô hiệu, và đo ngay
+      // lúc thử: bấm sau khi daemon vừa khởi động ⇒ *"đang bận"* trong khi việc đang chạy chẳng
+      // liên quan gì tới trình duyệt. Một nút bấm không ăn mà không nói rõ vì sao thì người dùng
+      // đọc thành hỏng. Thứ THẬT SỰ xung đột chỉ là job có thể ĐANG SỞ HỮU một trình duyệt.
+      const job = daemonJobBusy();
+      const busy = job === "web-pull" || job === "scan" || cliHoldsWrite();
+      // NGƯỠNG TUỔI khác vòng nền có chủ đích: nền chạy khi KHÔNG AI NHÌN nên phải dè dặt (30 phút);
+      // cú bấm là người đang ngồi đó nói "dọn đi", nên 5 phút — đủ để không cắt ngang một lượt dò
+      // vừa mở, nhưng không bắt họ chờ nửa tiếng để dọn thứ họ đang nhìn thấy.
+      const r = sweepOrphanBrowsers({ profileRoot: join(currentMemoryDir(), "browser"), busy, minAgeMs: UI_SWEEP_MIN_AGE_MS });
+      const dirs = r.skipped ? [] : sweepOrphanTempProfiles();
+      checkCache.delete("procs|" + root());
+      return json(res, { ok: true, killed: r.killed.length, dirs: dirs.length + r.dirs.length, skipped: r.skipped ?? null });
     }
     if (p === "/set-repo-std-check") {
       setRepoStdCheck(u.searchParams.get("on") === "1");

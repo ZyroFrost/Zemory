@@ -110,4 +110,36 @@
   function pillTxt(st){return st==='on'?'Healthy':st==='warn'?'Warning':st==='off'?'Off':'—';}
   function zGet(u){return fetch(u).then(function(r){return r.json();});}
   function zPost(u){return fetch(u,{method:'POST'}).then(function(r){return r.json();});}
+  /**
+   * LƯU MỘT THIẾT LẬP — gạt nút là một lời hứa "đã lưu"; không lưu được thì phải RÚT LỜI, không im.
+   *
+   * 🔴 Vì sao (user báo 2026-09-10: *"tui tắt rồi bạn mở lại nó vẫn y như cũ, setting tính năng ko
+   * bao giờ dc lưu"*): mọi công tắc đều lật nút TRƯỚC rồi mới gửi, và cả ba đường gạt đều kết bằng
+   * `.catch(function(){})` — nuốt sạch. Nền đang tắt/bận ⇒ nút sáng lên, không có gì được ghi, và
+   * không ai báo. Mở lại thì nó về như cũ ⇒ người dùng đọc thành "app không bao giờ lưu". Đúng thứ
+   * `02_RULES §Bề mặt CHẾT THEO nền` cấm: **vỏ rỗng trông như đang sống là kiểu hỏng TỆ NHẤT, vì nó
+   * không báo lỗi, nó NÓI DỐI.**
+   *
+   * Ba kiểu "không lưu được" phải bị bắt như nhau — thiếu kiểu nào là còn một đường nói dối:
+   *   ① gọi hỏng / không parse được (nền chết, mất kết nối)
+   *   ② HTTP ngoài 2xx
+   *   ③ nền trả `{ok:false}` — nhận request nhưng TỪ CHỐI ghi (vd `/set-realtime` khi không cắm
+   *      được hook vào host). Đây là kiểu êm nhất và cũ nhất: `zPost` cũ coi nó là thành công.
+   *
+   * Trả về promise **luôn resolve**: payload khi lưu THẬT, `null` khi không (đã báo + đã hoàn nguyên).
+   * Không ném, để chỗ gọi khỏi phải bọc `catch` — chính thói quen bọc `catch` rỗng đẻ ra lỗi này.
+   */
+  function zSave(url,revert){
+    return fetch(url,{method:'POST'})
+      .then(function(r){return r.json().catch(function(){return null;}).then(function(j){
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        if(j&&j.ok===false)throw new Error(j.error||'refused');
+        return j;
+      });})
+      .catch(function(e){
+        try{if(typeof revert==='function')revert();}catch(_){}
+        zToast(t('save.failed')+(e&&e.message?' ('+e.message+')':''),'warn');
+        return null;
+      });
+  }
   var Z={status:null,mem:null,auto:null,checks:{}};

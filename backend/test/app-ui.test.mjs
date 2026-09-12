@@ -96,6 +96,51 @@ test("hai từ điển có CÙNG tập key (không bên nào dư key chết)", (
   assert.deepEqual(onlyVi, [], "key chỉ có ở VI — EN sẽ rơi về tiếng Việt giữa giao diện Anh");
 });
 
+test("chữ trên UI KHÔNG được viết giọng NÓI", () => {
+  // User chốt 2026-09-11 sau khi thấy nút `＋ tài khoản nữa`: *"t đã ghi luật là ko có văn nói
+  // trong app rồi"*. Đối chiếu thì luật `02_RULES:36` chỉ phủ **harness docs** ("Hiến pháp, rules,
+  // structure và plan"), KHÔNG phủ UI — chữ của app lọt qua đúng khe đó. Quét 633 khoá ×2 dict:
+  // 5 chuỗi dính (`＋ tài khoản nữa` · `cho nó tự đẩy` · `BỎ luôn bước sweep` · `kiểu mục ruỗng` ·
+  // `mỗi repo một kiểu`).
+  //
+  // 🔴 Danh sách CỐ Ý HẸP, và đó là phần khó. `luôn`(=always) · `nữa`(=anymore) là tiếng Việt
+  // VIẾT hoàn toàn đúng — đo được 3 chuỗi hợp lệ dùng chúng. Bắt theo từ đơn là báo oan, mà một
+  // cổng báo oan thì sớm muộn bị tắt. Nên chỉ bắt CỤM không có cách đọc trang trọng nào.
+  const BANNED = [
+    ["＋ tài khoản nữa", "nhãn nút phải là mệnh lệnh ngắn: '＋ Thêm tài khoản'"],
+    ["cho nó tự", "đại từ phiếm — gọi thẳng tên chủ thể (zemory · daemon)"],
+    ["BỎ luôn", "'luôn' ở đây là trợ từ nhấn giọng nói, bỏ đi không mất nghĩa"],
+    ["— kiểu ", "'kiểu' nghĩa 'đại loại như' — dùng 'loại' hoặc 'tức là'"],
+    ["một kiểu.", "'mỗi nơi một kiểu' là khẩu ngữ — dùng 'một cách'"],
+    [" nhé", ""], [" nha.", ""], [" nhỉ", ""], ["mấy cái ", ""], ["cứ thế ", ""],
+  ];
+  const { vi } = dicts();
+  const hit = BANNED.filter(([p]) => vi.includes(p)).map(([p, why]) => `"${p}"${why ? " — " + why : ""}`);
+  assert.deepEqual(hit, [], `từ điển VI còn giọng nói:\n  ${hit.join("\n  ")}`);
+  // Vế NGƯỢC: ba chuỗi dùng `luôn`/`nữa` ĐÚNG phải còn nguyên. Không có neo này thì một lượt
+  // "dọn cho sạch" sau sẽ cắt chúng và làm hỏng tiếng Việt đúng — cổng phải chặn cả hai chiều.
+  for (const keep of ["Một lượt luôn là", "danh sách chọn nữa", "tất định, luôn đúng"]) {
+    assert.ok(vi.includes(keep), `chuỗi tiếng Việt ĐÚNG bị cắt oan: "${keep}"`);
+  }
+});
+
+test("hộp Thêm nguồn: tên nền đầy đủ · không nền nào hiện hai lần · danh tính đọc từ hàng CON", () => {
+  // Ba lỗi đo trên app thật 2026-09-11, đều sinh từ đợt thêm Gemini/Copilot hôm 10/09:
+  // hàng hiện khoá thô `gemini`/`copilot` · một dòng hardcode "Gemini — chưa hỗ trợ" còn sót nên
+  // Gemini bày HAI lần với hai câu ngược nhau · và "chưa nối" in cho ba nền đang nối tốt.
+  const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  const name = /var NAME=\{([^}]*)\}/.exec(src);
+  assert.ok(name, "phải có bảng tên nền");
+  for (const p of ["chatgpt", "claude", "gemini", "copilot"]) {
+    assert.match(name[1], new RegExp(`${p}:`), `thiếu tên bày ra cho '${p}' ⇒ hàng hiện khoá thô`);
+  }
+  assert.doesNotMatch(src, /addSoon/, "dòng 'chưa hỗ trợ' phải chết cùng lúc thứ nó hứa ra đời");
+  assert.equal((JS.match(/'src\.addSoon':/g) ?? []).length, 0, "khoá i18n mồ côi phải gỡ khỏi CẢ HAI dict");
+  // `who` không sống qua `aggregateConn` ⇒ phải lấy từ hàng con, nếu không "chưa nối" in đè lên
+  // một tài khoản đang nối — ngay cạnh nút mời thêm tài khoản.
+  assert.match(src, /\(n\.children\|\|\[\]\)\.forEach\(function\(kid\)/, "danh tính phải đọc từ hàng TÀI KHOẢN, không từ hàng nguồn đã gộp");
+});
+
 test("9 key i18n đã gỡ KHÔNG được quay lại (mồ côi từ đợt gộp nav)", () => {
   // Đo 2026-07-29: 9 key này còn trong CẢ HAI từ điển nhưng 0 chỗ dùng — sót từ đợt gộp nav
   // 9→6 màn, khi các card `homeChecks`/`insHealth`/`graph.checks` bị gỡ. Test parity ở trên
@@ -833,5 +878,12 @@ test("công tắc KHÔNG được 'tự bật tắt': payload memory-status GIÀ
   assert.match(gm, /Z\.flagsAt/u, "renderMem phải đối chiếu mốc cú bấm (Z.flagsAt)");
   assert.match(gm, /m\[k\]=Z\.mem\[k\]/u, "trong cửa sổ sau cú bấm, giá trị LOCAL phải thắng payload già");
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
-  assert.match(sys, /Z\.flagsAt\.hybrid=Date\.now\(\)/u, "toggle phải ĐÓNG DẤU cú bấm — thiếu dấu là guard mù");
+  // Neo theo BẢNG ÁNH XẠ, không theo tên khoá lẻ: 2026-09-10 ba bản chép của cùng chuỗi if/else
+  // (lật · đóng dấu · hoàn nguyên) được gom thành một `mk`. Bất biến y nguyên — cú bấm phải được
+  // đóng dấu — nên neo đi theo bản viết lại thay vì đỏ vì nó. Soi cả hai vế để không nới hụt:
+  // bảng phải phủ đủ bốn cờ, VÀ con dấu phải dùng chính bảng đó (dùng khoá khác là guard mù).
+  assert.match(sys, /Z\.flagsAt\[mk\]=Date\.now\(\)/u, "toggle phải ĐÓNG DẤU cú bấm — thiếu dấu là guard mù");
+  const mk = /var mk=([^;]+);/u.exec(sys);
+  assert.ok(mk, "phải có bảng ánh xạ khoá của công tắc");
+  for (const k of ["hybrid", "rerank", "scope", "pathsWatch"]) assert.match(mk[1], new RegExp(`'${k}'`), `bảng phải phủ '${k}'`);
 });

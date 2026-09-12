@@ -5,14 +5,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, salvageVectors, vectorDimsOf, verifyMemory } from "../memory/salvage.js";
-import { currentMemoryDb, openMemory } from "../memory/db.js";
+import { currentMemoryDb } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { embedConfig, embedProfileSpec } from "../memory/embed.js";
-import { dropVectorIndex, embedPending, vectorCount, vectorCoverage, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "../memory/vectors.js";
+import { dropVectorIndex, embedPending, memoryStats, vectorCount, vectorIndexInfo, vectorOutOfScope, vectorRemaining } from "../memory/vectors.js";
 import { runRagBench } from "../evals/ragbench.js";
 import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
@@ -1191,34 +1191,34 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "stats") {
-    // Bốn phép quét TOÀN BẢNG của bảng số — tách thành lệnh riêng để daemon gọi ở TIẾN TRÌNH
-    // CON. better-sqlite3 chạy đồng bộ, nên gọi thẳng trong daemon là khoá event loop: đo
+    // Bảng số của dashboard — tách thành lệnh riêng để daemon gọi ở TIẾN TRÌNH CON.
+    // better-sqlite3 chạy đồng bộ, nên gọi thẳng trong daemon là khoá event loop: đo
     // 2026-08-23 lượt LẠNH **16,7 giây** (ấm 0,06 s), và trong 16,7 s đó MỌI endpoint khác
     // đứng hình ⇒ chip ở rail treo "…" nhìn như đã tắt. Chỉ ĐỌC, không xin write-gate.
-    let tokensEst = 0;
+    //
+    // 🔴 ĐÂY LÀ ĐƯỜNG PRODUCTION THẬT của bảng số, nên nó phải mang bản vá một-lượt-quét
+    // (`memoryStats`, 2026-09-10) — không thì `ui.ts` nhanh mà con vẫn bò. Trước: bốn lượt đi
+    // bộ riêng qua cùng bảng `messages` 3 GB = **129 s trên tổng 137 s**, sát ngay trần
+    // `TIMEOUT_MS` 180 s của `statsjob.ts` ⇒ kho lớn thêm chút nữa là con bị giết và bảng số
+    // im lặng không bao giờ có số (fail-open trả `null`). Tức đây không chỉ là chậm, nó là
+    // một cái trần đang tiến tới.
+    let tokensEst = 0, count = 0, remaining = 0, covered = 0, embeddable = 0, outOfScope = 0;
     try {
-      const db = openMemory();
-      try {
-        tokensEst = Math.round(
-          Number((db.prepare("SELECT COALESCE(SUM(LENGTH(content)),0) AS c FROM messages").get() as { c: number }).c) / 4,
-        );
-      } finally {
-        db.close();
-      }
-    } catch {
-      /* best-effort */
-    }
-    let count = 0, remaining = 0, covered = 0, embeddable = 0;
-    try {
-      count = vectorCount();
-      remaining = vectorRemaining();
-      const cov = vectorCoverage();
-      covered = cov.covered;
-      embeddable = cov.embeddable;
+      const s = memoryStats();
+      tokensEst = Math.round(s.chars / 4);
+      embeddable = s.embeddable;
+      covered = s.covered;
+      remaining = s.remaining;
+      outOfScope = s.outOfScope;
     } catch {
       /* lane vector là tuỳ chọn — fail open (HP điều 9) */
     }
-    console.log(JSON.stringify({ tokensEst, count, remaining, covered, embeddable, outOfScope: vectorOutOfScope() }));
+    try {
+      count = vectorCount();
+    } catch {
+      /* đếm hàng trong vec_chunks là bảng KHÁC, hỏng riêng — không kéo năm số trên chết theo */
+    }
+    console.log(JSON.stringify({ tokensEst, count, remaining, covered, embeddable, outOfScope }));
     return;
   }
   if (sub === "info") {
@@ -1345,8 +1345,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  scan              ingest agent transcripts from known locations into the",
       "                    global memory (<repo>/data/global_memory.db) — fast, incremental.",
       "  scan --deep       walk the whole machine to find agents ANYWHERE.",
-      "  scan-web [--platform chatgpt|claude] [--limit N] [--refresh]",
-      "                    capture web-chat (ChatGPT · claude.ai) via a login-once browser",
+      "  scan-web [--platform chatgpt|claude|m365copilot|gemini|copilot|mscopilot] [--limit N] [--refresh]",
+      "                    capture web-chat (ChatGPT · claude.ai · Microsoft 365 Copilot) via a login-once browser",
       "                    window (origin=web). Ingests in batches + resumes; --limit N pulls",
       "                    the N newest for a quick verify. Session expired or signed out →",
       "                    it opens the window and ASKS, then continues in place.",
