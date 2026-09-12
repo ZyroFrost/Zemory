@@ -39,7 +39,7 @@ function seed() {
   }
 }
 
-test("① lane có account khớp ĐÚNG khe đó — 'main' không được nuốt khe khác", () => {
+test("1 a lane with an account matches EXACTLY that slot - 'main' must not swallow another slot", () => {
   const s = (account) => ({ origin: "web", host: "MAY-A", source: "claude-web", account });
   const lane2 = { origin: "web", source: "claude-web", account: "2" };
 
@@ -52,7 +52,7 @@ test("① lane có account khớp ĐÚNG khe đó — 'main' không được nu�
   for (const a of ["main", "2", null]) assert.equal(laneMatches(laneSrc, s(a)), true);
 });
 
-test("③ phiên CŨ (NULL) là nhóm '(không rõ)' RIÊNG — gộp vào main là gán bừa dữ liệu cũ", () => {
+test("3 OLD sessions (NULL) form their own '(unknown)' group - folding them into main would mislabel old data", () => {
   const s = (account) => ({ origin: "web", host: "MAY-A", source: "claude-web", account });
   const laneUnknown = { origin: "web", source: "claude-web", account: "" };
   assert.equal(laneMatches(laneUnknown, s(null)), true, "lane rỗng khớp đúng hàng NULL");
@@ -60,7 +60,7 @@ test("③ phiên CŨ (NULL) là nhóm '(không rõ)' RIÊNG — gộp vào main 
   assert.notEqual(laneKey({ account: "" }), laneKey({}), "khe '(không rõ)' phải là một lane RIÊNG, không trùng lane trống");
 });
 
-test("② laneSqlClause sinh điều kiện cho account — thiếu là ngừng KÉO mà không lọc SYNC", () => {
+test("2 laneSqlClause emits the account condition - without it PULLING stops while SYNC goes unfiltered", () => {
   const c = laneSqlClause("s", [{ origin: "web", source: "claude-web", account: "2" }]);
   assert.match(c.match, /COALESCE\(s\.account,''\)\s*=\s*\?/u, "phải có vế account trong SQL");
   assert.ok(c.params.includes("2"));
@@ -70,7 +70,7 @@ test("② laneSqlClause sinh điều kiện cho account — thiếu là ngừng 
   assert.match(u.match, /COALESCE\(s\.account,''\)/u);
 });
 
-test("④ cây đẻ MỘT DÒNG cho mỗi khe, kèm số tin của đúng khe đó", () => {
+test("4 the tree emits ONE ROW per slot, carrying that slot's own message count", () => {
   seed();
   const web = scopeTree(DB, []).find((n) => n.lane.origin === "web");
   const cw = (web.children || []).find((c) => c.lane.source === "claude-web");
@@ -85,7 +85,7 @@ test("④ cây đẻ MỘT DÒNG cho mỗi khe, kèm số tin của đúng khe �
   assert.equal(keys.size, (cw.children || []).length);
 });
 
-test("PROFILE RỖNG chưa từng đăng nhập KHÔNG được thành hàng — đó là rác, không phải cảnh báo", async () => {
+test("an EMPTY PROFILE that never signed in must NOT become a row - that is junk, not a warning", async () => {
   // User chốt 2026-08-28, nguyên văn: *"chưa liên kết thì sẽ ko hiện, đéo có chuyện mà nó
   // lưu thông tin nhảm tk2"*. Bối cảnh: bấm "＋ thêm tài khoản" tạo NGAY thư mục profile —
   // kể cả khi người dùng đóng cửa sổ mà không đăng nhập. Bản đầu dựng thư mục đó thành một
@@ -103,7 +103,7 @@ test("PROFILE RỖNG chưa từng đăng nhập KHÔNG được thành hàng —
   assert.ok(names.includes("main") && names.includes("2"), "khe CÓ DỮ LIỆU vẫn phải hiện đủ");
 });
 
-test("MỘT KHUÔN: dù chỉ một tài khoản, hàng nguồn vẫn có hàng tài khoản bên dưới", () => {
+test("ONE SHAPE: even with a single account, the source row still has an account row beneath it", () => {
   // 🔄 Đảo ca chiều 2026-08-28 ("một tài khoản ⇒ không bung"). Luật đó đẻ HAI kiểu hiển thị:
   // chatgpt dính email lên hàng nguồn, claude tách hàng — user: *"thằng gpt lại dính lên 1
   // dòng nữa chứ"*. Mọi nguồn web cùng một khuôn: nguồn → tài khoản. Chỉ không bung khi
@@ -125,7 +125,7 @@ test("MỘT KHUÔN: dù chỉ một tài khoản, hàng nguồn vẫn có hàng 
   assert.equal(cg.conn && cg.conn.who, undefined, "hàng NGUỒN không mang email — email nằm ở hàng tài khoản");
 });
 
-test("bỏ tick MỘT khe chỉ loại khe đó khỏi recall — hai khe kia còn nguyên", () => {
+test("unticking ONE slot removes only that slot from recall - the other two are untouched", () => {
   seed();
   const excl = [{ origin: "web", source: "claude-web", account: "2" }];
   const s = (account) => ({ origin: "web", host: "MAY-A", source: "claude-web", account });
@@ -134,7 +134,7 @@ test("bỏ tick MỘT khe chỉ loại khe đó khỏi recall — hai khe kia c�
   assert.equal(isExcluded(s(null), excl), false);
 });
 
-test("v25: phiên WEB cũ (account NULL) ⇒ 'main' · phiên LOCAL giữ NULL", async () => {
+test("v25: an old WEB session (account NULL) becomes 'main'; a LOCAL session keeps NULL", async () => {
   // Vì sao đây là GÁN chứ không phải ĐOÁN: trước v24 khe duy nhất từng đăng nhập được là
   // `main`; khe phụ có bản ghi đều `ok:false`. Tin NULL vì thế chỉ có thể do main kéo về. Để
   // NULL thì cây đẻ hàng "(không rõ)" lặp số của cha — user: *"tự nhiên có ko rõ… là vớ vẩn"*.
@@ -161,7 +161,7 @@ test("v25: phiên WEB cũ (account NULL) ⇒ 'main' · phiên LOCAL giữ NULL",
   }
 });
 
-test("stampAccount đóng dấu phiên chưa có, KHÔNG đè dấu đã có", () => {
+test("stampAccount stamps sessions that have none, and does NOT overwrite an existing stamp", () => {
   seed();
   assert.equal(stampAccount(DB, ["s-old"], "3"), 1, "phiên NULL phải được đóng dấu");
   assert.equal(stampAccount(DB, ["s-main"], "3"), 0, "phiên đã có dấu KHÔNG được đổi — kéo lại không được viết lại lịch sử");
@@ -184,7 +184,7 @@ const { accountKey, slotOfIdentity } = await import("../../dist/memory/webslots.
 const { restampAccount } = await import("../../dist/memory/ingest.js");
 const { setWebAuth } = await import("../../dist/config/settings.js");
 
-test("accountKey/slotOfIdentity: email thắng khe; tra ngược khe từ sổ webAuth", () => {
+test("accountKey/slotOfIdentity: email beats slot; the slot is looked up backwards from the webAuth ledger", () => {
   assert.equal(accountKey("a@x.com", "main"), "a@x.com");
   assert.equal(accountKey(null, "2"), "2", "chưa biết email thì mới rơi về khe");
   assert.equal(accountKey("org: Global", "main"), "main", "tên org KHÔNG phải danh tính");
@@ -194,7 +194,7 @@ test("accountKey/slotOfIdentity: email thắng khe; tra ngược khe từ sổ w
   assert.equal(slotOfIdentity(auth, "claude", "zzz@x.com"), null, "không khe nào giữ ⇒ null, không đoán");
 });
 
-test("restampAccount: chỉ đổi hàng còn mang KHE/NULL, hàng đã có email của người khác giữ nguyên", () => {
+test("restampAccount: it only changes rows still carrying a SLOT or NULL, leaving rows already holding someone's email", () => {
   const db = openMemory(DB);
   try {
     db.prepare("DELETE FROM sessions").run();
@@ -217,7 +217,7 @@ test("restampAccount: chỉ đổi hàng còn mang KHE/NULL, hàng đã có emai
   assert.equal(restampAccount(DB, ["claudeweb-1"], "org: Global"), 0, "không phải email thì không đóng dấu gì");
 });
 
-test("cây: email cũ KHÔNG còn khe vẫn có hàng riêng (chưa nối); khe main đăng nhập email mới là hàng khác", async () => {
+test("the tree: an old email with NO slot left still gets its own row (not linked); slot main signed into a new email is a different row", async () => {
   const db = openMemory(DB);
   try {
     db.prepare("DELETE FROM sessions").run();
@@ -245,7 +245,7 @@ test("cây: email cũ KHÔNG còn khe vẫn có hàng riêng (chưa nối); khe 
   assert.equal((cw.children || []).length, 2, "khe main KHÔNG được đẻ thêm hàng thứ ba trùng với email mới");
 });
 
-test("phiên đời cũ chưa có danh tính ⇒ MỘT hàng '(chưa gắn tài khoản)' + nút mở khe MỚI; KHÔNG 'main', KHÔNG mượn email", async () => {
+test("an old-generation session with no identity yields ONE '(no account attached)' row plus a button to open a NEW slot; never 'main', never a borrowed email", async () => {
   // User chốt 2026-08-28: *"khi thông tin chính thức của web nhận về lưu thì lấy nó, đéo phải lấy
   // lại cái cũ đã chế bị sai"* — danh tính chỉ đến từ web lúc đăng nhập; không đoán chủ cũ.
   const db = openMemory(DB);
@@ -269,7 +269,7 @@ test("phiên đời cũ chưa có danh tính ⇒ MỘT hàng '(chưa gắn tài 
   assert.equal(legacy.conn.who, undefined, "không mượn email của khe làm danh tính");
 });
 
-test("slotOfIdentity: một email ở hai khe ⇒ trả khe ĐANG NỐI, không trả khe cũ mất phiên", () => {
+test("slotOfIdentity: one email in two slots returns the CONNECTED slot, not the old signed-out one", () => {
   // Đo 2026-08-29: chatgpt main (ok:false, zyrofrost) + chatgpt#2 (ok:true, zyrofrost) ⇒ hàng phải ✓ theo khe 2.
   const auth = { chatgpt: { ok: false, who: "z@x.com" }, "chatgpt#2": { ok: true, who: "z@x.com" } };
   assert.equal(slotOfIdentity(auth, "chatgpt", "z@x.com"), "2");
@@ -277,7 +277,7 @@ test("slotOfIdentity: một email ở hai khe ⇒ trả khe ĐANG NỐI, không 
   assert.equal(slotOfIdentity(onlyOld, "chatgpt", "z@x.com"), "main", "không khe nào nối thì vẫn trả khe có danh tính (để nút nối lại đúng khe)");
 });
 
-test("bỏ tick một lane ⇒ tin của lane đó KHÔNG vào hàng đợi embed và không tính 'còn lại'", async () => {
+test("unticking a lane keeps its messages OUT of the embed queue and out of the 'remaining' count", async () => {
   // User chốt 2026-08-29: check = được lên GM VÀ được embed. Trước đây bỏ tick chỉ ngăn nạp.
   const { vectorRemaining } = await import("../../dist/memory/vectors.js");
   const { setScopeExclude } = await import("../../dist/config/settings.js");

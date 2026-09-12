@@ -49,16 +49,16 @@ function optsFor(version) {
   };
 }
 
-test("URL tải dựng đúng như template của prebuild-install", () => {
+test("the download URL is built exactly to the prebuild-install template", () => {
   assert.equal(downloadUrlFor(PKG, VERSION), util.getDownloadUrl(optsFor(VERSION)));
 });
 
-test("đường dẫn cache trùng đúng chỗ prebuild-install đi tìm", () => {
+test("the cache path lands exactly where prebuild-install looks", () => {
   const url = util.getDownloadUrl(optsFor(VERSION));
   assert.equal(cachedPrebuildPath(url), util.cachedPrebuild(url));
 });
 
-test("thư mục cache bám theo npm_config_cache, không phải đường cứng", () => {
+test("the cache folder follows npm_config_cache rather than a hardcoded path", () => {
   const saved = process.env.npm_config_cache;
   try {
     process.env.npm_config_cache = process.platform === "win32" ? "C:\\zz-cache" : "/zz-cache";
@@ -69,7 +69,7 @@ test("thư mục cache bám theo npm_config_cache, không phải đường cứn
   }
 });
 
-test("mọi gói khai báo đều tra được asset theo đúng tên tệp", () => {
+test("every declared package resolves to an asset under the right file name", () => {
   for (const pkg of PREBUILD_PACKAGES) {
     const url = downloadUrlFor(pkg, VERSION);
     assert.match(url, /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases\/download\/v/);

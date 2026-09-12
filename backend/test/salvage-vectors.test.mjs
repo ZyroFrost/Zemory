@@ -79,7 +79,7 @@ function countVectors(path) {
   }
 }
 
-test("vectorDimsOf đọc được số chiều, và trả 0 khi kho chưa từng nhúng", (t) => {
+test("vectorDimsOf reads the dimension count, and returns 0 for a store that never embedded", (t) => {
   const dir = scratch(t);
   const withVec = join(dir, "co-vector.db");
   const noVec = join(dir, "khong-vector.db");
@@ -91,7 +91,7 @@ test("vectorDimsOf đọc được số chiều, và trả 0 khi kho chưa từn
   assert.equal(vectorDimsOf(join(dir, "khong-ton-tai.db")), 0, "file không có ⇒ 0 (fail-open)");
 });
 
-test("cứu hộ CHỞ ĐƯỢC chỉ mục vector — đây là vế trước 2026-08-11 không ai gọi", (t) => {
+test("salvage CAN CARRY the vector index - the half nobody called before 2026-08-11", (t) => {
   const dir = scratch(t);
   const src = join(dir, "nguon.db");
   const out = join(dir, "cuu.db");
@@ -107,7 +107,7 @@ test("cứu hộ CHỞ ĐƯỢC chỉ mục vector — đây là vế trước 2
   assert.equal(countVectors(out), 5, "kho đã cứu phải MANG THEO chỉ mục vector");
 });
 
-test("kho nguồn KHÔNG có vector: cứu hộ vẫn chạy, không ném lỗi", (t) => {
+test("a source store with NO vectors: salvage still runs without throwing", (t) => {
   const dir = scratch(t);
   const src = join(dir, "tron.db");
   const out = join(dir, "cuu2.db");

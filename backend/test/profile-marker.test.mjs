@@ -14,22 +14,24 @@ import { readFileSync } from "node:fs";
 
 const SRC = readFileSync(new URL("../../backend/src/memory/scanweb.ts", import.meta.url), "utf8");
 
-test("nhánh đoán-là-Edge chỉ chạy khi khe KHÔNG có phiên", () => {
+test("the guess-it-is-Edge branch only runs when the slot has NO session", () => {
   // Neo vào ĐIỀU KIỆN, không vào câu chữ quanh nó (bài học cùng ngày: neo theo cửa sổ N ký tự vỡ
   // ngay khi ai đó viết thêm chú thích).
-  assert.match(SRC, /coNoiDung && !keepSession/u, "phải có vế `!keepSession` — thiếu nó là quay lại bug dời phiên đang sống");
+  // 2026-09-13: `coNoiDung` đổi thành `hasContent` theo luật định danh phải là tiếng Anh ASCII.
+  // Neo này bám TÊN BIẾN nên nó đỏ ngay lúc đổi tên — đúng như nó phải thế.
+  assert.match(SRC, /hasContent && !keepSession/u, "phải có vế `!keepSession` — thiếu nó là quay lại bug dời phiên đang sống");
   // Ca ÂM: KHÔNG được bỏ hẳn nhánh suy đoán. Profile đời cũ THẬT SỰ do Edge dựng và KHÔNG có phiên
   // thì vẫn phải được nhận là Edge — bỏ luôn là đổi hành vi của một ca khác, không phải sửa bug này.
   assert.match(SRC, /EDGE_PATHS\.find\(\(x\) => existsSync\(x\)\)/u, "vẫn phải giữ đường đoán cho profile đời cũ KHÔNG có phiên");
 });
 
-test("khi ĐỔI HÃNG thật thì vẫn dời profile sang bên, KHÔNG xoá", () => {
+test("on a real VENDOR CHANGE the profile is still moved aside, never deleted", () => {
   // Vế này là luật user chốt 2026-08-28 (máy mặc định THẮNG) — bản vá hôm nay không được đụng tới.
   assert.match(SRC, /renameSync\(profileDir, `\$\{profileDir\}\.\$\{basename\(built\)/u, "đổi hãng ⇒ dời sang bên");
   assert.doesNotMatch(SRC, /rmSync\(profileDir/u, "KHÔNG BAO GIỜ xoá profile cũ — luôn phải lùi lại được");
 });
 
-test("có dấu thì dấu THẮNG: profile Edge có dấu vẫn mở bằng Edge dù máy mặc định khác", () => {
+test("when a mark exists the MARK WINS: a marked Edge profile still opens in Edge even if the machine default differs", () => {
   // Đọc `built` từ dấu là đường CHÍNH; nhánh suy đoán chỉ là đường lui khi đọc dấu ném.
   assert.match(SRC, /built = readFileSync\(marker, "utf8"\)\.trim\(\) \|\| null;/u);
 });

@@ -54,27 +54,27 @@ function goodRepo(t, extra = () => {}) {
 
 const find = (rep, check) => rep.items.find((i) => i.check === check);
 
-test("repo bám chuẩn ⇒ không có mục blocking nào", (t) => {
+test("a repo on the standard reports no blocking item", (t) => {
   const rep = conform(goodRepo(t));
   const blocking = rep.items.filter((i) => i.level === "blocking");
   assert.deepEqual(blocking.map((i) => i.check), [], "repo sạch mà vẫn báo = báo oan");
   assert.equal(rep.ok, true);
 });
 
-test("BÁO OAN ①: file ở gốc repo (tool ép root) không bị tính là lệch slot", (t) => {
+test("FALSE POSITIVE 1: a file at the repo root (tool-forced) does not count as a slot violation", (t) => {
   const rep = conform(goodRepo(t));
   const off = find(rep, "off-standard-dir");
   assert.equal(off, undefined, `gốc repo phải được miễn trừ, nhận được: ${JSON.stringify(off?.samples)}`);
 });
 
-test("BÁO OAN ②: `backend`/`frontend`/`docs` là VAI TRÒ, không phải slot", (t) => {
+test("FALSE POSITIVE 2: `backend`/`frontend`/`docs` are ROLES, not slots", (t) => {
   const root = goodRepo(t, (r) => write(r, "frontend/main.js", "1;\n"));
   const rep = conform(root);
   const off = find(rep, "off-standard-dir");
   assert.ok(!off || !off.samples.some((s) => ["backend", "frontend", "docs"].includes(s)), "4 vai trò bắt buộc không được báo");
 });
 
-test("BÁO OAN ③: thư mục `NN_<tên>` (convention hệ non-app) không bị tính là lệch", (t) => {
+test("FALSE POSITIVE 3: an `NN_<name>` folder (the non-app convention) does not count as a violation", (t) => {
   const root = goodRepo(t, (r) => {
     write(r, "backend/src/pipelines/01_weekly/run.py", "x = 1\n");
     write(r, "backend/src/pipelines/02_daily/run.py", "x = 2\n");
@@ -84,7 +84,7 @@ test("BÁO OAN ③: thư mục `NN_<tên>` (convention hệ non-app) không bị
   assert.ok(!off || !off.samples.some((s) => /\/\d{2}_/.test(s)), `NN_ phải được miễn trừ, nhận: ${JSON.stringify(off?.samples)}`);
 });
 
-test("BÁO OAN ④: slot chuẩn khai mà repo chưa dùng KHÔNG phải phát hiện", (t) => {
+test("FALSE POSITIVE 4: a standard slot declared but unused by the repo is NOT a finding", (t) => {
   const rep = conform(goodRepo(t));
   // Không được có mục nào liệt kê slot-chưa-dùng (bản đầu đẻ ra 48 mục như vậy).
   assert.equal(find(rep, "concern-no-home"), undefined, "trạng thái đúng chuẩn, không được báo");
@@ -93,7 +93,7 @@ test("BÁO OAN ④: slot chuẩn khai mà repo chưa dùng KHÔNG phải phát h
   }
 });
 
-test("BÁO OAN ⑥ (2026-08-20): NON-APP — con TÊN TỰ DO của tasks/ · pipelines/ · data/ là chuẩn ĐÃ KHAI", (t) => {
+test("FALSE POSITIVE 6 (2026-08-20): NON-APP - FREE-NAMED children of tasks/, pipelines/ and data/ are a DECLARED standard", (t) => {
   // Báo từ repo PBI, tái lập được: `pipelines/excel_loader` bị chặn blocking trong khi
   // chuẩn non-app tự khai ở BA chỗ (`tasks/<case>/` · `pipelines/<domain>/` · `data/<case>/`,
   // legacy KHÔNG đánh số cùng tồn tại) — máy chỉ miễn tiền tố `NN_`.
@@ -113,7 +113,7 @@ test("BÁO OAN ⑥ (2026-08-20): NON-APP — con TÊN TỰ DO của tasks/ · pi
   );
 });
 
-test("VẾ NGƯỢC của ⑥: profile APP thì con lạ trong slot VẪN bị bắt — miễn trừ không được tràn sang app", (t) => {
+test("THE REVERSE of 6: on the APP profile a stray child inside a slot is still caught - the exemption must not spill into app", (t) => {
   // Chuẩn APP nói ngược lại chuẩn non-app: "bên trong một domain chỉ dùng slot từ CÙNG từ
   // điển, KHÔNG tạo tên mới" (03 §2). Miễn cả họ subdir bên app là mở lỗ — đây là lý do
   // KHÔNG nhận đề nghị "miễn mọi subdir của slot" trong báo cáo gốc.
@@ -125,7 +125,7 @@ test("VẾ NGƯỢC của ⑥: profile APP thì con lạ trong slot VẪN bị b
   assert.ok(off && off.samples.includes("pipelines/excel_loader"), `app phải vẫn nghiêm: ${JSON.stringify(off?.samples)}`);
 });
 
-test("`ignore` trong marker áp được cả nhánh CHUẨN — trước chỉ nhánh layout:foreign đọc", (t) => {
+test("`ignore` in the marker now applies to the STANDARD branch too - previously only the layout:foreign branch read it", (t) => {
   const root = goodRepo(t, (r) => {
     write(r, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", ignore: ["teamdocs"] }));
     write(r, "teamdocs/tool.py", "x = 1\n");
@@ -135,7 +135,7 @@ test("`ignore` trong marker áp được cả nhánh CHUẨN — trước chỉ 
   assert.ok(!off || !off.samples.includes("teamdocs"), `đường đã khai ignore phải được miễn: ${JSON.stringify(off?.samples)}`);
 });
 
-test("PARITY: NONAPP_FREEFORM_PARENTS phải còn được CHÍNH template non-app khai chỗ tự do", async () => {
+test("PARITY: NONAPP_FREEFORM_PARENTS must still be declared as free space by the non-app template itself", async () => {
   // Điều 13 HP: chuẩn (03) và từ điển trong code là hai lăng kính của CÙNG một luật —
   // giữ khớp bằng gate, không dựa ai nhớ. Ai gỡ dòng `<domain>/`/`<case>/` khỏi template
   // mà quên thu hẹp const (hoặc thêm parent vào const mà template không khai) ⇒ ĐỎ.
@@ -149,7 +149,7 @@ test("PARITY: NONAPP_FREEFORM_PARENTS phải còn được CHÍNH template non-a
   assert.ok(tpl.includes("<case>/"), "template không còn khai con tự do <case>/ (tasks/data)");
 });
 
-test("BÁO OAN ⑤: docs_template/** là TEMPLATE (hàng ship đi), không soi bằng thước của repo chứa nó", (t) => {
+test("FALSE POSITIVE 5: docs_template/** is a TEMPLATE (shipped goods), not measured by the yardstick of the repo holding it", (t) => {
   // Lộ ra 2026-07-29 khi bộ Cowork vào docs_template/01_cowork_basic/ mang theo script tự kiểm
   // `.py` (check_install.py + check_structure.py — thiết kế có chủ đích): conform báo
   // `docs_template/01_cowork_basic` là "thư mục chứa code không khớp slot". Ruột template theo
@@ -166,7 +166,7 @@ test("BÁO OAN ⑤: docs_template/** là TEMPLATE (hàng ship đi), không soi b
   );
 });
 
-test("BẮT THẬT: thư mục chứa code mà không khớp slot nào ⇒ blocking", (t) => {
+test("REAL CATCH: a folder holding code that matches no slot is blocking", (t) => {
   const root = goodRepo(t, (r) => write(r, "backend/src/weirdname/x.ts", "export const c = 3;\n"));
   const rep = conform(root);
   const off = find(rep, "off-standard-dir");
@@ -176,7 +176,7 @@ test("BẮT THẬT: thư mục chứa code mà không khớp slot nào ⇒ block
   assert.equal(rep.ok, false, "có blocking ⇒ gate phải đỏ");
 });
 
-test("BẮT THẬT: thiếu file harness bắt buộc ⇒ blocking", (t) => {
+test("REAL CATCH: a missing mandatory harness file is blocking", (t) => {
   const root = tempDir(t, "zemory-conform-bare-");
   write(root, "backend/src/api/x.ts", "export const a = 1;\n");
   const rep = conform(root);
@@ -186,7 +186,7 @@ test("BẮT THẬT: thiếu file harness bắt buộc ⇒ blocking", (t) => {
   assert.ok(miss.count >= 8, `thiếu cả bộ, nhận count=${miss.count}`);
 });
 
-test("BẮT THẬT: skill khai trong roster mà không có section `##`", (t) => {
+test("REAL CATCH: a skill declared in the roster with no `##` section", (t) => {
   const root = goodRepo(t, (r) =>
     write(r, "docs/agent/04_SKILLS.md", ["# Kho skill", "**Skill inline hiện có:** `grill` · `mất tích`.", "## grill", "thân."].join("\n")),
   );
@@ -196,7 +196,7 @@ test("BẮT THẬT: skill khai trong roster mà không có section `##`", (t) =>
   assert.deepEqual(drift.samples, ["mất tích"]);
 });
 
-test("empty-slot-dir đo trên ĐĨA: folder chỉ có .md KHÔNG phải folder rỗng", (t) => {
+test("empty-slot-dir measures ON DISK: a folder holding only .md is not an empty folder", (t) => {
   const root = goodRepo(t, (r) => {
     write(r, "backend/resources/prompts/hello.md", "# prompt\n"); // có file, không rỗng
     mkdirSync(join(r, "backend", "src", "jobs"), { recursive: true }); // slot RỖNG thật
@@ -209,7 +209,7 @@ test("empty-slot-dir đo trên ĐĨA: folder chỉ có .md KHÔNG phải folder 
   assert.equal(empty.level, "advisory", "rỗng là advisory, không chặn gate");
 });
 
-test("hp-uncited: điều không doc nào trích dẫn ⇒ advisory (không chặn)", (t) => {
+test("hp-uncited: an article no doc cites is advisory (not blocking)", (t) => {
   const root = goodRepo(t, (r) => write(r, "docs/agent/02_RULES.md", "# Rules\nChỉ nhắc điều 1.\n"));
   const rep = conform(root);
   const un = find(rep, "hp-uncited");
@@ -225,7 +225,7 @@ test("hp-uncited: điều không doc nào trích dẫn ⇒ advisory (không ch�
 // Một check không thể nổ còn tệ hơn không có: nó phát ra lời bảo đảm "không mâu
 // thuẫn" trong khi chưa hề nhìn. Ba test dưới đây tồn tại để BUỘC nó nổ được thật.
 
-test("dangling-ref bắt được `điều N` trỏ tới số điều không tồn tại", (t) => {
+test("dangling-ref catches an `article N` pointing at a number that does not exist", (t) => {
   const root = goodRepo(t, (r) =>
     write(r, "docs/plan/00_overview.md", "# Tổng quan\nTheo điều 2 và điều 9.\n"),
   );
@@ -236,7 +236,7 @@ test("dangling-ref bắt được `điều N` trỏ tới số điều không t�
   assert.ok(!d.samples.some((s) => /điều 2\b/.test(s)), "điều 2 CÓ thật, không được báo");
 });
 
-test("dangling-ref bắt được link .md trỏ tới file đã mất", (t) => {
+test("dangling-ref catches a .md link pointing at a file that is gone", (t) => {
   const root = goodRepo(t, (r) =>
     write(r, "docs/agent/05_TODO.md", "# TODO\nXem [kế hoạch](../plan/07_ghost.md) và [chuẩn](03_STRUCTURE.md).\n"),
   );
@@ -249,7 +249,7 @@ test("dangling-ref bắt được link .md trỏ tới file đã mất", (t) => 
 // Ratchet chống tái sinh ca báo oan: routing §4 trỏ tới TẦNG (`data/` `attic/`
 // `external/`…) là ĐÚNG CHUẨN — chúng khai ở §2, không phải slot §3. Thử kiểm điều
 // này ra 13 mục oan trên chính zemory nên đã cố ý bỏ nhánh đó.
-test("dangling-ref KHÔNG báo oan: routing tới tầng, link ngoài, và điều có thật", (t) => {
+test("dangling-ref raises NO false positive: routing to a layer, external links, and real articles", (t) => {
   const root = goodRepo(t, (r) => {
     write(
       r,
@@ -267,7 +267,7 @@ test("dangling-ref KHÔNG báo oan: routing tới tầng, link ngoài, và đi�
 // Audit 2026-07-27 (F1): `03_STRUCTURE.md` là nguồn (điều 3) nhưng `app.js` từng chép
 // tay lại thành `STRUCT`/`ROUTE` — và đã lệch nặng: cây 35/90 hàng, routing 26/66 dòng.
 // Màn Harness là màn TRA CỨU: hiện thiếu 60% mà không báo gì là kiểu hỏng tệ nhất.
-test("readStandardSpec parse ĐỦ cây + routing từ chính file .md", (t) => {
+test("readStandardSpec parses the FULL tree plus routing straight from the .md", (t) => {
   const root = tempDir(t, "zemory-spec-");
   write(root, "docs/agent/03_STRUCTURE.md", [
     "# Chuẩn",
@@ -297,7 +297,7 @@ test("readStandardSpec parse ĐỦ cây + routing từ chính file .md", (t) => 
 
 // Non-app đánh số section KHÁC app (§2 cây / §3 routing). Ghim số là một profile trả
 // rỗng mà không ai biết — bắt được lúc đo thật, khoá lại ở đây.
-test("tìm section theo TÊN, không theo số — non-app đánh số khác vẫn parse được", (t) => {
+test("sections are found by NAME, not by number - the non-app numbering still parses", (t) => {
   const root = tempDir(t, "zemory-spec2-");
   write(root, "docs/agent/03_STRUCTURE.md", [
     "## 2. Cây thư mục — ghi chú TỪNG DÒNG",
@@ -315,7 +315,7 @@ test("tìm section theo TÊN, không theo số — non-app đánh số khác v�
   assert.equal(spec.routing.length, 1, "routing phải parse được dù đánh số §3");
 });
 
-test("file thiếu / hỏng ⇒ trả rỗng, KHÔNG ném (fail-open, điều 9)", (t) => {
+test("a missing or broken file yields empty and does NOT throw (fail-open, constitution 9)", (t) => {
   const root = tempDir(t, "zemory-spec3-");
   const spec = readStandardSpec(root); // không có docs/agent/03_STRUCTURE.md
   assert.deepEqual(spec, { tree: [], routing: [] });
@@ -328,7 +328,7 @@ test("file thiếu / hỏng ⇒ trả rỗng, KHÔNG ném (fail-open, điều 9)
 // bằng grep trước đó chưa từng nhìn hai file lớn nhất của bề mặt. `tsc` xanh, test xanh,
 // không một dấu hiệu nào. Check chỉ có giá trị nếu nó thật sự đỏ được.
 
-test("control-char NỔ khi file nguồn có byte NUL", (t) => {
+test("control-char FIRES when a source file holds a NUL byte", (t) => {
   const root = goodRepo(t, (r) => {
     // NUL thật giữa một template literal — đúng hình dạng đã gặp ngoài đời.
     write(r, "backend/src/services/key.ts", "export const k = `a" + String.fromCharCode(0) + "b`;\n");
@@ -339,7 +339,7 @@ test("control-char NỔ khi file nguồn có byte NUL", (t) => {
   assert.ok(hit.samples.some((s) => s.includes("key.ts") && s.includes("0x00")), `mẫu phải chỉ đúng file + mã: ${hit.samples}`);
 });
 
-test("control-char NỔ khi docs .md nuốt mất chuỗi escape (0x08)", (t) => {
+test("control-char FIRES when a docs .md swallowed an escape sequence (0x08)", (t) => {
   const root = goodRepo(t, (r) => {
     write(r, "docs/plan/01_note.md", "# Ghi chú\nDùng " + String.fromCharCode(8) + " của JS là sai với tiếng Việt.\n");
   });
@@ -348,7 +348,7 @@ test("control-char NỔ khi docs .md nuốt mất chuỗi escape (0x08)", (t) =>
   assert.ok(hit.samples.some((s) => s.includes("01_note.md") && s.includes("0x08")));
 });
 
-test("control-char KHÔNG nổ oan với tab / xuống dòng / CRLF / ký tự có dấu", (t) => {
+test("control-char does NOT fire on tabs, newlines, CRLF or accented characters", (t) => {
   const root = goodRepo(t, (r) => {
     write(r, "backend/src/services/ok.ts", "export const s = {\r\n\ta: 1,\r\n};\t// chú thích có dấu: ăn, ước, đường\n");
     write(r, "docs/plan/02_ok.md", "# Tiêu đề\n\n\t- mục có tab\r\n- tiếng Việt: nguồn · ưu tiên\n");
@@ -356,7 +356,7 @@ test("control-char KHÔNG nổ oan với tab / xuống dòng / CRLF / ký tự c
   assert.equal(find(conform(root), "control-char"), undefined, "tab/CRLF/dấu tiếng Việt là hợp lệ — báo là báo oan");
 });
 
-test("BÁO OAN ⑦ (2026-08-21): mở graph sang ngôn ngữ MỞ RỘNG không được làm conform đỏ đột ngột", (t) => {
+test("FALSE POSITIVE 7 (2026-08-21): opening the graph to EXTENDED languages must not suddenly turn conform red", (t) => {
   // Audit bắt tại chỗ: đợt "đa ngôn ngữ theo kho" mở `SRC_EXT` cho graph, và nó LAN sang cổng
   // blocking này — đo thật: thư mục `devops/` chỉ chứa `deploy.sh` bỗng thành off-standard, tức
   // mọi repo pull bản mới ĐỎ ĐỘT NGỘT ở chỗ hôm qua còn xanh. Ngôn ngữ mở rộng chưa có lớp cạnh

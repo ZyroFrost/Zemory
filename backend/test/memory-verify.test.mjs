@@ -42,12 +42,12 @@ function seed(n = 5, counted = n) {
   return p;
 }
 
-test("kho lành ⇒ verify nói lành", () => {
+test("a healthy store means verify reports healthy", () => {
   const r = verifyMemory(seed());
   assert.equal(r.ok, true, `phải báo lành, thấy: ${r.detail}`);
 });
 
-test("file KHÔNG phải SQLite ⇒ verify phải BẮT ĐƯỢC", () => {
+test("a file that is NOT SQLite must be CAUGHT by verify", () => {
   const dir = mkdtempSync(join(tmpdir(), "zemory-verify-"));
   const p = join(dir, "global_memory.db");
   writeFileSync(p, "đây không phải cơ sở dữ liệu");
@@ -56,7 +56,7 @@ test("file KHÔNG phải SQLite ⇒ verify phải BẮT ĐƯỢC", () => {
   assert.ok(r.detail.length > 0, "phải nói hỏng ra sao");
 });
 
-test("file bị ĐẬP HỎNG giữa trang ⇒ verify phải BẮT ĐƯỢC", async () => {
+test("a file SMASHED mid-page must be CAUGHT by verify", async () => {
   const p = seed(200);
   const { readFileSync, writeFileSync: wf } = await import("node:fs");
   const buf = readFileSync(p);
@@ -67,7 +67,7 @@ test("file bị ĐẬP HỎNG giữa trang ⇒ verify phải BẮT ĐƯỢC", as
   assert.equal(r.ok, false, "trang bị đập nát mà vẫn báo lành = không bắt được đúng lớp lỗi đã gặp");
 });
 
-test("phiên thiếu tin ⇒ reopen mở lại đúng file transcript đó", () => {
+test("a session missing messages makes reopen reopen exactly that transcript file", () => {
   const p = seed(5, 8); // bộ đếm nói 8, thực có 5 ⇒ thủng 3
   const r = reopenIngest(p);
   assert.equal(r.missing, 3, `phải thấy thiếu 3 tin, thấy ${r.missing}`);
@@ -78,7 +78,7 @@ test("phiên thiếu tin ⇒ reopen mở lại đúng file transcript đó", () 
   db.close();
 });
 
-test("không phiên nào thiếu ⇒ reopen KHÔNG đụng gì (đọc lại cả kho là rất đắt)", () => {
+test("with no session missing anything, reopen touches NOTHING (re-reading the whole store is very expensive)", () => {
   const p = seed(5, 5);
   const r = reopenIngest(p);
   assert.equal(r.missing, 0);
@@ -89,12 +89,12 @@ test("không phiên nào thiếu ⇒ reopen KHÔNG đụng gì (đọc lại c�
   db.close();
 });
 
-test("--all mở lại TẤT CẢ, kể cả phiên không thiếu", () => {
+test("--all reopens EVERYTHING, including sessions missing nothing", () => {
   const p = seed(5, 5);
   assert.equal(reopenIngest(p, { all: true }).sessions, 1);
 });
 
-test("reconcileCounts chỉnh bộ đếm về số tin THẬT", () => {
+test("reconcileCounts corrects the counters to the REAL message count", () => {
   const p = seed(5, 8);
   reconcileCounts(p);
   const db = openMemory(p);
@@ -103,7 +103,7 @@ test("reconcileCounts chỉnh bộ đếm về số tin THẬT", () => {
   assert.equal(reopenIngest(p).missing, 0, "chỉnh xong thì không còn báo thiếu");
 });
 
-test("kho CHƯA TỒN TẠI ⇒ 'chưa có kho', KHÔNG phải HỎNG", () => {
+test("a store that DOES NOT EXIST YET means 'no store', NOT corrupt", () => {
   // Máy cài mới chưa chạy lần nào thì chưa có file. Bản đầu mở read-only rồi nhận
   // `unable to open database file` ⇒ báo HỎNG và bảo user đi cứu dữ liệu — dọa oan.
   // Nặng hơn: `verify` nằm ở bước 0 chuỗi bảo trì và DỪNG chuỗi khi không ok ⇒ máy mới

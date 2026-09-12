@@ -31,15 +31,15 @@ function withoutFlags(fn) {
   }
 }
 
-test("KHÔNG có cờ env ⇒ RM3 TẮT (trượt cổng: @40 47%→44%, FTS-thuần MRR 0,191→0,154)", () => {
+test("with NO env flag, RM3 is OFF (it failed the gate: @40 47% to 44%, FTS-only MRR 0.191 to 0.154)", () => {
   withoutFlags(() => assert.equal(rm3Enabled(), false));
 });
 
-test("KHÔNG có cờ env ⇒ lane từ-hiếm TẮT (trượt cổng: MRR 0,288→0,277)", () => {
+test("with NO env flag, the rare-term lane is OFF (it failed the gate: MRR 0.288 to 0.277)", () => {
   withoutFlags(() => assert.equal(rareEnabled(), false));
 });
 
-test("bật được bằng env khi cần đo lại — cả hai cờ", () => {
+test("both flags can be switched on through env when a re-measurement is needed", () => {
   const prev = { r: process.env.ZEMORY_RM3, k: process.env.ZEMORY_RARE };
   try {
     process.env.ZEMORY_RM3 = "1";
@@ -54,7 +54,7 @@ test("bật được bằng env khi cần đo lại — cả hai cờ", () => {
   }
 });
 
-test("tham số ép (force) thắng env — để bench đo được cả hai chiều trong một tiến trình", () => {
+test("an explicit force parameter beats env - so a bench can measure both directions in one process", () => {
   process.env.ZEMORY_RM3 = "1";
   try {
     assert.equal(rm3Enabled(false), false);
@@ -71,7 +71,7 @@ test("tham số ép (force) thắng env — để bench đo được cả hai ch
 // còn bộ ghi/đọc series hiện tại sinh `global_memory.<host>.<seq>.enc`. Máy nào đã lên
 // định dạng series thì ô đếm vĩnh viễn ra 0: sai lệch IM LẶNG, không cổng nào đỏ, và người
 // dùng đọc thành "chưa từng sync". Test canh đúng ca đó.
-test("đếm bundle phải thấy CẢ định dạng series lẫn tên đời cũ", async () => {
+test("the bundle count must see BOTH the series format and the old-generation names", async () => {
   const dir = mkdtempSync(join(tmpdir(), "zemory-drive-"));
   try {
     writeFileSync(join(dir, "global_memory.MAY-A.000012.enc"), "x");

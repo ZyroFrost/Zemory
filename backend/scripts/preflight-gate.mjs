@@ -21,7 +21,7 @@
 // THIRD THING, added 2026-08-31: THE GATE MANUFACTURES A RED LIGHT ON THE DASHBOARD.
 // The documented procedure is "kill the daemon, run the gate, start it again". If an auto-sync run
 // happens to be in flight at that moment, killing the daemon cuts it, and the next daemon start
-// reports `auto-sync: ... KHONG de lai ket cuc` on the Drive Sync card. That red is CORRECT (the
+// reports an auto-sync round that left no outcome on the Drive Sync card. That red is CORRECT (the
 // run really was cut) and HARMLESS (the next run pushes the remainder, no message is lost) — but
 // its cause is a maintenance action, not an incident. Happened for real 2026-08-31: the run started
 // 07:37:04Z, the daemon was killed ~07:44Z to run the gate, and the user saw "986 new messages not

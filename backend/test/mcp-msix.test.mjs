@@ -48,7 +48,7 @@ function withFakeHome(t, { msixPkg = null, plainAppData = false } = {}) {
 const isWin = process.platform === "win32";
 
 test(
-  "bản MSIX: bảng đích phải TRỎ vào LocalCache\\Roaming, không phải %APPDATA%",
+  "the MSIX build: the target table must POINT at LocalCache\\Roaming, not %APPDATA%",
   { skip: isWin ? false : "đường MSIX chỉ có trên Windows" },
   (t) => {
     const target = withFakeHome(t, { msixPkg: "Claude_pzs8sxrjxfjjc" });
@@ -63,7 +63,7 @@ test(
 );
 
 test(
-  "đuôi PackageFamilyName KHÔNG được ghim cứng — đổi kênh phát hành là đổi mã publisher",
+  "the PackageFamilyName suffix must NOT be hardcoded - a new release channel changes the publisher code",
   { skip: isWin ? false : "đường MSIX chỉ có trên Windows" },
   (t) => {
     // Mã khác hẳn máy đã đo. Ghim cứng `pzs8sxrjxfjjc` thì ca này trượt.
@@ -74,7 +74,7 @@ test(
 );
 
 test(
-  "MSIX được ưu tiên TRƯỚC %APPDATA% khi máy có cả hai",
+  "MSIX takes priority OVER %APPDATA% when a machine has both",
   { skip: isWin ? false : "đường MSIX chỉ có trên Windows" },
   (t) => {
     // Có cả hai ⇒ phải chọn MSIX: đó mới là chỗ app THẬT SỰ đọc. Ghi vào %APPDATA% là ghi vào
@@ -84,13 +84,13 @@ test(
   },
 );
 
-test("máy KHÔNG có bản MSIX ⇒ vẫn rơi về đường %APPDATA% như cũ (không phá bản cài thường)", (t) => {
+test("a machine WITHOUT the MSIX build still falls back to the %APPDATA% path (the normal install is not broken)", (t) => {
   const target = withFakeHome(t, { plainAppData: true });
   assert.ok(target.path, "bản cài thường phải còn dùng được");
   assert.doesNotMatch(target.path.replace(/\\/g, "/"), /Packages\//);
 });
 
-test("không có Claude Desktop kiểu nào ⇒ path = null, KHÔNG đoán bừa một đường", (t) => {
+test("with no Claude Desktop of any kind the path is null - never a guessed path", (t) => {
   const target = withFakeHome(t, {});
   assert.equal(target.path, null, "chưa cài mà trả đường dẫn là đẻ file cấu hình ma");
 });

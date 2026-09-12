@@ -50,7 +50,7 @@ const blocked = (r, command) =>
 const giveFlag = (r) => writeFileSync(join(r.hooksDir, ".allow-push"), "user dong y (test)\n");
 const flagExists = (r) => existsSync(join(r.hooksDir, ".allow-push"));
 
-test("flag chịu được MỘT LẦN THỬ LẠI cho cùng một việc (hook không biết lệnh có chạy hay không)", (t) => {
+test("the flag survives ONE RETRY of the same job (the hook cannot know whether the command ran)", (t) => {
   const r = repo(t);
   assert.ok(blocked(r, PUSH), "không flag ⇒ phải chặn");
   giveFlag(r);
@@ -58,7 +58,7 @@ test("flag chịu được MỘT LẦN THỬ LẠI cho cùng một việc (hook 
   assert.ok(!blocked(r, PUSH), "THỬ LẠI cùng lệnh ⇒ vẫn cho qua (đây chính là lỗ đã vá)");
 });
 
-test("flag KHÔNG thành cửa mở 90 giây: việc KHÁC dùng ké là bị thu hồi ngay", (t) => {
+test("the flag does NOT become a 90-second open door: a DIFFERENT job piggybacking is revoked at once", (t) => {
   const r = repo(t);
   giveFlag(r);
   assert.ok(!blocked(r, PUSH), "xin cho việc A");
@@ -83,7 +83,7 @@ const MV_OTHER = "mv " + "data/x.txt data/y.txt";
 const giveDocsFlag = (r) => writeFileSync(join(r.hooksDir, ".allow-docs-write"), "user dong y (test)\n");
 const docsFlagExists = (r) => existsSync(join(r.hooksDir, ".allow-docs-write"));
 
-test("đổi tên TRONG protected: một cờ phủ CẢ nguồn lẫn đích (trước đây chặn vĩnh viễn)", (t) => {
+test("renaming INSIDE protected: one flag covers BOTH source and target (this used to block forever)", (t) => {
   const r = repo(t);
   assert.ok(blocked(r, MV_IN), "không cờ ⇒ phải chặn (cả nguồn và đích đều trong protected)");
   giveDocsFlag(r);
@@ -91,7 +91,7 @@ test("đổi tên TRONG protected: một cờ phủ CẢ nguồn lẫn đích (t
   assert.ok(!blocked(r, MV_IN), "thử lại đúng lệnh đó ⇒ vẫn qua (cửa sổ 90s)");
 });
 
-test("CA ÂM: cờ cho lệnh đổi tên này KHÔNG được dùng ké cho lệnh đổi tên KHÁC", (t) => {
+test("NEGATIVE CASE: the flag for this rename must not be reused for a DIFFERENT rename", (t) => {
   const r = repo(t);
   giveDocsFlag(r);
   assert.ok(!blocked(r, MV_IN), "xin cho đúng lệnh A");
@@ -99,7 +99,7 @@ test("CA ÂM: cờ cho lệnh đổi tên này KHÔNG được dùng ké cho l�
   assert.ok(!docsFlagExists(r), "và cờ bị thu hồi khỏi đĩa");
 });
 
-test("CA ÂM: vá này KHÔNG mở đường cho ghi vào protected khi chưa có cờ", (t) => {
+test("NEGATIVE CASE: this patch does NOT open a path to writing into protected without a flag", (t) => {
   const r = repo(t);
   assert.ok(blocked(r, "cp " + "README.md data/keo-vao.txt"), "chép VÀO protected: không cờ ⇒ chặn");
   assert.ok(blocked(r, "mv " + "data/a.txt /tmp/ra-ngoai.txt"), "dời RA KHỎI protected: không cờ ⇒ chặn");
@@ -117,28 +117,28 @@ const RM_IN = "rm " + "data/a.txt";
 const RM_OTHER = "rm " + "data/b.txt";
 const giveDelFlag = (r) => writeFileSync(join(r.hooksDir, ".allow-delete"), "user dong y (test)\n");
 
-test("xoá trong protected: không cờ ⇒ CHẶN · có `.allow-delete` ⇒ QUA", (t) => {
+test("deleting inside protected: no flag means BLOCK; with `.allow-delete` it PASSES", (t) => {
   const r = repo(t);
   assert.ok(blocked(r, RM_IN), "không cờ ⇒ phải chặn");
   giveDelFlag(r);
   assert.ok(!blocked(r, RM_IN), "user đã duyệt ⇒ PHẢI QUA (trước đây không có đường nào)");
 });
 
-test("CA ÂM: cờ GHI không được biến thành cờ XOÁ", (t) => {
+test("NEGATIVE CASE: a WRITE flag must not turn into a DELETE flag", (t) => {
   const r = repo(t);
   giveDocsFlag(r); // `.allow-docs-write` — duyệt GHI vào protected
   assert.ok(blocked(r, RM_IN), "duyệt ghi KHÔNG phải duyệt xoá ⇒ vẫn chặn");
   assert.ok(docsFlagExists(r), "và không được tiêu thụ oan cờ ghi của người ta");
 });
 
-test("CA ÂM: cờ xoá cho lệnh này không dùng ké cho lệnh xoá KHÁC", (t) => {
+test("NEGATIVE CASE: a delete flag for this command is not reused for a DIFFERENT delete", (t) => {
   const r = repo(t);
   giveDelFlag(r);
   assert.ok(!blocked(r, RM_IN), "xin cho đúng lệnh A");
   assert.ok(blocked(r, RM_OTHER), "lệnh B mượn cờ của A ⇒ phải CHẶN");
 });
 
-test("CA ÂM: một cờ xoá KHÔNG mở cửa cho phần còn lại của cùng câu lệnh", (t) => {
+test("NEGATIVE CASE: one delete flag does NOT open the door for the rest of the same command line", (t) => {
   const r = repo(t);
   giveDelFlag(r);
   // Bản nháp đầu của tôi dùng `return` ở nhánh protected ⇒ thoát CẢ hàm guard, bỏ qua luôn phép
@@ -149,7 +149,7 @@ test("CA ÂM: một cờ xoá KHÔNG mở cửa cho phần còn lại của cùn
   );
 });
 
-test("hết cửa sổ thì flag chết hẳn — không có chuyện để quên rồi dùng lại sau", async (t) => {
+test("once the window closes the flag is dead for good - it cannot be forgotten and reused later", async (t) => {
   const r = repo(t);
   giveFlag(r);
   assert.ok(!blocked(r, PUSH));

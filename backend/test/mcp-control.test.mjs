@@ -71,7 +71,7 @@ const UNKNOWN = "unknown — daemon not responding";
 
 // ── ① Trung thực khi daemon chết ────────────────────────────────────────────
 
-test("memory_jobs: daemon chết ⇒ trả 'unknown', KHÔNG trả false", async () => {
+test("memory_jobs: a dead daemon returns 'unknown', NOT false", async () => {
   freeLock();
   const j = payload(await callMcpTool("memory_jobs", {}));
 
@@ -94,7 +94,7 @@ test("memory_jobs: daemon chết ⇒ trả 'unknown', KHÔNG trả false", async
   assert.match(j.note, /not answering/, "phải nói rõ vì sao có chữ unknown");
 });
 
-test("memory_jobs: im lặng + marker job còn tươi ⇒ 'unknown', KHÔNG kết luận đã chết", async () => {
+test("memory_jobs: silence plus a fresh job marker yields 'unknown', never a conclusion that it died", async () => {
   // Đo lúc nghiệm thu 2026-08-28: bản đầu in ra `daemon.alive:false` NGAY CẠNH
   // `daemonJobRunning:true` — hai câu đá nhau, và câu sai là câu đầu (daemon vẫn sống,
   // pid 9448, chỉ đang bận). Không trả lời ≠ đã chết.
@@ -112,7 +112,7 @@ test("memory_jobs: im lặng + marker job còn tươi ⇒ 'unknown', KHÔNG kế
   }
 });
 
-test("memory_jobs: đường RẺ không đếm được thì NÓI không đếm — không bịa 0", async () => {
+test("memory_jobs: when the CHEAP path cannot count, it SAYS it cannot - it does not invent 0", async () => {
   // Đo 2026-08-28: đếm thẳng là anti-join toàn bảng, **15,7 s** trên kho thật, trong khi
   // daemon cache đúng số đó và trả trong 107 ms. Nên đường mặc định là hỏi daemon. Daemon
   // không trả lời ⇒ phải nói "chưa đếm", vì `0` ở đây đọc ra là "đã nhúng xong hết" — một
@@ -126,7 +126,7 @@ test("memory_jobs: đường RẺ không đếm được thì NÓI không đếm
   assert.match(j.embedBacklog, /not counted/);
 });
 
-test("memory_jobs: deep=true ⇒ đếm THẬT, và thấy khoá của kẻ khác", async () => {
+test("memory_jobs: deep=true really counts, and sees another process's lock", async () => {
   seed(7);
   freeLock();
   let j = payload(await callMcpTool("memory_jobs", { deep: true }));
@@ -143,7 +143,7 @@ test("memory_jobs: deep=true ⇒ đếm THẬT, và thấy khoá của kẻ khá
 
 // ── ② Từ chối khi có kẻ khác đang ghi ───────────────────────────────────────
 
-test("memory_scan: có kẻ đang ghi ⇒ TỪ CHỐI, không tranh khoá", async () => {
+test("memory_scan: with a writer present it REFUSES rather than fighting for the lock", async () => {
   seed(3);
   holdLock("memory embed --all");
   const r = payload(await callMcpTool("memory_scan", {}));
@@ -154,7 +154,7 @@ test("memory_scan: có kẻ đang ghi ⇒ TỪ CHỐI, không tranh khoá", asyn
   freeLock();
 });
 
-test("memory_embed: có kẻ đang ghi ⇒ TỪ CHỐI, KHÔNG phóng job thứ hai", async () => {
+test("memory_embed: with a writer present it REFUSES and does NOT launch a second job", async () => {
   seed(5);
   holdLock("mcp memory_scan");
   const r = payload(await callMcpTool("memory_embed", {}));
@@ -167,7 +167,7 @@ test("memory_embed: có kẻ đang ghi ⇒ TỪ CHỐI, KHÔNG phóng job thứ 
 
 // ── Ca ÂM: rảnh thì phải CHẠY THẬT, không phải lúc nào cũng báo bận ──────────
 
-test("CA ÂM — memory_scan: khoá rảnh ⇒ chạy thật và NHẢ khoá sau khi xong", async () => {
+test("NEGATIVE CASE - memory_scan: a free lock means it really runs and RELEASES the lock afterwards", async () => {
   seed(2);
   freeLock();
   const r = payload(await callMcpTool("memory_scan", {}));
@@ -185,7 +185,7 @@ test("CA ÂM — memory_scan: khoá rảnh ⇒ chạy thật và NHẢ khoá sau
 
 // ── ③ Không có việc thì không phóng job ─────────────────────────────────────
 
-test("CA ÂM — memory_embed: backlog 0 ⇒ started:false, không phóng gì", async () => {
+test("NEGATIVE CASE - memory_embed: backlog 0 yields started:false and launches nothing", async () => {
   // Kho rỗng ⇒ không tin nào đáng nhúng. Job nhúng giữ khoá ghi hàng giờ, nên phóng nó khi
   // không có việc là chặn mọi lượt quét để đổi lấy đúng con số không.
   const empty = join(mkdtempSync(join(tmpdir(), "zemory-mcpctl-empty-")), "global_memory.db");

@@ -39,7 +39,7 @@ function seed(dir) {
   return db;
 }
 
-test("export TỰ DÒ chìa cạnh kho — không cần --key-file", () => {
+test("export FINDS the key next to the store by itself - no --key-file needed", () => {
   const s = scratch();
   try {
     const db = seed(s.dir);
@@ -58,7 +58,7 @@ test("export TỰ DÒ chìa cạnh kho — không cần --key-file", () => {
   }
 });
 
-test("import TỰ DÒ chìa cạnh kho — vòng xuất→nhập khép kín, không cần --key-file", () => {
+test("import FINDS the key next to the store by itself - the export to import loop closes with no --key-file", () => {
   const s = scratch();
   try {
     const db = seed(s.dir);
@@ -81,7 +81,7 @@ test("import TỰ DÒ chìa cạnh kho — vòng xuất→nhập khép kín, kh�
   }
 });
 
-test("--key-file vẫn THẮNG đường tự dò (không phá lối đang dùng)", () => {
+test("--key-file still BEATS the auto-discovery path (the existing usage is not broken)", () => {
   const s = scratch();
   try {
     const db = seed(s.dir);

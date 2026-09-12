@@ -23,20 +23,20 @@ function fsError(code, syscall = "read") {
   return e;
 }
 
-test("nhận đúng nhóm lỗi CHẬP CHỜN của ổ đám mây", () => {
+test("it recognises exactly the FLAKY error family of a cloud drive", () => {
   assert.equal(isTransientFsError(fsError("UNKNOWN")), true, "UNKNOWN là mã của chính ca 26/08");
   assert.equal(isTransientFsError(fsError("EBUSY")), true);
   assert.equal(isTransientFsError(fsError("EIO")), true);
 });
 
-test("KHÔNG nhận lỗi bền — thử lại chỉ che mất lỗi cấu hình thật", () => {
+test("it does NOT treat a permanent error as flaky - retrying would only mask a real configuration fault", () => {
   assert.equal(isTransientFsError(fsError("ENOENT")), false, "file không có là sự thật bền");
   assert.equal(isTransientFsError(fsError("EACCES")), false, "thiếu quyền là sự thật bền");
   assert.equal(isTransientFsError(new Error("lỗi thường không có code")), false);
   assert.equal(isTransientFsError(null), false);
 });
 
-test("chập một cú rồi qua ⇒ lượt đọc VẪN xong (đúng ca 26/08)", async () => {
+test("one flake then success means the read STILL completes (the real 26/08 case)", async () => {
   let calls = 0;
   const got = await withDriveRetry("đọc khối #7", async () => {
     calls++;
@@ -47,7 +47,7 @@ test("chập một cú rồi qua ⇒ lượt đọc VẪN xong (đúng ca 26/08)
   assert.equal(calls, 2, "phải thử lại đúng một lần, không nhiều hơn");
 });
 
-test("chập liên tục ⇒ chịu thua sau 3 lần, KHÔNG thử mãi", async () => {
+test("continuous flakes give up after 3 attempts rather than retrying forever", async () => {
   let calls = 0;
   await assert.rejects(
     () => withDriveRetry("đọc khối #7", async () => { calls++; throw fsError("UNKNOWN"); }),
@@ -56,7 +56,7 @@ test("chập liên tục ⇒ chịu thua sau 3 lần, KHÔNG thử mãi", async 
   assert.equal(calls, 3, "trần 3 lần — thử vô hạn thì lượt sync treo thay vì báo lỗi");
 });
 
-test("lỗi BỀN ⇒ ném NGAY, không phí một lần thử nào", async () => {
+test("a PERMANENT error throws AT ONCE, wasting no attempt", async () => {
   let calls = 0;
   await assert.rejects(
     () => withDriveRetry("đọc khối #7", async () => { calls++; throw fsError("ENOENT"); }),

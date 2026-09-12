@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 
 const FE = (f) => readFileSync(new URL(`../../frontend/scripts/${f}`, import.meta.url), "utf8");
 
-test("① click ngôn ngữ không kéo /memory-status?fresh=1; refetch đúng thứ server dịch (/status + checks fresh)", () => {
+test("1 a language click does not pull /memory-status?fresh=1; it refetches exactly what the server translates (/status + fresh checks)", () => {
   const src = FE("sources.js");
   const i = src.indexOf("closest('[data-lang]')");
   assert.ok(i > 0, "handler [data-lang] phải tồn tại");
@@ -23,12 +23,12 @@ test("① click ngôn ngữ không kéo /memory-status?fresh=1; refetch đúng t
   assert.match(handler, /renderSystem\(\);refreshHarnessUpdates\(\)/, "widget vẽ bằng t() phải vẽ lại từ dữ liệu đang có");
 });
 
-test("② lang nằm trong lưới flagsAt của renderMem và được đóng dấu lúc bấm", () => {
+test("2 lang is part of renderMem's flagsAt grid and is stamped at click time", () => {
   assert.match(FE("gm.js"), /\['hybrid','rerank','scope','pathsWatch','lang'\]/, "payload cũ không được đè lang vừa chọn trong 90 s");
   assert.match(FE("sources.js"), /Z\.mem\.lang=L;Z\.flagsAt=Z\.flagsAt\|\|\{\};Z\.flagsAt\.lang=Date\.now\(\)/, "cú bấm phải đóng dấu + ghi giá trị local");
 });
 
-test("③ nút VI/EN sáng trong applyI18n (được /ping nuôi sớm), không chờ renderMem", () => {
+test("3 the VI/EN buttons light up inside applyI18n (fed early by /ping), without waiting for renderMem", () => {
   const chrome = FE("chrome.js");
   const i = chrome.indexOf("function applyI18n(");
   const body = chrome.slice(i, chrome.indexOf("\n  }", i));

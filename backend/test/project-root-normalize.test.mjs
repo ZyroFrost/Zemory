@@ -114,7 +114,7 @@ test("importChangelog writes ONE project_root for two spellings of the same fold
 // ── canonProjectRoot: chữ ổ đĩa cho CỘT `sessions.project_root`/`cwd` (2026-08-29) ──────────
 // Fix 07-29 chắn ở sổ docs/project nhưng đường nạp transcript vẫn ghi cwd thô ⇒ 79 phiên `d:\…`
 // chẻ đôi nhóm project. Hàm này KHÔNG `resolve` vì cột chứa cả TÊN project web ("Tarot study").
-test("canonProjectRoot: chỉ viết hoa chữ ổ đĩa Windows, mọi giá trị khác giữ nguyên", async () => {
+test("canonProjectRoot: it upper-cases only the Windows drive letter, leaving everything else untouched", async () => {
   const { canonProjectRoot } = await import("../../dist/core/config.js");
   assert.equal(canonProjectRoot(String.raw`d:\huy.nguyen\Tool\Zemory`), String.raw`D:\huy.nguyen\Tool\Zemory`);
   assert.equal(canonProjectRoot("c:/x/y"), "C:/x/y");

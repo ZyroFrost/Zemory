@@ -1,16 +1,16 @@
-// XOA = BAT KHA DAO, nen no phai co CHOT MAY chu khong chi co chu trong 02_RULES.
+// DELETION = IRREVERSIBLE, so it needs a MACHINE LATCH, not merely words in 02_RULES.
 //
-// Do 2026-08-11 tren ban truoc do (ma tran 28 ca): guard chi nhin \`rm -r\` va ho hang, nen
-// TAM duong quet ca cay LOT sach — \`find -delete\` · \`find -exec rm\` · \`git clean -fdx\` ·
+// Measured 2026-08-11 on the previous build (a 28-case matrix): the guard only looked at \`rm -r\` and friends, so
+// EIGHT whole-tree paths slipped clean through — \`find -delete\` · \`find -exec rm\` · \`git clean -fdx\` ·
 // \`robocopy /MIR\` · \`fs.rmSync(recursive)\` · \`shutil.rmtree\` · \`xargs rm\` ·
 // \`Get-ChildItem -Recurse | Remove-Item\`. Cong them \`git reset --hard\` va
-// \`git checkout -- .\`: 02_RULES §Git cam bang CHU tu lau ma khong he co chot.
+// \`git checkout -- .\`: 02_RULES S Git forbade it in WORDS long ago with no latch at all.
 //
-// Test goi guard THAT qua stdin (dung giao thuc hook: exit 2 = chan) chu khong doc regex —
-// thu bi soi la HANH VI, khong phai cach viet.
+// The test calls the REAL guard through stdin (the hook protocol: exit 2 = block) rather than reading regexes —
+// what is under inspection is BEHAVIOUR, not how the code is written.
 //
-// Bat bien THU HAI, quan trong ngang: gate KHONG duoc nhieu. Xoa mot file thuong phai
-// CHO QUA; chan tat thi moi lenh deu phai xin flag va "gate nhieu = gate bi bo qua".
+// The SECOND invariant, just as important: the gate must NOT be noisy. Deleting an ordinary file must
+// PASS; blocking everything means every command needs a flag, and "a noisy gate is an ignored gate".
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -27,7 +27,7 @@ function ask(payload, guard = GUARD) {
 }
 const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
 
-test("xoa HANG LOAT khong dung tu khoa rm -r: tam duong deu bi chan", () => {
+test("mass deletion that uses none of the rm -r keywords: all eight paths are blocked", () => {
   const forms = [
     "find . -name '*.ts' -delete",
     "find . -name '*.ts' -exec rm {} \\;",
@@ -44,36 +44,36 @@ test("xoa HANG LOAT khong dung tu khoa rm -r: tam duong deu bi chan", () => {
   }
 });
 
-test("HUY viec chua commit bi chan (02_RULES §Git da cam bang chu, nay co chot)", () => {
+test("discarding uncommitted work is blocked (02_RULES S Git forbade it in words, now it has a latch)", () => {
   for (const cmd of ["git reset --hard", "git reset --hard HEAD~1", "git checkout -- .", "git stash clear"]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, true, `LOT: ${cmd}\n${r.say}`);
   }
 });
 
-test("ten khoa trong MAU TIM KIEM khong phai la doc khoa - gate khong duoc chan nham", () => {
-  // Do 2026-08-11: guard chan dung lenh AUDIT di do lich su git, vi cau lenh vua chua \`head\`
-  // vua chua chuoi \`id_rsa\` trong MAU TIM KIEM. Ban cu he thay mot lenh doc la soi MOI token,
-  // nen ten khoa nam o bat ky dau cung bi doi chieu.
+test("a key name in a SEARCH PATTERN is not a key read - the gate must not block wrongly", () => {
+  // Measured 2026-08-11: the guard blocked the very AUDIT command sent to inspect git history, because the command line held both \`head\`
+  // and the string \`id_rsa\` in its SEARCH PATTERN. The old build scanned EVERY token as soon as it saw a reading command,
+  // so a key name anywhere at all was compared.
   //
-  // Vi sao dang mot cong rieng, khong phai "phien nhe": luat 7 noi thang - gate chan nham thi
-  // nguoi ta di duong vong, va mot gate bi di vong la gate KHONG con ton tai. Chinh phien
-  // 2026-08-13 dinh lai ca nay khi go lenh grep de di SUA no.
+  // Why this deserves its own gate rather than a "light session": rule 7 says it plainly - a gate that blocks wrongly makes
+  // people go around it, and a gate that is gone around no longer EXISTS. The 2026-08-13 session
+  // hit this very case while typing the grep command sent to FIX it.
   for (const cmd of [
     `grep -rln "id_rsa" backend/src/ | head`,
     `grep -rn id_rsa docs/ | tail -5`,
     `rg "id_rsa|id_ed25519" --files-with-matches | head -20`,
   ]) {
     const r = ask(bash(cmd));
-    assert.equal(r.blocked, false, `CHAN NHAM: ${cmd}\n${r.say}`);
+    assert.equal(r.blocked, false, `BLOCKED WRONGLY: ${cmd}\n${r.say}`);
   }
 });
 
-test("doc THAT noi dung file khoa van bi chan - ban va khong duoc noi long", () => {
-  // Doi trong cua ca tren. Ba dau hieu "tep dang bi doc" phai chan lai duoc het:
+test("a REAL read of a key file is still blocked - the fix must not loosen that", () => {
+  // The counterweight to the case above. All three signs of "a file being read" must still be caught:
   for (const cmd of [
-    "cat /etc/ssh/id_rsa", //        1. co dau phan cach duong dan
-    "cat id_rsa | grep BEGIN", //    2. dung ngay sau mot lenh doc
+    "cat /etc/ssh/id_rsa", //        1. it holds a path separator
+    "cat id_rsa | grep BEGIN", //    2. it stands right after a reading command
     "head id_rsa", //                3. token cuoi cau
     "base64 ~/.ssh/id_rsa",
   ]) {
@@ -82,50 +82,50 @@ test("doc THAT noi dung file khoa van bi chan - ban va khong duoc noi long", () 
   }
 });
 
-test("xoa trang noi dung file bi chan", () => {
+test("emptying a file's content is blocked", () => {
   for (const cmd of ["truncate -s 0 backend/src/ui.ts", "Clear-Content backend/src/ui.ts"]) {
     assert.equal(ask(bash(cmd)).blocked, true, `LOT: ${cmd}`);
   }
 });
 
-test("GHI DE file dang co thi HOI; Edit thi KHONG hoi", () => {
+test("OVERWRITING an existing file ASKS; Edit does NOT ask", () => {
   const target = new URL("../../package.json", import.meta.url).pathname.replace(/^\//, "");
   const w = ask({ tool_name: "Write", tool_input: { file_path: target } });
-  assert.equal(w.blocked, true, `Write de len file dang co phai hoi:\n${w.say}`);
-  assert.match(w.say, /HOI USER/, "phai noi ro la hoi user, khong phai cam han");
+  assert.equal(w.blocked, true, `a Write over an existing file must ask:\n${w.say}`);
+  assert.match(w.say, /ASK THE USER/, "it must say plainly that it is asking the user, not forbidding outright");
 
   const e = ask({ tool_name: "Edit", tool_input: { file_path: target } });
-  assert.equal(e.blocked, false, `Edit sua mot doan thi KHONG duoc hoi:\n${e.say}`);
+  assert.equal(e.blocked, false, `Edit changing one region must NOT be asked about:\n${e.say}`);
 });
 
-// Sua 2026-08-24 (user gat 21/08): nhanh xoa quet token theo DUNG SEGMENT chua lenh xoa,
-// cung khuon nhanh git. Truoc do `rm build.log && echo "check prod.env"` bi CHAN OAN — ten
-// secret nhac trong echo cua CUNG cau lenh. Ca duong (xoa secret that) giu nguyen o tren.
-test("CA AM (segment): ten secret o segment KHAC segment xoa KHONG bi va lay", () => {
+// Fixed 2026-08-24 (user approved 21/08): the delete branch scans the tokens of the EXACT SEGMENT holding the delete command,
+// the same shape as the git branch. Before that `rm build.log && echo "check prod.env"` was BLOCKED WRONGLY — a
+// secret name mentioned in an echo on the SAME command line. The positive case (really deleting a secret) is unchanged above.
+test("NEGATIVE CASE (segment): a secret name in a segment OTHER than the delete segment is not caught", () => {
   for (const cmd of [
     'rm build.log && echo "check prod' + '.env"',
     "type prod" + ".env && rm build.log",
     "rm out.txt; cat ." + "env.example",
   ]) {
     const r = ask(bash(cmd));
-    assert.equal(r.blocked, false, cmd + " — secret o segment khac phai duoc CHO QUA (chan oan = nguoi ta thoi viet lenh tu-kiem): " + r.say);
+    assert.equal(r.blocked, false, cmd + " — a secret in another segment must be LET THROUGH (blocking wrongly makes people stop writing self-checking commands): " + r.say);
   }
-  // va ca DUONG ngay canh de dot bien khong lach: secret o DUNG segment xoa van CHAN
+  // and the positive case right beside it so a mutation cannot slip through: a secret in the ACTUAL delete segment is still BLOCKED
   const bad = ask(bash("echo ok && rm ." + "env"));
-  assert.equal(bad.blocked, true, "xoa secret o segment xoa van phai CHAN");
+  assert.equal(bad.blocked, true, "deleting a secret in the delete segment must still be BLOCKED");
 });
 
-test("KHONG NHIEU: xoa mot file thuong van cho qua", () => {
+test("NOT NOISY: deleting an ordinary file still passes", () => {
   for (const cmd of ["rm backend/src/ui.ts", "Remove-Item backend/src/ui.ts", "rm /tmp/x.txt"]) {
     const r = ask(bash(cmd));
-    assert.equal(r.blocked, false, `chan nham (gate se bi bo qua): ${cmd}\n${r.say}`);
+    assert.equal(r.blocked, false, `blocked wrongly (the gate will be ignored): ${cmd}\n${r.say}`);
   }
 });
 
-test("policy CU + guard MOI: van chan, KHONG duoc nem loi", () => {
-  // Bo cowork duoc mang tay sang may khac nen hai file chac chan co luc lech phien ban.
-  // Truoc khi va, `POLICY.flags[name]` thieu => path.join(..., undefined) => guard CHET
-  // giua chung, ma guard chet thi khong con ai gac.
+test("an OLD policy with a NEW guard: it still blocks and must NOT throw", () => {
+  // The cowork set is carried by hand to other machines, so the two files are bound to be out of step at times.
+  // Before the fix, a missing `POLICY.flags[name]` meant path.join(..., undefined) => the guard DIED
+  // halfway, and a dead guard guards nothing.
   const dir = mkdtempSync(join(tmpdir(), "zemory-guard-old-"));
   try {
     const hooks = join(dir, "docs", "hooks");
@@ -137,27 +137,27 @@ test("policy CU + guard MOI: van chan, KHONG duoc nem loi", () => {
         protected_write: [],
         secret_names: [],
         flags_dir: "docs/hooks",
-        flags: { push: ".allow-push" }, // policy DOI CU: khong co delete/discard/overwrite
+        flags: { push: ".allow-push" }, // an OLD-generation policy: no delete/discard/overwrite
       }),
     );
     const r = ask(bash("git clean -fdx"), join(hooks, "guard.cjs"));
-    assert.equal(r.blocked, true, `policy cu phai van CHAN, thuc te status=${r.status}:\n${r.say}`);
-    assert.doesNotMatch(r.say, /TypeError|Cannot read|undefined/, `guard nem loi thay vi chan:\n${r.say}`);
+    assert.equal(r.blocked, true, `an old policy must still BLOCK, actual status=${r.status}:\n${r.say}`);
+    assert.doesNotMatch(r.say, /TypeError|Cannot read|undefined/, `the guard threw instead of blocking:\n${r.say}`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-// GLOB phai an o CA HAI nhanh (ghi + xoa) - lo do thuc dia bao 2026-08-24.
+// The GLOB must bite on BOTH branches (write + delete) - a hole reported from the field 2026-08-24.
 //
-// Truoc do: nhanh GHI co glob, nhanh XOA chi so TIEN TO. Nen mot repo khai
-// `protected: ["data/*/01_raw"]` thi chan duoc GHI ma KHONG chan duoc XOA - dung loai lo
-// im lang: nguoi khai tuong da rao, thuc te cua sau van mo. He qua o estate that: moi repo
-// phai liet ke TAY tung duong `data/<case>/01_raw`, them case moi la phai nho sua - ma
-// "chot phai nho tay" thi se muc.
+// Before: the WRITE branch had globs while the DELETE branch compared PREFIXES only. So a repo declaring
+// `protected: ["data/*/01_raw"]` blocked WRITES but NOT DELETES - exactly the silent
+// hole class: whoever declared it believed the fence was up while the back door stood open. The consequence on a real estate: every repo
+// had to list each `data/<case>/01_raw` BY HAND, and each new case had to be remembered - and
+// "a latch you must remember by hand" rots.
 //
-// Ca AM o day quan trong ngang ca duong (luat 7 skill audit): glob khong duoc phinh ra chan
-// ca nhung duong LANG GIENG (`02_processing` la cho agent ghi suot).
+// The NEGATIVE case here matters as much as the positive one (audit skill rule 7): the glob must not swell up and block
+// NEIGHBOURING paths as well (`02_processing` is where the agent writes all day).
 function guardWithPolicy(protectedWrite) {
   const dir = mkdtempSync(join(tmpdir(), "zemory-guard-glob-"));
   const hooks = join(dir, "docs", "hooks");
@@ -177,24 +177,24 @@ function guardWithPolicy(protectedWrite) {
   return { guard: join(hooks, "guard.cjs"), root: dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-test("glob trong protected chan CA nhanh XOA, khong chi nhanh GHI", () => {
+test("a glob in protected blocks the DELETE branch too, not only the WRITE branch", () => {
   const g = guardWithPolicy(["data/*/01_raw"]);
   try {
-    // DUONG: xoa trong duong glob -> phai CHAN (truoc ban va: LOT)
+    // POSITIVE: deleting inside the glob path -> must BLOCK (before the fix: it slipped through)
     for (const cmd of ["rm data/case_x/01_raw/f.csv", "del data/mot_case_khac/01_raw/f.csv"]) {
       const r = ask(bash(cmd), g.guard);
-      assert.equal(r.blocked, true, `glob phai chan XOA: ${cmd}
+      assert.equal(r.blocked, true, `the glob must block DELETE: ${cmd}
 ${r.say}`);
     }
-    // Nhanh GHI van chan nhu truoc (khong lam hong thu dang chay)
+    // The WRITE branch still blocks as before (nothing already working is broken)
     const w = ask({ tool_name: "Write", tool_input: { file_path: join(g.root, "data", "case_x", "01_raw", "f.csv") } }, g.guard);
-    assert.equal(w.blocked, true, `glob phai chan GHI:
+    assert.equal(w.blocked, true, `the glob must block WRITE:
 ${w.say}`);
 
-    // AM: hang xom cua duong glob KHONG duoc chan - day la cho agent ghi/xoa hang ngay
+    // NEGATIVE: the glob path's neighbours must NOT be blocked - that is where the agent writes and deletes daily
     for (const cmd of ["rm data/case_x/02_processing/tmp.csv", "rm build.log", "rm docs/note.md"]) {
       const r = ask(bash(cmd), g.guard);
-      assert.equal(r.blocked, false, `KHONG duoc chan oan: ${cmd}
+      assert.equal(r.blocked, false, `must NOT be blocked wrongly: ${cmd}
 ${r.say}`);
     }
   } finally {
@@ -202,11 +202,11 @@ ${r.say}`);
   }
 });
 
-test("tien to thuong van chay y nhu cu sau khi gop mot ham khop", () => {
+test("a plain prefix still works exactly as before after the two matchers were merged", () => {
   const g = guardWithPolicy(["data"]);
   try {
-    assert.equal(ask(bash("rm data/x/y.csv"), g.guard).blocked, true, "tien to phai chan duong con");
-    assert.equal(ask(bash("rm database.md"), g.guard).blocked, false, "khong duoc chan `database.md` chi vi bat dau bang `data`");
+    assert.equal(ask(bash("rm data/x/y.csv"), g.guard).blocked, true, "a prefix must block its child paths");
+    assert.equal(ask(bash("rm database.md"), g.guard).blocked, false, "it must not block `database.md` merely for starting with `data`");
   } finally {
     g.cleanup();
   }

@@ -32,7 +32,7 @@ function reset() {
   releaseDaemonJob();
 }
 
-test("① NÚT bấm: chuỗi bảo trì đang giữ token ⇒ nó phải NHƯỜNG, không phải từ chối", () => {
+test("1 a BUTTON press: a maintenance chain holding the token must YIELD rather than refuse", () => {
   reset();
   assert.equal(claimDaemonJob("maintain"), true, "giả lập chuỗi bảo trì đang chạy");
 
@@ -52,7 +52,7 @@ test("① NÚT bấm: chuỗi bảo trì đang giữ token ⇒ nó phải NHƯ�
   reset();
 });
 
-test("② CA ÂM — máy tự chạy (auto-sync) KHÔNG được cắt ngang chuỗi bảo trì", () => {
+test("2 NEGATIVE CASE - machine-initiated auto-sync must NOT cut into the maintenance chain", () => {
   reset();
   claimDaemonJob("maintain");
   let asked = false;
@@ -69,7 +69,7 @@ test("② CA ÂM — máy tự chạy (auto-sync) KHÔNG được cắt ngang ch
   reset();
 });
 
-test("③ token do tiến trình KHÁC giữ (không nhường được) ⇒ KHÔNG giật, báo rõ", () => {
+test("3 a token held by ANOTHER process (cannot yield) is NOT seized, and it says so clearly", () => {
   reset();
   claimDaemonJob("một CLI ngoài");
   registerJobYielder(null); // scheduler không đăng ký / không phải nó đang giữ
@@ -81,7 +81,7 @@ test("③ token do tiến trình KHÁC giữ (không nhường được) ⇒ KH�
   reset();
 });
 
-test("yieldDaemonJob: không ai đăng ký ⇒ false (fail-open), có đăng ký ⇒ chuyển đúng lý do", () => {
+test("yieldDaemonJob: nobody registered yields false (fail-open); a registered handler receives the right reason", () => {
   reset();
   assert.equal(yieldDaemonJob("x"), false, "chưa ai khai nhường được thì không được coi là đã nhường");
   let seen = null;

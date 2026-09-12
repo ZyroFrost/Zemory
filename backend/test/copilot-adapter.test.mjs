@@ -15,7 +15,7 @@ import { copilotAdapter } from "../../dist/memory/adapters/copilot.js";
 const dir = mkdtempSync(join(tmpdir(), "zm-ghcp-"));
 const w = (name, obj) => { const f = join(dir, name); writeFileSync(f, JSON.stringify(obj), "utf8"); return f; };
 
-test("① hình dạng NHẬN RA được thì đọc: {messages:[{role,content}]}", () => {
+test("1 a RECOGNISED shape is read: {messages:[{role,content}]}", () => {
   const f = w("ok.json", [{ threadId: "th_1", title: "Sửa hàm tính thuế", raw: { messages: [
     { id: "m1", role: "user", content: "hàm này sai ở đâu?", createdAt: "2026-09-12T01:00:00Z" },
     { id: "m2", role: "assistant", content: "thiếu nhánh chia cho 0", createdAt: "2026-09-12T01:00:05Z" },
@@ -28,7 +28,7 @@ test("① hình dạng NHẬN RA được thì đọc: {messages:[{role,content}
   assert.equal(s.messages[0].timestamp, "2026-09-12T01:00:00Z");
 });
 
-test("② chữ nằm trong khối `content[].text` cũng đọc được", () => {
+test("2 text inside a `content[].text` block is read too", () => {
   const f = w("blocks.json", [{ threadId: "th_2", raw: { messages: [
     { role: "user", content: [{ type: "text", text: "phần một" }, { type: "text", text: "phần hai" }] },
     { role: "assistant", content: [{ type: "text", text: "trả lời" }] },
@@ -38,7 +38,7 @@ test("② chữ nằm trong khối `content[].text` cũng đọc được", () =
   assert.equal(s.messages.length, 2);
 });
 
-test("③ vai được quy về bộ chuẩn (`copilot`/`model`/`human` → user|assistant)", () => {
+test("3 roles are normalised to the standard set (`copilot`/`model`/`human` to user|assistant)", () => {
   const f = w("roles.json", [{ threadId: "th_3", raw: { messages: [
     { role: "human", content: "a" }, { role: "copilot", content: "b" }, { role: "model", content: "c" },
   ] } }]);
@@ -46,7 +46,7 @@ test("③ vai được quy về bộ chuẩn (`copilot`/`model`/`human` → user
   assert.deepEqual(s.messages.map((m) => m.role), ["user", "assistant", "assistant"]);
 });
 
-test("④ 🔴 hình dạng LẠ ⇒ null, KHÔNG đoán — đây là bất biến chính của file này", () => {
+test("4 an UNKNOWN shape yields null, never a guess - the core invariant of this file", () => {
   // Payload thật của GitHub có thể khác hẳn (chưa ai đo được). Gặp thứ không nhận ra thì phải NÓI
   // KHÔNG ĐỌC ĐƯỢC: `ingestFile` sẽ bỏ qua và KHÔNG ghi `ingest_state`, nên khi có parser thật thì
   // lượt quét sau nạp lại đủ. Nếu ở đây "cố vớt" thì kho nhận dữ liệu méo mà không ai biết.
@@ -58,13 +58,13 @@ test("④ 🔴 hình dạng LẠ ⇒ null, KHÔNG đoán — đây là bất bi�
   assert.equal(copilotAdapter.parseFileMulti(w("weird4.json", [{ threadId: "t", raw: { messages: [{ role: "tool-ish", content: "chữ" }] } }])), null);
 });
 
-test("⑤ file hỏng ⇒ null, KHÔNG ném", () => {
+test("5 a broken file yields null and does NOT throw", () => {
   const f = join(dir, "bad.json");
   writeFileSync(f, "{khong phai json", "utf8");
   assert.equal(copilotAdapter.parseFileMulti(f), null);
 });
 
-test("⑥ tiền tố phiên KHỚP `sessionPrefix` khai trong PLATFORMS", async () => {
+test("6 the session prefix MATCHES the `sessionPrefix` declared in PLATFORMS", async () => {
   const { PLATFORMS } = await import("../../dist/memory/scanweb.js");
   const f = w("pfx.json", [{ threadId: "th_9", raw: { messages: [{ role: "user", content: "x" }] } }]);
   const [s] = copilotAdapter.parseFileMulti(f);

@@ -41,7 +41,7 @@ const CHANGES_LINES = [
   "## [2026-09-02] — cu hon", "noi dung 2", "", "## [2026-09-01] — cu nhat", "noi dung 1", "",
 ];
 
-test("05_TODO CRLF: file archive KHÔNG được có LF đơn độc", () => {
+test("05_TODO CRLF: the archive file must carry no lone LF", () => {
   const s = scratch("05_TODO.md", TODO_LINES.join("\r\n"));
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
@@ -53,7 +53,7 @@ test("05_TODO CRLF: file archive KHÔNG được có LF đơn độc", () => {
   }
 });
 
-test("06_CHANGES CRLF: file archive KHÔNG được có LF đơn độc", () => {
+test("06_CHANGES CRLF: the archive file must carry no lone LF", () => {
   const s = scratch("06_CHANGES.md", CHANGES_LINES.join("\r\n"));
   try {
     assert.ok(archiveChanges(s.ctx, s.dbPath).moved > 0, "phải cắt được ít nhất một entry");
@@ -65,7 +65,7 @@ test("06_CHANGES CRLF: file archive KHÔNG được có LF đơn độc", () => 
   }
 });
 
-test("repo LF thì KHÔNG được lẫn CR vào", () => {
+test("an LF repo must not get CR mixed in", () => {
   const s = scratch("05_TODO.md", TODO_LINES.join("\n"));
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);

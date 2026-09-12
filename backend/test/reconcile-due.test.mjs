@@ -35,7 +35,7 @@ function sandboxHome(t) {
   return home;
 }
 
-test("CA ÂM: chưa nối kênh ⇒ KHÔNG bao giờ đối chiếu, kể cả khi chưa chạy lần nào", async (t) => {
+test("NEGATIVE CASE: with no channel linked it NEVER reconciles, not even on a first run", async (t) => {
   sandboxHome(t);
   const { reconcileDue } = await import("../../dist/jobs/scheduler.js");
   const { setDriveDir } = await import("../../dist/config/settings.js");
@@ -44,7 +44,7 @@ test("CA ÂM: chưa nối kênh ⇒ KHÔNG bao giờ đối chiếu, kể cả k
   assert.equal(reconcileDue(Date.now() - 400 * DAY), false, "kể cả 'quá hạn' cả năm: vẫn không có kênh");
 });
 
-test("chưa chạy lần nào ⇒ chạy lượt đầu; vừa chạy ⇒ nghỉ", async (t) => {
+test("never run before means run now; just run means rest", async (t) => {
   const home = sandboxHome(t);
   const { reconcileDue } = await import("../../dist/jobs/scheduler.js");
   const { setDriveDir } = await import("../../dist/config/settings.js");
@@ -56,7 +56,7 @@ test("chưa chạy lần nào ⇒ chạy lượt đầu; vừa chạy ⇒ nghỉ
   assert.equal(reconcileDue(now - 60_000, now), false, "một phút trước ⇒ nghỉ");
 });
 
-test("nhịp ghim ở ~7 NGÀY: 6 ngày chưa tới lượt, 8 ngày thì tới", async (t) => {
+test("the cadence is pinned at about 7 DAYS: 6 days is not due, 8 days is", async (t) => {
   const home = sandboxHome(t);
   const { reconcileDue } = await import("../../dist/jobs/scheduler.js");
   const { setDriveDir } = await import("../../dist/config/settings.js");

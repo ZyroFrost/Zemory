@@ -36,7 +36,7 @@ function ageFile(p, ms) {
   utimesSync(p, t, t);
 }
 
-test("chưa tới hạn thì KHÔNG chép thêm bản nào", async (t) => {
+test("before the interval elapses no extra copy is made", async (t) => {
   const dir = tempDir(t, "zemory-bak-");
   const db = await makeDb(dir);
 
@@ -49,7 +49,7 @@ test("chưa tới hạn thì KHÔNG chép thêm bản nào", async (t) => {
   assert.equal(listBackups(join(dir, "backups")).length, 1, "vẫn đúng 1 bản");
 });
 
-test("quá hạn thì chép bản mới", async (t) => {
+test("past the interval a new copy is made", async (t) => {
   const dir = tempDir(t, "zemory-bak-");
   const db = await makeDb(dir);
   await rotateBackup({ dbPath: db, policy: { everyMs: DAY, keep: 5 } });
@@ -63,7 +63,7 @@ test("quá hạn thì chép bản mới", async (t) => {
   assert.equal(listBackups(join(dir, "backups")).length, 2);
 });
 
-test("dọn về đúng keep bản, giữ lại bản MỚI NHẤT", async (t) => {
+test("it prunes down to exactly keep copies, keeping the NEWEST", async (t) => {
   const dir = tempDir(t, "zemory-bak-");
   const db = await makeDb(dir);
   const dirB = join(dir, "backups");
@@ -80,7 +80,7 @@ test("dọn về đúng keep bản, giữ lại bản MỚI NHẤT", async (t) =
   assert.ok(left[0].mtimeMs >= left[1].mtimeMs);
 });
 
-test("file lạ trong thư mục backups KHÔNG bao giờ bị xoá", async (t) => {
+test("a foreign file in the backups folder is NEVER deleted", async (t) => {
   const dir = tempDir(t, "zemory-bak-");
   const db = await makeDb(dir);
   const dirB = join(dir, "backups");
@@ -105,7 +105,7 @@ test("file lạ trong thư mục backups KHÔNG bao giờ bị xoá", async (t) 
   assert.ok(!listBackups(dirB).some((b) => b.path.endsWith("ghi-chu-cua-toi.txt")));
 });
 
-test("bản sao lưu đọc được và giữ đúng dữ liệu (chụp nhất quán, không phải chép byte)", async (t) => {
+test("the backup is readable and holds the right data (a consistent snapshot, not a byte copy)", async (t) => {
   const dir = tempDir(t, "zemory-bak-");
   const db = await makeDb(dir);
   const r = await rotateBackup({ dbPath: db, policy: { everyMs: DAY, keep: 5 } });

@@ -330,7 +330,7 @@ CREATE INDEX IF NOT EXISTS idx_compression_event_art ON compression_event(artifa
 // FTS5 index over messages.content. EXTERNAL CONTENT (content='messages',
 // content_rowid='id'): the index stores only the inverted-index postings, not
 // a second copy of the text — messages.content (already on disk) is read on
-// demand for snippet()/highlight(). This is what plan 12 buoc 4 trades a
+// demand for snippet()/highlight(). This is what plan 12 step 4 trades a
 // second (and third) verbatim copy of every message for. The default
 // (unicode61) table powers word search; the trigram table powers substring /
 // CJK / Vietnamese-with-diacritics matching. External-content triggers differ
@@ -539,7 +539,7 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     version = 11;
   }
   if (version < 12) {
-    // v12 (plan 12 buoc 4): messages_fts/_tri were STANDALONE fts5 tables, so
+    // v12 (plan 12 step 4): messages_fts/_tri were STANDALONE fts5 tables, so
     // each kept its own verbatim copy of messages.content — two extra copies of
     // every message's text (~246MB measured, see plan 11 §1/plan 12 §0). Convert
     // to EXTERNAL CONTENT (content='messages', content_rowid='id'): the index

@@ -37,7 +37,7 @@ function dump(t, sessions) {
   return f;
 }
 
-test("parse: giữ user + assistant, BỎ control/system/log", (t) => {
+test("parse: keeps user and assistant, DROPS control/system/log", (t) => {
   const out = coworkAdapter.parseFileMulti(dump(t, [SESSION]));
   assert.equal(out.length, 1);
   const s = out[0];
@@ -47,7 +47,7 @@ test("parse: giữ user + assistant, BỎ control/system/log", (t) => {
   assert.equal(s.messages.length, 3, "system/control/log KHÔNG được thành tin");
 });
 
-test("hai hình dạng content: user là CHUỖI, assistant là MẢNG block", (t) => {
+test("two content shapes: user is a STRING, assistant is an ARRAY of blocks", (t) => {
   const out = coworkAdapter.parseFileMulti(dump(t, [SESSION]));
   const [u, a] = out[0].messages;
   assert.equal(u.content, "vậy phải mở session mới?", "content chuỗi phải đọc thẳng");
@@ -56,26 +56,26 @@ test("hai hình dạng content: user là CHUỖI, assistant là MẢNG block", (
   assert.equal(u.uuid, "e1", "uuid = event_id ⇒ dedup + kéo lại idempotent");
 });
 
-test("khối tool được GIỮ, gắn nhãn đúng quy ước các adapter Claude khác", (t) => {
+test("tool blocks are KEPT and labelled to the same convention as the other Claude adapters", (t) => {
   const out = coworkAdapter.parseFileMulti(dump(t, [SESSION]));
   const tool = out[0].messages[2].content;
   assert.ok(tool.includes("[tool_use:Bash]"), "nhãn tool_use phải khớp quy ước");
   assert.ok(tool.includes("[tool_result]") && tool.includes("kết quả"), "nội dung tool_result KHÔNG bị cắt");
 });
 
-test("phiên chỉ có control/log ⇒ bỏ hẳn, không đẻ phiên rỗng", (t) => {
+test("a session holding only control/log is dropped entirely, no empty session", (t) => {
   const f = dump(t, [{ id: "cse_x", events: [{ event_id: "s", event_type: "system", payload: { message: { content: "x" } } }] }]);
   assert.equal(coworkAdapter.parseFileMulti(f), null);
 });
 
-test("file hỏng ⇒ null, không ném (fail-open)", (t) => {
+test("a broken file yields null and does not throw (fail-open)", (t) => {
   const dir = tempDir(t, "zemory-cowork-bad-");
   const f = join(dir, "x.json");
   writeFileSync(f, "{ khong phai json");
   assert.equal(coworkAdapter.parseFileMulti(f), null);
 });
 
-test("khai đúng lane + được ĐĂNG KÝ (adapter không đăng ký = không ai đọc)", () => {
+test("it declares the right lane AND is REGISTERED (an unregistered adapter is read by nobody)", () => {
   assert.equal(coworkAdapter.source, "claude-cowork");
   assert.equal(coworkAdapter.origin, "web", "phải nằm lane web để scope-tree tách khỏi transcript local");
   assert.equal(coworkAdapter.mode, "whole", "kéo lại là thay toàn bộ phiên, idempotent");
@@ -84,7 +84,7 @@ test("khai đúng lane + được ĐĂNG KÝ (adapter không đăng ký = không
 });
 
 // Cowork dùng CHUNG trang claude.ai ⇒ là lane phụ của platform claude, không phải nền thứ ba.
-test("lane phụ gắn đúng vào platform claude, dùng chung cửa sổ + cổng", () => {
+test("the side lane attaches to the claude platform and shares its window and port", () => {
   const sub = PLATFORMS.claude.sub;
   assert.ok(sub, "claude phải khai lane phụ");
   assert.equal(sub.source, "claude-cowork");
@@ -92,7 +92,7 @@ test("lane phụ gắn đúng vào platform claude, dùng chung cửa sổ + c�
   assert.ok(!Object.values(PLATFORMS).some((p) => p.key === "cowork"), "KHÔNG được tạo PLATFORMS thứ ba cho cùng một site");
 });
 
-test("năm header bắt buộc phải có trong cả hai expr (thiếu là 400 dù đã đăng nhập)", () => {
+test("the five mandatory headers must exist in both expressions (missing one is a 400 even when signed in)", () => {
   const sub = PLATFORMS.claude.sub;
   for (const expr of [sub.listExpr, sub.convExpr("cse_x")]) {
     for (const h of ["anthropic-version", "anthropic-beta", "anthropic-client-feature", "anthropic-client-platform", "x-organization-uuid"]) {
@@ -105,7 +105,7 @@ test("năm header bắt buộc phải có trong cả hai expr (thiếu là 400 d
 // Đo 2026-07-31: tài khoản đang đăng nhập chỉ có 1 phiên Cowork; 3 phiên user cần nằm ở
 // một tài khoản Claude KHÁC. Không có khe tài khoản ⇒ muốn lấy chúng phải đăng xuất cái
 // đang dùng, tức đổi mất phiên này để lấy phiên kia.
-test("nhiều TÀI KHOẢN cho cùng một nền: profile riêng + cổng riêng, main giữ nguyên tên cũ", async () => {
+test("several ACCOUNTS on one platform: separate profile and separate port, with main keeping its old name", async () => {
   const { accountSlot, accountPort, PLATFORMS: P } = await import("../../dist/memory/scanweb.js");
   assert.equal(accountSlot("claude"), "claude", "khe main PHẢI giữ đúng tên cũ — đổi tên là mất phiên đang đăng nhập");
   assert.equal(accountSlot("claude", "main"), "claude");
@@ -117,7 +117,7 @@ test("nhiều TÀI KHOẢN cho cùng một nền: profile riêng + cổng riêng
   assert.equal(ports.size, 3, "mỗi khe một cổng");
 });
 
-test("app quét MỌI tài khoản, và có nút thêm tài khoản (bỏ sót khe = mất cả tài khoản đó)", () => {
+test("the app scans EVERY account and offers an add-account button (a missed slot loses that whole account)", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   // Phép quét theo khe DỜI sang `memory/scanweb.ts` 2026-08-28 (nghiệp vụ thuộc domain,
   // `ui.ts` chỉ còn endpoint) — neo phải theo, không thì cổng soi một file đã hết code.
@@ -137,7 +137,7 @@ test("app quét MỌI tài khoản, và có nút thêm tài khoản (bỏ sót k
   assert.ok(/data-acct=/.test(js) && /&account='\+encodeURIComponent\(acct\)/.test(js), "nút nối phải mang theo khe tài khoản");
 });
 
-test("lane phụ hỏng KHÔNG được kéo lane chat xuống theo (fail-open)", () => {
+test("a broken side lane must NOT drag the chat lane down with it (fail-open)", () => {
   const src = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   const tail = src.slice(src.indexOf("LANE PHỤ"));
   assert.ok(/catch \(e\) \{[\s\S]{0,200}lane failed/.test(tail), "phải bọc try/catch quanh cả lane phụ");

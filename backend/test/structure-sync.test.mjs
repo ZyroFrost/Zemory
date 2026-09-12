@@ -45,7 +45,7 @@ test("every slot 03_STRUCTURE routes to has a role in the graph's SLOT_ROLES (no
 //
 // Ca chạy trên REPO GIẢ (không phải repo thật): repo thật có thể tình cờ không chứa đuôi nào
 // trong `EXTRA_LANG_EXT`, và một cổng chỉ xanh vì "không có dữ liệu để sai" thì không soi gì.
-test("cây folder và code graph đi CÙNG một tập file — kể cả ngôn ngữ mở rộng", (t) => {
+test("the folder tree and the code graph cover the SAME file set - extended languages included", (t) => {
   const root = mkdtempSync(join(tmpdir(), "zemory-parity-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const put = (rel, body) => {
@@ -85,7 +85,7 @@ test("cây folder và code graph đi CÙNG một tập file — kể cả ngôn 
 
 // Ca ÂM của chính cổng trên: kho THUẦN ts/js/py không được đổi hành vi vì đợt vá này (nếu bản vá
 // vô tình nhận thêm `.md`/`.json` vào lá mã nguồn thì đây là chỗ nó lộ ra).
-test("kho thuần ts/py: cây KHÔNG nhận file phi-mã-nguồn thành lá", (t) => {
+test("a pure ts/py store: the tree does NOT take a non-source file as a leaf", (t) => {
   const root = mkdtempSync(join(tmpdir(), "zemory-parity2-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "backend", "src", "services"), { recursive: true });

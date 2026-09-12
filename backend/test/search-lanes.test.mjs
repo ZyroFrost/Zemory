@@ -46,7 +46,7 @@ const goldId = (dbPath) => {
   try { return db.prepare("SELECT id FROM messages WHERE uuid='u-gold'").get().id; } finally { db.close(); }
 };
 
-test("truy vấn DÀI tự nhiên vẫn RA kết quả (luồng cũ cho 0 vì đòi khớp cả câu)", (t) => {
+test("a LONG natural-language query still RETURNS results (the old flow gave 0 by demanding the whole sentence match)", (t) => {
   const dbPath = store(t);
   const gold = goldId(dbPath);
   const q = "lenh nao da khoi dong lai container cua music_video_flow va kiem tra xem no chay chua the nao";
@@ -57,7 +57,7 @@ test("truy vấn DÀI tự nhiên vẫn RA kết quả (luồng cũ cho 0 vì đ
   assert.ok(hits.some((h) => h.id === gold), `phải tìm ra tin đích; nhận ${hits.length} kết quả`);
 });
 
-test("truy vấn NGẮN 2–3 từ khoá vẫn CHÍNH XÁC (không được hi sinh cho câu dài)", (t) => {
+test("a SHORT 2-3 keyword query stays PRECISE (it must not be sacrificed for long sentences)", (t) => {
   const dbPath = store(t);
   const gold = goldId(dbPath);
 
@@ -67,7 +67,7 @@ test("truy vấn NGẮN 2–3 từ khoá vẫn CHÍNH XÁC (không được hi s
   assert.equal(hits[0].id, gold, "tin đích phải đứng ĐẦU với truy vấn ngắn — đây là thế mạnh không được đánh đổi");
 });
 
-test("từ không có trong kho ⇒ vẫn im lặng trả rỗng, KHÔNG ném (fail-open giữ nguyên)", (t) => {
+test("a word absent from the store still returns empty quietly and does NOT throw (fail-open unchanged)", (t) => {
   const dbPath = store(t);
   assert.doesNotThrow(() => search("zzzkhongtontaizzz", { dbPath, all: true }));
   assert.deepEqual(search("zzzkhongtontaizzz", { dbPath, all: true }), []);

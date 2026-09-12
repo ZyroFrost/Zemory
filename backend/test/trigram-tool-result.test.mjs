@@ -34,7 +34,7 @@ function scratch(t) {
   return { db, add, triHits, cleanup: () => db.close() };
 }
 
-test("tin tool_result MỚI đi thẳng vào trigram (trigger INSERT không còn loại nó)", (t) => {
+test("a NEW tool_result message goes straight into trigram (the INSERT trigger no longer excludes it)", (t) => {
   const s = scratch(t);
   try {
     s.add("[tool_result] khungcanhdacbiet_abc mot doan dump dai");
@@ -44,7 +44,7 @@ test("tin tool_result MỚI đi thẳng vào trigram (trigger INSERT không còn
   }
 });
 
-test("văn xuôi và tool_use vẫn nguyên trong trigram (không đổi hành vi cũ)", (t) => {
+test("prose and tool_use remain in trigram (old behaviour unchanged)", (t) => {
   const s = scratch(t);
   try {
     s.add("mot doan van xuoi chua tuvanxuoi_xyz binh thuong");
@@ -56,7 +56,7 @@ test("văn xuôi và tool_use vẫn nguyên trong trigram (không đổi hành v
   }
 });
 
-test("UPDATE một tool_result: posting cũ gỡ, posting mới vào — không nhân đôi, không mất", (t) => {
+test("UPDATing a tool_result: old postings removed, new ones added - nothing duplicated, nothing lost", (t) => {
   // Ca này từng làm prose rơi khỏi trigram VĨNH VIỄN (bug thứ tự trigger, vá 2026-08-12).
   // `redact()` chạy UPDATE trên tin thật, nên đây là đường đi hằng ngày chứ không phải ca hiếm.
   const s = scratch(t);
@@ -70,7 +70,7 @@ test("UPDATE một tool_result: posting cũ gỡ, posting mới vào — không 
   }
 });
 
-test("DELETE một tool_result gỡ posting khỏi trigram (không để lại rác)", (t) => {
+test("DELETing a tool_result removes its postings from trigram (no junk left)", (t) => {
   const s = scratch(t);
   try {
     const id = s.add("[tool_result] sapxoa_ccc noi dung");
@@ -82,7 +82,7 @@ test("DELETE một tool_result gỡ posting khỏi trigram (không để lại r
   }
 });
 
-test("TỰ KIỂM phép đo — trigram phải THẤY được sự khác biệt, 0 hit không được đọc thành 'sạch'", (t) => {
+test("SELF-CHECK of the measurement - trigram must be able to SEE the difference, 0 hits must not read as 'clean'", (t) => {
   // Không có ca này thì mọi assert `=== 0` ở trên vẫn xanh khi bảng trigram rỗng hoặc MATCH hỏng.
   const s = scratch(t);
   try {

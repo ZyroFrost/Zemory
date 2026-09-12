@@ -25,7 +25,7 @@ import { tempDir } from "./helpers.mjs";
 const PROSE_1 = "xin chào tôi cần sửa cấu hình mạng";
 const PROSE_2 = "đã sửa xong cấu hình";
 const TOOL = '[tool_result] {"khoaduynhat":"mangluoi","x":1}';
-// tool_result nam trong luot USER va tool_name = NULL — chinh la ca v16 bo sot (vá o v17).
+// tool_result nằm trong lượt USER và tool_name = NULL — chính là ca v16 bỏ sót (vá ở v17).
 const TOOL_NO_NAME = '[tool_result] {"khongcotoolname":"vandumpto"}';
 // tool_use THUẦN: tool_name có, content KHÔNG mang tiền tố [tool_result] — đây là hình dạng
 // thật của một lượt gọi tool (tham số đầu vào). Bộ test cũ KHÔNG có ca này, nên chính sách
@@ -48,13 +48,13 @@ function seed(t) {
 const hits = (db, table, term) =>
   db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE ${table} MATCH ?`).get(term).n;
 
-test("messages giữ ĐỦ 5 hàng — lọc chỉ ở lớp dẫn xuất", (t) => {
+test("messages keeps ALL 5 rows - filtering happens only in the derived layer", (t) => {
   const db = seed(t);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM messages").get().n, 5);
   db.close();
 });
 
-test("lane WORD index TẤT CẢ — tool-dump vẫn tìm được bằng từ khoá", (t) => {
+test("the WORD lane indexes EVERYTHING - tool dumps are still findable by keyword", (t) => {
   const db = seed(t);
   assert.equal(hits(db, "messages_fts", "khoaduynhat"), 1, "token trong tool-dump phải tìm được ở lane word");
   assert.equal(hits(db, "messages_fts", "cấu"), 2, "prose vẫn đủ ở lane word");
@@ -66,7 +66,7 @@ test("lane WORD index TẤT CẢ — tool-dump vẫn tìm được bằng từ k
 // kho, và nó chỉ còn HAI luồng. Cấp cho nó luồng thứ ba: `@1` 0→12% · `@10` 20→28% · MRR
 // 0,060→0,167, prose y nguyên. Giá: +262 MB đĩa · +23% độ trễ.
 // Ca này khoá chiều MỚI — thêm lại bất kỳ điều kiện loại `[tool_result]` nào vào trigger là đỏ.
-test("v22: lane TRIGRAM PHỦ tool_result (chuỗi-con giữa từ cũng khớp)", (t) => {
+test("v22: the TRIGRAM lane COVERS tool_result (substrings inside a word match too)", (t) => {
   const db = seed(t);
   assert.equal(hits(db, "messages_fts_tri", "oaduynha"), 1, "chuỗi-con của tool_result PHẢI vào trigram");
   assert.equal(hits(db, "messages_fts_tri", "angluo"), 1, "mọi chuỗi trong cùng dump đều khớp được");
@@ -77,7 +77,7 @@ test("v22: lane TRIGRAM PHỦ tool_result (chuỗi-con giữa từ cũng khớp)
 
 // v21 — ca mà bộ test cũ KHÔNG có. Đây là bất biến mới, và cũng là thứ chặn việc lặng lẽ
 // quay về v16: nếu ai đó thêm lại "tool_name IS NULL" vào trigger, đúng test này đỏ.
-test("v21: lane TRIGRAM GIỮ tool_use (tool_name có, không phải tool_result)", (t) => {
+test("v21: the TRIGRAM lane KEEPS tool_use (it has a tool_name, it is not a tool_result)", (t) => {
   const db = seed(t);
   assert.equal(hits(db, "messages_fts_tri", "hamsodacbie"), 1, "chuỗi-con GIỮA TỪ của tool_use phải tìm được — đây là công dụng trigram không lane nào thay");
   // Nháy kép BẮT BUỘC: FTS5 coi '/' là ký tự cú pháp, để trần là `syntax error` chứ không
@@ -87,7 +87,7 @@ test("v21: lane TRIGRAM GIỮ tool_use (tool_name có, không phải tool_result
   db.close();
 });
 
-test("v21: DELETE hàng tool_use gỡ sạch posting trigram (không mồ côi)", (t) => {
+test("v21: DELETing a tool_use row clears its trigram postings (no orphans)", (t) => {
   const db = seed(t);
   db.prepare("DELETE FROM messages WHERE uuid='u5'").run();
   assert.equal(hits(db, "messages_fts_tri", "hamsodacbie"), 0, "posting của hàng đã xoá phải biến mất");
@@ -95,14 +95,14 @@ test("v21: DELETE hàng tool_use gỡ sạch posting trigram (không mồ côi)"
   db.close();
 });
 
-test("trigram vẫn tìm chuỗi-con trên prose (không hỏng công dụng chính)", (t) => {
+test("trigram still finds substrings in prose (its main purpose is not broken)", (t) => {
   const db = seed(t);
   assert.equal(hits(db, "messages_fts_tri", "ấu hìn"), 2, "chuỗi-con giữa từ vẫn khớp cả 2 prose");
   assert.equal(hits(db, "messages_fts_tri", "in chà"), 1);
   db.close();
 });
 
-test("DELETE hàng prose thì gỡ khỏi trigram (không để posting mồ côi)", (t) => {
+test("DELETing a prose row removes it from trigram (no orphan postings)", (t) => {
   const db = seed(t);
   db.prepare("DELETE FROM messages WHERE uuid='u1'").run();
   assert.equal(hits(db, "messages_fts_tri", "in chà"), 0, "postings của hàng đã xoá phải biến mất");
@@ -111,7 +111,7 @@ test("DELETE hàng prose thì gỡ khỏi trigram (không để posting mồ cô
   db.close();
 });
 
-test("DELETE hàng tool KHÔNG làm hỏng trigram", (t) => {
+test("DELETing a tool row does NOT corrupt trigram", (t) => {
   const db = seed(t);
   db.prepare("DELETE FROM messages WHERE uuid='u3'").run();
   assert.equal(hits(db, "messages_fts_tri", "ấu hìn"), 2, "prose không bị ảnh hưởng");
@@ -124,7 +124,7 @@ test("DELETE hàng tool KHÔNG làm hỏng trigram", (t) => {
 // đúng thứ tự, không mất và không nhân đôi. Chính ca này từng làm prose rơi khỏi trigram VĨNH
 // VIỄN (bug thứ tự trigger, vá 2026-08-12), và `redact()` chạy UPDATE trên tin thật nên đây là
 // đường đi hằng ngày chứ không phải ca hiếm.
-test("v22: UPDATE thay nội dung — posting CŨ gỡ, posting MỚI vào, mọi loại hàng", (t) => {
+test("v22: UPDATE replaces content - OLD postings removed, NEW ones added, for every row kind", (t) => {
   const db = seed(t);
   db.prepare("UPDATE messages SET tool_name='Read', content='[tool_result] chuoimoicuatool' WHERE uuid='u1'").run();
   assert.equal(hits(db, "messages_fts_tri", "in chà"), 0, "nội dung CŨ phải rời trigram");
@@ -138,7 +138,7 @@ test("v22: UPDATE thay nội dung — posting CŨ gỡ, posting MỚI vào, mọ
 
 // v21 chuyển TRỤC phân loại: từ `tool_name` sang tiền tố `[tool_result]`. Ca này khoá đúng
 // chỗ đó — đổi tool_name mà nội dung vẫn là prose thì posting KHÔNG được đụng tới.
-test("v21: đổi tool_name KHÔNG còn làm hàng rời trigram (trục là nội dung, không phải tên tool)", (t) => {
+test("v21: changing tool_name no longer drops the row from trigram (the axis is content, not the tool name)", (t) => {
   const db = seed(t);
   db.prepare("UPDATE messages SET tool_name='Edit' WHERE uuid='u1'").run();
   assert.equal(hits(db, "messages_fts_tri", "in chà"), 1, "prose gắn tool_name vẫn phải còn trong trigram");
@@ -149,7 +149,7 @@ test("v21: đổi tool_name KHÔNG còn làm hàng rời trigram (trục là n�
 // UPDATE một hàng prose thành prose khác — bản cũ tách `_del`/`_ins` thành hai trigger, mà
 // SQLite KHÔNG bảo đảm thứ tự nổ giữa chúng ⇒ "thêm rồi xoá" và tin rơi khỏi trigram vĩnh
 // viễn. Đây là ca mà bộ test cũ mù hoàn toàn: mọi ca UPDATE của nó đều ĐỔI PHÍA.
-test("v21: UPDATE prose→prose GIỮ được posting (lỗi thứ tự trigger)", (t) => {
+test("v21: UPDATE prose to prose KEEPS the postings (a trigger-order bug)", (t) => {
   const db = seed(t);
   db.prepare("UPDATE messages SET content='nội dung đã được biên tập lại hoàn toàn' WHERE uuid='u1'").run();
   assert.equal(hits(db, "messages_fts_tri", "in chà"), 0, "nội dung CŨ phải rời trigram");
@@ -168,7 +168,7 @@ test("v21: UPDATE prose→prose GIỮ được posting (lỗi thứ tự trigger
 // v24 (2026-08-28): `sessions.account` (khe → nay là DANH TÍNH email, xem `scope-account.test.mjs`).
 // v25 (2026-08-28): backfill phiên web `account NULL` ⇒ 'main'. Hai bậc này lọt qua cổng đúng như
 // cổng cảnh báo: đợt 28/08 chỉ chạy gate vùng đụng; gate đầy đủ 29/08 mới bắt.
-test("DB mới chạy hết migration và dừng ở schema v25", (t) => {
+test("a fresh DB runs every migration and stops at schema v25", (t) => {
   const db = seed(t);
   assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 25);
   db.close();

@@ -26,7 +26,7 @@ const { deadMainLane, webDue, webPullTargets } = await import("../../dist/jobs/s
 
 // ── ① khe THẬT vs thư mục sao lưu ───────────────────────────────────────────
 
-test("accountsOf: thư mục SAO LƯU không được tính là tài khoản", () => {
+test("accountsOf: a BACKUP folder must not count as an account", () => {
   const root = join(HOME, "browser");
   for (const d of [
     "claude",                                 // khe main
@@ -45,7 +45,7 @@ test("accountsOf: thư mục SAO LƯU không được tính là tài khoản", (
 
 // ── ② ngầm là ngầm, và KHÔNG headless ───────────────────────────────────────
 
-test("kéo ngầm: đẩy cửa sổ khuất, và KHÔNG chạy chế độ không-giao-diện", () => {
+test("a quiet pull pushes the window out of sight and does NOT run headless", () => {
   // Đo MẢNG THAM SỐ THẬT, không grep file. Bản đầu của ca này soi chữ trên cả nguồn nên
   // báo oan chính đoạn chú thích giải thích vì sao không dùng chế độ đó — đúng bẫy
   // `06_CHANGES [2026-08-27b]` đã ghi ("cổng partition soi CHỮ bắt oan 11 file").
@@ -74,7 +74,7 @@ test("kéo ngầm: đẩy cửa sổ khuất, và KHÔNG chạy chế độ khô
 
 // ── ③ hỏng là phải BÁO ──────────────────────────────────────────────────────
 
-test("setWebPull ghi sổ CẢ lượt hỏng — không phân biệt được 'chưa chạy' với 'chạy rồi hỏng' là lỗi", () => {
+test("setWebPull records FAILED rounds too - being unable to tell 'never ran' from 'ran and failed' is a fault", () => {
   setWebPull("chatgpt", { ok: true, status: "done", pulled: 12 });
   setWebPull("claude#2", { ok: false, status: "need-login" });
 
@@ -98,13 +98,13 @@ const SRC = { chatgpt: "chatgpt-web", claude: "claude-web" };
 const targets = (excl, pulled, now = Date.parse("2026-08-28T00:00:00Z")) =>
   webPullTargets(["chatgpt", "claude"], () => ["main"], (p) => SRC[p], "MAY-A", excl, pulled, now).map((t) => t.lane);
 
-test("ô KHÔNG tick ⇒ lane đó không được đụng tới (không tốn cả một lần mở trình duyệt)", () => {
+test("an UNTICKED box means that lane is untouched (not even the cost of opening a browser)", () => {
   assert.deepEqual(targets([], {}), ["chatgpt", "claude"], "chưa loại gì thì cả hai đều tới lượt");
   assert.deepEqual(targets([{ origin: "web", host: "MAY-A", source: "claude-web" }], {}), ["chatgpt"], "lane bị bỏ tick phải biến mất");
   assert.deepEqual(targets([{ origin: "web" }], {}), [], "bỏ tick cả nhánh Web chat ⇒ không lane nào");
 });
 
-test("hỏng thì LÙI LÂU, khoẻ thì hỏi lại thưa — thử lại dày cho thứ cần NGƯỜI đăng nhập là đốt máy", () => {
+test("failure means a LONG backoff and health means asking less often - retrying hard on something that needs a HUMAN to sign in just burns the machine", () => {
   const now = Date.parse("2026-08-28T00:00:00Z");
   const at = (h) => new Date(now - h * 3600_000).toISOString();
 
@@ -119,7 +119,7 @@ test("hỏng thì LÙI LÂU, khoẻ thì hỏi lại thưa — thử lại dày 
   assert.deepEqual(targets([], { chatgpt: { at: at(7), ok: false }, claude: { at: at(1), ok: true } }, now), ["chatgpt"]);
 });
 
-test("webDue: chưa chạy lần nào ⇒ tới lượt · dấu thời gian hỏng ⇒ tới lượt (không kẹt vĩnh viễn)", () => {
+test("webDue: never run means due; a broken timestamp means due (never stuck forever)", () => {
   assert.equal(webDue(undefined), true);
   assert.equal(webDue({ at: "không-phải-ngày", ok: true }), true, "sổ hỏng không được làm lane câm mãi mãi");
 });
@@ -129,14 +129,14 @@ test("webDue: chưa chạy lần nào ⇒ tới lượt · dấu thời gian h�
 // mở Brave ẩn mỗi ~6 giờ mãi mãi vì `accountsOf()` CỐ TÌNH luôn liệt kê `main` bất kể lịch sử.
 // User: *"app lại tự động gọi browser đăng nhập liên tục là bị gì"*.
 
-test("deadMainLane: need-login + khe SỐ đã phủ (ok:true) ⇒ main coi là CHẾT", () => {
+test("deadMainLane: need-login plus a NUMBERED slot covering it (ok:true) means main counts as DEAD", () => {
   assert.equal(
     deadMainLane("chatgpt", { chatgpt: { ok: false, status: "need-login" }, "chatgpt#2": { ok: true, status: "done" } }),
     true,
   );
 });
 
-test("deadMainLane: BỐN CA ÂM — main còn sống hoặc chưa đủ bằng chứng thì KHÔNG được tắt", () => {
+test("deadMainLane: FOUR NEGATIVE CASES - main alive or the evidence insufficient means it must NOT be switched off", () => {
   // main đang khoẻ (đúng ca `claude` thật: cả main lẫn #2 cùng kéo tốt) ⇒ không được đụng.
   assert.equal(deadMainLane("claude", { claude: { ok: true, status: "done" }, "claude#2": { ok: true, status: "done" } }), false);
   // main hỏng nhưng KHÔNG có khe số nào phủ ⇒ vẫn phải tự thử (đây có thể là tài khoản DUY NHẤT).
@@ -164,7 +164,7 @@ test("deadMainLane: BỐN CA ÂM — main còn sống hoặc chưa đủ bằng 
 // 15:53, và 16 phút sau vẫn treo. Cơ chế: khe `need-login` bị loại VĨNH VIỄN khỏi vòng tự kéo, còn
 // `startLoginWatch` chỉ canh 15 phút VÀ sống trong RAM daemon (restart là mất). ⇒ người đăng nhập
 // tay xong thì không còn gì kiểm lại — bề mặt nói dối theo chiều ngược với hai ca đã vá cùng ngày.
-test("needsLoginLane: phiên ĐÃ CÓ lại ⇒ phán quyết cũ hết hiệu lực; đọc không được ⇒ giữ nguyên", () => {
+test("needsLoginLane: a session that came BACK voids the old verdict; an unreadable state keeps it", () => {
   const needLogin = { ok: false, status: "need-login", at: "2026-09-02T15:53:09Z" };
 
   assert.equal(needsLoginLane(needLogin, () => true), false, "kho cookie đã có phiên ⇒ THÔI bỏ qua, cho kéo lại");
@@ -179,7 +179,7 @@ test("needsLoginLane: phiên ĐÃ CÓ lại ⇒ phán quyết cũ hết hiệu l
   assert.equal(needsLoginLane({ ok: true, status: "done" }, () => false), false, "khe lành không bị chặn oan");
 });
 
-test("webPullTargets: khe need-login ĐƯỢC KÉO LẠI khi kho cookie đã có phiên", () => {
+test("webPullTargets: a need-login slot IS PULLED AGAIN once the cookie jar holds a session", () => {
   const now = Date.parse("2026-09-02T16:30:00Z");
   const pulled = { chatgpt: { at: "2026-09-02T15:53:09Z", ok: false, status: "need-login" } };
   const run = (probe) =>
@@ -190,7 +190,7 @@ test("webPullTargets: khe need-login ĐƯỢC KÉO LẠI khi kho cookie đã có
   assert.deepEqual(run(() => null), [], "cửa sổ đang mở nên khoá jar ⇒ chờ, không đoán");
 });
 
-test("webPullTargets: main CHẾT ⇒ vắng mặt DÙ hỏng rất lâu rồi (nếu còn sống thì chắc chắn tới lượt)", () => {
+test("webPullTargets: a DEAD main is absent EVEN IF it failed long ago (were it alive it would certainly be due)", () => {
   const now = Date.parse("2026-08-31T00:00:00Z");
   const at = (h) => new Date(now - h * 3600_000).toISOString();
   const got = webPullTargets(
@@ -208,7 +208,7 @@ test("webPullTargets: main CHẾT ⇒ vắng mặt DÙ hỏng rất lâu rồi (
   assert.deepEqual(got, [], "main không được lọt qua dù đủ điều kiện thời gian — nó bị loại TRƯỚC bước hỏi webDue");
 });
 
-test("webPullTargets: main CHẾT nhưng khe số ĐÃ tới lượt riêng của nó ⇒ khe số vẫn được kéo", () => {
+test("webPullTargets: a DEAD main while a numbered slot is due in its own right still pulls the numbered slot", () => {
   const now = Date.parse("2026-08-31T00:00:00Z");
   const at = (h) => new Date(now - h * 3600_000).toISOString();
   const got = webPullTargets(
@@ -223,7 +223,7 @@ test("webPullTargets: main CHẾT nhưng khe số ĐÃ tới lượt riêng củ
   assert.deepEqual(got, ["chatgpt#2"], "main không được lẫn vào — CHỈ khe số hợp lệ mới xuất hiện");
 });
 
-test("NHƯỜNG THÌ PHẢI HẸN QUAY LẠI — nhịp kéo web không được đợi hết chu kỳ", () => {
+test("YIELDING MEANS SCHEDULING A RETURN - the web pull cadence must not wait out the whole cycle", () => {
   // Lần thứ BA repo trả giá cho hình dạng này (autosync 2,5 giờ 12/08 · sync 19 giờ 28/08 ·
   // và chính `webTick` bản đầu, bắt được trong lượt nghiệm thu đầu tiên). Kẻ chặn ở đây là
   // embed — thứ chạy 30 phút đến 3 giờ và gần như không bao giờ hết backlog.
@@ -248,14 +248,14 @@ test("NHƯỜNG THÌ PHẢI HẸN QUAY LẠI — nhịp kéo web không được
 // không cứu được: nó chỉ dập `main` KHI khe số cùng nền còn sống — ở đây không khe nào sống.
 const { needsLoginLane, webPullTargets: wpt2 } = await import("../../dist/jobs/scheduler.js");
 
-test("needsLoginLane: CHỈ đúng khi lượt kéo cuối nói need-login", () => {
+test("needsLoginLane: true ONLY when the last pull said need-login", () => {
   assert.equal(needsLoginLane(undefined), false, "chưa kéo lần nào ⇒ phải được thử");
   assert.equal(needsLoginLane({ ok: true, status: "ok" }), false);
   assert.equal(needsLoginLane({ ok: false, status: "no-browser" }), false, "hỏng vì lý do KHÁC vẫn nên thử lại");
   assert.equal(needsLoginLane({ ok: false, status: "need-login" }), true);
 });
 
-test("webPullTargets: khe need-login BỊ LOẠI — máy thôi tự mở cửa sổ đăng nhập", () => {
+test("webPullTargets: a need-login slot is EXCLUDED - the machine stops opening sign-in windows by itself", () => {
   const now = Date.parse("2026-09-02T12:00:00Z");
   const old = "2026-09-01T00:00:00Z"; // quá 6 giờ ⇒ `webDue` nói TỚI LƯỢT
   const pulled = {
@@ -266,14 +266,14 @@ test("webPullTargets: khe need-login BỊ LOẠI — máy thôi tự mở cửa 
   assert.deepEqual(targets, [], "cả hai khe cần đăng nhập ⇒ KHÔNG khe nào được kéo");
 });
 
-test("webPullTargets: khe hỏng vì lý do KHÁC vẫn được thử lại (không chặn oan)", () => {
+test("webPullTargets: a slot that failed for ANOTHER reason is still retried (no collateral blocking)", () => {
   const now = Date.parse("2026-09-02T12:00:00Z");
   const pulled = { claude: { at: "2026-09-01T00:00:00Z", ok: false, status: "no-browser" } };
   const targets = wpt2(["claude"], () => ["main"], () => "claude-web", "H", [], pulled, now);
   assert.equal(targets.length, 1, "`no-browser` có thể tự khỏi (cài lại trình duyệt) ⇒ vẫn thử");
 });
 
-test("webPullTargets: khe LÀNH vẫn kéo bình thường — không chặn cả làng", () => {
+test("webPullTargets: a HEALTHY slot pulls as usual - one bad slot does not block the village", () => {
   const now = Date.parse("2026-09-02T12:00:00Z");
   const pulled = {
     claude: { at: "2026-09-01T00:00:00Z", ok: false, status: "need-login" },
@@ -291,12 +291,12 @@ test("webPullTargets: khe LÀNH vẫn kéo bình thường — không chặn c�
 // hơn hẳn từ khi máy thôi tự mở cửa sổ, vì không còn gì nhắc người dùng.
 const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
 
-test("/connections: đọc CẢ `webPull`, không chỉ `webAuth`", () => {
+test("/connections: it reads `webPull` TOO, not only `webAuth`", () => {
   assert.match(CONN, /getWebPull\(\)/, "phải đọc kết quả lần KÉO cuối");
   assert.match(CONN, /getWebAuth\(\)/, "vẫn đọc lần KIỂM cuối");
 });
 
-test("/connections: KHÔNG tự phán — uỷ cho hàm chung `webLaneLinked`", () => {
+test("/connections: it does NOT judge on its own - it delegates to the shared `webLaneLinked`", () => {
   // Luật "bằng chứng mới nhất thắng" đã dời vào `webLaneLinked` (xem ca ⑥). Cổng này canh phần
   // còn lại của hợp đồng: `connections.ts` phải UỶ chứ không giữ bản sao — giữ bản sao là đúng
   // cách hai bề mặt lệch nhau lần trước.
@@ -304,7 +304,7 @@ test("/connections: KHÔNG tự phán — uỷ cho hàm chung `webLaneLinked`", 
   assert.match(CONN, /connected: !lost && st\?\.ok === true/, "mất kết nối ⇒ connected phải là false");
   assert.ok(!/lostAt > checkedAt/.test(CONN), "không được giữ bản sao của luật so mốc");
 });
-test("/connections: mất kết nối phải NÓI VIỆC PHẢI LÀM, không bắt đoán", () => {
+test("/connections: a lost connection must STATE THE ACTION REQUIRED rather than leave the user guessing", () => {
   assert.match(CONN, /detailCode: lost \? "needLogin"/, "phải có mã riêng để UI dịch được");
   const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
   assert.match(FE, /detailCode==='needLogin'/, "UI phải xử mã đó, không rơi về chuỗi thô");
@@ -320,7 +320,7 @@ test("/connections: mất kết nối phải NÓI VIỆC PHẢI LÀM, không b�
 // muộn cũng lệch, một hàm thì không.
 const { webLaneLinked } = await import("../../dist/memory/webslots.js");
 
-test("webLaneLinked: BẰNG CHỨNG MỚI NHẤT thắng, cả hai chiều", () => {
+test("webLaneLinked: the NEWEST EVIDENCE wins, in both directions", () => {
   const older = "2026-09-01T00:00:00Z";
   const newer = "2026-09-02T00:00:00Z";
   assert.equal(webLaneLinked(undefined, undefined), null, "chưa biết gì ⇒ null, KHÁC 'biết là đứt'");
@@ -333,7 +333,7 @@ test("webLaneLinked: BẰNG CHỨNG MỚI NHẤT thắng, cả hai chiều", () 
   assert.equal(webLaneLinked({ ok: true, at: older }, { ok: false, status: "no-browser", at: newer }), true);
 });
 
-test("hai bề mặt phải gọi CÙNG hàm — không bên nào tự đọc `webAuth` rồi tự phán", () => {
+test("both surfaces must call the SAME function - neither may read `webAuth` and judge on its own", () => {
   const scope = readFileSync(new URL("../src/memory/scope.ts", import.meta.url), "utf8");
   const conn = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
   assert.match(scope, /webLaneLinked\(/, "cây Nguồn phải dùng hàm chung");
@@ -342,7 +342,7 @@ test("hai bề mặt phải gọi CÙNG hàm — không bên nào tự đọc `w
   assert.ok(!/lostAt > checkedAt/.test(conn), "connections.ts không được giữ bản sao của luật so mốc");
 });
 
-test("nút nối lại KHÔNG hiện trên hàng gộp — hàng cha không biết nối vào khe nào", () => {
+test("the reconnect button must NOT appear on the merged row - a parent row does not know which slot to connect", () => {
   // User: *"link ở đây rồi nó biết link vào đâu"*. Hàng cha gộp nhiều khe con nên `account` của
   // nó rơi về 'main' theo mặc định ⇒ bấm Link ở đó là ÂM THẦM nối khe main dù khe hỏng là khe 2.
   const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
@@ -366,7 +366,7 @@ test("nút nối lại KHÔNG hiện trên hàng gộp — hàng cha không bi�
 // nâng cả tab lẫn cửa sổ, không phụ thuộc pid, không đụng khoá tiền cảnh của Windows.
 const SW2 = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
 
-test("bringToFront đi qua CDP `Page.bringToFront`, KHÔNG qua pid", () => {
+test("bringToFront goes through CDP `Page.bringToFront`, NOT through a pid", () => {
   assert.match(SW2, /Page\.bringToFront/, "phải dùng lệnh CDP");
   // Bỏ COMMENT trước khi soi: chữ `AppActivate` vẫn còn trong chú thích giải thích VÌ SAO nó
   // không ăn — cấm cả chú thích là bắt oan, và là đúng bẫy "soi CHỮ" mà `audit` đã ghi.
@@ -374,14 +374,14 @@ test("bringToFront đi qua CDP `Page.bringToFront`, KHÔNG qua pid", () => {
   assert.ok(!/AppActivate/.test(code), "AppActivate theo pid đã đo là KHÔNG ăn — không được quay lại");
 });
 
-test("chỉ nâng cửa sổ cho lượt NGƯỜI bấm, tuyệt đối không cho lượt ngầm", () => {
+test("the window is raised only for a HUMAN-initiated round, never for a quiet one", () => {
   const i = SW2.indexOf("await first.bringToFront()");
   assert.ok(i > 0, "phải gọi sau khi CDP nối được");
   const line = SW2.slice(SW2.lastIndexOf("\n", i - 1), i + 40);
   assert.match(line, /!opts\.hidden/, "lượt ngầm mà nhảy ra trước mặt là đúng lỗi vừa sửa ở ④");
 });
 
-test("nâng SAU khi CDP nối được — nâng sớm là nâng vào hư không", () => {
+test("raise it AFTER CDP connects - raising early raises nothing", () => {
   const iConn = SW2.indexOf('if (!first) return { status: "no-tab"');
   const iFront = SW2.indexOf("await first.bringToFront()");
   assert.ok(iConn > 0 && iFront > iConn, "phải nằm sau chốt `!first` (lúc đó cửa sổ chắc chắn có thật)");
@@ -396,13 +396,13 @@ test("nâng SAU khi CDP nối được — nâng sớm là nâng vào hư không
 // NUỐT lỗi đó rồi báo "không có trình duyệt nào còn phiên" — sai, và không chỉ được việc phải làm.
 const BC = readFileSync(new URL("../src/memory/borrowcookies.ts", import.meta.url), "utf8");
 
-test("cookieSources: có Brave — trình duyệt mặc định của máy và là thứ zemory tự mở", () => {
+test("cookieSources: Brave is there - it is the machine default and the browser zemory opens itself", () => {
   assert.match(BC, /key: "brave"/, "thiếu Brave thì phiên thật không bao giờ mượn được");
   assert.match(BC, /BraveSoftware/, "phải trỏ đúng thư mục User Data của Brave");
   for (const k of ["chrome", "edge"]) assert.match(BC, new RegExp(`key: "${k}"`), `không được bỏ ${k}`);
 });
 
-test("KHOÁ ≠ KHÔNG CÓ: hai câu hỏi ⇒ hai hàm, không nhồi cờ ngầm vào một kiểu trả về", () => {
+test("LOCKED IS NOT ABSENT: two questions mean two functions, not a hidden flag stuffed into one return type", () => {
   assert.match(BC, /export function borrowBlockedBy/, "phải có hàm trả lời 'đang bị khoá bởi ai'");
   // `findBorrowSource` bị nhồi một object 'khoá' sẽ lặng lẽ thành `canBorrow: true` ở nơi gọi
   // (`Boolean(findBorrowSource(...))`) ⇒ UI mời "Mượn" rồi thất bại.
@@ -416,7 +416,7 @@ test("KHOÁ ≠ KHÔNG CÓ: hai câu hỏi ⇒ hai hàm, không nhồi cờ ng�
   assert.ok(!/label: locked/.test(fn), "findBorrowSource chỉ trả nguồn ĐỌC ĐƯỢC");
 });
 
-test("bị khoá thì phải NÓI VIỆC PHẢI LÀM, không im", () => {
+test("when it is locked it must STATE THE ACTION REQUIRED, not stay silent", () => {
   const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
   assert.match(CONN, /borrowBlocked: borrowBlockedBy\(/, "server phải bày lý do ra hàng");
   const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
@@ -449,7 +449,7 @@ function fakeSource(root, key, rows) {
   return { key, label: key, userData, exe: join(root, `${key}.exe`) };
 }
 
-test("findBorrowSource: nguồn chỉ có cookie RÁC bị NHẢY QUA; nguồn có token phiên mới được mời", { skip: !onWin }, () => {
+test("findBorrowSource: a source holding only JUNK cookies is SKIPPED; only a source with a session token is invited", { skip: !onWin }, () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
   const junk = fakeSource(root, "chromejunk", [["chatgpt.com", "oai-did"]]);
   const live = fakeSource(root, "bravelive", [
@@ -462,7 +462,7 @@ test("findBorrowSource: nguồn chỉ có cookie RÁC bị NHẢY QUA; nguồn c
   assert.equal(findBorrowSource("chatgpt", [junk]), null, "chỉ còn nguồn rác ⇒ KHÔNG mời — mời là đưa người dùng vào form đăng nhập trắng");
 });
 
-test("token phiên CHUNKED (…session-token.0) và sessionKey của claude đều được nhận", { skip: !onWin }, () => {
+test("a CHUNKED session token (...session-token.0) and claude's sessionKey are both recognised", { skip: !onWin }, () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
   const chunked = fakeSource(root, "edgechunk", [["chatgpt.com", "__Secure-next-auth.session-token.0"]]);
   assert.equal(findBorrowSource("chatgpt", [chunked])?.from, "edgechunk", "NextAuth cắt token dài thành .0/.1 — vẫn là phiên");
@@ -472,7 +472,7 @@ test("token phiên CHUNKED (…session-token.0) và sessionKey của claude đ�
   assert.equal(findBorrowSource("claude", [claudeJunk, claudeLive])?.from, "clive");
 });
 
-test("borrowCookies: nguồn không có phiên ⇒ TỪ CHỐI kèm lý do thật; nguồn có phiên ⇒ mượn + prune đúng host", { skip: !onWin }, () => {
+test("borrowCookies: a source with no session REFUSES with the real reason; a source with one is borrowed and pruned to the right hosts", { skip: !onWin }, () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-jar-"));
   const junk = fakeSource(root, "chromejunk", [["chatgpt.com", "oai-did"]]);
   const no = borrowCookies({ platform: "chatgpt", from: "chromejunk", sources: [junk], browserRoot: join(root, "zb1") });
@@ -490,7 +490,7 @@ test("borrowCookies: nguồn không có phiên ⇒ TỪ CHỐI kèm lý do thậ
   assert.equal(ok.dropped, 1, "cookie site khác phải bị vứt — mượn MỘT site, không mượn cả jar");
 });
 
-test("SSO-only: nền hết phiên nhưng CÒN đăng nhập Google ⇒ vẫn mượn được để login hiện account chooser", { skip: !onWin }, () => {
+test("SSO-only: a platform whose session expired but which is STILL signed in to Google can still be borrowed so login shows the account chooser", { skip: !onWin }, () => {
   // User chốt 2026-09-02 ("Có — chép cả phiên SSO"). Chatgpt.com hết phiên, nhưng Google còn
   // ⇒ mượn để OAuth hiện sẵn tài khoản, một cú bấm thay vì gõ email.
   const root = mkdtempSync(join(tmpdir(), "zemory-sso-"));
@@ -516,7 +516,7 @@ test("SSO-only: nền hết phiên nhưng CÒN đăng nhập Google ⇒ vẫn m�
 // ChatGPT) mà vẫn THẮNG `brave` đang giữ phiên nền thật, vì vòng quét trả về nguồn qualify ĐẦU
 // TIÊN và thứ tự cứng là chrome→edge→brave. Hệ quả kép: bề mặt mời đường YẾU HƠN (còn phải bấm
 // qua trang OAuth) VÀ `borrowBlocked` bị che nên mất luôn câu chỉ việc "đóng Brave để vào thẳng".
-test("findBorrowSource: nguồn có PHIÊN NỀN thắng nguồn chỉ có SSO, dù SSO đứng TRƯỚC trong danh sách", { skip: !onWin }, () => {
+test("findBorrowSource: a source with a PLATFORM SESSION beats an SSO-only source, even when the SSO one comes FIRST in the list", { skip: !onWin }, () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-rank-"));
   const ssoFirst = fakeSource(root, "chromesso", [["accounts.google.com", "__Secure-1PSID"]]);
   const platLater = fakeSource(root, "bravereal", [["chatgpt.com", "__Secure-next-auth.session-token"]]);
@@ -531,7 +531,7 @@ test("findBorrowSource: nguồn có PHIÊN NỀN thắng nguồn chỉ có SSO, 
   assert.equal(only.via, "sso", "đường lùi phải nói rõ nó chỉ là SSO — nơi gọi dựa vào đó để chọn câu");
 });
 
-test("/connections: đường mượn chỉ-SSO KHÔNG được che câu 'đóng trình duyệt'; đường phiên nền thì được", () => {
+test("/connections: the SSO-only borrow path must NOT hide the 'close the browser' line; the platform-session path may", () => {
   const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
   // Chốt canh ĐÚNG cơ chế: chỉ `via === "platform"` mới được phép che hint.
   assert.match(CONN, /borrow\?\.via !== "platform"/, "chỉ đường mượn MẠNH mới được che chỉ dẫn đóng trình duyệt");
@@ -540,7 +540,7 @@ test("/connections: đường mượn chỉ-SSO KHÔNG được che câu 'đóng
   assert.equal((body.match(/findBorrowSource\(/g) || []).length, 1, "một hàng = một lời gọi dò nguồn");
 });
 
-test("chữ người dùng đọc: {b} phải được thay HẾT, và có câu riêng cho ca chỉ-SSO (đủ hai dict)", () => {
+test("user-facing copy: every {b} must be substituted, and the SSO-only case has its own sentence (in both dictionaries)", () => {
   const FE = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
   // `.replace('{b}', x)` của JS chỉ thay chỗ ĐẦU — mà câu này có {b} hai lần ⇒ lòi placeholder ra UI.
   assert.ok(!/t\('conn\.borrowBlocked'\)\.replace\('\{b\}'/.test(FE), "thay-một-lần là bug: câu có {b} hai lần");
@@ -576,7 +576,7 @@ function profileJar(dir, rows) {
 }
 const jarOf = (dir) => join(dir, "Default", "Network", "Cookies");
 
-test("khôi phục: bản bak CÙNG HÃNG mới nhất CÓ PHIÊN được trả về; vỏ rỗng mới hơn bị bỏ qua", () => {
+test("restore: the newest SAME-VENDOR bak that HOLDS A SESSION is returned; a newer empty shell is skipped", () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-restore-"));
   const live = join(root, "chatgpt");
   profileJar(live, [["chatgpt.com", "oai-did"]]); // vỏ: có cookie rác, KHÔNG có phiên
@@ -590,7 +590,7 @@ test("khôi phục: bản bak CÙNG HÃNG mới nhất CÓ PHIÊN được trả
   assert.ok(baks.includes("chatgpt.brave-bak-222"), "vỏ rỗng không được lấy làm phiên — đổi vỏ lấy vỏ là vô nghĩa");
 });
 
-test("khôi phục KHÔNG nổ khi: profile sống ĐANG có phiên · bak khác hãng (ABE) · không có bak", () => {
+test("restore does NOT fire when: the live profile HAS a session, the bak is from another vendor (ABE), or there is no bak", () => {
   const root = mkdtempSync(join(tmpdir(), "zemory-restore-"));
   const live = join(root, "chatgpt");
   profileJar(live, [["chatgpt.com", "__Secure-next-auth.session-token"], ["chatgpt.com", "keep-me"]]);
@@ -611,7 +611,7 @@ test("khôi phục KHÔNG nổ khi: profile sống ĐANG có phiên · bak khác
   assert.equal(restoreShelvedSession(live3, "C:\\x\\brave.exe", "chatgpt"), false, "không có bak thì thôi, không ném");
 });
 
-test("khôi phục được NỐI vào cả hai đường spawn — thiếu một đường là lỗ đúng nửa số lượt mở", () => {
+test("restore is WIRED INTO both spawn paths - missing one leaves a hole in exactly half the openings", () => {
   const sw = readFileSync(new URL("../src/memory/scanweb.ts", import.meta.url), "utf8");
   const wired = (sw.match(/restoreShelvedSession\(profileDir, exe, p\.key/g) || []).length;
   assert.equal(wired, 2, "cả nhánh relaunch lẫn nhánh mở-lạnh đều phải gọi khôi phục");

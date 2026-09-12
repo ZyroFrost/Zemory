@@ -6,7 +6,7 @@ description: Run a full review of the project across every dimension, verifying 
 # audit — soi toàn diện
 
 > Kích hoạt: user nói **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) · sau
-> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **10 mặt** dưới.
+> một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy đủ **11 mặt** dưới.
 >
 > **Vì sao bản NON-APP khác bản APP:** dự án non-app không phát triển app — không endpoint, không
 > FE↔BE, không bộ test code. Bê nguyên bản app sang là bắt một dự án BI chạy `npm run check` và soi
@@ -41,7 +41,7 @@ NHẦM** không, mà chặn nhầm là đường ngắn nhất tới *"gate nhi�
 mình đang xây. Đo thật trên guardrail: bảng 28 ca có giá trị **chính nhờ 6 ca *phải cho qua***;
 thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
 
-### 10 mặt — chạy đủ
+### 11 mặt — chạy đủ
 *(5 mặt đầu soi *"việc có ĐÚNG không"*. **Mặt 6–9** thêm sau khi soi ngược **mọi sự cố THẬT** của một
 repo rồi hỏi *"mặt nào lẽ ra bắt được"* — phát hiện: **mọi sự cố nặng nhất đều rơi vào vùng các mặt
 cũ không nhìn tới**, vì chúng thuộc loại khác hẳn: *"việc có SỐNG SÓT không"* — mất mát · lộ lọt ·
@@ -101,6 +101,18 @@ nặng nhất, không phải mặt phụ.)*
    2026-08-23: 6/245 file trúng, kiểm tay **0 thật**) · và **tên do người ta đặt thì KHÔNG phải
    lỗi**: tên cột/sheet của nguồn, tên file vendor, thuật ngữ nghiệp vụ viết hoa lạ — soi chữ trong
    phần MÌNH viết, đừng soi chữ mình chỉ đi ngang qua.
+
+11. **NGÔN NGỮ CỦA MÃ** — NORM ở `02_RULES §Ngôn ngữ`. Máy chạy `node
+   .claude/skills/audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc thành "chưa soi gì".
+   · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·
+     cột trung gian mình tự đặt · khoá config) chỉ ASCII tiếng Anh — thứ DUY NHẤT được tiếng Việt
+     trong mã là **chú thích**. *Tên do NGUỒN đặt (cột Excel · trường API) giữ nguyên từng ký tự: đó
+     là DỮ LIỆU, đổi là loader không tìm thấy.*
+   · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
+     chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba.
+   ⚠ **Hai bẫy đã trả giá:** ① không bóc chú thích/chuỗi trước khi quét ⇒ vừa báo oan vừa **bỏ sót**
+   (một lượt đo: 4 hit oan mà vẫn sót 9 định danh thật) · ② đồng âm Anh–Việt (`do · so · can · ten ·
+   van`) bắt oan cả câu tiếng Anh thuần.
 
 **Đầu ra:** bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking`/`advisory`.
 Vào `05_TODO` + `06_CHANGES`. **Nghi vấn đã loại cũng ghi, kèm lý do loại** — để lần sau khỏi đào lại.

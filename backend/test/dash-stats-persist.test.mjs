@@ -18,12 +18,12 @@ import { readAppJs } from "./helpers.mjs";
 const SRC = (rel) => readFileSync(new URL(`../../${rel}`, import.meta.url), "utf8");
 const UI = SRC("backend/src/ui.ts");
 
-test("bản ướp nằm CẠNH KHO, là lớp dẫn xuất — không phải file cấu hình, không phải nguồn", () => {
+test("the pickled copy sits NEXT TO THE STORE as a derived layer - not a config file, not a source", () => {
   assert.match(UI, /function heavyCacheFile\(\): string \{\s*\n\s*return join\(currentMemoryDir\(\), "dash-stats\.json"\);/,
     "phải đi theo kho (relocate là nó theo), không nằm ở ổ hệ thống — HP điều 14");
 });
 
-test("MỌI chỗ ghi heavyCache đều ướp, và CẢ HAI cửa đọc đều nạp lại", () => {
+test("EVERY heavyCache write pickles, and BOTH read doors reload it", () => {
   const writes = [...UI.matchAll(/heavyCache = \{ at: Date\.now\(\)/g)].length;
   const saves = [...UI.matchAll(/saveHeavyCache\(\);/g)].length;
   assert.equal(writes, 3, "ba chỗ đặt heavyCache (đồng bộ · nền · chờ con) — đổi số thì sửa cổng này");
@@ -37,14 +37,14 @@ test("MỌI chỗ ghi heavyCache đều ướp, và CẢ HAI cửa đọc đều
 // lớp ướp không bao giờ sống tới lần khởi động sau. Chỉ lượt CHẠY THẬT bắt được (vẫn 54,6 s). Bài
 // học giữ lại nguyên đây: một cổng xanh chỉ chứng minh code khớp với điều test TIN, không chứng minh
 // điều đó đúng.
-test("invalidateDashboard() KHÔNG được xoá bản ướp — nó chạy sau mỗi scan/sync", () => {
+test("invalidateDashboard() must NOT delete the pickle - it runs after every scan/sync", () => {
   const body = /function invalidateDashboard\(\): void \{([\s\S]*?)\n\}/.exec(UI);
   assert.ok(body, "phải tìm được invalidateDashboard");
   assert.match(body[1], /heavyCache = null;/, "xoá RAM là đủ để lượt sau tính lại");
   assert.doesNotMatch(body[1], /rmSync\(heavyCacheFile/, "xoá file ở đây = tự huỷ lớp ướp mỗi 30 phút");
 });
 
-test("đĩa chỉ được đọc MỘT LẦN mỗi tiến trình — nếu không, số đã hết hiệu lực sẽ sống lại trong cùng phiên", () => {
+test("disk is read ONCE per process - otherwise expired numbers come back to life in the same session", () => {
   const body = /function loadHeavyCache\(\): void \{([\s\S]*?)\n\}/.exec(UI);
   assert.match(body[1], /if \(heavyCache \|\| heavyDiskLoaded\) return;/, "cửa chặn phải xét CẢ cờ đã-đọc-đĩa");
   assert.match(body[1], /heavyDiskLoaded = true;/, "đặt cờ TRƯỚC khi đọc: file hỏng cũng không được thử lại mỗi lượt");
@@ -52,7 +52,7 @@ test("đĩa chỉ được đọc MỘT LẦN mỗi tiến trình — nếu khô
   assert.match(UI, /let heavyDiskLoaded = false;/);
 });
 
-test("nạp từ đĩa phải FAIL-OPEN và không tin dữ liệu rác (điều 9)", () => {
+test("loading from disk must FAIL-OPEN and must not trust junk data (constitution 9)", () => {
   const body = /function loadHeavyCache\(\): void \{([\s\S]*?)\n\}/.exec(UI);
   assert.ok(body, "phải tìm được loadHeavyCache");
   assert.match(body[1], /if \(heavyCache \|\| heavyDiskLoaded\) return;/, "đã có số trong RAM, hoặc đã đọc đĩa rồi ⇒ đừng đọc đè lên");
@@ -61,7 +61,7 @@ test("nạp từ đĩa phải FAIL-OPEN và không tin dữ liệu rác (điều
   assert.match(body[1], /catch \{/, "hỏng ⇒ bỏ qua im lặng, tính lại như trước");
 });
 
-test("payload nói TUỔI của khối số nặng, tách khỏi mốc đúc gói", () => {
+test("the payload states the AGE of the heavy block, separate from the bundle mint mark", () => {
   assert.match(UI, /statsAt: heavyCache \? new Date\(heavyCache\.at\)\.toISOString\(\) : null,/,
     "gói đúc bây giờ, nhưng số nặng có thể là bản ướp từ lần chạy trước — hai mốc khác nhau");
   // Không đòi FE phải vẽ nó ngay; đòi là nó có mặt để bề mặt nào cần thì đọc được.

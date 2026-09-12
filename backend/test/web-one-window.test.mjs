@@ -15,7 +15,7 @@ const { coalesceByKey, extraPageIds, launchPlan } = await import("../../dist/mem
 
 // ── ① quyết định mở: sống thì KHÔNG spawn ─────────────────────────────────────
 
-test("launchPlan: trình duyệt còn sống thì không bao giờ spawn", () => {
+test("launchPlan: a live browser is never spawned again", () => {
   assert.equal(launchPlan(false, false), "spawn", "chưa chạy ⇒ mở tiến trình (cửa sổ đầu, hợp lệ)");
   assert.equal(launchPlan(true, false), "tab", "đang chạy mà thiếu tab ⇒ mở TAB, không mở cửa sổ");
   assert.equal(launchPlan(true, true), "none", "đang chạy và có tab ⇒ không làm gì — spawn lúc này = cửa sổ trùng");
@@ -25,7 +25,7 @@ test("launchPlan: trình duyệt còn sống thì không bao giờ spawn", () =>
 
 // ── ② tab thừa: giữ đúng một, không đụng nền khác ────────────────────────────
 
-test("extraPageIds: giữ tab đầu của nền, đóng phần còn lại, tab nền khác và iframe để yên", () => {
+test("extraPageIds: it keeps the platform's first tab, closes the rest, and leaves other platforms' tabs and iframes alone", () => {
   const re = /claude\.ai/;
   const pages = [
     { id: "A", type: "page", url: "https://claude.ai/login" },
@@ -42,7 +42,7 @@ test("extraPageIds: giữ tab đầu của nền, đóng phần còn lại, tab 
 
 // ── ③ hai lượt cùng khe chạy chồng ⇒ MỘT lượt thật ────────────────────────────
 
-test("coalesceByKey: N lời gọi đồng thời cùng khoá chạy ĐÚNG MỘT lần; khoá khác chạy riêng; settle xong thì dọn", async () => {
+test("coalesceByKey: N concurrent calls on one key run EXACTLY once; a different key runs separately; it cleans up once settled", async () => {
   const bag = new Map();
   let runs = 0;
   let release;
@@ -68,7 +68,7 @@ test("coalesceByKey: N lời gọi đồng thời cùng khoá chạy ĐÚNG MỘ
   assert.equal(await d.p, "again");
 });
 
-test("coalesceByKey: lượt đầu NÉM thì khoá vẫn được dọn, lượt sau không kẹt vĩnh viễn", async () => {
+test("coalesceByKey: when the first round THROWS the key is still cleaned up, so later rounds are not stuck forever", async () => {
   const bag = new Map();
   const { p } = coalesceByKey(bag, "k", async () => {
     throw new Error("boom");

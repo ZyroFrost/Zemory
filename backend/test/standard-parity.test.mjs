@@ -79,7 +79,7 @@ function ruleLabels(path) {
 const faceCount = (txt) => (txt.match(/^\d+\. \*\*/gm) ?? []).length;
 const lawCount = (txt) => (txt.match(/^\*\*Luật \d+ /gm) ?? []).length;
 
-test("mọi skill generic của zemory đều được SHIP sang cả 3 bộ template", () => {
+test("every generic zemory skill is SHIPPED to all 3 template trees", () => {
   const zSkills = readdirSync(zSkillDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
@@ -96,7 +96,7 @@ test("mọi skill generic của zemory đều được SHIP sang cả 3 bộ tem
   }
 });
 
-test("skill đã ship thì phải được ĐĂNG KÝ ở 04_SKILLS + bảng trigger AGENTS (ship mà không khai = không ai mở)", () => {
+test("a shipped skill must be REGISTERED in 04_SKILLS and in the AGENTS trigger table (shipped but undeclared means nobody opens it)", () => {
   for (const s of SETS) {
     const reg = read(`docs_template/${s}/agent/04_SKILLS.md`);
     const agents = read(`docs_template/${s}/AGENTS.md`);
@@ -117,10 +117,11 @@ const APP_ONLY_MARKERS = ["npm run check", "FE ↔ BE", "integrity_check", "CSS/
  *  bỏ luôn mặt sống sót cho "gọn", mà đó đúng là 8 sự cố nặng nhất. */
 const SURVIVAL_FACES = ["Bí mật & phát tán", "Toàn vẹn &", "Vận hành nền & guardrail", "CHỮ & BỀ MẶT NGƯỜI ĐỌC"];
 
-test("skill audit: KHỚP THEO PROFILE — app/adapt bằng zemory, nonapp có bộ riêng nhưng không được cắt mặt sống sót", () => {
+test("the audit skill: MATCHED PER PROFILE - app and adapt equal zemory, non-app has its own set but may not drop the survival faces", () => {
   const z = read(".claude/skills/audit/SKILL.md");
   const zf = faceCount(z), zl = lawCount(z);
-  assert.equal(zf, 11, `bản zemory đang có ${zf} mặt — nếu đổi có chủ đích thì sửa cả cổng này`);
+  // 12 kể từ 2026-09-12: thêm mặt ⑫ NGÔN NGỮ CỦA MÃ (tên file · định danh · Việt mất dấu · đếm khoá song ngữ).
+  assert.equal(zf, 12, `bản zemory đang có ${zf} mặt — nếu đổi có chủ đích thì sửa cả cổng này`);
   assert.ok(zl >= 7, `bản zemory chỉ có ${zl} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
     const t = read(`docs_template/${s}/.claude/skills/audit/SKILL.md`);
@@ -145,7 +146,7 @@ test("skill audit: KHỚP THEO PROFILE — app/adapt bằng zemory, nonapp có b
   }
 });
 
-test("skill audit: câu dẫn phải nói ĐÚNG số mặt của tiêu đề (đã dính 3 lần: 6-vs-11, 7-vs-11, ba-vs-bốn)", () => {
+test("the audit skill: the intro sentence must state the SAME face count as the heading (3 misses so far: 6-vs-11, 7-vs-11, three-vs-four)", () => {
   const files = [".claude/skills/audit/SKILL.md", ...SETS.map((s) => `docs_template/${s}/.claude/skills/audit/SKILL.md`)];
   for (const f of files) {
     const txt = read(f);
@@ -157,7 +158,7 @@ test("skill audit: câu dẫn phải nói ĐÚNG số mặt của tiêu đề (�
   }
 });
 
-test("luật cứng §Luật khi VIẾT: app + adapt mang ĐỦ, nonapp chỉ được thiếu đúng danh sách miễn", () => {
+test("the hard rules under Writing-time rules: app and adapt carry them ALL, non-app may only omit the exempt list", () => {
   const z = ruleLabels("docs/agent/02_RULES.md");
   assert.ok(z.length >= 10, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
@@ -173,7 +174,7 @@ test("luật cứng §Luật khi VIẾT: app + adapt mang ĐỦ, nonapp chỉ đ
   }
 });
 
-test("TỰ KIỂM phép đo — đếm mặt/luật/nhãn phải khác 0 (0 hit đọc thành 'khớp' là bẫy)", () => {
+test("SELF-CHECK of the measurement - the face, rule and label counts must be non-zero (reading 0 hits as 'matched' is the trap)", () => {
   // Luật 5 của chính skill audit: công cụ hỏng lặng trả rỗng ⇒ mọi so sánh đều "bằng nhau".
   assert.ok(faceCount(read(".claude/skills/audit/SKILL.md")) > 0, "đếm mặt trả 0 — regex hỏng");
   assert.ok(lawCount(read(".claude/skills/audit/SKILL.md")) > 0, "đếm luật trả 0 — regex hỏng");

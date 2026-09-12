@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { stampEdgeIds } from "../../dist/memory/graph/graph.js";
 
-test("cạnh CẤP HÀM phải có id riêng — bỏ symbol ra là id đụng nhau hàng loạt", () => {
+test("a FUNCTION-LEVEL edge needs its own id - dropping the symbol makes ids collide en masse", () => {
   // Ca thật đo trên repo này 2026-08-06: 2.526 cạnh `calls` co còn 949 id, có id gánh
   // **157 cạnh khác nhau** (mọi lời gọi từ `go` sang cùng một file trùng id).
   const calls = [
@@ -21,19 +21,19 @@ test("cạnh CẤP HÀM phải có id riêng — bỏ symbol ra là id đụng n
   assert.equal(new Set(ids).size, 3, "ba lời gọi khác nhau PHẢI ra ba id khác nhau");
 });
 
-test("id của cạnh `imports` KHÔNG đổi khi thêm chiều symbol (giữ tương thích id đã công bố)", () => {
+test("the id of an `imports` edge does NOT change when the symbol dimension is added (published ids stay compatible)", () => {
   const e = { from: "backend/src/checks.ts", to: "backend/src/core/config.ts", type: "imports", kind: "declared" };
   // Giá trị này đo trên repo thật TRƯỚC khi vá; đổi nó = làm chết mọi trích dẫn đã phát ra.
   assert.equal(stampEdgeIds([e])[0].eid, "06dc5f274206");
 });
 
-test("HẠNG cạnh nằm TRONG hash — khai báo và suy luận cùng cặp là HAI sự thật khác hạng", () => {
+test("the edge CLASS is part of the hash - a declared and an inferred pair are two facts of different class", () => {
   const a = stampEdgeIds([{ from: "x.ts", to: "y.ts", type: "imports", kind: "declared" }])[0].eid;
   const b = stampEdgeIds([{ from: "x.ts", to: "y.ts", type: "imports", kind: "inferred" }])[0].eid;
   assert.notEqual(a, b, "điều 13 cấm trộn hai hạng ⇒ chúng phải khác id");
 });
 
-test("tất định: cùng đầu vào luôn ra cùng id, không phụ thuộc thứ tự dựng", () => {
+test("deterministic: the same input always yields the same id, regardless of build order", () => {
   const mk = () => [
     { from: "b.ts", to: "c.ts", type: "imports", kind: "declared" },
     { from: "a.ts", to: "b.ts", type: "imports", kind: "declared" },
@@ -45,7 +45,7 @@ test("tất định: cùng đầu vào luôn ra cùng id, không phụ thuộc t
   assert.equal(idOf(one, "b.ts"), idOf(two, "b.ts"));
 });
 
-test("lời gọi ở mức MODULE (fromSymbol null) vẫn băm được, không ném", () => {
+test("a MODULE-level call (fromSymbol null) still hashes without throwing", () => {
   const e = { from: "a.ts", to: "b.ts", type: "calls", kind: "inferred", fromSymbol: null, toSymbol: "init" };
   const [stamped] = stampEdgeIds([e]);
   assert.match(stamped.eid, /^[0-9a-f]{12}$/);

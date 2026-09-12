@@ -24,7 +24,7 @@ const PNG_SHA = createHash("sha256").update(PNG).digest("hex");
 
 // ── ① Bộ đọc block dùng chung ────────────────────────────────────────────────
 
-test("đọc được ba hình dạng ĐÃ KHAI, và chỉ ba hình dạng đó", () => {
+test("the three DECLARED shapes are read, and only those three", () => {
   const anthropic = imageAttachment({ type: "image", source: { type: "base64", media_type: "image/png", data: PNG_B64 } });
   assert.equal(anthropic.kind, "blob");
   assert.equal(anthropic.mime, "image/png");
@@ -50,7 +50,7 @@ test("đọc được ba hình dạng ĐÃ KHAI, và chỉ ba hình dạng đó"
   assert.equal(imageAttachment("chuỗi"), null);
 });
 
-test("vượt trần ⇒ hạ xuống 'ref', KHÔNG bỏ im lặng", () => {
+test("over the cap it is demoted to 'ref', never dropped silently", () => {
   const big = Buffer.alloc(MAX_BLOB_BYTES + 1, 7);
   const a = imageAttachment({ type: "image", source: { type: "base64", media_type: "image/png", data: big.toString("base64") } });
   assert.equal(a.kind, "ref");
@@ -58,7 +58,7 @@ test("vượt trần ⇒ hạ xuống 'ref', KHÔNG bỏ im lặng", () => {
   assert.equal(a.blob, undefined);
 });
 
-test("nhãn để lại trong content mang đủ mime · KB · sha12 (FE khớp nhãn↔blob bằng tiền tố sha)", () => {
+test("the label left in content carries mime - KB - sha12 (the FE matches label to blob by sha prefix)", () => {
   const a = imageAttachment({ type: "image", source: { type: "base64", media_type: "image/png", data: PNG_B64 } });
   const label = imageLabel(a);
   assert.match(label, /^\[image:image\/png \d+KB [0-9a-f]{12}\]$/);
@@ -192,7 +192,7 @@ function seed(t) {
   return { dbPath, m1: Number(m1), m2: Number(m2) };
 }
 
-test("attachmentsFor đi qua attachment_link — tin THỨ HAI cũng phải thấy ảnh", (t) => {
+test("attachmentsFor goes through attachment_link - the SECOND message must see the image too", (t) => {
   const { dbPath, m1, m2 } = seed(t);
   const map = attachmentsFor([m1, m2], dbPath);
   assert.equal(map[m1]?.length, 1);
@@ -201,13 +201,13 @@ test("attachmentsFor đi qua attachment_link — tin THỨ HAI cũng phải th�
   assert.equal(map[m1][0].blob, undefined, "payload chỉ mang metadata, KHÔNG kèm bytes");
 });
 
-test("attachmentsFor: danh sách rỗng / id không có thật ⇒ rỗng, không ném", (t) => {
+test("attachmentsFor: an empty list or a non-existent id yields empty, it does not throw", (t) => {
   const { dbPath } = seed(t);
   assert.deepEqual(attachmentsFor([], dbPath), {});
   assert.deepEqual(attachmentsFor([999999], dbPath), {});
 });
 
-test("attachmentBlob trả đúng bytes; sha sai hình dạng bị chặn TRƯỚC khi chạm SQL", (t) => {
+test("attachmentBlob returns the right bytes; a malformed sha is blocked BEFORE touching SQL", (t) => {
   const { dbPath } = seed(t);
   const got = attachmentBlob(PNG_SHA, dbPath);
   assert.ok(got.bytes.equals(PNG), "phải byte-for-byte, không mất mát");
@@ -217,7 +217,7 @@ test("attachmentBlob trả đúng bytes; sha sai hình dạng bị chặn TRƯ�
   }
 });
 
-test("attachmentStats đếm được hàng MỒ CÔI (whole-replace xoá tin, hàng đính kèm ở lại)", (t) => {
+test("attachmentStats counts ORPHAN rows (whole-replace deleted the message, the attachment row stayed)", (t) => {
   const { dbPath, m2 } = seed(t);
   let s = attachmentStats(dbPath);
   assert.equal(s.live, 1);
@@ -240,7 +240,7 @@ test("attachmentStats đếm được hàng MỒ CÔI (whole-replace xoá tin, h
 // do tool `Read` đọc từ file trên đĩa, và tên nằm ở LỜI GỌI tool (`input.file_path`),
 // không nằm cùng chỗ với ảnh ⇒ phải ghép ngược qua `tool_use_id` (đo: 166/166 ghép trúng).
 
-test("ảnh từ tool Read: ghép ngược tool_use_id ⇒ lấy được TÊN GỐC", async () => {
+test("an image from the Read tool: joining back on tool_use_id recovers the ORIGINAL NAME", async () => {
   const { claudeAdapter } = await import("../../dist/memory/adapters/claude.js");
   // Lượt assistant gọi Read — chỉ ở đây mới có đường dẫn.
   claudeAdapter.parseLine(JSON.stringify({
@@ -263,7 +263,7 @@ test("ảnh từ tool Read: ghép ngược tool_use_id ⇒ lấy được TÊN G
   assert.ok(!r.msg.content.includes(PNG_B64), "base64 KHÔNG lọt vào content");
 });
 
-test("không ghép được tool_use_id ⇒ vẫn nạp ảnh, chỉ là không có tên (mất tiện ích, không mất dữ liệu)", async () => {
+test("when tool_use_id cannot be joined the image still loads, just without a name (convenience lost, data kept)", async () => {
   const { claudeAdapter } = await import("../../dist/memory/adapters/claude.js");
   const r = claudeAdapter.parseLine(JSON.stringify({
     type: "user", uuid: "u10", timestamp: "2026-07-28T02:00:02Z", tool_use_id: "toolu_khong_ton_tai",
@@ -275,7 +275,7 @@ test("không ghép được tool_use_id ⇒ vẫn nạp ảnh, chỉ là không 
   assert.equal(r.msg.attachments[0].name, undefined);
 });
 
-test("tên tải về: có tên gốc thì dùng; không có thì ra tên CỦA MÌNH có ngày + sha, không bịa 'tên gốc'", (t) => {
+test("download name: use the original when there is one; otherwise emit OUR OWN name with date + sha, never a fabricated 'original'", (t) => {
   const { dbPath } = seed(t);
   const got = attachmentBlob(PNG_SHA, dbPath);
   // Hàng trong seed() không có `name` ⇒ phải rơi về tên dự phòng, KHÔNG phải "attachment".
@@ -300,7 +300,7 @@ test("tên tải về: có tên gốc thì dùng; không có thì ra tên CỦA 
 // (merge khoá trên UNIQUE(session_id,uuid)). Chở thẳng `message_id` sang máy khác là trỏ
 // vào tin của người ta. Nên bundle mang `session_id` + `msg_uuid`, bên nhận tra id của mình.
 
-test("bật công tắc ⇒ ảnh sang được máy khác và nối ĐÚNG tin; tắt ⇒ bundle không chở gì", async (t) => {
+test("with the switch on, images travel to another machine and attach to the RIGHT message; off, the bundle carries nothing", async (t) => {
   const { exportMemoryBundle, mergeMemoryBundle } = await import("../../dist/memory/share.js");
   const { setSyncAttachments } = await import("../../dist/config/settings.js");
   const { dbPath: src } = seed(t);
@@ -349,7 +349,7 @@ test("bật công tắc ⇒ ảnh sang được máy khác và nối ĐÚNG tin;
 
 // ── ⑥ Dọn mồ côi: chỉ link chết, TUYỆT ĐỐI không đụng ảnh còn sống ───────────
 
-test("pruneOrphanAttachments xoá link chết nhưng GIỮ ảnh còn tin khác trỏ tới", async (t) => {
+test("pruneOrphanAttachments deletes dead links but KEEPS images still referenced by another message", async (t) => {
   const { pruneOrphanAttachments } = await import("../../dist/memory/attachments.js");
   const { dbPath, m1 } = seed(t);
   // Xoá tin ĐẦU TIÊN — chính là tin mà `attachment.message_id` đang trỏ. Ảnh vẫn còn tin
@@ -369,7 +369,7 @@ test("pruneOrphanAttachments xoá link chết nhưng GIỮ ảnh còn tin khác 
   assert.equal(after.orphanRows, 0, "và nó KHÔNG bị tính là mồ côi");
 });
 
-test("MỌI liên kết chết ⇒ nội dung VẪN CÒN (mặc định không xoá); chỉ `dropUnlinked` mới xoá", async (t) => {
+test("with EVERY link dead the content STILL REMAINS (no delete by default); only `dropUnlinked` deletes", async (t) => {
   const { pruneOrphanAttachments } = await import("../../dist/memory/attachments.js");
   const { dbPath } = seed(t);
   // Ca NGUY HIỂM THẬT: xoá HẾT tin trỏ tới ảnh. Test cũ chỉ xoá một tin nên ảnh vẫn còn

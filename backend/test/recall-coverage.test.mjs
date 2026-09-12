@@ -26,7 +26,7 @@ function fakeResult({ byKind, coverage, resolved }) {
   };
 }
 
-test("lớp thiếu nhãn ⇒ cột n in dạng giải-được/tổng (không giả vờ đầy đủ)", () => {
+test("a layer with missing labels prints the n column as solved-over-total (never pretending completeness)", () => {
   const out = formatRecallBench(
     fakeResult({
       byKind: { prose: laneStat(34), tool_use: laneStat(2) },
@@ -39,7 +39,7 @@ test("lớp thiếu nhãn ⇒ cột n in dạng giải-được/tổng (không g
   assert.match(out, /prose\s+34\s/, "lớp đủ nhãn thì in số trần, không thêm mẫu số thừa");
 });
 
-test("lớp MẤT SẠCH nhãn vẫn phải xuất hiện, kèm câu nói rõ CHƯA được đo", () => {
+test("a layer with ALL labels lost must still appear, with a sentence saying it is NOT MEASURED YET", () => {
   const out = formatRecallBench(
     fakeResult({
       byKind: { prose: laneStat(34) },
@@ -52,7 +52,7 @@ test("lớp MẤT SẠCH nhãn vẫn phải xuất hiện, kèm câu nói rõ CH
   assert.match(out, /CHƯA được đo/, "phải nói thẳng là lớp đó chưa được đo, đừng để người đọc tự suy");
 });
 
-test("corpusByKind phủ đúng toàn bộ corpus (không sót, không đếm trùng)", () => {
+test("corpusByKind covers the whole corpus exactly (nothing missed, nothing double-counted)", () => {
   const m = corpusByKind();
   const sum = [...m.values()].reduce((s, l) => s + l.length, 0);
   assert.equal(sum, RECALL_CORPUS.length, "tổng các lớp phải bằng corpus");

@@ -21,7 +21,7 @@ import { jarHasSession } from "../../dist/memory/borrowcookies.js";
 /** Sáu nền thêm 2026-09-12. Liệt kê TAY: suy từ cờ `loginOnly` thì ca ① tự đúng và không đo gì. */
 const NEW = ["grok", "deepseek", "perplexity", "mistral", "qwen", "kimi"];
 
-test("① CÓ ĐƯỜNG NỐI: mỗi nền mới đủ URL · cửa sổ riêng · phép kiểm phiên · adapter đã đăng ký", () => {
+test("1 THERE IS A CONNECT PATH: each new platform has its URL, its own window, a session check and a registered adapter", () => {
   const sources = new Set(allAdapters().map((a) => a.source));
   for (const k of NEW) {
     const p = PLATFORMS[k];
@@ -34,7 +34,7 @@ test("① CÓ ĐƯỜNG NỐI: mỗi nền mới đủ URL · cửa sổ riêng 
   }
 });
 
-test("② KHÔNG TỰ NỐI: lượt quét GỘP bỏ qua; chỉ chạy khi được gọi ĐÍCH DANH", () => {
+test("2 IT DOES NOT CONNECT BY ITSELF: a COMBINED scan skips it; it runs only when called BY NAME", () => {
   // Máy đã có profile của cả nền cũ lẫn nền mới (ca xấu nhất: người dùng từng bấm nối một lần).
   const inUse = ["chatgpt", "claude", ...NEW];
 
@@ -48,7 +48,7 @@ test("② KHÔNG TỰ NỐI: lượt quét GỘP bỏ qua; chỉ chạy khi đư
   assert.deepEqual(platformsForScan(["khong-ton-tai"], inUse), []);
 });
 
-test("③ KHÔNG ĐƯỜNG KÉO GIẢ: nền chỉ-nối phải mang cờ và dùng đúng hai biểu thức rỗng", () => {
+test("3 NO FAKE PULL PATH: a connect-only platform must carry the flag and use the two empty expressions", () => {
   for (const k of NEW) {
     const p = PLATFORMS[k];
     assert.equal(p.loginOnly, true, `${k}: thiếu cờ ⇒ lượt quét sẽ báo 'done · 0' thay vì 'login-only'`);
@@ -58,7 +58,7 @@ test("③ KHÔNG ĐƯỜNG KÉO GIẢ: nền chỉ-nối phải mang cờ và d�
   }
 });
 
-test("④ KHÔNG ĐOÁN DANH TÍNH: phép kiểm chỉ nói CÓ PHIÊN, không bịa ra người dùng là ai", () => {
+test("4 NO IDENTITY GUESSING: the check only says THERE IS A SESSION, it never invents who the user is", () => {
   // 🔴 Ca này sinh từ một lỗi thật (`06_CHANGES [2026-09-10h]`): bản Gemini đầu suy danh tính từ
   // "tìm thấy một chuỗi hình email", và một URL nội bộ của Google đã thành danh tính đóng dấu lên
   // phiên. Một biểu thức DÙNG CHUNG chạy trên sáu trang lạ mà đi mò nhãn tài khoản thì chắc chắn
@@ -73,7 +73,7 @@ test("④ KHÔNG ĐOÁN DANH TÍNH: phép kiểm chỉ nói CÓ PHIÊN, không b
   }
 });
 
-test("⑤ KHÔNG ĐOÁN COOKIE: nền chưa đo khai `null` và `jarHasSession` trả 'không biết'", () => {
+test("5 NO COOKIE GUESSING: an unmeasured platform declares `null` and `jarHasSession` answers 'unknown'", () => {
   // `m365copilot` từng khai `%ESTSAUTH%` theo tài liệu công khai; tên đó SAI và hàm này trả `false`
   // cho một khe ĐANG đăng nhập. `null` = chưa đo ⇒ phải là "không kết luận được", KHÔNG phải "không
   // có phiên" — hai câu đó dẫn tới hai hành vi khác hẳn ở vòng tự kéo và ở `restoreShelvedSession`.

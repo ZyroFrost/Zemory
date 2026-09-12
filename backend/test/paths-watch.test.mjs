@@ -20,7 +20,7 @@ function repo(t) {
   return root;
 }
 
-test("check 'paths': watch OFF ⇒ state off · ok true · KHÔNG chạy monitor (không ghi state); ON lại ⇒ on như cũ; mặc định là ON", (t) => {
+test("the 'paths' check: with watch OFF the state is off, ok true, and the monitor does NOT run (no state written); switched back ON it is on as before; the default is ON", (t) => {
   const root = repo(t);
   const steps = runInMemoryChild(root, `
     out.push({ step: "default", watch: S.getPathsWatch() });
@@ -40,7 +40,7 @@ test("check 'paths': watch OFF ⇒ state off · ok true · KHÔNG chạy monitor
   assert.equal(existsSync(join(root, "data", "config.json")), true, "con phải ghi settings vào kho FIXTURE, không phải kho thật");
 });
 
-test("mọi bề mặt đều đi qua công tắc: scheduler bỏ sweep · /harness-updates không trả deadPaths · FE có nút + guard payload cũ · chữ 'sửa tay HOẶC giao A.I'", () => {
+test("every surface honours the switch: the scheduler skips the sweep, /harness-updates returns no deadPaths, the FE has the button plus a guard for old payloads, and the copy offers fix by hand OR by AI", () => {
   const sched = SRC("backend/src/jobs/scheduler.ts");
   assert.match(sched, /if \(getPathsWatch\(\)\) \{\s*\n\s*await runStep\("paths", \["paths", "sweep"\]\);/, "daemon phải bỏ bước paths khi tắt");
   const ui = SRC("backend/src/ui.ts");

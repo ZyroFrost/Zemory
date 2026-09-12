@@ -31,7 +31,7 @@ import { TOOLS } from "../../dist/tools/index.js";
 const scratch = () => mkdtempSync(join(tmpdir(), "zmcp-"));
 const target = (path, scope = "user") => ({ id: "t", label: "T", path, candidates: [path], key: "mcpServers", scope });
 
-test("merge giữ nguyên server khác và khoá lạ của user", () => {
+test("merge preserves other servers and the user's unknown keys", () => {
   const before = {
     mcpServers: { other: { command: "other-bin", args: ["x"] } },
     theme: "dark",
@@ -46,7 +46,7 @@ test("merge giữ nguyên server khác và khoá lạ của user", () => {
   assert.equal(next.mcpServers.zemory.command, "zemory");
 });
 
-test("đã khai rồi thì KHÔNG ghi lại — trừ khi --force", () => {
+test("an entry already declared is NOT rewritten - unless --force", () => {
   const before = { mcpServers: { zemory: { command: "zemory", args: ["mcp"], custom: "user sửa tay" } } };
   const keep = mergeServerConfig(before, "mcpServers");
   assert.equal(keep.changed, false, "không được đụng vào bản user đã tự sửa");
@@ -57,7 +57,7 @@ test("đã khai rồi thì KHÔNG ghi lại — trừ khi --force", () => {
   assert.equal(forced.reason, "replaced");
 });
 
-test("file JSON hỏng ⇒ DỪNG, không ghi đè", () => {
+test("a broken JSON file means STOP, never overwrite", () => {
   const dir = scratch();
   const f = join(dir, "cfg.json");
   writeFileSync(f, "{ this is not json");
@@ -67,7 +67,7 @@ test("file JSON hỏng ⇒ DỪNG, không ghi đè", () => {
   assert.equal(readFileSync(f, "utf8"), "{ this is not json", "nội dung phải còn NGUYÊN");
 });
 
-test("thiếu thư mục cấu hình (agent chưa cài) ⇒ không tự dựng cây thư mục", () => {
+test("a missing config folder (the agent is not installed) means no directory tree is created", () => {
   const dir = scratch();
   const f = join(dir, "khong-ton-tai", "cfg.json");
   const r = wireAgent(target(f));
@@ -76,7 +76,7 @@ test("thiếu thư mục cấu hình (agent chưa cài) ⇒ không tự dựng c
   assert.equal(existsSync(join(dir, "khong-ton-tai")), false, "không được để lại thư mục rác trên máy user");
 });
 
-test("ghi thật: tạo file, sao lưu .bak, và inspect thấy đã khai", () => {
+test("a real write: it creates the file, backs up to .bak, and inspect sees the declaration", () => {
   const dir = scratch();
   const f = join(dir, "cfg.json");
   writeFileSync(f, JSON.stringify({ mcpServers: { other: { command: "o" } } }, null, 2));
@@ -89,7 +89,7 @@ test("ghi thật: tạo file, sao lưu .bak, và inspect thấy đã khai", () =
   assert.equal(inspectAgent(target(f)), "wired");
 });
 
-test("bảng đích phủ đủ các agent nói MCP, mỗi cái một đường dẫn", () => {
+test("the target table covers every MCP-speaking agent, each with its own path", () => {
   const targets = agentTargets("D:\\proj");
   const ids = targets.map((t) => t.id);
   for (const want of ["claude-code", "claude-desktop", "cursor", "windsurf", "gemini", "qwen", "kiro", "antigravity"]) {
@@ -101,7 +101,7 @@ test("bảng đích phủ đủ các agent nói MCP, mỗi cái một đường 
   assert.equal(cc.scope, "project", "Claude Code khai theo PROJECT — nằm trong repo, không phải máy");
 });
 
-test("agent chưa cài ⇒ KHÔNG đoán bừa một đường để ghi vào", () => {
+test("an agent that is not installed gets NO guessed path to write into", () => {
   // Đo 2026-08-02: 0/10 đường cấu hình của các agent này tồn tại trên máy dev, nên đường dẫn
   // lấy từ tài liệu bên thứ ba là chỗ ĐOÁN. Quy tắc "chỉ chọn khi file hoặc thư mục cha có
   // thật" biến nó thành tự-xác-minh: sai đường thì không ghi gì, thay vì đẻ file cấu hình ma.
@@ -126,7 +126,7 @@ const memoTarget = (memo, memoScope = "user") => ({
   memoScope,
 });
 
-test("chèn lời dặn: giữ nguyên chữ user, chạy lại KHÔNG đẻ khối thứ hai", () => {
+test("inserting the instructions: the user's text is preserved and a rerun does NOT create a second block", () => {
   const mine = "# Luật của tôi\n\n- luôn dùng tiếng Việt\n";
   const one = mergeProtocol(mine);
   assert.equal(one.reason, "added");
@@ -140,7 +140,7 @@ test("chèn lời dặn: giữ nguyên chữ user, chạy lại KHÔNG đẻ kh�
   assert.equal(count, 1, "chỉ được có ĐÚNG MỘT khối, không nối thêm bản mới vào cuối");
 });
 
-test("bản cũ được THAY đúng chỗ, chữ user ở CẢ HAI phía còn nguyên", () => {
+test("an old block is REPLACED in place, with the user's text on BOTH sides intact", () => {
   const before = "# Đầu file\n\n";
   const after = "\n## Ghi chú riêng\n\n- giữ nguyên dòng này\n";
   const stale = `${before}${PROTOCOL_BEGIN}\nnội dung bản CŨ\n${PROTOCOL_END}${after}`;
@@ -152,7 +152,7 @@ test("bản cũ được THAY đúng chỗ, chữ user ở CẢ HAI phía còn n
   assert.ok(r.next.includes(protocolBlock()));
 });
 
-test("marker mở mà không đóng ⇒ DỪNG, không đoán chỗ kết thúc", () => {
+test("a marker opened but never closed means STOP, never guess where it ends", () => {
   const broken = `# File\n\n${PROTOCOL_BEGIN}\nai đó cắt mất đuôi\n`;
   const r = mergeProtocol(broken);
   assert.equal(r.changed, false);
@@ -160,7 +160,7 @@ test("marker mở mà không đóng ⇒ DỪNG, không đoán chỗ kết thúc"
   assert.equal(r.next, broken, "không được sửa một ký tự nào");
 });
 
-test("ghi thật: sao lưu .bak, inspect thấy đã cài, và bản cũ thì báo stale", () => {
+test("a real write: it backs up to .bak, inspect sees it installed, and an old copy is reported stale", () => {
   const dir = scratch();
   const memo = join(dir, "global_rules.md");
   writeFileSync(memo, `# Của tôi\n\n${PROTOCOL_BEGIN}\ncũ\n${PROTOCOL_END}\n`);
@@ -174,7 +174,7 @@ test("ghi thật: sao lưu .bak, inspect thấy đã cài, và bản cũ thì b�
   assert.ok(readFileSync(memo, "utf8").startsWith("# Của tôi"), "chữ user phải còn");
 });
 
-test("agent chưa cài ⇒ không dựng cây thư mục để nhét lời dặn", () => {
+test("an agent that is not installed gets no directory tree built just to hold the instructions", () => {
   const dir = scratch();
   const memo = join(dir, "chua-cai", "GEMINI.md");
   const r = writeProtocol(memoTarget(memo));
@@ -183,7 +183,7 @@ test("agent chưa cài ⇒ không dựng cây thư mục để nhét lời dặn
   assert.equal(existsSync(join(dir, "chua-cai")), false, "không để lại thư mục rác");
 });
 
-test("file .mdc mới phải tự khai alwaysApply — thiếu là ghi xong không ai đọc", () => {
+test("a new .mdc file must declare alwaysApply itself - without it nobody reads what was written", () => {
   const dir = scratch();
   const memo = join(dir, "rules", "zemory-memory.mdc");
   const r = writeProtocol(memoTarget(memo, "project"));
@@ -193,7 +193,7 @@ test("file .mdc mới phải tự khai alwaysApply — thiếu là ghi xong khô
   assert.ok(text.includes(protocolBlock()));
 });
 
-test("lời dặn chỉ được nhắc tool CÓ THẬT (parity với tools/list)", () => {
+test("the instructions may only mention tools that REALLY EXIST (parity with tools/list)", () => {
   const known = new Set(TOOLS.map((t) => t.name));
   const named = [...MEMORY_PROTOCOL.matchAll(/`([a-z_]+)`/g)].map((m) => m[1]).filter((n) => n.includes("_"));
   assert.ok(named.length >= 5, "lời dặn phải nêu đích danh tool, không nói chung chung");
@@ -204,14 +204,14 @@ test("lời dặn chỉ được nhắc tool CÓ THẬT (parity với tools/list
   }
 });
 
-test("agent không dặn được thì phải nói VÌ SAO, không im lặng bỏ trống", () => {
+test("an agent that cannot take instructions must say WHY, never leave a silent blank", () => {
   for (const t of agentTargets("D:\\proj")) {
     if (t.memoCandidates.length) continue;
     assert.ok(t.memoWhy && t.memoWhy.length > 20, `${t.id}: bỏ trống lời dặn mà không nêu lý do`);
   }
 });
 
-test("agent không khai được bằng JSON thì phải NÊU TÊN, không im lặng bỏ qua", () => {
+test("an agent that cannot be declared through JSON must be NAMED, never silently skipped", () => {
   const ids = UNSUPPORTED.map((u) => u.id);
   for (const want of ["codex", "opencode", "pi"]) assert.ok(ids.includes(want), `thiếu ghi chú cho ${want}`);
   for (const u of UNSUPPORTED) assert.ok(u.why.length > 20, `${u.id}: phải nói RÕ vì sao, để user biết đường khai tay`);

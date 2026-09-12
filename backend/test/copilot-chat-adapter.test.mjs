@@ -66,7 +66,7 @@ function store(root, { body = transcript(), folder = "file:///d%3A/huy.nguyen/Pr
   return { appdata, userDir, main, noFolder };
 }
 
-test("① đọc được một lượt thật: hỏi + đáp, đúng vai, đúng mốc, uuid là id của nền", (t) => {
+test("1 one real exchange is read: question and answer, right roles, right timestamps, uuid is the platform's id", (t) => {
   const { main } = store(tempDir(t, "zm-cpc1-"));
   const s = A.parseFile(main);
   assert.deepEqual(s.messages.map((m) => m.role), ["user", "assistant"]);
@@ -76,7 +76,7 @@ test("① đọc được một lượt thật: hỏi + đáp, đúng vai, đún
   assert.equal(s.messages[1].timestamp, new Date(1789152854848).toISOString());
 });
 
-test("② 🔴 câu TRẢ LỜI tới bằng patch `kind:2` — bỏ lớp phát lại là mất một nửa hội thoại", (t) => {
+test("2 the ANSWER arrives as a `kind:2` patch - dropping the replay layer loses half the conversation", (t) => {
   const { main } = store(tempDir(t, "zm-cpc2-"));
   const s = A.parseFile(main);
   assert.match(s.messages[1].content, /^Alo! Bạn cần mình/u);
@@ -84,7 +84,7 @@ test("② 🔴 câu TRẢ LỜI tới bằng patch `kind:2` — bỏ lớp phát
   assert.equal(s.messages.length, 2, "mất tin assistant = parser chỉ đọc dòng đầu");
 });
 
-test("③ phần response KHÔNG mang chữ thì BỎ, không đẻ tin rỗng và không đoán hình dạng", (t) => {
+test("3 a response part with no text is DROPPED - no empty message, no shape guessing", (t) => {
   const { main } = store(tempDir(t, "zm-cpc3-"), {
     body: [
       JSON.stringify({ kind: 0, v: { requests: [{ ...TURN, response: [{ kind: "toolInvocationSerialized", toolId: "readFile" }] }] } }),
@@ -95,7 +95,7 @@ test("③ phần response KHÔNG mang chữ thì BỎ, không đẻ tin rỗng v
   assert.deepEqual(s.messages.map((m) => m.role), ["user"]);
 });
 
-test("④ không có gì để lưu ⇒ null, không đẻ phiên rỗng (hai đường vào khác nhau)", (t) => {
+test("4 nothing to store yields null and no empty session (two different entry paths)", (t) => {
   const root = tempDir(t, "zm-cpc4-");
   const { noFolder } = store(root);
   // (a) chưa từng chat: `requests: []`. 46/47 file trên máy thật là loại này — chúng phải im lặng
@@ -110,7 +110,7 @@ test("④ không có gì để lưu ⇒ null, không đẻ phiên rỗng (hai đ
   assert.equal(A.parseFile(hidden), null, "phiên 0 tin vẫn là phiên rỗng trên UI");
 });
 
-test("⑤ enumerate phủ ĐÚNG hai thư mục; sessionId có tiền tố; cwd đọc từ workspace.json", (t) => {
+test("5 enumerate covers exactly the two folders; sessionId carries the prefix; cwd is read from workspace.json", (t) => {
   const root = tempDir(t, "zm-cpc5-");
   const { userDir, main, noFolder } = store(root);
   const paths = A.enumerate(userDir).map((f) => f.path).sort();
@@ -127,7 +127,7 @@ test("⑤ enumerate phủ ĐÚNG hai thư mục; sessionId có tiền tố; cwd 
   assert.equal(A.parseFile(ew).cwd, undefined, "không có workspace.json thì để trống, không đoán");
 });
 
-test("⑥ 🔴 NẰM ĐÚNG CHỖ: quét thật ⇒ origin=local · source=copilot-chat · project_root từ workspace.json", (t) => {
+test("6 IN THE RIGHT PLACE: a real scan yields origin=local - source=copilot-chat - project_root from workspace.json", (t) => {
   const root = tempDir(t, "zm-cpc6-");
   const { appdata } = store(root);
   const [row, tree] = runInMemoryChild(
@@ -161,7 +161,7 @@ test("⑥ 🔴 NẰM ĐÚNG CHỖ: quét thật ⇒ origin=local · source=copil
   assert.ok(!web || !web.kids.includes("copilot-chat"), "KHÔNG được mọc dưới Web chat");
 });
 
-test("⑦ ca ÂM: nguồn local KHÔNG được chạm vào lane web", () => {
+test("7 NEGATIVE case: a local source must never touch the web lane", () => {
   // Nó không có khe, không cookie, không cửa sổ đăng nhập. Khai nhầm vào đây là đẻ một hàng
   // "mất kết nối" vĩnh viễn trên màn Nguồn cho một thứ chẳng bao giờ phải đăng nhập.
   assert.ok(!WEB_PLATFORMS.includes("copilot-chat"), "copilot-chat không phải nền web");

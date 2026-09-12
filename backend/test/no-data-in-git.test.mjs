@@ -41,12 +41,12 @@ const MUST_BE_IGNORED = [
   "docs/agent/05_TODO.md.bak",
 ];
 
-test("mọi file DATA đều bị git bỏ qua (kiểm bằng git check-ignore)", () => {
+test("every DATA file is ignored by git (checked with git check-ignore)", () => {
   const leaks = MUST_BE_IGNORED.filter((p) => !ignored(p));
   assert.deepEqual(leaks, [], `git KHÔNG chặn: ${leaks.join(" · ")}`);
 });
 
-test(".gitignore KHÔNG có ngoại lệ nào cho .db / .enc / bundle", () => {
+test(".gitignore holds NO exception for .db, .enc or bundles", () => {
   // Một dòng `!...` là cách duy nhất data lọt qua các luật ở trên. Chặn ngay ở nguồn.
   const bad = readFileSync(join(ROOT, ".gitignore"), "utf8")
     .split(/\r?\n/)
@@ -55,13 +55,13 @@ test(".gitignore KHÔNG có ngoại lệ nào cho .db / .enc / bundle", () => {
   assert.deepEqual(bad, [], `ngoại lệ mở đường cho data: ${bad.join(" · ")}`);
 });
 
-test("không có file DATA nào đang được git theo dõi", () => {
+test("no DATA file is currently tracked by git", () => {
   const tracked = execSync("git ls-files", { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 }).split(/\r?\n/);
   const bad = tracked.filter((f) => /\.(db|db-wal|db-shm|sqlite3?|enc|pbix)$/i.test(f));
   assert.deepEqual(bad, [], `data đang trong git: ${bad.join(" · ")}`);
 });
 
-test("KHÔNG có docs của project khác trong cây git", () => {
+test("NO docs from another project live in the git tree", () => {
   // Bản cứu index dump doc row của MỌI project trên máy ra .md; commit nó vào repo PUBLIC
   // là công bố hạ tầng nội bộ của người ta (IP server, tên DB, tên biến *_PASSWORD).
   // Bắt được lúc soi diff trước khi push, 2026-07-29.
@@ -70,7 +70,7 @@ test("KHÔNG có docs của project khác trong cây git", () => {
   assert.deepEqual(bad, [], `dump của project khác đang trong git: ${bad.join(" · ")}`);
 });
 
-test("không có IP nội bộ (dải riêng) trong bất kỳ file được track", () => {
+test("no internal IP (private range) in any tracked file", () => {
   // Ratchet cuối: dù đường nào đưa nội dung vào, mẫu này vẫn bắt. Chỉ soi file text.
   const tracked = execSync("git ls-files", { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
     .split(/\r?\n/)

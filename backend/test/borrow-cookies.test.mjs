@@ -36,7 +36,7 @@ function fakeBrowser(t, rows) {
 // Không chạy được trên máy không phải Windows (hàm tự chặn) — bỏ qua cho sạch.
 const skip = process.platform !== "win32" ? { skip: "Windows-only path" } : {};
 
-test("nền không khai ⇒ từ chối, không đụng gì", skip, () => {
+test("an undeclared platform is refused, nothing is touched", skip, () => {
   // Dùng một tên KHÔNG BAO GIỜ là nền thật. Trước đây ca này dùng "gemini" làm ví dụ âm — tới
   // 2026-09-10 gemini thành nền THẬT và ca này đỏ: ví dụ âm mượn một tên có thể thành dương là
   // một quả bom hẹn giờ, không phải một phép kiểm.
@@ -45,7 +45,7 @@ test("nền không khai ⇒ từ chối, không đụng gì", skip, () => {
   assert.match(r.error, /unknown platform/);
 });
 
-test("chở cookie nền + nhà cung cấp SSO (Google) — bank/nền khác bị XOÁ", skip, (t) => {
+test("it carries the platform cookies plus the SSO provider (Google) - banks and other sites are STRIPPED", skip, (t) => {
   // ĐỔI 2026-09-02 (user chốt "Có — chép cả phiên SSO"): profile giờ giữ CẢ cookie đăng nhập
   // Google/Microsoft/Apple để OAuth hiện account chooser, KHÔNG chỉ chatgpt.com. Vẫn cắt sạch
   // bank/nền khác — không phải cả jar.
@@ -70,7 +70,7 @@ test("chở cookie nền + nhà cung cấp SSO (Google) — bank/nền khác b�
   }
 });
 
-test("nguồn cũng chưa đăng nhập ⇒ nói thẳng, KHÔNG đẻ profile rỗng rồi báo lỗi mơ hồ sau", skip, (t) => {
+test("when the source is not signed in either, say so plainly instead of creating an empty profile and failing vaguely later", skip, (t) => {
   const b = fakeBrowser(t, [[".mybank.example", "SESSION"]]);
   const r = borrowCookies({ platform: "chatgpt", browserRoot: b.browserRoot, sources: [{ key: "fake", label: "Fake", userData: b.ud, exe: process.execPath }] });
   assert.equal(r.ok, false);
@@ -78,7 +78,7 @@ test("nguồn cũng chưa đăng nhập ⇒ nói thẳng, KHÔNG đẻ profile r
   assert.ok(!existsSync(join(b.browserRoot, "chatgpt")), "không được để lại profile nửa vời");
 });
 
-test("profile zemory đang có phiên ⇒ KHÔNG đè khi chưa --replace (xoá phiên là bất khả đảo)", skip, (t) => {
+test("a zemory profile with a live session is NOT overwritten without --replace (dropping a session is irreversible)", skip, (t) => {
   // Fixture phải là nguồn CÓ PHIÊN THẬT (tên token NextAuth) — từ 2026-09-02 jar chỉ có cookie
   // rác bị từ chối TRƯỚC khi chạm tới hành vi ca này canh ("có cookie" ≠ "có phiên").
   const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]);
@@ -96,14 +96,14 @@ test("profile zemory đang có phiên ⇒ KHÔNG đè khi chưa --replace (xoá 
   assert.equal(yes.ok, true, yes.error);
 });
 
-test("ghi dấu trình duyệt NGUỒN — khoá app-bound chỉ mở được bằng chính trình duyệt đó", skip, (t) => {
+test("it records the SOURCE browser - an app-bound key only opens in that same browser", skip, (t) => {
   const b = fakeBrowser(t, [[".claude.ai", "sessionKey"]]);
   const r = borrowCookies({ platform: "claude", browserRoot: b.browserRoot, sources: [{ key: "fake", label: "Fake", userData: b.ud, exe: process.execPath }] });
   assert.equal(r.ok, true, r.error);
   assert.equal(readFileSync(join(b.browserRoot, "claude", ".zemory-browser"), "utf8"), process.execPath);
 });
 
-test("KHÔNG chở file mật khẩu — chỉ Local State + Cookies", skip, (t) => {
+test("it never carries the password file - only Local State + Cookies", skip, (t) => {
   const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]); // nguồn có phiên thật — xem ca --replace
   writeFileSync(join(b.ud, "Default", "Login Data"), "mật khẩu đã lưu");
   writeFileSync(join(b.ud, "Default", "Web Data"), "thẻ thanh toán");
@@ -119,7 +119,7 @@ test("KHÔNG chở file mật khẩu — chỉ Local State + Cookies", skip, (t)
 });
 
 // App phải TỰ làm, không bắt người dùng gõ lệnh (user 2026-07-30).
-test("nút Liên kết làm TRỌN việc: tự dò nguồn → mượn → kéo, người dùng chỉ bấm một cái", () => {
+test("the Link button does the WHOLE job: find the source, borrow, pull - the user clicks once", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   const branch = ui.slice(ui.indexOf('p === "/connect"'), ui.indexOf('p === "/set-sync-level"'));
   assert.ok(/findBorrowSource\(/.test(branch), "phải tự dò nguồn, không bắt người dùng chọn trình duyệt/profile");
@@ -137,7 +137,7 @@ test("nút Liên kết làm TRỌN việc: tự dò nguồn → mượn → kéo
 
 // User báo 2026-07-30: *"đăng nhập xong rồi nhưng ko thấy mở lại"* — bấm Liên kết, cửa
 // sổ mở, đăng nhập xong thì KHÔNG ai kiểm lại nên bảng đứng nguyên ở ⚠.
-test("sau khi bấm Liên kết, app tự CHỜ đăng nhập rồi chạy tiếp — không bắt bấm lại", () => {
+test("after Link is pressed the app WAITS for sign-in and continues by itself - no second click", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   assert.ok(ui.includes("async function liveConnections("), "đọc bảng là phải KIỂM LẠI, không trưng số cũ");
   assert.ok(/probeOnly: true/.test(ui), "và phải là phép hỏi RẺ — hỏi lại mỗi 5s mà mở cửa sổ mỗi lần thì loạn");
@@ -151,7 +151,7 @@ test("sau khi bấm Liên kết, app tự CHỜ đăng nhập rồi chạy tiế
   assert.ok(/conn\.waiting/.test(js), "và nói cho người dùng biết là đang chờ, không đứng im");
 });
 
-test("chép cookie qua VACUUM INTO — copy file trần bỏ mất phần WAL (chính là cookie vừa đăng nhập)", () => {
+test("cookies are copied via VACUUM INTO - a plain file copy loses the WAL (which holds the fresh sign-in)", () => {
   const src = readFileSync(new URL("../src/memory/borrowcookies.ts", import.meta.url), "utf8");
   assert.ok(/VACUUM INTO/.test(src), "phải dùng VACUUM INTO để gộp cả WAL");
   const copies = [...src.matchAll(/copyFileSync\(([^,]+),/g)].map((m) => m[1].trim());
@@ -161,7 +161,7 @@ test("chép cookie qua VACUUM INTO — copy file trần bỏ mất phần WAL (c
 // Đo 2026-07-30 trên máy thật: cookie chép từ Chrome sang profile khác KHÔNG mở được
 // phiên (App-Bound Encryption) — mà lần thử đó đã XOÁ profile claude đang đăng nhập tốt.
 // Một nút "thử mượn" tuyệt đối không được để lại hậu quả khi nó thất bại.
-test("mượn hụt phải LÙI ĐƯỢC: profile cũ được dời sang bên, không bị xoá", skip, (t) => {
+test("a failed borrow must be REVERSIBLE: the old profile is moved aside, not deleted", skip, (t) => {
   const b = fakeBrowser(t, [[".chatgpt.com", "__Secure-next-auth.session-token"]]); // nguồn có phiên thật — xem ca --replace
   const target = join(b.browserRoot, "chatgpt");
   mkdirSync(target, { recursive: true });
@@ -178,7 +178,7 @@ test("mượn hụt phải LÙI ĐƯỢC: profile cũ được dời sang bên, 
 
 // Phản biện audit 2026-09-02 chỉ ra: `restoreProfile` phá đích TRƯỚC khi biết bản lùi còn đó, và
 // cả hai bước nằm trong MỘT try nuốt lỗi ⇒ bản lùi biến mất là khe mất trắng profile, im lặng.
-test("restoreProfile: bản lùi KHÔNG còn ⇒ KHÔNG được phá profile đang có (không thì mất trắng, im lặng)", skip, (t) => {
+test("restoreProfile: with the backup GONE it must NOT destroy the existing profile (that would lose everything, silently)", skip, (t) => {
   const root = tempDir(t, "zemory-restore-");
   const target = join(root, "chatgpt");
   mkdirSync(target, { recursive: true });
@@ -190,7 +190,7 @@ test("restoreProfile: bản lùi KHÔNG còn ⇒ KHÔNG được phá profile đ
   assert.equal(readFileSync(join(target, "Local State"), "utf8"), "profile mượn-hụt nhưng vẫn là một profile");
 });
 
-test("restoreProfile: bản lùi CÒN thì vẫn lùi đúng như cũ (không hồi quy)", skip, (t) => {
+test("restoreProfile: with the backup present it still restores exactly as before (no regression)", skip, (t) => {
   const root = tempDir(t, "zemory-restore-");
   const target = join(root, "chatgpt");
   const backup = join(root, "chatgpt.bak-1");
@@ -205,7 +205,7 @@ test("restoreProfile: bản lùi CÒN thì vẫn lùi đúng như cũ (không h�
   assert.ok(!existsSync(backup), "và dọn bản lùi sau khi đã trả về");
 });
 
-test("/connect tự lùi khi mượn không mở được phiên", () => {
+test("/connect rolls back by itself when the borrow fails to open a session", () => {
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   const branch = ui.slice(ui.indexOf('p === "/connect"'), ui.indexOf('p === "/set-sync-level"'));
   assert.ok(/restoreProfile\(/.test(branch), "mượn hụt ⇒ phải gọi restoreProfile");
@@ -213,7 +213,7 @@ test("/connect tự lùi khi mượn không mở được phiên", () => {
   assert.ok(/status === "done"/.test(branch), "và phải QUYẾT theo kết quả đăng nhập thật, không theo 'chép xong là xong'");
 });
 
-test("mã nguồn KHÔNG bao giờ đọc giá trị cookie (chỉ đếm và xoá)", () => {
+test("the source code NEVER reads a cookie value (it only counts and deletes)", () => {
   const src = readFileSync(new URL("../src/memory/borrowcookies.ts", import.meta.url), "utf8");
   const sql = [...src.matchAll(/`?(SELECT|DELETE)[^`"']*/gi)].map((m) => m[0]);
   for (const q of sql) {

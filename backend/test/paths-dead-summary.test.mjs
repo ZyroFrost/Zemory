@@ -11,7 +11,7 @@ const FE = (f) => readFileSync(new URL(`../../frontend/scripts/${f}`, import.met
 const win = process.platform === "win32";
 const canon = (p) => (win ? resolve(p).toLowerCase() : resolve(p));
 
-test("deadPathsSummary: chỉ repo có firstSeen · khớp root theo canon (Windows không phân biệt hoa/thường) · sample ≤3 · xếp giảm", () => {
+test("deadPathsSummary: only repos with a firstSeen; root matching by canon (Windows is case-insensitive); sample of 3 or fewer; sorted descending", () => {
   const A = win ? "D:\\X\\Dept_OPS" : "/x/Dept_OPS";
   const B = win ? "D:\\X\\Quiet" : "/x/Quiet";
   const C = win ? "D:\\X\\Loud" : "/x/Loud";
@@ -29,7 +29,7 @@ test("deadPathsSummary: chỉ repo có firstSeen · khớp root theo canon (Wind
   assert.equal(r[1].sample[0], "assets/theme/duanbi.json");
 });
 
-test("FE tiêu thụ đủ ba chỗ: chip+hộp thoại (system.js) · thẻ Dự án (sources.js) · i18n hai dict (chrome.js)", () => {
+test("the FE consumes all three places: chip and dialog (system.js), the Projects card (sources.js), i18n in both dictionaries (chrome.js)", () => {
   const sys = FE("system.js"), src = FE("sources.js"), chrome = FE("chrome.js");
   assert.match(sys, /r\.deadPaths/, "system.js phải đọc deadPaths từ /harness-updates");
   assert.match(sys, /Z\.updDead=/, "system.js phải lưu Z.updDead cho hộp thoại + thẻ");

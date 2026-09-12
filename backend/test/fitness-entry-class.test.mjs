@@ -15,7 +15,7 @@ const { isEntryClassFile, graphFitness, FITNESS_GATES, ISOLATED_MIN_COUNT } = aw
   "../../dist/memory/graph/graph.js"
 );
 
-test("isEntryClassFile: nhận đúng thứ KHÔNG THỂ có cạnh import", () => {
+test("isEntryClassFile: correctly recognises what CANNOT have an import edge", () => {
   for (const p of [
     "backend/test/web-autopull.test.mjs",
     "backend/test/helpers.mjs",
@@ -32,7 +32,7 @@ test("isEntryClassFile: nhận đúng thứ KHÔNG THỂ có cạnh import", () 
   assert.equal(isEntryClassFile("backend\\test\\x.test.mjs"), true);
 });
 
-test("isEntryClassFile: CA ÂM — module nguồn thật KHÔNG được loại (không thì cổng thành trang trí)", () => {
+test("isEntryClassFile: NEGATIVE CASE - a real source module must NOT be excluded (otherwise the gate is decoration)", () => {
   for (const p of [
     "backend/src/memory/db.ts",
     "backend/src/ui.ts",
@@ -58,7 +58,7 @@ const mk = (nodes) => ({
   stats: { files: nodes.length, edges: 0, slots: 0, bytes: 0 },
 });
 
-test("fitness: test/script mồ côi KHÔNG làm đỏ; module nguồn mồ côi thì CÓ", () => {
+test("fitness: an orphan test or script does NOT go red; an orphan source module DOES", () => {
   // 10 test mồ côi + 1 module nguồn được import ⇒ 0 cô lập trong diện đo.
   const onlyTests = mk([
     ...Array.from({ length: 10 }, (_, i) => ({ id: `backend/test/t${i}.test.mjs` })),
@@ -84,7 +84,7 @@ test("fitness: test/script mồ côi KHÔNG làm đỏ; module nguồn mồ côi
 // SÀN ĐẾM — sinh ra từ một fixture ĐỎ OAN, nên phải có cổng để đừng mất lại.
 // Siết trần 30%→4% làm đỏ luôn fixture "repo nhỏ lành mạnh" của `graph.test.mjs`: 1 file cô lập
 // trên 3 file = 33%. Tỉ lệ trên mẫu bé là nhiễu (cùng doctrine `ABSTAIN_MIN_VECTORS`, `plan/17`).
-test("sàn đếm: repo BÉ có 1–2 file cô lập KHÔNG bị phán, nhưng đủ SỐ thì phán ngay", () => {
+test("the count floor: a SMALL repo with 1-2 isolated files is not judged, but a big enough COUNT is judged at once", () => {
   const tiny = (dead) =>
     mk([
       ...Array.from({ length: dead }, (_, i) => ({ id: `backend/src/dead${i}.ts` })),
@@ -104,7 +104,7 @@ test("sàn đếm: repo BÉ có 1–2 file cô lập KHÔNG bị phán, nhưng �
   assert.ok(!/under the floor of/i.test(at.detail), "chạm sàn rồi thì không được nói là dưới sàn");
 });
 
-test("ngưỡng còn ĐỎ ĐƯỢC: 5 module chết trên nền 116 file là vượt trần", () => {
+test("the threshold can still go RED: 5 dead modules against 116 files is over the cap", () => {
   assert.ok(FITNESS_GATES.isolatedPct <= 5, `trần ${FITNESS_GATES.isolatedPct}% phải đủ chặt để bắt vài module chết`);
   // Nền đo được là 1/116 = 0,9%; 5/116 = 4,3% phải vượt trần.
   assert.ok((5 / 116) * 100 > FITNESS_GATES.isolatedPct, "5 module chết phải làm đỏ");

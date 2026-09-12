@@ -18,13 +18,13 @@ import { syncCutNote } from "../scripts/preflight-gate.mjs";
 const T0 = Date.parse("2026-08-31T07:37:04.073Z");
 const at = (min) => T0 + min * 60_000;
 
-test("không có lượt treo trong sổ ⇒ IM, không được cảnh báo oan", () => {
+test("no interrupted run in the ledger means SILENCE, never a false warning", () => {
   assert.equal(syncCutNote(null, at(30), true), null, "null ⇒ không nói gì");
   assert.equal(syncCutNote(null, at(30), false), null, "null ⇒ không nói gì (daemon tắt)");
   assert.equal(syncCutNote(undefined, at(30), false), null, "undefined ⇒ không nói gì");
 });
 
-test("daemon SỐNG ⇒ cảnh báo PHÒNG NGỪA: tắt bây giờ là cắt nó", () => {
+test("a LIVE daemon gives a PREVENTIVE warning: shutting down now cuts it off", () => {
   const note = syncCutNote(T0, at(21), true);
   assert.ok(note, "phải có câu");
   assert.match(note, /21′ trước/, "phải nói lượt đó chạy bao lâu rồi");
@@ -36,7 +36,7 @@ test("daemon SỐNG ⇒ cảnh báo PHÒNG NGỪA: tắt bây giờ là cắt n�
   assert.doesNotMatch(note, /đã bị cắt/, "daemon còn sống ⇒ KHÔNG được khẳng định lượt đã bị cắt");
 });
 
-test("daemon TẮT ⇒ cảnh báo GIẢI THÍCH: đèn đỏ đang tới và vì sao", () => {
+test("a STOPPED daemon gives an EXPLANATORY warning: the red light is coming and here is why", () => {
   const note = syncCutNote(T0, at(21), false);
   assert.ok(note, "phải có câu");
   assert.match(note, /đã bị cắt lúc daemon tắt/, "vế giải thích: nói thẳng nguyên nhân");
@@ -45,13 +45,13 @@ test("daemon TẮT ⇒ cảnh báo GIẢI THÍCH: đèn đỏ đang tới và v�
   assert.doesNotMatch(note, /Tắt daemon BÂY GIỜ/, "daemon đã tắt ⇒ khuyên 'đừng tắt' là vô nghĩa");
 });
 
-test("hai vế PHẢI khác nhau — nếu giống thì cờ daemonAlive là trang trí", () => {
+test("the two branches MUST differ - if they read the same, the daemonAlive flag is decoration", () => {
   const alive = syncCutNote(T0, at(21), true);
   const dead = syncCutNote(T0, at(21), false);
   assert.notEqual(alive, dead, "sống và tắt cần lời khuyên NGƯỢC nhau, không được trả cùng một câu");
 });
 
-test("đồng hồ chạy lùi KHÔNG được in số phút âm", () => {
+test("a clock running backwards must NOT print negative minutes", () => {
   // Cùng ràng buộc mà `interruptedRunNote` đã chịu: máy lệch giờ / vừa đổi timezone thì `now` có thể
   // nhỏ hơn `runAt`, và "-40′ trước" là câu vô nghĩa đủ để người đọc mất tin vào cả cái đèn.
   const note = syncCutNote(T0, at(-40), false);

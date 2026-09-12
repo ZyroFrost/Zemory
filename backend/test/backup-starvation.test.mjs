@@ -45,7 +45,7 @@ function putLock(t, lock) {
   t.after(() => rmSync(LOCK, { force: true }));
 }
 
-test("① CA ÂM — kẻ ghi ở kho KHÁC thì backup của kho thật KHÔNG bị chặn", (t) => {
+test("1 NEGATIVE CASE - a writer on a DIFFERENT store does not block the real store's backup", (t) => {
   putLock(t, { label: "embed", db: PARALLEL });
   assert.equal(cliWriteHolder()?.label, "embed", "khoá phải đọc được, không thì ca này vô nghĩa");
   assert.equal(
@@ -55,27 +55,27 @@ test("① CA ÂM — kẻ ghi ở kho KHÁC thì backup của kho thật KHÔNG 
   );
 });
 
-test("② kẻ ghi ở CÙNG kho thì vẫn phải nhường", (t) => {
+test("2 a writer on the SAME store still has to yield", (t) => {
   putLock(t, { label: "embed", db: REAL });
   assert.equal(cliHoldsWriteOn(REAL), true, "chép kho đang bị ghi là đúng kiểu tranh chấp đã hỏng DB 03/08");
 });
 
-test("②b so đường kho không phân biệt hoa/thường và `/` vs `\\` (Windows)", (t) => {
+test("2b the store path comparison ignores case and forward vs back slashes (Windows)", (t) => {
   putLock(t, { label: "embed", db: REAL.replace(/\\/g, "/").toUpperCase() });
   assert.equal(cliHoldsWriteOn(REAL), true, "cùng một file viết khác kiểu vẫn là cùng một file");
 });
 
-test("③ khoá đời CŨ (không khai kho) ⇒ coi là xung đột, không đoán bừa là rảnh", (t) => {
+test("3 an OLD-generation lock (no store declared) counts as a conflict, never guessed idle", (t) => {
   putLock(t, { label: "embed" }); // khuôn trước 2026-08-21
   assert.equal(cliHoldsWriteOn(REAL), true, "không biết nó ghi kho nào ⇒ thà chờ hơn là chép giữa lúc bị ghi");
 });
 
-test("③b không có khoá nào ⇒ KHÔNG xung đột (đừng chặn khi không có ai)", () => {
+test("3b no lock at all means NO conflict (do not block when nobody is there)", () => {
   rmSync(LOCK, { force: true });
   assert.equal(cliHoldsWriteOn(REAL), false);
 });
 
-test("③c CỜ TRONG BỘ NHỚ cũng phải mang danh tính kho — và khoá FILE quyết trước", async (t) => {
+test("3c the IN-MEMORY flag must carry the store identity too - and the FILE lock decides first", async (t) => {
   // Bản vá đầu chỉ dạy khoá FILE khai kho; cờ `holdUntil` (CLI báo qua `/gate-acquire`) thì không,
   // mà nó lại được xét TRƯỚC ⇒ phủ quyết ngược và backup vẫn nhường **24 lượt liên tiếp** (đo
   // 2026-08-22 trên log daemon thật). Ca này khoá cả hai vế của bản vá đó.
@@ -96,7 +96,7 @@ test("③c CỜ TRONG BỘ NHỚ cũng phải mang danh tính kho — và khoá 
   assert.equal(cliHoldsWriteOn(REAL), false, "khoá file khai kho khác ⇒ quyết trước, không để cờ phủ ngược");
 });
 
-test("④ tuổi bản sao lưu quá 2 chu kỳ ⇒ backupStale BÁO (đường để doctor đỏ)", () => {
+test("4 a backup older than 2 cycles makes backupStale REPORT (the path for doctor to go red)", () => {
   const bak = join(DIR, "backups");
   mkdirSync(bak, { recursive: true });
   const p = join(bak, "global_memory-2026-08-20T12-32-45-260Z.db");
@@ -116,7 +116,7 @@ test("④ tuổi bản sao lưu quá 2 chu kỳ ⇒ backupStale BÁO (đường 
   rmSync(p, { force: true });
 });
 
-test("④b CHƯA có bản nào cũng là quá hạn (kho chạy mà không có lưới đỡ)", () => {
+test("4b having NO copy at all is also overdue (a running store with no safety net)", () => {
   const st = backupStale(join(DIR, "khong-co-o-dau", "global_memory.db"));
   assert.equal(st.stale, true);
   assert.equal(st.ageMs, null, "không có bản thì tuổi là null, KHÔNG được bịa số 0");

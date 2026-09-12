@@ -154,7 +154,7 @@ test("full depth writes one self-contained snapshot and clears the delta series"
 // đổi máy, nên nó phải có lệnh — và lệnh đó phải TỪ CHỐI khi chưa chứng minh được là
 // không mất gì, chứ không phải xoá theo lời hứa.
 
-test("prune-host TỪ CHỐI khi bundle của máy cũ CHƯA nằm trong kho máy này", async (t) => {
+test("prune-host REFUSES while the old machine's bundle is not yet in this machine's store", async (t) => {
   sandboxHome(t);
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
@@ -177,7 +177,7 @@ test("prune-host TỪ CHỐI khi bundle của máy cũ CHƯA nằm trong kho má
   assert.equal(enc(dir).filter((f) => f.includes("DEAD-PC")).length, 1, "dry-run không được đụng file");
 });
 
-test("prune-host xoá được SAU khi máy này đã merge đủ và đang phát series phủ hết kho", async (t) => {
+test("prune-host can delete AFTER this machine has merged everything and is publishing a series covering the store", async (t) => {
   sandboxHome(t);
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);
@@ -209,7 +209,7 @@ test("prune-host xoá được SAU khi máy này đã merge đủ và đang phá
   assert.equal(msgCount(NEW), totalBefore, "XOÁ TRÊN DRIVE KHÔNG ĐƯỢC ĐỤNG KHO LOCAL");
 });
 
-test("prune-host không cho tự dọn series của CHÍNH máy đang chạy", async (t) => {
+test("prune-host does not let a machine prune its OWN running series", async (t) => {
   sandboxHome(t);
   const root = tempDir(t, "zemory-ds-");
   const dir = join(root, "drive"); mkdirSync(dir);

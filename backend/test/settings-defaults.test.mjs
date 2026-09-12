@@ -27,7 +27,7 @@ async function withEmptyConfig(fn) {
   }
 }
 
-test("config RỖNG ⇒ rerank TẮT (plan/05 §4.E opt-in; điều 12 cấm bật mặc định thứ chưa qua gate)", async () => {
+test("an EMPTY config leaves rerank OFF (plan/05 S4.E opt-in; constitution 12 forbids defaulting on anything that has not passed a gate)", async () => {
   await withEmptyConfig(async (dir) => {
     writeFileSync(join(dir, ".zemory-config-probe"), "");
     const { getRerankSetting } = await import(`../../dist/config/settings.js?cfg=${Date.now()}`);
@@ -35,7 +35,7 @@ test("config RỖNG ⇒ rerank TẮT (plan/05 §4.E opt-in; điều 12 cấm b�
   });
 });
 
-test("mặc định các công tắc nặng khác: sync 'lean', KHÔNG kèm ảnh", async () => {
+test("the other heavy switch defaults: sync 'lean', images NOT included", async () => {
   await withEmptyConfig(async () => {
     const { getSyncLevel, getSyncAttachments } = await import(`../../dist/config/settings.js?cfg=${Date.now()}b`);
     assert.equal(getSyncLevel(), "lean", "bundle mặc định phải là bản gọn (−74%)");
@@ -46,7 +46,7 @@ test("mặc định các công tắc nặng khác: sync 'lean', KHÔNG kèm ản
 // Ngưỡng cảnh báo context — trước là hằng chôn trong `capture-hook.ts` (05_TODO §🧷).
 // Mặc định phải GIỮ NGUYÊN 95, và giá trị vô lý phải bị KẸP chứ không được ghi thẳng: một
 // ngưỡng 0 hay 150 lọt vào config sẽ làm hook hoặc spam mỗi prompt, hoặc câm vĩnh viễn.
-test("context warn threshold: mặc định 95, kẹp trong [50,99], rác không phá được config", async () => {
+test("context warn threshold: 95 by default, clamped to [50,99], and junk cannot break the config", async () => {
   await withEmptyConfig(async () => {
     const { getContextWarnPercent, setContextWarnPercent } = await import(`../../dist/config/settings.js?cfg=${Date.now()}c`);
     assert.equal(getContextWarnPercent(), 95, "mặc định KHÔNG được đổi lặng lẽ khi phơi ra config");

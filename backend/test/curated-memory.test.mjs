@@ -66,7 +66,7 @@ metadata:
 Turn the daemon off before running the gate, otherwise embed tests OOM.
 `;
 
-test("ingest: 1 file = 1 session, lane claude-code-memory, title từ frontmatter, project map qua registry", (t) => {
+test("ingest: 1 file = 1 session, lane claude-code-memory, title from the frontmatter, project mapped through the registry", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   r.write("gate-needs-daemon-off.md", FACT);
@@ -97,7 +97,7 @@ test("ingest: 1 file = 1 session, lane claude-code-memory, title từ frontmatte
   }
 });
 
-test("idempotent: quét lại không đổi gì · file ĐỔI ⇒ whole-replace đúng nội dung mới", (t) => {
+test("idempotent: a rescan changes nothing; a CHANGED file whole-replaces with the new content", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   const p = r.write("fact.md", FACT, 60_000);
@@ -122,7 +122,7 @@ test("idempotent: quét lại không đổi gì · file ĐỔI ⇒ whole-replace
   assert.equal(statSync(p).mtimeMs, before, "adapter không được chạm file nguồn (điều 3/10)");
 });
 
-test("redact lúc nạp: secret trong file memory KHÔNG vào kho dạng trần (điều 7)", (t) => {
+test("redact on ingest: a secret inside a memory file never enters the store in the clear (constitution 7)", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   const secret = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ00-abcdefgAA";
@@ -139,7 +139,7 @@ test("redact lúc nạp: secret trong file memory KHÔNG vào kho dạng trần 
   }
 });
 
-test("scope exclude chặn từ CỬA NẠP: lane bị loại ⇒ 0 session + được BÁO, không cắt âm thầm", (t) => {
+test("scope exclude blocks at the INGEST DOOR: an excluded lane yields 0 sessions AND is REPORTED, never cut silently", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   r.write("fact.md", FACT);
@@ -151,7 +151,7 @@ test("scope exclude chặn từ CỬA NẠP: lane bị loại ⇒ 0 session + đ
   );
 });
 
-test("enc dir KHÔNG có trong registry ⇒ project_root NULL, không đoán bừa", (t) => {
+test("an enc dir missing from the registry yields project_root NULL, never a guess", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   const strangeDir = join(r.home, ".claude", "projects", "x--stranger-Repo", "memory");
@@ -167,7 +167,7 @@ test("enc dir KHÔNG có trong registry ⇒ project_root NULL, không đoán b�
   }
 });
 
-test("enumerate chỉ nhặt memory/*.md — transcript .jsonl và file ngoài memory/ không bị đụng", (t) => {
+test("enumerate picks up only memory/*.md - .jsonl transcripts and files outside memory/ are untouched", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   const projDir = join(r.home, ".claude", "projects", r.enc);
@@ -179,7 +179,7 @@ test("enumerate chỉ nhặt memory/*.md — transcript .jsonl và file ngoài m
   assert.ok(files[0].path.endsWith("fact.md"));
 });
 
-test("phụ tùng: encode/decode + memoryTitle fallback theo đúng bậc thang", (t) => {
+test("helpers: encode/decode plus memoryTitle falling back down the right ladder", (t) => {
   const r = rig();
   t.after(() => r.cleanup());
   assert.equal(encodeProjectDir("d:\\huy.nguyen\\Tool\\Zemory"), "d--huy-nguyen-Tool-Zemory");

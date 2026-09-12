@@ -5,13 +5,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { extractPhase } from "../../dist/jobs/syncjob.js";
 
-test("một dòng phase trọn vẹn trong một khối", () => {
+test("a complete phase line inside one block", () => {
   const r = extractPhase("", "[phase] write\n", "");
   assert.equal(r.phase, "write");
   assert.equal(r.buf, "");
 });
 
-test("khối cắt ngang giữa dòng — phải ghép lại đúng ở lượt kế", () => {
+test("a block cut mid-line - it must be rejoined correctly on the next round", () => {
   const a = extractPhase("", "[phase] wr", "");
   assert.equal(a.phase, "", "chưa có \n thì chưa được tính là một dòng");
   assert.equal(a.buf, "[phase] wr");
@@ -19,17 +19,17 @@ test("khối cắt ngang giữa dòng — phải ghép lại đúng ở lượt 
   assert.equal(b.phase, "write");
 });
 
-test("nhiều dòng phase trong CÙNG một khối ⇒ lấy dòng CUỐI (mới nhất)", () => {
+test("several phase lines in the SAME block yield the LAST one (the newest)", () => {
   const r = extractPhase("", "[phase] export\n[phase] write\n[phase] verify\n", "");
   assert.equal(r.phase, "verify");
 });
 
-test("dòng KHÔNG phải phase (log thường) không được ghi đè phase đang có", () => {
+test("a line that is NOT a phase line (ordinary log) must not overwrite the current phase", () => {
   const r = extractPhase("", "  ⏳ đang chờ máy X (30s)…\n[sync] nối khối trượt\n", "write");
   assert.equal(r.phase, "write", "phase phải GIỮ NGUYÊN, không bị dòng log khác đè thành rỗng");
 });
 
-test("dòng dở cuối khối được giữ lại nguyên vẹn cho lượt sau, không bị nuốt hay nhân đôi", () => {
+test("a partial trailing line is kept intact for the next round, neither swallowed nor duplicated", () => {
   const r = extractPhase("", "[phase] scan\n[phase] mer", "");
   assert.equal(r.phase, "scan");
   assert.equal(r.buf, "[phase] mer");

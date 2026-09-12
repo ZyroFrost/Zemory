@@ -19,7 +19,7 @@ import { projectKey } from "../../dist/core/config.js";
 const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
-test("F1 — memory_doctor probe ĐÚNG những engine mà mô tả của nó hứa", async () => {
+test("F1 - the memory_doctor probe really probes the engines its description promises", async () => {
   const doc = TOOLS.find((t) => t.name === "memory_doctor");
   assert.ok(doc, "thiếu memory_doctor");
   const promised = [];
@@ -50,7 +50,7 @@ test("F1 — memory_doctor probe ĐÚNG những engine mà mô tả của nó h�
   }
 });
 
-test("F4 — chỉ còn MỘT bản so đường dẫn, và nó nắn đủ ba thứ hay vấp", () => {
+test("F4 - only ONE path comparison is left, and it normalises all three usual traps", () => {
   // Ba thứ: dấu phân cách, gạch cuối, hoa/thường (Windows).
   const a = projectKey("D:\\Zyro\\Tool\\Zemory");
   assert.equal(projectKey("d:\\Zyro\\Tool\\Zemory"), a, "hoa/thường ổ đĩa phải cùng khoá");

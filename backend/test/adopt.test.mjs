@@ -110,7 +110,7 @@ test("ensureHarness renames a gen-3 folder (04_TODO/05_CHANGES) to the current n
 // `plan/`·`planning/` cấp 1 = 0/23 ⇒ hành vi này gần như không giúp ai, nhưng khi nổ thì nổ
 // vào dữ liệu không dựng lại được. Hai khẳng định dưới đây là hai NỬA của cùng một luật:
 // không dời (①) VÀ phải nói ra là mình thấy (②) — im lặng bỏ qua cũng là một dạng hỏng.
-test("ensureHarness KHÔNG dời plan/ · planning/ của repo, chỉ BÁO (ADAPT v2 · N1)", (t) => {
+test("ensureHarness does NOT move the repo's plan/ or planning/, it only REPORTS (ADAPT v2 - N1)", (t) => {
   const root = tempDir(t, "zemory-adapt-sovereign-");
   for (const dir of ["plan", "planning"]) {
     mkdirSync(join(root, dir), { recursive: true });
@@ -146,7 +146,7 @@ test("ensureHarness KHÔNG dời plan/ · planning/ của repo, chỉ BÁO (ADAP
   assert.equal(existsSync(join(root, "docs", "plan", "00_overview.md")), true);
 });
 
-test("repo không có plan/ sẵn ⇒ untouchedLegacyPlan rỗng (không báo oan)", (t) => {
+test("a repo with no plan/ yields an empty untouchedLegacyPlan (no false positive)", (t) => {
   const root = tempDir(t, "zemory-adapt-clean-");
   const r = ensureHarness(root);
   assert.deepEqual(r.untouchedLegacyPlan, [], "trường hợp thường phải im lặng");
@@ -156,7 +156,7 @@ test("repo không có plan/ sẵn ⇒ untouchedLegacyPlan rỗng (không báo oa
 //
 // 43% repo lớn đã có AGENTS.md riêng. Bản trước gộp ca đó im lặng vào "kept existing":
 // harness trông như "đã nhận" mà không bao giờ được nạp, và không gì báo cho ai biết.
-test("entry là bản riêng của repo, KHÔNG nhắc harness ⇒ báo 'chưa nối' kèm dòng con trỏ", (t) => {
+test("an entry that is the repo's own and never mentions the harness reports 'not linked' plus a pointer line", (t) => {
   const root = tempDir(t, "zemory-entry-unlinked-");
   writeFileSync(join(root, "AGENTS.md"), "# Quy ước nội bộ của team\nĐây là file của repo.\n");
   writeFileSync(join(root, "CLAUDE.md"), "# Ghi chú riêng\n");
@@ -173,7 +173,7 @@ test("entry là bản riêng của repo, KHÔNG nhắc harness ⇒ báo 'chưa n
   assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), "# Quy ước nội bộ của team\nĐây là file của repo.\n");
 });
 
-test("entry bản riêng NHƯNG đã nhắc tới nhà harness ⇒ coi là nối rồi, không báo", (t) => {
+test("an own entry that DOES mention the harness home counts as linked and is not reported", (t) => {
   const root = tempDir(t, "zemory-entry-linked-");
   writeFileSync(join(root, "AGENTS.md"), "# Team\n> Harness: đọc docs/agent/ trước khi làm.\n");
 
@@ -187,7 +187,7 @@ test("entry bản riêng NHƯNG đã nhắc tới nhà harness ⇒ coi là nối
   assert.ok(!r.entriesUnlinked.length, `không được báo gì thêm: ${JSON.stringify(r.entriesUnlinked)}`);
 });
 
-test("nối GIÁN TIẾP: CLAUDE.md chỉ chứa @AGENTS.md, AGENTS.md đã trỏ harness ⇒ cả hai nối", (t) => {
+test("INDIRECT link: CLAUDE.md only holds @AGENTS.md and AGENTS.md points at the harness - both count as linked", (t) => {
   // Ca thật đã báo oan trên repo tham chiếu: khuôn "một nguồn, hai cửa" là thiết kế
   // của CHÍNH template zemory — CLAUDE.md import AGENTS.md thay vì lặp nội dung.
   const root = tempDir(t, "zemory-entry-transitive-");
@@ -203,7 +203,7 @@ test("nối GIÁN TIẾP: CLAUDE.md chỉ chứa @AGENTS.md, AGENTS.md đã tr�
   );
 });
 
-test("entry do template sinh (mang dấu zemory) ⇒ không bao giờ bị báo 'chưa nối'", (t) => {
+test("a template-generated entry (carrying the zemory mark) is never reported as 'not linked'", (t) => {
   const root = tempDir(t, "zemory-entry-generated-");
   ensureHarness(root); // lần 1: scaffold cả hai entry từ template
   const r = ensureHarness(root); // lần 2: chạy lại trên chính kết quả của mình
@@ -239,7 +239,7 @@ test("validate enforces the APP standard by default (warns on missing backend/fr
   assert.doesNotMatch(msgs, /non-app/i);
 });
 
-test("dự án TRẮNG (vừa init, chưa có code) KHÔNG bị cảnh báo đặt code sai chỗ", (t) => {
+test("a BLANK project (just initialised, no code yet) is not warned about misplaced code", (t) => {
   // Chặn hồi quy cho đúng lỗi vừa sửa: `doctor` báo "1 lỗi cần sửa" ngay phút đầu người mới
   // dùng công cụ, trong khi họ chưa viết dòng nào. Không có code thì không thể để code sai chỗ.
   const root = tempDir(t, "zemory-profile-blank-");

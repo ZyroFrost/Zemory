@@ -28,7 +28,7 @@ const FIXTURE = [
 const file = join(dir, "scan-web-part.json");
 writeFileSync(file, JSON.stringify(FIXTURE), "utf8");
 
-test("① ĐẢO thứ tự: tin vào kho theo chiều thời gian tăng dần", () => {
+test("1 order is REVERSED: messages enter the store in ascending time order", () => {
   const [s] = geminiAdapter.parseFileMulti(file);
   assert.deepEqual(
     s.messages.map((m) => m.content),
@@ -39,7 +39,7 @@ test("① ĐẢO thứ tự: tin vào kho theo chiều thời gian tăng dần",
   assert.ok(ts.every((v, i) => i === 0 || v >= ts[i - 1]), "mốc thời gian phải không giảm");
 });
 
-test("② khoá dedup lấy từ `rid` của nền, KHÔNG phải chỉ số thứ tự", () => {
+test("2 the dedup key comes from the platform's `rid`, NOT from the positional index", () => {
   const [s] = geminiAdapter.parseFileMulti(file);
   assert.deepEqual(
     s.messages.map((m) => m.uuid),
@@ -55,12 +55,12 @@ test("② khoá dedup lấy từ `rid` của nền, KHÔNG phải chỉ số th�
   writeFileSync(f2, JSON.stringify(grown), "utf8");
   const [s2] = geminiAdapter.parseFileMulti(f2);
   const cu = new Set(s.messages.map((m) => m.uuid));
-  const giu = s2.messages.filter((m) => cu.has(m.uuid)).length;
-  assert.equal(giu, 6, "mọi id cũ phải còn nguyên sau khi hội thoại mọc thêm — nếu không là nạp trùng cả hội thoại");
+  const kept = s2.messages.filter((m) => cu.has(m.uuid)).length;
+  assert.equal(kept, 6, "mọi id cũ phải còn nguyên sau khi hội thoại mọc thêm — nếu không là nạp trùng cả hội thoại");
   assert.equal(s2.messages.length, 8);
 });
 
-test("③ vai · tiêu đề · id phiên mang tiền tố của nền", () => {
+test("3 role, title and session id all carry the platform prefix", () => {
   const [s] = geminiAdapter.parseFileMulti(file);
   assert.equal(s.sessionId, "geminiweb-c_57eb54e22cdb9783");
   assert.equal(s.title, "Đánh giá repo zemory và tài liệu");
@@ -68,7 +68,7 @@ test("③ vai · tiêu đề · id phiên mang tiền tố của nền", () => {
   assert.ok(s.messages.every((m) => m.toolName === null));
 });
 
-test("④ lượt thiếu một đầu vẫn giữ đầu còn lại; lượt rỗng bị bỏ", () => {
+test("4 a turn missing one side keeps the other side; an empty turn is dropped", () => {
   const f = join(dir, "half.json");
   // Fixture viết ĐÚNG CHIỀU NỀN TRẢ: mới nhất trước. (Bản đầu tôi viết xuôi nên ca này đỏ với
   // `['assistant','user']` — cổng bắt đúng, sai là ở kỳ vọng chứ không ở code.)
@@ -84,13 +84,13 @@ test("④ lượt thiếu một đầu vẫn giữ đầu còn lại; lượt r�
   assert.deepEqual(s.messages.map((m) => m.role), ["user", "assistant"]);
 });
 
-test("⑤ tiền tố phiên KHỚP `sessionPrefix` khai trong PLATFORMS", async () => {
+test("5 the session prefix MATCHES the `sessionPrefix` declared in PLATFORMS", async () => {
   const { PLATFORMS } = await import("../../dist/memory/scanweb.js");
   const [s] = geminiAdapter.parseFileMulti(file);
   assert.ok(s.sessionId.startsWith(PLATFORMS.gemini.sessionPrefix), "lệch là resume không khớp ⇒ mỗi lượt quét kéo lại cả kho");
 });
 
-test("⑥ file hỏng / hội thoại 0 tin ⇒ null, KHÔNG ném", () => {
+test("6 a broken file or a 0-message conversation yields null and does NOT throw", () => {
   const bad = join(dir, "bad.json");
   writeFileSync(bad, "{khong phai json", "utf8");
   assert.equal(geminiAdapter.parseFileMulti(bad), null);

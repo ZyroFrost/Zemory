@@ -21,9 +21,9 @@ export interface ScopeLane {
   origin?: string;
   host?: string;
   source?: string;
-  /** v24 — KHE TAI KHOAN cua nguon web. Hoi thoai nam theo TAI KHOAN chu khong theo nen, nen
-   *  mot nen co the co nhieu lane con; thieu chieu nay thi o tick theo tai khoan khong loc
-   *  duoc gi (user bat 2026-08-28). NULL trong kho (phien cu) => lane khong ro. */
+  /** v24 — the ACCOUNT SLOT of a web source. Conversations belong to an ACCOUNT rather than to a platform, so
+   *  one platform can hold several child lanes; without this dimension a per-account tick box filters
+   *  nothing (user asked for it 2026-08-28). NULL in the store (an older session) => the lane is unknown. */
   account?: string;
 }
 

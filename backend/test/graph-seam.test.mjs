@@ -24,7 +24,7 @@ function repo(t, files) {
 
 const NODES = (...ids) => ids.map((id) => ({ id }));
 
-test("seam: FE gọi route → BE chứa nguyên văn route ⇒ một cạnh api·inferred, gộp mức file", (t) => {
+test("seam: FE calls a route and the BE holds that exact route, yielding one api-inferred edge merged at file level", (t) => {
   const root = repo(t, {
     "frontend/scripts/a.js": "zGet('/foo?x='+v).then();\nfetch('/bar');\nzPost('/foo');",
     "backend/src/y.ts": 'if (p === "/foo") return; // handler',
@@ -41,7 +41,7 @@ test("seam: FE gọi route → BE chứa nguyên văn route ⇒ một cạnh api
   assert.equal(e.count, 2, "zGet + zPost cùng /foo = 2 chỗ gọi");
 });
 
-test("seam: route cắt đúng ở ? và ở chỗ ghép biến — không nuốt query/template", (t) => {
+test("seam: the route is cut correctly at ? and at a variable join - no query string or template swallowed", (t) => {
   const root = repo(t, {
     "frontend/scripts/a.js": "zGet('/memory-scan?web=1');\nzGet('/check?feature='+f);\nfetch(`/doc${q}`);",
     "backend/src/y.ts": '"/memory-scan" · "/check" · "/doc"',
@@ -50,7 +50,7 @@ test("seam: route cắt đúng ở ? và ở chỗ ghép biến — không nuố
   assert.deepEqual(edges[0].routes, ["/check", "/doc", "/memory-scan"], "route TRẦN, không dính ?query hay ${var}");
 });
 
-test("seam: KHÔNG vớ chuỗi bừa — chỉ nhận fetch/zGet/zPost, bỏ đuôi file tĩnh", (t) => {
+test("seam: it does NOT grab arbitrary strings - only fetch/zGet/zPost, and static file extensions are dropped", (t) => {
   const root = repo(t, {
     // '/etc/passwd' nằm trong chuỗi thường, '/logo.png' là asset — cả hai không phải API
     "frontend/scripts/a.js": "var p='/etc/passwd'; fetch('/logo.png'); zGet('/real');",
@@ -61,12 +61,12 @@ test("seam: KHÔNG vớ chuỗi bừa — chỉ nhận fetch/zGet/zPost, bỏ đ
   assert.deepEqual(edges[0].routes, ["/real"]);
 });
 
-test("seam: repo không có frontend/ (non-app, CLI thuần) ⇒ trả [] êm, không ném", (t) => {
+test("seam: a repo with no frontend/ (non-app, pure CLI) returns [] quietly without throwing", (t) => {
   const root = repo(t, { "backend/src/y.ts": '"/x"' });
   assert.deepEqual(buildSeamEdges(root, NODES("backend/src/y.ts")), []);
 });
 
-test("seam trên CHÍNH repo này: nối được frontend/scripts → backend/src/ui.ts", () => {
+test("seam on THIS repo: it connects frontend/scripts to backend/src/ui.ts", () => {
   const root = process.cwd();
   const g = buildCodeGraph(root);
   const edges = buildSeamEdges(root, g.nodes);

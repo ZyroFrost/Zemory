@@ -29,7 +29,7 @@ function polyglotRepo(t) {
   return root;
 }
 
-test("① file ngôn ngữ mở rộng thành NODE, mang cờ noImportLayer; ts thì KHÔNG mang", (t) => {
+test("1 an extended-language file becomes a NODE carrying the noImportLayer flag; ts does NOT carry it", (t) => {
   const g = buildCodeGraph(polyglotRepo(t));
   const byId = new Map(g.nodes.map((n) => [n.id, n]));
   for (const f of ["src/pull.sh", "src/Loader.java", "src/pull.go", "src/pull.rs", "src/svc.cs", "src/pull.rb"]) {
@@ -41,7 +41,7 @@ test("① file ngôn ngữ mở rộng thành NODE, mang cờ noImportLayer; ts 
   assert.ok(byId.get("src/main.ts").fanOut >= 1, "cạnh import ts phải còn nguyên (hành vi cũ)");
 });
 
-test("② grammar nạp được ⇒ symbol AST đúng tên; ruby hỏng ⇒ fail-open không crash", async (t) => {
+test("2 with the grammar loaded, AST symbols get the right names; a broken ruby grammar fails open without crashing", async (t) => {
   const g = buildCodeGraph(polyglotRepo(t));
   await enrichGraphSymbols(g); // ruby LOAD FAIL nằm trong đây — không được ném
   const sym = (id) => (g.nodes.find((n) => n.id === id)?.symbolsDetail ?? []).map((s) => s.name);
@@ -53,7 +53,7 @@ test("② grammar nạp được ⇒ symbol AST đúng tên; ruby hỏng ⇒ fai
   assert.deepEqual(sym("src/pull.rb"), [], "ruby grammar fail — symbol rỗng là ĐÚNG, miễn đừng crash");
 });
 
-test("③ fitness: node noImportLayer nằm NGOÀI isolated_pct — không phạt thứ chưa đo được", (t) => {
+test("3 fitness: noImportLayer nodes sit OUTSIDE isolated_pct - do not punish what cannot be measured yet", (t) => {
   const g = buildCodeGraph(polyglotRepo(t));
   const iso = graphFitness(g).metrics.find((m) => m.metric === "isolated_pct");
   // 2 file ts nối nhau ⇒ 0 isolated trên 2 node đủ điều kiện; 6 file ngôn ngữ mở rộng
@@ -62,7 +62,7 @@ test("③ fitness: node noImportLayer nằm NGOÀI isolated_pct — không phạ
   assert.ok(iso.passed, "gate phải xanh");
 });
 
-test("④ bảng EXTRA_LANG_EXT và bảng wasm phải KHỚP nhau — thêm ext mà quên grammar là symbol câm lặng", () => {
+test("4 the EXTRA_LANG_EXT table and the wasm table must MATCH - adding an ext without a grammar means silent symbols", () => {
   // Parity kiểu structure-sync: hai bảng ở hai file là hai lăng kính của cùng một danh sách.
   const wanted = new Set(Object.values(EXTRA_LANG_EXT));
   for (const lang of wanted) {
@@ -70,7 +70,7 @@ test("④ bảng EXTRA_LANG_EXT và bảng wasm phải KHỚP nhau — thêm ext
   }
 });
 
-test("⑤ orphans và isolated_pct phải nói MỘT câu — node chưa có lớp import không bị gọi là mồ côi", (t) => {
+test("5 orphans and isolated_pct must tell ONE story - a node with no import layer is not called an orphan", (t) => {
   // Audit 2026-08-21 bắt được: fitness đã loại node noImportLayer nhưng `orphans` thì chưa ⇒
   // hai bề mặt của CÙNG một sự thật nói khác nhau, và consumer đọc `graph export` sẽ thấy
   // node .go nằm trong orphans (nói dối: "mồ côi" ≠ "chưa đo được cạnh").
@@ -90,7 +90,7 @@ test("⑤ orphans và isolated_pct phải nói MỘT câu — node chưa có l�
 // 🔴 Bản ĐẦU của ca này là TRANG TRÍ: nó dựng graph GIẢ bằng cách chèn node vào `g.nodes`, mà
 // `orphans` được tính TRONG `buildCodeGraph` ⇒ assertion không bao giờ soi tới `orphans`. Đột biến
 // *"trả `orphans` về lọc cũ"* vẫn XANH. Phải dựng REPO THẬT trên đĩa mới đo được cả hai bề mặt.
-test("⑤b lớp ĐIỂM VÀO cũng phải bị loại ở CẢ HAI bề mặt — đo trên repo THẬT, không graph giả", (t) => {
+test("5b the ENTRY class must be excluded on BOTH surfaces - measured on the REAL repo, not a fake graph", (t) => {
   const root = tempDir(t, "zemory-entryclass-");
   mkdirSync(join(root, "backend", "src"), { recursive: true });
   mkdirSync(join(root, "backend", "test"), { recursive: true });
@@ -99,7 +99,7 @@ test("⑤b lớp ĐIỂM VÀO cũng phải bị loại ở CẢ HAI bề mặt �
   writeFileSync(join(root, "backend", "src", "a.ts"), 'import { b } from "./b.js";\nexport const a = b;\n');
   writeFileSync(join(root, "backend", "src", "b.ts"), "export const b = 1;\n");
   // Lớp ĐIỂM VÀO, 0 cạnh — theo cấu trúc không thể có cạnh import.
-  writeFileSync(join(root, "backend", "test", "x.test.mjs"), "// khong import gi trong project\n");
+  writeFileSync(join(root, "backend", "test", "x.test.mjs"), "// imports nothing from the project\n");
   writeFileSync(join(root, "backend", "scripts", "y.mjs"), "// script doc lap\n");
   writeFileSync(join(root, "eslint.config.js"), "export default [];\n");
   // Module NGUỒN chết thật — ca ÂM giữ sức cho cổng.

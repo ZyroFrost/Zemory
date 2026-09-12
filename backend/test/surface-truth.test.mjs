@@ -22,7 +22,7 @@ import { openMemory } from "../../dist/memory/db.js";
 import { writeMemoryShareKey } from "../../dist/memory/share.js";
 import { tempDir } from "./helpers.mjs";
 
-test("① tin CỐ Ý ngoài phạm vi nhúng phải hiện ra trên bề mặt, không núp sau `remaining 0`", (t) => {
+test("1 messages DELIBERATELY outside the embed scope must show on the surface, not hide behind `remaining 0`", (t) => {
   const root = tempDir(t, "zemory-oos-");
   const dbPath = join(root, "memory.db");
   const db = openMemory(dbPath);
@@ -57,7 +57,7 @@ test("① tin CỐ Ý ngoài phạm vi nhúng phải hiện ra trên bề mặt,
   assert.notEqual(v.outOfScope, v.remaining, "hai con số đo hai thứ khác nhau; gộp lại là xoá mất ranh giới");
 });
 
-test("① `memory info` cũng phải nói ra, không chỉ đường JSON của daemon", (t) => {
+test("1 `memory info` must say it too, not only the daemon's JSON path", (t) => {
   const root = tempDir(t, "zemory-oos-info-");
   const dbPath = join(root, "memory.db");
   const db = openMemory(dbPath);
@@ -73,7 +73,7 @@ test("① `memory info` cũng phải nói ra, không chỉ đường JSON của 
   assert.match(out, /ngoài phạm vi nhúng/, `dòng vec_chunks phải nêu số cố-ý-bỏ. Thấy:\n${out}`);
 });
 
-test("② file không giải mã được trên kho chung phải LÊN LOG, không núp trong merged[]", async (t) => {
+test("2 a file that cannot be decrypted on the shared channel must reach the LOG, never hide inside merged[]", async (t) => {
   const { syncDrive } = await import("../../dist/memory/share.js");
   const home = tempDir(t, "zemory-mergelog-home-");
   const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB };
@@ -141,7 +141,7 @@ test("② file không giải mã được trên kho chung phải LÊN LOG, khôn
 //    tin nào thiếu vector"*, nên kênh càng CỤT thì kho tạm càng ít tin ⇒ con số đó càng NHỎ.
 //    Một cái thước tụt về phía "yên tâm" đúng lúc hệ hỏng nặng nhất còn tệ hơn không có thước.
 //    Ca này tái hiện đúng hình dạng đó: dựng kênh đủ, mở khúc 2, rồi BỎ khúc 1.
-test("③ mất khúc 1 ⇒ phép đo phải thấy kênh HỤT TIN, không chỉ đếm vector", async (t) => {
+test("3 a missing segment 1 means the measurement must see the channel MISSING MESSAGES, not merely count vectors", async (t) => {
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const home = tempDir(t, "zemory-short-home-");
   const save = {
@@ -213,7 +213,7 @@ test("③ mất khúc 1 ⇒ phép đo phải thấy kênh HỤT TIN, không ch�
 //    đẹp** — không ai biết kho chính đã rỗng suốt 20 giờ. Cái hỏng chưa bao giờ là "nó hội tụ",
 //    mà là **hội tụ trong im lặng khi đang hỏng**. Và bản lùi là thứ lượt gộp KẾ TIẾP xoá ngay
 //    dòng đầu (`rmSync(MAIN_BAK)`) ⇒ sống nhờ nó là sống trên một file đã có án tử.
-test("⑤ khúc chính hụt hơn bản lùi ⇒ phải LÊN LOG, không được hội tụ trong im lặng", async (t) => {
+test("5 a main segment shorter than the backup must reach the LOG, it must not converge in silence", async (t) => {
   const { syncDrive } = await import("../../dist/memory/share.js");
   const home = tempDir(t, "zemory-bak-home-");
   const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB, ZEMORY_SEGMENT_MAX: process.env.ZEMORY_SEGMENT_MAX };
@@ -283,7 +283,7 @@ test("⑤ khúc chính hụt hơn bản lùi ⇒ phải LÊN LOG, không đượ
 //    ngay ở vòng dựng kho tạm, tức chết TRƯỚC cả phép đếm mà ③ vừa thêm: khúc 1 lúc đó là một
 //    file 0 byte do một lượt gộp trượt để lại. Công cụ chẩn đoán câm đúng lúc cần nó nhất.
 //    Bài học: một khúc hỏng KHÔNG được giết cả phép đo — phải ghi tên nó rồi đi tiếp.
-test("④ khúc 0 byte trên kênh: phải GHI TÊN và đi tiếp, không được ném vỡ cả phép đo", async (t) => {
+test("4 a 0-byte segment on the channel: NAME IT and carry on, never throw and break the whole measurement", async (t) => {
   const { syncDrive, vectorCatchUp } = await import("../../dist/memory/share.js");
   const home = tempDir(t, "zemory-unread-home-");
   const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, GLOBAL_MEMORY_DB: process.env.GLOBAL_MEMORY_DB, ZEMORY_SEGMENT_MAX: process.env.ZEMORY_SEGMENT_MAX };

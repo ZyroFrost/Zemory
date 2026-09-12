@@ -39,7 +39,7 @@ function repo(t, harness) {
 
 const checks = (root) => new Set(conform(root).items.map((i) => i.check));
 
-test("khai đủ ⇒ KHÔNG còn đòi slot chuẩn (đây là điểm của hệ ADAPT)", (t) => {
+test("a full declaration means the standard slots are NO LONGER demanded (the whole point of ADAPT)", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   const c = checks(root);
   assert.ok(!c.has("off-standard-dir"), "vẫn đòi slot chuẩn ⇒ chế độ foreign không có tác dụng");
@@ -52,7 +52,7 @@ test("khai đủ ⇒ KHÔNG còn đòi slot chuẩn (đây là điểm của h�
 // Ca thật: repo OpenRCA ăn 4 lần CHẶN cho `.claude` · `.github` · `data` · `secrets` —
 // không cái nào là drift. Đo 23 repo lớn: 6–31 folder cấp 1, 22/23 có dot-entry ở gốc.
 // Nới cổng thì phải kiểm luôn chiều ngược lại, nếu không là tự tạo cổng giả (ca kế tiếp).
-test("dot-entry + data/secrets KHÔNG còn bị chặn (N7 — hết 4 blocking oan)", (t) => {
+test("dot-entries + data/secrets are no longer blocked (N7 - the 4 false blockings are gone)", (t) => {
   const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   for (const d of [".claude", ".github", "data", "secrets"]) {
     mkdirSync(join(root, d), { recursive: true });
@@ -65,7 +65,7 @@ test("dot-entry + data/secrets KHÔNG còn bị chặn (N7 — hết 4 blocking 
   );
 });
 
-test("folder chỉ chứa .md ⇒ ADVISORY, không chặn; folder CHỨA CODE ⇒ vẫn CHẶN (cổng còn nổ được)", (t) => {
+test("a folder holding only .md is ADVISORY, not blocking; a folder HOLDING CODE is still BLOCKED (the gate can still fire)", (t) => {
   const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   mkdirSync(join(root, "notes"), { recursive: true });
   writeFileSync(join(root, "notes", "idea.md"), "# ghi chú\n");
@@ -84,7 +84,7 @@ test("folder chỉ chứa .md ⇒ ADVISORY, không chặn; folder CHỨA CODE �
   assert.ok(blocked.samples.includes("worker"), "phải nêu đúng tên thư mục có code");
 });
 
-test("marker ở harness/ vẫn đọc được, và `ignore` của repo được tôn trọng (N5 + N7)", (t) => {
+test("a marker under harness/ is still read, and the repo's `ignore` is respected (N5 + N7)", (t) => {
   const root = repo(t); // KHÔNG ghi docs/.harness.json
   mkdirSync(join(root, "harness"), { recursive: true });
   writeFileSync(
@@ -106,7 +106,7 @@ test("marker ở harness/ vẫn đọc được, và `ignore` của repo đượ
 // cả 6 file, `conform` vẫn báo thiếu cả 7 — vì nó đi tìm ở `docs/agent`, chỗ không ai bảo
 // nó tìm. Cổng tìm sai chỗ rồi bắt người ta chạy `zemory sync` để "gap-fill" là đẩy họ vào
 // đúng hành vi phá `docs/` của team.
-test("harness ở harness/agent + đủ file ⇒ KHÔNG báo thiếu (N2 — đường lấy từ marker)", (t) => {
+test("harness under harness/agent with the full file set reports nothing missing (N2 - the path comes from the marker)", (t) => {
   const root = repo(t); // repo() ghi sẵn docs/agent + docs/plan; ta dựng thêm nhà harness/
   mkdirSync(join(root, "harness", "agent"), { recursive: true });
   mkdirSync(join(root, "harness", "plan"), { recursive: true });
@@ -134,7 +134,7 @@ test("harness ở harness/agent + đủ file ⇒ KHÔNG báo thiếu (N2 — đ�
   assert.ok(after.samples.some((s) => s.includes("harness/agent/02_RULES.md")), "phải chỉ đúng đường thật");
 });
 
-test("control-char KHÔNG soi file vendor / .min.js (code của người khác)", (t) => {
+test("control-char does NOT scan vendor files or .min.js (other people's code)", (t) => {
   const root = repo(t, { layout: "adapt", slots: { backend: "src" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   mkdirSync(join(root, "app", "public", "vendor"), { recursive: true });
   // Byte 0x01 y như bundle mermaid thật trong repo tham chiếu.
@@ -151,7 +151,7 @@ test("control-char KHÔNG soi file vendor / .min.js (code của người khác)"
   );
 });
 
-test("marker có BOM (PowerShell 5.1 Set-Content) VẪN parse được — không chết im lặng", (t) => {
+test("a marker with a BOM (PowerShell 5.1 Set-Content) still parses - no silent death", (t) => {
   // Ca Windows rất thật: PS 5.1 `-Encoding utf8` ghi BOM, JSON.parse ném ngay ký tự đầu.
   // Trước khi gom về readMarker, 5 người đọc marker đều ngã ca này — và ngã IM LẶNG
   // (buildPolicy mất `protected`, harnessPathsAt rơi fallback sinh guard nhầm chỗ).
@@ -163,7 +163,7 @@ test("marker có BOM (PowerShell 5.1 Set-Content) VẪN parse được — khôn
   assert.equal(fh.slots.backend, "src");
 });
 
-test("mọc thêm folder cấp 1 chưa khai ⇒ ĐỎ", (t) => {
+test("a new undeclared top-level folder goes RED", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src" }, extra: ["docs"] });
   // `pipelines` và `notebooks` có thật nhưng KHÔNG được khai
   const items = conform(root).items.filter((i) => i.check === "foreign-undeclared-dir");
@@ -172,14 +172,14 @@ test("mọc thêm folder cấp 1 chưa khai ⇒ ĐỎ", (t) => {
   assert.ok(items[0].samples.includes("pipelines"), `phải nêu đích danh, thấy ${JSON.stringify(items[0].samples)}`);
 });
 
-test("khai một đường KHÔNG tồn tại ⇒ ĐỎ (bảng lỗi thời)", (t) => {
+test("declaring a path that does NOT exist goes RED (a stale table)", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src", frontend: "webapp" }, extra: ["pipelines", "notebooks", "vendor_stuff", "docs"] });
   const items = conform(root).items.filter((i) => i.check === "foreign-missing-dir");
   assert.equal(items.length, 1);
   assert.ok(items[0].samples.includes("webapp"), "phải chỉ đúng đường đã biến mất");
 });
 
-test("`.harness.json` thiếu / gõ sai / khai RỖNG ⇒ rơi về cổng chuẩn, KHÔNG im lặng bỏ qua", (t) => {
+test("a missing, misspelled or EMPTY `.harness.json` falls back to the standard gate, never a silent skip", (t) => {
   for (const [nhan, h] of [
     ["không có file", undefined],
     ["JSON hỏng", "{ layout: foreign"],
@@ -194,7 +194,7 @@ test("`.harness.json` thiếu / gõ sai / khai RỖNG ⇒ rơi về cổng chu�
   }
 });
 
-test("đường khai chấp nhận khác biệt hình thức (dấu / thừa, \\ của Windows)", (t) => {
+test("a declared path tolerates cosmetic differences (an extra /, Windows backslashes)", (t) => {
   const root = repo(t, { layout: "foreign", slots: { backend: "src/" }, extra: ["pipelines\\", "./notebooks", "vendor_stuff", "docs"] });
   const c = checks(root);
   assert.ok(!c.has("foreign-undeclared-dir"), "khác dấu gạch mà báo chưa khai = bắt bẻ hình thức");

@@ -18,14 +18,14 @@ const CLI = SRC("backend/src/cli.ts");
 const HELP = SRC("backend/src/commands/help.ts");
 const SWEEP = SRC("backend/src/commands/sweep.ts");
 
-test("① hàng kiểm `procs` có thật và CHỈ ĐẾM (không tự giết)", () => {
+test("1 the `procs` check row exists and ONLY COUNTS (it never kills on its own)", () => {
   assert.match(CHECKS, /case "procs": \{/u);
   assert.match(CHECKS, /sweepOrphanBrowsers\(\{[^}]*dryRun: true/su, "hàng kiểm phải chạy ở chế độ DÒ — một cổng tự ý giết tiến trình là cổng vượt quyền");
   // Màu theo SỐ THẬT, không hardcode xanh (bài học `validate` từng luôn xanh dù có lỗi bên dưới).
   assert.match(CHECKS, /state: n > 0 \? "warn" : "on"/u);
 });
 
-test("② endpoint `/sweep-procs` — cú bấm mới đóng, và máy tự quyết 'đang bận'", () => {
+test("2 the `/sweep-procs` endpoint - a fresh click closes them, and the machine decides 'busy' itself", () => {
   assert.match(UI, /if \(p === "\/sweep-procs"\) \{/u);
   // `busy` KHÔNG được nhận từ query: bề mặt quyết là mở đường cho một cú bấm cắt ngang lượt quét web.
   const raw = UI.slice(UI.indexOf('if (p === "/sweep-procs")'), UI.indexOf('if (p === "/set-repo-std-check")'));
@@ -40,7 +40,7 @@ test("② endpoint `/sweep-procs` — cú bấm mới đóng, và máy tự quy�
   assert.doesNotMatch(body, /daemonJobBusy\(\) !== null/u);
 });
 
-test("③ CLI `zemory sweep` — đường dùng được khi daemon đã chết", () => {
+test("3 the `zemory sweep` CLI - the path that still works once the daemon is dead", () => {
   assert.match(CLI, /case "sweep":/u);
   assert.match(HELP, /^\s+" {2}sweep /mu, "verb mới phải có trong help (cổng help-đủ-lệnh)");
   assert.match(SWEEP, /--dry-run/u);
@@ -48,21 +48,21 @@ test("③ CLI `zemory sweep` — đường dùng được khi daemon đã chết
   assert.match(SWEEP, /const dry = args\.includes\("--dry-run"\);/u);
 });
 
-test("④ hàng hiện trên UI + nút Dọn ngay + vào vòng tự kiểm", () => {
+test("4 the row appears in the UI with a Sweep now button and joins the self-check loop", () => {
   assert.match(FE, /\{k:'procs',grp:'f\.grpSync',n:'f\.procs',kind:'check',feat:'procs',act:'sweep'/u);
   assert.match(FE, /data-sys-sweep/u, "phải có nút");
   assert.match(FE, /zPost\('\/sweep-procs'\)/u, "nút phải gọi đúng endpoint");
   assert.match(FE, /var SYS_CHECKS=\[[^\]]*'procs'\]/u, "phải nằm trong danh sách kiểm lại tất cả + nhịp tự kiểm");
 });
 
-test("⑤ i18n đủ HAI từ điển — thiếu một đầu là đổi ngôn ngữ xong vẫn thấy tiếng cũ", () => {
+test("5 i18n covers BOTH dictionaries - a missing side means switching language still shows the old text", () => {
   for (const k of ["f.procs", "f.doc.procs", "sys.sweepNow", "sys.sweeping", "sys.sweepDone", "sys.sweepBusy"]) {
     const n = (I18N.match(new RegExp(`'${k.replace(/\./gu, "\\.")}':`, "gu")) || []).length;
     assert.equal(n, 2, `khoá ${k} phải có ở CẢ HAI từ điển (đang có ${n})`);
   }
 });
 
-test("⑥ hai ngưỡng tuổi khai CẠNH NHAU và dùng đúng chỗ", () => {
+test("6 the two age thresholds are declared SIDE BY SIDE and used in the right places", () => {
   const SW = SRC("backend/src/platform/browsersweep.ts");
   assert.match(SW, /export const BG_SWEEP_MIN_AGE_MS = 30 \* 60_000;/u, "vòng nền: dè dặt vì không ai nhìn");
   assert.match(SW, /export const UI_SWEEP_MIN_AGE_MS = 5 \* 60_000;/u, "người bấm: không bắt chờ nửa tiếng");

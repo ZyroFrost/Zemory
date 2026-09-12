@@ -55,14 +55,14 @@ Nội dung.
 Thiếu quyền.
 `;
 
-test("dạng [ngày]: chỉ head có ngày là entry, heading trong thân bị bỏ qua", () => {
+test("[date] form: only a dated head is an entry, headings inside the body are ignored", () => {
   const e = parseChangelog(BRACKET);
   assert.equal(e.length, 2);
   assert.deepEqual(e.map((x) => x.date), ["2026-07-29", "2026-07-28"]);
   assert.ok(e[0].body.includes("Một heading trong thân"), "heading trần phải nằm trong BODY");
 });
 
-test("dạng ngày KHÔNG ngoặc cũng được nhận (ca PBI_Maintain)", () => {
+test("an UNBRACKETED date form is accepted too (the PBI_Maintain case)", () => {
   const e = parseChangelog(BARE);
   assert.equal(e.length, 2, "phải ra 2 entry, không phải 3");
   assert.deepEqual(e.map((x) => x.date), ["2026-07-28", "2026-07-26"]);
@@ -71,51 +71,51 @@ test("dạng ngày KHÔNG ngoặc cũng được nhận (ca PBI_Maintain)", () =
   assert.ok(e[0].body.includes("Chưa dò được"), "heading trần phải là BODY");
 });
 
-test("hậu tố chữ sau ngày (nhiều entry cùng ngày) vẫn nhận", () => {
+test("a letter suffix after the date (several entries on one day) is still accepted", () => {
   // Quy ước của zemory: 2026-07-28a/b/…/m khi một ngày có nhiều entry.
   const e = parseChangelog("# Change Log\n\n## 2026-07-28m — bản m\nthân\n\n## [2026-07-28n] — bản n\nthân\n");
   assert.deepEqual(e.map((x) => x.date), ["2026-07-28m", "2026-07-28n"]);
 });
 
-test("FILE KHÔNG PHẢI CHANGELOG ⇒ 0 entry (cổng H1)", () => {
+test("a FILE THAT IS NOT A CHANGELOG yields 0 entries (gate H1)", () => {
   // Đây là ca đã xảy ra thật: plan/01_legacy_topology.md sinh 5 entry mang thân bảng SQL.
   const e = parseChangelog(NOT_A_CHANGELOG);
   assert.deepEqual(e, [], "không có H1 'Change Log' và không có head ngày ⇒ không sinh entry nào");
 });
 
-test("changelog legacy (có H1 Change Log, chưa đánh ngày) VẪN parse được", () => {
+test("a legacy changelog (H1 Change Log, not yet dated) still parses", () => {
   // Nhánh legacy giữ lại có chủ đích — chỉ thêm cổng, không xoá.
   const e = parseChangelog("# Change Log\n\n## Việc chưa đánh ngày\nthân một\n\n## Việc khác\nthân hai\n");
   assert.equal(e.length, 2, "vẫn seed được changelog cũ");
   assert.equal(e.filter((x) => !x.date).length, 2, "chúng đúng là date=NULL — đó là dữ liệu, không phải rác");
 });
 
-test("H1 'Change Log' nhận mọi biến thể thật đã gặp", () => {
+test("the 'Change Log' H1 matches every real variant seen so far", () => {
   for (const h1 of ["# Change Log", "# <PROJECT> — Change Log", "# DuAnB — Change Log", "# change log"]) {
     const e = parseChangelog(`${h1}\n\n## Việc không ngày\nthân\n`);
     assert.equal(e.length, 1, `H1 "${h1}" phải được nhận là changelog`);
   }
 });
 
-test("`## 2026 kế hoạch` KHÔNG bị nhận là head ngày", () => {
+test("`## 2026 plan` is NOT taken as a date head", () => {
   // Ngày phải đủ yyyy-mm-dd; một con số năm trần là tiêu đề thường.
   const e = parseChangelog("# Change Log\n\n## [2026-07-29] — thật\nthân\n\n## 2026 kế hoạch\nthân\n");
   assert.equal(e.length, 1, "chỉ 1 entry — cái có ngày");
   assert.ok(e[0].body.includes("2026 kế hoạch"));
 });
 
-test("file rỗng / chỉ có H1 ⇒ 0 entry, không nổ", () => {
+test("an empty file or one with only an H1 yields 0 entries and does not throw", () => {
   assert.deepEqual(parseChangelog(""), []);
   assert.deepEqual(parseChangelog("# Change Log\n"), []);
 });
 
-test("CRLF vẫn parse đúng (bản Windows từng ra 0 entry)", () => {
+test("CRLF still parses (the Windows build used to yield 0 entries)", () => {
   const e = parseChangelog(BARE.replace(/\n/g, "\r\n"));
   assert.equal(e.length, 2);
   assert.deepEqual(e.map((x) => x.date), ["2026-07-28", "2026-07-26"]);
 });
 
-test("head trong khối fence KHÔNG phải entry", () => {
+test("a head inside a fenced block is NOT an entry", () => {
   const e = parseChangelog("# Change Log\n\n## [2026-07-29] — thật\n```\n## 2026-07-01 — trong fence\n```\nhết\n");
   assert.equal(e.length, 1);
 });

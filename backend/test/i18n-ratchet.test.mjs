@@ -57,7 +57,7 @@ function countHardcoded(src) {
   return literals.filter((s) => VIETNAMESE.test(s)).length;
 }
 
-test("chuỗi tiếng Việt hardcode trong frontend KHÔNG được tăng (cổng không-lùi)", () => {
+test("hardcoded Vietnamese strings in the frontend must not GROW (a ratchet gate)", () => {
   const files = readdirSync(DIR).filter((f) => f.endsWith(".js") && f !== DICT_FILE);
   const over = [];
   for (const f of files) {
@@ -73,7 +73,7 @@ test("chuỗi tiếng Việt hardcode trong frontend KHÔNG được tăng (cổ
   );
 });
 
-test("gỡ được thì phải HẠ trần — trần treo cao hơn thực tế là trần chết", () => {
+test("when strings are removed the cap must COME DOWN - a cap hung above reality is a dead cap", () => {
   // Không có vế này thì ngưỡng chỉ đi một chiều: ai đó gỡ 20 chuỗi, trần vẫn 45, và 20 chỗ vừa
   // dọn có thể lặng lẽ quay lại mà gate không kêu. Đây là thứ giữ cho con số thật sự tiến về 0.
   const stale = [];
@@ -133,7 +133,7 @@ function htmlGaps(html) {
   return out;
 }
 
-test("chữ Việt nằm thẳng trong HTML phải có MÓC i18n (cổng không-lùi)", () => {
+test("Vietnamese text sitting directly in the HTML must carry an i18n HOOK (a ratchet gate)", () => {
   const gaps = htmlGaps(readFileSync(HTML_FILE, "utf8"));
   assert.ok(
     gaps.length <= HTML_BUDGET,
@@ -142,7 +142,7 @@ test("chữ Việt nằm thẳng trong HTML phải có MÓC i18n (cổng không-
   );
 });
 
-test("phép dò HTML phải THẤY được lỗi — ca ÂM + ca DƯƠNG dựng tại chỗ", () => {
+test("the HTML probe must be able to SEE a fault - negative and positive cases built in place", () => {
   // Luật 4 của skill audit: hỏi "cái gì làm nó ĐỎ?". Nếu không có ca này thì một hàm dò trả
   // rỗng vĩnh viễn vẫn cho gate màu xanh — đúng kiểu hỏng câm đã dính nhiều lần.
   assert.equal(htmlGaps('<div title="Cài đặt"></div>').length, 1, "thiếu móc title phải bị bắt");
@@ -156,7 +156,7 @@ test("phép dò HTML phải THẤY được lỗi — ca ÂM + ca DƯƠNG dựng
   assert.equal(htmlGaps('<div data-i18n="k"><b>Quét sâu</b></div><b>Cả máy</b>').length, 1, "hết thẻ cha là hết phủ");
 });
 
-test("mọi key i18n phải có ở CẢ HAI dict — thiếu một bản là rơi ngược về tiếng Việt", () => {
+test("every i18n key must exist in BOTH dictionaries - a missing side falls back to Vietnamese", () => {
   // `t()` fallback sang dict vi khi thiếu key, nên một key chỉ có bản vi sẽ KHÔNG báo lỗi:
   // nó lặng lẽ hiện tiếng Việt giữa giao diện tiếng Anh. Đúng dạng hỏng câm.
   const src = readFileSync(join(DIR, DICT_FILE), "utf8");

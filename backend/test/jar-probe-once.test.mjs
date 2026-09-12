@@ -26,7 +26,7 @@ function brokenSource(root) {
   return [{ key: "gia", label: "Trình duyệt giả", userData, exe: process.execPath }];
 }
 
-test("kho mở KHÔNG được chỉ bị thử MỘT lần, dù hỏi cho cả 12 nền", (t) => {
+test("an open jar must not be probed only ONCE even when asked for all 12 platforms", (t) => {
   const sources = brokenSource(tempDir(t, "zm-jar-"));
   clearJarCache();
 
@@ -40,7 +40,7 @@ test("kho mở KHÔNG được chỉ bị thử MỘT lần, dù hỏi cho cả 
   assert.ok(c.skipped > 0, "các lượt sau phải được đệm cứu, không phải im lặng bỏ qua");
 });
 
-test("ca ÂM: `clearJarCache` phải THẬT SỰ xoá — không thì đệm hoá vĩnh viễn", (t) => {
+test("negative case: `clearJarCache` must REALLY clear - otherwise the cache becomes permanent", (t) => {
   const sources = brokenSource(tempDir(t, "zm-jar2-"));
   clearJarCache();
   findBorrowSource(WEB_PLATFORMS[0], sources);

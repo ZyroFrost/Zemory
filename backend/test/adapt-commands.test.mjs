@@ -34,7 +34,7 @@ function adaptRepo(t, { bom = false } = {}) {
   return root;
 }
 
-test("archive đưa mục đã xong vào ARCHIVE CỦA HARNESS, không đẻ cây docs/ thứ hai", (t) => {
+test("archive files closed items into the HARNESS archive, without growing a second docs/ tree", (t) => {
   const root = adaptRepo(t);
   writeFileSync(
     join(root, "harness", "agent", "05_TODO.md"),
@@ -59,7 +59,7 @@ test("archive đưa mục đã xong vào ARCHIVE CỦA HARNESS, không đẻ câ
   assert.ok(!kept.includes("việc đã xong"));
 });
 
-test("todo verify ĐỌC ĐƯỢC sổ ở harness/agent — cổng phải nhìn thấy mục, không báo 0", (t) => {
+test("todo verify READS the ledger under harness/agent - the gate must see the items, not report 0", (t) => {
   const root = adaptRepo(t);
   writeFileSync(
     join(root, "harness", "agent", "05_TODO.md"),
@@ -75,7 +75,7 @@ test("todo verify ĐỌC ĐƯỢC sổ ở harness/agent — cổng phải nhìn
   );
 });
 
-test("marker mang BOM: cả hai lệnh vẫn tìm đúng nhà (không chết im lặng)", (t) => {
+test("marker carrying a BOM: both commands still find the right home (no silent death)", (t) => {
   const root = adaptRepo(t, { bom: true });
   writeFileSync(join(root, "harness", "agent", "05_TODO.md"), "# TODO\n\n- [x] xong rồi\n- [ ] còn mở\n");
 
@@ -94,7 +94,7 @@ test("marker mang BOM: cả hai lệnh vẫn tìm đúng nhà (không chết im 
 // và mọi lần mở file trả "(file not found — run zemory init/sync to create it)" — tức mời
 // người ta chạy đúng cái lệnh sẽ scaffold vào `docs/` của team. Hỏng ở tầng TRÌNH BÀY nên
 // không cổng nào bắt được; phải có test riêng.
-test("UI: cây file + đọc doc của project ADAPT phải thấy harness/ (không rỗng, không not-found)", async (t) => {
+test("UI: file tree + doc read of an ADAPT project must show harness/ (not empty, not not-found)", async (t) => {
   const { listHarnessFilesForTest, readProjectDocForTest } = await import("../../dist/ui.js").then((m) => ({
     listHarnessFilesForTest: m.listHarnessFilesForTest,
     readProjectDocForTest: m.readProjectDocForTest,
@@ -119,7 +119,7 @@ test("UI: cây file + đọc doc của project ADAPT phải thấy harness/ (kh�
   assert.equal(readProjectDocForTest(root, "../../../etc/passwd").ok, false, "đường thoát ra ngoài phải bị chặn");
 });
 
-test("nếp cũ không gãy: repo chuẩn docs/ vẫn archive vào docs/agent/archive", (t) => {
+test("the old layout still works: a standard docs/ repo still archives into docs/agent/archive", (t) => {
   const root = tempDir(t, "zemory-legacy-cmd-");
   mkdirSync(join(root, "docs", "agent"), { recursive: true });
   writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));

@@ -14,38 +14,38 @@ import { readFileSync } from "node:fs";
 const SRC = readFileSync(new URL("../../backend/src/platform/browsersweep.ts", import.meta.url), "utf8");
 
 // Bốn ràng buộc an toàn phải nằm trong code, mỗi cái một lý do đã ghi:
-test("① chỉ đụng profile CỦA ZEMORY (khe hoặc tạm `zemory-*`)", () => {
+test("1 it only touches ZEMORY profiles (a slot or a temporary `zemory-*`)", () => {
   assert.match(SRC, /norm\.includes\(root\) \|\| \/--user-data-dir="\?\[\^"\]\*\[\/\\\\\]zemory-\/u\.test\(norm\)/u,
     "phải khớp profile khe HOẶC thư mục tạm zemory-*; nới ra là đụng trình duyệt người dùng");
 });
 
-test("② 🔴 KHÔNG đụng cửa sổ THẤY ĐƯỢC — đó là cửa sổ đăng nhập đang chờ NGƯỜI", () => {
+test("2 it does NOT touch a VISIBLE window - that is a sign-in window waiting for a PERSON", () => {
   assert.match(SRC, /if \(!\/--headless\/u\.test\(cmd\)\) continue;/u,
     "chỉ headless; cửa sổ đăng nhập do người mở thì tự đóng nó là cướp việc của họ");
 });
 
-test("③ quá tuổi mới coi là mồ côi — không cắt ngang lượt quét đang chạy", () => {
+test("3 only past the age threshold does it count as an orphan - it never cuts a running scan short", () => {
   // Ngưỡng mặc định của hàm = ngưỡng VÒNG NỀN (dè dặt, vì chạy lúc không ai nhìn). Người bấm dùng
   // ngưỡng ngắn hơn — hai con số khai cạnh nhau để không ai sửa một chỗ rồi lệch.
   assert.match(SRC, /const minAge = opts\.minAgeMs \?\? BG_SWEEP_MIN_AGE_MS;/u);
   assert.match(SRC, /if \(!\(p\.ageMs >= minAge\)\) continue;/u);
 });
 
-test("④ có job web đang chạy ⇒ KHÔNG đụng gì (chốt trực tiếp, không suy đoán)", () => {
+test("4 with a web job running it touches NOTHING (asked directly, never inferred)", () => {
   assert.match(SRC, /if \(opts\.busy\) return \{ \.\.\.res, skipped: "đang có job web chạy" \};/u);
 });
 
-test("⑤ ca ÂM sống: KHÔNG bao giờ đụng profile của chính cửa sổ cockpit", () => {
+test("5 live NEGATIVE case: it never touches the cockpit window's own profile", () => {
   // `<kho>/cockpit/browser` là bản lùi `msedge --app` của app — giết nó là tắt UI ngay trước mặt.
   assert.match(SRC, /if \(norm\.includes\("\/cockpit\/browser"\)\) continue;/u);
 });
 
-test("⑥ fail-open: không liệt kê được tiến trình thì bỏ lượt, KHÔNG ném", () => {
+test("6 fail-open: if processes cannot be listed it skips the round rather than throwing", () => {
   assert.match(SRC, /return \{ \.\.\.res, skipped: "không liệt kê được tiến trình" \};/u);
   assert.doesNotMatch(SRC, /throw new Error/u, "bộ dọn không bao giờ được làm chuỗi bảo trì chết theo");
 });
 
-test("⑦ được NỐI vào vòng dọn sẵn có, không dựng nhịp riêng", () => {
+test("7 it HOOKS INTO the existing sweep loop instead of starting its own timer", () => {
   const S = readFileSync(new URL("../../backend/src/jobs/scheduler.ts", import.meta.url), "utf8");
   assert.match(S, /sweepOrphanBrowsers\(\{ profileRoot: join\(currentMemoryDir\(\), "browser"\), busy \}\)/u);
   // Chặn ĐÚNG job có thể đang SỞ HỮU một trình duyệt. Bản đầu của tôi chặn theo *mọi* job
@@ -60,6 +60,6 @@ test("⑦ được NỐI vào vòng dọn sẵn có, không dựng nhịp riêng
   assert.match(tick, /sweepOrphanTempProfiles/u);
 });
 
-test("⑧ ESM thuần — không `require()` lọt vào (sẽ nổ lúc chạy, tsc không bắt)", () => {
+test("8 pure ESM - no `require()` slips in (it would throw at runtime, tsc will not catch it)", () => {
   assert.doesNotMatch(SRC, /\brequire\(/u, "module này chạy trong daemon ESM");
 });

@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import { isWithinBase } from "../../dist/util/safe-path.js";
 import { resolveDocPath } from "../../dist/docs/plan.js";
 
-test("isWithinBase: chặn thoát thư mục, và KHÔNG khớp nhầm thư mục trùng tiền tố", () => {
+test("isWithinBase: it blocks directory escape and does NOT match a folder that merely shares a prefix", () => {
   const base = resolve("/srv/proj/docs");
   assert.equal(isWithinBase(base, resolve("/srv/proj/docs/agent/02_RULES.md")), true);
   assert.equal(isWithinBase(base, base), true, "chính nó tính là nằm trong");
@@ -19,7 +19,7 @@ test("isWithinBase: chặn thoát thư mục, và KHÔNG khớp nhầm thư mụ
   assert.equal(isWithinBase(base, resolve("/srv/proj/docs-backup/x.md")), false, "trùng tiền tố KHÔNG phải nằm trong");
 });
 
-test("resolveDocPath vẫn ném khi bị ép ra ngoài docs/ (hành vi không đổi sau khi gộp guard)", () => {
+test("resolveDocPath still throws when forced outside docs/ (behaviour unchanged after the guards were merged)", () => {
   const root = resolve("/srv/proj");
   assert.equal(resolveDocPath(root, "docs/plan/00_overview.md"), resolve(root, "docs/plan/00_overview.md"));
   assert.throws(() => resolveDocPath(root, "../ngoai.md"), /Unsafe docs path/);

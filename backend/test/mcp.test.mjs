@@ -68,7 +68,7 @@ test("MCP tool list exposes recall tools", async () => {
   ]);
 });
 
-test("mọi tool khai trong danh sách phải có người thực thi — không có tool ma", async () => {
+test("every tool in the catalogue must have an implementation - no ghost tools", async () => {
   // Khai một tool rồi quên nối dispatcher là lỗi im lặng tệ nhất của bề mặt này: agent thấy
   // nó trong tools/list, gọi, và nhận "Unknown zemory MCP tool" — trông như zemory hỏng.
   for (const t of TOOLS) {
@@ -78,7 +78,7 @@ test("mọi tool khai trong danh sách phải có người thực thi — không
   }
 });
 
-test("memory_search KHÔNG rerank theo mặc định — rerank là lối chót, phải xin", () => {
+test("memory_search does NOT rerank by default - rerank is the last resort and must be asked for", () => {
   // Đo trong tiến trình đã ấm trên kho 198.334 tin: FTS 172ms · hybrid **746ms** ·
   // hybrid+rerank **29.420ms**. Tool này từng gọi `recall()` nên ăn theo công tắc rerank của
   // MÁY — đo thật qua MCP: **27–34s MỖI lần tìm**, không chỉ lần đầu. Agent gọi search liên
@@ -93,7 +93,7 @@ test("memory_search KHÔNG rerank theo mặc định — rerank là lối chót,
   assert.match(tool.description, /slower/i, "mô tả phải nêu cái GIÁ, không thì agent bật bừa");
 });
 
-test("tool ĐỔI DỮ LIỆU phải mặc định KHÔNG đổi gì", () => {
+test("a tool that CHANGES DATA must change nothing by default", () => {
   // `project_merge` là tool duy nhất ghi vào DB. Agent gọi tool thì không có ai gật ở giữa,
   // nên mặc định phải là dry-run và `apply` phải là thứ người ta cố ý bật.
   const merge = TOOLS.find((t) => t.name === "project_merge");
@@ -103,7 +103,7 @@ test("tool ĐỔI DỮ LIỆU phải mặc định KHÔNG đổi gì", () => {
   assert.ok(merge.inputSchema.properties.apply, "phải có cờ apply tường minh");
 });
 
-test("mỗi tool phải nói KHI NÀO gọi, không chỉ nói nó là gì", () => {
+test("each tool must say WHEN to call it, not just what it is", () => {
   // Bài học lấy từ engram (đo 2026-08-02): mô tả tool là thứ DUY NHẤT quyết định agent có
   // gọi hay không — y hệt `description` của một SKILL.md. zemory bắt mọi skill phải có, mà
   // quên áp cho chính tool MCP của mình: "Show one plan/doc section by id." đúng nhưng
@@ -119,7 +119,7 @@ test("mỗi tool phải nói KHI NÀO gọi, không chỉ nói nó là gì", () 
   );
 });
 
-test("tool chỉ-đọc để dò tình trạng thì KHÔNG được đòi tham số", () => {
+test("a read-only status probe must NOT require parameters", () => {
   // project_current/memory_stats là lối thoát khi agent không chắc đang ở đâu. Bắt truyền
   // tham số thì đúng lúc cần nhất lại không gọi được (engram ghi thẳng "NEVER errors").
   for (const name of ["project_current", "memory_stats"]) {
@@ -149,7 +149,7 @@ test("MCP memory search works without a project harness scope", async (t) => {
   assert.equal(hits[0].sessionId, "mcp-session");
 });
 
-test("session_pin: ghim phiên CŨ vẫn nổi lên đầu memory_context", async (t) => {
+test("session_pin: pinning an OLD session still floats it to the top of memory_context", async (t) => {
   const { projectRoot, dbPath } = seedMcpDb(t);
   const env = { dbPath, projectRoot };
   const db = openMemory(dbPath);
@@ -186,7 +186,7 @@ test("session_pin: ghim phiên CŨ vẫn nổi lên đầu memory_context", asyn
   assert.equal(bad.isError, true, "id sai phải BÁO, không được im lặng coi như xong");
 });
 
-test("project_merge: dry-run KHÔNG đổi gì, apply gộp mà KHÔNG xoá dòng nào", async (t) => {
+test("project_merge: dry-run changes nothing, apply merges WITHOUT deleting a row", async (t) => {
   const { projectRoot, dbPath } = seedMcpDb(t);
   const env = { dbPath, projectRoot };
   const db = openMemory(dbPath);
@@ -225,7 +225,7 @@ test("project_merge: dry-run KHÔNG đổi gì, apply gộp mà KHÔNG xoá dòn
   }
 });
 
-test("memory_conflicts: chỉ ghép CẶP, tuyệt đối không tự phán", async (t) => {
+test("memory_conflicts: it only PAIRS candidates, it never judges on its own", async (t) => {
   const { projectRoot, dbPath } = seedMcpDb(t);
   const env = { dbPath, projectRoot };
   const db = openMemory(dbPath);

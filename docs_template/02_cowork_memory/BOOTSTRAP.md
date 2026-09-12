@@ -194,6 +194,13 @@ cảnh — nên nó **cắt bớt cho vừa**. Bản này để `init` rót từ
 lược bớt, không phải diễn giải lại. Mọi quy trình (`fill` · `pull` · `upload` · `audit` ·
 `reconcile` · `session-close` · `grill` · `read-office` · `write-docx`) đều có sẵn và chạy được.
 
+⚙ **Luật trong `02_RULES` là MẶC ĐỊNH, user bật/tắt được — nói rõ điều này khi bàn giao.** Bộ cowork
+dùng chung cho nhiều kiểu dự án, nên vài luật có thể chặt quá với một nhóm cụ thể (ví dụ §Ngôn ngữ
+đòi định danh · tên file chỉ ASCII tiếng Anh). Người dùng thấy không hợp thì **bỏ hoặc nới**, và
+**ghi quyết định vào `01_CONSTITUTION.md`** — agent theo bản đã chốt ở đó, KHÔNG tự nới, cũng KHÔNG
+tự siết. Chưa ai chốt gì thì theo mặc định. *(Vế nên giữ dù nới hết: đừng viết tiếng Việt MẤT DẤU —
+không bỏ dấu được thì viết tiếng Anh.)*
+
 ## §4. Quét dữ liệu vào kho — như bản zemory gốc
 
 **HỎI người dùng lấy từ đâu — MỘT câu, kèm đề xuất của bạn.** Đừng quét câm rồi báo "xong".

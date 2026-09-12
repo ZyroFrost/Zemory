@@ -103,7 +103,7 @@ test("relocate carries the WHOLE data cluster — secrets included — and vacat
   assert.ok(r.configMoved && r.modelsMoved, "hai cờ cũ vẫn đúng nghĩa");
 });
 
-test("relocate không chở nổi BÍ MẬT thì HUỶ, không dời nửa vời", (t) => {
+test("when relocate cannot carry the SECRETS it ABORTS rather than moving half", (t) => {
   const paths = seed(t, 3);
   const dst = join(tempDir(t, "zloc-dst-"), "data");
   writeFileSync(join(paths.dir, "share.key"), "deadbeef");

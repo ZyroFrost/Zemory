@@ -15,7 +15,7 @@ const SRC = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
 const WIN = SRC("backend/src/platform/window.ts");
 const UI = SRC("backend/src/ui.ts");
 
-test("① cửa sổ bám theo PID của daemon, không phải theo cổng", () => {
+test("1 the window follows the daemon's PID, not the port", () => {
   assert.match(WIN, /let daemonPid: number \| null = null;/u, "phải nhớ pid daemon lần ping đầu");
   assert.match(WIN, /else if \(pid !== daemonPid\)/u, "pid đổi ⇒ nền đã bị thay");
   // Và khi phát hiện thì phải ĐÓNG, không chỉ ghi log. Cắt theo MỐC CODE THẬT (từ chỗ so pid tới
@@ -31,7 +31,7 @@ test("① cửa sổ bám theo PID của daemon, không phải theo cổng", () 
   assert.match(WIN, /refused = code === "ECONNREFUSED"/u, "chỉ cổng bị TỪ CHỐI mới đếm là chết");
 });
 
-test("② CHÍNH cửa sổ tự ghi sổ và tự đóng cửa sổ cũ — không phụ thuộc người gọi", () => {
+test("2 the window ITSELF records the ledger and closes the old window - it does not depend on the caller", () => {
   assert.match(WIN, /function claimSingleWindow\(file: string\): void/u);
   assert.match(WIN, /taskkill/u, "phải đóng được cửa sổ cũ trên Windows");
   assert.match(WIN, /IMAGENAME eq \$\{image\}/u, "lọc theo tên ảnh — pid được hệ dùng lại thì thành vô hại");
@@ -42,14 +42,14 @@ test("② CHÍNH cửa sổ tự ghi sổ và tự đóng cửa sổ cũ — kh�
   assert.match(WIN, /WEBVIEW2_USER_DATA_FOLDER/u);
 });
 
-test("③ `ui.ts` truyền đường sổ xuống cửa sổ (cả đối số lẫn env)", () => {
+test("3 `ui.ts` passes the ledger path down to the window (both as an argument and through env)", () => {
   assert.match(UI, /\[script, url, appIcon\(\), windowPidFile\(\)\]/u, "đối số thứ 4 = đường sổ");
   assert.match(UI, /ZEMORY_WINDOW_PID: windowPidFile\(\)/u, "và env cho đường lui");
   // Vế CŨ vẫn phải còn: daemon đóng cửa sổ trước khi mở cái mới (hai lớp, không bỏ lớp nào).
   assert.match(UI, /function openWindow\(url: string\): void \{\s*\n\s*closePrevWindow\(\);/u);
 });
 
-test("④ ghi sổ SAU khi cửa sổ dựng được, không phải trước", () => {
+test("4 the ledger is written AFTER the window is up, not before", () => {
   // Dựng hỏng ⇒ `ui.ts` rơi về `msedge --app`; một cái sổ trỏ tới tiến trình vừa chết chỉ làm lượt
   // mở sau đi giết nhầm một pid đã được hệ dùng lại.
   const i = WIN.indexOf("win.loadUrl(url);");

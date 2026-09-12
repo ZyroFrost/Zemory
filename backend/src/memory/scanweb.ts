@@ -1034,8 +1034,8 @@ function profileBrowser(profileDir: string, override?: string, keepSession = fal
     // định mở nó ra không giải mã được cookie ⇒ trang báo chưa đăng nhập ⇒ người dùng đăng nhập một
     // lần — ĐÚNG BẰNG cái giá của nhánh cũ, nhưng không phá một profile đang chạy được.
     try {
-      const coNoiDung = readdirSync(profileDir).some((f) => f !== BRAND_FILE);
-      if (coNoiDung && !keepSession) built = EDGE_PATHS.find((x) => existsSync(x)) ?? null;
+      const hasContent = readdirSync(profileDir).some((f) => f !== BRAND_FILE);
+      if (hasContent && !keepSession) built = EDGE_PATHS.find((x) => existsSync(x)) ?? null;
     } catch {
       /* thư mục chưa tồn tại — profile mới tinh */
     }

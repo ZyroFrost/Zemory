@@ -50,7 +50,7 @@ function scratch() {
 
 const BODY = (t) => `# ${t}\n\n## Mục\nNội dung ${t}.\n`;
 
-test("row của file đã xoá bị dọn, row của file còn lại thì KHÔNG", (t) => {
+test("the row of a deleted file is pruned, the row of a surviving file is NOT", (t) => {
   const s = scratch();
   t.after(s.cleanup);
   const a = s.write("00_a.md", BODY("A"));
@@ -63,7 +63,7 @@ test("row của file đã xoá bị dọn, row của file còn lại thì KHÔNG
   assert.deepEqual(s.docs(), [join("docs", "plan", "01_b.md")], "chỉ file còn tồn tại được giữ");
 });
 
-test("section của row bị dọn cũng đi theo (không để mồ côi)", (t) => {
+test("the sections of a pruned row go with it (no orphans left)", (t) => {
   const s = scratch();
   t.after(s.cleanup);
   const a = s.write("00_a.md", BODY("A"));
@@ -74,7 +74,7 @@ test("section của row bị dọn cũng đi theo (không để mồ côi)", (t)
   assert.equal(s.sections(), 0, "xoá doc phải xoá luôn section của nó");
 });
 
-test("dọn xong thì search KHÔNG còn trả đường dẫn chết", (t) => {
+test("after pruning, search NO LONGER returns the dead path", (t) => {
   const s = scratch();
   t.after(s.cleanup);
   const a = s.write("00_a.md", "# A\n\n## Riêng\nchuỗi-độc-nhất-xyzzy ở đây.\n");
@@ -88,7 +88,7 @@ test("dọn xong thì search KHÔNG còn trả đường dẫn chết", (t) => {
   assert.equal(searchSections("xyzzy", { project: root, dbPath: s.dbPath }).length, 0, "sau khi dọn phải hết hit");
 });
 
-test("không có gì để dọn thì trả 0 và không đụng gì", (t) => {
+test("with nothing to prune it returns 0 and touches nothing", (t) => {
   const s = scratch();
   t.after(s.cleanup);
   s.write("00_a.md", BODY("A"));
@@ -96,7 +96,7 @@ test("không có gì để dọn thì trả 0 và không đụng gì", (t) => {
   assert.equal(s.docs().length, 1);
 });
 
-test("GUARD: project root không tồn tại thì KHÔNG dọn gì", () => {
+test("GUARD: a project root that does not exist prunes NOTHING", () => {
   // Ổ cắm rời / share chưa mount: cả cây file "mất" cùng lúc. Dọn ở đây là xoá sạch
   // index của một project vẫn còn sống — hỏng nặng hơn nhiều so với một row cũ.
   const s = scratch();
@@ -114,7 +114,7 @@ test("GUARD: project root không tồn tại thì KHÔNG dọn gì", () => {
   s.cleanup();
 });
 
-test("GUARD: chỉ dọn project ĐƯỢC CHỈ ĐỊNH, không đụng project khác", (t) => {
+test("GUARD: it prunes only the NAMED project, never another one", (t) => {
   const s = scratch();
   t.after(s.cleanup);
   const other = mkdtempSync(join(tmpdir(), "zemory-prune-other-"));
@@ -139,7 +139,7 @@ test("GUARD: chỉ dọn project ĐƯỢC CHỈ ĐỊNH, không đụng project 
   }
 });
 
-test("khoá chuẩn hoá: root viết hoa/thường khác nhau vẫn dọn đúng row", (t) => {
+test("key normalisation: roots differing only in case still prune the right row", (t) => {
   if (process.platform !== "win32") return;
   const s = scratch();
   t.after(s.cleanup);

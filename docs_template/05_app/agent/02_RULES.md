@@ -36,12 +36,16 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **Văn phong harness = KỸ THUẬT / QUY PHẠM, KHÔNG văn nói.** Hiến pháp, rules, structure và plan viết dạng đặc tả: câu mệnh lệnh ngắn gọn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không dùng khẩu ngữ, câu cảm thán, ví dụ hội thoại, hay lối kể chuyện phiếm.
 - **UI · CLI output**: **English HOẶC i18n đủ 2 dict** (song ngữ, đổi qua nút setting) — **0 chuỗi hardcode** (mọi chuỗi người-dùng-thấy đi qua i18n, có cả 2 bản). **Thuật ngữ kỹ thuật / chuyên ngành nặng GIỮ NGUYÊN, KHÔNG dịch** (tên công nghệ, API, viết tắt kỹ thuật — dịch ra làm sai nghĩa). Chi tiết cổng chất lượng i18n → `03_STRUCTURE §9.D` (nguồn duy nhất, không lặp).
 - **code · comment: TIẾNG ANH TOÀN BỘ** — comment · docstring · tên biến/hàm · log/thông điệp kỹ thuật · commit message. Một file một ngôn ngữ. **Ba thứ KHÔNG phải comment — KHÔNG dịch:** ① **chuỗi RENDER ra tài liệu / bề mặt người đọc** (desc·note sinh vào `docs/`, nhãn UI qua i18n) theo luật của docs/UI ở trên, không theo luật code · ② **tên do người khác đặt** (tên cột Excel · trường API · tên file nguồn) giữ NGUYÊN từng ký tự dù trông như "mất dấu": đổi là loader không tìm thấy · ③ **thuật ngữ chuyên ngành** giữ nguyên. Comment bản địa cũ: sửa khi **đang đụng file đó**, KHÔNG mở chiến dịch dịch hàng loạt.
+- **ĐỊNH DANH · TÊN FILE = ASCII TIẾNG ANH. TRONG MÃ, THỨ DUY NHẤT ĐƯỢC PHÉP LÀ TIẾNG VIỆT CHÍNH LÀ CHÚ THÍCH** *(luật thiết kế chung MỌI app)*. Phủ hết: tên biến · hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · **tên file · tên thư mục** · tên nhánh git. Cấm **cả hai** dạng — có dấu (`chặnNhầm` · `tênFile`) và mất dấu ghép lại (`THAN_TOI_DA` · `soLuongBanGhi`). *Vì sao là luật chứ không phải gu: định danh là thứ MÁY khớp — grep · refactor · import · đường dẫn trong lệnh shell đều gãy hoặc trượt trên chữ ngoài ASCII, mà đổi tên về sau thì đụng mọi chỗ gọi.* Ba miễn trừ ở vế trên giữ nguyên (tên do người khác đặt · thuật ngữ chuyên ngành · chuỗi render cho người đọc) — đó là DỮ LIỆU, không phải định danh. Máy soi: `node .claude/skills/audit/scripts/lang-scan.mjs .`
 - **CHỮ NGƯỜI DÙNG ĐỌC PHẢI ĐẦY ĐỦ VÀ ĐÚNG — bốn ràng buộc, áp lúc VIẾT.**
   Luật đứng ở đây vì các mặt của `audit` đều soi MÁY; không mặt nào soi thứ **người đọc nhận**, và
   một lỗi chữ thì không gate nào kêu — nó chỉ hiện ra trước mặt người dùng.
-  · **① Có dấu, đúng chính tả.** Docs tiếng Việt phải CÓ DẤU và không mang mojibake (UTF-8 bị đọc
-    thành Latin-1: `Ã¡` · `â€` · `ï»¿`). Chữ ASCII-không-dấu CHỈ hợp lệ khi buộc phải vậy (vd file
-    in ra console không chắc encoding) — và phải nói rõ lý do tại chỗ.
+  · **① Có dấu, đúng chính tả — TUYỆT ĐỐI KHÔNG CÓ TIẾNG VIỆT MẤT DẤU Ở BẤT CỨ ĐÂU.** Áp cho **mọi
+    file, không trừ file nào**: plan · docs · chú thích code · docstring · tên test · chuỗi sinh máy ·
+    JSON cấu hình. Đúng **HAI** lựa chọn, không có lựa chọn thứ ba: **① tiếng Anh · ② tiếng Việt CÓ
+    DẤU.** Sợ encoding console thì viết **TIẾNG ANH** — nó ASCII sẵn, an toàn y hệt mà vẫn đọc được;
+    Việt mất dấu vừa khó đọc, vừa nhập nhằng nghĩa, vừa làm chính bộ dò chính tả mù. Và không mang
+    mojibake (UTF-8 bị đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
   · **② Nhãn ĐỦ, máy đọc được.** Mọi phần tử tương tác (nút · ô nhập · select · link) phải có nhãn
     mà **công cụ đọc được**: nội dung chữ, hoặc `aria-label`/`title`/`placeholder`; ảnh có `alt`.
     Nút icon trơn không nhãn là **thiếu**, không phải "gọn".

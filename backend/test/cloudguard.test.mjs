@@ -27,7 +27,7 @@ function fakeDriveFs(t, rows) {
   return p;
 }
 
-test("BẮT được kênh backup máy — ca đã hỏng kho thật 2 lần, tên thư mục hoàn toàn vô tội", (t) => {
+test("it CATCHES the machine-backup channel - the case that broke the real store twice, with a perfectly innocent folder name", (t) => {
   const store = tempDir(t, "zstore-");
   const prefs = fakeDriveFs(t, [{ title: "MAY-A", abs: "D:\\huy.nguyen", root_path: "D:\\huy.nguyen" }]);
 
@@ -44,7 +44,7 @@ test("BẮT được kênh backup máy — ca đã hỏng kho thật 2 lần, t�
   assert.equal(clean.atRisk, false);
 });
 
-test("sổ DriveFS rỗng / không có ⇒ nói KHÔNG KIỂM ĐƯỢC, không im lặng thành sạch", (t) => {
+test("an empty or missing DriveFS ledger means UNVERIFIABLE, never a silent pass", (t) => {
   const store = tempDir(t, "zstore-");
   const r = cloudSyncReport(store, { prefsPath: join(store, "khong-ton-tai.db") });
   assert.equal(r.atRisk, false);
@@ -55,7 +55,7 @@ test("sổ DriveFS rỗng / không có ⇒ nói KHÔNG KIỂM ĐƯỢC, không i
   assert.deepEqual(driveFsRoots(empty).paths, []);
 });
 
-test("KHÔNG báo oan: sổ root đọc được và nói 'không đồng bộ' ⇒ rác cũ không lật ngược được", (t) => {
+test("NO false positive: a readable root ledger saying 'not syncing' means stale junk cannot overturn it", (t) => {
   // Ca THẬT đo trên máy này 2026-08-06: user đã gỡ `D:\huy.nguyen` khỏi backup máy (roots
   // rỗng), nhưng một thư mục rỗng `.tmp.driveupload` từ 05/08 vẫn nằm đó. Bản đầu của phép
   // kiểm kêu ĐỎ vì nó — báo oan ngay ca đầu tiên. Cảnh báo kêu nhầm thì lần sau không ai đọc.
@@ -71,7 +71,7 @@ test("KHÔNG báo oan: sổ root đọc được và nói 'không đồng bộ' 
   assert.equal(r.inconclusive.length, 0);
 });
 
-test("nguồn thẩm quyền CÂM thì rác cũ được NÂNG thành bằng chứng", (t) => {
+test("when the authoritative source is SILENT, stale junk is PROMOTED to evidence", (t) => {
   // Đọc không được sổ root ⇒ ta mù về phạm vi đồng bộ thật; lúc đó dấu vết là thứ tốt nhất
   // đang có, và im lặng mới là lựa chọn nguy hiểm.
   const parent = tempDir(t, "zparent-");
@@ -84,7 +84,7 @@ test("nguồn thẩm quyền CÂM thì rác cũ được NÂNG thành bằng ch�
   assert.ok(r.evidence.some((e) => e.kind === "marker"));
 });
 
-test("isInside không khớp nhầm thư mục chỉ TRÙNG TIỀN TỐ", () => {
+test("isInside does not match a folder that merely shares a PREFIX", () => {
   assert.equal(isInside("C:\\ab\\x", "C:\\a"), false, "C:\\ab KHÔNG nằm trong C:\\a");
   assert.equal(isInside("C:\\a\\x", "C:\\a"), true);
   assert.equal(isInside("C:\\a", "C:\\a"), true, "chính nó cũng tính");

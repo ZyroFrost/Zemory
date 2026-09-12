@@ -21,7 +21,7 @@ const BORROW = SRC("backend/src/memory/borrowcookies.ts");
 const FE = SRC("frontend/scripts/sources.js");
 const keys = Object.keys(PLATFORMS);
 
-test("§17.4 — MỌI nền khai trong PLATFORMS đều được nối đủ sáu chỗ", () => {
+test("S17.4 - EVERY platform declared in PLATFORMS is wired into all six places", () => {
   const sources = new Set(allAdapters().map((a) => a.source));
   const missing = [];
   for (const k of keys) {
@@ -43,7 +43,7 @@ test("§17.4 — MỌI nền khai trong PLATFORMS đều được nối đủ s�
   assert.deepEqual(missing, [], "nền khai nửa vời:\n  " + missing.join("\n  "));
 });
 
-test("mỗi nền một CỔNG riêng và một TIỀN TỐ PHIÊN riêng — dùng chung là trộn hai nền vào một khe", () => {
+test("each platform has its own PORT and its own SESSION PREFIX - sharing them mixes two platforms into one slot", () => {
   const ports = keys.map((k) => PLATFORMS[k].port);
   assert.equal(new Set(ports).size, ports.length, `cổng CDP bị trùng: ${ports.join(", ")}`);
   const pre = keys.map((k) => PLATFORMS[k].sessionPrefix);
@@ -51,7 +51,7 @@ test("mỗi nền một CỔNG riêng và một TIỀN TỐ PHIÊN riêng — d�
   for (const k of keys) assert.ok(PLATFORMS[k].tabRe instanceof RegExp, `${k}: thiếu tabRe ⇒ eval có thể chạy nhầm tab`);
 });
 
-test("BA Copilot là BA nền riêng — không nền nào nuốt nền nào", () => {
+test("the THREE Copilots are THREE separate platforms - none may swallow another", () => {
   for (const k of ["copilot", "mscopilot", "m365copilot"]) assert.ok(PLATFORMS[k], `thiếu nền '${k}'`);
   // Khoá `copilot` PHẢI giữ nghĩa GitHub — đổi nó là làm mất phiên đang có trong `webAuth.copilot`
   // và thư mục `data/browser/copilot` (user đã đăng nhập ZyroFrost ở đó 2026-09-11).
@@ -68,7 +68,7 @@ test("BA Copilot là BA nền riêng — không nền nào nuốt nền nào", (
   }
 });
 
-test("cờ `loginOnly` phải KHỚP đường kéo có thật — suy từ CODE, không từ danh sách tên nền", () => {
+test("the `loginOnly` flag must MATCH the real pull paths - inferred from CODE, not from a list of platform names", () => {
   // Vòng tự kéo bỏ qua nền `loginOnly` (user chốt 2026-09-10: *"chỉ khi t bấm mới nối vào"*).
   // Thiếu cờ ⇒ nhịp nền mở một cửa sổ đăng nhập người dùng không hề yêu cầu. Thừa cờ ⇒ nền ĐÃ dò
   // được đường kéo vẫn dừng sau xác thực, và không ai báo — lỗi câm.
@@ -94,7 +94,7 @@ test("cờ `loginOnly` phải KHỚP đường kéo có thật — suy từ CODE
   assert.equal(PLATFORMS.mscopilot.loginOnly, true, "mscopilot chưa ai đăng nhập ⇒ chưa dò được đường kéo");
 });
 
-test("M365 Copilot — đường kéo phải là ĐƯỜNG ĐÃ ĐO, không phải đường đoán", () => {
+test("M365 Copilot - the pull path must be the MEASURED one, not a guessed one", () => {
   // Ba dữ kiện đo 2026-09-11 trên phiên công ty thật; mỗi cái từng là một cách hỏng im lặng:
   const list = PLATFORMS.m365copilot.listExpr;
   const conv = PLATFORMS.m365copilot.convExpr("ID");
@@ -116,7 +116,7 @@ test("M365 Copilot — đường kéo phải là ĐƯỜNG ĐÃ ĐO, không ph�
   assert.match(list, /toISOString\(\)/, "mốc phải là chuỗi ISO, không phải số mili-giây thô");
 });
 
-test("M365 — phép kiểm ĐĂNG NHẬP dựa vào LỜI GỌI DỮ LIỆU, không chờ giao diện vẽ xong", () => {
+test("M365 - the SIGN-IN check rests on a DATA CALL rather than waiting for the interface to paint", () => {
   // Đo 2026-09-11, lượt chạy THẬT: bản cũ chấm bằng `[role="textbox"]` báo "chưa đăng nhập" trên
   // profile CÓ ĐỦ cookie phiên — SPA của Microsoft cần ~30 s mới dựng ô soạn tin, còn `checkAuth`
   // eval ngay khi trang về đúng origin. **Chưa vẽ ≠ chưa đăng nhập**, nhưng hậu quả giống hệt:

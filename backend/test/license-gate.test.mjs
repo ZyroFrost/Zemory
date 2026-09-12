@@ -114,7 +114,7 @@ function scanTree(root) {
   return out;
 }
 
-test("bộ tự-kiểm của parser SPDX — gồm đúng ca AND-trap đã lọt lượt rà tay", () => {
+test("the SPDX parser self-check - including the exact AND-trap case that slipped past a manual review", () => {
   // Ca PHẢI CHẶN (thiếu nhóm này thì cổng không thể nổ — luật 4 của audit):
   assert.equal(licenseAllowed("GPL-3.0-only"), false, "copyleft mạnh đứng một mình phải bị chặn");
   assert.equal(licenseAllowed("Apache-2.0 AND LGPL-3.0-or-later"), false,
@@ -128,7 +128,7 @@ test("bộ tự-kiểm của parser SPDX — gồm đúng ca AND-trap đã lọt
   assert.equal(licenseAllowed("MIT AND (Apache-2.0 OR GPL-2.0-only)"), true, "AND của hai vế đều thoả");
 });
 
-test("cả cây node_modules: mọi gói phải hợp lệ Apache-2.0 hoặc nằm trong ngoại lệ đích danh", () => {
+test("the whole node_modules tree: every package must be Apache-2.0 compatible or named in the exception list", () => {
   const pkgs = scanTree(NM);
   assert.ok(pkgs.length >= 150, `quét ra ${pkgs.length} gói — quá ít, nghi walker hỏng lặng (mốc thật 190)`);
   const bad = pkgs.filter((p) => !licenseAllowed(p.license) && !(p.name in EXCEPTIONS));
@@ -140,7 +140,7 @@ test("cả cây node_modules: mọi gói phải hợp lệ Apache-2.0 hoặc n�
   );
 });
 
-test("ngoại lệ phải còn ĐÚNG SỰ THẬT — gói đổi license hay biến mất là phải mở lại hồ sơ", () => {
+test("the exception list must still be TRUE - a package changing licence or disappearing reopens the file", () => {
   const pkgs = scanTree(NM);
   const byName = new Map(pkgs.map((p) => [p.name, p]));
   const stale = [];

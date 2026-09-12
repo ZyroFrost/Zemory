@@ -31,7 +31,7 @@ function pad(root, project, session, { bytes = 1024, ageDays = 0 } = {}) {
   return dir;
 }
 
-test("quá hạn thì dọn, phiên mới thì để yên (dù cùng thư mục gốc)", (t) => {
+test("an overdue session is swept while a fresh one is left alone (even under the same root)", (t) => {
   const root = tempDir(t, "zemory-pad-");
   const old = pad(root, "proj-a", "sess-old", { ageDays: 30 });
   const fresh = pad(root, "proj-a", "sess-new", { ageDays: 0 });
@@ -43,7 +43,7 @@ test("quá hạn thì dọn, phiên mới thì để yên (dù cùng thư mục 
   assert.ok(existsSync(fresh), "phiên vừa dùng KHÔNG được đụng");
 });
 
-test("vượt trần thì dọn CŨ NHẤT trước, và chỉ tới khi về dưới trần", (t) => {
+test("over the cap it sweeps the OLDEST first, and only until it is back under the cap", (t) => {
   const root = tempDir(t, "zemory-pad-");
   const oldest = pad(root, "p", "s1", { bytes: 4096, ageDays: 5 });
   const mid = pad(root, "p", "s2", { bytes: 4096, ageDays: 3 });
@@ -56,7 +56,7 @@ test("vượt trần thì dọn CŨ NHẤT trước, và chỉ tới khi về d�
   assert.ok(existsSync(mid) && existsSync(newer), "phần còn lại giữ nguyên");
 });
 
-test("CA ÂM: KHÔNG đụng phiên đang chạy, dù nó cũ và đang vượt trần", (t) => {
+test("NEGATIVE CASE: it never touches a RUNNING session, even an old one over the cap", (t) => {
   const root = tempDir(t, "zemory-pad-");
   const current = pad(root, "p", "sess-dang-chay", { bytes: 8192, ageDays: 40 });
   const r = sweepScratchpads({ root, budgetBytes: 1, keepSession: "sess-dang-chay" });
@@ -64,7 +64,7 @@ test("CA ÂM: KHÔNG đụng phiên đang chạy, dù nó cũ và đang vượt 
   assert.ok(existsSync(current));
 });
 
-test("CA ÂM: KHÔNG đụng thư mục vừa được ghi (phiên có thể đang làm việc mà chưa khai id)", (t) => {
+test("NEGATIVE CASE: it never touches a folder just written to (a session may be working before declaring its id)", (t) => {
   const root = tempDir(t, "zemory-pad-");
   const justNow = pad(root, "p", "s-moi", { bytes: 8192, ageDays: 0 });
   const r = sweepScratchpads({ root, budgetBytes: 1 }); // trần = 1 byte ⇒ ép dọn tối đa
@@ -72,7 +72,7 @@ test("CA ÂM: KHÔNG đụng thư mục vừa được ghi (phiên có thể đa
   assert.ok(existsSync(justNow));
 });
 
-test("CA ÂM: chỉ nhận ĐÚNG khuôn <project>/<session>/scratchpad — thư mục lạ không bị xoá", (t) => {
+test("NEGATIVE CASE: it accepts only the exact <project>/<session>/scratchpad shape - a foreign folder is not deleted", (t) => {
   const root = tempDir(t, "zemory-pad-");
   // thứ trông giống nhưng KHÔNG phải: thiếu tầng session, và một thư mục người dùng đặt nhầm chỗ
   const shallow = join(root, "proj-b", "scratchpad");
@@ -88,7 +88,7 @@ test("CA ÂM: chỉ nhận ĐÚNG khuôn <project>/<session>/scratchpad — thư
   assert.ok(existsSync(join(stranger, "quan-trong.txt")), "dữ liệu người dùng đặt cạnh đó phải còn nguyên");
 });
 
-test("dryRun chỉ báo cáo, không xoá gì", (t) => {
+test("dryRun only reports, it deletes nothing", (t) => {
   const root = tempDir(t, "zemory-pad-");
   const old = pad(root, "p", "s", { ageDays: 30 });
   const r = sweepScratchpads({ root, dryRun: true, budgetBytes: 10 ** 12 });
@@ -96,7 +96,7 @@ test("dryRun chỉ báo cáo, không xoá gì", (t) => {
   assert.ok(existsSync(old), "nhưng KHÔNG được xoá");
 });
 
-test("không có thư mục nháp ⇒ im lặng, không ném (fail-open)", () => {
+test("no scratch folder at all is silent and does not throw (fail-open)", () => {
   const r = sweepScratchpads({ root: null });
   assert.equal(r.root, null);
   assert.deepEqual(r.removed, []);
