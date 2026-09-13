@@ -104,7 +104,27 @@ nó ra 22 hit, **21 trong đó là chữ `doc`** — tôi thêm `doc` (đọc) v
 "document" đầy rẫy trong code. Gỡ `doc` ⇒ còn đúng 1 hit, và đó là vi phạm THẬT (`coNoiDung`).
 Không có ca âm này thì bộ từ mới đã đi ra 20 repo kèm 21 báo oan mỗi lượt quét.
 
-## Số nền — đo 2026-09-12 (so lần sau vào đây)
+## Số nền 17 REPO — đo 2026-09-13, SAU khi vá máy dò (so lần sau vào đây)
+
+Đây là con số đáng tin, vì nó đo bằng máy dò đã qua bốn bản vá ở mục trên. Bảng 2026-09-12 phía
+dưới nói "0" ở mọi ô — nó sai, và sai theo hướng dễ chịu.
+
+| Phép | Hit khi máy dò còn hỏng | Sự thật khi máy dò đã vá | Còn lại sau đợt dọn |
+|---|---|---|---|
+| Ⓐ tên file | 0 | **22** | **0** |
+| Ⓑ định danh | 0 | **302** (OpenRCA 260 · DuAnA 38) | **3** |
+| Ⓒ không dấu | 0 | **197 dòng** | **22 dòng** |
+
+13/17 repo sạch tuyệt đối cả ba mặt. Phần còn lại là miễn trừ có lý do, ghi ở §Miễn trừ:
+`bang` tiếng Anh của DuAnA (3) · tên sheet Excel `QUYEN` và một chuỗi thử của Dept_IT (4) ·
+từ điển thuật ngữ đang gạch bỏ cách viết sai + log watchdog trích nguyên văn (6) · hai chỗ đang
+có phiên agent khác giữ file, cố ý không đụng (`KhoDuLieuTrungTam` 9 · `Dept_HR` 3).
+
+**Bài học lớn nhất của đợt này:** `guard.cjs` sinh máy từng chiếm 72% số dòng mất dấu, sửa một
+chỗ là sạch 9 repo — nhưng thứ tốn công nhất lại là **~350 định danh mà máy dò không thấy**. Khi
+gate và mắt người lệch nhau một bậc độ lớn, tin mắt người trước, rồi đi sửa gate.
+
+## Số nền một repo — đo 2026-09-12 (bảng CŨ, giữ để đối chiếu)
 
 | Phép | Đã quét | Hit lúc đầu | Sau đợt dọn |
 |---|---|---|---|
