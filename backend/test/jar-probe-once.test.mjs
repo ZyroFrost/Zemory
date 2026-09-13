@@ -26,7 +26,7 @@ function brokenSource(root) {
   return [{ key: "gia", label: "Trình duyệt giả", userData, exe: process.execPath }];
 }
 
-test("an open jar must not be probed only ONCE even when asked for all 12 platforms", (t) => {
+test("a jar that CANNOT be opened is probed exactly ONCE, even when all 12 platforms ask", (t) => {
   const sources = brokenSource(tempDir(t, "zm-jar-"));
   clearJarCache();
 
