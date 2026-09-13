@@ -45,7 +45,15 @@ const TEXT_EXT = new Set([...CODE_EXT, '.md', '.json', '.html', '.css'])
 // Paths exempt by design. Add a line here only with the reason next to it.
 const EXEMPT = [
   /docs_template\/.*\/skills\/write-docx\/reference\//, // deliberately ASCII Python samples
+  // `external/` is OTHER PEOPLE'S code kept for reference - `03_STRUCTURE` defines it that way
+  // ("code HỌ · ETL hệ cũ · script phòng khác"). Rewriting another team's script is not our call,
+  // and a rule about how WE name things does not reach into a repo we only cloned to read.
+  /(^|\/)external\//,
 ]
+// The NAMES face skips `attic/`: those are frozen snapshots and delivered files, and the file name
+// IS the record of what was handed over ("…-truoc-don.md", "…_BAN_AGENT_DUNG_COI_LA_GOC.xlsx").
+// Renaming them would edit history. Their CONTENTS are still scanned for missing diacritics.
+const NAME_EXEMPT = /(^|\/)attic\//
 // The archive IS scanned. 02_RULES forbids rewriting an old entry, but PUTTING THE DIACRITICS BACK
 // adds nothing and removes nothing - it only makes the same sentence readable (user ruling
 // 2026-09-12). Changing what an entry SAYS is still forbidden.
@@ -103,6 +111,7 @@ function stripCommentsAndStrings (src, ext) {
 
 const seen = new Set()
 for (const f of files) {
+  if (NAME_EXEMPT.test(f)) continue
   for (const part of f.split('/')) {
     if (seen.has(part)) continue
     seen.add(part)
