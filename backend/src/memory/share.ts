@@ -1135,6 +1135,61 @@ export function appendChunkVerified(containerPath: string, bundlePath: string, e
  * Chữ ký = `<độ dài>:<createdAt trong header>`, mà header là **plaintext nằm ở đầu khối** ⇒ đọc
  * 64 KB tại `chunk.offset` là đủ. Khối đã biết ⇒ bỏ qua với chi phí gần bằng 0.
  */
+/**
+ * DANH TÍNH KHỐI — bền xuyên máy, độc lập VỊ TRÍ (plan/24 §7c ①).
+ *
+ * 🔴 Khác `chunkSignature` ở chỗ quyết định: chữ ký kia dùng để phát hiện một
+ * FILE bị viết lại, nên `<tên file>#<chỉ số>` làm khoá là đủ — đúng với kênh
+ * CHUNG, nơi tên file là từ vựng chung của mọi máy. Kênh máy-tới-máy thì mỗi máy
+ * có thứ tự khúc của riêng nó (HP điều 16, sửa đổi 2026-09-13), nên `#21` của hai
+ * máy là HAI khối khác nhau. Đo được (plan/24 §6b phép ⑤): khoá theo vị trí làm
+ * MẤT khối, im lặng — mỗi bên tưởng bên kia đã có khối của mình nên không gửi.
+ *
+ * Dùng `kdf.salt`: 16 byte ngẫu nhiên sinh MỚI mỗi gói (xem `exportMemoryBundle`),
+ * nằm trong header PLAINTEXT ⇒ đọc được mà không giải mã, cùng chi phí 64 KB đầu
+ * khối như chữ ký. Thiếu salt (gói lạ/hỏng) ⇒ `null` để người gọi tự fail-open.
+ */
+export function chunkBlockId(containerPath: string, chunk: { offset: number; len: number }): string | null {
+  const fd = openSync(containerPath, "r");
+  try {
+    const probe = Buffer.alloc(Math.min(64 * 1024, chunk.len));
+    readSync(fd, probe, 0, probe.length, chunk.offset);
+    const firstNl = probe.indexOf(10, 0);
+    const secondNl = firstNl >= 0 ? probe.indexOf(10, firstNl + 1) : -1;
+    if (firstNl < 0 || secondNl < 0) return null;
+    const header = JSON.parse(probe.subarray(firstNl + 1, secondNl).toString("utf8")) as BundleHeader;
+    const salt = header?.kdf?.salt;
+    return typeof salt === "string" && salt.length > 0 ? salt : null;
+  } catch {
+    return null;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Khối trong một container — công bố cho lớp kênh (plan/24 §2). */
+export type ContainerChunk = ChunkRef;
+/** Liệt kê khối của một container. Công bố để lớp kênh KHÔNG phải viết lại bộ đọc. */
+export function listContainerChunks(path: string): ContainerChunk[] {
+  return listChunks(path);
+}
+/** Trích một khối ra file rời. Công bố cho lớp kênh; giữ nguyên lớp chịu-chập. */
+export async function extractContainerChunk(containerPath: string, chunk: ContainerChunk, outPath: string): Promise<void> {
+  await extractChunk(containerPath, chunk, outPath);
+}
+/** Container hay bundle đơn? Lớp kênh cần biết để đọc đúng đường. */
+export function isContainer(path: string): boolean {
+  return isChunkContainer(path);
+}
+/** Mọi khúc trong một thư mục kênh — công bố cho lớp kênh liệt kê khối mình có. */
+export function listChannelSegments(dir: string): { path: string; n: number }[] {
+  return listSegments(dir);
+}
+/** Khúc ĐANG MỞ — nơi khối nhận từ máy khác được nối vào (HP điều 16: chỉ nối thêm). */
+export function activeChannelSegment(dir: string): { path: string; name: string; fresh: boolean } {
+  return activeSegment(dir);
+}
+
 function chunkSignature(containerPath: string, chunk: ChunkRef): string {
   const fd = openSync(containerPath, "r");
   try {

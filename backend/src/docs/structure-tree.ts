@@ -75,6 +75,11 @@ export const SLOT_ROLES: Record<string, string> = {
   // 2026-07-26 sau khi `zemory conform` bắt được cùng một tên tự phát ở 2 repo độc lập
   // (zemory `memory/graph/`, DuAnB `integrations/graph/`) ⇒ concern thật, không ngẫu nhiên.
   graph: "engine graph dẫn xuất: import/symbol/docs/touches (lồng trong domain)",
+  // Cùng hạng `graph`/`adapters`: slot LỒNG trong domain. Khai tên 2026-09-13 khi build
+  // lớp kênh máy-tới-máy (plan/24) và `conform` bắt đúng `memory/channel` là tên tự phát —
+  // y hệt cách `graph/` được khai 2026-07-26. TÁCH bạch có chủ đích: module định dạng gói
+  // (`share.ts`) sở hữu ĐỊNH DẠNG + mã hoá, `channel/` chỉ sở hữu ĐƯỜNG ĐI.
+  channel: "đường truyền ngang hàng: danh tính · bắt tay · dò · chở khối (lồng trong domain)",
   packaging: "packaging resources: exe/tray icons (.spec reads)",
   skills: "vendored skills: one folder per upstream repo, kept verbatim (03 §3)",
   prompts: "LLM prompt templates (tracked resource)",
