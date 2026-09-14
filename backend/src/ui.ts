@@ -2565,6 +2565,62 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       checkCache.delete("paths|" + root());
       return json(res, { ok: true, pathsWatch: getPathsWatch() });
     }
+    if (p === "/channel-status") {
+      // Kênh máy-tới-máy (plan/24 §5). Chỉ ĐỌC — không mở socket, không dò gì.
+      const ch = await import("./memory/channel/index.js");
+      const st = ch.channelStatus();
+      return json(res, { ok: true, ...st, blocks: ch.inventoryIds(st.dir).length });
+    }
+    if (p === "/set-p2p") {
+      // 🔴 HAI KHÁI NIỆM TÁCH ĐÔI, đừng gộp (plan/24 §5):
+      //   `on`        = có NHẬN qua kênh p2p không — bật được CÙNG LÚC với Drive;
+      //   `transport` = GỬI đi đâu, ĐÚNG MỘT đích. Hai kẻ cùng ghi đã hỏng kho HAI LẦN (HP điều 11).
+      const { setP2pEnabled, setSyncTransport, getP2pEnabled, getSyncTransport } = await import("./config/settings.js");
+      const on = u.searchParams.get("on");
+      const transport = u.searchParams.get("transport");
+      if (on !== null) setP2pEnabled(on === "1");
+      if (transport === "drive" || transport === "p2p") setSyncTransport(transport);
+      return json(res, { ok: true, enabled: getP2pEnabled(), transport: getSyncTransport() });
+    }
+    if (p === "/channel-pair") {
+      const { getP2pPeers, setP2pPeers } = await import("./config/settings.js");
+      const id = (u.searchParams.get("id") ?? "").trim();
+      const drop = u.searchParams.get("drop") === "1";
+      const norm = (s: string): string => s.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      if (!id) return json(res, { ok: false, error: "thiếu id" });
+      // Ghép đôi là quyết định của NGƯỜI: chỉ ghi đúng thứ họ dán, không tự đoán thêm máy nào.
+      const cur = getP2pPeers();
+      setP2pPeers(drop ? cur.filter((x) => norm(x) !== norm(id)) : [...cur, id]);
+      return json(res, { ok: true, peers: getP2pPeers() });
+    }
+    if (p === "/channel-sync") {
+      // Người BẤM = lượt có chủ đích. Một lượt với MỘT địa chỉ; lỗi trả nguyên văn, không nuốt.
+      const host = (u.searchParams.get("host") ?? "").trim();
+      const port = Number(u.searchParams.get("port") ?? 0);
+      if (!host || !port) return json(res, { ok: false, error: "thiếu host/port" });
+      const ch = await import("./memory/channel/index.js");
+      const { resolveShareKey } = await import("./memory/share.js");
+      const keyFile = resolveShareKey(root());
+      if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
+      const st = ch.channelStatus();
+      const r = await ch.connectToPeer(
+        { host, port },
+        {
+          channelDir: st.dir,
+          identity: ch.channelIdentity(),
+          shareKey: readFileSync(keyFile, "utf8").trim(),
+          appVersion: appVersion(),
+          allowedPeers: st.peers,
+        },
+      );
+      return json(res, { ok: !r.error, ...r });
+    }
+    if (p === "/channel-probe") {
+      // Đo tầng 2 (mở cổng tự động). Fail-open: không router nào trả lời KHÔNG phải lỗi.
+      const ch = await import("./memory/channel/index.js");
+      const m = await ch.mapPort(ch.channelStatus().port, { lifetimeSeconds: 60 });
+      return json(res, { ok: true, mapped: !!m, externalPort: m?.externalPort ?? null, gateways: ch.guessGateways().length });
+    }
     if (p === "/sweep-procs") {
       // CÚ BẤM = LỜI CHO PHÉP ĐÓNG (cùng doctrine `/paths-fix-apply`): vòng dọn nền chạy mỗi 6 giờ,
       // nhưng khi người dùng NHÌN THẤY con số thì họ phải dọn được ngay, không phải chờ.

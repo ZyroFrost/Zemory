@@ -62,6 +62,14 @@ interface ZConfig {
   repoStdCheck?: boolean;
   /** plan/21 §5.7 — watch dead paths across linked repos (row · chip · badge · daemon sweep). Default ON. */
   pathsWatch?: boolean;
+  /** plan/24 §5 — peer-to-peer channel. NHẬN qua kênh p2p; bật được cùng lúc với Drive. Default OFF. */
+  p2pEnabled?: boolean;
+  /** plan/24 §5 — đích GHI, đúng MỘT tại một thời điểm (hai kẻ ghi đã hỏng kho hai lần, HP điều 11). */
+  syncTransport?: "drive" | "p2p";
+  /** plan/24 §5 — device ID của máy đã ghép đôi. Rỗng ⇒ không nhận ai. */
+  p2pPeers?: string[];
+  /** plan/24 §5 — cổng lớp kênh nghe. */
+  p2pPort?: number;
   /** Lịch tự sync — xem getAutosyncSchedule. */
   autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
   /** Tự kiểm lại màn Tính năng theo chu kỳ — xem getChecksAuto. */
@@ -437,6 +445,54 @@ export function getPathsWatch(): boolean {
 export function setPathsWatch(on: boolean): void {
   const c = read();
   c.pathsWatch = on;
+  write(c);
+}
+
+/**
+ * KÊNH MÁY-TỚI-MÁY (plan/24 §5). Mặc định **TẮT** — bật là lựa chọn có ý thức của
+ * từng máy, và tắt thì mọi thứ chạy y như hôm nay (Drive nguyên trạng).
+ *
+ * 🔴 Hai khái niệm TÁCH ĐÔI, đừng gộp vào một công tắc:
+ *   · `p2pEnabled`   = có NHẬN qua kênh máy-tới-máy không  → bật được CÙNG LÚC với Drive.
+ *   · `syncTransport` = GỬI đi đâu, **đúng MỘT đích** tại một thời điểm.
+ * Hai kẻ cùng GHI đã làm hỏng kho HAI LẦN (HP điều 11, plan/22 §0); một cái tick
+ * đọc ra thành "bật thêm kênh nữa" là đúng cách người ta hiểu sai chỗ này.
+ */
+export function getP2pEnabled(): boolean {
+  return read().p2pEnabled === true;
+}
+export function setP2pEnabled(on: boolean): void {
+  const c = read();
+  c.p2pEnabled = on;
+  write(c);
+}
+/** Đích GHI hiện hành. `drive` là mặc định và là đường đã chạy lâu nay. */
+export function getSyncTransport(): "drive" | "p2p" {
+  return read().syncTransport === "p2p" ? "p2p" : "drive";
+}
+export function setSyncTransport(t: "drive" | "p2p"): void {
+  const c = read();
+  c.syncTransport = t;
+  write(c);
+}
+/** Máy đã ghép đôi (device ID). Rỗng ⇒ không nhận ai — không bao giờ mặc định mở. */
+export function getP2pPeers(): string[] {
+  const v = read().p2pPeers;
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+}
+export function setP2pPeers(peers: string[]): void {
+  const c = read();
+  c.p2pPeers = [...new Set(peers.map((p) => p.trim()).filter(Boolean))];
+  write(c);
+}
+/** Cổng lớp kênh nghe. 0 ⇒ để hệ tự chọn (dùng cho test). */
+export function getP2pPort(): number {
+  const v = Number(read().p2pPort);
+  return Number.isFinite(v) && v > 0 && v < 65536 ? v : 21038;
+}
+export function setP2pPort(port: number): void {
+  const c = read();
+  c.p2pPort = port;
   write(c);
 }
 

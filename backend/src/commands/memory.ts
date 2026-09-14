@@ -7,7 +7,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, salvageVectors, vectorDimsOf, verifyMemory } from "../memory/salvage.js";
 import { currentMemoryDb } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
-import { currentProjectRoot } from "../core/config.js";
+import { appVersion, currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
@@ -709,6 +709,101 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // BÙ VECTOR cho kho chung — NỐI THÊM một khối, không ghi đè (HP điều 16). Tách khỏi `sync`
   // vì nó phải DỰNG LẠI kho chung vào file tạm để biết bên đó thiếu gì (vài phút), không phải
   // việc chạy mỗi 30 phút.
+  if (sub === "channel") {
+    // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
+    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort } =
+      await import("../memory/channel/index.js");
+    const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
+    const rest = positionalArgs(args.slice(1));
+    const action = rest[0] ?? "status";
+
+    if (action === "id") {
+      console.log(channelIdentity().deviceId);
+      return;
+    }
+    if (action === "status") {
+      const st = channelStatus();
+      console.log(`zemory memory channel — ${st.enabled ? "BẬT" : "TẮT"} · ghi vào: ${st.transport}`);
+      console.log(`  ID máy này : ${st.deviceId}`);
+      console.log(`  cổng nghe  : ${st.port}`);
+      console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
+      console.log(`  đã ghép đôi: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
+      console.log("  ID KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
+      return;
+    }
+    if (action === "pair" || action === "unpair") {
+      const id = rest[1];
+      if (!id) {
+        console.log(`usage: zemory memory channel ${action} <device-id>`);
+        process.exitCode = 1;
+        return;
+      }
+      const cur = getP2pPeers();
+      const next =
+        action === "pair"
+          ? [...cur, id]
+          : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== id.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+      setP2pPeers(next);
+      console.log(`zemory memory channel ${action} — ${next.length} máy đã ghép đôi`);
+      return;
+    }
+    if (action === "on" || action === "off") {
+      setP2pEnabled(action === "on");
+      console.log(`zemory memory channel — kênh máy-tới-máy ${getP2pEnabled() ? "BẬT" : "TẮT"} (Drive không đổi)`);
+      return;
+    }
+    if (action === "probe") {
+      // Đo tầng 2: router có nói NAT-PMP không. KHÔNG mở cổng thật, chỉ hỏi rồi thả.
+      const gws = guessGateways();
+      console.log(`zemory memory channel probe — gateway đoán được: ${gws.join(", ") || "(không có)"}`);
+      const m = await mapPort(channelStatus().port, { lifetimeSeconds: 60 });
+      console.log(
+        m
+          ? `  ✓ mở được cổng ngoài ${m.externalPort} qua ${m.gateway} (thuê ${m.lifetimeSeconds}s)`
+          : "  ✗ không router nào trả lời NAT-PMP — máy này KHÔNG gọi-vào-được.\n" +
+            "    Không sao: chỉ cần ĐẦU KIA mở được cổng, máy này gọi RA vẫn đồng bộ được.",
+      );
+      return;
+    }
+    if (action === "sync") {
+      const host = flagValue(args, "--host");
+      const port = Number(flagValue(args, "--port") ?? 0);
+      if (!host || !port) {
+        console.log("usage: zemory memory channel sync --host <ip> --port <cổng>");
+        process.exitCode = 1;
+        return;
+      }
+      const st = channelStatus();
+      const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
+      if (!keyFile || !existsSync(keyFile)) {
+        console.log("zemory memory channel sync — chưa có chìa share. Chạy `zemory memory keygen` hoặc `key set`.");
+        process.exitCode = 1;
+        return;
+      }
+      const r = await connectToPeer(
+        { host, port },
+        {
+          channelDir: channelDir(),
+          identity: channelIdentity(),
+          shareKey: readFileSync(keyFile, "utf8").trim(),
+          appVersion: appVersion(),
+          allowedPeers: st.peers,
+        },
+      );
+      console.log(`zemory memory channel sync — ${host}:${port}`);
+      console.log(`  đối phương : ${r.peerDeviceId ?? "(không rõ)"}`);
+      console.log(`  chở đi     : ${r.sentBlocks} khối · nhận về: ${r.receivedBlocks} khối`);
+      if (r.error) {
+        console.log(`  ✗ ${r.error}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+    console.log("usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]");
+    process.exitCode = 1;
+    return;
+  }
+
   if (sub === "vectors-catchup") {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
@@ -1376,6 +1471,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    ĐỒNG BỘ HAI CHIỀU qua thư mục chung (Drive): gộp mọi gói của máy khác",
       "                    vào kho này, rồi NỐI THÊM phần mới của máy này lên kho chung — không",
       "                    ghi đè byte cũ. --compact: viết LẠI kho chung từ kho máy này.",
+      "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
+      "                    KÊNH MÁY-TỚI-MÁY (plan/24): id = ID máy này (KHÔNG phải bí mật, chép",
+      "                    thoải mái) · pair = ghép đôi bằng ID máy kia · on/off = có NHẬN qua kênh",
+      "                    này không (Drive không đổi) · probe = router có mở cổng hộ được không",
+      "                    · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
       "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
       "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",
