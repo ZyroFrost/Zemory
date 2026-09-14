@@ -167,3 +167,110 @@
     if(fx)fx.classList.toggle('stale',!!stale||pend>0);
   }
   function setLvl(l){var a=zid('lvLean'),b=zid('lvFull');if(a)a.classList.toggle('on',l!=='full');if(b)b.classList.toggle('on',l==='full');}
+
+  // ── KÊNH MÁY-TỚI-MÁY (plan/24 §5) ────────────────────────────────────────
+  // Tab Drive ở trên giữ NGUYÊN TRẠNG — khối này chỉ THÊM một pane.
+  // 🔴 Hai khái niệm tách đôi, và bề mặt phải nói ra điều đó:
+  //    công tắc = có NHẬN không (bật cùng lúc với Drive được)
+  //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
+  function p2pMsg(s){zset('p2pMsg',s||'');}
+  function renderChannel(c){
+    if(!c)return;
+    zset('p2pBlocks',zN(c.blocks||0));zset('p2pPort',String(c.port||'—'));
+    var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=c.deviceId||'';
+    var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
+    var a=zid('trDrive'),b=zid('trP2p');
+    if(a)a.classList.toggle('on',c.transport!=='p2p');
+    if(b)b.classList.toggle('on',c.transport==='p2p');
+    var box=zid('p2pPeers');
+    if(box){
+      var ps=c.peers||[];
+      if(!ps.length){box.textContent=t('p2p.none');}
+      else{
+        box.innerHTML='';
+        ps.forEach(function(id){
+          var row=document.createElement('div');
+          row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:3px';
+          var s=document.createElement('span');s.style.cssText='flex:1;font-family:var(--mono,monospace);font-size:10.5px';s.textContent=id;
+          var x=document.createElement('button');x.className='btn sm';x.textContent=t('p2p.unpair');
+          x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',id);
+          row.appendChild(s);row.appendChild(x);box.appendChild(row);
+        });
+      }
+    }
+  }
+  function loadChannel(){return zGet('/channel-status').then(renderChannel).catch(function(){});}
+  window.zLoadChannel=loadChannel;
+  // Mở ⚙ ⇒ nạp luôn, để số trong đó không bao giờ là số cũ của lần mở trước.
+  document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#topSettings'))setTimeout(loadChannel,60);});
+
+  document.addEventListener('click',function(e){
+    var el=e.target&&e.target.closest?e.target.closest('[data-synctab],[data-act],[data-tr]'):null;
+    if(!el)return;
+    var tab=el.getAttribute('data-synctab');
+    if(tab){
+      // Hai loại sync sống trong ⚙ (user chốt: "nhét phần liên kết này vào setting").
+      var dr=tab==='drive',pd=zid('syncPaneDrive'),pp=zid('syncPaneP2p');
+      if(pd)pd.style.display=dr?'':'none';
+      if(pp)pp.style.display=dr?'none':'';
+      zid('syncTabDrive').classList.toggle('on',dr);
+      zid('syncTabP2p').classList.toggle('on',!dr);
+      if(!dr)loadChannel();
+      return;
+    }
+    var tr=el.getAttribute('data-tr');
+    if(tr){
+      // Đi qua zSave: đổi ĐÍCH GHI là thao tác lưu, hỏng mà im lặng thì người dùng tưởng
+      // đã đổi kênh trong khi vẫn ghi chỗ cũ — đúng kiểu vỏ-rỗng mà 02_RULES cấm.
+      var was=zid('trP2p')&&zid('trP2p').classList.contains('on')?'p2p':'drive';
+      zSave('/set-p2p?transport='+encodeURIComponent(tr),function(){
+        var a=zid('trDrive'),b=zid('trP2p');
+        if(a)a.classList.toggle('on',was!=='p2p');
+        if(b)b.classList.toggle('on',was==='p2p');
+      }).then(function(j){if(j)loadChannel();});
+      return;
+    }
+    var act=el.getAttribute('data-act');
+    if(act==='p2p-toggle'){
+      // zSave, KHÔNG zPost: cổng `save-never-silent` (2026-09-12) cấm công tắc tự xử lời
+      // hứa lưu. Ba kiểu hỏng (gọi hỏng · HTTP≠2xx · {ok:false}) đều phải HOÀN NGUYÊN + báo.
+      var wasOn=el.classList.contains('on');
+      el.classList.toggle('on',!wasOn); // lạc quan, để nút phản hồi ngay
+      zSave('/set-p2p?on='+(wasOn?'0':'1'),function(){el.classList.toggle('on',wasOn);})
+        .then(function(j){if(j)loadChannel();});
+    }
+    else if(act==='p2p-copy'){
+      var v=(zid('p2pMyId')||{}).value||'';
+      if(v&&navigator.clipboard)navigator.clipboard.writeText(v);
+      p2pMsg(t('p2p.copied'));
+    }
+    else if(act==='p2p-pair'){
+      var id=(zid('p2pPeerIn')||{}).value||'';
+      if(!id.trim()){p2pMsg(t('p2p.needId'));return;}
+      zPost('/channel-pair?id='+encodeURIComponent(id.trim())).then(function(r){
+        if(r&&r.ok===false){p2pMsg('✗ '+(r.error||''));return;}
+        zid('p2pPeerIn').value='';p2pMsg(t('p2p.paired'));loadChannel();
+      });
+    }
+    else if(act==='p2p-unpair'){
+      zPost('/channel-pair?drop=1&id='+encodeURIComponent(el.getAttribute('data-id')||'')).then(loadChannel);
+    }
+    else if(act==='p2p-sync'){
+      var h=((zid('p2pHost')||{}).value||'').trim(),pt=((zid('p2pPortIn')||{}).value||'').trim();
+      if(!h||!pt){p2pMsg(t('p2p.needAddr'));return;}
+      p2pMsg(t('p2p.syncing'));
+      zPost('/channel-sync?host='+encodeURIComponent(h)+'&port='+encodeURIComponent(pt)).then(function(r){
+        // Lỗi trả NGUYÊN VĂN: "khác chìa" và "máy lạ" là hai chuyện khác nhau, gộp thành
+        // một chữ "lỗi" là bắt người dùng đoán (cùng doctrine `save-never-silent`).
+        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
+        p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        loadChannel();
+      });
+    }
+    else if(act==='p2p-probe'){
+      p2pMsg(t('p2p.probing'));
+      zPost('/channel-probe').then(function(r){
+        p2pMsg(r&&r.mapped?t('p2p.mapped').replace('{n}',String(r.externalPort)):t('p2p.notMapped'));
+      });
+    }
+  });

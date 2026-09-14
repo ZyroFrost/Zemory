@@ -40,6 +40,10 @@ const SHOTS = [
   ["05-harness-docs", "harness", ["ht", "docs"], 5000],
   ["06-harness-structure", "harness", ["ht", "struct"], 5000],
   ["07-features", "system", null, 5000],
+  // The Settings dialog: this is where machine PAIRING lives (plan/24 §5 — the user asked for it
+  // in Settings, not on a screen). A raw selector, because the gear sits in the top bar.
+  ["08-settings-sync", "system", "#topSettings", 3500],
+  ["09-settings-p2p", "system", ["#topSettings", "#syncTabP2p"], 3500],
 ];
 
 const BROWSERS = [
@@ -160,9 +164,31 @@ async function main() {
 
   let bad = 0;
   for (const [name, nav, sub, wait] of SHOTS) {
-    const sel = sub ? `.screen[data-s="${nav}"] [data-${sub[0]}="${sub[1]}"]` : null;
+    // `sub` is either [attribute, value] scoped to the screen, OR a raw selector string for
+    // things that live OUTSIDE a screen — the Settings dialog is opened from the top bar,
+    // so a screen-scoped lookup can never reach it.
+    // `sub` may be: [attribute, value] scoped to the screen · a raw selector string · or an
+    // ARRAY of raw selectors clicked IN ORDER (open a dialog, then pick a tab inside it).
+    const rawChain = Array.isArray(sub) && typeof sub[0] === "string" && sub[0].startsWith("#") ? sub : null;
+    const sel = !sub
+      ? null
+      : rawChain
+        ? rawChain[rawChain.length - 1]
+        : typeof sub === "string"
+          ? sub
+          : `.screen[data-s="${nav}"] [data-${sub[0]}="${sub[1]}"]`;
+    const subLabel = !sub ? "" : rawChain ? rawChain.join(" -> ") : typeof sub === "string" ? sub : `${sub[0]}=${sub[1]}`;
+    const clickChain = rawChain
+      ? rawChain
+          .map((s) => `{const b=document.querySelector('${s}');if(!b)return 'not found ${s}';b.click();}`)
+          .join("")
+      : null;
     const click = `(()=>{const a=document.querySelector('.nav a[data-s="${nav}"]');if(!a)return 'nav item not found';a.click();${
-      sub ? `const b=document.querySelector('${sel}');if(!b)return 'sub-tab not found ${sub[0]}=${sub[1]}';b.click();` : ""
+      clickChain
+        ? clickChain
+        : sub
+          ? `const b=document.querySelector('${sel}');if(!b)return 'sub-tab not found ${subLabel}';b.click();`
+          : ""
     }return 'ok';})()`;
     const r = await send("Runtime.evaluate", { expression: click, returnByValue: true });
     let state = r?.result?.result?.value;
@@ -172,7 +198,16 @@ async function main() {
     // Without this step one missed click still produces a WRONG-TAB image while the script reports green.
     if (state === "ok") {
       const check = `(()=>{const s=document.querySelector('.screen[data-s="${nav}"]');if(!s||!s.classList.contains('on'))return 'man khong mo';${
-        sub ? `const b=document.querySelector('${sel}');if(!b||!b.classList.contains('on'))return 'sub-tab khong an';` : ""
+        // A raw-selector sub opens a DIALOG, and the trigger (the gear) never gets class `on` —
+        // checking it would fail a capture that is actually fine. Verify the dialog instead:
+        // that is the thing the image is supposed to show.
+        sub
+          ? rawChain || typeof sub === "string"
+            ? `if(!document.querySelector('.dlg-back.on'))return 'dialog khong mo';${
+                rawChain ? `const c=document.querySelector('${sel}');if(!c||!c.classList.contains('on'))return 'tab trong dialog khong an';` : ""
+              }`
+            : `const b=document.querySelector('${sel}');if(!b||!b.classList.contains('on'))return 'sub-tab khong an';`
+          : ""
       }return 'ok';})()`;
       const v = await send("Runtime.evaluate", { expression: check, returnByValue: true });
       state = v?.result?.result?.value;

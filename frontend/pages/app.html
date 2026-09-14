@@ -430,6 +430,36 @@
            BẬT", mà việc này chạy trong CỬA SỔ (nhịp của trang, tắt cửa sổ là ngừng) — xếp cạnh các
            việc nền của daemon là nói sai thứ nó làm, và user đi tìm ở ⚙ không thấy (2026-09-09). -->
       <div class="set-row" style="border:0"><div class="sl"><b data-i18n="mem.checksAuto">Tự kiểm lại tính năng</b><small data-i18n="mem.checksAutoD">BẬT: màn Tính năng tự chạy lại các phép kiểm theo chu kỳ, khỏi bấm “Kiểm lại tất cả”. Chỉ chạy khi cửa sổ đang mở.</small></div><select id="ckEvery" class="rsel" data-i18n-aria="mem.checksAutoEvery" aria-label="Chu kỳ tự kiểm" style="margin-right:8px;flex:0 0 auto"><option value="15">15′</option><option value="30">30′</option><option value="60">60′</option><option value="180">3h</option></select><div class="toggle" data-auto="checks"></div></div>
+      <!-- ĐỒNG BỘ — hai loại, đặt Ở ĐÂY theo đúng lời user 2026-09-13 ("nhét cái phần liên
+           kết này vào setting rồi mở ra 2 loại sync"). Lượt đầu tôi đặt vào card Global Memory
+           rồi tự biện minh bằng luật IA; user mở ⚙ không thấy. Thao tác GHÉP ĐÔI là CẤU HÌNH
+           làm một lần, nên nhà của nó là ⚙ — còn số liệu vận hành (đã đẩy/tổng, đồng bộ ngay)
+           vẫn ở card Global Memory, KHÔNG nhân đôi con số nào (luật IA plan/15). -->
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <b style="font-size:12.5px" data-i18n="set.syncH">Đồng bộ</b>
+        <div class="filters" style="margin:8px 0"><div class="fchip on" id="syncTabDrive" data-synctab="drive" data-i18n="sync.tabDrive">Drive</div><div class="fchip" id="syncTabP2p" data-synctab="p2p" data-i18n="sync.tabP2p">Máy-tới-máy</div></div>
+        <div id="syncPaneDrive" class="muted" style="font-size:11.5px" data-i18n="set.driveHere">Kênh Drive cấu hình ở màn Global Memory › Đồng bộ &amp; Sao lưu — nơi có sẵn số liệu để quyết định.</div>
+<div id="syncPaneP2p" style="display:none">
+            <div class="set-row"><div class="sl"><b data-i18n="p2p.enable">Bật kênh máy-tới-máy</b><small data-i18n="p2p.enableD">Nhận khối thẳng từ máy kia, không qua Drive. Bật được CÙNG LÚC với Drive — đây chỉ là chiều NHẬN.</small></div><div class="toggle" id="p2pToggle" data-act="p2p-toggle"><i></i></div></div>
+            <div class="section-t" data-i18n="p2p.meH">Máy này</div>
+            <div class="drv-facts">
+              <div><span data-i18n="p2p.blocks">Khối đang giữ</span><b id="p2pBlocks">—</b></div>
+              <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
+            </div>
+            <div class="muted" style="font-size:11px;margin:6px 0" data-i18n="p2p.idHint">ID máy này — đưa cho máy kia. ID KHÔNG phải bí mật (nó là băm của khoá công khai); chìa share thì TUYỆT ĐỐI không đưa qua chat.</div>
+            <div style="display:flex;gap:6px"><input id="p2pMyId" readonly style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none;font-family:var(--mono,monospace)"><button class="btn sm" data-act="p2p-copy" data-i18n="p2p.copy">Chép</button></div>
+            <div class="section-t" data-i18n="p2p.peersH">Máy đã ghép đôi</div>
+            <div id="p2pPeers" class="muted" style="font-size:11.5px;margin-bottom:6px">—</div>
+            <div style="display:flex;gap:6px"><input id="p2pPeerIn" data-i18n-ph="p2p.pairPh" placeholder="dán ID máy kia" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><button class="btn sm" data-act="p2p-pair" data-i18n="p2p.pair">Ghép đôi</button></div>
+            <div class="section-t" data-i18n="p2p.connH">Nối thử</div>
+            <div style="display:flex;gap:6px"><input id="p2pHost" data-i18n-ph="p2p.hostPh" placeholder="địa chỉ máy kia" style="flex:2;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><input id="p2pPortIn" data-i18n-ph="p2p.portPh" placeholder="cổng" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ</button></div>
+            <div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" style="flex:1" data-act="p2p-probe" data-i18n="p2p.probe">Kiểm router mở cổng</button></div>
+            <div class="section-t" data-i18n="p2p.writeH">Ghi vào kênh nào</div>
+            <div class="filters"><div class="fchip on" id="trDrive" data-tr="drive" data-i18n="p2p.trDrive">Drive</div><div class="fchip" id="trP2p" data-tr="p2p" data-i18n="p2p.trP2p">Máy-tới-máy</div></div>
+            <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="p2p.writeD">Đọc được CẢ HAI kênh cùng lúc, nhưng GHI chỉ đúng một — hai kẻ cùng ghi đã làm hỏng kho hai lần.</div>
+            <div id="p2pMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
+          </div>
+      </div>
       <div id="setMsg" class="muted" style="font-size:11.5px;min-height:1em;margin-top:8px"></div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <b style="font-size:12.5px" data-i18n="set.about">Giới thiệu</b>
