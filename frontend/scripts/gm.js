@@ -428,12 +428,30 @@ window.zFileView = (function () {
       body.innerHTML = '<img alt="" src="' + url + '" style="max-width:100%;max-height:100%;object-fit:contain">';
       return;
     }
-    // Không phải ảnh: trình duyệt nhúng được pdf/text thì nhúng, còn lại nêu rõ là tải về.
-    var embeddable = /^(application\/pdf|text\/)/.test(f.mime || '');
-    body.innerHTML = embeddable
-      ? '<iframe src="' + url + '" style="width:100%;height:100%;border:0;background:var(--surface-2)"></iframe>'
-      : '<div style="text-align:center"><div style="font-size:52px;opacity:.7">📎</div><div class="muted" style="margin-top:8px">' +
-        t('files.noPreview') + '</div></div>';
+    // TỆP CHỮ: đọc rồi tự vẽ, KHÔNG nhúng iframe.
+    //
+    // Hai lý do đo được (2026-09-15): ① iframe dùng bảng màu MẶC ĐỊNH của trình duyệt —
+    // nền tối của app + chữ đen mặc định ⇒ "đen thui không thấy gì"; token của app không
+    // với tới bên trong iframe. ② tự `fetch` rồi `response.text()` thì bản giải mã là
+    // UTF-8 theo chuẩn fetch, không phụ thuộc trình duyệt đoán bảng mã.
+    var isText = /^text\/|^application\/(json|sql|xml|javascript|x-sh)\b/.test(f.mime || '');
+    if (isText) {
+      body.innerHTML = '<div class="muted">' + t('files.loading') + '</div>';
+      fetch(url).then(function (r) { return r.text(); }).then(function (txt) {
+        if (list[idx] !== f) return; // người dùng đã bấm sang tệp khác trong lúc chờ
+        body.innerHTML = '<pre class="fpre"></pre>';
+        body.firstChild.textContent = txt; // textContent ⇒ không diễn giải HTML trong tệp
+      }).catch(function () {
+        body.innerHTML = '<div class="muted">' + t('files.err') + '</div>';
+      });
+      return;
+    }
+    if (/^application\/pdf/.test(f.mime || '')) {
+      body.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100%;border:0;background:var(--surface-2)"></iframe>';
+      return;
+    }
+    body.innerHTML = '<div style="text-align:center"><div style="font-size:52px;opacity:.7">📎</div><div class="muted" style="margin-top:8px">' +
+      t('files.noPreview') + '</div></div>';
   }
 
   function open(items, at) {

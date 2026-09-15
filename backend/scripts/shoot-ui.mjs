@@ -45,6 +45,9 @@ const SHOTS = [
   // ảnh render, nút lùi/tới và bộ đếm có mặt.
   ["04c-file-viewer", "gmem", ["#gmTabFiles", "#filesGrid [data-fopen]"], 7000,
     "document.querySelector('#fileDlg')?.classList.contains('on')"],
+  // Cùng dialog nhưng mở một tệp CHỮ: soi mojibake và độ tương phản — hai thứ ảnh không lộ ra.
+  ["04d-file-viewer-text", "gmem", ["#gmTabFiles", "[data-fkind=\"documents\"]", "#filesGrid [data-fopen]"], 8000,
+    "!!document.querySelector('#fileDlg.on .fpre')"],
   ["05-harness-docs", "harness", ["ht", "docs"], 5000],
   ["06-harness-structure", "harness", ["ht", "struct"], 5000],
   ["07-features", "system", null, 5000],
