@@ -62,6 +62,10 @@ interface ZConfig {
   repoStdCheck?: boolean;
   /** plan/21 §5.7 — watch dead paths across linked repos (row · chip · badge · daemon sweep). Default ON. */
   pathsWatch?: boolean;
+  /** Đã HỎI người dùng về lối tắt (Start Menu + Desktop) lúc cài chưa. Chỉ là "đã hỏi", KHÔNG phải
+   *  "đã tạo" — hỏi rồi mà chọn KHÔNG thì vẫn không được hỏi lại. Cờ này là thứ duy nhất giữ cho
+   *  lời mời lúc cài khỏi thành một lời nhắc lải nhải. */
+  shortcutPrompted?: boolean;
   /** plan/24 §5 — peer-to-peer channel. NHẬN qua kênh p2p; bật được cùng lúc với Drive. Default OFF. */
   p2pEnabled?: boolean;
   /** plan/24 §5 — đích GHI, đúng MỘT tại một thời điểm (hai kẻ ghi đã hỏng kho hai lần, HP điều 11). */
@@ -445,6 +449,16 @@ export function getPathsWatch(): boolean {
 export function setPathsWatch(on: boolean): void {
   const c = read();
   c.pathsWatch = on;
+  write(c);
+}
+
+/** Đã hỏi về lối tắt lúc cài chưa (xem `shortcutPrompted`). Mặc định CHƯA. */
+export function getShortcutPrompted(): boolean {
+  return read().shortcutPrompted === true;
+}
+export function setShortcutPrompted(on: boolean): void {
+  const c = read();
+  c.shortcutPrompted = on;
   write(c);
 }
 

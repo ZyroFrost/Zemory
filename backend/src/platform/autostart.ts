@@ -234,7 +234,30 @@ export function setAutostart(on: boolean): AutostartStatus {
 // ── Desktop shortcut (plan 14 §E packaging) ───────────────────────────────────
 // A clickable "zemory" icon that launches the daemon. Together with autostart it
 // gives the app-like install the user asked for, with no native dependency.
-export interface ShortcutStatus { supported: boolean; exists: boolean; path?: string; detail?: string }
+/** Một ĐÍCH lối tắt. Hai đích được nêu RIÊNG, và đó là cả điểm của kiểu này. */
+export interface ShortcutTarget { path: string; exists: boolean }
+
+/**
+ * 🔴 `exists` cũ là `desktop || startMenu` trong khi `path` chỉ trả về đường DESKTOP — nên bề
+ * mặt khoe một lối tắt Desktop KHÔNG CÓ THẬT. Đo trên máy này 15/09: công tắc BẬT, khai
+ * `…\OneDrive - <org>\Desktop\Zemory.lnk`, file đó không tồn tại, thứ thật sự có là mục Start
+ * Menu (tạo 01/09). Desktop ở đây bị chuyển hướng vào OneDrive nên lượt ghi trước đã trượt —
+ * mà lời hứa "một đích hỏng không kéo đích kia chết theo" lại biến cái trượt đó thành im lặng.
+ * `02_RULES` gọi đúng tên kiểu hỏng này: bề mặt không báo lỗi, nó NÓI DỐI.
+ *
+ * Nay mỗi đích tự khai `exists` của nó; `exists` tổng chỉ còn là tiện ích "có ít nhất một".
+ */
+export interface ShortcutStatus {
+  supported: boolean;
+  exists: boolean;
+  path?: string;
+  detail?: string;
+  startMenu?: ShortcutTarget;
+  desktop?: ShortcutTarget;
+}
+
+/** Đích nào của lối tắt được đụng tới. Không nêu ⇒ CẢ HAI (mặc định lúc cài, user chốt 15/09). */
+export interface ShortcutPick { startMenu?: boolean; desktop?: boolean }
 
 /** Expand `%VAR%` inside a Windows registry REG_EXPAND_SZ value. */
 function expandWinEnv(s: string): string {
@@ -334,7 +357,13 @@ function winWriteShortcut(lnkPath: string, vbs: string): void {
 
 export function desktopShortcutStatus(): ShortcutStatus {
   const os = platform();
-  if (os === "win32") { const p = winDesktopLnk(); return { supported: true, exists: existsSync(p) || existsSync(winStartMenuLnk()), path: p }; }
+  if (os === "win32") {
+    const desktop: ShortcutTarget = { path: winDesktopLnk(), exists: existsSync(winDesktopLnk()) };
+    const startMenu: ShortcutTarget = { path: winStartMenuLnk(), exists: existsSync(winStartMenuLnk()) };
+    // `path` giữ đường Desktop cho nơi gọi cũ; `exists` = "có ít nhất một". Sự thật từng đích
+    // nằm ở hai trường riêng — bề mặt nào nói "đã có" thì phải nói ĐÍCH NÀO.
+    return { supported: true, exists: desktop.exists || startMenu.exists, path: desktop.path, startMenu, desktop };
+  }
   if (os === "linux") { const p = join(desktopDir(), "zemory.desktop"); return { supported: true, exists: existsSync(p), path: p }; }
   if (os === "darwin") { const p = join(desktopDir(), "zemory.command"); return { supported: true, exists: existsSync(p), path: p }; }
   return { supported: false, exists: false, detail: `no desktop shortcut on ${os}` };
@@ -344,17 +373,26 @@ export function desktopShortcutStatus(): ShortcutStatus {
  * Install (on=true) or remove (on=false) the clickable "Zemory" shortcuts. On
  * Windows this creates BOTH a Desktop and a Start Menu entry (with the Z icon), so
  * the app opens from the menubar like an installed app. Fail-open.
+ *
+ * `pick` chọn ĐÍCH — hộp thoại lúc cài có hai ô tick riêng. Không nêu ⇒ cả hai (giữ nguyên
+ * hành vi của mọi nơi gọi cũ, gồm công tắc trong ⚙).
  */
-export function setDesktopShortcut(on: boolean): ShortcutStatus {
+export function setDesktopShortcut(on: boolean, pick: ShortcutPick = {}): ShortcutStatus {
   const st = desktopShortcutStatus();
   if (!st.supported || !st.path) return st;
+  const wantMenu = pick.startMenu ?? true;
+  const wantDesk = pick.desktop ?? true;
   try {
     if (platform() === "win32") {
       const desk = winDesktopLnk();
       const menu = winStartMenuLnk();
       if (!on) {
-        for (const p of [desk, menu, winLauncherVbs()]) if (existsSync(p)) rmSync(p, { force: true });
-        return { ...st, exists: false };
+        const drop = [...(wantMenu ? [menu] : []), ...(wantDesk ? [desk] : [])];
+        for (const p of drop) if (existsSync(p)) rmSync(p, { force: true });
+        // Bộ phóng .vbs chỉ xoá khi KHÔNG còn lối tắt nào trỏ vào nó — gỡ một đích mà xoá bộ
+        // phóng là bẻ gãy đích còn lại, im lặng.
+        if (!existsSync(menu) && !existsSync(desk) && existsSync(winLauncherVbs())) rmSync(winLauncherVbs(), { force: true });
+        return { ...desktopShortcutStatus() };
       }
       mkdirSync(dirname(menu), { recursive: true });
       const vbs = winWriteLauncher();
@@ -362,14 +400,15 @@ export function setDesktopShortcut(on: boolean): ShortcutStatus {
       // Before, a redirected Desktop threw and the Start Menu entry — the one the app
       // is actually launched from — was never even attempted.
       const fails: string[] = [];
-      for (const target of [menu, desk]) {
+      for (const target of [...(wantMenu ? [menu] : []), ...(wantDesk ? [desk] : [])]) {
         try {
           winWriteShortcut(target, vbs);
         } catch (error) {
+          // `winWriteShortcut` đã gắn sẵn đường đích vào thông điệp — đừng gắn thêm lần nữa.
           fails.push(error instanceof Error ? error.message : String(error));
         }
       }
-      return { ...st, exists: existsSync(menu) || existsSync(desk), ...(fails.length ? { detail: fails.join(" · ") } : {}) };
+      return { ...desktopShortcutStatus(), ...(fails.length ? { detail: fails.join(" · ") } : {}) };
     }
     if (!on) { if (existsSync(st.path)) rmSync(st.path, { force: true }); return { ...st, exists: false }; }
     const { exe } = launchParts();

@@ -536,7 +536,47 @@
     }});
   }
   document.addEventListener('click',function(e){if(e.target&&e.target.id==='asGear')openAsDialog();});
+  // LỜI MỜI LÚC CÀI — hiện MỘT lần, lần đầu cửa sổ app mở (user chốt 2026-09-15: "khi cài phải hỏi luôn").
+  // Vì sao ở đây chứ không chỉ ở CLI: lệnh cài thường do agent/CI chạy, không có người gõ — prompt chờ
+  // stdin ở đó là treo phiên. Cửa sổ app là lúc CHẮC CHẮN có người đang ngồi trước máy.
+  // Đóng hộp kiểu nào (Tạo · Bỏ qua · ESC) cũng đóng dấu "đã hỏi": mời lại mỗi lần mở app là phiền,
+  // và công tắc vẫn nằm sẵn trong ⚙ cho người đổi ý.
+  var SHORTCUT_ASKED=false;
+  function offerShortcut(a){
+    if(SHORTCUT_ASKED||!a||a.shortcutPrompted||!a.shortcut||!a.shortcut.supported)return;
+    SHORTCUT_ASKED=true;
+    // Đóng dấu "đã hỏi" ngay lúc HIỆN, không đợi lúc đóng: `zDialog` không có móc onCancel, nên
+    // đóng bằng X/nền/ESC sẽ không chạy gì cả ⇒ hộp mời lại mỗi lần mở app. Ngữ nghĩa của cờ là
+    // "đã TRÌNH lời mời", và trình rồi là trình rồi, bất kể người ta bấm gì.
+    zPost('/shortcut-asked').catch(function(){});
+    var sm=a.shortcut.startMenu||{},dk=a.shortcut.desktop||{};
+    var row=function(id,label,tgt){
+      return '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px"><input type="checkbox" id="'+id+'" checked style="margin-top:3px">'
+        +'<span><b>'+stdEsc(label)+'</b><br><span class="muted" style="font-size:11px">'+stdEsc(tgt.path||'')+(tgt.exists?' · '+stdEsc(t('sc.have')):'')+'</span></span></label>';
+    };
+    zDialog({icon:'📌',title:t('sc.title'),
+      bodyHtml:'<div style="font-size:13px"><div>'+stdEsc(t('sc.intro'))+'</div>'
+        +row('scMenu',t('sc.menu'),sm)+row('scDesk',t('sc.desk'),dk)
+        +'<div class="muted" style="font-size:11px;margin-top:10px">'+stdEsc(t('sc.note'))+'</div></div>',
+      okLabel:t('sc.create'),cancelLabel:t('sc.skip'),
+      onOk:function(){
+        var m=(zid('scMenu')||{}).checked?'1':'0',d=(zid('scDesk')||{}).checked?'1':'0';
+        // 🔴 KHÔNG `return true`: với zDialog, `onOk` trả true nghĩa là GIỮ HỘP MỞ (dành cho việc
+        // chạy dài tự báo tiến độ, như hộp cập nhật). Ở đây việc là tức thì và chạy tiếp ở nền,
+        // nên trả true làm hộp đứng im sau cú bấm — người dùng đọc thành "bấm không được".
+        if(m==='0'&&d==='0')return;   // bỏ tick cả hai = không tạo gì; cờ đã hỏi đóng dấu lúc hiện
+        // Qua zSave, KHÔNG phải zPost + catch rỗng: tạo lối tắt là thao tác CÓ THỂ TRƯỢT (Desktop bị
+        // chuyển hướng, thư mục không ghi được) — nuốt lỗi ở đây là hứa suông đúng kiểu `02_RULES`
+        // gọi là "vỏ rỗng". Trượt một đích thì server trả `detail`, và người dùng phải ĐỌC ĐƯỢC nó.
+        zSave('/set-shortcut?on=1&menu='+m+'&desk='+d).then(function(r){
+          if(!r)return;
+          if(r.shortcut&&r.shortcut.detail)zToast(r.shortcut.detail,'warn');
+          return zGet('/automation').then(renderAuto);
+        });
+      }});
+  }
   function renderAuto(a){Z.auto=a=a||{};zset('asSummary',asSummary(a.autosyncSchedule));setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
+    offerShortcut(a);
     // Tự kiểm lại (2026-09-09): công tắc + chu kỳ. Chu kỳ đổ vào ô CẢ KHI đang tắt — người dùng chọn
     // trước rồi mới bật là lối dùng bình thường, và ô trống trông như tính năng chưa có cấu hình.
     setTog('checks',!!(a.checksAuto&&a.checksAuto.on));

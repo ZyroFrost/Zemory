@@ -8,6 +8,17 @@ import { platform } from "node:os";
 import test from "node:test";
 import { tempDir } from "./helpers.mjs";
 
+/** Thân của một hàm trong file FE, cắt theo RANH GIỚI HÀM kế tiếp — không phải theo số ký tự.
+ *  Bản đầu của hai ca dưới cắt cứng 1600/2200 ký tự: thân `offerShortcut` dài 2.323, nên cửa sổ
+ *  hụt đúng 123 ký tự cuối và ca "không được return true" **không bắt được đột biến**. Một cổng
+ *  soi chữ mà cắt hụt vùng soi là cổng XANH GIẢ — tệ hơn không có cổng. */
+function feFunctionBody(src, name) {
+  const i = src.indexOf(`function ${name}`);
+  assert.ok(i >= 0, `phải tìm được ${name} trong file FE`);
+  const next = src.indexOf("\n  function ", i + 1);
+  return src.slice(i, next > 0 ? next : src.length);
+}
+
 function sandboxHome(t) {
   const home = tempDir(t, "zemory-autostart-");
   const save = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE, APPDATA: process.env.APPDATA, XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME };
@@ -86,4 +97,60 @@ test("the Windows entry, when on this OS, is a Startup .vbs that launches `ui` d
   assert.match(body, /WScript\.Shell/i, "phải dùng WScript.Shell");
   assert.match(body, /\.Run\b[^\n]*,\s*0,\s*False/i, "phải Run(..., 0, False) — cửa TÁCH tiến trình");
   setAutostart(false);
+});
+
+// ── LỐI TẮT LÚC CÀI (user chốt 2026-09-15: "khi cài phải hỏi luôn") ──────────
+//
+// Vì sao có cổng này: chức năng tạo mục Start Menu ĐÃ TỒN TẠI từ lâu và chạy đúng, nhưng bề
+// mặt duy nhất nói về nó là nhãn *"Lối tắt Desktop"* — không chỗ nào nhắc Start Menu. User đọc
+// thành "zemory chưa có chức năng này". Một năng lực không ai biết thì bằng không có, nên thứ
+// phải canh ở đây là **bề mặt có KỂ ĐỦ hai đích không**, không phải "code có chạy không".
+test("trạng thái lối tắt kể RIÊNG từng đích — không gộp thành một chữ 'đã có'", async () => {
+  if (platform() !== "win32") return;
+  const { desktopShortcutStatus } = await import("../../dist/platform/autostart.js");
+  const st = desktopShortcutStatus();
+  for (const [name, tgt] of [["startMenu", st.startMenu], ["desktop", st.desktop]]) {
+    assert.ok(tgt && typeof tgt.path === "string" && tgt.path, `${name} phải khai đường đích của nó`);
+    assert.equal(typeof tgt.exists, "boolean", `${name} phải tự khai có hay không`);
+    assert.equal(tgt.exists, existsSync(tgt.path), `${name}: lời khai phải khớp ĐĨA, không phải đích kia`);
+  }
+  // `exists` tổng chỉ là tiện ích "có ít nhất một" — nó KHÔNG được dùng để nói về một đích cụ thể.
+  assert.equal(st.exists, st.startMenu.exists || st.desktop.exists);
+});
+
+test("lời mời lúc cài phải nêu ĐÍCH DANH cả hai đích, ở CẢ HAI ngôn ngữ", async () => {
+  const { readFileSync } = await import("node:fs");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  // Đủ cặp khoá ở cả hai từ điển — thiếu một đầu thì người đổi ngôn ngữ vẫn thấy tiếng cũ mà
+  // không lỗi nào nổ (`02_RULES` §Song ngữ ĐỦ HAI ĐẦU).
+  for (const key of ["sc.title", "sc.intro", "sc.menu", "sc.desk", "sc.note", "sc.create", "sc.skip", "sc.have"]) {
+    const n = chrome.split(`'${key}':`).length - 1;
+    assert.equal(n, 2, `khoá ${key} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
+  }
+  // Nhãn công tắc phải nói ra Start Menu — đây chính là chữ đã làm user tưởng chức năng không tồn tại.
+  assert.ok(/'set\.shortcut':'[^']*Start Menu/.test(chrome), "nhãn công tắc (vi) phải nêu Start Menu");
+  assert.equal((chrome.match(/'set\.shortcut':'[^']*Start Menu/g) || []).length, 2, "cả hai từ điển đều phải nêu Start Menu");
+});
+
+test("hộp mời chỉ hiện khi CHƯA hỏi, và đóng dấu 'đã hỏi' ngay lúc hiện", async () => {
+  const { readFileSync } = await import("node:fs");
+  const js = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  assert.ok(/a\.shortcutPrompted/.test(js), "phải đọc cờ đã-hỏi từ server, không tự đoán");
+  // 🔴 Đóng dấu lúc HIỆN, không phải lúc đóng: `zDialog` không có móc onCancel, nên đóng bằng
+  // X/nền/ESC sẽ không chạy gì ⇒ hộp mời lại MỖI LẦN mở app. Neo vào đúng chỗ đó.
+  const body = feFunctionBody(js, "offerShortcut");
+  assert.ok(body.indexOf("/shortcut-asked") < body.indexOf("zDialog("), "phải POST /shortcut-asked TRƯỚC khi mở hộp");
+  // Neo vào KHOÁ tuỳ chọn `onCancel:`, không phải chữ "onCancel" — chú thích ngay trên cũng
+  // nhắc tên đó, mà bắt cả chú thích là cổng báo oan ngay trên file dạy về chính nó.
+  assert.equal(/onCancel\s*:/.test(body), false, "đừng dựa vào onCancel — zDialog không gọi nó");
+});
+
+test("nút hộp mời phải ĐÓNG hộp — `onOk` trả true là giữ hộp mở, trông y như treo", async () => {
+  const { readFileSync } = await import("node:fs");
+  const js = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  const body = feFunctionBody(js, "offerShortcut");
+  // Ca thật 2026-09-15: bản đầu chép khuôn `return true` từ hộp cập nhật (hộp đó CỐ Ý ở lại để
+  // in tiến độ). Ở đây việc chạy ở nền, nên hộp phải đóng ngay — user báo đúng triệu chứng:
+  // *"có kẹt gì ko bấm ko dc?"*. Không cổng nào nổ, không lỗi nào hiện: chỉ người dùng thấy.
+  assert.equal(/return true;/.test(body), false, "onOk KHÔNG được trả true — hộp phải đóng sau cú bấm");
 });

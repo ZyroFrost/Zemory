@@ -182,6 +182,34 @@
     zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
     var seen=(c.seen||[]);
     zset('p2pSeen', seen.length ? seen.map(function(s){return (s.deviceId||'').slice(0,11)+'… · '+s.host;}).join(' · ') : t('p2p.seenNone'));
+    // ĐỦ MỌI địa chỉ IPv4, kèm tên card — máy thật hay có nhiều card, và khai nhầm một cái là
+    // đưa địa chỉ máy kia KHÔNG BAO GIỜ tới được. Bấm một ô là chép luôn, khỏi gõ tay.
+    var ab=zid('p2pAddrs');
+    if(ab){
+      var ads=c.addrs||[];
+      ab.innerHTML='';
+      if(!ads.length){var e0=document.createElement('span');e0.className='fchip muted';e0.style.border='0';e0.textContent=t('p2p.addrNone');ab.appendChild(e0);}
+      ads.forEach(function(a){
+        var el=document.createElement('div');el.className='fchip';
+        el.textContent=a.addr+':'+(c.listening||c.port||'')+'  ·  '+a.iface;
+        el.setAttribute('data-copy',a.addr+':'+(c.listening||c.port||''));
+        el.setAttribute('title',t('p2p.addrCopy'));
+        ab.appendChild(el);
+      });
+    }
+    // Máy thấy trên cùng mạng: BẤM LÀ ĐIỀN cả ID lẫn địa chỉ vào ô ghép đôi/nối thử. Gõ tay một
+    // chuỗi 52 ký tự là chỗ sinh lỗi, mà tầng dò đã biết sẵn cả hai giá trị.
+    var sb=zid('p2pSeenList');
+    if(sb){
+      sb.innerHTML='';
+      seen.forEach(function(sp){
+        var el=document.createElement('div');el.className='fchip';
+        el.textContent='↳ '+(sp.deviceId||'').slice(0,11)+'… @ '+sp.host+':'+sp.port;
+        el.setAttribute('data-seenfill',(sp.deviceId||'')+'|'+sp.host+'|'+sp.port);
+        el.setAttribute('title',t('p2p.seenFill'));
+        sb.appendChild(el);
+      });
+    }
     var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=c.deviceId||'';
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     var a=zid('trDrive'),b=zid('trP2p');
@@ -209,6 +237,34 @@
   // Mở ⚙ ⇒ nạp luôn, để số trong đó không bao giờ là số cũ của lần mở trước.
   document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#topSettings'))setTimeout(loadChannel,60);});
 
+  // ── NHẬT KÝ KÊNH TRONG APP (`plan/24 §10.2` ③) ─────────────────────────────
+  // Bắt buộc phải có vì cửa sổ console của daemon nay bị giấu (`§10.1`): không có khung này thì
+  // câu hỏi "vì sao không nối được" mất luôn chỗ trả lời.
+  var LOG_ONLY_CHANNEL=true, LOG_HOLD=false, logTimer=null;
+  function loadLog(){
+    var box=zid('p2pLog');
+    if(!box)return Promise.resolve();
+    return zGet('/daemon-log?tail=300'+(LOG_ONLY_CHANNEL?'&filter=%5Bchannel%5D':'')).then(function(r){
+      if(!box)return;
+      var lines=(r&&r.lines)||[];
+      // Rỗng thì NÓI RA. Vùng trắng trông y như đang tải, và người đọc sẽ ngồi chờ một thứ đã xong.
+      box.textContent=lines.length?lines.join('\n'):t('p2p.logEmpty');
+      if(!LOG_HOLD)box.scrollTop=box.scrollHeight;
+      // Nói RA file log nằm đâu, và bấm vào là chép — thay cho một nút mở thư mục, thứ đòi
+      // thêm một đường chạy lệnh ra ngoài app đúng lúc vừa cấm cửa sổ console.
+      var pe=zid('p2pLogPath');
+      if(pe&&r&&r.file){pe.textContent=r.file;pe.setAttribute('data-copy',r.file);pe.setAttribute('title',t('p2p.addrCopy'));pe.classList.add('fchip');pe.style.cursor='pointer';}
+    }).catch(function(){ if(box)box.textContent=t('p2p.logErr'); });
+  }
+  // Chỉ chạy nhịp khi tab p2p ĐANG MỞ — hỏi log mỗi 5 giây trong lúc không ai nhìn là đốt I/O suông.
+  function logTick(on){
+    if(logTimer){clearInterval(logTimer);logTimer=null;}
+    // 15s, KHÔNG ngắn hơn: cổng `no short-interval polling` chốt sàn đó. Không mất gì thật —
+    // nhịp dò LAN vốn 30s/lần, nên log không có gì mới để hiện nhanh hơn thế.
+    if(on){loadLog();logTimer=setInterval(loadLog,15000);}
+  }
+  window.zP2pLogTick=logTick;
+
   document.addEventListener('click',function(e){
     var el=e.target&&e.target.closest?e.target.closest('[data-synctab],[data-act],[data-tr]'):null;
     if(!el)return;
@@ -221,6 +277,7 @@
       zid('syncTabDrive').classList.toggle('on',dr);
       zid('syncTabP2p').classList.toggle('on',!dr);
       if(!dr)loadChannel();
+      logTick(!dr);   // nhịp nhật ký chỉ chạy khi tab p2p đang mở
       return;
     }
     var tr=el.getAttribute('data-tr');
@@ -235,7 +292,35 @@
       }).then(function(j){if(j)loadChannel();});
       return;
     }
+    // Chép một địa chỉ: đỡ phải đọc số qua điện thoại rồi gõ nhầm một chữ.
+    var cp=el.getAttribute('data-copy');
+    if(cp){
+      try{navigator.clipboard.writeText(cp);p2pMsg(t('p2p.copiedAddr').replace('{a}',cp));}catch(_){}
+      return;
+    }
+    // Bấm một máy đã thấy ⇒ điền sẵn ID + địa chỉ + cổng. Gõ tay chuỗi 52 ký tự là chỗ sinh lỗi.
+    var sf=el.getAttribute('data-seenfill');
+    if(sf){
+      var parts=sf.split('|');
+      var i1=zid('p2pPeerIn'),i2=zid('p2pHost'),i3=zid('p2pPortIn');
+      if(i1)i1.value=parts[0]||'';
+      if(i2)i2.value=parts[1]||'';
+      if(i3)i3.value=parts[2]||'';
+      p2pMsg(t('p2p.filled'));
+      return;
+    }
     var act=el.getAttribute('data-act');
+    if(el.id==='p2pLogOnly'){
+      LOG_ONLY_CHANNEL=!LOG_ONLY_CHANNEL;
+      el.classList.toggle('on',LOG_ONLY_CHANNEL);
+      loadLog();
+      return;
+    }
+    if(el.id==='p2pLogHold'){
+      LOG_HOLD=!LOG_HOLD;
+      el.classList.toggle('on',LOG_HOLD);
+      return;
+    }
     if(act==='p2p-toggle'){
       // zSave, KHÔNG zPost: cổng `save-never-silent` (2026-09-12) cấm công tắc tự xử lời
       // hứa lưu. Ba kiểu hỏng (gọi hỏng · HTTP≠2xx · {ok:false}) đều phải HOÀN NGUYÊN + báo.

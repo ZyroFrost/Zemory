@@ -132,6 +132,7 @@ npm ci
 npm run build
 npm install -g .          # exposes the global `zemory` command (or: npm link)
 
+zemory setup              # describes what gets installed, and OFFERS the shortcuts
 zemory memory scan         # ingest existing agent transcripts on this machine
 zemory hook install       # auto-capture new Claude/Codex sessions (0 tokens)
 zemory memory embed --all  # build the semantic vector index (enables hybrid recall)
@@ -140,6 +141,23 @@ zemory doctor             # verify everything is green
 
 Because `npm install -g .` links the repo, a later `npm run build` updates the
 global `zemory` command in place — no reinstall needed.
+
+**Shortcuts (asked, never assumed).** zemory runs as a background daemon, so it needs a way to
+open its window. `zemory setup` prints exactly what it would create and where, then asks — and
+creates nothing until you answer:
+
+| target | path (Windows) |
+|---|---|
+| Start Menu entry | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Zemory.lnk` |
+| Desktop icon | your Desktop folder (the **redirected** one if the machine puts Desktop in OneDrive) |
+
+Both launch a hidden `.vbs` so no console window flashes; neither touches the registry and no
+service is installed. On Linux a `.desktop` entry is written, on macOS a `.command` file.
+
+The prompt only appears when a real terminal is attached — install scripts, CI and agent sessions
+are never blocked waiting for an answer. For those, decide up front with `zemory setup --shortcut`
+or `--no-shortcut`; if nothing decided, the app window asks once the first time it opens. Either
+way the switch stays in **Settings → Shortcuts**, and turning it off removes what it created.
 
 **Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
 `github.com/<repo>/releases/download/…`. Networks that block or throttle that host (measured on

@@ -23,7 +23,10 @@ import { currentMemoryDir } from "../memory/db.js";
  *  NOT `~/.zemory/logs`: the comment used to say that, and a later session went
  *  looking there, found nothing, and concluded there were no logs at all. Home
  *  only ever holds `location.json`; everything else lives beside the store. */
-function logsDir(): string {
+/** Export vì bề mặt nhật ký trong app (`plan/24 §10.3`) cần đọc đúng thư mục này. Trước đó nó
+ *  là riêng tư, và hệ quả là log CHỈ xem được bằng cách mở cửa sổ console của daemon — đúng thứ
+ *  `§10.1` vừa cấm. Giấu console mà không mở đường xem log là bịt luôn phép chẩn đoán. */
+export function logsDir(): string {
   const dir = join(currentMemoryDir(), "logs");
   mkdirSync(dir, { recursive: true });
   return dir;

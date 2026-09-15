@@ -46,7 +46,7 @@ function claimSingleWindow(file: string): void {
           const args = ["/F", "/T", "/FI", `PID eq ${prev}`];
           // Lọc theo TÊN ẢNH để một pid đã được hệ dùng lại thành vô hại thay vì bị giết oan.
           if (image) args.push("/FI", `IMAGENAME eq ${image}`);
-          try { spawn("taskkill", args, { stdio: "ignore" }).unref(); } catch { /* đã tắt */ }
+          try { spawn("taskkill", args, { stdio: "ignore", windowsHide: true }).unref(); } catch { /* đã tắt */ }
         } else {
           try { process.kill(prev); } catch { /* đã tắt */ }
         }

@@ -242,10 +242,10 @@ export function handleHook(event: HookEventName, payload: any): string {
             // Bản THÂN CÔNG CỤ cũ — nói TRƯỚC, vì `zemory sync` gap-fill từ template của
             // bản đang cài: áp chuẩn bằng một bản cũ là chép lại cái cũ.
             if (r.appUpdate) {
-              notes.push(
-                `[zemory] ⚠ zemory ${r.appUpdate.have} — có bản MỚI ${r.appUpdate.latest} ` +
-                  `(${r.appUpdate.from} đóng dấu ${r.appUpdate.at}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`,
-              );
+              // Nêu đúng nguồn: git (commit) hay tem kênh chung (máy đóng dấu).
+              const u = r.appUpdate;
+              const where = u.source === "git" ? `git commit ${u.from || "?"}` : `${u.from} đóng dấu ${u.at}`;
+              notes.push(`[zemory] ⚠ zemory ${u.have} — có bản MỚI ${u.latest} (${where}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`);
             }
             if (r.connected && (r.missing.length > 0 || r.guardStale.length > 0)) {
               const parts = [
