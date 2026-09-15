@@ -361,9 +361,12 @@
   /** ① Bản zemory trên MÁY này: đang chạy gì · kênh chung có gì mới · nút tự cập nhật. */
   function updDialogApp(){
     var app=UPD_APP;
+    // Nguồn đo hiện THẲNG trên hộp: 'git' = hỏi remote của repo công cụ (nguồn chính từ 2026-09-15),
+    // 'channel' = tem trên kênh chung (nguồn phụ, chỉ còn dùng khi máy không hỏi được git).
+    var fromGit=app&&app.source==='git';
     var body=app
-      ?'<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="muted">'+stdEsc(t('upd.appHave'))+'</span><b>'+stdEsc(app.have)+'</b><span class="muted">→ '+stdEsc(t('upd.appLatest'))+'</span><b>'+stdEsc(app.latest)+'</b></div>'
-        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.appFrom').replace('{from}',app.from||'?').replace('{at}',String(app.at||'').slice(0,16).replace('T',' ')))+'</div>'
+      ?'<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="muted">'+stdEsc(t('upd.appHave'))+'</span><b>'+stdEsc(app.have)+'</b><span class="muted">→ '+stdEsc(t(fromGit?'upd.appLatestGit':'upd.appLatest'))+'</span><b>'+stdEsc(app.latest)+'</b></div>'
+        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t(fromGit?'upd.appFromGit':'upd.appFrom').replace('{from}',app.from||'?').replace('{at}',String(app.at||'').slice(0,16).replace('T',' ')))+'</div>'
       :'<div>'+stdEsc(t('upd.appOk').replace('{v}',((zid('topVersion')||{}).textContent||'').replace(/^v/,'')))+'</div>';
     zDialog({iconHtml:ZICON.app,title:t('upd.appTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
       okLabel:app?t('upd.btn'):t('scope.detClose'),

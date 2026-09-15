@@ -14,6 +14,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { appVersion } from "../core/config.js";
+import { cmpSemver } from "../util/semver.js";
+import { refreshRemoteVersion } from "../update/remote-version.js";
 
 /** Gốc repo của chính công cụ (dist/commands/… → lên hai bậc). */
 function toolRoot(): string {
@@ -30,16 +32,57 @@ function run(cmd: string, args: string[], cwd: string): { ok: boolean; out: stri
   }
 }
 
+/**
+ * Pull đỏ thì nói RÕ VÌ SAO — nhất là ca "lịch sử đã bị viết lại".
+ *
+ * Ca này không phải giả định: 15/09/2026 repo bị `git filter-repo` gỡ hồ sơ riêng khỏi bản
+ * public ⇒ MỌI sha đổi, và mọi bản clone cũ không còn tổ tiên chung với origin. `git pull
+ * --ff-only` khi đó đỏ với câu "Not possible to fast-forward" — đúng nghĩa đen nhưng vô dụng:
+ * người đọc sẽ đi tìm xem mình lỡ commit cái gì, trong khi thứ phải làm là CLONE LẠI. Một lệnh
+ * `merge-base` phân biệt được ba ca đó, nên không có lý do bắt người dùng đoán.
+ */
+function diagnosePull(root: string): string | null {
+  const head = run("git", ["rev-parse", "HEAD"], root);
+  const remote = run("git", ["rev-parse", "FETCH_HEAD"], root);
+  if (!head.ok || !remote.ok) return null;
+  const base = run("git", ["merge-base", head.out, remote.out], root);
+  if (!base.ok || !base.out) {
+    return "LỊCH SỬ ĐÃ ĐƯỢC VIẾT LẠI trên origin — bản clone này không còn tổ tiên chung, không lệnh pull nào bắc qua được. Phải CLONE LẠI, rồi mang `data/` của máy sang bản mới.";
+  }
+  if (base.out === remote.out) return "Máy này đang ĐI TRƯỚC origin (có commit chưa push) — không có gì để kéo.";
+  if (base.out !== head.out) return "Nhánh đã RẼ (máy này có commit riêng mà origin không có) — người thật xử bằng tay, lệnh này không merge hộ.";
+  return null;
+}
+
 export function cmdSelfUpdate(args: string[] = []): void {
-  const bad = args.filter((a) => a.startsWith("--") && a !== "--dry-run");
+  const bad = args.filter((a) => a.startsWith("--") && a !== "--dry-run" && a !== "--check");
   if (bad.length) {
     console.log(`zemory selfupdate: unknown flag ${bad.join(" ")}`);
-    console.log("  usage: zemory selfupdate [--dry-run]");
+    console.log("  usage: zemory selfupdate [--check] [--dry-run]");
     process.exitCode = 1;
     return;
   }
   const dryRun = args.includes("--dry-run");
   const root = toolRoot();
+
+  // ── `--check`: CHỈ ĐO, không đụng gì ──────────────────────────────────────
+  // Đây là lượt đo THẬT (có mạng) đứng sau mọi bề mặt nhắc: daemon phóng đúng lệnh này ở tiến
+  // trình con khi cache hết hạn, và người gõ tay cũng chạy được để biết ngay. Tách khỏi lượt
+  // CẬP NHẬT vì hai việc khác cấp: đo là đọc, cập nhật là ghi đè cây mã.
+  if (args.includes("--check")) {
+    const have = appVersion();
+    const c = refreshRemoteVersion(root);
+    if (!c.ok) {
+      console.log(`zemory selfupdate --check — không đo được bản mới: ${c.error ?? "?"}`);
+      process.exitCode = 1;
+      return;
+    }
+    const newer = cmpSemver(c.latest ?? "", have) > 0;
+    console.log(`zemory selfupdate --check — đang chạy ${have || "?"} · git origin ${c.latest} (${c.commit ?? "?"})`);
+    console.log(newer ? "  ⚠ CÓ BẢN MỚI — áp bằng: `zemory selfupdate`" : "  ✓ đã là bản mới nhất.");
+    return;
+  }
+
   const before = appVersion();
   console.log(`zemory selfupdate — ${root} (đang chạy ${before || "?"})`);
 
@@ -88,6 +131,8 @@ export function cmdSelfUpdate(args: string[] = []): void {
     if (!r.ok) {
       console.log("LỖI");
       console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
+      const why = cmd === "git" ? diagnosePull(root) : null;
+      if (why) console.log(`    🔴 ${why}`);
       console.log(`    → dừng ở bước "${label}". Bản đang cài KHÔNG bị nửa vời nếu lỗi ở pull;`);
       console.log("      lỗi ở build thì chạy lại `npm run build` sau khi xử xong nguyên nhân.");
       process.exitCode = 1;
@@ -97,6 +142,9 @@ export function cmdSelfUpdate(args: string[] = []): void {
   }
 
   const after = appVersion();
+  // Đo lại NGAY: cache còn giữ số của lượt trước thì chip vẫn kêu "có bản mới" sau khi vừa cập
+  // nhật xong — người dùng đọc thành "cập nhật không ăn". Rẻ: sha vừa pull đã nằm dưới máy.
+  refreshRemoteVersion(root);
   console.log(`  ✓ xong: ${before || "?"} → ${after || "?"}`);
   console.log("  ⚠ daemon 4444 vẫn chạy MÃ CŨ — nó nạp code lúc bind cổng. Khởi động lại để bản mới sống:");
   console.log("      tắt cửa sổ zemory rồi `zemory ui`");

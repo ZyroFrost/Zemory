@@ -4,6 +4,7 @@
 
 import Database from "better-sqlite3";
 import { appVersion } from "../core/config.js";
+import { cmpSemver } from "../util/semver.js";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 import {
   appendFileSync,
@@ -1783,16 +1784,8 @@ export interface ChannelVersion {
 
 const VERSION_STAMP = "version.json";
 
-/** So semver. Trả >0 nếu a mới hơn b. Phần không phải số ⇒ coi là 0 (fail-open). */
-export function cmpSemver(a: string, b: string): number {
-  const pa = a.split(".").map((n) => Number.parseInt(n, 10) || 0);
-  const pb = b.split(".").map((n) => Number.parseInt(n, 10) || 0);
-  for (let i = 0; i < 3; i++) {
-    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (d !== 0) return d;
-  }
-  return 0;
-}
+/** So semver — thân hàm ở `util/semver.ts`; xuất lại ở đây để nơi gọi cũ không phải đổi neo. */
+export { cmpSemver };
 
 /** Đọc tem của kênh. Fail-open: thiếu Drive / thiếu file / JSON hỏng ⇒ `null`. */
 export function readChannelVersion(driveDir: string): ChannelVersion | null {

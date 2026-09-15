@@ -11,7 +11,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
-import { templateDir, channelUpdate, ensureHarness, syncCheck } from "./docs/adopt.js";
+import { templateDir, appUpdateStatus, ensureHarness, syncCheck } from "./docs/adopt.js";
+import { cacheDue, readUpdateCache, refreshRemoteVersion } from "./update/remote-version.js";
 import { generateGuards } from "./docs/guard-gen.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
@@ -42,6 +43,32 @@ import { TEMPLATE_DIR } from "./docs/adopt.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
+/**
+ * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
+ *
+ * `measureRemoteVersion` chạy hai ba lệnh git có mạng: nhanh thì 1 s, mạng xấu thì tới hạn 30 s.
+ * Gọi thẳng ở đây là đóng băng daemon đúng khoảng đó — mọi nút bấm, mọi nhịp tim của cửa sổ đều
+ * đi qua chính vòng lặp này. Nên: đọc cache (rẻ), hết hạn thì PHÓNG `selfupdate --check` rồi trả
+ * lời ngay bằng số cũ; số mới hiện ở nhịp hỏi sau.
+ *
+ * Vì sao móc vào ĐÂY chứ không vào chuỗi bảo trì của scheduler: chuỗi đó nằm sau công tắc
+ * `scheduler`, mà tắt scheduler KHÔNG có nghĩa là "thôi báo bản mới" — đúng cái bẫy "một công
+ * tắc gánh ba việc" đã làm backup chết câm 4 ngày (`jobs/scheduler.ts §backupTick`). Bề mặt này
+ * thì cửa sổ nào mở cũng hỏi, không phụ thuộc công tắc nào.
+ */
+let remoteCheckRunning = false;
+function kickRemoteVersionCheck(): void {
+  try {
+    if (remoteCheckRunning || !cacheDue(readUpdateCache(), Date.now())) return;
+    const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+    remoteCheckRunning = true;
+    const child = spawn(process.execPath, [join(root, "dist", "cli.js"), "selfupdate", "--check"], { cwd: root, stdio: "ignore", detached: false });
+    child.on("exit", () => { remoteCheckRunning = false; });
+    child.on("error", () => { remoteCheckRunning = false; });
+  } catch {
+    remoteCheckRunning = false; /* fail-open — không đo được thì thôi, chip im */
+  }
+}
 // Cache của /check — pill Healthy phải có sẵn khi cửa sổ mở, không bắt user bấm Recheck oan.
 const checkCache = new Map<string, { at: number; r: unknown }>();
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
@@ -2057,7 +2084,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         daemonLog(`[selfupdate] ${cmd} ${a.join(" ")} → ${r.ok ? "ok" : "FAIL"}`);
         if (!r.ok) return json(res, { ok: false, error: `${cmd} ${a.join(" ")}: ${r.out.split(/\r?\n/).slice(-6).join(" | ").slice(0, 400)}` });
       }
-      const latest = channelUpdate()?.latest ?? have;
+      // Đo lại sau khi đã dựng xong (sha mới đã nằm dưới máy ⇒ không tốn mạng): cache cũ còn
+      // giữ số cũ thì chip vẫn kêu sau một lượt cập nhật THÀNH CÔNG.
+      const latest = refreshRemoteVersion(root).latest ?? appUpdateStatus()?.latest ?? have;
       json(res, { ok: true, have, latest });
       // Phóng daemon MỚI rồi thoát — không dùng autostart (chỉ chạy lúc đăng nhập).
       setTimeout(() => {
@@ -2780,8 +2809,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         }
         harnessUpdCache = { at: now, stale };
       }
-      // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn kênh chung), KHÔNG cache theo
+      // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn bản đã phát hành), KHÔNG cache theo
       // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
+      kickRemoteVersionCheck();
       // Per-repo NEWLY-dead paths from the sweep's state (plan/21 §2.3) — one small JSON read, no scan, and
       // independent of the repo-std switch: the sweep runs regardless, so its verdict is shown regardless.
       let deadPaths: ReturnType<typeof deadPathsSummary> = [];
@@ -2791,7 +2821,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         /* fail-open — a reminder surface must not die */
       }
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: channelUpdate(), repoStdCheck: getRepoStdCheck(), deadPaths, pathsWatch: getPathsWatch() });
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: appUpdateStatus(), repoStdCheck: getRepoStdCheck(), deadPaths, pathsWatch: getPathsWatch() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

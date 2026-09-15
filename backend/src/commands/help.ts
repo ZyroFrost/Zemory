@@ -14,7 +14,7 @@ export function cmdHelp(): void {
       "  conform   score how closely this repo follows the declared folder standard (--gate)",
       "  sweep     close leftover browser processes zemory started (--dry-run · --all · --json)",
       "  paths     paths check: dead file paths in docs/config, judged only under declared roots (--gate = newly dead) · paths sweep · paths fix [--apply] (propose/repair unique-name targets)",
-      "  selfupdate  pull + rebuild this zemory install (stops if the tree is dirty)",
+      "  selfupdate  pull + rebuild this zemory install (stops if the tree is dirty); --check only measures origin",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
       "  todo      todo verify: re-measure every 05_TODO item against the code, print drift",
       "  docs      docs search-index: ls (.md is the SOURCE — edit files, then reindex)",
