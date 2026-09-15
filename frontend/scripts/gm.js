@@ -274,3 +274,209 @@
       });
     }
   });
+
+// ── TỆP (plan/25 §5 ①) ───────────────────────────────────────────────────────
+// Lưới theo tháng, giống album của một app chat. Một NGUỒN duy nhất `/attachments`
+// dùng chung với panel "Tệp của phiên" — không con số nào sống hai chỗ.
+(function () {
+  var state = { kind: 'all', q: '', loaded: false, items: [] };
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+  function month(at) { return at && at.length >= 7 ? at.slice(0, 7) : t('files.noDate'); }
+
+  function tile(f) {
+    // Tệp làn `picked` (người tự thêm) không tới từ hội thoại nào ⇒ KHÔNG gắn nút nhảy,
+    // thay vì trưng một nút bấm vào không có gì (plan/25 §5).
+    // Mở dialog xem tệp; nhảy về phiên là nút RIÊNG trong dialog, không phải cú bấm này —
+    // bấm một tấm ảnh mà bị ném sang màn khác là hành vi người dùng không lường được.
+    var jump = ' data-fopen="' + f.idx + '"';
+    // `ref` chưa tải thì KHÔNG trưng ô trống giả vờ có ảnh — nói thẳng là chưa có byte.
+    if (!f.fetched) {
+      return '<div class="ftile fmissing" title="' + esc(f.name || f.sha256.slice(0, 8)) + '"' + jump + '>' +
+        '<div class="fph">⧗</div><div class="fcap">' + t('files.notFetched') + '</div></div>';
+    }
+    if (f.category === 'images') {
+      return '<div class="ftile" title="' + esc(f.name || '') + ' · ' + kb(f.bytes) + '"' + jump + '>' +
+        '<img loading="lazy" src="/attachment?sha=' + f.sha256 + '" alt="' + esc(f.name || t('files.image')) + '">' +
+        '</div>';
+    }
+    var icon = f.category === 'documents' ? '📄' : f.category === 'archives' ? '🗜' : f.category === 'media' ? '🎬' : '📎';
+    return '<div class="ftile ffile" title="' + esc(f.name || '') + '"' + jump + '>' +
+      '<div class="fph">' + icon + '</div>' +
+      '<div class="fcap">' + esc((f.name || f.sha256.slice(0, 8)).slice(0, 22)) + '<br>' + kb(f.bytes) + '</div></div>';
+  }
+
+  function render(data) {
+    var box = zid('filesGrid'); if (!box) return;
+    // Giữ NGUYÊN danh sách đang hiện để dialog lùi/tới đi đúng thứ tự người dùng đang nhìn,
+    // và đánh chỉ số vào từng mục — `data-fopen` trỏ vào chỉ số này.
+    state.items = data.items || [];
+    state.items.forEach(function (f, i) { f.idx = i; });
+    zset('filesCount', String(data.total) + ' ' + t('files.unit'));
+    if (!data.items.length) { box.innerHTML = '<div class="muted" style="padding:14px">' + t('files.empty') + '</div>'; return; }
+    var html = '', cur = null;
+    data.items.forEach(function (f) {
+      var m = month(f.at);
+      if (m !== cur) { if (cur !== null) html += '</div>'; html += '<div class="fmonth">' + esc(m) + '</div><div class="fgrid">'; cur = m; }
+      html += tile(f);
+    });
+    html += '</div>';
+    box.innerHTML = html;
+  }
+
+  function load() {
+    var box = zid('filesGrid'); if (!box) return;
+    box.innerHTML = '<div class="muted" style="padding:14px">' + t('files.loading') + '</div>';
+    var qs = '/attachments?pageSize=300&kind=' + encodeURIComponent(state.kind) +
+      (state.q ? '&q=' + encodeURIComponent(state.q) : '');
+    zGet(qs).then(render).catch(function () {
+      box.innerHTML = '<div class="muted" style="padding:14px">' + t('files.err') + '</div>';
+    });
+  }
+
+  // Nạp LƯỜI: chỉ khi người dùng thật sự mở tab Tệp. Kho ảnh có thể vài nghìn mục nên
+  // kéo sẵn lúc mở app là trả tiền cho thứ chưa ai xem.
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-gm="files"]') : null;
+    if (b && b.tagName === 'BUTTON' && !state.loaded) { state.loaded = true; load(); }
+    var chip = e.target.closest ? e.target.closest('[data-fkind]') : null;
+    if (chip) {
+      state.kind = chip.getAttribute('data-fkind');
+      var wrap = zid('filesKind');
+      if (wrap) Array.prototype.forEach.call(wrap.children, function (c) { c.classList.toggle('on', c === chip); });
+      load();
+    }
+    var act = e.target.closest ? e.target.closest('[data-act="files-reload"]') : null;
+    if (act) load();
+    var tileEl = e.target.closest ? e.target.closest('#filesGrid [data-fopen]') : null;
+    if (tileEl) window.zFileView.open(state.items, Number(tileEl.getAttribute('data-fopen')));
+  });
+  var q = zid('filesQ');
+  if (q) {
+    var timer = null;
+    q.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { state.q = q.value.trim(); load(); }, 250);
+    });
+  }
+})();
+
+// Panel "Tệp của phiên" (plan/25 §5 ②) — lăng kính thứ hai của CÙNG endpoint `/attachments`.
+// Cố ý KHÔNG dựng truy vấn riêng: hai bề mặt của cùng một chức năng phải đi qua cùng một cửa,
+// nếu không chúng lệch số rồi không ai biết bên nào đúng (bài học `zemory sweep` 12/09).
+var sessItems = [];
+document.addEventListener('click', function (e) {
+  var el = e.target.closest ? e.target.closest('#sessFiles [data-sfopen]') : null;
+  if (el) window.zFileView.open(sessItems, Number(el.getAttribute('data-sfopen')));
+});
+window.zSessionFiles = function (sid) {
+  var box = document.getElementById('sessFiles');
+  var cnt = document.getElementById('sessFCount');
+  if (!box) return;
+  if (!sid) { box.innerHTML = '<div class="muted" style="font-size:12px">' + t('files.pickSess') + '</div>'; if (cnt) cnt.textContent = '—'; return; }
+  box.innerHTML = '<div class="muted" style="font-size:12px">' + t('files.loading') + '</div>';
+  zGet('/attachments?pageSize=200&session=' + encodeURIComponent(sid)).then(function (d) {
+    if (cnt) cnt.textContent = String(d.total) + ' ' + t('files.unit');
+    if (!d.items.length) { box.innerHTML = '<div class="muted" style="font-size:12px">' + t('files.empty') + '</div>'; return; }
+    sessItems = d.items;
+    box.innerHTML = '<div class="fgrid">' + d.items.map(function (f, i) {
+      if (f.category === 'images' && f.fetched) {
+        return '<div class="ftile" data-sfopen="' + i + '" title="' + String(f.bytes) + ' B"><img loading="lazy" src="/attachment?sha=' + f.sha256 + '" alt=""></div>';
+      }
+      var icon = f.category === 'documents' ? '📄' : f.category === 'archives' ? '🗜' : f.category === 'media' ? '🎬' : '📎';
+      var cls = f.fetched ? 'ftile ffile' : 'ftile fmissing';
+      var cap = f.fetched ? String(Math.max(1, Math.round(f.bytes / 1024))) + ' KB' : t('files.notFetched');
+      return '<div class="' + cls + '" data-sfopen="' + i + '"><div class="fph">' + icon + '</div><div class="fcap">' + cap + '</div></div>';
+    }).join('') + '</div>';
+  }).catch(function () { box.innerHTML = '<div class="muted" style="font-size:12px">' + t('files.err') + '</div>'; });
+};
+
+// ── Dialog XEM TỆP (plan/25 §5) ──────────────────────────────────────────────
+// Một dialog dùng CHUNG cho cả màn Tệp lẫn panel Tệp-của-phiên: hai bề mặt, một cửa.
+// Giữ nguyên DANH SÁCH đang xem để nút lùi/tới đi đúng thứ tự người dùng đang nhìn —
+// nếu hỏi lại server thì thứ tự có thể khác và người dùng "mất chỗ".
+window.zFileView = (function () {
+  var list = [];
+  var idx = 0;
+
+  function human(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+
+  function paint() {
+    var f = list[idx];
+    if (!f) return;
+    zset('fileDlgTitle', f.name || f.sha256.slice(0, 12));
+    zset('fileDlgMeta', (f.mime || '?') + ' · ' + human(f.bytes) + (f.at ? ' · ' + f.at.slice(0, 10) : ''));
+    zset('fileDlgPos', list.length > 1 ? (idx + 1) + '/' + list.length : '');
+    var dl = document.getElementById('fileDlgDl');
+    var body = document.getElementById('fileDlgBody');
+    var nav = list.length > 1;
+    var sb = document.getElementById('fileDlgSess');
+    if (sb) sb.style.display = f.sessionId ? '' : 'none';
+    ['fileDlgPrev', 'fileDlgNext'].forEach(function (id) {
+      var b = document.getElementById(id); if (b) b.style.display = nav ? '' : 'none';
+    });
+    if (!f.fetched) {
+      // Chưa có byte ⇒ nói thẳng, KHÔNG trưng thẻ ảnh rỗng rồi để trình duyệt hiện icon vỡ.
+      if (dl) { dl.style.display = 'none'; }
+      body.innerHTML = '<div class="muted" style="text-align:center">' + t('files.notFetchedLong') + '</div>';
+      return;
+    }
+    var url = '/attachment?sha=' + f.sha256;
+    if (dl) { dl.style.display = ''; dl.href = url; dl.setAttribute('download', f.name || (f.sha256.slice(0, 8) + '.bin')); }
+    if (f.category === 'images') {
+      body.innerHTML = '<img alt="" src="' + url + '" style="max-width:100%;max-height:100%;object-fit:contain">';
+      return;
+    }
+    // Không phải ảnh: trình duyệt nhúng được pdf/text thì nhúng, còn lại nêu rõ là tải về.
+    var embeddable = /^(application\/pdf|text\/)/.test(f.mime || '');
+    body.innerHTML = embeddable
+      ? '<iframe src="' + url + '" style="width:100%;height:100%;border:0;background:var(--surface-2)"></iframe>'
+      : '<div style="text-align:center"><div style="font-size:52px;opacity:.7">📎</div><div class="muted" style="margin-top:8px">' +
+        t('files.noPreview') + '</div></div>';
+  }
+
+  function open(items, at) {
+    list = items || [];
+    idx = Math.max(0, Math.min(at || 0, list.length - 1));
+    var d = document.getElementById('fileDlg');
+    if (!d || !list.length) return;
+    paint();
+    d.classList.add('on');
+  }
+  function step(n) {
+    if (list.length < 2) return;
+    idx = (idx + n + list.length) % list.length; // vòng lại, không kẹt ở hai đầu
+    paint();
+  }
+  function close() { var d = document.getElementById('fileDlg'); if (d) d.classList.remove('on'); }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    if (e.target.id === 'fileDlg' || e.target.id === 'fileDlgX') { close(); return; }
+    if (e.target.closest('#fileDlgPrev')) { step(-1); return; }
+    if (e.target.closest('#fileDlgNext')) { step(1); return; }
+    if (e.target.closest('#fileDlgSess')) {
+      // Nhảy về hội thoại gốc — nút RIÊNG, không phải cú bấm vào tấm ảnh. Tệp làn tự-thêm
+      // không có phiên nào ⇒ nút ẩn, không trưng nút chết (plan/25 §5).
+      var f = list[idx];
+      if (f && f.sessionId) {
+        close();
+        var nav = document.querySelector('[data-goto="recall:sess"]');
+        if (nav) nav.click();
+        if (window.zOpenSession) window.zOpenSession(f.sessionId);
+      }
+      return;
+    }
+  });
+  // Mũi tên trái/phải chỉ ăn KHI dialog đang mở, và không cướp phím của ô nhập.
+  document.addEventListener('keydown', function (e) {
+    var d = document.getElementById('fileDlg');
+    if (!d || !d.classList.contains('on')) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
+    if (e.key === 'ArrowLeft') { step(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { step(1); e.preventDefault(); }
+  });
+
+  return { open: open, step: step, close: close };
+})();

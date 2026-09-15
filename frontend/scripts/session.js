@@ -227,6 +227,9 @@
   }
   function openSess(sid){
     svCur=sid;renderSessList();
+    // Panel tệp của phiên (plan/25 §5 ②) — fail-open: chưa nạp xong gm.js thì bỏ qua,
+    // hội thoại vẫn mở bình thường. Một panel phụ không được phép chặn màn chính.
+    if(window.zSessionFiles)window.zSessionFiles(sid);
     var meta=svList.filter(function(s){return s.sessionId===sid;})[0]||{};
     var body=zid('sessVBody');if(!body)return;
     svInfo(meta,null);body.innerHTML='<div class="muted">…</div>';
@@ -243,6 +246,10 @@
     var md='# '+svThread.title+'\n\n'+svThread.messages.map(function(m){return '## '+(m.role||'')+' · '+String(m.timestamp||'').slice(0,16).replace('T',' ')+'\n\n'+String(m.content||'');}).join('\n\n---\n\n');
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));a.download='session-'+(svCur||'export')+'.md';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
   }
+  // Seam công khai để màn khác mở một phiên (màn Tệp bấm một tấm ảnh ⇒ về đúng hội thoại).
+  // MỘT hàm dùng chung thay vì mỗi màn tự dựng lại đường mở phiên — bài học `zemory sweep`
+  // 12/09: hai bề mặt của cùng một chức năng phải đi qua cùng một cửa.
+  window.zOpenSession=function(sid){if(sid)openSess(sid);};
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
     var li=e.target.closest('#sessList [data-sess]');if(li){openSess(li.dataset.sess);return;}

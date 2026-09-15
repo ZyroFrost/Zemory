@@ -24,7 +24,9 @@ const CDP_PORT = 9333;
 const W = 1840;
 const H = 1080;
 
-/** Screens to capture: [file name, nav item, sub-tab (if any), extra wait in ms] */
+/** Screens to capture: [file name, nav item, sub-tab (if any), extra wait in ms, phép xác nhận RIÊNG (tuỳ chọn)]
+ *  Phép xác nhận riêng dùng khi phần tử cuối của chuỗi KHÔNG phải một tab (nó không bao giờ
+ *  mang lớp `on`) — ví dụ bấm một ô ảnh để mở dialog xem tệp. */
 // The LONG waits are deliberate. Measured 2026-08-11: `/memory-status` takes 18.5 s (other endpoints
 // run 112-246 ms), so shooting early captures a page still LOADING — dashes in the number tiles, lists still showing
 // "...". Such an image is worse than no image: it paints the product as half finished.
@@ -37,6 +39,12 @@ const SHOTS = [
   ["02-recall", "recall", ["rc", "sess"], 5000],
   ["03-projects", "projects", null, 4000],
   ["04-global-memory-sync", "gmem", ["gm", "sync"], 9000],
+  // Màn Tệp (plan/25 §5) — nghiệm thu BẰNG MẮT: ảnh có render không, chip lọc có ở đó không.
+  ["04b-global-memory-files", "gmem", ["gm", "files"], 6000],
+  // Dialog xem tệp (plan/25 §5): mở tab Tệp rồi bấm ô ĐẦU TIÊN — nghiệm thu bằng MẮT rằng
+  // ảnh render, nút lùi/tới và bộ đếm có mặt.
+  ["04c-file-viewer", "gmem", ["#gmTabFiles", "#filesGrid [data-fopen]"], 7000,
+    "document.querySelector('#fileDlg')?.classList.contains('on')"],
   ["05-harness-docs", "harness", ["ht", "docs"], 5000],
   ["06-harness-structure", "harness", ["ht", "struct"], 5000],
   ["07-features", "system", null, 5000],
@@ -163,7 +171,7 @@ async function main() {
   await sleep(1500); // let the rest of the page finish painting
 
   let bad = 0;
-  for (const [name, nav, sub, wait] of SHOTS) {
+  for (const [name, nav, sub, wait, confirmExpr] of SHOTS) {
     // `sub` is either [attribute, value] scoped to the screen, OR a raw selector string for
     // things that live OUTSIDE a screen — the Settings dialog is opened from the top bar,
     // so a screen-scoped lookup can never reach it.
@@ -190,8 +198,29 @@ async function main() {
           ? `const b=document.querySelector('${sel}');if(!b)return 'sub-tab not found ${subLabel}';b.click();`
           : ""
     }return 'ok';})()`;
-    const r = await send("Runtime.evaluate", { expression: click, returnByValue: true });
-    let state = r?.result?.result?.value;
+    let state;
+    if (rawChain) {
+      // Bấm TỪNG BƯỚC, chờ giữa các bước: bản cũ gộp cả chuỗi vào MỘT lượt evaluate, nên một
+      // bước mở lưới nạp bất đồng bộ thì bước sau bấm vào phần tử CHƯA TỒN TẠI và im lặng
+      // trượt. Đo 2026-09-15: chuỗi "mở tab Tệp → bấm một ô" luôn báo `dialog khong mo`.
+      const nav0 = await send("Runtime.evaluate", {
+        expression: `(()=>{const a=document.querySelector('.nav a[data-s="${nav}"]');if(!a)return 'nav item not found';a.click();return 'ok';})()`,
+        returnByValue: true,
+      });
+      state = nav0?.result?.result?.value;
+      for (const step of rawChain) {
+        if (state !== "ok") break;
+        await sleep(1800);
+        const one = await send("Runtime.evaluate", {
+          expression: `(()=>{const b=document.querySelector('${step}');if(!b)return 'not found ${step}';b.click();return 'ok';})()`,
+          returnByValue: true,
+        });
+        state = one?.result?.result?.value;
+      }
+    } else {
+      const r = await send("Runtime.evaluate", { expression: click, returnByValue: true });
+      state = r?.result?.result?.value;
+    }
     await sleep(wait);
 
     // CONFIRM after waiting: is the right screen up, and is the sub-tab really 'on'.
@@ -204,8 +233,10 @@ async function main() {
         sub
           ? rawChain || typeof sub === "string"
             ? `if(!document.querySelector('.dlg-back.on'))return 'dialog khong mo';${
-                rawChain ? `const c=document.querySelector('${sel}');if(!c||!c.classList.contains('on'))return 'tab trong dialog khong an';` : ""
-              }`
+                rawChain && !confirmExpr
+                  ? `const c=document.querySelector('${sel}');if(!c||!c.classList.contains('on'))return 'tab trong dialog khong an';`
+                  : ""
+              }${confirmExpr ? `if(!(${confirmExpr}))return 'phep xac nhan rieng KHONG dat';` : ""}`
             : `const b=document.querySelector('${sel}');if(!b||!b.classList.contains('on'))return 'sub-tab khong an';`
           : ""
       }return 'ok';})()`;

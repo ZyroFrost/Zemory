@@ -887,3 +887,22 @@ test("a toggle must not 'flip itself': a STALE memory-status payload must not pa
   assert.ok(mk, "phải có bảng ánh xạ khoá của công tắc");
   for (const k of ["hybrid", "rerank", "scope", "pathsWatch"]) assert.match(mk[1], new RegExp(`'${k}'`), `bảng phải phủ '${k}'`);
 });
+
+test("dialog xem tệp: mỗi ô phải mang CHỈ SỐ, và render phải NẠP danh sách cho dialog (plan/25 §5)", () => {
+  // Lỗi thật 2026-09-15, bắt được bằng cách dò trang SỐNG chứ không bằng cổng: `render()`
+  // thiếu hai dòng nạp `state.items`/`f.idx`, nên `data-fopen` mang giá trị `undefined` và
+  // `open()` nhận danh sách RỖNG rồi thoát. Ô vẫn vẽ ra, vẫn bấm được, chỉ là KHÔNG MỞ GÌ —
+  // đúng kiểu hỏng im lặng: không lỗi, không đỏ, chỉ có người dùng thấy bấm vào không ăn.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+
+  assert.match(gm, /state\.items\s*=\s*data\.items/, "render phải giữ danh sách đang hiện cho dialog");
+  assert.match(gm, /f\.idx\s*=\s*i/, "mỗi mục phải được đánh chỉ số — data-fopen trỏ vào nó");
+  assert.match(gm, /sessItems\s*=\s*d\.items/, "panel Tệp-của-phiên cũng phải nạp danh sách của nó");
+  // Dialog phải là size L và có đủ ba nút điều hướng/hành động.
+  assert.match(html, /id="fileDlg"/, "dialog xem tệp phải có trong DOM");
+  assert.match(html, /<div class="dlg lg"[^>]*aria-labelledby="fileDlgTitle"/, "phải là size L (90%, 16:9)");
+  for (const id of ["fileDlgPrev", "fileDlgNext", "fileDlgDl", "fileDlgX"]) {
+    assert.ok(html.includes(`id="${id}"`), `thiếu nút ${id}`);
+  }
+});

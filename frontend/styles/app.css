@@ -483,3 +483,14 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .disc-row .sxa{display:flex;gap:6px;align-items:center;flex:0 0 auto;margin-left:auto}
 .disc-row .sxa .btn{min-width:88px;justify-content:center;text-align:center}
 .disc-row .sxa .muted{min-width:88px;text-align:center}
+
+/* ── Màn Tệp (plan/25 §5) — lưới ảnh theo tháng, mọi màu đi qua token ───────── */
+.fmonth{font-size:11.5px;color:var(--text-faint);margin:10px 2px 6px;letter-spacing:.02em}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.ftile{position:relative;aspect-ratio:1/1;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ftile:hover{border-color:var(--primary)}
+.ftile img{width:100%;height:100%;object-fit:cover;display:block}
+.ftile .fph{font-size:26px;opacity:.75}
+.ftile .fcap{position:absolute;left:0;right:0;bottom:0;padding:3px 5px;font-size:10px;line-height:1.25;color:var(--text-faint);background:var(--surface);border-top:1px solid var(--border);text-align:center}
+.ftile.ffile{flex-direction:column;gap:2px;padding-bottom:24px}
+.ftile.fmissing{opacity:.55;border-style:dashed;cursor:default}
