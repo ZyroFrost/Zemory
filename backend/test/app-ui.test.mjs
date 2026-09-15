@@ -947,3 +947,99 @@ test("làn `picked` trên UI: nút + kéo-thả + endpoint + i18n đủ HAI từ
     assert.equal(n, 2, `khoá ${k} phải có ở CẢ HAI từ điển (đang thấy ${n})`);
   }
 });
+
+// ── MỌI CLASS TRONG MARKUP PHẢI CÓ LUẬT CSS ─────────────────────────────────
+//
+// Ca thật 2026-09-16, user báo: *"lỗi UI, nút đang ko có js"* — bộ lọc panel Tệp hiện ra dạng
+// `<button>` trần của trình duyệt (nền trắng trên nền tối) và bấm vào thì "không thấy gì xảy ra".
+// JS KHÔNG hỏng: handler lọc theo `[data-fkind]` và bật class `.on` đúng như thiết kế. Hỏng ở chỗ
+// markup khai `class="chip"` mà **CSS chưa từng có `.chip`** — lớp thật tên `.fchip`. Không có kiểu
+// thì trạng thái `.on` vô hình, nên một lỗi CSS thuần đọc thành "JS chết".
+//
+// Vì sao phải là CỔNG chứ không phải một lần sửa: không thứ gì nổ khi gõ sai tên class — không
+// lint, không tsc, không test. Nó chỉ hiện ra trước mặt người dùng, và người dùng đoán nhầm nguyên
+// nhân. Đo lúc dựng cổng: 107 class trong markup, đúng 1 ngoại lệ có lý do dưới đây.
+test("mọi class trong app.html phải có luật trong app.css — trừ nhãn dành cho JS", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // Class KHÔNG để tạo kiểu, chỉ để JS nhận diện phần tử. Thêm vào đây phải kèm lý do —
+  // danh sách này là chỗ dễ biến thành nơi nhét cho cổng khỏi đỏ nhất.
+  const JS_MARKER = new Set([
+    // `recall.js` đọc `classList.contains('ssel')` để biết select nào thuộc tab Phiên; kiểu đến từ `.rsel`.
+    "ssel",
+  ]);
+  const hasRule = (c) => {
+    const needle = "." + c;
+    for (let i = css.indexOf(needle); i >= 0; i = css.indexOf(needle, i + 1)) {
+      const nx = css[i + needle.length] || " ";
+      if (!/[A-Za-z0-9_-]/.test(nx)) return true; // ".fchip" khớp; ".fchipx" thì không
+    }
+    return false;
+  };
+  const used = new Set();
+  for (const m of html.matchAll(/class="([^"]+)"/g)) for (const c of m[1].split(/\s+/)) if (c) used.add(c);
+  const orphan = [...used].filter((c) => !JS_MARKER.has(c) && !hasRule(c));
+  assert.deepEqual(orphan, [], `class không có luật CSS nào (gõ sai tên?): ${orphan.join(" · ")}`);
+});
+
+// ── KHÔNG MỘT CỬA SỔ ĐEN NÀO (`plan/24 §10.1`) ──────────────────────────────
+//
+// User chốt 2026-09-16: *"là cmd ko hiện lên nữa, phải đưa vào ui luôn"*. Không phải chuyện thẩm mỹ:
+// cửa sổ console của daemon **đóng nhầm là GIẾT daemon**, và chuyện đó đã xảy ra thật trong phiên
+// đó — cửa sổ app thành vỏ rỗng, mọi nút bấm rơi vào chỗ trống, user tưởng JS hỏng.
+//
+// `windowsHide: true` là thứ duy nhất chặn Node mở console cho tiến trình con trên Windows. Đo lúc
+// dựng cổng: 3 chỗ trong `ui.ts` thiếu cờ này (gồm cả lượt daemon TỰ KHỞI ĐỘNG LẠI sau `selfupdate`,
+// và lượt `selfupdate --check` chạy mỗi 6 giờ), cộng 2 chỗ `taskkill` và 1 chỗ phóng trình duyệt.
+test("mọi `spawn` phải đặt windowsHide — một cửa sổ đen là một cách giết daemon", () => {
+  const files = ["backend/src/ui.ts", "backend/src/platform/window.ts", "backend/src/memory/scanweb.ts",
+    "backend/src/jobs/scheduler.ts", "backend/src/jobs/searchjob.ts", "backend/src/jobs/statsjob.ts",
+    "backend/src/jobs/syncjob.ts", "backend/src/tools/index.ts"];
+  const bad = [];
+  for (const f of files) {
+    const src = readFileSync(new URL("../../" + f, import.meta.url), "utf8");
+    for (const m of src.matchAll(/spawn\(/g)) {
+      // Cửa sổ = TỪ `spawn(` TỚI NGOẶC ĐÓNG CÂN BẰNG, không phải tới dấu `;` đầu tiên: bản đầu cắt
+      // theo `;` và một dấu chấm phẩy trong CHÚ THÍCH bên trong lời gọi đã cắt hụt đúng dòng cần soi
+      // ⇒ cổng báo oan. Cổng soi chữ sai vùng soi thì vô dụng theo cả hai chiều.
+      let depth = 0, end = m.index;
+      for (let k = m.index + "spawn".length; k < src.length; k++) {
+        if (src[k] === "(") depth++;
+        else if (src[k] === ")") { depth--; if (depth === 0) { end = k; break; } }
+      }
+      const win = src.slice(m.index, end + 1);
+      if (!/windowsHide:\s*true/.test(win)) bad.push(`${f}:${src.slice(0, m.index).split("\n").length}`);
+    }
+  }
+  assert.deepEqual(bad, [], `spawn thiếu windowsHide: ${bad.join(" · ")}`);
+});
+
+// ── BỀ MẶT ĐỒNG BỘ: ĐỊA CHỈ + NHẬT KÝ (`plan/24 §10.2`) ─────────────────────
+//
+// Hai thứ này là ĐIỀU KIỆN của việc giấu cửa sổ console, không phải trang trí:
+//  · nhật ký — giấu console mà không mở đường xem log là bịt luôn phép chẩn đoán *"vì sao
+//    không nối được"*;
+//  · địa chỉ — user phải hỏi IP cho máy kia, và agent đã phải chạy PowerShell để lấy. Máy này
+//    đo được HAI card (Wi-Fi và LAN dây, hai dải khác nhau), nên khai MỘT cái là đưa
+//    địa chỉ có thể không bao giờ tới được.
+test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NHẬT KÝ, cả hai nối vào endpoint thật", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const js = readAppJs();
+  for (const id of ["p2pAddrs", "p2pSeenList", "p2pLog", "p2pLogOnly", "p2pLogHold", "p2pLogPath"]) {
+    assert.ok(html.includes(`id="${id}"`), `thiếu ô ${id} trên bề mặt`);
+  }
+  assert.match(js, /\/daemon-log\?tail=/, "khung nhật ký phải gọi /daemon-log");
+  assert.match(js, /c\.addrs/, "phải đổ DANH SÁCH địa chỉ, không phải một cái đoán được");
+  assert.match(js, /data-seenfill/, "bấm một máy đã thấy phải điền sẵn ID + địa chỉ");
+  // Rỗng phải NÓI RA: vùng trắng trông y như đang tải, người đọc sẽ ngồi chờ một thứ đã xong.
+  assert.match(js, /p2p\.logEmpty/, "log rỗng phải nói 'chưa có dòng nào'");
+});
+
+test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["p2p.addrH", "p2p.addrNone", "p2p.addrCopy", "p2p.copiedAddr", "p2p.seenFill",
+    "p2p.filled", "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
+    const n = chrome.split(`'${k}':`).length - 1;
+    assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
+  }
+});

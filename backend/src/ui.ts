@@ -5,7 +5,7 @@ import { execFile, execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { writeJsonAtomic } from "./util/fs-atomic.js";
 import { createServer } from "node:http";
-import { hostname } from "node:os";
+import { hostname, networkInterfaces } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,6 +42,33 @@ import { readStandardSpec } from "./docs/standard-spec.js";
 import { TEMPLATE_DIR } from "./docs/adopt.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
+/**
+ * MỌI địa chỉ IPv4 của máy này mà máy khác gọi tới được — không phải "cái đoán là đúng".
+ *
+ * Vì sao trả về DANH SÁCH: máy thật thường có nhiều card. Đo 2026-09-16 trên một máy thật: MỘT card
+ * Wi-Fi và MỘT card LAN dây, ở HAI dải khác nhau — máy kia chỉ tới được một dải, nên khai nhầm card là
+ * đưa một địa chỉ KHÔNG BAO GIỜ tới được, mà cả hai bên đều không có cách nào biết mình vừa đưa nhầm.
+ * Bỏ loopback và link-local (`169.254.*`): cả hai không bao giờ là đường máy kia đi vào.
+ */
+/** Tách dòng cho cả CRLF lẫn LF. */
+const SPLIT_LINES = /\r?\n/;
+
+function lanAddresses(): Array<{ addr: string; iface: string }> {
+  const out: Array<{ addr: string; iface: string }> = [];
+  try {
+    for (const [iface, list] of Object.entries(networkInterfaces())) {
+      for (const n of list ?? []) {
+        if (n.family !== "IPv4" || n.internal) continue;
+        if (n.address.startsWith("169.254.")) continue;
+        out.push({ addr: n.address, iface });
+      }
+    }
+  } catch {
+    /* fail-open — không đọc được card mạng thì thôi, đừng làm chết cả bề mặt */
+  }
+  return out;
+}
+
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
 /**
  * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
@@ -62,7 +89,7 @@ function kickRemoteVersionCheck(): void {
     if (remoteCheckRunning || !cacheDue(readUpdateCache(), Date.now())) return;
     const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
     remoteCheckRunning = true;
-    const child = spawn(process.execPath, [join(root, "dist", "cli.js"), "selfupdate", "--check"], { cwd: root, stdio: "ignore", detached: false });
+    const child = spawn(process.execPath, [join(root, "dist", "cli.js"), "selfupdate", "--check"], { cwd: root, stdio: "ignore", detached: false, windowsHide: true });
     child.on("exit", () => { remoteCheckRunning = false; });
     child.on("error", () => { remoteCheckRunning = false; });
   } catch {
@@ -87,7 +114,7 @@ import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
 import { UI_SWEEP_MIN_AGE_MS, sweepOrphanBrowsers, sweepOrphanTempProfiles } from "./platform/browsersweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
-import { armCrashReport, daemonHeartbeat, daemonLog } from "./logging/daemon-log.js";
+import { armCrashReport, daemonHeartbeat, daemonLog, logsDir } from "./logging/daemon-log.js";
 import {
   getAutostart,
   getAutosync,
@@ -128,6 +155,7 @@ import {
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
+import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
 import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
@@ -1369,7 +1397,7 @@ function closePrevWindow(): void {
       // makes a reused pid a no-op instead of killing the daemon (it has no window).
       if (title) args.push("/FI", `WINDOWTITLE eq ${title}`);
       try {
-        spawn("taskkill", args, { stdio: "ignore" }).unref();
+        spawn("taskkill", args, { stdio: "ignore", windowsHide: true }).unref();
       } catch {
         /* already gone */
       }
@@ -1411,7 +1439,9 @@ function openWindowMsedge(url: string): void {
       "--no-default-browser-check",
       "--window-size=1320,920",
     ],
-    { detached: true, stdio: "ignore" },
+    // windowsHide: trình duyệt tự mở cửa sổ GUI của nó; cờ này chỉ chặn Node kèm thêm một
+    // console — thứ mà đóng nhầm là giết tiến trình (`plan/24 §10.1`).
+    { detached: true, stdio: "ignore", windowsHide: true },
   );
   child.on("error", () => console.log(`  (couldn't launch window - open ${url} manually)`));
   try {
@@ -1448,6 +1478,7 @@ function openWindow(url: string): void {
   const child = spawn(process.execPath, [script, url, appIcon(), windowPidFile()], {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
     env: {
       ...process.env,
       WEBVIEW2_USER_DATA_FOLDER: join(currentMemoryDir(), "cockpit", "webview"),
@@ -2091,7 +2122,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Phóng daemon MỚI rồi thoát — không dùng autostart (chỉ chạy lúc đăng nhập).
       setTimeout(() => {
         try {
-          spawn(process.execPath, [join(root, "dist", "cli.js"), "ui"], { detached: true, stdio: "ignore", cwd: root }).unref();
+          spawn(process.execPath, [join(root, "dist", "cli.js"), "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
         } catch (e) {
           daemonLog(`[selfupdate] relaunch failed: ${e instanceof Error ? e.message : e}`);
         }
@@ -2697,7 +2728,28 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // người dùng không có cách nào biết nó có tìm được ai không.
         listening: ch.channelServingPort(),
         seen: ch.seenPeers(),
+        // ĐỦ MỌI địa chỉ, không đoán một cái: đo 2026-09-16 trên máy thật thấy HAI card ở hai dải
+        // khác nhau. Khai nhầm card là ca "đưa IP mà bên kia không tới được", và
+        // người dùng không có cách nào biết mình vừa đưa nhầm.
+        addrs: lanAddresses(),
       });
+    }
+    if (p === "/daemon-log") {
+      // Nhật ký ĐỌC ĐƯỢC TRONG APP (`plan/24 §10.3`) — thứ bắt buộc phải có khi đã cấm cửa sổ
+      // console (`§10.1`). Chỉ ĐỌC; daemon vốn chỉ bind loopback nên không thêm bề mặt mạng mới.
+      const tail = Math.min(2000, Math.max(1, Number(u.searchParams.get("tail")) || 300));
+      const needle = u.searchParams.get("filter") ?? "";
+      try {
+        const f = join(logsDir(), "daemon.log");
+        if (!existsSync(f)) return json(res, { ok: true, lines: [], file: f });
+        // Đọc CẢ file rồi cắt đuôi: log này do chính daemon xoay vòng, và đọc ngược từng khối
+        // là phức tạp hơn nhiều cho một file cỡ vài MB. Trần `tail` chặn phần đắt ở đầu ra.
+        const all = readFileSync(f, "utf8").split(SPLIT_LINES).filter(Boolean);
+        const hit = needle ? all.filter((l) => l.includes(needle)) : all;
+        return json(res, { ok: true, lines: hit.slice(-tail), file: f, total: hit.length });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
     }
     if (p === "/set-p2p") {
       // 🔴 HAI KHÁI NIỆM TÁCH ĐÔI, đừng gộp (plan/24 §5):
@@ -2837,7 +2889,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // Ngưỡng % context mà hook nhắc chốt sổ (kẹp [50,99] ở settings). Đi cùng công tắc
         // realtime vì lời nhắc là một phần của tính năng đó — UI chỉnh qua /set-context-warn.
         contextWarnPercent: getContextWarnPercent(),
-        os: autostartStatus(), shortcut: desktopShortcutStatus(),
+        os: autostartStatus(), shortcut: desktopShortcutStatus(), shortcutPrompted: getShortcutPrompted(),
         // Có ĐANG chạy job nền không (embed/scan). Đo 2026-07-28: job embed nền ngốn
         // 4.592 s CPU làm MỌI endpoint chậm 2–9× mà giao diện không hề nói gì — phải mở
         // `Get-Process` mới thấy. Phơi ra đây để lần sau nhìn là biết.
@@ -2845,8 +2897,18 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       });
     }
     if (p === "/set-shortcut") {
-      const st = setDesktopShortcut(u.searchParams.get("on") === "1");
+      // `menu`/`desk` = hai ô tick của hộp thoại lúc cài. Không nêu ⇒ CẢ HAI (công tắc trong ⚙
+      // giữ nguyên hành vi cũ). `asked=1` đóng dấu "đã hỏi rồi" để lời mời lúc cài không lải nhải.
+      const pick = { startMenu: u.searchParams.get("menu") !== "0", desktop: u.searchParams.get("desk") !== "0" };
+      const st = setDesktopShortcut(u.searchParams.get("on") === "1", pick);
+      if (u.searchParams.get("asked") === "1") setShortcutPrompted(true);
       return json(res, { ok: true, shortcut: st });
+    }
+    if (p === "/shortcut-asked") {
+      // Người dùng đã THẤY lời mời (bấm Tạo, bấm Bỏ qua, hay đóng hộp) ⇒ thôi mời. "Đã hỏi"
+      // KHÔNG phải "đã tạo": chọn không mà bị hỏi lại mỗi lần mở app là một kiểu phiền có thật.
+      setShortcutPrompted(true);
+      return json(res, { ok: true });
     }
     if (req.method === "POST" && p === "/drive-sync") {
       // Run-hidden sync (user 2026-07-21): the old handler awaited syncDrive

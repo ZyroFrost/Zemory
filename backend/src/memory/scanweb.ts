@@ -1201,7 +1201,7 @@ export function browserArgs(profileDir: string, port: number, url: string, hidde
 
 
 function launchBrowser(exe: string, profileDir: string, port: number, url: string, hidden = false): number | undefined {
-  const child = spawn(exe, browserArgs(profileDir, port, url, hidden), { detached: true, stdio: "ignore" });
+  const child = spawn(exe, browserArgs(profileDir, port, url, hidden), { detached: true, stdio: "ignore", windowsHide: true });
   child.unref();
   return child.pid;
 }

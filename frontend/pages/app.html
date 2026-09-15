@@ -126,7 +126,7 @@
           <div class="fchip muted" id="rCount" style="border:0" data-i18n="f.noResultYet">— kết quả</div>
         </div>
         <div class="grid grow rzgrid" style="grid-template-columns:var(--recall,1.15fr) 8px 1fr">
-          <div class="card pad0" style="padding:16px"><div class="card-b" id="hits">
+          <div class="card" style="padding:16px"><div class="card-b" id="hits">
             <div class="muted" data-i18n="st.loading">…</div>
           </div></div>
           <div class="seam" data-seam="recall"></div>
@@ -310,12 +310,12 @@
               <span class="muted" id="filesCount">—</span>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 2px 8px">
-              <div class="chips" id="filesKind">
-                <button class="chip on" data-fkind="all" data-i18n="files.kAll">Tất cả</button>
-                <button class="chip" data-fkind="images" data-i18n="files.kImg">🖼 Ảnh</button>
-                <button class="chip" data-fkind="documents" data-i18n="files.kDoc">📄 Tài liệu</button>
-                <button class="chip" data-fkind="archives" data-i18n="files.kArc">🗜 Nén</button>
-                <button class="chip" data-fkind="media" data-i18n="files.kMed">🎬 Media</button>
+              <div class="filters" id="filesKind">
+                <button class="fchip on" data-fkind="all" data-i18n="files.kAll">Tất cả</button>
+                <button class="fchip" data-fkind="images" data-i18n="files.kImg">🖼 Ảnh</button>
+                <button class="fchip" data-fkind="documents" data-i18n="files.kDoc">📄 Tài liệu</button>
+                <button class="fchip" data-fkind="archives" data-i18n="files.kArc">🗜 Nén</button>
+                <button class="fchip" data-fkind="media" data-i18n="files.kMed">🎬 Media</button>
               </div>
               <input id="filesQ" data-i18n-ph="files.search" placeholder="tìm theo tên…"
                      style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;min-width:160px">
@@ -482,6 +482,9 @@
               <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
               <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
             </div>
+            <div class="muted" style="font-size:11px;margin:6px 0 2px" data-i18n="p2p.addrH">Địa chỉ máy này — đưa cho máy kia</div>
+            <div id="p2pAddrs" class="filters" style="margin-bottom:2px"></div>
+            <div id="p2pSeenList" class="filters" style="margin:4px 0 0"></div>
             <div class="muted" style="font-size:11px;margin:6px 0" data-i18n="p2p.idHint">ID máy này — đưa cho máy kia. ID KHÔNG phải bí mật (nó là băm của khoá công khai); chìa share thì TUYỆT ĐỐI không đưa qua chat.</div>
             <div style="display:flex;gap:6px"><input id="p2pMyId" readonly style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none;font-family:var(--mono,monospace)"><button class="btn sm" data-act="p2p-copy" data-i18n="p2p.copy">Chép</button></div>
             <div class="section-t" data-i18n="p2p.peersH">Máy đã ghép đôi</div>
@@ -493,6 +496,13 @@
             <div class="section-t" data-i18n="p2p.writeH">Ghi vào kênh nào</div>
             <div class="filters"><div class="fchip on" id="trDrive" data-tr="drive" data-i18n="p2p.trDrive">Drive</div><div class="fchip" id="trP2p" data-tr="p2p" data-i18n="p2p.trP2p">Máy-tới-máy</div></div>
             <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="p2p.writeD">Đọc được CẢ HAI kênh cùng lúc, nhưng GHI chỉ đúng một — hai kẻ cùng ghi đã làm hỏng kho hai lần.</div>
+            <div class="section-t" data-i18n="p2p.logH">Nhật ký kênh</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+              <div class="fchip on" id="p2pLogOnly" data-i18n="p2p.logOnly">Chỉ kênh</div>
+              <div class="fchip" id="p2pLogHold" data-i18n="p2p.logHold">Dừng cuộn</div>
+              <span class="fchip muted" id="p2pLogPath" style="border:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            </div>
+            <pre id="p2pLog" style="flex:0 0 auto;max-height:190px;overflow:auto;margin:0;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10.5px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:var(--text-dim)"></pre>
             <div id="p2pMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
           </div>
       </div>

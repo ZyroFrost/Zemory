@@ -235,7 +235,10 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .recall-in{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:10px;flex:0 0 auto}
 .recall-in input{flex:1;background:none;border:0;outline:none;color:var(--text);font-size:13.5px}
 .filters{display:flex;flex-wrap:wrap;gap:7px;flex:0 0 auto}
-.fchip{font-size:11.5px;color:var(--text-dim);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer}
+/* `background:none` + `font-family:inherit` de class nay dung duoc tren CA `<div>` LAN `<button>`:
+   khong co reset `button` toan cuc, nen mot `<button class="fchip">` se giu nen xam + font mac dinh
+   cua trinh duyet. Do 2026-09-16: bo loc panel Tep dung `<button>` va trong hoan toan lac kieu. */
+.fchip{font-size:11.5px;font-family:inherit;color:var(--text-dim);background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer}
 .fchip:hover{border-color:var(--border-strong);color:var(--text)}
 .fchip.on{border-color:var(--primary);color:var(--primary)}
 .rsel{font-size:11.5px;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:5px 8px;outline:none;cursor:pointer}

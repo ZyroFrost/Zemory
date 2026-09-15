@@ -1,7 +1,7 @@
 // `zemory init|sync|migrate|doctor|archive|validate|setup|structure|grill|reindex`
 // — the per-project docs harness lifecycle.
 import { homedir } from "node:os";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readSync, readdirSync } from "node:fs";
 import { relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
@@ -20,6 +20,8 @@ import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, wr
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { guardDrift } from "../docs/guard-gen.js";
+import { desktopShortcutStatus, setDesktopShortcut } from "../platform/autostart.js";
+import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { backupStale } from "../memory/backup-rotate.js";
 import { uiPort } from "../ui.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
@@ -110,10 +112,11 @@ export function cmdSync(): void {
       return;
     }
     if (sc.appUpdate) {
-      console.log(
-        `  ⚠ zemory ${sc.appUpdate.have} — có bản MỚI ${sc.appUpdate.latest} trên kênh chung ` +
-          `(${sc.appUpdate.from} đóng dấu ${sc.appUpdate.at}). Áp: \`zemory selfupdate\``,
-      );
+      // Nói ĐÚNG nguồn đã trả lời: git (commit) hay tem kênh chung (máy đóng dấu). Câu cũ ghi
+      // cứng "trên kênh chung" cho mọi ca ⇒ sau 15/09 nó sẽ khai sai nguồn.
+      const u = sc.appUpdate;
+      const where = u.source === "git" ? `trên git (commit ${u.from || "?"})` : `trên kênh chung (${u.from} đóng dấu ${u.at})`;
+      console.log(`  ⚠ zemory ${u.have} — có bản MỚI ${u.latest} ${where}. Áp: \`zemory selfupdate\``);
     }
     if (sc.missing.length) {
       console.log(`  ⚠ ${sc.missing.length} file của bộ chuẩn hiện hành CHƯA nhận (chạy \`zemory sync\` để gap-fill):`);
@@ -626,6 +629,49 @@ export function cmdValidate(): void {
   if (!rep.ok) process.exitCode = 1;
 }
 
+/**
+ * LỐI TẮT LÚC CÀI — mô tả rõ, rồi HỎI (user chốt 2026-09-15).
+ *
+ * Vì sao phải hỏi ở đây *và* trong cửa sổ app: lệnh cài thường do agent/CI chạy, **không có
+ * người gõ**. Một prompt ngồi chờ stdin ở đó là treo phiên — đúng kiểu hỏng `02_RULES` cấm. Nên:
+ * có TTY thật thì hỏi ngay tại đây; không có thì **không hỏi**, chỉ nói ra là app sẽ hỏi lần mở
+ * đầu, và nêu cờ để bản cài theo kịch bản tự quyết.
+ *
+ * Vì sao phải mô tả chứ không chỉ hỏi: trước đợt này zemory VẪN tạo mục Start Menu (từ lâu), mà
+ * không bề mặt nào nói ra — nhãn duy nhất là *"Lối tắt Desktop"*. User đọc thành "chưa có chức
+ * năng này". Thứ tồn tại mà không ai biết thì bằng không tồn tại.
+ */
+function printShortcutPlan(): void {
+  const st = desktopShortcutStatus();
+  console.log("  Lối tắt sẽ tạo (mở app bằng một cú bấm, KHÔNG hiện cửa sổ đen):");
+  if (!st.supported) {
+    console.log(`    · nền tảng này chưa hỗ trợ — ${st.detail ?? ""}`);
+    return;
+  }
+  const line = (label: string, t?: { path: string; exists: boolean }): void => {
+    if (!t) return;
+    console.log(`    · ${label.padEnd(10)} ${t.path}${t.exists ? "   [đã có]" : ""}`);
+  };
+  line("Start Menu", st.startMenu);
+  line("Desktop", st.desktop);
+  console.log("    Gỡ/tạo lại bất cứ lúc nào: ⚙ Cài đặt → Lối tắt. Không đụng registry, không cài dịch vụ.");
+}
+
+/** Hỏi Y/n trên TTY THẬT. Không phải TTY ⇒ trả `null` (chưa hỏi), KHÔNG chờ stdin. */
+function askYesNo(question: string): boolean | null {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return null;
+  try {
+    // Đọc một dòng bằng fd 0 — `readline` cần vòng lặp sự kiện, mà lệnh này chạy đồng bộ.
+    process.stdout.write(question);
+    const buf = Buffer.alloc(64);
+    const n = readSync(0, buf, 0, 64, null);
+    const answer = buf.subarray(0, n).toString("utf8").trim().toLowerCase();
+    return answer === "" || answer === "y" || answer === "yes" || answer === "c" || answer === "có";
+  } catch {
+    return null; // đọc hỏng ⇒ coi như chưa hỏi, để app hỏi lại. Không bao giờ chặn lượt cài.
+  }
+}
+
 // AGENTS.md = router thuần (điều hướng). Luật/quy trình sống ở docs/agent/*. Print short install steps + pointer.
 export function cmdSetup(args: string[] = []): void {
   if (args[0] === "mcp") {
@@ -637,6 +683,29 @@ export function cmdSetup(args: string[] = []): void {
   console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
   console.log("  3. zemory doctor");
   console.log("  4. zemory setup mcp                 — nối zemory vào agent nói MCP (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
+  console.log("");
+  printShortcutPlan();
+
+  // Cờ cho bản cài theo kịch bản: quyết dứt khoát, không cần TTY.
+  const forced = args.includes("--shortcut") ? true : args.includes("--no-shortcut") ? false : null;
+  if (forced !== null) {
+    const st = setDesktopShortcut(forced);
+    setShortcutPrompted(true);
+    console.log(`  → ${forced ? "đã tạo" : "đã bỏ qua"} lối tắt${st.detail ? ` (⚠ ${st.detail})` : ""}`);
+  } else if (getShortcutPrompted()) {
+    console.log("  (đã hỏi lần cài trước — đổi ý thì vào ⚙ Cài đặt → Lối tắt)");
+  } else {
+    const yes = askYesNo("  Tạo lối tắt Start Menu + Desktop ngay? [Y/n] ");
+    if (yes === null) {
+      console.log("  (không có người gõ ở đây ⇒ KHÔNG hỏi — cửa sổ app sẽ hỏi lần mở đầu.");
+      console.log("   Cài theo kịch bản: `zemory setup --shortcut` hoặc `--no-shortcut`.)");
+    } else {
+      const st = setDesktopShortcut(yes);
+      setShortcutPrompted(true);
+      console.log(`  → ${yes ? "đã tạo" : "đã bỏ qua"} lối tắt${st.detail ? ` (⚠ ${st.detail})` : ""}`);
+    }
+  }
+  console.log("");
   console.log("Điều hướng mở phiên: AGENTS.md ở root (hỏi app/non-app trước khi init). Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE Reconcile).");
 }
 
