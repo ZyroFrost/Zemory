@@ -8,7 +8,7 @@
  * Đọc rẻ: mỗi khối chỉ chạm 64 KB đầu để lấy `kdf.salt` trong header plaintext —
  * KHÔNG giải mã. Đo (plan/24 §6b): 50 khối ⇒ danh sách 2,0 KB.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -88,6 +88,7 @@ export async function appendReceivedBlock(channelDir: string, bytes: Buffer): Pr
   const part = join(tmp, "block.enc");
   try {
     writeFileSync(part, bytes);
+    mkdirSync(channelDir, { recursive: true }); // chỗ GHI mới tạo thư mục (xem `channelDir()`)
     const target = activeChannelSegment(channelDir).path;
     const before = isContainer(target) ? listContainerChunks(target).length : 0;
     const after = appendChunkVerified(target, part, before + 1);
