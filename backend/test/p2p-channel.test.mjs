@@ -23,7 +23,7 @@ import { loadOrCreateIdentity, deviceIdFromDer, certIsParsable, sameDeviceId } f
 import { inventoryIds, missingOnPeer } from "../../dist/memory/channel/blocks.js";
 import { connectToPeer, serveChannel } from "../../dist/memory/channel/peer.js";
 import { computeProof, createFrameReader, encodeBlock, encodeJson, newNonce, proofMatches } from "../../dist/memory/channel/wire.js";
-import { tempDir } from "./helpers.mjs";
+import { tempDir, runInMemoryChild } from "./helpers.mjs";
 
 const APP_VERSION = "test";
 
@@ -259,4 +259,73 @@ test("p2p-resume: khối LỚN phải tới nơi nguyên vẹn (đóng socket kh
   assert.equal(r.sentBlocks, 1);
   assert.deepEqual(blockIdsOf(b.channelDir), idsA, "khối lớn phải tới nơi NGUYÊN VẸN, cùng danh tính");
   assert.equal(r.server?.receivedBlocks, 1, "bên nghe phải báo đúng 1 khối đã nối");
+});
+
+// ── ⑥ CỬA VÀO: khi nào daemon NGHE, và đích GHI đi đâu (plan/24 §7 bước ④) ────
+//
+// Lớp giao thức đã được năm cổng trên canh. Cụm này canh thứ khác hẳn và là thứ đã THIẾU tới
+// 2026-09-15: `serveChannel` viết xong từ 13/09 nhưng KHÔNG NƠI NÀO GỌI — cả lớp kênh là một
+// cánh cửa không ai mở, còn bề mặt vẫn khoe "đã sẵn sàng".
+//
+// 🔴 Chạy trong TIẾN TRÌNH CON, không gọi thẳng: mấy hàm này GHI vào `config.json`, mà đường
+// của nó suy từ kho ⇒ gọi trong tiến trình test là ghi vào config THẬT của máy. Đúng lỗi
+// `helpers.mjs` đã ghi (2026-09-10), và đúng hình dạng sự cố "cờ p2p tự bật" ngày 14/09 mà
+// sổ còn ghi là chưa giải thích được — một ca test chết giữa chừng là đủ để lại cờ bật.
+test("channel-serve: TẮT · chưa ghép đôi · chưa có chìa ⇒ KHÔNG nghe, và nói rõ lý do", (t) => {
+  const root = tempDir(t, "zemory-serve-off-");
+  const out = runInMemoryChild(root, [
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    'S.setP2pEnabled(false); S.setP2pPeers(["ZZZ-TEST"]); S.setP2pPort(0);',
+    'out.push(await ch.startChannelServer({ shareKey: "khoa-gia", appVersion: "test" }));',
+    'out.push(ch.channelServingPort());',
+    'S.setP2pEnabled(true); S.setP2pPeers([]);',
+    'out.push(await ch.startChannelServer({ shareKey: "khoa-gia", appVersion: "test" }));',
+    'S.setP2pPeers(["ZZZ-TEST"]);',
+    'out.push(await ch.startChannelServer({ shareKey: "", appVersion: "test" }));',
+    'ch.stopChannelServer();',
+  ].join("\n"));
+
+  const [off, port0, noPeer, noKey] = out;
+  assert.equal(off.listening, false, "TẮT thì không được mở cổng nào");
+  assert.match(off.reason, /TẮT/);
+  assert.equal(port0, null, "bề mặt phải nói đúng: không nghe");
+  assert.equal(noPeer.listening, false, "chưa ghép đôi ⇒ mở cổng là mở vô ích");
+  assert.match(noPeer.reason, /ghép đôi/);
+  assert.equal(noKey.listening, false, "không chìa ⇒ không có phép chứng minh cùng kho");
+  assert.match(noKey.reason, /chìa/);
+});
+
+test("channel-serve: đủ ba điều kiện ⇒ NGHE THẬT, và đóng rồi thì thôi khoe đang nghe", (t) => {
+  const root = tempDir(t, "zemory-serve-on-");
+  const out = runInMemoryChild(root, [
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    // cổng 0 ⇒ hệ tự chọn cổng rảnh: cổng thật của máy không bị giành trong lúc test chạy.
+    'S.setP2pEnabled(true); S.setP2pPeers(["ZZZ-TEST"]); S.setP2pPort(0);',
+    'const r = await ch.startChannelServer({ shareKey: "khoa-gia", appVersion: "test" });',
+    'out.push(r); out.push(ch.channelServingPort());',
+    'const again = await ch.startChannelServer({ shareKey: "khoa-gia", appVersion: "test" });',
+    'out.push(again.listening);',
+    'ch.stopChannelServer(); out.push(ch.channelServingPort());',
+  ].join("\n"));
+
+  const [r, portWhileOn, againListening, portAfterStop] = out;
+  assert.equal(r.listening, true, "đủ điều kiện thì PHẢI nghe — thiếu bước này thì máy kia không nối vào được");
+  assert.ok(r.port > 0);
+  assert.equal(portWhileOn, r.port, "cổng báo ra phải là cổng THẬT đang nghe");
+  assert.equal(againListening, true, "gọi lại ⇒ mở lại theo cấu hình mới, không đẻ cổng thứ hai");
+  assert.equal(portAfterStop, null, "đóng rồi thì bề mặt phải thôi khoe đang nghe");
+});
+
+test("channel-serve: đích GHI đúng MỘT — drive không bao giờ trả thư mục kênh (HP điều 11)", (t) => {
+  const root = tempDir(t, "zemory-serve-dir-");
+  const out = runInMemoryChild(root, [
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    'S.setSyncTransport("drive"); out.push(ch.syncWriteDir());',
+    'S.setSyncTransport("p2p");   out.push(ch.syncWriteDir());',
+  ].join("\n"));
+
+  const [onDrive, onP2p] = out;
+  assert.equal(onDrive, null, "đích Drive ⇒ người gọi giữ NGUYÊN đường cũ, không nhánh nào đổi hành vi");
+  assert.ok(typeof onP2p === "string" && onP2p.length > 0, "đích p2p ⇒ phải trả thư mục kênh");
+  assert.match(onP2p, /channel$/);
 });

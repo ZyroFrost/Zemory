@@ -4,16 +4,31 @@
 // loop (the same isolation the scheduler uses for embed passes). The result is
 // printed as one JSON line on stdout; the daemon parses it for /sync-status.
 
-import { resolveShareKey, syncDrive } from "../memory/share.js";
+import { mergeChannelDir, resolveShareKey, syncDrive } from "../memory/share.js";
 import { getDriveDir } from "../config/settings.js";
+import { channelDir, syncWriteDir } from "../memory/channel/index.js";
 
 (async () => {
   try {
-    const driveDir = getDriveDir();
+    // ĐÍCH GHI theo `syncTransport` — ĐÚNG MỘT, không bao giờ hai (HP điều 11: hai kẻ ghi đã
+    // hỏng kho hai lần). `drive` là mặc định và là đường đã chạy lâu nay; chỉ khi người dùng cố
+    // ý chuyển sang `p2p` thì lượt sync mới ghi khúc vào thư mục kênh.
+    const outDir = syncWriteDir();
+    const driveDir = outDir ?? getDriveDir();
     if (!driveDir) {
       console.log(JSON.stringify({ ok: false, error: "no Drive folder linked" }));
       process.exitCode = 1;
       return;
+    }
+    // ĐỌC thì được CẢ HAI (plan/24 §5): kênh p2p có thể đã nhận khối từ máy kia trong lúc đích
+    // ghi vẫn là Drive. Merge nó vào kho TRƯỚC lượt chính, nên khối nhận được không nằm chết
+    // trên đĩa tới khi có người đổi công tắc. Fail-open: hỏng thì lượt Drive vẫn chạy.
+    if (!outDir) {
+      try {
+        await mergeChannelDir(channelDir(), { keyFile: resolveShareKey(process.cwd()) ?? undefined });
+      } catch (e) {
+        console.error(`[phase] channel-merge lỗi: ${String(e).slice(0, 120)}`);
+      }
     }
     // `[phase] <mã>` qua stderr — kênh RIÊNG với dòng JSON kết quả trên stdout, để daemon (đã hút
     // cả hai ống từ trước) đọc được BƯỚC ĐANG CHẠY theo thời gian thực (`syncjob.ts`), không phải

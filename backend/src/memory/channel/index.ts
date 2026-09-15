@@ -10,6 +10,7 @@ import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
+import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -83,4 +84,107 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     peers: getP2pPeers(),
     dir: channelDir(storeRoot),
   };
+}
+
+/**
+ * ĐÍCH GHI của một lượt đồng bộ — đúng MỘT, theo `syncTransport` (HP điều 11).
+ *
+ * Trả `null` khi đích là Drive: người gọi giữ nguyên đường Drive sẵn có, KHÔNG có nhánh nào
+ * đổi hành vi. Chỉ khi người dùng cố ý chuyển đích sang `p2p` thì hàm này mới trả một thư mục,
+ * và nó **tạo thư mục** vì lúc đó ta sắp ghi thật (`channelDir(ensure)` — hàm ĐỌC không được
+ * để lại dấu chân, bài học 15/09).
+ */
+export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
+  return getSyncTransport() === "p2p" ? channelDir(storeRoot, true) : null;
+}
+
+/** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
+let running: { server: ChannelServer; port: number } | null = null;
+
+export interface ChannelServeResult {
+  listening: boolean;
+  port?: number;
+  reason?: string;
+}
+
+/**
+ * NGHE kết nối từ máy đã ghép đôi — mảnh cuối để hai máy nói chuyện được.
+ *
+ * 🔴 Không có hàm này thì cả lớp kênh là một cánh cửa KHÔNG AI MỞ: `serveChannel` đã viết xong
+ * từ 13/09 nhưng **không nơi nào gọi**, nên máy kia dù cài đúng bản vẫn không nối vào được, và
+ * bề mặt thì vẫn khoe "kênh đã sẵn sàng". Đo 2026-09-15: `grep serveChannel` toàn `backend/src`
+ * chỉ ra đúng một dòng — chính chỗ khai nó.
+ *
+ * BA CỬA TỪ CHỐI, theo thứ tự, và mỗi cửa nói rõ lý do thay vì im lặng không nghe:
+ *  ① `p2pEnabled` tắt ⇒ không nghe (mặc định của mọi máy);
+ *  ② chưa ghép đôi máy nào ⇒ không nghe — mở một cổng mà từ chối mọi người là mở vô ích, và nó
+ *    làm bề mặt trông như đang sẵn sàng trong khi không ai vào được;
+ *  ③ chưa có chìa share ⇒ không nghe, vì phép chứng minh cùng chìa (`plan/24 §7c ②`) là thứ
+ *    chặn hai kho LẠ chở khối cho nhau.
+ *
+ * Gọi lại khi đang chạy ⇒ đóng bản cũ rồi mở lại theo cấu hình mới (người dùng vừa đổi cổng
+ * hoặc vừa ghép thêm máy). Fail-open (điều 9): cổng bận/đang bị chiếm ⇒ trả `reason`, KHÔNG
+ * ném — một lỗi ở lớp phụ không được phép làm chết daemon.
+ */
+export async function startChannelServer(o: {
+  shareKey?: string | null;
+  appVersion: string;
+  onReceived?: (blocks: number) => void;
+  log?: (msg: string) => void;
+} ): Promise<ChannelServeResult> {
+  const log = o.log ?? (() => {});
+  stopChannelServer();
+  if (!getP2pEnabled()) return { listening: false, reason: "kênh đang TẮT" };
+  const peers = getP2pPeers();
+  if (!peers.length) return { listening: false, reason: "chưa ghép đôi máy nào" };
+  const key = (o.shareKey ?? "").trim();
+  if (!key) return { listening: false, reason: "chưa có chìa share" };
+  const port = getP2pPort();
+  try {
+    const server = await serveChannel(
+      {
+        port,
+        // KHÔNG `ensure`: bật kênh chưa phải là ghi. Lớp nhận khối (`blocks.ts`) tự tạo thư mục
+        // đúng lúc có khối thật. Tạo sẵn ở đây đẻ một folder RỖNG mà `conform` kêu mỗi lượt —
+        // đúng dấu chân đã phải vá hôm 15/09, và một cổng kêu suốt là cổng sắp bị bỏ qua.
+        channelDir: channelDir(currentStoreRoot()),
+        identity: channelIdentity(),
+        shareKey: key,
+        appVersion: o.appVersion,
+        allowedPeers: peers,
+      },
+      (r: SyncOutcome) => {
+        // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
+        // với "có gọi mà hỏng" — đúng kiểu vỏ rỗng mà `02_RULES §Bề mặt CHẾT THEO nền` cấm.
+        log(
+          `[channel] phiên với ${r.peerDeviceId ?? "(không rõ)"} — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}` +
+            (r.error ? ` · ✗ ${r.error}` : ""),
+        );
+        if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+      },
+    );
+    running = { server, port: server.port };
+    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi`);
+    return { listening: true, port: server.port };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
+    log(`[channel] KHÔNG nghe được cổng ${port}: ${reason}`);
+    return { listening: false, reason };
+  }
+}
+
+/** Đóng máy chủ kênh nếu đang chạy. An toàn khi gọi lúc không có gì chạy. */
+export function stopChannelServer(): void {
+  if (!running) return;
+  try {
+    running.server.close();
+  } catch {
+    /* đóng được thì tốt */
+  }
+  running = null;
+}
+
+/** Cổng đang nghe, `null` nếu không nghe — cho bề mặt nói đúng trạng thái THẬT. */
+export function channelServingPort(): number | null {
+  return running?.port ?? null;
 }
