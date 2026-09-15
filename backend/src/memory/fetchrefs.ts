@@ -365,7 +365,7 @@ export function chatgptRefFetcher(page: PageEvaluator, timeoutMs = 180_000): Ref
     return { gizmo: c.gizmo_id || c.conversation_template_id || null };
   } catch (e) { return { gizmo: null }; }
 })()`;
-      let gid: string | null = null;
+      let gid: string | null;
       try {
         const r = await page.evaluate<{ gizmo: string | null }>(expr, timeoutMs);
         gid = typeof r?.gizmo === "string" && /^[A-Za-z0-9_-]{6,128}$/.test(r.gizmo) ? r.gizmo : null;

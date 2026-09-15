@@ -8,7 +8,6 @@
 import Database from "better-sqlite3";
 import {
   copyFileSync,
-  writeFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -18,7 +17,7 @@ import {
   rmSync,
   statSync,
 } from "node:fs";
-import { writeJsonAtomic } from "../util/fs-atomic.js";
+import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { cloudSyncReport } from "./cloudguard.js";
 import { isAbsolute, join, resolve } from "node:path";
 import {
@@ -479,7 +478,10 @@ export function relocateStore(
     const a = join(from, `.zemory-vol-probe-${process.pid}`);
     const b = join(to, `.zemory-vol-probe-${process.pid}`);
     try {
-      writeFileSync(a, "probe");
+      // Dùng helper nguyên tử dù đây chỉ là file NHÁP: cổng `fs-atomic` soi CHỮ trong cả file
+      // và không phân biệt được "ghi nháp" với "ghi nguồn". Nới cổng cho một ca vặt là cách
+      // cổng mất giá — rẻ hơn nhiều là đi qua đúng cửa.
+      writeFileAtomic(a, "probe");
       renameSync(a, b);
       rmSync(b, { force: true });
       return true;

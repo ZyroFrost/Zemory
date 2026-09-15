@@ -58,7 +58,7 @@ test("đường đặt tệp: phân theo LOẠI rồi tới tháng, sha đứng 
 });
 
 test("rút byte ra đĩa: file khớp sha256, DB thôi giữ byte nhưng vẫn giữ chỉ mục", (t) => {
-  const { db, root, made } = seed(t, [
+  const { db, root } = seed(t, [
     { body: "anh-mot", mime: "image/png", name: "a.png" },
     { body: "tai-lieu", mime: "application/pdf", name: "b.pdf" },
   ]);
