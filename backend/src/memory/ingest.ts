@@ -7,7 +7,7 @@ import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from
 import { dirname, join } from "node:path";
 import { canonProjectRoot } from "../core/config.js";
 import { homedir, hostname } from "node:os";
-import { type MemoryDB, MEMORY_DB, openMemory } from "./db.js";
+import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
 import type { ParsedAttachment, TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
@@ -115,7 +115,7 @@ export function stampAccount(dbPath: string, sessionIds: string[], account: stri
 
 /** Run a full scan over every known agent and ingest into the memory. */
 export function scan(opts: ScanOptions = {}): ScanReport {
-  const dbPath = opts.dbPath ?? MEMORY_DB;
+  const dbPath = opts.dbPath ?? currentMemoryDb();
   const home = opts.home ?? homedir();
   const adapters = opts.adapters ?? allAdapters();
   const bySource = new Map(adapters.map((a) => [a.source, a]));
@@ -242,7 +242,7 @@ export interface OneFileResult {
  */
 export function scanOneFile(filePath: string, opts: ScanOptions = {}): OneFileResult {
   const t0 = Date.now();
-  const dbPath = opts.dbPath ?? MEMORY_DB;
+  const dbPath = opts.dbPath ?? currentMemoryDb();
   const adapters = opts.adapters ?? allAdapters();
   let st: ReturnType<typeof statSync>;
   try {
@@ -310,7 +310,7 @@ export function scanOneFile(filePath: string, opts: ScanOptions = {}): OneFileRe
  * purpose: proving "this file has no custom-title anywhere" would need the whole file, and
  * guessing would let an ai-title overwrite a name the user chose (the `titleLocked` rule).
  */
-export function refreshSessionTitles(dbPath: string = MEMORY_DB, limit = 150): {
+export function refreshSessionTitles(dbPath: string = currentMemoryDb(), limit = 150): {
   checked: number;
   updated: { sessionId: string; title: string }[];
 } {
@@ -400,7 +400,7 @@ function readTail(p: string, n: number): string | null {
   }
 }
 
-export function memoryInfo(dbPath: string = MEMORY_DB): {
+export function memoryInfo(dbPath: string = currentMemoryDb()): {
   dbPath: string;
   sizeKB: number;
   tables: { name: string; rows: number; detail?: string }[];
@@ -455,7 +455,7 @@ export interface MemorySummary {
 }
 
 /** Read current memory state WITHOUT scanning (for the UI's idle view). */
-export function memorySummary(dbPath: string = MEMORY_DB): MemorySummary {
+export function memorySummary(dbPath: string = currentMemoryDb()): MemorySummary {
   const db = openMemory(dbPath);
   try {
     const agents = db
@@ -502,7 +502,7 @@ export interface HostTreeNode {
   }[];
 }
 
-export function memoryHostTree(dbPath: string = MEMORY_DB): HostTreeNode[] {
+export function memoryHostTree(dbPath: string = currentMemoryDb()): HostTreeNode[] {
   const db = openMemory(dbPath);
   try {
     const rows = db

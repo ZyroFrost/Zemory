@@ -14,51 +14,111 @@ import { dirname, join } from "node:path";
 // Memory DB location — resolved in priority order so the DB can live OFF C:\
 // (it grows without bound) while a tiny FIXED pointer stays in the home dir:
 //   1. GLOBAL_MEMORY_DB env — explicit override (A.I Center / tests), wins always.
-//   2. ~/.zemory/location.json { dataDir } — the "move my storage" pointer.
+//   2. ~/.zemory/location.json — the "move my storage" pointer, carrying TWO paths.
 //   3. ~/.zemory — the historical default.
 // The pointer MUST live at a fixed home path (not next to the DB) or moving the
 // DB would move the very file that says where the DB is (chicken-and-egg).
-// Everything else (config.json, browser/, imports/, backups/) hangs off MEMORY_DIR,
-// so relocating the data dir moves the whole cluster in one step.
+//
+// TWO ROOTS (plan/25 §1) — they differ only in WHERE THEY GO, not in what they hold:
+//   · memoryRoot = the Global Memory STORE: global_memory.db + channel/ + files/.
+//     This is the folder a second machine receives a copy of.
+//   · dataDir    = THIS MACHINE's folder: share.key, secrets/, browser/ (signed-in
+//     sessions), models/, backups/, logs/, config.json. It NEVER travels — article 14.
+// `memoryRoot` absent ⇒ both resolve to `dataDir`, i.e. the historical single folder,
+// so an existing install keeps working untouched.
 const ENV_DB = process.env.GLOBAL_MEMORY_DB?.trim();
 export const HOME_ZEMORY_DIR = join(homedir(), ".zemory");
 export const LOCATION_POINTER = join(HOME_ZEMORY_DIR, "location.json");
 
 let warnedDanglingPointer = false;
+let warnedNestedRoot = false;
 
+/** The pointer file, parsed. Both keys are optional; a missing/unreadable file
+ *  yields `{}` so every caller falls back to the historical default. */
+export interface StoragePointer {
+  /** THIS MACHINE's folder: key, secrets, browser profiles, models, backups, logs. Never travels. */
+  dataDir?: string;
+  /** The Global Memory store root: global_memory.db + channel/ + files/. This is what a
+   *  second machine gets a copy of (plan/25 §1). Absent = old layout, store lives in `dataDir`. */
+  memoryRoot?: string;
+}
+
+export function readStoragePointer(): StoragePointer {
+  try {
+    const parsed = JSON.parse(readFileSync(LOCATION_POINTER, "utf8")) as Record<string, unknown>;
+    const out: StoragePointer = {};
+    for (const k of ["dataDir", "memoryRoot"] as const) {
+      const v = parsed[k];
+      if (typeof v === "string" && v.trim()) out[k] = v.trim();
+    }
+    return out;
+  } catch {
+    return {}; // no pointer (or unreadable) → caller falls back to the home default
+  }
+}
+
+/** True when one path sits inside the other (or they are equal). Case-insensitive
+ *  because Windows paths are, and the separator is normalised so `a/b` == `a\b`. */
+export function pathsOverlap(a: string, b: string): boolean {
+  const norm = (p: string) => p.replace(/[\\/]+$/, "").replace(/\\/g, "/").toLowerCase();
+  const x = norm(a);
+  const y = norm(b);
+  return x === y || x.startsWith(`${y}/`) || y.startsWith(`${x}/`);
+}
+
+/** THIS MACHINE's folder — key, browser profiles, models, backups. Unchanged meaning:
+ *  before the split this pointer already resolved here, so no call site shifts under it. */
 function resolveMemoryDir(): string {
   if (ENV_DB) return dirname(ENV_DB);
-  try {
-    const parsed = JSON.parse(readFileSync(LOCATION_POINTER, "utf8")) as { dataDir?: unknown };
-    if (typeof parsed.dataDir === "string" && parsed.dataDir.trim()) {
-      const dir = parsed.dataDir.trim();
-      // Dangling pointer (target folder wiped, e.g. repo re-cloned without data/)
-      // would silently spawn a fresh EMPTY memory there while an old DB still sits
-      // in the home dir — warn loudly ONCE instead of "losing" the memory.
-      if (
-        !warnedDanglingPointer &&
-        !existsSync(join(dir, "global_memory.db")) &&
-        existsSync(join(HOME_ZEMORY_DIR, "global_memory.db"))
-      ) {
-        warnedDanglingPointer = true;
+  const dir = readStoragePointer().dataDir;
+  return dir ?? HOME_ZEMORY_DIR;
+}
+
+/** The STORE root (global_memory.db + channel/). Falls back to the machine dir when the
+ *  pointer carries no `memoryRoot` — i.e. the old single-folder layout keeps working. */
+function resolveStoreRoot(): string {
+  if (ENV_DB) return dirname(ENV_DB);
+  const machineDir = resolveMemoryDir();
+  const declared = readStoragePointer().memoryRoot;
+  let root = machineDir;
+  if (declared) {
+    // Nested roots make "what travels" ambiguous: a store root inside the machine folder
+    // would drag browser/ and models/ along, and the reverse would park secrets inside the
+    // folder that goes to the other machine. Refuse the split, keep the old layout (fail-open).
+    if (pathsOverlap(declared, machineDir)) {
+      if (!warnedNestedRoot) {
+        warnedNestedRoot = true;
         console.error(
-          `zemory: WARNING — ${LOCATION_POINTER} points to ${dir} but no memory DB is there, ` +
-            `while ${join(HOME_ZEMORY_DIR, "global_memory.db")} exists. A new EMPTY memory will be created at the pointer target. ` +
-            `If this is wrong: delete location.json (falls back to the home DB) or run \`zemory memory relocate\` again.`,
+          `zemory: WARNING — memoryRoot (${declared}) overlaps dataDir (${machineDir}) in ${LOCATION_POINTER}. ` +
+            `Ignoring memoryRoot and using the single-folder layout. Pick a store folder that is NOT inside the machine folder.`,
         );
       }
-      return dir;
+    } else {
+      root = declared;
     }
-  } catch {
-    /* no pointer (or unreadable) → fall back to the home default */
   }
-  return HOME_ZEMORY_DIR;
+  // Dangling pointer (target folder wiped, e.g. repo re-cloned without the store)
+  // would silently spawn a fresh EMPTY memory there while an old DB still sits
+  // in the home dir — warn loudly ONCE instead of "losing" the memory.
+  if (
+    !warnedDanglingPointer &&
+    root !== HOME_ZEMORY_DIR &&
+    !existsSync(join(root, "global_memory.db")) &&
+    existsSync(join(HOME_ZEMORY_DIR, "global_memory.db"))
+  ) {
+    warnedDanglingPointer = true;
+    console.error(
+      `zemory: WARNING — ${LOCATION_POINTER} points to ${root} but no memory DB is there, ` +
+        `while ${join(HOME_ZEMORY_DIR, "global_memory.db")} exists. A new EMPTY memory will be created at the pointer target. ` +
+        `If this is wrong: delete location.json (falls back to the home DB) or run \`zemory memory relocate\` again.`,
+    );
+  }
+  return root;
 }
 
 /** True while an env override is pinning the DB location (pointer is ignored). */
 export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
-const MEMORY_DIR = resolveMemoryDir();
-export const MEMORY_DB = ENV_DB || join(MEMORY_DIR, "global_memory.db");
+export const MEMORY_DB = ENV_DB || join(resolveStoreRoot(), "global_memory.db");
 
 const SCHEMA_VERSION = 25;
 
@@ -760,10 +820,17 @@ export function currentMemoryDir(): string {
   return ENV_DB ? dirname(ENV_DB) : resolveMemoryDir();
 }
 
+/** The Global Memory STORE root — global_memory.db, channel/, files/ (plan/25 §1).
+ *  This is the folder that reaches the second machine; `currentMemoryDir()` is the one
+ *  that stays put. They are the SAME folder until a `memoryRoot` pointer says otherwise. */
+export function currentStoreRoot(): string {
+  return ENV_DB ? dirname(ENV_DB) : resolveStoreRoot();
+}
+
 /** Same, for the DB file itself. Prefer this over the `MEMORY_DB` const as a
  *  default everywhere — the const freezes the location at process start. */
 export function currentMemoryDb(): string {
-  return ENV_DB || join(resolveMemoryDir(), "global_memory.db");
+  return ENV_DB || join(resolveStoreRoot(), "global_memory.db");
 }
 
 /** Open (creating if needed) the global memory DB with schema applied. Defaults to

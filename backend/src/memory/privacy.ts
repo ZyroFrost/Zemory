@@ -5,7 +5,7 @@
 import Database from "better-sqlite3";
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { currentMemoryDb, openMemory, type MemoryDB } from "./db.js";
+import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
 import { redact } from "./redact.js";
 import { forgetVectors, vecConnect } from "./vectors.js";
 
@@ -14,7 +14,9 @@ function timestamp(): string {
 }
 
 function defaultBackupPath(dbPath: string): string {
-  const dir = join(dirname(resolve(dbPath)), "backups");
+  // Cùng lý lẽ `backupDir()`: bản sao lưu là vật của MÁY NÀY, không đi theo gốc kho
+  // sang máy khác (plan/25 §1). Kho khác kho mặc định thì vẫn để cạnh chính nó.
+  const dir = resolve(dbPath) === resolve(currentMemoryDb()) ? join(currentMemoryDir(), "backups") : join(dirname(resolve(dbPath)), "backups");
   const base = basename(dbPath).replace(/\.db$/i, "");
   return join(dir, `${base}-${timestamp()}.db`);
 }

@@ -30,6 +30,10 @@ coverage/
 # vào git, ai clone về cũng nhận bản cụt (vỏ skill, không có ruột). Runtime của repo
 # vẫn chỉ nằm ở gốc nên neo lại không mất gì.
 /data/
+# GỐC KHO (plan/25): kho + kênh + files/ — dữ liệu thật, cùng hạng với /data/ về mặt git.
+# Neo ở gốc vì cùng một lý do như trên. Nó ĐI sang máy khác qua kênh máy-tới-máy, KHÔNG
+# qua git — "được phép rời máy" và "được phép vào commit" là hai chuyện khác nhau.
+/global-memory/
 # web-capture (now in attic/): NEVER commit pulled chat data (PII) or dumps — code only
 attic/web-capture/*.json
 attic/web-capture/*.txt
