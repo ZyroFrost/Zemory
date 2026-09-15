@@ -18,7 +18,7 @@ import { formatRecallBench, runRecallBench } from "../evals/recallbench.js";
 import { scanWeb } from "../memory/scanweb.js";
 import { WEB_PLATFORMS } from "../memory/webslots.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
-import { relocateMemory, storageInfo } from "../memory/relocate.js";
+import { relocateMemory, relocateStore, storageInfo } from "../memory/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybridChecked, searchMulti } from "../memory/search.js";
 import {
   exportMemoryBundle,
@@ -1405,12 +1405,86 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     if (s.pinnedByEnv) console.log("  note: GLOBAL_MEMORY_DB pins the location; `memory relocate` is disabled until you unset it.");
     return;
   }
+  if (sub === "files") {
+    const verb = positionalArgs(args.slice(1))[0] ?? "status";
+    const { extractBlobs, verifyFiles, gcFiles, filesRoot } = await import("../memory/filestore.js");
+    const apply = args.includes("--apply");
+    if (verb === "extract") {
+      // Mặc định DRY-RUN: rút byte ra đĩa rồi xoá khỏi DB là thao tác một chiều, người
+      // phải thấy con số trước khi bấm (điều 12 · `02_RULES §Hành xử`).
+      const r = extractBlobs({ dryRun: !apply, limit: Number(flagValue(args, "--limit")) || undefined });
+      console.log(`zemory memory files extract${apply ? "" : " — DRY RUN (thêm --apply để ghi thật)"}`);
+      console.log(`  kho tệp: ${filesRoot()}`);
+      console.log(`  rút ra: ${r.moved} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · bỏ qua (đã có): ${r.skipped}`);
+      if (r.failed.length) {
+        console.log(`  ⚠ không rút được: ${r.failed.length}`);
+        for (const f of r.failed.slice(0, 5)) console.log(`     #${f.id}: ${f.reason}`);
+      }
+      if (apply) console.log("  ⓘ byte đã rời DB nhưng file chưa co lại — chạy `zemory memory vacuum` để đòi đĩa.");
+      return;
+    }
+    if (verb === "collect") {
+      // Làn `created` (plan/25 §1b): nhận TỆP DO AGENT TẠO. Mặc định dry-run vì nó ghi
+      // cả file lẫn hàng DB; người phải thấy số trước khi bấm.
+      const { collectCreated } = await import("../memory/filestore.js");
+      const r = collectCreated({ dryRun: !apply, limit: Number(flagValue(args, "--limit")) || undefined });
+      console.log(`zemory memory files collect${apply ? "" : " — DRY RUN (thêm --apply để ghi thật)"}`);
+      console.log(`  lời gọi Write: ${r.calls} · đường file: ${r.paths}`);
+      console.log(`  loại vì vùng nháp: ${r.excluded} · đã biến mất trên đĩa: ${r.gone}`);
+      console.log(`  NHẬN: ${r.added} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.already}`);
+      return;
+    }
+    if (verb === "verify") {
+      const r = verifyFiles();
+      console.log(`zemory memory files verify — ${r.checked} tệp · khớp ${r.ok}`);
+      if (r.missing.length) console.log(`  🔴 MẤT FILE: ${r.missing.length} (ảnh sẽ vỡ) — ${r.missing.slice(0, 3).map((m) => m.rel).join(" · ")}`);
+      if (r.corrupt.length) console.log(`  🔴 LỆCH NỘI DUNG: ${r.corrupt.length} — ${r.corrupt.slice(0, 3).map((m) => m.rel).join(" · ")}`);
+      if (!r.missing.length && !r.corrupt.length) console.log("  ✓ không thiếu, không lệch.");
+      process.exitCode = r.missing.length || r.corrupt.length ? 1 : 0;
+      return;
+    }
+    if (verb === "gc") {
+      const r = gcFiles({ remove: apply });
+      console.log(`zemory memory files gc${apply ? "" : " — DRY RUN (thêm --apply để xoá)"}`);
+      console.log(`  tệp không hàng nào trỏ tới: ${r.orphans.length} · ${(r.bytes / 1048576).toFixed(1)} MB`);
+      for (const o of r.orphans.slice(0, 5)) console.log(`     ${o}`);
+      if (apply) console.log(`  đã xoá: ${r.removed.length}`);
+      return;
+    }
+    console.log("usage: zemory memory files <extract|collect|verify|gc> [--apply] [--limit N]");
+      console.log("  collect: nhận tệp DO AGENT TẠO vào kho (lọc bỏ file nháp/đã xoá)");
+    console.log("  extract: rút byte đính kèm khỏi DB ra kho tệp trên đĩa (mặc định dry-run)");
+    console.log("  verify : đối chiếu sha256 từng tệp — bắt mất file / lệch nội dung");
+    console.log("  gc     : nêu tệp không còn hàng DB nào trỏ tới (mặc định chỉ đo)");
+    return;
+  }
+
   if (sub === "relocate") {
     const dir = positionalArgs(args.slice(1))[0];
+    const storeOnly = args.includes("--store");
     if (!dir) {
-      console.log("usage: zemory memory relocate <folder> [--force]");
+      console.log("usage: zemory memory relocate <folder> [--store] [--force]");
       console.log("  Move the memory DB (+ settings) to <folder>, off the system drive. Keeps a .bak of the old DB.");
+      console.log("  --store: move ONLY the Global Memory store (DB + channel/) — the folder that reaches");
+      console.log("           other machines. The key, secrets/, browser/, models/ and backups/ STAY PUT.");
       console.log("  --force: allow a cloud-synced / already-occupied target (risky).");
+      return;
+    }
+    if (storeOnly) {
+      try {
+        const r = relocateStore(dir, { force: args.includes("--force") });
+        if (r.pointerOnly) {
+          console.log(`zemory memory relocate --store — store root set → ${r.to} (no DB to move yet).`);
+          return;
+        }
+        console.log(`zemory memory relocate --store — moved the store → ${r.dbPath}`);
+        console.log(`  ${r.messages} message(s) verified · carried along: ${r.moved.join(" · ")} · mode: ${r.mode}`);
+        console.log(`  stayed on this machine: share.key · secrets/ · browser/ · models/ · backups/ (article 14)`);
+        if (r.backup) console.log(`  old DB kept as backup: ${r.backup}\n  (delete it once you've confirmed everything works)`);
+      } catch (error) {
+        console.log(`zemory memory relocate --store: ${error instanceof Error ? error.message : "failed"}`);
+        process.exitCode = 1;
+      }
       return;
     }
     try {

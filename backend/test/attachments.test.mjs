@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { imageAttachment, imageLabel, MAX_BLOB_BYTES } from "../../dist/memory/adapters/_shared.js";
+import { imageAttachment, fileAttachment, imageLabel, MAX_BLOB_BYTES } from "../../dist/memory/adapters/_shared.js";
 import { attachmentBlob, attachmentsFor, attachmentStats } from "../../dist/memory/attachments.js";
 import { openMemory } from "../../dist/memory/db.js";
 import { tempDir } from "./helpers.mjs";
@@ -389,4 +389,52 @@ test("with EVERY link dead the content STILL REMAINS (no delete by default); onl
   // Chỉ khi người dùng CHỦ ĐỘNG bật mới được xoá.
   const r2 = pruneOrphanAttachments(dbPath, { dropUnlinked: true });
   assert.equal(r2.rows, 1, "bật dropUnlinked thì mới dọn nội dung không còn ai trỏ tới");
+});
+
+test("khối `document` (pdf) được nhận như đính kèm, KHÔNG rơi vào nhánh mặc định", () => {
+  // Đo transcript thật 2026-09-15: khối tài liệu của Anthropic dùng CÙNG hình dạng với ảnh,
+  // chỉ khác `type`. Trước bản này adapter rẽ theo `case "image"` nên pdf/xlsx gửi cho agent
+  // mất im lặng ngay lúc nạp — cùng họ lỗi đã làm mất 93 MB ảnh (07-28).
+  const pdf = Buffer.from("%PDF-1.4 noi dung gia").toString("base64");
+  const a = fileAttachment({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf } });
+  assert.ok(a, "phải nhận ra khối tài liệu");
+  assert.equal(a.mime, "application/pdf");
+  assert.equal(a.kind, "blob");
+  assert.ok(a.bytes > 0);
+});
+
+test("CA ÂM — nhãn để lại trong tin phải phân biệt ảnh với tài liệu", () => {
+  // Nhãn ảnh giữ nguyên chữ `image:` vì viewer, ô Xem trước và bộ lọc "Có ảnh" đều cắt
+  // đúng chuỗi đó; đổi nó là làm chết ba bề mặt cùng lúc.
+  const img = fileAttachment({ type: "image", source: { type: "base64", media_type: "image/png", data: "AAAA" } });
+  const doc = fileAttachment({ type: "document", source: { type: "base64", media_type: "application/pdf", data: "AAAA" } });
+  assert.match(imageLabel(img), /^\[image:/, "ảnh GIỮ nhãn image:");
+  assert.match(imageLabel(doc), /^\[file:/, "tài liệu mang nhãn khác — nó không hiện được như ảnh");
+});
+
+test("ĐƯỜNG NẠP THẬT — adapter Claude Code phải nhận khối `document`, không chỉ hàm dùng chung", async () => {
+  // Ca trước chỉ gọi thẳng `fileAttachment` nên KHÔNG ghim được nhánh rẽ của adapter:
+  // gỡ `case "document"` ra thì test vẫn xanh (đo bằng đột biến 2026-09-15). Ca này đi qua
+  // đúng `parseLine` — cùng đường mà `memory scan` chạy.
+  const { claudeAdapter } = await import("../../dist/memory/adapters/claude.js");
+  const pdf = Buffer.from("%PDF-1.4 bao cao quy 3").toString("base64");
+  const line = {
+    type: "user", uuid: "u-doc", timestamp: "2026-09-15T01:00:00Z",
+    message: {
+      role: "user",
+      content: [
+        { type: "text", text: "đọc file này giúp" },
+        { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdf } },
+      ],
+    },
+  };
+
+  const r = claudeAdapter.parseLine(JSON.stringify(line));
+
+  assert.equal(r?.kind, "message");
+  const atts = r.msg.attachments ?? [];
+  assert.equal(atts.length, 1, "tài liệu phải thành MỘT đính kèm, không bị bỏ im lặng");
+  assert.equal(atts[0].mime, "application/pdf");
+  assert.match(r.msg.content, /\[file:application\/pdf/, "chữ của tin giữ MỘT dòng nhãn, không nhét base64");
+  assert.ok(!r.msg.content.includes(pdf.slice(0, 40)), "base64 KHÔNG được lọt vào nội dung (thổi FTS)");
 });

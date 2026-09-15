@@ -36,9 +36,13 @@ export const MAX_BLOB_BYTES = 8 * 1024 * 1024;
  *  ③ ChatGPT export `{content_type:'image_asset_pointer', asset_pointer:'file-service://…'}`
  *     — KHÔNG có bytes trong file export ⇒ `kind:'ref'`: thà ghi nhận "từng có ảnh ở đây"
  *     còn hơn để nó biến mất không dấu vết.
+ *  ④ Anthropic TÀI LIỆU `{type:'document', source:{type:'base64', media_type:'application/pdf', data}}`
+ *     — CÙNG hình dạng ① , chỉ khác `type`. Nhánh này thêm 2026-09-15 sau khi đo transcript
+ *     THẬT (357 file): đúng 1 khối, `application/pdf`. Trước đó adapter rẽ theo `case "image"`
+ *     nên tài liệu rơi vào nhánh mặc định và mất im lặng — cùng họ lỗi đã làm mất 93 MB ảnh.
  * Hình dạng lạ ⇒ `null` (người gọi giữ nguyên hành vi cũ), KHÔNG đoán bừa.
  */
-export function imageAttachment(block: unknown): ParsedAttachment | null {
+export function fileAttachment(block: unknown): ParsedAttachment | null {
   if (!block || typeof block !== "object") return null;
   const b = block as Record<string, any>;
 
@@ -85,8 +89,15 @@ export function imageAttachment(block: unknown): ParsedAttachment | null {
 
 /** Nhãn một dòng để lại trong `content` — người đọc và FTS vẫn thấy "có ảnh ở đây". */
 export function imageLabel(a: ParsedAttachment): string {
-  return `[image:${a.mime ?? "?"} ${(a.bytes / 1024).toFixed(0)}KB ${a.sha256.slice(0, 12)}]`;
+  // Nhãn để lại trong CHỮ của tin. Ảnh giữ nguyên chữ `image:` — đổi là làm chết mọi
+  // chỗ đang cắt nhãn đó ra (viewer, ô Xem trước, bộ lọc "Có ảnh"), mà đó là bề mặt
+  // người dùng nhìn. Tài liệu dùng chữ riêng vì nó KHÔNG hiện được như ảnh.
+  const tag = (a.mime ?? "").startsWith("image/") || a.mime === "image/*" ? "image" : "file";
+  return `[${tag}:${a.mime ?? "?"} ${(a.bytes / 1024).toFixed(0)}KB ${a.sha256.slice(0, 12)}]`;
 }
+
+/** Tên cũ — GIỮ để 7 chỗ gọi hiện có không phải sửa cùng lúc; cùng một hàm. */
+export const imageAttachment = fileAttachment;
 
 /** Load the project-id → project-name map dropped next to the transcript as
  *  `_projects.json` ({"g-p-…":"Video-Music Maker", …}) by `memory scan-web`, or
