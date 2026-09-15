@@ -475,10 +475,12 @@
         <div id="syncPaneDrive" class="muted" style="font-size:11.5px" data-i18n="set.driveHere">Kênh Drive cấu hình ở màn Global Memory › Đồng bộ &amp; Sao lưu — nơi có sẵn số liệu để quyết định.</div>
 <div id="syncPaneP2p" style="display:none">
             <div class="set-row"><div class="sl"><b data-i18n="p2p.enable">Bật kênh máy-tới-máy</b><small data-i18n="p2p.enableD">Nhận khối thẳng từ máy kia, không qua Drive. Bật được CÙNG LÚC với Drive — đây chỉ là chiều NHẬN.</small></div><div class="toggle" id="p2pToggle" data-act="p2p-toggle"><i></i></div></div>
+            <div class="muted" style="font-size:11px;margin:2px 0 6px;line-height:1.5" data-i18n="p2p.reachD">Chạy được khi: hai máy CÙNG MẠNG (tự tìm nhau), hoặc MỘT đầu mở được cổng. Cả hai đầu đều sau NAT kín thì chưa có đường — đo 15/09 trên hai mạng thật.</div>
             <div class="section-t" data-i18n="p2p.meH">Máy này</div>
             <div class="drv-facts">
               <div><span data-i18n="p2p.blocks">Khối đang giữ</span><b id="p2pBlocks">—</b></div>
               <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
+              <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
             </div>
             <div class="muted" style="font-size:11px;margin:6px 0" data-i18n="p2p.idHint">ID máy này — đưa cho máy kia. ID KHÔNG phải bí mật (nó là băm của khoá công khai); chìa share thì TUYỆT ĐỐI không đưa qua chat.</div>
             <div style="display:flex;gap:6px"><input id="p2pMyId" readonly style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none;font-family:var(--mono,monospace)"><button class="btn sm" data-act="p2p-copy" data-i18n="p2p.copy">Chép</button></div>

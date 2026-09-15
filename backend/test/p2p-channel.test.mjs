@@ -19,7 +19,7 @@ import {
   chunkBlockId,
   isContainer,
 } from "../../dist/memory/share.js";
-import { loadOrCreateIdentity, deviceIdFromDer, certIsParsable, sameDeviceId } from "../../dist/memory/channel/identity.js";
+import { loadOrCreateIdentity, deviceIdFromDer, certIsParsable, sameDeviceId, normalizeDeviceId, deviceIdLooksTyped, luhn32 } from "../../dist/memory/channel/identity.js";
 import { inventoryIds, missingOnPeer } from "../../dist/memory/channel/blocks.js";
 import { connectToPeer, serveChannel } from "../../dist/memory/channel/peer.js";
 import { computeProof, createFrameReader, encodeBlock, encodeJson, newNonce, proofMatches } from "../../dist/memory/channel/wire.js";
@@ -98,11 +98,13 @@ const opts = (side, peers) => ({
 });
 
 // ── ① danh tính ──────────────────────────────────────────────────────────────
-test("p2p-identity: chứng chỉ tự dựng đọc lại được, ID bền và dài đúng 52 ký tự", (t) => {
+test("p2p-identity: chứng chỉ tự dựng đọc lại được, ID bền và mang CHỮ SỐ KIỂM", (t) => {
   const dir = tempDir(t, "zemory-id-");
   const id = loadOrCreateIdentity(dir, "zemory-a");
   assert.equal(certIsParsable(id.certDer), true, "chứng chỉ phải parse lại được");
-  assert.equal(id.deviceId.replace(/-/g, "").length, 52);
+  // 52 ký tự thô, chia nhóm 7 + 1 chữ số kiểm mỗi nhóm ⇒ 8 nhóm (7 nhóm đủ + 1 nhóm lẻ 3).
+  assert.equal(normalizeDeviceId(id.deviceId).length, 52, "phần THÔ vẫn là 52 — chữ số kiểm không phải danh tính");
+  assert.equal(deviceIdLooksTyped(id.deviceId), true, "ID sinh ra phải tự kiểm được");
   assert.equal(loadOrCreateIdentity(dir, "zemory-a").deviceId, id.deviceId, "đọc lại phải ra cùng ID");
   assert.equal(deviceIdFromDer(id.certDer), id.deviceId);
   // So ID phải chịu được người chép tay (bỏ gạch, đổi hoa thường).
@@ -328,4 +330,26 @@ test("channel-serve: đích GHI đúng MỘT — drive không bao giờ trả th
   assert.equal(onDrive, null, "đích Drive ⇒ người gọi giữ NGUYÊN đường cũ, không nhánh nào đổi hành vi");
   assert.ok(typeof onP2p === "string" && onP2p.length > 0, "đích p2p ⇒ phải trả thư mục kênh");
   assert.match(onP2p, /channel$/);
+});
+
+test("p2p-identity: CHỮ SỐ KIỂM bắt lỗi chép — sai một ký tự là biết NGAY, không đợi bắt tay", (t) => {
+  const id = loadOrCreateIdentity(tempDir(t, "zemory-id-chk-"), "zemory-chk").deviceId;
+  assert.equal(deviceIdLooksTyped(id), true);
+
+  // Đổi ĐÚNG MỘT ký tự trong nhóm đầu ⇒ chữ số kiểm của nhóm đó sai ⇒ bắt được tại chỗ.
+  const flat = id.replace(/-/g, "");
+  const ch = flat[0] === "A" ? "B" : "A";
+  const typo = ch + flat.slice(1);
+  assert.equal(deviceIdLooksTyped(typo), false, "chép sai một ký tự PHẢI bị bắt");
+
+  // CA ÂM — tương thích ngược: ID đời CŨ (không chữ số kiểm) vẫn khớp với chính máy đó.
+  // Thiếu vế này thì bản nâng cấp cắt mọi cặp đã ghép đôi, tức tự dựng lại đúng sự cố
+  // mà chữ số kiểm sinh ra để tránh.
+  const raw = normalizeDeviceId(id); // 52 ký tự thô, đúng dạng ID đời cũ
+  assert.equal(sameDeviceId(raw, id), true, "ID cũ và ID mới của CÙNG máy phải khớp");
+  assert.equal(deviceIdLooksTyped(raw), false, "nhưng nó KHÔNG tự kiểm được — đó là cách phân biệt hai đời");
+
+  // Luhn mod 32: cùng đầu vào luôn ra cùng chữ số, và ký tự lạ thì NÉM chứ không đoán.
+  assert.equal(luhn32("ABCDEFG"), luhn32("ABCDEFG"));
+  assert.throws(() => luhn32("ABC0189"), /ngoài base32/);
 });

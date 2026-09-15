@@ -757,11 +757,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const gws = guessGateways();
       console.log(`zemory memory channel probe — gateway đoán được: ${gws.join(", ") || "(không có)"}`);
       const m = await mapPort(channelStatus().port, { lifetimeSeconds: 60 });
+      // 🔴 Câu báo lúc THẤT BẠI từng là *"Không sao: chỉ cần ĐẦU KIA mở được cổng"* — nó NÓI DỐI
+      // đúng ca tệ nhất: **cả hai đầu cùng câm** thì hết đường, mà người đọc lại được trấn an.
+      // Bắt được 2026-09-15 bằng phép đo ⑧ trên hai mạng thật (`plan/24 §6d`). Nay nó nói ĐIỀU
+      // KIỆN, không nói kết luận — vì máy này không biết gì về đầu kia.
       console.log(
         m
           ? `  ✓ mở được cổng ngoài ${m.externalPort} qua ${m.gateway} (thuê ${m.lifetimeSeconds}s)`
           : "  ✗ không router nào trả lời NAT-PMP — máy này KHÔNG gọi-vào-được.\n" +
-            "    Không sao: chỉ cần ĐẦU KIA mở được cổng, máy này gọi RA vẫn đồng bộ được.",
+            "    ⇒ Đồng bộ chỉ chạy nếu MỘT trong hai điều sau đúng:\n" +
+            "       · hai máy CÙNG MẠNG (tầng dò LAN tự tìm nhau), HOẶC\n" +
+            "       · ĐẦU KIA gọi-vào-được (router bên đó mở cổng, hoặc bạn tự forward cổng).\n" +
+            "    Cả hai đầu đều như máy này ⇒ HẾT ĐƯỜNG: relay chưa được dựng (plan/24 §1b ⑨).\n" +
+            "    Đo đầu kia bằng chính lệnh này trước khi kết luận.",
       );
       return;
     }

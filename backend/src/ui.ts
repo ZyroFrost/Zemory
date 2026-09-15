@@ -2659,7 +2659,16 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Kênh máy-tới-máy (plan/24 §5). Chỉ ĐỌC — không mở socket, không dò gì.
       const ch = await import("./memory/channel/index.js");
       const st = ch.channelStatus();
-      return json(res, { ok: true, ...st, blocks: ch.inventoryIds(st.dir).length });
+      return json(res, {
+        ok: true,
+        ...st,
+        blocks: ch.inventoryIds(st.dir).length,
+        // TRẠNG THÁI THẬT, không phải ý định: cổng đang nghe (`null` = không nghe) và máy nào
+        // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
+        // người dùng không có cách nào biết nó có tìm được ai không.
+        listening: ch.channelServingPort(),
+        seen: ch.seenPeers(),
+      });
     }
     if (p === "/set-p2p") {
       // 🔴 HAI KHÁI NIỆM TÁCH ĐÔI, đừng gộp (plan/24 §5):

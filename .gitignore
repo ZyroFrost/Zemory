@@ -54,3 +54,34 @@ attic/zemory-lab/
 # của người ta (IP server, tên DB, tên biến *_PASSWORD). Bắt được 2026-07-29 lúc soi
 # diff TRƯỚC khi push; dump nay để ở ~/.zemory/rescue/ (ngoài mọi cây git).
 attic/index-rescue-*/
+
+# ── HỒ SƠ RIÊNG CỦA MÁY: docs/ và docs_visual/ (user chốt 2026-09-15) ──────────
+# Repo này PUBLIC và cố ý vậy — nó là công cụ cho nhiều người. Nhưng `docs/` KHÔNG
+# phải tài liệu của công cụ, nó là hồ sơ riêng của MỘT bản cài: hiến pháp, mọi plan,
+# sổ việc, changelog. Đo 2026-09-15 trên bản đã push: email cá nhân + email ĐỒNG
+# NGHIỆP, hostname hai máy, tên dự án nội bộ công ty (DuAnA · Dept_* ·
+# KhoDuLieuTrungTam), cùng danh sách lỗi đã biết mà chưa vá — tức bản đồ chỉ
+# chỗ mềm của hệ. Không thứ nào trong đó giúp người lạ dùng zemory.
+#
+# `docs_visual/` cùng hạng: nó là PLAN Ở DẠNG ẢNH (user 16/07: *"vẫn là docs nhưng
+# nhánh khác"*), và `ui/` còn là ảnh chụp KHO THẬT — tên phiên, tên tệp, nội dung
+# hiển thị. Thứ không grep ra được, nên càng dễ lọt.
+#
+# Thứ NGƯỜI KHÁC cần thì vẫn công khai và không đụng tới: `docs_template/` (bản mẫu
+# TRẮNG) + `AGENTS.md`. Ai clone về chạy `zemory init` là có docs CỦA HỌ.
+# Hai folder này đi sang máy khác qua KÊNH ĐÃ XÁC THỰC (chìa share + ghép đôi máy),
+# không qua git — "được phép rời máy" và "được phép công khai" là hai chuyện khác nhau.
+#
+# ⚠ Lịch sử đã push thì KHÔNG gỡ được bằng dòng này (`.gitignore` là GIẤU, không phải
+# DỌN). Nó chặn từ nay; phần đã công khai coi như đã lộ — cùng bài học `share.key` 04/08.
+/docs/
+/docs_visual/
+
+# `attic/` — KHO LEGACY, cùng nhóm với docs/ (user chốt 2026-09-15).
+# Nó giữ thứ đã nghỉ hưu NHƯNG vẫn là hồ sơ thật của bản cài này: bàn giao dự án cũ, cấu
+# hình đã dùng, mã đã thay. Đo 2026-09-15 trên bản đang public: `duana-bangiao-04-08.txt`
+# mang số doanh thu, tên bảng nghiệp vụ và MỘT LỖ HỔNG CHƯA VÁ được mô tả rõ; `tu-drive-may-cu/
+# duana-ui.json` mang tên database thật của công ty. Không dòng nào giúp người lạ dùng
+# zemory — đó là thước phân biệt "tài liệu của công cụ" với "hồ sơ của một bản cài".
+# Ba dòng attic/* ở trên giữ nguyên: thừa thì vô hại, mà xoá đi là mất lời giải thích.
+/attic/
