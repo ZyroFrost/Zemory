@@ -31,6 +31,31 @@ import { filesRoot, relPathFor } from "./filestore.js";
 /** Con trỏ của ChatGPT. Hai lược đồ đo được: `sediment://` 3.208 · `file-service://` 15. */
 const POINTER_RE = /^(?:sediment|file-service):\/\/(.+)$/;
 
+/**
+ * Bao nhiêu lỗi LIÊN TIẾP thì kết luận *đường* hỏng chứ không phải *tệp* hỏng.
+ *
+ * 20 đủ rộng để một chùm tệp đã xoá trên nền không làm dừng lượt, và đủ chặt để một cửa sổ bị
+ * đóng giữa chừng không kéo theo 2.000 dòng lỗi vô ích che mất chỗ nó bắt đầu hỏng.
+ */
+const FAIL_STREAK_STOP = 20;
+
+/**
+ * Lỗi này nói ĐƯỜNG hỏng, hay chỉ nói TỆP NÀY hỏng?
+ *
+ * 🔴 Phân biệt này là bắt buộc, không phải tinh chỉnh. Bản đầu đếm MỌI lỗi vào chuỗi và hậu quả
+ * đo được ngay lượt sau: hàng lỗi **tích tụ ở ĐẦU danh sách** (lượt nào cũng chạy từ id nhỏ
+ * nhất, hàng tải được thì rời khỏi danh sách còn hàng hỏng thì ở lại), nên một cụm ~20 lỗi
+ * *"nội dung trùng"* — thứ hoàn toàn vô hại — làm mọi lượt sau **dừng ngay khi vừa bắt đầu**.
+ * Một chốt an toàn quá rộng không bảo vệ được gì, nó chỉ khoá cửa (`plan/14`: *"Chốt an toàn
+ * QUÁ RỘNG cũng là lỗi"*).
+ *
+ * Chỉ bốn dấu hiệu dưới đây mới là ĐƯỜNG: mất phiên, socket chết, hết giờ, nền lỗi 5xx, và byte
+ * về hỏng. `403`/`404`/trùng nội dung/con trỏ lạ đều là chuyện của RIÊNG tệp đó.
+ */
+function isTransportFailure(reason: string): boolean {
+  return /chưa đăng nhập|CDP socket|timed out|HTTP 5\d\d|byte hỏng trên đường về/i.test(reason);
+}
+
 /** Byte một tệp lấy về được, kèm thứ nền biết mà kho chưa có (tên gốc · mime thật). */
 export interface FetchedFile {
   bytes: Buffer;
@@ -71,6 +96,8 @@ export interface FetchRefsResult {
   /** Còn bao nhiêu hàng `ref` sau lượt này (0 = hết nợ). */
   remaining: number;
   dryRun: boolean;
+  /** Lý do dừng TRƯỚC khi hết danh sách — `undefined` nghĩa là đã đi hết. */
+  stoppedEarly?: string;
 }
 
 export interface FetchRefsOptions {
@@ -88,7 +115,16 @@ export interface FetchRefsOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
-const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms).unref?.());
+/**
+ * Nhịp giãn giữa hai tệp.
+ *
+ * 🔴 **KHÔNG `unref()`** — bản đầu có, và nó giết lượt chạy ở tệp thứ 1.100/3.119 với mã thoát
+ * **13** (*unsettled top-level await*): `unref` bảo Node *"timer này không cần giữ tiến trình
+ * sống"*, nên khi WebSocket CDP nhàn rỗi bị đóng thì không còn handle nào giữ, và Node thoát
+ * ngay giữa lượt. `unref()` đúng cho một đồng hồ CANH CHỪNG (nó không được kéo dài đời tiến
+ * trình), sai cho một nhịp mà công việc đang ĐỢI.
+ */
+const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Tách `file_…` khỏi con trỏ. Không khớp lược đồ đã biết ⇒ `null`, KHÔNG đoán. */
 export function fileIdOf(srcPath: string | null): string | null {
@@ -163,6 +199,7 @@ export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsR
     return out;
   }
 
+  let streak = 0;
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
     const fileId = fileIdOf(r.src_path);
@@ -209,6 +246,18 @@ export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsR
       }
     } catch (error) {
       out.failed.push({ id: r.id, reason: error instanceof Error ? error.message.slice(0, 160) : "lỗi không rõ" });
+    }
+    // Lỗi RẢI RÁC là chuyện bình thường (tệp đã xoá trên nền, nhóm chưa giải thích được).
+    // Lỗi LIÊN TIẾP thì không: nó nghĩa là ĐƯỜNG đã hỏng — cửa sổ bị đóng, phiên hết hạn,
+    // nền chặn. Đập đầu qua 2.000 tệp còn lại chỉ tổ biến một sự cố thành hai nghìn dòng lỗi
+    // và làm mất luôn dấu vết chỗ nó bắt đầu hỏng.
+    const last = out.failed[out.failed.length - 1];
+    const brokeHere = last?.id === r.id && isTransportFailure(last.reason);
+    streak = brokeHere ? streak + 1 : 0;
+    if (streak >= FAIL_STREAK_STOP) {
+      out.stoppedEarly = `${streak} lỗi liên tiếp — đường lấy byte hỏng (cửa sổ khe còn mở không?); phần còn lại vẫn là \`ref\`, chạy lại là tiếp`;
+      log(`  ⛔ ${out.stoppedEarly}`);
+      break;
     }
     if (i % 50 === 49) log(`  … ${i + 1}/${rows.length} · tải ${out.fetched} · bỏ qua ${out.skipped} · lỗi ${out.failed.length}`);
     if (delayMs > 0 && i < rows.length - 1) await sleep(delayMs);
