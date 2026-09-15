@@ -2289,8 +2289,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         res.writeHead(404, { "content-type": "text/plain" });
         return res.end("not found");
       }
+      // CHARSET là bắt buộc với mọi kiểu CHỮ. Thiếu nó + `nosniff` ⇒ trình duyệt KHÔNG được
+      // phép đoán, nên nó rơi về bảng mã Tây Âu và mọi dấu tiếng Việt thành `Ã¡`/`â€"`.
+      // Đo 2026-09-15 trên `/attachment`: `text/markdown` trần ⇒ mojibake toàn bộ chú thích.
+      // Kho luôn giữ byte UTF-8 (redact + ingest đều làm việc trên chuỗi UTF-8).
+      const isText = /^text\/|^application\/(json|sql|xml|javascript|x-sh)\b/i.test(a.mime);
+      const ctype = isText && !/charset=/i.test(a.mime) ? `${a.mime}; charset=utf-8` : a.mime;
       res.writeHead(200, {
-        "content-type": a.mime,
+        "content-type": ctype,
         "content-length": String(a.bytes.length),
         // `inline` = vẫn hiện trong trang, nhưng ĐẶT TÊN cho lúc "Save image as" — nếu
         // không, trình duyệt lấy đoạn cuối đường dẫn và mọi ảnh đều lưu thành "attachment".

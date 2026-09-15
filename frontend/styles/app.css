@@ -494,3 +494,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .ftile .fcap{position:absolute;left:0;right:0;bottom:0;padding:3px 5px;font-size:10px;line-height:1.25;color:var(--text-faint);background:var(--surface);border-top:1px solid var(--border);text-align:center}
 .ftile.ffile{flex-direction:column;gap:2px;padding-bottom:24px}
 .ftile.fmissing{opacity:.55;border-style:dashed;cursor:default}
+/* Xem tệp CHỮ trong dialog: mọi màu đi qua token nên nó đọc được ở CẢ hai theme —
+   iframe thì không, vì token của app không với tới bên trong nó. */
+.fpre{margin:0;width:100%;height:100%;overflow:auto;background:var(--surface-2);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.55;
+  white-space:pre;tab-size:2}

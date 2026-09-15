@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import { imageAttachment, fileAttachment, imageLabel, MAX_BLOB_BYTES } from "../../dist/memory/adapters/_shared.js";
@@ -437,4 +437,15 @@ test("ĐƯỜNG NẠP THẬT — adapter Claude Code phải nhận khối `docum
   assert.equal(atts[0].mime, "application/pdf");
   assert.match(r.msg.content, /\[file:application\/pdf/, "chữ của tin giữ MỘT dòng nhãn, không nhét base64");
   assert.ok(!r.msg.content.includes(pdf.slice(0, 40)), "base64 KHÔNG được lọt vào nội dung (thổi FTS)");
+});
+
+test("/attachment phải gắn charset cho kiểu CHỮ — thiếu nó là mojibake toàn bộ dấu tiếng Việt", () => {
+  // Đo 2026-09-15: header trả `text/markdown` TRẦN, cộng `nosniff` ⇒ trình duyệt không được
+  // phép đoán nên rơi về bảng mã Tây Âu, và mọi chú thích tiếng Việt thành `Ã¡`/`â€"`.
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /charset=utf-8/, "phải gắn charset");
+  // So CHUỖI thẳng, không viết regex: mọi lần gõ escape qua công cụ/shell trong phiên này
+  // đều mất một tầng chéo ngược — lần này nó làm hỏng chính cái regex của phép kiểm.
+  assert.ok(ui.includes("(json|sql|xml|javascript|x-sh)"), "phải phủ cả json/sql/xml");
+  assert.match(ui, /"content-type": ctype/, "header phải dùng biến đã gắn charset, không dùng a.mime trần");
 });

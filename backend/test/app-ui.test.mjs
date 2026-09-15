@@ -906,3 +906,17 @@ test("dialog xem tệp: mỗi ô phải mang CHỈ SỐ, và render phải NẠP
     assert.ok(html.includes(`id="${id}"`), `thiếu nút ${id}`);
   }
 });
+
+test("tệp CHỮ phải tự vẽ, KHÔNG nhúng iframe (iframe không ăn token ⇒ chữ chìm vào nền tối)", () => {
+  // Lỗi thật 2026-09-15, user báo "file đen thui không thấy gì": iframe dùng bảng màu MẶC
+  // ĐỊNH của trình duyệt, mà token của app không với tới bên trong nó.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(gm, /isText[\s\S]{0,400}?<pre class="fpre">/, "tệp chữ phải vẽ bằng <pre>, không iframe");
+  assert.match(gm, /textContent = txt/, "đổ bằng textContent — không diễn giải HTML nằm trong tệp");
+  assert.match(css, /\.fpre\{[^}]*color:var\(--text\)/, ".fpre phải lấy màu chữ từ token");
+  assert.match(css, /\.fpre\{[^}]*background:var\(--surface-2\)/, ".fpre phải lấy màu nền từ token");
+  // iframe CHỈ còn cho pdf — trình duyệt tự dựng bộ đọc riêng cho nó.
+  const iframes = gm.match(/<iframe/g) || [];
+  assert.equal(iframes.length, 1, "chỉ còn đúng một iframe (pdf)");
+});
