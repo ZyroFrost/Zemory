@@ -8,6 +8,7 @@
 import Database from "better-sqlite3";
 import {
   copyFileSync,
+  writeFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -26,6 +27,8 @@ import {
   LOCATION_POINTER,
   currentMemoryDb,
   currentMemoryDir,
+  currentStoreRoot,
+  pathsOverlap,
 } from "./db.js";
 
 const DB_NAME = "global_memory.db";
@@ -103,6 +106,9 @@ function copyCluster(from: string, to: string): ClusterMove {
  *  real ~/.zemory. `pinned` mirrors the GLOBAL_MEMORY_DB env override. */
 export interface StoragePaths {
   dir: string;
+  /** Gốc KHO (plan/25 §1). Vắng ⇒ trùng `dir` = bố cục một-thư-mục cũ. Test tiêm đường
+   *  này để không bao giờ đụng con trỏ thật ở home. */
+  storeRoot?: string;
   db: string;
   pointer: string;
   home: string;
@@ -112,7 +118,7 @@ export interface StoragePaths {
 function livePaths(): StoragePaths {
   // Resolve FRESH (not the module-load consts) so a `where`/dashboard call right
   // after a relocate in the same process already reports the new location.
-  return { dir: currentMemoryDir(), db: currentMemoryDb(), pointer: LOCATION_POINTER, home: HOME_ZEMORY_DIR, pinned: MEMORY_DB_PINNED_BY_ENV };
+  return { dir: currentMemoryDir(), storeRoot: currentStoreRoot(), db: currentMemoryDb(), pointer: LOCATION_POINTER, home: HOME_ZEMORY_DIR, pinned: MEMORY_DB_PINNED_BY_ENV };
 }
 
 export interface StorageInfo {
@@ -188,7 +194,27 @@ function setStoragePointer(dataDir: string | null, paths: StoragePaths = livePat
   }
   // Con trỏ này quyết định zemory tìm DB ở đâu. Ghi hỏng nửa chừng ⇒ JSON cụt ⇒
   // resolveMemoryDir() rơi về thư mục home và MỞ RA MỘT BỘ NHỚ RỖNG bên cạnh DB thật.
-  writeJsonAtomic(paths.pointer, { dataDir });
+  // GIỮ `memoryRoot` đang có: file này mang HAI đường (plan/25 §1a-1), ghi đè cả object
+  // là âm thầm kéo gốc kho về lại thư mục máy — và kéo theo cả kho đi sang máy khác.
+  const keep = readPointerAt(paths.pointer).memoryRoot;
+  writeJsonAtomic(paths.pointer, keep ? { dataDir, memoryRoot: keep } : { dataDir });
+}
+
+/** Đọc con trỏ TẠI ĐƯỜNG ĐƯỢC TRUYỀN. Cố ý KHÔNG dùng `readStoragePointer()`: hàm đó
+ *  luôn đọc con trỏ ở home, nên một lời gọi có `paths` tiêm vào sẽ đọc nhầm file của máy
+ *  — vừa sai trong test, vừa sai ở mọi đường gọi có tiêm đường. */
+function readPointerAt(file: string): { dataDir?: string; memoryRoot?: string } {
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    const out: { dataDir?: string; memoryRoot?: string } = {};
+    for (const k of ["dataDir", "memoryRoot"] as const) {
+      const v = parsed[k];
+      if (typeof v === "string" && v.trim()) out[k] = v.trim();
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 function timestamp(): string {
@@ -372,4 +398,222 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
     return { ...base, backup: null };
   }
   return { ...base, backup };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GỐC KHO (plan/25 §1a) — dời ĐÚNG hai mục: `global_memory.db` và `channel/`.
+// KHÁC `relocateMemory` ở trên, vốn dời CẢ CỤM của máy. Ở đây cụm PHẢI ở lại:
+// `share.key` · `secrets/` · `browser/` (phiên đăng nhập) · `models/` · `backups/`
+// không bao giờ được đi sang máy khác (HP điều 14).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Tên được phép sang gốc kho. Danh sách TƯỜNG MINH, không phải "mọi thứ trừ X":
+ *  bài học của `copyCluster` là cái không được gọi tên sẽ đi theo nhánh mặc định,
+ *  và ở đây nhánh mặc định sai nghĩa là mang bí mật đi. */
+const STORE_MEMBERS = [DB_NAME, `${DB_NAME}-wal`, `${DB_NAME}-shm`, "channel", "files"] as const;
+
+export interface RelocateStoreResult {
+  from: string;
+  to: string;
+  dbPath: string;
+  /** Tên đã sang. */
+  moved: string[];
+  /** Cách dời: đổi tên (cùng ổ, gần như tức thì) hay chép (khác ổ). */
+  mode: "rename" | "copy";
+  messages: number;
+  /** Bản lùi của DB ở chỗ cũ; null khi không có DB để dời. */
+  backup: string | null;
+  pointerOnly: boolean;
+}
+
+/**
+ * Dời GỐC KHO sang `targetDir` và ghi `memoryRoot` vào con trỏ.
+ *
+ * An toàn theo đúng khuôn `relocateMemory`: gập WAL → khoá ghi → đếm → chuyển →
+ * verify (integrity + số dòng) → mới lật con trỏ → giữ bản cũ thành `.bak`.
+ */
+export function relocateStore(
+  targetDir: string,
+  opts: { force?: boolean; paths?: StoragePaths } = {},
+): RelocateStoreResult {
+  const P = opts.paths ?? livePaths();
+  if (P.pinned) {
+    throw new Error("GLOBAL_MEMORY_DB is set — it pins the store location. Unset it before relocating.");
+  }
+  const to = resolve(targetDir.trim());
+  if (!to || !isAbsolute(to)) throw new Error(`Invalid target folder: ${targetDir}`);
+  const machineDir = P.dir;
+  const from = P.storeRoot ?? P.dir;
+  const oldDb = join(from, DB_NAME);
+  const newDb = join(to, DB_NAME);
+
+  if (to === from) {
+    return { from, to, dbPath: oldDb, moved: [], mode: "rename", messages: 0, backup: null, pointerOnly: true };
+  }
+  // Lồng nhau ⇒ "cái gì đi" thành mơ hồ: gốc kho nằm trong thư mục máy sẽ kéo theo
+  // `browser/` và `models/`; ngược lại thì đỗ bí mật vào đúng thứ đi sang máy khác.
+  if (pathsOverlap(to, machineDir)) {
+    throw new Error(
+      `Refusing: the store root (${to}) overlaps this machine's folder (${machineDir}). ` +
+        `Pick a folder OUTSIDE it — the store travels to other machines, the machine folder must not.`,
+    );
+  }
+  if (looksLikeCloudSync(to) && !opts.force) {
+    throw new Error(
+      `Refusing: "${to}" looks like a cloud-synced folder. A live WAL database there WILL corrupt. ` +
+        `Sync through the peer channel instead, or pass --force if you are sure.`,
+    );
+  }
+  if (existsSync(newDb) && !opts.force) {
+    throw new Error(`A memory DB already exists at ${newDb}. Move/rename it first, or pass --force.`);
+  }
+  mkdirSync(to, { recursive: true });
+
+  // Cùng ổ đĩa ⇒ đổi tên (gần như tức thì, không ghi lại vài GB). Khác ổ thì `rename`
+  // ném EXDEV — chính cái bẫy đã phá kênh thật 03/09 (plan/08 §8e) — nên rơi về chép.
+  // Dò bằng một file NHÁP, KHÔNG bằng chính file kho: bản đầu đổi tên `global_memory.db`
+  // sang đích rồi đổi về, tức có một khoảnh khắc kho mang tên tạm ở thư mục khác — sập
+  // đúng lúc đó là người dùng đi tìm kho không thấy. Phép dò không được phép đặt cược
+  // vào thứ nó đang bảo vệ.
+  const sameVolume = (() => {
+    const a = join(from, `.zemory-vol-probe-${process.pid}`);
+    const b = join(to, `.zemory-vol-probe-${process.pid}`);
+    try {
+      writeFileSync(a, "probe");
+      renameSync(a, b);
+      rmSync(b, { force: true });
+      return true;
+    } catch {
+      rmSync(a, { force: true });
+      rmSync(b, { force: true });
+      return false;
+    }
+  })();
+  const mode: "rename" | "copy" = sameVolume ? "rename" : "copy";
+
+  rescueChannelIdentity(from, machineDir);
+
+  if (!existsSync(oldDb)) {
+    const moved = moveStoreMembers(from, to, mode, new Set([DB_NAME, `${DB_NAME}-wal`, `${DB_NAME}-shm`]));
+    setStoreRootPointer(to, P);
+    return { from, to, dbPath: newDb, moved, mode, messages: 0, backup: null, pointerOnly: true };
+  }
+
+  let beforeCount!: number;
+  const chk = new Database(oldDb);
+  try {
+    let locked = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      chk.pragma("wal_checkpoint(TRUNCATE)");
+      chk.exec("BEGIN IMMEDIATE");
+      let walBytes = 0;
+      try {
+        walBytes = statSync(`${oldDb}-wal`).size;
+      } catch {
+        /* no WAL file = fully folded */
+      }
+      if (walBytes <= 32) {
+        locked = true;
+        break;
+      }
+      chk.exec("ROLLBACK");
+    }
+    if (!locked) throw new Error("Memory DB is being written to right now — close other zemory processes and retry.");
+    beforeCount = (chk.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+    copyFileSync(oldDb, newDb);
+    chk.exec("ROLLBACK");
+  } finally {
+    chk.close();
+  }
+
+  // VERIFY trước khi lật con trỏ — bản cũ còn nguyên cho tới khi bản mới chứng minh được.
+  const check = new Database(newDb, { readonly: true });
+  try {
+    const integrity = (check.pragma("integrity_check") as Array<{ integrity_check: string }>)[0]?.integrity_check;
+    const after = (check.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+    if (integrity !== "ok" || after !== beforeCount) {
+      check.close();
+      rmSync(newDb, { force: true });
+      throw new Error(`Move verification failed (integrity=${integrity}, messages ${beforeCount} → ${after}). Nothing was changed.`);
+    }
+  } finally {
+    check.close();
+  }
+
+  const moved = moveStoreMembers(from, to, mode, new Set([DB_NAME]));
+  moved.unshift(DB_NAME);
+  setStoreRootPointer(to, P);
+
+  // Nguồn chỉ đổi tên thành .bak SAU khi đích đã nghiệm thu — không xoá, để lùi được.
+  const backup = `${oldDb}.relocated-${timestamp()}.bak`;
+  try {
+    renameSync(oldDb, backup);
+  } catch {
+    return { from, to, dbPath: newDb, moved, mode, messages: beforeCount, backup: null, pointerOnly: false };
+  }
+  return { from, to, dbPath: newDb, moved, mode, messages: beforeCount, backup, pointerOnly: false };
+}
+
+/**
+ * Gỡ DANH TÍNH KÊNH ra khỏi `channel/` trước khi cụm đó sang gốc kho.
+ *
+ * Bản trước của lớp kênh để `device.key` ở `<dir>/channel/identity`, và bản di cư chỉ
+ * CHÉP sang `secrets/` chứ không dọn bản cũ ⇒ một lượt dời kho bê nguyên khoá riêng vào
+ * đúng thư mục đi sang máy khác. Đo được trên máy thật 2026-09-14, và nó là lỗ hạng
+ * GIẢ DANH: ai có khoá đó dựng được một máy tự xưng là máy này.
+ *
+ * DỜI, không xoá (`02_RULES §Hành xử`): đã có bản ở `secrets/channel` thì bản thừa lùi về
+ * `secrets/channel-legacy-<mốc>` để người xem rồi tự quyết.
+ */
+function rescueChannelIdentity(storeDirFrom: string, machineDir: string): void {
+  const legacy = join(storeDirFrom, "channel", "identity");
+  if (!existsSync(legacy)) return;
+  const home = join(machineDir, "secrets", "channel");
+  const target = existsSync(join(home, "device.key")) ? join(machineDir, "secrets", `channel-legacy-${timestamp()}`) : home;
+  try {
+    mkdirSync(join(target, ".."), { recursive: true });
+    renameSync(legacy, target);
+  } catch {
+    try {
+      cpSync(legacy, target, { recursive: true });
+      rmSync(legacy, { recursive: true, force: true });
+    } catch {
+      /* không gỡ được ⇒ phía gọi sẽ thấy nó còn trong gốc kho; thà để lộ ra còn hơn im */
+    }
+  }
+}
+
+/** Chuyển các thành viên còn lại của gốc kho (bỏ qua `skip`, thường là chính file DB
+ *  vì nó đã đi đường verify riêng). Trả về tên đã chuyển được. */
+function moveStoreMembers(from: string, to: string, mode: "rename" | "copy", skip: Set<string>): string[] {
+  const moved: string[] = [];
+  for (const name of STORE_MEMBERS) {
+    if (skip.has(name)) continue;
+    const src = join(from, name);
+    if (!existsSync(src)) continue;
+    const dst = join(to, name);
+    if (existsSync(dst)) continue; // không đè thứ đã có ở đích
+    try {
+      if (mode === "rename") renameSync(src, dst);
+      else {
+        cpSync(src, dst, { recursive: true });
+        rmSync(src, { recursive: true, force: true });
+      }
+      moved.push(name);
+    } catch {
+      /* một mục không sang được KHÔNG được làm hỏng cuộc dời: DB đã verify xong */
+    }
+  }
+  return moved;
+}
+
+/** Ghi `memoryRoot`, GIỮ NGUYÊN `dataDir` đang có (con trỏ mang hai đường). */
+function setStoreRootPointer(memoryRoot: string | null, paths: StoragePaths = livePaths()): void {
+  mkdirSync(paths.home, { recursive: true });
+  const cur = readPointerAt(paths.pointer);
+  const next: { dataDir?: string; memoryRoot?: string } = {};
+  if (cur.dataDir) next.dataDir = cur.dataDir;
+  else next.dataDir = paths.dir;
+  if (memoryRoot) next.memoryRoot = memoryRoot;
+  writeJsonAtomic(paths.pointer, next);
 }

@@ -6,8 +6,8 @@
  * mặt của cùng một chức năng lệch nhau, bài học `zemory sweep` 12/09).
  */
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
-import { currentMemoryDir } from "../db.js";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 
@@ -18,20 +18,44 @@ export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
 
-/** Thư mục KHÚC của kênh p2p — trong cây repo (HP điều 14), gitignore theo `data/`. */
-export function channelDir(memoryDir = currentMemoryDir()): string {
-  const dir = join(memoryDir, "channel");
+/**
+ * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
+ * đi sang máy kia cùng kho (plan/25 §1).
+ */
+export function channelDir(storeRoot = currentStoreRoot()): string {
+  const dir = join(storeRoot, "channel");
   mkdirSync(dir, { recursive: true });
   return dir;
 }
-/** Nhà của chứng chỉ + khoá riêng của máy. Nằm cạnh khúc, đi theo kho khi `relocate`. */
-export function identityDir(memoryDir = currentMemoryDir()): string {
-  const dir = join(channelDir(memoryDir), "identity");
+
+/**
+ * Nhà của chứng chỉ + KHOÁ RIÊNG của máy — ở lại THƯ MỤC MÁY NÀY, KHÔNG nằm trong
+ * gốc kho.
+ *
+ * Vì sao tách khỏi `channelDir()`: `device.key` là danh tính TRANSPORT của máy này
+ * (plan/24 §1b ①). Để nó trong thư mục đi sang máy khác thì máy đó giả danh được —
+ * cùng hạng với `share.key`, nên nó về đúng nhà của bí mật: `secrets/` (HP điều 14).
+ */
+export function identityDir(machineDir = currentMemoryDir()): string {
+  const dir = join(machineDir, "secrets", "channel");
   mkdirSync(dir, { recursive: true });
+  // Bản trước để danh tính ở `<machineDir>/channel/identity`. DỜI, không sinh lại:
+  // deviceId là vân tay của chứng chỉ, sinh lại là đổi danh tính và cắt mọi cặp đã ghép.
+  const legacy = join(machineDir, "channel", "identity");
+  if (!existsSync(join(dir, "device.key")) && existsSync(join(legacy, "device.key"))) {
+    for (const f of ["device.key", "device.crt"]) {
+      try {
+        copyFileSync(join(legacy, f), join(dir, f));
+      } catch {
+        /* thiếu một file ⇒ để loadOrCreateIdentity xử như chưa có, không đoán */
+      }
+    }
+  }
   return dir;
 }
-export function channelIdentity(memoryDir = currentMemoryDir()): ChannelIdentity {
-  return loadOrCreateIdentity(identityDir(memoryDir));
+
+export function channelIdentity(machineDir = currentMemoryDir()): ChannelIdentity {
+  return loadOrCreateIdentity(identityDir(machineDir));
 }
 
 export interface ChannelStatus {
@@ -45,13 +69,15 @@ export interface ChannelStatus {
   dir: string;
 }
 
-export function channelStatus(memoryDir = currentMemoryDir()): ChannelStatus {
+/** Hai gốc đi vào hai chỗ khác nhau — danh tính ở MÁY NÀY, khúc ở GỐC KHO. Nhận
+ *  riêng từng đường để không ai truyền một đường rồi tưởng phủ cả hai. */
+export function channelStatus(machineDir = currentMemoryDir(), storeRoot = currentStoreRoot()): ChannelStatus {
   return {
     enabled: getP2pEnabled(),
     transport: getSyncTransport(),
-    deviceId: channelIdentity(memoryDir).deviceId,
+    deviceId: channelIdentity(machineDir).deviceId,
     port: getP2pPort(),
     peers: getP2pPeers(),
-    dir: channelDir(memoryDir),
+    dir: channelDir(storeRoot),
   };
 }

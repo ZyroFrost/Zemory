@@ -15,7 +15,7 @@
 
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { currentMemoryDb } from "./db.js";
+import { currentMemoryDb, currentMemoryDir } from "./db.js";
 import { backupMemory } from "./privacy.js";
 
 /** Khuôn tên do `memory backup` sinh: `global_memory-<ISO>.db`. Chỉ file khớp mới bị dọn. */
@@ -44,8 +44,20 @@ export interface BackupPolicy {
  */
 export const DEFAULT_BACKUP_POLICY: BackupPolicy = { everyMs: DAY_MS, keep: 3 };
 
+/**
+ * Nhà của bản sao lưu — THƯ MỤC MÁY NÀY, không phải thư mục chứa file `.db`.
+ *
+ * Hai đường này từng là một, nên lấy `dirname(dbPath)` là đúng. Từ khi kho tách ra gốc
+ * riêng (plan/25 §1) thì không còn: gốc kho **đi sang máy khác**, mà bản sao lưu là vật
+ * của MÁY NÀY — chở nó đi vừa vô nghĩa vừa nhân ba dung lượng kênh. Đo 2026-09-14:
+ * `backups/` đang **9,5 GB**.
+ *
+ * Kho KHÁC kho mặc định (bản thí nghiệm, kho tạm của diễn tập phục hồi) vẫn giữ lối cũ —
+ * bản sao lưu nằm cạnh chính nó, vì nó không thuộc cụm của máy.
+ */
 export function backupDir(dbPath: string = currentMemoryDb()): string {
-  return join(dbPath.replace(/[/\\][^/\\]+$/, ""), "backups");
+  const beside = join(dbPath.replace(/[/\\][^/\\]+$/, ""), "backups");
+  return dbPath === currentMemoryDb() ? join(currentMemoryDir(), "backups") : beside;
 }
 
 interface Existing {
