@@ -151,7 +151,11 @@
             <select id="fSHost" class="rsel ssel"><option value="" data-i18n="f.hostAny">Máy: mọi</option></select>
             <div class="fchip muted" id="sCount" style="border:0" data-i18n="f.noSessYet">— phiên</div>
           </div>
-          <div class="grid grow rzgrid" style="grid-template-columns:var(--sess,300px) 8px 1fr">
+          <!-- BA cột: danh sách phiên · hội thoại · TỆP CỦA PHIÊN (plan/25 §5 ②). Cột tệp có
+               seam RIÊNG neo từ mép phải (`data-seam-side="after"`) — luật panel resize đòi mọi
+               vùng ≥2 panel kề nhau phải kéo được, và engine seam là data-driven nên thêm cột
+               chỉ là khai báo, không chép logic. -->
+          <div class="grid grow rzgrid" style="grid-template-columns:var(--sess,300px) 8px 1fr 8px var(--sessf,240px)">
             <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="rc.sess">Phiên</span></div></div>
               <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
             </div>
@@ -159,6 +163,10 @@
             <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><div style="display:flex;align-items:center;gap:10px"><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a><button type="button" class="cbtn" data-icon="expand" data-expand="sessVBody" data-expand-from="sessVTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div>
               <div id="sessVInfo" class="muted" style="font-size:11px;flex:0 0 auto;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:6px"></div>
               <div class="card-b" id="sessVBody"><div class="muted" data-i18n="sess.pick">Chọn một phiên bên trái để xem toàn bộ hội thoại.</div></div>
+            </div>
+            <div class="seam" data-seam="sessf" data-seam-side="after"></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="files.ofSession">Tệp của phiên</span></div><span class="muted" id="sessFCount">—</span></div>
+              <div class="card-b" id="sessFiles"><div class="muted" style="font-size:12px" data-i18n="files.pickSess">Chọn một phiên để xem tệp của nó.</div></div>
             </div>
           </div>
         </div>
@@ -266,7 +274,7 @@
            nội dung (dư khoảng trống mênh mông). Thứ tự: SỐ lên đầu → chart NHỎ → hành động.
            Đã bỏ donut "Sức khoẻ" + card "Vector Index" riêng: gộp thành tile trong bảng số. -->
       <section class="screen" data-s="gmem">
-        <div class="tabs"><button class="on" data-gm="mem">◉ <span data-i18n="gm.tabMem">Bộ nhớ</span></button><button data-gm="sync">🔄 <span data-i18n="gm.tabSync">Đồng bộ &amp; Sao lưu</span></button></div>
+        <div class="tabs"><button class="on" data-gm="mem">◉ <span data-i18n="gm.tabMem">Bộ nhớ</span></button><button id="gmTabFiles" data-gm="files">🗂 <span data-i18n="gm.tabFiles">Tệp</span></button><button data-gm="sync">🔄 <span data-i18n="gm.tabSync">Đồng bộ &amp; Sao lưu</span></button></div>
 
         <!-- ① BỘ NHỚ — bộ nhớ này đang có gì. Bảng số ở đây CHỈ chứa thứ Trang chủ KHÔNG có
              (Trang chủ giữ 6 ô at-a-glance Messages/Sessions/Vector/Storage…) ⇒ một con số
@@ -293,6 +301,30 @@
              sync/recall. Bản trước tôi nhét Sources sang tab chart (chỉ toàn số liệu) — sai,
              user bác 2026-07-26. Giữ đúng bố cục 3 cột như ban đầu, kéo được (§5).
              Tab ① chỉ SỐ + chart, tab ② chỉ SETTING — ranh giới theo VIỆC, không trộn. -->
+        <!-- TỆP — kho tệp trên đĩa (plan/25 §5 ①). Sub-tab, KHÔNG tab nav mới (luật IA plan/15).
+             Byte nằm ở <gốc kho>/files/, endpoint /attachments chỉ trả metadata. -->
+        <div class="sub" data-gm="files">
+          <div class="card grow" style="display:flex;flex-direction:column;min-height:0">
+            <div class="card-h">
+              <div class="t" data-i18n="files.title">Tệp — ảnh và tài liệu đã gửi</div>
+              <span class="muted" id="filesCount">—</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 2px 8px">
+              <div class="chips" id="filesKind">
+                <button class="chip on" data-fkind="all" data-i18n="files.kAll">Tất cả</button>
+                <button class="chip" data-fkind="images" data-i18n="files.kImg">🖼 Ảnh</button>
+                <button class="chip" data-fkind="documents" data-i18n="files.kDoc">📄 Tài liệu</button>
+                <button class="chip" data-fkind="archives" data-i18n="files.kArc">🗜 Nén</button>
+                <button class="chip" data-fkind="media" data-i18n="files.kMed">🎬 Media</button>
+              </div>
+              <input id="filesQ" data-i18n-ph="files.search" placeholder="tìm theo tên…"
+                     style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;min-width:160px">
+              <button class="btn sm" data-act="files-reload">↻</button>
+            </div>
+            <div id="filesGrid" style="flex:1;min-height:0;overflow:auto"></div>
+          </div>
+        </div>
+
         <div class="sub" data-gm="sync">
         <div class="grid grow rzgrid" style="grid-template-columns:var(--mem1,1.1fr) 8px var(--mem2,1fr) 8px 1fr">
           <!-- Col 1: Sources (scope) — thuộc nhóm sync, KHÔNG phải số liệu -->
@@ -500,6 +532,26 @@
   <div class="dlg" role="dialog" aria-labelledby="imgDlgTitle">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b" id="imgDlgBody"></div>
+  </div>
+</div>
+
+<!-- XEM TỆP (plan/25 §5) — size L (90%, 16:9 như mọi dialog, `03_STRUCTURE §5`).
+     Có nút lùi/tới vì người dùng xem tệp theo LOẠT, không phải từng cái một: mở rồi
+     phải đóng ra mới xem cái kế là bắt bấm hai lần cho một việc. -->
+<div class="dlg-back" id="fileDlg">
+  <div class="dlg lg" role="dialog" aria-labelledby="fileDlgTitle">
+    <div class="dlg-h">
+      <span class="ci" style="color:var(--primary)">🗂</span>
+      <b id="fileDlgTitle">—</b>
+      <span class="muted" style="font-size:11.5px" id="fileDlgMeta"></span>
+      <span class="muted" style="font-size:11.5px;margin-left:auto" id="fileDlgPos"></span>
+      <button class="btn sm" id="fileDlgPrev" data-i18n-title="files.prev" title="Tệp trước">‹</button>
+      <button class="btn sm" id="fileDlgNext" data-i18n-title="files.next" title="Tệp sau">›</button>
+      <button class="btn sm" id="fileDlgSess" data-i18n="files.openSess">Mở phiên</button>
+      <a class="btn sm" id="fileDlgDl" download data-i18n="files.download">Tải xuống</a>
+      <button class="x" id="fileDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button>
+    </div>
+    <div class="dlg-b" id="fileDlgBody" style="display:flex;align-items:center;justify-content:center"></div>
   </div>
 </div>
 

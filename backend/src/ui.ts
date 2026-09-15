@@ -2260,6 +2260,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       if (!ctx) return json(res, {});
       return json(res, { ...ctx, messages: withAttachments(ctx.messages) });
     }
+    if (p === "/attachments") {
+      // MỘT endpoint cho cả hai lăng kính của plan/25 §5: màn Tệp (tổng hợp) và panel
+      // "Tệp của phiên". Trả METADATA; byte vẫn đi qua `/attachment?sha=` sẵn có.
+      const { listFiles } = await import("./memory/filestore.js");
+      const num = (k: string, d: number) => {
+        const v = Number(u.searchParams.get(k));
+        return Number.isFinite(v) && v > 0 ? v : d;
+      };
+      return json(
+        res,
+        listFiles({
+          session: u.searchParams.get("session") ?? undefined,
+          project: u.searchParams.get("project") ?? undefined,
+          category: u.searchParams.get("kind") ?? undefined,
+          query: u.searchParams.get("q") ?? undefined,
+          page: num("page", 1),
+          pageSize: num("pageSize", 60),
+        }),
+      );
+    }
     if (p === "/attachment") {
       // Content-addressed ⇒ một sha luôn ra cùng bytes ⇒ cache vĩnh viễn được. `private`
       // vì đây là dữ liệu riêng của máy này. Đọc TRƯỚC rồi mới cam kết header — cùng bẫy
