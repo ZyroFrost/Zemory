@@ -210,6 +210,61 @@ test("nhóm gizmo: 403 ở đường thường ⇒ ĐỔI ĐƯỜNG kèm gizmo_i
   await assert.rejects(() => fetcher("file_z", { session_id: null }), /HTTP 403/);
 });
 
+test("đường hỏng giữa chừng: DỪNG SỚM và nói lý do, thay vì đập đầu qua phần còn lại", async (t) => {
+  // Sự cố thật 2026-09-15: lượt chạy chết ở tệp 1.100/3.119 (mã thoát 13). Lỗi RẢI RÁC là
+  // bình thường; lỗi LIÊN TIẾP nghĩa là ĐƯỜNG hỏng — cửa sổ bị đóng, phiên hết hạn.
+  const refs = [];
+  for (let i = 0; i < 40; i++) refs.push({ ptr: "sediment://file_" + i });
+  const { db, root } = seed(t, refs);
+  let calls = 0;
+  const dead = async () => {
+    calls++;
+    throw new Error("CDP socket dead");
+  };
+  const r = await fetchRefs({ db, root, delayMs: 0, fetcher: dead });
+  assert.ok(r.stoppedEarly, "phải NÓI là đã dừng sớm, không im lặng trả về như đã đi hết");
+  assert.match(r.stoppedEarly, /liên tiếp/);
+  assert.ok(calls <= 21, `dừng sau ~20 lỗi liên tiếp, không gọi hết 40 (đã gọi ${calls})`);
+  assert.equal(r.remaining, 40, "không hàng nào bị đánh dấu xong — chạy lại là tiếp");
+  db.close();
+});
+
+test("ca ÂM — chuỗi lỗi NỘI DUNG (trùng/404) KHÔNG được làm dừng lượt", async (t) => {
+  // Sự cố thật 2026-09-15, ngay lượt sau khi thêm chốt: hàng lỗi TÍCH TỤ Ở ĐẦU danh sách
+  // (tải được thì rời danh sách, hỏng thì ở lại), nên một cụm "nội dung trùng" làm mọi lượt
+  // sau dừng ngay khi vừa bắt đầu. Chốt phải phân biệt ĐƯỜNG hỏng với TỆP hỏng.
+  const refs = [];
+  for (let i = 0; i < 40; i++) refs.push({ ptr: "sediment://file_" + i });
+  const { db, root } = seed(t, refs);
+  let n = 0;
+  const contentErrors = async () => {
+    n++;
+    if (n <= 25) throw new Error("HTTP 404"); // 25 lỗi LIÊN TIẾP, nhưng là lỗi của TỆP
+    return { bytes: Buffer.from("ok-" + n), name: null, mime: "image/png" };
+  };
+  const r = await fetchRefs({ db, root, delayMs: 0, fetcher: contentErrors });
+  assert.equal(r.stoppedEarly, undefined, "404 liên tiếp KHÔNG phải đường hỏng ⇒ không được dừng");
+  assert.equal(r.fetched, 15, "phần lành phía sau vẫn phải tải được");
+  db.close();
+});
+
+test("ca ÂM — lỗi RẢI RÁC không được làm dừng lượt", async (t) => {
+  const body = Buffer.from("ok");
+  const refs = [];
+  for (let i = 0; i < 40; i++) refs.push({ ptr: "sediment://file_" + i });
+  const { db, root } = seed(t, refs);
+  // Cứ 3 tệp hỏng 1 — chuỗi lỗi không bao giờ đạt ngưỡng, nên lượt phải đi hết.
+  let n = 0;
+  const flaky = async () => {
+    if (n++ % 3 === 0) throw new Error("HTTP 404");
+    return { bytes: Buffer.concat([body, Buffer.from(String(n))]), name: null, mime: "image/png" };
+  };
+  const r = await fetchRefs({ db, root, delayMs: 0, fetcher: flaky });
+  assert.equal(r.stoppedEarly, undefined, "lỗi rải rác KHÔNG được dừng lượt");
+  assert.ok(r.fetched > 20, `phải tải được phần lành (đã tải ${r.fetched})`);
+  db.close();
+});
+
 test("đường lấy byte thật: trang tự băm — lệch một bên là NÉM, không âm thầm ghi", async () => {
   const body = Buffer.from("noi-dung");
   const b64 = body.toString("base64");

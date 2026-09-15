@@ -1488,9 +1488,18 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         });
         console.log(`  tải về: ${r.fetched} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.skipped}`);
         if (r.failed.length) {
+          // GOM NHÓM thay vì in 5 dòng đầu: hàng lỗi TÍCH TỤ ở đầu danh sách (tải được thì rời
+          // danh sách, hỏng thì ở lại), nên "5 dòng đầu" luôn là cùng 5 hàng cũ và giấu mất
+          // hình dạng thật của phần còn lại — đúng kiểu bề mặt nói đúng mà vẫn khiến đọc sai.
+          const kind = (s: string): string =>
+            /trùng hàng/.test(s) ? "nội dung trùng hàng đã có" : /HTTP (\d+)/.test(s) ? `HTTP ${/HTTP (\d+)/.exec(s)![1]}` : s.slice(0, 48);
+          const tally = new Map<string, number>();
+          for (const f of r.failed) tally.set(kind(f.reason), (tally.get(kind(f.reason)) ?? 0) + 1);
           console.log(`  ⚠ không lấy được: ${r.failed.length}`);
-          for (const f of r.failed.slice(0, 5)) console.log(`     #${f.id}: ${f.reason}`);
+          for (const [k, n] of [...tally].sort((a, b) => b[1] - a[1])) console.log(`     ${String(n).padStart(4)} × ${k}`);
+          console.log(`     ví dụ: ${r.failed.slice(0, 3).map((f) => "#" + f.id).join(" · ")}`);
         }
+        if (r.stoppedEarly) console.log(`  ⛔ ${r.stoppedEarly}`);
         console.log(`  còn ${r.remaining} hàng ref trong kho.`);
       } finally {
         cdp.close();
