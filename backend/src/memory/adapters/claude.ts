@@ -184,6 +184,10 @@ function flatten(content: unknown): { text: string; attachments: ParsedAttachmen
       case "tool_result":
         parts.push(`[tool_result] ${resultText(block.content)}`);
         break;
+      // `document` đi CHUNG nhánh với `image`: cùng hình dạng `source.base64` (đo trên
+      // transcript thật 2026-09-15). Trước đây nó rơi vào nhánh mặc định ⇒ tài liệu gửi
+      // cho agent mất im lặng ngay lúc nạp — đúng họ lỗi đã làm mất 93 MB ảnh hồi 07-28.
+      case "document":
       case "image": {
         // Đo 2026-07-28: 1.245 block ảnh / 93 MB nằm trong transcript, và nhánh này
         // TRƯỚC ĐÂY KHÔNG TỒN TẠI ⇒ toàn bộ bị bỏ im lặng ở khâu nạp. Nay tách sang

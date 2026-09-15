@@ -1,5 +1,9 @@
 // Read side of the attachment layer: what the Recall surface needs to SHOW an image.
 // Ingest side lives in `ingest.ts` (writeAttachments); the schema is in `db.ts` (v19).
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { filesRoot } from "./filestore.js";
 import { currentMemoryDb, openMemory } from "./db.js";
 
 /** One attachment WITHOUT its bytes — safe to embed in a JSON payload. */
@@ -105,8 +109,8 @@ export function attachmentBlob(
   if (!SHA_RE.test(sha256)) return null;
   const db = openMemory(dbPath);
   try {
-    const r = db.prepare("SELECT id, name, mime, kind, blob, content FROM attachment WHERE sha256 = ?").get(sha256) as
-      | { id: number; name: string | null; mime: string | null; kind: string; blob: Buffer | null; content: string | null }
+    const r = db.prepare("SELECT id, name, mime, kind, blob, content, src_path FROM attachment WHERE sha256 = ?").get(sha256) as
+      | { id: number; name: string | null; mime: string | null; kind: string; blob: Buffer | null; content: string | null; src_path: string | null }
       | undefined;
     if (!r) return null;
     // Ngày của tin SỚM NHẤT mang đính kèm này (dedup ⇒ có thể nhiều tin cùng trỏ tới).
@@ -119,6 +123,20 @@ export function attachmentBlob(
     if (r.kind === "blob" && r.blob) {
       const mime = r.mime || "application/octet-stream";
       return { mime, bytes: r.blob, name: downloadName(r.name, mime, sha256, day?.ts ?? null) };
+    }
+    // Byte đã rút ra KHO TỆP (plan/25): DB giữ chỉ mục, đĩa giữ byte. Đọc từ file và
+    // ĐỐI CHIẾU `sha256` trước khi trả — file có thể bị sửa/thay ngoài tầm kiểm soát của
+    // kho, mà đây là bề mặt duy nhất người dùng nhìn thấy nội dung.
+    if (r.kind === "blob" && !r.blob && r.src_path) {
+      const abs = join(filesRoot(), ...r.src_path.split("/"));
+      try {
+        const bytes = readFileSync(abs);
+        if (createHash("sha256").update(bytes).digest("hex") !== sha256) return null;
+        const mime = r.mime || "application/octet-stream";
+        return { mime, bytes, name: downloadName(r.name, mime, sha256, day?.ts ?? null) };
+      } catch {
+        return null; // mất file ⇒ nói KHÔNG CÓ, không trả bừa (`files verify` là chỗ soi)
+      }
     }
     // `text` giữ nội dung ở cột chữ; `ref` cố ý KHÔNG có nội dung (chỉ ghi nhận từng có).
     if (r.kind === "text" && r.content != null) {
