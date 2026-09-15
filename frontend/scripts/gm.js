@@ -351,7 +351,56 @@
     if (act) load();
     var tileEl = e.target.closest ? e.target.closest('#filesGrid [data-fopen]') : null;
     if (tileEl) window.zFileView.open(state.items, Number(tileEl.getAttribute('data-fopen')));
+    var add = e.target.closest ? e.target.closest('[data-act="files-add"]') : null;
+    if (add) pickAndAdd();
   });
+
+  // ── Làn `picked` (plan/25 §1b): NGƯỜI đưa tệp vào kho ────────────────────────
+  // Hai đường vì trình duyệt cố ý không cho trang biết đường dẫn thật của tệp được THẢ:
+  //  · nút  → hộp thoại của HỆ trả về đường dẫn → gửi đường dẫn, không gửi byte;
+  //  · thả  → chỉ có nội dung → gửi byte.
+  function say(msg) {
+    var el = zid('filesAddMsg'); if (!el) return;
+    el.textContent = msg;
+    setTimeout(function () { if (el.textContent === msg) el.textContent = ''; }, 6000);
+  }
+  function after(r) {
+    if (r && r.ok) {
+      say(r.added ? t('files.added') : t('files.dupe'));
+      state.loaded = true; load();
+    } else say((r && r.error) || t('files.addErr'));
+  }
+  function pickAndAdd() {
+    say(t('files.picking'));
+    zPost('/pick-file?filter=' + encodeURIComponent('All files (*.*)|*.*')).then(function (r) {
+      if (!r || !r.ok || !r.path) { say(''); return; }
+      return zPost('/attachments-add?path=' + encodeURIComponent(r.path)).then(after);
+    }).catch(function () { say(t('files.addErr')); });
+  }
+  var grid = zid('filesGrid');
+  if (grid) {
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      grid.addEventListener(ev, function (e) { e.preventDefault(); grid.classList.add('fdrop'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      grid.addEventListener(ev, function (e) { e.preventDefault(); grid.classList.remove('fdrop'); });
+    });
+    grid.addEventListener('drop', function (e) {
+      var files = e.dataTransfer && e.dataTransfer.files ? Array.prototype.slice.call(e.dataTransfer.files) : [];
+      if (!files.length) return;
+      say(t('files.adding'));
+      // Gửi TUẦN TỰ: mỗi tệp một lời cho phép, và một lượt thả 30 tệp không mở 30 kết nối.
+      var i = 0, added = 0;
+      (function next() {
+        if (i >= files.length) { say(added ? t('files.added') : t('files.dupe')); state.loaded = true; load(); return; }
+        var f = files[i++];
+        fetch('/attachments-add?name=' + encodeURIComponent(f.name), { method: 'POST', body: f })
+          .then(function (r) { return r.json(); })
+          .then(function (r) { if (r && r.added) added += r.added; next(); })
+          .catch(function () { next(); });
+      })();
+    });
+  }
   var q = zid('filesQ');
   if (q) {
     var timer = null;

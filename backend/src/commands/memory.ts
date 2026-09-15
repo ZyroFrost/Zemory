@@ -1434,6 +1434,91 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  NHẬN: ${r.added} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.already}`);
       return;
     }
+    if (verb === "fetch") {
+      // Tải byte cho hàng `ref` (plan/23 §2 · plan/25 ④). Cần MỘT CỬA SỔ của khe đã đăng nhập:
+      // đo 2026-09-15 cho thấy Node tải thẳng `download_url` đã ký vẫn nhận 403, byte buộc phải
+      // đi qua trang. Mặc định DRY-RUN nên lượt đếm KHÔNG mở/đụng trình duyệt nào.
+      const { fetchRefs, chatgptRefFetcher } = await import("../memory/fetchrefs.js");
+      const account = flagValue(args, "--account") ?? undefined;
+      const delayRaw = flagValue(args, "--delay");
+      const delayMs = delayRaw !== undefined ? Math.round(Number(delayRaw) * 1000) : undefined;
+      if (delayRaw !== undefined && (!Number.isFinite(delayMs) || (delayMs as number) < 0)) {
+        console.log("  ✗ --delay expects a non-negative number of seconds.");
+        process.exitCode = 1;
+        return;
+      }
+      const limit = Number(flagValue(args, "--limit")) || undefined;
+      const label = `chatgpt${account && account !== "main" ? `#${account}` : ""}`;
+      console.log(`zemory memory files fetch — ${label}${apply ? "" : " — DRY RUN (thêm --apply để tải thật)"}`);
+      if (!apply) {
+        const r = await fetchRefs({ limit, log: (m) => console.log("  " + m) });
+        console.log(`  còn ${r.remaining} hàng ref trong kho.`);
+        return;
+      }
+      // KHOÁ GHI: lượt thật chạy hàng giờ và sửa hàng DB liên tục. Hai kẻ ghi là đúng tổ hợp
+      // đã hỏng kho 03/08 và 04/08 (HP điều 11) — `HEAVY_WRITES` ở trên khoá theo lệnh cấp hai,
+      // mà ở đây chỉ verb NÀY ghi lâu, nên khoá đặt đúng chỗ thay vì phủ cả nhóm `files`
+      // (phủ cả nhóm là bắt `files verify` — thuần đọc — phải chờ, tức dựng một cổng kêu oan).
+      const g = acquireCliWriteLock("files fetch");
+      if (!g.ok) {
+        const held = cliWriteHolder();
+        console.log(`  ✗ tiến trình khác đang ghi kho (pid ${held?.pid}, ${held?.label}) — chờ nó xong rồi chạy lại.`);
+        process.exitCode = 1;
+        return;
+      }
+      const { Cdp, PLATFORMS, accountPort } = await import("../memory/scanweb.js");
+      const p = PLATFORMS.chatgpt;
+      const port = accountPort(p.port, account);
+      const cdp = await Cdp.connect(port, p.tabRe);
+      if (!cdp) {
+        // Nói CÁCH MỞ chứ không chỉ báo hỏng: cửa sổ khe do một lệnh khác mở, và người đọc
+        // câu lỗi này đang đứng đúng chỗ cần biết lệnh đó.
+        console.log(`  ✗ không nối được cửa sổ khe ${label} ở cổng ${port}.`);
+        console.log(`    mở nó trước: zemory memory scan-web --platform chatgpt${account ? ` --account ${account}` : ""} --limit 1`);
+        releaseCliWriteLock();
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        const r = await fetchRefs({
+          limit,
+          delayMs,
+          fetcher: chatgptRefFetcher(cdp),
+          log: (m) => console.log("  " + m),
+        });
+        console.log(`  tải về: ${r.fetched} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.skipped}`);
+        if (r.failed.length) {
+          console.log(`  ⚠ không lấy được: ${r.failed.length}`);
+          for (const f of r.failed.slice(0, 5)) console.log(`     #${f.id}: ${f.reason}`);
+        }
+        console.log(`  còn ${r.remaining} hàng ref trong kho.`);
+      } finally {
+        cdp.close();
+        releaseCliWriteLock();
+      }
+      return;
+    }
+    if (verb === "add") {
+      // Làn `picked` (plan/25 §1b): NGƯỜI đưa tệp vào kho. Không dry-run — gõ lệnh KÈM đường dẫn
+      // đã là lời cho phép tường minh cho đúng những tệp đó, khác hẳn `extract`/`collect` vốn
+      // quét hàng loạt và phải cho người xem số trước.
+      const { addPickedFiles } = await import("../memory/filestore.js");
+      const paths = positionalArgs(args.slice(1)).slice(1);
+      if (!paths.length) {
+        console.log("usage: zemory memory files add <đường-dẫn> [đường-dẫn…]");
+        console.log("  Đưa tệp của BẠN vào kho tệp chung. Tệp không đến từ hội thoại nào ⇒ không có tin để nhảy về.");
+        return;
+      }
+      const r = addPickedFiles(paths.map((p) => ({ path: p })));
+      console.log(`zemory memory files add — nhận ${r.added} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.already}`);
+      for (const rel of r.rels) console.log(`     ${rel}`);
+      if (r.failed.length) {
+        console.log(`  ⚠ không nhận được: ${r.failed.length}`);
+        for (const f of r.failed) console.log(`     ${f.path}: ${f.reason}`);
+      }
+      process.exitCode = r.failed.length && !r.added ? 1 : 0;
+      return;
+    }
     if (verb === "verify") {
       const r = verifyFiles();
       console.log(`zemory memory files verify — ${r.checked} tệp · khớp ${r.ok}`);
@@ -1451,8 +1536,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       if (apply) console.log(`  đã xoá: ${r.removed.length}`);
       return;
     }
-    console.log("usage: zemory memory files <extract|collect|verify|gc> [--apply] [--limit N]");
-      console.log("  collect: nhận tệp DO AGENT TẠO vào kho (lọc bỏ file nháp/đã xoá)");
+    console.log("usage: zemory memory files <extract|collect|fetch|add|verify|gc> [--apply] [--limit N]");
+    console.log("  collect: nhận tệp DO AGENT TẠO vào kho (lọc bỏ file nháp/đã xoá)");
+    console.log("  add    : đưa tệp CỦA BẠN vào kho — `files add <đường-dẫn>…` (ghi ngay, không dry-run)");
+    console.log("  fetch  : tải byte cho hàng `ref` qua cửa sổ nền đã đăng nhập [--account <khe>] [--delay <giây>]");
     console.log("  extract: rút byte đính kèm khỏi DB ra kho tệp trên đĩa (mặc định dry-run)");
     console.log("  verify : đối chiếu sha256 từng tệp — bắt mất file / lệch nội dung");
     console.log("  gc     : nêu tệp không còn hàng DB nào trỏ tới (mặc định chỉ đo)");

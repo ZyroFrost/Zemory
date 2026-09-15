@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { openMemory } from "../../dist/memory/db.js";
-import { extractBlobs, verifyFiles, gcFiles, relPathFor, categoryOf, listFiles, collectCreated, isScratchPath } from "../../dist/memory/filestore.js";
+import { extractBlobs, verifyFiles, gcFiles, relPathFor, categoryOf, listFiles, collectCreated, isScratchPath, addPickedFiles, PICKED_SESSION } from "../../dist/memory/filestore.js";
 import { tempDir } from "./helpers.mjs";
 
 const sha = (b) => createHash("sha256").update(b).digest("hex");
@@ -271,4 +271,85 @@ test("CA ÂM — luật vùng nháp phải bắt CẢ đường Windows (dấu c
   assert.equal(isScratchPath(win), true, "đường Windows phải bị bắt");
   assert.equal(isScratchPath(posix), true, "đường POSIX cũng phải bị bắt");
   assert.equal(isScratchPath(["D:", "repo", "src", "app.ts"].join(String.fromCharCode(92))), false, "mã nguồn thật KHÔNG bị loại");
+});
+
+test("làn `picked`: người tự đưa tệp vào kho — hàng KHÔNG có tin gốc, dedup theo sha256", (t) => {
+  const dir = tempDir(t, "zpick-db-");
+  const root = tempDir(t, "zpick-files-");
+  const src = tempDir(t, "zpick-src-");
+  const db = openMemory(join(dir, "global_memory.db"));
+  const body = Buffer.from("noi-dung-nguoi-dung-tu-them");
+  const p1 = join(src, "bao-cao.pdf");
+  writeFileSync(p1, body);
+
+  const r = addPickedFiles([{ path: p1 }], { db, root });
+  assert.equal(r.added, 1);
+  assert.equal(r.bytes, body.length);
+  assert.equal(r.failed.length, 0);
+  assert.equal(r.rels[0].split("/")[0], "documents", "phân hạng theo mime, không theo chỗ lấy");
+
+  const row = db.prepare("SELECT message_id, session_id, kind, name, mime, sha256, src_path FROM attachment").get();
+  // Schema khai hai cột này NOT NULL, nên làn picked mang NHÃN thay vì NULL. `message_id = 0`
+  // không trỏ vào tin nào (khoá tự tăng bắt đầu từ 1) — tệp người dùng không bám nhầm tin ai.
+  assert.equal(row.message_id, 0, "làn picked KHÔNG đến từ tin nào");
+  assert.equal(row.session_id, PICKED_SESSION);
+  assert.equal(row.kind, "blob");
+  assert.equal(row.name, "bao-cao.pdf");
+  assert.equal(row.mime, "application/pdf");
+  assert.equal(row.sha256, sha(body));
+  assert.equal(readFileSync(join(root, ...row.src_path.split("/"))).toString(), body.toString());
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM attachment_link").get().n, 0, "không có liên kết nào để tạo");
+
+  // Bề mặt đọc phải hiện nó, và phải nói rõ là KHÔNG có tin để nhảy về.
+  const listed = listFiles({ db });
+  assert.equal(listed.total, 1);
+  assert.equal(listed.items[0].messageId, null);
+  assert.equal(listed.items[0].fetched, true);
+
+  // Cùng nội dung đưa lần hai (đổi cả tên) ⇒ KHÔNG đẻ hàng thứ hai, KHÔNG chép tệp lần nữa.
+  const p2 = join(src, "ban-sao.pdf");
+  writeFileSync(p2, body);
+  const again = addPickedFiles([{ path: p2 }], { db, root });
+  assert.equal(again.added, 0);
+  assert.equal(again.already, 1);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM attachment").get().n, 1);
+
+  // Ca ÂM: không có cú đưa nào ⇒ không ghi gì (hàm KHÔNG tự quét thư mục).
+  const none = addPickedFiles([], { db, root });
+  assert.equal(none.added, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM attachment").get().n, 1);
+
+  // Ca ÂM: đường dẫn không tồn tại / tệp rỗng ⇒ báo lý do, không ném, không ghi hàng.
+  writeFileSync(join(src, "rong.txt"), "");
+  const bad = addPickedFiles([{ path: join(src, "khong-co.png") }, { path: join(src, "rong.txt") }], { db, root });
+  assert.equal(bad.added, 0);
+  assert.equal(bad.failed.length, 2);
+  assert.match(bad.failed[1].reason, /rỗng/);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM attachment").get().n, 1);
+  db.close();
+});
+
+test("ca ÂM — dọn mồ côi KHÔNG được xoá làn `picked` (nó vĩnh viễn không có liên kết)", async (t) => {
+  const { pruneOrphanAttachments } = await import("../../dist/memory/attachments.js");
+  const dir = tempDir(t, "zpick2-db-");
+  const root = tempDir(t, "zpick2-files-");
+  const src = tempDir(t, "zpick2-src-");
+  const dbPath = join(dir, "global_memory.db");
+  const db = openMemory(dbPath);
+  // Một hàng picked (không liên kết, theo thiết kế) + một hàng mồ côi THẬT (link trỏ tin đã chết).
+  const p = join(src, "cua-toi.png");
+  writeFileSync(p, Buffer.from("anh-nguoi-dung-tu-them"));
+  addPickedFiles([{ path: p }], { db, root });
+  db.prepare(
+    `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, blob, created_at)
+     VALUES (999, 's-chet', 'mo-coi.png', 'image/png', 3, 'f'||substr(hex(randomblob(32)),1,63), 'blob', x'000102', '2026-09-15T00:00:00Z')`,
+  ).run();
+  db.close();
+
+  const r = pruneOrphanAttachments(dbPath, { dropUnlinked: true });
+  const db2 = openMemory(dbPath);
+  const left = db2.prepare("SELECT session_id FROM attachment").all().map((x) => x.session_id);
+  assert.equal(r.rows, 1, "chỉ hàng mồ côi thật bị dọn");
+  assert.deepEqual(left, [PICKED_SESSION], "tệp người dùng tự thêm PHẢI còn nguyên");
+  db2.close();
 });

@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { filesRoot } from "./filestore.js";
+import { filesRoot, PICKED_SESSION } from "./filestore.js";
 import { currentMemoryDb, openMemory } from "./db.js";
 
 /** One attachment WITHOUT its bytes — safe to embed in a JSON payload. */
@@ -185,9 +185,18 @@ export function pruneOrphanAttachments(
       .run().changes;
     let rows = 0;
     if (opts.dropUnlinked) {
+      // 🔴 CHỪA LÀN `picked` (plan/25 §1b): tệp người dùng tự đưa vào kho theo thiết kế KHÔNG
+      // đến từ tin nào, nên nó vĩnh viễn "không có trong `attachment_link`" — đúng định nghĩa
+      // mồ côi ở đây. Thiếu vế loại trừ này thì một cú `dropUnlinked` xoá sạch thứ người dùng
+      // tự thêm, và xoá là bất khả đảo. Cùng họ với ca 2026-07 suýt xoá 87 ảnh đang sống vì một
+      // tiêu chí mồ côi nghe hợp lý.
       rows = db
-        .prepare("DELETE FROM attachment WHERE id NOT IN (SELECT attachment_id FROM attachment_link)")
-        .run().changes;
+        .prepare(
+          `DELETE FROM attachment
+            WHERE id NOT IN (SELECT attachment_id FROM attachment_link)
+              AND session_id <> ?`,
+        )
+        .run(PICKED_SESSION).changes;
     }
     return { links, rows };
   } finally {

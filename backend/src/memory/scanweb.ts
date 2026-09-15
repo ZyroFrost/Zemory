@@ -1302,8 +1302,17 @@ const inflight = new Map<string, Promise<ScanWebResult>>();
 // 2026-07-30: quét claude bám vào tab chatgpt.com rồi bắn `/api/organizations` vào đó,
 // nhận 404 và báo "chưa đăng nhập" trên một tài khoản đang đăng nhập bình thường.
 
-/** Minimal CDP client over the DevTools WebSocket (Runtime.evaluate only). */
-class Cdp {
+/**
+ * Minimal CDP client over the DevTools WebSocket (Runtime.evaluate only).
+ *
+ * EXPORTED on purpose (2026-09-15): downloading attachment bytes (`plan/23 §2`) has to run
+ * inside the SAME logged-in window this module drives — a second CDP client written elsewhere
+ * would miss the two properties that took measurements to get right: `awaitPromise` (the page's
+ * fetch must settle before the value comes back) and the hard timeout (a long-poll endpoint
+ * hangs the whole run forever without it — measured 2026-07-31). Callers get the client, not a
+ * copy of it; the window/auth flow stays private to `scanWeb`.
+ */
+export class Cdp {
   private id = 0;
   private pending = new Map<number, { resolve: (m: any) => void; reject: (e: Error) => void }>();
   private _dead = false;
