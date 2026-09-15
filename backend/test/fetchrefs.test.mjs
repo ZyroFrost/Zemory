@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { openMemory } from "../../dist/memory/db.js";
 import { fetchRefs, fileIdOf, chatgptRefFetcher } from "../../dist/memory/fetchrefs.js";
