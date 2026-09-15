@@ -20,7 +20,8 @@ import { CONFIG_FILE, findMarker, harnessPathsAt, loadContext, readMarker, appVe
 import { guardDrift } from "./guard-gen.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
-import { cmpSemver, readChannelVersion } from "../memory/share.js";
+import { readChannelVersion } from "../memory/share.js";
+import { type AppUpdate, pickUpdate, readUpdateCache } from "../update/remote-version.js";
 import { getDriveDir } from "../config/settings.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -407,34 +408,39 @@ export interface SyncCheckResult {
   /** File chốt lớp ① đã sinh nhưng trôi khỏi bản `hook guard` hôm nay (guardDrift). */
   guardStale: string[];
   /**
-   * Có bản zemory MỚI HƠN trên kênh chung không (tem `<Drive>/version.json`).
+   * Có bản zemory MỚI HƠN bản đang chạy không — đo từ GIT, tem kênh chung chỉ là nguồn phụ.
    *
    * Khác hai trường trên ở CẤP: `missing`/`guardStale` nói *repo này* cũ so với bản zemory
-   * đang cài; `appUpdate` nói *chính máy này* cũ so với máy khác. Trước 2026-08-23 không ai
-   * đo vế thứ hai ⇒ máy A pull+build thì repo trên máy A được nhắc, còn **máy B mù hoàn
-   * toàn**. Không có Drive / chưa ai đóng dấu / bản này đã mới nhất ⇒ `undefined` (fail-open).
+   * đang cài; `appUpdate` nói *chính máy này* cũ so với bản đã phát hành. Trước 2026-08-23
+   * không ai đo vế thứ hai ⇒ máy A pull+build thì repo trên máy A được nhắc, còn **máy B mù
+   * hoàn toàn**. Nguồn duy nhất lúc đó là tem Drive, và tem đó đo được là KHÔNG ĐỦ TIN: xem
+   * `update/remote-version.ts` (máy thứ hai kẹt ở 2.18.0 qua hai bản phát hành).
+   * Không đo được / bản này đã mới nhất ⇒ `undefined` (fail-open).
    */
-  appUpdate?: { have: string; latest: string; from: string; at: string };
+  appUpdate?: AppUpdate;
 }
 
-/** Máy này có đang chạy bản cũ hơn kênh chung không. Fail-open: mọi trục trặc ⇒ undefined.
+/** Máy này có đang chạy bản cũ hơn bản đã phát hành không. Fail-open: mọi trục trặc ⇒ undefined.
  *  Export vì `/harness-updates` cần nó ngay cả khi registry KHÔNG có project nào — đây là
- *  sự thật cấp MÁY, không phải cấp repo. */
-export function channelUpdate(): SyncCheckResult["appUpdate"] {
+ *  sự thật cấp MÁY, không phải cấp repo.
+ *
+ *  Chỉ ĐỌC: số của git lấy từ cache trên đĩa (`update-check.json`), không bao giờ gọi mạng ở
+ *  đây. Bề mặt này chạy trong hook capture và trong mỗi nhịp hỏi của UI — một lời gọi mạng
+ *  đồng bộ ở đây là treo cả hai. Lượt đo thật do `zemory selfupdate --check` làm, daemon gọi
+ *  nó ở tiến trình con khi cache hết hạn. */
+export function appUpdateStatus(): SyncCheckResult["appUpdate"] {
   try {
-    const dir = getDriveDir();
-    if (!dir) return undefined;
-    const stamp = readChannelVersion(dir);
     const have = appVersion();
-    if (!stamp || !have) return undefined;
-    return cmpSemver(stamp.latest, have) > 0 ? { have, latest: stamp.latest, from: stamp.host, at: stamp.at } : undefined;
+    if (!have) return undefined;
+    const dir = getDriveDir();
+    return pickUpdate(have, readUpdateCache(), dir ? readChannelVersion(dir) : null);
   } catch {
     return undefined;
   }
 }
 
 export function syncCheck(projectRoot: string): SyncCheckResult {
-  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [], appUpdate: channelUpdate() };
+  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [], appUpdate: appUpdateStatus() };
   try {
     const marker = readMarker(projectRoot);
     if (!marker) return out;
