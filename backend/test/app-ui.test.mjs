@@ -920,3 +920,30 @@ test("tệp CHỮ phải tự vẽ, KHÔNG nhúng iframe (iframe không ăn toke
   const iframes = gm.match(/<iframe/g) || [];
   assert.equal(iframes.length, 1, "chỉ còn đúng một iframe (pdf)");
 });
+
+test("làn `picked` trên UI: nút + kéo-thả + endpoint + i18n đủ HAI từ điển", () => {
+  // Một chức năng ở repo này là BA bề mặt; thiếu một thì nó mồ côi (bài học `WEB_LABEL`).
+  // Ở đây: nút/vùng thả (HTML+JS) · endpoint ghi (ui.ts) · nhãn (cả hai từ điển).
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+
+  assert.match(html, /data-act="files-add"/, "màn Tệp phải có nút Thêm tệp…");
+  assert.match(html, /id="filesAddMsg"/, "phải có chỗ báo kết quả — ghi xong mà im lặng là bề mặt nói dối");
+  assert.match(gm, /files-add[\s\S]{0,200}?pickAndAdd/, "nút phải nối vào hành động");
+  assert.match(gm, /addEventListener\('drop'/, "lưới phải nhận kéo-thả");
+  assert.match(gm, /\/attachments-add\?path=/, "đường CHỌN gửi đường dẫn (hộp thoại của hệ biết đường thật)");
+  assert.match(gm, /\/attachments-add\?name=/, "đường THẢ gửi byte (trình duyệt không cho biết đường dẫn)");
+  assert.match(css, /#filesGrid\.fdrop/, "vùng thả phải có dấu hiệu nhìn thấy được");
+
+  assert.match(ui, /p === "\/attachments-add"/, "endpoint ghi phải tồn tại");
+  assert.match(ui, /addPickedFiles/, "và phải đi qua đúng cửa ghi của làn picked");
+  assert.match(ui, /64 \* 1024 \* 1024/, "phải có trần kích thước — một cú thả nhầm không được nuốt RAM daemon");
+
+  for (const k of ["files.add", "files.adding", "files.added", "files.dupe", "files.addErr", "files.picking"]) {
+    const n = chrome.split(`'${k}'`).length - 1;
+    assert.equal(n, 2, `khoá ${k} phải có ở CẢ HAI từ điển (đang thấy ${n})`);
+  }
+});

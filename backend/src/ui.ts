@@ -2280,6 +2280,38 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         }),
       );
     }
+    if (req.method === "POST" && p === "/attachments-add") {
+      // LÀN `picked` (plan/25 §1b): NGƯỜI đưa tệp vào kho. Cú bấm/thả này LÀ lời cho phép ghi
+      // — cùng doctrine `/paths-fix-apply`. Hai đường vào, vì chúng mang hai thứ khác nhau:
+      //  · `?path=` — chọn qua hộp thoại của hệ (`/pick-file`) ⇒ có ĐƯỜNG THẬT, Node đọc đĩa;
+      //  · `?name=` + body nhị phân — KÉO-THẢ, vì trình duyệt cố ý KHÔNG cho trang biết đường
+      //    dẫn thật của tệp được thả, nên chỉ còn nội dung để gửi.
+      const { addPickedFiles } = await import("./memory/filestore.js");
+      const path = u.searchParams.get("path");
+      const name = u.searchParams.get("name") ?? undefined;
+      if (path) {
+        const r = addPickedFiles([{ path }]);
+        return json(res, { ok: r.added > 0 || r.already > 0, ...r });
+      }
+      // Trần để một cú thả nhầm (file máy ảo, video vài GB) không nuốt hết RAM của daemon.
+      const MAX = 64 * 1024 * 1024;
+      const chunks: Buffer[] = [];
+      let total = 0;
+      let tooBig = false;
+      for await (const c of req) {
+        const buf = c as Buffer;
+        total += buf.length;
+        if (total > MAX) {
+          tooBig = true;
+          break;
+        }
+        chunks.push(buf);
+      }
+      if (tooBig) return json(res, { ok: false, error: "tệp vượt trần 64 MB" });
+      if (!total) return json(res, { ok: false, error: "không có nội dung" });
+      const r = addPickedFiles([{ name, bytes: Buffer.concat(chunks) }]);
+      return json(res, { ok: r.added > 0 || r.already > 0, ...r });
+    }
     if (p === "/attachment") {
       // Content-addressed ⇒ một sha luôn ra cùng bytes ⇒ cache vĩnh viễn được. `private`
       // vì đây là dữ liệu riêng của máy này. Đọc TRƯỚC rồi mới cam kết header — cùng bẫy

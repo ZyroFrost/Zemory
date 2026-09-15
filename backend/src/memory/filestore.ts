@@ -586,3 +586,126 @@ export function collectCreated(
   if (!opts.db) db.close();
   return out;
 }
+
+/**
+ * NHÃN của làn `picked` trên cột `session_id`.
+ *
+ * Vì sao là một nhãn chứ không phải `NULL`: schema khai `message_id` và `session_id` là
+ * **NOT NULL** (`db.ts` v19), và đổi hai ràng buộc đó trong SQLite phải dựng lại cả bảng —
+ * một migration cho một tính năng không cần tới nó. `message_id = 0` KHÔNG trỏ vào tin nào
+ * (khoá tự tăng bắt đầu từ 1), nên không có chuyện tệp của người dùng bám nhầm tin của ai.
+ *
+ * Nhãn này **load-bearing**, không phải trang trí: phép dọn mồ côi định nghĩa *"không có
+ * trong `attachment_link`"* là mồ côi, mà làn `picked` theo thiết kế KHÔNG có liên kết nào —
+ * thiếu nhãn thì một cú `dropUnlinked` xoá sạch tệp người dùng tự thêm. Xem
+ * `pruneOrphanAttachments`, và bài học 2026-07: *một tiêu chí mồ côi nghe hợp lý từng suýt
+ * xoá 87 ảnh đang sống*.
+ */
+export const PICKED_SESSION = "(picked)";
+
+export interface PickedResult {
+  /** Tệp đã nhận vào kho lần này. */
+  added: number;
+  /** Đã có sẵn (dedup theo `sha256`) — không chép lần hai. */
+  already: number;
+  bytes: number;
+  /** Không nhận được, kèm lý do — nói ra chứ không nuốt. */
+  failed: Array<{ path: string; reason: string }>;
+  /** Đường tương đối trong kho tệp của những cái vừa nhận. */
+  rels: string[];
+}
+
+export interface PickedInput {
+  /** Tên hiển thị; thiếu thì lấy `basename` của đường dẫn. */
+  name?: string;
+  /** Đường dẫn trên đĩa — đọc byte từ đây. Bỏ trống nếu đã có `bytes`. */
+  path?: string;
+  /** Byte sẵn có (đường kéo-thả của trình duyệt gửi thẳng nội dung lên). */
+  bytes?: Buffer;
+}
+
+/**
+ * LÀN `picked` (plan/25 §1b) — tệp NGƯỜI DÙNG tự chọn đưa vào kho.
+ *
+ * Khác hai làn kia ở đúng một điểm và điểm đó quyết định cả hình dạng dữ liệu: tệp này **không
+ * đến từ hội thoại nào**, nên hàng của nó có `message_id` NULL và KHÔNG có `attachment_link`.
+ * Bề mặt đọc (`listFiles`) vốn đã `LEFT JOIN` nên hiện được ngay; `plan/25 §5` chốt là nút *nhảy
+ * về tin gốc* phải ẨN cho hạng này — trưng một nút không đi tới đâu là bề mặt nói dối.
+ *
+ * **Một cú bấm = một lời cho phép** (cùng doctrine `/paths-fix-apply`): hàm này KHÔNG quét thư
+ * mục, không tự tìm tệp, không có chế độ hàng loạt ngầm. Nó nhận đúng danh sách người đưa.
+ *
+ * Thứ tự ghi giữ nguyên như `extractBlobs`/`collectCreated`: ghi tệp → đọc lại kiểm `sha256` →
+ * mới chèn hàng. Hỏng giữa chừng thì thừa một tệp (`files gc` dọn), không phải thiếu byte.
+ */
+export function addPickedFiles(
+  items: PickedInput[],
+  opts: { db?: MemoryDB; dbPath?: string; root?: string; maxBytes?: number } = {},
+): PickedResult {
+  const db = opts.db ?? openMemory(opts.dbPath);
+  const root = opts.root ?? filesRoot();
+  const out: PickedResult = { added: 0, already: 0, bytes: 0, failed: [], rels: [] };
+  const findSha = db.prepare("SELECT id FROM attachment WHERE sha256 = ?");
+  const insAtt = db.prepare(
+    `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, src_path, created_at)
+     VALUES (0, '${PICKED_SESSION}', ?, ?, ?, ?, 'blob', ?, ?)`,
+  );
+
+  for (const it of items) {
+    const label = it.path ?? it.name ?? "(không tên)";
+    try {
+      let bytes: Buffer;
+      if (it.bytes) {
+        bytes = it.bytes;
+      } else if (it.path) {
+        if (!statSync(it.path).isFile()) {
+          out.failed.push({ path: label, reason: "không phải tệp" });
+          continue;
+        }
+        bytes = readFileSync(it.path);
+      } else {
+        out.failed.push({ path: label, reason: "thiếu cả đường dẫn lẫn nội dung" });
+        continue;
+      }
+      if (!bytes.length) {
+        out.failed.push({ path: label, reason: "tệp rỗng" });
+        continue;
+      }
+      if (opts.maxBytes && bytes.length > opts.maxBytes) {
+        out.failed.push({ path: label, reason: `${(bytes.length / 1048576).toFixed(1)} MB — vượt trần` });
+        continue;
+      }
+      const digest = createHash("sha256").update(bytes).digest("hex");
+      const existing = findSha.get(digest) as { id: number } | undefined;
+      if (existing) {
+        // Cùng nội dung đã nằm trong kho ⇒ KHÔNG chép lần hai và KHÔNG đẻ hàng thứ hai.
+        // Không có tin nào để nối liên kết (đây là làn `picked`), nên chỉ đếm rồi thôi.
+        out.already++;
+        continue;
+      }
+      const name = it.name ?? (it.path ? basename(it.path) : null) ?? "file";
+      const ext = (/\.([A-Za-z0-9]{1,8})$/.exec(name)?.[1] ?? "").toLowerCase();
+      const mime = MIME_BY_EXT[ext] ?? "application/octet-stream";
+      const at = new Date().toISOString();
+      const rel = relPathFor({ sha256: digest, mime, name, createdAt: at });
+      const abs = absOf(root, rel);
+      mkdirSync(dirname(abs), { recursive: true });
+      const tmp = `${abs}.part-${process.pid}`;
+      writeFileSync(tmp, bytes);
+      renameSync(tmp, abs);
+      if (sha256Of(abs) !== digest) {
+        rmSync(abs, { force: true });
+        out.failed.push({ path: label, reason: "đọc lại từ đĩa không khớp sha" });
+        continue;
+      }
+      insAtt.run(name, mime, bytes.length, digest, rel, at);
+      out.added++;
+      out.bytes += bytes.length;
+      out.rels.push(rel);
+    } catch (error) {
+      out.failed.push({ path: label, reason: error instanceof Error ? error.message.slice(0, 160) : "lỗi không rõ" });
+    }
+  }
+  if (!opts.db) db.close();
+  return out;
+}
