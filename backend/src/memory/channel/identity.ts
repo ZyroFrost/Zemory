@@ -116,13 +116,75 @@ export function base32(buf: Buffer): string {
   return out;
 }
 
-/** Device ID = base32(SHA-256 của DER), chia nhóm 7 cho người đọc/chép. */
+/**
+ * Chữ số kiểm Luhn mod 32 cho một nhóm — bắt LỖI CHÉP, không phải lỗi bảo mật.
+ *
+ * Vì sao cần (đo 2026-09-15 từ một máy thật): ID không có chữ số kiểm thì chép sai một ký tự
+ * lúc ghép đôi **chỉ lộ ra ở bước bắt tay**, và thông báo lúc đó là *"máy lạ, chưa ghép đôi"* —
+ * người dùng đi soi tường lửa, soi mạng, soi cổng, trong khi lỗi nằm ở một phím gõ nhầm.
+ * `plan/24 §1①` mô tả ID CÓ chữ số kiểm ngay từ đầu; đây là chỗ code chưa theo kịp spec.
+ */
+export function luhn32(group: string): string {
+  const n = B32.length;
+  let factor = 1;
+  let sum = 0;
+  for (const ch of group) {
+    const cp = B32.indexOf(ch);
+    if (cp < 0) throw new Error(`ký tự ngoài base32: ${ch}`);
+    let add = factor * cp;
+    factor = factor === 2 ? 1 : 2;
+    add = Math.floor(add / n) + (add % n);
+    sum += add;
+  }
+  return B32[(n - (sum % n)) % n];
+}
+
+/** Device ID = base32(SHA-256 của DER), nhóm 7 ký tự + 1 chữ số kiểm. */
 export function deviceIdFromDer(der: Buffer): string {
   const raw = base32(createHash("sha256").update(der).digest());
-  return (raw.match(/.{1,7}/g) ?? []).join("-");
+  return (raw.match(/.{1,7}/g) ?? []).map((g) => g + luhn32(g)).join("-");
 }
-/** Bỏ dấu gạch + hoa hoá — so ID phải chịu được người chép tay. */
-export const normalizeDeviceId = (id: string): string => id.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+
+/**
+ * Bóc chữ số kiểm; `null` khi chuỗi KHÔNG mang chữ số kiểm hợp lệ.
+ *
+ * Trả `null` cố ý mang hai nghĩa gộp — *"ID đời cũ (chưa có chữ số kiểm)"* và *"chép sai"* — vì
+ * ở tầng này không phân biệt được. Người gọi nào cần phân biệt thì dùng `deviceIdLooksTyped`.
+ */
+function stripChecksum(flat: string): string | null {
+  let out = "";
+  let i = 0;
+  while (i < flat.length) {
+    const take = Math.min(8, flat.length - i);
+    if (take < 2) return null;
+    const body = flat.slice(i, i + take - 1);
+    try {
+      if (luhn32(body) !== flat[i + take - 1]) return null;
+    } catch {
+      return null;
+    }
+    out += body;
+    i += take;
+  }
+  return out;
+}
+
+/**
+ * Bỏ dấu gạch + hoa hoá, và bóc chữ số kiểm nếu có.
+ *
+ * Bóc là thứ giữ **tương thích ngược**: một máy đã ghép đôi bằng ID đời cũ (không chữ số kiểm)
+ * vẫn khớp với chính nó ở bản mới — nếu so nguyên chuỗi thì bản nâng cấp sẽ cắt mọi cặp đã ghép,
+ * tức tự tay dựng lại đúng sự cố mà chữ số kiểm sinh ra để tránh.
+ */
+export const normalizeDeviceId = (id: string): string => {
+  const flat = id.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return stripChecksum(flat) ?? flat;
+};
+
+/** `true` khi chuỗi mang chữ số kiểm ĐÚNG — để bề mặt bắt lỗi chép NGAY lúc dán. */
+export const deviceIdLooksTyped = (id: string): boolean =>
+  stripChecksum(id.replace(/[^A-Za-z0-9]/g, "").toUpperCase()) !== null;
+
 export const sameDeviceId = (a: string, b: string): boolean =>
   normalizeDeviceId(a).length > 0 && normalizeDeviceId(a) === normalizeDeviceId(b);
 

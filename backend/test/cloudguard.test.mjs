@@ -1,5 +1,5 @@
 // Cảnh báo sớm: kho nằm trong vùng đồng bộ đám mây.
-// Ca trung tâm là ca ĐÃ HỎNG THẬT hai lần: đường dẫn `D:\huy.nguyen\...` không chứa chữ
+// Ca trung tâm là ca ĐÃ HỎNG THẬT hai lần: đường dẫn `D:\NguoiDung\...` không chứa chữ
 // "Drive" nào, nên mọi heuristic soi TÊN đều im — thứ cuốn kho đi là kênh backup máy khai
 // trong `root_preference_sqlite.db`. Test này khoá đúng chỗ đó.
 
@@ -29,15 +29,15 @@ function fakeDriveFs(t, rows) {
 
 test("it CATCHES the machine-backup channel - the case that broke the real store twice, with a perfectly innocent folder name", (t) => {
   const store = tempDir(t, "zstore-");
-  const prefs = fakeDriveFs(t, [{ title: "MAY-A", abs: "D:\\huy.nguyen", root_path: "D:\\huy.nguyen" }]);
+  const prefs = fakeDriveFs(t, [{ title: "MAY-A", abs: "D:\\NguoiDung", root_path: "D:\\NguoiDung" }]);
 
   // Tiền đề của cả bài: heuristic tên đường dẫn KHÔNG thấy gì.
-  assert.equal(looksLikeCloudSyncName("D:\\huy.nguyen\\Tool\\Zemory\\data"), false);
+  assert.equal(looksLikeCloudSyncName("D:\\NguoiDung\\Tool\\Zemory\\data"), false);
 
-  const r = cloudSyncReport("D:\\huy.nguyen\\Tool\\Zemory\\data", { prefsPath: prefs });
+  const r = cloudSyncReport("D:\\NguoiDung\\Tool\\Zemory\\data", { prefsPath: prefs });
   assert.equal(r.atRisk, true, "phải kêu — đây đúng là ca đã cuốn cả kho + chìa lên mây");
   assert.ok(r.evidence.some((e) => e.kind === "drivefs-root"), "bằng chứng phải là root của DriveFS");
-  assert.ok(r.evidence[0].detail.includes("D:\\huy.nguyen"), "phải chỉ ra root nào, để người đọc kiểm lại được");
+  assert.ok(r.evidence[0].detail.includes("D:\\NguoiDung"), "phải chỉ ra root nào, để người đọc kiểm lại được");
 
   // Thư mục NGOÀI root đó thì im — không được kêu bừa.
   const clean = cloudSyncReport(store, { prefsPath: prefs });
@@ -56,7 +56,7 @@ test("an empty or missing DriveFS ledger means UNVERIFIABLE, never a silent pass
 });
 
 test("NO false positive: a readable root ledger saying 'not syncing' means stale junk cannot overturn it", (t) => {
-  // Ca THẬT đo trên máy này 2026-08-06: user đã gỡ `D:\huy.nguyen` khỏi backup máy (roots
+  // Ca THẬT đo trên máy này 2026-08-06: user đã gỡ `D:\NguoiDung` khỏi backup máy (roots
   // rỗng), nhưng một thư mục rỗng `.tmp.driveupload` từ 05/08 vẫn nằm đó. Bản đầu của phép
   // kiểm kêu ĐỎ vì nó — báo oan ngay ca đầu tiên. Cảnh báo kêu nhầm thì lần sau không ai đọc.
   const parent = tempDir(t, "zparent-");
@@ -88,5 +88,5 @@ test("isInside does not match a folder that merely shares a PREFIX", () => {
   assert.equal(isInside("C:\\ab\\x", "C:\\a"), false, "C:\\ab KHÔNG nằm trong C:\\a");
   assert.equal(isInside("C:\\a\\x", "C:\\a"), true);
   assert.equal(isInside("C:\\a", "C:\\a"), true, "chính nó cũng tính");
-  assert.equal(isInside("d:\\HUY.nguyen\\k", "D:\\huy.nguyen"), true, "Windows không phân biệt hoa thường");
+  assert.equal(isInside("d:\\NGUOIDUNG\\k", "D:\\NguoiDung"), true, "Windows không phân biệt hoa thường");
 });

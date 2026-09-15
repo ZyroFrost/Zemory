@@ -11,6 +11,7 @@ import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
+import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -99,7 +100,7 @@ export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
-let running: { server: ChannelServer; port: number } | null = null;
+let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
 
 export interface ChannelServeResult {
   listening: boolean;
@@ -163,8 +164,23 @@ export async function startChannelServer(o: {
         if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
       },
     );
-    running = { server, port: server.port };
-    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi`);
+    // TẦNG 1 — DÒ LAN (plan/24 §1c). Cùng lỗi với `serveChannel`: `startDiscovery` viết xong
+    // 13/09 mà KHÔNG nơi nào gọi, nên hai máy cùng mạng vẫn phải khai IP tay. Bật cùng lúc với
+    // bên nghe vì nó quảng bá đúng cái cổng đó; fail-open (điều 9) — dò hỏng thì kênh vẫn dùng
+    // được bằng địa chỉ khai tay, nên nó KHÔNG được phép làm hỏng lượt bật.
+    let discovery: DiscoveryHandle | undefined;
+    try {
+      discovery = startDiscovery({
+        deviceId: channelIdentity().deviceId,
+        channelPort: server.port,
+        allowedPeers: peers,
+        onPeer: (p) => log(`[channel] thấy máy ${p.deviceId.slice(0, 11)}… ở ${p.host}:${p.port} (cùng mạng)`),
+      });
+    } catch (e) {
+      log(`[channel] dò LAN không bật được: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
+    }
+    running = { server, port: server.port, discovery };
+    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}`);
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
@@ -177,11 +193,25 @@ export async function startChannelServer(o: {
 export function stopChannelServer(): void {
   if (!running) return;
   try {
+    running.discovery?.stop();
+  } catch {
+    /* vòng dò đã tắt */
+  }
+  try {
     running.server.close();
   } catch {
     /* đóng được thì tốt */
   }
   running = null;
+}
+
+/** Máy cùng mạng đã thấy qua tầng 1 — rỗng khi kênh tắt hoặc chưa ai quảng bá. */
+export function seenPeers(): PeerSighting[] {
+  try {
+    return running?.discovery?.seen() ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Cổng đang nghe, `null` nếu không nghe — cho bề mặt nói đúng trạng thái THẬT. */

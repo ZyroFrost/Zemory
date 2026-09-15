@@ -176,7 +176,12 @@
   function p2pMsg(s){zset('p2pMsg',s||'');}
   function renderChannel(c){
     if(!c)return;
-    zset('p2pBlocks',zN(c.blocks||0));zset('p2pPort',String(c.port||'—'));
+    zset('p2pBlocks',zN(c.blocks||0));
+    // Nói cổng ĐANG NGHE, không nói cổng đã khai: bật mà không nghe được (cổng bận, chưa ghép
+    // đôi ai) là ca có thật, và bề mặt phải phân biệt được hai thứ đó.
+    zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
+    var seen=(c.seen||[]);
+    zset('p2pSeen', seen.length ? seen.map(function(s){return (s.deviceId||'').slice(0,11)+'… · '+s.host;}).join(' · ') : t('p2p.seenNone'));
     var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=c.deviceId||'';
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     var a=zid('trDrive'),b=zid('trP2p');
