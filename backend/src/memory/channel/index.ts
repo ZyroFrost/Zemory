@@ -22,9 +22,12 @@ export * from "./portmap.js";
  * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
  * đi sang máy kia cùng kho (plan/25 §1).
  */
-export function channelDir(storeRoot = currentStoreRoot()): string {
+export function channelDir(storeRoot = currentStoreRoot(), ensure = false): string {
   const dir = join(storeRoot, "channel");
-  mkdirSync(dir, { recursive: true });
+  // CHỈ tạo khi sắp GHI. Bản trước `mkdirSync` ngay trong hàm đọc, nên mỗi lượt hỏi trạng
+  // thái lại đẻ một thư mục RỖNG và `conform` kêu "folder rỗng" — một cổng kêu suốt là cổng
+  // sắp bị bỏ qua (`02_RULES §Guardrail`). Đường đọc không được để lại dấu chân.
+  if (ensure) mkdirSync(dir, { recursive: true });
   return dir;
 }
 
