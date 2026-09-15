@@ -1685,6 +1685,31 @@ export async function syncDrive(opts: {
 }
 
 /**
+ * MERGE-ONLY một thư mục khúc vào kho local — không `scan`, không xuất, không ghi ra kênh.
+ *
+ * Sinh ra cho kênh máy-tới-máy (`plan/24`): lớp kênh **nhận khối rồi nối vào khúc đang mở của
+ * MÌNH**, nên sau một phiên thì thư mục kênh có khối mới mà kho chưa biết. `syncDrive` không
+ * dùng được ở đây vì nó là cả một lượt đồng bộ (quét nguồn · xuất · lấy khoá · ghi) — chạy nó
+ * sau mỗi phiên nhận là biến một việc rẻ thành một lượt nặng, và tệ hơn: nó sẽ GHI, trong khi
+ * ở đây ta chỉ muốn ĐỌC vào.
+ *
+ * Định dạng khúc · dedup theo khối · sổ `merged_bundles` đều **giữ nguyên** — đúng bất biến
+ * `plan/24 §2`: đổi ĐƯỜNG TRUYỀN, giữ GIAO THỨC.
+ */
+export async function mergeChannelDir(
+  dir: string,
+  o: { dbPath?: string; keyFile?: string } = {},
+): Promise<DriveSyncResult["merged"]> {
+  if (!dir || !existsSync(dir) || !statSync(dir).isDirectory()) return [];
+  const excludeLanes = getScopeExclude(); // cùng bộ lọc với mọi cửa nạp khác
+  const out: DriveSyncResult["merged"] = [];
+  for (const f of readdirSync(dir).filter((x) => x.endsWith(".enc"))) {
+    out.push(...(await mergeContainer(join(dir, f), f, { ...o, excludeLanes })));
+  }
+  return out;
+}
+
+/**
  * Merge từng khối CHƯA merge của kho chính vào kho local.
  *
  * Dedup ở mức KHỐI, không ở mức FILE: kho chính đổi mỗi lần có máy nối thêm, nên chữ ký cả

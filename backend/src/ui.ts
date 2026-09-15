@@ -1462,6 +1462,38 @@ function openWindow(url: string): void {
 export { DEFAULT_UI_PORT } from "./core/config.js";
 export { uiPort };
 
+/**
+ * Bật/tắt bên NGHE của kênh máy-tới-máy cho khớp cấu hình hiện tại.
+ *
+ * Gọi ở HAI chỗ và phải là cùng một hàm: lúc daemon khởi động, và ngay sau khi người dùng gạt
+ * công tắc. Hai đường riêng là cách hai bề mặt của một chức năng lệch nhau — bật trong ⚙ mà
+ * phải khởi động lại app mới nghe thì người dùng đọc thành hỏng.
+ *
+ * Khối NHẬN được merge vào kho ngay sau phiên: thư mục kênh là dãy khúc cùng định dạng, nên
+ * đây chỉ là `mergeChannelDir` — KHÔNG phải một lượt đồng bộ (không quét nguồn, không ghi ra
+ * kênh). Fail-open (điều 9): merge hỏng thì ghi log, khối vẫn nằm trên đĩa cho lượt sau.
+ */
+async function refreshChannelServer(): Promise<void> {
+  try {
+    const ch = await import("./memory/channel/index.js");
+    const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
+    const keyFile = resolveShareKey(currentProjectRoot());
+    const r = await ch.startChannelServer({
+      shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
+      appVersion: appVersion(),
+      log: (m: string) => daemonLog(m),
+      onReceived: (blocks: number) => {
+        daemonLog(`[channel] nhận ${blocks} khối — merge vào kho`);
+        void mergeChannelDir(ch.channelStatus().dir)
+          .then((merged) => daemonLog(`[channel] merge xong: ${merged.filter((x) => !x.skipped).length} khối mới`))
+          .catch((e) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
+      },
+    });
+    if (!r.listening && r.reason) daemonLog(`[channel] không nghe: ${r.reason}`);
+  } catch (e) {
+    daemonLog(`[channel] lỗi khi bật: ${String(e).slice(0, 140)}`);
+  }
+}
 function listenOn(server: ReturnType<typeof createServer>, port: number): Promise<void> {
   return new Promise((ok, fail) => {
     const onError = (e: Error) => {
@@ -2638,7 +2670,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const transport = u.searchParams.get("transport");
       if (on !== null) setP2pEnabled(on === "1");
       if (transport === "drive" || transport === "p2p") setSyncTransport(transport);
-      return json(res, { ok: true, enabled: getP2pEnabled(), transport: getSyncTransport() });
+      // Gạt công tắc là ĂN NGAY: cùng một hàm với lúc daemon khởi động, nên không có chuyện
+      // bật trong ⚙ rồi phải mở lại app mới nghe (người dùng sẽ đọc cảnh đó thành hỏng).
+      await refreshChannelServer();
+      const ch = await import("./memory/channel/index.js");
+      return json(res, {
+        ok: true,
+        enabled: getP2pEnabled(),
+        transport: getSyncTransport(),
+        // Trạng thái THẬT, không phải ý định: cổng đang nghe, hoặc `null` nếu không nghe được.
+        listening: ch.channelServingPort(),
+      });
     }
     if (p === "/channel-pair") {
       const { getP2pPeers, setP2pPeers } = await import("./config/settings.js");
@@ -2872,6 +2914,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   setInterval(daemonHeartbeat, 30_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
+  // KÊNH MÁY-TỚI-MÁY: bắt đầu NGHE nếu người dùng đã bật (plan/24 §7 bước ④).
+  // Mặc định TẮT ⇒ máy chưa bật thì dòng này không làm gì và không mở cổng nào.
+  void refreshChannelServer();
   autoOpen(url);
   // System-tray presence (fail-open, HP điều 9): Open re-focuses the window, Quit
   // stops the daemon. Only the instance that WON the port reaches here — the
