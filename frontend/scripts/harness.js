@@ -13,35 +13,8 @@
     zid('stdBody').innerHTML='<div class="muted">'+t('st.loadingDoc')+stdEsc(stdFile)+'…</div>';
     zGet('/standard-doc?profile='+prof+'&file='+encodeURIComponent(stdFile)).then(function(r){var c=(r&&r.content)||t('st.empty');stdReal[key]=c;zid('stdBody').innerHTML=stdMd(c);}).catch(function(){zid('stdBody').innerHTML='<div class="muted">'+t('st.docErr')+'</div>';});
   }
-  // ── Per-project Harness: real docs viewer (this project's docs/agent + plan +
-  //    AGENTS.md) · click file → /doc?root=&file= · reuse stdMd markdown renderer.
-  var phFile='',phDoc={},phRoot='';
-  function phRow(rel,label){return '<div class="ti ind" data-f="'+stdEsc(rel)+'">📄 '+stdEsc(label)+'</div>';}
-  function loadProjHarness(root){
-    phRoot=root||'';var tr=zid('phTree');if(!tr)return;
-    tr.innerHTML='<div class="muted" style="font-size:11.5px">…</div>';
-    zGet('/harness-files?root='+encodeURIComponent(phRoot)).then(function(d){
-      d=d||{};var h='';
-      if(d.hasAgents)h+=phRow('AGENTS.md','AGENTS.md');
-      if((d.agent||[]).length){h+='<div class="section-t">docs/agent/</div>';(d.agent||[]).forEach(function(f){h+=phRow(f,f);});}
-      if((d.plan||[]).length){h+='<div class="section-t">docs/plan/</div>';(d.plan||[]).forEach(function(f){h+=phRow('plan/'+f,f);});}
-      tr.innerHTML=h||'<div class="muted" style="font-size:11.5px">'+t('ph.none')+'</div>';
-      var first=tr.querySelector('.ti[data-f]');
-      if(first)phOpen(first.dataset.f);
-      else{zid('phTitle').textContent='—';zid('phBody').innerHTML='<div class="muted">'+t('ph.none')+'</div>';}
-    }).catch(function(){tr.innerHTML='<div class="muted" style="font-size:11.5px">'+t('ph.err')+'</div>';});
-  }
-  function phOpen(rel){
-    phFile=rel;var body=zid('phBody'),tt=zid('phTitle');if(!body)return;
-    if(tt)tt.textContent=rel.replace('plan/','plan / ');
-    document.querySelectorAll('#phTree .ti').forEach(function(x){x.classList.toggle('on',x.dataset.f===rel);});
-    var key=phRoot+'|'+rel;
-    if(phDoc[key]){body.innerHTML=stdMd(phDoc[key]);return;}
-    body.innerHTML='<div class="muted">…</div>';
-    zGet('/doc?root='+encodeURIComponent(phRoot)+'&file='+encodeURIComponent(rel)).then(function(r){var c=(r&&r.content)||t('st.empty');phDoc[key]=c;if(phFile===rel)body.innerHTML=stdMd(c);}).catch(function(){body.innerHTML='<div class="muted">'+t('ph.err')+'</div>';});
-  }
-  document.addEventListener('click',function(e){
-    if(!e.target.closest)return;
-    var ti=e.target.closest('#phTree .ti[data-f]');if(ti){phOpen(ti.dataset.f);return;}
-    if(e.target.id==='phValidate'){var pv=e.target;pv.textContent='…';zGet('/check?feature=validate&root='+encodeURIComponent(phRoot)).then(function(r){zToast(r&&r.ok?t('ph.valOk'):t('ph.valBad'));pv.textContent='validate';}).catch(function(){pv.textContent='validate';});}
-  });
+  // GỠ 2026-09-16 (user chốt): trình xem docs theo project (`phTree`/`phOpen`/`phValidate`, đọc
+  // `/harness-files` + `/doc`). Bấm vào một dự án rồi bị đưa vào đọc `AGENTS.md` với `docs/agent/*`
+  // là việc KHÔNG liên quan tới thứ người ta vừa bấm. Chi tiết dự án nay chỉ còn Graph.
+  // Endpoint `/harness-files` phía backend GIỮ NGUYÊN (không tự xoá — `02_RULES §Hành xử`); nó nay
+  // không còn người gọi trong FE, nêu ra để user quyết bỏ hay để.

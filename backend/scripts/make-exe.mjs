@@ -11,7 +11,7 @@
 // The exe is a build artifact (dist/, gitignored), ~80 MB, rebuilt only when the Node version,
 // the app version or the icon changes (see the stamp). Re-signing is not attempted: the copy
 // loses node.exe's Authenticode signature, which does not matter for a local Startup launch.
-import { copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,6 +57,7 @@ export async function main() {
     try {
       const have = JSON.parse(readFileSync(STAMP, "utf8"));
       if (JSON.stringify(have) === JSON.stringify(want)) {
+        brandTrayBinary();
         console.log(`make-exe: dist/zemory.exe up to date (node ${want.node} · app ${want.app})`);
         return 0;
       }
@@ -77,6 +78,34 @@ export async function main() {
   writeFileSync(STAMP, JSON.stringify(want) + "\n");
   console.log(`make-exe: dist/zemory.exe built from ${process.execPath} (node ${process.version} · app ${pkg.version}${existsSync(ICON) ? " · icon" : " · NO icon"})`);
   return 0;
+}
+
+
+/**
+ * Chép nhị phân khay của `systray2` sang TÊN CỦA APP (`app-design` §B1).
+ *
+ * Thư viện khoá cứng tên `tray_windows_release.exe`, nên trên bảng tiến trình app hiện ra một dòng
+ * mang tên thư viện trong khi `node.exe` đã thành `zemory.exe`. Đổi một nửa còn tệ hơn không đổi.
+ * Ta chỉ CHÉP nhị phân (MIT, không sửa gì) — client phóng nó là mã của mình (`platform/tray-client.ts`).
+ * Thiếu nguồn ⇒ bỏ qua, client tự rơi về bản gốc: mất cái tên đẹp còn hơn mất cái khay.
+ */
+export function brandTrayBinary() {
+  const src = {
+    win32: "tray_windows_release.exe",
+    darwin: "tray_darwin_release",
+    linux: "tray_linux_release",
+  }[process.platform];
+  if (!src) return null;
+  const from = join(ROOT, "node_modules", "systray2", "traybin", src);
+  const to = join(ROOT, "dist", process.platform === "win32" ? "zemory-tray.exe" : "zemory-tray");
+  if (!existsSync(from)) return null;
+  try {
+    copyFileSync(from, to);
+    if (process.platform !== "win32") chmodSync(to, 0o755);
+    return to;
+  } catch {
+    return null;
+  }
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

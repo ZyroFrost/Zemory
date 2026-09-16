@@ -8,16 +8,9 @@
 // daemon is single-instance (one per port 4444), and the helper is killed on quit
 // / daemon exit — so a fresh `zemory ui` never stacks a second icon.
 
-import { createRequire } from "node:module";
 import { platform } from "node:os";
+import { TRAY_SEPARATOR, openTray, type TrayHandle } from "./tray-client.js";
 
-// systray2 is CJS (exports.default = the class). Under our NodeNext/ESM output a
-// plain `import SysTray from "systray2"` TYPE-checks as the class but RESOLVES to
-// the module namespace at runtime (the class hides behind `.default`), so
-// `new SysTray()` would throw "not a constructor". Load it through createRequire
-// and take `.default` — correct at both type and runtime (verified empirically).
-const cjsRequire = createRequire(import.meta.url);
-const SysTray = (cjsRequire("systray2") as typeof import("systray2")).default;
 
 // zemory logo, 64px. Windows tray wants ICO; macOS/Linux want PNG. Both are the
 // same glyph as the window favicon, generated from the packaging source asset.
@@ -33,83 +26,49 @@ export interface TrayHooks {
   onQuit: () => void;
 }
 
-let tray: InstanceType<typeof SysTray> | null = null;
+let tray: TrayHandle | null = null;
 
 /** Start the tray. Best-effort: any failure leaves the daemon headless-but-fine. */
 export function startTray(url: string, hooks: TrayHooks): void {
   if (tray) return;
-  try {
-    const os = platform();
-    const t = new SysTray({
-      menu: {
-        icon: os === "win32" ? ICON_ICO_B64 : ICON_PNG_B64,
-        isTemplateIcon: os === "darwin",
-        title: "zemory",
-        tooltip: `zemory — ${url}`,
-        items: [
-          { title: "Open zemory", tooltip: "Open the cockpit window", enabled: true },
-          SysTray.separator,
-          { title: "Quit zemory", tooltip: "Stop the background daemon", enabled: true },
-        ],
-      },
-      debug: false,
-    });
-    // Everything on the instance goes through ready(): systray2 sets _process
-    // only after its first await, so a synchronous onError() call here ALWAYS
-    // threw (null deref) — the module ref was never stored and a helper-spawn
-    // failure escaped as an unhandled rejection that KILLED the daemon, the
-    // opposite of fail-open (audit 2026-07-21).
-    t.ready()
-      .then(() => {
-        tray = t;
-        try {
-          t.onError(() => {
-            tray = null; // helper died — drop the ref; the daemon is unaffected
-          });
-        } catch {
-          /* keep the tray even if the error hook can't attach */
-        }
-      })
-      .catch(() => {
-        tray = null; // helper never started — headless daemon (HP điều 9)
-      });
-    t.onClick((action) => {
-      const title = action.item.title;
-      if (title === "Open zemory") {
-        hooks.onOpen();
-      } else if (title === "Quit zemory") {
-        void t.kill(false).finally(() => hooks.onQuit());
-      }
-    }).catch(() => {
-      /* onClick awaits ready() — a spawn failure lands here, not as a crash */
-    });
-  } catch {
-    tray = null; // no tray — daemon still serves (HP điều 9)
-  }
+  const os = platform();
+  tray = openTray(
+    {
+      icon: os === "win32" ? ICON_ICO_B64 : ICON_PNG_B64,
+      isTemplateIcon: os === "darwin",
+      title: "zemory",
+      tooltip: `zemory — ${url}`,
+      items: [
+        { title: "Open zemory", tooltip: "Open the cockpit window", onClick: () => hooks.onOpen() },
+        TRAY_SEPARATOR,
+        {
+          title: "Quit zemory",
+          tooltip: "Stop the background daemon",
+          onClick: () => {
+            // Giết khay TRƯỚC rồi mới tắt daemon: chỉ tiến trình khay mới bảo được Windows bỏ icon
+            // (NIM_DELETE). Tắt daemon trước thì nó chết vì stdin EOF và icon còn lại dạng MA cho tới
+            // khi người dùng vô tình rê chuột qua (user báo 2026-07-21).
+            stopTray();
+            hooks.onQuit();
+          },
+        },
+      ],
+    },
+    () => {
+      tray = null; // khay chết — bỏ tham chiếu, daemon không đổi gì
+    },
+  );
 }
 
 /**
- * Remove the tray icon (daemon shutdown / tests).
+ * Bỏ icon khay (lúc tắt daemon / trong test).
  *
- * AWAITABLE ON PURPOSE. Killing the tray is an IPC round-trip: we ask the helper
- * to quit, and only the helper can tell Windows to drop the icon (NIM_DELETE).
- * The old version fired the kill and returned, and `shutdown()` then called
- * `process.exit(0)` on the very next line — the helper died from stdin EOF before
- * it ever processed the quit, so the icon stayed behind as a GHOST until the user
- * happened to hover over it (user 2026-07-21: "tray vẫn kẹt icon ảo, ko tự mất").
- * Callers must await this before exiting. Bounded so a wedged helper can never
- * hang the daemon's shutdown.
+ * Nay là ĐỒNG BỘ: ta phóng thẳng tiến trình khay nên `kill()` là tín hiệu OS, không phải một vòng
+ * IPC như bản cũ — không còn gì để chờ, và cũng không còn cửa cho icon ma.
  */
-export async function stopTray(timeoutMs = 800): Promise<void> {
+export function stopTray(): void {
   const t = tray;
   if (!t) return;
   tray = null;
-  try {
-    await Promise.race([
-      t.kill(false),
-      new Promise<void>((resolve) => setTimeout(resolve, timeoutMs).unref?.()),
-    ]);
-  } catch {
-    /* already gone */
-  }
+  t.kill();
 }

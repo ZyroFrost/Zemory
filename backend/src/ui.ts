@@ -35,7 +35,7 @@ import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
-import { applyFix, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile } from "./docs/paths.js";
+import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
@@ -1900,6 +1900,63 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         /* fail-open (điều 9): hỏng lớp chuẩn thì code-graph vẫn nguyên vẹn */
       }
+      // ── TRẠNG THÁI NODE: ĐƯỜNG DẪN CHẾT (plan/13 §4c — user chốt 2026-09-16 "báo cáo dạng
+      //    node status"). Nguồn = state của sweep, KHÔNG quét sống: cùng tập `newlyDead` mà chip
+      //    rail + badge thẻ Dự án đang dùng, nên ba bề mặt không nói ba số khác nhau (plan/21 §5.5b).
+      //    `pathsWatch` TẮT ⇒ không tô gì: tắt là mọi bề mặt im CÙNG LÚC, graph không có ngoại lệ.
+      let deadTotal = 0;
+      if (getPathsWatch()) {
+        try {
+          const byFile = deadPathsByFile(loadPathsState(pathsStateFile()), target);
+          // Tra theo CẢ HAI khoá. Node lớp chuẩn mang id riêng (`doc:agent/05_TODO.md`,
+          // `plan:12_x.md`) chứ không phải đường dẫn, nên tra mỗi `id` là bỏ sót chúng và đẻ
+          // một `doc_file` thứ hai cho CÙNG một file — đúng thứ `plan/13 §4c` cấm. Đo trước khi
+          // vá, trên `_DataWarehouse_Central`: `docs/agent/05_TODO.md` và `docs/plan/01_*.md`
+          // hiện ra hai lần. `src` là chỗ node chuẩn khai nó được sinh từ file nào.
+          const nodeById = new Map<string, Record<string, unknown>>();
+          for (const n of nodes) {
+            nodeById.set(n.id as string, n);
+            const src = n.src as string | undefined;
+            if (src && !nodeById.has(src)) nodeById.set(src, n);
+          }
+          for (const [file, hits] of byFile) {
+            deadTotal += hits.length;
+            const existing = nodeById.get(file);
+            if (existing) {
+              // File ĐÃ là node (mã nguồn, `plan_spec`, `harness_doc`) ⇒ chỉ gắn thuộc tính.
+              // Đẻ node thứ hai cho cùng một đường dẫn là tự tạo hai sự thật về một file.
+              existing.deadPaths = hits.length;
+              existing.deadAt = hits.slice(0, 8);
+              continue;
+            }
+            // Chưa là node: dựng CÓ ĐIỀU KIỆN. Đo 2026-09-16 trên `_DataWarehouse_Central`:
+            // 24/24 đường mới chết nằm trong `.md`, mà lớp code chỉ có node cho mã nguồn và lớp
+            // chuẩn chỉ phủ `docs/agent/*` + `docs/plan/*` ⇒ 15/24 không có gì để tô. Node mọc
+            // VÌ nó hỏng và biến mất khi hết hỏng; dựng node cho MỌI `.md` là nhấn chìm graph.
+            const dir = file.includes("/") ? file.slice(0, file.lastIndexOf("/")) : "";
+            const n: Record<string, unknown> = {
+              id: file,
+              label: file.slice(file.lastIndexOf("/") + 1),
+              dir,
+              type: "doc_file",
+              loc: 0,
+              bytes: 0,
+              symbols: [],
+              fanIn: 0,
+              fanOut: 0,
+              touchedBy: 0,
+              deadPaths: hits.length,
+              deadAt: hits.slice(0, 8),
+            };
+            nodes.push(n);
+            nodeById.set(file, n);
+            // Treo vào tầng chứa nó để layout "theo folder" không bỏ node lơ lửng giữa canvas.
+            if (dir) edges.push({ from: `layer:${dir}`, to: file, kind: "contains", rel: "declared" });
+          }
+        } catch {
+          /* fail-open (điều 9): state hỏng/thiếu `where` ⇒ graph vẫn dựng, chỉ không tô đỏ */
+        }
+      }
       // Bậc của node tính trên TOÀN BỘ cạnh (kể cả cạnh chuẩn) — nếu không, node
       // hp_dieu/skill/slot đều bậc 0 ⇒ vẽ ra chấm bé xíu, không có nhãn, coi như vô hình.
       const deg: Record<string, { i: number; o: number }> = {};
@@ -1925,6 +1982,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         fitness,
         builtAt,
         touchDigests: digests,
+        // Tổng số đường MỚI CHẾT đang được tô trên graph (0 khi `pathsWatch` tắt). Bề mặt dùng nó
+        // cho mục legend — cùng con số mà chip rail đang báo, không phải một phép đếm thứ hai.
+        deadPaths: deadTotal,
         standard: stdStats,
       });
     }
@@ -3044,12 +3104,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // The tray helper needs a moment to tell Windows to REMOVE its icon; exiting
     // synchronously here is what left the ghost icon behind (user 2026-07-21).
     // Hard backstop so a wedged helper can never block the exit.
-    const bail = setTimeout(() => process.exit(0), 1500);
-    bail.unref();
-    void stopTray().finally(() => {
-      clearTimeout(bail);
-      process.exit(0);
-    });
+    // `stopTray` nay ĐỒNG BỘ: ta tự phóng tiến trình khay nên giết nó là tín hiệu OS, không còn
+    // vòng IPC nào để chờ — và cũng không còn cửa cho icon ma. Vẫn giữ một nhịp ngắn trước khi
+    // thoát để OS kịp thu hồi icon.
+    stopTray();
+    setTimeout(() => process.exit(0), 120).unref();
   }
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));

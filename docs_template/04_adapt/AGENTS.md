@@ -57,6 +57,7 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
 | repo chưa nhận · cấu trúc gốc đã đổi · `conform` đỏ | `.claude/skills/adopt/SKILL.md` |
 | tra "concern này nằm folder nào" · thêm folder mới | `docs/agent/03_STRUCTURE.md` §3 |
 | hỏi "repo có sẵn quy trình gì" · thêm/bớt skill | `docs/agent/04_SKILLS.md` |
+| **đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền** | `.claude/skills/app-design/SKILL.md` |
 | yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/grill/SKILL.md` |
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
 | kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |

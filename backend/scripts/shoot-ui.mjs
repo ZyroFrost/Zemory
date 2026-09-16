@@ -38,6 +38,7 @@ const SHOTS = [
   ["01-home", "home", null, 4000],
   ["02-recall", "recall", ["rc", "sess"], 5000],
   ["03-projects", "projects", null, 4000],
+
   ["04-global-memory-sync", "gmem", ["gm", "sync"], 9000],
   // Màn Tệp (plan/25 §5) — nghiệm thu BẰNG MẮT: ảnh có render không, chip lọc có ở đó không.
   ["04b-global-memory-files", "gmem", ["gm", "files"], 6000],
@@ -51,10 +52,14 @@ const SHOTS = [
   ["05-harness-docs", "harness", ["ht", "docs"], 5000],
   ["06-harness-structure", "harness", ["ht", "struct"], 5000],
   ["07-features", "system", null, 5000],
-  // The Settings dialog: this is where machine PAIRING lives (plan/24 §5 — the user asked for it
-  // in Settings, not on a screen). A raw selector, because the gear sits in the top bar.
-  ["08-settings-sync", "system", "#topSettings", 3500],
-  ["09-settings-p2p", "system", ["#topSettings", "#syncTabP2p"], 3500],
+  // ĐỒNG BỘ là MÀN RIÊNG từ 3.2.0 (user: *"chức năng sync này giờ lớn quá, nên phân thành 1 trang
+  // chính thức ko để trong setting nữa"*). Hai mục dưới trước đó còn mở ⚙ rồi bấm `#syncTabP2p` —
+  // id đã đi cùng lượt dời, nên lượt chụp báo "not found" và ảnh 08 chụp nhầm cả dialog đang mở.
+  // Nghiệm thu BẰNG MẮT ở đây: vạch ngăn giữa hai panel phải chạy hết vùng, không dừng giữa chừng.
+  ["08-sync-drive", "sync", ["sy", "drive"], 5000],
+  ["09-sync-p2p", "sync", ["sy", "p2p"], 5000],
+  // Hộp Chuẩn repo: nghiệm thu khối "giao cho agent" (lời nhắn + hai nút) bằng MẮT.
+  ["10-std-dialog", "system", "#railStd", 4500],
 ];
 
 const BROWSERS = [
@@ -175,6 +180,14 @@ async function main() {
 
   let bad = 0;
   for (const [name, nav, sub, wait, confirmExpr] of SHOTS) {
+    // ĐÓNG MỌI DIALOG CÒN MỞ TRƯỚC KHI CHỤP MÀN KẾ. Các mục `04c`/`04d` cố ý mở dialog xem tệp và
+    // KHÔNG đóng lại, nên từ đó trở đi mọi ảnh đều bị nó che — đo 2026-09-16: `05`→`09` chụp ra
+    // cùng một dialog, và tôi suýt nghiệm thu một bản vá CSS bằng ảnh không hề chứa thứ cần nhìn.
+    // Không dùng phím ESC: bộ chụp không có bàn phím thật, và `zDialog` đóng bằng class.
+    await send("Runtime.evaluate", {
+      expression: "document.querySelectorAll('.dlg-back.on,#fileDlg.on').forEach(d=>d.classList.remove('on'))",
+      returnByValue: true,
+    });
     // `sub` is either [attribute, value] scoped to the screen, OR a raw selector string for
     // things that live OUTSIDE a screen — the Settings dialog is opened from the top bar,
     // so a screen-scoped lookup can never reach it.

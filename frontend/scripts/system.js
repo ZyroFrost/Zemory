@@ -333,6 +333,24 @@
       zSave('/set-repo-std-check?on='+(on?'1':'0'),function(){box.checked=!on;}).then(function(j){if(!j)return;UPD_CHECK=on;return zGet('/harness-updates?fresh=1').then(function(){refreshHarnessUpdates().then(function(){zDlgClose();var c=zid('railStd');if(c&&c.style.display!=='none')c.click();});});});}
   });
   // "Cập nhật đã chọn": áp tuần tự từng repo đã tick (mỗi cú bấm của người dùng = lời cho phép cho ĐÚNG các repo đó).
+  // Hai nút của khối "giao cho agent": chép lời nhắn · mở Graph của repo đầu tiên trong danh sách.
+  document.addEventListener('click',function(e){
+    var b=e.target&&e.target.closest?e.target.closest('[data-act="dead-prompt-copy"],[data-act="dead-graph"]'):null;
+    if(!b)return;
+    if(b.getAttribute('data-act')==='dead-prompt-copy'){
+      var pre=zid('deadPrompt');if(!pre)return;
+      var txt=pre.textContent||'';
+      // Cùng khuôn nút Chép của p2p: báo NGAY tại nút, đừng để cú bấm im lặng.
+      var done=function(){var o=b.textContent;b.textContent=t('p2p.copied');setTimeout(function(){b.textContent=o;},1400);};
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done).catch(function(){});
+      else{try{var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();}catch(_){}}
+      return;
+    }
+    // Mở Graph: đóng hộp rồi sang màn Dự án. KHÔNG tự mở chi tiết một repo — chọn repo nào là
+    // việc của người dùng, và `showProjDetail` cần cả `profile` mà danh sách đường chết không giữ.
+    var dlg=document.querySelector('.dlg-back.on');if(dlg)dlg.classList.remove('on');
+    if(typeof go==='function')go('projects');
+  });
   document.addEventListener('click',function(e){
     if(!(e.target&&e.target.id==='updApplySel'))return;
     var picks=Array.prototype.slice.call(document.querySelectorAll('.upd-pick:checked')).map(function(c){return c.getAttribute('data-root');});
@@ -457,11 +475,35 @@
       :line('✓ '+t('upd.repoNone'));
     // ② ĐƯỜNG DẪN MỚI CHẾT (đọc từ state của sweep — không quét). Chỉ liệt kê + chỉ đường xem dòng cụ thể; sửa nguồn là việc
     // của agent/user bên repo đó (plan/21 §8). Hàng nói đủ: tên repo · N đường mới chết · mẫu · từ ngày.
+    //
+    /** Lời nhắn dán thẳng cho agent của repo đó. Nêu SỐ ĐO thật + lệnh tự kiểm, và nói rõ hai
+     *  ràng buộc dễ bị phá nhất khi sửa hàng loạt: giữ EOL, và đường trong file TỪ ĐIỂN thì
+     *  không phải con trỏ (`plan/21 §2.2` — đó là nguồn báo oan lớn nhất của phép kiểm này). */
+    function deadPrompt(list){
+      var head=t('fix.promptBody').replace('{n}',list.length);
+      var lines=list.map(function(x){
+        var smp=(x.sample||[]).slice(0,3).join(' · ');
+        return '- ' + (x.root||'') + '  (' + (x.newlyDead||0) + ')' + (smp?('  ⟵ '+smp):'');
+      }).join('\n');
+      return head+'\n'+lines+'\n\n'+t('fix.promptSteps');
+    }
     var dd=Z.updDead||[];
     repos+=hdr('upd.deadHdr',dd.length,false);
     repos+=dd.length
       ?line(t('upd.deadStatus').replace('{n}',dd.length),'')+'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚠ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.deadRow').replace('{n}',x.newlyDead))+(x.since?' · '+stdEsc(t('upd.deadSince').replace('{d}',String(x.since).slice(0,10))):'')+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div><div class="fixbox muted" data-fixroot="'+encodeURIComponent(x.root)+'" style="font-size:11px;padding-left:22px;margin-top:3px">'+stdEsc(t('fix.loading'))+'</div></div>';}).join('')+'</div>'
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.deadHint'))+'</div>'
+        // GIAO CHO AGENT: hộp vốn chỉ nói "sửa tay hoặc giao A.I sửa" mà không đưa gì để giao.
+        // Một lời mời không kèm thứ dán được thì người dùng vẫn phải tự ngồi soạn (user 2026-09-16).
+        // Prompt dựng từ CHÍNH số vừa đo, không phải mẫu chung: repo nào · bao nhiêu đường · mẫu nào.
+        +'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+        +'<b style="font-size:12px">'+stdEsc(t('fix.promptH'))+'</b>'
+        +'<button class="btn sm" data-act="dead-prompt-copy">'+stdEsc(t('p2p.copy'))+'</button>'
+        +'<button class="btn sm" data-act="dead-graph">'+stdEsc(t('fix.openGraph'))+'</button>'
+        +'</div>'
+        +'<pre id="deadPrompt" style="margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text)">'+stdEsc(deadPrompt(dd))+'</pre>'
+        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('fix.promptHint'))+'</div>'
+        +'</div>'
       :line('✓ '+t('upd.deadNone'));
     repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
     return repos;

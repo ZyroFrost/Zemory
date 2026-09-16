@@ -183,8 +183,13 @@ export function declaredSlots(root: string): Set<string> {
     const md = readFileSync(join(harnessPathsAt(root).agent, "03_STRUCTURE.md"), "utf8");
     let inSec = false;
     for (const line of md.split(/\r?\n/)) {
-      if (/^##\s*3\./.test(line)) { inSec = true; continue; }
-      if (inSec && /^##\s/.test(line)) break; // next heading ends §3
+      // BÁM TÊN SECTION, KHÔNG BÁM SỐ. Hai chuẩn đánh số khác nhau cho cùng một mục: cây thư mục
+      // là §3 ở chuẩn APP nhưng §2 ở chuẩn NON-APP (nó không có mục "hai cách sắp xếp code").
+      // Ghim `^## 3.` nghĩa là với mọi repo non-app ta đọc nhầm sang mục ROUTING ⇒ không thấy dòng
+      // cây nào ⇒ trả về TẬP RỖNG, âm thầm. Đo 2026-09-16 trên `Dept_IT`: `declaredSlots` = 0, nên
+      // `tasks/` — slot mà chính §2 của nó khai — bị cả cây lẫn graph gọi là "ngoài chuẩn".
+      if (/^##\s*\d+\.\s*Cây thư mục/u.test(line)) { inSec = true; continue; }
+      if (inSec && /^##\s/.test(line)) break; // hết section cây
       if (!inSec) continue;
       const m = line.match(/(?:├──|└──)\s+([A-Za-z][A-Za-z0-9_.-]*)\//);
       if (m) out.add(m[1]);

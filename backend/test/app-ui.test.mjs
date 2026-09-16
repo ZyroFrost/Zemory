@@ -12,7 +12,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { readAppJs } from "./helpers.mjs";
 
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
@@ -225,7 +225,7 @@ test("every COLOUR token is declared in BOTH :root and the light block", () => {
 
 // ============================ Cấu trúc 5 màn · không màn mồ côi ============================
 
-test("the nav holds exactly 6 screens, and each nav item has exactly one <section class=screen>", () => {
+test("the nav holds exactly 7 screens, and each nav item has exactly one <section class=screen>", () => {
   const nav = HTML.slice(HTML.indexOf('<nav class="nav"'), HTML.indexOf("</nav>"));
   const navKeys = [...nav.matchAll(/data-s="([a-z]+)"/g)].map((m) => m[1]);
   // 9 màn (nhiều chỗ trùng) → 5, rồi tách "Tính năng & Kiểm tra" ra lại thành mục nav
@@ -233,7 +233,10 @@ test("the nav holds exactly 6 screens, and each nav item has exactly one <sectio
   // trong thì không ai nhận ra nó tồn tại — và nó khác việc (chẩn đoán ≠ liếc nhanh).
   // Lý do gộp ban đầu là hai danh sách check trùng nhau, cái đó đã xử bằng cách xoá bản
   // trùng; việc đó KHÔNG đòi phải gộp luôn màn.
-  assert.deepEqual(navKeys, ["home", "recall", "projects", "gmem", "harness", "system"], "IA 6 màn");
+  // +`sync` 2026-09-16 (user chốt: *"chức năng sync này giờ lớn quá, t nghĩ nên phân thành 1 trang
+  // chính thức ko để trong setting nữa"*). Nó đứng TRƯỚC `system` vì là chỗ làm việc, còn `system`
+  // là màn chẩn đoán thỉnh thoảng mới vào.
+  assert.deepEqual(navKeys, ["home", "recall", "projects", "gmem", "sync", "harness", "system"], "IA 7 màn");
   // `class="screen on"` cho màn đang mở — khớp cả hai dạng, đừng neo cứng "screen".
   const screens = [...HTML.matchAll(/<section class="screen[^"]*"[^>]*data-s="([a-z]+)"/g)].map((m) => m[1]);
   assert.deepEqual([...navKeys].sort(), [...screens].sort(), "mỗi mục nav phải có đúng một màn, và ngược lại");
@@ -242,7 +245,9 @@ test("the nav holds exactly 6 screens, and each nav item has exactly one <sectio
 test("each sub-tab button has exactly one matching .sub block (no dead button, no orphan block)", () => {
   // "hm" đã biến mất cùng lúc Home hết sub-tab — nhóm rỗng phải bị loại khỏi danh sách,
   // nếu không test sẽ đòi ≥2 nút cho một nhóm không còn tồn tại.
-  for (const group of ["rc", "gm", "ht", "pt"]) {
+  // "pt" gỡ 2026-09-16 cùng lý do: khối "Tài liệu dự án" bỏ hẳn ⇒ chi tiết dự án chỉ còn Graph
+  // ⇒ không còn nhóm sub-tab nào ở đó. Cổng này ĐÃ BẮT đúng lúc cắt (1 nút < 2), giữ nguyên luật.
+  for (const group of ["rc", "gm", "ht"]) {
     const re = new RegExp(`<(button|div)([^>]*?)data-${group}="([a-z]+)"`, "g");
     const btns = new Set();
     const subs = new Set();
@@ -1042,4 +1047,268 @@ test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ đi
     const n = chrome.split(`'${k}':`).length - 1;
     assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
   }
+});
+
+// ── HỘP LỚP HAI: Dữ liệu & Đồng bộ ──────────────────────────────────────────
+//
+// User chốt 2026-09-16: *"cái nơi lưu data và sync nó là 1 nút setting chung trong đây, khi bấm vào
+// mới mở ra dialog box lớn"*. Hai thứ đó nói về CÙNG một chuyện — kho nằm đâu và nó đi đâu — nên
+// tách làm hai khối rời trong ⚙ là bắt người dùng ghép lại trong đầu.
+//
+// Hai bất biến của việc CHỒNG dialog, cả hai đều đã sai ở bản đầu:
+//  · ESC phải đóng ĐÚNG lớp trên cùng — bản cũ đóng SẠCH mọi `.dlg-back.on`, tức một phím ESC
+//    thổi bay cả hộp con LẪN ⚙ bên dưới (`02_RULES §Dialog` cấm);
+//  · z-index phải > 100 (nấc của `.dlg-back`) — bản đầu đặt 70, tức hộp mở ra NẰM DƯỚI ⚙.
+test("hộp chồng phải nằm TRÊN ⚙, và ESC chỉ đóng lớp trên cùng", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  // `addPeerDlg` mở TỪ TRONG màn Đồng bộ và có thể chồng lên ⚙ — cùng bài toán z-index/ESC.
+  const m = /id="addPeerDlg"[^>]*z-index:(\d+)/.exec(html);
+  assert.ok(m, "hộp chồng phải khai z-index tường minh");
+  assert.ok(Number(m[1]) > 100, `z-index ${m[1]} không nằm trên .dlg-back (100) — hộp sẽ mở ra dưới ⚙`);
+  assert.ok(Number(m[1]) < 120, `z-index ${m[1]} đè lên lớp toast (120)`);
+  // ESC: phải CHỌN một lớp rồi đóng đúng lớp đó, không quét cả danh sách.
+  assert.ok(!/open\.forEach\(function\(d\)\{d\.classList\.remove\('on'\);\}\)/.test(shell),
+    "ESC không được đóng SẠCH mọi dialog đang mở");
+  assert.match(shell, /zIndex/, "phải chọn lớp trên cùng theo z-index");
+});
+
+test("đồng bộ là MÀN riêng trên thanh điều hướng — ⚙ không giữ cửa vào trùng", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  // Mục điều hướng là cửa vào DUY NHẤT. Một hàng "Mở màn Đồng bộ" trong ⚙ chỉ là cú bấm thừa,
+  // và là chỗ để hai bề mặt lệch nhau (user 2026-09-16: *"cái này ko xài nữa thì xóa đi chứ"*).
+  assert.match(html, /<a data-s="sync">/, "thanh điều hướng phải có mục Đồng bộ");
+  assert.ok(!html.includes('id="openDataSync"'), "⚙ không được giữ nút mở trùng");
+  assert.ok(!html.includes('id="dataSyncDlg"'), "hộp lớp hai phải đi hẳn — nội dung nay ở màn riêng");
+  // Hai tab cũ trong ⚙ đã đi hẳn — còn sót là hai nơi cùng nói một chuyện, và JS sẽ trỏ vào hư không.
+  for (const dead of ["syncTabDrive", "syncTabP2p", "syncPaneDrive", "syncPaneP2p"]) {
+    assert.ok(!html.includes(`id="${dead}"`), `${dead} còn sót trong markup sau khi dời`);
+  }
+  // Ruột p2p + nhật ký + nơi lưu kho phải NẰM TRONG hộp mới, không rơi lại ⚙.
+  // Cắt theo thẻ <section>, KHÔNG theo `data-s="sync"` trần: chuỗi đó khớp MỤC NAV trước,
+  // và mục nav của harness đứng trước nó ⇒ lát cắt rỗng, cổng báo oan (đã dính 2026-09-16).
+  const i = html.indexOf('<section class="screen" data-s="sync"');
+  const box = html.slice(i, html.indexOf('<section class="screen" data-s="harness"'));
+  // `relocInput` bỏ khỏi danh sách 2026-09-16: chỗ lưu kho nay CỐ ĐỊNH (phải đúng
+  // `<repo>/global-memory/` thì .gitignore và kênh đồng bộ mới phủ đúng), nên không còn ô nhập
+  // đường dẫn nào để canh. `storePath` thay chỗ nó — đường kho vẫn phải HIỆN ở màn này.
+  for (const id of ["storePath", "driveInput", "p2pToggle", "p2pMyId", "p2pAddrs", "p2pLog"]) {
+    assert.ok(box.includes(`id="${id}"`), `${id} phải nằm trong hộp Dữ liệu & Đồng bộ`);
+  }
+  // Và nút dời phải đi hẳn, không chỉ ẩn: còn nút là còn đường bấm nhầm vào một thao tác
+  // mà thiết kế vừa tuyên là không còn.
+  assert.ok(!html.includes('data-act="browse-reloc"'), "nút Dời… phải đi hẳn khỏi markup");
+});
+
+// ── THẺ `<div>` PHẢI CÂN — và mỗi chế độ đồng bộ phải có KHUNG RIÊNG ─────────
+//
+// Hai lỗi thật của cùng một lượt sửa 2026-09-16:
+//  · dời khối p2p sang hộp mới bằng cách CẮT CHUỖI làm sót lại thẻ `</div>` của cái vỏ đã gỡ ⇒
+//    lệch một thẻ. Không lint, không tsc, không test nào kêu — trình duyệt tự "sửa" bằng cách
+//    đóng thẻ ở chỗ nó đoán, và bố cục lặng lẽ sai;
+//  · ba phần xếp liền nhau chỉ bằng một dòng chữ `.section-t` (không vạch, không khung) ⇒ user:
+//    *"để 1 nùi dính chùm vậy sao nhìn ra được là có 2 chế độ? phải phân line chứ"*.
+test("app.html: thẻ <div> phải cân, và hộp Dữ liệu & Đồng bộ phải chia KHUNG cho từng phần", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const open = (html.match(/<div\b/g) || []).length;
+  const close = (html.match(/<\/div>/g) || []).length;
+  assert.equal(open, close, `lệch thẻ div: ${open} mở vs ${close} đóng`);
+  const box = html.slice(html.indexOf('<section class="screen" data-s="sync"'), html.indexOf('<section class="screen" data-s="harness"'));
+  // ĐÚNG HAI panel = đúng HAI chức năng (user chốt 2026-09-16: "có 2 chức năng, 1 là drive, lưu lên
+  // drive, 2 là share qua máy khác"). Nơi lưu kho trên máy KHÔNG phải chế độ thứ ba — nó là cái mà
+  // cả hai kênh cùng dựa vào, nên nó là dòng đầu hộp, không phải một panel ngang hàng.
+  // ĐÚNG HAI KÊNH, và mỗi kênh là một TAB (user chốt 2026-09-16: *"phân ra làm 2 tab, mỗi tab là
+  // 1 kênh, vẫn bật tắt được"*). Đếm `.dsec` là sai phép vì cụm máy cũng đóng khung — neo vào ID
+  // của hai panel kênh mới đúng thứ cần canh.
+  // Dùng ĐÚNG component tab của app (`.tabs > button[data-sy]` + `.sub[data-sy]`), không tự chế
+  // chip riêng: user chốt 2026-09-16 *"tab ko đúng mẫu, mấy trang kia tab trên đầu mà"*. Tự chế còn
+  // kéo theo mất luôn phần nhớ tab đang mở mà `subSet`/`PERSIST` vốn lo sẵn.
+  assert.match(box, /<div class="tabs">[\s\S]{0,600}data-sy="drive"[\s\S]{0,600}data-sy="p2p"[\s\S]{0,600}data-sy="backup"/, "ba tab chuẩn");
+  assert.equal((box.match(/class="sub[^"]*" data-sy=/g) || []).length, 3, "ba tab: Drive · máy-tới-máy · Sao lưu");
+  // Tab phải là thứ ĐẦU TIÊN trong màn — đúng chỗ mọi màn khác đặt nó.
+  assert.match(box, /data-s="sync">[\s\S]{0,40}<div class="tabs">/, "tabs phải nằm trên đầu màn");
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  assert.match(shell, /subtabs\('data-sy'\)/, "phải đăng ký data-sy vào cơ chế sub-tab dùng chung");
+  assert.match(shell, /sync:'data-sy'/, "thiếu SUBATTR thì vào màn không nạp đúng tab đang mở");
+  // Cụm máy ĐÓNG KHUNG như một nhóm. Hai panel kênh thì KHÔNG — tab đã là ranh giới, thêm khung
+  // nữa là vẽ hai lần một đường (user chốt 2026-09-16: *"giờ phân tab rồi thì khỏi khung panel chung"*).
+  assert.equal((box.match(/class="dsec"/g) || []).length, 1, "chỉ CỤM MÁY được đóng khung");
+  assert.match(box, /class="dsec"[^>]*>[\s\S]{0,400}p2p\.clusterH/, "khung đó phải là khung cụm máy");
+  // Nội dung màn phải CO ĐƯỢC: chuỗi ID 52 ký tự và các ô nhập từng đẩy cả panel tràn ngang.
+  assert.match(box, /class="card syncwrap"/, "màn Đồng bộ phải mang lớp cho phép co");
+  const css2 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(css2, /\.syncwrap[^{]*\{[^}]*min-width:0/, "thiếu min-width:0 thì flex/grid item không co, panel tràn ra ngoài");
+  // Và chiều DỌC: `.sub` là cột flex, con của nó co được ⇒ nội dung dài bị bóp cho chữ chồng nhau.
+  assert.match(css2, /\.sub\[data-sy\]>\*\{[^}]*flex:0 0 auto/, "khối trong tab phải KHÔNG co, pane cuộn thay vì bóp");
+  // Ranh giới phải VẼ RA THẬT: viền suông chưa đủ nổi, phải có cả thanh đầu panel có vạch đáy.
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(css, /\.dsec\{[^}]*border:/, ".dsec phải có viền");
+  assert.match(css, /\.dsec-h\{[^}]*border-bottom:/, ".dsec-h phải có vạch đáy — đây là 'line nổi lên' user đòi");
+  // Mỗi kênh phải nêu CHỖ LƯU của nó (user: "mỗi thằng đều có setup chỗ lưu").
+  assert.ok(box.includes('id="driveInput"'), "kênh Drive phải có ô thư mục của nó");
+  assert.ok(box.includes('id="p2pDir"'), "kênh máy-tới-máy phải nêu thư mục của nó");
+  assert.ok(box.includes('id="p2pCluster"'), "phải có CỤM MÁY dạng thẻ");
+});
+
+// ── CHỮ TRÊN UI LÀ VĂN KỸ THUẬT, KHÔNG PHẢI VĂN NÓI ────────────────────────
+//
+// User chốt 2026-09-16: *"đừng có chú thích thừa thãi nhiều quá, và ko có được ghi văn nói vào,
+// t đã nói là ui phải ghi văn kỹ thuật chuẩn thiết kế ui mà"*. Ba thứ đã lọt ra giao diện và phải
+// chặn bằng máy, vì không cổng nào khác nhìn tới chữ:
+//  · **ngày đo / ghi chú nội bộ** — một nhãn từng ghi *"đo 15/09 trên hai mạng thật"*: đó là ghi
+//    chú cho người phát triển, người dùng không có việc gì với nó;
+//  · **viết hoa để nhấn giọng** (`KHÔNG` · `CÙNG MẠNG` · `TUYỆT ĐỐI`) — giọng nói, không phải
+//    nhãn giao diện;
+//  · **câu dài kể lể** — nhãn mô tả là một câu ngắn nêu hành vi, không phải một đoạn giải thích.
+test("nhãn UI: không ngày tháng, không viết-hoa-nhấn-giọng, không câu lê thê", () => {
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  // Chỉ soi nhóm nhãn của màn Đồng bộ (`p2p.*` · `ds.*` · `sync.*`) — phần còn lại của app là
+  // đợt dọn khác, và một cổng ôm quá rộng sẽ đỏ vì thứ không thuộc lượt này.
+  const bad = [];
+  for (const m of chrome.matchAll(new RegExp("'((?:p2p|ds|sync)\\.[A-Za-z0-9]+)':'([^']*)'", "g"))) {
+    const [, key, raw] = m;
+    const text = raw.replace(/\u2019/g, "'");
+    if (/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(text)) bad.push(`${key}: có ngày tháng`);
+    if (/(đo|measured)\s+\d/i.test(text)) bad.push(`${key}: có ghi chú đo đạc`);
+    // Từ viết hoa toàn bộ ≥3 ký tự, bỏ qua tên riêng/thuật ngữ hợp lệ.
+    const SHOUT_OK = new Set(["ID", "LAN", "NAT", "DB", "RAG", "FTS5", "WAL", "REAL", "UDP", "TCP"]);
+    for (const w of text.match(/\b[A-ZÀ-Ỹ]{3,}\b/g) || []) if (!SHOUT_OK.has(w)) bad.push(`${key}: viết hoa nhấn giọng "${w}"`);
+    if (text.length > 120) bad.push(`${key}: dài ${text.length} ký tự (>120)`);
+  }
+  assert.deepEqual(bad, [], `nhãn UI sai giọng:${String.fromCharCode(10)}  ${bad.join(String.fromCharCode(10) + "  ")}`);
+});
+
+// ── DỜI MỘT KHỐI LÀ PHẢI DỌN CẢ HAI ĐẦU ────────────────────────────────────
+//
+// User chốt 2026-09-16: *"dời thì phải phân lại cho đúng 2 bên chứ"*. Dời card Drive + Sao lưu ra
+// khỏi lưới 3 cột của Global Memory mà không sửa lưới thì **bên cho** còn một cột rỗng và một
+// thanh kéo mồ côi; còn **bên nhận** mất công tắc bật/tắt vốn nằm ở khối rút gọn bị thay thế.
+test("dời card sang tab: lưới GM phải khớp số cột, và kênh Drive phải còn công tắc", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const gm = html.slice(html.indexOf('data-gm="sync"'), html.indexOf('<section class="screen" data-s="sync"'));
+  // Số RÃNH của grid phải khớp số con: mỗi thanh kéo là một rãnh `8px`.
+  const tpl = /grid-template-columns:([^"]+)"/.exec(gm);
+  assert.ok(tpl, "lưới GM phải khai template");
+  // N cột ⇒ N-1 thanh kéo ⇒ 2N-1 rãnh. Neo vào quan hệ này chứ không đếm `.card`: trong khối còn
+  // có card LỒNG bên trong, đếm thô sẽ báo oan (đã dính khi viết cổng này).
+  const tracks = tpl[1].trim().split(/\s+/).length;
+  const seams = (gm.match(/class="seam"/g) || []).length;
+  assert.equal(tracks, 2 * seams + 1, `lưới khai ${tracks} rãnh cho ${seams} thanh kéo — phải là ${2 * seams + 1}`);
+  // Bên nhận: kênh Drive phải bật/tắt được, không chỉ có ô thư mục.
+  const sync = html.slice(html.indexOf('<section class="screen" data-s="sync"'));
+  assert.ok(sync.includes('id="driveToggle"'), "kênh Drive mất công tắc sau khi dời");
+});
+
+// ── CARD DRIVE TRÊN MÀN RỘNG: BẢNG ĐO TRÁI · NÚT PHẢI ─────────────────────
+//
+// User chốt 2026-09-16: *"tách cho t hẳn 2 phần, phần bên trái là dashboard... còn bên phải là các
+// nút chức năng, tách các nút ra 2-3 hàng, mỗi hàng là 1 nhóm nút chức năng riêng"*.
+//
+// Card này sinh ra cho một CỘT HẸP của lưới Global Memory. Bê nguyên sang tab chiếm trọn bề ngang
+// thì `flex:1` trên nút kéo nút dài hết trang, và mắt phải nhảy qua lại giữa biểu đồ và con số của
+// chính nó. Đây là lần thứ tư trong cùng một phiên một bề mặt dời sang khung rộng hơn mà không soát
+// lại thứ từng dựa vào bề rộng cũ — nên nó thành cổng.
+test("tab Drive: HAI panel riêng trong một lưới kéo được, bảng đo trái · thao tác phải", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const pane = html.slice(html.indexOf('<div class="sub on" data-sy="drive">'), html.indexOf('<div class="sub" data-sy="p2p">'));
+  // HAI `.card` RIÊNG trong lưới — không phải một card bị chia đôi (user chốt 2026-09-16:
+  // *"người ta là 2 panel tách biệt bạn đi nhét vào 1 panel chia làm 2"*). Đây là khuôn mà mọi
+  // màn khác dùng: lưới chứa các card, seam nằm GIỮA hai card.
+  assert.match(pane, /class="grid[^"]*rzgrid[^"]*drv2col"/, "phải là lưới kéo được VÀ có class `grid` (display:grid đến từ .grid)");
+  assert.equal((pane.match(/<div class="card">/g) || []).length, 2, "phải có ĐÚNG hai panel riêng");
+  assert.match(pane, /<div class="seam" data-seam="drv1"><\/div>/, "thiếu thanh kéo giữa hai panel");
+  assert.match(pane, /grid-template-columns:var\(--drv1/, "bề rộng cột trái phải là biến THẬT, kéo là đổi");
+  const l = pane.indexOf('<div class="card">');
+  const seam = pane.indexOf('data-seam="drv1"');
+  const left = pane.slice(l, seam), right = pane.slice(seam);
+  for (const id of ['id="driveArc"', 'id="drvMix"', 'class="drv-facts"']) {
+    assert.ok(left.includes(id), `${id} phải nằm ở panel TRÁI (bảng đo)`);
+  }
+  for (const id of ['data-act="drivelink"', 'data-act="drivesync"', 'id="lvLean"', 'id="lvAtt"']) {
+    assert.ok(right.includes(id), `${id} phải nằm ở panel PHẢI (thao tác)`);
+  }
+  assert.ok(pane.includes("donut-lg"), "biểu đồ tròn phải dùng cỡ lớn của màn rộng");
+  assert.ok((right.match(/class="section-t"/g) || []).length >= 2, "nút phải chia nhóm, mỗi nhóm một tiêu đề");
+  // …và nhóm phải NHÌN RA: có vạch ngăn + khoảng thở (`app-design` §F9). Lỗi lặp lại nhiều lần —
+  // panel cũ làm đúng, panel mới dựng lại quên, nên khoá bằng máy.
+  const css3 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // Luật áp cho MỌI khung chứa mục (`.card-b` · `.sub` · `.dlg-b`), không riêng panel Drive: quét
+  // 2026-09-16 thấy 4 khung khác cũng có ≥2 mục mà không vạch nào. Bó hẹp luật vào một chỗ là cách
+  // lỗi này cứ quay lại ở panel kế tiếp.
+  assert.match(css3, /\.card-b>\.section-t,[^{]*\{[^}]*border-top:1px/, "mục phải có vạch ngăn (mọi khung)");
+  assert.match(css3, /\.card-b>\.section-t:first-child,[^{]*\{[^}]*border-top:0/, "mục ĐẦU không kẻ vạch — sát tiêu đề thành hai vạch dính nhau");
+  // `flex:1` trên nút = nút nuốt hết chỗ trống của hàng. Chỉ ô nhập được phép giãn.
+  assert.ok(!/<button[^>]*style="[^"]*flex:1/.test(pane), "nút không được flex:1 trên màn rộng");
+});
+
+// ── MỖI CÔNG TẮC VỀ ĐÚNG NHÀ CỦA NÓ ────────────────────────────────────────
+//
+// User chốt 2026-09-16: *"tính năng chọn tự sync là của drive, còn mở cùng pc có lẽ ở setting mới
+// đúng"*. Khối "Tự động" của Global Memory là nơi khai **daemon làm gì với việc NẠP** — một công
+// tắc đồng bộ và một công tắc khởi động cùng máy nằm trong đó là hai việc khác hẳn bị xếp nhờ.
+test("tự-sync thuộc màn Đồng bộ, mở-cùng-PC thuộc ⚙ — không nằm nhờ ở Global Memory", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const syncAt = html.indexOf('<section class="screen" data-s="sync"');
+  const gmAt = html.indexOf('data-gm="sync"');
+  const setAt = html.indexOf('id="settingsDlg"');
+  const autosync = html.indexOf('data-i18n="mem.autosync"');
+  const autostart = html.indexOf('data-i18n="mem.autostart"');
+  assert.ok(autosync > syncAt && autosync < setAt, "công tắc tự-sync phải nằm trong màn Đồng bộ");
+  assert.ok(autostart > setAt, "công tắc mở-cùng-PC phải nằm trong ⚙ Cài đặt");
+  assert.ok(autosync > gmAt ? true : false);
+  // Và lời mô tả phải theo kịp hành vi: từ 2026-09-16 lượt sync ghi vào MỌI kênh đang bật, nên câu
+  // cũ "chỉ đi qua Drive, không thêm kênh nào" là một lời khai SAI trên giao diện.
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.ok(!/mem\.autosyncD':'[^']*không thêm kênh nào/.test(chrome), "mô tả tự-sync còn nói chỉ đi qua Drive");
+});
+
+// ── SỔ TIẾN TRÌNH PHẢI KHỚP MÃ (`app-design` §B1) ──────────────────────────
+//
+// User chốt 2026-09-16: *"mọi tiến trình của chính app phải dc gộp lại làm 1 và sổ ra ko dc sót
+// cái nào ở ngoài nhóm"*. Sổ viết tay trôi khỏi thực tế ngay lượt ai đó thêm một `spawn` mà quên
+// ghi — nên sổ là DỮ LIỆU và cổng này là dây nối giữa sổ với mã.
+test("sổ tiến trình phủ đúng số nơi spawn trong backend/src", async () => {
+  const { APP_PROCESSES, spawnSites } = await import("../../dist/platform/processes.js");
+  assert.ok(APP_PROCESSES.length >= 5, "sổ quá ngắn — app này sinh nhiều hơn thế");
+  const dir = new URL("../src/", import.meta.url);
+  let real = 0;
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const u = new URL(e.name + (e.isDirectory() ? "/" : ""), d);
+      if (e.isDirectory()) walk(u);
+      else if (e.name.endsWith(".ts") && e.name !== "processes.ts") {
+        real += (readFileSync(u, "utf8").match(/[^.\w]spawn\(/g) || []).length;
+      }
+    }
+  };
+  walk(dir);
+  assert.equal(real, spawnSites,
+    `mã có ${real} nơi spawn, sổ khai ${spawnSites} — thêm tiến trình thì phải khai vào platform/processes.ts`);
+  // Mỗi dòng phải nói ĐỦ: hiện ra tên gì · ai phóng · sống bao lâu · có ẩn console không.
+  for (const p of APP_PROCESSES) {
+    for (const k of ["shownAs", "spawnedBy", "lifetime", "note"]) {
+      assert.ok(p[k] && String(p[k]).length > 2, `dòng sổ thiếu trường ${k}: ${JSON.stringify(p)}`);
+    }
+    assert.equal(typeof p.hidden, "boolean", "phải khai rõ có ẩn console không (§B2)");
+  }
+});
+
+// ── BẤM THẺ DỰ ÁN = CHỌN, KHÔNG MỞ ─────────────────────────────────────────
+//
+// User chốt 2026-09-16 sau ba lượt báo *"bấm vào project toàn nhảy qua harness"*. Đo ra app KHÔNG
+// hề đổi màn — không dòng nào gọi `go('harness')`; nó mở khung chi tiết NẰM TRONG màn Projects, và
+// khung đó trông giống màn Harness nên đọc thành "bị nhảy". Bài học: khi người dùng nói "nhảy sai",
+// thứ phải sửa có thể là HÀNH VI chứ không phải cái tên — tôi đã sửa chữ ba lượt mà không đụng gốc.
+test("thẻ dự án: bấm là CHỌN; mở chi tiết phải qua nút riêng", () => {
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // Bấm thẻ KHÔNG được gọi showProjDetail nữa.
+  const i = shell.indexOf("var pc=e.target.closest('.proj-card')");
+  const block = shell.slice(i, i + 700);
+  assert.ok(!/showProjDetail\([^)]*pc\./.test(block), "bấm thẻ không được mở chi tiết");
+  assert.match(block, /classList\.add\('sel'\)/, "bấm thẻ phải ĐÁNH DẤU đang chọn");
+  assert.match(shell, /data-open-detail/, "phải có đường mở chi tiết tường minh");
+  assert.match(src, /data-open-detail/, "thẻ phải mang nút mở");
+  assert.match(css, /\.proj-card\.sel\{/, "trạng thái đang chọn phải NHÌN RA được");
 });

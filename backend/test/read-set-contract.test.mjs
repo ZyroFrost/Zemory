@@ -25,10 +25,19 @@ const AGENTS = ["AGENTS.md", "docs_template/05_app/AGENTS.md", "docs_template/03
 // Rules that fire while WRITING, not while creating folders. conform is blind to all of
 // them (its checks are off-standard-dir · empty-slot-dir · harness-missing · hp-uncited ·
 // skill-roster-drift · dangling-ref), so they must sit in the always-loaded 02_RULES.
+// 2026-09-16: bốn luật THIẾT KẾ (panel resize · dialog · version-up · deploy hai chiều) đã rời
+// `02_RULES` sang skill `app-design` — user chốt *"luật là 1 bộ chung ship đi repo có thể có người
+// khác xài, nên ko thể áp dụng chung dc thiết kế vào luật"*. Cổng KHÔNG bỏ canh, nó **đổi chỗ
+// canh**: `02_RULES` phải còn dòng TRỎ sang skill (`MOVED_POINTER`), và skill phải thật sự CHỨA
+// các luật đó (`MOVED_TO_SKILL`). Bỏ hẳn phép kiểm là để chúng rơi vào khoảng không.
 const WRITE_TIME = {
-  "05_app": ["SQL — 1 CÁCH", "Panel resize", "Dialog / modal", "Backup deploy", "2 KIỂU version-up", "Sync bundle qua git"],
+  "05_app": ["SQL — 1 CÁCH", "Secret", "Sync bundle qua git", "Thiết kế UI (LUẬT)", "Separator của INDEX", "EOL của file"],
   "03_nonapp": ["Secret/connection", "SQL/DAX/M", "Nhị phân nặng", "Data thật vs mẫu"],
 };
+/** Dòng trong `02_RULES` phải chỉ đúng nhà mới của các luật thiết kế. */
+const MOVED_POINTER = ".claude/skills/app-design/SKILL.md";
+/** Và nhà mới phải có đủ chúng — mỗi mục là một cụm chữ đặc trưng của luật đó. */
+const MOVED_TO_SKILL = ["Panel kề nhau PHẢI kéo được", "Dialog / modal", "version-up", "deploy"];
 
 test("AGENTS.md does not list 03_STRUCTURE in the READ-EVERYTHING set", () => {
   for (const f of AGENTS) {
@@ -123,6 +132,25 @@ test("the zemory repo itself honours that same contract", () => {
     assert.ok(!structure.split(/\r?\n/).some((l) => l.startsWith(n)), `03_STRUCTURE còn giữ "${n}"`);
   }
   assert.match(rules, /## Luật khi VIẾT/u, "02_RULES phải có mục §Luật khi VIẾT");
+});
+
+// Luật dời chỗ thì phép canh phải dời theo. Không có ca này, bốn luật thiết kế có thể biến mất
+// khỏi CẢ HAI nơi mà không cổng nào kêu — đúng kiểu hỏng mà `02_RULES` gọi là "vi phạm âm thầm".
+test("the design rules that left 02_RULES really live in the app-design skill", () => {
+  for (const base of ["", "docs_template/05_app/", "docs_template/04_adapt/"]) {
+    const rulesPath = base ? `${base}agent/02_RULES.md` : "docs/agent/02_RULES.md";
+    const skillPath = `${base}.claude/skills/app-design/SKILL.md`;
+    if (!existsSync(join(ROOT, skillPath))) continue;
+    const rules = read(rulesPath);
+    const skill = read(skillPath);
+    assert.ok(
+      rules.includes(MOVED_POINTER),
+      `${rulesPath} phải TRỎ sang ${MOVED_POINTER} — luật dời đi mà không để lại đường thì người đọc mất dấu`,
+    );
+    for (const n of MOVED_TO_SKILL) {
+      assert.ok(skill.includes(n), `${skillPath} thiếu luật đã dời sang: "${n}"`);
+    }
+  }
 });
 
 test("03_STRUCTURE leaves a pointer to where the rules moved", () => {

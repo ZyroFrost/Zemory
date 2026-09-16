@@ -473,6 +473,21 @@ export interface PathsProjectState {
   lastDead: string[];
   /** key → ISO time first seen dead after the baseline */
   firstSeen: Record<string, string>;
+  /**
+   * key → NƠI gặp nó trong lượt quét gần nhất (`plan/21 §5.5b`, user chốt 2026-09-16).
+   *
+   * Đảo vế cũ *"state không giữ `file:line`"* — vế đó đúng khi người đọc duy nhất là chip/badge
+   * (chỉ cần ĐẾM). Nay lớp trạng thái node của graph (`plan/13 §4c`) cần biết đường chết nằm ở
+   * FILE NÀO để tô. Chọn lưu thay vì quét sống: `/code-graph` chạy mỗi lượt mở tab và mỗi lượt
+   * poll, quét sống ở đó vừa tốn ~0,5 s/repo vừa đẻ NGUỒN THỨ HAI cho cùng một câu hỏi — chip
+   * đọc state, graph đọc lượt quét riêng, và hai bên lệch nhau đúng lúc người dùng đối chiếu.
+   *
+   * CHỈ ghi cho MỚI CHẾT: di sản không đổi màu ở đâu (§2.3) nên lưu vị trí của nó là phình state
+   * mà không ai đọc (đo 2026-09-16: 105 dead / 24 mới chết ở `_DataWarehouse_Central`).
+   * Một khoá gặp ở nhiều file ⇒ giữ lần gặp ĐẦU trong lượt quét (tất định theo thứ tự duyệt).
+   * Tuỳ chọn: state đời cũ không có trường này ⇒ mọi thứ chạy y như trước (điều 9).
+   */
+  where?: Record<string, { file: string; line: number }>;
 }
 export interface PathsState {
   version: 1;
@@ -529,6 +544,33 @@ export function deadPathsSummary(state: PathsState, projects: Array<{ root: stri
   return out.sort((a, b) => b.newlyDead - a.newlyDead || a.name.localeCompare(b.name));
 }
 
+export interface DeadPathAt {
+  /** đường dẫn repo-relative của FILE chứa chuỗi đã chết */
+  file: string;
+  line: number;
+  /** chính chuỗi đó (khoá hạ chữ thường — đủ để người đọc nhận ra, dòng chính xác vẫn ở CLI) */
+  text: string;
+}
+/**
+ * "File nào của repo này đang mang đường dẫn MỚI CHẾT" — đọc THẲNG state của sweep, **0 quét**.
+ *
+ * Người tiêu thụ: lớp trạng thái node của graph (`plan/13 §4c`). Dùng CÙNG tập `newlyDead` mà chip
+ * rail và badge thẻ Dự án đang dùng, nên ba bề mặt không bao giờ nói ba số khác nhau.
+ * State đời cũ (thiếu `where`) ⇒ trả rỗng: graph không tô gì, không ném (điều 9).
+ */
+export function deadPathsByFile(state: PathsState, root: string): Map<string, DeadPathAt[]> {
+  const out = new Map<string, DeadPathAt[]>();
+  const e = state.projects[canon(root)];
+  if (!e || !e.where) return out;
+  for (const [key, at] of Object.entries(e.where)) {
+    if (!at || !at.file) continue;
+    const list = out.get(at.file) ?? [];
+    list.push({ file: at.file, line: at.line ?? 0, text: key });
+    out.set(at.file, list);
+  }
+  return out;
+}
+
 /** Run the check and diff it against the stored baseline for this project. `stateFile` is injectable so
  *  tests never touch the real data dir. `resetBaseline` re-takes the baseline from today's dead set. */
 export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBaseline?: boolean } = {}): MonitoredReport {
@@ -551,11 +593,15 @@ export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBase
   const base = new Set(entry.baseline);
   const newlyDead = report.dead.filter((h) => !base.has(hitKey(h)));
   const firstSeen: Record<string, string> = {};
+  const where: Record<string, { file: string; line: number }> = {};
   for (const h of newlyDead) {
     const k = hitKey(h);
     firstSeen[k] = entry.firstSeen[k] ?? now; // keep the first date; drop keys that resolved
+    // Lần gặp ĐẦU trong lượt quét thắng (`report.dead` giữ thứ tự duyệt file ⇒ tất định).
+    if (!where[k]) where[k] = { file: h.file, line: h.line };
   }
   entry.firstSeen = firstSeen;
+  entry.where = where;
   entry.lastAt = now;
   entry.lastDead = [...deadKeys];
   state.projects[key] = entry;

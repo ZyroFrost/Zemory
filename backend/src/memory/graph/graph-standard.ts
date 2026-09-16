@@ -19,10 +19,11 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { harnessPathsAt } from "../../core/config.js";
-import { SLOT_ROLES } from "../../docs/structure-tree.js";
+import { slotDictFor } from "./graph.js";
 
-/** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG. */
-const slotNames = new Set(Object.keys(SLOT_ROLES));
+/** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG.
+ *  Tính THEO REPO (`slotDictFor`), không phải bảng cứng: repo non-app khai slot riêng ở chính §3
+ *  của nó, và điều 13 đòi graph nói cùng chuyện với cây thư mục (xem `plan/13 §4b`). */
 
 // `slot` = slot chuẩn CÓ file thật trong repo · `slot_unused` = chuẩn có khai nhưng project
 // này chưa dùng. Tách 2 loại vì chuẩn nói rõ "INDEX = TỪ ĐIỂN TÊN, KHÔNG phải checklist phải
@@ -118,6 +119,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   const nodes: StdNode[] = [];
   const edges: StdEdge[] = [];
   const has = new Set<string>();
+  const slotDict = slotDictFor(root); // bảng chuẩn ∪ slot repo tự khai ở §3 (plan/13 §4b)
   const present = new Set(files.map((f) => f.slot).filter((s): s is string => !!s));
   const slotType = (s: string): StdNodeType => (present.has(s) ? "slot" : "slot_unused");
   const add = (n: StdNode): void => {
@@ -242,7 +244,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
     if (!last) return null;
     // CHO PHÉP CHỮ SỐ: `i18n` là slot có thật trong từ điển, mà `[a-z_]+` lại loại nó ra ⇒
     // một slot thật bị xếp nhầm thành tầng (bắt được ngay lần đo đầu sau khi sửa).
-    if (/^[a-z0-9_]+$/.test(last) && slotNames.has(last)) return { id: `slot:${last}`, label: last + "/", slot: last };
+    if (/^[a-z0-9_]+$/.test(last) && slotDict.has(last)) return { id: `slot:${last}`, label: last + "/", slot: last };
     // Không phải slot ⇒ là tầng/thư mục đã khai. Giữ NGUYÊN đường dẫn làm định danh để không
     // mất thông tin (`data/logs/` khác `data/secrets/`), bỏ phần placeholder `<...>`.
     const clean = parts.filter((p) => !p.includes("<")).join("/");
@@ -250,7 +252,10 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
     return { id: `layer:${clean}`, label: clean + "/", slot: null };
   };
   if (struct) {
-    const body = sectionBody(struct, /^##\s*4\.\s*Routing/m);
+    // Bám TÊN, không bám SỐ: Routing là §4 ở chuẩn APP nhưng §3 ở chuẩn NON-APP. Ghim số làm cả
+    // lớp concern/routing biến mất với mọi repo non-app mà không một lỗi nào — đo 2026-09-16 trên
+    // `Dept_IT`: concerns = 0 (Zemory: 67). Cùng lớp lỗi với `declaredSlots` (structure-tree.ts).
+    const body = sectionBody(struct, /^##\s*\d+\.\s*Routing/mu);
     if (body) {
       let i = 0;
       for (const line of body.split("\n")) {

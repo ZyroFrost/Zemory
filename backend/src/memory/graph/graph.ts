@@ -11,7 +11,49 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { SLOT_ROLES } from "../../docs/structure-tree.js";
+import { declaredSlots, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "../../docs/structure-tree.js";
+
+/**
+ * Từ điển slot CỦA MỘT REPO = bảng chuẩn APP (`SLOT_ROLES`) ∪ slot repo đó tự khai ở
+ * `03_STRUCTURE §3` (`declaredSlots`). Đây đúng nguồn mà CÂY THƯ MỤC đang dùng — điều 13 đòi ba
+ * lăng kính (03 · index · graph) nói cùng một chuyện, mà tới 2026-09-16 graph vẫn chỉ đọc bảng
+ * cứng: repo NON-APP khai `tasks/` · `sources/` · `measures/` ở §3 thì cây nhận ra còn graph dán
+ * `(ngoài chuẩn)` (đo trên `Dept_IT`: legend `(ngoài chuẩn) 8`). Repo APP hai tập trùng nhau nên
+ * lệch này vô hình từ đầu. Fail-open: đọc §3 hỏng ⇒ `declaredSlots` trả tập rỗng ⇒ về hành vi cũ.
+ */
+export function slotDictFor(root: string): Set<string> {
+  const out = new Set(Object.keys(SLOT_ROLES));
+  for (const s of declaredSlots(root)) out.add(s);
+  return out;
+}
+
+/**
+ * Slot của MỘT file: thư mục chứa nó nếu tên đó là slot, nếu không thì leo lên **cha tự do**.
+ *
+ * Chuẩn NON-APP cho phép đặt tên tự do BÊN TRONG vài slot (`NONAPP_FREEFORM_PARENTS` — `tasks/` là
+ * "1 case = 1 folder", bên trong muốn chia sao cũng được). Vì vậy `tasks/IT_Daily_ProductCheck/
+ * pipeline/01_check.py` có thư mục cha là `pipeline` — KHÔNG phải slot — nhưng nó vẫn thuộc slot
+ * `tasks`. Cây thư mục đã xử ca này từ lâu (`extraDirOk` ① "declared freeform parent"); graph thì
+ * chưa, nên 8/10 file của `Dept_IT` bị gọi là "(ngoài chuẩn)" (đo 2026-09-16) dù chúng nằm đúng chỗ.
+ *
+ * Chỉ leo khi đoạn ĐẦU là một cha tự do và repo có khai nó — KHÔNG leo bừa, vì chuẩn APP nói ngược
+ * lại ("trong một domain chỉ dùng slot của từ điển") và leo tự do ở đó sẽ mở một lỗ thật.
+ */
+export function slotOfDir(dir: string, dict: Set<string>, declared?: Set<string>): string | undefined {
+  if (!dir) return undefined;
+  const segs = dir.split("/").filter(Boolean);
+  const last = segs[segs.length - 1];
+  if (last && dict.has(last)) return last;
+  const first = segs[0];
+  // 🔴 Điều kiện leo là `declared` (repo TỰ KHAI ở §3), KHÔNG phải `dict` (= chuẩn ∪ khai). Bản đầu
+  // dùng `dict` nên `pipelines/` — một slot của bảng chuẩn APP — cũng được miễn trên repo app, tức
+  // miễn trừ của non-app LAN sang app. Cổng `conform` ca *"THE REVERSE of 6"* bắt đúng điều đó, và
+  // tôi suýt đổ oan cho người khác vì lượt kiểm chứng chỉ hoàn nguyên `declaredSlots` chứ không
+  // hoàn nguyên hàm này. Chuẩn APP nói ngược lại ("trong một domain chỉ dùng slot của từ điển"),
+  // nên leo tự do ở đó là mở một lỗ thật — cùng lý lẽ `extraDirOk` ① vốn cũng xét `declared`.
+  if (first && segs.length > 1 && declared?.has(first) && NONAPP_FREEFORM_PARENTS.includes(first)) return first;
+  return undefined;
+}
 
 /**
  * Định danh ỔN ĐỊNH cho một cạnh — để trích dẫn được.
@@ -99,6 +141,12 @@ export function isSourceLeaf(name: string): boolean {
 const IGNORE = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".venv", "__pycache__",
   "data", "generated", ".turbo", ".next", ".cache", "models", "attic", "external",
+  // `global-memory/` — GỐC KHO đi xuyên máy (`03_STRUCTURE` dòng 164, dựng 2026-09-14 khi kho tách
+  // khỏi `data/`). Trong đó `files/` là TỆP NGƯỜI DÙNG gửi cho agent, không phải mã của repo.
+  // Thiếu dòng này, graph đếm chúng thành "file nguồn không ai import": đo 2026-09-16 có **162**
+  // tệp mã nằm trong kho (trên 5.445 tệp), đủ để đẩy `isolated_pct` lên 47,9% và làm cổng ĐỎ vì
+  // một thứ không thuộc mã nguồn. Cùng họ với lượt dời kho: chuẩn đổi chỗ mà lớp dẫn xuất không theo.
+  "global-memory",
 ]);
 
 export interface GraphNode {
@@ -273,6 +321,9 @@ export function buildCodeGraph(root: string): CodeGraph {
   const absFiles: string[] = [];
   collectFiles(root, root, absFiles, 0);
   const ids = absFiles.map((abs) => relative(root, abs).replace(/\\/g, "/"));
+  // Đọc §3 của repo MỘT lần, ngoài vòng lặp file (`declaredSlots` mở file mỗi lần gọi).
+  const slotDict = slotDictFor(root);
+  const declaredHere = declaredSlots(root); // chỉ slot repo TỰ KHAI — điều kiện leo cha tự do
   const idSet = new Set(ids);
   const absById = new Map<string, string>();
   ids.forEach((id, i) => absById.set(id, absFiles[i]));
@@ -307,7 +358,7 @@ export function buildCodeGraph(root: string): CodeGraph {
     const { imports, symbols } = extraLang ? { imports: [] as RawImport[], symbols: [] as string[] } : parseFile(text, isPy);
     const dir = dirname(id) === "." ? "" : dirname(id);
     const folderName = basename(dir || id);
-    const slot = SLOT_ROLES[folderName] ? folderName : undefined;
+    const slot = slotOfDir(dir || folderName, slotDict, declaredHere);
     nodes.push({
       id,
       label: basename(id),

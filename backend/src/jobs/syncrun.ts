@@ -5,38 +5,28 @@
 // printed as one JSON line on stdout; the daemon parses it for /sync-status.
 
 import { mergeChannelDir, resolveShareKey, syncDrive } from "../memory/share.js";
-import { getDriveDir } from "../config/settings.js";
-import { channelDir, syncWriteDir } from "../memory/channel/index.js";
+
+import { channelDir, syncTargets } from "../memory/channel/index.js";
 
 (async () => {
   try {
-    // ĐÍCH GHI theo `syncTransport` — ĐÚNG MỘT, không bao giờ hai (HP điều 11: hai kẻ ghi đã
-    // hỏng kho hai lần). `drive` là mặc định và là đường đã chạy lâu nay; chỉ khi người dùng cố
-    // ý chuyển sang `p2p` thì lượt sync mới ghi khúc vào thư mục kênh.
-    const outDir = syncWriteDir();
-    const driveDir = outDir ?? getDriveDir();
-    if (!driveDir) {
-      console.log(JSON.stringify({ ok: false, error: "no Drive folder linked" }));
+    // MỌI kênh đang bật đều được ghi — không còn chọn một (user chốt 2026-09-16).
+    // An toàn được là nhờ `wmKeyFor`: mỗi kênh giữ MỐC DELTA RIÊNG. Dùng chung một mốc như bản
+    // cũ thì kênh nào đẩy trước sẽ nuốt luôn phần của kênh kia, im lặng và vĩnh viễn.
+    const targets = syncTargets();
+    if (!targets.length) {
+      console.log(JSON.stringify({ ok: false, error: "no sync channel enabled" }));
       process.exitCode = 1;
       return;
     }
-    // ĐỌC thì được CẢ HAI (plan/24 §5): kênh p2p có thể đã nhận khối từ máy kia trong lúc đích
-    // ghi vẫn là Drive. Merge nó vào kho TRƯỚC lượt chính, nên khối nhận được không nằm chết
-    // trên đĩa tới khi có người đổi công tắc. Fail-open: hỏng thì lượt Drive vẫn chạy.
-    if (!outDir) {
-      try {
-        await mergeChannelDir(channelDir(), { keyFile: resolveShareKey(process.cwd()) ?? undefined });
-      } catch (e) {
-        console.error(`[phase] channel-merge lỗi: ${String(e).slice(0, 120)}`);
-      }
+    // MERGE thư mục kênh TRƯỚC mọi lượt đẩy (`plan/08 §8c` ⑤): khối máy kia vừa gửi phải vào kho
+    // trước khi ta xuất delta, nếu không lượt đẩy này mang một bản THIẾU phần của họ.
+    // Fail-open: merge hỏng thì lượt chính vẫn chạy.
+    try {
+      await mergeChannelDir(channelDir(), { keyFile: resolveShareKey(process.cwd()) ?? undefined });
+    } catch (e) {
+      console.error(`[phase] channel-merge lỗi: ${String(e).slice(0, 120)}`);
     }
-    // `[phase] <mã>` qua stderr — kênh RIÊNG với dòng JSON kết quả trên stdout, để daemon (đã hút
-    // cả hai ống từ trước) đọc được BƯỚC ĐANG CHẠY theo thời gian thực (`syncjob.ts`), không phải
-    // đợi tới khi con thoát mới biết. Mã ngắn ổn định, FE tự dịch — xem `share.ts::onProgress`.
-    // Per-phase wall time, reported on the ONE result line the daemon already logs. Without it a
-    // round that took 72 minutes to push nothing (2026-09-06 23:20) has no breakdown anywhere:
-    // the `[phase]` lines carry no timestamps and stderr is only kept on failure. `lock-wait:<host>`
-    // is folded into `lock-wait` so a slow neighbour reads as one bucket, not one per hostname.
     const phaseMs: Record<string, number> = {};
     let curPhase = "start";
     let curSince = Date.now();
@@ -47,13 +37,22 @@ import { channelDir, syncWriteDir } from "../memory/channel/index.js";
       curSince = now;
       console.error(`[phase] ${phase}`);
     };
-    const r = await syncDrive({ driveDir, keyFile: resolveShareKey(process.cwd()), onProgress });
+    // Chạy TUẦN TỰ, không song song: hai lượt xuất cùng lúc là hai kẻ đọc-ghi cùng cuốn sổ delta
+    // và cùng khoá ghi của kho — đúng thứ điều 11 cấm.
+    let r = null;
+    const channels = [];
+    for (const tgt of targets) {
+      const one = await syncDrive({ driveDir: tgt.dir, channel: tgt.channel, keyFile: resolveShareKey(process.cwd()), onProgress });
+      channels.push({ channel: tgt.channel, dir: tgt.dir, push: one.push, exportedBytes: one.exportedBytes });
+      // Kết quả CHÍNH giữ nguyên hình dạng cũ cho `/sync-status` (kênh đầu tiên = Drive khi có).
+      if (!r) r = one;
+    }
     phaseMs[curPhase] = (phaseMs[curPhase] ?? 0) + (Date.now() - curSince);
     const phases = Object.entries(phaseMs)
       .filter(([k, ms]) => k !== "done" && ms >= 1000)
       .map(([k, ms]) => `${k} ${Math.round(ms / 1000)}s`)
       .join(" · ");
-    console.log(JSON.stringify({ ok: true, ...r, phases }));
+    console.log(JSON.stringify({ ok: true, ...r, channels, phases }));
   } catch (e) {
     // 🔴 STACK RA STDERR, không chỉ `message` vào JSON (2026-08-26). Lỗi thật của lượt sync
     // 26/08 để lại đúng bốn chữ `UNKNOWN: unknown error, write` — không đủ để biết phép ghi

@@ -100,6 +100,7 @@
     var rh=zid('rHybrid'),rr=zid('rRerank');if(rh)rh.classList.toggle('on',!!m.hybrid);if(rr)rr.classList.toggle('on',!!m.rerank);
     var d=m.drive||{};zset('driveBundles',d.linked?(d.error?'—':(zN(d.bundles)+' bundle')):t('drv.notLinkedShort'));
     if(zid('driveInput')&&document.activeElement!==zid('driveInput'))zid('driveInput').value=d.path||'';
+    var dtg=zid('driveToggle'); if(dtg)dtg.classList.toggle('on',!!d.linked);
     zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);
     renderDriveDonut(d);
     applyI18n(m.lang||'vi'); // nút VI/EN tô trong applyI18n; `lang` được lưới flagsAt 90 s che khỏi payload cũ (ở trên)
@@ -182,24 +183,20 @@
     zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
     var seen=(c.seen||[]);
     zset('p2pSeen', seen.length ? seen.map(function(s){return (s.deviceId||'').slice(0,11)+'… · '+s.host;}).join(' · ') : t('p2p.seenNone'));
-    // ĐỦ MỌI địa chỉ IPv4, kèm tên card — máy thật hay có nhiều card, và khai nhầm một cái là
-    // đưa địa chỉ máy kia KHÔNG BAO GIỜ tới được. Bấm một ô là chép luôn, khỏi gõ tay.
+    // MỘT CỤM, chép MỘT LẦN — user chốt 2026-09-16: *"chép thì để vào 1 cụm để chép chung chứ ai
+    // tách ra ntn"*. Tách mỗi địa chỉ một ô thì người ta phải chép hai lần rồi tự ghép, mà thứ cần
+    // gửi sang máy kia là CẢ DANH SÁCH (máy này có hai card, bên đó chỉ tới được một dải).
     var ab=zid('p2pAddrs');
     if(ab){
       var ads=c.addrs||[];
-      ab.innerHTML='';
-      if(!ads.length){var e0=document.createElement('span');e0.className='fchip muted';e0.style.border='0';e0.textContent=t('p2p.addrNone');ab.appendChild(e0);}
-      ads.forEach(function(a){
-        var el=document.createElement('div');el.className='fchip';
-        el.textContent=a.addr+':'+(c.listening||c.port||'')+'  ·  '+a.iface;
-        el.setAttribute('data-copy',a.addr+':'+(c.listening||c.port||''));
-        el.setAttribute('title',t('p2p.addrCopy'));
-        ab.appendChild(el);
-      });
+      var port=c.listening||c.port||'';
+      var text=ads.map(function(a){return a.addr+':'+port+'  ·  '+a.iface;}).join(String.fromCharCode(10));
+      ab.textContent=text||t('p2p.addrNone');
+      if(text){ab.setAttribute('data-copy',text);ab.setAttribute('title',t('p2p.addrCopy'));ab.style.cursor='pointer';}
     }
     // Máy thấy trên cùng mạng: BẤM LÀ ĐIỀN cả ID lẫn địa chỉ vào ô ghép đôi/nối thử. Gõ tay một
     // chuỗi 52 ký tự là chỗ sinh lỗi, mà tầng dò đã biết sẵn cả hai giá trị.
-    var sb=zid('p2pSeenList');
+    var sb=zid('addPeerSeen');
     if(sb){
       sb.innerHTML='';
       seen.forEach(function(sp){
@@ -210,26 +207,46 @@
         sb.appendChild(el);
       });
     }
+    var dv=zid('p2pDir'); if(dv&&c.dir){dv.textContent=c.dir;dv.setAttribute('data-copy',c.dir);dv.setAttribute('title',t('p2p.addrCopy'));dv.classList.add('fchip');dv.style.cursor='pointer';}
     var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=c.deviceId||'';
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     var a=zid('trDrive'),b=zid('trP2p');
     if(a)a.classList.toggle('on',c.transport!=='p2p');
     if(b)b.classList.toggle('on',c.transport==='p2p');
-    var box=zid('p2pPeers');
-    if(box){
-      var ps=c.peers||[];
-      if(!ps.length){box.textContent=t('p2p.none');}
-      else{
-        box.innerHTML='';
-        ps.forEach(function(id){
-          var row=document.createElement('div');
-          row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:3px';
-          var s=document.createElement('span');s.style.cssText='flex:1;font-family:var(--mono,monospace);font-size:10.5px';s.textContent=id;
-          var x=document.createElement('button');x.className='btn sm';x.textContent=t('p2p.unpair');
-          x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',id);
-          row.appendChild(s);row.appendChild(x);box.appendChild(row);
-        });
-      }
+    // CỤM MÁY — mỗi máy MỘT THẺ, máy này đứng đầu. Bản cũ là một danh sách chuỗi 52 ký tự trần:
+    // không nói được máy nào đang thấy được, địa chỉ bao nhiêu, gặp lần cuối lúc nào.
+    var cl=zid('p2pCluster');
+    if(cl){
+      var seenBy={};
+      seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
+      var cards=[];
+      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
+      (c.peers||[]).forEach(function(id){
+        var sp=seenBy[id];
+        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
+      });
+      zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
+      cl.innerHTML='';
+      cards.forEach(function(m){
+        var d=document.createElement('div');
+        d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)';
+        // TÊN MÁY trước, trạng thái sau — một cụm toàn chuỗi 52 ký tự thì không ai phân biệt được
+        // máy nào với máy nào. Chưa biết tên (bản cũ không gửi trong gói dò) ⇒ rơi về 11 ký tự ID.
+        var label=m.name||(m.id?(m.id.slice(0,11)+'…'):'?');
+        var state=m.me?t('p2p.thisMachine'):(m.addr?t('p2p.online'):t('p2p.offline'));
+        var dot=m.me?'var(--primary)':(m.addr?'var(--success)':'var(--text-faint)');
+        d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
+          +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
+          +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
+          +'<div class="muted" style="font-size:10px;font-family:var(--mono,monospace);margin-top:5px;word-break:break-all">'+stdEsc(m.id)+'</div>'
+          +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(m.addr?(m.addr+(m.port?(':'+m.port):'')):t('p2p.noAddr'))+'</div>';
+        if(!m.me){
+          var x=document.createElement('button');x.className='btn sm';x.style.marginTop='7px';
+          x.textContent=t('p2p.unpair');x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',m.id);
+          d.appendChild(x);
+        }
+        cl.appendChild(d);
+      });
     }
   }
   function loadChannel(){return zGet('/channel-status').then(renderChannel).catch(function(){});}
@@ -266,20 +283,8 @@
   window.zP2pLogTick=logTick;
 
   document.addEventListener('click',function(e){
-    var el=e.target&&e.target.closest?e.target.closest('[data-synctab],[data-act],[data-tr]'):null;
+    var el=e.target&&e.target.closest?e.target.closest('[data-act],[data-tr],[data-copy],[data-seenfill],#p2pLogOnly,#p2pLogHold,#driveToggle'):null;
     if(!el)return;
-    var tab=el.getAttribute('data-synctab');
-    if(tab){
-      // Hai loại sync sống trong ⚙ (user chốt: "nhét phần liên kết này vào setting").
-      var dr=tab==='drive',pd=zid('syncPaneDrive'),pp=zid('syncPaneP2p');
-      if(pd)pd.style.display=dr?'':'none';
-      if(pp)pp.style.display=dr?'none':'';
-      zid('syncTabDrive').classList.toggle('on',dr);
-      zid('syncTabP2p').classList.toggle('on',!dr);
-      if(!dr)loadChannel();
-      logTick(!dr);   // nhịp nhật ký chỉ chạy khi tab p2p đang mở
-      return;
-    }
     var tr=el.getAttribute('data-tr');
     if(tr){
       // Đi qua zSave: đổi ĐÍCH GHI là thao tác lưu, hỏng mà im lặng thì người dùng tưởng
@@ -321,6 +326,41 @@
       el.classList.toggle('on',LOG_HOLD);
       return;
     }
+    // Công tắc kênh Drive. TẮT = bỏ liên kết (kho trên máy không bị đụng). BẬT mà chưa có thư mục
+    // thì KHÔNG đoán đường nào cả — đưa con trỏ vào ô thư mục, vì chọn sai chỗ là đẩy kho đi nơi khác.
+    if(el.id==='driveToggle'){
+      if(!el.classList.contains('on')){
+        // BẬT LẠI. Bản cũ chỉ `focus()` vào ô nhập rồi `return` — không bật, không báo, nên cú bấm
+        // đọc ra thành "nút hỏng" (user 2026-09-16: *"bấm bật lại drive ko dc"*). Cùng họ với lỗi
+        // `.chip` và nút *Dọn ngay*: một nút không ăn mà không nói lý do thì người dùng đọc là hỏng.
+        var di=zid('driveInput'), want=(di&&di.value.trim())||'';
+        if(!want){
+          if(di)di.focus();
+          zset('driveState',t('drv.needPath'));   // nói RA điều kiện còn thiếu
+          return;
+        }
+        zSave('/set-drive?path='+encodeURIComponent(want)).then(function(j){
+          if(!j)return;
+          el.classList.toggle('on',!!j.linked);
+          zset('driveState',driveMsg(j));
+          zGet('/memory-status?fresh=1').then(renderMem).catch(function(){});
+        });
+        return;
+      }
+      // GỠ LINK — giữ đường vừa gỡ lại trong ô nhập. Không giữ thì `/set-drive?path=` xoá sạch
+      // đường trong config và người dùng phải đi tìm lại nó để bật lại: một cú bấm gỡ hoá ra
+      // yêu cầu họ nhớ một đường dẫn mà chính app vừa quên.
+      var keep=(Z.mem&&Z.mem.drive&&Z.mem.drive.path)||'';
+      zSave('/set-drive?path=').then(function(j){
+        if(!j)return;
+        el.classList.remove('on');
+        var di2=zid('driveInput'); if(di2&&keep&&!di2.value.trim())di2.value=keep;
+        zset('driveState',driveMsg(j));
+        zGet('/memory-status?fresh=1').then(renderMem).catch(function(){});
+      });
+      return;
+    }
+    if(act==='p2p-add-open'){ var ap=zid('addPeerDlg'); if(ap)ap.classList.add('on'); loadChannel(); return; }
     if(act==='p2p-toggle'){
       // zSave, KHÔNG zPost: cổng `save-never-silent` (2026-09-12) cấm công tắc tự xử lời
       // hứa lưu. Ba kiểu hỏng (gọi hỏng · HTTP≠2xx · {ok:false}) đều phải HOÀN NGUYÊN + báo.
@@ -637,3 +677,44 @@ window.zFileView = (function () {
 
   return { open: open, step: step, close: close };
 })();
+
+  // ── MÀN ĐỒNG BỘ ────────────────────────────────────────────────────────────
+  // Vào màn thì nạp + bật nhịp nhật ký; rời màn thì TẮT nhịp. Hỏi log mỗi 15s trong lúc không ai
+  // nhìn là đốt I/O suông, và đó đúng là thứ `no short-interval polling` dựng ra để chặn.
+  // `onP2pTab` = tab máy-tới-máy có đang mở không. Trạng thái kênh nạp cho CẢ HAI tab (tab Drive
+  // cũng cần biết đã link chưa); riêng nhịp nhật ký chỉ chạy ở tab p2p.
+  // TỈ TRỌNG THEO NGUỒN — biểu đồ thứ hai của bảng đo Drive.
+  // Dùng CHÍNH số của `/insights` (nguồn mà màn Xu hướng đang vẽ), không đẻ endpoint mới và không
+  // đẻ con số thứ hai cho cùng một sự thật — `plan/15` cấm nhân đôi số liệu.
+  function renderDriveMix(){
+    var box=zid('drvMix'); if(!box)return;
+    zGet('/insights?days=30').then(function(d){
+      var rows=((d&&d.agents)||[]).filter(function(a){return (a.messages||0)>0;});
+      if(!rows.length){box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ins.noData'))+'</div>';return;}
+      var tot=rows.reduce(function(a,x){return a+(x.messages||0);},0)||1;
+      // Gộp đuôi thành "khác": 12 thanh dài 1px không nói được gì, mà lại đẩy nút xuống dưới màn.
+      var top=rows.slice(0,5), rest=rows.slice(5);
+      if(rest.length)top.push({source:t('drv.mixOther'),messages:rest.reduce(function(a,x){return a+(x.messages||0);},0)});
+      box.innerHTML=top.map(function(r){
+        var pc=Math.round((r.messages||0)/tot*1000)/10;
+        return '<div class="drvmix-row"><div class="drvmix-top"><span>'+stdEsc(r.source||'—')+'</span>'
+          +'<span class="muted">'+pc+'% · '+zN(r.messages)+'</span></div>'
+          +'<div class="drvmix-bar"><div class="drvmix-fill" style="width:'+Math.max(1,pc)+'%"></div></div></div>';
+      }).join('');
+    }).catch(function(){ box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ph.err'))+'</div>'; });
+  }
+
+  function syncScreen(onP2pTab){
+    logTick(!!onP2pTab);
+    loadChannel();
+    if(!onP2pTab)renderDriveMix();   // chỉ vẽ khi tab Drive đang mở
+    // Đường kho cục bộ: hiện, không cho gõ tay. Số liệu Drive do card Drive thật tự nạp.
+    zGet('/memory-status').then(function(m){ zset('storePath', (m&&m.info&&m.info.dbPath)||(m&&m.dbPath)||''); }).catch(function(){});
+  }
+  window.zSyncScreen=syncScreen;
+
+  // Đóng hộp Thêm máy: nút ✕ hoặc bấm nền. ESC đã do handler chung lo (đóng đúng lớp trên cùng).
+  document.addEventListener('click',function(e){
+    var t0=e.target; if(!t0||!t0.closest)return;
+    if(t0.closest('#addPeerClose')||t0.id==='addPeerDlg'){var d=zid('addPeerDlg');if(d)d.classList.remove('on');}
+  });

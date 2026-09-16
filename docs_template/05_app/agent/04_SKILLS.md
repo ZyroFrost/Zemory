@@ -30,6 +30,7 @@
 | `sync-path/` | khai + ĐO đường sang máy thứ hai của mọi thứ vừa dựng (không có kênh = chưa xong) |
 | `read-office/` | đọc `.xlsx .xls .docx .pptx .pdf` rẻ nhất có thể |
 | `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
+| `app-design/` | chuẩn thiết kế APP — FE (bề mặt) + BE (tiến trình); RÀNG BUỘC, `02_RULES` chỉ trỏ sang |
 | `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
 
 ## 3. Skill NGOÀI — vendor, KHÔNG chép nội dung

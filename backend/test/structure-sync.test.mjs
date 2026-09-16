@@ -10,7 +10,7 @@ import test from "node:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { SLOT_ROLES, buildFolderTree } from "../../dist/docs/structure-tree.js";
+import { SLOT_ROLES, buildFolderTree, declaredSlots } from "../../dist/docs/structure-tree.js";
 import { buildCodeGraph } from "../../dist/memory/graph/graph.js";
 
 const md = readFileSync(new URL("../../docs/agent/03_STRUCTURE.md", import.meta.url), "utf8");
@@ -103,4 +103,70 @@ test("a pure ts/py store: the tree does NOT take a non-source file as a leaf", (
   })(buildFolderTree(root).tree);
 
   assert.deepEqual(treeFiles, ["backend/src/services/calc.ts"], "chỉ file mã nguồn mới là lá");
+});
+
+// ── NON-APP: graph phải đọc từ điển slot CỦA CHÍNH REPO, không phải bảng cứng của chuẩn APP.
+//
+// Điều 13 đòi ba lăng kính (03_STRUCTURE · cây thư mục · graph) nói CÙNG một chuyện. Tới
+// 2026-09-16 graph chỉ đọc `SLOT_ROLES` (72 slot của chuẩn APP) nên mọi slot mà một repo
+// non-app tự khai ở §3 đều rơi vào "(ngoài chuẩn)". Hai lỗ, cả hai im lặng:
+//   ① `declaredSlots` tìm section theo SỐ (`## 3.`) — mà chuẩn non-app đặt cây ở `## 2.`
+//      (nó không có mục "hai cách sắp xếp code") ⇒ đọc nhầm sang mục Routing ⇒ TẬP RỖNG;
+//   ② slot tính theo thư mục cha TRỰC TIẾP — nhưng `tasks/<case>/pipeline/x.py` có cha là
+//      `pipeline`, trong khi chuẩn non-app cho phép đặt tên tự do BÊN TRONG `tasks/`.
+// Đo trên `Dept_IT` trước khi vá: 8/10 file "(ngoài chuẩn)", `declaredSlots` = 0, concern = 0.
+// Cổng cũ chỉ canh 03 của zemory (một repo APP, nơi hai tập trùng nhau) nên không thể bắt được.
+test("NON-APP: slot khai ở §3 của chính repo phải được graph nhận, kể cả khi cây đánh số khác", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-nonapp-slot-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "agent"), { recursive: true });
+  // Đánh số KIỂU NON-APP: cây ở §2, Routing ở §3 (chuẩn app là §3 và §4).
+  writeFileSync(
+    join(root, "docs", "agent", "03_STRUCTURE.md"),
+    [
+      "# chuan non-app (fixture)",
+      "## 1. Nguyên tắc",
+      "## 2. Cây thư mục — ghi chú TỪNG DÒNG",
+      "```text",
+      "├── tasks/          [opt]  1 CASE = 1 FOLDER",
+      "├── sources/        [opt]  định nghĩa nguồn",
+      "```",
+      "## 3. Routing — cần gì / có gì → vào đâu",
+      "| Có gì | vào đâu |",
+      "|---|---|",
+      "| một case mới | `tasks/<case>/` |",
+    ].join("\n"),
+  );
+  writeFileSync(join(root, "AGENTS.md"), "# fixture\n");
+  mkdirSync(join(root, "tasks", "IT_Daily_Check", "pipeline"), { recursive: true });
+  writeFileSync(join(root, "tasks", "IT_Daily_Check", "pipeline", "01_check.py"), "x = 1\n");
+  mkdirSync(join(root, "sources"), { recursive: true });
+  writeFileSync(join(root, "sources", "load.py"), "y = 2\n");
+
+  const slots = declaredSlots(root);
+  assert.ok(slots.has("tasks") && slots.has("sources"), `§3 đánh số non-app phải đọc được: ${[...slots]}`);
+
+  const g = buildCodeGraph(root);
+  const bySlot = Object.fromEntries(g.nodes.map((n) => [n.id, n.slot ?? "(ngoài chuẩn)"]));
+  assert.equal(bySlot["sources/load.py"], "sources", "slot khai riêng phải được nhận");
+  assert.equal(
+    bySlot["tasks/IT_Daily_Check/pipeline/01_check.py"],
+    "tasks",
+    "con TỰ DO bên trong `tasks/` vẫn thuộc slot `tasks` (chuẩn non-app cho phép đặt tên tự do ở đó)",
+  );
+});
+
+// Ca ÂM: miễn trừ "cha tự do" KHÔNG được lan sang chuẩn APP — ở đó luật ngược lại
+// ("trong một domain chỉ dùng slot của từ điển"), nên một thư mục con lạ vẫn phải là ngoài chuẩn.
+test("APP: con lạ bên trong một slot KHÔNG được ăn theo cha — miễn trừ chỉ dành cho non-app", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-app-strict-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "backend", "src", "services", "helpers_tam"), { recursive: true });
+  writeFileSync(join(root, "AGENTS.md"), "# fixture\n");
+  writeFileSync(join(root, "backend", "src", "services", "helpers_tam", "x.ts"), "export const a = 1\n");
+
+  const g = buildCodeGraph(root);
+  const n = g.nodes.find((x) => x.id === "backend/src/services/helpers_tam/x.ts");
+  assert.ok(n, "file phải có node");
+  assert.equal(n.slot, undefined, "`services` KHÔNG nằm trong NONAPP_FREEFORM_PARENTS ⇒ con lạ vẫn ngoài chuẩn");
 });

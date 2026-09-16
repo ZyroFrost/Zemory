@@ -351,7 +351,7 @@
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
         +old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
-        +'<div class="acts"><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
+        +'<div class="acts"><button data-open-detail data-root="'+stdEsc(root)+'" data-prof="'+(p.profile||'')+'" title="'+t('pj.open')+'">↗</button><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
   }
@@ -686,9 +686,11 @@
     }
     else if(act==='addproj'){openAddProjDlg();}
     else if(act==='browse-drive'){gPickFolder('driveInput');}
-    else if(act==='browse-reloc'){gPickFolder('relocInput');}
-    else if(act==='relocate'){var rp=zid('relocInput').value.trim();if(!rp){zset('setMsg',t('reloc.needPath'));return;}
-      zConfirm({title:t('reloc.title'),body:t('reloc.body')+'\n'+rp,okLabel:t('reloc.ok'),onOk:function(){zset('setMsg',t('reloc.moving'));zPost('/relocate?path='+encodeURIComponent(rp)).then(function(r){zset('setMsg',r&&r.ok?('✓ '+t('reloc.done')+(r.movedBytes?' · '+(r.movedBytes/1048576).toFixed(0)+' MB':'')):('✗ '+((r&&r.error)||t('q.err'))));zGet('/memory-status?fresh=1').then(renderMem);});}});}
+    /*  GỠ 2026-09-16 (user chốt): 'browse-reloc' + 'relocate'. Chỗ lưu kho nay CỐ ĐỊNH —
+        `<repo>/global-memory/` là điều kiện để .gitignore chặn đúng và kênh đồng bộ chở đúng thứ.
+        Thứ còn chọn được là folder Drive ('browse-drive' ngay trên). Endpoint `/relocate` và CLI
+        `zemory memory relocate` GIỮ NGUYÊN — dời kho vẫn làm được khi thật sự cần, chỉ không còn
+        là một nút bấm nhầm được. (Nút cũ vốn đã chết: nó ghi vào input ẩn mà không có nút xác nhận.)  */
     else if(act==='mbackup'){zset('drvMsg',t('bk.running'));zPost('/memory-backup').then(function(r){zset('drvMsg',r&&r.ok?('✓ '+t('bk.done')+' · '+((r.bytes/1048576).toFixed(1))+' MB → '+r.outPath):('✗ '+((r&&r.error)||t('q.err'))));});}
     else if(act==='mrestore'){zDialog({icon:'⬆',title:t('rs.title'),okLabel:t('rs.ok'),danger:true,focus:'#rsPath',
         bodyHtml:'<div class="muted" style="font-size:12px;margin-bottom:8px">'+t('rs.desc')+'</div><div style="display:flex;gap:6px"><input id="rsPath" class="zdi" placeholder="'+t('rs.ph')+'"><button class="btn sm" id="rsBrowse" style="flex:0 0 auto">📁</button></div>',

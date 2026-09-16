@@ -1487,6 +1487,26 @@ export function pruneDriveHost(o: {
  * other. Returns what was pushed/merged; embedding of new rows is left to the
  * caller (`memory embed`).
  */
+/** Kênh GHI. Mỗi kênh giữ MỐC RIÊNG — xem `wmKeyFor`. */
+export type SyncChannel = "drive" | "p2p";
+
+/**
+ * Khoá của cuốn sổ delta, THEO TỪNG KÊNH.
+ *
+ * 🔴 Vì sao đổi (user chốt 2026-09-16: *"ko có vụ chọn bên nào hết, vì nó có đụng nhau đâu"*):
+ * user đúng — Drive và kênh máy-tới-máy là HAI ĐÍCH khác nhau, ghi cả hai không làm hỏng nhau.
+ * Thứ chặn điều đó không phải xung đột mà là **sổ dùng chung một khoá**: bản cũ luôn ghi
+ * `drive:<host>` bất kể đích. Đẩy sang Drive xong là mốc nhảy lên, nên kênh kia **không bao giờ
+ * còn thấy** đám tin đó nữa — im lặng và vĩnh viễn, đúng họ với lỗi đã giấu mất 6.310 vector
+ * (`plan/08 §8b`). Tách khoá là điều kiện để bật cùng lúc cả hai kênh.
+ *
+ * Tương thích ngược: kênh `drive` GIỮ NGUYÊN khoá cũ, nên mọi bản cài đang chạy không đẩy lại từ
+ * đầu. Kênh `p2p` bắt đầu ở 0 — đúng, vì thư mục kênh chưa từng nhận gì của máy này.
+ */
+export function wmKeyFor(channel: SyncChannel, host: string): string {
+  return `${channel}:${host}`;
+}
+
 export async function syncDrive(opts: {
   driveDir: string;
   keyFile?: string;
@@ -1513,6 +1533,8 @@ export async function syncDrive(opts: {
    * số chưa đổi thì không cách nào phân biệt "chưa xong thật" với "xong mà không có gì để đẩy".
    */
   onProgress?: (phase: string) => void;
+  /** Kênh đang ghi — quyết định KHOÁ SỔ delta (`wmKeyFor`). Bỏ trống ⇒ `drive` (đường cũ). */
+  channel?: SyncChannel;
 }): Promise<DriveSyncResult> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
@@ -1660,8 +1682,8 @@ export async function syncDrive(opts: {
     await mergeAll("changed-only");
     push =
       level === "full"
-        ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, onProgress })
-        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, compact: opts.compact, onProgress });
+        ? await pushToDrive({ dir, host, level, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, onProgress, channel: opts.channel })
+        : await pushAppend({ dir, host, excludeLanes, keyFile: opts.keyFile, dbPath: opts.dbPath, compact: opts.compact, onProgress, channel: opts.channel });
   } finally {
     release();
   }
@@ -1840,12 +1862,14 @@ async function pushAppend(o: {
   /** Ép gộp kho chung NGAY lượt này (`memory sync --compact`), không chờ đủ ngưỡng khối. */
   compact?: boolean;
   onProgress?: (phase: string) => void;
+  /** Kênh đang ghi — mỗi kênh MỘT mốc delta riêng (`wmKeyFor`). */
+  channel?: SyncChannel;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, excludeLanes, keyFile, dbPath } = o;
   const onProgress = o.onProgress ?? (() => {});
   const segs = listSegments(dir);
   const active = activeSegment(dir);
-  const wmKey = `drive:${host}`;
+  const wmKey = wmKeyFor(o.channel ?? "drive", host);
   // Khối đếm trên khúc ĐANG MỞ — guard trước/sau khi ghi so trên CÙNG file này (khúc niêm
   // phong là bất biến, không cần canh).
   const chunks = !active.fresh && isChunkContainer(active.path) ? listChunks(active.path) : [];
@@ -2058,6 +2082,8 @@ async function pushToDrive(o: {
   keyFile?: string;
   dbPath?: string;
   onProgress?: (phase: string) => void;
+  /** Kênh đang ghi — mỗi kênh MỘT mốc delta riêng (`wmKeyFor`). */
+  channel?: SyncChannel;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, level, excludeLanes, keyFile, dbPath } = o;
 
@@ -2074,14 +2100,14 @@ async function pushToDrive(o: {
     const wdb = openMemory(dbPath);
     try {
       const maxId = (wdb.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
-      writeExportWatermark(`drive:${host}`, maxId, dbPath);
+      writeExportWatermark(wmKeyFor(o.channel ?? "drive", host), maxId, dbPath);
     } finally {
       wdb.close();
     }
     return { kind: "full", file: name, bytes: r.bundleBytes, messages: 0, removed: 0 };
   }
 
-  const wmKey = `drive:${host}`;
+  const wmKey = wmKeyFor(o.channel ?? "drive", host);
   const series = listMySeries(dir, host);
   const nextSeq = series.length ? series[series.length - 1].seq + 1 : 0;
 
