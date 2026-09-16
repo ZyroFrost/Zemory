@@ -349,7 +349,7 @@
       var deadB=dp?'<span class="ptype is-old" title="'+stdEsc(t('proj.deadOldTip').replace('{n}',dp.newlyDead).replace('{s}',(dp.sample||[]).join(' · ')))+'">'+stdEsc(t('proj.deadOld').replace('{n}',dp.newlyDead))+'</span>':'';
       return '<div class="proj-card'+(pinned?' pinned':'')+((us||dp)?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
-        +'<div style="flex:1;min-width:0"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
+        +'<div class="pnm"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
         +old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
         +'<div class="acts"><button data-open-detail data-root="'+stdEsc(root)+'" data-prof="'+(p.profile||'')+'" title="'+t('pj.open')+'">↗</button><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
@@ -358,7 +358,11 @@
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
     var pin=e.target.closest('[data-pin]'),fg=e.target.closest('[data-forget]');
-    if(pin){e.stopPropagation();zPost('/pin-project?root='+encodeURIComponent(pin.dataset.root)+'&on='+pin.dataset.on).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;zGet('/memory-status').then(renderMem);});return;}
+    if(pin){e.stopPropagation();zPost('/pin-project?root='+encodeURIComponent(pin.dataset.root)+'&on='+pin.dataset.on).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;
+      // Vẽ lại lưới NGAY từ dữ liệu vừa nhận, ĐỪNG chờ /memory-status: lượt đó đo được 7–74 s khi
+      // lạnh, nên người dùng bấm ghim rồi ngồi nhìn thẻ không đổi gì (user 2026-09-17: "có thanh
+      // ghim nhưng ko thay đổi dc"). POST đã trả về `knownProjects` mới — đủ để vẽ đúng.
+      pjRerender();zGet('/memory-status').then(renderMem);});return;}
     if(fg){e.stopPropagation();var fr=fg.dataset.root;zConfirm({title:t('rm.title'),body:t('rm.body')+'\n'+fr,okLabel:t('rm.ok'),danger:true,onOk:function(){zPost('/forget-project?root='+encodeURIComponent(fr)).then(function(r){if(r&&r.knownProjects&&Z.status)Z.status.knownProjects=r.knownProjects;zGet('/memory-status').then(renderMem);});}});return;}
     var op=e.target.closest('[data-open-proj]');if(op&&!op.closest('.proj-card')){go('projects');}
   });
