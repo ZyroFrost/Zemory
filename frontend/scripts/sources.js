@@ -341,6 +341,9 @@
       return oi(a)-oi(b);});
     box.innerHTML=ps.map(function(p){
       var km=pinMap[String(p.path).toLowerCase()]||{},pinned=!!km.pinned,root=km.root||p.path,pbi=p.profile==='non-app';
+      // Nhà của chính zemory: ghim CỨNG, nút ghim KHOÁ (user chốt 2026-09-17). Backend đã chặn ở
+      // `pinProject`, nút disabled chỉ để nói thật với người dùng rằng bấm cũng không đổi gì.
+      var lock=!!km.locked;
       // Dấu "chuẩn cũ" trên ĐÚNG thẻ — cùng nguồn với chấm cam ở rail (`/harness-updates`, lưu ở Z.updStale).
       var us=(Z.updStale||[]).find(function(x){return String(x.root||'').toLowerCase()===String(root).toLowerCase();});
       var old=us?'<span class="ptype is-old" title="'+stdEsc(t('proj.stdOldTip').replace('{m}',us.missing||0).replace('{g}',us.guardStale||0))+'">'+stdEsc(t('proj.stdOld'))+'</span>':'';
@@ -350,8 +353,11 @@
       return '<div class="proj-card'+(pinned?' pinned':'')+((us||dp)?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
         +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
         +'<div class="pnm"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
-        +old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')
-        +'<div class="acts"><button data-open-detail data-root="'+stdEsc(root)+'" data-prof="'+(p.profile||'')+'" title="'+t('pj.open')+'">↗</button><button class="'+(pinned?'on':'')+'" data-pin data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+t('src.pin')+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
+        +'<div class="acts"><button data-open-detail data-root="'+stdEsc(root)+'" data-prof="'+(p.profile||'')+'" title="'+t('pj.open')+'">↗</button><button class="'+(pinned?'on':'')+(lock?' locked':'')+'"'+(lock?' disabled':' data-pin')+' data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+stdEsc(lock?t('src.pinLocked'):t('src.pin'))+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
+        // Hàng 2 gom HẾT badge trạng thái, sát nhau (user chốt 2026-09-17: "cái nào liên quan
+        // nhau thì cho đứng sát nhau"). Hàng 1 chỉ còn [icon][tên][3 nút] nên nút không bao giờ
+        // bị badge đẩy xuống — nó ở đúng góc phải trên dù thẻ co tới đâu.
+        +'<div class="pbadges">'+old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
   }

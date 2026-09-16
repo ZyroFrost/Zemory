@@ -9,10 +9,12 @@ import { join } from "node:path";
 import {
   forgetProject,
   isScratchRoot,
+  isSelfRoot,
   listKnownProjects,
   pinProject,
   pruneDeadProjects,
   rememberProject,
+  selfRepoRoot,
 } from "../../dist/projects.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -108,4 +110,52 @@ test("a v1 registry (bare string[]) still loads after the upgrade", (t) => {
   const list = listKnownProjects();
   assert.equal(list.length, 1);
   assert.equal(list[0].root, root);
+});
+
+// zemory's OWN repo is pinned for good and its pin button is locked (user rule 2026-09-17:
+// "zemory phải luôn nằm ở đầu và nút ghim nó khóa"). The lock lives in the API, not just the
+// button — every surface can reach /pin-project, so a disabled button alone guards nothing.
+
+test("self repo is recognised, and an ordinary project is NOT", (t) => {
+  sandbox(t);
+  const self = selfRepoRoot();
+  assert.ok(self, "selfRepoRoot must resolve when running from the built dist/");
+  assert.equal(isSelfRoot(self), true);
+  // Same path spelled differently must still match (registry key rules).
+  assert.equal(isSelfRoot(self.toLowerCase()), true);
+  assert.equal(isSelfRoot(project(t, "zemory-other-")), false);
+});
+
+test("the self repo's pin is LOCKED: unpinning is refused and the file does not change", (t) => {
+  const home = sandbox(t);
+  const self = selfRepoRoot();
+  writeFileSync(join(home, "projects.json"), JSON.stringify({ version: 2, projects: [{ root: self, pinned: true }] }));
+  assert.equal(pinProject(self, false), false, "unpinning zemory's own repo must be refused");
+  const after = JSON.parse(readFileSync(join(home, "projects.json"), "utf8"));
+  assert.equal(after.projects[0].pinned, true, "registry must be untouched");
+});
+
+test("the self repo comes back pinned + locked and FIRST, even when the file says otherwise", (t) => {
+  const home = sandbox(t);
+  const self = selfRepoRoot();
+  const other = project(t, "zemory-recent-");
+  // Worst case for ordering: self is stale AND flagged unpinned, the other one is pinned + fresh.
+  writeFileSync(join(home, "projects.json"), JSON.stringify({ version: 2, projects: [
+    { root: other, pinned: true, lastSeen: "2099-01-01T00:00:00.000Z" },
+    { root: self, pinned: false, lastSeen: "2000-01-01T00:00:00.000Z" },
+  ] }));
+  const list = listKnownProjects();
+  assert.equal(list[0].root, self, "zemory's own repo must be first");
+  assert.equal(list[0].pinned, true, "and pinned regardless of the flag on disk");
+  assert.equal(list[0].locked, true);
+});
+
+test("THE REVERSE: a pinned ordinary project is NOT locked and stays unpinnable", (t) => {
+  const home = sandbox(t);
+  const other = project(t, "zemory-plain-");
+  writeFileSync(join(home, "projects.json"), JSON.stringify({ version: 2, projects: [{ root: other, pinned: true }] }));
+  const [entry] = listKnownProjects();
+  assert.equal(entry.locked, undefined, "only zemory's own repo may be locked");
+  assert.equal(pinProject(other, false), true, "an ordinary pin must still be removable");
+  assert.equal(listKnownProjects()[0].pinned, false);
 });
