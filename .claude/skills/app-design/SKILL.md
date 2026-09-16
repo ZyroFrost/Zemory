@@ -23,16 +23,6 @@ description: Chuẩn thiết kế của một APP do repo này dựng — FE (b�
 · **Đặt ở lớp DÙNG CHUNG, đừng vá từng màn**: cùng bài học với "phân mục phải có vạch ngăn" — vá riêng khung vừa bị chê thì lỗi quay lại ở khung kế tiếp.
 · Nghiệm thu bằng MẮT, không bằng cổng: cổng đọc được class nhưng không thấy vạch dài bao nhiêu.
 
-**⑦ MỘT KÊNH THỊ GIÁC = MỘT HẠNG THÔNG TIN** *(user chốt 2026-09-17: "cái khung sáng đánh dấu pin là đang bị ảo")*. Viền · nền · đậm nhạt là các KÊNH riêng; mỗi kênh chỉ được một hạng làm chủ. Hai trạng thái khác hạng cùng đòi một kênh thì **kẻ khai báo sau thắng, kẻ kia biến mất mà không cổng nào báo** — và nếu hai màu còn gần nhau (đo được ca thật: `--primary` #FFD166 vs `--warn` #FBBF24 cùng làm viền thẻ dự án) thì ngay cả khi không đè nhau, mắt vẫn đọc ra CÙNG một nghĩa ⇒ người dùng đếm 6 thẻ "đã ghim" trong khi hệ chỉ ghim 2. Cách làm: **đếm xem có bao nhiêu trạng thái đang đòi cùng một kênh, rồi chia lại** — mỗi kênh đúng một chủ, cái thứ ba phải nói bằng badge chữ. Ca thực ở thẻ dự án (chốt 2026-09-17): **ghim = VIỀN** (giữ nguyên kênh nó vốn có — đừng đổi thói quen đọc của người dùng), **đang chọn = NỀN**, **lệch chuẩn = badge chữ** (thôi đòi viền). ⚠ Khi sửa loại lỗi này, **đừng đẩy nạn nhân sang kênh khác rồi coi là xong**: dọn đúng trạng thái đang chen vào, giữ kênh cũ cho chủ cũ. Nghiệm thu bằng SỐ trên DOM thật (`getComputedStyle`), đừng tin ảnh chụp.
-· Cùng họ: **công tắc trạng thái phải LUÔN thấy được, hành động mới được ẩn theo hover**. Ẩn cả cụm nút bằng `opacity:0` ở container là bẫy — cha trong suốt thì con cũng vô hình, `opacity:1` trên con KHÔNG cứu được; phải ẩn theo từng nút.
-
-**⑧ TUYỆT ĐỐI KHÔNG có thanh cuộn NGANG** *(user chốt 2026-09-17: "lỗi UI, tuyệt đối ko dc có scoll bar ngang … size phải xuống chứ ko dc ngang")*. Hẹp lại thì nội dung **XUỐNG DÒNG**, không đẩy ngang. Ba cái bẫy đo được trong repo này, cả ba đều là "khai một nửa rồi trình duyệt tự điền nửa còn lại":
-· **`overflow-y:auto` một mình BẬT luôn cuộn ngang** — CSS ép chiều còn lại từ `visible` thành `auto`. Hễ có một khối con rộng quá là mọc thanh ngang mà không ai khai nó. Vùng cuộn phải viết **đủ hai chiều**: `overflow-y:auto;overflow-x:hidden`.
-· **`repeat(N,1fr)` là số cột CỨNG** — ô không co dưới nội dung tối thiểu ⇒ lưới rộng hơn khung. Dùng `repeat(auto-fit,minmax(<sàn>,1fr))`: đủ rộng thì vẫn N cột, hẹp thì tự bớt cột.
-· **Track `1fr` vẫn bị nội dung đẩy rộng** — `1fr` thực chất là `minmax(auto,1fr)` và `auto` đo theo min-content của ô. Ô lưới phải có `min-width:0` mới co được.
-· Ngoại lệ DUY NHẤT: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang.
-· Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
-
 ### F2. Dialog / modal
 CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%** (user chốt 2026-07-21; Settings = L). 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); tràn → cuộn TRONG dialog (`overflow:auto` ở thân, thân là grid/flex child phải `min-height:0` mới cuộn). KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Trạng thái layout user chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở frontend/styles/. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ (vd sync đang chạy) thì chặn cả ESC lẫn backdrop cho tới khi xong
 
@@ -97,6 +87,29 @@ không hề có lệnh đổi màn nào, mà chỉ là khung chi tiết trông g
 HÀNH VI thì báo bao nhiêu lần cũng không hết (đã mất ba lượt như vậy).
 
 ---
+
+### F11. Một kênh thị giác = MỘT hạng thông tin
+**Viền · nền · đậm nhạt là các KÊNH riêng; mỗi kênh chỉ một hạng làm chủ** *(user chốt 2026-09-17: "cái khung sáng đánh dấu pin là đang bị ảo")*. Hai trạng thái khác hạng cùng đòi một kênh thì **kẻ khai báo sau thắng, kẻ kia biến mất mà không cổng nào báo** — và nếu hai màu còn gần nhau (đo được ca thật: `--primary` #FFD166 vs `--warn` #FBBF24 cùng làm viền thẻ dự án) thì ngay cả khi không đè nhau, mắt vẫn đọc ra CÙNG một nghĩa ⇒ người dùng đếm 6 thẻ "đã ghim" trong khi hệ chỉ ghim 2. Cách làm: **đếm xem có bao nhiêu trạng thái đang đòi cùng một kênh, rồi chia lại** — mỗi kênh đúng một chủ, cái thứ ba phải nói bằng badge chữ. Ca thực ở thẻ dự án (chốt 2026-09-17): **ghim = VIỀN** (giữ nguyên kênh nó vốn có — đừng đổi thói quen đọc của người dùng), **đang chọn = NỀN**, **lệch chuẩn = badge chữ** (thôi đòi viền). ⚠ Khi sửa loại lỗi này, **đừng đẩy nạn nhân sang kênh khác rồi coi là xong**: dọn đúng trạng thái đang chen vào, giữ kênh cũ cho chủ cũ. Nghiệm thu bằng SỐ trên DOM thật (`getComputedStyle`), đừng tin ảnh chụp.
+· Cùng họ: **công tắc trạng thái phải LUÔN thấy được, hành động mới được ẩn theo hover**. Ẩn cả cụm nút bằng `opacity:0` ở container là bẫy — cha trong suốt thì con cũng vô hình, `opacity:1` trên con KHÔNG cứu được; phải ẩn theo từng nút.
+
+### F12. TUYỆT ĐỐI không có thanh cuộn NGANG
+**Hẹp lại thì nội dung XUỐNG DÒNG, không đẩy ngang** *(user chốt 2026-09-17: "lỗi UI, tuyệt đối ko dc có scoll bar ngang … size phải xuống chứ ko dc ngang")*. Ba cái bẫy đo được trong repo này, cả ba đều là "khai một nửa rồi trình duyệt tự điền nửa còn lại":
+· **`overflow-y:auto` một mình BẬT luôn cuộn ngang** — CSS ép chiều còn lại từ `visible` thành `auto`. Hễ có một khối con rộng quá là mọc thanh ngang mà không ai khai nó. Vùng cuộn phải viết **đủ hai chiều**: `overflow-y:auto;overflow-x:hidden`.
+· **`repeat(N,1fr)` là số cột CỨNG** — ô không co dưới nội dung tối thiểu ⇒ lưới rộng hơn khung. Dùng `repeat(auto-fit,minmax(<sàn>,1fr))`: đủ rộng thì vẫn N cột, hẹp thì tự bớt cột.
+· **Track `1fr` vẫn bị nội dung đẩy rộng** — `1fr` thực chất là `minmax(auto,1fr)` và `auto` đo theo min-content của ô. Ô lưới phải có `min-width:0` mới co được.
+· Ngoại lệ DUY NHẤT: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang.
+· Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
+
+### F13. Thẻ (card): NEO cố định, thứ liên quan ĐỨNG SÁT NHAU
+**Cụm nút neo góc phải trên; badge gom thành một cụm** *(user chốt 2026-09-17: "3 cái nút chức năng phải luôn nằm ở góc phải trên như ban đầu dù có scale lại … cái nào liên quan nhau thì phân vào đứng sát nhau")*. Một thẻ có ba hạng nội dung, và mỗi hạng là MỘT HÀNG riêng, không trộn:
+| hàng | chứa gì | luật |
+|---|---|---|
+| 1 | danh tính (icon · tên) + **cụm nút hành động** | `flex-wrap:nowrap` — hàng này KHÔNG BAO GIỜ xuống dòng. Nút neo phải (`margin-left:auto`, `flex:0 0 auto`); thứ co lại là **tên** (`min-width:0` + ellipsis) |
+| 2 | **badge trạng thái** — gom hết vào một cụm, `gap` đều, `:empty{display:none}` | được phép wrap; rỗng thì biến mất, không để khoảng trắng ma |
+| 3 | số liệu phụ | — |
+· **Vì sao neo:** cho cả badge lẫn nút chung một hàng wrap thì khi thẻ co, nút bị badge đẩy xuống và rơi ra **giữa thẻ** — người dùng đọc là "hỏng", và đúng là hỏng: một nút điều khiển không có chỗ đứng cố định thì mỗi khổ màn hình lại nằm một nơi. Neo trước, co sau.
+· **Khoảng cách chỉ một nguồn:** cụm đã có `gap` thì đừng gắn thêm `margin-right` lên từng badge — hai nguồn cùng chỉnh một khoảng, cụm thôi đều nhau.
+· **Nút KHOÁ vĩnh viễn** (vd repo gốc của chính app) thì `disabled` + đổi `title` nói lý do, và **chặn ở BACKEND** nữa — nút disabled chỉ là lời nhắc, endpoint thì bề mặt nào cũng gọi được. Đừng làm mờ nút: mờ nghĩa là "tạm thời không dùng được", còn đây là vĩnh viễn theo thiết kế.
 
 ## BE — tiến trình & tài nguyên
 

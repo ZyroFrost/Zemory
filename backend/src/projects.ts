@@ -10,6 +10,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isConnected, projectKey, readMarker } from "./core/config.js";
 import { currentMemoryDir } from "./memory/db.js";
 
@@ -41,6 +42,40 @@ function registryReadFile(): string {
   return existsSync(legacyRegistryFile()) ? legacyRegistryFile() : f;
 }
 
+/**
+ * The repo zemory itself lives in. It is the tool's OWN home, so it is pinned for good and its
+ * pin button is LOCKED — user rule 2026-09-17 ("zemory phải luôn nằm ở đầu và nút ghim nó khóa").
+ * Walk up from this compiled module (`<repo>/dist/projects.js`) to the folder whose package.json
+ * says `name: "zemory"` — works both when run from the repo and through the global junction,
+ * and does NOT depend on cwd (the daemon's cwd is wherever the user launched it).
+ * Fail-open to "" (HP điều 9): unknown self ⇒ nothing is locked, the picker still works.
+ */
+let selfRootCache: string | null = null;
+export function selfRepoRoot(): string {
+  if (selfRootCache !== null) return selfRootCache;
+  selfRootCache = "";
+  try {
+    let dir = dirname(fileURLToPath(import.meta.url));
+    for (let i = 0; i < 5 && dir; i++) {
+      const pkg = join(dir, "package.json");
+      if (existsSync(pkg)) {
+        const name = (JSON.parse(readFileSync(pkg, "utf8")) as { name?: string }).name;
+        if (name === "zemory") { selfRootCache = realpathSync(dir); break; }
+      }
+      const up = dirname(dir);
+      if (up === dir) break;
+      dir = up;
+    }
+  } catch { /* fail-open */ }
+  return selfRootCache;
+}
+
+/** Is this the repo zemory itself lives in? Compared by the same key as the registry. */
+export function isSelfRoot(root: string): boolean {
+  const self = selfRepoRoot();
+  return !!self && !!root && projectKey(self) === projectKey(root);
+}
+
 export interface ProjectEntry {
   root: string;
   /** User pinned it — always visible on the tab bar. */
@@ -53,6 +88,8 @@ export interface KnownProject extends ProjectEntry {
   name: string;
   /** Structure standard the project declares in docs/.harness.json (default "app"). */
   profile: "app" | "non-app";
+  /** zemory's OWN repo — pinned for good, and the pin button is locked (user rule 2026-09-17). */
+  locked?: boolean;
 }
 
 /**
@@ -155,19 +192,34 @@ export function rememberProject(root: string): void {
   write(list);
 }
 
-/** Known projects that still exist + are still set up, most recent first. */
+/**
+ * Known projects that still exist + are still set up, most recent first.
+ * zemory's own repo is FIRST, always, and comes back marked `locked` so the UI can
+ * show its pin button disabled instead of pretending the click will do something.
+ */
 export function listKnownProjects(): KnownProject[] {
   return read()
     .filter((e) => isConnected(e.root))
-    .map((e) => ({ ...e, name: basename(e.root), profile: projectProfile(e.root) }))
+    .map((e) => {
+      const self = isSelfRoot(e.root);
+      // Ghim CỨNG, không đọc cờ trong registry: kể cả file bị sửa tay thành `pinned:false`
+      // thì nhà của chính công cụ vẫn đứng đầu — một nguồn sự thật, không hai đường rẽ.
+      return { ...e, name: basename(e.root), profile: projectProfile(e.root), pinned: self || e.pinned, locked: self || undefined };
+    })
     .sort((a, b) => {
+      if (!!a.locked !== !!b.locked) return a.locked ? -1 : 1;
       if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
       return (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "");
     });
 }
 
-/** Pin/unpin a project so the UI always shows it. Returns false if unknown. */
+/**
+ * Pin/unpin a project so the UI always shows it. Returns false if unknown — or if this is
+ * zemory's OWN repo, whose pin is locked (user rule 2026-09-17). Khoá phải nằm Ở ĐÂY chứ không
+ * chỉ ở nút bấm: bề mặt nào cũng gọi được endpoint này, nút disabled chỉ là lời nhắc.
+ */
 export function pinProject(root: string, pinned: boolean): boolean {
+  if (isSelfRoot(root)) return false;
   const list = read();
   const hit = list.find((e) => key(e.root) === key(root));
   if (!hit) return false;

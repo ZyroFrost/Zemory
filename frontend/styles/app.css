@@ -200,7 +200,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    rộng hơn khung ⇒ thanh cuộn ngang (đo ở khung 1100px: g6 tràn 66px, g3 tràn 586px). */
 .g6{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
-.g3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
@@ -228,7 +228,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .row:last-child{border-bottom:0}
 .row .l{display:flex;align-items:center;gap:11px;min-width:0}
 .row .ico{width:30px;height:30px;border-radius:8px;background:var(--surface-3);display:grid;place-items:center;font-size:14px;flex:0 0 auto;color:var(--primary)}
-.row .nm{font-size:13px;font-weight:550}.row .meta{font-size:11px;color:var(--text-faint)}
+/* Khối trái của hàng phải CO được tới cùng: `.l` đã có `min-width:0` nhưng con của nó thì chưa,
+   nên tên/meta dài vẫn đẩy hàng rộng ra (đo ở khung 900px: tràn 19–56px). Cắt bằng ellipsis. */
+.row .l>div{min-width:0}
+.row .nm{font-size:13px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .meta{font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pill{font-size:10.5px;padding:2px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:5px}
 .pill.ok{color:var(--success);background:var(--wash-ok)}
 .pill.warn{color:var(--warn);background:var(--wash-warn)}
@@ -277,16 +281,23 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .proj-card:hover{border-color:var(--border-strong)}
 /* Thẻ ĐANG CHỌN — bấm thẻ chỉ chọn, mở chi tiết là nút ↗ riêng (`app-design` §F10). */
 .proj-card.sel{background:var(--wash)}
-/* Cho hàng tiêu đề XUỐNG DÒNG khi hẹp — `nowrap` ép badge + nút chen ngang và tràn khỏi thẻ
-   (đo: `.ph` tràn 27px ở thẻ rộng 384px). Thẻ vẫn cùng khổ nhờ hàng lưới `1fr` + `min-height`. */
-.proj-card .ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+/* HÀNG 1 của thẻ = [icon][tên][3 nút] và KHÔNG BAO GIỜ xuống dòng, nên cụm nút luôn nằm đúng
+   góc phải trên dù thẻ co tới đâu (user chốt 2026-09-17). Nó không gây tràn ngang vì thứ co lại
+   là khối tên — nó có `min-width:0` + ellipsis. Badge trạng thái đã dời hẳn xuống `.pbadges`. */
+.proj-card .ph{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
 /* Badge + nút là thứ có khổ CỐ ĐỊNH; phần co lại phải là khối tên (nó đã có ellipsis).
    Thiếu `min-width:0` thì flex item không co dưới kích thước nội dung và đẩy badge xuống dòng. */
 .proj-card .ph>div{min-width:0}
 /* Khối tên có SÀN: `flex:1` + `min-width:0` một mình cho phép nó co tới 0 — đo được tên project
    bị bóp còn 30px khi hàng tiêu đề xuống dòng. Có `flex-basis` thì nó giành đủ chỗ đọc được,
    và khi vẫn không đủ thì badge/nút xuống dòng — đúng hướng "xuống, không đẩy ngang". */
-.proj-card .ph .pnm{flex:1 1 140px;min-width:0}
+.proj-card .ph .pnm{flex:1 1 auto;min-width:0}
+/* Cụm nút có khổ CỐ ĐỊNH và dạt phải — nó là thứ neo, khối tên mới là thứ co. */
+.proj-card .ph .acts{flex:0 0 auto;margin-left:auto}
+/* HÀNG 2 = các badge trạng thái, đứng SÁT NHAU thành một cụm đọc được như một thứ.
+   Rỗng thì biến mất hẳn, không để lại khoảng trắng ma giữa tên và số liệu. */
+.proj-card .pbadges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.proj-card .pbadges:empty{display:none}
 .proj-card .ptype{white-space:nowrap}
 .proj-card .pn{display:flex;align-items:center;gap:10px;min-width:0}
 .proj-card .pi{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:0 0 auto}
@@ -301,6 +312,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .proj-card:hover .acts button{opacity:1}
 .proj-card .acts button:hover{background:var(--surface-3);color:var(--primary)}
 .proj-card .acts button.on{color:var(--primary);opacity:1}
+/* Ghim KHOÁ (nhà của chính zemory): vẫn sáng để đọc được là "đang ghim", nhưng con trỏ nói rõ
+   đây không phải công tắc — bấm không đổi gì. Không làm mờ: mờ = "tạm thời không dùng được",
+   còn đây là VĨNH VIỄN theo thiết kế. */
+.proj-card .acts button.locked{cursor:default}
+.proj-card .acts button.locked:hover{background:none;color:var(--primary)}
 .proj-card .pmeta{color:var(--text-faint);font-size:11.5px;display:flex;gap:12px;flex-wrap:wrap}
 /* GHIM = VIỀN. ĐANG CHỌN = NỀN. Mỗi kênh một chủ, không ai đè ai (user chốt 2026-09-17).
    Gốc lỗi *khung sáng đánh dấu pin bị ảo*: BA trạng thái cùng giành viền — ghim (`--primary`),
@@ -582,7 +598,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .sxi{color:var(--text-faint);font-size:11px;margin-left:8px;font-variant-numeric:tabular-nums}
 
 /* Thẻ dự án cũ chuẩn (cùng nguồn với chấm cam ở rail): nhãn cảnh báo + viền nhạt để nhìn ra ngay khi bấm chấm sang. */
-.ptype.is-old{color:var(--warn);border-color:var(--warn);margin-right:6px}
+/* Khoảng cách giữa các badge do `.pbadges` lo bằng `gap` — thêm `margin-right` ở đây nữa là
+   hai nguồn cùng chỉnh một khoảng, cụm badge thôi đều nhau. */
+.ptype.is-old{color:var(--warn);border-color:var(--warn)}
 /* 'Chuẩn cũ' nói bằng badge chữ (`.ptype.is-old`) — không giành viền của dấu ghim nữa. */
 
 /* Chip nguồn trên hàng "chưa liên kết": biết root này do agent nào/nền web nào góp phiên trước khi bấm Add. */
