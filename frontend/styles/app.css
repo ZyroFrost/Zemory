@@ -258,22 +258,40 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .donut{width:130px;height:130px;border-radius:50%;background:conic-gradient(var(--success) 0 84%,var(--warn) 84% 94%,var(--surface-3) 94% 100%);display:grid;place-items:center;margin:auto}
 .donut .in{width:96px;height:96px;border-radius:50%;background:var(--surface);display:grid;place-items:center;text-align:center}
 .donut .in b{font-size:26px}.donut .in small{font-size:10px;color:var(--text-faint)}
-.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:8px;align-self:start}
+/* MỌI THẺ CÙNG MỘT KHỔ — kể cả khi kéo hẹp lưới (user chốt 2026-09-16).
+   Ba thứ cùng ép thẻ co theo nội dung: lưới `align-items:start` + `grid-auto-rows:max-content`
+   (đã bỏ ở app.html) và `align-self:start` ở đây. Hậu quả thấy được: thẻ nào mang badge
+   (chuẩn cũ · N đường chết) thì hàng tên chật, tên vỡ dòng, thẻ cao hơn hàng xóm ⇒ lưới
+   răng cưa. Nay hàng lưới chia đều (`1fr`) và thẻ giãn hết ô của nó.
+   `min-height` giữ khổ khi một hàng chỉ có MỘT thẻ — lúc đó `1fr` co lại bằng nội dung. */
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:8px;justify-content:space-between;min-height:104px}
 .proj-card:hover{border-color:var(--border-strong)}
 /* Thẻ ĐANG CHỌN — bấm thẻ chỉ chọn, mở chi tiết là nút ↗ riêng (`app-design` §F10). */
 .proj-card.sel{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset}
-.proj-card .ph{display:flex;align-items:center;gap:10px}
+.proj-card .ph{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+/* Badge + nút là thứ có khổ CỐ ĐỊNH; phần co lại phải là khối tên (nó đã có ellipsis).
+   Thiếu `min-width:0` thì flex item không co dưới kích thước nội dung và đẩy badge xuống dòng. */
+.proj-card .ph>div{min-width:0}
+.proj-card .ptype{white-space:nowrap}
 .proj-card .pn{display:flex;align-items:center;gap:10px;min-width:0}
 .proj-card .pi{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:0 0 auto}
 .proj-card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.proj-card .acts{display:flex;gap:4px;opacity:0;transition:.12s}
-.proj-card:hover .acts{opacity:1}
-.proj-card .acts button{background:none;border:0;color:var(--text-faint);cursor:pointer;font-size:13px;padding:3px 5px;border-radius:6px}
+/* Nút GHIM luôn thấy được; ↗/✕ vẫn ẩn cho tới khi rê chuột.
+   Trước đây cả cụm `.acts` mang `opacity:0` — cha trong suốt thì con cũng vô hình, nên nút
+   ghim chỉ hiện khi hover; người dùng đọc thành *pin chỉ nhận khi chọn project*. Ghim là
+   CÔNG TẮC trạng thái (phải đọc được từ xa), còn mở/quên là HÀNH ĐỘNG (ẩn đi cho thẻ sạch). */
+.proj-card .acts{display:flex;gap:4px}
+.proj-card .acts button{background:none;border:0;color:var(--text-faint);cursor:pointer;font-size:13px;padding:3px 5px;border-radius:6px;opacity:1;transition:.12s}
+.proj-card .acts button[data-open-detail],.proj-card .acts button[data-forget]{opacity:0}
+.proj-card:hover .acts button{opacity:1}
 .proj-card .acts button:hover{background:var(--surface-3);color:var(--primary)}
 .proj-card .acts button.on{color:var(--primary);opacity:1}
 .proj-card .pmeta{color:var(--text-faint);font-size:11.5px;display:flex;gap:12px;flex-wrap:wrap}
-.proj-card.pinned{border-color:var(--primary)}
-.proj-card.pinned .acts{opacity:1}
+/* Ghim nói bằng NỀN, không bằng viền (user 2026-09-16: *khung sáng đánh dấu pin đang bị ảo*).
+   Đo trên DOM: thẻ ghim viền `--primary`, thẻ 'chuẩn cũ' viền `--warn` — hai token này là hai
+   sắc vàng trùng mắt, và `.is-old` đứng sau nên còn đè lên `.pinned`. Viền phải dành riêng cho
+   một hạng thông tin (đang chọn / lệch chuẩn); ghim đổi kênh sang nền + nút ghim sáng màu. */
+.proj-card.pinned{background:var(--wash)}
 .proj-card.dragging{opacity:.45}
 .proj-card.dropzone{border-color:var(--primary);border-style:dashed}
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);flex-wrap:wrap;flex:0 0 auto}
