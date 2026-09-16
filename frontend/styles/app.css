@@ -197,6 +197,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:0 0 auto}
 .card-h .t{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600}
+/* `.card-h` là flex KHÔNG gap, và cái công tắc cuối hàng mang `margin-left:auto` — nên mọi thứ
+   đứng trước nó bị dồn dính vào nhau: user đọc ra "Đồng bộ Drive6 bundle" (2026-09-16).
+   Đặt luật cho MỌI khung chứ không vá riêng khung bị chê: hai chỗ đang dùng khuôn này
+   (`driveBundles` · `stdProfTag`), và khung thứ ba thêm sau sẽ tự đúng. */
+.card-h .t + .muted{margin-left:8px}
 .card-h .t .ci{color:var(--primary)}
 .card-h a{color:var(--text-dim);font-size:12px;cursor:pointer}.card-h a:hover{color:var(--primary)}
 .card-b{overflow-y:auto;flex:1;min-height:0}
@@ -255,6 +260,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .donut .in b{font-size:26px}.donut .in small{font-size:10px;color:var(--text-faint)}
 .proj-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:8px;align-self:start}
 .proj-card:hover{border-color:var(--border-strong)}
+/* Thẻ ĐANG CHỌN — bấm thẻ chỉ chọn, mở chi tiết là nút ↗ riêng (`app-design` §F10). */
+.proj-card.sel{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary) inset}
 .proj-card .ph{display:flex;align-items:center;gap:10px}
 .proj-card .pn{display:flex;align-items:center;gap:10px;min-width:0}
 .proj-card .pi{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:0 0 auto}
@@ -318,6 +325,12 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .gnode.sel circle{stroke:var(--text);stroke-width:2.2}
 .gnode.dim{opacity:.18}
 .gnode.orphan circle{stroke:var(--warn);stroke-dasharray:2 2}
+/* ĐƯỜNG DẪN CHẾT (plan/13 §4c) — viền LIỀN, khác hẳn nét đứt của orphan: đây là hạng KHAI BÁO
+   (phép so đường dẫn tất định của plan/21), không phải suy luận, nên nó không được trông giống
+   cạnh `calls`/`semantic_neighbor` (điều 13). Viền dày hơn để thấy được cả ở node bán kính nhỏ. */
+.gnode.dead circle{stroke:var(--danger);stroke-width:2}
+.glegend .lg.dead .dot{background:var(--danger)}
+.glegend .lg.dead.on{outline:1px solid var(--danger);border-radius:6px}
 .pg-tree{overflow:auto;padding:8px 10px}
 .pg-right{display:flex;flex-direction:column;gap:12px;min-height:0;overflow:auto}
 .pg-top{display:none;gap:12px;flex:0 0 auto;margin-bottom:2px;max-height:40%;overflow:auto}
@@ -354,8 +367,73 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .drv-health.warn{color:var(--warn)}
 .drv-health.err{color:var(--danger);font-weight:600}
 .section-t{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);margin:6px 0 2px}
+/* KHỐI trong hộp lớp hai: mỗi chế độ MỘT khung riêng. `.section-t` chỉ là một dòng chữ nhỏ,
+   không vạch gì — ba phần xếp liền nhau đọc thành "một nùi dính chùm" và người dùng không thấy
+   được là có HAI chế độ đồng bộ (user báo 2026-09-16). Khung là thứ nói ra ranh giới đó. */
+/* Màn Đồng bộ: nội dung vốn thiết kế cho hộp thoại HẸP, nay nằm trong màn RỘNG. Trong flex/grid,
+   `min-width` mặc định là `auto` nên ô nhập và chuỗi ID 52 ký tự KHÔNG co được — chúng đẩy panel
+   tràn ngang ra ngoài khung. `min-width:0` là bản vá đúng chỗ; `overflow-x:hidden` chặn phần dư
+   của thứ vẫn không co nổi (ảnh, bảng) thay vì để nó đội cả trang. */
+.syncwrap,.syncwrap *,.sub[data-sy],.sub[data-sy] *{min-width:0}
+.syncwrap,.sub[data-sy]{overflow-x:hidden}
+.syncwrap pre,.sub[data-sy] pre{max-width:100%;overflow-x:auto}
+/* `.sub` là cột flex có `flex:1` + `min-height:0`, nên con của nó CO ĐƯỢC. Nội dung tab máy-tới-máy
+   cao hơn khung ⇒ mọi khối bị bóp lại và chữ chồng lên nhau (user báo: "cái gì dính chùm ở đây").
+   Khoá `flex:0 0 auto` cho khối con rồi để CẢ PANE cuộn — đó mới là hành vi đúng của một panel dài. */
+.sub[data-sy]{overflow-y:auto;gap:0}
+.sub[data-sy]>*{flex:0 0 auto}
+/* …TRỪ lưới kéo được. `flex:0 0 auto` ở trên ép mọi con cao đúng bằng nội dung, nên `grow` của
+   `.rzgrid` bị vô hiệu và VẠCH NGĂN dừng ở đáy panel dài nhất thay vì chạy hết vùng
+   (user báo 2026-09-16, và bản vá đầu của tôi ở `.rzgrid` không ăn vì bị chính dòng trên chặn).
+   Cho riêng lưới đó giãn — `min-height:0` để nó vẫn cuộn được khi nội dung dài hơn khung. */
+.sub[data-sy]>.rzgrid{flex:1 1 auto;min-height:0}
+/* Card dời từ lưới GM sang tab: trong lưới nó có `gap` của lưới lo khoảng cách, ở đây `.sub` để
+   `gap:0` (vì các khối con tự mang margin). Cho card khoảng thở riêng, nếu không mọi dòng dính
+   liền nhau như một khối chữ. */
+/* Card Drive trên màn rộng: TRÁI là bảng đo (hai biểu đồ + số của chúng), PHẢI là nút chia theo
+   nhóm việc. Một cột dọc như bản cũ (vốn cho cột hẹp của lưới GM) làm nút kéo dài cả trang và
+   bắt mắt nhảy giữa hình và số. Hẹp dưới 900px thì rơi về một cột. */
+/* Hai panel kề nhau ⇒ PHẢI kéo được (`02_RULES §Panel resize`): dùng `.rzgrid` + `.seam` như mọi
+   màn khác, biến `--drv1` là bề rộng THẬT của cột trái, nhớ qua localStorage, double-click dựng lại. */
+.drv2col{gap:0 16px;align-items:start}
+.drv2col>.seam{align-self:stretch}
+@media (max-width:900px){.drv2col{grid-template-columns:1fr !important}.drv2col>.seam{display:none}}
+.drv2col>.card{min-width:0}
+/* PHÂN MỤC PHẢI CÓ VẠCH + KHOẢNG CÁCH. `.section-t` trần chỉ là một dòng chữ nhỏ; nhiều mục xếp
+   liền nhau đọc thành một khối chữ (user báo nhiều lần). Khuôn đã có sẵn ở `.set-row` — mỗi hàng
+   một vạch đáy; ở đây áp cùng nguyên tắc cho từng MỤC, trừ mục đầu (vạch sát card-h là hai vạch
+   dính nhau — chính lỗi đã sửa cho `.set-row` cuối năm 2026-07). */
+.card-b>.section-t,.sub>.section-t,.dlg-b>.section-t{margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.card-b>.section-t:first-child,.sub>.section-t:first-child,.dlg-b>.section-t:first-child{margin-top:0;padding-top:0;border-top:0}
+.drv2col .card-b>.set-row{padding:12px 0}
+.donut-lg{width:132px;height:132px;flex:0 0 auto}
+.donut-lg .donut-lbl{font-size:20px}
+/* Thanh tỉ trọng nguồn — cùng khuôn với `barRows` của Insights, một giọng cho mọi biểu đồ cột. */
+.drvmix-row{margin-bottom:8px}
+.drvmix-top{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;margin-bottom:3px}
+.drvmix-bar{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+.drvmix-fill{height:100%;background:var(--primary);border-radius:3px}
+.sub[data-sy]{padding-top:10px}
+.sub[data-sy]>.card{margin-bottom:14px}
+.sub[data-sy] .card-b>.set-row{padding:10px 0}
+.dsec{border:1px solid var(--border-strong);border-radius:10px;padding:0 14px 12px;margin:16px 0;background:var(--surface-2)}
+/* Đầu panel là một THANH có nền + vạch đáy: user báo ba khối xếp liền nhau đọc thành "một nùi
+   dính chùm", không thấy được là có HAI chế độ. Viền suông chưa đủ nổi — cần cả thanh tiêu đề. */
+.dsec-h{display:flex;align-items:baseline;gap:10px;margin:0 -14px 10px;padding:9px 14px;
+  border-bottom:1px solid var(--border-strong);background:var(--surface-3);border-radius:9px 9px 0 0;
+  font-size:12.5px;font-weight:700}
+.dsec-h .muted{font-size:11px;font-weight:400}
+.dsec>.section-t{margin-top:10px}
+.dsec .set-row:last-of-type{border-bottom:0}
 .muted{color:var(--text-faint)}
 /* Resize seam (§5): kéo chỉnh cột · dblclick reset · lưu localStorage. */
+/* VẠCH NGĂN CHẠY HẾT CHIỀU CAO — mặc định, mọi lưới kéo được (user chốt 2026-09-16).
+   Vì sao cần một dòng riêng: `align-self:stretch` chỉ kéo vạch hết HÀNG, mà hàng thì cao bằng
+   panel dài nhất — panel ngắn hơn để lại một khoảng trống và vạch dừng giữa chừng, trông như
+   kẻ hụt. Mọi `.rzgrid` trong app đều là lưới MỘT HÀNG mang `grow` (chiếm hết vùng nội dung),
+   nên ép hàng đó bằng chiều cao lưới là an toàn và cho vạch chạy trọn trang.
+   Panel vẫn giữ chiều cao theo nội dung nhờ `align-items:start` ở nơi khai nó. */
+.rzgrid{grid-template-rows:minmax(0,1fr)}
 .seam{cursor:col-resize;align-self:stretch;position:relative;z-index:3;min-height:20px}
 .seam::after{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;border-radius:2px;background:var(--border);transition:background .12s}
 .seam:hover::after,.seam.drag::after{background:var(--primary)}
@@ -380,7 +458,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* Hàng tab của màn Dự án: tab bên trái, tên project + nút back đẩy sang PHẢI cùng hàng
    (user 2026-07-27 — trước đó back/tên chiếm riêng một hàng chỉ để hiện một chữ). */
 .pjtabs{align-items:center}
-.pjhead{margin-left:auto;display:flex;align-items:center;gap:10px;padding-bottom:4px}
+/* `margin-left:auto` bỏ 2026-09-16: nó đẩy tên dự án sang phải để chừa chỗ cho hàng tab bên trái.
+   Hàng tab đó nay không còn nút nào (khối "Tài liệu dự án" đã gỡ), nên giữ lại là để một dải trống. */
+.pjhead{display:flex;align-items:center;gap:10px;padding-bottom:4px}
 .pjhead b{font-size:14px}
 .pjhead .back{color:var(--text-dim);cursor:pointer;font-size:12.5px}
 .pjhead .back:hover{color:var(--primary)}

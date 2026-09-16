@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const PROFILES = ["05_app", "03_nonapp"];
 const STANDARD = [
@@ -149,4 +149,75 @@ test("the app structure standard no longer inlines the non-app §7 (it moved out
   const appStruct = read("05_app", "agent/03_STRUCTURE.md");
   assert.match(appStruct, /## 7\. Chuẩn NON-APP — đã TÁCH/, "app §7 is now a pointer stub");
   assert.doesNotMatch(appStruct, /## 7\. Chuẩn phụ NON-APP/, "the full §7 body must be gone from the app tree");
+});
+
+// ── CHUẨN THIẾT KẾ APP PHẢI TỚI ĐƯỢC REPO KHÁC ─────────────────────────────
+//
+// User chốt 2026-09-16: luật thiết kế UI rời `02_RULES` sang skill `app-design/`, **rồi áp lại cho
+// mọi repo dùng chuẩn này**. Một chuẩn chỉ sống trong repo zemory là chuẩn của riêng zemory.
+//
+// Ba vế phải khớp nhau, thiếu một là chuẩn tới nơi mà không ai biết để mở:
+//  ① bản mẫu APP/ADAPT phải MANG skill · ② `02_RULES` của chúng phải TRỎ sang nó ·
+//  ③ `AGENTS.md` phải có dòng trigger (đó là đường DUY NHẤT agent biết lúc nào mở).
+test("app-design tới được bản mẫu: skill có mặt, 02_RULES trỏ sang, AGENTS có trigger", () => {
+  for (const prof of ["05_app", "04_adapt"]) {
+    const skill = new URL(`../../docs_template/${prof}/.claude/skills/app-design/SKILL.md`, import.meta.url);
+    const body = readFileSync(skill, "utf8");
+    assert.match(body, /## FE/, `${prof}: skill thiếu mục FE`);
+    assert.match(body, /## BE/, `${prof}: skill thiếu mục BE`);
+    // BE phải mang đúng luật gom tiến trình — đây là thứ user yêu cầu thêm.
+    assert.match(body, /gom về MỘT nhóm/, `${prof}: thiếu chuẩn gom tiến trình`);
+    for (const need of [/### F8\./, /### B4\./, /### B5\./]) {
+      assert.match(body, need, `${prof}: skill thiếu mục vừa dời từ 02_RULES (${need})`);
+    }
+    const rules = readFileSync(new URL(`../../docs_template/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
+    assert.match(rules, /app-design\/SKILL\.md/, `${prof}: 02_RULES không trỏ sang skill`);
+    // Và KHÔNG được giữ bản sao — hai nhà cho một nội dung là cách chúng lệch nhau.
+    // LUẬT = thứ áp cho MỌI profile (kể cả NON-APP không có app). CHUẨN THIẾT KẾ = riêng của app.
+    // User chốt 2026-09-16: *"luật là 1 bộ chung ship đi repo có thể có người khác xài, nên ko thể áp
+    // dụng chung dc thiết kế vào luật"*. Nên `02_RULES` của profile app KHÔNG được giữ bản sao nào
+    // của chuẩn thiết kế — có bản sao là hai nhà cho một nội dung, và chúng sẽ lệch.
+    for (const dup of [/^Panel resize/m, /^Dialog \/ modal/m, /^Setting UI kéo-thả/m,
+                       /^2 KIỂU version-up/m, /^Backup deploy 2 CHIỀU/m, /Nhãn ĐỦ/, /UI phải KHỚP CODE/]) {
+      assert.ok(!dup.test(rules), `${prof}: 02_RULES còn giữ bản sao chuẩn thiết kế (${dup})`);
+    }
+    const agents = readFileSync(new URL(`../../docs_template/${prof}/AGENTS.md`, import.meta.url), "utf8");
+    assert.match(agents, /app-design\/SKILL\.md/, `${prof}: AGENTS.md thiếu dòng trigger`);
+  }
+});
+
+// ── NGUYÊN TẮC → LUẬT · QUY TRÌNH → SKILL ──────────────────────────────────
+//
+// User chốt 2026-09-16: *"luật chung là 1 thứ gì đó phải áp chung dc cho toàn hệ thống và mọi
+// template"*. Phép chia KHÔNG phải "skill hay luật" mà là **nguyên tắc → luật · quy trình → skill**:
+// một skill được phép có cả hai, miễn nguyên tắc của nó có mặt trong `02_RULES` của MỌI profile.
+//
+// Đo 2026-09-16 khi soi 10 skill theo phép này: `grill` đã đúng sẵn (nguyên tắc nằm trong luật từ
+// trước, skill chỉ giữ playbook); hai skill THIẾU nguyên tắc là `sync-path` và `write-style`.
+test("nguyên tắc của sync-path và write-style phải có trong 02_RULES của MỌI profile", () => {
+  const roots = ["01_cowork_basic/nonapp", "03_nonapp", "04_adapt", "05_app"];
+  for (const r of roots) {
+    const rules = readFileSync(new URL(`../../docs_template/${r}/agent/02_RULES.md`, import.meta.url), "utf8");
+    assert.match(rules, /CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI/, `${r}: thiếu nguyên tắc của sync-path`);
+    assert.match(rules, /VĂN BẢN ĐƯA NGƯỜI ĐỌC/, `${r}: thiếu nguyên tắc của write-style`);
+    // Nguyên tắc chỉ MỘT dòng + trỏ sang skill; playbook không được bò ngược vào luật.
+    assert.match(rules, /skills\/sync-path\/SKILL\.md/, `${r}: nguyên tắc không trỏ sang playbook`);
+  }
+});
+
+// ── LUẬT TRỎ SANG SKILL THÌ SKILL PHẢI CÓ THẬT ─────────────────────────────
+//
+// Thêm một dòng luật trỏ sang playbook là dễ; ship playbook sang ĐÚNG những bộ nhận dòng luật đó
+// thì hay quên. Đo 2026-09-16 ngay sau khi thêm hai nguyên tắc: `01_cowork_basic` nhận dòng trỏ
+// sang `sync-path` trong khi bộ đó KHÔNG mang skill ấy — một con trỏ chết ngay lúc sinh ra.
+test("mọi `.claude/skills/<x>/SKILL.md` mà 02_RULES trỏ sang đều phải có trong CÙNG bộ", () => {
+  for (const prof of ["01_cowork_basic/nonapp", "03_nonapp", "04_adapt", "05_app"]) {
+    const rules = readFileSync(new URL(`../../docs_template/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
+    const want = [...new Set([...rules.matchAll(/\.claude\/skills\/([a-z-]+)\/SKILL\.md/g)].map((m) => m[1]))];
+    assert.ok(want.length > 0, `${prof}: 02_RULES không trỏ sang skill nào — nguyên tắc đã rơi?`);
+    for (const name of want) {
+      const f = new URL(`../../docs_template/${prof}/.claude/skills/${name}/SKILL.md`, import.meta.url);
+      assert.ok(existsSync(f), `${prof}: luật trỏ sang skill \`${name}\` mà bộ này không mang nó`);
+    }
+  }
 });

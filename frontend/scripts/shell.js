@@ -11,9 +11,10 @@
     recall:['Recall','ttl.recall'],
     projects:['Projects','ttl.projects'],
     gmem:['Global Memory','ttl.gmem'],
-    harness:['Harness','ttl.harness']};
+    harness:['Harness','ttl.harness'],
+    sync:['nav.sync','ttl.sync']};
   // screen → attribute của sub-tab trong màn đó (cho data-goto="screen:sub")
-  var SUBATTR={recall:'data-rc',gmem:'data-gm',harness:'data-ht',projects:'data-pj'};
+  var SUBATTR={recall:'data-rc',gmem:'data-gm',harness:'data-ht',projects:'data-pj',sync:'data-sy'};
   var scrollEl=document.getElementById('scroll'); // đổi tên: window.scroll là hàm builtin, de-IIFE mà giữ tên cũ là ghi đè nó
   function go(s){
     document.querySelectorAll('.nav a').forEach(function(a){a.classList.toggle('on',a.dataset.s===s);});
@@ -26,7 +27,7 @@
     ensureScreen(s);
   }
   document.getElementById('nav').addEventListener('click',function(e){var a=e.target.closest('a[data-s]');if(a)go(a.dataset.s);});
-  // ── SUB-TAB (data-pt project · data-ht harness · data-rc recall · data-gm gmem)
+  // ── SUB-TAB (data-ht harness · data-rc recall · data-gm gmem · data-pj · data-sy)
   //    subApply = chỉ lật class (dùng lúc restore) · subSet = lật + nhớ + nạp dữ liệu.
   function subApply(attr,v){
     var b=document.querySelector('.tabs button['+attr+'="'+v+'"]');if(!b)return null;
@@ -36,14 +37,16 @@
     return b;
   }
   function subLoad(attr,v){
-    if(attr==='data-pt'){if(v==='graph'){gApplyLayout();loadProjGraph(curProjRoot);}else if(v==='harness')loadProjHarness(curProjRoot);return;}
     if(attr==='data-rc'&&v==='sess')loadSessions();
     else if(attr==='data-gm'&&v==='mem')renderInsights();
+    // Màn Đồng bộ: nhịp nhật ký CHỈ chạy khi tab máy-tới-máy đang mở — hỏi log mỗi 15s trong lúc
+    // không ai nhìn là đốt I/O suông.
+    else if(attr==='data-sy'&&window.zSyncScreen)window.zSyncScreen(v==='p2p');
   }
   function subOf(screen){var a=SUBATTR[screen];if(!a)return null;
     var b=document.querySelector('.screen[data-s="'+screen+'"] .tabs button['+a+'].on');return b?b.getAttribute(a):null;}
-  // data-pt KHÔNG persist: mở 1 project luôn về sub-tab Harness (showProjDetail reset).
-  var PERSIST={'data-rc':'recall','data-gm':'gmem','data-ht':'harness','data-pj':'projects'};
+  // Nhóm data-pt đã gỡ 2026-09-16 cùng khối "Tài liệu dự án" — chi tiết dự án chỉ còn Graph.
+  var PERSIST={'data-rc':'recall','data-gm':'gmem','data-ht':'harness','data-pj':'projects','data-sy':'sync'};
   function subSet(attr,v){if(!subApply(attr,v))return;
     var k=PERSIST[attr];if(k){try{localStorage.setItem('zemory.sub.'+k,v);}catch(_){}}
     subLoad(attr,v);
@@ -51,6 +54,8 @@
   // Vào 1 màn thì chỉ nạp đúng sub-tab đang mở (không fetch cho sub đang ẩn).
   function ensureScreen(s){
     if(s==='system'){renderSystem();return;}   // màn phẳng, không sub-tab
+    // Màn Đồng bộ cũng phẳng. Nạp ĐÚNG LÚC VÀO: số kênh/đường dẫn/nhật ký cũ là số sai, mà
+    // đây là màn người ta tới để SỬA. Rời màn thì `zSyncScreen(false)` tắt nhịp log.
     var a=SUBATTR[s],v=subOf(s);if(a&&v)subLoad(a,v);
   }
   function subtabs(attr){
@@ -59,7 +64,7 @@
       subSet(attr,b.getAttribute(attr));
     });
   }
-  subtabs('data-pt');subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');subtabs('data-pj'); // data-pj: Projects → Dự án | Thêm dự án (user 2026-08-29)
+  subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');subtabs('data-pj');subtabs('data-sy'); // data-pj: Projects → Dự án | Thêm dự án (user 2026-08-29)
   // Cây Nguồn TỰ TƯƠI khi đang mở Global Memory: nhịp nền/watcher kéo xong là daemon xoá cache, nhưng FE
   // trước đây chỉ vẽ lại theo cú bấm ⇒ user thấy ⚠ + số cũ 10 phút sau khi kho đã đổi (2026-08-29, ảnh
   // "linked rồi mà vẫn chấm đỏ"). Đọc bản cache (~40 ms) mỗi 60 s, chỉ khi màn đó đang hiện.
@@ -81,16 +86,27 @@
     document.getElementById('projList').style.display='none';
     var d=document.getElementById('projDetail');d.style.display='flex';
     document.getElementById('projProf').textContent=prof==='non-app'?'NON-APP':'APP';
-    // reset to harness sub-tab
-    d.querySelectorAll('.tabs button[data-pt]').forEach(function(x,i){x.classList.toggle('on',i===0);});
-    d.querySelectorAll('.sub[data-pt]').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-pt')==='harness');});
-    loadProjHarness(curProjRoot);
+    // Chi tiết dự án chỉ còn Graph — khối "Tài liệu dự án" gỡ 2026-09-16 (user chốt), và cùng lượt
+    // đó thanh sub-tab hết lý do tồn tại: một nhóm tab còn đúng một nút là thanh tab giả.
+    gApplyLayout();loadProjGraph(curProjRoot);
   }
   // Project-card → detail (works for real cards too; pin/forget + hit-select are
   // handled by the Phase-2 wiring block below, not here, to avoid double firing).
   document.addEventListener('click',function(e){
     var pc=e.target.closest('.proj-card');
-    if(pc&&!e.target.closest('.acts')){document.getElementById('projName').textContent=pc.querySelector('.nm').textContent;showProjDetail(pc.dataset.prof||'app',pc.dataset.openProj);}
+    // BẤM THẺ = CHỌN, KHÔNG mở (user chốt 2026-09-16). Mở chi tiết phải bấm nút ↗ riêng.
+    // Vì sao: mở ngay khi bấm làm người dùng đọc thành "bị nhảy sang màn khác" — khung chi tiết
+    // trông giống màn Harness, mà thao tác thì không hề có ý định rời danh sách.
+    if(pc&&!e.target.closest('.acts')){
+      document.querySelectorAll('.proj-card.sel').forEach(function(x){x.classList.remove('sel');});
+      pc.classList.add('sel');
+    }
+    var od=e.target.closest('[data-open-detail]');
+    if(od){
+      var card=od.closest('.proj-card');
+      if(card)document.getElementById('projName').textContent=card.querySelector('.nm').textContent;
+      showProjDetail(od.getAttribute('data-prof')||'app',od.getAttribute('data-root'));
+    }
     if(e.target.id==='projBack')showProjList();
     var nv=e.target.closest('[data-nav]');if(nv)go(nv.dataset.nav);
   });
@@ -110,7 +126,24 @@
     if(e.target.id==='topSettings'){openSettings();return;}
     if(e.target.id==='settingsClose'||e.target.id==='settingsDlg')closeSettings();
   });
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'){var open=document.querySelectorAll('.dlg-back.on');if(open.length)open.forEach(function(d){d.classList.remove('on');});}});
+  // ESC đóng ĐÚNG MỘT LỚP — lớp trên cùng, theo `02_RULES §Dialog`.
+  //
+  // Bản cũ đóng SẠCH mọi `.dlg-back.on` trong một nhịp. Nó chưa lộ ra khi app gần như không bao giờ
+  // chồng dialog, nhưng từ lúc có hộp lớp hai (Dữ liệu & Đồng bộ mở TỪ trong ⚙) thì một phím ESC
+  // thổi bay cả hộp con LẪN ⚙ — người dùng chỉ định lùi một bước và mất luôn chỗ đang đứng.
+  //
+  // "Trên cùng" = z-index lớn nhất; bằng nhau thì lớp KHAI SAU trong DOM nằm trên (đúng quy tắc xếp
+  // chồng của CSS). Đo bằng `getComputedStyle` chứ không đoán theo thứ tự mở, vì `.on` được bật ở
+  // rất nhiều nơi và không nơi nào ghi lại thứ tự.
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Escape')return;
+    var open=Array.prototype.slice.call(document.querySelectorAll('.dlg-back.on'));
+    if(!open.length)return;
+    var zi=function(el){var v=parseInt(getComputedStyle(el).zIndex,10);return isNaN(v)?0:v;};
+    var top=open[0];
+    for(var i=1;i<open.length;i++) if(zi(open[i])>=zi(top)) top=open[i];
+    top.classList.remove('on');
+  });
   // ---- Native OS folder picker (shared by Add-Project dialog · Drive link · DB relocate) ----
   function gPickFolder(inputId,cb){
     var inp=zid(inputId);

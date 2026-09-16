@@ -103,8 +103,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │
 ├── frontend/               ★ UI (mọi app đều có UI, kể cả tool ít UI). ▼ TẤT CẢ [opt]:
 │   ├── assets/       [opt]  MEDIA UI: logo · icon · background · banner · ảnh · font — con theo LOẠI khi có (logo/ icons/ backgrounds/ banners/ images/ fonts/)
-│   ├── components/   [opt]  component dùng lại — GỒM Dialog 3-size (S/M/L) + resize handle/seam (≥2 panel ⇒ bắt buộc, §5 "Panel resize")
-│   ├── styles/       [opt]  TOKENS: 3-size dialog, màu, spacing + CSS/theme chung + biến layout resize (--rail-w…)
+│   ├── components/   [opt]  component dùng lại — Dialog + resize handle/seam. Đặc tả: skill `app-design` §F1/§F2 (đừng chép lại ở đây)
+│   ├── styles/       [opt]  TOKENS: size dialog, màu, spacing + CSS/theme chung + biến layout resize (--rail-w…)
 │   ├── pages/        [opt]  trang / màn hình / route
 │   ├── layouts/      [opt]  layout khung trang
 │   ├── state/        [opt]  state client (Redux/Zustand)

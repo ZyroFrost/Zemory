@@ -1,11 +1,30 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import test from "node:test";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { join, relative, sep } from "node:path";
 import { ensureHarness, freshHarness } from "../../dist/docs/adopt.js";
 import { loadContext } from "../../dist/core/config.js";
 import { validate } from "../../dist/docs/validate.js";
 import { tempDir } from "./helpers.mjs";
+
+const REPO_ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
+
+// Every file under `dir`, as a slash-separated path relative to `dir`.
+// The recursive call MUST keep the original root: passing the child dir to relative() drops the
+// prefix (`agent/x` instead of `docs/agent/x`) and the comparison then reports "nothing missing"
+// while looking at the wrong names — a false green this very gate was written to prevent.
+function walkRel(dir, base) {
+  const root0 = base || dir;
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const entry of readdirSync(dir)) {
+    const p = join(dir, entry);
+    if (statSync(p).isDirectory()) out.push(...walkRel(p, root0));
+    else out.push(relative(root0, p).split(sep).join("/"));
+  }
+  return out.sort();
+}
 
 test("ensureHarness honors a custom docs path inside docs", (t) => {
   const root = tempDir(t, "zemory-adopt-");
@@ -46,6 +65,30 @@ test("ensureHarness(root, 'non-app') scaffolds the NON-APP tree (its own 03 + pr
   // The profile is persisted so validate/scaffold agree on later runs.
   const cfg = JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8"));
   assert.equal(cfg.profile, "non-app");
+});
+
+// A scaffold that drops files is the kind of failure nobody sees: `02_cowork_memory` ships NO
+// files on purpose and just calls `init`, so whatever init forgets, that set silently lacks
+// forever. The checks above assert a SAMPLE (03_STRUCTURE + three skills); this one compares the
+// whole SET against the template on disk, so a file added to docs_template/03_nonapp/ that init
+// never copies turns the gate red instead of shipping an incomplete harness.
+test("ensureHarness(root,'non-app') pours EVERY file of docs_template/03_nonapp (no silent gap)", (t) => {
+  const tplRoot = join(REPO_ROOT, "docs_template", "03_nonapp");
+  const expected = walkRel(tplRoot).map((rel) =>
+    // agent/* and plan/* land under docs/; AGENTS.md, CLAUDE.md and .claude/skills/** stay at root.
+    rel.startsWith("agent/") || rel.startsWith("plan/") ? `docs/${rel}` : rel,
+  );
+  assert.ok(expected.length >= 20, `the template itself must not be empty (got ${expected.length})`);
+
+  const root = tempDir(t, "zemory-nonapp-complete-");
+  ensureHarness(root, "non-app");
+  const got = new Set(walkRel(root));
+
+  const missing = expected.filter((p) => !got.has(p));
+  assert.deepEqual(missing, [], `init must not skip template files: ${missing.join(" · ")}`);
+  // Only the generated config may be extra — anything else means init invents files.
+  const extra = [...got].filter((p) => !expected.includes(p) && p !== "docs/.harness.json");
+  assert.deepEqual(extra, [], `init must not invent files: ${extra.join(" · ")}`);
 });
 
 test("ensureHarness() with no profile scaffolds the APP tree (unchanged default)", (t) => {

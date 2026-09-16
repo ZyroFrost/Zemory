@@ -353,3 +353,37 @@ test("p2p-identity: CHỮ SỐ KIỂM bắt lỗi chép — sai một ký tự l
   assert.equal(luhn32("ABCDEFG"), luhn32("ABCDEFG"));
   assert.throws(() => luhn32("ABC0189"), /ngoài base32/);
 });
+
+// ── GHI CẢ HAI KÊNH — và vì sao nó CHỈ an toàn khi mốc tách đôi ─────────────
+//
+// User chốt 2026-09-16: *"ko có vụ chọn bên nào hết, vì nó có đụng nhau đâu, xài nhiều cái dc mà"*.
+// User đúng: Drive và kênh máy-tới-máy là HAI ĐÍCH khác nhau — điều 11 cấm hai kẻ ghi cùng MỘT
+// kho, không cấm một kẻ ghi vào hai kho.
+//
+// 🔴 Thứ thật sự chặn không phải xung đột mà là CUỐN SỔ: bản cũ luôn dùng khoá `drive:<host>` bất
+// kể đích. Đẩy Drive xong là mốc nhảy lên ⇒ kênh kia KHÔNG BAO GIỜ còn thấy đám tin đó, im lặng và
+// vĩnh viễn — đúng họ với lỗi gieo `vec_shipped` đã giấu mất 6.310 vector (`plan/08 §8b`).
+// Cổng này canh đúng vế đó: hai kênh phải cho ra HAI khoá khác nhau.
+test("mỗi kênh giữ MỐC RIÊNG — dùng chung một khoá là bịt mắt kênh còn lại", async () => {
+  const { wmKeyFor } = await import("../../dist/memory/share.js");
+  assert.notEqual(wmKeyFor("drive", "MAY-A"), wmKeyFor("p2p", "MAY-A"), "hai kênh KHÔNG được chung mốc");
+  // Tương thích ngược: kênh drive phải giữ NGUYÊN khoá cũ, nếu không mọi bản cài đang chạy sẽ
+  // coi như chưa đẩy gì và xuất lại từ đầu.
+  assert.equal(wmKeyFor("drive", "MAY-A"), "drive:MAY-A", "đổi khoá của drive = mọi máy đẩy lại từ đầu");
+  assert.equal(wmKeyFor("p2p", "MAY-A"), "p2p:MAY-A");
+});
+
+test("mọi kênh đang BẬT đều là một đích ghi — không còn chọn một", (t) => {
+  const root = tempDir(t, "zemory-targets-");
+  const out = runInMemoryChild(root, [
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    'S.setDriveDir(""); S.setP2pEnabled(false); out.push(ch.syncTargets().map(x => x.channel));',
+    'S.setDriveDir(process.env.Z_ROOT); out.push(ch.syncTargets().map(x => x.channel));',
+    'S.setP2pEnabled(true); out.push(ch.syncTargets().map(x => x.channel));',
+    'S.setDriveDir(""); out.push(ch.syncTargets().map(x => x.channel));',
+  ].join(String.fromCharCode(10)));
+  assert.deepEqual(out[0], [], "không kênh nào bật ⇒ không đích nào");
+  assert.deepEqual(out[1], ["drive"]);
+  assert.deepEqual(out[2], ["drive", "p2p"], "bật cả hai ⇒ GHI cả hai, đây là cả điểm của thay đổi");
+  assert.deepEqual(out[3], ["p2p"], "chỉ p2p cũng chạy được, không bắt phải có Drive");
+});

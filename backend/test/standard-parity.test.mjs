@@ -42,6 +42,12 @@ const SET_DROPS = {
       "hệ adapt CẤM dời/đổi tên/xoá folder của repo (`03_STRUCTURE §0.1`) — nắn repo là việc bị cấm ở đó; " +
       "nó có `adopt/` thay thế: ánh xạ cấu trúc SẴN CÓ sang slot, không đụng cây thư mục",
   },
+  "03_nonapp": {
+    "app-design":
+      "non-app KHÔNG phát triển app — `03_STRUCTURE §7` của bộ đó có 0 luật UI và không có `frontend/`. " +
+      "Ship một chuẩn thiết kế panel/dialog/tiến-trình-nền sang đó là ship thứ không ai mở, " +
+      "đúng khuôn ngược của `pull`/`fill`/`upload` (chỉ non-app có). Thêm 2026-09-16 cùng lượt skill ra đời.",
+  },
 };
 
 /** Luật `02_RULES §Luật khi VIẾT` mà bộ NON-APP cố ý KHÔNG mang — non-app không phát triển app. */
@@ -49,6 +55,10 @@ const NONAPP_DROPS = {
   "SQL — 1 CÁCH": "non-app có luật riêng `SQL/DAX/M` (gom queries/ hoặc measures/)",
   "Sync bundle qua git": "non-app có luật riêng `Nhị phân nặng` cho LFS",
   "Setting UI kéo-thả": "0 luật UI (non-app không phát triển app)",
+  "Thiết kế UI (LUẬT)":
+    "dòng này chỉ TRỎ sang skill `app-design`, mà bộ non-app cố ý không ship skill đó " +
+    "(xem `SET_DROPS['03_nonapp']`) — non-app có 0 luật UI và không có `frontend/`. " +
+    "Mang một con trỏ tới file không tồn tại còn tệ hơn không mang gì.",
   "Panel resize (LUẬT)": "0 luật UI",
   "Dialog / modal": "0 luật UI",
   Test: "non-app không có bộ test code",
@@ -160,7 +170,11 @@ test("the audit skill: the intro sentence must state the SAME face count as the 
 
 test("the hard rules under Writing-time rules: app and adapt carry them ALL, non-app may only omit the exempt list", () => {
   const z = ruleLabels("docs/agent/02_RULES.md");
-  assert.ok(z.length >= 10, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
+  // Ngưỡng 10 → 6 (2026-09-16): khối §Luật khi VIẾT còn ĐÚNG 6 dòng sau khi bốn luật THIẾT KẾ
+  // (panel resize · dialog · version-up · deploy) rời sang skill `app-design`. Đây vẫn là phép
+  // TỰ KIỂM chống đo mù — nó bắt ca parser trả 0/1 — chỉ hạ về số thật, không bỏ.
+  // Nhà mới của bốn luật đó do `read-set-contract` canh (MOVED_TO_SKILL), nên không ai mất chỗ canh.
+  assert.ok(z.length >= 6, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
     const t = ruleLabels(`docs_template/${s}/agent/02_RULES.md`);
     const has = (r) => t.includes(r) || (s === "03_nonapp" && NONAPP_ALIAS[r] && t.includes(NONAPP_ALIAS[r]));

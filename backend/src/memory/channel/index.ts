@@ -6,9 +6,10 @@
  * mặt của cùng một chức năng lệch nhau, bài học `zemory sweep` 12/09).
  */
 import { join } from "node:path";
+import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
-import { getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
+import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
@@ -72,6 +73,8 @@ export interface ChannelStatus {
   port: number;
   peers: string[];
   dir: string;
+  /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
+  hostName: string;
 }
 
 /** Hai gốc đi vào hai chỗ khác nhau — danh tính ở MÁY NÀY, khúc ở GỐC KHO. Nhận
@@ -84,6 +87,7 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     port: getP2pPort(),
     peers: getP2pPeers(),
     dir: channelDir(storeRoot),
+    hostName: hostname(),
   };
 }
 
@@ -97,6 +101,34 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
  */
 export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
   return getSyncTransport() === "p2p" ? channelDir(storeRoot, true) : null;
+}
+
+/** Một đích ghi: kênh nào, và thư mục của nó. */
+export interface SyncTarget {
+  channel: "drive" | "p2p";
+  dir: string;
+}
+
+/**
+ * MỌI kênh đang bật đều là một đích ghi — không còn chuyện chọn một.
+ *
+ * 🔴 Vì sao đảo (user chốt 2026-09-16: *"ko có vụ chọn bên nào hết, vì nó có đụng nhau đâu, xài
+ * nhiều cái dc mà"*). User đúng: Drive và kênh máy-tới-máy là HAI đích khác nhau, ghi cả hai không
+ * làm hỏng nhau — điều 11 cấm **hai kẻ ghi cùng MỘT kho**, không cấm một kẻ ghi vào hai kho.
+ *
+ * Thứ thật sự chặn điều đó là cuốn SỔ DELTA dùng chung một khoá (`drive:<host>` cho mọi đích):
+ * đẩy sang Drive xong là mốc nhảy lên, kênh kia không bao giờ còn thấy đám tin đó. Đã tách bằng
+ * `wmKeyFor` (`share.ts`) — mỗi kênh một mốc — nên đây mới an toàn.
+ *
+ * 🔄 `syncWriteDir` GIỮ LẠI cho nơi gọi cũ và cho cổng đang neo vào nó, nhưng đường chạy thật của
+ * lượt sync nay đi qua hàm này.
+ */
+export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
+  const out: SyncTarget[] = [];
+  const drive = getDriveDir();
+  if (drive) out.push({ channel: "drive", dir: drive });
+  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelDir(storeRoot, true) });
+  return out;
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */

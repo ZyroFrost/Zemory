@@ -20,16 +20,9 @@
 SQL — 1 CÁCH         mặc định store/queries.* (gom, đặt tên, gọi theo tên); resources/sql/ CHỈ khi cố ý tách file .sql. KHÔNG rải inline
 Secret               config/ + .env.example chỉ trỏ TÊN env (password_env); pass THẬT ở .env/vault → data/secrets/. KHÔNG commit
 Sync bundle qua git   ngoại lệ CÓ CHỦ ĐÍCH của luật data/=gitignore: bundle MÃ HÓA cần đi qua git để đồng bộ xuyên máy (git-lfs) → TRACKED ở root share/ (đã mã hóa, không phải plaintext secret) — không nhét vào data/ (data/ không sync qua git)
-Setting UI kéo-thả   default ship → frontend/config/ (tracked); bản user chỉnh runtime → data/settings/ (gitignore)
-Panel resize (LUẬT)  **MỌI vùng có ≥2 panel kề nhau PHẢI có thanh kéo (resize handle) chỉnh được kích thước — KHÔNG có ngoại lệ.** Ràng buộc: **① Tự do THẬT** — seam phải điều khiển một biến layout THẬT (kéo là đổi), CẤM seam "trang trí" (cột `2fr`/`1fr` cứng = kéo không đổi gì = SAI). **② Bố cục 2D → kéo cả 2 chiều** (2 panel cạnh nhau = seam DỌC chỉnh bề ngang; 2 panel trên-dưới = seam NGANG chỉnh chiều cao; lưới 2×2 = có cả hai). Không được chỉ cho co 1 chiều. **③ MỘT engine dùng chung** — mọi seam đi qua CÙNG một cơ chế (1 hàm init + 1 kiểu handle + biến/clamp data-driven), KHÔNG mỗi chỗ một nhánh `if(type===…)` hardcode. Thêm seam mới = khai báo dữ liệu, KHÔNG chép logic. **④ Lưu + khôi phục** y nguyên qua phiên. **⑤ Dựng lại (double-click) về mặc định.** Ngưỡng min/max theo nội dung tối thiểu mỗi panel, KHÔNG số ma rải rác
-Dialog / modal       CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%**. 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); thân là grid/flex child phải `min-height:0` mới cuộn. KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Tràn → cuộn TRONG dialog (overflow:auto), KHÔNG phình theo nội dung. Trạng thái layout user chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở frontend/styles/. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ thì chặn cả ESC lẫn backdrop cho tới khi xong
-Test                 KHÔNG bắt buộc — chạy chính app = phép kiểm thử; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc frontend/test
-Version              git=source(tag/branch) · dist+Releases=build · data/snapshots=data · migrations=schema · 06_CHANGES=log. KHÔNG folder versions/ chép tay. **Bump RELEASE-BASED: số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG per-commit/per-feature; USER quyết số (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = manifest 1 chỗ (package.json/__version__/…); release-notes = 06_CHANGES**
-2 KIỂU version-up     ① TỰ ĐỘNG (app tự check+tải+apply) → backend/src/update/ (phối attic/+dist/+migrations/). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → dist/ build → backend/scripts/deploy.* → backup bản đang chạy về attic/ TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới
-Bề mặt CHẾT THEO nền  **Mọi bề mặt phụ thuộc một tiến trình nền (cửa sổ app · tab · panel · CLI đang chờ · job theo lịch) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang sống.** Đã trả giá thật: tiến trình nền chết mà cửa sổ vẫn mở ⇒ mọi nút bấm gửi request vào chỗ trống, vòng xoay "đang chạy…" quay MÃI, người dùng đọc thành "kẹt" rồi chờ hàng giờ trong khi KHÔNG có gì đang chạy. Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó **NÓI DỐI**, và người dùng không có cách nào phân biệt với đang-chạy-thật. Cách làm: nhịp tim định kỳ tới nền; chịu lỗi CÓ CHỦ ĐÍCH (chỉ đếm SAU khi đã thấy nền sống ít nhất một lần, và phải trượt LIÊN TIẾP N nhịp mới kết luận — nền bận một nhịp ≠ nền chết); hết N nhịp thì đóng/báo. Đối xứng với luật fail-open: lớp phụ hỏng thì rơi về lớp dưới **và NÓI RA**, không giả vờ vẫn chạy
+Thiết kế UI (LUẬT)   **Chuẩn thiết kế FE + BE của app: `.claude/skills/app-design/SKILL.md`** — panel resize · dialog · chữ người dùng đọc · gom tiến trình. Đây là CHUẨN THIẾT KẾ, không phải điều khoản; đụng bề mặt app hay thêm tiến trình nền ⇒ MỞ nó trước, và làm theo
 Separator của INDEX   ⛔ ĐỪNG "dọn cho đẹp": chỉ mục docs lưu đường theo separator của OS (`docs\agent\05_TODO.md`), KHÔNG posix — và mọi chỗ TRA cũng ghép bằng `join`. Từng có đợt chuẩn hoá sang `/`, hậu quả đo được: `plan ls` IM LẶNG báo "index rỗng" dù chỉ mục đủ, và `reindex` lần sau đẻ doc row TRÙNG. Muốn đổi = một MIGRATION riêng (đổi index cũ + mọi chỗ tra trong CÙNG một bước)
 EOL của file         ⛔ ĐỌC SAO GHI VẬY: sửa file CÓ SẴN thì giữ nguyên kiểu xuống dòng của nó — đọc dạng BYTE, thấy CRLF thì ghi lại CRLF. Đọc thành text rồi ghép lại bằng LF là ÂM THẦM đổi cả file sang LF ⇒ git kêu MỌI DÒNG đều đổi, thay đổi thật chìm trong nhiễu và mất blame theo dòng. Đo 2026-09-04: 2 file bị vậy, và cùng lượt ghi-lại-cả-file đó còn LÀM RƠI phần phiên khác vừa chèn (lost update, không ai báo lỗi) ⇒ sửa theo TỪNG ĐOẠN, đừng đọc-cả-file-rồi-ghi-lại
-Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp attic/ local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về attic/ local. Cùng nguyên lý additive-merge của memory sync/share.ts
 ```
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
@@ -46,16 +39,8 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
     DẤU.** Sợ encoding console thì viết **TIẾNG ANH** — nó ASCII sẵn, an toàn y hệt mà vẫn đọc được;
     Việt mất dấu vừa khó đọc, vừa nhập nhằng nghĩa, vừa làm chính bộ dò chính tả mù. Và không mang
     mojibake (UTF-8 bị đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
-  · **② Nhãn ĐỦ, máy đọc được.** Mọi phần tử tương tác (nút · ô nhập · select · link) phải có nhãn
-    mà **công cụ đọc được**: nội dung chữ, hoặc `aria-label`/`title`/`placeholder`; ảnh có `alt`.
-    Nút icon trơn không nhãn là **thiếu**, không phải "gọn".
-  · **③ Song ngữ ĐỦ HAI ĐẦU.** Vế "0 chuỗi hardcode" áp cho **cả chữ nằm thẳng trong HTML/markup**,
-    không riêng chuỗi trong code: text node và cả `title`/`placeholder`/hint phải có móc i18n
-    tương ứng, mọi khoá phải tồn tại ở **cả hai** dict. Chữ nằm trong markup mà thiếu móc = người
-    dùng đổi ngôn ngữ xong **vẫn thấy tiếng cũ**, và không lỗi nào nổ.
-  · **④ UI phải KHỚP CODE, kiểm bằng GRAPH chứ không bằng mắt.** Bề mặt gọi tới đâu thì chỗ đó phải
-    có thật, và ngược lại: cạnh seam `api` đối chiếu route FE gọi với route BE thật ⇒ ① FE gọi
-    route không tồn tại = UI gãy · ② endpoint không ai gọi = bề mặt chết.
+  · **②–④ — NHÃN ĐỦ · SONG NGỮ ĐỦ HAI ĐẦU · UI KHỚP CODE:** ba phép này nói về BỀ MẶT app, nên
+    chúng sống ở `.claude/skills/app-design/SKILL.md` §F4/§F7 — theo chuẩn đó khi làm bề mặt.
   *(Cách đo + **bẫy báo oan** từng phép nằm ở `.claude/skills/audit/`: luật nói PHẢI ĐÚNG GÌ, skill
   nói ĐO THẾ NÀO cho khỏi báo oan.)*
 ## Tài liệu — quy ước cập nhật
@@ -145,6 +130,13 @@ Backup deploy 2 CHIỀU  KHÔNG chỉ push 1 chiều. Máy đích có backup l�
 - **VAI CỦA HOOK: LƯỚI ĐỠ, KHÔNG PHẢI NGƯỜI QUYẾT.** Chốt máy tồn tại để đỡ lúc agent **đọc sót hoặc quên** luật — nó KHÔNG phải cơ chế cấm xoá, và càng không phải giấy phép. **Quyền quyết định xoá luôn thuộc USER: hỏi và được đồng ý TRƯỚC, bất kể hook có chặn hay không.** · **Hook cho qua ≠ được phép** — lưới chỉ bắt thứ nó biết trước (xoá một file thường cố ý cho qua để gate khỏi thành nhiễu, nhưng vẫn phải hỏi). · **Hook chặn ≠ hết việc** — bị chặn thì đi HỎI USER, không đi tìm đường vòng, không tự tạo flag. Chữ là tầng QUYẾT ĐỊNH, máy là tầng ĐỠ HỤT; bỏ một tầng thì tầng kia không gánh thay được.
 
 ## Hành xử
+- **CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI = CHƯA XONG** *(user chốt 2026-09-16)*. Mọi thứ vừa dựng — lớp
+  lưu, chỉ mục, bí mật, tài sản giao đi — phải KHAI được nó sang máy khác bằng đường nào, và đường đó
+  phải ĐO rồi mới gọi là xong. Không khai được = việc còn dở, bất kể cổng có xanh. Quy trình khai +
+  đo: `.claude/skills/sync-path/SKILL.md`.
+- **VĂN BẢN ĐƯA NGƯỜI ĐỌC THEO VĂN PHONG ĐÃ CHỐT** *(user chốt 2026-09-16)*. Báo cáo · email · tài
+  liệu giao đi viết cho NGƯỜI NHẬN, không bê giọng harness (mệnh lệnh, viết hoa nhấn giọng, thuật ngữ
+  nội bộ) sang. Bộ luật văn phong: `.claude/skills/write-style/SKILL.md`.
 - **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì
   · vì sao · dựa trên số nào* NGAY KHI LÀM — không chạy một chuỗi dài rồi mới ngoi lên báo kết
   quả. Thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng**: user mất khả năng

@@ -44,7 +44,7 @@
     var svg='<svg viewBox="0 0 '+L.W+' '+L.H+'" preserveAspectRatio="xMidYMid meet">';
     edges.forEach(function(e){if(gEdgeHidden(e,hid))return;var a=L.pos[e.from],b=L.pos[e.to];if(!a||!b)return;
       svg+='<line class="gedge'+((e.rel==='inferred')?' inferred':'')+'" data-from="'+stdEsc(e.from)+'" data-to="'+stdEsc(e.to)+'" data-kind="'+stdEsc(e.kind||'imports')+'" x1="'+a.x.toFixed(1)+'" y1="'+a.y.toFixed(1)+'" x2="'+b.x.toFixed(1)+'" y2="'+b.y.toFixed(1)+'"/>';});
-    nodes.forEach(function(nd){if(hid[nd.id])return;var p=L.pos[nd.id];if(!p)return;var deg=nd.fanIn+nd.fanOut,r=3+Math.sqrt(deg/maxDeg)*9,isO=orph[nd.id],cls='gnode'+(isO?' orphan':'')+(orphanOnly&&!isO?' dim':'');
+    nodes.forEach(function(nd){if(hid[nd.id])return;var p=L.pos[nd.id];if(!p)return;var deg=nd.fanIn+nd.fanOut,r=3+Math.sqrt(deg/maxDeg)*9,isO=orph[nd.id],cls='gnode'+(nd.deadPaths?' dead':'')+(isO?' orphan':'')+(orphanOnly&&!isO?' dim':'');
       svg+='<g class="'+cls+'" data-id="'+stdEsc(nd.id)+'" data-dir="'+stdEsc(nd.dir||'')+'"><circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+gSlotColor(nd.slot)+'"><title>'+stdEsc(nd.id)+'</title></circle>'+(r>=7?'<text x="'+p.x.toFixed(1)+'" y="'+(p.y-r-2).toFixed(1)+'" text-anchor="middle">'+stdEsc(nd.label)+'</text>':'')+'</g>';});
     svg+='</svg>';box.innerHTML=svg;
     gview={x:0,y:0,w:L.W,h:L.H,W:L.W,H:L.H};gUndo=[];gRedo=[];
@@ -116,13 +116,28 @@
     var box=zid('gLegend');if(!box)return;var cnt={};
     ((data&&data.nodes)||[]).forEach(function(n){var s=n.type||n.slot||G_NO_SLOT;cnt[s]=(cnt[s]||0)+1;});
     var keys=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]||a.localeCompare(b);});
-    box.innerHTML=keys.map(function(s){
+    var html=keys.map(function(s){
       return '<span class="lg'+(gSlotOff[s]?' off':'')+'" data-slot="'+stdEsc(s)+'" title="'+t('graph.legendTip')+'">'
         +'<span class="dot" style="background:'+gSlotColor(s===G_NO_SLOT?'':s)+'"></span>'
         +stdEsc(gSlotLabel(s))+' <span class="n">'+cnt[s]+'</span></span>';}).join('');
+    // TRẠNG THÁI, không phải một hạng node: một đường chết nằm TRÊN node đã có hạng riêng
+    // (`plan_spec`, `harness_doc`, file mã…), nên nó không thể là một mục type. Chip này đếm
+    // ĐƯỜNG (khớp con số chip rail đang báo), tooltip nói thêm nó rải trên bao nhiêu file.
+    // Ẩn hẳn khi bằng 0 — một chip luôn hiện "0" là chỗ mắt học cách bỏ qua.
+    var dn=(data&&data.deadPaths)||0;
+    if(dn){
+      var files=((data&&data.nodes)||[]).filter(function(n){return n.deadPaths;}).length;
+      html+='<span class="lg dead'+(gDeadOnly?' on':'')+'" data-deadonly="1" title="'+stdEsc(t('graph.deadTip').replace('{n}',dn).replace('{f}',files))+'">'
+        +'<span class="dot"></span>'+stdEsc(t('graph.deadLegend'))+' <span class="n">'+dn+'</span></span>';
+    }
+    box.innerHTML=html;
   }
+  /** Chỉ hiện node đang mang đường dẫn chết — cùng khuôn công tắc `Chỉ orphan` đã có. */
+  var gDeadOnly=false;
+  document.addEventListener('click',function(ev){var d=ev.target.closest?ev.target.closest('#gLegend .lg[data-deadonly]'):null;if(!d)return;
+    gDeadOnly=!gDeadOnly;if(gData)paintProjGraph(gData);});
   /** Node/cạnh có đang bị bộ lọc ẩn không (dùng chung cho vẽ + đếm). */
-  function gNodeHidden(n){return !!gSlotOff[n.type||n.slot||G_NO_SLOT];}
+  function gNodeHidden(n){if(gDeadOnly&&!n.deadPaths)return true;return !!gSlotOff[n.type||n.slot||G_NO_SLOT];}
   function gEdgeHidden(e,hid){return !!gEdgeOff[e.kind||'imports']||hid[e.from]||hid[e.to];}
   document.addEventListener('change',function(ev){var c=ev.target.closest?ev.target.closest('[data-ekind]'):null;if(!c)return;
     var k=c.dataset.ekind;if(c.checked)delete gEdgeOff[k];else gEdgeOff[k]=1;if(gData)paintProjGraph(gData);});
@@ -281,6 +296,17 @@
   // Danh sách cạnh ĐI RA / ĐI VÀO có KIỂU, bấm nhảy sang node đó (ý hay nhất mượn được
   // từ Knowledge Graph Viewer). Trước đây inspector chỉ hiện CON SỐ fan-in/out — biết
   // "5 file import mình" mà không biết file nào thì không dùng để tra blast-radius được.
+  /** Danh sách đường dẫn chết của MỘT node — `file:line` + chuỗi đã chết (plan/13 §4c).
+   *  Số này tới từ state của sweep, cùng nguồn với chip rail; nó KHÔNG tự quét lại. */
+  function gDeadListHtml(nd){
+    var at=(nd&&nd.deadAt)||[];if(!at.length)return '';
+    return '<div class="section-t">'+stdEsc(t('graph.deadIn'))+' ('+(nd.deadPaths||at.length)+')</div>'
+      +'<div class="eglist">'+at.map(function(h){
+        return '<div class="eg" title="'+stdEsc(h.text||'')+'">'
+          +'<span class="k">'+stdEsc(String(h.line||0))+'</span>'
+          +'<span class="t">'+stdEsc(h.text||'')+'</span></div>';}).join('')
+      +'</div><div class="muted" style="font-size:10.5px;padding-top:4px">'+stdEsc(t('graph.deadHint'))+'</div>';
+  }
   function gEdgeListHtml(id){
     if(!gState)return '';
     var out=[],inn=[];
@@ -318,6 +344,7 @@
         +'<div class="row"><span class="nm">Fan-in</span><b>'+nd.fanIn+'</b></div><div class="row"><span class="nm">Fan-out</span><b>'+nd.fanOut+'</b></div>'+(nd.loc?'<div class="row"><span class="nm">'+t('graph.lines')+'</span><b>'+zN(nd.loc)+'</b></div>':'')
         +(nd.touchedBy?'<div class="row"><span class="nm">'+t('graph.touchedBy')+'</span><b>'+zN(nd.touchedBy)+'</b></div>':'')
         +'<div class="row" style="border:0"><span class="nm">'+(nd.loc?'File':'ID')+'</span><span class="muted" style="font-size:10.5px;word-break:break-all">'+stdEsc(nd.id)+'</span></div>'+syms
+        +gDeadListHtml(nd)
         +gEdgeListHtml(nd.id);
       return;
     }
