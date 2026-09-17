@@ -1392,8 +1392,15 @@ test("hộp Chuẩn repo: câu '0' chỉ nói về phần XÁC MINH được; ph
   assert.ok(!js.includes("t('upd.deadNone')"), "câu 'không repo nào có đường dẫn mới chết' là SAI khi vẫn có đường chết chưa kết luận — phải đi");
   assert.match(js, /t\('upd\.deadNoneVerified'\)/, "câu 0 phải nói đúng phạm vi: 0 đường XÁC MINH được");
   assert.match(js, /upd\.unprovenHdr/, "khối không-kết-luận phải có tiêu đề riêng");
-  assert.match(js, /deadPrompt\(dd,uu\)/, "prompt ở nhánh có-mới-chết cũng phải mang phần không kết luận");
-  assert.match(js, /deadPrompt\(\[\],uu\)/, "khối trên rỗng thì prompt vẫn phải hiện cho khối dưới");
+  // MỘT prompt duy nhất, mang cả hai mục, hiện khi mục nào có cũng được — hai bản chép là hai chỗ để lệch (§F6).
+  assert.equal((js.match(/deadPrompt\(dd,uu\)/g) || []).length, 1, "đúng MỘT prompt, dựng từ cả hai danh sách");
+  assert.match(js, /if\(dd\.length\|\|uu\.length\)repos\+=/, "khối trên rỗng thì prompt vẫn phải hiện cho khối dưới");
+  // Mỗi MỤC một vạch ngăn, và vạch đó do chính `hdr` kẻ — tiêu đề tự chế thì dính vào mục trên (§F9).
+  assert.match(js, /if\(uu\.length\)repos\+=hdr\('upd\.unprovenHdr'/, "mục không-kết-luận phải đi qua hdr để có vạch ngăn");
+  // …và prompt KHÔNG được có vạch của riêng nó: nó là đuôi của mục cuối, không phải mục thứ ba.
+  const promptOpen = /if\(dd\.length\|\|uu\.length\)repos\+='<div style="([^"]*)"/.exec(js);
+  assert.ok(promptOpen, "không tìm thấy khối prompt");
+  assert.ok(!/border-top/.test(promptOpen[1]), "prompt liền mạch với mục trên — không kẻ vạch riêng");
   assert.match(js, /fix\.promptUnprovenSteps/, "prompt phải dạy ba nhánh xếp loại, không cho đoán đích");
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   for (const k of ["upd.deadNoneVerified", "upd.unprovenHdr", "upd.unprovenRow", "upd.unprovenHint", "fix.promptUnproven", "fix.promptUnprovenSteps"]) {
