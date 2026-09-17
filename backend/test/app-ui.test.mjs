@@ -1283,10 +1283,12 @@ test("tab Drive: HAI panel riêng trong một lưới kéo được, bảng đo 
   const l = pane.indexOf('<div class="card">');
   const seam = pane.indexOf('data-seam="drv1"');
   const left = pane.slice(l, seam), right = pane.slice(seam);
-  for (const id of ['id="driveArc"', 'id="drvMix"', 'class="drv-facts"']) {
-    assert.ok(left.includes(id), `${id} phải nằm ở panel TRÁI (bảng đo)`);
+  // `drivesync` DỜI sang panel TRÁI 2026-09-17 (user: *"nút đồng bộ ngay đổi qua chỗ kho hợp lý
+  // hơn"*) — nó là hành động trên chính cái kho mà panel trái đang báo trạng thái.
+  for (const id of ['id="driveArc"', 'id="drvMix"', 'class="drv-facts"', 'data-act="drivesync"']) {
+    assert.ok(left.includes(id), `${id} phải nằm ở panel TRÁI (bảng đo + hành động trên kho)`);
   }
-  for (const id of ['data-act="drivelink"', 'data-act="drivesync"', 'id="lvLean"', 'id="lvAtt"']) {
+  for (const id of ['data-act="drivelink"', 'id="lvLean"', 'id="lvAtt"']) {
     assert.ok(right.includes(id), `${id} phải nằm ở panel PHẢI (thao tác)`);
   }
   assert.ok(pane.includes("donut-lg"), "biểu đồ tròn phải dùng cỡ lớn của màn rộng");
@@ -1792,8 +1794,9 @@ test("donut vẽ từ SỐ THẬT — không nền conic vẽ cứng, không cun
 // chỗ này và không cần dialogbox nữa"*.
 test("panel Thao tác: nút chạy tay neo góc phải hàng đầu, lịch tự sync vẽ thẳng, không hộp thoại", () => {
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
-  // Nút là HÀNH ĐỘNG ⇒ nằm ở hàng đầu panel, neo phải (§F13), không đứng cạnh một con số lịch.
-  assert.match(html, /<div class="drv-progress">[\s\S]{0,900}data-act="drivesync"[^>]*margin-left:auto/, "nút Đồng bộ ngay phải ở hàng đầu panel và neo phải");
+  // Nút là HÀNH ĐỘNG ⇒ nằm trong CỤM HÀNH ĐỘNG của thẻ hiện trạng thái kho, neo phải (§F13),
+  // không đứng cạnh một con số lịch (user 2026-09-17: *"nút đồng bộ ngay đổi qua chỗ kho hợp lý hơn"*).
+  assert.match(html, /data-i18n="mem\.driveSync"[\s\S]{0,220}data-act="drivesync"[^>]*margin-left:auto[\s\S]{0,90}id="driveToggle"/, "nút chạy tay phải nằm trong cụm hành động của thẻ Đồng bộ Drive, đứng trước công tắc");
   assert.equal((html.match(/data-act="drivesync"/g) || []).length, 1, "chỉ một nút chạy tay — hai chỗ là hai chỗ để lệch");
   // Chỗ cũ nay là CÔNG TẮC + LỊCH, và lịch vẽ thẳng vào ô này.
   assert.match(html, /data-i18n="mem\.autosync"[\s\S]{0,400}data-auto="autosync"[\s\S]{0,200}id="asInline"/, "khối tự động: công tắc rồi tới lịch vẽ thẳng");
