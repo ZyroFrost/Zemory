@@ -53,7 +53,10 @@ test("every surface honours the switch: the scheduler skips the sweep, /harness-
   assert.match(ui, /p === "\/set-paths-watch"/, "phải có endpoint gạt");
   assert.match(ui, /pathsWatch: getPathsWatch\(\),/, "/memory-status phải mang trạng thái để FE vẽ nút");
   const sys = SRC("frontend/scripts/system.js");
-  assert.match(sys, /feat:'paths',watch:\{ep:'\/set-paths-watch',key:'pathsWatch'\}/, "hàng paths phải khai công tắc");
+  // Neo KHÔNG ôm các thuộc tính đứng giữa: hàng này về sau chèn thêm `to:'__std'`, và một neo
+  // dán liền hai thuộc tính sẽ đỏ vì một thay đổi chẳng liên quan gì tới công tắc.
+  assert.match(sys, /\{k:'paths',[^}]*feat:'paths'/, "phải có hàng paths dạng feat");
+  assert.match(sys, /watch:\{ep:'\/set-paths-watch',key:'pathsWatch'\}/, "hàng paths phải khai công tắc");
   assert.match(sys, /if\(f\.watch&&m\[f\.watch\.key\]===false\)return \{on:'dim'/, "tắt ⇒ hàng dim, ra khỏi Health");
   // Công tắc ở MÉP PHẢI hàng, panel chi tiết KHÔNG còn nút On/Off (user 2026-09-10) — hai nơi cùng gạt một thứ là hai nơi để lệch.
   assert.match(sys, /'<\/span>'\+sysSwitch\(f\)\+'<\/div>'/, "mỗi hàng phải nối switch vào cuối");

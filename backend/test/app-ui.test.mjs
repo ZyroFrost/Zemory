@@ -12,7 +12,10 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+// Cổng "bộ mẫu harness" GỌI hàm thật thay vì soi chữ — lý do ghi tại chỗ, ở chính test đó.
+import { listTemplateBundles, listBundleDocs, templateBundleDir } from "../../dist/docs/adopt.js";
+import { runCheck } from "../../dist/checks.js";
 import { readAppJs } from "./helpers.mjs";
 
 const rd = (p) => readFileSync(new URL(p, import.meta.url), "utf8");
@@ -1495,16 +1498,54 @@ test("rail: lượt vẽ chip nằm SAU /status, vì chip đọc số chỉ /sta
 // Bản cũ dựng bằng lưới `repeat(auto-fill,minmax(150px,1fr))` nhét thẳng vào chuỗi HTML: `auto-fill`
 // GIỮ LẠI ô trống, nên hàng cuối để hở một mảng và thẻ lẻ đứng hụt 150px. Dải flex chia lại phần
 // thừa theo TỪNG HÀNG ⇒ hàng nào cũng khít mép (đo: hở cuối hàng 0px ở 1500·1300·1230·1100·900·800).
-test("dải số liệu là .tile-strip co giãn, không phải lưới nhét style thẳng vào HTML", () => {
+test("dải số liệu: số cột là ƯỚC của số thẻ — không bao giờ có thẻ lẻ đứng một mình", () => {
+  // 🔄 VIẾT LẠI 2026-09-18. Bản trước khoá `display:flex` + `flex:1 1 150px` và tin rằng flex
+  // chống được mảng trống cuối hàng. Đúng về mảng trống, SAI về thẻ lẻ: flex xếp THAM nên 8 thẻ
+  // ra 7+1 — một thẻ chiếm trọn hàng hai (user: *"thu 1 xíu nó bị 1 card ở dưới lẻ… không được
+  // để nó lẻ"*). Cổng nay khoá đúng bất biến người dùng đòi, không khoá một cách cài đặt.
   const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
   assert.ok(!/grid-template-columns:repeat\(auto-fill/.test(gm), "auto-fill giữ ô trống ⇒ hàng cuối hở");
   assert.match(gm, /zid\('gmStats'\)\.innerHTML='<div class="tile-strip">'/, "dải phải dùng lớp chung");
-  assert.match(gm, /return '<div class="tile">/, "thẻ phải dùng lớp chung, không style rời trong chuỗi");
+  assert.match(gm, /return '<div class="tile"/, "thẻ phải dùng lớp chung, không style rời trong chuỗi");
+
+  // Đếm số thẻ THẬT từ mảng nguồn, đừng gõ tay con số vào cổng.
+  const arr = /var tiles=\[([\s\S]*?)\];/.exec(gm);
+  assert.ok(arr, "không tìm thấy mảng tiles");
+  const tileCount = (arr[1].match(/\[['"]/g) || []).length;
+  assert.ok(tileCount >= 4, "mảng tiles đọc ra quá ít — phép đếm hỏng, đừng tin kết quả");
+
   const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
-  assert.match(css, /\.tile-strip\{[^}]*display:flex[^}]*flex-wrap:wrap/, "phải là dải flex thì mỗi hàng mới tự chia lại phần thừa");
+  assert.ok(!/\.tile-strip\{[^}]*display:flex/.test(css), "flex xếp tham ⇒ đẻ thẻ lẻ; dải này phải là lưới");
+  assert.match(css, /\.tile-strip\{[^}]*grid-template-columns:repeat\(\d+,minmax\(0,/, "phải minmax(0,…): `1fr` một mình vẫn bị nội dung đẩy rộng (§F12)");
+
+  // 🔄 Số cột do JS đặt theo BỀ RỘNG THẬT của khung, không theo breakpoint CSS. Breakpoint đoán
+  // theo bề rộng CỬA SỔ, mà khung này nằm trong panel kéo được ⇒ cửa sổ 1600px nhưng khung 1230px
+  // thì nó cắt xuống 4 cột trong khi 8 thẻ vẫn vừa (user nhắc BA lần, 2026-09-18).
+  // Cổng chạy THẲNG thuật toán chọn cột, không soi chữ: soi chữ thì đổi hằng số là xanh giả.
+  const fit = /for\s*\(var d=n;d>=1;d--\)\{([\s\S]*?)\n\s*\}/.exec(gm);
+  assert.ok(fit, "thiếu vòng chọn số cột trong fitTiles");
+  assert.match(fit[1], /if\(n%d\)continue/, "chỉ được nhận ƯỚC của số thẻ, nếu không sẽ có hàng lẻ");
+  const minW = Number((/var TILE_MIN=(\d+)/.exec(gm) || [])[1]);
+  assert.ok(minW >= 120, "bề rộng tối thiểu của thẻ phải đủ để nội dung không bị đè");
+  const pick = (w, n, gap = 10) => {
+    for (let d = n; d >= 1; d--) { if (n % d) continue; if ((w - (d - 1) * gap) / d >= minW) return d; }
+    return 1;
+  };
+  // Khung rộng ⇒ MỘT hàng đủ 8. Hẹp dần ⇒ chia đôi, không bao giờ lẻ.
+  assert.equal(pick(1600, tileCount), tileCount, "khung rộng thì phải đủ một hàng");
+  for (const w of [2000, 1600, 1230, 900, 640, 400, 200]) {
+    const d = pick(w, tileCount);
+    assert.equal(tileCount % d, 0, `khung ${w}px ⇒ ${d} cột ⇒ dư ${tileCount % d} thẻ lẻ`);
+  }
+  // Hẹp dần thì số cột chỉ được GIẢM — nhảy lên lại là bố cục giật.
+  let prev = Infinity;
+  for (const w of [2000, 1600, 1230, 900, 640, 400, 200]) {
+    const d = pick(w, tileCount);
+    assert.ok(d <= prev, `khung hẹp hơn mà số cột tăng (${prev} → ${d})`);
+    prev = d;
+  }
   const tile = /\.tile-strip>\.tile\{([^}]*)\}/.exec(css);
   assert.ok(tile, "thiếu luật cho thẻ trong dải");
-  assert.match(tile[1], /flex:1 1 150px/, "thẻ phải GIÃN để lấp hết bề ngang, 150px chỉ là bề rộng mong muốn");
   assert.match(tile[1], /min-width:0/, "không có min-width:0 thì thẻ không co được ⇒ cuộn ngang (§F12)");
 });
 
@@ -1900,20 +1941,148 @@ test("mọi vùng cuộn chừa chỗ cho thanh cuộn; nút Quét lại ổ đ�
 // nhở hoặc tự động thêm template khi code thêm mới… phải tự động đọc được khu vực template"*.
 // Đo lúc làm: đĩa có 5 bộ, `templateDir` ánh xạ đúng 2 tên ⇒ `04_adapt` là một cây harness đầy đủ
 // mà app không với tới và không cổng nào canh — nó chưa lệch, nhưng không có gì giữ nó khỏi lệch.
-test("bộ mẫu harness: đọc thư mục lúc chạy, có hàng NHẮC khi bộ chưa nối vào app", () => {
-  const adopt = readFileSync(new URL("../../backend/src/docs/adopt.ts", import.meta.url), "utf8");
-  assert.match(adopt, /export function listTemplateBundles\(\): TemplateBundle\[\]/, "phải có hàm đọc thư mục template lúc chạy");
-  assert.match(adopt, /readdirSync\(TEMPLATE_DIR, \{ withFileTypes: true \}\)/, "phải ĐỌC thư mục, không giữ danh sách gõ tay");
-  assert.match(adopt, /kind: existsSync\(join\(TEMPLATE_DIR, dir, "agent"\)\) \? "harness" : "kit"/, "phân loại cây harness bằng sự tồn tại của agent/, không bằng tên");
-  const checks = readFileSync(new URL("../../backend/src/checks.ts", import.meta.url), "utf8");
-  assert.match(checks, /if \(feature === "templates"\) \{/, "thiếu phép kiểm nhắc");
-  assert.match(checks, /const loose = trees\.filter\(\(b\) => !b\.wired\)/, "phải nêu ĐÍCH DANH bộ chưa nối, không chỉ đếm");
+test("bộ mẫu harness: đọc thư mục THẬT, phân ba hạng, và chặn đường ra ngoài", async () => {
+  // 🔄 VIẾT LẠI 2026-09-18. Bản trước soi CHỮ của ba dòng trong adopt.ts/checks.ts, nên viết lại
+  // đúng ba dòng đó là cổng ĐỎ dù hành vi không đổi một ly — và ngược lại, đổi hành vi mà giữ
+  // nguyên chữ thì cổng XANH. Nay nó GỌI hàm thật rồi đo kết quả: neo theo hành vi thì bản viết
+  // lại nào cũng đi qua được, còn hỏng thật thì không lọt.
+  const disk = readdirSync(new URL("../../docs_template/", import.meta.url), { withFileTypes: true })
+    .filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  const bundles = listTemplateBundles();
+  assert.deepEqual(bundles.map((b) => b.dir), disk, "danh sách phải ĐỌC từ đĩa, không giữ bản gõ tay");
+
+  for (const b of bundles) {
+    const hasAgent = existsSync(new URL("../../docs_template/" + b.dir + "/agent/", import.meta.url));
+    assert.equal(b.kind, hasAgent ? "harness" : "kit", b.dir + ": phân hạng bằng sự tồn tại của agent/, không bằng tên");
+    assert.equal(b.wired, b.profile !== null, b.dir + ': "rót được" phải suy từ profile, không khai riêng');
+    assert.equal(b.reference, b.kind === "harness" && !b.wired, b.dir + ": hạng tham chiếu phải SUY RA, không phải danh sách gõ tay");
+  }
+  // Ba hạng phải cùng tồn tại — một hạng biến mất thì phép phân loại trên đang đo trên tập rỗng.
+  assert.ok(bundles.some((b) => b.wired), "phải có bộ rót được");
+  assert.ok(bundles.some((b) => b.reference), "phải có bộ THAM CHIẾU (user chốt 2026-09-17: 04_adapt)");
+  assert.ok(bundles.some((b) => b.kind === "kit"), "phải có gói phân phối");
+
+  // CÂY FILE đọc từ đĩa. Neo vào .claude/skills/ vì đó chính là thứ bản cũ BỎ SÓT: cây trên UI
+  // cứng 8 hàng trong app.html, nên 10 skill của bản chuẩn chưa bao giờ mở được trong app.
+  const appDocs = listBundleDocs("05_app");
+  assert.ok(appDocs.includes("agent/03_STRUCTURE.md"), "cây phải có 03_STRUCTURE.md");
+  assert.ok(appDocs.some((f) => f.startsWith(".claude/skills/")), "cây phải với tới .claude/skills/ — chỗ bản cũ bỏ sót");
+  assert.ok(!appDocs.some((f) => /\.(png|jpe?g|docx|py)$/i.test(f)), "cây chỉ chứa thứ bấm vào là xem được");
+
+  // CA ÂM — đường ra ngoài docs_template/ phải bị chặn, kể cả đường trông giống tên bộ thật.
+  for (const bad of ["..", "../..", "05_app/agent", "khong_ton_tai", "/etc"]) {
+    assert.equal(templateBundleDir(bad), null, 'đường "' + bad + '" phải bị từ chối');
+  }
+  assert.ok(templateBundleDir("05_app"), "tên bộ THẬT phải giải được");
+
+  // Hàng nhắc: ĐẾM đủ ba hạng, và KHÔNG còn warn cho bộ tham chiếu (user chốt 2026-09-17).
+  const row = await runCheck("templates");
+  assert.equal(row.state, "on", "bộ tham chiếu KHÔNG còn bị coi là thiếu sót");
+  assert.equal(row.ok, true);
+  for (const n of [bundles.length, bundles.filter((b) => b.wired).length, bundles.filter((b) => b.reference).length]) {
+    assert.ok(row.detail.includes(String(n)), "hàng nhắc phải nêu con số " + n);
+  }
+
   const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
   assert.match(ui, /"memory", "validate", "grill", "templates"/, "hàng nhắc phải được mồi sẵn, đừng chờ ai bấm Kiểm mới biết");
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   assert.match(sys, /\{k:'templates',grp:'f\.grpHarness',n:'f\.templates',kind:'check',feat:'templates'/, "phải có hàng trên màn Tính năng");
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   for (const k of ["f.templates", "f.doc.templates"]) {
-    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+    assert.equal(chrome.split("'" + k + "':").length - 1, 2, "khoá " + k + " phải có ở ĐÚNG hai từ điển");
+  }
+});
+
+// ── MÀN HARNESS VẼ TỪ ĐĨA: chip cho MỌI bộ, cây cho MỌI file ─────────────────
+//
+// User 2026-09-17: *"cái UI vẫn chưa hiện tab của các bộ template mà"*. Đo lúc làm: đĩa có 5 bộ,
+// app.html cứng ĐÚNG HAI chip (stdApp/stdNon) và cây cứng 8 hàng trong khi 05_app có 19 file đọc
+// được ⇒ 3 bộ và 10 skill không có đường nào mở ra. Cùng lớp lỗi với hai bảng cây/routing từng
+// hardcode (thiếu 55/90 hàng): bề mặt TRA CỨU thiếu mà không báo gì.
+test("màn Harness: chip và cây đọc từ /standard-bundles, không gõ cứng", () => {
+  assert.ok(HTML.includes('id="stdBundles"'), "phải có chỗ vẽ chip");
+  for (const dead of ['id="stdApp"', 'id="stdNon"']) {
+    assert.ok(!HTML.includes(dead), "chip gõ cứng " + dead + " phải biến mất — nó chỉ phủ 2/5 bộ");
+  }
+  // Cây rỗng trong markup = nó do JS đổ. Còn hàng gõ cứng thì bộ nào cũng hiện y một cây.
+  assert.match(HTML, /id="stdTree"><\/div>/, "cây phải rỗng trong markup, do JS đổ từ đĩa");
+  // §F0 TỐI GIẢN — ba thứ trang trí đã GỠ, và không được mọc lại: nhãn hạng dán lên từng chip ·
+  // chú giải ký hiệu trên tiêu đề card · con số đếm cạnh tiêu đề (user 2026-09-18, nhắc ba lượt).
+  for (const gone of ['id="stdTreeCount"', 'id="stdProfTag"', 'data-i18n="harness.required"', 'data-i18n="harness.opt"']) {
+    assert.ok(!HTML.includes(gone), gone + " là trang trí đã gỡ — đừng dựng lại (§F0)");
+  }
+  assert.ok(!JS.includes("stdKindTag"), "chip chỉ mang TÊN BỘ; hạng nói một lần ở dòng mô tả (§F0)");
+  // Ô do JS tính không được mang thêm khoá i18n tĩnh — hai chủ một ô thì lượt áp i18n ĐÈ giá trị.
+  const structTag = HTML.slice(HTML.indexOf('id="structProf"'), HTML.indexOf('id="structProf"') + 120);
+  assert.ok(!structTag.includes("data-i18n"), "structProf do JS tính — không được mang khoá i18n tĩnh");
+  assert.ok(JS.includes("/standard-bundles"), "FE phải gọi endpoint liệt kê bộ");
+  assert.match(JS, /standard-doc\?bundle=/, "trình xem docs phải đọc theo TÊN BỘ, không theo profile");
+  assert.match(JS, /standard-spec\?bundle=/, "cây chuẩn phải đọc theo TÊN BỘ");
+  // Tab Cấu trúc phải NÓI ra khi không vẽ được, không để vỏ rỗng (§F3) — và phải phân biệt HAI
+  // trạng thái: bộ KHÔNG có 03_STRUCTURE.md, với bộ CÓ nó mà bảng ánh xạ cố ý để trống (04_adapt).
+  // Gộp chúng làm một là in một câu sai mà chính đĩa bác được.
+  assert.ok(JS.includes("harness.noStruct"), "thiếu câu cho bộ KHÔNG có 03_STRUCTURE.md");
+  assert.ok(JS.includes("harness.emptyStruct"), "thiếu câu cho bộ CÓ 03_STRUCTURE.md mà bảng còn trống");
+  assert.match(JS, /hasStructure\s*\?\s*'harness\.emptyStruct'\s*:\s*'harness\.noStruct'/, "phải rẽ theo hasStructure, không in chung một câu");
+  // CẢ HAI panel của tab Cấu trúc phải nói lý do. Bản đầu chỉ vá panel trái và để `routeTable`
+  // rỗng trơn — một khung không chữ đọc ra là "đang tải" hoặc "hỏng" (§F3, vỏ rỗng).
+  assert.match(JS, /routeTable'\);if\(rt0\)rt0\.innerHTML='<div class="muted">'\+why/, "panel Routing cũng phải nói lý do, không để trống");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["harness.noteInit", "harness.noteRef",
+                   "harness.noteKitCarry", "harness.noteKitInit", "harness.noBundle", "harness.noFile",
+                   "harness.kitSet", "harness.stdSet",
+                   "harness.noStruct", "harness.emptyStruct", "harness.specFallback"]) {
+    assert.equal(chrome.split("'" + k + "':").length - 1, 2, "khoá " + k + " phải có ở ĐÚNG hai từ điển");
+  }
+});
+
+// ── §F0b — MỘT CHỨC NĂNG, MỘT KHUNG ────────────────────────────────────────────
+//
+// User 2026-09-18: *"có 1 cái khung search cũng không làm đồng bộ cho giống nhau được… tự nhiên 1
+// cái xoay 1 cái nút tìm — bất cứ cái gì mà 1 chức năng thì phải cùng 1 kiểu thiết kế, 1 khung UI,
+// 1 kiểu CSS"*. Đo lúc làm: BỐN ô tìm, ba hình hài — `.recall-in` + nút chữ (Tìm kiếm) · `.recall-in`
+// + nút icon `↻` (Phiên) · `<input>` style gõ thẳng vào HTML (Dự án, Tệp). Cổng này khoá lại.
+test("mọi ô tìm dùng CHUNG một khung, không ô nào style gõ thẳng vào HTML", () => {
+  const SEARCH_INPUTS = ["rq", "sessSearch", "pjSearch", "filesQ"];
+  for (const id of SEARCH_INPUTS) {
+    const at = HTML.indexOf(`id="${id}"`);
+    assert.ok(at > 0, `không tìm thấy ô tìm #${id}`);
+    // Thẻ mở của chính input: cắt ngược tới '<' gần nhất, tiến tới '>' kế tiếp.
+    const open = HTML.lastIndexOf("<", at);
+    const tag = HTML.slice(open, HTML.indexOf(">", at) + 1);
+    assert.ok(!/\sstyle=/.test(tag), `#${id} còn style gõ thẳng vào HTML — phải dùng khung chung (§F0b)`);
+    // Vỏ bao quanh phải là khung dùng chung. Đọc 200 ký tự TRƯỚC thẻ input là đủ thấy vỏ.
+    const before = HTML.slice(Math.max(0, open - 200), open);
+    assert.ok(/class="recall-in (fsm|fgrow)"/.test(before), `#${id} không nằm trong khung chung .recall-in`);
+  }
+  // Khung chung KHÔNG được khoá theo cha — khoá theo cha là cách nó lặng lẽ thành ba bản chép.
+  assert.match(CSS, /\.recall-in\.fsm\{/, ".recall-in.fsm phải khai độc lập, không nấp dưới một cha cụ thể");
+  // `fgrow` (ăn phần dư của hàng) CHỈ dành cho hai ô tìm của Recall — user yêu cầu gộp ô tìm vào
+  // hàng lọc ở ĐÓ. Bê nó sang hàng khác là tự kéo dài một ô không ai bảo kéo (dính 2026-09-18:
+  // ô tìm màn Dự án bỗng rộng hết hàng). Cỡ THƯỜNG `.fsm` mới là mặc định.
+  assert.equal((HTML.match(/class="recall-in fgrow"/g) || []).length, 2, "chỉ hai ô tìm của Recall được phép ăn phần dư của hàng");
+
+  // §F0c — MỌI control đứng chung một hàng phải cao BẰNG NHAU, và chốt bằng CHIỀU CAO chứ không
+  // bằng padding+font: `<select>` là control của HĐH, cùng padding vẫn ra chiều cao khác `<div>`
+  // (đo 2026-09-18: chip 28,7 vs select 26,0). Ở đây khoá nguồn: một biến, mọi control lấy từ đó.
+  assert.match(CSS, /--ctl-h:\s*\d+px/, "phải có biến chiều cao control dùng chung");
+  const hRule = /([^{}]*)\{[^}]*box-sizing:border-box;height:var\(--ctl-h\)/.exec(CSS);
+  assert.ok(hRule, "thiếu luật gán --ctl-h cho nhóm control");
+  for (const sel of [".fchip", ".rsel", ".btn.sm", ".tin", ".recall-in.fsm", ".recall-in.fgrow"]) {
+    assert.ok(hRule[1].includes(sel), `${sel} phải lấy chiều cao từ --ctl-h (§F0c)`);
+  }
+  // Ô nhập chữ KHÔNG được gõ hình hài thẳng vào HTML — đó là cách năm ô cao năm kiểu.
+  for (const id of ["driveInput", "p2pHost", "p2pPortIn", "p2pPeerIn", "addProjPath"]) {
+    const at = HTML.indexOf(`id="${id}"`);
+    assert.ok(at > 0, `không tìm thấy ô nhập #${id}`);
+    const tag = HTML.slice(HTML.lastIndexOf("<", at), HTML.indexOf(">", at) + 1);
+    assert.ok(/class="tin"/.test(tag), `#${id} phải dùng lớp chung .tin`);
+    assert.ok(!/style="[^"]*(padding|font-size|border-radius|background)/.test(tag), `#${id} còn gõ hình hài thẳng vào HTML (§F0b)`);
+  }
+  // Ô tìm nào cũng phải có nút chạy MANG CHỮ — nút icon trơn là hình hài thứ hai cho cùng việc.
+  for (const id of ["rq", "sessSearch"]) {
+    const at = HTML.indexOf(`id="${id}"`);
+    const shell = HTML.slice(at, HTML.indexOf("</div>", at));
+    assert.match(shell, /data-i18n="recall\.go"/, `#${id} phải có nút chạy dùng chung nhãn recall.go`);
   }
 });
