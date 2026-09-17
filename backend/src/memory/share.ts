@@ -19,6 +19,7 @@ import {
   readFileSync,
   readSync,
   readdirSync,
+  writeSync,
   renameSync,
   rmSync,
   statSync,
@@ -908,12 +909,39 @@ function segmentName(n: number): string {
   return n <= 1 ? MAIN_BUNDLE : `global_memory.${String(n).padStart(3, "0")}.enc`;
 }
 /** Mọi khúc đang có, theo thứ tự — khúc 1 là `global_memory.enc`, kế là `.002`, `.003`… */
-function listSegments(dir: string): { path: string; n: number }[] {
+/**
+ * Thư mục kênh ĐỌC KHÔNG ĐƯỢC ≠ kênh TRỐNG — và nhầm hai thứ này thì hậu quả là đẩy TRỌN kho.
+ *
+ * Đo 2026-09-17: ba lượt auto-sync chết với *"File size (2.487.460.255) is greater than 2 GiB"*.
+ * Truy ra: `readdirSync` trên thư mục Drive trượt (đúng nhóm mã CHẬP của `§8d`) ⇒ `listSegments`
+ * nuốt lỗi trả RỖNG ⇒ `since = segs.length === 0 ? 0 : watermark` chọn **0** ⇒ xuất **toàn bộ
+ * kho** (~2,4 GB) ⇒ chạm trần 2 GiB của Node ở bước nối. Bằng chứng thư mục thật sự chập: chính
+ * lượt liệt kê hôm đó trả về một dòng `-????????? global_memory.sync.lock` (stat trượt).
+ *
+ * 🔴 Nếu lượt đó KHÔNG chạm trần thì còn tệ hơn: nó đã nối một khối 2,4 GB **nhân bản cả kho**
+ * lên kênh — đúng thứ chia khúc 256 MB (`§8e`) sinh ra để giết.
+ *
+ * `ENOENT` là ca DUY NHẤT được coi là trống thật (lần đầu, chưa ai ghi gì). Mọi mã khác là
+ * *không đọc được* ⇒ người gọi phải DỪNG, không được suy ra kết luận nào.
+ */
+export function segmentsReadVerdict(code: string | undefined): "empty" | "unreadable" {
+  return code === "ENOENT" || code === undefined ? "empty" : "unreadable";
+}
+
+function listSegments(dir: string, strict = false): { path: string; n: number }[] {
   const out: { path: string; n: number }[] = [];
   let names: string[];
   try {
     names = readdirSync(dir);
-  } catch {
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (strict && segmentsReadVerdict(code) === "unreadable") {
+      throw new Error(
+        `Không đọc được thư mục kênh (${code ?? "?"}) — KHÔNG coi là kênh trống. ` +
+          "Kho của máy này vẫn đủ; chạy lại khi ổ đám mây trả lời được.",
+        { cause: e },
+      );
+    }
     return out;
   }
   if (names.includes(MAIN_BUNDLE)) out.push({ path: join(dir, MAIN_BUNDLE), n: 1 });
@@ -925,7 +953,9 @@ function listSegments(dir: string): { path: string; n: number }[] {
 }
 /** Khúc sẽ NHẬN lượt ghi kế: khúc cuối nếu còn chỗ, không thì khúc kế (chưa tồn tại). */
 function activeSegment(dir: string): { path: string; name: string; fresh: boolean } {
-  const segs = listSegments(dir);
+  // NGHIÊM: hàm này quyết định GHI VÀO ĐÂU. Đoán nhầm "trống" ở đây là mở một khúc tươi và
+  // xuất baseline — hai quyết định bất khả đảo trên kênh chung.
+  const segs = listSegments(dir, true);
   if (segs.length === 0) return { path: join(dir, MAIN_BUNDLE), name: MAIN_BUNDLE, fresh: true };
   const last = segs[segs.length - 1];
   let full = false;
@@ -1015,11 +1045,37 @@ function listChunks(path: string): ChunkRef[] {
 }
 
 /** Nối một bundle đã dựng sẵn vào cuối container (tạo container nếu chưa có). */
+/**
+ * Nối một gói vào container — CHÉP THEO KHỐI, tuyệt đối không `readFileSync` cả gói.
+ *
+ * `readFileSync` có TRẦN CỨNG ~2 GiB trong Node (`ERR_FS_FILE_TOO_LARGE`), và gói baseline của
+ * kho này đã **2,4 GB** — tức `--compact` (vốn luôn xuất `since=0`) hôm nay là KHÔNG chạy được,
+ * và lỗi rơi ra ở tận bước nối nên đọc như *"kênh hỏng"* chứ không như *"gói quá to"*.
+ * Chép theo khối thì trần biến mất, và bộ nhớ dùng là hằng số thay vì bằng cả gói.
+ */
 function appendChunk(containerPath: string, bundlePath: string): number {
-  const bytes = readFileSync(bundlePath);
+  const len = statSync(bundlePath).size;
   if (!existsSync(containerPath)) writeFileSync(containerPath, CHUNKS_MAGIC);
-  appendFileSync(containerPath, Buffer.concat([Buffer.from(`${CHUNK_PREFIX}${bytes.length}\n`, "utf8"), bytes]));
-  return bytes.length;
+  appendFileSync(containerPath, Buffer.from(`${CHUNK_PREFIX}${len}\n`, "utf8"));
+  const rfd = openSync(bundlePath, "r");
+  const wfd = openSync(containerPath, "a");
+  try {
+    const buf = Buffer.allocUnsafe(8 * 1024 * 1024);
+    let done = 0;
+    while (done < len) {
+      const got = readSync(rfd, buf, 0, Math.min(buf.length, len - done), done);
+      if (got <= 0) break;
+      writeSync(wfd, buf, 0, got);
+      done += got;
+    }
+    // Chép thiếu mà im lặng là để lại đuôi rác — `listChunks` gặp đuôi rác thì DỪNG, và mọi khối
+    // nối sau nó thành vô hình với MỌI máy (`§8d` luật ②). Ném ra để lớp trên cắt lại.
+    if (done !== len) throw new Error(`nối khối chép thiếu: ${done}/${len} byte`);
+  } finally {
+    closeSync(rfd);
+    closeSync(wfd);
+  }
+  return len;
 }
 
 /** Số lần thử nối trước khi chịu thua (`plan/08 §8c` ④ — vế "tối đa 3 lần", trước nay chưa build). */
@@ -1867,7 +1923,7 @@ async function pushAppend(o: {
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, excludeLanes, keyFile, dbPath } = o;
   const onProgress = o.onProgress ?? (() => {});
-  const segs = listSegments(dir);
+  const segs = listSegments(dir, true);
   const active = activeSegment(dir);
   const wmKey = wmKeyFor(o.channel ?? "drive", host);
   // Khối đếm trên khúc ĐANG MỞ — guard trước/sau khi ghi so trên CÙNG file này (khúc niêm
@@ -1885,6 +1941,8 @@ async function pushAppend(o: {
   // ra để giết. Máy mới không thiệt: mọi khối vẫn giải mã đúng MỘT lần bất kể nằm file nào,
   // khối đã biết bị bỏ qua bằng chữ ký tại chỗ (§8c ①). Gộp chỉ còn là lệnh TAY.
   const compacting = o.compact === true;
+  // `segs.length === 0` chỉ được đọc là "kênh trống" khi phép liệt kê THÀNH CÔNG — xem
+  // `segmentsReadVerdict`. `segs` ở đây lấy bằng thước NGHIÊM nên rỗng là rỗng thật.
   const since = compacting || segs.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));

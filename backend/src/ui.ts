@@ -2787,7 +2787,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
         // người dùng không có cách nào biết nó có tìm được ai không.
         listening: ch.channelServingPort(),
-        seen: ch.seenPeers(),
+        // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
+        // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
+        shortId: ch.shortIdFromDeviceId(st.deviceId),
+        peersShort: st.peers.map((id) => ch.shortIdFromDeviceId(id)),
+        seen: ch.seenPeers().map((s) => ({ ...s, short: ch.shortIdFromDeviceId(s.deviceId) })),
         // ĐỦ MỌI địa chỉ, không đoán một cái: đo 2026-09-16 trên máy thật thấy HAI card ở hai dải
         // khác nhau. Khai nhầm card là ca "đưa IP mà bên kia không tới được", và
         // người dùng không có cách nào biết mình vừa đưa nhầm.
@@ -2834,13 +2838,24 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     }
     if (p === "/channel-pair") {
       const { getP2pPeers, setP2pPeers } = await import("./config/settings.js");
+      const ch = await import("./memory/channel/index.js");
       const id = (u.searchParams.get("id") ?? "").trim();
       const drop = u.searchParams.get("drop") === "1";
       const norm = (s: string): string => s.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
       if (!id) return json(res, { ok: false, error: "thiếu id" });
-      // Ghép đôi là quyết định của NGƯỜI: chỉ ghi đúng thứ họ dán, không tự đoán thêm máy nào.
+      // SỐ MÁY 9 chữ số ⇒ TRA ra vân tay đầy đủ từ những máy tầng dò LAN đang thấy. Thứ ghi vào
+      // sổ vẫn là VÂN TAY — đó mới là thứ TLS so lúc nối; số máy chỉ là đường người dùng gõ.
+      let want = id;
+      if (!drop && ch.looksShortId(id)) {
+        const num = id.replace(/[\s-]/g, "");
+        const hits = ch.seenPeers().filter((s) => ch.shortIdFromDeviceId(s.deviceId) === num);
+        // Không thấy / trùng số ⇒ NÓI RA, không đoán. Đoán ở đây là ghép nhầm máy người khác.
+        if (hits.length === 0) return json(res, { ok: false, error: "khong-thay" });
+        if (hits.length > 1) return json(res, { ok: false, error: "trung-so" });
+        want = hits[0].deviceId;
+      }
       const cur = getP2pPeers();
-      setP2pPeers(drop ? cur.filter((x) => norm(x) !== norm(id)) : [...cur, id]);
+      setP2pPeers(drop ? cur.filter((x) => norm(x) !== norm(want)) : [...cur, want]);
       return json(res, { ok: true, peers: getP2pPeers() });
     }
     if (p === "/channel-sync") {

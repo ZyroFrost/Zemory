@@ -208,7 +208,12 @@ test("light theme is complete: every colour goes through a token, no literal lef
 });
 
 test("every COLOUR token is declared in BOTH :root and the light block", () => {
-  const used = new Set([...CSS.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]));
+  // Biến BỐ CỤC của thanh kéo (`--<khoá data-seam>`) KHÔNG phải token màu: nó mang một số px do
+  // người dùng kéo ra, mặc định nằm ngay trong `var(--x, mặc-định)`, và khai nó ở `:root` là đóng
+  // băng đúng thứ phải kéo được. Loại theo chính `data-seam` đã khai nên danh sách tự đúng khi
+  // thêm seam mới — không phải một danh sách trắng gõ tay rồi quên (2026-09-17).
+  const seamVars = new Set([...HTML.matchAll(/data-seam="([a-z0-9]+)"/g)].map((m) => "--" + m[1]));
+  const used = new Set([...CSS.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]).filter((v) => !seamVars.has(v)));
   const rootDefs = new Set([...CSS.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]));
   const li = CSS.indexOf(':root[data-theme="light"]');
   assert.ok(li > 0, "phải có khối theme light");
@@ -1038,6 +1043,41 @@ test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NH�
   assert.match(js, /data-seenfill/, "bấm một máy đã thấy phải điền sẵn ID + địa chỉ");
   // Rỗng phải NÓI RA: vùng trắng trông y như đang tải, người đọc sẽ ngồi chờ một thứ đã xong.
   assert.match(js, /p2p\.logEmpty/, "log rỗng phải nói 'chưa có dòng nào'");
+
+  // ── BA VÙNG (user chốt 2026-09-17: *"phân panel lại làm 3 khu vực, trái phải 2 bên và 1 cái log
+  // ở cuối"*). Trước đó tab này là 13 khối rời xếp dọc: mỗi khối chiếm trọn bề ngang dù chỉ chứa
+  // ba con số. Khoá bằng máy vì đây đúng loại lỗi "dựng panel mới thì quên khuôn panel cũ" (§F9).
+  const pane = html.slice(html.indexOf('<div class="sub" data-sy="p2p">'),
+    html.indexOf('<div class="sub" data-sy="backup">'));
+  assert.equal((pane.match(/<div class="card">/g) || []).length, 3, "phải đúng BA panel: máy này · máy kia · nhật ký");
+  // Hai chiều kéo, và cả hai phải là biến THẬT (§F1①: seam trang trí = kéo không đổi gì).
+  assert.match(pane, /<div class="seam" data-seam="p2p1"><\/div>/, "thiếu thanh kéo DỌC giữa hai panel trên");
+  assert.match(pane, /data-seam="p2ptop" data-seam-dir="row"/, "thiếu thanh kéo NGANG trên nhật ký");
+  assert.match(pane, /grid-template-columns:var\(--p2p1/, "bề rộng panel trái phải do biến điều khiển");
+  const css4 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(css4, /\.p2pwrap\{[^}]*var\(--p2ptop/, "chiều cao vùng trên phải do biến điều khiển");
+  // Số rãnh = 2 × số thanh kéo + 1, đúng phép của §F5 — thiếu rãnh là còn thanh kéo mồ côi.
+  assert.equal((pane.match(/class="seam"/g) || []).length, 2, "hai vùng kề nhau ⇒ hai thanh kéo");
+  // Engine seam phải BIẾT chiều dọc, nếu không thanh kéo ngang chỉ là một vạch không bấm được.
+  const sysjs = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sysjs, /seamDir==='row'/, "engine seam chưa nhận chiều dọc");
+  assert.match(sysjs, /row\?ev\.clientY:ev\.clientX/, "kéo dọc phải đo theo clientY, không thì nó vô hiệu");
+  // Đúng panel, đúng thứ: đo bằng LÁT CẮT theo thanh kéo chứ không tìm cả pane.
+  const cut = pane.indexOf('data-seam="p2p1"'), cutLog = pane.indexOf('data-seam="p2ptop"');
+  const left = pane.slice(0, cut), right = pane.slice(cut, cutLog), bottom = pane.slice(cutLog);
+  for (const id of ['id="p2pBlocks"', 'id="p2pAddrs"', 'id="p2pMyId"', 'id="p2pDir"'])
+    assert.ok(left.includes(id), `${id} phải ở panel TRÁI (máy này)`);
+  for (const id of ['id="p2pCluster"', 'id="p2pHost"', 'data-act="p2p-add-open"', 'p2p.foldersH'])
+    assert.ok(right.includes(id), `${id} phải ở panel PHẢI (máy kia)`);
+  for (const id of ['id="p2pLog"', 'id="p2pMsg"'])
+    assert.ok(bottom.includes(id), `${id} phải ở panel DƯỚI (nhật ký)`);
+  // Mỗi panel chia mục bằng `.section-t` — F9 đòi vạch ngăn + khoảng thở, không phải một khối chữ.
+  assert.ok((left.match(/class="section-t"/g) || []).length >= 3, "panel trái phải chia mục");
+  assert.ok((right.match(/class="section-t"/g) || []).length >= 2, "panel phải phải chia mục");
+  // Hàng trên KHÔNG được khoá chiều cao: ảnh 2026-09-17 cho thấy `1fr` cắt cụt nút *Kiểm router*
+  // và cả khối *Thứ sẽ đồng bộ* — cổng không thấy vì markup vẫn đủ, chỉ pixel là mất.
+  assert.match(css4, /\.p2pwrap\{[^}]*var\(--p2ptop,auto\)/, "mặc định phải là auto, nếu không panel cắt cụt nội dung");
+  assert.match(css4, /\.p2pwrap \.card-b\{[^}]*overflow-y:auto/, "kéo hẹp thì panel phải CUỘN, không cắt");
 });
 
 test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
@@ -1089,10 +1129,10 @@ test("đồng bộ là MÀN riêng trên thanh điều hướng — ⚙ không g
   // và mục nav của harness đứng trước nó ⇒ lát cắt rỗng, cổng báo oan (đã dính 2026-09-16).
   const i = html.indexOf('<section class="screen" data-s="sync"');
   const box = html.slice(i, html.indexOf('<section class="screen" data-s="harness"'));
-  // `relocInput` bỏ khỏi danh sách 2026-09-16: chỗ lưu kho nay CỐ ĐỊNH (phải đúng
-  // `<repo>/global-memory/` thì .gitignore và kênh đồng bộ mới phủ đúng), nên không còn ô nhập
-  // đường dẫn nào để canh. `storePath` thay chỗ nó — đường kho vẫn phải HIỆN ở màn này.
-  for (const id of ["storePath", "driveInput", "p2pToggle", "p2pMyId", "p2pAddrs", "p2pLog"]) {
+  // `relocInput` bỏ 2026-09-16 (chỗ lưu kho thành CỐ ĐỊNH), rồi `storePath` bỏ nốt 2026-09-17:
+  // một đường dẫn chỉ đáng hiện khi có thể ĐỔI. Drive đổi được thì đã có ô riêng (`driveInput`);
+  // kênh máy-tới-máy thì bám theo kho, không chọn. Còn lại đây là các ô ĐIỀU KHIỂN thật.
+  for (const id of ["driveInput", "p2pToggle", "p2pMyId", "p2pAddrs", "p2pLog"]) {
     assert.ok(box.includes(`id="${id}"`), `${id} phải nằm trong hộp Dữ liệu & Đồng bộ`);
   }
   // Và nút dời phải đi hẳn, không chỉ ẩn: còn nút là còn đường bấm nhầm vào một thao tác
@@ -1130,14 +1170,16 @@ test("app.html: thẻ <div> phải cân, và hộp Dữ liệu & Đồng bộ ph
   const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
   assert.match(shell, /subtabs\('data-sy'\)/, "phải đăng ký data-sy vào cơ chế sub-tab dùng chung");
   assert.match(shell, /sync:'data-sy'/, "thiếu SUBATTR thì vào màn không nạp đúng tab đang mở");
-  // Cụm máy ĐÓNG KHUNG như một nhóm. Hai panel kênh thì KHÔNG — tab đã là ranh giới, thêm khung
-  // nữa là vẽ hai lần một đường (user chốt 2026-09-16: *"giờ phân tab rồi thì khỏi khung panel chung"*).
-  assert.equal((box.match(/class="dsec"/g) || []).length, 1, "chỉ CỤM MÁY được đóng khung");
-  assert.match(box, /class="dsec"[^>]*>[\s\S]{0,400}p2p\.clusterH/, "khung đó phải là khung cụm máy");
+  // 2026-09-17: cụm máy nay LÀ một panel (card bên phải của bố cục ba vùng), nên khung `.dsec`
+  // lồng thêm đã gỡ — vẽ hai lần ranh giới cho cùng một nhóm. Cùng lý lẽ đã dùng khi bỏ khung
+  // panel chung lúc chia tab: thứ nào đã là ranh giới rồi thì đừng kẻ lại.
+  assert.equal((box.match(/class="dsec"/g) || []).length, 0, "cụm máy đã là panel riêng, không đóng khung hai lần");
   // Nội dung màn phải CO ĐƯỢC: chuỗi ID 52 ký tự và các ô nhập từng đẩy cả panel tràn ngang.
-  assert.match(box, /class="card syncwrap"/, "màn Đồng bộ phải mang lớp cho phép co");
+  // Neo đổi 2026-09-17: lớp `.syncwrap` đi theo panel "Kho cục bộ" vừa gỡ, nên phép co nay do
+  // `.sub[data-sy]` gánh — đó là thứ bọc CẢ BA tab, tức phủ rộng hơn cái neo cũ chứ không lỏng hơn.
+  assert.ok(!html.includes("syncwrap"), "lớp của panel đã gỡ không được để lại trong markup");
   const css2 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
-  assert.match(css2, /\.syncwrap[^{]*\{[^}]*min-width:0/, "thiếu min-width:0 thì flex/grid item không co, panel tràn ra ngoài");
+  assert.match(css2, /\.sub\[data-sy\][^{]*\{[^}]*min-width:0/, "thiếu min-width:0 thì flex/grid item không co, panel tràn ra ngoài");
   // Và chiều DỌC: `.sub` là cột flex, con của nó co được ⇒ nội dung dài bị bóp cho chữ chồng nhau.
   assert.match(css2, /\.sub\[data-sy\]>\*\{[^}]*flex:0 0 auto/, "khối trong tab phải KHÔNG co, pane cuộn thay vì bóp");
   // Ranh giới phải VẼ RA THẬT: viền suông chưa đủ nổi, phải có cả thanh đầu panel có vạch đáy.

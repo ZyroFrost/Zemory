@@ -197,9 +197,14 @@
       sm.addEventListener('mousedown',function(e){
         e.preventDefault();sm.classList.add('drag');
         var after=sm.dataset.seamSide==='after';
+        // Chieu keo khai bang DU LIEU (`data-seam-dir="row"`), khong phai nhanh-theo-loai:
+        // app-design F1(3) doi MOT engine dung chung, them seam = them khai bao.
+        var row=sm.dataset.seamDir==='row';
         var ref=after?sm.nextElementSibling:sm.previousElementSibling;if(!ref)return;
-        var cr=cont.getBoundingClientRect(),cw=cr.width,refLeft=ref.getBoundingClientRect().left;
-        function mv(ev){var px=after?(cr.right-ev.clientX):(ev.clientX-refLeft);px=Math.max(180,Math.min(px,cw-240));cont.style.setProperty(cvar,px+'px');}
+        var cr=cont.getBoundingClientRect(),rr=ref.getBoundingClientRect();
+        var span=row?cr.height:cr.width,start=row?rr.top:rr.left,end=row?cr.bottom:cr.right;
+        var min=row?90:180,keep=row?140:240;
+        function mv(ev){var at=row?ev.clientY:ev.clientX;var px=after?(end-at):(at-start);px=Math.max(min,Math.min(px,span-keep));cont.style.setProperty(cvar,px+'px');}
         function up(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);sm.classList.remove('drag');try{localStorage.setItem('zemory.seam.'+key,cont.style.getPropertyValue(cvar));}catch(e){}}
         document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
       });
