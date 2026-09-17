@@ -1673,7 +1673,8 @@ test("tab Drive: panel phải có donut sức chứa, cùng khuôn với donut �
   for (const id of ["driveArc", "capArc"]) {
     assert.match(html, new RegExp(`<circle class="darc" id="${id}" cx="20" cy="20" r="16"`), `donut ${id} phải dùng đúng khuôn chung`);
   }
-  assert.match(html, /<div class="drv-progress">[\s\S]{0,400}id="capArc"[\s\S]{0,400}id="capTxt"/, "donut sức chứa phải nằm trong khuôn .drv-progress như bên trái");
+  // Neo cho phép THUỘC TÍNH sau class: khối này còn mang `data-needs-drive` (đóng băng khi kênh tắt).
+  assert.match(html, /<div class="drv-progress"[^>]*>[\s\S]{0,400}id="capArc"[\s\S]{0,400}id="capTxt"/, "donut sức chứa phải nằm trong khuôn .drv-progress như bên trái");
   // Vòng đo phần CÒN TRỐNG — đó là câu người dùng hỏi ("còn bao nhiêu chỗ").
   assert.match(gm, /var freePct=Math\.round\(pc\(v\.free\)\);/, "vòng phải đo phần còn trống, không phải phần đã dùng");
   assert.match(gm, /cArc\.setAttribute\('stroke-dasharray',\(freePct\/100\*DONUT_C\)/, "phải vẽ cung theo cùng chu vi DONUT_C của donut kia");
@@ -1783,7 +1784,7 @@ test("donut vẽ từ SỐ THẬT — không nền conic vẽ cứng, không cun
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   const right = html.slice(html.indexOf('data-i18n="drv.actionsH"'));
   const body = right.slice(right.indexOf('<div class="card-b">'));
-  assert.match(body.slice(0, 260), /<div class="drv-progress">/, "panel phải mở đầu bằng vòng, cho ngang hàng với panel trái");
+  assert.match(body.slice(0, 300), /<div class="drv-progress"[^>]*>/, "panel phải mở đầu bằng vòng, cho ngang hàng với panel trái");
 });
 
 // ── HÀNH ĐỘNG TÁCH KHỎI THIẾT LẬP, VÀ LỊCH KHÔNG CÒN NẰM TRONG HỘP THOẠI ───────
@@ -1835,8 +1836,20 @@ test("kênh Drive: tắt thì ẩn chức năng, và KHÔNG xoá đường dẫn
   assert.match(gm, /zSave\('\/set-drive-on\?on=1'\)/, "bật lại chỉ là gạt cờ, không phải link lại");
   // Công tắc phản ánh KÊNH CÓ BẬT, không phải "đường dùng được".
   assert.match(gm, /dtg\.classList\.toggle\('on',!!d\.on\)/, "công tắc phải đọc cờ bật/tắt, không đọc `linked`");
-  assert.match(gm, /if\(btn\)btn\.style\.display=on\?'':'none';/, "kênh tắt thì ẩn nút chạy tay");
-  assert.match(gm, /if\(body\)body\.style\.display=on\?'':'none';/, "kênh tắt thì ẩn cả bảng số");
+  // ĐÓNG BĂNG, không ẩn (user 2026-09-17: *"tắt thì phải đóng băng luôn và xám hết các panel"*):
+  // vẫn thấy có gì ở đó, nhưng xám và không bấm được — thay vì một khoảng trống không giải thích.
+  assert.ok(gm.includes("btn.classList.toggle('frozen',!on);btn.disabled=!on;"), "kênh tắt thì nút xám VÀ khoá");
+  assert.ok(gm.includes("body.classList.toggle('frozen',!on)"), "kênh tắt thì bảng số đóng băng");
+  assert.ok(gm.includes("querySelectorAll('[data-needs-drive]')"), "phải phủ cả các khối phụ thuộc kênh ở panel phải");
+  const cssFz = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(cssFz, /\.frozen\{opacity:[^}]*grayscale\(1\)[^}]*pointer-events:none/, "đóng băng phải XÁM hẳn và không bấm được — chỉ mờ thì biểu đồ vẫn đọc ra như đang sống");
+  // ⚠ Ô "Thư mục dùng chung" KHÔNG được đóng băng: đó là đường DUY NHẤT để nối lại. Xám luôn cả nó
+  // thì tắt kênh xong là kẹt — không còn chỗ nào gõ đường dẫn để bật lại.
+  // Kênh máy-tới-máy theo CÙNG một luật — tắt là đóng băng, không phải ẩn.
+  assert.ok(gm.includes("b.classList.toggle('frozen',!p2pOn)"), "kênh máy-tới-máy tắt cũng phải đóng băng");
+  const htmlFz = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const linkRow = htmlFz.slice(htmlFz.indexOf('data-i18n="drv.grpLink"'), htmlFz.indexOf('id="driveInput"'));
+  assert.ok(linkRow.length > 50 && !linkRow.includes("data-needs-drive"), "ô Thư mục dùng chung phải còn dùng được khi kênh tắt");
   const st = readFileSync(new URL("../../backend/src/config/settings.ts", import.meta.url), "utf8");
   assert.match(st, /export function getDriveOn\(\): boolean \{/, "cờ bật/tắt phải TÁCH khỏi đường dẫn");
   assert.match(st, /if \(!\(c\.drive \?\? ""\)\) return false;/, "chưa có đường thì không có gì để bật");
