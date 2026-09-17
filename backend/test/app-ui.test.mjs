@@ -1427,3 +1427,24 @@ test("trang chủ không còn hàng lối tắt .qa — và gỡ đủ cả ba l
     assert.match(html, new RegExp(`data-s="${nav}"`), `màn ${nav} vẫn phải còn`);
   }
 });
+
+// ── NHÀ CỦA CHÍNH ZEMORY ĐỨNG ĐẦU TUYỆT ĐỐI ────────────────────────────────────
+//
+// User 2026-09-17: *"đã nói zemory luôn tag ở đầu, nhưng khi ghim 1 project khác bấm lại thì nó bị nhảy
+// đổi thứ tự"*. Backend đã xếp đúng (`listKnownProjects`: locked → pinned → lastSeen), nhưng BỀ MẶT SẮP LẠI
+// và bản cũ chỉ so `pinned` ⇒ ghim thêm một dự án là zemory rơi xuống theo tiêu chí đang chọn. Hai nơi cùng
+// quyết một thứ tự thì cả hai phải giữ CÙNG bất biến.
+test("danh sách dự án: `locked` xếp trước `pinned`, và trước mọi tiêu chí sắp xếp", () => {
+  const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  const cmp = /ps\.sort\(function\(a,b\)\{[\s\S]*?\n\s*if\(so==='name'\)/.exec(src);
+  assert.ok(cmp, "không tìm thấy hàm so sánh của danh sách dự án");
+  const iLocked = cmp[0].indexOf("la!==lb");
+  const iPinned = cmp[0].indexOf("pa!==pb");
+  assert.ok(iLocked >= 0, "phải so `locked` — nếu không, ghim thêm dự án là zemory bị đẩy đi");
+  assert.ok(iPinned >= 0, "vẫn phải so `pinned`");
+  assert.ok(iLocked < iPinned, "`locked` là hạng RIÊNG, phải xét trước `pinned`");
+  // …và trước cả bốn tiêu chí, nếu không thì đổi tiêu chí là đổi luôn chỗ của zemory.
+  for (const k of ["so==='name'", "so==='sessions'", "so==='recent'", "oi(a)-oi(b)"]) {
+    assert.ok(iLocked < cmp[0].indexOf(k) || cmp[0].indexOf(k) < 0, `\`locked\` phải xét trước ${k}`);
+  }
+});

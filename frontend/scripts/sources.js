@@ -330,11 +330,17 @@
     zset('projCount',((q||ty)?(ps.length+'/'+all.length):all.length)+' '+t('proj.count')+' · '+appN+' App · '+nonN+' Non-app ('+t('proj.thisMachine')+')');
     if(!all.length){box.innerHTML='<div class="muted">'+t('proj.noneLinked')+'</div>';return;}
     if(!ps.length){box.innerHTML='<div class="muted">'+t('proj.noMatch')+'</div>';return;}
-    // Đã ghim luôn lên đầu; trong nhóm: 'manual' = thứ tự kéo-thả (localStorage),
-    // còn lại theo tiêu chí đã chọn (tên · nhiều phiên · mới cập nhật).
+    // Nhà của chính zemory (`locked`) ĐỨNG ĐẦU TUYỆT ĐỐI, rồi tới nhóm đã ghim; trong nhóm:
+    // 'manual' = thứ tự kéo-thả (localStorage), còn lại theo tiêu chí đã chọn (tên · nhiều phiên ·
+    // mới cập nhật). Khoá `locked` trước `pinned` vì ghim CỨNG là hạng riêng, không phải "ghim
+    // sớm hơn": thiếu vế này thì ghim thêm một dự án là zemory bị chính tiêu chí sắp xếp đẩy đi
+    // (user 2026-09-17: *"ghim 1 project khác bấm lại thì nó bị nhảy đổi thứ tự"*). Backend đã xếp
+    // đúng ở `listKnownProjects`, nhưng bề mặt này SẮP LẠI — nên nó phải giữ cùng một bất biến.
     var ord=[];try{ord=JSON.parse(localStorage.getItem('zProjOrder')||'[]');}catch(_){}
     function oi(p){var i=ord.indexOf(String(p.path).toLowerCase());return i<0?1e9:i;}
-    ps.sort(function(a,b){var pa=!!(pinMap[String(a.path).toLowerCase()]||{}).pinned,pb=!!(pinMap[String(b.path).toLowerCase()]||{}).pinned;if(pa!==pb)return pa?-1:1;
+    ps.sort(function(a,b){var ka=pinMap[String(a.path).toLowerCase()]||{},kb=pinMap[String(b.path).toLowerCase()]||{};
+      var la=!!ka.locked,lb=!!kb.locked;if(la!==lb)return la?-1:1;
+      var pa=!!ka.pinned,pb=!!kb.pinned;if(pa!==pb)return pa?-1:1;
       if(so==='name')return zProjName(a.path).localeCompare(zProjName(b.path));
       if(so==='sessions')return (b.sessions||0)-(a.sessions||0);
       if(so==='recent')return String(b.last||'').localeCompare(String(a.last||''));
