@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const PROFILES = ["05_app", "03_nonapp"];
 const STANDARD = [
@@ -218,6 +218,34 @@ test("mọi `.claude/skills/<x>/SKILL.md` mà 02_RULES trỏ sang đều phải 
     for (const name of want) {
       const f = new URL(`../../docs_template/${prof}/.claude/skills/${name}/SKILL.md`, import.meta.url);
       assert.ok(existsSync(f), `${prof}: luật trỏ sang skill \`${name}\` mà bộ này không mang nó`);
+    }
+  }
+});
+
+// ── MỌI CÂY HARNESS ĐỀU PHẢI ĐƯỢC CANH — TỰ TÌM, KHÔNG GÕ TAY ─────────────────
+//
+// User 2026-09-17: *"bộ harness giờ đã 5 template rồi mà vẫn có 2 cái không đúng, nên có cơ chế nhắc
+// nhở hoặc tự động thêm template khi code thêm mới… phải tự động đọc được khu vực template"*.
+//
+// Ca cũ ở trên so ĐÚNG MỘT CẶP tên gõ tay (`05_app` ↔ `03_nonapp`). Đo 2026-09-17: đĩa có 5 bộ, và
+// `04_adapt` cũng là một cây harness đầy đủ (có `agent/` + `plan/`) mà KHÔNG cổng nào so nó với hai
+// cây kia — nó chưa lệch, nhưng không có gì giữ nó khỏi lệch. Thêm một bộ mẫu mới cũng sẽ vô hình y
+// như vậy. Ca này TỰ ĐỌC thư mục, nên bộ mới được phủ ngay từ lúc nó ra đời.
+test("mọi cây harness trong docs_template đều byte-identical ở phần vỏ dùng chung (tự tìm, không gõ tay)", () => {
+  const dir = new URL("../../docs_template/", import.meta.url);
+  const bundles = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .filter((n) => existsSync(new URL(`../../docs_template/${n}/agent/`, import.meta.url)))
+    .sort();
+  assert.ok(bundles.length >= 3, `phải tìm thấy ít nhất ba cây harness, thấy ${bundles.length}: ${bundles.join(", ")}`);
+  assert.ok(bundles.includes("05_app") && bundles.includes("03_nonapp"), "hai cây gốc phải nằm trong danh sách tự tìm");
+  const base = "05_app";
+  for (const rel of SHARED) {
+    const want = read(base, rel);
+    for (const b of bundles) {
+      if (b === base) continue;
+      assert.equal(read(b, rel), want, `${rel} phải byte-identical giữa docs_template/${base}/ và docs_template/${b}/`);
     }
   }
 });

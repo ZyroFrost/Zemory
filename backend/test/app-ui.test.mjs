@@ -878,7 +878,12 @@ test("the Healthy pill must light up BY ITSELF on open - the user must not be ma
   // ② daemon phải CACHE /check + mồi sẵn lúc lên — cửa sổ mở là có kết quả liền
   const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
   assert.match(ui, /checkCache\.get\(/, "/check phải đọc cache — mỗi cửa sổ đo lại từ đầu là bệnh cũ");
-  assert.match(ui, /\[\s*"memory",\s*"validate",\s*"grill"\s*\]/, "daemon phải MỒI 3 check rẻ lúc khởi động");
+  // Danh sách mồi CÓ THỂ DÀI RA — thêm `templates` 2026-09-17 (cũng rẻ: một lượt readdir, và nó là
+  // hàng NHẮC nên phải sáng ngay lượt mở đầu). Neo vào ba cái BẮT BUỘC, không khoá cứng cả danh sách:
+  // khoá cứng thì mỗi lần mồi thêm một check rẻ lại thành gate đỏ oan.
+  for (const f of ["memory", "validate", "grill"]) {
+    assert.match(ui, new RegExp(`for \\(const f of \\[[^\\]]*"${f}"`), `daemon phải MỒI check rẻ "${f}" lúc khởi động`);
+  }
   // ③ nút ↻ Recheck ép ĐO THẬT — cache là cho đường tự động, không được nuốt nghĩa của nút
   const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   // NEO ĐỔI 2026-09-09 — cùng ý nghĩa, khác cách đo. Bản cũ ĐẾM chuỗi `&fresh=1` và đòi ≥2 vì hồi
@@ -1887,4 +1892,28 @@ test("mọi vùng cuộn chừa chỗ cho thanh cuộn; nút Quét lại ổ đ�
   assert.match(ui, /return diskCache\?\.v \?\? \[\];\s*\n\s*\}\s*\n\s*if \(!diskCache/, "con chết thì GIỮ bản đệm cũ, thà số cũ còn hơn bảng trống");
   const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
   assert.match(gm, /renderMachineInfo\(true\)\.then/, "nút phải biết lúc nào dò xong để trả nhãn về");
+});
+
+// ── BỘ MẪU HARNESS: TỰ ĐỌC THƯ MỤC, VÀ NHẮC KHI CÓ BỘ CHƯA NỐI ───────────────
+//
+// User 2026-09-17: *"bộ harness giờ đã 5 template rồi mà vẫn có 2 cái không đúng, nên có cơ chế nhắc
+// nhở hoặc tự động thêm template khi code thêm mới… phải tự động đọc được khu vực template"*.
+// Đo lúc làm: đĩa có 5 bộ, `templateDir` ánh xạ đúng 2 tên ⇒ `04_adapt` là một cây harness đầy đủ
+// mà app không với tới và không cổng nào canh — nó chưa lệch, nhưng không có gì giữ nó khỏi lệch.
+test("bộ mẫu harness: đọc thư mục lúc chạy, có hàng NHẮC khi bộ chưa nối vào app", () => {
+  const adopt = readFileSync(new URL("../../backend/src/docs/adopt.ts", import.meta.url), "utf8");
+  assert.match(adopt, /export function listTemplateBundles\(\): TemplateBundle\[\]/, "phải có hàm đọc thư mục template lúc chạy");
+  assert.match(adopt, /readdirSync\(TEMPLATE_DIR, \{ withFileTypes: true \}\)/, "phải ĐỌC thư mục, không giữ danh sách gõ tay");
+  assert.match(adopt, /kind: existsSync\(join\(TEMPLATE_DIR, dir, "agent"\)\) \? "harness" : "kit"/, "phân loại cây harness bằng sự tồn tại của agent/, không bằng tên");
+  const checks = readFileSync(new URL("../../backend/src/checks.ts", import.meta.url), "utf8");
+  assert.match(checks, /if \(feature === "templates"\) \{/, "thiếu phép kiểm nhắc");
+  assert.match(checks, /const loose = trees\.filter\(\(b\) => !b\.wired\)/, "phải nêu ĐÍCH DANH bộ chưa nối, không chỉ đếm");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /"memory", "validate", "grill", "templates"/, "hàng nhắc phải được mồi sẵn, đừng chờ ai bấm Kiểm mới biết");
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sys, /\{k:'templates',grp:'f\.grpHarness',n:'f\.templates',kind:'check',feat:'templates'/, "phải có hàng trên màn Tính năng");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["f.templates", "f.doc.templates"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
 });
