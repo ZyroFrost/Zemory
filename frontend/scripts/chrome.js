@@ -235,8 +235,13 @@
       // như TẮT — user phải bấm Recheck oan (bệnh "heal mở lại là tắt"). Daemon đã mồi + cache
       // sẵn kết quả nên lời gọi này trả tức thì.
       refreshChecks();
-      refreshHarnessUpdates(); // rail chip: cần LANG + #topVersion thật (cả hai vừa có từ /ping) — xem system.js
+      // Rail chip vẽ SAU /status, không phải trước. Nó cần LANG + #topVersion (đã có từ /ping) NHƯNG
+      // cũng đọc Z.status.knownProjects, mà thứ đó chỉ có khi /status về. Vẽ trước thì chip ghi
+      // "0 repo đã liên kết" trong lúc có 17, và vì nhịp vẽ lại là 10 PHÚT nên con số sai đó nằm đó
+      // suốt — đo 2026-09-17: t=8s·20s·35s·60s đều "0" trong khi Z.status.knownProjects=17.
+      // Không thêm request nào: chỉ dời vào đúng mắt xích đã có.
       zGet('/status').then(renderStatus).catch(function(){}).then(function(){
+        refreshHarnessUpdates();
         return zGet('/memory-status').then(function(m){renderMem(m);loadConn();renderSystem();if(typeof gmPollOk==='function')gmPollOk();}).catch(function(){if(typeof gmPollFailed==='function')gmPollFailed();});
       });
       zGet('/automation').then(function(a){renderAuto(a);renderSystem();}).catch(function(){});
