@@ -1407,3 +1407,23 @@ test("hộp Chuẩn repo: câu '0' chỉ nói về phần XÁC MINH được; ph
     assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
   }
 });
+
+// ── HÀNG "LỐI TẮT" Ở ĐÁY TRANG CHỦ ĐÃ GỠ ────────────────────────────────────────
+//
+// User 2026-09-17: *"3 cái card ở dưới cùng của home thấy không cần thiết, nó vốn dĩ là page liên kết rồi"*.
+// Cả ba chỉ ĐIỀU HƯỚNG tới đúng ba mục đã nằm sẵn ở thanh bên (Recall · Đồng bộ · Harness) — một nội dung
+// hai nhà (§F6). Riêng "Đồng bộ ngay" còn nói dối: nhãn hứa chạy sync, mà `data-nav` chỉ chuyển màn.
+test("trang chủ không còn hàng lối tắt .qa — và gỡ đủ cả ba lớp (markup · CSS · i18n)", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.ok(!html.includes('class="qa"'), "ba thẻ lối tắt phải đi hết");
+  assert.ok(!/^\.qa[{:\s]/m.test(css), "luật CSS không còn ai mặc ⇒ phải gỡ theo");
+  for (const k of ["qa.recallD", "qa.syncD", "qa.harnessD", "home.openHarness"]) {
+    assert.ok(!chrome.includes(`'${k}'`), `khoá ${k} không ai đọc ⇒ phải gỡ`);
+  }
+  // Ba đích vẫn phải tới được — gỡ lối tắt, KHÔNG gỡ đường.
+  for (const nav of ["recall", "sync", "harness"]) {
+    assert.match(html, new RegExp(`data-s="${nav}"`), `màn ${nav} vẫn phải còn`);
+  }
+});

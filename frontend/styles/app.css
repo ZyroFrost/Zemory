@@ -241,10 +241,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .pill.ok{color:var(--success);background:var(--wash-ok)}
 .pill.warn{color:var(--warn);background:var(--wash-warn)}
 .pill.dim{color:var(--text-dim);background:var(--surface-3)}
-.qa{display:flex;align-items:center;gap:11px;padding:11px;border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:.12s}
-.qa:hover{border-color:var(--primary);background:var(--wash-2)}
-.qa .qi{width:32px;height:32px;border-radius:9px;background:var(--wash);display:grid;place-items:center;color:var(--primary)}
-.qa b{font-size:13px;display:block}.qa small{color:var(--text-faint);font-size:11px}
 .thread{border-left:2px solid var(--border);padding:2px 0 2px 14px;margin-left:4px}
 .msg{margin-bottom:13px}
 .msg .who{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-faint);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}

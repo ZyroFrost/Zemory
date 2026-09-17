@@ -57,8 +57,8 @@
     'graph.trend':'Xu hướng graph','graph.trendNone':'Chưa có mốc nào — xu hướng bắt đầu từ lần graph được dựng lại kế tiếp.','graph.trendOne':'Mới 1 mốc. Cần ≥2 lần code đổi mới có xu hướng để so.','graph.trendBuilds':'lần dựng','graph.trendLower':'thấp hơn = tốt hơn',
     'nav.home':'Trang chủ','nav.recall':'Recall','nav.projects':'Dự án','nav.harness':'Harness',
     'nav.system':'Tính năng','rc.find':'Tìm kiếm','rc.sess':'Phiên',
-    'qa.recallD':'tìm lại việc phiên trước','qa.syncD':'quét nguồn · đẩy lên Drive','qa.harnessD':'chuẩn & docs',
-    'home.recentProj':'Dự án gần đây','home.allSess':'Tất cả phiên →','home.openHarness':'Mở Harness',
+    
+    'home.recentProj':'Dự án gần đây','home.allSess':'Tất cả phiên →',
     'mem.thisMachine':'Máy này','mem.driveSync':'Đồng bộ Drive','mem.syncMode':'Chế độ đồng bộ',
     'act.scanKnown':'Quét nguồn đã biết','act.prune':'Dọn dự án đã mất','act.pruneTip':'Gỡ khỏi danh sách những project mà folder không còn tồn tại','prune.title':'Dọn dự án đã mất','prune.body':'Gỡ khỏi danh sách zemory những project mà folder không còn trên máy này? Folder · docs · bộ nhớ đều GIỮ NGUYÊN — chỉ bỏ khỏi danh sách.','prune.ok':'Dọn','prune.running':'đang dọn…','prune.done':'✓ đã gỡ {n} project khỏi danh sách','act.deepScan':'Quét sâu','act.syncNow':'Đồng bộ ngay','act.addProject':'Thêm dự án','act.run':'Chạy','act.pick':'Chọn…',
     'st.operational':'Hoạt động tốt','st.op':'ổn',
@@ -141,8 +141,8 @@
     'graph.trend':'Graph trend','graph.trendNone':'No data points yet — the trend starts at the next graph rebuild.','graph.trendOne':'Only 1 data point. A trend needs ≥2 code changes to compare.','graph.trendBuilds':'builds','graph.trendLower':'lower is better',
     'nav.home':'Home','nav.recall':'Recall','nav.projects':'Projects','nav.harness':'Harness',
     'nav.system':'Features','rc.find':'Search','rc.sess':'Sessions',
-    'qa.recallD':'find what earlier sessions did','qa.syncD':'scan sources · push to Drive','qa.harnessD':'standards & docs',
-    'home.recentProj':'Recent Projects','home.allSess':'All sessions →','home.openHarness':'Open Harness',
+    
+    'home.recentProj':'Recent Projects','home.allSess':'All sessions →',
     'mem.thisMachine':'This Machine','mem.driveSync':'Drive Sync','mem.syncMode':'Sync Mode',
     'act.scanKnown':'Scan Known','act.prune':'Prune missing','act.pruneTip':'Remove projects whose folder no longer exists from the list','prune.title':'Prune missing projects','prune.body':'Remove projects whose folder is gone from the list? The folder, docs and memory are all KEPT — only the list entry goes.','prune.ok':'Prune','prune.running':'pruning…','prune.done':'✓ removed {n} project(s) from the list','act.deepScan':'Deep Scan','act.syncNow':'Sync Now','act.addProject':'Add Project','act.run':'Run','act.pick':'Pick…',
     'st.operational':'All systems operational','st.op':'ok',
