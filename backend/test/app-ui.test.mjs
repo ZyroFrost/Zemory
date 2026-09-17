@@ -1577,3 +1577,39 @@ test("danh sách phiên: tiêu đề không đính badge — số tệp nằm �
   assert.ok(!row.includes("att-n"), "badge trên tiêu đề phải đi");
   assert.match(row, /zN\(s\.atts\)\+' '\+stdEsc\(t\('files\.unit'\)\)/, "số tệp phải có đơn vị, và đơn vị lấy từ từ điển");
 });
+
+// ── KHUNG CỬA SỔ PHẢI ĐƯỢC NHỚ ─────────────────────────────────────────────────
+//
+// User 2026-09-17: *"app lần đầu mở full màn hình thì mở lại phải mở full màn, còn màn nhỏ để ở đâu
+// thì lần sau mở đúng vị trí đó"*. Bản cũ truyền CỨNG `--window-size=1320,920` mỗi lần mở, nên dù
+// trình duyệt có tự nhớ cũng bị đè, và trạng thái PHÓNG TO thì kích thước không diễn tả được.
+test("khung cửa sổ được lưu và khôi phục — vị trí, kích thước, và trạng thái phóng to", () => {
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(ui, /"--no-default-browser-check",\s*\n\s*"--window-size=1320,920"/, "không được gắn cứng kích thước — có nhớ cũng bị đè");
+  assert.match(ui, /\.\.\.windowArgs\(\),/, "launcher phải lấy cờ khung từ bản đã lưu");
+  assert.match(ui, /if \(b\.max\) return \["--start-maximized"\];/, "phóng to là TRẠNG THÁI riêng, không diễn tả bằng kích thước");
+  assert.match(ui, /--window-position=\$\{b\.x\},\$\{b\.y\}/, "phải khôi phục cả VỊ TRÍ, không chỉ kích thước");
+  assert.match(ui, /p === "\/window-box"/, "thiếu endpoint nhận khung");
+  assert.match(ui, /box\.w < 320 \|\| box\.h < 240/, "số rác phải bị bỏ — một lần ghi hỏng là lần sau cửa sổ nằm ngoài màn hình");
+  const st = readFileSync(new URL("../../backend/src/config/settings.ts", import.meta.url), "utf8");
+  assert.match(st, /windowBox\?: \{ x: number; y: number; w: number; h: number; max: boolean \}/, "khung phải nằm trong config (localStorage mất khi đổi cổng)");
+  assert.match(st, /if \(b\.w < 320 \|\| b\.h < 240\) return null;/, "khung vô lý thì coi như chưa có, mở mặc định");
+  // Cửa sổ native là NƠI GHI DUY NHẤT: nó tự đo vị trí/kích thước trong đúng hệ toạ độ mà hàm dựng
+  // nhận. Trang chỉ khai một BOOLEAN "đang phóng to" — thứ cửa sổ không biết vì không biết màn hình
+  // rộng bao nhiêu. Lấy toạ độ từ trang là bẫy: `screenX` là gốc NỘI DUNG, nên mở lại thì cửa sổ tụt
+  // xuống thêm một thanh tiêu đề, lần nào cũng thế.
+  const win = readFileSync(new URL("../../backend/src/platform/window.ts", import.meta.url), "utf8");
+  assert.match(win, /const saved = getWindowBox\(\);/, "cửa sổ phải dựng theo khung đã lưu");
+  assert.match(win, /if \(saved\?\.max\) \{/, "phóng to phải khôi phục bằng maximize, không bằng kích thước");
+  assert.match(win, /win\.onMove\(/, "phải nghe cú KÉO — resize không nổ khi chỉ đổi vị trí");
+  assert.match(win, /if \(box\.max\) return;/, "đang phóng to thì KHÔNG ghi đè vị trí người dùng từng chọn");
+  // Nhận ra "cỡ phóng to" bằng VÙNG LÀM VIỆC, không bằng thứ tự sự kiện. Bản đầu hoàn nguyên một
+  // bước khi nghe tin phóng to — đo ra là KHÔNG ĂN vì một cú phóng to sinh nhiều hơn một onResize.
+  assert.match(win, /const isMaxSize = \(w: number, h: number\): boolean =>/, "phải tự nhận ra cỡ phóng to, đừng dựa vào thứ tự sự kiện");
+  assert.match(win, /if \(!area\) return;/, "chưa biết màn hình thì KHÔNG kết luận — ghi bừa là bê cỡ phóng to đè lên cỡ người dùng");
+  assert.doesNotMatch(win, /\{ \.\.\.prev, max: true \}/, "phép hoàn nguyên một bước đã đo là không ăn — không được quay lại");
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  assert.match(shell, /t:'winmax'/, "trang phải khai trạng thái phóng to qua kênh webview");
+  assert.match(shell, /aw:screen\.availWidth,ah:screen\.availHeight/, "phải gửi kèm vùng làm việc để cửa sổ tự phán");
+  assert.doesNotMatch(shell, /screenX/, "trang KHÔNG được khai toạ độ — đó là gốc nội dung, không phải gốc cửa sổ");
+});

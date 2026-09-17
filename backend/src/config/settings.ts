@@ -38,6 +38,11 @@ interface ZConfig {
   /** UI UI layout (panel sizes / resize positions) — persisted so a reopen
    *  restores exactly what the user dragged (localStorage resets per random port). */
   ui?: Record<string, unknown>;
+  /** Khung cửa sổ lần trước: vị trí · kích thước · có đang phóng to không.
+   *  Mở lại phải ra ĐÚNG chỗ cũ — mở full thì lần sau full, để ở góc nào thì lần sau ở đó
+   *  (user chốt 2026-09-17). Lưu ở đây chứ không phải localStorage: cổng daemon đổi thì
+   *  localStorage mất, mà khung cửa sổ là thứ người ta chỉnh một lần rồi muốn nó nằm yên. */
+  windowBox?: { x: number; y: number; w: number; h: number; max: boolean };
   /** Start zemory when the OS starts (plan 14 §6.B). Default false. */
   autostart?: boolean;
   /** Auto-sync the memory via the Drive bundle when data drifts (plan 14 §3b).
@@ -157,6 +162,22 @@ export function getEmbedTools(): string[] {
 export function setEmbedTools(names: string[]): void {
   const c = read();
   c.embedTools = names;
+  write(c);
+}
+
+/** Khung cửa sổ lần trước — `null` nghĩa là chưa từng lưu (lần đầu chạy). */
+export function getWindowBox(): { x: number; y: number; w: number; h: number; max: boolean } | null {
+  const b = read().windowBox;
+  if (!b || typeof b.w !== "number" || typeof b.h !== "number") return null;
+  // Khung vô lý (cửa sổ thu nhỏ hết cỡ, hoặc số rác) thì coi như CHƯA CÓ — thà mở mặc định
+  // còn hơn mở một cửa sổ 1×1 mà người dùng không tìm thấy.
+  if (b.w < 320 || b.h < 240) return null;
+  return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), max: !!b.max };
+}
+
+export function setWindowBox(b: { x: number; y: number; w: number; h: number; max: boolean }): void {
+  const c = read();
+  c.windowBox = { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), max: !!b.max };
   write(c);
 }
 
