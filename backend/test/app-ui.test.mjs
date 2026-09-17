@@ -1725,3 +1725,34 @@ test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được,
   // *"t đã nói là không được ghi văn nói rồi, tự nhiên thông tin có câu hỏi vào"*).
   assert.ok(!/'mem\.storesH':'[^']*(nằm ở đâu|ở đâu)/.test(chrome), "tiêu đề mục không được viết thành câu hỏi");
 });
+
+// ── VẠCH NGĂN CHẠY TRỌN VÙNG, VÀ KHÔNG Ô NÀO ĐẨY NGANG ─────────────────────────
+//
+// User nhắc LẦN HAI 2026-09-17: *"cái line phân cách phải chạy hết page hoặc hết luôn giới hạn của
+// panel, cái này đã nói fix 1 lần rồi"*. Đo được HAI nguyên nhân, cả hai đều vô hình khi đọc mã:
+//   ① một dấu `>` lạc trong lưới ⇒ chữ trần thành Ô LƯỚI ẨN DANH ⇒ lưới mọc hàng thứ hai ⇒ vạch
+//      (cao bằng hàng 1) dừng sớm. Đo: rows = "783px 21px", vạch 783 trong lưới 818.
+//   ② card cao hơn vùng thì tràn ra ngoài hàng ⇒ cuộn xuống là vạch hụt tiếp. `align-items:start`
+//      (cố ý) khiến `min-height:0` một mình không chặn được — phải có TRẦN.
+test("lưới kéo được: một hàng, vạch chạy trọn, và ô co được cả hai chiều", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // ① Không được có chữ TRẦN nằm thẳng trong lưới — nó thành một ô, và không lỗi nào nổ.
+  // Bỏ chú thích TRƯỚC khi soát: dòng giữa của một chú thích nhiều dòng không bắt đầu bằng `<`,
+  // nên nếu không bỏ thì cổng bắt oan chính lời giải thích của mình.
+  const noComment = html.replace(/<!--[\s\S]*?-->/g, "");
+  for (const m of noComment.matchAll(/<div class="grid[^"]*rzgrid[^"]*"[^>]*>([\s\S]*?)\n\s*<\/div>\s*\n/g)) {
+    const stray = m[1].split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("<") && !l.startsWith("</"));
+    assert.deepEqual(stray, [], "chữ trần trong lưới trở thành một ô ẩn danh ⇒ lưới mọc thêm hàng ⇒ vạch kẻ hụt");
+  }
+  assert.match(css, /\.rzgrid\{grid-template-rows:minmax\(0,1fr\)\}/, "lưới kéo được phải là MỘT hàng cao bằng vùng");
+  // ② Ô phải co được cả hai chiều, và có TRẦN chiều cao.
+  assert.match(css, /\.rzgrid>\*\{min-width:0\}/, "thiếu min-width:0 thì nội dung đẩy lưới rộng hơn khung");
+  assert.match(css, /\.rzgrid>\.card\{min-height:0;max-height:100%\}/, "card phải có trần chiều cao, nếu không nó tràn khỏi hàng và vạch kẻ hụt");
+  assert.match(css, /\.rzgrid>\.card>\.card-b\{overflow-y:auto;overflow-x:hidden\}/, "thân card tự cuộn dọc, và khai ĐỦ HAI chiều (§F12)");
+  // Cột đường dẫn của bảng Routing từng `flex:0 0 auto` ⇒ không bao giờ co ⇒ cắt mất 876px.
+  assert.doesNotMatch(css, /\.rslot\{[^}]*flex:0 0 auto/, "cột đường dẫn phải co được, nếu không hàng bị cắt ở khung hẹp");
+  // Nút chép để nguyên chữ Copy ở CẢ HAI ngôn ngữ (user 2026-09-17: "cái nút copy thì để copy").
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.equal((chrome.match(/'p2p\.copy':'Copy'/g) || []).length, 2, "nút Copy giữ nguyên chữ ở cả hai từ điển");
+});
