@@ -760,6 +760,20 @@ window.zFileView = (function () {
       // KHÔNG dùng zBytes ở đây: nó nhận KILOBYTE (core.js), còn probe trả BYTE — lẫn một nhịp là
       // sai đúng 1024 lần mà nhìn vẫn "có vẻ hợp lý".
       var gb=function(n){n=Number(n||0);return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(0)+' MB':Math.round(n/1024)+' KB';};
+      // VÒNG = phần CÒN TRỐNG, không phải phần đã dùng: câu người dùng hỏi là "còn bao nhiêu chỗ để
+      // đẩy tiếp". Vòng bên trái đọc là "đã đẩy được bao nhiêu %", vòng này đọc là "còn trống bao
+      // nhiêu %" — hai vòng cùng cỡ, cùng chỗ, nên mỗi vòng phải tự nói nó đo gì.
+      var freePct=Math.round(pc(v.free));
+      var cArc=zid('capArc'),cLbl=zid('capPct');
+      if(cArc){
+        if(freePct>=100)cArc.removeAttribute('stroke-dasharray');
+        else cArc.setAttribute('stroke-dasharray',(freePct/100*DONUT_C).toFixed(1)+' '+DONUT_C.toFixed(1));
+        // Sắp hết chỗ thì đổi màu, cùng bậc đọc với vòng bên trái để mắt quen một kiểu.
+        cArc.style.stroke=freePct<10?'var(--danger)':(freePct<25?'var(--warn)':'var(--success)');
+      }
+      if(cLbl)cLbl.textContent=freePct+'%';
+      zset('capTxt',t('drv.spaceFreeN').replace('{v}',gb(v.free)));
+      zset('capSub',t('drv.spaceUsedOf').replace('{u}',gb(used)).replace('{t}',gb(v.total)));
       var seg=function(w,cls,lbl,val){return '<div class="cap-seg '+cls+'" style="width:'+w+'%" title="'+stdEsc(lbl+': '+val)+'"></div>';};
       box.innerHTML='<div class="cap-bar">'+seg(pc(store),'is-store',t('drv.spaceStore'),gb(store))
         +seg(pc(other),'is-other',t('drv.spaceOther'),gb(other))

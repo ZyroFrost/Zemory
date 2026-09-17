@@ -1638,12 +1638,17 @@ test("Tính năng: mọi đích 'Đi tới' phải là màn/tab CÓ THẬT trong
     if (tab) assert.ok(html.includes(`${SUBATTR[screen]}="${tab}"`), `đích '${d}': tab '${tab}' không tồn tại trong màn '${screen}'`);
   }
   assert.ok(!table.includes("to:'memory'"), "'memory' không phải tên màn — đó là ca đã làm trang trắng");
+  // "Nơi lưu DB" là TÊN CŨ của chỗ lưu kho chung; thứ quyết định chỗ lưu nay là "Thư mục dùng chung"
+  // ở Đồng bộ › Kênh Drive (user 2026-09-17: *"nơi lưu DB là cái cũ, nó giờ là cái lưu drive đó, bỏ
+  // luôn trong setting, bấm vào trỏ vào đồng bộ"*). Hai cái tên cho một thứ là chỗ để người đọc lệch.
+  assert.ok(!html.includes("set.dbPath"), "dòng Nơi lưu DB phải rời hộp Cài đặt");
+  assert.match(table, /{k:'storage'[^}]*to:'sync:drive'/, "hàng Nơi lưu DB phải trỏ về Đồng bộ › Kênh Drive");
   // Hàng có công tắc NGAY TRÊN HÀNG, hoặc chỉ hiện một con số, thì KHÔNG có đích: mở hộp Cài đặt
   // chỉ để xem lại đúng thứ vừa thấy là một cú bấm nói dối (user 2026-09-17: *"nơi lưu db và auto
   // start mà còn mở ra setting là sai"*). Riêng autostart, hộp Cài đặt còn giữ một BẢN SAO của cùng
   // công tắc — trỏ sang đó là trỏ vào bản sao.
-  for (const k of ["autostart", "storage"]) {
-    const row = new RegExp("\{k:'" + k + "'[^}]*\}").exec(table);
+  for (const k of ["autostart"]) {
+    const row = new RegExp("[{]k:'" + k + "'[^}]*[}]").exec(table);
     assert.ok(row, `không thấy hàng ${k}`);
     assert.ok(!/(?<![a-zA-Z])to:/.test(row[0]), `hàng ${k} không được có đích — nó đã tự hiện đủ trên hàng`);
   }
@@ -1652,4 +1657,27 @@ test("Tính năng: mọi đích 'Đi tới' phải là màn/tab CÓ THẬT trong
   assert.match(js, /sysGoto\(f\)\+sysAction\(f\)/, "nút phải thật sự được vẽ ra");
   // Và đích lạ thì KHÔNG đi đâu cả — thà đứng yên còn hơn để lại trang trắng.
   assert.match(js, /if\(!document\.querySelector\('\.screen\[data-s="'\+pr\[0\]\+'"\]'\)\)return;/, "đích không có thật thì phải đứng yên");
+});
+
+// ── DONUT SỨC CHỨA, ĐỐI XỨNG VỚI DONUT ĐỒNG BỘ ─────────────────────────────────
+//
+// User 2026-09-17: *"thêm 1 chart để check có bao nhiêu store trống còn lại trên drive"* …
+// *"nó là cái nằm ngay thao tác panel phải đối xứng với chart donut đó"*. Bản đầu tôi vẽ một thanh
+// ngang mảnh — đúng số nhưng KHÔNG phải thứ được yêu cầu, và phá thế đối xứng hai panel.
+test("tab Drive: panel phải có donut sức chứa, cùng khuôn với donut đồng bộ bên trái", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  // Cùng KHUÔN, không phải hình tự chế: cùng class, cùng viewBox, cùng bán kính.
+  for (const id of ["driveArc", "capArc"]) {
+    assert.match(html, new RegExp(`<circle class="darc" id="${id}" cx="20" cy="20" r="16"`), `donut ${id} phải dùng đúng khuôn chung`);
+  }
+  assert.match(html, /<div class="drv-progress">[\s\S]{0,400}id="capArc"[\s\S]{0,400}id="capTxt"/, "donut sức chứa phải nằm trong khuôn .drv-progress như bên trái");
+  // Vòng đo phần CÒN TRỐNG — đó là câu người dùng hỏi ("còn bao nhiêu chỗ").
+  assert.match(gm, /var freePct=Math\.round\(pc\(v\.free\)\);/, "vòng phải đo phần còn trống, không phải phần đã dùng");
+  assert.match(gm, /cArc\.setAttribute\('stroke-dasharray',\(freePct\/100\*DONUT_C\)/, "phải vẽ cung theo cùng chu vi DONUT_C của donut kia");
+  assert.match(gm, /cArc\.style\.stroke=freePct<10\?'var\(--danger\)'/, "sắp hết chỗ phải đổi màu");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["drv.spaceFreeN", "drv.spaceUsedOf"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
 });

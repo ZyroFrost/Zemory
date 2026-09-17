@@ -411,6 +411,10 @@
                 <div class="section-t" data-i18n="mem.syncMode">Chế độ đồng bộ</div>
                 <div class="filters" style="gap:6px"><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div><div class="fchip" id="lvAtt" data-lvl="att" data-i18n-title="drv.attHint" title="Bật thì bundle chở kèm ảnh/file đính kèm (nặng hơn nhiều). Mặc định tắt.">🖼️ <span data-i18n="drv.att">Kèm ảnh</span></div></div>
                 <div class="section-t" data-i18n="drv.spaceH">Sức chứa ổ chứa thư mục Drive</div>
+                <div class="drv-progress">
+                  <div class="donut donut-lg"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="capArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="capPct">—</div></div>
+                  <div class="drv-progress-txt"><b id="capTxt">—</b><small id="capSub">—</small></div>
+                </div>
                 <div id="drvSpace"></div>
                 <div id="driveState" class="scanmsg" style="margin:10px 0 0">—</div>
             </div>
@@ -552,7 +556,6 @@
         <b style="font-size:12.5px" data-i18n="set.about">Giới thiệu</b>
         <div class="row" style="padding:7px 0"><span class="muted" data-i18n="set.version">Phiên bản</span><span class="mono" id="aboutVer">—</span></div>
         <div class="row" style="padding:7px 0"><span class="muted" data-i18n="set.machine">Máy này</span><span class="mono" id="aboutHost">—</span></div>
-        <div class="row" style="padding:7px 0"><span class="muted" data-i18n="set.dbPath">Nơi lưu DB</span><span class="mono" id="aboutDb" style="max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span></div>
         <div class="row" style="padding:7px 0;border:0"><span class="muted" data-i18n="set.engine">Engine</span><span data-i18n="set.engineV">Local-first · 0 model API · Apache-2.0</span></div>
         <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="set.updateHint">Cập nhật bản cài local: git pull → npm run build.</div>
       </div>

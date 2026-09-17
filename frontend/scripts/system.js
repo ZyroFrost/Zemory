@@ -14,7 +14,7 @@
     {k:'scheduler',grp:'f.grpSync',n:'f.sched',kind:'auto',auto:'scheduler',to:'gmem:mem',doc:'f.doc.scheduler'},
     {k:'autostart',grp:'f.grpSync',n:'f.autostart',kind:'auto',auto:'autostart',doc:'f.doc.autostart'},
     {k:'autosync',grp:'f.grpSync',n:'f.autosync',kind:'auto',auto:'autosync',to:'sync:drive',doc:'f.doc.autosync'},
-    {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'stat',doc:'f.doc.storage'},
+    {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'stat',to:'sync:drive',doc:'f.doc.storage'},
     {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',to:'harness:docs',doc:'f.doc.validate'},
     {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',to:'harness:docs',doc:'f.doc.grill'},
     {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',to:'harness:docs',doc:'f.doc.harness'},
@@ -184,7 +184,6 @@
     if(ck){var f=ck.dataset.sysCheck;ck.textContent='…';zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;renderSystem();}).catch(function(){renderSystem();});return;}
     if(nv){
       var dest=nv.dataset.sysNav;
-      if(dest==='__settings'){openSettings();return;}
       // Hộp "Chuẩn repo" là nhà của hàng đường-dẫn-chết: nó mở từ chip thanh bên, không phải một màn.
       if(dest==='__std'){var chip=zid('railStd');if(chip)chip.click();return;}
       var pr=String(dest).split(':');

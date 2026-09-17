@@ -119,7 +119,6 @@
     // About: fill from data already fetched (version/host from /ping, DB dir from /memory-status).
     zset('aboutVer',((zid('dlgVer')||{}).textContent||'—'));
     zset('aboutHost',((zid('railMachine')||{}).textContent||'—'));
-    var st=(Z.mem&&Z.mem.storage)||{};zset('aboutDb',st.dbPath||st.dir||'—');
   }
   function closeSettings(){var d=document.getElementById('settingsDlg');if(d)d.classList.remove('on');}
   document.addEventListener('click',function(e){
