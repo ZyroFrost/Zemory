@@ -715,6 +715,60 @@ window.zFileView = (function () {
         +'<div class="drvmix-bar"><div class="drvmix-fill" style="width:'+Math.max(1,pc)+'%"></div></div></div>';
     }).join('');
   }
+  // ── MÁY NÀY: ổ đĩa + nơi nguồn quét được nằm ─────────────────────────────
+  //
+  // User 2026-09-17: *"bên chỗ máy này bên chart panel phải mấy dòng bar chart hiển thị dung lượng ổ
+  // đĩa đang có, và hiển thị luôn chỗ quét được từ máy là nằm ở đâu link nào"*.
+  //
+  // Hai số này đều là SỰ THẬT CỦA MÁY, không phải của kho: dung lượng ổ đọc từ hệ điều hành (qua tiến
+  // trình con, vì ổ mây treo thì syscall nằm im), còn đường dẫn đọc thẳng sổ `known_stores` — chính
+  // chỗ bộ quét ghi lại từng gốc store nó tìm ra, nên không đẻ con số thứ hai lệch với cây Nguồn.
+  var mInfoTimer=null, mInfoTries=0;
+  function renderMachineInfo(){
+    var bd=zid('mDisks'), bs=zid('mStores');
+    if(!bd&&!bs)return;
+    zGet('/machine-info').then(function(d){
+      var disks=(d&&d.disks)||[], stores=(d&&d.stores)||[];
+      var gb=function(n){n=Number(n||0);return n>=1073741824?(n/1073741824).toFixed(1)+' GB':Math.round(n/1048576)+' MB';};
+      if(bd){
+        if(!disks.length){
+          // Lượt dò ĐẦU ngay sau khi daemon lên có thể trượt (đo 2026-09-17: con bị "Command failed"
+          // một lần rồi lượt sau chạy). Nói "chưa đọc được" rồi HỎI LẠI — đứng im ở một ô trống là
+          // bề mặt chết trông như đang sống (§F3).
+          bd.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('mem.disksNone'))+'</div>';
+          if(mInfoTries<6){mInfoTries++;if(mInfoTimer)clearTimeout(mInfoTimer);mInfoTimer=setTimeout(renderMachineInfo,4000);}
+        } else {
+          mInfoTries=0;if(mInfoTimer){clearTimeout(mInfoTimer);mInfoTimer=null;}
+          bd.innerHTML=disks.map(function(k){
+            var used=Math.max(0,k.total-k.free), pc=k.total?Math.round(used/k.total*1000)/10:0;
+            return '<div class="mdisk"><div class="mdisk-top"><b>'+stdEsc(k.root)+'</b>'
+              +'<span class="muted">'+stdEsc(t('mem.diskFree').replace('{v}',gb(k.free)))+' · '+gb(used)+' / '+gb(k.total)+'</span></div>'
+              +'<div class="drvmix-bar"><div class="drvmix-fill" style="width:'+Math.max(1,pc)+'%"></div></div></div>';
+          }).join('');
+        }
+      }
+      if(bs){
+        bs.innerHTML=stores.length
+          ? stores.map(function(x){
+              return '<div class="mstore" data-copypath="'+stdEsc(x.root)+'" title="'+stdEsc(t('mem.storeCopy'))+'">'
+                +'<span class="src">'+stdEsc(x.source||'—')+'</span><span class="pth">'+stdEsc(x.root||'')+'</span></div>';
+            }).join('')
+          : '<div class="muted" style="font-size:11.5px">'+stdEsc(t('mem.storesNone'))+'</div>';
+      }
+    }).catch(function(){
+      if(bd)bd.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ph.err'))+'</div>';
+    });
+  }
+  // Bấm một đường dẫn = chép. Đường dẫn dài thì không ai gõ lại được, mà đây đúng là thứ người ta
+  // cần dán sang Explorer hoặc terminal.
+  document.addEventListener('click',function(e){
+    var r=e.target.closest?e.target.closest('[data-copypath]'):null;if(!r)return;
+    var p=r.getAttribute('data-copypath')||'';
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p);
+    var old=r.querySelector('.src').textContent;
+    r.querySelector('.src').textContent=t('mem.copied');
+    setTimeout(function(){r.querySelector('.src').textContent=old;},1200);
+  });
   function renderDriveMix(){
     var box=zid('drvMix'), boxP=zid('drvMixProj'); if(!box&&!boxP)return;
     // MỘT lượt gọi cho CẢ HAI biểu đồ — cùng một câu trả lời thì hai con số không thể lệch nhau,

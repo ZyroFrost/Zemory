@@ -108,6 +108,7 @@ import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostar
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
 import { startSyncJob, stopSyncJob, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
 import type { DriveProbe } from "./jobs/driveprobe.js";
+import type { DiskInfo } from "./jobs/diskprobe.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
@@ -1426,6 +1427,35 @@ function windowArgs(): string[] {
   return [`--window-position=${b.x},${b.y}`, `--window-size=${b.w},${b.h}`];
 }
 
+/** Ổ đĩa của máy — bản đệm. Dò trong TIẾN TRÌNH CON vì `statfs` trên ổ mây treo thì nằm im
+ *  (xem `jobs/diskprobe.ts`). Đổi rất chậm nên 10 phút mới dò lại một lần. */
+let diskCache: { at: number; v: DiskInfo[] } | null = null;
+let diskInFlight = false;
+const DISK_TTL_MS = 600_000;
+
+function diskprobeEntry(): string {
+  return fileURLToPath(new URL("./jobs/diskprobe.js", import.meta.url));
+}
+
+function kickDiskProbe(): void {
+  if (diskInFlight) return;
+  diskInFlight = true;
+  execFile(process.execPath, [diskprobeEntry()], { timeout: PROBE_TIMEOUT_MS, windowsHide: true }, (err, stdout) => {
+    diskInFlight = false;
+    if (err) return;   // ổ treo ⇒ con bị giết ⇒ GIỮ bản cũ, đừng thay bằng danh sách rỗng
+    try {
+      diskCache = { at: Date.now(), v: JSON.parse(String(stdout)) as DiskInfo[] };
+    } catch {
+      /* stdout hỏng — giữ bản cũ */
+    }
+  });
+}
+
+function disksNow(): DiskInfo[] {
+  if (!diskCache || Date.now() - diskCache.at > DISK_TTL_MS) kickDiskProbe();
+  return diskCache?.v ?? [];
+}
+
 /** Fallback: open the cockpit in an msedge/chrome --app window (browser icon). */
 function openWindowMsedge(url: string): void {
   const browser = resolveBrowser();
@@ -2654,6 +2684,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         }
       }
       return json(res, { items, warnPercent: warnPct });
+    }
+    if (p === "/machine-info") {
+      // Hai câu hỏi về CHÍNH MÁY NÀY, trả chung một lượt vì bề mặt hỏi chúng cùng lúc:
+      //   ① còn bao nhiêu chỗ trên các ổ · ② những gì quét được nằm ở ĐÂU.
+      // ② đọc thẳng sổ `known_stores` — đó là nơi bộ quét ghi lại từng gốc store nó tìm thấy,
+      // nên không có con số thứ hai để lệch với cây Nguồn.
+      const db = openMemory();
+      let stores: { root: string; source: string }[] = [];
+      try {
+        stores = db.prepare("SELECT store_root AS root, source FROM known_stores ORDER BY source, store_root").all() as { root: string; source: string }[];
+      } catch {
+        /* sổ chưa có (kho mới) — trả rỗng, bề mặt tự nói "chưa quét được gì" */
+      }
+      return json(res, { disks: disksNow(), stores });
     }
     if (p === "/insights") {
       return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));

@@ -39,6 +39,9 @@
   function subLoad(attr,v){
     if(attr==='data-rc'&&v==='sess')loadSessions();
     else if(attr==='data-gm'&&v==='mem')renderInsights();
+    // Tab Đồng bộ & Sao lưu: ổ đĩa + nơi nguồn quét được nằm. Nạp ĐÚNG LÚC VÀO — hỏi sẵn lúc
+    // không ai mở là dò ổ đĩa suông, mà dò ổ phải phóng một tiến trình con.
+    else if(attr==='data-gm'&&v==='sync'&&typeof renderMachineInfo==='function')renderMachineInfo();
     // Màn Đồng bộ: nhịp nhật ký CHỈ chạy khi tab máy-tới-máy đang mở — hỏi log mỗi 15s trong lúc
     // không ai nhìn là đốt I/O suông.
     else if(attr==='data-sy'&&window.zSyncScreen)window.zSyncScreen(v==='p2p');
