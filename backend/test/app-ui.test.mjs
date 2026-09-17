@@ -1540,3 +1540,22 @@ test("tab Drive: bảng tỉ trọng theo dự án và bảng sức chứa ổ �
   // null cho bề mặt nói "chưa đo được", tuyệt đối không bịa 0.
   assert.match(probe, /catch \{\s*\n\s*\/\* ổ không trả lời thông số/, "đo hỏng phải để null, không rơi về 0");
 });
+
+// ── EMOJI PHẢI Ở DẠNG EMOJI, KHÔNG PHẢI DẠNG CHỮ ───────────────────────────────
+//
+// User 2026-09-17: *"list session sao lại bị có ký tự lạ"* — badge đính kèm hiện ra một ô vuông.
+// Gốc: U+1F5BC và U+1F5DC mặc định là TEXT presentation; Windows không có glyph chữ cho chúng
+// trong font UI nên vẽ ô trống. Đo trong chính trình duyệt của app (bề rộng canvas, đối chiếu với
+// U+FFFF = tofu và U+1F600 = emoji thật): `🖼` trần = 14,0px (dạng chữ) · `🖼️` (kèm U+FE0F) = 19,2px
+// = đúng emoji. ⚠ Và phép đo đã cứu một bản vá sai: `📎` — thứ tôi định thay vào — ĐO RA ĐÚNG BẰNG
+// TOFU, tức là đổi sang nó thì còn tệ hơn. Đoán glyph nào "chắc có" là cách hỏng lặng lẽ.
+test("mọi emoji dạng-chữ trên UI phải kèm dấu chọn biến thể U+FE0F", () => {
+  const TEXT_DEFAULT = [["\u{1F5BC}", "khung ảnh"], ["\u{1F5DC}", "nén"]];
+  for (const f of ["frontend/scripts/session.js", "frontend/scripts/recall.js", "frontend/scripts/chrome.js", "frontend/pages/app.html"]) {
+    const s = readFileSync(new URL("../../" + f, import.meta.url), "utf8");
+    for (const [ch, name] of TEXT_DEFAULT) {
+      const bare = [...s.matchAll(new RegExp(ch + "(?!\uFE0F)", "gu"))].length;
+      assert.equal(bare, 0, `${f}: ${name} (${ch}) thiếu U+FE0F ⇒ Windows vẽ thành ô vuông`);
+    }
+  }
+});

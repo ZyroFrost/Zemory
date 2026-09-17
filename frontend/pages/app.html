@@ -112,7 +112,7 @@
           <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>
           <div class="fchip" id="rHybrid" data-rf="hybrid" data-i18n-title="f.hybridTip" title="Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.">Hybrid</div>
           <div class="fchip" id="rRerank" data-rf="rerank" hidden data-i18n-title="f.rerankTip" title="Công tắc engine của MÁY: xếp lại hạng bằng cross-encoder trong lượt Tìm sâu. Rất chậm.">Rerank</div>
-          <div class="fchip" id="rImg" data-rf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
+          <div class="fchip" id="rImg" data-rf="img">🖼️ <span data-i18n="f.hasImg">Có ảnh</span></div>
           <select id="fTime" class="rsel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
           <!-- "user" = NGƯỜI thật gõ (backend đã loại tool_result nằm trong lượt user);
                "tool" = output công cụ. Xem roleMatches() trong search.ts. -->
@@ -140,7 +140,7 @@
                có 1.206, tức giao diện sẽ nói dối về phạm vi đã tìm. -->
           <div class="recall-in"><span>🔍</span><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" value=""><button class="btn sm" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻</button></div>
           <div class="filters">
-            <div class="fchip" id="sImg" data-sf="img">🖼 <span data-i18n="f.hasImg">Có ảnh</span></div>
+            <div class="fchip" id="sImg" data-sf="img">🖼️ <span data-i18n="f.hasImg">Có ảnh</span></div>
             <select id="fSTime" class="rsel ssel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
             <select id="fSOrigin" class="rsel ssel"><option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>
             <select id="fSAgent" class="rsel ssel"><option value="" data-i18n="f.agentAny">Agent: mọi</option></select>
@@ -303,9 +303,9 @@
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 2px 8px">
               <div class="filters" id="filesKind">
                 <button class="fchip on" data-fkind="all" data-i18n="files.kAll">Tất cả</button>
-                <button class="fchip" data-fkind="images" data-i18n="files.kImg">🖼 Ảnh</button>
+                <button class="fchip" data-fkind="images" data-i18n="files.kImg">🖼️ Ảnh</button>
                 <button class="fchip" data-fkind="documents" data-i18n="files.kDoc">📄 Tài liệu</button>
-                <button class="fchip" data-fkind="archives" data-i18n="files.kArc">🗜 Nén</button>
+                <button class="fchip" data-fkind="archives" data-i18n="files.kArc">🗜️ Nén</button>
                 <button class="fchip" data-fkind="media" data-i18n="files.kMed">🎬 Media</button>
               </div>
               <input id="filesQ" data-i18n-ph="files.search" placeholder="tìm theo tên…"
@@ -409,7 +409,7 @@
                 <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn primary sm" data-act="drivesync" data-i18n="act.syncNow">Đồng bộ ngay</button><span class="muted" id="asSummary" style="font-size:11px"></span><div class="toggle" data-auto="autosync" style="margin-left:auto"></div></div>
                 <div class="muted" style="font-size:11px;margin-top:4px"><b data-i18n="mem.autosync">Tự sync memory</b> — <span data-i18n="mem.autosyncD">BẬT: tự đồng bộ theo lịch, ghi vào mọi kênh đang bật.</span></div>
                 <div class="section-t" data-i18n="mem.syncMode">Chế độ đồng bộ</div>
-                <div class="filters" style="gap:6px"><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div><div class="fchip" id="lvAtt" data-lvl="att" data-i18n-title="drv.attHint" title="Bật thì bundle chở kèm ảnh/file đính kèm (nặng hơn nhiều). Mặc định tắt.">🖼 <span data-i18n="drv.att">Kèm ảnh</span></div></div>
+                <div class="filters" style="gap:6px"><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div><div class="fchip" id="lvAtt" data-lvl="att" data-i18n-title="drv.attHint" title="Bật thì bundle chở kèm ảnh/file đính kèm (nặng hơn nhiều). Mặc định tắt.">🖼️ <span data-i18n="drv.att">Kèm ảnh</span></div></div>
                 <div class="section-t" data-i18n="drv.spaceH">Sức chứa ổ chứa thư mục Drive</div>
                 <div id="drvSpace"></div>
                 <div id="driveState" class="scanmsg" style="margin:10px 0 0">—</div>
@@ -603,7 +603,7 @@
      cho mọi .dlg-back.on; bấm nền cũng đóng. -->
 <div class="dlg-back" id="imgDlg">
   <div class="dlg" role="dialog" aria-labelledby="imgDlgTitle">
-    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🖼️</span><b id="imgDlgTitle">—</b><button class="x" id="imgDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b" id="imgDlgBody"></div>
   </div>
 </div>
