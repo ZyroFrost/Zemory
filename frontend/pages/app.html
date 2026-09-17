@@ -378,7 +378,7 @@
              `.card`, không phải một card bị chia đôi). Trái: bảng đo. Phải: thao tác. -->
         <div class="grid grow rzgrid drv2col" style="grid-template-columns:var(--drv1,1fr) 8px minmax(0,1.05fr)">
           <div class="card">
-            <div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span><div class="toggle" id="driveToggle" style="margin-left:auto" data-i18n-aria="ds.driveOn" aria-label="Dùng kênh Drive"><i></i></div></div>
+            <div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span><button class="btn primary sm" data-act="drivesync" data-i18n="act.syncNow" style="margin-left:auto;flex:0 0 auto">Đồng bộ ngay</button><div class="toggle" id="driveToggle" data-i18n-aria="ds.driveOn" aria-label="Dùng kênh Drive"><i></i></div></div>
             <div class="card-b">
 
                 <div class="drv-progress" data-i18n-title="drv.pushedPct" title="% tin nhắn của máy này đã đẩy lên Drive">
@@ -405,7 +405,6 @@
                 <div class="drv-progress">
                   <div class="donut donut-lg"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="capArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="capPct">—</div></div>
                   <div class="drv-progress-txt"><b id="capTxt">—</b><small id="capSub">—</small></div>
-                  <button class="btn primary sm" data-act="drivesync" data-i18n="act.syncNow" style="margin-left:auto;flex:0 0 auto;align-self:flex-start">Đồng bộ ngay</button>
                 </div>
                 <div id="drvSpace"></div>
 
