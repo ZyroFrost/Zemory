@@ -701,28 +701,6 @@
         Thứ còn chọn được là folder Drive ('browse-drive' ngay trên). Endpoint `/relocate` và CLI
         `zemory memory relocate` GIỮ NGUYÊN — dời kho vẫn làm được khi thật sự cần, chỉ không còn
         là một nút bấm nhầm được. (Nút cũ vốn đã chết: nó ghi vào input ẩn mà không có nút xác nhận.)  */
-    else if(act==='mbackup'){zset('drvMsg',t('bk.running'));zPost('/memory-backup').then(function(r){zset('drvMsg',r&&r.ok?('✓ '+t('bk.done')+' · '+((r.bytes/1048576).toFixed(1))+' MB → '+r.outPath):('✗ '+((r&&r.error)||t('q.err'))));});}
-    else if(act==='mrestore'){zDialog({icon:'⬆',title:t('rs.title'),okLabel:t('rs.ok'),danger:true,focus:'#rsPath',
-        bodyHtml:'<div class="muted" style="font-size:12px;margin-bottom:8px">'+t('rs.desc')+'</div><div style="display:flex;gap:6px"><input id="rsPath" class="zdi" placeholder="'+t('rs.ph')+'"><button class="btn sm" id="rsBrowse" style="flex:0 0 auto">📁</button></div>',
-        onOk:function(){var bp=(zid('rsPath')&&zid('rsPath').value.trim())||'';if(!bp){zDlgMsg(t('rs.needPath'));return true;}
-          zDlgMsg(t('rs.restoring'));zid('zDlgOk').disabled=true;
-          zPost('/memory-restore?path='+encodeURIComponent(bp)).then(function(r){if(!r||r.ok===false){zDlgMsg('✗ '+((r&&r.error)||t('q.err')));zid('zDlgOk').disabled=false;return;}zDlgClose();zset('drvMsg','✓ '+t('rs.done')+' · '+(r.previousBackupPath||'—'));zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){zDlgMsg('✗ '+t('q.err'));zid('zDlgOk').disabled=false;});
-          return true;}});}
-    else if(act==='mforget'){var ksf=(Z.status&&Z.status.knownProjects)||[];
-      if(!ksf.length){zConfirm({title:t('fg.title'),body:t('fg.noProj'),okLabel:'OK',onOk:function(){}});return;}
-      var fo=ksf.map(function(k){return '<option value="'+stdEsc(k.root)+'">'+stdEsc(zProjName(k.root))+'</option>';}).join('');
-      zDialog({icon:'🗑',title:t('fg.title'),okLabel:t('fg.preview'),danger:true,focus:'#fgSel',
-        bodyHtml:'<div class="muted" style="font-size:12px;margin-bottom:8px">'+t('fg.desc')+'</div><select id="fgSel" class="zdi">'+fo+'</select>',
-        onOk:function(){var proj=zid('fgSel')&&zid('fgSel').value;if(!proj)return true;zDlgMsg(t('fg.previewing'));zid('zDlgOk').disabled=true;
-          zPost('/memory-forget?project='+encodeURIComponent(proj)).then(function(r){
-            if(!r||r.ok===false){zDlgMsg('✗ '+((r&&r.error)||t('q.err')));zid('zDlgOk').disabled=false;return;}
-            if(!r.messages){zDlgMsg(t('fg.noMatch'));zid('zDlgOk').disabled=false;return;}
-            zDlgClose();
-            zConfirm({title:t('fg.confirmTitle'),danger:true,okLabel:t('fg.deleteOk'),body:t('fg.willDelete').replace('{s}',zN(r.sessions)).replace('{m}',zN(r.messages)).replace('{d}',zN(r.digests))+'\n'+zProjName(proj)+'\n\n'+t('fg.autoBackup'),onOk:function(){
-              zset('drvMsg',t('fg.deleting'));zPost('/memory-forget?force=1&project='+encodeURIComponent(proj)).then(function(r2){zset('drvMsg',r2&&r2.ok?('✓ '+t('fg.deleted').replace('{m}',zN(r2.messages))+' · backup: '+(r2.backupPath||'—')):('✗ '+((r2&&r2.error)||t('q.err'))));zGet('/memory-status?fresh=1').then(renderMem);});}});
-          }).catch(function(){zDlgMsg('✗ '+t('q.err'));zid('zDlgOk').disabled=false;});
-          return true;}});}
-    else if(act==='mredact'){zConfirm({title:t('rd.title'),body:t('rd.body'),okLabel:t('rd.ok'),onOk:function(){zset('drvMsg',t('rd.running'));zPost('/memory-redact').then(function(r){zset('drvMsg',r&&r.ok?'✓ '+t('rd.done'):('✗ '+((r&&r.error)||t('q.err'))));});}});}
   });
   // BƯỚC → chữ hiện — mã từ backend (`share.ts::onProgress`), FE tự dịch qua i18n (user 2026-08-30:
   // "phải hiện tiến trình sync đang bước nào"). `lock-wait:<ai>` mang theo tên máy giữ khoá.
