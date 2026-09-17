@@ -11,7 +11,15 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
-import { templateDir, appUpdateStatus, ensureHarness, syncCheck } from "./docs/adopt.js";
+import {
+  templateDir,
+  templateBundleDir,
+  listTemplateBundles,
+  listBundleDocs,
+  appUpdateStatus,
+  ensureHarness,
+  syncCheck,
+} from "./docs/adopt.js";
 import { cacheDue, readUpdateCache, refreshRemoteVersion } from "./update/remote-version.js";
 import { generateGuards } from "./docs/guard-gen.js";
 import type { StructureProfile } from "./core/types.js";
@@ -33,12 +41,11 @@ import { memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
-import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
+import { forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
-import { TEMPLATE_DIR } from "./docs/adopt.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -926,11 +933,28 @@ function listHarnessFiles(projectRoot: string): { hasAgents: boolean; agent: str
   };
 }
 
-/** Read a file from the SHARED STANDARD (docs_template/<profile>/) — path-guarded.
+/**
+ * Giải tham số của `/standard-doc` và `/standard-spec` thành MỘT thư mục bộ mẫu.
+ *
+ * Hai cửa vào, một chỗ giải (F6 — cùng một thứ không được có hai nơi quyết):
+ * · `?bundle=<tên thư mục>` — đường mới, mở được MỌI bộ trên đĩa;
+ * · `?profile=app|non-app` — đường CŨ, giữ nguyên hành vi cho người gọi đời trước.
+ *
+ * Tên bộ lạ ⇒ `null` (người gọi trả câu "không biết bộ này"), KHÔNG âm thầm rơi về `05_app`:
+ * trả nhầm bản chuẩn của bộ khác là nói dối về thứ người đọc đang xem.
+ */
+function standardBase(params: URLSearchParams): string | null {
+  const bundle = params.get("bundle");
+  if (bundle) return templateBundleDir(bundle);
+  const profile: StructureProfile = params.get("profile") === "non-app" ? "non-app" : "app";
+  return templateDir(profile);
+}
+
+/** Read a file from the SHARED STANDARD (docs_template/<bundle>/) — path-guarded.
  *  This is the canonical harness, not any project's docs; the UI loads it
- *  read-only. Defaults to the APP tree; pass profile="non-app" for that standard. */
-function readStandardDoc(rel: string, profile: StructureProfile = "app"): { ok: boolean; file: string; content: string } {
-  const base = templateDir(profile);
+ *  read-only. `base` is an absolute bundle dir already resolved by the caller
+ *  (`templateBundleDir` for a named bundle, `templateDir` for a profile). */
+function readStandardDoc(rel: string, base: string): { ok: boolean; file: string; content: string } {
   const target = resolve(base, rel);
   const rl = relative(base, target);
   if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
@@ -955,7 +979,7 @@ function captureCoverage(limit = 10): {
   stores: { source: string; root: string; foundAt: string | null }[];
   /** `sources` = các nguồn góp phiên (vd `claude-code` · `chatgpt-web`) — để danh sách "chưa liên kết" phân biệt REPO
    *  thật (agent local) với TÊN PROJECT trên web (ChatGPT/Claude project), thứ không có folder để Add (user 2026-08-29). */
-  projects: { host: string; path: string; sessions: number; messages: number; agents: number; sources?: string; last: string | null; profile: "app" | "non-app" | null; gone?: boolean; ignored?: boolean }[];
+  projects: { host: string; path: string; sessions: number; messages: number; agents: number; sources?: string; last: string | null; profile: "app" | "non-app" | null; adapt?: boolean; gone?: boolean; ignored?: boolean }[];
   totals: { stores: number; projectFolders: number };
   /** THIS machine's hostname — lets the UI mark the local group and split
    *  linked (registry) projects from merely-scanned ones (user 2026-07-21). */
@@ -998,6 +1022,8 @@ function captureCoverage(limit = 10): {
       // are genuinely unknowable; the UI hides the badge instead of guessing).
       ...p,
       profile: p.host === localHost && isConnected(p.path) ? projectProfile(p.path) : null,
+      // Trục THỨ HAI, không gộp vào `profile`: repo hệ ADAPT vẫn có profile app/non-app riêng.
+      adapt: p.host === localHost && isConnected(p.path) ? projectIsAdapt(p.path) : false,
       // `gone` = folder không còn trên MÁY NÀY (chỉ đo được cho host local). UI gom các root này vào
       // nhóm "folder đã mất" thay vì bày lẫn với repo đang sống (user 2026-08-29: nút Dọn "không làm gì").
       ...(p.host === localHost && /^[A-Za-z]:[\\/]/.test(String(p.path)) ? { gone: !existsSync(String(p.path)) } : {}),
@@ -1862,20 +1888,37 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/harness-files") {
       return json(res, listHarnessFiles(target));
     }
+    if (p === "/standard-bundles") {
+      // MỌI bộ mẫu trên đĩa + cây file đọc được của từng bộ. Màn Harness vẽ chip và cây
+      // từ ĐÂY, nên thêm một bộ vào `docs_template/` là nó hiện ra ngay — trước đó chip
+      // và cây đều gõ cứng trong `app.html` (2 chip cho 5 bộ, 8 hàng cho 20 file).
+      return json(res, {
+        bundles: listTemplateBundles().map((b) => {
+          const files = listBundleDocs(b.dir);
+          return {
+            ...b,
+            files,
+            // Chỉ bộ có `agent/03_STRUCTURE.md` mới dựng được cây + routing; bộ phân phối
+            // thì không, và bề mặt phải NÓI ra thay vì để một tab chết.
+            hasStructure: files.includes("agent/03_STRUCTURE.md"),
+          };
+        }),
+      });
+    }
     if (p === "/standard-spec") {
       // Bản chuẩn ĐỌC TỪ NGUỒN `03_STRUCTURE.md` (§3 cây + §4 routing) — thay cho hai
       // bảng hardcode tay trong app.js. Xem `standard-spec.ts` để biết vì sao: bản tay
       // đang thiếu 55/90 hàng cây và 40/66 dòng routing.
-      const prof2: StructureProfile = u.searchParams.get("profile") === "non-app" ? "non-app" : "app";
       // Nguồn = docs của CHÍNH repo template tương ứng (bản mẫu trắng), không phải repo
       // đang mở — màn Harness hiển thị CHUẨN DÙNG CHUNG, không phải docs của project.
-      const dir = join(TEMPLATE_DIR, prof2 === "non-app" ? "03_nonapp" : "05_app");
+      const dir = standardBase(u.searchParams);
+      if (!dir) return json(res, { tree: [], routing: [] });
       return json(res, readStandardSpec(dir, join("agent", "03_STRUCTURE.md")));
     }
     if (p === "/standard-doc") {
-      // Default to the APP standard; the future profile toggle passes ?profile=non-app.
-      const prof: StructureProfile = u.searchParams.get("profile") === "non-app" ? "non-app" : "app";
-      return json(res, readStandardDoc(u.searchParams.get("file") ?? "", prof));
+      const dir = standardBase(u.searchParams);
+      if (!dir) return json(res, { ok: false, file: "", content: "(unknown template bundle)" });
+      return json(res, readStandardDoc(u.searchParams.get("file") ?? "", dir));
     }
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
@@ -2916,8 +2959,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         const num = id.replace(/[\s-]/g, "");
         const hits = ch.seenPeers().filter((s) => ch.shortIdFromDeviceId(s.deviceId) === num);
         // Không thấy / trùng số ⇒ NÓI RA, không đoán. Đoán ở đây là ghép nhầm máy người khác.
-        if (hits.length === 0) return json(res, { ok: false, error: "khong-thay" });
-        if (hits.length > 1) return json(res, { ok: false, error: "trung-so" });
+        if (hits.length === 0) return json(res, { ok: false, error: "not-seen" });
+        if (hits.length > 1) return json(res, { ok: false, error: "duplicate-number" });
         want = hits[0].deviceId;
       }
       const cur = getP2pPeers();

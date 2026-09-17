@@ -239,46 +239,153 @@
     ['dữ liệu kéo về (thô)','data/extract/'],['việc lẻ 1 lần','data/adhoc/ (≠ task)'],
     ['tự động KÉO/ĐIỀN/UPLOAD','scripts/ + playbook 04_SKILLS'],['tài liệu / chuẩn','docs/ (+ dictionary.md)'],
   ]};
-  var stdProf='app',stdFile='AGENTS.md';
-  // NGUỒN của hai bảng dưới = `/standard-spec`, đọc thẳng từ `03_STRUCTURE.md`.
+  // ── Màn Harness: MỘT bộ mẫu đang xem, chọn bằng chip. Trước đây khoá là stdProf chỉ nhận
+  // 'app'|'nonapp' nên 3/5 bộ trên đĩa không có đường nào mở ra (user 2026-09-17: "UI vẫn chưa
+  // hiện tab của các bộ template"). Nay khoá là TÊN THƯ MỤC thật (05_app…) — đúng cái tên mà
+  // docs, CLI và sổ việc đang dùng, nên không đẻ từ vựng thứ hai cho cùng một thứ.
+  var stdBundle='05_app',stdFile='AGENTS.md',stdBundles=null;
+  function stdCur(){if(!stdBundles)return null;for(var i=0;i<stdBundles.length;i++)if(stdBundles[i].dir===stdBundle)return stdBundles[i];return null;}
+  function stdFiles(){var c=stdCur();return (c&&c.files)||[];}
+  // NGUỒN của hai bảng dưới = /standard-spec, đọc thẳng từ 03_STRUCTURE.md.
   // Trước 2026-07-27 chúng là hai mảng hardcode TAY trong file này, và đã lệch nặng:
   // cây 35/90 hàng · routing 26/66 dòng, chữ lại viết tắt khác nguồn. Màn này là màn TRA
   // CỨU — hiện thiếu 60% mà không báo gì là kiểu hỏng tệ nhất.
   // FAIL-OPEN: fetch/parse hỏng ⇒ rơi về STRUCT/ROUTE cũ để UI không bao giờ trắng.
   var specCache={};
+  // Bộ dự phòng chỉ có HAI bản (app · nonapp) vì nó là bản chép tay đời cũ. Bộ nào không có
+  // bản dự phòng thì KHÔNG mượn bản của bộ khác — trưng cây của 05_app dưới nhãn một bộ khác
+  // là nói dối về thứ người đọc đang xem. Không có thì nói không có.
+  function stdFallbackKey(){var c=stdCur();if(!c||c.kind!=='harness')return null;return c.profile==='non-app'?'nonapp':(c.profile==='app'?'app':null);}
   function specRows(){
-    var sp=specCache[stdProf];
-    if(!sp||!sp.tree||!sp.tree.length)
-      return {tree:(STRUCT[stdProf]||[]).map(function(s){return {depth:s[0],name:s[1],marker:s[2],note:s[3]};}),
-              routing:(ROUTE[stdProf]||[]).map(function(r){return {concern:r[0],where:r[1]};}),fallback:true};
+    var sp=specCache[stdBundle];
+    if(!sp||!sp.tree||!sp.tree.length){
+      var fk=stdFallbackKey();
+      if(!fk)return {tree:[],routing:[],fallback:false};
+      return {tree:(STRUCT[fk]||[]).map(function(s){return {depth:s[0],name:s[1],marker:s[2],note:s[3]};}),
+              routing:(ROUTE[fk]||[]).map(function(r){return {concern:r[0],where:r[1]};}),fallback:true};
+    }
     return sp;
   }
   function loadSpec(){
-    var pr=stdProf==='app'?'app':'non-app';
-    if(specCache[stdProf])return Promise.resolve();
-    return zGet('/standard-spec?profile='+pr).then(function(d){if(d&&d.tree)specCache[stdProf]=d;}).catch(function(){});
+    var c=stdCur();
+    if(!c||!c.hasStructure)return Promise.resolve();
+    if(specCache[stdBundle])return Promise.resolve();
+    var key=stdBundle;
+    return zGet('/standard-spec?bundle='+encodeURIComponent(key)).then(function(d){if(d&&d.tree&&d.tree.length)specCache[key]=d;}).catch(function(){});
   }
   function structRender(){
     var st=document.getElementById('structTree');if(!st)return;
-    var sp=specRows();
-    document.getElementById('structProf').textContent='hệ '+(stdProf==='app'?'APP':'NON-APP')+(sp.fallback?' · bản dự phòng':'');
+    var c=stdCur(),sp=specRows();
+    var tag=document.getElementById('structProf');
+    if(tag)tag.textContent=c?(c.dir+(sp.fallback?' · '+t('harness.specFallback'):'')):'';
+    if(!sp.tree.length){
+      // HAI trạng thái khác nhau, và gộp chúng là NÓI SAI với người đọc:
+      //  · bộ phân phối KHÔNG có agent/03_STRUCTURE.md;
+      //  · bộ ADAPT CÓ file đó, nhưng §3 của nó là bảng ánh xạ cố ý để TRỐNG — điền lúc nhận
+      //    repo. Bảo nó "không có 03_STRUCTURE.md" là một câu sai kiểm được ngay trên đĩa.
+      var why=t(c&&c.hasStructure?'harness.emptyStruct':'harness.noStruct');
+      st.innerHTML='<div class="muted">'+why+'</div>';
+      // Panel Routing cũng phải NÓI, đừng để trống: một khung rỗng không chữ đọc ra là "đang tải"
+      // hoặc "hỏng" (§F3). Nó rỗng vì CÙNG một lý do, nên dùng lại đúng câu đó.
+      var rt0=document.getElementById('routeTable');if(rt0)rt0.innerHTML='<div class="muted">'+why+'</div>';
+      return;
+    }
     st.innerHTML=sp.tree.map(function(n){
       var s=[n.depth,n.name,n.marker,n.note];
       var dir=/[\/·|]/.test(s[1]);
-      var tag=s[2]==='req'?'<span class="stag req">★</span>':s[2]==='opt'?'<span class="stag">opt</span>':s[2]==='gi'?'<span class="stag gi">gitignore</span>':'';
-      return '<div class="strow" style="padding-left:'+(s[0]*15+2)+'px"><span class="sic">'+(dir?'📁':'📄')+'</span><span class="sname">'+stdEsc(s[1])+'</span>'+tag+'<span class="snote">'+stdEsc(s[3])+'</span></div>';
+      var tg=s[2]==='req'?'<span class="stag req">★</span>':s[2]==='opt'?'<span class="stag">opt</span>':s[2]==='gi'?'<span class="stag gi">gitignore</span>':'';
+      return '<div class="strow" style="padding-left:'+(s[0]*15+2)+'px"><span class="sic">'+(dir?'📁':'📄')+'</span><span class="sname">'+stdEsc(s[1])+'</span>'+tg+'<span class="snote">'+stdEsc(s[3])+'</span></div>';
     }).join('');
-    document.getElementById('routeTable').innerHTML=sp.routing.map(function(r){
+    var rt=document.getElementById('routeTable');
+    if(rt)rt.innerHTML=sp.routing.map(function(r){
       return '<div class="rrow"><span class="rneed">'+stdEsc(r.concern)+'</span><span class="rslot">'+stdEsc(r.where)+'</span></div>';
     }).join('');
   }
-  // renderHarness: cả HAI bảng đều đọc từ nguồn thật — docs qua /standard-doc,
-  // cây + routing qua /standard-spec (parse từ 03_STRUCTURE.md).
-  function renderHarness(){stdRenderReal();structRender();loadSpec().then(structRender);}
+  // Chip chỉ mang TÊN BỘ. Dán thêm nhãn hạng lên từng chip là lặp một thông tin năm lần và làm
+  // rối hàng chọn (user 2026-09-18: *"chú thích mấy cái gói phát này kia làm gì… làm rối thiết
+  // kế thêm"*). Hạng nói ĐÚNG MỘT LẦN, ở dòng mô tả của bộ đang chọn.
+  function stdChips(){
+    var box=document.getElementById('stdBundles');if(!box)return;
+    if(!stdBundles||!stdBundles.length){box.innerHTML='<span class="muted">'+t('harness.noBundle')+'</span>';return;}
+    box.innerHTML=stdBundles.map(function(b){
+      return '<button class="fchip'+(b.dir===stdBundle?' on':'')+'" data-bundle="'+stdEsc(b.dir)+'">'+stdEsc(b.dir)+'</button>';
+    }).join('');
+    var note=document.getElementById('stdBundleNote'),c=stdCur();
+    // Gói phát có HAI kiểu, và gộp chúng làm một khiến người đọc tưởng bộ ít file bị hụt
+    // (user hỏi đúng chỗ này 2026-09-18: *"tại sao bộ harness của 02 không có đủ?"*):
+    //  · gói CHỞ SẴN harness (01) — không gọi được `zemory` nên phải chép tay, và bản chép bị CẮT;
+    //  · gói RÓT QUA `init` (02) — chỉ cần 2 file hướng dẫn, rồi nhận bản ĐẦY ĐỦ từ 03_nonapp.
+    // Phân biệt bằng chính cây file của bộ đó, không gõ tay tên bộ nào.
+    var kitCarries=!!(c&&c.kind==='kit'&&(c.files||[]).some(function(f){return /(^|\/)agent\/0\d_/.test(f)}));
+    if(note)note.textContent=c?(c.kind==='kit'?t(kitCarries?'harness.noteKitCarry':'harness.noteKitInit')
+      :c.reference?t('harness.noteRef')
+      :t('harness.noteInit').replace('{cmd}','zemory init'+(c.profile==='non-app'?' --non-app':''))):'';
+  }
+  function stdTreeRender(){
+    var box=document.getElementById('stdTree');if(!box)return;
+    var files=stdFiles(),c=stdCur();
+    // Tiêu đề card theo HẠNG. Gọi 2 file của một gói phát là "Bộ chuẩn" thì người đọc tưởng bộ
+    // chuẩn bị thiếu — trong khi 02_cowork_memory cố ý KHÔNG chở harness: nó bảo agent cài zemory
+    // rồi `init` rót ra từ 03_nonapp/05_app (user hỏi đúng chỗ này 2026-09-18).
+    var hd=document.getElementById('stdSetLabel');
+    if(hd)hd.textContent=t(c&&c.kind==='kit'?'harness.kitSet':'harness.stdSet');
+    if(!files.length){box.innerHTML='<div class="muted">'+t('harness.noFile')+'</div>';return;}
+    // Gom theo HAI đoạn đầu của đường, không theo thư mục cha trực tiếp. Theo cha trực tiếp thì
+    // .claude/skills/<x>/SKILL.md đẻ MỘT tiêu đề nhóm cho MỖI skill (đo: 10 tiêu đề, mỗi cái đúng
+    // một hàng) — cây dài gấp đôi mà không thêm thông tin nào. Gom hai đoạn ⇒ một nhóm
+    // ".claude/skills/" với các lá "adopt/SKILL.md", đọc ra ngay skill nào.
+    var groups=[],seen={};
+    files.forEach(function(f){
+      var parts=f.split('/');
+      var dir=parts.length<2?'':parts.slice(0,Math.min(2,parts.length-1)).join('/');
+      var leaf=dir?f.slice(dir.length+1):f;
+      if(!(dir in seen)){seen[dir]=groups.length;groups.push({dir:dir,files:[]});}
+      groups[seen[dir]].files.push({path:f,leaf:leaf});
+    });
+    groups.sort(function(a,b){return a.dir===''?-1:b.dir===''?1:(a.dir<b.dir?-1:1);});
+    box.innerHTML=groups.map(function(g){
+      var head=g.dir?'<div class="section-t">'+stdEsc(g.dir)+'/</div>':'';
+      return head+g.files.map(function(f){
+        return '<div class="ti'+(g.dir?' ind':'')+(f.path===stdFile?' on':'')+'" data-f="'+stdEsc(f.path)+'">📄 '+stdEsc(f.leaf)+'</div>';
+      }).join('');
+    }).join('');
+  }
+  function loadBundles(){
+    if(stdBundles)return Promise.resolve();
+    return zGet('/standard-bundles').then(function(d){
+      var list=(d&&d.bundles)||[];
+      if(!list.length)return;
+      stdBundles=list;
+      // Bộ mở sẵn = bộ APP nếu còn, không thì bộ đầu. KHÔNG ghim cứng '05_app': đổi tên thư
+      // mục trên đĩa là màn này trắng, mà không lỗi nào nổ.
+      var pick=null;
+      list.forEach(function(b){if(!pick&&b.profile==='app')pick=b.dir;});
+      stdBundle=pick||list[0].dir;
+      if(stdFiles().indexOf(stdFile)<0)stdFile=stdFiles()[0]||stdFile;
+    }).catch(function(){});
+  }
+  // renderHarness: MỌI bảng đọc từ nguồn thật — danh sách bộ qua /standard-bundles, docs qua
+  // /standard-doc, cây + routing qua /standard-spec (parse từ 03_STRUCTURE.md).
+  function renderHarness(){
+    loadBundles().then(function(){
+      stdChips();stdTreeRender();stdRenderReal();structRender();
+      return loadSpec();
+    }).then(structRender);
+  }
   document.addEventListener('click',function(e){
-    if(e.target.id==='stdApp'){stdProf='app';renderHarness();return;}
-    if(e.target.id==='stdNon'){stdProf='nonapp';renderHarness();return;}
-    var ti=e.target.closest('#stdTree .ti');if(ti&&ti.dataset.f){stdFile=ti.dataset.f;stdRenderReal();}
+    var chip=e.target.closest&&e.target.closest('#stdBundles [data-bundle]');
+    if(chip){
+      var d=chip.getAttribute('data-bundle');
+      if(d!==stdBundle){
+        stdBundle=d;
+        // Giữ nguyên file đang xem nếu bộ mới cũng có nó — so cùng một file giữa hai bộ là
+        // lối dùng chính của màn này. Không có thì rơi về file đầu.
+        if(stdFiles().indexOf(stdFile)<0)stdFile=stdFiles()[0]||stdFile;
+        stdChips();stdTreeRender();stdRenderReal();structRender();loadSpec().then(structRender);
+      }
+      return;
+    }
+    var ti=e.target.closest('#stdTree .ti');if(ti&&ti.dataset.f){stdFile=ti.dataset.f;stdTreeRender();stdRenderReal();}
   });
   // fake graph
 

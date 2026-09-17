@@ -24,7 +24,41 @@
       ['🗄','Known stores',zN(T('known_stores')),'hint.stores','']];
     zid('gmStats').innerHTML='<div class="tile-strip">'
       +tiles.map(function(s){return '<div class="tile"><div style="font-size:19px;font-weight:700">'+s[2]+'</div><div class="muted" style="font-size:11.5px">'+s[0]+' '+s[1]+'<span class="qh" data-hint="'+stdEsc(t(s[3]))+'">?</span></div>'+(s[4]?'<div class="muted" style="font-size:10.5px;margin-top:2px">'+stdEsc(s[4])+'</div>':'')+'</div>';}).join('')+'</div>';
+    fitTiles();
   }
+
+  // ── SỐ CỘT TÍNH THEO BỀ RỘNG THẬT, KHÔNG THEO BREAKPOINT CỨNG ─────────────────
+  //
+  // User chốt (nhắc tới lần thứ BA, 2026-09-18): *"khi full size nó là 1 hàng 8 card; khi kéo nhỏ
+  // màn hình, khi có card nào bị nhỏ tới mức bị đè mất nội dung của chính nó thì mới xuống dòng,
+  // nhưng nhảy theo kiểu CHIA ĐÔI"*.
+  //
+  // Vì sao KHÔNG làm được bằng CSS thuần — hai hướng đều hỏng, đã thử cả hai:
+  //  · `flex-wrap` xếp THAM (nhét được bao nhiêu thì nhét) ⇒ 8 thẻ ra 7+1, một thẻ lẻ chơ vơ;
+  //  · breakpoint cứng (`max-width:1500px` ⇒ 4 cột) ĐOÁN bề rộng khung từ bề rộng CỬA SỔ. Khung
+  //    này nằm trong panel có thanh kéo, nên hai thứ đó không bằng nhau: cửa sổ 1600px mà khung
+  //    chỉ ~1230px thì nó cắt xuống 4 cột trong khi 8 thẻ vẫn vừa.
+  // ⇒ Đo bề rộng THẬT của khung, rồi chọn ƯỚC LỚN NHẤT của số thẻ mà mỗi thẻ vẫn đủ rộng. Ước nên
+  //   mọi hàng luôn đầy: 8 → 4 → 2 → 1, không bao giờ có thẻ lẻ.
+  var TILE_MIN=150;   // bề rộng tối thiểu để nội dung thẻ không bị đè (số + nhãn + dòng phụ)
+  function fitTiles(){
+    var strip=document.querySelector('#gmStats .tile-strip');if(!strip)return;
+    var n=strip.children.length;if(!n)return;
+    var gap=parseFloat(getComputedStyle(strip).columnGap)||10;
+    var w=strip.clientWidth;if(!w)return;
+    var cols=1;
+    for(var d=n;d>=1;d--){
+      if(n%d)continue;                                  // chỉ nhận ƯỚC ⇒ không hàng nào lẻ
+      if((w-(d-1)*gap)/d>=TILE_MIN){cols=d;break;}
+    }
+    strip.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
+  }
+  // Theo BỀ RỘNG KHUNG, không theo `window.resize`: người dùng kéo thanh chia panel thì cửa sổ
+  // không đổi mà khung thì đổi — nghe nhầm sự kiện là bỏ sót đúng thao tác hay dùng nhất.
+  if(window.ResizeObserver){
+    var tileRO=new ResizeObserver(function(){fitTiles();});
+    var tileHost=zid('gmStats');if(tileHost)tileRO.observe(tileHost);
+  }else{window.addEventListener('resize',fitTiles);}
   // ── INSIGHTS: deterministic only — daily activity · agent mix · growth · health.
   //    /insights (time-series COUNT/SUM from DB) + Z.mem (vector coverage). 0 AI, 0 forecast.
   var insData=null;
@@ -409,9 +443,9 @@
       if(!id.trim()){p2pMsg(t('p2p.needId'));return;}
       zPost('/channel-pair?id='+encodeURIComponent(id.trim())).then(function(r){
         if(r&&r.ok===false){
-          // Câu lỗi phải CHỈ ĐƯỜNG. "khong-thay" nghĩa là số đúng dạng nhưng chưa máy nào mang
+          // Câu lỗi phải CHỈ ĐƯỜNG. "not-seen" nghĩa là số đúng dạng nhưng chưa máy nào mang
           // số đó phát trên mạng này — người dùng cần biết đó là chuyện MẠNG, không phải gõ sai.
-          var why=r.error==='khong-thay'?t('p2p.numNotSeen'):(r.error==='trung-so'?t('p2p.numDup'):('✗ '+(r.error||'')));
+          var why=r.error==='not-seen'?t('p2p.numNotSeen'):(r.error==='duplicate-number'?t('p2p.numDup'):('✗ '+(r.error||'')));
           p2pMsg(why);return;
         }
         zid('p2pPeerIn').value='';p2pMsg(t('p2p.paired'));loadChannel();
@@ -479,15 +513,16 @@
     state.items = data.items || [];
     state.items.forEach(function (f, i) { f.idx = i; });
     zset('filesCount', String(data.total) + ' ' + t('files.unit'));
-    if (!data.items.length) { box.innerHTML = '<div class="muted" style="padding:14px">' + t('files.empty') + '</div>'; return; }
-    var html = '', cur = null;
-    data.items.forEach(function (f) {
-      var m = month(f.at);
-      if (m !== cur) { if (cur !== null) html += '</div>'; html += '<div class="fmonth">' + esc(m) + '</div><div class="fgrid">'; cur = m; }
-      html += tile(f);
-    });
-    html += '</div>';
-    box.innerHTML = html;
+    if (!data.items.length) { zset('filesMonth', ''); box.innerHTML = '<div class="muted" style="padding:14px">' + t('files.empty') + '</div>'; return; }
+    // Nhãn tháng KHÔNG còn chiếm một hàng riêng trong lưới (user 2026-09-18: *"tự nhiên có cái
+    // năm bị nằm 1 hàng 1 mình… để nó lên hàng search luôn"*). Một dòng chữ ăn trọn chiều ngang
+    // chỉ để nói "2026-09" là đổi một hàng lưới lấy sáu chữ. Nay khoảng tháng nằm ở CUỐI hàng
+    // search — đúng thứ tự search → filter → thông tin.
+    var months = [];
+    data.items.forEach(function (f) { var m = month(f.at); if (months.indexOf(m) < 0) months.push(m); });
+    var span = months.length ? (months.length === 1 ? months[0] : months[months.length - 1] + ' → ' + months[0]) : '';
+    zset('filesMonth', span);
+    box.innerHTML = '<div class="fgrid">' + data.items.map(tile).join('') + '</div>';
   }
 
   function load() {

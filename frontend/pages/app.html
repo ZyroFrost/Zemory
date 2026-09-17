@@ -19,7 +19,7 @@
       <a data-s="recall"><span class="ic">🔍</span> <span data-i18n="nav.recall">Recall</span></a>
       <a data-s="projects"><span class="ic">▤</span> <span data-i18n="nav.projects">Dự án</span></a>
       <a data-s="gmem"><span class="ic">◉</span> <span data-i18n="nav.gmem">Global Memory</span></a>
-      <a data-s="sync"><span class="ic">⇄</span> <span data-i18n="nav.sync">Đồng bộ</span></a>
+      <a data-s="sync"><span class="ic">⇄</span> <span data-i18n="nav.sync">Sync</span></a>
       <a data-s="harness"><span class="ic">📘</span> <span data-i18n="nav.harness">Harness</span></a>
       <!-- Đặt CUỐI: đây là màn chẩn đoán, thỉnh thoảng mới vào — không tranh chỗ với
            các mục dùng hằng ngày. (Bản 9-màn cũ cũng để "✔ Hệ thống" ở cuối.) -->
@@ -44,7 +44,7 @@
 
   <main class="main">
     <div class="topbar">
-      <div class="ttl" id="topTitle"><h1>Home</h1><p data-i18n="ttl.home">Tổng quan bộ nhớ AI trên máy này</p></div>
+      <div class="ttl" id="topTitle"><h1>Home</h1><p data-i18n="ttl.home">Liếc nhanh bộ nhớ AI trên máy này</p></div>
       <div class="spacer"></div>
       <span class="topver" id="topVersion" data-i18n-title="top.ver" title="phiên bản">v1.0.0</span>
       <button class="topgear" id="topSettings" data-i18n-title="top.settings" data-i18n-aria="top.settings" title="Cài đặt" aria-label="Cài đặt">⚙</button>
@@ -84,7 +84,6 @@
       <section class="screen" data-s="system">
         <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto">
           <span id="sysSummary" class="pill ok" style="font-size:12px">—</span>
-          <span class="muted" style="font-size:12px" data-i18n="sys.hint">Bấm 1 tính năng bên trái → mô tả + Kiểm / Bật bên phải</span>
           <button class="btn sm" data-act="sysrecheck" style="margin-left:auto">↻ <span data-i18n="sys.recheckAll">Kiểm lại tất cả</span></button>
         </div>
         <div class="grid grow rzgrid" style="grid-template-columns:var(--sys,1fr) 8px 1.15fr">
@@ -100,13 +99,14 @@
       <section class="screen" data-s="recall">
         <div class="tabs"><button class="on" data-rc="find">🔍 <span data-i18n="rc.find">Tìm kiếm</span></button><button data-rc="sess">🗂 <span data-i18n="rc.sess">Phiên</span></button></div>
         <div class="sub on" data-rc="find">
-        <div class="recall-in"><span>🔍</span><input id="rq" data-i18n-ph="recall.ph" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall" data-i18n="recall.go">Tìm ✦</button></div>
         <!-- Ô "cách nói khác" (T5 cho NGƯỜI dùng, user chốt 2026-08-24). CHỈ hiện khi Tìm sâu
              bật — `also` đi đường sâu, lộ thường trực thì một lượt tìm thường bỗng chậm 20s.
              KHÔNG được là ô trống: biến thể MƠ HỒ làm kết quả TỆ HƠN không gõ gì (đo 10/08:
              MRR 0,407→0,189) — placeholder là VÍ DỤ cụ thể, title nói thẳng rủi ro. -->
         <div class="recall-in" id="rAlsoRow" style="display:none"><span>↔</span><input id="rAlso" data-i18n-ph="recall.alsoPh" data-i18n-title="recall.alsoTip" placeholder="Cách nói KHÁC của cùng câu hỏi — cụ thể ngang câu gốc (vd: lỗi khoá ghi cli-write.lock khi embed)" title="Chỉ dùng với Tìm sâu. Biến thể CỤ THỂ giúp tìm trúng hơn (@10 50→71%); biến thể MƠ HỒ làm tệ hơn không gõ gì (MRR 0,407→0,189). Không chắc thì để trống." value=""></div>
-        <div class="filters">
+        <!-- Ô tìm GỘP vào hàng lọc — bề rộng của nó là PHẦN DƯ của hàng (user 2026-09-18). -->
+        <div class="filters frow">
+          <div class="recall-in fgrow"><span>🔍</span><input id="rq" data-i18n-ph="recall.ph" placeholder="Tìm trong bộ nhớ… (Enter)" value=""><button class="btn primary sm" data-act="recall" data-i18n="recall.go">Tìm ✦</button></div>
           <div class="fchip on" id="rAll" data-rf="all" data-i18n="recall.allMachines">Cả máy</div>
           <div class="fchip" id="rDeep" data-rf="deep" data-i18n-title="f.deepTip" title="Tìm theo NGHĨA (vector + rerank). Chậm hơn nhiều — chạy nền, không làm treo cửa sổ."><span data-i18n="f.deep">🔬 Tìm sâu</span></div>
           <div class="fchip" id="rHybrid" data-rf="hybrid" data-i18n-title="f.hybridTip" title="Công tắc engine của MÁY (dùng cho lượt Tìm sâu, CLI và MCP) — không đổi kết quả của lượt tìm nhanh.">Hybrid</div>
@@ -125,7 +125,7 @@
             <div class="muted" data-i18n="st.loading">…</div>
           </div></div>
           <div class="seam" data-seam="recall"></div>
-          <div class="card"><div class="card-h"><div class="t" id="rPreviewTitle" data-i18n="recall.preview">Xem trước</div><div style="display:flex;align-items:center;gap:10px"><a id="rCopy" style="cursor:pointer" data-i18n="recall.copy">Sao chep</a><button type="button" class="cbtn" data-icon="expand" data-expand="rPreview" data-expand-from="rPreviewTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div><div class="card-b" id="rPreview">
+          <div class="card"><div class="card-h"><div class="t" id="rPreviewTitle" data-i18n="recall.preview">Xem trước</div><div style="display:flex;align-items:center;gap:10px"><a id="rCopy" style="cursor:pointer" data-i18n="recall.copy">Sao chép</a><button type="button" class="cbtn" data-icon="expand" data-expand="rPreview" data-expand-from="rPreviewTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div><div class="card-b" id="rPreview">
             <div class="muted" data-i18n="recall.previewEmpty">Chọn một kết quả để xem các message lân cận ngay tại đây.</div>
           </div></div>
         </div>
@@ -137,8 +137,16 @@
                vì đó là công tắc của bộ máy tìm, vô nghĩa với một danh sách phiên. Mọi bộ lọc
                chạy Ở SERVER — lọc phía client chỉ lọc trong 120 phiên vừa tải, trong khi DB
                có 1.206, tức giao diện sẽ nói dối về phạm vi đã tìm. -->
-          <div class="recall-in"><span>🔍</span><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" value=""><button class="btn sm" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻</button></div>
-          <div class="filters">
+          <!-- Ô tìm GỘP vào hàng lọc (user 2026-09-18: *"khung search quá dài full width không cần
+               thiết, gộp dòng search này với hàng filter ở dưới… search nằm ở đầu, khu filter nằm
+               sau"*). Trước đó nó chiếm trọn một hàng riêng rộng hết khung chỉ để nhận vài chữ —
+               bề rộng của nó nay là PHẦN DƯ của hàng lọc. -->
+          <div class="filters frow">
+            <!-- §F0b — CÙNG khuôn với ô tìm của tab Tìm kiếm: icon + input + nút chạy có CHỮ.
+                 Nút `↻` (quét lại tên phiên từ đĩa) đã tách ra khỏi ô: nó là hành động KHÁC, nằm
+                 trong ô tìm chỉ vì chỗ đó trống. -->
+            <div class="recall-in fgrow"><span>🔍</span><input id="sessSearch" data-i18n-ph="sess.searchPh" placeholder="Tìm phiên…" value=""><button class="btn primary sm" data-act="sesssearch" data-i18n="recall.go">Tìm ✦</button></div>
+            <button class="fchip" data-act="sessrescan" data-i18n-title="sess.rescan" title="Quét lại để lấy tên phiên mới nhất">↻ <span data-i18n="sess.rescanShort">Quét lại</span></button>
             <div class="fchip" id="sImg" data-sf="img">🖼️ <span data-i18n="f.hasImg">Có ảnh</span></div>
             <select id="fSTime" class="rsel ssel"><option value="0" data-i18n="f.timeAny">Thời gian: mọi lúc</option><option value="1" data-i18n="f.time1">24 giờ</option><option value="7" data-i18n="f.time7">7 ngày</option><option value="30" data-i18n="f.time30">30 ngày</option><option value="90" data-i18n="f.time90">90 ngày</option></select>
             <select id="fSOrigin" class="rsel ssel"><option value="" data-i18n="f.originAny">Nguồn: mọi</option><option value="local">local</option><option value="web">web</option></select>
@@ -155,7 +163,7 @@
               <div class="card-b" id="sessList"><div class="muted" data-i18n="st.loading">…</div></div>
             </div>
             <div class="seam" data-seam="sess"></div>
-            <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><div style="display:flex;align-items:center;gap:10px"><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Export .md</a><button type="button" class="cbtn" data-icon="expand" data-expand="sessVBody" data-expand-from="sessVTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div>
+            <div class="card"><div class="card-h"><div class="t" id="sessVTitle">—</div><div style="display:flex;align-items:center;gap:10px"><a id="sessExport" style="cursor:pointer" data-i18n="sess.export">Xuất .md</a><button type="button" class="cbtn" data-icon="expand" data-expand="sessVBody" data-expand-from="sessVTitle" data-i18n-title="panel.expand" data-i18n-aria="panel.expand" title="Mo full" aria-label="Mo full"></button></div></div>
               <div id="sessVInfo" class="muted" style="font-size:11px;flex:0 0 auto;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:6px"></div>
               <div class="card-b" id="sessVBody"><div class="muted" data-i18n="sess.pick">Chọn một phiên bên trái để xem toàn bộ hội thoại.</div></div>
             </div>
@@ -174,13 +182,18 @@
                "Thêm dự án" = nút thêm/quét/dọn + phần chưa liên kết. Repo nhiều nên tách để danh sách sạch. -->
           <div class="tabs"><button class="on" data-pj="list">📁 <span data-i18n="pj.tabList">Dự án</span></button><button data-pj="add">＋ <span data-i18n="pj.tabAdd">Thêm dự án</span></button></div>
           <div class="sub on" data-pj="list" style="overflow-y:auto">
-          <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto">
+          <!-- CÙNG khuôn hàng lọc với Recall (§F0b: một chức năng — một khung, một bộ CSS).
+               Trước đây ô tìm ở đây là một `<input>` gõ style THẲNG vào HTML, nên màn Dự án có một
+               ô tìm trông khác hẳn hai ô kia dù cùng là "gõ để lọc". `?` đứng NGAY TRƯỚC ô tìm. -->
+          <div class="filters frow">
+            <!-- `?` ĐÚNG vai của nó: mở một bảng nhiều thông tin, không phải tooltip một dòng
+                 (user 2026-09-18). Badge trên thẻ là MÃ MÀU — phải có chỗ tra, nếu không nó là
+                 mã bí mật. -->
+            <button class="qh" id="projLegendBtn" data-i18n-title="proj.legendH" title="Thông tin template">?</button>
+            <div class="recall-in fsm"><span>🔍</span><input id="pjSearch" data-i18n-ph="proj.searchPh" placeholder="Tìm project…" value=""></div>
+            <select id="pjType" class="rsel"><option value="" data-i18n="proj.typeAll">Loại: mọi</option><option value="app">APP</option><option value="non">NON-APP</option></select>
+            <select id="pjSort" class="rsel"><option value="manual" data-i18n="proj.sortManual">Thứ tự tự sắp</option><option value="recent" data-i18n="proj.sortRecent">Mới cập nhật</option><option value="name" data-i18n="proj.sortName">Tên A→Z</option><option value="sessions" data-i18n="proj.sortSessions">Nhiều phiên</option></select>
             <span class="fchip muted" id="projCount" style="border:0">—</span>
-            <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
-              <input id="pjSearch" data-i18n-ph="proj.searchPh" placeholder="Tìm project…" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;width:150px">
-              <select id="pjType" class="rsel"><option value="" data-i18n="proj.typeAll">Loại: mọi</option><option value="app">APP</option><option value="non">NON-APP</option></select>
-              <select id="pjSort" class="rsel"><option value="manual" data-i18n="proj.sortManual">Thứ tự tự sắp</option><option value="recent" data-i18n="proj.sortRecent">Mới cập nhật</option><option value="name" data-i18n="proj.sortName">Tên A→Z</option><option value="sessions" data-i18n="proj.sortSessions">Nhiều phiên</option></select>
-            </div>
           </div>
           <div class="sys-grp" style="margin:2px 0 0" data-i18n="proj.linkedHere">Đã liên kết · máy này</div>
           <div class="grid g3" id="projGrid" style="align-content:start;grid-auto-rows:1fr">
@@ -226,7 +239,7 @@
                    giả dạng khai báo (HP điều 13). Dựng động trong gRenderEdgeFilter(). -->
               <span id="gEdgeFilter" class="gfilter"></span>
               <button class="btn sm" id="gRebuild">↻ <span data-i18n="graph.relayout">Tự xếp lại</span></button>
-              <span class="muted" style="font-size:11px" data-i18n="graph.hint2">Kéo node · lăn = zoom · kéo nền = di chuyển · Ctrl+Z hoàn tác · bấm đúp nền = 1:1 · bấm folder trái → sáng node</span>
+              <span class="muted" style="font-size:11px" data-i18n="graph.hint2">Kéo node · Shift+kéo nền = bôi chọn nhiều · Ctrl+bấm = thêm/bớt · kéo 1 node đã chọn = kéo cả nhóm · lăn = zoom · kéo nền = di chuyển · Ctrl+Z hoàn tác · bấm đúp nền = 1:1</span>
               <span style="flex:1"></span>
               <button class="btn sm" id="gTreeToggle" data-i18n-title="graph.collapseTree" title="Thu gọn cây folder">◀</button>
               <button class="btn sm" id="gPanelToggle" data-i18n-title="graph.collapsePanel" title="Thu gọn bảng thông tin">▶</button>
@@ -244,7 +257,7 @@
               <div class="pg-right" id="gPanelRight">
                 <div id="gPanel" style="display:flex;flex-direction:column;gap:12px;min-height:0;min-width:0">
                   <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t" data-i18n="graph.inspector">Node Inspector</div></div><div class="card-b" id="gInspect"><div class="muted" style="font-size:11.5px" data-i18n="graph.pickNode">Bấm 1 node để xem chi tiết.</div></div></div>
-                  <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t"><span class="ci">✔</span> <span data-i18n="graph.checks">Kiểm tra (từ graph)</span></div></div><div class="card-b" id="gChecks"><div class="muted" style="font-size:11.5px" data-i18n="graph.pickNode">…</div></div></div>
+                  <div class="card" style="flex:0 0 auto;min-width:0"><div class="card-h"><div class="t"><span class="ci">✔</span> <span data-i18n="graph.checks">Kiểm tra (từ graph)</span></div></div><div class="card-b" id="gChecks"><div class="muted" style="font-size:11.5px" data-i18n="graph.pickNode">Bấm 1 node để xem chi tiết.</div></div></div>
                   <!-- Xu hướng fitness — ĐẶT Ở ĐÂY chứ không nhét vào lưới 4 chart của
                        Global Memory: lưới đó user đã chốt đúng 4 bảng và nó nói về BỘ NHỚ,
                        còn fitness nói về CODE-GRAPH của project ⇒ để cạnh Kiểm tra (từ
@@ -307,10 +320,11 @@
                 <button class="fchip" data-fkind="archives" data-i18n="files.kArc">🗜️ Nén</button>
                 <button class="fchip" data-fkind="media" data-i18n="files.kMed">🎬 Media</button>
               </div>
-              <input id="filesQ" data-i18n-ph="files.search" placeholder="tìm theo tên…"
-                     style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;min-width:160px">
+              <!-- §F0b — cùng khuôn với mọi ô tìm khác, không style gõ thẳng vào HTML. -->
+              <div class="recall-in fsm"><span>🔍</span><input id="filesQ" data-i18n-ph="files.search" placeholder="tìm theo tên…" value=""></div>
               <button class="btn sm" data-act="files-add" data-i18n="files.add">+ Thêm tệp…</button>
               <button class="btn sm" data-act="files-reload">↻</button>
+              <span class="fchip muted" id="filesMonth" style="border:0"></span>
               <span class="muted" id="filesAddMsg" style="font-size:11px"></span>
             </div>
             <div id="filesGrid" style="flex:1;min-height:0;overflow:auto"></div>
@@ -324,16 +338,16 @@
             <span class="zpop-wrap"><button type="button" class="zhelp" id="srcLegendBtn" data-i18n-title="src.legendBtn" title="Chú giải các dấu trạng thái" aria-expanded="false">?</button>
               <div class="zpop" id="srcLegend" role="dialog" aria-label="legend" hidden>
                 <div class="zpop-t" data-i18n="src.legendT">Dấu trạng thái</div>
-                <div class="zpop-s" data-i18n="src.legendWeb">WEB</div>
+                <div class="zpop-s" data-i18n="src.legendWeb">Web</div>
                 <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendWebOk">còn liên kết — kéo bình thường</span></div>
                 <div class="zpop-r"><span class="zbadge scope-bad">⚠</span><span data-i18n="src.legendWebBad">mất liên kết — bấm dấu để nối lại</span></div>
-                <div class="zpop-s" data-i18n="src.legendLocal">LOCAL — máy này</div>
+                <div class="zpop-s" data-i18n="src.legendLocal">Local — máy này</div>
                 <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendLocalOk">kho còn trên đĩa, được quét mỗi nhịp</span></div>
                 <div class="zpop-r"><span class="zbadge scope-bad">⚠</span><span data-i18n="src.legendLocalBad">kho từng có nhưng không còn trên đĩa</span></div>
-                <div class="zpop-s" data-i18n="src.legendRemote">LOCAL — máy khác (đồng bộ về)</div>
+                <div class="zpop-s" data-i18n="src.legendRemote">Local — máy khác (đồng bộ về)</div>
                 <div class="zpop-r"><span class="zbadge conn-ok">✓</span><span data-i18n="src.legendRemoteOk">máy đó vẫn đang dùng — có tin mới trong 30 ngày</span></div>
                 <div class="zpop-r"><span class="zbadge scope-dim">✓</span><span data-i18n="src.legendRemoteRetired">máy đã ngưng / đã dời — kho lưu trữ, không cần làm gì</span></div>
-                <div class="zpop-s" data-i18n="src.legendOther">CHUNG</div>
+                <div class="zpop-s" data-i18n="src.legendOther">Chung</div>
                 <div class="zpop-r"><span class="zbadge scope-dim">•</span><span data-i18n="src.legendUnknown">chưa kiểm lần nào</span></div>
                 <div class="zpop-r"><span class="zbadge">—</span><span data-i18n="src.legendParent">hàng nguồn / hàng máy gộp từ các hàng con: một con ⚠ ⇒ cha ⚠</span></div>
               </div></span></div><div class="card-b">
@@ -411,10 +425,10 @@
                 <div class="section-t" data-i18n="drv.grpLink">Thư mục dùng chung</div>
                 <div class="muted" style="font-size:11px;margin-bottom:4px" data-i18n="drv.chooseFolder">Mỗi máy ghi bundle mã hoá vào cùng một folder trên Drive; máy khác đọc về rồi gộp.</div>
                 <div class="muted" style="font-size:11px;margin-bottom:6px;line-height:1.6" data-i18n="drv.needApp">Cần cài Google Drive cho máy tính trước, rồi trỏ vào một folder nằm trong ổ Drive đã gắn.</div>
-                <div style="display:flex;gap:6px;align-items:center"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
+                <div style="display:flex;gap:6px;align-items:center"><input id="driveInput" class="tin" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1"><button class="btn sm" data-act="browse-drive" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
                 <div class="section-t" data-i18n="mem.autosync" data-needs-drive>Tự sync memory</div>
                 <div class="set-row" style="border:0;padding:0 0 6px" data-needs-drive>
-                  <div class="sl"><small data-i18n="mem.autosyncD">BẬT: tự đồng bộ theo lịch, ghi vào mọi kênh đang bật.</small></div>
+                  <div class="sl"><small data-i18n="mem.autosyncD">Có tin mới thì tự đóng gói và đẩy đi; gói mới của máy khác thì tự gộp về. Đi qua mọi kênh đang bật.</small></div>
                   <div class="toggle" data-auto="autosync"></div>
                 </div>
                 <div id="asInline" data-needs-drive></div>
@@ -425,10 +439,10 @@
           </div>
         </div>
       </div>
-      <!-- BA VUNG (user chot 2026-09-17: "phan panel lai lam 3 khu vuc, trai phai 2 ben va 1 cai
-           log o cuoi"). Truoc do tab nay la 13 khoi roi xep doc, moi khoi chiem tron be ngang du
-           chi chua ba con so. Gom theo KHO NGANG: hang nhan-gia-tri hep ve panel trai; thu can luc
-           ghep doi ve panel phai; nhat ky xuong duoi vi no la thu duy nhat can tron be ngang. -->
+      <!-- BA VÙNG (user chốt 2026-09-17: "phân panel lại làm 3 khu vực, trái phải 2 bên và 1 cái
+           log ở cuối"). Trước đó tab này là 13 khối rời xếp dọc, mỗi khối chiếm trọn bề ngang dù
+           chỉ chứa ba con số. Gom theo KHỔ NGANG: hàng nhãn-giá-trị hẹp về panel trái; thứ cần lúc
+           ghép đôi về panel phải; nhật ký xuống dưới vì nó là thứ duy nhất cần trọn bề ngang. -->
       <div class="sub" data-sy="p2p">
         <div class="grid grow rzgrid p2pwrap">
           <div class="grid rzgrid p2p2col" style="grid-template-columns:var(--p2p1,1fr) 8px minmax(0,1fr)">
@@ -469,8 +483,8 @@
                 <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button></div>
                 <div id="p2pSeenList" class="filters" style="margin:0"></div>
                 <div class="section-t" data-i18n="p2p.connH">Nối tay</div>
-                <div style="display:flex;gap:6px"><input id="p2pHost" data-i18n-ph="p2p.hostPh" placeholder="địa chỉ máy cần nối" style="flex:2;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><input id="p2pPortIn" data-i18n-ph="p2p.portPh" placeholder="cổng" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ</button></div>
-                <div class="section-t" data-i18n="p2p.foldersH">Thứ sẽ đồng bộ</div>
+                <div style="display:flex;gap:6px"><input id="p2pHost" class="tin" data-i18n-ph="p2p.hostPh" placeholder="địa chỉ máy cần nối" style="flex:2"><input id="p2pPortIn" class="tin" data-i18n-ph="p2p.portPh" placeholder="cổng" style="flex:1"><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ</button></div>
+                <div class="section-t" data-i18n="p2p.foldersH">Thư mục sẽ đồng bộ</div>
                 <div class="muted" style="font-size:11px;margin:0;line-height:1.7">
                   <div><b>global-memory/</b> — <span data-i18n="p2p.fldMem">kho bộ nhớ, đi bằng khối mã hoá chứ không chép file.</span></div>
                   <div><b>global-memory/files/</b> — <span data-i18n="p2p.fldFiles">tệp đã gửi hoặc agent tạo. Tên tệp là mã nội dung nên không bao giờ đụng nhau.</span></div>
@@ -499,34 +513,29 @@
       </section>
 
       <section class="screen" data-s="harness">
-        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto">
-          <div class="filters"><div class="fchip on" id="stdApp">App</div><div class="fchip" id="stdNon">Non-app</div></div>
-          <div class="muted" style="font-size:12px"><span data-i18n="harness.descA">Bản mẫu TRẮNG mọi project copy về · 5 shell chung khoá byte-identical ·</span> <b style="color:var(--primary)">02·03·04</b> <span data-i18n="harness.descB">khác theo profile.</span></div>
+        <!-- Chip VẼ TỪ `/standard-bundles`, không gõ tay. Bản cũ cứng đúng hai chip (App · Non-app)
+             cho 5 bộ trên đĩa, nên 3 bộ vô hình với người dùng (user 2026-09-17: "UI vẫn chưa hiện
+             tab của các bộ template"). `.filters` đã `flex-wrap:wrap`; cha cũng phải wrap, nếu
+             không 5 chip + dòng mô tả đẩy ngang (§F12 — cấm cuộn ngang). -->
+        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto;flex-wrap:wrap">
+          <div class="filters" id="stdBundles"></div>
+          <div class="muted" style="font-size:12px;min-width:0" id="stdBundleNote"></div>
         </div>
         <div class="tabs"><button class="on" data-ht="docs">📄 <span data-i18n="harness.docsTab">Docs harness</span></button><button data-ht="struct">🗂 <span data-i18n="harness.structTab">Cấu trúc folder</span></button></div>
         <div class="sub on" data-ht="docs">
           <div class="grid grow rzgrid" style="grid-template-columns:var(--hdocs,250px) 8px 1fr">
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">📘</span> <span data-i18n="harness.stdSet">Bộ chuẩn</span></div></div><div class="card-b tree" id="stdTree">
-              <div class="ti on" data-f="AGENTS.md">📄 AGENTS.md</div>
-              <div class="section-t">docs/agent/</div>
-              <div class="ti ind" data-f="agent/01_CONSTITUTION.md">📄 01_CONSTITUTION.md</div>
-              <div class="ti ind" data-f="agent/02_RULES.md">📄 02_RULES.md</div>
-              <div class="ti ind" data-f="agent/03_STRUCTURE.md">📄 03_STRUCTURE.md</div>
-              <div class="ti ind" data-f="agent/04_SKILLS.md">📄 04_SKILLS.md</div>
-              <div class="ti ind" data-f="agent/05_TODO.md">📄 05_TODO.md</div>
-              <div class="ti ind" data-f="agent/06_CHANGES.md">📄 06_CHANGES.md</div>
-              <div class="section-t">docs/plan/</div>
-              <div class="ti ind" data-f="plan/00_overview.md">📄 00_overview.md</div>
-            </div></div>
+            <!-- Cây cũng ĐỌC TỪ ĐĨA. Bản cũ cứng 8 hàng trong khi `05_app` có 19 file đọc được,
+                 nên 10 skill của bản chuẩn chưa bao giờ mở được trong app. -->
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">📘</span> <span id="stdSetLabel" data-i18n="harness.stdSet">Bộ chuẩn</span></div></div><div class="card-b tree" id="stdTree"></div></div>
             <div class="seam" data-seam="hdocs"></div>
-            <div class="card"><div class="card-h"><div class="t" id="stdTitle">AGENTS.md</div><span class="muted" id="stdProfTag" data-i18n="harness.profApp">hệ APP</span></div>
+            <div class="card"><div class="card-h"><div class="t" id="stdTitle">AGENTS.md</div></div>
               <div class="card-b"><div class="mdview" id="stdBody"></div></div>
             </div>
           </div>
         </div>
         <div class="sub" data-ht="struct">
           <div class="grid grow rzgrid" style="grid-template-columns:var(--hstruct,1.15fr) 8px 1fr">
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="harness.tree">Cây thư mục chuẩn —</span> <span class="badge-req" style="border-color:var(--primary);color:var(--primary)" data-i18n="harness.required">★ = bắt buộc</span> · <span data-i18n="harness.opt">opt = tạo khi có concern</span></div><span class="muted" id="structProf" data-i18n="harness.profApp">hệ APP</span></div><div class="card-b" id="structTree"></div></div>
+            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="harness.tree">Cây thư mục chuẩn</span></div><span class="muted" id="structProf"></span></div><div class="card-b" id="structTree"></div></div>
             <div class="seam" data-seam="hstruct"></div>
             <div class="card"><div class="card-h"><div class="t"><span class="ci">🧭</span> <span data-i18n="harness.routing">Routing — sửa gì → vào đâu</span></div></div><div class="card-b" id="routeTable"></div></div>
           </div>
@@ -550,7 +559,7 @@
             <!-- set-row CUỐI phải border:0 — ngay dưới là khối About có border-top, để border
            của row này thì ra HAI vạch sát nhau (user báo 2026-07-25 "dư line ngang"). -->
       <div class="set-row"><div class="sl"><b data-i18n="mem.autostart">Mở cùng PC</b><small data-i18n="mem.autostartD">BẬT: đăng nhập máy là daemon đã chạy nền sẵn ở port 4444 (không phải mở tay).</small></div><div class="toggle" data-auto="autostart"></div></div>
-      <div class="set-row"><div class="sl"><b data-i18n="set.shortcut">Lối tắt Desktop</b><small data-i18n="set.shortcutD">tạo/gỡ shortcut ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
+      <div class="set-row"><div class="sl"><b data-i18n="set.shortcut">Lối tắt (Start Menu + Desktop)</b><small data-i18n="set.shortcutD">tạo/gỡ lối tắt mở app — cả mục Start Menu lẫn icon ngoài desktop</small></div><div class="toggle" data-auto="shortcut"></div></div>
       <!-- Ở ⚙ chứ KHÔNG ở khối "Tự động" của Global Memory: khối đó tự khai "daemon tự làm gì khi
            BẬT", mà việc này chạy trong CỬA SỔ (nhịp của trang, tắt cửa sổ là ngừng) — xếp cạnh các
            việc nền của daemon là nói sai thứ nó làm, và user đi tìm ở ⚙ không thấy (2026-09-09). -->
@@ -581,7 +590,7 @@
       <div class="section-t" data-i18n="p2p.seen">Thấy cùng mạng</div>
       <div id="addPeerSeen" class="filters"></div>
       <div class="section-t" data-i18n="p2p.addManual">Hoặc gõ số máy cần ghép</div>
-      <div style="display:flex;gap:6px"><input id="p2pPeerIn" data-i18n-ph="p2p.pairPh" placeholder="số máy cần ghép" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:11px;outline:none"><button class="btn sm" data-act="p2p-pair" data-i18n="p2p.pair">Ghép đôi</button></div>
+      <div style="display:flex;gap:6px"><input id="p2pPeerIn" class="tin" data-i18n-ph="p2p.pairPh" placeholder="số máy cần ghép" style="flex:1"><button class="btn sm" data-act="p2p-pair" data-i18n="p2p.pair">Ghép đôi</button></div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
   </div>
@@ -593,7 +602,7 @@
     <div class="dlg-b">
       <p class="muted" style="font-size:12px;margin:0 0 10px" data-i18n="addp.desc">Dán đường dẫn folder của dự án, hoặc bấm Chọn folder… để mở hộp thoại hệ điều hành.</p>
       <div style="display:flex;gap:6px">
-        <input type="text" id="addProjPath" data-i18n-ph="addp.ph" placeholder="vd D:\Zyro\App\MyProject" style="flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none">
+        <input type="text" id="addProjPath" class="tin" data-i18n-ph="addp.ph" placeholder="vd D:\Zyro\App\MyProject" style="flex:1">
         <button class="btn sm" id="addProjBrowse" style="flex:0 0 auto">📁 <span data-i18n="addp.browse">Chọn folder…</span></button>
       </div>
       <div id="addProjMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
@@ -618,6 +627,14 @@
 <!-- XEM TỆP (plan/25 §5) — size L (90%, 16:9 như mọi dialog, `03_STRUCTURE §5`).
      Có nút lùi/tới vì người dùng xem tệp theo LOẠT, không phải từng cái một: mở rồi
      phải đóng ra mới xem cái kế là bắt bấm hai lần cho một việc. -->
+<!-- BẢNG MÀU BỘ MẪU — mỗi bộ một màu (user chốt 2026-09-18). Nấc S: nội dung là một bảng ngắn,
+     không phải một màn (§F2: chọn nấc theo nội dung, không phóng to cho oai). -->
+<div class="dlg-back" id="projLegendDlg">
+  <div class="dlg" role="dialog" aria-labelledby="projLegendTitle">
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">🎨</span><b id="projLegendTitle" data-i18n="proj.legendH">Thông tin template</b><button class="x" id="projLegendClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
+    <div class="dlg-b"><div id="projLegendBody"></div></div>
+  </div>
+</div>
 <div class="dlg-back" id="fileDlg">
   <div class="dlg lg" role="dialog" aria-labelledby="fileDlgTitle">
     <div class="dlg-h">

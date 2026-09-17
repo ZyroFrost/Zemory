@@ -46,24 +46,20 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
       return { feature, ok: false, state: "warn", detail: tr("không đọc được docs_template/", "could not read docs_template/") };
     }
     const trees = bundles.filter((b) => b.kind === "harness");
-    const loose = trees.filter((b) => !b.wired).map((b) => b.dir);
+    const wired = trees.filter((b) => b.wired).length;
+    const refs = trees.filter((b) => b.reference).length;
     const kits = bundles.filter((b) => b.kind === "kit").length;
-    if (loose.length) {
-      return {
-        feature,
-        ok: false,
-        state: "warn",
-        detail: tr(
-          `${bundles.length} bộ mẫu · ${loose.length} cây harness CHƯA nối vào app: ${loose.join(", ")}`,
-          `${bundles.length} bundles · ${loose.length} harness tree(s) NOT wired into the app: ${loose.join(", ")}`,
-        ),
-      };
-    }
+    // KHÔNG còn warn cho cây harness chưa nối (user chốt 2026-09-17: `04_adapt` là bộ THAM CHIẾU —
+    // đọc được trong app, không rót ra được). Hàng này nay chỉ ĐẾM, và đếm đủ cả ba hạng: một hạng
+    // không được gọi tên là một hạng sẽ bị quên. Warn giữ đúng một ca THẬT là hỏng: đọc rỗng.
     return {
       feature,
       ok: true,
       state: "on",
-      detail: tr(`${trees.length} cây harness đã nối · ${kits} gói phân phối`, `${trees.length} harness trees wired · ${kits} kits`),
+      detail: tr(
+        `${bundles.length} bộ mẫu · ${wired} rót được · ${refs} tham chiếu · ${kits} gói phân phối`,
+        `${bundles.length} bundles · ${wired} scaffoldable · ${refs} reference · ${kits} kits`,
+      ),
     };
   }
   if (feature === "grill") {

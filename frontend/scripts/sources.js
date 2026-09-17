@@ -302,6 +302,54 @@
     var q=new URLSearchParams();if(lane.origin)q.set('origin',lane.origin);if(lane.host)q.set('host',lane.host);if(lane.source)q.set('source',lane.source);q.set('on',c.checked?'0':'1');
     fetch('/set-scope-exclude?'+q.toString(),{method:'POST'}).then(function(){zGet('/memory-status?fresh=1').then(renderMem);});
   });
+  // ── BADGE HẠNG BỘ MẪU — MỘT nguồn cho mọi bề mặt (§F0b: một chức năng, một khuôn, một bộ CSS).
+  // Mỗi bộ mẫu MỘT MÀU (user chốt 2026-09-18); bảng màu có chỗ bấm xem ngay trên màn Dự án, để nó
+  // không thành mã bí mật. `adapt` là trục RIÊNG với `profile` — repo hệ ADAPT vẫn là app hoặc
+  // non-app — nhưng trên thẻ ta nêu hạng CỤ THỂ NHẤT, vì đó mới là thứ đổi cách làm việc.
+  function projKind(p){return p&&p.adapt?'adapt':(p&&p.profile==='non-app'?'non':(p&&p.profile?'app':''));}
+  // Vai của project ↔ BỘ MẪU rót ra nó. Ba dòng này là bản soi của `templateDir` bên backend —
+  // màu lấy theo SỐ BỘ nên thẻ dự án và bảng Thông tin template không bao giờ lệch màu (§F0b).
+  var KIND_BUNDLE={app:'05_app',non:'03_nonapp',adapt:'04_adapt'};
+  function tplClass(dir){var m=/^(\d+)_/.exec(String(dir||''));return m?'tpl-'+Number(m[1]):'';}
+  function projBadge(p,extra){
+    var k=projKind(p);if(!k)return '';
+    var txt=k==='adapt'?'ADAPT':(k==='non'?'NON-APP':'APP');
+    return '<span class="ptype '+(extra||'')+' '+tplClass(KIND_BUNDLE[k])+'" title="'+stdEsc(t('proj.kind.'+k))+'">'+txt+'</span>';
+  }
+  // Bảng liệt MỌI bộ mẫu ĐỌC TỪ ĐĨA (`/standard-bundles`), không gõ tay ba dòng — đĩa có 5 bộ mà
+  // bảng chỉ liệt 3 là nói thiếu (user 2026-09-18: *"5 bộ lận mà"*). Thêm một bộ vào
+  // `docs_template/` là nó hiện ra đây ngay.
+  var tplBundles=null;
+  function bundleTag(b){
+    // Nhãn ngắn: bộ nào là vai của một project thì dùng đúng chữ trên thẻ dự án, còn lại là số bộ.
+    for(var k in KIND_BUNDLE)if(KIND_BUNDLE[k]===b.dir)return k==='adapt'?'ADAPT':(k==='non'?'NON-APP':'APP');
+    return b.kind==='kit'?t('harness.kKitShort'):b.dir.replace(/^\d+_/,'').toUpperCase();
+  }
+  function bundleDesc(b){
+    for(var k in KIND_BUNDLE)if(KIND_BUNDLE[k]===b.dir)return t('proj.kind.'+k);
+    return t(b.kind==='kit'?'proj.kind.kit':'proj.kind.other');
+  }
+  function projLegendRender(){
+    var body=zid('projLegendBody');if(!body)return;
+    var list=tplBundles||[];
+    if(!list.length){body.innerHTML='<div class="muted">'+t('harness.noBundle')+'</div>';return;}
+    body.innerHTML=list.map(function(b){
+      return '<div class="lgd-row"><span class="ptype '+tplClass(b.dir)+'">'+stdEsc(bundleTag(b))+'</span>'
+        +'<div><div class="lgd-t">'+stdEsc(b.dir)+'</div>'
+        +'<div class="muted" style="font-size:11.5px">'+stdEsc(bundleDesc(b))+'</div></div></div>';
+    }).join('')+'<div class="muted" style="font-size:11.5px;margin-top:10px">'+stdEsc(t('proj.legendNote'))+'</div>';
+  }
+  function projLegendOpen(){
+    var d=zid('projLegendDlg');if(!d)return;
+    d.classList.add('on');
+    projLegendRender();
+    if(tplBundles)return;
+    zGet('/standard-bundles').then(function(r){tplBundles=(r&&r.bundles)||[];projLegendRender();}).catch(function(){});
+  }
+  document.addEventListener('click',function(e){
+    if(e.target&&e.target.id==='projLegendBtn'){projLegendOpen();return;}
+    if(e.target&&e.target.id==='projLegendClose'){var d=zid('projLegendDlg');if(d)d.classList.remove('on');}
+  });
   function renderHomeProjects(cap){
     var box=zid('homeProjects');if(!box)return;
     var linked=new Set(((Z.status&&Z.status.knownProjects)||[]).map(function(k){return String(k.root||'').toLowerCase();}));
@@ -346,7 +394,7 @@
       if(so==='recent')return String(b.last||'').localeCompare(String(a.last||''));
       return oi(a)-oi(b);});
     box.innerHTML=ps.map(function(p){
-      var km=pinMap[String(p.path).toLowerCase()]||{},pinned=!!km.pinned,root=km.root||p.path,pbi=p.profile==='non-app';
+      var km=pinMap[String(p.path).toLowerCase()]||{},pinned=!!km.pinned,root=km.root||p.path;
       // Nhà của chính zemory: ghim CỨNG, nút ghim KHOÁ (user chốt 2026-09-17). Backend đã chặn ở
       // `pinProject`, nút disabled chỉ để nói thật với người dùng rằng bấm cũng không đổi gì.
       var lock=!!km.locked;
@@ -357,13 +405,18 @@
       var dp=(Z.updDead||[]).find(function(x){return String(x.root||'').toLowerCase()===String(root).toLowerCase();});
       var deadB=dp?'<span class="ptype is-old" title="'+stdEsc(t('proj.deadOldTip').replace('{n}',dp.newlyDead).replace('{s}',(dp.sample||[]).join(' · ')))+'">'+stdEsc(t('proj.deadOld').replace('{n}',dp.newlyDead))+'</span>':'';
       return '<div class="proj-card'+(pinned?' pinned':'')+((us||dp)?' is-old':'')+'" draggable="'+(so==='manual'?'true':'false')+'" data-prof="'+(p.profile||'')+'" data-open-proj="'+stdEsc(p.path)+'">'
-        +'<div class="ph"><div class="pi">'+stdEsc((((zProjName(p.path)||'?')+'').charAt(0)||'?').toUpperCase())+'</div>'
-        +'<div class="pnm"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+zN(p.sessions)+' sessions</div></div>'
+        // Ô chữ-cái-đầu đã GỠ (user 2026-09-18: *"cái thừa là cái logo lấy chữ đầu của tên project
+        // kìa"*) — nó tốn 34px mà không nói gì: chữ `D` đứng trước bốn project `Dept_*` không phân
+        // biệt được cái nào. Badge hạng KHÔNG đứng thay vào ô đó (đứng một mình cạnh tên trông
+        // nặng và đẩy tên tụt vào) mà nằm ĐẦU HÀNG ĐẾM PHIÊN — cùng hàng với dữ kiện cùng hạng,
+        // đúng thói quen đọc "tên ở trên, dữ kiện ở dưới".
+        +'<div class="ph">'
+        +'<div class="pnm"><div class="nm">'+stdEsc(zProjName(p.path))+'</div><div class="muted" style="font-size:11px">'+projBadge(p,'pinline')+zN(p.sessions)+' sessions</div></div>'
         +'<div class="acts"><button data-open-detail data-root="'+stdEsc(root)+'" data-prof="'+(p.profile||'')+'" title="'+t('pj.open')+'">↗</button><button class="'+(pinned?'on':'')+(lock?' locked':'')+'"'+(lock?' disabled':' data-pin')+' data-root="'+stdEsc(root)+'" data-on="'+(pinned?'0':'1')+'" title="'+stdEsc(lock?t('src.pinLocked'):t('src.pin'))+'">📌</button><button data-forget data-root="'+stdEsc(root)+'" title="'+t('src.remove')+'">✕</button></div></div>'
         // Hàng 2 gom HẾT badge trạng thái, sát nhau (user chốt 2026-09-17: "cái nào liên quan
         // nhau thì cho đứng sát nhau"). Hàng 1 chỉ còn [icon][tên][3 nút] nên nút không bao giờ
         // bị badge đẩy xuống — nó ở đúng góc phải trên dù thẻ co tới đâu.
-        +'<div class="pbadges">'+old+deadB+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+'</div>'
+        +'<div class="pbadges">'+old+deadB+'</div>'
         +'<div class="pmeta"><span>'+zN(p.messages)+' msg</span><span>'+zN(p.agents)+' agents</span><span>'+t('src.updated')+(p.last?String(p.last).slice(0,10):'—')+'</span></div></div>';
     }).join('');
   }
@@ -692,6 +745,9 @@
     // Tên phiên: backend ĐÃ đúng (custom-title của `/title` thắng + khoá, ai-title sau
     // không ghi đè — claude.ts / ingest.ts titleLocked). Thiếu là chỗ LÀM TƯƠI: app chỉ
     // thấy tên mới sau lần scan kế tiếp. Nút này quét lại rồi nạp lại danh sách ngay.
+    // §F0b — ô tìm phiên có nút chạy GIỐNG ô tìm bộ nhớ. Danh sách vốn đã tự lọc sau 250ms gõ,
+    // nút này chỉ bỏ qua quãng chờ đó; có nó để hai ô tìm là MỘT khuôn, không phải hai kiểu.
+    else if(act==='sesssearch'){loadSessions();}
     else if(act==='sessrescan'){var sb=a,so=sb.textContent;sb.textContent='⏳';sb.disabled=true;
       zPost('/memory-scan').then(function(){return zGet('/memory-status?fresh=1').then(renderMem);})
         .then(function(){loadSessions();zToast(t('sess.rescanned'));})
@@ -788,14 +844,14 @@
       var chips=srcs.map(function(s){return '<span class="srcchip'+(/-web$|-cowork$/.test(s)?' is-web':'')+'">'+stdEsc(s)+'</span>';}).join('');
       var rowAct=isPath?act:(isLocalTab?act.replace(/<button class="btn sm" data-add-proj="[^"]*"[^>]*>＋ Add<\/button>/,'<span class="muted" style="font-size:10.5px;flex:0 0 auto" title="'+stdEsc(t('src.webProjTip'))+'">'+stdEsc(t('src.webProj'))+'</span>'):act);
       rowAct+='<button class="btn sm" data-ignore-proj="'+stdEsc(p.path)+'" data-on="1" style="flex:0 0 auto" title="'+stdEsc(t('src.ignoreTip'))+'">'+stdEsc(t('src.ignore'))+'</button>';
-      return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+(p.profile?'<span class="ptype '+(pbi?'is-non':'is-app')+'">'+(pbi?'NON-APP':'APP')+'</span>':'')+chips+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+rowAct+'</div></div>';
+      return '<div class="disc-row"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="nm">'+stdEsc(zProjName(p.path))+'</span>'+projBadge(p)+chips+'</div><div class="muted" style="font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+stdEsc(p.path)+' · '+zN(p.sessions)+' sess · '+zN(p.messages)+' msg</div></div><div class="sxa">'+rowAct+'</div></div>';
     }).join('');
     box.innerHTML='<div class="sys-grp" style="margin-top:16px;color:var(--warn)">'+t('src.unlinkedHdr')+'</div>'+tabs+'<div style="margin-top:8px">'+rows+'</div>'+goneHtml+ignHtml;
   }
   var IGN_ALL=[];
   function openIgnoredList(){
     var rows=IGN_ALL.length?IGN_ALL.map(function(p){return '<div class="disc-row" style="font-size:12px"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" title="'+stdEsc(p.path)+'">'+stdEsc(p.path)+'</span><span class="muted" style="flex:0 0 auto">'+stdEsc(p.host||'')+' · '+zN(p.sessions)+' sess</span><button class="btn sm" data-ignore-proj="'+stdEsc(p.path)+'" data-on="0" style="flex:0 0 auto">'+stdEsc(t('src.restore'))+'</button></div>';}).join(''):'<div class="muted">'+stdEsc(t('src.ignoredNone'))+'</div>';
-    zDialog({icon:'🚫',title:t('src.ignoredTitle').replace('{n}',IGN_ALL.length),bodyHtml:'<div class="muted" style="font-size:11.5px;margin-bottom:8px">'+stdEsc(t('src.ignoreTip'))+'</div>'+rows,okLabel:t('scope.detClose')});
+    zDialog({tag:'ignored',icon:'🚫',title:t('src.ignoredTitle').replace('{n}',IGN_ALL.length),bodyHtml:'<div class="muted" style="font-size:11.5px;margin-bottom:8px">'+stdEsc(t('src.ignoreTip'))+'</div>'+rows,okLabel:t('scope.detClose')});
   }
   document.addEventListener('click',function(e){if(e.target&&e.target.id==='ignList')openIgnoredList();});
   document.addEventListener('click',function(e){var b=e.target.closest?e.target.closest('[data-ignore-proj]'):null;if(!b)return;
@@ -803,7 +859,7 @@
     // Báo NGAY (toast) rồi mới vẽ lại: /memory-status có thể mất vài giây, im lặng lúc đó là "bấm không thấy gì".
     zToast(t(on?'toast.ignoring':'toast.restoring').replace('{p}',name));
     zPost('/set-project-ignore?root='+encodeURIComponent(path)+'&on='+(on?'1':'0')).then(function(){return zGet('/memory-status');}).then(function(m){renderMem(m);zToast(t(on?'toast.ignored':'toast.restored').replace('{p}',name),'ok');
-      var d=zid('zDlg');if(d&&d.classList.contains('on')&&zid('zDlgTitle')&&/🚫|Đã bỏ qua|Ignored/.test(zid('zDlgIcon').textContent+zid('zDlgTitle').textContent))openIgnoredList();
+      var d=zid('zDlg');if(d&&d.classList.contains('on')&&d.dataset.dlg==='ignored')openIgnoredList();
     }).catch(function(){b.disabled=false;zToast(t('q.err'),'err');});});
   document.addEventListener('click',function(e){var t=e.target.closest?e.target.closest('[data-disc-tab]'):null;if(t){discTab=t.dataset.discTab;renderDiscovered((Z.mem&&Z.mem.coverage)||{});}});
   document.addEventListener('click',function(e){var mg=e.target.closest?e.target.closest('[data-merge-proj]'):null;if(!mg)return;

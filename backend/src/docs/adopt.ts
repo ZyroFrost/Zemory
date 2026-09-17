@@ -53,6 +53,75 @@ export interface TemplateBundle {
   kind: "harness" | "kit";
   /** Bộ này có đường nào để app dùng tới không (đang được `templateDir` ánh xạ). */
   wired: boolean;
+  /** Profile mà `init`/`sync` rót bộ này ra — `null` khi bộ không rót được.
+   *  SUY từ chính `templateDir`, nên đổi ánh xạ ở đó là nhãn trên UI theo ngay. */
+  profile: StructureProfile | null;
+  /**
+   * Bộ ĐỌC ĐƯỢC nhưng KHÔNG rót ra được — `init`/`sync` không với tới nó.
+   *
+   * SUY RA từ `kind` + `wired`, **không phải một danh sách gõ tay** (danh sách gõ tay là thứ sẽ
+   * lệch — cùng bài học `SYS_CHECKS` vs `FEATURES`). User chốt 2026-09-17: `04_adapt` đứng hạng
+   * này, nên hàng nhắc trên màn Tính năng KHÔNG còn coi nó là thiếu sót.
+   *
+   * ⚠ Hệ quả phải nói ra, không để ngầm: bộ tham chiếu có skill riêng (`04_adapt` ships
+   * `.claude/skills/adopt/`) thì skill đó **không repo nào nhận được qua `init`** — người dùng đọc
+   * trong app rồi chép tay. Đó là cái giá của hạng này, và nhãn phải nói đúng như vậy.
+   */
+  reference: boolean;
+}
+
+/** Các đuôi file ĐỌC ĐƯỢC trong trình xem docs của màn Harness. Ảnh/`.docx`/script không mở được
+ *  bằng `stdMd`, nên chúng không lên cây — cây phải chỉ chứa thứ bấm vào là xem được. */
+const BUNDLE_DOC_EXT = [".md", ".json"];
+
+/** Đường có đi vào cây docs của một bộ mẫu không. Bỏ thư mục ảnh và mọi thứ không đọc được. */
+function isBundleDoc(rel: string): boolean {
+  const lower = rel.toLowerCase();
+  return BUNDLE_DOC_EXT.some((ext) => lower.endsWith(ext));
+}
+
+/**
+ * Liệt kê file ĐỌC ĐƯỢC của một bộ mẫu, đường tương đối so với gốc bộ đó.
+ *
+ * ⚠ Đọc TỪ ĐĨA, không gõ tay — cây docs trên UI trước đây là 8 hàng cứng trong `app.html`, nên
+ * `.claude/skills/*` (11 skill của `05_app`) **chưa bao giờ đọc được trong app** dù chúng là một
+ * phần của bản chuẩn. Cùng lớp lỗi với hai bảng cây/routing từng hardcode (thiếu 55/90 hàng).
+ *
+ * Trả về RỖNG khi không đọc được — người gọi tự quyết, hàm này không ném (điều 9).
+ */
+export function listBundleDocs(dir: string): string[] {
+  const base = join(TEMPLATE_DIR, dir);
+  const out: string[] = [];
+  const walk = (abs: string, prefix: string, depth: number): void => {
+    if (depth > 4) return;
+    // Kiểu khai TƯỜNG MINH: `ReturnType<typeof readdirSync>` bắt trúng nạp chồng Buffer
+    // (`Dirent<NonSharedBuffer>`), nên `e.name` thành Buffer và mọi phép ghép đường đỏ.
+    let entries: { name: string; isDirectory(): boolean }[];
+    try {
+      entries = readdirSync(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const rel = prefix ? `${prefix}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(join(abs, e.name), rel, depth + 1);
+      else if (isBundleDoc(rel)) out.push(rel);
+    }
+  };
+  walk(base, "", 0);
+  return out.sort();
+}
+
+/**
+ * Giải tên thư mục bộ mẫu thành đường tuyệt đối — CHẶN đường đi ra ngoài `docs_template/`.
+ *
+ * Phép kiểm là "tên này có trong danh sách đọc được từ đĩa không", KHÔNG phải một allowlist gõ tay:
+ * thêm một bộ vào đĩa là nó dùng được ngay, và `..`/đường tuyệt đối không bao giờ khớp một tên
+ * thư mục thật nên chúng bị loại mà không cần luật riêng.
+ */
+export function templateBundleDir(dir: string): string | null {
+  if (!listTemplateBundles().some((b) => b.dir === dir)) return null;
+  return join(TEMPLATE_DIR, dir);
 }
 
 /**
@@ -73,13 +142,16 @@ export function listTemplateBundles(): TemplateBundle[] {
   } catch {
     return [];
   }
-  const wired = new Set([basename(templateDir("app")), basename(templateDir("non-app"))]);
-  return names.map((dir) => ({
-    dir,
+  const byProfile = new Map<string, StructureProfile>([
+    [basename(templateDir("app")), "app"],
+    [basename(templateDir("non-app")), "non-app"],
+  ]);
+  return names.map((dir) => {
     // Cây harness nhận ra bằng thư mục `agent/` — đó là thứ `init`/`sync` chép đi.
-    kind: existsSync(join(TEMPLATE_DIR, dir, "agent")) ? "harness" : "kit",
-    wired: wired.has(dir),
-  }));
+    const kind: TemplateBundle["kind"] = existsSync(join(TEMPLATE_DIR, dir, "agent")) ? "harness" : "kit";
+    const profile = byProfile.get(dir) ?? null;
+    return { dir, kind, wired: profile !== null, profile, reference: kind === "harness" && profile === null };
+  });
 }
 
 export interface AdoptResult {
