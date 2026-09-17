@@ -47,8 +47,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .railcoll .nav a span:not(.ic){display:none}
 .railcoll .status-chip{justify-content:center}
 .railcoll .status-chip>div{display:none}
-.railcoll .machine{justify-content:center}
-.railcoll .machine>div:last-child{display:none}
 .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px}
 /* Logo là <img> (đổi từ chữ "Z" sang initials). Bỏ gradient + căn chữ của bản cũ:
    ảnh object-fit:cover phủ kín nên chúng chỉ là code chết. --logo-plate là nền dự
@@ -69,7 +67,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .nav a:hover{background:var(--surface-2);color:var(--text)}
 .nav a.on{background:var(--wash);color:var(--primary)}
 .rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:10px}
-.status-chip,.machine{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px}
+.status-chip{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);flex:0 0 auto}
 .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 /* Icon NHẬN DIỆN của chip trạng thái: chấm nói TRẠNG THÁI (xanh/cam), icon nói THUỘC CHỨC NĂNG NÀO.
@@ -95,8 +93,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .railcoll .status-chip.warn .cic{color:var(--warn)}
 .railcoll .status-chip{border-color:var(--success)}
 .railcoll .status-chip.warn{border-color:var(--warn)}
-.machine .av{width:26px;height:26px;border-radius:7px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;font-size:12px}
-.machine b{font-size:12.5px;display:block}.machine small{color:var(--text-faint);font-size:10.5px}
 .rail-icons{display:flex;gap:4px}
 .rail-icons button{flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:7px;cursor:pointer;font-size:13px}
 .rail-icons button:hover{color:var(--primary);border-color:var(--border-strong)}

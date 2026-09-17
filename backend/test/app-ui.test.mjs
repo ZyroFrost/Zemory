@@ -1783,3 +1783,35 @@ test("donut vẽ từ SỐ THẬT — không nền conic vẽ cứng, không cun
   const body = right.slice(right.indexOf('<div class="card-b">'));
   assert.match(body.slice(0, 260), /<div class="drv-progress">/, "panel phải mở đầu bằng vòng, cho ngang hàng với panel trái");
 });
+
+// ── HÀNH ĐỘNG TÁCH KHỎI THIẾT LẬP, VÀ LỊCH KHÔNG CÒN NẰM TRONG HỘP THOẠI ───────
+//
+// User 2026-09-17: *"cái bật sync mỗi 30p là riêng, còn nút bấm đồng bộ liền là riêng, để sát 2 cái
+// không liên quan rồi cái bật sync thì xa ra làm hiểu sai tính năng"* + *"nút đồng bộ ngay đưa lên
+// trên chỗ thao tác ngay chỗ chart bên phải và neo vào gốc phải"* + *"cái lịch sync… đem trả về cho
+// chỗ này và không cần dialogbox nữa"*.
+test("panel Thao tác: nút chạy tay neo góc phải hàng đầu, lịch tự sync vẽ thẳng, không hộp thoại", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  // Nút là HÀNH ĐỘNG ⇒ nằm ở hàng đầu panel, neo phải (§F13), không đứng cạnh một con số lịch.
+  assert.match(html, /<div class="drv-progress">[\s\S]{0,900}data-act="drivesync"[^>]*margin-left:auto/, "nút Đồng bộ ngay phải ở hàng đầu panel và neo phải");
+  assert.equal((html.match(/data-act="drivesync"/g) || []).length, 1, "chỉ một nút chạy tay — hai chỗ là hai chỗ để lệch");
+  // Chỗ cũ nay là CÔNG TẮC + LỊCH, và lịch vẽ thẳng vào ô này.
+  assert.match(html, /data-i18n="mem\.autosync"[\s\S]{0,400}data-auto="autosync"[\s\S]{0,200}id="asInline"/, "khối tự động: công tắc rồi tới lịch vẽ thẳng");
+  assert.ok(!html.includes('id="asGear"'), "nút mở hộp thoại lịch phải đi");
+  const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  assert.ok(!src.includes("openAsDialog"), "hộp thoại lịch phải đi hẳn, không để lại hàm mồ côi");
+  assert.match(src, /function renderAsInline\(\)/, "lịch phải có hàm vẽ thẳng");
+  // Vẽ thẳng thì ĐỔI LÀ ÁP — không có nút Lưu để người ta quên bấm.
+  assert.match(src, /document\.addEventListener\('change',function\(e\)\{\s*\n\s*if\(!e\.target\.closest\|\|!e\.target\.closest\('#asInline'\)\)return;/, "đổi trong khối lịch là áp ngay");
+  assert.match(src, /function asSave\(\)/, "phải có đường lưu lịch");
+  assert.ok(!src.includes("function asSummary("), "dòng tóm tắt cạnh công tắc đã hết chỗ dùng ⇒ phải gỡ");
+  // Chip "This machine" đã gỡ — và thứ ĐỌC NHỜ nó phải được nối lại nguồn thật TRƯỚC.
+  assert.ok(!html.includes('id="railMachine"'), "chip This machine phải đi");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.ok(!/\.machine[{ ]/.test(css), "luật CSS của chip không còn ai mặc ⇒ phải gỡ theo");
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  assert.ok(!shell.includes("zid('railMachine')"), "hộp Cài đặt không được đọc nhờ chữ của chip đã gỡ");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.match(chrome, /var ah=zid\('aboutHost'\);if\(ah\)ah\.textContent=\(p&&p\.host\?p\.host:'local'\)/, "tên máy phải đọc thẳng từ /ping");
+  for (const k of ["as.gear", "as.title", "as.save"]) assert.ok(!chrome.includes(`'${k}'`), `khoá ${k} của hộp thoại đã gỡ ⇒ phải đi theo`);
+});

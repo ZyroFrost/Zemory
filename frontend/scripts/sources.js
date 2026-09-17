@@ -535,23 +535,43 @@
   // Code), và một công tắc sáng đèn trong khi không có gì chạy là lời hứa suông.
   // Tóm tắt lịch tự sync cạnh công tắc ("mỗi 30 phút" · "lúc 12:00 · 18:00").
   function asFmt(m){return m%60===0?t('as.hour').replace('{n}',m/60):t('as.min').replace('{n}',m);}
-  function asSummary(s){s=s||{};if(s.mode==='times')return (s.times&&s.times.length)?t('as.sumTimes').replace('{t}',s.times.join(' · ')):t('as.sumNone');return t('as.sumInterval').replace('{t}',asFmt(s.everyMin||30));}
-  function openAsDialog(){
+  // LỊCH TỰ SYNC — vẽ THẲNG tại chỗ, không hộp thoại (user 2026-09-17: *"cái lịch sync… đem trả về
+  // cho chỗ này và không cần dialogbox nữa"*). Hộp thoại bắt người ta mở ra, đọc, bấm Lưu, đóng —
+  // ba bước cho một thứ chỉ có hai lựa chọn. Vẽ tại chỗ thì ĐỔI LÀ ÁP, không có nút Lưu để quên bấm.
+  function renderAsInline(){
+    var box=zid('asInline'); if(!box)return;
     var s=(Z.auto&&Z.auto.autosyncSchedule)||{mode:'interval',everyMin:30,times:[]};
     var evs=[15,30,60,120,180,360,720],hours=[];for(var h=0;h<24;h++)hours.push((h<10?'0':'')+h+':00');
-    var body='<div style="font-size:13px;display:flex;flex-direction:column;gap:10px">'
-      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="interval"'+(s.mode!=='times'?' checked':'')+'> '+stdEsc(t('as.modeInterval'))+' <select id="asEvery" class="rsel">'+evs.map(function(m){return '<option value="'+m+'"'+(m===(s.everyMin||30)?' selected':'')+'>'+stdEsc(asFmt(m))+'</option>';}).join('')+'</select></label>'
-      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="times"'+(s.mode==='times'?' checked':'')+'> '+stdEsc(t('as.modeTimes'))+'</label>'
-      +'<div id="asTimes" style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px 10px;padding-left:24px;font-size:12px">'+hours.map(function(hh){return '<label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" class="asT" value="'+hh+'"'+((s.times||[]).indexOf(hh)>=0?' checked':'')+'>'+hh+'</label>';}).join('')+'</div>'
+    var isT=s.mode==='times';
+    box.innerHTML='<div style="font-size:12.5px;display:flex;flex-direction:column;gap:8px">'
+      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="interval"'+(isT?'':' checked')+'> '+stdEsc(t('as.modeInterval'))
+      +' <select id="asEvery" class="rsel">'+evs.map(function(m){return '<option value="'+m+'"'+(Number(s.everyMin)===m?' selected':'')+'>'+stdEsc(asFmt(m))+'</option>';}).join('')+'</select></label>'
+      +'<label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="asMode" value="times"'+(isT?' checked':'')+'> '+stdEsc(t('as.modeTimes'))+'</label>'
+      +'<div id="asTimes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:4px 10px;padding-left:24px;font-size:11.5px">'
+      +hours.map(function(hh){return '<label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" class="asT" value="'+hh+'"'+((s.times||[]).indexOf(hh)>=0?' checked':'')+'> '+hh+'</label>';}).join('')
+      +'</div>'
       +'<div class="muted" style="font-size:11px">'+stdEsc(t('as.note'))+'</div></div>';
-    zDialog({icon:'⏱',title:t('as.title'),bodyHtml:body,okLabel:t('as.save'),onOk:function(){
-      var mode=(document.querySelector('input[name=asMode]:checked')||{}).value||'interval';
-      var every=(zid('asEvery')||{}).value||'30';
-      var times=Array.prototype.slice.call(document.querySelectorAll('.asT:checked')).map(function(c){return c.value;});
-      zPost('/set-autosync-schedule?mode='+mode+'&every='+encodeURIComponent(every)+'&times='+encodeURIComponent(times.join(','))).then(function(){return zGet('/automation');}).then(renderAuto);
-    }});
+    asTimesDim();
   }
-  document.addEventListener('click',function(e){if(e.target&&e.target.id==='asGear')openAsDialog();});
+  // Chọn "sau mỗi khoảng" thì lưới giờ vô nghĩa ⇒ làm mờ, đừng để nó trông như đang có tác dụng.
+  function asTimesDim(){
+    var t2=zid('asTimes'); if(!t2)return;
+    var isT=(document.querySelector('input[name=asMode]:checked')||{}).value==='times';
+    t2.style.opacity=isT?'1':'.45';
+    t2.querySelectorAll('input').forEach(function(c){c.disabled=!isT;});
+  }
+  function asSave(){
+    var mode=(document.querySelector('input[name=asMode]:checked')||{}).value||'interval';
+    var every=(zid('asEvery')||{}).value||'30';
+    var times=Array.prototype.slice.call(document.querySelectorAll('.asT:checked')).map(function(c){return c.value;});
+    zPost('/set-autosync-schedule?mode='+mode+'&every='+encodeURIComponent(every)+'&times='+encodeURIComponent(times.join(',')))
+      .then(function(){return zGet('/automation');}).then(renderAuto).catch(function(){});
+  }
+  document.addEventListener('change',function(e){
+    if(!e.target.closest||!e.target.closest('#asInline'))return;
+    asTimesDim();
+    asSave();
+  });
   // LỜI MỜI LÚC CÀI — hiện MỘT lần, lần đầu cửa sổ app mở (user chốt 2026-09-15: "khi cài phải hỏi luôn").
   // Vì sao ở đây chứ không chỉ ở CLI: lệnh cài thường do agent/CI chạy, không có người gõ — prompt chờ
   // stdin ở đó là treo phiên. Cửa sổ app là lúc CHẮC CHẮN có người đang ngồi trước máy.
@@ -591,7 +611,7 @@
         });
       }});
   }
-  function renderAuto(a){Z.auto=a=a||{};zset('asSummary',asSummary(a.autosyncSchedule));setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
+  function renderAuto(a){Z.auto=a=a||{};renderAsInline();setTog('scheduler',a.scheduler);setTog('realtime',a.realtime&&a.realtimeWired!==false);setTog('autostart',a.autostart);setTog('autosync',a.autosync);setTog('shortcut',a.shortcut&&a.shortcut.exists);
     offerShortcut(a);
     // Tự kiểm lại (2026-09-09): công tắc + chu kỳ. Chu kỳ đổ vào ô CẢ KHI đang tắt — người dùng chọn
     // trước rồi mới bật là lối dùng bình thường, và ô trống trông như tính năng chưa có cấu hình.
