@@ -253,7 +253,10 @@
   // MỘT danh sách phép kiểm cho MỌI đường làm tươi (lúc nạp · nút "Kiểm lại tất cả" · nhịp tự động).
   // Chép danh sách này ra nhiều chỗ thì sớm muộn cũng lệch — một bên thêm phép kiểm mới, bên kia
   // quên, và người đọc không có cách nào biết bảng đang xem tươi tới đâu.
-  var SYS_CHECKS=['memory','validate','grill','paths','procs'];
+  // SUY TỪ CHÍNH BẢNG FEATURES, không giữ danh sách thứ hai. Bản cũ gõ tay năm tên, nên thêm một
+  // hàng kiểm mới là nó KHÔNG BAO GIỜ được hỏi — hàng hiện ra nhưng trạng thái trống mãi (đo
+  // 2026-09-17 với hàng `templates`). Hai danh sách cho cùng một thứ là một danh sách sẽ quên.
+  var SYS_CHECKS=FEATURES.filter(function(f){return f.kind==='check'&&f.feat;}).map(function(f){return f.feat;});
   /** Nạp các check thật (/check) rồi vẽ lại inventory. `fresh` = bỏ qua cache 10′ của daemon —
    *  đúng nghĩa nút ↻; đường nạp thường vẫn ăn cache để mở cửa sổ không phải đo lại từ đầu. */
   function refreshChecks(fresh){
