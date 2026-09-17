@@ -35,10 +35,13 @@ const ctxOf = (root) => ({ projectRoot: root, docsDir: join(root, "docs", "agent
 test("state ghi lại NƠI gặp (file:line) của đường mới chết — trước đây chỉ giữ khoá", (t) => {
   const root = repoWithDeadPath(t);
   const sf = stateFileIn(root);
-  // Lượt đầu = baseline (mọi thứ đang chết là DI SẢN) ⇒ chưa có gì mới chết.
+  // Lượt đầu = baseline (mọi thứ đang chết là DI SẢN), và plan trỏ vào một file ĐANG SỐNG ⇒ lượt này
+  // ghi bằng chứng "từng sống" cho nó.
+  writeFileSync(join(root, "docs", "plan", "10_x.md"), "# spec\nDời sang `backend/src/services/calc.ts`.\n");
   monitorPaths(ctxOf(root), { stateFile: sf });
-  // Thêm một đường chết MỚI sau baseline ⇒ đây là thứ duy nhất được đổi màu (plan/21 §2.3).
-  writeFileSync(join(root, "docs", "plan", "10_x.md"), "# spec\nDời sang `backend/src/da_xoa/cu.ts`.\n");
+  // Rồi file đó mất (đổi tên/dời) ⇒ đúng nghĩa MỚI CHẾT: từng sống, nay không (plan/21 §2.3, sửa 2026-09-17:
+  // một chuỗi chưa từng giải được thì không phải mục ruỗng — bản cũ của ca này viết `da_xoa/cu.ts` chưa từng có).
+  rmSync(join(root, "backend", "src", "services", "calc.ts"));
   const rep = monitorPaths(ctxOf(root), { stateFile: sf });
   assert.ok(rep.monitor.newlyDead.length >= 1, "phải thấy ít nhất một đường MỚI chết");
 
@@ -46,7 +49,7 @@ test("state ghi lại NƠI gặp (file:line) của đường mới chết — tr
   assert.ok(byFile.has("docs/plan/10_x.md"), `phải biết file nào gãy: ${[...byFile.keys()]}`);
   const hits = byFile.get("docs/plan/10_x.md");
   assert.ok(hits[0].line > 0, "phải giữ cả số DÒNG, không chỉ tên file");
-  assert.match(hits[0].text, /da_xoa/, "phải giữ chính chuỗi đã chết");
+  assert.match(hits[0].text, /services\/calc\.ts/, "phải giữ chính chuỗi đã chết");
 });
 
 test("CA ÂM: repo không có đường mới chết ⇒ không file nào bị đánh dấu", (t) => {

@@ -37,6 +37,9 @@ export interface PathHit {
   text: string;
   /** only on `unresolved`: why no verdict was reached */
   reason?: UnresolvedReason;
+  /** only on `dead`: root-relative posix readings of the string — relative to the containing file AND to the
+   *  repo root (docs use both conventions); what `.gitignore` and git history are asked about */
+  rels?: string[];
 }
 export type UnresolvedReason =
   | "outside-roots"
@@ -49,6 +52,10 @@ export type UnresolvedReason =
   | "dictionary"
   | "slot-name"
   | "excluded-target"
+  /** đích khớp `.gitignore` của repo — file CỐ Ý không nằm trong git (`.env`, output), đường đúng, chỗ đứng đúng */
+  | "gitignored"
+  /** đường đi qua thư mục nháp (`scratchpad/` · `_scratch_*` · `.tmp_*`) — theo luật FILE TẠM nó PHẢI chết */
+  | "scratch"
   | "io-error";
 
 export interface PathsReport {
@@ -62,6 +69,8 @@ export interface PathsReport {
   ok: boolean;
   /** posix, root-relative paths of every listed file — the set `proposeFixes` searches (not printed by the CLI) */
   files?: string[];
+  /** keys (lower-cased posix text) of every string that RESOLVED this run — the monitor's evidence of life */
+  alive?: string[];
 }
 
 /** Phase 1 file set: docs + config/runbook. Code strings are phase 2 (plan/21 §4.1). */
@@ -158,6 +167,8 @@ function looksPathish(s: string): boolean {
   return true;
 }
 
+const hitKey = (h: PathHit): string => posix(h.text).toLowerCase();
+
 // ── classification ────────────────────────────────────────────────────────────
 interface Judge {
   root: string;
@@ -170,7 +181,25 @@ interface Judge {
   exclude?: string[];
 }
 
-type Verdict = { kind: "ok" } | { kind: "dead" } | { kind: "unresolved"; reason: UnresolvedReason };
+type Verdict = { kind: "ok" } | { kind: "dead"; rels?: string[] } | { kind: "unresolved"; reason: UnresolvedReason };
+
+/**
+ * Thư mục NHÁP theo chính luật của repo (`02_RULES §FILE TẠM`): `scratchpad/` của phiên, `_scratch_*`,
+ * `.tmp_*`. Một đường đi qua đó mà chết là ĐÚNG THIẾT KẾ — thứ đó phải chết. Báo nó là "mục ruỗng" thì
+ * mỗi phiên làm việc lại đẻ vài dòng đỏ (đo 2026-09-17: 4/24 ở `_DataWarehouse_Central`, 1/11 ở SasinFlow).
+ */
+export function isScratchPath(s: string): boolean {
+  return s.split(/[\\/]/).some((g) => /^scratchpad$/i.test(g) || /^_scratch_/i.test(g) || /^\.tmp_/i.test(g));
+}
+/**
+ * "Đuôi" vừa hoa vừa thường (`.ItemID`) không phải đuôi file — đó là ký hiệu `Bảng.Cột`. Đuôi file thật
+ * viết một kiểu (`.md` · `.SQL`); trộn hai kiểu trong một đuôi là dấu vân của định danh. Đo 2026-09-17:
+ * `Fact_SaleModifier/Fact_SaleDiscount.ItemID` trong bảng so kiểu cột bị gọi là đường chết.
+ */
+export function isIdentifierNotation(lastSeg: string): boolean {
+  const m = /\.([A-Za-z0-9]{1,8})$/.exec(lastSeg);
+  return !!m && /[a-z]/.test(m[1]) && /[A-Z]/.test(m[1]);
+}
 
 export function classify(c: Candidate, file: string, judge: Judge, opts: { dictionary?: boolean } = {}): Verdict {
   let s = c.text;
@@ -182,6 +211,7 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
   // `%APPDATA%`, `$HOME`, `${var}` are environment placeholders, not folders (plan/20 names the MSIX path that way).
   if (/[<>{}…*?]/.test(s) || /%[^%\\/]+%/.test(s) || /\$[A-Za-z_{]/.test(s) || /(^|[\\/])N{1,2}([\\/_]|$)/.test(s)) return { kind: "unresolved", reason: "placeholder" };
   if (/^[A-Za-z]:\\[nrt0abfv](?![\\/])/.test(s) && s.split(/[\\/]/).length < 3) return { kind: "unresolved", reason: "escape" };
+  if (isScratchPath(s)) return { kind: "unresolved", reason: "scratch" };
   // `~` is a real convention (README, runbooks) — expand it, then treat as absolute.
   if (/^~[\\/]/.test(s)) s = join(homedir(), s.slice(2));
   const absolute = ABS_WIN.test(s) || UNC.test(s) || (isAbsolute(s) && !s.startsWith("."));
@@ -189,13 +219,16 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
   if (opts.dictionary && !absolute) return { kind: "unresolved", reason: "dictionary" };
 
   let abs: string;
+  let relReadings: string[] = [];
   if (absolute) {
     abs = s;
+    if (under(s, judge.root)) relReadings = [posix(relative(judge.root, s))];
   } else if (REL.test(s) || /[\\/]/.test(s)) {
     // relative: ≥2 segments and (extension | trailing slash | explicit ./ ../) — else ambiguous prose
     const segs = s.split(/[\\/]/).filter(Boolean);
     const explicit = REL.test(s);
     const hasExt = /\.[A-Za-z0-9]{1,8}$/.test(segs[segs.length - 1] ?? "");
+    if (!explicit && isIdentifierNotation(segs[segs.length - 1] ?? "")) return { kind: "unresolved", reason: "not-a-path" };
     const trailing = /[\\/]$/.test(s);
     if (!explicit && !(segs.length >= 2 && (hasExt || trailing))) return { kind: "unresolved", reason: "shape-ambiguous" };
     if (segs.every((g) => g.startsWith("."))) return { kind: "unresolved", reason: "shape-ambiguous" }; // `.go/.java/.sh` = an extension list
@@ -230,6 +263,7 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
     if (!explicit && judge.names && segs.every((g) => judge.names!.has(g))) return { kind: "unresolved", reason: "slot-name" };
     // Neither resolved: judged as dead only if the resolution stays under a present root.
     abs = under(fromFile, judge.root) ? fromFile : fromRoot;
+    relReadings = [fromFile, fromRoot].filter((p) => under(p, judge.root)).map((p) => posix(relative(judge.root, p)));
   } else {
     return { kind: "unresolved", reason: "shape-ambiguous" };
   }
@@ -237,7 +271,50 @@ export function classify(c: Candidate, file: string, judge: Judge, opts: { dicti
   const declaredHit = judge.roots.declared.find((r) => under(abs, r));
   if (!declaredHit) return { kind: "unresolved", reason: "outside-roots" };
   if (!judge.roots.present.includes(declaredHit)) return { kind: "unresolved", reason: "root-absent" };
-  return existsSync(abs) ? { kind: "ok" } : { kind: "dead" };
+  if (existsSync(abs)) return { kind: "ok" };
+  // Hai cách đọc một đường tương đối (theo file · theo gốc) đều hợp lệ trong docs — bằng chứng git và
+  // check-ignore phải được hỏi CẢ HAI, không thì `backend/src/x.ts` viết trong `docs/plan/` bị hỏi thành
+  // `docs/plan/backend/src/x.ts` và git trả "chưa từng có" (probe 2026-09-17 bắt đúng lỗi này).
+  return { kind: "dead", rels: [...new Set(relReadings)] };
+}
+
+// ── git as a witness ─────────────────────────────────────────────────────────
+/**
+ * Đích nào trong `rels` khớp `.gitignore` của repo. `--no-index` để hỏi THUẦN mẫu (đích không tồn tại
+ * nên không có gì trong index để hỏi). Không phải git repo / git lỗi ⇒ tập rỗng (fail-open, điều 9).
+ * Vì sao là hỏi git chứ không tự đọc `.gitignore`: cú pháp ignore (phủ định, neo, `**`) đủ rắc rối để một
+ * bản chép tay lệch bản thật — mà git đã có sẵn câu trả lời đúng.
+ */
+function gitIgnored(root: string, rels: string[]): Set<string> {
+  const out = new Set<string>();
+  const list = [...new Set(rels.filter(Boolean))];
+  if (!list.length) return out;
+  try {
+    const r = execFileSync("git", ["check-ignore", "--stdin", "-z", "--no-index"], {
+      cwd: root, input: list.join("\0") + "\0", encoding: "utf8", maxBuffer: 16 << 20, stdio: ["pipe", "pipe", "ignore"],
+    });
+    for (const p of r.split("\0")) if (p) out.add(posix(p).toLowerCase());
+  } catch (e) {
+    // exit 1 = "không mẫu nào khớp" (đầu ra vẫn là sự thật, có thể rỗng); lỗi khác = không phải git repo.
+    const ex = e as { status?: number; stdout?: string };
+    if (ex.status === 1 && typeof ex.stdout === "string") for (const p of ex.stdout.split("\0")) if (p) out.add(posix(p).toLowerCase());
+  }
+  return out;
+}
+/**
+ * Mọi đường từng bị XOÁ hay ĐỔI TÊN trong lịch sử git (`--no-renames` để tên cũ hiện là D). Đây là bằng
+ * chứng "từng sống" thứ hai, bù cho lượt quét đầu của một repo mới liên kết — lúc chưa có lượt nào ghi
+ * nhận nó sống. Đo 2026-09-17 trên `_DataWarehouse_Central`: 264 đường, 1,3 s. Không phải git ⇒ rỗng.
+ */
+function gitDeletedEver(root: string): Set<string> {
+  try {
+    const r = execFileSync("git", ["log", "--no-renames", "--diff-filter=D", "--name-only", "--pretty=format:"], {
+      cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"],
+    });
+    return new Set(r.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => posix(l).toLowerCase()));
+  } catch {
+    return new Set();
+  }
 }
 
 // ── file set ──────────────────────────────────────────────────────────────────
@@ -328,6 +405,7 @@ export function pathsCheck(ctx: Context): PathsReport {
   const sorted = [...files].sort();
   const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))), names: standardNames(root), exclude };
   report.files = judge.files;
+  const alive = new Set<string>();
 
   for (const abs of sorted) {
     const rel = posix(relative(root, abs));
@@ -361,10 +439,27 @@ export function pathsCheck(ctx: Context): PathsReport {
         const v = classify(c, abs, judge, { dictionary });
         const hit: PathHit = { file: rel, line: i + 1, text: c.text };
         if (v.kind === "unresolved") report.unresolved.push({ ...hit, reason: v.reason });
-        else if (v.kind === "dead") (histFile || isHistoryLine(lines[i]) ? report.history : report.dead).push(hit);
+        else if (v.kind === "dead") (histFile || isHistoryLine(lines[i]) ? report.history : report.dead).push({ ...hit, rels: v.rels });
+        else alive.add(hitKey(hit));
       }
     }
   }
+  // HẬU KIỂM bằng git: đích CHẾT mà khớp `.gitignore` là file cố ý không nằm trong git — `.env`, output —
+  // đường viết đúng, chỗ đứng đúng, chỉ là máy này không có bản đó. Đo 2026-09-17: 6/24 "mới chết" ở
+  // `_DataWarehouse_Central` là đúng lớp này (`config/dw_load.env` · `pos_sky.env` · `ipos_loader.env`…).
+  // Một lượt `check-ignore` cho cả rổ, không hỏi từng chuỗi.
+  if (fromGit && report.dead.length) {
+    const ignored = gitIgnored(root, report.dead.flatMap((h) => h.rels ?? []));
+    if (ignored.size) {
+      const keep: PathHit[] = [];
+      for (const h of report.dead) {
+        if ((h.rels ?? []).some((r) => ignored.has(r.toLowerCase()))) report.unresolved.push({ file: h.file, line: h.line, text: h.text, reason: "gitignored" });
+        else keep.push(h);
+      }
+      report.dead = keep;
+    }
+  }
+  report.alive = [...alive];
   report.ok = report.dead.length === 0;
   return report;
 }
@@ -488,6 +583,12 @@ export interface PathsProjectState {
    * Tuỳ chọn: state đời cũ không có trường này ⇒ mọi thứ chạy y như trước (điều 9).
    */
   where?: Record<string, { file: string; line: number }>;
+  /**
+   * Khoá của mọi chuỗi TỪNG GIẢI ĐƯỢC ở một lượt quét nào đó — chỉ THÊM, không bớt. Đây là bằng chứng
+   * "từng sống", điều kiện để một đường chết được gọi là MỚI CHẾT (xem `monitorPaths`).
+   * State đời cũ không có trường này ⇒ đọc là rỗng; bằng chứng git bù phần lịch sử.
+   */
+  alive?: string[];
 }
 export interface PathsState {
   version: 1;
@@ -505,8 +606,6 @@ export type MonitoredReport = PathsReport & { monitor: PathsMonitor };
 export function pathsStateFile(): string {
   return join(currentMemoryDir(), "paths-state.json");
 }
-const hitKey = (h: PathHit): string => posix(h.text).toLowerCase();
-
 export function loadPathsState(file: string): PathsState {
   try {
     const v = JSON.parse(readFileSync(file, "utf8")) as Partial<PathsState>;
@@ -591,7 +690,25 @@ export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBase
     baselined = true;
   }
   const base = new Set(entry.baseline);
-  const newlyDead = report.dead.filter((h) => !base.has(hitKey(h)));
+  // MỚI CHẾT = chết bây giờ ∧ không phải di sản ∧ **có bằng chứng từng sống**. Vế thứ ba là sửa đổi 2026-09-17
+  // (user chốt: *"mục đích là phải báo đúng hết, không được sai"*): định nghĩa cũ "chết mà không có trong
+  // baseline" gọi MỌI chuỗi mới viết mà không giải được là mục ruỗng — kể cả ký hiệu `Bảng.Cột`, đường sang
+  // repo khác, file trên share mạng. Đo trên 3 repo: 23/37 "mới chết" chưa từng là đường ở repo đó.
+  // Hai nguồn bằng chứng, đều tất định: ① lượt quét trước thấy nó SỐNG (`alive`) · ② git ghi nó đã bị
+  // xoá/đổi tên (kể cả một file dưới thư mục đó). Không có cả hai ⇒ vẫn nằm rổ `dead` cho người đọc,
+  // nhưng KHÔNG được đổi màu — "chưa xác minh thì chưa phải sự thật".
+  const aliveEver = new Set(entry.alive ?? []);
+  const deleted = report.dead.length ? gitDeletedEver(report.root) : new Set<string>();
+  const provenAlive = (h: PathHit): boolean => {
+    if (aliveEver.has(hitKey(h))) return true;
+    for (const rel of h.rels ?? []) {
+      const r = rel.toLowerCase().replace(/\/+$/, "");
+      if (deleted.has(r)) return true;
+      for (const d of deleted) if (d.startsWith(r + "/")) return true; // một file dưới thư mục đó từng tồn tại
+    }
+    return false;
+  };
+  const newlyDead = report.dead.filter((h) => !base.has(hitKey(h)) && provenAlive(h));
   const firstSeen: Record<string, string> = {};
   const where: Record<string, { file: string; line: number }> = {};
   for (const h of newlyDead) {
@@ -602,6 +719,10 @@ export function monitorPaths(ctx: Context, opts: { stateFile?: string; resetBase
   }
   entry.firstSeen = firstSeen;
   entry.where = where;
+  // Bằng chứng chỉ THÊM: một chuỗi từng sống thì mãi là "từng sống" — đó chính là thứ cho phép nó thành
+  // MỚI CHẾT ở lượt sau. Cắt nó đi khi nó chết là tự xoá bằng chứng.
+  for (const k of report.alive ?? []) aliveEver.add(k);
+  entry.alive = [...aliveEver].sort();
   entry.lastAt = now;
   entry.lastDead = [...deadKeys];
   state.projects[key] = entry;
