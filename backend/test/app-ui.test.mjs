@@ -1373,3 +1373,21 @@ test("hộp Chuẩn repo: gọi /harness-updates TRƯỚC khi vẽ, và trượt
   assert.ok(refreshAt > drawAt, "refresh phải ở sau khối vẽ (vẽ được gọi từ .then), không phải vẽ trước rồi mới hỏi");
   assert.match(body, /\.then\(draw,\s*draw\)/, "trượt mạng vẫn phải vẽ bằng số đang có — không để hộp trống");
 });
+
+// ── HAI KHỐI ĐƯỜNG CHẾT TÁCH RIÊNG, và prompt cho khối "không kết luận được" ─────────
+//
+// User 2026-09-17: *"có 2 cái bị mà vẫn báo không cái nào bị là không đúng… phải tách ra: 0 đường dẫn nào dò
+// được mà bị dead, phần dưới là có dead path nhưng không dò được nguyên nhân, rồi cho prompt hỏi"*.
+test("hộp Chuẩn repo: câu '0' chỉ nói về phần XÁC MINH được; phần không kết luận có khối riêng + prompt gửi chính repo", () => {
+  const js = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.ok(!js.includes("t('upd.deadNone')"), "câu 'không repo nào có đường dẫn mới chết' là SAI khi vẫn có đường chết chưa kết luận — phải đi");
+  assert.match(js, /t\('upd\.deadNoneVerified'\)/, "câu 0 phải nói đúng phạm vi: 0 đường XÁC MINH được");
+  assert.match(js, /upd\.unprovenHdr/, "khối không-kết-luận phải có tiêu đề riêng");
+  assert.match(js, /deadPrompt\(dd,uu\)/, "prompt ở nhánh có-mới-chết cũng phải mang phần không kết luận");
+  assert.match(js, /deadPrompt\(\[\],uu\)/, "khối trên rỗng thì prompt vẫn phải hiện cho khối dưới");
+  assert.match(js, /fix\.promptUnprovenSteps/, "prompt phải dạy ba nhánh xếp loại, không cho đoán đích");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["upd.deadNoneVerified", "upd.unprovenHdr", "upd.unprovenRow", "upd.unprovenHint", "fix.promptUnproven", "fix.promptUnprovenSteps"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
+});

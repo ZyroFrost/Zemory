@@ -648,6 +648,8 @@ export interface UnprovenPathsRepo {
   name: string;
   /** dead now · NOT legacy · NO evidence of life — "không kết luận được", listed, never coloured */
   unproven: number;
+  /** first few keys — enough for the hand-over prompt to name them; exact lines via `paths check --root` */
+  sample: string[];
 }
 /**
  * Đường CHẾT mà máy KHÔNG KẾT LUẬN được (user 2026-09-17: *"cái nào không dò được thì phải báo không dò được"*):
@@ -662,8 +664,8 @@ export function unprovenPathsSummary(state: PathsState, projects: Array<{ root: 
     if (!e) continue;
     const base = new Set(e.baseline ?? []);
     const seen = new Set(Object.keys(e.firstSeen ?? {}));
-    const n = (e.lastDead ?? []).filter((k) => !base.has(k) && !seen.has(k)).length;
-    if (n > 0) out.push({ root: p.root, name: p.name, unproven: n });
+    const keys = (e.lastDead ?? []).filter((k) => !base.has(k) && !seen.has(k));
+    if (keys.length > 0) out.push({ root: p.root, name: p.name, unproven: keys.length, sample: keys.slice(0, 3) });
   }
   return out.sort((a, b) => b.unproven - a.unproven || a.name.localeCompare(b.name));
 }

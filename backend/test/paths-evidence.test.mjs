@@ -140,3 +140,17 @@ test("unprovenPathsSummary: chết mà không có bằng chứng ⇒ đếm riê
   assert.deepEqual(deadPathsSummary(st, projs).map((x) => x.newlyDead), [1], "mới chết = real.ts (có bằng chứng)");
   assert.deepEqual(unprovenPathsSummary(st, projs).map((x) => x.unproven), [1], "không kết luận = x.dax — KHÔNG đếm legacy.ts (di sản), KHÔNG đếm real.ts (đã là mới chết)");
 });
+
+test("unprovenPathsSummary mang MẪU chuỗi — prompt gửi repo phải gọi được tên thứ cần soi", async (t) => {
+  const { unprovenPathsSummary, loadPathsState } = await import("../../dist/docs/paths.js");
+  const root = repo(t);
+  const sf = join(tempDir(t, "zemory-pev-state-"), "paths-state.json");
+  plan(root, "# p\n`backend/src/real.ts`\n");
+  monitorPaths(ctxOf(root), { stateFile: sf });
+  plan(root, "# p\n`backend/src/real.ts` · `reports/x.dax` · `reports/y.dax`\n");
+  monitorPaths(ctxOf(root), { stateFile: sf });
+  const u = unprovenPathsSummary(loadPathsState(sf), [{ root, name: "fx" }]);
+  assert.equal(u.length, 1);
+  assert.equal(u[0].unproven, 2);
+  assert.deepEqual(u[0].sample.slice().sort(), ["reports/x.dax", "reports/y.dax"], "mẫu phải là chính các chuỗi không kết luận được");
+});

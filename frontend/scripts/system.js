@@ -493,15 +493,27 @@
     /** Lời nhắn dán thẳng cho agent của repo đó. Nêu SỐ ĐO thật + lệnh tự kiểm, và nói rõ hai
      *  ràng buộc dễ bị phá nhất khi sửa hàng loạt: giữ EOL, và đường trong file TỪ ĐIỂN thì
      *  không phải con trỏ (`plan/21 §2.2` — đó là nguồn báo oan lớn nhất của phép kiểm này). */
-    function deadPrompt(list){
+    function deadPrompt(list,unproven){
+      unproven=unproven||[];
+      var parts=[];
+      if(list.length){
       var head=t('fix.promptBody').replace('{n}',list.length);
       var lines=list.map(function(x){
         var smp=(x.sample||[]).slice(0,3).join(' · ');
         return '- ' + (x.root||'') + '  (' + (x.newlyDead||0) + ')' + (smp?('  ⟵ '+smp):'');
       }).join('\n');
-      return head+'\n'+lines+'\n\n'+t('fix.promptSteps');
+      parts.push(head+'\n'+lines+'\n\n'+t('fix.promptSteps'));
+      }
+      // KHÔNG KẾT LUẬN ĐƯỢC (user 2026-09-17): zemory chỉ thấy chuỗi không giải được; nó là con trỏ hỏng, placeholder
+      // hay thứ đã xoá thì phải HỎI CHÍNH REPO ĐÓ — prompt nói rõ ba nhánh xếp loại, không cho đoán đích.
+      if(unproven.length){
+        var uh=t('fix.promptUnproven').replace('{n}',unproven.length);
+        var ul=unproven.map(function(x){var smp=(x.sample||[]).slice(0,3).join(' · ');return '- '+(x.root||'')+'  ('+(x.unproven||0)+')'+(smp?('  ⟵ '+smp):'');}).join('\n');
+        parts.push(uh+'\n'+ul+'\n\n'+t('fix.promptUnprovenSteps'));
+      }
+      return parts.join('\n\n');
     }
-    var dd=Z.updDead||[];
+    var dd=Z.updDead||[], uu=Z.updUnproven||[];
     repos+=hdr('upd.deadHdr',dd.length,false);
     repos+=dd.length
       ?line(t('upd.deadStatus').replace('{n}',dd.length),'')+'<div style="font-size:12.5px">'+dd.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚠ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.deadRow').replace('{n}',x.newlyDead))+(x.since?' · '+stdEsc(t('upd.deadSince').replace('{d}',String(x.since).slice(0,10))):'')+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div><div class="fixbox muted" data-fixroot="'+encodeURIComponent(x.root)+'" style="font-size:11px;padding-left:22px;margin-top:3px">'+stdEsc(t('fix.loading'))+'</div></div>';}).join('')+'</div>'
@@ -515,16 +527,24 @@
         +'<button class="btn sm" data-act="dead-prompt-copy">'+stdEsc(t('p2p.copy'))+'</button>'
         +'<button class="btn sm" data-act="dead-graph">'+stdEsc(t('fix.openGraph'))+'</button>'
         +'</div>'
-        +'<pre id="deadPrompt" style="margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text)">'+stdEsc(deadPrompt(dd))+'</pre>'
+        +'<pre id="deadPrompt" style="margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text)">'+stdEsc(deadPrompt(dd,uu))+'</pre>'
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('fix.promptHint'))+'</div>'
         +'</div>'
-      :line('✓ '+t('upd.deadNone'));
-    // KHÔNG KẾT LUẬN ĐƯỢC: chết mà không có bằng chứng từng sống (plan/21 §2.3b). Không màu, không nút — nhưng
-    // phải có mặt, nếu không "báo đúng hết" thành "giấu phần không biết".
-    var uu=Z.updUnproven||[];
-    if(uu.length)repos+='<div class="muted" style="font-size:12px;margin-top:8px">'
-      +uu.map(function(x){return '<div style="padding:2px 0">⚪ <b>'+stdEsc(x.name)+'</b> — '+stdEsc(t('upd.unprovenRow').replace('{n}',x.unproven))+'</div>';}).join('')
-      +'<div style="font-size:11px;margin-top:2px">'+stdEsc(t('upd.unprovenHint'))+'</div></div>';
+      :line('✓ '+t('upd.deadNoneVerified'));
+    // KHỐI TÁCH RIÊNG: có đường chết nhưng KHÔNG dò được nguyên nhân (plan/21 §2.3b). User 2026-09-17: khối trên
+    // phải nói "0 đường XÁC MINH được", khối này nói "có nhưng không kết luận", và phải kèm prompt HỎI CHÍNH REPO ĐÓ —
+    // vì từ ngoài zemory chỉ thấy một chuỗi không giải được, không biết nó là con trỏ hỏng hay chữ.
+    if(uu.length){
+      repos+='<div class="section-t" style="margin-top:12px">'+stdEsc(t('upd.unprovenHdr').replace('{n}',uu.length))+'</div>'
+        +'<div style="font-size:12.5px">'+uu.map(function(x){var smp=(x.sample||[]).join(' · ');return '<div class="upd-row" data-root="'+stdEsc(x.root)+'" style="padding:3px 0"><div style="display:flex;align-items:center;gap:8px">⚪ <b>'+stdEsc(x.name)+'</b> <span style="font-size:12px">'+stdEsc(t('upd.unprovenRow').replace('{n}',x.unproven))+'</span></div><div class="muted" style="font-size:11px;padding-left:22px;word-break:break-all">'+stdEsc(smp)+'</div></div>';}).join('')+'</div>'
+        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('upd.unprovenHint'))+'</div>';
+      // Khối trên rỗng thì prompt chưa được vẽ ⇒ vẽ ở đây, cùng id/nút để nút Chép dùng chung một handler.
+      if(!dd.length)repos+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b style="font-size:12px">'+stdEsc(t('fix.promptH'))+'</b>'
+        +'<button class="btn sm" data-act="dead-prompt-copy">'+stdEsc(t('p2p.copy'))+'</button></div>'
+        +'<pre id="deadPrompt" style="margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text)">'+stdEsc(deadPrompt([],uu))+'</pre>'
+        +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('fix.promptHint'))+'</div></div>';
+    }
     repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
     return repos;
   }
