@@ -753,8 +753,9 @@ window.zFileView = (function () {
               // Dòng GỘP của cụm web nói rõ nó gộp bao nhiêu nền — nếu không, một dòng "imports" trông
               // như một nguồn lẻ, và người đọc mất luôn thông tin "web nằm chung một chỗ".
               var lbl=x.kind==='import'?t('mem.storeImports').replace('{n}',x.platforms||0):(x.source||'—');
-              return '<div class="mstore" data-copypath="'+stdEsc(x.root)+'" title="'+stdEsc(t('mem.storeCopy'))+'">'
-                +'<span class="src">'+stdEsc(lbl)+'</span><span class="pth">'+stdEsc(x.root||'')+'</span></div>';
+              return '<div class="mstore">'
+                +'<span class="src">'+stdEsc(lbl)+'</span><span class="pth">'+stdEsc(x.root||'')+'</span>'
+                +'<button class="btn xs mstore-cp" data-copypath="'+stdEsc(x.root)+'" title="'+stdEsc(t('mem.storeCopy'))+'" aria-label="'+stdEsc(t('mem.storeCopy'))+'">'+stdEsc(t('p2p.copy'))+'</button></div>';
             }).join('')
           : '<div class="muted" style="font-size:11.5px">'+stdEsc(t('mem.storesNone'))+'</div>';
       }
@@ -762,15 +763,19 @@ window.zFileView = (function () {
       if(bd)bd.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ph.err'))+'</div>';
     });
   }
-  // Bấm một đường dẫn = chép. Đường dẫn dài thì không ai gõ lại được, mà đây đúng là thứ người ta
-  // cần dán sang Explorer hoặc terminal.
+  // NÚT chép riêng, và báo kết quả NGAY TRÊN NÚT. Bản đầu biến cả hàng thành vùng bấm rồi ghi
+  // "đã chép" đè lên NHÃN NGUỒN — tức là nuốt mất thông tin của hàng, và hàng nào đã bấm thì nằm
+  // đó mãi với chữ sai (user 2026-09-17: *"mắc gì copy rồi đổi tên title người ta"*). Phản hồi phải
+  // rơi vào chính thứ vừa bấm, không rơi vào dữ liệu.
   document.addEventListener('click',function(e){
-    var r=e.target.closest?e.target.closest('[data-copypath]'):null;if(!r)return;
-    var p=r.getAttribute('data-copypath')||'';
+    var b=e.target.closest?e.target.closest('.mstore-cp[data-copypath]'):null;if(!b)return;
+    var p=b.getAttribute('data-copypath')||'';
     if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p);
-    var old=r.querySelector('.src').textContent;
-    r.querySelector('.src').textContent=t('mem.copied');
-    setTimeout(function(){r.querySelector('.src').textContent=old;},1200);
+    if(b.dataset.busy)return;                      // bấm dồn thì đừng chồng nhãn lên nhau
+    b.dataset.busy='1';
+    var old=b.textContent;
+    b.textContent=t('mem.copied');
+    setTimeout(function(){b.textContent=old;delete b.dataset.busy;},1200);
   });
   function renderDriveMix(){
     var box=zid('drvMix'), boxP=zid('drvMixProj'); if(!box&&!boxP)return;
