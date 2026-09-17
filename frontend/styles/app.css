@@ -201,7 +201,14 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .g6{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
-.g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+/* g2 là lưới CÓ HÌNH DẠNG (2×2 cho 4 bảng thống kê — user chốt 2026-07-26), không phải dải ô tự xếp.
+   `auto-fit` ở đây là SAI nghĩa: nó không chặn trên, nên khung đủ rộng là nhét 4 ô vào MỘT hàng
+   (đo: vùng 1230px vừa đúng 4×280 + khe ⇒ 2×2 thành 1×4, user 2026-09-17 *"nhìn nó kì quá"*).
+   Cách giữ CẢ HAI ràng buộc: số cột cố định + `minmax(0,1fr)` — vế `0` mới là thứ cho ô co
+   xuống dưới nội dung tối thiểu, tức là thứ thật sự chặn thanh cuộn ngang (§F12), chứ không phải
+   `auto-fit`. Hẹp quá thì xuống MỘT cột bằng breakpoint, không phải bằng cách bỏ trần. */
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:820px){.g2{grid-template-columns:minmax(0,1fr)}}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 /* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —

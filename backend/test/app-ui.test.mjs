@@ -360,6 +360,17 @@ test("Global Memory: exactly 4 charts, no more and no fewer", () => {
   const block = grid.slice(0, grid.indexOf("</div>\n\n        </div>"));
   const ids = [...block.matchAll(/id="(ins[A-Za-z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, ["insProjects", "insAgents", "insDaily", "insGrowth"], "lưới 2×2 đúng 4 bảng (user chốt 2026-07-26)");
+  // ĐẾM CỘT, không chỉ đếm thẻ. Ca này từng xanh suốt trong khi lưới đã thành 1×4: `auto-fit` bỏ
+  // trần cột nên khung rộng nhét cả bốn vào một hàng (user 2026-09-17). Đếm thẻ không thấy được
+  // hình dạng — phải soi đúng thứ quyết định hình dạng.
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  const g2 = /\n\.g2\{grid-template-columns:([^}]*)\}/.exec(css);
+  assert.ok(g2, "không tìm thấy luật .g2");
+  assert.doesNotMatch(g2[1], /auto-fit|auto-fill/, "auto-fit không chặn trên ⇒ 2×2 thành 1×4 khi khung rộng");
+  assert.match(g2[1], /repeat\(2,/, "phải là ĐÚNG hai cột");
+  // …và vẫn phải co được, nếu không thì trần cột đổi lại thành thanh cuộn ngang (§F12).
+  assert.match(g2[1], /minmax\(0,\s*1fr\)/, "ô phải co dưới nội dung tối thiểu, nếu không lưới rộng hơn khung");
+  assert.match(css, /@media \(max-width:820px\)\{\.g2\{grid-template-columns:minmax\(0,1fr\)\}\}/, "hẹp quá phải xuống một cột");
 });
 
 test("a time-series chart MUST have a time axis", () => {
