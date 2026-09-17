@@ -229,6 +229,16 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .cap-leg i.is-other{background:var(--border-strong)}
 .cap-leg i.is-free{background:var(--surface-3);border:1px solid var(--border)}
 .cap-leg b{color:var(--text);font-weight:600}
+/* Ổ ĐĨA + NƠI QUÉT ĐƯỢC — hai danh sách của panel "Máy này". Dùng lại đúng thanh của biểu đồ tỉ
+   trọng (`.drvmix-*`) chứ không đẻ kiểu thanh thứ hai: cùng một ý "phần trên tổng" thì phải cùng
+   một hình, nếu không mỗi bảng một kiểu đọc. */
+.mdisk{padding:4px 0}
+.mdisk-top{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:3px}
+.mdisk-top b{font-weight:600}
+.mstore{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:11.5px;cursor:pointer}
+.mstore:hover{background:var(--wash)}
+.mstore .src{flex:0 0 auto;color:var(--primary);font-size:11px}
+.mstore .pth{min-width:0;word-break:break-all;color:var(--text-faint);font-family:ui-monospace,Consolas,monospace}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 /* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —

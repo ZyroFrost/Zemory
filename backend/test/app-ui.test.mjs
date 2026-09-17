@@ -1681,3 +1681,34 @@ test("tab Drive: panel phải có donut sức chứa, cùng khuôn với donut �
     assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
   }
 });
+
+// ── PANEL "MÁY NÀY": Ổ ĐĨA + NƠI NGUỒN QUÉT ĐƯỢC NẰM ───────────────────────────
+//
+// User 2026-09-17: *"bên chỗ máy này bên chart panel phải mấy dòng bar chart hiển thị dung lượng ổ
+// đĩa đang có, và hiển thị luôn chỗ quét được từ máy là nằm ở đâu link nào"*.
+test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được, đọc từ nguồn thật", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.match(html, /id="mDisks"/, "thiếu ô cho danh sách ổ đĩa");
+  assert.match(html, /id="mStores"/, "thiếu ô cho danh sách nơi quét được");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /zGet\('\/machine-info'\)/, "phải đọc từ endpoint thật");
+  // Dùng lại đúng thanh của biểu đồ tỉ trọng — cùng một ý "phần trên tổng" thì phải cùng một hình.
+  assert.match(gm, /drvmix-bar[\s\S]{0,200}drvmix-fill/, "bar ổ đĩa phải dùng lại thanh có sẵn, không đẻ kiểu thứ hai");
+  // Lượt dò ĐẦU sau khi daemon lên có thể trượt (đo thật) ⇒ phải hỏi lại, có trần.
+  assert.match(gm, /mInfoTries<6/, "chưa có số thì phải hỏi lại, và phải có trần");
+  assert.match(gm, /data-copypath=/, "đường dẫn phải bấm chép được — dài thế không ai gõ lại");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /p === "\/machine-info"/, "thiếu endpoint");
+  assert.match(ui, /SELECT store_root AS root, source FROM known_stores/, "nơi quét được phải đọc thẳng sổ known_stores, không đếm lại một bản thứ hai");
+  // Dò ổ chạy trong TIẾN TRÌNH CON: `statfs` trên ổ mây treo thì nằm im, gọi thẳng là đóng băng daemon.
+  const probe = readFileSync(new URL("../../backend/src/jobs/diskprobe.ts", import.meta.url), "utf8");
+  assert.match(probe, /endsWith\("jobs\/diskprobe\.js"\)/, "phải có điểm vào cho tiến trình con");
+  assert.match(ui, /execFile\(process\.execPath, \[diskprobeEntry\(\)\]/, "daemon phải gọi qua con, không statfs thẳng");
+  assert.match(ui, /if \(err\) return;/, "con chết thì GIỮ bản cũ, đừng thay bằng danh sách rỗng");
+  const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");
+  assert.match(shell, /v==='sync'&&typeof renderMachineInfo==='function'/, "phải nạp đúng lúc vào tab, không hỏi sẵn");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["mem.disksH", "mem.storesH", "mem.disksNone", "mem.storesNone", "mem.diskFree", "mem.storeCopy", "mem.copied"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
+});
