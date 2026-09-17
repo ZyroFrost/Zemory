@@ -643,6 +643,31 @@ export function deadPathsSummary(state: PathsState, projects: Array<{ root: stri
   return out.sort((a, b) => b.newlyDead - a.newlyDead || a.name.localeCompare(b.name));
 }
 
+export interface UnprovenPathsRepo {
+  root: string;
+  name: string;
+  /** dead now · NOT legacy · NO evidence of life — "không kết luận được", listed, never coloured */
+  unproven: number;
+}
+/**
+ * Đường CHẾT mà máy KHÔNG KẾT LUẬN được (user 2026-09-17: *"cái nào không dò được thì phải báo không dò được"*):
+ * chết bây giờ, không phải di sản, nhưng không có bằng chứng từng sống (`plan/21 §2.3b`). Chúng KHÔNG đổi màu
+ * chip — nhưng cũng KHÔNG được biến mất khỏi bề mặt: im lặng ở đây là "báo sai" theo chiều ngược. Đọc thẳng
+ * state, 0 quét; đếm = `lastDead ∖ baseline ∖ firstSeen`.
+ */
+export function unprovenPathsSummary(state: PathsState, projects: Array<{ root: string; name: string }>): UnprovenPathsRepo[] {
+  const out: UnprovenPathsRepo[] = [];
+  for (const p of projects) {
+    const e = state.projects[canon(p.root)];
+    if (!e) continue;
+    const base = new Set(e.baseline ?? []);
+    const seen = new Set(Object.keys(e.firstSeen ?? {}));
+    const n = (e.lastDead ?? []).filter((k) => !base.has(k) && !seen.has(k)).length;
+    if (n > 0) out.push({ root: p.root, name: p.name, unproven: n });
+  }
+  return out.sort((a, b) => b.unproven - a.unproven || a.name.localeCompare(b.name));
+}
+
 export interface DeadPathAt {
   /** đường dẫn repo-relative của FILE chứa chuỗi đã chết */
   file: string;

@@ -124,3 +124,19 @@ test("file đã bị XOÁ trong lịch sử git là bằng chứng từng sống
   assert.deepEqual([...new Set(r2.monitor.newlyDead.map((h) => h.text))], ["backend/src/old_name.ts"],
     "git nói `old_name.ts` từng tồn tại ⇒ mới chết; `never.ts` không có bằng chứng ⇒ không");
 });
+
+// ── ⑥ "không dò được" phải ĐƯỢC BÁO, không được biến mất ─────────────────────
+test("unprovenPathsSummary: chết mà không có bằng chứng ⇒ đếm riêng, không lẫn vào mới chết, không lẫn di sản", async (t) => {
+  const { unprovenPathsSummary, deadPathsSummary, loadPathsState } = await import("../../dist/docs/paths.js");
+  const root = repo(t);
+  const sf = join(tempDir(t, "zemory-pev-state-"), "paths-state.json");
+  plan(root, "# p\ndi sản: `backend/src/legacy.ts` · sống: `backend/src/real.ts`\n");
+  monitorPaths(ctxOf(root), { stateFile: sf }); // baseline: legacy.ts là di sản
+  plan(root, "# p\ndi sản: `backend/src/legacy.ts` · sống: `backend/src/real.ts` · lạ: `reports/x.dax`\n");
+  rmSync(join(root, "backend", "src", "real.ts"));
+  monitorPaths(ctxOf(root), { stateFile: sf });
+  const st = loadPathsState(sf);
+  const projs = [{ root, name: "fx" }];
+  assert.deepEqual(deadPathsSummary(st, projs).map((x) => x.newlyDead), [1], "mới chết = real.ts (có bằng chứng)");
+  assert.deepEqual(unprovenPathsSummary(st, projs).map((x) => x.unproven), [1], "không kết luận = x.dax — KHÔNG đếm legacy.ts (di sản), KHÔNG đếm real.ts (đã là mới chết)");
+});
