@@ -45,6 +45,43 @@ export function templateDir(profile: StructureProfile = "app"): string {
   return join(TEMPLATE_DIR, profile === "non-app" ? "03_nonapp" : "05_app");
 }
 
+/** Một bộ mẫu tìm thấy trong `docs_template/`. */
+export interface TemplateBundle {
+  /** Tên thư mục, ví dụ `04_adapt`. */
+  dir: string;
+  /** `harness` = cây docs đầy đủ (có `agent/`) · `kit` = gói phân phối (BOOTSTRAP/README…). */
+  kind: "harness" | "kit";
+  /** Bộ này có đường nào để app dùng tới không (đang được `templateDir` ánh xạ). */
+  wired: boolean;
+}
+
+/**
+ * ĐỌC thư mục template lúc chạy — KHÔNG gõ tay danh sách.
+ *
+ * ⚠ Vì sao cần: `templateDir` ánh xạ đúng HAI tên (`03_nonapp`, `05_app`), nên bộ mẫu thứ ba trở đi
+ * thêm vào đĩa là **vô hình với cả app lẫn cổng** — không ai dùng, không ai canh, và nó lặng lẽ lệch
+ * khỏi phần vỏ dùng chung. Đo 2026-09-17: đĩa có 5 bộ, chỉ 2 bộ được ánh xạ; `04_adapt` là một cây
+ * harness đầy đủ mà không cổng nào so nó với hai cây kia (user: *"5 template mà vẫn có 2 cái không
+ * đúng, nên có cơ chế nhắc nhở… phải tự động đọc được khu vực template"*).
+ *
+ * Trả về RỖNG khi không đọc được thư mục — người gọi tự quyết, hàm này không ném.
+ */
+export function listTemplateBundles(): TemplateBundle[] {
+  let names: string[];
+  try {
+    names = readdirSync(TEMPLATE_DIR, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort();
+  } catch {
+    return [];
+  }
+  const wired = new Set([basename(templateDir("app")), basename(templateDir("non-app"))]);
+  return names.map((dir) => ({
+    dir,
+    // Cây harness nhận ra bằng thư mục `agent/` — đó là thứ `init`/`sync` chép đi.
+    kind: existsSync(join(TEMPLATE_DIR, dir, "agent")) ? "harness" : "kit",
+    wired: wired.has(dir),
+  }));
+}
+
 export interface AdoptResult {
   createdConfig: boolean;
   added: string[];

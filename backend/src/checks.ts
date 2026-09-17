@@ -7,6 +7,7 @@ import { findProjectRoot, isConnected, loadContext, normalizeRoot } from "./core
 import { createRuntime } from "./core/runtime.js";
 import type { Capability } from "./core/types.js";
 import { memorySummary } from "./memory/ingest.js";
+import { listTemplateBundles } from "./docs/adopt.js";
 import { openMemory } from "./memory/db.js";
 import { search } from "./memory/search.js";
 import { validate } from "./docs/validate.js";
@@ -34,6 +35,37 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     rootArg && isConnected(rootArg) ? normalizeRoot(rootArg) : findProjectRoot();
 
   // --- Tool/memory-level features (no project needed) ---
+  if (feature === "templates") {
+    // NHẮC khi có bộ mẫu trên đĩa mà app KHÔNG với tới được.
+    //
+    // `templateDir` ánh xạ đúng hai tên, nên bộ mẫu thứ ba trở đi là vô hình: không ai dùng, không
+    // ai canh. Phép kiểm này ĐỌC thư mục lúc chạy nên bộ mới vừa thêm là hiện ra ngay — thay vì đợi
+    // ai đó nhớ ra (user 2026-09-17: *"có cơ chế nhắc nhở… phải tự động đọc được khu vực template"*).
+    const bundles = listTemplateBundles();
+    if (!bundles.length) {
+      return { feature, ok: false, state: "warn", detail: tr("không đọc được docs_template/", "could not read docs_template/") };
+    }
+    const trees = bundles.filter((b) => b.kind === "harness");
+    const loose = trees.filter((b) => !b.wired).map((b) => b.dir);
+    const kits = bundles.filter((b) => b.kind === "kit").length;
+    if (loose.length) {
+      return {
+        feature,
+        ok: false,
+        state: "warn",
+        detail: tr(
+          `${bundles.length} bộ mẫu · ${loose.length} cây harness CHƯA nối vào app: ${loose.join(", ")}`,
+          `${bundles.length} bundles · ${loose.length} harness tree(s) NOT wired into the app: ${loose.join(", ")}`,
+        ),
+      };
+    }
+    return {
+      feature,
+      ok: true,
+      state: "on",
+      detail: tr(`${trees.length} cây harness đã nối · ${kits} gói phân phối`, `${trees.length} harness trees wired · ${kits} kits`),
+    };
+  }
   if (feature === "grill") {
     // Real check: the grill playbook must actually exist. TWO shapes are valid, because
     // Phase 3 (2026-07-31) moved playbooks out of 04_SKILLS into their own skill files —

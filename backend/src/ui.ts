@@ -3154,7 +3154,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // Mồi 3 check RẺ (FTS query · đọc docs · đọc skill — <1s mỗi cái) để cửa sổ đầu tiên mở ra
   // là pill sáng liền. CỐ Ý không mồi probe sâu (vector/rerank nạp model 8s+ — giữ thủ công).
   setTimeout(() => {
-    for (const f of ["memory", "validate", "grill"]) {
+    // `templates` cũng RẺ (một lượt readdir) và là hàng NHẮC — mồi luôn để nó sáng ngay lượt mở
+    // đầu, thay vì chờ ai đó bấm Kiểm mới biết có bộ mẫu chưa nối.
+    for (const f of ["memory", "validate", "grill", "templates"]) {
       void runCheck(f).then((r) => checkCache.set(`${f}|`, { at: Date.now(), r })).catch(() => {});
     }
   }, 1500);
