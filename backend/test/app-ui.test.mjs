@@ -1559,3 +1559,21 @@ test("mọi emoji dạng-chữ trên UI phải kèm dấu chọn biến thể U+
     }
   }
 });
+
+// ── TIÊU ĐỀ PHIÊN LÀ CHỮ GỐC ───────────────────────────────────────────────────
+//
+// User 2026-09-17: *"mắc gì có cái ảnh trong title session? title người ta chữ gốc thôi chứ"*.
+// Số tệp đính kèm vẫn đáng hiện (bộ lọc "Có ảnh" dựa vào đúng thứ đó) nhưng nó là MỘT DỮ KIỆN của
+// phiên, cùng hạng với nguồn và số tin ⇒ thuộc hàng dữ kiện, không chen vào tên người ta đặt.
+test("danh sách phiên: tiêu đề không đính badge — số tệp nằm ở hàng dữ kiện", () => {
+  const js = readFileSync(new URL("../../frontend/scripts/session.js", import.meta.url), "utf8");
+  const row = js.slice(js.indexOf("class=\"sys-li"), js.indexOf("</div>';}).join('')"));
+  assert.ok(row.length > 100, "không khoanh được hàng phiên");
+  const iTitle = row.indexOf("String(ti).slice(0,64)");
+  const iMeta = row.indexOf("zProjName(s.project)");
+  const iAtts = row.indexOf("s.atts?");
+  assert.ok(iTitle >= 0 && iMeta > iTitle, "hàng phiên phải có tiêu đề rồi tới hàng dữ kiện");
+  assert.ok(iAtts > iMeta, "số tệp phải nằm SAU hàng dữ kiện, không dính vào tiêu đề");
+  assert.ok(!row.includes("att-n"), "badge trên tiêu đề phải đi");
+  assert.match(row, /zN\(s\.atts\)\+' '\+stdEsc\(t\('files\.unit'\)\)/, "số tệp phải có đơn vị, và đơn vị lấy từ từ điển");
+});
