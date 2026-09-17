@@ -26,7 +26,6 @@ import type { AttachmentMeta } from "./memory/attachments.js";
 // tiến trình con qua `deepSearchChild`. Bề mặt này chỉ giữ đường RẺ (`search` = FTS + lọc).
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS, getMessageContext, getSessionThread, search } from "./memory/search.js";
 import { digestBackfill } from "./memory/digest.js";
-import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup } from "./memory/privacy.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
@@ -2320,55 +2319,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const r = digestBackfill();
       invalidateDashboard();
       return json(res, { ok: true, ...r });
-    }
-    if (req.method === "POST" && p === "/memory-backup") {
-      // Snapshot the whole memory DB to a standalone .db file (safe SQLite online
-      // backup). Non-destructive. Powers Drive Sync → Backup.
-      try {
-        const r = await backupMemory();
-        return json(res, { ok: true, outPath: r.outPath, bytes: r.bytes });
-      } catch (e) {
-        return json(res, { ok: false, error: String((e as Error).message || e) });
-      }
-    }
-    if (req.method === "POST" && p === "/memory-restore") {
-      // Replace the live DB with a snapshot file (destructive — the caller must
-      // confirm in the UI). Keeps the previous DB as a .bak. Powers Restore.
-      const path = u.searchParams.get("path") ?? "";
-      if (!path) return json(res, { ok: false, error: "path required" });
-      try {
-        const r = await restoreMemoryBackup({ backupPath: path, force: true });
-        invalidateDashboard();
-        return json(res, { ok: true, previousBackupPath: r.previousBackupPath, bytes: r.bytes });
-      } catch (e) {
-        return json(res, { ok: false, error: String((e as Error).message || e) });
-      }
-    }
-    if (req.method === "POST" && p === "/memory-forget") {
-      // Delete memory for a scope. Without force = DRY RUN (counts only). With
-      // force = actually delete (auto-backup first). Scope is required so a blank
-      // request can never wipe everything. Powers Drive Sync → Forget.
-      const project = u.searchParams.get("project") ?? "";
-      if (!project) return json(res, { ok: false, error: "project required" });
-      const force = u.searchParams.get("force") === "1";
-      try {
-        const r = await forgetMemory({ project, force });
-        if (force) invalidateDashboard();
-        return json(res, { ok: true, dryRun: r.dryRun, sessions: r.sessions, messages: r.messages, digests: r.digests, backupPath: r.backupPath });
-      } catch (e) {
-        return json(res, { ok: false, error: String((e as Error).message || e) });
-      }
-    }
-    if (req.method === "POST" && p === "/memory-redact") {
-      // Re-run the secret/PII redactor over already-stored content (masks tokens,
-      // keys, emails that slipped in). Powers Drive Sync → Redact.
-      try {
-        const r = await reRedactMemory();
-        invalidateDashboard();
-        return json(res, { ok: true, ...r });
-      } catch (e) {
-        return json(res, { ok: false, error: String((e as Error).message || e) });
-      }
     }
     // TÌM: mặc định lớp RẺ (FTS + bộ lọc), lớp ngữ nghĩa chỉ chạy khi được XIN (`deep=1`).
     //

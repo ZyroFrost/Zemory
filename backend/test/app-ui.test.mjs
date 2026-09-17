@@ -1048,7 +1048,7 @@ test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NH�
   // ở cuối"*). Trước đó tab này là 13 khối rời xếp dọc: mỗi khối chiếm trọn bề ngang dù chỉ chứa
   // ba con số. Khoá bằng máy vì đây đúng loại lỗi "dựng panel mới thì quên khuôn panel cũ" (§F9).
   const pane = html.slice(html.indexOf('<div class="sub" data-sy="p2p">'),
-    html.indexOf('<div class="sub" data-sy="backup">'));
+    html.indexOf("</section>", html.indexOf('<div class="sub" data-sy="p2p">')));
   assert.equal((pane.match(/<div class="card">/g) || []).length, 3, "phải đúng BA panel: máy này · máy kia · nhật ký");
   // Hai chiều kéo, và cả hai phải là biến THẬT (§F1①: seam trang trí = kéo không đổi gì).
   assert.match(pane, /<div class="seam" data-seam="p2p1"><\/div>/, "thiếu thanh kéo DỌC giữa hai panel trên");
@@ -1163,8 +1163,17 @@ test("app.html: thẻ <div> phải cân, và hộp Dữ liệu & Đồng bộ ph
   // Dùng ĐÚNG component tab của app (`.tabs > button[data-sy]` + `.sub[data-sy]`), không tự chế
   // chip riêng: user chốt 2026-09-16 *"tab ko đúng mẫu, mấy trang kia tab trên đầu mà"*. Tự chế còn
   // kéo theo mất luôn phần nhớ tab đang mở mà `subSet`/`PERSIST` vốn lo sẵn.
-  assert.match(box, /<div class="tabs">[\s\S]{0,600}data-sy="drive"[\s\S]{0,600}data-sy="p2p"[\s\S]{0,600}data-sy="backup"/, "ba tab chuẩn");
-  assert.equal((box.match(/class="sub[^"]*" data-sy=/g) || []).length, 3, "ba tab: Drive · máy-tới-máy · Sao lưu");
+  assert.match(box, /<div class="tabs">[\s\S]{0,600}data-sy="drive"[\s\S]{0,600}data-sy="p2p"/, "hai tab chuẩn");
+  assert.equal((box.match(/class="sub[^"]*" data-sy=/g) || []).length, 2, "hai tab: Drive · máy-tới-máy");
+  // Gỡ một tab là gỡ HẾT bốn đầu: markup · handler · khoá i18n · endpoint. Bỏ sót đầu nào cũng là
+  // bề mặt chết (§F7) — endpoint không ai gọi, hoặc khoá dịch không ai đọc.
+  assert.ok(!html.includes('data-sy="backup"'), "markup tab đã gỡ không được sót");
+  const src = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
+  for (const a of ["mbackup", "mrestore", "mforget", "mredact"]) assert.ok(!src.includes("act==='" + a + "'"), "handler " + a + " phải đi theo tab");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  for (const ep of ["/memory-backup", "/memory-restore", "/memory-forget", "/memory-redact"]) assert.ok(!ui.includes('p === "' + ep + '"'), "endpoint " + ep + " không còn ai gọi ⇒ phải gỡ");
+  const chr = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["drv.privH", "rs.title", "fg.title", "rd.title", "bk.done"]) assert.ok(!chr.includes("'" + k + "'"), "khoá " + k + " không ai đọc ⇒ phải gỡ");
   // Tab phải là thứ ĐẦU TIÊN trong màn — đúng chỗ mọi màn khác đặt nó.
   assert.match(box, /data-s="sync">[\s\S]{0,40}<div class="tabs">/, "tabs phải nằm trên đầu màn");
   const shell = readFileSync(new URL("../../frontend/scripts/shell.js", import.meta.url), "utf8");

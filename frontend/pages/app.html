@@ -375,7 +375,7 @@
            t nghĩ nên phân thành 1 trang chính thức ko để trong setting nữa"*). ⚙ là nơi gạt vài
            công tắc; cụm máy + nhật ký + hai kênh là một khu vực làm việc, không phải một dòng. -->
       <section class="screen" data-s="sync">
-        <div class="tabs"><button class="on" data-sy="drive">☁ <span data-i18n="ds.driveH">Kênh Drive</span></button><button data-sy="p2p">⇄ <span data-i18n="sync.tabP2p">Máy-tới-máy</span></button><button data-sy="backup">⬇ <span data-i18n="drv.privH">Sao lưu &amp; Riêng tư</span></button></div>
+        <div class="tabs"><button class="on" data-sy="drive">☁ <span data-i18n="ds.driveH">Kênh Drive</span></button><button data-sy="p2p">⇄ <span data-i18n="sync.tabP2p">Máy-tới-máy</span></button></div>
       <div class="sub on" data-sy="drive">
         <!-- HAI PANEL RIÊNG trong một lưới kéo được — đúng khuôn mọi màn khác (lưới chứa các
              `.card`, không phải một card bị chia đôi). Trái: bảng đo. Phải: thao tác. -->
@@ -484,15 +484,6 @@
             </div>
           </div>
         </div>
-      </div>
-        <div class="sub" data-sy="backup">
-        <div class="card"><div class="section-t" data-i18n="drv.privH">Sao lưu &amp; Riêng tư</div>
-            <div class="set-row"><div class="sl"><b>⬇ <span data-i18n="drv.backup">Sao lưu</span></b><small data-i18n="drv.backupD">Xuất toàn bộ DB nhớ ra 1 file snapshot để cất giữ.</small></div><button class="btn sm" data-act="mbackup" data-i18n="act.run">Chạy</button></div>
-            <div class="set-row"><div class="sl"><b>⬆ <span data-i18n="drv.restore">Phục hồi</span></b><small data-i18n="drv.restoreD">Nạp lại từ file snapshot, ghi đè DB hiện tại (giữ bản cũ .bak).</small></div><button class="btn sm" data-act="mrestore" data-i18n="act.pick">Chọn…</button></div>
-            <div class="set-row"><div class="sl"><b>🗑 <span data-i18n="drv.forget">Xoá nhớ</span></b><small data-i18n="drv.forgetD">Xoá vĩnh viễn session/message của 1 project — xem trước rồi mới xoá, tự backup.</small></div><button class="btn sm" data-act="mforget" data-i18n="act.pick">Chọn…</button></div>
-            <div class="set-row" style="border:0"><div class="sl"><b>🛡 <span data-i18n="drv.redact">Che secret</span></b><small data-i18n="drv.redactD">Quét lại tin đã lưu, che token/key/PII lọt vào (đây là "privacy").</small></div><button class="btn sm" data-act="mredact" data-i18n="act.run">Chạy</button></div>
-            <div id="drvMsg" class="muted" style="font-size:11.5px;margin-top:6px;min-height:1em"></div>
-          </div</div>
       </div>
       <!-- 2026-09-17 (user chốt, nhắc lần thứ hai): panel "Kho cục bộ" GỠ HẲN. Đường dẫn chỉ có
            nghĩa với một kênh CHỌN được chỗ ghi — Drive thì đã có ô thư mục riêng ở tab của nó, còn
