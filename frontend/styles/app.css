@@ -209,6 +209,13 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    `auto-fit`. Hẹp quá thì xuống MỘT cột bằng breakpoint, không phải bằng cách bỏ trần. */
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (max-width:820px){.g2{grid-template-columns:minmax(0,1fr)}}
+/* DẢI SỐ LIỆU — thẻ tự chia đều bề ngang, hàng cuối KHÔNG để lại mảng trống.
+   Vì sao flex chứ không grid: lưới ép mọi hàng dùng chung một bộ cột, nên 8 thẻ trên 7 cột là một
+   thẻ lẻ rộng 1/7 nằm chơ vơ (user 2026-09-17: *"tự sắp xếp giãn theo chiều ngang của app"*). Flex
+   chia lại phần thừa theo TỪNG HÀNG. `min-width:0` giữ lời hứa không cuộn ngang (§F12); 150px chỉ
+   là bề rộng MONG MUỐN, thẻ vẫn co nhỏ hơn khi hàng chật. */
+.tile-strip{display:flex;flex-wrap:wrap;gap:10px}
+.tile-strip>.tile{flex:1 1 150px;min-width:0;border:1px solid var(--border);border-radius:10px;padding:11px 13px}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 /* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —

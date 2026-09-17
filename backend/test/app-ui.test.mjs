@@ -1459,3 +1459,44 @@ test("danh sách dự án: `locked` xếp trước `pinned`, và trước mọi 
     assert.ok(iLocked < cmp[0].indexOf(k) || cmp[0].indexOf(k) < 0, `\`locked\` phải xét trước ${k}`);
   }
 });
+
+// ── CHIP THANH BÊN PHẢI ĐỌC SỐ ĐÃ CÓ ───────────────────────────────────────────
+//
+// Chip "Chuẩn repo khớp · {n} repo đã liên kết" đọc Z.status.knownProjects, thứ chỉ có sau /status.
+// Bản cũ vẽ chip NGAY sau /ping ⇒ ghi "0 repo đã liên kết" trong khi đã liên kết 17, và nhịp vẽ lại
+// là 10 PHÚT nên con số sai nằm đó rất lâu (đo 2026-09-17: t=60s vẫn "0", Z.status.knownProjects=17).
+// Một con số sai không tự sửa là kiểu hỏng tệ nhất — nó không báo lỗi, nó NÓI DỐI (§F3).
+test("rail: lượt vẽ chip nằm SAU /status, vì chip đọc số chỉ /status mới có", () => {
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  const boot = chrome.slice(chrome.indexOf("refreshChecks();"), chrome.indexOf("loadRecentSessions();"));
+  const iStatus = boot.indexOf("zGet('/status')");
+  const iRail = boot.indexOf("refreshHarnessUpdates()");
+  assert.ok(iStatus >= 0 && iRail >= 0, "không tìm thấy hai mắt xích trong chuỗi khởi động");
+  assert.ok(iRail > iStatus, "vẽ chip trước /status ⇒ chip ghi 0 repo trong khi đã liên kết N");
+  // …và phải nằm TRONG nhánh then của /status, không phải một dòng rời chạy song song.
+  const chain = boot.slice(iStatus);
+  assert.match(chain, /zGet\('\/status'\)\.then\(renderStatus\)[^\n]*\n\s*refreshHarnessUpdates\(\);/,
+    "phải gọi trong then của /status — song song thì vẫn là đua, chỉ khó thấy hơn");
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sys, /rail\.stdOkSub'\)\.replace\('\{n\}',\(\(Z\.status&&Z\.status\.knownProjects\)\|\|\[\]\)\.length\)/,
+    "chip vẫn phải lấy số từ Z.status.knownProjects — đổi nguồn thì ca này phải được soạn lại");
+});
+
+// ── DẢI SỐ LIỆU GIÃN ĐẦY BỀ NGANG ──────────────────────────────────────────────
+//
+// User 2026-09-17: *"tất cả card này tự sắp xếp giãn theo chiều ngang của app, tự động cân chỉnh"*.
+// Bản cũ dựng bằng lưới `repeat(auto-fill,minmax(150px,1fr))` nhét thẳng vào chuỗi HTML: `auto-fill`
+// GIỮ LẠI ô trống, nên hàng cuối để hở một mảng và thẻ lẻ đứng hụt 150px. Dải flex chia lại phần
+// thừa theo TỪNG HÀNG ⇒ hàng nào cũng khít mép (đo: hở cuối hàng 0px ở 1500·1300·1230·1100·900·800).
+test("dải số liệu là .tile-strip co giãn, không phải lưới nhét style thẳng vào HTML", () => {
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.ok(!/grid-template-columns:repeat\(auto-fill/.test(gm), "auto-fill giữ ô trống ⇒ hàng cuối hở");
+  assert.match(gm, /zid\('gmStats'\)\.innerHTML='<div class="tile-strip">'/, "dải phải dùng lớp chung");
+  assert.match(gm, /return '<div class="tile">/, "thẻ phải dùng lớp chung, không style rời trong chuỗi");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(css, /\.tile-strip\{[^}]*display:flex[^}]*flex-wrap:wrap/, "phải là dải flex thì mỗi hàng mới tự chia lại phần thừa");
+  const tile = /\.tile-strip>\.tile\{([^}]*)\}/.exec(css);
+  assert.ok(tile, "thiếu luật cho thẻ trong dải");
+  assert.match(tile[1], /flex:1 1 150px/, "thẻ phải GIÃN để lấp hết bề ngang, 150px chỉ là bề rộng mong muốn");
+  assert.match(tile[1], /min-width:0/, "không có min-width:0 thì thẻ không co được ⇒ cuộn ngang (§F12)");
+});
