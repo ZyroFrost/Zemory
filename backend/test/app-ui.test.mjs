@@ -1818,3 +1818,34 @@ test("panel Thao tác: nút chạy tay neo góc phải hàng đầu, lịch tự
   assert.match(chrome, /var ah=zid\('aboutHost'\);if\(ah\)ah\.textContent=\(p&&p\.host\?p\.host:'local'\)/, "tên máy phải đọc thẳng từ /ping");
   for (const k of ["as.gear", "as.title", "as.save"]) assert.ok(!chrome.includes(`'${k}'`), `khoá ${k} của hộp thoại đã gỡ ⇒ phải đi theo`);
 });
+
+// ── TẮT KÊNH = ẨN CHỨC NĂNG, KHÔNG PHẢI QUÊN CẤU HÌNH ──────────────────────────
+//
+// User 2026-09-17: *"bật tắt phải ẩn chức năng chứ đúng không?"*. Hai lỗi đo được cùng lúc:
+//   ① Kênh TẮT mà nút "Đồng bộ ngay" + cả bảng số vẫn hiện ⇒ mời người ta bấm một thứ không chạy,
+//      và số cũ đọc ra như đang sống.
+//   ② Công tắc dùng CHÍNH đường dẫn làm trạng thái: gạt tắt gọi `/set-drive?path=` — XOÁ đường khỏi
+//      config. Tắt một tính năng không được phép làm mất cấu hình của nó (đo: `drive` về chuỗi rỗng
+//      ngay sau một cú gạt, thẻ hiện "chưa link").
+test("kênh Drive: tắt thì ẩn chức năng, và KHÔNG xoá đường dẫn đã lưu", () => {
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  // Không còn đường nào gạt-tắt-bằng-cách-xoá.
+  assert.ok(!gm.includes("zSave('/set-drive?path=')"), "gạt tắt không được xoá đường dẫn khỏi config");
+  assert.match(gm, /zSave\('\/set-drive-on\?on=0'\)/, "tắt phải đi qua cờ riêng");
+  assert.match(gm, /zSave\('\/set-drive-on\?on=1'\)/, "bật lại chỉ là gạt cờ, không phải link lại");
+  // Công tắc phản ánh KÊNH CÓ BẬT, không phải "đường dùng được".
+  assert.match(gm, /dtg\.classList\.toggle\('on',!!d\.on\)/, "công tắc phải đọc cờ bật/tắt, không đọc `linked`");
+  assert.match(gm, /if\(btn\)btn\.style\.display=on\?'':'none';/, "kênh tắt thì ẩn nút chạy tay");
+  assert.match(gm, /if\(body\)body\.style\.display=on\?'':'none';/, "kênh tắt thì ẩn cả bảng số");
+  const st = readFileSync(new URL("../../backend/src/config/settings.ts", import.meta.url), "utf8");
+  assert.match(st, /export function getDriveOn\(\): boolean \{/, "cờ bật/tắt phải TÁCH khỏi đường dẫn");
+  assert.match(st, /if \(!\(c\.drive \?\? ""\)\) return false;/, "chưa có đường thì không có gì để bật");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /p === "\/set-drive-on"/, "thiếu endpoint gạt kênh");
+  // Bảng điều khiển có CACHE — không xoá thì gạt xong bề mặt vẫn đọc bản cũ (đo được đúng ca này).
+  const setOn = ui.slice(ui.indexOf('p === "/set-drive-on"'), ui.indexOf('p === "/set-drive-on"') + 700);
+  assert.match(setOn, /invalidateDashboard\(\);/, "gạt xong phải xoá cache, nếu không công tắc 'gạt mà không đổi'");
+  // Card Drive vẽ từ CẢ HAI đường — thiếu cờ ở một đường thì bề mặt lúc ẩn lúc hiện.
+  assert.match(ui, /drive: \{ \.\.\.prog, on: getDriveOn\(\)/, "/sync-pulse cũng phải chở cờ bật/tắt");
+  assert.match(ui, /on: getDriveOn\(\), level: getSyncLevel\(\)/, "/memory-status cũng phải chở cờ bật/tắt");
+});

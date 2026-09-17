@@ -100,7 +100,9 @@
     var rh=zid('rHybrid'),rr=zid('rRerank');if(rh)rh.classList.toggle('on',!!m.hybrid);if(rr)rr.classList.toggle('on',!!m.rerank);
     var d=m.drive||{};zset('driveBundles',d.linked?(d.error?'—':(zN(d.bundles)+' bundle')):t('drv.notLinkedShort'));
     if(zid('driveInput')&&document.activeElement!==zid('driveInput'))zid('driveInput').value=d.path||'';
-    var dtg=zid('driveToggle'); if(dtg)dtg.classList.toggle('on',!!d.linked);
+    // Công tắc phản ánh KÊNH CÓ BẬT KHÔNG, không phải 'đường có dùng được không'. Hai thứ khác nhau:
+    // đường vẫn đó mà người dùng tắt kênh là chuyện bình thường, và lúc đó công tắc phải ở vị trí tắt.
+    var dtg=zid('driveToggle'); if(dtg)dtg.classList.toggle('on',!!d.on);
     zset('driveState',driveMsg(d));setLvl(d.level||'lean');var la=zid('lvAtt');if(la)la.classList.toggle('on',!!d.atts);
     renderDriveDonut(d);
     applyI18n(m.lang||'vi'); // nút VI/EN tô trong applyI18n; `lang` được lưới flagsAt 90 s che khỏi payload cũ (ở trên)
@@ -146,6 +148,13 @@
   var DONUT_C=2*Math.PI*16;
   function renderDriveDonut(d){
     var arc=zid('driveArc'),lbl=zid('driveDonutPct');if(!arc||!lbl)return;
+    // KÊNH TẮT ⇒ ẨN CHỨC NĂNG (user 2026-09-17: *"bật tắt phải ẩn chức năng chứ đúng không?"*).
+    // Để nguyên nút "Đồng bộ ngay" và cả bảng số khi kênh đang tắt là mời người ta bấm một thứ
+    // không chạy — và số cũ thì đọc ra như đang sống. Ẩn cả cụm, chỉ chừa công tắc để bật lại.
+    var on=!!(d&&d.on), body=arc.closest('.card-b'), btn=document.querySelector('[data-act="drivesync"]');
+    if(btn)btn.style.display=on?'':'none';
+    if(body)body.style.display=on?'':'none';
+    if(!on)return;
     var pct=Math.max(0,Math.min(100,(d&&d.syncPercent!=null)?d.syncPercent:0));
     if(pct>=100)arc.removeAttribute('stroke-dasharray'); // solid ring — no dash seam, no track sliver
     else arc.setAttribute('stroke-dasharray',(pct/100*DONUT_C).toFixed(1)+' '+DONUT_C.toFixed(1));
@@ -334,9 +343,20 @@
       el.classList.toggle('on',LOG_HOLD);
       return;
     }
-    // Công tắc kênh Drive. TẮT = bỏ liên kết (kho trên máy không bị đụng). BẬT mà chưa có thư mục
-    // thì KHÔNG đoán đường nào cả — đưa con trỏ vào ô thư mục, vì chọn sai chỗ là đẩy kho đi nơi khác.
+    // Công tắc kênh Drive = BẬT/TẮT KÊNH, KHÔNG phải xoá liên kết.
+    //
+    // ⚠ Bản cũ dùng chính ĐƯỜNG DẪN làm công tắc: gạt tắt là gọi `/set-drive?path=` — tức xoá đường
+    // khỏi config, rồi cố cứu bằng cách giữ chuỗi trong ô nhập. Nạp lại trang là mất luôn, và thẻ
+    // hiện "chưa link" (đo 2026-09-17: `drive` trong config về chuỗi rỗng đúng sau một cú gạt).
+    // Tắt một tính năng không được phép làm mất cấu hình của nó — bật lại phải là chạy tiếp, không
+    // phải đi tìm lại thư mục mà chính app vừa quên.
     if(el.id==='driveToggle'){
+      var linked=!!(Z.mem&&Z.mem.drive&&Z.mem.drive.path);
+      if(!el.classList.contains('on')&&linked){
+        // Đã có đường rồi thì bật lại chỉ là gạt cờ.
+        zSave('/set-drive-on?on=1').then(function(){el.classList.add('on');return zGet('/memory-status?fresh=1').then(renderMem);}).catch(function(){});
+        return;
+      }
       if(!el.classList.contains('on')){
         // BẬT LẠI. Bản cũ chỉ `focus()` vào ô nhập rồi `return` — không bật, không báo, nên cú bấm
         // đọc ra thành "nút hỏng" (user 2026-09-16: *"bấm bật lại drive ko dc"*). Cùng họ với lỗi
@@ -355,17 +375,11 @@
         });
         return;
       }
-      // GỠ LINK — giữ đường vừa gỡ lại trong ô nhập. Không giữ thì `/set-drive?path=` xoá sạch
-      // đường trong config và người dùng phải đi tìm lại nó để bật lại: một cú bấm gỡ hoá ra
-      // yêu cầu họ nhớ một đường dẫn mà chính app vừa quên.
-      var keep=(Z.mem&&Z.mem.drive&&Z.mem.drive.path)||'';
-      zSave('/set-drive?path=').then(function(j){
-        if(!j)return;
+      // TẮT KÊNH — đường dẫn GIỮ NGUYÊN trong config.
+      zSave('/set-drive-on?on=0').then(function(){
         el.classList.remove('on');
-        var di2=zid('driveInput'); if(di2&&keep&&!di2.value.trim())di2.value=keep;
-        zset('driveState',driveMsg(j));
-        zGet('/memory-status?fresh=1').then(renderMem).catch(function(){});
-      });
+        return zGet('/memory-status?fresh=1').then(renderMem);
+      }).catch(function(){});
       return;
     }
     if(act==='p2p-add-open'){ var ap=zid('addPeerDlg'); if(ap)ap.classList.add('on'); loadChannel(); return; }

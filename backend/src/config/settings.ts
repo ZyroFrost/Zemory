@@ -43,6 +43,8 @@ interface ZConfig {
    *  (user chốt 2026-09-17). Lưu ở đây chứ không phải localStorage: cổng daemon đổi thì
    *  localStorage mất, mà khung cửa sổ là thứ người ta chỉnh một lần rồi muốn nó nằm yên. */
   windowBox?: { x: number; y: number; w: number; h: number; max: boolean };
+  /** Kênh Drive đang bật hay tắt. TÁCH khỏi `drive` (đường dẫn) để tắt kênh không làm mất đường. */
+  driveOn?: boolean;
   /** Start zemory when the OS starts (plan 14 §6.B). Default false. */
   autostart?: boolean;
   /** Auto-sync the memory via the Drive bundle when data drifts (plan 14 §3b).
@@ -571,6 +573,26 @@ export function setWebPull(lane: string, v: { ok: boolean; status: string; pulle
 /** Drive sync folder (where encrypted bundles live). Empty = not linked. */
 export function getDriveDir(): string {
   return read().drive ?? "";
+}
+
+/**
+ * Kênh Drive có đang BẬT không. Mặc định: bật khi đã có đường.
+ *
+ * ⚠ Vì sao tách khỏi đường dẫn: bản cũ dùng CHÍNH đường dẫn làm công tắc — gạt tắt là gọi
+ * `/set-drive?path=` tức XOÁ đường khỏi config. Tắt một tính năng không được phép làm mất cấu
+ * hình của nó: bật lại là phải đi tìm lại thư mục, mà chính app vừa quên nó. Đo 2026-09-17:
+ * `drive` trong config về chuỗi rỗng đúng sau một cú gạt, và thẻ hiện "chưa link".
+ */
+export function getDriveOn(): boolean {
+  const c = read();
+  if (!(c.drive ?? "")) return false;      // chưa có đường thì không có gì để bật
+  return c.driveOn !== false;
+}
+
+export function setDriveOn(on: boolean): void {
+  const c = read();
+  c.driveOn = !!on;
+  write(c);
 }
 
 export function setDriveDir(path: string): void {

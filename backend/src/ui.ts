@@ -152,6 +152,8 @@ import {
   getWebAuth,
   setWebAuth,
   setWebPull,
+  getDriveOn,
+  setDriveOn,
   getWindowBox,
   setWindowBox,
 } from "./config/settings.js";
@@ -244,6 +246,8 @@ const APP_VERSION: string = (() => {
 interface DriveSummary {
   path: string;
   linked: boolean;
+  /** Kênh có đang BẬT không — tách khỏi `linked` (có đường và đường đó dùng được). */
+  on: boolean;
   exists: boolean;
   writable: boolean;
   bundles: number;
@@ -466,7 +470,7 @@ function driveHealthNow(prog: ReturnType<typeof driveSyncProgress>): ReturnType<
 
 function driveSummary(): DriveSummary {
   const prog = driveSyncProgress();
-  return { ...probeDrive(getDriveDir()), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
+  return { ...probeDrive(getDriveDir()), on: getDriveOn(), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
 }
 
 // `WebScanRow` · `WEB_PLATFORMS` · `platformsInUse` · `accountsOf` · `scanWebPlatforms`
@@ -1780,7 +1784,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // Kèm đèn sức khoẻ — /sync-pulse là đường TƯƠI của card Drive, thiếu đèn ở đây thì
         // đúng lúc cần báo nhất (vừa quét/vừa sync xong) card lại vẽ bản không có đèn.
         const prog = driveSyncProgress();
-        return json(res, { drive: { ...prog, health: driveHealthNow(prog) }, scopeTree: safeScopeTree() });
+        // Kèm cờ BẬT/TẮT kênh: card Drive vẽ từ CẢ HAI đường (/memory-status lúc nạp, /sync-pulse lúc
+        // tươi). Thiếu cờ ở một đường thì bề mặt lúc ẩn lúc hiện tuỳ đường nào về sau.
+        return json(res, { drive: { ...prog, on: getDriveOn(), health: driveHealthNow(prog) }, scopeTree: safeScopeTree() });
       }
     }
     if (p === "/set-lang") {
@@ -1823,6 +1829,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         invalidateDashboardSoft();
       }
       return json(res, { ok: true, scopeExcluded: getScopeExclude().length });
+    }
+    if (req.method === "POST" && p === "/set-drive-on") {
+      // Gạt KÊNH, không đụng tới ĐƯỜNG. Tắt rồi bật lại là chạy tiếp, không phải đi tìm lại thư mục.
+      setDriveOn(u.searchParams.get("on") === "1");
+      // Bảng điều khiển có CACHE; không xoá thì bề mặt còn đọc bản cũ và công tắc "gạt xong không đổi"
+      // — đúng ca đo được 2026-09-17: endpoint trả on=true trong khi trang vẫn giữ on=false.
+      invalidateDashboard();
+      return json(res, { ok: true, on: getDriveOn() });
     }
     if (p === "/set-drive") {
       const path = (u.searchParams.get("path") ?? "").trim();
