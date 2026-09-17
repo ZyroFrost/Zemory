@@ -1694,7 +1694,8 @@ test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được,
   assert.match(html, /id="mDisks"/, "thiếu ô cho danh sách ổ đĩa");
   assert.match(html, /id="mStores"/, "thiếu ô cho danh sách nơi quét được");
   const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
-  assert.match(gm, /zGet\('\/machine-info'\)/, "phải đọc từ endpoint thật");
+  // Neo cho phép phần `?fresh=1` nối sau — nút "Quét lại" dùng chính đường này.
+  assert.match(gm, /zGet\('\/machine-info'/, "phải đọc từ endpoint thật");
   // Dùng lại đúng thanh của biểu đồ tỉ trọng — cùng một ý "phần trên tổng" thì phải cùng một hình.
   assert.match(gm, /drvmix-bar[\s\S]{0,200}drvmix-fill/, "bar ổ đĩa phải dùng lại thanh có sẵn, không đẻ kiểu thứ hai");
   // Lượt dò ĐẦU sau khi daemon lên có thể trượt (đo thật) ⇒ phải hỏi lại, có trần.
@@ -1861,4 +1862,26 @@ test("kênh Drive: tắt thì ẩn chức năng, và KHÔNG xoá đường dẫn
   // Card Drive vẽ từ CẢ HAI đường — thiếu cờ ở một đường thì bề mặt lúc ẩn lúc hiện.
   assert.match(ui, /drive: \{ \.\.\.prog, on: getDriveOn\(\)/, "/sync-pulse cũng phải chở cờ bật/tắt");
   assert.match(ui, /on: getDriveOn\(\), level: getSyncLevel\(\)/, "/memory-status cũng phải chở cờ bật/tắt");
+});
+
+// ── VÙNG CUỘN TỰ CHỪA CHỖ, CHIP CHẾT ĐÃ GỠ, NÚT QUÉT LẠI DÒ THẬT ──────────────
+test("mọi vùng cuộn chừa chỗ cho thanh cuộn; nút Quét lại ổ đĩa dò NGAY và giữ dữ liệu", () => {
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // `scrollbar-gutter:stable` giữ chỗ SẴN kể cả lúc chưa tràn ⇒ nội dung không nhảy ngang đúng lúc
+  // dài thêm một dòng, và thanh cuộn không ăn vào chữ (user chốt 2026-09-17).
+  assert.match(css, /scrollbar-gutter:stable/, "vùng cuộn phải giữ chỗ cho thanh cuộn");
+  const gutterRule = /\.scroll,\.card-b,\.dlg-b,\.sub\[data-sy\],\.pg-tree,\.pg-right,\.pg-top,\.fpre\{scrollbar-gutter:stable\}/;
+  assert.match(css, gutterRule, "phải đặt ở lớp CHUNG cho mọi vùng cuộn, không vá riêng panel vừa bị chê");
+  assert.match(css, /\.card-b\{[^}]*padding-right:8px/, "thân thẻ cần khoảng thở, chữ sát mép thanh cuộn vẫn đọc ra là bị cắt");
+  // Chip "ổn" là nhãn CỨNG, không nối vào phép đo nào ⇒ đã gỡ.
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.ok(!html.includes('data-i18n="st.op"'), "chip trạng thái vẽ cứng phải đi");
+  // Nút quét lại: có thật, và backend phải dò NGAY (chờ) chứ không trả bản đệm rỗng.
+  assert.match(html, /data-act="rescan-disks"/, "thiếu nút quét lại ổ đĩa");
+  const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /function disksNow\(fresh = false\)/, "endpoint phải nhận cờ quét lại");
+  assert.match(ui, /if \(fresh\) \{[\s\S]{0,400}execFileSync\(process\.execPath, \[diskprobeEntry\(\)\]/, "quét lại phải dò NGAY và CHỜ — trả đệm rỗng là nút xoá sạch bảng");
+  assert.match(ui, /return diskCache\?\.v \?\? \[\];\s*\n\s*\}\s*\n\s*if \(!diskCache/, "con chết thì GIỮ bản đệm cũ, thà số cũ còn hơn bảng trống");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /renderMachineInfo\(true\)\.then/, "nút phải biết lúc nào dò xong để trả nhãn về");
 });

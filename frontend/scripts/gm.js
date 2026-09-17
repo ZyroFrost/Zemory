@@ -746,10 +746,17 @@ window.zFileView = (function () {
   // trình con, vì ổ mây treo thì syscall nằm im), còn đường dẫn đọc thẳng sổ `known_stores` — chính
   // chỗ bộ quét ghi lại từng gốc store nó tìm ra, nên không đẻ con số thứ hai lệch với cây Nguồn.
   var mInfoTimer=null, mInfoTries=0;
-  function renderMachineInfo(){
+  // Quét lại = ÉP DÒ TƯƠI. Bản đệm sống 10 phút, nên cắm thêm ổ xong mà bấm nút vẫn ra số cũ thì
+  // nút đọc ra là hỏng — nút phải làm đúng việc nó hứa.
+  document.addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('[data-act="rescan-disks"]'):null;if(!b||b.dataset.busy)return;
+    b.dataset.busy='1';var old=b.textContent;b.textContent=t('mem.disksScanning');
+    renderMachineInfo(true).then(function(){b.textContent=old;delete b.dataset.busy;});
+  });
+  function renderMachineInfo(fresh){
     var bd=zid('mDisks'), bs=zid('mStores');
-    if(!bd&&!bs)return;
-    zGet('/machine-info').then(function(d){
+    if(!bd&&!bs)return Promise.resolve();
+    return zGet('/machine-info'+(fresh?'?fresh=1':'')).then(function(d){
       var disks=(d&&d.disks)||[], stores=(d&&d.stores)||[];
       var gb=function(n){n=Number(n||0);return n>=1073741824?(n/1073741824).toFixed(1)+' GB':Math.round(n/1048576)+' MB';};
       if(bd){
