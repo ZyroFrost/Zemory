@@ -843,10 +843,18 @@ window.zFileView = (function () {
         // vành) là bịa ra một biểu đồ cho dữ liệu chưa có — đúng thứ user gọi là "chart giả".
         var a0=zid('capArc');if(a0)a0.setAttribute('stroke-dasharray','0 '+DONUT_C.toFixed(1));
         zset('capPct','—');zset('capTxt','—');zset('capSub','');
-        box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(dv.linked&&spaceTries<8?t('drv.spaceProbing'):t('drv.spaceNone'))+'</div>';
+        box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(dv.linked?t('drv.spaceProbing'):t('drv.spaceNone'))+'</div>';
         // Đã link mà chưa có số ⇒ probe đang chạy, hỏi lại. Chưa link thì KHÔNG hỏi lại: không có
         // gì để đo, hẹn nữa chỉ là gõ cửa một căn phòng trống.
-        if(dv.linked&&spaceTries<8){spaceTries++;if(spaceTimer)clearTimeout(spaceTimer);spaceTimer=setTimeout(renderDriveSpace,5000);}
+        // HỎI NHANH lúc đầu rồi CHẬM MÃI — KHÔNG bỏ cuộc. Bản cũ dừng sau 8 lượt (40 s) rồi đứng
+        // vĩnh viễn ở "chưa đo được", trong khi lượt dò ổ đầu tiên sau khi daemon lên hay trượt một
+        // lần nên số thật chỉ về sau đó (đo 2026-09-17: endpoint đã có đủ số mà panel vẫn báo chưa
+        // đo được). Một bề mặt bỏ cuộc rồi nằm im là bề mặt nói sai (§F3).
+        if(dv.linked){
+          spaceTries++;
+          if(spaceTimer)clearTimeout(spaceTimer);
+          spaceTimer=setTimeout(renderDriveSpace,spaceTries<8?5000:30000);
+        }
         return;
       }
       stopDriveSpace();
