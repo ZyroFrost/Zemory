@@ -122,9 +122,11 @@ test("FE: exactly ONE place reruns the whole check set (button and timer call th
   const src = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
   // Chuỗi endpoint kiểm chỉ được xuất hiện MỘT lần: hai bản sao thì sớm muộn cũng lệch nhau
   // (một bên thêm nguồn mới, bên kia quên) và không ai biết bảng nào tươi hơn.
-  const n = (src.match(/'memory','validate','grill'/g) || []).length;
-  assert.equal(n, 1, "danh sách phép kiểm bị chép ở nhiều nơi");
-  assert.match(src, /var SYS_CHECKS=/, "danh sách phải có MỘT tên gọi, không nằm rải dạng chuỗi");
+  // Bản cũ đếm chuỗi `'memory','validate','grill'` — mảng gõ tay đó đã bị gỡ 2026-09-17, nên
+  // phép đếm luôn ra 0 và cổng đứng đỏ. Ý ĐỊNH của nó giữ nguyên và nay mạnh hơn: danh sách chỉ
+  // được có MỘT nguồn, và nguồn đó là `FEATURES`.
+  assert.match(src, /var SYS_CHECKS=FEATURES\.filter\(/, "danh sách phép kiểm phải dẫn xuất từ MỘT nguồn (FEATURES)");
+  assert.equal((src.match(/var SYS_CHECKS=/g) || []).length, 1, "danh sách phép kiểm bị chép ở nhiều nơi");
   assert.match(src, /function sysRecheckAll\(\)/, "phải có một đường dùng chung");
   assert.match(src, /refreshChecks\(true\)/, "nút/nhịp phải đi qua refreshChecks, không tự gọi /check");
   assert.match(src, /document\.hidden\|\|ckBusy/, "nhịp tự động phải bỏ qua khi cửa sổ khuất / đang chạy");

@@ -340,10 +340,11 @@ test("FE: the `paths` row sits under HARNESS (DOCS), is of kind check, and appea
   // làm ca này ĐỎ — trong khi `paths` (thứ nó tồn tại để canh) vẫn nằm nguyên đó. Cổng đo sai thứ
   // nó khai là đang đo: thêm một hàng kiểm MỚI là việc tốt, mà nó lại phạt. Và vì phiên đó chưa
   // chạy `npm run check` lượt nào, cổng đứng đỏ từ 12/09 tới khi audit 2026-09-12 bắt được.
-  const arr = /SYS_CHECKS=\[([^\]]*)\]/u.exec(sys);
-  assert.ok(arr, "phải có danh sách SYS_CHECKS");
-  const members = [...arr[1].matchAll(/'([^']+)'/gu)].map((m) => m[1]);
-  assert.ok(members.includes("paths"), `nút Kiểm lại tất cả + nhịp tự kiểm phải bao gồm paths — thấy: ${members.join(", ")}`);
+  // 🔄 2026-09-18: SYS_CHECKS nay SUY TỪ `FEATURES` (không còn mảng gõ tay — `[2026-09-17e]`).
+  // Nên phép kiểm đúng là: danh sách phải được DẪN XUẤT, và hàng cần canh phải mang `kind:'check'`
+  // + `feat:` — hai điều đó cộng lại LÀ tư cách thành viên. Ghim nguyên mảng là ghim một hình dạng
+  // đã chết, và nó phạt đúng việc tốt (gỡ được một danh sách gõ tay).
+  assert.match(sys, /var SYS_CHECKS=FEATURES\.filter\(/, "danh sách phép kiểm phải SUY từ FEATURES, không gõ tay");
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   for (const k of ["f.paths", "f.doc.paths"]) assert.equal((chrome.match(new RegExp(`'${k.replace(".", "\\.")}':`, "g")) || []).length, 2, `${k} phải có ở CẢ HAI từ điển`);
 });

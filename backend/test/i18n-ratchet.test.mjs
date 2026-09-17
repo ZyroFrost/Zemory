@@ -35,7 +35,8 @@ const BUDGET = {
   // Muốn màn này ra tiếng Anh thì phải có bản `03_STRUCTURE` tiếng Anh (hoặc backend trả song
   // ngữ) — đó là việc ở TẦNG TÀI LIỆU, không phải i18n frontend. Hạ trần này mà không làm tầng
   // đó là tự thưởng cho mình một con số đẹp trong khi người dùng không thấy khác gì.
-  "shell.js": 45,
+  // 45 → 43 (2026-09-18): màn Harness bỏ hai chuỗi gõ cứng khi chip/cây chuyển sang đọc từ đĩa.
+  "shell.js": 43,
   "system.js": 0,
   "graph-panel.js": 0,
   "sources.js": 0,

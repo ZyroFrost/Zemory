@@ -10,6 +10,16 @@ import { probeDue } from "../../dist/memory/connections.js";
 
 const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 const CHROME = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+
+// Cắt ĐÚNG thân `zboot()`, không cắt theo số ký tự. Bản cũ lấy 3000 ký tự cố định; hàm dài lên
+// 3414 (thêm chú thích + hai lời gọi) là hai phép kiểm cuối rơi RA NGOÀI cửa sổ và cổng đỏ OAN —
+// đúng bẫy "cổng soi chữ theo cửa sổ N ký tự" repo đã trả giá nhiều lần. Neo theo MỐC CODE:
+// từ tên hàm tới dấu đóng ở cột 2.
+function bootBody() {
+  const i = CHROME.indexOf("function zboot()");
+  const end = CHROME.indexOf("\n  }", i);
+  return CHROME.slice(i, end > 0 ? end : CHROME.length);
+}
 const CONN = readFileSync(new URL("../src/memory/connections.ts", import.meta.url), "utf8");
 const SOURCES = readFileSync(new URL("../../frontend/scripts/sources.js", import.meta.url), "utf8");
 
@@ -26,7 +36,7 @@ test("#2 /ping carries lang — the cheapest call is the one the shell must lear
 });
 
 test("#2 shell applies lang from /ping BEFORE it fires the fetches whose widgets render through t()", () => {
-  const boot = CHROME.slice(CHROME.indexOf("function zboot()"), CHROME.indexOf("function zboot()") + 3000);
+  const boot = bootBody();
   const iPing = boot.indexOf("zGet('/ping')");
   const iApply = boot.indexOf("applyI18n(p.lang)");
   const iChecks = boot.indexOf("refreshChecks()");
@@ -46,7 +56,7 @@ test("#2b rail update chip is rendered from zboot AFTER /ping — not at script 
   // Measured 2026-09-07 (cold headless): "Đã cập nhật · v1.0.0 · repo khớp chuẩn" on an EN screen of
   // 2.15.0 — rendered at load with LANG='vi' and #topVersion still the HTML placeholder.
   assert.doesNotMatch(SYSTEM, /^\s*refreshHarnessUpdates\(\);\s*$/m, "no load-time call in system.js");
-  const boot = CHROME.slice(CHROME.indexOf("function zboot()"), CHROME.indexOf("function zboot()") + 3000);
+  const boot = bootBody();
   const iApply = boot.indexOf("applyI18n(p.lang)");
   const iChip = boot.indexOf("refreshHarnessUpdates()");
   assert.ok(iChip > iApply && iApply >= 0, "the chip renders after the language and the real version are known");

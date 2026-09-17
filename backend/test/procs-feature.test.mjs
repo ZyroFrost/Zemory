@@ -52,7 +52,9 @@ test("4 the row appears in the UI with a Sweep now button and joins the self-che
   assert.match(FE, /\{k:'procs',grp:'f\.grpSync',n:'f\.procs',kind:'check',feat:'procs',act:'sweep'/u);
   assert.match(FE, /data-sys-sweep/u, "phải có nút");
   assert.match(FE, /zPost\('\/sweep-procs'\)/u, "nút phải gọi đúng endpoint");
-  assert.match(FE, /var SYS_CHECKS=\[[^\]]*'procs'\]/u, "phải nằm trong danh sách kiểm lại tất cả + nhịp tự kiểm");
+  // SYS_CHECKS suy từ FEATURES (2026-09-17) ⇒ hàng `procs` ở trên đã mang `kind:'check'`+`feat:`
+  // là đủ tư cách thành viên; việc còn lại là danh sách phải THẬT SỰ dẫn xuất, không gõ tay.
+  assert.match(FE, /var SYS_CHECKS=FEATURES\.filter\(/u, "danh sách kiểm lại tất cả phải SUY từ FEATURES");
 });
 
 test("5 i18n covers BOTH dictionaries - a missing side means switching language still shows the old text", () => {
