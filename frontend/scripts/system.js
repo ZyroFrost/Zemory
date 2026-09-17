@@ -217,7 +217,7 @@
       sm.addEventListener('mousedown',function(e){
         e.preventDefault();sm.classList.add('drag');
         var after=sm.dataset.seamSide==='after';
-        // Chieu keo khai bang DU LIEU (`data-seam-dir="row"`), khong phai nhanh-theo-loai:
+        // Chiều kéo khai bằng DỮ LIỆU (`data-seam-dir="row"`), không phải nhánh-theo-loại:
         // app-design F1(3) doi MOT engine dung chung, them seam = them khai bao.
         var row=sm.dataset.seamDir==='row';
         var ref=after?sm.nextElementSibling:sm.previousElementSibling;if(!ref)return;

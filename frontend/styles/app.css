@@ -13,6 +13,14 @@
   --border:#23262F;--border-strong:#333844;
   --primary:#FFD166;--primary-dim:#B99534;--on-primary:#1A1400;
   --success:#34D399;--warn:#FBBF24;--danger:#F87171;--on-danger:#fff;
+  /* Màu hạng THỨ BA cho badge template (ADAPT). Bốn token cũ đã có chủ: primary=APP ·
+     success=NON-APP · warn="chuẩn cũ" · danger=lỗi ⇒ phải thêm một màu, không mượn (§F11). */
+  /* BẢNG MÀU BỘ MẪU — mỗi bộ trong docs_template một màu, đánh số theo tiền tố thư mục (01..05).
+     Khai theo SỐ chứ không theo vai (app/non-app): thêm một bộ là thêm một màu, không phải đi sửa
+     từng chỗ dùng. Bốn token cũ đã có chủ (primary=nhấn · success=ổn · warn=cảnh báo · danger=lỗi)
+     nên bảng này là token RIÊNG, không mượn (§F11). */
+  --tpl-1:#C084FC;--tpl-2:#22D3EE;--tpl-3:#34D399;--tpl-4:#7DA8FF;--tpl-5:#FFD166;
+  --accent-2:#7DA8FF;
   --wash:rgba(255,209,102,.08);--wash-2:rgba(255,255,255,.03);
   --wash-ok:rgba(52,211,153,.10);--wash-warn:rgba(251,191,36,.12);
   --scrim:rgba(0,0,0,.55);--logo-plate:#0d0d0d;
@@ -24,6 +32,8 @@
   --border:#E4E7EC;--border-strong:#D2D6DD;
   --primary:#C99700;--primary-dim:#E7B84a;--on-primary:#fff;
   --success:#0E9F6E;--warn:#B45309;--danger:#DC2626;--on-danger:#fff;
+  --tpl-1:#7E22CE;--tpl-2:#0E7490;--tpl-3:#0E9F6E;--tpl-4:#2563EB;--tpl-5:#C99700;
+  --accent-2:#2563EB;
   --wash:rgba(201,151,0,.08);--wash-2:rgba(0,0,0,.02);
   --wash-ok:rgba(14,159,110,.10);--wash-warn:rgba(180,83,9,.10);
   --scrim:rgba(20,22,28,.42);--logo-plate:#0d0d0d;
@@ -205,13 +215,18 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    `auto-fit`. Hẹp quá thì xuống MỘT cột bằng breakpoint, không phải bằng cách bỏ trần. */
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (max-width:820px){.g2{grid-template-columns:minmax(0,1fr)}}
-/* DẢI SỐ LIỆU — thẻ tự chia đều bề ngang, hàng cuối KHÔNG để lại mảng trống.
-   Vì sao flex chứ không grid: lưới ép mọi hàng dùng chung một bộ cột, nên 8 thẻ trên 7 cột là một
-   thẻ lẻ rộng 1/7 nằm chơ vơ (user 2026-09-17: *"tự sắp xếp giãn theo chiều ngang của app"*). Flex
-   chia lại phần thừa theo TỪNG HÀNG. `min-width:0` giữ lời hứa không cuộn ngang (§F12); 150px chỉ
-   là bề rộng MONG MUỐN, thẻ vẫn co nhỏ hơn khi hàng chật. */
-.tile-strip{display:flex;flex-wrap:wrap;gap:10px}
-.tile-strip>.tile{flex:1 1 150px;min-width:0;border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+/* DẢI SỐ LIỆU — SỐ CỘT LÀ ƯỚC CỦA SỐ THẺ, nên KHÔNG BAO GIỜ có thẻ lẻ đứng một mình.
+   🔄 Đổi 2026-09-18: bản trước là `flex-wrap` với `flex:1 1 150px`. Flex xếp THAM: nhét được bao
+   nhiêu thì nhét, nên 8 thẻ ra 7+1 — một thẻ lẻ chiếm trọn hàng hai (user: *"thu 1 xíu nó bị 1
+   card ở dưới lẻ… cái này cần phải cố định, không được để nó lẻ"*). Chú thích cũ ở đây nói flex
+   chống được mảng trống cuối hàng; đúng về mảng trống, SAI về thẻ lẻ — nó chính là thứ đẻ ra 7+1.
+   Nay là lưới có số cột CHỐT theo breakpoint, và ba mức đều là ước của 8: 8 → 4 → 2.
+   `minmax(0,…)` giữ lời hứa không cuộn ngang (§F12) — `1fr` một mình vẫn bị nội dung đẩy rộng. */
+/* Số cột do JS đặt (`fitTiles`) theo bề rộng THẬT của khung — breakpoint cứng đoán theo bề rộng
+   CỬA SỔ, mà khung này nằm trong panel kéo được nên hai thứ đó không bằng nhau. Giá trị dưới chỉ
+   là bản trước-khi-JS-chạy, để không có một nháy 1-cột lúc mới vẽ. */
+.tile-strip{display:grid;gap:10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.tile-strip>.tile{min-width:0;border:1px solid var(--border);border-radius:10px;padding:11px 13px}
 /* THANH SỨC CHỨA — ba đoạn kề nhau, không thêm màu mới: mỗi đoạn một mức đậm nhạt của cùng dải,
    vì đây là ba phần của MỘT tổng chứ không phải ba hạng khác nhau (§F11: một kênh, một hạng). */
 .cap-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface-3);border:1px solid var(--border)}
@@ -300,15 +315,56 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .msg .body{font-size:12.5px;color:var(--text-dim)}
 .tool{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text-dim)}
 .recall-in{background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:10px;flex:0 0 auto}
+/* HÀNG LỌC CÓ Ô TÌM (user 2026-09-18: *"gộp dòng search với hàng filter… search nằm ở đầu, khu
+   filter nằm sau"*). Ô tìm nhận PHẦN DƯ của hàng, nên nó không còn chiếm trọn một hàng riêng;
+   `min-width` là SÀN đọc được — hẹp hơn nữa thì hàng lọc tự xuống dòng (`.filters` đã wrap sẵn),
+   không bao giờ đẩy ngang (§F12). Ô tìm thấp lại cho bằng tầm chip/select cùng hàng. */
+.filters.frow{align-items:center}
+/* `.qh` sinh ra để đứng CUỐI một nhãn nên nó mang `margin-left:auto`. Trong hàng lọc, vế đó đẩy
+   nó dạt ra giữa hàng và trông như một nút lạc (user 2026-09-18: *"cái ? nằm kì vậy"*). Ở đây nó
+   là một nút thật, đứng đúng chỗ khai trong markup. */
+.filters .qh{margin-left:0;width:17px;height:17px;font-size:10.5px;cursor:pointer;background:none}
+.filters .qh:hover{border-color:var(--primary);color:var(--primary)}
+/* Ô TÌM TRONG MỘT HÀNG — khung CHUNG (§F0b), hai cỡ.
+   KHÔNG khoá trong `.filters`: màn Tệp có hàng lọc riêng, không phải `.filters`; khoá theo cha là
+   cách một component "chung" lặng lẽ thành ba bản chép.
+   · `.fsm` — cỡ THƯỜNG, không giành chỗ. Đây là mặc định.
+   · `.fgrow` — ăn phần dư của hàng. CHỈ dùng ở hai tab Recall, nơi user yêu cầu gộp ô tìm vào hàng
+     lọc và nói rõ *"dài của nó là phần dư của filter"*. Bê `fgrow` sang hàng khác là tự kéo dài một
+     ô không ai bảo kéo (đã dính 2026-09-18).
+
+   🔴 CHIỀU CAO PHẢI BẰNG `.fchip`/`.rsel` ĐỨNG CÙNG HÀNG (user 2026-09-18, nhắc lần thứ hai:
+   *"filter và search khung phải bằng nhau, cứ cái nhỏ cái lớn"*). Ba control này trước đây khai
+   padding/font RỜI NHAU nên cao thấp so le — đúng lớp lỗi §F0b. Nay cả ba lấy từ MỘT bộ biến:
+   sửa một chỗ là cả hàng theo, không có đường nào để chúng trôi lệch lần nữa. */
+/* CHỐT bằng CHIỀU CAO, không bằng padding+line-height. `<select>` là control của HĐH: cùng padding
+   và cùng font vẫn ra chiều cao khác `<div>` (đo 2026-09-18: chip 28,7px vs select 26px). Khai
+   thẳng `height` + `box-sizing` là cách duy nhất ba thứ bằng nhau CHẮC CHẮN. */
+:root{--ctl-fs:11.5px;--ctl-h:28px;--ctl-px:10px;--ctl-r:8px}
+/* §F0c — MỌI control đứng chung một hàng lấy CÙNG chiều cao từ MỘT biến. Thêm loại control mới
+   thì nối vào danh sách này, đừng khai padding riêng rồi hy vọng nó trùng. */
+.fchip,.rsel,.btn.sm,.tin,.recall-in.fsm,.recall-in.fgrow{box-sizing:border-box;height:var(--ctl-h)}
+.btn.sm{padding:0 var(--ctl-px);font-size:var(--ctl-fs);border-radius:var(--ctl-r)}
+/* Ô NHẬP CHỮ dùng chung (đường dẫn · cổng · số máy). Trước đây năm chỗ chép cùng một chuỗi CSS
+   thẳng vào HTML, nên mỗi chỗ cao một kiểu — đúng lớp lỗi §F0b/§F0c. */
+.tin{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--ctl-r);padding:0 var(--ctl-px);color:var(--text);font-size:var(--ctl-fs);font-family:inherit;outline:none;min-width:0}
+/* `?` đứng trong một hàng control thì cũng phải cao bằng hàng đó (§F0c). Nó vốn là một vòng tròn
+   15px sinh ra để nép cạnh một nhãn chữ; để nguyên khổ đó là một nút thấp lè tè giữa hàng. */
+.filters .qh{width:var(--ctl-h);height:var(--ctl-h);font-size:12px}
+.recall-in.fsm,.recall-in.fgrow{padding:0 var(--ctl-px);border-radius:var(--ctl-r);gap:7px}
+.recall-in.fsm input,.recall-in.fgrow input{font-size:var(--ctl-fs);line-height:1.45}
+.recall-in.fsm>span,.recall-in.fgrow>span{font-size:var(--ctl-fs);line-height:1.45}
+.recall-in.fsm{flex:0 1 220px;min-width:150px}
+.recall-in.fgrow{flex:1 1 240px;min-width:200px}
 .recall-in input{flex:1;background:none;border:0;outline:none;color:var(--text);font-size:13.5px}
 .filters{display:flex;flex-wrap:wrap;gap:7px;flex:0 0 auto}
-/* `background:none` + `font-family:inherit` de class nay dung duoc tren CA `<div>` LAN `<button>`:
-   khong co reset `button` toan cuc, nen mot `<button class="fchip">` se giu nen xam + font mac dinh
-   cua trinh duyet. Do 2026-09-16: bo loc panel Tep dung `<button>` va trong hoan toan lac kieu. */
-.fchip{font-size:11.5px;font-family:inherit;color:var(--text-dim);background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer}
+/* `background:none` + `font-family:inherit` để class này dùng được trên CẢ `<div>` LẪN `<button>`:
+   không có reset `button` toàn cục, nên một `<button class="fchip">` sẽ giữ nền xám + font mặc định
+   của trình duyệt. Đo 2026-09-16: bộ lọc panel Tệp dùng `<button>` và trông hoàn toàn lạc kiểu. */
+.fchip{display:inline-flex;align-items:center;gap:5px;font-size:var(--ctl-fs);font-family:inherit;color:var(--text-dim);background:none;border:1px solid var(--border);border-radius:var(--ctl-r);padding:0 var(--ctl-px);cursor:pointer}
 .fchip:hover{border-color:var(--border-strong);color:var(--text)}
 .fchip.on{border-color:var(--primary);color:var(--primary)}
-.rsel{font-size:11.5px;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:5px 8px;outline:none;cursor:pointer}
+.rsel{font-size:var(--ctl-fs);font-family:inherit;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--ctl-r);padding:0 var(--ctl-px);outline:none;cursor:pointer}
 .rsel:hover{border-color:var(--border-strong)}
 .hit{padding:11px 2px;border-bottom:1px solid var(--border);cursor:pointer}
 .hit:hover{background:var(--wash-2)}
@@ -346,7 +402,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .proj-card .pbadges:empty{display:none}
 .proj-card .ptype{white-space:nowrap}
 .proj-card .pn{display:flex;align-items:center;gap:10px;min-width:0}
-.proj-card .pi{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:0 0 auto}
+/* Badge hạng nằm ĐẦU hàng đếm phiên, trong dòng chữ — nên đảo lề (`.ptype` mặc định chừa lề
+   TRÁI cho khi nó đứng SAU một thứ khác) và canh theo đường giữa chữ. */
+.proj-card .ptype.pinline{margin-left:0;margin-right:6px;vertical-align:middle}
 .proj-card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* CẢ BA nút luôn hiện — không ẩn theo rê chuột (user chốt 2026-09-17: *"mấy cái nút ở góc card
    project nó phải luôn hiện chứ, mắc gì để chuột vào mới hiện"*). Bản trước còn giữ ↗/✕ ở
@@ -389,7 +447,16 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .badge-prof{font-size:10.5px;color:var(--primary);border:1px solid var(--primary);border-radius:20px;padding:2px 9px}
 .ptype{font-size:9.5px;letter-spacing:.04em;padding:1px 6px;border-radius:5px;border:1px solid var(--border-strong);color:var(--text-faint);margin-left:7px;flex:0 0 auto}
 .ptype.is-app{color:var(--primary);border-color:var(--primary)}
-.ptype.is-non{color:var(--text-dim);border-color:var(--border-strong)}
+/* MỖI BỘ MẪU MỘT MÀU (user chốt 2026-09-18) — và không hạng nào mượn màu của hạng khác (§F11).
+   Bảng màu này có một bản giải thích bấm xem được ngay trên màn Dự án, đừng để nó thành mã bí mật. */
+.ptype.is-non{color:var(--success);border-color:var(--success)}
+.ptype.is-adapt{color:var(--accent-2);border-color:var(--accent-2)}
+/* Badge lấy màu theo SỐ BỘ — một nguồn cho cả thẻ dự án lẫn bảng Thông tin template (§F0b). */
+.ptype.tpl-1{color:var(--tpl-1);border-color:var(--tpl-1)}
+.ptype.tpl-2{color:var(--tpl-2);border-color:var(--tpl-2)}
+.ptype.tpl-3{color:var(--tpl-3);border-color:var(--tpl-3)}
+.ptype.tpl-4{color:var(--tpl-4);border-color:var(--tpl-4)}
+.ptype.tpl-5{color:var(--tpl-5);border-color:var(--tpl-5)}
 .mdview{font-size:12.5px;line-height:1.75;color:var(--text-dim)}
 .mdview .h{color:var(--text);font-weight:650;margin:13px 0 4px}
 .mdview .h1{font-size:15.5px;margin-top:2px}.mdview .h2{font-size:13px}
@@ -704,7 +771,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* ── Màn Tệp (plan/25 §5) — lưới ảnh theo tháng, mọi màu đi qua token ───────── */
 .fmonth{font-size:11.5px;color:var(--text-faint);margin:10px 2px 6px;letter-spacing:.02em}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
-/* Vung tha tep — lan picked (plan/25 §1b). Vien sang de nguoi tha biet dang nham dung cho. */
+/* Vùng thả tệp — làn picked (plan/25 §1b). Viền sáng để người thả biết đang nhắm đúng chỗ. */
 #filesGrid.fdrop{outline:2px dashed var(--primary);outline-offset:-6px;border-radius:10px}
 .ftile{position:relative;aspect-ratio:1/1;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ftile:hover{border-color:var(--primary)}
@@ -718,3 +785,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .fpre{margin:0;width:100%;min-width:0;height:100%;overflow:auto;background:var(--surface-2);color:var(--text);
   border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.55;
   white-space:pre;tab-size:2}
+
+/* Thông tin template (dialog `?` trên màn Dự án) — mỗi hạng một hàng.
+   Badge có CỘT RIÊNG khổ cố định: ba nhãn dài ngắn khác nhau (APP · NON-APP · ADAPT) nên nếu để
+   chúng tự đẩy thì tiêu đề mỗi hàng bắt đầu ở một chỗ, đọc thành so le (user 2026-09-18). */
+.lgd-row{display:grid;grid-template-columns:86px minmax(0,1fr);align-items:start;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.lgd-row:last-of-type{border-bottom:0}
+.lgd-row .ptype{margin-left:0;justify-self:start;margin-top:2px}
+.lgd-t{font-size:13.5px;font-weight:600;margin-bottom:3px}

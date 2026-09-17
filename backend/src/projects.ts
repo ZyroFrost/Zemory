@@ -107,6 +107,25 @@ export function projectProfile(root: string): "app" | "non-app" {
 }
 
 /**
+ * Repo có theo hệ ADAPT không (`layout: adapt|foreign` trong `.harness.json`).
+ *
+ * Trường RIÊNG, KHÔNG nhồi vào `projectProfile`: hệ ADAPT là một trục KHÁC — `04_adapt/AGENTS.md`
+ * §2 vẫn bắt hỏi *"repo này APP hay NON-APP"*, nó chỉ bỏ phần ÉP tên folder. Gộp hai trục vào một
+ * ô là mất hẳn thông tin profile của repo đó.
+ *
+ * Nhận cả hai tên vì `conform.ts` nhận cả hai: `adapt` là tên v2, `foreign` là marker đời trước.
+ * Fail-open về `false` — đọc hỏng thì thẻ chỉ hiện hạng thường, không ném.
+ */
+export function projectIsAdapt(root: string): boolean {
+  try {
+    const layout = (readMarker(root)?.data as { layout?: unknown } | undefined)?.layout;
+    return layout === "adapt" || layout === "foreign";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Comparison key for a project root. Windows paths are case-insensitive and the
  * same repo shows up as both `D:\…` and `d:\…` depending on how the shell spelled
  * it — without folding, one project renders as two tabs.

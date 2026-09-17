@@ -69,6 +69,10 @@
     zid('zDlgBody').innerHTML=o.bodyHtml||'';zset('zDlgMsg','');
     var ok=zid('zDlgOk');ok.textContent=o.okLabel||'OK';ok.className='btn sm '+(o.danger?'danger':'primary');ok.disabled=false;
     zset('zDlgCancel',o.cancelLabel||t('addp.cancel'));
+    // DẤU NHẬN DẠNG hộp thoại. Người gọi cần biết "hộp đang mở có phải hộp của tôi không" thì đọc
+    // cái này, ĐỪNG so chữ tiêu đề đang hiển thị: chữ đó đi qua i18n, nên đổi ngôn ngữ hoặc sửa một
+    // nhãn là phép so hỏng LẶNG. Đã có một chỗ làm vậy (`/🚫|Đã bỏ qua|Ignored/`), vá cùng lượt.
+    if(o.tag)d.dataset.dlg=o.tag;else delete d.dataset.dlg;
     zDlgOnOk=o.onOk||null;d.classList.add('on');
     if(o.focus){var f=d.querySelector(o.focus);if(f)setTimeout(function(){f.focus();},30);}
   }

@@ -446,7 +446,7 @@ const geminiConv = (id: string): string => `(async()=>{
       if(Array.isArray(y)&&dd<5) for(const z of y) n(z,dd+1); })(t,0);
     if(user||model) out.push({rid:rid, at:(eps.length?eps[0]:null), user:user, model:model});
   }
-  if(!out.length) throw new Error('khong doc duoc luot nao');
+  if(!out.length) throw new Error('no turns could be read');
   return {conversationId:${JSON.stringify(id)}, turns:out};
 })()`;
 
@@ -523,7 +523,7 @@ const copilotConv = (id: string): string => `(async()=>{
       return {threadId:'${id}', from:p, raw:j};
     }catch(e){ tried.push(p+' → '+String(e)); }
   }
-  throw new Error('chua doc duoc hoi thoai GitHub Copilot: '+tried.join(' | '));
+  throw new Error('could not read the GitHub Copilot thread: '+tried.join(' | '));
 })()`;
 
 /**
@@ -682,7 +682,7 @@ const m365Conv = (id: string): string =>
   `(async()=>{const r=await fetch('/chat/conversation/${id}',{headers:{'Accept':'application/json'}});` +
   `if(!r.ok) throw new Error('HTTP '+r.status);` +
   `const j=await r.json(); const rc=j&&j.store&&j.store.rawConversationResponse;` +
-  `if(!rc) throw new Error('khong co rawConversationResponse');` +
+  `if(!rc) throw new Error('no rawConversationResponse');` +
   `return {conversationId:(rc.conversationId||'${id}'), chatName:(rc.chatName||null), createTimeUtc:(rc.createTimeUtc||null), updateTimeUtc:(rc.updateTimeUtc||null), messages:(rc.messages||[])};})()`;
 
 export const PLATFORMS: Record<string, Platform> = {
