@@ -1700,6 +1700,12 @@ test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được,
   const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
   assert.match(ui, /p === "\/machine-info"/, "thiếu endpoint");
   assert.match(ui, /SELECT store_root AS root, source FROM known_stores/, "nơi quét được phải đọc thẳng sổ known_stores, không đếm lại một bản thứ hai");
+  // ⚠ known_stores ĐI THEO ĐỒNG BỘ ⇒ chứa cả gốc store của MÁY KHÁC. Panel tên là "Máy này" thì chỉ
+  // được nói về máy này (đo 2026-09-17: sổ 27 hàng, chỉ 8 có thật ở đây).
+  assert.ok(ui.includes("const here = rows.filter((r) => { try { return existsSync(r.root)"), "phải lọc bỏ đường của máy khác");
+  // Nguồn WEB đổ chung MỘT thư mục imports ⇒ gộp một dòng, không liệt kê từng nền.
+  assert.ok(ui.includes("const impRoots = new Map<string, Set<string>>();"), "phải gom cụm web theo gốc imports");
+  assert.ok(ui.includes('kind: "import" as const, platforms: srcs.size'), "dòng gộp phải mang số nền, nếu không mất thông tin");
   // Dò ổ chạy trong TIẾN TRÌNH CON: `statfs` trên ổ mây treo thì nằm im, gọi thẳng là đóng băng daemon.
   const probe = readFileSync(new URL("../../backend/src/jobs/diskprobe.ts", import.meta.url), "utf8");
   assert.match(probe, /endsWith\("jobs\/diskprobe\.js"\)/, "phải có điểm vào cho tiến trình con");

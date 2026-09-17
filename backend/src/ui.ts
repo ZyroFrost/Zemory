@@ -2691,12 +2691,30 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // ② đọc thẳng sổ `known_stores` — đó là nơi bộ quét ghi lại từng gốc store nó tìm thấy,
       // nên không có con số thứ hai để lệch với cây Nguồn.
       const db = openMemory();
-      let stores: { root: string; source: string }[] = [];
+      let rows: { root: string; source: string }[] = [];
       try {
-        stores = db.prepare("SELECT store_root AS root, source FROM known_stores ORDER BY source, store_root").all() as { root: string; source: string }[];
+        rows = db.prepare("SELECT store_root AS root, source FROM known_stores ORDER BY source, store_root").all() as { root: string; source: string }[];
       } catch {
         /* sổ chưa có (kho mới) — trả rỗng, bề mặt tự nói "chưa quét được gì" */
       }
+      // ⚠ `known_stores` ĐI THEO ĐỒNG BỘ, nên nó chứa cả gốc store của MÁY KHÁC. Panel này tên là
+      // "Máy này" ⇒ chỉ được nói về máy này. Đo 2026-09-17: sổ 27 hàng, chỉ 8 hàng có thật ở đây —
+      // 19 hàng còn lại là của user/máy khác. Bày cả 27 là nói dối bằng một danh sách đúng-kiểu.
+      const here = rows.filter((r) => { try { return existsSync(r.root); } catch { return false; } });
+      // Nguồn WEB không có store riêng: mọi nền đều đổ vào CÙNG một thư mục `imports/`. Liệt kê từng
+      // nền là sáu dòng cho đúng một chỗ (user 2026-09-17: *"toàn nằm trong import"*) ⇒ gộp lại một
+      // dòng cho mỗi thư mục imports, kèm số nền đang nằm trong đó.
+      const isImport = (p: string): boolean => /[\\/]imports[\\/]/i.test(p);
+      const impRoots = new Map<string, Set<string>>();
+      for (const r of here.filter((x) => isImport(x.root))) {
+        const base = r.root.replace(/([\\/])imports[\\/].*$/i, "$1imports");
+        if (!impRoots.has(base)) impRoots.set(base, new Set());
+        impRoots.get(base)?.add(r.source);
+      }
+      const stores = [
+        ...here.filter((r) => !isImport(r.root)).map((r) => ({ root: r.root, source: r.source, kind: "local" as const, platforms: 0 })),
+        ...[...impRoots].map(([root, srcs]) => ({ root, source: "imports", kind: "import" as const, platforms: srcs.size })),
+      ];
       return json(res, { disks: disksNow(), stores });
     }
     if (p === "/insights") {
