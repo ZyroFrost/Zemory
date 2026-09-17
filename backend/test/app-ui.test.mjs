@@ -1638,6 +1638,15 @@ test("Tính năng: mọi đích 'Đi tới' phải là màn/tab CÓ THẬT trong
     if (tab) assert.ok(html.includes(`${SUBATTR[screen]}="${tab}"`), `đích '${d}': tab '${tab}' không tồn tại trong màn '${screen}'`);
   }
   assert.ok(!table.includes("to:'memory'"), "'memory' không phải tên màn — đó là ca đã làm trang trắng");
+  // Hàng có công tắc NGAY TRÊN HÀNG, hoặc chỉ hiện một con số, thì KHÔNG có đích: mở hộp Cài đặt
+  // chỉ để xem lại đúng thứ vừa thấy là một cú bấm nói dối (user 2026-09-17: *"nơi lưu db và auto
+  // start mà còn mở ra setting là sai"*). Riêng autostart, hộp Cài đặt còn giữ một BẢN SAO của cùng
+  // công tắc — trỏ sang đó là trỏ vào bản sao.
+  for (const k of ["autostart", "storage"]) {
+    const row = new RegExp("\{k:'" + k + "'[^}]*\}").exec(table);
+    assert.ok(row, `không thấy hàng ${k}`);
+    assert.ok(!/(?<![a-zA-Z])to:/.test(row[0]), `hàng ${k} không được có đích — nó đã tự hiện đủ trên hàng`);
+  }
   // Nút vẽ theo `to`, không theo `kind` — nếu không thì hàng có nhà mà vẫn không có đường tới.
   assert.match(js, /function sysGoto\(f\)\{\s*\n\s*return f\.to \?/, "nút Đi tới phải bám vào `to`, không bám vào kind");
   assert.match(js, /sysGoto\(f\)\+sysAction\(f\)/, "nút phải thật sự được vẽ ra");
