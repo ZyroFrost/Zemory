@@ -1500,3 +1500,43 @@ test("dải số liệu là .tile-strip co giãn, không phải lưới nhét st
   assert.match(tile[1], /flex:1 1 150px/, "thẻ phải GIÃN để lấp hết bề ngang, 150px chỉ là bề rộng mong muốn");
   assert.match(tile[1], /min-width:0/, "không có min-width:0 thì thẻ không co được ⇒ cuộn ngang (§F12)");
 });
+
+// ── HAI BẢNG MỚI CỦA TAB KÊNH DRIVE ────────────────────────────────────────────
+//
+// User 2026-09-17: *"trang trống chỗ nhiều, thêm vài dashboard … cột phải thêm chart phần trống của
+// drive đang kết nối, bên trái thêm dashboard tỉ trọng project"*.
+test("tab Drive: bảng tỉ trọng theo dự án và bảng sức chứa ổ — số thật, tên gọi đúng thứ đo được", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.match(html, /id="drvMixProj"/, "thiếu ô cho bảng tỉ trọng dự án");
+  assert.match(html, /id="drvSpace"/, "thiếu ô cho bảng sức chứa");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  // MỘT lượt /insights nuôi CẢ HAI thanh tỉ trọng — hai lượt gọi là hai câu trả lời có thể lệch (§F6).
+  // Đếm TRONG renderDriveMix thôi: màn Global Memory có lượt gọi riêng của nó, đó là chuyện khác.
+  const mixFn = gm.slice(gm.indexOf("function renderDriveMix()"), gm.indexOf("function renderDriveSpace()"));
+  assert.ok(mixFn.length > 200, "không khoanh được hàm renderDriveMix");
+  assert.equal((mixFn.match(/zGet\('\/insights\?days=30'\)/g) || []).length, 1, "đúng một lượt gọi cho cả hai biểu đồ");
+  assert.match(gm, /function mixBars\(/, "hai biểu đồ phải dùng chung một hàm vẽ");
+  // Tên dự án lấy từ `project` — đọc nhầm sang `path` thì mọi thanh mang nhãn rỗng mà không ai đỏ.
+  assert.match(gm, /String\(r\.project\|\|''\)/, "tên dự án nằm ở trường `project` của /insights");
+  assert.doesNotMatch(gm, /mixBars\(boxP,pr,function\(r\)\{return String\(r\.path/, "`path` là trường KHÔNG có trong hàng /insights");
+  // Sức chứa: probe chạy ở tiến trình con nên vài lượt đầu chưa có số ⇒ phải tự đo lại, có TRẦN.
+  assert.match(gm, /spaceTimer=setTimeout\(renderDriveSpace,5000\)/, "chưa có số thì phải hẹn đo lại, không đứng im ở 'chưa đo được' (§F3)");
+  assert.match(gm, /spaceTries<8/, "hẹn lại phải có trần, không thành vòng hỏi vô tận");
+  assert.match(gm, /if\(onP2pTab\)stopDriveSpace\(\)/, "rời tab thì phải thôi hỏi");
+  // zBytes nhận KILOBYTE; probe trả BYTE. Lẫn là sai đúng 1024 lần mà nhìn vẫn hợp lý.
+  assert.doesNotMatch(gm, /zBytes\((?:dv\.storeBytes|v\.free|v\.total)/, "không được đưa BYTE vào zBytes (nó nhận KB)");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["drv.mixProjH", "drv.spaceH", "drv.spaceStore", "drv.spaceOther", "drv.spaceFree", "drv.spaceNote", "drv.spaceNone", "drv.spaceProbing"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
+  // Nhãn phải GỌI ĐÚNG TÊN thứ đo được: Google Drive Desktop báo thông số ĐĨA LOCAL (đo 2026-09-17:
+  // G: và C: trùng Size tới từng byte), nên không được viết thành "dung lượng Drive còn lại".
+  assert.match(chrome, /'drv\.spaceH':'Sức chứa ổ chứa thư mục Drive'/, "tiêu đề phải nói rõ là ổ chứa thư mục, không phải quota đám mây");
+  assert.match(chrome, /'drv\.spaceNote':'Google Drive Desktop báo thông số của ĐĨA LOCAL/, "phải có câu nói rõ nguồn số");
+  const probe = readFileSync(new URL("../../backend/src/jobs/driveprobe.ts", import.meta.url), "utf8");
+  assert.match(probe, /volume: \{ total: number; free: number; root: string \} \| null;/, "probe phải mang sức chứa ổ");
+  assert.match(probe, /storeBytes: number;/, "probe phải mang dung lượng kho chung");
+  // Ổ treo là ca THẬT ở đây (chính vì vậy probe mới chạy ở tiến trình con) — không đo được thì để
+  // null cho bề mặt nói "chưa đo được", tuyệt đối không bịa 0.
+  assert.match(probe, /catch \{\s*\n\s*\/\* ổ không trả lời thông số/, "đo hỏng phải để null, không rơi về 0");
+});

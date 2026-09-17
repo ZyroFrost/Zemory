@@ -699,28 +699,86 @@ window.zFileView = (function () {
   // TỈ TRỌNG THEO NGUỒN — biểu đồ thứ hai của bảng đo Drive.
   // Dùng CHÍNH số của `/insights` (nguồn mà màn Xu hướng đang vẽ), không đẻ endpoint mới và không
   // đẻ con số thứ hai cho cùng một sự thật — `plan/15` cấm nhân đôi số liệu.
+  // Một hàm vẽ CHUNG cho cả hai thanh tỉ trọng — cùng khuôn, cùng phép gộp đuôi. Hai bản chép
+  // là hai chỗ để lệch (§F6), mà đây đúng là loại lệch không ai thấy: hai biểu đồ cạnh nhau tính
+  // phần trăm theo hai kiểu.
+  function mixBars(box,rows,nameOf){
+    if(!rows.length){box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ins.noData'))+'</div>';return;}
+    var tot=rows.reduce(function(a,x){return a+(x.messages||0);},0)||1;
+    // Gộp đuôi thành "khác": 12 thanh dài 1px không nói được gì, mà lại đẩy nút xuống dưới màn.
+    var top=rows.slice(0,5), rest=rows.slice(5);
+    if(rest.length)top.push({_other:1,messages:rest.reduce(function(a,x){return a+(x.messages||0);},0)});
+    box.innerHTML=top.map(function(r){
+      var pc=Math.round((r.messages||0)/tot*1000)/10;
+      return '<div class="drvmix-row"><div class="drvmix-top"><span>'+stdEsc(r._other?t('drv.mixOther'):(nameOf(r)||'—'))+'</span>'
+        +'<span class="muted">'+pc+'% · '+zN(r.messages)+'</span></div>'
+        +'<div class="drvmix-bar"><div class="drvmix-fill" style="width:'+Math.max(1,pc)+'%"></div></div></div>';
+    }).join('');
+  }
   function renderDriveMix(){
-    var box=zid('drvMix'); if(!box)return;
+    var box=zid('drvMix'), boxP=zid('drvMixProj'); if(!box&&!boxP)return;
+    // MỘT lượt gọi cho CẢ HAI biểu đồ — cùng một câu trả lời thì hai con số không thể lệch nhau,
+    // và cũng không tốn lượt thứ hai.
     zGet('/insights?days=30').then(function(d){
-      var rows=((d&&d.agents)||[]).filter(function(a){return (a.messages||0)>0;});
-      if(!rows.length){box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ins.noData'))+'</div>';return;}
-      var tot=rows.reduce(function(a,x){return a+(x.messages||0);},0)||1;
-      // Gộp đuôi thành "khác": 12 thanh dài 1px không nói được gì, mà lại đẩy nút xuống dưới màn.
-      var top=rows.slice(0,5), rest=rows.slice(5);
-      if(rest.length)top.push({source:t('drv.mixOther'),messages:rest.reduce(function(a,x){return a+(x.messages||0);},0)});
-      box.innerHTML=top.map(function(r){
-        var pc=Math.round((r.messages||0)/tot*1000)/10;
-        return '<div class="drvmix-row"><div class="drvmix-top"><span>'+stdEsc(r.source||'—')+'</span>'
-          +'<span class="muted">'+pc+'% · '+zN(r.messages)+'</span></div>'
-          +'<div class="drvmix-bar"><div class="drvmix-fill" style="width:'+Math.max(1,pc)+'%"></div></div></div>';
-      }).join('');
+      if(box)mixBars(box,((d&&d.agents)||[]).filter(function(a){return (a.messages||0)>0;}),function(r){return r.source;});
+      if(boxP){
+        // Xếp lại theo số tin: /insights không hứa thứ tự, mà biểu đồ tỉ trọng đọc từ trên xuống thì
+        // thanh dài nhất phải đứng đầu. Chỉ lấy tên cuối đường cho gọn.
+        var pr=((d&&d.projects)||[]).filter(function(x){return (x.messages||0)>0;})
+          .slice().sort(function(a,b){return (b.messages||0)-(a.messages||0);});
+        // Trường là `project` (đường dẫn gốc repo), KHÔNG phải `path` — hàng của /insights chỉ có
+        // {project, sessions, messages}. Đọc nhầm tên thì `nameOf` trả rỗng và mọi thanh mang nhãn
+        // "—", tức biểu đồ vẫn vẽ nhưng không nói được gì (đo 2026-09-17, user báo "không có tên").
+        mixBars(boxP,pr,function(r){return String(r.project||'').split(/[\\/]/).filter(Boolean).pop();});
+      }
+    }).catch(function(){ [box,boxP].forEach(function(b){if(b)b.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ph.err'))+'</div>';}); });
+  }
+  // SỨC CHỨA Ổ — và gọi ĐÚNG TÊN thứ đang đo. Google Drive Desktop gắn ổ ảo rồi báo lại thông số
+  // của ĐĨA LOCAL (đo 2026-09-17: G: và C: trùng Size tới từng byte), nên nhãn không được viết là
+  // "dung lượng Drive còn lại" — đó sẽ là một con số dối. Hạn mức đám mây phải hỏi API Google bằng
+  // tài khoản đã đăng nhập, mà zemory không bao giờ cầm mật khẩu/2FA.
+  // Probe ổ chạy trong TIẾN TRÌNH CON và có cache riêng, nên vài lượt đầu sau khi mở app nó trả
+  // `volume:null` ("đang dò"). Vẽ MỘT LẦN rồi thôi là đứng vĩnh viễn ở câu "chưa đo được" dù số
+  // đã về ngay sau đó — đúng kiểu bề mặt chết mà trông như đang sống (§F3). Nên: còn "đang dò" thì
+  // hẹn đo lại, có TRẦN số lần để không thành vòng hỏi vô tận, và huỷ hẹn khi rời tab.
+  var spaceTimer=null, spaceTries=0;
+  function stopDriveSpace(){ if(spaceTimer){clearTimeout(spaceTimer);spaceTimer=null;} spaceTries=0; }
+  function renderDriveSpace(){
+    var box=zid('drvSpace'); if(!box)return;
+    zGet('/memory-status').then(function(m){
+      var dv=(m&&m.drive)||{}, v=dv.volume;
+      if(!v||!v.total){
+        box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(dv.linked&&spaceTries<8?t('drv.spaceProbing'):t('drv.spaceNone'))+'</div>';
+        // Đã link mà chưa có số ⇒ probe đang chạy, hỏi lại. Chưa link thì KHÔNG hỏi lại: không có
+        // gì để đo, hẹn nữa chỉ là gõ cửa một căn phòng trống.
+        if(dv.linked&&spaceTries<8){spaceTries++;if(spaceTimer)clearTimeout(spaceTimer);spaceTimer=setTimeout(renderDriveSpace,5000);}
+        return;
+      }
+      stopDriveSpace();
+      var store=Math.max(0,dv.storeBytes||0), used=Math.max(0,v.total-v.free), other=Math.max(0,used-store);
+      var pc=function(n){return Math.max(0,Math.min(100,n/v.total*100));};
+      // KHÔNG dùng zBytes ở đây: nó nhận KILOBYTE (core.js), còn probe trả BYTE — lẫn một nhịp là
+      // sai đúng 1024 lần mà nhìn vẫn "có vẻ hợp lý".
+      var gb=function(n){n=Number(n||0);return n>=1073741824?(n/1073741824).toFixed(1)+' GB':n>=1048576?(n/1048576).toFixed(0)+' MB':Math.round(n/1024)+' KB';};
+      var seg=function(w,cls,lbl,val){return '<div class="cap-seg '+cls+'" style="width:'+w+'%" title="'+stdEsc(lbl+': '+val)+'"></div>';};
+      box.innerHTML='<div class="cap-bar">'+seg(pc(store),'is-store',t('drv.spaceStore'),gb(store))
+        +seg(pc(other),'is-other',t('drv.spaceOther'),gb(other))
+        +seg(pc(v.free),'is-free',t('drv.spaceFree'),gb(v.free))+'</div>'
+        +'<div class="cap-leg">'
+        +'<span><i class="is-store"></i>'+stdEsc(t('drv.spaceStore'))+' <b>'+gb(store)+'</b></span>'
+        +'<span><i class="is-other"></i>'+stdEsc(t('drv.spaceOther'))+' <b>'+gb(other)+'</b></span>'
+        +'<span><i class="is-free"></i>'+stdEsc(t('drv.spaceFree'))+' <b>'+gb(v.free)+'</b></span>'
+        +'</div>'
+        +'<div class="muted" style="font-size:11px;margin-top:5px">'+stdEsc(v.root||'')+' · '+stdEsc(t('drv.spaceUsed'))+' '+gb(used)+' / '+gb(v.total)+'</div>'
+        +'<div class="muted" style="font-size:11px;margin-top:2px">'+stdEsc(t('drv.spaceNote'))+'</div>';
     }).catch(function(){ box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(t('ph.err'))+'</div>'; });
   }
 
   function syncScreen(onP2pTab){
     logTick(!!onP2pTab);
     loadChannel();
-    if(!onP2pTab)renderDriveMix();   // chỉ vẽ khi tab Drive đang mở
+    if(onP2pTab)stopDriveSpace();   // rời tab Drive thì thôi hỏi lại
+    else {renderDriveMix();renderDriveSpace();}   // chỉ vẽ khi tab Drive đang mở
   }
   window.zSyncScreen=syncScreen;
 
