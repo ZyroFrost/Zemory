@@ -406,12 +406,19 @@
   }
   /** ② Chuẩn harness của CÁC REPO: repo nào còn cũ, tick để áp, và công tắc có kiểm vòng repo không. */
   function updDialogStd(){
-    var st=Z.updStale||[];
-    var body=buildRepoBlock(st);
-    // Nấc M (user 2026-09-10): hộp S bóp dòng "cũ → mới" của đề xuất sửa thành 3 dòng chữ dính nhau.
-    zDialog({iconHtml:ZICON.std,size:'md',title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
-      okLabel:t('scope.detClose'),onOk:null});
-    loadFixProposals();
+    // LẤY SỐ TƯƠI trước khi vẽ (user 2026-09-17: *"fix rồi, app phải tự cập nhật lại mới đúng"*). Bản cũ vẽ
+    // từ `Z.updDead` của lượt poll trước — nhịp poll là 10′, nên sửa xong bằng CLI rồi mở hộp vẫn thấy số cũ.
+    // `/harness-updates` đọc `deadPaths` thẳng từ state, không cache ⇒ một lượt gọi là đủ. Trượt mạng thì
+    // vẽ bằng số đang có (fail-open), không để hộp trống.
+    function draw(){
+      var st=Z.updStale||[];
+      var body=buildRepoBlock(st);
+      // Nấc M (user 2026-09-10): hộp S bóp dòng "cũ → mới" của đề xuất sửa thành 3 dòng chữ dính nhau.
+      zDialog({iconHtml:ZICON.std,size:'md',title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
+        okLabel:t('scope.detClose'),onOk:null});
+      loadFixProposals();
+    }
+    refreshHarnessUpdates().then(draw,draw);
   }
   // ĐỀ XUẤT SỬA đường dẫn chết (plan/21 §5.6, user 2026-09-10: "đề xuất + tick + Áp dụng"): mỗi hộp .fixbox hỏi
   // /paths-fix?root= (chạy monitor ~0,5 s/repo, nên chỉ hỏi khi mở hộp thoại, chỉ repo đang có mới chết). Đích duy nhất

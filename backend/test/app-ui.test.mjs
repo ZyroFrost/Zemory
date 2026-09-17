@@ -1354,3 +1354,22 @@ test("thẻ dự án: bấm là CHỌN; mở chi tiết phải qua nút riêng",
   assert.match(src, /data-open-detail/, "thẻ phải mang nút mở");
   assert.match(css, /\.proj-card\.sel\{/, "trạng thái đang chọn phải NHÌN RA được");
 });
+
+// ── HỘP "CHUẨN REPO" PHẢI LẤY SỐ TƯƠI KHI MỞ ────────────────────────────────────
+//
+// User 2026-09-17: *"fix rồi, app phải tự cập nhật lại mới đúng"*. Bản cũ vẽ hộp từ `Z.updDead` của lượt
+// poll trước (nhịp 10′) ⇒ sửa đường chết bằng CLI xong mở hộp vẫn thấy số cũ. `/harness-updates` đọc
+// `deadPaths` thẳng từ state (không cache) nên một lượt gọi trước khi vẽ là đủ.
+test("hộp Chuẩn repo: gọi /harness-updates TRƯỚC khi vẽ, và trượt mạng vẫn vẽ (fail-open)", () => {
+  const js = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  const at = js.indexOf("function updDialogStd(");
+  assert.ok(at > 0, "phải có updDialogStd");
+  const body = js.slice(at, js.indexOf("\n  }", at) + 4);
+  const refreshAt = body.indexOf("refreshHarnessUpdates()");
+  const drawAt = body.indexOf("zDialog(");
+  assert.ok(refreshAt > 0, "phải lấy số tươi từ /harness-updates");
+  assert.ok(drawAt > 0, "…rồi mới vẽ hộp");
+  // Vẽ nằm trong hàm được gọi SAU refresh — tức refresh phải đứng ở đuôi hàm (sau định nghĩa draw), không đứng trước.
+  assert.ok(refreshAt > drawAt, "refresh phải ở sau khối vẽ (vẽ được gọi từ .then), không phải vẽ trước rồi mới hỏi");
+  assert.match(body, /\.then\(draw,\s*draw\)/, "trượt mạng vẫn phải vẽ bằng số đang có — không để hộp trống");
+});
