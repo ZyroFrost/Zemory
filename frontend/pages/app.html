@@ -402,24 +402,24 @@
           <div class="card">
             <div class="card-h"><div class="t" data-i18n="drv.actionsH">Thao tác</div></div>
             <div class="card-b">
-                <div class="drv-progress">
+                <div class="drv-progress" data-needs-drive>
                   <div class="donut donut-lg"><svg viewBox="0 0 40 40"><circle class="dtrack" cx="20" cy="20" r="16"></circle><circle class="darc" id="capArc" cx="20" cy="20" r="16" stroke-dasharray="0 1000"></circle></svg><div class="donut-lbl" id="capPct">—</div></div>
                   <div class="drv-progress-txt"><b id="capTxt">—</b><small id="capSub">—</small></div>
                 </div>
-                <div id="drvSpace"></div>
+                <div id="drvSpace" data-needs-drive></div>
 
                 <div class="section-t" data-i18n="drv.grpLink">Thư mục dùng chung</div>
                 <div class="muted" style="font-size:11px;margin-bottom:4px" data-i18n="drv.chooseFolder">Mỗi máy ghi bundle mã hoá vào cùng một folder trên Drive; máy khác đọc về rồi gộp.</div>
                 <div class="muted" style="font-size:11px;margin-bottom:6px;line-height:1.6" data-i18n="drv.needApp">Cần cài Google Drive cho máy tính trước, rồi trỏ vào một folder nằm trong ổ Drive đã gắn.</div>
                 <div style="display:flex;gap:6px;align-items:center"><input id="driveInput" data-i18n-ph="drv.ph" placeholder="vd G:\My Drive\zemory" style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"><button class="btn sm" data-act="browse-drive" data-i18n-title="addp.browse" title="Chọn folder…">📁</button><button class="btn sm" data-act="drivelink">Link</button></div>
-                <div class="section-t" data-i18n="mem.autosync">Tự sync memory</div>
-                <div class="set-row" style="border:0;padding:0 0 6px">
+                <div class="section-t" data-i18n="mem.autosync" data-needs-drive>Tự sync memory</div>
+                <div class="set-row" style="border:0;padding:0 0 6px" data-needs-drive>
                   <div class="sl"><small data-i18n="mem.autosyncD">BẬT: tự đồng bộ theo lịch, ghi vào mọi kênh đang bật.</small></div>
                   <div class="toggle" data-auto="autosync"></div>
                 </div>
-                <div id="asInline"></div>
-                <div class="section-t" data-i18n="mem.syncMode">Chế độ đồng bộ</div>
-                <div class="filters" style="gap:6px"><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div><div class="fchip" id="lvAtt" data-lvl="att" data-i18n-title="drv.attHint" title="Bật thì bundle chở kèm ảnh/file đính kèm (nặng hơn nhiều). Mặc định tắt.">🖼️ <span data-i18n="drv.att">Kèm ảnh</span></div></div>
+                <div id="asInline" data-needs-drive></div>
+                <div class="section-t" data-i18n="mem.syncMode" data-needs-drive>Chế độ đồng bộ</div>
+                <div class="filters" style="gap:6px" data-needs-drive><div class="fchip" id="lvLean" data-lvl="lean">◉ <span data-i18n="drv.lean">Gọn (−74%)</span></div><div class="fchip" id="lvFull" data-lvl="full">○ <span data-i18n="drv.full">Đầy đủ (khôi phục)</span></div><div class="fchip" id="lvAtt" data-lvl="att" data-i18n-title="drv.attHint" title="Bật thì bundle chở kèm ảnh/file đính kèm (nặng hơn nhiều). Mặc định tắt.">🖼️ <span data-i18n="drv.att">Kèm ảnh</span></div></div>
                 <div id="driveState" class="scanmsg" style="margin:10px 0 0">—</div>
             </div>
           </div>

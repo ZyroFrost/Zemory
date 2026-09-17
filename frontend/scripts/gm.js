@@ -148,12 +148,16 @@
   var DONUT_C=2*Math.PI*16;
   function renderDriveDonut(d){
     var arc=zid('driveArc'),lbl=zid('driveDonutPct');if(!arc||!lbl)return;
-    // KÊNH TẮT ⇒ ẨN CHỨC NĂNG (user 2026-09-17: *"bật tắt phải ẩn chức năng chứ đúng không?"*).
-    // Để nguyên nút "Đồng bộ ngay" và cả bảng số khi kênh đang tắt là mời người ta bấm một thứ
-    // không chạy — và số cũ thì đọc ra như đang sống. Ẩn cả cụm, chỉ chừa công tắc để bật lại.
+    // KÊNH TẮT ⇒ ĐÓNG BĂNG, không phải ẩn (user 2026-09-17: *"tắt thì phải đóng băng luôn và xám
+    // hết các panel trong đây"*). Vẫn thấy có gì ở đó, nhưng xám và không bấm được — người dùng
+    // biết tính năng tồn tại và đang tắt, thay vì thấy một khoảng trống không giải thích.
+    //
+    // ⚠ Chừa ĐÚNG hai thứ: công tắc (nằm ngoài thân thẻ) và ô "Thư mục dùng chung" — đó là đường
+    // DUY NHẤT để nối lại. Xám luôn cả hai là tắt xong thì kẹt, không còn chỗ nào bật lại được.
     var on=!!(d&&d.on), body=arc.closest('.card-b'), btn=document.querySelector('[data-act="drivesync"]');
-    if(btn)btn.style.display=on?'':'none';
-    if(body)body.style.display=on?'':'none';
+    if(btn){btn.classList.toggle('frozen',!on);btn.disabled=!on;}
+    if(body)body.classList.toggle('frozen',!on);
+    document.querySelectorAll('[data-needs-drive]').forEach(function(el){el.classList.toggle('frozen',!on);});
     if(!on)return;
     var pct=Math.max(0,Math.min(100,(d&&d.syncPercent!=null)?d.syncPercent:0));
     if(pct>=100)arc.removeAttribute('stroke-dasharray'); // solid ring — no dash seam, no track sliver
@@ -225,6 +229,10 @@
     var fid=zid('p2pFullId');
     if(fid&&c.deviceId){fid.textContent=c.deviceId;fid.setAttribute('data-copy',c.deviceId);fid.setAttribute('title',t('p2p.addrCopy'));fid.style.cursor='pointer';}
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
+    // ĐÓNG BĂNG cả tab khi kênh tắt (user 2026-09-17: *"bên máy-tới-máy cũng vậy luôn đúng không?"*).
+    // Thân của CẢ BA thẻ (máy này · cụm máy · nhật ký) — chừa thanh đầu thẻ vì công tắc nằm ở đó.
+    var p2pOn=!!c.enabled, sub=document.querySelector('.sub[data-sy="p2p"]');
+    if(sub)sub.querySelectorAll('.card-b').forEach(function(b){b.classList.toggle('frozen',!p2pOn);});
     var a=zid('trDrive'),b=zid('trP2p');
     if(a)a.classList.toggle('on',c.transport!=='p2p');
     if(b)b.classList.toggle('on',c.transport==='p2p');

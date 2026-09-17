@@ -238,6 +238,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .mstore-cp{margin-left:auto;flex:0 0 auto}
 .mstore .src{flex:0 0 auto;color:var(--primary);font-size:11px}
 .mstore .pth{min-width:0;word-break:break-all;color:var(--text-faint);font-family:ui-monospace,Consolas,monospace}
+/* ĐÓNG BĂNG — dùng khi một kênh/tính năng đang TẮT. Xám hẳn (`grayscale`) chứ không chỉ mờ: mờ
+   thôi thì biểu đồ vàng/xanh vẫn đọc ra như đang sống. `pointer-events:none` để không bấm nhầm một
+   thứ đang tắt. KHÔNG dùng `display:none` — user 2026-09-17: *"tắt thì phải đóng băng luôn và xám
+   hết"*, tức vẫn thấy có gì ở đó, chỉ là đang không chạy. */
+.frozen{opacity:.4;filter:grayscale(1);pointer-events:none;user-select:none}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 /* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —
