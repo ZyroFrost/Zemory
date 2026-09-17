@@ -188,6 +188,35 @@ export const deviceIdLooksTyped = (id: string): boolean =>
 export const sameDeviceId = (a: string, b: string): boolean =>
   normalizeDeviceId(a).length > 0 && normalizeDeviceId(a) === normalizeDeviceId(b);
 
+/**
+ * SỐ MÁY — 9 chữ số, VĨNH VIỄN, dẫn xuất tất định từ vân tay. Đây là thứ NGƯỜI gõ.
+ *
+ * 🔴 KHÔNG phải danh tính, KHÔNG phải bí mật, và cố ý KHÔNG có hạn dùng.
+ * Danh tính vẫn là vân tay đầy đủ — TLS so nguyên chuỗi đó, và bước chứng minh cùng
+ * `share.key` (`wire.ts`) mới là thứ gác cửa. 30 bit ở đây chỉ dùng để TRA xem máy nào
+ * trong số đang phát trên mạng là máy người dùng muốn; đoán trúng số cũng không ghép được
+ * nếu không có chìa. Đúng vai "số nhà" của TeamViewer: ID công khai, mật khẩu mới bảo vệ.
+ *
+ * *Hạn dùng chỉ có nghĩa khi con số LÀ bí mật. Bản đề xuất đầu gắn hạn 10 phút cho nó —
+ * đó là tự thêm một ràng buộc mà bài toán không đặt ra, và user bác đúng (2026-09-17).*
+ *
+ * Trùng số là chuyện có thể xảy ra (30 bit), nên người gọi phải xử ca **nhiều ứng viên**
+ * bằng cách HỎI, không được đoán — xem `/channel-pair`.
+ */
+export function shortIdFromDeviceId(id: string): string {
+  const flat = normalizeDeviceId(id);
+  if (!flat) return "";
+  const n = createHash("sha256").update(flat).digest().readUInt32BE(0) % 1_000_000_000;
+  return String(n).padStart(9, "0");
+}
+
+/** `418902577` → `418 902 577`. Nhóm ba để đọc và gõ lại được, như mọi mã máy khác. */
+export const formatShortId = (s: string): string =>
+  /^[0-9]{9}$/.test(s) ? `${s.slice(0, 3)} ${s.slice(3, 6)} ${s.slice(6)}` : s;
+
+/** `true` khi người dùng gõ SỐ MÁY (9 chữ số) chứ không phải vân tay base32. */
+export const looksShortId = (s: string): boolean => /^[0-9]{9}$/.test(s.replace(/[\s-]/g, ""));
+
 function pemToDer(pem: string): Buffer {
   const b64 = pem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
   return Buffer.from(b64, "base64");

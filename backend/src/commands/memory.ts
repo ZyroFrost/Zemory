@@ -20,6 +20,7 @@ import { WEB_PLATFORMS } from "../memory/webslots.js";
 import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borrowcookies.js";
 import { relocateMemory, relocateStore, storageInfo } from "../memory/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybridChecked, searchMulti } from "../memory/search.js";
+import { attachmentsForMessages } from "../memory/filestore.js";
 import {
   exportMemoryBundle,
   importMemoryBundle,
@@ -162,6 +163,12 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
       `  #${h.id} [${h.source}] ${proj} · ${fmtDate(h.timestamp)} · ${h.role}`,
     );
     console.log(`     ${h.snippet}`);
+    // ĐÍNH KÈM: in ĐƯỜNG DẪN để agent mở ra xem. Chưa có byte thì nói VÌ SAO, không đưa một
+    // đường không tồn tại — cùng luật "chưa xác minh thì đừng khẳng định".
+    for (const a of h.attachments ?? []) {
+      const where = a.path ?? (a.state === "not-fetched" ? "(chưa tải byte)" : a.state === "in-db" ? "(còn trong kho)" : "(chữ)");
+      console.log(`     🖼 ${a.name ?? a.mime ?? "tệp"} → ${where}`);
+    }
   }
   console.log("");
   console.log(`  ${hits.length} hit(s) — \`zemory memory show <#id>\` for full message.`);
@@ -711,20 +718,25 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort } =
+    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort,
+      shortIdFromDeviceId, formatShortId, looksShortId, seenPeers } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
     const action = rest[0] ?? "status";
 
     if (action === "id") {
-      console.log(channelIdentity().deviceId);
+      // Hai dòng, hai vai: SỐ MÁY là thứ đọc qua điện thoại được; VÂN TAY là thứ máy so lúc nối.
+      const did = channelIdentity().deviceId;
+      console.log(formatShortId(shortIdFromDeviceId(did)));
+      console.log(did);
       return;
     }
     if (action === "status") {
       const st = channelStatus();
       console.log(`zemory memory channel — ${st.enabled ? "BẬT" : "TẮT"} · ghi vào: ${st.transport}`);
-      console.log(`  ID máy này : ${st.deviceId}`);
+      console.log(`  Số máy     : ${formatShortId(shortIdFromDeviceId(st.deviceId))}`);
+      console.log(`  Vân tay    : ${st.deviceId}`);
       console.log(`  cổng nghe  : ${st.port}`);
       console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
       console.log(`  đã ghép đôi: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
@@ -738,11 +750,30 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
+      // SỐ MÁY 9 chữ số ⇒ tra ra vân tay từ máy đang thấy trên mạng (cùng luật với bề mặt app).
+      let want = id;
+      if (action === "pair" && looksShortId(id)) {
+        // ⚠ Tầng dò LAN sống TRONG daemon, nên ở tiến trình CLI danh sách thấy-được gần như luôn
+        // rỗng. Nói đúng lý do thay vì báo "không thấy máy nào" — câu đó đẩy người ta đi soi mạng
+        // trong khi thứ thiếu chỉ là chỗ tra. Vân tay đầy đủ thì CLI ghép được mọi lúc.
+        const num = id.replace(/[\s-]/g, "");
+        const hits = seenPeers().filter((p) => shortIdFromDeviceId(p.deviceId) === num);
+        if (hits.length !== 1) {
+          console.log(
+            hits.length > 1
+              ? "có nhiều máy trùng số — dán vân tay đầy đủ để khỏi ghép nhầm"
+              : "số máy chỉ tra được khi app đang chạy (tầng dò nằm trong daemon) — ghép trong app, hoặc dán vân tay đầy đủ",
+          );
+          process.exitCode = 1;
+          return;
+        }
+        want = hits[0].deviceId;
+      }
       const cur = getP2pPeers();
       const next =
         action === "pair"
-          ? [...cur, id]
-          : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== id.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+          ? [...cur, want]
+          : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== want.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       setP2pPeers(next);
       console.log(`zemory memory channel ${action} — ${next.length} máy đã ghép đôi`);
       return;
@@ -1398,6 +1429,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     console.log(`#${id} [${m.source}] ${m.project_root ?? "(unknown)"} · ${fmtDate(m.timestamp)} · ${m.role}`);
     if (m.title) console.log(`session: ${m.title}`);
+    // Cùng một phép tra với recall — hai bề mặt nói khác nhau về cùng một tệp là lỗi đã trả giá.
+    const att = attachmentsForMessages([id]).get(id) ?? [];
+    for (const a of att) {
+      const where = a.path ?? (a.state === "not-fetched" ? "(chưa tải byte)" : a.state === "in-db" ? "(còn trong kho)" : "(chữ)");
+      console.log(`🖼 ${a.name ?? a.mime ?? "tệp"} → ${where}`);
+    }
     console.log("---");
     console.log(m.content);
     return;

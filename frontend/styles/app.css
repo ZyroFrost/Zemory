@@ -204,7 +204,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
-.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:0 0 auto}
+/* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —
+   tiêu đề, con số phụ, chip, công tắc — mà `space-between` không sinh khoảng cách giữa các phần
+   tử bị dồn về cùng một phía. Đo 2026-09-17: 26 thanh đầu thẻ đều thiếu, biểu hiện là chip dính
+   sát chữ ở thẻ Nhật ký. Vá một chỗ thì chỗ kế tiếp lại dính. */
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex:0 0 auto}
 .card-h .t{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600}
 /* `.card-h` là flex KHÔNG gap, và cái công tắc cuối hàng mang `margin-left:auto` — nên mọi thứ
    đứng trước nó bị dồn dính vào nhau: user đọc ra "Đồng bộ Drive6 bundle" (2026-09-16).
@@ -302,14 +306,12 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .proj-card .pn{display:flex;align-items:center;gap:10px;min-width:0}
 .proj-card .pi{width:34px;height:34px;border-radius:9px;background:var(--surface-3);display:grid;place-items:center;color:var(--primary);font-weight:700;flex:0 0 auto}
 .proj-card .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-/* Nút GHIM luôn thấy được; ↗/✕ vẫn ẩn cho tới khi rê chuột.
-   Trước đây cả cụm `.acts` mang `opacity:0` — cha trong suốt thì con cũng vô hình, nên nút
-   ghim chỉ hiện khi hover; người dùng đọc thành *pin chỉ nhận khi chọn project*. Ghim là
-   CÔNG TẮC trạng thái (phải đọc được từ xa), còn mở/quên là HÀNH ĐỘNG (ẩn đi cho thẻ sạch). */
+/* CẢ BA nút luôn hiện — không ẩn theo rê chuột (user chốt 2026-09-17: *"mấy cái nút ở góc card
+   project nó phải luôn hiện chứ, mắc gì để chuột vào mới hiện"*). Bản trước còn giữ ↗/✕ ở
+   `opacity:0` cho tới lúc hover: nút không nhìn thấy là nút không tồn tại với người dùng, và
+   thẻ dự án không phải chỗ cần giấu ba cái nút nhỏ để cho sạch. */
 .proj-card .acts{display:flex;gap:4px}
 .proj-card .acts button{background:none;border:0;color:var(--text-faint);cursor:pointer;font-size:13px;padding:3px 5px;border-radius:6px;opacity:1;transition:.12s}
-.proj-card .acts button[data-open-detail],.proj-card .acts button[data-forget]{opacity:0}
-.proj-card:hover .acts button{opacity:1}
 .proj-card .acts button:hover{background:var(--surface-3);color:var(--primary)}
 .proj-card .acts button.on{color:var(--primary);opacity:1}
 /* Ghim KHOÁ (nhà của chính zemory): vẫn sáng để đọc được là "đang ghim", nhưng con trỏ nói rõ
@@ -424,9 +426,9 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    `min-width` mặc định là `auto` nên ô nhập và chuỗi ID 52 ký tự KHÔNG co được — chúng đẩy panel
    tràn ngang ra ngoài khung. `min-width:0` là bản vá đúng chỗ; `overflow-x:hidden` chặn phần dư
    của thứ vẫn không co nổi (ảnh, bảng) thay vì để nó đội cả trang. */
-.syncwrap,.syncwrap *,.sub[data-sy],.sub[data-sy] *{min-width:0}
-.syncwrap,.sub[data-sy]{overflow-x:hidden}
-.syncwrap pre,.sub[data-sy] pre{max-width:100%;overflow-x:auto}
+.sub[data-sy],.sub[data-sy] *{min-width:0}
+.sub[data-sy]{overflow-x:hidden}
+.sub[data-sy] pre{max-width:100%;overflow-x:auto}
 /* `.sub` là cột flex có `flex:1` + `min-height:0`, nên con của nó CO ĐƯỢC. Nội dung tab máy-tới-máy
    cao hơn khung ⇒ mọi khối bị bóp lại và chữ chồng lên nhau (user báo: "cái gì dính chùm ở đây").
    Khoá `flex:0 0 auto` cho khối con rồi để CẢ PANE cuộn — đó mới là hành vi đúng của một panel dài. */
@@ -448,6 +450,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .drv2col{gap:0 16px;align-items:start}
 .drv2col>.seam{align-self:stretch}
 @media (max-width:900px){.drv2col{grid-template-columns:1fr !important}.drv2col>.seam{display:none}}
+/* Tab máy-tới-máy: BA VÙNG — hai panel trên (kéo NGANG) + nhật ký dưới (kéo DỌC). Bố cục 2D nên
+   phải kéo được cả hai chiều (`app-design` §F1②); chiều thứ hai khai bằng dữ liệu trên chính
+   engine cũ, không đẻ nhánh riêng (§F1③). Vạch dọc chạy hết vùng nhờ `.rzgrid` một hàng (§F1⑥). */
+.p2p2col>.seam{align-self:stretch}
+.seam[data-seam-dir="row"]{cursor:row-resize;align-self:auto;justify-self:stretch;min-height:8px;min-width:20px}
+.seam[data-seam-dir="row"]::after{top:50%;bottom:auto;left:0;right:0;width:auto;height:2px;transform:translateY(-50%)}
+/* Khung hẹp: bớt cột thay vì đẩy ngang (§F12). Thẻ máy cũng phải hạ sàn, nếu không lưới con
+   tràn ra khỏi cột nửa màn. */
+@media (max-width:900px){.p2p2col{grid-template-columns:1fr !important}.p2p2col>.seam{display:none}}
 .drv2col>.card{min-width:0}
 /* PHÂN MỤC PHẢI CÓ VẠCH + KHOẢNG CÁCH. `.section-t` trần chỉ là một dòng chữ nhỏ; nhiều mục xếp
    liền nhau đọc thành một khối chữ (user báo nhiều lần). Khuôn đã có sẵn ở `.set-row` — mỗi hàng
@@ -488,6 +499,16 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    `minmax(auto,1fr)`, và `auto` đo theo min-content của ô) ⇒ lưới rộng hơn khung ⇒ cuộn ngang.
    Đo ở khung 1100px trước khi vá: lưới Recall tràn 254px. Đặt tại lớp CHUNG cho mọi `.rzgrid`. */
 .rzgrid>*{min-width:0}
+/* Khung BA VÙNG của tab máy-tới-máy: hai panel trên · thanh kéo dọc · nhật ký dưới. Phải nằm SAU
+   `.rzgrid` (cùng độ đặc hiệu, thứ tự quyết định) — đứng trước thì bị luật một-hàng đè mất. */
+.p2pwrap{grid-template-rows:minmax(0,var(--p2ptop,auto)) 8px auto}
+/* Phải neo qua `.sub[data-sy]>` mới thắng được luật `>.rzgrid{flex:1 1 auto}` ở trên (cùng loại,
+   độ đặc hiệu cao hơn). Viết `.p2pwrap{flex:0 0 auto}` trần là KHÔNG ăn — đo 2026-09-17: hàng trên
+   vẫn bị ép còn 387px và nội dung cuối panel nằm ngoài tầm nhìn. */
+.sub[data-sy]>.p2pwrap{flex:0 0 auto}
+/* Kéo thanh NGANG nhỏ lại ⇒ panel tự cuộn dọc, KHÔNG cắt cụt. Khai đủ hai chiều vì
+   `overflow-y` một mình bật luôn cuộn ngang (§F12). */
+.p2pwrap .card-b{overflow-y:auto;overflow-x:hidden}
 .seam{cursor:col-resize;align-self:stretch;position:relative;z-index:3;min-height:20px}
 .seam::after{content:"";position:absolute;top:0;bottom:0;left:50%;transform:translateX(-50%);width:2px;border-radius:2px;background:var(--border);transition:background .12s}
 .seam:hover::after,.seam.drag::after{background:var(--primary)}

@@ -5,6 +5,7 @@
 // scope = the current project; pass all=true for cross-project recall.
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
+import { attachmentsForMessages, type RecallAttachment } from "./filestore.js";
 import { vectorCount, vectorProbe, vectorsByRowid } from "./vectors.js";
 import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
@@ -22,6 +23,14 @@ export interface SearchHit {
   timestamp: string | null;
   score: number;
   snippet: string;
+  /**
+   * Đính kèm của tin này — ĐƯỜNG DẪN để agent MỞ RA XEM, không phải để tìm bằng ảnh.
+   *
+   * Khuyết khi tin không có đính kèm (gần hết số tin), nên payload thường ngày không nặng thêm.
+   * Ảnh không nằm trong FTS cũng không có vector: recall tìm bằng CHỮ quanh ảnh rồi dẫn tới đây,
+   * và chỗ này là thứ cho agent nhìn được vật chứng (HP điều 6 bậc ②, `plan/23 §7` cấm OCR).
+   */
+  attachments?: RecallAttachment[];
   /** Gộp near-duplicate: số bản gần trùng đã xếp sau dòng này (plan 17 §1.2). Khuyết = 0. */
   similar?: number;
   /**
@@ -723,6 +732,20 @@ function hydrate(
       snippet: makeSnippet(row.content, terms),
     });
     if (hits.length >= limit) break;
+  }
+  // MỘT lượt tra cho CẢ danh sách, và FAIL-OPEN (điều 9): lớp đính kèm là thứ THÊM, hỏng thì
+  // recall vẫn phải trả chữ như cũ. Đặt ở `finish` vì đây là chỗ DUY NHẤT dựng hit — mọi đường
+  // (search · hybrid · đa-truy-vấn · gộp gần trùng) đều đi qua, không phải vá bốn nơi rồi lệch.
+  try {
+    if (hits.length) {
+      const byMsg = attachmentsForMessages(hits.map((h) => h.id), { db });
+      for (const h of hits) {
+        const list = byMsg.get(h.id);
+        if (list && list.length) h.attachments = list;
+      }
+    }
+  } catch {
+    /* không có gì để mở thì thôi — KHÔNG được làm hỏng lượt recall */
   }
   // NOTE: recall is NOT logged as a token "saving" — its benefit is
   // counterfactual, so claiming a % would be fake.

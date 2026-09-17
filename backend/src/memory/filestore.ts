@@ -21,6 +21,18 @@ import { basename, dirname, join, relative, sep } from "node:path";
 import { currentStoreRoot, openMemory, type MemoryDB } from "./db.js";
 
 /** Nhà của kho tệp — trong GỐC KHO, nên nó đi sang máy khác cùng bộ nhớ (plan/25 §3). */
+/** Một đính kèm như lớp recall nhìn thấy: đủ để MỞ, không kèm byte. */
+export interface RecallAttachment {
+  sha: string;
+  name: string | null;
+  mime: string | null;
+  bytes: number | null;
+  /** Đường TUYỆT ĐỐI trên đĩa; `null` khi chưa có byte để mở. */
+  path: string | null;
+  /** `on-disk` mở được · `not-fetched` chưa tải byte · `in-db` còn nằm trong kho · `text` là chữ. */
+  state: "on-disk" | "not-fetched" | "in-db" | "text";
+}
+
 export function filesRoot(storeRoot: string = currentStoreRoot()): string {
   return join(storeRoot, "files");
 }
@@ -346,6 +358,61 @@ export interface FileListResult {
  * Đi qua `attachment_link → messages → sessions`, KHÔNG dùng `attachment.session_id`: cột
  * đó chỉ ghi tin ĐẦU TIÊN mang nội dung ấy (dedup theo sha256), lấy nhầm là mất ~22% số tin.
  */
+/**
+ * Đính kèm của một TẬP tin, cho lớp recall — để agent MỞ ĐƯỢC ẢNH, không phải để tìm bằng ảnh.
+ *
+ * Vì sao cần: recall xưa nay chỉ trả CHỮ; nó lọc được "tin có ảnh" nhưng không bao giờ nói ảnh
+ * nằm đâu, nên khi người dùng hỏi *"xem lại ảnh lý do vì sao"* thì agent tới đúng tin mà không
+ * có gì để nhìn. Byte đã nằm sẵn trên đĩa với tên đọc được (`plan/25 §2`), agent lại mở file
+ * ảnh được — thứ thiếu chỉ là CON TRỎ.
+ *
+ * Đúng bậc ② của HP điều 6: máy chỉ đường bằng phép tất định, **agent liên kết** nhìn ảnh bằng
+ * token của chính phiên đang chạy. KHÔNG OCR, KHÔNG model trong lõi (`plan/23 §7`).
+ *
+ * Trả `path=null` kèm `state` nói VÌ SAO thay vì đưa một đường dẫn không tồn tại — cùng luật
+ * "chưa xác minh thì đừng khẳng định" của `02_RULES`.
+ */
+export function attachmentsForMessages(
+  ids: number[],
+  opts: { db?: MemoryDB; dbPath?: string; root?: string } = {},
+): Map<number, RecallAttachment[]> {
+  const out = new Map<number, RecallAttachment[]>();
+  if (!ids.length) return out;
+  const db = opts.db ?? openMemory(opts.dbPath);
+  const root = opts.root ?? filesRoot();
+  // Một lượt truy vấn cho CẢ danh sách: hỏi từng tin là N+1 trên đường nóng của recall.
+  const marks = ids.map(() => "?").join(",");
+  const rows = db
+    .prepare(
+      `SELECT al.message_id AS mid, a.sha256, a.name, a.mime, a.bytes, a.kind, a.src_path AS rel
+         FROM attachment_link al JOIN attachment a ON a.id = al.attachment_id
+        WHERE al.message_id IN (${marks})`,
+    )
+    .all(...ids) as Array<{ mid: number; sha256: string; name: string | null; mime: string | null; bytes: number | null; kind: string; rel: string | null }>;
+  for (const r of rows) {
+    // CÙNG một phép phân hạng với `listFiles` — hai bề mặt nói khác nhau về cùng một tệp là
+    // lỗi đã trả giá ở `src_path` mang hai nghĩa (`plan/25` bước ⑤).
+    const onDisk = r.kind === "blob" && typeof r.rel === "string" && !/^[a-z][a-z0-9+.-]*:\/\//i.test(r.rel);
+    const state: RecallAttachment["state"] =
+      r.kind === "text" ? "text" : onDisk ? "on-disk" : r.kind === "ref" ? "not-fetched" : "in-db";
+    const list = out.get(r.mid) ?? [];
+    list.push({
+      sha: r.sha256,
+      name: r.name,
+      mime: r.mime,
+      bytes: r.bytes,
+      path: onDisk ? join(root, ...(r.rel as string).split("/")) : null,
+      state,
+    });
+    out.set(r.mid, list);
+  }
+  // ĐÓNG THỨ MÌNH MỞ (khuôn chung của module): `openMemory` dựng một kết nối MỚI mỗi lượt, nên
+  // quên đóng là rò một handle mỗi lần recall — trên Windows nó giữ khoá file và lượt dọn thư mục
+  // tạm của cổng test ném EPERM. Bắt được đúng bằng cách đó (cổng `mcp` đỏ ngay lượt đầu).
+  if (!opts.db) db.close();
+  return out;
+}
+
 export function listFiles(
   opts: {
     db?: MemoryDB;

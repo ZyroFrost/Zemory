@@ -175,6 +175,8 @@
   //    công tắc = có NHẬN không (bật cùng lúc với Drive được)
   //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
   function p2pMsg(s){zset('p2pMsg',s||'');}
+  // SỐ MÁY nhóm ba cho dễ đọc/gõ lại. Không phải số 9 chữ ⇒ trả nguyên, không bịa dạng.
+  function fmtNum(s){s=String(s||'');return /^[0-9]{9}$/.test(s)?(s.slice(0,3)+' '+s.slice(3,6)+' '+s.slice(6)):s;}
   function renderChannel(c){
     if(!c)return;
     zset('p2pBlocks',zN(c.blocks||0));
@@ -208,7 +210,11 @@
       });
     }
     var dv=zid('p2pDir'); if(dv&&c.dir){dv.textContent=c.dir;dv.setAttribute('data-copy',c.dir);dv.setAttribute('title',t('p2p.addrCopy'));dv.classList.add('fchip');dv.style.cursor='pointer';}
-    var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=c.deviceId||'';
+    // SỐ MÁY là thứ trưng ra; vân tay lùi vào mục nâng cao. Backend tính số (băm ở đó), bề mặt
+    // chỉ hiển thị — không có chuyện hai nơi cùng tính rồi lệch nhau.
+    var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=fmtNum(c.shortId||'');
+    var fid=zid('p2pFullId');
+    if(fid&&c.deviceId){fid.textContent=c.deviceId;fid.setAttribute('data-copy',c.deviceId);fid.setAttribute('title',t('p2p.addrCopy'));fid.style.cursor='pointer';}
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     var a=zid('trDrive'),b=zid('trP2p');
     if(a)a.classList.toggle('on',c.transport!=='p2p');
@@ -220,25 +226,27 @@
       var seenBy={};
       seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
       var cards=[];
-      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
-      (c.peers||[]).forEach(function(id){
+      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',num:c.shortId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
+      (c.peers||[]).forEach(function(id,i){
         var sp=seenBy[id];
-        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
+        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,num:(c.peersShort||[])[i]||'',addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
       cards.forEach(function(m){
         var d=document.createElement('div');
         d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)';
-        // TÊN MÁY trước, trạng thái sau — một cụm toàn chuỗi 52 ký tự thì không ai phân biệt được
-        // máy nào với máy nào. Chưa biết tên (bản cũ không gửi trong gói dò) ⇒ rơi về 11 ký tự ID.
-        var label=m.name||(m.id?(m.id.slice(0,11)+'…'):'?');
+        // TÊN MÁY trước, trạng thái sau. Chưa biết tên (bản dò đời cũ không gửi) ⇒ rơi về SỐ MÁY,
+        // không phải một lát 11 ký tự của vân tay: lát đó vừa không đọc được vừa không gõ lại được.
+        var label=m.name||(m.num?fmtNum(m.num):'?');
         var state=m.me?t('p2p.thisMachine'):(m.addr?t('p2p.online'):t('p2p.offline'));
         var dot=m.me?'var(--primary)':(m.addr?'var(--success)':'var(--text-faint)');
         d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
           +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
           +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
-          +'<div class="muted" style="font-size:10px;font-family:var(--mono,monospace);margin-top:5px;word-break:break-all">'+stdEsc(m.id)+'</div>'
+          // Chưa biết tên thì NHÃN đã là số máy rồi — in lại lần nữa là một con số ở hai chỗ trên
+          // cùng một thẻ, đọc ra như thẻ bị lỗi. Có tên mới cần dòng số bên dưới.
+          +(m.name?'<div class="muted" style="font-size:11px;font-family:var(--mono,monospace);margin-top:5px;letter-spacing:1px" title="'+stdEsc(m.id)+'">'+stdEsc(fmtNum(m.num))+'</div>':'')
           +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(m.addr?(m.addr+(m.port?(':'+m.port):'')):t('p2p.noAddr'))+'</div>';
         if(!m.me){
           var x=document.createElement('button');x.className='btn sm';x.style.marginTop='7px';
@@ -378,7 +386,12 @@
       var id=(zid('p2pPeerIn')||{}).value||'';
       if(!id.trim()){p2pMsg(t('p2p.needId'));return;}
       zPost('/channel-pair?id='+encodeURIComponent(id.trim())).then(function(r){
-        if(r&&r.ok===false){p2pMsg('✗ '+(r.error||''));return;}
+        if(r&&r.ok===false){
+          // Câu lỗi phải CHỈ ĐƯỜNG. "khong-thay" nghĩa là số đúng dạng nhưng chưa máy nào mang
+          // số đó phát trên mạng này — người dùng cần biết đó là chuyện MẠNG, không phải gõ sai.
+          var why=r.error==='khong-thay'?t('p2p.numNotSeen'):(r.error==='trung-so'?t('p2p.numDup'):('✗ '+(r.error||'')));
+          p2pMsg(why);return;
+        }
         zid('p2pPeerIn').value='';p2pMsg(t('p2p.paired'));loadChannel();
       });
     }
@@ -708,8 +721,6 @@ window.zFileView = (function () {
     logTick(!!onP2pTab);
     loadChannel();
     if(!onP2pTab)renderDriveMix();   // chỉ vẽ khi tab Drive đang mở
-    // Đường kho cục bộ: hiện, không cho gõ tay. Số liệu Drive do card Drive thật tự nạp.
-    zGet('/memory-status').then(function(m){ zset('storePath', (m&&m.info&&m.info.dbPath)||(m&&m.dbPath)||''); }).catch(function(){});
   }
   window.zSyncScreen=syncScreen;
 

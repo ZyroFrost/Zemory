@@ -15,6 +15,7 @@ import { acquireCliWriteLock, cliWriteHolder, daemonJobBusyExternal, releaseCliW
 import { getCodeGraph } from "../memory/graph/graph-cache.js";
 import { fileImpact } from "../memory/graph/graph.js";
 import { getMessage, getMessageContext, searchHybrid, searchMulti } from "../memory/search.js";
+import { attachmentsForMessages } from "../memory/filestore.js";
 import { searchSections, showSection } from "../docs/plan.js";
 import { searchChangelog } from "../docs/changelog.js";
 import { listPinned, pinSession, recallCard } from "../memory/recall.js";
@@ -203,7 +204,10 @@ export const TOOLS = [
             "MERGED into one line carrying `similar` (how many were folded in) and `similarIds` (their ids — open any " +
             "with memory_show, no second search needed). NOTHING is hidden. Set true only when you need every copy " +
             "listed separately — e.g. tracing how one decision was worded over time, or the merged line is not the " +
-            "exact message you must cite.",
+            "exact message you must cite. A hit may carry an attachments list; each entry has an absolute path on "
+            + "disk. OPEN that file yourself when the answer depends on what the picture shows - zemory never "
+            + "reads images (no OCR, no vision in the core), it only hands you the pointer. A null path means "
+            + "the bytes were never fetched: say so instead of guessing what the picture contained.",
         },
         deep: { type: "boolean", description: "Add cross-encoder re-ranking. LAST RESORT: ~40x slower (tens of seconds)." },
       },
@@ -505,9 +509,20 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
     if (!Number.isFinite(id) || id <= 0) return errorResult("memory_show requires a positive numeric id.");
     const window = clampWindow(args.window);
     const value = window > 0 ? getMessageContext(id, window, env.dbPath) : getMessage(id, env.dbPath);
+    // ĐÍNH KÈM đi kèm tin: agent mở được ảnh thì mới trả lời được "xem lại ảnh vì sao".
+    // Fail-open (điều 9) — lớp này là thứ THÊM, hỏng thì vẫn phải trả nguyên văn tin.
+    let withFiles = value;
+    if (value) {
+      try {
+        const att = attachmentsForMessages([id], { dbPath: env.dbPath }).get(id);
+        if (att?.length) withFiles = { ...(value as Record<string, unknown>), attachments: att };
+      } catch {
+        /* không mở được kho tệp thì thôi */
+      }
+    }
     // memory_show is a drill-down WITHIN a recall already counted by memory_search;
     // not logged separately (same 'recall' feature) to avoid double-counting.
-    return value ? toolResult(value) : errorResult(`No memory message #${id}.`);
+    return withFiles ? toolResult(withFiles) : errorResult(`No memory message #${id}.`);
   }
 
   if (name === "changelog_search") {
