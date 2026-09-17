@@ -350,11 +350,11 @@
           </div></div>
           <div class="seam" data-seam="mem1"></div>
           <!-- Col 2: This Machine + tự động -->
-          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.thisMachine">Máy này</div><span style="display:flex;gap:8px;align-items:center"><span class="pill ok" data-i18n="st.op">ổn</span></span></div><div class="card-b">
+          <div class="card"><div class="card-h"><div class="t" data-i18n="mem.thisMachine">Máy này</div><span style="display:flex;gap:8px;align-items:center"></span></div><div class="card-b">
             <div style="display:flex;gap:8px"><button class="btn sm" style="flex:1" data-act="scan" data-i18n="act.scanKnown">Quét nguồn đã biết</button><button class="btn primary sm" style="flex:1" data-act="deepscan" data-i18n="act.deepScan">Quét sâu</button></div>
             <div class="muted" style="font-size:11px;margin-top:6px" data-i18n="mem.scanHint"><b>Quét nguồn đã biết</b>: quét lại các store agent đã biết (nhanh). · <b>Quét sâu</b>: dò toàn ổ tìm agent/máy mới.</div>
             <div id="scanMsg" class="scanmsg"></div>
-            <div class="section-t" data-i18n="mem.disksH">Ổ đĩa trên máy</div>
+            <div class="section-t" style="display:flex;align-items:center;gap:8px"><span data-i18n="mem.disksH">Ổ đĩa trên máy</span><button class="btn xs" data-act="rescan-disks" data-i18n="mem.disksRescan" style="margin-left:auto">Quét lại</button></div>
             <div id="mDisks"><div class="muted" style="font-size:11.5px">…</div></div>
             <div class="section-t" data-i18n="mem.storesH">Nơi lưu nguồn đã quét</div>
             <div id="mStores"><div class="muted" style="font-size:11.5px">…</div></div>

@@ -111,6 +111,36 @@ HÀNH VI thì báo bao nhiêu lần cũng không hết (đã mất ba lượt nh
 · **Khoảng cách chỉ một nguồn:** cụm đã có `gap` thì đừng gắn thêm `margin-right` lên từng badge — hai nguồn cùng chỉnh một khoảng, cụm thôi đều nhau.
 · **Nút KHOÁ vĩnh viễn** (vd repo gốc của chính app) thì `disabled` + đổi `title` nói lý do, và **chặn ở BACKEND** nữa — nút disabled chỉ là lời nhắc, endpoint thì bề mặt nào cũng gọi được. Đừng làm mờ nút: mờ nghĩa là "tạm thời không dùng được", còn đây là vĩnh viễn theo thiết kế.
 
+### F14. Vùng cuộn phải TỰ CHỪA CHỖ cho thanh cuộn
+**Mọi vùng cuộn khai `scrollbar-gutter:stable`** *(user chốt 2026-09-17: "tất cả mọi panel đều phải
+tự co lại 1 khoảng padding vừa đủ để cái scrollbar nó không đè lên mất 1 khoảng chữ")*. Thanh cuộn
+mọc ra ở mép phải và **ăn vào chữ** — con số cuối hàng bị cắt, và người đọc không biết là bị cắt.
+· **Vì sao `scrollbar-gutter` chứ không chỉ `padding`:** chừa chỗ bằng padding thì lúc CHƯA tràn dư
+  một khoảng trống, lúc tràn lại vẫn đúng — hai trạng thái hai kiểu. `stable` giữ chỗ SẴN, nên nội
+  dung **không nhảy ngang** đúng lúc nó dài thêm một dòng.
+· **Kèm một khoảng thở** (`padding-right`): chữ dừng sát mép thanh cuộn vẫn đọc ra là bị cắt.
+· **Đặt ở LỚP CHUNG**, liệt kê mọi vùng cuộn một lần. Vá riêng panel vừa bị chê thì panel kế tiếp
+  lại dính — cùng bài học với §F9 và §F1⑥.
+· Đo bằng máy: với mỗi vùng có `overflow-y:auto|scroll`, `getComputedStyle` phải trả
+  `scrollbar-gutter: stable`. Ảnh chụp headless **không đo được** việc này (`--hide-scrollbars`),
+  nên phải soi CSS đã tính, đừng tin mắt nhìn ảnh.
+
+### F15. ĐÓNG BĂNG khi tắt, đừng ẩn — và chừa đường bật lại
+**Một tính năng/kênh đang TẮT thì xám hẳn và không bấm được, KHÔNG phải biến mất** *(user chốt
+2026-09-17: "tắt thì phải đóng băng luôn và xám hết các panel trong đây")*. Ẩn đi để lại một khoảng
+trống không giải thích: người dùng không biết ở đó vốn có gì, cũng không biết vì sao mất.
+· Công thức: `opacity` giảm **+ `filter:grayscale(1)` + `pointer-events:none`**. Phải xám HẲN —
+  chỉ giảm opacity thì biểu đồ vàng/xanh vẫn đọc ra như đang sống.
+· ⚠ **Luôn chừa đường bật lại.** Xám cả ô cấu hình cần để bật là **tự khoá mình ngoài cửa** (ca
+  thật: xám luôn ô "Thư mục dùng chung" thì tắt kênh Drive xong không còn chỗ nào gõ đường dẫn).
+  Liệt kê rõ thứ được miễn, và có cổng canh đúng điểm đó.
+· ⚠ **Công tắc không được dùng chính CẤU HÌNH làm trạng thái.** Ca thật: gạt tắt kênh Drive gọi
+  `/set-drive?path=` — tức XOÁ đường dẫn khỏi config. Tắt một tính năng không bao giờ được làm mất
+  cấu hình của nó; tách một cờ `<feature>On` riêng.
+· Bề mặt vẽ từ **nhiều đường** (lúc nạp · lúc làm tươi) thì cờ bật/tắt phải có mặt ở **mọi** đường,
+  nếu không nó lúc ẩn lúc hiện tuỳ đường nào về sau. Và setter phải xoá cache của bảng điều khiển,
+  nếu không công tắc "gạt mà không đổi".
+
 ## BE — tiến trình & tài nguyên
 
 ### B1. MỌI tiến trình của app gom về MỘT nhóm — không sót cái nào

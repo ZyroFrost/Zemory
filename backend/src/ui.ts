@@ -1455,7 +1455,19 @@ function kickDiskProbe(): void {
   });
 }
 
-function disksNow(): DiskInfo[] {
+function disksNow(fresh = false): DiskInfo[] {
+  // `fresh` = cú bấm "Quét lại". Phải dò NGAY và CHỜ, đúng như cú bấm Link của Drive: vứt đệm rồi
+  // trả về trong lúc con còn đang chạy thì bề mặt nhận danh sách RỖNG — nút "quét lại" hoá ra xoá
+  // sạch bảng (đo 2026-09-17: 3 ổ → 0 ổ ngay sau cú bấm). Chặn CÓ TRẦN, không vô hạn.
+  if (fresh) {
+    try {
+      const out = execFileSync(process.execPath, [diskprobeEntry()], { timeout: PROBE_TIMEOUT_MS, windowsHide: true, encoding: "utf8" });
+      diskCache = { at: Date.now(), v: JSON.parse(String(out)) as DiskInfo[] };
+    } catch {
+      /* ổ treo / con chết ⇒ GIỮ bản đệm cũ, thà số cũ còn hơn bảng trống */
+    }
+    return diskCache?.v ?? [];
+  }
   if (!diskCache || Date.now() - diskCache.at > DISK_TTL_MS) kickDiskProbe();
   return diskCache?.v ?? [];
 }
@@ -2729,7 +2741,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         ...here.filter((r) => !isImport(r.root)).map((r) => ({ root: r.root, source: r.source, kind: "local" as const, platforms: 0 })),
         ...[...impRoots].map(([root, srcs]) => ({ root, source: "imports", kind: "import" as const, platforms: srcs.size })),
       ];
-      return json(res, { disks: disksNow(), stores });
+      return json(res, { disks: disksNow(u.searchParams.get("fresh") === "1"), stores });
     }
     if (p === "/insights") {
       return json(res, insightsData(Math.min(120, Math.max(7, Number(u.searchParams.get("days") || 30)))));
