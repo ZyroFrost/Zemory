@@ -395,9 +395,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .strow .snote{color:var(--text-faint);font-size:11px;margin-left:auto;text-align:right}
 .stag{font-size:9px;padding:0 5px;border-radius:4px;border:1px solid var(--border-strong);color:var(--text-faint);flex:0 0 auto}
 .stag.req{color:var(--primary);border-color:var(--primary)}.stag.gi{color:var(--text-dim)}
-.rrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+/* Hàng của bảng Routing: hai cột chữ dài. Khung hẹp thì phải XUỐNG DÒNG, không đẩy ngang —
+   đo 2026-09-17 ở khung 516px: hàng dài nhất 1392px, tức 876px bị cắt mất khi thân card ẩn
+   chiều ngang. Flex item mặc định không co dưới min-content, nên phải khai min-width:0 (§F12). */
+.rrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap}
+.rrow>*{min-width:0;word-break:break-word}
 .rrow:last-child{border-bottom:0}.rneed{color:var(--text-dim)}
-.rslot{color:var(--primary);font-family:ui-monospace,monospace;font-size:11px;text-align:right;flex:0 0 auto}
+/* `flex:0 0 auto` = KHÔNG BAO GIỜ co ⇒ cột đường dẫn đẩy cả hàng rộng ra, và khung hẹp thì phần
+   thừa bị cắt mất (đo 2026-09-17: hàng 1392px trong khung 516px). Cho co và cho bẻ dòng. */
+.rslot{color:var(--primary);font-family:ui-monospace,monospace;font-size:11px;text-align:right;flex:0 1 auto;min-width:0;word-break:break-all}
 .graph-canvas{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;position:relative;flex:1;min-height:0;overflow:hidden}
 /* ── per-project code graph (SVG) + folder tree beside it ── */
 .graph-canvas{cursor:grab}.graph-canvas:active{cursor:grabbing}
@@ -535,6 +541,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    `minmax(auto,1fr)`, và `auto` đo theo min-content của ô) ⇒ lưới rộng hơn khung ⇒ cuộn ngang.
    Đo ở khung 1100px trước khi vá: lưới Recall tràn 254px. Đặt tại lớp CHUNG cho mọi `.rzgrid`. */
 .rzgrid>*{min-width:0}
+/* …và PHẢI CO ĐƯỢC THEO CHIỀU DỌC nữa. Lưới kéo được là lưới MỘT HÀNG chiếm trọn vùng; card nào
+   cao hơn vùng thì tràn ra ngoài hàng, nên VẠCH NGĂN (cao bằng hàng) dừng sớm trong khi nội dung
+   còn chạy tiếp — đúng lỗi "line không chạy hết panel" (user nhắc LẦN HAI 2026-09-17). Cho card
+   co về chiều cao vùng rồi để THÂN card tự cuộn: vạch chạy trọn, nội dung không mất.
+   Đặt ở lớp CHUNG — vá riêng một màn thì màn kế tiếp lại hụt (§F1⑥). */
+/*  (cố ý) cho ô tự cao theo nội dung, nên  MỘT MÌNH không chặn
+   được card cao hơn vùng — phải có TRẦN. Đo 2026-09-17: gmem:sync còn 2 card tràn, sync:drive 1. */
+.rzgrid>.card{min-height:0;max-height:100%}
+.rzgrid>.card>.card-b{overflow-y:auto;overflow-x:hidden}
 /* Khung BA VÙNG của tab máy-tới-máy: hai panel trên · thanh kéo dọc · nhật ký dưới. Phải nằm SAU
    `.rzgrid` (cùng độ đặc hiệu, thứ tự quyết định) — đứng trước thì bị luật một-hàng đè mất. */
 .p2pwrap{grid-template-rows:minmax(0,var(--p2ptop,auto)) 8px auto}
@@ -694,6 +709,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .ftile.fmissing{opacity:.55;border-style:dashed;cursor:default}
 /* Xem tệp CHỮ trong dialog: mọi màu đi qua token nên nó đọc được ở CẢ hai theme —
    iframe thì không, vì token của app không với tới bên trong nó. */
-.fpre{margin:0;width:100%;height:100%;overflow:auto;background:var(--surface-2);color:var(--text);
+.fpre{margin:0;width:100%;min-width:0;height:100%;overflow:auto;background:var(--surface-2);color:var(--text);
   border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.55;
   white-space:pre;tab-size:2}
