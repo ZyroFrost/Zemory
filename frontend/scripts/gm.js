@@ -750,8 +750,11 @@ window.zFileView = (function () {
       if(bs){
         bs.innerHTML=stores.length
           ? stores.map(function(x){
+              // Dòng GỘP của cụm web nói rõ nó gộp bao nhiêu nền — nếu không, một dòng "imports" trông
+              // như một nguồn lẻ, và người đọc mất luôn thông tin "web nằm chung một chỗ".
+              var lbl=x.kind==='import'?t('mem.storeImports').replace('{n}',x.platforms||0):(x.source||'—');
               return '<div class="mstore" data-copypath="'+stdEsc(x.root)+'" title="'+stdEsc(t('mem.storeCopy'))+'">'
-                +'<span class="src">'+stdEsc(x.source||'—')+'</span><span class="pth">'+stdEsc(x.root||'')+'</span></div>';
+                +'<span class="src">'+stdEsc(lbl)+'</span><span class="pth">'+stdEsc(x.root||'')+'</span></div>';
             }).join('')
           : '<div class="muted" style="font-size:11.5px">'+stdEsc(t('mem.storesNone'))+'</div>';
       }
