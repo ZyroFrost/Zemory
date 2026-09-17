@@ -1613,3 +1613,34 @@ test("khung cửa sổ được lưu và khôi phục — vị trí, kích thư�
   assert.match(shell, /aw:screen\.availWidth,ah:screen\.availHeight/, "phải gửi kèm vùng làm việc để cửa sổ tự phán");
   assert.doesNotMatch(shell, /screenX/, "trang KHÔNG được khai toạ độ — đó là gốc nội dung, không phải gốc cửa sổ");
 });
+
+// ── "ĐI TỚI" PHẢI TỚI ĐƯỢC ─────────────────────────────────────────────────────
+//
+// User 2026-09-17: *"đi tới thì trỏ trang trống không đúng chỗ setting"* — hàng Kênh Drive mang
+// `to:'memory'`, một tên màn KHÔNG TỒN TẠI (các màn: home · system · recall · projects · gmem ·
+// harness · sync). `go()` với tên lạ gỡ hết class `.on` ⇒ TRANG TRẮNG, và không lỗi nào nổ.
+// Cùng lượt, user chốt: *"mỗi 1 tính năng đều có đi tới và trỏ vào đúng trang setting hoặc thông
+// tin của tính năng đó"*.
+test("Tính năng: mọi đích 'Đi tới' phải là màn/tab CÓ THẬT trong markup", () => {
+  const js = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const SUBATTR = { recall: "data-rc", gmem: "data-gm", harness: "data-ht", projects: "data-pj", sync: "data-sy" };
+  // Khoanh đúng BẢNG FEATURES: quét cả file thì trúng luôn chú thích kể về ca hỏng cũ.
+  // Và cần biên trước `to:` — thiếu nó thì `auto:'scheduler'` cũng khớp (nó chứa đúng chuỗi `to:'`).
+  const table = js.slice(js.indexOf("var FEATURES=["), js.indexOf("\n  ];"));
+  assert.ok(table.length > 500, "không khoanh được bảng FEATURES");
+  const dests = [...table.matchAll(/(?<![a-zA-Z])to:'([^']+)'/g)].map((m) => m[1]);
+  assert.ok(dests.length >= 8, `phải có nhiều hàng mang đích (thấy ${dests.length})`);
+  for (const d of dests) {
+    if (d.startsWith("__")) { assert.match(js, new RegExp(`dest==='${d}'`), `đích đặc biệt ${d} phải có nhánh xử lý`); continue; }
+    const [screen, tab] = d.split(":");
+    assert.ok(html.includes(`data-s="${screen}"`), `đích '${d}': màn '${screen}' không tồn tại ⇒ bấm Đi tới ra trang trắng`);
+    if (tab) assert.ok(html.includes(`${SUBATTR[screen]}="${tab}"`), `đích '${d}': tab '${tab}' không tồn tại trong màn '${screen}'`);
+  }
+  assert.ok(!table.includes("to:'memory'"), "'memory' không phải tên màn — đó là ca đã làm trang trắng");
+  // Nút vẽ theo `to`, không theo `kind` — nếu không thì hàng có nhà mà vẫn không có đường tới.
+  assert.match(js, /function sysGoto\(f\)\{\s*\n\s*return f\.to \?/, "nút Đi tới phải bám vào `to`, không bám vào kind");
+  assert.match(js, /sysGoto\(f\)\+sysAction\(f\)/, "nút phải thật sự được vẽ ra");
+  // Và đích lạ thì KHÔNG đi đâu cả — thà đứng yên còn hơn để lại trang trắng.
+  assert.match(js, /if\(!document\.querySelector\('\.screen\[data-s="'\+pr\[0\]\+'"\]'\)\)return;/, "đích không có thật thì phải đứng yên");
+});

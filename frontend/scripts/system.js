@@ -2,28 +2,28 @@
 // Cắt CƠ HỌC giữ hành vi; dời hàm giữa file là việc của đợt sau. Xem 06_CHANGES.
   // ── SYSTEM screen: full capability inventory + per-feature check/enable ──
   var FEATURES=[
-    {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',doc:'f.doc.memory'},
-    {k:'vector',grp:'f.grpCore',n:'Vector index (semantic)',kind:'stat',probe:'vector',doc:'f.doc.vector'},
-    {k:'hybrid',grp:'f.grpCore',n:'Hybrid search',kind:'toggle',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
+    {k:'memory',grp:'f.grpCore',n:'Memory & recall (FTS5)',kind:'check',feat:'memory',to:'gmem:mem',doc:'f.doc.memory'},
+    {k:'vector',grp:'f.grpCore',n:'Vector index (semantic)',kind:'stat',to:'gmem:mem',probe:'vector',doc:'f.doc.vector'},
+    {k:'hybrid',grp:'f.grpCore',n:'Hybrid search',kind:'toggle',to:'recall:find',ep:'/set-hybrid',get:function(m){return !!m.hybrid;},doc:'f.doc.hybrid'},
     // `hidden`: engine còn (CLI/MCP/env ZEMORY_RERANK vẫn bật được) nhưng KHÔNG bày trên UI — user 2026-08-29:
     // *"rerank ko xài, ẩn nó luôn"*. Giữ entry để cổng `checks-probes` và `/check?feature=rerank` còn nguyên.
     {k:'rerank',grp:'f.grpCore',n:'Rerank (cross-encoder)',kind:'toggle',ep:'/set-rerank',get:function(m){return !!m.rerank;},probe:'rerank',doc:'f.doc.rerank',hidden:true},
-    {k:'digest',grp:'f.grpCore',n:'Session digest',kind:'stat',doc:'f.doc.digest'},
+    {k:'digest',grp:'f.grpCore',n:'Session digest',kind:'stat',to:'gmem:mem',doc:'f.doc.digest'},
     {k:'graph',grp:'f.grpCore',n:'Graph (code · docs)',kind:'nav',to:'projects',doc:'f.doc.graph'},
-    {k:'drive',grp:'f.grpSync',n:'f.drive',kind:'nav',to:'memory',doc:'f.doc.drive'},
-    {k:'scheduler',grp:'f.grpSync',n:'f.sched',kind:'auto',auto:'scheduler',doc:'f.doc.scheduler'},
-    {k:'autostart',grp:'f.grpSync',n:'f.autostart',kind:'auto',auto:'autostart',doc:'f.doc.autostart'},
-    {k:'autosync',grp:'f.grpSync',n:'f.autosync',kind:'auto',auto:'autosync',doc:'f.doc.autosync'},
+    {k:'drive',grp:'f.grpSync',n:'f.drive',kind:'nav',to:'sync:drive',doc:'f.doc.drive'},
+    {k:'scheduler',grp:'f.grpSync',n:'f.sched',kind:'auto',auto:'scheduler',to:'gmem:mem',doc:'f.doc.scheduler'},
+    {k:'autostart',grp:'f.grpSync',n:'f.autostart',kind:'auto',auto:'autostart',to:'__settings',doc:'f.doc.autostart'},
+    {k:'autosync',grp:'f.grpSync',n:'f.autosync',kind:'auto',auto:'autosync',to:'sync:drive',doc:'f.doc.autosync'},
     {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'nav',to:'__settings',doc:'f.doc.storage'},
-    {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',doc:'f.doc.validate'},
-    {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',doc:'f.doc.grill'},
-    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',doc:'f.doc.harness'},
+    {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',to:'harness:docs',doc:'f.doc.validate'},
+    {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',to:'harness:docs',doc:'f.doc.grill'},
+    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',to:'harness:docs',doc:'f.doc.harness'},
     // plan/21 — hàng CHÍNH THỨC từ 2026-09-09. Màu theo "MỚI chết kể từ baseline", không theo tổng
     // số chết: prose kể về thiết kế đã bác chết từ lúc sinh, không phải mục ruỗng. Warning = có đường
     // vừa chết sau baseline = có folder vừa bị dời/đổi tên mà docs còn trỏ tên cũ.
     // `watch`: công tắc theo dõi (user 2026-09-10: "thêm nút toggle bật tắt cho toàn bộ tính năng dò này") — tắt ⇒ hàng
     // Off, ra khỏi Health, chip/badge im, daemon bỏ sweep; CLI gõ tay vẫn chạy. Mẫu chung cho hàng kiểm có công tắc.
-    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',watch:{ep:'/set-paths-watch',key:'pathsWatch'},doc:'f.doc.paths'},
+    {k:'paths',grp:'f.grpHarness',n:'f.paths',kind:'check',feat:'paths',to:'__std',watch:{ep:'/set-paths-watch',key:'pathsWatch'},doc:'f.doc.paths'},
     // 2026-09-12 (user: *"thêm chức năng dọn tiến trình thừa đi"*). Rác dạng TIẾN TRÌNH không nằm
     // trong `git status`, không chiếm chỗ thấy được — người dùng chỉ phát hiện khi mở Task Manager
     // thấy đầy tiến trình lạ (đo hôm đó: 75 tiến trình Edge headless sống từ sáng). Vòng dọn nền 6
@@ -55,6 +55,13 @@
     if(f.k==='harness'){var docs=s.docs||[],n=docs.filter(function(x){return x.ok;}).length;return {on:docs.length&&n===docs.length?'on':'warn',txt:n+'/'+(docs.length||0)};}
     return {on:'dim',txt:'—'};
   }
+  /** Nút "Đi tới" — có `to` thì có nút, bất kể hàng thuộc loại nào (user 2026-09-17: *"mỗi 1 tính
+   *  năng đều có đi tới và trỏ vào đúng trang setting hoặc thông tin của tính năng đó"*).
+   *  Hàng KHÔNG có nhà nào khác — công tắc của nó nằm ngay trên hàng này — thì cố tình không có nút:
+   *  một nút đưa người ta về đúng chỗ đang đứng là nút nói dối. */
+  function sysGoto(f){
+    return f.to ? '<button class="btn sm" data-sys-nav="'+f.to+'">'+t('sys.goto')+'</button> ' : '';
+  }
   function sysAction(f){
     if(f.k==='digest'){var m=Z.mem||{},d=((m.info&&m.info.tables)||[]).find(function(x){return x.name==='session_digest';}),has=d&&d.rows>0;
       return '<button class="btn '+(has?'sm':'primary sm')+'" data-sys-digest="1">'+(has?'↻ '+t('sys.buildMissing'):'⚙ '+t('sys.buildNow'))+'</button>';}
@@ -71,7 +78,6 @@
     // Không có nhánh này thì `/check?feature=vector|rerank` chỉ gọi được bằng curl —
     // tức vẫn mồ côi, chỉ đổi chỗ (tự bắt 2026-07-28 ngay sau khi nối backend).
     if(f.probe)return '<button class="btn sm" data-sys-check="'+f.probe+'">↻ '+t('sys.recheck')+'</button>';
-    if(f.kind==='nav')return '<button class="btn sm" data-sys-nav="'+f.to+'">'+t('sys.goto')+'</button>';
     return '';
   }
   /** Công tắc ở MÉP PHẢI hàng — cùng khuôn `.toggle` của Settings (một hình cho một việc). Chỉ hàng có gì để bật/tắt:
@@ -125,7 +131,7 @@
       // t(f.grp) chứ KHÔNG phải f.grp: `grp` là KHOÁ i18n (đã chuẩn hoá 2026-08-13), in thẳng
       // là hiện chữ thô `f.grpCore` ra màn hình.
       +'<div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">'+stdEsc(t(f.grp))+'</div>'
-      +'<div class="sxa" style="margin-bottom:14px">'+sysAction(f)+'</div>'
+      +'<div class="sxa" style="margin-bottom:14px">'+sysGoto(f)+sysAction(f)+'</div>'
       // Kết quả PHÉP KIỂM THẬT (probe model). Không có khối này thì bấm "Kiểm" xong kết quả
       // nằm im trong Z.checks mà không ai thấy — nửa vời đúng nghĩa. `sysStatus` chỉ đọc
       // Z.checks cho kind='check', nên feature kind stat/toggle phải hiện ở đây.
@@ -176,7 +182,19 @@
       zSave('/set-'+nm+'?on='+au.dataset.on,function(){if(Z.auto)Z.auto[nm]=aprev;renderSystem();})
         .then(function(j){if(!j)return;return zGet('/automation').then(function(a){renderAuto(a);renderSystem();});}).catch(function(){});return;}
     if(ck){var f=ck.dataset.sysCheck;ck.textContent='…';zGet('/check?feature='+f+'&fresh=1').then(function(r){Z.checks[f]=r;renderSystem();}).catch(function(){renderSystem();});return;}
-    if(nv){if(nv.dataset.sysNav==='__settings')openSettings();else go(nv.dataset.sysNav);return;}
+    if(nv){
+      var dest=nv.dataset.sysNav;
+      if(dest==='__settings'){openSettings();return;}
+      // Hộp "Chuẩn repo" là nhà của hàng đường-dẫn-chết: nó mở từ chip thanh bên, không phải một màn.
+      if(dest==='__std'){var chip=zid('railStd');if(chip)chip.click();return;}
+      var pr=String(dest).split(':');
+      // Đích không có thật thì ĐỪNG ĐI: `go()` với một tên lạ gỡ hết class `.on` và để lại TRANG
+      // TRẮNG — đúng ca `to:'memory'` đã lọt (user 2026-09-17). Thà không đi còn hơn đi vào hư không.
+      if(!document.querySelector('.screen[data-s="'+pr[0]+'"]'))return;
+      go(pr[0]);
+      if(pr[1]&&typeof subSet==='function'){var at=({recall:'data-rc',gmem:'data-gm',harness:'data-ht',projects:'data-pj',sync:'data-sy'})[pr[0]];if(at)subSet(at,pr[1]);}
+      return;
+    }
     var rc=e.target.closest&&e.target.closest('[data-act="sysrecheck"]');
     if(rc){
       var ro=rc.innerHTML;rc.disabled=true;rc.innerHTML='⏳ '+t('sys.rechecking');
