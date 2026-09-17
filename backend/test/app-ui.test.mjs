@@ -1696,7 +1696,11 @@ test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được,
   assert.match(gm, /drvmix-bar[\s\S]{0,200}drvmix-fill/, "bar ổ đĩa phải dùng lại thanh có sẵn, không đẻ kiểu thứ hai");
   // Lượt dò ĐẦU sau khi daemon lên có thể trượt (đo thật) ⇒ phải hỏi lại, có trần.
   assert.match(gm, /mInfoTries<6/, "chưa có số thì phải hỏi lại, và phải có trần");
-  assert.match(gm, /data-copypath=/, "đường dẫn phải bấm chép được — dài thế không ai gõ lại");
+  // NÚT chép riêng, phản hồi rơi TRÊN NÚT. Bản đầu biến cả hàng thành vùng bấm rồi ghi "đã chép" đè
+  // lên NHÃN NGUỒN — nuốt mất thông tin của hàng, và hàng đã bấm nằm đó mãi với chữ sai.
+  assert.match(gm, /button class="btn xs mstore-cp" data-copypath=/, "phải là NÚT chép riêng, không biến cả hàng thành vùng bấm");
+  assert.ok(!gm.includes("r.querySelector('.src').textContent=t('mem.copied')"), "không được ghi phản hồi đè lên nhãn nguồn");
+  assert.ok(gm.includes("b.textContent=t('mem.copied')"), "phản hồi phải rơi vào chính cái nút vừa bấm");
   const ui = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
   assert.match(ui, /p === "\/machine-info"/, "thiếu endpoint");
   assert.match(ui, /SELECT store_root AS root, source FROM known_stores/, "nơi quét được phải đọc thẳng sổ known_stores, không đếm lại một bản thứ hai");
@@ -1717,4 +1721,7 @@ test("panel Máy này: bar dung lượng ổ và danh sách nơi quét được,
   for (const k of ["mem.disksH", "mem.storesH", "mem.disksNone", "mem.storesNone", "mem.diskFree", "mem.storeCopy", "mem.copied"]) {
     assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
   }
+  // Tiêu đề mục là DANH TỪ, không phải câu hỏi đặt cho người dùng (user nhắc LẠI 2026-09-17:
+  // *"t đã nói là không được ghi văn nói rồi, tự nhiên thông tin có câu hỏi vào"*).
+  assert.ok(!/'mem\.storesH':'[^']*(nằm ở đâu|ở đâu)/.test(chrome), "tiêu đề mục không được viết thành câu hỏi");
 });

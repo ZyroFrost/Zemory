@@ -235,8 +235,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .mdisk{padding:4px 0}
 .mdisk-top{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:3px}
 .mdisk-top b{font-weight:600}
-.mstore{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:11.5px;cursor:pointer}
+.mstore{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:11.5px}
 .mstore:hover{background:var(--wash)}
+/* Nút chép NEO PHẢI và không bao giờ co (§F13: thứ co lại là nội dung, không phải nút điều khiển). */
+.btn.xs{padding:2px 7px;font-size:10.5px;line-height:1.5}
+.mstore-cp{margin-left:auto;flex:0 0 auto}
 .mstore .src{flex:0 0 auto;color:var(--primary);font-size:11px}
 .mstore .pth{min-width:0;word-break:break-all;color:var(--text-faint);font-family:ui-monospace,Consolas,monospace}
 /* card */
