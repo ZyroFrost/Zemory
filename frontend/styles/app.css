@@ -216,6 +216,19 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    là bề rộng MONG MUỐN, thẻ vẫn co nhỏ hơn khi hàng chật. */
 .tile-strip{display:flex;flex-wrap:wrap;gap:10px}
 .tile-strip>.tile{flex:1 1 150px;min-width:0;border:1px solid var(--border);border-radius:10px;padding:11px 13px}
+/* THANH SỨC CHỨA — ba đoạn kề nhau, không thêm màu mới: mỗi đoạn một mức đậm nhạt của cùng dải,
+   vì đây là ba phần của MỘT tổng chứ không phải ba hạng khác nhau (§F11: một kênh, một hạng). */
+.cap-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface-3);border:1px solid var(--border)}
+.cap-seg{height:100%}
+.cap-seg.is-store{background:var(--primary)}
+.cap-seg.is-other{background:var(--border-strong)}
+.cap-seg.is-free{background:transparent}
+.cap-leg{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:7px;font-size:11.5px;color:var(--text-faint)}
+.cap-leg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:baseline}
+.cap-leg i.is-store{background:var(--primary)}
+.cap-leg i.is-other{background:var(--border-strong)}
+.cap-leg i.is-free{background:var(--surface-3);border:1px solid var(--border)}
+.cap-leg b{color:var(--text);font-weight:600}
 /* card */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;min-height:0}
 /* `gap` ở LỚP CHUNG, không vá riêng thẻ vừa bị chê (§F9): thanh đầu thẻ nào cũng có ≥2 thứ —

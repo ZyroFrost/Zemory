@@ -400,7 +400,7 @@ function driveprobeEntry(): string {
 
 /** Kết quả probe khi ổ KHÔNG trả lời — nói thẳng, không đoán "folder not found". */
 function probeHungResult(dir: string): DriveProbe {
-  return { path: dir.trim(), linked: !!dir.trim(), exists: false, writable: false, bundles: 0, error: "drive not responding (cloud drive hung?)" };
+  return { path: dir.trim(), linked: !!dir.trim(), exists: false, writable: false, bundles: 0, error: "drive not responding (cloud drive hung?)", volume: null, storeBytes: 0 };
 }
 
 function kickProbe(dir: string): void {
@@ -429,7 +429,7 @@ function probeDrive(dir: string): DriveProbe {
   if (probeCache && probeCache.dir === dir) return probeCache.v;
   // Chưa từng có số cho đường này (vừa đổi path / vừa khởi động): nói "đang dò", KHÔNG chặn.
   const path = dir.trim();
-  return { path, linked: !!path, exists: false, writable: false, bundles: 0, error: path ? "probing…" : null };
+  return { path, linked: !!path, exists: false, writable: false, bundles: 0, error: path ? "probing…" : null, volume: null, storeBytes: 0 };
 }
 
 /** Probe TƯƠI cho cú bấm Link — user vừa gõ đường mới, cần phán ngay; chặn CÓ TRẦN 8 s. */
