@@ -1522,8 +1522,11 @@ test("tab Drive: bảng tỉ trọng theo dự án và bảng sức chứa ổ �
   assert.match(gm, /String\(r\.project\|\|''\)/, "tên dự án nằm ở trường `project` của /insights");
   assert.doesNotMatch(gm, /mixBars\(boxP,pr,function\(r\)\{return String\(r\.path/, "`path` là trường KHÔNG có trong hàng /insights");
   // Sức chứa: probe chạy ở tiến trình con nên vài lượt đầu chưa có số ⇒ phải tự đo lại, có TRẦN.
-  assert.match(gm, /spaceTimer=setTimeout\(renderDriveSpace,5000\)/, "chưa có số thì phải hẹn đo lại, không đứng im ở 'chưa đo được' (§F3)");
-  assert.match(gm, /spaceTries<8/, "hẹn lại phải có trần, không thành vòng hỏi vô tận");
+  // HỎI NHANH lúc đầu rồi CHẬM MÃI — KHÔNG bỏ cuộc. Bản cũ dừng sau 8 lượt rồi đứng vĩnh viễn ở
+  // "chưa đo được", trong khi lượt dò ổ đầu tiên sau khi daemon lên hay trượt một lần nên số thật
+  // chỉ về sau đó (đo 2026-09-17: endpoint đã có đủ số mà panel vẫn treo). Bỏ cuộc rồi nằm im là
+  // bề mặt nói sai (§F3); nhịp chậm 30 s thì không phải là vòng hỏi dồn.
+  assert.match(gm, /spaceTimer=setTimeout\(renderDriveSpace,spaceTries<8\?5000:30000\)/, "hỏi nhanh lúc đầu rồi chậm mãi, không dừng hẳn");
   assert.match(gm, /if\(onP2pTab\)stopDriveSpace\(\)/, "rời tab thì phải thôi hỏi");
   // zBytes nhận KILOBYTE; probe trả BYTE. Lẫn là sai đúng 1024 lần mà nhìn vẫn hợp lý.
   assert.doesNotMatch(gm, /zBytes\((?:dv\.storeBytes|v\.free|v\.total)/, "không được đưa BYTE vào zBytes (nó nhận KB)");
