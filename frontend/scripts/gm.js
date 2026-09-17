@@ -810,6 +810,10 @@ window.zFileView = (function () {
     zGet('/memory-status').then(function(m){
       var dv=(m&&m.drive)||{}, v=dv.volume;
       if(!v||!v.total){
+        // Chưa đo được thì VÀNH PHẢI RỖNG và số là "—". Để nguyên cung cũ (hoặc để CSS vẽ sẵn một
+        // vành) là bịa ra một biểu đồ cho dữ liệu chưa có — đúng thứ user gọi là "chart giả".
+        var a0=zid('capArc');if(a0)a0.setAttribute('stroke-dasharray','0 '+DONUT_C.toFixed(1));
+        zset('capPct','—');zset('capTxt','—');zset('capSub','');
         box.innerHTML='<div class="muted" style="font-size:11.5px">'+stdEsc(dv.linked&&spaceTries<8?t('drv.spaceProbing'):t('drv.spaceNone'))+'</div>';
         // Đã link mà chưa có số ⇒ probe đang chạy, hỏi lại. Chưa link thì KHÔNG hỏi lại: không có
         // gì để đo, hẹn nữa chỉ là gõ cửa một căn phòng trống.
@@ -835,7 +839,9 @@ window.zFileView = (function () {
       }
       if(cLbl)cLbl.textContent=freePct+'%';
       zset('capTxt',t('drv.spaceFreeN').replace('{v}',gb(v.free)));
-      zset('capSub',t('drv.spaceUsedOf').replace('{u}',gb(used)).replace('{t}',gb(v.total)));
+      // Phụ đề mang Ý NGHĨA của vòng (tiêu đề cũ nằm trên donut làm panel phải lệch 17px so với
+      // panel trái — user muốn hai vòng ngang nhau). Số 'đã dùng/tổng' đã có ở khối dưới, không lặp.
+      zset('capSub',t('drv.spaceH')+' · '+(v.root||''));
       var seg=function(w,cls,lbl,val){return '<div class="cap-seg '+cls+'" style="width:'+w+'%" title="'+stdEsc(lbl+': '+val)+'"></div>';};
       box.innerHTML='<div class="cap-bar">'+seg(pc(store),'is-store',t('drv.spaceStore'),gb(store))
         +seg(pc(other),'is-other',t('drv.spaceOther'),gb(other))

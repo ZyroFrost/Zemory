@@ -1756,3 +1756,30 @@ test("lưới kéo được: một hàng, vạch chạy trọn, và ô co đư�
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
   assert.equal((chrome.match(/'p2p\.copy':'Copy'/g) || []).length, 2, "nút Copy giữ nguyên chữ ở cả hai từ điển");
 });
+
+// ── KHÔNG CÓ BIỂU ĐỒ VẼ CỨNG ───────────────────────────────────────────────────
+//
+// User 2026-09-17: *"chart này là chart giả, không đúng dashboard thật… dù có 100% thì vòng tròn nó
+// không kín là sai"*. Gốc: `.donut` mang `background:conic-gradient(success 0 84%, warn 84% 94%, …)`
+// — ba mốc gõ thẳng vào CSS, không đọc dữ liệu nào, và nó nằm DƯỚI mọi donut thật nên vòng nào cũng
+// hiện sẵn một vành xanh-vàng bất kể số thật. Đây là hạng lỗi tệ nhất: nó không trống, nó NÓI DỐI.
+test("donut vẽ từ SỐ THẬT — không nền conic vẽ cứng, không cung khi chưa có dữ liệu", () => {
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // Không một luật nào của biểu đồ được tự vẽ dữ liệu bằng gradient có mốc cứng.
+  for (const m of css.matchAll(/\.(donut|dtrack|darc|cap-bar|cap-seg)[^{]*\{([^}]*)\}/g)) {
+    assert.ok(!/conic-gradient/.test(m[2]), `luật ${m[0].slice(0, 30)}… vẽ dữ liệu bằng gradient cứng — đó là biểu đồ giả`);
+  }
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  // Cung phải tính từ CHU VI thật và % đo được; 100% thì gỡ dasharray để vòng KÍN, không hở mối nối.
+  assert.match(gm, /if\(pct>=100\)arc\.removeAttribute\('stroke-dasharray'\)/, "đủ 100% thì vòng phải KÍN");
+  assert.match(gm, /if\(freePct>=100\)cArc\.removeAttribute\('stroke-dasharray'\)/, "vòng sức chứa cũng phải kín được");
+  assert.match(gm, /\(freePct\/100\*DONUT_C\)/, "cung phải tính từ chu vi thật, không phải số ma");
+  // CHƯA ĐO ĐƯỢC thì vành RỖNG và số là "—" — vẽ cung cho dữ liệu chưa có cũng là bịa.
+  assert.match(gm, /a0\.setAttribute\('stroke-dasharray','0 '\+DONUT_C/, "chưa có số thì vành phải rỗng");
+  assert.match(gm, /zset\('capPct','—'\)/, "chưa có số thì nhãn phải là dấu gạch, không phải một con số cũ");
+  // Hai vòng ĐỐI XỨNG: panel phải cũng mở đầu bằng vòng, như panel trái.
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const right = html.slice(html.indexOf('data-i18n="drv.actionsH"'));
+  const body = right.slice(right.indexOf('<div class="card-b">'));
+  assert.match(body.slice(0, 260), /<div class="drv-progress">/, "panel phải mở đầu bằng vòng, cho ngang hàng với panel trái");
+});

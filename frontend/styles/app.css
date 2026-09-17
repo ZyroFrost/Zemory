@@ -308,9 +308,6 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .score{color:var(--primary);font-weight:700;font-family:ui-monospace,monospace}
 .tagx{font-size:10px;padding:1px 7px;border-radius:5px;background:var(--surface-3);color:var(--text-dim)}
 .hit .txt{font-size:12.5px;color:var(--text-dim);overflow-wrap:anywhere}.hit .dt{font-size:10.5px;color:var(--text-faint);margin-top:4px}
-.donut{width:130px;height:130px;border-radius:50%;background:conic-gradient(var(--success) 0 84%,var(--warn) 84% 94%,var(--surface-3) 94% 100%);display:grid;place-items:center;margin:auto}
-.donut .in{width:96px;height:96px;border-radius:50%;background:var(--surface);display:grid;place-items:center;text-align:center}
-.donut .in b{font-size:26px}.donut .in small{font-size:10px;color:var(--text-faint)}
 /* MỌI THẺ CÙNG MỘT KHỔ — kể cả khi kéo hẹp lưới (user chốt 2026-09-16).
    Ba thứ cùng ép thẻ co theo nội dung: lưới `align-items:start` + `grid-auto-rows:max-content`
    (đã bỏ ở app.html) và `align-self:start` ở đây. Hậu quả thấy được: thẻ nào mang badge
