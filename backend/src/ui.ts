@@ -151,6 +151,8 @@ import {
   getWebAuth,
   setWebAuth,
   setWebPull,
+  getWindowBox,
+  setWindowBox,
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
@@ -1414,6 +1416,16 @@ function closePrevWindow(): void {
   }
 }
 
+/** Cờ khung cửa sổ cho lần mở này — đúng chỗ cũ, đúng cỡ cũ, và phóng to thì vẫn phóng to. */
+function windowArgs(): string[] {
+  const b = getWindowBox();
+  if (!b) return ["--window-size=1320,920"];
+  // Phóng to: KHÔNG kèm --window-size, vì cỡ lúc phóng to là việc của hệ điều hành; truyền cả hai
+  // thì trình duyệt mở cỡ đó rồi mới phóng, thấy rõ một nhịp giật.
+  if (b.max) return ["--start-maximized"];
+  return [`--window-position=${b.x},${b.y}`, `--window-size=${b.w},${b.h}`];
+}
+
 /** Fallback: open the cockpit in an msedge/chrome --app window (browser icon). */
 function openWindowMsedge(url: string): void {
   const browser = resolveBrowser();
@@ -1436,7 +1448,12 @@ function openWindowMsedge(url: string): void {
       `--user-data-dir=${profileDir}`,
       "--no-first-run",
       "--no-default-browser-check",
-      "--window-size=1320,920",
+      // Khung cửa sổ lần trước. Chưa có thì dùng mặc định như cũ.
+      //
+      // Vì sao truyền cờ chứ không phó mặc trình duyệt tự nhớ: bản cũ truyền CỨNG
+      // `--window-size=1320,920` mỗi lần mở, tức là có nhớ cũng bị đè. Và trạng thái PHÓNG TO
+      // không diễn tả được bằng kích thước — phóng to là một trạng thái riêng, nên nó có cờ riêng.
+      ...windowArgs(),
     ],
     // windowsHide: trình duyệt tự mở cửa sổ GUI của nó; cờ này chỉ chặn Node kèm thêm một
     // console — thứ mà đóng nhầm là giết tiến trình (`plan/24 §10.1`).
@@ -2077,6 +2094,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } finally {
         db.close();
       }
+    }
+    if (req.method === "POST" && p === "/window-box") {
+      // Bề mặt tự khai khung của nó (trang không đọc được khung bằng cách nào khác trên Windows).
+      // Số rác thì BỎ QUA, không ghi: một lần ghi hỏng là lần mở sau cửa sổ nằm ngoài màn hình.
+      const n = (k: string): number => Number(u.searchParams.get(k));
+      const box = { x: n("x"), y: n("y"), w: n("w"), h: n("h"), max: u.searchParams.get("max") === "1" };
+      if (![box.x, box.y, box.w, box.h].every((v) => Number.isFinite(v)) || box.w < 320 || box.h < 240) {
+        return json(res, { ok: false, error: "khung không hợp lệ" });
+      }
+      setWindowBox(box);
+      return json(res, { ok: true });
     }
     if (req.method === "POST" && p === "/pin-project") {
       // Pin keeps a project on the tab bar; unpinned ones fall back to recency.

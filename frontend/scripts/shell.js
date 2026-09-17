@@ -300,3 +300,26 @@
   // 'warn'/'off'=cảnh báo · 'dim'=tắt-có-chủ-đích, KHÔNG tính là lỗi.
   // MỘT nguồn duy nhất = FEATURES + sysStatus() (trước 2026-07-25 còn một list check
   // thứ hai hardcode ở Home — 2 chỗ phải sửa song song, tất yếu lệch nhau).
+
+/* ── KHAI "ĐANG PHÓNG TO HAY KHÔNG" CHO CỬA SỔ ──────────────────────────────────
+ *
+ * Cửa sổ native tự đo được vị trí và kích thước của nó, nhưng KHÔNG biết màn hình rộng bao nhiêu
+ * nên không tự suy ra được là đang phóng to hay chỉ đang to. Trang thì biết (`screen.availWidth`).
+ * Nên phân vai: trang khai đúng MỘT boolean, mọi toạ độ vẫn do cửa sổ tự đo — tránh hẳn cái bẫy
+ * toạ độ nội dung ≠ toạ độ cửa sổ (lấy nhầm là mỗi lần mở cửa sổ lại tụt xuống một thanh tiêu đề).
+ *
+ * Chỉ chạy dưới cửa sổ native; mở bằng trình duyệt thì không có kênh này và cũng không cần.
+ */
+(function(){
+  var ch=window.chrome&&window.chrome.webview; if(!ch||!ch.postMessage)return;
+  var last=null,timer=null;
+  function tell(){
+    var max=(outerWidth>=screen.availWidth-24)&&(outerHeight>=screen.availHeight-24);
+    if(max===last)return; last=max;
+    // Gửi kèm VÙNG LÀM VIỆC của màn hình: cửa sổ cần nó để tự nhận ra "cỡ này là cỡ phóng to"
+    // mà không phải đoán theo thứ tự sự kiện — thứ tự đó đo ra là không tin được.
+    try{ch.postMessage(JSON.stringify({t:'winmax',v:max,aw:screen.availWidth,ah:screen.availHeight}));}catch(_){}
+  }
+  addEventListener('resize',function(){clearTimeout(timer);timer=setTimeout(tell,150);});
+  tell();
+})();

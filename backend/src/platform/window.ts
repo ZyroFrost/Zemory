@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { spawn } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getWindowBox, setWindowBox } from "../config/settings.js";
 
 /**
  * MỘT APP = MỘT CỬA SỔ (user chốt 2026-09-12: *"mở app lại mà app UI cũ vẫn còn, không biết cái nào
@@ -76,6 +77,71 @@ function releaseWindow(file: string | null): void {
   }
 }
 
+type Box = { x: number; y: number; w: number; h: number; max: boolean };
+
+/**
+ * Ghi nhớ khung cửa sổ khi người dùng KÉO hoặc ĐỔI CỠ, để lượt mở sau dựng lại y hệt.
+ *
+ * Điểm khó duy nhất: **cỡ lúc phóng to không phải cỡ người dùng chọn.** Ghi đè nó vào khung đã
+ * nhớ thì lần sau bỏ phóng to sẽ ra một cửa sổ to bằng màn hình — mất luôn cỡ họ từng đặt. Mà
+ * cửa sổ native KHÔNG có API hỏi "đang phóng to không", cũng không biết màn hình rộng bao nhiêu.
+ * Thứ biết điều đó là TRANG, nên trang gửi VÙNG LÀM VIỆC của màn hình qua kênh `postMessage`.
+ *
+ * ⚠ Bản đầu chỉ nhờ trang khai một boolean rồi "hoàn nguyên một bước" khi nghe tin phóng to —
+ * ĐO RA LÀ KHÔNG ĂN: một cú phóng to sinh nhiều hơn một `onResize`, nên bước lùi rơi vào đúng
+ * một cỡ màn hình khác. Nay không phụ thuộc thứ tự sự kiện nữa: biết vùng làm việc rồi thì cửa
+ * sổ tự nhận ra "cỡ này là cỡ phóng to" và không cho nó chạm vào cỡ đã nhớ.
+ */
+function rememberBox(win: { onResize: (cb: (w: number, h: number) => void) => void; onMove: (cb: (x: number, y: number) => void) => void; onMessage: (cb: (m: string, src: string) => void) => void }, saved: Box | null): void {
+  let box: Box = saved ?? { x: 0, y: 0, w: 1320, h: 920, max: false };
+  let area: { w: number; h: number } | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const later = (): void => {
+    if (timer) clearTimeout(timer);
+    // Gộp nhịp: kéo một cái sinh hàng chục sự kiện, ghi từng cái là đập vào đĩa vô ích.
+    timer = setTimeout(() => {
+      try {
+        setWindowBox(box);
+      } catch {
+        /* ghi hỏng thì thôi — mất chỗ cửa sổ không đáng để giết cửa sổ */
+      }
+    }, 800);
+  };
+  /** Cỡ này có phải cỡ lúc phóng to không? Chưa biết màn hình thì đành coi là không. */
+  const isMaxSize = (w: number, h: number): boolean => !!area && w >= area.w - 24 && h >= area.h - 24;
+  win.onResize((width, height) => {
+    // CHƯA biết màn hình rộng bao nhiêu thì KHÔNG kết luận được cỡ này là do người dùng chọn hay
+    // do phóng to ⇒ không ghi gì. Lượt mở đầu nổ `onResize` trước khi trang kịp khai vùng làm việc;
+    // ghi bừa ở đó là bê nguyên cỡ phóng to đè lên cỡ người dùng từng đặt (đã đo đúng ca này).
+    if (!area) return;
+    if (isMaxSize(width, height)) {
+      // Cỡ của hệ điều hành, không phải cỡ người dùng chọn ⇒ chỉ ghi nhận TRẠNG THÁI.
+      if (!box.max) { box = { ...box, max: true }; later(); }
+      return;
+    }
+    box = { ...box, w: width, h: height, max: false };
+    later();
+  });
+  win.onMove((x, y) => {
+    if (box.max) return;   // vị trí lúc phóng to là của hệ điều hành (thường âm vài pixel)
+    box = { ...box, x, y };
+    later();
+  });
+  win.onMessage((m) => {
+    try {
+      const j = JSON.parse(m) as { t?: string; v?: boolean; aw?: number; ah?: number };
+      if (j?.t !== "winmax") return;
+      if (typeof j.aw === "number" && typeof j.ah === "number" && j.aw > 0 && j.ah > 0) area = { w: j.aw, h: j.ah };
+      const max = !!j.v;
+      if (max === box.max) return;
+      box = { ...box, max };
+      later();
+    } catch {
+      /* tin nhắn không phải của mình — bỏ qua */
+    }
+  });
+}
+
 async function main(): Promise<void> {
   const url = process.argv[2];
   const icon = process.argv[3];
@@ -118,7 +184,34 @@ async function main(): Promise<void> {
   const { NativeWindow } = await import("@nativewindow/webview");
   // `new NativeWindow` auto-initializes the native subsystem and pumps events, so
   // the process stays alive until the window closes.
-  const win = new NativeWindow({ title: "Zemory", width: 1320, height: 920, minWidth: 900, minHeight: 600 });
+  // ── KHUNG CỬA SỔ ĐƯỢC NHỚ ───────────────────────────────────────────────────
+  //
+  // Mở lại phải ra ĐÚNG chỗ cũ: mở full thì lần sau full, để ở góc nào thì lần sau ở đó
+  // (user chốt 2026-09-17).
+  //
+  // Vì sao GHI Ở ĐÂY chứ không để trang web tự khai: trong trang, `screenX/screenY` là gốc của
+  // vùng NỘI DUNG, không phải gốc CỬA SỔ. Dựng lại cửa sổ tại đúng toạ độ đó thì mỗi lần mở nó
+  // tụt xuống thêm một thanh tiêu đề — cửa sổ "đi bộ" dần xuống góc màn hình. `onMove`/`onResize`
+  // của chính cửa sổ trả đúng hệ toạ độ mà hàm dựng nhận, nên vòng lưu–khôi phục khép kín.
+  const saved = getWindowBox();
+  const win = new NativeWindow({
+    title: "Zemory",
+    width: saved ? saved.w : 1320,
+    height: saved ? saved.h : 920,
+    ...(saved ? { x: saved.x, y: saved.y } : {}),
+    minWidth: 900,
+    minHeight: 600,
+  });
+  // Phóng to là TRẠNG THÁI riêng, không diễn tả được bằng kích thước: dựng theo khung-chưa-phóng
+  // rồi mới phóng, nên lúc người dùng bỏ phóng to sẽ về đúng cỡ họ từng chọn.
+  if (saved?.max) {
+    try {
+      win.maximize();
+    } catch {
+      /* không phóng được thì vẫn có cửa sổ đúng cỡ — không chặn lượt mở */
+    }
+  }
+  rememberBox(win, saved);
   if (icon) {
     try {
       win.setIcon(icon);
