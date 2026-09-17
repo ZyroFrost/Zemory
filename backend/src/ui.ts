@@ -35,7 +35,7 @@ import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
-import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile } from "./docs/paths.js";
+import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
@@ -2942,13 +2942,21 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Per-repo NEWLY-dead paths from the sweep's state (plan/21 §2.3) — one small JSON read, no scan, and
       // independent of the repo-std switch: the sweep runs regardless, so its verdict is shown regardless.
       let deadPaths: ReturnType<typeof deadPathsSummary> = [];
+      // "Không kết luận được" đi kèm — chết mà không có bằng chứng từng sống (plan/21 §2.3b). Không đổi màu,
+      // nhưng phải HIỆN: user 2026-09-17 *"cái nào không dò được thì phải báo không dò được"*.
+      let unprovenPaths: ReturnType<typeof unprovenPathsSummary> = [];
       try {
         // Watch OFF ⇒ nothing here: the chip and the Projects badges read this field, and OFF means quiet.
-        if (getPathsWatch()) deadPaths = deadPathsSummary(loadPathsState(pathsStateFile()), listKnownProjects());
+        if (getPathsWatch()) {
+          const st = loadPathsState(pathsStateFile());
+          const projs = listKnownProjects();
+          deadPaths = deadPathsSummary(st, projs);
+          unprovenPaths = unprovenPathsSummary(st, projs);
+        }
       } catch {
         /* fail-open — a reminder surface must not die */
       }
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: appUpdateStatus(), repoStdCheck: getRepoStdCheck(), deadPaths, pathsWatch: getPathsWatch() });
+      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: appUpdateStatus(), repoStdCheck: getRepoStdCheck(), deadPaths, unprovenPaths, pathsWatch: getPathsWatch() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.

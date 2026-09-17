@@ -263,6 +263,8 @@
       // "có badge check repo theo chuẩn rồi, xài cái đó luôn"). Sweep canh 17 repo nhưng hàng Tính năng chỉ nói về
       // project của daemon — Dept_OPS mới chết mà UI im (đo 2026-09-10). Lưu để hộp thoại + thẻ Dự án dùng chung.
       var dead=(r&&r.deadPaths)||[];Z.updDead=dead;
+      // "Không kết luận được" đi kèm, KHÔNG đổi màu — nhưng phải hiện (user 2026-09-17: "không dò được thì báo không dò được").
+      Z.updUnproven=(r&&r.unprovenPaths)||[];
       var app=r&&r.appUpdate;UPD_APP=app||null;UPD_CHECK=!(r&&r.repoStdCheck===false);
       // HAI SỰ THẬT ĐỘC LẬP, HAI CHIP — không `return` sớm nữa. Bản cũ ưu tiên "bản zemory mới" rồi
       // thoát, nên khi vừa có bản mới VỪA có repo cũ chuẩn thì vế repo BIẾN MẤT khỏi rail; user gặp
@@ -517,6 +519,12 @@
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t('fix.promptHint'))+'</div>'
         +'</div>'
       :line('✓ '+t('upd.deadNone'));
+    // KHÔNG KẾT LUẬN ĐƯỢC: chết mà không có bằng chứng từng sống (plan/21 §2.3b). Không màu, không nút — nhưng
+    // phải có mặt, nếu không "báo đúng hết" thành "giấu phần không biết".
+    var uu=Z.updUnproven||[];
+    if(uu.length)repos+='<div class="muted" style="font-size:12px;margin-top:8px">'
+      +uu.map(function(x){return '<div style="padding:2px 0">⚪ <b>'+stdEsc(x.name)+'</b> — '+stdEsc(t('upd.unprovenRow').replace('{n}',x.unproven))+'</div>';}).join('')
+      +'<div style="font-size:11px;margin-top:2px">'+stdEsc(t('upd.unprovenHint'))+'</div></div>';
     repos+='<label style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;cursor:pointer"><input type="checkbox" id="updCheckRepos"'+(UPD_CHECK?' checked':'')+'> '+stdEsc(t('upd.checkRepos'))+'</label>';
     return repos;
   }

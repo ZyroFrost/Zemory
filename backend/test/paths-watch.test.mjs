@@ -44,7 +44,12 @@ test("every surface honours the switch: the scheduler skips the sweep, /harness-
   const sched = SRC("backend/src/jobs/scheduler.ts");
   assert.match(sched, /if \(getPathsWatch\(\)\) \{\s*\n\s*await runStep\("paths", \["paths", "sweep"\]\);/, "daemon phải bỏ bước paths khi tắt");
   const ui = SRC("backend/src/ui.ts");
-  assert.match(ui, /if \(getPathsWatch\(\)\) deadPaths = deadPathsSummary\(/, "chip + badge đọc deadPaths ⇒ tắt thì phải rỗng");
+  // Khối `if (getPathsWatch()) { … }` phải bọc CẢ HAI phép đọc state — `deadPaths` (đổi màu) và `unprovenPaths`
+  // ("không kết luận được", thêm 2026-09-17). Tắt là im hết, không chừa dòng nào (plan/21 §5.7).
+  const guard = /if \(getPathsWatch\(\)\) \{([\s\S]{0,400}?)\n\s*\}/.exec(ui);
+  assert.ok(guard, "chip + badge đọc deadPaths ⇒ phải có khối if (getPathsWatch()) bọc phép đọc state");
+  assert.match(guard[1], /deadPaths = deadPathsSummary\(/, "deadPaths phải nằm TRONG công tắc — tắt thì phải rỗng");
+  assert.match(guard[1], /unprovenPaths = unprovenPathsSummary\(/, "unprovenPaths cũng phải nằm TRONG công tắc — tắt là im hết");
   assert.match(ui, /p === "\/set-paths-watch"/, "phải có endpoint gạt");
   assert.match(ui, /pathsWatch: getPathsWatch\(\),/, "/memory-status phải mang trạng thái để FE vẽ nút");
   const sys = SRC("frontend/scripts/system.js");
