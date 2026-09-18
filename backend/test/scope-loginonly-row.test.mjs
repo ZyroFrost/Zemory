@@ -45,8 +45,17 @@ test("1b IDENTITY is not necessarily an EMAIL - GitHub returns a USERNAME", () =
   // BA trạng thái, BA câu: biết là ai · ĐÃ NỐI mà chưa rõ ai · chưa nối. Gộp hai cái sau là dán
   // "chưa gắn tài khoản" lên một khe đang nối — đúng ca M365 Copilot (`token:true` chắc chắn,
   // nhưng nhãn nút tài khoản render thất thường: một lượt thấy, ba lượt sau rỗng).
-  assert.match(SCOPE, /const label = slotWho \?\? \(fromAuth\.has\(account\) \? "\(đã nối · chưa rõ tài khoản\)" : "\(chưa gắn tài khoản\)"\);/,
+  // 🔄 Neo viết lại 2026-09-18: hai nhãn này đã đi qua `tr()` (commit 528604c — bản cũ gõ cứng
+  // tiếng Việt nên giao diện tiếng Anh hiện "(chưa gắn tài khoản)" giữa các hàng tiếng Anh, bắt
+  // được lúc chụp ảnh README). Neo cũ gõ cứng chuỗi trần nên ĐỎ dù hành vi không đổi. Nay neo
+  // đúng hai thứ phải giữ: BA trạng thái vẫn tách, và cả hai nhãn đều đi qua từ điển — chứ không
+  // neo vào hình dạng một dòng, thứ sẽ gãy lần xuống dòng tiếp theo.
+  assert.match(SCOPE, /const label =\s*\n\s*slotWho \?\?\s*\n\s*\(fromAuth\.has\(account\)/,
     "phải phân biệt 'đã nối mà chưa rõ ai' với 'chưa gắn tài khoản'");
+  assert.match(SCOPE, /tr\("\(đã nối · chưa rõ tài khoản\)", "\(linked · account unknown\)"\)/,
+    "nhãn 'đã nối mà chưa rõ ai' phải qua tr() — gõ cứng là giao diện Anh hiện tiếng Việt");
+  assert.match(SCOPE, /tr\("\(chưa gắn tài khoản\)", "\(no account yet\)"\)/,
+    "nhãn 'chưa gắn tài khoản' phải qua tr()");
   // Vế NGƯỢC, quan trọng ngang: KHÔNG được nới `isEmail` cho nhận chuỗi thường — khoá hàng có thể
   // là TÊN KHE (`main`·`2`), mà `main` trông y hệt một tên đăng nhập hợp lệ. Nới ra là biến khe
   // thành danh tính, và hàng sẽ mang nhãn "main".
