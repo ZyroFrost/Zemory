@@ -126,7 +126,29 @@ export function cmdSync(): void {
     if (sc.guardStale.length) {
       console.log(`  ⚠ guard LỖI THỜI: ${sc.guardStale.join(" · ")} — chạy lại \`zemory hook guard\``);
     }
-    if (!sc.missing.length && !sc.guardStale.length) console.log("  ✓ đang khớp bộ chuẩn hiện hành.");
+    // Lệch CHỮ — file CÓ nhưng nội dung cũ (plan/26). Gap-fill không với tới ca này: `ensureHarness`
+    // chỉ bù file THIẾU và không bao giờ ghi đè, nên một bản sửa chuẩn nằm mãi ở template. Báo ở ĐÂY
+    // chứ không đẻ lệnh riêng — hỏi "repo này lệch chuẩn chỗ nào" thì chỉ nên có MỘT chỗ trả lời.
+    const verdicts = standardDiff(root).files; // một lượt — mỗi file là một lời gọi git, đừng đo hai lần
+    const drift = verdicts.filter((f) => f.verdict === "clean" || f.verdict === "local");
+    const unsure = verdicts.filter((f) => f.verdict === "unknown");
+    if (drift.length) {
+      console.log(`  ⚠ ${drift.length} file CÓ SẴN nhưng chữ đã cũ (gap-fill KHÔNG chạm tới):`);
+      for (const f of drift) {
+        const how = f.verdict === "clean" ? "thay được" : `có sửa riêng ${f.localLines} dòng`;
+        console.log(`      ~ ${f.file}  ${f.repoStamp} → ${f.tplStamp}  (${how} · chuẩn đổi ${f.standardLines} dòng)`);
+      }
+    }
+    if (unsure.length) {
+      console.log(`  ? ${unsure.length} file chưa kết luận được: ${unsure.map((f) => f.file).join(" · ")}`);
+      console.log(`      (${unsure[0].reason} — chưa có gốc để so, xem plan/26 §3)`);
+    }
+    // ✓ chỉ được in khi KHÔNG còn ô nào chưa đo được. "5 file chưa kết luận" đứng cạnh "đang khớp"
+    // là một câu tự chống lại mình, và người đọc sẽ tin vế xanh (`02_RULES §Hành xử` — chưa xác minh
+    // thì chưa phải sự thật).
+    const clean = !sc.missing.length && !sc.guardStale.length && !drift.length;
+    if (clean && !unsure.length) console.log("  ✓ đang khớp bộ chuẩn hiện hành.");
+    else if (clean) console.log("  · phần đo được thì khớp; phần trên chưa kết luận được.");
     else process.exitCode = 1;
     return;
   }
@@ -135,6 +157,13 @@ export function cmdSync(): void {
   if (r.createdConfig) console.log("  + created .harness.json");
   if (r.added.length) console.log(`  + added missing: ${r.added.join(", ")}`);
   if (r.present.length) console.log(`  · kept existing: ${r.present.join(", ")}`);
+  // "kept existing" nói file CÒN, không nói nó còn ĐÚNG. Nếu chữ trong đó đã cũ thì phải nói ra ngay
+  // tại đây, nếu không người chạy sync sẽ đọc dòng trên thành "xong rồi" (plan/26 §0).
+  const behind = standardDiff(root).files.filter((f) => f.verdict === "clean" || f.verdict === "local");
+  if (behind.length) {
+    console.log(`  ⚠ ${behind.length} file trong số đó có CHỮ đã cũ — gap-fill không sửa nội dung.`);
+    console.log(`    → xem chi tiết: \`zemory sync --check\``);
+  }
   if (r.needsReconcile) {
     console.log("  ⚠ existing docs are non-standard — NOT auto-modified.");
     console.log("    → AGENT reconcile (các bước: docs/agent/03_STRUCTURE.md §8, hoặc `zemory migrate`):");
@@ -608,58 +637,6 @@ export function cmdConform(args: string[]): void {
     console.log(`      → ${it.fix}`);
   }
   if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
-}
-
-/**
- * `zemory standard diff` — how far this repo's harness text is behind the shipped standard.
- *
- * READ ONLY, on purpose. `sync` cannot answer this (it gap-fills missing files and never overwrites),
- * and the update chip cannot either (it counts missing files, not content). Writing is a separate
- * step with its own permission gate, because it means editing another project's files.
- */
-export function cmdStandard(args: string[]): void {
-  const sub = args[0];
-  if (sub !== "diff") {
-    console.log("zemory standard diff [--root <dir>] [--json]   how far this repo is behind the shipped standard");
-    process.exitCode = 1;
-    return;
-  }
-  const at = args.indexOf("--root");
-  const root = at >= 0 && args[at + 1] ? resolve(args[at + 1]) : findProjectRoot();
-  if (!root) {
-    console.log("zemory standard: not connected — run `zemory init` first, or pass --root <dir>.");
-    process.exitCode = 1;
-    return;
-  }
-  const rep = standardDiff(root);
-  if (args.includes("--json")) {
-    console.log(JSON.stringify({ root, ...rep }, null, 2));
-    return;
-  }
-  console.log(`zemory standard diff — ${root}  (profile: ${rep.profile})`);
-  const LABEL: Record<string, string> = {
-    current: "✓ đúng bản",
-    clean: "→ thay được",
-    local: "⚠ có sửa riêng",
-    unknown: "? chưa kết luận",
-    absent: "- thiếu file",
-  };
-  for (const f of rep.files) {
-    const size =
-      f.verdict === "local"
-        ? `  (repo sửa ${f.localLines} dòng · chuẩn đổi ${f.standardLines} dòng)`
-        : f.verdict === "clean"
-          ? `  (chuẩn đổi ${f.standardLines} dòng)`
-          : "";
-    const when = f.repoStamp ? `${f.repoStamp} → ${f.tplStamp ?? "?"}` : "chưa có dấu";
-    console.log(`  ${LABEL[f.verdict].padEnd(16)} ${f.file.padEnd(20)} ${when}${size}${f.reason ? `  — ${f.reason}` : ""}`);
-  }
-  const n = (v: string) => rep.files.filter((f) => f.verdict === v).length;
-  console.log(
-    `\n  ${n("current")} đúng bản · ${n("clean")} thay được · ${n("local")} có sửa riêng · ${n("unknown")} chưa kết luận · ${n("absent")} thiếu`,
-  );
-  if (n("local") || n("unknown"))
-    console.log("  ⚠ `standard apply` chưa có — hợp nhất và ghi là bước sau (plan/26 §6 bước ③).");
 }
 
 export function cmdValidate(): void {

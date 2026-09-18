@@ -12,7 +12,6 @@ export function cmdHelp(): void {
       "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  conform   score how closely this repo follows the declared folder standard (--gate)",
-      "  standard  standard diff: how far this repo's harness TEXT is behind the shipped standard (read-only)",
       "  sweep     close leftover browser processes zemory started (--dry-run · --all · --json)",
       "  paths     paths check: dead file paths in docs/config, judged only under declared roots (--gate = newly dead) · paths sweep · paths fix [--apply] (propose/repair unique-name targets)",
       "  selfupdate  pull + rebuild this zemory install (stops if the tree is dirty); --check only measures origin",
