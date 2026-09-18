@@ -80,26 +80,43 @@ const npm = (args) => step(`npm ${args.join(" ")}`, NPM_CMD, [...NPM_PREFIX, ...
     say("  ✓ daemon da thoat");
   }
 
-  if (!step("git pull --ff-only", "git", ["pull", "--ff-only"])) process.exit(4);
-  if (!npm(["install"])) process.exit(5);
-  if (!npm(["run", "build"])) process.exit(6);
-
-  if (RELAUNCH) {
-    const cli = join(ROOT, "dist", "cli.js");
-    if (!existsSync(cli)) { say(`  ✗ dung xong ma khong thay ${cli} — KHONG phong lai`); process.exit(7); }
-    // Phóng bằng nhị phân VỪA DỰNG trong dist/, KHÔNG bằng `process.execPath`: tiến trình này
-    // đang chạy từ một BẢN CHÉP TẠM ngoài dist (phải thế, nếu không nó tự khoá thư mục nó sắp
-    // xoá). Phóng bằng bản chép tạm thì daemon mới sống trong thư mục tạm — sai chỗ, và lượt
-    // cập nhật sau lại không xoá nổi bản tạm đó. Đây đúng là dòng mà `zemory.vbs` chạy.
-    const exe = join(ROOT, "dist", "zemory.exe");
-    const launcher = existsSync(exe) ? exe : process.execPath;
-    say(`· phong daemon moi bang ${launcher}`);
-    spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: ROOT, windowsHide: true }).unref();
+  // Hỏng giữa chừng thì PHẢI trả daemon lại. Đã đo 2026-09-18 ở lượt thử thật: bước pull đỏ,
+  // người thợ thoát, và người dùng mất hẳn app — daemon đã tắt từ trước mà không ai bật lại.
+  // Bỏ người ta ngồi với màn hình trống là kiểu hỏng tệ hơn cả việc cập nhật không thành.
+  const bail = (code) => { say(`  → cập nhật KHÔNG thành. Trả daemon lại bằng bản đang có.`); relaunch(); process.exit(code); };
+  if (!step("git pull --ff-only", "git", ["pull", "--ff-only"])) {
+    say("    🔴 nhánh chưa có upstream thì `git pull` không biết kéo từ đâu — đặt bằng");
+    say("       `git branch --set-upstream-to=origin/<nhánh>`; lịch sử bị viết lại thì phải CLONE LẠI.");
+    bail(4);
   }
+  if (!npm(["install"])) bail(5);
+  if (!npm(["run", "build"])) bail(6);
+
+  relaunch();
   say("=== selfupdate XONG");
   cleanupSelf();
   process.exit(0);
 })().catch((e) => { say(`=== selfupdate NO: ${e && e.stack ? e.stack : e}`); cleanupSelf(); process.exit(1); });
+
+/**
+ * Phóng daemon trở lại. Gọi ở CẢ đường thành công lẫn đường hỏng — daemon đã bị tắt từ đầu lượt,
+ * nên không phóng lại là người dùng mất app, bất kể cập nhật có thành hay không.
+ *
+ * Phóng bằng nhị phân trong `dist/`, KHÔNG bằng `process.execPath`: tiến trình này đang chạy từ
+ * một BẢN CHÉP TẠM ngoài dist (bắt buộc thế, nếu không nó tự khoá thư mục nó sắp xoá). Phóng bằng
+ * bản chép tạm thì daemon mới sống trong thư mục tạm — sai chỗ, và lượt cập nhật sau lại không xoá
+ * nổi bản tạm đó. Đây đúng là dòng mà `zemory.vbs` chạy.
+ */
+function relaunch() {
+  if (!RELAUNCH) return;
+  const cli = join(ROOT, "dist", "cli.js");
+  if (!existsSync(cli)) { say(`  ✗ khong thay ${cli} — KHONG phong lai duoc`); return; }
+  const exe = join(ROOT, "dist", "zemory.exe");
+  const launcher = existsSync(exe) ? exe : process.execPath;
+  say(`· phong daemon bang ${launcher}`);
+  try { spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: ROOT, windowsHide: true }).unref(); }
+  catch (e) { say(`  ✗ phong lai HONG: ${e && e.message}`); }
+}
 
 /**
  * Dọn bản chép tạm đã phóng ra tiến trình này. Không xoá được chính mình lúc đang chạy (Windows

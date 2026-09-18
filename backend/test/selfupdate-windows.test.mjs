@@ -116,6 +116,28 @@ test("người thợ phải chạy từ NGOÀI dist/ — nếu không nó tự k
   assert.match(block, /spawn\(updaterExe,/, "phải phóng bằng đúng bản chép ngoài dist/");
 });
 
+// Lộ ra từ PHÉP THỬ THẬT 2026-09-18, không phải từ đọc mã: bước `git pull` đỏ ⇒ người thợ thoát ⇒
+// người dùng mất hẳn app, vì daemon đã bị tắt từ đầu lượt và không ai bật lại. Cập nhật không
+// thành còn đỡ; bỏ người ta ngồi với màn hình trống mới là kiểu hỏng tệ nhất.
+test("selfupdate hỏng giữa chừng: phải TRẢ daemon lại, không bỏ người dùng tay trắng", () => {
+  const h = src("backend/scripts/selfupdate-run.mjs");
+  // Mọi bước có thể đỏ đều phải đi qua `bail()`, và `bail()` phải phóng lại trước khi thoát.
+  assert.match(h, /const bail = \([\s\S]{0,120}relaunch\(\);[\s\S]{0,40}process\.exit/, "bail() phải phóng daemon lại RỒI mới thoát");
+  for (const stepName of ["git pull --ff-only", '"install"', '"run", "build"']) {
+    const i = h.indexOf(stepName);
+    assert.ok(i > 0, `không thấy bước ${stepName}`);
+  }
+  // Mệnh đề thẳng, không phụ thuộc cách viết dòng lệnh: mã thoát của TỪNG BƯỚC chỉ được phát ra
+  // từ `bail()` (nó thoát bằng `process.exit(code)`), nên không chỗ nào được gọi thẳng với số.
+  // Bản đầu neo vào hình dạng `)) process.exit(4)` và đột biến viết xuống dòng đã lách qua được.
+  for (const code of [4, 5, 6]) {
+    assert.ok(h.includes(`bail(${code})`), `bước có mã ${code} phải đi qua bail()`);
+    assert.ok(!h.includes(`process.exit(${code})`), `mã ${code} thoát thẳng ⇒ daemon không được trả lại`);
+  }
+  // Và đường THÀNH CÔNG cũng phóng lại — dùng chung một hàm, không hai bản.
+  assert.equal((h.match(/function relaunch\(\)/g) || []).length, 1, "chỉ một hàm phóng lại, đừng chép đôi");
+});
+
 test("CLI selfupdate: tiễn daemon trước khi dựng, rồi trả lại daemon", () => {
   const s = src("backend/src/commands/selfupdate.ts");
   // Lại là chỗ GỌI, không phải tên: định nghĩa hàm cũng mang tên đó.
