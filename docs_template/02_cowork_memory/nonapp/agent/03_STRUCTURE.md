@@ -196,3 +196,6 @@ Ngoài phạm vi        app có code chạy (UI/server/CLI) → chuẩn APP · l
 | *(chưa có — điền khi dự án có metric đầu tiên)* | | | |
 
 **Quy ước:** một dòng một khái niệm · tên viết đúng như trên deliverable giao đi · **đổi định nghĩa là đổi SỐ LIỆU** ⇒ ghi `06_CHANGES` (supersede nếu đảo định nghĩa cũ) và nêu rõ ảnh hưởng tới bản đã phát hành.
+
+
+<!-- zemory-standard: 2026-09-18 -->

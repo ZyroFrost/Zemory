@@ -40,3 +40,6 @@
    nào dùng**, kèm trigger tiếng Việt, vì harness tự nạp theo `description`).
 2. Thêm **một dòng** vào §2 và **một dòng** vào bảng trigger của `AGENTS.md`.
 3. Có tài nguyên đi kèm → `reference/` · `scripts/` trong chính thư mục skill đó.
+
+
+<!-- zemory-standard: 2026-08-31 -->

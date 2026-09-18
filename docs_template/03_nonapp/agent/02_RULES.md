@@ -188,3 +188,6 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
 - **Nêu phản biện thiết kế trước khi thực thi** nếu phát hiện điểm bất hợp lý; quyết định cuối thuộc về user.
 - **Đổi HÌNH HÀI / BỐ CỤC deliverable** (layout report/dashboard, chọn chart, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi** (đi cặp với "chỉ làm đúng cái được yêu cầu"). *(Đây KHÔNG phải luật UI-app; chỉ là "đừng tự nắn hình hài sản phẩm giao đi".)* Cần ý tưởng biểu đồ → tham khảo skill `dataviz` rồi TRÌNH, không auto-apply.
 - **Skill là THAM KHẢO cho khuyến nghị, KHÔNG auto-apply.** Trước khi làm việc mà skill phủ (dataviz cho report · review chất lượng · …) → ĐỌC skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → TRÌNH user; user chốt mới làm. Quy trình đầy đủ: `04_SKILLS` §1.
+
+
+<!-- zemory-standard: 2026-09-16 -->
