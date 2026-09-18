@@ -28,7 +28,7 @@ import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
-import { standardDiff } from "../docs/standard.js";
+import { applyStandard, standardDiff } from "../docs/standard.js";
 
 export function cmdInit(args: string[]): void {
   if (args.includes("--fresh")) {
@@ -100,11 +100,33 @@ export function cmdMigrate(): void {
   console.log("  4. zemory reindex → zemory doctor (xanh = xong)");
 }
 
-export function cmdSync(): void {
-  const root = currentProjectRoot();
+export function cmdSync(args: string[] = process.argv): void {
+  const ri = args.indexOf("--root");
+  const root = ri >= 0 && args[ri + 1] ? resolve(args[ri + 1]) : currentProjectRoot();
+  // `--standard` = áp BẢN SỬA của chuẩn vào file ĐÃ CÓ (plan/26 bước ③). Không phải lệnh mới:
+  // HP điều 17 cấm hai lệnh cho một chức năng, và "đưa repo về đúng chuẩn" vốn đã là việc của `sync`.
+  // MẶC ĐỊNH DRY-RUN — `--apply` mới ghi. Ghi vào repo khác chỉ xảy ra khi có CẢ `--root` lẫn `--apply`.
+  if (args.includes("--standard")) {
+    const apply = args.includes("--apply");
+    const rep = applyStandard(root, { apply });
+    console.log(`zemory sync --standard${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
+    if (!rep.length) {
+      console.log("  ✓ không file nào cần áp.");
+      return;
+    }
+    for (const r of rep) {
+      if (r.action === "skipped") console.log(`  ✗ ${r.file.padEnd(20)} BỎ QUA — ${r.reason}`);
+      else console.log(`  ${apply ? "✔" : "→"} ${r.file.padEnd(20)} ${r.verdict === "clean" ? "thay nguyên file" : "hợp nhất"} · +${r.added} −${r.removed}`);
+    }
+    const w = rep.filter((r) => r.action !== "skipped").length;
+    const s = rep.filter((r) => r.action === "skipped").length;
+    console.log(`\n  ${apply ? `đã ghi ${w}` : `sẽ ghi ${w}`} · bỏ qua ${s}` + (apply ? "" : "  — thêm `--apply` để ghi thật"));
+    if (s) console.log("  ✗ phần bỏ qua phải sửa TAY ở repo đó — công cụ không đoán (plan/26 §4 lớp C).");
+    return;
+  }
   // `--check` = DRY-RUN "chấm than update" (2026-08-21): chỉ ĐO repo này cũ chỗ nào so với
   // bộ chuẩn hiện hành, KHÔNG ghi gì. Cùng một phép đo với hook mỗi-phiên và /harness-updates.
-  if (process.argv.includes("--check")) {
+  if (args.includes("--check")) {
     const sc = syncCheck(root);
     console.log(`zemory sync --check — ${root}`);
     if (!sc.connected) {

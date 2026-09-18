@@ -8,16 +8,26 @@
 // overwrite is not an option.
 //
 // This module only ever READS. Writing is a separate step with its own permission gate.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { templateDir } from "./adopt.js";
 import { harnessPathsAt } from "../core/config.js";
 import { projectProfile, selfRepoRoot } from "../projects.js";
 
-/** Files the revision mechanism carries. `05_TODO`/`06_CHANGES` are the target repo's own CONTENT
- *  and are never touched (plan/26 §8); `CLAUDE.md` is a one-line import with nothing to revise. */
-export const CARRIED = ["AGENTS.md", "01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md"] as const;
+/**
+ * Files the revision mechanism carries — only text that is genuinely SHARED across projects.
+ *
+ * Deliberately absent, and each for its own reason:
+ *  · `01_CONSTITUTION.md` — per-app by definition. The file itself says "mỗi app một bản, như mỗi
+ *    quốc gia một hiến pháp", and only the user may change it. Measured 2026-09-18 across 16 repos:
+ *    it differs from the template by 13 to 146 lines EVERYWHERE, which is the design working, not
+ *    drift. Carrying it would overwrite somebody's constitution.
+ *  · `04_SKILLS.md` — the registry of THAT repo's skills, so its content is per-repo too.
+ *  · `05_TODO` / `06_CHANGES` — the repo's own backlog and history (plan/26 §8).
+ *  · `CLAUDE.md` — a one-line `@AGENTS.md` import with nothing to revise.
+ */
+export const CARRIED = ["AGENTS.md", "02_RULES.md", "03_STRUCTURE.md"] as const;
 
 const MARK = /<!--\s*zemory-standard:\s*(\d{4}-\d{2}-\d{2})\s*-->\s*$/;
 
@@ -43,6 +53,17 @@ export type FileVerdict = {
   standardLines?: number;
   reason?: string;
 };
+
+
+/**
+ * `adopt.ts` thay `<PROJECT>` bằng tên repo lúc chép, nên file trong repo KHÔNG BAO GIỜ trùng byte
+ * với template. Mọi phép so — và mọi lượt GHI — phải thay giống hệt, nếu không:
+ *   · phép so: 0/85 file khớp bất kỳ bản lịch sử nào (đo 2026-09-18) ⇒ mọi thứ rơi vào "chưa kết luận";
+ *   · phép ghi: ghi nguyên chữ `<PROJECT>` vào repo người ta.
+ */
+function withProject(text: string, root: string): string {
+  return text.replace(/<PROJECT>/g, basename(root));
+}
 
 /** Where a carried file sits inside a harness. AGENTS.md is at the repo root; the rest under agent/. */
 function repoPathOf(root: string, file: string): string {
@@ -124,7 +145,7 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
       continue;
     }
     const mine = readFileSync(rp, "utf8");
-    const theirs = existsSync(tp) ? readFileSync(tp, "utf8") : null;
+    const theirs = existsSync(tp) ? withProject(readFileSync(tp, "utf8"), root) : null;
     const repoStamp = stampOf(mine);
     const tplStamp = theirs ? stampOf(theirs) : null;
 
@@ -140,7 +161,8 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
       files.push({ file, verdict: "unknown", repoStamp: null, tplStamp, reason: "chưa có dấu bản chuẩn" });
       continue;
     }
-    const base = templateAt(profile, file, repoStamp);
+    const baseRaw0 = templateAt(profile, file, repoStamp);
+    const base = baseRaw0 === null ? null : withProject(baseRaw0, root);
     if (base === null) {
       files.push({ file, verdict: "unknown", repoStamp, tplStamp, reason: `không lấy được bản gốc ${repoStamp} từ git` });
       continue;
@@ -160,4 +182,168 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
     });
   }
   return { profile, files };
+}
+
+// ── HỢP NHẤT BA BÊN (plan/26 §4, bước ③) ────────────────────────────────────────────────────────
+//
+// Vì sao tự viết thay vì kéo một thư viện diff: HP điều 2 (dependency mới phải rà license) và điều 1
+// (đừng thêm khi thứ có sẵn đủ dùng). File chuẩn dài ~330 dòng nên LCS O(n·m) là ~100k ô — rẻ hơn
+// nhiều so với chi phí nhận thêm một phụ thuộc vào lõi.
+
+/** Bảng LCS: dùng để tách ra ĐOẠN thay đổi, không phải để in diff cho người đọc. */
+function lcs(a: string[], b: string[]): number[][] {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--)
+    for (let j = n - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  return dp;
+}
+
+export type Hunk = {
+  /** vùng BỊ THAY trên BASE, nửa mở [start, end) */
+  start: number;
+  end: number;
+  /** dòng thay thế */
+  lines: string[];
+};
+
+/** Các đoạn biến `base` thành `other`. Đoạn liền nhau được gộp làm một để phép so chồng lấn
+ *  không bị vụn thành hàng chục đoạn một dòng. */
+export function hunks(base: string[], other: string[]): Hunk[] {
+  const dp = lcs(base, other);
+  const out: Hunk[] = [];
+  let i = 0;
+  let j = 0;
+  let cur: Hunk | null = null;
+  const flush = () => {
+    if (cur) out.push(cur);
+    cur = null;
+  };
+  while (i < base.length && j < other.length) {
+    if (base[i] === other[j]) {
+      flush();
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      // dòng của BASE bị bỏ
+      cur ??= { start: i, end: i, lines: [] };
+      cur.end = i + 1;
+      i++;
+    } else {
+      // dòng của OTHER được thêm
+      cur ??= { start: i, end: i, lines: [] };
+      cur.lines.push(other[j]);
+      j++;
+    }
+  }
+  if (i < base.length || j < other.length) {
+    cur ??= { start: i, end: i, lines: [] };
+    cur.end = base.length;
+    for (; j < other.length; j++) cur.lines.push(other[j]);
+  }
+  flush();
+  return out;
+}
+
+export type MergeResult =
+  | { ok: true; lines: string[]; mine: number; theirs: number }
+  | { ok: false; reason: string; at?: { mine: Hunk; theirs: Hunk } };
+
+/**
+ * Hợp nhất ba bên. CHỈ trộn khi hai bên sửa hai vùng KHÔNG chồng nhau; chồng nhau thì TỪ CHỐI và
+ * nói ra chỗ chồng — `plan/24 §9.4` đã chốt luật này cho lớp file và ở đây dùng lại nguyên văn:
+ * *trùng đoạn thì CHẶN và hỏi, không tự trộn*. Đoán ở đây là cách mất việc của người khác, mà 4 repo
+ * đang mang phần tự viết (một repo +160 dòng).
+ */
+export function merge3(base: string[], mine: string[], theirs: string[]): MergeResult {
+  const hm = hunks(base, mine);
+  const ht = hunks(base, theirs);
+  for (const a of hm)
+    for (const b of ht) {
+      // Chạm nhau tính là chồng: hai đoạn kề sát nhau sửa cùng một chỗ về mặt ngữ nghĩa thường
+      // xuyên hơn là ngẫu nhiên, và đây là phía AN TOÀN của lỗi.
+      if (a.start <= b.end && b.start <= a.end) return { ok: false, reason: "đoạn sửa CHỒNG nhau", at: { mine: a, theirs: b } };
+    }
+  const all = [...hm.map((h) => ({ ...h, src: "mine" as const })), ...ht.map((h) => ({ ...h, src: "theirs" as const }))].sort(
+    (x, y) => x.start - y.start,
+  );
+  const out: string[] = [];
+  let at = 0;
+  for (const h of all) {
+    for (let k = at; k < h.start; k++) out.push(base[k]);
+    out.push(...h.lines);
+    at = Math.max(at, h.end);
+  }
+  for (let k = at; k < base.length; k++) out.push(base[k]);
+  return { ok: true, lines: out, mine: hm.length, theirs: ht.length };
+}
+
+export type ApplyOne = {
+  file: string;
+  action: "would-write" | "written" | "skipped";
+  verdict: FileVerdict["verdict"];
+  reason?: string;
+  added?: number;
+  removed?: number;
+};
+
+/**
+ * Áp bản chuẩn mới vào MỘT repo. **Mặc định KHÔNG ghi** — `apply` phải được bật tường minh.
+ *
+ * Chỉ ghi hai hạng: `clean` (khớp gốc của chính nó ⇒ thay nguyên file, không mất gì) và `local` mà
+ * hai bên sửa KHÔNG chồng nhau (⇒ hợp nhất). Mọi ca còn lại TỪ CHỐI và nói lý do: `unknown` không có
+ * gốc để so, chồng đoạn thì người phải chọn (`plan/26 §4` lớp C).
+ *
+ * Giữ nguyên kiểu xuống dòng của FILE ĐÍCH và đóng lại dấu của bản chuẩn mới — ghi lại cả file bằng
+ * LF là đẻ một diff toàn-file che mất thay đổi thật (`02_RULES §EOL`).
+ */
+export function applyStandard(root: string, opts: { apply: boolean; only?: string[] }): ApplyOne[] {
+  const { profile, files } = standardDiff(root);
+  const out: ApplyOne[] = [];
+
+  for (const v of files) {
+    if (opts.only?.length && !opts.only.includes(v.file)) continue;
+    if (v.verdict === "current" || v.verdict === "absent") continue;
+    if (v.verdict === "unknown") {
+      out.push({ file: v.file, action: "skipped", verdict: v.verdict, reason: v.reason ?? "chưa kết luận được" });
+      continue;
+    }
+    const rp = repoPathOf(root, v.file);
+    const tp = tplPathOf(profile, v.file);
+    const mineRaw = readFileSync(rp, "utf8");
+    const theirsRaw = withProject(readFileSync(tp, "utf8"), root);
+    const baseRaw0 = v.repoStamp ? templateAt(profile, v.file, v.repoStamp) : null;
+    const baseRaw = baseRaw0 === null ? null : withProject(baseRaw0, root);
+    if (baseRaw === null) {
+      out.push({ file: v.file, action: "skipped", verdict: v.verdict, reason: "không lấy được bản gốc từ git" });
+      continue;
+    }
+
+    const eol = mineRaw.includes("\r\n") ? "\r\n" : "\n";
+    const base = contentLines(baseRaw);
+    const mine = contentLines(mineRaw);
+    const theirs = contentLines(theirsRaw);
+
+    let merged: string[];
+    if (v.verdict === "clean") {
+      merged = theirs; // khớp gốc ⇒ thay thẳng, không có gì của repo để giữ
+    } else {
+      const r = merge3(base, mine, theirs);
+      if (!r.ok) {
+        out.push({ file: v.file, action: "skipped", verdict: v.verdict, reason: r.reason + " — phải sửa tay ở repo đó" });
+        continue;
+      }
+      merged = r.lines;
+    }
+
+    const stamp = stampOf(theirsRaw);
+    const body = merged.join(eol) + eol + (stamp ? eol + `<!-- zemory-standard: ${stamp} -->` + eol : "");
+    const added = merged.filter((l) => !mine.includes(l)).length;
+    const removed = mine.filter((l) => !merged.includes(l)).length;
+
+    if (opts.apply) writeFileSync(rp, body);
+    out.push({ file: v.file, action: opts.apply ? "written" : "would-write", verdict: v.verdict, added, removed });
+  }
+  return out;
 }
