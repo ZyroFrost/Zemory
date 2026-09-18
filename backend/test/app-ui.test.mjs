@@ -2086,3 +2086,22 @@ test("mọi ô tìm dùng CHUNG một khung, không ô nào style gõ thẳng v�
     assert.match(shell, /data-i18n="recall\.go"/, `#${id} phải có nút chạy dùng chung nhãn recall.go`);
   }
 });
+
+// ── HAI HỘP CẬP NHẬT PHẢI CÓ NÚT HÀNH ĐỘNG ────────────────────────────────────
+//
+// User 2026-09-18: *"thiếu nguyên 2 cái nút check version với repo đồng bộ luôn"*. Đo lúc đó: hộp
+// phiên bản chỉ có `✕ · Huỷ · Đóng` khi đang là bản mới nhất, hộp chuẩn repo khai thẳng `onOk:null`
+// ⇒ người dùng KHÔNG có đường nào bắt app dò lại; nó chỉ tự dò theo nhịp 10 phút. Endpoint
+// (`/harness-updates?fresh=1`) đã có sẵn — đúng lớp lỗi "năng lực đã xây mà bề mặt không thấy".
+test("hộp Phiên bản và hộp Chuẩn repo đều có nút KIỂM LẠI, không phải một nút Đóng câm", () => {
+  const sys = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.ok(!/okLabel:t\('scope\.detClose'\),onOk:null/.test(sys), "hộp chuẩn repo không được chỉ có nút Đóng");
+  assert.match(sys, /okLabel:app\?t\('upd\.btn'\):t\('upd\.recheck'\)/, "hộp phiên bản: không có bản mới ⇒ ô nút thành 'kiểm bản mới'");
+  assert.match(sys, /okLabel:t\('upd\.recheckStd'\),onOk:function\(\)/, "hộp chuẩn repo phải có hành động kiểm lại");
+  // Cả hai phải dò TƯƠI, không đọc lại bản đệm của lượt poll trước.
+  assert.equal((sys.match(/zGet\('\/harness-updates\?fresh=1'\)/g) || []).length >= 3, true, "nút kiểm lại phải gọi bản TƯƠI");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  for (const k of ["upd.recheck", "upd.recheckStd", "upd.rechecking", "upd.recheckErr"]) {
+    assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
+  }
+});
