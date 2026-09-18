@@ -347,3 +347,41 @@ export function applyStandard(root: string, opts: { apply: boolean; only?: strin
   }
   return out;
 }
+
+/**
+ * ĐÓNG DẤU MỒI cho một repo đã có harness nhưng chưa có dấu (plan/26 §3).
+ *
+ * 🔴 Nói thẳng dấu này nghĩa là gì: nó KHÔNG khai "file này khớp bản chuẩn hôm nay" — đo 2026-09-18
+ * cho thấy 77/85 file mang dòng mà template không có. Nó khai **"từ mốc này trở đi, thứ repo đang
+ * có là CỦA REPO"**. Hệ quả: mọi bản sửa chuẩn SAU mốc chở được; phần đã lệch TRƯỚC mốc thì không,
+ * và vẫn phải nắn tay ở repo đó. Đây là mồi, không phải phép chữa.
+ *
+ * Chỉ THÊM một dòng chú thích ở cuối file; không đụng một chữ nội dung nào.
+ */
+export function stampRepo(root: string, opts: { apply: boolean }): Array<{ file: string; action: string; date?: string }> {
+  const profile = projectProfile(root);
+  const out: Array<{ file: string; action: string; date?: string }> = [];
+  for (const file of CARRIED) {
+    const rp = repoPathOf(root, file);
+    const tp = tplPathOf(profile, file);
+    if (!existsSync(rp) || !existsSync(tp)) {
+      out.push({ file, action: "không có file" });
+      continue;
+    }
+    const mine = readFileSync(rp, "utf8");
+    if (stampOf(mine)) {
+      out.push({ file, action: "đã có dấu", date: stampOf(mine) ?? undefined });
+      continue;
+    }
+    const date = stampOf(readFileSync(tp, "utf8"));
+    if (!date) {
+      out.push({ file, action: "bộ mẫu chưa có dấu" });
+      continue;
+    }
+    const eol = mine.includes("\r\n") ? "\r\n" : "\n";
+    const body = mine.replace(/\s*$/, "") + eol + eol + `<!-- zemory-standard: ${date} -->` + eol;
+    if (opts.apply) writeFileSync(rp, body);
+    out.push({ file, action: opts.apply ? "đã đóng dấu" : "sẽ đóng dấu", date });
+  }
+  return out;
+}
