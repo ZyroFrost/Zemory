@@ -130,6 +130,7 @@ const ROOT_ROLES: Record<string, string> = {
   frontend: "UI (pages/components/styles/assets)",
   docs: "zemory harness: agent/ (01→06) + plan/ + .harness.json",
   docs_visual: "human-only visual diagrams (agent does NOT read)",
+  docs_public: "media published with the README (tracked; scrub before adding)",
   docs_template: "the blank standard shipped to other projects",
   external: "external repos cloned for reference (their code)",
   attic: "backup: removed code / pre-deploy snapshots",

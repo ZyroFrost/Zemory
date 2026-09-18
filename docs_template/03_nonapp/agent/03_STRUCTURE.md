@@ -24,6 +24,9 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 ├── .claude/skills/      ★  QUY TRÌNH thao tác, mỗi skill một thư mục tự chứa (sổ đăng ký: 04_SKILLS)
 ├── docs_visual/        [opt] sơ đồ/flow/lineage XEM TRỰC QUAN cho NGƯỜI (vd luồng nạp DW) — .html tương tác/.svg;
 │                            NGOÀI docs/, mỗi file có .md chủ trỏ tới + tóm tắt 1–3 dòng
+├── docs_public/        [opt] ảnh/media ĐI KÈM README hoặc trang công khai — TRACKED (ngược hẳn docs_visual/).
+│                            CHỈ nhận thứ CỐ Ý công khai; TẨY dữ liệu thật trước khi bỏ vào (tên dự án · tên
+│                            máy · email · đường dẫn người dùng). Không có gì công khai → KHÔNG tạo folder
 │ ┄┄ DELIVERABLE — sản phẩm chính giao đi (chọn theo loại, ≥1) ┄┄
 ├── reports/             ◆  BI: file báo cáo .pbix/.pbip/.twb (bản chính giao đi)          [LFS nếu nhị phân nặng]
 ├── models/              ◆  data: semantic/transform layer — dbt model · tabular .bim · DAX model
@@ -122,6 +125,7 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 | định nghĩa metric/cột (nguồn sự thật) | **§7 của file này** — KHÔNG tạo `docs/dictionary.md` |
 | quy trình thao tác lặp lại (playbook) | `.claude/skills/<tên>/SKILL.md` (đăng ký ở `04_SKILLS`) |
 | sơ đồ luồng/lineage xem trực quan | `docs_visual/` (NGOÀI docs/, có .md chủ trỏ tới) |
+| ảnh/media đăng kèm README (công khai) | `docs_public/` — TRACKED; TẨY dữ liệu thật trước khi bỏ vào |
 | bản cũ deliverable / trước publish | `attic/` (rollback) |
 | tài liệu / rule / plan | `docs/` — sửa FILE `.md` trực tiếp (file wins) |
 | skill / playbook (grill · chốt phiên · reconcile · pull/fill/upload) | `docs/agent/04_SKILLS.md` |
