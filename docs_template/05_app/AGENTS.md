@@ -44,3 +44,6 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
 
 > Chạy trong Claude Code: các skill trên được harness **tự nạp theo `description`**; bảng này là đường
 > dự phòng khi cơ chế đó không có (và là chỗ khai báo skill mới — xem `04_SKILLS` §4).
+
+
+<!-- zemory-standard: 2026-09-16 -->

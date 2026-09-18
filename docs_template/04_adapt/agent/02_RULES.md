@@ -189,3 +189,6 @@ EOL của file         ⛔ ĐỌC SAO GHI VẬY: sửa file CÓ SẴN thì giữ
 - **Skill là THAM KHẢO cho khuyến nghị, KHÔNG auto-apply.** Trước khi thiết kế/nắn UI (hay việc skill phủ) → ĐỌC skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → TRÌNH user; đổi vẫn theo luật "thiết kế UI phải duyệt trước". User có ý tưởng UI mới cũng check skill gợi ý lại. Quy trình đầy đủ: `04_SKILLS` §1.
 
 > *(Luật THIẾT KẾ/UI cụ thể — Dialog 3-size, ESC mọi dialog, token-first… — KHÔNG ở đây: RULES là luật LÀM VIỆC chung. Convention thiết kế ở `03_STRUCTURE §5`. Ở đây CHỈ là luật hành xử "phải hỏi trước".)*
+
+
+<!-- zemory-standard: 2026-09-16 -->

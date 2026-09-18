@@ -49,3 +49,6 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 >
 > Chạy trong Claude Code: các skill trên được harness tự nạp theo `description`;
 > bảng này là đường dự phòng khi cơ chế đó không có.
+
+
+<!-- zemory-standard: 2026-08-31 -->

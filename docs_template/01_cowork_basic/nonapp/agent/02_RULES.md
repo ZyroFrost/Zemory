@@ -158,3 +158,6 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - **Nêu phản biện thiết kế trước khi thực thi** nếu thấy điểm bất hợp lý; quyết định cuối thuộc về user.
 - **Đổi HÌNH HÀI / BỐ CỤC sản phẩm giao đi** (layout báo cáo, chọn biểu đồ, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi**. Điền số theo mẫu có sẵn thì cứ làm.
 - **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
+
+
+<!-- zemory-standard: 2026-09-16 -->

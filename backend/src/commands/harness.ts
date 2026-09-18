@@ -28,6 +28,7 @@ import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
+import { standardDiff } from "../docs/standard.js";
 
 export function cmdInit(args: string[]): void {
   if (args.includes("--fresh")) {
@@ -607,6 +608,58 @@ export function cmdConform(args: string[]): void {
     console.log(`      → ${it.fix}`);
   }
   if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+}
+
+/**
+ * `zemory standard diff` — how far this repo's harness text is behind the shipped standard.
+ *
+ * READ ONLY, on purpose. `sync` cannot answer this (it gap-fills missing files and never overwrites),
+ * and the update chip cannot either (it counts missing files, not content). Writing is a separate
+ * step with its own permission gate, because it means editing another project's files.
+ */
+export function cmdStandard(args: string[]): void {
+  const sub = args[0];
+  if (sub !== "diff") {
+    console.log("zemory standard diff [--root <dir>] [--json]   how far this repo is behind the shipped standard");
+    process.exitCode = 1;
+    return;
+  }
+  const at = args.indexOf("--root");
+  const root = at >= 0 && args[at + 1] ? resolve(args[at + 1]) : findProjectRoot();
+  if (!root) {
+    console.log("zemory standard: not connected — run `zemory init` first, or pass --root <dir>.");
+    process.exitCode = 1;
+    return;
+  }
+  const rep = standardDiff(root);
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ root, ...rep }, null, 2));
+    return;
+  }
+  console.log(`zemory standard diff — ${root}  (profile: ${rep.profile})`);
+  const LABEL: Record<string, string> = {
+    current: "✓ đúng bản",
+    clean: "→ thay được",
+    local: "⚠ có sửa riêng",
+    unknown: "? chưa kết luận",
+    absent: "- thiếu file",
+  };
+  for (const f of rep.files) {
+    const size =
+      f.verdict === "local"
+        ? `  (repo sửa ${f.localLines} dòng · chuẩn đổi ${f.standardLines} dòng)`
+        : f.verdict === "clean"
+          ? `  (chuẩn đổi ${f.standardLines} dòng)`
+          : "";
+    const when = f.repoStamp ? `${f.repoStamp} → ${f.tplStamp ?? "?"}` : "chưa có dấu";
+    console.log(`  ${LABEL[f.verdict].padEnd(16)} ${f.file.padEnd(20)} ${when}${size}${f.reason ? `  — ${f.reason}` : ""}`);
+  }
+  const n = (v: string) => rep.files.filter((f) => f.verdict === v).length;
+  console.log(
+    `\n  ${n("current")} đúng bản · ${n("clean")} thay được · ${n("local")} có sửa riêng · ${n("unknown")} chưa kết luận · ${n("absent")} thiếu`,
+  );
+  if (n("local") || n("unknown"))
+    console.log("  ⚠ `standard apply` chưa có — hợp nhất và ghi là bước sau (plan/26 §6 bước ③).");
 }
 
 export function cmdValidate(): void {

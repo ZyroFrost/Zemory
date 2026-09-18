@@ -56,3 +56,6 @@
 2. **Trình trước khi ghi**: nêu tên + một dòng lý do, user gật mới thêm.
 3. Đăng ký ở **HAI chỗ**, thiếu một là skill mồ côi: một dòng vào §2 của file này, và một dòng vào
    bảng trigger trong `AGENTS.md`.
+
+
+<!-- zemory-standard: 2026-09-18 -->

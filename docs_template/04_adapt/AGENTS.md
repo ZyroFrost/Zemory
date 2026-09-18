@@ -69,3 +69,6 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
 
 > ⚠ Skill `reconcile` (nắn repo về chuẩn) **KHÔNG dùng ở hệ này** — nó nắn repo, đúng thứ hệ
 > ADAPT cấm. Cần chỉnh thì chỉnh **bảng ánh xạ**, không chỉnh repo.
+
+
+<!-- zemory-standard: 2026-09-16 -->
