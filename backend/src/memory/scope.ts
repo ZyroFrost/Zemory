@@ -11,6 +11,7 @@ import { allAdapters } from "./adapters/index.js";
 import { getScopeExclude, getWebAuth, getWebPull, type ScopeLane } from "../config/settings.js";
 import { accountsOf, isEmail, slotOfIdentity, webLaneLinked } from "./webslots.js";
 import { findBorrowSource } from "./borrowcookies.js";
+import { tr } from "../i18n/index.js";
 import { type ConnectionRow, listConnections } from "./connections.js";
 
 export type { ScopeLane };
@@ -476,7 +477,11 @@ export function scopeTree(dbPath: string = currentMemoryDb(), lanes: ScopeLane[]
                 //    "Nguyễn Đức Huy - CNTT, Work account", ba lượt sau rỗng). Dán
                 //    "(chưa gắn tài khoản)" lên đây là bảo người ta chưa nối, trong khi họ đã nối.
                 //  · chưa nối / phiên đời cũ chưa đóng dấu ⇒ "(chưa gắn tài khoản)"
-                const label = slotWho ?? (fromAuth.has(account) ? "(đã nối · chưa rõ tài khoản)" : "(chưa gắn tài khoản)");
+                const label =
+                  slotWho ??
+                  (fromAuth.has(account)
+                    ? tr("(đã nối · chưa rõ tài khoản)", "(linked · account unknown)")
+                    : tr("(chưa gắn tài khoản)", "(no account yet)"));
                 return {
                   key: laneKey(kl),
                   label,
