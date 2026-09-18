@@ -73,6 +73,13 @@ export const APP_PROCESSES: AppProcess[] = [
     hidden: true,
     note: "Đóng cửa sổ app còn sót. Chớp tắt ngay; `windowsHide` để nó không nháy một console đen.",
   },
+  {
+    shownAs: "zemory-updater-<pid>.exe (thư mục tạm)",
+    spawnedBy: "ui.ts → backend/scripts/selfupdate-run.mjs",
+    lifetime: "oneshot",
+    hidden: true,
+    note: "Người thợ dựng lại bản cài khi bấm “Cập nhật ngay”. Là BẢN CHÉP của daemon đặt ngoài `dist/` — chạy thẳng từ `dist/` thì nó tự khoá đúng thư mục nó sắp xoá (EPERM, đo 2026-09-18). Sống lâu hơn daemon đúng một lượt: daemon thoát để nhả khoá, nó dựng xong rồi phóng daemon mới và tự xoá bản chép.",
+  },
 ];
 
 /**
@@ -82,4 +89,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 13;
+export const spawnSites = 14;
