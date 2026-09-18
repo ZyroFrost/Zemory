@@ -66,7 +66,7 @@ switch (cmd) {
     cmdInit(args);
     break;
   case "sync":
-    cmdSync();
+    cmdSync(args);
     break;
   case "migrate":
     cmdMigrate();
