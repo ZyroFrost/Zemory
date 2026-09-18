@@ -125,6 +125,10 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │                            .drawio/.svg vẽ tay: sơ đồ flow/kiến trúc/lineage/lưới trạng thái/timeline của
 │                            hệ hoặc plan. NGOÀI cây docs/ → luật "đọc mọi file docs/" KHÔNG chạm (0 token).
 │                            Mỗi file PHẢI có .md chủ trỏ tới + tóm tắt 1–3 dòng. Vẽ bằng chữ được → mermaid TRONG .md.
+├── docs_public/      [opt]  ảnh/media ĐI KÈM README hoặc trang công khai — TRACKED (ngược hẳn docs_visual/).
+│                            CHỈ nhận thứ CỐ Ý công khai. Ảnh chụp giao diện phải TẨY trước khi bỏ vào: tên dự
+│                            án · tên phiên · tên máy · email · IP nội bộ · đường dẫn mang tên người dùng.
+│                            Con theo LOẠI khi có (ui/ · diagrams/). Không có gì công khai → KHÔNG tạo folder.
 │
 ├── config/           [opt]  file config OPERATOR tự sửa (YAML/TOML): profile kết nối, server list
 │   ├── *.example.*   [opt]    template TRACKED — trỏ secret bằng TÊN env
@@ -240,6 +244,7 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | **skill / playbook thao tác** (grill · chốt phiên · reconcile) | `docs/agent/04_SKILLS.md` (KHO SKILL — chỉ chứa skill; RULES/STRUCTURE nêu NORM+trigger → dẫn chiếu tới đây) |
 | **sơ đồ / flow / kiến trúc** (mô tả bằng chữ) | khối `mermaid` **TRONG `docs/plan/NN_*.md`** — đi cùng spec, `plan search` index được |
 | **sơ đồ XEM TRỰC QUAN** (tương tác / vẽ tay) | `docs_visual/` (NGOÀI `docs/`) — 1 file self-contained + có `.md` chủ trỏ tới; sinh từ data → `scripts/` + render `exports/` |
+| **ảnh/media đăng kèm README** (công khai) | `docs_public/` — TRACKED; TẨY dữ liệu thật trước khi bỏ vào (tên dự án · phiên · máy · email · IP · đường dẫn người dùng) |
 
 ## 5. Quyết định & Convention
 ```
