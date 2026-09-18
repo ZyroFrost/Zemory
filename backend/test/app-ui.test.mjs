@@ -1640,8 +1640,10 @@ test("khung cửa sổ được lưu và khôi phục — vị trí, kích thư�
   assert.match(ui, /\.\.\.windowArgs\(\),/, "launcher phải lấy cờ khung từ bản đã lưu");
   assert.match(ui, /if \(b\.max\) return \["--start-maximized"\];/, "phóng to là TRẠNG THÁI riêng, không diễn tả bằng kích thước");
   assert.match(ui, /--window-position=\$\{b\.x\},\$\{b\.y\}/, "phải khôi phục cả VỊ TRÍ, không chỉ kích thước");
-  assert.match(ui, /p === "\/window-box"/, "thiếu endpoint nhận khung");
-  assert.match(ui, /box\.w < 320 \|\| box\.h < 240/, "số rác phải bị bỏ — một lần ghi hỏng là lần sau cửa sổ nằm ngoài màn hình");
+  // `POST /window-box` GỠ 2026-09-18: đường ghi qua HTTP là thiết kế CŨ. Nay cửa sổ native tự đo
+  // và gọi thẳng `setWindowBox()` trong cùng tiến trình ⇒ không byte nào đi qua mạng. Chặn số rác
+  // vẫn còn, nhưng ở phía ĐỌC (`settings.ts`, assert ngay dưới) — chỗ đó chặn được CẢ file config
+  // bị sửa tay, thứ mà lớp chặn ở endpoint không với tới.
   const st = readFileSync(new URL("../../backend/src/config/settings.ts", import.meta.url), "utf8");
   assert.match(st, /windowBox\?: \{ x: number; y: number; w: number; h: number; max: boolean \}/, "khung phải nằm trong config (localStorage mất khi đổi cổng)");
   assert.match(st, /if \(b\.w < 320 \|\| b\.h < 240\) return null;/, "khung vô lý thì coi như chưa có, mở mặc định");

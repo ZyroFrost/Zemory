@@ -40,7 +40,6 @@ import { isWithinBase } from "./util/safe-path.js";
 import { memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
-import { analyzeMigration } from "./docs/migrate.js";
 import { forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
@@ -162,7 +161,6 @@ import {
   getDriveOn,
   setDriveOn,
   getWindowBox,
-  setWindowBox,
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
@@ -1786,7 +1784,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // /init-fresh đã gỡ 2026-07-27 (audit F2): 0 người gọi ở cả FE lẫn CLI, mà nó là
     // thao tác DỜI docs cũ đi. Năng lực không mất — `zemory init --fresh` gọi thẳng
     // freshHarness(). Không nên mở một thao tác phá huỷ trên HTTP khi không ai dùng.
-    if (p === "/migrate") return json(res, analyzeMigration(target) ?? { error: "no docs dir" });
+    // `GET /migrate` GỠ 2026-09-18: không FE, không CLI, không MCP nào gọi (đo bằng cách so mọi
+    // route với mọi lời gọi). Năng lực KHÔNG mất — `analyzeMigration()` vẫn chạy qua
+    // `zemory` CLI (`commands/harness.ts`). Giữ một cửa mạng chết chỉ để "biết đâu cần" là
+    // thêm một chỗ phải bảo trì và phải soi mỗi lượt audit.
     if (p === "/check") {
       // Cache 10' phía daemon (2026-08-21): trước đây MỖI cửa sổ mở đo lại từ đầu và pill
       // check treo "…" tới khi xong — user đọc thành "heal mở lại là tắt". Nay kết quả sống
@@ -2193,17 +2194,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } finally {
         db.close();
       }
-    }
-    if (req.method === "POST" && p === "/window-box") {
-      // Bề mặt tự khai khung của nó (trang không đọc được khung bằng cách nào khác trên Windows).
-      // Số rác thì BỎ QUA, không ghi: một lần ghi hỏng là lần mở sau cửa sổ nằm ngoài màn hình.
-      const n = (k: string): number => Number(u.searchParams.get(k));
-      const box = { x: n("x"), y: n("y"), w: n("w"), h: n("h"), max: u.searchParams.get("max") === "1" };
-      if (![box.x, box.y, box.w, box.h].every((v) => Number.isFinite(v)) || box.w < 320 || box.h < 240) {
-        return json(res, { ok: false, error: "khung không hợp lệ" });
-      }
-      setWindowBox(box);
-      return json(res, { ok: true });
     }
     if (req.method === "POST" && p === "/pin-project") {
       // Pin keeps a project on the tab bar; unpinned ones fall back to recency.
