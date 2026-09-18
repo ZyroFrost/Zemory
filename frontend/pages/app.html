@@ -392,7 +392,7 @@
              `.card`, không phải một card bị chia đôi). Trái: bảng đo. Phải: thao tác. -->
         <div class="grid grow rzgrid drv2col" style="grid-template-columns:var(--drv1,1fr) 8px minmax(0,1.05fr)">
           <div class="card">
-            <div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span><button class="btn primary sm" data-act="drivesync" data-i18n="act.syncNow" style="margin-left:auto;flex:0 0 auto">Đồng bộ ngay</button><div class="toggle" id="driveToggle" data-i18n-aria="ds.driveOn" aria-label="Dùng kênh Drive"><i></i></div></div>
+            <div class="card-h"><div class="t" data-i18n="mem.driveSync">Đồng bộ Drive</div><span class="muted" id="driveBundles">—</span><button class="btn primary sm" data-act="drivesync" data-i18n="act.syncNow" style="margin-left:auto;flex:0 0 auto">Đồng bộ ngay</button><span class="tgl-l" data-i18n="ds.driveOn">Dùng kênh Drive</span><div class="toggle" id="driveToggle" data-i18n-aria="ds.driveOn" aria-label="Dùng kênh Drive"><i></i></div></div>
             <div class="card-b">
 
                 <div class="drv-progress" data-i18n-title="drv.pushedPct" title="% tin nhắn của máy này đã đẩy lên Drive">
@@ -447,7 +447,7 @@
         <div class="grid grow rzgrid p2pwrap">
           <div class="grid rzgrid p2p2col" style="grid-template-columns:var(--p2p1,1fr) 8px minmax(0,1fr)">
             <div class="card">
-              <div class="card-h"><div class="t" data-i18n="p2p.meH">Máy này</div><div class="toggle" id="p2pToggle" data-act="p2p-toggle" style="margin-left:auto" data-i18n-aria="p2p.enable" aria-label="Bật kênh máy-tới-máy"><i></i></div></div>
+              <div class="card-h"><div class="t" data-i18n="p2p.meH">Máy này</div><span class="tgl-l" data-i18n="p2p.enable" style="margin-left:auto">Dùng kênh máy-tới-máy</span><div class="toggle" id="p2pToggle" data-act="p2p-toggle" data-i18n-aria="p2p.enable" aria-label="Bật kênh máy-tới-máy"><i></i></div></div>
               <div class="card-b">
                 <div class="muted" style="font-size:11px;margin:0 0 6px;line-height:1.5" data-i18n="p2p.enableD">Nhận khối thẳng từ máy đã ghép, không qua Drive. Bật cùng lúc với Drive được; đây là chiều nhận.</div>
                 <div class="drv-facts">

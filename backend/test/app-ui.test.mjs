@@ -1849,8 +1849,28 @@ test("panel Thao tác: nút chạy tay neo góc phải hàng đầu, lịch tự
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   // Nút là HÀNH ĐỘNG ⇒ nằm trong CỤM HÀNH ĐỘNG của thẻ hiện trạng thái kho, neo phải (§F13),
   // không đứng cạnh một con số lịch (user 2026-09-17: *"nút đồng bộ ngay đổi qua chỗ kho hợp lý hơn"*).
-  assert.match(html, /data-i18n="mem\.driveSync"[\s\S]{0,220}data-act="drivesync"[^>]*margin-left:auto[\s\S]{0,90}id="driveToggle"/, "nút chạy tay phải nằm trong cụm hành động của thẻ Đồng bộ Drive, đứng trước công tắc");
+  // Neo theo THỨ TỰ trong đúng hàng đầu thẻ, KHÔNG theo khoảng cách ký tự. Bản cũ đòi nút và công
+  // tắc cách nhau tối đa 90 ký tự, nên chèn thêm một NHÃN cho công tắc là gãy — trong khi bố cục
+  // vẫn đúng y nguyên. Thứ cần canh là ai đứng trước ai, không phải giữa họ có bao nhiêu chữ.
+  const iHd = html.indexOf('data-i18n="mem.driveSync"');
+  const drvHead = html.slice(iHd, html.indexOf('class="card-b"', iHd));
+  const iBtn = drvHead.indexOf('data-act="drivesync"');
+  const iTgl = drvHead.indexOf('id="driveToggle"');
+  assert.ok(iBtn > 0, "nút chạy tay phải nằm trong hàng đầu thẻ Đồng bộ Drive");
+  assert.ok(iTgl > iBtn, "nút chạy tay phải ĐỨNG TRƯỚC công tắc — hành động trước, thiết lập sau");
+  assert.match(drvHead.slice(iBtn, drvHead.indexOf(">", iBtn)), /margin-left:auto/, "nút phải neo góc phải (§F13)");
   assert.equal((html.match(/data-act="drivesync"/g) || []).length, 1, "chỉ một nút chạy tay — hai chỗ là hai chỗ để lệch");
+  // Mỗi công tắc kênh phải có NHÃN NHÌN THẤY, không chỉ `aria-label` — người nhìn màn hình thấy
+  // một cái gạt trần thì không đoán được nó gạt cái gì (user 2026-09-18). Hai công tắc cùng một
+  // hạng việc ⇒ dùng CHUNG một khuôn `.tgl-l` (§F0b), và nhãn đứng NGAY TRƯỚC công tắc nó tả.
+  for (const [key, tglId] of [["ds.driveOn", "driveToggle"], ["p2p.enable", "p2pToggle"]]) {
+    const iL = html.indexOf('class="tgl-l" data-i18n="' + key + '"');
+    const iT = html.indexOf('id="' + tglId + '"');
+    assert.ok(iL > 0, `công tắc ${tglId} phải có nhãn nhìn thấy dùng khuôn chung .tgl-l`);
+    assert.ok(iT > iL && iT - iL < 260, `nhãn phải nằm ngay trước công tắc ${tglId}, đọc thành một cụm`);
+  }
+  // Nhãn hiện và nhãn đọc-màn-hình dùng CHUNG một khoá ⇒ không bao giờ lệch nghĩa nhau.
+  assert.match(html, /data-i18n="p2p\.enable"[\s\S]{0,200}data-i18n-aria="p2p\.enable"/, "nhãn hiện và aria của công tắc p2p phải cùng một khoá");
   // Chỗ cũ nay là CÔNG TẮC + LỊCH, và lịch vẽ thẳng vào ô này.
   assert.match(html, /data-i18n="mem\.autosync"[\s\S]{0,400}data-auto="autosync"[\s\S]{0,200}id="asInline"/, "khối tự động: công tắc rồi tới lịch vẽ thẳng");
   assert.ok(!html.includes('id="asGear"'), "nút mở hộp thoại lịch phải đi");

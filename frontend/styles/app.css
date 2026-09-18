@@ -438,6 +438,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .toggle::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-dim);transition:.15s}
 .toggle.on{background:var(--wash);border-color:var(--primary)}
 .toggle.on::after{left:18px;background:var(--primary)}
+/* Nhãn của một công tắc. Luôn nằm SÁT trước công tắc nó mô tả — đọc thành một cụm. */
+.tgl-l{font-size:11px;color:var(--text-dim);flex:0 0 auto;white-space:nowrap}
 .set-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
 .set-row:last-child{border-bottom:0}
 .set-row .sl b{font-size:13px;display:block}.set-row .sl small{color:var(--text-faint);font-size:11.5px}
