@@ -50,7 +50,6 @@ const {
   cmdArchive,
   cmdValidate,
   cmdConform,
-  cmdStandard,
   cmdPaths,
   cmdSetup,
   cmdStructure,
@@ -90,9 +89,6 @@ switch (cmd) {
     break;
   case "conform":
     cmdConform(args);
-    break;
-  case "standard":
-    cmdStandard(args);
     break;
   case "paths":
     cmdPaths(args);
