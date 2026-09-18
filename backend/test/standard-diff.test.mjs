@@ -7,10 +7,10 @@
 // files that needed none.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CARRIED, applyStandard, contentLines, stampOf, standardDiff } from "../../dist/docs/standard.js";
+import { CARRIED, applyStandard, contentLines, stampOf, stampRepo, standardDiff } from "../../dist/docs/standard.js";
 
 const STAMP = "<!-- zemory-standard: 2026-09-16 -->";
 
@@ -115,6 +115,77 @@ test("`only` lọc đúng file được nêu, không đụng file khác", () => 
   try {
     const rep = applyStandard(root, { apply: false, only: ["02_RULES.md"] });
     assert.deepEqual(rep.map((r) => r.file), ["02_RULES.md"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// ── MỒI: đóng dấu bản chuẩn cho repo đang có harness mà chưa có dấu (plan/26 bước ⑤) ────────────
+// Đây là đường ghi chạy vào 16 repo NGOÀI repo này trong một lượt, nên thứ phải neo không phải "nó
+// có chạy không" mà "nó có chỉ thêm ĐÚNG một dòng chú thích không". Một ký tự nội dung bị đổi ở đây
+// là 51 file hỏng mà không ai mở lại từng file để thấy.
+
+test("MỒI dry-run: nói trước sẽ làm gì mà KHÔNG ghi một byte nào", () => {
+  const root = repoNoStamp();
+  try {
+    const before = readFileSync(join(root, "docs", "agent", "03_STRUCTURE.md"));
+    const rep = stampRepo(root, { apply: false });
+    assert.ok(rep.some((r) => r.action === "sẽ đóng dấu"), "phải nói trước sẽ đóng dấu file nào");
+    assert.deepEqual(readFileSync(join(root, "docs", "agent", "03_STRUCTURE.md")), before);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("MỒI chỉ THÊM dòng chú thích — không một dòng nội dung nào bị đổi", () => {
+  const root = repoNoStamp();
+  try {
+    const paths = [join(root, "AGENTS.md"), join(root, "docs", "agent", "03_STRUCTURE.md")];
+    const before = paths.map((f) => contentLines(readFileSync(f, "utf8")));
+    stampRepo(root, { apply: true });
+    paths.forEach((f, i) => {
+      const after = readFileSync(f, "utf8");
+      assert.deepEqual(contentLines(after), before[i], f + ": nội dung bị đổi");
+      assert.ok(stampOf(after), f + ": thiếu dấu");
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("MỒI giữ nguyên kiểu xuống dòng của file (CRLF không bị nắn thành LF)", () => {
+  const root = repoNoStamp();
+  try {
+    stampRepo(root, { apply: true });
+    const agents = readFileSync(join(root, "AGENTS.md"), "utf8"); // file này viết bằng CRLF
+    assert.ok(agents.endsWith("-->\r\n"), "đuôi phải là CRLF như file gốc");
+    assert.ok(!/[^\r]\n/.test(agents), "không được lẫn LF trần vào file CRLF");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("MỒI chạy lần hai KHÔNG đóng dấu chồng — file đứng yên", () => {
+  const root = repoNoStamp();
+  try {
+    stampRepo(root, { apply: true });
+    const after1 = readFileSync(join(root, "AGENTS.md"), "utf8");
+    const rep2 = stampRepo(root, { apply: true });
+    assert.ok(rep2.every((r) => r.action !== "đã đóng dấu"), "không được đóng dấu lại");
+    assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), after1, "lần hai phải là no-op");
+    assert.equal(after1.match(/zemory-standard:/g).length, 1, "chỉ được có MỘT dấu");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("MỒI không đẻ file: repo thiếu file thì báo, không tạo mới", () => {
+  const root = repoNoStamp();
+  try {
+    rmSync(join(root, "AGENTS.md"));
+    const rep = stampRepo(root, { apply: true });
+    assert.equal(rep.find((r) => r.file === "AGENTS.md").action, "không có file");
+    assert.ok(!existsSync(join(root, "AGENTS.md")), "sync mới được bù file thiếu, mồi thì không");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
