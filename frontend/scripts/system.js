@@ -417,7 +417,9 @@
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t(fromGit?'upd.appFromGit':'upd.appFrom').replace('{from}',app.from||'?').replace('{at}',String(app.at||'').slice(0,16).replace('T',' ')))+'</div>'
       :'<div>'+stdEsc(t('upd.appOk').replace('{v}',((zid('topVersion')||{}).textContent||'').replace(/^v/,'')))+'</div>';
     zDialog({iconHtml:ZICON.app,title:t('upd.appTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
-      okLabel:app?t('upd.btn'):t('scope.detClose'),
+      // KHÔNG có bản mới ⇒ ô nút thành "kiểm lại", không phải một nút Đóng câm. Có bản mới thì ô đó
+      // là "Cập nhật ngay" — lúc đó chẳng ai cần dò lại nữa.
+      okLabel:app?t('upd.btn'):t('upd.recheck'),
       onOk:app?function(){
         var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.running'));
         zPost('/selfupdate').then(function(r){
@@ -427,7 +429,13 @@
           zDlgMsg(t('upd.done').replace('{have}',r.have||'').replace('{latest}',r.latest||''));
         }).catch(function(){zDlgMsg(t('upd.done').replace('{have}',app.have).replace('{latest}',app.latest));}); // daemon thoát giữa response = đã đi dựng lại
         return true;
-      }:null});
+      }:function(){
+        var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
+        zGet('/harness-updates?fresh=1').then(function(){return refreshHarnessUpdates();})
+          .then(function(){zDlgClose();updDialogApp();})
+          .catch(function(){zDlgMsg(t('upd.recheckErr'));if(okb)okb.disabled=false;});
+        return true;   // giữ hộp mở: đóng rồi mở lại là mất chỗ người ta đang đọc
+      }});
   }
   /** ② Chuẩn harness của CÁC REPO: repo nào còn cũ, tick để áp, và công tắc có kiểm vòng repo không. */
   function updDialogStd(){
@@ -440,7 +448,15 @@
       var body=buildRepoBlock(st);
       // Nấc M (user 2026-09-10): hộp S bóp dòng "cũ → mới" của đề xuất sửa thành 3 dòng chữ dính nhau.
       zDialog({iconHtml:ZICON.std,size:'md',title:t('upd.stdTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
-        okLabel:t('scope.detClose'),onOk:null});
+        // Hộp này trước đây `onOk:null` ⇒ chỉ có nút Đóng, kể cả khi người dùng vừa sửa xong repo
+        // và muốn app đếm lại ngay. Nay ô nút là "kiểm lại repo".
+        okLabel:t('upd.recheckStd'),onOk:function(){
+          var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
+          zGet('/harness-updates?fresh=1').then(function(){return refreshHarnessUpdates();})
+            .then(function(){if(okb)okb.disabled=false;zDlgMsg('');draw();})
+            .catch(function(){zDlgMsg(t('upd.recheckErr'));if(okb)okb.disabled=false;});
+          return true;
+        }});
       loadFixProposals();
     }
     refreshHarnessUpdates().then(draw,draw);
