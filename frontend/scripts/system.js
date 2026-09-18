@@ -426,6 +426,10 @@
           r=r||{};
           if(r.dirty){zDlgMsg(t('upd.dirty'));if(okb)okb.disabled=false;return;}
           if(!r.ok){zDlgMsg(t('upd.fail').replace('{e}',r.error||''));if(okb)okb.disabled=false;return;}
+          // Bàn giao ≠ xong. Việc dựng mới bắt đầu Ở TIẾN TRÌNH KHÁC sau khi daemon thoát;
+          // nói "đã cập nhật" ngay đây là nói dối, và nếu bước dựng hỏng thì không còn bề mặt nào
+          // báo được nữa — nên câu này phải chỉ thẳng chỗ đọc nhật ký.
+          if(r.handoff){zDlgMsg(t('upd.handoff'));return;}
           zDlgMsg(t('upd.done').replace('{have}',r.have||'').replace('{latest}',r.latest||''));
         }).catch(function(){zDlgMsg(t('upd.done').replace('{have}',app.have).replace('{latest}',app.latest));}); // daemon thoát giữa response = đã đi dựng lại
         return true;

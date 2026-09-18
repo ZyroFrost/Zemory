@@ -9,12 +9,14 @@
 // agent khác làm việc là ghi đè việc của người ta — đụng thẳng `02_RULES §Phạm vi project`.
 // Lệnh này chỉ chạy khi CÓ NGƯỜI GÕ.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { appVersion } from "../core/config.js";
 import { cmpSemver } from "../util/semver.js";
+import { npmInvocation } from "../platform/npm.js";
+import { uiPort } from "../ui.js";
 import { refreshRemoteVersion } from "../update/remote-version.js";
 
 /** Gốc repo của chính công cụ (dist/commands/… → lên hai bậc). */
@@ -22,9 +24,9 @@ function toolRoot(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 }
 
-function run(cmd: string, args: string[], cwd: string): { ok: boolean; out: string } {
+function run(cmd: string, args: string[], cwd: string, shell = false): { ok: boolean; out: string } {
   try {
-    const out = execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: "pipe", timeout: 15 * 60_000 });
+    const out = execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: "pipe", shell, timeout: 15 * 60_000 });
     return { ok: true, out: String(out).trim() };
   } catch (e) {
     const err = e as { stdout?: unknown; stderr?: unknown; message?: string };
@@ -41,6 +43,35 @@ function run(cmd: string, args: string[], cwd: string): { ok: boolean; out: stri
  * người đọc sẽ đi tìm xem mình lỡ commit cái gì, trong khi thứ phải làm là CLONE LẠI. Một lệnh
  * `merge-base` phân biệt được ba ca đó, nên không có lý do bắt người dùng đoán.
  */
+/**
+ * Daemon đang chạy dưới `dist/zemory.exe` KHOÁ chính tệp đó (Windows khoá ảnh đang nạp), nên
+ * `npm run build` → `clean` → `rmSync(dist)` chết bằng EPERM. Đo 2026-09-18: xoá tệp exe 89 MB
+ * đang chạy trả về `EPERM, Permission denied`. Bản thân tiến trình CLI không giữ khoá nào —
+ * chỉ cần tiễn daemon đi là dựng được, rồi phóng lại bản mới.
+ *
+ * Trả về pid vừa tiễn (để biết có phải phóng lại không), hoặc null nếu không có daemon nào.
+ */
+async function stopDaemonForBuild(): Promise<number | null> {
+  const port = uiPort();
+  let pid = 0;
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/ping`, { signal: AbortSignal.timeout(600) });
+    const b = (await r.json()) as { app?: string; pid?: number };
+    if (b?.app !== "zemory" || !b.pid) return null;
+    pid = b.pid;
+  } catch {
+    return null; // không có daemon ⇒ không có khoá ⇒ dựng thẳng
+  }
+  const alive = (): boolean => { try { process.kill(pid, 0); return true; } catch { return false; } };
+  console.log(`  · tắt daemon pid ${pid} để nhả khoá dist/ …`);
+  try { process.kill(pid); } catch { /* vừa tự thoát */ }
+  for (let i = 0; i < 100 && alive(); i++) await new Promise((r) => setTimeout(r, 200));
+  if (alive()) { console.log(`    ✗ pid ${pid} không chịu thoát — dừng, vì dựng tiếp chắc chắn EPERM`); return -1; }
+  await new Promise((r) => setTimeout(r, 1200)); // Windows nhả handle trễ một nhịp
+  console.log("    ok");
+  return pid;
+}
+
 function diagnosePull(root: string): string | null {
   const head = run("git", ["rev-parse", "HEAD"], root);
   const remote = run("git", ["rev-parse", "FETCH_HEAD"], root);
@@ -54,7 +85,7 @@ function diagnosePull(root: string): string | null {
   return null;
 }
 
-export function cmdSelfUpdate(args: string[] = []): void {
+export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   const bad = args.filter((a) => a.startsWith("--") && a !== "--dry-run" && a !== "--check");
   if (bad.length) {
     console.log(`zemory selfupdate: unknown flag ${bad.join(" ")}`);
@@ -119,15 +150,23 @@ export function cmdSelfUpdate(args: string[] = []): void {
   // ── CHỐT 2: CHỈ FAST-FORWARD ────────────────────────────────────────────────
   // `--ff-only` để không bao giờ đẻ merge commit tự động trên máy người khác. Nhánh đã
   // rẽ ⇒ dừng, người thật xử — đúng doctrine "bị chặn thì đi HỎI, không tìm đường vòng".
-  const steps: Array<[string, string, string[]]> = [
-    ["git pull --ff-only", "git", ["pull", "--ff-only"]],
-    ["npm install", process.platform === "win32" ? "npm.cmd" : "npm", ["install"]],
-    ["npm run build", process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"]],
-    ["npm link", process.platform === "win32" ? "npm.cmd" : "npm", ["link"]],
+  // Tiễn daemon TRƯỚC bước dựng — nó là kẻ duy nhất giữ khoá trên `dist/zemory.exe`.
+  const stoppedPid = await stopDaemonForBuild();
+  if (stoppedPid === -1) { process.exitCode = 1; return; }
+
+  // npm KHÔNG gọi thẳng `npm.cmd` nữa: từ Node 20.12 (vá CVE-2024-27980) spawn một `.cmd` mà
+  // thiếu `shell: true` bị từ chối bằng EINVAL — đúng thứ đã làm lệnh này chết câm trên Windows.
+  // Cách gọi đúng nằm ở MỘT chỗ (`platform/npm.ts`), dùng chung với endpoint `/selfupdate`.
+  const npmInv = npmInvocation([]);
+  const steps: Array<[string, string, string[], boolean]> = [
+    ["git pull --ff-only", "git", ["pull", "--ff-only"], false],
+    ["npm install", npmInv.cmd, [...npmInv.args, "install"], npmInv.shell],
+    ["npm run build", npmInv.cmd, [...npmInv.args, "run", "build"], npmInv.shell],
+    ["npm link", npmInv.cmd, [...npmInv.args, "link"], npmInv.shell],
   ];
-  for (const [label, cmd, a] of steps) {
+  for (const [label, cmd, a, sh] of steps) {
     process.stdout.write(`  · ${label} … `);
-    const r = run(cmd, a, root);
+    const r = run(cmd, a, root, sh);
     if (!r.ok) {
       console.log("LỖI");
       console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
@@ -146,6 +185,15 @@ export function cmdSelfUpdate(args: string[] = []): void {
   // nhật xong — người dùng đọc thành "cập nhật không ăn". Rẻ: sha vừa pull đã nằm dưới máy.
   refreshRemoteVersion(root);
   console.log(`  ✓ xong: ${before || "?"} → ${after || "?"}`);
-  console.log("  ⚠ daemon 4444 vẫn chạy MÃ CŨ — nó nạp code lúc bind cổng. Khởi động lại để bản mới sống:");
-  console.log("      tắt cửa sổ zemory rồi `zemory ui`");
+  // Trước đây chỗ này chỉ DẶN người ta tự tắt tự mở, nên ai làm theo cũng vẫn ngồi với mã cũ cho
+  // tới lúc nhớ ra. Đã tiễn daemon ở trên thì phải trả nó lại — tự dọn cái mình đã dọn đi.
+  if (stoppedPid !== null) {
+    const cli = join(root, "dist", "cli.js");
+    if (existsSync(cli)) {
+      spawn(process.execPath, [cli, "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
+      console.log("  ✓ daemon đã được phóng lại bằng mã mới");
+    } else {
+      console.log(`  ⚠ không thấy ${cli} — daemon CHƯA được phóng lại, chạy \`zemory ui\` sau khi xử xong`);
+    }
+  }
 }

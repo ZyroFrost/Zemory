@@ -2,10 +2,10 @@
 // local data layer so new captured messages appear while the user keeps chatting.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { writeJsonAtomic } from "./util/fs-atomic.js";
 import { createServer } from "node:http";
-import { hostname, networkInterfaces } from "node:os";
+import { hostname, networkInterfaces, tmpdir } from "node:os";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +20,11 @@ import {
   ensureHarness,
   syncCheck,
 } from "./docs/adopt.js";
-import { cacheDue, readUpdateCache, refreshRemoteVersion } from "./update/remote-version.js";
+// `refreshRemoteVersion` đã rời khỏi đây cùng lượt bàn giao selfupdate 2026-09-18: việc dựng nay
+// xảy ra ở tiến trình NGOÀI, nên daemon này không còn "sau khi dựng xong" để mà đo lại. Daemon MỚI
+// tự đo ở nhịp của nó, và vì `have` lúc đó đã bằng `latest` nên chip không kêu oan.
+import { cacheDue, readUpdateCache } from "./update/remote-version.js";
+import { npmInvocation } from "./platform/npm.js";
 import { generateGuards } from "./docs/guard-gen.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
@@ -2285,25 +2289,49 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       if (!st.ok) return json(res, { ok: false, error: `git status: ${st.out.slice(0, 200)}` });
       if (st.out.split(/\r?\n/).filter(Boolean).length) return json(res, { ok: false, dirty: true });
       const have = appVersion();
-      const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-      for (const [cmd, a] of [["git", ["pull", "--ff-only"]], [npm, ["install"]], [npm, ["run", "build"]]] as [string, string[]][]) {
-        const r = run(cmd, a);
-        daemonLog(`[selfupdate] ${cmd} ${a.join(" ")} → ${r.ok ? "ok" : "FAIL"}`);
-        if (!r.ok) return json(res, { ok: false, error: `${cmd} ${a.join(" ")}: ${r.out.split(/\r?\n/).slice(-6).join(" | ").slice(0, 400)}` });
+      // BÀN GIAO ra một tiến trình NGOÀI daemon — không dựng tại chỗ được, và đây là lý do:
+      // daemon chạy dưới `dist/zemory.exe`, Windows KHOÁ ảnh đang nạp, nên `npm run build` gọi
+      // `clean` gọi `rmSync(dist)` và chết bằng **EPERM**. Đo 2026-09-18 trên chính tệp exe
+      // 89 MB đang chạy: `EPERM, Permission denied … dist\zemory.exe`. Không cờ nào lách được —
+      // một tiến trình không thể dựng lại thư mục nó đang chạy từ đó. Nên thứ tự bắt buộc là
+      // daemon THOÁT trước, rồi mới dựng, rồi phóng bản mới.
+      // Người thợ nằm ở `backend/scripts/` chứ KHÔNG phải `dist/`: để trong `dist/` thì bước
+      // `clean` xoá mất chính nó giữa chừng.
+      const helper = join(root, "backend", "scripts", "selfupdate-run.mjs");
+      if (!existsSync(helper)) return json(res, { ok: false, error: `missing updater: ${helper}` });
+      // Cách gọi npm do ĐÂY tính (một nguồn duy nhất: `platform/npm.ts`) rồi truyền xuống. Người
+      // thợ cố tình không tự quyết — thêm một bản sao logic nữa chính là thứ đã làm hai chỗ cùng hỏng.
+      const inv = npmInvocation([]);
+      const latest = appUpdateStatus()?.latest ?? have;
+      // ⚠ KHÔNG được phóng người thợ bằng `process.execPath`: daemon chạy dưới `dist/zemory.exe`,
+      // nên người thợ sẽ nằm TRONG `dist/` và tự khoá đúng thư mục nó sắp xoá — lặp lại y hệt
+      // EPERM mà cả lượt sửa này sinh ra để diệt. Chép nhị phân ra ngoài rồi chạy từ bản chép:
+      // Windows cho phép ĐỌC một exe đang chạy, chỉ cấm xoá/ghi đè nó.
+      const updaterExe = join(tmpdir(), `zemory-updater-${process.pid}.exe`);
+      try {
+        copyFileSync(process.execPath, updaterExe);
+      } catch (e) {
+        return json(res, { ok: false, error: `cannot stage updater binary: ${e instanceof Error ? e.message : String(e)}` });
       }
-      // Đo lại sau khi đã dựng xong (sha mới đã nằm dưới máy ⇒ không tốn mạng): cache cũ còn
-      // giữ số cũ thì chip vẫn kêu sau một lượt cập nhật THÀNH CÔNG.
-      const latest = refreshRemoteVersion(root).latest ?? appUpdateStatus()?.latest ?? have;
-      json(res, { ok: true, have, latest });
-      // Phóng daemon MỚI rồi thoát — không dùng autostart (chỉ chạy lúc đăng nhập).
-      setTimeout(() => {
-        try {
-          spawn(process.execPath, [join(root, "dist", "cli.js"), "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
-        } catch (e) {
-          daemonLog(`[selfupdate] relaunch failed: ${e instanceof Error ? e.message : e}`);
-        }
-        shutdown("selfupdate");
-      }, 800);
+      try {
+        spawn(updaterExe, [
+          helper,
+          "--root", root,
+          "--pid", String(process.pid),
+          "--kill", "0",
+          "--relaunch", "1",
+          "--npm-cmd", inv.cmd,
+          "--npm-prefix", JSON.stringify(inv.args),
+          "--npm-shell", inv.shell ? "1" : "0",
+        ], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
+      } catch (e) {
+        return json(res, { ok: false, error: `cannot start updater: ${e instanceof Error ? e.message : String(e)}` });
+      }
+      daemonLog(`[selfupdate] bàn giao cho ${helper} (npm qua ${inv.via}) — thoát để nhả khoá dist/`);
+      json(res, { ok: true, handoff: true, have, latest });
+      // Thoát để NHẢ KHOÁ trên dist/. Người thợ đang chờ đúng pid này chết rồi mới dựng, và chính
+      // nó phóng daemon mới — ở đây không phóng nữa, phóng sớm là lại khoá dist/ lần nữa.
+      setTimeout(() => shutdown("selfupdate"), 800);
       return;
     }
     if (req.method === "POST" && p === "/prune-projects") {
