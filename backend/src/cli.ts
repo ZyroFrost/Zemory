@@ -85,7 +85,7 @@ switch (cmd) {
     cmdValidate();
     break;
   case "selfupdate":
-    (await import("./commands/selfupdate.js")).cmdSelfUpdate(args);
+    await (await import("./commands/selfupdate.js")).cmdSelfUpdate(args);
     break;
   case "conform":
     cmdConform(args);
