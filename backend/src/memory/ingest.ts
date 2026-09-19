@@ -425,7 +425,11 @@ export function memoryInfo(dbPath: string = currentMemoryDb()): {
       sizeKB,
       tables: [
         { name: "sessions", rows: count("SELECT COUNT(*) c FROM sessions"), detail: sources.map((s) => `${s.source}:${s.c}`).join(" ") },
-        { name: "messages", rows: count("SELECT COUNT(*) c FROM messages") },
+        // Tổng tin lấy từ SUM(message_count) trên `sessions` (3k dòng, ~1 ms) thay vì COUNT(*) trên
+        // `messages` (427k dòng ⇒ quét b-tree/bảng 3.5GB, ĐO 2026-09-19: 68,6 s trên HDD) — số Y HỆT
+        // (đây cũng là tổng canonical `memorySummary` dùng). COUNT(*) sync này chặn event loop của
+        // daemon ~68 s mỗi lượt dashboard cold ⇒ /ping + app treo, card trống. (Bug đo trên DB 3.5GB.)
+        { name: "messages", rows: count("SELECT COALESCE(SUM(message_count),0) c FROM sessions") },
         { name: "doc", rows: count("SELECT COUNT(*) c FROM doc"), detail: docKinds.map((d) => `${d.kind}:${d.c}`).join(" ") },
         { name: "section", rows: count("SELECT COUNT(*) c FROM section") },
         { name: "session_digest", rows: count("SELECT COUNT(*) c FROM session_digest") },
