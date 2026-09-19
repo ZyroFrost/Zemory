@@ -394,14 +394,13 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
       writeFileSync(dst, fresh);
       added.push(entry);
     } else {
-      const cur = readFileSync(dst, "utf8");
-      // Refresh ONLY our own generated file (marker comment); never a user-authored one.
-      if (cur.startsWith("<!-- zemory") && cur !== fresh) {
-        writeFileSync(dst, fresh);
-        added.push(`${entry} (refreshed)`);
-      } else {
-        present.push(entry);
-      }
+      // 🔴 KHÔNG ghi đè — kể cả file mang dấu `<!-- zemory`. Nhánh cũ coi dấu đó là "file máy sinh thuần"
+      // và thay NGUYÊN FILE hễ khác bản mẫu một ký tự. Sai: chính harness bảo repo THÊM dòng vào bảng
+      // kích hoạt của AGENTS.md mỗi khi có skill riêng (`04_SKILLS §4`). Bắt tại trận 2026-09-19 bằng phép
+      // thử thật nút "Cập nhật repo": `Dept_FIN` mất 2 dòng skill riêng (`pbip`, `pbi-classic`) và tiêu đề
+      // `# PBI_FIN` bị đổi thành tên THƯ MỤC. Bản sửa chuẩn cho file đã có đi đường hợp nhất ba chiều
+      // (`docs/standard.ts`), vốn giữ nguyên chữ repo tự viết — đường ghi đè ở đây không còn lý do tồn tại.
+      present.push(entry);
     }
   }
   // ADAPT v2 · 4.2 — bản RIÊNG của repo (43% repo lớn đã có AGENTS.md sẵn): KHÔNG ghi

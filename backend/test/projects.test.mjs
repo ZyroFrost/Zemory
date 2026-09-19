@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
 import {
+  deadProjectEntries,
   forgetProject,
   isScratchRoot,
   isSelfRoot,
@@ -158,4 +159,23 @@ test("THE REVERSE: a pinned ordinary project is NOT locked and stays unpinnable"
   assert.equal(entry.locked, undefined, "only zemory's own repo may be locked");
   assert.equal(pinProject(other, false), true, "an ordinary pin must still be removable");
   assert.equal(listKnownProjects()[0].pinned, false);
+});
+
+test("bản nháp 'Dọn dự án đã mất' đếm ĐÚNG cái lượt chạy thật sẽ gỡ — kể cả mục mà danh sách đã giấu", (t) => {
+  // Ca thật 2026-09-19: repo `SasinAuto` đổi tên, folder cũ mất, mục sổ nằm lại. `listKnownProjects`
+  // lọc bỏ nó (đúng), nhưng bản nháp lại đếm trên chính danh sách đã lọc đó ⇒ luôn ra 0, trong khi
+  // `pruneDeadProjects` đọc sổ thô và có xoá. Hộp xác nhận nói "không có gì", nút bấm thì làm việc.
+  const home = sandbox(t);
+  const live = project(t, "zemory-live-");
+  rememberProject(live);
+  const gone = join(home, "repo-da-doi-ten");
+  writeFileSync(
+    process.env.ZEMORY_REGISTRY_FILE,
+    JSON.stringify({ version: 2, projects: [{ root: live }, { root: gone }] }),
+  );
+  assert.ok(!listKnownProjects().some((k) => k.root === gone), "danh sách hiển thị phải giấu mục chết");
+  assert.deepEqual(deadProjectEntries(), [gone], "bản nháp phải THẤY mục mà danh sách đã giấu");
+  const preview = deadProjectEntries().length;
+  assert.equal(pruneDeadProjects(), preview, "nháp và thật phải cùng một con số");
+  assert.deepEqual(deadProjectEntries(), [], "chạy xong thì không còn mục chết");
 });

@@ -44,11 +44,12 @@ import { isWithinBase } from "./util/safe-path.js";
 import { memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
-import { forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
+import { deadProjectEntries, forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
+import { applyStandard, isStandardSource, standardDiff } from "./docs/standard.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -2250,7 +2251,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Nút "Cập nhật repo" trong hộp cập nhật (user 2026-08-29: *"có cập nhật luôn được không"*). Ghi vào repo KHÁC —
       // được phép vì chính cú bấm của người dùng là lời cho phép, cho ĐÚNG repo đó, ĐÚNG lượt đó (02_RULES §Phạm vi).
       // Làm y hệt `zemory sync` + `zemory hook guard` chạy bên trong repo: bù file harness THIẾU (file có sẵn giữ nguyên —
-      // file wins) + sinh lại bộ guard từ marker. Không sửa nội dung docs của họ, không cắm hook vào runtime của họ.
+      // file wins) + sinh lại bộ guard từ marker + chở bản sửa chuẩn vào file đã có (hợp nhất, giữ chữ repo tự viết).
+      // Không cắm hook vào runtime của họ.
       const root = u.searchParams.get("root") ?? "";
       const known = listKnownProjects().find((k) => k.root.toLowerCase() === root.toLowerCase());
       if (!known) return json(res, { ok: false, error: "not a linked project" });
@@ -2264,9 +2266,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         } catch (e) {
           daemonLog(`[harness-apply] guard ${known.root}: ${e instanceof Error ? e.message : e}`);
         }
+        // Bản sửa CHUẨN cho file đã có (plan/26 bước ④) — cùng một phép với `zemory sync --standard --apply`,
+        // cùng các luật từ chối (đoạn chồng · chưa có dấu · sẽ mất chữ repo tự viết). Cú bấm là lời cho phép.
+        const std = applyStandard(known.root, { apply: true });
+        const written = std.filter((x) => x.action === "written").length;
+        const skipped = std.filter((x) => x.action === "skipped").length;
         harnessUpdCache = null; // đo lại ngay ở lượt /harness-updates kế
-        daemonLog(`[harness-apply] ${known.root}: +${r.added.length} file · guard ${guard ? "ok" : "skipped"}`);
-        return json(res, { ok: true, added: r.added, kept: r.present.length, needsReconcile: r.needsReconcile, guard });
+        daemonLog(`[harness-apply] ${known.root}: +${r.added.length} file · chuẩn ${written} ghi / ${skipped} bỏ qua · guard ${guard ? "ok" : "skipped"}`);
+        return json(res, { ok: true, added: r.added, kept: r.present.length, needsReconcile: r.needsReconcile, guard, stdWritten: written, stdSkipped: skipped });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
       }
@@ -2357,8 +2364,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           if (to && to.toLowerCase() !== x.r.toLowerCase()) merges.push({ from: x.r, to, n: x.n });
           else gone.push({ root: x.r, n: x.n });
         }
-        const regDead = listKnownProjects().filter((k) => !existsSync(k.root)).length;
-        if (dry) return json(res, { ok: true, dry: true, removeReg: regDead, merges, gone });
+        // Đếm trên sổ THÔ, cùng phép thử với `pruneDeadProjects` — xem `deadProjectEntries`.
+        const regDead = deadProjectEntries();
+        if (dry) return json(res, { ok: true, dry: true, removeReg: regDead.length, merges, gone });
         const upd = db.prepare("UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE project_root = ? AND host = ?");
         let merged = 0;
         db.transaction(() => { for (const m of merges) merged += upd.run(m.to, m.from, host).changes; })();
@@ -3048,14 +3056,23 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const now = Date.now();
       // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
       if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
-        const stale: Array<{ root: string; name: string; missing: number; guardStale: number }> = [];
+        const stale: Array<{ root: string; name: string; missing: number; guardStale: number; drift: number; locked: boolean }> = [];
         try {
           // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
           for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
             if (!existsSync(proj.root)) continue;
             const r = syncCheck(proj.root);
-            if (r.connected && (r.missing.length || r.guardStale.length)) {
-              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length });
+            if (!r.connected) continue;
+            // Lệch CHỮ (plan/26 bước ④): file CÓ SẴN nhưng đứng ở bản chuẩn cũ. Trước đây hộp này chỉ đếm file
+            // THIẾU, nên một repo thiếu 63 dòng chuẩn vẫn đọc ra "khớp chuẩn". Repo nguồn thì không có gì để chở.
+            const v = isStandardSource(proj.root) ? [] : standardDiff(proj.root).files;
+            const drift = v.filter((f) => f.verdict === "clean" || f.verdict === "local").length;
+            const unknown = v.filter((f) => f.verdict === "unknown").length;
+            if (r.missing.length || r.guardStale.length || drift || unknown) {
+              // `locked`: thứ DUY NHẤT còn lệch là phần máy không kết luận được (chưa có dấu) ⇒ bấm áp cũng không
+              // ghi được gì. Ô tick khoá lại — nút bấm được mà không ghi gì là nút nói dối.
+              const locked = !r.missing.length && !r.guardStale.length && !drift && unknown > 0;
+              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length, drift, locked });
             }
           }
         } catch {
