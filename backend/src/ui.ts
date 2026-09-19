@@ -166,6 +166,9 @@ import {
   getDriveOn,
   setDriveOn,
   getWindowBox,
+  getP2pPeers,
+  setP2pPeers,
+  setP2pPeerAddrs,
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
@@ -1630,6 +1633,14 @@ async function refreshChannelServer(): Promise<void> {
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),
+      // Máy LẠ chỉ đi qua khi người dùng vừa mở cửa sổ ghép và đọc mã cho máy kia — và vẫn phải chứng
+      // minh cùng chìa trước. Đúng mã ⇒ ghi vân tay nó vào sổ ngay tại đây.
+      acceptPair: (code: string, peerId: string): boolean => {
+        if (!ch.consumePairCode(code)) return false;
+        setP2pPeers([...getP2pPeers(), peerId]);
+        daemonLog(`[channel] đã ghép máy ${peerId.slice(0, 11)}… qua mã ghép`);
+        return true;
+      },
       log: (m: string) => daemonLog(m),
       onReceived: (blocks: number) => {
         daemonLog(`[channel] nhận ${blocks} khối — merge vào kho`);
@@ -2924,9 +2935,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         listening: ch.channelServingPort(),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
-        shortId: ch.shortIdFromDeviceId(st.deviceId),
-        peersShort: st.peers.map((id) => ch.shortIdFromDeviceId(id)),
-        seen: ch.seenPeers().map((s) => ({ ...s, short: ch.shortIdFromDeviceId(s.deviceId) })),
+        // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
+        // Nó không phải một đường ghép thứ hai, nên bề mặt không mời người dùng chọn nó.
+        seen: ch.seenPeers(),
+
         // ĐỦ MỌI địa chỉ, không đoán một cái: đo 2026-09-16 trên máy thật thấy HAI card ở hai dải
         // khác nhau. Khai nhầm card là ca "đưa IP mà bên kia không tới được", và
         // người dùng không có cách nào biết mình vừa đưa nhầm.
@@ -2972,48 +2984,85 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       });
     }
     if (p === "/channel-pair") {
-      const { getP2pPeers, setP2pPeers } = await import("./config/settings.js");
-      const ch = await import("./memory/channel/index.js");
+      const { getP2pPeers, setP2pPeers, getP2pPeerAddrs, setP2pPeerAddrs } = await import("./config/settings.js");
       const id = (u.searchParams.get("id") ?? "").trim();
       const drop = u.searchParams.get("drop") === "1";
+
       const norm = (s: string): string => s.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
       if (!id) return json(res, { ok: false, error: "thiếu id" });
-      // SỐ MÁY 9 chữ số ⇒ TRA ra vân tay đầy đủ từ những máy tầng dò LAN đang thấy. Thứ ghi vào
-      // sổ vẫn là VÂN TAY — đó mới là thứ TLS so lúc nối; số máy chỉ là đường người dùng gõ.
-      let want = id;
-      if (!drop && ch.looksShortId(id)) {
-        const num = id.replace(/[\s-]/g, "");
-        const hits = ch.seenPeers().filter((s) => ch.shortIdFromDeviceId(s.deviceId) === num);
-        // Không thấy / trùng số ⇒ NÓI RA, không đoán. Đoán ở đây là ghép nhầm máy người khác.
-        if (hits.length === 0) return json(res, { ok: false, error: "not-seen" });
-        if (hits.length > 1) return json(res, { ok: false, error: "duplicate-number" });
-        want = hits[0].deviceId;
-      }
+      // Chỉ còn MỘT thứ đi vào sổ: VÂN TAY. Ghép là việc của `/channel-sync?host=&code=` (địa chỉ + mã
+      // ghép một lần) — endpoint này còn lại để BỎ ghép, và để lớp ghép ghi vân tay vào sổ.
+      const want = id;
       const cur = getP2pPeers();
       setP2pPeers(drop ? cur.filter((x) => norm(x) !== norm(want)) : [...cur, want]);
+      if (drop) {
+        const keep = Object.fromEntries(Object.entries(getP2pPeerAddrs()).filter(([k]) => norm(k) !== norm(want)));
+        setP2pPeerAddrs(keep);
+      }
       return json(res, { ok: true, peers: getP2pPeers() });
     }
     if (p === "/channel-sync") {
       // Người BẤM = lượt có chủ đích. Một lượt với MỘT địa chỉ; lỗi trả nguyên văn, không nuốt.
-      const host = (u.searchParams.get("host") ?? "").trim();
-      const port = Number(u.searchParams.get("port") ?? 0);
-      if (!host || !port) return json(res, { ok: false, error: "thiếu host/port" });
       const ch = await import("./memory/channel/index.js");
+      // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
+      // `port` rời vẫn nhận (đường cũ, và CLI/script đang gọi), nhưng cổng trong chuỗi thắng.
+      // KHÔNG có `host` ⇒ tự đi: địa chỉ tầng dò LAN đang thấy (mới nhất) + địa chỉ đã nhớ từ mã máy.
+      // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
+      const { getP2pPeerAddrs } = await import("./config/settings.js");
+      const raw = (u.searchParams.get("host") ?? "").trim();
+      const known = getP2pPeerAddrs();
+      const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
+      const candidates = raw
+        ? [raw]
+        : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
+      if (!candidates.length) return json(res, { ok: false, error: "chưa biết địa chỉ máy nào — dán mã máy kia vào ô ghép" });
       const { resolveShareKey } = await import("./memory/share.js");
       const keyFile = resolveShareKey(root());
       if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
       const st = ch.channelStatus();
-      const r = await ch.connectToPeer(
-        { host, port },
-        {
-          channelDir: st.dir,
-          identity: ch.channelIdentity(),
-          shareKey: readFileSync(keyFile, "utf8").trim(),
-          appVersion: appVersion(),
-          allowedPeers: st.peers,
-        },
-      );
-      return json(res, { ok: !r.error, ...r });
+      const pairCode = (u.searchParams.get("code") ?? "").trim() || undefined;
+      // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
+      // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
+      let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
+      for (const cand of candidates) {
+        const a = ch.parsePeerAddress(cand);
+        if (!a) continue;
+        const r = await ch.connectToPeer(
+          { host: a.host, port: a.port },
+          {
+            channelDir: st.dir,
+            identity: ch.channelIdentity(),
+            shareKey: readFileSync(keyFile, "utf8").trim(),
+            appVersion: appVersion(),
+            allowedPeers: st.peers,
+            pairCode,
+            // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
+            onPaired: (peerId: string): void => {
+              setP2pPeers([...getP2pPeers(), peerId]);
+              setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${a.host}:${a.port}`] });
+              daemonLog(`[channel] đã ghép máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã ghép`);
+            },
+          },
+        );
+        last = { ...r, addr: cand };
+        if (!r.error) return json(res, { ok: true, ...last });
+      }
+      return json(res, { ok: false, ...last });
+    }
+    if (req.method === "POST" && p === "/channel-arm") {
+      // Mở (hoặc đóng) cửa sổ ghép. Trả kèm ĐỊA CHỈ máy này — đó là thứ người dùng gửi cho máy kia,
+      // cùng với mã. Mã dùng MỘT lần, có hạn; mở lại là đổi mã.
+      const ch = await import("./memory/channel/index.js");
+      if (u.searchParams.get("off") === "1") {
+        ch.disarmPairing();
+        void refreshChannelServer();
+        return json(res, { ok: true, window: null });
+      }
+      const w = ch.armPairing();
+      // Mở cửa sổ là lúc phải NGHE thật: lớp nghe vốn chỉ mở khi đã ghép ai đó, mà máy đầu tiên thì chưa.
+      await refreshChannelServer();
+      const port = ch.channelServingPort() ?? ch.channelStatus().port;
+      return json(res, { ok: true, window: w, port, addrs: lanAddresses().map((a) => `${a.addr}:${port}`) });
     }
     if (p === "/channel-probe") {
       // Đo tầng 2 (mở cổng tự động). Fail-open: không router nào trả lời KHÔNG phải lỗi.

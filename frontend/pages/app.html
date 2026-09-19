@@ -455,19 +455,9 @@
                   <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
                   <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
                 </div>
-                <div class="section-t" data-i18n="p2p.addrH">Địa chỉ máy này — dùng khi nối tay</div>
-                <pre id="p2pAddrs" style="margin:0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.6;white-space:pre-wrap;color:var(--text);cursor:default"></pre>
-                <div class="section-t" data-i18n="p2p.numH">Số máy</div>
-                <!-- Số máy CỐ Ý to: nó là dữ kiện chính của panel, thứ người ta đọc cho máy khác gõ
-                     lại. Nhưng nút phải CAO BẰNG ô — đo 2026-09-17: ô 42px, nút `.btn.sm` 28px, tâm
-                     khớp mà vẫn đọc ra "lệch" vì một nút nhỏ thả cạnh ô cao gấp rưỡi. `align-self`
-                     ở đây, không hạ cỡ số: hạ cỡ là bỏ đúng thứ vừa sửa cho dễ gõ. -->
-                <div style="display:flex;gap:8px;align-items:stretch"><input id="p2pMyId" readonly style="flex:1;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:19px;letter-spacing:2px;outline:none;font-family:var(--mono,monospace)"><button class="btn sm" data-act="p2p-copy" data-i18n="p2p.copy" style="padding-left:14px;padding-right:14px">Chép</button></div>
-                <div class="muted" style="font-size:11px;margin:6px 0 0;line-height:1.5" data-i18n="p2p.numHint">Máy cần ghép sẽ gõ số này. Số không phải bí mật; chìa share mới là thứ gác cửa.</div>
-                <details style="margin-top:6px"><summary class="muted" style="font-size:11px;cursor:pointer" data-i18n="p2p.fullIdH">Vân tay máy (nâng cao)</summary>
-                  <pre id="p2pFullId" style="margin:6px 0 0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text-dim);cursor:default"></pre>
-                  <div class="muted" style="font-size:10.5px;margin-top:4px;line-height:1.5" data-i18n="p2p.fullIdD">Đây mới là thứ hai máy so lúc nối. Dùng khi khác mạng, hoặc khi hai máy trùng số.</div>
-                </details>
+                <div class="section-t" data-i18n="p2p.armH">Cho máy khác ghép vào</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn sm" data-act="p2p-arm" data-i18n="p2p.arm">Cho phép ghép</button><span class="muted" id="p2pArmMsg" style="font-size:11px"></span></div>
+                <pre id="p2pArmBox" style="display:none;margin:8px 0 0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:var(--text);font-family:var(--mono,monospace)"></pre>
                 <div class="section-t" data-i18n="ds.p2pDir">Chỗ lưu của kênh này</div>
                 <span class="fchip muted" id="p2pDir" style="border:0;display:block;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
                 <div class="section-t" data-i18n="p2p.reachH">Cổng ra ngoài</div>
@@ -480,10 +470,8 @@
               <div class="card-h"><div class="t" data-i18n="p2p.clusterH">Cụm máy</div><span class="muted" id="p2pClusterN"></span></div>
               <div class="card-b">
                 <div id="p2pCluster" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>
-                <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button></div>
+                <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ ngay</button></div>
                 <div id="p2pSeenList" class="filters" style="margin:0"></div>
-                <div class="section-t" data-i18n="p2p.connH">Nối tay</div>
-                <div style="display:flex;gap:6px"><input id="p2pHost" class="tin" data-i18n-ph="p2p.hostPh" placeholder="địa chỉ máy cần nối" style="flex:2"><input id="p2pPortIn" class="tin" data-i18n-ph="p2p.portPh" placeholder="cổng" style="flex:1"><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ</button></div>
                 <div class="section-t" data-i18n="p2p.foldersH">Thư mục sẽ đồng bộ</div>
                 <div class="muted" style="font-size:11px;margin:0;line-height:1.7">
                   <div><b>global-memory/</b> — <span data-i18n="p2p.fldMem">kho bộ nhớ, đi bằng khối mã hoá chứ không chép file.</span></div>
@@ -587,10 +575,8 @@
   <div class="dlg sm" role="dialog" data-i18n-aria="p2p.addMachine" aria-label="Thêm máy">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">⇄</span><b data-i18n="p2p.addMachine">+ Thêm máy…</b><button class="x" id="addPeerClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
-      <div class="section-t" data-i18n="p2p.seen">Thấy cùng mạng</div>
-      <div id="addPeerSeen" class="filters"></div>
-      <div class="section-t" data-i18n="p2p.addManual">Hoặc gõ số máy cần ghép</div>
-      <div style="display:flex;gap:6px"><input id="p2pPeerIn" class="tin" data-i18n-ph="p2p.pairPh" placeholder="số máy cần ghép" style="flex:1"><button class="btn sm" data-act="p2p-pair" data-i18n="p2p.pair">Ghép đôi</button></div>
+      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Trên máy kia bấm "Cho phép ghép" rồi đọc địa chỉ và mã. Gõ hai thứ đó vào đây.</div>
+      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="địa chỉ máy kia" style="flex:2"><input id="p2pCodeIn" class="tin" data-i18n-ph="p2p.pairCodePh" placeholder="mã ghép" style="flex:1"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Ghép đôi</button></div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
   </div>

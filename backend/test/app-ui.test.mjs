@@ -1048,18 +1048,26 @@ test("mọi `spawn` phải đặt windowsHide — một cửa sổ đen là mộ
 // Hai thứ này là ĐIỀU KIỆN của việc giấu cửa sổ console, không phải trang trí:
 //  · nhật ký — giấu console mà không mở đường xem log là bịt luôn phép chẩn đoán *"vì sao
 //    không nối được"*;
-//  · địa chỉ — user phải hỏi IP cho máy kia, và agent đã phải chạy PowerShell để lấy. Máy này
-//    đo được HAI card (Wi-Fi và LAN dây, hai dải khác nhau), nên khai MỘT cái là đưa
-//    địa chỉ có thể không bao giờ tới được.
-test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NHẬT KÝ, cả hai nối vào endpoint thật", () => {
+//  · địa chỉ — user phải hỏi IP cho máy kia, và agent đã phải chạy PowerShell để lấy.
+//
+// 🔄 Từ 2026-09-19 địa chỉ KHÔNG còn là thứ người dùng cầm: nó nằm trong MÃ MÁY (`p2pInvite`), dán
+// một chuỗi là ghép được (user: *"1 id sẽ chứa cả ip"*). Neo đổi theo bề mặt, nhưng vẫn canh đúng
+// thứ cũ canh: ô có thật · nối vào endpoint thật · bấm máy đã thấy thì điền hộ.
+test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai nối vào endpoint thật", () => {
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   const js = readAppJs();
-  for (const id of ["p2pAddrs", "p2pSeenList", "p2pLog", "p2pLogOnly", "p2pLogHold", "p2pLogPath"]) {
+  for (const id of ["p2pArmBox", "p2pSeenList", "p2pLog", "p2pLogOnly", "p2pLogHold", "p2pLogPath"]) {
     assert.ok(html.includes(`id="${id}"`), `thiếu ô ${id} trên bề mặt`);
   }
   assert.match(js, /\/daemon-log\?tail=/, "khung nhật ký phải gọi /daemon-log");
-  assert.match(js, /c\.addrs/, "phải đổ DANH SÁCH địa chỉ, không phải một cái đoán được");
-  assert.match(js, /data-seenfill/, "bấm một máy đã thấy phải điền sẵn ID + địa chỉ");
+  assert.match(js, /channel-arm/, "cửa sổ ghép phải gọi endpoint thật, không giả lập ở bề mặt");
+  // MỘT ĐƯỜNG GHÉP (user chốt 2026-09-20): địa chỉ + mã. Không chip "bấm để ghép", không ô mã 9 số —
+  // mỗi đường thêm vào là một thứ người dùng phải đọc và chọn giữa.
+  assert.ok(!/data-seenfill/.test(js), "không được có đường ghép thứ hai bằng chip");
+  assert.ok(!/id="p2pPeerIn"/.test(html), "ô mã 9 số phải đi hẳn");
+  // Mã mang địa chỉ ⇒ nút Đồng bộ KHÔNG còn ô địa chỉ nào để đọc.
+  assert.ok(!/id="p2pHost"/.test(html), "ô địa chỉ tay phải đi hẳn, không chỉ ẩn");
+  assert.match(js, /zPost\('\/channel-sync'\)/, "Đồng bộ phải tự đi, không cần ai gõ địa chỉ");
   // Rỗng phải NÓI RA: vùng trắng trông y như đang tải, người đọc sẽ ngồi chờ một thứ đã xong.
   assert.match(js, /p2p\.logEmpty/, "log rỗng phải nói 'chưa có dòng nào'");
 
@@ -1084,15 +1092,18 @@ test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NH�
   // Đúng panel, đúng thứ: đo bằng LÁT CẮT theo thanh kéo chứ không tìm cả pane.
   const cut = pane.indexOf('data-seam="p2p1"'), cutLog = pane.indexOf('data-seam="p2ptop"');
   const left = pane.slice(0, cut), right = pane.slice(cut, cutLog), bottom = pane.slice(cutLog);
-  for (const id of ['id="p2pBlocks"', 'id="p2pAddrs"', 'id="p2pMyId"', 'id="p2pDir"'])
+  for (const id of ['id="p2pBlocks"', 'id="p2pArmBox"', 'id="p2pDir"'])
     assert.ok(left.includes(id), `${id} phải ở panel TRÁI (máy này)`);
-  for (const id of ['id="p2pCluster"', 'id="p2pHost"', 'data-act="p2p-add-open"', 'p2p.foldersH'])
+  for (const id of ['id="p2pCluster"', 'data-act="p2p-sync"', 'data-act="p2p-add-open"', 'p2p.foldersH'])
     assert.ok(right.includes(id), `${id} phải ở panel PHẢI (máy kia)`);
   for (const id of ['id="p2pLog"', 'id="p2pMsg"'])
     assert.ok(bottom.includes(id), `${id} phải ở panel DƯỚI (nhật ký)`);
   // Mỗi panel chia mục bằng `.section-t` — F9 đòi vạch ngăn + khoảng thở, không phải một khối chữ.
   assert.ok((left.match(/class="section-t"/g) || []).length >= 3, "panel trái phải chia mục");
-  assert.ok((right.match(/class="section-t"/g) || []).length >= 2, "panel phải phải chia mục");
+  // 🔄 Ngưỡng hạ 2→1 (2026-09-19): mục "Nối tay" đã bỏ — mã máy mang sẵn địa chỉ nên không còn gì
+  // để gõ. Panel phải nay có ĐÚNG hai nhóm: cụm máy (nhãn là tiêu đề card) + "Thư mục sẽ đồng bộ"
+  // (một `section-t`). Đòi hai tiêu đề ở đây là ép đẻ một nhãn thừa, trái §F0.
+  assert.ok((right.match(/class="section-t"/g) || []).length >= 1, "panel phải phải chia mục");
   // Hàng trên KHÔNG được khoá chiều cao: ảnh 2026-09-17 cho thấy `1fr` cắt cụt nút *Kiểm router*
   // và cả khối *Thứ sẽ đồng bộ* — cổng không thấy vì markup vẫn đủ, chỉ pixel là mất.
   assert.match(css4, /\.p2pwrap\{[^}]*var\(--p2ptop,auto\)/, "mặc định phải là auto, nếu không panel cắt cụt nội dung");
@@ -1101,8 +1112,8 @@ test("tab máy-tới-máy phải có ĐỊA CHỈ của máy này và KHUNG NH�
 
 test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
-  for (const k of ["p2p.addrH", "p2p.addrNone", "p2p.addrCopy", "p2p.copiedAddr", "p2p.seenFill",
-    "p2p.filled", "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
+  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.pairCodePh", "p2p.armH", "p2p.arm", "p2p.armOn", "p2p.armCode", "p2p.copyHint", "p2p.copied2",
+    "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
     const n = chrome.split(`'${k}':`).length - 1;
     assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
   }
@@ -1151,7 +1162,7 @@ test("đồng bộ là MÀN riêng trên thanh điều hướng — ⚙ không g
   // `relocInput` bỏ 2026-09-16 (chỗ lưu kho thành CỐ ĐỊNH), rồi `storePath` bỏ nốt 2026-09-17:
   // một đường dẫn chỉ đáng hiện khi có thể ĐỔI. Drive đổi được thì đã có ô riêng (`driveInput`);
   // kênh máy-tới-máy thì bám theo kho, không chọn. Còn lại đây là các ô ĐIỀU KHIỂN thật.
-  for (const id of ["driveInput", "p2pToggle", "p2pMyId", "p2pAddrs", "p2pLog"]) {
+  for (const id of ["driveInput", "p2pToggle", "p2pArmBox", "p2pLog"]) {
     assert.ok(box.includes(`id="${id}"`), `${id} phải nằm trong hộp Dữ liệu & Đồng bộ`);
   }
   // Và nút dời phải đi hẳn, không chỉ ẩn: còn nút là còn đường bấm nhầm vào một thao tác
@@ -2093,8 +2104,11 @@ test("mọi ô tìm dùng CHUNG một khung, không ô nào style gõ thẳng v�
   for (const sel of [".fchip", ".rsel", ".btn.sm", ".tin", ".recall-in.fsm", ".recall-in.fgrow"]) {
     assert.ok(hRule[1].includes(sel), `${sel} phải lấy chiều cao từ --ctl-h (§F0c)`);
   }
+  // Hàng có một ô CAO: nút phải cao THEO Ô (§F0c). Lớp chung giữ lại cho hàng sau dùng, kể cả khi
+  // hàng mã 9 số đã bỏ — luật không mất theo một ô cụ thể.
+  assert.match(CSS, /\.ctlrow-tall>\.btn\.sm\{height:auto\}/, "hàng ô cao phải cởi ghim chiều cao cho nút (§F0c)");
   // Ô nhập chữ KHÔNG được gõ hình hài thẳng vào HTML — đó là cách năm ô cao năm kiểu.
-  for (const id of ["driveInput", "p2pHost", "p2pPortIn", "p2pPeerIn", "addProjPath"]) {
+  for (const id of ["driveInput", "p2pAddrIn", "p2pCodeIn", "addProjPath"]) {
     const at = HTML.indexOf(`id="${id}"`);
     assert.ok(at > 0, `không tìm thấy ô nhập #${id}`);
     const tag = HTML.slice(HTML.lastIndexOf("<", at), HTML.indexOf(">", at) + 1);

@@ -21,7 +21,6 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
-export * from "./presence.js";
 export * from "./pairwindow.js";
 
 /**
