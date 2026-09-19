@@ -42,18 +42,17 @@ Marker: `★` = BẮT BUỘC · `◆` = deliverable (≥1) · `[opt]` = tạo KH
 │   │                     ĐỀ XUẤT + query CHỈ case đó dùng. Data THẬT → `data/<case>/` (gitignore,
 │   │                     mirror ĐÚNG TÊN). Case ĐÓNG mở lại được — folder là hồ sơ sống, không xoá.
 │   │ ┄┄ MỌI case đặt tên THƯỜNG, KHÔNG đánh số (số `NN_` chỉ dành cho STAGE trong pipeline) ┄┄
-│   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Tuan_TonKho` — pipeline `pipelines/<cùng tên>/`, launcher `bin/<tên>.cmd`
+│   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Weekly_Inventory` — pipeline `tasks/<tên>/pipeline/`, launcher `bin/<tên>.cmd`
 │   │ ┄┄ case theo YÊU CẦU (điều tra · sự cố · dim phải chăm đi chăm lại) → tên thường, KHÔNG số ┄┄
 │   └── <case>/     [opt]    mỗi vấn đề một mạch việc quay lại nhiều lần — ngang hàng case định kỳ
-│       └── pipeline/ [opt]    script chạy CỦA CHÍNH case: `common.py` + `00_/01_/02_…` (§5)
+│       └── pipeline/ [opt]    script chạy CỦA CHÍNH case: `common.py` + `00_ready.py 01_pull.py …` — mỗi STAGE 1 file, số phẳng theo thứ tự chạy (§5)
 ├── templates/      [opt]  FILE MẪU để ĐIỀN tự động (report/sheet TRỐNG chờ đổ số) — KHÁC `fixtures/` (data mẫu)
 │ ┄┄ ĐẦU VÀO / XỬ LÝ ┄┄
 ├── sources/        [opt]  ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec (trỏ TÊN env) · SQL kéo nguồn — chỗ automation "KÉO" đọc
 ├── measures/       [opt]  thư viện DAX/tính toán đặt tên + chú thích (trích ra để review/tái dùng)
 ├── queries/        [opt]  SQL/DAX/M đặt tên, gọi theo tên — KHÔNG rải inline (đối xứng store/queries.* của app)
-├── pipelines/      [opt]  PIPELINE thực thi, MIRROR ĐÚNG TÊN tasks/ (§4 “Pipeline mirror theo TÊN”):
-│   ├── <cadence>/  [opt]    case ĐỊNH KỲ, vd `IT_Tuan_TonKho` — pipeline `pipelines/<cùng tên>/`, launcher `bin/<tên>.cmd`
-│   │                        └ 00_ready.py 01_pull.py 02_fill.py … = mỗi STAGE 1 file, số phẳng theo thứ tự chạy
+├── pipelines/      [opt]  pipeline gom theo NGUỒN — CHỈ cho repo KHÔNG tổ chức theo case (xem “pipelines/ (nguồn)”).
+│   │                     Repo theo case: pipeline nằm TRONG case (`tasks/<tên>/pipeline/`), KHÔNG ở đây.
 │   └── <domain>/   [opt]    script gom theo nguồn/domain (fast · haravan · pos…) — legacy KHÔNG đánh số, cùng tồn tại
 ├── notebooks/      [opt]  phân tích thăm dò .ipynb (research/analytics)
 ├── fixtures/       [opt]  DATA MẪU NHỎ (tracked) để mở report/model KHỎI cần nguồn thật
@@ -150,7 +149,7 @@ KHÔNG folder rỗng    INDEX = từ điển tên để TRA, KHÔNG checklist. T
 Tên THƯỜNG           slot folder viết thường (tasks · sources · templates · extract · adhoc). TÊN có sẵn của người ta GIỮ NGUYÊN: file (TargetAll.xlsx · ..._REPORT.xlsx), vendor/tool ép (.pbix · .Report/ · .SemanticModel/)
 Tên file = TIẾNG ANH MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII. NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` — luật này chỉ nói về TÊN. Lý do: tên là thứ bị gõ lại trong lệnh·import·link·URL, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. Áp cho CẢ tên case (`tasks/<case>/`) và tên stage pipeline — đó là chỗ hay bị đặt theo ngôn ngữ bản địa nhất. ĐỂ YÊN tên KHÔNG phải của mình (file/vendor có sẵn, ở dòng trên)
 adhoc ≠ task         data/adhoc/ = file LẺ check 1 lần, throwaway (chỉ giữ README marker) · cái gì thuộc DELIVERABLE ĐỊNH KỲ → phải nằm dưới tasks/<task>/ + data/<task>/. KHÔNG quăng file định kỳ vào adhoc
-tasks/ KHÔNG SỐ     Case đặt tên THƯỜNG, mô tả việc — KHÔNG đánh số thứ tự. Estate thực tế dùng `<MÃ PHÒNG>_<NHỊP>_<TênViệc>` (vd `IT_Tuan_TonKho`), và đó là quy ước của repo, chuẩn KHÔNG ép. ⚠ Bãi bỏ quy ước cũ `tasks/NN_<cadence>/`: số thứ tự trên TÊN CASE là số chết — case không chạy theo thứ tự, thêm/bỏ case là phải đánh số lại cả dãy, và nó lẫn với số STAGE vốn có nghĩa thật
+tasks/ KHÔNG SỐ     Case đặt tên THƯỜNG, mô tả việc — KHÔNG đánh số thứ tự. Estate thực tế dùng `<MÃ PHÒNG>_<NHỊP>_<TênViệc>` (vd `IT_Weekly_Inventory`), và đó là quy ước của repo, chuẩn KHÔNG ép. ⚠ Bãi bỏ quy ước cũ `tasks/NN_<cadence>/`: số thứ tự trên TÊN CASE là số chết — case không chạy theo thứ tự, thêm/bỏ case là phải đánh số lại cả dãy, và nó lẫn với số STAGE vốn có nghĩa thật
                      Case theo YÊU CẦU (chạy khi có việc, không lịch) = tên THƯỜNG không số: tasks/<tên>/.
                      Cả hai loại: data/<case>/ mirror ĐÚNG TÊN. Khác data/adhoc/ = file 1 lần, throwaway, KHÔNG có spec
 3 CHẶNG DATA        data/<case>/ chia 01_raw/ (đầu vào ngoài, CHỈ ĐỌC) · 02_processing/ (trung gian, dựng lại được) · 03_output/ (bản giao đi).
