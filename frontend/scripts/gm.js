@@ -223,7 +223,6 @@
   //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
   function p2pMsg(s){zset('p2pMsg',s||'');}
   // SỐ MÁY nhóm ba cho dễ đọc/gõ lại. Không phải số 9 chữ ⇒ trả nguyên, không bịa dạng.
-  function fmtNum(s){s=String(s||'');return /^[0-9]{9}$/.test(s)?(s.slice(0,3)+' '+s.slice(3,6)+' '+s.slice(6)):s;}
   function renderChannel(c){
     if(!c)return;
     zset('p2pBlocks',zN(c.blocks||0));
@@ -231,37 +230,7 @@
     // đôi ai) là ca có thật, và bề mặt phải phân biệt được hai thứ đó.
     zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
     var seen=(c.seen||[]);
-    zset('p2pSeen', seen.length ? seen.map(function(s){return (s.deviceId||'').slice(0,11)+'… · '+s.host;}).join(' · ') : t('p2p.seenNone'));
-    // MỘT CỤM, chép MỘT LẦN — user chốt 2026-09-16: *"chép thì để vào 1 cụm để chép chung chứ ai
-    // tách ra ntn"*. Tách mỗi địa chỉ một ô thì người ta phải chép hai lần rồi tự ghép, mà thứ cần
-    // gửi sang máy kia là CẢ DANH SÁCH (máy này có hai card, bên đó chỉ tới được một dải).
-    var ab=zid('p2pAddrs');
-    if(ab){
-      var ads=c.addrs||[];
-      var port=c.listening||c.port||'';
-      var text=ads.map(function(a){return a.addr+':'+port+'  ·  '+a.iface;}).join(String.fromCharCode(10));
-      ab.textContent=text||t('p2p.addrNone');
-      if(text){ab.setAttribute('data-copy',text);ab.setAttribute('title',t('p2p.addrCopy'));ab.style.cursor='pointer';}
-    }
-    // Máy thấy trên cùng mạng: BẤM LÀ ĐIỀN cả ID lẫn địa chỉ vào ô ghép đôi/nối thử. Gõ tay một
-    // chuỗi 52 ký tự là chỗ sinh lỗi, mà tầng dò đã biết sẵn cả hai giá trị.
-    var sb=zid('addPeerSeen');
-    if(sb){
-      sb.innerHTML='';
-      seen.forEach(function(sp){
-        var el=document.createElement('div');el.className='fchip';
-        el.textContent='↳ '+(sp.deviceId||'').slice(0,11)+'… @ '+sp.host+':'+sp.port;
-        el.setAttribute('data-seenfill',(sp.deviceId||'')+'|'+sp.host+'|'+sp.port);
-        el.setAttribute('title',t('p2p.seenFill'));
-        sb.appendChild(el);
-      });
-    }
-    var dv=zid('p2pDir'); if(dv&&c.dir){dv.textContent=c.dir;dv.setAttribute('data-copy',c.dir);dv.setAttribute('title',t('p2p.addrCopy'));dv.classList.add('fchip');dv.style.cursor='pointer';}
-    // SỐ MÁY là thứ trưng ra; vân tay lùi vào mục nâng cao. Backend tính số (băm ở đó), bề mặt
-    // chỉ hiển thị — không có chuyện hai nơi cùng tính rồi lệch nhau.
-    var idIn=zid('p2pMyId');if(idIn&&document.activeElement!==idIn)idIn.value=fmtNum(c.shortId||'');
-    var fid=zid('p2pFullId');
-    if(fid&&c.deviceId){fid.textContent=c.deviceId;fid.setAttribute('data-copy',c.deviceId);fid.setAttribute('title',t('p2p.addrCopy'));fid.style.cursor='pointer';}
+    // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     // ĐÓNG BĂNG cả tab khi kênh tắt (user 2026-09-17: *"bên máy-tới-máy cũng vậy luôn đúng không?"*).
     // Thân của CẢ BA thẻ (máy này · cụm máy · nhật ký) — chừa thanh đầu thẻ vì công tắc nằm ở đó.
@@ -277,27 +246,24 @@
       var seenBy={};
       seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
       var cards=[];
-      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',num:c.shortId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
+      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
       (c.peers||[]).forEach(function(id,i){
         var sp=seenBy[id];
-        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,num:(c.peersShort||[])[i]||'',addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
+        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
       cards.forEach(function(m){
         var d=document.createElement('div');
         d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)';
-        // TÊN MÁY trước, trạng thái sau. Chưa biết tên (bản dò đời cũ không gửi) ⇒ rơi về SỐ MÁY,
-        // không phải một lát 11 ký tự của vân tay: lát đó vừa không đọc được vừa không gõ lại được.
-        var label=m.name||(m.num?fmtNum(m.num):'?');
+        // TÊN MÁY trước, trạng thái sau. Chưa biết tên (bản dò đời cũ không gửi) ⇒ '?' — từ 2026-09-19
+        // bề mặt chỉ còn MỘT mã, nên con số 9 chữ số không còn là thứ người dùng nhìn tới.
+        var label=m.name||'?';
         var state=m.me?t('p2p.thisMachine'):(m.addr?t('p2p.online'):t('p2p.offline'));
         var dot=m.me?'var(--primary)':(m.addr?'var(--success)':'var(--text-faint)');
         d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
           +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
           +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
-          // Chưa biết tên thì NHÃN đã là số máy rồi — in lại lần nữa là một con số ở hai chỗ trên
-          // cùng một thẻ, đọc ra như thẻ bị lỗi. Có tên mới cần dòng số bên dưới.
-          +(m.name?'<div class="muted" style="font-size:11px;font-family:var(--mono,monospace);margin-top:5px;letter-spacing:1px" title="'+stdEsc(m.id)+'">'+stdEsc(fmtNum(m.num))+'</div>':'')
           +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(m.addr?(m.addr+(m.port?(':'+m.port):'')):t('p2p.noAddr'))+'</div>';
         if(!m.me){
           var x=document.createElement('button');x.className='btn sm';x.style.marginTop='7px';
@@ -329,7 +295,7 @@
       // Nói RA file log nằm đâu, và bấm vào là chép — thay cho một nút mở thư mục, thứ đòi
       // thêm một đường chạy lệnh ra ngoài app đúng lúc vừa cấm cửa sổ console.
       var pe=zid('p2pLogPath');
-      if(pe&&r&&r.file){pe.textContent=r.file;pe.setAttribute('data-copy',r.file);pe.setAttribute('title',t('p2p.addrCopy'));pe.classList.add('fchip');pe.style.cursor='pointer';}
+      if(pe&&r&&r.file){pe.textContent=r.file;pe.setAttribute('data-copy',r.file);pe.setAttribute('title',t('p2p.copyHint'));pe.classList.add('fchip');pe.style.cursor='pointer';}
     }).catch(function(){ if(box)box.textContent=t('p2p.logErr'); });
   }
   // Chỉ chạy nhịp khi tab p2p ĐANG MỞ — hỏi log mỗi 5 giây trong lúc không ai nhìn là đốt I/O suông.
@@ -342,7 +308,7 @@
   window.zP2pLogTick=logTick;
 
   document.addEventListener('click',function(e){
-    var el=e.target&&e.target.closest?e.target.closest('[data-act],[data-tr],[data-copy],[data-seenfill],#p2pLogOnly,#p2pLogHold,#driveToggle'):null;
+    var el=e.target&&e.target.closest?e.target.closest('[data-act],[data-tr],[data-copy],#p2pLogOnly,#p2pLogHold,#driveToggle'):null;
     if(!el)return;
     var tr=el.getAttribute('data-tr');
     if(tr){
@@ -359,18 +325,7 @@
     // Chép một địa chỉ: đỡ phải đọc số qua điện thoại rồi gõ nhầm một chữ.
     var cp=el.getAttribute('data-copy');
     if(cp){
-      try{navigator.clipboard.writeText(cp);p2pMsg(t('p2p.copiedAddr').replace('{a}',cp));}catch(_){}
-      return;
-    }
-    // Bấm một máy đã thấy ⇒ điền sẵn ID + địa chỉ + cổng. Gõ tay chuỗi 52 ký tự là chỗ sinh lỗi.
-    var sf=el.getAttribute('data-seenfill');
-    if(sf){
-      var parts=sf.split('|');
-      var i1=zid('p2pPeerIn'),i2=zid('p2pHost'),i3=zid('p2pPortIn');
-      if(i1)i1.value=parts[0]||'';
-      if(i2)i2.value=parts[1]||'';
-      if(i3)i3.value=parts[2]||'';
-      p2pMsg(t('p2p.filled'));
+      try{navigator.clipboard.writeText(cp);p2pMsg(t('p2p.copied2'));}catch(_){}
       return;
     }
     var act=el.getAttribute('data-act');
@@ -433,32 +388,31 @@
       zSave('/set-p2p?on='+(wasOn?'0':'1'),function(){el.classList.toggle('on',wasOn);})
         .then(function(j){if(j)loadChannel();});
     }
-    else if(act==='p2p-copy'){
-      var v=(zid('p2pMyId')||{}).value||'';
-      if(v&&navigator.clipboard)navigator.clipboard.writeText(v);
-      p2pMsg(t('p2p.copied'));
-    }
-    else if(act==='p2p-pair'){
-      var id=(zid('p2pPeerIn')||{}).value||'';
-      if(!id.trim()){p2pMsg(t('p2p.needId'));return;}
-      zPost('/channel-pair?id='+encodeURIComponent(id.trim())).then(function(r){
-        if(r&&r.ok===false){
-          // Câu lỗi phải CHỈ ĐƯỜNG. "not-seen" nghĩa là số đúng dạng nhưng chưa máy nào mang
-          // số đó phát trên mạng này — người dùng cần biết đó là chuyện MẠNG, không phải gõ sai.
-          var why=r.error==='not-seen'?t('p2p.numNotSeen'):(r.error==='duplicate-number'?t('p2p.numDup'):('✗ '+(r.error||'')));
-          p2pMsg(why);return;
-        }
-        zid('p2pPeerIn').value='';p2pMsg(t('p2p.paired'));loadChannel();
+    else if(act==='p2p-arm'){
+      // Mở cửa sổ ghép: hiện ĐỊA CHỈ + MÃ để người dùng đọc cho máy kia. Mã dùng một lần, có hạn.
+      zPost('/channel-arm').then(function(r){
+        var box=zid('p2pArmBox');
+        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));return;}
+        var mins=Math.max(1,Math.round(((r.window||{}).expiresAt-Date.now())/60000));
+        if(box){box.style.display='';box.textContent=(r.addrs||[]).join(String.fromCharCode(10))+String.fromCharCode(10)+t('p2p.armCode').replace('{c}',(r.window||{}).code||'');}
+        zset('p2pArmMsg',t('p2p.armOn').replace('{m}',mins));
       });
     }
-    else if(act==='p2p-unpair'){
-      zPost('/channel-pair?drop=1&id='+encodeURIComponent(el.getAttribute('data-id')||'')).then(loadChannel);
+    else if(act==='p2p-sync-addr'){
+      // Đường dự phòng: nối THẲNG bằng địa chỉ. Cùng endpoint với nút Đồng bộ, chỉ khác là có `host`.
+      var ad=((zid('p2pAddrIn')||{}).value||'').trim();
+      if(!ad){p2pMsg(t('p2p.byAddrNeed'));return;}
+      var pc=((zid('p2pCodeIn')||{}).value||'').trim().replace(/\s/g,'');
+      p2pMsg(t('p2p.syncing'));
+      zPost('/channel-sync?host='+encodeURIComponent(ad)+(pc?'&code='+encodeURIComponent(pc):'')).then(function(r){
+        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
+        p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        loadChannel();
+      });
     }
     else if(act==='p2p-sync'){
-      var h=((zid('p2pHost')||{}).value||'').trim(),pt=((zid('p2pPortIn')||{}).value||'').trim();
-      if(!h||!pt){p2pMsg(t('p2p.needAddr'));return;}
       p2pMsg(t('p2p.syncing'));
-      zPost('/channel-sync?host='+encodeURIComponent(h)+'&port='+encodeURIComponent(pt)).then(function(r){
+      zPost('/channel-sync').then(function(r){
         // Lỗi trả NGUYÊN VĂN: "khác chìa" và "máy lạ" là hai chuyện khác nhau, gộp thành
         // một chữ "lỗi" là bắt người dùng đoán (cùng doctrine `save-never-silent`).
         if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}

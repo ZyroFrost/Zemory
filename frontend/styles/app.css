@@ -345,6 +345,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
    thì nối vào danh sách này, đừng khai padding riêng rồi hy vọng nó trùng. */
 .fchip,.rsel,.btn.sm,.tin,.recall-in.fsm,.recall-in.fgrow{box-sizing:border-box;height:var(--ctl-h)}
 .btn.sm{padding:0 var(--ctl-px);font-size:var(--ctl-fs);border-radius:var(--ctl-r)}
+/* HÀNG CÓ MỘT Ô CAO (vd mã máy: số cỡ lớn để đọc/đọc cho nhau). §F0c nói cái KHÔNG NHỎ ĐƯỢC đặt chuẩn
+   cho cả hàng ⇒ nút cao theo ô, chứ không phải ô thấp xuống cho vừa nút. `.btn.sm` ghim cứng
+   `height:var(--ctl-h)` nên `align-items:stretch` một mình không kéo được — phải cởi ghim ở đây. */
+.ctlrow-tall{display:flex;gap:8px;align-items:stretch}
+.ctlrow-tall>.btn.sm{height:auto}
 /* Ô NHẬP CHỮ dùng chung (đường dẫn · cổng · số máy). Trước đây năm chỗ chép cùng một chuỗi CSS
    thẳng vào HTML, nên mỗi chỗ cao một kiểu — đúng lớp lỗi §F0b/§F0c. */
 .tin{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--ctl-r);padding:0 var(--ctl-px);color:var(--text);font-size:var(--ctl-fs);font-family:inherit;outline:none;min-width:0}

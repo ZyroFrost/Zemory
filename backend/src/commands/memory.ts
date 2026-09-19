@@ -718,29 +718,25 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort,
-      shortIdFromDeviceId, formatShortId, looksShortId, seenPeers } =
+    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
     const action = rest[0] ?? "status";
 
     if (action === "id") {
-      // Hai dòng, hai vai: SỐ MÁY là thứ đọc qua điện thoại được; VÂN TAY là thứ máy so lúc nối.
-      const did = channelIdentity().deviceId;
-      console.log(formatShortId(shortIdFromDeviceId(did)));
-      console.log(did);
+      // MỘT dòng, một vai: vân tay — thứ hai máy so lúc nối. Không còn con số song song.
+      console.log(channelIdentity().deviceId);
       return;
     }
     if (action === "status") {
       const st = channelStatus();
       console.log(`zemory memory channel — ${st.enabled ? "BẬT" : "TẮT"} · ghi vào: ${st.transport}`);
-      console.log(`  Số máy     : ${formatShortId(shortIdFromDeviceId(st.deviceId))}`);
       console.log(`  Vân tay    : ${st.deviceId}`);
       console.log(`  cổng nghe  : ${st.port}`);
       console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
       console.log(`  đã ghép đôi: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
-      console.log("  ID KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
+      console.log("  Vân tay KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
       return;
     }
     if (action === "pair" || action === "unpair") {
@@ -750,25 +746,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      // SỐ MÁY 9 chữ số ⇒ tra ra vân tay từ máy đang thấy trên mạng (cùng luật với bề mặt app).
-      let want = id;
-      if (action === "pair" && looksShortId(id)) {
-        // ⚠ Tầng dò LAN sống TRONG daemon, nên ở tiến trình CLI danh sách thấy-được gần như luôn
-        // rỗng. Nói đúng lý do thay vì báo "không thấy máy nào" — câu đó đẩy người ta đi soi mạng
-        // trong khi thứ thiếu chỉ là chỗ tra. Vân tay đầy đủ thì CLI ghép được mọi lúc.
-        const num = id.replace(/[\s-]/g, "");
-        const hits = seenPeers().filter((p) => shortIdFromDeviceId(p.deviceId) === num);
-        if (hits.length !== 1) {
-          console.log(
-            hits.length > 1
-              ? "có nhiều máy trùng số — dán vân tay đầy đủ để khỏi ghép nhầm"
-              : "số máy chỉ tra được khi app đang chạy (tầng dò nằm trong daemon) — ghép trong app, hoặc dán vân tay đầy đủ",
-          );
-          process.exitCode = 1;
-          return;
-        }
-        want = hits[0].deviceId;
-      }
+      // Chỉ nhận VÂN TAY. Ghép thường ngày đi bằng địa chỉ + mã ghép trong app; đường CLI này để
+      // sửa sổ khi daemon chết, nên nó nhận đúng thứ nằm trong sổ chứ không tra cứu gì.
+      const want = id;
       const cur = getP2pPeers();
       const next =
         action === "pair"
