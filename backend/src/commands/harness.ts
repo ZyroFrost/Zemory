@@ -28,7 +28,7 @@ import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
-import { applyStandard, stampRepo, standardDiff } from "../docs/standard.js";
+import { applyStandard, isStandardSource, stampRepo, standardDiff } from "../docs/standard.js";
 
 export function cmdInit(args: string[]): void {
   if (args.includes("--fresh")) {
@@ -106,13 +106,20 @@ export function cmdSync(args: string[] = process.argv): void {
   // `--standard` = áp BẢN SỬA của chuẩn vào file ĐÃ CÓ (plan/26 bước ③). Không phải lệnh mới:
   // HP điều 17 cấm hai lệnh cho một chức năng, và "đưa repo về đúng chuẩn" vốn đã là việc của `sync`.
   // MẶC ĐỊNH DRY-RUN — `--apply` mới ghi. Ghi vào repo khác chỉ xảy ra khi có CẢ `--root` lẫn `--apply`.
-  // `--stamp` = MỒI: đóng dấu bản chuẩn cho repo đã có harness mà chưa có dấu. Chỉ thêm một dòng
-  // chú thích cuối file, không đụng nội dung. Sau mốc này repo mới nhận được bản sửa chuẩn.
+  // `--stamp` = MỒI: đóng dấu cho repo đã có harness mà chưa có dấu. Ngày trong dấu là ngày của bản
+  // template mà file BÁM SÁT NHẤT, đo trên lịch sử git — không phải ngày hôm nay. Chỉ thêm một dòng
+  // chú thích cuối file, không đụng nội dung.
+  if ((args.includes("--stamp") || args.includes("--standard")) && isStandardSource(root)) {
+    // Nói ra, đừng im: "không có gì để áp" ở repo nguồn nghe như "đã khớp", mà sự thật là KHÔNG ĐO.
+    console.log(`zemory sync — ${root}`);
+    console.log("  · repo NGUỒN của bộ mẫu: chuẩn đi TỪ đây ra, không chở ngược vào (plan/26 §8).");
+    return;
+  }
   if (args.includes("--stamp")) {
     const apply = args.includes("--apply");
     const rep = stampRepo(root, { apply });
     console.log(`zemory sync --stamp${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
-    for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${r.action}${r.date ? ` ${r.date}` : ""}`);
+    for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${r.action}${r.date ? ` ${r.date}` : ""}${r.own !== undefined ? `  (riêng ${r.own} · thiếu so với gốc ${r.miss})` : ""}`);
     const n = rep.filter((r) => r.action.startsWith("sẽ") || r.action === "đã đóng dấu").length;
     console.log(`  ${apply ? `đã đóng dấu ${n}` : `sẽ đóng dấu ${n}`}` + (apply ? "" : " — thêm `--apply` để ghi"));
     return;
@@ -127,7 +134,8 @@ export function cmdSync(args: string[] = process.argv): void {
     }
     for (const r of rep) {
       if (r.action === "skipped") console.log(`  ✗ ${r.file.padEnd(20)} BỎ QUA — ${r.reason}`);
-      else console.log(`  ${apply ? "✔" : "→"} ${r.file.padEnd(20)} ${r.verdict === "clean" ? "thay nguyên file" : "hợp nhất"} · +${r.added} −${r.removed}`);
+      else console.log(`  ${apply ? "✔" : "→"} ${r.file.padEnd(20)} ${r.verdict === "clean" ? "thay nguyên file" : "hợp nhất"} · +${r.added} −${r.removed}` +
+            (r.superseded ? ` · ${r.superseded} chỗ repo mang bản chuẩn CŨ ⇒ lấy bản mới` : ""));
     }
     const w = rep.filter((r) => r.action !== "skipped").length;
     const s = rep.filter((r) => r.action === "skipped").length;

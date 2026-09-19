@@ -5,7 +5,7 @@
 // là mất công người khác, im lặng — nên mọi ca nghi ngờ phải rơi về phía TỪ CHỐI.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hunks, merge3 } from "../../dist/docs/standard.js";
+import { hunks, lostLines, merge3 } from "../../dist/docs/standard.js";
 
 const L = (s) => s.trim().split("\n");
 
@@ -69,4 +69,58 @@ test("repo thêm CẢ MỘT KHỐI ở đầu, chuẩn thêm ở cuối ⇒ còn
 
 test("hunks: không đổi gì ⇒ 0 đoạn", () => {
   assert.equal(hunks(L(`a\nb`), L(`a\nb`)).length, 0);
+});
+
+test("hai bên sửa Y HỆT nhau (cùng chỗ, cùng chữ) ⇒ nhận MỘT lần, không từ chối, không nhân đôi", () => {
+  // Ca thật 2026-09-18: repo đã tự chép dòng `config` mà chuẩn thêm sau đó, cùng một chỗ. Git không
+  // coi đó là xung đột; bản đầu của merge3 thì có, và 28 file bị đẩy sang "sửa tay" vì thế.
+  const base = L("a\nb\nc");
+  const mine = L("a\nb\nDÒNG CHUNG\nc\ncủa repo");
+  const theirs = L("a\nb\nDÒNG CHUNG\nc");
+  const r = merge3(base, mine, theirs);
+  assert.ok(r.ok, "trùng khít không phải xung đột");
+  assert.deepEqual(r.lines, L("a\nb\nDÒNG CHUNG\nc\ncủa repo"));
+  assert.equal(r.lines.filter((l) => l === "DÒNG CHUNG").length, 1, "không được nhân đôi dòng chung");
+});
+
+test("CA ÂM: cùng chỗ mà chữ lệch MỘT ký tự ⇒ vẫn TỪ CHỐI", () => {
+  const base = L("a\nb\nc");
+  const r = merge3(base, L("a\nb\nDÒNG CHUNG\nc"), L("a\nb\nDÒNG CHUNG.\nc"));
+  assert.equal(r.ok, false, "hai lời sửa khác nhau dù chỉ một dấu chấm");
+});
+
+// ── Repo mang BẢN CŨ của chính chữ chuẩn (cập nhật từng mảnh) ──────────────────────────────────────
+const K = (...ls) => new Set(ls);
+
+test("repo mang BẢN CŨ của một luật chuẩn (mọi dòng từng có trong template) ⇒ lấy bản chuẩn MỚI", () => {
+  const base = L("a\nb\nc");
+  const mine = L("a\nb\nLUẬT bản 1\nc\nriêng repo");
+  const theirs = L("a\nb\nLUẬT bản 2\nc");
+  const r = merge3(base, mine, theirs, K("a", "b", "c", "LUẬT bản 1", "LUẬT bản 2"));
+  assert.ok(r.ok, "bản cũ ↔ bản mới của cùng một luật chuẩn không phải xung đột thật");
+  assert.deepEqual(r.lines, L("a\nb\nLUẬT bản 2\nc\nriêng repo"), "lấy bản mới, và phần riêng của repo còn nguyên");
+  assert.equal(r.superseded, 1);
+});
+
+test("CA ÂM: chỗ chồng có MỘT dòng repo tự viết ⇒ vẫn TỪ CHỐI", () => {
+  const base = L("a\nb\nc");
+  const mine = L("a\nb\nLUẬT bản 1\nrepo tự viết chen vào\nc");
+  const r = merge3(base, mine, L("a\nb\nLUẬT bản 2\nc"), K("a", "b", "c", "LUẬT bản 1", "LUẬT bản 2"));
+  assert.equal(r.ok, false, "một dòng tự viết là đủ để máy không được chọn");
+});
+
+test("CA ÂM: repo chỉ XOÁ một đoạn chuẩn mà chuẩn cũng sửa đoạn đó ⇒ vẫn TỪ CHỐI (không hồi sinh thứ người ta bỏ)", () => {
+  const base = L("a\nLUẬT cũ\nc");
+  const r = merge3(base, L("a\nc"), L("a\nLUẬT mới\nc"), K("a", "c", "LUẬT cũ", "LUẬT mới"));
+  assert.equal(r.ok, false);
+});
+
+test("không truyền `known` ⇒ hành vi cũ nguyên vẹn: chồng là từ chối", () => {
+  const r = merge3(L("a\nb\nc"), L("a\nb\nX1\nc"), L("a\nb\nX2\nc"));
+  assert.equal(r.ok, false);
+});
+
+test("lostLines đếm theo BỘI: hai dòng trùng mà mất một thì báo đúng một", () => {
+  assert.deepEqual(lostLines(["x", "x", "y"], ["x", "y"]), ["x"]);
+  assert.deepEqual(lostLines(["a", "b"], ["b", "a", "c"]), []);
 });
