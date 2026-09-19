@@ -332,3 +332,19 @@ test("validate hints at the non-app profile when there is no code but a delivera
   const msgs = rep.issues.map((i) => i.msg).join("\n");
   assert.match(msgs, /"profile": "non-app"/);
 });
+
+test("`zemory sync` KHÔNG ghi đè AGENTS.md đã có — kể cả file mang dấu `<!-- zemory`", (t) => {
+  // Ca thật 2026-09-19: nhánh "làm tươi file máy sinh" thay NGUYÊN FILE hễ AGENTS.md khác bản mẫu. Bấm
+  // "Cập nhật repo" trên `Dept_FIN` là mất 2 dòng skill riêng của repo và tiêu đề `# PBI_FIN` bị đổi thành
+  // tên thư mục. Repo được PHÉP thêm dòng vào bảng kích hoạt (04_SKILLS §4), nên dấu `<!-- zemory` không
+  // có nghĩa "file thuần máy sinh".
+  const root = tempDir(t, "zem-noclobber-");
+  ensureHarness(root); // dựng harness đủ, có AGENTS.md mang dấu
+  const p = join(root, "AGENTS.md");
+  const own = readFileSync(p, "utf8").replace(/^# .*$/m, "# TEN_THAT_CUA_DU_AN") + "| việc riêng | `.claude/skills/rieng/SKILL.md` |\n";
+  assert.ok(own.startsWith("<!-- zemory"), "tiền đề: file vẫn mang dấu của zemory");
+  writeFileSync(p, own);
+  const r = ensureHarness(root);
+  assert.equal(readFileSync(p, "utf8"), own, "chữ repo tự viết phải còn nguyên từng byte");
+  assert.ok(!r.added.some((a) => a.startsWith("AGENTS.md")), "không được báo là đã 'làm tươi'");
+});
