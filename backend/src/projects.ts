@@ -266,8 +266,27 @@ export function forgetProject(root: string): boolean {
  */
 export function pruneDeadProjects(): number {
   const list = read();
-  const next = list.filter((e) => isConnected(e.root) && !isScratchRoot(e.root));
+  const next = list.filter((e) => !isDeadEntry(e.root));
   if (next.length === list.length) return 0;
   write(next);
   return list.length - next.length;
+}
+
+/** Một mục sổ là CHẾT khi folder mất, không còn harness, hoặc là thư mục nháp. */
+function isDeadEntry(root: string): boolean {
+  return !isConnected(root) || isScratchRoot(root);
+}
+
+/**
+ * Các mục `pruneDeadProjects` SẼ gỡ — đọc sổ THÔ, cùng một phép thử với lượt chạy thật.
+ *
+ * 🔴 Bản nháp của nút "Dọn dự án đã mất" từng đếm trên `listKnownProjects()`, mà hàm đó ĐÃ lọc bỏ
+ * mục có folder mất ⇒ luôn ra 0, trong khi lượt chạy thật đọc sổ thô và có xoá. Bản nháp nói
+ * "không có gì", nút bấm thì làm việc. Bắt được 2026-09-19 với `SasinAuto`: repo đổi tên, folder
+ * cũ mất, mục sổ nằm lại — và vô hình với cả màn Dự án lẫn hộp xác nhận.
+ */
+export function deadProjectEntries(): string[] {
+  return read()
+    .filter((e) => isDeadEntry(e.root))
+    .map((e) => e.root);
 }
