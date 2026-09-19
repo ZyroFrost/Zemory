@@ -79,6 +79,7 @@ interface ZConfig {
   syncTransport?: "drive" | "p2p";
   /** plan/24 §5 — device ID của máy đã ghép đôi. Rỗng ⇒ không nhận ai. */
   p2pPeers?: string[];
+  p2pPeerAddrs?: Record<string, string[]>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
   /** Lịch tự sync — xem getAutosyncSchedule. */
@@ -522,6 +523,29 @@ export function setP2pPeers(peers: string[]): void {
   c.p2pPeers = [...new Set(peers.map((p) => p.trim()).filter(Boolean))];
   write(c);
 }
+/**
+ * Địa chỉ ĐÃ BIẾT của từng máy đã ghép: `{ <device id>: ["10.101.1.2:21038", …] }`.
+ *
+ * Người dùng KHÔNG cầm IP. Mã máy dán sang đã mang sẵn địa chỉ (user chốt 2026-09-19: *"1 id sẽ chứa
+ * cả ip"*), nên ghép xong là có đường quay số — kể cả khi hai máy khác mạng, nơi tầng dò LAN không
+ * thấy gì. Tầng dò vẫn chạy song song và luôn thắng khi nó thấy máy kia: địa chỉ nó báo là địa chỉ
+ * HÔM NAY, còn địa chỉ trong mã là địa chỉ lúc tạo mã.
+ */
+export function getP2pPeerAddrs(): Record<string, string[]> {
+  const v = read().p2pPeerAddrs;
+  if (!v || typeof v !== "object") return {};
+  const out: Record<string, string[]> = {};
+  for (const [id, list] of Object.entries(v)) {
+    if (Array.isArray(list)) out[id] = list.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+  }
+  return out;
+}
+export function setP2pPeerAddrs(map: Record<string, string[]>): void {
+  const c = read();
+  c.p2pPeerAddrs = map;
+  write(c);
+}
+
 /** Cổng lớp kênh nghe. 0 ⇒ để hệ tự chọn (dùng cho test). */
 export function getP2pPort(): number {
   const v = Number(read().p2pPort);
