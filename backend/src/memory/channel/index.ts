@@ -13,6 +13,7 @@ import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport }
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
+import { pairingWindow } from "./pairwindow.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -20,6 +21,8 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
+export * from "./presence.js";
+export * from "./pairwindow.js";
 
 /**
  * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
@@ -162,6 +165,8 @@ export interface ChannelServeResult {
 export async function startChannelServer(o: {
   shareKey?: string | null;
   appVersion: string;
+  /** Cửa sổ ghép đang mở ⇒ hàm xét mã một lần; đúng mã thì chính nó ghi vân tay máy kia vào sổ. */
+  acceptPair?: (code: string, peerDeviceId: string) => boolean;
   onReceived?: (blocks: number) => void;
   log?: (msg: string) => void;
 } ): Promise<ChannelServeResult> {
@@ -169,7 +174,9 @@ export async function startChannelServer(o: {
   stopChannelServer();
   if (!getP2pEnabled()) return { listening: false, reason: "kênh đang TẮT" };
   const peers = getP2pPeers();
-  if (!peers.length) return { listening: false, reason: "chưa ghép đôi máy nào" };
+  // Cửa ② nới đúng một khe: ĐANG MỞ CỬA SỔ GHÉP thì phải nghe, dù chưa ghép ai — nếu không, người dùng
+  // đọc mã cho máy kia mà bên này không ai nhấc máy. Cửa sổ đóng lại là về đúng luật cũ.
+  if (!peers.length && !pairingWindow()) return { listening: false, reason: "chưa ghép đôi máy nào" };
   const key = (o.shareKey ?? "").trim();
   if (!key) return { listening: false, reason: "chưa có chìa share" };
   const port = getP2pPort();
@@ -185,6 +192,7 @@ export async function startChannelServer(o: {
         shareKey: key,
         appVersion: o.appVersion,
         allowedPeers: peers,
+        acceptPair: o.acceptPair,
       },
       (r: SyncOutcome) => {
         // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
@@ -250,3 +258,42 @@ export function seenPeers(): PeerSighting[] {
 export function channelServingPort(): number | null {
   return running?.port ?? null;
 }
+
+/**
+ * Tách "địa chỉ máy cần nối" mà NGƯỜI dán vào — chấp nhận đúng cái bề mặt in ra.
+ *
+ * Bề mặt in địa chỉ của máy thành MỘT chuỗi `10.101.1.2:21038`, nên bắt người ta cắt đôi rồi gõ vào
+ * hai ô là tự đẻ một bước thừa (user 2026-09-19: *"mắc gì bắt người ta phải nhập"*). Cổng là của
+ * RIÊNG từng máy nên vẫn phải nhập được — nhưng nó đi kèm trong chính chuỗi đó, và vắng thì rơi về
+ * cổng mặc định của sản phẩm.
+ *
+ * Nhận: `host` · `host:port` · `[::1]:port` (IPv6 trong ngoặc) · có/không có `tcp://` dán kèm.
+ * Trả `null` khi không có host, hoặc cổng nằm ngoài 1–65535 — người dán sai phải được BÁO, không
+ * được lặng lẽ nối sang cổng khác.
+ */
+export function parsePeerAddress(raw: string, fallbackPort = 21038): { host: string; port: number } | null {
+  const s = (raw ?? "").trim().replace(/^[a-z]+:\/\//i, "");
+  if (!s) return null;
+  let host = s;
+  let port = fallbackPort;
+  const v6 = /^\[([^\]]+)\](?::(\d+))?$/.exec(s);
+  if (v6) {
+    host = v6[1];
+    if (v6[2]) port = Number(v6[2]);
+  } else {
+    const i = s.lastIndexOf(":");
+    // Nhiều dấu `:` mà không có ngoặc ⇒ IPv6 trần, KHÔNG được cắt khúc cuối làm cổng.
+    if (i > 0 && s.indexOf(":") === i) {
+      host = s.slice(0, i);
+      const tail = s.slice(i + 1);
+      if (!/^\d+$/.test(tail)) return null;
+      port = Number(tail);
+    }
+  }
+  host = host.trim();
+  // Dấu `:` mồ côi ở đầu/cuối = người dán hụt một vế (`:21038`) — báo, đừng nhận bừa.
+  if (!host || /^:|:$/.test(host)) return null;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return null;
+  return { host, port };
+}
+

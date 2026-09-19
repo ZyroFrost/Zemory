@@ -43,6 +43,18 @@ export interface SessionOptions {
   appVersion: string;
   /** ID được phép nói chuyện. Rỗng ⇒ TỪ CHỐI tất (không bao giờ mặc định mở). */
   allowedPeers: string[];
+  /**
+   * Bên GỌI: mã ghép một lần đọc được từ máy kia. Có mã ⇒ sau khi chứng minh cùng chìa sẽ XIN GHÉP.
+   * Không có ⇒ phiên như cũ (chỉ nói chuyện với máy đã ghép).
+   */
+  pairCode?: string;
+  /**
+   * Bên NGHE: cửa sổ ghép đang mở. Trả `true` nếu mã đúng — và chính hàm này ghi vân tay máy kia vào
+   * sổ. `undefined` ⇒ không mở cửa sổ nào, máy lạ bị từ chối như cũ.
+   */
+  acceptPair?: (code: string, peerDeviceId: string) => boolean;
+  /** Bên GỌI: máy kia đã nhận ghép, đây là vân tay của nó — ghi lại để lần sau khỏi cần mã. */
+  onPaired?: (peerDeviceId: string) => void;
   /** Trần một lượt — phiên treo không được giữ tiến trình mãi. */
   timeoutMs?: number;
 }
@@ -88,9 +100,16 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const peerId = peerDeviceId(sock.getPeerCertificate()?.raw);
     out.peerDeviceId = peerId;
     if (!peerId) return finish("đối phương không xuất trình chứng chỉ");
-    if (!o.allowedPeers.some((a) => sameDeviceId(a, peerId))) {
+    // Máy lạ chỉ đi tiếp được khi bên này ĐANG MỞ cửa sổ ghép — và vẫn phải qua bằng chứng cùng chìa
+    // trước khi được ghi vào sổ. Không có cửa sổ ⇒ từ chối y như cũ.
+    const known = o.allowedPeers.some((a) => sameDeviceId(a, peerId));
+    // HAI ĐẦU đều phải nới: bên NGHE khi đang mở cửa sổ ghép, bên GỌI khi cầm mã ghép. Bản đầu chỉ
+    // nới bên nghe, nên lượt ghép đầu tiên chết ngay ở chính máy đi gọi — danh sách của nó còn rỗng.
+    const pairing = !known && (typeof o.acceptPair === "function" || Boolean(o.pairCode));
+    if (!known && !pairing) {
       return finish(`máy lạ, chưa ghép đôi: ${peerId}`);
     }
+    let paired = known;
 
     const send = (buf: Buffer): void => {
       out.bytesSent += buf.length;
@@ -117,10 +136,36 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           return finish("chìa share KHÁC nhau — hai máy không đọc được kho của nhau");
         }
         proofOk = true;
+        // Bên GỌI có mã ⇒ xin ghép trước khi khai kho.
+        if (initiator && o.pairCode) {
+          send(encodeJson({ t: "pair", code: o.pairCode }));
+          return;
+        }
+        if (!paired) return; // bên NGHE: chờ lời xin ghép, chưa khai gì cả
+        sendHave();
+        return;
+      }
+      if (m.t === "pair") {
+        if (!proofOk) return finish("xin ghép trước khi chứng minh cùng chìa");
+        if (paired) return; // đã ghép rồi thì lời xin ghép là thừa, bỏ qua
+        if (!o.acceptPair || !peerId || !o.acceptPair(m.code, peerId)) {
+          return finish("mã ghép sai hoặc đã hết hạn");
+        }
+        paired = true;
+        send(encodeJson({ t: "paired", id: o.identity.deviceId }));
+        sendHave();
+        return;
+      }
+      if (m.t === "paired") {
+        // Bên GỌI: máy kia đã nhận. Ghi vân tay của nó rồi mới khai kho.
+        if (!proofOk) return finish("nhận xác nhận ghép trước khi chứng minh cùng chìa");
+        paired = true;
+        o.onPaired?.(m.id || peerId || "");
         sendHave();
         return;
       }
       if (m.t === "have") {
+        if (!paired) return finish("khai kho trước khi ghép đôi");
         if (!proofOk) return finish("khai kho trước khi chứng minh cùng chìa");
         void shipMissing(m.ids);
         return;
