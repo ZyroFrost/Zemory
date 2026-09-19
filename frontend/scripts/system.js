@@ -395,7 +395,7 @@
       if(stEl)stEl.textContent='…';
       zPost('/harness-apply?root='+encodeURIComponent(root)).then(function(r){
         r=r||{};
-        if(stEl)stEl.textContent=r.ok?t('upd.applied').replace('{n}',(r.added||[]).length).replace('{g}',r.guard?'✓':'—'):(t('upd.applyFail')+(r.error?' · '+r.error:''));
+        if(stEl)stEl.textContent=r.ok?t('upd.applied').replace('{n}',(r.added||[]).length+(r.stdWritten||0)).replace('{g}',r.guard?'✓':'—')+(r.stdSkipped?' · '+t('upd.stdSkipped').replace('{k}',r.stdSkipped):''):(t('upd.applyFail')+(r.error?' · '+r.error:''));
         if(r.ok){okN++;var cb=row&&row.querySelector('.upd-pick');if(cb){cb.checked=false;cb.disabled=true;}
           if(row){row.innerHTML=row.innerHTML.replace('⚠','✓');}}
         next();
@@ -527,8 +527,8 @@
     repos+=!UPD_CHECK
       ?line(t('upd.stdOff'))
       :st.length
-      ?line(t('upd.repoHdr').replace('{n}',st.length))+'<div style="font-size:12.5px">'+st.map(function(x){return '<label class="upd-row" data-root="'+stdEsc(x.root)+'" style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'" checked> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
-        +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel">'+stdEsc(t('upd.applySel').replace('{n}',st.length))+'</button><span class="muted" style="font-size:11px">'+stdEsc(t('upd.repoHint'))+'</span></div>'
+      ?line(t('upd.repoHdr').replace('{n}',st.length))+'<div style="font-size:12.5px">'+st.map(function(x){var lk=!!x.locked,why=lk?' title="'+stdEsc(t('upd.lockedWhy'))+'"':'';return '<label class="upd-row" data-root="'+stdEsc(x.root)+'"'+why+' style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:'+(lk?'default':'pointer')+'"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'"'+(lk?' disabled':' checked')+'> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel"'+(st.some(function(x){return !x.locked;})?'':' disabled')+'>'+stdEsc(t('upd.applySel').replace('{n}',st.filter(function(x){return !x.locked;}).length))+'</button></div>'
       :line('✓ '+t('upd.repoNone'));
     // ② ĐƯỜNG DẪN MỚI CHẾT (đọc từ state của sweep — không quét). Chỉ liệt kê + chỉ đường xem dòng cụ thể; sửa nguồn là việc
     // của agent/user bên repo đó (plan/21 §8). Hàng nói đủ: tên repo · N đường mới chết · mẫu · từ ngày.
