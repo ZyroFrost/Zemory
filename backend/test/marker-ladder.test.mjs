@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { findMarker, isConnected, loadContext, MARKER_CANDIDATES } from "../../dist/core/config.js";
+import { findMarker, findProjectRoot, isConnected, loadContext, MARKER_CANDIDATES, normalizeRoot } from "../../dist/core/config.js";
 import { tempDir } from "./helpers.mjs";
 
 const rel = (root, p) => p.slice(root.length + 1).replace(/\\/g, "/");
@@ -68,4 +68,32 @@ test("a pointer aimed OUTSIDE the repo tree MUST be blocked (the harness may not
   const root = tempDir(t, "zemory-ladder-escape-");
   writeFileSync(join(root, ".harness.json"), JSON.stringify({ home: "../../ngoai-repo" }));
   assert.throws(() => loadContext(root), /phải nằm trong cây project/i);
+});
+
+// findProjectRoot walk-up DỪNG ở ranh giới `.git` — một repo (có `.git`) mà THIẾU marker KHÔNG
+// được nhận marker của thư mục CHA. Đo 2026-09-19: zemory mất marker (gitignored) sau reset ⇒
+// mọi lệnh + check lúc daemon start resolve nhầm sang marker của `…/Tools/` cha rồi quét 10k file
+// mọi project anh em (validate 123 s → CPU-spin daemon → app trắng). Ca ÂM: bỏ chốt `.git` ⇒ leo cha.
+test("findProjectRoot STOPS at a .git boundary: a git repo without a marker does NOT adopt the parent's marker", (t) => {
+  const root = tempDir(t, "zemory-gitboundary-");
+  writeFileSync(join(root, ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} })); // cha CÓ marker
+  const repo = join(root, "child-repo");
+  mkdirSync(join(repo, ".git"), { recursive: true }); // con là repo (.git) NHƯNG không marker
+  assert.equal(findProjectRoot(repo), null, "repo có .git mà thiếu marker phải trả null, KHÔNG leo sang marker của cha");
+});
+
+test("findProjectRoot still walks up through NON-repo folders to a marker (normal case preserved)", (t) => {
+  const root = tempDir(t, "zemory-walkup-");
+  writeFileSync(join(root, ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
+  const sub = join(root, "a", "b");
+  mkdirSync(sub, { recursive: true }); // không .git ở giữa ⇒ walk-up bình thường tới marker cha
+  assert.equal(findProjectRoot(sub), normalizeRoot(root));
+});
+
+test("a marker AT the .git root is still found (marker beats the boundary check)", (t) => {
+  const root = tempDir(t, "zemory-gitmarker-");
+  mkdirSync(join(root, ".git"), { recursive: true });
+  mkdirSync(join(root, "docs"), { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
+  assert.equal(findProjectRoot(root), normalizeRoot(root), "marker cùng cấp .git vẫn phải nhận, không bị chốt boundary nuốt");
 });

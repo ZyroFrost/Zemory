@@ -164,6 +164,13 @@ export function findProjectRoot(start: string = process.cwd()): string | null {
   let dir = normalizeRoot(start);
   while (true) {
     if (findMarker(dir)) return dir;
+    // DỪNG ở ranh giới repo: một thư mục có `.git` nhưng KHÔNG có marker harness là gốc của một
+    // repo CHƯA nối harness — KHÔNG được leo tiếp lên thư mục CHA rồi nhận marker của nó. Nếu leo,
+    // một repo con vô tình quét theo chuẩn của cả thư mục chứa nó. Đo 2026-09-19: zemory mất marker
+    // (gitignored, rơi sau một `reset --hard`) nên MỌI lệnh + các check lúc daemon khởi động resolve
+    // nhầm sang marker của cha `…/Tools/` và quét 10k file của mọi project anh em — `validate` mất
+    // 123 s, và runCheck lúc startup khoá event loop daemon ⇒ app mở trắng/chậm.
+    if (existsSync(join(dir, ".git"))) return null;
     const parent = dirname(dir);
     if (parent === dir) return null;
     dir = parent;
