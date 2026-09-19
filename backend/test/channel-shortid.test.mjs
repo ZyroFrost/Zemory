@@ -56,8 +56,13 @@ test("SỐ MÁY KHÔNG phải danh tính — thứ ghi vào sổ ghép đôi v�
   const pane = ui.slice(ui.indexOf('if (p === "/channel-pair")'), ui.indexOf('if (p === "/channel-sync")'));
   assert.match(pane, /looksShortId/, "phải nhận được số máy người dùng gõ");
   assert.match(pane, /hits\[0\]\.deviceId/, "tra xong phải ghi VÂN TAY, không ghi con số");
-  // CA ÂM BẮT BUỘC — hai nhánh này là thứ chặn "ghép nhầm máy người khác":
-  assert.match(pane, /hits\.length === 0/, "không thấy máy nào ⇒ phải NÓI, không ghi bừa");
+  // CA ÂM BẮT BUỘC — hai vế này là thứ chặn "ghép nhầm máy người khác".
+  // 🔄 Nhánh "không thấy trên mạng" nay KHÔNG dừng ngay mà TRA BẢNG trên thư mục dùng chung
+  // (2026-09-19) — đó là thứ làm số máy dùng được khi hai máy khác mạng. Luật vẫn nguyên: tra không
+  // ra thì NÓI, không ghi bừa.
+  assert.match(pane, /findPresence/, "không thấy trên mạng ⇒ phải TRA BẢNG, không bỏ cuộc sớm");
+  assert.match(pane, /if \(!found\) return json\(res, \{ ok: false, error: "not-seen" \}\);/,
+    "tra không ra ⇒ phải NÓI, không ghi bừa");
   assert.match(pane, /hits\.length > 1/, "trùng số ⇒ phải HỎI, không được đoán");
 });
 

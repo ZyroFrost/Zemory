@@ -40,7 +40,17 @@ export interface DoneMessage {
   t: "done";
   sent: number;
 }
-export type ControlMessage = HelloMessage | ProofMessage | HaveMessage | DoneMessage;
+/** Bên GỌI xin ghép, kèm mã một lần đọc từ máy kia. Chỉ gửi SAU khi đã chứng minh cùng chìa. */
+export interface PairMessage {
+  t: "pair";
+  code: string;
+}
+/** Bên NGHE nhận lời xin ghép: khai vân tay của mình để bên gọi ghi lại, khỏi chép tay chiều ngược. */
+export interface PairedMessage {
+  t: "paired";
+  id: string;
+}
+export type ControlMessage = HelloMessage | ProofMessage | HaveMessage | DoneMessage | PairMessage | PairedMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");
