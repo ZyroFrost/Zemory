@@ -718,9 +718,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort } =
+    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort, serveRelay, relayAddress, DEFAULT_RELAY_PORT } =
       await import("../memory/channel/index.js");
-    const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
+    const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled, getP2pRelay, setP2pRelay } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
     const action = rest[0] ?? "status";
 
@@ -756,6 +756,41 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== want.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       setP2pPeers(next);
       console.log(`zemory memory channel ${action} — ${next.length} máy đã kết nối`);
+      return;
+    }
+    if (action === "relay") {
+      // Địa chỉ relay của zemory (plan/24 §7 ⑧): `relay <host:port>` đặt · `relay off` bỏ · không đối số = xem.
+      const v = rest[1];
+      if (v === "off") {
+        setP2pRelay("");
+        console.log("zemory memory channel relay — TẮT (chỉ gọi thẳng / cùng LAN)");
+        return;
+      }
+      if (v) {
+        setP2pRelay(v);
+        const a = relayAddress();
+        if (!a) {
+          console.log(`zemory memory channel relay — địa chỉ không đọc được: ${v}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`zemory memory channel relay — dùng ${a.host}:${a.port} (daemon đang chạy sẽ nhận sau khi bật lại kênh)`);
+        return;
+      }
+      console.log(`zemory memory channel relay — ${getP2pRelay() || "(không dùng)"}`);
+      return;
+    }
+    if (action === "relay-serve") {
+      // Chạy RELAY trên máy có IP công khai. Relay không giữ gì ngoài RAM và không đọc được nội dung:
+      // hai đầu bắt tay TLS bên trong ống, khối vốn đã .enc bằng chìa share (điều 7).
+      const port = Number(flagValue(args, "--port") ?? DEFAULT_RELAY_PORT);
+      const r = await serveRelay({ port, log: (m) => console.log(m) });
+      console.log(`zemory memory channel relay-serve — đang nghe cổng ${r.port}. Máy khác: \`zemory memory channel relay <ip-công-khai>:${r.port}\``);
+      console.log("  Ctrl+C để dừng. Relay thấy IP + device ID + lưu lượng; KHÔNG thấy nội dung.");
+      await new Promise<void>((resolve) => {
+        process.once("SIGINT", () => { r.close(); resolve(); });
+        process.once("SIGTERM", () => { r.close(); resolve(); });
+      });
       return;
     }
     if (action === "on" || action === "off") {
@@ -818,7 +853,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       return;
     }
-    console.log("usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]");
+    console.log("usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|relay <host:port>|off|relay-serve [--port <n>]|sync --host <ip> --port <n>]");
     process.exitCode = 1;
     return;
   }
@@ -1666,11 +1701,13 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    ĐỒNG BỘ HAI CHIỀU qua thư mục chung (Drive): gộp mọi gói của máy khác",
       "                    vào kho này, rồi NỐI THÊM phần mới của máy này lên kho chung — không",
       "                    ghi đè byte cũ. --compact: viết LẠI kho chung từ kho máy này.",
-      "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
+      "  channel [status|id|pair <id>|unpair <id>|on|off|probe|relay <host:port>|relay-serve|sync --host <ip> --port <n>]",
       "                    KÊNH MÁY-TỚI-MÁY (plan/24): id = ID máy này (KHÔNG phải bí mật, chép",
       "                    thoải mái) · pair = kết nối bằng ID máy kia · on/off = có NHẬN qua kênh",
       "                    này không (Drive không đổi) · probe = router có mở cổng hộ được không",
-      "                    · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
+      "                    · relay <host:port> = dùng relay của zemory khi hai máy khác mạng (relay off",
+      "                    để bỏ) · relay-serve = CHẠY relay trên máy có IP công khai; relay không đọc",
+      "                    được nội dung · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
       "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
       "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",

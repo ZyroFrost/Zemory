@@ -2962,6 +2962,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
         // người dùng không có cách nào biết nó có tìm được ai không.
         listening: ch.channelServingPort(),
+        // RELAY (plan/24 §7 ⑧): địa chỉ đã cấu hình + có đang giữ hộp thư ở đó không.
+        relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : "",
+        relayJoined: ch.relayJoined(),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
         // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
@@ -2995,10 +2998,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // 🔴 HAI KHÁI NIỆM TÁCH ĐÔI, đừng gộp (plan/24 §5):
       //   `on`        = có NHẬN qua kênh p2p không — bật được CÙNG LÚC với Drive;
       //   `transport` = GỬI đi đâu, ĐÚNG MỘT đích. Hai kẻ cùng ghi đã hỏng kho HAI LẦN (HP điều 11).
-      const { setP2pEnabled, setSyncTransport, getP2pEnabled, getSyncTransport } = await import("./config/settings.js");
+      const { setP2pEnabled, setSyncTransport, getP2pEnabled, getSyncTransport, setP2pRelay } = await import("./config/settings.js");
       const on = u.searchParams.get("on");
       const transport = u.searchParams.get("transport");
+      const relay = u.searchParams.get("relay");
       if (on !== null) setP2pEnabled(on === "1");
+      // Địa chỉ relay: chuỗi rỗng = TẮT relay (xoá khoá), không phải "giữ nguyên".
+      if (relay !== null) setP2pRelay(relay);
       if (transport === "drive" || transport === "p2p") setSyncTransport(transport);
       // Gạt công tắc là ĂN NGAY: cùng một hàm với lúc daemon khởi động, nên không có chuyện
       // bật trong ⚙ rồi phải mở lại app mới nghe (người dùng sẽ đọc cảnh đó thành hỏng).
@@ -3076,6 +3082,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         );
         last = { ...r, addr: cand };
         if (!r.error) return json(res, { ok: true, ...last });
+      }
+      // TẦNG 4: gọi thẳng trượt hết ⇒ đi qua relay, cho từng máy ĐÃ QUEN (relay ghép theo device ID,
+      // nên địa chỉ gõ tay không có gì để đưa nó). Thứ tự *thẳng trước, relay sau* là của §1c.
+      const ra = ch.relayAddress();
+      if (ra && st.peers.length) {
+        const shareKey = readFileSync(keyFile, "utf8").trim();
+        for (const peerId of st.peers) {
+          const r = await ch.connectViaRelay(ra, peerId, {
+            channelDir: st.dir,
+            identity: ch.channelIdentity(),
+            shareKey,
+            appVersion: appVersion(),
+            allowedPeers: st.peers,
+          });
+          last = { ...r, addr: `relay ${ra.host}:${ra.port} → ${peerId.slice(0, 11)}…`, viaRelay: true };
+          if (!r.error) {
+            daemonLog(`[channel] nối qua relay tới ${peerId.slice(0, 11)}… — nhận ${r.receivedBlocks} · gửi ${r.sentBlocks}`);
+            return json(res, { ok: true, ...last });
+          }
+        }
       }
       return json(res, { ok: false, ...last });
     }
