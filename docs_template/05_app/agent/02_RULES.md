@@ -23,6 +23,7 @@ Sync bundle qua git   ngoại lệ CÓ CHỦ ĐÍCH của luật data/=gitignore
 Thiết kế UI (LUẬT)   **Chuẩn thiết kế FE + BE của app: `.claude/skills/app-design/SKILL.md`** — panel resize · dialog · chữ người dùng đọc · gom tiến trình. Đây là CHUẨN THIẾT KẾ, không phải điều khoản; đụng bề mặt app hay thêm tiến trình nền ⇒ MỞ nó trước, và làm theo
 Separator của INDEX   ⛔ ĐỪNG "dọn cho đẹp": chỉ mục docs lưu đường theo separator của OS (`docs\agent\05_TODO.md`), KHÔNG posix — và mọi chỗ TRA cũng ghép bằng `join`. Từng có đợt chuẩn hoá sang `/`, hậu quả đo được: `plan ls` IM LẶNG báo "index rỗng" dù chỉ mục đủ, và `reindex` lần sau đẻ doc row TRÙNG. Muốn đổi = một MIGRATION riêng (đổi index cũ + mọi chỗ tra trong CÙNG một bước)
 EOL của file         ⛔ ĐỌC SAO GHI VẬY: sửa file CÓ SẴN thì giữ nguyên kiểu xuống dòng của nó — đọc dạng BYTE, thấy CRLF thì ghi lại CRLF. Đọc thành text rồi ghép lại bằng LF là ÂM THẦM đổi cả file sang LF ⇒ git kêu MỌI DÒNG đều đổi, thay đổi thật chìm trong nhiễu và mất blame theo dòng. Đo 2026-09-04: 2 file bị vậy, và cùng lượt ghi-lại-cả-file đó còn LÀM RƠI phần phiên khác vừa chèn (lost update, không ai báo lỗi) ⇒ sửa theo TỪNG ĐOẠN, đừng đọc-cả-file-rồi-ghi-lại
+EOL của file MÁY SINH ⛔ File do máy ghép TỪ file khác (archive ← `05_TODO`/`06_CHANGES`; mọi bản dẫn xuất ← bản nguồn) lấy EOL của **file NGUỒN**, KHÔNG lấy EOL của chính nó — một họ hai file phải đi cùng một kiểu, và nguồn mới là thứ người ta đọc mỗi phiên. **Hệ quả phải biết TRƯỚC:** khi file sinh ra đang lệch kiểu với nguồn thì lượt ghi ĐẦU TIÊN sau đó đảo NGUYÊN file — đó là **cái giá trả MỘT LẦN, không phải bug**; đừng chẩn đoán thành "tool phá file" rồi đi sửa tool. Xử ĐÚNG: chuyển dứt điểm một lượt, trong MỘT commit riêng có nhãn, TÁCH khỏi commit nội dung — chứng minh bằng `git diff --ignore-cr-at-eol` ra RỖNG. Xử SAI, cả hai đều đã xảy ra thật: ① nắn ngược file sinh ra về kiểu cũ ⇒ lượt sinh kế tiếp đảo lại, đẩy file qua lại mãi mà không ai sửa gì ② dựng cổng "EOL không được đổi" ⇒ cổng đỏ đúng vào hành vi ĐÚNG, mà gate nhiễu là gate bị bỏ qua. Mặt này ĐÃ có máy canh sẵn trong zemory (test của lệnh `archive`) ⇒ đừng dựng phép đo thứ hai bên cạnh. Đo 2026-09-21 trên một repo thật: sổ nguồn CRLF, 2 file archive LF ⇒ mỗi lượt `archive` đẻ diff **6.247 dòng giả** trong khi thay đổi thật là **247**
 ```
 ## Ngôn ngữ (BẮT BUỘC)
 - **docs (`docs/agent` + `docs/plan`)**: tiếng Việt có dấu.
@@ -191,4 +192,4 @@ EOL của file         ⛔ ĐỌC SAO GHI VẬY: sửa file CÓ SẴN thì giữ
 > *(Luật THIẾT KẾ/UI cụ thể — Dialog 3-size, ESC mọi dialog, token-first… — KHÔNG ở đây: RULES là luật LÀM VIỆC chung. Convention thiết kế ở `03_STRUCTURE §5`. Ở đây CHỈ là luật hành xử "phải hỏi trước".)*
 
 
-<!-- zemory-standard: 2026-09-16 -->
+<!-- zemory-standard: 2026-09-21 -->
