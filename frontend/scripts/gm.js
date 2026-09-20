@@ -222,6 +222,14 @@
   //    công tắc = có NHẬN không (bật cùng lúc với Drive được)
   //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
   function p2pMsg(s){zset('p2pMsg',s||'');}
+  // `ETIMEDOUT` không nói được phải đi soi đâu. Ba nhóm dưới là ba CHẨN ĐOÁN KHÁC NHAU, gộp thành
+  // một chữ "lỗi" là bắt người dùng đoán. Mã lạ thì trả NGUYÊN VĂN — đừng nuốt thứ mình chưa biết.
+  function p2pWhy(e){
+    var s=String(e||'');
+    if(/ETIMEDOUT|EHOSTUNREACH|ENETUNREACH/.test(s))return t('p2p.errRoute');
+    if(/ECONNREFUSED/.test(s))return t('p2p.errRefused');
+    return s;
+  }
   // SỐ MÁY nhóm ba cho dễ đọc/gõ lại. Không phải số 9 chữ ⇒ trả nguyên, không bịa dạng.
   // Một hàng nhãn↔giá trị trong khung `.drv-facts` — CÙNG khung với ba hàng số ngay phía trên
   // (app-design §F0b: một chức năng thì một khung, không đẻ kiểu trình bày thứ hai). Dựng bằng
@@ -438,13 +446,15 @@
         .then(function(j){if(j)loadChannel();});
     }
     else if(act==='p2p-sync-addr'){
-      // Đường dự phòng: nối THẲNG bằng địa chỉ. Cùng endpoint với nút Đồng bộ, chỉ khác là có `host`.
+      // Nối bằng địa chỉ. Kết quả phải hiện TRONG hộp thoại đang mở: bản trước đẩy sang `p2pMsg`
+      // nằm ở thẻ nhật ký phía sau, nên bấm xong không thấy gì và người dùng đọc thành "nút chết"
+      // (user báo 2026-09-20 — lúc đó endpoint đang trả ETIMEDOUT đều đặn).
       var ad=((zid('p2pAddrIn')||{}).value||'').trim();
-      if(!ad){p2pMsg(t('p2p.byAddrNeed'));return;}
-      p2pMsg(t('p2p.syncing'));
+      if(!ad){zset('addPeerMsg',t('p2p.byAddrNeed'));return;}
+      zset('addPeerMsg',t('p2p.syncing'));
       zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
-        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
-        p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
+        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
       });
     }
