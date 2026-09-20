@@ -40,12 +40,17 @@ export interface DoneMessage {
   t: "done";
   sent: number;
 }
-/** Bên GỌI xin ghép, kèm mã một lần đọc từ máy kia. Chỉ gửi SAU khi đã chứng minh cùng chìa. */
+/**
+ * Bên GỌI xin được nhận vào sổ. Chỉ gửi SAU khi đã chứng minh cùng chìa.
+ *
+ * 🔄 Trường `code` đã BỎ (user chốt 2026-09-20) — xem `peer.ts` `acceptPeer`. Tin này nay là một
+ * lời xin TRẦN: thứ cho phép nó đi tiếp là bằng chứng cùng `share.key` ở bước trước, không phải
+ * một con số người dùng phải đọc qua điện thoại.
+ */
 export interface PairMessage {
   t: "pair";
-  code: string;
 }
-/** Bên NGHE nhận lời xin ghép: khai vân tay của mình để bên gọi ghi lại, khỏi chép tay chiều ngược. */
+/** Bên NGHE nhận lời xin: khai vân tay của mình để bên gọi ghi lại, khỏi chép tay chiều ngược. */
 export interface PairedMessage {
   t: "paired";
   id: string;

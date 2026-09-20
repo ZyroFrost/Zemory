@@ -13,7 +13,6 @@ import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport }
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
-import { pairingWindow } from "./pairwindow.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -21,7 +20,6 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
-export * from "./pairwindow.js";
 
 /**
  * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
@@ -150,12 +148,15 @@ export interface ChannelServeResult {
  * bề mặt thì vẫn khoe "kênh đã sẵn sàng". Đo 2026-09-15: `grep serveChannel` toàn `backend/src`
  * chỉ ra đúng một dòng — chính chỗ khai nó.
  *
- * BA CỬA TỪ CHỐI, theo thứ tự, và mỗi cửa nói rõ lý do thay vì im lặng không nghe:
+ * HAI CỬA TỪ CHỐI, và mỗi cửa nói rõ lý do thay vì im lặng không nghe:
  *  ① `p2pEnabled` tắt ⇒ không nghe (mặc định của mọi máy);
- *  ② chưa ghép đôi máy nào ⇒ không nghe — mở một cổng mà từ chối mọi người là mở vô ích, và nó
- *    làm bề mặt trông như đang sẵn sàng trong khi không ai vào được;
- *  ③ chưa có chìa share ⇒ không nghe, vì phép chứng minh cùng chìa (`plan/24 §7c ②`) là thứ
- *    chặn hai kho LẠ chở khối cho nhau.
+ *  ② chưa có chìa chung ⇒ không nghe, vì phép chứng minh cùng chìa (`plan/24 §7c ②`) là thứ chặn
+ *    hai kho LẠ chở khối cho nhau — và từ 2026-09-20 nó là thứ DUY NHẤT gác cửa.
+ *
+ * 🔄 Cửa "chưa ghép đôi máy nào" ĐÃ BỎ cùng mã kết nối (user chốt 2026-09-20). Nó tồn tại vì hồi đó
+ * máy lạ còn phải đọc một mã 6 số, nên mở cổng khi chưa ghép ai là mở vô ích. Nay máy nào chứng minh
+ * được cùng chìa là vào được, nên bật kênh = nghe ngay — đúng điều 16 mục 9 (*tự động, người dùng
+ * không phải nhớ bấm gì*).
  *
  * Gọi lại khi đang chạy ⇒ đóng bản cũ rồi mở lại theo cấu hình mới (người dùng vừa đổi cổng
  * hoặc vừa ghép thêm máy). Fail-open (điều 9): cổng bận/đang bị chiếm ⇒ trả `reason`, KHÔNG
@@ -164,8 +165,8 @@ export interface ChannelServeResult {
 export async function startChannelServer(o: {
   shareKey?: string | null;
   appVersion: string;
-  /** Cửa sổ ghép đang mở ⇒ hàm xét mã một lần; đúng mã thì chính nó ghi vân tay máy kia vào sổ. */
-  acceptPair?: (code: string, peerDeviceId: string) => boolean;
+  /** Máy vừa chứng minh cùng chìa xin vào sổ ⇒ hàm này ghi vân tay nó lại và trả `true`. */
+  acceptPeer?: (peerDeviceId: string) => boolean;
   onReceived?: (blocks: number) => void;
   log?: (msg: string) => void;
 } ): Promise<ChannelServeResult> {
@@ -173,9 +174,6 @@ export async function startChannelServer(o: {
   stopChannelServer();
   if (!getP2pEnabled()) return { listening: false, reason: "kênh đang TẮT" };
   const peers = getP2pPeers();
-  // Cửa ② nới đúng một khe: ĐANG MỞ CỬA SỔ GHÉP thì phải nghe, dù chưa ghép ai — nếu không, người dùng
-  // đọc mã cho máy kia mà bên này không ai nhấc máy. Cửa sổ đóng lại là về đúng luật cũ.
-  if (!peers.length && !pairingWindow()) return { listening: false, reason: "chưa ghép đôi máy nào" };
   const key = (o.shareKey ?? "").trim();
   if (!key) return { listening: false, reason: "chưa có chìa share" };
   const port = getP2pPort();
@@ -191,7 +189,7 @@ export async function startChannelServer(o: {
         shareKey: key,
         appVersion: o.appVersion,
         allowedPeers: peers,
-        acceptPair: o.acceptPair,
+        acceptPeer: o.acceptPeer,
       },
       (r: SyncOutcome) => {
         // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
