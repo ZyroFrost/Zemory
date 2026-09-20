@@ -260,6 +260,14 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
   });
 }
 
+/**
+ * Chạy MỘT phiên trên một socket TLS đã bắt tay xong — cho lớp relay (`relay.ts`) dùng lại
+ * NGUYÊN giao thức phiên trên một ống đi qua bên thứ ba. Không có bản sao logic thứ hai.
+ */
+export function runSessionOn(sock: TLSSocket, o: SessionOptions, initiator: boolean): Promise<SyncOutcome> {
+  return runSession(sock, o, initiator);
+}
+
 /** Gọi sang một máy đã ghép đôi. */
 export function connectToPeer(addr: { host: string; port: number }, o: SessionOptions): Promise<SyncOutcome> {
   return new Promise((resolve) => {

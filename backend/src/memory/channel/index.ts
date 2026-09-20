@@ -9,10 +9,11 @@ import { join } from "node:path";
 import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
-import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
+import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getP2pRelay, getSyncTransport } from "../../config/settings.js";
 import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
+import { joinRelay, DEFAULT_RELAY_PORT, type RelayJoinHandle } from "./relay.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -20,6 +21,7 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
+export * from "./relay.js";
 
 /**
  * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
@@ -132,7 +134,17 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
-let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
+let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle; relay?: RelayJoinHandle } | null = null;
+
+/** Địa chỉ relay đã cấu hình, tách sẵn; `null` khi không dùng. */
+export function relayAddress(): { host: string; port: number } | null {
+  const raw = getP2pRelay();
+  return raw ? parsePeerAddress(raw, DEFAULT_RELAY_PORT) : null;
+}
+/** Đang giữ hộp thư ở relay không — TRẠNG THÁI THẬT, không phải ý định. */
+export function relayJoined(): boolean {
+  return running?.relay?.connected() ?? false;
+}
 
 export interface ChannelServeResult {
   listening: boolean;
@@ -216,8 +228,33 @@ export async function startChannelServer(o: {
     } catch (e) {
       log(`[channel] dò LAN không bật được: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
     }
-    running = { server, port: server.port, discovery };
-    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}`);
+    // TẦNG 4 — RELAY (plan/24 §7 ⑧). Máy sau NAT không ai gọi vào được ⇒ nó tự GIỮ một hộp thư ở
+    // relay để máy kia gọi qua đó. Cùng `acceptPeer`/`onReceived` với đường thẳng — một phiên relay
+    // là một phiên thường, chỉ khác ống. Fail-open: không tới được relay thì đường thẳng + LAN vẫn chạy.
+    let relay: RelayJoinHandle | undefined;
+    const ra = relayAddress();
+    if (ra) {
+      relay = joinRelay(
+        ra,
+        {
+          channelDir: channelDir(currentStoreRoot()),
+          identity: channelIdentity(),
+          shareKey: key,
+          appVersion: o.appVersion,
+          allowedPeers: peers,
+          acceptPeer: o.acceptPeer,
+        },
+        {
+          log,
+          onSession: (r: SyncOutcome) => {
+            log(`[channel] phiên qua relay với ${r.peerDeviceId ?? "(không rõ)"} — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}` + (r.error ? ` · ✗ ${r.error}` : ""));
+            if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+          },
+        },
+      );
+    }
+    running = { server, port: server.port, discovery, relay };
+    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}${ra ? ` · relay ${ra.host}:${ra.port}` : ""}`);
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
@@ -229,6 +266,11 @@ export async function startChannelServer(o: {
 /** Đóng máy chủ kênh nếu đang chạy. An toàn khi gọi lúc không có gì chạy. */
 export function stopChannelServer(): void {
   if (!running) return;
+  try {
+    running.relay?.stop();
+  } catch {
+    /* hộp thư relay đã đóng */
+  }
   try {
     running.discovery?.stop();
   } catch {

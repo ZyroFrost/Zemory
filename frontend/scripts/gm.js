@@ -285,9 +285,11 @@
     // Thân của CẢ BA thẻ (máy này · cụm máy · nhật ký) — chừa thanh đầu thẻ vì công tắc nằm ở đó.
     var p2pOn=!!c.enabled, sub=document.querySelector('.sub[data-sy="p2p"]');
     if(sub)sub.querySelectorAll('.card-b').forEach(function(b){b.classList.toggle('frozen',!p2pOn);});
-    var a=zid('trDrive'),b=zid('trP2p');
-    if(a)a.classList.toggle('on',c.transport!=='p2p');
-    if(b)b.classList.toggle('on',c.transport==='p2p');
+    // RELAY (plan/24 §7 ⑧): nói TRẠNG THÁI THẬT — đang giữ hộp thư ở relay, hay không tới được nó.
+    // Ô nhập chỉ điền khi người dùng không đang gõ, để lượt làm mới không đè chữ họ vừa gõ.
+    var rs=zid('p2pRelayState'),ri=zid('p2pRelayIn');
+    if(rs)rs.textContent=c.relay?(c.relayJoined?t('p2p.relayJoined'):t('p2p.relayIdle')):t('p2p.relayOff');
+    if(ri&&document.activeElement!==ri)ri.value=c.relay||'';
     // CỤM MÁY — mỗi máy MỘT THẺ, máy này đứng đầu. Bản cũ là một danh sách chuỗi 52 ký tự trần:
     // không nói được máy nào đang thấy được, địa chỉ bao nhiêu, gặp lần cuối lúc nào.
     var cl=zid('p2pCluster');
@@ -445,6 +447,10 @@
       zSave('/set-p2p?on='+(wasOn?'0':'1'),function(){el.classList.toggle('on',wasOn);})
         .then(function(j){if(j)loadChannel();});
     }
+    else if(act==='p2p-relay-save'){
+      var rv=((zid('p2pRelayIn')||{}).value||'').trim();
+      zSave('/set-p2p?relay='+encodeURIComponent(rv),function(){}).then(function(j){if(j)loadChannel();});
+    }
     else if(act==='p2p-sync-addr'){
       // Nối bằng địa chỉ. Kết quả phải hiện TRONG hộp thoại đang mở: bản trước đẩy sang `p2pMsg`
       // nằm ở thẻ nhật ký phía sau, nên bấm xong không thấy gì và người dùng đọc thành "nút chết"
@@ -454,7 +460,7 @@
       zset('addPeerMsg',t('p2p.syncing'));
       zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
         if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
-        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0))+(r.viaRelay?' · '+t('p2p.viaRelay'):''));
         loadChannel();
       });
     }
