@@ -223,12 +223,53 @@
   //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
   function p2pMsg(s){zset('p2pMsg',s||'');}
   // SỐ MÁY nhóm ba cho dễ đọc/gõ lại. Không phải số 9 chữ ⇒ trả nguyên, không bịa dạng.
+  // Một hàng nhãn↔giá trị trong khung `.drv-facts` — CÙNG khung với ba hàng số ngay phía trên
+  // (app-design §F0b: một chức năng thì một khung, không đẻ kiểu trình bày thứ hai). Dựng bằng
+  // DOM chứ không ghép chuỗi HTML: giá trị là dữ liệu máy trả về, ghép chuỗi là mở đường lỗi escape.
+  function p2pFact(label,value,hint){
+    var row=document.createElement('div');
+    var s=document.createElement('span');s.textContent=label;
+    // Giá trị + nút chép đi CHUNG một cụm neo phải; label ở lại bên trái (space-between của .drv-facts).
+    var right=document.createElement('span');
+    right.style.display='flex';right.style.alignItems='center';right.style.gap='8px';right.style.minWidth='0';
+    var b=document.createElement('b');b.textContent=value;
+    // Tên card đi kèm địa chỉ, mờ hơn: nó là thứ để CHỌN, không phải thứ để chép.
+    if(hint){var h=document.createElement('span');h.textContent=' '+hint;h.style.color='var(--text-faint)';h.style.fontWeight='400';b.appendChild(h);}
+    right.appendChild(b);
+    if(value)right.appendChild(p2pCopyBtn(value));
+    row.appendChild(s);row.appendChild(right);
+    return row;
+  }
+  // Nút chép: NHÌN THẤY ĐƯỢC. Bản trước gắn `data-copy` thẳng lên chữ — bấm được nhưng không ai
+  // biết là bấm được, nên người dùng đi bôi đen từng số. Khuôn y hệt nút chép ở danh sách kho.
+  function p2pCopyBtn(value){
+    var c=document.createElement('button');
+    c.className='btn xs';c.textContent=t('p2p.copy');
+    c.setAttribute('data-copy',value);c.setAttribute('title',t('p2p.copyHint'));
+    return c;
+  }
   function renderChannel(c){
     if(!c)return;
     zset('p2pBlocks',zN(c.blocks||0));
     // Nói cổng ĐANG NGHE, không nói cổng đã khai: bật mà không nghe được (cổng bận, chưa ghép
     // đôi ai) là ca có thật, và bề mặt phải phân biệt được hai thứ đó.
     zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
+    // Ô này có sẵn trong markup từ đầu mà KHÔNG nơi nào điền ⇒ mục "Chỗ lưu của kênh này" hiện
+    // ra như một tiêu đề rỗng. Đường thật nằm sẵn trong payload.
+    var de=zid('p2pDir'),dc=zid('p2pDirCopy');
+    if(de){de.textContent=c.dir||'—';de.setAttribute('title',c.dir||'');}
+    if(dc){dc.style.display=c.dir?'':'none';dc.setAttribute('data-copy',c.dir||'');dc.setAttribute('title',t('p2p.copyHint'));}
+    // ĐỊA CHỈ là thuộc tính của MÁY, không phải sản phẩm của một cú bấm ⇒ nó ở đây, cạnh cổng nghe,
+    // hiện thường trực. Kèm nhãn "cố định" cho địa chỉ khai tĩnh: đo 2026-09-20 thì địa chỉ Wi-Fi
+    // đổi .90 → .81 trong một buổi, nên người đưa địa chỉ cần biết cái nào dùng lại được.
+    var ab=zid('p2pAddrs');
+    if(ab){
+      while(ab.firstChild)ab.removeChild(ab.firstChild);
+      var prt=c.listening||c.port;
+      (c.addrs||[]).forEach(function(a,i){
+        ab.appendChild(p2pFact(i?'':t('p2p.addrH'),a.addr+':'+prt,a.iface+(a.fixed?' · '+t('p2p.fixed'):'')));
+      });
+    }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
@@ -325,7 +366,15 @@
     // Chép một địa chỉ: đỡ phải đọc số qua điện thoại rồi gõ nhầm một chữ.
     var cp=el.getAttribute('data-copy');
     if(cp){
-      try{navigator.clipboard.writeText(cp);p2pMsg(t('p2p.copied2'));}catch(_){}
+      try{
+        navigator.clipboard.writeText(cp);
+        // Báo ngay TRÊN NÚT vừa bấm. Bản cũ đẩy câu này xuống `p2pMsg` nằm ở THẺ NHẬT KÝ phía
+        // dưới — bấm ở panel trái, chữ hiện ở panel khác thì coi như không báo.
+        if(el.tagName==='BUTTON'){
+          var old=el.textContent;el.textContent=t('p2p.copied2');el.disabled=true;
+          setTimeout(function(){el.textContent=old;el.disabled=false;},1200);
+        } else p2pMsg(t('p2p.copied2'));
+      }catch(_){}
       return;
     }
     var act=el.getAttribute('data-act');
@@ -388,23 +437,12 @@
       zSave('/set-p2p?on='+(wasOn?'0':'1'),function(){el.classList.toggle('on',wasOn);})
         .then(function(j){if(j)loadChannel();});
     }
-    else if(act==='p2p-arm'){
-      // Mở cửa sổ ghép: hiện ĐỊA CHỈ + MÃ để người dùng đọc cho máy kia. Mã dùng một lần, có hạn.
-      zPost('/channel-arm').then(function(r){
-        var box=zid('p2pArmBox');
-        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));return;}
-        var mins=Math.max(1,Math.round(((r.window||{}).expiresAt-Date.now())/60000));
-        if(box){box.style.display='';box.textContent=(r.addrs||[]).join(String.fromCharCode(10))+String.fromCharCode(10)+t('p2p.armCode').replace('{c}',(r.window||{}).code||'');}
-        zset('p2pArmMsg',t('p2p.armOn').replace('{m}',mins));
-      });
-    }
     else if(act==='p2p-sync-addr'){
       // Đường dự phòng: nối THẲNG bằng địa chỉ. Cùng endpoint với nút Đồng bộ, chỉ khác là có `host`.
       var ad=((zid('p2pAddrIn')||{}).value||'').trim();
       if(!ad){p2pMsg(t('p2p.byAddrNeed'));return;}
-      var pc=((zid('p2pCodeIn')||{}).value||'').trim().replace(/\s/g,'');
       p2pMsg(t('p2p.syncing'));
-      zPost('/channel-sync?host='+encodeURIComponent(ad)+(pc?'&code='+encodeURIComponent(pc):'')).then(function(r){
+      zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
         if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
         p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
@@ -418,12 +456,6 @@
         if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
         p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
-      });
-    }
-    else if(act==='p2p-probe'){
-      p2pMsg(t('p2p.probing'));
-      zPost('/channel-probe').then(function(r){
-        p2pMsg(r&&r.mapped?t('p2p.mapped').replace('{n}',String(r.externalPort)):t('p2p.notMapped'));
       });
     }
   });

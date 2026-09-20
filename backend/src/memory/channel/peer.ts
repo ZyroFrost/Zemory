@@ -44,16 +44,22 @@ export interface SessionOptions {
   /** ID được phép nói chuyện. Rỗng ⇒ TỪ CHỐI tất (không bao giờ mặc định mở). */
   allowedPeers: string[];
   /**
-   * Bên GỌI: mã ghép một lần đọc được từ máy kia. Có mã ⇒ sau khi chứng minh cùng chìa sẽ XIN GHÉP.
-   * Không có ⇒ phiên như cũ (chỉ nói chuyện với máy đã ghép).
+   * Bên GỌI: người dùng vừa gõ địa chỉ để nối tới một máy CHƯA quen ⇒ xin nhận sau khi chứng minh
+   * cùng chìa. Không bật ⇒ phiên chỉ nói chuyện với máy đã có trong sổ.
    */
-  pairCode?: string;
+  wantPair?: boolean;
   /**
-   * Bên NGHE: cửa sổ ghép đang mở. Trả `true` nếu mã đúng — và chính hàm này ghi vân tay máy kia vào
-   * sổ. `undefined` ⇒ không mở cửa sổ nào, máy lạ bị từ chối như cũ.
+   * Bên NGHE: ghi vân tay máy vừa chứng minh cùng chìa vào sổ, trả `true` nếu nhận.
+   *
+   * 🔄 **Bỏ MÃ KẾT NỐI (user chốt 2026-09-20).** Trước đây đây là `acceptPair(code, peerId)` và máy
+   * lạ phải đọc thêm một mã 6 số. Đo lại thứ tự bắt tay thì mã nằm SAU bước chứng minh cùng
+   * `share.key` — mà chìa đó đã giải mã được TOÀN BỘ kho, nên mã canh một cánh cửa nằm sau một cánh
+   * cửa mạnh hơn nó nhiều. Nguyên văn user: *"giờ xài ip thì 1 cơ chế nhập ip thôi chứ còn nhập mã
+   * chi cho rối thêm"*. Bỏ mã KHÔNG mất lớp bảo vệ nào có thật, và trả lại điều 16 mục 9
+   * (*tự động — người dùng không phải nhớ bấm gì*).
    */
-  acceptPair?: (code: string, peerDeviceId: string) => boolean;
-  /** Bên GỌI: máy kia đã nhận ghép, đây là vân tay của nó — ghi lại để lần sau khỏi cần mã. */
+  acceptPeer?: (peerDeviceId: string) => boolean;
+  /** Bên GỌI: máy kia đã nhận, đây là vân tay của nó — ghi lại để lần sau khỏi gõ địa chỉ.*/
   onPaired?: (peerDeviceId: string) => void;
   /** Trần một lượt — phiên treo không được giữ tiến trình mãi. */
   timeoutMs?: number;
@@ -105,7 +111,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const known = o.allowedPeers.some((a) => sameDeviceId(a, peerId));
     // HAI ĐẦU đều phải nới: bên NGHE khi đang mở cửa sổ ghép, bên GỌI khi cầm mã ghép. Bản đầu chỉ
     // nới bên nghe, nên lượt ghép đầu tiên chết ngay ở chính máy đi gọi — danh sách của nó còn rỗng.
-    const pairing = !known && (typeof o.acceptPair === "function" || Boolean(o.pairCode));
+    const pairing = !known && (typeof o.acceptPeer === "function" || Boolean(o.wantPair));
     if (!known && !pairing) {
       return finish(`máy lạ, chưa ghép đôi: ${peerId}`);
     }
@@ -136,20 +142,20 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           return finish("chìa share KHÁC nhau — hai máy không đọc được kho của nhau");
         }
         proofOk = true;
-        // Bên GỌI có mã ⇒ xin ghép trước khi khai kho.
-        if (initiator && o.pairCode) {
-          send(encodeJson({ t: "pair", code: o.pairCode }));
+        // Bên GỌI đang nối tới máy chưa quen ⇒ xin nhận trước khi khai kho.
+        if (initiator && o.wantPair) {
+          send(encodeJson({ t: "pair" }));
           return;
         }
-        if (!paired) return; // bên NGHE: chờ lời xin ghép, chưa khai gì cả
+        if (!paired) return; // bên NGHE: chờ lời xin nhận, chưa khai gì cả
         sendHave();
         return;
       }
       if (m.t === "pair") {
-        if (!proofOk) return finish("xin ghép trước khi chứng minh cùng chìa");
-        if (paired) return; // đã ghép rồi thì lời xin ghép là thừa, bỏ qua
-        if (!o.acceptPair || !peerId || !o.acceptPair(m.code, peerId)) {
-          return finish("mã ghép sai hoặc đã hết hạn");
+        if (!proofOk) return finish("xin kết nối trước khi chứng minh cùng chìa");
+        if (paired) return; // đã nhận rồi thì lời xin là thừa, bỏ qua
+        if (!o.acceptPeer || !peerId || !o.acceptPeer(peerId)) {
+          return finish("máy này không nhận kết nối mới");
         }
         paired = true;
         send(encodeJson({ t: "paired", id: o.identity.deviceId }));

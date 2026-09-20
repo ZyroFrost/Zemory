@@ -63,14 +63,43 @@ import { applyStandard, isStandardSource, standardDiff } from "./docs/standard.j
 /** Tách dòng cho cả CRLF lẫn LF. */
 const SPLIT_LINES = /\r?\n/;
 
-function lanAddresses(): Array<{ addr: string; iface: string }> {
-  const out: Array<{ addr: string; iface: string }> = [];
+/**
+ * Địa chỉ nào CỐ ĐỊNH — đọc từ hệ điều hành, đệm lại vì nó gần như không đổi.
+ *
+ * `os.networkInterfaces()` KHÔNG nói được cấp phát tĩnh hay DHCP, nên phải hỏi OS. Chỉ Windows có
+ * đường rẻ (`PrefixOrigin`); OS khác trả rỗng ⇒ bề mặt không dán nhãn, KHÔNG đoán (điều 9 + điều 12).
+ * Vì sao đáng hỏi: đo 2026-09-20 trên chính máy này, địa chỉ Wi-Fi đổi `.90` → `.81` trong một buổi,
+ * còn địa chỉ LAN dây khai `Manual` thì đứng yên — người dùng cần biết cái nào đưa đi mới dùng lại được.
+ */
+let fixedAddrCache: { at: number; set: Set<string> } | null = null;
+function fixedAddresses(): Set<string> {
+  if (fixedAddrCache && Date.now() - fixedAddrCache.at < 300_000) return fixedAddrCache.set;
+  const set = new Set<string>();
+  if (process.platform === "win32") {
+    try {
+      const out = execFileSync(
+        "powershell.exe",
+        ["-NoProfile", "-Command", "Get-NetIPAddress -AddressFamily IPv4 | Where-Object PrefixOrigin -eq 'Manual' | ForEach-Object IPAddress"],
+        { encoding: "utf8", timeout: 6000, windowsHide: true },
+      );
+      for (const line of out.split(SPLIT_LINES)) { const v = line.trim(); if (v) set.add(v); }
+    } catch {
+      /* fail-open: không hỏi được thì thôi, đừng dán nhãn bừa */
+    }
+  }
+  fixedAddrCache = { at: Date.now(), set };
+  return set;
+}
+
+function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> {
+  const out: Array<{ addr: string; iface: string; fixed: boolean }> = [];
+  const fixed = fixedAddresses();
   try {
     for (const [iface, list] of Object.entries(networkInterfaces())) {
       for (const n of list ?? []) {
         if (n.family !== "IPv4" || n.internal) continue;
         if (n.address.startsWith("169.254.")) continue;
-        out.push({ addr: n.address, iface });
+        out.push({ addr: n.address, iface, fixed: fixed.has(n.address) });
       }
     }
   } catch {
@@ -1633,12 +1662,12 @@ async function refreshChannelServer(): Promise<void> {
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),
-      // Máy LẠ chỉ đi qua khi người dùng vừa mở cửa sổ ghép và đọc mã cho máy kia — và vẫn phải chứng
-      // minh cùng chìa trước. Đúng mã ⇒ ghi vân tay nó vào sổ ngay tại đây.
-      acceptPair: (code: string, peerId: string): boolean => {
-        if (!ch.consumePairCode(code)) return false;
+      // Máy nào chứng minh được cùng chìa thì nhận — ghi vân tay nó vào sổ ngay tại đây, để lần
+      // sau khỏi ai phải gõ địa chỉ. Không còn mã một lần: xem `channel/peer.ts` `acceptPeer`.
+      acceptPeer: (peerId: string): boolean => {
+        if (getP2pPeers().some((x) => x === peerId)) return true;
         setP2pPeers([...getP2pPeers(), peerId]);
-        daemonLog(`[channel] đã ghép máy ${peerId.slice(0, 11)}… qua mã ghép`);
+        daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}…`);
         return true;
       },
       log: (m: string) => daemonLog(m),
@@ -3015,12 +3044,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const candidates = raw
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
-      if (!candidates.length) return json(res, { ok: false, error: "chưa biết địa chỉ máy nào — dán mã máy kia vào ô ghép" });
+      if (!candidates.length) return json(res, { ok: false, error: "chưa biết địa chỉ máy nào — gõ địa chỉ và mã kết nối của máy kia" });
       const { resolveShareKey } = await import("./memory/share.js");
       const keyFile = resolveShareKey(root());
       if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
       const st = ch.channelStatus();
-      const pairCode = (u.searchParams.get("code") ?? "").trim() || undefined;
+      // Người dùng tự gõ địa chỉ ⇒ đó LÀ lời xin nối tới một máy có thể chưa quen.
+      const wantPair = Boolean(raw);
       // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
       // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
       let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
@@ -3035,12 +3065,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
             shareKey: readFileSync(keyFile, "utf8").trim(),
             appVersion: appVersion(),
             allowedPeers: st.peers,
-            pairCode,
+            wantPair,
             // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
             onPaired: (peerId: string): void => {
               setP2pPeers([...getP2pPeers(), peerId]);
               setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${a.host}:${a.port}`] });
-              daemonLog(`[channel] đã ghép máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã ghép`);
+              daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã`);
             },
           },
         );
@@ -3048,21 +3078,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         if (!r.error) return json(res, { ok: true, ...last });
       }
       return json(res, { ok: false, ...last });
-    }
-    if (req.method === "POST" && p === "/channel-arm") {
-      // Mở (hoặc đóng) cửa sổ ghép. Trả kèm ĐỊA CHỈ máy này — đó là thứ người dùng gửi cho máy kia,
-      // cùng với mã. Mã dùng MỘT lần, có hạn; mở lại là đổi mã.
-      const ch = await import("./memory/channel/index.js");
-      if (u.searchParams.get("off") === "1") {
-        ch.disarmPairing();
-        void refreshChannelServer();
-        return json(res, { ok: true, window: null });
-      }
-      const w = ch.armPairing();
-      // Mở cửa sổ là lúc phải NGHE thật: lớp nghe vốn chỉ mở khi đã ghép ai đó, mà máy đầu tiên thì chưa.
-      await refreshChannelServer();
-      const port = ch.channelServingPort() ?? ch.channelStatus().port;
-      return json(res, { ok: true, window: w, port, addrs: lanAddresses().map((a) => `${a.addr}:${port}`) });
     }
     if (p === "/channel-probe") {
       // Đo tầng 2 (mở cổng tự động). Fail-open: không router nào trả lời KHÔNG phải lỗi.

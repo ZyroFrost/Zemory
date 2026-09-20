@@ -442,27 +442,23 @@
       <!-- BA VÙNG (user chốt 2026-09-17: "phân panel lại làm 3 khu vực, trái phải 2 bên và 1 cái
            log ở cuối"). Trước đó tab này là 13 khối rời xếp dọc, mỗi khối chiếm trọn bề ngang dù
            chỉ chứa ba con số. Gom theo KHỔ NGANG: hàng nhãn-giá-trị hẹp về panel trái; thứ cần lúc
-           ghép đôi về panel phải; nhật ký xuống dưới vì nó là thứ duy nhất cần trọn bề ngang. -->
+           kết nối máy về panel phải; nhật ký xuống dưới vì nó là thứ duy nhất cần trọn bề ngang. -->
       <div class="sub" data-sy="p2p">
         <div class="grid grow rzgrid p2pwrap">
           <div class="grid rzgrid p2p2col" style="grid-template-columns:var(--p2p1,1fr) 8px minmax(0,1fr)">
             <div class="card">
               <div class="card-h"><div class="t" data-i18n="p2p.meH">Máy này</div><span class="tgl-l" data-i18n="p2p.enable" style="margin-left:auto">Dùng kênh máy-tới-máy</span><div class="toggle" id="p2pToggle" data-act="p2p-toggle" data-i18n-aria="p2p.enable" aria-label="Bật kênh máy-tới-máy"><i></i></div></div>
               <div class="card-b">
-                <div class="muted" style="font-size:11px;margin:0 0 6px;line-height:1.5" data-i18n="p2p.enableD">Nhận khối thẳng từ máy đã ghép, không qua Drive. Bật cùng lúc với Drive được; đây là chiều nhận.</div>
+                <div class="muted" style="font-size:11px;margin:0 0 6px;line-height:1.5" data-i18n="p2p.enableD">Nhận khối thẳng từ máy đã kết nối, không qua Drive. Bật cùng lúc với Drive được; đây là chiều nhận.</div>
                 <div class="drv-facts">
                   <div><span data-i18n="p2p.blocks">Khối đang giữ</span><b id="p2pBlocks">—</b></div>
                   <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
                   <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
                 </div>
-                <div class="section-t" data-i18n="p2p.armH">Cho máy khác ghép vào</div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn sm" data-act="p2p-arm" data-i18n="p2p.arm">Cho phép ghép</button><span class="muted" id="p2pArmMsg" style="font-size:11px"></span></div>
-                <pre id="p2pArmBox" style="display:none;margin:8px 0 0;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:var(--text);font-family:var(--mono,monospace)"></pre>
+                <div class="drv-facts" id="p2pAddrs" style="margin-top:0"></div>
+                <div class="muted" style="font-size:11px;margin:-2px 0 0;line-height:1.5" data-i18n="p2p.reachD">Chạy được khi hai máy cùng mạng, hoặc một đầu mở được cổng. Hai đầu đều sau NAT kín thì chưa có đường.</div>
                 <div class="section-t" data-i18n="ds.p2pDir">Chỗ lưu của kênh này</div>
-                <span class="fchip muted" id="p2pDir" style="border:0;display:block;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-                <div class="section-t" data-i18n="p2p.reachH">Cổng ra ngoài</div>
-                <button class="btn sm" data-act="p2p-probe" data-i18n="p2p.probe">Kiểm router mở cổng</button>
-                <div class="muted" style="font-size:11px;margin:6px 0 0;line-height:1.5" data-i18n="p2p.reachD">Chạy được khi hai máy cùng mạng, hoặc một đầu mở được cổng. Hai đầu đều sau NAT kín thì chưa có đường.</div>
+                <div style="display:flex;align-items:center;gap:8px"><span class="fchip muted" id="p2pDir" style="border:0;flex:1;min-width:0;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="btn xs" id="p2pDirCopy" style="display:none;flex:0 0 auto" data-i18n="p2p.copy" data-i18n-title="p2p.copyHint">Copy</button></div>
               </div>
             </div>
             <div class="seam" data-seam="p2p1"></div>
@@ -575,8 +571,8 @@
   <div class="dlg sm" role="dialog" data-i18n-aria="p2p.addMachine" aria-label="Thêm máy">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">⇄</span><b data-i18n="p2p.addMachine">+ Thêm máy…</b><button class="x" id="addPeerClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
-      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Trên máy kia bấm "Cho phép ghép" rồi đọc địa chỉ và mã. Gõ hai thứ đó vào đây.</div>
-      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="địa chỉ máy kia" style="flex:2"><input id="p2pCodeIn" class="tin" data-i18n-ph="p2p.pairCodePh" placeholder="mã ghép" style="flex:1"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Ghép đôi</button></div>
+      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Gõ địa chỉ máy kia đọc được ở khối "Máy này" của nó. Xong thì hai bên tự nhớ nhau.</div>
+      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="địa chỉ máy kia" style="flex:2"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Kết nối</button></div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
   </div>

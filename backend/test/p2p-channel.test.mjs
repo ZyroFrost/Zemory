@@ -273,7 +273,7 @@ test("p2p-resume: khối LỚN phải tới nơi nguyên vẹn (đóng socket kh
 // của nó suy từ kho ⇒ gọi trong tiến trình test là ghi vào config THẬT của máy. Đúng lỗi
 // `helpers.mjs` đã ghi (2026-09-10), và đúng hình dạng sự cố "cờ p2p tự bật" ngày 14/09 mà
 // sổ còn ghi là chưa giải thích được — một ca test chết giữa chừng là đủ để lại cờ bật.
-test("channel-serve: TẮT · chưa ghép đôi · chưa có chìa ⇒ KHÔNG nghe, và nói rõ lý do", (t) => {
+test("channel-serve: TẮT hoặc chưa có chìa ⇒ KHÔNG nghe; chưa quen ai thì VẪN nghe", (t) => {
   const root = tempDir(t, "zemory-serve-off-");
   const out = runInMemoryChild(root, [
     'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
@@ -291,13 +291,15 @@ test("channel-serve: TẮT · chưa ghép đôi · chưa có chìa ⇒ KHÔNG ng
   assert.equal(off.listening, false, "TẮT thì không được mở cổng nào");
   assert.match(off.reason, /TẮT/);
   assert.equal(port0, null, "bề mặt phải nói đúng: không nghe");
-  assert.equal(noPeer.listening, false, "chưa ghép đôi ⇒ mở cổng là mở vô ích");
-  assert.match(noPeer.reason, /ghép đôi/);
+  // 🔄 ĐẢO ca này (2026-09-20): cửa "chưa ghép đôi máy nào" đã bỏ cùng mã kết nối. Máy nào chứng
+  // minh được cùng chìa là vào được, nên CHƯA quen ai vẫn phải NGHE — nếu không thì máy đầu tiên
+  // gõ địa chỉ sang sẽ không có ai nhấc máy, đúng ca hỏng mà cửa đó từng tự sinh ra.
+  assert.equal(noPeer.listening, true, "0 máy đã biết vẫn phải NGHE — chìa chung là thứ gác cửa");
   assert.equal(noKey.listening, false, "không chìa ⇒ không có phép chứng minh cùng kho");
   assert.match(noKey.reason, /chìa/);
 });
 
-test("channel-serve: đủ ba điều kiện ⇒ NGHE THẬT, và đóng rồi thì thôi khoe đang nghe", (t) => {
+test("channel-serve: đủ hai điều kiện ⇒ NGHE THẬT, và đóng rồi thì thôi khoe đang nghe", (t) => {
   const root = tempDir(t, "zemory-serve-on-");
   const out = runInMemoryChild(root, [
     'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',

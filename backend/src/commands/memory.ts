@@ -735,7 +735,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  Vân tay    : ${st.deviceId}`);
       console.log(`  cổng nghe  : ${st.port}`);
       console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
-      console.log(`  đã ghép đôi: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
+      console.log(`  đã kết nối: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
       console.log("  Vân tay KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
       return;
     }
@@ -746,7 +746,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      // Chỉ nhận VÂN TAY. Ghép thường ngày đi bằng địa chỉ + mã ghép trong app; đường CLI này để
+      // Chỉ nhận VÂN TAY. Kết nối thường ngày đi bằng địa chỉ trong app; đường CLI này để
       // sửa sổ khi daemon chết, nên nó nhận đúng thứ nằm trong sổ chứ không tra cứu gì.
       const want = id;
       const cur = getP2pPeers();
@@ -755,7 +755,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           ? [...cur, want]
           : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== want.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       setP2pPeers(next);
-      console.log(`zemory memory channel ${action} — ${next.length} máy đã ghép đôi`);
+      console.log(`zemory memory channel ${action} — ${next.length} máy đã kết nối`);
       return;
     }
     if (action === "on" || action === "off") {
@@ -1668,7 +1668,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    ghi đè byte cũ. --compact: viết LẠI kho chung từ kho máy này.",
       "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
       "                    KÊNH MÁY-TỚI-MÁY (plan/24): id = ID máy này (KHÔNG phải bí mật, chép",
-      "                    thoải mái) · pair = ghép đôi bằng ID máy kia · on/off = có NHẬN qua kênh",
+      "                    thoải mái) · pair = kết nối bằng ID máy kia · on/off = có NHẬN qua kênh",
       "                    này không (Drive không đổi) · probe = router có mở cổng hộ được không",
       "                    · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
