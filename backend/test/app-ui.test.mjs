@@ -1081,6 +1081,16 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
   assert.ok(!/channel-arm/.test(js), "ca ÂM: endpoint cửa sổ ghép phải đi hẳn");
   assert.ok(!/id="p2pCodeIn"/.test(html), "ca ÂM: ô nhập mã phải đi hẳn, không chỉ ẩn");
   assert.ok(!/&code=/.test(js), "ca ÂM: lượt nối không được gửi mã nào nữa");
+  // Kết quả của nút *Kết nối* phải hiện TRONG hộp thoại đang mở. Bản trước đẩy sang `p2pMsg` nằm ở
+  // thẻ nhật ký phía sau ⇒ bấm xong không thấy gì, người dùng đọc thành "nút chết" (báo 2026-09-20,
+  // trong khi endpoint vẫn trả ETIMEDOUT đều đặn). Neo vào chính nhánh đó, không vào cả file.
+  const byAddr = js.slice(js.indexOf("act==='p2p-sync-addr'"), js.indexOf("act==='p2p-sync'"));
+  assert.ok(byAddr.includes("addPeerMsg"), "kết quả nối phải hiện trong hộp thoại, không rơi ra panel sau");
+  assert.ok(!byAddr.includes("p2pMsg("), "ca ÂM: không báo vào ô nằm ngoài hộp thoại");
+  // Mã lỗi mạng trần không nói được phải soi đâu — ba nhóm là ba chẩn đoán khác nhau.
+  // ⚠ Neo vào chỗ GỌI trong nhánh lỗi, KHÔNG vào tên hàm: `"function p2pWhy"` vẫn là chuỗi con của
+  // `"function p2pWhyX"`, nên đổi tên định nghĩa đi mà cổng vẫn xanh (đã dính ở lượt đột biến đầu).
+  assert.ok(byAddr.includes("p2pWhy("), "nhánh lỗi phải dịch mã mạng sang câu nêu điều kiện");
   // MỘT ĐƯỜNG GHÉP (user chốt 2026-09-20): địa chỉ + mã. Không chip "bấm để ghép", không ô mã 9 số —
   // mỗi đường thêm vào là một thứ người dùng phải đọc và chọn giữa.
   assert.ok(!/data-seenfill/.test(js), "không được có đường ghép thứ hai bằng chip");
@@ -1137,7 +1147,7 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
 
 test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
-  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.addrH", "p2p.fixed", "p2p.copyHint", "p2p.copied2",
+  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.errRoute", "p2p.errRefused", "p2p.addrH", "p2p.fixed", "p2p.copyHint", "p2p.copied2",
     "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
     const n = chrome.split(`'${k}':`).length - 1;
     assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
