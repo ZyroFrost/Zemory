@@ -239,8 +239,10 @@
     var s=document.createElement('span');s.textContent=label;
     // Giá trị + nút chép đi CHUNG một cụm neo phải; label ở lại bên trái (space-between của .drv-facts).
     var right=document.createElement('span');
-    right.style.display='flex';right.style.alignItems='center';right.style.gap='8px';right.style.minWidth='0';
+    right.style.display='flex';right.style.alignItems='center';right.style.gap='8px';right.style.minWidth='0';right.style.overflow='hidden';
     var b=document.createElement('b');b.textContent=value;
+    // Chuỗi dài (mã máy) KHÔNG được đẩy rộng hàng — cắt bằng ellipsis, nút Chép vẫn chép ĐỦ (§F12).
+    b.style.minWidth='0';b.style.overflow='hidden';b.style.textOverflow='ellipsis';b.style.whiteSpace='nowrap';
     // Tên card đi kèm địa chỉ, mờ hơn: nó là thứ để CHỌN, không phải thứ để chép.
     if(hint){var h=document.createElement('span');h.textContent=' '+hint;h.style.color='var(--text-faint)';h.style.fontWeight='400';b.appendChild(h);}
     right.appendChild(b);

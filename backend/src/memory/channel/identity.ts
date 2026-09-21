@@ -116,6 +116,24 @@ export function base32(buf: Buffer): string {
   return out;
 }
 
+/** Giải base32 RFC 4648 (không đệm) — đối xứng với `base32`. Ký tự lạ ⇒ `null`, không đoán. */
+export function unbase32(s: string): Buffer | null {
+  let bits = 0;
+  let value = 0;
+  const out: number[] = [];
+  for (const ch of s) {
+    const idx = B32.indexOf(ch);
+    if (idx < 0) return null;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(out);
+}
+
 /**
  * Chữ số kiểm Luhn mod 32 cho một nhóm — bắt LỖI CHÉP, không phải lỗi bảo mật.
  *
@@ -184,6 +202,18 @@ export const normalizeDeviceId = (id: string): string => {
 /** `true` khi chuỗi mang chữ số kiểm ĐÚNG — để bề mặt bắt lỗi chép NGAY lúc dán. */
 export const deviceIdLooksTyped = (id: string): boolean =>
   stripChecksum(id.replace(/[^A-Za-z0-9]/g, "").toUpperCase()) !== null;
+
+/** 32 byte thô của vân tay (bỏ chữ số kiểm + dấu nối). Không phải ID hợp lệ ⇒ `null`. */
+export function deviceIdBytes(id: string): Buffer | null {
+  const flat = stripChecksum(id.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+  if (!flat) return null;
+  const b = unbase32(flat);
+  return b && b.length >= 32 ? b.subarray(0, 32) : null;
+}
+/** Dựng lại ID người đọc được từ 32 byte thô — nghịch đảo của `deviceIdBytes`. */
+export function deviceIdFromBytes(raw: Buffer): string {
+  return (base32(raw).match(/.{1,7}/g) ?? []).map((g) => g + luhn32(g)).join("-");
+}
 
 export const sameDeviceId = (a: string, b: string): boolean =>
   normalizeDeviceId(a).length > 0 && normalizeDeviceId(a) === normalizeDeviceId(b);

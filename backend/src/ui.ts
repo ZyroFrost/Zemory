@@ -2970,7 +2970,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         machineCode: ch.encodeMachineCode({
           fingerprint: st.deviceId,
           relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : undefined,
-          addrs: lanAddresses().map((a) => `${a.addr}:${ch.channelServingPort() ?? st.port}`),
         }),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
@@ -3066,9 +3065,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const typedId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
       const known = getP2pPeerAddrs();
       const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
-      // Mã mang địa chỉ LAN ⇒ thử THẲNG trước (rẻ hơn relay, §1c), relay là đường rơi xuống.
+      // Mã KHÔNG mang địa chỉ LAN (chúng hết hạn) ⇒ ca cùng mạng đi bằng địa chỉ tầng dò LAN đang
+      // thấy, tức địa chỉ HIỆN TẠI. Thử thẳng trước, relay là đường rơi xuống (§1c).
+      const codeAddrs = code ? ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, code.fingerprint)).map((s) => `${s.host}:${s.port}`) : [];
       const candidates = code
-        ? (code.addrs ?? [])
+        ? codeAddrs
         : typedId
         ? []
         : raw

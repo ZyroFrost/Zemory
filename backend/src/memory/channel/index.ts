@@ -10,7 +10,7 @@ import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getP2pRelay, getSyncTransport } from "../../config/settings.js";
-import { loadOrCreateIdentity, type ChannelIdentity } from "./identity.js";
+import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { joinRelay, DEFAULT_RELAY_PORT, type RelayJoinHandle } from "./relay.js";
@@ -146,33 +146,59 @@ const CODE_PREFIX = "ZM1.";
 export interface MachineCode {
   fingerprint: string;
   relay?: string;
-  addrs?: string[];
 }
 /**
- * MỘT chuỗi để đưa cho máy kia: vân tay + relay (nếu có) + địa chỉ LAN. Máy kia dán một lần là đủ —
- * nó biết mình LÀ AI và GẶP Ở ĐÂU, không phải hỏi thêm gì (app-design §F0: bớt một lựa chọn cho người dùng).
+ * MỘT chuỗi để đưa cho máy kia: **vân tay + relay**. Dán một lần là máy kia biết mình LÀ AI và GẶP Ở
+ * ĐÂU — không hỏi thêm gì (app-design §F0).
+ *
+ * 🔴 **KHÔNG mang địa chỉ LAN**, dù trước đó có. Hai lý do, lý do sau nặng hơn: nó chiếm hơn nửa chuỗi,
+ * và nó **hết hạn** — đo 2026-09-21 trên chính máy này, địa chỉ Wi-Fi đổi **ba lần trong một ngày**
+ * (`.90 → .81 → .6`). Một mã người ta chép đi rồi dán lại sau vài hôm mà mang địa chỉ chết thì chỉ
+ * làm máy kia gọi vào chỗ không còn ai. Ca cùng mạng do tầng dò LAN lo (nó thấy địa chỉ HIỆN TẠI);
+ * ai cần khai tay thì ô nhập vẫn nhận `host:port` như cũ.
+ *
+ * Khuôn nhị phân, không JSON: `[ver 1][vân tay 32 byte][kiểu relay 1][relay…]` rồi base32 — cùng
+ * bảng chữ với device ID nên mã đọc/gõ lại được, không lẫn chữ hoa thường.
+ * Kiểu relay: 0 = không có · 1 = IPv4 (4 byte + cổng 2 byte) · 2 = chữ (1 byte độ dài + utf8).
  */
 export function encodeMachineCode(m: MachineCode): string {
-  const body = { f: m.fingerprint, ...(m.relay ? { r: m.relay } : {}), ...(m.addrs?.length ? { a: m.addrs } : {}) };
-  return CODE_PREFIX + Buffer.from(JSON.stringify(body), "utf8").toString("base64url");
+  const fp = deviceIdBytes(m.fingerprint);
+  if (!fp) return "";
+  const parts: Buffer[] = [Buffer.from([1]), fp];
+  const a = m.relay ? parsePeerAddress(m.relay, DEFAULT_RELAY_PORT) : null;
+  const v4 = a && /^\d{1,3}(\.\d{1,3}){3}$/.test(a.host) ? a.host.split(".").map(Number) : null;
+  if (v4 && v4.every((n) => n >= 0 && n <= 255)) {
+    const b = Buffer.alloc(7);
+    b.writeUInt8(1, 0);
+    for (let i = 0; i < 4; i++) b.writeUInt8(v4[i], 1 + i);
+    b.writeUInt16BE(a!.port, 5);
+    parts.push(b);
+  } else if (a) {
+    const host = Buffer.from(`${a.host}:${a.port}`, "utf8").subarray(0, 255);
+    parts.push(Buffer.concat([Buffer.from([2, host.length]), host]));
+  } else {
+    parts.push(Buffer.from([0]));
+  }
+  return CODE_PREFIX + base32(Buffer.concat(parts));
 }
 /** Đọc mã máy. Không phải mã ⇒ `null` (để nơi gọi rơi về nhánh địa chỉ/ID trần), KHÔNG ném. */
 export function parseMachineCode(raw: string): MachineCode | null {
   const s = raw.trim();
   if (!s.startsWith(CODE_PREFIX)) return null;
-  try {
-    const o = JSON.parse(Buffer.from(s.slice(CODE_PREFIX.length), "base64url").toString("utf8")) as {
-      f?: unknown; r?: unknown; a?: unknown;
-    };
-    if (typeof o.f !== "string" || !o.f) return null;
-    return {
-      fingerprint: o.f,
-      relay: typeof o.r === "string" && o.r ? o.r : undefined,
-      addrs: Array.isArray(o.a) ? o.a.filter((x): x is string => typeof x === "string" && !!x) : undefined,
-    };
-  } catch {
+  const buf = unbase32(s.slice(CODE_PREFIX.length).replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+  if (!buf || buf.length < 34 || buf.readUInt8(0) !== 1) return null;
+  const fingerprint = deviceIdFromBytes(buf.subarray(1, 33));
+  const kind = buf.readUInt8(33);
+  if (kind === 1 && buf.length >= 40) {
+    const h = `${buf[34]}.${buf[35]}.${buf[36]}.${buf[37]}`;
+    return { fingerprint, relay: `${h}:${buf.readUInt16BE(38)}` };
+  }
+  if (kind === 2 && buf.length >= 35) {
+    const n = buf.readUInt8(34);
+    if (buf.length >= 35 + n && n > 0) return { fingerprint, relay: buf.subarray(35, 35 + n).toString("utf8") };
     return null;
   }
+  return { fingerprint };
 }
 
 /** Đang giữ hộp thư ở relay không — TRẠNG THÁI THẬT, không phải ý định. */
