@@ -1,9 +1,10 @@
 // MÃ MÁY + NGĂN THEO MÁY — nền cho lớp đục lỗ NAT (plan/24 §7 ⑩).
-//   ① hai máy KHÔNG thấy nhau vẫn hội tụ về CÙNG MỘT TẬP khối khi đi qua relay;
-//   ② ca ÂM: relay không bao giờ nhìn thấy plaintext của phiên (mọi byte sau khi ghép là TLS);
-//   ③ ca ÂM: gọi tới máy KHÔNG đang chờ ở relay ⇒ báo lỗi rõ, không phiên nào mở.
-// Cả ba chạy trên loopback với ba tiến trình logic (relay · nghe · gọi) trong một tiến trình test —
-// đúng khuôn phép ①③④⑤ của §6b: giao thức đo được mà không cần hai máy thật.
+//   ① mã máy đi vòng tròn nguyên vẹn, NGẮN, và KHÔNG mang địa chỉ LAN (địa chỉ hết hạn);
+//   ② ngăn theo máy: hai máy ghi hai đường dẫn KHÁC nhau, chiều đọc thấy khối của cả hai.
+//
+// 🔄 Đầu file này từng tả BA ca của lớp RELAY. Relay đã gỡ khỏi mã ngày 2026-09-21
+// (`06_CHANGES [2026-09-21f]`) nhưng phần mô tả ở lại, cùng ba hàm phụ không còn ai gọi —
+// đúng thứ `02_RULES` gọi là neo test không đi theo bản viết lại. Nắn 2026-09-21.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
@@ -13,14 +14,12 @@ import {
   writeMemoryShareKey,
   appendChunkVerified,
   listContainerChunks,
-  chunkBlockId,
   isContainer,
 } from "../../dist/memory/share.js";
 import { openMemory } from "../../dist/memory/db.js";
 import { loadOrCreateIdentity } from "../../dist/memory/channel/identity.js";
 import { tempDir } from "./helpers.mjs";
 
-const APP_VERSION = "test";
 
 function seedDb(dbPath, tag) {
   const db = openMemory(dbPath);
@@ -40,13 +39,8 @@ async function addBlock(t, channelDir, keyPath, tag) {
   const before = existsSync(target) && isContainer(target) ? listContainerChunks(target).length : 0;
   appendChunkVerified(target, bundlePath, before + 1);
 }
-function blockIdsOf(channelDir) {
-  const target = join(channelDir, "global_memory.enc");
-  if (!existsSync(target) || !isContainer(target)) return [];
-  return listContainerChunks(target).map((c) => chunkBlockId(target, c)).filter(Boolean).sort();
-}
 function makeSide(t, name, shareSecret) {
-  const root = tempDir(t, `zemory-relay-${name}-`);
+  const root = tempDir(t, `zemory-code-${name}-`);
   const channelDir = join(root, "channel");
   mkdirSync(channelDir, { recursive: true });
   const keyPath = join(root, "share.key");
@@ -56,23 +50,6 @@ function makeSide(t, name, shareSecret) {
   const identity = loadOrCreateIdentity(join(root, "id"), `zemory-${name}`);
   return { root, channelDir, keyPath, shareKey, identity };
 }
-const opts = (side, peers, extra = {}) => ({
-  channelDir: side.channelDir,
-  identity: side.identity,
-  shareKey: side.shareKey,
-  allowedPeers: peers,
-  appVersion: APP_VERSION,
-  timeoutMs: 20_000,
-  ...extra,
-});
-const waitFor = async (pred, ms = 5000) => {
-  const t0 = Date.now();
-  while (!pred()) {
-    if (Date.now() - t0 > ms) return false;
-    await new Promise((r) => setTimeout(r, 50));
-  }
-  return true;
-};
 
 // ── MÃ MÁY: một chuỗi mang vân tay + relay, và nó phải NGẮN ─────────────────────────────────────
 test("p2p-code: mã máy đi vòng tròn nguyên vẹn, và KHÔNG mang địa chỉ (địa chỉ hết hạn)", async (t) => {

@@ -7,7 +7,7 @@
  */
 import { join } from "node:path";
 import { hostname } from "node:os";
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
@@ -20,6 +20,7 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
+export * from "./stun.js";
 
 /**
  * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
