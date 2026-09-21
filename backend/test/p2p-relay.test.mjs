@@ -142,3 +142,36 @@ test("p2p-relay: ca ÂM — gọi tới máy KHÔNG đang chờ ⇒ lỗi rõ, k
     relay.close();
   }
 });
+
+// ── MÃ MÁY: một chuỗi mang vân tay + relay, và nó phải NGẮN ─────────────────────────────────────
+test("p2p-code: mã máy đi vòng tròn nguyên vẹn, và KHÔNG mang địa chỉ LAN (chúng hết hạn)", async (t) => {
+  const { encodeMachineCode, parseMachineCode } = await import("../../dist/memory/channel/index.js");
+  const A = makeSide(t, "code", "chia");
+  const id = A.identity.deviceId;
+
+  const bare = encodeMachineCode({ fingerprint: id });
+  assert.equal(parseMachineCode(bare)?.fingerprint, id, "vân tay phải về nguyên vẹn");
+  assert.equal(parseMachineCode(bare)?.relay, undefined);
+
+  const withRelay = encodeMachineCode({ fingerprint: id, relay: "203.0.113.7:21039" });
+  assert.equal(parseMachineCode(withRelay)?.fingerprint, id);
+  assert.equal(parseMachineCode(withRelay)?.relay, "203.0.113.7:21039", "relay phải về nguyên vẹn");
+
+  // Tên miền (không phải IPv4) đi nhánh chữ — vẫn phải về đúng.
+  const named = encodeMachineCode({ fingerprint: id, relay: "relay.example.com:21039" });
+  assert.equal(parseMachineCode(named)?.relay, "relay.example.com:21039");
+
+  // 🔴 NGẮN là một yêu cầu, không phải mong muốn: bản JSON+base64 trước đó dài 164 ký tự và tràn
+  // cả hàng trên bề mặt. Trần đặt rộng rãi so với mức đo được (~48 / ~58).
+  assert.ok(bare.length <= 60, `mã không relay phải ngắn, đang ${bare.length} ký tự`);
+  assert.ok(withRelay.length <= 70, `mã có relay phải ngắn, đang ${withRelay.length} ký tự`);
+
+  // ca ÂM — mã KHÔNG được mang địa chỉ LAN: chúng đổi (đo .90 → .81 → .6 trong một ngày) nên dán
+  // lại sau là gọi vào chỗ không còn ai.
+  for (const s of [bare, withRelay]) assert.ok(!/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:21038/.test(s), "mã không được chứa địa chỉ LAN");
+
+  // ca ÂM — rác không bao giờ được đọc thành mã.
+  for (const junk of ["", "khong-phai-ma", "ZM1.", "ZM1.@@@@", id, "10.0.0.1:21038"]) {
+    assert.equal(parseMachineCode(junk), null, `phải từ chối: ${junk.slice(0, 20)}`);
+  }
+});
