@@ -718,7 +718,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable } =
+    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
@@ -831,26 +831,54 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
-      const r = await connectToPeer(
-        { host, port },
-        {
-          channelDir: channelPen(),
-          identity: channelIdentity(),
-          shareKey: readFileSync(keyFile, "utf8").trim(),
-          appVersion: appVersion(),
-          allowedPeers: st.peers,
-        },
-      );
+      const session = {
+        channelDir: channelPen(),
+        identity: channelIdentity(),
+        shareKey: readFileSync(keyFile, "utf8").trim(),
+        appVersion: appVersion(),
+        allowedPeers: st.peers,
+      };
       console.log(`zemory memory channel sync — ${host}:${port}`);
-      console.log(`  đối phương : ${r.peerDeviceId ?? "(không rõ)"}`);
-      console.log(`  chở đi     : ${r.sentBlocks} khối · nhận về: ${r.receivedBlocks} khối`);
-      if (r.error) {
+
+      // ĐỤC LỖ chỉ là ĐƯỜNG RƠI XUỐNG, không phải đường mặc định (plan/24 §1c: thử RẺ trước).
+      // Gọi thẳng ăn thì xong trong một nhịp; chỉ khi không có đường vào mới bỏ ~20 giây đục lỗ.
+      const onlyPunch = args.includes("--punch");
+      // Mã mạng nghĩa là *"không có đường vào địa chỉ đó"* — đúng ca đục lỗ sinh ra để chữa.
+      // Mã KHÁC (chìa lệch, máy lạ, bắt tay hỏng) thì đục lỗ cũng vô ích: đừng bỏ 20 giây cho nó.
+      const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
+      let r = onlyPunch ? null : await connectToPeer({ host, port }, session);
+      if (r && !r.error) {
+        console.log("  cửa        : gọi thẳng");
+      } else if (onlyPunch || noWayIn.has(r?.error ?? "")) {
+        if (r?.error) console.log(`  gọi thẳng trượt (${r.error}) ⇒ đục lỗ NAT`);
+        // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch vì
+        // chính máy này đang giữ cổng đó. Lệch một nấc, và hai máy tự ra cùng số.
+        const localPort = Number(flagValue(args, "--local-port") ?? st.port + 1);
+        console.log(`  đục lỗ     : cổng nội ${localPort} · máy kia phải chạy CÙNG lệnh, CÙNG lúc`);
+        const p = await punchToPeer(
+          { host, port, deviceId: flagValue(args, "--peer") ?? st.peers[0] },
+          {
+            ...session,
+            localPort,
+            onRound: ({ round, phase, note }) =>
+              console.log(`    vòng ${round} · ${phase === "ban" ? "bắn" : "nghe"}${note ? ` — ${note}` : ""}`),
+          },
+        );
+        console.log(`  cửa        : ${p.won === "goi" ? "đục lỗ, ta GỌI được" : p.won === "nhan" ? "đục lỗ, ta NHẬN được" : "không cửa nào"} (${p.rounds} vòng)`);
+        r = p;
+      }
+      console.log(`  đối phương : ${r?.peerDeviceId ?? "(không rõ)"}`);
+      console.log(`  chở đi     : ${r?.sentBlocks ?? 0} khối · nhận về: ${r?.receivedBlocks ?? 0} khối`);
+      if (r?.error) {
         console.log(`  ✗ ${r.error}`);
         process.exitCode = 1;
       }
       return;
     }
-    console.log("usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]");
+    console.log(
+      "usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|" +
+        "sync --host <ip> --port <n> [--punch] [--local-port <n>] [--peer <id>]]",
+    );
     process.exitCode = 1;
     return;
   }
@@ -1703,7 +1731,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    thoải mái) · pair = kết nối bằng ID máy kia · on/off = có NHẬN qua kênh",
       "                    này không (Drive không đổi) · probe = máy này gọi-vào-được không, và",
       "                    NAT thuộc kiểu nào (đục lỗ có cửa hay không — chạy ở CẢ HAI máy)",
-      "                    · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
+      "                    · sync = chạy MỘT lượt với một địa chỉ: gọi THẲNG trước, không có",
+      "                    đường vào thì tự ĐỤC LỖ NAT (hai máy phải chạy cùng lúc; `--punch`",
+      "                    để bỏ lượt gọi thẳng, `--local-port` để đổi cổng đục lỗ). Mặc định TẮT.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
       "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
       "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",
