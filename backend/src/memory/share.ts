@@ -1238,9 +1238,26 @@ export async function extractContainerChunk(containerPath: string, chunk: Contai
 export function isContainer(path: string): boolean {
   return isChunkContainer(path);
 }
-/** Mọi khúc trong một thư mục kênh — công bố cho lớp kênh liệt kê khối mình có. */
+/**
+ * Mọi khúc trong một thư mục kênh — công bố cho lớp kênh liệt kê khối mình có.
+ *
+ * Quét CẢ NGĂN CON: từ 2026-09-21 mỗi máy ghi vào `channel/<device-id>/` của riêng nó, vì Syncthing
+ * chở FILE — hai máy cùng nối khối vào một đường dẫn là đẻ `.sync-conflict` và một bên mất phần vừa
+ * ghi. Chiều ĐỌC phải thấy mọi ngăn thì kho mới hội tụ về cùng một TẬP KHỐI (HP điều 16); chiều GHI
+ * vẫn chỉ đụng ngăn của mình (`channelPen`). Khúc nằm thẳng ở gốc vẫn đọc — đó là khúc của bản cũ.
+ */
 export function listChannelSegments(dir: string): { path: string; n: number }[] {
-  return listSegments(dir);
+  const out = listSegments(dir);
+  let pens: string[];
+  try {
+    pens = readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+  } catch {
+    return out; // chưa có thư mục / không đọc được ⇒ giữ nguyên hành vi cũ (điều 9)
+  }
+  for (const pen of pens) out.push(...listSegments(join(dir, pen)));
+  return out;
 }
 /** Khúc ĐANG MỞ — nơi khối nhận từ máy khác được nối vào (HP điều 16: chỉ nối thêm). */
 export function activeChannelSegment(dir: string): { path: string; name: string; fresh: boolean } {
@@ -1782,8 +1799,28 @@ export async function mergeChannelDir(
   if (!dir || !existsSync(dir) || !statSync(dir).isDirectory()) return [];
   const excludeLanes = getScopeExclude(); // cùng bộ lọc với mọi cửa nạp khác
   const out: DriveSyncResult["merged"] = [];
+  // Khúc ở GỐC (bản cũ) và khúc trong TỪNG NGĂN máy. Nhãn mang tên ngăn để sổ `merged_bundles`
+  // không lẫn hai khúc trùng tên của hai máy khác nhau — khoá là `<ngăn>/<file>#<số khối>`.
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".enc"))) {
     out.push(...(await mergeContainer(join(dir, f), f, { ...o, excludeLanes })));
+  }
+  let pens: string[] = [];
+  try {
+    pens = readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+  } catch {
+    /* không đọc được ngăn con ⇒ phần gốc vẫn merge (điều 9) */
+  }
+  for (const pen of pens) {
+    const penDir = join(dir, pen);
+    let names: string[];
+    try {
+      names = readdirSync(penDir).filter((x) => x.endsWith(".enc"));
+    } catch {
+      continue;
+    }
+    for (const f of names) out.push(...(await mergeContainer(join(penDir, f), `${pen}/${f}`, { ...o, excludeLanes })));
   }
   return out;
 }

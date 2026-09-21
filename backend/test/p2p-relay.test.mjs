@@ -175,3 +175,47 @@ test("p2p-code: mã máy đi vòng tròn nguyên vẹn, và KHÔNG mang địa c
     assert.equal(parseMachineCode(junk), null, `phải từ chối: ${junk.slice(0, 20)}`);
   }
 });
+
+// ── SYNCTHING SHARE: mỗi máy một NGĂN, không đường dẫn nào có hai người ghi ─────────────────────
+test("st-pen: hai máy ghi hai ngăn KHÁC nhau, và chiều đọc thấy khối của CẢ HAI", async (t) => {
+  const { channelPen, channelDir, ensureShareIgnore } = await import("../../dist/memory/channel/index.js");
+  const { listChannelSegments } = await import("../../dist/memory/share.js");
+  const root = tempDir(t, "zemory-pen-");
+
+  // Hai "máy" = hai thư mục danh tính khác nhau ⇒ hai deviceId ⇒ hai ngăn.
+  const penA = join(channelDir(root, true), "MAYA");
+  const penB = join(channelDir(root, true), "MAYB");
+  mkdirSync(penA, { recursive: true });
+  mkdirSync(penB, { recursive: true });
+  const keyPath = join(root, "share.key");
+  writeMemoryShareKey(keyPath);
+  await addBlock(t, penA, keyPath, "cua-A");
+  await addBlock(t, penB, keyPath, "cua-B");
+
+  // 🔴 Bất biến của cả thiết kế: hai máy KHÔNG BAO GIỜ ghi cùng một đường dẫn.
+  assert.notEqual(penA, penB, "hai máy phải có hai ngăn khác nhau");
+
+  // Chiều ĐỌC phải thấy khúc của MỌI ngăn — nếu không, kho không bao giờ hội tụ.
+  const segs = listChannelSegments(channelDir(root)).map((s) => s.path);
+  assert.ok(segs.some((p) => p.includes("MAYA")), "phải thấy khúc của ngăn A");
+  assert.ok(segs.some((p) => p.includes("MAYB")), "phải thấy khúc của ngăn B");
+
+  // ngăn của MÁY NÀY phải nằm TRONG channel/, không phải chính nó
+  const mine = channelPen(root, true);
+  assert.ok(mine.startsWith(channelDir(root)) && mine !== channelDir(root), "ngăn phải là thư mục con của channel/");
+
+  // `.stignore` — chốt máy cho điều 11: Syncthing không được chở kho đang mở.
+  const p = ensureShareIgnore(root);
+  assert.ok(p, "phải tạo .stignore");
+  const body = readFileSync(p, "utf8");
+  for (const must of ["global_memory.db", "*.db-wal", "*.db-shm"]) {
+    assert.ok(body.includes(must), `.stignore phải loại ${must}`);
+  }
+  // ca ÂM: KHÔNG được loại khối — đó chính là thứ phải đi qua Syncthing.
+  assert.ok(!/^\*\.enc$/m.test(body), "ca ÂM: .stignore không được loại khối .enc");
+  assert.ok(!/^channel/m.test(body), "ca ÂM: .stignore không được loại thư mục channel/");
+  // ca ÂM: chạy lại KHÔNG ghi đè luật người dùng đã sửa.
+  writeFileSync(p, "// luat rieng cua nguoi dung\n", "utf8");
+  assert.equal(ensureShareIgnore(root), null, "ca ÂM: đã có .stignore thì không đụng vào");
+  assert.match(readFileSync(p, "utf8"), /luat rieng/, "nội dung người dùng phải còn nguyên");
+});

@@ -1659,6 +1659,9 @@ async function refreshChannelServer(): Promise<void> {
     const ch = await import("./memory/channel/index.js");
     const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
     const keyFile = resolveShareKey(currentProjectRoot());
+    // Chốt máy cho điều 11: thư mục kho này do Syncthing chở, và file kho ĐANG MỞ không được đi theo.
+    const ign = ch.ensureShareIgnore();
+    if (ign) daemonLog(`[channel] đã tạo ${ign} — Syncthing sẽ không chở file kho đang mở`);
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),
