@@ -278,6 +278,13 @@
         ab.appendChild(p2pFact(i?'':t('p2p.addrH'),a.addr+':'+prt,a.iface+(a.fixed?' · '+t('p2p.fixed'):'')));
       });
     }
+    // MỘT chuỗi để đưa máy kia — gom vân tay + relay + địa chỉ. Người dùng chép ĐÚNG thứ này,
+    // không phải chọn giữa hai địa chỉ (app-design §F0).
+    var cb=zid('p2pCodeRow');
+    if(cb){
+      while(cb.firstChild)cb.removeChild(cb.firstChild);
+      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,''));
+    }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
@@ -285,11 +292,8 @@
     // Thân của CẢ BA thẻ (máy này · cụm máy · nhật ký) — chừa thanh đầu thẻ vì công tắc nằm ở đó.
     var p2pOn=!!c.enabled, sub=document.querySelector('.sub[data-sy="p2p"]');
     if(sub)sub.querySelectorAll('.card-b').forEach(function(b){b.classList.toggle('frozen',!p2pOn);});
-    // RELAY (plan/24 §7 ⑧): nói TRẠNG THÁI THẬT — đang giữ hộp thư ở relay, hay không tới được nó.
-    // Ô nhập chỉ điền khi người dùng không đang gõ, để lượt làm mới không đè chữ họ vừa gõ.
-    var rs=zid('p2pRelayState'),ri=zid('p2pRelayIn');
-    if(rs)rs.textContent=c.relay?(c.relayJoined?t('p2p.relayJoined'):t('p2p.relayIdle')):t('p2p.relayOff');
-    if(ri&&document.activeElement!==ri)ri.value=c.relay||'';
+    // RELAY không có hàng riêng: nó là HẠ TẦNG, nằm sẵn trong mã máy. Người dùng không khai, không
+    // đọc, không chọn — chỉ chép một mã. Khai relay là việc một lần của người CHẠY relay, ở CLI.
     // CỤM MÁY — mỗi máy MỘT THẺ, máy này đứng đầu. Bản cũ là một danh sách chuỗi 52 ký tự trần:
     // không nói được máy nào đang thấy được, địa chỉ bao nhiêu, gặp lần cuối lúc nào.
     var cl=zid('p2pCluster');
@@ -446,10 +450,6 @@
       el.classList.toggle('on',!wasOn); // lạc quan, để nút phản hồi ngay
       zSave('/set-p2p?on='+(wasOn?'0':'1'),function(){el.classList.toggle('on',wasOn);})
         .then(function(j){if(j)loadChannel();});
-    }
-    else if(act==='p2p-relay-save'){
-      var rv=((zid('p2pRelayIn')||{}).value||'').trim();
-      zSave('/set-p2p?relay='+encodeURIComponent(rv),function(){}).then(function(j){if(j)loadChannel();});
     }
     else if(act==='p2p-sync-addr'){
       // Nối bằng địa chỉ. Kết quả phải hiện TRONG hộp thoại đang mở: bản trước đẩy sang `p2pMsg`
