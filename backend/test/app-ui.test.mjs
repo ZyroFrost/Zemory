@@ -1153,7 +1153,7 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
 
 test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
-  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.errRoute", "p2p.errRefused", "p2p.addrH", "p2p.fixed", "p2p.viaRelay", "p2p.codeH", "p2p.copyHint", "p2p.copied2",
+  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.errRoute", "p2p.errRefused", "p2p.addrH", "p2p.fixed", "p2p.codeH", "p2p.copyHint", "p2p.copied2",
     "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
     const n = chrome.split(`'${k}':`).length - 1;
     assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);

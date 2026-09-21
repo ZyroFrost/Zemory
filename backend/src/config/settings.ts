@@ -82,11 +82,6 @@ interface ZConfig {
   p2pPeerAddrs?: Record<string, string[]>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
-  /**
-   * plan/24 §7 ⑧ — địa chỉ relay `host:port` (relay CỦA ZEMORY, `channel relay-serve`). Rỗng ⇒ không dùng.
-   * Cần khi hai máy khác mạng và cả hai đầu kín NAT — ca `§6d` đo được là ca thường gặp.
-   */
-  p2pRelay?: string;
   /** Lịch tự sync — xem getAutosyncSchedule. */
   autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
   /** Tự kiểm lại màn Tính năng theo chu kỳ — xem getChecksAuto. */
@@ -559,19 +554,6 @@ export function getP2pPort(): number {
 export function setP2pPort(port: number): void {
   const c = read();
   c.p2pPort = port;
-  write(c);
-}
-
-/** Địa chỉ relay `host:port`; rỗng ⇒ không dùng relay (chỉ gọi thẳng / cùng LAN). */
-export function getP2pRelay(): string {
-  const v = read().p2pRelay;
-  return typeof v === "string" ? v.trim() : "";
-}
-export function setP2pRelay(addr: string): void {
-  const c = read();
-  const v = addr.trim();
-  if (v) c.p2pRelay = v;
-  else delete c.p2pRelay;
   write(c);
 }
 

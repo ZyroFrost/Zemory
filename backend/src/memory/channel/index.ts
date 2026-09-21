@@ -9,11 +9,10 @@ import { join } from "node:path";
 import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
-import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getP2pRelay, getSyncTransport } from "../../config/settings.js";
+import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
-import { joinRelay, DEFAULT_RELAY_PORT, type RelayJoinHandle } from "./relay.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -21,48 +20,6 @@ export * from "./blocks.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
-export * from "./relay.js";
-
-/**
- * Viết `.stignore` vào GỐC KHO để Syncthing KHÔNG BAO GIỜ chở file kho đang mở.
- *
- * 🔴 Đây là chốt máy cho HP điều 11, không phải tiện ích. `global_memory.db` là SQLite mở WAL: ba
- * file (`.db` · `-wal` · `-shm`) phải khớp nhau tại CÙNG một thời điểm, trong khi Syncthing chở ba
- * file đó độc lập, khác thời điểm. Maintainer của chính Syncthing nói thẳng về đúng ca này:
- * *"don't expect to sync databases… you will corrupt them"*. Kho này đã hỏng HAI LẦN (03/08 · 04/08)
- * vì hai kẻ ghi — đó là nơi điều 11 sinh ra.
- *
- * Không mất gì: kho đi bằng KHỐI trong `channel/<ngăn>/`, và mỗi khối chở trọn bộ RAG (điều 16), nên
- * máy nhận dựng lại `.db` của chính nó. `.db` chỉ là lăng kính cục bộ.
- *
- * KHÔNG ghi đè file người dùng đã có — họ có thể đã thêm luật riêng; chỉ tạo khi chưa có.
- */
-export function ensureShareIgnore(storeRoot = currentStoreRoot()): string | null {
-  const path = join(storeRoot, ".stignore");
-  if (existsSync(path)) return null;
-  const body = [
-    "// zemory — Syncthing share (sinh tu dong, sua tu do)",
-    "// Kho SQLite dang mo KHONG duoc cho theo: ba file .db/-wal/-shm phai khop cung mot thoi diem,",
-    "// ma Syncthing cho chung doc lap => hong kho. Bo nho di bang KHOI trong channel/<ngan>/.",
-    "global_memory.db",
-    "global_memory.db-wal",
-    "global_memory.db-shm",
-    "*.db",
-    "*.db-wal",
-    "*.db-shm",
-    "// Ban lui + file tam cua chinh Syncthing",
-    "*.bak",
-    ".stversions",
-    "",
-  ].join("\n");
-  try {
-    mkdirSync(storeRoot, { recursive: true });
-    writeFileSync(path, body, "utf8");
-    return path;
-  } catch {
-    return null; // fail-open (dieu 9): khong ghi duoc thi thoi, dung lam chet daemon
-  }
-}
 
 /**
  * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
@@ -194,18 +151,12 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
-let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle; relay?: RelayJoinHandle } | null = null;
+let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
 
-/** Địa chỉ relay đã cấu hình, tách sẵn; `null` khi không dùng. */
-export function relayAddress(): { host: string; port: number } | null {
-  const raw = getP2pRelay();
-  return raw ? parsePeerAddress(raw, DEFAULT_RELAY_PORT) : null;
-}
 /** Tiền tố mã máy. Đổi bản là đổi tiền tố — máy cũ nhận ra ngay là không đọc được, không đoán. */
 const CODE_PREFIX = "ZM1.";
 export interface MachineCode {
   fingerprint: string;
-  relay?: string;
 }
 /**
  * MỘT chuỗi để đưa cho máy kia: **vân tay + relay**. Dán một lần là máy kia biết mình LÀ AI và GẶP Ở
@@ -217,53 +168,22 @@ export interface MachineCode {
  * làm máy kia gọi vào chỗ không còn ai. Ca cùng mạng do tầng dò LAN lo (nó thấy địa chỉ HIỆN TẠI);
  * ai cần khai tay thì ô nhập vẫn nhận `host:port` như cũ.
  *
- * Khuôn nhị phân, không JSON: `[ver 1][vân tay 32 byte][kiểu relay 1][relay…]` rồi base32 — cùng
- * bảng chữ với device ID nên mã đọc/gõ lại được, không lẫn chữ hoa thường.
- * Kiểu relay: 0 = không có · 1 = IPv4 (4 byte + cổng 2 byte) · 2 = chữ (1 byte độ dài + utf8).
+ * Khuôn nhị phân, không JSON: `[ver 1][vân tay 32 byte][phần mở rộng 1 byte = 0]` rồi base32 — cùng
+ * bảng chữ với device ID nên mã đọc và gõ lại được. Byte cuối để dành cho lớp ĐỤC LỖ NAT (`§7 ⑩`)
+ * mang thêm dữ kiện điểm hẹn; bản nay luôn là 0.
  */
 export function encodeMachineCode(m: MachineCode): string {
   const fp = deviceIdBytes(m.fingerprint);
   if (!fp) return "";
-  const parts: Buffer[] = [Buffer.from([1]), fp];
-  const a = m.relay ? parsePeerAddress(m.relay, DEFAULT_RELAY_PORT) : null;
-  const v4 = a && /^\d{1,3}(\.\d{1,3}){3}$/.test(a.host) ? a.host.split(".").map(Number) : null;
-  if (v4 && v4.every((n) => n >= 0 && n <= 255)) {
-    const b = Buffer.alloc(7);
-    b.writeUInt8(1, 0);
-    for (let i = 0; i < 4; i++) b.writeUInt8(v4[i], 1 + i);
-    b.writeUInt16BE(a!.port, 5);
-    parts.push(b);
-  } else if (a) {
-    const host = Buffer.from(`${a.host}:${a.port}`, "utf8").subarray(0, 255);
-    parts.push(Buffer.concat([Buffer.from([2, host.length]), host]));
-  } else {
-    parts.push(Buffer.from([0]));
-  }
-  return CODE_PREFIX + base32(Buffer.concat(parts));
+  return CODE_PREFIX + base32(Buffer.concat([Buffer.from([1]), fp, Buffer.from([0])]));
 }
-/** Đọc mã máy. Không phải mã ⇒ `null` (để nơi gọi rơi về nhánh địa chỉ/ID trần), KHÔNG ném. */
+/** Đọc mã máy. Không phải mã ⇒ `null` (để nơi gọi rơi về nhánh địa chỉ trần), KHÔNG ném. */
 export function parseMachineCode(raw: string): MachineCode | null {
   const s = raw.trim();
   if (!s.startsWith(CODE_PREFIX)) return null;
   const buf = unbase32(s.slice(CODE_PREFIX.length).replace(/[^A-Za-z0-9]/g, "").toUpperCase());
   if (!buf || buf.length < 34 || buf.readUInt8(0) !== 1) return null;
-  const fingerprint = deviceIdFromBytes(buf.subarray(1, 33));
-  const kind = buf.readUInt8(33);
-  if (kind === 1 && buf.length >= 40) {
-    const h = `${buf[34]}.${buf[35]}.${buf[36]}.${buf[37]}`;
-    return { fingerprint, relay: `${h}:${buf.readUInt16BE(38)}` };
-  }
-  if (kind === 2 && buf.length >= 35) {
-    const n = buf.readUInt8(34);
-    if (buf.length >= 35 + n && n > 0) return { fingerprint, relay: buf.subarray(35, 35 + n).toString("utf8") };
-    return null;
-  }
-  return { fingerprint };
-}
-
-/** Đang giữ hộp thư ở relay không — TRẠNG THÁI THẬT, không phải ý định. */
-export function relayJoined(): boolean {
-  return running?.relay?.connected() ?? false;
+  return { fingerprint: deviceIdFromBytes(buf.subarray(1, 33)) };
 }
 
 export interface ChannelServeResult {
@@ -348,33 +268,8 @@ export async function startChannelServer(o: {
     } catch (e) {
       log(`[channel] dò LAN không bật được: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
     }
-    // TẦNG 4 — RELAY (plan/24 §7 ⑧). Máy sau NAT không ai gọi vào được ⇒ nó tự GIỮ một hộp thư ở
-    // relay để máy kia gọi qua đó. Cùng `acceptPeer`/`onReceived` với đường thẳng — một phiên relay
-    // là một phiên thường, chỉ khác ống. Fail-open: không tới được relay thì đường thẳng + LAN vẫn chạy.
-    let relay: RelayJoinHandle | undefined;
-    const ra = relayAddress();
-    if (ra) {
-      relay = joinRelay(
-        ra,
-        {
-          channelDir: channelPen(currentStoreRoot()),
-          identity: channelIdentity(),
-          shareKey: key,
-          appVersion: o.appVersion,
-          allowedPeers: peers,
-          acceptPeer: o.acceptPeer,
-        },
-        {
-          log,
-          onSession: (r: SyncOutcome) => {
-            log(`[channel] phiên qua relay với ${r.peerDeviceId ?? "(không rõ)"} — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}` + (r.error ? ` · ✗ ${r.error}` : ""));
-            if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
-          },
-        },
-      );
-    }
-    running = { server, port: server.port, discovery, relay };
-    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}${ra ? ` · relay ${ra.host}:${ra.port}` : ""}`);
+    running = { server, port: server.port, discovery };
+    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}`);
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
@@ -386,11 +281,6 @@ export async function startChannelServer(o: {
 /** Đóng máy chủ kênh nếu đang chạy. An toàn khi gọi lúc không có gì chạy. */
 export function stopChannelServer(): void {
   if (!running) return;
-  try {
-    running.relay?.stop();
-  } catch {
-    /* hộp thư relay đã đóng */
-  }
   try {
     running.discovery?.stop();
   } catch {

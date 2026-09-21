@@ -1659,9 +1659,6 @@ async function refreshChannelServer(): Promise<void> {
     const ch = await import("./memory/channel/index.js");
     const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
     const keyFile = resolveShareKey(currentProjectRoot());
-    // Chốt máy cho điều 11: thư mục kho này do Syncthing chở, và file kho ĐANG MỞ không được đi theo.
-    const ign = ch.ensureShareIgnore();
-    if (ign) daemonLog(`[channel] đã tạo ${ign} — Syncthing sẽ không chở file kho đang mở`);
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),
@@ -2965,15 +2962,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
         // người dùng không có cách nào biết nó có tìm được ai không.
         listening: ch.channelServingPort(),
-        // RELAY (plan/24 §7 ⑧): địa chỉ đã cấu hình + có đang giữ hộp thư ở đó không.
-        relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : "",
-        relayJoined: ch.relayJoined(),
         // MỘT chuỗi duy nhất để đưa máy kia — gom vân tay + relay + địa chỉ LAN. Bề mặt chỉ cần
         // một hàng và một nút Chép; người dùng thôi phải chọn "đưa địa chỉ nào".
-        machineCode: ch.encodeMachineCode({
-          fingerprint: st.deviceId,
-          relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : undefined,
-        }),
+        machineCode: ch.encodeMachineCode({ fingerprint: st.deviceId }),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
         // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
@@ -3007,13 +2998,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // 🔴 HAI KHÁI NIỆM TÁCH ĐÔI, đừng gộp (plan/24 §5):
       //   `on`        = có NHẬN qua kênh p2p không — bật được CÙNG LÚC với Drive;
       //   `transport` = GỬI đi đâu, ĐÚNG MỘT đích. Hai kẻ cùng ghi đã hỏng kho HAI LẦN (HP điều 11).
-      const { setP2pEnabled, setSyncTransport, getP2pEnabled, getSyncTransport, setP2pRelay } = await import("./config/settings.js");
+      const { setP2pEnabled, setSyncTransport, getP2pEnabled, getSyncTransport } = await import("./config/settings.js");
       const on = u.searchParams.get("on");
       const transport = u.searchParams.get("transport");
-      const relay = u.searchParams.get("relay");
       if (on !== null) setP2pEnabled(on === "1");
-      // Địa chỉ relay: chuỗi rỗng = TẮT relay (xoá khoá), không phải "giữ nguyên".
-      if (relay !== null) setP2pRelay(relay);
       if (transport === "drive" || transport === "p2p") setSyncTransport(transport);
       // Gạt công tắc là ĂN NGAY: cùng một hàm với lúc daemon khởi động, nên không có chuyện
       // bật trong ⚙ rồi phải mở lại app mới nghe (người dùng sẽ đọc cảnh đó thành hỏng).
@@ -3054,31 +3042,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
       const { getP2pPeerAddrs } = await import("./config/settings.js");
       const raw = (u.searchParams.get("host") ?? "").trim();
-      // Người dùng dán ID MÁY ⇒ thứ duy nhất tới được máy sau NAT là relay. Nhận diện bằng chính
-      // hàm đã có (`deviceIdLooksTyped` — ID mang chữ số kiểm nên không lẫn với địa chỉ).
-      // Dán MÃ MÁY ⇒ nó mang sẵn mọi thứ: vân tay, relay, địa chỉ LAN. Tự lưu relay nếu máy này
-      // chưa có — đó là cả điểm của việc gộp một mã: máy thứ hai KHÔNG phải gõ relay lần nữa.
+      // Dán MÃ MÁY (hoặc ID trần) ⇒ tra địa chỉ HIỆN TẠI qua tầng dò LAN. Mã cố ý KHÔNG mang địa chỉ:
+      // địa chỉ DHCP đổi (đo 2026-09-21: `.90 → .81 → .6` trong một ngày), nhét vào mã là để người ta
+      // dán lại sau rồi gọi vào chỗ không còn ai.
       const code = raw ? ch.parseMachineCode(raw) : null;
-      if (code?.relay && !ch.relayAddress()) {
-        const { setP2pRelay } = await import("./config/settings.js");
-        setP2pRelay(code.relay);
-        daemonLog(`[channel] nhận relay ${code.relay} từ mã máy`);
-        await refreshChannelServer();
-      }
-      const typedId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
+      const wantId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
       const known = getP2pPeerAddrs();
       const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
-      // Mã KHÔNG mang địa chỉ LAN (chúng hết hạn) ⇒ ca cùng mạng đi bằng địa chỉ tầng dò LAN đang
-      // thấy, tức địa chỉ HIỆN TẠI. Thử thẳng trước, relay là đường rơi xuống (§1c).
-      const codeAddrs = code ? ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, code.fingerprint)).map((s) => `${s.host}:${s.port}`) : [];
-      const candidates = code
-        ? codeAddrs
-        : typedId
-        ? []
+      const candidates = wantId
+        ? ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, wantId)).map((s) => `${s.host}:${s.port}`)
         : raw
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
-      if (!candidates.length && !typedId) return json(res, { ok: false, error: "chưa biết máy nào — dán mã máy kia" });
+      if (!candidates.length) {
+        return json(res, {
+          ok: false,
+          error: wantId
+            ? "không thấy máy đó trên mạng này — hai máy khác mạng thì chưa có đường (đục lỗ NAT chưa dựng)"
+            : "chưa biết máy nào — dán mã máy kia",
+        });
+      }
       const { resolveShareKey } = await import("./memory/share.js");
       const keyFile = resolveShareKey(root());
       if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
@@ -3110,46 +3093,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         );
         last = { ...r, addr: cand };
         if (!r.error) return json(res, { ok: true, ...last });
-      }
-      // TẦNG 4 — RELAY. Hai lối vào, cùng một hàm:
-      //   · người dùng DÁN ID ⇒ quay đúng ID đó, kèm `wantPair` (máy mới, chưa có trong sổ);
-      //   · không dán gì / gọi thẳng trượt hết ⇒ thử lại từng máy ĐÃ QUEN.
-      // Thứ tự *thẳng trước, relay sau* là của §1c: thử rẻ trước, rơi dần xuống.
-      const ra = ch.relayAddress();
-      if (ra && typedId) {
-        const r = await ch.connectViaRelay(ra, typedId, {
-          channelDir: st.dir,
-          identity: ch.channelIdentity(),
-          shareKey: readFileSync(keyFile, "utf8").trim(),
-          appVersion: appVersion(),
-          allowedPeers: st.peers,
-          wantPair: true,
-          onPaired: (peerId: string): void => {
-            setP2pPeers([...getP2pPeers(), peerId]);
-            daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua relay`);
-          },
-        });
-        return json(res, { ok: !r.error, ...r, addr: `relay → ${typedId.slice(0, 11)}…`, viaRelay: true });
-      }
-      if (typedId && !candidates.length) {
-        return json(res, { ok: false, error: "máy kia không cùng mạng, và chưa có relay nào để gặp nhau" });
-      }
-      if (ra && st.peers.length) {
-        const shareKey = readFileSync(keyFile, "utf8").trim();
-        for (const peerId of st.peers) {
-          const r = await ch.connectViaRelay(ra, peerId, {
-            channelDir: st.dir,
-            identity: ch.channelIdentity(),
-            shareKey,
-            appVersion: appVersion(),
-            allowedPeers: st.peers,
-          });
-          last = { ...r, addr: `relay ${ra.host}:${ra.port} → ${peerId.slice(0, 11)}…`, viaRelay: true };
-          if (!r.error) {
-            daemonLog(`[channel] nối qua relay tới ${peerId.slice(0, 11)}… — nhận ${r.receivedBlocks} · gửi ${r.sentBlocks}`);
-            return json(res, { ok: true, ...last });
-          }
-        }
       }
       return json(res, { ok: false, ...last });
     }
