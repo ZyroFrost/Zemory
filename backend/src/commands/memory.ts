@@ -718,7 +718,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort } =
+    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
@@ -775,12 +775,44 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(
         m
           ? `  ✓ mở được cổng ngoài ${m.externalPort} qua ${m.gateway} (thuê ${m.lifetimeSeconds}s)`
-          : "  ✗ không router nào trả lời NAT-PMP — máy này KHÔNG gọi-vào-được.\n" +
-            "    ⇒ Đồng bộ chỉ chạy nếu MỘT trong hai điều sau đúng:\n" +
+          : "  ✗ không router nào trả lời NAT-PMP — máy này KHÔNG nhận được kết nối vào KHÔNG MỜI.\n" +
+            "    ⇒ Đồng bộ chạy được nếu MỘT trong ba điều sau đúng:\n" +
             "       · hai máy CÙNG MẠNG (tầng dò LAN tự tìm nhau), HOẶC\n" +
-            "       · ĐẦU KIA gọi-vào-được (router bên đó mở cổng, hoặc bạn tự forward cổng).\n" +
-            "    Cả hai đầu đều như máy này ⇒ HẾT ĐƯỜNG: đục lỗ NAT chưa dựng (plan/24 §7 ⑩).\n" +
-            "    Đo đầu kia bằng chính lệnh này trước khi kết luận.",
+            "       · ĐẦU KIA gọi-vào-được (router bên đó mở cổng, hoặc bạn tự forward cổng), HOẶC\n" +
+            "       · ĐỤC LỖ NAT — xem phần đo ngay dưới đây.",
+      );
+
+      // ── Kiểu NAT: thứ quyết định đục lỗ (plan/24 §7 ⑩) có cửa hay không.
+      // Phải chạy ở CẢ HAI máy rồi mới kết luận được — máy này không biết gì về đầu kia.
+      console.log("\n  Kiểu NAT (STUN công khai — không tài khoản, không máy chủ của bạn):");
+      const nat = await measureNat({ localPort: channelStatus().port });
+      const sideLine = (label: string, s: typeof nat.udp): string => {
+        if (!s.answered) return `    ${label.padEnd(4)} không server nào trả lời (${s.asked} đã hỏi) — chưa đo được`;
+        const kept = s.portPreserved === null ? "chưa đo" : s.portPreserved ? "GIỮ NGUYÊN" : "bị đổi";
+        const verdict =
+          s.mapping === "endpoint-independent"
+            ? "ánh xạ KHÔNG phụ thuộc đích (cone) ⇒ đục lỗ có cửa"
+            : s.mapping === "address-dependent"
+              ? "ánh xạ PHỤ THUỘC đích (NAT đối xứng) ⇒ đục lỗ chết ở đầu này"
+              : `chưa kết luận được (${s.distinctServers} server khác nhau trả lời — cần ≥ 2)`;
+        return `    ${label.padEnd(4)} ${s.answered}/${s.asked} trả lời · cổng nguồn ${kept} · ${verdict}`;
+      };
+      console.log(sideLine("UDP", nat.udp));
+      console.log(sideLine("TCP", nat.tcp));
+      if (nat.stable !== null) {
+        console.log(`    ánh xạ ${nat.stable ? "BỀN" : "NHẢY"} qua ba lượt cách nhau — ${nat.stable ? "cổng đoán trước được" : "không đoán trước được"}`);
+      }
+      const addr = nat.tcp.externalAddress ?? nat.udp.externalAddress;
+      if (addr) console.log(`    địa chỉ ngoài server thấy được: ${addr}`);
+      const viable = holePunchViable(nat);
+      console.log(
+        viable === true
+          ? "  ⇒ Đầu NÀY thoả điều kiện đục lỗ. Chạy đúng lệnh này ở máy kia; CẢ HAI thoả thì mới có đường.\n" +
+              "     (Lớp đục lỗ chưa dựng — plan/24 §7 ⑩ đòi đo hai đầu trước khi viết.)"
+          : viable === false
+            ? "  ⇒ Đầu NÀY là NAT đối xứng: đục lỗ không cứu được, và không dòng mã nào đổi được điều đó.\n" +
+                "     Đường còn lại: cùng mạng, hoặc đầu kia mở cổng."
+            : "  ⇒ CHƯA ĐỦ DỮ KIỆN để phán. Không đọc thành 'được' cũng không đọc thành 'không được'.",
       );
       return;
     }
@@ -1669,7 +1701,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
       "                    KÊNH MÁY-TỚI-MÁY (plan/24): id = ID máy này (KHÔNG phải bí mật, chép",
       "                    thoải mái) · pair = kết nối bằng ID máy kia · on/off = có NHẬN qua kênh",
-      "                    này không (Drive không đổi) · probe = router có mở cổng hộ được không",
+      "                    này không (Drive không đổi) · probe = máy này gọi-vào-được không, và",
+      "                    NAT thuộc kiểu nào (đục lỗ có cửa hay không — chạy ở CẢ HAI máy)",
       "                    · sync = chạy MỘT lượt với một địa chỉ. Mặc định TẮT.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
       "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
