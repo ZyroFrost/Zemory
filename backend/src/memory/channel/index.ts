@@ -141,6 +141,40 @@ export function relayAddress(): { host: string; port: number } | null {
   const raw = getP2pRelay();
   return raw ? parsePeerAddress(raw, DEFAULT_RELAY_PORT) : null;
 }
+/** Tiền tố mã máy. Đổi bản là đổi tiền tố — máy cũ nhận ra ngay là không đọc được, không đoán. */
+const CODE_PREFIX = "ZM1.";
+export interface MachineCode {
+  fingerprint: string;
+  relay?: string;
+  addrs?: string[];
+}
+/**
+ * MỘT chuỗi để đưa cho máy kia: vân tay + relay (nếu có) + địa chỉ LAN. Máy kia dán một lần là đủ —
+ * nó biết mình LÀ AI và GẶP Ở ĐÂU, không phải hỏi thêm gì (app-design §F0: bớt một lựa chọn cho người dùng).
+ */
+export function encodeMachineCode(m: MachineCode): string {
+  const body = { f: m.fingerprint, ...(m.relay ? { r: m.relay } : {}), ...(m.addrs?.length ? { a: m.addrs } : {}) };
+  return CODE_PREFIX + Buffer.from(JSON.stringify(body), "utf8").toString("base64url");
+}
+/** Đọc mã máy. Không phải mã ⇒ `null` (để nơi gọi rơi về nhánh địa chỉ/ID trần), KHÔNG ném. */
+export function parseMachineCode(raw: string): MachineCode | null {
+  const s = raw.trim();
+  if (!s.startsWith(CODE_PREFIX)) return null;
+  try {
+    const o = JSON.parse(Buffer.from(s.slice(CODE_PREFIX.length), "base64url").toString("utf8")) as {
+      f?: unknown; r?: unknown; a?: unknown;
+    };
+    if (typeof o.f !== "string" || !o.f) return null;
+    return {
+      fingerprint: o.f,
+      relay: typeof o.r === "string" && o.r ? o.r : undefined,
+      addrs: Array.isArray(o.a) ? o.a.filter((x): x is string => typeof x === "string" && !!x) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Đang giữ hộp thư ở relay không — TRẠNG THÁI THẬT, không phải ý định. */
 export function relayJoined(): boolean {
   return running?.relay?.connected() ?? false;

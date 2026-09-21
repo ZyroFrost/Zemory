@@ -2965,6 +2965,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // RELAY (plan/24 §7 ⑧): địa chỉ đã cấu hình + có đang giữ hộp thư ở đó không.
         relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : "",
         relayJoined: ch.relayJoined(),
+        // MỘT chuỗi duy nhất để đưa máy kia — gom vân tay + relay + địa chỉ LAN. Bề mặt chỉ cần
+        // một hàng và một nút Chép; người dùng thôi phải chọn "đưa địa chỉ nào".
+        machineCode: ch.encodeMachineCode({
+          fingerprint: st.deviceId,
+          relay: ch.relayAddress() ? `${ch.relayAddress()!.host}:${ch.relayAddress()!.port}` : undefined,
+          addrs: lanAddresses().map((a) => `${a.addr}:${ch.channelServingPort() ?? st.port}`),
+        }),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
         // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
@@ -3045,12 +3052,29 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
       const { getP2pPeerAddrs } = await import("./config/settings.js");
       const raw = (u.searchParams.get("host") ?? "").trim();
+      // Người dùng dán ID MÁY ⇒ thứ duy nhất tới được máy sau NAT là relay. Nhận diện bằng chính
+      // hàm đã có (`deviceIdLooksTyped` — ID mang chữ số kiểm nên không lẫn với địa chỉ).
+      // Dán MÃ MÁY ⇒ nó mang sẵn mọi thứ: vân tay, relay, địa chỉ LAN. Tự lưu relay nếu máy này
+      // chưa có — đó là cả điểm của việc gộp một mã: máy thứ hai KHÔNG phải gõ relay lần nữa.
+      const code = raw ? ch.parseMachineCode(raw) : null;
+      if (code?.relay && !ch.relayAddress()) {
+        const { setP2pRelay } = await import("./config/settings.js");
+        setP2pRelay(code.relay);
+        daemonLog(`[channel] nhận relay ${code.relay} từ mã máy`);
+        await refreshChannelServer();
+      }
+      const typedId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
       const known = getP2pPeerAddrs();
       const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
-      const candidates = raw
+      // Mã mang địa chỉ LAN ⇒ thử THẲNG trước (rẻ hơn relay, §1c), relay là đường rơi xuống.
+      const candidates = code
+        ? (code.addrs ?? [])
+        : typedId
+        ? []
+        : raw
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
-      if (!candidates.length) return json(res, { ok: false, error: "chưa biết địa chỉ máy nào — gõ địa chỉ và mã kết nối của máy kia" });
+      if (!candidates.length && !typedId) return json(res, { ok: false, error: "chưa biết máy nào — dán mã máy kia" });
       const { resolveShareKey } = await import("./memory/share.js");
       const keyFile = resolveShareKey(root());
       if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
@@ -3083,9 +3107,29 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         last = { ...r, addr: cand };
         if (!r.error) return json(res, { ok: true, ...last });
       }
-      // TẦNG 4: gọi thẳng trượt hết ⇒ đi qua relay, cho từng máy ĐÃ QUEN (relay ghép theo device ID,
-      // nên địa chỉ gõ tay không có gì để đưa nó). Thứ tự *thẳng trước, relay sau* là của §1c.
+      // TẦNG 4 — RELAY. Hai lối vào, cùng một hàm:
+      //   · người dùng DÁN ID ⇒ quay đúng ID đó, kèm `wantPair` (máy mới, chưa có trong sổ);
+      //   · không dán gì / gọi thẳng trượt hết ⇒ thử lại từng máy ĐÃ QUEN.
+      // Thứ tự *thẳng trước, relay sau* là của §1c: thử rẻ trước, rơi dần xuống.
       const ra = ch.relayAddress();
+      if (ra && typedId) {
+        const r = await ch.connectViaRelay(ra, typedId, {
+          channelDir: st.dir,
+          identity: ch.channelIdentity(),
+          shareKey: readFileSync(keyFile, "utf8").trim(),
+          appVersion: appVersion(),
+          allowedPeers: st.peers,
+          wantPair: true,
+          onPaired: (peerId: string): void => {
+            setP2pPeers([...getP2pPeers(), peerId]);
+            daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua relay`);
+          },
+        });
+        return json(res, { ok: !r.error, ...r, addr: `relay → ${typedId.slice(0, 11)}…`, viaRelay: true });
+      }
+      if (typedId && !candidates.length) {
+        return json(res, { ok: false, error: "máy kia không cùng mạng, và chưa có relay nào để gặp nhau" });
+      }
       if (ra && st.peers.length) {
         const shareKey = readFileSync(keyFile, "utf8").trim();
         for (const peerId of st.peers) {

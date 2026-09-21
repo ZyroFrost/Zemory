@@ -1081,6 +1081,12 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
   assert.ok(!/channel-arm/.test(js), "ca ÂM: endpoint cửa sổ ghép phải đi hẳn");
   assert.ok(!/id="p2pCodeIn"/.test(html), "ca ÂM: ô nhập mã phải đi hẳn, không chỉ ẩn");
   assert.ok(!/&code=/.test(js), "ca ÂM: lượt nối không được gửi mã nào nữa");
+  // MỘT Ô, DÁN MỘT THỨ: ô nhận CẢ ID lẫn địa chỉ — dán ID thì đi qua relay, dán địa chỉ thì gọi
+  // thẳng. Chữ phải NÓI RA điều đó, không thì người dùng chỉ biết một nửa năng lực đang có.
+  const chromeDict = readFileSync(new URL('../../frontend/scripts/chrome.js', import.meta.url), 'utf8');
+  const ph = /'p2p.byAddrPh':'([^']*)'/.exec(chromeDict);
+  assert.ok(ph && /mã/i.test(ph[1]), 'ô nhập phải nói rõ dán MÃ MÁY — một thứ, không phải chọn giữa ID và địa chỉ');
+  assert.ok(rc.includes('machineCode'), 'phải vẽ MÃ MÁY — thứ duy nhất người dùng đưa cho máy kia');
   // Kết quả của nút *Kết nối* phải hiện TRONG hộp thoại đang mở. Bản trước đẩy sang `p2pMsg` nằm ở
   // thẻ nhật ký phía sau ⇒ bấm xong không thấy gì, người dùng đọc thành "nút chết" (báo 2026-09-20,
   // trong khi endpoint vẫn trả ETIMEDOUT đều đặn). Neo vào chính nhánh đó, không vào cả file.
@@ -1122,7 +1128,7 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
   // Đúng panel, đúng thứ: đo bằng LÁT CẮT theo thanh kéo chứ không tìm cả pane.
   const cut = pane.indexOf('data-seam="p2p1"'), cutLog = pane.indexOf('data-seam="p2ptop"');
   const left = pane.slice(0, cut), right = pane.slice(cut, cutLog), bottom = pane.slice(cutLog);
-  for (const id of ['id="p2pBlocks"', 'id="p2pAddrs"', 'id="p2pRelayIn"', 'id="p2pDir"'])
+  for (const id of ['id="p2pBlocks"', 'id="p2pAddrs"', 'id="p2pCodeRow"', 'id="p2pDir"'])
     assert.ok(left.includes(id), `${id} phải ở panel TRÁI (máy này)`);
   for (const id of ['id="p2pCluster"', 'data-act="p2p-sync"', 'data-act="p2p-add-open"', 'p2p.foldersH'])
     assert.ok(right.includes(id), `${id} phải ở panel PHẢI (máy kia)`);
@@ -1147,7 +1153,7 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
 
 test("chuỗi của bề mặt đồng bộ mới phải đủ CẢ HAI từ điển", () => {
   const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
-  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.errRoute", "p2p.errRefused", "p2p.addrH", "p2p.fixed", "p2p.relay", "p2p.relayPh", "p2p.relaySave", "p2p.relayJoined", "p2p.relayIdle", "p2p.relayOff", "p2p.viaRelay", "p2p.copyHint", "p2p.copied2",
+  for (const k of ["p2p.byAddrD", "p2p.byAddrPh", "p2p.byAddrNeed", "p2p.errRoute", "p2p.errRefused", "p2p.addrH", "p2p.fixed", "p2p.viaRelay", "p2p.codeH", "p2p.copyHint", "p2p.copied2",
     "p2p.logH", "p2p.logOnly", "p2p.logHold", "p2p.logEmpty", "p2p.logErr"]) {
     const n = chrome.split(`'${k}':`).length - 1;
     assert.equal(n, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển, đếm được ${n}`);
@@ -2143,7 +2149,7 @@ test("mọi ô tìm dùng CHUNG một khung, không ô nào style gõ thẳng v�
   // hàng mã 9 số đã bỏ — luật không mất theo một ô cụ thể.
   assert.match(CSS, /\.ctlrow-tall>\.btn\.sm\{height:auto\}/, "hàng ô cao phải cởi ghim chiều cao cho nút (§F0c)");
   // Ô nhập chữ KHÔNG được gõ hình hài thẳng vào HTML — đó là cách năm ô cao năm kiểu.
-  for (const id of ["driveInput", "p2pAddrIn", "p2pRelayIn", "addProjPath"]) {
+  for (const id of ["driveInput", "p2pAddrIn", "addProjPath"]) {
     const at = HTML.indexOf(`id="${id}"`);
     assert.ok(at > 0, `không tìm thấy ô nhập #${id}`);
     const tag = HTML.slice(HTML.lastIndexOf("<", at), HTML.indexOf(">", at) + 1);

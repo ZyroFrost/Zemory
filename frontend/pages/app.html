@@ -456,8 +456,7 @@
                   <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
                 </div>
                 <div class="drv-facts" id="p2pAddrs" style="margin-top:0"></div>
-                <div class="drv-facts" style="margin-top:0"><div><span data-i18n="p2p.relay">Relay</span><b id="p2pRelayState">—</b></div></div>
-                <div style="display:flex;gap:6px;margin:2px 0 0"><input id="p2pRelayIn" class="tin" data-i18n-ph="p2p.relayPh" placeholder="địa chỉ relay, vd 203.0.113.7:21039" style="flex:1;min-width:0"><button class="btn sm" data-act="p2p-relay-save" data-i18n="p2p.relaySave">Lưu</button></div>
+                <div class="drv-facts" id="p2pCodeRow" style="margin-top:0"></div>
                 <div class="muted" style="font-size:11px;margin:6px 0 0;line-height:1.5" data-i18n="p2p.reachD">Cùng mạng thì tự thấy nhau. Khác mạng thì cần một relay của zemory trên máy có IP công khai, hai máy cùng trỏ vào.</div>
                 <div class="section-t" data-i18n="ds.p2pDir">Chỗ lưu của kênh này</div>
                 <div style="display:flex;align-items:center;gap:8px"><span class="fchip muted" id="p2pDir" style="border:0;flex:1;min-width:0;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="btn xs" id="p2pDirCopy" style="display:none;flex:0 0 auto" data-i18n="p2p.copy" data-i18n-title="p2p.copyHint">Copy</button></div>
@@ -573,8 +572,8 @@
   <div class="dlg sm" role="dialog" data-i18n-aria="p2p.addMachine" aria-label="Thêm máy">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">⇄</span><b data-i18n="p2p.addMachine">+ Thêm máy…</b><button class="x" id="addPeerClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
-      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Gõ địa chỉ máy kia đọc được ở khối "Máy này" của nó. Xong thì hai bên tự nhớ nhau.</div>
-      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="địa chỉ máy kia" style="flex:2"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Kết nối</button></div>
+      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Dán mã máy kia đọc ở khối "Máy này" của nó. Xong thì hai bên tự nhớ nhau.</div>
+      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="dán mã máy kia" style="flex:2"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Kết nối</button></div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
   </div>
