@@ -2962,6 +2962,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
         // người dùng không có cách nào biết nó có tìm được ai không.
         listening: ch.channelServingPort(),
+        // CHỖ CHỜ đục lỗ — trạng thái NỀN, nên bề mặt phải đọc được nó ở đây chứ không chỉ trong
+        // câu trả lời của cú bấm: đóng hộp thoại rồi mở lại vẫn phải thấy nó đang chờ ai.
+        punchWait: ch.punchWaitState(),
         // MỘT chuỗi duy nhất để đưa máy kia — gom vân tay + relay + địa chỉ LAN. Bề mặt chỉ cần
         // một hàng và một nút Chép; người dùng thôi phải chọn "đưa địa chỉ nào".
         machineCode: ch.encodeMachineCode({ fingerprint: st.deviceId }),
@@ -3061,11 +3064,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         return json(res, {
           ok: false,
           error: wantId
-            ? "không thấy máy đó trên mạng này. Khác mạng thì cần ĐỊA CHỈ NGOÀI của nó (mã máy chỉ mang vân tay) — dán `ip:cổng` vào đây, và hai máy phải bấm CÙNG LÚC để đục lỗ NAT."
+            ? "không thấy máy đó trên mạng này. Khác mạng thì cần ĐỊA CHỈ NGOÀI của nó (mã máy chỉ mang vân tay) — dán `ip:cổng` vào đây. Bên nào dán trước thì mở chỗ chờ, bên kia bấm lúc nào cũng gặp."
             : "chưa biết máy nào — dán mã máy kia",
         });
       }
-      const { resolveShareKey } = await import("./memory/share.js");
+      const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
       const keyFile = resolveShareKey(root());
       if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
       const st = ch.channelStatus();
@@ -3098,41 +3101,36 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         if (!r.error) return json(res, { ok: true, ...last });
       }
 
-      // ĐỤC LỖ NAT — đường rơi xuống khi không địa chỉ nào gọi thẳng được (`plan/24 §6f`).
-      // Nút này phải thấy đúng năng lực CLI đã có: một lớp xây rồi mà bề mặt chính không gọi thì
-      // vẫn là 0% dùng được (bài học `WEB_LABEL`). Chỉ đi khi mã lỗi nghĩa là *không có đường vào* —
-      // chìa lệch hay máy lạ thì đục lỗ cũng vô ích, đừng bắt người dùng chờ ~20 giây cho nó.
+      // ĐỤC LỖ NAT — MỞ CHỖ CHỜ, không chạy một lượt 20 giây rồi trả lỗi (`plan/24 §6f`).
+      //
+      // 🔴 Bản đầu await thẳng `punchToPeer` ở đây, nên hai máy phải bấm gần như CÙNG LÚC. User bác
+      // đúng chỗ đó: *"ai lại canh đi bấm cùng lúc"* · *"phải tạo sẵn slot chờ để bên kia nhận chứ"*.
+      // Nay cú bấm **mở một chỗ chờ trong daemon** rồi trả về NGAY; bên kia bấm lúc nào cũng gặp.
+      // Chỉ đi khi mã lỗi nghĩa là *không có đường vào* — chìa lệch hay máy lạ thì đục lỗ vô ích.
       const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
       const target = ch.parsePeerAddress(String(candidates[candidates.length - 1] ?? ""));
       if (target && noWayIn.has(String(last.error ?? ""))) {
-        daemonLog(`[channel] gọi thẳng trượt (${String(last.error)}) ⇒ đục lỗ NAT tới ${target.host}:${target.port}`);
-        const p = await ch.punchToPeer(
-          { host: target.host, port: target.port, deviceId: wantId || st.peers[0] },
-          {
-            channelDir: st.dir,
-            identity: ch.channelIdentity(),
-            shareKey: readFileSync(keyFile, "utf8").trim(),
-            appVersion: appVersion(),
-            allowedPeers: st.peers,
-            wantPair,
-            // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
-            localPort: st.port + 1,
-            onPaired: (peerId: string): void => {
-              setP2pPeers([...getP2pPeers(), peerId]);
-              setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
-            },
-            // Đục lỗ mất hàng chục giây. Im lặng suốt lượt là bề mặt nói dối — nhật ký phải thấy nhịp.
-            onRound: ({ round, phase }) => daemonLog(`[channel] đục lỗ vòng ${round} · ${phase === "ban" ? "bắn" : "nghe"}`),
+        const info = ch.armPunchWait({
+          target: { host: target.host, port: target.port, deviceId: wantId || st.peers[0] },
+          shareKey: readFileSync(keyFile, "utf8").trim(),
+          appVersion: appVersion(),
+          allowedPeers: st.peers,
+          wantPair,
+          // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
+          localPort: st.port + 1,
+          onPaired: (peerId: string): void => {
+            setP2pPeers([...getP2pPeers(), peerId]);
+            setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
           },
-        );
-        if (!p.error) return json(res, { ok: true, ...p, addr: `${target.host}:${target.port}`, via: "punch" });
-        return json(res, {
-          ok: false,
-          ...p,
-          addr: `${target.host}:${target.port}`,
-          via: "punch",
-          error: `${p.error}. Đục lỗ chỉ ăn khi CẢ HAI máy bấm cùng lúc — bấm lại ở máy kia trong vài giây.`,
+          onReceived: (blocks: number): void => {
+            daemonLog(`[channel] chỗ chờ nhận ${blocks} khối — merge vào kho`);
+            void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
+          },
+          log: (m: string) => daemonLog(m),
         });
+        // `waiting` là thứ bề mặt PHẢI đọc: trả `ok:true` với 0 khối mà không có cờ này thì nó in
+        // "✓ gửi 0 · nhận 0" — đọc thành ĐÃ XONG, tức bề mặt nói dối về một việc chưa xảy ra.
+        return json(res, { ok: true, waiting: true, ...info, dialFailed: String(last.error ?? "") });
       }
       return json(res, { ok: false, ...last });
     }

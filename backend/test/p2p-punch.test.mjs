@@ -239,22 +239,45 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
     .filter((l) => !l.trim().startsWith("//"))
     .join("\n");
 
-  // Neo vào chỗ GỌI, không vào tên — `"punchToPeer"` trần vẫn khớp một chú thích hay một
-  // định nghĩa, nên vứt hẳn lời gọi đi mà cổng vẫn xanh (bài học `p2pWhy`).
-  assert.match(code, /ch\.punchToPeer\(/, "nhánh /channel-sync phải GỌI punchToPeer, không chỉ nhắc tên nó");
+  // Neo vào chỗ GỌI, không vào tên — tên trần vẫn khớp một chú thích hay một định nghĩa, nên
+  // vứt hẳn lời gọi đi mà cổng vẫn xanh (bài học `p2pWhy`).
+  //
+  // 🔄 Neo ĐI THEO bản viết lại: cửa vào nay là `armPunchWait` (MỞ CHỖ CHỜ) chứ không phải
+  // `punchToPeer` (chạy một lượt). Bản đầu neo vào `punchToPeer` và đỏ ngay khi hành vi được
+  // sửa cho ĐÚNG — đúng thứ `02_RULES` gọi là neo test không theo bản viết lại.
+  assert.match(code, /ch\.armPunchWait\(/, "nhánh /channel-sync phải MỞ CHỖ CHỜ, không chỉ nhắc tên nó");
+
+  // 🔴 CA ÂM QUAN TRỌNG NHẤT của cả ca này: endpoint KHÔNG được `await` một lượt đục lỗ.
+  // Đó chính là hình dạng bắt HAI MÁY BẤM CÙNG LÚC — user bác thẳng: *"ai lại canh đi bấm
+  // cùng lúc"*. Quay lại hình dạng đó là quay lại đúng cái lỗi đã được chỉ ra.
+  assert.ok(
+    !/await ch\.punchToPeer\(/.test(code),
+    "endpoint await một lượt đục lỗ ⇒ lại bắt hai máy bấm cùng lúc",
+  );
 
   // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
   assert.match(code, /localPort:\s*st\.port \+ 1/, "phải lệch khỏi cổng daemon đang giữ");
 
-  // Đục lỗ tốn ~20 giây; im lặng suốt lượt là bề mặt nói dối (§Bề mặt CHẾT THEO nền).
-  assert.match(code, /onRound:/, "phải báo nhịp ra nhật ký, không chạy im");
+  // Chỗ chờ sống tới hàng PHÚT trong daemon ⇒ bề mặt phải đọc được nó ở trạng thái, không chỉ
+  // trong câu trả lời của cú bấm: đóng hộp thoại rồi mở lại vẫn phải thấy đang chờ ai.
+  const status = UI.slice(UI.indexOf('p === "/channel-status"'), UI.indexOf('p === "/channel-sync"'));
+  assert.match(status, /punchWait: ch\.punchWaitState\(\)/, "/channel-status phải phơi chỗ chờ, nếu không trạng thái nền là vô hình");
+
+  // Bấm rồi phải biết NÓ ĐANG CHỜ. Trả `ok:true` với 0 khối mà không có cờ này thì bề mặt in
+  // "✓ gửi 0 · nhận 0" cho một việc chưa xảy ra.
+  assert.match(code, /waiting: true/, "phải có cờ waiting, không để bề mặt đọc thành đã xong");
 
   // CA ÂM: câu "đục lỗ NAT chưa dựng" nay là một lời khai SAI — bề mặt không được nói nó nữa.
   assert.ok(
     !/đục lỗ NAT chưa dựng"/.test(code),
     "bề mặt còn khai 'đục lỗ NAT chưa dựng' trong khi lớp đó đã dựng — bề mặt nói dối",
   );
-  // ...và phải nói đúng thứ ĐANG thiếu: địa chỉ ngoài, cộng điều kiện hai máy cùng lúc.
+  // ...và phải nói đúng thứ ĐANG thiếu: địa chỉ ngoài.
   assert.match(code, /ĐỊA CHỈ NGOÀI/, "phải nêu đúng thứ còn thiếu là địa chỉ, không phải lớp đục lỗ");
-  assert.match(code, /CÙNG LÚC/, "phải nêu điều kiện: đục lỗ chỉ ăn khi hai máy cùng bấm");
+
+  // 🔴 CA ÂM: bề mặt KHÔNG được dặn "bấm cùng lúc" nữa. Câu đó đúng với bản một-lượt-20-giây và
+  // SAI từ khi có chỗ chờ — user thấy đúng nó trên màn hình rồi hỏi *"sao kì vậy?"*. Một câu
+  // hướng dẫn đã hết đúng thì tệ hơn không có câu nào.
+  assert.ok(!/CÙNG LÚC/.test(code), "bề mặt còn dặn bấm CÙNG LÚC trong khi đã có chỗ chờ");
+  assert.match(code, /chỗ chờ/, "phải nói ra cơ chế thật: bên dán trước mở chỗ chờ");
 });
