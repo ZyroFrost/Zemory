@@ -1,0 +1,7 @@
+# EOL: chuẩn của repo là LF. Khoá bằng MÁY thay vì trông vào việc mỗi phiên tự nhớ.
+# Dòng này phải đứng TRƯỚC các dòng LFS bên dưới: gitattributes lấy dòng SAU ghi đè dòng
+# TRƯỚC, nên `-text` của LFS mới thắng được `text=auto` cho nhị phân.
+* text=auto eol=lf
+
+*.pbix filter=lfs diff=lfs merge=lfs -text
+*.xlsx filter=lfs diff=lfs merge=lfs -text
