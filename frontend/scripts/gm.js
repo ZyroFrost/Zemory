@@ -462,7 +462,7 @@
       zset('addPeerMsg',t('p2p.syncing'));
       zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
         if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
-        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0))+(r.viaRelay?' · '+t('p2p.viaRelay'):''));
+        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
       });
     }
