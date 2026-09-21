@@ -14,6 +14,7 @@ import test from "node:test";
 import { join } from "node:path";
 import net from "node:net";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync as readSrc } from "node:fs";
 import { openMemory } from "../../dist/memory/db.js";
 import {
   exportMemoryBundle,
@@ -217,4 +218,43 @@ test("CA ÂM: cổng nội đã bị chiếm ⇒ báo lý do rõ, KHÔNG ném, k
   assert.ok(r.error, "phải NÓI lý do, không im lặng trả về rỗng");
   assert.match(r.error, /đục lỗ không ăn/, `lý do phải nêu điều kiện, đang là: ${r.error}`);
   assert.equal(r.sentBlocks, 0);
+});
+
+// ── BỀ MẶT PHẢI THẤY LỚP NÀY — xây rồi mà nút không gọi thì vẫn là 0% dùng được ─────────
+test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục lỗ, và thôi khai 'chưa dựng'", () => {
+  const UI = readSrc(new URL("../src/ui.ts", import.meta.url), "utf8");
+
+  // Cắt ĐÚNG thân nhánh `/channel-sync` theo MỐC CODE, không theo số ký tự (bẫy "cửa sổ N ký
+  // tự" repo đã trả giá nhiều lần: hàm dài thêm một chú thích là phép kiểm rơi ra ngoài).
+  const from = UI.indexOf('p === "/channel-sync"');
+  assert.ok(from > 0, "không thấy nhánh /channel-sync");
+  const to = UI.indexOf('p === "/channel-probe"', from);
+  assert.ok(to > from, "không thấy mốc kết thúc nhánh");
+  const body = UI.slice(from, to);
+  // Soi CHỮ thì phải bỏ CHÚ THÍCH trước. Bản đầu của ca ÂM dưới đây đỏ oan vì chính chú thích
+  // trong mã có nhắc lại cụm sai để giải thích vì sao nó bị bỏ — đúng bẫy "cổng quét cả chú
+  // thích" repo đã trả giá (cổng light-theme đỏ vì một mã hex nằm trong comment CSS).
+  const code = body
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("//"))
+    .join("\n");
+
+  // Neo vào chỗ GỌI, không vào tên — `"punchToPeer"` trần vẫn khớp một chú thích hay một
+  // định nghĩa, nên vứt hẳn lời gọi đi mà cổng vẫn xanh (bài học `p2pWhy`).
+  assert.match(code, /ch\.punchToPeer\(/, "nhánh /channel-sync phải GỌI punchToPeer, không chỉ nhắc tên nó");
+
+  // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
+  assert.match(code, /localPort:\s*st\.port \+ 1/, "phải lệch khỏi cổng daemon đang giữ");
+
+  // Đục lỗ tốn ~20 giây; im lặng suốt lượt là bề mặt nói dối (§Bề mặt CHẾT THEO nền).
+  assert.match(code, /onRound:/, "phải báo nhịp ra nhật ký, không chạy im");
+
+  // CA ÂM: câu "đục lỗ NAT chưa dựng" nay là một lời khai SAI — bề mặt không được nói nó nữa.
+  assert.ok(
+    !/đục lỗ NAT chưa dựng"/.test(code),
+    "bề mặt còn khai 'đục lỗ NAT chưa dựng' trong khi lớp đó đã dựng — bề mặt nói dối",
+  );
+  // ...và phải nói đúng thứ ĐANG thiếu: địa chỉ ngoài, cộng điều kiện hai máy cùng lúc.
+  assert.match(code, /ĐỊA CHỈ NGOÀI/, "phải nêu đúng thứ còn thiếu là địa chỉ, không phải lớp đục lỗ");
+  assert.match(code, /CÙNG LÚC/, "phải nêu điều kiện: đục lỗ chỉ ăn khi hai máy cùng bấm");
 });

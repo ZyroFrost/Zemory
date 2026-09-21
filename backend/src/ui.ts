@@ -3055,10 +3055,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
       if (!candidates.length) {
+        // 🔴 Câu cũ ở đây khai *"đục lỗ NAT chưa dựng"* — nay SAI (dựng 2026-09-21, `plan/24 §6f`).
+        // Thứ còn thiếu KHÔNG phải lớp đục lỗ mà là ĐỊA CHỈ: mã máy cố ý chỉ mang vân tay, nên khác
+        // mạng thì không ai biết máy kia ở đâu. Nói đúng thứ đang thiếu, đừng nói thứ đã có.
         return json(res, {
           ok: false,
           error: wantId
-            ? "không thấy máy đó trên mạng này — hai máy khác mạng thì chưa có đường (đục lỗ NAT chưa dựng)"
+            ? "không thấy máy đó trên mạng này. Khác mạng thì cần ĐỊA CHỈ NGOÀI của nó (mã máy chỉ mang vân tay) — dán `ip:cổng` vào đây, và hai máy phải bấm CÙNG LÚC để đục lỗ NAT."
             : "chưa biết máy nào — dán mã máy kia",
         });
       }
@@ -3093,6 +3096,43 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         );
         last = { ...r, addr: cand };
         if (!r.error) return json(res, { ok: true, ...last });
+      }
+
+      // ĐỤC LỖ NAT — đường rơi xuống khi không địa chỉ nào gọi thẳng được (`plan/24 §6f`).
+      // Nút này phải thấy đúng năng lực CLI đã có: một lớp xây rồi mà bề mặt chính không gọi thì
+      // vẫn là 0% dùng được (bài học `WEB_LABEL`). Chỉ đi khi mã lỗi nghĩa là *không có đường vào* —
+      // chìa lệch hay máy lạ thì đục lỗ cũng vô ích, đừng bắt người dùng chờ ~20 giây cho nó.
+      const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
+      const target = ch.parsePeerAddress(String(candidates[candidates.length - 1] ?? ""));
+      if (target && noWayIn.has(String(last.error ?? ""))) {
+        daemonLog(`[channel] gọi thẳng trượt (${String(last.error)}) ⇒ đục lỗ NAT tới ${target.host}:${target.port}`);
+        const p = await ch.punchToPeer(
+          { host: target.host, port: target.port, deviceId: wantId || st.peers[0] },
+          {
+            channelDir: st.dir,
+            identity: ch.channelIdentity(),
+            shareKey: readFileSync(keyFile, "utf8").trim(),
+            appVersion: appVersion(),
+            allowedPeers: st.peers,
+            wantPair,
+            // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
+            localPort: st.port + 1,
+            onPaired: (peerId: string): void => {
+              setP2pPeers([...getP2pPeers(), peerId]);
+              setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
+            },
+            // Đục lỗ mất hàng chục giây. Im lặng suốt lượt là bề mặt nói dối — nhật ký phải thấy nhịp.
+            onRound: ({ round, phase }) => daemonLog(`[channel] đục lỗ vòng ${round} · ${phase === "ban" ? "bắn" : "nghe"}`),
+          },
+        );
+        if (!p.error) return json(res, { ok: true, ...p, addr: `${target.host}:${target.port}`, via: "punch" });
+        return json(res, {
+          ok: false,
+          ...p,
+          addr: `${target.host}:${target.port}`,
+          via: "punch",
+          error: `${p.error}. Đục lỗ chỉ ăn khi CẢ HAI máy bấm cùng lúc — bấm lại ở máy kia trong vài giây.`,
+        });
       }
       return json(res, { ok: false, ...last });
     }
