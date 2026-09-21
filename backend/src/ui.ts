@@ -2954,6 +2954,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Kênh máy-tới-máy (plan/24 §5). Chỉ ĐỌC — không mở socket, không dò gì.
       const ch = await import("./memory/channel/index.js");
       const st = ch.channelStatus();
+      // Đo lại ở NỀN, không chặn lượt trả về: STUN giới hạn nhịp nên chỉ hỏi khi đệm quá tuổi
+      // (bẫy đã trả giá ở `§6e` — nện một server ba lượt là năm phép sau hết giờ sạch).
+      if (ch.externalAddressStale()) void ch.refreshExternalAddress(st.port);
       return json(res, {
         ok: true,
         ...st,
@@ -2967,7 +2970,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         punchWait: ch.punchWaitState(),
         // MỘT chuỗi duy nhất để đưa máy kia — gom vân tay + relay + địa chỉ LAN. Bề mặt chỉ cần
         // một hàng và một nút Chép; người dùng thôi phải chọn "đưa địa chỉ nào".
-        machineCode: ch.encodeMachineCode({ fingerprint: st.deviceId }),
+        // Mã mang ĐỊA CHỈ NGOÀI khi đã đo được — đó là thứ làm ca KHÁC MẠNG chạy bằng một chuỗi
+        // (user chốt 2026-09-13: *"ID chính là bộ khai báo IP"*). Chưa đo được ⇒ mã không mang gì và
+        // ca cùng mạng vẫn chạy y nguyên (fail-open).
+        machineCode: ch.encodeMachineCode({ fingerprint: st.deviceId, external: ch.externalAddress() ?? undefined }),
+        externalAddr: ch.externalAddress(),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
         // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
@@ -3061,8 +3068,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const wantId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
       const known = getP2pPeerAddrs();
       const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
+      // Địa chỉ NGOÀI nằm trong chính mã vừa dán — đây là thứ mở được ca KHÁC MẠNG mà không ai gõ
+      // một IP. Xếp SAU địa chỉ tầng dò LAN: cùng mạng thì đường LAN rẻ hơn và tươi hơn (`§1c`).
+      const fromCode = code?.external ? [`${code.external.host}:${code.external.port}`] : [];
       const candidates = wantId
-        ? ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, wantId)).map((s) => `${s.host}:${s.port}`)
+        ? [
+            ...ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, wantId)).map((s) => `${s.host}:${s.port}`),
+            ...fromCode,
+            ...(known[wantId] ?? []),
+          ]
         : raw
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
@@ -3120,13 +3134,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const target = ch.parsePeerAddress(String(candidates[candidates.length - 1] ?? ""));
       if (target && noWayIn.has(String(last.error ?? ""))) {
         const info = ch.armPunchWait({
-          target: { host: target.host, port: target.port, deviceId: wantId || st.peers[0] },
+          // Nhắm CỔNG ĐỤC LỖ của máy kia, không nhắm cổng NGHE của nó: cổng nghe do daemon bên đó
+          // giữ nên bên đó không thể tự mở lỗ trên chính nó (`EADDRINUSE`). Hai máy suy ra cùng số.
+          target: { host: target.host, port: ch.punchPortOf(target.port), deviceId: wantId || st.peers[0] },
           shareKey: readFileSync(keyFile, "utf8").trim(),
           appVersion: appVersion(),
           allowedPeers: st.peers,
           wantPair,
           // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
-          localPort: st.port + 1,
+          localPort: ch.punchPortOf(st.port),
           onPaired: (peerId: string): void => {
             setP2pPeers([...getP2pPeers(), peerId]);
             setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });

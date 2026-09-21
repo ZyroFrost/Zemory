@@ -256,7 +256,10 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   );
 
   // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
-  assert.match(code, /localPort:\s*st\.port \+ 1/, "phải lệch khỏi cổng daemon đang giữ");
+  // Neo ĐI THEO bản viết lại: số `+1` gõ tay đã thành `punchPortOf`, để hai máy không bao giờ
+  // suy ra hai số khác nhau.
+  assert.match(code, /localPort:\s*ch\.punchPortOf\(st\.port\)/, "phải lệch khỏi cổng daemon, qua hàm suy chung");
+  assert.match(code, /ch\.punchPortOf\(target\.port\)/, "phải nhắm CỔNG ĐỤC LỖ của máy kia, không nhắm cổng nghe của nó");
 
   // Chỗ chờ sống tới hàng PHÚT trong daemon ⇒ bề mặt phải đọc được nó ở trạng thái, không chỉ
   // trong câu trả lời của cú bấm: đóng hộp thoại rồi mở lại vẫn phải thấy đang chờ ai.
@@ -291,4 +294,76 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   // hướng dẫn đã hết đúng thì tệ hơn không có câu nào.
   assert.ok(!/CÙNG LÚC/.test(code), "bề mặt còn dặn bấm CÙNG LÚC trong khi đã có chỗ chờ");
   assert.match(code, /chỗ chờ/, "phải nói ra cơ chế thật: bên dán trước mở chỗ chờ");
+});
+
+// ── MÃ MANG ĐỊA CHỈ NGOÀI — mảnh mở ca KHÁC MẠNG bằng một chuỗi ────────────────────────
+test("mã: chở được ĐỊA CHỈ NGOÀI, và mã KHÔNG có địa chỉ vẫn đọc được (tương thích ngược)", async () => {
+  const { encodeMachineCode, parseMachineCode, punchPortOf } = await import("../../dist/memory/channel/index.js");
+  const id = "HMVEQRS7-IJADAN5J-JLKQQUD2-Q32CWNBK-S6N4WZF5-B3JBFHCI-EV4WLIQ5-XXA2";
+
+  // Địa chỉ tài liệu RFC 5737 — công khai về mặt dải, không phải của ai.
+  const withAddr = encodeMachineCode({ fingerprint: id, external: { host: "203.0.113.7", port: 21038 } });
+  const back = parseMachineCode(withAddr);
+  assert.equal(back?.fingerprint, id, "vân tay phải về nguyên vẹn");
+  assert.deepEqual(back?.external, { host: "203.0.113.7", port: 21038 }, "địa chỉ ngoài phải về nguyên vẹn");
+
+  // Vẫn phải NGẮN. Bản JSON+base64 từng dài 164 ký tự và tràn cả hàng trên bề mặt.
+  assert.ok(withAddr.length <= 80, `mã có địa chỉ phải ngắn, đang ${withAddr.length} ký tự`);
+
+  // Mã KHÔNG địa chỉ vẫn hợp lệ — đó là mã của máy chưa đo được địa chỉ ngoài.
+  const bare = encodeMachineCode({ fingerprint: id });
+  assert.equal(parseMachineCode(bare)?.fingerprint, id);
+  assert.equal(parseMachineCode(bare)?.external, undefined, "không có địa chỉ thì phải là undefined, không bịa");
+  assert.ok(bare.length <= 60, `mã trần phải ngắn, đang ${bare.length} ký tự`);
+
+  // Cổng đục lỗ suy TẤT ĐỊNH — hai máy phải ra cùng số, không ai gõ.
+  assert.equal(punchPortOf(21038), 21039);
+  assert.equal(punchPortOf(back.external.port), 21039, "máy kia suy ra đúng cổng đục lỗ từ cổng trong mã");
+});
+
+test("CA ÂM: mã KHÔNG được chở địa chỉ dải RIÊNG — đúng cái bẫy đã gỡ 21/09c", async () => {
+  const { encodeMachineCode, parseMachineCode, publicIpv4Bytes } = await import(
+    "../../dist/memory/channel/index.js"
+  );
+  const id = "HMVEQRS7-IJADAN5J-JLKQQUD2-Q32CWNBK-S6N4WZF5-B3JBFHCI-EV4WLIQ5-XXA2";
+
+  // Một địa chỉ LAN trong mã là vô dụng ở mạng khác, mà lại làm người dùng tin là dùng được —
+  // bề mặt nói dối bằng DỮ LIỆU. Đây chính là vế bị gỡ ngày 2026-09-21c.
+  for (const bad of ["192.168.1.39", "10.101.1.2", "172.16.0.5", "127.0.0.1", "169.254.1.1", "100.64.0.1"]) {
+    assert.equal(publicIpv4Bytes(bad), null, `${bad} là dải riêng/loopback, phải bị loại`);
+    const s = encodeMachineCode({ fingerprint: id, external: { host: bad, port: 21038 } });
+    assert.equal(parseMachineCode(s)?.external, undefined, `mã không được chở ${bad}`);
+    assert.ok(s.length <= 60, `địa chỉ bị loại thì mã phải về dạng TRẦN, đang ${s.length} ký tự`);
+  }
+
+  // Rác cũng không được thành địa chỉ.
+  for (const junk of ["", "abc", "1.2.3", "1.2.3.4.5", "999.1.1.1", "224.0.0.1"]) {
+    assert.equal(publicIpv4Bytes(junk), null, `phải loại: ${junk}`);
+  }
+  // ...và một địa chỉ công khai thật thì phải ĐI QUA (ca dương, để phép lọc không chặn mù).
+  assert.ok(publicIpv4Bytes("203.0.113.7"), "địa chỉ công khai phải đi qua");
+});
+
+// ── GIỮ LỖ MỞ — đường MỘT BÊN DÁN ──────────────────────────────────────────────────────
+test("giữ lỗ: bật kênh phải tự mở một chỗ chờ KHÔNG nhắm máy nào", () => {
+  const CH = readSrc(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const start = CH.slice(CH.indexOf("export async function startChannelServer"), CH.indexOf("export function stopChannelServer"));
+
+  // Không có dòng này thì máy chỉ NGHE trên cổng kênh — mà nó không thể tự mở lỗ trên chính cổng
+  // đó (`EADDRINUSE`), nên máy kia dán mã cũng không vào được. Đây là mảnh của đường một-bên.
+  assert.match(start, /armPunchWait\(\{\s*\n?\s*target: null/, "bật kênh phải tự giữ một lỗ mở");
+  assert.match(start, /localPort: punchPortOf\(server\.port\)/, "lỗ phải mở ở cổng ĐỤC LỖ, không phải cổng nghe");
+
+  // CA ÂM: không được đè một chỗ chờ đang nhắm một máy CỤ THỂ — cái đó đang làm việc cụ thể hơn.
+  assert.match(start, /punchWaitState\(\)/, "phải xem có chỗ chờ nào đang nhắm máy cụ thể không");
+
+  // Địa chỉ ngoài phải được đo ở NỀN lúc bật, để mã mang được nó từ lượt vẽ đầu.
+  assert.match(start, /refreshExternalAddress\(server\.port\)/, "bật kênh phải đo địa chỉ ngoài ở nền");
+
+  // 🔴 ĐÓNG là đóng MỌI thứ của kênh. Thiếu vế này thì một lượt bật-rồi-tắt để lại một vòng đục
+  // lỗ chạy 10 phút: trong daemon là giữ lỗ NAT cho một kênh ĐÃ TẮT, và trong một tiến trình test
+  // thì bộ hẹn giờ của nó giữ event loop sống ⇒ **cổng treo**. Đã xảy ra thật: lượt quét đầy đủ
+  // đứng im ở nhóm `p2p-channel` đúng vì lý do này.
+  const stop = CH.slice(CH.indexOf("export function stopChannelServer"), CH.indexOf("export function stopChannelServer") + 700);
+  assert.match(stop, /cancelPunchWait\(\);/, "đóng kênh phải đóng luôn chỗ chờ, nếu không nó chạy tiếp 10 phút");
 });

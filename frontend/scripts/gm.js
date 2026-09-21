@@ -285,7 +285,8 @@
       var w=c.punchWait;
       if(w){
         var sub=w.outcome?t('p2p.waitClosed').replace('{r}',w.outcome.error||''):t('p2p.waitRounds').replace('{n}',zN(w.rounds||0));
-        if(!(w.outcome&&w.outcome.won))ab.appendChild(p2pFact(t('p2p.waitH'),w.addr||'',sub));
+        // `addr` rỗng = đang giữ lỗ mở, không nhắm máy nào. Chữ lấy từ i18n, không lấy từ payload.
+        if(!(w.outcome&&w.outcome.won))ab.appendChild(p2pFact(t('p2p.waitH'),w.addr||t('p2p.waitHold'),sub));
       }
     }
     // MỘT chuỗi để đưa máy kia — gom vân tay + relay + địa chỉ. Người dùng chép ĐÚNG thứ này,

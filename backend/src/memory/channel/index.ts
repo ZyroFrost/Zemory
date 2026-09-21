@@ -14,6 +14,7 @@ import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromByte
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
+import { resolveStunServers, stunQueryTcp } from "./stun.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -155,6 +156,78 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
 let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
+// ── ĐỊA CHỈ NGOÀI CỦA MÁY NÀY — mảnh làm ca KHÁC MẠNG chạy bằng một mã ────────────────────────
+/**
+ * Khác mạng thì không tầng dò nào tìm ra máy kia, nên địa chỉ phải đi TRONG mã. Máy tự đo địa chỉ
+ * ngoài của chính nó bằng STUN công khai (không tài khoản, không máy chủ của user — `§1a-0`), rồi
+ * `encodeMachineCode` chở nó. Người dùng dán MỘT chuỗi và không bao giờ thấy một IP — đúng câu user
+ * chốt 2026-09-13: *"ID chính là bộ khai báo IP, chỉ là IP không lộ ra bên ngoài thôi"*.
+ *
+ * 🔴 **Có ĐỆM, và đệm là bắt buộc chứ không phải tối ưu.** STUN công khai **giới hạn nhịp**: đo
+ * 2026-09-21, nện cùng một IP server ba lượt liền là năm phép sau hết giờ sạch, và đọc thẳng thì ra
+ * kết luận SAI *"mạng chặn"* (`§6e`). Bề mặt vẽ lại mã mỗi lần mở panel ⇒ hỏi STUN mỗi lượt vẽ là tự
+ * bắn vào chân mình.
+ *
+ * TTL 5 phút: địa chỉ ngoài đổi chậm hơn địa chỉ LAN nhưng KHÔNG bất biến ⇒ mã phải tươi lúc người
+ * dùng chép. Làm mới ở NỀN, nên không ai phải chờ một lời gọi mạng để thấy mã của mình.
+ */
+/**
+ * Cổng ĐỤC LỖ = cổng kênh + 1, suy TẤT ĐỊNH ở cả hai máy.
+ *
+ * Vì sao phải lệch: daemon giữ cổng kênh để NGHE, và Node không cho chia một cổng TCP giữa lớp nghe
+ * và lớp gọi (`EADDRINUSE`, đo ở `§6e`) ⇒ máy KHÔNG THỂ tự mở một lỗ trên chính cổng kênh. Cổng kề
+ * bên thì mở được, và vì cả hai máy suy ra cùng một số nên mã chỉ cần chở **cổng kênh**.
+ */
+export const PUNCH_PORT_OFFSET = 1;
+export function punchPortOf(channelPort: number): number {
+  return channelPort + PUNCH_PORT_OFFSET;
+}
+
+const EXT_TTL_MS = 5 * 60_000;
+let extAddr: { host: string; port: number; at: number } | null = null;
+let extBusy = false;
+
+/** Địa chỉ ngoài đã đo, ĐỌC THUẦN — không mở socket, không chờ mạng. `null` = chưa đo được. */
+export function externalAddress(): { host: string; port: number } | null {
+  return extAddr ? { host: extAddr.host, port: extAddr.port } : null;
+}
+
+/** Đệm đã quá tuổi chưa — người gọi tự quyết có làm mới không. */
+export function externalAddressStale(): boolean {
+  return !extAddr || Date.now() - extAddr.at > EXT_TTL_MS;
+}
+
+/**
+ * Đo lại địa chỉ ngoài — MỘT lời hỏi, không phải cả bảng phân loại NAT.
+ *
+ * `measureNat` hỏi mọi server để phân loại ánh xạ; ở đây chỉ cần *"tôi ở địa chỉ nào"*, nên đi
+ * server đầu tiên trả lời rồi dừng. Cổng NGOÀI lấy từ chính phép đo; NAT đo được là giữ nguyên cổng
+ * nguồn (`§6e`) nên nó thường bằng cổng nghe, nhưng **đừng suy khi đã đo được**.
+ *
+ * **Fail-open** (điều 9): không đo được ⇒ giữ đệm cũ, mã rơi về bản KHÔNG mang địa chỉ và ca cùng
+ * mạng chạy y nguyên. Chống gọi trùng: hai lượt cùng lúc thì lượt sau dùng đệm.
+ */
+export async function refreshExternalAddress(localPort = getP2pPort()): Promise<{ host: string; port: number } | null> {
+  if (extBusy) return externalAddress();
+  extBusy = true;
+  try {
+    for (const s of await resolveStunServers()) {
+      const m = await stunQueryTcp(s, { timeoutMs: 3000 });
+      if (!m) continue;
+      // Cổng lấy từ CẤU HÌNH, không lấy từ phép đo: phép đo đi bằng một cổng tuỳ ý nên cổng nó
+      // báo về là cổng của chính nó, vô dụng với máy kia. Thứ máy kia phải gọi vào là **cổng kênh**
+      // của máy này — và nó đúng ở ngoài vì NAT đo được là GIỮ NGUYÊN cổng nguồn (`§6e`).
+      extAddr = { host: m.ip, port: localPort, at: Date.now() };
+      return externalAddress();
+    }
+    return externalAddress();
+  } catch {
+    return externalAddress();
+  } finally {
+    extBusy = false;
+  }
+}
+
 // ── CHỖ CHỜ ĐỤC LỖ — "slot" mà bên dán mã trước mở ra để bên kia tới lúc nào cũng gặp ─────────
 /**
  * 🔴 **Vì sao phải có, và vì sao nó là TRẠNG THÁI NỀN chứ không phải một cú bấm.**
@@ -206,7 +279,17 @@ export function cancelPunchWait(): void {
  * Trả về NGAY: người bấm thấy *"đang chờ"*, không đứng nhìn một thanh chạy 20 giây rồi nhận lỗi.
  */
 export function armPunchWait(o: {
-  target: { host: string; port: number; deviceId?: string };
+  /**
+   * Máy cần gặp. **`null` = GIỮ LỖ MỞ mà không biết máy kia ở đâu** — nửa *bắn* nhắm một server
+   * công khai chỉ để tạo ánh xạ, nửa *nghe* vẫn bind đúng cổng đục lỗ.
+   *
+   * 🔴 Đây là đường **MỘT BÊN DÁN**: A giữ lỗ, B dán mã của A (mã mang địa chỉ ngoài của A) rồi gọi
+   * vào. NAT của A lọc KHÔNG phụ thuộc đích ⇒ gói của B vào được và A không cần biết B là ai. Lọc
+   * phụ thuộc địa chỉ ⇒ không vào được, và lúc đó mới cần dán cả hai bên.
+   * ⚠ **Thuộc tính đó CHƯA ĐO ĐƯỢC từ một máy** (`§6e`: server 5780 duy nhất không tuân
+   * CHANGE-REQUEST) ⇒ dựng đường này là để HAI MÁY THẬT trả lời, không phải để khẳng định nó chạy.
+   */
+  target: { host: string; port: number; deviceId?: string } | null;
   shareKey: string;
   appVersion: string;
   allowedPeers: string[];
@@ -225,16 +308,28 @@ export function armPunchWait(o: {
   const roundMs = o.roundMs ?? 2000;
   const waitMs = o.waitMs ?? 10 * 60_000;
   const info: PunchWaitInfo = {
-    peerId: o.target.deviceId ?? "",
-    addr: `${o.target.host}:${o.target.port}`,
+    peerId: o.target?.deviceId ?? "",
+    // RỖNG = không nhắm máy nào (đang giữ lỗ mở). Trường này là DỮ LIỆU, không phải một câu:
+    // backend không soạn chữ tiếng Việt cho UI — chữ đi qua i18n (`§Ngôn ngữ`, audit 07/09 #3).
+    addr: o.target ? `${o.target.host}:${o.target.port}` : "",
     since: new Date().toISOString(),
     rounds: 0,
   };
   const slot = { info, stopped: false };
   punchWait = slot;
-  log(`[channel] mở chỗ chờ đục lỗ tới ${info.addr} — bên kia bấm lúc nào cũng gặp, không cần cùng lúc`);
+  log(
+    o.target
+      ? `[channel] mở chỗ chờ đục lỗ tới ${info.addr} — bên kia bấm lúc nào cũng gặp, không cần cùng lúc`
+      : `[channel] giữ lỗ mở ở cổng ${o.localPort} — máy nào có mã của máy này đều gọi vào được`,
+  );
 
-  void punchToPeer(o.target, {
+  // Không biết máy kia ⇒ bắn ra một đích CÔNG KHAI chỉ để tạo ánh xạ. Đích là gì không quan trọng;
+  // thứ quan trọng là NAT thấy một gói ĐI RA từ cổng này. Địa chỉ tài liệu RFC 5737 thì không ai
+  // trả lời (đủ để mở ánh xạ), nhưng dùng một server STUN THẬT thì gói còn được hồi đáp nên ánh xạ
+  // sống lâu hơn — và nó vốn đã nằm trong danh sách công khai của `stun.ts`.
+  const hold = { host: "203.0.113.1", port: 9, deviceId: o.target?.deviceId };
+
+  void punchToPeer(o.target ?? hold, {
     channelDir: channelPen(currentStoreRoot()),
     identity: channelIdentity(),
     shareKey: o.shareKey,
@@ -281,6 +376,47 @@ export function armPunchWait(o: {
 const CODE_PREFIX = "ZM1.";
 export interface MachineCode {
   fingerprint: string;
+  /**
+   * Địa chỉ NGOÀI mà máy tự đo được bằng STUN. Vắng ⇒ mã chỉ dùng được khi hai máy CÙNG MẠNG.
+   *
+   * 🔴 **Vì sao mã mang địa chỉ LẠI, sau khi đã gỡ hôm `[2026-09-21c]`.** Vế bị gỡ là **địa chỉ
+   * LAN**, và lý do là nó đổi (đo: `.90 → .81 → .6` trong một ngày) **và tầng dò LAN làm việc đó tốt
+   * hơn** — nó thấy địa chỉ HIỆN TẠI. Lý do đó **không áp cho địa chỉ ngoài**: khác mạng thì không có
+   * tầng dò nào thay được, nên mã là chỗ DUY NHẤT chở được nó.
+   *
+   * Đây đúng mô hình user chốt 2026-09-13: *"ID chính là bộ khai báo IP, chỉ là IP không lộ ra bên
+   * ngoài thôi — vẫn liên kết trực tiếp được"*. Người dùng dán MỘT chuỗi, không bao giờ thấy một IP.
+   *
+   * ⚠ **Chỉ nhận địa chỉ CÔNG KHAI.** Nhét một địa chỉ dải riêng vào đây là tái tạo đúng cái bẫy
+   * `[2026-09-21c]` vừa gỡ: nó vô dụng ở mạng khác và hết hạn nhanh. Có ca ÂM giữ.
+   */
+  external?: { host: string; port: number };
+}
+
+/** Kiểu địa chỉ trong mã. Byte này là byte `0` bỏ không từ thời relay — dùng lại, không nới khuôn. */
+const CODE_ADDR_NONE = 0;
+const CODE_ADDR_IPV4 = 1;
+
+/**
+ * Bốn byte của một địa chỉ IPv4 **CÔNG KHAI**, hoặc `null`.
+ *
+ * Loại thẳng loopback · dải riêng (10/8 · 172.16/12 · 192.168/16) · link-local (169.254/16) ·
+ * CGNAT (100.64/10). Một địa chỉ như thế trong mã không giúp được ca khác mạng, mà lại làm người
+ * dùng tin là giúp — bề mặt nói dối bằng dữ liệu thay vì bằng chữ.
+ */
+export function publicIpv4Bytes(host: string): Buffer | null {
+  const parts = host.trim().split(".");
+  if (parts.length !== 4) return null;
+  const n = parts.map((p) => (/^\d{1,3}$/.test(p) ? Number(p) : -1));
+  if (n.some((x) => x < 0 || x > 255)) return null;
+  const [a, b] = n;
+  if (a === 0 || a === 127 || a === 10) return null;
+  if (a === 172 && b >= 16 && b <= 31) return null;
+  if (a === 192 && b === 168) return null;
+  if (a === 169 && b === 254) return null;
+  if (a === 100 && b >= 64 && b <= 127) return null;
+  if (a >= 224) return null; // multicast + dự trữ
+  return Buffer.from(n);
 }
 /**
  * MỘT chuỗi để đưa cho máy kia: **vân tay + relay**. Dán một lần là máy kia biết mình LÀ AI và GẶP Ở
@@ -299,7 +435,16 @@ export interface MachineCode {
 export function encodeMachineCode(m: MachineCode): string {
   const fp = deviceIdBytes(m.fingerprint);
   if (!fp) return "";
-  return CODE_PREFIX + base32(Buffer.concat([Buffer.from([1]), fp, Buffer.from([0])]));
+  const ip = m.external ? publicIpv4Bytes(m.external.host) : null;
+  const port = m.external?.port ?? 0;
+  if (!ip || !(port > 0 && port <= 65535)) {
+    return CODE_PREFIX + base32(Buffer.concat([Buffer.from([1]), fp, Buffer.from([CODE_ADDR_NONE])]));
+  }
+  const tail = Buffer.alloc(7);
+  tail.writeUInt8(CODE_ADDR_IPV4, 0);
+  ip.copy(tail, 1);
+  tail.writeUInt16BE(port, 5);
+  return CODE_PREFIX + base32(Buffer.concat([Buffer.from([1]), fp, tail]));
 }
 /** Đọc mã máy. Không phải mã ⇒ `null` (để nơi gọi rơi về nhánh địa chỉ trần), KHÔNG ném. */
 export function parseMachineCode(raw: string): MachineCode | null {
@@ -307,7 +452,15 @@ export function parseMachineCode(raw: string): MachineCode | null {
   if (!s.startsWith(CODE_PREFIX)) return null;
   const buf = unbase32(s.slice(CODE_PREFIX.length).replace(/[^A-Za-z0-9]/g, "").toUpperCase());
   if (!buf || buf.length < 34 || buf.readUInt8(0) !== 1) return null;
-  return { fingerprint: deviceIdFromBytes(buf.subarray(1, 33)) };
+  const out: MachineCode = { fingerprint: deviceIdFromBytes(buf.subarray(1, 33)) };
+  // Mã KHÔNG mang địa chỉ vẫn hợp lệ — đó là mã của một máy chưa đo được địa chỉ ngoài, và ca
+  // cùng mạng không cần nó. Đọc thêm CHỈ khi byte kiểu nói có, và chỉ khi địa chỉ là CÔNG KHAI.
+  if (buf.readUInt8(33) === CODE_ADDR_IPV4 && buf.length >= 40) {
+    const host = Array.from(buf.subarray(34, 38)).join(".");
+    const port = buf.readUInt16BE(38);
+    if (publicIpv4Bytes(host) && port > 0) out.external = { host, port };
+  }
+  return out;
 }
 
 export interface ChannelServeResult {
@@ -399,6 +552,28 @@ export async function startChannelServer(o: {
     }
     running = { server, port: server.port, discovery };
     log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}`);
+
+    // Đo địa chỉ ngoài ở NỀN để mã máy mang được nó ngay từ lượt vẽ đầu (fail-open).
+    void refreshExternalAddress(server.port);
+
+    // GIỮ LỖ MỞ — đường MỘT BÊN DÁN. Bật kênh là máy này tự mở một lỗ trên cổng đục lỗ, nên máy nào
+    // có mã của nó đều gọi vào được mà máy này không cần biết trước là ai. Không đè một chỗ chờ
+    // người dùng đang nhắm tới một máy cụ thể — cái đó đang làm việc cụ thể hơn.
+    const cur = punchWaitState();
+    if (!cur || cur.outcome || !cur.peerId) {
+      armPunchWait({
+        target: null,
+        shareKey: key,
+        appVersion: o.appVersion,
+        allowedPeers: peers,
+        localPort: punchPortOf(server.port),
+        log,
+        onPaired: (peerId: string): void => {
+          o.acceptPeer?.(peerId);
+        },
+        onReceived: o.onReceived,
+      });
+    }
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
@@ -409,6 +584,11 @@ export async function startChannelServer(o: {
 
 /** Đóng máy chủ kênh nếu đang chạy. An toàn khi gọi lúc không có gì chạy. */
 export function stopChannelServer(): void {
+  // ĐÓNG là đóng MỌI thứ của kênh, kể cả chỗ chờ đang giữ lỗ. Thiếu dòng này thì một lượt bật-rồi-
+  // tắt để lại một vòng đục lỗ chạy 10 phút: trong daemon là giữ lỗ NAT cho một kênh đã tắt, và
+  // trong một TIẾN TRÌNH TEST thì bộ hẹn giờ của nó giữ event loop sống ⇒ **cổng treo 10 phút**.
+  // Bắt được đúng như vậy khi lượt quét đầy đủ đứng im ở nhóm `p2p-channel`.
+  cancelPunchWait();
   if (!running) return;
   try {
     running.discovery?.stop();
