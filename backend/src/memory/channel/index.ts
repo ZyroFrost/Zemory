@@ -348,7 +348,12 @@ export async function startChannelServer(o: {
 } ): Promise<ChannelServeResult> {
   const log = o.log ?? (() => {});
   stopChannelServer();
-  if (!getP2pEnabled()) return { listening: false, reason: "kênh đang TẮT" };
+  if (!getP2pEnabled()) {
+    // Bất biến: TẮT kênh là tắt MỌI thứ của kênh. Để một chỗ chờ sống sau khi người dùng gạt tắt
+    // là giữ lỗ NAT mở cho một kênh họ vừa tắt — đúng kiểu công tắc không tắt thật mà §F15 cấm.
+    cancelPunchWait();
+    return { listening: false, reason: "kênh đang TẮT" };
+  }
   const peers = getP2pPeers();
   const key = (o.shareKey ?? "").trim();
   if (!key) return { listening: false, reason: "chưa có chìa share" };
