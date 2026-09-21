@@ -267,6 +267,17 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   // "✓ gửi 0 · nhận 0" cho một việc chưa xảy ra.
   assert.match(code, /waiting: true/, "phải có cờ waiting, không để bề mặt đọc thành đã xong");
 
+  // Một chỗ chờ KHÔNG rút lại được là một cái bẫy — nó giữ lỗ và bắn đều trong nhiều phút.
+  // Cửa huỷ phải nằm trên CÙNG endpoint, không đẻ verb thứ hai (HP điều 17).
+  assert.match(code, /cancelPunchWait\(\)/, "phải có cửa HUỶ chỗ chờ");
+  assert.match(code, /cancel"\) === "1"/, "huỷ phải đi qua CÙNG endpoint, không đẻ cửa thứ hai");
+
+  // Bất biến: tắt kênh = tắt MỌI thứ của kênh. Chỗ chờ sống sau khi gạt tắt là giữ lỗ NAT mở
+  // cho một kênh người dùng vừa tắt — công tắc không tắt thật (§F15).
+  const CH = readSrc(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const off = CH.slice(CH.indexOf("export async function startChannelServer"), CH.indexOf("export function stopChannelServer"));
+  assert.match(off, /cancelPunchWait\(\);/, "tắt kênh phải đóng luôn chỗ chờ");
+
   // CA ÂM: câu "đục lỗ NAT chưa dựng" nay là một lời khai SAI — bề mặt không được nói nó nữa.
   assert.ok(
     !/đục lỗ NAT chưa dựng"/.test(code),

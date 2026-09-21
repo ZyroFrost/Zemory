@@ -3037,6 +3037,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       return json(res, { ok: true, peers: getP2pPeers() });
     }
     if (p === "/channel-sync") {
+      // HUỶ chỗ chờ — CÙNG cửa, không đẻ endpoint thứ hai (HP điều 17). Một chỗ chờ không rút lại
+      // được là một cái bẫy: nó giữ lỗ và bắn đều trong nhiều phút mà người bấm không gỡ ra được.
+      if (u.searchParams.get("cancel") === "1") {
+        const chx = await import("./memory/channel/index.js");
+        const had = chx.punchWaitState();
+        chx.cancelPunchWait();
+        if (had) daemonLog(`[channel] đã huỷ chỗ chờ tới ${had.addr} sau ${had.rounds} vòng`);
+        return json(res, { ok: true, cancelled: Boolean(had) });
+      }
       // Người BẤM = lượt có chủ đích. Một lượt với MỘT địa chỉ; lỗi trả nguyên văn, không nuốt.
       const ch = await import("./memory/channel/index.js");
       // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
