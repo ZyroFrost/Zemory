@@ -21,6 +21,7 @@ export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
 export * from "./stun.js";
+export * from "./punch.js";
 
 /**
  * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
