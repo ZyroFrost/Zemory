@@ -6,6 +6,7 @@
 // judgment, so it is NOT done here — that is the agent-assisted `migrate` path.
 
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -184,6 +185,21 @@ const STANDARD_AGENT = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", 
  *  CLAUDE.md exists because Claude Code reads only CLAUDE.md — it imports
  *  AGENTS.md rather than repeating it. */
 const ROOT_ENTRIES = ["AGENTS.md", "CLAUDE.md"];
+
+/**
+ * File ở GỐC bộ mẫu mà KHÔNG phải entry doc — rót nguyên văn, và **chép theo BYTE**.
+ *
+ * Vì sao tách khỏi `ROOT_ENTRIES`: danh sách kia mang ngữ nghĩa *"entry trỏ tới harness chưa"*
+ * (`entryStates`), nên nhét một file cấu hình vào đó là bắt nó trả lời một câu không dành cho nó.
+ *
+ * Vì sao `copyFileSync` chứ không đọc-rồi-ghi: việc của `.gitattributes` **chính là khoá EOL**, nên
+ * nó là file cuối cùng được phép đi qua một vòng đọc-text-rồi-ghép-lại (`02_RULES §EOL`).
+ *
+ * 🔴 Bắt được bằng CỔNG, không bằng mắt: `.gitattributes` vào bốn bộ mẫu ngày 2026-09-21 (commit
+ * `618f819`) nhưng `init` không rót nó, nên ca *"init phải rót ĐỦ"* của `adopt.test` đỏ — đúng lý do
+ * ca đó tồn tại (*"một file thêm vào bộ mẫu mà init không chép thì bộ harness thiếu vĩnh viễn"*).
+ */
+const ROOT_ASSETS = [".gitattributes"];
 
 // Projects adopted the harness under older numberings:
 //   gen-1 (pre 2026-07-09): 01_RULES / 02_TODO / 03_CHANGES (no STRUCTURE doc)
@@ -403,6 +419,19 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
       present.push(entry);
     }
   }
+  // File gốc không phải entry doc (xem `ROOT_ASSETS`) — cùng luật KHÔNG ghi đè.
+  for (const asset of ROOT_ASSETS) {
+    const src = join(tplBase, asset);
+    const dst = join(projectRoot, asset);
+    if (!existsSync(src)) continue;
+    if (existsSync(dst)) {
+      present.push(asset);
+      continue;
+    }
+    copyFileSync(src, dst);
+    added.push(asset);
+  }
+
   // ADAPT v2 · 4.2 — bản RIÊNG của repo (43% repo lớn đã có AGENTS.md sẵn): KHÔNG ghi
   // đè (N1), nhưng cũng KHÔNG được lặn mất tăm như trước — entry không trỏ tới harness
   // thì mọi thứ bên trong không bao giờ được nạp, và không ai biết. Tính SAU vòng scaffold

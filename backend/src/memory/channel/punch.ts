@@ -58,6 +58,16 @@ export interface PunchOptions extends SessionOptions {
   localPort: number;
   rounds?: number;
   roundMs?: number;
+  /**
+   * Nhịp bắn lại TRONG một nửa. Mặc định dày (`RETRY_MS`) cho lượt NGẮN do người vừa bấm;
+   * chế độ CHỜ dài thì truyền số lớn hơn — giữ lỗ mở hàng phút không cần bắn dồn dập.
+   */
+  retryMs?: number;
+  /**
+   * Dừng giữa đường. Điều kiện để có một CHỖ CHỜ huỷ được: không có nó thì một lượt chờ dài
+   * chỉ tắt bằng cách tắt daemon, và người dùng không rút lại được cú bấm của mình.
+   */
+  shouldStop?: () => boolean;
   /** Báo tiến độ cho bề mặt — đục lỗ mất hàng chục giây, im lặng là bề mặt nói dối. */
   onRound?: (info: { round: number; phase: "ban" | "nghe"; note?: string }) => void;
 }
@@ -157,7 +167,13 @@ function secure(raw: net.Socket, o: PunchOptions, asServer: boolean, timeoutMs: 
 const RETRY_MS = 40;
 
 /** Nửa BẮN: một cú gọi ra từ `localPort`. Ăn ⇒ ta là bên GỌI. Trượt ⇒ lỗ vẫn đã đục. */
-function dialHalf(target: PunchTarget, localPort: number, windowMs: number): Promise<net.Socket | null> {
+function dialHalf(
+  target: PunchTarget,
+  localPort: number,
+  windowMs: number,
+  retryMs: number,
+  stop?: () => boolean,
+): Promise<net.Socket | null> {
   return new Promise((resolve) => {
     let settled = false;
     let current: net.Socket | null = null;
@@ -177,12 +193,12 @@ function dialHalf(target: PunchTarget, localPort: number, windowMs: number): Pro
     };
     const timer = setTimeout(() => finish(null), windowMs);
     const attempt = (): void => {
-      if (settled) return;
+      if (settled || stop?.()) return;
       let sock: net.Socket;
       try {
         sock = net.connect({ host: target.host, port: target.port, localPort, family: 4 });
       } catch {
-        if (Date.now() + RETRY_MS < until) setTimeout(attempt, RETRY_MS);
+        if (Date.now() + retryMs < until) setTimeout(attempt, retryMs);
         return;
       }
       current = sock;
@@ -198,7 +214,7 @@ function dialHalf(target: PunchTarget, localPort: number, windowMs: number): Pro
         // hai đầu đổi pha ĐỒNG THỜI, nên cú gọi luôn bắn trước lúc lớp nghe bên kia kịp lên
         // ⇒ `ECONNREFUSED` ở millisecond đầu, rồi nằm im hết nửa. Một bộ đục lỗ thật thì
         // **bắn lặp lại suốt nửa của nó** — mỗi cú SYN vừa là một lần thử vừa giữ lỗ mở.
-        if (Date.now() + RETRY_MS < until) setTimeout(attempt, RETRY_MS);
+        if (Date.now() + retryMs < until) setTimeout(attempt, retryMs);
       });
     };
     attempt();
@@ -206,7 +222,12 @@ function dialHalf(target: PunchTarget, localPort: number, windowMs: number): Pro
 }
 
 /** Nửa NGHE: bind đúng `localPort` để nhận SYN đi qua cái lỗ vừa đục. */
-function listenHalf(localPort: number, windowMs: number): Promise<net.Socket | null> {
+function listenHalf(
+  localPort: number,
+  windowMs: number,
+  retryMs: number,
+  stop?: () => boolean,
+): Promise<net.Socket | null> {
   return new Promise((resolve) => {
     let settled = false;
     let current: net.Server | null = null;
@@ -227,7 +248,7 @@ function listenHalf(localPort: number, windowMs: number): Promise<net.Socket | n
     };
     const timer = setTimeout(() => finish(null), windowMs);
     const attempt = (): void => {
-      if (settled) return;
+      if (settled || stop?.()) return;
       const srv = net.createServer();
       current = srv;
       srv.once("connection", (s) => finish(s));
@@ -239,7 +260,7 @@ function listenHalf(localPort: number, windowMs: number): Promise<net.Socket | n
         } catch {
           /* đóng được thì tốt */
         }
-        if (Date.now() + RETRY_MS < until) setTimeout(attempt, RETRY_MS);
+        if (Date.now() + retryMs < until) setTimeout(attempt, retryMs);
       });
       srv.listen(localPort, "0.0.0.0");
     };
@@ -257,6 +278,7 @@ export async function punchToPeer(target: PunchTarget, o: PunchOptions): Promise
   const rounds = o.rounds ?? DEFAULT_ROUNDS;
   const roundMs = o.roundMs ?? DEFAULT_ROUND_MS;
   const half = Math.max(200, Math.floor(roundMs / 2));
+  const retryMs = Math.max(20, o.retryMs ?? RETRY_MS);
   const meFirst = dialsFirst(o.identity.deviceId, target.deviceId ?? "");
   // Trần CỦA CẢ LƯỢT. Từng nửa đã có trần riêng, nhưng một lượt đục lỗ nằm trên đường
   // đồng bộ: nó phải hứa một mốc kết thúc, không được để người gọi treo vì một nhánh
@@ -264,12 +286,17 @@ export async function punchToPeer(target: PunchTarget, o: PunchOptions): Promise
   const deadline = Date.now() + Math.ceil(rounds * roundMs * 1.5);
 
   for (let round = 1; round <= rounds; round++) {
+    // Người dùng rút lại cú bấm ⇒ dừng ở chốt AN TOÀN, không cắt giữa một nửa đang mở socket.
+    if (o.shouldStop?.()) return fail(`đã huỷ sau ${round - 1} vòng`, round - 1);
     if (Date.now() > deadline) return fail(`đục lỗ hết giờ sau ${round - 1} vòng`, round - 1);
     // Thứ tự hai nửa ĐẢO theo pha — đây là chỗ hai máy gặp được nhau.
     const order: ("ban" | "nghe")[] = meFirst ? ["ban", "nghe"] : ["nghe", "ban"];
     for (const phase of order) {
       o.onRound?.({ round, phase });
-      const raw = phase === "ban" ? await dialHalf(target, o.localPort, half) : await listenHalf(o.localPort, half);
+      const raw =
+        phase === "ban"
+          ? await dialHalf(target, o.localPort, half, retryMs, o.shouldStop)
+          : await listenHalf(o.localPort, half, retryMs, o.shouldStop);
       if (!raw) continue;
 
       const asServer = phase === "nghe";

@@ -13,6 +13,7 @@ import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport }
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
+import { punchToPeer } from "./punch.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -154,6 +155,127 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
 let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
+// ── CHỖ CHỜ ĐỤC LỖ — "slot" mà bên dán mã trước mở ra để bên kia tới lúc nào cũng gặp ─────────
+/**
+ * 🔴 **Vì sao phải có, và vì sao nó là TRẠNG THÁI NỀN chứ không phải một cú bấm.**
+ *
+ * Bản đầu của lớp đục lỗ chạy ~20 giây rồi trả kết quả, nên hai máy phải bấm *gần như cùng lúc*.
+ * User bác đúng chỗ đó: *"ai lại canh đi bấm cùng lúc"* · *"phải tạo sẵn slot chờ để bên kia
+ * nhận chứ"*. Họ đúng, và đó là lỗ thiết kế, không phải cách dùng sai.
+ *
+ * Điều kiện vật lý không đổi được: NAT chỉ cho gói của máy kia vào **sau khi ta đã gửi ra** địa
+ * chỉ của nó, nên phải bắn đều đặn để giữ lỗ mở. Thứ sai là **thời lượng**: giữ lỗ là việc của
+ * daemon (tiến trình vốn đã sống), không phải của một lần bấm. Nên: bấm Kết nối = **mở một chỗ
+ * chờ**; bên kia bấm lúc nào cũng gặp trong vòng một hai vòng.
+ *
+ * Hai máy đều mở chỗ chờ thì càng chắc — đồng hồ hai bên tự do nên hai nửa *bắn/nghe* trôi lệch
+ * nhau và chắc chắn có lúc chồng lên nhau. Pha so le theo vân tay (`dialsFirst`) lo đúng một ca
+ * còn lại: hai bên tình cờ khởi động cùng một khoảnh khắc.
+ *
+ * Nhịp CHỜ cố ý loãng hơn nhịp BẮN của lượt ngắn (`retryMs` ~300 ms thay vì 40 ms): giữ một cái
+ * lỗ trong nhiều phút không cần bắn dồn dập, và nó phải rẻ đủ để nằm trong daemon.
+ */
+export interface PunchWaitInfo {
+  /** Vân tay máy đang chờ — để bề mặt nói ĐANG chờ ai, không nói chung chung. */
+  peerId: string;
+  addr: string;
+  since: string;
+  /** Đã qua bao nhiêu vòng — con số DUY NHẤT chứng minh nó còn sống, không phải cờ `true`. */
+  rounds: number;
+  /** Có kết cục rồi thì giữ lại để bề mặt nói xong/hỏng, không im lặng biến mất. */
+  outcome?: { won: "goi" | "nhan" | null; error?: string; at: string; received: number; sent: number };
+}
+
+let punchWait: { info: PunchWaitInfo; stopped: boolean } | null = null;
+
+/** Chỗ chờ hiện tại (kể cả đã có kết cục), hoặc `null` khi chưa ai mở. */
+export function punchWaitState(): PunchWaitInfo | null {
+  return punchWait ? { ...punchWait.info } : null;
+}
+
+/** Đóng chỗ chờ. Rút lại được cú bấm của mình là điều kiện để nó không thành một cái bẫy. */
+export function cancelPunchWait(): void {
+  if (punchWait) punchWait.stopped = true;
+  punchWait = null;
+}
+
+/**
+ * Mở chỗ chờ tới một máy. Gọi lại ⇒ **thay** chỗ cũ (một lúc một chỗ chờ, không xếp hàng ngầm —
+ * hai vòng đục lỗ cùng giữ một cổng là tự chặn nhau).
+ *
+ * Trả về NGAY: người bấm thấy *"đang chờ"*, không đứng nhìn một thanh chạy 20 giây rồi nhận lỗi.
+ */
+export function armPunchWait(o: {
+  target: { host: string; port: number; deviceId?: string };
+  shareKey: string;
+  appVersion: string;
+  allowedPeers: string[];
+  wantPair?: boolean;
+  localPort: number;
+  /** Trần thời gian chờ. Vô hạn là một cái bẫy: lỗ giữ mãi mà không ai nói cho người dùng biết. */
+  waitMs?: number;
+  roundMs?: number;
+  retryMs?: number;
+  onPaired?: (peerDeviceId: string) => void;
+  onReceived?: (blocks: number) => void;
+  log?: (msg: string) => void;
+}): PunchWaitInfo {
+  cancelPunchWait();
+  const log = o.log ?? (() => {});
+  const roundMs = o.roundMs ?? 2000;
+  const waitMs = o.waitMs ?? 10 * 60_000;
+  const info: PunchWaitInfo = {
+    peerId: o.target.deviceId ?? "",
+    addr: `${o.target.host}:${o.target.port}`,
+    since: new Date().toISOString(),
+    rounds: 0,
+  };
+  const slot = { info, stopped: false };
+  punchWait = slot;
+  log(`[channel] mở chỗ chờ đục lỗ tới ${info.addr} — bên kia bấm lúc nào cũng gặp, không cần cùng lúc`);
+
+  void punchToPeer(o.target, {
+    channelDir: channelPen(currentStoreRoot()),
+    identity: channelIdentity(),
+    shareKey: o.shareKey,
+    appVersion: o.appVersion,
+    allowedPeers: o.allowedPeers,
+    wantPair: o.wantPair,
+    onPaired: o.onPaired,
+    localPort: o.localPort,
+    rounds: Math.max(1, Math.ceil(waitMs / roundMs)),
+    roundMs,
+    retryMs: o.retryMs ?? 300,
+    // Chốt dừng gồm CẢ phép so danh tính chỗ chờ: mở chỗ mới thì vòng cũ phải tự rút, nếu không
+    // hai vòng cùng giành một cổng và cả hai cùng trượt.
+    shouldStop: () => slot.stopped || punchWait !== slot,
+    onRound: ({ round }) => {
+      slot.info.rounds = round;
+    },
+  })
+    .then((r) => {
+      slot.info.outcome = {
+        won: r.won,
+        error: r.error,
+        at: new Date().toISOString(),
+        received: r.receivedBlocks,
+        sent: r.sentBlocks,
+      };
+      log(
+        r.won
+          ? `[channel] chỗ chờ GẶP máy ${r.peerDeviceId ?? "(không rõ)"} sau ${r.rounds} vòng — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}`
+          : `[channel] chỗ chờ đóng sau ${r.rounds} vòng: ${r.error ?? "không rõ"}`,
+      );
+      if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+    })
+    .catch((e) => {
+      slot.info.outcome = { won: null, error: String(e).slice(0, 140), at: new Date().toISOString(), received: 0, sent: 0 };
+      log(`[channel] chỗ chờ lỗi: ${String(e).slice(0, 140)}`);
+    });
+
+  return { ...info };
+}
+
 
 /** Tiền tố mã máy. Đổi bản là đổi tiền tố — máy cũ nhận ra ngay là không đọc được, không đoán. */
 const CODE_PREFIX = "ZM1.";

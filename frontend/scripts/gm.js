@@ -279,6 +279,14 @@
       (c.addrs||[]).forEach(function(a,i){
         ab.appendChild(p2pFact(i?'':t('p2p.addrH'),a.addr+':'+prt,a.iface+(a.fixed?' · '+t('p2p.fixed'):'')));
       });
+      // CHỖ CHỜ đục lỗ — hiện CHỈ khi có (§F0: mặc định của mọi phần tử là KHÔNG CÓ NÓ).
+      // Nó là trạng thái nền sống tới hàng phút, nên một dòng thoáng qua trong hộp thoại là
+      // không đủ: đóng hộp rồi mở lại vẫn phải biết đang chờ ai, và đã chờ bao lâu.
+      var w=c.punchWait;
+      if(w){
+        var sub=w.outcome?t('p2p.waitClosed').replace('{r}',w.outcome.error||''):t('p2p.waitRounds').replace('{n}',zN(w.rounds||0));
+        if(!(w.outcome&&w.outcome.won))ab.appendChild(p2pFact(t('p2p.waitH'),w.addr||'',sub));
+      }
     }
     // MỘT chuỗi để đưa máy kia — gom vân tay + relay + địa chỉ. Người dùng chép ĐÚNG thứ này,
     // không phải chọn giữa hai địa chỉ (app-design §F0).
@@ -462,6 +470,9 @@
       zset('addPeerMsg',t('p2p.syncing'));
       zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
         if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
+        // CHỖ CHỜ: `ok:true` mà 0 khối KHÔNG phải "đã xong". Thiếu nhánh này thì bề mặt in
+        // "✓ gửi 0 · nhận 0" cho một việc chưa xảy ra — đúng kiểu nói dối §F3 cấm.
+        if(r.waiting){zset('addPeerMsg',t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
         zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
       });
@@ -472,6 +483,7 @@
         // Lỗi trả NGUYÊN VĂN: "khác chìa" và "máy lạ" là hai chuyện khác nhau, gộp thành
         // một chữ "lỗi" là bắt người dùng đoán (cùng doctrine `save-never-silent`).
         if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
+        if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
         p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
         loadChannel();
       });
