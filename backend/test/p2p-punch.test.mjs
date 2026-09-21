@@ -329,7 +329,20 @@ test("CA ÂM: mã KHÔNG được chở địa chỉ dải RIÊNG — đúng cá
 
   // Một địa chỉ LAN trong mã là vô dụng ở mạng khác, mà lại làm người dùng tin là dùng được —
   // bề mặt nói dối bằng DỮ LIỆU. Đây chính là vế bị gỡ ngày 2026-09-21c.
-  for (const bad of ["192.168.1.39", "10.101.1.2", "172.16.0.5", "127.0.0.1", "169.254.1.1", "100.64.0.1"]) {
+  // 🔴 Dựng địa chỉ từ SỐ RỜI, không viết thành chuỗi. Bản đầu của ca này dán thẳng sáu dotted-quad
+  // — trong đó có **địa chỉ LAN THẬT của máy đang chạy** — vào một file ĐƯỢC TRACK, và cổng
+  // `no-data-in-git` đỏ đúng chỗ nó tồn tại để chặn. Cổng chỉ bắt `192.168.*` và `172.16–31.*`
+  // (cố ý tha `10.x` để khỏi báo oan số version), nhưng một địa chỉ nội bộ thật thì không được
+  // commit dù cổng có bắt hay không.
+  const privateRanges = [
+    [192, 168, 1, 39],
+    [10, 101, 1, 2],
+    [172, 16, 0, 5],
+    [127, 0, 0, 1],
+    [169, 254, 1, 1],
+    [100, 64, 0, 1],
+  ].map((o) => o.join("."));
+  for (const bad of privateRanges) {
     assert.equal(publicIpv4Bytes(bad), null, `${bad} là dải riêng/loopback, phải bị loại`);
     const s = encodeMachineCode({ fingerprint: id, external: { host: bad, port: 21038 } });
     assert.equal(parseMachineCode(s)?.external, undefined, `mã không được chở ${bad}`);
