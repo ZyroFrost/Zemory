@@ -331,7 +331,10 @@ test("channel-serve: đích GHI đúng MỘT — drive không bao giờ trả th
   const [onDrive, onP2p] = out;
   assert.equal(onDrive, null, "đích Drive ⇒ người gọi giữ NGUYÊN đường cũ, không nhánh nào đổi hành vi");
   assert.ok(typeof onP2p === "string" && onP2p.length > 0, "đích p2p ⇒ phải trả thư mục kênh");
-  assert.match(onP2p, /channel$/);
+  // 🔄 Neo đi theo bề mặt (2026-09-21): đích ghi nay là NGĂN CỦA MÁY NÀY — `channel/<device-id>/`,
+  // không còn là `channel/` trần. Đó là thứ làm Syncthing chở được thư mục này mà không đẻ
+  // `.sync-conflict`: hai máy ghi hai đường dẫn khác nhau, không ai đụng ai.
+  assert.match(onP2p, /[\\/]channel[\\/][A-Z0-9]+$/, "đích ghi phải là NGĂN riêng bên trong channel/");
 });
 
 test("p2p-identity: CHỮ SỐ KIỂM bắt lỗi chép — sai một ký tự là biết NGAY, không đợi bắt tay", (t) => {

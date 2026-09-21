@@ -7,7 +7,7 @@
  */
 import { join } from "node:path";
 import { hostname } from "node:os";
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getP2pRelay, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
@@ -22,6 +22,66 @@ export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
 export * from "./relay.js";
+
+/**
+ * Viết `.stignore` vào GỐC KHO để Syncthing KHÔNG BAO GIỜ chở file kho đang mở.
+ *
+ * 🔴 Đây là chốt máy cho HP điều 11, không phải tiện ích. `global_memory.db` là SQLite mở WAL: ba
+ * file (`.db` · `-wal` · `-shm`) phải khớp nhau tại CÙNG một thời điểm, trong khi Syncthing chở ba
+ * file đó độc lập, khác thời điểm. Maintainer của chính Syncthing nói thẳng về đúng ca này:
+ * *"don't expect to sync databases… you will corrupt them"*. Kho này đã hỏng HAI LẦN (03/08 · 04/08)
+ * vì hai kẻ ghi — đó là nơi điều 11 sinh ra.
+ *
+ * Không mất gì: kho đi bằng KHỐI trong `channel/<ngăn>/`, và mỗi khối chở trọn bộ RAG (điều 16), nên
+ * máy nhận dựng lại `.db` của chính nó. `.db` chỉ là lăng kính cục bộ.
+ *
+ * KHÔNG ghi đè file người dùng đã có — họ có thể đã thêm luật riêng; chỉ tạo khi chưa có.
+ */
+export function ensureShareIgnore(storeRoot = currentStoreRoot()): string | null {
+  const path = join(storeRoot, ".stignore");
+  if (existsSync(path)) return null;
+  const body = [
+    "// zemory — Syncthing share (sinh tu dong, sua tu do)",
+    "// Kho SQLite dang mo KHONG duoc cho theo: ba file .db/-wal/-shm phai khop cung mot thoi diem,",
+    "// ma Syncthing cho chung doc lap => hong kho. Bo nho di bang KHOI trong channel/<ngan>/.",
+    "global_memory.db",
+    "global_memory.db-wal",
+    "global_memory.db-shm",
+    "*.db",
+    "*.db-wal",
+    "*.db-shm",
+    "// Ban lui + file tam cua chinh Syncthing",
+    "*.bak",
+    ".stversions",
+    "",
+  ].join("\n");
+  try {
+    mkdirSync(storeRoot, { recursive: true });
+    writeFileSync(path, body, "utf8");
+    return path;
+  } catch {
+    return null; // fail-open (dieu 9): khong ghi duoc thi thoi, dung lam chet daemon
+  }
+}
+
+/**
+ * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
+ *
+ * 🔴 Vì sao phải có, và vì sao mọi lượt GHI đi vào đây chứ không vào gốc: thư mục này do **Syncthing**
+ * chở (user chốt 2026-09-21), mà Syncthing chở **FILE**. Hai máy cùng nối khối vào
+ * `channel/global_memory.007.enc` là hai bản khác nhau của CÙNG một đường dẫn ⇒ nó đẻ
+ * `.sync-conflict-…` và một bên mất phần vừa ghi. Mỗi máy một ngăn thì **không đường dẫn nào có hai
+ * người ghi** — hết xung đột, không cần khoá, không cần hàng đợi.
+ *
+ * Đây KHÔNG phải "series theo máy" mà HP điều 16 cấm: vế đó cấm nhiều BẢN SAO của cùng một kho nằm
+ * cạnh nhau; các ngăn ở đây là những PHẦN khác nhau của cùng một kho. Chiều ĐỌC quét mọi ngăn
+ * (`listChannelSegments`) nên hai máy vẫn hội tụ về cùng một TẬP KHỐI — đúng bất biến bản 13/09.
+ */
+export function channelPen(storeRoot = currentStoreRoot(), ensure = false): string {
+  const dir = join(channelDir(storeRoot, ensure), channelIdentity().deviceId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16));
+  if (ensure) mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 /**
  * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
@@ -102,7 +162,7 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
  * để lại dấu chân, bài học 15/09).
  */
 export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
-  return getSyncTransport() === "p2p" ? channelDir(storeRoot, true) : null;
+  return getSyncTransport() === "p2p" ? channelPen(storeRoot, true) : null;
 }
 
 /** Một đích ghi: kênh nào, và thư mục của nó. */
@@ -129,7 +189,7 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
   const out: SyncTarget[] = [];
   const drive = getDriveDir();
   if (drive) out.push({ channel: "drive", dir: drive });
-  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelDir(storeRoot, true) });
+  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelPen(storeRoot, true) });
   return out;
 }
 
@@ -256,7 +316,7 @@ export async function startChannelServer(o: {
         // KHÔNG `ensure`: bật kênh chưa phải là ghi. Lớp nhận khối (`blocks.ts`) tự tạo thư mục
         // đúng lúc có khối thật. Tạo sẵn ở đây đẻ một folder RỖNG mà `conform` kêu mỗi lượt —
         // đúng dấu chân đã phải vá hôm 15/09, và một cổng kêu suốt là cổng sắp bị bỏ qua.
-        channelDir: channelDir(currentStoreRoot()),
+        channelDir: channelPen(currentStoreRoot()),
         identity: channelIdentity(),
         shareKey: key,
         appVersion: o.appVersion,
@@ -297,7 +357,7 @@ export async function startChannelServer(o: {
       relay = joinRelay(
         ra,
         {
-          channelDir: channelDir(currentStoreRoot()),
+          channelDir: channelPen(currentStoreRoot()),
           identity: channelIdentity(),
           shareKey: key,
           appVersion: o.appVersion,
