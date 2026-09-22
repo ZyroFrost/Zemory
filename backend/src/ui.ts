@@ -1806,9 +1806,12 @@ async function channelSyncOnce(
   // chung, và **không cần STUN** (ta khai `0.0.0.0`, server lấy IP nguồn của gói).
   // Chỉ tra được khi biết ID ⇒ bỏ qua ở nhánh người dùng gõ thẳng một địa chỉ.
   // Trần 5 giây, bắn song song — nó phải nằm gọn trong ngân sách 25 giây của cả lượt.
-  const fromGlobal = wantId
-    ? await ch.lookupGlobal(wantId, { identity: ch.channelIdentity(), timeoutMs: 5000 }).catch(() => [])
-    : [];
+  const globalAddrs = wantId
+    ? await ch
+        .lookupGlobalAddresses(wantId, { identity: ch.channelIdentity(), timeoutMs: 5000 })
+        .catch(() => ({ direct: [], relays: [] }))
+    : { direct: [], relays: [] };
+  const fromGlobal = globalAddrs.direct;
   // Thứ tự có Ý, xếp theo ĐỘ TƯƠI: LAN (rẻ + tươi nhất) → BẢNG CHUNG (≤10 phút, tự cập nhật)
   // → CỤM DÒ (máy kia đăng lại theo nhịp server nói, ~63 phút, nhưng đăng NGAY khi đổi địa
   // chỉ) → địa chỉ trong mã (ảnh chụp, hay hết hạn) → địa chỉ đã nhớ (cũ nhất).
@@ -1882,6 +1885,34 @@ async function channelSyncOnce(
     );
     last = { ...r, addr: cand };
     if (!r.error) return ({ ok: true, ...last });
+  }
+
+  // ── ĐƯỜNG CUỐI: QUA RELAY CÔNG KHAI ────────────────────────────────────────────────────
+  //
+  // 🔴 Chỉ tới đây khi MỌI đường gọi thẳng đã trượt — tức nhiều khả năng cả hai đầu kín NAT,
+  // đúng ca `§6d` đo được và là ca duy nhất không code nào chữa được nếu không có máy thứ ba.
+  // Xếp TRƯỚC chỗ chờ đục lỗ vì relay là một lượt nối THẬT (ăn hoặc không), còn chỗ chờ chỉ là
+  // lời hẹn — trả `waiting` cho người bấm trong khi relay đã nối được là bỏ phí một đường ngon.
+  if (wantId && globalAddrs.relays.length) {
+    const viaRelay = await ch
+      .syncViaRelay({
+        relayUrls: globalAddrs.relays,
+        peerDeviceId: wantId,
+        shareKey: readFileSync(keyFile, "utf8").trim(),
+        appVersion: appVersion(),
+        allowedPeers: st.peers,
+        wantPair,
+        acceptPeer: (peerId: string): boolean => {
+          if (!getP2pPeers().some((x) => x === peerId)) setP2pPeers([...getP2pPeers(), peerId]);
+          return true;
+        },
+        onPaired: (peerId: string): void => {
+          setP2pPeers([...getP2pPeers(), peerId]);
+          daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua relay công khai`);
+        },
+      })
+      .catch(() => null);
+    if (viaRelay && !viaRelay.error) return { ok: true, ...viaRelay, via: "relay" };
   }
 
   // ĐỤC LỖ NAT — MỞ CHỖ CHỜ, không chạy một lượt 20 giây rồi trả lỗi (`plan/24 §6f`).

@@ -37,7 +37,7 @@
  */
 import net from "node:net";
 import tls from "node:tls";
-import { normalizeDeviceId } from "./identity.js";
+import { normalizeDeviceId, type ChannelIdentity } from "./identity.js";
 import { runSessionOn, type SessionOptions, type SyncOutcome } from "./peer.js";
 
 /** Một vòng = một nửa bắn + một nửa nghe. 2 giây đủ cho một lượt bắt tay LAN/WAN. */
@@ -131,7 +131,19 @@ export function dialsFirstInRound(myDeviceId: string, peerDeviceId: string, roun
  * còn ai đọc nó** ⇒ `tls.connect` chờ một `ServerHello` không bao giờ tới, vô hạn.
  * Đây đúng họ lỗi mà `02_RULES` gọi là treo lặng: không lỗi nào nổ, chỉ là không xong.
  */
-function secure(raw: net.Socket, o: PunchOptions, asServer: boolean, timeoutMs: number): Promise<tls.TLSSocket> {
+/**
+ * 🔄 XUẤT RA từ 2026-09-23: lớp RELAY dùng CHUNG hàm này. Phiên relay cũng chỉ là một socket
+ * TCP, nên nó phải được bọc bằng ĐÚNG lớp TLS này — viết một bản TLS thứ hai cho relay là mở
+ * đường cho hai bản lệch nhau đúng ở chỗ quyết định bảo mật.
+ */
+export function secureSocket(
+  raw: net.Socket,
+  // CHỈ đòi thứ thật sự dùng — `PunchOptions` kéo theo `localPort`, thứ vô nghĩa với một phiên
+  // relay. Bắt người gọi dựng một trường giả để qua kiểu là cách chữ ký nói dối về phụ thuộc.
+  o: { identity: ChannelIdentity },
+  asServer: boolean,
+  timeoutMs: number,
+): Promise<tls.TLSSocket> {
   return new Promise((resolve, reject) => {
     // Không có CA nào ở đây theo THIẾT KẾ — danh tính là vân tay chứng chỉ, kiểm
     // trong `runSession`. Giống y `connectToPeer`/`serveChannel`, không nới một nấc nào.
@@ -369,7 +381,7 @@ export async function punchToPeer(target: PunchTarget, o: PunchOptions): Promise
       const asServer = phase === "nghe";
       let sock: tls.TLSSocket;
       try {
-        sock = await secure(raw, o, asServer, half);
+        sock = await secureSocket(raw, o, asServer, half);
       } catch (e) {
         // Bắt tay TLS trượt ⇒ hoặc máy lạ, hoặc dây đứt. Đóng rồi thử vòng sau; KHÔNG
         // kết luận "đục lỗ không được" từ một cú bắt tay hỏng.

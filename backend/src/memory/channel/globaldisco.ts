@@ -178,11 +178,21 @@ export interface AnnounceResult {
 export async function announceGlobal(o: {
   identity: ChannelIdentity;
   port: number;
+  /**
+   * Địa chỉ RELAY đang chờ (`relay://…`), nếu máy này đã tham gia một relay.
+   *
+   * 🔴 Đây là mảnh làm tầng 4 CHẠY ĐƯỢC, không phải thông tin thêm: máy kia phải biết ta đang chờ
+   * ở relay NÀO thì mới xin phiên đúng chỗ. Không đăng nó thì tầng relay dựng xong vẫn vô dụng —
+   * hai máy cùng ở trong pool mà không bên nào biết tìm bên nào.
+   */
+  relays?: readonly string[];
   servers?: readonly string[];
   timeoutMs?: number;
 }): Promise<AnnounceResult> {
   const servers = o.servers ?? PUBLIC_DISCOVERY;
-  const body = JSON.stringify({ addresses: [`tcp://0.0.0.0:${o.port}`] });
+  const body = JSON.stringify({
+    addresses: [`tcp://0.0.0.0:${o.port}`, ...(o.relays ?? []).filter((r) => r.startsWith("relay://"))],
+  });
   const tried: { server: string; status: number }[] = [];
   for (const server of servers) {
     const r = await call(server, { method: "POST", identity: o.identity, body, timeoutMs: o.timeoutMs ?? 8000 });
@@ -208,7 +218,42 @@ export async function announceGlobal(o: {
  * Trả danh sách `host:port` đã bóc khỏi dạng `tcp://…` của họ. Rỗng = chưa ai đăng, hoặc server im
  * — hai ca đó **không phân biệt được ở tầng này** và cũng không cần: người gọi chỉ thử đường khác.
  */
+export interface GlobalAddresses {
+  /** Địa chỉ gọi THẲNG (`host:port`), đã bỏ dải riêng. */
+  direct: string[];
+  /** Địa chỉ RELAY nguyên văn (`relay://…`) — máy kia đang chờ ở đó. */
+  relays: string[];
+}
+
+/**
+ * Tra và PHÂN LOẠI địa chỉ của một máy.
+ *
+ * 🔴 Vì sao trả cả hai trong MỘT lời gọi: cụm dò trả cùng một danh sách cho cả hai loại, nên tách
+ * thành hai hàm là hai vòng mạng cho cùng một câu trả lời — và tệ hơn, là hai chỗ để luật phân loại
+ * lệch nhau. Người gọi tự chọn thử cái nào trước.
+ */
+export async function lookupGlobalAddresses(
+  deviceId: string,
+  o: { identity?: ChannelIdentity; servers?: readonly string[]; timeoutMs?: number } = {},
+): Promise<GlobalAddresses> {
+  const raw = await lookupGlobalRaw(deviceId, o);
+  return {
+    direct: [...new Set(raw.map((a) => parseWireAddress(a)).filter((a): a is string => Boolean(a)))],
+    // Chỉ giữ dạng `relay://` — lọc thật sự nằm ở `parseRelayUrl` của lớp relay, đừng đoán ở đây.
+    relays: [...new Set(raw.filter((a) => a.trim().startsWith("relay://")))],
+  };
+}
+
+/** Như `lookupGlobalAddresses` nhưng chỉ lấy đường gọi THẲNG — giữ cho nơi gọi cũ. */
 export async function lookupGlobal(
+  deviceId: string,
+  o: { identity?: ChannelIdentity; servers?: readonly string[]; timeoutMs?: number } = {},
+): Promise<string[]> {
+  return (await lookupGlobalAddresses(deviceId, o)).direct;
+}
+
+/** Danh sách địa chỉ THÔ đúng như cụm dò trả về — chưa lọc, chưa phân loại. */
+async function lookupGlobalRaw(
   deviceId: string,
   o: { identity?: ChannelIdentity; servers?: readonly string[]; timeoutMs?: number } = {},
 ): Promise<string[]> {
@@ -232,7 +277,10 @@ export async function lookupGlobal(
       try {
         const j = JSON.parse(r.body) as { addresses?: unknown };
         const list = Array.isArray(j.addresses) ? j.addresses : [];
-        return list.map((a) => parseWireAddress(String(a))).filter((a): a is string => Boolean(a));
+        // THÔ thật — KHÔNG lọc ở đây. Bản đầu gọi `parseWireAddress` ngay chỗ này, và nó âm thầm
+        // vứt mọi `relay://`: tầng relay sẽ không bao giờ thấy máy kia đang chờ ở relay nào, mà
+        // cũng không có lỗi nào nổ. Phân loại là việc của `lookupGlobalAddresses`, đúng một chỗ.
+        return list.map((a) => String(a).trim()).filter(Boolean);
       } catch {
         return []; // server trả rác ⇒ coi như im, các server kia vẫn tính
       }
