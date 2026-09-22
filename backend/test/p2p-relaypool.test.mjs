@@ -375,3 +375,32 @@ test("sổ đăng ký ghi thứ ĐÃ GỬI, không phải thứ đang định g�
   const afterAwait = fn.slice(fn.indexOf("await announceGlobal("));
   assert.ok(!/relayAt/.test(afterAwait), "sau `await` không được đọc lại `relayAt` — ghi ý định thay vì sự thật");
 });
+
+test("giữ relay: vào lại theo NHỊP, và trượt sạch thì phải NÓI RA", () => {
+  // 🔴 Hai lỗi thật, cả hai bắt được lúc chạy app thật 23/09 — bản đầu vào relay đúng MỘT lần lúc
+  // bật kênh:
+  // · trượt cả pool thì IM LẶNG, và cụm dò vẫn trả địa chỉ relay THỪA của lượt chạy trước ⇒ bề mặt
+  //   nói dối bằng dữ liệu cũ, thứ khó thấy hơn nói dối bằng chữ ·
+  // · relay ngắt thì `onClose` xoá mốc nhưng KHÔNG có gì vào lại ⇒ một lần rớt mạng là mất tầng 4
+  //   tới lúc khởi động lại app, mà không ai biết.
+  const CH = readSrc(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+
+  // ① Việc vào relay phải nằm trong NHỊP, không phải một lượt chạy rồi thôi.
+  assert.match(CH, /await keepRelay\(server, key, peers, o, log\);/, "nhịp beat phải gọi lại keepRelay");
+  const beat = CH.slice(CH.indexOf("const beat = async ()"), CH.indexOf("void beat()"));
+  assert.match(beat, /keepRelay\(/, "keepRelay phải nằm TRONG beat — ngoài nhịp là quay lại bản một-lần");
+
+  // ② Đã có relay thì bỏ qua, và hai lượt không được chồng nhau khi nhịp tới sớm.
+  const fn = CH.slice(CH.indexOf("async function keepRelay("), CH.indexOf("async function acceptRelayInvite("));
+  assert.ok(fn.length > 0, "không thấy keepRelay — neo đã chết");
+  assert.match(fn, /if \(relayAt \|\| relayJoining\) return;/, "đã có relay hoặc đang đi ⇒ bỏ qua");
+  assert.match(fn, /relayJoining = true;/);
+  assert.match(fn, /finally \{\s*relayJoining = false;/, "cờ phải được nhả kể cả khi ném");
+
+  // ③ Rớt relay ⇒ XOÁ mốc để nhịp sau vào lại. Thiếu dòng này là mất tầng 4 vĩnh viễn.
+  assert.match(fn, /relayAt = null;[\s\S]{0,200}relay ngắt/, "onClose phải xoá mốc và nói ra");
+
+  // ④ Trượt sạch phải có log — đây là ca đã lọt, và im lặng ở đây là kiểu hỏng tệ nhất.
+  assert.match(fn, /chưa vào được relay nào/, "trượt cả pool phải NÓI RA");
+  assert.match(fn, /chưa lấy được danh sách relay/, "không lấy được pool cũng phải nói ra");
+});

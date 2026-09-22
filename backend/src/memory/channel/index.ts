@@ -237,6 +237,8 @@ let globalAnn: GlobalAnnounceState | null = null;
  * một tầng hoàn chỉnh vẫn có thể không nối được gì.
  */
 let relayAt: RelayEndpoint | null = null;
+/** Đang có một lượt xin vào relay đi dở — chặn hai lượt chồng nhau khi nhịp tới sớm. */
+let relayJoining = false;
 
 /** Relay đang chờ — cho bề mặt nói nó đang dựa vào đâu. */
 export function relayEndpoint(): RelayEndpoint | null {
@@ -790,6 +792,8 @@ export async function startChannelServer(o: {
       // vào đây chỉ để BẮT LÚC ĐỔI, và `null` (chưa đo được) chỉ làm mất phép bắt đó chứ không
       // chặn lượt đăng.
       await announceBeat(server.port, host);
+      // Giữ cho luôn có một relay để chờ: vào lại sau khi rớt, và thử lại sau một lượt trượt.
+      await keepRelay(server, key, peers, o, log);
     };
     void beat().then(() => {
       if (externalAddress()) log(`[channel] đã đăng địa chỉ lên bảng chung — máy đã kết nối đọc được địa chỉ mới nhất`);
@@ -830,45 +834,84 @@ export async function startChannelServer(o: {
     // đầu kín NAT. Ca đó cần một máy thứ ba — sự thật vật lý. Cụm công khai cho ta máy đó mà user
     // không phải nuôi gì (`§1c-d`), khác hẳn relay tự host đã gỡ 21/09 vì trượt `§1a-0`.
     //
-    // Chạy ở NỀN và KHÔNG chặn lượt bật kênh: lấy danh sách pool là một vòng mạng, mà kênh phải
-    // nghe được ngay. Trượt hết pool ⇒ im, mọi đường cũ chạy y nguyên (điều 9).
-    void (async (): Promise<void> => {
-      const pool = await fetchRelayPool();
-      // Thử vài relay chứ không chỉ một: relay đầy hoặc đang chết là chuyện thường trong một cụm
-      // tình nguyện. Dừng ở cái đầu tiên là để cả tầng 4 phụ thuộc vào một máy của người lạ.
-      for (const ep of pool.slice(0, 4)) {
-        if (!running || running.server !== server) return; // kênh đã tắt giữa chừng
-        try {
-          const join = await joinRelay({
-            endpoint: ep,
-            identity: channelIdentity(),
-            onInvite: (inv) => {
-              void acceptRelayInvite(ep, inv, server, key, peers, o, log);
-            },
-            onClose: (why) => {
-              if (relayAt?.url === ep.url) relayAt = null;
-              log(`[channel] relay ngắt: ${why}`);
-            },
-          });
-          if (!running || running.server !== server) {
-            join.stop();
-            return;
-          }
-          running.relay = join;
-          relayAt = ep;
-          log(`[channel] đang chờ ở relay công khai ${ep.host}:${ep.port} — máy kín NAT vẫn kết nối được`);
-          return;
-        } catch {
-          /* relay này không nhận ⇒ thử relay kế */
-        }
-      }
-    })();
+    // Nhịp `beat` (60 giây) gọi lại `keepRelay` — KHÔNG phải chạy đúng một lần lúc bật. Xem chú
+    // thích ở `keepRelay` để biết vì sao một-lần là sai.
+    void keepRelay(server, key, peers, o, log);
 
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
     log(`[channel] không lắng nghe được cổng ${port}: ${reason}`);
     return { listening: false, reason };
+  }
+}
+
+/**
+ * GIỮ cho máy này luôn có một relay để chờ — gọi lại mỗi nhịp, tự bỏ qua khi đã có.
+ *
+ * 🔴 **Vì sao KHÔNG chạy đúng một lần lúc bật kênh.** Bản đầu làm vậy và nó hỏng theo hai kiểu,
+ * cả hai bắt được lúc chạy app thật 23/09:
+ * · **trượt cả pool thì im lặng** — lượt bật 19:08 không vào được relay nào và KHÔNG một dòng
+ *   log nào nói ra; địa chỉ relay mà cụm dò trả về lúc đó là **đồ thừa của lượt chạy trước**,
+ *   nên bề mặt nói dối bằng dữ liệu cũ. (Đo ngay sau đó từ một tiến trình rời: 4/4 relay nhận
+ *   bình thường ⇒ đó là trục trặc nhất thời, đúng thứ một lượt thử lại sẽ qua.)
+ * · **relay ngắt là tầng 4 chết hẳn** — `onClose` xoá `relayAt` nhưng KHÔNG có gì vào lại, nên
+ *   một lần rớt mạng là mất tầng 4 tới lúc khởi động lại app, mà không ai biết.
+ *
+ * Móc vào nhịp 60 giây có sẵn chứ không đẻ bộ hẹn giờ thứ hai: một vòng đời nữa là một chỗ nữa
+ * phải nhớ đóng khi tắt kênh.
+ */
+async function keepRelay(
+  server: ChannelServer,
+  shareKey: string,
+  peers: string[],
+  o: { appVersion: string; acceptPeer?: (id: string) => boolean; onReceived?: (n: number) => void },
+  log: (m: string) => void,
+): Promise<void> {
+  if (relayAt || relayJoining) return; // đã có chỗ chờ, hoặc một lượt đang đi
+  relayJoining = true;
+  try {
+    const pool = await fetchRelayPool();
+    // Thử vài relay chứ không chỉ một: relay đầy hoặc đang chết là chuyện thường trong một cụm
+    // tình nguyện. Dừng ở cái đầu là để cả tầng 4 treo vào một máy của người lạ.
+    for (const ep of pool.slice(0, 4)) {
+      if (!running || running.server !== server) return; // kênh đã tắt giữa chừng
+      try {
+        const join = await joinRelay({
+          endpoint: ep,
+          identity: channelIdentity(),
+          onInvite: (inv) => {
+            void acceptRelayInvite(ep, inv, server, shareKey, peers, o, log);
+          },
+          onClose: (why) => {
+            // Xoá mốc để nhịp sau VÀO LẠI. Không có dòng này thì một lần rớt là mất tầng 4 vĩnh viễn.
+            if (relayAt?.url === ep.url) {
+              relayAt = null;
+              log(`[channel] relay ngắt (${why}) — sẽ tìm relay khác ở nhịp sau`);
+            }
+          },
+        });
+        if (!running || running.server !== server) {
+          join.stop();
+          return;
+        }
+        running.relay = join;
+        relayAt = ep;
+        log(`[channel] đang chờ ở relay công khai ${ep.host}:${ep.port} — máy kín NAT vẫn kết nối được`);
+        return;
+      } catch {
+        /* relay này không nhận ⇒ thử relay kế */
+      }
+    }
+    // 🔴 NÓI RA khi trượt sạch. Im lặng ở đây là để bề mặt khoe một địa chỉ relay THỪA của lượt
+    // chạy trước — nói dối bằng dữ liệu cũ, thứ khó thấy hơn nói dối bằng chữ.
+    log(
+      pool.length
+        ? `[channel] chưa vào được relay nào (thử ${Math.min(pool.length, 4)}/${pool.length}) — thử lại ở nhịp sau`
+        : `[channel] chưa lấy được danh sách relay — thử lại ở nhịp sau`,
+    );
+  } finally {
+    relayJoining = false;
   }
 }
 
@@ -988,6 +1031,7 @@ export function stopChannelServer(): void {
     /* đóng được thì tốt */
   }
   relayAt = null;
+  relayJoining = false;
   // Gỡ mục khỏi bảng chung: để nó ở lại là mời máy kia bắn vào một cổng vừa đóng (`§11`).
   try {
     withdrawPresence(getDriveDir(), channelIdentity().deviceId);
