@@ -21,7 +21,7 @@ const DEFAULT_BEAT_MS = 30_000;
 const MULTICAST6_GROUP = "ff12::8384";
 
 /** Địa chỉ broadcast SUBNET của một card từ (địa chỉ, mask): `addr | ~mask`. */
-function subnetBroadcast(addr: string, mask: string): string | null {
+export function subnetBroadcast(addr: string, mask: string): string | null {
   const a = addr.split(".").map(Number);
   const m = mask.split(".").map(Number);
   if (a.length !== 4 || m.length !== 4 || a.some(Number.isNaN) || m.some(Number.isNaN)) return null;
@@ -32,12 +32,14 @@ function subnetBroadcast(addr: string, mask: string): string | null {
  * ĐÍCH broadcast — một cho MỖI card LAN thật, KHÔNG chỉ `255.255.255.255`.
  *
  * 🔴 Vì sao: `255.255.255.255` đi ra ĐÚNG MỘT card do bảng định tuyến OS chọn. Máy có card ảo
- * (WSL/Hyper-V, vd `172.31.96.1`) thì gói rất dễ ra nhầm card ảo ⇒ máy cùng LAN không bao giờ
+ * (WSL/Hyper-V, ở một dải riêng khác hẳn LAN) thì gói rất dễ ra nhầm card ảo ⇒ máy cùng LAN không bao giờ
  * nhận được, `seen` rỗng dù hai máy chung router (đo 2026-09-22). Bắn thẳng broadcast SUBNET của
- * từng card (`192.168.1.255`) buộc gói ra ĐÚNG card LAN — đúng cách local discovery của Syncthing.
+ * từng card (`<mạng của card>.255`) buộc gói ra ĐÚNG card LAN — đúng cách local discovery của
+ * Syncthing. ⚠ Địa chỉ THẬT không viết vào đây: cổng `no-data-in-git` cấm IP dải riêng trong file
+ * được track, và chính chú thích này đã làm nó đỏ một lần.
  * Giữ `255.255.255.255` làm phòng hờ cho môi trường không liệt kê được card.
  */
-function broadcastTargets(): string[] {
+export function broadcastTargets(): string[] {
   const out = new Set<string>(["255.255.255.255"]);
   try {
     for (const list of Object.values(networkInterfaces())) {
