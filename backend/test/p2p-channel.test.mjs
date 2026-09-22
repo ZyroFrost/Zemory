@@ -392,3 +392,111 @@ test("mọi kênh đang BẬT đều là một đích ghi — không còn chọn
   assert.deepEqual(out[2], ["drive", "p2p"], "bật cả hai ⇒ GHI cả hai, đây là cả điểm của thay đổi");
   assert.deepEqual(out[3], ["p2p"], "chỉ p2p cũng chạy được, không bắt phải có Drive");
 });
+
+// ── WIRING CHẠY THẬT: bật kênh ⇒ máy LẠ có cùng chìa phải đục lỗ vào được ──────────────
+//
+// 🔴 Đây là cổng của bug người dùng gặp 2026-09-21: B dán mã của A, B báo "đang chờ", A không
+// nhận gì. Gốc là `startChannelServer` truyền `onPaired` thay cho `acceptPeer` vào chỗ chờ tự
+// giữ — mà `onPaired` chỉ bắn ở bên GỌI, nên nửa NGHE thấy sổ rỗng rồi trả *"máy lạ"*.
+//
+// Cổng cũ (`giữ lỗ`, trong `p2p-punch`) chỉ SOI CHỮ nên nó XANH với đúng cái bug đó — đã đo
+// bằng đột biến. Ca này GỌI hàm thật: dựng chỗ chờ qua `startChannelServer`, rồi cho một máy
+// thứ hai đục lỗ vào cổng của nó.
+test("wiring: bật kênh ⇒ chỗ chờ tự giữ NHẬN máy lạ chứng minh cùng chìa", (t) => {
+  const root = tempDir(t, "zemory-hold-wire-");
+  // Cổng riêng mỗi lượt: cổng cố định còn kẹt TIME_WAIT từ lượt chạy trước (xem `p2p-punch`).
+  const port = 23000 + Math.floor(Math.random() * 1200) * 2;
+  const out = runInMemoryChild(root, [
+    'const { join } = await import("node:path");',
+    'const fs = await import("node:fs");',
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    'const ID = await import("file://" + process.env.Z_DIST + "/memory/channel/identity.js");',
+    'const P = await import("file://" + process.env.Z_DIST + "/memory/channel/punch.js");',
+    'const KEY = "chia-chung-cua-hai-may-that";',
+    'S.setP2pEnabled(true); S.setP2pPeers([]); S.setP2pPort(' + port + ");",
+    // Sổ máy RỖNG — đúng trạng thái máy người dùng sau khi cơ chế ghép đổi 20/09.
+    "let accepted = null;",
+    // Callback làm ĐÚNG việc `ui.ts` làm (ghi vân tay vào sổ) — `startChannelServer` chỉ HỎI,
+    // việc ghi thuộc người gọi. Đặt callback rỗng thì ca này chỉ kiểm chính nó.
+    'const r = await ch.startChannelServer({ shareKey: KEY, appVersion: "test", acceptPeer: (id) => { accepted = id; S.setP2pPeers([...S.getP2pPeers(), id]); return true; } });',
+    // Máy thứ hai: danh tính riêng, kho riêng, và nó KHÔNG có trong sổ của máy một.
+    'const broot = join(process.env.Z_ROOT, "bee"); fs.mkdirSync(join(broot, "channel"), { recursive: true });',
+    'const bid = ID.loadOrCreateIdentity(join(broot, "id"), "zemory-bee");',
+    "const me = ch.channelStatus().deviceId;",
+    "const res = await P.punchToPeer(",
+    '  { host: "127.0.0.1", port: ch.punchPortOf(' + port + "), deviceId: me },",
+    "  {",
+    '    channelDir: join(broot, "channel"), identity: bid, shareKey: KEY, allowedPeers: [me],',
+    '    appVersion: "test", timeoutMs: 20000, localPort: ' + (port + 3) + ", rounds: 8, roundMs: 1200,",
+    "  },",
+    ");",
+    "ch.stopChannelServer();",
+    "out.push({ listening: r.listening, accepted, err: res.error ?? null, won: res.won, peers: S.getP2pPeers() });",
+  ].join("\n"));
+
+  const [g] = out;
+  assert.equal(g.listening, true, "bật kênh phải nghe");
+  assert.equal(g.err, null, `máy lạ cùng chìa phải vào được, lỗi: ${g.err}`);
+  // Bằng chứng thật: chỗ chờ đã HỎI `acceptPeer`, và vân tay máy kia đã vào sổ.
+  assert.ok(g.accepted, "chỗ chờ phải hỏi `acceptPeer` — thiếu nó là cả đường một-bên-dán chết");
+  assert.equal(g.peers.length, 1, "máy vừa nhận phải được ghi vào sổ để lần sau khỏi làm quen lại");
+});
+
+// ── CHỖ CHỜ TỰ GIỮ PHẢI SỐNG CÙNG KÊNH, không chết sau một trần ───────────────────────
+//
+// 🔴 Bug thật 2026-09-21, đọc được thẳng trong `daemon.log`: chỗ chờ mở lúc `14:42:20Z`, đóng
+// lúc `14:52:57Z` sau 300 vòng, rồi **im tới hết ngày**. Từ phút thứ 11 trở đi máy này không
+// còn ai nghe cổng đục lỗ, trong khi bề mặt vẫn khai *"máy nào có mã của máy này đều gọi vào
+// được"*. Một lời hứa hết hạn sau 10 phút mà không ai nói là hỏng nặng hơn không hứa.
+test("chỗ chờ tự giữ: hết trần thì MỞ LẠI; người bấm thì KHÔNG; tắt kênh thì THÔI", (t) => {
+  const root = tempDir(t, "zemory-renew-");
+  const p1 = 23600 + Math.floor(Math.random() * 100) * 3;
+  const out = runInMemoryChild(root, [
+    'const ch = await import("file://" + process.env.Z_DIST + "/memory/channel/index.js");',
+    "const nap = (ms) => new Promise((r) => setTimeout(r, ms));",
+    // 🔴 CHỜ THEO ĐIỀU KIỆN, KHÔNG THEO ĐỒNG HỒ. Bản đầu lấy mẫu ở những mốc cố định và nó đỏ
+    // trong lượt quét đầy đủ: gate chạy trong lồng Job Object ưu tiên thấp nên cùng một ca mất
+    // 18,6 s thay vì 13,8 s, và mọi mốc đều trượt. Một cổng đỏ vì máy đang bận là cổng dạy người
+    // đọc bỏ qua chính nó.
+    "const doi = async (dieuKien, tranMs) => {",
+    "  const het = Date.now() + tranMs;",
+    "  while (Date.now() < het) { if (dieuKien()) return true; await nap(200); }",
+    "  return false;",
+    "};",
+    'const base = { shareKey: "chia-test", appVersion: "test", allowedPeers: [], waitMs: 3000, roundMs: 300 };',
+    "S.setP2pEnabled(true);",
+    // ① renew BẬT (chỗ chờ tự giữ): lượt cũ xong ⇒ phải có lượt MỚI.
+    "const a1 = ch.armPunchWait({ ...base, target: null, localPort: " + p1 + ", renew: true });",
+    "const moi = await doi(() => { const s = ch.punchWaitState(); return s && s.since !== a1.since; }, 60000);",
+    "ch.cancelPunchWait();",
+    "out.push({ moi });",
+    // ② renew TẮT (đúng hình dạng cú bấm của người dùng): xong là xong, không tự mở lại.
+    'const b1 = ch.armPunchWait({ ...base, target: { host: "203.0.113.1", port: 9 }, localPort: ' + (p1 + 1) + " });",
+    "const bXong = await doi(() => { const s = ch.punchWaitState(); return s && s.outcome; }, 60000);",
+    // Đã có kết cục rồi thì chờ thêm QUÁ sàn mở lại để chắc chắn nó không tự mở.
+    "await nap(5000);",
+    "const b2 = ch.punchWaitState();",
+    "ch.cancelPunchWait();",
+    "out.push({ bXong, doiSlot: b2 ? b2.since !== b1.since : null });",
+    // ③ TẮT KÊNH giữa chừng ⇒ không được mở lại (giữ lỗ NAT cho một kênh đã tắt là §F15 cấm).
+    "const c1 = ch.armPunchWait({ ...base, target: null, localPort: " + (p1 + 2) + ", renew: true });",
+    "await nap(600); S.setP2pEnabled(false);",
+    "const cXong = await doi(() => { const s = ch.punchWaitState(); return s && s.outcome; }, 60000);",
+    "await nap(5000);",
+    "const c2 = ch.punchWaitState();",
+    "ch.cancelPunchWait();",
+    "out.push({ cXong, doiSlot: c2 ? c2.since !== c1.since : null });",
+  ].join("\n"));
+
+  const [renewOn, renewOff, afterOff] = out;
+  // ① Lượt MỚI phải xuất hiện — đó là toàn bộ bất biến: hết trần mà không mở lại thì máy thôi
+  // nghe cổng đục lỗ, im lặng, trong khi bề mặt vẫn hứa "máy nào có mã đều gọi vào được".
+  assert.equal(renewOn.moi, true, "hết trần mà không mở lại ⇒ máy thôi nghe cổng đục lỗ, im lặng");
+  // ② CA ÂM: chỗ chờ của một cú bấm là việc có hạn — tự mở lại mãi là giữ lỗ cho việc người dùng
+  // tưởng đã xong.
+  assert.equal(renewOff.bXong, true, "chỗ chờ phải đóng lại và mang kết cục");
+  assert.equal(renewOff.doiSlot, false, "chỗ chờ của một cú bấm KHÔNG được tự mở lại");
+  // ③ CA ÂM: tắt kênh = tắt mọi thứ của kênh.
+  assert.equal(afterOff.cXong, true, "tắt kênh rồi thì lượt đang giữ phải đóng lại, không treo lơ lửng");
+  assert.equal(afterOff.doiSlot, false, "tắt kênh rồi mà vẫn mở lượt MỚI ⇒ giữ lỗ NAT cho một kênh đã tắt (§F15)");
+});

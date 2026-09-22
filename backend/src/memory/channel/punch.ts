@@ -103,6 +103,25 @@ export function dialsFirst(myDeviceId: string, peerDeviceId: string): boolean {
 }
 
 /**
+ * Pha của MỘT VÒNG cụ thể — biết máy kia thì cố định, chưa biết thì ĐỔI mỗi vòng.
+ *
+ * 🔴 Vì sao phải đổi pha khi chưa biết: `dialsFirst` trả `true` cho đối phương rỗng, tức ta bắn
+ * ở nửa đầu MỌI vòng. Máy kia biết ta nên pha của nó cố định theo thứ tự ID — và nếu ID nó nhỏ
+ * hơn thì nó CŨNG bắn nửa đầu ⇒ hai bên bắn cùng lúc, nghe cùng lúc, **không bao giờ gặp**.
+ * Không lỗi nào nổ; triệu chứng duy nhất là *"đục lỗ không ăn"*. Đổi pha theo vòng thì dù pha
+ * bên kia cố định kiểu nào, **cứ hai vòng là trùng một lần**.
+ *
+ * Tách thành hàm THUẦN có chủ đích: đây là luật mà một đột biến làm chết cả cơ chế trong khi mọi
+ * thứ vẫn "chạy", nên nó phải soi được **không cần mạng**. Đo đầu-cuối KHÔNG đủ để canh nó —
+ * hai bên trôi lệch theo thời gian nên đôi khi vẫn gặp nhau dù pha sai (đo được: đột biến cố
+ * định pha vẫn làm cổng đầu-cuối XANH).
+ */
+export function dialsFirstInRound(myDeviceId: string, peerDeviceId: string, round: number): boolean {
+  if (!normalizeDeviceId(peerDeviceId)) return round % 2 === 1;
+  return dialsFirst(myDeviceId, peerDeviceId);
+}
+
+/**
  * Bọc TLS lên một socket TCP đã mở. Bên nhận là server, bên gọi là client.
  *
  * 🔴 **TRẦN THỜI GIAN Ở ĐÂY LÀ BẮT BUỘC, không phải cẩn thận thừa.** Bắt được lúc dựng
@@ -173,6 +192,8 @@ function dialHalf(
   windowMs: number,
   retryMs: number,
   stop?: () => boolean,
+  /** Mã lỗi ĐẦU TIÊN của nửa này — chỉ một lần, để không rải log mỗi 40 ms. */
+  report?: (code: string) => void,
 ): Promise<net.Socket | null> {
   return new Promise((resolve) => {
     let settled = false;
@@ -203,7 +224,11 @@ function dialHalf(
       }
       current = sock;
       sock.once("connect", () => finish(sock));
-      sock.once("error", () => {
+      sock.once("error", (err: NodeJS.ErrnoException) => {
+        if (report) {
+          report(err.code ?? "ERR");
+          report = undefined;
+        }
         try {
           sock.destroy();
         } catch {
@@ -227,6 +252,8 @@ function listenHalf(
   windowMs: number,
   retryMs: number,
   stop?: () => boolean,
+  /** Mã lỗi bind ĐẦU TIÊN của nửa này — nửa nghe không bind được là ca hỏng câm nhất. */
+  report?: (code: string) => void,
 ): Promise<net.Socket | null> {
   return new Promise((resolve) => {
     let settled = false;
@@ -239,6 +266,36 @@ function listenHalf(
       // Đóng lớp nghe NGAY khi đã nhận được: cổng phải rảnh cho nửa bắn của vòng sau.
       // Socket đã nhận vẫn sống sau khi server đóng — đó là hành vi của `net`, và là
       // điều kiện để phiên chạy tiếp trên nó.
+      //
+      // 🔴 Nửa RỖNG (không nhận được ai) phải CHỜ cổng nhả THẬT rồi mới trả về.
+      // `server.close()` là bất đồng bộ; trả về ngay thì nửa BẮN của vòng sau giành đúng cổng
+      // đó và ăn `EADDRINUSE`, rồi nó quay vòng thử lại suốt nửa và giữ cổng, làm nửa NGHE kế
+      // tiếp cũng bind trượt — **đổ dây chuyền**, và triệu chứng duy nhất là *"đục lỗ không ăn"*.
+      // Đo được: cổng test gặp-nhau đỏ ~50% lượt, lượt đỏ chạy hết cả 8 vòng.
+      //
+      // CHỈ chờ khi nửa rỗng: `close(cb)` đợi mọi kết nối đang mở kết thúc, nên khi ĐÃ nhận
+      // được một socket (thứ ta cố tình giữ sống) thì callback sẽ không bao giờ tới.
+      // Thêm trần 150 ms để không bao giờ treo vì một handle cứng đầu.
+      if (!s && current?.listening) {
+        let released = false;
+        const release = (): void => {
+          if (released) return;
+          released = true;
+          resolve(s);
+        };
+        const guard = setTimeout(release, 150);
+        guard.unref?.();
+        try {
+          current.close(() => {
+            clearTimeout(guard);
+            release();
+          });
+        } catch {
+          clearTimeout(guard);
+          release();
+        }
+        return;
+      }
       try {
         current?.close();
       } catch {
@@ -254,7 +311,11 @@ function listenHalf(
       srv.once("connection", (s) => finish(s));
       // Cổng bị chiếm ⇒ nửa nghe thử lại trong phạm vi nửa này; hết nửa thì bỏ qua và
       // KHÔNG làm chết cả lượt đục lỗ (fail-open, điều 9).
-      srv.once("error", () => {
+      srv.once("error", (err: NodeJS.ErrnoException) => {
+        if (report) {
+          report(err.code ?? "ERR");
+          report = undefined;
+        }
         try {
           srv.close();
         } catch {
@@ -279,7 +340,6 @@ export async function punchToPeer(target: PunchTarget, o: PunchOptions): Promise
   const roundMs = o.roundMs ?? DEFAULT_ROUND_MS;
   const half = Math.max(200, Math.floor(roundMs / 2));
   const retryMs = Math.max(20, o.retryMs ?? RETRY_MS);
-  const meFirst = dialsFirst(o.identity.deviceId, target.deviceId ?? "");
   // Trần CỦA CẢ LƯỢT. Từng nửa đã có trần riêng, nhưng một lượt đục lỗ nằm trên đường
   // đồng bộ: nó phải hứa một mốc kết thúc, không được để người gọi treo vì một nhánh
   // chậm nào chưa ai nghĩ tới. Nới 50% so với lịch để không cắt oan vòng cuối.
@@ -289,14 +349,21 @@ export async function punchToPeer(target: PunchTarget, o: PunchOptions): Promise
     // Người dùng rút lại cú bấm ⇒ dừng ở chốt AN TOÀN, không cắt giữa một nửa đang mở socket.
     if (o.shouldStop?.()) return fail(`đã huỷ sau ${round - 1} vòng`, round - 1);
     if (Date.now() > deadline) return fail(`đục lỗ hết giờ sau ${round - 1} vòng`, round - 1);
-    // Thứ tự hai nửa ĐẢO theo pha — đây là chỗ hai máy gặp được nhau.
-    const order: ("ban" | "nghe")[] = meFirst ? ["ban", "nghe"] : ["nghe", "ban"];
+    // Thứ tự hai nửa ĐẢO theo pha — đây là chỗ hai máy gặp được nhau. Luật nằm trong
+    // `dialsFirstInRound` (hàm THUẦN, có cổng riêng): biết máy kia ⇒ pha tất định theo hai vân
+    // tay, 0 tin thương lượng; chưa biết ⇒ đổi pha mỗi vòng.
+    const dialFirstNow = dialsFirstInRound(o.identity.deviceId, target.deviceId ?? "", round);
+    const order: ("ban" | "nghe")[] = dialFirstNow ? ["ban", "nghe"] : ["nghe", "ban"];
     for (const phase of order) {
       o.onRound?.({ round, phase });
+      // Mã lỗi đầu tiên của mỗi nửa đi ra `onRound` — "đục lỗ không ăn" mà không kèm lý do là
+      // câu vô dụng đúng lúc cần nhất: không phân biệt được *cổng bind trượt* với *bên kia chưa
+      // nghe* với *mạng không có đường*, mà ba thứ đó vá ba kiểu khác nhau.
+      const note = (what: string) => (code: string) => o.onRound?.({ round, phase, note: `${what}: ${code}` });
       const raw =
         phase === "ban"
-          ? await dialHalf(target, o.localPort, half, retryMs, o.shouldStop)
-          : await listenHalf(o.localPort, half, retryMs, o.shouldStop);
+          ? await dialHalf(target, o.localPort, half, retryMs, o.shouldStop, note("bắn trượt"))
+          : await listenHalf(o.localPort, half, retryMs, o.shouldStop, note("nghe không bind được"));
       if (!raw) continue;
 
       const asServer = phase === "nghe";
