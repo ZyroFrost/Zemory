@@ -1293,7 +1293,7 @@ test("nhãn UI: không ngày tháng, không viết-hoa-nhấn-giọng, không c�
     if (/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/.test(text)) bad.push(`${key}: có ngày tháng`);
     if (/(đo|measured)\s+\d/i.test(text)) bad.push(`${key}: có ghi chú đo đạc`);
     // Từ viết hoa toàn bộ ≥3 ký tự, bỏ qua tên riêng/thuật ngữ hợp lệ.
-    const SHOUT_OK = new Set(["ID", "LAN", "NAT", "DB", "RAG", "FTS5", "WAL", "REAL", "UDP", "TCP"]);
+    const SHOUT_OK = new Set(["ID", "LAN", "NAT", "DB", "RAG", "FTS5", "WAL", "REAL", "UDP", "TCP", "STUN"]);
     for (const w of text.match(/\b[A-ZÀ-Ỹ]{3,}\b/g) || []) if (!SHOUT_OK.has(w)) bad.push(`${key}: viết hoa nhấn giọng "${w}"`);
     if (text.length > 120) bad.push(`${key}: dài ${text.length} ký tự (>120)`);
   }

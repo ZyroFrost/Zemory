@@ -61,8 +61,13 @@ export interface SessionOptions {
   acceptPeer?: (peerDeviceId: string) => boolean;
   /** Bên GỌI: máy kia đã nhận, đây là vân tay của nó — ghi lại để lần sau khỏi gõ địa chỉ.*/
   onPaired?: (peerDeviceId: string) => void;
-  /** Trần một lượt — phiên treo không được giữ tiến trình mãi. */
+  /** Trần một lượt — phiên treo không được giữ tiến trình mãi. Chỉ chạy SAU khi bắt tay xong. */
   timeoutMs?: number;
+  /**
+   * Trần cho NỐI + BẮT TAY (`connectToPeer`). Khác `timeoutMs`: cái kia canh PHIÊN, cái này canh
+   * quãng TRƯỚC phiên — quãng duy nhất mà một địa chỉ nuốt gói làm treo vô hạn.
+   */
+  connectTimeoutMs?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -315,9 +320,42 @@ export function runSessionOn(sock: TLSSocket, o: SessionOptions, initiator: bool
   return runSession(sock, o, initiator);
 }
 
+/**
+ * Trần cho NỐI + BẮT TAY của `connectToPeer`.
+ *
+ * 🔴 **Thiếu trần ở đây là treo VÔ HẠN, và nó đã xảy ra thật** (máy thứ hai báo 2026-09-22,
+ * bản 3.4.1): nối tới một địa chỉ khác mạng mà tường lửa NUỐT gói — TCP bắt tay xong nhưng
+ * `ServerHello` không bao giờ tới — thì `tls.connect` chờ mãi, `/channel-sync` `await` nó nên
+ * **endpoint không bao giờ trả**, và cửa sổ app đọc thành CHẾT.
+ *
+ * Đây đúng ca mà `punch.ts` `secure()` đã tả bằng một chú thích dài rồi vá bằng `setTimeout` —
+ * nhưng bản vá đó **chỉ áp cho đường đục lỗ**, còn đường gọi thẳng bị bỏ sót. Cùng một cơ chế
+ * hỏng, hai đường gọi, vá một nửa: bài học là *vá một ca thì đi soi MỌI chỗ gọi cùng lớp đó*.
+ *
+ * `error` của socket KHÔNG cứu được ca này: nó chỉ bắn khi TCP hỏng, không bắn khi TCP lành mà
+ * TLS im. Và `SessionOptions.timeoutMs` cũng không — đồng hồ đó nằm TRONG `runSession`, tức chỉ
+ * chạy SAU khi bắt tay xong.
+ */
+export const CONNECT_TIMEOUT_MS = 10_000;
+
 /** Gọi sang một máy đã ghép đôi. */
 export function connectToPeer(addr: { host: string; port: number }, o: SessionOptions): Promise<SyncOutcome> {
   return new Promise((resolve) => {
+    let settled = false;
+    const done = (r: SyncOutcome): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(r);
+    };
+    const giveUp = (code: string): void => {
+      try {
+        sock.destroy();
+      } catch {
+        /* đóng được thì tốt */
+      }
+      done({ peerDeviceId: null, sentBlocks: 0, receivedBlocks: 0, bytesSent: 0, error: code });
+    };
     const sock = tls.connect(
       {
         host: addr.host,
@@ -330,12 +368,16 @@ export function connectToPeer(addr: { host: string; port: number }, o: SessionOp
         minVersion: "TLSv1.3",
       },
       () => {
-        void runSession(sock, o, true).then(resolve);
+        // Bắt tay xong ⇒ trần của PHIÊN (`runSession`) tiếp quản. Giữ đồng hồ này chạy tiếp là
+        // cắt ngang một lượt chở khối đang lành.
+        clearTimeout(timer);
+        void runSession(sock, o, true).then(done);
       },
     );
-    sock.on("error", (e: NodeJS.ErrnoException) =>
-      resolve({ peerDeviceId: null, sentBlocks: 0, receivedBlocks: 0, bytesSent: 0, error: e.code ?? e.message }),
-    );
+    // Đồng hồ khai SAU `sock` để nó là `const` (lint), và hai hàm trên vẫn trỏ tới được vì chúng
+    // chỉ CHẠY về sau — không có lượt nào đọc `timer` trước khi nó tồn tại.
+    const timer = setTimeout(() => giveUp("ETIMEDOUT"), o.connectTimeoutMs ?? CONNECT_TIMEOUT_MS);
+    sock.on("error", (e: NodeJS.ErrnoException) => giveUp(e.code ?? e.message));
   });
 }
 

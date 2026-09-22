@@ -2975,6 +2975,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // ca cùng mạng vẫn chạy y nguyên (fail-open).
         machineCode: ch.encodeMachineCode({ fingerprint: st.deviceId, external: ch.externalAddress() ?? undefined }),
         externalAddr: ch.externalAddress(),
+        // Vì sao CHƯA có địa chỉ ngoài — `dns` (bộ giải tên của máy) vs `no-answer` (mạng chặn
+        // STUN). Hai bệnh vá hai kiểu; một `null` trần bắt người đọc đoán, và máy thứ hai đã
+        // kẹt đúng chỗ đó 22/09.
+        externalAddrWhy: ch.externalAddressWhy(),
         // SỐ MÁY (9 chữ số) đi kèm ở MỌI chỗ có vân tay — bề mặt không tự tính được (băm nằm ở
         // backend), mà bắt người đọc một chuỗi 52 ký tự thì không ai gõ lại nổi.
         // Tầng dò LAN chỉ còn một việc THẦM LẶNG: tìm lại địa chỉ MỚI của máy đã ghép khi IP đổi.
@@ -3103,9 +3107,18 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
       // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
       let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
+      // 🔴 TRẦN CHO CẢ LƯỢT, không chỉ cho từng ứng viên. Một máy có nhiều card mạng nên danh
+      // sách ứng viên dài ra được, và `trần mỗi ứng viên × số ứng viên` là một con số không ai
+      // hứa với người bấm. Endpoint phải trả trong thời gian đọc được, kể cả khi mọi địa chỉ đều
+      // chết — treo thì cửa sổ app đọc thành CHẾT (máy thứ hai báo đúng triệu chứng đó 22/09).
+      const untilAll = Date.now() + 25_000;
       for (const cand of candidates) {
         const a = ch.parsePeerAddress(cand);
         if (!a) continue;
+        if (Date.now() > untilAll) {
+          last = { error: "ETIMEDOUT", addr: cand, note: "hết trần thử địa chỉ" };
+          break;
+        }
         const r = await ch.connectToPeer(
           { host: a.host, port: a.port },
           {
