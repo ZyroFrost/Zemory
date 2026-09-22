@@ -75,6 +75,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const myNonce = newNonce();
     let peerNonce = "";
     let proofOk = false;
+    /** Ta đã GỬI lời xin ghép và đang chờ trả lời — xem nhánh `have` để biết vì sao cần nhớ. */
+    let pairAsked = false;
     let sentDone = false;
     let gotDone = false;
     const pending: Buffer[] = [];
@@ -143,7 +145,20 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         }
         proofOk = true;
         // Bên GỌI đang nối tới máy chưa quen ⇒ xin nhận trước khi khai kho.
-        if (initiator && o.wantPair) {
+        //
+        // 🔴 `acceptPeer` cũng tính là "sẵn sàng làm quen", không riêng `wantPair`. Thiếu vế đó
+        // thì một bên mở cửa cho máy lạ nhưng KHÔNG BAO GIỜ tự xin khi nó rơi vào vai GỌI — mà
+        // vai nào là do cú bắt tay nào ăn trước quyết định, tức **tung đồng xu**. Nửa số lượt
+        // sẽ chết bằng `"khai kho trước khi ghép đôi"`: bên kia khai kho vì nó đã quen ta, còn
+        // ta thì vẫn đang chờ một lời xin ghép mà chính ta lẽ ra phải gửi. Cổng `cửa lạ` bắt
+        // được ca này ngay lượt chạy đầu.
+        //
+        // `!paired` để không gửi lời xin thừa khi hai bên vốn đã quen nhau.
+        // `wantPair` giữ nguyên nghĩa cũ — người dùng vừa gõ địa chỉ là đang TỰ GIỚI THIỆU, và
+        // ta không biết bên kia có nhớ ta hay không, nên cứ xin. Vế `acceptPeer` là phần THÊM:
+        // bên mở cửa cho máy lạ cũng phải biết tự xin khi nó rơi vào vai GỌI.
+        if (initiator && (o.wantPair || (!paired && typeof o.acceptPeer === "function"))) {
+          pairAsked = true;
           send(encodeJson({ t: "pair" }));
           return;
         }
@@ -153,7 +168,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       }
       if (m.t === "pair") {
         if (!proofOk) return finish("xin kết nối trước khi chứng minh cùng chìa");
-        if (paired) return; // đã nhận rồi thì lời xin là thừa, bỏ qua
+        // Đã quen nhau rồi ⇒ vẫn phải TRẢ LỜI. Bỏ qua im lặng thì bên kia ngồi chờ một câu
+        // không bao giờ tới; một lời xin không được đáp là đúng kiểu treo lặng.
+        if (paired) {
+          send(encodeJson({ t: "paired", id: o.identity.deviceId }));
+          return;
+        }
         if (!o.acceptPeer || !peerId || !o.acceptPeer(peerId)) {
           return finish("máy này không nhận kết nối mới");
         }
@@ -165,12 +185,39 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (m.t === "paired") {
         // Bên GỌI: máy kia đã nhận. Ghi vân tay của nó rồi mới khai kho.
         if (!proofOk) return finish("nhận xác nhận ghép trước khi chứng minh cùng chìa");
+        // Đã ghép rồi thì lời xác nhận thứ hai là thừa — khai kho lần nữa là chở TRÙNG.
+        if (paired) return;
         paired = true;
         o.onPaired?.(m.id || peerId || "");
         sendHave();
         return;
       }
       if (m.t === "have") {
+        // 🔴 Nhận `have` trong lúc ĐANG XIN ghép = bên kia VỐN ĐÃ quen ta. Đó chính là lời
+        // chấp nhận, chỉ đến bằng một đường khác — và nó tới TRƯỚC lời xin của ta vì bên kia
+        // khai kho ngay sau bước chứng minh chìa, không đợi ai.
+        //
+        // Thiếu nhánh này thì ca *"ta chưa quen nó, nó đã quen ta"* chết bằng câu
+        // `"khai kho trước khi ghép đôi"` — mà vai GỌI/NGHE do cú bắt tay nào ăn trước quyết
+        // định, tức nó hỏng theo kiểu TUNG ĐỒNG XU. Cổng `cửa lạ` bắt được ngay lượt đầu.
+        //
+        // `sendHave()` ở đây là bắt buộc: không khai kho của mình thì bên kia không biết ta
+        // thiếu gì và **không bao giờ chở về**, và lượt đồng bộ thành một chiều mà không ai báo.
+        if (!paired && proofOk) {
+          if (pairAsked) {
+            // Ta đang xin ghép, và bên kia khai kho ⇒ nó vốn đã quen ta. Đó LÀ lời chấp nhận.
+            paired = true;
+            o.onPaired?.(peerId || "");
+            sendHave();
+          } else if (peerId && o.acceptPeer?.(peerId)) {
+            // Ta là bên NGHE, chưa quen nó, nhưng cửa của ta là `acceptPeer` và nó đã chứng minh
+            // cùng chìa. Ca này có THẬT và là ca của máy người dùng: sổ máy A bị dọn khi cơ chế
+            // ghép đổi (20/09) trong khi B vẫn còn nhớ A ⇒ B không thấy cần xin ghép, A thì
+            // không có gì để mở cửa. Hai bên đều "đúng" theo sổ của mình và phiên chết lặng.
+            paired = true;
+            sendHave();
+          }
+        }
         if (!paired) return finish("khai kho trước khi ghép đôi");
         if (!proofOk) return finish("khai kho trước khi chứng minh cùng chìa");
         void shipMissing(m.ids);

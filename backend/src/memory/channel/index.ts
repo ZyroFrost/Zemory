@@ -14,7 +14,7 @@ import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromByte
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
-import { resolveStunServers, stunQueryTcp } from "./stun.js";
+import { stunPublicIp } from "./stun.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -200,9 +200,17 @@ export function externalAddressStale(): boolean {
 /**
  * Đo lại địa chỉ ngoài — MỘT lời hỏi, không phải cả bảng phân loại NAT.
  *
- * `measureNat` hỏi mọi server để phân loại ánh xạ; ở đây chỉ cần *"tôi ở địa chỉ nào"*, nên đi
- * server đầu tiên trả lời rồi dừng. Cổng NGOÀI lấy từ chính phép đo; NAT đo được là giữ nguyên cổng
- * nguồn (`§6e`) nên nó thường bằng cổng nghe, nhưng **đừng suy khi đã đo được**.
+ * `measureNat` hỏi mọi server để phân loại ánh xạ; ở đây chỉ cần *"tôi ở địa chỉ nào"*, nên
+ * `stunPublicIp` đi server đầu tiên trả lời rồi dừng.
+ *
+ * 🔴 **Hỏi UDP TRƯỚC — bản cũ chỉ hỏi TCP và đó là bug thật, không phải tối ưu bỏ lỡ.** Đo
+ * 21/09: UDP **5/6** server trả lời, TCP chỉ **2/6**. Máy nào rơi vào 0/6 phía TCP thì không
+ * bao giờ có địa chỉ ngoài ⇒ mã máy ra bản TRẦN ⇒ máy kia dán vào nhận *"không thấy máy đó"*,
+ * và không ai đoán ra vì bề mặt không nói nó đang thiếu ĐỊA CHỈ. Đúng ca máy thứ hai 21/09.
+ *
+ * Cổng lấy từ CẤU HÌNH, không lấy từ phép đo: phép đo đi bằng một cổng tuỳ ý nên cổng nó báo về
+ * là cổng của chính nó, vô dụng với máy kia. Thứ máy kia phải gọi vào là **cổng kênh** của máy
+ * này — và nó đúng ở ngoài vì NAT đo được là GIỮ NGUYÊN cổng nguồn (`§6e`).
  *
  * **Fail-open** (điều 9): không đo được ⇒ giữ đệm cũ, mã rơi về bản KHÔNG mang địa chỉ và ca cùng
  * mạng chạy y nguyên. Chống gọi trùng: hai lượt cùng lúc thì lượt sau dùng đệm.
@@ -211,15 +219,8 @@ export async function refreshExternalAddress(localPort = getP2pPort()): Promise<
   if (extBusy) return externalAddress();
   extBusy = true;
   try {
-    for (const s of await resolveStunServers()) {
-      const m = await stunQueryTcp(s, { timeoutMs: 3000 });
-      if (!m) continue;
-      // Cổng lấy từ CẤU HÌNH, không lấy từ phép đo: phép đo đi bằng một cổng tuỳ ý nên cổng nó
-      // báo về là cổng của chính nó, vô dụng với máy kia. Thứ máy kia phải gọi vào là **cổng kênh**
-      // của máy này — và nó đúng ở ngoài vì NAT đo được là GIỮ NGUYÊN cổng nguồn (`§6e`).
-      extAddr = { host: m.ip, port: localPort, at: Date.now() };
-      return externalAddress();
-    }
+    const ip = await stunPublicIp({ timeoutMs: 3000 });
+    if (ip) extAddr = { host: ip, port: localPort, at: Date.now() };
     return externalAddress();
   } catch {
     return externalAddress();
@@ -266,6 +267,13 @@ export function punchWaitState(): PunchWaitInfo | null {
   return punchWait ? { ...punchWait.info } : null;
 }
 
+/**
+ * Sàn thời gian giữa hai lượt mở chỗ chờ TỰ GIỮ. Một lượt bình thường chạy hết trần (10 phút)
+ * nên sàn này không bao giờ chạm tới; nó chỉ nổ khi lượt kết thúc bất thường nhanh — và đó
+ * đúng lúc cần chặn vòng quay chặt.
+ */
+export const RENEW_FLOOR_MS = 3000;
+
 /** Đóng chỗ chờ. Rút lại được cú bấm của mình là điều kiện để nó không thành một cái bẫy. */
 export function cancelPunchWait(): void {
   if (punchWait) punchWait.stopped = true;
@@ -294,9 +302,34 @@ export function armPunchWait(o: {
   appVersion: string;
   allowedPeers: string[];
   wantPair?: boolean;
+  /**
+   * 🔴 **Nửa NGHE của chỗ chờ phải có cái này, nếu không nó TỪ CHỐI máy lạ và cả đường
+   * MỘT-BÊN-DÁN chết ngay từ cấu tạo.**
+   *
+   * Bản đầu chỉ truyền `onPaired` — mà `onPaired` là hook của bên GỌI (`peer.ts`), không bao
+   * giờ bắn ở bên nghe. Thứ mở cửa cho máy chưa quen là `acceptPeer`: `peer.ts` tính
+   * `pairing = !known && (typeof acceptPeer === "function" || wantPair)`, nên thiếu nó thì sổ
+   * máy rỗng ⇒ `"máy lạ, chưa ghép đôi"` ⇒ B dán mã của A xong ngồi chờ, A không nhận gì.
+   * Đúng triệu chứng user báo 21/09. Chìa vẫn gác cửa: hàm này chỉ chạy SAU bước chứng minh
+   * cùng `share.key`.
+   */
+  acceptPeer?: (peerDeviceId: string) => boolean;
   localPort: number;
   /** Trần thời gian chờ. Vô hạn là một cái bẫy: lỗ giữ mãi mà không ai nói cho người dùng biết. */
   waitMs?: number;
+  /**
+   * Hết trần thì MỞ LẠI, chừng nào kênh còn bật. Chỉ dành cho chỗ chờ TỰ GIỮ (`target: null`).
+   *
+   * 🔴 Vì sao bắt buộc: `startChannelServer` mở chỗ chờ đúng MỘT lần lúc daemon bật, mà trần là
+   * 10 phút ⇒ từ phút 11 trở đi **không ai nghe cổng đục lỗ nữa**, trong khi bề mặt vẫn khai
+   * *"máy nào có mã của máy này đều gọi vào được"*. Đo trên log 21/09: chỗ chờ đóng lúc
+   * `14:52:57Z` rồi im tới hết ngày. Một lời hứa hết hạn sau 10 phút mà không ai nói là hỏng
+   * nặng hơn không hứa.
+   *
+   * KHÔNG áp cho chỗ chờ do người BẤM (`target` khác `null`): cú bấm là một việc có hạn, tự
+   * mở lại mãi là giữ lỗ NAT cho một việc người dùng tưởng đã xong.
+   */
+  renew?: boolean;
   roundMs?: number;
   retryMs?: number;
   onPaired?: (peerDeviceId: string) => void;
@@ -329,6 +362,37 @@ export function armPunchWait(o: {
   // sống lâu hơn — và nó vốn đã nằm trong danh sách công khai của `stun.ts`.
   const hold = { host: "203.0.113.1", port: 9, deviceId: o.target?.deviceId };
 
+  const armedAt = Date.now();
+  /**
+   * Mở lại chỗ chờ TỰ GIỮ khi lượt này kết thúc — kể cả lượt vừa GẶP được máy kia.
+   *
+   * Mở lại sau khi THẮNG cũng quan trọng ngang khi trượt: xong một phiên mà không mở lại thì
+   * máy này im từ đó, và lượt đồng bộ sau của máy kia không còn cửa nào vào.
+   *
+   * `RENEW_FLOOR_MS` chặn vòng quay chặt: lượt nào kết thúc bất thường nhanh (cổng bị chiếm
+   * vĩnh viễn chẳng hạn) mà mở lại ngay là đốt CPU cho một việc không bao giờ chạy được.
+   * `unref` để một bộ hẹn giờ nền không giữ tiến trình sống — đúng ca `stopChannelServer` đã
+   * phải vá khi một cổng test treo 10 phút; đây là đồng hồ CANH CHỪNG, không phải nhịp mà
+   * ai đó đang đợi (`05_TODO` bẫy `unref`).
+   */
+  const renewIfWanted = (): void => {
+    // Phép kiểm ở ĐÂY chỉ là lối thoát rẻ — nó KHÔNG phải cái gác. Trạng thái có thể đổi giữa
+    // lúc hẹn và lúc bắn, nên thứ thật sự quyết định là phép kiểm TRONG đồng hồ bên dưới.
+    // (Ghi ra vì một đột biến bỏ phép kiểm ở dòng này KHÔNG làm cổng đỏ — nó tương đương, và
+    // đọc nhầm nó thành "cổng không soi gì" là kết luận sai.)
+    if (!o.renew || slot.stopped || punchWait !== slot || !getP2pEnabled()) return;
+    const timer = setTimeout(
+      () => {
+        // 🔴 CÁI GÁC THẬT. Giữa lúc hẹn và lúc chạy, người dùng có thể đã tắt kênh hoặc mở một
+        // chỗ chờ khác; mở lại lúc đó là giữ một lỗ NAT cho một kênh đã tắt (`app-design §F15`).
+        if (slot.stopped || punchWait !== slot || !getP2pEnabled()) return;
+        armPunchWait(o);
+      },
+      Math.max(0, RENEW_FLOOR_MS - (Date.now() - armedAt)),
+    );
+    timer.unref?.();
+  };
+
   void punchToPeer(o.target ?? hold, {
     channelDir: channelPen(currentStoreRoot()),
     identity: channelIdentity(),
@@ -336,6 +400,9 @@ export function armPunchWait(o: {
     appVersion: o.appVersion,
     allowedPeers: o.allowedPeers,
     wantPair: o.wantPair,
+    // Hai hook, hai VAI khác nhau — truyền thiếu một cái là bịt một chiều mà không lỗi nào nổ:
+    // `acceptPeer` mở cửa khi TA là bên nghe · `onPaired` ghi sổ khi TA là bên gọi.
+    acceptPeer: o.acceptPeer,
     onPaired: o.onPaired,
     localPort: o.localPort,
     rounds: Math.max(1, Math.ceil(waitMs / roundMs)),
@@ -362,10 +429,12 @@ export function armPunchWait(o: {
           : `[channel] chỗ chờ đóng sau ${r.rounds} vòng: ${r.error ?? "không rõ"}`,
       );
       if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+      renewIfWanted();
     })
     .catch((e) => {
       slot.info.outcome = { won: null, error: String(e).slice(0, 140), at: new Date().toISOString(), received: 0, sent: 0 };
       log(`[channel] chỗ chờ lỗi: ${String(e).slice(0, 140)}`);
+      renewIfWanted();
     });
 
   return { ...info };
@@ -551,7 +620,15 @@ export async function startChannelServer(o: {
       log(`[channel] dò LAN không bật được: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
     }
     running = { server, port: server.port, discovery };
-    log(`[channel] đang nghe cổng ${server.port} · nhận từ ${peers.length} máy đã ghép đôi${discovery ? " · dò LAN BẬT" : ""}`);
+    // 🔴 Câu cũ là *"nhận từ N máy đã ghép đôi"* — với sổ rỗng nó in "nhận từ 0 máy", đọc ra
+    // thành **từ chối tất**, trong khi từ 2026-09-20 thứ gác cửa là CHÌA CHUNG chứ không phải sổ.
+    // Người dùng đọc dòng đó rồi đi tìm cách "ghép đôi" một cơ chế đã bị gỡ. Nay nói đúng luật
+    // đang chạy, và số máy đã biết chỉ là dữ kiện phụ.
+    log(
+      `[channel] đang nghe cổng ${server.port} · nhận máy chứng minh được cùng chìa` +
+        (peers.length ? ` · ${peers.length} máy đã biết` : "") +
+        (discovery ? " · dò LAN BẬT" : ""),
+    );
 
     // Đo địa chỉ ngoài ở NỀN để mã máy mang được nó ngay từ lượt vẽ đầu (fail-open).
     void refreshExternalAddress(server.port);
@@ -568,9 +645,13 @@ export async function startChannelServer(o: {
         allowedPeers: peers,
         localPort: punchPortOf(server.port),
         log,
-        onPaired: (peerId: string): void => {
-          o.acceptPeer?.(peerId);
-        },
+        // 🔴 `acceptPeer`, KHÔNG phải `onPaired`. Bản đầu truyền `onPaired: () => o.acceptPeer?.()`
+        // — mà `onPaired` chỉ bắn ở bên GỌI, nên nửa NGHE của chỗ chờ này chưa bao giờ nhận được
+        // một máy lạ nào: `peer.ts` thấy sổ rỗng và không có `acceptPeer` ⇒ `"máy lạ, chưa ghép đôi"`.
+        // Đường MỘT-BÊN-DÁN của `§6g` vì vậy chết từ cấu tạo, không phải vì NAT.
+        acceptPeer: o.acceptPeer,
+        // Chỗ chờ này là TRẠNG THÁI của kênh, không phải một cú bấm ⇒ hết trần thì mở lại.
+        renew: true,
         onReceived: o.onReceived,
       });
     }

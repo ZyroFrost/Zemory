@@ -3081,13 +3081,16 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         ? [raw]
         : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
       if (!candidates.length) {
-        // 🔴 Câu cũ ở đây khai *"đục lỗ NAT chưa dựng"* — nay SAI (dựng 2026-09-21, `plan/24 §6f`).
-        // Thứ còn thiếu KHÔNG phải lớp đục lỗ mà là ĐỊA CHỈ: mã máy cố ý chỉ mang vân tay, nên khác
-        // mạng thì không ai biết máy kia ở đâu. Nói đúng thứ đang thiếu, đừng nói thứ đã có.
+        // 🔴 Câu ở đây đã SAI HAI LẦN, mỗi lần vì một vế của spec đi trước mà chữ ở lại.
+        // ① *"đục lỗ NAT chưa dựng"* — sai từ 21/09 khi lớp đục lỗ ship (`§6f`).
+        // ② *"mã máy chỉ mang vân tay"* — sai từ `[2026-09-21l]`, khi mã BẮT ĐẦU chở địa chỉ ngoài
+        //    (`§6g`). Người dùng đọc câu đó rồi đi tìm một IP để gõ tay, trong khi thứ thật sự
+        //    thiếu là **máy KIA chưa đo được địa chỉ ngoài của chính nó** nên mã nó xuất ra là bản
+        //    TRẦN. Bảo người ta làm một việc không giải quyết gì là tệ hơn im lặng.
         return json(res, {
           ok: false,
           error: wantId
-            ? "không thấy máy đó trên mạng này. Khác mạng thì cần ĐỊA CHỈ NGOÀI của nó (mã máy chỉ mang vân tay) — dán `ip:cổng` vào đây. Bên nào dán trước thì mở chỗ chờ, bên kia bấm lúc nào cũng gặp."
+            ? "không thấy máy đó trên mạng này, và MÃ vừa dán KHÔNG mang địa chỉ ngoài. Mở app ở máy kia, xem hàng `Mã máy này`: nếu nó báo chưa đo được địa chỉ ngoài thì máy đó chưa ra được STUN (mạng chặn, hoặc DNS hỏng) — chép lại mã sau khi hàng đó đã có địa chỉ. Cách khác: dán thẳng `ip:cổng` ngoài của nó vào đây."
             : "chưa biết máy nào — dán mã máy kia",
         });
       }
@@ -3141,6 +3144,19 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           appVersion: appVersion(),
           allowedPeers: st.peers,
           wantPair,
+          // 🔴 `acceptPeer` PHẢI có ở đây, cùng lý do như chỗ chờ tự giữ — và thiếu nó thì đường
+          // lùi *"dán mã ở CẢ HAI bên"* (`plan/24 §6g`) chết hẳn, đúng lúc cần nó nhất.
+          //
+          // Vai GỌI/NGHE do cú bắt tay nào ăn trước quyết định. Khi ta rơi vào vai NGHE và máy kia
+          // chưa có trong sổ, `peer.ts` đòi một trong hai cửa: `acceptPeer`, hoặc lời xin ghép của
+          // bên kia. Bản cũ chỉ có `wantPair` (cửa của bên GỌI) + `onPaired` (hook của bên GỌI) ⇒
+          // hai máy **đều vừa bấm**, đều chưa quen nhau, và cả hai cùng chờ bên kia mở cửa ⇒ phiên
+          // chết bằng *"máy này không nhận kết nối mới"*. Chìa chung vẫn là thứ gác cửa thật.
+          acceptPeer: (peerId: string): boolean => {
+            if (!getP2pPeers().some((x) => x === peerId)) setP2pPeers([...getP2pPeers(), peerId]);
+            daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua lỗ vừa đục`);
+            return true;
+          },
           // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
           localPort: ch.punchPortOf(st.port),
           onPaired: (peerId: string): void => {

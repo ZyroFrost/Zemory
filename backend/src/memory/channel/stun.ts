@@ -115,22 +115,65 @@ export function parseMappedAddress(msg: Buffer, txid: Buffer): MappedAddress | n
 }
 
 /**
+ * Giải MỘT tên ra IPv4 — **`dns.lookup` TRƯỚC, `dns.resolve4` làm đường lùi**.
+ *
+ * 🔴 Vì sao thứ tự này, đo trên máy thứ hai 2026-09-21: `channel probe` ở đó in
+ * *"không server nào trả lời (0 đã hỏi)"* — **0 đã hỏi**, tức nó chưa gửi một gói nào.
+ * Gốc là bản cũ chỉ gọi `dns.resolve4`, mà hàm đó đi thẳng tới DNS server bằng c-ares và
+ * **bỏ qua bộ giải tên của hệ điều hành**: không đọc `hosts`, không dùng cache/DoH của
+ * Windows, và hỏi nhầm DNS server khi máy có adapter ảo (máy đó có một adapter
+ * Hyper-V/WSL). `dns.lookup` đi `getaddrinfo` — cùng đường mọi app khác dùng, nên nó ra.
+ *
+ * Giữ `resolve4` làm đường lùi vì có ca ngược lại: `getaddrinfo` bị hỏng/chậm trong khi
+ * DNS thẳng vẫn ra. Hai đường khác cơ chế ⇒ bịt được hai kiểu hỏng khác nhau.
+ */
+async function resolveOne(host: string): Promise<string | null> {
+  const viaOs = await dns
+    .lookup(host, { family: 4 })
+    .then((r) => r.address)
+    .catch(() => null);
+  if (viaOs) return viaOs;
+  const ips = await dns.resolve4(host).catch(() => [] as string[]);
+  return ips[0] ?? null;
+}
+
+/** Kết quả giải tên — giữ luôn phần TRƯỢT để bề mặt nói đúng thứ đang hỏng. */
+export interface StunResolution {
+  servers: StunServer[];
+  /** Tên KHÔNG giải được. Rỗng hết ⇒ bệnh là DNS, KHÁC HẲN "server im". */
+  unresolved: string[];
+}
+
+/**
  * Giải tên server rồi **khử trùng THEO IP**. Hai tên trỏ cùng một máy đếm là MỘT —
  * xem bẫy nhịp ở đầu file: trùng IP vừa làm phân loại vô nghĩa, vừa tự gây hết giờ.
+ *
+ * Trả cả danh sách TRƯỢT: không có nó thì `asked = 0` đọc ra thành *"hỏi rồi không ai
+ * trả lời"*, trong khi sự thật là **chưa hỏi ai**. Đó đúng kiểu bề mặt nói dối mà
+ * `02_RULES §Hành xử` cấm, và nó đã đốt một lượt chẩn đoán thật.
  */
-export async function resolveStunServers(hostports: readonly string[] = PUBLIC_STUN_SERVERS): Promise<StunServer[]> {
-  const out: StunServer[] = [];
+export async function resolveStunServersDetailed(
+  hostports: readonly string[] = PUBLIC_STUN_SERVERS,
+): Promise<StunResolution> {
+  const servers: StunServer[] = [];
+  const unresolved: string[] = [];
   for (const hostport of hostports) {
     const [host, portText] = hostport.split(":");
     const port = Number(portText);
     if (!host || !Number.isInteger(port) || port <= 0) continue;
-    const ips = await dns.resolve4(host).catch(() => [] as string[]);
-    const ip = ips[0];
-    if (!ip) continue;
-    if (out.some((s) => s.ip === ip)) continue;
-    out.push({ host, ip, port });
+    const ip = await resolveOne(host);
+    if (!ip) {
+      unresolved.push(host);
+      continue;
+    }
+    if (servers.some((s) => s.ip === ip)) continue;
+    servers.push({ host, ip, port });
   }
-  return out;
+  return { servers, unresolved };
+}
+
+export async function resolveStunServers(hostports: readonly string[] = PUBLIC_STUN_SERVERS): Promise<StunServer[]> {
+  return (await resolveStunServersDetailed(hostports)).servers;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -241,6 +284,12 @@ export interface NatMeasurement {
   tcp: NatSide;
   /** Ánh xạ có bền qua nhiều lượt cách nhau hay không; `null` = chưa đo được. */
   stable: boolean | null;
+  /**
+   * Giải tên được mấy trên mấy. **`resolved === 0` là bệnh DNS, không phải bệnh mạng** —
+   * thiếu trường này thì `asked = 0` đọc thành *"không server nào trả lời"* và người đọc
+   * đi soi tường lửa cho một lượt chưa gửi gói nào (đã xảy ra thật, máy thứ hai 21/09).
+   */
+  dns: { names: number; resolved: number };
 }
 
 const emptySide = (asked: number): NatSide => ({
@@ -293,8 +342,10 @@ export async function measureNat(
 ): Promise<NatMeasurement> {
   const timeoutMs = o.timeoutMs ?? 3000;
   const spacingMs = o.spacingMs ?? 400;
-  const servers = await resolveStunServers(o.servers);
-  if (!servers.length) return { udp: emptySide(0), tcp: emptySide(0), stable: null };
+  const names = (o.servers ?? PUBLIC_STUN_SERVERS).length;
+  const { servers } = await resolveStunServersDetailed(o.servers);
+  const dnsInfo = { names, resolved: servers.length };
+  if (!servers.length) return { udp: emptySide(0), tcp: emptySide(0), stable: null, dns: dnsInfo };
 
   // ── UDP: MỘT socket hỏi mọi server. Giữ nguyên socket là toàn bộ phép thử —
   // đổi socket giữa các lượt thì cổng ngoài đổi vì lý do khác, và phân loại thành vô nghĩa.
@@ -356,7 +407,46 @@ export async function measureNat(
       ? "endpoint-independent"
       : classifyMapping(tcp.externalPorts, tcp.distinctServers);
 
-  return { udp, tcp, stable };
+  return { udp, tcp, stable, dns: dnsInfo };
+}
+
+/**
+ * Địa chỉ ngoài của chính máy này — **UDP TRƯỚC, TCP làm đường lùi**.
+ *
+ * Tách khỏi `measureNat` vì hai câu hỏi khác nhau: kia phân loại NAT (phải hỏi MỌI server,
+ * giãn nhịp, mất chục giây), đây chỉ cần *"tôi ở địa chỉ nào"* ⇒ server đầu tiên trả lời
+ * là xong.
+ *
+ * 🔴 **Thứ tự UDP-trước là bản vá, không phải gu.** Bản cũ (`refreshExternalAddress`) chỉ
+ * hỏi TCP, mà đo 2026-09-21: UDP **5/6** server trả lời, TCP chỉ **2/6** — phần lớn server
+ * không phục vụ STUN trên TCP. Máy nào rơi vào 0/6 TCP thì **không bao giờ** đo được địa
+ * chỉ ngoài ⇒ mã máy ra bản TRẦN 59 ký tự ⇒ máy kia dán vào nhận *"không thấy máy đó"*.
+ * Đó đúng ca đã gặp trên máy thứ hai.
+ *
+ * Fail-open (điều 9): không đo được ⇒ `null`, người gọi tự xử.
+ */
+export async function stunPublicIp(o: { timeoutMs?: number; servers?: readonly string[] } = {}): Promise<string | null> {
+  const timeoutMs = o.timeoutMs ?? 3000;
+  const { servers } = await resolveStunServersDetailed(o.servers);
+  if (!servers.length) return null;
+  // MỘT socket cho mọi lượt hỏi UDP: mở socket mới mỗi lượt là đổi cổng nguồn, tốn thêm
+  // một ánh xạ NAT cho việc chỉ cần đọc địa chỉ.
+  const socket = await openUdp(0).catch(() => null);
+  if (socket) {
+    try {
+      for (const s of servers) {
+        const mapped = await stunQueryUdp(socket, s, timeoutMs);
+        if (mapped) return mapped.ip;
+      }
+    } finally {
+      closeQuietly(socket);
+    }
+  }
+  for (const s of servers) {
+    const mapped = await stunQueryTcp(s, { timeoutMs: timeoutMs + 2000 });
+    if (mapped) return mapped.ip;
+  }
+  return null;
 }
 
 /**

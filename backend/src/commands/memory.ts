@@ -766,7 +766,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     if (action === "probe") {
       // Đo tầng 2: router có nói NAT-PMP không. KHÔNG mở cổng thật, chỉ hỏi rồi thả.
       const gws = guessGateways();
-      console.log(`zemory memory channel probe — gateway đoán được: ${gws.join(", ") || "(không có)"}`);
+      console.log(`zemory memory channel probe — gateways guessed: ${gws.join(", ") || "(none)"}`);
       const m = await mapPort(channelStatus().port, { lifetimeSeconds: 60 });
       // 🔴 Câu báo lúc THẤT BẠI từng là *"Không sao: chỉ cần ĐẦU KIA mở được cổng"* — nó NÓI DỐI
       // đúng ca tệ nhất: **cả hai đầu cùng câm** thì hết đường, mà người đọc lại được trấn an.
@@ -774,45 +774,57 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // KIỆN, không nói kết luận — vì máy này không biết gì về đầu kia.
       console.log(
         m
-          ? `  ✓ mở được cổng ngoài ${m.externalPort} qua ${m.gateway} (thuê ${m.lifetimeSeconds}s)`
-          : "  ✗ không router nào trả lời NAT-PMP — máy này KHÔNG nhận được kết nối vào KHÔNG MỜI.\n" +
-            "    ⇒ Đồng bộ chạy được nếu MỘT trong ba điều sau đúng:\n" +
-            "       · hai máy CÙNG MẠNG (tầng dò LAN tự tìm nhau), HOẶC\n" +
-            "       · ĐẦU KIA gọi-vào-được (router bên đó mở cổng, hoặc bạn tự forward cổng), HOẶC\n" +
-            "       · ĐỤC LỖ NAT — xem phần đo ngay dưới đây.",
+          ? `  ✓ opened external port ${m.externalPort} via ${m.gateway} (lease ${m.lifetimeSeconds}s)`
+          : "  ✗ no router answered NAT-PMP — this machine does NOT accept uninvited inbound connections.\n" +
+            "    ⇒ Sync still works if ONE of these holds:\n" +
+            "       · both machines on the SAME network (LAN discovery finds them), OR\n" +
+            "       · the OTHER end is reachable (its router opens a port, or you forward one), OR\n" +
+            "       · NAT hole punching — see the measurement below.",
       );
 
       // ── Kiểu NAT: thứ quyết định đục lỗ (plan/24 §7 ⑩) có cửa hay không.
       // Phải chạy ở CẢ HAI máy rồi mới kết luận được — máy này không biết gì về đầu kia.
-      console.log("\n  Kiểu NAT (STUN công khai — không tài khoản, không máy chủ của bạn):");
+      console.log("\n  NAT type (public STUN — no account, no server of yours):");
       const nat = await measureNat({ localPort: channelStatus().port });
+      // 🔴 DNS TRƯỚC MỌI THỨ KHÁC. Máy thứ hai in *"no server answered (0 asked)"* ngày 21/09 và
+      // người đọc đi soi tường lửa — trong khi lượt đó **chưa gửi một gói nào**: cả 6 tên đều
+      // không giải được. `asked = 0` và *"không ai trả lời"* là HAI câu khác nhau; gộp chúng là
+      // bề mặt nói dối về thứ nó biết.
+      if (nat.dns.resolved === 0) {
+        console.log(`    ✗ DNS: could not resolve ANY of the ${nat.dns.names} STUN hostnames — nothing was asked.`);
+        console.log("      This is a name-resolution problem on this machine, not a NAT or firewall one.");
+        console.log("      Check with: node -e \"require('dns').lookup('stun.cloudflare.com',console.log)\"");
+      } else if (nat.dns.resolved < nat.dns.names) {
+        console.log(`    ⚠ DNS: resolved ${nat.dns.resolved}/${nat.dns.names} STUN hostnames`);
+      }
       const sideLine = (label: string, s: typeof nat.udp): string => {
-        if (!s.answered) return `    ${label.padEnd(4)} không server nào trả lời (${s.asked} đã hỏi) — chưa đo được`;
-        const kept = s.portPreserved === null ? "chưa đo" : s.portPreserved ? "GIỮ NGUYÊN" : "bị đổi";
+        if (!s.asked) return `    ${label.padEnd(4)} not asked (no server address to ask) — not measured`;
+        if (!s.answered) return `    ${label.padEnd(4)} no server answered (${s.asked} asked) — not measured`;
+        const kept = s.portPreserved === null ? "not measured" : s.portPreserved ? "PRESERVED" : "changed";
         const verdict =
           s.mapping === "endpoint-independent"
-            ? "ánh xạ KHÔNG phụ thuộc đích (cone) ⇒ đục lỗ có cửa"
+            ? "endpoint-INDEPENDENT mapping (cone) ⇒ hole punching has a chance"
             : s.mapping === "address-dependent"
-              ? "ánh xạ PHỤ THUỘC đích (NAT đối xứng) ⇒ đục lỗ chết ở đầu này"
-              : `chưa kết luận được (${s.distinctServers} server khác nhau trả lời — cần ≥ 2)`;
-        return `    ${label.padEnd(4)} ${s.answered}/${s.asked} trả lời · cổng nguồn ${kept} · ${verdict}`;
+              ? "endpoint-DEPENDENT mapping (symmetric NAT) ⇒ hole punching dies at this end"
+              : `not conclusive (${s.distinctServers} distinct servers answered — needs ≥ 2)`;
+        return `    ${label.padEnd(4)} ${s.answered}/${s.asked} answered · source port ${kept} · ${verdict}`;
       };
       console.log(sideLine("UDP", nat.udp));
       console.log(sideLine("TCP", nat.tcp));
       if (nat.stable !== null) {
-        console.log(`    ánh xạ ${nat.stable ? "BỀN" : "NHẢY"} qua ba lượt cách nhau — ${nat.stable ? "cổng đoán trước được" : "không đoán trước được"}`);
+        console.log(`    mapping is ${nat.stable ? "STABLE" : "UNSTABLE"} across three spaced probes — port ${nat.stable ? "is predictable" : "is not predictable"}`);
       }
       const addr = nat.tcp.externalAddress ?? nat.udp.externalAddress;
-      if (addr) console.log(`    địa chỉ ngoài server thấy được: ${addr}`);
+      if (addr) console.log(`    external address as seen by the server: ${addr}`);
       const viable = holePunchViable(nat);
       console.log(
         viable === true
-          ? "  ⇒ Đầu NÀY thoả điều kiện đục lỗ. Chạy đúng lệnh này ở máy kia; CẢ HAI thoả thì mới có đường.\n" +
-              "     (Lớp đục lỗ chưa dựng — plan/24 §7 ⑩ đòi đo hai đầu trước khi viết.)"
+          ? "  ⇒ THIS end meets the hole-punching condition. Run the same command on the other machine;\n" +
+              "     a path exists only when BOTH ends do."
           : viable === false
-            ? "  ⇒ Đầu NÀY là NAT đối xứng: đục lỗ không cứu được, và không dòng mã nào đổi được điều đó.\n" +
-                "     Đường còn lại: cùng mạng, hoặc đầu kia mở cổng."
-            : "  ⇒ CHƯA ĐỦ DỮ KIỆN để phán. Không đọc thành 'được' cũng không đọc thành 'không được'.",
+            ? "  ⇒ THIS end is a symmetric NAT: hole punching cannot fix that, and no code change will.\n" +
+                "     Remaining routes: same network, or the other end opens a port."
+            : "  ⇒ NOT ENOUGH EVIDENCE to judge. Do not read this as 'works' or as 'does not work'.",
       );
       return;
     }

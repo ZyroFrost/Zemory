@@ -16,6 +16,8 @@ import {
   classifyMapping,
   holePunchViable,
   resolveStunServers,
+  resolveStunServersDetailed,
+  measureNat,
   PUBLIC_STUN_SERVERS,
 } from "../../dist/memory/channel/stun.js";
 
@@ -137,4 +139,48 @@ test("stun: danh sách server công khai gồm nhiều NHÀ, và khử trùng th
   // Tên không giải được ⇒ bỏ qua, không ném (fail-open, điều 9).
   const bogus = await resolveStunServers(["khong-ton-tai.zemory-test.invalid:3478"]);
   assert.deepEqual(bogus, [], "DNS trượt là bỏ mục đó, không phải làm chết phép đo");
+});
+
+// ── GIẢI TÊN — cổng cho bản vá 2026-09-22 ─────────────────────────────────────────────
+//
+// 🔴 Bug thật: `channel probe` trên máy thứ hai in *"không server nào trả lời (0 đã hỏi)"*.
+// **0 đã hỏi** — nó chưa gửi một gói nào. Gốc: bản cũ chỉ gọi `dns.resolve4`, mà hàm đó đi thẳng
+// tới DNS server bằng c-ares và BỎ QUA bộ giải tên của hệ điều hành (không đọc `hosts`, không
+// dùng cache của Windows, hỏi nhầm DNS server khi máy có adapter ảo). Cả 6 tên trượt ⇒ 0 server
+// ⇒ không đo được địa chỉ ngoài ⇒ mã máy ra bản TRẦN ⇒ máy kia dán vào nhận *"không thấy máy đó"*.
+//
+// Cụm này chạy OFFLINE và TẤT ĐỊNH: `localhost` là phép phân biệt hoàn hảo giữa hai đường —
+// đo trên máy này: `dns.resolve4("localhost")` ⇒ **ENOTFOUND**, `dns.lookup("localhost")` ⇒
+// **127.0.0.1**. Nên một cổng dùng `localhost` chứng minh được ĐÚNG đường nào đang chạy.
+
+// RFC 2606: `.invalid` bảo đảm KHÔNG BAO GIỜ giải được ⇒ ca âm không phụ thuộc mạng.
+const KHONG_CO_THAT = "zemory-khong-co-that-abc123.invalid:3478";
+
+test("stun: giải tên bằng bộ giải của HỆ ĐIỀU HÀNH, không chỉ hỏi DNS thẳng", async () => {
+  const r = await resolveStunServersDetailed(["localhost:3478"]);
+  // `localhost` chỉ ra được qua `getaddrinfo` (đọc `hosts`). Đường DNS thẳng trả ENOTFOUND.
+  // Ca này đỏ ngay khi ai đó bỏ `dns.lookup` — đúng cái bug của máy thứ hai.
+  assert.equal(r.servers.length, 1, "phải giải được `localhost` — nếu không thì đang bỏ qua bộ giải của HĐH");
+  assert.equal(r.servers[0].ip, "127.0.0.1");
+  assert.equal(r.servers[0].port, 3478, "cổng phải giữ nguyên, không bị nuốt");
+  assert.deepEqual(r.unresolved, []);
+});
+
+test("stun: CA ÂM — tên không tồn tại vào sổ TRƯỢT, không bịa ra một IP", async () => {
+  const r = await resolveStunServersDetailed([KHONG_CO_THAT]);
+  assert.equal(r.servers.length, 0, "không giải được thì KHÔNG được đẻ ra server");
+  assert.equal(r.unresolved.length, 1, "phải kể tên đã trượt — thiếu nó thì bề mặt không nói được bệnh gì");
+});
+
+test("stun: bề mặt phân biệt *CHƯA HỎI AI* với *KHÔNG AI TRẢ LỜI*", async () => {
+  // Bất biến của cả bản vá: hai câu đó nghĩa khác hẳn nhau và vá hai kiểu khác nhau — một cái là
+  // DNS của máy, một cái là mạng/NAT. Gộp chúng làm người đọc đi soi nhầm đầu, và nó đã đốt một
+  // lượt chẩn đoán thật (`02_RULES §Hành xử`: chưa xác minh thì chưa phải sự thật).
+  const m = await measureNat({ localPort: 0, servers: [KHONG_CO_THAT] });
+  assert.equal(m.dns.names, 1, "phải nói đã ĐỊNH hỏi mấy tên");
+  assert.equal(m.dns.resolved, 0, "và giải được mấy — 0 nghĩa là bệnh DNS, không phải bệnh mạng");
+  assert.equal(m.udp.asked, 0, "chưa giải được tên thì KHÔNG hỏi ai — `asked` phải là 0");
+  assert.equal(m.tcp.asked, 0);
+  assert.equal(m.udp.mapping, "unknown", "không đo được thì nói KHÔNG BIẾT, không phán (điều 12)");
+  assert.equal(m.tcp.mapping, "unknown");
 });

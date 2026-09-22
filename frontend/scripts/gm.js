@@ -294,7 +294,10 @@
     var cb=zid('p2pCodeRow');
     if(cb){
       while(cb.firstChild)cb.removeChild(cb.firstChild);
-      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,''));
+      // MÃ NÓI RÕ NÓ DÙNG ĐƯỢC TỚI ĐÂU. Mã không có địa chỉ ngoài trông y hệt mã có — chỉ ngắn
+      // hơn 9 ký tự — nên người dùng đưa nó đi rồi máy kia báo "không thấy máy đó", và không ai
+      // đoán ra là thiếu ĐỊA CHỈ. Đó là bề mặt nói dối bằng DỮ LIỆU (đã cắn thật 21/09).
+      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,t(c.externalAddr?'p2p.codeWan':'p2p.codeLan')));
     }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.

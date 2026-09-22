@@ -25,10 +25,18 @@ import {
   isContainer,
 } from "../../dist/memory/share.js";
 import { loadOrCreateIdentity, normalizeDeviceId } from "../../dist/memory/channel/identity.js";
-import { punchToPeer, dialsFirst } from "../../dist/memory/channel/punch.js";
+import { punchToPeer, dialsFirst, dialsFirstInRound } from "../../dist/memory/channel/punch.js";
 import { tempDir } from "./helpers.mjs";
 
 const APP_VERSION = "test";
+
+/**
+ * Đích HỐ ĐEN — y hệt thứ `armPunchWait({target:null})` dùng khi giữ lỗ.
+ * Cố ý KHÔNG dùng `127.0.0.1:<cổng đóng>`: nó trả RST TỨC THÌ, nên nửa BẮN quay vòng thử lại
+ * hàng chục lượt trong một nửa và giữ chặt cổng nội — rồi nửa NGHE của chính ta không bind nổi.
+ * Địa chỉ tài liệu RFC 5737 thì NUỐT gói, đúng hành vi mà lớp giữ lỗ gặp ngoài đời.
+ */
+const HOLE = { host: "203.0.113.1", port: 9 };
 
 function seedDb(dbPath, tag) {
   const db = openMemory(dbPath);
@@ -86,6 +94,21 @@ const opts = (side, peers, localPort, extra = {}) => ({
   ...extra,
 });
 
+/**
+ * Một CẶP CỔNG riêng cho mỗi lượt chạy.
+ *
+ * 🔴 Cổng CỐ ĐỊNH làm cụm này chập chờn, và gốc KHÔNG phải sản phẩm: chạy lại test ngay sau
+ * lượt trước thì cổng cũ còn kẹt `TIME_WAIT`, nên nửa BẮN nhận `EADDRINUSE` ngay cú đầu của
+ * một tiến trình hoàn toàn mới. Đo được bằng log từng nửa: `1223ms B r2 ban` rồi
+ * `1224ms bắn trượt: EADDRINUSE`, trong khi mọi mắt xích đo riêng đều tốt.
+ * Một cổng đỏ vì máy vừa chạy nó một phút trước là cổng dạy người đọc bỏ qua chính nó.
+ */
+let portCursor = 22000 + Math.floor(Math.random() * 1500) * 2;
+const portPair = () => {
+  portCursor += 2;
+  return [portCursor, portCursor + 1];
+};
+
 // ── SO LE PHA — luật thuần, và nó phải ĐỐI XỨNG NGƯỢC ──────────────────────────────────
 test("pha: hai máy PHẢI ra hai pha NGƯỢC nhau, và luật không phụ thuộc cách viết ID", () => {
   const A = "AAAAAAA-BBBBBBB";
@@ -115,7 +138,7 @@ test("gặp-nhau: hai máy cùng đục lỗ về phía nhau ⇒ nối được 
 
   // Trên loopback không có NAT, nhưng MÁY TRẠNG THÁI y hệt: mỗi bên giữ cổng của mình,
   // bắn sang cổng của bên kia. Pha so le là thứ làm một cú bắn gặp được một lớp nghe.
-  const [pa, pb] = [21181, 21182];
+  const [pa, pb] = portPair();
   const [ra, rb] = await Promise.all([
     punchToPeer({ host: "127.0.0.1", port: pb, deviceId: B.identity.deviceId }, opts(A, [B.identity.deviceId], pa)),
     punchToPeer({ host: "127.0.0.1", port: pa, deviceId: A.identity.deviceId }, opts(B, [A.identity.deviceId], pb)),
@@ -140,7 +163,7 @@ test("CA ÂM: hai máy KHÁC chìa share ⇒ không khối nào đi qua", async 
   await addBlock(t, B.channelDir, B.keyPath, "chi-cua-B");
   const before = { a: blockIdsOf(A.channelDir).length, b: blockIdsOf(B.channelDir).length };
 
-  const [pa, pb] = [21183, 21184];
+  const [pa, pb] = portPair();
   await Promise.all([
     punchToPeer({ host: "127.0.0.1", port: pb, deviceId: B.identity.deviceId }, opts(A, [B.identity.deviceId], pa)),
     punchToPeer({ host: "127.0.0.1", port: pa, deviceId: A.identity.deviceId }, opts(B, [A.identity.deviceId], pb)),
@@ -159,7 +182,7 @@ test("CA ÂM: máy lạ (không trong sổ đã ghép) ⇒ không khối nào đ
   await addBlock(t, B.channelDir, B.keyPath, "cua-B-la");
   const before = { a: blockIdsOf(A.channelDir).length, b: blockIdsOf(B.channelDir).length };
 
-  const [pa, pb] = [21185, 21186];
+  const [pa, pb] = portPair();
   // Sổ RỖNG hai bên ⇒ `allowedPeers: []` ⇒ TỪ CHỐI tất (không bao giờ mặc định mở).
   await Promise.all([
     punchToPeer({ host: "127.0.0.1", port: pb, deviceId: B.identity.deviceId }, opts(A, [], pa)),
@@ -286,8 +309,25 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
     !/đục lỗ NAT chưa dựng"/.test(code),
     "bề mặt còn khai 'đục lỗ NAT chưa dựng' trong khi lớp đó đã dựng — bề mặt nói dối",
   );
-  // ...và phải nói đúng thứ ĐANG thiếu: địa chỉ ngoài.
-  assert.match(code, /ĐỊA CHỈ NGOÀI/, "phải nêu đúng thứ còn thiếu là địa chỉ, không phải lớp đục lỗ");
+  // ...và phải nói đúng thứ ĐANG thiếu: địa chỉ ngoài. Khớp KHÔNG phân biệt hoa/thường —
+  // neo vào cách viết hoa là phạt oan mọi lần câu chữ được nắn cho dễ đọc hơn.
+  assert.match(code, /địa chỉ ngoài/i, "phải nêu đúng thứ còn thiếu là địa chỉ, không phải lớp đục lỗ");
+
+  // 🔴 CA ÂM THỨ HAI, cùng họ với ca trên: *"mã máy chỉ mang vân tay"* đúng cho tới
+  // `[2026-09-21l]`, rồi SAI từ lúc mã bắt đầu chở địa chỉ ngoài (`§6g`). Người dùng đọc câu đó
+  // sẽ đi tìm một IP để gõ tay, trong khi thứ thật sự thiếu là **máy KIA chưa đo được địa chỉ
+  // của chính nó**. Bảo người ta làm một việc không giải quyết gì là tệ hơn im lặng.
+  assert.ok(
+    !/chỉ mang vân tay/.test(code),
+    "bề mặt còn khai 'mã máy chỉ mang vân tay' trong khi mã đã chở địa chỉ ngoài từ 21/09l",
+  );
+
+  // 🔴 CA ÂM: chỗ chờ do người BẤM cũng phải mở cửa cho máy chưa quen. Thiếu nó thì đường lùi
+  // *"dán mã ở CẢ HAI bên"* (`plan/24 §6g`) chết: hai máy đều vừa bấm, đều chưa có nhau trong sổ,
+  // và bên rơi vào vai NGHE trả *"máy này không nhận kết nối mới"*. Bug thật, tìm ra 2026-09-22
+  // khi phép thử hai máy đầu tiên không nối được.
+  const armBlock = code.slice(code.indexOf("ch.armPunchWait({"), code.indexOf("dialFailed"));
+  assert.match(armBlock, /acceptPeer:/, "chỗ chờ của cú bấm phải nhận máy chứng minh được cùng chìa");
 
   // 🔴 CA ÂM: bề mặt KHÔNG được dặn "bấm cùng lúc" nữa. Câu đó đúng với bản một-lượt-20-giây và
   // SAI từ khi có chỗ chờ — user thấy đúng nó trên màn hình rồi hỏi *"sao kì vậy?"*. Một câu
@@ -379,4 +419,93 @@ test("giữ lỗ: bật kênh phải tự mở một chỗ chờ KHÔNG nhắm m
   // đứng im ở nhóm `p2p-channel` đúng vì lý do này.
   const stop = CH.slice(CH.indexOf("export function stopChannelServer"), CH.indexOf("export function stopChannelServer") + 700);
   assert.match(stop, /cancelPunchWait\(\);/, "đóng kênh phải đóng luôn chỗ chờ, nếu không nó chạy tiếp 10 phút");
+});
+
+// ── CỬA CHO MÁY CHƯA QUEN — `acceptPeer`, và vì sao `onPaired` KHÔNG thay được ──────────
+//
+// 🔴 Đây là cổng của bug thật ngày 2026-09-21: B dán mã của A, B báo "đang chờ", A không
+// nhận gì. Gốc không phải NAT mà là chỗ chờ tự-giữ của A truyền `onPaired` thay cho
+// `acceptPeer` — mà `onPaired` chỉ bắn ở bên GỌI, nên nửa NGHE thấy sổ rỗng và trả
+// "máy lạ, chưa ghép đôi". Cả đường MỘT-BÊN-DÁN chết từ cấu tạo.
+test("cửa lạ ①: ta NGHE, máy kia đã quen ta ⇒ `acceptPeer` là cửa duy nhất", async (t) => {
+  const secret = "chia-chung-cho-may-la";
+  const A = makeSide(t, "acc-a", secret);
+  const B = makeSide(t, "acc-b", secret);
+  await addBlock(t, A.channelDir, A.keyPath, "cua-A-acc");
+  await addBlock(t, B.channelDir, B.keyPath, "cua-B-acc");
+
+  const [pa, pb] = portPair();
+  let accepted = null;
+  // ÉP A CHỈ ĐƯỢC LÀM BÊN NGHE: đích của A là một cổng chết nên nửa BẮN không bao giờ ăn.
+  // Không ép thì vai GỌI/NHẬN là ngẫu nhiên và đột biến sẽ đỏ chập chờn — mà một cổng chập
+  // chờn thì tệ hơn không có cổng.
+  //
+  // B ĐÃ QUEN A và vì vậy KHÔNG có `wantPair`: nó thấy không cần xin ghép, nên nó khai kho
+  // ngay sau bước chứng minh chìa. Đây đúng tình trạng máy người dùng — sổ của A bị dọn khi
+  // cơ chế ghép đổi (20/09), B thì vẫn còn nhớ A.
+  const [ra, rb] = await Promise.all([
+    punchToPeer({ host: HOLE.host, port: HOLE.port }, opts(A, [], pa, { rounds: 8, roundMs: 1200, acceptPeer: (id) => { accepted = id; return true; } })),
+    punchToPeer({ host: "127.0.0.1", port: pa, deviceId: A.identity.deviceId }, opts(B, [A.identity.deviceId], pb, { rounds: 8, roundMs: 1200 })),
+  ]);
+
+  // Báo CẢ HAI phía: lỗi thật hay nằm ở bên kia, và một cổng chỉ kể một nửa thì người đọc
+  // đi soi nhầm đầu (đúng bài học "bề mặt phải nói đủ thứ nó biết").
+  assert.ok(!ra.error, `A lỗi: ${ra.error} | B: ${rb.won ?? "-"} ${rb.error ?? ""}`);
+  assert.equal(normalizeDeviceId(accepted ?? ""), normalizeDeviceId(B.identity.deviceId), "`acceptPeer` phải được hỏi với vân tay của B");
+  assert.deepEqual(blockIdsOf(A.channelDir), blockIdsOf(B.channelDir), "hai máy phải hội tụ cùng TẬP khối");
+  assert.equal(blockIdsOf(A.channelDir).length, 2, "phải có đủ hai khối");
+});
+
+test("cửa lạ ②: ta GỌI, chưa quen nó ⇒ phải TỰ XIN ghép, không nằm chờ", async (t) => {
+  const secret = "chia-chung-cho-may-la-2";
+  const A = makeSide(t, "dial-a", secret);
+  const B = makeSide(t, "dial-b", secret);
+  await addBlock(t, A.channelDir, A.keyPath, "cua-A-dial");
+  await addBlock(t, B.channelDir, B.keyPath, "cua-B-dial");
+
+  const [pa, pb] = portPair();
+  let learned = null;
+  // ÉP A CHỈ ĐƯỢC LÀM BÊN GỌI: đích của B là cổng chết. Và ép B vào pha NGHE-trước bằng một
+  // đích có ID thấp hơn ID của B, để hai bên không cùng pha.
+  // Phải là ký tự NHỎ NHẤT của bảng base32, và đó là `2` chứ không phải `A`: RFC 4648 dùng
+  // `A-Z` rồi `2-7`, mà trong ASCII chữ số đứng TRƯỚC chữ cái. Bản đầu dùng `"A"*52` nên mọi
+  // ID của B bắt đầu bằng `2`–`7` (≈19% số lượt, vì danh tính sinh ngẫu nhiên mỗi lượt chạy)
+  // rơi xuống DƯỚI nó và ca tự hỏng — đúng kiểu cổng đỏ vì phép dựng, không vì sản phẩm.
+  const LOW = "2".repeat(52);
+  assert.equal(dialsFirst(B.identity.deviceId, LOW), false, "phép dựng ca hỏng: B phải NGHE ở nửa đầu");
+
+  const [ra, rb] = await Promise.all([
+    punchToPeer({ host: "127.0.0.1", port: pb }, opts(A, [], pa, { rounds: 8, roundMs: 1200, acceptPeer: () => true, onPaired: (id) => { learned = id; } })),
+    punchToPeer({ host: HOLE.host, port: HOLE.port, deviceId: LOW }, opts(B, [A.identity.deviceId], pb, { rounds: 8, roundMs: 1200 })),
+  ]);
+
+  assert.ok(!ra.error, `A lỗi: ${ra.error} | B: ${rb.won ?? "-"} ${rb.error ?? ""}`);
+  assert.equal(normalizeDeviceId(learned ?? ""), normalizeDeviceId(B.identity.deviceId), "A phải nhớ được vân tay của B sau khi tự xin ghép");
+  assert.deepEqual(blockIdsOf(A.channelDir), blockIdsOf(B.channelDir), "hai máy phải hội tụ cùng TẬP khối");
+});
+
+// ── PHA khi CHƯA BIẾT máy kia: phải ĐỔI MỖI VÒNG, không được cố định ───────────────────
+//
+// Ca này dựng đúng thế bí mà bản cũ rơi vào: A giữ lỗ (không biết B) nên `dialsFirst` trả
+// `true` ⇒ A bắn nửa đầu MỌI vòng; còn B thì tính pha theo ID và cũng ra "bắn nửa đầu".
+// Hai bên bắn cùng lúc, nghe cùng lúc ⇒ KHÔNG BAO GIỜ gặp, mà không lỗi nào nổ.
+test("pha: chưa biết máy kia ⇒ ĐỔI PHA MỖI VÒNG, không cố định một pha", () => {
+  const ME = "M".repeat(52);
+  const PEER = "Z".repeat(52);
+
+  // Biết máy kia ⇒ pha CỐ ĐỊNH mọi vòng (0 tin thương lượng), và hai đầu ra pha ngược nhau.
+  for (const r of [1, 2, 3, 4]) {
+    assert.equal(dialsFirstInRound(ME, PEER, r), true, "biết máy kia thì pha không được đổi theo vòng");
+    assert.equal(dialsFirstInRound(PEER, ME, r), false, "hai đầu phải ngược pha");
+  }
+
+  // CHƯA biết máy kia ⇒ phải ĐỔI mỗi vòng. Đây là bất biến: giữ một pha cố định thì khi máy kia
+  // tình cờ cùng pha, hai bên bắn cùng lúc và nghe cùng lúc — KHÔNG BAO GIỜ gặp, mà không lỗi
+  // nào nổ. Đúng ca của chỗ chờ TỰ GIỮ, nơi ta không biết ai sẽ gọi tới.
+  const phases = [1, 2, 3, 4].map((r) => dialsFirstInRound(ME, "", r));
+  assert.deepEqual(phases, [true, false, true, false], "chưa biết máy kia thì pha phải ĐỔI mỗi vòng");
+
+  // 🔴 Vì sao ca này soi LUẬT THUẦN chứ không đo đầu-cuối: đã thử đo đầu-cuối và nó KHÔNG canh
+  // được — hai bên trôi lệch theo thời gian nên đôi khi vẫn gặp nhau dù pha cố định sai. Đột
+  // biến `dialFirstNow = meFirst` làm cổng đầu-cuối XANH, tức cổng đó trang trí.
 });
