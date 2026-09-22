@@ -264,11 +264,25 @@ async function announceBeat(port: number, host: string | null, now = Date.now())
   // lúc đó cụm dò vẫn nói ta không có đường relay nào, và máy kia sẽ không thử tầng 4.
   const relayChanged = (globalAnn?.relay ?? null) !== (relayAt?.url ?? null);
   if (!relayChanged && !shouldAnnounceNow(globalAnn, host, now)) return;
+  /**
+   * 🔴 CHỤP địa chỉ relay MỘT LẦN, dùng chung cho cả thân tin lẫn sổ. Ghi `relayAt` sau `await` là
+   * ghi thứ ta ĐỊNH gửi chứ không phải thứ ĐÃ gửi — và nó hỏng thật, bắt được lúc chạy app thật
+   * 23/09:
+   *
+   *   `relayAt` còn `null` lúc dựng thân tin ⇒ lượt đăng đi KHÔNG mang relay · lượt tham gia relay
+   *   xong **trong lúc đang chờ HTTP** ⇒ `relayAt` có giá trị · lượt đăng trả về, sổ ghi giá trị
+   *   MỚI đó ⇒ nhịp sau so `url !== url` thấy *"không đổi"* và **không bao giờ đăng lại**.
+   *
+   * Kết cục: máy này ở trong pool relay, mà cụm dò vĩnh viễn nói nó không có đường relay nào — tầng
+   * 4 dựng xong vẫn vô dụng, và **không một lỗi nào nổ**. Cổng không bắt được ca này; chạy thật mới
+   * bắt được. Bài học rộng hơn: sổ phải ghi **thứ đã làm**, không phải thứ đang định làm.
+   */
+  const sentRelay = relayAt?.url ?? null;
   try {
     const r = await announceGlobal({
       identity: channelIdentity(),
       port,
-      relays: relayAt ? [relayAt.url] : [],
+      relays: sentRelay ? [sentRelay] : [],
     });
     globalAnn = {
       ok: r.ok,
@@ -276,11 +290,11 @@ async function announceBeat(port: number, host: string | null, now = Date.now())
       nextAt: now + (r.ok ? r.reannounceAfterS * 1000 : 60_000),
       server: r.server,
       host,
-      relay: relayAt?.url ?? null,
+      relay: sentRelay,
     };
   } catch {
     // Không bao giờ ném lên người gọi: lane này chỉ THÊM một đường (điều 9).
-    globalAnn = { ok: false, at: now, nextAt: now + 60_000, host, relay: relayAt?.url ?? null };
+    globalAnn = { ok: false, at: now, nextAt: now + 60_000, host, relay: sentRelay };
   }
 }
 
