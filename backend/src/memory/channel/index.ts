@@ -15,6 +15,8 @@ import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
 import { stunPublicIp } from "./stun.js";
+import { publishPresence, withdrawPresence } from "./presence.js";
+import { announceGlobal, shouldAnnounceNow } from "./globaldisco.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -24,6 +26,8 @@ export * from "./discovery.js";
 export * from "./portmap.js";
 export * from "./stun.js";
 export * from "./punch.js";
+export * from "./presence.js";
+export * from "./globaldisco.js";
 
 /**
  * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
@@ -155,7 +159,7 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
-let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle } | null = null;
+let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle; presence?: NodeJS.Timeout } | null = null;
 // ── ĐỊA CHỈ NGOÀI CỦA MÁY NÀY — mảnh làm ca KHÁC MẠNG chạy bằng một mã ────────────────────────
 /**
  * Khác mạng thì không tầng dò nào tìm ra máy kia, nên địa chỉ phải đi TRONG mã. Máy tự đo địa chỉ
@@ -181,6 +185,61 @@ let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle 
 export const PUNCH_PORT_OFFSET = 1;
 export function punchPortOf(channelPort: number): number {
   return channelPort + PUNCH_PORT_OFFSET;
+}
+
+// ── DÒ TOÀN CẦU — trạng thái lượt đăng ký gần nhất lên cụm công khai của Syncthing ────────────
+/**
+ * 🔴 **Lane này KHÔNG cần STUN.** Ta khai `0.0.0.0` và server thay bằng **IP nguồn của gói**, nên
+ * nó đăng được địa chỉ đúng ngay cả trên máy STUN im — chính là ca máy thứ hai kẹt 22/09
+ * (`externalAddr: null`). Đó là lý do nó xếp TRƯỚC bảng thư mục chung, vốn phải có STUN mới ghi
+ * được một dòng.
+ *
+ * Giữ mốc `nextAt` chứ không phải một bộ hẹn giờ riêng: nhịp đăng lại do SERVER nói
+ * (`Reannounce-After`, đo được 3774 giây hôm 22/09) và nó dài gấp ~60 lần nhịp bảng chung. Một
+ * timer thứ hai là một vòng đời thứ hai phải đóng khi tắt kênh — `beat()` 60 giây đã chạy sẵn, chỉ
+ * cần nó tự hỏi *"tới lượt chưa"*. Đăng dày hơn nhịp server nói là ăn `429`.
+ */
+export interface GlobalAnnounceState {
+  ok: boolean;
+  at: number;
+  nextAt: number;
+  server?: string;
+  /** Địa chỉ ngoài lúc đăng — mốc để biết máy đã đổi IP kể từ lượt đăng gần nhất. */
+  host?: string | null;
+}
+let globalAnn: GlobalAnnounceState | null = null;
+
+/** Lượt đăng ký toàn cầu gần nhất — cho bề mặt nói nó đang dựa vào đâu. `null` = chưa thử lần nào. */
+export function globalAnnounceState(): GlobalAnnounceState | null {
+  return globalAnn ? { ...globalAnn } : null;
+}
+
+/**
+ * Một nhịp đăng ký toàn cầu — TỰ BỎ QUA khi chưa tới lượt.
+ *
+ * Phép quyết *"tới lượt chưa"* nằm ở `shouldAnnounceNow` (hàm THUẦN, có cổng soi riêng) — kể cả
+ * vế **đổi địa chỉ thì đăng ngay**, thứ quyết định lane này sống hay chết. Đừng chép lại luật đó
+ * vào đây: hai bản của cùng một luật là hai bản lệch nhau.
+ *
+ * Khi thất bại thì hẹn lại SỚM (1 phút) chứ không theo nhịp dài: một lượt trượt thường là mạng vừa
+ * chập hoặc máy vừa đổi IP, và chờ cả tiếng mới thử lại là để lane chết đúng lúc nó cần nhất.
+ * Thành công thì theo đúng nhịp server nói — đó là giao kèo của họ, không phải con số ta chọn.
+ */
+async function announceBeat(port: number, host: string | null, now = Date.now()): Promise<void> {
+  if (!shouldAnnounceNow(globalAnn, host, now)) return;
+  try {
+    const r = await announceGlobal({ identity: channelIdentity(), port });
+    globalAnn = {
+      ok: r.ok,
+      at: now,
+      nextAt: now + (r.ok ? r.reannounceAfterS * 1000 : 60_000),
+      server: r.server,
+      host,
+    };
+  } catch {
+    // Không bao giờ ném lên người gọi: lane này chỉ THÊM một đường (điều 9).
+    globalAnn = { ok: false, at: now, nextAt: now + 60_000, host };
+  }
 }
 
 const EXT_TTL_MS = 5 * 60_000;
@@ -644,7 +703,47 @@ export async function startChannelServer(o: {
     );
 
     // Đo địa chỉ ngoài ở NỀN để mã máy mang được nó ngay từ lượt vẽ đầu (fail-open).
-    void refreshExternalAddress(server.port);
+    // Đo địa chỉ ngoài rồi ĐĂNG lên bảng chung — mảnh làm ca KHÁC MẠNG chạy (`plan/24 §11`).
+    // Phải đăng SAU khi đo xong, nên nó nằm trong `.then` chứ không phải một lời gọi rời: đăng
+    // trước khi có địa chỉ là ghi một mục rỗng, và máy kia đọc được một dòng vô dụng.
+    /**
+     * Đăng địa chỉ lên bảng chung, và ĐĂNG LẠI theo nhịp.
+     *
+     * 🔴 Nhịp là bắt buộc, không phải tối ưu: mục quá `PRESENCE_STALE_MS` (10 phút) bị bên kia
+     * BỎ, nên đăng đúng một lần lúc bật là bảng chết sau 10 phút và cả lane khác-mạng chết theo.
+     * Và địa chỉ ngoài thì đổi thật — đo trên máy này: BA lần trong ~17 giờ.
+     *
+     * Nhịp 60 giây dùng ĐỆM địa chỉ (rẻ, không chạm mạng); chỉ khi đệm quá tuổi (5 phút) mới hỏi
+     * STUN lại — STUN giới hạn nhịp, nện nó mỗi phút là tự bắn vào chân mình (`§6e`).
+     */
+    const beat = async (): Promise<void> => {
+      let host: string | null = null;
+      try {
+        const ext = externalAddressStale() ? await refreshExternalAddress(server.port) : externalAddress();
+        host = ext?.host ?? null;
+        publishPresence(getDriveDir(), {
+          deviceId: channelIdentity().deviceId,
+          host,
+          port: server.port,
+        });
+      } catch {
+        /* ổ chung chập / STUN im — nhịp sau thử lại, đường cũ không bị đụng (điều 9) */
+      }
+      // Đăng lên cụm công khai — RỜI khỏi `try` ở trên có chủ đích: lane này KHÔNG cần địa chỉ đo
+      // được (server tự lấy IP nguồn), nên một STUN chết không được phép kéo nó chết theo. `host`
+      // vào đây chỉ để BẮT LÚC ĐỔI, và `null` (chưa đo được) chỉ làm mất phép bắt đó chứ không
+      // chặn lượt đăng.
+      await announceBeat(server.port, host);
+    };
+    void beat().then(() => {
+      if (externalAddress()) log(`[channel] đã đăng địa chỉ lên bảng chung — máy đã ghép đọc được địa chỉ mới nhất`);
+      if (globalAnn?.ok) log(`[channel] đã đăng lên cụm dò toàn cầu — máy khác mạng tra được địa chỉ hiện tại`);
+    });
+    const presence = setInterval(() => void beat(), 60_000);
+    presence.unref?.();
+    // Gắn vào bản ghi đang chạy để `stopChannelServer` đóng được — một nhịp sống sót sau khi tắt
+    // kênh là tiếp tục đăng địa chỉ cho một kênh đã tắt (§F15, và nó mời máy kia bắn vào cổng đóng).
+    if (running) running.presence = presence;
 
     // GIỮ LỖ MỞ — đường MỘT BÊN DÁN. Bật kênh là máy này tự mở một lỗ trên cổng đục lỗ, nên máy nào
     // có mã của nó đều gọi vào được mà máy này không cần biết trước là ai. Không đè một chỗ chờ
@@ -683,6 +782,18 @@ export function stopChannelServer(): void {
   // trong một TIẾN TRÌNH TEST thì bộ hẹn giờ của nó giữ event loop sống ⇒ **cổng treo 10 phút**.
   // Bắt được đúng như vậy khi lượt quét đầy đủ đứng im ở nhóm `p2p-channel`.
   cancelPunchWait();
+  if (running?.presence) clearInterval(running.presence);
+  // Gỡ mục khỏi bảng chung: để nó ở lại là mời máy kia bắn vào một cổng vừa đóng (`§11`).
+  try {
+    withdrawPresence(getDriveDir(), channelIdentity().deviceId);
+  } catch {
+    /* gỡ được thì tốt; không thì mục tự hết hạn */
+  }
+  // Quên lượt đăng ký toàn cầu. Giao thức của họ KHÔNG có lệnh gỡ — mục tự hết hạn trên server —
+  // nên thứ duy nhất ta sửa được là **bề mặt**: để `globalAnn` ở lại là màn hình khoe "đang đăng
+  // trên cụm dò" cho một kênh đã tắt. Và mốc `nextAt` cũ (có thể còn cả tiếng) sẽ khiến lượt bật
+  // lại KHÔNG đăng — kênh mới cổng mới mà cụm dò vẫn giữ số cũ.
+  globalAnn = null;
   if (!running) return;
   try {
     running.discovery?.stop();

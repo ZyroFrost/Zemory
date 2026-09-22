@@ -249,11 +249,20 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
 
   // Cắt ĐÚNG thân nhánh `/channel-sync` theo MỐC CODE, không theo số ký tự (bẫy "cửa sổ N ký
   // tự" repo đã trả giá nhiều lần: hàm dài thêm một chú thích là phép kiểm rơi ra ngoài).
+  //
+  // 🔄 Neo ĐI THEO bản viết lại (22/09): thân nhánh đã được tách ra hàm `channelSyncOnce`, dùng chung
+  // cho CÚ BẤM và VÒNG TỰ NỐI — vì thứ tự thử địa chỉ là một LUẬT, chép ra bản thứ hai là dựng
+  // sẵn chỗ để hai bản lệch nhau. Nếu chỉ cắt nhánh handler thì cổng này soi đúng HAI DÒNG — xanh
+  // giả tuyệt đối. Nên `code` phải phủ CẢ hai: nhánh handler (còn giữ cửa HUẦ) + thân hàm.
   const from = UI.indexOf('p === "/channel-sync"');
   assert.ok(from > 0, "không thấy nhánh /channel-sync");
   const to = UI.indexOf('p === "/channel-probe"', from);
   assert.ok(to > from, "không thấy mốc kết thúc nhánh");
-  const body = UI.slice(from, to);
+  const fnFrom = UI.indexOf("async function channelSyncOnce(");
+  assert.ok(fnFrom > 0, "không thấy hàm channelSyncOnce — nhánh đã được tách ra đó");
+  const fnTo = UI.indexOf("\r\n}\r\n", fnFrom);
+  assert.ok(fnTo > fnFrom, "không thấy cuối hàm channelSyncOnce");
+  const body = UI.slice(from, to) + "\n" + UI.slice(fnFrom, fnTo);
   // Soi CHỮ thì phải bỏ CHÚ THÍCH trước. Bản đầu của ca ÂM dưới đây đỏ oan vì chính chú thích
   // trong mã có nhắc lại cụm sai để giải thích vì sao nó bị bỏ — đúng bẫy "cổng quét cả chú
   // thích" repo đã trả giá (cổng light-theme đỏ vì một mã hex nằm trong comment CSS).

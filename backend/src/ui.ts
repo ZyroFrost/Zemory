@@ -1654,6 +1654,285 @@ export { uiPort };
  * đây chỉ là `mergeChannelDir` — KHÔNG phải một lượt đồng bộ (không quét nguồn, không ghi ra
  * kênh). Fail-open (điều 9): merge hỏng thì ghi log, khối vẫn nằm trên đĩa cho lượt sau.
  */
+// ── VÒNG TỰ NỐI ────────────────────────────────────────────────────────────────────────────────
+/**
+ * Nhịp TỐI THIỂU giữa hai lượt tự nối, và TRẦN khi thụt lùi.
+ *
+ * 5 phút là mức người dùng chịu được cho câu *"máy kia vừa bật, bao lâu thì thấy nhau"*. Trần 30
+ * phút cho ca máy kia TẮT HẲN nhiều ngày: giữ nhịp 5 phút lúc đó là mỗi lượt đốt trọn ngân sách
+ * cho một máy chắc chắn không có ở đó, mà chẳng ai đọc kết quả.
+ */
+const AUTO_CONNECT_MIN_MS = 5 * 60_000;
+const AUTO_CONNECT_MAX_MS = 30 * 60_000;
+/**
+ * Trần cho MỖI máy trong một lượt tự nối — ngắn hơn hẳn 25 giây của cú bấm.
+ *
+ * Không ai đang ngồi chờ, nên thà bỏ lượt này và thử lại sau 5 phút còn hơn giữ event loop của
+ * daemon bận lâu. Với nhiều máy trong sổ thì `trần × số máy` mới là con số thật — 12 giây giữ nó
+ * ở mức đọc được ngay cả khi sổ dài.
+ */
+const AUTO_CONNECT_BUDGET_MS = 12_000;
+let autoNextAt = 0;
+let autoWait = AUTO_CONNECT_MIN_MS;
+let autoBusy = false;
+/** Lượt trước có nối được không — chỉ để biết KHI NÀO đáng ghi một dòng log. */
+let autoLastOk: boolean | null = null;
+
+/**
+ * Tới lượt tự nối chưa — hàm THUẦN, tách ra để có cổng soi.
+ *
+ * ⛔ Bốn cửa, thiếu cửa nào cũng thành một kiểu hỏng riêng:
+ * · **kênh tắt** ⇒ đừng gọi ra ngoài. Tắt kênh là một lời từ chối, không phải một trục trặc.
+ * · **sổ rỗng** ⇒ không có ai để gọi. Chưa nối lần nào thì vòng này không có việc gì làm — nó
+ *   KHÔNG đi tìm máy lạ, đó vẫn là việc của cú dán mã.
+ * · **đang bận** ⇒ một lượt nền khác đang ghi kho, hoặc chính lượt tự nối trước chưa xong. Chồng
+ *   hai lượt lên nhau là hai kẻ ghi cùng một kho (HP điều 11).
+ * · **chưa tới nhịp** ⇒ tôn trọng thụt lùi.
+ */
+export function autoConnectDue(o: {
+  enabled: boolean;
+  peers: number;
+  busy: boolean;
+  nextAt: number;
+  now: number;
+}): boolean {
+  if (!o.enabled || o.peers <= 0 || o.busy) return false;
+  return o.now >= o.nextAt;
+}
+
+/**
+ * Một nhịp tự nối: thử lại với MỌI máy đã từng nối được.
+ *
+ * 🔴 Vì sao vòng này tồn tại (user chốt 2026-09-22: *"kết nối 1 lần, để nó ghi nhớ trong list tự
+ * nối luôn"*): nối một lần là máy kia đã vào sổ (`setP2pPeers` ở cả hai cửa nhận), nhưng trước
+ * bản này **không có gì tự chạy lại** — máy kia bật lên hay đổi IP thì máy này mù cho tới lúc có
+ * người bấm. Mà cả hai chuyện đó xảy ra liên tục: địa chỉ ngoài của máy này đổi BỐN lần trong
+ * chưa tới hai ngày.
+ *
+ * **Thụt lùi nhân đôi khi trượt, về đáy khi nối được.** Máy kia tắt cả tuần mà cứ 5 phút gọi một
+ * lần là đốt ngân sách cho việc chắc chắn hỏng; nhưng vừa nối được thì phải nhạy trở lại ngay.
+ *
+ * **Log CHỈ khi đổi trạng thái.** Ghi mỗi nhịp là mỗi ngày mấy trăm dòng "không nối được" — một
+ * cổng kêu suốt là cổng sắp bị bỏ qua (`02_RULES §Guardrail`), và nó chôn mất dòng đáng đọc.
+ */
+async function autoConnectTick(projectRoot: string): Promise<void> {
+  const { getP2pEnabled, getP2pPeers } = await import("./config/settings.js");
+  const peers = getP2pPeers();
+  if (
+    !autoConnectDue({
+      enabled: getP2pEnabled(),
+      peers: peers.length,
+      busy: autoBusy || daemonJobBusy() !== null,
+      nextAt: autoNextAt,
+      now: Date.now(),
+    })
+  ) {
+    return;
+  }
+  autoBusy = true;
+  try {
+    let ok = false;
+    for (const id of peers) {
+      // `armWait: false` — xem chú thích ở `channelSyncOnce`: chỗ chờ đục lỗ đã có một cái giữ
+      // vĩnh viễn từ `startChannelServer`, mở thêm mỗi nhịp là chồng lỗ NAT lên nhau.
+      const r = await channelSyncOnce(id, { budgetMs: AUTO_CONNECT_BUDGET_MS, armWait: false, projectRoot });
+      // `waiting` KHÔNG tính là nối được — nó nghĩa là "đã mở chỗ chờ", một việc chưa xảy ra.
+      if (r.ok === true && r.waiting !== true) ok = true;
+    }
+    autoWait = ok ? AUTO_CONNECT_MIN_MS : Math.min(autoWait * 2, AUTO_CONNECT_MAX_MS);
+    autoNextAt = Date.now() + autoWait;
+    if (ok !== autoLastOk) {
+      daemonLog(
+        ok
+          ? `[channel] tự nối: đã đồng bộ với ${peers.length} máy đã biết`
+          : `[channel] tự nối: chưa gọi được máy nào — thử lại sau ${Math.round(autoWait / 60_000)} phút`,
+      );
+      autoLastOk = ok;
+    }
+  } catch (e) {
+    // Không bao giờ để một lượt nền ném lên event loop của daemon (điều 9).
+    autoNextAt = Date.now() + autoWait;
+    daemonLog(`[channel] tự nối lỗi: ${e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120)}`);
+  } finally {
+    autoBusy = false;
+  }
+}
+/**
+ * MỘT lượt nối + đồng bộ với một máy — dùng chung cho **cú bấm** và **vòng TỰ NỐI**.
+ *
+ * 🔴 Vì sao là MỘT hàm chứ không phải hai bản: thứ tự thử địa chỉ ở đây là một LUẬT (xếp theo độ
+ * tươi — dò LAN → bảng chung → cụm dò toàn cầu → địa chỉ trong mã → địa chỉ đã nhớ), và nó đã
+ * sai hai lần rồi mới đúng. Chép ra bản thứ hai cho vòng tự chạy là dựng sẵn chỗ để hai bản lệch
+ * nhau — đúng cách hai bề mặt của cùng một chức năng tách đôi (bài học `zemory sweep` 12/09).
+ *
+ * `rawInput` rỗng ⇒ tự đi theo sổ máy đã biết. `budgetMs` là trần cho CẢ lượt, không phải cho
+ * từng ứng viên.
+ *
+ * ⛔ `armWait` chỉ bật cho CÚ BẤM. Vòng tự nối KHÔNG được mở chỗ chờ đục lỗ: `startChannelServer`
+ * đã giữ sẵn một chỗ vĩnh viễn, nên mở thêm mỗi nhịp là giữ lỗ NAT cho một việc không ai bấm —
+ * và mỗi chỗ chờ sống 10 phút, tức chúng chồng lên nhau.
+ */
+async function channelSyncOnce(
+  rawInput: string,
+  o: { budgetMs: number; armWait: boolean; projectRoot: string },
+): Promise<Record<string, unknown>> {
+  const ch = await import("./memory/channel/index.js");
+  // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
+  // `port` rời vẫn nhận (đường cũ, và CLI/script đang gọi), nhưng cổng trong chuỗi thắng.
+  // KHÔNG có `host` ⇒ tự đi: địa chỉ tầng dò LAN đang thấy (mới nhất) + địa chỉ đã nhớ từ mã máy.
+  // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
+  const { getP2pPeerAddrs } = await import("./config/settings.js");
+  const raw = rawInput.trim();
+  // Dán MÃ MÁY (hoặc ID trần) ⇒ tra địa chỉ HIỆN TẠI qua tầng dò LAN. Mã cố ý KHÔNG mang địa chỉ:
+  // địa chỉ DHCP đổi (đo 2026-09-21: `.90 → .81 → .6` trong một ngày), nhét vào mã là để người ta
+  // dán lại sau rồi gọi vào chỗ không còn ai.
+  const code = raw ? ch.parseMachineCode(raw) : null;
+  const wantId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
+  const known = getP2pPeerAddrs();
+  const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
+  // Địa chỉ NGOÀI nằm trong chính mã vừa dán — đây là thứ mở được ca KHÁC MẠNG mà không ai gõ
+  // một IP. Xếp SAU địa chỉ tầng dò LAN: cùng mạng thì đường LAN rẻ hơn và tươi hơn (`§1c`).
+  const fromCode = code?.external ? [`${code.external.host}:${code.external.port}`] : [];
+  // 🔴 BẢNG ĐỊA CHỈ đứng TRƯỚC địa chỉ trong mã (`plan/24 §11`). Mã là một ẢNH CHỤP — đo được:
+  // địa chỉ ngoài của một máy đổi BA lần trong ~17 giờ, nên mã đã chép thường trỏ vào một địa
+  // chỉ đã đổi chủ. Bảng chung thì mỗi máy tự làm tươi, và mục quá 10 phút bị bỏ.
+  // Đây là thứ làm ca KHÁC MẠNG chạy được mà không ai phải canh giờ dán mã.
+  const me = ch.channelStatus();
+  const fresh = ch
+    .readPresence(getDriveDir(), { selfDeviceId: me.deviceId, allowedPeers: wantId ? [wantId] : me.peers })
+    .map((e) => `${e.host}:${e.port}`);
+  // 🔴 DÒ TOÀN CẦU — cụm server công khai của Syncthing (`plan/24 §1c` tầng 3). Đây là đường
+  // KHÁC MẠNG không cần gì của user: không tài khoản, không máy chủ phải nuôi, không thư mục
+  // chung, và **không cần STUN** (ta khai `0.0.0.0`, server lấy IP nguồn của gói).
+  // Chỉ tra được khi biết ID ⇒ bỏ qua ở nhánh người dùng gõ thẳng một địa chỉ.
+  // Trần 5 giây, bắn song song — nó phải nằm gọn trong ngân sách 25 giây của cả lượt.
+  const fromGlobal = wantId
+    ? await ch.lookupGlobal(wantId, { identity: ch.channelIdentity(), timeoutMs: 5000 }).catch(() => [])
+    : [];
+  // Thứ tự có Ý, xếp theo ĐỘ TƯƠI: LAN (rẻ + tươi nhất) → BẢNG CHUNG (≤10 phút, tự cập nhật)
+  // → CỤM DÒ (máy kia đăng lại theo nhịp server nói, ~63 phút, nhưng đăng NGAY khi đổi địa
+  // chỉ) → địa chỉ trong mã (ảnh chụp, hay hết hạn) → địa chỉ đã nhớ (cũ nhất).
+  // Cụm dò xếp sau bảng chung vì nhịp dài hơn, nhưng TRƯỚC mã vì mã không tự tươi bao giờ.
+  const candidates = [
+    ...new Set(
+      wantId
+        ? [
+            ...ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, wantId)).map((s) => `${s.host}:${s.port}`),
+            ...fresh,
+            ...fromGlobal,
+            ...fromCode,
+            ...(known[wantId] ?? []),
+          ]
+        : raw
+        ? [raw]
+        : [...seenAddrs, ...fresh, ...me.peers.flatMap((id) => known[id] ?? [])],
+    ),
+  ];
+  if (!candidates.length) {
+    // 🔴 Câu ở đây đã SAI HAI LẦN, mỗi lần vì một vế của spec đi trước mà chữ ở lại.
+    // ① *"đục lỗ NAT chưa dựng"* — sai từ 21/09 khi lớp đục lỗ ship (`§6f`).
+    // ② *"mã máy chỉ mang vân tay"* — sai từ `[2026-09-21l]`, khi mã BẮT ĐẦU chở địa chỉ ngoài
+    //    (`§6g`). Người dùng đọc câu đó rồi đi tìm một IP để gõ tay, trong khi thứ thật sự
+    //    thiếu là **máy KIA chưa đo được địa chỉ ngoài của chính nó** nên mã nó xuất ra là bản
+    //    TRẦN. Bảo người ta làm một việc không giải quyết gì là tệ hơn im lặng.
+    return ({
+      ok: false,
+      error: wantId
+        ? "không thấy máy đó trên mạng này, và MÃ vừa dán KHÔNG mang địa chỉ ngoài. Mở app ở máy kia, xem hàng `Mã máy này`: nếu nó báo chưa đo được địa chỉ ngoài thì máy đó chưa ra được STUN (mạng chặn, hoặc DNS hỏng) — chép lại mã sau khi hàng đó đã có địa chỉ. Cách khác: dán thẳng `ip:cổng` ngoài của nó vào đây."
+        : "chưa biết máy nào — dán mã máy kia",
+    });
+  }
+  const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
+  const keyFile = resolveShareKey(o.projectRoot);
+  if (!keyFile || !existsSync(keyFile)) return ({ ok: false, error: "chưa có chìa share" });
+  const st = ch.channelStatus();
+  // Người dùng tự gõ địa chỉ ⇒ đó LÀ lời xin nối tới một máy có thể chưa quen.
+  const wantPair = Boolean(raw);
+  // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
+  // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
+  let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
+  // 🔴 TRẦN CHO CẢ LƯỢT, không chỉ cho từng ứng viên. Một máy có nhiều card mạng nên danh
+  // sách ứng viên dài ra được, và `trần mỗi ứng viên × số ứng viên` là một con số không ai
+  // hứa với người bấm. Endpoint phải trả trong thời gian đọc được, kể cả khi mọi địa chỉ đều
+  // chết — treo thì cửa sổ app đọc thành CHẾT (máy thứ hai báo đúng triệu chứng đó 22/09).
+  const untilAll = Date.now() + o.budgetMs;
+  for (const cand of candidates) {
+    const a = ch.parsePeerAddress(cand);
+    if (!a) continue;
+    if (Date.now() > untilAll) {
+      last = { error: "ETIMEDOUT", addr: cand, note: "hết trần thử địa chỉ" };
+      break;
+    }
+    const r = await ch.connectToPeer(
+      { host: a.host, port: a.port },
+      {
+        channelDir: st.dir,
+        identity: ch.channelIdentity(),
+        shareKey: readFileSync(keyFile, "utf8").trim(),
+        appVersion: appVersion(),
+        allowedPeers: st.peers,
+        wantPair,
+        // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
+        onPaired: (peerId: string): void => {
+          setP2pPeers([...getP2pPeers(), peerId]);
+          setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${a.host}:${a.port}`] });
+          daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã`);
+        },
+      },
+    );
+    last = { ...r, addr: cand };
+    if (!r.error) return ({ ok: true, ...last });
+  }
+
+  // ĐỤC LỖ NAT — MỞ CHỖ CHỜ, không chạy một lượt 20 giây rồi trả lỗi (`plan/24 §6f`).
+  //
+  // 🔴 Bản đầu await thẳng `punchToPeer` ở đây, nên hai máy phải bấm gần như CÙNG LÚC. User bác
+  // đúng chỗ đó: *"ai lại canh đi bấm cùng lúc"* · *"phải tạo sẵn slot chờ để bên kia nhận chứ"*.
+  // Nay cú bấm **mở một chỗ chờ trong daemon** rồi trả về NGAY; bên kia bấm lúc nào cũng gặp.
+  // Chỉ đi khi mã lỗi nghĩa là *không có đường vào* — chìa lệch hay máy lạ thì đục lỗ vô ích.
+  const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
+  const target = ch.parsePeerAddress(String(candidates[candidates.length - 1] ?? ""));
+  if (o.armWait && target && noWayIn.has(String(last.error ?? ""))) {
+    const info = ch.armPunchWait({
+      // Nhắm CỔNG ĐỤC LỖ của máy kia, không nhắm cổng NGHE của nó: cổng nghe do daemon bên đó
+      // giữ nên bên đó không thể tự mở lỗ trên chính nó (`EADDRINUSE`). Hai máy suy ra cùng số.
+      target: { host: target.host, port: ch.punchPortOf(target.port), deviceId: wantId || st.peers[0] },
+      shareKey: readFileSync(keyFile, "utf8").trim(),
+      appVersion: appVersion(),
+      allowedPeers: st.peers,
+      wantPair,
+      // 🔴 `acceptPeer` PHẢI có ở đây, cùng lý do như chỗ chờ tự giữ — và thiếu nó thì đường
+      // lùi *"dán mã ở CẢ HAI bên"* (`plan/24 §6g`) chết hẳn, đúng lúc cần nó nhất.
+      //
+      // Vai GỌI/NGHE do cú bắt tay nào ăn trước quyết định. Khi ta rơi vào vai NGHE và máy kia
+      // chưa có trong sổ, `peer.ts` đòi một trong hai cửa: `acceptPeer`, hoặc lời xin ghép của
+      // bên kia. Bản cũ chỉ có `wantPair` (cửa của bên GỌI) + `onPaired` (hook của bên GỌI) ⇒
+      // hai máy **đều vừa bấm**, đều chưa quen nhau, và cả hai cùng chờ bên kia mở cửa ⇒ phiên
+      // chết bằng *"máy này không nhận kết nối mới"*. Chìa chung vẫn là thứ gác cửa thật.
+      acceptPeer: (peerId: string): boolean => {
+        if (!getP2pPeers().some((x) => x === peerId)) setP2pPeers([...getP2pPeers(), peerId]);
+        daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua phiên chờ`);
+        return true;
+      },
+      // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
+      localPort: ch.punchPortOf(st.port),
+      onPaired: (peerId: string): void => {
+        setP2pPeers([...getP2pPeers(), peerId]);
+        setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
+      },
+      onReceived: (blocks: number): void => {
+        daemonLog(`[channel] chỗ chờ nhận ${blocks} khối — merge vào kho`);
+        void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
+      },
+      log: (m: string) => daemonLog(m),
+    });
+    // `waiting` là thứ bề mặt PHẢI đọc: trả `ok:true` với 0 khối mà không có cờ này thì nó in
+    // "✓ gửi 0 · nhận 0" — đọc thành ĐÃ XONG, tức bề mặt nói dối về một việc chưa xảy ra.
+    return ({ ok: true, waiting: true, ...info, dialFailed: String(last.error ?? "") });
+  }
+  return ({ ok: false, ...last });
+}
+
 async function refreshChannelServer(): Promise<void> {
   try {
     const ch = await import("./memory/channel/index.js");
@@ -3057,136 +3336,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         if (had) daemonLog(`[channel] đã huỷ chỗ chờ tới ${had.addr} sau ${had.rounds} vòng`);
         return json(res, { ok: true, cancelled: Boolean(had) });
       }
-      // Người BẤM = lượt có chủ đích. Một lượt với MỘT địa chỉ; lỗi trả nguyên văn, không nuốt.
-      const ch = await import("./memory/channel/index.js");
-      // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
-      // `port` rời vẫn nhận (đường cũ, và CLI/script đang gọi), nhưng cổng trong chuỗi thắng.
-      // KHÔNG có `host` ⇒ tự đi: địa chỉ tầng dò LAN đang thấy (mới nhất) + địa chỉ đã nhớ từ mã máy.
-      // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
-      const { getP2pPeerAddrs } = await import("./config/settings.js");
-      const raw = (u.searchParams.get("host") ?? "").trim();
-      // Dán MÃ MÁY (hoặc ID trần) ⇒ tra địa chỉ HIỆN TẠI qua tầng dò LAN. Mã cố ý KHÔNG mang địa chỉ:
-      // địa chỉ DHCP đổi (đo 2026-09-21: `.90 → .81 → .6` trong một ngày), nhét vào mã là để người ta
-      // dán lại sau rồi gọi vào chỗ không còn ai.
-      const code = raw ? ch.parseMachineCode(raw) : null;
-      const wantId = code ? code.fingerprint : raw && ch.deviceIdLooksTyped(raw) ? raw : "";
-      const known = getP2pPeerAddrs();
-      const seenAddrs = ch.seenPeers().map((s) => `${s.host}:${s.port}`);
-      // Địa chỉ NGOÀI nằm trong chính mã vừa dán — đây là thứ mở được ca KHÁC MẠNG mà không ai gõ
-      // một IP. Xếp SAU địa chỉ tầng dò LAN: cùng mạng thì đường LAN rẻ hơn và tươi hơn (`§1c`).
-      const fromCode = code?.external ? [`${code.external.host}:${code.external.port}`] : [];
-      const candidates = wantId
-        ? [
-            ...ch.seenPeers().filter((s) => ch.sameDeviceId(s.deviceId, wantId)).map((s) => `${s.host}:${s.port}`),
-            ...fromCode,
-            ...(known[wantId] ?? []),
-          ]
-        : raw
-        ? [raw]
-        : [...new Set([...seenAddrs, ...ch.channelStatus().peers.flatMap((id) => known[id] ?? [])])];
-      if (!candidates.length) {
-        // 🔴 Câu ở đây đã SAI HAI LẦN, mỗi lần vì một vế của spec đi trước mà chữ ở lại.
-        // ① *"đục lỗ NAT chưa dựng"* — sai từ 21/09 khi lớp đục lỗ ship (`§6f`).
-        // ② *"mã máy chỉ mang vân tay"* — sai từ `[2026-09-21l]`, khi mã BẮT ĐẦU chở địa chỉ ngoài
-        //    (`§6g`). Người dùng đọc câu đó rồi đi tìm một IP để gõ tay, trong khi thứ thật sự
-        //    thiếu là **máy KIA chưa đo được địa chỉ ngoài của chính nó** nên mã nó xuất ra là bản
-        //    TRẦN. Bảo người ta làm một việc không giải quyết gì là tệ hơn im lặng.
-        return json(res, {
-          ok: false,
-          error: wantId
-            ? "không thấy máy đó trên mạng này, và MÃ vừa dán KHÔNG mang địa chỉ ngoài. Mở app ở máy kia, xem hàng `Mã máy này`: nếu nó báo chưa đo được địa chỉ ngoài thì máy đó chưa ra được STUN (mạng chặn, hoặc DNS hỏng) — chép lại mã sau khi hàng đó đã có địa chỉ. Cách khác: dán thẳng `ip:cổng` ngoài của nó vào đây."
-            : "chưa biết máy nào — dán mã máy kia",
-        });
-      }
-      const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
-      const keyFile = resolveShareKey(root());
-      if (!keyFile || !existsSync(keyFile)) return json(res, { ok: false, error: "chưa có chìa share" });
-      const st = ch.channelStatus();
-      // Người dùng tự gõ địa chỉ ⇒ đó LÀ lời xin nối tới một máy có thể chưa quen.
-      const wantPair = Boolean(raw);
-      // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
-      // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
-      let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
-      // 🔴 TRẦN CHO CẢ LƯỢT, không chỉ cho từng ứng viên. Một máy có nhiều card mạng nên danh
-      // sách ứng viên dài ra được, và `trần mỗi ứng viên × số ứng viên` là một con số không ai
-      // hứa với người bấm. Endpoint phải trả trong thời gian đọc được, kể cả khi mọi địa chỉ đều
-      // chết — treo thì cửa sổ app đọc thành CHẾT (máy thứ hai báo đúng triệu chứng đó 22/09).
-      const untilAll = Date.now() + 25_000;
-      for (const cand of candidates) {
-        const a = ch.parsePeerAddress(cand);
-        if (!a) continue;
-        if (Date.now() > untilAll) {
-          last = { error: "ETIMEDOUT", addr: cand, note: "hết trần thử địa chỉ" };
-          break;
-        }
-        const r = await ch.connectToPeer(
-          { host: a.host, port: a.port },
-          {
-            channelDir: st.dir,
-            identity: ch.channelIdentity(),
-            shareKey: readFileSync(keyFile, "utf8").trim(),
-            appVersion: appVersion(),
-            allowedPeers: st.peers,
-            wantPair,
-            // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
-            onPaired: (peerId: string): void => {
-              setP2pPeers([...getP2pPeers(), peerId]);
-              setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${a.host}:${a.port}`] });
-              daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã`);
-            },
-          },
-        );
-        last = { ...r, addr: cand };
-        if (!r.error) return json(res, { ok: true, ...last });
-      }
-
-      // ĐỤC LỖ NAT — MỞ CHỖ CHỜ, không chạy một lượt 20 giây rồi trả lỗi (`plan/24 §6f`).
-      //
-      // 🔴 Bản đầu await thẳng `punchToPeer` ở đây, nên hai máy phải bấm gần như CÙNG LÚC. User bác
-      // đúng chỗ đó: *"ai lại canh đi bấm cùng lúc"* · *"phải tạo sẵn slot chờ để bên kia nhận chứ"*.
-      // Nay cú bấm **mở một chỗ chờ trong daemon** rồi trả về NGAY; bên kia bấm lúc nào cũng gặp.
-      // Chỉ đi khi mã lỗi nghĩa là *không có đường vào* — chìa lệch hay máy lạ thì đục lỗ vô ích.
-      const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
-      const target = ch.parsePeerAddress(String(candidates[candidates.length - 1] ?? ""));
-      if (target && noWayIn.has(String(last.error ?? ""))) {
-        const info = ch.armPunchWait({
-          // Nhắm CỔNG ĐỤC LỖ của máy kia, không nhắm cổng NGHE của nó: cổng nghe do daemon bên đó
-          // giữ nên bên đó không thể tự mở lỗ trên chính nó (`EADDRINUSE`). Hai máy suy ra cùng số.
-          target: { host: target.host, port: ch.punchPortOf(target.port), deviceId: wantId || st.peers[0] },
-          shareKey: readFileSync(keyFile, "utf8").trim(),
-          appVersion: appVersion(),
-          allowedPeers: st.peers,
-          wantPair,
-          // 🔴 `acceptPeer` PHẢI có ở đây, cùng lý do như chỗ chờ tự giữ — và thiếu nó thì đường
-          // lùi *"dán mã ở CẢ HAI bên"* (`plan/24 §6g`) chết hẳn, đúng lúc cần nó nhất.
-          //
-          // Vai GỌI/NGHE do cú bắt tay nào ăn trước quyết định. Khi ta rơi vào vai NGHE và máy kia
-          // chưa có trong sổ, `peer.ts` đòi một trong hai cửa: `acceptPeer`, hoặc lời xin ghép của
-          // bên kia. Bản cũ chỉ có `wantPair` (cửa của bên GỌI) + `onPaired` (hook của bên GỌI) ⇒
-          // hai máy **đều vừa bấm**, đều chưa quen nhau, và cả hai cùng chờ bên kia mở cửa ⇒ phiên
-          // chết bằng *"máy này không nhận kết nối mới"*. Chìa chung vẫn là thứ gác cửa thật.
-          acceptPeer: (peerId: string): boolean => {
-            if (!getP2pPeers().some((x) => x === peerId)) setP2pPeers([...getP2pPeers(), peerId]);
-            daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… qua lỗ vừa đục`);
-            return true;
-          },
-          // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch.
-          localPort: ch.punchPortOf(st.port),
-          onPaired: (peerId: string): void => {
-            setP2pPeers([...getP2pPeers(), peerId]);
-            setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
-          },
-          onReceived: (blocks: number): void => {
-            daemonLog(`[channel] chỗ chờ nhận ${blocks} khối — merge vào kho`);
-            void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
-          },
-          log: (m: string) => daemonLog(m),
-        });
-        // `waiting` là thứ bề mặt PHẢI đọc: trả `ok:true` với 0 khối mà không có cờ này thì nó in
-        // "✓ gửi 0 · nhận 0" — đọc thành ĐÃ XONG, tức bề mặt nói dối về một việc chưa xảy ra.
-        return json(res, { ok: true, waiting: true, ...info, dialFailed: String(last.error ?? "") });
-      }
-      return json(res, { ok: false, ...last });
+      // Người BẤM = lượt có chủ đích: trần 25 giây cho cả lượt, và ĐƯỢC mở chỗ chờ đục lỗ.
+      return json(res, await channelSyncOnce(u.searchParams.get("host") ?? "", { budgetMs: 25_000, armWait: true, projectRoot: root() }));
     }
     if (p === "/channel-probe") {
       // Đo tầng 2 (mở cổng tự động). Fail-open: không router nào trả lời KHÔNG phải lỗi.
@@ -3415,6 +3566,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
   daemonHeartbeat();
   setInterval(daemonHeartbeat, 30_000).unref();
+  // TỰ NỐI — hỏi mỗi 60 giây, nhưng `autoConnectDue` mới là thứ quyết có chạy hay không.
+  // Một đồng hồ RẺ hỏi thường xuyên + một mốc `nextAt` thì đổi nhịp (thụt lùi) không phải dựng
+  // lại timer; đặt hẳn `setInterval(autoWait)` là mỗi lần đổi nhịp lại phải clear rồi tạo mới,
+  // và đó là chỗ người ta quên clear rồi có hai đồng hồ cùng chạy.
+  setInterval(() => void autoConnectTick(root()), 60_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
   // KÊNH MÁY-TỚI-MÁY: bắt đầu NGHE nếu người dùng đã bật (plan/24 §7 bước ④).
