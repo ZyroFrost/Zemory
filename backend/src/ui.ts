@@ -1744,15 +1744,15 @@ async function autoConnectTick(projectRoot: string): Promise<void> {
     if (ok !== autoLastOk) {
       daemonLog(
         ok
-          ? `[channel] tự nối: đã đồng bộ với ${peers.length} máy đã biết`
-          : `[channel] tự nối: chưa gọi được máy nào — thử lại sau ${Math.round(autoWait / 60_000)} phút`,
+          ? `[channel] tự kết nối: đã đồng bộ với ${peers.length} máy đã biết`
+          : `[channel] tự kết nối: chưa kết nối được máy nào — thử lại sau ${Math.round(autoWait / 60_000)} phút`,
       );
       autoLastOk = ok;
     }
   } catch (e) {
     // Không bao giờ để một lượt nền ném lên event loop của daemon (điều 9).
     autoNextAt = Date.now() + autoWait;
-    daemonLog(`[channel] tự nối lỗi: ${e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120)}`);
+    daemonLog(`[channel] lỗi khi tự kết nối: ${e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120)}`);
   } finally {
     autoBusy = false;
   }
@@ -1876,7 +1876,7 @@ async function channelSyncOnce(
         onPaired: (peerId: string): void => {
           setP2pPeers([...getP2pPeers(), peerId]);
           setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${a.host}:${a.port}`] });
-          daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… bằng địa chỉ + mã`);
+          daemonLog(`[channel] đã kết nối máy ${peerId.slice(0, 11)}… bằng mã máy`);
         },
       },
     );
@@ -1921,8 +1921,8 @@ async function channelSyncOnce(
         setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
       },
       onReceived: (blocks: number): void => {
-        daemonLog(`[channel] chỗ chờ nhận ${blocks} khối — merge vào kho`);
-        void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
+        daemonLog(`[channel] phiên chờ đã nhận ${blocks} khối — đang hợp nhất vào kho`);
+        void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] lỗi khi hợp nhất: ${String(e).slice(0, 120)}`));
       },
       log: (m: string) => daemonLog(m),
     });
@@ -1951,13 +1951,13 @@ async function refreshChannelServer(): Promise<void> {
       },
       log: (m: string) => daemonLog(m),
       onReceived: (blocks: number) => {
-        daemonLog(`[channel] nhận ${blocks} khối — merge vào kho`);
+        daemonLog(`[channel] đã nhận ${blocks} khối — đang hợp nhất vào kho`);
         void mergeChannelDir(ch.channelStatus().dir)
-          .then((merged) => daemonLog(`[channel] merge xong: ${merged.filter((x) => !x.skipped).length} khối mới`))
-          .catch((e) => daemonLog(`[channel] merge lỗi: ${String(e).slice(0, 120)}`));
+          .then((merged) => daemonLog(`[channel] hợp nhất xong: ${merged.filter((x) => !x.skipped).length} khối mới`))
+          .catch((e) => daemonLog(`[channel] lỗi khi hợp nhất: ${String(e).slice(0, 120)}`));
       },
     });
-    if (!r.listening && r.reason) daemonLog(`[channel] không nghe: ${r.reason}`);
+    if (!r.listening && r.reason) daemonLog(`[channel] không lắng nghe được: ${r.reason}`);
   } catch (e) {
     daemonLog(`[channel] lỗi khi bật: ${String(e).slice(0, 140)}`);
   }
@@ -3333,7 +3333,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         const chx = await import("./memory/channel/index.js");
         const had = chx.punchWaitState();
         chx.cancelPunchWait();
-        if (had) daemonLog(`[channel] đã huỷ chỗ chờ tới ${had.addr} sau ${had.rounds} vòng`);
+        if (had) daemonLog(`[channel] đã huỷ phiên chờ tới ${had.addr} sau ${had.rounds} vòng`);
         return json(res, { ok: true, cancelled: Boolean(had) });
       }
       // Người BẤM = lượt có chủ đích: trần 25 giây cho cả lượt, và ĐƯỢC mở chỗ chờ đục lỗ.

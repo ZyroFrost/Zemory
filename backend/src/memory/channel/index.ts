@@ -424,8 +424,8 @@ export function armPunchWait(o: {
   punchWait = slot;
   log(
     o.target
-      ? `[channel] mở chỗ chờ đục lỗ tới ${info.addr} — bên kia bấm lúc nào cũng gặp, không cần cùng lúc`
-      : `[channel] giữ lỗ mở ở cổng ${o.localPort} — máy nào có mã của máy này đều gọi vào được`,
+      ? `[channel] đã mở phiên chờ kết nối tới ${info.addr} — máy kia có thể kết nối bất kỳ lúc nào`
+      : `[channel] phiên chờ kết nối đang mở ở cổng ${o.localPort} — mọi máy có mã của máy này đều kết nối được`,
   );
 
   // Không biết máy kia ⇒ bắn ra một đích CÔNG KHAI chỉ để tạo ánh xạ. Đích là gì không quan trọng;
@@ -497,15 +497,15 @@ export function armPunchWait(o: {
       };
       log(
         r.won
-          ? `[channel] chỗ chờ GẶP máy ${r.peerDeviceId ?? "(không rõ)"} sau ${r.rounds} vòng — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}`
-          : `[channel] chỗ chờ đóng sau ${r.rounds} vòng: ${r.error ?? "không rõ"}`,
+          ? `[channel] phiên chờ đã kết nối với máy ${r.peerDeviceId ?? "(không rõ)"} sau ${r.rounds} vòng — đã nhận ${r.receivedBlocks} khối · đã gửi ${r.sentBlocks} khối`
+          : `[channel] phiên chờ đã đóng sau ${r.rounds} vòng: ${r.error ?? "không rõ"}`,
       );
       if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
       renewIfWanted();
     })
     .catch((e) => {
       slot.info.outcome = { won: null, error: String(e).slice(0, 140), at: new Date().toISOString(), received: 0, sent: 0 };
-      log(`[channel] chỗ chờ lỗi: ${String(e).slice(0, 140)}`);
+      log(`[channel] phiên chờ gặp lỗi: ${String(e).slice(0, 140)}`);
       renewIfWanted();
     });
 
@@ -670,7 +670,7 @@ export async function startChannelServer(o: {
         // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
         // với "có gọi mà hỏng" — đúng kiểu vỏ rỗng mà `02_RULES §Bề mặt CHẾT THEO nền` cấm.
         log(
-          `[channel] phiên với ${r.peerDeviceId ?? "(không rõ)"} — nhận ${r.receivedBlocks} khối · gửi ${r.sentBlocks}` +
+          `[channel] phiên với ${r.peerDeviceId ?? "(không rõ)"} — đã nhận ${r.receivedBlocks} khối · đã gửi ${r.sentBlocks} khối` +
             (r.error ? ` · ✗ ${r.error}` : ""),
         );
         if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
@@ -686,10 +686,10 @@ export async function startChannelServer(o: {
         deviceId: channelIdentity().deviceId,
         channelPort: server.port,
         allowedPeers: peers,
-        onPeer: (p) => log(`[channel] thấy máy ${p.deviceId.slice(0, 11)}… ở ${p.host}:${p.port} (cùng mạng)`),
+        onPeer: (p) => log(`[channel] phát hiện máy ${p.deviceId.slice(0, 11)}… tại ${p.host}:${p.port} (mạng nội bộ)`),
       });
     } catch (e) {
-      log(`[channel] dò LAN không bật được: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
+      log(`[channel] không bật được dò mạng nội bộ: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
     }
     running = { server, port: server.port, discovery };
     // 🔴 Câu cũ là *"nhận từ N máy đã ghép đôi"* — với sổ rỗng nó in "nhận từ 0 máy", đọc ra
@@ -697,9 +697,9 @@ export async function startChannelServer(o: {
     // Người dùng đọc dòng đó rồi đi tìm cách "ghép đôi" một cơ chế đã bị gỡ. Nay nói đúng luật
     // đang chạy, và số máy đã biết chỉ là dữ kiện phụ.
     log(
-      `[channel] đang nghe cổng ${server.port} · nhận máy chứng minh được cùng chìa` +
+      `[channel] đang lắng nghe cổng ${server.port} · chấp nhận máy chứng minh được cùng khoá chia sẻ` +
         (peers.length ? ` · ${peers.length} máy đã biết` : "") +
-        (discovery ? " · dò LAN BẬT" : ""),
+        (discovery ? " · dò mạng nội bộ đang bật" : ""),
     );
 
     // Đo địa chỉ ngoài ở NỀN để mã máy mang được nó ngay từ lượt vẽ đầu (fail-open).
@@ -736,7 +736,7 @@ export async function startChannelServer(o: {
       await announceBeat(server.port, host);
     };
     void beat().then(() => {
-      if (externalAddress()) log(`[channel] đã đăng địa chỉ lên bảng chung — máy đã ghép đọc được địa chỉ mới nhất`);
+      if (externalAddress()) log(`[channel] đã đăng địa chỉ lên bảng chung — máy đã kết nối đọc được địa chỉ mới nhất`);
       if (globalAnn?.ok) log(`[channel] đã đăng lên cụm dò toàn cầu — máy khác mạng tra được địa chỉ hiện tại`);
     });
     const presence = setInterval(() => void beat(), 60_000);
@@ -770,7 +770,7 @@ export async function startChannelServer(o: {
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
-    log(`[channel] KHÔNG nghe được cổng ${port}: ${reason}`);
+    log(`[channel] không lắng nghe được cổng ${port}: ${reason}`);
     return { listening: false, reason };
   }
 }
