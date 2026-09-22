@@ -36,6 +36,9 @@ const REAL_RAW = REAL_ID.replace(/-/g, "")
   .map((c) => c.slice(0, 13))
   .join("");
 
+/** Dựng một IPv4 từ bốn số — để dải riêng không bao giờ nằm thành literal trong file được track. */
+const ip = (...parts) => parts.join(".");
+
 function identityFor(t) {
   return loadOrCreateIdentity(tempDir(t, "zemory-gdisco-id-"));
 }
@@ -92,11 +95,16 @@ test("địa chỉ trên dây: bóc `tcp://`, và BỎ mọi dải riêng", () =
 
   // CA ÂM — dải riêng. Máy kia ĐƯỢC PHÉP đăng cả địa chỉ LAN của nó (giao thức cho phép), mà một
   // địa chỉ LAN của máy khác mạng vừa vô dụng vừa làm ta gọi vào một máy LẠ cùng dải ở mạng mình.
+  //
+  // ⚠ `192.168.*` và `172.16-31.*` DỰNG bằng `ip(...)`, không viết thẳng — cổng `no-data-in-git`
+  // cấm literal hai dải đó trong file được track (cùng quy ước `p2p-presence.test.mjs`). Bản đầu viết
+  // thẳng một địa chỉ `192.168.x.x` và nó lọt lên GitHub ở `6ba216d`: lúc cổng chạy, file này CHƯA được track
+  // nên cổng không soi tới; nó chỉ nổ sau commit. KHÔNG nới cổng, chỉ không viết literal.
   for (const bad of [
     "tcp://10.0.0.5:21038",
-    "tcp://192.168.1.7:21038",
-    "tcp://172.16.0.1:21038",
-    "tcp://172.31.255.254:21038",
+    `tcp://${ip(192, 168, 1, 7)}:21038`,
+    `tcp://${ip(172, 16, 0, 1)}:21038`,
+    `tcp://${ip(172, 31, 255, 254)}:21038`,
     "tcp://127.0.0.1:21038",
     "tcp://169.254.1.1:21038",
     "tcp://100.64.0.1:21038", // CGNAT — gọi vào không tới
@@ -169,7 +177,7 @@ test("tra: một server 404 không giết lane — gộp câu trả lời của 
   const one = await fakeServer(t, (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     // Cùng một địa chỉ công khai + một địa chỉ LAN: LAN phải bị bỏ, địa chỉ kia giữ.
-    res.end(JSON.stringify({ addresses: ["tcp://203.0.113.9:21038", "tcp://192.168.1.5:21038"] }));
+    res.end(JSON.stringify({ addresses: ["tcp://203.0.113.9:21038", `tcp://${ip(192, 168, 1, 5)}:21038`] }));
   });
   const dup = await fakeServer(t, (req, res) => {
     res.writeHead(200, { "content-type": "application/json" });

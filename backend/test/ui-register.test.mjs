@@ -15,6 +15,13 @@ import { readFileSync } from "node:fs";
 
 const CHROME = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
 const UI_TS = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+// 🔴 Soi CẢ module kênh, không chỉ ui.ts. Bản đầu của cổng này chỉ soi `daemonLog(` trong ui.ts —
+// trong khi dòng `giữ lỗ mở ở cổng …` đến từ `log(...)` trong channel/index.ts, và nó LỌT lên thẻ
+// Nhật ký kênh ngay sau khi cổng xanh. Bắt được bằng mắt trên app thật, 22/09. Một cổng soi thiếu
+// một nguồn là một cổng xanh giả cho đúng nguồn đó.
+const CHANNEL_SRC = ["index.ts", "punch.ts", "peer.ts", "discovery.ts", "globaldisco.ts", "presence.ts"]
+  .map((f) => readFileSync(new URL(`../src/memory/channel/${f}`, import.meta.url), "utf8"))
+  .join("\n");
 
 /**
  * Chuỗi CẤM trên bề mặt, kèm thứ dùng thay.
@@ -48,6 +55,24 @@ const BANNED = [
   ["press Connect over there whenever", "viết thành câu đầy đủ"],
 ];
 
+/**
+ * Cấm RIÊNG trong nhật ký — nhật ký chỉ có bản tiếng Việt.
+ *
+ * Tách khỏi `BANNED` có chủ đích: `merge` là tiếng Anh hợp lệ trong bản EN của từ điển chữ, nên
+ * cho vào danh sách chung là cổng kêu oan trên một câu tiếng Anh đúng.
+ */
+const LOG_BANNED = [
+  ["chỗ chờ", "dùng 'phiên chờ' — cùng từ với bề mặt, theo từ điển tên"],
+  [/\bmerge\b/, "dùng 'hợp nhất' — đừng chen tiếng Anh vào câu tiếng Việt"],
+  ["gọi vào được", "dùng 'kết nối được'"],
+  ["gọi được", "dùng 'kết nối được'"],
+  ["cùng chìa", "dùng 'cùng khoá chia sẻ'"],
+  [/\bthấy máy\b/, "dùng 'phát hiện máy'"],
+  ["BẬT", "không viết hoa để nhấn giọng — viết 'đang bật'"],
+  [/\bKHÔNG\b/, "không viết hoa để nhấn giọng"],
+  ["tự nối", "dùng 'tự kết nối'"],
+];
+
 test("bề mặt: không còn chuỗi CẤM nào trong từ điển chữ của app", () => {
   const hits = [];
   for (const [bad, fix] of BANNED) {
@@ -58,14 +83,20 @@ test("bề mặt: không còn chuỗi CẤM nào trong từ điển chữ của 
 });
 
 test("nhật ký kênh CŨNG là bề mặt — nó hiện trong thẻ 'Nhật ký kênh'", () => {
-  // 🔴 Chỗ này đúng là chỗ đã lọt: dòng `daemonLog` trông như log kỹ thuật nội bộ, nhưng UI có một
+  // 🔴 Chỗ này đúng là chỗ đã lọt: dòng log trông như ghi chú kỹ thuật nội bộ, nhưng UI có một
   // thẻ in thẳng chúng ra cho người dùng đọc. Viết log kiểu ghi chú riêng là đưa ghi chú riêng lên
   // sản phẩm — cùng họ với luật "không để ghi chú dev trong UI".
-  const lines = UI_TS.match(/daemonLog\(`\[channel\][^`]*`/g) ?? [];
-  assert.ok(lines.length > 0, "phải có dòng nhật ký kênh để soi — nếu 0, neo test đã chết");
+  //
+  // Soi MỌI chuỗi mở bằng `[channel]`, bất kể hàm gọi là `daemonLog`, `log` hay gì khác: tên hàm
+  // không quyết định dòng đó có lên màn hình hay không — tiền tố `[channel]` mới quyết định.
+  const SRC = UI_TS + "\n" + CHANNEL_SRC;
+  const lines = SRC.match(/`\[channel\][^`]*`/g) ?? [];
+  assert.ok(lines.length >= 20, `phải soi được đủ dòng nhật ký kênh — mới thấy ${lines.length}, neo có thể đã chết`);
+  // Cả nhánh nối tiếp bằng `+ " · …"` cũng lên màn hình — bắt riêng, vì nó không nằm trong backtick.
+  const tails = SRC.match(/\? " · [^"]*"/g) ?? [];
   const hits = [];
-  for (const line of lines) {
-    for (const [bad, fix] of BANNED) {
+  for (const line of [...lines, ...tails]) {
+    for (const [bad, fix] of [...BANNED, ...LOG_BANNED]) {
       const found = typeof bad === "string" ? line.includes(bad) : bad.test(line);
       if (found) hits.push(`${line.slice(0, 70)}… : "${bad}" ⇒ ${fix}`);
     }

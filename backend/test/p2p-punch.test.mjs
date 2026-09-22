@@ -342,7 +342,11 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   // SAI từ khi có chỗ chờ — user thấy đúng nó trên màn hình rồi hỏi *"sao kì vậy?"*. Một câu
   // hướng dẫn đã hết đúng thì tệ hơn không có câu nào.
   assert.ok(!/CÙNG LÚC/.test(code), "bề mặt còn dặn bấm CÙNG LÚC trong khi đã có chỗ chờ");
-  assert.match(code, /chỗ chờ/, "phải nói ra cơ chế thật: bên dán trước mở chỗ chờ");
+  // 🔄 Neo ĐI THEO từ điển tên (22/09): `chỗ chờ` → `phiên chờ`. Và neo vào ĐÚNG chỗ câu hướng
+  // dẫn sống: bản cũ khớp `/chỗ chờ/` vào `code`, mà thứ khớp được lại là một DÒNG LOG tình cờ
+  // chứa cụm đó — không phải câu hướng dẫn nó định canh. Câu hướng dẫn nay ở từ điển chữ.
+  const CHROME = readSrc(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  assert.match(CHROME, /'p2p\.reachD':'[^']*phiên chờ/, "bề mặt phải nói ra cơ chế thật: máy dán trước mở phiên chờ");
 });
 
 // ── MÃ MANG ĐỊA CHỈ NGOÀI — mảnh mở ca KHÁC MẠNG bằng một chuỗi ────────────────────────
