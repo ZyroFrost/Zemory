@@ -327,7 +327,9 @@ test("tầng 4 được MÓC thật vào app — tham gia, đăng địa chỉ, 
 
   // ② Địa chỉ relay phải ĐI VÀO lượt đăng ký — thiếu bước này thì tầng 4 dựng xong vẫn vô dụng:
   //    hai máy cùng trong pool mà không bên nào biết tìm bên nào.
-  assert.match(CH, /relays: relayAt \? \[relayAt\.url\] : \[\]/, "lượt đăng phải mang địa chỉ relay");
+  // 🔄 Neo ĐI THEO bản vá 23/09: thân tin nay dùng bản đã CHỤP (`sentRelay`), không đọc thẳng
+  //    `relayAt` — xem ca "sổ đăng ký ghi thứ ĐÃ GỬI" ở cuối file.
+  assert.match(CH, /relays: sentRelay \? \[sentRelay\] : \[\]/, "lượt đăng phải mang địa chỉ relay");
   assert.match(GD, /\.\.\.\(o\.relays \?\? \[\]\)\.filter\(\(r\) => r\.startsWith\("relay:\/\/"\)\)/,
     "announceGlobal phải đăng kèm địa chỉ relay");
 
@@ -353,4 +355,23 @@ test("tầng 4 được MÓC thật vào app — tham gia, đăng địa chỉ, 
   //    tắt — và trong tiến trình test, kết nối thường trực đó giữ event loop sống mãi (§F15).
   const off = CH.slice(CH.indexOf("export function stopChannelServer"));
   assert.match(off, /running\?\.relay\?\.stop\(\);/, "tắt kênh phải rời relay");
+});
+
+test("sổ đăng ký ghi thứ ĐÃ GỬI, không phải thứ đang định gửi", () => {
+  // 🔴 Lỗi thật, bắt được lúc chạy app thật 23/09 — cổng KHÔNG bắt được ca này:
+  //   `relayAt` còn null lúc dựng thân tin ⇒ lượt đăng đi không mang relay · lượt tham gia relay
+  //   xong TRONG LÚC đang chờ HTTP ⇒ `relayAt` có giá trị · lượt đăng trả về, sổ ghi giá trị MỚI
+  //   ⇒ nhịp sau so `url !== url` thấy "không đổi" và KHÔNG BAO GIỜ đăng lại.
+  // Kết cục: máy ở trong pool relay mà cụm dò vĩnh viễn nói nó không có đường relay nào, và không
+  // một lỗi nào nổ. Cổng này ghim đúng kỷ luật đã chữa nó: CHỤP một lần, dùng chung.
+  const CH = readSrc(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const fn = CH.slice(CH.indexOf("async function announceBeat("), CH.indexOf("const EXT_TTL_MS"));
+  assert.ok(fn.length > 0, "không thấy announceBeat — neo đã chết");
+
+  assert.match(fn, /const sentRelay = relayAt\?\.url \?\? null;/, "phải CHỤP địa chỉ relay trước khi gọi mạng");
+  assert.match(fn, /relays: sentRelay \? \[sentRelay\] : \[\]/, "thân tin dùng bản đã chụp");
+  assert.match(fn, /relay: sentRelay,/, "sổ ghi bản đã chụp");
+  // CA ÂM: KHÔNG được đọc lại `relayAt` sau `await` — đó chính là hình dạng của lỗi.
+  const afterAwait = fn.slice(fn.indexOf("await announceGlobal("));
+  assert.ok(!/relayAt/.test(afterAwait), "sau `await` không được đọc lại `relayAt` — ghi ý định thay vì sự thật");
 });
