@@ -297,7 +297,10 @@
       // MÃ NÓI RÕ NÓ DÙNG ĐƯỢC TỚI ĐÂU. Mã không có địa chỉ ngoài trông y hệt mã có — chỉ ngắn
       // hơn 9 ký tự — nên người dùng đưa nó đi rồi máy kia báo "không thấy máy đó", và không ai
       // đoán ra là thiếu ĐỊA CHỈ. Đó là bề mặt nói dối bằng DỮ LIỆU (đã cắn thật 21/09).
-      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,t(c.externalAddr?'p2p.codeWan':'p2p.codeLan')));
+      // BA trạng thái, không phải hai: có địa chỉ · thiếu vì DNS · thiếu vì mạng chặn STUN.
+      // Gộp hai ca thiếu làm người đọc không biết phải đi sửa cái gì.
+      var why=c.externalAddr?'p2p.codeWan':(c.externalAddrWhy==='dns'?'p2p.codeLanDns':(c.externalAddrWhy==='no-answer'?'p2p.codeLanNet':'p2p.codeLan'));
+      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,t(why)));
     }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.

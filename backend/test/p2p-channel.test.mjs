@@ -10,6 +10,7 @@ import test from "node:test";
 import { join } from "node:path";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { X509Certificate } from "node:crypto";
+import net from "node:net";
 import { openMemory } from "../../dist/memory/db.js";
 import {
   exportMemoryBundle,
@@ -499,4 +500,38 @@ test("chỗ chờ tự giữ: hết trần thì MỞ LẠI; người bấm thì 
   // ③ CA ÂM: tắt kênh = tắt mọi thứ của kênh.
   assert.equal(afterOff.cXong, true, "tắt kênh rồi thì lượt đang giữ phải đóng lại, không treo lơ lửng");
   assert.equal(afterOff.doiSlot, false, "tắt kênh rồi mà vẫn mở lượt MỚI ⇒ giữ lỗ NAT cho một kênh đã tắt (§F15)");
+});
+
+// ── TRẦN BẮT TAY CỦA `connectToPeer` — ca treo VÔ HẠN, máy thứ hai báo 22/09 ───────────
+//
+// 🔴 Bug thật (bản 3.4.1): nối tới một địa chỉ khác mạng mà tường lửa NUỐT gói — TCP bắt tay
+// xong nhưng `ServerHello` không bao giờ tới — thì `tls.connect` chờ MÃI, `/channel-sync`
+// `await` nó nên endpoint không bao giờ trả, và cửa sổ app đọc thành CHẾT.
+//
+// `punch.ts secure()` đã có trần cho đúng ca này kèm một chú thích dài, nhưng bản vá đó CHỈ áp
+// cho đường đục lỗ — đường gọi thẳng bị bỏ sót. Cùng cơ chế hỏng, hai đường gọi, vá một nửa.
+test("connectToPeer: đầu kia nhận TCP rồi IM ⇒ trả lỗi trong trần, KHÔNG treo", async (t) => {
+  const a = makeSide(t, "to-a", "chia-chung-tran");
+  // Nhận kết nối rồi không nói một byte TLS nào — đúng hình dạng tường lửa nuốt gói.
+  const mute = net.createServer(() => {
+    /* im lặng có chủ đích */
+  });
+  await new Promise((r) => mute.listen(0, "127.0.0.1", r));
+  t.after(() => mute.close());
+
+  const t0 = Date.now();
+  // 🔴 Viết dạng ĐUA VỚI MỐC: nếu neo bằng một `await` trần thì đột biến gỡ trần sẽ làm cổng
+  // TREO chứ không ĐỎ — mà một cổng treo thì không ai đọc được nó đang báo gì.
+  const r = await Promise.race([
+    connectToPeer(
+      { host: "127.0.0.1", port: mute.address().port },
+      { ...opts(a, []), appVersion: APP_VERSION, connectTimeoutMs: 1500 },
+    ),
+    new Promise((res) => setTimeout(() => res({ error: "CONG-TREO" }), 8000)),
+  ]);
+
+  assert.notEqual(r.error, "CONG-TREO", "connectToPeer treo quá trần — đúng bug làm đơ endpoint 22/09");
+  assert.match(String(r.error), /ETIMEDOUT/, "phải nói rõ là HẾT GIỜ, không nuốt thành lỗi mơ hồ");
+  assert.ok(Date.now() - t0 < 6000, `phải trả sớm, đo được ${Date.now() - t0}ms`);
+  assert.equal(r.receivedBlocks, 0);
 });

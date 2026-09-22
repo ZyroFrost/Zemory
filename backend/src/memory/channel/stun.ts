@@ -425,10 +425,27 @@ export async function measureNat(
  *
  * Fail-open (điều 9): không đo được ⇒ `null`, người gọi tự xử.
  */
-export async function stunPublicIp(o: { timeoutMs?: number; servers?: readonly string[] } = {}): Promise<string | null> {
+export interface PublicIpResult {
+  ip: string | null;
+  /**
+   * Vì sao KHÔNG có địa chỉ. `null` = có rồi.
+   * · `dns` — không giải được tên server nào ⇒ bệnh ở bộ giải tên của MÁY, không phải mạng.
+   * · `no-answer` — giải được tên, hỏi rồi, **không ai trả lời** ⇒ mạng chặn STUN.
+   *
+   * 🔴 Vì sao phải tách: `null` trần không nói gì, và máy thứ hai đã kẹt đúng chỗ đó 22/09 —
+   * mã máy ra bản TRẦN, người đọc không có cách nào biết phải đi sửa DNS hay đi sửa tường lửa.
+   */
+  why: "dns" | "no-answer" | null;
+  names: number;
+  resolved: number;
+}
+
+export async function stunPublicIp(o: { timeoutMs?: number; servers?: readonly string[] } = {}): Promise<PublicIpResult> {
   const timeoutMs = o.timeoutMs ?? 3000;
+  const names = (o.servers ?? PUBLIC_STUN_SERVERS).length;
   const { servers } = await resolveStunServersDetailed(o.servers);
-  if (!servers.length) return null;
+  const base = { names, resolved: servers.length };
+  if (!servers.length) return { ip: null, why: "dns", ...base };
   // MỘT socket cho mọi lượt hỏi UDP: mở socket mới mỗi lượt là đổi cổng nguồn, tốn thêm
   // một ánh xạ NAT cho việc chỉ cần đọc địa chỉ.
   const socket = await openUdp(0).catch(() => null);
@@ -436,7 +453,7 @@ export async function stunPublicIp(o: { timeoutMs?: number; servers?: readonly s
     try {
       for (const s of servers) {
         const mapped = await stunQueryUdp(socket, s, timeoutMs);
-        if (mapped) return mapped.ip;
+        if (mapped) return { ip: mapped.ip, why: null, ...base };
       }
     } finally {
       closeQuietly(socket);
@@ -444,9 +461,9 @@ export async function stunPublicIp(o: { timeoutMs?: number; servers?: readonly s
   }
   for (const s of servers) {
     const mapped = await stunQueryTcp(s, { timeoutMs: timeoutMs + 2000 });
-    if (mapped) return mapped.ip;
+    if (mapped) return { ip: mapped.ip, why: null, ...base };
   }
-  return null;
+  return { ip: null, why: "no-answer", ...base };
 }
 
 /**

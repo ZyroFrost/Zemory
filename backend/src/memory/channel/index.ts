@@ -186,6 +186,18 @@ export function punchPortOf(channelPort: number): number {
 const EXT_TTL_MS = 5 * 60_000;
 let extAddr: { host: string; port: number; at: number } | null = null;
 let extBusy = false;
+/** Vì sao chưa có địa chỉ ngoài — `dns` · `no-answer` · `null` (có rồi, hoặc chưa đo lần nào). */
+let extWhy: "dns" | "no-answer" | null = null;
+
+/**
+ * Lý do KHÔNG đo được địa chỉ ngoài, cho bề mặt nói đúng thứ cần sửa.
+ *
+ * Một `externalAddr: null` trần bắt người đọc đoán giữa *DNS của máy hỏng* và *mạng chặn STUN* —
+ * hai bệnh vá hai kiểu khác nhau. Máy thứ hai kẹt đúng chỗ này 2026-09-22.
+ */
+export function externalAddressWhy(): "dns" | "no-answer" | null {
+  return extWhy;
+}
 
 /** Địa chỉ ngoài đã đo, ĐỌC THUẦN — không mở socket, không chờ mạng. `null` = chưa đo được. */
 export function externalAddress(): { host: string; port: number } | null {
@@ -219,8 +231,9 @@ export async function refreshExternalAddress(localPort = getP2pPort()): Promise<
   if (extBusy) return externalAddress();
   extBusy = true;
   try {
-    const ip = await stunPublicIp({ timeoutMs: 3000 });
-    if (ip) extAddr = { host: ip, port: localPort, at: Date.now() };
+    const r = await stunPublicIp({ timeoutMs: 3000 });
+    extWhy = r.why;
+    if (r.ip) extAddr = { host: r.ip, port: localPort, at: Date.now() };
     return externalAddress();
   } catch {
     return externalAddress();
