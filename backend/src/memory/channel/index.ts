@@ -17,6 +17,17 @@ import { punchToPeer } from "./punch.js";
 import { stunPublicIp } from "./stun.js";
 import { publishPresence, withdrawPresence } from "./presence.js";
 import { announceGlobal, shouldAnnounceNow } from "./globaldisco.js";
+import {
+  connectViaRelay,
+  fetchRelayPool,
+  joinRelay,
+  openRelaySession,
+  parseRelayUrl,
+  type RelayEndpoint,
+  type RelayJoin,
+} from "./relaypool.js";
+import { secureSocket } from "./punch.js";
+import { runSessionOn } from "./peer.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -28,6 +39,7 @@ export * from "./stun.js";
 export * from "./punch.js";
 export * from "./presence.js";
 export * from "./globaldisco.js";
+export * from "./relaypool.js";
 
 /**
  * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
@@ -159,7 +171,13 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
-let running: { server: ChannelServer; port: number; discovery?: DiscoveryHandle; presence?: NodeJS.Timeout } | null = null;
+let running: {
+  server: ChannelServer;
+  port: number;
+  discovery?: DiscoveryHandle;
+  presence?: NodeJS.Timeout;
+  relay?: RelayJoin;
+} | null = null;
 // ── ĐỊA CHỈ NGOÀI CỦA MÁY NÀY — mảnh làm ca KHÁC MẠNG chạy bằng một mã ────────────────────────
 /**
  * Khác mạng thì không tầng dò nào tìm ra máy kia, nên địa chỉ phải đi TRONG mã. Máy tự đo địa chỉ
@@ -206,8 +224,24 @@ export interface GlobalAnnounceState {
   server?: string;
   /** Địa chỉ ngoài lúc đăng — mốc để biết máy đã đổi IP kể từ lượt đăng gần nhất. */
   host?: string | null;
+  /** Relay đã đăng kèm — mốc để biết ta vừa đổi relay kể từ lượt đăng gần nhất. */
+  relay?: string | null;
 }
 let globalAnn: GlobalAnnounceState | null = null;
+
+/**
+ * Relay mà máy này đang CHỜ Ở ĐÓ — `null` = chưa tham gia được relay nào.
+ *
+ * 🔴 Địa chỉ này phải đi vào lượt ĐĂNG KÝ dò toàn cầu, nếu không tầng 4 dựng xong vẫn vô dụng:
+ * hai máy cùng nằm trong pool mà không bên nào biết tìm bên kia ở relay nào. Đây đúng là chỗ
+ * một tầng hoàn chỉnh vẫn có thể không nối được gì.
+ */
+let relayAt: RelayEndpoint | null = null;
+
+/** Relay đang chờ — cho bề mặt nói nó đang dựa vào đâu. */
+export function relayEndpoint(): RelayEndpoint | null {
+  return relayAt ? { ...relayAt } : null;
+}
 
 /** Lượt đăng ký toàn cầu gần nhất — cho bề mặt nói nó đang dựa vào đâu. `null` = chưa thử lần nào. */
 export function globalAnnounceState(): GlobalAnnounceState | null {
@@ -226,19 +260,27 @@ export function globalAnnounceState(): GlobalAnnounceState | null {
  * Thành công thì theo đúng nhịp server nói — đó là giao kèo của họ, không phải con số ta chọn.
  */
 async function announceBeat(port: number, host: string | null, now = Date.now()): Promise<void> {
-  if (!shouldAnnounceNow(globalAnn, host, now)) return;
+  // Vừa tham gia được một relay KHÁC lượt đăng trước ⇒ đăng lại NGAY, đừng đợi hết nhịp: cho tới
+  // lúc đó cụm dò vẫn nói ta không có đường relay nào, và máy kia sẽ không thử tầng 4.
+  const relayChanged = (globalAnn?.relay ?? null) !== (relayAt?.url ?? null);
+  if (!relayChanged && !shouldAnnounceNow(globalAnn, host, now)) return;
   try {
-    const r = await announceGlobal({ identity: channelIdentity(), port });
+    const r = await announceGlobal({
+      identity: channelIdentity(),
+      port,
+      relays: relayAt ? [relayAt.url] : [],
+    });
     globalAnn = {
       ok: r.ok,
       at: now,
       nextAt: now + (r.ok ? r.reannounceAfterS * 1000 : 60_000),
       server: r.server,
       host,
+      relay: relayAt?.url ?? null,
     };
   } catch {
     // Không bao giờ ném lên người gọi: lane này chỉ THÊM một đường (điều 9).
-    globalAnn = { ok: false, at: now, nextAt: now + 60_000, host };
+    globalAnn = { ok: false, at: now, nextAt: now + 60_000, host, relay: relayAt?.url ?? null };
   }
 }
 
@@ -767,12 +809,153 @@ export async function startChannelServer(o: {
         onReceived: o.onReceived,
       });
     }
+
+    // ── TẦNG 4: THAM GIA CỤM RELAY CÔNG KHAI ──────────────────────────────────────────────
+    //
+    // 🔴 Vì sao phải có: đục lỗ chỉ ăn khi ít nhất MỘT đầu gọi vào được, mà `§6d` đã đo **cả hai**
+    // đầu kín NAT. Ca đó cần một máy thứ ba — sự thật vật lý. Cụm công khai cho ta máy đó mà user
+    // không phải nuôi gì (`§1c-d`), khác hẳn relay tự host đã gỡ 21/09 vì trượt `§1a-0`.
+    //
+    // Chạy ở NỀN và KHÔNG chặn lượt bật kênh: lấy danh sách pool là một vòng mạng, mà kênh phải
+    // nghe được ngay. Trượt hết pool ⇒ im, mọi đường cũ chạy y nguyên (điều 9).
+    void (async (): Promise<void> => {
+      const pool = await fetchRelayPool();
+      // Thử vài relay chứ không chỉ một: relay đầy hoặc đang chết là chuyện thường trong một cụm
+      // tình nguyện. Dừng ở cái đầu tiên là để cả tầng 4 phụ thuộc vào một máy của người lạ.
+      for (const ep of pool.slice(0, 4)) {
+        if (!running || running.server !== server) return; // kênh đã tắt giữa chừng
+        try {
+          const join = await joinRelay({
+            endpoint: ep,
+            identity: channelIdentity(),
+            onInvite: (inv) => {
+              void acceptRelayInvite(ep, inv, server, key, peers, o, log);
+            },
+            onClose: (why) => {
+              if (relayAt?.url === ep.url) relayAt = null;
+              log(`[channel] relay ngắt: ${why}`);
+            },
+          });
+          if (!running || running.server !== server) {
+            join.stop();
+            return;
+          }
+          running.relay = join;
+          relayAt = ep;
+          log(`[channel] đang chờ ở relay công khai ${ep.host}:${ep.port} — máy kín NAT vẫn kết nối được`);
+          return;
+        } catch {
+          /* relay này không nhận ⇒ thử relay kế */
+        }
+      }
+    })();
+
     return { listening: true, port: server.port };
   } catch (e) {
     const reason = e instanceof Error ? e.message.slice(0, 120) : "không mở được cổng";
     log(`[channel] không lắng nghe được cổng ${port}: ${reason}`);
     return { listening: false, reason };
   }
+}
+
+/**
+ * Nhận một phiên gọi tới qua relay: mở ống byte → bọc TLS → chạy phiên như mọi đường khác.
+ *
+ * 🔴 **Vai TLS do RELAY phân** (`inv.serverSocket`), không phải ta đoán. Lớp đục lỗ không có thứ
+ * này — ở đó vai do cú bắt tay nào ăn trước quyết định, tức tung đồng xu, và đó đúng là họ lỗi đã
+ * đốt nhiều ngày. Ở đây hai đầu nhận hai vai ngược nhau từ cùng một nguồn, nên không thể lệch.
+ *
+ * `acceptPeer` PHẢI truyền xuống: đầu này là đầu NGHE, và thiếu nó thì `peer.ts` từ chối mọi máy
+ * chưa có trong sổ — đúng lỗi đã làm đường một-bên-dán chết từ cấu tạo.
+ */
+async function acceptRelayInvite(
+  ep: RelayEndpoint,
+  inv: { from: Buffer; key: Buffer; host: string | null; port: number; serverSocket: boolean },
+  server: ChannelServer,
+  shareKey: string,
+  peers: string[],
+  o: { appVersion: string; acceptPeer?: (id: string) => boolean; onReceived?: (n: number) => void },
+  log: (m: string) => void,
+) {
+  const raw = await openRelaySession(ep, inv);
+  if (!raw) return;
+  try {
+    const opts = {
+      channelDir: channelDir(currentStoreRoot(), true),
+      identity: channelIdentity(),
+      shareKey,
+      appVersion: o.appVersion,
+      allowedPeers: peers,
+      acceptPeer: o.acceptPeer,
+    };
+    const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
+    const out = await runSessionOn(sock, opts, !inv.serverSocket);
+    if (out.error) return;
+    log(
+      `[channel] phiên qua relay với ${out.peerDeviceId ?? "(không rõ)"} — đã nhận ${out.receivedBlocks} khối · đã gửi ${out.sentBlocks} khối`,
+    );
+    if (out.receivedBlocks) o.onReceived?.(out.receivedBlocks);
+  } catch {
+    // Một phiên hỏng KHÔNG được làm chết chỗ chờ relay — máy kia thử lại là gặp.
+    try {
+      raw.destroy();
+    } catch {
+      /* đóng được thì tốt */
+    }
+  }
+}
+
+/**
+ * GỌI một máy qua relay — đường CUỐI, chỉ dùng khi mọi đường gọi thẳng đã trượt.
+ *
+ * `relayUrls` là địa chỉ relay máy kia ĐÃ ĐĂNG lên cụm dò. Ta không đi dò cả pool: máy kia chỉ
+ * chờ ở relay NÓ chọn, nên xin phiên ở relay khác là chắc chắn trượt — và tốn đúng một vòng
+ * mạng cho mỗi lần đoán sai.
+ *
+ * Trả `null` khi không đường nào đi được. Đây vẫn là fail-open: người gọi còn chỗ chờ đục lỗ.
+ */
+export async function syncViaRelay(o: {
+  relayUrls: readonly string[];
+  peerDeviceId: string;
+  shareKey: string;
+  appVersion: string;
+  allowedPeers: string[];
+  wantPair?: boolean;
+  acceptPeer?: (id: string) => boolean;
+  onPaired?: (id: string) => void;
+  storeRoot?: string;
+}): Promise<SyncOutcome | null> {
+  for (const url of o.relayUrls) {
+    const ep = parseRelayUrl(url);
+    if (!ep) continue;
+    const inv = await connectViaRelay({ endpoint: ep, identity: channelIdentity(), peerDeviceId: o.peerDeviceId });
+    if (!inv) continue; // máy kia không có ở relay này ⇒ thử địa chỉ relay kế
+    const raw = await openRelaySession(ep, inv);
+    if (!raw) continue;
+    try {
+      const opts = {
+        channelDir: channelDir(o.storeRoot ?? currentStoreRoot(), true),
+        identity: channelIdentity(),
+        shareKey: o.shareKey,
+        appVersion: o.appVersion,
+        allowedPeers: o.allowedPeers,
+        wantPair: o.wantPair,
+        acceptPeer: o.acceptPeer,
+        onPaired: o.onPaired,
+      };
+      // Vai TLS do RELAY phân (`inv.serverSocket`) — hai đầu nhận hai vai ngược nhau từ CÙNG một
+      // nguồn, nên không thể lệch. Đây là thứ lớp đục lỗ không có.
+      const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
+      return await runSessionOn(sock, opts, !inv.serverSocket);
+    } catch {
+      try {
+        raw.destroy();
+      } catch {
+        /* đóng được thì tốt */
+      }
+    }
+  }
+  return null;
 }
 
 /** Đóng máy chủ kênh nếu đang chạy. An toàn khi gọi lúc không có gì chạy. */
@@ -783,6 +966,14 @@ export function stopChannelServer(): void {
   // Bắt được đúng như vậy khi lượt quét đầy đủ đứng im ở nhóm `p2p-channel`.
   cancelPunchWait();
   if (running?.presence) clearInterval(running.presence);
+  // RỜI relay: một chỗ chờ sống sót sau khi tắt kênh là mời máy kia mở phiên tới một kênh đã
+  // tắt — và trong tiến trình test, kết nối thường trực đó giữ event loop sống mãi.
+  try {
+    running?.relay?.stop();
+  } catch {
+    /* đóng được thì tốt */
+  }
+  relayAt = null;
   // Gỡ mục khỏi bảng chung: để nó ở lại là mời máy kia bắn vào một cổng vừa đóng (`§11`).
   try {
     withdrawPresence(getDriveDir(), channelIdentity().deviceId);
