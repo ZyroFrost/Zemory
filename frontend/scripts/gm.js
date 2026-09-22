@@ -294,12 +294,17 @@
     var cb=zid('p2pCodeRow');
     if(cb){
       while(cb.firstChild)cb.removeChild(cb.firstChild);
-      // MÃ NÓI RÕ NÓ DÙNG ĐƯỢC TỚI ĐÂU. Mã không có địa chỉ ngoài trông y hệt mã có — chỉ ngắn
-      // hơn 9 ký tự — nên người dùng đưa nó đi rồi máy kia báo "không thấy máy đó", và không ai
-      // đoán ra là thiếu ĐỊA CHỈ. Đó là bề mặt nói dối bằng DỮ LIỆU (đã cắn thật 21/09).
-      // BA trạng thái, không phải hai: có địa chỉ · thiếu vì DNS · thiếu vì mạng chặn STUN.
-      // Gộp hai ca thiếu làm người đọc không biết phải đi sửa cái gì.
-      var why=c.externalAddr?'p2p.codeWan':(c.externalAddrWhy==='dns'?'p2p.codeLanDns':(c.externalAddrWhy==='no-answer'?'p2p.codeLanNet':'p2p.codeLan'));
+      // MÃ NÓI RÕ NÓ DÙNG ĐƯỢC TỚI ĐÂU — BỐN trạng thái, mỗi cái dẫn tới một việc khác nhau:
+      // có địa chỉ ⇒ dùng được · đang đo ⇒ CHỜ rồi hãy chép · DNS hỏng ⇒ sửa máy · không ai trả
+      // lời ⇒ mạng chặn. Mã thiếu địa chỉ trông y hệt mã đủ, chỉ ngắn hơn 9 ký tự, nên gộp bất kỳ
+      // hai trạng thái nào là bắt người dùng đoán — họ đưa mã đi rồi máy kia báo "không thấy máy
+      // đó" mà không ai lần ra là thiếu ĐỊA CHỈ (user hỏi đúng chỗ này 22/09).
+      // `externalAddrWhy` rỗng mà cũng chưa có địa chỉ = **chưa đo xong lần nào**: daemon làm tươi
+      // địa chỉ kiểu bắn-rồi-quên, nên lượt hỏi ĐẦU sau khi bật app luôn trả mã TRẦN.
+      var why=c.externalAddr?'p2p.codeWan'
+        :c.externalAddrWhy==='dns'?'p2p.codeLanDns'
+        :c.externalAddrWhy==='no-answer'?'p2p.codeLanNet'
+        :'p2p.codeMeasuring';
       if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,t(why)));
     }
     var seen=(c.seen||[]);

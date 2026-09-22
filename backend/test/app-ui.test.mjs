@@ -2182,3 +2182,37 @@ test("hộp Phiên bản và hộp Chuẩn repo đều có nút KIỂM LẠI, kh
     assert.equal(chrome.split(`'${k}':`).length - 1, 2, `khoá ${k} phải có ở ĐÚNG hai từ điển`);
   }
 });
+
+// ── MÃ MÁY PHẢI NÓI RÕ NÓ DÙNG ĐƯỢC TỚI ĐÂU ───────────────────────────────
+//
+// 🔴 User hỏi 2026-09-22: *"sao mã máy bên kia bị ngắn hơn vậy? có lỗi gì ko"*. Mã thiếu địa chỉ
+// ngoài trông y hệt mã đủ, chỉ ngắn hơn 9 ký tự — nên người dùng đưa nó đi rồi máy kia báo *"không
+// thấy máy đó"*, và không ai đoán ra là thiếu ĐỊA CHỈ. Bề mặt nói dối bằng DỮ LIỆU.
+//
+// BỐN trạng thái, và mỗi cái dẫn tới một việc KHÁC nhau cho người đọc:
+//   có địa chỉ ⇒ dùng được · đang đo ⇒ CHỜ rồi hãy chép · DNS hỏng ⇒ sửa máy · không ai trả lời ⇒ mạng chặn.
+// Gộp bất kỳ hai cái nào là bắt người dùng đoán.
+test("mã máy: bốn trạng thái, không gộp — và 'đang đo' không được đọc thành 'không có'", () => {
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const chrome = readFileSync(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
+  // Lát cắt chỉ quanh hàng MÃ MÁY — soi cả file thì một khoá trùng tên ở chỗ khác làm cổng xanh oan.
+  const row = gm.slice(gm.indexOf("p2pCodeRow"), gm.indexOf("p2pCodeRow") + 1600);
+
+  for (const key of ["p2p.codeWan", "p2p.codeMeasuring", "p2p.codeLanDns", "p2p.codeLanNet"]) {
+    assert.ok(row.includes(key), `hàng mã máy không phân biệt trạng thái '${key}'`);
+    // Đủ HAI từ điển — một chuỗi chỉ có ở một bên là nhãn chết với nửa số người dùng.
+    // Đếm bằng `split`, KHÔNG dựng regex: khoá có dấu chấm nên phải escape, mà một tầng
+    // backslash bị nuốt lúc viết file là ra một regex khớp sai mà vẫn "chạy" (dính đúng vậy).
+    assert.equal(
+      chrome.split(`'${key}':`).length - 1,
+      2,
+      `'${key}' phải có ở CẢ HAI từ điển`,
+    );
+  }
+  // CA ÂM: `đang đo` phải là nhánh CUỐI (khi chưa biết lý do), không được thành nhánh mặc định
+  // cho mọi ca thiếu — nếu không thì DNS hỏng cũng hiện "đang đo" và người dùng chờ mãi.
+  assert.ok(
+    row.indexOf("p2p.codeLanDns") < row.indexOf("p2p.codeMeasuring"),
+    "'đang đo' phải xét SAU các lý do đã biết, không nuốt chúng",
+  );
+});
