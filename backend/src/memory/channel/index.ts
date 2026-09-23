@@ -967,6 +967,7 @@ async function acceptRelayInvite(
       appVersion: o.appVersion,
       allowedPeers: peers,
       acceptPeer: o.acceptPeer,
+      log,
     };
     const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
     const out = await runSessionOn(sock, opts, !inv.serverSocket);
@@ -1054,6 +1055,7 @@ export async function syncViaRelay(o: {
         wantPair: o.wantPair,
         acceptPeer: o.acceptPeer,
         onPaired: o.onPaired,
+        log: say,
       };
       // Vai TLS do RELAY phân (`inv.serverSocket`) — hai đầu nhận hai vai ngược nhau từ CÙNG một
       // nguồn, nên không thể lệch. Đây là thứ lớp đục lỗ không có.
