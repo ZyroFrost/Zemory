@@ -1680,6 +1680,8 @@ let autoBusy = false;
 let autoLastOk: boolean | null = null;
 /** Vân tay relay của các máy đã biết ở lượt trước — đổi ⇒ thử lại ngay. */
 let autoLastRelays = "";
+/** Lượt trước sổ có rỗng không — chỉ nói ra khi trạng thái ĐỔI, đừng kêu mỗi nhịp. */
+let autoLastEmpty: boolean | null = null;
 
 /**
  * Tới lượt tự nối chưa — hàm THUẦN, tách ra để có cổng soi.
@@ -1754,6 +1756,21 @@ async function autoConnectTick(projectRoot: string): Promise<void> {
     }
   } catch {
     /* không đọc được bảng chung ⇒ giữ nhịp cũ, đường nào cũng chạy y nguyên (điều 9) */
+  }
+  // 🔴 KÊNH BẬT mà SỔ RỖNG là một trạng thái CHẾT, và nó hoàn toàn im lặng: `autoConnectDue` trả
+  // false vì `peers: 0`, nên vòng tự nối không chạy lần nào; `readPresence` lọc theo sổ nên cũng
+  // trả rỗng. Máy trông như đang hoạt động bình thường mà không bao giờ gọi ai.
+  //
+  // Gặp thật 23/09: sổ mất máy đã ghép (chưa rõ vì đâu — mọi đường ghi đều đòi gọi tường minh),
+  // và phải đo bằng tay mới thấy, sau khi đã đi soi nhầm sang relay và mạng. Nói ra MỘT lần khi
+  // trạng thái đổi là đủ để lần sau thấy ngay.
+  if (getP2pEnabled() && peers.length === 0) {
+    if (autoLastEmpty !== true) {
+      autoLastEmpty = true;
+      daemonLog("[channel] kênh đang bật nhưng SỔ MÁY RỖNG — sẽ không tự kết nối với ai; dán mã máy kia một lần");
+    }
+  } else if (peers.length > 0) {
+    autoLastEmpty = false;
   }
   if (
     !autoConnectDue({
