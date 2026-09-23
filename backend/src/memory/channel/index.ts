@@ -1004,14 +1004,39 @@ export async function syncViaRelay(o: {
   acceptPeer?: (id: string) => boolean;
   onPaired?: (id: string) => void;
   storeRoot?: string;
+  /**
+   * Trần cho CẢ pha relay. Đo 23/09: một lượt ăn **2 phút 20 giây** — mỗi địa chỉ relay cộng dồn
+   * xin-lời-mời + mở-phiên + bắt-tay, và bắt tay thì chờ tới hết giờ khi đầu kia không mở phiên.
+   * Người bấm không ai hứa được con số đó.
+   */
+  budgetMs?: number;
+  /** Nói ra từng bước — đường này từng IM HOÀN TOÀN khi trượt, nên hai máy chỉ còn nước đoán. */
+  log?: (m: string) => void;
 }): Promise<SyncOutcome | null> {
+  const say = o.log ?? ((): void => {});
+  const until = Date.now() + (o.budgetMs ?? 45_000);
   for (const url of o.relayUrls) {
+    if (Date.now() > until) {
+      say(`[channel] relay: hết trần sau khi thử ${o.relayUrls.indexOf(url)}/${o.relayUrls.length} địa chỉ`);
+      return null;
+    }
     const ep = parseRelayUrl(url);
-    if (!ep) continue;
+    if (!ep) {
+      say(`[channel] relay: địa chỉ không đọc được — ${url.slice(0, 60)}`);
+      continue;
+    }
     const inv = await connectViaRelay({ endpoint: ep, identity: channelIdentity(), peerDeviceId: o.peerDeviceId });
-    if (!inv) continue; // máy kia không có ở relay này ⇒ thử địa chỉ relay kế
+    if (!inv) {
+      // Relay nói máy kia KHÔNG ở đây: hoặc nó đã rời, hoặc địa chỉ ta đọc được đã cũ.
+      say(`[channel] relay ${ep.host}:${ep.port}: máy kia không có ở đây (địa chỉ có thể đã cũ)`);
+      continue;
+    }
+    say(`[channel] relay ${ep.host}:${ep.port}: đã xin được phiên — đang mở ống`);
     const raw = await openRelaySession(ep, inv);
-    if (!raw) continue;
+    if (!raw) {
+      say(`[channel] relay ${ep.host}:${ep.port}: mở ống thất bại`);
+      continue;
+    }
     try {
       const opts = {
         channelDir: channelDir(o.storeRoot ?? currentStoreRoot(), true),
@@ -1026,8 +1051,15 @@ export async function syncViaRelay(o: {
       // Vai TLS do RELAY phân (`inv.serverSocket`) — hai đầu nhận hai vai ngược nhau từ CÙNG một
       // nguồn, nên không thể lệch. Đây là thứ lớp đục lỗ không có.
       const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
+      say(`[channel] relay ${ep.host}:${ep.port}: bắt tay xong — đang chạy phiên`);
       return await runSessionOn(sock, opts, !inv.serverSocket);
-    } catch {
+    } catch (e) {
+      // 🔴 Gần như luôn là MỘT ca: đầu kia nhận được lời mời nhưng KHÔNG mở phiên từ phía nó, nên
+      // cú bắt tay TLS của ta chờ tới hết giờ. Nói thẳng ra, đừng để hai máy đi đoán — chính chỗ
+      // im lặng này đã khiến cả hai bên soi nhầm sang mạng suốt 23/09.
+      say(
+        `[channel] relay ${ep.host}:${ep.port}: mở ống được nhưng không bắt tay được — nhiều khả năng máy kia không mở phiên từ phía nó (${e instanceof Error ? e.message.slice(0, 60) : "không rõ"})`,
+      );
       try {
         raw.destroy();
       } catch {
@@ -1035,6 +1067,7 @@ export async function syncViaRelay(o: {
       }
     }
   }
+  say(`[channel] relay: đã thử hết ${o.relayUrls.length} địa chỉ, không đường nào đi được`);
   return null;
 }
 

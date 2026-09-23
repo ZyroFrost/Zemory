@@ -1962,6 +1962,8 @@ async function channelSyncOnce(
     const viaRelay = await ch
       .syncViaRelay({
         relayUrls,
+        budgetMs: 45_000,
+        log: (m: string) => daemonLog(m),
         peerDeviceId: wantId,
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
