@@ -22,6 +22,7 @@ import {
   createFrameReader,
   encodeBlock,
   encodeJson,
+  MAX_FRAME_BYTES,
   newNonce,
   parseControl,
   proofMatches,
@@ -68,6 +69,13 @@ export interface SessionOptions {
    * quãng TRƯỚC phiên — quãng duy nhất mà một địa chỉ nuốt gói làm treo vô hạn.
    */
   connectTimeoutMs?: number;
+  /**
+   * Nói ra những chuyện xảy ra TRONG phiên mà không phải lỗi — ví dụ một khối bị bỏ qua.
+   *
+   * Không có hố này thì mọi quyết định lặng của phiên đều vô hình, và hai máy lệch nhau một khối
+   * mà không bên nào biết.
+   */
+  log?: (m: string) => void;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -249,12 +257,31 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const shipMissing = async (peerIds: string[]): Promise<void> => {
       try {
         const missing = missingOnPeer(o.channelDir, peerIds);
+        let shipped = 0;
         for (const block of missing) {
+          // 🔴 MỘT khối quá cỡ KHÔNG được phép kéo sập cả phiên.
+          //
+          // Đo 23/09 trên hai máy thật: ngăn kênh còn một `global_memory.enc` **nguyên khối 2,6 GB**
+          // — baseline đời cũ, sót lại từ trước khi kho chuyển sang cắt khúc. `readBlockBytes` bóc
+          // nó ra rồi `readFileSync` chạm trần cứng ~2 GiB của Node (`ERR_FS_FILE_TOO_LARGE`), lỗi
+          // ném lên `catch` và **giết trọn lượt chở** — nên bắt tay xong, phiên chạy, rồi 0 khối đi
+          // và không ai hiểu vì sao. Cả một kho delta vài trăm KB bị chặn bởi một tệp không liên quan.
+          //
+          // Khối lớn hơn một khung thì **không có cách nào** gửi (lớp dây chốt `MAX_FRAME_BYTES`),
+          // nên bỏ qua là câu trả lời ĐÚNG chứ không phải nhân nhượng — và phải NÓI RA, vì im lặng
+          // ở đây là để hai máy vĩnh viễn lệch nhau một khối mà không bên nào biết.
+          if (block.chunk.len > MAX_FRAME_BYTES) {
+            o.log?.(
+              `[channel] bỏ qua một khối ${Math.round(block.chunk.len / 1024 / 1024)} MB — vượt trần khung ${Math.round(MAX_FRAME_BYTES / 1024 / 1024)} MB; đây là baseline nguyên khối đời cũ, khối delta vẫn đi bình thường`,
+            );
+            continue;
+          }
           const bytes = await readBlockBytes(block);
           send(encodeBlock(bytes));
           out.sentBlocks++;
+          shipped++;
         }
-        send(encodeJson({ t: "done", sent: missing.length }));
+        send(encodeJson({ t: "done", sent: shipped }));
         sentDone = true;
         tryFinish();
       } catch (e) {
