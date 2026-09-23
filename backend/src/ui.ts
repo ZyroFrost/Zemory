@@ -1980,6 +1980,10 @@ async function channelSyncOnce(
       })
       .catch(() => null);
     if (viaRelay && !viaRelay.error) return { ok: true, ...viaRelay, via: "relay" };
+    // 🔴 Relay đã CHẠY mà hỏng ⇒ giữ lại lỗi đó. Bản trước vứt đi rồi rơi thẳng xuống chỗ chờ đục
+    // lỗ, nên bề mặt chỉ còn `dialFailed: ETIMEDOUT` của đường gọi thẳng — một câu nói về đường
+    // KHÁC, trong khi thứ vừa thất bại là relay. Người đọc đi sửa nhầm chỗ.
+    if (viaRelay?.error) last = { ...last, relayError: String(viaRelay.error).slice(0, 160) };
   }
 
   // ĐỤC LỖ NAT — MỞ CHỖ CHỜ, không chạy một lượt 20 giây rồi trả lỗi (`plan/24 §6f`).

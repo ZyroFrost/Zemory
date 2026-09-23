@@ -970,7 +970,14 @@ async function acceptRelayInvite(
     };
     const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
     const out = await runSessionOn(sock, opts, !inv.serverSocket);
-    if (out.error) return;
+    // 🔴 KHÔNG nuốt lỗi phiên. Bản trước `return` câm ở đây, nên ca *bắt tay xong rồi phiên chết*
+    // hoàn toàn vô hình — đúng lớp cuối mà máy thứ hai chỉ ra 23/09: hai bên thấy "đang chạy
+    // phiên" rồi không khối nào đi, và không ai biết vì sao. Chìa lệch, phiên rớt ngay sau bắt
+    // tay, hay giao thức khối không chạy trên ống relay — ba bệnh khác nhau, cùng một sự im lặng.
+    if (out.error) {
+      log(`[channel] phiên qua relay HỎNG sau khi bắt tay: ${String(out.error).slice(0, 120)}`);
+      return;
+    }
     log(
       `[channel] phiên qua relay với ${out.peerDeviceId ?? "(không rõ)"} — đã nhận ${out.receivedBlocks} khối · đã gửi ${out.sentBlocks} khối`,
     );
@@ -1052,7 +1059,15 @@ export async function syncViaRelay(o: {
       // nguồn, nên không thể lệch. Đây là thứ lớp đục lỗ không có.
       const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
       say(`[channel] relay ${ep.host}:${ep.port}: bắt tay xong — đang chạy phiên`);
-      return await runSessionOn(sock, opts, !inv.serverSocket);
+      const out = await runSessionOn(sock, opts, !inv.serverSocket);
+      // Nói ra KẾT CỤC, không chỉ trả về. "Đang chạy phiên" rồi im là câu nói dở dang: người đọc
+      // tưởng xong, mà có thể phiên vừa chết hoặc chở 0 khối.
+      say(
+        out.error
+          ? `[channel] relay ${ep.host}:${ep.port}: phiên hỏng — ${String(out.error).slice(0, 120)}`
+          : `[channel] relay ${ep.host}:${ep.port}: xong — đã nhận ${out.receivedBlocks} khối · đã gửi ${out.sentBlocks} khối`,
+      );
+      return out;
     } catch (e) {
       // 🔴 Gần như luôn là MỘT ca: đầu kia nhận được lời mời nhưng KHÔNG mở phiên từ phía nó, nên
       // cú bắt tay TLS của ta chờ tới hết giờ. Nói thẳng ra, đừng để hai máy đi đoán — chính chỗ
