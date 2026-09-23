@@ -53,6 +53,35 @@ const BANNED = [
   [/ở màn (?!hình)/, "'màn' là dạng nói của 'màn hình' — viết đủ 'màn hình'"],
   ["chép, mã bây giờ", "tách thành câu hoàn chỉnh"],
   ["press Connect over there whenever", "viết thành câu đầy đủ"],
+
+  // ── tiếng Anh chen vào câu tiếng Việt (rà toàn bộ 209 chuỗi thông báo, 23/09) ──────
+  // Mỗi mục dưới đây là một câu ĐÃ lên màn hình, không phải phỏng đoán.
+  ["sync xong", "dùng 'đã đồng bộ xong'"],
+  ["embed đủ", "dùng 'nhúng đủ'"],
+  ["chờ embed", "dùng 'chờ nhúng'"],
+  ["chưa từng sync", "dùng 'chưa từng đồng bộ'"],
+  ["chưa link", "dùng 'chưa nối'"],
+  ["đã link", "dùng 'đã nối'"],
+  ["lane semantic", "dùng 'lớp ngữ nghĩa'"],
+  [/\bmessage lân cận\b/, "dùng 'tin lân cận'"],
+
+  // ── cách viết kiểu nói ────────────────────────────────────────────────────────────
+  ["sửa tay", "dùng 'sửa thủ công'"],
+  ["chép tay", "dùng 'sao chép thủ công'"],
+  ["chép thẳng", "dùng 'sao chép trực tiếp'"],
+  ["rót ra", "ẩn dụ — viết thẳng 'tạo ra'"],
+  ["chở sẵn", "dùng 'mang sẵn'"],
+  ["chở kèm", "dùng 'mang theo'"],
+  ["không ai import", "dùng 'không tệp nào import'"],
+  ["không xong", "dùng 'không hoàn tất'"],
+  ["không thành —", "dùng 'không thành công'"],
+  ["hộp này", "dùng 'hộp thoại này'"],
+  ["lịch này ràng", "dùng 'chịu ràng buộc của lịch này'"],
+  ["Bỏ tick", "dùng 'Bỏ chọn'"],
+  ["treo?)", "câu hỏi tu từ trong ngoặc — viết thành câu"],
+  ["finishing up", "EN: dùng 'finalising'"],
+  [/pulling fine/, "EN: dùng 'pulling normally'"],
+  [/linked and fine/, "EN: dùng 'linked and healthy'"],
 ];
 
 /**
@@ -112,4 +141,39 @@ test("hai bản ngôn ngữ nói CÙNG một thứ — khoá phiên chờ phải
   }
   assert.ok(CHROME.includes("'p2p.waitH':'Phiên chờ kết nối'"), "bản VI");
   assert.ok(CHROME.includes("'p2p.waitH':'Pending connection'"), "bản EN");
+});
+
+test("chữ DỰ PHÒNG trong HTML phải khớp từ điển — hai bản của một câu là hai bản lệch nhau", () => {
+  // 🔴 Ca thật, bắt được 23/09: từ điển đã sửa nhưng chữ dự phòng cứng trong `app.html` vẫn hứa
+  // *"cần một relay của zemory trên máy có IP công khai"* — một lời hứa đã SAI kể từ khi tầng 4
+  // chuyển sang cụm công khai. Người đọc thấy nó trước khi i18n kịp chạy, hoặc khi i18n hỏng.
+  const HTML = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+
+  // Mọi phần tử có `data-i18n` phải mang chữ dự phòng ĐÚNG BẰNG bản VI trong từ điển.
+  const pairs = [...HTML.matchAll(/data-i18n="([a-zA-Z0-9._]+)"[^>]*>([^<]*)</g)];
+  assert.ok(pairs.length > 20, `phải soi được nhiều nhãn — mới thấy ${pairs.length}, neo có thể đã chết`);
+
+  // Soi cụm `p2p.*`: đây là bề mặt vừa đổi nhiều nhất, và là chỗ đã lệch thật.
+  const drift = [];
+  for (const [, keyRaw, fallbackRaw] of pairs) {
+    if (!keyRaw.startsWith("p2p.")) continue;
+    const fallback = fallbackRaw.trim();
+    if (!fallback) continue;
+    // Cắt chuỗi thay vì regex: giá trị có thể chứa dấu nháy thoát, và một regex sai ở đây làm cổng
+    // NÉM SyntaxError chứ không báo lệch — một cổng hỏng còn tệ hơn một cổng thiếu.
+    const at = CHROME.indexOf(`'${keyRaw}':'`);
+    if (at < 0) continue; // khoá chỉ có trong HTML — việc của cổng khác
+    const from = at + keyRaw.length + 4;
+    let end = from;
+    while (end < CHROME.length && !(CHROME[end] === "'" && CHROME[end - 1] !== "\\")) end += 1;
+    const dict = CHROME.slice(from, end);
+    if (dict !== fallback) drift.push(`${keyRaw}\n      HTML: ${fallback}\n      từ điển: ${dict}`);
+  }
+  assert.deepEqual(drift, [], `Chữ dự phòng lệch từ điển:\n    ${drift.join("\n    ")}`);
+
+  // CA ÂM riêng cho lời hứa đã chết: KHÔNG nơi nào trên bề mặt được nói user phải có máy IP công khai.
+  for (const src of [HTML, CHROME]) {
+    assert.ok(!/IP công khai/.test(src), "bề mặt còn hứa một relay trên máy có IP công khai — đã sai từ 23/09");
+    assert.ok(!/public IP/i.test(src), "bản EN còn hứa một relay trên máy có IP công khai");
+  }
 });

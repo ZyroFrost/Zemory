@@ -346,7 +346,10 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   // dẫn sống: bản cũ khớp `/chỗ chờ/` vào `code`, mà thứ khớp được lại là một DÒNG LOG tình cờ
   // chứa cụm đó — không phải câu hướng dẫn nó định canh. Câu hướng dẫn nay ở từ điển chữ.
   const CHROME = readSrc(new URL("../../frontend/scripts/chrome.js", import.meta.url), "utf8");
-  assert.match(CHROME, /'p2p\.reachD':'[^']*phiên chờ/, "bề mặt phải nói ra cơ chế thật: máy dán trước mở phiên chờ");
+  // 🔄 Neo ĐI THEO lần hai (23/09): sau khi có tầng 4, câu hướng dẫn không còn nói *ai dán trước mở
+  //    phiên chờ* nữa — app tự tìm đường, nên chi tiết đó thành thứa. Thứ phải canh nay là lời hứa
+  //    ĐẮT NHẤT: nối được **kể cả khi cả hai đầu kín NAT**. Mất câu đó là bề mặt im về ca khó nhất.
+  assert.match(CHROME, /'p2p\.reachD':'[^']*kín NAT/, "bề mặt phải nói rõ nối được kể cả khi cả hai đầu kín NAT");
 });
 
 // ── MÃ MANG ĐỊA CHỈ NGOÀI — mảnh mở ca KHÁC MẠNG bằng một chuỗi ────────────────────────

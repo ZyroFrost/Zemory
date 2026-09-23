@@ -449,15 +449,15 @@
             <div class="card">
               <div class="card-h"><div class="t" data-i18n="p2p.meH">Máy này</div><span class="tgl-l" data-i18n="p2p.enable" style="margin-left:auto">Dùng kênh máy-tới-máy</span><div class="toggle" id="p2pToggle" data-act="p2p-toggle" data-i18n-aria="p2p.enable" aria-label="Bật kênh máy-tới-máy"><i></i></div></div>
               <div class="card-b">
-                <div class="muted" style="font-size:11px;margin:0 0 6px;line-height:1.5" data-i18n="p2p.enableD">Nhận khối thẳng từ máy đã kết nối, không qua Drive. Bật cùng lúc với Drive được; đây là chiều nhận.</div>
+                <div class="muted" style="font-size:11px;margin:0 0 6px;line-height:1.5" data-i18n="p2p.enableD">Nhận khối trực tiếp từ máy đã kết nối, không qua Drive. Có thể bật đồng thời với Drive; đây là chiều nhận.</div>
                 <div class="drv-facts">
                   <div><span data-i18n="p2p.blocks">Khối đang giữ</span><b id="p2pBlocks">—</b></div>
                   <div><span data-i18n="p2p.port">Cổng nghe</span><b id="p2pPort">—</b></div>
-                  <div><span data-i18n="p2p.seen">Thấy cùng mạng</span><b id="p2pSeen">—</b></div>
+                  <div><span data-i18n="p2p.seen">Phát hiện trong mạng nội bộ</span><b id="p2pSeen">—</b></div>
                 </div>
                 <div class="drv-facts" id="p2pAddrs" style="margin-top:0"></div>
                 <div class="drv-facts" id="p2pCodeRow" style="margin-top:0"></div>
-                <div class="muted" style="font-size:11px;margin:6px 0 0;line-height:1.5" data-i18n="p2p.reachD">Cùng mạng thì tự thấy nhau. Khác mạng thì cần một relay của zemory trên máy có IP công khai, hai máy cùng trỏ vào.</div>
+                <div class="muted" style="font-size:11px;margin:6px 0 0;line-height:1.5" data-i18n="p2p.reachD">Cùng mạng: hai máy tự nhận ra nhau. Khác mạng: dán mã của máy kia, app tự tìm đường — kể cả khi cả hai kín NAT.</div>
                 <div class="section-t" data-i18n="ds.p2pDir">Chỗ lưu của kênh này</div>
                 <div style="display:flex;align-items:center;gap:8px"><span class="fchip muted" id="p2pDir" style="border:0;flex:1;min-width:0;padding:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><button class="btn xs" id="p2pDirCopy" style="display:none;flex:0 0 auto" data-i18n="p2p.copy" data-i18n-title="p2p.copyHint">Copy</button></div>
               </div>
@@ -471,13 +471,13 @@
                 <div id="p2pSeenList" class="filters" style="margin:0"></div>
                 <div class="section-t" data-i18n="p2p.foldersH">Thư mục sẽ đồng bộ</div>
                 <div class="muted" style="font-size:11px;margin:0;line-height:1.7">
-                  <div><b>global-memory/</b> — <span data-i18n="p2p.fldMem">kho bộ nhớ, đi bằng khối mã hoá chứ không chép file.</span></div>
-                  <div><b>global-memory/files/</b> — <span data-i18n="p2p.fldFiles">tệp đã gửi hoặc agent tạo. Tên tệp là mã nội dung nên không bao giờ đụng nhau.</span></div>
-                  <div><b>docs/</b> — <span data-i18n="p2p.fldDocs">tài liệu của repo. Hai máy sửa hai chỗ khác nhau thì gộp được; sửa đè cùng chỗ thì chặn lại và hỏi.</span></div>
-                  <div><b>docs_visual/</b> — <span data-i18n="p2p.fldVis">ảnh thiết kế, sơ đồ. Không gộp được, phải chọn giữ bản của máy nào.</span></div>
-                  <div><b>attic/</b> — <span data-i18n="p2p.fldAttic">đồ cũ đã cất, gần như chỉ thêm.</span></div>
+                  <div><b>global-memory/</b> — <span data-i18n="p2p.fldMem">kho bộ nhớ, truyền bằng khối mã hoá thay vì sao chép tệp.</span></div>
+                  <div><b>global-memory/files/</b> — <span data-i18n="p2p.fldFiles">tệp đã gửi hoặc agent tạo. Tên tệp là mã nội dung nên không bao giờ trùng nhau.</span></div>
+                  <div><b>docs/</b> — <span data-i18n="p2p.fldDocs">tài liệu của repo. Sửa ở hai vị trí khác nhau sẽ được hợp nhất; sửa đè cùng vị trí sẽ bị chặn để người dùng chọn.</span></div>
+                  <div><b>docs_visual/</b> — <span data-i18n="p2p.fldVis">ảnh thiết kế, sơ đồ. Không hợp nhất được; phải chọn bản giữ lại.</span></div>
+                  <div><b>attic/</b> — <span data-i18n="p2p.fldAttic">tài liệu đã lưu trữ, gần như chỉ thêm mới.</span></div>
                 </div>
-                <div class="muted" style="font-size:11px;margin:8px 0 0;line-height:1.6" data-i18n="p2p.notSynced">Không rời máy này: chìa share, két bí mật, phiên đăng nhập, model, bản sao lưu.</div>
+                <div class="muted" style="font-size:11px;margin:8px 0 0;line-height:1.6" data-i18n="p2p.notSynced">Không rời máy này: khoá chia sẻ, kho bí mật, phiên đăng nhập, model, bản sao lưu.</div>
               </div>
             </div>
           </div>
@@ -572,7 +572,7 @@
   <div class="dlg sm" role="dialog" data-i18n-aria="p2p.addMachine" aria-label="Thêm máy">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">⇄</span><b data-i18n="p2p.addMachine">+ Thêm máy…</b><button class="x" id="addPeerClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
-      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Dán mã máy kia đọc ở khối "Máy này" của nó. Xong thì hai bên tự nhớ nhau.</div>
+      <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Dán mã của máy kia, lấy ở mục "Máy này" trên máy đó. Sau lần kết nối đầu, hai máy tự ghi nhớ nhau.</div>
       <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="dán mã máy kia" style="flex:2"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Kết nối</button></div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
