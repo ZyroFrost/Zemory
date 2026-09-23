@@ -351,7 +351,120 @@
       });
     }
   }
-  function loadChannel(){return zGet('/channel-status').then(renderChannel).catch(function(){});}
+  // ── HÀNG ĐỢI DUYỆT của lớp mirror thư mục (plan/24 §9.6) ────────────────────
+  //
+  // Luật user chốt: thay đổi từ máy kia KHÔNG tự áp — *"bên đây phải confirm chấp nhận sửa đó
+  // thì sẽ tự động lên"*. Khối này là chỗ DUY NHẤT trên bề mặt làm được việc đó; thiếu nó thì
+  // các thay đổi nằm im trong kho và người dùng không có cách nào biết có gì đang chờ.
+  //
+  // Rỗng ⇒ biến mất HẲN, kể cả tiêu đề (§F0: mặc định của mọi phần tử là KHÔNG CÓ NÓ).
+  function renderQueue(r){
+    var box=zid('p2pQueue'), badge=zid('p2pQBadge');
+    if(!box)return;
+    var rows=(r&&r.rows)||[];
+    if(badge)badge.textContent=rows.length?String(rows.length):'';
+    box.innerHTML='';
+    if(!rows.length)return;
+    var mergeable=rows.filter(function(x){return x.verdict!=='block';});
+    var h=document.createElement('div');
+    h.className='section-t';h.style.marginTop='0';
+    h.textContent=t('mir.h');
+    box.appendChild(h);
+    // Duyệt CẢ NHÓM chỉ cho nhóm KHÔNG trùng đoạn. Dòng bị chặn cố ý không có nút tự động —
+    // user chốt: *"phải block lại và hỏi xài bên máy nào"*.
+    if(mergeable.length>1){
+      var all=document.createElement('button');
+      all.className='btn sm';all.style.margin='0 0 8px';
+      all.textContent=t('mir.acceptAll').replace('{n}',String(mergeable.length));
+      all.setAttribute('data-act','mir-all');
+      box.appendChild(all);
+    }
+    rows.forEach(function(q){
+      var blocked=q.verdict==='block';
+      var d=document.createElement('div');
+      d.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--surface-2)';
+      var why=blocked?t('mir.block'):(q.verdict==='merge'?t('mir.merge'):t('mir.take'));
+      d.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">'
+        +'<span style="font-size:11.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        +stdEsc(q.area+'/'+q.rel)+'</span>'
+        +'<span class="muted" style="font-size:10.5px;margin-left:auto;flex:0 0 auto">'+stdEsc(why)+'</span></div>';
+      var bar=document.createElement('div');
+      bar.style.cssText='display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
+      function mk(label,choice){
+        var b=document.createElement('button');
+        b.className='btn xs';b.textContent=label;
+        b.setAttribute('data-act','mir-apply');b.setAttribute('data-id',String(q.id));b.setAttribute('data-choice',choice);
+        return b;
+      }
+      if(blocked){
+        bar.appendChild(mk(t('mir.keepMine'),'mine'));
+        bar.appendChild(mk(t('mir.useTheirs'),'theirs'));
+      }else{
+        bar.appendChild(mk(t('mir.accept'),q.verdict==='merge'?'merged':'theirs'));
+      }
+      bar.appendChild(mk(t('mir.later'),'dismiss'));
+      var dv=document.createElement('button');
+      dv.className='btn xs';dv.textContent=t('mir.diff');
+      dv.setAttribute('data-act','mir-diff');dv.setAttribute('data-id',String(q.id));
+      bar.appendChild(dv);
+      d.appendChild(bar);
+      var pre=document.createElement('pre');
+      pre.id='mirD'+q.id;
+      pre.style.cssText='display:none;max-height:220px;overflow:auto;margin:8px 0 0;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:10.5px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:var(--text-dim)';
+      d.appendChild(pre);
+      box.appendChild(d);
+    });
+  }
+  function loadQueue(){return zGet('/mirror-queue').then(renderQueue).catch(function(){});}
+  window.zLoadMirrorQueue=loadQueue;
+
+  document.addEventListener('click',function(e){
+    var el=e.target&&e.target.closest?e.target.closest('[data-act="mir-apply"],[data-act="mir-diff"],[data-act="mir-all"]'):null;
+    if(!el)return;
+    var act=el.getAttribute('data-act');
+    if(act==='mir-diff'){
+      var id=el.getAttribute('data-id'), pre=zid('mirD'+id);
+      if(!pre)return;
+      if(pre.style.display!=='none'){pre.style.display='none';return;}
+      pre.style.display='';
+      pre.textContent='…';
+      zGet('/mirror-diff?id='+encodeURIComponent(id)).then(function(r){
+        if(!r||!r.ok){pre.textContent=(r&&r.error)||t('mir.err');return;}
+        // Nhị phân thì NÓI THẲNG là không so được, đừng trưng byte — người đọc không quyết
+        // được bằng thứ đó, và một bức tường ký tự lạ đọc ra như lỗi.
+        var parts=[];
+        parts.push(t('mir.colMine')+':\n'+(r.mineBinary?t('mir.binary'):(r.mine===null?t('mir.missing'):r.mine)));
+        parts.push(t('mir.colTheirs')+':\n'+(r.theirsBinary?t('mir.binary'):(r.theirs===null?t('mir.binary'):r.theirs)));
+        if(r.merged)parts.push(t('mir.colMerged')+':\n'+r.merged);
+        pre.textContent=parts.join('\n\n———\n\n');
+      }).catch(function(){pre.textContent=t('mir.err');});
+      return;
+    }
+    if(act==='mir-all'){
+      // Chỉ nhóm KHÔNG trùng đoạn. Lấy lại danh sách từ server thay vì tin DOM: DOM có thể cũ
+      // hơn kho nếu vừa có một lượt đồng bộ chạy nền.
+      zGet('/mirror-queue').then(function(r){
+        var rows=((r&&r.rows)||[]).filter(function(x){return x.verdict!=='block';});
+        var chain=Promise.resolve();
+        rows.forEach(function(q){
+          chain=chain.then(function(){
+            return zGet('/mirror-apply?id='+q.id+'&choice='+(q.verdict==='merge'?'merged':'theirs'));
+          });
+        });
+        return chain;
+      }).then(loadQueue).catch(loadQueue);
+      return;
+    }
+    // Nhánh TƯỜNG MINH, không dùng đường rơi-xuống: một hành động mới lọt vào bộ chọn ở trên
+    // mà không ai để ý sẽ được gửi đi như một lượt duyệt. Cổng `data-act` của repo soi đúng
+    // chữ `act==='…'` chính vì lý do đó.
+    if(act==='mir-apply'){
+      zGet('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice')))
+        .then(loadQueue).catch(loadQueue);
+    }
+  });
+
+  function loadChannel(){return zGet('/channel-status').then(renderChannel).then(loadQueue).catch(function(){});}
   window.zLoadChannel=loadChannel;
   // Mở ⚙ ⇒ nạp luôn, để số trong đó không bao giờ là số cũ của lần mở trước.
   document.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#topSettings'))setTimeout(loadChannel,60);});

@@ -43,8 +43,13 @@ export interface AtomicWriteOptions {
  *
  * File tạm PHẢI nằm CÙNG THƯ MỤC với đích: rename chỉ nguyên tử trong cùng volume,
  * để ở %TEMP% là dính EXDEV khi đích nằm ổ khác (repo ở D:, temp ở C: — đúng máy này).
+ *
+ * `data` nhận cả `Buffer` (thêm 2026-09-23 cho lớp mirror thư mục — ảnh trong
+ * `docs_visual/` và `global-memory/files/` là nhị phân). `writeSync` vốn nhận cả hai,
+ * nên đây chỉ là nới KIỂU: thà nới một đường ghi đã có đủ fsync + retry rename + dọn
+ * file tạm, còn hơn đẻ một đường ghi thứ hai cho nhị phân rồi hai bản trôi lệch.
  */
-export function writeFileAtomic(target: string, data: string, opts: AtomicWriteOptions = {}): void {
+export function writeFileAtomic(target: string, data: string | Buffer, opts: AtomicWriteOptions = {}): void {
   const dir = dirname(target);
   mkdirSync(dir, { recursive: true });
   const tmp = join(dir, `.${process.pid}.${Date.now().toString(36)}.tmp`);
@@ -57,7 +62,10 @@ export function writeFileAtomic(target: string, data: string, opts: AtomicWriteO
     // nằm ở cache của OS ⇒ mất điện là được một file rỗng đã đổi tên xong.
     const fd = openSync(tmp, "w");
     try {
-      writeSync(fd, data);
+      // Hai nhánh vì `writeSync` có hai chữ ký (chuỗi ↔ buffer) và TypeScript không chọn
+      // được khi kiểu là hợp của cả hai. Nội dung hai nhánh giống hệt nhau về hành vi.
+      if (typeof data === "string") writeSync(fd, data);
+      else writeSync(fd, data);
       fsyncSync(fd);
     } finally {
       closeSync(fd);

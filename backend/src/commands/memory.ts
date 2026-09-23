@@ -718,7 +718,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer } =
+    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer, mirrorHooks } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
@@ -737,6 +737,101 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
       console.log(`  đã kết nối: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
       console.log("  Vân tay KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
+      return;
+    }
+    if (action === "mirror") {
+      // MIRROR THƯ MỤC (plan/24 §9) — hàng đợi duyệt, đường CLI.
+      //
+      // Vì sao CLI cần cửa này dù UI đã có: hàng đợi nằm trong kho, và lúc daemon chết thì
+      // UI cũng chết theo — đúng lúc người ta cần xem *"cái gì đang chờ tôi"* nhất. Cùng lý
+      // lẽ với mọi verb `channel` khác ở file này.
+      const { mirrorDb, listQueue, applyQueued, dismissQueued, scanMirror } = await import("../memory/channel/index.js");
+      const act = rest[1] ?? "list";
+      if (act === "list") {
+        const scan = scanMirror();
+        const rows = listQueue(mirrorDb());
+        console.log(`zemory memory channel mirror — ${rows.length} mục chờ duyệt`);
+        console.log(`  đang theo dõi: ${scan.entries.length} file`);
+        if (scan.skipped.length > 0) {
+          // Loại trong im lặng thì không phân biệt được với quét sót — luôn nói ra.
+          const byReason = new Map<string, number>();
+          for (const s of scan.skipped) byReason.set(s.reason, (byReason.get(s.reason) ?? 0) + 1);
+          console.log(`  đã loại      : ${[...byReason].map(([r, n]) => `${n} ${r}`).join(" · ")}`);
+        }
+        for (const r of rows) {
+          const what = r.verdict === "take" ? "nhận bản bên kia" : r.verdict === "merge" ? "gộp được" : "TRÙNG ĐOẠN — phải chọn";
+          console.log(`  #${r.id}  ${r.area}/${r.rel}  · ${what} · ${Math.max(1, Math.round(r.size / 1024))} KB`);
+        }
+        if (rows.length > 0) console.log("  duyệt: zemory memory channel mirror approve <id> [--mine|--merged]");
+        return;
+      }
+      if (act === "approve" || act === "dismiss") {
+        const id = Number(rest[2]);
+        if (!Number.isInteger(id) || id <= 0) {
+          console.log(`usage: zemory memory channel mirror ${act} <id>`);
+          process.exitCode = 1;
+          return;
+        }
+        if (act === "dismiss") {
+          console.log(dismissQueued(mirrorDb(), id) ? `đã bỏ mục #${id} (lượt sau sẽ hỏi lại)` : `không có mục #${id}`);
+          return;
+        }
+        // Mặc định là NHẬN BẢN BÊN KIA — đó là thứ người ta bấm approve để làm. `--mine` giữ
+        // bản của mình (không ghi byte nào, chỉ đóng mốc), `--merged` lấy bản đã gộp.
+        const choice = args.includes("--mine") ? "mine" : args.includes("--merged") ? "merged" : "theirs";
+        const r = applyQueued(mirrorDb(), id, choice);
+        if (!r.ok) {
+          console.log(`✗ ${r.error}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`đã duyệt #${id} (${choice})${r.wrote ? ` → ${r.path}` : " — giữ bản của máy này"}`);
+        return;
+      }
+      if (act === "direction") {
+        // CHIỀU ĐỒNG BỘ của một cặp ghép (plan/24 §9.2).
+        const { getPeerSync, setPeerSync } = await import("../config/settings.js");
+        const peer = rest[2];
+        const dir = rest[3];
+        if (!peer) {
+          // Không có tham số ⇒ LIỆT KÊ, không phải báo lỗi: đó là câu hỏi hay gặp nhất.
+          for (const id of channelStatus().peers) {
+            const c = getPeerSync(id);
+            console.log(`  ${id}  ${c.direction}${c.source ? ` · nguồn ${c.source}` : ""}`);
+          }
+          if (channelStatus().peers.length === 0) console.log("  (chưa kết nối máy nào)");
+          return;
+        }
+        if (dir !== "two-way" && dir !== "one-way") {
+          console.log("usage: zemory memory channel mirror direction <peer-id> <two-way|one-way> [--source <id>]");
+          process.exitCode = 1;
+          return;
+        }
+        // 🔴 CHỐT ① của §9.2 — LẬT CHỦ khi hai bên chưa hội tụ là để lượt đẩy đầu tiên của chủ
+        // mới mang bản THIẾU sang đè bản đủ, và không lỗi nào nổ.
+        //
+        // ⚠ Phép kiểm ở đây là phép XẤP XỈ, nói thẳng: nó đếm mục CÒN CHỜ DUYỆT của cặp đó —
+        // tức phần lệch ta ĐÃ BIẾT. Phép đủ (so trọn tập băm hai máy) cần kiểm kê của máy kia,
+        // mà thứ đó chỉ có trong một phiên đang chạy. Chặn theo thứ đã biết vẫn đúng hướng an
+        // toàn; thứ nó KHÔNG bắt được là phần lệch chưa lượt đồng bộ nào chạm tới.
+        const pending = listQueue(mirrorDb(), peer).length;
+        if (dir === "one-way" && pending > 0) {
+          console.log(`✗ còn ${pending} mục chờ duyệt với máy đó — duyệt hết rồi hãy đổi chiều (plan/24 §9.2 chốt ①)`);
+          process.exitCode = 1;
+          return;
+        }
+        const source = flagValue(args, "--source") ?? (dir === "one-way" ? channelIdentity().deviceId : undefined);
+        setPeerSync(peer, { direction: dir, source });
+        const c = getPeerSync(peer);
+        console.log(`chiều với ${peer}: ${c.direction}${c.source ? ` · nguồn ${c.source}` : ""}`);
+        if (c.direction === "one-way") {
+          console.log("  máy KHÔNG phải nguồn sẽ bị nguồn ghi đè, và không bao giờ đẩy ngược.");
+          console.log("  đặt CÙNG giá trị này ở máy kia — mỗi máy giữ sổ của riêng nó.");
+        }
+        return;
+      }
+      console.log("usage: zemory memory channel mirror [list|approve <id> [--mine|--merged]|dismiss <id>|direction <peer> <two-way|one-way>]");
+      process.exitCode = 1;
       return;
     }
     if (action === "pair" || action === "unpair") {
@@ -849,6 +944,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
         allowedPeers: st.peers,
+        // Lop MIRROR THU MUC (plan/24 §9). CLI phai co NO y het daemon: mot cua thieu la mot
+        // duong dong bo im lang bo qua bon thu muc, va nguoi dung khong co cach nao biet.
+        mirror: mirrorHooks(),
       };
       console.log(`zemory memory channel sync — ${host}:${port}`);
 
@@ -881,6 +979,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       console.log(`  đối phương : ${r?.peerDeviceId ?? "(không rõ)"}`);
       console.log(`  chở đi     : ${r?.sentBlocks ?? 0} khối · nhận về: ${r?.receivedBlocks ?? 0} khối`);
+      console.log(
+        `  thư mục    : gửi ${r?.sentFiles ?? 0} file · nhận ${r?.receivedFiles ?? 0} · áp thẳng ${r?.appliedFiles ?? 0} · chờ duyệt ${r?.queuedFiles ?? 0}`,
+      );
       if (r?.error) {
         console.log(`  ✗ ${r.error}`);
         process.exitCode = 1;
@@ -889,6 +990,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     console.log(
       "usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|" +
+        "mirror [list|approve <id>|dismiss <id>]|" +
         "sync --host <ip> --port <n> [--punch] [--local-port <n>] [--peer <id>]]",
     );
     process.exitCode = 1;

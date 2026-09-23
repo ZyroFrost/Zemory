@@ -15,12 +15,15 @@
 import tls, { type TLSSocket } from "node:tls";
 import { appendReceivedBlock, inventoryIds, missingOnPeer, readBlockBytes } from "./blocks.js";
 import { peerDeviceId, sameDeviceId, type ChannelIdentity } from "./identity.js";
+import { isContentAddressed, MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
 import {
   FRAME_BLOCK,
+  FRAME_FILE,
   FRAME_JSON,
   computeProof,
   createFrameReader,
   encodeBlock,
+  encodeFile,
   encodeJson,
   MAX_FRAME_BYTES,
   newNonce,
@@ -34,7 +37,68 @@ export interface SyncOutcome {
   sentBlocks: number;
   receivedBlocks: number;
   bytesSent: number;
+  /** plan/24 §9 — lớp FILE. Tách khỏi bộ đếm khối: hai lớp hỏng độc lập nên phải đọc độc lập. */
+  sentFiles: number;
+  receivedFiles: number;
+  /** File nhận được đã ghi thẳng (mục địa chỉ-theo-nội-dung, hoặc cặp một chiều phía đích). */
+  appliedFiles: number;
+  /** File nhận được đang CHỜ người duyệt (§9.3). */
+  queuedFiles: number;
   error?: string;
+}
+
+/**
+ * Kết quả RỖNG — MỘT nguồn duy nhất cho hình dạng của nó.
+ *
+ * 🔴 Vì sao là một hàm chứ không phải gõ tay ở từng chỗ: thêm một trường vào `SyncOutcome`
+ * mà quên một chỗ dựng thì hoặc gãy lúc biên dịch (may), hoặc trả về một bộ đếm thiếu mà
+ * bề mặt đọc thành `0` (không may) — cùng bài học *"thêm một trường vào trạng thái = đi HẾT
+ * mọi đường trả nó"* đã trả giá ở `plan/14`. Nay chỉ có một đường.
+ */
+export function emptyOutcome(error?: string): SyncOutcome {
+  return {
+    peerDeviceId: null,
+    sentBlocks: 0,
+    receivedBlocks: 0,
+    bytesSent: 0,
+    sentFiles: 0,
+    receivedFiles: 0,
+    appliedFiles: 0,
+    queuedFiles: 0,
+    ...(error ? { error } : {}),
+  };
+}
+
+/**
+ * Cái mà phiên cần để chạy lớp mirror. Tiêm vào chứ không gọi thẳng `mirrorstate` từ đây:
+ * phiên là lớp DÂY, nó không được sở hữu quyết định *áp hay hỏi* — quyết định đó sống ở
+ * một chỗ duy nhất (`mirrorstate.receiveFile`), và tiêm được là điều kiện để cổng chạy
+ * phiên trên loopback mà không đụng kho thật.
+ */
+export interface MirrorHooks {
+  /** Kiểm kê của MÁY NÀY. Vắng ⇒ phiên không chạy pha mirror. */
+  inventory: () => MirrorEntry[];
+  /**
+   * Byte của MỘT mục trong kiểm kê. `null` = không đọc được (file vừa biến mất, quyền, …)
+   * ⇒ bỏ qua một file, không giết cả lượt.
+   *
+   * 🔴 **Phiên KHÔNG được tự giải đường dẫn.** Bản đầu gọi thẳng `mirrorRoots()` ở đây, tức
+   * kiểm kê đi qua gốc ĐƯỢC TIÊM còn phép đọc đi qua gốc MẶC ĐỊNH — hai nguồn sự thật cho
+   * cùng một câu hỏi *"file này nằm đâu"*. Cổng bắt được ngay lượt chạy đầu: máy giả khai một
+   * file của mình nhưng chở đi nội dung file CÙNG TÊN trong repo thật. Trên máy production hai
+   * gốc trùng nhau nên lỗi này **vô hình mãi mãi** — đúng hạng lỗi mà một cổng phải bắt hộ.
+   */
+  read: (area: MirrorArea, rel: string) => Buffer | null;
+  /**
+   * Xử một file vừa nhận. Trả về đã ghi thẳng hay đã vào hàng đợi.
+   *
+   * Nhận `peerId` làm tham số chứ không gắn cứng vào hook: MỘT bộ hook phục vụ mọi phiên,
+   * kể cả lượt NGHE nơi ta không biết trước ai sẽ gọi tới. Phiên biết vân tay đối phương
+   * ngay từ bước đọc chứng chỉ, trước cả tin đầu tiên, nên nó luôn truyền được.
+   */
+  receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string };
+  /** Máy này có được ĐẨY sang máy đó không — `false` ở phía đích của cặp một chiều (§9.2). */
+  mayPush: (peerId: string) => boolean;
 }
 
 export interface SessionOptions {
@@ -76,14 +140,27 @@ export interface SessionOptions {
    * mà không bên nào biết.
    */
   log?: (m: string) => void;
+  /**
+   * Lớp MIRROR THƯ MỤC (plan/24 §9). Vắng ⇒ phiên chạy y như trước, chỉ chở khối.
+   *
+   * Vắng cũng có nghĩa là ta **không khai** `mirror` trong `hello`, nên máy kia biết ngay
+   * là đừng chờ `mdone` của ta — cùng một luật với bản cũ, chỉ khác lý do.
+   */
+  mirror?: MirrorHooks;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
+/** Khoá của một file trên dây. Mục + đường, không bao giờ là đường tuyệt đối. */
+const fileKey = (area: string, rel: string): string => `${area}/${rel}`;
+
+/** Mục hợp lệ. Dựng TỪ danh sách của `mirror.ts` — gõ tay lần thứ hai là để hai chỗ trôi lệch. */
+const MIRROR_AREA_SET: ReadonlySet<string> = new Set<string>(MIRROR_AREAS);
+
 /** Lái một phiên trên socket đã bắt tay TLS. Dùng chung cho cả bên gọi lẫn bên nghe. */
 function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Promise<SyncOutcome> {
   return new Promise((resolve) => {
-    const out: SyncOutcome = { peerDeviceId: null, sentBlocks: 0, receivedBlocks: 0, bytesSent: 0 };
+    const out: SyncOutcome = emptyOutcome();
     let settled = false;
     const myNonce = newNonce();
     let peerNonce = "";
@@ -93,6 +170,16 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let sentDone = false;
     let gotDone = false;
     const pending: Buffer[] = [];
+
+    // ── Lớp MIRROR (plan/24 §9) — sổ riêng, kết thúc riêng ──────────────────────────
+    /** Máy kia có khai biết mirror không. Chưa nhận `hello` ⇒ chưa biết ⇒ chưa gửi gì. */
+    let peerMirror = false;
+    let mSentDone = false;
+    let mGotDone = false;
+    /** Tiêu đề của khung `FRAME_FILE` sắp tới. Byte không tự nói nó thuộc đường nào. */
+    let pendingFile: { area: MirrorArea; rel: string; hash: string; size: number } | null = null;
+    /** Lớp mirror của ta có chạy trong phiên này không — cần CẢ hai đầu biết nó. */
+    const mirrorOn = (): boolean => Boolean(o.mirror) && peerMirror;
 
     /**
      * 🔴 `end()` để ĐẨY NỐT, `destroy()` chỉ khi HỎNG.
@@ -137,14 +224,43 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       sock.write(buf);
     };
 
-    /** Sau khi bằng chứng khớp mới khai kho — không nói gì với máy chưa chứng minh cùng chìa. */
+    /**
+     * Sau khi bằng chứng khớp mới khai kho — không nói gì với máy chưa chứng minh cùng chìa.
+     *
+     * Kiểm kê FILE đi CÙNG LÚC với kiểm kê khối, không xếp sau: hai lớp độc lập nhau, và
+     * nối tiếp chúng là để một lớp chậm giữ lớp kia lại mà không được gì.
+     */
     const sendHave = (): void => {
       send(encodeJson({ t: "have", ids: inventoryIds(o.channelDir) }));
+      sendMirrorInventory();
+    };
+
+    const sendMirrorInventory = (): void => {
+      if (!mirrorOn()) return;
+      let entries: MirrorEntry[];
+      try {
+        entries = o.mirror?.inventory() ?? [];
+      } catch (e) {
+        // Quét hỏng KHÔNG được giết lượt chở khối — lớp mirror là lớp THÊM (điều 9).
+        o.log?.(`[channel] mirror: quét thư mục thất bại (${e instanceof Error ? e.message : "?"}) — bỏ pha mirror lượt này`);
+        send(encodeJson({ t: "mdone", sent: 0 }));
+        mSentDone = true;
+        return;
+      }
+      send(
+        encodeJson({
+          t: "mfiles",
+          entries: entries.map((e) => ({ a: e.area, p: e.rel, ...(e.hash ? { h: e.hash } : {}), s: e.size })),
+        }),
+      );
     };
 
     const onControl = (m: ControlMessage): void => {
       if (m.t === "hello") {
         peerNonce = m.nonce;
+        // Khai năng lực tới TRƯỚC mọi thứ khác, nên tới lúc khai kho ta đã biết có chạy pha
+        // mirror hay không. Bản cũ không có trường này ⇒ `undefined` ⇒ tắt, đúng như phải vậy.
+        peerMirror = m.mirror === true;
         const [a, b] = initiator ? [myNonce, peerNonce] : [peerNonce, myNonce];
         send(encodeJson({ t: "proof", hmac: computeProof(o.shareKey, a, b) }));
         return;
@@ -242,6 +358,31 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         o.log?.(`[channel] nhận "xong" từ máy kia (${m.sent ?? "?"} khối)`);
         gotDone = true;
         tryFinish();
+        return;
+      }
+      if (m.t === "mfiles") {
+        if (!proofOk) return finish("khai thư mục trước khi chứng minh cùng chìa");
+        if (!paired) return finish("khai thư mục trước khi ghép đôi");
+        void shipMirror(m.entries);
+        return;
+      }
+      if (m.t === "mfile") {
+        if (!proofOk) return finish("gửi file trước khi chứng minh cùng chìa");
+        // Tiêu đề KHÔNG được tin: `p` tới từ máy kia. Phép chặn đường thoát nằm ở
+        // `resolveMirrorPath` phía `mirrorstate`, nhưng mục thì kiểm ngay ở đây — một mục
+        // lạ nghĩa là hai bản lệch giao thức, và đoán tiếp là ghi vào chỗ không ai khai.
+        if (!MIRROR_AREA_SET.has(m.a)) {
+          o.log?.(`[channel] mirror: bỏ qua mục lạ "${m.a}"`);
+          pendingFile = null;
+          return;
+        }
+        pendingFile = { area: m.a as MirrorArea, rel: m.p, hash: m.h, size: m.s };
+        return;
+      }
+      if (m.t === "mdone") {
+        o.log?.(`[channel] mirror: nhận "xong" từ máy kia (${m.sent ?? "?"} file)`);
+        mGotDone = true;
+        tryFinish();
       }
     };
 
@@ -254,7 +395,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
      * mất khối — im lặng, đúng loại hỏng mà cả plan này sinh ra để chặn.
      */
     const tryFinish = (): void => {
-      if (sentDone && gotDone && pending.length === 0 && !draining) finish();
+      if (!sentDone || !gotDone) return;
+      // Lớp mirror chỉ được tính vào điều kiện đóng khi nó THẬT SỰ chạy. Đòi `mdone` của một
+      // máy không biết mirror là treo tới hết giờ — xem `HelloMessage.mirror`.
+      if (mirrorOn() && (!mSentDone || !mGotDone)) return;
+      if (pending.length > 0 || draining) return;
+      finish();
     };
 
     const shipMissing = async (peerIds: string[]): Promise<void> => {
@@ -290,6 +436,57 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         tryFinish();
       } catch (e) {
         finish(e instanceof Error ? e.message : "lỗi khi chở khối");
+      }
+    };
+
+    /**
+     * Chở phần FILE máy kia còn thiếu (plan/24 §9).
+     *
+     * Hai mục hai luật, và chúng KHÁC NHAU ở chỗ quyết định:
+     * · `files/` — địa chỉ theo nội dung ⇒ chỉ gửi đường nào bên kia **không có**. Trùng tên
+     *   là trùng nội dung, nên gửi lại một file họ đã có là ném byte đi không mua gì.
+     * · `docs/` · `docs_visual/` · `attic/` — gửi khi bên kia **thiếu HOẶC khác băm**. Ta cố ý
+     *   KHÔNG tự phán ai đúng ở đây: phép phân loại `§9.3` cần mốc `base`, mà mốc đó là của
+     *   BÊN NHẬN — nó mới biết lần gặp gần nhất hai bên khớp ở đâu. Gửi ứng viên, để bên nhận
+     *   quyết. Đây cũng là lý do hàng đợi duyệt nằm ở phía nhận chứ không phía gửi.
+     */
+    const shipMirror = async (peerEntries: Array<{ a: string; p: string; h?: string; s: number }>): Promise<void> => {
+      if (!mirrorOn()) return;
+      try {
+        if (!o.mirror?.mayPush(peerId ?? "")) {
+          // Phía ĐÍCH của cặp một chiều: nhận thì nhận, đẩy thì không bao giờ (§9.2).
+          send(encodeJson({ t: "mdone", sent: 0 }));
+          mSentDone = true;
+          tryFinish();
+          return;
+        }
+        const theirs = new Map(peerEntries.map((e) => [fileKey(e.a, e.p), e.h ?? ""]));
+        let shipped = 0;
+        for (const e of o.mirror.inventory()) {
+          const k = fileKey(e.area, e.rel);
+          const has = theirs.has(k);
+          if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) continue;
+          // File biến mất giữa lúc quét và lúc gửi là chuyện thường (agent đang làm việc).
+          // Bỏ qua MỘT file, không giết cả lượt.
+          const bytes = o.mirror.read(e.area, e.rel);
+          if (!bytes) continue;
+          send(encodeJson({ t: "mfile", a: e.area, p: e.rel, h: e.hash ?? "", s: bytes.length }));
+          send(encodeFile(bytes));
+          out.sentFiles++;
+          shipped++;
+        }
+        send(encodeJson({ t: "mdone", sent: shipped }));
+        o.log?.(`[channel] mirror: đã gửi "xong" (${shipped} file)`);
+        mSentDone = true;
+        tryFinish();
+      } catch (e) {
+        // Lớp mirror hỏng KHÔNG được kéo theo lớp khối (điều 9): đóng sổ mirror rồi đi tiếp.
+        o.log?.(`[channel] mirror: lỗi khi chở file (${e instanceof Error ? e.message : "?"})`);
+        if (!mSentDone) {
+          send(encodeJson({ t: "mdone", sent: 0 }));
+          mSentDone = true;
+        }
+        tryFinish();
       }
     };
 
@@ -330,6 +527,24 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           if (!proofOk) return finish("gửi khối trước khi chứng minh cùng chìa");
           pending.push(Buffer.from(f.body));
           void drain();
+        } else if (f.kind === FRAME_FILE) {
+          if (!proofOk) return finish("gửi file trước khi chứng minh cùng chìa");
+          // 🔴 Byte KHÔNG có tiêu đề ⇒ VỨT, không đoán. Ghi một file mà không biết nó thuộc
+          // đường nào thì chỗ duy nhất để đoán là một cái tên bịa ra — đúng thứ không được làm
+          // với dữ liệu tới từ máy khác.
+          const head = pendingFile;
+          pendingFile = null;
+          if (!head) {
+            o.log?.("[channel] mirror: nhận byte file mà không có tiêu đề — bỏ qua");
+            continue;
+          }
+          const body = Buffer.from(f.body);
+          out.receivedFiles++;
+          const r = o.mirror?.receive(peerId ?? "", head.area, head.rel, body);
+          if (!r) continue;
+          if (r.applied) out.appliedFiles++;
+          if (r.queued) out.queuedFiles++;
+          if (r.error) o.log?.(`[channel] mirror: ${head.area}/${head.rel} — ${r.error}`);
         }
       }
     });
@@ -339,7 +554,16 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (pending.length === 0 && !draining) finish();
     });
 
-    send(encodeJson({ t: "hello", deviceId: o.identity.deviceId, appVersion: o.appVersion, nonce: myNonce, initiator }));
+    send(
+      encodeJson({
+        t: "hello",
+        deviceId: o.identity.deviceId,
+        appVersion: o.appVersion,
+        nonce: myNonce,
+        initiator,
+        mirror: Boolean(o.mirror),
+      }),
+    );
   });
 }
 
@@ -385,7 +609,7 @@ export function connectToPeer(addr: { host: string; port: number }, o: SessionOp
       } catch {
         /* đóng được thì tốt */
       }
-      done({ peerDeviceId: null, sentBlocks: 0, receivedBlocks: 0, bytesSent: 0, error: code });
+      done(emptyOutcome(code));
     };
     const sock = tls.connect(
       {
