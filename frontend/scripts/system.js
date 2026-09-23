@@ -288,7 +288,7 @@
       var dead=(r&&r.deadPaths)||[];Z.updDead=dead;
       // "Không kết luận được" đi kèm, KHÔNG đổi màu — nhưng phải hiện (user 2026-09-17: "không dò được thì báo không dò được").
       Z.updUnproven=(r&&r.unprovenPaths)||[];
-      var app=r&&r.appUpdate;UPD_APP=app||null;UPD_CHECK=!(r&&r.repoStdCheck===false);
+      var app=r&&r.appUpdate;UPD_APP=app||null;UPD_AHEAD=(r&&r.appAhead)||null;UPD_CHECK=!(r&&r.repoStdCheck===false);
       // HAI SỰ THẬT ĐỘC LẬP, HAI CHIP — không `return` sớm nữa. Bản cũ ưu tiên "bản zemory mới" rồi
       // thoát, nên khi vừa có bản mới VỪA có repo cũ chuẩn thì vế repo BIẾN MẤT khỏi rail; user gặp
       // đúng ca đó trên máy PC và không biết mình đang cần cập nhật cái nào (2026-09-09). Cả hai chip
@@ -353,7 +353,7 @@
   },60000);
   // Bấm chấm cập nhật ⇒ HỘP tại chỗ (không nhảy màn — mục đích gốc 23/08 là "có bản mới → bấm cập nhật", kiểu VS Code):
   // trên = bản zemory (đang chạy / mới trên kênh chung / nút Cập nhật); dưới = repo cũ chuẩn (liệt kê + cách áp).
-  var UPD_APP=null,UPD_CHECK=true;
+  var UPD_APP=null,UPD_AHEAD=null,UPD_CHECK=true;
   // Đếm lại nhãn nút theo số ô đang tick.
   document.addEventListener('change',function(e){
     if(e.target&&e.target.classList&&e.target.classList.contains('upd-pick')){var n=document.querySelectorAll('.upd-pick:checked').length,b=zid('updApplySel');if(b){b.textContent=t('upd.applySel').replace('{n}',n);b.disabled=!n;}return;}
@@ -415,6 +415,11 @@
     var body=app
       ?'<div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="muted">'+stdEsc(t('upd.appHave'))+'</span><b>'+stdEsc(app.have)+'</b><span class="muted">→ '+stdEsc(t(fromGit?'upd.appLatestGit':'upd.appLatest'))+'</span><b>'+stdEsc(app.latest)+'</b></div>'
         +'<div class="muted" style="font-size:11px;margin-top:4px">'+stdEsc(t(fromGit?'upd.appFromGit':'upd.appFrom').replace('{from}',app.from||'?').replace('{at}',String(app.at||'').slice(0,16).replace('T',' ')))+'</div>'
+      // 🔴 Ba trạng thái, không phải hai. Bản trước chỉ có *có bản mới* và *đã mới nhất*, nên khi
+      // bản trên máy CAO hơn repo nó in "đã là bản mới nhất" — sai, vì máy đang chạy một bản
+      // KHÔNG CÒN tồn tại trên repo. Gặp thật 23/09 sau một lượt hạ version.
+      :UPD_AHEAD
+      ?'<div>'+stdEsc(t('upd.appAhead').replace('{have}',UPD_AHEAD.have).replace('{latest}',UPD_AHEAD.latest).replace('{from}',UPD_AHEAD.from||'?'))+'</div>'
       :'<div>'+stdEsc(t('upd.appOk').replace('{v}',((zid('topVersion')||{}).textContent||'').replace(/^v/,'')))+'</div>';
     zDialog({iconHtml:ZICON.app,title:t('upd.appTitle'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
       // KHÔNG có bản mới ⇒ ô nút thành "kiểm lại", không phải một nút Đóng câm. Có bản mới thì ô đó

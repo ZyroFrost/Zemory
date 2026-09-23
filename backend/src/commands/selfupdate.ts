@@ -102,7 +102,7 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   // CẬP NHẬT vì hai việc khác cấp: đo là đọc, cập nhật là ghi đè cây mã.
   if (args.includes("--check")) {
     const have = appVersion();
-    const c = refreshRemoteVersion(root);
+    const c = refreshRemoteVersion(root, undefined, appVersion());
     if (!c.ok) {
       console.log(`zemory selfupdate --check — không đo được bản mới: ${c.error ?? "?"}`);
       process.exitCode = 1;
@@ -183,7 +183,7 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   const after = appVersion();
   // Đo lại NGAY: cache còn giữ số của lượt trước thì chip vẫn kêu "có bản mới" sau khi vừa cập
   // nhật xong — người dùng đọc thành "cập nhật không ăn". Rẻ: sha vừa pull đã nằm dưới máy.
-  refreshRemoteVersion(root);
+  refreshRemoteVersion(root, undefined, appVersion());
   console.log(`  ✓ xong: ${before || "?"} → ${after || "?"}`);
   // Trước đây chỗ này chỉ DẶN người ta tự tắt tự mở, nên ai làm theo cũng vẫn ngồi với mã cũ cho
   // tới lúc nhớ ra. Đã tiễn daemon ở trên thì phải trả nó lại — tự dọn cái mình đã dọn đi.

@@ -783,6 +783,9 @@ export async function startChannelServer(o: {
           deviceId: channelIdentity().deviceId,
           host,
           port: server.port,
+          // Địa chỉ relay đi CÙNG bảng chung: đây là kênh động duy nhất còn lại khi lượt đăng ký
+          // lên cụm dò toàn cầu thất bại. Xem chú thích ở `PresenceEntry.relay`.
+          relay: relayAt?.url ?? null,
         });
       } catch {
         /* ổ chung chập / STUN im — nhịp sau thử lại, đường cũ không bị đụng (điều 9) */

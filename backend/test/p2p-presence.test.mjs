@@ -97,3 +97,45 @@ test("bảng địa chỉ: tắt kênh thì GỠ mục — đừng mời máy ki
   withdrawPresence(shared, A);
   assert.deepEqual(readPresence(shared, { selfDeviceId: B, allowedPeers: [A] }), [], "gỡ rồi thì bảng phải sạch");
 });
+
+test("bảng chung CHỞ địa chỉ relay — thiếu nó là tầng 4 chết trên đúng máy cần nó nhất", (t) => {
+  // 🔴 Ca thật, hai máy khác mạng 23/09: cả hai vào được relay công khai, cả hai thấy nhau trong
+  // bảng chung, mà KHÔNG bên nào gọi được bên nào. Địa chỉ relay vốn đi qua cụm dò toàn cầu, nhưng
+  // máy nào ĐĂNG KÝ thất bại thì lane đó rỗng — và lúc ấy bảng chung là kênh ĐỘNG duy nhất còn lại.
+  // Mã máy không thay được: nó tĩnh, còn relay thì xoay mỗi lượt bật.
+  const shared = tempDir(t, "zemory-presence-relay-");
+  const RELAY = "relay://203.0.113.9:22067/?id=ABC";
+
+  assert.equal(publishPresence(shared, { deviceId: A, host: "203.0.113.9", port: 21038, relay: RELAY }), true);
+  const seen = readPresence(shared, { selfDeviceId: B, allowedPeers: [A] });
+  assert.equal(seen[0].relay, RELAY, "địa chỉ relay phải đi qua bảng chung");
+  assert.equal(seen[0].host, "203.0.113.9", "và KHÔNG được thay thế đường gọi thẳng");
+});
+
+test("bảng chung: CHỈ có relay vẫn đăng được — STUN câm không phải lý do để im", (t) => {
+  // 🔴 Một máy không đo được địa chỉ ngoài (STUN bị chặn) vẫn kết nối được QUA RELAY. Bản trước
+  // đòi `host` mới cho đăng, nên đúng cái máy chỉ còn một đường thì bị cắt nốt đường đó.
+  const shared = tempDir(t, "zemory-presence-relayonly-");
+  const RELAY = "relay://198.51.100.2:443/?id=XYZ";
+
+  assert.equal(publishPresence(shared, { deviceId: A, host: null, port: 21038, relay: RELAY }), true);
+  const seen = readPresence(shared, { selfDeviceId: B, allowedPeers: [A] });
+  assert.equal(seen.length, 1, "mục chỉ có relay VẪN phải đọc được");
+  assert.equal(seen[0].relay, RELAY);
+  assert.equal(seen[0].host, "", "không có địa chỉ gọi thẳng ⇒ rỗng, không bịa");
+
+  // CA ÂM: không địa chỉ ngoài VÀ không relay ⇒ không có gì để đăng.
+  assert.equal(publishPresence(shared, { deviceId: B, host: null, port: 21038 }), false);
+  // CA ÂM: chuỗi relay không đúng lược đồ ⇒ bỏ, đừng để bên kia gọi vào một thứ vô nghĩa.
+  assert.equal(publishPresence(shared, { deviceId: B, host: null, port: 21038, relay: "tcp://1.2.3.4:5" }), false);
+});
+
+test("bảng chung: mục KHÔNG có relay vẫn đọc bình thường — chỉ thử đường thẳng, không ném", (t) => {
+  // Ca âm bên máy thứ hai yêu cầu: peer chưa vào được relay nào thì mọi thứ phải chạy y như cũ.
+  const shared = tempDir(t, "zemory-presence-norelay-");
+  assert.equal(publishPresence(shared, { deviceId: A, host: "203.0.113.9", port: 21038 }), true);
+  const seen = readPresence(shared, { selfDeviceId: B, allowedPeers: [A] });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].relay, undefined, "không có relay ⇒ vắng hẳn, không phải chuỗi rỗng");
+  assert.equal(seen[0].host, "203.0.113.9");
+});

@@ -2216,3 +2216,28 @@ test("mã máy: bốn trạng thái, không gộp — và 'đang đo' không đ�
     "'đang đo' phải xét SAU các lý do đã biết, không nuốt chúng",
   );
 });
+
+test("mọi data-act đặt trong JS đều phải có chỗ BẮT — nút không tay cầm là nút chết", () => {
+  // 🔴 Ca thật 23/09: nút "gỡ" trên thẻ máy gắn `data-act="p2p-unpair"` mà KHÔNG nhánh nào bắt.
+  // Bấm không xảy ra gì, thẻ ở nguyên đó, người dùng đọc thành "kẹt". Bốn hành động p2p khác đều
+  // có nhánh; riêng nó rơi ra lúc dựng bề mặt cụm máy — và không có lỗi nào nổ để ai biết.
+  const files = ["gm.js", "system.js", "harness.js", "recall.js", "session.js", "sources.js", "shell.js"];
+  const src = files
+    .map((f) => {
+      try {
+        return readFileSync(new URL(`../../frontend/scripts/${f}`, import.meta.url), "utf8");
+      } catch {
+        return ""; // file đổi tên ⇒ phần còn lại vẫn soi được
+      }
+    })
+    .join("\n");
+  assert.ok(src.length > 1000, "không đọc được mã bề mặt — neo đã chết");
+
+  // Chỉ soi các hành động ĐẶT BẰNG JS (`setAttribute('data-act', …)`): nút viết thẳng trong HTML
+  // đã có cổng khác, còn đây là chỗ dễ lọt nhất vì nút và tay cầm nằm cách nhau vài trăm dòng.
+  const declared = [...src.matchAll(/setAttribute\(\s*'data-act'\s*,\s*'([a-z0-9-]+)'\s*\)/g)].map((m) => m[1]);
+  assert.ok(declared.length > 0, "không thấy data-act nào đặt bằng JS — neo đã chết");
+
+  const orphan = declared.filter((a) => !src.includes(`act==='${a}'`));
+  assert.deepEqual(orphan, [], `Hành động không có chỗ bắt (bấm sẽ không xảy ra gì): ${orphan.join(" · ")}`);
+});
