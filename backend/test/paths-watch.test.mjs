@@ -72,6 +72,8 @@ test("every surface honours the switch: the scheduler skips the sweep, /harness-
   assert.match(sys, /zSave\(ep\+'\?on='\+tg\.dataset\.on,undo\)/, "gạt mà lưu hỏng thì phải trả nút về chỗ cũ, không nuốt lỗi");
   assert.match(SRC("frontend/scripts/gm.js"), /\['hybrid','rerank','scope','pathsWatch'(,'[a-zA-Z]+')*\]/, "renderMem phải giữ giá trị local trong 90 s cho pathsWatch");
   const chrome = SRC("frontend/scripts/chrome.js");
-  assert.match(chrome, /'fix\.noCand':'không có đích duy nhất — sửa tay hoặc giao A\.I sửa'/);
+  // 🔄 Neo ĐI THEO bản nắn văn phong 23/09: *sửa tay* → *sửa thủ công*. Ý của cổng không đổi —
+  //    bề mặt phải nêu ĐỦ hai lối: tự sửa, hoặc giao cho A.I.
+  assert.match(chrome, /'fix\.noCand':'không có đích duy nhất — sửa thủ công, hoặc giao cho A\.I'/);
   assert.match(chrome, /'fix\.noCand':'no unique target — fix by hand or let the A\.I do it'/);
 });

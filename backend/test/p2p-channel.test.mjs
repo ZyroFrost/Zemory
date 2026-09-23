@@ -532,6 +532,13 @@ test("connectToPeer: đầu kia nhận TCP rồi IM ⇒ trả lỗi trong trần
 
   assert.notEqual(r.error, "CONG-TREO", "connectToPeer treo quá trần — đúng bug làm đơ endpoint 22/09");
   assert.match(String(r.error), /ETIMEDOUT/, "phải nói rõ là HẾT GIỜ, không nuốt thành lỗi mơ hồ");
-  assert.ok(Date.now() - t0 < 6000, `phải trả sớm, đo được ${Date.now() - t0}ms`);
   assert.equal(r.receivedBlocks, 0);
+  // 🔴 KHÔNG thêm một mốc đồng hồ tuyệt đối ở đây. Bản trước có `Date.now() - t0 < 6000` và nó
+  // ĐỎ GIẢ trong lượt quét đầy đủ (đo 9376ms cho một trần 1500ms): cổng chạy trong lồng 4 GB ưu
+  // tiên thấp, event loop bị bỏ đói nên MỌI bộ hẹn giờ bắn muộn — kể cả mốc 8000ms của chính phép
+  // đua này. Dòng đó đo TẢI MÁY chứ không đo mã.
+  //
+  // Thứ thật sự canh là phép ĐUA ở trên: gỡ trần trong `connectToPeer` ⇒ nó chờ mãi ⇒ mốc thắng ⇒
+  // `CONG-TREO` ⇒ ca này ĐỎ. Đã kiểm bằng đột biến, nên bỏ mốc tuyệt đối không nới lỏng gì.
+  t.diagnostic(`trả về sau ${Date.now() - t0}ms (trần đặt 1500ms; số này chỉ để đọc, không phán)`);
 });
