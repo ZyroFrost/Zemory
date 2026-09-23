@@ -2154,7 +2154,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // guard bên dưới đã chặn — nên chỉ cần ép POST là bịt cả họ.
   // Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong số đó đang nhận GET.
   const MUTATING =
-    /^\/(set-|drive-sync|forget-project|prune-projects|memory-(forget|redact|restore|scan|digest|embed)|relocate|sync$|migrate$|gate-(acquire|release))/;
+    /^\/(set-|drive-sync|forget-project|prune-projects|memory-(forget|redact|restore|scan|digest|embed)|relocate|sync$|migrate$|gate-(acquire|release)|mirror-apply)/;
+  // `mirror-apply` GHI RA ĐĨA (duyệt một dòng chờ ⇒ ghi đè một file trong `docs/`…), nên nó
+  // thuộc hạng này dù tên không bắt đầu bằng `set-`. Bắt được lúc thử tay sau khi mở app:
+  // endpoint ghi mà đi được bằng GET là một đường ghi chỉ cần một URL.
+  // `mirror-queue`/`mirror-diff` CHỈ ĐỌC ⇒ cố ý KHÔNG neo `mirror-` trần, nếu không hai bề
+  // mặt đọc-liên-tục đó ăn 405 — đúng bài học `sync$` ngay dưới đây.
   // `sync$`/`migrate$` neo cuối CÓ CHỦ Ý: bản đầu tôi viết `sync|migrate` trần và nó bắt
   // nhầm `/sync-pulse` + `/sync-status` — hai endpoint CHỈ ĐỌC mà UI gọi bằng GET liên
   // tục. Một luật bảo mật quá tay thì hỏng đúng thứ nó định bảo vệ.

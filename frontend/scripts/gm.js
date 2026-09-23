@@ -448,7 +448,7 @@
         var chain=Promise.resolve();
         rows.forEach(function(q){
           chain=chain.then(function(){
-            return zGet('/mirror-apply?id='+q.id+'&choice='+(q.verdict==='merge'?'merged':'theirs'));
+            return zPost('/mirror-apply?id='+q.id+'&choice='+(q.verdict==='merge'?'merged':'theirs'));
           });
         });
         return chain;
@@ -459,7 +459,7 @@
     // mà không ai để ý sẽ được gửi đi như một lượt duyệt. Cổng `data-act` của repo soi đúng
     // chữ `act==='…'` chính vì lý do đó.
     if(act==='mir-apply'){
-      zGet('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice')))
+      zPost('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice')))
         .then(loadQueue).catch(loadQueue);
     }
   });

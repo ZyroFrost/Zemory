@@ -524,10 +524,13 @@ test("state-changing endpoints require POST and block cross-site calls", () => {
   const m = src.match(/const MUTATING\s*=\s*([\s\S]*?);/);
   assert.ok(m, "đọc được biểu thức MUTATING");
   const re = new RegExp(m[1].trim().replace(/^\/|\/$/g, ""));
-  for (const readOnly of ["/sync-pulse", "/sync-status", "/memory-status", "/code-graph", "/standard-spec"]) {
+  // `mirror-*` (plan/24 §9.6) là ca đúng KHUÔN CŨ nên nó nằm đây: hai cửa ĐỌC + một cửa GHI
+  // cùng tiền tố. Neo `mirror-` trần thì hai cửa đọc ăn 405; quên cửa ghi thì có một đường
+  // ghi ra `docs/` chỉ cần một URL. Bắt được lúc thử tay sau khi mở app, không phải trên giấy.
+  for (const readOnly of ["/sync-pulse", "/sync-status", "/memory-status", "/code-graph", "/standard-spec", "/mirror-queue", "/mirror-diff"]) {
     assert.ok(!re.test(readOnly), `${readOnly} CHỈ ĐỌC — không được ép POST`);
   }
-  for (const mut of ["/set-drive", "/memory-forget", "/drive-sync", "/relocate", "/prune-projects"]) {
+  for (const mut of ["/set-drive", "/memory-forget", "/drive-sync", "/relocate", "/prune-projects", "/mirror-apply"]) {
     assert.ok(re.test(mut), `${mut} đổi trạng thái — phải ép POST`);
   }
 });
