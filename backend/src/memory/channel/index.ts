@@ -28,6 +28,7 @@ import {
 } from "./relaypool.js";
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
+import { mirrorHooks } from "./mirrorstate.js";
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -39,6 +40,8 @@ export * from "./stun.js";
 export * from "./punch.js";
 export * from "./presence.js";
 export * from "./globaldisco.js";
+export * from "./mirror.js";
+export * from "./mirrorstate.js";
 export * from "./relaypool.js";
 
 /**
@@ -530,6 +533,7 @@ export function armPunchWait(o: {
     appVersion: o.appVersion,
     allowedPeers: o.allowedPeers,
     wantPair: o.wantPair,
+    mirror: mirrorHooks(),
     // Hai hook, hai VAI khác nhau — truyền thiếu một cái là bịt một chiều mà không lỗi nào nổ:
     // `acceptPeer` mở cửa khi TA là bên nghe · `onPaired` ghi sổ khi TA là bên gọi.
     acceptPeer: o.acceptPeer,
@@ -723,6 +727,7 @@ export async function startChannelServer(o: {
         appVersion: o.appVersion,
         allowedPeers: peers,
         acceptPeer: o.acceptPeer,
+        mirror: mirrorHooks(),
       },
       (r: SyncOutcome) => {
         // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
@@ -967,6 +972,7 @@ async function acceptRelayInvite(
       appVersion: o.appVersion,
       allowedPeers: peers,
       acceptPeer: o.acceptPeer,
+      mirror: mirrorHooks(),
       log,
     };
     const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
@@ -1055,6 +1061,7 @@ export async function syncViaRelay(o: {
         wantPair: o.wantPair,
         acceptPeer: o.acceptPeer,
         onPaired: o.onPaired,
+        mirror: mirrorHooks(),
         log: say,
       };
       // Vai TLS do RELAY phân (`inv.serverSocket`) — hai đầu nhận hai vai ngược nhau từ CÙNG một

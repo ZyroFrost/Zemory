@@ -1,0 +1,247 @@
+/**
+ * MIRROR THƯ MỤC — lớp FILE của kênh máy-tới-máy (plan/24 §9).
+ *
+ * Kênh vốn chỉ chở **KHỐI** của kho bộ nhớ. Mục này chở thứ còn lại: bốn thư mục mà
+ * `§9.1` chốt, và chúng là những thứ **KHÔNG đi qua git** (`.gitignore` neo `/docs/` ·
+ * `/docs_visual/` · `/attic/` · `/global-memory/`) nên trước nay không có đường nào
+ * sang máy khác. Đó là nguyên văn chỗ user chỉ 2026-09-23: *"bên kia xem được nhưng
+ * không nhận được mirror thư mục từ bên đây"*.
+ *
+ * ── HAI HẠNG, HAI BÀI TOÁN (§9.0 · §9.1) ──────────────────────────────────────────────
+ *
+ * | | `files/` | `docs/` · `docs_visual/` · `attic/` |
+ * |---|---|---|
+ * | định danh | **TÊN LÀ sha256** ⇒ trùng tên = trùng nội dung | đường dẫn; nội dung đổi được |
+ * | hai máy cùng đụng | **không thể** | **có thật** |
+ * | cách hội tụ | chở thẳng, chỉ THÊM | luật `§9.4`, có hàng đợi duyệt |
+ *
+ * Vì thế `files/` **không băm lại** — `plan/25 §2` chốt tệp trong đó BẤT BIẾN và tên
+ * mang sẵn chữ ký, nên băm lại 832 MB mỗi lượt là trả tiền cho một câu hỏi đã có đáp
+ * án. Ba thư mục kia chỉ ~2 MB tổng (đo bên dưới) nên băm trọn là rẻ.
+ *
+ * ── 🔴 KHÔNG BAO GIỜ CHỞ FILE DATABASE — luật cứng, không phải bộ lọc tiện tay ─────────
+ *
+ * HP điều 11 cấm đặt kho sống trong vùng đồng bộ, và repo này đã hỏng kho **hai lần**
+ * (03/08 · 04/08) đúng vì vế đó. `§9.7` điều 8 đòi cổng phải ĐỎ nếu `global_memory.db`
+ * lọt vào danh sách chở — luật ở đây là **cùng một bất biến, mở rộng cho mọi file
+ * database**, không phải một luật mới:
+ *
+ * · một file `.db` đang mở WAL thì bản chép được là bản RÁCH — nội dung nằm một nửa
+ *   trong `-wal`, và chở cả cặp cũng không cứu được vì hai file chụp ở hai thời điểm;
+ * · nó lớn và nó **không hợp nhất được** — hai máy cùng sửa thì không có "đoạn" nào để
+ *   trộn, chỉ có chọn cả file, tức mất trọn việc của một bên.
+ *
+ * **Đo 2026-09-23, và đây là lý do luật này phải có ngay từ lượt đầu:** `attic/` cân
+ * **1.181 MB**, trong đó **1.237 MB là MỘT file** — `attic/zemory-lab/lab.db`, bản sao
+ * kho của lượt thí nghiệm `plan/19` đã chốt KHÔNG tráo. Không có luật này thì lượt
+ * mirror đầu tiên chở 1,2 GB một kho chết qua dây. Trừ nó ra: `attic` còn **~2 MB**.
+ *
+ * ── TRẦN MỘT FILE ────────────────────────────────────────────────────────────────────
+ *
+ * Khối đi trong MỘT khung (`wire.ts`), nên file cũng vậy. Trần đặt ở 64 MB chứ không
+ * phải `MAX_FRAME_BYTES` (512 MB): một khung 512 MB là 512 MB Buffer nằm trong RAM ở
+ * CẢ HAI đầu cùng lúc. File lớn nhất trong phạm vi thật là 6,5 MB (ảnh), nên 64 MB đã
+ * là rất rộng.
+ *
+ * Và cùng doctrine `blocks.ts`: **thứ mình không chở nổi thì KHÔNG KHAI**. Khai rồi
+ * không gửi là nói với máy kia *"tôi có"* cho một thứ nó sẽ không bao giờ nhận được,
+ * mà nó đọc lời khai đó rồi thôi không hỏi nữa ⇒ hai máy lệch vĩnh viễn trong im lặng.
+ * Bỏ qua thì phải NÓI RA.
+ */
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, join, relative, sep } from "node:path";
+import { currentStoreRoot } from "../db.js";
+import { filesRoot } from "../filestore.js";
+import { selfRepoRoot } from "../../projects.js";
+
+/** Bốn mục của `§9.1`. `files` tách hạng riêng vì nó địa chỉ theo NỘI DUNG. */
+export type MirrorArea = "docs" | "docs_visual" | "attic" | "files";
+
+export const MIRROR_AREAS: readonly MirrorArea[] = ["docs", "docs_visual", "attic", "files"] as const;
+
+/** Mục địa chỉ-theo-nội-dung: trùng tên là trùng nội dung ⇒ không xung đột, không hàng đợi. */
+export function isContentAddressed(area: MirrorArea): boolean {
+  return area === "files";
+}
+
+/** Trần một file. Xem khối chú thích đầu file: đây là trần RAM, không phải trần giao thức. */
+export const MAX_MIRROR_FILE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Ngưỡng giữ NỘI DUNG bản `base` để hợp nhất theo đoạn (`§9.3`).
+ * Trên ngưỡng, hoặc nhị phân ⇒ rơi về chọn-cả-file (`§9.5`).
+ */
+export const MAX_TEXT_MERGE_BYTES = 1024 * 1024;
+
+export interface MirrorRoot {
+  area: MirrorArea;
+  /** Đường tuyệt đối TRÊN MÁY NÀY. Máy kia có đường của nó — đường không bao giờ đi qua dây. */
+  path: string;
+}
+
+export interface MirrorEntry {
+  area: MirrorArea;
+  /** Đường tương đối trong mục, luôn dùng `/` — đây là thứ DUY NHẤT đi trên dây. */
+  rel: string;
+  size: number;
+  mtimeMs: number;
+  /** sha256 hex. Vắng ở mục địa chỉ-theo-nội-dung (tên đã là chữ ký). */
+  hash?: string;
+}
+
+export interface ScanResult {
+  entries: MirrorEntry[];
+  /** File bị bỏ qua kèm lý do — để bề mặt nói ra thay vì lệch trong im lặng. */
+  skipped: Array<{ rel: string; reason: string; size: number }>;
+}
+
+/**
+ * Tên file KHÔNG BAO GIỜ được chở. Kiểm theo ĐUÔI, hạ chữ thường.
+ *
+ * `-wal`/`-shm` nằm trong danh sách dù chúng vô nghĩa nếu thiếu `.db`: bỏ sót chúng là
+ * để lại đúng hai file làm người đọc tưởng kho đã đi qua.
+ */
+const DB_SUFFIXES = [".db", ".db-wal", ".db-shm", ".sqlite", ".sqlite3", ".sqlite-wal", ".sqlite-shm"];
+
+/** Thư mục không bao giờ đi vào: máy móc của git/npm, và thư mục nháp theo `02_RULES §FILE TẠM`. */
+const SKIP_DIRS = new Set([".git", "node_modules", ".venv", "__pycache__", "scratchpad", "dist"]);
+
+function isDatabaseFile(name: string): boolean {
+  const low = name.toLowerCase();
+  return DB_SUFFIXES.some((s) => low.endsWith(s));
+}
+
+/** File nháp theo chính luật của repo — thứ *phải* chết, chở đi là chở rác. */
+function isScratchFile(name: string): boolean {
+  return name.startsWith("_scratch_") || name.startsWith(".tmp_") || name.endsWith(".md.bak");
+}
+
+/**
+ * Lý do một đường dẫn bị loại, hoặc `null` nếu nó được chở.
+ *
+ * Tách thành hàm THUẦN để cổng soi thẳng được — cổng đầu-cuối không chứng minh nổi
+ * *"vì sao"* một file không có mặt (bài học `plan/24 §6f`: đo đầu-cuối không canh nổi luật pha).
+ */
+export function excludeReason(rel: string, name: string, size: number): string | null {
+  if (rel.split("/").some((seg) => SKIP_DIRS.has(seg))) return "thư mục kỹ thuật";
+  if (isDatabaseFile(name)) return "file database — không bao giờ đi dạng file (HP điều 11)";
+  if (isScratchFile(name)) return "file nháp";
+  if (size > MAX_MIRROR_FILE_BYTES) return `vượt trần ${Math.round(MAX_MIRROR_FILE_BYTES / 1024 / 1024)} MB`;
+  return null;
+}
+
+/**
+ * Bốn gốc trên MÁY NÀY. Gốc không tồn tại thì vắng mặt — fail-open (điều 9): một máy
+ * chưa có `docs_visual/` vẫn đồng bộ được ba mục còn lại.
+ *
+ * `docs`/`docs_visual`/`attic` treo ở repo của CHÍNH zemory (`selfRepoRoot`), không
+ * phải ở kho: chúng là hồ sơ của bản cài, nằm trong cây repo. `files` treo ở gốc KHO
+ * (`filesRoot`) vì nó đi cùng kho (plan/25 §1).
+ */
+export function mirrorRoots(opts: { repoRoot?: string; storeRoot?: string } = {}): MirrorRoot[] {
+  const repo = opts.repoRoot ?? selfRepoRoot();
+  const store = opts.storeRoot ?? currentStoreRoot();
+  const out: MirrorRoot[] = [];
+  if (repo) {
+    for (const area of ["docs", "docs_visual", "attic"] as const) {
+      const p = join(repo, area);
+      if (existsSync(p)) out.push({ area, path: p });
+    }
+  }
+  const f = filesRoot(store);
+  if (existsSync(f)) out.push({ area: "files", path: f });
+  return out;
+}
+
+/** Quét một gốc. Mục địa chỉ-theo-nội-dung KHÔNG băm (xem khối chú thích đầu file). */
+export function scanArea(root: MirrorRoot): ScanResult {
+  const entries: MirrorEntry[] = [];
+  const skipped: ScanResult["skipped"] = [];
+  const wantHash = !isContentAddressed(root.area);
+
+  const walk = (dir: string): void => {
+    let names: string[];
+    try {
+      names = readdirSync(dir);
+    } catch {
+      return; // thư mục đọc không được ⇒ bỏ qua, không làm chết cả lượt (điều 9)
+    }
+    for (const name of names) {
+      const abs = join(dir, name);
+      let st;
+      try {
+        st = statSync(abs);
+      } catch {
+        continue;
+      }
+      const rel = relative(root.path, abs).split(sep).join("/");
+      if (st.isDirectory()) {
+        if (SKIP_DIRS.has(name)) continue;
+        walk(abs);
+        continue;
+      }
+      if (!st.isFile()) continue;
+      const reason = excludeReason(rel, name, st.size);
+      if (reason) {
+        skipped.push({ rel, reason, size: st.size });
+        continue;
+      }
+      const e: MirrorEntry = { area: root.area, rel, size: st.size, mtimeMs: Math.round(st.mtimeMs) };
+      if (wantHash) {
+        const h = hashFile(abs);
+        if (!h) {
+          skipped.push({ rel, reason: "đọc không được", size: st.size });
+          continue;
+        }
+        e.hash = h;
+      }
+      entries.push(e);
+    }
+  };
+  walk(root.path);
+  entries.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+  return { entries, skipped };
+}
+
+/** Quét cả bốn mục. */
+export function scanMirror(opts: { repoRoot?: string; storeRoot?: string } = {}): ScanResult {
+  const entries: MirrorEntry[] = [];
+  const skipped: ScanResult["skipped"] = [];
+  for (const root of mirrorRoots(opts)) {
+    const r = scanArea(root);
+    entries.push(...r.entries);
+    for (const s of r.skipped) skipped.push({ ...s, rel: `${root.area}/${s.rel}` });
+  }
+  return { entries, skipped };
+}
+
+export function hashFile(abs: string): string | null {
+  try {
+    return createHash("sha256").update(readFileSync(abs)).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+export function hashBytes(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/**
+ * Đường tuyệt đối của một mục trên máy này — và là CỬA DUY NHẤT dịch `rel` thành đường.
+ *
+ * 🔴 Trả `null` cho mọi đường thoát ra ngoài gốc. `rel` tới TỪ MÁY KIA, nên nó là dữ
+ * liệu không tin được: `../` hay một đường tuyệt đối trong đó là lệnh ghi ra ngoài vùng
+ * mirror — tức một máy đã ghép đôi ghi được vào bất cứ đâu trên đĩa của ta. Kiểm bằng
+ * cách dựng đường rồi so tiền tố, KHÔNG bằng cách soi chuỗi tìm `..` (soi chuỗi trượt
+ * trên `%2e%2e`, trên `...`, và trên mọi kiểu viết lạ).
+ */
+export function resolveMirrorPath(root: MirrorRoot, rel: string): string | null {
+  if (!rel || rel.startsWith("/") || rel.startsWith("\\") || /^[A-Za-z]:/.test(rel)) return null;
+  const abs = join(root.path, rel);
+  const base = root.path.endsWith(sep) ? root.path : root.path + sep;
+  if (!abs.startsWith(base)) return null;
+  if (isDatabaseFile(basename(abs))) return null; // luật cứng áp cả chiều NHẬN
+  return abs;
+}

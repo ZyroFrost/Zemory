@@ -1933,6 +1933,9 @@ async function channelSyncOnce(
         appVersion: appVersion(),
         allowedPeers: st.peers,
         wantPair,
+        // Lớp MIRROR THƯ MỤC (plan/24 §9) — CÙNG bộ hook với daemon và với CLI. Ba cửa, một
+        // bản cài đặt: cửa nào thiếu nó là cửa đó âm thầm bỏ qua bốn thư mục.
+        mirror: ch.mirrorHooks(),
         // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
         onPaired: (peerId: string): void => {
           setP2pPeers([...getP2pPeers(), peerId]);
@@ -3371,6 +3374,76 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // người dùng không có cách nào biết mình vừa đưa nhầm.
         addrs: lanAddresses(),
       });
+    }
+    if (p === "/mirror-queue") {
+      // HÀNG ĐỢI DUYỆT của lớp mirror thư mục (plan/24 §9.6). Chỉ ĐỌC.
+      //
+      // User chốt: thay đổi từ máy kia KHÔNG tự áp — *"bên đây phải confirm chấp nhận sửa đó
+      // thì sẽ tự động lên"*. Endpoint này là thứ làm hàng đợi NHÌN THẤY ĐƯỢC; thiếu nó thì
+      // mọi thay đổi nằm im trong kho và người dùng không có cách nào biết có gì đang chờ —
+      // đúng hạng "năng lực đã xây mà một bề mặt không thấy" (0% dùng được).
+      const ch = await import("./memory/channel/index.js");
+      try {
+        const rows = ch.listQueue(ch.mirrorDb());
+        return json(res, { ok: true, count: rows.length, rows });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e), count: 0, rows: [] });
+      }
+    }
+    if (p === "/mirror-diff") {
+      // Xem khác biệt TRƯỚC khi duyệt (§9.6). Trả CHỮ cho file chữ; nhị phân thì nói thẳng là
+      // không so được thay vì trưng một đống byte — người đọc không quyết được bằng thứ đó.
+      const ch = await import("./memory/channel/index.js");
+      const id = Number(u.searchParams.get("id")) || 0;
+      try {
+        const { theirs, merged, row } = ch.queueBodies(ch.mirrorDb(), id);
+        if (!row) return json(res, { ok: false, error: "mục chờ không còn" });
+        const roots = ch.mirrorRoots();
+        const root = roots.find((r) => r.area === row.area);
+        const abs = root ? ch.resolveMirrorPath(root, row.rel) : null;
+        let mine: string | null = null;
+        let mineBinary = false;
+        if (abs && existsSync(abs)) {
+          const b = readFileSync(abs);
+          if (b.includes(0)) mineBinary = true;
+          else mine = b.toString("utf8");
+        }
+        const theirsBinary = Boolean(theirs && theirs.includes(0));
+        return json(res, {
+          ok: true,
+          row,
+          mine,
+          mineBinary,
+          theirs: theirs && !theirsBinary ? theirs.toString("utf8") : null,
+          theirsBinary,
+          merged: merged && !merged.includes(0) ? merged.toString("utf8") : null,
+        });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (p === "/mirror-apply") {
+      // MỘT cửa cho việc "chốt một dòng chờ", bốn lựa chọn (HP điều 17 — không đẻ endpoint thứ
+      // hai cho `dismiss`, nó là cùng một chức năng: *giải quyết dòng này*).
+      //   theirs  — lấy bản máy kia      ·  merged — lấy bản đã gộp
+      //   mine    — giữ bản của mình (không ghi byte nào, chỉ đóng mốc để lượt sau thôi hỏi lại)
+      //   dismiss — để sau (KHÔNG đóng mốc ⇒ lượt sau hỏi lại, đúng thứ người bấm "để sau" muốn)
+      // Cú bấm LÀ lời cho phép ghi — cùng doctrine `/paths-fix-apply`.
+      const ch = await import("./memory/channel/index.js");
+      const id = Number(u.searchParams.get("id")) || 0;
+      const choice = (u.searchParams.get("choice") ?? "theirs").trim();
+      try {
+        if (choice === "dismiss") {
+          return json(res, { ok: ch.dismissQueued(ch.mirrorDb(), id), dismissed: true });
+        }
+        if (choice !== "theirs" && choice !== "merged" && choice !== "mine") {
+          return json(res, { ok: false, error: `lựa chọn lạ: ${choice}` });
+        }
+        const r = ch.applyQueued(ch.mirrorDb(), id, choice);
+        return json(res, r.ok ? { ok: true, wrote: r.wrote, path: r.path } : { ok: false, error: r.error });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
     }
     if (p === "/daemon-log") {
       // Nhật ký ĐỌC ĐƯỢC TRONG APP (`plan/24 §10.3`) — thứ bắt buộc phải có khi đã cấm cửa sổ

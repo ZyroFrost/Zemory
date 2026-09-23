@@ -120,7 +120,7 @@ function resolveStoreRoot(): string {
 export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DB = ENV_DB || join(resolveStoreRoot(), "global_memory.db");
 
-const SCHEMA_VERSION = 25;
+const SCHEMA_VERSION = 26;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -129,6 +129,38 @@ CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 -- không còn chuyến nào chở nó ⇒ diễn tập phục hồi 27/08 đo thiếu 16.405 vector (HP điều 16).
 -- Mỗi lượt đẩy: vector có ở kho mà CHƯA có trong sổ ⇒ chở kèm (đường vectorCatchUpIds sẵn có).
 CREATE TABLE IF NOT EXISTS vec_shipped (message_id INTEGER PRIMARY KEY);
+
+-- v26 (2026-09-23): MIRROR THƯ MỤC qua kênh máy-tới-máy (plan/24 §9).
+-- Bảng peer_file_state giữ MỐC "base" = bản hai máy gặp nhau lần gần nhất. Không có mốc thì
+-- không phân biệt được "bên kia sửa" với "mình xoá" (§9.3) — mọi hệ đồng bộ nghiêm túc đều
+-- lưu nó. Lưu HASH cho mọi file; lưu thêm NỘI DUNG chỉ cho file CHỮ dưới ngưỡng, vì hợp nhất
+-- theo đoạn (§9.4) cần bản base thật chứ không chỉ chữ ký.
+-- (Không dùng dấu backtick trong khối này: SCHEMA là một template literal, backtick đóng chuỗi.)
+CREATE TABLE IF NOT EXISTS peer_file_state (
+  peer_id    TEXT NOT NULL,
+  area       TEXT NOT NULL,
+  rel        TEXT NOT NULL,
+  base_hash  TEXT,
+  base_body  BLOB,              -- NULL = nhị phân hoặc quá ngưỡng ⇒ rơi về chọn-cả-file (§9.5)
+  updated_at TEXT,
+  PRIMARY KEY (peer_id, area, rel)
+);
+-- Hàng đợi DUYỆT. User chốt: thay đổi từ máy kia KHÔNG tự áp, phải confirm (§9.3).
+-- Một (máy, mục, đường) chỉ có MỘT dòng chờ — lượt sau ghi đè dòng cũ, vì thứ đáng duyệt
+-- luôn là bản MỚI NHẤT bên kia đang có, không phải một chồng lịch sử.
+CREATE TABLE IF NOT EXISTS peer_file_queue (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  peer_id     TEXT NOT NULL,
+  area        TEXT NOT NULL,
+  rel         TEXT NOT NULL,
+  verdict     TEXT NOT NULL,    -- 'take' (chỉ bên kia sửa) | 'merge' (gộp được) | 'block' (trùng đoạn)
+  their_hash  TEXT,
+  their_body  BLOB,
+  mine_hash   TEXT,
+  merged_body BLOB,             -- kết quả hợp nhất, chỉ có khi verdict='merge'
+  created_at  TEXT,
+  UNIQUE (peer_id, area, rel)
+);
 
 -- One row per agent session (a single conversation/transcript file).
 CREATE TABLE IF NOT EXISTS sessions (
@@ -810,6 +842,28 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // Nguồn LOCAL không đụng: chúng không có khái niệm tài khoản, NULL là đúng.
     db.exec("UPDATE sessions SET account='main' WHERE COALESCE(origin,'local')='web' AND account IS NULL");
     version = 25;
+  }
+  if (version < 26) {
+    // v26 (2026-09-23): mirror thư mục (plan/24 §9). Hai bảng MỚI, không đụng bảng nào sẵn có.
+    //
+    // **Cố ý KHÔNG gieo gì.** Sổ `vec_shipped` ở v23 phải gieo vì không gieo thì lượt sync đầu
+    // chở lại ~290k vector; ở đây ngược lại — gieo `base` bằng trạng thái hôm nay là khai rằng
+    // hai máy ĐÃ từng khớp ở mọi file, mà điều đó chưa bao giờ đúng (lớp này chưa từng chạy).
+    // Khai bừa một mốc gặp-nhau làm phép phân loại §9.3 đọc mọi khác biệt thật thành "bên kia
+    // sửa" và tự áp — đúng thứ hàng đợi duyệt sinh ra để chặn. Không có `base` ⇒ `§9.4` mục 4
+    // xử là CHẶN-và-hỏi, tức lượt gặp đầu tiên đi qua mắt người. Đó là kết cục ĐÚNG.
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS peer_file_state (" +
+        "peer_id TEXT NOT NULL, area TEXT NOT NULL, rel TEXT NOT NULL, " +
+        "base_hash TEXT, base_body BLOB, updated_at TEXT, PRIMARY KEY (peer_id, area, rel))",
+    );
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS peer_file_queue (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, peer_id TEXT NOT NULL, area TEXT NOT NULL, rel TEXT NOT NULL, " +
+        "verdict TEXT NOT NULL, their_hash TEXT, their_body BLOB, mine_hash TEXT, merged_body BLOB, " +
+        "created_at TEXT, UNIQUE (peer_id, area, rel))",
+    );
+    version = 26;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

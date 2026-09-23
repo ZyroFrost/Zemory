@@ -386,7 +386,7 @@
            t nghĩ nên phân thành 1 trang chính thức ko để trong setting nữa"*). ⚙ là nơi gạt vài
            công tắc; cụm máy + nhật ký + hai kênh là một khu vực làm việc, không phải một dòng. -->
       <section class="screen" data-s="sync">
-        <div class="tabs"><button class="on" data-sy="drive">☁ <span data-i18n="ds.driveH">Kênh Drive</span></button><button data-sy="p2p">⇄ <span data-i18n="sync.tabP2p">Máy-tới-máy</span></button></div>
+        <div class="tabs"><button class="on" data-sy="drive">☁ <span data-i18n="ds.driveH">Kênh Drive</span></button><button data-sy="p2p">⇄ <span data-i18n="sync.tabP2p">Máy-tới-máy</span><span id="p2pQBadge" class="qbadge"></span></button></div>
       <div class="sub on" data-sy="drive">
         <!-- HAI PANEL RIÊNG trong một lưới kéo được — đúng khuôn mọi màn khác (lưới chứa các
              `.card`, không phải một card bị chia đôi). Trái: bảng đo. Phải: thao tác. -->
@@ -466,6 +466,9 @@
             <div class="card">
               <div class="card-h"><div class="t" data-i18n="p2p.clusterH">Cụm máy</div><span class="muted" id="p2pClusterN"></span></div>
               <div class="card-b">
+                <!-- HÀNG ĐỢI DUYỆT (plan/24 §9.6) — đứng TRƯỚC lưới máy vì nó là thứ đang chờ
+                     người dùng quyết; rỗng thì biến mất hẳn (§F0: mặc định là KHÔNG CÓ NÓ). -->
+                <div id="p2pQueue"></div>
                 <div id="p2pCluster" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>
                 <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ ngay</button></div>
                 <div id="p2pSeenList" class="filters" style="margin:0"></div>

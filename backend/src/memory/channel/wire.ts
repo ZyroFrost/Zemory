@@ -2,7 +2,7 @@
  * KHUNG + TIN của giao thức kênh máy-tới-máy (plan/24 §7c ②).
  *
  * Khung: `<1 byte kiểu><4 byte độ dài, big-endian><thân>`.
- *   kiểu 0 = JSON điều khiển · kiểu 1 = BYTE THÔ của một khối.
+ *   kiểu 0 = JSON điều khiển · kiểu 1 = BYTE THÔ của một khối · kiểu 2 = BYTE THÔ của một FILE mirror.
  *
  * 🔴 Vì sao thân khối KHÔNG đi qua JSON: đo được base64-trong-JSON tốn **+33%**
  * (plan/24 §6b — thân 0,300 MB thành 0,400 MB trên dây). Khối là phần nặng nhất
@@ -15,6 +15,12 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const FRAME_JSON = 0;
 export const FRAME_BLOCK = 1;
+/**
+ * Byte thô của một FILE mirror (plan/24 §9). Khung riêng chứ không dùng lại `FRAME_BLOCK`:
+ * hai thứ đi vào hai nơi khác hẳn — khối nối vào khúc `.enc` của kho, file ghi ra cây thư
+ * mục — nên gộp một kiểu là để một lỗi đặt nhầm chỗ trở thành một lỗi GHI SAI CHỖ.
+ */
+export const FRAME_FILE = 2;
 /** Trần một khung — chặn bên kia khai độ dài điên rồ làm ta cấp phát vô hạn. */
 export const MAX_FRAME_BYTES = 512 * 1024 * 1024;
 
@@ -25,6 +31,15 @@ export interface HelloMessage {
   nonce: string;
   /** Bên gọi là `true`; quyết thứ tự ghép nonce khi tính bằng chứng. */
   initiator: boolean;
+  /**
+   * Máy này biết MIRROR THƯ MỤC (plan/24 §9). Khai năng lực, không phải bật/tắt.
+   *
+   * 🔴 Thiếu trường này thì bản mới nối bản cũ là **TREO tới hết giờ**: bản mới chờ một
+   * `mdone` mà bản cũ không biết gửi, và phiên chỉ chết sau trần 120 giây — mỗi lượt sync
+   * hai phút, không lỗi nào giải thích. Bản cũ đọc JSON và chỉ lấy trường nó biết, nên
+   * thêm một khoá là an toàn một chiều; vắng khoá ⇒ coi là KHÔNG có ⇒ bỏ hẳn pha mirror.
+   */
+  mirror?: boolean;
 }
 export interface ProofMessage {
   t: "proof";
@@ -55,7 +70,41 @@ export interface PairedMessage {
   t: "paired";
   id: string;
 }
-export type ControlMessage = HelloMessage | ProofMessage | HaveMessage | DoneMessage | PairMessage | PairedMessage;
+/**
+ * Kiểm kê FILE của mục mirror (`plan/24 §9`) — đối xứng với `have` của lớp khối.
+ *
+ * `hash` vắng ở mục địa chỉ-theo-nội-dung (`files/`): tên file ĐÃ là chữ ký, băm lại
+ * 832 MB mỗi lượt là trả tiền cho một câu hỏi đã có đáp án (`mirror.ts`).
+ */
+export interface MirrorListMessage {
+  t: "mfiles";
+  entries: Array<{ a: string; p: string; h?: string; s: number }>;
+  /** Còn trang nữa — chừa sẵn cho kho nhiều tệp, chưa dùng ở lượt đầu. */
+  more?: boolean;
+}
+/** Tiêu đề đi NGAY TRƯỚC một khung `FRAME_FILE`. Byte không tự nói nó thuộc đường nào. */
+export interface MirrorFileMessage {
+  t: "mfile";
+  a: string;
+  p: string;
+  h: string;
+  s: number;
+}
+/** Xong phần mirror của mình. Tách khỏi `done` của lớp khối: hai lớp kết thúc độc lập. */
+export interface MirrorDoneMessage {
+  t: "mdone";
+  sent: number;
+}
+export type ControlMessage =
+  | HelloMessage
+  | ProofMessage
+  | HaveMessage
+  | DoneMessage
+  | PairMessage
+  | PairedMessage
+  | MirrorListMessage
+  | MirrorFileMessage
+  | MirrorDoneMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");
@@ -63,6 +112,9 @@ export function encodeJson(msg: ControlMessage): Buffer {
 }
 export function encodeBlock(bytes: Buffer): Buffer {
   return frame(FRAME_BLOCK, bytes);
+}
+export function encodeFile(bytes: Buffer): Buffer {
+  return frame(FRAME_FILE, bytes);
 }
 function frame(kind: number, body: Buffer): Buffer {
   const head = Buffer.alloc(5);

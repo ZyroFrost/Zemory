@@ -38,7 +38,7 @@
 import net from "node:net";
 import tls from "node:tls";
 import { normalizeDeviceId, type ChannelIdentity } from "./identity.js";
-import { runSessionOn, type SessionOptions, type SyncOutcome } from "./peer.js";
+import { emptyOutcome, runSessionOn, type SessionOptions, type SyncOutcome } from "./peer.js";
 
 /** Một vòng = một nửa bắn + một nửa nghe. 2 giây đủ cho một lượt bắt tay LAN/WAN. */
 export const DEFAULT_ROUND_MS = 2000;
@@ -78,15 +78,9 @@ export interface PunchResult extends SyncOutcome {
   rounds: number;
 }
 
-const fail = (error: string, rounds: number): PunchResult => ({
-  peerDeviceId: null,
-  sentBlocks: 0,
-  receivedBlocks: 0,
-  bytesSent: 0,
-  error,
-  won: null,
-  rounds,
-});
+// Dựng từ `emptyOutcome()` chứ không gõ lại từng trường: hình dạng của `SyncOutcome` có
+// đúng MỘT nguồn, nên thêm một bộ đếm ở lớp phiên không để lại chỗ nào trả số thiếu.
+const fail = (error: string, rounds: number): PunchResult => ({ ...emptyOutcome(error), won: null, rounds });
 
 /**
  * Ai bắn ở nửa ĐẦU của vòng.

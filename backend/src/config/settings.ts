@@ -77,8 +77,16 @@ interface ZConfig {
   p2pEnabled?: boolean;
   /** plan/24 §5 — đích GHI, đúng MỘT tại một thời điểm (hai kẻ ghi đã hỏng kho hai lần, HP điều 11). */
   syncTransport?: "drive" | "p2p";
-  /** plan/24 §5 — device ID của máy đã ghép đôi. Rỗng ⇒ không nhận ai. */
-  p2pPeers?: string[];
+  /**
+   * plan/24 §5 — device ID của máy đã ghép đôi. Rỗng ⇒ không nhận ai.
+   *
+   * 🔄 **Nâng lên BẢN GHI 2026-09-23** (`plan/24 §9.2`): mỗi cặp ghép mang thêm CHIỀU đồng bộ
+   * của lớp mirror thư mục. Hai dạng cùng đọc được — chuỗi trần là cặp ghép đời trước, hiểu là
+   * `two-way` (mặc định). Giữ được cả hai dạng là điều kiện để `p2pPeers` KHÔNG phải một
+   * migration: cấu hình cũ chạy y nguyên, và `getP2pPeers()` vẫn trả về đúng danh sách ID như
+   * trước nên 15 chỗ gọi không đổi một chữ.
+   */
+  p2pPeers?: Array<string | PeerRecord>;
   p2pPeerAddrs?: Record<string, string[]>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
@@ -515,12 +523,91 @@ export function setSyncTransport(t: "drive" | "p2p"): void {
 }
 /** Máy đã ghép đôi (device ID). Rỗng ⇒ không nhận ai — không bao giờ mặc định mở. */
 export function getP2pPeers(): string[] {
-  const v = read().p2pPeers;
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : [];
+  return readPeerRecords().map((r) => r.id);
 }
 export function setP2pPeers(peers: string[]): void {
   const c = read();
-  c.p2pPeers = [...new Set(peers.map((p) => p.trim()).filter(Boolean))];
+  // Giữ chiều đồng bộ đã đặt cho máy còn trong danh sách — bản ghi cũ không được rơi chỉ vì
+  // một chỗ gọi đời trước chỉ biết truyền mảng ID. Đây là nửa còn lại của tương thích ngược:
+  // đọc được dạng cũ là chưa đủ, phải GIỮ được phần dạng mới khi đường cũ ghi đè.
+  const known = new Map(readPeerRecords().map((r) => [normPeerId(r.id), r]));
+  const seen = new Set<string>();
+  const out: Array<string | PeerRecord> = [];
+  for (const raw of peers) {
+    const id = raw.trim();
+    if (!id) continue;
+    const key = normPeerId(id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const prev = known.get(key);
+    out.push(prev && prev.direction === "one-way" ? { ...prev, id } : id);
+  }
+  c.p2pPeers = out;
+  write(c);
+}
+
+/**
+ * CHIỀU đồng bộ của lớp mirror thư mục, theo TỪNG CẶP GHÉP (`plan/24 §9.2`).
+ *
+ * `two-way` (mặc định) — hai bên đều đẩy, áp luật phân loại + hàng đợi duyệt.
+ * `one-way` — `source` là máy NGUỒN; máy còn lại chỉ đọc, nhận và áp thẳng, không đẩy ngược
+ * và không có hàng đợi (không có gì để tranh).
+ */
+export type PeerDirection = "two-way" | "one-way";
+export interface PeerRecord {
+  id: string;
+  direction?: PeerDirection;
+  /** Device ID của máy NGUỒN. Chỉ có nghĩa khi `direction === "one-way"`. */
+  source?: string;
+}
+
+/** So device ID bỏ gạch nối + không phân biệt hoa thường — cùng phép `sameDeviceId` của lớp kênh. */
+const normPeerId = (s: string): string => s.replace(/-/g, "").toUpperCase();
+
+function readPeerRecords(): PeerRecord[] {
+  const v = read().p2pPeers;
+  if (!Array.isArray(v)) return [];
+  const out: PeerRecord[] = [];
+  for (const x of v) {
+    if (typeof x === "string") {
+      if (x.trim()) out.push({ id: x.trim() });
+    } else if (x && typeof x === "object" && typeof x.id === "string" && x.id.trim()) {
+      out.push({ id: x.id.trim(), direction: x.direction, source: x.source });
+    }
+  }
+  return out;
+}
+
+/** Cấu hình chiều của một máy. Máy lạ hoặc cặp đời cũ ⇒ `two-way` — mặc định của `§9.2`. */
+export function getPeerSync(peerId: string): { direction: PeerDirection; source?: string } {
+  const key = normPeerId(peerId);
+  const rec = readPeerRecords().find((r) => normPeerId(r.id) === key);
+  return rec?.direction === "one-way" ? { direction: "one-way", source: rec.source } : { direction: "two-way" };
+}
+
+/**
+ * Đặt chiều cho một cặp ghép.
+ *
+ * 🔴 KHÔNG kiểm "hai bên đã hội tụ chưa" ở đây — đó là chốt ① của `§9.2` và nó thuộc về CỬA
+ * người dùng bấm (nơi đọc được số file còn lệch để nêu lý do từ chối), không thuộc về bộ ghi
+ * cấu hình. Đặt phép kiểm ở đây thì mọi đường ghi cấu hình khác lại phải nhớ nó lần nữa.
+ */
+export function setPeerSync(peerId: string, cfg: { direction: PeerDirection; source?: string }): void {
+  const c = read();
+  const key = normPeerId(peerId);
+  const recs = readPeerRecords();
+  const next: Array<string | PeerRecord> = [];
+  let found = false;
+  for (const r of recs) {
+    if (normPeerId(r.id) !== key) {
+      next.push(r.direction === "one-way" ? r : r.id);
+      continue;
+    }
+    found = true;
+    next.push(cfg.direction === "one-way" ? { id: r.id, direction: "one-way", source: cfg.source } : r.id);
+  }
+  if (!found) next.push(cfg.direction === "one-way" ? { id: peerId, direction: "one-way", source: cfg.source } : peerId);
+  c.p2pPeers = next;
   write(c);
 }
 /**
