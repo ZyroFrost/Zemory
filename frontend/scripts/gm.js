@@ -465,6 +465,23 @@
       return;
     }
     if(act==='p2p-add-open'){ var ap=zid('addPeerDlg'); if(ap)ap.classList.add('on'); loadChannel(); return; }
+    if(act==='p2p-unpair'){
+      // 🔴 Nhánh này TỪNG THIẾU HẲN: nút gắn `data-act="p2p-unpair"` mà không ai bắt, nên bấm
+      // không xảy ra gì và thẻ máy ở nguyên đó — người dùng đọc thành "kẹt". Bốn hành động p2p
+      // khác đều có nhánh; riêng nó rơi ra lúc dựng bề mặt cụm máy.
+      var uid=el.getAttribute('data-id')||'';
+      if(!uid)return;
+      // Khoá nút ngay: một lượt xoá là lời gọi mạng, và bấm hai lần là hai lượt ghi vào cùng sổ.
+      el.disabled=true;
+      zPost('/channel-pair?drop=1&id='+encodeURIComponent(uid)).then(function(r){
+        // Hỏng thì MỞ LẠI nút và nói ra — không để một nút chết im lặng (`save-never-silent`).
+        if(!r||r.ok===false){el.disabled=false;p2pMsg('✗ '+((r&&r.error)||t('q.err')));return;}
+        // Thẻ máy dựng từ SỔ, nên nạp lại là nó biến mất — không tự gỡ node bằng tay, tránh
+        // để màn hình và sổ nói hai chuyện khác nhau.
+        loadChannel();
+      }).catch(function(){el.disabled=false;p2pMsg('✗ '+t('q.err'));});
+      return;
+    }
     if(act==='p2p-toggle'){
       // zSave, KHÔNG zPost: cổng `save-never-silent` (2026-09-12) cấm công tắc tự xử lời
       // hứa lưu. Ba kiểu hỏng (gọi hỏng · HTTP≠2xx · {ok:false}) đều phải HOÀN NGUYÊN + báo.

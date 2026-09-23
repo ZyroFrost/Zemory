@@ -22,7 +22,7 @@ import { guardDrift } from "./guard-gen.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
 import { readChannelVersion } from "../memory/share.js";
-import { type AppUpdate, pickUpdate, readUpdateCache } from "../update/remote-version.js";
+import { type AppUpdate, aheadOfRepo, pickUpdate, readUpdateCache } from "../update/remote-version.js";
 import { getDriveDir } from "../config/settings.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -555,6 +555,13 @@ export interface SyncCheckResult {
    * Không đo được / bản này đã mới nhất ⇒ `undefined` (fail-open).
    */
   appUpdate?: AppUpdate;
+  /**
+   * Bản trên máy ĐI TRƯỚC repo — ngược chiều `appUpdate`.
+   *
+   * Có trường riêng chứ không nhồi vào `appUpdate`: hai ca đòi hai câu khác hẳn nhau, và gộp
+   * lại là mời người dùng "cập nhật" xuống một bản cũ hơn.
+   */
+  appAhead?: { have: string; latest: string; from: string };
 }
 
 /** Máy này có đang chạy bản cũ hơn bản đã phát hành không. Fail-open: mọi trục trặc ⇒ undefined.
@@ -576,8 +583,24 @@ export function appUpdateStatus(): SyncCheckResult["appUpdate"] {
   }
 }
 
+/** Bản trên máy có đi trước repo không — đọc THUẦN từ đệm, không chạm mạng (cùng lý lẽ `appUpdateStatus`). */
+export function appAheadStatus(): SyncCheckResult["appAhead"] {
+  try {
+    const have = appVersion();
+    return have ? aheadOfRepo(have, readUpdateCache()) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function syncCheck(projectRoot: string): SyncCheckResult {
-  const out: SyncCheckResult = { connected: false, missing: [], guardStale: [], appUpdate: appUpdateStatus() };
+  const out: SyncCheckResult = {
+    connected: false,
+    missing: [],
+    guardStale: [],
+    appUpdate: appUpdateStatus(),
+    appAhead: appAheadStatus(),
+  };
   try {
     const marker = readMarker(projectRoot);
     if (!marker) return out;

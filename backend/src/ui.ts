@@ -125,7 +125,8 @@ let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; mi
 let remoteCheckRunning = false;
 function kickRemoteVersionCheck(): void {
   try {
-    if (remoteCheckRunning || !cacheDue(readUpdateCache(), Date.now())) return;
+    // Truyền bản ĐANG CHẠY vào: đổi bản ⇒ đệm hết hạn ngay, xem chú thích ở `cacheDue`.
+    if (remoteCheckRunning || !cacheDue(readUpdateCache(), Date.now(), undefined, undefined, appVersion())) return;
     const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
     remoteCheckRunning = true;
     const child = spawn(process.execPath, [join(root, "dist", "cli.js"), "selfupdate", "--check"], { cwd: root, stdio: "ignore", detached: false, windowsHide: true });
@@ -1798,9 +1799,13 @@ async function channelSyncOnce(
   // chỉ đã đổi chủ. Bảng chung thì mỗi máy tự làm tươi, và mục quá 10 phút bị bỏ.
   // Đây là thứ làm ca KHÁC MẠNG chạy được mà không ai phải canh giờ dán mã.
   const me = ch.channelStatus();
-  const fresh = ch
-    .readPresence(getDriveDir(), { selfDeviceId: me.deviceId, allowedPeers: wantId ? [wantId] : me.peers })
-    .map((e) => `${e.host}:${e.port}`);
+  const presence = ch.readPresence(getDriveDir(), {
+    selfDeviceId: me.deviceId,
+    allowedPeers: wantId ? [wantId] : me.peers,
+  });
+  // Mục CHỈ có relay (máy kia chưa đo được địa chỉ ngoài) không có gì để gọi thẳng — lọc ra, chứ
+  // đừng dựng một ứng viên `:21038` cụt đầu rồi tốn một lượt bắt tay chắc chắn trượt.
+  const fresh = presence.filter((e) => e.host).map((e) => `${e.host}:${e.port}`);
   // 🔴 DÒ TOÀN CẦU — cụm server công khai của Syncthing (`plan/24 §1c` tầng 3). Đây là đường
   // KHÁC MẠNG không cần gì của user: không tài khoản, không máy chủ phải nuôi, không thư mục
   // chung, và **không cần STUN** (ta khai `0.0.0.0`, server lấy IP nguồn của gói).
@@ -1893,10 +1898,17 @@ async function channelSyncOnce(
   // đúng ca `§6d` đo được và là ca duy nhất không code nào chữa được nếu không có máy thứ ba.
   // Xếp TRƯỚC chỗ chờ đục lỗ vì relay là một lượt nối THẬT (ăn hoặc không), còn chỗ chờ chỉ là
   // lời hẹn — trả `waiting` cho người bấm trong khi relay đã nối được là bỏ phí một đường ngon.
-  if (wantId && globalAddrs.relays.length) {
+  // 🔴 Gom địa chỉ relay từ CẢ HAI nguồn. Bản đầu chỉ đọc cụm dò toàn cầu, nên trên máy nào lượt
+  // ĐĂNG KÝ thất bại thì danh sách rỗng và tầng 4 **không bao giờ được thử** — dù cả hai máy đều
+  // đang chờ sẵn ở relay. Đo 23/09 trên hai máy thật khác mạng: cả hai vào relay, cả hai thấy
+  // nhau trong bảng chung, mà không bên nào gọi được bên nào.
+  //
+  // Bảng chung xếp TRƯỚC: nó làm tươi mỗi 60 giây, còn cụm dò chỉ đăng lại theo nhịp server nói.
+  const relayUrls = [...new Set([...presence.map((e) => e.relay).filter((r): r is string => Boolean(r)), ...globalAddrs.relays])];
+  if (wantId && relayUrls.length) {
     const viaRelay = await ch
       .syncViaRelay({
-        relayUrls: globalAddrs.relays,
+        relayUrls,
         peerDeviceId: wantId,
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),

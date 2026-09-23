@@ -17,6 +17,7 @@ import test from "node:test";
 import {
   ERR_TTL_MS,
   OK_TTL_MS,
+  aheadOfRepo,
   cacheDue,
   pickUpdate,
   readUpdateCache,
@@ -102,4 +103,48 @@ test("cache đọc/ghi được, và file hỏng ⇒ coi như chưa đo (fail-op
   assert.equal(readUpdateCache(f), null, "thiếu checkedAt ⇒ không biết cũ hay mới, phải đo lại");
   writeUpdateCache({ ok: true, checkedAt: "x" }, join(dir, "khong-co-thu-muc-nay", "sub", "a.json"));
   assert.equal(existsSync(join(dir, "khong-co-thu-muc-nay", "sub", "a.json")), true, "ghi tạo được thư mục; và có hỏng cũng không được ném");
+});
+
+test("đệm hết hạn NGAY khi bản trên máy đổi — đừng nói dối suốt 6 tiếng", () => {
+  // 🔴 Ca thật 23/09: sau một lượt hạ version (viết lại lịch sử git), app còn khoe "bản mới trên
+  // git 3.6.0, commit f1cce93" — một bản VÀ một commit không còn tồn tại trên origin. Với TTL 6
+  // giờ, nó sẽ nói dối suốt 6 tiếng và người dùng không có cách nào bảo nó đo lại ngoài chờ.
+  const now = Date.parse("2026-09-23T10:00:00Z");
+  const fresh = { ok: true, latest: "3.6.0", commit: "f1cce93", checkedAt: "2026-09-23T09:59:00Z", have: "3.6.0" };
+
+  assert.equal(cacheDue(fresh, now, undefined, undefined, "3.6.0"), false, "cùng bản, còn hạn ⇒ giữ đệm");
+  assert.equal(cacheDue(fresh, now, undefined, undefined, "3.4.5"), true, "ĐỔI bản ⇒ đo lại ngay");
+  // Hạ version cũng phải bắt, không chỉ nâng — đây đúng là chiều đã xảy ra.
+  assert.equal(cacheDue({ ...fresh, have: "3.4.5" }, now, undefined, undefined, "3.6.0"), true);
+
+  // CA ÂM: đệm đời cũ chưa có `have` ⇒ KHÔNG được coi là hết hạn, nếu không mỗi nhịp lại đẻ một
+  // tiến trình con đo git cho tới khi có lượt ghi mới.
+  assert.equal(cacheDue({ ...fresh, have: undefined }, now, undefined, undefined, "3.4.5"), false);
+  // CA ÂM: không truyền bản đang chạy ⇒ giữ nguyên hành vi cũ (nơi gọi cũ không bị đổi nghĩa).
+  assert.equal(cacheDue(fresh, now), false);
+  // Hết hạn theo thời gian vẫn phải chạy như trước.
+  assert.equal(cacheDue(fresh, now + 7 * 60 * 60_000, undefined, undefined, "3.6.0"), true);
+});
+
+test("bản trên máy ĐI TRƯỚC repo phải nói ra, không được khoe 'đã mới nhất'", () => {
+  // `pickUpdate` chỉ mời cập nhật khi remote MỚI hơn, nên ở ca ngược lại nó trả rỗng và bề mặt in
+  // "Zemory đang là bản mới nhất" — SAI: máy đang chạy một bản không còn tồn tại trên repo.
+  const git = { ok: true, latest: "3.4.5", commit: "992f3ec", at: "" };
+
+  const ahead = aheadOfRepo("3.6.0", git);
+  assert.ok(ahead, "cao hơn git ⇒ phải báo đi trước");
+  assert.equal(ahead.have, "3.6.0");
+  assert.equal(ahead.latest, "3.4.5");
+  assert.equal(ahead.from, "992f3ec");
+  // Và `pickUpdate` vẫn KHÔNG được mời cập nhật xuống — hai hàm nói hai chuyện khác nhau.
+  assert.equal(pickUpdate("3.6.0", git, null), undefined, "không bao giờ mời 'cập nhật' xuống bản cũ hơn");
+
+  // CA ÂM: bằng nhau hoặc thấp hơn ⇒ không phải đi trước.
+  assert.equal(aheadOfRepo("3.4.5", git), undefined);
+  assert.equal(aheadOfRepo("3.4.4", git), undefined);
+  // CA ÂM: chỉ xét nguồn GIT. Tem kênh chung cũ là chuyện bình thường (máy lâu không sync), lấy nó
+  // làm căn cứ "đi trước" là báo động giả.
+  assert.equal(aheadOfRepo("3.6.0", null), undefined);
+  assert.equal(aheadOfRepo("3.6.0", { ok: false, latest: "3.4.5" }), undefined);
+  assert.equal(aheadOfRepo("", git), undefined);
 });

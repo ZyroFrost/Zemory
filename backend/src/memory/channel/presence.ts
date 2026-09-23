@@ -49,6 +49,18 @@ export interface PresenceEntry {
   port: number;
   /** Mốc ISO lúc ghi — thứ duy nhất cho phép phán một mục đã hết hạn. */
   at: string;
+  /**
+   * Địa chỉ RELAY máy đó đang chờ (`relay://host:port/?id=…`), rỗng nếu chưa vào được relay nào.
+   *
+   * 🔴 **Thiếu trường này là tầng 4 chết trên đúng những máy cần nó nhất.** Địa chỉ relay vốn đi
+   * qua cụm dò toàn cầu, nhưng máy nào ĐĂNG KÝ thất bại (mạng chặn, cụm từ chối) thì lane đó
+   * rỗng — và lúc ấy bảng chung là kênh ĐỘNG duy nhất còn lại. Đo 23/09 trên hai máy thật khác
+   * mạng: cả hai vào được relay, cả hai thấy nhau trong bảng chung, mà không bên nào gọi được
+   * bên nào — vì bảng chỉ chở địa chỉ gọi thẳng.
+   *
+   * Mã máy KHÔNG thay được chỗ này: nó tĩnh, còn relay thì xoay mỗi lượt bật.
+   */
+  relay?: string;
 }
 
 /**
@@ -82,13 +94,17 @@ function fileFor(deviceId: string): string {
  */
 export function publishPresence(
   sharedDir: string | null,
-  o: { deviceId: string; host: string | null; port: number },
+  o: { deviceId: string; host: string | null; port: number; relay?: string | null },
 ): boolean {
-  if (!sharedDir || !o.host || !isPublicIpv4(o.host)) return false;
+  // 🔴 CÒN ĐĂNG khi chưa đo được địa chỉ ngoài, MIỄN LÀ có relay: một máy STUN câm vẫn kết nối
+  // được qua relay, nên bắt nó im là cắt đúng đường duy nhất nó còn.
+  const host = o.host && isPublicIpv4(o.host) ? o.host : null;
+  const relay = o.relay && o.relay.startsWith("relay://") ? o.relay : undefined;
+  if (!sharedDir || (!host && !relay)) return false;
   try {
     const dir = join(sharedDir, PRESENCE_DIR);
     mkdirSync(dir, { recursive: true });
-    const entry: PresenceEntry = { fp: o.deviceId, host: o.host, port: o.port, at: new Date().toISOString() };
+    const entry: PresenceEntry = { fp: o.deviceId, host: host ?? "", port: o.port, at: new Date().toISOString(), relay };
     writeFileSync(join(dir, fileFor(o.deviceId)), JSON.stringify(entry), "utf8");
     return true;
   } catch {
@@ -131,13 +147,17 @@ export function readPresence(
   for (const name of names) {
     try {
       const e = JSON.parse(readFileSync(join(dir, name), "utf8")) as Partial<PresenceEntry>;
-      if (!e.fp || !e.host || typeof e.port !== "number" || !e.at) continue;
+      if (!e.fp || typeof e.port !== "number" || !e.at) continue;
+      const relay = typeof e.relay === "string" && e.relay.startsWith("relay://") ? e.relay : undefined;
+      // Mục chỉ có relay (máy chưa đo được địa chỉ ngoài) VẪN dùng được — đó đúng là ca tầng 4 sinh
+      // ra để cứu. Bỏ nó là quay lại đúng bệnh vừa vá.
+      if (!e.host && !relay) continue;
       if (sameDeviceId(e.fp, o.selfDeviceId)) continue; // mục của chính mình
       if (!o.allowedPeers.some((a) => sameDeviceId(a, e.fp as string))) continue;
-      if (!isPublicIpv4(e.host)) continue; // ai đó đăng địa chỉ LAN — bỏ, đừng bắn vào đó
+      if (e.host && !isPublicIpv4(e.host)) continue; // ai đó đăng địa chỉ LAN — bỏ, đừng bắn vào đó
       const at = Date.parse(e.at);
       if (!Number.isFinite(at) || now - at > PRESENCE_STALE_MS) continue; // hết hạn
-      out.push({ fp: e.fp, host: e.host, port: e.port, at: e.at });
+      out.push({ fp: e.fp, host: e.host ?? "", port: e.port, at: e.at, relay });
     } catch {
       /* file rác hoặc đang được ghi dở — bỏ qua, nhịp sau đọc lại */
     }

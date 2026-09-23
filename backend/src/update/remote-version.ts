@@ -35,6 +35,8 @@ export interface RemoteMeasure {
   ok: boolean;
   /** Semver đọc từ `package.json` của commit mới nhất trên remote. */
   latest?: string;
+  /** Bản ĐANG CHẠY lúc đo — mốc để biết cây mã đã đổi kể từ lượt đo đó. */
+  have?: string;
   /** Sha ngắn của commit đó. */
   commit?: string;
   /** Ngày commit (ISO). */
@@ -84,8 +86,23 @@ export function writeUpdateCache(c: RemoteVersionCache, file: string = updateCac
 }
 
 /** Tới hạn đo lại chưa. Chưa từng đo ⇒ tới hạn ngay. */
-export function cacheDue(c: RemoteVersionCache | null, now: number, okMs = OK_TTL_MS, errMs = ERR_TTL_MS): boolean {
+export function cacheDue(
+  c: RemoteVersionCache | null,
+  now: number,
+  okMs = OK_TTL_MS,
+  errMs = ERR_TTL_MS,
+  have?: string,
+): boolean {
   if (!c) return true;
+  // 🔴 BẢN TRÊN MÁY ĐỔI ⇒ đệm hết hạn NGAY, đừng đợi hết 6 giờ.
+  //
+  // Bắt được 23/09: sau một lượt hạ version (viết lại lịch sử git), app còn khoe *"bản mới trên
+  // git 3.6.0, commit f1cce93"* — một bản VÀ một commit không còn tồn tại trên origin. Nó sẽ
+  // nói dối suốt 6 tiếng, và người dùng không có cách nào bảo nó đo lại ngoài chờ.
+  //
+  // Cây mã dưới chân đổi thì mọi thứ đã đo về remote đều đáng ngờ — đó là tín hiệu rẻ nhất và
+  // chắc nhất để vứt đệm, rẻ hơn hẳn việc đi hỏi git xem commit cũ còn sống không.
+  if (have && c.have && have !== c.have) return true;
   const t = Date.parse(c.checkedAt);
   if (!Number.isFinite(t)) return true;
   return now - t >= (c.ok ? okMs : errMs);
@@ -165,9 +182,13 @@ export function measureRemoteVersion(root: string = toolRoot()): RemoteMeasure {
 }
 
 /** Đo rồi ghi cache — một lời gọi cho cả CLI lẫn lượt làm mới nền. */
-export function refreshRemoteVersion(root: string = toolRoot(), file: string = updateCacheFile()): RemoteVersionCache {
+export function refreshRemoteVersion(
+  root: string = toolRoot(),
+  file: string = updateCacheFile(),
+  have?: string,
+): RemoteVersionCache {
   const m = measureRemoteVersion(root);
-  const c: RemoteVersionCache = { ...m, checkedAt: new Date().toISOString() };
+  const c: RemoteVersionCache = { ...m, checkedAt: new Date().toISOString(), have };
   writeUpdateCache(c, file);
   return c;
 }
@@ -193,6 +214,26 @@ export interface AppUpdate {
  * bản phát hành mới biến mất khỏi mắt máy thứ hai. Lấy max thì một nguồn cũ chỉ là im lặng,
  * không phải nói dối.
  */
+/**
+ * Bản trên máy đang ĐI TRƯỚC repo — trả về khi bản đang chạy CAO hơn bản trên git.
+ *
+ * 🔴 Vì sao cần nói ra: `pickUpdate` chỉ mời cập nhật khi remote MỚI hơn, nên ở ca ngược lại nó
+ * trả rỗng và bề mặt in *"Zemory đang là bản mới nhất"*. Câu đó SAI: máy đang chạy một bản
+ * **không còn tồn tại trên repo**, tức chính nó mới là thứ lệch. Xảy ra thật sau lượt hạ version
+ * 23/09, và im lặng ở đây là để người dùng tin mình đang đúng chuẩn trong khi không phải.
+ *
+ * Chỉ xét nguồn GIT: tem kênh chung có thể cũ một cách bình thường (máy lâu không sync), nên
+ * lấy nó làm căn cứ *đi trước* là báo động giả.
+ */
+export function aheadOfRepo(
+  have: string,
+  git: { latest?: string; commit?: string; at?: string; ok?: boolean } | null,
+): { have: string; latest: string; from: string } | undefined {
+  if (!have || !git?.ok || !git.latest) return undefined;
+  if (cmpSemver(have, git.latest) <= 0) return undefined;
+  return { have, latest: git.latest, from: git.commit ?? "" };
+}
+
 export function pickUpdate(
   have: string,
   git: { latest?: string; commit?: string; at?: string; ok?: boolean } | null,
