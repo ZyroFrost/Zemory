@@ -11,6 +11,7 @@
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { MAX_FRAME_BYTES } from "./wire.js";
 import {
   chunkBlockId,
   listChannelSegments,
@@ -40,6 +41,12 @@ export function inventory(channelDir: string): BlockRef[] {
   for (const seg of listChannelSegments(channelDir)) {
     if (!isContainer(seg.path)) continue;
     for (const chunk of listContainerChunks(seg.path)) {
+      // 🔴 KHÔNG khai khối lớn hơn một khung. Cùng nguyên tắc với dòng trên: **đừng khai thứ mình
+      // không giao được**. Khối vượt `MAX_FRAME_BYTES` thì không khung nào chứa nổi, nên khai nó
+      // là nói với máy kia *"tôi có"* cho một thứ ta vĩnh viễn không gửi được — và tệ hơn, máy kia
+      // đọc `have` của ta rồi **thôi không gửi khối đó cho ta nữa**, nên hai bên cùng nghĩ bên kia
+      // đã có. Ca thật: baseline đời cũ 2,4–2,5 GB nằm trong ngăn kênh (đo 23/09).
+      if (chunk.len > MAX_FRAME_BYTES) continue;
       const id = chunkBlockId(seg.path, chunk);
       if (id) out.push({ id, segment: seg.path, chunk });
     }

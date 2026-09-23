@@ -237,6 +237,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "done") {
+        // Nói ra cả hai chiều `done`: một phiên treo tới hết giờ hầu như luôn là MỘT bên không
+        // đóng sổ, và không có hai dòng này thì không cách nào biết bên nào.
+        o.log?.(`[channel] nhận "xong" từ máy kia (${m.sent ?? "?"} khối)`);
         gotDone = true;
         tryFinish();
       }
@@ -282,6 +285,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           shipped++;
         }
         send(encodeJson({ t: "done", sent: shipped }));
+        o.log?.(`[channel] đã gửi "xong" (${shipped} khối) — chờ máy kia đóng sổ`);
         sentDone = true;
         tryFinish();
       } catch (e) {
