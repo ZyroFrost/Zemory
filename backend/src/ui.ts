@@ -1678,6 +1678,8 @@ let autoWait = AUTO_CONNECT_MIN_MS;
 let autoBusy = false;
 /** Lượt trước có nối được không — chỉ để biết KHI NÀO đáng ghi một dòng log. */
 let autoLastOk: boolean | null = null;
+/** Vân tay relay của các máy đã biết ở lượt trước — đổi ⇒ thử lại ngay. */
+let autoLastRelays = "";
 
 /**
  * Tới lượt tự nối chưa — hàm THUẦN, tách ra để có cổng soi.
@@ -1690,6 +1692,25 @@ let autoLastOk: boolean | null = null;
  *   hai lượt lên nhau là hai kẻ ghi cùng một kho (HP điều 11).
  * · **chưa tới nhịp** ⇒ tôn trọng thụt lùi.
  */
+/**
+ * Dấu vân tay tập địa chỉ relay của các máy đã biết — đổi nghĩa là ĐÁNG THỬ LẠI NGAY.
+ *
+ * 🔴 Vì sao cần: thụt lùi giãn tới 30 phút cho một máy im. Nhưng một máy trên mạng 4G không hề
+ * im — nó đổi IP, rớt relay, vào relay KHÁC, rồi chờ ở đó. Với thụt lùi dài thì ta ngồi im tới
+ * nửa tiếng trong khi bên kia đã sẵn sàng ở một địa chỉ mới. Đo 23/09: IP máy này đổi BA lần
+ * trong ~10 phút, và hai máy trượt nhau đúng theo kiểu đó.
+ *
+ * Đặt lại nhịp theo TÍN HIỆU chứ không rút timer cho mọi ca: rút timer là đốt ngân sách đều đặn
+ * cho một máy đang tắt hẳn, trong khi thứ ta thật sự chờ là *bên kia vừa đổi chỗ đứng*.
+ */
+export function relayFingerprint(entries: readonly { fp: string; relay?: string }[]): string {
+  return entries
+    .filter((e) => e.relay)
+    .map((e) => `${e.fp}=${e.relay}`)
+    .sort()
+    .join("|");
+}
+
 export function autoConnectDue(o: {
   enabled: boolean;
   peers: number;
@@ -1719,6 +1740,21 @@ export function autoConnectDue(o: {
 async function autoConnectTick(projectRoot: string): Promise<void> {
   const { getP2pEnabled, getP2pPeers } = await import("./config/settings.js");
   const peers = getP2pPeers();
+  // Máy kia vừa đổi relay ⇒ bỏ thụt lùi, thử lại ngay. Đọc bảng chung là một lượt đọc đĩa rẻ,
+  // rẻ hơn hẳn việc ngồi chờ hết nhịp 30 phút cho một máy đã sẵn sàng ở chỗ mới.
+  try {
+    const ch = await import("./memory/channel/index.js");
+    const fp = relayFingerprint(
+      ch.readPresence(getDriveDir(), { selfDeviceId: ch.channelStatus().deviceId, allowedPeers: peers }),
+    );
+    if (fp && fp !== autoLastRelays) {
+      autoLastRelays = fp;
+      autoWait = AUTO_CONNECT_MIN_MS;
+      autoNextAt = 0;
+    }
+  } catch {
+    /* không đọc được bảng chung ⇒ giữ nhịp cũ, đường nào cũng chạy y nguyên (điều 9) */
+  }
   if (
     !autoConnectDue({
       enabled: getP2pEnabled(),

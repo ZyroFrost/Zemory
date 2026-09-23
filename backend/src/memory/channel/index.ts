@@ -776,9 +776,8 @@ export async function startChannelServer(o: {
      */
     const beat = async (): Promise<void> => {
       let host: string | null = null;
-      try {
-        const ext = externalAddressStale() ? await refreshExternalAddress(server.port) : externalAddress();
-        host = ext?.host ?? null;
+      /** Đăng địa chỉ HIỆN TẠI lên bảng chung — gọi được nhiều lần trong một nhịp, xem cuối hàm. */
+      const publish = (): void => {
         publishPresence(getDriveDir(), {
           deviceId: channelIdentity().deviceId,
           host,
@@ -787,6 +786,11 @@ export async function startChannelServer(o: {
           // lên cụm dò toàn cầu thất bại. Xem chú thích ở `PresenceEntry.relay`.
           relay: relayAt?.url ?? null,
         });
+      };
+      try {
+        const ext = externalAddressStale() ? await refreshExternalAddress(server.port) : externalAddress();
+        host = ext?.host ?? null;
+        publish();
       } catch {
         /* ổ chung chập / STUN im — nhịp sau thử lại, đường cũ không bị đụng (điều 9) */
       }
@@ -796,7 +800,23 @@ export async function startChannelServer(o: {
       // chặn lượt đăng.
       await announceBeat(server.port, host);
       // Giữ cho luôn có một relay để chờ: vào lại sau khi rớt, và thử lại sau một lượt trượt.
+      const relayBefore = relayAt?.url ?? null;
       await keepRelay(server, key, peers, o, log);
+      // 🔴 VÀO RELAY MỚI TRONG CHÍNH NHỊP NÀY ⇒ báo LẠI ngay, đừng đợi nhịp sau.
+      //
+      // `publish()` ở trên chạy TRƯỚC `keepRelay`, nên một relay vừa vào chỉ lên bảng chung ở nhịp
+      // kế — chậm trọn 60 giây. Trên mạng ổn định thì vô hình (vào relay đúng một lần lúc bật),
+      // nhưng trên mạng 4G xoay IP thì kết nối relay đứt mỗi lần đổi IP, nên **mỗi lần xoay là một
+      // lỗ 60 giây** máy kia tra đúng lúc đó sẽ thấy relay CŨ hoặc không thấy gì.
+      //
+      // Đo 23/09 trên máy này: IP công khai đổi BA lần trong ~10 phút, và hai máy trượt nhau đúng
+      // theo kiểu đó — máy kia báo `connectViaRelay` trả `null` rồi rơi xuống đục lỗ.
+      if ((relayAt?.url ?? null) !== relayBefore) {
+        publish();
+        // Cụm dò toàn cầu cũng vừa bị bỏ lỡ vì cùng lý do: `announceBeat` ở trên chạy trước
+        // `keepRelay`. Gọi lại — nó tự thấy relay đã đổi và đăng ngay.
+        await announceBeat(server.port, host);
+      }
     };
     void beat().then(() => {
       if (externalAddress()) log(`[channel] đã đăng địa chỉ lên bảng chung — máy đã kết nối đọc được địa chỉ mới nhất`);
