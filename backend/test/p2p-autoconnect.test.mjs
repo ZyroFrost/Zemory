@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { autoConnectDue } from "../../dist/ui.js";
+import { autoConnectDue, relayFingerprint } from "../../dist/ui.js";
 
 const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 
@@ -97,4 +97,39 @@ test("`waiting` KHÔNG được tính là nối được", () => {
   // thì thụt lùi về đáy và log báo "đã đồng bộ" cho một lượt chưa chở một khối nào; đúng kiểu bề
   // mặt nói dối mà `§F3` cấm, chỉ khác là lần này nó nói dối với chính vòng nền.
   assert.match(UI, /if \(r\.ok === true && r\.waiting !== true\) ok = true;/);
+});
+
+test("vân tay relay: máy kia ĐỔI RELAY là tín hiệu thử lại ngay", () => {
+  // 🔴 Vì sao cần: thụt lùi giãn tới 30 phút cho một máy im. Nhưng máy trên mạng 4G KHÔNG im — nó
+  // đổi IP, rớt relay, vào relay KHÁC rồi chờ ở đó. Với thụt lùi dài thì ta ngồi im nửa tiếng
+  // trong khi bên kia đã sẵn sàng ở địa chỉ mới. Đo 23/09: IP máy này đổi BA lần trong ~10 phút.
+  const A = { fp: "AAA", relay: "relay://203.0.113.9:22067/?id=X" };
+  const B = { fp: "BBB", relay: "relay://198.51.100.2:443/?id=Y" };
+
+  assert.equal(relayFingerprint([A, B]), relayFingerprint([B, A]), "thứ tự đọc thư mục KHÔNG được đổi vân tay");
+  assert.notEqual(relayFingerprint([A]), relayFingerprint([{ ...A, relay: "relay://203.0.113.9:443/?id=X" }]),
+    "đổi relay ⇒ đổi vân tay");
+  assert.notEqual(relayFingerprint([A]), relayFingerprint([A, B]), "thêm một máy có relay ⇒ đổi vân tay");
+
+  // CA ÂM: mục KHÔNG có relay không được ảnh hưởng vân tay — nếu không thì mỗi lần một máy làm tươi
+  // địa chỉ gọi thẳng lại kích một lượt thử, tức rút timer bằng cửa sau.
+  assert.equal(relayFingerprint([A, { fp: "CCC" }]), relayFingerprint([A]));
+  assert.equal(relayFingerprint([]), "");
+  assert.equal(relayFingerprint([{ fp: "CCC" }]), "", "không máy nào có relay ⇒ vân tay rỗng, không kích gì");
+});
+
+test("vào relay mới phải báo NGAY, không đợi nhịp sau", () => {
+  // 🔴 `publishPresence` chạy TRƯỚC `keepRelay` trong cùng một nhịp, nên một relay vừa vào chỉ lên
+  // bảng chung ở nhịp KẾ — chậm trọn 60 giây. Mạng ổn định thì vô hình (vào relay một lần lúc bật);
+  // mạng 4G xoay IP thì mỗi lần xoay là một lỗ 60 giây, và máy kia tra đúng lúc đó thấy relay CŨ.
+  const CH = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const beat = CH.slice(CH.indexOf("const beat = async ()"), CH.indexOf("void beat()"));
+  assert.ok(beat.length > 0, "không thấy nhịp beat — neo đã chết");
+
+  assert.match(beat, /const relayBefore = relayAt\?\.url \?\? null;/, "phải chụp relay TRƯỚC khi gọi keepRelay");
+  assert.match(beat, /if \(\(relayAt\?\.url \?\? null\) !== relayBefore\) \{/, "đổi relay trong nhịp ⇒ báo lại");
+  // Cả HAI kênh rendezvous đều bị bỏ lỡ vì cùng lý do, nên cả hai phải được gọi lại.
+  const after = beat.slice(beat.indexOf("!== relayBefore"));
+  assert.match(after, /publish\(\);/, "bảng chung phải được đăng lại");
+  assert.match(after, /await announceBeat\(/, "cụm dò toàn cầu cũng phải được đăng lại");
 });
