@@ -209,6 +209,48 @@ test("mirror-e2e: mục files/ chở THẲNG — không hàng đợi, vì không
   assert.equal(r.client.appliedFiles + (r.server?.appliedFiles ?? 0) >= 1, true);
 });
 
+test("mirror-e2e: MÁY MỚI chưa có thư mục nào vẫn phải NHẬN được — thư mục tự sinh", async (t) => {
+  // 🔴 Ca THẬT, đo trên hai máy 2026-09-24: đầu này log `đã gửi "xong" (5560 file)` **lặp lại
+  // nguyên con số đó** ở tám lượt liên tiếp. Giữ được dù một file thì lượt sau phải tụt; nó không
+  // tụt lần nào ⇒ đầu kia không giữ lại gì. Gốc: `mirrorRoots()` chặn mọi mục bằng `existsSync`,
+  // mà chiều NHẬN cũng gọi đúng hàm đó ⇒ máy chưa có `docs_visual/` thì vĩnh viễn không nhận
+  // được nó, và thư mục đó không bao giờ sinh ra vì chính phép nhận mới là thứ tạo nó.
+  //
+  // Đây đúng ca "máy mới nhận bàn giao" của HP điều 16 — thứ cả lớp này tồn tại để phục vụ.
+  const a = makeMachine(t, "na", "chia-chung-newbox");
+  const b = makeMachine(t, "nb", "chia-chung-newbox");
+  // B là máy TRẮNG: xoá sạch ba thư mục mirror, giữ đúng gốc repo/kho như một bản clone mới.
+  for (const d of ["docs", "docs_visual", "attic"]) rmSync(join(b.repoRoot, d), { recursive: true, force: true });
+  rmSync(join(b.storeRoot, "files"), { recursive: true, force: true });
+
+  write(a, "docs", "agent/02_RULES.md", "luat\n");
+  write(a, "docs_visual", "design/so-do.txt", "so do\n");
+  write(a, "attic", "cu/ghi-chu.md", "ghi chu\n");
+  write(a, "files", "images/2026-09/ab12_anh.png", "BYTE-ANH");
+
+  const r = await syncPair(a, b);
+  assert.equal(r.client.error, undefined, `phiên phải sạch: ${r.client.error ?? ""}`);
+  assert.equal(r.client.sentFiles, 4, "A phải chở đủ bốn mục");
+
+  // `files/` địa chỉ theo nội dung ⇒ ghi THẲNG, kể cả khi thư mục chưa từng tồn tại.
+  assert.equal(readAt(b, "files", "images/2026-09/ab12_anh.png"), "BYTE-ANH", "máy trắng vẫn phải nhận được files/");
+  // Ba mục chữ vào hàng đợi (chưa duyệt thì chưa ghi) — nhưng phải VÀO ĐƯỢC, không bị từ chối.
+  const q = listQueue(b.db);
+  assert.equal(q.length, 3, `ba mục chữ phải vào hàng đợi, đang có ${q.length}`);
+  assert.equal(r.client.receivedFiles, 0, "A không nhận gì (B trắng)");
+  assert.equal(r.server?.receivedFiles ?? 0, 4, "B phải ĐẾM đủ 4 file nhận về");
+  assert.equal((r.server?.appliedFiles ?? 0) + (r.server?.queuedFiles ?? 0), 4, "không file nào được phép rơi im lặng");
+
+  // Duyệt cả nhóm ⇒ thư mục tự sinh ra trên đĩa.
+  for (const row of q) {
+    const ap = applyQueued(b.db, row.id, "theirs", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+    assert.equal(ap.ok, true, `duyệt ${row.area}/${row.rel} phải ăn: ${ap.ok ? "" : ap.error}`);
+  }
+  assert.equal(readAt(b, "docs", "agent/02_RULES.md"), "luat\n");
+  assert.equal(readAt(b, "docs_visual", "design/so-do.txt"), "so do\n");
+  assert.equal(readAt(b, "attic", "cu/ghi-chu.md"), "ghi chu\n");
+});
+
 test("mirror-e2e: hội tụ rồi thì lượt sau KHÔNG chở lại gì", async (t) => {
   const a = makeMachine(t, "ia", "chia-chung-idem");
   const b = makeMachine(t, "ib", "chia-chung-idem");

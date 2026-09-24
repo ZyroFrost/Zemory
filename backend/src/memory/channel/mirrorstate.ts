@@ -38,7 +38,7 @@ import {
   hashBytes,
   isContentAddressed,
   MAX_TEXT_MERGE_BYTES,
-  mirrorRoots,
+  mirrorRootFor,
   resolveMirrorPath,
   scanMirror,
   type MirrorArea,
@@ -256,9 +256,10 @@ export function applyQueued(db: MemoryDB, id: number, choice: ApplyChoice, opts:
   | { ok: false; error: string } {
   const { theirs, merged, row } = queueBodies(db, id);
   if (!row) return { ok: false, error: "dòng chờ không còn" };
-  const roots = mirrorRoots(opts);
-  const root = roots.find((r) => r.area === row.area);
-  if (!root) return { ok: false, error: `mục ${row.area} không có trên máy này` };
+  // GHI ⇒ gốc "SẼ nằm đâu", không phải gốc "đang có". Duyệt một mục của máy trắng phải tạo
+  // được thư mục; dùng `mirrorRoots()` ở đây là tái tạo đúng vòng luẩn quẩn đã trả giá.
+  const root = mirrorRootFor(row.area, opts);
+  if (!root) return { ok: false, error: `không xác định được chỗ đặt mục ${row.area} trên máy này` };
   const abs = resolveMirrorPath(root, row.rel);
   if (!abs) return { ok: false, error: "đường dẫn bị từ chối" };
 
@@ -319,9 +320,10 @@ export function receiveFile(
   body: Buffer,
   opts: { autoApply?: boolean; repoRoot?: string; storeRoot?: string } = {},
 ): IncomingResult {
-  const roots = mirrorRoots(opts);
-  const root = roots.find((r) => r.area === area);
-  if (!root) return { verdict: "none", applied: false, queued: false, error: `mục ${area} không có trên máy này` };
+  // NHẬN ⇒ gốc "SẼ nằm đâu". Đây CHÍNH LÀ chỗ đã hỏng: máy chưa có `docs_visual/` thì mọi
+  // file của mục đó bị từ chối, nên thư mục vĩnh viễn không ra đời (xem `mirrorRootFor`).
+  const root = mirrorRootFor(area, opts);
+  if (!root) return { verdict: "none", applied: false, queued: false, error: `không xác định được chỗ đặt mục ${area} trên máy này` };
   const abs = resolveMirrorPath(root, rel);
   if (!abs) return { verdict: "none", applied: false, queued: false, error: "đường dẫn bị từ chối" };
 
@@ -456,7 +458,8 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
     // CÙNG `opts` với `inventory` — đó là cả điểm của việc phép đọc sống ở đây chứ không ở
     // lớp dây: một gốc, một câu trả lời cho *"file này nằm đâu"*.
     read: (area, rel) => {
-      const root = mirrorRoots(opts).find((r) => r.area === area);
+      // ĐỌC: gốc chưa có thì `safeRead` trả `null` — cùng kết cục, một đường.
+      const root = mirrorRootFor(area, opts);
       if (!root) return null;
       const abs = resolveMirrorPath(root, rel);
       return abs ? safeRead(abs) : null;

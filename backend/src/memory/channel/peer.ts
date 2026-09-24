@@ -182,6 +182,33 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const mirrorOn = (): boolean => Boolean(o.mirror) && peerMirror;
 
     /**
+     * Lỗi lúc NHẬN file: in vài dòng đầu, phần còn lại GOM lại một dòng ở cuối phiên.
+     *
+     * 🔴 Vì sao phải chặn: lỗi ở đây gần như không bao giờ lẻ tẻ — nó là lỗi HỆ THỐNG, nên
+     * một lượt hỏng là hỏng CẢ kiểm kê. Đo ca thật 24/09: phía nhận từ chối trọn **5.560**
+     * file mỗi lượt. In mỗi file một dòng là 5.560 dòng mỗi 30 phút, tức nhấn chìm đúng cái
+     * nhật ký mà `plan/24 §10.1` bắt buộc phải có sau khi giấu cửa sổ console. Nhật ký ngập
+     * là nhật ký không ai đọc — cùng doctrine *"một cổng kêu suốt là cổng sắp bị bỏ qua"*.
+     *
+     * Gom theo LÝ DO, không theo đường dẫn: người đọc cần biết *bệnh gì* và *bao nhiêu*, còn
+     * 5.560 đường dẫn thì không nói thêm điều gì.
+     */
+    const RECV_ERR_SHOWN = 3;
+    const recvErrors = new Map<string, number>();
+    let recvErrShown = 0;
+    const noteRecvError = (area: string, rel: string, err: string): void => {
+      recvErrors.set(err, (recvErrors.get(err) ?? 0) + 1);
+      if (recvErrShown++ < RECV_ERR_SHOWN) o.log?.(`[channel] mirror: ${area}/${rel} — ${err}`);
+    };
+    const flushRecvErrors = (): void => {
+      let total = 0;
+      for (const n of recvErrors.values()) total += n;
+      if (total <= RECV_ERR_SHOWN) return;
+      const parts = [...recvErrors].map(([why, n]) => `${n}× ${why}`).join(" · ");
+      o.log?.(`[channel] mirror: KHÔNG nhận được ${total} file — ${parts}`);
+    };
+
+    /**
      * 🔴 `end()` để ĐẨY NỐT, `destroy()` chỉ khi HỎNG.
      *
      * Bug thật bắt được lúc dựng cổng: bản đầu gọi `end()` rồi `destroy()` ngay dòng
@@ -381,6 +408,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       }
       if (m.t === "mdone") {
         o.log?.(`[channel] mirror: nhận "xong" từ máy kia (${m.sent ?? "?"} file)`);
+        // Gom lỗi NGAY ở đây, không đợi `finish()`: `finish()` cũng chạy ở nhánh đứt dây và
+        // hết giờ, còn đây là chỗ duy nhất biết chắc bên kia đã chở xong phần của nó.
+        flushRecvErrors();
         mGotDone = true;
         tryFinish();
       }
@@ -544,7 +574,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           if (!r) continue;
           if (r.applied) out.appliedFiles++;
           if (r.queued) out.queuedFiles++;
-          if (r.error) o.log?.(`[channel] mirror: ${head.area}/${head.rel} — ${r.error}`);
+          if (r.error) noteRecvError(head.area, head.rel, r.error);
         }
       }
     });
