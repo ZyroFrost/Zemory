@@ -140,18 +140,31 @@ export function excludeReason(rel: string, name: string, size: number): string |
  * (`filesRoot`) vì nó đi cùng kho (plan/25 §1).
  */
 export function mirrorRoots(opts: { repoRoot?: string; storeRoot?: string } = {}): MirrorRoot[] {
+  return MIRROR_AREAS.map((area) => mirrorRootFor(area, opts)).filter((r): r is MirrorRoot => Boolean(r) && existsSync((r as MirrorRoot).path));
+}
+
+/**
+ * Chỗ một mục SẼ nằm trên máy này — **tồn tại hay chưa cũng trả về**.
+ *
+ * 🔴 Đây là nửa còn lại của `mirrorRoots()`, và thiếu nó là một lỗi ĐÃ TRẢ GIÁ THẬT
+ * (đo trên hai máy 2026-09-24). Chiều NHẬN từng gọi chính `mirrorRoots()`, tức nó chỉ nhận
+ * được mục mà máy này **đã có thư mục**. Nhưng thư mục đó chỉ sinh ra khi có file đầu tiên
+ * được ghi vào — mà phép ghi lại bị chặn vì thư mục chưa có. Vòng luẩn quẩn khép kín:
+ * **một máy mới không bao giờ nhận được gì**, và không lỗi nào nổ ở đầu gửi.
+ *
+ * Triệu chứng đo được: đầu gửi log `đã gửi "xong" (5560 file)` **lặp lại nguyên con số đó**
+ * qua tám lượt liên tiếp — giữ được dù một file thì lượt sau phải tụt. Đúng ca "máy mới nhận
+ * bàn giao" mà HP điều 16 đặt làm mục đích của cả hệ.
+ *
+ * Hai hàm, hai câu hỏi, đừng gộp lại: *"quét cái gì"* chỉ hỏi thứ CÓ THẬT · *"ghi vào đâu"*
+ * phải trả lời được cả khi chưa có gì. `writeFileAtomic` tự tạo thư mục cha, nên chỗ ghi
+ * đầu tiên là chỗ thư mục ra đời.
+ */
+export function mirrorRootFor(area: MirrorArea, opts: { repoRoot?: string; storeRoot?: string } = {}): MirrorRoot | null {
+  if (area === "files") return { area, path: filesRoot(opts.storeRoot ?? currentStoreRoot()) };
   const repo = opts.repoRoot ?? selfRepoRoot();
-  const store = opts.storeRoot ?? currentStoreRoot();
-  const out: MirrorRoot[] = [];
-  if (repo) {
-    for (const area of ["docs", "docs_visual", "attic"] as const) {
-      const p = join(repo, area);
-      if (existsSync(p)) out.push({ area, path: p });
-    }
-  }
-  const f = filesRoot(store);
-  if (existsSync(f)) out.push({ area: "files", path: f });
-  return out;
+  // Không biết repo nằm đâu thì TỪ CHỐI — đoán một chỗ để ghi vào là tệ hơn không ghi.
+  return repo ? { area, path: join(repo, area) } : null;
 }
 
 /** Quét một gốc. Mục địa chỉ-theo-nội-dung KHÔNG băm (xem khối chú thích đầu file). */
