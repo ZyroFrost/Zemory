@@ -185,7 +185,7 @@ export interface SessionOptions {
    * thái khi trọn một lượt xong. Đo 2026-09-25: phiên relay bắt tay 16:31:38, đã gửi khối và file,
    * mà thẻ nói dối tới tận lúc soi log. "Đang nối" phải nghĩa là *ống đang mở*, không phải *đã hội tụ*.
    */
-  onOpen?: () => void;
+  onOpen?: (peerDeviceId: string) => void;
   /** Im bao lâu thì bắn nhịp tim. Mặc định `PING_IDLE_MS` — cổng hạ xuống vài trăm ms để soi nhanh. */
   pingIdleMs?: number;
   /** Không nghe thấy gì bao lâu thì coi là đứt (chỉ ở chế độ thường trực). Mặc định `LINK_DEAD_MS`. */
@@ -536,7 +536,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         }
         proofOk = true;
         // Máy đã quen + cùng chìa ⇒ liên kết SỐNG ngay tại đây, không đợi lượt đầu đóng sổ.
-        if (paired) o.onOpen?.();
+        if (paired) o.onOpen?.(peerId ?? "");
         // Bên GỌI đang nối tới máy chưa quen ⇒ xin nhận trước khi khai kho.
         //
         // 🔴 `acceptPeer` cũng tính là "sẵn sàng làm quen", không riêng `wantPair`. Thiếu vế đó
