@@ -393,24 +393,15 @@
     var box=zid('p2pQueue'), badge=zid('p2pQBadge');
     if(!box)return;
     var rows=(r&&r.rows)||[];
-    if(badge)badge.textContent=rows.length?String(rows.length):'';
+    // HAI nhóm: đang CHỜ NGƯỜI, và "để sau". Nhóm sau vẫn nằm trong hàng đợi (để máy kia thôi
+    // gửi lại) nhưng không được đếm lên nhãn và không được bật lại lên mặt — người dùng đã nói
+    // "để sau" thì mặt trước phải im cho tới khi máy kia có cái MỚI.
+    var active=rows.filter(function(x){return !x.dismissedAt;});
+    var later=rows.filter(function(x){return !!x.dismissedAt;});
+    if(badge)badge.textContent=active.length?String(active.length):'';
     box.innerHTML='';
     if(!rows.length)return;
-    var mergeable=rows.filter(function(x){return x.verdict!=='block';});
-    var h=document.createElement('div');
-    h.className='section-t';h.style.marginTop='0';
-    h.textContent=t('mir.h');
-    box.appendChild(h);
-    // Duyệt CẢ NHÓM chỉ cho nhóm KHÔNG trùng đoạn. Dòng bị chặn cố ý không có nút tự động —
-    // user chốt: *"phải block lại và hỏi xài bên máy nào"*.
-    if(mergeable.length>1){
-      var all=document.createElement('button');
-      all.className='btn sm';all.style.margin='0 0 8px';
-      all.textContent=t('mir.acceptAll').replace('{n}',String(mergeable.length));
-      all.setAttribute('data-act','mir-all');
-      box.appendChild(all);
-    }
-    rows.forEach(function(q){
+    function card(q){
       var blocked=q.verdict==='block';
       var d=document.createElement('div');
       d.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--surface-2)';
@@ -425,15 +416,22 @@
         var b=document.createElement('button');
         b.className='btn xs';b.textContent=label;
         b.setAttribute('data-act','mir-apply');b.setAttribute('data-id',String(q.id));b.setAttribute('data-choice',choice);
+        // Verdict ĐANG VẼ đi kèm cú bấm: đĩa đổi sau khi màn hình vẽ thì kho từ chối, không đè.
+        b.setAttribute('data-seen',q.verdict);
         return b;
       }
+      // "Giữ bản máy này" ở MỌI verdict, không chỉ khi bị chặn. Bản trước `take` chỉ có [Nhận]/[Để
+      // sau] — người dùng KHÔNG có cách nào nói "bản của tôi đúng, thôi hỏi", và hai máy mà mỗi bên
+      // đều bấm Nhận bản kia là hoán đổi tệp cho nhau mãi mãi (đo thật 25/09: `06_CHANGES` mất một
+      // mục vì đúng vòng đó).
       if(blocked){
         bar.appendChild(mk(t('mir.keepMine'),'mine'));
         bar.appendChild(mk(t('mir.useTheirs'),'theirs'));
       }else{
         bar.appendChild(mk(t('mir.accept'),q.verdict==='merge'?'merged':'theirs'));
+        bar.appendChild(mk(t('mir.keepMine'),'mine'));
       }
-      bar.appendChild(mk(t('mir.later'),'dismiss'));
+      if(!q.dismissedAt)bar.appendChild(mk(t('mir.later'),'dismiss'));
       var dv=document.createElement('button');
       dv.className='btn xs';dv.textContent=t('mir.diff');
       dv.setAttribute('data-act','mir-diff');dv.setAttribute('data-id',String(q.id));
@@ -443,8 +441,35 @@
       pre.id='mirD'+q.id;
       pre.style.cssText='display:none;max-height:220px;overflow:auto;margin:8px 0 0;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:10.5px;line-height:1.5;white-space:pre-wrap;word-break:break-all;color:var(--text-dim)';
       d.appendChild(pre);
-      box.appendChild(d);
-    });
+      return d;
+    }
+    if(active.length){
+      var mergeable=active.filter(function(x){return x.verdict!=='block';});
+      var h=document.createElement('div');
+      h.className='section-t';h.style.marginTop='0';
+      h.textContent=t('mir.h');
+      box.appendChild(h);
+      // Duyệt CẢ NHÓM chỉ cho nhóm KHÔNG trùng đoạn. Dòng bị chặn cố ý không có nút tự động —
+      // user chốt: *"phải block lại và hỏi xài bên máy nào"*.
+      if(mergeable.length>1){
+        var all=document.createElement('button');
+        all.className='btn sm';all.style.margin='0 0 8px';
+        all.textContent=t('mir.acceptAll').replace('{n}',String(mergeable.length));
+        all.setAttribute('data-act','mir-all');
+        box.appendChild(all);
+      }
+      active.forEach(function(q){box.appendChild(card(q));});
+    }
+    if(later.length){
+      // Gập lại một dòng, không phải biến mất hẳn: "để sau" vẫn phải tìm lại được.
+      var lt=document.createElement('button');
+      lt.className='btn xs';lt.style.margin='2px 0 6px';
+      lt.textContent=t('mir.laterN').replace('{n}',String(later.length));
+      var wrap=document.createElement('div');wrap.style.display='none';
+      later.forEach(function(q){wrap.appendChild(card(q));});
+      lt.onclick=function(){wrap.style.display=wrap.style.display==='none'?'':'none';};
+      box.appendChild(lt);box.appendChild(wrap);
+    }
   }
   function loadQueue(){return zGet('/mirror-queue').then(renderQueue).catch(function(){});}
   window.zLoadMirrorQueue=loadQueue;
@@ -475,7 +500,8 @@
       // Chỉ nhóm KHÔNG trùng đoạn. Lấy lại danh sách từ server thay vì tin DOM: DOM có thể cũ
       // hơn kho nếu vừa có một lượt đồng bộ chạy nền.
       zGet('/mirror-queue').then(function(r){
-        var rows=((r&&r.rows)||[]).filter(function(x){return x.verdict!=='block';});
+        // Bỏ cả mục "để sau": người dùng đã gạt nó ra, "duyệt cả nhóm" không được lôi lại.
+        var rows=((r&&r.rows)||[]).filter(function(x){return x.verdict!=='block'&&!x.dismissedAt;});
         var chain=Promise.resolve();
         rows.forEach(function(q){
           chain=chain.then(function(){
@@ -503,8 +529,13 @@
       return;
     }
     if(act==='mir-apply'){
-      zPost('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice')))
-        .then(loadQueue).catch(loadQueue);
+      zPost('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice'))+'&seen='+encodeURIComponent(el.getAttribute('data-seen')||''))
+        .then(function(r){
+          // Bị TỪ CHỐI (tệp đã đổi từ lúc nhận) thì phải nói ra — im lặng rồi vẽ lại là người dùng
+          // tưởng nút không ăn, bấm tiếp, và lần thứ hai có thể ăn thật lên bản mới nhất.
+          if(r&&r.ok===false)p2pMsg('✗ '+(r.error||t('mir.err')));
+          return loadQueue();
+        }).catch(loadQueue);
     }
   });
 

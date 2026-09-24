@@ -120,7 +120,7 @@ function resolveStoreRoot(): string {
 export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DB = ENV_DB || join(resolveStoreRoot(), "global_memory.db");
 
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -159,6 +159,7 @@ CREATE TABLE IF NOT EXISTS peer_file_queue (
   mine_hash   TEXT,
   merged_body BLOB,             -- kết quả hợp nhất, chỉ có khi verdict='merge'
   created_at  TEXT,
+  dismissed_at TEXT,            -- v27 "để sau": GIỮ dòng để máy kia thôi gửi lại, chỉ ẩn khỏi mặt trước
   UNIQUE (peer_id, area, rel)
 );
 
@@ -864,6 +865,22 @@ function migrate(db: MemoryDB, fromVersion: number): void {
         "created_at TEXT, UNIQUE (peer_id, area, rel))",
     );
     version = 26;
+  }
+  if (version < 27) {
+    // v27 (2026-09-25): "Để sau" là một quyết định phải GIỮ, không phải một dòng để xoá.
+    //
+    // Bản trước `dismiss` = DELETE. Phần khai `pending` của `mfiles` (3.5.8) đọc từ chính bảng
+    // này, nên xoá dòng là máy kia thôi thấy ta "đang cầm" và gửi lại ngay lượt sau — với liên
+    // kết thường trực là 30 giây. User: *"t bấm xong 1 hồi nó hiện lại"*. Cột này giữ dòng ở lại
+    // (máy kia thôi gửi) nhưng ẩn nó khỏi mặt trước; máy kia đổi nội dung ⇒ upsert xoá dấu này
+    // ⇒ hỏi lại — đúng nghĩa "để sau": hỏi lại khi CÓ CÁI MỚI, không phải mỗi nửa phút.
+    //
+    // ALTER có kiểm: kho dựng MỚI đã có cột từ `SCHEMA`, thêm lần nữa là "duplicate column".
+    const cols = db.prepare("PRAGMA table_info(peer_file_queue)").all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === "dismissed_at")) {
+      db.exec("ALTER TABLE peer_file_queue ADD COLUMN dismissed_at TEXT");
+    }
+    version = 27;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

@@ -29,7 +29,7 @@ import {
   LINK_DEAD_MS,
 } from "../../dist/memory/channel/peer.js";
 import { excludeReason, mirrorRoots, resolveMirrorPath, scanMirror } from "../../dist/memory/channel/mirror.js";
-import { classify, listQueue, applyQueued, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
+import { classify, listQueue, applyQueued, dismissQueued, freshenRow, readBase, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
 import { tempDir } from "./helpers.mjs";
 
 const APP_VERSION = "test";
@@ -635,4 +635,115 @@ test("mirror-e2e: cặp MỘT CHIỀU — đích áp thẳng, và KHÔNG bao gi�
   // CA ÂM: đích KHÔNG được đẩy bản riêng của nó ngược về nguồn.
   assert.equal(r.server?.sentFiles ?? 0, 0, "đích của cặp một chiều không bao giờ đẩy");
   assert.equal(readAt(a, "docs", "rieng-cua-dich.md"), null, "nguồn không được nhận gì từ đích");
+});
+
+// ── ⑥ HÀNG ĐỢI KHÔNG ĐƯỢC NÓI DỐI — ba lỗi đo thật 2026-09-25, cùng một triệu chứng ──────
+//
+// User: *"nó cứ hiện chờ duyệt, t bấm xong 1 hồi nó hiện lại"*. Ba cơ chế, ba lỗi:
+//   ① "Để sau" XOÁ dòng ⇒ phần khai `pending` mất nó ⇒ máy kia gửi lại sau 30 giây;
+//   ② "Giữ bản máy này" đặt mốc = bản MÌNH ⇒ lượt sau vẫn `take` ⇒ hỏi lại y nguyên;
+//   ③ verdict đóng băng lúc NHẬN ⇒ nút *Nhận* trên ảnh chụp cũ đè lên thứ vừa sửa — `06_CHANGES`
+//      đã mất một mục thật vì đúng chỗ này.
+
+test("queue-later: 'để sau' GIỮ dòng, máy kia thôi gửi lại, và chỉ hỏi lại khi có nội dung MỚI", async (t) => {
+  const a = makeMachine(t, "qla", "chia-chung-later");
+  const b = makeMachine(t, "qlb", "chia-chung-later");
+  write(a, "docs", "agent/05_TODO.md", "viec cua A\n");
+  await syncPair(a, b);
+  const q1 = listQueue(b.db);
+  assert.equal(q1.length, 1, "lượt đầu: một dòng chờ");
+  assert.equal(q1[0].dismissedAt, null);
+
+  assert.ok(dismissQueued(b.db, q1[0].id));
+  const q2 = listQueue(b.db);
+  assert.equal(q2.length, 1, "để sau KHÔNG xoá dòng — xoá là máy kia gửi lại ngay lượt sau");
+  assert.ok(q2[0].dismissedAt, "phải có dấu 'để sau'");
+
+  // Lượt sau: A KHÔNG được gửi lại (B đã khai đang cầm), và B không đẻ dòng mới.
+  const r2 = await syncPair(a, b);
+  assert.equal(r2.client.sentFiles, 0, "máy kia thôi gửi lại thứ ta đang cầm — kể cả khi đã 'để sau'");
+  const q3 = listQueue(b.db);
+  assert.equal(q3.length, 1);
+  assert.equal(q3[0].id, q1[0].id, "vẫn là dòng cũ, không đẻ dòng mới");
+  assert.ok(q3[0].dismissedAt, "dấu 'để sau' phải còn — không được tự bật lại");
+
+  // A đổi NỘI DUNG ⇒ đây mới là lúc hỏi lại: dòng được thay bằng bản mới và dấu 'để sau' hết hiệu lực.
+  write(a, "docs", "agent/05_TODO.md", "viec cua A — da sua\n");
+  const r3 = await syncPair(a, b);
+  assert.equal(r3.client.sentFiles, 1, "nội dung mới thì phải đi");
+  const q4 = listQueue(b.db);
+  assert.equal(q4.length, 1);
+  assert.equal(q4[0].dismissedAt, null, "có cái MỚI ⇒ hỏi lại — đúng nghĩa 'để sau'");
+  assert.notEqual(q4[0].theirHash, q1[0].theirHash);
+});
+
+test("queue-mine: 'giữ bản máy này' ⇒ mốc = bản CỦA HỌ ⇒ lượt sau ĐẨY bản mình sang, không hỏi lại", async (t) => {
+  const a = makeMachine(t, "qma", "chia-chung-mine");
+  const b = makeMachine(t, "qmb", "chia-chung-mine");
+  write(a, "docs", "agent/05_TODO.md", "ban cua A\n");
+  write(b, "docs", "agent/05_TODO.md", "ban cua B\n");
+  await syncPair(a, b);
+  const qb = listQueue(b.db);
+  assert.equal(qb.length, 1);
+  const row = qb[0];
+
+  const ap = applyQueued(b.db, row.id, "mine", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  assert.equal(ap.ok, true, `giữ bản mình phải xong: ${ap.ok ? "" : ap.error}`);
+  assert.equal(readAt(b, "docs", "agent/05_TODO.md"), "ban cua B\n", "không ghi byte nào");
+  // 🔴 Mốc phải là bản CỦA HỌ — "tôi đã thấy bản này và từ chối". Mốc = bản mình là hỏi lại mãi.
+  const base = readBase(b.db, a.identity.deviceId, "docs", "agent/05_TODO.md");
+  assert.equal(base?.hash, row.theirHash, "mốc sau 'giữ bản mình' phải bằng băm của HỌ");
+  assert.equal(classify(base.hash, row.mineHash, row.theirHash), "push", "lượt sau phải là ĐẨY, không phải hỏi lại");
+
+  // Lượt sau, hai chiều: B KHÔNG bị hỏi lại; A nhận được bản của B vào hàng đợi (bản B đã sang).
+  await syncPair(a, b);
+  assert.equal(listQueue(b.db).length, 0, "giữ bản mình rồi thì KHÔNG được hỏi lại");
+  const qa = listQueue(a.db);
+  assert.equal(qa.length, 1, "bản của B phải SANG A");
+  assert.equal(qa[0].theirHash, row.mineHash, "thứ A nhận được là đúng bản B đã giữ");
+});
+
+test("🔴 queue-stale: verdict phải tính LẠI theo đĩa — nút Nhận trên ảnh chụp cũ không được đè lên thứ vừa sửa", async (t) => {
+  const a = makeMachine(t, "qsa", "chia-chung-stale");
+  const b = makeMachine(t, "qsb", "chia-chung-stale");
+  write(a, "docs", "agent/05_TODO.md", "ban cua A\n");
+  await syncPair(a, b);
+  const q = listQueue(b.db);
+  assert.equal(q.length, 1);
+  assert.equal(q[0].verdict, "take", "B chưa có tệp ⇒ 'họ đổi, tôi không đổi' — lúc NHẬN thì đúng");
+
+  // B sửa tệp SAU khi nhận — đúng ca thật: agent thêm §9.10 sau 13:06.
+  write(b, "docs", "agent/05_TODO.md", "B vua viet them\n");
+
+  // ĐỌC: mặt trước phải thấy verdict mới, không phải ảnh chụp.
+  const fresh = listQueue(b.db, undefined, { freshen: true, repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  assert.equal(fresh.length, 1);
+  assert.equal(fresh[0].verdict, "block", "hai bên cùng có bản riêng, chưa có mốc ⇒ CHẶN (§9.4 mục 4)");
+  // CA ÂM — đĩa không đổi thêm thì verdict vừa tính vẫn dùng được, không tính lại vô ích.
+  assert.equal(freshenRow(b.db, fresh[0], { repoRoot: b.repoRoot, storeRoot: b.storeRoot }), fresh[0], "đĩa không đổi ⇒ trả đúng dòng cũ");
+
+  // GHI: người bấm ĐÃ THẤY `take` (màn hình vẽ trước khi đĩa đổi) ⇒ phải bị TỪ CHỐI, tệp còn nguyên.
+  // 🔴 `seen` là bắt buộc ở đây: cửa ĐỌC ngay trên vừa làm tươi dòng, nên "verdict đã lưu" đã bằng
+  // đĩa — so với nó thì không còn gì lệch và cửa ghi vẫn đè. Cổng đã bắt đúng lỗ đó ở bản đầu.
+  const ap = applyQueued(b.db, q[0].id, "theirs", { repoRoot: b.repoRoot, storeRoot: b.storeRoot }, "take");
+  assert.equal(ap.ok, false, "đè lên thứ vừa sửa vì một ảnh chụp cũ = đúng cách 06_CHANGES đã mất một mục");
+  assert.equal(ap.verdict, "block", "phải trả verdict MỚI để mặt trước vẽ lại");
+  assert.equal(readAt(b, "docs", "agent/05_TODO.md"), "B vua viet them\n", "tệp KHÔNG được đụng");
+  // CA ÂM: đã thấy đúng verdict hiện tại (`block`) và chọn "dùng bản máy kia" thì ĐƯỢC — đó là quyết định có ý thức.
+  const ok2 = applyQueued(b.db, q[0].id, "theirs", { repoRoot: b.repoRoot, storeRoot: b.storeRoot }, "block");
+  assert.equal(ok2.ok, true, `thấy đúng verdict thì phải cho: ${ok2.ok ? "" : ok2.error}`);
+  assert.equal(readAt(b, "docs", "agent/05_TODO.md"), "ban cua A\n");
+});
+
+test("queue-merged: chọn 'bản đã gộp' mà KHÔNG có bản gộp ⇒ từ chối, không rơi về bản máy kia", async (t) => {
+  const a = makeMachine(t, "qga", "chia-chung-merged");
+  const b = makeMachine(t, "qgb", "chia-chung-merged");
+  write(a, "docs", "agent/05_TODO.md", "ban cua A\n");
+  write(b, "docs", "agent/05_TODO.md", "ban cua B\n");
+  await syncPair(a, b);
+  const q = listQueue(b.db);
+  assert.equal(q[0].verdict, "block", "chưa có mốc ⇒ chặn ⇒ không có bản gộp");
+  const ap = applyQueued(b.db, q[0].id, "merged", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  assert.equal(ap.ok, false, "rơi về bản máy kia là mất phần của mình đúng chỗ người bấm tưởng đã được giữ");
+  assert.equal(readAt(b, "docs", "agent/05_TODO.md"), "ban cua B\n");
 });

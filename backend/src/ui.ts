@@ -2011,6 +2011,11 @@ async function channelSyncOnce(
   // hứa với người bấm. Endpoint phải trả trong thời gian đọc được, kể cả khi mọi địa chỉ đều
   // chết — treo thì cửa sổ app đọc thành CHẾT (máy thứ hai báo đúng triệu chứng đó 22/09).
   const untilAll = Date.now() + o.budgetMs;
+  // 🔴 Ghi lại TỪNG ứng viên đã trượt. Bản trước chỉ giữ `last` (ứng viên CUỐI), nên thẻ máy ghi
+  // `ECONNREFUSED` của một địa chỉ cũ trong khi cú gọi LAN — ứng viên ĐẦU, và là đường duy nhất
+  // đáng quan tâm khi hai máy cùng Wi-Fi — trượt vì lý do khác mà không ai thấy. Đo 2026-09-25:
+  // mất hơn một giờ soi nhầm vì đúng chỗ mù này.
+  const tried: string[] = [];
   for (const cand of candidates) {
     const a = ch.parsePeerAddress(cand);
     if (!a) continue;
@@ -2041,11 +2046,15 @@ async function channelSyncOnce(
       },
     );
     last = { ...r, addr: cand };
+    if (r.error) tried.push(`${cand} → ${String(r.error).slice(0, 60)}`);
     // Ghi sổ MỌI kết cục, kể cả hỏng: thẻ máy cần phân biệt "chưa thử lần nào" với "thử rồi và
     // hỏng vì lý do X" — gộp hai cái đó thành một chữ "chưa rõ" là bắt người dùng đoán.
     ch.notePeerSync(r.peerDeviceId, "gọi thẳng", r);
     if (!r.error) return ({ ok: true, ...last });
   }
+  // Nói ra MỘT dòng cho cả lượt gọi thẳng — không phải một dòng mỗi ứng viên (lớp giữ-liên-kết
+  // gọi lại mỗi vài giây tới một phút; mỗi ứng viên một dòng là nhật ký ngập trong một giờ).
+  if (tried.length) daemonLog(`[channel] gọi thẳng tới ${(wantId || raw).slice(0, 11)}…: ${tried.join(" · ")}`);
 
   // ── ĐƯỜNG CUỐI: QUA RELAY CÔNG KHAI ────────────────────────────────────────────────────
   //
@@ -3501,8 +3510,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // đúng hạng "năng lực đã xây mà một bề mặt không thấy" (0% dùng được).
       const ch = await import("./memory/channel/index.js");
       try {
-        const rows = ch.listQueue(ch.mirrorDb());
-        return json(res, { ok: true, count: rows.length, rows });
+        // `freshen`: verdict tính LẠI theo tệp đang có trên đĩa — verdict lúc nhận là ảnh chụp, và
+        // nút *Nhận* trên một ảnh chụp cũ đã xoá mất việc vừa sửa một lần (xem `freshenRow`).
+        const rows = ch.listQueue(ch.mirrorDb(), undefined, { freshen: true });
+        // `count` = thứ đang CHỜ NGƯỜI; mục "để sau" vẫn trong hàng (máy kia thôi gửi) nhưng không đếm.
+        return json(res, { ok: true, count: rows.filter((r) => !r.dismissedAt).length, rows });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e), count: 0, rows: [] });
       }
@@ -3543,8 +3555,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // MỘT cửa cho việc "chốt một dòng chờ", bốn lựa chọn (HP điều 17 — không đẻ endpoint thứ
       // hai cho `dismiss`, nó là cùng một chức năng: *giải quyết dòng này*).
       //   theirs  — lấy bản máy kia      ·  merged — lấy bản đã gộp
-      //   mine    — giữ bản của mình (không ghi byte nào, chỉ đóng mốc để lượt sau thôi hỏi lại)
-      //   dismiss — để sau (KHÔNG đóng mốc ⇒ lượt sau hỏi lại, đúng thứ người bấm "để sau" muốn)
+      //   mine    — giữ bản của mình (không ghi byte nào; mốc = bản CỦA HỌ ⇒ lượt sau ĐẨY bản mình sang)
+      //   dismiss — để sau (GIỮ dòng để máy kia thôi gửi lại; họ đổi nội dung mới hỏi lại — 🔄 supersede
+      //             bản "xoá dòng, lượt sau hỏi lại": với liên kết thường trực đó là hỏi lại mỗi 30 giây)
+      // Mọi lựa chọn GHI đều tính lại verdict theo đĩa trước khi ghi; lệch ⇒ từ chối và trả `verdict`
+      // mới để mặt trước vẽ lại — không bao giờ đè lên thứ vừa sửa vì một ảnh chụp cũ.
       // Cú bấm LÀ lời cho phép ghi — cùng doctrine `/paths-fix-apply`.
       const ch = await import("./memory/channel/index.js");
       const id = Number(u.searchParams.get("id")) || 0;
@@ -3556,8 +3571,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         if (choice !== "theirs" && choice !== "merged" && choice !== "mine") {
           return json(res, { ok: false, error: `lựa chọn lạ: ${choice}` });
         }
-        const r = ch.applyQueued(ch.mirrorDb(), id, choice);
-        return json(res, r.ok ? { ok: true, wrote: r.wrote, path: r.path } : { ok: false, error: r.error });
+        // `seen` = verdict mặt trước ĐÃ VẼ lúc người bấm — lệch với đĩa bây giờ thì kho từ chối.
+        const seen = (u.searchParams.get("seen") ?? "").trim() || undefined;
+        const r = ch.applyQueued(ch.mirrorDb(), id, choice, {}, seen);
+        return json(res, r.ok ? { ok: true, wrote: r.wrote, path: r.path } : { ok: false, error: r.error, verdict: r.verdict });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
       }
