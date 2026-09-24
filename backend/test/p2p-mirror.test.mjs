@@ -123,6 +123,31 @@ test("mirror-exclude: file DATABASE bị loại ở mọi mục, và lý do nói
   assert.equal(excludeReason("ui/x.png", "x.png", 10), null);
 });
 
+test("mirror-exclude: CỜ ĐỒNG Ý của guard không bao giờ rời máy đã sinh ra nó", (t) => {
+  // 🔴 Bắt tại trận 2026-09-24: `docs/hooks/.allow-push` nằm trong hàng đợi duyệt của máy này,
+  // chở sang từ máy kia. Tệp đó KHÔNG phải tài liệu — nó là mã uỷ quyền MỘT LẦN cho đúng một việc
+  // người dùng vừa cho phép trên MỘT máy. Bay sang máy thứ hai thì guard bên đó mở cửa cho một
+  // lệnh mà chủ máy chưa hề đồng ý, và vượt cửa IM LẶNG.
+  for (const name of [".allow-push", ".allow-delete", ".allow-docs-write"]) {
+    const why = excludeReason(`hooks/${name}`, name, 40);
+    assert.ok(why, `${name} phải bị loại`);
+    assert.match(why, /cờ đồng ý/i, `${name}: lý do phải nói rõ đây là thẩm quyền, không phải "file nháp"`);
+  }
+  // HAI ĐẦU: chặn bên gửi mới chỉ vá máy đã cập nhật — thứ nguy hiểm đến từ máy KIA, vốn có thể
+  // còn chạy bản cũ. Bên nhận phải tự từ chối.
+  const root = mirrorRoots({ repoRoot: tempDir(t, "zemory-flag-"), storeRoot: tempDir(t, "zemory-flag-s-") })[0]
+    ?? { area: "docs", path: tempDir(t, "zemory-flag-r-") };
+  assert.equal(resolveMirrorPath(root, "hooks/.allow-push"), null, "chiều NHẬN cũng phải từ chối");
+  assert.equal(resolveMirrorPath(root, "hooks\\.allow-push"), null, "gạch ngược của Windows không được thành đường vòng");
+
+  // CA ÂM — mã guard thì VẪN đi: nó là tài liệu/luật dùng chung, chỉ có THẨM QUYỀN mới ở lại máy.
+  assert.equal(excludeReason("hooks/guard.cjs", "guard.cjs", 40), null, "mã guard là tài liệu, phải chở");
+  assert.equal(excludeReason("hooks/policy.json", "policy.json", 40), null);
+  // CA ÂM — tên na ná nhưng KHÔNG ở trong `hooks/`, và tên không mở bằng `.allow-`.
+  assert.equal(excludeReason("agent/.allow-push.md", ".allow-push.md", 40), null, "ngoài hooks/ thì không phải cờ");
+  assert.equal(excludeReason("hooks/allow-push", "allow-push", 40), null, "thiếu dấu chấm đầu ⇒ không phải cờ");
+});
+
 test("mirror-exclude: thư mục kỹ thuật, file nháp và file quá trần đều bị loại", () => {
   assert.ok(excludeReason("node_modules/a/b.js", "b.js", 10));
   assert.ok(excludeReason(".git/config", "config", 10));

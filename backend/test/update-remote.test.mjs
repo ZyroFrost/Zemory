@@ -19,6 +19,7 @@ import {
   OK_TTL_MS,
   aheadOfRepo,
   cacheDue,
+  isPhantomStamp,
   pickUpdate,
   readUpdateCache,
   shaFromLsRemote,
@@ -63,6 +64,34 @@ test("tem MỚI HƠN git thì tem thắng — lấy max, không phải 'git luô
   const u = pickUpdate("3.0.0", { ok: true, latest: "3.1.0", commit: "abc1234", at: "" }, { latest: "3.2.0", host: "MAY-B", at: "" });
   assert.equal(u.latest, "3.2.0");
   assert.equal(u.source, "channel");
+});
+
+test("🔴 tem chỉ vào bản KHÔNG TỒN TẠI (git đã đi tiếp mà vẫn không có số đó) ⇒ bỏ tem", () => {
+  // Ca thật 2026-09-24: tem `3.6.0` đóng dấu 22/09, rồi lượt đánh số lại lịch sử 23/09 xoá số đó
+  // khỏi mọi commit/tag. Git đi tiếp tới 3.5.6 ngày 24/09. Lấy max thì bản ma thắng ⇒ bề mặt mời
+  // cập nhật lên thứ không tải về được, và mời MÃI vì tem chỉ đi lên.
+  const u = pickUpdate(
+    "3.5.6",
+    { ok: true, latest: "3.5.6", commit: "745b17a", at: "2026-09-24T15:42:53+07:00" },
+    { latest: "3.6.0", host: "SS01-IT-12", at: "2026-09-22T19:34:09.417Z" },
+  );
+  assert.equal(u, undefined, "bản ma không được mời cập nhật");
+
+  // CA ÂM — ĐÚNG ca mà luật lấy-max sinh ra, và nó phải SỐNG NGUYÊN: máy kia vừa build xong bản
+  // chưa push ⇒ nó đóng dấu SAU commit cuối của git ⇒ tem còn nói điều git chưa biết.
+  const v = pickUpdate(
+    "3.0.0",
+    { ok: true, latest: "3.1.0", commit: "abc1234", at: "2026-09-20T10:00:00Z" },
+    { latest: "3.2.0", host: "MAY-B", at: "2026-09-21T10:00:00Z" },
+  );
+  assert.equal(v.latest, "3.2.0", "bản chưa push vẫn phải được nhắc — đừng giấu");
+  assert.equal(v.source, "channel");
+
+  // CA ÂM — THIẾU MỐC: không đủ căn cứ thì KHÔNG kết luận là ma. Im lặng nhầm còn hơn giấu bản thật.
+  assert.equal(isPhantomStamp({ ok: true, latest: "3.1.0", at: "" }, { latest: "3.2.0", at: "" }), false);
+  assert.equal(isPhantomStamp({ ok: true, latest: "3.1.0" }, { latest: "3.2.0", at: "2026-09-21T10:00:00Z" }), false);
+  // CA ÂM — tem KHÔNG vượt git thì không có gì để nghi, bất kể mốc.
+  assert.equal(isPhantomStamp({ ok: true, latest: "3.5.6", at: "2026-09-24T00:00:00Z" }, { latest: "3.5.0", at: "2026-09-01T00:00:00Z" }), false);
 });
 
 test("đã là bản mới nhất (hoặc mới hơn) ⇒ undefined, chip im", () => {
