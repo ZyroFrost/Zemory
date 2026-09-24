@@ -126,6 +126,8 @@ export interface QueueRow {
   mineHash: string | null;
   size: number;
   createdAt: string;
+  /** "Để sau" — vẫn trong hàng đợi (máy kia thôi gửi lại), chỉ ẩn khỏi mặt trước. */
+  dismissedAt: string | null;
 }
 
 /**
@@ -152,7 +154,8 @@ export function enqueue(
     "INSERT INTO peer_file_queue (peer_id, area, rel, verdict, their_hash, their_body, mine_hash, merged_body, created_at) " +
       "VALUES (?,?,?,?,?,?,?,?,?) " +
       "ON CONFLICT(peer_id, area, rel) DO UPDATE SET verdict=excluded.verdict, their_hash=excluded.their_hash, " +
-      "their_body=excluded.their_body, mine_hash=excluded.mine_hash, merged_body=excluded.merged_body, created_at=excluded.created_at",
+      // Nội dung MỚI từ máy kia ⇒ quyết định "để sau" cũ hết hiệu lực ⇒ hỏi lại. Đúng nghĩa "để sau".
+      "their_body=excluded.their_body, mine_hash=excluded.mine_hash, merged_body=excluded.merged_body, created_at=excluded.created_at, dismissed_at=NULL",
   ).run(
     row.peerId,
     row.area,
@@ -166,9 +169,13 @@ export function enqueue(
   );
 }
 
-export function listQueue(db: MemoryDB, peerId?: string): QueueRow[] {
+export function listQueue(
+  db: MemoryDB,
+  peerId?: string,
+  opts: { freshen?: boolean; repoRoot?: string; storeRoot?: string } = {},
+): QueueRow[] {
   const sql =
-    "SELECT id, peer_id, area, rel, verdict, their_hash, mine_hash, LENGTH(their_body) AS size, created_at FROM peer_file_queue" +
+    "SELECT id, peer_id, area, rel, verdict, their_hash, mine_hash, LENGTH(their_body) AS size, created_at, dismissed_at FROM peer_file_queue" +
     (peerId ? " WHERE peer_id=?" : "") +
     " ORDER BY area, rel";
   const rows = (peerId ? db.prepare(sql).all(peerId) : db.prepare(sql).all()) as Array<{
@@ -181,8 +188,9 @@ export function listQueue(db: MemoryDB, peerId?: string): QueueRow[] {
     mine_hash: string | null;
     size: number | null;
     created_at: string;
+    dismissed_at: string | null;
   }>;
-  return rows.map((r) => ({
+  const out = rows.map((r) => ({
     id: r.id,
     peerId: r.peer_id,
     area: r.area as MirrorArea,
@@ -192,7 +200,58 @@ export function listQueue(db: MemoryDB, peerId?: string): QueueRow[] {
     mineHash: r.mine_hash,
     size: r.size ?? 0,
     createdAt: r.created_at,
+    dismissedAt: r.dismissed_at,
   }));
+  if (!opts.freshen) return out;
+  return out.map((r) => freshenRow(db, r, opts)).filter((r): r is QueueRow => r !== null);
+}
+
+/**
+ * Tính LẠI verdict của một dòng chờ theo tệp ĐANG có trên đĩa. Trả `null` nếu dòng đã hết lý do.
+ *
+ * 🔴 Verdict được tính lúc NHẬN rồi đóng băng, mà tệp trên đĩa thì không đứng yên — agent sửa
+ * docs suốt ngày. Đo tại trận 2026-09-25: dòng `plan/24` nhận lúc 13:06 với verdict `take` (*"họ
+ * đổi, tôi không đổi"*); tới 14:00 máy này đã thêm §9.10, verdict đúng phải là `block`. Nút *Nhận*
+ * vẫn hiện, bấm là §9.10 **bay im lặng** — đúng cách mục 3.5.10 của `06_CHANGES` đã mất thật.
+ *
+ * Nên verdict chỉ là bộ đệm; sự thật là `classify(base, đĩa-bây-giờ, họ)`. Mọi cửa ĐỌC (mặt trước)
+ * và mọi cửa GHI (`applyQueued`) đều đi qua đây trước — hai cửa, một luật.
+ */
+export function freshenRow(db: MemoryDB, row: QueueRow, opts: { repoRoot?: string; storeRoot?: string } = {}): QueueRow | null {
+  if (isContentAddressed(row.area) || !row.theirHash) return row;
+  const root = mirrorRootFor(row.area, opts);
+  if (!root) return row;
+  const abs = resolveMirrorPath(root, row.rel);
+  if (!abs) return row;
+  const mine = safeRead(abs);
+  const mineHash = mine ? hashBytes(mine) : null;
+  if (mineHash === row.mineHash) return row; // đĩa không đổi ⇒ verdict cũ còn đúng, đừng tính lại vô ích
+
+  const { theirs } = queueBodies(db, row.id);
+  const base = readBase(db, row.peerId, row.area, row.rel);
+  const v = classify(base?.hash ?? null, mineHash, row.theirHash);
+  if (v === "same") {
+    // Người dùng tự tay chép cho khớp ⇒ hai bên gặp nhau ⇒ đóng mốc, dòng hết lý do.
+    writeBase(db, row.peerId, row.area, row.rel, row.theirHash, theirs && isMergeableText(theirs) ? theirs : null);
+    db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(row.id);
+    return null;
+  }
+  if (v === "push" || v === "none") {
+    // Bản máy này mới hơn (họ chưa đổi kể từ mốc) ⇒ lượt sau ta ĐẨY, không có gì để nhận.
+    db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(row.id);
+    return null;
+  }
+  let final: QueueRow["verdict"] = v === "take" ? "take" : "block";
+  let merged: Buffer | null = null;
+  if (v === "merge" && base?.body && mine && theirs && isMergeableText(theirs) && isMergeableText(mine)) {
+    const r = merge3(splitLines(base.body), splitLines(mine), splitLines(theirs));
+    if (r.ok) {
+      final = "merge";
+      merged = Buffer.from(r.lines.join(eolOf(mine)) + eolOf(mine), "utf8");
+    }
+  }
+  db.prepare("UPDATE peer_file_queue SET verdict=?, mine_hash=?, merged_body=? WHERE id=?").run(final, mineHash, merged, row.id);
+  return { ...row, verdict: final, mineHash };
 }
 
 export function queueCount(db: MemoryDB): number {
@@ -204,7 +263,7 @@ export function queueCount(db: MemoryDB): number {
 export function queueBodies(db: MemoryDB, id: number): { theirs: Buffer | null; merged: Buffer | null; row: QueueRow | null } {
   const r = db
     .prepare(
-      "SELECT id, peer_id, area, rel, verdict, their_hash, mine_hash, their_body, merged_body, LENGTH(their_body) AS size, created_at " +
+      "SELECT id, peer_id, area, rel, verdict, their_hash, mine_hash, their_body, merged_body, LENGTH(their_body) AS size, created_at, dismissed_at " +
         "FROM peer_file_queue WHERE id=?",
     )
     .get(id) as
@@ -220,6 +279,7 @@ export function queueBodies(db: MemoryDB, id: number): { theirs: Buffer | null; 
         merged_body: Buffer | null;
         size: number | null;
         created_at: string;
+        dismissed_at: string | null;
       }
     | undefined;
   if (!r) return { theirs: null, merged: null, row: null };
@@ -236,6 +296,7 @@ export function queueBodies(db: MemoryDB, id: number): { theirs: Buffer | null; 
       mineHash: r.mine_hash,
       size: r.size ?? 0,
       createdAt: r.created_at,
+      dismissedAt: r.dismissed_at,
     },
   };
 }
@@ -251,11 +312,35 @@ export type ApplyChoice = "theirs" | "merged" | "mine";
  * Chọn `mine` nghĩa là **đã nhìn cả hai bản và chốt** — đó đúng là một lần hai máy gặp
  * nhau, chỉ khác là kết luận nghiêng về bản của mình.
  */
-export function applyQueued(db: MemoryDB, id: number, choice: ApplyChoice, opts: { repoRoot?: string; storeRoot?: string } = {}):
+export function applyQueued(
+  db: MemoryDB,
+  id: number,
+  choice: ApplyChoice,
+  opts: { repoRoot?: string; storeRoot?: string } = {},
+  /** Verdict người bấm ĐÃ THẤY trên màn hình — lệch với đĩa bây giờ thì từ chối. Vắng ⇒ so với verdict đã lưu. */
+  seen?: string,
+):
   | { ok: true; wrote: boolean; path?: string }
-  | { ok: false; error: string } {
-  const { theirs, merged, row } = queueBodies(db, id);
+  | { ok: false; error: string; verdict?: string } {
+  let { theirs, merged, row } = queueBodies(db, id);
   if (!row) return { ok: false, error: "dòng chờ không còn" };
+  // 🔴 GHI ĐÈ thì phải hỏi đĩa TRƯỚC: verdict trong dòng là ảnh chụp lúc nhận, còn tệp thì không
+  // đứng yên. Bấm *Nhận* trên một `take` đã cũ là đè lên phần máy này vừa sửa — mất im lặng, và
+  // đã mất thật một lần (xem `freshenRow`). Chọn `mine` không ghi byte nào nên không cần kiểm.
+  if (choice !== "mine") {
+    const fresh = freshenRow(db, row, opts);
+    if (!fresh) return { ok: false, error: "tệp đã hội tụ hoặc bản máy này mới hơn — không còn gì để nhận", verdict: "gone" };
+    // So với verdict người bấm ĐÃ THẤY (`seen`), không chỉ với verdict đã lưu: cửa ĐỌC vừa làm tươi
+    // dòng thì "đã lưu" đã bằng "đĩa", còn màn hình của người bấm có thể vẫn là ảnh chụp trước đó.
+    // Cổng bắt đúng ca này: sau một lượt đọc, cửa ghi không còn gì để so và vẫn đè. Không có `seen`
+    // (CLI, script) thì so với verdict đã lưu — vẫn chặn được ca đĩa đổi sau khi dòng được đọc.
+    const expect = seen ?? row.verdict;
+    if (fresh.verdict !== expect) {
+      return { ok: false, error: `tệp đã đổi từ lúc nhận — giờ là "${fresh.verdict}", xem lại khác biệt trước khi chọn`, verdict: fresh.verdict };
+    }
+    if (fresh !== row) ({ theirs, merged, row } = queueBodies(db, id));
+    if (!row) return { ok: false, error: "dòng chờ không còn" };
+  }
   // GHI ⇒ gốc "SẼ nằm đâu", không phải gốc "đang có". Duyệt một mục của máy trắng phải tạo
   // được thư mục; dùng `mirrorRoots()` ở đây là tái tạo đúng vòng luẩn quẩn đã trả giá.
   const root = mirrorRootFor(row.area, opts);
@@ -265,26 +350,45 @@ export function applyQueued(db: MemoryDB, id: number, choice: ApplyChoice, opts:
 
   let body: Buffer | null = null;
   if (choice === "theirs") body = theirs;
-  else if (choice === "merged") body = merged ?? theirs;
-  if (choice !== "mine" && !body) return { ok: false, error: "không còn nội dung để áp" };
+  // `merged` KHÔNG rơi về `theirs`: người bấm "lấy bản đã gộp" mà nhận trọn bản máy kia là mất
+  // phần của mình đúng chỗ họ tưởng đã được giữ. Không có bản gộp ⇒ từ chối, nói rõ.
+  else if (choice === "merged") body = merged;
+  if (choice !== "mine" && !body) {
+    return { ok: false, error: choice === "merged" ? "không có bản gộp — tệp đã đổi, xem lại khác biệt" : "không còn nội dung để áp" };
+  }
 
   try {
     if (body) writeFileAtomic(abs, body);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "ghi file thất bại" };
   }
-  // Mốc mới = nội dung HAI MÁY vừa thống nhất. Chọn `mine` ⇒ mốc là bản của mình.
-  const finalBody = body ?? safeRead(abs);
-  if (finalBody) {
-    writeBase(db, row.peerId, row.area, row.rel, hashBytes(finalBody), isMergeableText(finalBody) ? finalBody : null);
+  if (choice === "mine") {
+    // 🔴 Giữ bản mình ⇒ mốc là bản CỦA HỌ, không phải của mình.
+    //
+    // Bản trước đặt mốc = bản của mình. Lượt sau: họ vẫn khác mốc, mình bằng mốc ⇒ `classify` ra
+    // `take` ⇒ hỏi lại y nguyên — mỗi 30 giây, mãi mãi. User: *"t bấm xong 1 hồi nó hiện lại"*.
+    // Mốc = bản của họ nghĩa là *"tôi đã thấy bản này và từ chối"*: lượt sau họ bằng mốc, mình khác
+    // ⇒ `push` ⇒ bản của mình SANG họ. Đó mới là nghĩa của "giữ bản máy này".
+    if (row.theirHash) writeBase(db, row.peerId, row.area, row.rel, row.theirHash, theirs && isMergeableText(theirs) ? theirs : null);
+  } else if (body) {
+    // Mốc mới = nội dung HAI MÁY vừa thống nhất.
+    writeBase(db, row.peerId, row.area, row.rel, hashBytes(body), isMergeableText(body) ? body : null);
   }
   db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(id);
   return { ok: true, wrote: Boolean(body), path: abs };
 }
 
-/** Bỏ một dòng chờ mà KHÔNG đóng mốc — lượt sau sẽ hỏi lại. Đó là điều người bấm "để sau" muốn. */
+/**
+ * "Để sau" GIỮ dòng, không xoá.
+ *
+ * 🔄 Supersede bản trước (*xoá dòng, lượt sau hỏi lại*). Phần khai `pending` của `mfiles` đọc từ
+ * chính bảng này để máy kia thôi gửi lại; xoá dòng là máy kia thấy ta "còn thiếu" và chở lại ngay
+ * lượt sau — với liên kết thường trực là **30 giây**. User: *"t bấm xong 1 hồi nó hiện lại"*.
+ * "Để sau" phải nghĩa là *hỏi lại khi có cái MỚI*: máy kia đổi nội dung ⇒ `enqueue` upsert xoá
+ * dấu này ⇒ dòng hiện lại. Không đổi ⇒ im.
+ */
 export function dismissQueued(db: MemoryDB, id: number): boolean {
-  return db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(id).changes > 0;
+  return db.prepare("UPDATE peer_file_queue SET dismissed_at=? WHERE id=?").run(new Date().toISOString(), id).changes > 0;
 }
 
 function safeRead(abs: string): Buffer | null {

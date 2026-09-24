@@ -152,3 +152,12 @@ test("🔴 LỚP NGHE cũng phải thường trực — một liên kết là th
   const drop = UI.slice(UI.indexOf('if (p === "/channel-pair")'));
   assert.match(drop.slice(0, 3000), /void refreshChannelServer\(\);/, "gỡ cặp phải dựng lại lớp nghe để cắt ống ĐẾN");
 });
+
+test("gọi thẳng phải NÓI RA từng ứng viên đã trượt — thẻ máy chỉ giữ lỗi của ứng viên CUỐI", () => {
+  // Đo 2026-09-25: thẻ ghi `ECONNREFUSED` của một địa chỉ CŨ, trong khi cú gọi LAN — ứng viên đầu,
+  // và là đường duy nhất đáng quan tâm khi hai máy cùng Wi-Fi — trượt vì lý do khác mà không ai
+  // thấy. Mất hơn một giờ soi nhầm vì đúng chỗ mù này.
+  assert.match(UI, /const tried: string\[\] = \[\];/, "phải gom từng ứng viên trượt");
+  assert.match(UI, /if \(r\.error\) tried\.push\(/, "mỗi ứng viên trượt phải vào sổ");
+  assert.match(UI, /\[channel\] gọi thẳng tới \$\{/, "phải nói ra MỘT dòng cho cả lượt");
+});

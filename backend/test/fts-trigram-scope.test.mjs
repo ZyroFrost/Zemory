@@ -172,8 +172,13 @@ test("v21: UPDATE prose to prose KEEPS the postings (a trigger-order bug)", (t) 
 // 🔴 Và nó lọt y HỆT hai bậc trên, cùng một nguyên nhân: đợt 3.5.0 chỉ chạy gate vùng đụng, nên
 // cổng này đỏ suốt từ 3.5.0 → 3.5.5 mà không ai đọc. Cổng đã làm đúng việc của nó; thứ hỏng là
 // thói quen chạy gate hẹp rồi đẩy đi. Đây là lần thứ HAI cùng một bài học ở cùng một dòng.
-test("a fresh DB runs every migration and stops at schema v26", (t) => {
+// v27 (2026-09-25): `peer_file_queue.dismissed_at` — "để sau" GIỮ dòng (máy kia thôi gửi lại), chỉ
+// ẩn khỏi mặt trước. Lần này neo được dời CÙNG LƯỢT với migration, không đợi gate đầy đủ bắt.
+test("a fresh DB runs every migration and stops at schema v27", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 26);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 27);
+  // Cột v27 phải có mặt trên kho DỰNG MỚI lẫn kho nâng cấp — `ALTER` có kiểm, không "duplicate column".
+  const cols = db.prepare("PRAGMA table_info(peer_file_queue)").all().map((c) => c.name);
+  assert.ok(cols.includes("dismissed_at"), "thiếu cột dismissed_at");
   db.close();
 });

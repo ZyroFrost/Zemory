@@ -158,7 +158,7 @@ test("v25: an old WEB session (account NULL) becomes 'main'; a LOCAL session kee
     // Mở lại là chạy TỚI BẬC CUỐI, không dừng ở v25 — nay bậc cuối là v26 (`peer_file_*`, mirror
     // thư mục). Giữ số CHÍNH XÁC chứ không nới thành `>= 25`: nới là bỏ mất đúng cái chốt bắt được
     // một migration mới lẻn vào (xem `fts-trigram-scope.test.mjs`).
-    assert.equal(db.prepare("SELECT version v FROM schema_version").get().v, 26);
+    assert.equal(db.prepare("SELECT version v FROM schema_version").get().v, 27);
   } finally {
     db.close();
   }
