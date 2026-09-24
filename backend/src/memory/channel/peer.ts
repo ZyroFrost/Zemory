@@ -156,6 +156,47 @@ export interface SessionOptions {
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 /**
+ * Ghi MỘT khung rồi ĐỢI ống thoát nếu bộ đệm đã đầy.
+ *
+ * 🔴 Vì sao lớp mirror phải ghi qua đây chứ không gọi thẳng `sock.write`:
+ *
+ * `write()` trả về **ngay** kể cả khi byte còn nằm nguyên trong bộ đệm của tiến trình — nó chỉ
+ * trả `false` để BÁO là đầy, và bản trước không ai đọc cái `false` đó. Hệ quả đo được trên hai
+ * máy thật qua relay (24/09): vòng chở xếp trọn **4.586 file / ~800 MB** vào ống trong **6 giây**
+ * rồi tuyên bố "đã gửi xong". Nhưng dây thật chỉ chảy vài MB mỗi giây, nên máy kia còn đang nuốt
+ * thân file thứ vài trăm khi ta đã hết 120 giây — nó chưa đọc tới khung `mdone` thì không thể đóng
+ * sổ, và phiên nào cũng chết ở ĐÚNG trần với dòng *"hết giờ phiên"*.
+ *
+ * Nói cách khác: ngân sách `mirrorBudgetMs` vốn đúng, nhưng nó đang bấm NHẦM ĐỒNG HỒ — đo thời
+ * gian *liệt kê* (6 giây) thay vì thời gian *trên dây* (nhiều phút). Đợi ống thoát làm hai đồng hồ
+ * đó thành một, và chỉ khi đó "chở vừa sức một lượt" mới có nghĩa.
+ *
+ * `close`/`error` cũng mở khoá, không chỉ `drain`: dây đứt giữa lúc chờ mà chỉ nghe `drain` là
+ * treo vĩnh viễn một lời hứa không ai gọi — phiên chết nhưng vòng chở thì không bao giờ biết.
+ */
+export function writeFlow(
+  sock: {
+    write(b: Buffer): boolean;
+    once(e: string, f: () => void): unknown;
+    off(e: string, f: () => void): unknown;
+  },
+  buf: Buffer,
+): Promise<void> {
+  if (sock.write(buf)) return Promise.resolve();
+  return new Promise<void>((res) => {
+    const go = (): void => {
+      sock.off("drain", go);
+      sock.off("close", go);
+      sock.off("error", go);
+      res();
+    };
+    sock.once("drain", go);
+    sock.once("close", go);
+    sock.once("error", go);
+  });
+}
+
+/**
  * Bao nhiêu thời gian của một phiên được dành cho lớp MIRROR.
  *
  * Nửa trần phiên: nửa còn lại là chỗ thở để `mdone` của cả hai bên đi qua, để lớp khối làm nốt
@@ -222,7 +263,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       for (const n of recvErrors.values()) total += n;
       if (total <= RECV_ERR_SHOWN) return;
       const parts = [...recvErrors].map(([why, n]) => `${n}× ${why}`).join(" · ");
-      o.log?.(`[channel] mirror: KHÔNG nhận được ${total} file — ${parts}`);
+      o.log?.(`[channel] mirror: không nhận được ${total} file — ${parts}`);
     };
 
     /**
@@ -266,6 +307,11 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const send = (buf: Buffer): void => {
       out.bytesSent += buf.length;
       sock.write(buf);
+    };
+    /** Ghi CÓ ĐỢI ỐNG THOÁT — chỉ lớp mirror dùng, vì chỉ nó chở hàng trăm MB (xem `writeFlow`). */
+    const sendFlow = async (buf: Buffer): Promise<void> => {
+      out.bytesSent += buf.length;
+      await writeFlow(sock, buf);
     };
 
     /**
@@ -534,8 +580,11 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           // Bỏ qua MỘT file, không giết cả lượt.
           const bytes = o.mirror.read(e.area, e.rel);
           if (!bytes) continue;
-          send(encodeJson({ t: "mfile", a: e.area, p: e.rel, h: e.hash ?? "", s: bytes.length }));
-          send(encodeFile(bytes));
+          await sendFlow(encodeJson({ t: "mfile", a: e.area, p: e.rel, h: e.hash ?? "", s: bytes.length }));
+          await sendFlow(encodeFile(bytes));
+          // Phiên có thể đã chết TRONG lúc ta chờ ống thoát. Ghi tiếp vào một ống đã đóng là ném
+          // byte đi, còn gửi `mdone` sau đó là đóng sổ cho một phiên không còn ai bên kia.
+          if (settled) return;
           out.sentFiles++;
           shipped++;
         }

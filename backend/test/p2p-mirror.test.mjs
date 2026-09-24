@@ -18,7 +18,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { openMemory } from "../../dist/memory/db.js";
 import { writeMemoryShareKey } from "../../dist/memory/share.js";
 import { loadOrCreateIdentity } from "../../dist/memory/channel/identity.js";
-import { connectToPeer, serveChannel, mirrorBudgetMs } from "../../dist/memory/channel/peer.js";
+import { connectToPeer, serveChannel, mirrorBudgetMs, writeFlow } from "../../dist/memory/channel/peer.js";
 import { excludeReason, mirrorRoots, resolveMirrorPath, scanMirror } from "../../dist/memory/channel/mirror.js";
 import { classify, listQueue, applyQueued, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
 import { tempDir } from "./helpers.mjs";
@@ -193,6 +193,92 @@ test("mirror-budget: một phiên chỉ chở PHẦN vừa sức, không cố ch
   // Và không bao giờ được bằng/vượt trần phiên: chở tới sát trần là dựng lại đúng cái chết đang vá.
   for (const ms of [20_000, 60_000, 120_000, 600_000]) {
     assert.ok(mirrorBudgetMs(ms) < ms, `ngân sách phải NHỎ HƠN trần phiên (${ms})`);
+  }
+});
+
+/**
+ * Chờ một lời hứa, nhưng CÓ HẠN — quá hạn thì NÉM, không ngồi đó.
+ *
+ * 🔴 Vì sao bắt buộc ở cụm này: bản đầu của cổng `mirror-flow` `await` thẳng. Đột biến "chỉ nghe
+ * `drain`, quên `close`/`error`" làm lời hứa không bao giờ được gọi ⇒ phép thử **TREO** thay vì đỏ,
+ * và `node --test` mặc định không có hạn giờ nên nó treo mãi. Cổng treo tệ hơn cổng lọt: cổng lọt
+ * còn báo xanh cho người đọc biết mà nghi, cổng treo thì chỉ làm cả cụm đứng im.
+ */
+function withinMs(p, ms, what) {
+  let timer;
+  return Promise.race([
+    p.finally(() => clearTimeout(timer)),
+    new Promise((_, rej) => {
+      timer = setTimeout(() => rej(new Error(`treo quá ${ms}ms: ${what}`)), ms);
+    }),
+  ]);
+}
+
+/** Ống giả: `write` trả `false` đúng số lần được dặn, rồi mới cho đi. Đủ để soi PHẢN ÁP. */
+function fakePipe(fullTimes) {
+  const waiters = new Map();
+  let left = fullTimes;
+  return {
+    written: 0,
+    write(b) {
+      this.written += b.length;
+      return left-- <= 0;
+    },
+    once(e, f) {
+      waiters.set(e, [...(waiters.get(e) ?? []), f]);
+    },
+    off(e, f) {
+      waiters.set(e, (waiters.get(e) ?? []).filter((x) => x !== f));
+    },
+    /** Số tay đang chờ ở một sự kiện — dùng để chứng minh KHÔNG rò listener. */
+    waiting(e) {
+      return (waiters.get(e) ?? []).length;
+    },
+    fire(e) {
+      for (const f of [...(waiters.get(e) ?? [])]) f();
+    },
+  };
+}
+
+test("mirror-flow: vòng chở phải ĐỢI ỐNG THOÁT, không xếp cả kho vào bộ đệm rồi bảo 'xong'", async () => {
+  // 🔴 Ca thật đo 2026-09-24, và nó là bệnh CÒN LẠI sau khi đã có ngân sách ở trên: vòng chở xếp
+  // trọn 4.586 file / ~800 MB vào ống trong SÁU GIÂY rồi tuyên bố "đã gửi xong". Dây thật chảy vài
+  // MB/giây, nên máy kia còn đang nuốt thân file thứ vài trăm lúc ta hết 120 giây — chưa đọc tới
+  // `mdone` thì không thể đóng sổ. Ngân sách vẫn đúng, nó chỉ bấm NHẦM ĐỒNG HỒ: đo thời gian liệt
+  // kê chứ không đo thời gian trên dây. Đợi ống thoát làm hai đồng hồ đó thành một.
+  const ok = fakePipe(0);
+  await writeFlow(ok, Buffer.from("xong ngay"));
+  assert.equal(ok.written, 9, "ống rỗng thì ghi thẳng, không chờ ai");
+
+  // CA CHÍNH — ống ĐẦY: lời hứa KHÔNG được xong trước khi `drain` nổ.
+  const full = fakePipe(1);
+  let done = false;
+  const p = writeFlow(full, Buffer.from("cho ong thoat")).then(() => {
+    done = true;
+  });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(done, false, "ống đầy mà đã xong = đúng con bug: 800 MB dồn vào bộ đệm trong 6 giây");
+  assert.equal(full.waiting("drain"), 1, "phải đang chờ ở `drain`");
+  full.fire("drain");
+  await withinMs(p, 2_000, "`drain` nổ rồi mà vòng chở vẫn không đi tiếp");
+  assert.equal(done, true);
+  for (const e of ["drain", "close", "error"]) {
+    assert.equal(full.waiting(e), 0, `phải gỡ tay chờ ở \`${e}\` — 4.586 file là 4.586 lần rò`);
+  }
+
+  // CA ÂM — DÂY ĐỨT giữa lúc chờ: chỉ nghe `drain` là treo một lời hứa không ai gọi, vòng chở
+  // đứng đó tới hết đời phiên. `close` và `error` phải mở khoá y như `drain`.
+  for (const ev of ["close", "error"]) {
+    const dead = fakePipe(1);
+    let freed = false;
+    const q = writeFlow(dead, Buffer.from("day dut")).then(() => {
+      freed = true;
+    });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(freed, false);
+    dead.fire(ev);
+    await withinMs(q, 2_000, `\`${ev}\` KHÔNG mở khoá — vòng chở treo vĩnh viễn ở một lời hứa không ai gọi`);
+    assert.equal(freed, true, `\`${ev}\` phải mở khoá — nếu không, vòng chở treo vĩnh viễn`);
   }
 });
 
