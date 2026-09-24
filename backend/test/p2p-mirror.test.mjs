@@ -18,7 +18,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { openMemory } from "../../dist/memory/db.js";
 import { writeMemoryShareKey } from "../../dist/memory/share.js";
 import { loadOrCreateIdentity } from "../../dist/memory/channel/identity.js";
-import { connectToPeer, serveChannel } from "../../dist/memory/channel/peer.js";
+import { connectToPeer, serveChannel, mirrorBudgetMs } from "../../dist/memory/channel/peer.js";
 import { excludeReason, mirrorRoots, resolveMirrorPath, scanMirror } from "../../dist/memory/channel/mirror.js";
 import { classify, listQueue, applyQueued, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
 import { tempDir } from "./helpers.mjs";
@@ -175,6 +175,25 @@ test("mirror-classify: bảng §9.3 chạy đúng từng hàng, kể cả hai ca
   assert.equal(classify("A", null, "A"), "none", "ta đã xoá, họ không đổi ⇒ KHÔNG hồi sinh");
   assert.equal(classify("A", null, "B"), "block", "ta xoá, họ sửa ⇒ chặn (xoá không đảo được)");
   assert.equal(classify("A", "A", null), "none", "họ không có ⇒ ta không bao giờ tự xoá theo");
+});
+
+test("mirror-budget: một phiên chỉ chở PHẦN vừa sức, không cố chở hết rồi bị chém", () => {
+  // 🔴 Ca thật đo 2026-09-24 trên hai máy qua relay công khai: lượt mirror đầu ~820 MB, phiên có
+  // trần 120 giây. Bên gửi xếp trọn 5.117 file vào ống rồi phiên chết ở ĐÚNG giây 120 — `mdone`
+  // không bao giờ đi qua, hai bên không đóng sổ, log chỉ nói "hết giờ phiên". Lượt nào cũng nhích
+  // được vài trăm file rồi chết.
+  //
+  // Nới trần phiên là SAI HƯỚNG — trần đó đang gác bệnh phiên-treo. Thứ đúng là chở theo LƯỢT.
+  assert.equal(mirrorBudgetMs(120_000), 60_000, "một nửa trần phiên; nửa kia để `mdone` và lớp khối đi nốt");
+  assert.equal(mirrorBudgetMs(20_000), 10_000);
+  // CA ÂM — SÀN: trần phiên bé bất thường không được biến ngân sách thành 0, vì 0 nghĩa là
+  // KHÔNG BAO GIỜ chở được file nào và lớp mirror chết câm.
+  assert.equal(mirrorBudgetMs(1_000), 5_000, "phải có sàn — ngân sách 0 là lớp mirror chết câm");
+  assert.equal(mirrorBudgetMs(0), 5_000);
+  // Và không bao giờ được bằng/vượt trần phiên: chở tới sát trần là dựng lại đúng cái chết đang vá.
+  for (const ms of [20_000, 60_000, 120_000, 600_000]) {
+    assert.ok(mirrorBudgetMs(ms) < ms, `ngân sách phải NHỎ HƠN trần phiên (${ms})`);
+  }
 });
 
 // ── ④ Đầu-cuối: hai máy thật trên loopback ───────────────────────────────────────────

@@ -44,6 +44,9 @@ export interface SyncOutcome {
   appliedFiles: number;
   /** File nhận được đang CHỜ người duyệt (§9.3). */
   queuedFiles: number;
+  /** File CÒN THIẾU ở máy kia mà lượt này không kịp chở — bề mặt phải nói ra, nếu không
+   *  người dùng thấy "xong" rồi lượt sau vẫn còn việc và không hiểu vì sao. */
+  filesLeft: number;
   error?: string;
 }
 
@@ -65,6 +68,7 @@ export function emptyOutcome(error?: string): SyncOutcome {
     receivedFiles: 0,
     appliedFiles: 0,
     queuedFiles: 0,
+    filesLeft: 0,
     ...(error ? { error } : {}),
   };
 }
@@ -150,6 +154,19 @@ export interface SessionOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+
+/**
+ * Bao nhiêu thời gian của một phiên được dành cho lớp MIRROR.
+ *
+ * Nửa trần phiên: nửa còn lại là chỗ thở để `mdone` của cả hai bên đi qua, để lớp khối làm nốt
+ * phần của nó, và để bên nhận ghi những file cuối xuống đĩa. Chở tới sát trần là tự dựng lại
+ * đúng cái chết đang đi vá — chỉ muộn hơn vài giây.
+ *
+ * Tách thành hàm THUẦN để cổng soi được luật mà không cần hai máy và không cần chờ hai phút.
+ */
+export function mirrorBudgetMs(sessionTimeoutMs: number): number {
+  return Math.max(5_000, Math.floor(sessionTimeoutMs / 2));
+}
 
 /** Khoá của một file trên dây. Mục + đường, không bao giờ là đường tuyệt đối. */
 const fileKey = (area: string, rel: string): string => `${area}/${rel}`;
@@ -492,10 +509,27 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         }
         const theirs = new Map(peerEntries.map((e) => [fileKey(e.a, e.p), e.h ?? ""]));
         let shipped = 0;
+        let left = 0;
+        const until = Date.now() + mirrorBudgetMs(o.timeoutMs ?? DEFAULT_TIMEOUT_MS);
         for (const e of o.mirror.inventory()) {
           const k = fileKey(e.area, e.rel);
           const has = theirs.has(k);
           if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) continue;
+          // 🔴 HẾT NGÂN SÁCH ⇒ ĐÓNG SỔ SẠCH, phần còn lại để lượt sau. KHÔNG cố chở hết.
+          //
+          // Ca thật đo 2026-09-24 trên hai máy qua relay: lượt mirror đầu là ~820 MB, mà phiên
+          // có trần 120 giây. Bên gửi xếp trọn 5.117 file vào ống rồi phiên bị chém giữa chừng
+          // — `mdone` không bao giờ đi qua, hai bên không đóng sổ, và log chỉ nói *"hết giờ
+          // phiên"*. Lượt nào cũng vậy: nhích được vài trăm file rồi chết, mãi không xong.
+          //
+          // Nới trần phiên lên hàng chục phút là SAI HƯỚNG — trần đó đang gác một bệnh khác
+          // (phiên treo vì đầu kia im, đã trả giá `§6f`). Thứ đúng là chở THEO LƯỢT: mỗi phiên
+          // một phần vừa sức, đóng sổ đàng hoàng, lượt sau `have` tự nói phần còn thiếu nên nó
+          // tiếp tục đúng chỗ — resume có sẵn trong giao thức, không cần sổ sách gì thêm.
+          if (Date.now() > until) {
+            left++;
+            continue;
+          }
           // File biến mất giữa lúc quét và lúc gửi là chuyện thường (agent đang làm việc).
           // Bỏ qua MỘT file, không giết cả lượt.
           const bytes = o.mirror.read(e.area, e.rel);
@@ -505,8 +539,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           out.sentFiles++;
           shipped++;
         }
+        out.filesLeft = left;
         send(encodeJson({ t: "mdone", sent: shipped }));
-        o.log?.(`[channel] mirror: đã gửi "xong" (${shipped} file)`);
+        o.log?.(
+          `[channel] mirror: đã gửi "xong" (${shipped} file)` +
+            (left > 0 ? ` — còn ${left} file cho lượt sau (hết ngân sách của phiên này)` : ""),
+        );
         mSentDone = true;
         tryFinish();
       } catch (e) {

@@ -980,7 +980,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  đối phương : ${r?.peerDeviceId ?? "(không rõ)"}`);
       console.log(`  chở đi     : ${r?.sentBlocks ?? 0} khối · nhận về: ${r?.receivedBlocks ?? 0} khối`);
       console.log(
-        `  thư mục    : gửi ${r?.sentFiles ?? 0} file · nhận ${r?.receivedFiles ?? 0} · áp thẳng ${r?.appliedFiles ?? 0} · chờ duyệt ${r?.queuedFiles ?? 0}`,
+        `  thư mục    : gửi ${r?.sentFiles ?? 0} file · nhận ${r?.receivedFiles ?? 0} · áp thẳng ${r?.appliedFiles ?? 0} · chờ duyệt ${r?.queuedFiles ?? 0}` +
+          ((r?.filesLeft ?? 0) > 0 ? ` · còn ${r?.filesLeft} cho lượt sau` : ""),
       );
       if (r?.error) {
         console.log(`  ✗ ${r.error}`);
