@@ -10,7 +10,7 @@ import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
-import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, type ChannelIdentity } from "./identity.js";
+import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
@@ -29,6 +29,48 @@ import {
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
+import { getPeerLastSync, setPeerLastSync } from "../../config/settings.js";
+
+/**
+ * Ghi lại kết cục một lượt nối với một máy — CỬA DUY NHẤT, gọi từ MỌI đường phiên.
+ *
+ * Bốn đường dẫn tới một phiên (nghe · gọi thẳng · relay · đục lỗ). Ghi sổ ở ba đường rồi quên
+ * đường thứ tư thì thẻ máy nói sai đúng ở ca đi qua đường đó — mà vai GỌI/NGHE là do cú bắt tay
+ * nào ăn trước quyết định, tức nó hỏng theo kiểu tung đồng xu.
+ */
+/**
+ * Thẻ máy đang ở trạng thái nào — hàm THUẦN, và nó là NGUỒN DUY NHẤT của phép này.
+ *
+ * 🔴 Ca thật user báo 2026-09-24: thẻ hiện *"chưa phát hiện"* trong khi hai máy đang chở file
+ * qua relay ngay lúc đó. Gốc: bề mặt tự phán bằng DUY NHẤT tầng dò LAN. Nhưng dò LAN trả lời
+ * *"có thấy trên mạng nội bộ không"* — câu KHÁC hẳn *"có nối được không"*. Khác mạng thì câu
+ * đầu vĩnh viễn là "không", nên thẻ nói ngược sự thật (`app-design §F3`: vỏ rỗng).
+ *
+ * BỐN trạng thái, xếp theo ĐỘ TƯƠI của bằng chứng — gộp ba cái cuối lại chính là lời nói dối:
+ *   `lan`    thấy trên mạng nội bộ ngay bây giờ   · `synced` đã nối được, kèm lúc nào và qua đâu
+ *   `failed` lần thử gần nhất KHÔNG nối được      · `never`  chưa thử lần nào
+ *
+ * Để ở BACKEND chứ không ở bề mặt: bề mặt tự ghép hai nguồn thô là cách hai bề mặt (thẻ và
+ * dòng trạng thái) trôi lệch nhau, và là chỗ cổng không với tới được.
+ */
+export function peerCardState(
+  seenOnLan: boolean,
+  last: { at?: string; via?: string; ok?: boolean; error?: string } | undefined | null,
+): { kind: "lan" | "synced" | "failed" | "never"; at?: string; via?: string } {
+  if (seenOnLan) return { kind: "lan" };
+  if (last?.ok) return { kind: "synced", at: last.at, via: last.via };
+  if (last?.at) return { kind: "failed", at: last.at };
+  return { kind: "never" };
+}
+
+export function notePeerSync(peerDeviceId: string | null | undefined, via: string, r: { error?: string }): void {
+  if (!peerDeviceId) return;
+  try {
+    setPeerLastSync(peerDeviceId, { at: new Date().toISOString(), via, ok: !r.error, ...(r.error ? { error: r.error } : {}) });
+  } catch {
+    /* ghi sổ hỏng KHÔNG được làm hỏng lượt đồng bộ (điều 9) */
+  }
+}
 
 export * from "./identity.js";
 export * from "./wire.js";
@@ -114,6 +156,16 @@ export interface ChannelStatus {
   deviceId: string;
   port: number;
   peers: string[];
+  /**
+   * Lượt nối GẦN NHẤT với từng máy đã ghép.
+   *
+   * 🔴 Đây là thứ bề mặt thiếu, và thiếu nó thì thẻ máy NÓI SAI: nó vốn chỉ đọc tầng dò LAN,
+   * nên hai máy khác mạng luôn hiện "chưa phát hiện" kể cả đang chở file qua relay. Dò LAN trả
+   * lời *"có thấy trên mạng nội bộ không"* — một câu KHÁC hẳn *"có nối được không"*.
+   */
+  peerSync: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
+  /** Trạng thái ĐÃ TÍNH của từng máy — xem `peerCardState`. Bề mặt vẽ theo đây, không tự phán. */
+  peerState: Record<string, { kind: "lan" | "synced" | "failed" | "never"; at?: string; via?: string }>;
   dir: string;
   /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
   hostName: string;
@@ -128,6 +180,12 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     deviceId: channelIdentity(machineDir).deviceId,
     port: getP2pPort(),
     peers: getP2pPeers(),
+    // Lượt nối gần nhất theo từng máy — thứ thẻ máy cần để thôi nói "chưa rõ" (xem `notePeerSync`).
+    peerSync: getPeerLastSync(),
+    // Trạng thái ĐÃ TÍNH cho từng máy — bề mặt chỉ việc vẽ, không tự ghép hai nguồn thô.
+    peerState: Object.fromEntries(
+      getP2pPeers().map((id) => [id, peerCardState(seenPeers().some((s) => sameDeviceId(s.deviceId, id)), getPeerLastSync()[id])]),
+    ),
     dir: channelDir(storeRoot),
     hostName: hostname(),
   };
@@ -730,6 +788,7 @@ export async function startChannelServer(o: {
         mirror: mirrorHooks(),
       },
       (r: SyncOutcome) => {
+        notePeerSync(r.peerDeviceId, "nghe", r);
         // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
         // với "có gọi mà hỏng" — đúng kiểu vỏ rỗng mà `02_RULES §Bề mặt CHẾT THEO nền` cấm.
         log(

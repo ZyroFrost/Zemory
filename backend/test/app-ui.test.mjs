@@ -506,6 +506,40 @@ test("Sources shows +N from the latest scan and keeps it across unchanged render
 // 4444/set-drive?path=…">` trên một trang bất kỳ vẫn chạy (ảnh hỏng, nhưng REQUEST đã
 // gửi — CORS chặn ĐỌC kết quả chứ không chặn GỬI). Cổng 4444 cố định, có ghi trong README.
 // Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong đó đang nhận GET.
+test("thẻ máy KHÔNG được phán trạng thái chỉ bằng tầng dò LAN", async () => {
+  // 🔴 Ca thật user báo 2026-09-24: thẻ hiện "chưa phát hiện" trong khi hai máy đang chở file
+  // qua relay ngay lúc đó. Gốc: thẻ đọc DUY NHẤT `seen` (dò LAN), mà dò LAN trả lời *"có thấy
+  // trên mạng nội bộ không"* — một câu KHÁC hẳn *"có nối được không"*. Khác mạng thì câu đầu
+  // vĩnh viễn là "không", nên bề mặt nói ngược sự thật (`app-design §F3`: vỏ rỗng).
+  // Gọi HÀM THẬT — soi chữ ở đây là cổng rỗng, và đột biến hoá đã chứng minh đúng thế:
+  // gỡ hẳn phép tính mà cổng soi-chữ vẫn xanh vì cái TÊN còn nằm trong khai báo kiểu.
+  const { peerCardState } = await import("../../dist/memory/channel/index.js");
+  assert.equal(peerCardState(true, null).kind, "lan", "thấy trên LAN là bằng chứng tươi nhất");
+  assert.equal(peerCardState(true, { ok: false, at: "x" }).kind, "lan", "LAN thắng một lượt thử hỏng");
+  // 🔴 Ca THẬT: khác mạng ⇒ KHÔNG thấy trên LAN, nhưng đã nối được qua relay.
+  const s1 = peerCardState(false, { ok: true, at: "2026-09-24T05:00:00Z", via: "relay" });
+  assert.equal(s1.kind, "synced", "đã nối được thì phải nói ĐÃ NỐI, không phải 'chưa phát hiện'");
+  assert.equal(s1.via, "relay", "phải nói qua đường nào");
+  assert.equal(peerCardState(false, { ok: false, at: "x", error: "ETIMEDOUT" }).kind, "failed", "thử rồi mà hỏng KHÁC chưa thử");
+  // CA ÂM: chưa có lượt nào ⇒ `never`, và KHÔNG được bịa thành 'đã nối'.
+  assert.equal(peerCardState(false, null).kind, "never");
+  assert.equal(peerCardState(false, undefined).kind, "never");
+  assert.equal(peerCardState(false, {}).kind, "never", "bản ghi rỗng cũng là chưa từng nối");
+  const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  const chSrc = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /peerState/, "thẻ máy phải VẼ theo trạng thái backend đã tính, không tự phán");
+  // Ghim vào chính DỮ LIỆU đang chảy, không chỉ vào cái tên: vứt `m.st` đi thì thẻ lại tự phán
+  // mà chuỗi "peerState" vẫn còn ở chỗ khác — đột biến hoá đã cho thấy đúng lỗ đó.
+  assert.match(gm, /m\.st\|\|/, "trạng thái phải đi từ backend vào từng thẻ");
+  assert.doesNotMatch(gm, /m\.addr\?t\(.p2p\.online.\)/, "thẻ KHÔNG được tự phán trạng thái từ địa chỉ LAN");
+  // CA ÂM: mọi đường GHI sổ phải có mặt — thiếu một đường thì thẻ nói sai đúng ở ca đi qua nó,
+  // mà vai GỌI/NGHE do cú bắt tay nào ăn trước quyết định, tức hỏng kiểu tung đồng xu.
+  assert.match(chSrc, /export function notePeerSync/, "phải có MỘT cửa ghi sổ dùng chung");
+  assert.ok((ui.match(/notePeerSync\(/g) ?? []).length >= 2, "đường gọi thẳng VÀ đường relay đều phải ghi sổ");
+  assert.match(chSrc, /notePeerSync\(r\.peerDeviceId/, "đường NGHE cũng phải ghi sổ");
+});
+
 test("Đồng bộ ngay KHÔNG nhập gì ⇒ nhắm từng máy đã ghép, không phải chuỗi rỗng", async () => {
   // 🔴 Ca thật, tốn của user nhiều ngày: cú bấm truyền chuỗi RỖNG xuống `channelSyncOnce`, mà
   // rỗng nghĩa là *"không nhắm ai"* — nhánh đó chỉ gom dò LAN + bảng chung + địa chỉ đã nhớ và
