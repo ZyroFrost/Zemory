@@ -211,3 +211,19 @@ test("🔴 BA cửa nghe, một luật — cửa nghe THẲNG và cửa nghe REL
   const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
   assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(peerId \?\? ""\);/, "onOpen phải mang vân tay máy kia");
 });
+
+test("🔴 nhận khối xong KHÔNG hợp nhất trên event loop của daemon — giao cho tiến trình con", () => {
+  // Đo 2026-09-24 trên máy kia, HAI lần trong một buổi (16:59 và 18:04): ngay sau khi nhận trọn kho,
+  // cả hai cổng nhận TCP mà không nói TLS suốt hàng chục phút — nhịp tim không trả lời, bắt tay
+  // không xong, thẻ xanh đóng băng. Thủ phạm là `mergeChannelDir` gọi tại chỗ trong `onReceived`:
+  // giải mã + ghi SQLite đồng bộ cả kho. Tiến trình con của lượt sync (`jobs/syncrun.ts`) vốn đã
+  // hợp nhất thư mục kênh trước khi đẩy — nên việc đúng là GIAO cho nó, qua cổng ghi.
+  const recv = UI.slice(UI.indexOf("onReceived: (blocks: number) => {"), UI.indexOf("if (!r.listening && r.reason)"));
+  assert.ok(recv.length > 0 && recv.length < 3000, "không thấy khối onReceived — neo đã chết");
+  assert.doesNotMatch(recv, /mergeChannelDir\(/, "hợp nhất tại chỗ trong daemon = event loop chết đứng nhiều phút");
+  assert.match(recv, /startSyncJob\(\(\) => invalidateDashboard\(\), \{ lowPriority: true \}\)/, "phải giao cho tiến trình con qua cổng ghi, không preempt (không ai ngồi chờ)");
+  assert.match(recv, /chưa hợp nhất ngay/, "kho bận thì phải NÓI RA, không im — lượt sync theo nhịp sẽ làm");
+  // Tiến trình con thật sự hợp nhất trước khi đẩy — nếu dòng này biến mất thì "giao" là giao vào hư không.
+  const RUN = readFileSync(new URL("../src/jobs/syncrun.ts", import.meta.url), "utf8");
+  assert.match(RUN, /await mergeChannelDir\(channelDir\(\)/, "syncrun phải hợp nhất thư mục kênh");
+});
