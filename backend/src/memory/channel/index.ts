@@ -11,7 +11,7 @@ import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
-import { serveChannel, type ChannelServer, type SyncOutcome } from "./peer.js";
+import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
 import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
 import { stunPublicIp } from "./stun.js";
@@ -1085,6 +1085,14 @@ export async function syncViaRelay(o: {
   budgetMs?: number;
   /** Nói ra từng bước — đường này từng IM HOÀN TOÀN khi trượt, nên hai máy chỉ còn nước đoán. */
   log?: (m: string) => void;
+  /**
+   * Bật LIÊN KẾT THƯỜNG TRỰC cho phiên mở qua relay.
+   *
+   * 🔴 Bắt buộc phải luồn qua đây chứ không chỉ qua `connectToPeer`: hai máy KHÁC MẠNG kín NAT thì
+   * relay là đường duy nhất nối được (đo suốt 23–24/09). Bật thường trực ở mỗi đường gọi thẳng là
+   * để đúng ca người dùng đang gặp chạy y như cũ — nối rồi rụng.
+   */
+  link?: Pick<SessionOptions, "persistent" | "stop" | "onSyncRound" | "roundGapMs" | "pingIdleMs" | "linkDeadMs">;
 }): Promise<SyncOutcome | null> {
   const say = o.log ?? ((): void => {});
   const until = Date.now() + (o.budgetMs ?? 45_000);
@@ -1122,6 +1130,7 @@ export async function syncViaRelay(o: {
         onPaired: o.onPaired,
         mirror: mirrorHooks(),
         log: say,
+        ...(o.link ?? {}),
       };
       // Vai TLS do RELAY phân (`inv.serverSocket`) — hai đầu nhận hai vai ngược nhau từ CÙNG một
       // nguồn, nên không thể lệch. Đây là thứ lớp đục lỗ không có.

@@ -1657,15 +1657,6 @@ export { uiPort };
  */
 // ── VÒNG TỰ NỐI ────────────────────────────────────────────────────────────────────────────────
 /**
- * Nhịp TỐI THIỂU giữa hai lượt tự nối, và TRẦN khi thụt lùi.
- *
- * 5 phút là mức người dùng chịu được cho câu *"máy kia vừa bật, bao lâu thì thấy nhau"*. Trần 30
- * phút cho ca máy kia TẮT HẲN nhiều ngày: giữ nhịp 5 phút lúc đó là mỗi lượt đốt trọn ngân sách
- * cho một máy chắc chắn không có ở đó, mà chẳng ai đọc kết quả.
- */
-const AUTO_CONNECT_MIN_MS = 5 * 60_000;
-const AUTO_CONNECT_MAX_MS = 30 * 60_000;
-/**
  * Trần cho MỖI máy trong một lượt tự nối — ngắn hơn hẳn 25 giây của cú bấm.
  *
  * Không ai đang ngồi chờ, nên thà bỏ lượt này và thử lại sau 5 phút còn hơn giữ event loop của
@@ -1673,56 +1664,26 @@ const AUTO_CONNECT_MAX_MS = 30 * 60_000;
  * ở mức đọc được ngay cả khi sổ dài.
  */
 const AUTO_CONNECT_BUDGET_MS = 12_000;
-let autoNextAt = 0;
-let autoWait = AUTO_CONNECT_MIN_MS;
-let autoBusy = false;
-/** Lượt trước có nối được không — chỉ để biết KHI NÀO đáng ghi một dòng log. */
-let autoLastOk: boolean | null = null;
-/** Vân tay relay của các máy đã biết ở lượt trước — đổi ⇒ thử lại ngay. */
-let autoLastRelays = "";
 /** Lượt trước sổ có rỗng không — chỉ nói ra khi trạng thái ĐỔI, đừng kêu mỗi nhịp. */
 let autoLastEmpty: boolean | null = null;
 
 /**
- * Tới lượt tự nối chưa — hàm THUẦN, tách ra để có cổng soi.
+ * Chờ bao lâu trước lần nối lại thứ `fails` — 2s, 4s, 8s… trần 60s.
  *
- * ⛔ Bốn cửa, thiếu cửa nào cũng thành một kiểu hỏng riêng:
- * · **kênh tắt** ⇒ đừng gọi ra ngoài. Tắt kênh là một lời từ chối, không phải một trục trặc.
- * · **sổ rỗng** ⇒ không có ai để gọi. Chưa nối lần nào thì vòng này không có việc gì làm — nó
- *   KHÔNG đi tìm máy lạ, đó vẫn là việc của cú dán mã.
- * · **đang bận** ⇒ một lượt nền khác đang ghi kho, hoặc chính lượt tự nối trước chưa xong. Chồng
- *   hai lượt lên nhau là hai kẻ ghi cùng một kho (HP điều 11).
- * · **chưa tới nhịp** ⇒ tôn trọng thụt lùi.
+ * 🔴 Khác hẳn thụt lùi cũ (5 → 30 PHÚT), và khác vì câu hỏi đã đổi. Vòng cũ hỏi *"bao lâu thì thử
+ * đồng bộ một lần"* — thưa là đúng, vì mỗi lượt là một lần bắt tay đắt. Vòng này hỏi *"máy kia vừa
+ * rụng, bao lâu thì nối lại"*, mà user chốt 2026-09-24: *"phải luôn kết nối và tự động kết nối dù
+ * đổi mạng"*. Đổi Wi-Fi rồi ngồi chờ 30 phút thì không gọi là *"luôn kết nối"* được.
+ *
+ * Vẫn PHẢI có thụt lùi: máy kia tắt cả tuần mà cứ 2 giây gọi một lần là đốt pin và đốt relay công
+ * khai cho việc chắc chắn hỏng. Trần 60 giây là chỗ dừng — đủ thưa để không phiền ai, đủ dày để
+ * người dùng mở máy kia lên thì trong vòng một phút là thấy nối.
  */
-/**
- * Dấu vân tay tập địa chỉ relay của các máy đã biết — đổi nghĩa là ĐÁNG THỬ LẠI NGAY.
- *
- * 🔴 Vì sao cần: thụt lùi giãn tới 30 phút cho một máy im. Nhưng một máy trên mạng 4G không hề
- * im — nó đổi IP, rớt relay, vào relay KHÁC, rồi chờ ở đó. Với thụt lùi dài thì ta ngồi im tới
- * nửa tiếng trong khi bên kia đã sẵn sàng ở một địa chỉ mới. Đo 23/09: IP máy này đổi BA lần
- * trong ~10 phút, và hai máy trượt nhau đúng theo kiểu đó.
- *
- * Đặt lại nhịp theo TÍN HIỆU chứ không rút timer cho mọi ca: rút timer là đốt ngân sách đều đặn
- * cho một máy đang tắt hẳn, trong khi thứ ta thật sự chờ là *bên kia vừa đổi chỗ đứng*.
- */
-export function relayFingerprint(entries: readonly { fp: string; relay?: string }[]): string {
-  return entries
-    .filter((e) => e.relay)
-    .map((e) => `${e.fp}=${e.relay}`)
-    .sort()
-    .join("|");
+export function reconnectDelayMs(fails: number, baseMs = 2_000, capMs = 60_000): number {
+  if (fails <= 0) return 0; // vừa rụng lần đầu ⇒ thử lại NGAY, đừng bắt chờ
+  return Math.min(capMs, baseMs * 2 ** (fails - 1));
 }
 
-export function autoConnectDue(o: {
-  enabled: boolean;
-  peers: number;
-  busy: boolean;
-  nextAt: number;
-  now: number;
-}): boolean {
-  if (!o.enabled || o.peers <= 0 || o.busy) return false;
-  return o.now >= o.nextAt;
-}
 
 /**
  * Một nhịp tự nối: thử lại với MỌI máy đã từng nối được.
@@ -1739,32 +1700,137 @@ export function autoConnectDue(o: {
  * **Log CHỈ khi đổi trạng thái.** Ghi mỗi nhịp là mỗi ngày mấy trăm dòng "không nối được" — một
  * cổng kêu suốt là cổng sắp bị bỏ qua (`02_RULES §Guardrail`), và nó chôn mất dòng đáng đọc.
  */
-async function autoConnectTick(projectRoot: string): Promise<void> {
-  const { getP2pEnabled, getP2pPeers } = await import("./config/settings.js");
-  const peers = getP2pPeers();
-  // Máy kia vừa đổi relay ⇒ bỏ thụt lùi, thử lại ngay. Đọc bảng chung là một lượt đọc đĩa rẻ,
-  // rẻ hơn hẳn việc ngồi chờ hết nhịp 30 phút cho một máy đã sẵn sàng ở chỗ mới.
-  try {
-    const ch = await import("./memory/channel/index.js");
-    const fp = relayFingerprint(
-      ch.readPresence(getDriveDir(), { selfDeviceId: ch.channelStatus().deviceId, allowedPeers: peers }),
-    );
-    if (fp && fp !== autoLastRelays) {
-      autoLastRelays = fp;
-      autoWait = AUTO_CONNECT_MIN_MS;
-      autoNextAt = 0;
+/**
+ * Trạng thái LIÊN KẾT với một máy — thứ thẻ máy vẽ, và thứ thay cho "lượt thử gần nhất".
+ *
+ * 🔴 Ba trạng thái này KHÁC câu hỏi cũ. Bản trước ghi *"lượt nối gần nhất hỏng lúc X"*, nên một
+ * máy đang đồng bộ tốt vẫn hiện *"không nối được"* chỉ vì lượt trước đó rụng — user đọc đúng chỗ
+ * sai: *"card nối vào cứ hiện ko rõ dù đã nối"*. Liên kết thường trực thì câu đúng là *"ĐANG nối
+ * hay không"*, một câu trả lời được tức thời chứ không phải đọc trong lịch sử.
+ */
+export type LinkState = "up" | "connecting" | "off";
+
+/** Phần tuỳ chọn của phiên mà lớp liên kết cần luồn xuống — MỘT chỗ khai, ba cửa dùng lại. */
+type LinkOptions = Pick<
+  import("./memory/channel/peer.js").SessionOptions,
+  "persistent" | "stop" | "onSyncRound" | "roundGapMs" | "pingIdleMs" | "linkDeadMs"
+>;
+
+interface LinkEntry {
+  ctrl: AbortController;
+  fails: number;
+  state: LinkState;
+  /** Mốc của trạng thái hiện tại — bề mặt in "đã nối N phút". */
+  since: number;
+  lastError?: string;
+}
+
+/** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
+const links = new Map<string, LinkEntry>();
+
+/** Ảnh chụp cho bề mặt. Trả bản sao: bề mặt không được cầm tham chiếu vào trạng thái sống. */
+export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string }> {
+  const out: Record<string, { state: LinkState; since: number; fails: number; error?: string }> = {};
+  for (const [id, e] of links) out[id] = { state: e.state, since: e.since, fails: e.fails, ...(e.lastError ? { error: e.lastError } : {}) };
+  return out;
+}
+
+/**
+ * NGẮT liên kết với một máy — đường DUY NHẤT, và `unpair` phải đi qua đây.
+ *
+ * Xoá tên khỏi sổ mà không ngắt ống là gỡ cặp trên giấy: hai máy vẫn chở dữ liệu cho nhau, người
+ * dùng thì tin là đã cắt. Trả về có thật sự có liên kết để cắt hay không.
+ */
+export function dropLink(peerId: string): boolean {
+  const e = links.get(peerId);
+  if (!e) return false;
+  e.ctrl.abort();
+  links.delete(peerId);
+  daemonLog(`[channel] đã ngắt liên kết với ${peerId.slice(0, 11)}…`);
+  return true;
+}
+
+/** Ngắt HẾT — dùng khi tắt kênh hoặc đóng daemon. */
+export function dropAllLinks(): void {
+  for (const id of [...links.keys()]) dropLink(id);
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms).unref?.());
+
+/**
+ * GIỮ một liên kết sống với một máy, tới khi có người ngắt.
+ *
+ * 🔴 Vòng này là chỗ *"tự động kết nối dù đổi mạng"* thành thật. Mỗi lần vào vòng, `channelSyncOnce`
+ * dò LẠI địa chỉ từ đầu — dò LAN, bảng chung, cụm dò toàn cầu, relay. Nên đổi Wi-Fi, đổi IP, máy
+ * kia khởi động lại: không có gì phải nhớ, lượt sau tự tìm ra chỗ mới. Đó cũng là lý do KHÔNG cache
+ * một địa chỉ "đang dùng" ở đây.
+ */
+function keepLink(peerId: string, projectRoot: string): void {
+  if (links.has(peerId)) return;
+  const ctrl = new AbortController();
+  const entry: LinkEntry = { ctrl, fails: 0, state: "connecting", since: Date.now() };
+  links.set(peerId, entry);
+
+  void (async () => {
+    while (!ctrl.signal.aborted) {
+      try {
+        // Lời hứa này chỉ tan khi LIÊN KẾT chết — trong lúc nó còn sống, từng lượt đồng bộ báo về
+        // qua `onSyncRound`. Đây là khác biệt với vòng cũ: ở đó mỗi lời gọi là một lượt rồi thôi.
+        const r = await channelSyncOnce(peerId, {
+          budgetMs: AUTO_CONNECT_BUDGET_MS,
+          armWait: false,
+          projectRoot,
+          link: {
+            persistent: true,
+            stop: ctrl.signal,
+            onSyncRound: (): void => {
+              const cur = links.get(peerId);
+              if (!cur || cur.ctrl !== ctrl) return;
+              if (cur.state !== "up") {
+                cur.state = "up";
+                cur.since = Date.now();
+                daemonLog(`[channel] đã nối với ${peerId.slice(0, 11)}… — giữ liên kết`);
+              }
+              // Nối được thì thụt lùi về đáy: lần rụng kế phải nhạy lại ngay.
+              cur.fails = 0;
+              delete cur.lastError;
+            },
+          },
+        });
+        if (ctrl.signal.aborted) break;
+        entry.lastError = typeof r.error === "string" ? r.error : undefined;
+      } catch (e) {
+        if (ctrl.signal.aborted) break;
+        entry.lastError = e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120);
+      }
+      if (ctrl.signal.aborted) break;
+      if (entry.state === "up") {
+        entry.state = "connecting";
+        entry.since = Date.now();
+        daemonLog(`[channel] liên kết với ${peerId.slice(0, 11)}… rụng — đang nối lại`);
+      }
+      entry.fails++;
+      await sleep(reconnectDelayMs(entry.fails));
     }
-  } catch {
-    /* không đọc được bảng chung ⇒ giữ nhịp cũ, đường nào cũng chạy y nguyên (điều 9) */
-  }
-  // 🔴 KÊNH BẬT mà SỔ RỖNG là một trạng thái CHẾT, và nó hoàn toàn im lặng: `autoConnectDue` trả
-  // false vì `peers: 0`, nên vòng tự nối không chạy lần nào; `readPresence` lọc theo sổ nên cũng
-  // trả rỗng. Máy trông như đang hoạt động bình thường mà không bao giờ gọi ai.
-  //
-  // Gặp thật 23/09: sổ mất máy đã ghép (chưa rõ vì đâu — mọi đường ghi đều đòi gọi tường minh),
-  // và phải đo bằng tay mới thấy, sau khi đã đi soi nhầm sang relay và mạng. Nói ra MỘT lần khi
-  // trạng thái đổi là đủ để lần sau thấy ngay.
-  if (getP2pEnabled() && peers.length === 0) {
+    if (links.get(peerId) === entry) links.delete(peerId);
+  })();
+}
+
+/**
+ * Nhịp canh: MỌI máy trong sổ phải có một liên kết đang được giữ, và không máy nào ngoài sổ có.
+ *
+ * Chỉ làm việc canh sổ — việc nối nằm trong `keepLink`, việc nối lại nằm trong chính vòng đó. Nhịp
+ * này rẻ (đọc sổ + so hai tập), nên chạy dày được mà không tốn gì.
+ */
+async function linkTick(projectRoot: string): Promise<void> {
+  const { getP2pEnabled, getP2pPeers } = await import("./config/settings.js");
+  const on = getP2pEnabled();
+  const peers = on ? getP2pPeers() : [];
+
+  // 🔴 KÊNH BẬT mà SỔ RỖNG là một trạng thái CHẾT và hoàn toàn im lặng: không có ai để nối, nên
+  // không vòng nào chạy và máy trông như đang hoạt động bình thường. Gặp thật 23/09, phải đo bằng
+  // tay mới thấy. Nói ra MỘT lần khi trạng thái đổi.
+  if (on && peers.length === 0) {
     if (autoLastEmpty !== true) {
       autoLastEmpty = true;
       daemonLog("[channel] kênh đang bật nhưng SỔ MÁY RỖNG — sẽ không tự kết nối với ai; dán mã máy kia một lần");
@@ -1772,45 +1838,13 @@ async function autoConnectTick(projectRoot: string): Promise<void> {
   } else if (peers.length > 0) {
     autoLastEmpty = false;
   }
-  if (
-    !autoConnectDue({
-      enabled: getP2pEnabled(),
-      peers: peers.length,
-      busy: autoBusy || daemonJobBusy() !== null,
-      nextAt: autoNextAt,
-      now: Date.now(),
-    })
-  ) {
-    return;
-  }
-  autoBusy = true;
-  try {
-    let ok = false;
-    for (const id of peers) {
-      // `armWait: false` — xem chú thích ở `channelSyncOnce`: chỗ chờ đục lỗ đã có một cái giữ
-      // vĩnh viễn từ `startChannelServer`, mở thêm mỗi nhịp là chồng lỗ NAT lên nhau.
-      const r = await channelSyncOnce(id, { budgetMs: AUTO_CONNECT_BUDGET_MS, armWait: false, projectRoot });
-      // `waiting` KHÔNG tính là nối được — nó nghĩa là "đã mở chỗ chờ", một việc chưa xảy ra.
-      if (r.ok === true && r.waiting !== true) ok = true;
-    }
-    autoWait = ok ? AUTO_CONNECT_MIN_MS : Math.min(autoWait * 2, AUTO_CONNECT_MAX_MS);
-    autoNextAt = Date.now() + autoWait;
-    if (ok !== autoLastOk) {
-      daemonLog(
-        ok
-          ? `[channel] tự kết nối: đã đồng bộ với ${peers.length} máy đã biết`
-          : `[channel] tự kết nối: chưa kết nối được máy nào — thử lại sau ${Math.round(autoWait / 60_000)} phút`,
-      );
-      autoLastOk = ok;
-    }
-  } catch (e) {
-    // Không bao giờ để một lượt nền ném lên event loop của daemon (điều 9).
-    autoNextAt = Date.now() + autoWait;
-    daemonLog(`[channel] lỗi khi tự kết nối: ${e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120)}`);
-  } finally {
-    autoBusy = false;
-  }
+
+  const want = new Set(peers.map((p) => p.trim()).filter(Boolean));
+  // Ra khỏi sổ (gỡ cặp) hoặc tắt kênh ⇒ CẮT ống, không chỉ quên cái tên.
+  for (const id of [...links.keys()]) if (!want.has(id)) dropLink(id);
+  for (const id of want) keepLink(id, projectRoot);
 }
+
 /**
  * MỘT lượt nối + đồng bộ với một máy — dùng chung cho **cú bấm** và **vòng TỰ NỐI**.
  *
@@ -1833,7 +1867,7 @@ async function autoConnectTick(projectRoot: string): Promise<void> {
  * gõ gì ⇒ nhắm **từng máy đã ghép**, KHÔNG phải chuỗi rỗng: chuỗi rỗng nghĩa là *"không nhắm
  * ai"*, và nhánh đó chỉ gom địa chỉ từ dò LAN + bảng chung + địa chỉ đã nhớ rồi **bỏ qua cả cụm
  * dò toàn cầu lẫn relay** — hai tầng chỉ tra được khi biết ID, tức đúng hai tầng dựng riêng cho
- * ca KHÁC MẠNG. Vòng nền (`autoConnectTick`) vốn đã truyền ID nên nó chạy đúng; chỉ cú bấm tay
+ * ca KHÁC MẠNG. Lớp giữ-liên-kết (`keepLink`) vốn đã truyền ID nên nó chạy đúng; chỉ cú bấm tay
  * rơi xuống nhánh LAN. Triệu chứng: *"hôm qua nối được là do cùng mạng"*.
  *
  * Trả về MẢNG chứ không phải một đích: nhiều máy đã ghép thì phải thử hết, không im lặng bỏ sót.
@@ -1846,7 +1880,20 @@ export function syncTargets(typed: string, peers: readonly string[]): string[] {
 
 async function channelSyncOnce(
   rawInput: string,
-  o: { budgetMs: number; armWait: boolean; projectRoot: string },
+  o: {
+    budgetMs: number;
+    armWait: boolean;
+    projectRoot: string;
+    /**
+     * Bật LIÊN KẾT THƯỜNG TRỰC. Có ⇒ lời hứa chỉ tan khi liên kết CHẾT, không phải khi đồng bộ
+     * xong. Vắng ⇒ y hệt đời cũ: một lượt rồi trả về.
+     *
+     * Luồn qua ĐÂY chứ không dựng một hàm nối thứ hai: thứ tự thử địa chỉ (dò LAN → bảng chung →
+     * cụm dò toàn cầu → mã → đã nhớ) là một LUẬT đã sai hai lần rồi mới đúng, và nó cũng chính là
+     * thứ làm *"tự nối lại dù đổi mạng"* thành thật — mỗi lần vào vòng là dò lại từ đầu.
+     */
+    link?: LinkOptions;
+  },
 ): Promise<Record<string, unknown>> {
   const ch = await import("./memory/channel/index.js");
   // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
@@ -1954,6 +2001,8 @@ async function channelSyncOnce(
         // Lớp MIRROR THƯ MỤC (plan/24 §9) — CÙNG bộ hook với daemon và với CLI. Ba cửa, một
         // bản cài đặt: cửa nào thiếu nó là cửa đó âm thầm bỏ qua bốn thư mục.
         mirror: ch.mirrorHooks(),
+        // Liên kết THƯỜNG TRỰC (nếu lớp giữ-liên-kết xin) — cùng một đường nối, chỉ khác lúc buông.
+        ...(o.link ?? {}),
         // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
         onPaired: (peerId: string): void => {
           setP2pPeers([...getP2pPeers(), peerId]);
@@ -1988,6 +2037,9 @@ async function channelSyncOnce(
         relayUrls,
         budgetMs: 45_000,
         log: (m: string) => daemonLog(m),
+        // 🔴 Phải luồn xuống CẢ đường này, không chỉ đường gọi thẳng. Hai máy khác mạng kín NAT thì
+        // relay là đường DUY NHẤT nối được — bỏ sót ở đây là đúng ca user đang gặp vẫn rụng như cũ.
+        ...(o.link ? { link: o.link } : {}),
         peerDeviceId: wantId,
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
@@ -3371,6 +3423,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       return json(res, {
         ok: true,
         ...st,
+        // 🔴 Trạng thái LIÊN KẾT — câu hỏi *"đang nối hay không"*, trả lời được TỨC THÌ.
+        //
+        // Nó thay cho `peerState`, vốn chỉ đọc được LỊCH SỬ (*"lượt thử gần nhất hỏng lúc X"*).
+        // Với liên kết một-lượt-rồi-đóng thì lịch sử là tất cả những gì có; với liên kết thường
+        // trực thì lịch sử là câu trả lời SAI — user đọc đúng chỗ đó: *"card nối vào cứ hiện ko rõ
+        // dù đã nối"*.
+        links: linkStates(),
         blocks: ch.inventoryIds(st.dir).length,
         // TRẠNG THÁI THẬT, không phải ý định: cổng đang nghe (`null` = không nghe) và máy nào
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
@@ -3525,6 +3584,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       if (drop) {
         const keep = Object.fromEntries(Object.entries(getP2pPeerAddrs()).filter(([k]) => norm(k) !== norm(want)));
         setP2pPeerAddrs(keep);
+        // 🔴 CẮT ỐNG, không chỉ xoá cái tên. Từ khi liên kết là THƯỜNG TRỰC, bỏ sót dòng này nghĩa
+        // là gỡ cặp chỉ đổi nhãn trên màn hình: ống vẫn mở, hai máy vẫn chở dữ liệu cho nhau, và
+        // người dùng tin là đã cắt. `linkTick` cũng dọn theo sổ, nhưng nó chạy 30 giây một lần —
+        // với một hành động người dùng vừa bấm thì 30 giây im lặng đã là quá dài.
+        for (const cur of [...getP2pPeers(), want]) if (norm(cur) === norm(want)) dropLink(cur);
       }
       return json(res, { ok: true, peers: getP2pPeers() });
     }
@@ -3543,7 +3607,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       if (typed) {
         return json(res, await channelSyncOnce(syncTargets(typed, [])[0], { budgetMs: 25_000, armWait: true, projectRoot: root() }));
       }
-      // 🔴 KHÔNG nhập gì ⇒ nhắm TỪNG MÁY ĐÃ GHÉP, đúng như `autoConnectTick` vẫn làm.
+      // 🔴 KHÔNG nhập gì ⇒ nhắm TỪNG MÁY ĐÃ GHÉP, đúng như lớp giữ-liên-kết vẫn làm.
       //
       // Bản trước truyền chuỗi RỖNG xuống, và chuỗi rỗng nghĩa là *"không nhắm ai"*: nhánh đó chỉ
       // gom địa chỉ từ dò LAN + bảng chung + địa chỉ đã nhớ, rồi **bỏ qua cả cụm dò toàn cầu lẫn
@@ -3795,11 +3859,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
   daemonHeartbeat();
   setInterval(daemonHeartbeat, 30_000).unref();
-  // TỰ NỐI — hỏi mỗi 60 giây, nhưng `autoConnectDue` mới là thứ quyết có chạy hay không.
-  // Một đồng hồ RẺ hỏi thường xuyên + một mốc `nextAt` thì đổi nhịp (thụt lùi) không phải dựng
-  // lại timer; đặt hẳn `setInterval(autoWait)` là mỗi lần đổi nhịp lại phải clear rồi tạo mới,
-  // và đó là chỗ người ta quên clear rồi có hai đồng hồ cùng chạy.
-  setInterval(() => void autoConnectTick(root()), 60_000).unref();
+  // GIỮ LIÊN KẾT — nhịp này chỉ canh SỔ (mọi máy đã ghép phải có một liên kết đang giữ, và không
+  // máy nào ngoài sổ được giữ). Việc nối và nối lại nằm trong chính vòng của từng liên kết, nên
+  // nhịp ở đây rẻ và không cần dày. Chạy ngay một lượt: chờ 30 giây đầu là 30 giây người dùng mở
+  // app lên và thấy "chưa nối" mà không hiểu vì sao.
+  void linkTick(root());
+  setInterval(() => void linkTick(root()), 30_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
   // KÊNH MÁY-TỚI-MÁY: bắt đầu NGHE nếu người dùng đã bật (plan/24 §7 bước ④).

@@ -18,7 +18,16 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { openMemory } from "../../dist/memory/db.js";
 import { writeMemoryShareKey } from "../../dist/memory/share.js";
 import { loadOrCreateIdentity } from "../../dist/memory/channel/identity.js";
-import { connectToPeer, serveChannel, mirrorBudgetMs, writeFlow } from "../../dist/memory/channel/peer.js";
+import {
+  connectToPeer,
+  serveChannel,
+  mirrorBudgetMs,
+  writeFlow,
+  keepaliveDue,
+  linkDead,
+  PING_IDLE_MS,
+  LINK_DEAD_MS,
+} from "../../dist/memory/channel/peer.js";
 import { excludeReason, mirrorRoots, resolveMirrorPath, scanMirror } from "../../dist/memory/channel/mirror.js";
 import { classify, listQueue, applyQueued, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
 import { tempDir } from "./helpers.mjs";
@@ -77,7 +86,7 @@ const readAt = (m, area, rel) => {
   }
 };
 
-const sideOpts = (m, peers, peerSync) => ({
+const sideOpts = (m, peers, peerSync, extra = {}) => ({
   channelDir: m.channelDir,
   identity: m.identity,
   shareKey: m.shareKey,
@@ -85,6 +94,7 @@ const sideOpts = (m, peers, peerSync) => ({
   appVersion: APP_VERSION,
   timeoutMs: 20_000,
   mirror: mirrorHooks({ repoRoot: m.repoRoot, storeRoot: m.storeRoot, db: m.db, peerSync }),
+  ...extra,
 });
 
 /** Một lượt đồng bộ hai chiều. Chờ CẢ HAI đầu đóng sổ — cắt sớm là mất phần bên nghe. */
@@ -264,6 +274,166 @@ function fakePipe(fullTimes) {
     },
   };
 }
+
+// ── ⑤ LIÊN KẾT THƯỜNG TRỰC — user chốt 2026-09-24 ────────────────────────────────────
+//
+// 🔴 Nguyên văn: *"nó phải luôn kết nối và tự động kết nối dù đổi mạng, ko được hết phiên, trừ khi
+// t bấm unpair"*. Tức liên kết phải cư xử như cặp ghép điện thoại, không phải như một cuộc gọi.
+//
+// Trước bản này "xong một lượt" = "đóng ống", nên giữa hai lượt hai máy KHÔNG có liên kết nào —
+// bề mặt không có gì để gọi là *"đang nối"*, và mọi đồng hồ đều buộc phải chọn giữa chém nhầm
+// liên kết còn sống hay ôm mãi một ống đã đứt.
+
+test("link: hai luật đồng hồ — im thì bắn nhịp tim, MẤT TÍN HIỆU mới là chết", () => {
+  // Hai câu hỏi KHÁC NHAU, và gộp chúng làm một chính là con bug cũ: trần "hết giờ phiên" đếm từ
+  // lúc bắt tay nên nó trả lời câu *"phiên chạy bao lâu rồi"* — một câu không ai cần biết.
+  assert.equal(keepaliveDue(10_000, 10_000, 1_000), false, "vừa có byte thì chưa cần nhịp tim");
+  assert.equal(keepaliveDue(11_000, 10_000, 1_000), true, "đúng mốc là tới hạn");
+  assert.equal(keepaliveDue(11_500, 10_000, 1_000), true);
+
+  assert.equal(linkDead(10_000, 10_000, 3_000), false);
+  assert.equal(linkDead(13_000, 10_000, 3_000), false, "ĐÚNG mốc chưa phải chết — chết là VƯỢT mốc");
+  assert.equal(linkDead(13_001, 10_000, 3_000), true);
+
+  // 🔴 CA ÂM QUAN TRỌNG NHẤT: trần chết phải là BỘI của nhịp tim. Đặt sát nhau thì một nhịp rớt vì
+  // mạng chập là cắt nhầm một liên kết còn sống — đúng thứ user cấm.
+  assert.ok(LINK_DEAD_MS >= PING_IDLE_MS * 3, "phải chịu được ÍT NHẤT hai nhịp tim rớt liên tiếp");
+  // Và lượt chở dài không bao giờ được chạm trần chết, vì mỗi khung đi qua đều dời mốc.
+  assert.equal(linkDead(1_000_000, 999_999, LINK_DEAD_MS), false, "liên kết đang bận thì không bao giờ chết");
+});
+
+test("link: liên kết THƯỜNG TRỰC sống qua nhiều lượt, không đóng sau lượt đầu", async (t) => {
+  const a = makeMachine(t, "lka", "chia-chung-link");
+  const b = makeMachine(t, "lkb", "chia-chung-link");
+  write(a, "docs", "agent/05_TODO.md", "viec cua A\n");
+
+  const rounds = [];
+  const cut = new AbortController();
+  t.after(() => cut.abort()); // ca đỏ cũng phải buông ống, nếu không cả cụm treo
+  // 🔴 CẢ HAI ĐẦU phải thường trực. Phép thử này bắt được ngay một lỗ thật: bản đầu chỉ bật cờ ở
+  // bên GỌI, nên bên NGHE vẫn đóng ống sau lượt một và liên kết chết từ đầu kia — bên gọi thì
+  // tưởng mình đang giữ một liên kết sống. Một liên kết là thoả thuận của HAI máy, không phải
+  // thiết lập của một máy.
+  const server = await serveChannel(
+    {
+      ...sideOpts(b, [a.identity.deviceId], undefined, { persistent: true, roundGapMs: 120, pingIdleMs: 60, linkDeadMs: 8_000 }),
+      port: 0,
+      host: "127.0.0.1",
+    },
+    () => {},
+  );
+  t.after(() => server.close());
+
+  // Trần chết rộng hơn hẳn khoảng cách lượt: đây là phép thử liên kết, không phải phép thử đồng hồ.
+  const linkClosed = connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, {
+      persistent: true,
+      roundGapMs: 120,
+      pingIdleMs: 60,
+      linkDeadMs: 8_000,
+      stop: cut.signal,
+      onSyncRound: (r) => rounds.push(r),
+    }),
+  );
+
+  // Chờ tới khi có ÍT NHẤT ba lượt — một lượt là chưa chứng minh được gì, hai lượt còn có thể do
+  // trùng hợp; ba lượt nghĩa là vòng đang tự quay.
+  const t0 = Date.now();
+  while (rounds.length < 3 && Date.now() - t0 < 10_000) {
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  assert.ok(rounds.length >= 3, `liên kết phải tự mở lượt kế (mới thấy ${rounds.length} lượt)`);
+  // Ống vẫn PHẢI còn mở: lời hứa chỉ tan khi dây đứt.
+  assert.equal(
+    await Promise.race([linkClosed.then(() => "ĐÃ ĐÓNG"), new Promise((r) => setTimeout(() => r("còn mở"), 150))]),
+    "còn mở",
+    "liên kết thường trực không được tự đóng sau khi đồng bộ xong",
+  );
+
+  // Lượt ĐẦU chở file, các lượt SAU đã hội tụ nên chở 0 — bộ đếm phải về 0, không cộng dồn.
+  assert.equal(rounds[0].sentFiles, 1, "lượt đầu phải chở đúng 1 file");
+  assert.equal(rounds[rounds.length - 1].sentFiles, 0, "hội tụ rồi thì lượt sau chở 0 — cộng dồn là nói dối bề mặt");
+  assert.equal(readAt(b, "docs", "agent/05_TODO.md"), null, "file mới vẫn phải vào HÀNG ĐỢI, không tự ghi");
+
+  // 🔴 CẮT = `unpair`, và đây là vế THỨ HAI của yêu cầu, ngang hàng với vế "không hết phiên".
+  // Một liên kết không bao giờ tự hết hạn mà KHÔNG có đường cắt thì `unpair` chỉ xoá được cái tên
+  // trong sổ — ống vẫn chạy, hai máy vẫn đồng bộ, người dùng bấm gỡ mà không có gì xảy ra.
+  cut.abort();
+  const end = await Promise.race([linkClosed, new Promise((r) => setTimeout(() => r(null), 5_000))]);
+  assert.ok(end, "bấm gỡ mà ống không tan = gỡ cặp chỉ là đổi nhãn");
+  assert.match(end.error ?? "", /ngắt/, `phải nói rõ là NGƯỜI DÙNG ngắt, không phải lỗi mạng: ${end.error}`);
+});
+
+test("link: liên kết RẢNH sống nhờ NHỊP TIM — im không phải là chết", async (t) => {
+  // 🔴 Đây là vế *"ko được hết phiên"* của yêu cầu, và là ca mà mọi trần thời gian đời cũ đều
+  // trượt: hai máy đã hội tụ thì KHÔNG có gì để chở, nên ống im hoàn toàn. Không có nhịp tim thì
+  // liên kết rảnh trông y hệt liên kết chết, và bất kỳ đồng hồ nào cũng buộc phải chém nhầm.
+  //
+  // Dựng đúng ca đó: KHÔNG lượt nào (roundGap khổng lồ), và trần chết chỉ bằng 4 nhịp tim — nên
+  // nếu nhịp tim không bắn, liên kết PHẢI chết trong vòng một giây.
+  const a = makeMachine(t, "lke", "chia-chung-idle");
+  const b = makeMachine(t, "lkf", "chia-chung-idle");
+  const cut = new AbortController();
+  t.after(() => cut.abort());
+
+  const idle = { persistent: true, roundGapMs: 3_600_000, pingIdleMs: 60, linkDeadMs: 240 };
+  const server = await serveChannel(
+    { ...sideOpts(b, [a.identity.deviceId], undefined, idle), port: 0, host: "127.0.0.1" },
+    () => {},
+  );
+  t.after(() => server.close());
+
+  const linkClosed = connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, { ...idle, stop: cut.signal }),
+  );
+
+  // Chờ QUÁ NĂM LẦN trần chết. Không nhịp tim thì nó đã phải chết từ lần thứ nhất.
+  const verdict = await Promise.race([
+    linkClosed.then((r) => `CHẾT: ${r.error ?? "không rõ"}`),
+    new Promise((r) => setTimeout(() => r("còn sống"), 240 * 5)),
+  ]);
+  assert.equal(verdict, "còn sống", "liên kết RẢNH bị chém = đúng thứ user cấm (*ko được hết phiên*)");
+});
+
+test("link: máy kia MẤT TÍN HIỆU thì liên kết phải chết, không ôm mãi", async (t) => {
+  const a = makeMachine(t, "lkc", "chia-chung-link2");
+  const b = makeMachine(t, "lkd", "chia-chung-link2");
+
+  // Máy kia GIỮ ỐNG nhưng CÂM — ca khó nhất, và là ca duy nhất mà "dây đứt" không cứu được ta.
+  const server = await serveChannel(
+    {
+      ...sideOpts(b, [a.identity.deviceId], undefined, {
+        persistent: true,
+        roundGapMs: 3_600_000,
+        pingIdleMs: 3_600_000,
+        linkDeadMs: 3_600_000,
+      }),
+      port: 0,
+      host: "127.0.0.1",
+    },
+    () => {},
+  );
+  t.after(() => server.close());
+
+  // 🔴 CA ÂM của cả tính năng: "không bao giờ hết phiên" KHÔNG được biến thành "không bao giờ buông".
+  // Nhịp tim tắt (pingIdleMs khổng lồ) ⇒ không ai dời mốc ⇒ trần chết phải ăn.
+  const t0 = Date.now();
+  const r = await connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, {
+      persistent: true,
+      roundGapMs: 3_600_000,
+      pingIdleMs: 3_600_000,
+      linkDeadMs: 600,
+    }),
+  );
+  const took = Date.now() - t0;
+  assert.ok(r.error, "mất tín hiệu phải báo lỗi, không im lặng trả về 'ok'");
+  assert.match(r.error, /mất tín hiệu/, `lý do phải nói rõ là mất tín hiệu, không phải "hết giờ": ${r.error}`);
+  assert.ok(took < 8_000, `phải buông NGAY sau trần chết, không đợi trần phiên đời cũ (mất ${took}ms)`);
+});
 
 test("mirror-flow: vòng chở phải ĐỢI ỐNG THOÁT, không xếp cả kho vào bộ đệm rồi bảo 'xong'", async () => {
   // 🔴 Ca thật đo 2026-09-24, và nó là bệnh CÒN LẠI sau khi đã có ngân sách ở trên: vòng chở xếp
