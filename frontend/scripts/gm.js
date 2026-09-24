@@ -324,9 +324,14 @@
       seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
       var cards=[];
       cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
+      var pstate=c.peerState||{};
       (c.peers||[]).forEach(function(id,i){
         var sp=seenBy[id];
-        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:''});
+        // 🔴 Thẻ đọc HAI nguồn, không phải một. Bản trước chỉ đọc tầng dò LAN, nên hai máy khác
+        // mạng thì nó vĩnh viễn hiện "chưa phát hiện" — kể cả đang chở file qua relay ngay lúc đó.
+        // Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; lượt nối gần nhất trả lời *"có nối
+        // được không"*. Hai câu khác nhau, và câu thứ hai mới là thứ người dùng đang hỏi.
+        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
@@ -335,17 +340,35 @@
         d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)';
         // TÊN MÁY trước, trạng thái sau. Chưa biết tên (bản dò đời cũ không gửi) ⇒ '?' — từ 2026-09-19
         // bề mặt chỉ còn MỘT mã, nên con số 9 chữ số không còn là thứ người dùng nhìn tới.
-        var label=m.name||'?';
-        var state=m.me?t('p2p.thisMachine'):(m.addr?t('p2p.online'):t('p2p.offline'));
-        var dot=m.me?'var(--primary)':(m.addr?'var(--success)':'var(--text-faint)');
+        var label=m.name||(m.me?'?':(m.id||'').slice(0,11)+'…');
+        // BA trạng thái, không phải hai — và thứ tự này là thứ tự ĐỘ TƯƠI của bằng chứng:
+        //   thấy trên LAN  > đã nối được lúc nào đó  > lần thử gần nhất HỎNG  > chưa thử lần nào
+        // Gộp ba cái cuối thành "chưa phát hiện" chính là câu nói dối user bắt được.
+        // VẼ theo trạng thái backend đã tính (`peerCardState`), KHÔNG tự ghép hai nguồn thô —
+        // đó là cách thẻ và dòng trạng thái trôi lệch nhau, và là chỗ cổng không với tới.
+        var ps=m.st||{kind:'never'};
+        var state, dot;
+        if(m.me){state=t('p2p.thisMachine');dot='var(--primary)';}
+        else if(ps.kind==='lan'){state=t('p2p.online');dot='var(--success)';}
+        else if(ps.kind==='synced'){state=t('p2p.syncedAgo').replace('{t}',zAgo(ps.at))+(ps.via?' · '+ps.via:'');dot='var(--success)';}
+        else if(ps.kind==='failed'){state=t('p2p.lastFail').replace('{t}',zAgo(ps.at));dot='var(--warn)';}
+        else {state=t('p2p.never');dot='var(--text-faint)';}
         d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
           +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
           +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
           +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(m.addr?(m.addr+(m.port?(':'+m.port):'')):t('p2p.noAddr'))+'</div>';
         if(!m.me){
-          var x=document.createElement('button');x.className='btn sm';x.style.marginTop='7px';
+          var bar=document.createElement('div');
+          bar.style.cssText='display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
+          // THỬ LẠI trên chính thẻ của máy đó: nút *Đồng bộ ngay* chung thử lần lượt mọi máy,
+          // còn ở đây người dùng đang hỏi về MỘT máy cụ thể và muốn câu trả lời về đúng nó.
+          var rt=document.createElement('button');rt.className='btn xs';
+          rt.textContent=t('p2p.retry');rt.setAttribute('data-act','p2p-retry');rt.setAttribute('data-id',m.id);
+          bar.appendChild(rt);
+          var x=document.createElement('button');x.className='btn xs';
           x.textContent=t('p2p.unpair');x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',m.id);
-          d.appendChild(x);
+          bar.appendChild(x);
+          d.appendChild(bar);
         }
         cl.appendChild(d);
       });
@@ -458,6 +481,19 @@
     // Nhánh TƯỜNG MINH, không dùng đường rơi-xuống: một hành động mới lọt vào bộ chọn ở trên
     // mà không ai để ý sẽ được gửi đi như một lượt duyệt. Cổng `data-act` của repo soi đúng
     // chữ `act==='…'` chính vì lý do đó.
+    if(act==='p2p-retry'){
+      // Thử lại với ĐÚNG máy này. Truyền ID làm `host` — `channelSyncOnce` nhận cả ID lẫn địa
+      // chỉ, và ID mở được cả cụm dò toàn cầu lẫn relay (địa chỉ trần thì không).
+      var pid=el.getAttribute('data-id')||'';
+      p2pMsg(t('p2p.syncing'));
+      zPost('/channel-sync?host='+encodeURIComponent(pid)).then(function(r){
+        if(!r||r.ok===false){p2pMsg('✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
+        if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
+        p2pMsg('✓ '+syncResultText(r));
+        loadChannel();
+      }).catch(function(){p2pMsg(t('p2p.logErr'));});
+      return;
+    }
     if(act==='mir-apply'){
       zPost('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice')))
         .then(loadQueue).catch(loadQueue);
@@ -496,6 +532,18 @@
     if(on){loadLog();logTimer=setInterval(loadLog,15000);}
   }
   window.zP2pLogTick=logTick;
+
+  /** "vừa xong" / "N phút" / "N giờ" / "N ngày" — mốc thô không đọc được bằng mắt. */
+  function zAgo(iso){
+    var ms=Date.now()-new Date(iso||0).getTime();
+    if(!isFinite(ms)||ms<0)return t('p2p.agoNow');
+    var m=Math.floor(ms/60000);
+    if(m<1)return t('p2p.agoNow');
+    if(m<60)return t('p2p.agoMin').replace('{n}',String(m));
+    var h=Math.floor(m/60);
+    if(h<24)return t('p2p.agoHour').replace('{n}',String(h));
+    return t('p2p.agoDay').replace('{n}',String(Math.floor(h/24)));
+  }
 
   // KẾT QUẢ MỘT LƯỢT NỐI — phải nói được CÓ NỐI ĐƯỢC HAY KHÔNG, không chỉ đếm khối.
   //

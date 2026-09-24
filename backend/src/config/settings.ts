@@ -88,6 +88,8 @@ interface ZConfig {
    */
   p2pPeers?: Array<string | PeerRecord>;
   p2pPeerAddrs?: Record<string, string[]>;
+  /** plan/24 §9 — lượt nối GẦN NHẤT với từng máy: `{ at, via, ok }`. Xem getPeerLastSync. */
+  p2pPeerLastSync?: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
   /** Lịch tự sync — xem getAutosyncSchedule. */
@@ -527,6 +529,20 @@ export function getP2pPeers(): string[] {
 }
 export function setP2pPeers(peers: string[]): void {
   const c = read();
+  // 🔴 XOÁ SẠCH SỔ MÁY là thao tác BẤT KHẢ ĐẢO đối với người dùng: mất ghép đôi nghĩa là
+  // không máy nào gọi vào được nữa, và không gì trên bề mặt nói vì sao. Đã xảy ra HAI LẦN
+  // (23/09 và 24/09) và sổ ghi thẳng *"không tìm ra kẻ ghi"* — vì lượt ghi đó IM LẶNG.
+  //
+  // Không CẤM (gỡ máy cuối cùng là việc hợp lệ), nhưng bắt nó để lại DẤU VẾT kèm chồng lời
+  // gọi. Lần sau sổ rỗng thì có tên thủ phạm ngay trong nhật ký thay vì một phiên đi dò.
+  const before = readPeerRecords().length;
+  if (before > 0 && peers.filter((p) => p.trim()).length === 0) {
+    console.error(
+      `zemory: XOÁ SẠCH sổ máy đã ghép (${before} máy) — nếu đây không phải chủ đích thì đây là chỗ cần truy:
+` +
+        (new Error("stack").stack ?? "(không có chồng lời gọi)"),
+    );
+  }
   // Giữ chiều đồng bộ đã đặt cho máy còn trong danh sách — bản ghi cũ không được rơi chỉ vì
   // một chỗ gọi đời trước chỉ biết truyền mảng ID. Đây là nửa còn lại của tương thích ngược:
   // đọc được dạng cũ là chưa đủ, phải GIỮ được phần dạng mới khi đường cũ ghi đè.
@@ -576,6 +592,29 @@ function readPeerRecords(): PeerRecord[] {
     }
   }
   return out;
+}
+
+/**
+ * LƯỢT NỐI GẦN NHẤT với từng máy — thứ bề mặt cần để nói *"đã nối được"* thay vì *"chưa rõ"*.
+ *
+ * 🔴 Vì sao phải LƯU chứ không suy từ tầng dò: thẻ máy trước đây đọc DUY NHẤT tầng dò LAN, nên
+ * hai máy khác mạng thì nó vĩnh viễn hiện *"chưa phát hiện"* — kể cả lúc đang chở file qua relay
+ * ngay tại thời điểm đó. Bề mặt nói ngược với sự thật, đúng hạng *vỏ rỗng* mà `app-design §F3`
+ * cấm. Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; nó KHÔNG trả lời *"có nối được không"*.
+ *
+ * Lưu vào cấu hình chứ không giữ trong RAM daemon: người dùng khởi động lại app luôn, mà mất
+ * trạng thái là thẻ lại về *"chưa rõ"* đúng lúc họ vừa mở app lên xem.
+ */
+export function getPeerLastSync(): Record<string, { at?: string; via?: string; ok?: boolean; error?: string }> {
+  const v = read().p2pPeerLastSync;
+  return v && typeof v === "object" ? v : {};
+}
+export function setPeerLastSync(peerId: string, info: { at: string; via: string; ok: boolean; error?: string }): void {
+  const id = peerId.trim();
+  if (!id) return; // không có danh tính thì không ghi sổ — đừng đẻ một hàng "(không rõ)"
+  const c = read();
+  c.p2pPeerLastSync = { ...(c.p2pPeerLastSync ?? {}), [id]: info };
+  write(c);
 }
 
 /** Cấu hình chiều của một máy. Máy lạ hoặc cặp đời cũ ⇒ `two-way` — mặc định của `§9.2`. */

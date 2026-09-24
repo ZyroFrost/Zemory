@@ -1963,6 +1963,9 @@ async function channelSyncOnce(
       },
     );
     last = { ...r, addr: cand };
+    // Ghi sổ MỌI kết cục, kể cả hỏng: thẻ máy cần phân biệt "chưa thử lần nào" với "thử rồi và
+    // hỏng vì lý do X" — gộp hai cái đó thành một chữ "chưa rõ" là bắt người dùng đoán.
+    ch.notePeerSync(r.peerDeviceId, "gọi thẳng", r);
     if (!r.error) return ({ ok: true, ...last });
   }
 
@@ -2000,6 +2003,7 @@ async function channelSyncOnce(
         },
       })
       .catch(() => null);
+    if (viaRelay) ch.notePeerSync(viaRelay.peerDeviceId ?? wantId, "relay", viaRelay);
     if (viaRelay && !viaRelay.error) return { ok: true, ...viaRelay, via: "relay" };
     // 🔴 Relay đã CHẠY mà hỏng ⇒ giữ lại lỗi đó. Bản trước vứt đi rồi rơi thẳng xuống chỗ chờ đục
     // lỗ, nên bề mặt chỉ còn `dialFailed: ETIMEDOUT` của đường gọi thẳng — một câu nói về đường
