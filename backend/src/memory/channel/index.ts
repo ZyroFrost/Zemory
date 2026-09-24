@@ -758,6 +758,17 @@ export async function startChannelServer(o: {
   /** Máy vừa chứng minh cùng chìa xin vào sổ ⇒ hàm này ghi vân tay nó lại và trả `true`. */
   acceptPeer?: (peerDeviceId: string) => boolean;
   onReceived?: (blocks: number) => void;
+  /**
+   * Mỗi LƯỢT đồng bộ xong trên liên kết ĐẾN — thứ bề mặt cần để nói *"đang nối"*.
+   *
+   * 🔴 Vì sao không dùng `onDone` được: từ khi lớp nghe thường trực, `onDone` chỉ nổ lúc liên kết
+   * CHẾT. Một liên kết khoẻ, chở dữ liệu suốt, sẽ **im lặng ở mọi hố báo** — và thẻ máy lại hiện
+   * *"chưa nối"* đúng như con bug đang vá, chỉ đổi nguyên nhân.
+   *
+   * Và nó là hố DUY NHẤT cho ca máy kia gọi được ta còn ta gọi không được nó (NAT một chiều):
+   * liên kết CÓ THẬT, nhưng lớp giữ-liên-kết bên này không biết gì về nó.
+   */
+  onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
   log?: (msg: string) => void;
 } ): Promise<ChannelServeResult> {
   const log = o.log ?? (() => {});
@@ -786,16 +797,37 @@ export async function startChannelServer(o: {
         allowedPeers: peers,
         acceptPeer: o.acceptPeer,
         mirror: mirrorHooks(),
+        // 🔴 LỚP NGHE CŨNG PHẢI THƯỜNG TRỰC — một liên kết là thoả thuận của HAI máy.
+        //
+        // Đo tại trận 2026-09-24, ngay sau khi 3.5.8 lên cả hai máy: cả hai vĩnh viễn hiện *"đang
+        // nối lại"*, mà nhật ký lại có `phiên với … — đã nhận 122 khối` rồi `hợp nhất xong: 231
+        // khối mới`. Dữ liệu CÓ chảy; dòng đó chính là lúc phiên **kết thúc**. Bên gọi bật cờ
+        // thường trực, bên nghe thì không, nên đầu nghe đóng ống sau lượt một và giết luôn liên
+        // kết của đầu kia. Hai máy thay nhau làm việc đó ⇒ không bên nào giữ nổi liên kết.
+        //
+        // Cổng `p2p-mirror` đã bắt đúng lỗ này ngay lượt chạy đầu — nhưng nó được vá TRONG PHÉP
+        // THỬ mà quên vá ở đây. Bài học: phép thử bắt được một lỗ thì phải hỏi *"chỗ THẬT đã vá
+        // chưa"*, không chỉ *"phép thử xanh chưa"*.
+        persistent: true,
+        onSyncRound: (r: SyncOutcome) => {
+          notePeerSync(r.peerDeviceId, "nghe", r);
+          if (r.peerDeviceId) o.onLinkRound?.(r.peerDeviceId, r);
+          // Chỉ nói khi có việc THẬT xảy ra. Liên kết thường trực chạy một lượt mỗi 30 giây; in
+          // cả lượt rỗng là mỗi ngày vài nghìn dòng, và một nhật ký ngập là nhật ký không ai đọc.
+          if (r.receivedBlocks > 0 || r.receivedFiles > 0) {
+            log(`[channel] nhận từ ${(r.peerDeviceId ?? "?").slice(0, 11)}… — ${r.receivedBlocks} khối · ${r.receivedFiles} file`);
+          }
+          if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+        },
       },
+      // Từ khi lớp nghe THƯỜNG TRỰC, hố này chỉ nổ lúc liên kết CHẾT — nên câu ở đây phải nói về
+      // cái chết, không phải về một lượt đồng bộ. Từng lượt đã báo ở `onSyncRound` bên trên.
       (r: SyncOutcome) => {
         notePeerSync(r.peerDeviceId, "nghe", r);
-        // Nói ra MỌI phiên, kể cả phiên 0 khối: im lặng thì không phân biệt được "chưa ai gọi"
-        // với "có gọi mà hỏng" — đúng kiểu vỏ rỗng mà `02_RULES §Bề mặt CHẾT THEO nền` cấm.
         log(
-          `[channel] phiên với ${r.peerDeviceId ?? "(không rõ)"} — đã nhận ${r.receivedBlocks} khối · đã gửi ${r.sentBlocks} khối` +
-            (r.error ? ` · ✗ ${r.error}` : ""),
+          `[channel] liên kết đến từ ${(r.peerDeviceId ?? "(không rõ)").slice(0, 11)}… đã đóng` +
+            (r.error ? ` — ${String(r.error).slice(0, 80)}` : ""),
         );
-        if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
       },
     );
     // TẦNG 1 — DÒ LAN (plan/24 §1c). Cùng lỗi với `serveChannel`: `startDiscovery` viết xong
