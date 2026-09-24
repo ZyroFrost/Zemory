@@ -12,7 +12,7 @@ import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
-import { startDiscovery, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
+import { startDiscovery, stripMappedV4, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
 import { stunPublicIp } from "./stun.js";
 import { publishPresence, withdrawPresence } from "./presence.js";
@@ -1232,7 +1232,14 @@ export function channelServingPort(): number | null {
  * được lặng lẽ nối sang cổng khác.
  */
 export function parsePeerAddress(raw: string, fallbackPort = 21038): { host: string; port: number } | null {
-  const s = (raw ?? "").trim().replace(/^[a-z]+:\/\//i, "");
+  const s0 = (raw ?? "").trim().replace(/^[a-z]+:\/\//i, "");
+  // 🔴 IPv4 ánh xạ vào IPv6 KÈM cổng (`::ffff:192.168.1.29:21038`) — ca duy nhất mà luật *"nhiều
+  // dấu `:` không ngoặc ⇒ IPv6 trần, đừng cắt"* trả lời SAI. Nắn về IPv4 trước khi vào luật đó.
+  //
+  // Gốc đã vá ở `normalizeSourceHost` (dò LAN không còn sinh ra dạng này). Vẫn chặn ở đây vì máy
+  // ĐỜI CŨ vẫn đẩy dạng đó lên bảng chung, và địa chỉ đã nhớ trong cấu hình cũng còn dạng đó —
+  // vá một đầu là để nguyên bug ở đường bên cạnh.
+  const s = stripMappedV4(s0);
   if (!s) return null;
   let host = s;
   let port = fallbackPort;
