@@ -325,13 +325,16 @@
       var cards=[];
       cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
       var pstate=c.peerState||{};
+      // Trạng thái LIÊN KẾT SỐNG. Nó đứng trên mọi nguồn khác vì nó trả lời đúng câu người dùng
+      // hỏi — *"đang nối hay không"* — chứ không phải *"lượt thử gần nhất ra sao"*.
+      var plinks=c.links||{};
       (c.peers||[]).forEach(function(id,i){
         var sp=seenBy[id];
         // 🔴 Thẻ đọc HAI nguồn, không phải một. Bản trước chỉ đọc tầng dò LAN, nên hai máy khác
         // mạng thì nó vĩnh viễn hiện "chưa phát hiện" — kể cả đang chở file qua relay ngay lúc đó.
         // Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; lượt nối gần nhất trả lời *"có nối
         // được không"*. Hai câu khác nhau, và câu thứ hai mới là thứ người dùng đang hỏi.
-        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null});
+        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
@@ -347,8 +350,13 @@
         // VẼ theo trạng thái backend đã tính (`peerCardState`), KHÔNG tự ghép hai nguồn thô —
         // đó là cách thẻ và dòng trạng thái trôi lệch nhau, và là chỗ cổng không với tới.
         var ps=m.st||{kind:'never'};
+        var lk=m.lk||null;
         var state, dot;
         if(m.me){state=t('p2p.thisMachine');dot='var(--primary)';}
+        // LIÊN KẾT SỐNG thắng mọi nguồn khác: ghép một lần là nối mãi, nên câu đúng là trạng thái
+        // NGAY BÂY GIỜ, không phải dấu vết của lượt trước.
+        else if(lk&&lk.state==='up'){state=t('p2p.linkUp').replace('{t}',zAgo(lk.since));dot='var(--success)';}
+        else if(lk&&lk.state==='connecting'){state=t('p2p.linkConnecting');dot='var(--warn)';}
         else if(ps.kind==='lan'){state=t('p2p.online');dot='var(--success)';}
         else if(ps.kind==='synced'){state=t('p2p.syncedAgo').replace('{t}',zAgo(ps.at))+(ps.via?' · '+ps.via:'');dot='var(--success)';}
         else if(ps.kind==='failed'){state=t('p2p.lastFail').replace('{t}',zAgo(ps.at));dot='var(--warn)';}

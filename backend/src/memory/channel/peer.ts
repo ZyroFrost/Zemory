@@ -103,6 +103,11 @@ export interface MirrorHooks {
   receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string };
   /** Máy này có được ĐẨY sang máy đó không — `false` ở phía đích của cặp một chiều (§9.2). */
   mayPush: (peerId: string) => boolean;
+  /**
+   * Những gì máy này đã NHẬN nhưng còn chờ người duyệt — khai ra để bên kia thôi gửi lại.
+   * Vắng ⇒ không khai, và bên kia cư xử y như bản cũ. Xem `MirrorPendingEntry`.
+   */
+  pending?: (peerId: string) => Array<{ area: string; rel: string; hash: string }>;
 }
 
 export interface SessionOptions {
@@ -130,7 +135,11 @@ export interface SessionOptions {
   acceptPeer?: (peerDeviceId: string) => boolean;
   /** Bên GỌI: máy kia đã nhận, đây là vân tay của nó — ghi lại để lần sau khỏi gõ địa chỉ.*/
   onPaired?: (peerDeviceId: string) => void;
-  /** Trần một lượt — phiên treo không được giữ tiến trình mãi. Chỉ chạy SAU khi bắt tay xong. */
+  /**
+   * Trần IM LẶNG của một phiên — bao lâu KHÔNG có byte nào đi qua thì coi là treo. Chỉ chạy SAU
+   * khi bắt tay xong. Đây KHÔNG phải trần tổng thời gian: phiên còn chở hàng thì còn sống (xem
+   * đồng hồ trong `runSession`).
+   */
   timeoutMs?: number;
   /**
    * Trần cho NỐI + BẮT TAY (`connectToPeer`). Khác `timeoutMs`: cái kia canh PHIÊN, cái này canh
@@ -151,9 +160,86 @@ export interface SessionOptions {
    * là đừng chờ `mdone` của ta — cùng một luật với bản cũ, chỉ khác lý do.
    */
   mirror?: MirrorHooks;
+  /**
+   * LIÊN KẾT THƯỜNG TRỰC — phiên KHÔNG đóng sau một lượt đồng bộ.
+   *
+   * 🔴 User chốt 2026-09-24: *"nó phải luôn kết nối và tự động kết nối dù đổi mạng, ko được hết
+   * phiên, trừ khi t bấm unpair"*. Bật cờ này thì lời hứa của `runSession` chỉ tan khi **dây đứt**,
+   * còn từng lượt đồng bộ báo về qua `onRound`. Mặc định TẮT: mọi nơi gọi đời cũ chờ một lượt rồi
+   * đi tiếp, đổi ngữ nghĩa lời hứa đó là treo hết.
+   */
+  persistent?: boolean;
+  /**
+   * Mỗi lượt đồng bộ xong báo về đây (chỉ ở chế độ thường trực). Ảnh CHỤP, không phải tham chiếu sống.
+   *
+   * Tên có tiền tố `Sync` vì `onRound` đã có chủ ở lớp đục lỗ, với nghĩa KHÁC HẲN (vòng bắn gói).
+   * Hai khái niệm trùng tên trong cùng một hợp đồng là chỗ để đọc nhầm — trình biên dịch bắt được
+   * lần này, nhưng nó chỉ bắt được vì hai kiểu lệch nhau.
+   */
+  onSyncRound?: (r: SyncOutcome) => void;
+  /** Im bao lâu thì bắn nhịp tim. Mặc định `PING_IDLE_MS` — cổng hạ xuống vài trăm ms để soi nhanh. */
+  pingIdleMs?: number;
+  /** Không nghe thấy gì bao lâu thì coi là đứt (chỉ ở chế độ thường trực). Mặc định `LINK_DEAD_MS`. */
+  linkDeadMs?: number;
+  /** Cách nhau bao lâu thì mở lượt đồng bộ kế (chỉ ở chế độ thường trực). */
+  roundGapMs?: number;
+  /**
+   * TAY NGẮT của liên kết thường trực — và là đường DUY NHẤT để người dùng cắt nó.
+   *
+   * 🔴 User chốt 2026-09-24: liên kết *"ko được hết phiên, trừ khi t bấm unpair"*. Vế sau là một
+   * yêu cầu ngang hàng với vế trước: một liên kết không bao giờ tự hết hạn mà lại KHÔNG có đường
+   * cắt thì `unpair` chỉ xoá được cái tên trong sổ, còn ống thì vẫn chạy và vẫn chở dữ liệu —
+   * người dùng bấm gỡ mà hai máy vẫn đồng bộ, đúng hạng hỏng im lặng tệ nhất.
+   */
+  stop?: AbortSignal;
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+
+/** Im bao lâu thì gửi một nhịp tim. Xem `PingMessage` để biết vì sao nhịp tim là bắt buộc. */
+export const PING_IDLE_MS = 20_000;
+/**
+ * Không nghe thấy gì bao lâu thì coi là ĐỨT.
+ *
+ * Phải là BỘI của `PING_IDLE_MS`, không phải một số đẹp: đặt sát nhau thì một nhịp tim rớt vì mạng
+ * chập là cắt nhầm một liên kết còn sống. Ba nhịp là chỗ thở cho hai lần rớt liên tiếp.
+ */
+export const LINK_DEAD_MS = PING_IDLE_MS * 3;
+/**
+ * Cách nhau bao lâu thì mở lượt đồng bộ kế trên liên kết đã có.
+ *
+ * Không cần dày: khung `have` chỉ nói *"tôi đang có những gì"*, hội tụ rồi thì lượt sau chở 0 khối
+ * / 0 file và tắt ngay. Thưa quá thì một thay đổi vừa ghi phải nằm chờ; dày quá là quét lại cả
+ * kiểm kê (5.559 file, ~1,6 giây đọc đĩa) liên tục mà hầu hết lượt không mua gì.
+ */
+export const ROUND_GAP_MS = 30_000;
+
+/**
+ * Đã tới lúc gửi nhịp tim chưa — im quá `PING_IDLE_MS` kể từ lần CUỐI có byte đi qua.
+ *
+ * Tách thuần để cổng soi được luật mà không cần hai máy và không cần ngồi chờ hai mươi giây.
+ */
+export function keepaliveDue(now: number, lastTraffic: number, idleMs = PING_IDLE_MS): boolean {
+  return now - lastTraffic >= idleMs;
+}
+
+/**
+ * Liên kết đã CHẾT chưa — chỉ khi máy kia không trả lời gì suốt `LINK_DEAD_MS`.
+ *
+ * 🔴 Đây là chỗ thay cho trần "hết giờ phiên" cũ, và khác nó ở bản chất chứ không ở con số. Trần
+ * cũ đếm từ lúc BẮT TAY, nên nó chém cả phiên đang chở hàng: đo thật 24/09 giữa hai máy khác mạng,
+ * kiểm kê là **5.559 file / 829,8 MB** qua relay công khai — riêng phần đó cần nhiều PHÚT trên dây,
+ * nên lượt nào cũng chết giữa chừng, `mdone` không đi qua, hai bên không đóng sổ, và thẻ máy báo
+ * *"không nối được"* trong khi file vẫn đang chảy.
+ *
+ * Luật mới đếm từ lần CUỐI nghe thấy máy kia. Liên kết bận thì mốc đó dời liên tục ⇒ không bao giờ
+ * chạm trần. Liên kết rảnh thì nhịp tim dời nó ⇒ cũng không chạm. Chỉ máy kia thật sự mất mới chạm
+ * — tức nó gác ĐÚNG bệnh mà trần cũ định gác (`plan/24 §6f`: phiên treo vì đầu kia im), và gác
+ * CHẶT HƠN: chết thật thì lộ trong một phút, không phải đợi hết hai phút của một phiên đang khoẻ.
+ */
+export function linkDead(now: number, lastHeard: number, deadMs = LINK_DEAD_MS): boolean {
+  return now - lastHeard > deadMs;
+}
 
 /**
  * Ghi MỘT khung rồi ĐỢI ống thoát nếu bộ đệm đã đầy.
@@ -199,9 +285,14 @@ export function writeFlow(
 /**
  * Bao nhiêu thời gian của một phiên được dành cho lớp MIRROR.
  *
- * Nửa trần phiên: nửa còn lại là chỗ thở để `mdone` của cả hai bên đi qua, để lớp khối làm nốt
- * phần của nó, và để bên nhận ghi những file cuối xuống đĩa. Chở tới sát trần là tự dựng lại
- * đúng cái chết đang đi vá — chỉ muộn hơn vài giây.
+ * Nửa trần im lặng: nửa còn lại là chỗ thở để `mdone` của cả hai bên đi qua, để lớp khối làm nốt
+ * phần của nó, và để bên nhận ghi những file cuối xuống đĩa.
+ *
+ * ⚠ Từ khi trần phiên thành trần IM LẶNG, ngân sách này KHÔNG còn là "phần được phép dùng trước
+ * khi bị chém" — phiên đang chở thì không bị chém nữa. Nó nay là *"chở bao nhiêu thì ĐÓNG SỔ một
+ * lượt"*: mỗi phiên một phần vừa sức, `mdone` đi qua, hàng đợi bên nhận tiến lên, lượt sau khung
+ * `have` tự nói phần còn thiếu. Một phiên khổng lồ không đóng sổ lần nào thì bên nhận không duyệt
+ * được gì — đó mới là thứ ngân sách này đang gác.
  *
  * Tách thành hàm THUẦN để cổng soi được luật mà không cần hai máy và không cần chờ hai phút.
  */
@@ -234,6 +325,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let peerMirror = false;
     let mSentDone = false;
     let mGotDone = false;
+    /** Hẹn giờ mở lượt kế trên liên kết thường trực — xem `tryFinish`. */
+    let roundTimer: ReturnType<typeof setTimeout> | null = null;
     /** Tiêu đề của khung `FRAME_FILE` sắp tới. Byte không tự nói nó thuộc đường nào. */
     let pendingFile: { area: MirrorArea; rel: string; hash: string; size: number } | null = null;
     /** Lớp mirror của ta có chạy trong phiên này không — cần CẢ hai đầu biết nó. */
@@ -278,7 +371,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (settled) return;
       settled = true;
       if (error) out.error = error;
-      clearTimeout(timer);
+      clearInterval(timer);
+      if (roundTimer) clearTimeout(roundTimer);
       try {
         if (error) sock.destroy();
         else sock.end();
@@ -287,7 +381,66 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       }
       resolve(out);
     };
-    const timer = setTimeout(() => finish("hết giờ phiên"), o.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+    /**
+     * 🔴 Trần của phiên là trần IM LẶNG, KHÔNG phải trần tổng thời gian.
+     *
+     * Bản trước hẹn giờ một lần từ lúc bắt tay rồi chém khi hết giờ — nghĩa là nó **giết cả phiên
+     * đang chở hàng**. Đo thật 24/09 giữa hai máy khác mạng: kiểm kê là **5.559 file / 829,8 MB**,
+     * mà relay công khai chảy vài MB mỗi giây ⇒ riêng phần `files/` cần nhiều PHÚT trên dây. Trần
+     * 120 giây không bao giờ với tới, nên lượt nào cũng chết giữa chừng với đúng một dòng *"hết giờ
+     * phiên"*, `mdone` không đi qua, hai bên không đóng sổ — và thẻ máy báo *"không nối được"*
+     * trong khi file vẫn đang chảy. User nói thẳng chỗ sai: *"kết nối thì phải kết nối luôn chứ
+     * sao lại hết phiên"*.
+     *
+     * Trần đó sinh ra để gác **phiên TREO vì đầu kia im** (`§6f`) — và trần im lặng gác đúng bệnh
+     * ấy, gác CHẶT HƠN: phiên chết thật thì chết ngay khi im, không phải đợi hết hai phút; phiên
+     * đang chạy thì sống chừng nào còn chạy. Mốc được dời mỗi khi có byte THẬT đi qua: khung vào
+     * (máy kia còn sống) hoặc ống vừa thoát (byte của ta vừa rời máy).
+     */
+    let lastHeard = Date.now();
+    const bump = (): void => {
+      lastHeard = Date.now();
+    };
+    /**
+     * Liên kết THƯỜNG TRỰC: không đóng sau một lượt, sống tới khi dây đứt hoặc người dùng gỡ cặp.
+     *
+     * Chỉ bật cho lớp quản-liên-kết. Mọi nơi gọi đời cũ (`channel sync`, cú bấm, đục lỗ) vẫn nhận
+     * đúng lời hứa MỘT LƯỢT như trước — đổi ngữ nghĩa của lời hứa đó là treo hết mọi nơi gọi.
+     */
+    const persistent = o.persistent === true;
+    const idleMs = o.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const pingMs = o.pingIdleMs ?? PING_IDLE_MS;
+    const deadMs = persistent ? (o.linkDeadMs ?? LINK_DEAD_MS) : idleMs;
+    // Nhịp soi: đủ dày để trần nhỏ (cổng dùng vài trăm ms) vẫn đúng, đủ thưa để trần thật không
+    // đánh thức tiến trình hàng trăm lần.
+    const tickMs = Math.min(5_000, Math.max(50, Math.floor(Math.min(pingMs, deadMs) / 4)));
+    let lastPingAt = 0;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (linkDead(now, lastHeard, deadMs)) return finish(persistent ? "máy kia mất tín hiệu" : "máy kia im quá lâu");
+      // Nhịp tim chỉ có nghĩa ở liên kết thường trực. Lượt một-phát vốn đã có việc để làm; bắn
+      // thêm nhịp vào đó là thêm khung mà không mua gì.
+      if (!persistent || !proofOk) return;
+      if (keepaliveDue(now, Math.max(lastHeard, lastPingAt), pingMs)) {
+        lastPingAt = now;
+        try {
+          send(encodeJson({ t: "ping" }));
+        } catch {
+          /* ghi hỏng ⇒ đồng hồ chết sẽ lo, đừng ném trong một cái hẹn giờ */
+        }
+      }
+    }, tickMs);
+    // Đồng hồ KHÔNG được giữ tiến trình sống: ống đã tự giữ rồi, mà một liên kết thường trực còn
+    // sót thì cái hẹn giờ này một mình đủ để tiến trình không bao giờ thoát (bắt được ở cổng —
+    // cụm phép thử treo vô hạn thay vì đỏ).
+    timer.unref?.();
+    // NGẮT theo yêu cầu — `unpair` đi qua đúng đường này. Đã ngắt sẵn trước khi phiên chạy thì
+    // cắt ngay, đừng mở một liên kết mà ta biết chắc là không ai muốn.
+    if (o.stop) {
+      if (o.stop.aborted) return finish("người dùng ngắt liên kết");
+      o.stop.addEventListener("abort", () => finish("người dùng ngắt liên kết"), { once: true });
+    }
 
     // ① Vân tay đối phương — TỰ tính, không nhờ CA phán.
     const peerId = peerDeviceId(sock.getPeerCertificate()?.raw);
@@ -312,6 +465,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const sendFlow = async (buf: Buffer): Promise<void> => {
       out.bytesSent += buf.length;
       await writeFlow(sock, buf);
+      bump(); // ống vừa nhận xong khung này ⇒ phiên ĐANG chạy, không phải đang treo
     };
 
     /**
@@ -337,10 +491,19 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         mSentDone = true;
         return;
       }
+      // Khai luôn phần ĐANG CHỜ DUYỆT: không khai thì bên kia thấy ta "còn thiếu" và chở lại mỗi
+      // lượt — vô hại với nhịp 30 phút, nhưng liên kết thường trực chạy lượt mỗi 30 giây.
+      let pending: Array<{ a: string; p: string; h: string }> = [];
+      try {
+        pending = (o.mirror?.pending?.(peerId ?? "") ?? []).map((q) => ({ a: q.area, p: q.rel, h: q.hash }));
+      } catch {
+        /* đọc hàng đợi hỏng ⇒ khai thiếu, cùng lắm là chở thừa — không được giết pha mirror */
+      }
       send(
         encodeJson({
           t: "mfiles",
           entries: entries.map((e) => ({ a: e.area, p: e.rel, ...(e.hash ? { h: e.hash } : {}), s: e.size })),
+          ...(pending.length ? { pending } : {}),
         }),
       );
     };
@@ -442,6 +605,13 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         void shipMissing(m.ids);
         return;
       }
+      // Nhịp tim: trả lời NGAY, không kiểm gì thêm. Nó không chạm dữ liệu nên không có gì để gác,
+      // và `bump()` ở tầng `data` đã ghi nhận máy kia còn sống trước khi tới đây.
+      if (m.t === "ping") {
+        send(encodeJson({ t: "pong" }));
+        return;
+      }
+      if (m.t === "pong") return;
       if (m.t === "done") {
         // Nói ra cả hai chiều `done`: một phiên treo tới hết giờ hầu như luôn là MỘT bên không
         // đóng sổ, và không có hai dòng này thì không cách nào biết bên nào.
@@ -453,7 +623,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (m.t === "mfiles") {
         if (!proofOk) return finish("khai thư mục trước khi chứng minh cùng chìa");
         if (!paired) return finish("khai thư mục trước khi ghép đôi");
-        void shipMirror(m.entries);
+        void shipMirror(m.entries, m.pending ?? []);
         return;
       }
       if (m.t === "mfile") {
@@ -493,7 +663,41 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       // máy không biết mirror là treo tới hết giờ — xem `HelloMessage.mirror`.
       if (mirrorOn() && (!mSentDone || !mGotDone)) return;
       if (pending.length > 0 || draining) return;
-      finish();
+      if (!persistent) return finish();
+
+      // ── LIÊN KẾT THƯỜNG TRỰC: đóng sổ LƯỢT, không đóng LIÊN KẾT ────────────────────────
+      //
+      // 🔴 Đây là chỗ đổi bản chất. Trước đây "xong một lượt" = "đóng ống", nên mỗi lần đồng bộ là
+      // một lần nối lại từ đầu: dò địa chỉ, xin relay, bắt tay, chứng minh cùng chìa — rồi vứt hết.
+      // Giữa hai lượt, hai máy KHÔNG có liên kết nào, nên bề mặt không có gì để gọi là "đang nối".
+      //
+      // Nay ống ở lại. Lượt sau chỉ là một khung `have` nữa trên cùng ống đó.
+      o.onSyncRound?.({ ...out });
+      // Bộ đếm về 0 cho lượt kế: giữ lại là lượt sau cộng dồn số của lượt trước, và bề mặt đọc
+      // thành "vẫn đang chở" trong khi thực ra đã hội tụ.
+      out.sentBlocks = 0;
+      out.receivedBlocks = 0;
+      out.sentFiles = 0;
+      out.receivedFiles = 0;
+      out.appliedFiles = 0;
+      out.queuedFiles = 0;
+      out.filesLeft = 0;
+      sentDone = false;
+      gotDone = false;
+      mSentDone = false;
+      mGotDone = false;
+      if (roundTimer) clearTimeout(roundTimer);
+      roundTimer = setTimeout(() => {
+        if (settled) return;
+        // Khai lại kho của mình = mở lượt mới. Máy kia thấy `have` thì tự chở phần ta còn thiếu,
+        // đúng một bản luật với lượt đầu — không có đường đồng bộ thứ hai (HP điều 17).
+        try {
+          sendHave();
+        } catch {
+          /* hỏng ở đây thì đồng hồ chết sẽ lo; đừng ném trong một cái hẹn giờ */
+        }
+      }, o.roundGapMs ?? ROUND_GAP_MS);
+      roundTimer.unref?.();
     };
 
     const shipMissing = async (peerIds: string[]): Promise<void> => {
@@ -543,7 +747,10 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
      *   BÊN NHẬN — nó mới biết lần gặp gần nhất hai bên khớp ở đâu. Gửi ứng viên, để bên nhận
      *   quyết. Đây cũng là lý do hàng đợi duyệt nằm ở phía nhận chứ không phía gửi.
      */
-    const shipMirror = async (peerEntries: Array<{ a: string; p: string; h?: string; s: number }>): Promise<void> => {
+    const shipMirror = async (
+      peerEntries: Array<{ a: string; p: string; h?: string; s: number }>,
+      peerPending: Array<{ a: string; p: string; h: string }> = [],
+    ): Promise<void> => {
       if (!mirrorOn()) return;
       try {
         if (!o.mirror?.mayPush(peerId ?? "")) {
@@ -554,6 +761,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           return;
         }
         const theirs = new Map(peerEntries.map((e) => [fileKey(e.a, e.p), e.h ?? ""]));
+        // "Đã cầm rồi, đang chờ người duyệt" tính là ĐÃ TỚI — khoá theo đường dẫn + BĂM, vì cùng
+        // một đường dẫn mà ta vừa sửa lần nữa thì bản mới vẫn phải đi.
+        const theirPending = new Set(peerPending.map((q) => `${fileKey(q.a, q.p)}\u0000${q.h}`));
         let shipped = 0;
         let left = 0;
         const until = Date.now() + mirrorBudgetMs(o.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -561,6 +771,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           const k = fileKey(e.area, e.rel);
           const has = theirs.has(k);
           if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) continue;
+          // Bản NÀY đã nằm trong hàng đợi duyệt của họ ⇒ chở lại là chở đúng thứ họ đang cầm.
+          if (theirPending.has(`${k}\u0000${e.hash ?? ""}`)) continue;
           // 🔴 HẾT NGÂN SÁCH ⇒ ĐÓNG SỔ SẠCH, phần còn lại để lượt sau. KHÔNG cố chở hết.
           //
           // Ca thật đo 2026-09-24 trên hai máy qua relay: lượt mirror đầu là ~820 MB, mà phiên
@@ -629,6 +841,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const read = createFrameReader();
     sock.on("data", (data: Buffer) => {
       if (settled) return;
+      bump(); // byte từ máy kia ⇒ nó còn sống, dù khung này chưa trọn
       let frames;
       try {
         frames = read(data);

@@ -442,6 +442,7 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
   read: (area: MirrorArea, rel: string) => Buffer | null;
   receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string };
   mayPush: (peerId: string) => boolean;
+  pending: (peerId: string) => Array<{ area: string; rel: string; hash: string }>;
 } {
   // Tra chiều đồng bộ. Tiêm được vì cổng dựng HAI "máy" trong MỘT tiến trình, mà cấu hình
   // thì chỉ có một — không tiêm thì cả hai máy giả đọc chung một chiều và ca `one-way`
@@ -473,6 +474,25 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
         return { applied: r.applied, queued: r.queued, error: r.error };
       } catch (e) {
         return { applied: false, queued: false, error: e instanceof Error ? e.message : "lỗi khi nhận file" };
+      }
+    },
+    /**
+     * Những gì ta ĐÃ CẦM của máy đó mà còn chờ người duyệt — khai ra để nó thôi gửi lại.
+     *
+     * 🔴 Không có phần khai này thì một mục trong hàng đợi bị chở lại MỖI LƯỢT, mãi mãi: file chờ
+     * duyệt không bao giờ nằm trên đĩa nên kiểm kê không thấy nó, và bên kia đọc ra *"máy này còn
+     * thiếu"*. Với liên kết thường trực (lượt cách nhau 30 giây) thì một hàng đợi 114 mục là 114
+     * file chạy lại suốt ngày — đo thật 24/09 ngay khi liên kết vừa thành thường trực.
+     *
+     * Fail-open: kho hỏng ⇒ khai rỗng ⇒ cùng lắm chở thừa, không được làm chết pha mirror.
+     */
+    pending: (peerId) => {
+      try {
+        return listQueue(opts.db ?? mirrorDb(), peerId)
+          .filter((r) => r.theirHash)
+          .map((r) => ({ area: r.area, rel: r.rel, hash: r.theirHash as string }));
+      } catch {
+        return [];
       }
     },
     mayPush: (peerId) => {

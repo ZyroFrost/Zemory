@@ -79,6 +79,11 @@ export interface PairedMessage {
 export interface MirrorListMessage {
   t: "mfiles";
   entries: Array<{ a: string; p: string; h?: string; s: number }>;
+  /**
+   * Đã nhận nhưng CHỜ DUYỆT — đừng gửi lại. Vắng (máy đời cũ) ⇒ xử y như trước: gửi lại.
+   * Xem `MirrorPendingEntry` để biết vì sao nó không được gộp vào `entries`.
+   */
+  pending?: MirrorPendingEntry[];
   /** Còn trang nữa — chừa sẵn cho kho nhiều tệp, chưa dùng ở lượt đầu. */
   more?: boolean;
 }
@@ -95,6 +100,40 @@ export interface MirrorDoneMessage {
   t: "mdone";
   sent: number;
 }
+/**
+ * NHỊP TIM — giữ liên kết sống, và là thứ DUY NHẤT phân biệt *"im vì rảnh"* với *"chết"*.
+ *
+ * 🔴 Vì sao phải có (user chốt 2026-09-24): *"nó phải luôn kết nối và tự động kết nối dù đổi mạng,
+ * ko được hết phiên, trừ khi t bấm unpair"* — tức liên kết phải cư xử như cặp ghép điện thoại.
+ * Không có nhịp tim thì một liên kết RẢNH trông y hệt một liên kết CHẾT, nên bất kỳ đồng hồ nào
+ * cũng buộc phải chọn: hoặc chém nhầm liên kết còn sống, hoặc ôm mãi một ống đã đứt. Nhịp tim gỡ
+ * đúng thế lưỡng nan đó — im mà vẫn trả lời là sống, im mà không trả lời là chết.
+ */
+export interface PingMessage {
+  t: "ping";
+}
+/**
+ * Phần khai THÊM trong `mfiles`: những gì máy này ĐÃ CẦM nhưng còn CHỜ NGƯỜI DUYỆT (`§9.3`).
+ *
+ * 🔴 Vì sao tách khỏi `entries` chứ không nhét chung: `entries` trả lời *"trên ĐĨA tôi đang có
+ * gì"*, còn đây trả lời *"tôi đã nhận rồi, đừng gửi lại"*. Gộp hai câu là nói dối câu thứ nhất —
+ * bên kia sẽ tưởng file đã nằm trên đĩa máy này.
+ *
+ * Vì sao bắt buộc phải có, và vì sao nó thành gấp khi liên kết trở nên thường trực: file vào hàng
+ * đợi thì KHÔNG bao giờ xuất hiện trong kiểm kê đĩa, nên bên gửi thấy *"máy kia còn thiếu"* và
+ * chở lại — **mỗi lượt một lần, mãi mãi**. Với nhịp cũ 5–30 phút thì nó chỉ phí; với liên kết
+ * thường trực (lượt cách nhau 30 giây) thì một hàng đợi 114 mục là 114 file chạy lại suốt ngày.
+ * Người dùng gạt một mục đi thì hàng của nó biến mất khỏi khai báo này ⇒ lượt sau được mời lại —
+ * tự lành, không cần sổ sách gì thêm.
+ */
+export interface MirrorPendingEntry {
+  a: string;
+  p: string;
+  h: string;
+}
+export interface PongMessage {
+  t: "pong";
+}
 export type ControlMessage =
   | HelloMessage
   | ProofMessage
@@ -104,7 +143,9 @@ export type ControlMessage =
   | PairedMessage
   | MirrorListMessage
   | MirrorFileMessage
-  | MirrorDoneMessage;
+  | MirrorDoneMessage
+  | PingMessage
+  | PongMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");
