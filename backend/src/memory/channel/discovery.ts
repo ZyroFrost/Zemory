@@ -76,6 +76,40 @@ function ipv6Interfaces(): { address: string; scoped: string }[] {
   return out;
 }
 
+/**
+ * Địa chỉ NGUỒN của một gói, nắn về dạng dùng lại được ở tầng nối.
+ *
+ * Hai thứ phải cắt, và cả hai đều là hiện vật của tầng socket chứ không phải địa chỉ thật:
+ * · **scope của IPv6 link-local** (`fe80::1%12`) — số scope chỉ có nghĩa trên máy sinh ra nó;
+ * · **IPv4 ánh xạ vào IPv6** (`::ffff:192.168.1.29`) — Node trả dạng này khi socket chạy hai tầng.
+ *
+ * 🔴 Vì sao dạng thứ hai đắt, đo tại trận 2026-09-24: hai máy CÙNG Wi-Fi, dò LAN thấy nhau đều đặn
+ * 30 giây một lần, mà **không lần nào gọi thẳng được**. Ứng viên dựng ra là
+ * `::ffff:192.168.1.29:21038`, và `parsePeerAddress` trả `null` cho nó — đúng luật, vì nhiều dấu
+ * `:` mà không có ngoặc thì KHÔNG được cắt khúc cuối làm cổng (luật đó chặn một bug khác). Nên
+ * ứng viên LAN bị bỏ qua **im lặng**, cả cụm rơi xuống địa chỉ cũ rồi relay, và thẻ máy hiện
+ * *"đang nối lại"* mãi mãi trong khi hai máy nằm cách nhau một cái router.
+ *
+ * Nắn ở ĐÂY chứ không ở nơi tiêu thụ: đây là chỗ duy nhất dạng đó ra đời. Dạy từng nơi đọc về một
+ * dạng lẽ ra không nên tồn tại là để lại đúng cái bẫy cho nơi thứ ba quên.
+ */
+export function normalizeSourceHost(addr: string): string {
+  return stripMappedV4((addr ?? "").replace(/%.*$/, ""));
+}
+
+/** Một octet IPv4 THẬT: 0–255. `\d{1,3}` nuốt cả `300`, và ca âm của cổng bắt đúng chỗ đó. */
+const OCTET = "(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
+/**
+ * Bỏ tiền tố `::ffff:` của một IPv4 ánh xạ — MỘT bản luật, dùng cho cả địa chỉ trần lẫn `host:cổng`.
+ *
+ * Chỉ ăn khi phần sau là IPv4 HỢP LỆ và kết thúc ở cuối chuỗi hoặc ngay trước dấu `:` của cổng.
+ * Không hợp lệ ⇒ **trả nguyên**, không đoán: một địa chỉ hỏng phải ở nguyên dạng hỏng để nơi gọi
+ * từ chối nó, chứ không được nắn thành thứ trông giống hợp lệ (`::ffff:192.168.1.300` là ca đó).
+ */
+export function stripMappedV4(s: string): string {
+  return (s ?? "").replace(new RegExp(`^::ffff:((?:${OCTET}\\.){3}${OCTET})(?=$|:)`, "i"), "$1");
+}
+
 export interface PeerSighting {
   deviceId: string;
   host: string;
@@ -142,7 +176,7 @@ export function startDiscovery(o: DiscoveryOptions): DiscoveryHandle {
       if (o.allowedPeers?.length && !o.allowedPeers.some((a) => sameDeviceId(a, m.id as string))) return;
       // Địa chỉ lấy từ NGUỒN gói, không tin địa chỉ bên kia tự khai. IPv6 link-local kèm scope
       // (`fe80::…%12`) — cắt scope đi để địa chỉ dùng lại được ở tầng nối.
-      const host = rinfo.address.replace(/%.*$/, "");
+      const host = normalizeSourceHost(rinfo.address);
       const p: PeerSighting = {
         deviceId: m.id,
         host,
