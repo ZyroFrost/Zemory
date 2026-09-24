@@ -122,3 +122,33 @@ test("vào relay mới phải báo NGAY, không đợi nhịp sau", () => {
   assert.match(after, /publish\(\);/, "bảng chung phải được đăng lại");
   assert.match(after, /await announceBeat\(/, "cụm dò toàn cầu cũng phải được đăng lại");
 });
+
+test("🔴 LỚP NGHE cũng phải thường trực — một liên kết là thoả thuận của HAI máy", async () => {
+  // 🔴 Lỗ THẬT, lọt ra sản phẩm ngày 2026-09-24 dù cổng đã bắt đúng nó: cụm `p2p-mirror` phát hiện
+  // "chỉ bật cờ ở bên GỌI thì bên NGHE vẫn đóng ống sau lượt một", tôi vá TRONG PHÉP THỬ rồi quên
+  // vá ở `startChannelServer`. Hai máy cùng lên bản mới vẫn vĩnh viễn "đang nối lại", trong khi
+  // nhật ký có `đã nhận 122 khối` — dữ liệu chảy thật, còn dòng đó là lúc phiên KẾT THÚC.
+  //
+  // Bài học được đóng thành cổng: phép thử bắt được một lỗ thì phải hỏi *"chỗ THẬT đã vá chưa"*,
+  // không chỉ *"phép thử xanh chưa"*.
+  const CH = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  // Neo cuối phải là một chuỗi chỉ xuất hiện SAU chỗ dựng — `startDiscovery` trượt vì nó còn nằm
+  // ở dòng `import` trên đầu file, và lát cắt ra rỗng thì mọi `assert.match` bên dưới xanh giả.
+  const serve = CH.slice(CH.indexOf("const server = await serveChannel("), CH.indexOf("TẦNG 1 — DÒ LAN"));
+  assert.ok(serve.length > 0, "không thấy chỗ dựng lớp nghe — neo đã chết");
+  assert.match(serve, /persistent: true/, "lớp NGHE phải thường trực, nếu không nó giết liên kết của đầu kia");
+
+  // Từng LƯỢT phải báo ra: `onDone` nay chỉ nổ lúc liên kết CHẾT, nên một liên kết khoẻ sẽ im
+  // lặng ở mọi hố báo và thẻ lại hiện "chưa nối" — cùng con bug, đổi nguyên nhân.
+  assert.match(serve, /onSyncRound:/, "phải báo từng lượt, không chỉ báo lúc chết");
+  assert.match(CH, /onLinkRound\?: \(peerDeviceId: string, r: SyncOutcome\) => void;/, "phải có hố cho bề mặt");
+
+  // Và bề mặt phải DÙNG hố đó: NAT một chiều ⇒ máy kia gọi được ta còn ta gọi không được nó, liên
+  // kết CÓ THẬT mà lớp giữ-liên-kết bên này không biết gì.
+  assert.match(UI, /onLinkRound: \(peerId: string\) => noteInboundLink\(peerId\)/, "thẻ phải thấy liên kết ĐẾN");
+  assert.match(UI, /function noteInboundLink\(/);
+
+  // Gỡ cặp phải cắt CẢ HAI chiều — cắt một nửa thì nửa còn lại vẫn chở dữ liệu.
+  const drop = UI.slice(UI.indexOf('if (p === "/channel-pair")'));
+  assert.match(drop.slice(0, 3000), /void refreshChannelServer\(\);/, "gỡ cặp phải dựng lại lớp nghe để cắt ống ĐẾN");
+});

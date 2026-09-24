@@ -1728,6 +1728,35 @@ interface LinkEntry {
 /** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
 const links = new Map<string, LinkEntry>();
 
+/**
+ * Máy kia vừa hoàn tất một lượt trên liên kết ĐẾN ⇒ liên kết với nó đang SỐNG.
+ *
+ * 🔴 Vì sao thẻ không được chỉ đọc liên kết ĐI: NAT có thể một chiều. Máy kia gọi được ta trong
+ * khi ta gọi không được nó là chuyện thường — lúc đó liên kết **có thật**, dữ liệu đang chảy, mà
+ * lớp giữ-liên-kết bên này không biết gì và thẻ vẫn hiện *"đang nối lại"*. Đúng con bug đang vá,
+ * chỉ đổi nguyên nhân.
+ *
+ * Không đụng `ctrl`: liên kết đến do lớp NGHE sở hữu, cắt nó là việc của `stopChannelServer`.
+ */
+function noteInboundLink(peerId: string): void {
+  const cur = links.get(peerId);
+  if (cur) {
+    if (cur.state !== "up") {
+      cur.state = "up";
+      cur.since = Date.now();
+      daemonLog(`[channel] ${peerId.slice(0, 11)}… gọi tới được — liên kết đang sống`);
+    }
+    cur.fails = 0;
+    delete cur.lastError;
+    return;
+  }
+  // Chưa có mục nào (vòng giữ-liên-kết chưa kịp tạo) ⇒ dựng một mục CHỈ để bề mặt nói đúng.
+  // `ctrl` đã huỷ sẵn: mục này không sở hữu ống nào, nên nó không được giả vờ cắt được gì.
+  const ctrl = new AbortController();
+  ctrl.abort();
+  links.set(peerId, { ctrl, fails: 0, state: "up", since: Date.now() });
+}
+
 /** Ảnh chụp cho bề mặt. Trả bản sao: bề mặt không được cầm tham chiếu vào trạng thái sống. */
 export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string }> {
   const out: Record<string, { state: LinkState; since: number; fails: number; error?: string }> = {};
@@ -2129,6 +2158,8 @@ async function refreshChannelServer(): Promise<void> {
         return true;
       },
       log: (m: string) => daemonLog(m),
+      // Liên kết ĐẾN cũng là một liên kết — thẻ máy phải thấy nó.
+      onLinkRound: (peerId: string) => noteInboundLink(peerId),
       onReceived: (blocks: number) => {
         daemonLog(`[channel] đã nhận ${blocks} khối — đang hợp nhất vào kho`);
         void mergeChannelDir(ch.channelStatus().dir)
@@ -3589,6 +3620,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // người dùng tin là đã cắt. `linkTick` cũng dọn theo sổ, nhưng nó chạy 30 giây một lần —
         // với một hành động người dùng vừa bấm thì 30 giây im lặng đã là quá dài.
         for (const cur of [...getP2pPeers(), want]) if (norm(cur) === norm(want)) dropLink(cur);
+        // Và cắt cả ống ĐẾN. Liên kết đến do lớp NGHE sở hữu, không có tay ngắt riêng từng máy —
+        // dựng lại lớp nghe là cách cắt nó, và lớp nghe mới đọc sổ ĐÃ bỏ máy này nên nó không
+        // được nhận lại. Các máy còn lại rụng một nhịp rồi tự nối lại; bỏ qua bước này thì gỡ cặp
+        // chỉ cắt được một nửa, và nửa còn lại vẫn chở dữ liệu.
+        void refreshChannelServer();
       }
       return json(res, { ok: true, peers: getP2pPeers() });
     }
