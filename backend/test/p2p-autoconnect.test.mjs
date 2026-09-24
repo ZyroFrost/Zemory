@@ -173,7 +173,7 @@ test("🔴 thẻ lên 'đang nối' lúc BẮT TAY XONG, không đợi lượt �
   assert.match(open, /cur\.state = "up"/, "bắt tay xong ⇒ up");
   assert.match(open, /cur\.via = via/, "phải nhớ ĐƯỜNG đang đi — linkTick cần nó để đổi đường");
   const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
-  assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(\);/, "phiên phải bắn `onOpen` ngay sau bằng chứng cùng chìa");
+  assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(peerId \?\? ""\);/, "phiên phải bắn `onOpen` ngay sau bằng chứng cùng chìa, kèm vân tay máy kia");
 });
 
 test("🔴 cùng Wi-Fi mà đi relay: bỏ qua HAIRPIN, và đổi sang gọi thẳng khi thấy nhau trên LAN", () => {
@@ -190,4 +190,24 @@ test("🔴 cùng Wi-Fi mà đi relay: bỏ qua HAIRPIN, và đổi sang gọi th
   assert.match(tick, /if \(e\.via !== "relay" \|\| e\.state !== "up"\) continue;/, "chỉ đổi khi ĐANG đi relay và đang sống");
   assert.match(tick, /ch\.sameDeviceId\(s\.deviceId, id\)/, "so danh tính bằng luật chung, không so chuỗi");
   assert.match(tick, /dropLink\(id\);\s*\n\s*keepLink\(id, projectRoot\);/, "cắt rồi nối lại NGAY, không đợi nhịp sau");
+});
+
+test("🔴 BA cửa nghe, một luật — cửa nghe THẲNG và cửa nghe RELAY đều thường trực và đều báo bắt tay", () => {
+  // Đo 2026-09-25: máy kia XANH, máy này KHÔNG, cùng một ống. Đường ĐI của máy kia lên ngay lúc bắt
+  // tay; đường ĐẾN của máy này chỉ báo khi trọn một lượt — lượt đầu chở cả kho. Và `phiên qua relay
+  // với … — 0 khối` lúc 16:58:37 là cửa nghe RELAY vẫn đóng ống sau MỘT lượt: lỗ 3.5.10 vá ở cửa
+  // thẳng mà sót cửa relay. Relay hay thẳng là do cú bắt tay nào ăn trước ⇒ hỏng kiểu tung đồng xu.
+  const CH = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const serve = CH.slice(CH.indexOf("const server = await serveChannel("), CH.indexOf("TẦNG 1 — DÒ LAN"));
+  assert.match(serve, /onOpen: \(id: string\) => o\.onLinkOpen\?\.\(id, "direct"\),/, "cửa nghe THẲNG phải báo bắt tay, gắn nhãn direct");
+
+  const accept = CH.slice(CH.indexOf("async function acceptRelayInvite("), CH.indexOf("const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);", CH.indexOf("async function acceptRelayInvite(")));
+  assert.match(accept, /persistent: true,/, "cửa nghe RELAY phải thường trực — sót là máy kia rụng theo kiểu tung đồng xu");
+  assert.match(accept, /onOpen: \(id: string\) => o\.onLinkOpen\?\.\(id, "relay"\),/, "cửa nghe RELAY phải báo bắt tay, gắn nhãn relay");
+  assert.match(accept, /onSyncRound: \(r: SyncOutcome\) => \{/, "cửa nghe RELAY phải báo từng lượt — onDone nay chỉ nổ lúc chết");
+
+  // Bề mặt phải DÙNG hố đó, và phiên phải mang danh tính khi báo (cửa nghe không biết trước ai gọi).
+  assert.match(UI, /onLinkOpen: \(peerId: string, via: LinkVia\) => noteInboundLink\(peerId, via\),/, "thẻ phải lên ngay lúc bắt tay ở cửa nghe");
+  const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
+  assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(peerId \?\? ""\);/, "onOpen phải mang vân tay máy kia");
 });

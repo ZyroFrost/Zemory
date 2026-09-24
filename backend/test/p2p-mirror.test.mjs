@@ -310,6 +310,7 @@ test("link: liên kết THƯỜNG TRỰC sống qua nhiều lượt, không đó
   const rounds = [];
   let opened = 0;
   let openedBeforeRound = false;
+  let openedFor = "";
   const cut = new AbortController();
   t.after(() => cut.abort()); // ca đỏ cũng phải buông ống, nếu không cả cụm treo
   // 🔴 CẢ HAI ĐẦU phải thường trực. Phép thử này bắt được ngay một lỗ thật: bản đầu chỉ bật cờ ở
@@ -336,8 +337,9 @@ test("link: liên kết THƯỜNG TRỰC sống qua nhiều lượt, không đó
       linkDeadMs: 8_000,
       stop: cut.signal,
       // `onOpen` phải nổ TRƯỚC lượt đầu — thẻ lên "đang nối" lúc bắt tay xong, không đợi hội tụ.
-      onOpen: () => {
+      onOpen: (id) => {
         opened++;
+        openedFor = id;
         openedBeforeRound = rounds.length === 0;
       },
       onSyncRound: (r) => rounds.push(r),
@@ -355,6 +357,9 @@ test("link: liên kết THƯỜNG TRỰC sống qua nhiều lượt, không đó
   // qua relay, và suốt lúc đó thẻ nói "đang nối lại" là thẻ nói dối (đo 25/09).
   assert.equal(opened, 1, "onOpen phải nổ đúng MỘT lần cho một liên kết");
   assert.equal(openedBeforeRound, true, "onOpen phải nổ TRƯỚC lượt đầu đóng sổ");
+  // Mang DANH TÍNH máy kia: cửa NGHE không biết trước ai sẽ gọi tới, nên không có id thì cửa đó
+  // không đánh dấu được liên kết ĐẾN — đúng ca "máy kia xanh, máy này không" đo 25/09.
+  assert.equal(openedFor, b.identity.deviceId, "onOpen phải mang vân tay máy kia");
   // Ống vẫn PHẢI còn mở: lời hứa chỉ tan khi dây đứt.
   assert.equal(
     await Promise.race([linkClosed.then(() => "ĐÃ ĐÓNG"), new Promise((r) => setTimeout(() => r("còn mở"), 150))]),

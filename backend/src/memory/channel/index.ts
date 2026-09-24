@@ -524,6 +524,9 @@ export function armPunchWait(o: {
   roundMs?: number;
   retryMs?: number;
   onPaired?: (peerDeviceId: string) => void;
+  /** Liên kết ĐẾN qua relay: từng lượt + lúc bắt tay — đi tiếp xuống `acceptRelayInvite`. */
+  onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
+  onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
   onReceived?: (blocks: number) => void;
   log?: (msg: string) => void;
 }): PunchWaitInfo {
@@ -769,6 +772,15 @@ export async function startChannelServer(o: {
    * liên kết CÓ THẬT, nhưng lớp giữ-liên-kết bên này không biết gì về nó.
    */
   onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
+  /**
+   * Bắt tay XONG trên một liên kết ĐẾN, kèm đường (thẳng/relay) — thẻ lên "đang nối" tại đây.
+   *
+   * 🔴 Đo 2026-09-25: máy kia xanh, máy này không, cùng một liên kết. Vì đường ĐI của máy kia lên
+   * ngay lúc bắt tay (`onOpen` ở lớp giữ-liên-kết), còn máy này chỉ có đường ĐẾN và đường đó chỉ
+   * báo khi trọn một lượt (`onLinkRound`) — lượt đầu chở cả kho. Hai máy nhìn CÙNG một ống mà một
+   * bên nói "đang nối", một bên nói "đang nối lại".
+   */
+  onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
   log?: (msg: string) => void;
 } ): Promise<ChannelServeResult> {
   const log = o.log ?? (() => {});
@@ -809,6 +821,7 @@ export async function startChannelServer(o: {
         // THỬ mà quên vá ở đây. Bài học: phép thử bắt được một lỗ thì phải hỏi *"chỗ THẬT đã vá
         // chưa"*, không chỉ *"phép thử xanh chưa"*.
         persistent: true,
+        onOpen: (id: string) => o.onLinkOpen?.(id, "direct"),
         onSyncRound: (r: SyncOutcome) => {
           notePeerSync(r.peerDeviceId, "nghe", r);
           if (r.peerDeviceId) o.onLinkRound?.(r.peerDeviceId, r);
@@ -944,6 +957,9 @@ export async function startChannelServer(o: {
         // Chỗ chờ này là TRẠNG THÁI của kênh, không phải một cú bấm ⇒ hết trần thì mở lại.
         renew: true,
         onReceived: o.onReceived,
+        // Hai hố báo của liên kết ĐẾN đi tiếp xuống cửa nghe relay — không luồn là cửa đó câm.
+        onLinkRound: o.onLinkRound,
+        onLinkOpen: o.onLinkOpen,
       });
     }
 
@@ -1050,7 +1066,13 @@ async function acceptRelayInvite(
   server: ChannelServer,
   shareKey: string,
   peers: string[],
-  o: { appVersion: string; acceptPeer?: (id: string) => boolean; onReceived?: (n: number) => void },
+  o: {
+    appVersion: string;
+    acceptPeer?: (id: string) => boolean;
+    onReceived?: (n: number) => void;
+    onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
+    onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
+  },
   log: (m: string) => void,
 ) {
   const raw = await openRelaySession(ep, inv);
@@ -1065,6 +1087,20 @@ async function acceptRelayInvite(
       acceptPeer: o.acceptPeer,
       mirror: mirrorHooks(),
       log,
+      // 🔴 Cửa NGHE QUA RELAY cũng phải thường trực. Đo 25/09: `phiên qua relay với … — 0 khối`
+      // lúc 16:58:37 là cửa này đóng ống sau MỘT lượt — đúng lỗ đã vá ở cửa nghe thẳng (3.5.10)
+      // nhưng sót cửa này. Ba cửa nghe, một luật; sót một là máy kia rụng theo kiểu tung đồng xu
+      // (relay hay thẳng là do cú bắt tay nào ăn trước).
+      persistent: true,
+      onOpen: (id: string) => o.onLinkOpen?.(id, "relay"),
+      onSyncRound: (r: SyncOutcome) => {
+        notePeerSync(r.peerDeviceId, "relay", r);
+        if (r.peerDeviceId) o.onLinkRound?.(r.peerDeviceId, r);
+        if (r.receivedBlocks > 0 || r.receivedFiles > 0) {
+          log(`[channel] nhận qua relay từ ${(r.peerDeviceId ?? "?").slice(0, 11)}… — ${r.receivedBlocks} khối · ${r.receivedFiles} file`);
+        }
+        if (r.receivedBlocks > 0) o.onReceived?.(r.receivedBlocks);
+      },
     };
     const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);
     const out = await runSessionOn(sock, opts, !inv.serverSocket);
@@ -1077,7 +1113,9 @@ async function acceptRelayInvite(
       return;
     }
     log(
-      `[channel] phiên qua relay với ${out.peerDeviceId ?? "(không rõ)"} — đã nhận ${out.receivedBlocks} khối · đã gửi ${out.sentBlocks} khối`,
+      // Từ khi cửa này THƯỜNG TRỰC, dòng này chỉ in lúc liên kết CHẾT — nói về cái chết, không nói
+      // như một lượt vừa xong. Từng lượt đã báo ở `onSyncRound`.
+      `[channel] liên kết relay đến từ ${(out.peerDeviceId ?? "(không rõ)").slice(0, 11)}… đã đóng`,
     );
     if (out.receivedBlocks) o.onReceived?.(out.receivedBlocks);
   } catch {

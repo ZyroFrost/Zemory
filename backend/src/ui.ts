@@ -1759,9 +1759,10 @@ const links = new Map<string, LinkEntry>();
  *
  * Không đụng `ctrl`: liên kết đến do lớp NGHE sở hữu, cắt nó là việc của `stopChannelServer`.
  */
-function noteInboundLink(peerId: string): void {
+function noteInboundLink(peerId: string, via?: LinkVia): void {
   const cur = links.get(peerId);
   if (cur) {
+    if (via) cur.via = via;
     if (cur.state !== "up") {
       cur.state = "up";
       cur.since = Date.now();
@@ -1775,7 +1776,7 @@ function noteInboundLink(peerId: string): void {
   // `ctrl` đã huỷ sẵn: mục này không sở hữu ống nào, nên nó không được giả vờ cắt được gì.
   const ctrl = new AbortController();
   ctrl.abort();
-  links.set(peerId, { ctrl, fails: 0, state: "up", since: Date.now() });
+  links.set(peerId, { ctrl, fails: 0, state: "up", since: Date.now(), ...(via ? { via } : {}) });
 }
 
 /** Ảnh chụp cho bề mặt. Trả bản sao: bề mặt không được cầm tham chiếu vào trạng thái sống. */
@@ -2233,6 +2234,9 @@ async function refreshChannelServer(): Promise<void> {
       log: (m: string) => daemonLog(m),
       // Liên kết ĐẾN cũng là một liên kết — thẻ máy phải thấy nó.
       onLinkRound: (peerId: string) => noteInboundLink(peerId),
+      // Bắt tay xong ở cửa NGHE cũng là "đang nối" — không đợi lượt đầu (đo 25/09: máy kia xanh
+      // vì đường ĐI của nó lên ngay lúc bắt tay, còn bên này chỉ có đường ĐẾN và đợi trọn lượt).
+      onLinkOpen: (peerId: string, via: LinkVia) => noteInboundLink(peerId, via),
       onReceived: (blocks: number) => {
         daemonLog(`[channel] đã nhận ${blocks} khối — đang hợp nhất vào kho`);
         void mergeChannelDir(ch.channelStatus().dir)

@@ -1803,6 +1803,7 @@ export async function mergeChannelDir(
   // không lẫn hai khúc trùng tên của hai máy khác nhau — khoá là `<ngăn>/<file>#<số khối>`.
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".enc"))) {
     out.push(...(await mergeContainer(join(dir, f), f, { ...o, excludeLanes })));
+    await new Promise<void>((resolve) => setImmediate(resolve)); // nhường loop giữa các gói — xem `mergeContainer`
   }
   let pens: string[] = [];
   try {
@@ -1820,7 +1821,10 @@ export async function mergeChannelDir(
     } catch {
       continue;
     }
-    for (const f of names) out.push(...(await mergeContainer(join(penDir, f), `${pen}/${f}`, { ...o, excludeLanes })));
+    for (const f of names) {
+      out.push(...(await mergeContainer(join(penDir, f), `${pen}/${f}`, { ...o, excludeLanes })));
+      await new Promise<void>((resolve) => setImmediate(resolve)); // nhường loop giữa các gói — xem `mergeContainer`
+    }
   }
   return out;
 }
@@ -1864,6 +1868,13 @@ async function mergeContainer(
       const r = await mergeMemoryBundle({ bundlePath: part, dbPath: o.dbPath, keyFile: o.keyFile, excludeLanes: o.excludeLanes });
       markBundleMerged(label, sig, o.dbPath);
       out.push({ file: label, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
+      // 🔴 NHƯỜNG event loop sau MỖI gói. `mergeMemoryBundle` ghi SQLite đồng bộ; hợp nhất cả kho là
+      // nhiều phút mà không một khung mạng nào được xử lý: nhịp tim không trả lời được, bắt tay TLS
+      // không xong, và thẻ máy đóng băng ở trạng thái cuối. Đo 2026-09-25 trên máy kia ngay sau khi
+      // nó nhận trọn kho: cả hai cổng nhận TCP mà không nói TLS suốt nhiều phút, thẻ xanh chết cứng
+      // trong khi liên kết đã rụng. Nhường giữa các gói chưa phải câu trả lời trọn (một gói to vẫn
+      // chặn trọn gói đó) — câu trả lời trọn là đưa hợp nhất ra tiến trình con, ghi ở `05_TODO`.
+      await new Promise<void>((resolve) => setImmediate(resolve));
     } catch (error) {
       out.push({ file: label, error: error instanceof Error ? error.message : "merge failed" });
     } finally {
