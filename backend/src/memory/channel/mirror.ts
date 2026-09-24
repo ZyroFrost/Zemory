@@ -118,6 +118,23 @@ function isScratchFile(name: string): boolean {
 }
 
 /**
+ * CỜ ĐỒNG Ý của guard (`docs/hooks/.allow-*`) — không bao giờ rời máy đã sinh ra nó.
+ *
+ * 🔴 Bắt tại trận 2026-09-24: `docs/hooks/.allow-push` nằm trong hàng đợi duyệt của máy này, chở
+ * sang từ máy kia. Tệp đó KHÔNG phải tài liệu — nó là **mã uỷ quyền một-lần** cho đúng một việc
+ * người dùng vừa cho phép trên MỘT máy (`guard.cjs §consumeFlag`). Bay sang máy thứ hai thì guard
+ * bên đó mở cửa cho một lệnh mà chủ máy chưa hề đồng ý, và tệ hơn: nó vượt cửa **im lặng**, đúng
+ * kiểu hỏng mà cả lớp guard sinh ra để chặn.
+ *
+ * Cùng hạng với `data/` trong `§9.8` (khoá chia sẻ · bí mật · phiên đăng nhập): **thẩm quyền là
+ * thuộc tính của MÁY, không phải của repo**. Chặn theo HẠNG (`.allow-*` dưới `hooks/`) chứ không
+ * theo một cái tên, vì thêm một cờ mới — `.allow-delete`, `.allow-docs-write` — là lỗ mở lại.
+ */
+function isConsentFlag(rel: string, name: string): boolean {
+  return name.startsWith(".allow-") && rel.split("/").includes("hooks");
+}
+
+/**
  * Lý do một đường dẫn bị loại, hoặc `null` nếu nó được chở.
  *
  * Tách thành hàm THUẦN để cổng soi thẳng được — cổng đầu-cuối không chứng minh nổi
@@ -126,6 +143,7 @@ function isScratchFile(name: string): boolean {
 export function excludeReason(rel: string, name: string, size: number): string | null {
   if (rel.split("/").some((seg) => SKIP_DIRS.has(seg))) return "thư mục kỹ thuật";
   if (isDatabaseFile(name)) return "file database — không bao giờ đi dạng file (HP điều 11)";
+  if (isConsentFlag(rel, name)) return "cờ đồng ý của guard — thẩm quyền thuộc về MÁY (HP điều 14)";
   if (isScratchFile(name)) return "file nháp";
   if (size > MAX_MIRROR_FILE_BYTES) return `vượt trần ${Math.round(MAX_MIRROR_FILE_BYTES / 1024 / 1024)} MB`;
   return null;
@@ -256,5 +274,9 @@ export function resolveMirrorPath(root: MirrorRoot, rel: string): string | null 
   const base = root.path.endsWith(sep) ? root.path : root.path + sep;
   if (!abs.startsWith(base)) return null;
   if (isDatabaseFile(basename(abs))) return null; // luật cứng áp cả chiều NHẬN
+  // Cờ đồng ý cũng áp HAI ĐẦU: chặn bên gửi mới chỉ vá máy đã cập nhật, mà thứ nguy hiểm đến từ
+  // máy KIA. Một máy đời cũ vẫn chở `.allow-push` sang, nên bên nhận phải tự từ chối — cùng lý do
+  // `resolveMirrorPath` đã tự kiểm `../` thay vì tin tiêu đề của đối phương.
+  if (isConsentFlag(rel.replace(/\\/g, "/"), basename(abs))) return null;
   return abs;
 }

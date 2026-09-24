@@ -234,6 +234,35 @@ export function aheadOfRepo(
   return { have, latest: git.latest, from: git.commit ?? "" };
 }
 
+/**
+ * Tem kênh có đang chỉ vào một bản **KHÔNG TỒN TẠI** không.
+ *
+ * 🔴 Bắt tại trận 2026-09-24: tem còn ghi `3.6.0`, do chính máy này đóng dấu 22/09 — nhưng số đó
+ * **chết** lúc đánh số lại lịch sử 23/09. Không commit nào, không tag nào mang nó. Lấy max thì bản
+ * ma thắng, nên bề mặt mời cập nhật lên một bản **không ai tải về được**, và mời MÃI: tem theo
+ * thiết kế chỉ đi LÊN. Người dùng bấm *Cập nhật ngay* rồi không có gì xảy ra.
+ *
+ * ⚠ Nhưng KHÔNG được vì thế mà cho git thắng tuyệt đối — `pickUpdate` lấy max là một quyết định
+ * đã chốt, cho ca thật *"máy kia vừa build xong bản chưa push"* (xem test cùng tên). Bỏ tem là
+ * giấu mất bản đó.
+ *
+ * Hai ca đó phân biệt được, và phân biệt bằng MỐC THỜI GIAN chứ không bằng số:
+ * · máy kia build bản mới ⇒ nó đóng dấu **SAU** commit cuối của git ⇒ tem còn nói điều git chưa biết;
+ * · bản ma ⇒ git đã **ĐI TIẾP** sau ngày đóng dấu mà vẫn KHÔNG có số đó ⇒ repo đã bỏ nó lại.
+ * Thiếu một trong hai mốc thì KHÔNG kết luận là ma — im lặng nhầm còn hơn giấu một bản thật.
+ */
+export function isPhantomStamp(
+  git: { latest?: string; at?: string; ok?: boolean } | null,
+  stamp: { latest: string; at?: string } | null,
+): boolean {
+  if (!git?.ok || !git.latest || !stamp?.latest) return false;
+  if (cmpSemver(stamp.latest, git.latest) <= 0) return false; // tem không vượt git ⇒ không có gì để nghi
+  const gitAt = Date.parse(git.at ?? "");
+  const stampAt = Date.parse(stamp.at ?? "");
+  if (!Number.isFinite(gitAt) || !Number.isFinite(stampAt)) return false;
+  return gitAt > stampAt;
+}
+
 export function pickUpdate(
   have: string,
   git: { latest?: string; commit?: string; at?: string; ok?: boolean } | null,
@@ -242,7 +271,9 @@ export function pickUpdate(
   if (!have) return undefined;
   const cands: AppUpdate[] = [];
   if (git?.ok && git.latest) cands.push({ have, latest: git.latest, from: git.commit ?? "", at: git.at ?? "", source: "git" });
-  if (stamp?.latest) cands.push({ have, latest: stamp.latest, from: stamp.host ?? "?", at: stamp.at ?? "", source: "channel" });
+  if (stamp?.latest && !isPhantomStamp(git, stamp)) {
+    cands.push({ have, latest: stamp.latest, from: stamp.host ?? "?", at: stamp.at ?? "", source: "channel" });
+  }
   let best: AppUpdate | undefined;
   for (const c of cands) {
     if (cmpSemver(c.latest, have) <= 0) continue;
