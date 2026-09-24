@@ -506,6 +506,23 @@ test("Sources shows +N from the latest scan and keeps it across unchanged render
 // 4444/set-drive?path=…">` trên một trang bất kỳ vẫn chạy (ảnh hỏng, nhưng REQUEST đã
 // gửi — CORS chặn ĐỌC kết quả chứ không chặn GỬI). Cổng 4444 cố định, có ghi trong README.
 // Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong đó đang nhận GET.
+test("Đồng bộ ngay KHÔNG nhập gì ⇒ nhắm từng máy đã ghép, không phải chuỗi rỗng", async () => {
+  // 🔴 Ca thật, tốn của user nhiều ngày: cú bấm truyền chuỗi RỖNG xuống `channelSyncOnce`, mà
+  // rỗng nghĩa là *"không nhắm ai"* — nhánh đó chỉ gom dò LAN + bảng chung + địa chỉ đã nhớ và
+  // **bỏ qua cả cụm dò toàn cầu lẫn relay**, hai tầng chỉ tra được khi biết ID. Vòng nền vốn
+  // truyền ID nên nó chạy đúng; chỉ cú bấm rơi xuống nhánh LAN. Triệu chứng người dùng thấy:
+  // *"hôm qua nối được là do cùng mạng"*.
+  //
+  // Gọi HÀM THẬT, không soi chữ: phép này quyết định ca khác-mạng sống hay chết.
+  const { syncTargets } = await import("../../dist/ui.js");
+  assert.deepEqual(syncTargets("", ["AAA", "BBB"]), ["AAA", "BBB"], "không nhập gì ⇒ nhắm MỌI máy đã ghép");
+  assert.deepEqual(syncTargets("   ", ["AAA"]), ["AAA"], "toàn khoảng trắng cũng là không nhập gì");
+  assert.deepEqual(syncTargets("10.0.0.5:21038", ["AAA"]), ["10.0.0.5:21038"], "gõ địa chỉ ⇒ nhắm đúng nó");
+  // CA ÂM: chưa ghép ai thì trả RỖNG để bề mặt nói thẳng, KHÔNG được đẻ một đích giả.
+  assert.deepEqual(syncTargets("", []), [], "chưa ghép máy nào ⇒ rỗng, để bề mặt nói ra");
+  assert.deepEqual(syncTargets("", ["", "  "]), [], "ID rỗng trong sổ không được thành một đích");
+});
+
 test("state-changing endpoints require POST and block cross-site calls", () => {
   const src = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\/\/[^\n]*/g, "");
   assert.ok(/const MUTATING\s*=/.test(src), "phải có danh sách endpoint đổi trạng thái");

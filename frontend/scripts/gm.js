@@ -497,6 +497,32 @@
   }
   window.zP2pLogTick=logTick;
 
+  // KẾT QUẢ MỘT LƯỢT NỐI — phải nói được CÓ NỐI ĐƯỢC HAY KHÔNG, không chỉ đếm khối.
+  //
+  // 🔴 Ca thật user báo 2026-09-24: bấm Kết nối, màn hình hiện `✓ đã gửi 0 khối · đã nhận 0 khối`.
+  // Endpoint chỉ trả `ok:true` khi một phiên đã chạy XONG không lỗi, nên đó LÀ nối thành công —
+  // nhưng bề mặt không nói câu đó, chỉ trưng hai số 0. Người dùng đọc thành "không nối được", và
+  // họ đọc đúng theo thứ nhìn thấy. Nguyên văn: *"phải thông báo có nối dc hay ko chứ"*.
+  //
+  // Nên dòng kết quả nay có ba phần, theo đúng thứ tự người cần: ① nối được với MÁY NÀO, qua
+  // ĐƯỜNG nào · ② khối · ③ thư mục. Và 0/0 được nói thẳng là **hai máy đã khớp**, chứ không để
+  // một con số 0 tự nói hộ — 0 vì đã đủ và 0 vì không có gì đi qua trông giống hệt nhau.
+  function syncResultText(r){
+    var who=(r.peerDeviceId||'').slice(0,11);
+    var head=t('p2p.okConn').replace('{m}', who?who+'…':t('p2p.unknownPeer'));
+    var via=r.via==='relay'?t('p2p.viaRelay'):(r.addr?t('p2p.viaDirect').replace('{a}',r.addr):'');
+    var sb=r.sentBlocks||0, rb=r.receivedBlocks||0;
+    var sf=r.sentFiles||0, rf=r.receivedFiles||0, af=r.appliedFiles||0, qf=r.queuedFiles||0;
+    var parts=[head+(via?' · '+via:'')];
+    if(sb||rb)parts.push(t('p2p.resBlocks').replace('{s}',zN(sb)).replace('{r}',zN(rb)));
+    if(sf||rf)parts.push(t('p2p.resFiles').replace('{s}',zN(sf)).replace('{r}',zN(rf)).replace('{a}',zN(af)).replace('{q}',zN(qf)));
+    if(!sb&&!rb&&!sf&&!rf)parts.push(t('p2p.nothingNew'));
+    // CÒN LẠI phải nói ra: một lượt chở có ngân sách thời gian, nên "xong" ở đây nghĩa là
+    // "xong phần của lượt này". Im lặng thì người dùng thấy ✓ rồi lượt sau vẫn còn việc.
+    if(r.filesLeft)parts.push(t('p2p.filesLeft').replace('{n}',zN(r.filesLeft)));
+    return parts.join(' · ');
+  }
+
   document.addEventListener('click',function(e){
     var el=e.target&&e.target.closest?e.target.closest('[data-act],[data-tr],[data-copy],#p2pLogOnly,#p2pLogHold,#driveToggle'):null;
     if(!el)return;
@@ -615,7 +641,7 @@
         // CHỖ CHỜ: `ok:true` mà 0 khối KHÔNG phải "đã xong". Thiếu nhánh này thì bề mặt in
         // "✓ gửi 0 · nhận 0" cho một việc chưa xảy ra — đúng kiểu nói dối §F3 cấm.
         if(r.waiting){zset('addPeerMsg',t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
-        zset('addPeerMsg','✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        zset('addPeerMsg','✓ '+syncResultText(r));
         loadChannel();
       });
     }
@@ -626,7 +652,7 @@
         // một chữ "lỗi" là bắt người dùng đoán (cùng doctrine `save-never-silent`).
         if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
         if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
-        p2pMsg('✓ '+t('p2p.result').replace('{s}',zN(r.sentBlocks||0)).replace('{r}',zN(r.receivedBlocks||0)));
+        p2pMsg('✓ '+syncResultText(r));
         loadChannel();
       });
     }

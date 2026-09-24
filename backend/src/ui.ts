@@ -1826,6 +1826,24 @@ async function autoConnectTick(projectRoot: string): Promise<void> {
  * đã giữ sẵn một chỗ vĩnh viễn, nên mở thêm mỗi nhịp là giữ lỗ NAT cho một việc không ai bấm —
  * và mỗi chỗ chờ sống 10 phút, tức chúng chồng lên nhau.
  */
+/**
+ * Cú bấm *Đồng bộ ngay* nhắm vào ĐÂU — hàm THUẦN, tách riêng để cổng gọi thẳng được.
+ *
+ * 🔴 Đây là phép đã sai và đã tốn của user nhiều ngày. Gõ một địa chỉ ⇒ nhắm địa chỉ đó. KHÔNG
+ * gõ gì ⇒ nhắm **từng máy đã ghép**, KHÔNG phải chuỗi rỗng: chuỗi rỗng nghĩa là *"không nhắm
+ * ai"*, và nhánh đó chỉ gom địa chỉ từ dò LAN + bảng chung + địa chỉ đã nhớ rồi **bỏ qua cả cụm
+ * dò toàn cầu lẫn relay** — hai tầng chỉ tra được khi biết ID, tức đúng hai tầng dựng riêng cho
+ * ca KHÁC MẠNG. Vòng nền (`autoConnectTick`) vốn đã truyền ID nên nó chạy đúng; chỉ cú bấm tay
+ * rơi xuống nhánh LAN. Triệu chứng: *"hôm qua nối được là do cùng mạng"*.
+ *
+ * Trả về MẢNG chứ không phải một đích: nhiều máy đã ghép thì phải thử hết, không im lặng bỏ sót.
+ */
+export function syncTargets(typed: string, peers: readonly string[]): string[] {
+  const one = typed.trim();
+  if (one) return [one];
+  return peers.filter((p) => p.trim().length > 0);
+}
+
 async function channelSyncOnce(
   rawInput: string,
   o: { budgetMs: number; armWait: boolean; projectRoot: string },
@@ -3507,17 +3525,44 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       return json(res, { ok: true, peers: getP2pPeers() });
     }
     if (p === "/channel-sync") {
+      const ch2 = await import("./memory/channel/index.js");
       // HUỶ chỗ chờ — CÙNG cửa, không đẻ endpoint thứ hai (HP điều 17). Một chỗ chờ không rút lại
       // được là một cái bẫy: nó giữ lỗ và bắn đều trong nhiều phút mà người bấm không gỡ ra được.
       if (u.searchParams.get("cancel") === "1") {
-        const chx = await import("./memory/channel/index.js");
-        const had = chx.punchWaitState();
-        chx.cancelPunchWait();
+        const had = ch2.punchWaitState();
+        ch2.cancelPunchWait();
         if (had) daemonLog(`[channel] đã huỷ phiên chờ tới ${had.addr} sau ${had.rounds} vòng`);
         return json(res, { ok: true, cancelled: Boolean(had) });
       }
       // Người BẤM = lượt có chủ đích: trần 25 giây cho cả lượt, và ĐƯỢC mở chỗ chờ đục lỗ.
-      return json(res, await channelSyncOnce(u.searchParams.get("host") ?? "", { budgetMs: 25_000, armWait: true, projectRoot: root() }));
+      const typed = (u.searchParams.get("host") ?? "").trim();
+      if (typed) {
+        return json(res, await channelSyncOnce(syncTargets(typed, [])[0], { budgetMs: 25_000, armWait: true, projectRoot: root() }));
+      }
+      // 🔴 KHÔNG nhập gì ⇒ nhắm TỪNG MÁY ĐÃ GHÉP, đúng như `autoConnectTick` vẫn làm.
+      //
+      // Bản trước truyền chuỗi RỖNG xuống, và chuỗi rỗng nghĩa là *"không nhắm ai"*: nhánh đó chỉ
+      // gom địa chỉ từ dò LAN + bảng chung + địa chỉ đã nhớ, rồi **bỏ qua cả cụm dò toàn cầu lẫn
+      // relay** — vì hai tầng đó chỉ tra được khi biết ID. Tức đúng hai tầng dựng riêng cho ca
+      // KHÁC MẠNG bị cú bấm bỏ qua, trong khi vòng nền vẫn dùng đủ. Triệu chứng người dùng thấy:
+      // *"hôm qua nối được là do cùng mạng"*, và bấm tay thì im.
+      //
+      // Dùng LẠI `channelSyncOnce` cho từng ID thay vì nới nhánh rỗng: vòng nền đã chạy đúng
+      // đường này hàng trăm lượt, nên đây là một cửa gọi thứ hai vào CÙNG một bản cài đặt, không
+      // phải một bản thứ hai (HP điều 17).
+      const peerIds = syncTargets("", ch2.channelStatus().peers);
+      if (peerIds.length === 0) {
+        return json(res, { ok: false, error: "chưa ghép đôi máy nào — dán mã máy kia một lần" });
+      }
+      // Trần chia đều cho số máy, sàn 10 giây: một máy chết không được ăn hết ngân sách của máy sống.
+      const each = Math.max(10_000, Math.floor(25_000 / peerIds.length));
+      let lastTry: Record<string, unknown> = { ok: false, error: "không máy nào trả lời" };
+      for (const id of peerIds) {
+        const r = await channelSyncOnce(id, { budgetMs: each, armWait: true, projectRoot: root() });
+        if (r.ok === true && r.waiting !== true) return json(res, r);
+        lastTry = r;
+      }
+      return json(res, lastTry);
     }
     if (p === "/channel-probe") {
       // Đo tầng 2 (mở cổng tự động). Fail-open: không router nào trả lời KHÔNG phải lỗi.
