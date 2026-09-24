@@ -53,9 +53,11 @@ test("🔴 phiên THƯỜNG TRỰC được bật, và bật ở CẢ HAI đư�
   // ⛔ Hai đường, không một. Gọi thẳng chạy ở ca cùng mạng; RELAY là đường DUY NHẤT ở ca hai máy
   // khác mạng kín NAT — chính ca user đang dùng. Luồn cờ vào một đường rồi quên đường kia là để
   // nguyên con bug ở đúng chỗ nó đang cắn.
-  const spread = UI.match(/\.\.\.\(o\.link/g) ?? [];
-  assert.ok(spread.length >= 2, `tuỳ chọn liên kết phải đi vào CẢ gọi thẳng lẫn relay (mới thấy ${spread.length})`);
-  assert.match(UI, /\.\.\.\(o\.link \? \{ link: o\.link \} : \{\}\)/, "đường relay phải nhận `link`");
+  // Cả hai đường đi qua MỘT hàm nắn (`linkOpts`) — nơi duy nhất gắn nhãn đường vào `onOpen`.
+  const spread = UI.match(/linkOpts\(o\.link, "(direct|relay)"\)/g) ?? [];
+  assert.deepEqual([...spread].sort(), ['linkOpts(o.link, "direct")', 'linkOpts(o.link, "relay")'],
+    "tuỳ chọn liên kết phải đi vào CẢ gọi thẳng lẫn relay, mỗi đường đúng nhãn của nó");
+  assert.match(UI, /\.\.\.\(o\.link \? \{ link: linkOpts\(o\.link, "relay"\) \} : \{\}\)/, "đường relay phải nhận `link`");
 });
 
 test("🔴 `unpair` phải CẮT ỐNG, không chỉ xoá cái tên trong sổ", () => {
@@ -157,7 +159,35 @@ test("gọi thẳng phải NÓI RA từng ứng viên đã trượt — thẻ m�
   // Đo 2026-09-25: thẻ ghi `ECONNREFUSED` của một địa chỉ CŨ, trong khi cú gọi LAN — ứng viên đầu,
   // và là đường duy nhất đáng quan tâm khi hai máy cùng Wi-Fi — trượt vì lý do khác mà không ai
   // thấy. Mất hơn một giờ soi nhầm vì đúng chỗ mù này.
-  assert.match(UI, /const tried: string\[\] = \[\];/, "phải gom từng ứng viên trượt");
+  // Sổ mở sẵn bằng các ứng viên HAIRPIN đã bỏ qua — bỏ qua cũng là một kết cục phải nói ra.
+  assert.match(UI, /const tried: string\[\] = hairpin\.map\(/, "phải gom từng ứng viên trượt, kể cả ứng viên đã bỏ qua");
   assert.match(UI, /if \(r\.error\) tried\.push\(/, "mỗi ứng viên trượt phải vào sổ");
   assert.match(UI, /\[channel\] gọi thẳng tới \$\{/, "phải nói ra MỘT dòng cho cả lượt");
+});
+
+test("🔴 thẻ lên 'đang nối' lúc BẮT TAY XONG, không đợi lượt đầu đóng sổ", () => {
+  // Đo 2026-09-25: phiên relay bắt tay 16:31:38, đã gửi khối và file, mà thẻ ghi "đang nối lại"
+  // suốt — vì trạng thái chỉ đổi khi trọn một lượt xong, và lượt đầu đang chở 800 MB.
+  assert.match(UI, /onOpen: \(via\): void => \{/, "lớp giữ-liên-kết phải nhận `onOpen`");
+  const open = UI.slice(UI.indexOf("onOpen: (via): void => {"), UI.indexOf("onSyncRound: (): void => {"));
+  assert.match(open, /cur\.state = "up"/, "bắt tay xong ⇒ up");
+  assert.match(open, /cur\.via = via/, "phải nhớ ĐƯỜNG đang đi — linkTick cần nó để đổi đường");
+  const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
+  assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(\);/, "phiên phải bắn `onOpen` ngay sau bằng chứng cùng chìa");
+});
+
+test("🔴 cùng Wi-Fi mà đi relay: bỏ qua HAIRPIN, và đổi sang gọi thẳng khi thấy nhau trên LAN", () => {
+  // Hai máy cùng router: IP công cộng của máy kia = IP công cộng của máy này ⇒ gọi ra đó là gọi
+  // vào chính router mình, bị từ chối (`ECONNREFUSED` suốt ngày 25/09). Lượt đầu chạy 2 giây sau
+  // khi daemon lên nên dò LAN chưa thấy ai ⇒ chỉ có IP đó ⇒ rơi xuống relay ⇒ ở lì trên relay.
+  assert.match(UI, /const myExt = ch\.externalAddress\(\)\?\.host \?\? null;/, "phải biết IP ngoài của chính mình");
+  assert.match(UI, /const dialable = candidates\.filter\(\(c\) => !hairpin\.includes\(c\)\);/, "ứng viên hairpin không được gọi");
+  assert.match(UI, /for \(const cand of dialable\) \{/, "vòng gọi phải đi qua danh sách đã lọc");
+  assert.match(UI, /bỏ qua \(IP ngoài của chính mạng này\)/, "bỏ qua thì phải NÓI RA — không thì nhật ký đọc thành 'không thử'");
+
+  // Đổi đường: relay + thấy trên LAN ⇒ cắt và nối lại. Phải đi qua đúng cửa ngắt, và nối lại NGAY.
+  const tick = UI.slice(UI.indexOf("async function linkTick("), UI.indexOf("async function channelSyncOnce("));
+  assert.match(tick, /if \(e\.via !== "relay" \|\| e\.state !== "up"\) continue;/, "chỉ đổi khi ĐANG đi relay và đang sống");
+  assert.match(tick, /ch\.sameDeviceId\(s\.deviceId, id\)/, "so danh tính bằng luật chung, không so chuỗi");
+  assert.match(tick, /dropLink\(id\);\s*\n\s*keepLink\(id, projectRoot\);/, "cắt rồi nối lại NGAY, không đợi nhịp sau");
 });

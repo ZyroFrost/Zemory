@@ -177,6 +177,15 @@ export interface SessionOptions {
    * lần này, nhưng nó chỉ bắt được vì hai kiểu lệch nhau.
    */
   onSyncRound?: (r: SyncOutcome) => void;
+  /**
+   * Bắt tay XONG (cùng chìa, đã quen) — liên kết đã SỐNG, dù chưa lượt nào đóng sổ.
+   *
+   * 🔴 Vì sao không dùng `onSyncRound` thay được: lượt đầu giữa hai máy có thể chở 800 MB qua
+   * relay công cộng — nhiều phút. Suốt lúc đó thẻ máy vẫn ghi *"đang nối lại"* nếu chỉ đổi trạng
+   * thái khi trọn một lượt xong. Đo 2026-09-25: phiên relay bắt tay 16:31:38, đã gửi khối và file,
+   * mà thẻ nói dối tới tận lúc soi log. "Đang nối" phải nghĩa là *ống đang mở*, không phải *đã hội tụ*.
+   */
+  onOpen?: () => void;
   /** Im bao lâu thì bắn nhịp tim. Mặc định `PING_IDLE_MS` — cổng hạ xuống vài trăm ms để soi nhanh. */
   pingIdleMs?: number;
   /** Không nghe thấy gì bao lâu thì coi là đứt (chỉ ở chế độ thường trực). Mặc định `LINK_DEAD_MS`. */
@@ -526,6 +535,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           return finish("chìa share KHÁC nhau — hai máy không đọc được kho của nhau");
         }
         proofOk = true;
+        // Máy đã quen + cùng chìa ⇒ liên kết SỐNG ngay tại đây, không đợi lượt đầu đóng sổ.
+        if (paired) o.onOpen?.();
         // Bên GỌI đang nối tới máy chưa quen ⇒ xin nhận trước khi khai kho.
         //
         // 🔴 `acceptPeer` cũng tính là "sẵn sàng làm quen", không riêng `wantPair`. Thiếu vế đó
