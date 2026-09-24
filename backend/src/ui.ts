@@ -1710,11 +1710,30 @@ export function reconnectDelayMs(fails: number, baseMs = 2_000, capMs = 60_000):
  */
 export type LinkState = "up" | "connecting" | "off";
 
+/** Đường mà liên kết đang đi. Thẻ máy in ra, và `linkTick` dùng để biết khi nào đáng đổi đường. */
+export type LinkVia = "direct" | "relay";
+
 /** Phần tuỳ chọn của phiên mà lớp liên kết cần luồn xuống — MỘT chỗ khai, ba cửa dùng lại. */
 type LinkOptions = Pick<
   import("./memory/channel/peer.js").SessionOptions,
   "persistent" | "stop" | "onSyncRound" | "roundGapMs" | "pingIdleMs" | "linkDeadMs"
->;
+> & {
+  /** Bắt tay xong — kèm ĐƯỜNG đã đi, vì phiên không tự biết nó đang chạy trên relay hay gọi thẳng. */
+  onOpen?: (via: LinkVia) => void;
+};
+
+/**
+ * Nắn `LinkOptions` thành tuỳ chọn phiên cho MỘT đường cụ thể — chỗ duy nhất gắn `via` vào `onOpen`.
+ *
+ * Phiên (`runSession`) không biết nó đi qua đâu: ống relay và ống gọi thẳng trông y hệt nhau ở tầng
+ * đó. Chỉ nơi GỌI mới biết, nên nơi gọi gắn nhãn — và gắn ở một hàm để hai đường không mỗi bên tự
+ * gắn một kiểu.
+ */
+function linkOpts(l: LinkOptions | undefined, via: LinkVia): Partial<import("./memory/channel/peer.js").SessionOptions> {
+  if (!l) return {};
+  const { onOpen, ...rest } = l;
+  return { ...rest, ...(onOpen ? { onOpen: (): void => onOpen(via) } : {}) };
+}
 
 interface LinkEntry {
   ctrl: AbortController;
@@ -1723,6 +1742,8 @@ interface LinkEntry {
   /** Mốc của trạng thái hiện tại — bề mặt in "đã nối N phút". */
   since: number;
   lastError?: string;
+  /** Đường đang đi — có từ lúc bắt tay xong. `relay` mà máy kia hiện trên LAN thì `linkTick` đổi đường. */
+  via?: LinkVia;
 }
 
 /** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
@@ -1758,9 +1779,11 @@ function noteInboundLink(peerId: string): void {
 }
 
 /** Ảnh chụp cho bề mặt. Trả bản sao: bề mặt không được cầm tham chiếu vào trạng thái sống. */
-export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string }> {
-  const out: Record<string, { state: LinkState; since: number; fails: number; error?: string }> = {};
-  for (const [id, e] of links) out[id] = { state: e.state, since: e.since, fails: e.fails, ...(e.lastError ? { error: e.lastError } : {}) };
+export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia }> {
+  const out: Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia }> = {};
+  for (const [id, e] of links) {
+    out[id] = { state: e.state, since: e.since, fails: e.fails, ...(e.lastError ? { error: e.lastError } : {}), ...(e.via ? { via: e.via } : {}) };
+  }
   return out;
 }
 
@@ -1812,6 +1835,20 @@ function keepLink(peerId: string, projectRoot: string): void {
           link: {
             persistent: true,
             stop: ctrl.signal,
+            // Bắt tay xong = ĐANG NỐI. Không đợi lượt đầu đóng sổ: lượt đầu có thể chở 800 MB qua
+            // relay, nhiều phút, và suốt lúc đó thẻ nói "đang nối lại" là thẻ nói dối (đo 25/09).
+            onOpen: (via): void => {
+              const cur = links.get(peerId);
+              if (!cur || cur.ctrl !== ctrl) return;
+              cur.via = via;
+              if (cur.state !== "up") {
+                cur.state = "up";
+                cur.since = Date.now();
+                daemonLog(`[channel] đã nối với ${peerId.slice(0, 11)}… qua ${via === "relay" ? "relay" : "gọi thẳng"} — giữ liên kết`);
+              }
+              cur.fails = 0;
+              delete cur.lastError;
+            },
             onSyncRound: (): void => {
               const cur = links.get(peerId);
               if (!cur || cur.ctrl !== ctrl) return;
@@ -1872,6 +1909,26 @@ async function linkTick(projectRoot: string): Promise<void> {
   // Ra khỏi sổ (gỡ cặp) hoặc tắt kênh ⇒ CẮT ống, không chỉ quên cái tên.
   for (const id of [...links.keys()]) if (!want.has(id)) dropLink(id);
   for (const id of want) keepLink(id, projectRoot);
+
+  // 🔴 ĐỔI ĐƯỜNG: liên kết đang đi RELAY mà máy kia hiện trên LAN ⇒ cắt và nối lại để đi thẳng.
+  //
+  // Đo 2026-09-25: hai máy cùng Wi-Fi mà chở 800 MB qua relay công cộng. Lượt gọi đầu chạy 2 giây
+  // sau khi daemon lên, dò LAN chưa thấy ai, nên ứng viên duy nhất là IP công cộng (hairpin, bị từ
+  // chối) rồi rơi xuống relay — và liên kết thường trực **ở lì** trên relay vì không bao giờ dò lại.
+  // Một liên kết sống không có lý do để tự hỏi "có đường tốt hơn không"; nhịp canh sổ này hỏi hộ.
+  try {
+    const ch = await import("./memory/channel/index.js");
+    const onLan = ch.seenPeers();
+    for (const [id, e] of links) {
+      if (e.via !== "relay" || e.state !== "up") continue;
+      if (!onLan.some((s) => ch.sameDeviceId(s.deviceId, id))) continue;
+      daemonLog(`[channel] ${id.slice(0, 11)}… đang đi relay mà có mặt trên mạng nội bộ — đổi sang gọi thẳng`);
+      dropLink(id);
+      keepLink(id, projectRoot);
+    }
+  } catch {
+    /* không đọc được tầng dò ⇒ giữ đường đang có (điều 9) */
+  }
 }
 
 /**
@@ -1983,6 +2040,13 @@ async function channelSyncOnce(
         : [...seenAddrs, ...fresh, ...me.peers.flatMap((id) => known[id] ?? [])],
     ),
   ];
+  // 🔴 HAIRPIN: địa chỉ ngoài của máy kia TRÙNG địa chỉ ngoài của máy này ⇒ hai máy cùng một router,
+  // và gọi ra IP công cộng của chính mạng mình thì router từ chối (đo 25/09: `ECONNREFUSED` đúng
+  // ở địa chỉ đó, suốt cả ngày). Bỏ qua thay vì tốn một cú gọi chắc chắn trượt — và nói ra là đã
+  // bỏ, để nhật ký không đọc thành "không thử".
+  const myExt = ch.externalAddress()?.host ?? null;
+  const hairpin = myExt ? candidates.filter((c) => ch.parsePeerAddress(c)?.host === myExt) : [];
+  const dialable = candidates.filter((c) => !hairpin.includes(c));
   if (!candidates.length) {
     // 🔴 Câu ở đây đã SAI HAI LẦN, mỗi lần vì một vế của spec đi trước mà chữ ở lại.
     // ① *"đục lỗ NAT chưa dựng"* — sai từ 21/09 khi lớp đục lỗ ship (`§6f`).
@@ -2015,8 +2079,8 @@ async function channelSyncOnce(
   // `ECONNREFUSED` của một địa chỉ cũ trong khi cú gọi LAN — ứng viên ĐẦU, và là đường duy nhất
   // đáng quan tâm khi hai máy cùng Wi-Fi — trượt vì lý do khác mà không ai thấy. Đo 2026-09-25:
   // mất hơn một giờ soi nhầm vì đúng chỗ mù này.
-  const tried: string[] = [];
-  for (const cand of candidates) {
+  const tried: string[] = hairpin.map((h) => `${h} → bỏ qua (IP ngoài của chính mạng này)`);
+  for (const cand of dialable) {
     const a = ch.parsePeerAddress(cand);
     if (!a) continue;
     if (Date.now() > untilAll) {
@@ -2036,7 +2100,7 @@ async function channelSyncOnce(
         // bản cài đặt: cửa nào thiếu nó là cửa đó âm thầm bỏ qua bốn thư mục.
         mirror: ch.mirrorHooks(),
         // Liên kết THƯỜNG TRỰC (nếu lớp giữ-liên-kết xin) — cùng một đường nối, chỉ khác lúc buông.
-        ...(o.link ?? {}),
+        ...linkOpts(o.link, "direct"),
         // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.
         onPaired: (peerId: string): void => {
           setP2pPeers([...getP2pPeers(), peerId]);
@@ -2077,7 +2141,7 @@ async function channelSyncOnce(
         log: (m: string) => daemonLog(m),
         // 🔴 Phải luồn xuống CẢ đường này, không chỉ đường gọi thẳng. Hai máy khác mạng kín NAT thì
         // relay là đường DUY NHẤT nối được — bỏ sót ở đây là đúng ca user đang gặp vẫn rụng như cũ.
-        ...(o.link ? { link: o.link } : {}),
+        ...(o.link ? { link: linkOpts(o.link, "relay") } : {}),
         peerDeviceId: wantId,
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
