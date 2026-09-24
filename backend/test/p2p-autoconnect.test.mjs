@@ -60,7 +60,9 @@ test("vòng tự nối được MÓC thật vào daemon, và KHÔNG mở chỗ c
     "vòng tự nối KHÔNG được mở chỗ chờ đục lỗ");
 
   // Cú BẤM thì ngược lại — nó ĐƯỢC mở chỗ chờ, và trần rộng hơn vì có người đang ngồi đợi.
-  assert.match(UI, /channelSyncOnce\(u\.searchParams\.get\("host"\) \?\? "", \{ budgetMs: 25_000, armWait: true/,
+  // Đối số đầu đi qua `syncTargets` từ 3.5.4: chuỗi gõ tay phải được nắn về cùng một dạng mục tiêu
+  // với vòng nền, nếu không thì cú bấm bỏ qua cụm dò toàn cầu và relay (xem `syncTargets`).
+  assert.match(UI, /channelSyncOnce\(syncTargets\(typed, \[\]\)\[0\], \{ budgetMs: 25_000, armWait: true/,
     "cú bấm giữ trần 25 giây và vẫn mở được chỗ chờ");
 });
 
@@ -71,7 +73,10 @@ test("MỘT bản luật địa chỉ, không hai — cú bấm và vòng tự n
   const defs = UI.match(/^async function channelSyncOnce\(/gm) ?? [];
   assert.equal(defs.length, 1, "chỉ được có MỘT định nghĩa channelSyncOnce");
   const calls = UI.match(/channelSyncOnce\(/g) ?? [];
-  assert.equal(calls.length, 3, "một định nghĩa + đúng hai chỗ gọi (cú bấm · vòng tự nối)");
+  // Một định nghĩa + BA cửa gọi: vòng tự nối · cú bấm CÓ gõ máy · cú bấm KHÔNG gõ gì (lặp từng máy
+  // đã ghép — thêm ở 3.5.4). Cửa thứ ba là cửa gọi, KHÔNG phải bản cài đặt thứ hai: nó dựng đúng
+  // thứ tự thử địa chỉ bằng cách gọi lại hàm này, chứ không chép luật ra chỗ khác.
+  assert.equal(calls.length, 4, "một định nghĩa + đúng ba cửa gọi (vòng tự nối · bấm có gõ · bấm không gõ)");
 
   // Danh sách ứng viên chỉ được dựng ở MỘT chỗ.
   const cand = UI.match(/const candidates = \[/g) ?? [];

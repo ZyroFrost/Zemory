@@ -168,8 +168,12 @@ test("v21: UPDATE prose to prose KEEPS the postings (a trigger-order bug)", (t) 
 // v24 (2026-08-28): `sessions.account` (khe → nay là DANH TÍNH email, xem `scope-account.test.mjs`).
 // v25 (2026-08-28): backfill phiên web `account NULL` ⇒ 'main'. Hai bậc này lọt qua cổng đúng như
 // cổng cảnh báo: đợt 28/08 chỉ chạy gate vùng đụng; gate đầy đủ 29/08 mới bắt.
-test("a fresh DB runs every migration and stops at schema v25", (t) => {
+// v26 (2026-09-24): `peer_file_state` + `peer_file_queue` cho mirror thư mục (`plan/24 §9`).
+// 🔴 Và nó lọt y HỆT hai bậc trên, cùng một nguyên nhân: đợt 3.5.0 chỉ chạy gate vùng đụng, nên
+// cổng này đỏ suốt từ 3.5.0 → 3.5.5 mà không ai đọc. Cổng đã làm đúng việc của nó; thứ hỏng là
+// thói quen chạy gate hẹp rồi đẩy đi. Đây là lần thứ HAI cùng một bài học ở cùng một dòng.
+test("a fresh DB runs every migration and stops at schema v26", (t) => {
   const db = seed(t);
-  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 25);
+  assert.equal(db.prepare("SELECT version FROM schema_version").get().version, 26);
   db.close();
 });
