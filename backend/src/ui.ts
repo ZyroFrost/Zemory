@@ -2218,7 +2218,7 @@ async function channelSyncOnce(
 async function refreshChannelServer(): Promise<void> {
   try {
     const ch = await import("./memory/channel/index.js");
-    const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
+    const { resolveShareKey } = await import("./memory/share.js");
     const keyFile = resolveShareKey(currentProjectRoot());
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
@@ -2238,10 +2238,20 @@ async function refreshChannelServer(): Promise<void> {
       // vì đường ĐI của nó lên ngay lúc bắt tay, còn bên này chỉ có đường ĐẾN và đợi trọn lượt).
       onLinkOpen: (peerId: string, via: LinkVia) => noteInboundLink(peerId, via),
       onReceived: (blocks: number) => {
-        daemonLog(`[channel] đã nhận ${blocks} khối — đang hợp nhất vào kho`);
-        void mergeChannelDir(ch.channelStatus().dir)
-          .then((merged) => daemonLog(`[channel] hợp nhất xong: ${merged.filter((x) => !x.skipped).length} khối mới`))
-          .catch((e) => daemonLog(`[channel] lỗi khi hợp nhất: ${String(e).slice(0, 120)}`));
+        // 🔴 KHÔNG hợp nhất trên event loop của daemon. Bản trước gọi `mergeChannelDir` tại đây:
+        // giải mã + ghi SQLite đồng bộ cả kho là NHIỀU PHÚT không một khung mạng nào được xử lý
+        // — nhịp tim không trả lời, bắt tay TLS không xong, thẻ máy đóng băng. Đo 2026-09-24 trên
+        // máy kia ngay sau khi nó nhận trọn kho: cả hai cổng nhận TCP mà không nói TLS, hai lần
+        // trong một buổi (16:59 và 18:04), mỗi lần hàng chục phút.
+        //
+        // Tiến trình con của lượt sync (`jobs/syncrun.ts`) vốn ĐÃ hợp nhất thư mục kênh trước khi
+        // đẩy — nên việc đúng là GIAO cho nó, qua `startSyncJob` để đi qua cổng ghi (một kẻ ghi,
+        // HP điều 11). Không có `preempt`: người dùng không ngồi chờ lượt này; nếu một job khác
+        // đang giữ kho thì lượt sync theo nhịp sẽ tự hợp nhất sau — khối đã nằm an toàn trong
+        // thư mục kênh, không mất đi đâu.
+        daemonLog(`[channel] đã nhận ${blocks} khối — giao hợp nhất cho tiến trình con`);
+        const st = startSyncJob(() => invalidateDashboard(), { lowPriority: true });
+        if (!st.running) daemonLog(`[channel] chưa hợp nhất ngay: ${st.error ?? "kho đang bận"} — lượt sync theo nhịp sẽ làm`);
       },
     });
     if (!r.listening && r.reason) daemonLog(`[channel] không lắng nghe được: ${r.reason}`);
