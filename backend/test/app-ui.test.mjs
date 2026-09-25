@@ -2395,3 +2395,22 @@ test("thẻ máy: hàng trên chỉ chấm + tên (trọn ngang), trạng thái 
   assert.match(fx, /box\.appendChild\(h\);box\.appendChild\(b\);box\.appendChild\(cell\)/, "thứ tự ô: chú thích · giá trị · Copy");
   assert.match(gm, /p2pFact\(t\('p2p\.codeH'\),\[\{v:c\.machineCode,hint:t\(why\)\}\],true\)/, "mã máy dựng kiểu xuống dòng");
 });
+
+test("click handler: every act==='…' branch is listed in the handler's own selector (a missing name is a dead button)", () => {
+  // Đo 25/09 trong trình duyệt thật: Thử lại · Mã máy · Nhập chìa đều nằm dưới trình xử lý mà bộ
+  // chọn chỉ có ba nút hàng đợi ⇒ bấm không gì xảy ra, không lỗi nào nổ. Cổng cũ chỉ soi xem
+  // nhánh `act==='…'` CÓ trong file, không soi nó có TỚI ĐƯỢC không.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const start = gm.indexOf("// Bộ chọn phải liệt kê ĐỦ mọi nhánh");
+  assert.ok(start > 0, "anchor for the delegated mirror/p2p handler is gone");
+  // Cấp ngoài cùng (thụt 2 dấu cách); listener lồng bên trong trình xử lý thụt sâu hơn.
+  const rest = gm.slice(start);
+  const end = rest.search(/\r?\n {2}document\.addEventListener\('click'/);
+  const body = end > 0 ? rest.slice(0, end) : rest;
+  const sel = body.match(/closest\('([^']+)'\)/)[1];
+  const listed = new Set([...sel.matchAll(/data-act="([^"]+)"/g)].map((m) => m[1]));
+  const branches = [...new Set([...body.matchAll(/act==='([a-z0-9-]+)'/g)].map((m) => m[1]))];
+  assert.ok(branches.length >= 8, `expected the handler's branches, saw ${branches.length}`);
+  const dead = branches.filter((b) => !listed.has(b));
+  assert.deepEqual(dead, [], `branches unreachable from the selector: ${dead.join(", ")}`);
+});

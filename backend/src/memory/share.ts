@@ -2293,17 +2293,21 @@ export interface SetShareKeyResult {
  *  chìa người dùng mang tới. Trước đây không có đường nào làm việc này, nên ở máy thứ hai
  *  người dùng phải tự biết đường dẫn rồi tạo file bằng editor — và không có cách nào kiểm
  *  mình gõ đúng chưa. */
+/** Lỗi của `setShareKey` kèm MÃ — bề mặt chọn câu theo mã, không dò câu chữ tiếng Việt. */
+export type ShareKeyErrorCode = "empty" | "short" | "space" | "exists";
+const keyError = (code: ShareKeyErrorCode, message: string): Error => Object.assign(new Error(message), { code });
+
 export function setShareKey(secret: string, opts: { dbDir?: string; force?: boolean } = {}): SetShareKeyResult {
   const value = secret.trim();
-  if (!value) throw new Error("Chìa rỗng — không ghi.");
+  if (!value) throw keyError("empty", "Chìa rỗng — không ghi.");
   // Chìa là passphrase tuỳ ý (readShareSecret nhận mọi chuỗi UTF-8), nhưng quá ngắn thì
   // bundle trên kênh chia sẻ chỉ được che bởi vài bit. Chặn trước khi nó thành thói quen.
-  if (value.length < 16) throw new Error(`Chìa quá ngắn (${value.length} ký tự) — cần ≥ 16.`);
-  if (/\s/.test(value)) throw new Error("Chìa không được chứa khoảng trắng (dùng '-' để nối từ).");
+  if (value.length < 16) throw keyError("short", `Chìa quá ngắn (${value.length} ký tự) — cần ≥ 16.`);
+  if (/\s/.test(value)) throw keyError("space", "Chìa không được chứa khoảng trắng (dùng '-' để nối từ).");
   const path = shareKeyPath(opts.dbDir);
   const replaced = existsSync(path);
   if (replaced && !opts.force) {
-    throw new Error(`Đã có chìa ở ${path} — thêm --force nếu muốn thay (bundle cũ sẽ KHÔNG giải được nữa).`);
+    throw keyError("exists", `Đã có chìa ở ${path} — thêm --force nếu muốn thay (bundle cũ sẽ KHÔNG giải được nữa).`);
   }
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${value}\n`, { mode: 0o600 });

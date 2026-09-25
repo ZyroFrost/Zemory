@@ -3594,6 +3594,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // trực thì lịch sử là câu trả lời SAI — user đọc đúng chỗ đó: *"card nối vào cứ hiện ko rõ
         // dù đã nối"*.
         links: linkStates(),
+        // Chìa share: CHỈ dấu tay, không bao giờ giá trị, không cả đường dẫn (plan/16 §4).
+        shareKey: await (async () => {
+          const k = (await import("./memory/share.js")).shareKeyStatus(currentProjectRoot());
+          return { found: k.found, source: k.source, ...(k.fingerprint ? { fingerprint: k.fingerprint } : {}) };
+        })(),
         blocks: ch.inventoryIds(st.dir).length,
         // TRẠNG THÁI THẬT, không phải ý định: cổng đang nghe (`null` = không nghe) và máy nào
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
@@ -3740,6 +3745,30 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // Trạng thái THẬT, không phải ý định: cổng đang nghe, hoặc `null` nếu không nghe được.
         listening: ch.channelServingPort(),
       });
+    }
+    if (req.method === "POST" && p === "/share-key") {
+      // Ô nhập chìa của bề mặt — CÙNG đường ghi với `zemory memory key set` (`setShareKey`), không
+      // đường thứ hai. Chìa đi trong BODY, không trong query: query nằm lại ở nhật ký và lịch sử.
+      // Trả về CHỈ dấu tay (plan/16 §4) — giá trị chìa không bao giờ quay lại bề mặt hay vào log.
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const c of req) {
+        total += (c as Buffer).length;
+        if (total > 4096) return json(res, { ok: false, code: "long" });
+        chunks.push(c as Buffer);
+      }
+      const { setShareKey } = await import("./memory/share.js");
+      try {
+        const r = setShareKey(Buffer.concat(chunks).toString("utf8"), { force: u.searchParams.get("force") === "1" });
+        daemonLog(`[share] đã ${r.replaced ? "thay" : "ghi"} chìa share — dấu tay ${r.fingerprint}`);
+        // Kênh máy-tới-máy không nghe khi chưa có chìa ⇒ có chìa rồi thì dựng lại lớp nghe ngay.
+        void refreshChannelServer();
+        invalidateDashboard();
+        return json(res, { ok: true, fingerprint: r.fingerprint, replaced: r.replaced });
+      } catch (e) {
+        const code = (e as { code?: string }).code;
+        return json(res, { ok: false, code: code ?? "error" });
+      }
     }
     if (p === "/channel-pair") {
       const { getP2pPeers, setP2pPeers, getP2pPeerAddrs, setP2pPeerAddrs } = await import("./config/settings.js");
