@@ -227,6 +227,12 @@
     el.textContent=s||'';
     el.className='scanmsg'+(kind?' '+kind:'');
   }
+  /**
+   * Máy nào đang có cú *Thử lại* chạy dở. Nút nằm TRONG thẻ, mà thẻ được dựng lại mỗi 15 s và mỗi bước
+   * theo dõi — nên trạng thái xoay không được sống trên phần tử DOM (nó bị thay ngay sau cú bấm: user
+   * 25/09 *"thử lại chưa"*), mà phải sống ở đây rồi thẻ đọc lại lúc vẽ.
+   */
+  var p2pBusyIds={};
   /** Khoá một nút + chấm xoay trong lúc việc của nó chạy. Bấm dồn thì bỏ qua (`data-busy`). */
   function btnBusy(b,on){
     if(!b)return;
@@ -241,6 +247,12 @@
    * mỗi 2 giây, TỐI ĐA 20 lần và CHỈ trong lúc có người vừa bấm — không phải nhịp nền. Quá hạn thì
    * nói thật là chưa xong, vẫn chạy nền; không giả vờ ✓.
    */
+  function kickDone(btn){
+    for(var k in p2pBusyIds)delete p2pBusyIds[k];
+    btnBusy(btn,false);
+    var rb=document.querySelectorAll('[data-act="p2p-retry"].busy');
+    for(var i=0;i<rb.length;i++)btnBusy(rb[i],false);
+  }
   function watchKick(r,btn){
     var ids=Object.keys(r.actions||{}); var at=r.at||Date.now(); var tries=0;
     var anyKick=ids.some(function(id){return r.actions[id]==='kicked';});
@@ -255,30 +267,31 @@
           else if(k.state==='up')done.push(null); else pend++;
         });
         if(!pend){
-          btnBusy(btn,false);
+          kickDone(btn);
           var lr=done.filter(Boolean)[0];
           p2pMsg('✓ '+(lr?syncResultText(Object.assign({peerDeviceId:ids[0]},lr)):t('p2p.redialDone')),'hit');
           loadQueue();
           return;
         }
-        if(++tries>=20){btnBusy(btn,false);p2pMsg(anyKick?t('p2p.kickSlow'):t('p2p.redialSlow'),'none');return;}
+        if(++tries>=20){kickDone(btn);p2pMsg(anyKick?t('p2p.kickSlow'):t('p2p.redialSlow'),'none');return;}
         setTimeout(step,2000);
-      }).catch(function(){btnBusy(btn,false);p2pMsg(t('p2p.logErr'),'err');});
+      }).catch(function(){kickDone(btn);p2pMsg(t('p2p.logErr'),'err');});
     })();
   }
   /** Một cửa cho hai nút (*Đồng bộ ngay* · *Thử lại*): khác nhau đúng ở `host`. */
   function p2pKick(btn,host){
     if(btn&&btn.dataset.busy)return;
+    if(host)p2pBusyIds[host]=1;
     btnBusy(btn,true);
     p2pMsg(t('p2p.syncing'),'run');
     zPost('/channel-sync'+(host?'?host='+encodeURIComponent(host):'')).then(function(r){
       if(r&&r.ok&&r.actions){watchKick(r,btn);return;}
-      btnBusy(btn,false);
+      kickDone(btn);
       if(!r||r.ok===false){p2pMsg('✗ '+p2pWhy((r&&r.error)||''),'err');loadChannel();return;}
       if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''),'none');loadChannel();return;}
       p2pMsg('✓ '+syncResultText(r),'hit');
       loadChannel();
-    }).catch(function(){btnBusy(btn,false);p2pMsg(t('p2p.logErr'),'err');});
+    }).catch(function(){kickDone(btn);p2pMsg(t('p2p.logErr'),'err');});
   }
   // `ETIMEDOUT` không nói được phải đi soi đâu. Ba nhóm dưới là ba CHẨN ĐOÁN KHÁC NHAU, gộp thành
   // một chữ "lỗi" là bắt người dùng đoán. Mã lạ thì trả NGUYÊN VĂN — đừng nuốt thứ mình chưa biết.
@@ -439,6 +452,7 @@
           // còn ở đây người dùng đang hỏi về MỘT máy cụ thể và muốn câu trả lời về đúng nó.
           var rt=document.createElement('button');rt.className='btn xs';
           rt.textContent=t('p2p.retry');rt.setAttribute('data-act','p2p-retry');rt.setAttribute('data-id',m.id);
+          if(p2pBusyIds[m.id])btnBusy(rt,true);
           bar.appendChild(rt);
           var x=document.createElement('button');x.className='btn xs';
           x.textContent=t('p2p.unpair');x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',m.id);

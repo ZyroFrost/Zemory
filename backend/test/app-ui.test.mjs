@@ -2340,3 +2340,18 @@ test("🔴 nút p2p phải XOAY + khoá khi chạy, và báo kết quả NGAY D�
   assert.match(w, /\+\+tries>=20/, "phải có trần — quá hạn thì nói thật");
   assert.doesNotMatch(w, /setInterval/, "không đẻ đồng hồ nền");
 });
+
+test("🔴 'Thử lại' GIỮ chấm xoay qua các lượt vẽ lại thẻ, và 4 thư mục tô cùng kiểu đường dẫn", () => {
+  // User 25/09: *"nút đồng bộ có chạy nhưng thử lại chưa"*. Thẻ dựng lại mỗi 15 s và mỗi bước theo dõi
+  // ⇒ nút Thử lại bị thay ngay sau cú bấm, mất trạng thái xoay. Trạng thái phải sống ngoài DOM.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /if\(p2pBusyIds\[m\.id\]\)btnBusy\(rt,true\);/, "thẻ vẽ lại phải đọc lại trạng thái bận của Thử lại");
+  assert.match(gm, /if\(host\)p2pBusyIds\[host\]=1;/, "bấm Thử lại phải ghi nhớ máy đang bận");
+  const kd = gm.slice(gm.indexOf("function kickDone("), gm.indexOf("function watchKick("));
+  assert.match(kd, /delete p2pBusyIds\[k\]/, "xong phải nhả bận, không thì nút xoay mãi");
+  // User: *"đánh màu nổi 4 thư mục… màu vàng như mấy trang kia"* — cùng kiểu với .rslot (§F0b).
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.match(css, /\.p2p-flds b\{color:var\(--primary\);font-family:ui-monospace,monospace/, "tên thư mục phải vàng + mono như .rslot");
+  assert.match(html, /class="muted p2p-flds"/, "khối thư mục phải mang lớp p2p-flds");
+});
