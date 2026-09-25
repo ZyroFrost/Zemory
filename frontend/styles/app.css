@@ -487,6 +487,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .rrow:last-child{border-bottom:0}.rneed{color:var(--text-dim)}
 /* `flex:0 0 auto` = KHÔNG BAO GIỜ co ⇒ cột đường dẫn đẩy cả hàng rộng ra, và khung hẹp thì phần
    thừa bị cắt mất (đo 2026-09-17: hàng 1392px trong khung 516px). Cho co và cho bẻ dòng. */
+/* Tên thư mục sẽ đồng bộ: CÙNG kiểu đường dẫn với .rslot (vàng + mono) — §F0b, một kiểu cho một thứ. */
+.p2p-flds b{color:var(--primary);font-family:ui-monospace,monospace;font-weight:600}
 .rslot{color:var(--primary);font-family:ui-monospace,monospace;font-size:11px;text-align:right;flex:0 1 auto;min-width:0;word-break:break-all}
 .graph-canvas{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;position:relative;flex:1;min-height:0;overflow:hidden}
 /* ── per-project code graph (SVG) + folder tree beside it ── */

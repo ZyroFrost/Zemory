@@ -796,3 +796,27 @@ test("link: TAY ĐÁ mở lượt kế NGAY trên liên kết đang có — khô
   await until(() => false, 200);
   assert.equal(kick(), false, "ống đã chết ⇒ tay đá phải nói không, không giả vờ");
 });
+
+test("🔴 gọi một máy ĐÃ QUEN với wantPair bật vẫn phải KHAI KHO — lượt phải đóng sổ", async (t) => {
+  // Đo 2026-09-25 bằng số phiên: bên gọi không bao giờ gửi `have` ⇒ bên nghe không bao giờ gửi
+  // `done` ⇒ lượt không bao giờ đóng sổ (liên kết thường trực) / "hết giờ phiên" ở giây 120 (phiên
+  // một-lượt, suốt 24/09). Vì lớp giữ-liên-kết truyền vân tay làm địa chỉ ⇒ `wantPair` luôn bật, và
+  // phiên xin ghép THAY cho khai kho kể cả với máy đã quen.
+  const a = makeMachine(t, "wpa", "chia-chung-wp");
+  const b = makeMachine(t, "wpb", "chia-chung-wp");
+  write(a, "docs", "agent/05_TODO.md", "viec cua A\n");
+  let resolveServer;
+  const serverDone = new Promise((r) => { resolveServer = r; });
+  const server = await serveChannel({ ...sideOpts(b, [a.identity.deviceId]), port: 0, host: "127.0.0.1" }, (r) => resolveServer(r));
+  t.after(() => server.close());
+  const t0 = Date.now();
+  const client = await connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, { wantPair: true, timeoutMs: 6_000 }),
+  );
+  assert.equal(client.error, undefined, `phiên phải đóng sổ sạch, không chờ tới trần: ${client.error ?? ""}`);
+  assert.ok(Date.now() - t0 < 5_000, "không được chờ tới trần im lặng");
+  assert.equal(client.sentFiles, 1, "bên gọi phải khai kho và chở tệp");
+  const srv = await Promise.race([serverDone, new Promise((r) => setTimeout(() => r(null), 5_000))]);
+  assert.ok(srv && !srv.error, "bên nghe cũng phải đóng sổ sạch");
+});

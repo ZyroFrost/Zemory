@@ -214,6 +214,7 @@ export interface SessionOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+let sessionSeq = 0;
 
 /** Im bao lâu thì gửi một nhịp tim. Xem `PingMessage` để biết vì sao nhịp tim là bắt buộc. */
 export const PING_IDLE_MS = 20_000;
@@ -346,6 +347,13 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let mGotDone = false;
     /** Hẹn giờ mở lượt kế trên liên kết thường trực — xem `tryFinish`. */
     let roundTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Đã nói "lượt chưa đóng sổ" cho lượt này chưa — một dòng mỗi lượt, không kêu mỗi khung. */
+    let stuckSaid = false;
+    /** Số phiên trong tiến trình — hai phiên song song với CÙNG một máy chỉ phân biệt được bằng số này. */
+    const sid = ++sessionSeq;
+    let peerVersion = "?";
+    /** Số lượt đã đóng sổ trên phiên này — nhật ký chi tiết chỉ in ở lượt 0 để không ngập. */
+    let roundNo = 0;
     /** Tiêu đề của khung `FRAME_FILE` sắp tới. Byte không tự nói nó thuộc đường nào. */
     let pendingFile: { area: MirrorArea; rel: string; hash: string; size: number } | null = null;
     /** Lớp mirror của ta có chạy trong phiên này không — cần CẢ hai đầu biết nó. */
@@ -530,6 +538,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const onControl = (m: ControlMessage): void => {
       if (m.t === "hello") {
         peerNonce = m.nonce;
+        peerVersion = typeof m.appVersion === "string" && m.appVersion ? m.appVersion.slice(0, 20) : "?";
         // Khai năng lực tới TRƯỚC mọi thứ khác, nên tới lúc khai kho ta đã biết có chạy pha
         // mirror hay không. Bản cũ không có trường này ⇒ `undefined` ⇒ tắt, đúng như phải vậy.
         peerMirror = m.mirror === true;
@@ -546,6 +555,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         }
         proofOk = true;
         // Máy đã quen + cùng chìa ⇒ liên kết SỐNG ngay tại đây, không đợi lượt đầu đóng sổ.
+        if (paired && persistent) {
+          o.log?.(`[channel] phiên #${sid} với ${(peerId ?? "?").slice(0, 11)}… (bản ${peerVersion}) — ${initiator ? "ta gọi" : "máy kia gọi"}`);
+        }
         if (paired) o.onOpen?.(peerId ?? "");
         if (paired && persistent) {
           o.onKick?.((): boolean => {
@@ -575,7 +587,14 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         // `wantPair` giữ nguyên nghĩa cũ — người dùng vừa gõ địa chỉ là đang TỰ GIỚI THIỆU, và
         // ta không biết bên kia có nhớ ta hay không, nên cứ xin. Vế `acceptPeer` là phần THÊM:
         // bên mở cửa cho máy lạ cũng phải biết tự xin khi nó rơi vào vai GỌI.
-        if (initiator && (o.wantPair || (!paired && typeof o.acceptPeer === "function"))) {
+        // 🔴 CHỈ xin ghép khi CHƯA quen. Bản trước xin cả khi `wantPair` bật với máy ĐÃ quen: gửi `pair`
+        // THAY cho `have`, bên nghe đáp `paired`, và nhánh `paired` bên dưới thấy mình vốn đã quen ⇒
+        // `return` mà KHÔNG khai kho. Bên nghe chờ `have` mãi, không bao giờ gửi `done`, lượt không
+        // bao giờ đóng sổ. Đo tại trận 2026-09-25 bằng số phiên (`#1 ta gọi` nhận kiểm kê của máy kia
+        // mà máy kia không nhận của ta; `#2 máy kia gọi` ngược lại). Lớp giữ-liên-kết truyền vân tay
+        // làm địa chỉ ⇒ `wantPair` luôn bật ⇒ MỌI cú gọi của nó dính. Đây cũng là gốc của `hết giờ
+        // phiên` ở giây 120 suốt 24/09 — phiên một-lượt chờ `done` không bao giờ tới.
+        if (initiator && !paired && (o.wantPair || typeof o.acceptPeer === "function")) {
           pairAsked = true;
           send(encodeJson({ t: "pair" }));
           return;
@@ -604,13 +623,19 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         // Bên GỌI: máy kia đã nhận. Ghi vân tay của nó rồi mới khai kho.
         if (!proofOk) return finish("nhận xác nhận ghép trước khi chứng minh cùng chìa");
         // Đã ghép rồi thì lời xác nhận thứ hai là thừa — khai kho lần nữa là chở TRÙNG.
-        if (paired) return;
+        // Đã quen mà vẫn nhận `paired` (máy kia đời cũ, hoặc ta xin thừa) ⇒ vẫn phải KHAI KHO nếu chưa
+        // khai — `return` câm ở đây chính là nửa kia của con bug trên.
+        if (paired) {
+          if (pairAsked) sendHave();
+          return;
+        }
         paired = true;
         o.onPaired?.(m.id || peerId || "");
         sendHave();
         return;
       }
       if (m.t === "have") {
+        if (persistent && roundNo === 0) o.log?.(`[channel] #${sid} nhận kiểm kê khối (${Array.isArray(m.ids) ? m.ids.length : "?"})`);
         // 🔴 Máy kia MỞ LƯỢT trong lúc ta đang chờ lượt kế ⇒ NHẬP lượt đó ngay. Một lượt chỉ đóng sổ
         // khi CẢ HAI bên đã khai `have` (mỗi bên chở phần bên kia thiếu dựa trên `have` nhận được);
         // tay đá (`onKick`) chỉ làm MỘT bên khai, bên kia vẫn ngủ tới `roundGapMs` — cổng bắt đúng
@@ -661,12 +686,13 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (m.t === "done") {
         // Nói ra cả hai chiều `done`: một phiên treo tới hết giờ hầu như luôn là MỘT bên không
         // đóng sổ, và không có hai dòng này thì không cách nào biết bên nào.
-        o.log?.(`[channel] nhận "xong" từ máy kia (${m.sent ?? "?"} khối)`);
+        o.log?.(`[channel] #${sid} nhận "xong" từ máy kia (${m.sent ?? "?"} khối)`);
         gotDone = true;
         tryFinish();
         return;
       }
       if (m.t === "mfiles") {
+        if (persistent && roundNo === 0) o.log?.(`[channel] #${sid} nhận kiểm kê tệp (${Array.isArray(m.entries) ? m.entries.length : "?"})`);
         if (!proofOk) return finish("khai thư mục trước khi chứng minh cùng chìa");
         if (!paired) return finish("khai thư mục trước khi ghép đôi");
         void shipMirror(m.entries, m.pending ?? []);
@@ -686,7 +712,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "mdone") {
-        o.log?.(`[channel] mirror: nhận "xong" từ máy kia (${m.sent ?? "?"} file)`);
+        o.log?.(`[channel] #${sid} mirror: nhận "xong" từ máy kia (${m.sent ?? "?"} file)`);
         // Gom lỗi NGAY ở đây, không đợi `finish()`: `finish()` cũng chạy ở nhánh đứt dây và
         // hết giờ, còn đây là chỗ duy nhất biết chắc bên kia đã chở xong phần của nó.
         flushRecvErrors();
@@ -704,6 +730,16 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
      * mất khối — im lặng, đúng loại hỏng mà cả plan này sinh ra để chặn.
      */
     const tryFinish = (): void => {
+      // Liên kết thường trực: lượt mà CẢ HAI tin "xong" của máy kia đã tới nhưng vẫn không đóng sổ là
+      // lượt KẸT — dữ liệu ngừng chảy mà ống vẫn sống. Nói ra đúng cờ nào còn thiếu, một lần mỗi lượt
+      // (đo 2026-09-25: nhận `done` + `mdone` rồi im, không biết vì sao).
+      if (persistent && gotDone && (mGotDone || !mirrorOn()) && !stuckSaid) {
+        const miss = [!sentDone && "done của ta", mirrorOn() && !mSentDone && "mdone của ta", pending.length > 0 && `${pending.length} khối chờ nối`, draining && "đang nối khối"].filter(Boolean);
+        if (miss.length) {
+          stuckSaid = true;
+          o.log?.(`[channel] phiên #${sid}: lượt chưa đóng sổ — còn chờ: ${miss.join(" · ")}`);
+        }
+      }
       if (!sentDone || !gotDone) return;
       // Lớp mirror chỉ được tính vào điều kiện đóng khi nó THẬT SỰ chạy. Đòi `mdone` của một
       // máy không biết mirror là treo tới hết giờ — xem `HelloMessage.mirror`.
@@ -732,6 +768,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       gotDone = false;
       mSentDone = false;
       mGotDone = false;
+      stuckSaid = false;
+      roundNo++;
       if (roundTimer) clearTimeout(roundTimer);
       roundTimer = setTimeout(() => {
         roundTimer = null; // hết chờ ⇒ đang chạy lượt; tay đá đọc biến này để biết
@@ -775,7 +813,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           shipped++;
         }
         send(encodeJson({ t: "done", sent: shipped }));
-        o.log?.(`[channel] đã gửi "xong" (${shipped} khối) — chờ máy kia đóng sổ`);
+        o.log?.(`[channel] #${sid} đã gửi "xong" (${shipped} khối) — chờ máy kia đóng sổ`);
         sentDone = true;
         tryFinish();
       } catch (e) {
@@ -850,7 +888,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         out.filesLeft = left;
         send(encodeJson({ t: "mdone", sent: shipped }));
         o.log?.(
-          `[channel] mirror: đã gửi "xong" (${shipped} file)` +
+          `[channel] #${sid} mirror: đã gửi "xong" (${shipped} file)` +
             (left > 0 ? ` — còn ${left} file cho lượt sau (hết ngân sách của phiên này)` : ""),
         );
         mSentDone = true;

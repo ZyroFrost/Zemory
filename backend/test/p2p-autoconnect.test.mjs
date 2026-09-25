@@ -245,3 +245,8 @@ test("🔴 'Đồng bộ ngay'/'Thử lại' với máy ĐÃ GHÉP dùng liên k
   assert.match(PEER, /o\.onKick\?\.\(\(\): boolean => \{/, "phiên thường trực phải trao tay đá");
   assert.match(PEER, /if \(!roundTimer\) return true;/, "đang giữa lượt thì không chồng lượt thứ hai");
 });
+
+test("🔴 vân tay của máy ĐÃ QUEN không phải lời xin ghép (wantPair)", () => {
+  assert.match(UI, /const wantPair = Boolean\(raw\) && !st\.peers\.some\(\(p\) => ch\.sameDeviceId\(p, wantId \|\| raw\)\);/,
+    "lớp giữ-liên-kết/Thử lại truyền vân tay ⇒ wantPair phải tắt với máy đã có trong sổ");
+});

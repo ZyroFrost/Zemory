@@ -2112,7 +2112,10 @@ async function channelSyncOnce(
   if (!keyFile || !existsSync(keyFile)) return ({ ok: false, error: "chưa có chìa share" });
   const st = ch.channelStatus();
   // Người dùng tự gõ địa chỉ ⇒ đó LÀ lời xin nối tới một máy có thể chưa quen.
-  const wantPair = Boolean(raw);
+  // Xin ghép CHỈ khi máy đích chưa có trong sổ. Vân tay của một máy ĐÃ quen (lớp giữ-liên-kết, nút
+  // Thử lại) không phải lời xin ghép — coi nó là lời xin thì phiên gửi `pair` thay cho `have` và lượt
+  // không bao giờ đóng sổ (xem `peer.ts`, nhánh `proof`).
+  const wantPair = Boolean(raw) && !st.peers.some((p) => ch.sameDeviceId(p, wantId || raw));
   // Thử LẦN LƯỢT tới khi có một đường đi được. Một máy có nhiều card mạng, và địa chỉ trong mã có
   // thể đã cũ — báo đường CUỐI cùng đã thử để người đọc biết nó vừa gọi tới đâu.
   let last: Record<string, unknown> = { error: "không còn địa chỉ nào để thử" };
