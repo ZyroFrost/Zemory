@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -57,16 +56,4 @@ export function npmInvocationFor(platform: string, cliScript: string | null, arg
 /** Cách gọi npm an toàn trên nền đang chạy. KHÔNG BAO GIỜ trả về `.cmd` mà thiếu `shell`. */
 export function npmInvocation(args: string[]): NpmInvocation {
   return npmInvocationFor(process.platform, npmCliScript(), args, process.execPath);
-}
-
-/** Chạy npm và trả về kết quả gộp stdout+stderr. Không ném — người gọi tự quyết. */
-export function runNpm(args: string[], cwd: string, timeoutMs = 15 * 60_000): { ok: boolean; out: string } {
-  const inv = npmInvocation(args);
-  try {
-    const out = execFileSync(inv.cmd, inv.args, { cwd, encoding: "utf8", stdio: "pipe", shell: inv.shell, timeout: timeoutMs });
-    return { ok: true, out: String(out).trim() };
-  } catch (e) {
-    const err = e as { stdout?: unknown; stderr?: unknown; message?: string };
-    return { ok: false, out: (String(err.stdout ?? "") + String(err.stderr ?? "")).trim() || (err.message ?? "failed") };
-  }
 }

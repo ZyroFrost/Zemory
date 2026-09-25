@@ -48,7 +48,7 @@ test("CA ÂM: địa chỉ dải RIÊNG không bao giờ được đăng, và kh
   // không ai đọc thành một mẹo lách cổng: cổng đó tồn tại để chặn **hạ tầng THẬT** rò ra ngoài,
   // còn đây là số ví dụ chung của chính phép lọc dải riêng. KHÔNG nới cổng, chỉ không viết literal.
   const rfc1918 = [[192, 168, 1, 29].join("."), [172, 31, 96, 1].join(".")];
-  for (const bad of [...rfc1918, "10.101.1.2", "169.254.1.1", "100.64.0.1", "127.0.0.1"]) {
+  for (const bad of [...rfc1918, "10.0.0.2", "169.254.1.1", "100.64.0.1", "127.0.0.1"]) {
     assert.equal(isPublicIpv4(bad), false, `${bad} phải bị coi là dải riêng`);
     assert.equal(publishPresence(shared, { deviceId: A, host: bad, port: 21038 }), false, `${bad} không được đăng`);
   }

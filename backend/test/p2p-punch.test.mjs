@@ -260,7 +260,10 @@ test("bề mặt: nút Đồng bộ (/channel-sync) phải GỌI lớp đục l�
   assert.ok(to > from, "không thấy mốc kết thúc nhánh");
   const fnFrom = UI.indexOf("async function channelSyncOnce(");
   assert.ok(fnFrom > 0, "không thấy hàm channelSyncOnce — nhánh đã được tách ra đó");
-  const fnTo = UI.indexOf("\r\n}\r\n", fnFrom);
+  // Không neo cứng CRLF: bản làm việc có thể là LF (clone sạch, hoặc một công cụ sửa file đã đổi EOL —
+  // đo 25/09: `sed -i` của Git Bash đổi ui.ts sang LF và ca này đỏ ở 3.5.29).
+  const endM = UI.slice(fnFrom).match(/\r?\n\}\r?\n/);
+  const fnTo = endM ? fnFrom + endM.index : -1;
   assert.ok(fnTo > fnFrom, "không thấy cuối hàm channelSyncOnce");
   const body = UI.slice(from, to) + "\n" + UI.slice(fnFrom, fnTo);
   // Soi CHỮ thì phải bỏ CHÚ THÍCH trước. Bản đầu của ca ÂM dưới đây đỏ oan vì chính chú thích

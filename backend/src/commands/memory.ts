@@ -851,6 +851,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== want.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       setP2pPeers(next);
       console.log(`zemory memory channel ${action} — ${next.length} máy đã kết nối`);
+      // Cùng luật với nút gỡ trên app: gỡ máy thì quên trạng thái mirror của nó.
+      if (action === "unpair") {
+        const ms = await import("../memory/channel/mirrorstate.js");
+        const f = ms.forgetPeerMirror(ms.mirrorDb(), want);
+        console.log(`  mirror state cleared: ${f.queue} queued file(s) · ${f.bases} base(s)`);
+      }
       return;
     }
     if (action === "on" || action === "off") {

@@ -13,7 +13,7 @@ import { subnetBroadcast, broadcastTargets } from "../../dist/memory/channel/dis
 
 test("dò LAN: địa chỉ broadcast của subnet tính đúng cho mọi mặt nạ thường gặp", () => {
   assert.equal(subnetBroadcast("203.0.113.29", "255.255.255.0"), "203.0.113.255");
-  assert.equal(subnetBroadcast("10.101.1.2", "255.255.255.0"), "10.101.1.255");
+  assert.equal(subnetBroadcast("10.0.0.2", "255.255.255.0"), "10.0.0.255");
   // Mặt nạ KHÔNG phải /24 — đây là chỗ một bản cài ẩu hay gán bừa `.255` vào octet cuối rồi
   // bắn nhầm subnet. Đo trên máy này 22/09: Wi-Fi là /20, broadcast đúng là `10.0.15.255`.
   assert.equal(subnetBroadcast("10.0.2.191", "255.255.240.0"), "10.0.15.255");

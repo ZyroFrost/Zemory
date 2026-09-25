@@ -47,7 +47,8 @@ test("6 fail-open: if processes cannot be listed it skips the round rather than 
 
 test("7 it HOOKS INTO the existing sweep loop instead of starting its own timer", () => {
   const S = readFileSync(new URL("../../backend/src/jobs/scheduler.ts", import.meta.url), "utf8");
-  assert.match(S, /sweepOrphanBrowsers\(\{ profileRoot: join\(currentMemoryDir\(\), "browser"\), busy \}\)/u);
+  // 🔄 3.5.31: lượt dọn chạy ở WORKER (daemon từng đứng ~5 s mỗi lượt — CPU profiler 25/09); neo đi theo.
+  assert.match(S, /runInWorker<OrphanSweepResult>\("platform\/browsersweep\.js", "sweepOrphanBrowsers", \[\{ profileRoot: join\(currentMemoryDir\(\), "browser"\), busy \}\]\)/u);
   // Chặn ĐÚNG job có thể đang SỞ HỮU một trình duyệt. Bản đầu của tôi chặn theo *mọi* job
   // (`daemonJobBusy() !== null`), và đo ngay lúc thử: nút *Dọn ngay* thành vô hiệu khi daemon đang
   // nhúng vector — một việc chẳng liên quan gì tới trình duyệt. Chặn quá rộng cũng là một kiểu sai:
@@ -55,7 +56,10 @@ test("7 it HOOKS INTO the existing sweep loop instead of starting its own timer"
   assert.match(S, /const busy = webRunning \|\| job === "web-pull" \|\| job === "scan" \|\| cliHoldsWrite\(\);/u,
     "chặn theo job GIỮ TRÌNH DUYỆT, không phải theo 'có job nào đó'");
   // Cùng hàm `scratchTick` (nhịp 6 giờ) chứ không phải một bộ hẹn giờ mới.
-  const tick = S.slice(S.indexOf("function scratchTick"), S.indexOf("function scratchTick") + 3000);
+  // Cắt TRỌN thân hàm theo mốc code, không theo số ký tự (3000 ký tự hụt ngay khi hàm dài thêm — 3.5.31).
+  const Sn = S.replace(/\r\n/g, "\n");
+  const from = Sn.indexOf("function scratchTick");
+  const tick = Sn.slice(from, Sn.indexOf("\n}\n", from));
   assert.match(tick, /sweepOrphanBrowsers/u, "phải nằm trong scratchTick");
   assert.match(tick, /sweepOrphanTempProfiles/u);
 });

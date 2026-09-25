@@ -304,16 +304,6 @@ let relayAt: RelayEndpoint | null = null;
 /** Đang có một lượt xin vào relay đi dở — chặn hai lượt chồng nhau khi nhịp tới sớm. */
 let relayJoining = false;
 
-/** Relay đang chờ — cho bề mặt nói nó đang dựa vào đâu. */
-export function relayEndpoint(): RelayEndpoint | null {
-  return relayAt ? { ...relayAt } : null;
-}
-
-/** Lượt đăng ký toàn cầu gần nhất — cho bề mặt nói nó đang dựa vào đâu. `null` = chưa thử lần nào. */
-export function globalAnnounceState(): GlobalAnnounceState | null {
-  return globalAnn ? { ...globalAnn } : null;
-}
-
 /**
  * Một nhịp đăng ký toàn cầu — TỰ BỎ QUA khi chưa tới lượt.
  *
@@ -530,6 +520,8 @@ export function armPunchWait(o: {
   /** Liên kết ĐẾN qua relay: từng lượt + lúc bắt tay — đi tiếp xuống `acceptRelayInvite`. */
   onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
   onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
+  /** Liên kết ĐẾN đã đóng — chỉ bắn cho phiên ĐÃ bắt tay xong (cặp với `onLinkOpen`). */
+  onLinkClose?: (peerDeviceId: string) => void;
   onReceived?: (blocks: number) => void;
   log?: (msg: string) => void;
 }): PunchWaitInfo {
@@ -784,6 +776,8 @@ export async function startChannelServer(o: {
    * bên nói "đang nối", một bên nói "đang nối lại".
    */
   onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
+  /** Liên kết ĐẾN đã đóng — chỉ bắn cho phiên ĐÃ bắt tay xong (cặp với `onLinkOpen`). */
+  onLinkClose?: (peerDeviceId: string) => void;
   log?: (msg: string) => void;
 } ): Promise<ChannelServeResult> {
   const log = o.log ?? (() => {});
@@ -798,6 +792,8 @@ export async function startChannelServer(o: {
   const key = (o.shareKey ?? "").trim();
   if (!key) return { listening: false, reason: "chưa có chìa share" };
   const port = getP2pPort();
+  // Số phiên ĐẾN đã bắt tay xong, theo máy — để `onLinkClose` chỉ bắn cho phiên đã mở.
+  const openedIn = new Map<string, number>();
   try {
     const server = await serveChannel(
       {
@@ -814,6 +810,9 @@ export async function startChannelServer(o: {
         mirror: mirrorHooks(),
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
+        // Cửa nghe THẲNG từng không truyền log ⇒ mọi phiên đến qua đường thẳng CÂM: không `phiên #n`,
+        // không chẩn đoán lượt kẹt, không dòng mirror nào (đo 25/09 khi liên kết chuyển sang đường thẳng).
+        log,
         // 🔴 LỚP NGHE CŨNG PHẢI THƯỜNG TRỰC — một liên kết là thoả thuận của HAI máy.
         //
         // Đo tại trận 2026-09-24, ngay sau khi 3.5.8 lên cả hai máy: cả hai vĩnh viễn hiện *"đang
@@ -826,7 +825,10 @@ export async function startChannelServer(o: {
         // THỬ mà quên vá ở đây. Bài học: phép thử bắt được một lỗ thì phải hỏi *"chỗ THẬT đã vá
         // chưa"*, không chỉ *"phép thử xanh chưa"*.
         persistent: true,
-        onOpen: (id: string) => o.onLinkOpen?.(id, "direct"),
+        onOpen: (id: string) => {
+          openedIn.set(id, (openedIn.get(id) ?? 0) + 1);
+          o.onLinkOpen?.(id, "direct");
+        },
         onSyncRound: (r: SyncOutcome) => {
           notePeerSync(r.peerDeviceId, "nghe", r);
           if (r.peerDeviceId) o.onLinkRound?.(r.peerDeviceId, r);
@@ -842,6 +844,14 @@ export async function startChannelServer(o: {
       // cái chết, không phải về một lượt đồng bộ. Từng lượt đã báo ở `onSyncRound` bên trên.
       (r: SyncOutcome) => {
         notePeerSync(r.peerDeviceId, "nghe", r);
+        // Chỉ trả phiên ĐÃ mở: bắt tay hỏng không được xoá mất một liên kết đến khác đang sống.
+        const pid = r.peerDeviceId ?? "";
+        const n = openedIn.get(pid) ?? 0;
+        if (n > 0) {
+          if (n === 1) openedIn.delete(pid);
+          else openedIn.set(pid, n - 1);
+          o.onLinkClose?.(pid);
+        }
         log(
           `[channel] liên kết đến từ ${(r.peerDeviceId ?? "(không rõ)").slice(0, 11)}… đã đóng` +
             (r.error ? ` — ${String(r.error).slice(0, 80)}` : ""),
@@ -968,6 +978,7 @@ export async function startChannelServer(o: {
         // Hai hố báo của liên kết ĐẾN đi tiếp xuống cửa nghe relay — không luồn là cửa đó câm.
         onLinkRound: o.onLinkRound,
         onLinkOpen: o.onLinkOpen,
+        onLinkClose: o.onLinkClose,
       });
     }
 
@@ -1080,11 +1091,13 @@ async function acceptRelayInvite(
     onReceived?: (n: number) => void;
     onLinkRound?: (peerDeviceId: string, r: SyncOutcome) => void;
     onLinkOpen?: (peerDeviceId: string, via: "direct" | "relay") => void;
+    onLinkClose?: (peerDeviceId: string) => void;
   },
   log: (m: string) => void,
 ) {
   const raw = await openRelaySession(ep, inv);
   if (!raw) return;
+  let openedId: string | null = null;
   try {
     const opts = {
       channelDir: channelDir(currentStoreRoot(), true),
@@ -1102,7 +1115,10 @@ async function acceptRelayInvite(
       // nhưng sót cửa này. Ba cửa nghe, một luật; sót một là máy kia rụng theo kiểu tung đồng xu
       // (relay hay thẳng là do cú bắt tay nào ăn trước).
       persistent: true,
-      onOpen: (id: string) => o.onLinkOpen?.(id, "relay"),
+      onOpen: (id: string) => {
+        openedId = id;
+        o.onLinkOpen?.(id, "relay");
+      },
       onSyncRound: (r: SyncOutcome) => {
         notePeerSync(r.peerDeviceId, "relay", r);
         if (r.peerDeviceId) o.onLinkRound?.(r.peerDeviceId, r);
@@ -1135,6 +1151,8 @@ async function acceptRelayInvite(
     } catch {
       /* đóng được thì tốt */
     }
+  } finally {
+    if (openedId) o.onLinkClose?.(openedId);
   }
 }
 
@@ -1304,7 +1322,7 @@ export function channelServingPort(): number | null {
 /**
  * Tách "địa chỉ máy cần nối" mà NGƯỜI dán vào — chấp nhận đúng cái bề mặt in ra.
  *
- * Bề mặt in địa chỉ của máy thành MỘT chuỗi `10.101.1.2:21038`, nên bắt người ta cắt đôi rồi gõ vào
+ * Bề mặt in địa chỉ của máy thành MỘT chuỗi `203.0.113.7:21038`, nên bắt người ta cắt đôi rồi gõ vào
  * hai ô là tự đẻ một bước thừa (user 2026-09-19: *"mắc gì bắt người ta phải nhập"*). Cổng là của
  * RIÊNG từng máy nên vẫn phải nhập được — nhưng nó đi kèm trong chính chuỗi đó, và vắng thì rơi về
  * cổng mặc định của sản phẩm.

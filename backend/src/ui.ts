@@ -72,23 +72,30 @@ const SPLIT_LINES = /\r?\n/;
  * còn địa chỉ LAN dây khai `Manual` thì đứng yên — người dùng cần biết cái nào đưa đi mới dùng lại được.
  */
 let fixedAddrCache: { at: number; set: Set<string> } | null = null;
+let fixedAddrInFlight = false;
+/**
+ * 🔴 KHÔNG BAO GIỜ chặn: PowerShell khởi động ~1 s và tới 6 s khi máy bận — bản cũ chạy nó ĐỒNG BỘ
+ * trong lượt trả lời trạng thái kênh (CPU profiler 25/09: 1,2 s chặn event loop). Nay trả bản ĐỆM ngay
+ * (lần đầu: rỗng — nhãn "cố định" hiện ở lượt vẽ kế), còn lời hỏi PowerShell chạy BẤT ĐỒNG BỘ phía sau.
+ */
 function fixedAddresses(): Set<string> {
-  if (fixedAddrCache && Date.now() - fixedAddrCache.at < 300_000) return fixedAddrCache.set;
-  const set = new Set<string>();
-  if (process.platform === "win32") {
-    try {
-      const out = execFileSync(
-        "powershell.exe",
-        ["-NoProfile", "-Command", "Get-NetIPAddress -AddressFamily IPv4 | Where-Object PrefixOrigin -eq 'Manual' | ForEach-Object IPAddress"],
-        { encoding: "utf8", timeout: 6000, windowsHide: true },
-      );
-      for (const line of out.split(SPLIT_LINES)) { const v = line.trim(); if (v) set.add(v); }
-    } catch {
-      /* fail-open: không hỏi được thì thôi, đừng dán nhãn bừa */
-    }
+  const stale = !fixedAddrCache || Date.now() - fixedAddrCache.at >= 300_000;
+  if (stale && !fixedAddrInFlight && process.platform === "win32") {
+    fixedAddrInFlight = true;
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-Command", "Get-NetIPAddress -AddressFamily IPv4 | Where-Object PrefixOrigin -eq 'Manual' | ForEach-Object IPAddress"],
+      { encoding: "utf8", timeout: 6000, windowsHide: true },
+      (err, out) => {
+        fixedAddrInFlight = false;
+        const set = new Set<string>();
+        if (!err) for (const line of String(out).split(SPLIT_LINES)) { const v = line.trim(); if (v) set.add(v); }
+        // fail-open: không hỏi được thì giữ bản cũ (nếu có), đừng dán nhãn bừa
+        fixedAddrCache = { at: Date.now(), set: err && fixedAddrCache ? fixedAddrCache.set : set };
+      },
+    );
   }
-  fixedAddrCache = { at: Date.now(), set };
-  return set;
+  return fixedAddrCache?.set ?? new Set<string>();
 }
 
 function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> {
@@ -138,6 +145,18 @@ function kickRemoteVersionCheck(): void {
 }
 // Cache của /check — pill Healthy phải có sẵn khi cửa sổ mở, không bắt user bấm Recheck oan.
 const checkCache = new Map<string, { at: number; r: unknown }>();
+/**
+ * Bộ kiểm sức khoẻ ở WORKER. `runCheck` khai async nhưng bên trong ĐỒNG BỘ: quét đường dẫn docs, `git`
+ * qua `spawnSync`, liệt kê tiến trình trình duyệt bằng `execFileSync` — CPU profiler 25/09 bắt được
+ * chúng trong các khoảng daemon đứng (2,4 s riêng phần liệt kê trình duyệt). Worker hỏng ⇒ chạy tại
+ * chỗ (chậm nhưng không để chip sức khoẻ trống).
+ */
+async function runCheckOffLoop(feature: string, rootArg?: string): Promise<unknown> {
+  const w = await runInWorker<unknown>("checks.js", "runCheck", rootArg === undefined ? [feature] : [feature, rootArg], 180_000);
+  if (w.ok) return w.value;
+  daemonLog(`[check] ${feature}: worker hỏng — chạy tại chỗ: ${w.error}`);
+  return runCheck(feature, rootArg);
+}
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
@@ -153,7 +172,7 @@ import type { DiskInfo } from "./jobs/diskprobe.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
 import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
-import { UI_SWEEP_MIN_AGE_MS, sweepOrphanBrowsers, sweepOrphanTempProfiles } from "./platform/browsersweep.js";
+import { UI_SWEEP_MIN_AGE_MS, type BrowserSweepResult as OrphanSweepResult } from "./platform/browsersweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
 import { armCrashReport, daemonHeartbeat, daemonLog, logsDir } from "./logging/daemon-log.js";
 import {
@@ -203,11 +222,13 @@ import {
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
 import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
-import { type ScopeLane, scopeTree, toggleLane } from "./memory/scope.js";
+import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
+import { driveCountsInWorker } from "./jobs/driveprogress.js";
+import { runInWorker } from "./jobs/fnworker.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
 // daemon serves those files as-is — no bundler, no TS template. Read per request
 // so editing a .css/.js + reloading shows it with no rebuild.
@@ -430,6 +451,42 @@ function driveSyncProgress(): {
   }
 }
 
+/**
+ * Tiến độ đẩy Drive, KHÔNG khoá event loop — đường chính của bảng số và /sync-pulse.
+ *
+ * Đếm ở worker (`jobs/driveprogress.ts`); TTL ngắn (5 s) + một lượt tại một thời điểm, để một loạt
+ * request dồn không đẻ một loạt lượt quét toàn bảng. Worker hỏng ⇒ rơi về bản đồng bộ (vẫn đúng số,
+ * chỉ chậm) — thà chậm một lần còn hơn một card Drive trống.
+ */
+const DRIVE_PROG_TTL_MS = 5_000;
+let driveProgCache: { at: number; v: ReturnType<typeof driveSyncProgress> } | null = null;
+let driveProgInFlight: Promise<ReturnType<typeof driveSyncProgress>> | null = null;
+async function driveSyncProgressAsync(): Promise<ReturnType<typeof driveSyncProgress>> {
+  if (driveProgCache && Date.now() - driveProgCache.at < DRIVE_PROG_TTL_MS) return driveProgCache.v;
+  if (!driveProgInFlight) {
+    driveProgInFlight = (async () => {
+      const c = await driveCountsInWorker(currentMemoryDb(), `drive:${hostname()}`, (why) =>
+        daemonLog(`[dashboard] đếm tiến độ Drive ở worker hỏng — lùi về đường đồng bộ: ${why}`),
+      );
+      const v = c
+        ? {
+            syncPercent: syncPercentOf(c.synced, c.total),
+            syncedMessages: c.synced,
+            totalMessages: c.total,
+            pendingMessages: Math.max(0, c.total - c.synced),
+            lastPushAt: c.lastPushAt,
+            newestAt: c.newestAt,
+          }
+        : driveSyncProgress();
+      driveProgCache = { at: Date.now(), v };
+      return v;
+    })().finally(() => {
+      driveProgInFlight = null;
+    });
+  }
+  return driveProgInFlight;
+}
+
 /** Probe a Drive sync folder: exists? writable? how many bundles inside? */
 // ── PROBE DRIVE — KHÔNG BAO GIỜ sờ ổ đám mây trên event loop của daemon (vá 2026-08-30) ─────
 // Logic thật DỜI sang `jobs/driveprobe.ts` và chạy trong TIẾN TRÌNH CON có trần giờ. Vì sao:
@@ -511,8 +568,8 @@ function driveHealthNow(prog: ReturnType<typeof driveSyncProgress>): ReturnType<
   });
 }
 
-function driveSummary(): DriveSummary {
-  const prog = driveSyncProgress();
+async function driveSummary(): Promise<DriveSummary> {
+  const prog = await driveSyncProgressAsync();
   return { ...probeDrive(getDriveDir()), on: getDriveOn(), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
 }
 
@@ -1167,6 +1224,7 @@ function saveHeavyCache(): void {
 function invalidateDashboard(): void {
   dashCache = null;
   heavyCache = null;
+  markConnectionsStale();
   // KHÔNG xoá bản ướp trên đĩa. Hàm này chạy sau MỖI lượt scan/sync, nên xoá ở đây là xoá đúng thứ
   // vừa ghi ⇒ lớp ướp không bao giờ sống tới lần khởi động sau (đo: vẫn 54,6 s, y như chưa vá).
   // Không cần xoá vẫn đúng: `loadHeavyCache()` chỉ đọc đĩa một lần mỗi tiến trình, nên `heavyCache
@@ -1311,9 +1369,21 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
     return { ...dashCache.value, ...liveFlags(), cached: true, cachedAgeMs: now - dashCache.at };
   }
   if (opts.fresh) invalidateDashboard();
+  // Đo TỪNG phần: SQLite ở đây chạy ĐỒNG BỘ, nên mỗi mili-giây ở phần đồng bộ là cả daemon đứng
+  // (đo 25/09: một lượt tính lại chặn /ping 6,3 s; một lần daemon im 213 s chưa rõ gốc).
+  const lap: Array<[string, number]> = [];
+  let t0 = performance.now();
+  const mark = (k: string): void => {
+    const t1 = performance.now();
+    lap.push([k, t1 - t0]);
+    t0 = t1;
+  };
   const summary = memorySummary();
+  mark("summary");
   const info = memoryInfo();
+  mark("info");
   const heavy = await heavyStatsAsync();
+  mark("heavy");
   let vectors: { count: number; remaining: number; coverage: number | null; dims: string; outOfScope: number; error?: string };
   try {
     let dimsLabel = "";
@@ -1355,7 +1425,14 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
   // MỘT lời gọi, dùng cho CẢ hai ô: panel Drive và ô "Last Sync". Trước đây `lastSync` đi qua
   // một truy vấn riêng (MAX toàn bảng `sync_state`) nên hai ô có thể nói hai mốc khác nhau về
   // cùng một sự việc — xem chú thích ở `parseSyncTimestamp()`.
-  const drive = driveSummary();
+  const drive = await driveSummary();
+  mark("drive");
+  const coverageNow = captureCoverage();
+  mark("coverage");
+  const scopeNow = safeScopeTree();
+  mark("scope");
+  const total = lap.reduce((s, [, ms]) => s + ms, 0);
+  if (total > 1000) daemonLog(`[dashboard] tính lại mất ${(total / 1000).toFixed(1)} s — ${lap.map(([k, ms]) => `${k} ${Math.round(ms)}`).join(" · ")} (ms)`);
 
   const payload = {
     ...summary,
@@ -1363,7 +1440,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
     sizeKB: info.sizeKB,
     vectors,
     tokensEst,
-    coverage: captureCoverage(),
+    coverage: coverageNow,
     // The MEASURED cost of USING the memory (not a counterfactual "saved" number,
     // which HP điều 12 forbids): a default recall injects at most
     // DEFAULT_SEARCH_LIMIT hits × SNIPPET_MAX_CHARS chars of snippet ≈ tokens/4.
@@ -1374,7 +1451,7 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
       tokensApprox: Math.round((DEFAULT_SEARCH_LIMIT * SNIPPET_MAX_CHARS) / 4),
     },
     ...liveFlags(),
-    scopeTree: safeScopeTree(),
+    scopeTree: scopeNow,
     scopeExcluded: getScopeExclude().length,
     scopeRules: getScopeExclude(),
     drive,
@@ -1765,6 +1842,43 @@ const links = new Map<string, LinkEntry>();
  *
  * Không đụng `ctrl`: liên kết đến do lớp NGHE sở hữu, cắt nó là việc của `stopChannelServer`.
  */
+/**
+ * Số phiên ĐẾN đang sống, theo máy. 🔴 Có phiên đến sống thì KHÔNG gọi đi (`keepLink`).
+ *
+ * Đo 2026-09-25, hai máy cùng ≥3.5.21 khác mạng: máy kia gọi sang và giữ được liên kết, vậy mà vòng
+ * giữ-liên-kết bên này vẫn gọi đi qua relay mỗi ~20 s; phiên thừa bị huỷ sau <0,5 s (`ECONNABORTED`)
+ * và vòng đó hạ cả liên kết xuống *"rụng — đang nối lại"* — 393 lần trong 5 giờ, thẻ nhấp nháy.
+ * Một máy MỘT liên kết: đường đến đang chở thì đường đi là thừa.
+ */
+const inboundOpen = new Map<string, number>();
+export function inboundAlive(peerId: string): boolean {
+  return (inboundOpen.get(peerId) ?? 0) > 0;
+}
+/** Phiên đến bắt tay xong. */
+export function noteInboundOpen(peerId: string, via?: LinkVia): void {
+  inboundOpen.set(peerId, (inboundOpen.get(peerId) ?? 0) + 1);
+  noteInboundLink(peerId, via);
+}
+/** Phiên đến đã đóng. Hết phiên đến thì đánh thức vòng giữ-liên-kết để nó gọi đi NGAY. */
+export function noteInboundClose(peerId: string): void {
+  const n = (inboundOpen.get(peerId) ?? 0) - 1;
+  if (n > 0) {
+    inboundOpen.set(peerId, n);
+    return;
+  }
+  inboundOpen.delete(peerId);
+  const e = links.get(peerId);
+  if (!e) return;
+  if (e.state === "up" && !e.kick) {
+    // Mục này chỉ "up" nhờ đường đến (đường đi không có tay đá) ⇒ nay thật sự đang nối lại.
+    e.state = "connecting";
+    e.since = Date.now();
+    daemonLog(`[channel] liên kết đến từ ${peerId.slice(0, 11)}… đã đóng — tự gọi đi`);
+  }
+  e.fails = 0;
+  e.wake?.();
+}
+
 function noteInboundLink(peerId: string, via?: LinkVia): void {
   const cur = links.get(peerId);
   if (cur) {
@@ -1842,8 +1956,26 @@ function keepLink(peerId: string, projectRoot: string): void {
   const entry: LinkEntry = { ctrl, fails: 0, state: "connecting", since: Date.now() };
   links.set(peerId, entry);
 
+  // Ngủ mà ĐÁNH THỨC được — nối lại NGAY khi người bấm *Thử lại* hoặc khi phiên đến vừa đóng.
+  const nap = (ms: number): Promise<void> =>
+    new Promise<void>((resolve) => {
+      const done = (): void => {
+        clearTimeout(tm);
+        if (entry.wake === done) entry.wake = undefined;
+        resolve();
+      };
+      const tm = setTimeout(done, ms);
+      tm.unref?.();
+      entry.wake = done;
+    });
+
   void (async () => {
     while (!ctrl.signal.aborted) {
+      // Đường ĐẾN đang chở ⇒ không gọi đi. Không tính là trượt, không đụng trạng thái (đã "up").
+      if (inboundAlive(peerId)) {
+        await nap(30_000);
+        continue;
+      }
       try {
         // Lời hứa này chỉ tan khi LIÊN KẾT chết — trong lúc nó còn sống, từng lượt đồng bộ báo về
         // qua `onSyncRound`. Đây là khác biệt với vòng cũ: ở đó mỗi lời gọi là một lượt rồi thôi.
@@ -1901,6 +2033,11 @@ function keepLink(peerId: string, projectRoot: string): void {
         entry.lastError = e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120);
       }
       if (ctrl.signal.aborted) break;
+      // Phiên ĐI hỏng trong lúc một phiên ĐẾN đang sống: liên kết vẫn sống — không hạ, không đếm trượt.
+      if (inboundAlive(peerId)) {
+        entry.kick = undefined;
+        continue;
+      }
       if (entry.state === "up") {
         entry.state = "connecting";
         entry.since = Date.now();
@@ -1909,16 +2046,7 @@ function keepLink(peerId: string, projectRoot: string): void {
       entry.kick = undefined; // ống cũ đã chết — tay đá của nó không còn nghĩa
       entry.fails++;
       // Ngủ thụt lùi mà ĐÁNH THỨC được: người bấm *Thử lại* thì nối lại NGAY, không chờ tới 60 s.
-      await new Promise<void>((resolve) => {
-        const done = (): void => {
-          clearTimeout(tm);
-          if (entry.wake === done) entry.wake = undefined;
-          resolve();
-        };
-        const tm = setTimeout(done, reconnectDelayMs(entry.fails));
-        tm.unref?.();
-        entry.wake = done;
-      });
+      await nap(reconnectDelayMs(entry.fails));
     }
     if (links.get(peerId) === entry) links.delete(peerId);
   })();
@@ -2024,7 +2152,7 @@ async function channelSyncOnce(
   },
 ): Promise<Record<string, unknown>> {
   const ch = await import("./memory/channel/index.js");
-  // Nhận đúng chuỗi bề mặt IN RA (`10.101.1.2:21038`) — không bắt người cắt đôi rồi gõ hai ô.
+  // Nhận đúng chuỗi bề mặt IN RA (`203.0.113.7:21038`) — không bắt người cắt đôi rồi gõ hai ô.
   // `port` rời vẫn nhận (đường cũ, và CLI/script đang gọi), nhưng cổng trong chuỗi thắng.
   // KHÔNG có `host` ⇒ tự đi: địa chỉ tầng dò LAN đang thấy (mới nhất) + địa chỉ đã nhớ từ mã máy.
   // Người dùng không phải gõ gì; họ chỉ dán mã một lần lúc ghép.
@@ -2045,10 +2173,13 @@ async function channelSyncOnce(
   // chỉ đã đổi chủ. Bảng chung thì mỗi máy tự làm tươi, và mục quá 10 phút bị bỏ.
   // Đây là thứ làm ca KHÁC MẠNG chạy được mà không ai phải canh giờ dán mã.
   const me = ch.channelStatus();
-  const presence = ch.readPresence(getDriveDir(), {
-    selfDeviceId: me.deviceId,
-    allowedPeers: wantId ? [wantId] : me.peers,
-  });
+  // Bảng presence nằm trên ổ ĐỒNG BỘ (Drive) — đọc nó ĐỒNG BỘ từng chặn daemon 1,4 s (CPU profiler 25/09),
+  // và ổ Drive treo thì còn lâu hơn. Đọc ở worker; hỏng thì coi như bảng rỗng (fail-open).
+  const pres = await runInWorker<ReturnType<typeof ch.readPresence>>("memory/channel/presence.js", "readPresence", [
+    getDriveDir(),
+    { selfDeviceId: me.deviceId, allowedPeers: wantId ? [wantId] : me.peers },
+  ], 15_000);
+  const presence = pres.ok ? pres.value : [];
   // Mục CHỈ có relay (máy kia chưa đo được địa chỉ ngoài) không có gì để gọi thẳng — lọc ra, chứ
   // đừng dựng một ứng viên `:21038` cụt đầu rồi tốn một lượt bắt tay chắc chắn trượt.
   const fresh = presence.filter((e) => e.host).map((e) => `${e.host}:${e.port}`);
@@ -2282,7 +2413,8 @@ async function refreshChannelServer(): Promise<void> {
       onLinkRound: (peerId: string) => noteInboundLink(peerId),
       // Bắt tay xong ở cửa NGHE cũng là "đang nối" — không đợi lượt đầu (đo 25/09: máy kia xanh
       // vì đường ĐI của nó lên ngay lúc bắt tay, còn bên này chỉ có đường ĐẾN và đợi trọn lượt).
-      onLinkOpen: (peerId: string, via: LinkVia) => noteInboundLink(peerId, via),
+      onLinkOpen: (peerId: string, via: LinkVia) => noteInboundOpen(peerId, via),
+      onLinkClose: (peerId: string) => noteInboundClose(peerId),
       onReceived: (blocks: number) => {
         // 🔴 KHÔNG hợp nhất trên event loop của daemon. Bản trước gọi `mergeChannelDir` tại đây:
         // giải mã + ghi SQLite đồng bộ cả kho là NHIỀU PHÚT không một khung mạng nào được xử lý
@@ -2471,7 +2603,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const key = `${feat}|${target}`;
       const hit = checkCache.get(key);
       if (u.searchParams.get("fresh") !== "1" && hit && Date.now() - hit.at < 600_000) return json(res, hit.r);
-      const r = await runCheck(feat, target);
+      const r = await runCheckOffLoop(feat, target);
       checkCache.set(key, { at: Date.now(), r });
       return json(res, r);
     }
@@ -2494,7 +2626,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       {
         // Kèm đèn sức khoẻ — /sync-pulse là đường TƯƠI của card Drive, thiếu đèn ở đây thì
         // đúng lúc cần báo nhất (vừa quét/vừa sync xong) card lại vẽ bản không có đèn.
-        const prog = driveSyncProgress();
+        const prog = await driveSyncProgressAsync();
         // Kèm cờ BẬT/TẮT kênh: card Drive vẽ từ CẢ HAI đường (/memory-status lúc nạp, /sync-pulse lúc
         // tươi). Thiếu cờ ở một đường thì bề mặt lúc ẩn lúc hiện tuỳ đường nào về sau.
         return json(res, { drive: { ...prog, on: getDriveOn(), health: driveHealthNow(prog) }, scopeTree: safeScopeTree() });
@@ -3801,6 +3933,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // được nhận lại. Các máy còn lại rụng một nhịp rồi tự nối lại; bỏ qua bước này thì gỡ cặp
         // chỉ cắt được một nửa, và nửa còn lại vẫn chở dữ liệu.
         void refreshChannelServer();
+        // Và quên trạng thái mirror của nó — hàng đợi duyệt không được còn trỏ vào máy đã gỡ.
+        try {
+          const ms = await import("./memory/channel/mirrorstate.js");
+          const f = ms.forgetPeerMirror(ms.mirrorDb(), want);
+          if (f.queue || f.bases) daemonLog(`[channel] gỡ ${want.slice(0, 11)}…: bỏ ${f.queue} file chờ duyệt · ${f.bases} mốc`);
+        } catch (e) {
+          daemonLog(`[channel] gỡ ${want.slice(0, 11)}…: không dọn được trạng thái mirror (${e instanceof Error ? e.message : "?"})`);
+        }
       }
       return json(res, { ok: true, peers: getP2pPeers() });
     }
@@ -3888,8 +4028,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // NGƯỠNG TUỔI khác vòng nền có chủ đích: nền chạy khi KHÔNG AI NHÌN nên phải dè dặt (30 phút);
       // cú bấm là người đang ngồi đó nói "dọn đi", nên 5 phút — đủ để không cắt ngang một lượt dò
       // vừa mở, nhưng không bắt họ chờ nửa tiếng để dọn thứ họ đang nhìn thấy.
-      const r = sweepOrphanBrowsers({ profileRoot: join(currentMemoryDir(), "browser"), busy, minAgeMs: UI_SWEEP_MIN_AGE_MS });
-      const dirs = r.skipped ? [] : sweepOrphanTempProfiles();
+      // Ở WORKER: liệt kê tiến trình bằng execFileSync + quét thư mục tạm từng chặn daemon ~5 s (CPU profiler 25/09).
+      const w1 = await runInWorker<OrphanSweepResult>("platform/browsersweep.js", "sweepOrphanBrowsers", [{ profileRoot: join(currentMemoryDir(), "browser"), busy, minAgeMs: UI_SWEEP_MIN_AGE_MS }]);
+      if (!w1.ok) return json(res, { ok: false, error: w1.error });
+      const r = w1.value;
+      const w2 = r.skipped ? null : await runInWorker<string[]>("platform/browsersweep.js", "sweepOrphanTempProfiles", []);
+      const dirs = w2 && w2.ok ? w2.value : [];
       checkCache.delete("procs|" + root());
       return json(res, { ok: true, killed: r.killed.length, dirs: dirs.length + r.dirs.length, skipped: r.skipped ?? null });
     }
@@ -4085,7 +4229,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // `templates` cũng RẺ (một lượt readdir) và là hàng NHẮC — mồi luôn để nó sáng ngay lượt mở
     // đầu, thay vì chờ ai đó bấm Kiểm mới biết có bộ mẫu chưa nối.
     for (const f of ["memory", "validate", "grill", "templates"]) {
-      void runCheck(f).then((r) => checkCache.set(`${f}|`, { at: Date.now(), r })).catch(() => {});
+      void runCheckOffLoop(f).then((r) => checkCache.set(`${f}|`, { at: Date.now(), r })).catch(() => {});
     }
   }, 1500);
   // Nhịp tim mỗi 30 s — thứ DUY NHẤT còn lại khi daemon bị giết cứng (xem daemon-log.ts).

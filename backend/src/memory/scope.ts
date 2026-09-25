@@ -6,6 +6,7 @@
 // sync (share.ts export + merge). Data stays in the local DB either way.
 
 import { hostname } from "node:os";
+import { Worker } from "node:worker_threads";
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { allAdapters } from "./adapters/index.js";
 import { getScopeExclude, getWebAuth, getWebPull, type ScopeLane } from "../config/settings.js";
@@ -591,9 +592,48 @@ function newestPerSource(dbPath: string): Record<string, string> {
  * ngày nói khác nhau, và đó đúng là thứ mặt ③ của `audit` gọi tên (NGUỒN TRÙNG) — hôm nay
  * đã trả giá một lần vì `browserAccounts` là bản sao của `accountsOf`.
  */
+/**
+ * Kết nối nguồn local — đọc từ ĐỆM, làm tươi ở WORKER (`jobs/connworker.ts`).
+ *
+ * 🔴 Đo 2026-09-25: `listConnections` 2,5 s lạnh / 0,37 s ấm, đồng bộ, và cây nguồn đi kèm cả bảng số
+ * lẫn /sync-pulse ⇒ mỗi lượt làm tươi chặn mọi endpoint (một lượt tính lại bảng số chặn /ping 6,3 s).
+ * Hết hạn ⇒ trả bản CŨ ngay, worker làm tươi phía sau; chỉ lần ĐẦU (chưa có gì) mới tính đồng bộ.
+ */
+const CONN_TTL_MS = 60_000;
+let connCache: { at: number; dbPath: string; rows: ConnectionRow[] } | null = null;
+let connInFlight = false;
+/** Kết nối có thể đã đổi (vừa quét, vừa thêm nguồn) — đánh dấu CŨ, không xoá: xoá là ép lượt sau tính đồng bộ. */
+export function markConnectionsStale(): void {
+  if (connCache) connCache.at = 0;
+}
+function refreshConnections(dbPath: string): void {
+  if (connInFlight) return;
+  connInFlight = true;
+  try {
+    const w = new Worker(new URL("../jobs/connworker.js", import.meta.url), { workerData: { dbPath } });
+    w.unref();
+    w.once("message", (m: { ok: boolean; rows?: ConnectionRow[] }) => {
+      if (m.ok && m.rows) connCache = { at: Date.now(), dbPath, rows: m.rows };
+    });
+    w.once("error", () => {
+      /* fail-open: giữ bản cũ, lượt sau thử lại */
+    });
+    w.once("exit", () => {
+      connInFlight = false;
+    });
+  } catch {
+    connInFlight = false;
+  }
+}
 function safeConnections(dbPath: string): ConnectionRow[] {
   try {
-    return listConnections(dbPath);
+    if (connCache && connCache.dbPath === dbPath) {
+      if (Date.now() - connCache.at > CONN_TTL_MS) refreshConnections(dbPath);
+      return connCache.rows;
+    }
+    const rows = listConnections(dbPath);
+    connCache = { at: Date.now(), dbPath, rows };
+    return rows;
   } catch {
     return []; // fail-open (điều 9): không dò được kho thì cây vẫn phải dựng được
   }

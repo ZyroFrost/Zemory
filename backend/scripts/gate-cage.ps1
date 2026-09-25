@@ -19,7 +19,9 @@ $Cmd = @($args)
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 # chữ Việt trong log không thành mojibake
 if ($Cmd.Count -gt 0 -and $Cmd[0] -eq "--") { $Cmd = $Cmd[1..($Cmd.Count - 1)] }
-if (-not $Cmd -or $Cmd.Count -eq 0) { Write-Error "gate-cage: thiếu lệnh cần chạy"; exit 2 }
+# OUTPUT MUST BE ASCII: PowerShell 5.1 reads a BOM-less .ps1 as the ANSI code page, so any non-ASCII
+# string it prints comes out garbled (measured 2026-09-25: "đỉnh RAM" printed as "Ä‘á»‰nh RAM").
+if (-not $Cmd -or $Cmd.Count -eq 0) { Write-Error "gate-cage: no command to run"; exit 2 }
 
 $limitMb = [int]([Environment]::GetEnvironmentVariable("ZEMORY_GATE_RAM_MB"))
 if ($limitMb -le 0) { $limitMb = 4096 }
@@ -52,7 +54,7 @@ public static class JobCage {
     info.JobMemoryLimit = (UIntPtr)limitBytes;
     if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, ref info, (uint)Marshal.SizeOf(info))) throw new Exception("SetInformationJobObject failed");
   }
-  public static void Assign(IntPtr proc) { if (!AssignProcessToJobObject(job, proc)) throw new Exception("AssignProcessToJobObject failed (tiến trình đã nằm trong job khác?)"); }
+  public static void Assign(IntPtr proc) { if (!AssignProcessToJobObject(job, proc)) throw new Exception("AssignProcessToJobObject failed (process already in another job?)"); }
   public static ulong Peak() { var info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION(); QueryInformationJobObject(job, JobObjectExtendedLimitInformation, ref info, (uint)Marshal.SizeOf(info), IntPtr.Zero); return (ulong)info.PeakJobMemoryUsed; }
 }
 "@
@@ -70,8 +72,8 @@ $psi.UseShellExecute = $false
 $psi.WorkingDirectory = (Get-Location).Path
 $p = [System.Diagnostics.Process]::Start($psi)
 [JobCage]::Assign($p.Handle)
-Write-Host ("[gate-cage] trần {0} MB · ưu tiên {1} · pid {2}" -f $limitMb, $prio, $p.Id)
+Write-Host ("[gate-cage] limit {0} MB, priority {1}, pid {2}" -f $limitMb, $prio, $p.Id)
 $p.WaitForExit()
 $peakMb = [int]([JobCage]::Peak() / 1MB)
-Write-Host ("[gate-cage] đỉnh RAM cả cây: {0} MB / trần {1} MB · exit {2}" -f $peakMb, $limitMb, $p.ExitCode)
+Write-Host ("[gate-cage] peak RAM (whole tree): {0} MB / limit {1} MB, exit {2}" -f $peakMb, $limitMb, $p.ExitCode)
 exit $p.ExitCode

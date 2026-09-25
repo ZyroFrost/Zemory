@@ -29,7 +29,7 @@ import {
   LINK_DEAD_MS,
 } from "../../dist/memory/channel/peer.js";
 import { excludeReason, mirrorRoots, resolveMirrorPath, scanMirror } from "../../dist/memory/channel/mirror.js";
-import { classify, listQueue, applyQueued, dismissQueued, freshenRow, readBase, mirrorHooks } from "../../dist/memory/channel/mirrorstate.js";
+import { classify, listQueue, applyQueued, dismissQueued, freshenRow, readBase, mirrorHooks, forgetPeerMirror } from "../../dist/memory/channel/mirrorstate.js";
 import { tempDir } from "./helpers.mjs";
 
 const APP_VERSION = "test";
@@ -819,4 +819,124 @@ test("🔴 gọi một máy ĐÃ QUEN với wantPair bật vẫn phải KHAI KHO
   assert.equal(client.sentFiles, 1, "bên gọi phải khai kho và chở tệp");
   const srv = await Promise.race([serverDone, new Promise((r) => setTimeout(() => r(null), 5_000))]);
   assert.ok(srv && !srv.error, "bên nghe cũng phải đóng sổ sạch");
+});
+
+test("🔴 declined: bản cũ của máy kia mà ta đã từ chối (bản mình mới hơn) KHÔNG được chở lại mỗi lượt", async (t) => {
+  // Đo 25/09: máy kia chở lại 4 file docs mỗi lượt, 527 lượt liên tiếp — bên nhận xét ra 'push' rồi im.
+  const a = makeMachine(t, "dca", "chia-chung-declined");
+  const b = makeMachine(t, "dcb", "chia-chung-declined");
+  write(a, "docs", "agent/05_TODO.md", "ban cua A\n");
+  write(b, "docs", "agent/05_TODO.md", "ban cua B\n");
+  await syncPair(a, b);
+  const row = listQueue(b.db)[0];
+  assert.ok(row, "lượt đầu: bản A vào hàng đợi của B");
+  applyQueued(b.db, row.id, "mine", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  // Lượt 2: B đẩy bản mình sang A (A giữ trong hàng đợi); A vẫn chở bản cũ của nó ⇒ B xét ra 'push'.
+  await syncPair(a, b);
+  assert.equal(listQueue(a.db).length, 1, "bản của B phải nằm trong hàng đợi của A");
+  // Lượt 3: B đã khai 'đã xét bản đó của A' ⇒ A KHÔNG chở lại.
+  const r3 = await syncPair(a, b);
+  assert.equal(r3.client.sentFiles, 0, `A không được chở lại bản B đã từ chối — chở ${r3.client.sentFiles}`);
+  assert.equal(r3.server?.sentFiles ?? 0, 0, "B cũng không chở lại thứ A đang giữ trong hàng đợi");
+  // A SỬA lại file ⇒ băm đổi ⇒ phải được chở và xét lại (không bị khai cũ nuốt mất).
+  write(a, "docs", "agent/05_TODO.md", "ban cua A lan hai\n");
+  const r4 = await syncPair(a, b);
+  assert.equal(r4.client.sentFiles, 1, "bản MỚI của A phải đi");
+});
+
+test("nhận mà không áp phải NÓI ra đường dẫn, và cửa nghe thẳng phải có log (từng câm cả phiên)", () => {
+  const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
+  assert.match(PEER, /else if \(!r\.applied && !r\.queued && r\.verdict && idleShown\+\+ < RECV_ERR_SHOWN\) \{\s*o\.log\?\.\(`\[channel\] #\$\{sid\} mirror: \$\{head\.area\}\/\$\{head\.rel\} — nhận nhưng không áp/, "file nhận mà không áp phải in đường dẫn + lý do");
+  const CH = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
+  const serve = CH.slice(CH.indexOf("const server = await serveChannel("), CH.indexOf("persistent: true,", CH.indexOf("const server = await serveChannel(")));
+  assert.match(serve, /\n\s*log,\s*\n/, "cửa nghe thẳng phải truyền log vào phiên");
+});
+
+test("🔴 gỡ máy ⇒ quên hàng đợi + mốc của ĐÚNG máy đó (vân tay viết khác dạng vẫn trúng), máy khác nguyên", async (t) => {
+  // Audit 25/09: hàm dọn có sẵn mà không ai gọi ⇒ gỡ máy xong file chờ duyệt của nó vẫn nằm đó.
+  const a = makeMachine(t, "fga", "chia-chung-forget");
+  const b = makeMachine(t, "fgb", "chia-chung-forget");
+  write(a, "docs", "agent/05_TODO.md", "ban cua A\n");
+  write(b, "docs", "agent/05_TODO.md", "ban cua B\n");
+  await syncPair(a, b);
+  assert.equal(listQueue(b.db).length, 1, "tiền đề: B có một dòng chờ từ A");
+  // File giống hệt nhau không bao giờ được chở ⇒ không lượt nào ghi mốc cho nó; chèn thẳng một mốc.
+  b.db.prepare("INSERT INTO peer_file_state (peer_id, area, rel, base_hash, base_body, updated_at) VALUES (?,?,?,?,?,?)").run(a.identity.deviceId, "docs", "plan/x.md", "h", null, new Date().toISOString());
+  assert.ok(readBase(b.db, a.identity.deviceId, "docs", "plan/x.md"), "tiền đề: B có mốc với A");
+  // Một dòng của MÁY KHÁC, để chứng minh không xoá nhầm.
+  b.db.prepare("INSERT INTO peer_file_state (peer_id, area, rel, base_hash, base_body, updated_at) VALUES (?,?,?,?,?,?)").run("OTHER-PEER-1", "docs", "k.md", "h", null, new Date().toISOString());
+  const messy = a.identity.deviceId.replace(/-/g, "").toLowerCase();
+  const f = forgetPeerMirror(b.db, messy);
+  assert.equal(f.queue, 1);
+  assert.ok(f.bases >= 1);
+  assert.equal(listQueue(b.db).length, 0, "hàng đợi của máy đã gỡ phải sạch");
+  assert.equal(readBase(b.db, a.identity.deviceId, "docs", "plan/x.md"), null, "mốc của máy đã gỡ phải sạch");
+  assert.ok(readBase(b.db, "OTHER-PEER-1", "docs", "k.md"), "máy khác không được đụng tới");
+  // Cả HAI đường gỡ máy phải gọi nó.
+  const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  const pair = UI.slice(UI.indexOf('if (p === "/channel-pair") {'), UI.indexOf('if (p === "/channel-sync") {'));
+  assert.match(pair, /if \(drop\) \{[\s\S]*forgetPeerMirror\(ms\.mirrorDb\(\), want\)/, "nút gỡ trên app phải dọn trạng thái mirror");
+  const CLI = readFileSync(new URL("../src/commands/memory.ts", import.meta.url), "utf8");
+  assert.match(CLI, /if \(action === "unpair"\) \{[\s\S]{0,200}forgetPeerMirror\(ms\.mirrorDb\(\), want\)/, "lệnh CLI unpair cũng phải dọn");
+});
+
+test("🔴 echo: bản CỦA CHÍNH MÌNH quay về từ máy kia KHÔNG được hỏi lại (user 25/09)", async (t) => {
+  // A gửi V1 → B nhận → A sửa tiếp V2 → B chở V1 về A. V1 là của A, A không được hỏi "máy kia sửa".
+  const a = makeMachine(t, "eca", "chia-chung-echo");
+  const b = makeMachine(t, "ecb", "chia-chung-echo");
+  write(a, "docs", "agent/x.md", "goc\n");
+  write(b, "docs", "agent/x.md", "goc\n");
+  await syncPair(a, b); // hai bên giống nhau
+  write(a, "docs", "agent/x.md", "goc\nA sua lan 1\n");
+  await syncPair(a, b);
+  const rowB = listQueue(b.db)[0];
+  assert.ok(rowB, "B phải được hỏi bản V1 của A");
+  const ap = applyQueued(b.db, rowB.id, "theirs", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  assert.equal(ap.ok, true);
+  await syncPair(a, b); // lượt hai bên đã khớp ở V1
+  write(a, "docs", "agent/x.md", "goc\nA sua lan 1\nA sua lan 2\n");
+  await syncPair(a, b);
+  assert.equal(listQueue(a.db).length, 0, "A KHÔNG được hỏi lại chính bản V1 của nó");
+  assert.equal(listQueue(b.db).length, 1, "B vẫn được hỏi bản V2 mới của A");
+});
+
+test("🔴 echo (tranh nhau): A sửa tiếp TRƯỚC lượt khớp — bản A đã chở đi quay về vẫn không bị hỏi", async (t) => {
+  const a = makeMachine(t, "era", "chia-chung-echo-race");
+  const b = makeMachine(t, "erb", "chia-chung-echo-race");
+  write(a, "docs", "agent/y.md", "goc\n");
+  write(b, "docs", "agent/y.md", "goc\n");
+  await syncPair(a, b);
+  write(a, "docs", "agent/y.md", "goc\nA1\n");
+  await syncPair(a, b);
+  const row = listQueue(b.db)[0];
+  applyQueued(b.db, row.id, "theirs", { repoRoot: b.repoRoot, storeRoot: b.storeRoot });
+  // KHÔNG có lượt nào ở giữa để A thấy hai bên khớp — A sửa tiếp ngay.
+  write(a, "docs", "agent/y.md", "goc\nA1\nA2\n");
+  await syncPair(a, b);
+  assert.equal(listQueue(a.db).length, 0, "bản A1 là của A — quay về không được hỏi lại");
+});
+
+test("scan-cache: đệm quét KHÔNG được trả số cũ — thêm tệp files/, sửa docs, xoá tệp đều thấy ngay", async (t) => {
+  // Đệm vào 3.5.31: quét là ĐỒNG BỘ trên event loop (đo 0,6–0,9 s × 2 mỗi lượt) ⇒ nay ~7 ms khi ấm.
+  const m = makeMachine(t, "scc", "chia-chung-scan");
+  const opts = { repoRoot: m.repoRoot, storeRoot: m.storeRoot };
+  write(m, "docs", "agent/a.md", "mot\n");
+  write(m, "files", "images/2026-09/aaa.png", "x");
+  const s1 = scanMirror(opts).entries;
+  assert.ok(s1.some((e) => e.rel === "images/2026-09/aaa.png"));
+  // Thêm tệp vào thư mục files/ ĐÃ quét (đệm theo mtime thư mục phải vỡ).
+  await new Promise((r) => setTimeout(r, 20));
+  write(m, "files", "images/2026-09/bbb.png", "y");
+  // Sửa nội dung docs (băm phải tính lại theo size/mtime).
+  write(m, "docs", "agent/a.md", "hai dong\nkhac\n");
+  const s2 = scanMirror(opts).entries;
+  assert.ok(s2.some((e) => e.rel === "images/2026-09/bbb.png"), "tệp files/ mới phải hiện");
+  const a1 = s1.find((e) => e.rel === "agent/a.md"), a2 = s2.find((e) => e.rel === "agent/a.md");
+  assert.notEqual(a2.hash, a1.hash, "docs sửa rồi thì băm phải đổi");
+  // Xoá một tệp files/.
+  const { rmSync: rm } = await import("node:fs");
+  await new Promise((r) => setTimeout(r, 20));
+  rm(join(m.storeRoot, "files", "images", "2026-09", "aaa.png"));
+  const s3 = scanMirror(opts).entries;
+  assert.ok(!s3.some((e) => e.rel === "images/2026-09/aaa.png"), "tệp đã xoá không được còn trong kiểm kê");
 });
