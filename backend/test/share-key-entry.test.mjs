@@ -138,3 +138,36 @@ test("`key show` prints only the fingerprint - the source must never print the k
   assert.match(block, /st\.fingerprint/u, "phải in dấu tay");
   assert.ok(!/readFileSync\([^)]*share\.key/.test(block), "không được đọc rồi in nội dung chìa");
 });
+
+test("every rejection carries a machine-readable code, so the UI never parses the message text", () => {
+  const s = scratch();
+  try {
+    const codeOf = (fn) => { try { fn(); return "none"; } catch (e) { return e.code; } };
+    assert.equal(codeOf(() => setShareKey("   ", { dbDir: s.dir })), "empty");
+    assert.equal(codeOf(() => setShareKey("short-key", { dbDir: s.dir })), "short");
+    assert.equal(codeOf(() => setShareKey("has a space in it ok ok", { dbDir: s.dir })), "space");
+    setShareKey(GOOD, { dbDir: s.dir });
+    assert.equal(codeOf(() => setShareKey(GOOD + "x", { dbDir: s.dir })), "exists");
+    assert.equal(codeOf(() => setShareKey(GOOD + "x", { dbDir: s.dir, force: true })), "none", "force still replaces");
+  } finally {
+    s.cleanup();
+  }
+});
+
+test("UI key entry: POST body, one write path, fingerprint only, row stays live when the channel is off", () => {
+  const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  const ep = ui.slice(ui.indexOf('p === "/share-key"'), ui.indexOf('p === "/channel-pair"'));
+  assert.ok(ep.length > 0, "endpoint /share-key missing");
+  assert.match(ui, /req\.method === "POST" && p === "\/share-key"/, "key entry must be POST only");
+  assert.match(ep, /for await \(const c of req\)/, "the key travels in the BODY, not the query string");
+  assert.doesNotMatch(ep, /searchParams\.get\("key"\)/, "negative: the key must never be read from the URL");
+  assert.match(ep, /setShareKey\(/, "same write path as `zemory memory key set`");
+  assert.doesNotMatch(ep, /json\(res, \{[^}]*\bkey\b\s*:/, "negative: the response must never echo the key");
+  assert.match(ui, /shareKey: await[\s\S]{0,200}fingerprint/, "status reports the fingerprint");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  assert.match(gm, /fetch\('\/share-key'.{0,60}\{method:'POST',body:inp\.value\}/, "UI posts the key in the body");
+  assert.match(gm, /type="password"/, "the key input hides what is typed");
+  assert.match(gm, /ch\.classList\.toggle\('frozen',!p2pOn&&!ch\.hasAttribute\('data-live'\)\)/, "the key row is exempt from the channel-off freeze");
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.match(html, /id="p2pKeyRow" data-live/, "key row is marked live");
+});

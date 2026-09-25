@@ -58,6 +58,9 @@ const SHOTS = [
   // Nghiệm thu BẰNG MẮT ở đây: vạch ngăn giữa hai panel phải chạy hết vùng, không dừng giữa chừng.
   ["08-sync-drive", "sync", ["sy", "drive"], 5000],
   ["09-sync-p2p", "sync", ["sy", "p2p"], 5000],
+  // Ô nhập chìa share: mở popover — nghiệm thu bằng MẮT rằng ô ẩn ký tự và nút Lưu có mặt.
+  ["09b-sync-key", "sync", ["#p2pQBadge", "#p2pKeyRow [data-act=\"p2p-key-open\"]"], 6000,
+    "document.querySelector('#p2pKeyPop')?.classList.contains('on')"],
   // Hộp Chuẩn repo: nghiệm thu khối "giao cho agent" (lời nhắn + hai nút) bằng MẮT.
   ["10-std-dialog", "system", "#railStd", 4500],
 ];

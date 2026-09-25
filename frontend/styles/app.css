@@ -696,10 +696,12 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .p2p-pop.on{display:flex}
 .p2p-pop-code{font-size:11px;word-break:break-all;color:var(--primary);user-select:all}
 .p2p-pop .btn{align-self:flex-end}
+.p2p-pop-msg{font-size:11px;line-height:1.5}
+.p2p-pop-msg:empty{display:none}
 /* Mục thông tin "Máy này": khối có đường kẻ, lưới 4 cột cố định — tên dòng · chú thích · giá trị · Copy.
    Cột ① và ④ cố định bề rộng ⇒ chú thích thẳng cột, nút Copy thẳng cột, ở MỌI mục. */
 .drv-facts>.p2p-fact{display:grid;grid-template-columns:150px minmax(0,1fr) fit-content(62%) 52px;column-gap:10px;row-gap:4px;align-items:center;padding:7px 0;border-top:1px solid var(--border)}
-#p2pCodeRow>.p2p-fact{border-bottom:1px solid var(--border)}
+#p2pKeyRow>.p2p-fact{border-bottom:1px solid var(--border)}
 .p2p-fact>b{text-align:right;white-space:normal;word-break:break-all;min-width:0}
 .drv-facts .p2p-fact-hint{color:var(--text-faint);opacity:.8;font-size:11px;min-width:0}
 .p2p-fact-act{display:flex;justify-content:flex-end}

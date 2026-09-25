@@ -323,7 +323,8 @@
       var h=document.createElement('span');h.className='p2p-fact-hint';h.textContent=r.hint||'';
       var b=document.createElement('b');b.textContent=r.v;
       var cell=document.createElement('span');cell.className='p2p-fact-act';
-      if(r.copy!==false&&r.v)cell.appendChild(p2pCopyBtn(r.v));
+      if(r.act){var ab=document.createElement('button');ab.className='btn xs';ab.textContent=r.act.label;ab.setAttribute('data-act',r.act.act);cell.appendChild(ab);}
+      else if(r.copy!==false&&r.v)cell.appendChild(p2pCopyBtn(r.v));
       box.appendChild(h);box.appendChild(b);box.appendChild(cell);
     });
     return box;
@@ -382,13 +383,24 @@
         :'p2p.codeMeasuring';
       if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),[{v:c.machineCode,hint:t(why)}],true));
     }
+    // CHÌA SHARE — dùng chung cho Drive và máy-tới-máy. Chỉ hiện DẤU TAY (plan/16 §4); không Copy.
+    var kr=zid('p2pKeyRow');
+    if(kr){
+      while(kr.firstChild)kr.removeChild(kr.firstChild);
+      var sk=c.shareKey||{};
+      kr.appendChild(p2pFact(t('p2p.keyH'),[{v:sk.found?(sk.fingerprint||''):t('p2p.keyNone'),hint:t('p2p.keyD'),act:{act:'p2p-key-open',label:t(sk.found?'p2p.keyChange':'p2p.keySet')}}]));
+    }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.
     var tg=zid('p2pToggle');if(tg)tg.classList.toggle('on',!!c.enabled);
     // ĐÓNG BĂNG cả tab khi kênh tắt (user 2026-09-17: *"bên máy-tới-máy cũng vậy luôn đúng không?"*).
     // Thân của CẢ BA thẻ (máy này · cụm máy · nhật ký) — chừa thanh đầu thẻ vì công tắc nằm ở đó.
     var p2pOn=!!c.enabled, sub=document.querySelector('.sub[data-sy="p2p"]');
-    if(sub)sub.querySelectorAll('.card-b').forEach(function(b){b.classList.toggle('frozen',!p2pOn);});
+    if(sub)sub.querySelectorAll('.card-b').forEach(function(b){
+      if(!b.querySelector('[data-live]')){b.classList.toggle('frozen',!p2pOn);return;}
+      b.classList.remove('frozen');
+      Array.prototype.forEach.call(b.children,function(ch){ch.classList.toggle('frozen',!p2pOn&&!ch.hasAttribute('data-live'));});
+    });
     // RELAY không có hàng riêng: nó là HẠ TẦNG, nằm sẵn trong mã máy. Người dùng không khai, không
     // đọc, không chọn — chỉ chép một mã. Khai relay là việc một lần của người CHẠY relay, ở CLI.
     // CỤM MÁY — mỗi máy MỘT THẺ, máy này đứng đầu. Bản cũ là một danh sách chuỗi 52 ký tự trần:
@@ -570,7 +582,9 @@
   window.zLoadMirrorQueue=loadQueue;
 
   document.addEventListener('click',function(e){
-    var el=e.target&&e.target.closest?e.target.closest('[data-act="mir-apply"],[data-act="mir-diff"],[data-act="mir-all"]'):null;
+    // Bộ chọn phải liệt kê ĐỦ mọi nhánh `act===` bên dưới. Thiếu một tên là nhánh đó chết im lặng:
+    // Thử lại · Mã máy · chìa từng nằm dưới đây mà bộ chọn chỉ có ba nút hàng đợi (đo 25/09).
+    var el=e.target&&e.target.closest?e.target.closest('[data-act="mir-apply"],[data-act="mir-diff"],[data-act="mir-all"],[data-act="p2p-retry"],[data-act="p2p-code"],[data-act="p2p-code-copy"],[data-act="p2p-key-open"],[data-act="p2p-key-save"]'):null;
     if(!el)return;
     var act=el.getAttribute('data-act');
     if(act==='mir-diff'){
@@ -612,6 +626,42 @@
     // Nhánh TƯỜNG MINH, không dùng đường rơi-xuống: một hành động mới lọt vào bộ chọn ở trên
     // mà không ai để ý sẽ được gửi đi như một lượt duyệt. Cổng `data-act` của repo soi đúng
     // chữ `act==='…'` chính vì lý do đó.
+    if(act==='p2p-key-open'){
+      var kp=zid('p2pKeyPop');
+      if(!kp){
+        kp=document.createElement('div');kp.id='p2pKeyPop';kp.className='p2p-pop';
+        kp.innerHTML='<input class="tin" type="password" autocomplete="off" spellcheck="false"><div class="p2p-pop-msg muted"></div><button class="btn xs primary" data-act="p2p-key-save"></button>';
+        document.body.appendChild(kp);
+        kp.querySelector('input').addEventListener('keydown',function(ev){if(ev.key==='Enter')kp.querySelector('[data-act="p2p-key-save"]').click();});
+        document.addEventListener('keydown',function(ev){if(ev.key==='Escape')kp.classList.remove('on');});
+        document.addEventListener('click',function(ev){if(kp.classList.contains('on')&&!kp.contains(ev.target)&&!(ev.target.closest&&ev.target.closest('[data-act="p2p-key-open"]')))kp.classList.remove('on');});
+      }
+      var ki=kp.querySelector('input'),kb=kp.querySelector('[data-act="p2p-key-save"]');
+      ki.value='';ki.setAttribute('placeholder',t('p2p.keyPh'));ki.setAttribute('aria-label',t('p2p.keyH'));
+      kp.querySelector('.p2p-pop-msg').textContent='';
+      kb.textContent=t('p2p.keySave');kb.removeAttribute('data-force');
+      var r1=el.getBoundingClientRect();
+      kp.style.left=Math.max(8,Math.min(r1.left,window.innerWidth-340))+'px';kp.style.top=(r1.bottom+6)+'px';
+      kp.classList.add('on');ki.focus();
+      return;
+    }
+    if(act==='p2p-key-save'){
+      var pop2=zid('p2pKeyPop'),inp=pop2.querySelector('input'),msg=pop2.querySelector('.p2p-pop-msg');
+      var force=el.getAttribute('data-force')==='1';
+      btnBusy(el,true);
+      fetch('/share-key'+(force?'?force=1':''),{method:'POST',body:inp.value}).then(function(r){return r.json();}).then(function(r){
+        btnBusy(el,false);
+        if(r.ok){
+          inp.value='';msg.textContent=t('p2p.keySaved').replace('{f}',r.fingerprint||'');
+          loadChannel();setTimeout(function(){pop2.classList.remove('on');},1500);
+          return;
+        }
+        // Đã có chìa ⇒ nói rõ cái giá rồi mới cho ghi đè, bằng chính nút này (bấm lần hai).
+        if(r.code==='exists'){msg.textContent=t('p2p.keyExists');el.textContent=t('p2p.keyReplace');el.setAttribute('data-force','1');return;}
+        msg.textContent=t('p2p.keyBad');
+      }).catch(function(){btnBusy(el,false);msg.textContent=t('p2p.keyErr');});
+      return;
+    }
     if(act==='p2p-code'){
       var pop=zid('p2pCodePop');
       if(!pop){
