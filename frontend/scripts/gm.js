@@ -323,7 +323,7 @@
       var seenBy={};
       seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
       var cards=[];
-      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port});
+      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port,on:!!c.listening});
       var pstate=c.peerState||{};
       // Trạng thái LIÊN KẾT SỐNG. Nó đứng trên mọi nguồn khác vì nó trả lời đúng câu người dùng
       // hỏi — *"đang nối hay không"* — chứ không phải *"lượt thử gần nhất ra sao"*.
@@ -352,7 +352,11 @@
         var ps=m.st||{kind:'never'};
         var lk=m.lk||null;
         var state, dot;
-        if(m.me){state=t('p2p.thisMachine');dot='var(--primary)';}
+        // Chấm của "máy này" là TRẠNG THÁI (kênh đang nghe hay không), không phải màu thương hiệu.
+        // Bản trước gán cứng `--primary` (vàng) — đứng cạnh thẻ máy kia xanh thì đọc thành cảnh báo
+        // (user 25/09: *"máy này sao cứ màu vàng là sai"*). Cùng một bảng màu với thẻ máy kia:
+        // xanh = đang sống, xám = tắt.
+        if(m.me){state=t('p2p.thisMachine');dot=m.on?'var(--success)':'var(--text-faint)';}
         // LIÊN KẾT SỐNG thắng mọi nguồn khác: ghép một lần là nối mãi, nên câu đúng là trạng thái
         // NGAY BÂY GIỜ, không phải dấu vết của lượt trước.
         else if(lk&&lk.state==='up'){state=t('p2p.linkUp').replace('{t}',zAgo(lk.since));dot='var(--success)';}
