@@ -568,7 +568,11 @@
     if(logTimer){clearInterval(logTimer);logTimer=null;}
     // 15s, KHÔNG ngắn hơn: cổng `no short-interval polling` chốt sàn đó. Không mất gì thật —
     // nhịp dò LAN vốn 30s/lần, nên log không có gì mới để hiện nhanh hơn thế.
-    if(on){loadLog();logTimer=setInterval(loadLog,15000);}
+    // 🔴 THẺ MÁY đi CÙNG nhịp này, không chỉ nhật ký. Trước đây `loadChannel()` chỉ chạy lúc mở tab và
+    // sau một cú bấm — nên thẻ là ẢNH CHỤP: liên kết lên lúc 01:59 mà thẻ vẫn "đang nối lại" tới khi
+    // người dùng mở lại tab (đo 25/09, user: *"vẫn kẹt quài nè"* trong khi backend đã `up`). Cùng một
+    // đồng hồ, cùng một công tắc "tab đang mở" — không đẻ đồng hồ thứ hai.
+    if(on){loadLog();loadChannel();logTimer=setInterval(function(){loadLog();loadChannel();},15000);}
   }
   window.zP2pLogTick=logTick;
 
