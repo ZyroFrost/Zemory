@@ -571,6 +571,19 @@
         all.setAttribute('data-act','mir-all');
         box.appendChild(all);
       }
+      // HAI NÚT CẢ HÀNG ĐỢI, hai chiều ngược nhau, áp cho MỌI dòng đang chờ kể cả dòng trùng đoạn —
+      // người bấm đã chọn phía cho tất cả (user 25/09: *"giữ toàn bộ theo máy này hoặc là bỏ toàn bộ"*).
+      // "Giữ bản máy này" không ghi byte nào ⇒ một cú. "Dùng bản máy kia" ĐÈ tệp ⇒ bấm lần hai.
+      if(active.length>1){
+        var bulk=document.createElement('div');
+        bulk.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px';
+        var km=document.createElement('button');km.className='btn sm';
+        km.textContent=t('mir.allMine').replace('{n}',String(active.length));km.setAttribute('data-act','mir-all-mine');
+        var ut=document.createElement('button');ut.className='btn sm';
+        ut.textContent=t('mir.allTheirs').replace('{n}',String(active.length));ut.setAttribute('data-act','mir-all-theirs');
+        bulk.appendChild(km);bulk.appendChild(ut);
+        box.appendChild(bulk);
+      }
       active.forEach(function(q){box.appendChild(card(q));});
     }
     if(later.length){
@@ -590,7 +603,7 @@
   document.addEventListener('click',function(e){
     // Bộ chọn phải liệt kê ĐỦ mọi nhánh `act===` bên dưới. Thiếu một tên là nhánh đó chết im lặng:
     // Thử lại · Mã máy · chìa từng nằm dưới đây mà bộ chọn chỉ có ba nút hàng đợi (đo 25/09).
-    var el=e.target&&e.target.closest?e.target.closest('[data-act="mir-apply"],[data-act="mir-diff"],[data-act="mir-all"],[data-act="p2p-retry"],[data-act="p2p-code"],[data-act="p2p-code-copy"],[data-act="p2p-key-open"],[data-act="p2p-key-save"]'):null;
+    var el=e.target&&e.target.closest?e.target.closest('[data-act="mir-apply"],[data-act="mir-diff"],[data-act="mir-all"],[data-act="mir-all-mine"],[data-act="mir-all-theirs"],[data-act="p2p-retry"],[data-act="p2p-code"],[data-act="p2p-code-copy"],[data-act="p2p-key-open"],[data-act="p2p-key-save"]'):null;
     if(!el)return;
     var act=el.getAttribute('data-act');
     if(act==='mir-diff'){
@@ -623,6 +636,29 @@
         rows.forEach(function(q){
           chain=chain.then(function(){
             return zPost('/mirror-apply?id='+q.id+'&choice='+(q.verdict==='merge'?'merged':'theirs'));
+          });
+        });
+        return chain;
+      }).then(loadQueue).catch(loadQueue).then(function(){btnBusy(el,false);});
+      return;
+    }
+    if(act==='mir-all-mine'||act==='mir-all-theirs'){
+      if(el.dataset.busy)return;
+      var mine=act==='mir-all-mine';
+      // Đè tệp bằng bản máy kia là không lùi được ⇒ lần bấm đầu chỉ NÓI cái giá.
+      if(!mine&&el.getAttribute('data-armed')!=='1'){
+        el.setAttribute('data-armed','1');
+        el.textContent=t('mir.allTheirsConfirm').replace('{n}',el.textContent.replace(/\D+/g,''));
+        return;
+      }
+      btnBusy(el,true);
+      // Lấy lại danh sách từ server (DOM có thể cũ hơn kho). Bỏ mục "để sau" như nút duyệt cả nhóm.
+      zGet('/mirror-queue').then(function(r){
+        var rows=((r&&r.rows)||[]).filter(function(x){return !x.dismissedAt;});
+        var chain=Promise.resolve();
+        rows.forEach(function(q){
+          chain=chain.then(function(){
+            return zPost('/mirror-apply?id='+q.id+'&choice='+(mine?'mine':'theirs')+'&seen='+encodeURIComponent(q.verdict));
           });
         });
         return chain;

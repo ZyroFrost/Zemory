@@ -129,36 +129,3 @@ export async function mapPort(
   return null;
 }
 
-export interface PortMapHandle {
-  stop: () => void;
-  current: () => PortMapping | null;
-}
-
-/**
- * Giữ một ánh xạ cổng sống: xin rồi gia hạn ở khoảng nửa thời hạn.
- * Khuôn `natRenewalMinutes` của Syncthing — xin thuê CÓ HẠN rồi làm mới, không bao
- * giờ xin vĩnh viễn (router khởi động lại là ánh xạ vĩnh viễn thành rác treo).
- */
-export function keepPortMapped(internalPort: number, o: { lifetimeSeconds?: number } = {}): PortMapHandle {
-  const lifetime = o.lifetimeSeconds ?? DEFAULT_LIFETIME_S;
-  let mapping: PortMapping | null = null;
-  let stopped = false;
-  let timer: NodeJS.Timeout | null = null;
-
-  const renew = async (): Promise<void> => {
-    if (stopped) return;
-    mapping = await mapPort(internalPort, { lifetimeSeconds: lifetime });
-  };
-  void renew();
-  timer = setInterval(() => void renew(), Math.max(60_000, (lifetime * 1000) / 2));
-  if (typeof timer.unref === "function") timer.unref();
-
-  return {
-    stop: () => {
-      stopped = true;
-      if (timer) clearInterval(timer);
-      timer = null;
-    },
-    current: () => mapping,
-  };
-}

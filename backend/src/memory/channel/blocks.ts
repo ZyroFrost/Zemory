@@ -8,7 +8,7 @@
  * Đọc rẻ: mỗi khối chỉ chạm 64 KB đầu để lấy `kdf.salt` trong header plaintext —
  * KHÔNG giải mã. Đo (plan/24 §6b): 50 khối ⇒ danh sách 2,0 KB.
  */
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MAX_FRAME_BYTES } from "./wire.js";
@@ -36,10 +36,30 @@ export interface BlockRef {
  * định danh được, vì khai bừa là nói với máy kia "tôi đã có" cho một thứ ta không
  * nhận ra (fail-open đúng chiều: thà nhận lại một khối còn hơn mất nó).
  */
+/**
+ * Đệm kiểm kê theo TỪNG khúc, khoá bằng (kích thước, mtime). Kiểm kê chạy ĐỒNG BỘ trên event loop mỗi
+ * lần hỏi trạng thái kênh (15 s một lần) và mỗi lượt đồng bộ; nó đọc 64 KB đầu của MỌI khối — đo
+ * 25/09: 163 khối ≈ 109 ms mỗi lần. Khúc chỉ NỐI THÊM (HP điều 16) nên (kích thước, mtime) không đổi
+ * nghĩa là danh sách khối của khúc không đổi.
+ */
+const segCache = new Map<string, { size: number; mtimeMs: number; refs: BlockRef[] }>();
+
 export function inventory(channelDir: string): BlockRef[] {
   const out: BlockRef[] = [];
   for (const seg of listChannelSegments(channelDir)) {
     if (!isContainer(seg.path)) continue;
+    let st: { size: number; mtimeMs: number } | null;
+    try {
+      st = statSync(seg.path);
+    } catch {
+      st = null;
+    }
+    const hit = st ? segCache.get(seg.path) : undefined;
+    if (st && hit && hit.size === st.size && hit.mtimeMs === st.mtimeMs) {
+      out.push(...hit.refs);
+      continue;
+    }
+    const refs: BlockRef[] = [];
     for (const chunk of listContainerChunks(seg.path)) {
       // 🔴 KHÔNG khai khối lớn hơn một khung. Cùng nguyên tắc với dòng trên: **đừng khai thứ mình
       // không giao được**. Khối vượt `MAX_FRAME_BYTES` thì không khung nào chứa nổi, nên khai nó
@@ -48,8 +68,10 @@ export function inventory(channelDir: string): BlockRef[] {
       // đã có. Ca thật: baseline đời cũ 2,4–2,5 GB nằm trong ngăn kênh (đo 23/09).
       if (chunk.len > MAX_FRAME_BYTES) continue;
       const id = chunkBlockId(seg.path, chunk);
-      if (id) out.push({ id, segment: seg.path, chunk });
+      if (id) refs.push({ id, segment: seg.path, chunk });
     }
+    if (st) segCache.set(seg.path, { size: st.size, mtimeMs: st.mtimeMs, refs });
+    out.push(...refs);
   }
   return out;
 }

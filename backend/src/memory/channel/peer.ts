@@ -100,7 +100,7 @@ export interface MirrorHooks {
    * kể cả lượt NGHE nơi ta không biết trước ai sẽ gọi tới. Phiên biết vân tay đối phương
    * ngay từ bước đọc chứng chỉ, trước cả tin đầu tiên, nên nó luôn truyền được.
    */
-  receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string };
+  receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string; verdict?: string };
   /** Máy này có được ĐẨY sang máy đó không — `false` ở phía đích của cặp một chiều (§9.2). */
   mayPush: (peerId: string) => boolean;
   /**
@@ -108,6 +108,14 @@ export interface MirrorHooks {
    * Vắng ⇒ không khai, và bên kia cư xử y như bản cũ. Xem `MirrorPendingEntry`.
    */
   pending?: (peerId: string) => Array<{ area: string; rel: string; hash: string }>;
+  /**
+   * Hai bên ĐÃ KHỚP ở băm này (kiểm kê của máy kia = file của máy này) ⇒ ghi mốc `base`.
+   * Thiếu nó thì mốc chỉ được ghi ở phía NHẬN, và bên gửi giữ mốc cũ mãi — lượt sau bản của
+   * CHÍNH NÓ quay về bị đọc thành "máy kia sửa" và hỏi lại (user 25/09).
+   */
+  converged?: (peerId: string, area: MirrorArea, rel: string, hash: string) => void;
+  /** Máy này vừa CHỞ bản này đi — bản đó quay về là bản của chính mình, không phải việc mới. */
+  sent?: (peerId: string, area: MirrorArea, rel: string, hash: string) => void;
 }
 
 export interface SessionOptions {
@@ -376,6 +384,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
      * 5.560 đường dẫn thì không nói thêm điều gì.
      */
     const RECV_ERR_SHOWN = 3;
+    let idleShown = 0;
     const recvErrors = new Map<string, number>();
     let recvErrShown = 0;
     const noteRecvError = (area: string, rel: string, err: string): void => {
@@ -860,7 +869,10 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         for (const e of o.mirror.inventory()) {
           const k = fileKey(e.area, e.rel);
           const has = theirs.has(k);
-          if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) continue;
+          if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) {
+            if (!isContentAddressed(e.area) && e.hash) o.mirror.converged?.(peerId ?? "", e.area, e.rel, e.hash);
+            continue;
+          }
           // Bản NÀY đã nằm trong hàng đợi duyệt của họ ⇒ chở lại là chở đúng thứ họ đang cầm.
           if (theirPending.has(`${k}\u0000${e.hash ?? ""}`)) continue;
           // 🔴 HẾT NGÂN SÁCH ⇒ ĐÓNG SỔ SẠCH, phần còn lại để lượt sau. KHÔNG cố chở hết.
@@ -887,6 +899,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           // Phiên có thể đã chết TRONG lúc ta chờ ống thoát. Ghi tiếp vào một ống đã đóng là ném
           // byte đi, còn gửi `mdone` sau đó là đóng sổ cho một phiên không còn ai bên kia.
           if (settled) return;
+          if (e.hash) o.mirror.sent?.(peerId ?? "", e.area, e.rel, e.hash);
           out.sentFiles++;
           shipped++;
         }
@@ -965,6 +978,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           if (r.applied) out.appliedFiles++;
           if (r.queued) out.queuedFiles++;
           if (r.error) noteRecvError(head.area, head.rel, r.error);
+          // 🔴 Nhận mà KHÔNG ghi, KHÔNG xếp hàng, KHÔNG lỗi = máy kia sẽ chở lại MỖI LƯỢT, và trước
+          // đây không để lại dấu vết nào (đo 25/09: 527 lượt liên tiếp "1 file" mà không ai biết file
+          // nào). Nói ra đường dẫn + lý do, có trần mỗi phiên.
+          else if (!r.applied && !r.queued && r.verdict && idleShown++ < RECV_ERR_SHOWN) {
+            o.log?.(`[channel] #${sid} mirror: ${head.area}/${head.rel} — nhận nhưng không áp (${r.verdict})`);
+          }
         }
       }
     });

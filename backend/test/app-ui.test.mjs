@@ -1110,8 +1110,13 @@ test("mọi `spawn` phải đặt windowsHide — một cửa sổ đen là mộ
 test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai nối vào endpoint thật", () => {
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   const js = readAppJs();
-  for (const id of ["p2pAddrs", "p2pSeenList", "p2pLog", "p2pLogOnly", "p2pLogHold", "p2pLogPath"]) {
+  for (const id of ["p2pAddrs", "p2pLog", "p2pLogOnly", "p2pLogHold", "p2pLogPath"]) {
     assert.ok(html.includes(`id="${id}"`), `thiếu ô ${id} trên bề mặt`);
+  }
+  // 🔴 Dò mạng nội bộ chạy NGẦM (chốt 20/09: chỉ để tìm lại địa chỉ mới của máy đã ghép) ⇒ bề mặt
+  // không có dòng nào cho nó. Dòng cũ nằm lại sau lần gỡ và hiện "—" vĩnh viễn (audit 25/09).
+  for (const id of ["p2pSeen", "p2pSeenList"]) {
+    assert.ok(!html.includes(`id="${id}"`), `ca ÂM: ô ${id} không được mọc lại — không ai điền nó`);
   }
   assert.match(js, /\/daemon-log\?tail=/, "khung nhật ký phải gọi /daemon-log");
   // ĐỊA CHỈ là thuộc tính của MÁY nên nó vẽ trong lượt dựng trạng thái, không phải sau một cú bấm.
@@ -2414,4 +2419,17 @@ test("click handler: every act==='…' branch is listed in the handler's own sel
   assert.ok(branches.length >= 8, `expected the handler's branches, saw ${branches.length}`);
   const dead = branches.filter((b) => !listed.has(b));
   assert.deepEqual(dead, [], `branches unreachable from the selector: ${dead.join(", ")}`);
+});
+
+test("hàng đợi: HAI nút cả hàng — giữ hết bản máy này / dùng hết bản máy kia (đè ⇒ bấm lần hai)", () => {
+  // User 25/09: *"còn 1 nút tui chưa thấy là giữ toàn bộ theo máy này hoặc là bỏ toàn bộ"*.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const rq = gm.slice(gm.indexOf("function renderQueue"), gm.indexOf("function loadQueue"));
+  assert.match(rq, /if\(active\.length>1\)\{[\s\S]*data-act','mir-all-mine'[\s\S]*data-act','mir-all-theirs'/, "hai nút hiện khi có từ hai dòng chờ");
+  const h = gm.slice(gm.indexOf("if(act==='mir-all-mine'||act==='mir-all-theirs'){"), gm.indexOf("// Nhánh TƯỜNG MINH, không dùng đường rơi-xuống"));
+  assert.ok(h.length > 0, "không thấy nhánh xử lý hai nút");
+  assert.match(h, /if\(!mine&&el\.getAttribute\('data-armed'\)!=='1'\)\{[\s\S]*?return;\s*\}/, "dùng hết bản máy kia (ĐÈ tệp) phải bấm lần hai");
+  assert.match(h, /choice='\+\(mine\?'mine':'theirs'\)/, "gửi đúng lựa chọn cho từng dòng");
+  assert.match(h, /&seen='\+encodeURIComponent\(q\.verdict\)/, "kèm verdict đã thấy — đĩa đổi thì kho từ chối, không đè");
+  assert.match(h, /filter\(function\(x\)\{return !x\.dismissedAt;\}\)/, "bỏ qua mục 'để sau'");
 });

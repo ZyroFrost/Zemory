@@ -542,3 +542,13 @@ test("connectToPeer: đầu kia nhận TCP rồi IM ⇒ trả lỗi trong trần
   // `CONG-TREO` ⇒ ca này ĐỎ. Đã kiểm bằng đột biến, nên bỏ mốc tuyệt đối không nới lỏng gì.
   t.diagnostic(`trả về sau ${Date.now() - t0}ms (trần đặt 1500ms; số này chỉ để đọc, không phán)`);
 });
+
+test("kiểm kê có ĐỆM: nối thêm khối vào CÙNG khúc thì lượt kiểm kê sau phải thấy nó", async (t) => {
+  // Đệm theo (kích thước, mtime) của khúc vào 3.5.31 — kiểm kê chạy đồng bộ trên event loop 15 s/lần.
+  const a = makeSide(t, "ic", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN=");
+  await addBlock(t, a.channelDir, a.keyPath, "c1");
+  assert.equal(inventoryIds(a.channelDir).length, 1);
+  assert.equal(inventoryIds(a.channelDir).length, 1, "lượt ấm (trúng đệm) vẫn đúng số");
+  await addBlock(t, a.channelDir, a.keyPath, "c2");
+  assert.equal(inventoryIds(a.channelDir).length, 2, "khúc đã đổi ⇒ đệm phải vỡ, khối mới phải hiện");
+});

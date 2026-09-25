@@ -14,7 +14,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { reconnectDelayMs } from "../../dist/ui.js";
+import { reconnectDelayMs, inboundAlive, noteInboundOpen, noteInboundClose } from "../../dist/ui.js";
 
 const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
 
@@ -199,15 +199,18 @@ test("🔴 BA cửa nghe, một luật — cửa nghe THẲNG và cửa nghe REL
   // thẳng mà sót cửa relay. Relay hay thẳng là do cú bắt tay nào ăn trước ⇒ hỏng kiểu tung đồng xu.
   const CH = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
   const serve = CH.slice(CH.indexOf("const server = await serveChannel("), CH.indexOf("TẦNG 1 — DÒ LAN"));
-  assert.match(serve, /onOpen: \(id: string\) => o\.onLinkOpen\?\.\(id, "direct"\),/, "cửa nghe THẲNG phải báo bắt tay, gắn nhãn direct");
+  assert.match(serve, /onOpen: \(id: string\) => \{[\s\S]{0,120}o\.onLinkOpen\?\.\(id, "direct"\);/, "cửa nghe THẲNG phải báo bắt tay, gắn nhãn direct");
+  assert.match(serve, /if \(n > 0\) \{[\s\S]{0,120}o\.onLinkClose\?\.\(pid\);/, "cửa nghe THẲNG báo lúc phiên đến đóng — chỉ phiên đã mở");
 
   const accept = CH.slice(CH.indexOf("async function acceptRelayInvite("), CH.indexOf("const sock = await secureSocket(raw, opts, inv.serverSocket, 20_000);", CH.indexOf("async function acceptRelayInvite(")));
   assert.match(accept, /persistent: true,/, "cửa nghe RELAY phải thường trực — sót là máy kia rụng theo kiểu tung đồng xu");
-  assert.match(accept, /onOpen: \(id: string\) => o\.onLinkOpen\?\.\(id, "relay"\),/, "cửa nghe RELAY phải báo bắt tay, gắn nhãn relay");
+  assert.match(accept, /onOpen: \(id: string\) => \{\s*openedId = id;\s*o\.onLinkOpen\?\.\(id, "relay"\);/, "cửa nghe RELAY phải báo bắt tay, gắn nhãn relay");
+  assert.match(CH, /\} finally \{\s*if \(openedId\) o\.onLinkClose\?\.\(openedId\);/, "cửa nghe RELAY báo lúc đóng, kể cả khi phiên hỏng");
+  assert.match(CH, /onLinkOpen: o\.onLinkOpen,\s*onLinkClose: o\.onLinkClose,/, "chỗ chờ relay chuyển tiếp móc đóng");
   assert.match(accept, /onSyncRound: \(r: SyncOutcome\) => \{/, "cửa nghe RELAY phải báo từng lượt — onDone nay chỉ nổ lúc chết");
 
   // Bề mặt phải DÙNG hố đó, và phiên phải mang danh tính khi báo (cửa nghe không biết trước ai gọi).
-  assert.match(UI, /onLinkOpen: \(peerId: string, via: LinkVia\) => noteInboundLink\(peerId, via\),/, "thẻ phải lên ngay lúc bắt tay ở cửa nghe");
+  assert.match(UI, /onLinkOpen: \(peerId: string, via: LinkVia\) => noteInboundOpen\(peerId, via\),\s*onLinkClose: \(peerId: string\) => noteInboundClose\(peerId\),/, "thẻ phải lên ngay lúc bắt tay ở cửa nghe, và biết lúc nó đóng");
   const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
   assert.match(PEER, /if \(paired\) o\.onOpen\?\.\(peerId \?\? ""\);/, "onOpen phải mang vân tay máy kia");
 });
@@ -249,4 +252,31 @@ test("🔴 'Đồng bộ ngay'/'Thử lại' với máy ĐÃ GHÉP dùng liên k
 test("🔴 vân tay của máy ĐÃ QUEN không phải lời xin ghép (wantPair)", () => {
   assert.match(UI, /const wantPair = Boolean\(raw\) && !st\.peers\.some\(\(p\) => ch\.sameDeviceId\(p, wantId \|\| raw\)\);/,
     "lớp giữ-liên-kết/Thử lại truyền vân tay ⇒ wantPair phải tắt với máy đã có trong sổ");
+});
+
+test("🔴 có phiên ĐẾN đang sống thì KHÔNG gọi đi, và phiên đi hỏng không hạ liên kết (đo 25/09: nhấp nháy 393 lần)", () => {
+  // Hành vi của bộ đếm: đếm theo phiên, đóng một trong hai phiên thì vẫn sống.
+  const id = "TEST-PEER-" + process.pid;
+  assert.equal(inboundAlive(id), false);
+  noteInboundOpen(id, "relay");
+  noteInboundOpen(id, "direct");
+  assert.equal(inboundAlive(id), true);
+  noteInboundClose(id);
+  assert.equal(inboundAlive(id), true, "còn một phiên đến thì vẫn sống");
+  noteInboundClose(id);
+  assert.equal(inboundAlive(id), false, "hết phiên đến thì thôi");
+  noteInboundClose(id);
+  assert.equal(inboundAlive(id), false, "đóng thừa không làm số âm");
+  // Vòng giữ-liên-kết: chốt 'đang có phiên đến' đứng TRƯỚC lời gọi đi, và đứng trước chỗ hạ trạng thái.
+  const UIn = UI.replace(/\r\n/g, "\n"); // ui.ts là CRLF — neo nhiều dòng phải so trên bản đã nắn
+  const kl = UIn.slice(UIn.indexOf("function keepLink("), UIn.indexOf("async function linkTick("));
+  const guard = kl.indexOf("if (inboundAlive(peerId)) {\n        await nap(30_000);\n        continue;");
+  const dial = kl.indexOf("await channelSyncOnce(");
+  assert.ok(guard > 0 && dial > guard, "phải hỏi 'đang có phiên đến?' TRƯỚC khi gọi đi");
+  const noDrop = kl.indexOf("if (inboundAlive(peerId)) {\n        entry.kick = undefined;\n        continue;");
+  const drop = kl.indexOf("rụng — đang nối lại");
+  assert.ok(noDrop > dial && drop > noDrop, "phiên đi hỏng khi phiên đến còn sống: không in 'rụng', không hạ");
+  // Phiên đến cuối cùng đóng ⇒ đánh thức vòng để gọi đi ngay (không chờ 30 s).
+  const cl = UIn.slice(UIn.indexOf("export function noteInboundClose("), UIn.indexOf("function noteInboundLink("));
+  assert.match(cl, /e\.wake\?\.\(\);/, "hết phiên đến phải đánh thức vòng gọi đi");
 });

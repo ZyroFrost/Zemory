@@ -278,3 +278,27 @@ test("`✅` is a CLOSED marker too — the repo's real writing convention (2026-
     s.cleanup();
   }
 });
+
+test("CLI: `--dry-run` must SAY 'would', never 'moved'/'marked' (audit 2026-09-25: it printed 'marked … archived')", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const root = mkdtempSync(join(tmpdir(), "zarch-dry-"));
+  const docsDir = join(root, "docs", "agent");
+  mkdirSync(docsDir, { recursive: true });
+  writeFileSync(join(docsDir, "05_TODO.md"), "# TODO\n\n- [ ] còn mở\n- ✅ **xong rồi**\n");
+  writeFileSync(join(docsDir, "06_CHANGES.md"), "# Change Log\n");
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent" }));
+  writeFileSync(join(root, "AGENTS.md"), "# fixture\n");
+  const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
+  try {
+    const out = execFileSync(process.execPath, [cli, "archive", "--dry-run"], {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, GLOBAL_MEMORY_DB: join(root, "t.db") },
+    });
+    assert.match(out, /would move 1 closed item/, `xem trước phải nói SẼ dời:\n${out}`);
+    assert.doesNotMatch(out, /\bmoved\b|\bmarked\b/, `ca ÂM: xem trước không được nói như đã làm:\n${out}`);
+    assert.doesNotMatch(out.replace(/—/g, ""), /[\u0080-￿]/,"lệnh kỹ thuật in tiếng Anh (luật CLI output = English)");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

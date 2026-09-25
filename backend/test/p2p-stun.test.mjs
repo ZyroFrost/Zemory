@@ -154,7 +154,7 @@ test("stun: danh sách server công khai gồm nhiều NHÀ, và khử trùng th
 // **127.0.0.1**. Nên một cổng dùng `localhost` chứng minh được ĐÚNG đường nào đang chạy.
 
 // RFC 2606: `.invalid` bảo đảm KHÔNG BAO GIỜ giải được ⇒ ca âm không phụ thuộc mạng.
-const KHONG_CO_THAT = "zemory-khong-co-that-abc123.invalid:3478";
+const NONEXISTENT_STUN = "zemory-khong-co-that-abc123.invalid:3478";
 
 test("stun: giải tên bằng bộ giải của HỆ ĐIỀU HÀNH, không chỉ hỏi DNS thẳng", async () => {
   const r = await resolveStunServersDetailed(["localhost:3478"]);
@@ -167,7 +167,7 @@ test("stun: giải tên bằng bộ giải của HỆ ĐIỀU HÀNH, không ch�
 });
 
 test("stun: CA ÂM — tên không tồn tại vào sổ TRƯỢT, không bịa ra một IP", async () => {
-  const r = await resolveStunServersDetailed([KHONG_CO_THAT]);
+  const r = await resolveStunServersDetailed([NONEXISTENT_STUN]);
   assert.equal(r.servers.length, 0, "không giải được thì KHÔNG được đẻ ra server");
   assert.equal(r.unresolved.length, 1, "phải kể tên đã trượt — thiếu nó thì bề mặt không nói được bệnh gì");
 });
@@ -176,7 +176,7 @@ test("stun: bề mặt phân biệt *CHƯA HỎI AI* với *KHÔNG AI TRẢ LỜ
   // Bất biến của cả bản vá: hai câu đó nghĩa khác hẳn nhau và vá hai kiểu khác nhau — một cái là
   // DNS của máy, một cái là mạng/NAT. Gộp chúng làm người đọc đi soi nhầm đầu, và nó đã đốt một
   // lượt chẩn đoán thật (`02_RULES §Hành xử`: chưa xác minh thì chưa phải sự thật).
-  const m = await measureNat({ localPort: 0, servers: [KHONG_CO_THAT] });
+  const m = await measureNat({ localPort: 0, servers: [NONEXISTENT_STUN] });
   assert.equal(m.dns.names, 1, "phải nói đã ĐỊNH hỏi mấy tên");
   assert.equal(m.dns.resolved, 0, "và giải được mấy — 0 nghĩa là bệnh DNS, không phải bệnh mạng");
   assert.equal(m.udp.asked, 0, "chưa giải được tên thì KHÔNG hỏi ai — `asked` phải là 0");

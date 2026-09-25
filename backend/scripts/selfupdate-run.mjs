@@ -60,7 +60,7 @@ function step(label, cmd, args, shell = false) {
     return true;
   } catch (e) {
     const both = (String(e.stdout ?? "") + String(e.stderr ?? "")).trim() || e.message || "failed";
-    say(`  ✗ ${label} HONG: ${both.split(/\r?\n/).slice(-6).join(" | ").slice(0, 500)}`);
+    say(`  ✗ ${label} FAILED: ${both.split(/\r?\n/).slice(-6).join(" | ").slice(0, 500)}`);
     return false;
   }
 }
@@ -68,35 +68,35 @@ function step(label, cmd, args, shell = false) {
 const npm = (args) => step(`npm ${args.join(" ")}`, NPM_CMD, [...NPM_PREFIX, ...args], NPM_SHELL);
 
 (async () => {
-  say(`=== selfupdate bat dau · root=${ROOT} · pid cho=${PID || "(khong)"} · kill=${KILL} · relaunch=${RELAUNCH}`);
+  say(`=== selfupdate start · root=${ROOT} · waiting on pid=${PID || "(none)"} · kill=${KILL} · relaunch=${RELAUNCH}`);
 
   if (PID) {
-    if (KILL && alive(PID)) { say(`· yeu cau daemon pid ${PID} thoat`); try { process.kill(PID); } catch { /* thoat truoc roi */ } }
-    say(`· cho daemon pid ${PID} thoat han (khoa tren dist/ chi nha khi tien trinh chet)`);
+    if (KILL && alive(PID)) { say(`· asking daemon pid ${PID} to exit`); try { process.kill(PID); } catch { /* đã thoát trước rồi */ } }
+    say(`· waiting for daemon pid ${PID} to exit (the lock on dist/ is released only when the process dies)`);
     const gone = await waitForExit(PID, 60_000);
-    if (!gone) { say(`  ✗ pid ${PID} VAN SONG sau 60s — dung lai, KHONG dung de tranh EPERM nua chung`); process.exit(3); }
+    if (!gone) { say(`  ✗ pid ${PID} still alive after 60 s — stopping, not building, to avoid a half-done EPERM`); process.exit(3); }
     // Windows nhả handle trễ hơn lúc tiến trình biến mất một nhịp ngắn.
     await new Promise((r) => setTimeout(r, 1200));
-    say("  ✓ daemon da thoat");
+    say("  ✓ daemon exited");
   }
 
   // Hỏng giữa chừng thì PHẢI trả daemon lại. Đã đo 2026-09-18 ở lượt thử thật: bước pull đỏ,
   // người thợ thoát, và người dùng mất hẳn app — daemon đã tắt từ trước mà không ai bật lại.
   // Bỏ người ta ngồi với màn hình trống là kiểu hỏng tệ hơn cả việc cập nhật không thành.
-  const bail = (code) => { say(`  → cập nhật KHÔNG thành. Trả daemon lại bằng bản đang có.`); relaunch(); process.exit(code); };
+  const bail = (code) => { say(`  → update did not complete. Relaunching the daemon on the current build.`); relaunch(); process.exit(code); };
   if (!step("git pull --ff-only", "git", ["pull", "--ff-only"])) {
-    say("    🔴 nhánh chưa có upstream thì `git pull` không biết kéo từ đâu — đặt bằng");
-    say("       `git branch --set-upstream-to=origin/<nhánh>`; lịch sử bị viết lại thì phải CLONE LẠI.");
+    say("    🔴 a branch with no upstream leaves `git pull` nothing to pull from — set it with");
+    say("       `git branch --set-upstream-to=origin/<branch>`; if history was rewritten, clone again.");
     bail(4);
   }
   if (!npm(["install"])) bail(5);
   if (!npm(["run", "build"])) bail(6);
 
   relaunch();
-  say("=== selfupdate XONG");
+  say("=== selfupdate done");
   cleanupSelf();
   process.exit(0);
-})().catch((e) => { say(`=== selfupdate NO: ${e && e.stack ? e.stack : e}`); cleanupSelf(); process.exit(1); });
+})().catch((e) => { say(`=== selfupdate crashed: ${e && e.stack ? e.stack : e}`); cleanupSelf(); process.exit(1); });
 
 /**
  * Phóng daemon trở lại. Gọi ở CẢ đường thành công lẫn đường hỏng — daemon đã bị tắt từ đầu lượt,
@@ -110,12 +110,12 @@ const npm = (args) => step(`npm ${args.join(" ")}`, NPM_CMD, [...NPM_PREFIX, ...
 function relaunch() {
   if (!RELAUNCH) return;
   const cli = join(ROOT, "dist", "cli.js");
-  if (!existsSync(cli)) { say(`  ✗ khong thay ${cli} — KHONG phong lai duoc`); return; }
+  if (!existsSync(cli)) { say(`  ✗ ${cli} not found — cannot relaunch`); return; }
   const exe = join(ROOT, "dist", "zemory.exe");
   const launcher = existsSync(exe) ? exe : process.execPath;
-  say(`· phong daemon bang ${launcher}`);
+  say(`· launching the daemon with ${launcher}`);
   try { spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: ROOT, windowsHide: true }).unref(); }
-  catch (e) { say(`  ✗ phong lai HONG: ${e && e.message}`); }
+  catch (e) { say(`  ✗ relaunch FAILED: ${e && e.message}`); }
 }
 
 /**

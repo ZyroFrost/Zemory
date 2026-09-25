@@ -254,11 +254,6 @@ export function freshenRow(db: MemoryDB, row: QueueRow, opts: { repoRoot?: strin
   return { ...row, verdict: final, mineHash };
 }
 
-export function queueCount(db: MemoryDB): number {
-  const r = db.prepare("SELECT COUNT(*) AS n FROM peer_file_queue").get() as { n: number };
-  return r.n;
-}
-
 /** Nội dung hai bản của một dòng chờ — để bề mặt xem khác biệt trước khi duyệt (`§9.6`). */
 export function queueBodies(db: MemoryDB, id: number): { theirs: Buffer | null; merged: Buffer | null; row: QueueRow | null } {
   const r = db
@@ -522,15 +517,6 @@ export function mirrorDb(): MemoryDB {
   return mirrorDbCache.db;
 }
 
-/** Đếm nhanh cho huy hiệu trên tab đồng bộ (`§9.6`). Kho không mở được ⇒ 0, không ném. */
-export function mirrorQueueCount(): number {
-  try {
-    return queueCount(mirrorDb());
-  } catch {
-    return 0;
-  }
-}
-
 /**
  * Bộ hook cho lớp phiên (`peer.ts`) — CỬA DUY NHẤT nối dây với trạng thái.
  *
@@ -541,12 +527,47 @@ export function mirrorQueueCount(): number {
  * Fail-open ở mọi nhánh (điều 9): quét hỏng ⇒ kiểm kê rỗng; kho không mở được ⇒ coi như
  * không nhận gì. Lớp mirror hỏng KHÔNG bao giờ được kéo lớp khối theo.
  */
+/**
+ * Bản của máy kia mà ta ĐÃ XÉT và CỐ Ý không nhận — theo máy · đường dẫn · băm CỦA HỌ.
+ *
+ * 🔴 Đo 2026-09-25: máy kia chở lại đúng 4 file docs MỖI LƯỢT (527 lượt liên tiếp). Ta đã sửa chúng
+ * sau lần gặp cuối ⇒ phân loại ra `push` (bản mình mới hơn) ⇒ không ghi, không xếp hàng, và KHÔNG
+ * KHAI gì — nên bên gửi vẫn thấy băm lệch và chở lại mãi. Cùng bệnh với hàng đợi trước khi có `pending`.
+ * Khai kèm `pending` ⇒ bên gửi bỏ qua đúng bản đó; bản đó đổi băm thì lại được chở và XÉT LẠI.
+ * Giữ trong bộ nhớ tiến trình: khởi động lại thì tốn đúng một lượt chở lại rồi tự khai tiếp.
+ */
+const declined = new Map<string, Map<string, string>>();
+
+/**
+ * Hai trí nhớ chống "hỏi lại bản của chính mình" (user 25/09 — máy kia duyệt xong thì máy này lại
+ * bị hỏi về đúng nội dung nó đã gửi đi):
+ *   · `knownBase` — mốc đã ghi, để lượt khớp không phải hỏi kho cho từng file mỗi lượt;
+ *   · `sentHashes` — băm máy này đã CHỞ đi, theo máy · đường dẫn (giữ vài bản gần nhất).
+ * Giữ trong bộ nhớ tiến trình; khởi động lại thì lượt khớp đầu tiên tự dựng lại `knownBase`.
+ */
+const knownBase = new Map<string, string>();
+const sentHashes = new Map<string, string[]>();
+const SENT_KEEP = 8;
+const memKey = (peerId: string, area: string, rel: string): string => `${peerId}\u0000${area}/${rel}`;
+function noteDeclined(peerId: string, area: string, rel: string, theirHash: string | null): void {
+  const k = `${area}/${rel}`;
+  let m = declined.get(peerId);
+  if (!theirHash) {
+    m?.delete(k);
+    return;
+  }
+  if (!m) declined.set(peerId, (m = new Map()));
+  m.set(k, theirHash);
+}
+
 export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: MemoryDB; peerSync?: PeerSyncLookup } = {}): {
   inventory: () => MirrorEntry[];
   read: (area: MirrorArea, rel: string) => Buffer | null;
-  receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string };
+  receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string; verdict?: string };
   mayPush: (peerId: string) => boolean;
   pending: (peerId: string) => Array<{ area: string; rel: string; hash: string }>;
+  converged: (peerId: string, area: MirrorArea, rel: string, hash: string) => void;
+  sent: (peerId: string, area: MirrorArea, rel: string, hash: string) => void;
 } {
   // Tra chiều đồng bộ. Tiêm được vì cổng dựng HAI "máy" trong MỘT tiến trình, mà cấu hình
   // thì chỉ có một — không tiêm thì cả hai máy giả đọc chung một chiều và ca `one-way`
@@ -574,8 +595,18 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
         // Cặp MỘT CHIỀU mà NGUỒN là máy kia ⇒ ta là đích ⇒ áp thẳng, không hàng đợi (§9.2).
         const cfg = lookup(peerId);
         const autoApply = cfg.direction === "one-way" && isSourcePeer(cfg.source, peerId);
+        // Bản quay về đúng là thứ máy này đã chở đi ⇒ hai bên từng khớp ở đó: dời mốc TRƯỚC khi phân
+        // loại, để nó ra "push" (bản mình mới hơn) thay vì "hai bên cùng sửa" — không hỏi lại.
+        const incoming = hashBytes(body);
+        if (!isContentAddressed(area) && (sentHashes.get(memKey(peerId, area, rel)) ?? []).includes(incoming)) {
+          writeBase(opts.db ?? mirrorDb(), peerId, area, rel, incoming, isMergeableText(body) ? body : null);
+          knownBase.set(memKey(peerId, area, rel), incoming);
+        }
         const r = receiveFile(opts.db ?? mirrorDb(), peerId, area, rel, body, { ...opts, autoApply });
-        return { applied: r.applied, queued: r.queued, error: r.error };
+        // Cố ý không nhận (bản mình mới hơn · mình đã xoá) ⇒ nhớ để khai; mọi kết cục khác ⇒ quên.
+        const skip = !r.applied && !r.queued && !r.error && (r.verdict === "push" || r.verdict === "none");
+        noteDeclined(peerId, area, rel, skip ? hashBytes(body) : null);
+        return { applied: r.applied, queued: r.queued, error: r.error, verdict: r.verdict };
       } catch (e) {
         return { applied: false, queued: false, error: e instanceof Error ? e.message : "lỗi khi nhận file" };
       }
@@ -592,12 +623,41 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
      */
     pending: (peerId) => {
       try {
-        return listQueue(opts.db ?? mirrorDb(), peerId)
+        const queued = listQueue(opts.db ?? mirrorDb(), peerId)
           .filter((r) => r.theirHash)
           .map((r) => ({ area: r.area, rel: r.rel, hash: r.theirHash as string }));
+        const skipped = [...(declined.get(peerId) ?? new Map<string, string>())].map(([k, hash]) => {
+          const i = k.indexOf("/");
+          return { area: k.slice(0, i), rel: k.slice(i + 1), hash };
+        });
+        return [...queued, ...skipped];
       } catch {
         return [];
       }
+    },
+    converged: (peerId, area, rel, hash) => {
+      try {
+        const k = memKey(peerId, area, rel);
+        if (knownBase.get(k) === hash) return;
+        const db = opts.db ?? mirrorDb();
+        if (readBase(db, peerId, area, rel)?.hash !== hash) {
+          const root = mirrorRootFor(area, opts);
+          const abs = root ? resolveMirrorPath(root, rel) : null;
+          const body = abs ? safeRead(abs) : null;
+          // Chỉ ghi khi byte trên đĩa ĐÚNG là băm đó — kiểm kê có thể đã cũ một nhịp.
+          if (!body || hashBytes(body) !== hash) return;
+          writeBase(db, peerId, area, rel, hash, isMergeableText(body) ? body : null);
+        }
+        knownBase.set(k, hash);
+      } catch {
+        /* fail-open: thiếu mốc thì cùng lắm hỏi thừa một lần, không làm chết pha mirror */
+      }
+    },
+    sent: (peerId, area, rel, hash) => {
+      const k = memKey(peerId, area, rel);
+      const list = (sentHashes.get(k) ?? []).filter((h) => h !== hash);
+      list.push(hash);
+      sentHashes.set(k, list.slice(-SENT_KEEP));
     },
     mayPush: (peerId) => {
       try {
@@ -622,13 +682,39 @@ function isSourcePeer(source: string | undefined, peerId: string): boolean {
   return n(source) === n(peerId);
 }
 
-/** Dọn mọi dòng chờ của một máy — dùng khi gỡ ghép đôi, để hàng đợi không trỏ vào máy đã đi. */
-export function clearPeerQueue(db: MemoryDB, peerId: string): number {
-  return db.prepare("DELETE FROM peer_file_queue WHERE peer_id=?").run(peerId).changes;
+/**
+ * GỠ MÁY ⇒ quên trọn trạng thái mirror của máy đó: hàng đợi duyệt · mốc `base` · phần đã từ chối.
+ *
+ * 🔴 Hàm tiền thân (`clearPeerQueue`) có từ lúc dựng mirror nhưng KHÔNG AI GỌI (audit 25/09): gỡ máy
+ * xong, các file chờ duyệt của nó vẫn nằm trong *Cụm máy* và nút Nhận vẫn ghi được chúng ra đĩa. Mốc
+ * `base` cũ còn lại thì lần ghép lại sau sẽ phân loại theo một lần gặp đã hết nghĩa.
+ * So vân tay theo dạng CHUẨN HOÁ (bỏ gạch, không phân biệt hoa thường) — sổ và phiên có thể ghi khác nhau.
+ */
+export function forgetPeerMirror(db: MemoryDB, peerId: string): { queue: number; bases: number } {
+  const norm = (s: string): string => s.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const want = norm(peerId);
+  const ids = new Set<string>();
+  for (const tbl of ["peer_file_queue", "peer_file_state"]) {
+    for (const id of db.prepare(`SELECT DISTINCT peer_id FROM ${tbl}`).pluck().all() as string[]) if (norm(id) === want) ids.add(id);
+  }
+  let queue = 0;
+  let bases = 0;
+  for (const id of ids) {
+    queue += db.prepare("DELETE FROM peer_file_queue WHERE peer_id=?").run(id).changes;
+    bases += db.prepare("DELETE FROM peer_file_state WHERE peer_id=?").run(id).changes;
+    declined.delete(id);
+  }
+  for (const k of [...declined.keys()]) if (norm(k) === want) declined.delete(k);
+  for (const m of [knownBase, sentHashes]) for (const k of [...m.keys()]) if (norm(k.split("\u0000")[0]) === want) m.delete(k);
+  return { queue, bases };
 }
 
 /**
  * Hai bên đã HỘI TỤ chưa — chốt ① của `§9.2`, điều kiện để được LẬT CHỦ.
+ *
+ * ⚠ CHƯA NỐI (audit 25/09 thấy không ai gọi) — CỐ Ý GIỮ: đây là "phép đủ" của chốt ① mà `05_TODO`
+ * còn ghi nợ (hiện chỉ có phép XẤP XỈ theo hàng đợi). Nó cần kiểm kê của máy kia, chỉ có trong một
+ * phiên đang chạy. Nối nó thì xoá dòng này; bỏ hẳn chốt ① thì xoá cả hàm.
  *
  * Trả về số file còn lệch. Lật khi chưa hội tụ thì lượt đẩy đầu tiên của chủ mới mang bản
  * THIẾU sang đè bản đủ, và không lỗi nào nổ.

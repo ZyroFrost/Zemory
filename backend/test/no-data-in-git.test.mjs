@@ -15,8 +15,14 @@ import test from "node:test";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { networkInterfaces } from "node:os";
 
 const ROOT = join(import.meta.dirname, "..", "..");
+/** IPv4 thật đang gắn trên card mạng của máy chạy cổng (bỏ loopback, bỏ dải tài liệu 203.0.113/24). */
+const OWN_IPS = Object.values(networkInterfaces())
+  .flat()
+  .filter((n) => n && n.family === "IPv4" && !n.internal && !n.address.startsWith("203.0.113."))
+  .map((n) => n.address);
 const ignored = (p) => {
   try {
     execSync(`git check-ignore -q "${p}"`, { cwd: ROOT, stdio: "pipe" });
@@ -97,6 +103,12 @@ test("no internal IP (private range) in any tracked file", () => {
     if (f === ".gitignore" || f.endsWith("no-data-in-git.test.mjs")) continue;
     const m = RE.exec(t);
     if (m) bad.push(`${f} → ${m[0]}`);
+    // Dải 10.x bị bỏ khỏi RE vì báo oan số version — và đúng lỗ đó đã để IP LAN THẬT của máy này
+    // (`10.101.1.2`) nằm trong 5 file suốt nhiều bản (audit 25/09). Phép không-báo-oan: địa chỉ
+    // ĐANG gắn trên card mạng của chính máy chạy cổng thì không được có trong file nào.
+    for (const ip of OWN_IPS) {
+      if (new RegExp(`(?<![\\d.])${ip.replace(/\./g, "\\.")}(?![\\d.])`).test(t)) bad.push(`${f} → ${ip} (IP của máy này)`);
+    }
   }
   assert.deepEqual(bad, [], `hạ tầng nội bộ trong file được track:\n  ${bad.join("\n  ")}`);
 });

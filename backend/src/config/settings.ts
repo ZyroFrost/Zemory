@@ -673,7 +673,7 @@ export function setPeerSync(peerId: string, cfg: { direction: PeerDirection; sou
   write(c);
 }
 /**
- * Địa chỉ ĐÃ BIẾT của từng máy đã ghép: `{ <device id>: ["10.101.1.2:21038", …] }`.
+ * Địa chỉ ĐÃ BIẾT của từng máy đã ghép: `{ <device id>: ["203.0.113.7:21038", …] }`.
  *
  * Người dùng KHÔNG cầm IP. Mã máy dán sang đã mang sẵn địa chỉ (user chốt 2026-09-19: *"1 id sẽ chứa
  * cả ip"*), nên ghép xong là có đường quay số — kể cả khi hai máy khác mạng, nơi tầng dò LAN không

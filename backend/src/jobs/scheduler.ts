@@ -68,12 +68,13 @@ import { webProfileDir } from "../memory/connections.js";
 import { jarHasSession } from "../memory/borrowcookies.js";
 import { DEFAULT_BACKUP_POLICY, backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
-import { sweepOrphanBrowsers, sweepOrphanTempProfiles } from "../platform/browsersweep.js";
+import type { BrowserSweepResult as OrphanSweepResult } from "../platform/browsersweep.js";
+import { runInWorker } from "./fnworker.js";
 import { daemonLog } from "../logging/daemon-log.js";
-import { sweepScratchpads } from "./scratchpad.js";
+import type { SweepResult as ScratchSweepResult } from "./scratchpad.js";
 import { backgroundChildEnv } from "./childenv.js";
-import { sweepBrowserProfiles } from "../memory/browser-rotate.js";
-import { vectorRemaining } from "../memory/vectors.js";
+import type { BrowserSweepResult as ProfileSweepResult } from "../memory/browser-rotate.js";
+import { vectorRemainingInWorker } from "./vecworker.js";
 import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, type SyncJobStatus, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
 
@@ -326,13 +327,14 @@ async function maintainTick(): Promise<void> {
     //    last seen EMPTY, skip the count for a while (audit 2026-07-21).
     const skipCount = lastEmptyAt !== 0 && Date.now() - lastEmptyAt < IDLE_BACKOFF_MS;
     if (!skipCount) {
-      let remaining = 0;
-      try {
-        remaining = vectorRemaining();
-      } catch {
-        remaining = 0; // vector lane unavailable → fail-open, try next tick
-      }
-      if (remaining > 0) {
+      // Đếm ở WORKER: anti-join toàn bảng từng đứng daemon 3,85 s ngay sau "scan: finished" (đo 25/09).
+      // Worker hỏng/quá giờ ⇒ null ⇒ bỏ lượt đếm này, KHÔNG ghi mốc "trống" (ghi là hoãn đếm oan cả
+      // khoảng chờ), thử lại nhịp sau — và KHÔNG lùi về đếm đồng bộ (đó chính là thứ đang gỡ).
+      const counted = await vectorRemainingInWorker(currentMemoryDb());
+      const remaining = counted ?? 0;
+      if (counted === null) {
+        log("embed backlog: count failed in worker — skipped this tick");
+      } else if (remaining > 0) {
         lastEmptyAt = 0;
         log(`embed backlog ${remaining} — running embed (--all)`);
         await runStep("embed", ["memory", "embed", "--all"]);
@@ -522,9 +524,14 @@ async function backupTick(why: string, fromChain = false): Promise<void> {
  * (chỉ đọc/xoá trong thư mục tạm của host), nên treo nó vào công tắc tính năng khác là tái diễn
  * đúng lỗi đã làm backup chết lặng 4 ngày. Fail-open như mọi lớp phụ (HP điều 9).
  */
-function scratchTick(): void {
+async function scratchTick(): Promise<void> {
+  // 🔴 CẢ BỐN lượt dọn chạy ở WORKER (`fnworker.ts`). Đo 2026-09-25 bằng CPU profiler gắn vào daemon
+  // thật: chúng là `statSync`/`readdirSync` trên cả cây nháp + `execFileSync` liệt kê tiến trình —
+  // ~5 s chặn event loop mỗi lượt, trong khi daemon còn phải giữ liên kết và trả lời bảng số.
+  const scratch = await runInWorker<ScratchSweepResult>("jobs/scratchpad.js", "sweepScratchpads", [{ keepSession: process.env.CLAUDE_SESSION_ID }]);
   try {
-    const r = sweepScratchpads({ keepSession: process.env.CLAUDE_SESSION_ID });
+    if (!scratch.ok) throw new Error(scratch.error);
+    const r = scratch.value;
     if (r.removed.length) {
       const mb = (n: number): string => (n / 1024 / 1024).toFixed(0);
       log(
@@ -538,8 +545,10 @@ function scratchTick(): void {
   }
   // Cùng nhịp 6 giờ, cùng bản chất "rác lớn dần theo GIỜ, nằm dưới đường đã gitignore nên không
   // cổng nào thấy". Bắt riêng try: một lượt hỏng ở đây không được cướp lượt dọn nháp ở trên.
+  const prof = await runInWorker<ProfileSweepResult>("memory/browser-rotate.js", "sweepBrowserProfiles", [{}]);
   try {
-    const b = sweepBrowserProfiles();
+    if (!prof.ok) throw new Error(prof.error);
+    const b = prof.value;
     if (b.reclaimed.length) {
       log(
         `dọn profile trình duyệt: thu hồi ${b.reclaimed.length} bản dời-sang-bên quá ${Math.round(b.keepMs / 86_400_000)} ngày` +
@@ -561,11 +570,15 @@ function scratchTick(): void {
     // hay backup KHÔNG liên quan — chặn theo chúng là biến vòng dọn thành không bao giờ tới lượt.
     const job = daemonJobBusy();
     const busy = webRunning || job === "web-pull" || job === "scan" || cliHoldsWrite();
-    const b = sweepOrphanBrowsers({ profileRoot: join(currentMemoryDir(), "browser"), busy });
+    const orphans = await runInWorker<OrphanSweepResult>("platform/browsersweep.js", "sweepOrphanBrowsers", [{ profileRoot: join(currentMemoryDir(), "browser"), busy }]);
+    if (!orphans.ok) throw new Error(orphans.error);
+    const b = orphans.value;
     if (b.killed.length) {
       log(`dọn trình duyệt mồ côi: đóng ${b.killed.length} tiến trình headless${b.dirs.length ? ` · xoá ${b.dirs.length} profile tạm` : ""}`);
     }
-    const gone = sweepOrphanTempProfiles();
+    const temp = await runInWorker<string[]>("platform/browsersweep.js", "sweepOrphanTempProfiles", []);
+    if (!temp.ok) throw new Error(temp.error);
+    const gone = temp.value;
     if (gone.length) log(`dọn profile tạm không ai giữ: ${gone.length} thư mục`);
   } catch (e) {
     log(`dọn trình duyệt mồ côi bỏ qua: ${(e as Error).message}`);
@@ -1026,8 +1039,8 @@ export function startScheduler(): void {
   // Backup có ĐỒNG HỒ RIÊNG, KHÔNG hỏi `getScheduler()` — xem chú thích ở `backupTick()`.
   // Lệch pha 1/4 chu kỳ để không tới hạn cùng lúc với hai đồng hồ kia (cùng bài học bỏ đói).
   backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
-  scratchTimer = setInterval(scratchTick, SCRATCH_EVERY_MS);
-  setTimeout(scratchTick, 90_000).unref?.(); // mồi một lượt sau khi daemon ổn định
+  scratchTimer = setInterval(() => void scratchTick(), SCRATCH_EVERY_MS);
+  setTimeout(() => void scratchTick(), 90_000).unref?.(); // mồi một lượt sau khi daemon ổn định
   // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
   // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
   // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.

@@ -477,10 +477,10 @@ export function cmdArchive(args: string[] = []): void {
   const flags = args.filter((a) => a.startsWith("-"));
   const unknown = flags.filter((f) => f !== "--dry-run");
   if (unknown.length) {
-    console.log(`zemory archive: cờ không hiểu: ${unknown.join(" ")}`);
+    console.log(`zemory archive: unknown flag: ${unknown.join(" ")}`);
     console.log("  usage: zemory archive [--dry-run]");
-    console.log("  (`--dry-run` = chỉ ĐẾM, không ghi. Lệnh này DỜI NỘI DUNG giữa hai file nên cờ lạ bị TỪ CHỐI");
-    console.log("   thay vì bỏ qua — bỏ qua âm thầm đã khiến `--help` archive thật 5 entry + 6 mục.)");
+    console.log("  (--dry-run only counts, it writes nothing. This command MOVES content between two files,");
+    console.log("   so an unknown flag is refused rather than ignored.)");
     process.exitCode = 1;
     return;
   }
@@ -492,7 +492,7 @@ export function cmdArchive(args: string[] = []): void {
     return;
   }
   const ctx = loadContext(root);
-  if (dryRun) console.log("zemory archive — XEM TRƯỚC (--dry-run): không ghi gì.");
+  if (dryRun) console.log("zemory archive — DRY RUN: nothing will be written.");
   // Both per-session logs get trimmed: 06_CHANGES by oldest ENTRY, 05_TODO by
   // closed ITEM. They fill up at different rates, so each has its own threshold.
   const r = archiveChanges(ctx, currentMemoryDb(), { dryRun });
@@ -511,15 +511,21 @@ export function cmdArchive(args: string[] = []): void {
       );
     }
   } else {
-    console.log(`zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`);
-    console.log(`  active 06_CHANGES.md now ${r.activeLines} lines (history remains searchable).`);
+    // 🔴 Xem trước phải nói "SẼ", không nói "đã" — audit 25/09: dry-run in "marked … archived" trong khi
+    // không ghi gì, đúng kiểu bề mặt nói dối mà cờ này sinh ra để tránh.
+    console.log(
+      dryRun
+        ? `zemory archive: would archive ${r.moved} old entr(ies).`
+        : `zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`,
+    );
+    console.log(`  active 06_CHANGES.md ${dryRun ? "would be" : "now"} ${r.activeLines} lines (history remains searchable).`);
   }
   const t = archiveTodo(ctx, currentMemoryDb(), { dryRun });
   if (t.moved === 0) {
-    console.log(`  05_TODO.md = ${t.activeLines} lines · 0 mục đã đóng để dời (KHÔNG có ngưỡng cho file này).`);
+    console.log(`  05_TODO.md = ${t.activeLines} lines, 0 closed item(s) to move (this file has no threshold).`);
   } else {
-    console.log(`  moved ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
-    console.log(`  active 05_TODO.md now ${t.activeLines} lines (open work only).`);
+    console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
+    console.log(`  active 05_TODO.md ${dryRun ? "would be" : "now"} ${t.activeLines} lines (open work only).`);
   }
 }
 
