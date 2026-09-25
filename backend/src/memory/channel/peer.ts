@@ -186,6 +186,10 @@ export interface SessionOptions {
    * mà thẻ nói dối tới tận lúc soi log. "Đang nối" phải nghĩa là *ống đang mở*, không phải *đã hội tụ*.
    */
   onOpen?: (peerDeviceId: string) => void;
+  /** Tên máy của ta, khai trong `hello`. */
+  hostName?: string;
+  /** Máy kia khai tên trong `hello` ⇒ ghi sổ. */
+  onPeerName?: (peerDeviceId: string, name: string) => void;
   /**
    * Trao cho nơi gọi một TAY ĐÁ: gọi nó là mở lượt đồng bộ kế NGAY, không chờ `ROUND_GAP_MS`.
    *
@@ -539,6 +543,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (m.t === "hello") {
         peerNonce = m.nonce;
         peerVersion = typeof m.appVersion === "string" && m.appVersion ? m.appVersion.slice(0, 20) : "?";
+        if (typeof m.name === "string" && m.name && peerId) o.onPeerName?.(peerId, m.name);
         // Khai năng lực tới TRƯỚC mọi thứ khác, nên tới lúc khai kho ta đã biết có chạy pha
         // mirror hay không. Bản cũ không có trường này ⇒ `undefined` ⇒ tắt, đúng như phải vậy.
         peerMirror = m.mirror === true;
@@ -977,6 +982,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         nonce: myNonce,
         initiator,
         mirror: Boolean(o.mirror),
+        ...(o.hostName ? { name: o.hostName } : {}),
       }),
     );
   });

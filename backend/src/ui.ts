@@ -1826,10 +1826,6 @@ export function kickLink(peerId: string): "kicked" | "redial" | "none" {
   return "redial";
 }
 
-/** Ngắt HẾT — dùng khi tắt kênh hoặc đóng daemon. */
-export function dropAllLinks(): void {
-  for (const id of [...links.keys()]) dropLink(id);
-}
 
 
 /**
@@ -2148,6 +2144,8 @@ async function channelSyncOnce(
         // Lớp MIRROR THƯ MỤC (plan/24 §9) — CÙNG bộ hook với daemon và với CLI. Ba cửa, một
         // bản cài đặt: cửa nào thiếu nó là cửa đó âm thầm bỏ qua bốn thư mục.
         mirror: ch.mirrorHooks(),
+        hostName: hostname(),
+        onPeerName: (id: string, nm: string) => { void import("./config/settings.js").then((s) => s.setPeerName(id, nm)); },
         // Liên kết THƯỜNG TRỰC (nếu lớp giữ-liên-kết xin) — cùng một đường nối, chỉ khác lúc buông.
         ...linkOpts(o.link, "direct"),
         // Máy kia nhận ghép ⇒ ghi vân tay + ĐỊA CHỈ vừa dùng, để lần sau khỏi cần mã lẫn địa chỉ.

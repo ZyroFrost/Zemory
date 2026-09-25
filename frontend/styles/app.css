@@ -690,6 +690,19 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* Nút đang chạy việc: khoá + chấm xoay đứng trước chữ. Dùng chung cho MỌI nút gọi mạng/ghi đĩa —
    bấm mà nút đứng im là người dùng đọc thành "nút hỏng" (user 25/09 với *Đồng bộ ngay*). */
 .btn.busy{pointer-events:none;opacity:.85;display:inline-flex;align-items:center;gap:6px}
+/* Nhãn trạng thái ĐANG CHẠY (thẻ máy "đang nối lại…"): cùng chấm xoay với nút bận — một kiểu cho một nghĩa. */
+/* Popover Mã máy: nổi trên mọi thứ, mã xuống dòng được (không cuộn ngang — §F12). */
+.p2p-pop{position:fixed;z-index:50;display:none;flex-direction:column;gap:8px;width:320px;padding:10px 12px;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.p2p-pop.on{display:flex}
+.p2p-pop-code{font-size:11px;word-break:break-all;color:var(--primary);user-select:all}
+.p2p-pop .btn{align-self:flex-end}
+/* Hàng thông tin "Máy này": nhãn · giá trị (xuống dòng) · cột Copy cố định — nút Copy thẳng cột. */
+.drv-facts>.p2p-fact{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr) 52px;gap:10px;align-items:start}
+.p2p-fact>b{text-align:right;white-space:normal;word-break:break-all;min-width:0}
+.p2p-fact-hint{color:var(--text-faint);font-weight:400;word-break:normal}
+.p2p-fact-act{display:flex;justify-content:flex-end}
+.zspin-lbl{display:inline-flex;align-items:center;gap:5px}
+.zspin-lbl::before{content:'';width:8px;height:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
 .btn.busy::before{content:'';width:9px;height:9px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
 .scanmsg.hit{color:var(--primary);font-weight:600;background:var(--wash);border:1px solid var(--primary-dim);border-radius:7px;padding:5px 9px}
 .scanmsg.err{color:var(--danger);font-weight:600}

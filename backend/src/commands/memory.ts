@@ -944,8 +944,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
         allowedPeers: st.peers,
-        // Lop MIRROR THU MUC (plan/24 §9). CLI phai co NO y het daemon: mot cua thieu la mot
-        // duong dong bo im lang bo qua bon thu muc, va nguoi dung khong co cach nao biet.
+        // Lớp MIRROR THƯ MỤC (plan/24 §9). CLI phải có NÓ y hệt daemon: một cửa thiếu là một
+        // đường đồng bộ im lặng bỏ qua bốn thư mục, và người dùng không có cách nào biết.
         mirror: mirrorHooks(),
       };
       console.log(`zemory memory channel sync — ${host}:${port}`);

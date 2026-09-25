@@ -169,7 +169,12 @@ test("priority is lowered ONLY for MACHINE-initiated work - never for work the u
   );
 
   const ui = read(SCHED.replace("jobs/scheduler.ts", "ui.ts"));
-  const call = /startSyncJob\(([\s\S]*?)\);/su.exec(ui);
+  // Soi lời gọi của NÚT BẤM (`preempt: true`), không soi lời gọi đầu tiên: từ 3.5.14 `ui.ts` còn một lời
+  // gọi của MÁY (nhận khối xong ⇒ giao hợp nhất cho tiến trình con) — cái đó ĐƯỢC hạ ưu tiên, và nó đứng
+  // trước trong file nên neo cũ trỏ nhầm (audit 2026-09-25).
+  const call = /startSyncJob\(([^;]*?preempt:\s*true[\s\S]*?)\);/su.exec(ui);
+  const machine = /startSyncJob\(\(\) => invalidateDashboard\(\), \{ lowPriority: true \}\)/u.test(ui);
+  assert.ok(machine, "lời gọi của máy (nhận khối) phải hạ ưu tiên");
   assert.ok(call, "không tìm thấy lời gọi startSyncJob trong ui.ts");
   assert.ok(
     !/lowPriority/u.test(call[1]),

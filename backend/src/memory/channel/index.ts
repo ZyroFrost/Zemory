@@ -29,7 +29,7 @@ import {
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
-import { getPeerLastSync, setPeerLastSync } from "../../config/settings.js";
+import { getPeerLastSync, getPeerNames, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /**
  * Ghi lại kết cục một lượt nối với một máy — CỬA DUY NHẤT, gọi từ MỌI đường phiên.
@@ -165,6 +165,7 @@ export interface ChannelStatus {
    */
   peerSync: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
   /** Trạng thái ĐÃ TÍNH của từng máy — xem `peerCardState`. Bề mặt vẽ theo đây, không tự phán. */
+  peerNames: Record<string, string>;
   peerState: Record<string, { kind: "lan" | "synced" | "failed" | "never"; at?: string; via?: string }>;
   dir: string;
   /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
@@ -182,6 +183,8 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     peers: getP2pPeers(),
     // Lượt nối gần nhất theo từng máy — thứ thẻ máy cần để thôi nói "chưa rõ" (xem `notePeerSync`).
     peerSync: getPeerLastSync(),
+    // Tên máy đã ghép (từ dò LAN + `hello`) — thẻ in TÊN, không in mẩu vân tay.
+    peerNames: getPeerNames(),
     // Trạng thái ĐÃ TÍNH cho từng máy — bề mặt chỉ việc vẽ, không tự ghép hai nguồn thô.
     peerState: Object.fromEntries(
       getP2pPeers().map((id) => [id, peerCardState(seenPeers().some((s) => sameDeviceId(s.deviceId, id)), getPeerLastSync()[id])]),
@@ -809,6 +812,8 @@ export async function startChannelServer(o: {
         allowedPeers: peers,
         acceptPeer: o.acceptPeer,
         mirror: mirrorHooks(),
+        hostName: hostname(),
+        onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         // 🔴 LỚP NGHE CŨNG PHẢI THƯỜNG TRỰC — một liên kết là thoả thuận của HAI máy.
         //
         // Đo tại trận 2026-09-24, ngay sau khi 3.5.8 lên cả hai máy: cả hai vĩnh viễn hiện *"đang
@@ -853,7 +858,10 @@ export async function startChannelServer(o: {
         deviceId: channelIdentity().deviceId,
         channelPort: server.port,
         allowedPeers: peers,
-        onPeer: (p) => log(`[channel] phát hiện máy ${p.deviceId.slice(0, 11)}… tại ${p.host}:${p.port} (mạng nội bộ)`),
+        onPeer: (p) => {
+          if (p.name) setPeerName(p.deviceId, p.name); // dò LAN có tên ⇒ nhớ, để khi đi relay thẻ vẫn in tên
+          log(`[channel] phát hiện máy ${p.deviceId.slice(0, 11)}… tại ${p.host}:${p.port} (mạng nội bộ)`);
+        },
       });
     } catch (e) {
       log(`[channel] không bật được dò mạng nội bộ: ${e instanceof Error ? e.message.slice(0, 90) : e}`);
@@ -1086,6 +1094,8 @@ async function acceptRelayInvite(
       allowedPeers: peers,
       acceptPeer: o.acceptPeer,
       mirror: mirrorHooks(),
+      hostName: hostname(),
+      onPeerName: (id: string, nm: string) => setPeerName(id, nm),
       log,
       // 🔴 Cửa NGHE QUA RELAY cũng phải thường trực. Đo 25/09: `phiên qua relay với … — 0 khối`
       // lúc 16:58:37 là cửa này đóng ống sau MỘT lượt — đúng lỗ đã vá ở cửa nghe thẳng (3.5.10)
@@ -1199,6 +1209,8 @@ export async function syncViaRelay(o: {
         acceptPeer: o.acceptPeer,
         onPaired: o.onPaired,
         mirror: mirrorHooks(),
+        hostName: hostname(),
+        onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         log: say,
         ...(o.link ?? {}),
       };
@@ -1303,7 +1315,7 @@ export function channelServingPort(): number | null {
  */
 export function parsePeerAddress(raw: string, fallbackPort = 21038): { host: string; port: number } | null {
   const s0 = (raw ?? "").trim().replace(/^[a-z]+:\/\//i, "");
-  // 🔴 IPv4 ánh xạ vào IPv6 KÈM cổng (`::ffff:192.168.1.29:21038`) — ca duy nhất mà luật *"nhiều
+  // 🔴 IPv4 ánh xạ vào IPv6 KÈM cổng (`::ffff:203.0.113.29:21038`) — ca duy nhất mà luật *"nhiều
   // dấu `:` không ngoặc ⇒ IPv6 trần, đừng cắt"* trả lời SAI. Nắn về IPv4 trước khi vào luật đó.
   //
   // Gốc đã vá ở `normalizeSourceHost` (dò LAN không còn sinh ra dạng này). Vẫn chặn ở đây vì máy

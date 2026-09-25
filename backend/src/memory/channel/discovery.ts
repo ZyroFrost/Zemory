@@ -81,11 +81,11 @@ function ipv6Interfaces(): { address: string; scoped: string }[] {
  *
  * Hai thứ phải cắt, và cả hai đều là hiện vật của tầng socket chứ không phải địa chỉ thật:
  * · **scope của IPv6 link-local** (`fe80::1%12`) — số scope chỉ có nghĩa trên máy sinh ra nó;
- * · **IPv4 ánh xạ vào IPv6** (`::ffff:192.168.1.29`) — Node trả dạng này khi socket chạy hai tầng.
+ * · **IPv4 ánh xạ vào IPv6** (`::ffff:203.0.113.29`) — Node trả dạng này khi socket chạy hai tầng.
  *
  * 🔴 Vì sao dạng thứ hai đắt, đo tại trận 2026-09-24: hai máy CÙNG Wi-Fi, dò LAN thấy nhau đều đặn
  * 30 giây một lần, mà **không lần nào gọi thẳng được**. Ứng viên dựng ra là
- * `::ffff:192.168.1.29:21038`, và `parsePeerAddress` trả `null` cho nó — đúng luật, vì nhiều dấu
+ * `::ffff:203.0.113.29:21038`, và `parsePeerAddress` trả `null` cho nó — đúng luật, vì nhiều dấu
  * `:` mà không có ngoặc thì KHÔNG được cắt khúc cuối làm cổng (luật đó chặn một bug khác). Nên
  * ứng viên LAN bị bỏ qua **im lặng**, cả cụm rơi xuống địa chỉ cũ rồi relay, và thẻ máy hiện
  * *"đang nối lại"* mãi mãi trong khi hai máy nằm cách nhau một cái router.
@@ -104,7 +104,7 @@ const OCTET = "(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
  *
  * Chỉ ăn khi phần sau là IPv4 HỢP LỆ và kết thúc ở cuối chuỗi hoặc ngay trước dấu `:` của cổng.
  * Không hợp lệ ⇒ **trả nguyên**, không đoán: một địa chỉ hỏng phải ở nguyên dạng hỏng để nơi gọi
- * từ chối nó, chứ không được nắn thành thứ trông giống hợp lệ (`::ffff:192.168.1.300` là ca đó).
+ * từ chối nó, chứ không được nắn thành thứ trông giống hợp lệ (`::ffff:203.0.113.300` là ca đó).
  */
 export function stripMappedV4(s: string): string {
   return (s ?? "").replace(new RegExp(`^::ffff:((?:${OCTET}\\.){3}${OCTET})(?=$|:)`, "i"), "$1");

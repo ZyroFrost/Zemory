@@ -40,6 +40,8 @@ export interface HelloMessage {
    * thêm một khoá là an toàn một chiều; vắng khoá ⇒ coi là KHÔNG có ⇒ bỏ hẳn pha mirror.
    */
   mirror?: boolean;
+  /** Tên máy (hostname) — để máy kia in TÊN thay cho vân tay khi không thấy nhau trên LAN. Bản cũ không gửi. */
+  name?: string;
 }
 export interface ProofMessage {
   t: "proof";
