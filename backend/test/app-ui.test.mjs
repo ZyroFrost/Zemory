@@ -2295,3 +2295,15 @@ test("mọi data-act đặt trong JS đều phải có chỗ BẮT — nút khô
   const orphan = declared.filter((a) => !src.includes(`act==='${a}'`));
   assert.deepEqual(orphan, [], `Hành động không có chỗ bắt (bấm sẽ không xảy ra gì): ${orphan.join(" · ")}`);
 });
+
+test("🔴 thẻ máy phải TỰ vẽ lại theo nhịp khi tab máy-tới-máy đang mở — không phải ảnh chụp", () => {
+  // Đo 2026-09-25: backend `up · relay` từ 01:59:39, thẻ vẫn "đang nối lại" tới khi mở lại tab.
+  // `loadChannel()` chỉ chạy lúc mở tab và sau cú bấm; nhật ký có đồng hồ 15 s, thẻ thì không.
+  // Cùng một đồng hồ, cùng công tắc "tab đang mở" — và vẫn giữ sàn 15 s của cổng ngay trên.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const tick = gm.slice(gm.indexOf("function logTick(on){"), gm.indexOf("window.zP2pLogTick=logTick;"));
+  assert.ok(tick.length > 0, "không thấy logTick — neo đã chết");
+  assert.match(tick, /setInterval\(function\(\)\{loadLog\(\);loadChannel\(\);\},15000\)/, "thẻ máy phải đi cùng nhịp 15 s với nhật ký");
+  assert.match(tick, /if\(on\)\{loadLog\(\);loadChannel\(\);/, "mở tab là vẽ ngay, không đợi nhịp đầu");
+  assert.doesNotMatch(tick, /setInterval\([^)]*,\s*(\d{1,4})\)/, "không được rút dưới sàn 15 s");
+});
