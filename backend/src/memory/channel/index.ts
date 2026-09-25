@@ -1162,7 +1162,7 @@ export async function syncViaRelay(o: {
    * relay là đường duy nhất nối được (đo suốt 23–24/09). Bật thường trực ở mỗi đường gọi thẳng là
    * để đúng ca người dùng đang gặp chạy y như cũ — nối rồi rụng.
    */
-  link?: Pick<SessionOptions, "persistent" | "stop" | "onSyncRound" | "onOpen" | "roundGapMs" | "pingIdleMs" | "linkDeadMs">;
+  link?: Pick<SessionOptions, "persistent" | "stop" | "onSyncRound" | "onOpen" | "onKick" | "roundGapMs" | "pingIdleMs" | "linkDeadMs">;
 }): Promise<SyncOutcome | null> {
   const say = o.log ?? ((): void => {});
   const until = Date.now() + (o.budgetMs ?? 45_000);

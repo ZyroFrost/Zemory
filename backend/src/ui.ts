@@ -1716,7 +1716,7 @@ export type LinkVia = "direct" | "relay";
 /** Phần tuỳ chọn của phiên mà lớp liên kết cần luồn xuống — MỘT chỗ khai, ba cửa dùng lại. */
 type LinkOptions = Pick<
   import("./memory/channel/peer.js").SessionOptions,
-  "persistent" | "stop" | "onSyncRound" | "roundGapMs" | "pingIdleMs" | "linkDeadMs"
+  "persistent" | "stop" | "onSyncRound" | "onKick" | "roundGapMs" | "pingIdleMs" | "linkDeadMs"
 > & {
   /** Bắt tay xong — kèm ĐƯỜNG đã đi, vì phiên không tự biết nó đang chạy trên relay hay gọi thẳng. */
   onOpen?: (via: LinkVia) => void;
@@ -1744,6 +1744,12 @@ interface LinkEntry {
   lastError?: string;
   /** Đường đang đi — có từ lúc bắt tay xong. `relay` mà máy kia hiện trên LAN thì `linkTick` đổi đường. */
   via?: LinkVia;
+  /** Tay đá của phiên đang sống — mở lượt kế NGAY. Xem `SessionOptions.onKick`. */
+  kick?: () => boolean;
+  /** Cắt giấc ngủ thụt lùi — nối lại NGAY thay vì chờ tới 60 s. */
+  wake?: () => void;
+  /** Lượt đồng bộ gần nhất đã đóng sổ — mặt trước so mốc này với lúc bấm để biết "đã xong chưa". */
+  lastRound?: { at: number; receivedBlocks: number; sentBlocks: number; receivedFiles: number; sentFiles: number; queuedFiles: number };
 }
 
 /** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
@@ -1780,10 +1786,10 @@ function noteInboundLink(peerId: string, via?: LinkVia): void {
 }
 
 /** Ảnh chụp cho bề mặt. Trả bản sao: bề mặt không được cầm tham chiếu vào trạng thái sống. */
-export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia }> {
-  const out: Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia }> = {};
+export function linkStates(): Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia; lastRound?: LinkEntry["lastRound"] }> {
+  const out: Record<string, { state: LinkState; since: number; fails: number; error?: string; via?: LinkVia; lastRound?: LinkEntry["lastRound"] }> = {};
   for (const [id, e] of links) {
-    out[id] = { state: e.state, since: e.since, fails: e.fails, ...(e.lastError ? { error: e.lastError } : {}), ...(e.via ? { via: e.via } : {}) };
+    out[id] = { state: e.state, since: e.since, fails: e.fails, ...(e.lastError ? { error: e.lastError } : {}), ...(e.via ? { via: e.via } : {}), ...(e.lastRound ? { lastRound: e.lastRound } : {}) };
   }
   return out;
 }
@@ -1803,12 +1809,28 @@ export function dropLink(peerId: string): boolean {
   return true;
 }
 
+/**
+ * *Đồng bộ ngay* / *Thử lại* cho MỘT máy đã ghép — một cửa, dùng lại liên kết đang có.
+ *
+ * · Liên kết đang sống ⇒ đá một lượt NGAY trên chính ống đó (`kicked`). Không dựng phiên thứ hai:
+ *   bản trước dựng lại từ đầu và mất hơn 90 giây, trong khi ống đã mở sẵn.
+ * · Chưa có liên kết ⇒ đánh thức vòng nối lại NGAY, xoá thụt lùi (`redial`).
+ * · Không có vòng nào cho máy này (kênh vừa bật, sổ vừa đổi) ⇒ `none`, nơi gọi tự dựng.
+ */
+export function kickLink(peerId: string): "kicked" | "redial" | "none" {
+  const e = links.get(peerId);
+  if (!e) return "none";
+  if (e.state === "up" && e.kick && e.kick()) return "kicked";
+  e.fails = 0;
+  e.wake?.();
+  return "redial";
+}
+
 /** Ngắt HẾT — dùng khi tắt kênh hoặc đóng daemon. */
 export function dropAllLinks(): void {
   for (const id of [...links.keys()]) dropLink(id);
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms).unref?.());
 
 /**
  * GIỮ một liên kết sống với một máy, tới khi có người ngắt.
@@ -1850,9 +1872,21 @@ function keepLink(peerId: string, projectRoot: string): void {
               cur.fails = 0;
               delete cur.lastError;
             },
-            onSyncRound: (): void => {
+            onKick: (k): void => {
+              const cur = links.get(peerId);
+              if (cur && cur.ctrl === ctrl) cur.kick = k;
+            },
+            onSyncRound: (r): void => {
               const cur = links.get(peerId);
               if (!cur || cur.ctrl !== ctrl) return;
+              cur.lastRound = {
+                at: Date.now(),
+                receivedBlocks: r.receivedBlocks,
+                sentBlocks: r.sentBlocks,
+                receivedFiles: r.receivedFiles,
+                sentFiles: r.sentFiles,
+                queuedFiles: r.queuedFiles,
+              };
               if (cur.state !== "up") {
                 cur.state = "up";
                 cur.since = Date.now();
@@ -1876,8 +1910,19 @@ function keepLink(peerId: string, projectRoot: string): void {
         entry.since = Date.now();
         daemonLog(`[channel] liên kết với ${peerId.slice(0, 11)}… rụng — đang nối lại`);
       }
+      entry.kick = undefined; // ống cũ đã chết — tay đá của nó không còn nghĩa
       entry.fails++;
-      await sleep(reconnectDelayMs(entry.fails));
+      // Ngủ thụt lùi mà ĐÁNH THỨC được: người bấm *Thử lại* thì nối lại NGAY, không chờ tới 60 s.
+      await new Promise<void>((resolve) => {
+        const done = (): void => {
+          clearTimeout(tm);
+          if (entry.wake === done) entry.wake = undefined;
+          resolve();
+        };
+        const tm = setTimeout(done, reconnectDelayMs(entry.fails));
+        tm.unref?.();
+        entry.wake = done;
+      });
     }
     if (links.get(peerId) === entry) links.delete(peerId);
   })();
@@ -3735,6 +3780,27 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       }
       // Người BẤM = lượt có chủ đích: trần 25 giây cho cả lượt, và ĐƯỢC mở chỗ chờ đục lỗ.
       const typed = (u.searchParams.get("host") ?? "").trim();
+      // 🔴 MÁY ĐÃ GHÉP ⇒ dùng LIÊN KẾT ĐANG CÓ, không dựng phiên thứ hai. Bản trước luôn dựng lại từ
+      // đầu (dò địa chỉ → gọi thẳng → relay → chỗ chờ đục lỗ): đo 2026-09-25 không trả lời sau 90
+      // giây, nút không xoay, người dùng đọc thành "nút hỏng" — trong khi ống đã mở sẵn. Nay: đá một
+      // lượt trên ống đó, hoặc đánh thức vòng nối lại. Trả lời TỨC THÌ; mặt trước theo dõi kết quả
+      // qua `links[id].lastRound` / `state`. Đường dựng-từ-đầu chỉ còn cho máy CHƯA ghép (dán mã).
+      const pairedNow = ch2.channelStatus().peers;
+      const targetIds = typed ? pairedNow.filter((pid) => ch2.sameDeviceId(pid, typed)) : syncTargets("", pairedNow);
+      if (targetIds.length) {
+        if (!ch2.channelStatus().enabled) return json(res, { ok: false, error: "kênh máy-tới-máy đang tắt" });
+        const at = Date.now();
+        const actions: Record<string, "kicked" | "redial"> = {};
+        for (const pid of targetIds) {
+          const a = kickLink(pid);
+          if (a === "none") {
+            // Chưa có vòng nào (kênh vừa bật, sổ vừa đổi) ⇒ dựng ngay, không đợi nhịp canh sổ 30 giây.
+            void linkTick(root());
+            actions[pid] = "redial";
+          } else actions[pid] = a;
+        }
+        return json(res, { ok: true, at, actions });
+      }
       if (typed) {
         return json(res, await channelSyncOnce(syncTargets(typed, [])[0], { budgetMs: 25_000, armWait: true, projectRoot: root() }));
       }

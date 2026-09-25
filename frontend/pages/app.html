@@ -471,6 +471,7 @@
                 <div id="p2pQueue"></div>
                 <div id="p2pCluster" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>
                 <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ ngay</button></div>
+                <div id="p2pMsg" class="scanmsg" aria-live="polite"></div>
                 <div id="p2pSeenList" class="filters" style="margin:0"></div>
                 <div class="section-t" data-i18n="p2p.foldersH">Thư mục sẽ đồng bộ</div>
                 <div class="muted" style="font-size:11px;margin:0;line-height:1.7">
@@ -489,7 +490,6 @@
             <div class="card-h"><div class="t" data-i18n="p2p.logH">Nhật ký kênh</div><div class="fchip on" id="p2pLogOnly" data-i18n-title="p2p.logOnlyD" title="Bật: chỉ hiện dòng của kênh máy-tới-máy. Tắt: hiện mọi dòng nhật ký của app." data-i18n="p2p.logOnly">Chỉ kênh</div><div class="fchip" id="p2pLogHold" data-i18n-title="p2p.logHoldD" title="Giữ nguyên chỗ đang đọc, không cho nhật ký tự nhảy xuống đáy khi làm mới." data-i18n="p2p.logHold">Dừng cuộn</div><span class="fchip muted" id="p2pLogPath" style="border:0;margin-left:auto;max-width:44%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
             <div class="card-b">
               <pre id="p2pLog" style="max-height:190px;overflow:auto;margin:0;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:10.5px;line-height:1.55;white-space:pre-wrap;word-break:break-all;color:var(--text-dim)"></pre>
-              <div id="p2pMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
             </div>
           </div>
         </div>

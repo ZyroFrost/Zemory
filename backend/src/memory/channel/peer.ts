@@ -186,6 +186,16 @@ export interface SessionOptions {
    * mà thẻ nói dối tới tận lúc soi log. "Đang nối" phải nghĩa là *ống đang mở*, không phải *đã hội tụ*.
    */
   onOpen?: (peerDeviceId: string) => void;
+  /**
+   * Trao cho nơi gọi một TAY ĐÁ: gọi nó là mở lượt đồng bộ kế NGAY, không chờ `ROUND_GAP_MS`.
+   *
+   * 🔴 Vì sao phải có: nút *Đồng bộ ngay* trước đây dựng một phiên nối MỚI từ đầu (dò địa chỉ →
+   * gọi thẳng → relay) trong khi liên kết thường trực đã có sẵn — đo 2026-09-25: không trả lời sau
+   * **90 giây**, nút không xoay, người dùng đọc thành "nút hỏng". Liên kết đang sống thì việc đúng
+   * là một khung `have` trên chính ống đó — vài mili-giây.
+   * Trả `true` nếu đã mở lượt (hoặc một lượt đang chạy sẵn), `false` nếu ống đã chết.
+   */
+  onKick?: (kick: () => boolean) => void;
   /** Im bao lâu thì bắn nhịp tim. Mặc định `PING_IDLE_MS` — cổng hạ xuống vài trăm ms để soi nhanh. */
   pingIdleMs?: number;
   /** Không nghe thấy gì bao lâu thì coi là đứt (chỉ ở chế độ thường trực). Mặc định `LINK_DEAD_MS`. */
@@ -537,6 +547,21 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         proofOk = true;
         // Máy đã quen + cùng chìa ⇒ liên kết SỐNG ngay tại đây, không đợi lượt đầu đóng sổ.
         if (paired) o.onOpen?.(peerId ?? "");
+        if (paired && persistent) {
+          o.onKick?.((): boolean => {
+            if (settled) return false;
+            // Đang giữa một lượt ⇒ lượt đó chính là thứ người bấm muốn; đá thêm là chồng hai lượt.
+            if (!roundTimer) return true;
+            clearTimeout(roundTimer);
+            roundTimer = null;
+            try {
+              sendHave();
+            } catch {
+              return false;
+            }
+            return true;
+          });
+        }
         // Bên GỌI đang nối tới máy chưa quen ⇒ xin nhận trước khi khai kho.
         //
         // 🔴 `acceptPeer` cũng tính là "sẵn sàng làm quen", không riêng `wantPair`. Thiếu vế đó
@@ -586,6 +611,16 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "have") {
+        // 🔴 Máy kia MỞ LƯỢT trong lúc ta đang chờ lượt kế ⇒ NHẬP lượt đó ngay. Một lượt chỉ đóng sổ
+        // khi CẢ HAI bên đã khai `have` (mỗi bên chở phần bên kia thiếu dựa trên `have` nhận được);
+        // tay đá (`onKick`) chỉ làm MỘT bên khai, bên kia vẫn ngủ tới `roundGapMs` — cổng bắt đúng
+        // ca này: đá xong, lượt thứ hai không bao giờ đóng sổ. Lượt đầu `roundTimer` là null nên
+        // không khai đôi; hai đồng hồ nổ cùng lúc thì bên nhận thấy `roundTimer` đã null, cũng không.
+        if (persistent && roundTimer) {
+          clearTimeout(roundTimer);
+          roundTimer = null;
+          sendHave();
+        }
         // 🔴 Nhận `have` trong lúc ĐANG XIN ghép = bên kia VỐN ĐÃ quen ta. Đó chính là lời
         // chấp nhận, chỉ đến bằng một đường khác — và nó tới TRƯỚC lời xin của ta vì bên kia
         // khai kho ngay sau bước chứng minh chìa, không đợi ai.
@@ -699,6 +734,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       mGotDone = false;
       if (roundTimer) clearTimeout(roundTimer);
       roundTimer = setTimeout(() => {
+        roundTimer = null; // hết chờ ⇒ đang chạy lượt; tay đá đọc biến này để biết
         if (settled) return;
         // Khai lại kho của mình = mở lượt mới. Máy kia thấy `have` thì tự chở phần ta còn thiếu,
         // đúng một bản luật với lượt đầu — không có đường đồng bộ thứ hai (HP điều 17).

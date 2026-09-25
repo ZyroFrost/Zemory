@@ -221,7 +221,65 @@
   // 🔴 Hai khái niệm tách đôi, và bề mặt phải nói ra điều đó:
   //    công tắc = có NHẬN không (bật cùng lúc với Drive được)
   //    ô chọn   = GỬI đi đâu, ĐÚNG MỘT (hai kẻ cùng ghi đã hỏng kho HAI LẦN — HP điều 11).
-  function p2pMsg(s){zset('p2pMsg',s||'');}
+  /** Dòng trạng thái NGAY DƯỚI hàng nút. `kind`: run (đang chạy, có chấm xoay) · hit · err · none. */
+  function p2pMsg(s,kind){
+    var el=zid('p2pMsg'); if(!el)return;
+    el.textContent=s||'';
+    el.className='scanmsg'+(kind?' '+kind:'');
+  }
+  /** Khoá một nút + chấm xoay trong lúc việc của nó chạy. Bấm dồn thì bỏ qua (`data-busy`). */
+  function btnBusy(b,on){
+    if(!b)return;
+    if(on){b.dataset.busy='1';b.disabled=true;b.classList.add('busy');}
+    else{delete b.dataset.busy;b.disabled=false;b.classList.remove('busy');}
+  }
+  /**
+   * Theo dõi một cú *Đồng bộ ngay* / *Thử lại* tới khi nó THẬT SỰ xong — không phải tới khi HTTP trả.
+   *
+   * Endpoint trả lời tức thì (đá một lượt trên liên kết đang có, hoặc đánh thức vòng nối lại). "Xong"
+   * nghĩa là: lượt đồng bộ đóng sổ SAU mốc bấm (`lastRound.at >= at`), hoặc liên kết đã `up`. Hỏi
+   * mỗi 2 giây, TỐI ĐA 20 lần và CHỈ trong lúc có người vừa bấm — không phải nhịp nền. Quá hạn thì
+   * nói thật là chưa xong, vẫn chạy nền; không giả vờ ✓.
+   */
+  function watchKick(r,btn){
+    var ids=Object.keys(r.actions||{}); var at=r.at||Date.now(); var tries=0;
+    var anyKick=ids.some(function(id){return r.actions[id]==='kicked';});
+    p2pMsg(anyKick?t('p2p.kickRun'):t('p2p.redialRun'),'run');
+    (function step(){
+      zGet('/channel-status').then(function(c){
+        renderChannel(c);
+        var L=(c&&c.links)||{}; var done=[]; var pend=0;
+        ids.forEach(function(id){
+          var k=L[id]||{};
+          if(r.actions[id]==='kicked'){ if(k.lastRound&&k.lastRound.at>=at)done.push(k.lastRound); else pend++; }
+          else if(k.state==='up')done.push(null); else pend++;
+        });
+        if(!pend){
+          btnBusy(btn,false);
+          var lr=done.filter(Boolean)[0];
+          p2pMsg('✓ '+(lr?syncResultText(Object.assign({peerDeviceId:ids[0]},lr)):t('p2p.redialDone')),'hit');
+          loadQueue();
+          return;
+        }
+        if(++tries>=20){btnBusy(btn,false);p2pMsg(anyKick?t('p2p.kickSlow'):t('p2p.redialSlow'),'none');return;}
+        setTimeout(step,2000);
+      }).catch(function(){btnBusy(btn,false);p2pMsg(t('p2p.logErr'),'err');});
+    })();
+  }
+  /** Một cửa cho hai nút (*Đồng bộ ngay* · *Thử lại*): khác nhau đúng ở `host`. */
+  function p2pKick(btn,host){
+    if(btn&&btn.dataset.busy)return;
+    btnBusy(btn,true);
+    p2pMsg(t('p2p.syncing'),'run');
+    zPost('/channel-sync'+(host?'?host='+encodeURIComponent(host):'')).then(function(r){
+      if(r&&r.ok&&r.actions){watchKick(r,btn);return;}
+      btnBusy(btn,false);
+      if(!r||r.ok===false){p2pMsg('✗ '+p2pWhy((r&&r.error)||''),'err');loadChannel();return;}
+      if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''),'none');loadChannel();return;}
+      p2pMsg('✓ '+syncResultText(r),'hit');
+      loadChannel();
+    }).catch(function(){btnBusy(btn,false);p2pMsg(t('p2p.logErr'),'err');});
+  }
   // `ETIMEDOUT` không nói được phải đi soi đâu. Ba nhóm dưới là ba CHẨN ĐOÁN KHÁC NHAU, gộp thành
   // một chữ "lỗi" là bắt người dùng đoán. Mã lạ thì trả NGUYÊN VĂN — đừng nuốt thứ mình chưa biết.
   function p2pWhy(e){
@@ -506,6 +564,8 @@
       return;
     }
     if(act==='mir-all'){
+      if(el.dataset.busy)return;
+      btnBusy(el,true);
       // Chỉ nhóm KHÔNG trùng đoạn. Lấy lại danh sách từ server thay vì tin DOM: DOM có thể cũ
       // hơn kho nếu vừa có một lượt đồng bộ chạy nền.
       zGet('/mirror-queue').then(function(r){
@@ -518,7 +578,7 @@
           });
         });
         return chain;
-      }).then(loadQueue).catch(loadQueue);
+      }).then(loadQueue).catch(loadQueue).then(function(){btnBusy(el,false);});
       return;
     }
     // Nhánh TƯỜNG MINH, không dùng đường rơi-xuống: một hành động mới lọt vào bộ chọn ở trên
@@ -527,24 +587,19 @@
     if(act==='p2p-retry'){
       // Thử lại với ĐÚNG máy này. Truyền ID làm `host` — `channelSyncOnce` nhận cả ID lẫn địa
       // chỉ, và ID mở được cả cụm dò toàn cầu lẫn relay (địa chỉ trần thì không).
-      var pid=el.getAttribute('data-id')||'';
-      p2pMsg(t('p2p.syncing'));
-      zPost('/channel-sync?host='+encodeURIComponent(pid)).then(function(r){
-        if(!r||r.ok===false){p2pMsg('✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
-        if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
-        p2pMsg('✓ '+syncResultText(r));
-        loadChannel();
-      }).catch(function(){p2pMsg(t('p2p.logErr'));});
+      p2pKick(el,el.getAttribute('data-id')||'');
       return;
     }
     if(act==='mir-apply'){
+      if(el.dataset.busy)return;
+      btnBusy(el,true);
       zPost('/mirror-apply?id='+encodeURIComponent(el.getAttribute('data-id'))+'&choice='+encodeURIComponent(el.getAttribute('data-choice'))+'&seen='+encodeURIComponent(el.getAttribute('data-seen')||''))
         .then(function(r){
           // Bị TỪ CHỐI (tệp đã đổi từ lúc nhận) thì phải nói ra — im lặng rồi vẽ lại là người dùng
           // tưởng nút không ăn, bấm tiếp, và lần thứ hai có thể ăn thật lên bản mới nhất.
-          if(r&&r.ok===false)p2pMsg('✗ '+(r.error||t('mir.err')));
+          if(r&&r.ok===false)p2pMsg('✗ '+(r.error||t('mir.err')),'err');
           return loadQueue();
-        }).catch(loadQueue);
+        }).catch(loadQueue).then(function(){btnBusy(el,false);});
     }
   });
 
@@ -711,14 +766,15 @@
       var uid=el.getAttribute('data-id')||'';
       if(!uid)return;
       // Khoá nút ngay: một lượt xoá là lời gọi mạng, và bấm hai lần là hai lượt ghi vào cùng sổ.
-      el.disabled=true;
+      if(el.dataset.busy)return;
+      btnBusy(el,true);
       zPost('/channel-pair?drop=1&id='+encodeURIComponent(uid)).then(function(r){
         // Hỏng thì MỞ LẠI nút và nói ra — không để một nút chết im lặng (`save-never-silent`).
-        if(!r||r.ok===false){el.disabled=false;p2pMsg('✗ '+((r&&r.error)||t('q.err')));return;}
+        if(!r||r.ok===false){btnBusy(el,false);p2pMsg('✗ '+((r&&r.error)||t('q.err')));return;}
         // Thẻ máy dựng từ SỔ, nên nạp lại là nó biến mất — không tự gỡ node bằng tay, tránh
         // để màn hình và sổ nói hai chuyện khác nhau.
         loadChannel();
-      }).catch(function(){el.disabled=false;p2pMsg('✗ '+t('q.err'));});
+      }).catch(function(){btnBusy(el,false);p2pMsg('✗ '+t('q.err'));});
       return;
     }
     if(act==='p2p-toggle'){
@@ -735,26 +791,21 @@
       // (user báo 2026-09-20 — lúc đó endpoint đang trả ETIMEDOUT đều đặn).
       var ad=((zid('p2pAddrIn')||{}).value||'').trim();
       if(!ad){zset('addPeerMsg',t('p2p.byAddrNeed'));return;}
+      if(el.dataset.busy)return;
+      btnBusy(el,true);
       zset('addPeerMsg',t('p2p.syncing'));
       zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
+        btnBusy(el,false);
         if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
         // CHỖ CHỜ: `ok:true` mà 0 khối KHÔNG phải "đã xong". Thiếu nhánh này thì bề mặt in
         // "✓ gửi 0 · nhận 0" cho một việc chưa xảy ra — đúng kiểu nói dối §F3 cấm.
         if(r.waiting){zset('addPeerMsg',t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
         zset('addPeerMsg','✓ '+syncResultText(r));
         loadChannel();
-      });
+      }).catch(function(){btnBusy(el,false);zset('addPeerMsg',t('p2p.logErr'));});
     }
     else if(act==='p2p-sync'){
-      p2pMsg(t('p2p.syncing'));
-      zPost('/channel-sync').then(function(r){
-        // Lỗi trả NGUYÊN VĂN: "khác chìa" và "máy lạ" là hai chuyện khác nhau, gộp thành
-        // một chữ "lỗi" là bắt người dùng đoán (cùng doctrine `save-never-silent`).
-        if(!r||r.ok===false){p2pMsg('✗ '+((r&&r.error)||''));loadChannel();return;}
-        if(r.waiting){p2pMsg(t('p2p.waiting').replace('{a}',r.addr||''));loadChannel();return;}
-        p2pMsg('✓ '+syncResultText(r));
-        loadChannel();
-      });
+      p2pKick(el,'');
     }
   });
 
