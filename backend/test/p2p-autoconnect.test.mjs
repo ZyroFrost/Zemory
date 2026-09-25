@@ -227,3 +227,21 @@ test("🔴 nhận khối xong KHÔNG hợp nhất trên event loop của daemon 
   const RUN = readFileSync(new URL("../src/jobs/syncrun.ts", import.meta.url), "utf8");
   assert.match(RUN, /await mergeChannelDir\(channelDir\(\)/, "syncrun phải hợp nhất thư mục kênh");
 });
+
+test("🔴 'Đồng bộ ngay'/'Thử lại' với máy ĐÃ GHÉP dùng liên kết đang có — không dựng phiên thứ hai", () => {
+  // Đo 25/09: `/channel-sync` không trả lời sau 90 s vì dựng phiên mới từ đầu trong khi ống đã mở.
+  const ep = UI.slice(UI.indexOf('if (p === "/channel-sync") {'), UI.indexOf('if (p === "/channel-probe")'));
+  const kickAt = ep.indexOf("kickLink(pid)");
+  const slowAt = ep.indexOf("await channelSyncOnce(syncTargets(typed, [])[0]");
+  assert.ok(kickAt > 0, "endpoint phải đi qua kickLink");
+  assert.ok(slowAt > kickAt, "đường dựng-từ-đầu chỉ còn SAU nhánh máy đã ghép (cho máy chưa ghép)");
+  assert.match(ep, /return json\(res, \{ ok: true, at, actions \}\);/, "trả lời TỨC THÌ kèm mốc bấm");
+  // kickLink: sống ⇒ đá; chưa sống ⇒ đánh thức giấc thụt lùi.
+  const k = UI.slice(UI.indexOf("export function kickLink("), UI.indexOf("/** Ngắt HẾT"));
+  assert.match(k, /e\.state === "up" && e\.kick && e\.kick\(\)/, "đang sống ⇒ đá một lượt trên ống đó");
+  assert.match(k, /e\.wake\?\.\(\)/, "chưa sống ⇒ đánh thức vòng nối lại NGAY");
+  assert.match(UI, /entry\.wake = done;/, "giấc thụt lùi phải đánh thức được");
+  const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
+  assert.match(PEER, /o\.onKick\?\.\(\(\): boolean => \{/, "phiên thường trực phải trao tay đá");
+  assert.match(PEER, /if \(!roundTimer\) return true;/, "đang giữa lượt thì không chồng lượt thứ hai");
+});

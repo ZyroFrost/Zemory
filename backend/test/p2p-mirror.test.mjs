@@ -763,3 +763,36 @@ test("queue-merged: chọn 'bản đã gộp' mà KHÔNG có bản gộp ⇒ t�
   assert.equal(ap.ok, false, "rơi về bản máy kia là mất phần của mình đúng chỗ người bấm tưởng đã được giữ");
   assert.equal(readAt(b, "docs", "agent/05_TODO.md"), "ban cua B\n");
 });
+
+test("link: TAY ĐÁ mở lượt kế NGAY trên liên kết đang có — không chờ roundGap", async (t) => {
+  // Đo 2026-09-25: *Đồng bộ ngay* dựng phiên mới từ đầu, không trả lời sau 90 s. Liên kết đang sống
+  // thì đúng là một khung `have` trên chính ống đó. Dựng đúng ca: lượt kế hẹn 1 GIỜ — không đá thì
+  // chỉ có một lượt; đá thì phải có lượt thứ hai trong vài giây.
+  const a = makeMachine(t, "kka", "chia-chung-kick");
+  const b = makeMachine(t, "kkb", "chia-chung-kick");
+  const cut = new AbortController();
+  t.after(() => cut.abort());
+  const slow = { persistent: true, roundGapMs: 3_600_000, pingIdleMs: 200, linkDeadMs: 8_000 };
+  const server = await serveChannel({ ...sideOpts(b, [a.identity.deviceId], undefined, slow), port: 0, host: "127.0.0.1" }, () => {});
+  t.after(() => server.close());
+  const rounds = [];
+  let kick = null;
+  void connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, { ...slow, stop: cut.signal, onKick: (k) => (kick = k), onSyncRound: (r) => rounds.push(r) }),
+  );
+  const until = (ok, ms) => new Promise((res) => { const t0 = Date.now(); (function s() { if (ok() || Date.now() - t0 > ms) return res(); setTimeout(s, 30); })(); });
+  await until(() => rounds.length >= 1 && kick, 8_000);
+  assert.equal(rounds.length, 1, "lượt đầu xong, lượt kế hẹn 1 giờ");
+  assert.equal(typeof kick, "function", "phiên thường trực phải trao tay đá");
+
+  write(a, "docs", "agent/05_TODO.md", "moi sua\n");
+  assert.equal(kick(), true, "ống còn sống ⇒ đá được");
+  await until(() => rounds.length >= 2, 5_000);
+  assert.ok(rounds.length >= 2, "đá xong phải có lượt thứ hai NGAY, không chờ 1 giờ");
+  assert.equal(rounds[1].sentFiles, 1, "lượt được đá phải chở thay đổi vừa ghi");
+
+  cut.abort();
+  await until(() => false, 200);
+  assert.equal(kick(), false, "ống đã chết ⇒ tay đá phải nói không, không giả vờ");
+});

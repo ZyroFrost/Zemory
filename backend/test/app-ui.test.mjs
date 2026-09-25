@@ -1157,7 +1157,9 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
   assert.ok(!/id="p2pPeerIn"/.test(html), "ô mã 9 số phải đi hẳn");
   // Mã mang địa chỉ ⇒ nút Đồng bộ KHÔNG còn ô địa chỉ nào để đọc.
   assert.ok(!/id="p2pHost"/.test(html), "ô địa chỉ tay phải đi hẳn, không chỉ ẩn");
-  assert.match(js, /zPost\('\/channel-sync'\)/, "Đồng bộ phải tự đi, không cần ai gõ địa chỉ");
+  // Đồng bộ ngay đi qua MỘT cửa (`p2pKick`) chung với Thử lại, không gõ địa chỉ.
+  assert.match(js, /else if\(act==='p2p-sync'\)\{\s*p2pKick\(el,''\);/, "Đồng bộ phải tự đi, không cần ai gõ địa chỉ");
+  assert.match(js, /zPost\('\/channel-sync'\+\(host\?/, "một cửa gọi /channel-sync cho cả hai nút");
   // Rỗng phải NÓI RA: vùng trắng trông y như đang tải, người đọc sẽ ngồi chờ một thứ đã xong.
   assert.match(js, /p2p\.logEmpty/, "log rỗng phải nói 'chưa có dòng nào'");
 
@@ -1184,9 +1186,11 @@ test("tab máy-tới-máy phải có MÃ MÁY và KHUNG NHẬT KÝ, cả hai n�
   const left = pane.slice(0, cut), right = pane.slice(cut, cutLog), bottom = pane.slice(cutLog);
   for (const id of ['id="p2pBlocks"', 'id="p2pAddrs"', 'id="p2pCodeRow"', 'id="p2pDir"'])
     assert.ok(left.includes(id), `${id} phải ở panel TRÁI (máy này)`);
-  for (const id of ['id="p2pCluster"', 'data-act="p2p-sync"', 'data-act="p2p-add-open"', 'p2p.foldersH'])
+  // 🔄 Supersede (2026-09-25): `p2pMsg` dời từ panel DƯỚI lên panel PHẢI, sát hàng nút. Ở dưới thẻ
+  // nhật ký nó cách nút cả màn — user: *"bấm ko tác dụng, ko có xoay gì luôn"*. Ba vùng giữ nguyên.
+  for (const id of ['id="p2pCluster"', 'data-act="p2p-sync"', 'data-act="p2p-add-open"', 'p2p.foldersH', 'id="p2pMsg"'])
     assert.ok(right.includes(id), `${id} phải ở panel PHẢI (máy kia)`);
-  for (const id of ['id="p2pLog"', 'id="p2pMsg"'])
+  for (const id of ['id="p2pLog"'])
     assert.ok(bottom.includes(id), `${id} phải ở panel DƯỚI (nhật ký)`);
   // Mỗi panel chia mục bằng `.section-t` — F9 đòi vạch ngăn + khoảng thở, không phải một khối chữ.
   // 🔄 Ngưỡng 3→1 (2026-09-20, hai lượt trong ngày). Lượt đầu bỏ mục "Cổng ra ngoài" cùng nút
@@ -2306,4 +2310,33 @@ test("🔴 thẻ máy phải TỰ vẽ lại theo nhịp khi tab máy-tới-máy
   assert.match(tick, /setInterval\(function\(\)\{loadLog\(\);loadChannel\(\);\},15000\)/, "thẻ máy phải đi cùng nhịp 15 s với nhật ký");
   assert.match(tick, /if\(on\)\{loadLog\(\);loadChannel\(\);/, "mở tab là vẽ ngay, không đợi nhịp đầu");
   assert.doesNotMatch(tick, /setInterval\([^)]*,\s*(\d{1,4})\)/, "không được rút dưới sàn 15 s");
+});
+
+test("🔴 nút p2p phải XOAY + khoá khi chạy, và báo kết quả NGAY DƯỚI nút", () => {
+  // User 25/09: *"nút đồng bộ ngay lỗi đúng ko, bấm ko tác dụng, ko có xoay gì luôn"*. Đo: endpoint
+  // không trả lời sau 90 s (dựng phiên mới từ đầu), và dòng phản hồi nằm dưới đáy thẻ Nhật ký —
+  // cách nút cả màn hình. Hai lỗi, một triệu chứng: bấm mà không thấy gì.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  // Dòng trạng thái đứng SÁT hàng nút, và chỉ có MỘT (§F0: một thông tin một chỗ).
+  const row = html.indexOf('data-act="p2p-sync"');
+  const msg = html.indexOf('id="p2pMsg"');
+  assert.ok(row > 0 && msg > row && msg - row < 400, "p2pMsg phải nằm ngay sau hàng nút, không dưới thẻ nhật ký");
+  assert.equal(html.split('id="p2pMsg"').length - 1, 1, "chỉ một dòng p2pMsg");
+  // Một kiểu bận cho mọi nút (§F0b), dùng chung chấm xoay với .scanmsg.run.
+  assert.match(css, /\.btn\.busy::before\{[^}]*animation:zspin/, "nút bận phải có chấm xoay");
+  for (const act of ["p2p-sync", "p2p-retry", "mir-apply", "mir-all", "p2p-sync-addr", "p2p-unpair"]) {
+    const i = gm.indexOf(`act==='${act}'`);
+    assert.ok(i > 0, `không thấy nhánh ${act}`);
+    assert.match(gm.slice(i, i + 700), /btnBusy\(el,true\)|p2pKick\(el,/, `${act} phải khoá + xoay khi chạy`);
+  }
+  // Gọi btnBusy mà btnBusy không làm gì thì vẫn là nút đứng im — soi THÂN hàm, không chỉ chỗ gọi.
+  const bb = gm.slice(gm.indexOf('function btnBusy('), gm.indexOf('function watchKick('));
+  assert.match(bb, /if\(on\)\{[^}]*b\.disabled=true[^}]*b\.classList\.add\('busy'\)/, 'btnBusy phải khoá nút VÀ gắn lớp xoay');
+  // Theo dõi tới khi lượt THẬT SỰ xong, có hạn — không nhịp nền, không giả vờ ✓.
+  const w = gm.slice(gm.indexOf("function watchKick("), gm.indexOf("function p2pKick("));
+  assert.match(w, /k\.lastRound&&k\.lastRound\.at>=at/, "kicked ⇒ chỉ ✓ khi lượt đóng sổ SAU lúc bấm");
+  assert.match(w, /\+\+tries>=20/, "phải có trần — quá hạn thì nói thật");
+  assert.doesNotMatch(w, /setInterval/, "không đẻ đồng hồ nền");
 });

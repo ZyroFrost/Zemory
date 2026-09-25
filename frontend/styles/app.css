@@ -685,6 +685,10 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .scanmsg.run::before{content:'';width:11px;height:11px;border:2px solid var(--primary);border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
 .scanmsg.none{color:var(--text-dim)}
 @keyframes zspin{to{transform:rotate(360deg)}}
+/* Nút đang chạy việc: khoá + chấm xoay đứng trước chữ. Dùng chung cho MỌI nút gọi mạng/ghi đĩa —
+   bấm mà nút đứng im là người dùng đọc thành "nút hỏng" (user 25/09 với *Đồng bộ ngay*). */
+.btn.busy{pointer-events:none;opacity:.85;display:inline-flex;align-items:center;gap:6px}
+.btn.busy::before{content:'';width:9px;height:9px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
 .scanmsg.hit{color:var(--primary);font-weight:600;background:var(--wash);border:1px solid var(--primary-dim);border-radius:7px;padding:5px 9px}
 .scanmsg.err{color:var(--danger);font-weight:600}
 /* Mốc kiểm chứng của Drive: nhãn trái, số phải; đỏ lên khi lần đẩy cũ hơn tin mới nhất. */
