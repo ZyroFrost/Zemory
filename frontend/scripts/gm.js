@@ -329,6 +329,12 @@
     });
     return box;
   }
+  /** Ô chìa trong hộp Thêm máy: gợi ý nói máy này đã có chìa chưa (dấu tay), nút về trạng thái đầu. */
+  function p2pAddKeyReset(){
+    var k=zid('p2pAddKey'),b=document.querySelector('#addPeerDlg [data-act="p2p-sync-addr"]'),sk=Z.p2pKey||{};
+    if(k)k.setAttribute('placeholder',sk.found?t('p2p.addKeyPhHave').replace('{f}',sk.fingerprint||''):t('p2p.addKeyPh'));
+    if(b&&!b.dataset.busy){b.removeAttribute('data-force');b.textContent=t('p2p.pair');}
+  }
   function p2pCopyBtn(value){
     var c=document.createElement('button');
     c.className='btn xs';c.textContent=t('p2p.copy');
@@ -388,6 +394,7 @@
     if(kr){
       while(kr.firstChild)kr.removeChild(kr.firstChild);
       var sk=c.shareKey||{};
+      Z.p2pKey=sk; // hộp Thêm máy đọc cùng trạng thái này — một nguồn
       kr.appendChild(p2pFact(t('p2p.keyH'),[{v:sk.found?(sk.fingerprint||''):t('p2p.keyNone'),hint:t('p2p.keyD'),act:{act:'p2p-key-open',label:t(sk.found?'p2p.keyChange':'p2p.keySet')}}]));
     }
     var seen=(c.seen||[]);
@@ -858,7 +865,12 @@
       }).catch(function(){});
       return;
     }
-    if(act==='p2p-add-open'){ var ap=zid('addPeerDlg'); if(ap)ap.classList.add('on'); loadChannel(); return; }
+    if(act==='p2p-add-open'){
+      var ap=zid('addPeerDlg'); if(ap)ap.classList.add('on');
+      p2pAddKeyReset();
+      loadChannel().then(p2pAddKeyReset);
+      return;
+    }
     if(act==='p2p-unpair'){
       // 🔴 Nhánh này TỪNG THIẾU HẲN: nút gắn `data-act="p2p-unpair"` mà không ai bắt, nên bấm
       // không xảy ra gì và thẻ máy ở nguyên đó — người dùng đọc thành "kẹt". Bốn hành động p2p
@@ -892,9 +904,23 @@
       var ad=((zid('p2pAddrIn')||{}).value||'').trim();
       if(!ad){zset('addPeerMsg',t('p2p.byAddrNeed'));return;}
       if(el.dataset.busy)return;
+      // CHÌA đi cùng lượt thêm máy: ghi chìa TRƯỚC, nối SAU — kênh không nghe khi chưa có chìa.
+      var kin=zid('p2pAddKey'),kv=((kin||{}).value||'').trim(),kforce=el.getAttribute('data-force')==='1';
+      if(!kv&&!(Z.p2pKey&&Z.p2pKey.found)){zset('addPeerMsg',t('p2p.addKeyNeed'));if(kin)kin.focus();return;}
       btnBusy(el,true);
-      zset('addPeerMsg',t('p2p.syncing'));
-      zPost('/channel-sync?host='+encodeURIComponent(ad)).then(function(r){
+      var keyStep=kv?fetch('/share-key'+(kforce?'?force=1':''),{method:'POST',body:kv}).then(function(r){return r.json();}):Promise.resolve({ok:true,skip:true});
+      keyStep.then(function(k){
+        if(!k||!k.ok){
+          btnBusy(el,false);
+          // Chìa KHÁC chìa đang có: nói cái giá, rồi chính nút này (bấm lần hai) mới thay.
+          if(k&&k.code==='exists'){zset('addPeerMsg',t('p2p.keyExists'));el.textContent=t('p2p.addReplace');el.setAttribute('data-force','1');return null;}
+          zset('addPeerMsg',t('p2p.keyBad'));return null;
+        }
+        if(!k.skip){if(kin)kin.value='';el.removeAttribute('data-force');el.textContent=t('p2p.pair');}
+        zset('addPeerMsg',t('p2p.syncing'));
+        return zPost('/channel-sync?host='+encodeURIComponent(ad));
+      }).then(function(r){
+        if(r===null)return;
         btnBusy(el,false);
         if(!r||r.ok===false){zset('addPeerMsg','✗ '+p2pWhy((r&&r.error)||''));loadChannel();return;}
         // CHỖ CHỜ: `ok:true` mà 0 khối KHÔNG phải "đã xong". Thiếu nhánh này thì bề mặt in

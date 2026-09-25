@@ -171,3 +171,19 @@ test("UI key entry: POST body, one write path, fingerprint only, row stays live 
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   assert.match(html, /id="p2pKeyRow" data-live/, "key row is marked live");
 });
+
+test("Add machine dialog carries the key: saved BEFORE dialing, same key is a no-op, a different key needs a second click", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  const dlg = html.slice(html.indexOf('id="addPeerDlg"'), html.indexOf('id="addProjDlg"'));
+  assert.match(dlg, /id="p2pAddKey" class="tin" type="password"/, "the dialog has a hidden key field");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const flow = gm.slice(gm.indexOf("else if(act==='p2p-sync-addr')"), gm.indexOf("else if(act==='p2p-sync')"));
+  const keyAt = flow.indexOf("fetch('/share-key'"), dialAt = flow.indexOf("zPost('/channel-sync");
+  assert.ok(keyAt > 0 && dialAt > keyAt, "the key is saved before the dial");
+  assert.match(flow, /if\(!kv&&!\(Z\.p2pKey&&Z\.p2pKey\.found\)\)\{zset\('addPeerMsg',t\('p2p\.addKeyNeed'\)\)/, "no key anywhere => stop before dialing");
+  assert.match(flow, /k\.code==='exists'[^}]*setAttribute\('data-force','1'\)/, "a different key arms a second, explicit click");
+  const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  const ep = ui.slice(ui.indexOf('p === "/share-key"'), ui.indexOf('p === "/channel-pair"'));
+  const sameAt = ep.indexOf("same: true"), writeAt = ep.indexOf("setShareKey(value");
+  assert.ok(sameAt > 0 && writeAt > sameAt, "pasting the key already in place returns before any write");
+});

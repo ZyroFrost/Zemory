@@ -2331,7 +2331,8 @@ test("🔴 nút p2p phải XOAY + khoá khi chạy, và báo kết quả NGAY D�
   for (const act of ["p2p-sync", "p2p-retry", "mir-apply", "mir-all", "p2p-sync-addr", "p2p-unpair"]) {
     const i = gm.indexOf(`act==='${act}'`);
     assert.ok(i > 0, `không thấy nhánh ${act}`);
-    assert.match(gm.slice(i, i + 700), /btnBusy\(el,true\)|p2pKick\(el,/, `${act} phải khoá + xoay khi chạy`);
+    // 1200: nhánh Kết nối kiểm khoá chia sẻ TRƯỚC khi khoá nút (thiếu khoá thì dừng, không xoay).
+    assert.match(gm.slice(i, i + 1200), /btnBusy\(el,true\)|p2pKick\(el,/, `${act} phải khoá + xoay khi chạy`);
   }
   // Gọi btnBusy mà btnBusy không làm gì thì vẫn là nút đứng im — soi THÂN hàm, không chỉ chỗ gọi.
   const bb = gm.slice(gm.indexOf('function btnBusy('), gm.indexOf('function watchKick('));
