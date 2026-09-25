@@ -364,7 +364,12 @@
         d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
           +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
           +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
-          +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(m.addr?(m.addr+(m.port?(':'+m.port):'')):t('p2p.noAddr'))+'</div>';
+          // Dòng dưới nói ĐƯỜNG đang đi, không phải "có thấy trên LAN không": liên kết đang sống qua
+          // relay mà in "chưa có địa chỉ" là cả thẻ đọc như đang chờ (user 25/09: *"màu xanh rồi mà
+          // vẫn báo chờ"*). "Chưa có địa chỉ" chỉ đúng khi KHÔNG có liên kết nào.
+          +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(
+            m.addr?(m.addr+(m.port?(':'+m.port):''))
+            :(lk&&lk.state==='up'?(lk.via==='relay'?t('p2p.viaRelay'):t('p2p.viaDirect').replace(' {a}','').replace('{a}','')):t('p2p.noAddr')))+'</div>';
         if(!m.me){
           var bar=document.createElement('div');
           bar.style.cssText='display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
