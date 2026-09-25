@@ -105,7 +105,10 @@ const LOG_BANNED = [
 test("bề mặt: không còn chuỗi CẤM nào trong từ điển chữ của app", () => {
   const hits = [];
   for (const [bad, fix] of BANNED) {
-    const found = typeof bad === "string" ? CHROME.includes(bad) : bad.test(CHROME);
+    // Mục cấm viết THƯỜNG thì so không phân biệt hoa thường: chữ đầu câu viết hoa ("Chìa share")
+    // từng lọt ở 3.5.22. Mục có chữ HOA (BẬT…) là cấm đúng kiểu viết đó ⇒ so nguyên văn.
+    const lower = typeof bad === "string" && bad === bad.toLowerCase();
+    const found = typeof bad === "string" ? (lower ? CHROME.toLowerCase().includes(bad) : CHROME.includes(bad)) : bad.test(CHROME);
     if (found) hits.push(`frontend/scripts/chrome.js: "${bad}" ⇒ ${fix}`);
   }
   assert.deepEqual(hits, [], `Chuỗi cấm còn trên bề mặt:\n  ${hits.join("\n  ")}`);

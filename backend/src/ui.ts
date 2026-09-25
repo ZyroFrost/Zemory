@@ -3757,9 +3757,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         if (total > 4096) return json(res, { ok: false, code: "long" });
         chunks.push(c as Buffer);
       }
-      const { setShareKey } = await import("./memory/share.js");
+      const { setShareKey, shareKeyStatus, shareKeyFingerprint } = await import("./memory/share.js");
+      const value = Buffer.concat(chunks).toString("utf8");
+      // Dán lại ĐÚNG chìa đang có (hộp Thêm máy luôn mời dán) ⇒ không ghi, không bắt xác nhận thay.
+      const cur = shareKeyStatus(currentProjectRoot());
+      if (cur.found && value.trim() && cur.fingerprint === shareKeyFingerprint(value)) {
+        return json(res, { ok: true, fingerprint: cur.fingerprint, same: true });
+      }
       try {
-        const r = setShareKey(Buffer.concat(chunks).toString("utf8"), { force: u.searchParams.get("force") === "1" });
+        const r = setShareKey(value, { force: u.searchParams.get("force") === "1" });
         daemonLog(`[share] đã ${r.replaced ? "thay" : "ghi"} chìa share — dấu tay ${r.fingerprint}`);
         // Kênh máy-tới-máy không nghe khi chưa có chìa ⇒ có chìa rồi thì dựng lại lớp nghe ngay.
         void refreshChannelServer();

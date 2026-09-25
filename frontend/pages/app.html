@@ -577,7 +577,11 @@
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">⇄</span><b data-i18n="p2p.addMachine">+ Thêm máy…</b><button class="x" id="addPeerClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
       <div class="muted" style="font-size:11.5px;margin:0 0 8px;line-height:1.6" data-i18n="p2p.byAddrD">Dán mã của máy kia, lấy ở mục "Máy này" trên máy đó. Sau lần kết nối đầu, hai máy tự ghi nhớ nhau.</div>
-      <div style="display:flex;gap:6px"><input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="dán mã máy kia" style="flex:2"><button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair">Kết nối</button></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <input id="p2pAddrIn" class="tin" data-i18n-ph="p2p.byAddrPh" placeholder="dán mã máy kia">
+        <input id="p2pAddKey" class="tin" type="password" autocomplete="off" spellcheck="false" data-i18n-aria="p2p.keyH" aria-label="Khoá chia sẻ">
+        <button class="btn sm" data-act="p2p-sync-addr" data-i18n="p2p.pair" style="align-self:flex-end">Kết nối</button>
+      </div>
       <div id="addPeerMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
     </div>
   </div>
