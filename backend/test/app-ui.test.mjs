@@ -2383,8 +2383,15 @@ test("thẻ máy: hàng trên chỉ chấm + tên (trọn ngang), trạng thái 
   assert.match(gm, /cbt\.setAttribute\('data-act','p2p-code'\)/, "mọi thẻ có nút Mã máy");
   assert.match(gm, /if\(act==='p2p-code'\)\{/, "nút Mã máy mở popover");
   assert.match(gm, /if\(act==='p2p-code-copy'\)\{/, "popover có nút Copy");
-  // Panel Máy này: lưới ba cột, cột Copy cố định bên phải, giá trị xuống dòng.
+  // Panel Máy này (user 25/09, lượt 2): lưới BỐN cột — tên dòng · chú thích · giá trị · Copy; mỗi
+  // mục một đường kẻ; chú thích KHÔNG dính đuôi giá trị; mã máy xuống dòng dưới tên dòng.
+  // > 🔄 Supersede: lưới ba cột với chú thích nhét trong <b> giá trị (lượt 1) — user chê rối.
   const css5 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
-  assert.match(css5, /\.drv-facts>\.p2p-fact\{display:grid;grid-template-columns:[^;]*52px/, "cột Copy cố định bề rộng ⇒ nút thẳng cột");
+  assert.match(css5, /\.drv-facts>\.p2p-fact\{display:grid;grid-template-columns:150px minmax\(0,1fr\) [^;]* 52px;[^}]*border-top:1px solid/, "4 cột, tên dòng + cột Copy cố định, mỗi mục có đường kẻ");
   assert.match(css5, /\.p2p-fact>b\{[^}]*white-space:normal;word-break:break-all/, "giá trị dài phải xuống dòng, không cắt một hàng");
+  assert.match(css5, /\.p2p-fact\.wide>b\{grid-column:1 \/ 4/, "mã máy: giá trị xuống dòng dưới tên dòng, trải ngang");
+  const fx = gm.slice(gm.indexOf("function p2pFact"), gm.indexOf("function p2pCopyBtn"));
+  assert.doesNotMatch(fx, /b\.appendChild\(h\)/, "ca ÂM: chú thích không được nhét vào sau giá trị");
+  assert.match(fx, /box\.appendChild\(h\);box\.appendChild\(b\);box\.appendChild\(cell\)/, "thứ tự ô: chú thích · giá trị · Copy");
+  assert.match(gm, /p2pFact\(t\('p2p\.codeH'\),\[\{v:c\.machineCode,hint:t\(why\)\}\],true\)/, "mã máy dựng kiểu xuống dòng");
 });

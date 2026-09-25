@@ -696,11 +696,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .p2p-pop.on{display:flex}
 .p2p-pop-code{font-size:11px;word-break:break-all;color:var(--primary);user-select:all}
 .p2p-pop .btn{align-self:flex-end}
-/* Hàng thông tin "Máy này": nhãn · giá trị (xuống dòng) · cột Copy cố định — nút Copy thẳng cột. */
-.drv-facts>.p2p-fact{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr) 52px;gap:10px;align-items:start}
+/* Mục thông tin "Máy này": khối có đường kẻ, lưới 4 cột cố định — tên dòng · chú thích · giá trị · Copy.
+   Cột ① và ④ cố định bề rộng ⇒ chú thích thẳng cột, nút Copy thẳng cột, ở MỌI mục. */
+.drv-facts>.p2p-fact{display:grid;grid-template-columns:150px minmax(0,1fr) fit-content(62%) 52px;column-gap:10px;row-gap:4px;align-items:center;padding:7px 0;border-top:1px solid var(--border)}
+#p2pCodeRow>.p2p-fact{border-bottom:1px solid var(--border)}
 .p2p-fact>b{text-align:right;white-space:normal;word-break:break-all;min-width:0}
-.p2p-fact-hint{color:var(--text-faint);font-weight:400;word-break:normal}
+.drv-facts .p2p-fact-hint{color:var(--text-faint);opacity:.8;font-size:11px;min-width:0}
 .p2p-fact-act{display:flex;justify-content:flex-end}
+.p2p-fact.wide>.p2p-fact-hint{grid-column:2 / 5}
+.p2p-fact.wide>b{grid-column:1 / 4;text-align:left;font-family:ui-monospace,monospace;letter-spacing:.02em}
 .zspin-lbl{display:inline-flex;align-items:center;gap:5px}
 .zspin-lbl::before{content:'';width:8px;height:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}
 .btn.busy::before{content:'';width:9px;height:9px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:zspin .7s linear infinite;flex:none}

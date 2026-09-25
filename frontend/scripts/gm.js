@@ -306,20 +306,27 @@
   // (app-design §F0b: một chức năng thì một khung, không đẻ kiểu trình bày thứ hai). Dựng bằng
   // DOM chứ không ghép chuỗi HTML: giá trị là dữ liệu máy trả về, ghép chuỗi là mở đường lỗi escape.
   /**
-   * Một hàng thông tin: LƯỚI ba cột cố định — nhãn · giá trị · cột Copy.
-   * Cột Copy luôn cùng bề rộng và neo phải ⇒ mọi nút Copy thẳng một cột, kể cả hàng không có nút
-   * (ô trống giữ chỗ). Giá trị dài (mã máy) XUỐNG DÒNG, không cắt một hàng rồi thêm "…" (user 25/09:
-   * *"thông tin dài như mã kết nối phải tách xuống dòng"*). Không cuộn ngang (§F12).
+   * Một MỤC thông tin = một khối có đường kẻ trên, lưới BỐN cột cố định:
+   * ① tên dòng · ② chú thích · ③ giá trị · ④ nút Copy. Chú thích nằm cột riêng NGAY SAU tên dòng,
+   * không dính đuôi giá trị (user 25/09: *"chú thích phải ở cột 2 phía sau tên dòng"*). Tên dòng và
+   * cột Copy cố định bề rộng ⇒ mọi chú thích thẳng một cột, mọi nút Copy thẳng một cột.
+   * Một mục có thể nhiều dòng (hai địa chỉ) — tên dòng viết MỘT lần, kéo dọc cả khối.
+   * `wide`: giá trị dài (mã máy) xuống dòng dưới tên dòng, trải ngang, Copy vẫn ở cột ④.
+   * rows: [{v, hint, copy}] — copy=false khi giá trị là câu trạng thái, không phải thứ để chép.
    */
-  function p2pFact(label,value,hint){
-    var row=document.createElement('div');row.className='p2p-fact';
-    var s=document.createElement('span');s.textContent=label;
-    var b=document.createElement('b');b.textContent=value;
-    if(hint){var h=document.createElement('span');h.className='p2p-fact-hint';h.textContent=' '+hint;b.appendChild(h);}
-    var cell=document.createElement('span');cell.className='p2p-fact-act';
-    if(value)cell.appendChild(p2pCopyBtn(value));
-    row.appendChild(s);row.appendChild(b);row.appendChild(cell);
-    return row;
+  function p2pFact(label,rows,wide){
+    var box=document.createElement('div');box.className='p2p-fact'+(wide?' wide':'');
+    var s=document.createElement('span');s.className='p2p-fact-lbl';s.textContent=label;
+    if(!wide&&rows.length>1)s.style.gridRow='1 / span '+rows.length;
+    box.appendChild(s);
+    rows.forEach(function(r){
+      var h=document.createElement('span');h.className='p2p-fact-hint';h.textContent=r.hint||'';
+      var b=document.createElement('b');b.textContent=r.v;
+      var cell=document.createElement('span');cell.className='p2p-fact-act';
+      if(r.copy!==false&&r.v)cell.appendChild(p2pCopyBtn(r.v));
+      box.appendChild(h);box.appendChild(b);box.appendChild(cell);
+    });
+    return box;
   }
   function p2pCopyBtn(value){
     var c=document.createElement('button');
@@ -345,9 +352,8 @@
     if(ab){
       while(ab.firstChild)ab.removeChild(ab.firstChild);
       var prt=c.listening||c.port;
-      (c.addrs||[]).forEach(function(a,i){
-        ab.appendChild(p2pFact(i?'':t('p2p.addrH'),a.addr+':'+prt,a.iface+(a.fixed?' · '+t('p2p.fixed'):'')));
-      });
+      var ar=(c.addrs||[]).map(function(a){return {v:a.addr+':'+prt,hint:a.iface+(a.fixed?' · '+t('p2p.fixed'):'')};});
+      if(ar.length)ab.appendChild(p2pFact(t('p2p.addrH'),ar));
       // CHỖ CHỜ đục lỗ — hiện CHỈ khi có (§F0: mặc định của mọi phần tử là KHÔNG CÓ NÓ).
       // Nó là trạng thái nền sống tới hàng phút, nên một dòng thoáng qua trong hộp thoại là
       // không đủ: đóng hộp rồi mở lại vẫn phải biết đang chờ ai, và đã chờ bao lâu.
@@ -355,7 +361,7 @@
       if(w){
         var sub=w.outcome?t('p2p.waitClosed').replace('{r}',w.outcome.error||''):t('p2p.waitRounds').replace('{n}',zN(w.rounds||0));
         // `addr` rỗng = đang giữ lỗ mở, không nhắm máy nào. Chữ lấy từ i18n, không lấy từ payload.
-        if(!(w.outcome&&w.outcome.won))ab.appendChild(p2pFact(t('p2p.waitH'),w.addr||t('p2p.waitHold'),sub));
+        if(!(w.outcome&&w.outcome.won))ab.appendChild(p2pFact(t('p2p.waitH'),[{v:w.addr||t('p2p.waitHold'),hint:sub,copy:!!w.addr}]));
       }
     }
     // MỘT chuỗi để đưa máy kia — gom vân tay + relay + địa chỉ. Người dùng chép ĐÚNG thứ này,
@@ -374,7 +380,7 @@
         :c.externalAddrWhy==='dns'?'p2p.codeLanDns'
         :c.externalAddrWhy==='no-answer'?'p2p.codeLanNet'
         :'p2p.codeMeasuring';
-      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),c.machineCode,t(why)));
+      if(c.machineCode)cb.appendChild(p2pFact(t('p2p.codeH'),[{v:c.machineCode,hint:t(why)}],true));
     }
     var seen=(c.seen||[]);
     // Số máy 9 chữ số là MÃ DUY NHẤT. Backend băm ra số; bề mặt chỉ hiển thị — không hai nơi cùng tính.
