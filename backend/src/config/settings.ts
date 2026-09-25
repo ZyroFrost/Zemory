@@ -90,6 +90,8 @@ interface ZConfig {
   p2pPeerAddrs?: Record<string, string[]>;
   /** plan/24 §9 — lượt nối GẦN NHẤT với từng máy: `{ at, via, ok }`. Xem getPeerLastSync. */
   p2pPeerLastSync?: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
+  /** Tên máy đã ghép theo vân tay — xem `getPeerNames`. */
+  p2pPeerNames?: Record<string, string>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
   /** Lịch tự sync — xem getAutosyncSchedule. */
@@ -605,6 +607,27 @@ function readPeerRecords(): PeerRecord[] {
  * Lưu vào cấu hình chứ không giữ trong RAM daemon: người dùng khởi động lại app luôn, mà mất
  * trạng thái là thẻ lại về *"chưa rõ"* đúng lúc họ vừa mở app lên xem.
  */
+/**
+ * TÊN máy đã ghép, theo vân tay — thứ thẻ máy in ra thay cho một mẩu vân tay.
+ *
+ * Tên chỉ tới từ dò LAN (và từ `hello` ở bản mới); đi relay thì không có ⇒ phải NHỚ. Không nhớ thì
+ * hai máy khác mạng thấy nhau là `SGEKJ2R3-A6KS7XNZ…` (user 25/09: *"số dài là số gì, phải lấy tên máy"*).
+ * Tên là chuỗi do máy KHÁC gửi ⇒ nơi ghi đã lọc ký tự + cắt ngắn.
+ */
+export function getPeerNames(): Record<string, string> {
+  const v = read().p2pPeerNames;
+  return v && typeof v === "object" ? v : {};
+}
+export function setPeerName(peerId: string, name: string): void {
+  const id = peerId.trim();
+  const nm = name.replace(/[^\w.-]/g, "").slice(0, 40);
+  if (!id || !nm) return;
+  const c = read();
+  if (c.p2pPeerNames?.[id] === nm) return; // không đổi thì không ghi — dò LAN báo 30 s một lần
+  c.p2pPeerNames = { ...(c.p2pPeerNames ?? {}), [id]: nm };
+  write(c);
+}
+
 export function getPeerLastSync(): Record<string, { at?: string; via?: string; ok?: boolean; error?: string }> {
   const v = read().p2pPeerLastSync;
   return v && typeof v === "object" ? v : {};

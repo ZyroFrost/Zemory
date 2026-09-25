@@ -1352,7 +1352,9 @@ test("nhãn UI: không ngày tháng, không viết-hoa-nhấn-giọng, không c�
     if (/(đo|measured)\s+\d/i.test(text)) bad.push(`${key}: có ghi chú đo đạc`);
     // Từ viết hoa toàn bộ ≥3 ký tự, bỏ qua tên riêng/thuật ngữ hợp lệ.
     const SHOUT_OK = new Set(["ID", "LAN", "NAT", "DB", "RAG", "FTS5", "WAL", "REAL", "UDP", "TCP", "STUN"]);
-    for (const w of text.match(/\b[A-ZÀ-Ỹ]{3,}\b/g) || []) if (!SHOUT_OK.has(w)) bad.push(`${key}: viết hoa nhấn giọng "${w}"`);
+    // `\p{Lu}` chứ không phải `[A-ZÀ-Ỹ]`: dải U+00C0–U+1EF8 chứa CẢ chữ thường có dấu (à ư ợ…), và `\b` chỉ hiểu
+    // ASCII ⇒ "Lượt" bị báo "viết hoa nhấn giọng Lượ" (audit 2026-09-25). Biên chữ theo `\p{L}`.
+    for (const w of text.match(/(?<!\p{L})\p{Lu}{3,}(?!\p{L})/gu) || []) if (!SHOUT_OK.has(w)) bad.push(`${key}: viết hoa nhấn giọng "${w}"`);
     if (text.length > 120) bad.push(`${key}: dài ${text.length} ký tự (>120)`);
   }
   assert.deepEqual(bad, [], `nhãn UI sai giọng:${String.fromCharCode(10)}  ${bad.join(String.fromCharCode(10) + "  ")}`);
@@ -2354,4 +2356,35 @@ test("🔴 'Thử lại' GIỮ chấm xoay qua các lượt vẽ lại thẻ, v�
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   assert.match(css, /\.p2p-flds b\{color:var\(--primary\);font-family:ui-monospace,monospace/, "tên thư mục phải vàng + mono như .rslot");
   assert.match(html, /class="muted p2p-flds"/, "khối thư mục phải mang lớp p2p-flds");
+});
+
+test("'đang nối lại…' trên thẻ máy có chấm xoay — cùng kiểu với nút bận", () => {
+  // User 25/09: *"chỗ đang nối lại thêm cho t cái xoay spinner"*. Trạng thái đang chạy mà đứng im thì
+  // đọc như kẹt; chấm xoay dùng chung keyframe `zspin` (§F0b).
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(gm, /lk&&lk\.state==='connecting'\?' zspin-lbl':''/, "nhãn đang nối lại phải mang lớp xoay");
+  assert.match(css, /\.zspin-lbl::before\{[^}]*animation:zspin/, "lớp xoay phải dùng chung zspin");
+});
+
+test("thẻ máy: hàng trên chỉ chấm + tên (trọn ngang), trạng thái xuống hàng dưới; tên nhớ qua relay", () => {
+  // User 25/09: *"chỗ check nối lại đưa xuống hàng dưới đi, hàng trên để cho tên máy được full"*.
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const m = gm.slice(gm.indexOf("// Hàng trên: CHỈ chấm + tên"), gm.indexOf("// Dòng dưới nói ĐƯỜNG đang đi"));
+  assert.ok(m.length > 0, "không thấy khối dựng thẻ — neo đã chết");
+  const top = m.slice(0, m.indexOf("</div>'"));
+  assert.doesNotMatch(top, /stdEsc\(state\)/, "trạng thái KHÔNG được nằm ở hàng tên");
+  assert.match(m, /zspin-lbl[^\n]*stdEsc\(state\)/, "trạng thái nằm hàng riêng, có chấm xoay khi đang nối lại");
+  // Tên máy kia lấy từ SỔ backend (dò LAN + `hello`) — một nguồn; không nhớ phía trình duyệt.
+  assert.match(gm, /\(c\.peerNames\|\|\{\}\)\[id\]/, "tên máy kia phải lấy từ sổ tên của backend khi không thấy trên LAN");
+  assert.doesNotMatch(gm, /zPeerNames/, "không được có nguồn tên thứ hai phía trình duyệt");
+  // MỘT khuôn cho mọi thẻ: hàng nút có ở CẢ thẻ máy này (không chỉ thẻ máy kia) và dính đáy.
+  assert.match(gm, /var bar=document\.createElement\('div'\);\s*\n\s*bar\.style\.cssText='display:flex;gap:6px;margin-top:auto;/, "hàng nút dựng cho MỌI thẻ, dính đáy");
+  assert.match(gm, /cbt\.setAttribute\('data-act','p2p-code'\)/, "mọi thẻ có nút Mã máy");
+  assert.match(gm, /if\(act==='p2p-code'\)\{/, "nút Mã máy mở popover");
+  assert.match(gm, /if\(act==='p2p-code-copy'\)\{/, "popover có nút Copy");
+  // Panel Máy này: lưới ba cột, cột Copy cố định bên phải, giá trị xuống dòng.
+  const css5 = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
+  assert.match(css5, /\.drv-facts>\.p2p-fact\{display:grid;grid-template-columns:[^;]*52px/, "cột Copy cố định bề rộng ⇒ nút thẳng cột");
+  assert.match(css5, /\.p2p-fact>b\{[^}]*white-space:normal;word-break:break-all/, "giá trị dài phải xuống dòng, không cắt một hàng");
 });

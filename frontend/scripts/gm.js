@@ -305,24 +305,22 @@
   // Một hàng nhãn↔giá trị trong khung `.drv-facts` — CÙNG khung với ba hàng số ngay phía trên
   // (app-design §F0b: một chức năng thì một khung, không đẻ kiểu trình bày thứ hai). Dựng bằng
   // DOM chứ không ghép chuỗi HTML: giá trị là dữ liệu máy trả về, ghép chuỗi là mở đường lỗi escape.
+  /**
+   * Một hàng thông tin: LƯỚI ba cột cố định — nhãn · giá trị · cột Copy.
+   * Cột Copy luôn cùng bề rộng và neo phải ⇒ mọi nút Copy thẳng một cột, kể cả hàng không có nút
+   * (ô trống giữ chỗ). Giá trị dài (mã máy) XUỐNG DÒNG, không cắt một hàng rồi thêm "…" (user 25/09:
+   * *"thông tin dài như mã kết nối phải tách xuống dòng"*). Không cuộn ngang (§F12).
+   */
   function p2pFact(label,value,hint){
-    var row=document.createElement('div');
+    var row=document.createElement('div');row.className='p2p-fact';
     var s=document.createElement('span');s.textContent=label;
-    // Giá trị + nút chép đi CHUNG một cụm neo phải; label ở lại bên trái (space-between của .drv-facts).
-    var right=document.createElement('span');
-    right.style.display='flex';right.style.alignItems='center';right.style.gap='8px';right.style.minWidth='0';right.style.overflow='hidden';
     var b=document.createElement('b');b.textContent=value;
-    // Chuỗi dài (mã máy) KHÔNG được đẩy rộng hàng — cắt bằng ellipsis, nút Chép vẫn chép ĐỦ (§F12).
-    b.style.minWidth='0';b.style.overflow='hidden';b.style.textOverflow='ellipsis';b.style.whiteSpace='nowrap';
-    // Tên card đi kèm địa chỉ, mờ hơn: nó là thứ để CHỌN, không phải thứ để chép.
-    if(hint){var h=document.createElement('span');h.textContent=' '+hint;h.style.color='var(--text-faint)';h.style.fontWeight='400';b.appendChild(h);}
-    right.appendChild(b);
-    if(value)right.appendChild(p2pCopyBtn(value));
-    row.appendChild(s);row.appendChild(right);
+    if(hint){var h=document.createElement('span');h.className='p2p-fact-hint';h.textContent=' '+hint;b.appendChild(h);}
+    var cell=document.createElement('span');cell.className='p2p-fact-act';
+    if(value)cell.appendChild(p2pCopyBtn(value));
+    row.appendChild(s);row.appendChild(b);row.appendChild(cell);
     return row;
   }
-  // Nút chép: NHÌN THẤY ĐƯỢC. Bản trước gắn `data-copy` thẳng lên chữ — bấm được nhưng không ai
-  // biết là bấm được, nên người dùng đi bôi đen từng số. Khuôn y hệt nút chép ở danh sách kho.
   function p2pCopyBtn(value){
     var c=document.createElement('button');
     c.className='btn xs';c.textContent=t('p2p.copy');
@@ -394,7 +392,7 @@
       var seenBy={};
       seen.forEach(function(sp){ seenBy[sp.deviceId]=sp; });
       var cards=[];
-      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port,on:!!c.listening});
+      cards.push({me:true,name:c.hostName||'',id:c.deviceId||'',addr:(c.addrs||[]).map(function(a){return a.addr;}).join(' · '),port:c.listening||c.port,on:!!c.listening,code:c.machineCode||''});
       var pstate=c.peerState||{};
       // Trạng thái LIÊN KẾT SỐNG. Nó đứng trên mọi nguồn khác vì nó trả lời đúng câu người dùng
       // hỏi — *"đang nối hay không"* — chứ không phải *"lượt thử gần nhất ra sao"*.
@@ -405,16 +403,18 @@
         // mạng thì nó vĩnh viễn hiện "chưa phát hiện" — kể cả đang chở file qua relay ngay lúc đó.
         // Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; lượt nối gần nhất trả lời *"có nối
         // được không"*. Hai câu khác nhau, và câu thứ hai mới là thứ người dùng đang hỏi.
-        cards.push({me:false,name:sp&&sp.name?sp.name:'',id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null});
+        // Tên: LAN nếu đang thấy, không thì sổ tên của backend (dò LAN cũ + `hello`) — một nguồn, không nhớ phía trình duyệt.
+        cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
       cards.forEach(function(m){
         var d=document.createElement('div');
-        d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2)';
+        // MỘT khuôn cho mọi thẻ (user 25/09): ① tên · ② trạng thái · ③ IP · ④ hàng nút dính đáy — hai thẻ cao bằng nhau.
+        d.style.cssText='border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2);display:flex;flex-direction:column';
         // TÊN MÁY trước, trạng thái sau. Chưa biết tên (bản dò đời cũ không gửi) ⇒ '?' — từ 2026-09-19
         // bề mặt chỉ còn MỘT mã, nên con số 9 chữ số không còn là thứ người dùng nhìn tới.
-        var label=m.name||(m.me?'?':(m.id||'').slice(0,11)+'…');
+        var label=m.name||(m.me?'?':(m.id||'').split('-').slice(0,2).join('-')+'…');
         // BA trạng thái, không phải hai — và thứ tự này là thứ tự ĐỘ TƯƠI của bằng chứng:
         //   thấy trên LAN  > đã nối được lúc nào đó  > lần thử gần nhất HỎNG  > chưa thử lần nào
         // Gộp ba cái cuối thành "chưa phát hiện" chính là câu nói dối user bắt được.
@@ -436,18 +436,20 @@
         else if(ps.kind==='synced'){state=t('p2p.syncedAgo').replace('{t}',zAgo(ps.at))+(ps.via?' · '+ps.via:'');dot='var(--success)';}
         else if(ps.kind==='failed'){state=t('p2p.lastFail').replace('{t}',zAgo(ps.at));dot='var(--warn)';}
         else {state=t('p2p.never');dot='var(--text-faint)';}
-        d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700">'
-          +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'+stdEsc(label)
-          +'<span class="muted" style="font-size:10.5px;font-weight:400;margin-left:auto">'+stdEsc(state)+'</span></div>'
+        // Hàng trên: CHỈ chấm + tên, tên được trọn chiều ngang. Trạng thái xuống hàng riêng ngay dưới.
+        d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;min-width:0">'
+          +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'
+          +'<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+stdEsc(label)+'">'+stdEsc(label)+'</span></div>'
+          +'<div class="muted'+(lk&&lk.state==='connecting'?' zspin-lbl':'')+'" style="font-size:10.5px;margin-top:4px">'+stdEsc(state)+'</div>'
           // Dòng dưới nói ĐƯỜNG đang đi, không phải "có thấy trên LAN không": liên kết đang sống qua
           // relay mà in "chưa có địa chỉ" là cả thẻ đọc như đang chờ (user 25/09: *"màu xanh rồi mà
           // vẫn báo chờ"*). "Chưa có địa chỉ" chỉ đúng khi KHÔNG có liên kết nào.
           +'<div class="muted" style="font-size:10.5px;margin-top:4px">'+stdEsc(
             m.addr?(m.addr+(m.port?(':'+m.port):''))
             :(lk&&lk.state==='up'?(lk.via==='relay'?t('p2p.viaRelay'):t('p2p.viaDirect').replace(' {a}','').replace('{a}','')):t('p2p.noAddr')))+'</div>';
+        var bar=document.createElement('div');
+        bar.style.cssText='display:flex;gap:6px;margin-top:auto;padding-top:8px;flex-wrap:wrap';
         if(!m.me){
-          var bar=document.createElement('div');
-          bar.style.cssText='display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
           // THỬ LẠI trên chính thẻ của máy đó: nút *Đồng bộ ngay* chung thử lần lượt mọi máy,
           // còn ở đây người dùng đang hỏi về MỘT máy cụ thể và muốn câu trả lời về đúng nó.
           var rt=document.createElement('button');rt.className='btn xs';
@@ -457,8 +459,14 @@
           var x=document.createElement('button');x.className='btn xs';
           x.textContent=t('p2p.unpair');x.setAttribute('data-act','p2p-unpair');x.setAttribute('data-id',m.id);
           bar.appendChild(x);
-          d.appendChild(bar);
         }
+        // Mã máy: máy này = mã để máy khác dán vào; máy kia = vân tay của nó (dán vào ô kết nối là đủ).
+        if(m.code){
+          var cbt=document.createElement('button');cbt.className='btn xs';
+          cbt.textContent=t('p2p.codeBtn');cbt.setAttribute('data-act','p2p-code');cbt.setAttribute('data-code',m.code);
+          bar.appendChild(cbt);
+        }
+        d.appendChild(bar);
         cl.appendChild(d);
       });
     }
@@ -598,6 +606,28 @@
     // Nhánh TƯỜNG MINH, không dùng đường rơi-xuống: một hành động mới lọt vào bộ chọn ở trên
     // mà không ai để ý sẽ được gửi đi như một lượt duyệt. Cổng `data-act` của repo soi đúng
     // chữ `act==='…'` chính vì lý do đó.
+    if(act==='p2p-code'){
+      var pop=zid('p2pCodePop');
+      if(!pop){
+        pop=document.createElement('div');pop.id='p2pCodePop';pop.className='p2p-pop';
+        pop.innerHTML='<div class="p2p-pop-code mono"></div><button class="btn xs" data-act="p2p-code-copy"></button>';
+        document.body.appendChild(pop);
+        document.addEventListener('keydown',function(ev){if(ev.key==='Escape')pop.classList.remove('on');});
+        document.addEventListener('click',function(ev){if(pop.classList.contains('on')&&!pop.contains(ev.target)&&!(ev.target.closest&&ev.target.closest('[data-act="p2p-code"]')))pop.classList.remove('on');});
+      }
+      var code=el.getAttribute('data-code')||'';
+      pop.querySelector('.p2p-pop-code').textContent=code;
+      var cp=pop.querySelector('[data-act="p2p-code-copy"]');cp.textContent=t('p2p.copy');cp.setAttribute('data-code',code);
+      var r0=el.getBoundingClientRect();
+      pop.style.left=Math.max(8,Math.min(r0.left,window.innerWidth-340))+'px';pop.style.top=(r0.bottom+6)+'px';
+      pop.classList.add('on');
+      return;
+    }
+    if(act==='p2p-code-copy'){
+      var cd=el.getAttribute('data-code')||'';
+      (navigator.clipboard?navigator.clipboard.writeText(cd):Promise.reject()).then(function(){el.textContent=t('p2p.copied2');setTimeout(function(){el.textContent=t('p2p.copy');},1200);}).catch(function(){el.textContent='✗';});
+      return;
+    }
     if(act==='p2p-retry'){
       // Thử lại với ĐÚNG máy này. Truyền ID làm `host` — `channelSyncOnce` nhận cả ID lẫn địa
       // chỉ, và ID mở được cả cụm dò toàn cầu lẫn relay (địa chỉ trần thì không).
