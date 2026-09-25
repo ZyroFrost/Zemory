@@ -187,3 +187,12 @@ test("Add machine dialog carries the key: saved BEFORE dialing, same key is a no
   const sameAt = ep.indexOf("same: true"), writeAt = ep.indexOf("setShareKey(value");
   assert.ok(sameAt > 0 && writeAt > sameAt, "pasting the key already in place returns before any write");
 });
+
+test("the key field's hint is just its name — no fingerprint, no explanation (§F0)", () => {
+  const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
+  assert.match(html, /id="p2pAddKey"[^>]*data-i18n-ph="p2p\.keyH"/, "placeholder is the field name");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const reset = gm.slice(gm.indexOf("function p2pAddKeyReset"), gm.indexOf("function p2pCopyBtn"));
+  assert.ok(reset.length > 0, "p2pAddKeyReset anchor is gone");
+  assert.doesNotMatch(reset, /placeholder|fingerprint/, "negative: nothing rewrites the hint with the fingerprint");
+});
