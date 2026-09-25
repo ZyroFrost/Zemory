@@ -329,10 +329,9 @@
     });
     return box;
   }
-  /** Ô chìa trong hộp Thêm máy: gợi ý nói máy này đã có chìa chưa (dấu tay), nút về trạng thái đầu. */
+  /** Hộp Thêm máy mở lại: nút Kết nối về trạng thái đầu (bỏ lượt "Thay khoá" còn treo). */
   function p2pAddKeyReset(){
-    var k=zid('p2pAddKey'),b=document.querySelector('#addPeerDlg [data-act="p2p-sync-addr"]'),sk=Z.p2pKey||{};
-    if(k)k.setAttribute('placeholder',sk.found?t('p2p.addKeyPhHave').replace('{f}',sk.fingerprint||''):t('p2p.addKeyPh'));
+    var b=document.querySelector('#addPeerDlg [data-act="p2p-sync-addr"]');
     if(b&&!b.dataset.busy){b.removeAttribute('data-force');b.textContent=t('p2p.pair');}
   }
   function p2pCopyBtn(value){
