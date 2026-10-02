@@ -12,6 +12,7 @@ description: Close out a work session correctly - route everything that happened
 **Global Memory là NGUỒN THẬT của phiên — trí nhớ trong context thì KHÔNG.** Khi context bị tóm tắt/trim, chi tiết phiên vẫn còn NGUYÊN trong episodic memory (DB); cái bạn "nhớ" trong context đã bị lược. Đây là GỐC của "đổi session là sót/lệch". Nên **mọi lần ghi docs / audit / báo cáo — nhất là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code THẬT để verify TRƯỚC khi khẳng định bất cứ điều gì.**
 
 **Bước 0 — DÒ GLOBAL MEMORY + VERIFY (bắt buộc, KHÔNG skip, làm TRƯỚC Bước 1):**
+0. **`zemory memory scan` TRƯỚC `digest`** — phiên ĐANG CHẠY chưa nằm trong GM tới khi được scan; bỏ bước này thì `digest` trả thiếu/rỗng và phần đầu phiên đã bị nén khỏi context mất luôn. Scan xong GM vẫn thiếu ⇒ đọc thẳng transcript gốc của phiên (Claude Code: `~/.claude/projects/<repo>/<session>.jsonl`). *Đo 2026-10-02 (`Dept_IC`): một quyết định user chốt giữa phiên rơi mất, sổ chỉ còn câu nói 3 phút trước đó — câu đã bị chính quyết định kia thay.*
 1. `zemory memory digest <session>` + `zemory memory search "<chủ đề phiên>" [--all]` → dựng lại ĐẦY ĐỦ việc/đổi/quyết định/lỗi của phiên, kể cả đoạn đã trôi khỏi context.
 2. **Verify từng mục sắp ghi vào docs với NGUỒN THẬT** = GM (điều đã thực sự làm/nói/quyết) + code/file THẬT (đọc lại dòng liên quan). Chỉ mục SỐNG SÓT verify mới được ghi; claim chưa verify = KHÔNG ghi.
 3. **SOÁT `05_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`02_RULES §Hành xử` — luật áp **MỌI LÚC**, chốt phiên chỉ là một trường hợp): mỗi mục là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng định phải truy được về nguồn kiểm được. **BA NGUỒN, chạy ĐỦ CẢ BA cho MỌI mục — không chọn nguồn theo loại mục**: ① **mã** · ② **lịch sử quyết định** (`memory search --all`, lọc lời USER — quyết định hay nằm ở phiên khác, thậm chí **repo khác**) · ③ **chạy thật** (gọi endpoint · mở app nhìn · đọc log tiến trình đang chạy). Chỉ khi **cả ba khớp** mới kết luận; lệch ⇒ **cái mới hơn thắng** (lời user CÓ HẠN DÙNG, có thể bị chính việc làm sau đó supersede). Nguồn nào không chạm được ⇒ ghi "chưa xác minh được" kèm nguồn đã thử, KHÔNG mặc định "chưa làm", KHÔNG lấy 2 nguồn còn lại làm đủ. **Mục quá 7 ngày không ai đụng = NGHI NGỜ.** Hỏi lại user một việc đã chốt là **LỖI**, không phải cẩn thận.
@@ -21,6 +22,7 @@ description: Close out a work session correctly - route everything that happened
 1. **FULL phiên hiện tại** — đọc lại từ ĐẦU hội thoại, kể cả đoạn đã bị tóm tắt/trôi khỏi context (dùng `zemory memory digest <session>` / `memory search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
 2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không.
 3. **FULL `docs/agent/*`** — `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE` · `04_SKILLS` · `05_TODO` · `06_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
+4. **FULL spec của MỌI case/task đã đụng trong phiên** (vd `tasks/<case>/spec.md`) — cả thân lẫn khối khai báo đầu file (`status` · `updated` · `evidence` · `run_at`…). Quyết định riêng của một case sống ở đó, KHÔNG ở `docs/plan`. *Đo 2026-10-02 (`Dept_IC`): bỏ qua file này ⇒ spec còn ghi "chưa dựng pipeline" sau khi pipeline đã chạy, giữ bảng lịch đã huỷ, ghi sai máy chạy.*
 
 **Bước 2 — định tuyến từng thứ về đúng file, KHÔNG BỎ SÓT:**
 
@@ -29,6 +31,7 @@ description: Close out a work session correctly - route everything that happened
 | Việc đã xong / đã sửa code | `06_CHANGES.md` (sau khi user OK) **và xoá khỏi** `05_TODO.md` |
 | Việc còn dở · việc phát sinh · việc phiên sau làm | `05_TODO.md` — nêu rõ trạng thái `[~]`, **đã tới đâu, bước kế tiếp là gì** |
 | Thiết kế / quyết định thay đổi | `docs/plan/NN_*.md` (+ supersede ở changelog nếu đảo quyết định cũ) |
+| Quyết định / trạng thái của MỘT case | spec của case đó (vd `tasks/<case>/spec.md`) — thân + khối khai báo (`updated` đổi cùng lượt); câu cũ bị thay thì sửa/gạch, KHÔNG để hai câu ngược nhau cùng sống |
 | Luật / bất biến riêng phát sinh | **HỎI user ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_CONSTITUTION.md`, và KHÔNG đậu vào `05_TODO` chờ duyệt (vế đó đã BÃI BỎ) |
 
 **Chuẩn "không bỏ sót":** mọi việc đã làm trong phiên phải tìm được ở CHANGES **hoặc** TODO — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai / đường cụt / thứ đã thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó).
