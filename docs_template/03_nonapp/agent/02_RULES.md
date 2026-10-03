@@ -202,4 +202,4 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
 - **Skill là THAM KHẢO cho khuyến nghị, KHÔNG auto-apply.** Trước khi làm việc mà skill phủ (dataviz cho report · review chất lượng · …) → ĐỌC skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → TRÌNH user; user chốt mới làm. Quy trình đầy đủ: `04_SKILLS` §1.
 
 
-<!-- zemory-standard: 2026-09-21 -->
+<!-- zemory-standard: 2026-10-04 -->
