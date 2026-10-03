@@ -88,7 +88,7 @@ SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải
   làm đủ ba bước **trong cùng lượt đó**: ① **ĐO LẠI** nó theo §Hành xử *"SOÁT SỔ = ĐO LẠI"* — *"tôi
   vừa làm nên tôi biết"* **KHÔNG** phải bằng chứng, và đây đúng chỗ hay sai nhất: phần lớn ca hỏng là
   GIỮA PHIÊN, ngay sau khi vừa xong một việc · ② ghi sang `06_CHANGES` · ③ **xoá mục khỏi
-  `05_TODO`** (hoặc `zemory archive` dời sang `archive/`).
+  `05_TODO`** (hoặc `zemory archive` dời sang `archive/`). Dấu máy nhặt: `- [x]` · `N. [x]` · `✅` · tiêu đề `## [x]` (cả khối); viết "xong" kiểu khác (gạch ngang, chữ XONG) thì `archive` không thấy và mục nằm lại mãi.
   **Vì sao không đợi tới chốt phiên:** một mục đã xong là **đặt sai chỗ kể từ giây nó xong**, mà
   `05_TODO` được nạp MỌI phiên — đo thật: **107 mục đã xong chiếm 46%** một file luôn-nạp.
   **Vì sao không tin trí nhớ:** soát 58 mục thì **11 sai (~19%)** — có mục đã làm xong vẫn mang dấu
