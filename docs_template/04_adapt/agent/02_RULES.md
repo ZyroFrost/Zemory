@@ -203,4 +203,4 @@ EOL của file MÁY SINH ⛔ File do máy ghép TỪ file khác (archive ← `05
 > *(Luật THIẾT KẾ/UI cụ thể — Dialog 3-size, ESC mọi dialog, token-first… — KHÔNG ở đây: RULES là luật LÀM VIỆC chung. Convention thiết kế ở `03_STRUCTURE §5`. Ở đây CHỈ là luật hành xử "phải hỏi trước".)*
 
 
-<!-- zemory-standard: 2026-09-21 -->
+<!-- zemory-standard: 2026-10-04 -->
