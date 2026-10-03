@@ -22,7 +22,10 @@ test("closedItems counts BOTH `[x]` and a check mark (the case that stayed silen
 test("NEGATIVE CASE - an unclosed marker must not be counted (without this, any counter 'passes')", () => {
   assert.equal(closedItems("- [ ] chưa làm"), 0, "`[ ]` KHÔNG phải đã đóng");
   assert.equal(closedItems("- [~] đang làm"), 0, "`[~]` KHÔNG phải đã đóng");
-  assert.equal(closedItems("## ✅ tiêu đề khối, không phải mục"), 0, "heading không phải mục backlog");
+  assert.equal(closedItems("## tiêu đề khối thường"), 0, "heading KHÔNG mang dấu đóng thì không phải mục");
+  // 2026-10-04: a heading WITH a closed marker (`## [x]` / `## ✅`) closes the whole section and IS counted —
+  // a real backlog closed sections that way and `archive` never moved them (see archive-todo.test).
+  assert.equal(closedItems("## ✅ khối đã đóng"), 1, "heading mang dấu đóng = cả khối đã đóng");
   assert.equal(closedItems("text ✅ giữa câu"), 0, "dấu giữa câu không phải mục");
 });
 

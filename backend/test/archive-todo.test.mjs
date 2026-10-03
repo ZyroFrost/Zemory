@@ -302,3 +302,50 @@ test("CLI: `--dry-run` must SAY 'would', never 'moved'/'marked' (audit 2026-09-2
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// 2026-10-04 (_DB_DataWarehouse): `archive` said "0 closed items" on a 1.328-line backlog. The
+// closed work was there — written as NUMBERED items (`1. [x] …`, the session hand-off blocks)
+// and as whole sections closed at the heading (`## [x] ~~…~~`) — but only `-` bullets were
+// recognised, so nothing ever left the file and every session paid to re-read it.
+test("archive also moves NUMBERED closed items and whole sections closed at the heading", () => {
+  const s = scratch(`# TODO
+
+## [x] ~~nghi vấn đã loại~~
+lời giải thích của khối đã đóng
+- [ ] dòng mở NẰM TRONG khối đã đóng — đi cùng khối, không đếm riêng
+### mục con của khối đã đóng
+
+## Khối bàn giao
+1. [x] bước đã xong
+   chi tiết bước đã xong
+2. [ ] bước còn mở
+3) ✅ bước xong viết kiểu khác
+
+## Nhóm còn sống
+- [ ] việc mở
+`);
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath);
+    assert.equal(r.moved, 3, "1 closed section + 2 closed numbered items");
+    const active = s.read("05_TODO.md");
+    assert.doesNotMatch(active, /nghi vấn đã loại|lời giải thích|mục con của khối đã đóng/, "the closed section leaves whole");
+    assert.doesNotMatch(active, /bước đã xong|chi tiết bước đã xong|bước xong viết kiểu khác/, "closed numbered items leave with their continuation");
+    assert.match(active, /2\. \[ \] bước còn mở/, "open numbered item stays");
+    assert.match(active, /## Khối bàn giao/, "a heading that is not closed stays");
+    assert.match(active, /## Nhóm còn sống[\s\S]*việc mở/, "the next section is untouched");
+    const arch = s.read("archive/05_TODO.md");
+    assert.match(arch, /## \[x\] ~~nghi vấn đã loại~~[\s\S]*mục con của khối đã đóng/, "archive keeps the section verbatim");
+  } finally {
+    s.cleanup();
+  }
+});
+
+test("a `## [x]` heading inside a code fence is not a closed section", () => {
+  const s = scratch("# TODO\n\n## Ví dụ\n```\n## [x] chỉ là ví dụ trong khối code\n1. [x] cũng là ví dụ\n```\n- [ ] việc mở\n");
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath);
+    assert.equal(r.moved, 0, "nothing inside a fence is an item");
+  } finally {
+    s.cleanup();
+  }
+});

@@ -108,7 +108,15 @@ const TODO_INTRO =
  * `✅`**, nên `archive` chưa bao giờ nhặt được gì và `05_TODO` phình 2.327 dòng. Đúng bệnh
  * "107 mục đã xong chiếm 46% file" mà cơ chế này sinh ra để trị — nó chỉ trị nhánh không ai
  * dùng. Sổ nói khác code, và ở đây code là thứ phải chạy theo quy ước viết. */
-const ITEM = /^(\s*)-\s*(?:\[([x ~])\]|(✅))/;
+// Bullet (`-` · `*`) OR numbered (`1.`) item. Numbered was missing until 2026-10-04: a real
+// backlog (_DB_DataWarehouse) wrote its session hand-off blocks as `1. [x] …` lists, so
+// `archive` reported "0 closed items" on a 1.328-line file while the closed work sat in it.
+const ITEM = /^(\s*)(?:[-*]|\d+[.)])\s*(?:\[([x ~])\]|(✅))/;
+/** A heading closed as a whole: `## [x] …` / `### ✅ …` — the section moves with everything
+ *  under it, up to the next heading of the same or a higher level. Same repo, same day:
+ *  sections were closed this way (`## [x] ~~…~~`) and stayed forever, since only list
+ *  items were recognised. */
+const CLOSED_HEAD = /^(#{2,6})\s+(?:\[x\]|✅)/;
 /** Trạng thái đã chốt (mục ra khỏi backlog) — một chỗ hỏi, hai cách viết. */
 const CLOSED = new Set(["x", "✅"]);
 
@@ -121,6 +129,7 @@ const CLOSED = new Set(["x", "✅"]);
  * một sự thật một nhà; hai bản sao của "thế nào là đã đóng" là chắc chắn lệch.
  */
 export function isClosedItemLine(line: string): boolean {
+  if (CLOSED_HEAD.test(line)) return true;
   const m = ITEM.exec(line);
   if (!m) return false;
   return CLOSED.has(m[2] ?? m[3] ?? "");
@@ -138,6 +147,21 @@ function itemBlocks(lines: string[]): Array<{ state: string; start: number; end:
       i++;
       continue;
     }
+    const h = inFence ? null : CLOSED_HEAD.exec(lines[i]);
+    if (h) {
+      // closed section: take it whole (items inside go with it, never counted twice)
+      const level = h[1].length;
+      let j = i + 1;
+      let fence = false;
+      for (; j < lines.length; j++) {
+        if (FENCE.test(lines[j])) fence = !fence;
+        const hm = fence ? null : /^(#{1,6})\s/.exec(lines[j]);
+        if (hm && hm[1].length <= level) break;
+      }
+      out.push({ state: "x", start: i, end: j });
+      i = j;
+      continue;
+    }
     const m = inFence ? null : ITEM.exec(lines[i]);
     if (!m) {
       i++;
@@ -147,7 +171,7 @@ function itemBlocks(lines: string[]): Array<{ state: string; start: number; end:
     let j = i + 1;
     for (; j < lines.length; j++) {
       const n = lines[j];
-      if (/^## /.test(n) || /^>/.test(n)) break;
+      if (/^#{1,6} /.test(n) || /^>/.test(n)) break;
       const m2 = ITEM.exec(n);
       if (m2 && m2[1].length <= indent) break;
     }

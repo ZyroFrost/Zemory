@@ -21,6 +21,8 @@ description: Close out a work session correctly - route everything that happened
 
 **SOÁT `05_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`02_RULES §Hành xử` — luật áp **MỌI LÚC**, chốt phiên chỉ là một trường hợp; kích hoạt cả khi user nói *"check todo"* · *"còn gì chưa làm"* giữa chừng). Mỗi mục là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng định phải truy được về nguồn kiểm được — file `.md` là nguồn của NỘI DUNG, **không phải nguồn của sự thật**. **BA NGUỒN, chạy ĐỦ CẢ BA cho MỌI mục — không chọn nguồn theo loại mục**: ① **nguồn (mở file/số liệu ra đếm)** · ② **lịch sử quyết định** (có CLI thì `memory search --all` lọc lời USER; không có thì đọc `archive/` — quyết định hay nằm ở phiên khác, thậm chí **repo khác**) · ③ **chạy thật** (mở chính bản giao nhìn tận mắt · làm mới dữ liệu rồi đối chiếu số). Chỉ khi **cả ba khớp** mới kết luận; lệch ⇒ **cái mới hơn thắng** (lời user CÓ HẠN DÙNG, có thể bị chính việc làm sau đó supersede). Nguồn nào không chạm được ⇒ ghi "chưa xác minh được" kèm nguồn đã thử, KHÔNG mặc định "chưa làm", KHÔNG lấy 2 nguồn còn lại làm đủ. **Mục quá 7 ngày không ai đụng = NGHI NGỜ.** **Hỏi lại user một việc đã chốt là LỖI**, không phải cẩn thận.
 
+**SOÁT HẾT SỔ, KHÔNG CHỈ KHỐI MỚI NHẤT.** Mọi khối — kể cả khối bàn giao của các phiên trước và khối cũ nhiều tuần — từng mục đối chiếu `06_CHANGES` + `archive/`. Xong ⇒ dời NGUYÊN VĂN sang `archive/05_TODO.md` ngay; cả khối xong ⇒ dời cả khối. Khối bàn giao của phiên trước: phiên NHẬN nó soát xong thì đóng — mục còn mở nhấc sang khối bàn giao MỚI, khối cũ vào archive — không để khối bàn giao chồng lên nhau. *Đo 2026-10-04 (một repo thật): sổ 1.328 dòng, hơn 10 khối bàn giao từ 11/09 chưa ai đóng.*
+
 ## Bước 2 — định tuyến, KHÔNG BỎ SÓT
 
 | Thứ phát sinh trong phiên | Ghi vào |
