@@ -100,3 +100,18 @@ test("🔴 trùng DẤU NGÀY mà bản mẫu đã sửa lại trong ngày ⇒ K
   assert.notEqual(v.verdict, "current", "cùng dấu ngày nhưng dựng từ bản SỚM hơn ⇒ phải được áp bản mới");
   assert.equal(v.verdict, "clean", JSON.stringify(v));
 });
+
+test("🔴 repo đã mang sẵn mọi dòng chuẩn đổi (dấu ngày cũ) ⇒ 'current', KHÔNG hợp nhất rỗng +0 −0 mãi (DW 03_STRUCTURE 04/10)", async (t) => {
+  const { standardDiff, applyStandard } = await import("../../dist/docs/standard.js");
+  const { basename } = await import("node:path");
+  const root = repo(t);
+  // Nội dung = bản mẫu HIỆN TẠI + một dòng repo tự thêm, nhưng dấu ngày vẫn là 2026-09-21 (bản gốc khác).
+  const now = readFileSync(join(ZEMORY, "docs_template", "03_nonapp", "agent", "02_RULES.md"), "utf8").replace(/<PROJECT>/g, basename(root));
+  const body = now.replace(/zemory-standard: 2026-10-04/, "zemory-standard: 2026-09-21").replace(/\r?\n/g, "\n");
+  assert.match(body, /zemory-standard: 2026-09-21/, "tiền đề: đã hạ dấu ngày");
+  writeFileSync(join(root, "docs", "agent", "02_RULES.md"), body.replace(/^(# .*\n)/, "$1\nDÒNG REPO TỰ THÊM\n"));
+  const v = standardDiff(root).files.find((f) => f.file === "02_RULES.md");
+  assert.equal(v.verdict, "current", JSON.stringify(v));
+  const applied = applyStandard(root, { apply: false }).filter((x) => x.file === "02_RULES.md");
+  assert.deepEqual(applied, [], "không còn gì để áp");
+});
