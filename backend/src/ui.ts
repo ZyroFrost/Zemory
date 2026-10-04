@@ -49,7 +49,7 @@ import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPat
 import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
-import { applyStandard, isStandardSource, standardDiff } from "./docs/standard.js";
+import { applySkills, applyStandard, isStandardSource, skillDiff, standardDiff } from "./docs/standard.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -3068,11 +3068,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // Bản sửa CHUẨN cho file đã có (plan/26 bước ④) — cùng một phép với `zemory sync --standard --apply`,
         // cùng các luật từ chối (đoạn chồng · chưa có dấu · sẽ mất chữ repo tự viết). Cú bấm là lời cho phép.
         const std = applyStandard(known.root, { apply: true });
+        // Skill CHUNG đi cùng cú bấm (2026-10-04) — cùng phép với `sync --standard --apply`; skill đã sửa tay chỉ báo.
+        const sk = applySkills(known.root, { apply: true });
+        const skWritten = sk.filter((x) => x.action === "added" || x.action === "replaced").length;
+        const skLocal = sk.filter((x) => x.action === "kept-local").length;
         const written = std.filter((x) => x.action === "written").length;
         const skipped = std.filter((x) => x.action === "skipped").length;
         harnessUpdCache = null; // đo lại ngay ở lượt /harness-updates kế
-        daemonLog(`[harness-apply] ${known.root}: +${r.added.length} file · chuẩn ${written} ghi / ${skipped} bỏ qua · guard ${guard ? "ok" : "skipped"}`);
-        return json(res, { ok: true, added: r.added, kept: r.present.length, needsReconcile: r.needsReconcile, guard, stdWritten: written, stdSkipped: skipped });
+        daemonLog(`[harness-apply] ${known.root}: +${r.added.length} file · chuẩn ${written} ghi / ${skipped} bỏ qua · skill ${skWritten} ghi / ${skLocal} sửa tay · guard ${guard ? "ok" : "skipped"}`);
+        return json(res, { ok: true, added: r.added, kept: r.present.length, needsReconcile: r.needsReconcile, guard, stdWritten: written, stdSkipped: skipped, skillsWritten: skWritten, skillsLocal: skLocal });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
       }
@@ -4060,7 +4064,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
             // Lệch CHỮ (plan/26 bước ④): file CÓ SẴN nhưng đứng ở bản chuẩn cũ. Trước đây hộp này chỉ đếm file
             // THIẾU, nên một repo thiếu 63 dòng chuẩn vẫn đọc ra "khớp chuẩn". Repo nguồn thì không có gì để chở.
             const v = isStandardSource(proj.root) ? [] : standardDiff(proj.root).files;
-            const drift = v.filter((f) => f.verdict === "clean" || f.verdict === "local").length;
+            // Skill CHUNG cũ (thay được / thiếu) cũng là lệch chuẩn; skill đã sửa tay thì không tính — bấm áp không ghi nó.
+            const skillDrift = isStandardSource(proj.root) ? 0 : skillDiff(proj.root).filter((s) => s.verdict === "clean" || s.verdict === "absent").length;
+            const drift = v.filter((f) => f.verdict === "clean" || f.verdict === "local").length + skillDrift;
             const unknown = v.filter((f) => f.verdict === "unknown").length;
             if (r.missing.length || r.guardStale.length || drift || unknown) {
               // `locked`: thứ DUY NHẤT còn lệch là phần máy không kết luận được (chưa có dấu) ⇒ bấm áp cũng không

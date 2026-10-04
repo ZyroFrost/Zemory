@@ -48,7 +48,7 @@ Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng
   ngay, vì một mục đã xong là **đặt sai chỗ kể từ giây nó xong** — không liên quan file dài hay ngắn.
   (Đo 2026-07-29: gác bằng ngưỡng kích thước là lý do 107 mục đã xong nằm lại chiếm **46%** một file
   vốn được nạp MỌI phiên.) Mục còn mở `[ ]`/`[~]` giữ nguyên toàn bộ.
-  **Dạng dấu máy nhặt:** dòng `- [x]` · `N. [x]` · `✅`, và khối có tiêu đề `## [x]` / `## ✅` (dời NGUYÊN khối tới tiêu đề cùng cấp kế tiếp). Viết "xong" kiểu khác (gạch `~~…~~`, chữ XONG trong đoạn văn) thì máy KHÔNG thấy. **Đối số:** số mục vừa đóng ở Bước 0.3b phải bằng số `archive` báo dời — báo `0` trong khi vừa đóng mục ⇒ sai dạng dấu, sửa dấu rồi chạy lại; KHÔNG coi "nothing to do" là sạch.
+  **Dạng dấu máy dời:** dòng `- [x]` · `- ✅` · `N. [x]`, và khối có tiêu đề `## [x]` (dời NGUYÊN khối tới tiêu đề cùng cấp kế tiếp). `✅` trên mục đánh số / tiêu đề, và khối đóng mà bên trong còn `[ ]`/`[~]`, thì máy CHỈ BÁO (danh sách *"NOT moved"*), không dời — `✅` hay được dùng để trang trí khối còn nợ. Đọc từng dòng báo: xong thật thì đổi sang `[x]` rồi chạy lại. Viết "xong" kiểu khác (gạch `~~…~~`, chữ XONG trong đoạn văn) thì máy KHÔNG thấy. **Đối số:** số mục vừa đóng ở Bước 0.3b phải bằng số `archive` báo dời; danh sách báo phải về 0 và số khối bàn giao `archive` đếm phải về 1 (chỉ khối của phiên này) — lệch ⇒ sửa dấu/đóng khối rồi chạy lại; KHÔNG coi "nothing to do" là sạch.
 - **`06_CHANGES.md` — có trần.** Entry **cũ nhất** chuyển sang `archive/06_CHANGES.md`, giữ bản mới nhất
   tại chỗ. Ngưỡng khai trong `docs/.harness.json` (`thresholds.changes_lines`/`changes_keep`).
 

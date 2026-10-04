@@ -23,9 +23,12 @@ test("NEGATIVE CASE - an unclosed marker must not be counted (without this, any 
   assert.equal(closedItems("- [ ] chưa làm"), 0, "`[ ]` KHÔNG phải đã đóng");
   assert.equal(closedItems("- [~] đang làm"), 0, "`[~]` KHÔNG phải đã đóng");
   assert.equal(closedItems("## tiêu đề khối thường"), 0, "heading KHÔNG mang dấu đóng thì không phải mục");
-  // 2026-10-04: a heading WITH a closed marker (`## [x]` / `## ✅`) closes the whole section and IS counted —
-  // a real backlog closed sections that way and `archive` never moved them (see archive-todo.test).
-  assert.equal(closedItems("## ✅ khối đã đóng"), 1, "heading mang dấu đóng = cả khối đã đóng");
+  // 2026-10-04: `## [x]` closes the whole section (counted, moved); `## ✅` is NOT — ✅ is used as decoration on
+  // blocks still open (decision 2026-08-23, 859fe20). `archive` reports it instead of moving it.
+  assert.equal(closedItems("## [x] khối đã đóng"), 1, "heading [x] = cả khối đã đóng");
+  assert.equal(closedItems("## ✅ tiêu đề khối"), 0, "heading ✅ KHÔNG phải dấu đóng máy nhặt");
+  assert.equal(closedItems("1. ✅ mục đánh số trang trí"), 0, "mục đánh số ✅ KHÔNG phải dấu đóng máy nhặt");
+  assert.equal(closedItems("1. [x] mục đánh số đã xong"), 1, "mục đánh số [x] = đã đóng");
   assert.equal(closedItems("text ✅ giữa câu"), 0, "dấu giữa câu không phải mục");
 });
 

@@ -35,6 +35,20 @@ export interface ArchiveResult {
    *  real investigation down the wrong path (DuAnA, 2026-08-05): the file was 947 lines
    *  against a 400 threshold and the caller was told it was under it. */
   skipped?: "short" | "no-entries";
+  /** 05_TODO only — blocks that LOOK closed but were deliberately NOT moved, with the reason.
+   *  `archive` must never answer "nothing to do" in silence while the ledger still holds them. */
+  flagged?: TodoFlag[];
+  /** 05_TODO only — hand-off headings ("BÀN GIAO" / "PHIÊN SAU ĐỌC TRƯỚC" / "hand-off") still in the
+   *  ledger. More than one means older sessions' hand-offs were never closed (_DB_DataWarehouse
+   *  2026-10-04: 10+ of them since 09-11). */
+  handoffs?: number;
+}
+
+export interface TodoFlag {
+  /** 1-based line in 05_TODO.md. */
+  line: number;
+  text: string;
+  reason: "check-mark-only" | "has-open-items";
 }
 
 const FENCE = /^[ \t]*(```|~~~)/;
@@ -108,77 +122,134 @@ const TODO_INTRO =
  * `✅`**, nên `archive` chưa bao giờ nhặt được gì và `05_TODO` phình 2.327 dòng. Đúng bệnh
  * "107 mục đã xong chiếm 46% file" mà cơ chế này sinh ra để trị — nó chỉ trị nhánh không ai
  * dùng. Sổ nói khác code, và ở đây code là thứ phải chạy theo quy ước viết. */
-// Bullet (`-` · `*`) OR numbered (`1.`) item. Numbered was missing until 2026-10-04: a real
-// backlog (_DB_DataWarehouse) wrote its session hand-off blocks as `1. [x] …` lists, so
-// `archive` reported "0 closed items" on a 1.328-line file while the closed work sat in it.
-const ITEM = /^(\s*)(?:[-*]|\d+[.)])\s*(?:\[([x ~])\]|(✅))/;
-/** A heading closed as a whole: `## [x] …` / `### ✅ …` — the section moves with everything
- *  under it, up to the next heading of the same or a higher level. Same repo, same day:
- *  sections were closed this way (`## [x] ~~…~~`) and stayed forever, since only list
- *  items were recognised. */
-const CLOSED_HEAD = /^(#{2,6})\s+(?:\[x\]|✅)/;
-/** Trạng thái đã chốt (mục ra khỏi backlog) — một chỗ hỏi, hai cách viết. */
-const CLOSED = new Set(["x", "✅"]);
-
-/**
- * Một dòng có phải mục backlog ĐÃ ĐÓNG không. Export để `validate` dùng CHUNG hàm này thay vì
- * giữ mẫu riêng — chính lỗi đó đã xảy ra và im lặng suốt: bản vá 2026-08-21 dạy `archive` hiểu
- * `✅`, nhưng để `validate.closedItems()` ở lại với mẫu chỉ-`[x]`. Hệ quả đo được 2026-08-23:
- * `05_TODO` có **7 mục `✅` / 0 mục `[x]`**, `closedItems()` trả **0**, nên `validate` KHÔNG in
- * một chữ nhắc archive — cơ chế nhắc duy nhất tự làm mình vô hình. Cùng doctrine HP điều 3:
- * một sự thật một nhà; hai bản sao của "thế nào là đã đóng" là chắc chắn lệch.
+/*
+ * WHAT THE MACHINE MOVES — decided 2026-10-04 after a first attempt moved OPEN work.
+ *
+ * Moved (explicit, unambiguous):  `- [x]` · `* [x]` · `- ✅` (bullets, since 2026-08-21) ·
+ *   `1. [x]` / `1) [x]` (numbered) · a heading `## [x] …` (the whole section, up to the next
+ *   heading of the same or a higher level).
+ * NOT moved, only REPORTED (`flagged`):
+ *   · a numbered `1. ✅` or a heading `## ✅` — this repo uses ✅ as a status DECORATION on items
+ *     that still carry open debts (measured on its own ledger: "0. ✅ … LỚP ĐÃ DỰNG" whose body
+ *     lists "🔴 … còn nợ"). The 2026-08-23 decision (commit 859fe20) kept `## ✅` out on purpose;
+ *   · any closed block that still contains an open item (`[ ]` / `[~]`).
+ * Block end: the next heading, a `>` block, or ANY list line (bullet or numbered, marked or not)
+ *   at the same or a shallower indent. The first attempt stopped only at MARKED items, so a
+ *   closed "2. ✅" swallowed the open "3. …" right after it.
  */
-export function isClosedItemLine(line: string): boolean {
-  if (CLOSED_HEAD.test(line)) return true;
+const LIST = /^(\s*)(?:[-*]|\d+[.)])\s/;
+const ITEM = /^(\s*)(?:([-*])|\d+[.)])\s*(?:\[([x ~])\]|(✅))/;
+const CLOSED_HEAD = /^(#{2,6})\s+\[x\]/;
+const CHECK_HEAD = /^(#{2,6})\s+✅/;
+const ANY_HEAD = /^(#{1,6})\s/;
+const HANDOFF_HEAD = /^#{1,6}\s.*(BÀN GIAO|PHIÊN SAU ĐỌC TRƯỚC|hand-?off)/i;
+
+/** A list line the machine treats as CLOSED (moves it). */
+function closedItem(line: string): boolean {
   const m = ITEM.exec(line);
   if (!m) return false;
-  return CLOSED.has(m[2] ?? m[3] ?? "");
+  return m[3] === "x" || (m[4] === "✅" && m[2] !== undefined);
+}
+/** A list line that is still OPEN work. */
+function openItem(line: string): boolean {
+  const m = ITEM.exec(line);
+  return !!m && (m[3] === " " || m[3] === "~");
 }
 
-/** One backlog item = its `- [x]` line plus every following line that belongs to
- *  it (deeper indent, continuation prose). Stops at the next item of the same or
- *  shallower level, a `##` heading, or a `>` block — those start new structure. */
-function itemBlocks(lines: string[]): Array<{ state: string; start: number; end: number }> {
-  const out: Array<{ state: string; start: number; end: number }> = [];
+/**
+ * Một dòng có phải mục backlog ĐÃ ĐÓNG mà máy sẽ dời không. Export để `validate` dùng CHUNG hàm này
+ * thay vì giữ mẫu riêng — chính lỗi đó đã xảy ra và im lặng suốt: bản vá 2026-08-21 dạy `archive`
+ * hiểu `✅`, nhưng để `validate.closedItems()` ở lại với mẫu chỉ-`[x]` (đo 2026-08-23: 7 mục `✅`,
+ * `closedItems()` trả 0). Một sự thật một nhà (HP điều 3).
+ */
+export function isClosedItemLine(line: string): boolean {
+  return CLOSED_HEAD.test(line) || closedItem(line);
+}
+
+export interface TodoPlan {
+  /** Line ranges [start, end) to move. */
+  moves: Array<{ start: number; end: number }>;
+  flagged: TodoFlag[];
+  handoffs: number;
+}
+
+/** Pure: decide what `archive` would move out of 05_TODO and what it must only report. */
+export function planTodo(lines: string[]): TodoPlan {
+  const moves: TodoPlan["moves"] = [];
+  const flagged: TodoFlag[] = [];
+  let handoffs = 0;
+  // fence state per line, computed once
+  const fenced: boolean[] = [];
   let inFence = false;
-  for (let i = 0; i < lines.length; ) {
-    if (FENCE.test(lines[i])) {
+  for (const l of lines) {
+    if (FENCE.test(l)) {
+      fenced.push(true);
       inFence = !inFence;
-      i++;
       continue;
     }
-    const h = inFence ? null : CLOSED_HEAD.exec(lines[i]);
-    if (h) {
-      // closed section: take it whole (items inside go with it, never counted twice)
-      const level = h[1].length;
-      let j = i + 1;
-      let fence = false;
-      for (; j < lines.length; j++) {
-        if (FENCE.test(lines[j])) fence = !fence;
-        const hm = fence ? null : /^(#{1,6})\s/.exec(lines[j]);
-        if (hm && hm[1].length <= level) break;
-      }
-      out.push({ state: "x", start: i, end: j });
-      i = j;
-      continue;
-    }
-    const m = inFence ? null : ITEM.exec(lines[i]);
-    if (!m) {
-      i++;
-      continue;
-    }
-    const indent = m[1].length;
+    fenced.push(inFence);
+  }
+  const headingEnd = (i: number, level: number): number => {
     let j = i + 1;
     for (; j < lines.length; j++) {
-      const n = lines[j];
-      if (/^#{1,6} /.test(n) || /^>/.test(n)) break;
-      const m2 = ITEM.exec(n);
-      if (m2 && m2[1].length <= indent) break;
+      const hm = fenced[j] ? null : ANY_HEAD.exec(lines[j]);
+      if (hm && hm[1].length <= level) break;
     }
-    out.push({ state: m[2] ?? m[3], start: i, end: j });
-    i = j;
+    return j;
+  };
+  const itemEnd = (i: number, indent: number): number => {
+    let j = i + 1;
+    for (; j < lines.length; j++) {
+      if (fenced[j]) continue;
+      const n = lines[j];
+      if (ANY_HEAD.test(n) || /^>/.test(n)) break;
+      const lm = LIST.exec(n);
+      if (lm && lm[1].length <= indent) break;
+    }
+    return j;
+  };
+  const hasOpen = (s: number, e: number): boolean => {
+    for (let k = s + 1; k < e; k++) if (!fenced[k] && openItem(lines[k])) return true;
+    return false;
+  };
+  const flag = (i: number, reason: TodoFlag["reason"]): void => {
+    flagged.push({ line: i + 1, text: lines[i].trim().slice(0, 120), reason });
+  };
+  for (let i = 0; i < lines.length; ) {
+    const line = lines[i];
+    if (fenced[i]) {
+      i++;
+      continue;
+    }
+    if (HANDOFF_HEAD.test(line)) handoffs++;
+    const ch = CLOSED_HEAD.exec(line);
+    if (ch) {
+      const end = headingEnd(i, ch[1].length);
+      if (hasOpen(i, end)) flag(i, "has-open-items");
+      else moves.push({ start: i, end });
+      // HANDOFF headings inside a moved section still count as handled; skip past it either way
+      i = end;
+      continue;
+    }
+    if (CHECK_HEAD.test(line)) {
+      flag(i, "check-mark-only");
+      i++;
+      continue;
+    }
+    const m = ITEM.exec(line);
+    if (m && (closedItem(line) || m[4] === "✅")) {
+      const end = itemEnd(i, m[1].length);
+      if (!closedItem(line)) flag(i, "check-mark-only");
+      else if (hasOpen(i, end)) flag(i, "has-open-items");
+      else {
+        moves.push({ start: i, end });
+        i = end;
+        continue;
+      }
+    }
+    i++;
   }
-  return out;
+  return { moves, flagged, handoffs };
 }
 
 /** Move every CLOSED item (`[x]`) — with its continuation lines — out of 05_TODO.md
@@ -215,8 +286,10 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   // closed — file size has nothing to do with it. Gating on a threshold is what let
   // 107 of them pile up to 46% of the file; and the byte threshold was firing anyway
   // with nothing to move, which is the tell that it was measuring the wrong thing.
-  const closed = itemBlocks(lines).filter((b) => CLOSED.has(b.state));
-  if (closed.length === 0) return { moved: 0, activeLines: lines.length, archivePath: null };
+  const plan = planTodo(lines);
+  const closed = plan.moves;
+  const report = { flagged: plan.flagged, handoffs: plan.handoffs };
+  if (closed.length === 0) return { moved: 0, activeLines: lines.length, archivePath: null, ...report };
 
   const drop = new Set<number>();
   for (const b of closed) for (let i = b.start; i < b.end; i++) drop.add(i);
@@ -229,7 +302,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   // thay vì ở CLI — để mọi người gọi `archiveTodo` đều có đường xem trước, không riêng CLI.
   if (opts.dryRun) {
     const kept = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
-    return { moved: closed.length, activeLines: kept.split(/\r?\n/).length, archivePath };
+    return { moved: closed.length, activeLines: kept.split(/\r?\n/).length, archivePath, ...report };
   }
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
@@ -253,7 +326,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   const rel = (p: string) => relative(ctx.projectRoot, p);
   importDoc(mainPath, rel(mainPath), ctx.projectRoot, "agent", dbPath);
   importDoc(archivePath, rel(archivePath), ctx.projectRoot, "agent-archive", dbPath);
-  return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath };
+  return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath, ...report };
 }
 
 /** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries

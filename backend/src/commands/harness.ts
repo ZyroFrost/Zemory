@@ -28,7 +28,7 @@ import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
-import { applyStandard, isStandardSource, stampRepo, standardDiff } from "../docs/standard.js";
+import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 
 export function cmdInit(args: string[]): void {
   if (args.includes("--fresh")) {
@@ -100,6 +100,23 @@ export function cmdMigrate(): void {
   console.log("  4. zemory reindex → zemory doctor (xanh = xong)");
 }
 
+/** Shared skills (2026-10-04): what `--standard` adds/replaces, and what it leaves because the repo edited it. */
+function printSkillApply(sk: Array<{ skill: string; file: string; action: string }>, apply: boolean): void {
+  if (!sk.length) return;
+  for (const s of sk) {
+    const what =
+      s.action === "kept-local"
+        ? "edited in this repo — NOT overwritten, compare by hand"
+        : s.action === "added" || s.action === "would-add"
+          ? `${apply ? "added" : "would add"} (missing here)`
+          : `${apply ? "replaced" : "would replace"} (unchanged copy of an older standard)`;
+    console.log(`  ${s.action === "kept-local" ? "!" : apply ? "✔" : "→"} skill ${s.skill}/${s.file} — ${what}`);
+  }
+  const w = sk.filter((s) => s.action !== "kept-local").length;
+  const k = sk.length - w;
+  console.log(`  skills: ${apply ? "wrote" : "would write"} ${w} · edited locally ${k}${apply ? "" : "  — add `--apply` to write"}`);
+}
+
 export function cmdSync(args: string[] = process.argv): void {
   const ri = args.indexOf("--root");
   const root = ri >= 0 && args[ri + 1] ? resolve(args[ri + 1]) : currentProjectRoot();
@@ -127,7 +144,9 @@ export function cmdSync(args: string[] = process.argv): void {
   if (args.includes("--standard")) {
     const apply = args.includes("--apply");
     const rep = applyStandard(root, { apply });
+    const sk = applySkills(root, { apply });
     console.log(`zemory sync --standard${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
+    printSkillApply(sk, apply);
     if (!rep.length) {
       console.log("  ✓ không file nào cần áp.");
       return;
@@ -187,7 +206,15 @@ export function cmdSync(args: string[] = process.argv): void {
     // ✓ chỉ được in khi KHÔNG còn ô nào chưa đo được. "5 file chưa kết luận" đứng cạnh "đang khớp"
     // là một câu tự chống lại mình, và người đọc sẽ tin vế xanh (`02_RULES §Hành xử` — chưa xác minh
     // thì chưa phải sự thật).
-    const clean = !sc.missing.length && !sc.guardStale.length && !drift.length;
+    const skills = skillDiff(root).filter((s) => s.verdict !== "current");
+    if (skills.length) {
+      const byKind = (k: string): number => skills.filter((s) => s.verdict === k).length;
+      console.log(
+        `  ⚠ shared skills behind the standard: ${byKind("clean")} replaceable · ${byKind("absent")} missing · ${byKind("local")} edited locally (report only)`,
+      );
+      console.log("      → `zemory sync --standard` to see them, `--apply` to write");
+    }
+    const clean = !sc.missing.length && !sc.guardStale.length && !drift.length && !skills.some((s) => s.verdict !== "local");
     if (clean && !unsure.length) console.log("  ✓ không có bản sửa chuẩn nào đang chờ áp.");
     else if (clean) console.log("  · phần đo được thì khớp; phần trên chưa kết luận được.");
     else process.exitCode = 1;
@@ -526,6 +553,20 @@ export function cmdArchive(args: string[] = []): void {
   } else {
     console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
     console.log(`  active 05_TODO.md ${dryRun ? "would be" : "now"} ${t.activeLines} lines (open work only).`);
+  }
+  // NEVER silent (2026-10-04): a 1,328-line ledger once answered "0 closed items" while holding 10+
+  // closed hand-off blocks, and every agent read that as "clean". Say what was left and why.
+  const leftClosed = t.flagged ?? [];
+  if (leftClosed.length) {
+    console.log(`  ${leftClosed.length} block(s) look closed but were NOT moved — close them by hand after checking:`);
+    for (const fl of leftClosed.slice(0, 20)) {
+      const why = fl.reason === "has-open-items" ? "still contains an open [ ] / [~] item" : "marked only with ✅ (numbered item or heading) — use [x] if it is really done";
+      console.log(`    line ${fl.line}: ${why} — ${fl.text}`);
+    }
+    if (leftClosed.length > 20) console.log(`    … and ${leftClosed.length - 20} more`);
+  }
+  if ((t.handoffs ?? 0) > 1) {
+    console.log(`  ${t.handoffs} hand-off blocks are still in 05_TODO.md — only the latest should remain; close or remove the older ones.`);
   }
 }
 

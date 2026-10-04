@@ -8,9 +8,9 @@
 // overwrite is not an option.
 //
 // This module only ever READS. Writing is a separate step with its own permission gate.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { templateDir } from "./adopt.js";
 import { harnessPathsAt } from "../core/config.js";
 import { projectProfile, selfRepoRoot } from "../projects.js";
@@ -92,7 +92,11 @@ const textCache = new Map<string, string | null>();
  * nhận harness sớm nhất, tức những repo lệch nhiều nhất.
  */
 export function templateHistory(profile: "app" | "non-app", file: string): Rev[] {
-  const rel = tplRel(profile, file);
+  return historyOfRel(tplRel(profile, file));
+}
+
+/** Mọi bản của MỘT đường dẫn (tương đối gốc zemory) trong lịch sử git, mới nhất trước, theo cả đổi tên. */
+function historyOfRel(rel: string): Rev[] {
   const hit = histCache.get(rel);
   if (hit) return hit;
   const self = selfRepoRoot();
@@ -307,8 +311,17 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
       continue;
     }
     if (repoStamp && tplStamp && repoStamp === tplStamp) {
-      files.push({ file, verdict: "current", repoStamp, tplStamp });
-      continue;
+      // Dấu chỉ mang NGÀY. Cùng ngày mà bản mẫu đổi thêm một lần nữa (đo 2026-10-04: 9 repo áp bản sáng,
+      // bản mẫu sửa lại chiều cùng ngày) thì "trùng dấu = mới nhất" là SAI — repo dựng từ bản SỚM HƠN
+      // trong ngày sẽ không bao giờ nhận bản sửa. Chỉ coi là mới nhất khi bản gốc của repo (bản trong ngày
+      // khớp repo nhất) CHÍNH LÀ bản mẫu hiện tại; còn lại đi tiếp đường so ba bên như thường.
+      const sameDayBase = templateAt(profile, file, repoStamp, { root, mine: contentLines(mine) });
+      const builtFromCurrent =
+        sameDayBase === null || contentLines(withProject(sameDayBase, root)).join("\n") === contentLines(theirs).join("\n");
+      if (builtFromCurrent) {
+        files.push({ file, verdict: "current", repoStamp, tplStamp });
+        continue;
+      }
     }
     if (!repoStamp) {
       files.push({ file, verdict: "unknown", repoStamp: null, tplStamp, reason: "chưa có dấu bản chuẩn" });
@@ -615,6 +628,107 @@ export function stampRepo(
     const body = mine.replace(/\s*$/, "") + eol + eol + `<!-- zemory-standard: ${picked.date} -->` + eol;
     if (opts.apply) writeFileSync(rp, body);
     out.push({ file, action: opts.apply ? "đã đóng dấu" : "sẽ đóng dấu", date: picked.date, own: picked.own, miss: picked.miss });
+  }
+  return out;
+}
+
+// ── SKILL CHUNG (2026-10-04) ────────────────────────────────────────────────────────────────────────
+//
+// `init` chép bộ skill của bộ mẫu một lần rồi KHÔNG BAO GIỜ cập nhật (`copyTree` không ghi đè; `CARRIED`
+// chỉ có ba file) ⇒ đo 2026-10-04: 6 phòng ban giữ `session-close` từ 24/08, thiếu cả bước quét rác —
+// mọi bản sửa skill từ đó tới nay không tới được repo nào đã init. Luật user: skill có CHUNG và RIÊNG.
+//   · CHUNG = skill CÓ trong bộ mẫu của profile repo (`docs_template/<profile>/.claude/skills/<tên>`).
+//   · RIÊNG = mọi skill khác — KHÔNG đọc, KHÔNG so, KHÔNG ghi.
+// Với từng tệp của skill chung:
+//   · repo chưa có ⇒ `absent` (áp: thêm vào);
+//   · khớp bản mẫu hiện tại ⇒ `current`;
+//   · khớp MỘT bản cũ trong lịch sử git của bộ mẫu ⇒ `clean` — repo chưa tự sửa (áp: thay bằng bản mới);
+//   · khác mọi bản ⇒ `local` — repo đã sửa tay (CHỈ BÁO, không ghi đè: ghi đè là mất chữ repo tự viết).
+// So bằng `contentLines` (bỏ qua kiểu xuống dòng, dòng trống cuối) — clone CRLF và bản mẫu LF không phải "sửa".
+
+export type SkillVerdictKind = "current" | "clean" | "local" | "absent";
+export interface SkillVerdict {
+  skill: string;
+  /** Đường dẫn trong thư mục skill, dạng posix (`SKILL.md`, `scripts/x.mjs`). */
+  file: string;
+  verdict: SkillVerdictKind;
+}
+
+function filesUnder(dir: string, base = dir): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) out.push(...filesUnder(p, base));
+    else out.push(relative(base, p).split(sep).join("/"));
+  }
+  return out;
+}
+
+/** So skill CHUNG của repo với bộ mẫu. Repo nguồn (chính zemory) ⇒ rỗng: chuẩn đi TỪ đây ra. */
+export function skillDiff(root: string): SkillVerdict[] {
+  if (isStandardSource(root)) return [];
+  const self = selfRepoRoot();
+  const tplSkills = join(templateDir(projectProfile(root)), ".claude", "skills");
+  if (!self || !existsSync(tplSkills)) return [];
+  const out: SkillVerdict[] = [];
+  for (const skill of readdirSync(tplSkills)) {
+    const tplDir = join(tplSkills, skill);
+    if (!statSync(tplDir).isDirectory()) continue;
+    for (const file of filesUnder(tplDir)) {
+      const repoFile = join(root, ".claude", "skills", skill, ...file.split("/"));
+      if (!existsSync(repoFile)) {
+        out.push({ skill, file, verdict: "absent" });
+        continue;
+      }
+      const mine = contentLines(withProject(readFileSync(repoFile, "utf8"), root)).join("\n");
+      const theirs = contentLines(withProject(readFileSync(join(tplDir, ...file.split("/")), "utf8"), root)).join("\n");
+      if (mine === theirs) {
+        out.push({ skill, file, verdict: "current" });
+        continue;
+      }
+      const rel = relative(self, join(tplDir, ...file.split("/"))).split(sep).join("/");
+      const fromHistory = historyOfRel(rel).some((r) => {
+        const txt = revText(r);
+        return txt !== null && contentLines(withProject(txt, root)).join("\n") === mine;
+      });
+      out.push({ skill, file, verdict: fromHistory ? "clean" : "local" });
+    }
+  }
+  return out;
+}
+
+export interface SkillApply {
+  skill: string;
+  file: string;
+  action: "added" | "replaced" | "would-add" | "would-replace" | "kept-local";
+}
+
+/**
+ * Áp skill CHUNG. **Mặc định KHÔNG ghi** — `apply` phải bật tường minh (cùng luật `applyStandard`).
+ * Chỉ ghi `absent` (thêm) và `clean` (thay — repo chưa tự sửa nên không mất gì). `local` CHỈ BÁO.
+ * Giữ kiểu xuống dòng của FILE ĐÍCH khi thay (`02_RULES §EOL`).
+ */
+export function applySkills(root: string, opts: { apply: boolean }): SkillApply[] {
+  const out: SkillApply[] = [];
+  const tplSkills = join(templateDir(projectProfile(root)), ".claude", "skills");
+  for (const v of skillDiff(root)) {
+    if (v.verdict === "current") continue;
+    if (v.verdict === "local") {
+      out.push({ skill: v.skill, file: v.file, action: "kept-local" });
+      continue;
+    }
+    const repoFile = join(root, ".claude", "skills", v.skill, ...v.file.split("/"));
+    let body = withProject(readFileSync(join(tplSkills, v.skill, ...v.file.split("/")), "utf8"), root);
+    if (v.verdict === "clean") {
+      const eol = readFileSync(repoFile, "utf8").includes("\r\n") ? "\r\n" : "\n";
+      body = body.replace(/\r?\n/g, eol);
+    }
+    if (opts.apply) {
+      mkdirSync(dirname(repoFile), { recursive: true });
+      writeFileSync(repoFile, body);
+    }
+    const added = v.verdict === "absent";
+    out.push({ skill: v.skill, file: v.file, action: opts.apply ? (added ? "added" : "replaced") : added ? "would-add" : "would-replace" });
   }
   return out;
 }

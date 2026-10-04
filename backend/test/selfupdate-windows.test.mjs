@@ -145,7 +145,8 @@ test("CLI selfupdate: tiễn daemon trước khi dựng, rồi trả lại daemo
   const iSteps = s.indexOf("const steps:");
   assert.ok(iStop > 0, "CLI phải THỰC SỰ gọi stopDaemonForBuild — nó là kẻ duy nhất giữ khoá dist/");
   assert.ok(iStop < iSteps, "phải tiễn daemon TRƯỚC khi dựng");
-  assert.match(s, /spawn\(process\.execPath, \[cli, "ui"\]/, "tiễn đi thì phải phóng lại — không bỏ người dùng không có daemon");
+  // 🔄 3.6.0: phóng bằng `launcher` (zemory.exe trước, node là đường lùi) — neo đi theo, ý giữ nguyên.
+  assert.match(s, /spawn\(launcher, \[cli, "ui"\]/, "tiễn đi thì phải phóng lại — không bỏ người dùng không có daemon");
 });
 
 test("clean: gặp tệp đang bị khoá thì nói RÕ vì sao, không ném lỗi rm trần", () => {
@@ -156,4 +157,15 @@ test("clean: gặp tệp đang bị khoá thì nói RÕ vì sao, không ném l�
   assert.match(s, /e\.code === "EBUSY"/, "EBUSY cũng là tệp đang bị giữ");
   assert.match(s, /console\.error\([^)]*daemon/i, "thông báo phải chỉ đúng thủ phạm — lỗi rm trần khiến người ta đi ngờ quyền thư mục");
   assert.match(s, /throw e/, "lỗi KHÁC thì vẫn phải ném lên, đừng nuốt");
+});
+
+test("cả HAI đường bật lại daemon dùng runtime mang tên app (zemory.exe), không node.exe trần (app-design §B1)", () => {
+  // Đo 2026-10-04: `zemory selfupdate` gõ từ CLI phóng lại daemon bằng process.execPath = node.exe ⇒ daemon
+  // giữ cổng kênh dưới tên node, lệnh tắt theo tên zemory.exe không chạm tới; script chạy nền thì vốn đúng.
+  const cli = src("backend/src/commands/selfupdate.ts").replace(/\r\n/g, "\n");
+  const relaunch = cli.slice(cli.indexOf("if (stoppedPid !== null) {"), cli.indexOf("daemon đã được phóng lại bằng mã mới"));
+  assert.match(relaunch, /const exe = join\(root, "dist", "zemory\.exe"\);\s*const launcher = existsSync\(exe\) \? exe : process\.execPath;\s*spawn\(launcher, \[cli, "ui"\]/, "CLI: zemory.exe trước, node chỉ là đường lùi");
+  assert.doesNotMatch(relaunch, /spawn\(process\.execPath, \[cli, "ui"\]/, "ca ÂM: không phóng thẳng bằng node");
+  const bg = src("backend/scripts/selfupdate-run.mjs");
+  assert.match(bg, /const launcher = existsSync\(exe\) \? exe : process\.execPath;/, "script nền: cùng luật");
 });
