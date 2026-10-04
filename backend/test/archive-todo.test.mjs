@@ -307,36 +307,100 @@ test("CLI: `--dry-run` must SAY 'would', never 'moved'/'marked' (audit 2026-09-2
 // closed work was there — written as NUMBERED items (`1. [x] …`, the session hand-off blocks)
 // and as whole sections closed at the heading (`## [x] ~~…~~`) — but only `-` bullets were
 // recognised, so nothing ever left the file and every session paid to re-read it.
-test("archive also moves NUMBERED closed items and whole sections closed at the heading", () => {
+test("archive moves what is EXPLICITLY closed: '- [x]' · '- ✅' · '1. [x]' · a '## [x]' section", () => {
   const s = scratch(`# TODO
 
 ## [x] ~~nghi vấn đã loại~~
 lời giải thích của khối đã đóng
-- [ ] dòng mở NẰM TRONG khối đã đóng — đi cùng khối, không đếm riêng
 ### mục con của khối đã đóng
 
 ## Khối bàn giao
 1. [x] bước đã xong
    chi tiết bước đã xong
 2. [ ] bước còn mở
-3) ✅ bước xong viết kiểu khác
+- ✅ mục gạch đầu dòng đã xong
 
 ## Nhóm còn sống
 - [ ] việc mở
 `);
   try {
     const r = archiveTodo(s.ctx, s.dbPath);
-    assert.equal(r.moved, 3, "1 closed section + 2 closed numbered items");
+    assert.equal(r.moved, 3, "1 closed section + 1 numbered [x] + 1 bullet ✅");
     const active = s.read("05_TODO.md");
     assert.doesNotMatch(active, /nghi vấn đã loại|lời giải thích|mục con của khối đã đóng/, "the closed section leaves whole");
-    assert.doesNotMatch(active, /bước đã xong|chi tiết bước đã xong|bước xong viết kiểu khác/, "closed numbered items leave with their continuation");
+    assert.doesNotMatch(active, /bước đã xong|chi tiết bước đã xong|mục gạch đầu dòng đã xong/, "closed items leave with their continuation");
     assert.match(active, /2\. \[ \] bước còn mở/, "open numbered item stays");
     assert.match(active, /## Khối bàn giao/, "a heading that is not closed stays");
     assert.match(active, /## Nhóm còn sống[\s\S]*việc mở/, "the next section is untouched");
-    const arch = s.read("archive/05_TODO.md");
-    assert.match(arch, /## \[x\] ~~nghi vấn đã loại~~[\s\S]*mục con của khối đã đóng/, "archive keeps the section verbatim");
+    assert.match(s.read("archive/05_TODO.md"), /## \[x\] ~~nghi vấn đã loại~~[\s\S]*mục con của khối đã đóng/, "archive keeps the section verbatim");
   } finally {
     s.cleanup();
+  }
+});
+
+test("🔴 boundary: a closed numbered item must NOT swallow the next numbered item that has no checkbox", () => {
+  // Measured 2026-10-04 on this repo's own ledger: "2. ✅ …" swallowed "3. Các tiêu chí … chưa đo" (open).
+  const s = scratch("# TODO\n\n## Việc kế\n1. [x] đã xong\n   chi tiết\n2. Các tiêu chí còn lại chưa đo\n   tiếp dòng của mục 2\n- gạch đầu dòng không dấu cũng là ranh giới\n");
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath);
+    assert.equal(r.moved, 1);
+    const active = s.read("05_TODO.md");
+    assert.doesNotMatch(active, /đã xong|chi tiết/, "the closed item leaves with its own continuation only");
+    assert.match(active, /2\. Các tiêu chí còn lại chưa đo\n {3}tiếp dòng của mục 2/, "the unmarked open item stays, whole");
+    assert.match(active, /- gạch đầu dòng không dấu cũng là ranh giới/);
+  } finally {
+    s.cleanup();
+  }
+});
+
+test("🔴 safety: '✅' on a numbered item or a heading, and closed blocks with open items inside, are REPORTED, never moved", () => {
+  // Measured 2026-10-04: "0. ✅ … LỚP ĐÃ DỰNG" carried "🔴 … còn nợ" in its body. The 2026-08-23
+  // decision (859fe20) kept '## ✅' out on purpose: ✅ is used as decoration on blocks still open.
+  const s = scratch(`# TODO
+
+## BÀN GIAO 2026-10-01
+0. ✅ **LỚP ĐÃ DỰNG**
+   🔴 phép thử còn nợ
+### ✅ tiêu đề trang trí
+- [ ] việc mở dưới tiêu đề ✅
+
+## [x] khối đóng nhưng còn việc
+- [ ] việc còn mở bên trong
+
+## BÀN GIAO 2026-10-03
+- [ ] việc của phiên mới
+`);
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath, { dryRun: true });
+    assert.equal(r.moved, 0, "nothing here may move");
+    const reasons = (r.flagged ?? []).map((f) => f.reason).sort();
+    assert.deepEqual(reasons, ["check-mark-only", "check-mark-only", "has-open-items"], JSON.stringify(r.flagged));
+    assert.equal(r.handoffs, 2, "both hand-off headings are counted");
+    const real = archiveTodo(s.ctx, s.dbPath);
+    assert.equal(real.moved, 0);
+    assert.match(s.read("05_TODO.md"), /phép thử còn nợ[\s\S]*việc còn mở bên trong/, "open debts stay in the ledger");
+  } finally {
+    s.cleanup();
+  }
+});
+
+test("CLI: archive is never silent — it lists blocks left behind and old hand-offs", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const root = mkdtempSync(join(tmpdir(), "zarch-flag-"));
+  const docsDir = join(root, "docs", "agent");
+  mkdirSync(docsDir, { recursive: true });
+  writeFileSync(join(docsDir, "05_TODO.md"), "# TODO\n\n## BÀN GIAO 1\n1. ✅ xong kiểu trang trí\n\n## BÀN GIAO 2\n- [ ] mở\n");
+  writeFileSync(join(docsDir, "06_CHANGES.md"), "# Change Log\n");
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent" }));
+  writeFileSync(join(root, "AGENTS.md"), "# fixture\n");
+  const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
+  try {
+    const out = execFileSync(process.execPath, [cli, "archive", "--dry-run"], { cwd: root, encoding: "utf8", env: { ...process.env, GLOBAL_MEMORY_DB: join(root, "t.db") } });
+    assert.match(out, /1 block\(s\) look closed but were NOT moved/, out);
+    assert.match(out, /line 4: marked only with ✅/, out);
+    assert.match(out, /2 hand-off blocks are still in 05_TODO\.md/, out);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

@@ -190,7 +190,12 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   if (stoppedPid !== null) {
     const cli = join(root, "dist", "cli.js");
     if (existsSync(cli)) {
-      spawn(process.execPath, [cli, "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
+      // Runtime MANG TÊN APP (`dist/zemory.exe`) nếu có — cùng luật với `selfupdate-run.mjs`. Phóng bằng
+      // `process.execPath` (= node.exe khi gõ từ CLI) thì daemon chạy dưới tên node (app-design §B1): đo
+      // 2026-10-04, daemon node.exe giữ cổng kênh, lệnh tắt theo tên zemory.exe không chạm tới nó.
+      const exe = join(root, "dist", "zemory.exe");
+      const launcher = existsSync(exe) ? exe : process.execPath;
+      spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
       console.log("  ✓ daemon đã được phóng lại bằng mã mới");
     } else {
       console.log(`  ⚠ không thấy ${cli} — daemon CHƯA được phóng lại, chạy \`zemory ui\` sau khi xử xong`);
