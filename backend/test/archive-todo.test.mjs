@@ -413,3 +413,32 @@ test("a `## [x]` heading inside a code fence is not a closed section", () => {
     s.cleanup();
   }
 });
+
+test("hand-off headings as repos really write them are all counted; a nested '#### BÀN GIAO' is not a second one", () => {
+  // _DB_DataWarehouse 2026-10-04: the old pattern knew only "PHIÊN SAU ĐỌC TRƯỚC" and counted 2 of 10+.
+  const s = scratch(`# TODO
+
+## ▶ PHIÊN SAU ĐỌC KHỐI NÀY TRƯỚC (2026-09-30)
+- [ ] việc a
+#### BÀN GIAO chi tiết bên trong
+- [ ] việc b
+
+## 🔴 PHIÊN SAU BẮT ĐẦU TỪ ĐÂY
+- [ ] việc c
+
+### BÀN GIAO 2026-10-02
+- [ ] việc d
+
+## Hand-off 2026-10-03
+- [ ] việc e
+
+## Việc thường
+- [ ] việc f
+`);
+  try {
+    const r = archiveTodo(s.ctx, s.dbPath, { dryRun: true });
+    assert.equal(r.handoffs, 4);
+  } finally {
+    s.cleanup();
+  }
+});

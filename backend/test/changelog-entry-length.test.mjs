@@ -8,7 +8,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { longEntries, closedItems } from "../../dist/docs/validate.js";
+import { longEntries, closedItems, duplicateKeys, supersededKeys } from "../../dist/docs/validate.js";
 
 const body = (n) => Array.from({ length: n }, (_, i) => `dòng ${i}`).join("\n");
 
@@ -61,4 +61,19 @@ test("a checked box inside a fence is an example, not an item", () => {
 
 test("a clean backlog reports zero — that is the standard's expected state", () => {
   assert.equal(closedItems("# TODO\n\n- [ ] còn làm\n- [~] đang làm\n"), 0);
+});
+
+test("duplicate entry keys are found across both tiers; a key inside a code fence is text", () => {
+  // _DB_DataWarehouse 2026-10-04: two `## [2026-10-01a]` and validate reported clean — a supersede
+  // clause naming that key links to whichever entry the parser meets first.
+  const active = "# Change Log\n\n## [2026-10-01a] — một\nx\n\n## [2026-10-01a] — hai\ny\n\n```\n## [2026-09-30]\n```\n";
+  const archived = "# Archive\n\n## [2026-09-30] — cũ\nz\n\n## [2026-09-29] — cũ hơn\n";
+  assert.deepEqual(duplicateKeys([active, archived]), [{ key: "2026-10-01a", count: 2 }]);
+  assert.deepEqual(duplicateKeys([active.replace("01a] — hai", "01b] — hai"), archived]), []);
+  assert.deepEqual(duplicateKeys(["## [k] a\n", "## [k] b\n"]), [{ key: "k", count: 2 }], "across tiers");
+});
+
+test("supersede clauses name the keys they replace — those are the keys a duplicate breaks", () => {
+  const md = "## [2026-10-02]\n> 🔄 **Supersede:** `[2026-09-25r]`…`[2026-09-25w]` và [2026-07-16]\n\n## [2026-09-25r]\nnói về 2026-09-01 ngoài câu supersede\n";
+  assert.deepEqual([...supersededKeys([md])].sort(), ["2026-07-16", "2026-09-25r", "2026-09-25w"]);
 });

@@ -50,6 +50,27 @@ export function validate(ctx: Context): ValidateReport {
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });
 
+    // Entry keys must be unique across BOTH tiers: a supersede clause names a key, and with two
+    // entries under one key it links to whichever the parser meets first. Nothing checked this —
+    // _DB_DataWarehouse (2026-10-04) carried two `## [2026-10-01a]` and validate reported clean.
+    const archFile = join(agentDir, "archive", "06_CHANGES.md");
+    // Bare-date keys repeated (`[2026-07-16]`×12) are how entries were written before suffixes, not
+    // an error: only a suffixed key (meant to be unique) or a key a supersede clause names is a warn.
+    const tiers = [readFileSync(chFile, "utf8"), existsSync(archFile) ? readFileSync(archFile, "utf8") : ""];
+    const dups = duplicateKeys(tiers);
+    const named = supersededKeys(tiers);
+    const hard = dups.filter((d) => /\d[a-z]+$/i.test(d.key) || named.has(d.key));
+    const legacy = dups.length - hard.length;
+    if (hard.length > 0) {
+      issues.push({
+        level: "warn",
+        msg: `changelog: ${hard.length} duplicate entry key(s): ${hard.map((d) => `[${d.key}]×${d.count}`).join(" · ")} — a supersede clause naming such a key links to the wrong entry; give each entry its own suffix`,
+      });
+    }
+    if (legacy > 0) {
+      issues.push({ level: "info", msg: `changelog: ${legacy} bare-date key(s) shared by several older entries — harmless unless a supersede clause names one` });
+    }
+
     // Per-ENTRY length. The file-level threshold above only says "time to archive";
     // it says nothing about entries that are individually bloated, and those are what
     // make archiving pointless — at keep=180 lines, four 50-line entries fill the whole
@@ -290,6 +311,35 @@ export function closedItems(text: string): number {
     if (!inFence && isClosedItemLine(l)) n++;
   }
   return n;
+}
+
+/** Entry keys (`## [key]`) that occur more than once across the given changelog texts. Fence-aware. */
+export function duplicateKeys(texts: string[]): Array<{ key: string; count: number }> {
+  const seen = new Map<string, number>();
+  for (const text of texts) {
+    let inFence = false;
+    for (const l of text.split("\n")) {
+      if (/^[ \t]*(```|~~~)/.test(l)) {
+        inFence = !inFence;
+        continue;
+      }
+      const m = !inFence && /^## \[([^\]]+)\]/.exec(l);
+      if (m) seen.set(m[1], (seen.get(m[1]) ?? 0) + 1);
+    }
+  }
+  return [...seen].filter(([, n]) => n > 1).map(([key, count]) => ({ key, count }));
+}
+
+/** Keys named by supersede clauses (`> 🔄 **Supersede:** … 2026-07-29l …`). */
+export function supersededKeys(texts: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const text of texts) {
+    for (const l of text.split("\n")) {
+      if (!/🔄\s*\*\*Supersede/u.test(l)) continue;
+      for (const m of l.matchAll(/\d{4}-\d{2}-\d{2}[a-z]*/gi)) out.add(m[0]);
+    }
+  }
+  return out;
 }
 
 /** Dated changelog entries longer than `max` lines, longest first. Fence-aware so a

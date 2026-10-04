@@ -338,6 +338,18 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
     const theirsL = contentLines(theirs);
     const local = changedLines(baseL, mineL);
     const moved = changedLines(baseL, theirsL);
+    // Nothing to bring: the standard moved no line, or every line it moved is already in this repo
+    // (merging yields the file as it stands). Such a file is current. Without this it reported
+    // "merge +0 −0" forever (_DB_DataWarehouse 03_STRUCTURE, 2026-10-04): the apply rewrote the stamp,
+    // the next run picked the earlier same-day revision as base again, and the empty merge came back.
+    const noop = moved === 0 || (local > 0 && (() => {
+      const r = merge3(baseL, mineL, theirsL, knownLines(root, file));
+      return r.ok && r.lines.join("\n") === mineL.join("\n");
+    })());
+    if (noop) {
+      files.push({ file, verdict: "current", repoStamp, tplStamp });
+      continue;
+    }
     files.push({
       file,
       verdict: local === 0 ? "clean" : "local",

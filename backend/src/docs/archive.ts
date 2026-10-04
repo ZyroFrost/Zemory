@@ -142,7 +142,10 @@ const ITEM = /^(\s*)(?:([-*])|\d+[.)])\s*(?:\[([x ~])\]|(✅))/;
 const CLOSED_HEAD = /^(#{2,6})\s+\[x\]/;
 const CHECK_HEAD = /^(#{2,6})\s+✅/;
 const ANY_HEAD = /^(#{1,6})\s/;
-const HANDOFF_HEAD = /^#{1,6}\s.*(BÀN GIAO|PHIÊN SAU ĐỌC TRƯỚC|hand-?off)/i;
+// Hand-off headings as repos really write them (_DB_DataWarehouse 2026-10-04: "▶ PHIÊN SAU ĐỌC KHỐI NÀY TRƯỚC",
+// "🔴 PHIÊN SAU BẮT ĐẦU TỪ ĐÂY", "BÀN GIAO …" — the first pattern only knew "PHIÊN SAU ĐỌC TRƯỚC" and counted 2 of 10+).
+// Levels 1–3 only: a "#### BÀN GIAO" nested inside another hand-off is part of it, not a second one.
+const HANDOFF_HEAD = /^#{1,3}\s.*(BÀN GIAO|PHIÊN SAU|hand-?off)/i;
 
 /** A list line the machine treats as CLOSED (moves it). */
 function closedItem(line: string): boolean {
