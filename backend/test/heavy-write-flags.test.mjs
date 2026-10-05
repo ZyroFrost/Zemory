@@ -40,6 +40,8 @@ test("function layer: an unknown flag on embed/scan/digest is REFUSED, with usag
     // tells the user to use it), so it is NOT an unknown flag. Refusing it broke that escape hatch
     // and kept `write-gate-command` green for the wrong reason (found 2026-10-05).
     ["scan", "--verbose"],
+    // 2026-10-05: `vectors-catchup --help` ran a REAL catch-up against the Drive channel.
+    ["vectors-catchup", "--help"],
   ]) {
     const r = quiet(() => rejectUnknownFlags(sub, [sub, bad]));
     assert.equal(r.out, true, `${sub} ${bad}: phải bị từ chối`);
@@ -62,6 +64,11 @@ test("NEGATIVE CASE: valid flags and a flagless command must GO THROUGH (false b
     ["digest"],
     ["digest", "--all"],
     ["digest", "claude-abc123"], // session id là đối số thường, không phải cờ
+    ["scan", "--force"], // the documented lock override (2026-10-05)
+    ["digest", "--force"],
+    ["vectors-catchup"],
+    ["vectors-catchup", "--dry-run"],
+    ["vectors-catchup", "--dir", "G:/somewhere", "--key-file", "k.key"],
   ]) {
     const r = quiet(() => rejectUnknownFlags(args[0], args));
     assert.equal(r.out, false, `${args.join(" ")}: KHÔNG được chặn`);
@@ -69,7 +76,7 @@ test("NEGATIVE CASE: valid flags and a flagless command must GO THROUGH (false b
 });
 
 test("commands outside the heavy-write group are untouched by this check", () => {
-  // Chốt cố ý hẹp: chỉ ba lệnh GHI nặng. Mở rộng sang mọi lệnh là đổi hành vi của cả CLI
+  // Chốt cố ý hẹp: chỉ các lệnh GHI nặng (scan · embed · digest · vectors-catchup). Mở rộng sang mọi lệnh là đổi hành vi của cả CLI
   // trong một bản vá không ai xin — và `search`/`show` vốn nhận nhiều cờ tự do.
   for (const args of [["search", "--all"], ["info", "--gì-đó"], ["show", "--context"]]) {
     const r = quiet(() => rejectUnknownFlags(args[0], args));
