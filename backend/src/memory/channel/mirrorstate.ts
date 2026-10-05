@@ -29,9 +29,10 @@
  * điều 17) — và hai bản trộn ba chiều trôi lệch nhau thì lệch đúng ở chỗ quyết định mất
  * hay giữ việc của người ta.
  */
-import { readFileSync } from "node:fs";
-import { currentMemoryDb, openMemory, type MemoryDB } from "../db.js";
-import { getPeerSync } from "../../config/settings.js";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "../db.js";
+import { getPeerSync, setPeerSync } from "../../config/settings.js";
 import { writeFileAtomic } from "../../util/fs-atomic.js";
 import { merge3 } from "../../docs/standard.js";
 import {
@@ -562,6 +563,7 @@ function noteDeclined(peerId: string, area: string, rel: string, theirHash: stri
 
 export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: MemoryDB; peerSync?: PeerSyncLookup } = {}): {
   inventory: () => MirrorEntry[];
+  declared: (peerId: string, entries: MirrorEntry[]) => void;
   read: (area: MirrorArea, rel: string) => Buffer | null;
   receive: (peerId: string, area: MirrorArea, rel: string, body: Buffer) => { applied: boolean; queued: boolean; error?: string; verdict?: string };
   mayPush: (peerId: string) => boolean;
@@ -573,6 +575,9 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
   // thì chỉ có một — không tiêm thì cả hai máy giả đọc chung một chiều và ca `one-way`
   // không dựng lại được. Mặc định vẫn là cấu hình thật, nên đường production không đổi.
   const lookup: PeerSyncLookup = opts.peerSync ?? getPeerSync;
+  // Injected roots (gates build two fake machines) ⇒ keep the inventory file inside them, so a test
+  // can never write into the real machine dir. Production (no roots) ⇒ the machine dir.
+  const invFile = opts.storeRoot ?? opts.repoRoot ? join((opts.storeRoot ?? opts.repoRoot) as string, "peer-inventory.json") : inventoryPath();
   return {
     inventory: () => {
       try {
@@ -581,6 +586,7 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
         return [];
       }
     },
+    declared: (peerId, entries) => rememberPeerInventory(peerId, entries, invFile),
     // CÙNG `opts` với `inventory` — đó là cả điểm của việc phép đọc sống ở đây chứ không ở
     // lớp dây: một gốc, một câu trả lời cho *"file này nằm đâu"*.
     read: (area, rel) => {
@@ -710,14 +716,11 @@ export function forgetPeerMirror(db: MemoryDB, peerId: string): { queue: number;
 }
 
 /**
- * Hai bên đã HỘI TỤ chưa — chốt ① của `§9.2`, điều kiện để được LẬT CHỦ.
+ * Have both sides CONVERGED — check ① of `§9.2`, the condition for flipping the source.
+ * Wired 2026-10-05 through `setPeerDirection` (the full check; the queue count is the quick one).
  *
- * ⚠ CHƯA NỐI (audit 25/09 thấy không ai gọi) — CỐ Ý GIỮ: đây là "phép đủ" của chốt ① mà `05_TODO`
- * còn ghi nợ (hiện chỉ có phép XẤP XỈ theo hàng đợi). Nó cần kiểm kê của máy kia, chỉ có trong một
- * phiên đang chạy. Nối nó thì xoá dòng này; bỏ hẳn chốt ① thì xoá cả hàm.
- *
- * Trả về số file còn lệch. Lật khi chưa hội tụ thì lượt đẩy đầu tiên của chủ mới mang bản
- * THIẾU sang đè bản đủ, và không lỗi nào nổ.
+ * Returns the number of files that still differ. Flipping before convergence makes the new
+ * source's first push carry the INCOMPLETE copy over the complete one, and nothing errors.
  */
 export function divergentCount(mine: MirrorEntry[], theirs: MirrorEntry[]): number {
   const key = (e: MirrorEntry): string => `${e.area}/${e.rel}`;
@@ -727,4 +730,87 @@ export function divergentCount(mine: MirrorEntry[], theirs: MirrorEntry[]): numb
   for (const [k, h] of m) if (t.get(k) !== h) n++;
   for (const k of t.keys()) if (!m.has(k)) n++;
   return n;
+}
+
+// ── PEER INVENTORY + DIRECTION CHANGE (plan/24 §9.2 check ①) ─────────────────────────────
+//
+// The full convergence check needs the OTHER machine's inventory, which only exists inside a live
+// session (`mfiles`). With the persistent link (§9.10) a session is nearly always open, so the last
+// declared inventory is kept on disk — a derived file (rebuilt by the next round), not a second store.
+// Only areas that CAN conflict are kept: `files/` is content-addressed and never diverges (§9.1).
+
+export interface PeerInventory {
+  at: string;
+  entries: Array<{ area: MirrorArea; rel: string; hash?: string }>;
+}
+
+function inventoryPath(machineDir = currentMemoryDir()): string {
+  return join(machineDir, "peer-inventory.json");
+}
+
+function readInventories(file = inventoryPath()): Record<string, PeerInventory> {
+  if (!existsSync(file)) return {};
+  try {
+    const j = JSON.parse(readFileSync(file, "utf8")) as Record<string, PeerInventory>;
+    return j && typeof j === "object" ? j : {};
+  } catch {
+    return {}; // unreadable ⇒ "no inventory known", which blocks a flip — the safe side
+  }
+}
+
+const normPeer = (id: string): string => id.replace(/-/g, "").toUpperCase();
+
+/** Called by the session each time the peer declares its files. Failure never breaks the session. */
+export function rememberPeerInventory(peerId: string, entries: MirrorEntry[], file = inventoryPath(), now = new Date()): void {
+  try {
+    const all = readInventories(file);
+    all[normPeer(peerId)] = {
+      at: now.toISOString(),
+      entries: entries.filter((e) => !isContentAddressed(e.area)).map((e) => ({ area: e.area, rel: e.rel, hash: e.hash })),
+    };
+    writeFileAtomic(file, JSON.stringify(all));
+  } catch {
+    /* derived state: next round writes it again */
+  }
+}
+
+export function peerInventory(peerId: string, file = inventoryPath()): PeerInventory | null {
+  return readInventories(file)[normPeer(peerId)] ?? null;
+}
+
+export type DirectionResult =
+  | { ok: true; direction: "two-way" | "one-way"; source?: string }
+  | { ok: false; reason: "pending" | "no-inventory" | "diverged"; count?: number; at?: string };
+
+/**
+ * THE one place that changes a pair's sync direction (HP điều 17: CLI and HTTP both call this).
+ *
+ * Going to one-way, or changing the source, is allowed only when both sides have converged:
+ *   ① quick: no item of that peer is still waiting for review in the queue;
+ *   ② full: this machine's files == the peer's last declared inventory (`divergentCount` = 0).
+ * No inventory known ⇒ refuse: convergence cannot be proven, and an unproven flip is the silent
+ * overwrite this check exists to stop. Back to two-way is always allowed (nothing gets overwritten).
+ */
+export function setPeerDirection(
+  peerId: string,
+  want: { direction: "two-way" | "one-way"; source?: string },
+  opts: { db?: MemoryDB; mine?: MirrorEntry[]; inventoryFile?: string; repoRoot?: string; storeRoot?: string } = {},
+): DirectionResult {
+  if (want.direction === "one-way") {
+    const cur = getPeerSync(peerId);
+    const same = cur.direction === "one-way" && cur.source && want.source && normPeer(cur.source) === normPeer(want.source);
+    if (!same) {
+      const db = opts.db ?? mirrorDb();
+      const pending = listQueue(db, peerId).length;
+      if (pending > 0) return { ok: false, reason: "pending", count: pending };
+      const inv = peerInventory(peerId, opts.inventoryFile);
+      if (!inv) return { ok: false, reason: "no-inventory" };
+      const mine = opts.mine ?? scanMirror({ repoRoot: opts.repoRoot, storeRoot: opts.storeRoot }).entries;
+      const diff = divergentCount(mine, inv.entries as MirrorEntry[]);
+      if (diff > 0) return { ok: false, reason: "diverged", count: diff, at: inv.at };
+    }
+  }
+  setPeerSync(peerId, want.direction === "one-way" ? { direction: "one-way", source: want.source } : { direction: "two-way" });
+  const c = getPeerSync(peerId);
+  return { ok: true, direction: c.direction, ...(c.source ? { source: c.source } : {}) };
 }

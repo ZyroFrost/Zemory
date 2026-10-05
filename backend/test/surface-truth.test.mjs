@@ -70,7 +70,7 @@ test("1 `memory info` must say it too, not only the daemon's JSON path", (t) => 
     encoding: "utf8",
     env: { ...process.env, GLOBAL_MEMORY_DB: dbPath, ZEMORY_DAEMON_CHILD: "1" },
   });
-  assert.match(out, /ngoài phạm vi nhúng/, `dòng vec_chunks phải nêu số cố-ý-bỏ. Thấy:\n${out}`);
+  assert.match(out, /deliberately outside the embed scope/,`dòng vec_chunks phải nêu số cố-ý-bỏ. Thấy:\n${out}`);
 });
 
 test("2 a file that cannot be decrypted on the shared channel must reach the LOG, never hide inside merged[]", async (t) => {

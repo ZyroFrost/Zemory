@@ -951,6 +951,36 @@ function listSegments(dir: string, strict = false): { path: string; n: number }[
   }
   return out.sort((a, b) => a.n - b.n);
 }
+/**
+ * Is the channel EMPTY, for the one decision "export a BASELINE (since = 0) instead of a delta"?
+ *
+ * 🔴 Why this is not just `penSegments === 0` (measured 2026-10-05): since 2026-09-21 the p2p write
+ * target is this machine's PEN (`channel/<device-id>/`), not the channel root. The first write into a
+ * brand-new, empty pen therefore read as "empty channel" ⇒ since = 0 ⇒ it exported the WHOLE store
+ * (2.6 GB) while the root already carried the same store since 2026-09-17 and the `p2p:<host>`
+ * watermark was valid. Result: the channel holds one store TWICE (6.7 GB) — the shape HP điều 16
+ * forbids. "Empty" must mean the whole channel: root AND every pen.
+ *
+ * Drive (and any dir that is not a pen) keeps the old meaning: no segment in THIS dir ⇒ empty.
+ * Listing is STRICT everywhere (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
+ */
+export function channelEmptyForBaseline(dir: string, penSegments: number, channel?: SyncChannel): boolean {
+  if (penSegments > 0) return false;
+  const root = dirname(dir);
+  if (channel !== "p2p" || basename(root) !== "channel") return true;
+  if (listSegments(root, true).length > 0) return false;
+  let pens: string[];
+  try {
+    pens = readdirSync(root, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+  } catch (e) {
+    if (segmentsReadVerdict((e as NodeJS.ErrnoException).code) === "unreadable") throw e;
+    return true;
+  }
+  return pens.every((p) => join(root, p) === dir || listSegments(join(root, p), true).length === 0);
+}
+
 /** Khúc sẽ NHẬN lượt ghi kế: khúc cuối nếu còn chỗ, không thì khúc kế (chưa tồn tại). */
 function activeSegment(dir: string): { path: string; name: string; fresh: boolean } {
   // NGHIÊM: hàm này quyết định GHI VÀO ĐÂU. Đoán nhầm "trống" ở đây là mở một khúc tươi và
@@ -1991,7 +2021,8 @@ async function pushAppend(o: {
   const compacting = o.compact === true;
   // `segs.length === 0` chỉ được đọc là "kênh trống" khi phép liệt kê THÀNH CÔNG — xem
   // `segmentsReadVerdict`. `segs` ở đây lấy bằng thước NGHIÊM nên rỗng là rỗng thật.
-  const since = compacting || segs.length === 0 ? 0 : readExportWatermark(wmKey, dbPath);
+  // "Empty" for a p2p pen means the WHOLE channel (root + every pen) — `channelEmptyForBaseline`.
+  const since = compacting || channelEmptyForBaseline(dir, segs.length, o.channel) ? 0 : readExportWatermark(wmKey, dbPath);
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
   const part = join(tmp, "part.enc");

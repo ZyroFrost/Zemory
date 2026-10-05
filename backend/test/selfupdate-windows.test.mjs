@@ -163,7 +163,7 @@ test("cả HAI đường bật lại daemon dùng runtime mang tên app (zemory.
   // Đo 2026-10-04: `zemory selfupdate` gõ từ CLI phóng lại daemon bằng process.execPath = node.exe ⇒ daemon
   // giữ cổng kênh dưới tên node, lệnh tắt theo tên zemory.exe không chạm tới; script chạy nền thì vốn đúng.
   const cli = src("backend/src/commands/selfupdate.ts").replace(/\r\n/g, "\n");
-  const relaunch = cli.slice(cli.indexOf("if (stoppedPid !== null) {"), cli.indexOf("daemon đã được phóng lại bằng mã mới"));
+  const relaunch = cli.slice(cli.indexOf("if (stoppedPid !== null) {"), cli.indexOf("daemon relaunched on the new code"));
   assert.match(relaunch, /const exe = join\(root, "dist", "zemory\.exe"\);\s*const launcher = existsSync\(exe\) \? exe : process\.execPath;\s*spawn\(launcher, \[cli, "ui"\]/, "CLI: zemory.exe trước, node chỉ là đường lùi");
   assert.doesNotMatch(relaunch, /spawn\(process\.execPath, \[cli, "ui"\]/, "ca ÂM: không phóng thẳng bằng node");
   const bg = src("backend/scripts/selfupdate-run.mjs");

@@ -36,7 +36,10 @@ test("function layer: an unknown flag on embed/scan/digest is REFUSED, with usag
     ["scan", "--help"],
     ["digest", "--help"],
     ["embed", "--dry-run"],
-    ["scan", "--force"],
+    // Was `["scan", "--force"]` — but `--force` is the documented lock override (the lock message
+    // tells the user to use it), so it is NOT an unknown flag. Refusing it broke that escape hatch
+    // and kept `write-gate-command` green for the wrong reason (found 2026-10-05).
+    ["scan", "--verbose"],
   ]) {
     const r = quiet(() => rejectUnknownFlags(sub, [sub, bad]));
     assert.equal(r.out, true, `${sub} ${bad}: phải bị từ chối`);

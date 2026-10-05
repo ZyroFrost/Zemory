@@ -31,7 +31,7 @@ export async function cmdPlan(args: string[]): Promise<void> {
     const docPath = args[1] ? args[1] : join(relative(root, harnessPathsAt(root).plan), "00_overview.md");
     const toc = listToc(docPath, root);
     if (!toc.length) {
-      console.log(`zemory plan: no sections for ${docPath} (index rỗng — chạy \`zemory reindex\`; hoặc đọc thẳng file .md).`);
+      console.log(`zemory plan: no sections for ${docPath} (index is empty — run \`zemory reindex\`, or read the .md file directly).`);
       return;
     }
     console.log(`zemory plan ls — ${docPath}`);
@@ -68,7 +68,7 @@ export async function cmdPlan(args: string[]): Promise<void> {
   }
   console.log(
     [
-      "zemory plan <subcommand>   (.md là NGUỒN; DB = index dẫn xuất — dựng lại bằng `zemory reindex`)",
+      "zemory plan <subcommand>   (.md is the SOURCE; DB = derived index — rebuild with `zemory reindex`)",
       "",
       "  ls [doc]           table of contents (from the search index)",
       "  show <#id>         print a section's body",
@@ -82,16 +82,16 @@ export async function cmdDocs(args: string[]): Promise<void> {
   const root = currentProjectRoot();
   if (sub === "ls") {
     const docs = listDocs(root);
-    console.log(`zemory docs — ${docs.length} doc(s) trong search index`);
+    console.log(`zemory docs — ${docs.length} doc(s) in the search index`);
     for (const d of docs) console.log(`  #${d.id} [${d.kind}] ${d.path} (${d.sections} sections)`);
     return;
   }
   console.log(
     [
-      "zemory docs <subcommand>   (.md là NGUỒN, file wins; DB = search index dẫn xuất)",
+      "zemory docs <subcommand>   (.md is the SOURCE, file wins; DB = derived search index)",
       "",
       "  ls       list docs currently in the search index (kind · sections)",
-      "  (thêm/sửa/xoá docs = sửa file .md trực tiếp; `zemory reindex` dựng lại index)",
+      "  (add/edit/delete docs = edit the .md files directly; `zemory reindex` rebuilds the index)",
     ].join("\n"),
   );
 }
@@ -103,7 +103,7 @@ export async function cmdChangelog(args: string[]): Promise<void> {
     const rows = listEntries(root);
     console.log(`zemory changelog — ${rows.length} entr(ies)`);
     for (const r of rows) {
-      const relation = r.supersedes_id ? ` → thay #${r.supersedes_id}` : "";
+      const relation = r.supersedes_id ? ` → supersedes #${r.supersedes_id}` : "";
       console.log(`  #${r.id} [${r.date ?? "—"}] ${r.title}${r.archived ? " (archived)" : ""}${relation}`);
     }
     return;
@@ -123,7 +123,7 @@ export async function cmdChangelog(args: string[]): Promise<void> {
       // lặng: search trả phán quyết 29/07 ("chuẩn mới cho cowork thôi") y như luật còn
       // sống, trong khi 31/07 đã lật — phiên sau đọc trúng dòng đó là làm sai.
       const dead = h.supersededBy
-        ? `\n     ⚠ ĐÃ BỊ THAY bởi #${h.supersededBy}${h.supersededDate ? ` (${h.supersededDate})` : ""} — đọc bản đó trước khi tin dòng này.`
+        ? `\n     ⚠ SUPERSEDED by #${h.supersededBy}${h.supersededDate ? ` (${h.supersededDate})` : ""} — read that entry before trusting this one.`
         : "";
       console.log(`  #${h.id} [${h.date ?? "—"}] ${h.title}\n     ${h.snippet}${dead}`);
     }
@@ -132,11 +132,11 @@ export async function cmdChangelog(args: string[]): Promise<void> {
   }
   console.log(
     [
-      "zemory changelog <subcommand>   (.md là NGUỒN; DB = search index dẫn xuất)",
+      "zemory changelog <subcommand>   (.md is the SOURCE; DB = derived search index)",
       "",
       "  ls               list entries in the index (newest first)",
       "  search <q> [--all] FTS over entries",
-      "  (thêm entry = sửa 06_CHANGES.md trực tiếp; `zemory reindex` dựng lại index)",
+      "  (add an entry = edit 06_CHANGES.md directly; `zemory reindex` rebuilds the index)",
     ].join("\n"),
   );
 }

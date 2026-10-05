@@ -142,7 +142,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
     // nhiều mới là chỗ mọi thứ đi QUA. Số per-node vốn có sẵn; đây chỉ là bản in xếp hạng.
     const gods = topHubs(g, 5).filter((h) => h.fanIn + h.fanOut > 0);
     if (gods.length) {
-      console.log(`  god-nodes (tổng bậc): ${gods.map((h) => `${h.id} (${h.fanIn}↓/${h.fanOut}↑)`).join(" · ")}`);
+      console.log(`  god-nodes (total degree): ${gods.map((h) => `${h.id} (${h.fanIn}↓/${h.fanOut}↑)`).join(" · ")}`);
     }
     console.log(f.passed ? "  PASS" : "  FAIL");
     if (args.includes("--gate") && !f.passed) process.exitCode = 1;
@@ -157,7 +157,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
     const qb = args[2];
     if (!qa || !qb) {
       console.log("usage: zemory graph path <fileA> <fileB>");
-      console.log("  Đường NGẮN NHẤT nối hai file qua imports · calls · api seam (không hướng, in chiều thật).");
+      console.log("  The SHORTEST path linking two files through imports · calls · api seam (undirected, printed in the real direction).");
       return;
     }
     const g = buildCodeGraph(root);
@@ -187,12 +187,12 @@ export async function cmdGraph(args: string[]): Promise<void> {
     ];
     const path = shortestPathEdges(edges, a, b);
     if (path === null) {
-      console.log(`zemory graph path — ${a} và ${b} KHÔNG nối được qua 3 lớp cạnh hiện có (imports · calls · api).`);
-      console.log("  Không nối ≠ không liên quan: quan hệ ngữ nghĩa/route viết động nằm ngoài tầm graph (điều 13).");
+      console.log(`zemory graph path — ${a} and ${b} are NOT connected through the 3 existing edge layers (imports · calls · api).`);
+      console.log("  Not connected ≠ unrelated: semantic relations and dynamically built routes are outside the graph's reach (article 13).");
       process.exitCode = 1;
       return;
     }
-    console.log(`zemory graph path — ${a} → ${b}  (${path.length} bước)`);
+    console.log(`zemory graph path — ${a} → ${b}  (${path.length} step(s))`);
     for (const s of path) {
       const arrow = s.forward ? "→" : "←";
       console.log(`  ${s.from} ${arrow} (${s.type}${s.kind === "inferred" ? " · inferred" : ""}) ${arrow} ${s.to}`);
@@ -212,8 +212,8 @@ export async function cmdGraph(args: string[]): Promise<void> {
     const ids = args.slice(1).filter((a) => !a.startsWith("--"));
     if (!ids.length) {
       console.log("usage: zemory graph edge <eid> [<eid>…]");
-      console.log("  Kiểm một (hoặc nhiều) edge id được TRÍCH DẪN: có thật không · hạng gì · nối ai với ai.");
-      console.log("  Id lấy từ `zemory graph export` (trường `eid`) hoặc payload /code-graph của UI.");
+      console.log("  Check one (or more) CITED edge ids: does it exist · which class · what it connects.");
+      console.log("  Ids come from `zemory graph export` (the `eid` field) or the UI's /code-graph payload.");
       process.exitCode = 1;
       return;
     }
@@ -243,16 +243,16 @@ export async function cmdGraph(args: string[]): Promise<void> {
     ]);
     const byId = new Map(edges.map((e) => [e.eid, e]));
     let valid = 0;
-    console.log(`zemory graph edge — ${root} (${edges.length} cạnh trong graph)`);
+    console.log(`zemory graph edge — ${root} (${edges.length} edge(s) in the graph)`);
     for (const raw of ids) {
       const id = raw.replace(/^edge:/, "").trim().toLowerCase();
       const e = byId.get(id);
       if (!e) {
-        console.log(`  ✗ ${id} — KHÔNG có cạnh nào mang id này`);
+        console.log(`  ✗ ${id} — NO edge carries this id`);
         continue;
       }
       valid++;
-      const hang = e.kind === "declared" ? "KHAI BÁO" : `SUY LUẬN${"confidence" in e ? ` (${(e as { confidence?: string }).confidence})` : ""}`;
+      const hang = e.kind === "declared" ? "DECLARED" : `INFERRED${"confidence" in e ? ` (${(e as { confidence?: string }).confidence})` : ""}`;
       console.log(`  ✓ ${id} — [${e.type} · ${hang}] ${e.from} → ${e.to}`);
     }
     if (ids.length > 1) {

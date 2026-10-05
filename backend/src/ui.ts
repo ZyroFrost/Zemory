@@ -1914,12 +1914,14 @@ export function linkStates(): Record<string, { state: LinkState; since: number; 
  * Xoá tên khỏi sổ mà không ngắt ống là gỡ cặp trên giấy: hai máy vẫn chở dữ liệu cho nhau, người
  * dùng thì tin là đã cắt. Trả về có thật sự có liên kết để cắt hay không.
  */
-export function dropLink(peerId: string): boolean {
+export function dropLink(peerId: string, reason = "người dùng ngắt liên kết"): boolean {
   const e = links.get(peerId);
   if (!e) return false;
-  e.ctrl.abort();
+  // The reason travels on the signal: the session logs it as-is. Without it, the system's own path
+  // switch (relay → direct) was logged as "the user cut the link" — a fault nobody caused.
+  e.ctrl.abort(reason);
   links.delete(peerId);
-  daemonLog(`[channel] đã ngắt liên kết với ${peerId.slice(0, 11)}…`);
+  daemonLog(`[channel] đã ngắt liên kết với ${peerId.slice(0, 11)}… (${reason})`);
   return true;
 }
 
@@ -2093,7 +2095,7 @@ async function linkTick(projectRoot: string): Promise<void> {
       if (e.via !== "relay" || e.state !== "up") continue;
       if (!onLan.some((s) => ch.sameDeviceId(s.deviceId, id))) continue;
       daemonLog(`[channel] ${id.slice(0, 11)}… đang đi relay mà có mặt trên mạng nội bộ — đổi sang gọi thẳng`);
-      dropLink(id);
+      dropLink(id, "tự đổi đường sang gọi thẳng");
       keepLink(id, projectRoot);
     }
   } catch {
@@ -3911,6 +3913,32 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         const code = (e as { code?: string }).code;
         return json(res, { ok: false, code: code ?? "error" });
       }
+    }
+    // Sync direction of one pair (plan/24 §9.2 · §9.6). A MIRROR of `channel mirror direction`:
+    // both call `setPeerDirection`, which owns check ① (HP điều 17). `set-` ⇒ POST only (MUTATING).
+    if (p === "/set-peer-direction") {
+      const id = (u.searchParams.get("id") ?? "").trim();
+      const direction = u.searchParams.get("direction");
+      if (!id || (direction !== "two-way" && direction !== "one-way")) return json(res, { ok: false, error: "bad-args" });
+      const ms = await import("./memory/channel/mirrorstate.js");
+      const ch = await import("./memory/channel/index.js");
+      const source = direction === "one-way" ? (u.searchParams.get("source") === "peer" ? id : ch.channelIdentity().deviceId) : undefined;
+      const r = ms.setPeerDirection(id, { direction, source });
+      if (!r.ok) {
+        // `zSave` shows `error` to the user verbatim ⇒ it must already be in the UI language.
+        const { tr } = await import("./i18n/index.js");
+        const n = String(r.count ?? 0);
+        const error =
+          r.reason === "pending"
+            ? tr(`Còn ${n} mục chờ duyệt với máy này — duyệt hết rồi đổi chiều`, `${n} item(s) still awaiting approval from this machine — clear them, then change direction`)
+            : r.reason === "diverged"
+              ? tr(`Hai máy còn lệch ${n} tệp — đồng bộ cho khớp rồi đổi chiều`, `The two machines still differ on ${n} file(s) — sync until they match, then change direction`)
+              : tr("Chưa có kiểm kê tệp của máy kia — đồng bộ một lượt rồi đổi chiều", "No file inventory from the other machine yet — run one sync, then change direction");
+        daemonLog(`[channel] không đổi chiều với ${id.slice(0, 11)}…: ${r.reason}${r.count !== undefined ? ` (${r.count})` : ""}`);
+        return json(res, { ...r, error });
+      }
+      daemonLog(`[channel] chiều với ${id.slice(0, 11)}…: ${r.direction}${r.source ? ` · nguồn ${r.source.slice(0, 11)}…` : ""}`);
+      return json(res, r);
     }
     if (p === "/channel-pair") {
       const { getP2pPeers, setP2pPeers, getP2pPeerAddrs, setP2pPeerAddrs } = await import("./config/settings.js");

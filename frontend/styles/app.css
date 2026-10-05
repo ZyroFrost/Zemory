@@ -250,6 +250,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .mstore:hover{background:var(--wash)}
 /* Nút chép NEO PHẢI và không bao giờ co (§F13: thứ co lại là nội dung, không phải nút điều khiển). */
 .btn.xs{padding:2px 7px;font-size:10.5px;line-height:1.5}
+/* §F0c: an xs select next to xs buttons must be the same HEIGHT — pinned from one variable, not
+   from padding+font (an OS <select> renders a different height with the same padding). */
+:root{--ctl-h-xs:22px}
+.btn.xs,.rsel.xs{box-sizing:border-box;height:var(--ctl-h-xs)}
+.rsel.xs{font-size:10.5px;padding:0 6px;border-radius:6px}
 .mstore-cp{margin-left:auto;flex:0 0 auto}
 .mstore .src{flex:0 0 auto;color:var(--primary);font-size:11px}
 .mstore .pth{min-width:0;word-break:break-all;color:var(--text-faint);font-family:ui-monospace,Consolas,monospace}
