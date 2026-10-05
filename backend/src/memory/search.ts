@@ -496,48 +496,45 @@ function demoteToolOutput(
     .sort((a, b) => b.s - a.s);
 }
 
-// ── GỘP NEAR-DUPLICATE (plan 17 §1.2) — OPT-IN, TRƯỢT CỔNG ───────────────────
-// Bệnh nhắm tới (đo 2026-08-08): 16/34 ca trượt lớp `prose` là vì một tin MỚI HƠN cùng chủ
-// đề chiếm chỗ tin có nhãn — kho chat bàn đi bàn lại một việc hàng chục lần nên top-N đầy
-// bản gần trùng.
+// ── NEAR-DUPLICATE COLLAPSE (plan 17 §1.2) — ON BY DEFAULT ─────────────────────
+// Target (measured 2026-08-08): 16/34 `prose` misses were a NEWER message on the same topic
+// taking the labelled message's slot — the chat store revisits one task dozens of times, so
+// top-N fills with near-duplicates.
 //
-// 🔴 NHƯNG ĐO TRÊN BỀ MẶT THẬT THÌ NÓ TRƯỢT (điều 12 ⇒ KHÔNG bật mặc định):
-//     1 truy vấn: MRR 0,255 → **0,223** · `@10` 39% → **32%**
-//     3 truy vấn: `@10` 45% → **39%** · `@40` 64% → **41%**
-// Phép thử ngoại tuyến trước đó hứa MRR +29% — **con số đó SAI vì thước sai**: nó chấm theo
-// *"cụm chứa đáp án nằm ở vị trí mấy"*, tức cho điểm dù thứ TRẢ VỀ là tin khác. Bản cài thật
-// trả về ĐẠI DIỆN, nên đáp án là bản-trùng thì bị đẩy khỏi top-10. Đã thử cả hai lối (xoá
-// bản trùng · hạ chúng xuống sau) — hạ tốt hơn xoá ở `@40` nhưng cả hai đều không cứu `@10`.
-//
-// Vì sao GIỮ code lại thay vì xoá: giá trị thật của gộp là *"trả về một tin TƯƠNG ĐƯƠNG cũng
-// được"* — mà thước hiện tại đòi ĐÚNG MỘT uuid nên nó không thể ghi nhận điều đó (đúng món nợ
-// `plan 17 §4.3` nhãn đa-uuid). Chưa sửa thước thì KHÔNG được tuyên nó thắng; để opt-in cho
-// bề mặt NGƯỜI đọc (danh sách gọn hơn) và để đo lại khi có nhãn đa-uuid.
+// History, kept because it explains the two rulers: the first verdict (2026-08-09) was "fails
+// the gate, opt-in only" — the strict one-uuid ruler said 1 query MRR 0.255 → 0.223, @10 39% →
+// 32%; 3 queries @10 45% → 39%, @40 64% → 41%. An earlier offline probe promising MRR +29% was
+// WRONG because it scored "where does the cluster containing the answer rank" while the real
+// code returns the cluster REPRESENTATIVE. Both dropping and demoting duplicates were tried;
+// demoting beat dropping at @40, neither saved @10. The verdict flipped once the EQUIVALENT
+// ruler existed (plan 17 §1.2b / §4.3) — see the doc comment on `collapseEnabled`.
 const COLLAPSE_SIM = Number(process.env.ZEMORY_COLLAPSE_SIM) || 0.85;
-// Lấy dư rồi mới gộp: gộp SAU khi đã cắt còn `limit` thì mỗi bản trùng vẫn chiếm một suất
-// trong `limit`. ⚠ Lấy dư cũng làm mất phần "sạch hơn": suất trống được LẤP BẰNG RÁC MỚI, nên
-// ca âm vẫn 40 kết quả/câu (phép thử cũ tưởng 40 → 22 vì nó không lấp lại).
+// Over-fetch before collapsing: collapsing AFTER cutting to `limit` still lets each duplicate
+// take a slot. ⚠ Over-fetching also cancels the "cleaner" effect: freed slots are refilled
+// with NEW noise, so negative queries still return 40 results each (the old probe thought
+// 40 → 22 because it never refilled).
 const COLLAPSE_OVERFETCH = 4;
-/** Trần số ID bản-trùng trả kèm mỗi dòng: đủ để mở, không phá tinh thần "lớp mỏng trước". */
+/** Cap on duplicate ids returned per row: enough to open them, still a thin first layer. */
 const SIMILAR_IDS_CAP = 5;
 
 /**
- * Gộp near-duplicate — **MẶC ĐỊNH BẬT (user chốt 2026-08-09)**, sau khi thước TƯƠNG ĐƯƠNG
- * đảo phán quyết cũ.
- *
- * 🔄 **Supersede kết luận "TRƯỢT CỔNG, mặc định TẮT" của chính khối này.** Hai thước nói NGƯỢC
- * nhau về cùng thay đổi, và cả hai đều đúng vì đo hai việc khác:
- *   · thước NGHIÊM (đúng 1 uuid): gộp THUA — MRR 0,319 → 0,288
- *   · thước TƯƠNG ĐƯƠNG (gần trùng cũng tính): gộp THẮNG — MRR 0,407 → **0,413**,
+ * Near-duplicate collapse — **ON BY DEFAULT (user decision 2026-08-09)**, after the
+ * EQUIVALENT ruler reversed the earlier "fails the gate, off by default" verdict.
+ * The two rulers disagree about the same change and both are right, because they measure
+ * different things:
+ *   · STRICT ruler (exactly one uuid): collapse LOSES — MRR 0.319 → 0.288
+ *   · EQUIVALENT ruler (a near-duplicate counts): collapse WINS — MRR 0.407 → **0.413**,
  *     `@10` 49% → **54%**, `@40` 60% → **63%**; `prose@40` 76% → **82%**,
  *     `tool_result@10` 63% → **75%**
- * Thước nghiêm phạt gộp nặng nhất trong mọi thay đổi, vì bản chất của gộp LÀ gom bản trùng nên
- * đại diện cụm thường không phải đúng uuid được đánh dấu — dù nội dung y hệt. Với mục đích thật
- * của zemory (agent tra cứu để BIẾT VIỆC, không phải hệ trích dẫn một uuid) thì tương đương là
- * thước cầm lái. `ZEMORY_COLLAPSE=0` để tắt.
+ * The strict ruler punishes collapse hardest of all changes: collapsing IS merging duplicates,
+ * so the representative is often not the labelled uuid even when the content is identical.
+ * For zemory's purpose (an agent looking things up to KNOW what happened, not a system that
+ * cites one uuid) the equivalent ruler leads. Re-confirmed 2026-08-25 on 108 labels
+ * (plan 19 §4b). `ZEMORY_COLLAPSE=0` turns it off.
  *
- * KHÔNG có gì bị ẩn: mỗi đại diện mang `similar` (số bản đã gom) + `similarIds` (mở được ngay
- * bằng `memory_show`). Agent nào cần thấy từng bản riêng thì gọi lại với `collapse:false`.
+ * Nothing is hidden: each representative carries `similar` (how many were merged) and
+ * `similarIds` (openable directly with `memory_show`). An agent that needs every copy calls
+ * again with `collapse:false`.
  */
 export function collapseEnabled(force?: boolean): boolean {
   if (force !== undefined) return force;
