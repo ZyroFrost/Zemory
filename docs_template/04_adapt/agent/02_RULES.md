@@ -51,7 +51,7 @@ EOL của file MÁY SINH ⛔ File do máy ghép TỪ file khác (archive ← `05
 | `04_SKILLS.md` | **sổ ĐĂNG KÝ** skill: một dòng mỗi skill + luật dùng. Playbook nằm ở `.claude/skills/<tên>/SKILL.md` | khi thêm/bớt một skill |
 | `05_TODO.md` | backlog | phát sinh việc / đổi ưu tiên; xong → chuyển sang CHANGES |
 | `06_CHANGES.md` | changelog | mỗi lần sửa code; **chỉ ghi sau khi xác nhận OK** (viết tay đúng format `## [YYYY-MM-DD] — tiêu đề`) |
-- **Quy trình thao tác = MỘT file skill, đăng ký HAI chỗ.** Việc lặp lại đóng thành `.claude/skills/<tên-tiếng-anh>/SKILL.md` (frontmatter `name` + `description` — `description` là thứ DUY NHẤT quyết định skill có được gọi ra hay không), rồi thêm **một dòng vào `04_SKILLS` §2 và một dòng vào bảng trigger `AGENTS.md`**. Thiếu một trong hai = skill mồ côi, phiên sau không tìm ra. **KHÔNG nhét playbook trở lại `04_SKILLS`** — nó là sổ đăng ký, có trần 60 dòng và gate canh.
+- **Quy trình thao tác = MỘT file skill, đăng ký HAI chỗ.** Việc lặp lại đóng thành `.claude/skills/<tên-tiếng-anh>/SKILL.md` (frontmatter `name` + `description` — `description` là thứ DUY NHẤT quyết định skill có được gọi ra hay không), rồi thêm **một dòng vào `04_SKILLS` §2 và một dòng vào bảng trigger `AGENTS.md`**. Thiếu một trong hai = skill mồ côi, phiên sau không tìm ra. **KHÔNG nhét playbook trở lại `04_SKILLS`** — nó là sổ đăng ký, mỗi skill một dòng.
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế |
 
 - **Docs = FILE là nguồn (FILE WINS):** viết/sửa `.md` trực tiếp BÁM CHUẨN (đúng file, đúng vai trò, changelog đúng format `## [YYYY-MM-DD] — tiêu đề`); **xong là xong** — file là nguồn, KHÔNG cần chạy gì thêm. Muốn `plan search`/`changelog search` tươi thì chạy `zemory reindex` (đọc `.md` → dựng lại search index, **KHÔNG ghi ngược file**). Các lệnh ghi DB→md kiểu cũ (render/set/add) **đã gỡ hoàn toàn** — docs chỉ sửa bằng tay.
@@ -203,4 +203,4 @@ EOL của file MÁY SINH ⛔ File do máy ghép TỪ file khác (archive ← `05
 > *(Luật THIẾT KẾ/UI cụ thể — Dialog 3-size, ESC mọi dialog, token-first… — KHÔNG ở đây: RULES là luật LÀM VIỆC chung. Convention thiết kế ở `03_STRUCTURE §5`. Ở đây CHỈ là luật hành xử "phải hỏi trước".)*
 
 
-<!-- zemory-standard: 2026-10-04 -->
+<!-- zemory-standard: 2026-10-05 -->

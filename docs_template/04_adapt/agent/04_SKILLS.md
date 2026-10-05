@@ -1,7 +1,7 @@
 <!-- zemory template · SỔ ĐĂNG KÝ skill (bản hệ APP) — KHÔNG chứa playbook: mỗi quy trình sống
      trọn trong `.claude/skills/<tên>/SKILL.md`. Ở đây chỉ 1 dòng mỗi skill + luật dùng.
-     Bảng TRIGGER ("mở lúc nào") ở `AGENTS.md` — KHÔNG chép lại. File này có TRẦN 60 dòng,
-     gate `bootstrap-manifest.test.mjs` canh: phình lên là playbook đang bò về đây. -->
+     Bảng TRIGGER ("mở lúc nào") ở `AGENTS.md` — KHÔNG chép lại. Mỗi skill MỘT dòng —
+     playbook bò về đây là sai chỗ. -->
 # <PROJECT> — Sổ đăng ký skill
 
 > Mở khi: cần biết **project có sẵn quy trình gì**, hoặc thêm/bớt một skill.
@@ -16,7 +16,7 @@
 - **Skill KHÔNG chứa luật.** Luật chung → `02_RULES`; bất biến riêng của project → `01_CONSTITUTION`;
   chuẩn cấu trúc → `03_STRUCTURE`. Skill chỉ mô tả **cách làm**, dẫn chiếu luật khi cần.
 - **Skill dài / có tài nguyên → tách file, KHÔNG phình `SKILL.md`**: `reference/*.md` và `scripts/*`
-  đặt cạnh nó, thân `SKILL.md` chỉ trỏ tới. Trần **120 dòng** mỗi `SKILL.md`.
+  đặt cạnh nó, thân `SKILL.md` chỉ trỏ tới.
 
 ## 2. Danh mục — mỗi skill một việc
 
@@ -55,4 +55,4 @@
    bảng trigger trong `AGENTS.md`.
 
 
-<!-- zemory-standard: 2026-09-16 -->
+<!-- zemory-standard: 2026-10-05 -->
