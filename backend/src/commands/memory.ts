@@ -205,6 +205,12 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
     usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force]",
   },
   digest: { allow: new Set(["--all", "--force"]), usage: "zemory memory digest [<session-id>] [--all] [--force]" },
+  // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
+  // catch-up against the Drive channel (no --dry-run) — the same class as `embed --help` (2026-08-22).
+  "vectors-catchup": {
+    allow: new Set(["--dir", "--key-file", "--dry-run"]),
+    usage: "zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run]",
+  },
 };
 
 /** true ⇒ đã in usage + đặt exit code; NGƯỜI GỌI PHẢI DỪNG, không chạy gì. */
