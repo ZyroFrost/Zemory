@@ -428,7 +428,7 @@
         // Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; lượt nối gần nhất trả lời *"có nối
         // được không"*. Hai câu khác nhau, và câu thứ hai mới là thứ người dùng đang hỏi.
         // Tên: LAN nếu đang thấy, không thì sổ tên của backend (dò LAN cũ + `hello`) — một nguồn, không nhớ phía trình duyệt.
-        cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null});
+        cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null,dir:(c.peerDirection||{})[id]||null,self:c.deviceId||''});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
@@ -474,6 +474,17 @@
         var bar=document.createElement('div');
         bar.style.cssText='display:flex;gap:6px;margin-top:auto;padding-top:8px;flex-wrap:wrap';
         if(!m.me){
+          // CHIỀU ĐỒNG BỘ của cặp này (plan/24 §9.6). Nguồn so theo vân tay đã chuẩn hoá: máy này
+          // hay máy kia. Đổi đi qua `/set-peer-direction` — nơi giữ chốt ① (hội tụ trước khi lật).
+          var nid=function(s){return String(s||'').replace(/-/g,'').toUpperCase();};
+          var dv=(m.dir&&m.dir.direction==='one-way')?(nid(m.dir.source)===nid(m.self)?'me':'peer'):'two';
+          var ds=document.createElement('select');ds.className='rsel xs';
+          ds.setAttribute('data-act','p2p-dir');ds.setAttribute('data-id',m.id);ds.setAttribute('data-prev',dv);
+          ds.title=t('p2p.dirTitle');ds.setAttribute('aria-label',t('p2p.dirTitle'));
+          [['two','p2p.dirTwo'],['me','p2p.dirOneMe'],['peer','p2p.dirOnePeer']].forEach(function(o){
+            var op=document.createElement('option');op.value=o[0];op.textContent=t(o[1]);if(o[0]===dv)op.selected=true;ds.appendChild(op);
+          });
+          bar.appendChild(ds);
           // THỬ LẠI trên chính thẻ của máy đó: nút *Đồng bộ ngay* chung thử lần lượt mọi máy,
           // còn ở đây người dùng đang hỏi về MỘT máy cụ thể và muốn câu trả lời về đúng nó.
           var rt=document.createElement('button');rt.className='btn xs';
@@ -599,6 +610,22 @@
   }
   function loadQueue(){return zGet('/mirror-queue').then(renderQueue).catch(function(){});}
   window.zLoadMirrorQueue=loadQueue;
+
+  // Sync direction of one pair. Saved through zSave: a refused flip (pending items · files still
+  // differ · no inventory yet) REVERTS the select and shows the server's reason (save-never-silent).
+  document.addEventListener('change',function(e){
+    var el=e.target&&e.target.closest?e.target.closest('select[data-act]'):null;
+    if(!el)return;
+    var act=el.getAttribute('data-act');
+    if(!(act==='p2p-dir'))return;
+    var id=el.getAttribute('data-id')||'',v=el.value,prev=el.getAttribute('data-prev')||'two';
+    var q='/set-peer-direction?id='+encodeURIComponent(id)+'&direction='+(v==='two'?'two-way':'one-way')+(v==='peer'?'&source=peer':'');
+    el.disabled=true;
+    zSave(q,function(){el.value=prev;}).then(function(j){
+      el.disabled=false;
+      if(j){el.setAttribute('data-prev',v);loadChannel();}
+    });
+  });
 
   document.addEventListener('click',function(e){
     // Bộ chọn phải liệt kê ĐỦ mọi nhánh `act===` bên dưới. Thiếu một tên là nhánh đó chết im lặng:

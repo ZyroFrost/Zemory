@@ -82,6 +82,8 @@ export function emptyOutcome(error?: string): SyncOutcome {
 export interface MirrorHooks {
   /** Kiểm kê của MÁY NÀY. Vắng ⇒ phiên không chạy pha mirror. */
   inventory: () => MirrorEntry[];
+  /** The PEER's declared inventory (`mfiles`) — kept for the full convergence check of §9.2 ①. */
+  declared?: (peerId: string, entries: MirrorEntry[]) => void;
   /**
    * Byte của MỘT mục trong kiểm kê. `null` = không đọc được (file vừa biến mất, quyền, …)
    * ⇒ bỏ qua một file, không giết cả lượt.
@@ -478,8 +480,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     // NGẮT theo yêu cầu — `unpair` đi qua đúng đường này. Đã ngắt sẵn trước khi phiên chạy thì
     // cắt ngay, đừng mở một liên kết mà ta biết chắc là không ai muốn.
     if (o.stop) {
-      if (o.stop.aborted) return finish("người dùng ngắt liên kết");
-      o.stop.addEventListener("abort", () => finish("người dùng ngắt liên kết"), { once: true });
+      // The caller says WHY on the signal (`dropLink(id, reason)`). A bare `abort()` sets a DOMException
+      // as the reason, so only a string counts; anything else keeps the old default.
+      const stop = o.stop;
+      const why = (): string => (typeof stop.reason === "string" ? stop.reason : "người dùng ngắt liên kết");
+      if (stop.aborted) return finish(why());
+      stop.addEventListener("abort", () => finish(why()), { once: true });
     }
 
     // ① Vân tay đối phương — TỰ tính, không nhờ CA phán.
@@ -709,6 +715,15 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         if (persistent && roundNo === 0) o.log?.(`[channel] #${sid} nhận kiểm kê tệp (${Array.isArray(m.entries) ? m.entries.length : "?"})`);
         if (!proofOk) return finish("khai thư mục trước khi chứng minh cùng chìa");
         if (!paired) return finish("khai thư mục trước khi ghép đôi");
+        if (peerId && Array.isArray(m.entries) && o.mirror?.declared) {
+          // Wire form is `{a, p, h, s}`; unknown areas are dropped the same way `mfile` drops them.
+          o.mirror.declared(
+            peerId,
+            m.entries
+              .filter((e) => MIRROR_AREA_SET.has(e.a))
+              .map((e) => ({ area: e.a as MirrorArea, rel: e.p, size: e.s, mtimeMs: 0, ...(e.h ? { hash: e.h } : {}) })),
+          );
+        }
         void shipMirror(m.entries, m.pending ?? []);
         return;
       }

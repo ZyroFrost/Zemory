@@ -29,7 +29,7 @@ import {
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
-import { getPeerLastSync, getPeerNames, setPeerLastSync, setPeerName } from "../../config/settings.js";
+import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /**
  * Ghi lại kết cục một lượt nối với một máy — CỬA DUY NHẤT, gọi từ MỌI đường phiên.
@@ -166,6 +166,8 @@ export interface ChannelStatus {
   peerSync: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
   /** Trạng thái ĐÃ TÍNH của từng máy — xem `peerCardState`. Bề mặt vẽ theo đây, không tự phán. */
   peerNames: Record<string, string>;
+  /** Sync direction of each pair (plan/24 §9.2) — the peer card shows and changes it. */
+  peerDirection: Record<string, { direction: "two-way" | "one-way"; source?: string }>;
   peerState: Record<string, { kind: "lan" | "synced" | "failed" | "never"; at?: string; via?: string }>;
   dir: string;
   /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
@@ -185,6 +187,7 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     peerSync: getPeerLastSync(),
     // Tên máy đã ghép (từ dò LAN + `hello`) — thẻ in TÊN, không in mẩu vân tay.
     peerNames: getPeerNames(),
+    peerDirection: Object.fromEntries(getP2pPeers().map((id) => [id, getPeerSync(id)])),
     // Trạng thái ĐÃ TÍNH cho từng máy — bề mặt chỉ việc vẽ, không tự ghép hai nguồn thô.
     peerState: Object.fromEntries(
       getP2pPeers().map((id) => [id, peerCardState(seenPeers().some((s) => sameDeviceId(s.deviceId, id)), getPeerLastSync()[id])]),

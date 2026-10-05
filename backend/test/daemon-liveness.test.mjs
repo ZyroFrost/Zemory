@@ -35,8 +35,11 @@ test("THREE distinct sentences - if 'unknown' shares wording with 'dead', that l
   // Câu của nhánh unknown KHÔNG được khuyên bật daemon (nó đang chạy), và PHẢI nói là có thể bận.
   const i = H.indexOf('live === "unknown"');
   const branch = H.slice(i, i + 500);
-  assert.ok(!/Bật `zemory ui`/.test(branch), "đang bận thì khuyên 'bật lại' là sai việc");
-  assert.match(branch, /BẬN|bận/, "phải nói rõ có thể đang bận");
+  assert.ok(!/Start `zemory ui`/.test(branch), "đang bận thì khuyên 'bật lại' là sai việc");
+  assert.match(branch, /BUSY|busy/, "phải nói rõ có thể đang bận");
+  // Câu khuyên bật lại phải CÒN ở nhánh absent — không thì vế âm ở trên soi một chuỗi không tồn tại.
+  const j = H.indexOf('live === "absent"');
+  assert.match(H.slice(j, j + 500), /Start `zemory ui`/, "nhánh absent phải khuyên bật daemon");
 });
 
 test("both surfaces follow one rule: ui.ts still holds 'timeout != absent'", () => {

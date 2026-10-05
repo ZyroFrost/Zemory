@@ -32,10 +32,10 @@ export async function cmdHook(args: string[]): Promise<void> {
       console.log(`zemory hook: Codex Stop ${state} (${where}) → ${result.path}`);
       console.log(`  codex_hooks ${result.featureEnabled ? "enabled" : "already enabled"} → ${result.configPath}`);
     }
-    console.log("  Stop → nạp phiên vào bộ nhớ sau MỖI lượt trả lời (~0,3s, không chặn bạn gõ tiếp).");
-    console.log("  UserPromptSubmit → im lặng tới khi context chạm 95%, rồi chốt sổ + cảnh báo MỘT lần.");
-    console.log("  PreCompact → nạp nốt ngay trước khi context bị nén · SessionStart → chỉ nhắc SAU khi bị nén.");
-    console.log("  Recall vẫn do agent tự gọi (điều 8). Gỡ: `zemory hook uninstall` (hoặc tắt công tắc trong UI).");
+    console.log("  Stop → ingests the session into memory after EVERY reply (~0.3s, never blocks your typing).");
+    console.log("  UserPromptSubmit → silent until context reaches 95%, then closes the ledger + warns ONCE.");
+    console.log("  PreCompact → ingests the rest right before context is compacted · SessionStart → reminds only AFTER a compaction.");
+    console.log("  Recall is still called by the agent itself (article 8). Remove: `zemory hook uninstall` (or turn the switch off in the UI).");
     return;
   }
   if (sub === "guard") {
@@ -47,21 +47,21 @@ export async function cmdHook(args: string[]): Promise<void> {
     const rel = (p: string): string => relative(root, p).replace(/\\/g, "/");
     console.log(`zemory hook guard — ${rel(r.hooksDir)}/`);
     if (r.added.length) console.log(`  + ${r.added.join(" · ")}`);
-    if (r.kept.length) console.log(`  · giữ nguyên: ${r.kept.join(" · ")}`);
+    if (r.kept.length) console.log(`  · kept as is: ${r.kept.join(" · ")}`);
     console.log(
       r.protectedWrite.length
-        ? `  đường cấm ghi (marker \`protected\`): ${r.protectedWrite.join(" · ")}`
-        : "  chưa khai đường cấm ghi — thêm khoá `protected: [\"...\"]` vào .harness.json rồi chạy lại (mẫu secret vẫn gác).",
+        ? `  write-protected paths (marker \`protected\`): ${r.protectedWrite.join(" · ")}`
+        : "  no write-protected paths declared — add a `protected: [\"...\"]` key to .harness.json and run again (secret patterns are still guarded).",
     );
-    console.log("  Nối vào runtime (user duyệt rồi tự thêm — tool không cắm hộ):");
+    console.log("  Wire into the runtime (the user reviews and adds it — the tool does not wire it for you):");
     // Print the matcher TOO: the guard is only invoked for tools named in the matcher, so a missing name
     // is an open door — measured 2026-08-20: one repo declared a matcher without `PowerShell`, and every dangerous
     // command going through that tool never reached the guard. Say it out loud rather than leaving it to be guessed.
     console.log(
       `    · Claude Code (.claude/settings.json): PreToolUse matcher ${GUARD_MATCHER} → node ${rel(r.hooksDir)}/guard.cjs`,
     );
-    console.log(`    · pre-commit: hook local chạy node ${rel(r.hooksDir)}/precommit-guard.cjs`);
-    console.log("  Flag một-lần (.allow-*) nằm trong thư mục hooks, đã .gitignore — chỉ tạo khi user nói rõ.");
+    console.log(`    · pre-commit: a local hook running node ${rel(r.hooksDir)}/precommit-guard.cjs`);
+    console.log("  One-time flags (.allow-*) live in the hooks folder, already .gitignore'd — create one only when the user says so explicitly.");
     return;
   }
   if (sub === "uninstall") {
@@ -70,8 +70,8 @@ export async function cmdHook(args: string[]): Promise<void> {
     const r = uninstallHooks(path);
     console.log(
       r.removed.length
-        ? `zemory hook: gỡ ${r.removed.join(" · ")} khỏi ${r.path}`
-        : `zemory hook: không có móc nào của zemory trong ${r.path}`,
+        ? `zemory hook: removed ${r.removed.join(" · ")} from ${r.path}`
+        : `zemory hook: no zemory hooks in ${r.path}`,
     );
     return;
   }

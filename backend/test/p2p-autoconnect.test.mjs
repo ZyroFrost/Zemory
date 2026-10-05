@@ -189,7 +189,13 @@ test("🔴 cùng Wi-Fi mà đi relay: bỏ qua HAIRPIN, và đổi sang gọi th
   const tick = UI.slice(UI.indexOf("async function linkTick("), UI.indexOf("async function channelSyncOnce("));
   assert.match(tick, /if \(e\.via !== "relay" \|\| e\.state !== "up"\) continue;/, "chỉ đổi khi ĐANG đi relay và đang sống");
   assert.match(tick, /ch\.sameDeviceId\(s\.deviceId, id\)/, "so danh tính bằng luật chung, không so chuỗi");
-  assert.match(tick, /dropLink\(id\);\s*\n\s*keepLink\(id, projectRoot\);/, "cắt rồi nối lại NGAY, không đợi nhịp sau");
+  assert.match(tick, /dropLink\(id, "[^"]+"\);\s*\n\s*keepLink\(id, projectRoot\);/, "cắt rồi nối lại NGAY, không đợi nhịp sau");
+  // 2026-10-05: the path switch must SAY why — a bare `dropLink(id)` is logged as "the user cut the link".
+  assert.doesNotMatch(tick, /dropLink\(id\);\s*\n\s*keepLink\(/, "đổi đường mà không nêu lý do ⇒ nhật ký đổ lỗi cho người dùng");
+  assert.match(UI, /e\.ctrl\.abort\(reason\);/, "lý do phải đi theo tín hiệu ngắt tới phiên");
+  const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
+  assert.match(PEER, /typeof stop\.reason === "string" \? stop\.reason :/, "phiên phải in lý do trên tín hiệu, không in câu cố định");
+  assert.doesNotMatch(PEER, /return finish\("người dùng ngắt liên kết"\)/, "câu cố định cũ quay lại = nhật ký sai khi đổi đường");
 });
 
 test("🔴 BA cửa nghe, một luật — cửa nghe THẲNG và cửa nghe RELAY đều thường trực và đều báo bắt tay", () => {

@@ -107,7 +107,7 @@ function printScanReport(r: ScanReport): void {
   // Lane bị loại phải HIỆN RA. Cắt âm thầm là cách người dùng ngồi tự hỏi vì sao thiếu
   // dữ liệu mà không có chỗ nào nói — cùng nguyên tắc `memory scope ls` đánh dấu ✗ EXCLUDED.
   for (const s of r.skippedLanes) {
-    console.log(`  ✗ bỏ qua ${s.files} file của lane ${s.lane} (đang bị loại — \`zemory memory scope ls\`)`);
+    console.log(`  ✗ skipped ${s.files} file(s) of lane ${s.lane} (excluded — \`zemory memory scope ls\`)`);
   }
   console.log("");
   console.log(`  agents (${r.agents.length}):`);
@@ -166,8 +166,8 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
     // ĐÍNH KÈM: in ĐƯỜNG DẪN để agent mở ra xem. Chưa có byte thì nói VÌ SAO, không đưa một
     // đường không tồn tại — cùng luật "chưa xác minh thì đừng khẳng định".
     for (const a of h.attachments ?? []) {
-      const where = a.path ?? (a.state === "not-fetched" ? "(chưa tải byte)" : a.state === "in-db" ? "(còn trong kho)" : "(chữ)");
-      console.log(`     🖼 ${a.name ?? a.mime ?? "tệp"} → ${where}`);
+      const where = a.path ?? (a.state === "not-fetched" ? "(bytes not fetched)" : a.state === "in-db" ? "(still in the store)" : "(text)");
+      console.log(`     🖼 ${a.name ?? a.mime ?? "file"} → ${where}`);
     }
   }
   console.log("");
@@ -197,12 +197,14 @@ const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync"]);
  * giữ khoá. Đặt sau đó thì lệnh vẫn chiếm khoá rồi mới báo lỗi.
  */
 const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
-  scan: { allow: new Set(["--deep"]), usage: "zemory memory scan [--deep]" },
+  // `--force` overrides a FRESH write lock held by another process — the lock message itself tells
+  // the user to use it, so refusing it here made that advice impossible to follow (found 2026-10-05).
+  scan: { allow: new Set(["--deep", "--force"]), usage: "zemory memory scan [--deep] [--force]" },
   embed: {
-    allow: new Set(["--all", "--rebuild", "--limit"]),
-    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>]",
+    allow: new Set(["--all", "--rebuild", "--limit", "--force"]),
+    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force]",
   },
-  digest: { allow: new Set(["--all"]), usage: "zemory memory digest [<session-id>] [--all]" },
+  digest: { allow: new Set(["--all", "--force"]), usage: "zemory memory digest [<session-id>] [--all] [--force]" },
 };
 
 /** true ⇒ đã in usage + đặt exit code; NGƯỜI GỌI PHẢI DỪNG, không chạy gì. */
@@ -213,7 +215,7 @@ export function rejectUnknownFlags(sub: string, args: string[]): boolean {
   if (bad.length === 0) return false;
   console.log(`zemory memory ${sub}: unknown flag ${bad.join(" ")}`);
   console.log(`  usage: ${spec.usage}`);
-  console.log("  (lệnh này GHI vào kho nên cờ lạ bị TỪ CHỐI — không chạy gì, không giữ khoá.)");
+  console.log("  (this command WRITES to the store, so an unknown flag is REFUSED — nothing ran, no lock held.)");
   process.exitCode = 1;
   return true;
 }
@@ -255,7 +257,7 @@ export async function cmdMemory(args: string[]): Promise<void> {
       const held = cliWriteHolder();
       if (held && held.pid !== process.pid && held.pid !== Number(process.env.ZEMORY_DAEMON_PID)) {
         console.error(
-          `zemory memory ${sub} (job nền): BỎ QUA — CLI khác đang ghi kho (pid ${held.pid}, ${held.label}).`,
+          `zemory memory ${sub} (background job): SKIPPED — another CLI is writing the store (pid ${held.pid}, ${held.label}).`,
         );
         return; // lượt nền bỏ qua là chuyện thường; lượt sau sẽ lượm lại
       }
@@ -293,7 +295,7 @@ export async function cmdMemory(args: string[]): Promise<void> {
         break;
       }
       if (forced) break;
-      if (i === 0) console.log(`  tiến trình khác đang ghi kho (pid ${g.heldBy?.pid}, ${g.heldBy?.label}) — chờ…`);
+      if (i === 0) console.log(`  another process is writing the store (pid ${g.heldBy?.pid}, ${g.heldBy?.label}) — waiting…`);
       await new Promise((r) => setTimeout(r, 5000));
     }
     if (!locked) {
@@ -301,15 +303,15 @@ export async function cmdMemory(args: string[]): Promise<void> {
       if (held && !forced) {
         const mins = Math.round((Date.now() - held.at) / 60_000);
         console.error(
-          `zemory memory ${sub}: DỪNG — tiến trình khác đang ghi kho (pid ${held.pid}, ${held.label}, đã ${mins} phút).\n` +
-            "  Hai tiến trình cùng ghi vector là đúng tổ hợp đã hỏng kho 2026-08-03, nên lệnh này KHÔNG chạy đè.\n" +
-            "  → chờ nó xong rồi chạy lại; hoặc `--force` nếu bạn chắc tiến trình kia không còn ghi.",
+          `zemory memory ${sub}: STOPPED — another process is writing the store (pid ${held.pid}, ${held.label}, for ${mins} min).\n` +
+            "  Two processes writing vectors at once is exactly the combination that corrupted the store on 2026-08-03, so this command does NOT run over it.\n" +
+            "  → wait for it to finish and run again; or `--force` if you are sure the other process is no longer writing.",
         );
         process.exitCode = 1;
         return;
       }
       // Khoá đã mồ côi (chủ chết / quá hạn) — hoặc user ép bằng --force.
-      console.log(`  khoá ghi ${held ? "bị ép bỏ qua (--force)" : "đã mồ côi"} — chạy tiếp.`);
+      console.log(`  write lock ${held ? "overridden (--force)" : "was orphaned"} — continuing.`);
     }
     port = await daemonPort();
     if (port) {
@@ -525,7 +527,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const query = rest.filter((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(rest[i - 1] ?? "")).join(" ");
     if (!query) {
       console.log(
-        "usage: zemory memory search <query> [--also <cách nói khác>]… [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency] [--json]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
+        "usage: zemory memory search <query> [--also <another phrasing>]… [--all] [--limit N] [--origin local|web] [--digest] [--hybrid|--fts] [--rerank|--no-rerank] [--no-recency] [--json]   (default mode: ZEMORY_HYBRID / ZEMORY_RERANK; recency blend on)",
       );
       return;
     }
@@ -591,10 +593,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // nằm sai chỗ.
     const out = positionalArgs(args.slice(1))[0] ?? shareKeyPath();
     writeMemoryShareKey(out, { force: args.includes("--force") });
-    console.log(`zemory memory keygen — đã ghi ${out}`);
-    console.log(`  dấu tay: ${shareKeyFingerprint(readFileSync(out, "utf8"))}   (đối chiếu khi nhập chìa này ở máy khác)`);
-    console.log("  Chìa KHÔNG được vào git. Bundle mã hoá là vô dụng nếu thiếu chìa —");
-    console.log("  giữ một bản ở note riêng: profile Windows hỏng là mất chìa, không còn đường phục hồi nào.");
+    console.log(`zemory memory keygen — wrote ${out}`);
+    console.log(`  fingerprint: ${shareKeyFingerprint(readFileSync(out, "utf8"))}   (compare it when entering this key on another machine)`);
+    console.log("  The key must NEVER go into git. An encrypted bundle is useless without the key —");
+    console.log("  keep a copy in a private note: a broken Windows profile loses the key, with no way to recover it.");
     return;
   }
   if (sub === "key") {
@@ -605,14 +607,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     if (action === "show" || action === "status") {
       const st = shareKeyStatus(currentProjectRoot());
       if (!st.found) {
-        console.log("zemory memory key — CHƯA có chìa.");
-        console.log(`  máy đầu tiên : zemory memory keygen      (sinh chìa mới → ${st.path})`);
-        console.log("  máy thứ hai  : zemory memory key set     (nhập chìa từ máy đầu)");
+        console.log("zemory memory key — NO key yet.");
+        console.log(`  first machine  : zemory memory keygen      (generates a new key → ${st.path})`);
+        console.log("  second machine : zemory memory key set     (enter the key from the first machine)");
         return;
       }
-      console.log(`zemory memory key — dấu tay ${st.fingerprint} · nguồn: ${st.source}`);
+      console.log(`zemory memory key — fingerprint ${st.fingerprint} · source: ${st.source}`);
       if (st.path) console.log(`  ${st.path}`);
-      console.log("  (chỉ in DẤU TAY. Không in chìa: phiên agent bị ingest vào chính DB mà chìa bảo vệ.)");
+      console.log("  (prints the FINGERPRINT only. Never the key: agent sessions are ingested into the very DB the key protects.)");
       return;
     }
     if (action === "path") {
@@ -625,19 +627,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // rò đúng kiểu vừa đi vá.
       try {
         const r = setShareKey(readFileSync(0, "utf8"), { force: args.includes("--force") });
-        console.log(`zemory memory key set — đã ${r.replaced ? "THAY" : "ghi"} ${r.path}`);
-        console.log(`  dấu tay: ${r.fingerprint}`);
-        console.log("  So dấu tay này với máy nguồn (`zemory memory key show`) — khác nhau là gõ sai.");
+        console.log(`zemory memory key set — ${r.replaced ? "REPLACED" : "wrote"} ${r.path}`);
+        console.log(`  fingerprint: ${r.fingerprint}`);
+        console.log("  Compare this fingerprint with the source machine (`zemory memory key show`) — if they differ, it was mistyped.");
       } catch (error) {
-        console.log(`zemory memory key set — ${error instanceof Error ? error.message : "lỗi"}`);
+        console.log(`zemory memory key set — ${error instanceof Error ? error.message : "error"}`);
         process.exitCode = 1;
       }
       return;
     }
     console.log("usage: zemory memory key [show|set|path] [--force]");
-    console.log("  show  dấu tay + đường dẫn chìa đang dùng (KHÔNG in chìa)");
-    console.log("  set   nhập chìa đang có, ĐỌC TỪ STDIN (dán rồi Ctrl+Z, hoặc pipe từ file)");
-    console.log("  path  in đường chuẩn của chìa (cạnh DB, KHÔNG phải trong repo)");
+    console.log("  show  fingerprint + path of the key in use (NEVER prints the key)");
+    console.log("  set   enter an existing key, READ FROM STDIN (paste then Ctrl+Z, or pipe from a file)");
+    console.log("  path  print the standard key path (next to the DB, NOT inside the repo)");
     return;
   }
   if (sub === "export") {
@@ -731,12 +733,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     if (action === "status") {
       const st = channelStatus();
-      console.log(`zemory memory channel — ${st.enabled ? "BẬT" : "TẮT"} · ghi vào: ${st.transport}`);
-      console.log(`  Vân tay    : ${st.deviceId}`);
-      console.log(`  cổng nghe  : ${st.port}`);
-      console.log(`  thư mục    : ${st.dir}  (${inventoryIds(st.dir).length} khối)`);
-      console.log(`  đã kết nối: ${st.peers.length > 0 ? st.peers.join(", ") : "(chưa có máy nào)"}`);
-      console.log("  Vân tay KHÔNG phải bí mật — chép qua chat thoải mái. Chìa share thì TUYỆT ĐỐI không.");
+      console.log(`zemory memory channel — ${st.enabled ? "ON" : "OFF"} · writes to: ${st.transport}`);
+      console.log(`  Fingerprint : ${st.deviceId}`);
+      console.log(`  listen port : ${st.port}`);
+      console.log(`  folder      : ${st.dir}  (${inventoryIds(st.dir).length} block(s))`);
+      console.log(`  connected   : ${st.peers.length > 0 ? st.peers.join(", ") : "(no machine yet)"}`);
+      console.log("  The fingerprint is NOT a secret — share it over chat freely. The share key, NEVER.");
       return;
     }
     if (action === "mirror") {
@@ -750,19 +752,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       if (act === "list") {
         const scan = scanMirror();
         const rows = listQueue(mirrorDb());
-        console.log(`zemory memory channel mirror — ${rows.length} mục chờ duyệt`);
-        console.log(`  đang theo dõi: ${scan.entries.length} file`);
+        console.log(`zemory memory channel mirror — ${rows.length} item(s) awaiting review`);
+        console.log(`  watching : ${scan.entries.length} file(s)`);
         if (scan.skipped.length > 0) {
           // Loại trong im lặng thì không phân biệt được với quét sót — luôn nói ra.
           const byReason = new Map<string, number>();
           for (const s of scan.skipped) byReason.set(s.reason, (byReason.get(s.reason) ?? 0) + 1);
-          console.log(`  đã loại      : ${[...byReason].map(([r, n]) => `${n} ${r}`).join(" · ")}`);
+          console.log(`  excluded : ${[...byReason].map(([r, n]) => `${n} ${r}`).join(" · ")}`);
         }
         for (const r of rows) {
-          const what = r.verdict === "take" ? "nhận bản bên kia" : r.verdict === "merge" ? "gộp được" : "TRÙNG ĐOẠN — phải chọn";
+          const what = r.verdict === "take" ? "take the other side's copy" : r.verdict === "merge" ? "mergeable" : "OVERLAPPING EDITS — must choose";
           console.log(`  #${r.id}  ${r.area}/${r.rel}  · ${what} · ${Math.max(1, Math.round(r.size / 1024))} KB`);
         }
-        if (rows.length > 0) console.log("  duyệt: zemory memory channel mirror approve <id> [--mine|--merged]");
+        if (rows.length > 0) console.log("  review: zemory memory channel mirror approve <id> [--mine|--merged]");
         return;
       }
       if (act === "approve" || act === "dismiss") {
@@ -773,7 +775,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           return;
         }
         if (act === "dismiss") {
-          console.log(dismissQueued(mirrorDb(), id) ? `đã bỏ mục #${id} (lượt sau sẽ hỏi lại)` : `không có mục #${id}`);
+          console.log(dismissQueued(mirrorDb(), id) ? `dismissed item #${id} (the next run will ask again)` : `no item #${id}`);
           return;
         }
         // Mặc định là NHẬN BẢN BÊN KIA — đó là thứ người ta bấm approve để làm. `--mine` giữ
@@ -785,21 +787,21 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        console.log(`đã duyệt #${id} (${choice})${r.wrote ? ` → ${r.path}` : " — giữ bản của máy này"}`);
+        console.log(`approved #${id} (${choice})${r.wrote ? ` → ${r.path}` : " — kept this machine's copy"}`);
         return;
       }
       if (act === "direction") {
         // CHIỀU ĐỒNG BỘ của một cặp ghép (plan/24 §9.2).
-        const { getPeerSync, setPeerSync } = await import("../config/settings.js");
+        const { getPeerSync } = await import("../config/settings.js");
         const peer = rest[2];
         const dir = rest[3];
         if (!peer) {
           // Không có tham số ⇒ LIỆT KÊ, không phải báo lỗi: đó là câu hỏi hay gặp nhất.
           for (const id of channelStatus().peers) {
             const c = getPeerSync(id);
-            console.log(`  ${id}  ${c.direction}${c.source ? ` · nguồn ${c.source}` : ""}`);
+            console.log(`  ${id}  ${c.direction}${c.source ? ` · source ${c.source}` : ""}`);
           }
-          if (channelStatus().peers.length === 0) console.log("  (chưa kết nối máy nào)");
+          if (channelStatus().peers.length === 0) console.log("  (no machine connected)");
           return;
         }
         if (dir !== "two-way" && dir !== "one-way") {
@@ -807,26 +809,28 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           process.exitCode = 1;
           return;
         }
-        // 🔴 CHỐT ① của §9.2 — LẬT CHỦ khi hai bên chưa hội tụ là để lượt đẩy đầu tiên của chủ
-        // mới mang bản THIẾU sang đè bản đủ, và không lỗi nào nổ.
-        //
-        // ⚠ Phép kiểm ở đây là phép XẤP XỈ, nói thẳng: nó đếm mục CÒN CHỜ DUYỆT của cặp đó —
-        // tức phần lệch ta ĐÃ BIẾT. Phép đủ (so trọn tập băm hai máy) cần kiểm kê của máy kia,
-        // mà thứ đó chỉ có trong một phiên đang chạy. Chặn theo thứ đã biết vẫn đúng hướng an
-        // toàn; thứ nó KHÔNG bắt được là phần lệch chưa lượt đồng bộ nào chạm tới.
-        const pending = listQueue(mirrorDb(), peer).length;
-        if (dir === "one-way" && pending > 0) {
-          console.log(`✗ còn ${pending} mục chờ duyệt với máy đó — duyệt hết rồi hãy đổi chiều (plan/24 §9.2 chốt ①)`);
+        // plan/24 §9.2 check ① lives in ONE place — `setPeerDirection` — shared with the HTTP door
+        // `/set-peer-direction` (HP điều 17). It runs the quick check (queue) and the full one
+        // (this machine's files vs the peer's last declared inventory).
+        const source = flagValue(args, "--source") ?? (dir === "one-way" ? channelIdentity().deviceId : undefined);
+        const { setPeerDirection } = await import("../memory/channel/mirrorstate.js");
+        const r = setPeerDirection(peer, { direction: dir, source });
+        if (!r.ok) {
+          const why =
+            r.reason === "pending"
+              ? `${r.count} item(s) still awaiting review with that machine — review them all first`
+              : r.reason === "diverged"
+                ? `the two machines still differ on ${r.count} file(s) (peer inventory ${r.at}) — sync until they match first`
+                : "no file inventory from that machine yet — run one sync first";
+          console.log(`✗ direction not changed: ${why} (plan/24 §9.2 check ①)`);
           process.exitCode = 1;
           return;
         }
-        const source = flagValue(args, "--source") ?? (dir === "one-way" ? channelIdentity().deviceId : undefined);
-        setPeerSync(peer, { direction: dir, source });
         const c = getPeerSync(peer);
-        console.log(`chiều với ${peer}: ${c.direction}${c.source ? ` · nguồn ${c.source}` : ""}`);
+        console.log(`direction with ${peer}: ${c.direction}${c.source ? ` · source ${c.source}` : ""}`);
         if (c.direction === "one-way") {
-          console.log("  máy KHÔNG phải nguồn sẽ bị nguồn ghi đè, và không bao giờ đẩy ngược.");
-          console.log("  đặt CÙNG giá trị này ở máy kia — mỗi máy giữ sổ của riêng nó.");
+          console.log("  the machine that is NOT the source gets overwritten by the source, and never pushes back.");
+          console.log("  set the SAME value on the other machine — each machine keeps its own ledger.");
         }
         return;
       }
@@ -850,7 +854,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           ? [...cur, want]
           : cur.filter((p) => p.replace(/[^A-Za-z0-9]/g, "").toUpperCase() !== want.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       setP2pPeers(next);
-      console.log(`zemory memory channel ${action} — ${next.length} máy đã kết nối`);
+      console.log(`zemory memory channel ${action} — ${next.length} machine(s) connected`);
       // Cùng luật với nút gỡ trên app: gỡ máy thì quên trạng thái mirror của nó.
       if (action === "unpair") {
         const ms = await import("../memory/channel/mirrorstate.js");
@@ -861,7 +865,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     if (action === "on" || action === "off") {
       setP2pEnabled(action === "on");
-      console.log(`zemory memory channel — kênh máy-tới-máy ${getP2pEnabled() ? "BẬT" : "TẮT"} (Drive không đổi)`);
+      console.log(`zemory memory channel — machine-to-machine channel ${getP2pEnabled() ? "ON" : "OFF"} (Drive unchanged)`);
       return;
     }
     if (action === "probe") {
@@ -933,14 +937,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const host = flagValue(args, "--host");
       const port = Number(flagValue(args, "--port") ?? 0);
       if (!host || !port) {
-        console.log("usage: zemory memory channel sync --host <ip> --port <cổng>");
+        console.log("usage: zemory memory channel sync --host <ip> --port <port>");
         process.exitCode = 1;
         return;
       }
       const st = channelStatus();
       const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
       if (!keyFile || !existsSync(keyFile)) {
-        console.log("zemory memory channel sync — chưa có chìa share. Chạy `zemory memory keygen` hoặc `key set`.");
+        console.log("zemory memory channel sync — no share key yet. Run `zemory memory keygen` or `key set`.");
         process.exitCode = 1;
         return;
       }
@@ -964,30 +968,30 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const noWayIn = new Set(["ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "ECONNREFUSED", "ECONNRESET"]);
       let r = onlyPunch ? null : await connectToPeer({ host, port }, session);
       if (r && !r.error) {
-        console.log("  cửa        : gọi thẳng");
+        console.log("  route       : direct call");
       } else if (onlyPunch || noWayIn.has(r?.error ?? "")) {
-        if (r?.error) console.log(`  gọi thẳng trượt (${r.error}) ⇒ đục lỗ NAT`);
+        if (r?.error) console.log(`  direct call failed (${r.error}) ⇒ NAT hole punching`);
         // Cổng đục lỗ KHÔNG được là cổng daemon đang nghe — nửa NGHE sẽ trượt sạch vì
         // chính máy này đang giữ cổng đó. Lệch một nấc, và hai máy tự ra cùng số.
         const localPort = Number(flagValue(args, "--local-port") ?? st.port + 1);
-        console.log(`  đục lỗ     : cổng nội ${localPort} · máy kia phải chạy CÙNG lệnh, CÙNG lúc`);
+        console.log(`  hole punch  : local port ${localPort} · the other machine must run the SAME command at the SAME time`);
         const p = await punchToPeer(
           { host, port, deviceId: flagValue(args, "--peer") ?? st.peers[0] },
           {
             ...session,
             localPort,
             onRound: ({ round, phase, note }) =>
-              console.log(`    vòng ${round} · ${phase === "ban" ? "bắn" : "nghe"}${note ? ` — ${note}` : ""}`),
+              console.log(`    round ${round} · ${phase === "ban" ? "send" : "listen"}${note ? ` — ${note}` : ""}`),
           },
         );
-        console.log(`  cửa        : ${p.won === "goi" ? "đục lỗ, ta GỌI được" : p.won === "nhan" ? "đục lỗ, ta NHẬN được" : "không cửa nào"} (${p.rounds} vòng)`);
+        console.log(`  route       : ${p.won === "goi" ? "hole punch, we could CALL out" : p.won === "nhan" ? "hole punch, we could RECEIVE" : "no route"} (${p.rounds} round(s))`);
         r = p;
       }
-      console.log(`  đối phương : ${r?.peerDeviceId ?? "(không rõ)"}`);
-      console.log(`  chở đi     : ${r?.sentBlocks ?? 0} khối · nhận về: ${r?.receivedBlocks ?? 0} khối`);
+      console.log(`  peer        : ${r?.peerDeviceId ?? "(unknown)"}`);
+      console.log(`  sent        : ${r?.sentBlocks ?? 0} block(s) · received: ${r?.receivedBlocks ?? 0} block(s)`);
       console.log(
-        `  thư mục    : gửi ${r?.sentFiles ?? 0} file · nhận ${r?.receivedFiles ?? 0} · áp thẳng ${r?.appliedFiles ?? 0} · chờ duyệt ${r?.queuedFiles ?? 0}` +
-          ((r?.filesLeft ?? 0) > 0 ? ` · còn ${r?.filesLeft} cho lượt sau` : ""),
+        `  folders     : sent ${r?.sentFiles ?? 0} file(s) · received ${r?.receivedFiles ?? 0} · applied directly ${r?.appliedFiles ?? 0} · awaiting review ${r?.queuedFiles ?? 0}` +
+          ((r?.filesLeft ?? 0) > 0 ? ` · ${r?.filesLeft} left for the next run` : ""),
       );
       if (r?.error) {
         console.log(`  ✗ ${r.error}`);
@@ -1008,14 +1012,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
       console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run]");
-      console.log("  Dựng lại kho chung vào file TẠM, so bằng khoá bền (session_id, uuid), rồi NỐI THÊM");
-      console.log("  một khối chở đúng phần vector kho chung còn thiếu. Không đụng byte cũ, không ghi đè.");
+      console.log("  Rebuilds the shared store into a TEMP file, compares by stable keys (session_id, uuid), then APPENDS");
+      console.log("  one block carrying exactly the vectors the shared store is missing. Old bytes untouched, nothing overwritten.");
       return;
     }
     const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
     const dryRun = args.includes("--dry-run");
     console.log(`zemory memory vectors-catchup — ${driveDir}${dryRun ? "  (DRY-RUN)" : ""}`);
-    console.log("  ⏳ dựng lại kho chung vào file tạm để đo (vài phút, không đụng kho thật)…");
+    console.log("  ⏳ rebuilding the shared store into a temp file to measure (a few minutes, the real store is untouched)…");
     try {
       const r = await vectorCatchUp({ driveDir, keyFile, dryRun });
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
@@ -1027,31 +1031,31 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // ngay ở đó, không phải chỉ nhận thiếu. Đo 2026-09-03 trên kênh thật: khúc 1 bị một lượt
       // gộp trượt để lại 0 byte ⇒ bản trước của lệnh này NÉM ngay tại vòng dựng và không in nổi
       // một con số nào — công cụ chẩn đoán câm đúng lúc cần nó nhất.
-      for (const u of r.unreadable) console.log(`  🔴 KHÚC KHÔNG ĐỌC ĐƯỢC: ${u.file} — ${u.error}`);
+      for (const u of r.unreadable) console.log(`  🔴 UNREADABLE SEGMENT: ${u.file} — ${u.error}`);
       if (r.unreadable.length) {
-        console.log(`     Máy mới nhận kênh sẽ hỏng ở đúng khúc này. Kiểm nó trước mọi con số bên dưới.`);
-        console.error(`KHÚC KHÔNG ĐỌC ĐƯỢC trên kho chung: ${r.unreadable.map((u) => u.file).join(", ")}`);
+        console.log(`     A new machine receiving the channel will fail at exactly this segment. Check it before any number below.`);
+        console.error(`UNREADABLE SEGMENT in the shared store: ${r.unreadable.map((u) => u.file).join(", ")}`);
         process.exitCode = 1;
       }
-      console.log(`  dựng lại từ kênh: ${r.probeSessions} phiên · ${r.probeMessages} tin   (kho máy này: ${r.localSessions} phiên · ${r.localMessages} tin)`);
+      console.log(`  rebuilt from the channel: ${r.probeSessions} session(s) · ${r.probeMessages} message(s)   (this machine's store: ${r.localSessions} session(s) · ${r.localMessages} message(s))`);
       // Kênh giữ dữ liệu của MỌI máy nên bình thường nó phải ≥ kho máy này; thiếu chút là do delta
       // chưa đẩy (bị chặn theo ranh giới đã nhúng). Hụt NHIỀU nghĩa là kênh mất khúc — thứ không
       // lượt sync nào tự chữa. Sàn ĐẾM để kho bé không kêu oan (cùng doctrine ISOLATED_MIN_COUNT).
       const shortBy = r.localMessages - r.probeMessages;
       if (r.localMessages >= 1000 && shortBy > r.localMessages * 0.05) {
-        console.log(`  🔴 KÊNH HỤT ${shortBy} tin so với kho máy này (>5%) — gần như chắc chắn MẤT KHÚC, không phải trễ delta.`);
-        console.log(`     Soi thư mục kênh: phải có \`global_memory.enc\` (khúc 1) đọc được, rồi \`.002.enc\`, \`.003.enc\`…`);
-        console.log(`     Con số "thiếu vector" bên dưới KHÔNG dùng được khi kênh đang cụt — nó chỉ soi phần kênh đang có.`);
+        console.log(`  🔴 CHANNEL SHORT by ${shortBy} message(s) vs this machine's store (>5%) — almost certainly a LOST SEGMENT, not a delayed delta.`);
+        console.log(`     Inspect the channel folder: \`global_memory.enc\` (segment 1) must be readable, then \`.002.enc\`, \`.003.enc\`…`);
+        console.log(`     The "missing vectors" number below is NOT usable while the channel is truncated — it only sees the part the channel has.`);
         // RA STDERR + EXIT ≠ 0, không phải để "báo lỗi lệnh" mà để phát hiện này ĐI ĐƯỢC TỚI
         // `daemon.log`: `runStep` chỉ log DÒNG CUỐI của stdout (nên dòng trên sẽ mất), nhưng nó
         // đổ tới 20 dòng stderr khi exit ≠ 0. Dùng đúng đường sẵn có thay vì thêm một kênh báo mới.
-        console.error(`KÊNH HỤT ${shortBy} tin (kênh ${r.probeMessages} / kho ${r.localMessages}) — nghi mất khúc; kiểm khúc 1 của kho chung.`);
+        console.error(`CHANNEL SHORT by ${shortBy} message(s) (channel ${r.probeMessages} / store ${r.localMessages}) — suspected lost segment; check segment 1 of the shared store.`);
         process.exitCode = 1;
       }
-      console.log(`  kho chung thiếu ${r.missing} vector mà máy này ĐANG CÓ.`);
-      if (!r.missing) console.log("  ✓ không thiếu gì — kho chung đã đủ vector.");
-      else if (!r.pushed) console.log(`  (DRY-RUN) chạy lại không kèm --dry-run để nối khối bù (~${mb(r.missing * 3072)}).`);
-      else console.log(`  ↑ đã NỐI THÊM khối bù: ${r.shipped} vector, ${mb(r.bytes)} — kho chung không bị ghi đè.`);
+      console.log(`  the shared store is missing ${r.missing} vector(s) that this machine HAS.`);
+      if (!r.missing) console.log("  ✓ nothing missing — the shared store has every vector.");
+      else if (!r.pushed) console.log(`  (DRY-RUN) run again without --dry-run to append the catch-up block (~${mb(r.missing * 3072)}).`);
+      else console.log(`  ↑ APPENDED catch-up block: ${r.shipped} vector(s), ${mb(r.bytes)} — the shared store was not overwritten.`);
     } catch (error) {
       console.log(`  ⚠ ${error instanceof Error ? error.message : "catch-up failed"}`);
       // 🔴 STACK RA STDERR (2026-08-26). Lượt hỏng đầu tiên chỉ để lại `⚠ UNKNOWN: unknown error,
@@ -1067,8 +1071,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
       console.log("usage: zemory memory sync [--dir <folder>] [--key-file <path>] [--full] [--compact]");
-      console.log("  --compact: viết LẠI kho chung ngay từ kho máy này (chở trọn vector) thay vì chờ đủ ngưỡng khối.");
-      console.log("         zemory memory sync --prune-host <host> [--apply]   (dọn series của máy đã bỏ)");
+      console.log("  --compact: REWRITE the shared store right now from this machine's store (carries every vector) instead of waiting for the block threshold.");
+      console.log("         zemory memory sync --prune-host <host> [--apply]   (clean up the series of a retired machine)");
       console.log("  Push this machine's bundle to the synced Drive FOLDER + merge every other machine's bundle there.");
       console.log("  Depth: LEAN by default (source rows; the sync-level setting picks it). --full ships a whole-DB snapshot.");
       console.log("  Link the folder once in `zemory ui`, or pass --dir. Needs the share key (--key-file / ZEMORY_SHARE_KEY / share/share.key).");
@@ -1084,19 +1088,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         const r = pruneDriveHost({ dir: driveDir, host: pruneHost, apply });
         const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
         console.log(`zemory memory sync --prune-host ${r.host} — ${r.files.length} file · ${mb(r.bytes)}${apply ? "" : "  (DRY-RUN)"}`);
-        for (const f of r.files) console.log(`  ${f.merged ? "✓ đã merge" : "✗ CHƯA merge"}  ${f.file}  ${mb(f.bytes)}`);
+        for (const f of r.files) console.log(`  ${f.merged ? "✓ merged" : "✗ NOT merged"}  ${f.file}  ${mb(f.bytes)}`);
         if (!r.safe) {
-          console.log("  ⛔ CHƯA an toàn để xoá:");
+          console.log("  ⛔ NOT safe to delete yet:");
           for (const b of r.blockers) console.log(`     · ${b}`);
           process.exitCode = 1;
           return;
         }
         if (!apply) {
-          console.log(`  ✅ An toàn: mọi bundle đã nằm trong kho máy này, và series của máy này đã phủ đủ để máy thứ ba lấy tiếp.`);
-          console.log(`     Chạy lại kèm --apply để xoá thật.`);
+          console.log(`  ✅ Safe: every bundle is already in this machine's store, and this machine's series covers enough for a third machine to continue.`);
+          console.log(`     Run again with --apply to really delete.`);
           return;
         }
-        console.log(`  🗑 đã xoá ${r.removed.length} file, giải phóng ${mb(r.bytes)}`);
+        console.log(`  🗑 deleted ${r.removed.length} file(s), freed ${mb(r.bytes)}`);
       } catch (error) {
         console.log(`zemory memory sync --prune-host: ${error instanceof Error ? error.message : "failed"}`);
         process.exitCode = 1;
@@ -1109,7 +1113,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     try {
       const compact = args.includes("--compact");
       if (compact) {
-        console.log("  ⚙ --compact: viết LẠI kho chung từ kho MÁY NÀY (một khối, since=0) — chở trọn vector.");
+        console.log("  ⚙ --compact: REWRITING the shared store from THIS MACHINE's store (one block, since=0) — carries every vector.");
       }
       const r = await syncDrive({ driveDir, keyFile, level: args.includes("--full") ? "full" : undefined, compact });
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
@@ -1132,8 +1136,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         // Sync embeds a capped batch (embedPending default limit) — a remaining
         // backlog is NORMAL, not a model failure. Only flag the model when this
         // pass embedded NOTHING (embedded === 0 → model likely down; FTS still works).
-        const why = r.embedded === 0 ? " (model unavailable? — recall vẫn chạy qua FTS)" : "";
-        console.log(`  ${r.vectorRemaining} message(s) chưa embed → chạy \`zemory memory embed --all\` để vector hoá nốt${why}`);
+        const why = r.embedded === 0 ? " (model unavailable? — recall still works via FTS)" : "";
+        console.log(`  ${r.vectorRemaining} message(s) not embedded yet → run \`zemory memory embed --all\` to vectorize the rest${why}`);
       }
       // "Exported" only means the bytes reached the Drive FOLDER — not the cloud. The
       // 2026-08-11 incident had this very command print success for 3 days while the
@@ -1145,9 +1149,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         if (up.stuck.length) {
           const worst = up.stuck[0];
           console.log(
-            `  ⚠ ${up.stuck.length} bundle từ các lượt TRƯỚC vẫn CHƯA rời khỏi máy` +
-              ` (cũ nhất ${(worst.ageMs / 3_600_000).toFixed(1)} giờ: ${worst.file}).` +
-              ` Client Drive đang kẹt hàng đợi — máy kia chưa nhận được gì. Kiểm/khởi động lại client.`,
+            `  ⚠ ${up.stuck.length} bundle(s) from EARLIER runs have still NOT left this machine` +
+              ` (oldest ${(worst.ageMs / 3_600_000).toFixed(1)} h: ${worst.file}).` +
+              ` The Drive client's queue is stuck — the other machine has received nothing. Check/restart the client.`,
           );
         }
       } catch {
@@ -1188,8 +1192,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // "corrupt" and any other non-zero as "could not check" (fail-open, điều 9).
     if (args.includes("--json")) console.log(JSON.stringify(r));
     else {
-      console.log(`zemory memory verify — ${db}\n  ${r.ok ? (r.fresh ? `· ${r.detail}` : "✓ lành") : `✗ HỎNG: ${r.detail}`}`);
-      if (!r.ok) console.log("  → cứu: `zemory memory salvage` rồi `memory reopen` + `memory scan` (nguồn thật là transcript trên đĩa).");
+      console.log(`zemory memory verify — ${db}\n  ${r.ok ? (r.fresh ? `· ${r.detail}` : "✓ healthy") : `✗ CORRUPT: ${r.detail}`}`);
+      if (!r.ok) console.log("  → rescue: `zemory memory salvage` then `memory reopen` + `memory scan` (the real source is the transcripts on disk).");
     }
     if (!r.ok) process.exitCode = 2;
     return;
@@ -1200,26 +1204,26 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const all = args.includes("--all");
     const r = reopenIngest(db, { all });
     console.log(`zemory memory reopen — ${db}`);
-    console.log(`  ${r.missing ? `thiếu ${r.missing} tin so với bộ đếm` : "không phiên nào thiếu tin"} · mở lại ${r.sessions} file transcript`);
-    console.log(r.sessions ? "  → chạy `zemory memory scan` để nạp lại phần thiếu (tin đã có sẽ tự bỏ qua)." : "  → không có gì để nạp lại.");
-    if (args.includes("--reconcile")) console.log(`  chỉnh bộ đếm: ${reconcileCounts(db)} phiên`);
+    console.log(`  ${r.missing ? `${r.missing} message(s) missing vs the counters` : "no session is missing messages"} · reopened ${r.sessions} transcript file(s)`);
+    console.log(r.sessions ? "  → run `zemory memory scan` to re-ingest the missing part (messages already in are skipped)." : "  → nothing to re-ingest.");
+    if (args.includes("--reconcile")) console.log(`  counters corrected: ${reconcileCounts(db)} session(s)`);
     return;
   }
   if (sub === "salvage") {
     const src = flagValue(args, "--db") ?? currentMemoryDb();
     const out = positionalArgs(args.slice(1))[0] ?? join(dirname(src), "salvaged.db");
     if (existsSync(out) && !args.includes("--force")) {
-      console.log(`zemory memory salvage: ${out} đã tồn tại — dùng --force để ghi đè, hoặc nêu đường khác.`);
+      console.log(`zemory memory salvage: ${out} already exists — use --force to overwrite, or give another path.`);
       process.exitCode = 1;
       return;
     }
-    console.log(`zemory memory salvage — vét dữ liệu còn đọc được\n  từ: ${src}\n  sang: ${out}`);
+    console.log(`zemory memory salvage — recovering the data that is still readable\n  from: ${src}\n  to: ${out}`);
     const r = salvageMemory(src, out);
     for (const t of r.tables) {
-      if (t.copied || t.lost) console.log(`  ${t.lost ? "⚠" : "✓"} ${t.table.padEnd(18)} ${t.copied}${t.lost ? ` · MẤT ${t.lost}` : ""}`);
+      if (t.copied || t.lost) console.log(`  ${t.lost ? "⚠" : "✓"} ${t.table.padEnd(18)} ${t.copied}${t.lost ? ` · LOST ${t.lost}` : ""}`);
     }
-    console.log(`  tổng: chép ${r.copied} dòng · mất ${r.lost}`);
-    console.log("  dựng lại chỉ mục FTS…");
+    console.log(`  total: copied ${r.copied} row(s) · lost ${r.lost}`);
+    console.log("  rebuilding the FTS index…");
     for (const f of rebuildFts(out)) if (!f.ok) console.log(`  ✗ ${f.table}`);
 
     // CỨU LUÔN CHỈ MỤC VECTOR — nửa sau của đường cứu hộ, trước 2026-08-11 KHÔNG AI GỌI.
@@ -1235,19 +1239,19 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // `vec_config` ⇒ BỎ QUA và nói ra, tuyệt đối không làm hỏng lượt cứu hộ đang chạy.
     const dims = vectorDimsOf(src);
     if (dims > 0) {
-      console.log(`  cứu chỉ mục vector (${dims} chiều)…`);
+      console.log(`  rescuing the vector index (${dims} dimensions)…`);
       try {
         const v = salvageVectors(src, out, dims);
-        console.log(`  ${v.lost ? "⚠" : "✓"} vector: chép ${v.copied}${v.lost ? ` · MẤT ${v.lost}` : ""}`);
+        console.log(`  ${v.lost ? "⚠" : "✓"} vector: copied ${v.copied}${v.lost ? ` · LOST ${v.lost}` : ""}`);
       } catch (e) {
-        console.log(`  ⚠ không cứu được vector (${(e as Error).message}) — kho vẫn cứu xong, chạy \`memory embed --all\` để dựng lại.`);
+        console.log(`  ⚠ could not rescue the vectors (${(e as Error).message}) — the store was still rescued, run \`memory embed --all\` to rebuild them.`);
       }
     } else {
-      console.log("  · bỏ qua vector: kho nguồn không có `vec_config` (chưa từng nhúng, hoặc vùng hỏng nuốt mất).");
+      console.log("  · skipping vectors: the source store has no `vec_config` (never embedded, or the damaged region swallowed it).");
     }
 
-    console.log("  → bước tiếp: kiểm `PRAGMA integrity_check`, đổi chỗ, rồi `zemory reindex`");
-    console.log("    + `memory digest --all` + `memory embed --all` để vá phần vector còn thiếu.");
+    console.log("  → next: check `PRAGMA integrity_check`, swap the files, then `zemory reindex`");
+    console.log("    + `memory digest --all` + `memory embed --all` to fill in the missing vectors.");
     return;
   }
   if (sub === "vacuum") {
@@ -1312,12 +1316,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // không sửa, không xoá, không chặn; người quyết định là user, không phải zemory.
     const hits = scanHiddenChars(flagValue(args, "--db"));
     if (!hits.length) {
-      console.log("zemory memory audit — ✓ không thấy ký tự điều hướng ẩn nào.");
+      console.log("zemory memory audit — ✓ no hidden control characters found.");
       return;
     }
-    console.log(`zemory memory audit — ${hits.length} tin có ký tự điều hướng ẩn:`);
-    for (const h of hits.slice(0, 20)) console.log(`  #${h.id}  ${h.chars.join(" · ")}   (phiên ${h.sessionId})`);
-    console.log("  Xem toàn văn: `zemory memory show <#id>`. Bỏ tin: `zemory memory forget --message <#id>`.");
+    console.log(`zemory memory audit — ${hits.length} message(s) contain hidden control characters:`);
+    for (const h of hits.slice(0, 20)) console.log(`  #${h.id}  ${h.chars.join(" · ")}   (session ${h.sessionId})`);
+    console.log("  Full text: `zemory memory show <#id>`. Drop a message: `zemory memory forget --message <#id>`.");
     return;
   }
   if (sub === "redact") {
@@ -1413,7 +1417,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         limit: limRaw ? Number(limRaw) : undefined,
         skipRerank: args.includes("--no-rerank"),
       };
-      console.log("zemory memory bench --recall — FTS vs hybrid vs hybrid+rerank trên kho THẬT…");
+      console.log("zemory memory bench --recall — FTS vs hybrid vs hybrid+rerank on the REAL store…");
       const rr = await runRecallBench(opts);
       for (const line of formatRecallBench(rr)) console.log(line);
       return;
@@ -1445,7 +1449,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
     }
     const verdict = r.hybridRecall > r.ftsRecall ? "HYBRID WINS" : r.hybridRecall === r.ftsRecall ? "TIE" : "FTS WINS";
-    console.log(`  → ${verdict}. Gate: chỉ bật hybrid mặc định khi thắng net (giờ vẫn opt-in qua --hybrid).`);
+    console.log(`  → ${verdict}. Gate: hybrid becomes the default only on a net win (still opt-in via --hybrid for now).`);
     if (!withRerank) console.log("  tip: add --rerank to measure the cross-encoder lane (downloads the reranker once).");
     return;
   }
@@ -1531,7 +1535,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const outOfScope = vectorOutOfScope();
     console.log(
       `  ${"vec_chunks".padEnd(13)} ${String(vectorCount()).padStart(7)}   · semantic embeddings (RAG)${remaining ? ` · ${remaining} remaining` : ""}` +
-        (outOfScope ? ` · ${outOfScope} cố ý ngoài phạm vi nhúng (đổi bằng ZEMORY_EMBED_TOOLS)` : ""),
+        (outOfScope ? ` · ${outOfScope} deliberately outside the embed scope (change with ZEMORY_EMBED_TOOLS)` : ""),
     );
     return;
   }
@@ -1593,8 +1597,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // Cùng một phép tra với recall — hai bề mặt nói khác nhau về cùng một tệp là lỗi đã trả giá.
     const att = attachmentsForMessages([id]).get(id) ?? [];
     for (const a of att) {
-      const where = a.path ?? (a.state === "not-fetched" ? "(chưa tải byte)" : a.state === "in-db" ? "(còn trong kho)" : "(chữ)");
-      console.log(`🖼 ${a.name ?? a.mime ?? "tệp"} → ${where}`);
+      const where = a.path ?? (a.state === "not-fetched" ? "(bytes not fetched)" : a.state === "in-db" ? "(still in the store)" : "(text)");
+      console.log(`🖼 ${a.name ?? a.mime ?? "file"} → ${where}`);
     }
     console.log("---");
     console.log(m.content);
@@ -1619,14 +1623,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // Mặc định DRY-RUN: rút byte ra đĩa rồi xoá khỏi DB là thao tác một chiều, người
       // phải thấy con số trước khi bấm (điều 12 · `02_RULES §Hành xử`).
       const r = extractBlobs({ dryRun: !apply, limit: Number(flagValue(args, "--limit")) || undefined });
-      console.log(`zemory memory files extract${apply ? "" : " — DRY RUN (thêm --apply để ghi thật)"}`);
-      console.log(`  kho tệp: ${filesRoot()}`);
-      console.log(`  rút ra: ${r.moved} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · bỏ qua (đã có): ${r.skipped}`);
+      console.log(`zemory memory files extract${apply ? "" : " — DRY RUN (add --apply to really write)"}`);
+      console.log(`  file store: ${filesRoot()}`);
+      console.log(`  extracted: ${r.moved} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · skipped (already there): ${r.skipped}`);
       if (r.failed.length) {
-        console.log(`  ⚠ không rút được: ${r.failed.length}`);
+        console.log(`  ⚠ could not extract: ${r.failed.length}`);
         for (const f of r.failed.slice(0, 5)) console.log(`     #${f.id}: ${f.reason}`);
       }
-      if (apply) console.log("  ⓘ byte đã rời DB nhưng file chưa co lại — chạy `zemory memory vacuum` để đòi đĩa.");
+      if (apply) console.log("  ⓘ the bytes have left the DB but the file has not shrunk yet — run `zemory memory vacuum` to reclaim the disk.");
       return;
     }
     if (verb === "collect") {
@@ -1634,10 +1638,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // cả file lẫn hàng DB; người phải thấy số trước khi bấm.
       const { collectCreated } = await import("../memory/filestore.js");
       const r = collectCreated({ dryRun: !apply, limit: Number(flagValue(args, "--limit")) || undefined });
-      console.log(`zemory memory files collect${apply ? "" : " — DRY RUN (thêm --apply để ghi thật)"}`);
-      console.log(`  lời gọi Write: ${r.calls} · đường file: ${r.paths}`);
-      console.log(`  loại vì vùng nháp: ${r.excluded} · đã biến mất trên đĩa: ${r.gone}`);
-      console.log(`  NHẬN: ${r.added} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.already}`);
+      console.log(`zemory memory files collect${apply ? "" : " — DRY RUN (add --apply to really write)"}`);
+      console.log(`  Write calls: ${r.calls} · file paths: ${r.paths}`);
+      console.log(`  excluded as scratch: ${r.excluded} · gone from disk: ${r.gone}`);
+      console.log(`  TAKEN IN: ${r.added} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · already present: ${r.already}`);
       return;
     }
     if (verb === "fetch") {
@@ -1655,10 +1659,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       const limit = Number(flagValue(args, "--limit")) || undefined;
       const label = `chatgpt${account && account !== "main" ? `#${account}` : ""}`;
-      console.log(`zemory memory files fetch — ${label}${apply ? "" : " — DRY RUN (thêm --apply để tải thật)"}`);
+      console.log(`zemory memory files fetch — ${label}${apply ? "" : " — DRY RUN (add --apply to really download)"}`);
       if (!apply) {
         const r = await fetchRefs({ limit, log: (m) => console.log("  " + m) });
-        console.log(`  còn ${r.remaining} hàng ref trong kho.`);
+        console.log(`  ${r.remaining} ref row(s) left in the store.`);
         return;
       }
       // KHOÁ GHI: lượt thật chạy hàng giờ và sửa hàng DB liên tục. Hai kẻ ghi là đúng tổ hợp
@@ -1668,7 +1672,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const g = acquireCliWriteLock("files fetch");
       if (!g.ok) {
         const held = cliWriteHolder();
-        console.log(`  ✗ tiến trình khác đang ghi kho (pid ${held?.pid}, ${held?.label}) — chờ nó xong rồi chạy lại.`);
+        console.log(`  ✗ another process is writing the store (pid ${held?.pid}, ${held?.label}) — wait for it to finish, then run again.`);
         process.exitCode = 1;
         return;
       }
@@ -1679,8 +1683,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       if (!cdp) {
         // Nói CÁCH MỞ chứ không chỉ báo hỏng: cửa sổ khe do một lệnh khác mở, và người đọc
         // câu lỗi này đang đứng đúng chỗ cần biết lệnh đó.
-        console.log(`  ✗ không nối được cửa sổ khe ${label} ở cổng ${port}.`);
-        console.log(`    mở nó trước: zemory memory scan-web --platform chatgpt${account ? ` --account ${account}` : ""} --limit 1`);
+        console.log(`  ✗ could not connect to the ${label} slot window on port ${port}.`);
+        console.log(`    open it first: zemory memory scan-web --platform chatgpt${account ? ` --account ${account}` : ""} --limit 1`);
         releaseCliWriteLock();
         process.exitCode = 1;
         return;
@@ -1692,21 +1696,22 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           fetcher: chatgptRefFetcher(cdp),
           log: (m) => console.log("  " + m),
         });
-        console.log(`  tải về: ${r.fetched} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.skipped}`);
+        console.log(`  downloaded: ${r.fetched} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · already present: ${r.skipped}`);
         if (r.failed.length) {
           // GOM NHÓM thay vì in 5 dòng đầu: hàng lỗi TÍCH TỤ ở đầu danh sách (tải được thì rời
           // danh sách, hỏng thì ở lại), nên "5 dòng đầu" luôn là cùng 5 hàng cũ và giấu mất
           // hình dạng thật của phần còn lại — đúng kiểu bề mặt nói đúng mà vẫn khiến đọc sai.
+          // `/trùng hàng/` matches the Vietnamese reason fetchrefs.ts writes — keep it byte-exact.
           const kind = (s: string): string =>
-            /trùng hàng/.test(s) ? "nội dung trùng hàng đã có" : /HTTP (\d+)/.test(s) ? `HTTP ${/HTTP (\d+)/.exec(s)![1]}` : s.slice(0, 48);
+            /trùng hàng/.test(s) ? "content duplicates an existing row" : /HTTP (\d+)/.test(s) ? `HTTP ${/HTTP (\d+)/.exec(s)![1]}` : s.slice(0, 48);
           const tally = new Map<string, number>();
           for (const f of r.failed) tally.set(kind(f.reason), (tally.get(kind(f.reason)) ?? 0) + 1);
-          console.log(`  ⚠ không lấy được: ${r.failed.length}`);
+          console.log(`  ⚠ could not fetch: ${r.failed.length}`);
           for (const [k, n] of [...tally].sort((a, b) => b[1] - a[1])) console.log(`     ${String(n).padStart(4)} × ${k}`);
-          console.log(`     ví dụ: ${r.failed.slice(0, 3).map((f) => "#" + f.id).join(" · ")}`);
+          console.log(`     e.g.: ${r.failed.slice(0, 3).map((f) => "#" + f.id).join(" · ")}`);
         }
         if (r.stoppedEarly) console.log(`  ⛔ ${r.stoppedEarly}`);
-        console.log(`  còn ${r.remaining} hàng ref trong kho.`);
+        console.log(`  ${r.remaining} ref row(s) left in the store.`);
       } finally {
         cdp.close();
         releaseCliWriteLock();
@@ -1720,15 +1725,15 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const { addPickedFiles } = await import("../memory/filestore.js");
       const paths = positionalArgs(args.slice(1)).slice(1);
       if (!paths.length) {
-        console.log("usage: zemory memory files add <đường-dẫn> [đường-dẫn…]");
-        console.log("  Đưa tệp của BẠN vào kho tệp chung. Tệp không đến từ hội thoại nào ⇒ không có tin để nhảy về.");
+        console.log("usage: zemory memory files add <path> [path…]");
+        console.log("  Puts YOUR files into the shared file store. They come from no conversation ⇒ there is no message to jump back to.");
         return;
       }
       const r = addPickedFiles(paths.map((p) => ({ path: p })));
-      console.log(`zemory memory files add — nhận ${r.added} tệp · ${(r.bytes / 1048576).toFixed(1)} MB · đã có sẵn: ${r.already}`);
+      console.log(`zemory memory files add — took in ${r.added} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · already present: ${r.already}`);
       for (const rel of r.rels) console.log(`     ${rel}`);
       if (r.failed.length) {
-        console.log(`  ⚠ không nhận được: ${r.failed.length}`);
+        console.log(`  ⚠ could not take in: ${r.failed.length}`);
         for (const f of r.failed) console.log(`     ${f.path}: ${f.reason}`);
       }
       process.exitCode = r.failed.length && !r.added ? 1 : 0;
@@ -1736,28 +1741,28 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     if (verb === "verify") {
       const r = verifyFiles();
-      console.log(`zemory memory files verify — ${r.checked} tệp · khớp ${r.ok}`);
-      if (r.missing.length) console.log(`  🔴 MẤT FILE: ${r.missing.length} (ảnh sẽ vỡ) — ${r.missing.slice(0, 3).map((m) => m.rel).join(" · ")}`);
-      if (r.corrupt.length) console.log(`  🔴 LỆCH NỘI DUNG: ${r.corrupt.length} — ${r.corrupt.slice(0, 3).map((m) => m.rel).join(" · ")}`);
-      if (!r.missing.length && !r.corrupt.length) console.log("  ✓ không thiếu, không lệch.");
+      console.log(`zemory memory files verify — ${r.checked} file(s) · matching ${r.ok}`);
+      if (r.missing.length) console.log(`  🔴 MISSING FILES: ${r.missing.length} (images will break) — ${r.missing.slice(0, 3).map((m) => m.rel).join(" · ")}`);
+      if (r.corrupt.length) console.log(`  🔴 CONTENT MISMATCH: ${r.corrupt.length} — ${r.corrupt.slice(0, 3).map((m) => m.rel).join(" · ")}`);
+      if (!r.missing.length && !r.corrupt.length) console.log("  ✓ nothing missing, nothing mismatched.");
       process.exitCode = r.missing.length || r.corrupt.length ? 1 : 0;
       return;
     }
     if (verb === "gc") {
       const r = gcFiles({ remove: apply });
-      console.log(`zemory memory files gc${apply ? "" : " — DRY RUN (thêm --apply để xoá)"}`);
-      console.log(`  tệp không hàng nào trỏ tới: ${r.orphans.length} · ${(r.bytes / 1048576).toFixed(1)} MB`);
+      console.log(`zemory memory files gc${apply ? "" : " — DRY RUN (add --apply to delete)"}`);
+      console.log(`  files no row points to: ${r.orphans.length} · ${(r.bytes / 1048576).toFixed(1)} MB`);
       for (const o of r.orphans.slice(0, 5)) console.log(`     ${o}`);
-      if (apply) console.log(`  đã xoá: ${r.removed.length}`);
+      if (apply) console.log(`  deleted: ${r.removed.length}`);
       return;
     }
     console.log("usage: zemory memory files <extract|collect|fetch|add|verify|gc> [--apply] [--limit N]");
-    console.log("  collect: nhận tệp DO AGENT TẠO vào kho (lọc bỏ file nháp/đã xoá)");
-    console.log("  add    : đưa tệp CỦA BẠN vào kho — `files add <đường-dẫn>…` (ghi ngay, không dry-run)");
-    console.log("  fetch  : tải byte cho hàng `ref` qua cửa sổ nền đã đăng nhập [--account <khe>] [--delay <giây>]");
-    console.log("  extract: rút byte đính kèm khỏi DB ra kho tệp trên đĩa (mặc định dry-run)");
-    console.log("  verify : đối chiếu sha256 từng tệp — bắt mất file / lệch nội dung");
-    console.log("  gc     : nêu tệp không còn hàng DB nào trỏ tới (mặc định chỉ đo)");
+    console.log("  collect: take files CREATED BY AGENTS into the store (filters out scratch/deleted files)");
+    console.log("  add    : put YOUR files into the store — `files add <path>…` (writes at once, no dry-run)");
+    console.log("  fetch  : download bytes for `ref` rows through the signed-in platform window [--account <slot>] [--delay <seconds>]");
+    console.log("  extract: move attachment bytes out of the DB into the on-disk file store (dry-run by default)");
+    console.log("  verify : check every file's sha256 — catches missing files / content mismatch");
+    console.log("  gc     : list files no DB row points to any more (measure-only by default)");
     return;
   }
 
@@ -1837,36 +1842,36 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    --rebuild drops + re-embeds everything under the current embed profile",
       "                    (asymmetric Gemma query/document prompts; long messages chunked).",
       "  vacuum            reclaim freed pages (rewrites the whole DB file — run after structural surgery).",
-      "  keygen [key-file] sinh chìa share MỚI — máy ĐẦU TIÊN. Không truyền đường dẫn thì ghi",
-      "                    vào đường chuẩn (cạnh DB). Chìa KHÔNG được vào git.",
+      "  keygen [key-file] generate a NEW share key — the FIRST machine. Without a path it writes",
+      "                    to the standard path (next to the DB). The key must NEVER go into git.",
       "  key [show|set|path]",
-      "                    show = dấu tay + đường dẫn (KHÔNG in chìa) · set = nhập chìa ĐANG CÓ",
-      "                    từ stdin (máy THỨ HAI) · path = đường chuẩn. Chìa là DANH TÍNH:",
-      "                    zemory local-only nên không có server nhận diện — người mang chìa vào.",
+      "                    show = fingerprint + path (NEVER prints the key) · set = enter an EXISTING key",
+      "                    from stdin (the SECOND machine) · path = the standard path. The key IS the IDENTITY:",
+      "                    zemory is local-only, so there is no identity server — a person carries the key over.",
       "  sync [--dir <folder>] [--key-file <path>] [--full] [--compact]",
-      "                    ĐỒNG BỘ HAI CHIỀU qua thư mục chung (Drive): gộp mọi gói của máy khác",
-      "                    vào kho này, rồi NỐI THÊM phần mới của máy này lên kho chung — không",
-      "                    ghi đè byte cũ. --compact: viết LẠI kho chung từ kho máy này.",
+      "                    TWO-WAY SYNC through a shared folder (Drive): merges every other machine's bundle",
+      "                    into this store, then APPENDS this machine's new data to the shared store — never",
+      "                    overwrites old bytes. --compact: REWRITE the shared store from this machine's store.",
       "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
-      "                    KÊNH MÁY-TỚI-MÁY (plan/24): id = ID máy này (KHÔNG phải bí mật, chép",
-      "                    thoải mái) · pair = kết nối bằng ID máy kia · on/off = có NHẬN qua kênh",
-      "                    này không (Drive không đổi) · probe = máy này gọi-vào-được không, và",
-      "                    NAT thuộc kiểu nào (đục lỗ có cửa hay không — chạy ở CẢ HAI máy)",
-      "                    · sync = chạy MỘT lượt với một địa chỉ: gọi THẲNG trước, không có",
-      "                    đường vào thì tự ĐỤC LỖ NAT (hai máy phải chạy cùng lúc; `--punch`",
-      "                    để bỏ lượt gọi thẳng, `--local-port` để đổi cổng đục lỗ). Mặc định TẮT.",
+      "                    MACHINE-TO-MACHINE CHANNEL (plan/24): id = this machine's ID (NOT a secret, share it",
+      "                    freely) · pair = connect using the other machine's ID · on/off = whether to RECEIVE over",
+      "                    this channel (Drive unchanged) · probe = can this machine be called into, and",
+      "                    which NAT type it has (does hole punching stand a chance — run it on BOTH machines)",
+      "                    · sync = run ONE pass against one address: a DIRECT call first; if there is",
+      "                    no way in, it falls back to NAT HOLE PUNCHING (both machines must run at once; `--punch`",
+      "                    skips the direct call, `--local-port` changes the punch port). OFF by default.",
       "  vectors-catchup [--dir <folder>] [--dry-run]",
-      "                    đối chiếu kho chung với kho máy này: báo khúc KHÔNG ĐỌC ĐƯỢC, báo kênh",
-      "                    HỤT TIN, rồi nối thêm vector còn thiếu. --dry-run = chỉ đo, không ghi.",
+      "                    compare the shared store with this machine's store: reports UNREADABLE segments, reports",
+      "                    a channel SHORT of messages, then appends the missing vectors. --dry-run = measure only, no write.",
       "  verify [--db <path>] [--json]",
-      "                    kho có lành không (integrity). Hỏng → exit 2 + chỉ đường salvage + reopen + scan.",
-      "                    --json: một dòng JSON cho máy — daemon chạy nó trong CON (start-up · trước",
-      "                    mỗi backup · mỗi ngày) để quick_check kho vài GB không đóng băng daemon.",
+      "                    is the store healthy (integrity). Corrupt → exit 2 + points to salvage + reopen + scan.",
+      "                    --json: one JSON line for machines — the daemon runs it in a CHILD (start-up · before",
+      "                    each backup · daily) so quick_check on a multi-GB store never freezes the daemon.",
       "  reopen [--all] [--reconcile]",
-      "                    mở lại đường nạp cho phiên bị thủng, để scan kéo lại từ transcript GỐC.",
+      "                    reopen ingestion for sessions with holes, so scan pulls them again from the ORIGINAL transcript.",
       "  salvage [out.db] [--force]",
-      "                    cứu những bảng còn đọc được từ một kho đã hỏng sang một file mới.",
-      "  stats             in một dòng JSON các số nặng (daemon dùng; người đọc thì xem info).",
+      "                    rescue the tables that are still readable from a corrupt store into a new file.",
+      "  stats             print one JSON line of the heavy numbers (used by the daemon; humans read info).",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
       "  restore <backup.db> [--force]",
       "                    restore a raw local SQLite backup; renames the previous DB aside.",
@@ -1877,7 +1882,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  forget [selectors] [--force]",
       "                    dry-run/delete memory rows by --session, --project, --source, --before, or --message.",
       "  redact [--force]   re-apply secret redaction to already ingested memory rows.",
-      "  audit             soi ký tự điều hướng ẩn trong nội dung đã lưu (chỉ đọc, không sửa).",
+      "  audit             scan stored content for hidden control characters (read-only, changes nothing).",
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",
       "  promote [--limit N] [--min N] [--json]",

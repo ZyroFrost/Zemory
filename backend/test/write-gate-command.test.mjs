@@ -44,16 +44,20 @@ test("an ordinary CLI: a FRESH lock held by another process means STOP, never ov
   const r = runCli(dir, ["memory", "digest"]);
   const out = `${r.stdout}${r.stderr}`;
 
-  assert.match(out, /DỪNG|tiến trình khác đang ghi/i, `phải từ chối rõ ràng, nhận:\n${out.slice(0, 400)}`);
+  assert.match(out, /STOPPED — another process is writing the store/, `phải từ chối rõ ràng, nhận:\n${out.slice(0, 400)}`);
   assert.equal(r.status, 1, "phải thoát mã 1 để người gọi/script biết là KHÔNG chạy");
-  assert.doesNotMatch(out, /chạy tiếp|chạy luôn/i, "không được tự cho phép chạy đè khi khoá còn tươi");
+  assert.doesNotMatch(out, /— continuing\./i, "không được tự cho phép chạy đè khi khoá còn tươi");
 });
 
 test("an ordinary CLI with --force: a user forcing it may run (a DELIBERATE bypass)", (t) => {
   const dir = lockedStore(t);
   const r = runCli(dir, ["memory", "digest", "--force"]);
   const out = `${r.stdout}${r.stderr}`;
-  assert.doesNotMatch(out, /DỪNG/i, `--force phải đi qua được, nhận:\n${out.slice(0, 300)}`);
+  assert.doesNotMatch(out, /STOPPED/, `--force phải đi qua được, nhận:\n${out.slice(0, 300)}`);
+  // 2026-10-05: the two lines above were GREEN for the wrong reason — `--force` was refused as an
+  // unknown flag, so the command printed usage and never reached the lock. Prove it reached it.
+  assert.doesNotMatch(out, /unknown flag/, `--force bị từ chối như cờ lạ, nhận:\n${out.slice(0, 300)}`);
+  assert.match(out, /write lock overridden \(--force\)/, `phải tới đúng nhánh ép khoá, nhận:\n${out.slice(0, 300)}`);
 });
 
 test("a DAEMON child must also yield to an external CLI (this was the original hole)", (t) => {
@@ -61,7 +65,7 @@ test("a DAEMON child must also yield to an external CLI (this was the original h
   // Giả lập đúng cách scheduler sinh con, với pid daemon KHÁC pid đang giữ khoá.
   const r = runCli(dir, ["memory", "digest"], { ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: "999999" });
   const out = `${r.stdout}${r.stderr}`;
-  assert.match(out, /BỎ QUA|CLI khác đang ghi/i, `job nền phải nhường, nhận:\n${out.slice(0, 400)}`);
+  assert.match(out, /SKIPPED — another CLI is writing the store/, `job nền phải nhường, nhận:\n${out.slice(0, 400)}`);
 });
 
 test("a daemon child does not block itself: a lock held by the daemon ITSELF still runs", (t) => {
@@ -72,5 +76,5 @@ test("a daemon child does not block itself: a lock held by the daemon ITSELF sti
   writeFileSync(join(dir, "cli-write.lock"), JSON.stringify({ pid: process.pid, label: "embed", at: Date.now() }));
   const r = runCli(dir, ["memory", "digest"], { ZEMORY_DAEMON_CHILD: "1", ZEMORY_DAEMON_PID: String(process.pid) });
   const out = `${r.stdout}${r.stderr}`;
-  assert.doesNotMatch(out, /BỎ QUA/i, `khoá của chính daemon không được chặn con của nó, nhận:\n${out.slice(0, 300)}`);
+  assert.doesNotMatch(out, /SKIPPED — another CLI/, `khoá của chính daemon không được chặn con của nó, nhận:\n${out.slice(0, 300)}`);
 });

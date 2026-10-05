@@ -47,7 +47,7 @@ export function cmdInit(args: string[]): void {
   const profile = args.includes("--non-app") ? "non-app" : undefined;
   const r = ensureHarness(process.cwd(), profile);
   if (profile === "non-app") {
-    console.log('  profile: "non-app" (chuẩn hệ NON-APP — BI/data/docs/design; scaffold từ template nonapp/)');
+    console.log('  profile: "non-app" (NON-APP standard — BI/data/docs/design; scaffolded from the nonapp/ template)');
   }
   const parts: string[] = [];
   if (r.createdConfig) parts.push("created .harness.json");
@@ -62,12 +62,12 @@ export function cmdInit(args: string[]): void {
  *  Không in gì khi rỗng: trường hợp thường phải yên tĩnh. */
 function printAdoptNotices(r: { untouchedLegacyPlan: string[]; entriesUnlinked: Array<{ file: string; pointer: string }> }): void {
   if (r.untouchedLegacyPlan.length) {
-    console.log(`  · thấy thư mục plan CÓ SẴN của repo (KHÔNG đụng vào): ${r.untouchedLegacyPlan.join(", ")}`);
-    console.log("    → muốn gộp vào plan của harness thì người/agent tự dời, tool không tự dời đồ của repo.");
+    console.log(`  · found the repo's OWN plan folder (NOT touched): ${r.untouchedLegacyPlan.join(", ")}`);
+    console.log("    → to merge it into the harness plan, a person/agent moves it; the tool never moves the repo's files.");
   }
   for (const e of r.entriesUnlinked) {
-    console.log(`  ⚠ ${e.file} là bản riêng của repo và CHƯA trỏ tới harness — harness sẽ KHÔNG được nạp qua cửa này.`);
-    console.log(`    → thêm (sau khi user duyệt) một dòng con trỏ vào ${e.file}:`);
+    console.log(`  ⚠ ${e.file} is the repo's own copy and does NOT point to the harness yet — the harness will NOT be loaded through this entry.`);
+    console.log(`    → add (after the user approves) a pointer line to ${e.file}:`);
     console.log(`      ${e.pointer}`);
   }
 }
@@ -82,22 +82,22 @@ export function cmdMigrate(): void {
   const root = currentProjectRoot();
   const rep = analyzeMigration(root);
   if (rep) {
-    console.log(`zemory migrate — soi \`${rep.docsDir}\`:`);
+    console.log(`zemory migrate — inspecting \`${rep.docsDir}\`:`);
     const missing = rep.roles.filter((r) => !r.present).map((r) => r.file);
-    console.log(`  file chuẩn: ${rep.roles.length - missing.length}/${rep.roles.length} có sẵn` + (missing.length ? ` · THIẾU: ${missing.join(" · ")}` : ""));
+    console.log(`  standard files: ${rep.roles.length - missing.length}/${rep.roles.length} present` + (missing.length ? ` · MISSING: ${missing.join(" · ")}` : ""));
     if (rep.extras.length) {
-      console.log(`  file lạ (${rep.extras.length}) — đoán vai trò:`);
-      for (const e of rep.extras.slice(0, 12)) console.log(`    · ${e.file}${e.guessRole ? `  →  ${e.guessRole}` : "  →  (chưa đoán được)"}`);
+      console.log(`  unknown files (${rep.extras.length}) — guessed role:`);
+      for (const e of rep.extras.slice(0, 12)) console.log(`    · ${e.file}${e.guessRole ? `  →  ${e.guessRole}` : "  →  (no guess)"}`);
     }
-    console.log(`  plan: ${rep.plan.hasPlanDir ? "có docs/plan/" : "chưa có docs/plan/"}` + (rep.plan.specs.length ? ` · ${rep.plan.specs.length} spec rời` : ""));
+    console.log(`  plan: ${rep.plan.hasPlanDir ? "docs/plan/ present" : "no docs/plan/ yet"}` + (rep.plan.specs.length ? ` · ${rep.plan.specs.length} loose spec(s)` : ""));
     console.log("");
   }
-  console.log("zemory migrate — reconcile docs cũ về chuẩn (App KHÔNG tự sửa; agent làm).");
-  console.log("Các bước đầy đủ: docs/agent/03_STRUCTURE.md §8. Tóm tắt:");
-  console.log("  1. zemory docs ls          — xem cái nào trùng/thừa (trong search index)");
-  console.log("  2. zemory plan show <#id>  — đọc nội dung TRƯỚC khi quyết");
-  console.log("  3. gộp todo → 05_TODO; XOÁ THẲNG file .md trùng/thừa (HỎI user nếu còn nội dung)");
-  console.log("  4. zemory reindex → zemory doctor (xanh = xong)");
+  console.log("zemory migrate — reconcile old docs to the standard (the app does NOT edit them; the agent does).");
+  console.log("Full steps: docs/agent/03_STRUCTURE.md §8. Summary:");
+  console.log("  1. zemory docs ls          — see which ones are duplicate/redundant (in the search index)");
+  console.log("  2. zemory plan show <#id>  — read the content BEFORE deciding");
+  console.log("  3. merge todos → 05_TODO; DELETE duplicate/redundant .md files outright (ASK the user if they still hold content)");
+  console.log("  4. zemory reindex → zemory doctor (green = done)");
 }
 
 /** Shared skills (2026-10-04): what `--standard` adds/replaces, and what it leaves because the repo edited it. */
@@ -129,16 +129,25 @@ export function cmdSync(args: string[] = process.argv): void {
   if ((args.includes("--stamp") || args.includes("--standard")) && isStandardSource(root)) {
     // Nói ra, đừng im: "không có gì để áp" ở repo nguồn nghe như "đã khớp", mà sự thật là KHÔNG ĐO.
     console.log(`zemory sync — ${root}`);
-    console.log("  · repo NGUỒN của bộ mẫu: chuẩn đi TỪ đây ra, không chở ngược vào (plan/26 §8).");
+    console.log("  · this is the template SOURCE repo: the standard flows OUT from here, never back in (plan/26 §8).");
     return;
   }
   if (args.includes("--stamp")) {
     const apply = args.includes("--apply");
     const rep = stampRepo(root, { apply });
     console.log(`zemory sync --stamp${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
-    for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${r.action}${r.date ? ` ${r.date}` : ""}${r.own !== undefined ? `  (riêng ${r.own} · thiếu so với gốc ${r.miss})` : ""}`);
+    // `stampRepo` reports its action as a Vietnamese phrase (docs/standard.ts, shared with the UI). The keys
+    // below must match those values byte for byte; only the printed label is English.
+    const stampLabel: Record<string, string> = {
+      "không có file": "no file",
+      "đã có dấu": "already stamped",
+      "không bám bản chuẩn nào — phải xử tay": "follows no standard version — handle by hand",
+      "đã đóng dấu": "stamped",
+      "sẽ đóng dấu": "would stamp",
+    };
+    for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${stampLabel[r.action] ?? r.action}${r.date ? ` ${r.date}` : ""}${r.own !== undefined ? `  (own ${r.own} · missing vs base ${r.miss})` : ""}`);
     const n = rep.filter((r) => r.action.startsWith("sẽ") || r.action === "đã đóng dấu").length;
-    console.log(`  ${apply ? `đã đóng dấu ${n}` : `sẽ đóng dấu ${n}`}` + (apply ? "" : " — thêm `--apply` để ghi"));
+    console.log(`  ${apply ? `stamped ${n}` : `would stamp ${n}`}` + (apply ? "" : " — add `--apply` to write"));
     return;
   }
   if (args.includes("--standard")) {
@@ -148,18 +157,18 @@ export function cmdSync(args: string[] = process.argv): void {
     console.log(`zemory sync --standard${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
     printSkillApply(sk, apply);
     if (!rep.length) {
-      console.log("  ✓ không file nào cần áp.");
+      console.log("  ✓ no file needs applying.");
       return;
     }
     for (const r of rep) {
-      if (r.action === "skipped") console.log(`  ✗ ${r.file.padEnd(20)} BỎ QUA — ${r.reason}`);
-      else console.log(`  ${apply ? "✔" : "→"} ${r.file.padEnd(20)} ${r.verdict === "clean" ? "thay nguyên file" : "hợp nhất"} · +${r.added} −${r.removed}` +
-            (r.superseded ? ` · ${r.superseded} chỗ repo mang bản chuẩn CŨ ⇒ lấy bản mới` : ""));
+      if (r.action === "skipped") console.log(`  ✗ ${r.file.padEnd(20)} SKIPPED — ${r.reason}`);
+      else console.log(`  ${apply ? "✔" : "→"} ${r.file.padEnd(20)} ${r.verdict === "clean" ? "replace whole file" : "merge"} · +${r.added} −${r.removed}` +
+            (r.superseded ? ` · ${r.superseded} spot(s) where the repo carries an OLD standard ⇒ take the new one` : ""));
     }
     const w = rep.filter((r) => r.action !== "skipped").length;
     const s = rep.filter((r) => r.action === "skipped").length;
-    console.log(`\n  ${apply ? `đã ghi ${w}` : `sẽ ghi ${w}`} · bỏ qua ${s}` + (apply ? "" : "  — thêm `--apply` để ghi thật"));
-    if (s) console.log("  ✗ phần bỏ qua phải sửa TAY ở repo đó — công cụ không đoán (plan/26 §4 lớp C).");
+    console.log(`\n  ${apply ? `wrote ${w}` : `would write ${w}`} · skipped ${s}` + (apply ? "" : "  — add `--apply` to really write"));
+    if (s) console.log("  ✗ skipped files must be fixed BY HAND in that repo — the tool does not guess (plan/26 §4 layer C).");
     return;
   }
   // `--check` = DRY-RUN "chấm than update" (2026-08-21): chỉ ĐO repo này cũ chỗ nào so với
@@ -176,15 +185,15 @@ export function cmdSync(args: string[] = process.argv): void {
       // Nói ĐÚNG nguồn đã trả lời: git (commit) hay tem kênh chung (máy đóng dấu). Câu cũ ghi
       // cứng "trên kênh chung" cho mọi ca ⇒ sau 15/09 nó sẽ khai sai nguồn.
       const u = sc.appUpdate;
-      const where = u.source === "git" ? `trên git (commit ${u.from || "?"})` : `trên kênh chung (${u.from} đóng dấu ${u.at})`;
-      console.log(`  ⚠ zemory ${u.have} — có bản MỚI ${u.latest} ${where}. Áp: \`zemory selfupdate\``);
+      const where = u.source === "git" ? `on git (commit ${u.from || "?"})` : `on the shared channel (stamped by ${u.from} at ${u.at})`;
+      console.log(`  ⚠ zemory ${u.have} — a NEWER version ${u.latest} is ${where}. Apply: \`zemory selfupdate\``);
     }
     if (sc.missing.length) {
-      console.log(`  ⚠ ${sc.missing.length} file của bộ chuẩn hiện hành CHƯA nhận (chạy \`zemory sync\` để gap-fill):`);
+      console.log(`  ⚠ ${sc.missing.length} file(s) of the current standard NOT received yet (run \`zemory sync\` to gap-fill):`);
       for (const f of sc.missing) console.log(`      + ${f}`);
     }
     if (sc.guardStale.length) {
-      console.log(`  ⚠ guard LỖI THỜI: ${sc.guardStale.join(" · ")} — chạy lại \`zemory hook guard\``);
+      console.log(`  ⚠ guard OUT OF DATE: ${sc.guardStale.join(" · ")} — run \`zemory hook guard\` again`);
     }
     // Lệch CHỮ — file CÓ nhưng nội dung cũ (plan/26). Gap-fill không với tới ca này: `ensureHarness`
     // chỉ bù file THIẾU và không bao giờ ghi đè, nên một bản sửa chuẩn nằm mãi ở template. Báo ở ĐÂY
@@ -193,15 +202,15 @@ export function cmdSync(args: string[] = process.argv): void {
     const drift = verdicts.filter((f) => f.verdict === "clean" || f.verdict === "local");
     const unsure = verdicts.filter((f) => f.verdict === "unknown");
     if (drift.length) {
-      console.log(`  ⚠ ${drift.length} file CÓ SẴN nhưng chữ đã cũ (gap-fill KHÔNG chạm tới):`);
+      console.log(`  ⚠ ${drift.length} file(s) PRESENT but with outdated text (gap-fill does NOT reach them):`);
       for (const f of drift) {
-        const how = f.verdict === "clean" ? "thay được" : `có sửa riêng ${f.localLines} dòng`;
-        console.log(`      ~ ${f.file}  ${f.repoStamp} → ${f.tplStamp}  (${how} · chuẩn đổi ${f.standardLines} dòng)`);
+        const how = f.verdict === "clean" ? "replaceable" : `${f.localLines} locally edited line(s)`;
+        console.log(`      ~ ${f.file}  ${f.repoStamp} → ${f.tplStamp}  (${how} · standard changed ${f.standardLines} line(s))`);
       }
     }
     if (unsure.length) {
-      console.log(`  ? ${unsure.length} file chưa kết luận được: ${unsure.map((f) => f.file).join(" · ")}`);
-      console.log(`      (${unsure[0].reason} — chưa có gốc để so, xem plan/26 §3)`);
+      console.log(`  ? ${unsure.length} file(s) not concluded yet: ${unsure.map((f) => f.file).join(" · ")}`);
+      console.log(`      (${unsure[0].reason} — no base to compare against yet, see plan/26 §3)`);
     }
     // ✓ chỉ được in khi KHÔNG còn ô nào chưa đo được. "5 file chưa kết luận" đứng cạnh "đang khớp"
     // là một câu tự chống lại mình, và người đọc sẽ tin vế xanh (`02_RULES §Hành xử` — chưa xác minh
@@ -215,8 +224,8 @@ export function cmdSync(args: string[] = process.argv): void {
       console.log("      → `zemory sync --standard` to see them, `--apply` to write");
     }
     const clean = !sc.missing.length && !sc.guardStale.length && !drift.length && !skills.some((s) => s.verdict !== "local");
-    if (clean && !unsure.length) console.log("  ✓ không có bản sửa chuẩn nào đang chờ áp.");
-    else if (clean) console.log("  · phần đo được thì khớp; phần trên chưa kết luận được.");
+    if (clean && !unsure.length) console.log("  ✓ no standard revision is waiting to be applied.");
+    else if (clean) console.log("  · what could be measured matches; the part above is not concluded yet.");
     else process.exitCode = 1;
     return;
   }
@@ -229,14 +238,14 @@ export function cmdSync(args: string[] = process.argv): void {
   // tại đây, nếu không người chạy sync sẽ đọc dòng trên thành "xong rồi" (plan/26 §0).
   const behind = standardDiff(root).files.filter((f) => f.verdict === "clean" || f.verdict === "local");
   if (behind.length) {
-    console.log(`  ⚠ ${behind.length} file trong số đó có CHỮ đã cũ — gap-fill không sửa nội dung.`);
-    console.log(`    → xem chi tiết: \`zemory sync --check\``);
+    console.log(`  ⚠ ${behind.length} of those file(s) have outdated TEXT — gap-fill does not edit content.`);
+    console.log(`    → details: \`zemory sync --check\``);
   }
   if (r.needsReconcile) {
     console.log("  ⚠ existing docs are non-standard — NOT auto-modified.");
-    console.log("    → AGENT reconcile (các bước: docs/agent/03_STRUCTURE.md §8, hoặc `zemory migrate`):");
-    console.log("      zemory docs ls  (xem index) · xoá thẳng file .md trùng/obsolete (00_INDEX, 02_CONTEXT…)");
-    console.log("      zemory reindex  (dựng lại search index từ .md)");
+    console.log("    → AGENT reconcile (steps: docs/agent/03_STRUCTURE.md §8, or `zemory migrate`):");
+    console.log("      zemory docs ls  (view the index) · delete duplicate/obsolete .md files outright (00_INDEX, 02_CONTEXT…)");
+    console.log("      zemory reindex  (rebuild the search index from .md)");
   } else if (!r.added.length && !r.createdConfig) {
     console.log("  ✓ already in sync (nothing to add).");
   }
@@ -257,8 +266,8 @@ function warnStrayConfig(): void {
   const home = resolve(homedir(), ".zemory", "config.json");
   if (live.toLowerCase() === home.toLowerCase()) return;
   if (!existsSync(home) || !existsSync(live)) return;
-  console.log(`  ⚠ hai file config: đang dùng ${live}`);
-  console.log(`      bản mồ côi (KHÔNG được đọc): ${home} — xoá tay nếu không cần`);
+  console.log(`  ⚠ two config files: using ${live}`);
+  console.log(`      orphan copy (NOT read): ${home} — delete it by hand if not needed`);
 }
 
 /**
@@ -317,7 +326,7 @@ export async function cmdDoctor(): Promise<void> {
   if (s.project.root) {
     const hp = harnessPathsAt(s.project.root);
     const agentRel = relative(s.project.root, hp.agent).replace(/\\/g, "/");
-    const label = { linked: "nối rồi", unlinked: "bản riêng CHƯA nối", missing: "thiếu" } as const;
+    const label = { linked: "linked", unlinked: "own copy, NOT linked", missing: "missing" } as const;
     const states = entryStates(s.project.root, hp.agent, hp.entries);
     const anyLinked = states.some((e) => e.state === "linked");
     const line = states.map((e) => `${e.file} (${label[e.state]})`).join(" · ");
@@ -325,7 +334,7 @@ export async function cmdDoctor(): Promise<void> {
       console.log(`  entry: ✓ ${line}`);
     } else {
       console.log(`  entry: ⚠ ${line}`);
-      console.log(`      → harness KHÔNG được nạp qua cửa nào — thêm dòng con trỏ tới \`${agentRel}/\` (xem \`zemory sync\`)`);
+      console.log(`      → the harness is NOT loaded through any entry — add a pointer line to \`${agentRel}/\` (see \`zemory sync\`)`);
     }
 
     // ADAPT v2 · §4b ⓐ — "luật lớp ① chưa được cưỡng chế" phải có máy nhắc, đừng dựa
@@ -337,18 +346,18 @@ export async function cmdDoctor(): Promise<void> {
       const declared = Array.isArray(mj?.protected) && mj.protected.length > 0;
       const guardPath = join(hp.agent, "..", "hooks", "guard.cjs");
       if (declared && !existsSync(guardPath)) {
-        console.log("  guard: ⚠ marker khai `protected` nhưng CHƯA có chốt máy — luật lớp ① đang chỉ có chữ gác");
-        console.log("      → chạy `zemory hook guard` để sinh policy + guard từ marker (02_RULES §Guardrail lớp ①)");
+        console.log("  guard: ⚠ the marker declares `protected` but there is NO machine guard yet — layer ① rules are guarded by words only");
+        console.log("      → run `zemory hook guard` to generate policy + guard from the marker (02_RULES §Guardrail layer ①)");
       } else if (existsSync(guardPath)) {
         // Guard KHÔNG tự làm mới — mỗi lần zemory vá guard, repo đã cắm giữ bản HỞ cho tới
         // khi ai đó NHỚ chạy lại `hook guard`. Đề xuất 05_TODO, thành máy sau ngày có HAI
         // vòng vá guard (2026-08-20). Chỉ báo file mang dấu zemory mà lệch bản sinh hôm nay.
         const stale = guardDrift(s.project.root);
         if (stale.length) {
-          console.log(`  guard: ⚠ chốt LỖI THỜI so với bản \`hook guard\` hôm nay: ${stale.join(" · ")}`);
-          console.log("      → chạy lại `zemory hook guard` (guard không tự làm mới; matcher giữ nguyên)");
+          console.log(`  guard: ⚠ guard OUT OF DATE vs today's \`hook guard\` output: ${stale.join(" · ")}`);
+          console.log("      → run `zemory hook guard` again (the guard does not refresh itself; the matcher is kept)");
         } else {
-          console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (nối runtime: xem \`zemory hook guard\`)`);
+          console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (runtime wiring: see \`zemory hook guard\`)`);
         }
       }
     } catch {
@@ -405,9 +414,9 @@ export async function cmdDoctor(): Promise<void> {
       const gb = (n: number): string => (n / 1024 ** 3).toFixed(2) + " GB";
       if (sw.removed.length) {
         const doomed = sw.removed.reduce((a, r) => a + r.bytes, 0);
-        console.log(`  scratch: ○ ${gb(sw.totalBytes)} ở thư mục nháp — scratchTick sẽ dọn ${sw.removed.length} phiên (${gb(doomed)}) ở nhịp 6 giờ kế`);
+        console.log(`  scratch: ○ ${gb(sw.totalBytes)} in scratch folders — scratchTick will clean ${sw.removed.length} session(s) (${gb(doomed)}) at the next 6-hour tick`);
       } else {
-        console.log(`  scratch: ✓ ${gb(sw.totalBytes)} ở thư mục nháp (trong trần)`);
+        console.log(`  scratch: ✓ ${gb(sw.totalBytes)} in scratch folders (within the cap)`);
       }
     }
   } catch {
@@ -426,18 +435,18 @@ export async function cmdDoctor(): Promise<void> {
   try {
     const st = backupStale(currentMemoryDb());
     const hours = st.ageMs === null ? null : (st.ageMs / 3_600_000).toFixed(1);
-    const age = hours === null ? "CHƯA có bản sao lưu nào" : `bản mới nhất ${hours} giờ tuổi`;
+    const age = hours === null ? "NO backup yet" : `newest backup is ${hours} h old`;
     const live = await daemonLiveness();
     if (st.stale) {
       failed = true;
       console.log(
-        `  backup: ✗ ${age} — quá hạn (trần ${(st.limitMs / 3_600_000).toFixed(0)} giờ).` +
-          ` Kẻ ghi kho khác có đang giữ khoá không? Xem \`[scheduler] backup nhường …\` trong logs/daemon.log`,
+        `  backup: ✗ ${age} — overdue (cap ${(st.limitMs / 3_600_000).toFixed(0)} h).` +
+          ` Is another store writer holding the lock? Look for \`[scheduler] backup nhường …\` in logs/daemon.log`,
       );
     } else if (st.late) {
       console.log(
-        `  backup: ○ ${age} — trượt nhịp (chu kỳ ${(st.everyMs / 3_600_000).toFixed(0)} giờ).` +
-          ` Chưa tới mức hỏng, nhưng đã có người giữ khoá hoặc daemon vừa nghỉ.`,
+        `  backup: ○ ${age} — missed a tick (cycle ${(st.everyMs / 3_600_000).toFixed(0)} h).` +
+          ` Not broken yet, but someone held the lock or the daemon was just down.`,
       );
     } else if (hours !== null) {
       console.log(`  backup: ✓ ${age}`);
@@ -446,13 +455,13 @@ export async function cmdDoctor(): Promise<void> {
     // *Bật `zemory ui`* cho một daemon đang chạy là sai việc, và nó dạy người đọc nghi ngờ doctor.
     if (live === "absent") {
       console.log(
-        "  backup: ○ daemon KHÔNG chạy (cổng chối kết nối) ⇒ không có đồng hồ nào chép bản mới." +
-          " Tuổi ở trên là ảnh chụp quá khứ, không phải bằng chứng còn được bảo vệ. Bật `zemory ui`.",
+        "  backup: ○ daemon is NOT running (port refused the connection) ⇒ no clock is taking new backups." +
+          " The age above is a snapshot of the past, not proof you are still protected. Start `zemory ui`.",
       );
     } else if (live === "unknown") {
       console.log(
-        `  backup: ○ daemon KHÔNG TRẢ LỜI trong ${(PING_TIMEOUT_MS / 1000).toFixed(0)}s — có thể đang BẬN, không phải bằng chứng đã chết` +
-          " (đo `plan/14 §8`: /ping lượt lạnh 12,3s). Chưa kết luận được là còn ai chép bản mới hay không.",
+        `  backup: ○ daemon did NOT ANSWER within ${(PING_TIMEOUT_MS / 1000).toFixed(0)}s — it may be BUSY, this is not proof it is dead` +
+          " (measured in `plan/14 §8`: cold /ping 12.3s). Cannot tell yet whether anything is still taking new backups.",
       );
     }
   } catch {
@@ -472,16 +481,16 @@ export async function cmdDoctor(): Promise<void> {
         failed = true;
         const worst = up.stuck[0];
         console.log(
-          `  uplink: ✗ ${up.stuck.length} bundle CHƯA rời khỏi máy quá ${(uplinkStaleMs() / 60_000).toFixed(0)} phút` +
-            ` — cũ nhất ${hrs(worst.ageMs)} giờ: ${worst.file} (${(worst.sizeBytes / 1024 ** 2).toFixed(1)} MB).` +
-            ` Client đồng bộ đang kẹt hàng đợi; máy kia KHÔNG nhận được gì. Mở client Drive kiểm/khởi động lại.`,
+          `  uplink: ✗ ${up.stuck.length} bundle(s) have NOT left this machine for over ${(uplinkStaleMs() / 60_000).toFixed(0)} min` +
+            ` — oldest ${hrs(worst.ageMs)} h: ${worst.file} (${(worst.sizeBytes / 1024 ** 2).toFixed(1)} MB).` +
+            ` The sync client's queue is stuck; the other machine receives NOTHING. Open the Drive client to check/restart it.`,
         );
       } else if (!up.journalFound) {
-        console.log(`  uplink: ○ chưa kiểm được — ${up.inconclusive[0] ?? "không đọc được sổ DriveFS"}`);
+        console.log(`  uplink: ○ could not check — ${up.inconclusive[0] ?? "cannot read the DriveFS journal"}`);
       } else if (up.pending.length) {
-        console.log(`  uplink: ○ ${up.pending.length} bundle đang lên mây (trẻ hơn ngưỡng — bình thường)`);
+        console.log(`  uplink: ○ ${up.pending.length} bundle(s) uploading (younger than the threshold — normal)`);
       } else if (up.departed > 0) {
-        console.log(`  uplink: ✓ mọi bundle trên Drive đã lên mây (${up.departed} file xác nhận bằng sổ client)`);
+        console.log(`  uplink: ✓ every bundle on Drive has reached the cloud (${up.departed} file(s) confirmed by the client journal)`);
       }
     }
   } catch {
@@ -710,12 +719,12 @@ export function cmdConform(args: string[]): void {
     return;
   }
   const s = rep.stats;
-  console.log(`zemory conform — độ bám chuẩn (${root})`);
+  console.log(`zemory conform — conformance to the standard (${root})`);
   console.log(
-    `  ${s.files} file · slot dùng ${s.slotsUsed}/${s.slotsDeclared} · điều ${s.hpDieu} · skill ${s.skills}`,
+    `  ${s.files} file(s) · slots used ${s.slotsUsed}/${s.slotsDeclared} · articles ${s.hpDieu} · skills ${s.skills}`,
   );
   if (!rep.items.length) {
-    console.log("  ✓ không lệch chuẩn.");
+    console.log("  ✓ no deviation from the standard.");
     return;
   }
   for (const it of rep.items) {
@@ -761,18 +770,18 @@ export function cmdValidate(): void {
  */
 function printShortcutPlan(): void {
   const st = desktopShortcutStatus();
-  console.log("  Lối tắt sẽ tạo (mở app bằng một cú bấm, KHÔNG hiện cửa sổ đen):");
+  console.log("  Shortcuts to create (open the app in one click, NO black console window):");
   if (!st.supported) {
-    console.log(`    · nền tảng này chưa hỗ trợ — ${st.detail ?? ""}`);
+    console.log(`    · this platform is not supported yet — ${st.detail ?? ""}`);
     return;
   }
   const line = (label: string, t?: { path: string; exists: boolean }): void => {
     if (!t) return;
-    console.log(`    · ${label.padEnd(10)} ${t.path}${t.exists ? "   [đã có]" : ""}`);
+    console.log(`    · ${label.padEnd(10)} ${t.path}${t.exists ? "   [exists]" : ""}`);
   };
   line("Start Menu", st.startMenu);
   line("Desktop", st.desktop);
-  console.log("    Gỡ/tạo lại bất cứ lúc nào: ⚙ Cài đặt → Lối tắt. Không đụng registry, không cài dịch vụ.");
+  console.log("    Remove/recreate any time: ⚙ Settings → Shortcuts. No registry changes, no service installed.");
 }
 
 /** Hỏi Y/n trên TTY THẬT. Không phải TTY ⇒ trả `null` (chưa hỏi), KHÔNG chờ stdin. */
@@ -796,11 +805,11 @@ export function cmdSetup(args: string[] = []): void {
     cmdSetupMcp(args.slice(1));
     return;
   }
-  console.log("zemory setup — cài & dùng:");
-  console.log("  1. npm i -g zemory                 — cài global (lệnh `zemory`)");
-  console.log("  2. cd <project> && zemory init     — scaffold harness (hoặc `zemory ui` → Setup)");
+  console.log("zemory setup — install & use:");
+  console.log("  1. npm i -g zemory                 — global install (the `zemory` command)");
+  console.log("  2. cd <project> && zemory init     — scaffold the harness (or `zemory ui` → Setup)");
   console.log("  3. zemory doctor");
-  console.log("  4. zemory setup mcp                 — nối zemory vào agent nói MCP (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
+  console.log("  4. zemory setup mcp                 — wire zemory into MCP-speaking agents (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
   console.log("");
   printShortcutPlan();
 
@@ -809,22 +818,22 @@ export function cmdSetup(args: string[] = []): void {
   if (forced !== null) {
     const st = setDesktopShortcut(forced);
     setShortcutPrompted(true);
-    console.log(`  → ${forced ? "đã tạo" : "đã bỏ qua"} lối tắt${st.detail ? ` (⚠ ${st.detail})` : ""}`);
+    console.log(`  → shortcuts ${forced ? "created" : "skipped"}${st.detail ? ` (⚠ ${st.detail})` : ""}`);
   } else if (getShortcutPrompted()) {
-    console.log("  (đã hỏi lần cài trước — đổi ý thì vào ⚙ Cài đặt → Lối tắt)");
+    console.log("  (already asked at a previous install — to change your mind, go to ⚙ Settings → Shortcuts)");
   } else {
-    const yes = askYesNo("  Tạo lối tắt Start Menu + Desktop ngay? [Y/n] ");
+    const yes = askYesNo("  Create Start Menu + Desktop shortcuts now? [Y/n] ");
     if (yes === null) {
-      console.log("  (không có người gõ ở đây ⇒ KHÔNG hỏi — cửa sổ app sẽ hỏi lần mở đầu.");
-      console.log("   Cài theo kịch bản: `zemory setup --shortcut` hoặc `--no-shortcut`.)");
+      console.log("  (nobody is typing here ⇒ NOT asking — the app window will ask on first open.");
+      console.log("   Scripted install: `zemory setup --shortcut` or `--no-shortcut`.)");
     } else {
       const st = setDesktopShortcut(yes);
       setShortcutPrompted(true);
-      console.log(`  → ${yes ? "đã tạo" : "đã bỏ qua"} lối tắt${st.detail ? ` (⚠ ${st.detail})` : ""}`);
+      console.log(`  → shortcuts ${yes ? "created" : "skipped"}${st.detail ? ` (⚠ ${st.detail})` : ""}`);
     }
   }
   console.log("");
-  console.log("Điều hướng mở phiên: AGENTS.md ở root (hỏi app/non-app trước khi init). Luật + quy trình (sửa docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE Reconcile).");
+  console.log("Session entry point: AGENTS.md at the root (ask app/non-app before init). Rules + workflows (editing docs · reconcile · grill): docs/agent/* (02_RULES + 03_STRUCTURE Reconcile).");
 }
 
 /** `zemory setup mcp [agent] [--force]` — khai zemory vào cấu hình MCP của agent.
@@ -837,31 +846,31 @@ function cmdSetupMcp(args: string[]): void {
   const force = args.includes("--force");
   const pick = args.find((a) => !a.startsWith("--"));
   if (!pick) {
-    console.log("zemory setup mcp — nối zemory vào agent nói MCP (chỉ LIỆT KÊ; nêu tên agent mới ghi)");
+    console.log("zemory setup mcp — wire zemory into MCP-speaking agents (LIST only; name an agent to write)");
     for (const t of targets) {
       const state = inspectAgent(t);
-      const mark = state === "wired" ? "✓ đã khai" : state === "present-not-wired" ? "○ có file, chưa khai" : state === "bad-json" ? "⚠ file JSON hỏng" : t.path ? "· chưa có file" : "· chưa cài";
+      const mark = state === "wired" ? "✓ wired" : state === "present-not-wired" ? "○ file present, not wired" : state === "bad-json" ? "⚠ broken JSON file" : t.path ? "· no file yet" : "· not installed";
       const memo: Record<string, string> = {
-        installed: "✓ có lời dặn",
-        stale: "○ lời dặn bản cũ",
-        absent: "○ chưa dặn",
-        "no-file": "· chưa có file",
-        "broken-marker": "⚠ khối hỏng",
-        unsupported: "— không áp dụng",
+        installed: "✓ protocol installed",
+        stale: "○ protocol outdated",
+        absent: "○ no protocol yet",
+        "no-file": "· no file yet",
+        "broken-marker": "⚠ broken block",
+        unsupported: "— not applicable",
       };
-      console.log(`  ${mark.padEnd(22)} ${t.id.padEnd(15)} ${t.path ?? `(chưa thấy: ${t.candidates[0]})`}`);
+      console.log(`  ${mark.padEnd(26)} ${t.id.padEnd(15)} ${t.path ?? `(not found: ${t.candidates[0]})`}`);
       const memoWhere = t.memo ?? t.memoCandidates[0];
       console.log(
-        `  ${" ".repeat(22)} ${"↳ chỉ dẫn".padEnd(15)} ${memo[inspectProtocol(t)]}` +
+        `  ${" ".repeat(26)} ${"↳ protocol".padEnd(15)} ${memo[inspectProtocol(t)]}` +
           (memoWhere ? ` — ${memoWhere}` : t.memoWhy ? ` (${t.memoWhy})` : ""),
       );
     }
     console.log("");
-    console.log("  ghi vào một agent:  zemory setup mcp <agent> [--force]");
-    console.log("  agent hợp lệ:       " + targets.map((t) => t.id).join(" · "));
-    console.log("  mỗi lần ghi làm HAI việc: khai server + cài LỜI DẶN khi nào gọi trí nhớ (`--no-protocol` để bỏ vế sau)");
-    console.log("  luôn sao lưu .bak trước khi ghi · KHÔNG đụng server khác trong file");
-    console.log("  chưa khai tự động được (khai tay): " + UNSUPPORTED.map((u) => `${u.id} — ${u.why}`).join(" · "));
+    console.log("  write to one agent:  zemory setup mcp <agent> [--force]");
+    console.log("  valid agents:        " + targets.map((t) => t.id).join(" · "));
+    console.log("  each write does TWO things: declares the server + installs the PROTOCOL for when to call memory (`--no-protocol` skips the second)");
+    console.log("  always backs up to .bak before writing · NEVER touches other servers in the file");
+    console.log("  cannot be wired automatically yet (wire by hand): " + UNSUPPORTED.map((u) => `${u.id} — ${u.why}`).join(" · "));
     // 🔄 ĐẢO 2026-08-27 — đo trên máy thật thì vế cũ SAI.
     // Câu cũ: "Cowork KHÔNG dùng được MCP: nó chạy trong máy ảo riêng, không với tới `zemory`
     // trên máy thật." Nó viết CÙNG LÚC với lỗ đường dẫn MSIX (`mcpsetup.ts`), nên chưa bao giờ
@@ -870,29 +879,29 @@ function cmdSetupMcp(args: string[]): void {
     // trả về ĐÚNG kho chung: `messages` 303.977 — khớp tuyệt đối với số đo cùng thời điểm ở
     // máy thật, trong khi số đo 30 phút trước là 303.434. Trùng đúng con số ĐANG THAY ĐỔI là
     // bằng chứng nó đọc kho SỐNG, không phải bản sao.
-    console.log("  ⓘ Cowork DÙNG ĐƯỢC MCP qua Claude Desktop (nghiệm thu 2026-08-27): nối `claude-desktop`");
-    console.log("    là phiên Cowork thấy `mcp__zemory__memory_*` và đọc ĐÚNG kho chung, không phải bản sao.");
+    console.log("  ⓘ Cowork CAN use MCP through Claude Desktop (accepted 2026-08-27): wire `claude-desktop`");
+    console.log("    and a Cowork session sees `mcp__zemory__memory_*` and reads the REAL shared store, not a copy.");
     return;
   }
   const target = targets.find((t) => t.id === pick);
   if (!target) {
-    console.log(`zemory setup mcp: không biết agent "${pick}". Hợp lệ: ${targets.map((t) => t.id).join(" · ")}`);
+    console.log(`zemory setup mcp: unknown agent "${pick}". Valid: ${targets.map((t) => t.id).join(" · ")}`);
     process.exitCode = 1;
     return;
   }
   const r = wireAgent(target, force);
   const why: Record<string, string> = {
-    already: "đã khai sẵn rồi (dùng --force để ghi đè)",
-    "no-parent-dir": "chưa thấy thư mục cấu hình — agent này có vẻ chưa cài trên máy",
-    "bad-json": "file cấu hình không parse được JSON — KHÔNG ghi đè, sửa tay trước",
+    already: "already wired (use --force to overwrite)",
+    "no-parent-dir": "config folder not found — this agent does not seem to be installed on this machine",
+    "bad-json": "the config file is not valid JSON — NOT overwritten, fix it by hand first",
   };
   if (r.wrote) {
-    console.log(`zemory setup mcp — ${r.reason === "replaced" ? "ghi đè" : "đã khai"} zemory vào ${target.label}`);
+    console.log(`zemory setup mcp — ${r.reason === "replaced" ? "overwrote" : "wired"} zemory into ${target.label}`);
     console.log(`  server:   ${target.path}`);
-    if (r.backup) console.log(`  sao lưu:  ${r.backup}`);
+    if (r.backup) console.log(`  backup:   ${r.backup}`);
   } else {
-    console.log(`zemory setup mcp — server KHÔNG ghi: ${why[r.reason] ?? r.reason}`);
-    console.log(`  server:   ${target.path ?? `(chưa thấy: ${target.candidates[0]})`}`);
+    console.log(`zemory setup mcp — server NOT written: ${why[r.reason] ?? r.reason}`);
+    console.log(`  server:   ${target.path ?? `(not found: ${target.candidates[0]})`}`);
     if (r.reason === "bad-json") process.exitCode = 1;
   }
 
@@ -900,19 +909,19 @@ function cmdSetupMcp(args: string[]): void {
   if (!args.includes("--no-protocol")) {
     const p = writeProtocol(target);
     const pw: Record<string, string> = {
-      added: "đã cài lời dặn",
-      updated: "đã cập nhật lời dặn (bản cũ được thay đúng chỗ)",
-      already: "lời dặn đã đúng bản mới nhất",
-      "broken-marker": "⚠ khối cũ thiếu marker đóng — KHÔNG ghi, sửa tay rồi chạy lại",
-      "no-parent-dir": "chưa thấy thư mục — agent này có vẻ chưa cài",
-      unsupported: `không áp dụng${target.memoWhy ? ` (${target.memoWhy})` : ""}`,
+      added: "protocol installed",
+      updated: "protocol updated (the old copy was replaced in place)",
+      already: "protocol is already the latest version",
+      "broken-marker": "⚠ the old block is missing its closing marker — NOT written, fix it by hand and run again",
+      "no-parent-dir": "folder not found — this agent does not seem to be installed",
+      unsupported: `not applicable${target.memoWhy ? ` (${target.memoWhy})` : ""}`,
     };
-    console.log(`  chỉ dẫn:  ${pw[p.reason] ?? p.reason}`);
+    console.log(`  protocol: ${pw[p.reason] ?? p.reason}`);
     if (p.path) console.log(`            ${p.path}`);
-    if (p.backup) console.log(`            sao lưu: ${p.backup}`);
+    if (p.backup) console.log(`            backup: ${p.backup}`);
     if (p.reason === "broken-marker") process.exitCode = 1;
   }
-  if (r.wrote) console.log("  → mở lại agent đó để nó nạp server mới.");
+  if (r.wrote) console.log("  → restart that agent so it loads the new server.");
 }
 
 export function cmdStructure(): void {
@@ -990,7 +999,7 @@ export function cmdReindex(): void {
   for (const f of files) {
     const r = importDoc(join(planDir, f), rel(join(planDir, f)), root, "plan");
     sections += r.sections;
-    if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (cấu trúc lạ; vẫn index)`);
+    if (!r.roundTrip) console.log(`  ⚠ ${f} — round-trip diff (unusual structure; indexed anyway)`);
   }
   // Harness docs are searchable content too — the backlog especially. Before this,
   // `reindex` covered docs/plan/* and 06_CHANGES only, so 05_TODO (the biggest file
@@ -1047,8 +1056,8 @@ export function cmdReindex(): void {
     ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
     : 0;
   console.log(
-    `zemory reindex — ${files.length} plan doc(s) · ${agentDocs} harness doc(s) · ${deadDocs} plan chết (attic/dead-plans) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (đọc .md, KHÔNG ghi ngược).` +
-      (pruned ? `\n  dọn ${pruned} doc row mồ côi (file .md không còn trên đĩa).` : ""),
+    `zemory reindex — ${files.length} plan doc(s) · ${agentDocs} harness doc(s) · ${deadDocs} dead plan(s) (attic/dead-plans) · ${sections} section(s) · ${ch} changelog entr(ies) + ${arc} archived → search index (reads .md, NEVER writes back).` +
+      (pruned ? `\n  pruned ${pruned} orphan doc row(s) (the .md file is no longer on disk).` : ""),
   );
 }
 
@@ -1067,7 +1076,7 @@ export function cmdTodoVerify(args: string[]): void {
   const sub = args[0];
   if (sub && sub !== "verify") {
     console.log("usage: zemory todo verify");
-    console.log("  Đo lại từng mục 05_TODO bằng code (file/ký hiệu/endpoint nó nêu tên có thật không).");
+    console.log("  Re-measures every 05_TODO item against the code (do the files/symbols/endpoints it names really exist).");
     process.exitCode = 1;
     return;
   }

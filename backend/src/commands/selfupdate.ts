@@ -63,10 +63,10 @@ async function stopDaemonForBuild(): Promise<number | null> {
     return null; // không có daemon ⇒ không có khoá ⇒ dựng thẳng
   }
   const alive = (): boolean => { try { process.kill(pid, 0); return true; } catch { return false; } };
-  console.log(`  · tắt daemon pid ${pid} để nhả khoá dist/ …`);
+  console.log(`  · stopping daemon pid ${pid} to release the lock on dist/ …`);
   try { process.kill(pid); } catch { /* vừa tự thoát */ }
   for (let i = 0; i < 100 && alive(); i++) await new Promise((r) => setTimeout(r, 200));
-  if (alive()) { console.log(`    ✗ pid ${pid} không chịu thoát — dừng, vì dựng tiếp chắc chắn EPERM`); return -1; }
+  if (alive()) { console.log(`    ✗ pid ${pid} refuses to exit — stopping, because building now is certain to hit EPERM`); return -1; }
   await new Promise((r) => setTimeout(r, 1200)); // Windows nhả handle trễ một nhịp
   console.log("    ok");
   return pid;
@@ -78,10 +78,10 @@ function diagnosePull(root: string): string | null {
   if (!head.ok || !remote.ok) return null;
   const base = run("git", ["merge-base", head.out, remote.out], root);
   if (!base.ok || !base.out) {
-    return "LỊCH SỬ ĐÃ ĐƯỢC VIẾT LẠI trên origin — bản clone này không còn tổ tiên chung, không lệnh pull nào bắc qua được. Phải CLONE LẠI, rồi mang `data/` của máy sang bản mới.";
+    return "HISTORY WAS REWRITTEN on origin — this clone no longer shares an ancestor, no pull can bridge it. CLONE AGAIN, then carry this machine's `data/` over to the new copy.";
   }
-  if (base.out === remote.out) return "Máy này đang ĐI TRƯỚC origin (có commit chưa push) — không có gì để kéo.";
-  if (base.out !== head.out) return "Nhánh đã RẼ (máy này có commit riêng mà origin không có) — người thật xử bằng tay, lệnh này không merge hộ.";
+  if (base.out === remote.out) return "This machine is AHEAD of origin (has unpushed commits) — nothing to pull.";
+  if (base.out !== head.out) return "The branch has DIVERGED (this machine has its own commits origin does not have) — a human must resolve it by hand, this command does not merge for you.";
   return null;
 }
 
@@ -104,21 +104,21 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     const have = appVersion();
     const c = refreshRemoteVersion(root, undefined, appVersion());
     if (!c.ok) {
-      console.log(`zemory selfupdate --check — không đo được bản mới: ${c.error ?? "?"}`);
+      console.log(`zemory selfupdate --check — could not measure the latest version: ${c.error ?? "?"}`);
       process.exitCode = 1;
       return;
     }
     const newer = cmpSemver(c.latest ?? "", have) > 0;
-    console.log(`zemory selfupdate --check — đang chạy ${have || "?"} · git origin ${c.latest} (${c.commit ?? "?"})`);
-    console.log(newer ? "  ⚠ CÓ BẢN MỚI — áp bằng: `zemory selfupdate`" : "  ✓ đã là bản mới nhất.");
+    console.log(`zemory selfupdate --check — running ${have || "?"} · git origin ${c.latest} (${c.commit ?? "?"})`);
+    console.log(newer ? "  ⚠ NEW VERSION AVAILABLE — apply with: `zemory selfupdate`" : "  ✓ already the latest version.");
     return;
   }
 
   const before = appVersion();
-  console.log(`zemory selfupdate — ${root} (đang chạy ${before || "?"})`);
+  console.log(`zemory selfupdate — ${root} (running ${before || "?"})`);
 
   if (!existsSync(join(root, ".git"))) {
-    console.log("  ✗ đây không phải bản cài từ mã nguồn (không thấy .git) — không tự cập nhật được.");
+    console.log("  ✗ this is not a source install (no .git found) — cannot update itself.");
     process.exitCode = 1;
     return;
   }
@@ -129,21 +129,21 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   // Thà dừng và bảo người ta tự xử còn hơn "cố cho xong".
   const status = run("git", ["status", "--porcelain"], root);
   if (!status.ok) {
-    console.log(`  ✗ không chạy được git status: ${status.out}`);
+    console.log(`  ✗ could not run git status: ${status.out}`);
     process.exitCode = 1;
     return;
   }
   if (status.out) {
     const n = status.out.split(/\r?\n/).filter(Boolean).length;
-    console.log(`  ✗ DỪNG — cây làm việc còn ${n} thay đổi chưa commit. Cập nhật sẽ đè lên chúng.`);
+    console.log(`  ✗ STOP — the working tree still has ${n} uncommitted change(s). Updating would overwrite them.`);
     for (const l of status.out.split(/\r?\n/).filter(Boolean).slice(0, 10)) console.log(`      ${l}`);
-    console.log("    → commit hoặc stash trước, rồi chạy lại.");
+    console.log("    → commit or stash first, then run again.");
     process.exitCode = 1;
     return;
   }
 
   if (dryRun) {
-    console.log("  (--dry-run) cây sạch ⇒ sẽ chạy: git pull --ff-only · npm install · npm run build · npm link");
+    console.log("  (--dry-run) tree is clean ⇒ would run: git pull --ff-only · npm install · npm run build · npm link");
     return;
   }
 
@@ -168,12 +168,12 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     process.stdout.write(`  · ${label} … `);
     const r = run(cmd, a, root, sh);
     if (!r.ok) {
-      console.log("LỖI");
+      console.log("FAILED");
       console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
       const why = cmd === "git" ? diagnosePull(root) : null;
       if (why) console.log(`    🔴 ${why}`);
-      console.log(`    → dừng ở bước "${label}". Bản đang cài KHÔNG bị nửa vời nếu lỗi ở pull;`);
-      console.log("      lỗi ở build thì chạy lại `npm run build` sau khi xử xong nguyên nhân.");
+      console.log(`    → stopped at step "${label}". The installed copy is NOT left half-updated if the failure is in pull;`);
+      console.log("      if the failure is in build, run `npm run build` again once the cause is fixed.");
       process.exitCode = 1;
       return;
     }
@@ -184,7 +184,7 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   // Đo lại NGAY: cache còn giữ số của lượt trước thì chip vẫn kêu "có bản mới" sau khi vừa cập
   // nhật xong — người dùng đọc thành "cập nhật không ăn". Rẻ: sha vừa pull đã nằm dưới máy.
   refreshRemoteVersion(root, undefined, appVersion());
-  console.log(`  ✓ xong: ${before || "?"} → ${after || "?"}`);
+  console.log(`  ✓ done: ${before || "?"} → ${after || "?"}`);
   // Trước đây chỗ này chỉ DẶN người ta tự tắt tự mở, nên ai làm theo cũng vẫn ngồi với mã cũ cho
   // tới lúc nhớ ra. Đã tiễn daemon ở trên thì phải trả nó lại — tự dọn cái mình đã dọn đi.
   if (stoppedPid !== null) {
@@ -196,9 +196,9 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
       const exe = join(root, "dist", "zemory.exe");
       const launcher = existsSync(exe) ? exe : process.execPath;
       spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
-      console.log("  ✓ daemon đã được phóng lại bằng mã mới");
+      console.log("  ✓ daemon relaunched on the new code");
     } else {
-      console.log(`  ⚠ không thấy ${cli} — daemon CHƯA được phóng lại, chạy \`zemory ui\` sau khi xử xong`);
+      console.log(`  ⚠ ${cli} not found — daemon NOT relaunched, run \`zemory ui\` once this is fixed`);
     }
   }
 }
