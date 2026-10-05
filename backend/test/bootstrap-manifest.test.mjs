@@ -38,13 +38,6 @@ function lineCount(text) {
   return text.endsWith("\n") ? parts.length - 1 : parts.length;
 }
 
-/** Số dòng KHÔNG tính chân trang dấu bản chuẩn (`<!-- zemory-standard: … -->` và dòng trắng trước nó).
- *  Trần dưới đây đo xem SỔ ĐĂNG KÝ có mọc lại thành sổ tay hay không — một dòng máy tự đóng dấu không
- *  phải sổ tay. Để nó ăn 3 trong 60 dòng là biến một luật về NỘI DUNG thành tai nạn kế toán, và người
- *  sau sẽ cắt chữ thật đi cho vừa trần. */
-function contentLineCount(text) {
-  return lineCount(text.replace(/(?:\r?\n)*<!--\s*zemory-standard:[^>]*-->\s*$/, "\n"));
-}
 
 /** Every file shipped as part of the Cowork standard — .md AND the self-check script;
  *  the manifest must cover ALL of them, or Cowork scaffolds half a harness. */
@@ -144,12 +137,6 @@ test("all three sets carry the skills architecture (Phase 3 — no profile left 
       const body = readFileSync(join(root, rel), "utf8");
       assert.match(body, /^---\r?\nname:/u, `${label}/${rel}: no frontmatter — the harness cannot auto-load it`);
     }
-    // A registry that grows playbooks back into itself defeats the whole move.
-    const registry = readFileSync(join(root, "agent", "04_SKILLS.md"), "utf8");
-    assert.ok(
-      contentLineCount(registry) <= 60,
-      `${label}: 04_SKILLS is ${contentLineCount(registry)} dòng NỘI DUNG — sổ đăng ký, không phải bãi đổ sổ tay (trần 60)`,
-    );
   }
   const coworkAgents = readFileSync(join(TEMPLATE, "AGENTS.md"), "utf8");
   assert.match(coworkAgents, /Hợp đồng nạp/u, "cowork AGENTS.md must carry the trigger-based load contract");

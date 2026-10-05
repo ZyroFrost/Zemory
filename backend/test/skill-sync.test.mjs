@@ -107,7 +107,9 @@ test("🔴 repo đã mang sẵn mọi dòng chuẩn đổi (dấu ngày cũ) ⇒
   const root = repo(t);
   // Nội dung = bản mẫu HIỆN TẠI + một dòng repo tự thêm, nhưng dấu ngày vẫn là 2026-09-21 (bản gốc khác).
   const now = readFileSync(join(ZEMORY, "docs_template", "03_nonapp", "agent", "02_RULES.md"), "utf8").replace(/<PROJECT>/g, basename(root));
-  const body = now.replace(/zemory-standard: 2026-10-04/, "zemory-standard: 2026-09-21").replace(/\r?\n/g, "\n");
+  // Lower WHATEVER date the template carries today — pinning one literal date turned this case red
+  // every time the template was revised (2026-10-05), with no change in behaviour.
+  const body = now.replace(/zemory-standard: \d{4}-\d{2}-\d{2}/, "zemory-standard: 2026-09-21").replace(/\r?\n/g, "\n");
   assert.match(body, /zemory-standard: 2026-09-21/, "tiền đề: đã hạ dấu ngày");
   writeFileSync(join(root, "docs", "agent", "02_RULES.md"), body.replace(/^(# .*\n)/, "$1\nDÒNG REPO TỰ THÊM\n"));
   const v = standardDiff(root).files.find((f) => f.file === "02_RULES.md");

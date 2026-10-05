@@ -257,7 +257,7 @@ Mười một quy trình chuẩn đã có sẵn trong `.claude/skills/`. Việc 
    - `name`: **tiếng Anh**, chữ thường, nối bằng `-`. Thân file: tiếng Việt.
    - `description` phải nói cả **làm gì** lẫn **khi nào dùng** — đó là thứ duy nhất quyết định
      quy trình có được gọi ra hay không. Kèm vài cụm tiếng Việt người dùng hay gõ.
-   - Mỗi `SKILL.md` **≤ 120 dòng**; dài hơn thì đẩy phần chi tiết xuống `reference/`.
+   - `SKILL.md` dài thì đẩy phần chi tiết xuống `reference/`.
 2. **Trình trước khi ghi**: nêu tên + một dòng lý do, người dùng gật mới thêm.
 3. Đăng ký ở **HAI chỗ**, thiếu một là quy trình thành mồ côi: một dòng vào danh mục §2 của
    `docs/agent/04_SKILLS.md`, và một dòng vào bảng trigger trong `AGENTS.md` (mở lúc nào).
