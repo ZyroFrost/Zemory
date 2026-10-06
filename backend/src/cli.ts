@@ -24,6 +24,8 @@ try {
   if (cmd === "hook") {
     const { cmdHook } = await import("./commands/hook.js");
     await cmdHook(args);
+  } else if (cmd === "peers") {
+    (await import("./commands/peers.js")).cmdPeers(args);
   } else {
     await runRest();
   }

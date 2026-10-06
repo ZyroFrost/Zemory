@@ -23,6 +23,7 @@ export function cmdHelp(): void {
       "  memory     scan/search the global memory (memory scan | search | show)",
       "  mcp       run the local MCP stdio server (memory_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
+      "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate)",
       "  grill     interrogate the plan before building (workflow)",
       "  graph     code-graph queries: impact <file> · callers <symbol> · fitness [--gate]",
       "  structure print the standard harness structure (target to conform to)",
