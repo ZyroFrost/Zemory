@@ -109,7 +109,7 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - **CHỈ làm việc trong thư mục đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng thư mục dự án khác khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp" hay "tiện tay sửa luôn"**.
 - Cần đụng chỗ khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao. Nơi khác có thể đang có phiên khác làm việc.
 - Đọc-tham-khảo (read-only) thì được; **mọi thao tác GHI là cấm mặc định**.
-- **Tiêu đề phiên** (user đặt, agent không đặt được): khuôn `<Repo>_<Model>_<d-m-yyyy>` — `<Model>` = model đang chạy (`Claude`, `Codex`, …); chủ đề nếu có chèn trước ngày (`<Repo>_<Model>_<ChuDe>_<d-m-yyyy>`); ngày không đệm số 0. Phiên chưa có tiêu đề = chưa dùng. Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc user một lần.
+- **Tiêu đề phiên** (user đặt, agent không tự đổi): khuôn `<Repo>_<Model>_<d-m-yyyy>` — `<Model>` = model đang chạy (`Claude`, `Codex`, …); chủ đề nếu có chèn trước ngày; phiên thứ 2, 3 trong ngày thêm `_<số>` sau ngày; ngày không đệm số 0. Phiên chưa có tiêu đề = chưa dùng. Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc user một lần.
 - **Nhắn agent ở phiên khác** (khi môi trường cho phép): chỉ nhắn phiên đang chạy có tiêu đề chuẩn `<Repo>_<Model>_<d-m-yyyy>`, ngày trong tiêu đề mới nhất của repo đó — phiên chưa có tiêu đề (`Untitled`, chưa dùng) ⇒ CẤM. Tiêu đề không phải địa chỉ gửi: có `zemory` thì tra `zemory peers` (★ = phiên được nhắn); không tra được ⇒ KHÔNG gửi, báo user. Trả lời tin đến thì dùng đúng địa chỉ `from` của tin.
 
 > 🖥️ **Chỉ khi có `zemory` CLI** (Claude Code trên máy thật — Cowork bỏ qua mục này):
