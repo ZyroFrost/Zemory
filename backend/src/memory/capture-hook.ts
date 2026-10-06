@@ -341,6 +341,7 @@ export function handleHook(event: HookEventName, payload: any): string {
 // ---- Installer: merge zemory hooks into Claude Code settings (non-destructive) ----
 
 interface HookCmd {
+  matcher?: string;
   hooks: { type: "command"; command: string }[];
 }
 
@@ -357,11 +358,13 @@ const CODEX_CONFIG = join(homedir(), ".codex", "config.toml");
 // SessionStart ở đây KHÔNG phải "auto-inject memory mỗi phiên" (điều 8 cấm) — handler tự
 // kiểm `source` và im lặng với mọi phiên mở bình thường; nó chỉ mở miệng đúng lúc agent vừa
 // MẤT trí nhớ vì bị nén, tức đúng sự kiện chứ không phải mỗi prompt.
-const ZEMORY_HOOKS: { event: string; command: string }[] = [
+const ZEMORY_HOOKS: { event: string; command: string; matcher?: string }[] = [
   { event: "Stop", command: "zemory hook stop" },
   { event: "UserPromptSubmit", command: "zemory hook prompt" },
   { event: "PreCompact", command: "zemory hook pre-compact" },
   { event: "SessionStart", command: "zemory hook session-start" },
+  // PreToolUse on SendMessage — the cross-session messaging latch (user ruling 2026-10-07, see send-guard.ts).
+  { event: "PreToolUse", command: "zemory hook send-guard", matcher: "SendMessage" },
 ];
 
 export interface InstallResult {
@@ -397,6 +400,7 @@ function mergeCommandHook(
   rootKey: string | null,
   event: string,
   command: string,
+  matcher?: string,
 ): InstallResult {
   const document = readJsonObject(path);
   const settings = rootKey
@@ -407,7 +411,7 @@ function mergeCommandHook(
     (group.hooks ?? []).some((hook) => hook.type === "command" && hook.command === command),
   );
   if (!already) {
-    groups.push({ hooks: [{ type: "command", command }] });
+    groups.push(matcher ? { matcher, hooks: [{ type: "command", command }] } : { hooks: [{ type: "command", command }] });
     settings[event] = groups;
     mkdirSync(dirname(path), { recursive: true });
     // File cấu hình của CHÍNH agent (vd settings.json của Claude Code). Ghi hỏng ở đây
@@ -437,8 +441,8 @@ export function hooksInstalled(settingsPath: string = CLAUDE_SETTINGS): boolean 
 export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallResult {
   const added: string[] = [];
   const present: string[] = [];
-  for (const { event, command } of ZEMORY_HOOKS) {
-    const result = mergeCommandHook(settingsPath, "hooks", event, command);
+  for (const { event, command, matcher } of ZEMORY_HOOKS) {
+    const result = mergeCommandHook(settingsPath, "hooks", event, command, matcher);
     added.push(...result.added);
     present.push(...result.present);
   }

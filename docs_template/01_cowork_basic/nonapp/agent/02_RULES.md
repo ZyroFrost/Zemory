@@ -45,6 +45,7 @@ CHẶN xoá     xoá ĐỆ QUY (rm -r · Remove-Item -Recurse · del /S) — m�
              xoá chạm file secret (.env · *.key · *.pem …)
 CHẶN ngoài   ghi ra đường TUYỆT ĐỐI ngoài thư mục dự án (miễn thư mục tạm · ~/.claude · /dev/null)
              SQL bắt máy chủ ghi file (BACKUP/RESTORE … DISK) · SQL đổi cấu hình máy chủ (sp_configure, linked server, CREATE/DROP DATABASE)
+             lệnh chạy trên MÁY KHÁC (ssh · Invoke-Command · psexec · winrs) mà tạo/xoá/đổi thứ gì — thư mục · task Scheduler · dịch vụ · registry; scp/rsync chép LÊN máy khác
              cờ hooks/.allow-outside · thêm chỗ được ghi / máy chủ được nhắm = allowed_roots / allowed_sql_servers trong policy.json
              giới hạn: đường hay SQL nằm trong file script hoặc dựng lúc chạy thì bộ chặn không thấy
 CHO QUA      02_processing/ · 03_output/ · file tạm — agent ghi suốt ở đây
@@ -108,6 +109,7 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - **CHỈ làm việc trong thư mục đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng thư mục dự án khác khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp" hay "tiện tay sửa luôn"**.
 - Cần đụng chỗ khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao. Nơi khác có thể đang có phiên khác làm việc.
 - Đọc-tham-khảo (read-only) thì được; **mọi thao tác GHI là cấm mặc định**.
+- **Nhắn agent ở phiên khác** (khi môi trường cho phép): chỉ nhắn vào phiên **ĐANG HOẠT ĐỘNG và có tên do user đặt** — CẤM chủ động nhắn phiên mang tên mặc định `<thư mục>-<2 ký tự hex>`. Trước mỗi lần gửi: liệt kê phiên → đúng MỘT phiên có tên do user đặt thì gửi; không có hoặc từ hai trở lên ⇒ KHÔNG gửi, báo user. Trả lời tin đến thì dùng đúng địa chỉ `from` của tin.
 
 > 🖥️ **Chỉ khi có `zemory` CLI** (Claude Code trên máy thật — Cowork bỏ qua mục này):
 > Lệnh `zemory` **GHI theo cwd**. Đứng ở repo tham khảo mà chạy `init`/`sync`/`reindex`/`archive`/`memory scan` = ghi vào repo ĐÓ. Lấy chuẩn = đọc `docs_template/`, rồi chạy lệnh **ở thư mục của bạn**.
@@ -164,4 +166,4 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
 
 
-<!-- zemory-standard: 2026-10-06 -->
+<!-- zemory-standard: 2026-10-07 -->

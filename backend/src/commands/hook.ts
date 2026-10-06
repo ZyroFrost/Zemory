@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
 import { generateGuards, GUARD_MATCHER } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
+import { judgeSendTarget } from "../memory/send-guard.js";
 import { readStdin } from "./_shared.js";
 
 export async function cmdHook(args: string[]): Promise<void> {
@@ -42,6 +43,15 @@ export async function cmdHook(args: string[]): Promise<void> {
     // ADAPT v2 · §4b — sinh chốt chặn lớp ① từ marker. CHỈ SINH FILE trong nhà harness;
     // việc cắm con trỏ runtime (.claude/settings.json · pre-commit) in ra cho user quyết —
     // tự cắm hook vào cấu hình đang chạy của người ta là đúng loại hành vi N1 cấm.
+    // Unknown flags are refused, not ignored (same shape as `archive`): measured 2026-10-06, `hook guard --help`
+    // REWROTE the repo's guard.cjs instead of printing help — harmless that time only because it was already current.
+    const extra = args.slice(1);
+    if (extra.length) {
+      console.log(`zemory hook guard: unknown argument: ${extra.join(" ")}`);
+      console.log("  usage: zemory hook guard   (no options — regenerates docs/hooks/ from the marker)");
+      process.exitCode = 1;
+      return;
+    }
     const root = currentProjectRoot();
     const r = generateGuards(root);
     const rel = (p: string): string => relative(root, p).replace(/\\/g, "/");
@@ -75,9 +85,25 @@ export async function cmdHook(args: string[]): Promise<void> {
     );
     return;
   }
+  if (sub === "send-guard") {
+    // PreToolUse on SendMessage (wired at user level by `zemory hook install`). exit 2 = block, stderr goes to the agent.
+    let payload: { tool_input?: { to?: unknown } } = {};
+    try {
+      // Strip a BOM: a PowerShell 5.1 pipe prepends U+FEFF to stdin (same fix as guard.cjs).
+      payload = JSON.parse((await readStdin()).replace(new RegExp("^" + String.fromCharCode(0xfeff)), "") || "{}");
+    } catch {
+      // unreadable payload => nothing to judge, let it through (the host decides; this latch only narrows)
+    }
+    const why = judgeSendTarget(payload.tool_input?.to);
+    if (why) {
+      process.stderr.write(why + "\n");
+      process.exitCode = 2;
+    }
+    return;
+  }
   const EVENTS = ["session-start", "stop", "session-end", "prompt", "pre-compact"];
   if (!EVENTS.includes(sub ?? "")) {
-    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall|guard>`);
+    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall|guard|send-guard>`);
     return;
   }
   const raw = await readStdin();
