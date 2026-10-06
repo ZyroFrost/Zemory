@@ -196,6 +196,16 @@ function isOutside(tok, strict) {
   return !outsideRoots().some((r) => c === r || c.startsWith(r + "/"));
 }
 
+// String literals that are only ARGUMENTS of a text operation are data, not a place being written. False block
+// reported 2026-10-07 (session db-datawarehouse-fa): `python -c "...s.replace('E:\\_retired','E:\\Legacy')..."` edited
+// two .md files INSIDE the repo and was blocked as "writing into E:\_retired". `os.path.join` is NOT dropped - it
+// builds write paths. The write call's own argument (`open('C:/x','w')`) is untouched, so a real outside write still blocks.
+function dropTextOps(s) {
+  return String(s)
+    .replace(/\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\s*\([^()]*\)/g, ".$1()")
+    .replace(/\b(re\.sub|re\.search|re\.match|re\.findall|print|console\.log)\s*\([^()]*\)/g, "$1()");
+}
+
 function denyOutside(what, subject) {
   if (consumeFlag("outside", subject)) return;
   deny("BLOCKED (guard layer 1): " + what + " - " +
@@ -551,7 +561,7 @@ function checkBash(cmd) {
     // 3 interpreters: judge only when the payload holds both a protected path AND a writing verb — to
     //    avoid wrongly blocking `python -c "print(open('data/x').read())"` (reading, not writing).
     if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
-      for (const tok of seg.split(/[\s'"(),]+/)) {
+      for (const tok of dropTextOps(seg).split(/[\s'"(),]+/)) {
         // Do NOT require the token to contain a `/`: a protected path is often a BARE NAME at the repo root
         // (`.vault` · `attic` · `data`) — measured 2026-08-26 across 7 of 9 PBI repos, and at first they slipped clean through
         // by the "must contain /" condition. `underProtected` is the real decider; a meaningless token
@@ -617,7 +627,7 @@ function checkBash(cmd) {
     // Interpreter payloads that write. The first plain argument is the SCRIPT being run (read, not written) - skip it.
     if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
       const script = args.find((t) => !t.startsWith("-"));
-      for (const tok of seg.split(/[\s'"(),]+/)) {
+      for (const tok of dropTextOps(seg).split(/[\s'"(),]+/)) {
         if (!tok || tok.startsWith("-") || tok === script) continue;
         outsideHit(tok, "writing (through " + word + ") into", true);
       }
@@ -630,9 +640,76 @@ function checkBash(cmd) {
     let h;
     while ((h = HEREDOC.exec(cmd))) {
       if (!WRITE_VERB.test(h[3])) continue;
-      for (const tok of h[3].split(/[\s'"(),]+/)) {
+      for (const tok of dropTextOps(h[3]).split(/[\s'"(),]+/)) {
         if (tok && !tok.startsWith("-")) outsideHit(tok, "writing (through a heredoc script) into", true);
       }
+    }
+  }
+
+  // ── OUTSIDE THE PROJECT 4: work on ANOTHER MACHINE (added 2026-10-07) ─────────────────
+  //
+  // Incident (session db-datawarehouse-fa, 2026-10-07): `ssh <vm> "New-Item -ItemType Directory E:\_retired\...;
+  // Export-ScheduledTask ... | Out-File ...; Unregister-ScheduledTask ..."`, and before that two `Register-ScheduledTask`
+  // - a new folder and Scheduler tasks created/deleted on a VM, unblocked: `ssh` was an ordinary command
+  // whose quoted payload nobody judged. Now a remote runner works like an interpreter: once one is in command
+  // position the WHOLE line is the payload (a PowerShell script block `{ a; b }` is split by `;` like any
+  // line, so a single segment would miss half of it), and anything that CHANGES the other machine needs the
+  // `outside` flag - the same flag as the branches above, because it is the same question: work outside the project.
+  // Reading (Get-*, ls, cat, Test-Path, sqlcmd SELECT) passes.
+  //
+  // 🔴 LIMIT: a script FILE that lives on the other machine (`ssh host "powershell -File C:\job.ps1"`) is invisible
+  // (a LOCAL script piped in through stdin IS read - see `fed` below). A local command that merely shares the line with `ssh` is judged as remote too
+  // - blocking wrongly beats a hole, and remote commands are rare enough for that to stay quiet.
+  const REMOTE_RUNNERS = /^(ssh|plink|psexec|psexec64|paexec|winrs)(\.exe)?$/;
+  const REMOTE_PS = /\b(Invoke-Command|icm)\b[^\n]*\s-(ComputerName|cn|Session|HostName|VMName|ContainerId)\b|\bEnter-PSSession\b|\betsn\b|\bCopy-Item\b[^\n]*\s-ToSession\b/i;
+  const remoteLine = anyCmdIs(cmd, REMOTE_RUNNERS) || REMOTE_PS.test(bare);
+  if (remoteLine) {
+    const REMOTE_MUTATE = new RegExp([
+      // PowerShell verbs that change state; the excluded nouns only build objects or steer the local session.
+      "\\b(New|Set|Add|Remove|Register|Unregister|Install|Uninstall|Rename|Move|Copy|Clear|Enable|Disable|Start|Stop|Restart|Suspend|Resume|Grant|Revoke|Mount|Dismount|Initialize|Reset|Update|Publish|Expand|Compress)-(?!(Object|TimeSpan|Guid|Variable|PSSession|PSSessionOption|CimSession|CimSessionOption|Location|StrictMode|PSDebug|Sleep|Type|Member|Transcript|Host)\\b)[A-Za-z]\\w*",
+      "\\bOut-File\\b", "\\bTee-Object\\b", "\\bExport-(Csv|Clixml|PfxCertificate|Certificate)\\b", "\\bFormat-Volume\\b", "-OutFile\\b",
+      // native commands
+      "\\b(mkdir|md|rmdir|rd|del|erase|rm|mv|cp|move|copy|xcopy|robocopy|touch|tee|chmod|chown|chgrp|ln|truncate|shutdown|reboot|useradd|userdel|usermod)\\b",
+      "\\bschtasks(\\.exe)?\\b[^\\n]*\\/(create|delete|change|run|end)\\b",
+      "\\bsc(\\.exe)?\\s+(\\\\\\\\\\S+\\s+)?(create|delete|config|start|stop|pause|failure|sdset)\\b",
+      "\\breg(\\.exe)?\\s+(add|delete|import|restore|load|unload|copy)\\b",
+      "\\bnet(\\.exe)?\\s+(user|localgroup|group|share|use)\\b[^\\n]*\\/(add|delete)\\b",
+      "\\bnet(\\.exe)?\\s+(start|stop)\\s+\\S",
+      "\\bsystemctl\\s+(enable|disable|mask|unmask|start|stop|restart|reload|daemon-reload|kill)\\b",
+      "\\bservice\\s+\\S+\\s+(start|stop|restart)\\b",
+      "\\bcrontab\\s+(-[rei]\\b|[^-\\s|;&])",
+      "\\b(apt|apt-get|yum|dnf|zypper|apk|pip|pip3|npm|choco|winget|brew)\\s+(install|remove|uninstall|purge|upgrade|add|i)\\b",
+      "\\bsed\\s+(-\\w*i\\b|--in-place)",
+      // redirection into a file (not 2>&1, not > $null / /dev/null / nul, not -> or =>)
+      "(?:^|[^\\d&<>=-])>{1,2}\\s*(?![&]|\\$null\\b|\\/dev\\/null\\b|nul\\b)[^\\s&|;>]",
+    ].join("|"), "i");
+    // A LOCAL script fed to the remote shell through stdin (reported 2026-10-07:
+    // `Get-Content x.ps1 | ssh host "powershell -Command -"` · `ssh host bash < x.sh`): the line shows only `ssh`,
+    // the payload is the FILE - and that file is local, so read it and judge its text too.
+    let fed = "";
+    for (const s of splitSegments(cmd)) {
+      const files = [];
+      if (/^(get-content|gc|cat|type)$/.test(cmdWordOf(s))) files.push(...shellWords(s).slice(1).filter((t) => t && !t.startsWith("-")));
+      const lt = /(?<!<)<(?!<)\s*(["']?)([^\s"'|;&<>]+)\1/.exec(s);
+      if (lt) files.push(lt[2]);
+      for (const f of files) {
+        try {
+          const p = path.resolve(process.cwd(), f);
+          if (fs.statSync(p).size <= 2 * 1024 * 1024) fed += "\n" + fs.readFileSync(p, "utf8");
+        } catch {}
+      }
+    }
+    if (REMOTE_MUTATE.test(cmd) || (fed && REMOTE_MUTATE.test(fed))) {
+      denyOutside("a command that CHANGES ANOTHER MACHINE (ssh / Invoke-Command / psexec / winrs payload that creates, deletes or reconfigures - files, folders, scheduled tasks, services, registry, packages)", bare);
+    }
+  }
+  // Copying ONTO another machine: `scp a.txt host:/x` · `rsync -a dir user@host:dir` (a drive letter `C:` is not a host).
+  for (const s of splitSegments(bare)) {
+    if (!/^(scp|pscp|rsync)(\.exe)?$/.test(cmdWordOf(s))) continue;
+    const args = shellWords(s).slice(1).filter((t) => t && !t.startsWith("-"));
+    const dest = args[args.length - 1] || "";
+    if (/^([^@\s:\/\\]+@)?[A-Za-z0-9][\w.-]+:/.test(dest)) {
+      denyOutside("copying ONTO another machine (`" + dest + "`)", bare);
     }
   }
 
@@ -641,7 +718,7 @@ function checkBash(cmd) {
   // `git log`, `cat x.sql` merely MENTION the words. Matched against the ORIGINAL command, not `bare`:
   // SQL is very often a heredoc fed to python/sqlcmd, and `bare` has dropped exactly that.
   const rawSegs = splitSegments(cmd);
-  const sqlCtx = rawSegs.some((s) => /^(sqlcmd|osql|bcp|invoke-sqlcmd)$/.test(cmdWordOf(s)) || SEG_INTERP.test(cmdWordOf(s)));
+  const sqlCtx = rawSegs.some((s) => /^(sqlcmd|osql|bcp|invoke-sqlcmd)$/.test(cmdWordOf(s)) || SEG_INTERP.test(cmdWordOf(s))) || remoteLine;
   if (sqlCtx) {
     const SQL_FILE_WRITE =
       /\bBACKUP\s+(DATABASE|LOG)\b[\s\S]*?\bTO\s+DISK\b|\bRESTORE\b[\s\S]*?\bFROM\s+DISK\b|\bWITH\b[\s\S]*?\bMOVE\s+\S+\s+TO\b|\bCREATE\s+DATABASE\b[\s\S]*?\bFILENAME\b/i;

@@ -130,3 +130,30 @@ test("CLI: `memory embed --help` refuses with usage, writes no byte and holds no
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// 2026-10-06: `zemory hook guard --help` REWROTE docs/hooks/ instead of printing help.
+test("CLI: `hook guard --help` refuses and writes nothing; plain `hook guard` still generates", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const { writeFileSync } = await import("node:fs");
+  const root = mkdtempSync(join(tmpdir(), "zflag-guard-"));
+  mkdirSync(join(root, "docs", "agent"), { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent" }));
+  const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
+  const run = (args) => {
+    try {
+      return { code: 0, out: String(execFileSync(process.execPath, [cli, "hook", "guard", ...args], { cwd: root, stdio: "pipe", timeout: 60_000 })) };
+    } catch (e) {
+      return { code: e.status ?? -1, out: String(e.stdout ?? "") + String(e.stderr ?? "") };
+    }
+  };
+  try {
+    const bad = run(["--help"]);
+    assert.notEqual(bad.code, 0, "--help ⇒ phải thất bại, không chạy thật");
+    assert.match(bad.out, /usage:/, "phải in usage");
+    assert.ok(!existsSync(join(root, "docs", "hooks", "guard.cjs")), "--help ⇒ KHÔNG được sinh guard.cjs");
+    assert.equal(run([]).code, 0, "không đối số ⇒ sinh bình thường");
+    assert.ok(existsSync(join(root, "docs", "hooks", "guard.cjs")), "không đối số ⇒ guard.cjs có mặt");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

@@ -166,6 +166,83 @@ test("③ with `allowedSqlServers` declared, a server NOT on the list is blocked
   assert.deepEqual(leaked, [], "lọt: " + leaked.join(", "));
 });
 
+// ── ④ làm việc trên MÁY KHÁC (2026-10-07) ─────────────────────────────────────────────
+//
+// Sự cố phiên `db-datawarehouse-fa`: `ssh <vm> "New-Item … ; Unregister-ScheduledTask …"` cùng hai lượt
+// `Register-ScheduledTask` — tạo thư mục, xoá/tạo task Scheduler trên VM, KHÔNG bị chặn: `ssh` là lệnh
+// thường, phần trong ngoặc không ai xét.
+
+const SCHED = "Regist" + "er-ScheduledTask";
+const UNSCHED = "Unregist" + "er-ScheduledTask";
+
+test("④ the 2026-10-07 incident: ssh payload that creates a folder / drops a scheduled task is blocked", (t) => {
+  const r = repo(t);
+  const leaked = collect(
+    r,
+    [
+      ["ca thật 07/10", `ssh vm1 "New-Item -ItemType Directory E:\\_retired\\20261007; Export-ScheduledTask -TaskName X | Out-File E:\\_retired\\x.xml; ${UNSCHED} -TaskName X -Confirm:$false"`],
+      ["ssh Register-ScheduledTask", `ssh vm1 "${SCHED} -TaskName Y -Action $a -Trigger $t"`],
+      ["ssh schtasks /create", `ssh vm1 "schtasks /create /tn Y /tr C:\\y.cmd /sc daily"`],
+      ["ssh sc create", `ssh vm1 sc create svc binPath= C:\\s.exe`],
+      ["ssh mkdir (Linux)", `ssh user@box "mkdir -p /srv/x"`],
+      ["ssh redirection", `ssh vm1 "echo x > C:\\x.txt"`],
+      ["ssh heredoc", `ssh vm1 <<'EOF'\nNew-Item -ItemType Directory E:\\z\nEOF`],
+      ["ssh sqlcmd sp_configure", `ssh vm1 "sqlcmd -Q \\"${CONFIGURE}\\""`],
+      ["Invoke-Command -ComputerName", `Invoke-Command -ComputerName vm1 -ScriptBlock { New-Item -ItemType Directory E:\\z; Remove-Item E:\\y }`],
+      ["gán biến rồi Invoke-Command", `$r = Invoke-Command -cn vm1 { ${SCHED} -TaskName Y }`],
+      ["pwsh -c bọc Invoke-Command", `pwsh -c "Invoke-Command -Session $s { Set-Service w3svc -StartupType Disabled }"`],
+      ["psexec", `psexec \\\\vm1 cmd /c mkdir E:\\z`],
+      ["winrs", `winrs -r:vm1 reg add HKLM\\Software\\X /v a /d 1`],
+      ["scp lên máy khác", `scp build.zip user@vm1:/srv/drop/`],
+      ["Copy-Item -ToSession", `Copy-Item a.txt -ToSession $s -Destination C:\\x`],
+    ],
+    (rr, c) => sh(rr, c, "PowerShell"),
+  );
+  assert.deepEqual(leaked, [], "lọt: " + leaked.join(", "));
+});
+
+test("④ a LOCAL script piped into the remote shell is read and judged (stdin variant, 2026-10-07)", (t) => {
+  const r = repo(t);
+  writeFileSync(join(r.root, "job.ps1"), `${UNSCHED} -TaskName "Inventory day" -Confirm:$false\r\n`);
+  writeFileSync(join(r.root, "look.ps1"), `Get-ScheduledTask | Select-Object TaskName\r\n`);
+  assert.ok(sh(r, `Get-Content job.ps1 | ssh vm1 "powershell -Command -"`, "PowerShell"), "Get-Content x | ssh ⇒ chặn");
+  assert.ok(sh(r, `ssh vm1 bash < job.ps1`), "ssh … < x ⇒ chặn");
+  assert.ok(!sh(r, `Get-Content look.ps1 | ssh vm1 "powershell -Command -"`, "PowerShell"), "script chỉ đọc ⇒ qua");
+});
+
+test("① NEGATIVE: an absolute path that is only an ARGUMENT of a text operation is not a write target", (t) => {
+  const r = repo(t);
+  // `open(..., 'w')` makes WRITE_VERB fire — without it the branch never runs and this case is green for nothing.
+  const REPL = `s = open('docs/a.md').read().replace('E:\\\\_retired', 'E:\\\\Legacy'); open('docs/a.md', 'w').write(s)`;
+  assert.ok(!sh(r, `python -c "${REPL}"`), ".replace('E:\\…') ⇒ qua");
+  assert.ok(sh(r, `python -c "open('${OUT}', 'w').write(s.replace('E:/a', 'E:/b'))"`), "open(ngoài) vẫn chặn");
+});
+
+test("④ NEGATIVE: READING on another machine passes, and so does a local scp download", (t) => {
+  const r = repo(t);
+  const wrong = [
+    `ssh vm1 "Get-ScheduledTask -TaskName X | Select-Object State"`,
+    `ssh vm1 "Get-ChildItem E:\\data; Test-Path E:\\x"`,
+    `ssh user@box "ls -la /srv && cat /etc/hostname"`,
+    `ssh vm1 "sqlcmd -S localhost -Q \\"SELECT 1\\" 2>&1"`,
+    `ssh vm1 "Get-Service w3svc > $null"`,
+    `Invoke-Command -ComputerName vm1 -ScriptBlock { Get-Process | Sort-Object CPU | Select-Object -First 5 }`,
+    `scp user@vm1:/srv/log.txt ./log.txt`,
+    `git commit -m "ssh vm1 New-Item"`,
+    `grep -rn "Invoke-Command -ComputerName" docs`,
+  ].filter((c) => sh(r, c, "PowerShell"));
+  assert.deepEqual(wrong, [], "chặn nhầm: " + wrong.join(" | "));
+});
+
+test("④ FLAG: `.allow-outside` opens ONE remote job; a different one is revoked", (t) => {
+  const r = repo(t);
+  const CMD = `ssh vm1 "${SCHED} -TaskName Y"`;
+  assert.ok(sh(r, CMD), "không cờ ⇒ chặn");
+  giveFlag(r);
+  assert.ok(!sh(r, CMD), "có cờ ⇒ qua");
+  assert.ok(sh(r, `ssh vm1 "${UNSCHED} -TaskName Z"`), "việc khác mượn cờ ⇒ chặn");
+});
+
 // ── CA ÂM: phải cho qua ────────────────────────────────────────────────────────────
 
 test("NEGATIVE: writes inside the repo pass (relative and absolute)", (t) => {

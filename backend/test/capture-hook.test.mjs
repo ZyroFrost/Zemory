@@ -31,9 +31,10 @@ test("Claude and Codex hook installers merge safely and are idempotent", (t) => 
   // 2026-08-02: bộ móc của Claude Code lên 4 (Stop + UserPromptSubmit + PreCompact +
   // SessionStart) khi realtime capture thành đường nạp chính. Neo test đi theo code —
   // giữ nguyên TÍNH CHẤT nó canh: cài lần hai không thêm gì, chỉ báo "đã có".
+  // 2026-10-07: +PreToolUse (matcher SendMessage — chốt nhắn session, `send-guard.ts`).
   assert.deepEqual(
     [...secondClaude.present].sort(),
-    ["PreCompact", "SessionStart", "Stop", "UserPromptSubmit"],
+    ["PreCompact", "PreToolUse", "SessionStart", "Stop", "UserPromptSubmit"],
     "cài lại phải thấy ĐỦ bộ móc đã có, không thêm bản trùng",
   );
   assert.deepEqual(secondClaude.added, [], "lần hai không được thêm móc nào");

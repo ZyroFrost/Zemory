@@ -258,6 +258,8 @@ test("every DECLARED hook must be dispatchable - the two lists must not drift ap
     (/const EVENTS = \[([^\]]+)\]/u.exec(cliSrc)?.[1] ?? "").match(/"([a-z-]+)"/gu)?.map((s) => s.slice(1, -1)) ?? [],
   );
   assert.ok(accepted.size > 0, "không đọc được danh sách sự kiện CLI chấp nhận");
+  // A sub-command handled by its own branch (`sub === "send-guard"`, 2026-10-07) is dispatchable too.
+  for (const m of cliSrc.matchAll(/sub === "([a-z-]+)"/gu)) accepted.add(m[1]);
   for (const c of declared) {
     assert.ok(accepted.has(c), `khai móc "zemory hook ${c}" nhưng CLI không nhận sự kiện đó`);
   }
