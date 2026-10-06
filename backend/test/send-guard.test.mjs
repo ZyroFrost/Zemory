@@ -12,7 +12,16 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { judgeSendTarget, listPeers, standardTitle, titleDate, titleProblem } from "../../dist/memory/send-guard.js";
+import {
+  judgeSendTarget,
+  listPeers,
+  listStoredSessions,
+  projectDirName,
+  standardTitle,
+  suggestTitle,
+  titleDate,
+  titleProblem,
+} from "../../dist/memory/send-guard.js";
 import { installHooks, uninstallHooks } from "../../dist/memory/capture-hook.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -27,7 +36,8 @@ function fakeHome(t) {
     mkdirSync(proj, { recursive: true });
     writeFileSync(join(home, "sessions", `${pid}-${n}.json`), JSON.stringify({ pid, sessionId: sid, cwd, name, nameSource, status: "idle" }));
     if (jsonl) {
-      const lines = [JSON.stringify({ type: "user", message: "x" })];
+      // a real jsonl names its cwd on the first lines — the stored-session scan reads the repo from it
+      const lines = [JSON.stringify({ type: "user", message: "x", cwd })];
       for (const tt of titles ?? (title ? [title] : [])) lines.push(JSON.stringify({ type: "custom-title", customTitle: tt, sessionId: sid }));
       writeFileSync(join(proj, `${sid}.jsonl`), lines.join("\n") + "\n");
     }
@@ -72,6 +82,82 @@ test("standardTitle: the model slot takes any model, topic before the date, exac
     ["Dept_OPS_Claude_6-10-2026", "Dept_BIZ"], // tên repo khác
   ];
   assert.deepEqual(bad.filter(([t, r]) => standardTitle(t, r)).map(([t]) => t), [], "khuôn sai phải bị bắt");
+});
+
+test("standardTitle: a `_<n>` day counter after the date is allowed (user 2026-10-07), a topic after it is not", () => {
+  assert.ok(standardTitle("Zemory_Claude_21-7-2026_2", "Zemory"), "_2 sau ngày ⇒ hợp lệ");
+  assert.ok(standardTitle("_DB_DataWarehouse_Claude_15-9-2026_3", "_DB_DataWarehouse"));
+  assert.ok(!standardTitle("Zemory_Claude_21-7-2026_0", "Zemory"), "_0 không phải số thứ tự");
+  assert.ok(!standardTitle("Zemory_Claude_28-7-2026_CoworkCEO", "Zemory"), "chủ đề phải đứng TRƯỚC ngày");
+});
+
+test("suggestTitle: fills the model, fixes case/padding/swap, keeps topic + counter; refuses what it cannot derive", () => {
+  const day = (d, m) => Date.UTC(2026, m - 1, d);
+  const cases = [
+    ["Dept_FA-1-10-2026", "Dept_FA", day(1, 10), "Dept_FA_Claude_1-10-2026"], // ca thật: thiếu model
+    ["Sasinflow_Claude_4-7-2026_2", "SasinFlow", day(4, 7), "SasinFlow_Claude_4-7-2026_2"], // hoa thường + giữ đuôi
+    ["SasinFlow_Claude_FixApp_10-1-2026", "SasinFlow", day(1, 10), "SasinFlow_Claude_FixApp_1-10-2026"], // đảo ngày-tháng
+    ["Dept_OPS_Claude_15-07-2026", "Dept_OPS", day(15, 7), "Dept_OPS_Claude_15-7-2026"], // đệm số 0
+    ["Dept_BIZ_Codex_6-10-2026", "Dept_BIZ", day(6, 10), "Dept_BIZ_Codex_6-10-2026"], // model khác giữ nguyên
+  ];
+  for (const [t, r, s, want] of cases) assert.equal(suggestTitle(t, r, s), want, t);
+  assert.equal(suggestTitle("Dept_FA-2-9-2026", "Dept_FA", day(7, 9)), null, "ngày lệch xa ngày mở (ca thật) ⇒ KHÔNG đoán");
+  assert.equal(suggestTitle("Bộ khung làm việc và kho nhớ", "test2", day(1, 10)), null, "tên tự do ⇒ KHÔNG đoán");
+  assert.equal(suggestTitle("Kiểm tra dữ liệu 5-10-2026", "huy.nguyen", day(5, 10)), null, "chữ có dấu ⇒ không vứt chữ của user");
+});
+
+test("stored sessions: the repo comes from the PROJECT FOLDER (renamed repos), not the old cwd", (t) => {
+  const { home } = fakeHome(t);
+  const root = "D:\\huy.nguyen\\WorkSpace\\_DB_DataWarehouse";
+  const proj = join(home, "projects", projectDirName(root));
+  mkdirSync(proj, { recursive: true });
+  // phiên cũ: cwd vẫn là tên thư mục CŨ, tiêu đề theo tên MỚI (ca thật 07/10)
+  writeFileSync(
+    join(proj, "old.jsonl"),
+    [
+      JSON.stringify({ type: "user", cwd: "D:\\huy.nguyen\\WorkSpace\\_DataWarehouse_Central", timestamp: "2026-09-20T03:00:00Z" }),
+      JSON.stringify({ type: "custom-title", customTitle: "_DB_DataWarehouse_Claude_20-9-2026", sessionId: "old" }),
+    ].join("\n") + "\n",
+  );
+  withHome(home, () => {
+    assert.equal(projectDirName(root), "d--huy-nguyen-workspace--db-datawarehouse");
+    const [withRoot] = listStoredSessions([root]);
+    assert.equal(withRoot.repo, "_DB_DataWarehouse", "thư mục project ⇒ tên repo HIỆN TẠI");
+    assert.equal(withRoot.problem, null, "tiêu đề theo tên mới ⇒ đúng");
+    const [noRoot] = listStoredSessions([]);
+    assert.equal(noRoot.repo, "_DataWarehouse_Central", "không biết repo nào ⇒ lùi về cwd");
+  });
+});
+
+test("stored sessions: no root and no cwd ⇒ repo unknown, and NO retitle is suggested (never the encoded folder)", (t) => {
+  const { home } = fakeHome(t);
+  const proj = join(home, "projects", "d--w-Dept-FA");
+  mkdirSync(proj, { recursive: true });
+  writeFileSync(join(proj, "x.jsonl"), JSON.stringify({ type: "custom-title", customTitle: "Dept_FA-1-9-2026", sessionId: "x" }) + "\n");
+  withHome(home, () => {
+    const [s] = listStoredSessions([]);
+    assert.equal(s.repo, "", "không suy ra được repo ⇒ để trống");
+    assert.equal(suggestTitle(s.title, s.repo, s.startDay), null, "repo rỗng ⇒ không đề xuất (bản đầu ghi tiêu đề rác)");
+  });
+});
+
+test("CLI: `peers --all --check` covers CLOSED sessions; `--fix` plans, `--fix --apply` writes the last title", (t) => {
+  const { home, add } = fakeHome(t);
+  // một phiên ĐÃ ĐÓNG (pid không sống) — đúng loại phiên bản đầu của --check bỏ sót
+  const closed = add({ name: "dept-fa-xx", cwd: "D:/w/Dept_FA", title: "Dept_FA-1-9-2026", pid: 999999 });
+  const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
+  const env = { ...process.env, ZEMORY_CLAUDE_HOME: home, ZEMORY_PEER_TITLE_CACHE: join(home, "c.json") };
+  const run = (...a) => spawnSync(process.execPath, [cli, "peers", ...a], { encoding: "utf8", env, timeout: 60_000 });
+  assert.equal(run("--check").status, 0, "chỉ xét phiên SỐNG ⇒ không thấy phiên đã đóng");
+  const all = run("--all", "--check");
+  assert.equal(all.status, 1, "--all xét cả phiên đã đóng ⇒ đỏ");
+  assert.match(all.stdout, /Dept_FA-1-9-2026/);
+  const plan = run("--fix");
+  assert.match(plan.stdout, /→ .*"Dept_FA-1-9-2026"\s+→\s+"Dept_FA_Claude_1-9-2026"/);
+  assert.ok(!readFileSync(closed.file, "utf8").includes("Dept_FA_Claude_1-9-2026"), "--fix KHÔNG ghi");
+  assert.equal(run("--apply").status, 1, "--apply không có --fix ⇒ từ chối");
+  assert.equal(run("--fix", "--apply").status, 0);
+  assert.equal(run("--all", "--check").status, 0, "sau --apply ⇒ xanh (dòng custom-title CUỐI thắng)");
 });
 
 test("titleProblem: day/month swap is caught; one day off the start is tolerated", () => {

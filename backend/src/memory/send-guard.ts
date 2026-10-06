@@ -74,7 +74,8 @@ export function titleDate(title: string | null): number | null {
 export function standardTitle(title: string | null, repo: string): boolean {
   if (!title || !repo) return false;
   const esc = repo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const m = new RegExp(`^${esc}_[A-Za-z][A-Za-z0-9.]*_(?:[A-Za-z0-9]+_)*([1-9]\\d?)-([1-9]\\d?)-(\\d{4})$`).exec(title);
+  // `_<n>` after the date numbers the 2nd/3rd session of a day (user 2026-10-07: allowed — "Cho phép `_<số>` sau ngày").
+  const m = new RegExp(`^${esc}_[A-Za-z][A-Za-z0-9.]*_(?:[A-Za-z0-9]+_)*([1-9]\\d?)-([1-9]\\d?)-(\\d{4})(?:_[1-9]\\d*)?$`).exec(title);
   return Boolean(m && Number(m[1]) <= 31 && Number(m[2]) <= 12);
 }
 
@@ -96,29 +97,143 @@ export function titleProblem(title: string | null, repo: string, startDay: numbe
 
 type TitleCache = Record<
   string,
-  { size: number; mtime: number; offset: number; title: string | null; started?: number | null }
+  { size: number; mtime: number; offset: number; title: string | null; started?: number | null; cwd?: string | null }
 >;
 
-/** Local calendar day of the first `timestamp` in a jsonl (read once, cached). */
+/** Local calendar day of the first `timestamp` in a jsonl, and its `cwd` (read once from the head, cached). */
 function startDayOf(file: string, cache: TitleCache): number | null {
   const hit = cache[file];
-  if (hit && hit.started !== undefined) return hit.started;
+  if (hit && hit.started !== undefined && hit.cwd !== undefined) return hit.started;
   let day: number | null = null;
+  let cwd: string | null = null;
   const fd = openSync(file, "r");
   try {
     const buf = Buffer.alloc(256 * 1024);
     const n = readSync(fd, buf, 0, buf.length, 0);
-    const m = /"timestamp":"([^"]+)"/.exec(buf.subarray(0, n).toString("utf8"));
+    const text = buf.subarray(0, n).toString("utf8");
+    const m = /"timestamp":"([^"]+)"/.exec(text);
     const ms = m ? Date.parse(m[1]) : NaN;
     if (!Number.isNaN(ms)) {
       const d = new Date(ms);
       day = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
     }
+    const c = /"cwd":("(?:[^"\\]|\\.)*")/.exec(text);
+    if (c) {
+      try {
+        cwd = JSON.parse(c[1]) as string;
+      } catch {
+        cwd = null;
+      }
+    }
   } finally {
     closeSync(fd);
   }
-  if (hit) hit.started = day;
+  if (hit) {
+    hit.started = day;
+    hit.cwd = cwd;
+  }
   return day;
+}
+
+/**
+ * The title the rule asks for, built from what the user wrote — or null when it cannot be derived safely.
+ * Keeps the user's topic words; fills the model (`Claude`: every session under ~/.claude is a Claude Code session);
+ * fixes the repo's case; drops zero padding; swaps day/month ONLY when the swap lands on the session's start day.
+ */
+export function suggestTitle(title: string | null, repo: string, startDay: number | null): string | null {
+  if (!title || !repo) return null;
+  const dates = [...title.matchAll(/(\d{1,2})-(\d{1,2})-(\d{4})/g)];
+  const last = dates[dates.length - 1];
+  if (!last) return null;
+  let d = Number(last[1]);
+  let m = Number(last[2]);
+  const y = Number(last[3]);
+  if (startDay !== null) {
+    const near = (dd: number, mm: number): boolean => Math.abs(Date.UTC(y, mm - 1, dd) - startDay) <= 86_400_000;
+    if (!near(d, m) && m >= 1 && m <= 31 && d <= 12 && near(m, d)) [d, m] = [m, d];
+    if (!near(d, m)) return null; // a date we cannot reconcile with the start day — leave it to the user
+  }
+  if (d < 1 || d > 31 || m < 1 || m > 12) return null;
+  // a `_<n>` day counter right after the date is kept as the counter, not read as a topic word
+  const after = title.slice((last.index ?? 0) + last[0].length);
+  const counter = /^_([1-9]\d*)$/.exec(after)?.[1];
+  // the words around the date, minus the repo name and a model word
+  const rest = (title.slice(0, last.index) + (counter ? "" : after)).split(/[_\-\s]+/).filter(Boolean);
+  const repoWords = repo.split(/[_\-\s]+/).filter(Boolean).map((w) => w.toLowerCase());
+  let i = 0;
+  while (i < repoWords.length && rest[i] && rest[i].toLowerCase() === repoWords[i]) i++;
+  const words = i === repoWords.length ? rest.slice(i) : rest;
+  const MODELS = /^(claude|codex|gpt\d*|gemini|cursor|copilot)$/i;
+  const model = words[0] && MODELS.test(words[0]) ? words.shift()! : "Claude";
+  const topic = words.filter((w) => /^[A-Za-z0-9]+$/.test(w));
+  if (topic.length !== words.length) return null; // words we would have to drop — not ours to decide
+  const next = [repo, model[0].toUpperCase() + model.slice(1), ...topic, `${d}-${m}-${y}`, ...(counter ? [counter] : [])].join("_");
+  return standardTitle(next, repo) ? next : null;
+}
+
+export interface StoredSession {
+  sessionId: string;
+  file: string;
+  cwd: string | null;
+  repo: string;
+  title: string | null;
+  problem: string | null;
+  startDay: number | null;
+  lastActive: number;
+}
+
+/** Claude Code's project-folder name for a path: every `:` `\` `/` `_` `.` and space becomes `-`. */
+export const projectDirName = (p: string): string => p.replace(/[\\/]+$/, "").replace(/[:\\/_. ]/g, "-").toLowerCase();
+
+/**
+ * EVERY session on disk (closed ones too — the session list shows them all), with its title and the rule verdict.
+ *
+ * The repo is the folder the session list groups it under — its PROJECT FOLDER, which Claude Code moves along when a
+ * repo is renamed — NOT the `cwd` written in the old jsonl. Measured 2026-10-07: 38 sessions of `_DB_DataWarehouse`
+ * still carry `cwd` `_DataWarehouse_Central` (the old name); judged by `cwd`, every correct `_DB_DataWarehouse_…`
+ * title read as wrong. `roots` = the known repo folders; a project folder no root matches falls back to `cwd`.
+ */
+export function listStoredSessions(roots: string[] = []): StoredSession[] {
+  const home = claudeHome();
+  const pdir = join(home, "projects");
+  if (!existsSync(pdir)) return [];
+  const byDir = new Map(roots.map((r) => [projectDirName(r), basename(r.replace(/[\\/]+$/, ""))] as const));
+  const cache = readCache();
+  const out: StoredSession[] = [];
+  for (const d of readdirSync(pdir)) {
+    let files: string[];
+    try {
+      files = readdirSync(join(pdir, d)).filter((x) => x.endsWith(".jsonl"));
+    } catch {
+      continue;
+    }
+    for (const f of files) {
+      const file = join(pdir, d, f);
+      const title = lastTitle(file, cache);
+      const startDay = startDayOf(file, cache);
+      const cwd = cache[file]?.cwd ?? null;
+      // No root and no cwd ⇒ the repo is UNKNOWN (""). Never fall back to the encoded folder name: a retitle built on it
+      // wrote `D--w-Dept_FA_Claude_Dept_FA_1-9-2026` in the first test run — suggestTitle refuses an empty repo.
+      const repo = byDir.get(d.toLowerCase()) ?? (cwd ? basename(cwd.replace(/[\\/]+$/, "")) : "");
+      out.push({
+        sessionId: basename(f, ".jsonl"),
+        file,
+        cwd,
+        repo,
+        title,
+        problem: titleProblem(title, repo, startDay),
+        startDay,
+        lastActive: statSync(file).mtimeMs,
+      });
+    }
+  }
+  try {
+    mkdirSync(dirname(cacheFile()), { recursive: true });
+    writeFileSync(cacheFile(), JSON.stringify(cache));
+  } catch {
+    // a cache that cannot be written only costs speed
+  }
+  return out.sort((a, b) => a.repo.localeCompare(b.repo) || b.lastActive - a.lastActive);
 }
 
 function readCache(): TitleCache {
@@ -168,6 +283,7 @@ function lastTitle(file: string, cache: TitleCache): string | null {
     offset: from - Buffer.byteLength(carry, "utf8"),
     title,
     started: hit?.started,
+    cwd: hit?.cwd,
   };
   return title;
 }
