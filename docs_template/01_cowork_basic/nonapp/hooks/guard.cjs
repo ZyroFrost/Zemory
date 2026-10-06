@@ -8,6 +8,7 @@
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 const path = require("node:path");
+const os = require("node:os");
 
 const HERE = __dirname;
 const POLICY = JSON.parse(fs.readFileSync(path.join(HERE, "policy.json"), "utf8"));
@@ -117,6 +118,133 @@ function checkRead(rel) {
   if (nameMatches(rel, POLICY.key_read_block || [])) {
     deny("BLOCKED (guard layer 1): reading the key file `" + rel + "` - " + POLICY.key_read_reason);
   }
+}
+
+// ── WORKING OUTSIDE THE PROJECT (added 2026-10-06) ─────────────────────────────────────
+//
+// Incident (session db-datawarehouse-15): an agent in a data-warehouse repo created a database and a
+// linked server, changed `max server memory` on the local SQL Server, and wrote files to a drive outside
+// the repo. 02_RULES "Pham vi project" forbade all of it in WORDS; there was no latch. Three branches, ONE flag (`outside`):
+//   1 writing to an ABSOLUTE path outside the repo (Write/Edit tools, redirection, move/copy, writer
+//     commands such as mkdir/Set-Content/tee, interpreter payloads that write)
+//   2 SQL that makes the SERVER write files (BACKUP ... TO DISK, RESTORE ... FROM DISK / WITH MOVE,
+//     CREATE DATABASE ... FILENAME)
+//   3 SQL that changes the server configuration (sp_configure, RECONFIGURE, linked servers,
+//     CREATE/DROP/ALTER DATABASE), and - when the marker declares `allowedSqlServers` - any target server not on that list.
+// Allowed without a flag: the repo itself, the OS temp folders (scratchpads live there), ~/.claude,
+// /dev/null, /tmp, NUL, and every `allowedRoots` entry of the marker.
+//
+// 🔴 LIMIT - this is the easiest road closed, not a wall: only paths and SQL WRITTEN OUT in the command are
+// seen. A path or SQL text built at runtime, read from a variable or a file, or sitting inside a script FILE
+// (`sqlcmd -i job.sql`, `python job.py`) is invisible to a hook that reads a command string. Relative paths are
+// not judged at all (cwd is the repo), so `cd` elsewhere and a relative write slips too.
+const DEVICE_OK = /^(\/dev\/(null|stdout|stderr|tty)|nul|\/tmp)$/i;
+
+// Is the token an ABSOLUTE path? `strict` is for interpreter payloads, where a bare `/x` is far more often
+// a regex or a comment than a path: there a POSIX path must have two clean segments.
+function isAbsTok(t, strict) {
+  if (/^[A-Za-z]:[\\/]/.test(t)) return true;
+  if (/^(\\\\|\/\/)[^\\/\s]+[\\/][^\\/\s]+/.test(t)) return true;
+  if (/^~([\\/]|$)/.test(t)) return true;
+  if (!t.startsWith("/")) return false;
+  return strict ? /^\/[\w.~-]+\/[\w.~\/ -]*$/.test(t) : true;
+}
+
+// One spelling per place: Git Bash `/d/x` -> `D:/x`, `~` -> home, then the deepest EXISTING ancestor goes
+// through realpathSync.native - that turns a Windows 8.3 short name (`C:/Users/HUY~1.NGU/...`) into the long
+// one (`C:/Users/huy.nguyen/...`). Without it the same temp folder has two spellings and one of them is "outside".
+// A UNC path skips realpath: an unreachable share can stall for seconds, and it is outside either way.
+function canonPath(p) {
+  let s = String(p);
+  if (process.platform === "win32") {
+    const m = /^\/([A-Za-z])(\/|$)/.exec(s);
+    if (m) s = m[1] + ":/" + s.slice(3);
+  }
+  if (/^~([\\/]|$)/.test(s)) s = os.homedir() + s.slice(1);
+  s = path.resolve(s);
+  const norm = (x) => x.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  if (/^[\\/]{2}/.test(s)) return norm(s);
+  const tail = [];
+  let head = s;
+  for (;;) {
+    try { head = fs.realpathSync.native(head); break; } catch {}
+    const up = path.dirname(head);
+    if (up === head) break;
+    tail.unshift(path.basename(head));
+    head = up;
+  }
+  return norm(path.join(head, ...tail));
+}
+
+let OUTSIDE_OK = null;
+function outsideRoots() {
+  if (OUTSIDE_OK) return OUTSIDE_OK;
+  const list = [ROOT, os.tmpdir(), process.env.TEMP, process.env.TMP, path.join(os.homedir(), ".claude")];
+  for (const r of POLICY.allowed_roots || []) {
+    const s = String(r);
+    list.push(/^~/.test(s) || path.isAbsolute(s) ? s : path.resolve(ROOT, s));
+  }
+  OUTSIDE_OK = [...new Set(list.filter(Boolean).map(canonPath))];
+  return OUTSIDE_OK;
+}
+
+function isOutside(tok, strict) {
+  const t = String(tok).replace(/^["']|["']$/g, "").trim();
+  if (!t || DEVICE_OK.test(t) || /^\/tmp\//i.test(t)) return false;
+  if (!isAbsTok(t, strict)) return false;
+  const c = canonPath(t);
+  return !outsideRoots().some((r) => c === r || c.startsWith(r + "/"));
+}
+
+function denyOutside(what, subject) {
+  if (consumeFlag("outside", subject)) return;
+  deny("BLOCKED (guard layer 1): " + what + " - " +
+    (POLICY.outside_reason || "work stays inside the project folder (02_RULES Pham vi project)") + flagTip("outside"));
+}
+
+// Split a segment into words the way a shell would for quoting (quotes removed, spaces inside them kept),
+// so `"C:/Program Files/x"` stays ONE path.
+function shellWords(seg) {
+  const out = [];
+  let cur = "";
+  let q = null;
+  let had = false;
+  for (const c of seg) {
+    if (q) { if (c === q) q = null; else cur += c; continue; }
+    if (c === '"' || c === "'") { q = c; had = true; continue; }
+    if (/\s/.test(c)) { if (cur || had) out.push(cur); cur = ""; had = false; continue; }
+    cur += c;
+  }
+  if (cur || had) out.push(cur);
+  return out;
+}
+
+// `.` / `(local)` / `127.0.0.1` / `localhost` are one machine; `tcp:` and `,1433` are transport, not identity.
+function normServer(raw) {
+  let s = String(raw || "").trim().replace(/^["']|["']$/g, "").replace(/\\+/g, "\\").toLowerCase();
+  s = s.replace(/^(tcp|np|lpc):/, "").replace(/,\s*\d+$/, "");
+  const cut = s.indexOf("\\");
+  const host = cut < 0 ? s : s.slice(0, cut);
+  const inst = cut < 0 ? "" : s.slice(cut);
+  return (/^(\.|\(local\)|localhost|127\.0\.0\.1)$/.test(host) ? "localhost" : host) + inst;
+}
+
+// Target servers written out in the command: `sqlcmd -S x` / `-Sx` (case-sensitive: `-s` is sqlcmd's column
+// separator), `Invoke-Sqlcmd -ServerInstance x`, and `Server=x` / `Data Source=x` in a connection string.
+function sqlTargets(cmd, segs) {
+  const out = [];
+  const interp = segs.some((s) => SEG_INTERP.test(cmdWordOf(s)));
+  const zones = interp && /\b(sqlcmd|osql|bcp)\b/i.test(cmd) ? [cmd] : segs.filter((s) => /^(sqlcmd|osql|bcp)$/.test(cmdWordOf(s)));
+  let m;
+  for (const z of zones) {
+    const re = /(?:^|\s)-S(?![A-Za-z]*Instance)\s*("[^"]*"|'[^']*'|[^\s"';|&]+)/g;
+    while ((m = re.exec(z))) out.push(m[1]);
+  }
+  const re2 = /-ServerInstance\s+("[^"]*"|'[^']*'|[^\s"';|&]+)/gi;
+  while ((m = re2.exec(cmd))) out.push(m[1]);
+  const re3 = /\b(?:Server|Data\s+Source)\s*=\s*["']?([^;"'\s]+)/gi;
+  while ((m = re3.exec(cmd))) out.push(m[1]);
+  return out.map(normServer).filter(Boolean);
 }
 
 // Drop ONLY the payload of -m/--message and heredocs (where false positives are born), keeping the rest intact.
@@ -434,6 +562,107 @@ function checkBash(cmd) {
     }
   }
 
+  // ── OUTSIDE THE PROJECT 1: absolute write targets (see WORKING OUTSIDE THE PROJECT above) ──
+  // One flag for the whole command line (`bare`), the same shape as every branch above.
+  const WRITERS = /^(mkdir|md|new-item|ni|set-content|sc|add-content|ac|out-file|tee|tee-object|touch)$/;
+  // PowerShell cmdlets: the path is `-Path`/`-FilePath`/`-LiteralPath` or the FIRST positional argument -
+  // NOT `-Value` (`Set-Content a.txt -Value /usr/bin` writes a.txt, it does not write /usr/bin).
+  const PS_WRITERS = /^(new-item|ni|set-content|sc|add-content|ac|out-file|tee-object)$/;
+  const PS_PATH_PARAM = /^-(path|filepath|literalpath|pspath)$/i;
+  const PS_SWITCH = /^-(force|nonewline|append|noclobber|passthru|whatif|confirm|asbytestream|verbose)$/i;
+  const outsideHit = (tok, how, strict) => {
+    if (isOutside(tok, strict)) denyOutside(how + " `" + String(tok) + "` - that is OUTSIDE the project", bare);
+  };
+  for (const seg of splitSegments(bare)) {
+    const word = cmdWordOf(seg);
+    let m;
+    REDIRECT.lastIndex = 0;
+    while ((m = REDIRECT.exec(seg))) outsideHit(m[2], "writing (redirection) into", false);
+    const toks = shellWords(seg);
+    const at = toks.findIndex((t) => (t.replace(/\\/g, "/").split("/").pop() || "").toLowerCase() === word);
+    const args = at < 0 ? [] : toks.slice(at + 1);
+    if (MOVERS.test(word)) {
+      // cmd-native commands take `/Y` `/E` `/MIR` switches - not paths.
+      const native = /^(robocopy|copy|move|ren|rename)$/.test(word);
+      const plain = args.filter((t) => t && !t.startsWith("-") && !(native && /^\/[A-Za-z0-9]+(:\S*)?$/.test(t)));
+      const removes = /^(mv|move|move-item|mi|rename|ren)$/.test(word);
+      plain.forEach((a, i) => {
+        const target = word === "robocopy" ? i === 1 : i === plain.length - 1;
+        if (target) outsideHit(a, "writing (target of " + word + ") into", false);
+        else if (removes) outsideHit(a, "MOVING AWAY (source of " + word + ")", false);
+      });
+    }
+    if (WRITERS.test(word)) {
+      if (PS_WRITERS.test(word)) {
+        let positional = false;
+        for (let i = 0; i < args.length; i++) {
+          const a = args[i];
+          const named = /^(-[A-Za-z]+):(.+)$/.exec(a);
+          if (named) {
+            if (PS_PATH_PARAM.test(named[1])) outsideHit(named[2], "writing (" + word + ") into", false);
+            continue;
+          }
+          if (a.startsWith("-")) {
+            if (PS_SWITCH.test(a)) continue;
+            if (PS_PATH_PARAM.test(a)) outsideHit(args[i + 1] || "", "writing (" + word + ") into", false);
+            i++;
+            continue;
+          }
+          if (!positional) { positional = true; outsideHit(a, "writing (" + word + ") into", false); }
+        }
+      } else {
+        for (const a of args) if (!a.startsWith("-")) outsideHit(a, "writing (" + word + ") into", false);
+      }
+    }
+    // Interpreter payloads that write. The first plain argument is the SCRIPT being run (read, not written) - skip it.
+    if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
+      const script = args.find((t) => !t.startsWith("-"));
+      for (const tok of seg.split(/[\s'"(),]+/)) {
+        if (!tok || tok.startsWith("-") || tok === script) continue;
+        outsideHit(tok, "writing (through " + word + ") into", true);
+      }
+    }
+  }
+  // `bare` drops heredocs (false positives in commit messages are born there), but `python - <<EOF` IS the
+  // script: when an interpreter is on the line, judge the heredoc bodies that write.
+  if (anyCmdIs(cmd, SEG_INTERP)) {
+    const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)^\2\b/gm;
+    let h;
+    while ((h = HEREDOC.exec(cmd))) {
+      if (!WRITE_VERB.test(h[3])) continue;
+      for (const tok of h[3].split(/[\s'"(),]+/)) {
+        if (tok && !tok.startsWith("-")) outsideHit(tok, "writing (through a heredoc script) into", true);
+      }
+    }
+  }
+
+  // ── OUTSIDE THE PROJECT 2 + 3: SQL that reaches past the repo ─────────────────────────
+  // Judged ONLY when a SQL client or an interpreter is in command position - `grep sp_configure`,
+  // `git log`, `cat x.sql` merely MENTION the words. Matched against the ORIGINAL command, not `bare`:
+  // SQL is very often a heredoc fed to python/sqlcmd, and `bare` has dropped exactly that.
+  const rawSegs = splitSegments(cmd);
+  const sqlCtx = rawSegs.some((s) => /^(sqlcmd|osql|bcp|invoke-sqlcmd)$/.test(cmdWordOf(s)) || SEG_INTERP.test(cmdWordOf(s)));
+  if (sqlCtx) {
+    const SQL_FILE_WRITE =
+      /\bBACKUP\s+(DATABASE|LOG)\b[\s\S]*?\bTO\s+DISK\b|\bRESTORE\b[\s\S]*?\bFROM\s+DISK\b|\bWITH\b[\s\S]*?\bMOVE\s+\S+\s+TO\b|\bCREATE\s+DATABASE\b[\s\S]*?\bFILENAME\b/i;
+    const SQL_SERVER_CFG =
+      /\bsp_configure\b|\bRECONFIGURE\b|\bsp_addlinkedserver\b|\bsp_addlinkedsrvlogin\b|\bsp_dropserver\b|\b(CREATE|DROP|ALTER)\s+DATABASE\b/i;
+    if (SQL_FILE_WRITE.test(cmd)) {
+      denyOutside("SQL that makes the SERVER write files on its own disk (BACKUP/RESTORE ... DISK, WITH MOVE, CREATE DATABASE ... FILENAME)", bare);
+    }
+    if (SQL_SERVER_CFG.test(cmd)) {
+      denyOutside("SQL that changes the SERVER configuration (sp_configure/RECONFIGURE, linked servers, CREATE/DROP/ALTER DATABASE)", bare);
+    }
+    const allowSrv = (POLICY.allowed_sql_servers || []).map(normServer).filter(Boolean);
+    if (allowSrv.length) {
+      for (const s of sqlTargets(cmd, rawSegs)) {
+        if (!allowSrv.includes(s)) {
+          denyOutside("SQL aimed at the server `" + s + "`, which is not in the marker's allowedSqlServers (" + allowSrv.join(", ") + ")", bare);
+        }
+      }
+    }
+  }
+
   // Reading the contents of a key file through the shell - the same rule as checkRead.
   //
   // Scan ONLY tokens that LOOK LIKE A FILE BEING READ, not every token in the command line.
@@ -493,6 +722,8 @@ function main() {
   if (isWriteTool) {
     const p = ti.file_path || ti.notebook_path || "";
     if (p) checkWrite(relToRoot(p));
+    // OUTSIDE THE PROJECT 1 through the file tools - fingerprint = the path.
+    if (p && isOutside(p, false)) denyOutside("writing `" + p + "` - that is OUTSIDE the project", p);
     // OVERWRITING = losing the old content, as good as a delete. `Write` replaces the WHOLE file; `Edit`
     // does not (it edits a region), so ONLY `Write` is asked about.
     //

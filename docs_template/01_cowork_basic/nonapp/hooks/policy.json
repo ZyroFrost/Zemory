@@ -35,6 +35,9 @@
     "*.key"
   ],
   "key_read_reason": "the contents of a key file must never be read, returned or logged; the key PATH is only a path",
+  "allowed_roots": [],
+  "allowed_sql_servers": [],
+  "outside_reason": "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
   "flags_dir": "docs/hooks",
   "flags": {
     "push": ".allow-push",
@@ -42,7 +45,8 @@
     "git_add_all": ".allow-git-add-all",
     "delete": ".allow-delete",
     "discard": ".allow-discard",
-    "overwrite": ".allow-overwrite"
+    "overwrite": ".allow-overwrite",
+    "outside": ".allow-outside"
   },
   "flags_comment": "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` into the flag file itself — it is NOT deleted at once. Within 90 seconds THAT SAME command may be retried (a PreToolUse hook cannot know whether the command really ran; another host layer blocking it would cost the flag for nothing). Asking for a DIFFERENT job, or going past 90 seconds, REVOKES the flag and it must be requested again. An agent may only create a flag after the user has said so explicitly in the session."
 }

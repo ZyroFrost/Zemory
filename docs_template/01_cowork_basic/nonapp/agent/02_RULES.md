@@ -43,6 +43,10 @@ CHẶN ghi     data/*/01_raw   đầu vào GỐC mỗi case — mất là mất 
              docs/agent      hiến pháp + luật
 CHẶN xoá     xoá ĐỆ QUY (rm -r · Remove-Item -Recurse · del /S) — một lệnh quét cả cây
              xoá chạm file secret (.env · *.key · *.pem …)
+CHẶN ngoài   ghi ra đường TUYỆT ĐỐI ngoài thư mục dự án (miễn thư mục tạm · ~/.claude · /dev/null)
+             SQL bắt máy chủ ghi file (BACKUP/RESTORE … DISK) · SQL đổi cấu hình máy chủ (sp_configure, linked server, CREATE/DROP DATABASE)
+             cờ hooks/.allow-outside · thêm chỗ được ghi / máy chủ được nhắm = allowed_roots / allowed_sql_servers trong policy.json
+             giới hạn: đường hay SQL nằm trong file script hoặc dựng lúc chạy thì bộ chặn không thấy
 CHO QUA      02_processing/ · 03_output/ · file tạm — agent ghi suốt ở đây
 Vượt MỘT VIỆC bằng flag hooks/.allow-* (user duyệt trong phiên). Guard cho qua rồi ĐÓNG DẤU vào file flag, không xoá ngay: đúng lệnh đó được thử lại trong 90 giây; xin việc khác hoặc quá hạn thì flag bị thu hồi
 ```
@@ -160,4 +164,4 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
 
 
-<!-- zemory-standard: 2026-09-16 -->
+<!-- zemory-standard: 2026-10-06 -->
