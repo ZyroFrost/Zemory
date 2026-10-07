@@ -87,27 +87,20 @@ export * from "./mirrorstate.js";
 export * from "./relaypool.js";
 
 /**
- * NGĂN của máy này trong thư mục kênh — `channel/<device-id>/`.
+ * Segment folder of the p2p channel — inside the STORE ROOT, because segments are memory content
+ * and travel to the other machine with the store (plan/25 §1).
  *
- * 🔴 Vì sao phải có, và vì sao mọi lượt GHI đi vào đây chứ không vào gốc: thư mục này do **Syncthing**
- * chở (user chốt 2026-09-21), mà Syncthing chở **FILE**. Hai máy cùng nối khối vào
- * `channel/global_memory.007.enc` là hai bản khác nhau của CÙNG một đường dẫn ⇒ nó đẻ
- * `.sync-conflict-…` và một bên mất phần vừa ghi. Mỗi máy một ngăn thì **không đường dẫn nào có hai
- * người ghi** — hết xung đột, không cần khoá, không cần hàng đợi.
+ * 🔴 ONE container, ONE write queue (user 2026-10-07: *"2 máy đều chỉ dc ghi vào 1 file 1 db thôi, và
+ * phải có hàng đợi, máy nào gửi trước thì vào trước, xong tới máy kia, cái này là logic từ đầu"*). Every
+ * writer — our own export, blocks received from another machine, the legacy-pen move — appends to the
+ * segment sequence right here, through `acquireChannelWriteLock`.
  *
- * Đây KHÔNG phải "series theo máy" mà HP điều 16 cấm: vế đó cấm nhiều BẢN SAO của cùng một kho nằm
- * cạnh nhau; các ngăn ở đây là những PHẦN khác nhau của cùng một kho. Chiều ĐỌC quét mọi ngăn
- * (`listChannelSegments`) nên hai máy vẫn hội tụ về cùng một TẬP KHỐI — đúng bất biến bản 13/09.
- */
-export function channelPen(storeRoot = currentStoreRoot(), ensure = false): string {
-  const dir = join(channelDir(storeRoot, ensure), channelIdentity().deviceId.replace(/[^A-Za-z0-9]/g, "").slice(0, 16));
-  if (ensure) mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-/**
- * Thư mục KHÚC của kênh p2p — nằm trong GỐC KHO, vì khúc là nội dung bộ nhớ và nó
- * đi sang máy kia cùng kho (plan/25 §1).
+ * Retired 2026-10-07: the per-machine PEN `channel/<device-id>/` (2026-09-21). It assumed file-level
+ * Syncthing carried this folder, so two machines appending to one path would fork it. Measured 2026-10-07: neither
+ * the user's Syncthing (a share needs the folder on both ends; this machine declares none under the
+ * store) nor the zemory mirror (`MIRROR_AREAS`) carries `channel/` — blocks travel only
+ * through the block protocol, and the real second writer is on the SAME machine. The pen dodged the
+ * queue instead of providing it, and it put one store into the channel twice (6.7 GB, HP điều 16).
  */
 export function channelDir(storeRoot = currentStoreRoot(), ensure = false): string {
   const dir = join(storeRoot, "channel");
@@ -206,7 +199,7 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
  * để lại dấu chân, bài học 15/09).
  */
 export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
-  return getSyncTransport() === "p2p" ? channelPen(storeRoot, true) : null;
+  return getSyncTransport() === "p2p" ? channelDir(storeRoot, true) : null;
 }
 
 /** Một đích ghi: kênh nào, và thư mục của nó. */
@@ -233,7 +226,7 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
   const out: SyncTarget[] = [];
   const drive = getDriveDir();
   if (drive) out.push({ channel: "drive", dir: drive });
-  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelPen(storeRoot, true) });
+  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelDir(storeRoot, true) });
   return out;
 }
 
@@ -586,7 +579,7 @@ export function armPunchWait(o: {
   };
 
   void punchToPeer(o.target ?? hold, {
-    channelDir: channelPen(currentStoreRoot()),
+    channelDir: channelDir(currentStoreRoot()),
     identity: channelIdentity(),
     shareKey: o.shareKey,
     appVersion: o.appVersion,
@@ -804,7 +797,7 @@ export async function startChannelServer(o: {
         // KHÔNG `ensure`: bật kênh chưa phải là ghi. Lớp nhận khối (`blocks.ts`) tự tạo thư mục
         // đúng lúc có khối thật. Tạo sẵn ở đây đẻ một folder RỖNG mà `conform` kêu mỗi lượt —
         // đúng dấu chân đã phải vá hôm 15/09, và một cổng kêu suốt là cổng sắp bị bỏ qua.
-        channelDir: channelPen(currentStoreRoot()),
+        channelDir: channelDir(currentStoreRoot()),
         identity: channelIdentity(),
         shareKey: key,
         appVersion: o.appVersion,

@@ -977,31 +977,29 @@ function listSegments(dir: string, strict = false): { path: string; n: number }[
 /**
  * Is the channel EMPTY, for the one decision "export a BASELINE (since = 0) instead of a delta"?
  *
- * 🔴 Why this is not just `penSegments === 0` (measured 2026-10-05): since 2026-09-21 the p2p write
- * target is this machine's PEN (`channel/<device-id>/`), not the channel root. The first write into a
- * brand-new, empty pen therefore read as "empty channel" ⇒ since = 0 ⇒ it exported the WHOLE store
- * (2.6 GB) while the root already carried the same store since 2026-09-17 and the `p2p:<host>`
- * watermark was valid. Result: the channel holds one store TWICE (6.7 GB) — the shape HP điều 16
- * forbids. "Empty" must mean the whole channel: root AND every pen.
+ * The p2p channel is ONE segment sequence at the channel root (`channel/global_memory*.enc`) that every
+ * writer appends to through `acquireChannelWriteLock` (plan/24 §4, user 2026-10-07). From 2026-09-21 to
+ * 2026-10-07 each machine wrote into its own PEN (`channel/<device-id>/`) instead — the deviation being
+ * retired. Measured 2026-10-05: an empty pen read as "empty channel" exported the WHOLE store (2.6 GB)
+ * a second time. So a legacy pen that still holds segments means "not empty": it is the same store,
+ * and a baseline on top of it is that same 2.6 GB again.
  *
- * Drive (and any dir that is not a pen) keeps the old meaning: no segment in THIS dir ⇒ empty.
- * Listing is STRICT everywhere (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
+ * Drive keeps the old meaning: no segment in THIS dir ⇒ empty. Listing is STRICT everywhere
+ * (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
  */
-export function channelEmptyForBaseline(dir: string, penSegments: number, channel?: SyncChannel): boolean {
-  if (penSegments > 0) return false;
-  const root = dirname(dir);
-  if (channel !== "p2p" || basename(root) !== "channel") return true;
-  if (listSegments(root, true).length > 0) return false;
+export function channelEmptyForBaseline(dir: string, segments: number, channel?: SyncChannel): boolean {
+  if (segments > 0) return false;
+  if (channel !== "p2p") return true;
   let pens: string[];
   try {
-    pens = readdirSync(root, { withFileTypes: true })
+    pens = readdirSync(dir, { withFileTypes: true })
       .filter((d) => d.isDirectory())
       .map((d) => d.name);
   } catch (e) {
     if (segmentsReadVerdict((e as NodeJS.ErrnoException).code) === "unreadable") throw e;
     return true;
   }
-  return pens.every((p) => join(root, p) === dir || listSegments(join(root, p), true).length === 0);
+  return pens.every((p) => listSegments(join(dir, p), true).length === 0);
 }
 
 /** Khúc sẽ NHẬN lượt ghi kế: khúc cuối nếu còn chỗ, không thì khúc kế (chưa tồn tại). */
@@ -1292,12 +1290,13 @@ export function isContainer(path: string): boolean {
   return isChunkContainer(path);
 }
 /**
- * Mọi khúc trong một thư mục kênh — công bố cho lớp kênh liệt kê khối mình có.
+ * Every segment of a channel dir — published so the channel layer can list the blocks it holds.
  *
- * Quét CẢ NGĂN CON: từ 2026-09-21 mỗi máy ghi vào `channel/<device-id>/` của riêng nó, vì Syncthing
- * chở FILE — hai máy cùng nối khối vào một đường dẫn là đẻ `.sync-conflict` và một bên mất phần vừa
- * ghi. Chiều ĐỌC phải thấy mọi ngăn thì kho mới hội tụ về cùng một TẬP KHỐI (HP điều 16); chiều GHI
- * vẫn chỉ đụng ngăn của mình (`channelPen`). Khúc nằm thẳng ở gốc vẫn đọc — đó là khúc của bản cũ.
+ * Writes go to the ROOT only (one container + write queue — plan/24 §4). Legacy pens
+ * (`channel/<device-id>/`, written 2026-09-21 → 2026-10-07) are still READ until they are removed (step ⑤,
+ * on both machines, user confirms): a block only a pen holds must stay declared and servable, or the
+ * other machine stops asking for it. `absorbLegacyPens` copies them into the root; after that the pen
+ * copies are duplicates by block id and `inventory` dedups them.
  */
 export function listChannelSegments(dir: string): { path: string; n: number }[] {
   const out = listSegments(dir);
@@ -1430,7 +1429,13 @@ async function acquireDriveLock(
   for (;;) {
     if (opts.signal?.aborted) throw new Error("Đã huỷ khi đang chờ tới lượt ghi kho chung.");
     const cur = readDriveLock(path);
-    const mine = !cur || cur.host === host;
+    // Same host is NOT enough to call the lock ours (plan/24 §4, 2026-10-07). The p2p channel has two
+    // writers on ONE machine — the sync child (`pushAppend`) and the daemon appending received blocks —
+    // and both carry the same host name. Host-only ownership let either one walk straight in; two
+    // concurrent appends then make `appendChunkVerified` count `before + 2`, read it as a failed write and
+    // truncate the tail, deleting the OTHER writer's block. Ours = same host AND (same pid, or a pid
+    // that is no longer alive — a crashed run must not jam the queue).
+    const mine = !cur || (cur.host === host && (cur.pid === process.pid || !pidAlive(cur.pid)));
     const dead = cur ? Date.now() - Date.parse(cur.at) >= lockStaleMs(cur) : true;
 
     if (mine || dead) {
@@ -1461,6 +1466,63 @@ async function acquireDriveLock(
     await new Promise((r) => setTimeout(r, step));
     step = Math.min(step * 2, LOCK_WAIT_STEP_MAX_MS);
   }
+}
+
+/** Is a process on THIS machine still running? `EPERM` means it exists but belongs to someone else. */
+function pidAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** In-process queue per channel dir: one daemon can run several peer sessions at once, all with one pid. */
+const channelWriteQueue = new Map<string, Promise<void>>();
+
+/**
+ * THE WRITE QUEUE of a channel container (plan/24 §4, user 2026-10-07: *"2 máy đều chỉ dc ghi vào 1 file
+ * 1 db thôi, và phải có hàng đợi, máy nào gửi trước thì vào trước, xong tới máy kia"*).
+ *
+ * Every writer of a channel dir goes through here: our own export (`syncDrive` → `pushAppend`), blocks
+ * received from another machine (`appendReceivedBlock`), and the move of legacy pens into the root.
+ * Two layers, because there are two kinds of "another writer":
+ *  ① same process (several peer sessions in the daemon) — a promise chain, first come first served;
+ *  ② another process or another machine — the lock file with heartbeat (`acquireDriveLock`).
+ * Returns the release function; the caller MUST call it in `finally`.
+ */
+export async function acquireChannelWriteLock(
+  dir: string,
+  opts: { host?: string; onWait?: (holder: string, waitedMs: number) => void; signal?: { aborted: boolean } } = {},
+): Promise<() => void> {
+  const key = resolve(dir).toLowerCase();
+  const prev = channelWriteQueue.get(key) ?? Promise.resolve();
+  let releaseLocal!: () => void;
+  const mine = new Promise<void>((r) => (releaseLocal = r));
+  const chained = prev.then(() => mine);
+  channelWriteQueue.set(key, chained);
+  await prev;
+  let releaseFile: () => void;
+  try {
+    releaseFile = await acquireDriveLock(dir, opts.host ?? sanitizeHost(), { onWait: opts.onWait, signal: opts.signal });
+  } catch (e) {
+    releaseLocal();
+    if (channelWriteQueue.get(key) === chained) channelWriteQueue.delete(key);
+    throw e;
+  }
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    try {
+      releaseFile();
+    } finally {
+      releaseLocal();
+      if (channelWriteQueue.get(key) === chained) channelWriteQueue.delete(key);
+    }
+  };
 }
 
 const sanitizeHost = (): string => (hostname() || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
@@ -1791,7 +1853,8 @@ export async function syncDrive(opts: {
   const release =
     level === "full"
       ? () => {}
-      : await acquireDriveLock(dir, host, {
+      : await acquireChannelWriteLock(dir, {
+          host,
           signal: opts.lockSignal,
           // Xếp hàng phải NHÌN THẤY: im lặng thì người dùng đọc thành treo. In mỗi ~30 s một lần,
           // không mỗi vòng — vòng đầu nới rộng dần từ 1 s nên in mỗi vòng sẽ thành spam.
@@ -1852,8 +1915,9 @@ export async function mergeChannelDir(
   if (!dir || !existsSync(dir) || !statSync(dir).isDirectory()) return [];
   const excludeLanes = getScopeExclude(); // cùng bộ lọc với mọi cửa nạp khác
   const out: DriveSyncResult["merged"] = [];
-  // Khúc ở GỐC (bản cũ) và khúc trong TỪNG NGĂN máy. Nhãn mang tên ngăn để sổ `merged_bundles`
-  // không lẫn hai khúc trùng tên của hai máy khác nhau — khoá là `<ngăn>/<file>#<số khối>`.
+  // Segments at the ROOT (the one container every writer appends to) and, until step ⑤ removes them,
+  // in each LEGACY pen. The label carries the pen name so `merged_bundles` never confuses two
+  // same-named segments of two pens — the key is `<pen>/<file>#<block>`.
   for (const f of readdirSync(dir).filter((x) => x.endsWith(".enc"))) {
     out.push(...(await mergeContainer(join(dir, f), f, { ...o, excludeLanes })));
     await new Promise<void>((resolve) => setImmediate(resolve)); // nhường loop giữa các gói — xem `mergeContainer`
@@ -2427,7 +2491,7 @@ export async function vectorCatchUp(opts: {
   // nối vào khúc 1 đã niêm phong là bắt Drive re-upload cả khúc lớn, đúng tải đang giết.
   const segsAll = listSegments(dir);
   if (segsAll.length === 0) throw new Error(`Kho chung chưa có: ${join(dir, MAIN_BUNDLE)}`);
-  const container = activeSegment(dir).path;
+  let container = activeSegment(dir).path;
   const dbPath = opts.dbPath ?? currentMemoryDb();
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-catchup-"));
@@ -2540,7 +2604,8 @@ export async function vectorCatchUp(opts: {
     // KHOÁ KÊNH như mọi lượt ghi khác. Bản đầu của tôi nối thẳng — hai máy nối cùng lúc là
     // container rách, đúng thứ `acquireDriveLock` sinh ra để thu hẹp.
     const host = hostname();
-    const release = await acquireDriveLock(dir, host, {
+    const release = await acquireChannelWriteLock(dir, {
+      host,
       onWait: (holder, waited) => {
         if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
         console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
@@ -2548,6 +2613,8 @@ export async function vectorCatchUp(opts: {
     });
     let bytes = 0;
     try {
+      // Re-read the open segment UNDER the lock: another writer may have filled it while we waited.
+      container = activeSegment(dir).path;
       // Khúc đang mở có thể là khúc TƯƠI chưa tồn tại (khúc trước vừa đầy) — dựng vỏ magic trước.
       if (!existsSync(container)) writeFileSync(container, CHUNKS_MAGIC);
       bytes = appendChunk(container, part);

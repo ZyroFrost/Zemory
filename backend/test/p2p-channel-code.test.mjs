@@ -75,15 +75,15 @@ test("p2p-code: mã máy đi vòng tròn nguyên vẹn, và KHÔNG mang địa c
   }
 });
 
-// ── SYNCTHING SHARE: mỗi máy một NGĂN, không đường dẫn nào có hai người ghi ─────────────────────
-test("st-pen: hai máy ghi hai ngăn KHÁC nhau, và chiều đọc thấy khối của CẢ HAI", async (t) => {
-  const { channelPen, channelDir } = await import("../../dist/memory/channel/index.js");
+// ── ONE CONTAINER (plan/24 §4, 2026-10-07): writes go to the root; legacy pens are still READ ─────────
+test("legacy pens: blocks a pen holds stay visible to the read side until the pen is removed", async (t) => {
+  const ch = await import("../../dist/memory/channel/index.js");
   const { listChannelSegments } = await import("../../dist/memory/share.js");
   const root = tempDir(t, "zemory-pen-");
 
-  // Hai "máy" = hai thư mục danh tính khác nhau ⇒ hai deviceId ⇒ hai ngăn.
-  const penA = join(channelDir(root, true), "MAYA");
-  const penB = join(channelDir(root, true), "MAYB");
+  // Two legacy pens written by the retired per-machine layout (2026-09-21 → 2026-10-07).
+  const penA = join(ch.channelDir(root, true), "MAYA");
+  const penB = join(ch.channelDir(root, true), "MAYB");
   mkdirSync(penA, { recursive: true });
   mkdirSync(penB, { recursive: true });
   const keyPath = join(root, "share.key");
@@ -91,16 +91,11 @@ test("st-pen: hai máy ghi hai ngăn KHÁC nhau, và chiều đọc thấy khố
   await addBlock(t, penA, keyPath, "cua-A");
   await addBlock(t, penB, keyPath, "cua-B");
 
-  // 🔴 Bất biến của cả thiết kế: hai máy KHÔNG BAO GIỜ ghi cùng một đường dẫn.
-  assert.notEqual(penA, penB, "hai máy phải có hai ngăn khác nhau");
+  // Read side sees every pen — a block only a pen holds must stay declared, or the other machine stops asking.
+  const segs = listChannelSegments(ch.channelDir(root)).map((s) => s.path);
+  assert.ok(segs.some((p) => p.includes("MAYA")), "must see pen A's segment");
+  assert.ok(segs.some((p) => p.includes("MAYB")), "must see pen B's segment");
 
-  // Chiều ĐỌC phải thấy khúc của MỌI ngăn — nếu không, kho không bao giờ hội tụ.
-  const segs = listChannelSegments(channelDir(root)).map((s) => s.path);
-  assert.ok(segs.some((p) => p.includes("MAYA")), "phải thấy khúc của ngăn A");
-  assert.ok(segs.some((p) => p.includes("MAYB")), "phải thấy khúc của ngăn B");
-
-  // ngăn của MÁY NÀY phải nằm TRONG channel/, không phải chính nó
-  const mine = channelPen(root, true);
-  assert.ok(mine.startsWith(channelDir(root)) && mine !== channelDir(root), "ngăn phải là thư mục con của channel/");
-
+  // The per-machine pen API is gone: nothing can WRITE into a pen any more.
+  assert.equal(ch.channelPen, undefined, "channelPen is retired — the one write target is the channel root");
 });
