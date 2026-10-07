@@ -108,6 +108,21 @@ test("④b a plan holds spec, not open work: open checkboxes in docs/plan are fo
   assert.deepEqual(planOpenItems(join(ROOT, "docs", "plan")), [], "this repo's plans carry no open work");
 });
 
+test("④c plans must stay small: a spec over the cap and a folder over the total are named; NEGATIVE: within caps is silent (2026-10-08)", async (t) => {
+  const { planSizeIssues } = await import("../../dist/docs/validate.js");
+  const { tempDir } = await import("./helpers.mjs");
+  const { writeFileSync } = await import("node:fs");
+  const d = tempDir(t, "zemory-plansize-");
+  const lines = (n) => Array.from({ length: n }, (_, i) => `l${i}`).join("\n") + "\n";
+  writeFileSync(join(d, "01_a.md"), lines(5));
+  writeFileSync(join(d, "02_b.md"), lines(8));
+  assert.deepEqual(planSizeIssues(d, 10, 20), [], "both specs and the folder within the caps");
+  writeFileSync(join(d, "03_c.md"), lines(12));
+  const out = planSizeIssues(d, 10, 20);
+  assert.match(out.join("\n"), /1 spec\(s\) over 10 lines: 03_c\.md \(12\)/);
+  assert.match(out.join("\n"), /docs\/plan is 25 lines \(> 20\)/);
+});
+
 test("④ supersede clauses must name an existing entry key", () => {
   const log = ["## [2026-10-07b] — a", "> 🔄 **Supersede:** 2026-10-07b — ok", "## [2026-10-06] — b", "> 🔄 **Supersede:** thay [2026-09-01x] — gone", "> 🔄 **Supersede** the old way of doing it", "```", "> 🔄 **Supersede:** inside a fence", "```"].join("\n");
   assert.deepEqual(danglingSupersedes([log]), ["2026-09-01x", "no key"]);

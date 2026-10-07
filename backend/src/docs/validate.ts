@@ -22,6 +22,23 @@ export interface ValidateReport {
   paths?: PathsReport;
 }
 
+/** Plan size caps (02_RULES §Tài liệu — "plan phải gọn"). One message per breach; empty = within the caps. */
+export function planSizeIssues(planDir: string, specMax: number, planMax: number): string[] {
+  if (!existsSync(planDir)) return [];
+  const out: string[] = [];
+  let total = 0;
+  const big: string[] = [];
+  for (const f of readdirSync(planDir).filter((x) => x.toLowerCase().endsWith(".md")).sort()) {
+    const txt = readFileSync(join(planDir, f), "utf8");
+    const n = txt.split("\n").length - (txt.endsWith("\n") ? 1 : 0); // `wc -l` count — the number a reader sees
+    total += n;
+    if (n > specMax) big.push(`${f} (${n})`);
+  }
+  if (big.length) out.push(`plan: ${big.length} spec(s) over ${specMax} lines: ${big.join(" · ")} — keep the CURRENT direction + open points; history goes to 06_CHANGES`);
+  if (total > planMax) out.push(`plan: docs/plan is ${total} lines (> ${planMax}) — every session must read it in full; trim it`);
+  return out;
+}
+
 export function validate(ctx: Context): ValidateReport {
   const issues: ValidateIssue[] = [];
   const projectRoot = ctx.projectRoot;
@@ -48,6 +65,13 @@ export function validate(ctx: Context): ValidateReport {
       level: "error",
       msg: `plan: ${planHits.length} open checkbox(es) in docs/plan — a plan holds spec, open work goes to 05_TODO: ${planHits.slice(0, 4).join(" · ")}`,
     });
+  }
+
+  // 1b'. Plans must stay SMALL (user 2026-10-08, from _DB_DataWarehouse: 12.800 plan lines — an agent read them all, the
+  // context compacted, re-reading did not fit). The read-everything rule stays; the plans shrink. WARN, not error, while repos
+  // trim (user chose "áp từng bước"): a spec over the cap, or the whole plan folder over the total.
+  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 300, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
+    issues.push({ level: "warn", msg });
   }
 
   // 1c. Every constitution article must name its machine gate (user 2026-10-07: "mỗi repo nếu có HP riêng phải tự tạo
