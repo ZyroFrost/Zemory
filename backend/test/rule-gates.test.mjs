@@ -173,6 +173,51 @@ test("⑨ every child-process call in backend/src sets windowsHide (no console f
   assert.deepEqual(missing, [], "add `windowsHide: true` to: " + missing.join(" · "));
 });
 
+// ── constitution gates (user 2026-10-07: "tạo hook luôn những cái trong HP cái nào dc thì làm") ──────────────────
+test("⑩ HP 6: no model API endpoint or base-url override anywhere in backend/src", () => {
+  const re = /api\.anthropic\.com|api\.openai\.com|ANTHROPIC_BASE_URL|\/v1\/messages\b|\/v1\/chat\/completions|generativelanguage\.googleapis/;
+  const hits = tsFiles(SRC).filter((f) => re.test(readFileSync(f, "utf8"))).map(rel);
+  assert.deepEqual(hits, [], "zemory does not proxy a model API (HP 6)");
+});
+
+test("⑪ HP 10: the capture path imports no embedding/model module and makes no network call", () => {
+  const seen = new Set();
+  const walk = (file) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const s = readFileSync(file, "utf8");
+    for (const m of s.matchAll(/^import[^'"]*["'](\.{1,2}\/[^"']+)\.js["']/gm)) {
+      const next = join(file, "..", m[1] + ".ts");
+      try { statSync(next); walk(next); } catch { /* not a source file */ }
+    }
+  };
+  walk(join(SRC, "memory", "capture-hook.ts"));
+  // Measure what LOADS, not file names: the chain reaches embed.ts (ingest → pruneOrphanVectors → vectors → embed), but
+  // embed.ts pulls the model library with a LAZY `await import` — only a static, non-type import loads it on every hook.
+  const MODEL_LIB = /^import\s+(?!type\b)[^;]*["'](@huggingface\/transformers|onnxruntime[^"']*|@xenova\/transformers)["']/m;
+  const bad = [...seen].filter((f) => MODEL_LIB.test(readFileSync(f, "utf8"))).map(rel);
+  assert.deepEqual(bad, [], "Stop/prompt hooks must stay mechanical, 0 tokens (HP 10) — a model library loaded statically on the capture path");
+  assert.ok(seen.size > 3, "the walk must actually follow imports");
+});
+
+// HP 16: ONE store, every machine appends to it. The per-machine pen (`channelPen`) is the deviation being retired
+// (user 2026-10-07) — its call sites may only SHRINK, and reach 0 when the channel is merged back into one sequence.
+test("⑫ HP 16: channelPen call sites do not grow (target 0 — one shared segment sequence + write queue)", () => {
+  ratchet(countBy(/\bchannelPen\(/g), { "memory/channel/index.ts": 5, "commands/memory.ts": 1 }, "per-machine pen writes");
+});
+
+test("⑬ every constitution article has a row in 02_RULES `## Cổng cho hiến pháp`", async () => {
+  const { hpGateGaps } = await import("../../dist/docs/validate.js");
+  assert.equal(hpGateGaps(join(ROOT, "docs", "agent")), null);
+  const { tempDir } = await import("./helpers.mjs");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const d = join(tempDir({ after() {} }, "zemory-hpgate-"), "agent");
+  mkdirSync(d, { recursive: true });
+  writeFileSync(join(d, "01_CONSTITUTION.md"), "1. **A**\n2. **B**\n");
+  writeFileSync(join(d, "02_RULES.md"), "## Cổng cho hiến pháp\n| # | x |\n|---|---|\n| 1 | a |\n");
+  assert.match(hpGateGaps(d) ?? "", /article\(s\) 2 have no row/);
+});
+
 test("⑥ `npm run check` runs validate", () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   assert.match(pkg.scripts.check, /npm run validate\b/);
