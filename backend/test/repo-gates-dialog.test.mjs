@@ -47,6 +47,14 @@ test("⑤ a CHECKLIST: every repo is a row with its four checks, not only the re
   assert.match(fn("gateCells"), /return \[guard,pre,hp,top,rf\];/, "five checks per repo (read-before-write added 2026-10-08)");
 });
 
+test("⑥ the repo-update button counts a repo as done only when NOTHING was left for a hand fix (user 2026-10-08)", () => {
+  // "đã áp 3/3" while every repo answered stdSkipped=1 ⇒ 0 bytes carried, badge never green, button lied.
+  const at = SYS.indexOf("zPost('/harness-apply?root='");
+  const body = SYS.slice(at, at + 1200);
+  assert.match(body, /if\(r\.ok&&!r\.stdSkipped\)\{okN\+\+/, "a skipped file must not count as applied");
+  assert.doesNotMatch(body, /if\(r\.ok\)\{okN\+\+/, "r.ok alone = the old lie");
+});
+
 test("③ gap lines go through i18n in BOTH dictionaries, never the backend's English `lines`", () => {
   assert.doesNotMatch(fn("gatesDialog"), /g\.lines/, "rendering g.lines puts English CLI text in the UI");
   const keys = ["gates.colRf", "gates.noReadFirst", "gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top"];

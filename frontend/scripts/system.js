@@ -455,8 +455,10 @@
       zPost('/harness-apply?root='+encodeURIComponent(root)).then(function(r){
         r=r||{};
         if(stEl)stEl.textContent=r.ok?t('upd.applied').replace('{n}',(r.added||[]).length+(r.stdWritten||0)).replace('{g}',r.guard?'✓':'—')+(r.stdSkipped?' · '+t('upd.stdSkipped').replace('{k}',r.stdSkipped):''):(t('upd.applyFail')+(r.error?' · '+r.error:''));
-        if(r.ok){okN++;var cb=row&&row.querySelector('.upd-pick');if(cb){cb.checked=false;cb.disabled=true;}
-          if(row){row.innerHTML=row.innerHTML.replace('⚠','✓');}}
+        // Done = the write went through AND nothing was left for a hand fix. A skipped file means the repo is STILL
+        // off-standard (2026-10-08: "đã áp 3/3" while 0 bytes were carried — the badge never turned green).
+        var cb=row&&row.querySelector('.upd-pick');if(cb){cb.checked=false;}
+        if(r.ok&&!r.stdSkipped){okN++;if(cb)cb.disabled=true;if(row){row.innerHTML=row.innerHTML.replace('⚠','✓');}}
         next();
       }).catch(function(){if(stEl)stEl.textContent=t('upd.applyFail');next();});
     }
