@@ -447,7 +447,10 @@
     var btn=e.target;btn.disabled=true;btn.textContent='…';
     var i=0,okN=0;
     function next(){
-      if(i>=picks.length){btn.textContent=t('upd.applied2').replace('{n}',okN).replace('{m}',picks.length);zGet('/harness-updates?fresh=1').then(function(){refreshHarnessUpdates();});return;}
+      // Re-measure, then REDRAW the open box from the fresh numbers (user 2026-10-08: "bấm xong nó cập nhật liền") —
+      // repainting only the rail chip left the stale list standing in the box.
+      if(i>=picks.length){var note=t('upd.applied2').replace('{n}',okN).replace('{m}',picks.length);btn.textContent=note;
+        zGet('/harness-updates?fresh=1').then(function(){if(zid('updApplySel'))updDialogStd(note);else refreshHarnessUpdates();});return;}
       // Tìm hàng bằng so sánh dataset, KHÔNG bằng selector CSS: đường dẫn Windows có `\` làm selector hỏng ⇒ bản
       // đầu áp THẬT (log + file guard ghi lại) nhưng hàng không vẽ lại — user đọc thành "apply giả" (2026-08-29).
       var root=picks[i++],row=Array.prototype.slice.call(document.querySelectorAll('.upd-row')).filter(function(x){return x.getAttribute('data-root')===root;})[0],stEl=row&&row.querySelector('.upd-st');
@@ -508,7 +511,7 @@
       }});
   }
   /** ② Chuẩn harness của CÁC REPO: repo nào còn cũ, tick để áp, và công tắc có kiểm vòng repo không. */
-  function updDialogStd(){
+  function updDialogStd(note){
     // LẤY SỐ TƯƠI trước khi vẽ (user 2026-09-17: *"fix rồi, app phải tự cập nhật lại mới đúng"*). Bản cũ vẽ
     // từ `Z.updDead` của lượt poll trước — nhịp poll là 10′, nên sửa xong bằng CLI rồi mở hộp vẫn thấy số cũ.
     // `/harness-updates` đọc `deadPaths` thẳng từ state, không cache ⇒ một lượt gọi là đủ. Trượt mạng thì
@@ -528,6 +531,7 @@
           return true;
         }});
       loadFixProposals();
+      if(note){zDlgMsg(note);note='';}
     }
     refreshHarnessUpdates().then(draw,draw);
   }
@@ -593,7 +597,7 @@
     repos+=!UPD_CHECK
       ?line(t('upd.stdOff'))
       :st.length
-      ?line(t('upd.repoHdr').replace('{n}',st.length))+'<div style="font-size:12.5px">'+st.map(function(x){var lk=!!x.locked,why=lk?' title="'+stdEsc(t('upd.lockedWhy'))+'"':'';return '<label class="upd-row" data-root="'+stdEsc(x.root)+'"'+why+' style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:'+(lk?'default':'pointer')+'"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'"'+(lk?' disabled':' checked')+'> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(x.root)+'</span></label>';}).join('')+'</div>'
+      ?line(t('upd.repoHdr').replace('{n}',st.length))+'<div style="font-size:12.5px">'+st.map(function(x){var lk=!!x.locked,why=lk?' title="'+stdEsc(t('upd.lockedWhy'))+'"':'';return '<label class="upd-row" data-root="'+stdEsc(x.root)+'"'+why+' style="display:flex;align-items:center;gap:8px;padding:3px 0;cursor:'+(lk?'default':'pointer')+'"><input type="checkbox" class="upd-pick" data-root="'+stdEsc(x.root)+'"'+(lk?' disabled':' checked')+'> ⚠ <b>'+stdEsc(x.name)+'</b> <span class="muted upd-st" style="font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">'+stdEsc(lk&&x.manual?t('upd.stdSkipped').replace('{k}',x.manual):x.root)+'</span></label>';}).join('')+'</div>'
         +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn sm primary" id="updApplySel"'+(st.some(function(x){return !x.locked;})?'':' disabled')+'>'+stdEsc(t('upd.applySel').replace('{n}',st.filter(function(x){return !x.locked;}).length))+'</button></div>'
       :line('✓ '+t('upd.repoNone'));
     // ② ĐƯỜNG DẪN MỚI CHẾT (đọc từ state của sweep — không quét). Chỉ liệt kê + chỉ đường xem dòng cụ thể; sửa nguồn là việc

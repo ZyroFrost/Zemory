@@ -55,6 +55,17 @@ test("⑥ the repo-update button counts a repo as done only when NOTHING was lef
   assert.doesNotMatch(body, /if\(r\.ok\)\{okN\+\+/, "r.ok alone = the old lie");
 });
 
+test("⑦ after applying, the box REDRAWS from fresh numbers, and the measure asks the same merge the button runs (3.8.1)", () => {
+  // User 2026-10-08: "bấm xong nó cập nhật liền chứ" — only the rail chip was repainted, the stale list stayed in the box;
+  // and /harness-updates called an overlapping `local` file "appliable", so the box invited a click that wrote nothing.
+  const at = SYS.indexOf("if(i>=picks.length)");
+  assert.match(SYS.slice(at, at + 500), /updDialogStd\(note\)/, "the open box must be redrawn after the apply loop");
+  const UI = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
+  const h = UI.slice(UI.indexOf('p === "/harness-updates"'), UI.indexOf('p === "/automation"'));
+  assert.match(h, /applyStandard\(proj\.root, \{ apply: false \}\)/, "the measure must dry-run the real merge");
+  assert.match(h, /f\.action === "skipped"/, "refused files count as manual, not as appliable drift");
+});
+
 test("③ gap lines go through i18n in BOTH dictionaries, never the backend's English `lines`", () => {
   assert.doesNotMatch(fn("gatesDialog"), /g\.lines/, "rendering g.lines puts English CLI text in the UI");
   const keys = ["gates.colRf", "gates.noReadFirst", "gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top"];
