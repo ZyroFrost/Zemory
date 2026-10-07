@@ -90,12 +90,12 @@ test("NEGATIVE: our OWN edit after reading does not void the read, even though t
   assert.equal(s.check(s.edit("x.md")), null);
 });
 
-test("a context compaction voids every earlier read", (t) => {
+test("NEGATIVE: a context compaction does NOT void earlier reads (user 2026-10-08: the session already knows them)", (t) => {
   const s = setup(t);
   s.read("docs/agent/02_RULES.md", 1, 10, 10);
   s.read("docs/plan/01_x.md", 1, 4, 4);
   s.compact();
-  assert.match(s.check(s.edit("x.md")), /NOT READ IN FULL/);
+  assert.equal(s.check(s.edit("x.md")), null);
 });
 
 test("touching a CASE requires its spec; NEGATIVE: an unrelated write does not", (t) => {

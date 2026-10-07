@@ -179,18 +179,14 @@ function expand(root, list) {
   return [...new Set(out)];
 }
 
-// What the transcript says was read (after the last context compaction) and what this session itself wrote.
+// What the transcript says this session read and wrote. A context compaction does NOT void a read (user 2026-10-08: "t ko
+// nghĩ là nén xong bắt đọc lại… nó tự biết rồi") — the session keeps what it learned; a file changed since is still re-read.
 function ledger(transcript) {
   const reads = new Map(), own = new Map(), events = new Map();
   const ev = (k, e) => { if (!events.has(k)) events.set(k, []); events.get(k).push(e); };
   let text;
   try { text = fs.readFileSync(transcript, "utf8"); } catch { return null; }
   for (const line of text.split("\n")) {
-    if (line.includes("compact_boundary") || line.includes("\"isCompactSummary\":true")) {
-      let j; try { j = JSON.parse(line); } catch { continue; }
-      if (j.subtype === "compact_boundary" || j.isCompactSummary === true) { reads.clear(); events.clear(); } // compacted: what was read is gone
-      continue;
-    }
     if (!line.includes("\"toolUseResult\"")) continue;
     let j; try { j = JSON.parse(line); } catch { continue; }
     const r = j.toolUseResult, ts = Date.parse(j.timestamp || "") || 0;
@@ -280,7 +276,7 @@ function readFirst(payload, root, policy) {
   return "BLOCKED (guard layer 1): NOT READ IN FULL - this repo requires reading these files completely in this session before acting:\n" +
     missing.join("\n") +
     "\nRead each with the Read tool to the last line (a long file: keep reading with offset until the end). grep / sed / head / Get-Content do not count." +
-    " After a context compaction the files must be read again. There is no flag for this.";
+    " There is no flag for this.";
 }
 
 module.exports = { readFirst, shellActs, coverage, ledger };
