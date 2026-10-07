@@ -70,6 +70,19 @@ export function validate(ctx: Context): ValidateReport {
     if (legacy > 0) {
       issues.push({ level: "info", msg: `changelog: ${legacy} bare-date key(s) shared by several older entries — harmless unless a supersede clause names one` });
     }
+    // A supersede clause with NO key, or naming a key no entry carries, links to nothing: the old decision keeps reading
+    // as live (02_RULES §Changelog). It was only words until 2026-10-07 — the rule audit listed it as machine-checkable.
+    // ACTIVE tier only is an error: the archive holds clauses written before this rule (prose, plan sections, a "vế" of
+    // an entry) — history, not a defect to fix; it is counted at info level.
+    const dangling = danglingSupersedes([tiers[0]], tiers);
+    if (dangling.length) {
+      issues.push({
+        level: "error",
+        msg: `changelog: ${dangling.length} supersede clause(s) name no existing entry key: ${dangling.slice(0, 4).join(" · ")} — write the exact key, e.g. \`2026-07-29l\``,
+      });
+    }
+    const oldDangling = tiers[1] ? danglingSupersedes([tiers[1]], tiers).length : 0;
+    if (oldDangling) issues.push({ level: "info", msg: `changelog archive: ${oldDangling} older supersede clause(s) without an entry key (written before the rule)` });
 
     // Per-ENTRY length. The file-level threshold above only says "time to archive";
     // it says nothing about entries that are individually bloated, and those are what
@@ -328,6 +341,27 @@ export function duplicateKeys(texts: string[]): Array<{ key: string; count: numb
     }
   }
   return [...seen].filter(([, n]) => n > 1).map(([key, count]) => ({ key, count }));
+}
+
+/**
+ * Supersede clauses that point at nothing: no date key at all, or keys of which NONE is an entry heading in either tier.
+ * Returned as short labels (`"no key"` or the keys named) for the validate message.
+ */
+export function danglingSupersedes(texts: string[], keyTexts: string[] = texts): string[] {
+  const keys = new Set<string>();
+  for (const t of keyTexts) for (const m of t.matchAll(/^##\s*\[(\d{4}-\d{2}-\d{2}[a-z]*)\]/gim)) keys.add(m[1].toLowerCase());
+  const out: string[] = [];
+  for (const t of texts) {
+    let fence = false;
+    for (const l of t.split("\n")) {
+      if (/^\s*```/.test(l)) fence = !fence;
+      if (fence || !/🔄\s*\*\*Supersede/u.test(l)) continue;
+      const named = [...l.matchAll(/\d{4}-\d{2}-\d{2}[a-z]*/gi)].map((m) => m[0].toLowerCase());
+      if (!named.length) out.push("no key");
+      else if (!named.some((k) => keys.has(k))) out.push(named.join("/"));
+    }
+  }
+  return out;
 }
 
 /** Keys named by supersede clauses (`> 🔄 **Supersede:** … 2026-07-29l …`). */
