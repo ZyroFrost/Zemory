@@ -156,6 +156,7 @@ test("a sender script is recognised by its CONTENT, one hop through a launcher; 
   assert.equal(globalCheck("node --test test/mail.test.mjs"), null, "a test file mentioning smtplib");
   assert.equal(globalCheck("npm run build -- tasks\\FA_Weekly\\pipeline\\03_send.py"), null, "named, not run by an interpreter");
   assert.equal(globalCheck("$f='tasks\\FA_Weekly\\pipeline\\03_send.py'; Get-Content $f"), null, "a quoted value assigned to a variable is not run");
+  assert.equal(globalCheck("$files=@('x.json','tasks/FA_Weekly/pipeline/03_send.py'); git add -- $files"), null, "a PowerShell array of paths is data, not a run");
 });
 
 test("NEGATIVE: writing OUTSIDE the repo (a scratchpad) is not this latch's business", (t) => {

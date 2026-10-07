@@ -122,7 +122,7 @@ function extraFor(rf, root, targets, cmd) {
 
 // The scripts a command RUNS — the first script after an interpreter, or a script standing as the command itself. A file the
 // command merely names (a test fed to "node --test", a path handed to grep) is not run: reading its text made a test that
-// mentions "smtplib" in a fixture demand write-style (caught in the zemory session that fixed Dept_FA's report, 2026-10-08).
+// names a mail library in a fixture demand write-style (caught in the zemory session that fixed Dept_FA's report, 2026-10-08).
 const INTERP = /^(python|python3|py|node|deno|bun|pwsh|powershell|bash|sh|cmd|uv|poetry)$/;
 const TESTISH = /(^|[\\\/])(tests?|__tests__)[\\\/]|\.test\.|_test\.|(^|[\\\/])test_[^\\\/]*$/i;
 function scriptsRun(cmd) {
@@ -133,9 +133,11 @@ function scriptsRun(cmd) {
     const w = words(seg);
     if (!w.length) continue;
     const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.exe$/, "");
+    // A script token is a PLAIN path — "@('a.cjs','b.json')" (a PowerShell array) is data, not a run (caught live).
+    const isScript = (x) => /^[\w.\-\\\/:~]+\.(py|ps1|js|mjs|cjs|cmd|bat|sh)$/i.test(x);
     let s = null;
-    if (/\.(py|ps1|js|mjs|cjs|cmd|bat|sh)$/i.test(w[0])) s = w[0];
-    else if (INTERP.test(name)) s = w.slice(1).find((x) => /\.(py|ps1|js|mjs|cjs|cmd|bat|sh)$/i.test(x)) || null;
+    if (isScript(w[0])) s = w[0];
+    else if (INTERP.test(name)) s = w.slice(1).find(isScript) || null;
     if (s && !TESTISH.test(s)) out.push(s);
   }
   return out;
