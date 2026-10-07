@@ -77,8 +77,9 @@ export function validate(ctx: Context): ValidateReport {
       msg: `plan: ${autogen.length} machine-generated block marker(s) in docs/plan — a plan is text a person writes; write generated tables next to their source and link them: ${autogen.slice(0, 4).join(" · ")}`,
     });
   }
-  // Spec cap 500 (user 2026-10-08: "nâng trần 500 luôn đi cho chẳn" — the trimmed specs sat at 330–410 without losing ideas).
-  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 500, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
+  // Spec cap 1000 (user 2026-10-08, "vậy chắc trần cho 1k"): trimmed with no idea lost, plan/24 still holds ~64k characters
+  // = ~700 lines at the normal wrap; 300 then 500 were experiments. Total cap unchanged until the user sets it.
+  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 1000, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
     issues.push({ level: "warn", msg });
   }
 
