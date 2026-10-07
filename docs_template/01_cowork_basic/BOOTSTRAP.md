@@ -109,12 +109,12 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 
 | # | Ghi ra | Tải từ | Dòng |
 |---|---|---|---:|
-| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 54 |
+| 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 55 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 34 |
 | 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 193 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 39 |
-| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 45 |
+| 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 46 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
 | 8 | `docs/agent/06_CHANGES.md` | `<RAW>/agent/06_CHANGES.md` | 9 |
 | 9 | `docs/plan/00_overview.md` | `<RAW>/plan/00_overview.md` | 18 |
@@ -138,6 +138,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 885 |
 | 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 82 |
 | 29 | `docs/hooks/read-first.cjs` | `<RAW>/hooks/read-first.cjs` | 295 |
+| 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |
 
 **Ba file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
 lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào

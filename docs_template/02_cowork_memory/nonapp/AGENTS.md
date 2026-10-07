@@ -40,6 +40,7 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
 | cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
+| `zemory validate` báo plan vượt trần · "gọt plan" / "dọn plan" | `.claude/skills/plan-trim/SKILL.md` |
 | "mở case" · "lưu thành task" · "đóng case" · "mở lại case" · "vụ này lưu ở đâu" | `.claude/skills/case/SKILL.md` |
 | kéo dữ liệu từ nguồn về | `.claude/skills/pull/SKILL.md` |
 | điền số vào template → xuất deliverable | `.claude/skills/fill/SKILL.md` |
