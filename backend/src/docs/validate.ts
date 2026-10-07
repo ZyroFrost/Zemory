@@ -39,6 +39,16 @@ export function validate(ctx: Context): ValidateReport {
     }
   }
 
+  // 1b. A plan holds SPEC, never open work (02_RULES §Tài liệu). A `- [ ]` in docs/plan is a task living outside the
+  // ledger, where `todo verify` and the hand-off never see it (rule audit 2026-10-07; zemory itself carried 5).
+  const planHits = planOpenItems(join(agentDir, "..", "plan"));
+  if (planHits.length) {
+    issues.push({
+      level: "error",
+      msg: `plan: ${planHits.length} open checkbox(es) in docs/plan — a plan holds spec, open work goes to 05_TODO: ${planHits.slice(0, 4).join(" · ")}`,
+    });
+  }
+
   // 2. Changelog length (suggest archive).
   const chFile = join(agentDir, "06_CHANGES.md");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
@@ -341,6 +351,20 @@ export function duplicateKeys(texts: string[]): Array<{ key: string; count: numb
     }
   }
   return [...seen].filter(([, n]) => n > 1).map(([key, count]) => ({ key, count }));
+}
+
+/** `file:line` of every open checkbox (`- [ ]` / `- [~]`) in the plan folder's *.md, code fences skipped. */
+export function planOpenItems(planDir: string): string[] {
+  const out: string[] = [];
+  if (!existsSync(planDir)) return out;
+  for (const name of readdirSync(planDir).filter((n) => n.endsWith(".md")).sort()) {
+    let fence = false;
+    readFileSync(join(planDir, name), "utf8").split("\n").forEach((l, i) => {
+      if (/^\s*```/.test(l)) fence = !fence;
+      else if (!fence && /^\s*[-*]\s*\[[ ~]\]/.test(l)) out.push(`${name}:${i + 1}`);
+    });
+  }
+  return out;
 }
 
 /**

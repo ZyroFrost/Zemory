@@ -466,10 +466,40 @@ const hitsIn = (cmd, nameRe, re) => zonesFor(cmd, nameRe).some((z) => re.test(z)
 // scan, and once it scans, it scans THE WHOLE LINE.
 const anyCmdIs = (cmd, nameRe) => splitSegments(cmd).some((s) => nameRe.test(cmdWordOf(s)));
 
+// ── PUSH WITH A VERSION ALREADY ON UPSTREAM (added 2026-10-07, rule audit) ───────────────────
+// 02_RULES §Git: every push that carries CODE carries a NEW version. Measured 2026-09-24: three commits all declared
+// 3.5.0, so the other machine's \`selfupdate\` compared numbers, saw "same", and never pulled the fix. Docs-only pushes are
+// exempt (the rule says so). No flag: the fix is to bump the number, not to ask permission. Fail-open on any git error.
+function versionClash() {
+  try {
+    const pkgPath = path.join(ROOT, "package.json");
+    if (!fs.existsSync(pkgPath)) return null;
+    const mine = JSON.parse(fs.readFileSync(pkgPath, "utf8")).version;
+    if (!mine) return null;
+    const { execFileSync } = require("node:child_process");
+    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
+    const up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}");
+    if (!up) return null;
+    let theirs = null;
+    try { theirs = JSON.parse(git("show", up + ":package.json")).version; } catch { return null; }
+    if (theirs !== mine) return null;
+    const touched = git("diff", "--name-only", up + "..HEAD").split(/\\r?\\n/).filter(Boolean);
+    const code = touched.filter((f) => !/^(docs\\/|docs_visual\\/|README|CHANGELOG|.*\\.md$)/i.test(f));
+    return code.length ? { version: mine, upstream: up, files: code.length } : null;
+  } catch {
+    return null;
+  }
+}
+
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
   if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\\\n;|&]*" + PUSH_ARG))) {
+    const clash = versionClash();
+    if (clash) {
+      deny("BLOCKED (guard layer 1): \`git push\` carries code but package.json still says " + clash.version +
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (02_RULES Git: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+    }
     if (!consumeFlag("push", bare)) {
       deny("BLOCKED (guard layer 1): \`git push\` - push only when the user says so (02_RULES Git)." +
         "\\nDid the user just say so? -> create the flag \`" + POLICY.flags_dir + "/" + POLICY.flags.push + "\` and run again (one use).");
@@ -834,6 +864,21 @@ function checkBash(cmd) {
     }
   }
 
+  // ── OUTSIDE THE PROJECT 5: a WRITING \`zemory\` command aimed at ANOTHER repo (added 2026-10-07, rule audit) ──
+  // 02_RULES §Phạm vi project, "vế ngược": \`zemory\` writes by its target (\`--root\`, or the cwd after \`cd\`) — run against a
+  // repo you only came to READ, it writes into that repo and its DB. Read-only verbs (doctor · validate · conform · peers ·
+  // paths check · plan/changelog/memory search · \`sync --check\`) pass. Same \`outside\` flag as the branches above.
+  const ZEMORY_WRITE =
+    /\\bzemory(\\.cmd|\\.ps1)?\\s+(init|reindex|archive|migrate|hook\\s+(guard|install|uninstall)|sync(?![^\\n;|&]*--check)|memory\\s+(scan|sync|import|embed|digest|relocate|forget|vectors-catchup|keygen))\\b/i;
+  if (ZEMORY_WRITE.test(bare)) {
+    const rootArg = /--root\\s+("[^"]+"|'[^']+'|[^\\s;|&]+)/.exec(bare);
+    const cdArg = /(?:^|[;&|]\\s*)(?:cd|Set-Location|sl|pushd)\\s+(?:-Path\\s+)?("[^"]+"|'[^']+'|[^\\s;|&]+)/i.exec(bare);
+    const target = (rootArg && rootArg[1]) || (cdArg && cdArg[1]);
+    if (target && isOutside(target, false)) {
+      denyOutside("a zemory command that WRITES, aimed at another repo \`" + target.replace(/^["']|["']$/g, "") + "\` - it writes into that repo and its DB", bare);
+    }
+  }
+
   // ── OUTSIDE THE PROJECT 2 + 3: SQL that reaches past the repo ─────────────────────────
   // Judged ONLY when a SQL client or an interpreter is in command position - \`grep sp_configure\`,
   // \`git log\`, \`cat x.sql\` merely MENTION the words. Matched against the ORIGINAL command, not \`bare\`:
@@ -1105,5 +1150,43 @@ export function generateGuards(projectRoot: string): GuardGenResult {
   // Flag không bao giờ được theo commit — .gitignore cục bộ trong chính thư mục hooks.
   put(".gitignore", ".allow-*\n", () => true);
 
+  const wired = wireGuard(projectRoot, `${hooksRel}/guard.cjs`);
+  if (wired) added.push(wired);
   return { hooksDir, added, kept, protectedWrite: policy.protected_write as string[] };
+}
+
+/**
+ * CẮM guard vào runtime của repo: `.claude/settings.json` › PreToolUse, matcher `GUARD_MATCHER` → `node <guard>`.
+ *
+ * 🔄 Supersede the old line "the tool does not wire it for you — the user reviews and adds it" (user 2026-10-07: *"phải
+ * theo chuẩn toàn bộ chứ, đây là luật mà… bộ kiểm của zemory quản có đồng bộ ko"*). Measured that day: 6 of 17 repos had a
+ * generated guard that NOTHING called (no settings file), and zemory itself ran it without `PowerShell`/`MultiEdit`.
+ * A guard that is generated but not wired is a rule in words only. Merge, never overwrite: other hooks of the repo stay;
+ * an existing guard group is WIDENED to the full matcher, never narrowed. Returns what changed, or null.
+ */
+export function wireGuard(projectRoot: string, guardRel: string): string | null {
+  const p = join(projectRoot, ".claude", "settings.json");
+  let raw = "";
+  let doc: { hooks?: { PreToolUse?: { matcher?: string; hooks?: { type?: string; command?: string; args?: unknown[] }[] }[] } } & Record<string, unknown> = {};
+  if (existsSync(p)) {
+    raw = readFileSync(p, "utf8");
+    try {
+      doc = JSON.parse(raw.replace(new RegExp("^" + String.fromCharCode(0xfeff)), "")) as typeof doc;
+    } catch {
+      return null; // a settings file we cannot read is left alone — doctor reports it
+    }
+  }
+  const gaps = guardMatcherGaps(raw || null);
+  if (gaps !== null && gaps.length === 0) return null; // already wired in full
+  doc.hooks ??= {};
+  const pre = (doc.hooks.PreToolUse ??= []);
+  const runsGuard = (h: { command?: string; args?: unknown[] }): boolean =>
+    /(^|[\\/\s"'])guard\.cjs/.test([h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String).join(" "));
+  const group = pre.find((g) => (g.hooks ?? []).some(runsGuard));
+  if (group) group.matcher = GUARD_MATCHER;
+  else pre.unshift({ matcher: GUARD_MATCHER, hooks: [{ type: "command", command: `node ${guardRel}` }] });
+  const eol = raw.includes("\r\n") ? "\r\n" : "\n";
+  mkdirSync(join(projectRoot, ".claude"), { recursive: true });
+  writeFileSync(p, JSON.stringify(doc, null, 2).split("\n").join(eol) + eol);
+  return group ? ".claude/settings.json (guard matcher widened)" : ".claude/settings.json (guard wired)";
 }

@@ -76,6 +76,38 @@ test("③ guard wiring: every tool of GUARD_MATCHER must reach guard.cjs (the me
   assert.deepEqual(guardMatcherGaps(readFileSync(join(ROOT, ".claude", "settings.json"), "utf8")), [], "settings.json của chính repo này");
 });
 
+test("③b wireGuard: wires an unwired repo, widens a narrow matcher, keeps the repo's other hooks, is idempotent", async (t) => {
+  const { wireGuard } = await import("../../dist/docs/guard-gen.js");
+  const { tempDir } = await import("./helpers.mjs");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  // a repo with NO settings file (6 of 17 repos on 2026-10-07)
+  const a = tempDir(t, "zemory-wire-a-");
+  assert.equal(wireGuard(a, "docs/hooks/guard.cjs"), ".claude/settings.json (guard wired)");
+  assert.deepEqual(guardMatcherGaps(readFileSync(join(a, ".claude", "settings.json"), "utf8")), []);
+  assert.equal(wireGuard(a, "docs/hooks/guard.cjs"), null, "second run ⇒ nothing to do");
+  // a repo with a narrow guard group + an unrelated hook (Dept_OPS shape)
+  const b = tempDir(t, "zemory-wire-b-");
+  mkdirSync(join(b, ".claude"), { recursive: true });
+  const other = { matcher: "Bash|PowerShell", hooks: [{ type: "command", command: "node", args: ["docs/hooks/pbi-open-gate.cjs"] }] };
+  writeFileSync(join(b, ".claude", "settings.json"), JSON.stringify({ env: { KEEP: "1" }, hooks: { PreToolUse: [{ matcher: "Write|Bash", hooks: [{ type: "command", command: "node", args: ["docs/hooks/guard.cjs"] }] }, other] } }, null, 2));
+  assert.equal(wireGuard(b, "docs/hooks/guard.cjs"), ".claude/settings.json (guard matcher widened)");
+  const after = JSON.parse(readFileSync(join(b, ".claude", "settings.json"), "utf8"));
+  assert.equal(after.env.KEEP, "1", "unrelated settings kept");
+  assert.equal(after.hooks.PreToolUse.length, 2, "no duplicate guard group");
+  assert.deepEqual(after.hooks.PreToolUse[1], other, "the repo's own hook untouched");
+  assert.equal(after.hooks.PreToolUse[0].matcher, GUARD_MATCHER);
+});
+
+test("④b a plan holds spec, not open work: open checkboxes in docs/plan are found (fences skipped)", async (t) => {
+  const { planOpenItems } = await import("../../dist/docs/validate.js");
+  const { tempDir } = await import("./helpers.mjs");
+  const { writeFileSync } = await import("node:fs");
+  const d = tempDir(t, "zemory-plan-");
+  writeFileSync(join(d, "01_x.md"), ["# spec", "- [x] done", "- [ ] open", "```", "- [ ] inside a fence", "```", "- [~] doing"].join("\n"));
+  assert.deepEqual(planOpenItems(d), ["01_x.md:3", "01_x.md:7"]);
+  assert.deepEqual(planOpenItems(join(ROOT, "docs", "plan")), [], "this repo's plans carry no open work");
+});
+
 test("④ supersede clauses must name an existing entry key", () => {
   const log = ["## [2026-10-07b] — a", "> 🔄 **Supersede:** 2026-10-07b — ok", "## [2026-10-06] — b", "> 🔄 **Supersede:** thay [2026-09-01x] — gone", "> 🔄 **Supersede** the old way of doing it", "```", "> 🔄 **Supersede:** inside a fence", "```"].join("\n");
   assert.deepEqual(danglingSupersedes([log]), ["2026-09-01x", "no key"]);
@@ -100,6 +132,17 @@ test("⑦ doctor finds leftover `_scratch_*` / `.tmp_*` — untracked AND git-ig
   writeFileSync(join(r, "keep.txt"), "x");
   assert.deepEqual(scratchLeftovers(r).sort(), ["_scratch_probe.py", "data/.tmp_big.bin"]);
   assert.deepEqual(scratchLeftovers(null), []);
+});
+
+// 02 §Ngôn ngữ ①: no Vietnamese without diacritics anywhere; file names and identifiers are plain English ASCII.
+// The audit's lang-scan measured 616 stripped lines / 28 files on 2026-09-12; the sweep left 0 — a gate keeps it at 0.
+test("⑧ language: lang-scan finds 0 stripped-Vietnamese lines, 0 non-ASCII names, 0 non-ASCII identifiers", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const r = spawnSync(process.execPath, [join(ROOT, ".claude", "skills", "audit", "scripts", "lang-scan.mjs"), ROOT], { encoding: "utf8", timeout: 240_000 });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /SCANNED\s+files=\d+/, "the probe must say what it scanned — a silent run is not a clean run");
+  const count = (face) => Number(new RegExp(`=== ${face}: (\\d+) hits ===`).exec(r.stdout)?.[1] ?? NaN);
+  assert.deepEqual({ names: count("names"), idents: count("idents"), noDiacritic: count("noDiacritic") }, { names: 0, idents: 0, noDiacritic: 0 }, r.stdout.slice(-1500));
 });
 
 test("⑥ `npm run check` runs validate", () => {

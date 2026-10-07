@@ -23,6 +23,7 @@
 import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { currentMemoryDir } from "./db.js";
 
 export interface PeerSession {
   pid: number;
@@ -49,8 +50,9 @@ export interface PeerSession {
 }
 
 const claudeHome = (): string => process.env.ZEMORY_CLAUDE_HOME || join(homedir(), ".claude");
-const cacheFile = (): string =>
-  process.env.ZEMORY_PEER_TITLE_CACHE || join(homedir(), ".zemory", "cache", "peer-titles.json");
+// HP 14: nothing but `~/.zemory/location.json` lives in home — the cache sits in the store's own folder. The first build
+// wrote `~/.zemory/cache/` and the rule audit's doctor check caught it the same day.
+const cacheFile = (): string => process.env.ZEMORY_PEER_TITLE_CACHE || join(currentMemoryDir(), "cache", "peer-titles.json");
 
 /** `Dept_BIZ_Claude_6-10-2026` · `Dept_FA-6-10-2026` · `SasinFlow_Claude_FixApp_10-5-2026` → the LAST d-m-yyyy date. */
 export function titleDate(title: string | null): number | null {
@@ -290,6 +292,20 @@ function lastTitle(file: string, cache: TitleCache): string | null {
     cwd: hit?.cwd,
   };
   return title;
+}
+
+/** The current title of ONE session transcript (the hook asks for its own session) — cached, read incrementally. */
+export function titleOfTranscript(file: string): string | null {
+  if (!existsSync(file)) return null;
+  const cache = readCache();
+  const t = lastTitle(file, cache);
+  try {
+    mkdirSync(dirname(cacheFile()), { recursive: true });
+    writeFileSync(cacheFile(), JSON.stringify(cache));
+  } catch {
+    // speed only
+  }
+  return t;
 }
 
 function alive(pid: number): boolean {

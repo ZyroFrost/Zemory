@@ -46,7 +46,8 @@ test("3 `ui.ts` passes the ledger path down to the window (both as an argument a
   assert.match(UI, /\[script, url, appIcon\(\), windowPidFile\(\)\]/u, "đối số thứ 4 = đường sổ");
   assert.match(UI, /ZEMORY_WINDOW_PID: windowPidFile\(\)/u, "và env cho đường lui");
   // Vế CŨ vẫn phải còn: daemon đóng cửa sổ trước khi mở cái mới (hai lớp, không bỏ lớp nào).
-  assert.match(UI, /function openWindow\(url: string\): void \{\s*\n\s*closePrevWindow\(\);/u);
+  // 3.7.5: openWindow takes its CAUSE (`why`) and logs it first; it still closes the previous window before anything else.
+  assert.match(UI, /function openWindow\(url: string, why = "\?"\): void \{[\s\S]{0,400}?\n\s*closePrevWindow\(\);/u);
 });
 
 test("4 the ledger is written AFTER the window is up, not before", () => {

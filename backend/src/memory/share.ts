@@ -74,6 +74,11 @@ export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
    */
   sinceMessageId?: number;
   /**
+   * This machine's identity for the "ship only what I originated" rule of a DELTA (see `buildRowsSnapshot`). Defaults to
+   * `os.hostname()` — the value ingest writes into `sessions.host`. Tests and the channel pass their own.
+   */
+  ownHost?: string;
+  /**
    * GÓI BÙ VECTOR: id tin CŨ cần chở vector dù tin không nằm trong gói. Dùng cho
    * `memory vectors-catchup` — bù phần kho chung còn thiếu bằng cách NỐI THÊM một khối nhỏ,
    * KHÔNG ghi đè kho chung (HP điều 16). Gói khi đó có thể 0 tin mà vẫn có ích.
@@ -228,7 +233,7 @@ interface RowsStats {
  */
 function buildRowsSnapshot(
   sourcePath: string,
-  opts: { excludeLanes?: ScopeLane[]; since?: number; until?: number; attachments?: boolean },
+  opts: { excludeLanes?: ScopeLane[]; since?: number; until?: number; attachments?: boolean; ownHost?: string },
 ): { path: string; cleanup: () => void; stats: RowsStats } {
   const dir = mkdtempSync(join(tmpdir(), "zemory-memory-rows-"));
   const out = join(dir, "global_memory.rows.db");
@@ -257,8 +262,25 @@ function buildRowsSnapshot(
       // sau đi CÙNG vector của nó (HP điều 16). Số nội suy thẳng vì nó là `number` đã ép kiểu —
       // cùng nếp `vecship.ts`, không rải chuỗi ngoài vào SQL.
       const untilSql = opts.until !== undefined ? ` AND id <= ${Number(opts.until)}` : "";
+      // 🔴 A DELTA SHIPS ONLY WHAT THIS MACHINE ORIGINATED (user ruling 2026-10-07: *"1 máy gửi, máy kia đồng ý thì ngưng…
+      // lỡ mà nối 3-4 máy vào group nó sẽ loop lên kinh khủng"*). Measured that day: 29 of 377 deltas this machine exported
+      // re-shipped 2,242 messages that had come FROM the other machine — a merge gives them fresh local ids, so `id > since`
+      // picks them up again. With two machines that is waste; with three it is an echo: A→B, B→C, C→A… forever. A session's
+      // `host` is the machine that INGESTED it, so "mine" = `host` is this machine; `NULL`/`'unknown'` (pre-v4 rows) count
+      // as mine. Baselines (since = 0) are a REPLACEMENT of the container and stay whole.
+      let own = since > 0 ? (opts.ownHost ?? (hostname() || "unknown")) : null;
+      // A store holding NO session ingested under this machine's name (a store copied from elsewhere, a test fixture)
+      // cannot tell its own rows from merged ones ⇒ no filter, the old behaviour. An explicit `ownHost` always filters.
+      if (own !== null && opts.ownHost === undefined) {
+        const has = db.prepare("SELECT 1 FROM src.sessions WHERE host = ? LIMIT 1").get(own);
+        if (!has) own = null;
+      }
+      const ownSql = own !== null ? ` AND (host = ? OR host IS NULL OR host = 'unknown')` : "";
+      const ownParams = own !== null ? [own] : [];
       const deltaSessions =
-        since > 0 ? ` AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?${untilSql})` : "";
+        since > 0 ? ` AND id IN (SELECT DISTINCT session_id FROM src.messages WHERE id > ?${untilSql})${ownSql}` : "";
+      const ownMessages =
+        own !== null ? ` AND session_id IN (SELECT id FROM src.sessions WHERE (host = ? OR host IS NULL OR host = 'unknown'))` : "";
 
       const stats: RowsStats = { sessions: 0, messages: 0, since, maxMessageId: 0, attachments: 0 };
       db.transaction(() => {
@@ -269,14 +291,14 @@ function buildRowsSnapshot(
         db.exec("INSERT INTO main.schema_version SELECT * FROM src.schema_version");
         db.prepare(
           `INSERT INTO main.sessions SELECT * FROM src.sessions WHERE 1=1${deltaSessions}${notExcluded("id")}`,
-        ).run(...(since > 0 ? [since] : []), ...excl.params);
+        ).run(...(since > 0 ? [since, ...ownParams] : []), ...excl.params);
         // `id` is local AUTOINCREMENT — omitted so it never travels (merge keys on
         // UNIQUE(session_id, uuid) / content identity, never on id).
         db.prepare(
           `INSERT INTO main.messages (session_id, uuid, role, content, tool_name, timestamp)
              SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages
-             WHERE id > ?${untilSql}${notExcluded("session_id")}`,
-        ).run(since, ...excl.params);
+             WHERE id > ?${untilSql}${ownMessages}${notExcluded("session_id")}`,
+        ).run(since, ...ownParams, ...excl.params);
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
         // L3: chỉ chở khi máy này BẬT công tắc. Bám đúng tập message vừa chở (delta +
         // scope exclude) — chở đính kèm của tin không có trong bundle là chở rác.
@@ -290,8 +312,8 @@ function buildRowsSnapshot(
                FROM src.attachment_link al
                JOIN src.attachment a ON a.id = al.attachment_id
                JOIN src.messages m   ON m.id = al.message_id
-              WHERE m.id > ?${untilSql.replace(/ AND id /, " AND m.id ")}${notExcluded("m.session_id")}`,
-          ).run(since, ...excl.params);
+              WHERE m.id > ?${untilSql.replace(/ AND id /, " AND m.id ")}${ownMessages.replace("AND session_id", "AND m.session_id")}${notExcluded("m.session_id")}`,
+          ).run(since, ...ownParams, ...excl.params);
           stats.attachments = (
             db.prepare("SELECT COUNT(*) c FROM main.attachment_ship").get() as { c: number }
           ).c;
@@ -344,6 +366,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
           excludeLanes: opts.excludeLanes,
           since: opts.sinceMessageId,
           until,
+          ownHost: opts.ownHost,
           attachments: getSyncAttachments(),
         })
       : await snapshotSqlite(sourcePath);

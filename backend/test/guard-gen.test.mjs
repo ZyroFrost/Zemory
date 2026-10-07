@@ -145,7 +145,9 @@ test("precommit-guard: a secret in staging exits 1 naming it; clean staging exit
 test("regeneration: our own files are refreshed when they drift, files without our mark are left alone (N1)", (t) => {
   const root = repo(t);
   const r1 = generateGuards(root);
-  assert.equal(r1.added.length, 4);
+  // 3.7.5: + the runtime wiring (`.claude/settings.json`) — the guard is the standard, generated AND wired.
+  assert.equal(r1.added.length, 5, r1.added.join(", "));
+  assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   // Chạy lại y nguyên ⇒ không có gì mới.
   const r2 = generateGuards(root);
   assert.equal(r2.added.length, 0, `chạy lại phải im: ${r2.added.join(", ")}`);

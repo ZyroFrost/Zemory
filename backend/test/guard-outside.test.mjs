@@ -243,6 +243,29 @@ test("④ FLAG: `.allow-outside` opens ONE remote job; a different one is revoke
   assert.ok(sh(r, `ssh vm1 "${UNSCHED} -TaskName Z"`), "việc khác mượn cờ ⇒ chặn");
 });
 
+// ── ⑤ lệnh zemory GHI nhắm sang repo khác (2026-10-07, rà luật) ───────────────────────
+
+test("⑤ a WRITING zemory command aimed at another repo (`--root` · `cd`) is blocked; read-only and in-repo pass", (t) => {
+  const r = repo(t);
+  const other = WIN ? "D:/zemory-other-repo-probe" : "/opt/zemory-other-repo-probe";
+  const blocked = [
+    `zemory sync --standard --root ${other} --apply`,
+    `zemory memory scan --root "${other}"`,
+    `cd ${other} && zemory init`,
+    `Set-Location ${other}; zemory hook guard`,
+  ].filter((c) => !sh(r, c, "PowerShell"));
+  assert.deepEqual(blocked, [], "lọt: " + blocked.join(" | "));
+  const wrong = [
+    `zemory doctor`,
+    `zemory sync --check --root ${other}`,
+    `zemory peers --all --check`,
+    `zemory paths check --root ${other}`,
+    `zemory sync --standard --apply`,
+    `cd ${join(r.root, "docs").replace(/\\/g, "/")} && zemory reindex`,
+  ].filter((c) => sh(r, c, "PowerShell"));
+  assert.deepEqual(wrong, [], "chặn nhầm: " + wrong.join(" | "));
+});
+
 // ── CA ÂM: phải cho qua ────────────────────────────────────────────────────────────
 
 test("NEGATIVE: writes inside the repo pass (relative and absolute)", (t) => {

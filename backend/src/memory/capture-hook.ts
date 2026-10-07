@@ -23,6 +23,7 @@ import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
+import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -68,6 +69,45 @@ function warnedFlagPath(sessionId: string): string {
  * Lấy hook làm mốc thì mỗi lần bấm nhầm lại mở một chu kỳ giả; lấy dấu vết thì huỷ là như
  * chưa từng bấm.
  */
+/**
+ * Class-C rule reminders for UserPromptSubmit (rule audit 2026-10-07). A machine cannot judge these rules, only remind
+ * at the right moment; each kind fires at most ONCE per session (flag file), so the hook adds 0 characters otherwise.
+ *   · session title (02 §Phạm vi project): only when the session HAS a title and it breaks `<Repo>_<Model>_<d-m-yyyy>` —
+ *     an untitled new session is normal and gets nothing.
+ *   · closing a session (02 §Chốt phiên): the prompt says "chốt phiên / note lại / ghi sổ …" ⇒ the session-close steps.
+ *   · auditing the ledger (02 §Hành xử): the prompt asks "còn gì / soát sổ / check todo …" ⇒ measure all three sources.
+ */
+export function ruleReminders(payload: any): string {
+  const sidRaw = String(payload?.session_id ?? payload?.transcript_path ?? "");
+  if (!sidRaw) return "";
+  const once = (kind: string): boolean => {
+    const flag = join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.${kind}`);
+    if (existsSync(flag)) return false;
+    mkdirSync(dirname(flag), { recursive: true });
+    writeFileAtomic(flag, new Date().toISOString());
+    return true;
+  };
+  const out: string[] = [];
+  const prompt = String(payload?.prompt ?? "");
+  const cwd = String(payload?.cwd ?? "");
+  const transcript = String(payload?.transcript_path ?? payload?.transcriptPath ?? "");
+  if (transcript && cwd) {
+    const title = titleOfTranscript(transcript);
+    const repo = cwd.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    const problem = title ? titleProblem(title, repo, null) : null;
+    if (problem && once("title")) {
+      out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (02_RULES §Phạm vi project).`);
+    }
+  }
+  if (/(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)/i.test(prompt) && once("close")) {
+    out.push("[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`.");
+  }
+  if (/(còn gì|còn việc|soát sổ|check todo|check hết todo|việc gì còn)/i.test(prompt) && once("audit")) {
+    out.push("[zemory] Auditing the ledger = re-measure each item from ALL three sources: the code · Global Memory (`zemory memory search --all`, filter the USER's words) · a real run. Older than 7 days = suspect.");
+  }
+  return out.join("\n");
+}
+
 function alreadyWarned(sessionId: string, transcriptPath?: string): boolean {
   const p = warnedFlagPath(sessionId);
   if (!existsSync(p)) return false;
@@ -262,6 +302,14 @@ export function handleHook(event: HookEventName, payload: any): string {
         }
       } catch {
         /* fail-open — lời nhắc không bao giờ được chặn prompt */
+      }
+      // RULE REMINDERS (rule audit 2026-10-07, class C — rules a machine can only REMIND of). Each fires AT MOST ONCE per
+      // session (a flag per kind), so this hook stays quiet: 0 characters on every other prompt.
+      try {
+        const extra = ruleReminders(payload);
+        if (extra) updNote = updNote ? `${updNote}\n${extra}` : extra;
+      } catch {
+        /* fail-open */
       }
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
       if (!path) return updNote;
