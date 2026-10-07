@@ -121,6 +121,19 @@ test("NEGATIVE: looking is never blocked — Read, git status, memory search, a 
   assert.equal(s.check(s.sh("curl -s http://127.0.0.1:4444/ping")), null, "a plain GET only looks");
 });
 
+test("NEGATIVE: reading Global Memory and finding sessions is never blocked, in every common spelling (user 2026-10-08)", (t) => {
+  // "đọc zemory và dò là lệnh để nó trỏ lên GM… ko nên cấm" — a session that read NOTHING must still reach these.
+  const s = setup(t);
+  for (const c of ["zemory peers 2>&1 | Select-Object -First 20", "zemory memory search x --all --limit 8 2>&1 | Select-Object -First 40",
+    "zemory memory context", "zemory memory conflicts", "zemory graph impact backend/src/ui.ts", "zemory graph neighbors x",
+    "zemory.cmd peers", "npx zemory peers"]) {
+    assert.equal(s.check(s.sh(c)), null, c);
+  }
+  assert.match(s.check(s.sh("zemory hook guard")), /NOT READ IN FULL/, "a zemory command that WRITES still acts");
+  assert.match(s.check(s.sh("zemory memory search x > out.txt")), /NOT READ IN FULL/, "a redirect into a file still writes");
+  assert.match(s.check(s.sh("zemory peers 2>&1; npm run check")), /NOT READ IN FULL/, "2>&1 no longer splits, but a real second command still counts");
+});
+
 test("NEGATIVE: git's GLOBAL options do not turn a look into an act — git -C <dir> status (Dept_FA 2026-10-08)", (t) => {
   const s = setup(t);
   for (const c of ['git -C "D:\\w\\Dept_FA" status --short', "git -c core.pager=cat log -3", "git --no-pager diff --stat", "git --git-dir=.git --work-tree=. status",

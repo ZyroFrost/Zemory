@@ -14,7 +14,10 @@ const LOOK = new Set(["ls", "dir", "pwd", "cd", "echo", "cat", "type", "head", "
   "get-ciminstance", "write-output", "write-host", "get-filehash", "get-acl", "get-command", "get-location", "set-location",
   "start-sleep", "out-null", "get-member", "invoke-webrequest", "irm", "iwr", "curl"]);
 const GIT_LOOK = /^(status|log|diff|show|rev-parse|ls-files|fetch|branch|remote|rev-list|blame|grep|ls-remote|describe|shortlog|cat-file|check-ignore)$/;
-const ZEMORY_LOOK = [/^memory (search|show|digest|info|stats|scan|status|channel status)\b/, /^(peers|gates|validate|doctor|help|--version|-v)\b/,
+// Reading Global Memory and finding sessions IS how an agent learns what the docs do not say — never blocked (user 2026-10-08:
+// "đọc zemory và dò là lệnh để nó trỏ lên GM… ko nên cấm lệnh dò session và đọc GM").
+const ZEMORY_LOOK = [/^memory (search|show|digest|info|stats|scan|status|context|conflicts|audit|verify|channel status|key (show|path))\b/,
+  /^(peers|gates|validate|doctor|help|--version|-v)\b/, /^graph (impact|neighbors|path|docs|fitness)\b/,
   /^paths check\b/, /^sync --check\b/, /^plan (search|ls|show)\b/, /^changelog search\b/];
 
 function segments(cmd) {
@@ -24,6 +27,9 @@ function segments(cmd) {
     const c = cmd[i];
     if (q) { cur += c; if (c === q && cmd[i - 1] !== "\\") q = null; continue; }
     if (c === '"' || c === "'") { q = c; cur += c; continue; }
+    // "2>&1" / "&>" are redirects, not command separators — splitting there made "1" a command (blocked every
+    // "zemory memory search x 2>&1 | ..."; reported 2026-10-08).
+    if (c === "&" && (cmd[i - 1] === ">" || cmd[i + 1] === ">")) { cur += c; continue; }
     if (c === ";" || c === "\n" || c === "&" || c === "|") { out.push(cur); cur = ""; continue; }
     cur += c;
   }
@@ -47,8 +53,9 @@ function shellActs(cmd) {
     // A request that SENDS data acts (a mail API, a webhook): curl -X POST / -d · Invoke-WebRequest -Method Post / -Body.
     if (/^(curl|invoke-webrequest|iwr|irm|invoke-restmethod)\b/i.test(seg.trim()) && /\s(-X\s*(POST|PUT|PATCH|DELETE)|-d\b|--data|-F\b|-Method\s+(Post|Put|Patch|Delete)|-Body\b|-InFile\b)/i.test(seg)) return true;
     const w = words(seg);
+    if (w.length > 1 && /^npx$/i.test(w[0])) w.shift(); // "npx zemory peers"
     if (!w.length) continue;
-    const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.exe$/, "");
+    const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.(exe|cmd|ps1)$/, "");
     if (LOOK.has(name)) continue;
     if (name === "git") {
       // Skip git's GLOBAL options before the subcommand: "git -C <dir> status" is a look (Dept_FA 2026-10-08).
