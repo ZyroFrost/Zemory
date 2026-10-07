@@ -356,7 +356,7 @@ function versionClash() {
     const mine = JSON.parse(fs.readFileSync(pkgPath, "utf8")).version;
     if (!mine) return null;
     const { execFileSync } = require("node:child_process");
-    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
+    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { windowsHide: true, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
     const up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}");
     if (!up) return null;
     let theirs = null;

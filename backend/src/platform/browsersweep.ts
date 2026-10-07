@@ -83,7 +83,7 @@ Get-CimInstance Win32_Process -Filter "Name='msedge.exe' or Name='chrome.exe' or
       })
       .filter((p) => Number.isInteger(p.pid) && p.pid > 0);
   }
-  const out = execFileSync("ps", ["-eo", "pid=,etimes=,args="], { encoding: "utf8", timeout: 20_000 });
+  const out = execFileSync("ps", ["-eo", "pid=,etimes=,args="], { windowsHide: true, encoding: "utf8", timeout: 20_000 });
   return out
     .split("\n")
     .map((l) => l.trim())

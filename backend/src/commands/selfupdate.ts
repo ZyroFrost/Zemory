@@ -26,7 +26,7 @@ function toolRoot(): string {
 
 function run(cmd: string, args: string[], cwd: string, shell = false): { ok: boolean; out: string } {
   try {
-    const out = execFileSync(cmd, args, { cwd, encoding: "utf8", stdio: "pipe", shell, timeout: 15 * 60_000 });
+    const out = execFileSync(cmd, args, { windowsHide: true, cwd, encoding: "utf8", stdio: "pipe", shell, timeout: 15 * 60_000 });
     return { ok: true, out: String(out).trim() };
   } catch (e) {
     const err = e as { stdout?: unknown; stderr?: unknown; message?: string };

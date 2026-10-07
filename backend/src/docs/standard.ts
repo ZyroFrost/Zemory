@@ -103,7 +103,7 @@ function historyOfRel(rel: string): Rev[] {
   const out: Rev[] = [];
   if (self) {
     try {
-      const raw = execFileSync("git", ["log", "--follow", "--name-only", "--format=@@%H %ad", "--date=short", "--", rel], {
+      const raw = execFileSync("git", ["log", "--follow", "--name-only", "--format=@@%H %ad", "--date=short", "--", rel], { windowsHide: true,
         cwd: self,
         encoding: "utf8",
         maxBuffer: 64 << 20,
@@ -129,7 +129,7 @@ function revText(rev: Rev): string | null {
   const self = selfRepoRoot();
   if (self) {
     try {
-      t = execFileSync("git", ["show", key], { cwd: self, encoding: "utf8", maxBuffer: 8 << 20 });
+      t = execFileSync("git", ["show", key], { windowsHide: true, cwd: self, encoding: "utf8", maxBuffer: 8 << 20 });
     } catch {
       t = null;
     }

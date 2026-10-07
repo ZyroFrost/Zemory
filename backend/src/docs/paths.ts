@@ -341,7 +341,7 @@ function gitIgnored(root: string, rels: string[]): Set<string> {
   const list = [...new Set(rels.filter(Boolean))];
   if (!list.length) return out;
   try {
-    const r = execFileSync("git", ["check-ignore", "--stdin", "-z", "--no-index"], {
+    const r = execFileSync("git", ["check-ignore", "--stdin", "-z", "--no-index"], { windowsHide: true,
       cwd: root, input: list.join("\0") + "\0", encoding: "utf8", maxBuffer: 16 << 20, stdio: ["pipe", "pipe", "ignore"],
     });
     for (const p of r.split("\0")) if (p) out.add(posix(p).toLowerCase());
@@ -359,7 +359,7 @@ function gitIgnored(root: string, rels: string[]): Set<string> {
  */
 function gitDeletedEver(root: string): Set<string> {
   try {
-    const r = execFileSync("git", ["log", "--no-renames", "--diff-filter=D", "--name-only", "--pretty=format:"], {
+    const r = execFileSync("git", ["log", "--no-renames", "--diff-filter=D", "--name-only", "--pretty=format:"], { windowsHide: true,
       cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"],
     });
     return new Set(r.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => posix(l).toLowerCase()));
@@ -371,7 +371,7 @@ function gitDeletedEver(root: string): Set<string> {
 // ── file set ──────────────────────────────────────────────────────────────────
 function tracked(root: string): string[] | null {
   try {
-    const out = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] });
+    const out = execFileSync("git", ["ls-files", "-z"], { windowsHide: true, cwd: root, encoding: "utf8", maxBuffer: 64 << 20, stdio: ["ignore", "pipe", "ignore"] });
     return out.split("\0").filter(Boolean).map((f) => join(root, f));
   } catch {
     return null; // not a git repo (test fixtures, plain folders) → walk instead

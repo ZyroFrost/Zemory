@@ -54,7 +54,7 @@ export interface TodoFinding {
 /** Giây epoch của lần commit cuối chạm `file`; 0 = không tra được (chưa commit / không có git). */
 function lastCommitTime(root: string, file: string): number {
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", file], {
+    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", file], { windowsHide: true,
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -75,7 +75,7 @@ function blameLineTimes(root: string, file: string): Map<number, number> {
   const out = new Map<number, number>();
   let text: string;
   try {
-    text = execFileSync("git", ["blame", "--line-porcelain", "--", file], {
+    text = execFileSync("git", ["blame", "--line-porcelain", "--", file], { windowsHide: true,
       cwd: root,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,

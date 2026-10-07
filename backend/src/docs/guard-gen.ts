@@ -477,7 +477,7 @@ function versionClash() {
     const mine = JSON.parse(fs.readFileSync(pkgPath, "utf8")).version;
     if (!mine) return null;
     const { execFileSync } = require("node:child_process");
-    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
+    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { windowsHide: true, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
     const up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}");
     if (!up) return null;
     let theirs = null;
@@ -1015,7 +1015,7 @@ const POLICY = JSON.parse(fs.readFileSync(path.join(__dirname, "policy.json"), "
 function globToRe(pat) {
   return new RegExp("^" + pat.replace(/[.+^$(){}|[\\]\\\\]/g, "\\\\$&").replace(/\\*/g, ".*").replace(/\\?/g, ".") + "$", "i");
 }
-const staged = cp.execSync("git diff --cached --name-only", { encoding: "utf8" }).split(/\\r?\\n/).filter(Boolean);
+const staged = cp.execSync("git diff --cached --name-only", { encoding: "utf8", windowsHide: true }).split(/\\r?\\n/).filter(Boolean);
 const bad = [];
 for (const f of staged) {
   const name = f.replace(/\\\\/g, "/").split("/").pop() || "";
