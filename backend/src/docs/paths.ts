@@ -60,6 +60,13 @@ export type UnresolvedReason =
   | "var-joined"
   /** the line only TESTS for the file (`if exist` · `Test-Path` · `[ -f ]`) — written for when it is absent */
   | "existence-test"
+  /** the TOP folder is not this repo's — not on disk and never in its git history (SharePoint library · another machine ·
+   *  inside a .pbix · a bare host name). Nothing here can say whether it lives; a top folder the repo once had is still judged */
+  | "foreign-top"
+  /** a regex, not a path: an escaped dot or alternation (`webhook_fabi\.py` · `archive/\|attic/`) */
+  | "regex"
+  /** named only to say NOT to use it (`KHÔNG tách \`docs/dictionary.md\``) */
+  | "negated"
   | "io-error";
 
 export interface PathsReport {
@@ -216,6 +223,9 @@ interface Judge {
   names?: Set<string>;
   /** the scan's own `exclude` list — pointers INTO those dirs are not judged either (see `excluded-target`) */
   exclude?: string[];
+  /** did this repo ever have this lower-cased top-level name in git (deleted files included)? Absent ⇒ not a git repo, the
+   *  rule is off (no history = no vocabulary). Lazy: one `git log` per repo, only when a candidate needs it. See `foreign-top` */
+  everTop?: (lowerTop: string) => boolean;
 }
 
 type Verdict = { kind: "ok" } | { kind: "dead"; rels?: string[] } | { kind: "unresolved"; reason: UnresolvedReason };
@@ -263,6 +273,11 @@ export function classify(
   // `origin/master..HEAD` is a git RANGE, not a file: two dots INSIDE a segment (not the `..` parent segment).
   // Found by the first real sweep (DuAnA 05_TODO, 2026-09-09) — `.HEAD` looked like an extension.
   if (/[^.\\/]\.\.[^.\\/]/.test(s)) return { kind: "unresolved", reason: "not-a-path" };
+  // A regex, not a path: escaped dot before an extension, or an escaped alternation (DW 2026-10-07: `webhook_fabi\.py` in
+  // deploy scripts, `docs/agent/archive/\|attic/` in a grep pattern).
+  if (/\\\|/.test(s) || /^[\w-]+\\{1,2}\.[A-Za-z0-9]{1,8}$/.test(s)) return { kind: "unresolved", reason: "regex" };
+  // `%~dp0` = the folder of the .cmd file itself — resolve it and judge for REAL (DW `bin/*.cmd`, 2026-10-07).
+  if (/^%~dp0/i.test(s)) s = join(dirname(file), s.slice(5));
   // `%APPDATA%`, `$HOME`, `${var}` are environment placeholders, not folders (plan/20 names the MSIX path that way).
   if (/[<>{}…*?]/.test(s) || /%[^%\\/]+%/.test(s) || /\$[A-Za-z_{]/.test(s) || /(^|[\\/])N{1,2}([\\/_]|$)/.test(s)) return { kind: "unresolved", reason: "placeholder" };
   if (/^[A-Za-z]:\\[nrt0abfv](?![\\/])/.test(s) && s.split(/[\\/]/).length < 3) return { kind: "unresolved", reason: "escape" };
@@ -323,6 +338,17 @@ export function classify(
     // `frontend/zzz/` (one segment not a name) is still dead. Explicit `./` pointers are never exempt.
     // Runs AFTER the "/"-as-"or" rule: `backend/docs/` (both real root entries) keeps its more specific reason.
     if (!explicit && judge.names && segs.every((g) => judge.names!.has(g))) return { kind: "unresolved", reason: "slot-name" };
+    // The TOP folder is not this repo's: not on disk (from the file or the root) and never in its git history. SharePoint
+    // libraries (`Data-Lake/OPS/…`), another machine (`Project\Company\`), the inside of a .pbix (`RegisteredResources/…`)
+    // — measured 2026-10-07: ~80 of `_DB_DataWarehouse`'s 111 "dead". POSITIVE: the repo's own history is the vocabulary,
+    // so a top folder that was deleted or renamed (`pipelines/` → gone) is still judged, which is the rot this check is for.
+    // A STANDARD slot name (`config/` · `backend/`) is the repo's vocabulary too, even before the folder exists — a pointer into
+    // it is still judged (gate `paths-evidence`: `config/dw_load.example.env` must stay dead).
+    const top = (segs[0] ?? "").toLowerCase();
+    const isSlot = !!judge.names && (judge.names.has(segs[0]) || judge.names.has(top));
+    if (!explicit && judge.everTop && top && !isSlot && !existsSync(join(judge.root, segs[0])) && !existsSync(join(dirname(file), segs[0])) && !judge.everTop(top)) {
+      return { kind: "unresolved", reason: "foreign-top" };
+    }
     // Neither resolved: judged as dead only if the resolution stays under a present root.
     abs = under(fromFile, judge.root) ? fromFile : fromRoot;
     relReadings = [fromFile, fromRoot].filter((p) => under(p, judge.root)).map((p) => posix(relative(judge.root, p)));
@@ -334,6 +360,13 @@ export function classify(
   if (!declaredHit) return { kind: "unresolved", reason: "outside-roots" };
   if (!judge.roots.present.includes(declaredHit)) return { kind: "unresolved", reason: "root-absent" };
   if (existsSync(abs)) return { kind: "ok" };
+  // Named only to say NOT to use it — an uppercase KHÔNG / NOT / NEVER right before the string (DW README:13). Last of the
+  // abstentions on purpose: a more specific reason (`backend/docs/` = "or") wins, and only a would-be DEAD string is spared.
+  if (opts.line) {
+    const at = opts.line.indexOf(c.text);
+    const before = at > 0 ? opts.line.slice(Math.max(0, at - 24), at) : "";
+    if (/(^|[^A-Za-zÀ-ỹ])(KHÔNG|NOT|NEVER)([^A-Za-zÀ-ỹ]|$)/.test(before)) return { kind: "unresolved", reason: "negated" };
+  }
   // Hai cách đọc một đường tương đối (theo file · theo gốc) đều hợp lệ trong docs — bằng chứng git và
   // check-ignore phải được hỏi CẢ HAI, không thì `backend/src/x.ts` viết trong `docs/plan/` bị hỏi thành
   // `docs/plan/backend/src/x.ts` và git trả "chưa từng có" (probe 2026-09-17 bắt đúng lỗi này).
@@ -487,6 +520,7 @@ export function pathsCheck(ctx: Context): PathsReport {
   const present = declared.filter((r) => existsSync(r));
   const absent = declared.filter((r) => !existsSync(r));
   const exclude = cfg.exclude ?? DEFAULT_EXCLUDE;
+  const dictDirs = (cfg.dictionary ?? []).map((d) => posix(d).replace(/^\.\//, "").replace(/\/+$/, "")).filter(Boolean);
   const maxBytes = (cfg.maxFileKB ?? DEFAULT_MAX_KB) * 1024;
 
   // File set = tracked files of the repo (or a walk when there is no git) ∪ a walk of every other
@@ -525,7 +559,11 @@ export function pathsCheck(ctx: Context): PathsReport {
     ok: true,
   };
   const sorted = [...files].sort();
-  const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))), names: standardNames(root), exclude };
+  let tops: Set<string> | null = null;
+  const everTop = existsSync(join(root, ".git"))
+    ? (t: string): boolean => (tops ??= new Set([...gitDeletedEver(root)].map((p) => p.split("/")[0]))).has(t)
+    : undefined;
+  const judge: Judge = { root, roots: { declared, present }, files: sorted.map((f) => posix(relative(root, f))), names: standardNames(root), exclude, everTop };
   report.files = judge.files;
   const alive = new Set<string>();
 
@@ -549,7 +587,8 @@ export function pathsCheck(ctx: Context): PathsReport {
     }
     report.scanned.files++;
     const histFile = isHistoryFile(rel);
-    const dictionary = isDictionaryFile(rel);
+    // + folders the REPO declares as a standard written for other repos (`pathCheck.dictionary`) — declared, never guessed.
+    const dictionary = isDictionaryFile(rel) || dictDirs.some((d) => rel === d || rel.startsWith(d + "/"));
     // Markdown link targets under docs/ are validate.ts §1's job already — do not report them twice.
     const linkTargets = !(/\.md$/i.test(abs) && /(^|\/)docs\//.test("/" + rel));
     const lines = text.split("\n");

@@ -63,7 +63,9 @@ export interface HarnessConfig {
   /** plan/21 — dead-path check. `roots` = the only places a path is JUDGED under (positive filter;
    *  everything else is listed as "unresolved", never "dead"). Absent ⇒ roots = [project root].
    *  Named `pathCheck`, not `paths`: `paths` above is ADAPT v2's harness-location table. */
-  pathCheck?: { roots?: string[]; exclude?: string[]; maxFileKB?: number };
+  /** `dictionary`: repo-relative folders whose files are a standard written FOR OTHER repos (their relative paths name
+   *  places in those repos) — e.g. `content/standard/` in a data-warehouse repo that ships the department standard. */
+  pathCheck?: { roots?: string[]; exclude?: string[]; maxFileKB?: number; dictionary?: string[] };
 }
 
 /** Shared context handed to every module call. */
