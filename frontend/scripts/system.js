@@ -291,26 +291,27 @@
     // swallowing it made "Kiểm lại cổng" look finished when the check never ran.
     }).catch(function(e){if(fresh)throw e;});
   }
-  // One line per open gap, built from the structured fields through i18n — the backend's `lines` are English CLI text.
-  function gateLines(g){
-    var out=[];
-    if(g.wiring===null)out.push(t('gates.noGuard'));
-    else if(g.wiring&&g.wiring.length)out.push(t('gates.matcher').replace('{t}',g.wiring.join(' · ')));
-    if(g.precommit==='none')out.push(t('gates.noPrecommit'));
-    if(g.precommit==='other')out.push(t('gates.ownPrecommit'));
-    if(g.hp&&!g.hp.table)out.push(t('gates.noTable').replace('{n}',g.hp.articles));
-    else if(g.hp&&g.hp.missing.length)out.push(t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles));
-    if(g.top&&g.top.length)out.push(t('gates.top'));
-    return out;
+  // One checklist row per repo, four checks (user 2026-10-07: "kiểm dạng check list từng repo"). A ✗ cell says in a
+  // word what is missing; the full sentence (gateLines) is its tooltip. Repos with gaps first.
+  function gateCells(g){
+    var ok=function(txt){return {ok:true,txt:txt||'✓'};},no=function(txt,tip){return {ok:false,txt:'✗ '+txt,tip:tip};},na={na:true,txt:'—'};
+    var guard=g.wiring===null?no(t('gates.cellNo'),t('gates.noGuard')):(g.wiring&&g.wiring.length?no(t('gates.cellTools').replace('{n}',g.wiring.length),t('gates.matcher').replace('{t}',g.wiring.join(' · '))):ok());
+    var pre=g.precommit==='guard'?ok():g.precommit==='no-git'?na:g.precommit==='none'?no(t('gates.cellNo'),t('gates.noPrecommit')):no(t('gates.cellOwn'),t('gates.ownPrecommit'));
+    var hp=!g.hp?na:!g.hp.table?no(t('gates.cellNoTable'),t('gates.noTable').replace('{n}',g.hp.articles)):
+      g.hp.missing.length?no((g.hp.articles-g.hp.missing.length)+'/'+g.hp.articles,t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles)):ok('✓ '+g.hp.articles+'/'+g.hp.articles);
+    var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
+    return [guard,pre,hp,top];
   }
   function gatesDialog(){
     function draw(note){
-      var bad=(GATES||[]).filter(function(g){return g.gaps>0;});
-      var body=bad.length?bad.map(function(g,i){
-        return '<div style="padding:8px 0;'+(i?'border-top:1px solid var(--border)':'')+'"><b>'+stdEsc(g.name)+'</b>'+
-          gateLines(g).map(function(l){return '<div class="muted" style="font-size:12px;margin-top:2px;word-break:break-word">· '+stdEsc(l)+'</div>';}).join('')+'</div>';
+      var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
+      var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
+      var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
+        '</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span></div>';
+      var body=rows.length?head+rows.map(function(g){
+        return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
-      zDialog({iconHtml:ZICON.gates,size:'md',title:t('gates.title'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
+      zDialog({iconHtml:ZICON.gates,size:'md',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
         okLabel:t('gates.recheck'),onOk:function(){
           var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
           refreshRepoGates(true).then(function(r){draw(checkedNote(r));})
