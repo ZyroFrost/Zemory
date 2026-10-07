@@ -5,6 +5,10 @@
 // ⇒ a 2.6 GB BASELINE, although the channel root already carried the same store since 2026-09-17 and
 // the `p2p:<host>` watermark was valid. `global-memory/channel/` reached 6.7 GB = one store twice.
 //
+//
+// 2026-10-07 (plan/24 §4): the write target is the channel ROOT again (one container + write queue).
+// The mirror-image trap: a machine whose root is empty but whose legacy pen holds the store must NOT
+// export a baseline into the root — that is the same 2.6 GB a third time.
 // `channelEmptyForBaseline` is the one decision; each case below is a way it can go wrong.
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -22,46 +26,37 @@ function channelTree(t) {
   return { base, root, pen };
 }
 
-test("empty pen + segments at the channel ROOT ⇒ NOT empty (the 2026-09-21 case: delta, not baseline)", (t) => {
+test("empty root + a legacy pen holding segments ⇒ NOT empty (no baseline on top of the same store)", (t) => {
   const { root, pen } = channelTree(t);
-  writeFileSync(join(root, "global_memory.enc"), "x");
-  assert.equal(channelEmptyForBaseline(pen, 0, "p2p"), false);
+  writeFileSync(join(pen, "global_memory.enc"), "x");
+  assert.equal(channelEmptyForBaseline(root, 0, "p2p"), false);
 });
 
-test("empty pen + segments in ANOTHER machine's pen ⇒ NOT empty", (t) => {
-  const { root, pen } = channelTree(t);
+test("empty root + segments in ANOTHER machine's legacy pen ⇒ NOT empty", (t) => {
+  const { root } = channelTree(t);
   mkdirSync(join(root, "SGEKJ2R3A6KS0000"));
   writeFileSync(join(root, "SGEKJ2R3A6KS0000", "global_memory.002.enc"), "x");
-  assert.equal(channelEmptyForBaseline(pen, 0, "p2p"), false);
+  assert.equal(channelEmptyForBaseline(root, 0, "p2p"), false);
 });
 
 test("whole channel truly empty ⇒ empty (first use: a baseline is RIGHT here)", (t) => {
-  const { root, pen } = channelTree(t);
-  mkdirSync(join(root, "SGEKJ2R3A6KS0000")); // another pen exists but holds nothing
-  assert.equal(channelEmptyForBaseline(pen, 0, "p2p"), true);
+  const { root } = channelTree(t);
+  mkdirSync(join(root, "SGEKJ2R3A6KS0000")); // pens exist but hold nothing
+  assert.equal(channelEmptyForBaseline(root, 0, "p2p"), true);
 });
 
-test("own pen already has segments ⇒ NOT empty, whatever the root holds", (t) => {
-  const { pen } = channelTree(t);
-  assert.equal(channelEmptyForBaseline(pen, 3, "p2p"), false);
+test("root already has segments ⇒ NOT empty", (t) => {
+  const { root } = channelTree(t);
+  assert.equal(channelEmptyForBaseline(root, 3, "p2p"), false);
 });
 
-test("Drive keeps its old meaning: nothing in THIS dir ⇒ empty, even with a sibling folder full", (t) => {
+test("Drive keeps its old meaning: nothing in THIS dir ⇒ empty, sub-folders are not pens there", (t) => {
   const { base } = channelTree(t);
   const drive = join(base, "drive");
-  mkdirSync(drive);
-  mkdirSync(join(base, "other"));
-  writeFileSync(join(base, "other", "global_memory.enc"), "x");
+  mkdirSync(join(drive, "other"), { recursive: true });
+  writeFileSync(join(drive, "other", "global_memory.enc"), "x");
   assert.equal(channelEmptyForBaseline(drive, 0, "drive"), true);
   assert.equal(channelEmptyForBaseline(drive, 0, undefined), true);
-});
-
-test("a p2p dir that is NOT inside channel/ is treated like any dir (no guessing about parents)", (t) => {
-  const { base } = channelTree(t);
-  const loose = join(base, "loose");
-  mkdirSync(loose);
-  writeFileSync(join(base, "global_memory.enc"), "x"); // parent has a segment, but parent is not `channel`
-  assert.equal(channelEmptyForBaseline(loose, 0, "p2p"), true);
 });
 
 test("the push path decides `since` through this function, not through the pen alone", async () => {

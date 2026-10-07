@@ -200,10 +200,10 @@ test("⑪ HP 10: the capture path imports no embedding/model module and makes no
   assert.ok(seen.size > 3, "the walk must actually follow imports");
 });
 
-// HP 16: ONE store, every machine appends to it. The per-machine pen (`channelPen`) is the deviation being retired
-// (user 2026-10-07) — its call sites may only SHRINK, and reach 0 when the channel is merged back into one sequence.
-test("⑫ HP 16: channelPen call sites do not grow (target 0 — one shared segment sequence + write queue)", () => {
-  ratchet(countBy(/\bchannelPen\(/g), { "memory/channel/index.ts": 5, "commands/memory.ts": 1 }, "per-machine pen writes");
+// HP 16: ONE store, every writer appends to it through one queue. The per-machine pen (`channelPen`) was the
+// deviation (user 2026-10-07); it reached 0 on 2026-10-07 — the ratchet now holds it at 0.
+test("⑫ HP 16: no per-machine pen writes — one shared segment sequence + write queue", () => {
+  ratchet(countBy(/\bchannelPen\(/g), {}, "per-machine pen writes");
 });
 
 test("⑬ every constitution article has a row in 02_RULES `## Cổng cho hiến pháp`", async () => {

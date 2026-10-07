@@ -726,7 +726,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelPen, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer, mirrorHooks } =
+    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer, mirrorHooks } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
@@ -955,7 +955,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         return;
       }
       const session = {
-        channelDir: channelPen(),
+        channelDir: channelDir(),
         identity: channelIdentity(),
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
