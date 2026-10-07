@@ -35,6 +35,31 @@
     "*.key"
   ],
   "key_read_reason": "the contents of a key file must never be read, returned or logged; the key PATH is only a path",
+  "read_first": {
+    "required": [
+      "docs/agent/01_CONSTITUTION.md",
+      "docs/agent/02_RULES.md",
+      "docs/agent/05_TODO.md",
+      "docs/agent/06_CHANGES.md",
+      "docs/plan/*.md"
+    ],
+    "case_root": "tasks",
+    "case_files": [
+      "spec.md",
+      "mail_form.md"
+    ],
+    "triggers": [
+      {
+        "when": "new_dir",
+        "read": "docs/agent/03_STRUCTURE.md"
+      },
+      {
+        "when": "cmd_re",
+        "re": "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b",
+        "read": ".claude/skills/write-style/SKILL.md"
+      }
+    ]
+  },
   "allowed_roots": [],
   "allowed_sql_servers": [],
   "outside_reason": "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",

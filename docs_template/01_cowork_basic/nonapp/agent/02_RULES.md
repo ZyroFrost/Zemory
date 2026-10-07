@@ -166,6 +166,9 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - Commit cục bộ (đảo được) thì thoải mái theo phong cách repo; **push mới là cửa cần phép**.
 - KHÔNG `--force`, KHÔNG rewrite lịch sử đã push, KHÔNG `reset --hard`/`clean` lên việc chưa commit của user nếu chưa hỏi.
 
+## Đọc trước khi ghi (BẮT BUỘC — có chốt máy)
+- **ĐỌC HẾT TRƯỚC KHI GHI — có chốt máy** (2026-10-08): `read-first.cjs` (guard gọi) chặn mọi thao tác GHI (Write/Edit · lệnh shell có ghi) khi trong phiên này agent CHƯA đọc trọn các file khai ở `policy.json › read_first.required` — mặc định `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES` · `docs/plan/*.md` — bằng công cụ Read tới dòng cuối. Đọc dở, đọc bằng `grep`/`head`/`Get-Content`, hay file bị sửa NGOÀI Edit/Write (kể cả script của chính agent) sau lần đọc đều KHÔNG tính. Đòi thêm theo việc: ghi vào `tasks/<case>/` ⇒ `spec.md` · `mail_form.md` của case đó · tạo thư mục mới ⇒ `03_STRUCTURE` · đụng `frontend/` (bộ APP) ⇒ skill `app-design` · chạy script gửi mail ⇒ skill `write-style`. Context bị nén ⇒ phải đọc lại. **Không có cờ vượt.** Khai thêm file bắt đọc: khoá marker `readFirst: ["..."]`. Giới hạn: host không ghi transcript ⇒ chốt cho qua (fail-open); phần "đòi theo việc" chỉ phủ chỗ máy đoán tất định được — luật chữ vẫn là tầng quyết định.
+
 ## Cổng cho hiến pháp (BẮT BUỘC — luật cứng)
 
 > User chốt 2026-10-07: *"tụi agent quên luật quá nhiều rồi, phải có hook chặn hết hạn chế quên"*. Mỗi điều trong `01_CONSTITUTION`
@@ -184,4 +187,4 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 |---|---|---|---|
 | _ | _(mỗi điều của `01_CONSTITUTION` một dòng — agent repo tự điền và dựng hook)_ | _ | _ |
 
-<!-- zemory-standard: 2026-10-07 -->
+<!-- zemory-standard: 2026-10-08 -->
