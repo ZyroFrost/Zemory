@@ -44,11 +44,11 @@ test("⑤ a CHECKLIST: every repo is a row with its four checks, not only the re
   const body = fn("gatesDialog");
   assert.match(body, /var rows=\(GATES\|\|\[\]\)\.slice\(\)\.sort\(/, "all repos, gaps first");
   assert.doesNotMatch(body, /filter\(function\(g\)\{return g\.gaps>0;\}\);\s*var body/, "listing only the bad repos = the old list");
-  assert.match(fn("gateCells"), /return \[guard,pre,hp,top\];/, "four checks per repo");
+  assert.match(fn("gateCells"), /return \[guard,pre,hp,top,rf\];/, "five checks per repo (read-before-write added 2026-10-08)");
 });
 
 test("③ gap lines go through i18n in BOTH dictionaries, never the backend's English `lines`", () => {
   assert.doesNotMatch(fn("gatesDialog"), /g\.lines/, "rendering g.lines puts English CLI text in the UI");
-  const keys = ["gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top"];
+  const keys = ["gates.colRf", "gates.noReadFirst", "gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top"];
   for (const k of keys) assert.equal(CHROME.split(`'${k}':`).length - 1, 2, `${k} must exist in the VI and the EN dictionary`);
 });

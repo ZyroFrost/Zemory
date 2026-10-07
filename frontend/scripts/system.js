@@ -300,14 +300,15 @@
     var hp=!g.hp?na:!g.hp.table?no(t('gates.cellNoTable'),t('gates.noTable').replace('{n}',g.hp.articles)):
       g.hp.missing.length?no((g.hp.articles-g.hp.missing.length)+'/'+g.hp.articles,t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles)):ok('✓ '+g.hp.articles+'/'+g.hp.articles);
     var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
-    return [guard,pre,hp,top];
+    var rf=g.readFirst===false?no(t('gates.cellNo'),t('gates.noReadFirst')):ok();
+    return [guard,pre,hp,top,rf];
   }
   function gatesDialog(){
     function draw(note){
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
-        '</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span></div>';
+        '</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';

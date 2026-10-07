@@ -135,7 +135,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .dlg-b{padding:12px 20px 18px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0}
 .dlg-f{flex:0 0 auto;padding:10px 20px 14px;border-top:1px solid var(--border)}
 /* Repo-gates checklist: one row per repo, four check columns. */
-.gchk{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(4,minmax(0,1fr));gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border)}
+.gchk{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(0,1fr));gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border)}
 .gchk.h{border-top:0;color:var(--text-faint);font-size:11px;padding-top:0}
 .gchk>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gchk .ok{color:var(--success)}.gchk .no{color:var(--warn)}.gchk .na{color:var(--text-faint)}

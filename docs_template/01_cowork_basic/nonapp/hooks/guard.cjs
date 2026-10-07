@@ -875,6 +875,11 @@ function main() {
   } else if (isCommandTool) {
     checkBash(String(ti.command));
   }
+  // READ BEFORE WRITE (read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
+  // A failure of the latch itself lets the action through: a broken guard must not block blindly.
+  let rfMsg = null;
+  try { rfMsg = require(path.join(HERE, "read-first.cjs")).readFirst(payload, ROOT, POLICY); } catch { rfMsg = null; }
+  if (rfMsg) deny(rfMsg);
   process.exit(0);
 }
 main();

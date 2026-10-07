@@ -22,15 +22,26 @@ function repo(t, { git = true } = {}) {
   return root;
 }
 
-test("a repo that carries nothing wired has two gaps, each named with its fix", (t) => {
+test("a repo that carries nothing wired has three gaps, each named with its fix", (t) => {
   const root = repo(t);
   const g = repoGates(root, "R");
   assert.equal(g.wiring, null);
   assert.equal(g.precommit, "none");
-  assert.equal(g.gaps, 2);
+  assert.equal(g.readFirst, false);
+  assert.equal(g.gaps, 3);
   const lines = repoGateLines(g).join("\n");
   assert.match(lines, /guard not wired/);
   assert.match(lines, /pre-commit not wired/);
+  assert.match(lines, /read-before-write latch not in place/);
+});
+
+test("an OLD guard.cjs that never calls read-first.cjs is a gap even when the file sits next to it", (t) => {
+  const root = repo(t, { git: false });
+  generateGuards(root);
+  assert.equal(repoGates(root, "R").readFirst, true, "premise: hook guard puts the latch in place");
+  const guard = join(root, "docs", "hooks", "guard.cjs");
+  writeFileSync(guard, readFileSync(guard, "utf8").replaceAll("read-first.cjs", "x.cjs"));
+  assert.equal(repoGates(root, "R").readFirst, false);
 });
 
 test("`hook guard` wires the guard AND the pre-commit — afterwards no gap is left", (t) => {

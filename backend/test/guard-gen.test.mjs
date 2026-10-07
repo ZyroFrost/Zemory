@@ -146,8 +146,10 @@ test("regeneration: our own files are refreshed when they drift, files without o
   const root = repo(t);
   const r1 = generateGuards(root);
   // 3.7.5: + the runtime wiring (`.claude/settings.json`) — the guard is the standard, generated AND wired.
-  assert.equal(r1.added.length, 5, r1.added.join(", "));
+  // 3.8.0: + read-first.cjs (read-before-write latch, called by guard.cjs).
+  assert.equal(r1.added.length, 6, r1.added.join(", "));
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
+  assert.ok(r1.added.includes("read-first.cjs"));
   // Chạy lại y nguyên ⇒ không có gì mới.
   const r2 = generateGuards(root);
   assert.equal(r2.added.length, 0, `chạy lại phải im: ${r2.added.join(", ")}`);

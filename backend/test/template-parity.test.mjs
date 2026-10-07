@@ -56,6 +56,15 @@ test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, an
   );
 });
 
+test("the cowork set carries EXACTLY the generated read-first.cjs, and its policy declares read_first", () => {
+  // guard.cjs calls read-first.cjs; a stale copy next to a fresh guard enforces yesterday's rules (2026-10-08).
+  const gen = readFileSync(new URL("../../docs/hooks/read-first.cjs", import.meta.url), "utf8");
+  const shipped = readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/read-first.cjs", import.meta.url), "utf8");
+  assert.equal(shipped.replace(/\r\n/g, "\n"), gen.replace(/\r\n/g, "\n"), "cowork read-first.cjs drifted — copy docs/hooks/read-first.cjs again");
+  const pol = JSON.parse(readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"));
+  assert.ok(Array.isArray(pol.read_first?.required) && pol.read_first.required.length > 0, "without read_first.required the latch never fires");
+});
+
 // #12 (user approved 2026-08-21, done 2026-08-24): the cowork policy.json gets a CONTENT gate.
 // guard.cjs already has the BYTE gate above; policy.json only had its LINES counted in the manifest —
 // and on the afternoon of 20/08 it was edited BY HAND with no gate noticing (the same shape as the guard.cjs incident on 11/08).
