@@ -123,6 +123,19 @@ test("④c plans must stay small: a spec over the cap and a folder over the tota
   assert.match(out.join("\n"), /docs\/plan is 25 lines \(> 20\)/);
 });
 
+test("④d no machine-generated block inside docs/plan; NEGATIVE: prose saying 'máy sinh' and fenced examples pass (2026-10-08)", async (t) => {
+  const { planAutogenHits } = await import("../../dist/docs/validate.js");
+  const { tempDir } = await import("./helpers.mjs");
+  const { writeFileSync } = await import("node:fs");
+  const d = tempDir(t, "zemory-autogen-");
+  writeFileSync(join(d, "00_overview.md"), ["# Overview", "<!-- AUTOGEN:PLAN_INDEX start -->", "| 01 | x |", "<!-- AUTOGEN:PLAN_INDEX end -->"].join("\n"));
+  writeFileSync(join(d, "06_lineage.md"), ["# Lineage", "## Bảng tra — SINH TỰ ĐỘNG", "> MÁY SINH từ build.py — ĐỪNG SỬA TAY"].join("\n"));
+  writeFileSync(join(d, "24_p2p.md"), ["# p2p", "Hai máy sinh khối cùng lúc ⇒ hội tụ theo tập khối.", "```", "<!-- AUTOGEN:example -->", "```", "<!-- GENERATED · NGUỒN = file .md này -->"].join("\n"));
+  writeFileSync(join(d, "11_catalog.md"), ["# Catalog", "<!-- AUTOGEN start -->", "AUTOGEN: column index (build_plan.py)"].join("\n"));
+  assert.deepEqual(planAutogenHits(d), ["00_overview.md:2", "00_overview.md:4", "06_lineage.md:2", "06_lineage.md:3", "11_catalog.md:2", "11_catalog.md:3"]);
+  assert.deepEqual(planAutogenHits(join(ROOT, "docs", "plan")), [], "this repo's plans carry no generated block");
+});
+
 test("④ supersede clauses must name an existing entry key", () => {
   const log = ["## [2026-10-07b] — a", "> 🔄 **Supersede:** 2026-10-07b — ok", "## [2026-10-06] — b", "> 🔄 **Supersede:** thay [2026-09-01x] — gone", "> 🔄 **Supersede** the old way of doing it", "```", "> 🔄 **Supersede:** inside a fence", "```"].join("\n");
   assert.deepEqual(danglingSupersedes([log]), ["2026-09-01x", "no key"]);

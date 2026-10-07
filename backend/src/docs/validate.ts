@@ -70,7 +70,15 @@ export function validate(ctx: Context): ValidateReport {
   // 1b'. Plans must stay SMALL (user 2026-10-08, from _DB_DataWarehouse: 12.800 plan lines — an agent read them all, the
   // context compacted, re-reading did not fit). The read-everything rule stays; the plans shrink. WARN, not error, while repos
   // trim (user chose "áp từng bước"): a spec over the cap, or the whole plan folder over the total.
-  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 300, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
+  const autogen = planAutogenHits(join(agentDir, "..", "plan"));
+  if (autogen.length) {
+    issues.push({
+      level: "error",
+      msg: `plan: ${autogen.length} machine-generated block marker(s) in docs/plan — a plan is text a person writes; write generated tables next to their source and link them: ${autogen.slice(0, 4).join(" · ")}`,
+    });
+  }
+  // Spec cap 500 (user 2026-10-08: "nâng trần 500 luôn đi cho chẳn" — the trimmed specs sat at 330–410 without losing ideas).
+  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 500, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
     issues.push({ level: "warn", msg });
   }
 
@@ -445,6 +453,25 @@ export function planOpenItems(planDir: string): string[] {
     readFileSync(join(planDir, name), "utf8").split("\n").forEach((l, i) => {
       if (/^\s*```/.test(l)) fence = !fence;
       else if (!fence && /^\s*[-*]\s*\[[ ~]\]/.test(l)) out.push(`${name}:${i + 1}`);
+    });
+  }
+  return out;
+}
+
+/**
+ * Machine-generated blocks inside docs/plan (user 2026-10-08, from _DB_DataWarehouse: "plan đúng là phải full text… plan là bàn
+ * và chốt thiết kế mà"). A plan is text a PERSON writes; a generator writes next to its own source and the plan links to it.
+ * Matches the MARKERS of a generated block only — plain prose ("hai máy sinh khối") never matches; fenced code is skipped.
+ */
+const AUTOGEN_MARKERS = [/<!--\s*AUTOGEN/i, /\bAUTOGEN:/, /^#{1,6}\s.*SINH TỰ ĐỘNG/u, /MÁY SINH.{0,60}ĐỪNG SỬA TAY/u];
+export function planAutogenHits(planDir: string): string[] {
+  const out: string[] = [];
+  if (!existsSync(planDir)) return out;
+  for (const name of readdirSync(planDir).filter((n) => n.endsWith(".md")).sort()) {
+    let fence = false;
+    readFileSync(join(planDir, name), "utf8").split("\n").forEach((l, i) => {
+      if (/^\s*```/.test(l)) fence = !fence;
+      else if (!fence && AUTOGEN_MARKERS.some((re) => re.test(l))) out.push(`${name}:${i + 1}`);
     });
   }
   return out;
