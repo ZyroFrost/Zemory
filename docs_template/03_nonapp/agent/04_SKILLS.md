@@ -31,6 +31,7 @@
 | `read-office/` | đọc `.xlsx .xls .docx .pptx .pdf` rẻ nhất có thể |
 | `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
 | `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
+| `plan-trim/` | gọt plan vượt trần mà KHÔNG mất ý — lùi bản gốc, nháp ngoài repo, soát độc lập so với bản gốc + code |
 | `case/` | mở · đóng · mở lại một case trong `tasks/<case>/` (1 case = 1 folder) |
 | `pull/` | kéo dữ liệu từ nguồn (SQL · VM · web · API) về `data/extract/` |
 | `fill/` | điền số vào template → xuất deliverable |

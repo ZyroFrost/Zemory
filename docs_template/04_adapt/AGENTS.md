@@ -66,6 +66,7 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
 | cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
 | cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
+| `zemory validate` báo plan vượt trần · "gọt plan" / "dọn plan" | `.claude/skills/plan-trim/SKILL.md` |
 
 > ⚠ Skill `reconcile` (nắn repo về chuẩn) **KHÔNG dùng ở hệ này** — nó nắn repo, đúng thứ hệ
 > ADAPT cấm. Cần chỉnh thì chỉnh **bảng ánh xạ**, không chỉnh repo.

@@ -32,6 +32,7 @@
 | `write-docx/` | sửa/tạo `.docx` mà không phá bảng · ảnh · mục lục · style |
 | `app-design/` | chuẩn thiết kế APP — FE (bề mặt) + BE (tiến trình); RÀNG BUỘC, `02_RULES` chỉ trỏ sang |
 | `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
+| `plan-trim/` | gọt plan vượt trần mà KHÔNG mất ý — lùi bản gốc, nháp ngoài repo, soát độc lập so với bản gốc + code |
 
 ## 3. Skill NGOÀI — vendor, KHÔNG chép nội dung
 
