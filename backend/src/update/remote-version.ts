@@ -134,7 +134,7 @@ export function versionFromPackageJson(text: string): string {
  */
 function git(args: string[], cwd: string, timeoutMs: number): { ok: boolean; out: string } {
   try {
-    const out = execFileSync("git", args, {
+    const out = execFileSync("git", args, { windowsHide: true,
       cwd,
       encoding: "utf8",
       stdio: "pipe",

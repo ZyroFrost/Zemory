@@ -1549,7 +1549,7 @@ function closePrevWindow(): void {
     } else {
       // POSIX: verify the process name still matches before signalling.
       try {
-        const comm = execFileSync("ps", ["-o", "comm=", "-p", String(pid)], { encoding: "utf8" }).trim();
+        const comm = execFileSync("ps", ["-o", "comm=", "-p", String(pid)], { windowsHide: true, encoding: "utf8" }).trim();
         if (!image || comm.includes(image.replace(/\.exe$/i, ""))) process.kill(pid);
       } catch {
         /* already gone / ps unavailable */
@@ -3100,7 +3100,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
       const run = (cmd: string, args: string[]): { ok: boolean; out: string } => {
         try {
-          return { ok: true, out: String(execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: "pipe", timeout: 15 * 60_000 })).trim() };
+          return { ok: true, out: String(execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: "pipe", timeout: 15 * 60_000, windowsHide: true })).trim() };
         } catch (e) {
           const err = e as { stdout?: string; stderr?: string; message?: string };
           return { ok: false, out: (String(err.stdout ?? "") + String(err.stderr ?? "")).trim() || (err.message ?? "failed") };

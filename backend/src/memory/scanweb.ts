@@ -1665,7 +1665,7 @@ async function closeBrowserTree(pid: number, log: (msg: string) => void): Promis
       }
       // Chrome đẻ một cây tiến trình con (renderer/gpu/utility) — giết mỗi tiến trình cha
       // để lại cả đàn con mồ côi. `/T` mới dọn hết.
-      execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { timeout: 30_000 }, (err) => {
+      execFile("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, timeout: 30_000 }, (err) => {
         if (err) reject(err);
         else resolve();
       });

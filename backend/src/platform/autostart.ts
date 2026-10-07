@@ -74,7 +74,7 @@ export function relaunchBranded(args: string[]): { exe: string; pid: number | un
   const argv = [cliEntry(), "ui", ...args];
   // Test hook: print what WOULD be started, start nothing.
   if (process.env.ZEMORY_RELAUNCH_DRYRUN === "1") return { exe: `${brandedExe} ${argv.join(" ")}`, pid: undefined };
-  const child = spawn(brandedExe, argv, {
+  const child = spawn(brandedExe, argv, { windowsHide: true,
     cwd: process.cwd(),
     detached: true,
     stdio: "ignore",
@@ -382,7 +382,7 @@ function desktopDir(): string {
     const out = execFileSync(
       "reg",
       ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders", "/v", "Desktop"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      { windowsHide: true, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     );
     const m = /Desktop\s+REG_(?:EXPAND_)?SZ\s+(.+)/.exec(out);
     const p = m ? expandWinEnv(m[1].trim()) : "";
@@ -450,7 +450,7 @@ function winWriteShortcut(lnkPath: string, vbs: string): void {
     "$s.Save()",
   ].join(" ");
   try {
-    execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: ["ignore", "ignore", "pipe"] });
+    execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
   } catch (error) {
     // stdio "ignore" used to swallow the REASON — a redirected Desktop reports
     // DirectoryNotFoundException, but all the UI ever saw was "Command failed".

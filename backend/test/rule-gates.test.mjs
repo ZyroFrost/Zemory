@@ -145,6 +145,34 @@ test("⑧ language: lang-scan finds 0 stripped-Vietnamese lines, 0 non-ASCII nam
   assert.deepEqual({ names: count("names"), idents: count("idents"), noDiacritic: count("noDiacritic") }, { names: 0, idents: 0, noDiacritic: 0 }, r.stdout.slice(-1500));
 });
 
+// app-design §B2 — a child of a windowless daemon opens its OWN console on Windows unless `windowsHide` is set.
+// Measured 2026-10-07: at daemon start, cmd/git.exe consoles flashed ~10×/s and stole focus from the user's chat
+// ("nó nhảy cmd git .exe liên tục"); 17 calls (git in paths/standard/todo-verify/remote-version, the relaunch spawn …)
+// lacked the option. Every REAL call (name directly followed by "(") must carry it.
+test("⑨ every child-process call in backend/src sets windowsHide (no console flashing over the user's screen)", () => {
+  const re = /(?<![.\w])(execFileSync|execFile|spawnSync|spawn|execSync)\(/g;
+  const missing = [];
+  for (const f of tsFiles(SRC)) {
+    const s = readFileSync(f, "utf8");
+    let m;
+    while ((m = re.exec(s))) {
+      if (/(function|import|\{)\s*$/.test(s.slice(Math.max(0, m.index - 12), m.index))) continue;
+      const lineStart = s.lastIndexOf("\n", m.index) + 1;
+      if (/^\s*(\/\/|\*)/.test(s.slice(lineStart, m.index))) continue; // a comment line
+      let depth = 0, end = -1, inStr = null;
+      for (let i = m.index + m[0].length - 1; i < s.length; i++) {
+        const c = s[i];
+        if (inStr) { if (c === "\\") { i++; continue; } if (c === inStr) inStr = null; continue; }
+        if (c === '"' || c === "'" || c === "`") { inStr = c; continue; }
+        if ("([{".includes(c)) depth++;
+        else if (")]}".includes(c)) { depth--; if (depth === 0) { end = i; break; } }
+      }
+      if (end > 0 && !/windowsHide/.test(s.slice(m.index, end + 1))) missing.push(`${rel(f)}:${s.slice(0, m.index).split("\n").length}`);
+    }
+  }
+  assert.deepEqual(missing, [], "add `windowsHide: true` to: " + missing.join(" · "));
+});
+
 test("⑥ `npm run check` runs validate", () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   assert.match(pkg.scripts.check, /npm run validate\b/);
