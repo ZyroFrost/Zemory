@@ -112,7 +112,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 54 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 34 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 190 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 193 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 39 |
 | 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 45 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
