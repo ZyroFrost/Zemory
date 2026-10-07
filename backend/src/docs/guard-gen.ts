@@ -1003,6 +1003,31 @@ process.exit(0);
  */
 export const GUARD_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell";
 
+/**
+ * Tools of `GUARD_MATCHER` that the repo's `.claude/settings.json` does NOT route through `guard.cjs` — or `null` when the
+ * guard is not wired at all. Pure: settings text in. Measured 2026-10-07 on zemory itself: the wiring said
+ * `Write|Edit|NotebookEdit|Read|Bash` — no `PowerShell`, no `MultiEdit` — so `git push` or a recursive delete through the
+ * PowerShell tool never reached the guard (the same hole recorded above on 2026-08-20). `guardDrift` compares only the
+ * generated FILES; the wiring lives in the host's settings, which `hook guard` deliberately does not write.
+ */
+export function guardMatcherGaps(settingsText: string | null): string[] | null {
+  if (!settingsText) return null;
+  let j: { hooks?: { PreToolUse?: { matcher?: string; hooks?: { command?: string; args?: unknown[] }[] }[] } };
+  try {
+    j = JSON.parse(settingsText.replace(new RegExp("^" + String.fromCharCode(0xfeff)), "")) as typeof j;
+  } catch {
+    return null;
+  }
+  // `command` alone, or `command` + `args` (Dept_OPS writes `"command": "node", "args": ["docs/hooks/guard.cjs"]`).
+  const runsGuard = (h: { command?: string; args?: unknown[] }): boolean =>
+    /(^|[\\/\s"'])guard\.cjs/.test([h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String).join(" "));
+  const groups = (j.hooks?.PreToolUse ?? []).filter((g) => (g.hooks ?? []).some(runsGuard));
+  if (!groups.length) return null;
+  const covered = new Set(groups.flatMap((g) => String(g.matcher ?? "").split("|").map((t) => t.trim())));
+  if (covered.has("*") || groups.some((g) => !g.matcher)) return []; // no matcher = every tool
+  return GUARD_MATCHER.split("|").filter((t) => !covered.has(t));
+}
+
 /** Doctor: file chốt ĐÃ SINH nhưng đã TRÔI khỏi bản `hook guard` sẽ sinh hôm nay.
  *
  *  Vì sao phải có máy nhắc (đề xuất từ 05_TODO, nóng lên sau NGÀY CÓ HAI vòng vá guard

@@ -1,7 +1,8 @@
 // `zemory init|sync|migrate|doctor|archive|validate|setup|structure|grill|reindex`
 // — the per-project docs harness lifecycle.
 import { homedir } from "node:os";
-import { existsSync, readSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
@@ -19,7 +20,7 @@ import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
-import { guardDrift } from "../docs/guard-gen.js";
+import { GUARD_MATCHER, guardDrift, guardMatcherGaps } from "../docs/guard-gen.js";
 import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } from "../platform/autostart.js";
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { backupStale } from "../memory/backup-rotate.js";
@@ -301,6 +302,21 @@ async function daemonLiveness(): Promise<DaemonLiveness> {
   }
 }
 
+/** `_scratch_*` / `.tmp_*` files left in the repo — untracked or git-ignored — as repo-relative paths. Fail-open. */
+export function scratchLeftovers(root: string | null | undefined): string[] {
+  if (!root) return [];
+  try {
+    const run = (...a: string[]): string[] =>
+      String(execFileSync("git", ["-C", root, "ls-files", "-o", ...a], { encoding: "utf8", windowsHide: true, maxBuffer: 64 * 1024 * 1024 }))
+        .split(/\r?\n/)
+        .filter(Boolean);
+    const all = [...run("--exclude-standard"), ...run("-i", "--exclude-standard")];
+    return [...new Set(all)].filter((p) => /(^|\/)(_scratch_|\.tmp_)[^/]*$/.test(p));
+  } catch {
+    return [];
+  }
+}
+
 export async function cmdDoctor(): Promise<void> {
   const s = await gatherStatus();
   if (!s.project.connected) {
@@ -315,6 +331,13 @@ export async function cmdDoctor(): Promise<void> {
   console.log(
     `  setup: ${s.setup.complete ? "✓ done" : `○ ${s.setup.detail} (first-time → \`zemory setup\`)`}`,
   );
+
+  // Leftover scratch files (02_RULES §Hành xử: `_scratch_*` / `.tmp_*` are deleted in the same turn; `.gitignore` HIDES,
+  // it does not CLEAN). Untracked AND ignored files both count — that is where 1.56 GB once sat unseen.
+  const junk = scratchLeftovers(s.project.root);
+  if (junk.length) {
+    console.log(`  scratch: ⚠ ${junk.length} leftover scratch file(s) — delete them (02_RULES §Hành xử): ${junk.slice(0, 5).join(" · ")}${junk.length > 5 ? " · …" : ""}`);
+  }
 
   // Install / launch: right name and logo everywhere, no leftover launchers (user 2026-10-07).
   const lf = launchFacts();
@@ -371,6 +394,19 @@ export async function cmdDoctor(): Promise<void> {
           console.log("      → run `zemory hook guard` again (the guard does not refresh itself; the matcher is kept)");
         } else {
           console.log(`  guard: ✓ ${relative(s.project.root, guardPath).replace(/\\/g, "/")} (runtime wiring: see \`zemory hook guard\`)`);
+        }
+        // The WIRING, not just the files: a tool missing from the matcher never reaches the guard at all (2026-10-07).
+        const settingsPath = join(s.project.root, ".claude", "settings.json");
+        const gaps = guardMatcherGaps(existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : null);
+        if (gaps === null) {
+          console.log("  guard wiring: ⚠ .claude/settings.json does not run guard.cjs — the guard exists but nothing calls it");
+          console.log(`      → PreToolUse matcher ${GUARD_MATCHER} → node ${relative(s.project.root, guardPath).replace(/\\/g, "/")}`);
+        } else if (gaps.length) {
+          console.log(`  guard wiring: ✗ the PreToolUse matcher skips ${gaps.join(" · ")} — those tools bypass every layer-① rule`);
+          console.log(`      → set the matcher to ${GUARD_MATCHER} in .claude/settings.json`);
+          process.exitCode = 1;
+        } else {
+          console.log("  guard wiring: ✓ every guarded tool goes through guard.cjs");
         }
       }
     } catch {
