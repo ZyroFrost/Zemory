@@ -220,11 +220,15 @@ async function main(): Promise<void> {
     }
   }
   win.loadUrl(url);
+  // stderr goes to `<logs>/window.log` (ui.ts openWindow): one line per life of a window, so a window that opens and
+  // closes in a loop leaves a trail instead of nothing (2026-10-07).
+  console.error(`${new Date().toISOString()} [zemory window] pid ${process.pid} opened ${url}`);
   // Ghi sổ SAU khi cửa sổ dựng được: hỏng trước đó thì `ui.ts` rơi về `msedge --app`, và một cái
   // sổ trỏ tới tiến trình vừa chết chỉ làm lượt mở sau đi giết nhầm.
   const pidFile = pidFilePath();
   if (pidFile) claimSingleWindow(pidFile);
   win.onClose(() => {
+    console.error(`${new Date().toISOString()} [zemory window] pid ${process.pid} closed by the window (user or OS)`);
     releaseWindow(pidFile);
     process.exit(0);
   });

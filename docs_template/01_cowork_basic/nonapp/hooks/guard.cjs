@@ -345,10 +345,40 @@ const hitsIn = (cmd, nameRe, re) => zonesFor(cmd, nameRe).some((z) => re.test(z)
 // scan, and once it scans, it scans THE WHOLE LINE.
 const anyCmdIs = (cmd, nameRe) => splitSegments(cmd).some((s) => nameRe.test(cmdWordOf(s)));
 
+// ── PUSH WITH A VERSION ALREADY ON UPSTREAM (added 2026-10-07, rule audit) ───────────────────
+// 02_RULES §Git: every push that carries CODE carries a NEW version. Measured 2026-09-24: three commits all declared
+// 3.5.0, so the other machine's `selfupdate` compared numbers, saw "same", and never pulled the fix. Docs-only pushes are
+// exempt (the rule says so). No flag: the fix is to bump the number, not to ask permission. Fail-open on any git error.
+function versionClash() {
+  try {
+    const pkgPath = path.join(ROOT, "package.json");
+    if (!fs.existsSync(pkgPath)) return null;
+    const mine = JSON.parse(fs.readFileSync(pkgPath, "utf8")).version;
+    if (!mine) return null;
+    const { execFileSync } = require("node:child_process");
+    const git = (...a) => String(execFileSync("git", ["-C", ROOT, ...a], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 })).trim();
+    const up = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}");
+    if (!up) return null;
+    let theirs = null;
+    try { theirs = JSON.parse(git("show", up + ":package.json")).version; } catch { return null; }
+    if (theirs !== mine) return null;
+    const touched = git("diff", "--name-only", up + "..HEAD").split(/\r?\n/).filter(Boolean);
+    const code = touched.filter((f) => !/^(docs\/|docs_visual\/|README|CHANGELOG|.*\.md$)/i.test(f));
+    return code.length ? { version: mine, upstream: up, files: code.length } : null;
+  } catch {
+    return null;
+  }
+}
+
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
   if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\n;|&]*" + PUSH_ARG))) {
+    const clash = versionClash();
+    if (clash) {
+      deny("BLOCKED (guard layer 1): `git push` carries code but package.json still says " + clash.version +
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (02_RULES Git: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+    }
     if (!consumeFlag("push", bare)) {
       deny("BLOCKED (guard layer 1): `git push` - push only when the user says so (02_RULES Git)." +
         "\nDid the user just say so? -> create the flag `" + POLICY.flags_dir + "/" + POLICY.flags.push + "` and run again (one use).");
@@ -710,6 +740,21 @@ function checkBash(cmd) {
     const dest = args[args.length - 1] || "";
     if (/^([^@\s:\/\\]+@)?[A-Za-z0-9][\w.-]+:/.test(dest)) {
       denyOutside("copying ONTO another machine (`" + dest + "`)", bare);
+    }
+  }
+
+  // ── OUTSIDE THE PROJECT 5: a WRITING `zemory` command aimed at ANOTHER repo (added 2026-10-07, rule audit) ──
+  // 02_RULES §Phạm vi project, "vế ngược": `zemory` writes by its target (`--root`, or the cwd after `cd`) — run against a
+  // repo you only came to READ, it writes into that repo and its DB. Read-only verbs (doctor · validate · conform · peers ·
+  // paths check · plan/changelog/memory search · `sync --check`) pass. Same `outside` flag as the branches above.
+  const ZEMORY_WRITE =
+    /\bzemory(\.cmd|\.ps1)?\s+(init|reindex|archive|migrate|hook\s+(guard|install|uninstall)|sync(?![^\n;|&]*--check)|memory\s+(scan|sync|import|embed|digest|relocate|forget|vectors-catchup|keygen))\b/i;
+  if (ZEMORY_WRITE.test(bare)) {
+    const rootArg = /--root\s+("[^"]+"|'[^']+'|[^\s;|&]+)/.exec(bare);
+    const cdArg = /(?:^|[;&|]\s*)(?:cd|Set-Location|sl|pushd)\s+(?:-Path\s+)?("[^"]+"|'[^']+'|[^\s;|&]+)/i.exec(bare);
+    const target = (rootArg && rootArg[1]) || (cdArg && cdArg[1]);
+    if (target && isOutside(target, false)) {
+      denyOutside("a zemory command that WRITES, aimed at another repo `" + target.replace(/^["']|["']$/g, "") + "` - it writes into that repo and its DB", bare);
     }
   }
 

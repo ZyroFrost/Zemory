@@ -339,6 +339,16 @@ export async function cmdDoctor(): Promise<void> {
     console.log(`  scratch: ⚠ ${junk.length} leftover scratch file(s) — delete them (02_RULES §Hành xử): ${junk.slice(0, 5).join(" · ")}${junk.length > 5 ? " · …" : ""}`);
   }
 
+  // HP 14: the ONE file Zemory may keep in home is `~/.zemory/location.json` (the pointer to the store). Anything else
+  // there is data that should live with the store — unless the store itself still sits in ~/.zemory (old default).
+  const homeDir = join(homedir(), ".zemory");
+  if (existsSync(homeDir) && resolve(currentMemoryDir()).toLowerCase() !== resolve(homeDir).toLowerCase()) {
+    const extra = readdirSync(homeDir).filter((n) => n !== "location.json");
+    if (extra.length) {
+      console.log(`  home: ⚠ ~/.zemory holds ${extra.length} item(s) besides location.json (HP 14 — they belong with the store): ${extra.slice(0, 5).join(" · ")}`);
+    }
+  }
+
   // Install / launch: right name and logo everywhere, no leftover launchers (user 2026-10-07).
   const lf = launchFacts();
   if (lf) {
@@ -399,11 +409,12 @@ export async function cmdDoctor(): Promise<void> {
         const settingsPath = join(s.project.root, ".claude", "settings.json");
         const gaps = guardMatcherGaps(existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : null);
         if (gaps === null) {
-          console.log("  guard wiring: ⚠ .claude/settings.json does not run guard.cjs — the guard exists but nothing calls it");
-          console.log(`      → PreToolUse matcher ${GUARD_MATCHER} → node ${relative(s.project.root, guardPath).replace(/\\/g, "/")}`);
+          console.log("  guard wiring: ✗ .claude/settings.json does not run guard.cjs — the guard exists but nothing calls it");
+          console.log("      → run `zemory hook guard` (it wires PreToolUse itself since 3.7.5)");
+          process.exitCode = 1;
         } else if (gaps.length) {
           console.log(`  guard wiring: ✗ the PreToolUse matcher skips ${gaps.join(" · ")} — those tools bypass every layer-① rule`);
-          console.log(`      → set the matcher to ${GUARD_MATCHER} in .claude/settings.json`);
+          console.log(`      → run \`zemory hook guard\` (widens the matcher to ${GUARD_MATCHER})`);
           process.exitCode = 1;
         } else {
           console.log("  guard wiring: ✓ every guarded tool goes through guard.cjs");

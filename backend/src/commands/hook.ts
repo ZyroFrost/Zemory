@@ -63,7 +63,7 @@ export async function cmdHook(args: string[]): Promise<void> {
         ? `  write-protected paths (marker \`protected\`): ${r.protectedWrite.join(" · ")}`
         : "  no write-protected paths declared — add a `protected: [\"...\"]` key to .harness.json and run again (secret patterns are still guarded).",
     );
-    console.log("  Wire into the runtime (the user reviews and adds it — the tool does not wire it for you):");
+    console.log("  Runtime wiring (Claude Code is wired by this command since 3.7.5 — the guard is the standard, not an option):");
     // Print the matcher TOO: the guard is only invoked for tools named in the matcher, so a missing name
     // is an open door — measured 2026-08-20: one repo declared a matcher without `PowerShell`, and every dangerous
     // command going through that tool never reached the guard. Say it out loud rather than leaving it to be guessed.

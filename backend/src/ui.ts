@@ -2,7 +2,7 @@
 // local data layer so new captured messages appear while the user keeps chatting.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { writeJsonAtomic } from "./util/fs-atomic.js";
 import { createServer } from "node:http";
 import { hostname, networkInterfaces, tmpdir } from "node:os";
@@ -1666,7 +1666,10 @@ function appIcon(): string {
  * icon (taskbar shows Z, not the browser); falls back to `msedge --app` if the
  * native helper can't start — no prebuilt binary / no WebView2 (HP điều 9).
  */
-function openWindow(url: string): void {
+function openWindow(url: string, why = "?"): void {
+  // Every open is logged with its CAUSE (boot · tray): a window popping over the user's screen several times a second
+  // at daemon restart (2026-10-07) left no trace — the helper's stderr went to "ignore" and nothing said who opened it.
+  daemonLog(`[window] open (${why})`);
   closePrevWindow();
   const script = nativeWindowScript();
   if (!existsSync(script)) {
@@ -1676,9 +1679,15 @@ function openWindow(url: string): void {
   // Đường SỔ đi kèm: cửa sổ tự ghi tên nó vào đó và tự đóng cửa sổ cũ còn ghi trong sổ (xem
   // `platform/window.ts` §MỘT APP = MỘT CỬA SỔ). Trước đây chỉ CHỖ NÀY ghi sổ, nên cửa sổ mở bằng
   // đường khác không được ghi ⇒ lượt mở sau không biết mà đóng, và người dùng thấy hai cửa sổ.
+  let errFd: number | "ignore" = "ignore";
+  try {
+    errFd = openSync(join(logsDir(), "window.log"), "a");
+  } catch {
+    /* no log file — the window still opens */
+  }
   const child = spawn(process.execPath, [script, url, appIcon(), windowPidFile()], {
     detached: true,
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", errFd],
     windowsHide: true,
     env: {
       ...process.env,
@@ -1696,6 +1705,7 @@ function openWindow(url: string): void {
   // The helper exits fast & non-zero when the native window can't be created; if it
   // survives the grace window, the window is up.
   const onExit = (code: number | null): void => {
+    daemonLog(`[window] helper pid ${child.pid ?? "?"} exited code ${code} within the 2.5 s grace`);
     clearTimeout(grace);
     if (code !== 0) fallback();
   };
@@ -2492,7 +2502,7 @@ async function probeZemoryUi(port: number): Promise<{ pid: number } | null | "bu
 export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   const showWindow = opts.window !== false;
   const autoOpen = (url: string): void => {
-    if (showWindow) openWindow(url);
+    if (showWindow) openWindow(url, "boot");
     else console.log(`zemory ui — --no-window: not opening a window (serve only) -> ${url}`);
   };
   // The daemon is a MACHINE-level service, not a cwd-bound command: Startup launches it with the
@@ -4289,7 +4299,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // (Windows keeps it until hover); then add ours. Ports DuAnA's startup sweep.
   sweepDeadTrayIcons();
   startTray(url, {
-    onOpen: () => openWindow(url),
+    onOpen: () => openWindow(url, "tray"),
     onQuit: () => shutdown("tray quit"),
   });
   // A hard daemon exit used to ORPHAN the embed/sync child (it kept writing the
