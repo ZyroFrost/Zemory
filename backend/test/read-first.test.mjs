@@ -172,6 +172,27 @@ test("a sender script is recognised by its CONTENT, one hop through a launcher; 
   assert.equal(globalCheck("$files=@('x.json','tasks/FA_Weekly/pipeline/03_send.py'); git add -- $files"), null, "a PowerShell array of paths is data, not a run");
 });
 
+test("a SUBAGENT's reads and edits count for the session — its hook gets the parent transcript (measured 2026-10-08)", (t) => {
+  // Four trimming subagents were blocked for good: their first edit read as "someone else changed it", re-reads never seen.
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4, Date.now() - 120_000);
+  s.check(s.sh("echo warm")); // writes the parent transcript
+  const tx = join(s.root, "..", "session.jsonl");
+  const sub = join(s.root, "..", "session", "subagents");
+  mkdirSync(sub, { recursive: true });
+  // the subagent edits plan/01_x.md (now 6 lines) and re-reads it — both only in ITS transcript
+  const at = new Date(Date.now() + 120_000);
+  utimesSync(join(s.root, "docs/plan/01_x.md"), at, at);
+  writeFileSync(join(sub, "agent-a1.jsonl"), [
+    { type: "user", timestamp: at.toISOString(), toolUseResult: { type: "update", filePath: join(s.root, "docs/plan/01_x.md") } },
+    { type: "user", timestamp: new Date(at.getTime() + 1000).toISOString(), toolUseResult: { type: "text", file: { filePath: join(s.root, "docs/plan/01_x.md"), startLine: 1, numLines: 6, totalLines: 6 } } },
+  ].map((e) => JSON.stringify(e)).join("\n") + "\n");
+  const RF = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], triggers: [] } };
+  assert.equal(RF.readFirst({ tool_name: "Edit", tool_input: { file_path: join(s.root, "docs/plan/01_x.md") }, transcript_path: tx }, s.root, policy), null);
+});
+
 test("NEGATIVE: writing OUTSIDE the repo (a scratchpad) is not this latch's business", (t) => {
   const s = setup(t);
   assert.equal(s.check({ tool_name: "Write", tool_input: { file_path: join(s.root, "..", "scratch", "x.mjs") } }), null);

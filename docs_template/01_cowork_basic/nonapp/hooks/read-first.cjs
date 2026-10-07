@@ -181,11 +181,23 @@ function expand(root, list) {
 
 // What the transcript says this session read and wrote. A context compaction does NOT void a read (user 2026-10-08: "t ko
 // nghĩ là nén xong bắt đọc lại… nó tự biết rồi") — the session keeps what it learned; a file changed since is still re-read.
+// A subagent's hook receives the PARENT transcript, while its own reads and edits land in
+// "<session>/subagents/agent-*.jsonl" (measured 2026-10-08: four trimming subagents were blocked for good — their first edit
+// looked like "someone else changed the file", and their re-reads were never seen). One session = parent + its subagents.
+function sessionFiles(transcript) {
+  const out = [transcript];
+  try {
+    const dir = path.join(path.dirname(transcript), path.basename(transcript).replace(/\.jsonl$/i, ""), "subagents");
+    for (const f of fs.readdirSync(dir)) if (/^agent-.*\.jsonl$/i.test(f)) out.push(path.join(dir, f));
+  } catch {}
+  return out;
+}
 function ledger(transcript) {
   const reads = new Map(), own = new Map(), events = new Map();
   const ev = (k, e) => { if (!events.has(k)) events.set(k, []); events.get(k).push(e); };
-  let text;
+  let text = "";
   try { text = fs.readFileSync(transcript, "utf8"); } catch { return null; }
+  for (const f of sessionFiles(transcript).slice(1)) { try { text += "\n" + fs.readFileSync(f, "utf8"); } catch {} }
   for (const line of text.split("\n")) {
     if (!line.includes("\"toolUseResult\"")) continue;
     let j; try { j = JSON.parse(line); } catch { continue; }
@@ -202,6 +214,7 @@ function ledger(transcript) {
       ev(norm(r.filePath), { kind: "own", ts });
     }
   }
+  for (const list of events.values()) list.sort((a, b) => a.ts - b.ts); // several files ⇒ restore time order
   return { reads, own, events };
 }
 
