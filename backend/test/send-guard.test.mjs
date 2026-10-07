@@ -160,6 +160,14 @@ test("CLI: `peers --all --check` covers CLOSED sessions; `--fix` plans, `--fix -
   assert.equal(run("--all", "--check").status, 0, "sau --apply ⇒ xanh (dòng custom-title CUỐI thắng)");
 });
 
+// User 2026-10-07: "chênh lệch thường 1-2 ngày là cao nhất" — up to 2 days is fine, 3+ is a wrong date.
+test("titleProblem: up to TWO days off the start is tolerated; three is flagged (ca thật 2-9 vs 7-9 ⇒ flagged)", () => {
+  const day = (d, m) => Date.UTC(2026, m - 1, d);
+  assert.equal(titleProblem("Dept_FA_Claude_5-9-2026", "Dept_FA", day(7, 9)), null, "lệch 2 ngày ⇒ chấp nhận");
+  assert.match(titleProblem("Dept_FA_Claude_4-9-2026", "Dept_FA", day(7, 9)) ?? "", /date ≠ start day/, "lệch 3 ngày ⇒ báo");
+  assert.match(titleProblem("Dept_FA_Claude_2-9-2026", "Dept_FA", day(7, 9)) ?? "", /date ≠ start day \(7-9-2026\)/, "ca thật: lệch 5 ngày");
+});
+
 test("titleProblem: day/month swap is caught; one day off the start is tolerated", () => {
   const day = (d, m) => Date.UTC(2026, m - 1, d);
   assert.match(titleProblem("SasinFlow_Claude_FixApp_10-5-2026", "SasinFlow", day(5, 10)) ?? "", /date ≠ start day \(5-10-2026\)/, "ca thật: đảo ngày-tháng");

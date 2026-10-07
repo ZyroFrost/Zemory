@@ -76,10 +76,19 @@ switch (cmd) {
   case "doctor":
     await cmdDoctor();
     break;
-  case "ui":
+  case "ui": {
+    // Started under node.exe (the npm shim) while dist/zemory.exe exists ⇒ hand over to it: Task Manager names and
+    // icons a process by its exe (2026-10-07: a hand-typed restart showed as "Node.js JavaScript Runtime").
+    const { relaunchBranded } = await import("./platform/autostart.js");
+    const handed = relaunchBranded(args);
+    if (handed) {
+      console.log(`zemory ui: started under ${handed.exe}${handed.pid ? ` (pid ${handed.pid})` : ""} — this node.exe exits.`);
+      break;
+    }
     // `--no-window`: dựng daemon + serve, không tự bật cửa sổ (smoke-test / restart bởi agent).
     await startUi({ window: !args.includes("--no-window") });
     break;
+  }
   case "archive":
     cmdArchive(args);
     break;

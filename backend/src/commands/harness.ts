@@ -20,7 +20,7 @@ import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, wr
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { guardDrift } from "../docs/guard-gen.js";
-import { desktopShortcutStatus, setDesktopShortcut } from "../platform/autostart.js";
+import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } from "../platform/autostart.js";
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { backupStale } from "../memory/backup-rotate.js";
 import { uiPort } from "../ui.js";
@@ -315,6 +315,19 @@ export async function cmdDoctor(): Promise<void> {
   console.log(
     `  setup: ${s.setup.complete ? "✓ done" : `○ ${s.setup.detail} (first-time → \`zemory setup\`)`}`,
   );
+
+  // Install / launch: right name and logo everywhere, no leftover launchers (user 2026-10-07).
+  const lf = launchFacts();
+  if (lf) {
+    const bad = judgeLaunch(lf);
+    if (bad.length) {
+      console.log(`  launch: ✗ ${bad.length} problem(s) with how Zemory is installed or started`);
+      for (const b of bad) console.log(`      ✗ ${b}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`  launch: ✓ daemon + launchers run as zemory.exe (name and logo), no leftover launcher files`);
+    }
+  }
 
   const missing = s.docs.filter((d) => !d.ok);
   console.log(`  docs: ${missing.length === 0 ? "✓ all present" : `✗ ${missing.length} missing (run \`zemory sync\`)`}`);

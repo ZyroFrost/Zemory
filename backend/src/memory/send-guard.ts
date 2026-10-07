@@ -79,16 +79,20 @@ export function standardTitle(title: string | null, repo: string): boolean {
   return Boolean(m && Number(m[1]) <= 31 && Number(m[2]) <= 12);
 }
 
+/** How far a title date may sit from the session's first timestamp (user 2026-10-07: a session started late one day runs
+ * into the next, or is titled one day back — "chênh lệch thường 1-2 ngày là cao nhất"). */
+export const MAX_TITLE_DRIFT_MS = 2 * 86_400_000;
+
 /**
- * Why a title breaks the rule, or null. The title date may sit ONE day off the start day (a session opened near
- * midnight, or titled the next morning — measured: `_DB_DataWarehouse_Claude_5-10-2026` whose first line is 6/10);
- * further off is a wrong date — measured: `SasinFlow_Claude_FixApp_10-5-2026` started 5/10, i.e. day and month swapped.
+ * Why a title breaks the rule, or null. The title date may sit up to TWO days off the start day (`MAX_TITLE_DRIFT_MS`
+ * — measured: `_DB_DataWarehouse_Claude_5-10-2026` whose first line is 6/10); further off is a wrong date — measured:
+ * `SasinFlow_Claude_FixApp_10-5-2026` started 5/10 (day and month swapped), `Dept_FA_Claude_2-9-2026` started 7/9.
  */
 export function titleProblem(title: string | null, repo: string, startDay: number | null): string | null {
   if (!title) return null; // untitled = unused — a different case, reported as such
   if (!standardTitle(title, repo)) return `not ${repo}_<Model>_<d-m-yyyy>`;
   const t = titleDate(title);
-  if (t !== null && startDay !== null && Math.abs(t - startDay) > 86_400_000) {
+  if (t !== null && startDay !== null && Math.abs(t - startDay) > MAX_TITLE_DRIFT_MS) {
     const d = new Date(startDay);
     return `date ≠ start day (${d.getUTCDate()}-${d.getUTCMonth() + 1}-${d.getUTCFullYear()})`;
   }
@@ -149,7 +153,7 @@ export function suggestTitle(title: string | null, repo: string, startDay: numbe
   let m = Number(last[2]);
   const y = Number(last[3]);
   if (startDay !== null) {
-    const near = (dd: number, mm: number): boolean => Math.abs(Date.UTC(y, mm - 1, dd) - startDay) <= 86_400_000;
+    const near = (dd: number, mm: number): boolean => Math.abs(Date.UTC(y, mm - 1, dd) - startDay) <= MAX_TITLE_DRIFT_MS;
     if (!near(d, m) && m >= 1 && m <= 31 && d <= 12 && near(m, d)) [d, m] = [m, d];
     if (!near(d, m)) return null; // a date we cannot reconcile with the start day — leave it to the user
   }
