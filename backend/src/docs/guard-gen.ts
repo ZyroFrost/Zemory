@@ -18,7 +18,7 @@
 // Riêng nhóm secret KHÔNG có flag. Agent chỉ được tạo flag SAU khi user nói rõ trong phiên.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 
 export interface GuardGenResult {
@@ -49,6 +49,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   let secretAllowExtra: string[] = [];
   let allowedRoots: string[] = [];
   let allowedSqlServers: string[] = [];
+  let repoGates: string[] = [];
   // readMarker: MỘT người đọc marker (đã lột BOM). Bản đầu tự parse ở đây và nuốt lỗi
   // im lặng — fixture Windows (Set-Content ghi BOM) đã chứng minh policy sinh ra MẤT
   // `protected` mà không ai hay. Marker hỏng ⇒ policy chỉ còn bộ mặc định (secret vẫn gác).
@@ -60,6 +61,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       secretAllow?: unknown;
       allowedRoots?: unknown;
       allowedSqlServers?: unknown;
+      repoGates?: unknown;
     };
     const strs = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
@@ -69,12 +71,14 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     // Ngoài-project (2026-10-06): chỗ ghi ngoài repo user đã cho phép sẵn + máy chủ SQL được nhắm tới.
     allowedRoots = strs(j.allowedRoots);
     allowedSqlServers = strs(j.allowedSqlServers);
+    // The repo's own gates for its constitution (Dept_FA 2026-10-07: they hand-edited .git/hooks/pre-commit to add one).
+    repoGates = strs(j.repoGates);
   }
   return {
     generator: "zemory",
     comment:
       "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. " +
-      "Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`) — edit the marker, then run `zemory hook guard` to regenerate.",
+      "Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`) — edit the marker, then run `zemory hook guard` to regenerate.",
     protected_write: protectedWrite,
     protected_write_reason: "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
     secret_names: [...new Set([...SECRET_DEFAULTS, ...secretExtra])],
@@ -90,6 +94,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     // `max server memory` trên SQL local, ghi file ra ổ ngoài repo). Đường tương đối giải theo gốc repo.
     allowed_roots: allowedRoots,
     allowed_sql_servers: allowedSqlServers,
+    // Commands precommit-guard.cjs runs after the secret check; non-zero exit blocks the commit.
+    repo_gates: repoGates,
     outside_reason:
       "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
     flags_dir: hooksRel,
@@ -1027,6 +1033,16 @@ if (bad.length) {
   for (const f of bad) process.stderr.write("  - " + f + "\\n");
   process.exit(1);
 }
+// The repo's OWN gates (marker key \`repoGates\`), run from the repo root after the secret check - the standard hook
+// point for a repo that builds gates for its own constitution. Any non-zero exit blocks the commit.
+const top = cp.execSync("git rev-parse --show-toplevel", { encoding: "utf8", windowsHide: true }).trim();
+for (const cmd of POLICY.repo_gates || []) {
+  const r = cp.spawnSync(cmd, { cwd: top, shell: true, stdio: "inherit", windowsHide: true });
+  if (r.status !== 0) {
+    process.stderr.write("BLOCKED (pre-commit): repo gate failed - " + cmd + " (exit " + (r.status === null ? "signal" : r.status) + ")\\n");
+    process.exit(r.status || 1);
+  }
+}
 process.exit(0);
 `;
 
@@ -1152,7 +1168,62 @@ export function generateGuards(projectRoot: string): GuardGenResult {
 
   const wired = wireGuard(projectRoot, `${hooksRel}/guard.cjs`);
   if (wired) added.push(wired);
+  const pc = wirePrecommit(projectRoot, `${hooksRel}/precommit-guard.cjs`);
+  if (pc === "wired") added.push("pre-commit (precommit-guard wired)");
+  else if (pc === "other") kept.push("pre-commit (the repo's own hook — add `node <hooks>/precommit-guard.cjs` to it by hand)");
   return { hooksDir, added, kept, protectedWrite: policy.protected_write as string[] };
+}
+
+/** The repo's git hooks folder (`core.hooksPath` honoured, a `.git` FILE of a worktree followed), or null outside git.
+ *  Read from disk — no `git` child process: the daemon calls this for every registered repo. */
+export function gitHooksDir(projectRoot: string): string | null {
+  let gitDir = join(projectRoot, ".git");
+  if (!existsSync(gitDir)) return null;
+  try {
+    const st = readFileSync(gitDir, "utf8");
+    const m = /^gitdir:\s*(.+)$/m.exec(st);
+    if (m) gitDir = resolve(projectRoot, m[1].trim());
+  } catch {
+    /* a directory — the normal case */
+  }
+  try {
+    const cfg = readFileSync(join(gitDir, "config"), "utf8");
+    const hp = /^\s*hooksPath\s*=\s*(.+?)\s*$/im.exec(cfg);
+    if (hp) return resolve(projectRoot, hp[1].replace(/^"|"$/g, ""));
+  } catch {
+    /* no config — default hooks dir */
+  }
+  return join(gitDir, "hooks");
+}
+
+/** Is the commit-boundary guard actually run by git? "guard" = a pre-commit that calls precommit-guard.cjs · "other" = a
+ *  pre-commit of the repo's own that does not · "none" = no pre-commit · "no-git" = not a git repo. */
+export function precommitState(projectRoot: string): "guard" | "other" | "none" | "no-git" {
+  const dir = gitHooksDir(projectRoot);
+  if (!dir) return "no-git";
+  const p = join(dir, "pre-commit");
+  if (!existsSync(p)) return "none";
+  try {
+    return readFileSync(p, "utf8").includes("precommit-guard") ? "guard" : "other";
+  } catch {
+    return "other";
+  }
+}
+
+/**
+ * CẮM chốt commit vào git: tạo `pre-commit` gọi `precommit-guard.cjs` khi repo CHƯA có pre-commit nào.
+ * Đo 2026-10-07: 6/18 repo sinh `precommit-guard.cjs` mà git không bao giờ gọi — secret vào staging lọt qua đúng cái chốt
+ * "phủ cả người". Cùng lý lẽ với `wireGuard`: chốt sinh ra mà không cắm là luật bằng chữ. pre-commit CỦA REPO (không gọi
+ * guard) thì để yên — ghép vào script của người khác là đoán; trả "other" để lệnh nói ra.
+ */
+export function wirePrecommit(projectRoot: string, guardRel: string): "wired" | "guard" | "other" | "none" | "no-git" {
+  const state = precommitState(projectRoot);
+  if (state !== "none") return state;
+  const dir = gitHooksDir(projectRoot);
+  if (!dir) return "no-git";
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "pre-commit"), `#!/bin/sh\nexec node "$(git rev-parse --show-toplevel)/${guardRel}"\n`, { mode: 0o755 });
+  return "wired";
 }
 
 /**

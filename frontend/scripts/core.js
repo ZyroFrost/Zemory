@@ -32,6 +32,7 @@
   var ZICON={
     app:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.8v7"/><path d="M5.2 5.6 8 2.8l2.8 2.8"/><path d="M3.2 11.2v1.4c0 .5.4.9.9.9h7.8c.5 0 .9-.4.9-.9v-1.4"/></svg>',
     std:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.6h5.2L12 5.4v8H4z"/><path d="M9.2 2.6v2.8H12"/><path d="M6 9.6l1.3 1.3 2.7-2.9"/></svg>',
+    gates:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2 3.2 4v3.7c0 3 2.1 5.2 4.8 6.1 2.7-.9 4.8-3.1 4.8-6.1V4z"/><path d="M6 8.1l1.4 1.4 2.7-2.8"/></svg>',
     health:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.9"/><path d="M5.4 8.2l1.9 1.9 3.4-3.9"/></svg>',
     expand:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.6 2.6h3.8v3.8"/><path d="M13.4 2.6 9.2 6.8"/><path d="M6.4 13.4H2.6V9.6"/><path d="M2.6 13.4l4.2-4.2"/></svg>'
   };

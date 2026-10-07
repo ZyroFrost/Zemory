@@ -26,6 +26,8 @@ try {
     await cmdHook(args);
   } else if (cmd === "peers") {
     (await import("./commands/peers.js")).cmdPeers(args);
+  } else if (cmd === "gates") {
+    (await import("./commands/gates.js")).cmdGates(args);
   } else {
     await runRest();
   }

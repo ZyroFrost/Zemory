@@ -9,6 +9,7 @@ import type { Context } from "../core/types.js";
 import { foreignLayout } from "./conform.js";
 import { isClosedItemLine } from "./archive.js";
 import { pathsCheck, pathsSummary, type PathsReport } from "./paths.js";
+import { noGateIssues } from "./no-gate.js";
 
 export interface ValidateIssue {
   level: "error" | "warn" | "info";
@@ -55,6 +56,8 @@ export function validate(ctx: Context): ValidateReport {
   // or writing why the article is words-only.
   const hpGap = hpGateGaps(agentDir);
   if (hpGap) issues.push({ level: "warn", msg: hpGap });
+  // 1d. Ungated rules stand FIRST so they are not skimmed (user 2026-10-07) — see docs/no-gate.ts.
+  for (const m of noGateIssues(agentDir)) issues.push({ level: "warn", msg: `ungated-first: ${m} — run \`zemory gates --write-top\`` });
 
   // 2. Changelog length (suggest archive).
   const chFile = join(agentDir, "06_CHANGES.md");
@@ -361,25 +364,52 @@ export function duplicateKeys(texts: string[]): Array<{ key: string; count: numb
 }
 
 /**
- * Constitution articles (`N. **…**` lines of 01_CONSTITUTION) with no row in 02_RULES `## Cổng cho hiến pháp`
- * (`| N | … |`). null = nothing to say (no constitution, or every article covered).
+ * Constitution articles (`N. **…**` lines of 01_CONSTITUTION, an emoji marker allowed before the bold — `4. 🔒 **…**`)
+ * with no row in 02_RULES `## Cổng cho hiến pháp` (`| N | … |`). The template placeholder `N. **(chưa chốt)**` is
+ * not an article. null = nothing to say (no constitution, or every article covered).
  */
 export function hpGateGaps(agentDir: string): string | null {
+  const c = hpGateCoverage(agentDir);
+  if (!c) return null;
+  if (!c.table) return `constitution: ${c.articles} article(s) but 02_RULES has no "## Cổng cho hiến pháp" table — map each article to its hook/test, or say why it is words-only`;
+  return c.missing.length ? `constitution: article(s) ${c.missing.join(", ")} have no row in "## Cổng cho hiến pháp" — build the gate or say why it is words-only` : null;
+}
+
+/** The measurement behind `hpGateGaps`, as data (the rail's repo-gates chip reads it). null = no constitution / no article. */
+export function hpGateCoverage(agentDir: string): { articles: number; missing: number[]; table: boolean } | null {
   const con = join(agentDir, "01_CONSTITUTION.md");
-  const rules = join(agentDir, "02_RULES.md");
   if (!existsSync(con)) return null;
-  const articles = new Set<number>();
-  for (const m of readFileSync(con, "utf8").matchAll(/^(\d+)\.\s+\*\*/gm)) articles.add(Number(m[1]));
-  if (!articles.size) return null;
+  const all = constitutionArticles(readFileSync(con, "utf8")).map((a) => a.n);
+  if (!all.length) return null;
+  const rows = hpGateRows(agentDir);
+  if (!rows) return { articles: all.length, missing: all, table: false };
+  const covered = new Set(rows.map((r) => r.n));
+  return { articles: all.length, missing: all.filter((n) => !covered.has(n)), table: true };
+}
+
+/** Articles of a constitution text: `N. **title…**` (an emoji marker allowed before the bold), numbers unique, ascending. */
+export function constitutionArticles(text: string): { n: number; title: string }[] {
+  // 8 Dept repos mark articles 4+ with 🔒/🔴 before the bold; the old `N. **` shape saw 3 of their 16-19 (07/10).
+  const ARTICLE = /^(\d+)\.\s+(?:[\p{Extended_Pictographic}️‍]+\s*)*\*\*(?!\(chưa chốt)(.*?)\*\*/gmu;
+  const seen = new Map<number, string>();
+  for (const m of text.matchAll(ARTICLE)) if (!seen.has(Number(m[1]))) seen.set(Number(m[1]), m[2].trim());
+  return [...seen].map(([n, title]) => ({ n, title })).sort((a, b) => a.n - b.n);
+}
+
+/** Rows of 02_RULES `## Cổng cho hiến pháp` (`| N | title | kind | gate |`), or null when the section is absent. */
+export function hpGateRows(agentDir: string): { n: number; title: string; kind: string; gate: string }[] | null {
+  const rules = join(agentDir, "02_RULES.md");
   const text = existsSync(rules) ? readFileSync(rules, "utf8") : "";
   const at = text.search(/^##\s+Cổng cho hiến pháp/m);
-  if (at < 0) return `constitution: ${articles.size} article(s) but 02_RULES has no "## Cổng cho hiến pháp" table — map each article to its hook/test, or say why it is words-only`;
+  if (at < 0) return null;
   const rest = text.slice(at);
   const end = rest.slice(3).search(/^##\s/m);
   const section = end < 0 ? rest : rest.slice(0, end + 3);
-  const covered = new Set([...section.matchAll(/^\|\s*(\d+)\s*\|/gm)].map((m) => Number(m[1])));
-  const missing = [...articles].filter((n) => !covered.has(n)).sort((a, b) => a - b);
-  return missing.length ? `constitution: article(s) ${missing.join(", ")} have no row in "## Cổng cho hiến pháp" — build the gate or say why it is words-only` : null;
+  // Lenient on purpose: a row with fewer cells still COVERS its article (coverage only needs the number).
+  return [...section.matchAll(/^\|\s*(\d+)\s*\|(.*)$/gm)].map((m) => {
+    const cells = m[2].replace(/\|\s*$/, "").split("|").map((c) => c.trim());
+    return { n: Number(m[1]), title: cells[0] ?? "", kind: cells[1] ?? "", gate: cells.slice(2).join(" | ") };
+  });
 }
 
 /** `file:line` of every open checkbox (`- [ ]` / `- [~]`) in the plan folder's *.md, code fences skipped. */

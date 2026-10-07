@@ -273,7 +273,41 @@
   //    hiện hành ⇒ chip hiện ngay TRÊN chip sức khoẻ, bấm sang màn Dự án. Mọi repo khớp ⇒ ẨN
   //    HẲN (một chip xanh thường trực chỉ thêm nhiễu). Poll thưa: /harness-updates đã cache 5'
   //    phía daemon, đây chỉ hỏi lại mỗi 10' + một lần lúc mở app. Fail-open: lỗi ⇒ giữ ẩn.
+  // ── Chip ④ CỔNG REPO (user 2026-10-07): repo có CHẠY cổng không. Đi theo MỌI đường làm tươi chip ② (boot · đổi ngôn
+  //    ngữ · nhịp 10′) bằng cách gọi từ chính refreshHarnessUpdates — thêm một danh sách chỗ gọi thứ hai là danh sách sẽ quên.
+  var GATES=null;
+  function refreshRepoGates(fresh){
+    return zGet('/repo-gates'+(fresh?'?fresh=1':'')).then(function(r){
+      var chip=zid('railGates');if(!chip)return;
+      var rows=(r&&r.repos)||[];GATES=rows;
+      var bad=rows.filter(function(g){return g.gaps>0;});
+      chip.style.display='';
+      chip.classList.toggle('warn',!!bad.length);
+      var d=chip.querySelector('.dot');if(d)d.className=bad.length?'dot warn':'dot';
+      zset('railGatesN',bad.length?t('rail.gatesBad').replace('{n}',bad.length)+' ⚠':t('rail.gatesOk'));
+      zset('railGatesSub',bad.length?bad[0].name+(bad.length>1?' +'+(bad.length-1):''):t('rail.gatesOkSub').replace('{n}',rows.length));
+    }).catch(function(){});
+  }
+  function gatesDialog(){
+    function draw(){
+      var bad=(GATES||[]).filter(function(g){return g.gaps>0;});
+      var body=bad.length?bad.map(function(g,i){
+        return '<div style="padding:8px 0;'+(i?'border-top:1px solid var(--border)':'')+'"><b>'+stdEsc(g.name)+'</b>'+
+          g.lines.map(function(l){return '<div class="muted" style="font-size:12px;margin-top:2px;word-break:break-word">· '+stdEsc(l)+'</div>';}).join('')+'</div>';
+      }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
+      zDialog({iconHtml:ZICON.gates,size:'md',title:t('gates.title'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
+        okLabel:t('gates.recheck'),onOk:function(){
+          var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
+          refreshRepoGates(true).then(function(){if(okb)okb.disabled=false;zDlgMsg('');draw();})
+            .catch(function(){zDlgMsg(t('upd.recheckErr'));if(okb)okb.disabled=false;});
+          return true;
+        }});
+    }
+    refreshRepoGates(true).then(draw,draw);
+  }
+  document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#railGates'))gatesDialog();});
   function refreshHarnessUpdates(){
+    refreshRepoGates();
     return zGet('/harness-updates').then(function(r){
       var appChip=zid('railApp'),appN=zid('railAppN'),appSub=zid('railAppSub');
       var stdChip=zid('railStd'),stdN=zid('railStdN'),stdSub=zid('railStdSub');

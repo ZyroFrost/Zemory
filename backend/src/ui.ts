@@ -50,6 +50,7 @@ import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, standardDiff } from "./docs/standard.js";
+import { repoGateLines, repoGates, type RepoGates } from "./docs/repo-gates.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -116,6 +117,7 @@ function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> 
 }
 
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
+let repoGatesCache: { at: number; rows: Array<RepoGates & { lines: string[] }> } | null = null;
 /**
  * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
  *
@@ -4083,6 +4085,25 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       setRepoStdCheck(u.searchParams.get("on") === "1");
       harnessUpdCache = null;
       return json(res, { ok: true, repoStdCheck: getRepoStdCheck() });
+    }
+    if (p === "/repo-gates") {
+      // Fourth rail chip (user 2026-10-07): does every registered repo RUN its gates — guard wired, pre-commit wired,
+      // a row per constitution article. Same function as `zemory gates --all`. Cached 5′ like /harness-updates.
+      const now = Date.now();
+      if (!repoGatesCache || now - repoGatesCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
+        const rows: Array<RepoGates & { lines: string[] }> = [];
+        try {
+          for (const proj of listKnownProjects()) {
+            if (!existsSync(proj.root)) continue;
+            const g = repoGates(proj.root, proj.name);
+            if (g) rows.push({ ...g, lines: repoGateLines(g) });
+          }
+        } catch {
+          /* fail-open — a reminder surface must not die */
+        }
+        repoGatesCache = { at: now, rows };
+      }
+      return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows });
     }
     if (p === "/harness-updates") {
       // "Chấm than update" (2026-08-21): repo nào trong registry đang CŨ so với bộ chuẩn

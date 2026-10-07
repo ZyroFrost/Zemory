@@ -24,6 +24,7 @@ export function cmdHelp(): void {
       "  mcp       run the local MCP stdio server (memory_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
       "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate)",
+      "  gates     does each repo RUN its gates: guard wired · pre-commit wired · a row per constitution article · ungated rules on top (--all · --json · --write-top = write the top block here)",
       "  grill     interrogate the plan before building (workflow)",
       "  graph     code-graph queries: impact <file> · callers <symbol> · fitness [--gate]",
       "  structure print the standard harness structure (target to conform to)",

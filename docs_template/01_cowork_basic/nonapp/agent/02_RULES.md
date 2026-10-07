@@ -7,6 +7,50 @@
 > Đọc SAU `01_CONSTITUTION.md` (bất biến riêng của dự án, tối cao). Tuân thủ tuyệt đối.
 > Điều hướng nạp (đọc gì, lúc nào) → `AGENTS.md` ở root. Quy trình thao tác → `.claude/skills/`.
 
+## Hành xử
+- **CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI = CHƯA XONG** *(user chốt 2026-09-16)*. Mọi thứ vừa dựng — lớp
+  lưu, chỉ mục, bí mật, tài sản giao đi — phải KHAI được nó sang máy khác bằng đường nào, và đường đó
+  phải ĐO rồi mới gọi là xong. Không khai được = việc còn dở, bất kể cổng có xanh. Quy trình khai +
+  đo: `.claude/skills/sync-path/SKILL.md`.
+- **VĂN BẢN ĐƯA NGƯỜI ĐỌC THEO VĂN PHONG ĐÃ CHỐT** *(user chốt 2026-09-16)*. Báo cáo · email · tài
+  liệu giao đi viết cho NGƯỜI NHẬN, không bê giọng harness (mệnh lệnh, viết hoa nhấn giọng, thuật ngữ
+  nội bộ) sang. Bộ luật văn phong: `.claude/skills/write-style/SKILL.md`.
+- **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, **ngay khi làm**, không dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả. **Vì sao:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** — người dùng mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Hệ quả bắt buộc: ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm nguồn đo được · ③ số đo lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc chạy lâu phải báo đang chờ gì.
+- **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT — không thứ gì được phình vô hạn.** Mọi thứ bạn tạo ra để LÀM VIỆC mà không phải sản phẩm giao đi (bản nháp, bản thử, dữ liệu trung gian, ảnh chụp, bản sao để so) phải có chỗ riêng và có đường dọn. Xong một phép thử mà biết chắc không dùng lại ⇒ **dọn ngay trong phiên**; thứ đáng giữ thì giữ nhưng phải NHỎ và nói rõ giữ vì gì. Rác không nằm trong sản phẩm nên không ai thấy nó lớn lên — cho tới lúc thư mục dự án hết dùng được.
+- **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
+  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
+  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
+    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
+  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
+    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
+  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
+  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
+  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
+  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
+  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
+- **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
+- **Yêu cầu không rõ phải được làm rõ TRƯỚC khi thực thi — cơ chế TỰ ĐỘNG, không chờ user gọi.** Kích hoạt khi: đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Mở `.claude/skills/grill/`. KHÔNG tự chọn cách hiểu rộng nhất.
+- **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
+- **Thao tác XOÁ phải được user xác nhận trước.** Xoá file, sản phẩm, script, nội dung docs hay thư mục đều coi là bất khả đảo: nêu đối tượng + lý do, chờ chấp thuận rồi mới làm. Thứ dư thừa: **đề xuất, không tự xoá**. Bổ sung/mở rộng không cần xác nhận; **xoá/thu hẹp luôn cần**.
+- **CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT — KHÔNG BỊA, KHÔNG SUY DIỄN (luật cứng).** Áp cho **mọi khẳng định**, không riêng con số: trạng thái hệ thống · nguyên nhân · "cái gì đang xảy ra" · "đã xong chưa". Mỗi khẳng định phải truy được về **nguồn kiểm được** (đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài). **Tra không ra ⇒ nói thẳng "không biết / chưa xác minh được"** và nêu đã thử đường nào — cấm lấp bằng suy đoán nghe hợp lý, vì *nghe hợp lý* chính là thứ làm nó lọt.
+  Trước khi ① báo một con số · ② kết luận "xong / chưa xong" · ③ xoá bất cứ thứ gì — phải đo lại bằng **đường thứ hai, khác cơ chế**. Bốn dạng sai thường gặp: công cụ trả rỗng vì **hỏng lặng** (cờ sai ⇒ tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒ tưởng dữ liệu mồ côi, suýt xoá thứ đang sống) · **sổ nói khác thực tế**. Kiểm chéo = đổi công cụ, đổi hướng đếm, hoặc gọi bề mặt thật.
+- **📋 SOÁT SỔ = ĐO LẠI TỪNG MỤC, KHÔNG ĐỌC RỒI CHÉP LẠI (luật cứng).**
+  **ÁP MỌI LÚC — KHÔNG chờ chốt phiên.** Kích hoạt ngay khi user nói *"check todo"* · *"còn gì chưa làm"* · *"liệt kê ra"* · *"soát lại"* · *"plan/change tới đâu rồi"*, hay khi agent tự mở sổ giữa chừng. Phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc — đúng lúc dễ tưởng mình đang nhớ rõ nhất.
+  - **Vì sao:** mỗi mục trong `05_TODO` là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI** ("chưa làm", "chờ duyệt", "còn N mục") — mà khẳng định thì phải **truy được về nguồn kiểm được** (luật ngay trên). File `.md` là nguồn của *nội dung* (FILE WINS), **KHÔNG phải nguồn của sự thật hệ thống**. Đọc sổ rồi báo lại y nguyên = báo cáo chưa xác minh, dù chữ nằm trong file của chính mình.
+  - **TRƯỚC khi liệt kê / báo cáo / hỏi user về bất kỳ mục nào — BA NGUỒN, CHẠY ĐỦ CẢ BA. KHÔNG chọn nguồn theo "loại mục".** Ba nguồn trả lời BA câu KHÁC nhau, không nguồn nào thay được nguồn nào:
+    · **① NGUỒN — *"file/số liệu hiện đang thế nào"***: mở đúng file, đếm đúng dòng/cột, chạy lại truy vấn. **Cấm suy từ mô tả.**
+    · **② LỊCH SỬ QUYẾT ĐỊNH — *"đã từng quyết / làm gì"***: có `zemory` CLI thì `zemory memory search --all` (**lọc riêng LỜI USER** — quyết định đến từ user, không từ agent); không có thì đọc `docs/agent/archive/`. Quyết định hay nằm ở phiên khác, thậm chí **REPO KHÁC**.
+    · **③ CHẠY THẬT — *"khi mở ra nó ra cái gì"***: mở chính bản giao (báo cáo · mô hình · bản xuất) nhìn tận mắt · làm mới dữ liệu rồi đối chiếu số. **Công thức/cấu hình có mặt KHÔNG bảo đảm số ra đúng** — nguồn đổi mà bản giao chưa làm mới thì sai LẶNG; còn lịch sử thì chỉ nói về quá khứ, không nói hiện tại.
+    **CHỈ KHI CẢ BA KHỚP mới được kết luận.** Lệch nhau ⇒ **cái MỚI HƠN thắng**, và phải ghi rõ cái cũ đã bị thay — **lời nói của user CÓ HẠN DÙNG**: một quyết định cũ có thể bị chính việc làm sau đó supersede. Không chạm được nguồn nào (không mở được, mất mạng, chưa có quyền…) ⇒ ghi **"chưa xác minh được"** kèm nguồn đã thử — **KHÔNG** mặc định là "chưa làm", và **KHÔNG** lấy hai nguồn còn lại làm đủ.
+    > ⚠ **Vì sao phải nói "đủ cả ba" thay vì liệt kê điều kiện:** bản cũ của chính luật này viết theo kiểu *"kiểm được bằng X ⇒ làm thế này · là quyết định ⇒ làm thế kia"* — đọc ra thành **bảng phân nhánh theo loại mục**, nên agent phân loại xong là rẽ MỘT nhánh rồi dừng. Đã trả giá thật, và trong cùng một ngày nó sai theo **hai hướng ngược nhau**: một mục chỉ chạy ① nên bỏ sót việc đã được sửa hai lần cùng một nguồn dữ liệu đã chết vẫn nằm trong bản quét; một mục khác chỉ chạy ② nên tin một câu user nói từ lâu rồi **gỡ mất một mục mà thực tế đã làm xong**. Cả hai đều lọt qua bản cũ **mà không vi phạm chữ nào**.
+  - **Mục quá 7 ngày không ai đụng = NGHI NGỜ, không phải sự thật.** Đo trên một repo thật: soát 58 mục thì **11 sai (~19%)** — có mục đã làm xong vẫn mang dấu `[ ]`, có mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
+  - **Hỏi lại user một việc đã chốt là LỖI, không phải cẩn thận.** Nó bắt user trả lời hai lần cho cùng một câu và làm hỏng lòng tin vào cả bản danh sách.
+  - **Máy phải canh, đừng dựa agent nhớ** (cùng doctrine `structure-sync`/`conform`): `zemory todo verify` đo lại từng mục bằng nguồn kiểm được (tên file/ký hiệu/bề mặt mà mục nêu có thật không · phép đo mục tự nêu có còn đúng không · nguồn đã đổi SAU khi dòng sổ được viết chưa) rồi in bảng LỆCH; exit khác 0 khi có lệch nên nối được vào cổng kiểm. Luật không có máy canh thì chỉ là lời hứa.
+- **Phép kiểm mới phải chứng minh mình ĐỎ ĐƯỢC.** Viết xong một phép kiểm (script, công thức đối chiếu, bảng so số) → **phá đúng thứ nó canh** rồi chạy lại: không đỏ ⇒ nó chưa soi gì, phải sửa phép kiểm chứ không phải mừng vì xanh. Hai lỗ điển hình: phép kiểm chưa bao giờ chạy tới nhánh nguy hiểm, và **bản sao logic ở nơi khác gánh thay**. Xanh KHÔNG phải bằng chứng.
+- **Nêu phản biện thiết kế trước khi thực thi** nếu thấy điểm bất hợp lý; quyết định cuối thuộc về user.
+- **Đổi HÌNH HÀI / BỐ CỤC sản phẩm giao đi** (layout báo cáo, chọn biểu đồ, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi**. Điền số theo mẫu có sẵn thì cứ làm.
+- **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
+
 ## Cấu trúc thư mục
 **Cần đặt · tạo · dời bất cứ file nào → mở `.claude/skills/structure/` TRƯỚC.** Ở đó có cây thư mục, bảng tra "cần gì → để đâu", và quy ước đặt tên. Không chắc để đâu → tra bảng đó hoặc HỎI, **đừng đoán**. Thấy chỗ đang lệch chuẩn → nắn về chuẩn (lớn/khó đảo thì BÁO), KHÔNG nhân cái sai lên.
 **Định nghĩa metric/cột** → `03_STRUCTURE` §2 (từ điển dữ liệu, nguồn sự thật). **KHÔNG tạo `docs/dictionary.md`** — một dự án một từ điển.
@@ -122,53 +166,6 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 - Commit cục bộ (đảo được) thì thoải mái theo phong cách repo; **push mới là cửa cần phép**.
 - KHÔNG `--force`, KHÔNG rewrite lịch sử đã push, KHÔNG `reset --hard`/`clean` lên việc chưa commit của user nếu chưa hỏi.
 
-## Hành xử
-- **CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI = CHƯA XONG** *(user chốt 2026-09-16)*. Mọi thứ vừa dựng — lớp
-  lưu, chỉ mục, bí mật, tài sản giao đi — phải KHAI được nó sang máy khác bằng đường nào, và đường đó
-  phải ĐO rồi mới gọi là xong. Không khai được = việc còn dở, bất kể cổng có xanh. Quy trình khai +
-  đo: `.claude/skills/sync-path/SKILL.md`.
-- **VĂN BẢN ĐƯA NGƯỜI ĐỌC THEO VĂN PHONG ĐÃ CHỐT** *(user chốt 2026-09-16)*. Báo cáo · email · tài
-  liệu giao đi viết cho NGƯỜI NHẬN, không bê giọng harness (mệnh lệnh, viết hoa nhấn giọng, thuật ngữ
-  nội bộ) sang. Bộ luật văn phong: `.claude/skills/write-style/SKILL.md`.
-- **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, **ngay khi làm**, không dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả. **Vì sao:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** — người dùng mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Hệ quả bắt buộc: ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm nguồn đo được · ③ số đo lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc chạy lâu phải báo đang chờ gì.
-- **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT — không thứ gì được phình vô hạn.** Mọi thứ bạn tạo ra để LÀM VIỆC mà không phải sản phẩm giao đi (bản nháp, bản thử, dữ liệu trung gian, ảnh chụp, bản sao để so) phải có chỗ riêng và có đường dọn. Xong một phép thử mà biết chắc không dùng lại ⇒ **dọn ngay trong phiên**; thứ đáng giữ thì giữ nhưng phải NHỎ và nói rõ giữ vì gì. Rác không nằm trong sản phẩm nên không ai thấy nó lớn lên — cho tới lúc thư mục dự án hết dùng được.
-- **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
-  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
-  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
-    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
-  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
-    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
-  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
-  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
-  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
-  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
-  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
-- **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
-- **Yêu cầu không rõ phải được làm rõ TRƯỚC khi thực thi — cơ chế TỰ ĐỘNG, không chờ user gọi.** Kích hoạt khi: đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Mở `.claude/skills/grill/`. KHÔNG tự chọn cách hiểu rộng nhất.
-- **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
-- **Thao tác XOÁ phải được user xác nhận trước.** Xoá file, sản phẩm, script, nội dung docs hay thư mục đều coi là bất khả đảo: nêu đối tượng + lý do, chờ chấp thuận rồi mới làm. Thứ dư thừa: **đề xuất, không tự xoá**. Bổ sung/mở rộng không cần xác nhận; **xoá/thu hẹp luôn cần**.
-- **CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT — KHÔNG BỊA, KHÔNG SUY DIỄN (luật cứng).** Áp cho **mọi khẳng định**, không riêng con số: trạng thái hệ thống · nguyên nhân · "cái gì đang xảy ra" · "đã xong chưa". Mỗi khẳng định phải truy được về **nguồn kiểm được** (đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài). **Tra không ra ⇒ nói thẳng "không biết / chưa xác minh được"** và nêu đã thử đường nào — cấm lấp bằng suy đoán nghe hợp lý, vì *nghe hợp lý* chính là thứ làm nó lọt.
-  Trước khi ① báo một con số · ② kết luận "xong / chưa xong" · ③ xoá bất cứ thứ gì — phải đo lại bằng **đường thứ hai, khác cơ chế**. Bốn dạng sai thường gặp: công cụ trả rỗng vì **hỏng lặng** (cờ sai ⇒ tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒ tưởng dữ liệu mồ côi, suýt xoá thứ đang sống) · **sổ nói khác thực tế**. Kiểm chéo = đổi công cụ, đổi hướng đếm, hoặc gọi bề mặt thật.
-- **📋 SOÁT SỔ = ĐO LẠI TỪNG MỤC, KHÔNG ĐỌC RỒI CHÉP LẠI (luật cứng).**
-  **ÁP MỌI LÚC — KHÔNG chờ chốt phiên.** Kích hoạt ngay khi user nói *"check todo"* · *"còn gì chưa làm"* · *"liệt kê ra"* · *"soát lại"* · *"plan/change tới đâu rồi"*, hay khi agent tự mở sổ giữa chừng. Phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc — đúng lúc dễ tưởng mình đang nhớ rõ nhất.
-  - **Vì sao:** mỗi mục trong `05_TODO` là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI** ("chưa làm", "chờ duyệt", "còn N mục") — mà khẳng định thì phải **truy được về nguồn kiểm được** (luật ngay trên). File `.md` là nguồn của *nội dung* (FILE WINS), **KHÔNG phải nguồn của sự thật hệ thống**. Đọc sổ rồi báo lại y nguyên = báo cáo chưa xác minh, dù chữ nằm trong file của chính mình.
-  - **TRƯỚC khi liệt kê / báo cáo / hỏi user về bất kỳ mục nào — BA NGUỒN, CHẠY ĐỦ CẢ BA. KHÔNG chọn nguồn theo "loại mục".** Ba nguồn trả lời BA câu KHÁC nhau, không nguồn nào thay được nguồn nào:
-    · **① NGUỒN — *"file/số liệu hiện đang thế nào"***: mở đúng file, đếm đúng dòng/cột, chạy lại truy vấn. **Cấm suy từ mô tả.**
-    · **② LỊCH SỬ QUYẾT ĐỊNH — *"đã từng quyết / làm gì"***: có `zemory` CLI thì `zemory memory search --all` (**lọc riêng LỜI USER** — quyết định đến từ user, không từ agent); không có thì đọc `docs/agent/archive/`. Quyết định hay nằm ở phiên khác, thậm chí **REPO KHÁC**.
-    · **③ CHẠY THẬT — *"khi mở ra nó ra cái gì"***: mở chính bản giao (báo cáo · mô hình · bản xuất) nhìn tận mắt · làm mới dữ liệu rồi đối chiếu số. **Công thức/cấu hình có mặt KHÔNG bảo đảm số ra đúng** — nguồn đổi mà bản giao chưa làm mới thì sai LẶNG; còn lịch sử thì chỉ nói về quá khứ, không nói hiện tại.
-    **CHỈ KHI CẢ BA KHỚP mới được kết luận.** Lệch nhau ⇒ **cái MỚI HƠN thắng**, và phải ghi rõ cái cũ đã bị thay — **lời nói của user CÓ HẠN DÙNG**: một quyết định cũ có thể bị chính việc làm sau đó supersede. Không chạm được nguồn nào (không mở được, mất mạng, chưa có quyền…) ⇒ ghi **"chưa xác minh được"** kèm nguồn đã thử — **KHÔNG** mặc định là "chưa làm", và **KHÔNG** lấy hai nguồn còn lại làm đủ.
-    > ⚠ **Vì sao phải nói "đủ cả ba" thay vì liệt kê điều kiện:** bản cũ của chính luật này viết theo kiểu *"kiểm được bằng X ⇒ làm thế này · là quyết định ⇒ làm thế kia"* — đọc ra thành **bảng phân nhánh theo loại mục**, nên agent phân loại xong là rẽ MỘT nhánh rồi dừng. Đã trả giá thật, và trong cùng một ngày nó sai theo **hai hướng ngược nhau**: một mục chỉ chạy ① nên bỏ sót việc đã được sửa hai lần cùng một nguồn dữ liệu đã chết vẫn nằm trong bản quét; một mục khác chỉ chạy ② nên tin một câu user nói từ lâu rồi **gỡ mất một mục mà thực tế đã làm xong**. Cả hai đều lọt qua bản cũ **mà không vi phạm chữ nào**.
-  - **Mục quá 7 ngày không ai đụng = NGHI NGỜ, không phải sự thật.** Đo trên một repo thật: soát 58 mục thì **11 sai (~19%)** — có mục đã làm xong vẫn mang dấu `[ ]`, có mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
-  - **Hỏi lại user một việc đã chốt là LỖI, không phải cẩn thận.** Nó bắt user trả lời hai lần cho cùng một câu và làm hỏng lòng tin vào cả bản danh sách.
-  - **Máy phải canh, đừng dựa agent nhớ** (cùng doctrine `structure-sync`/`conform`): `zemory todo verify` đo lại từng mục bằng nguồn kiểm được (tên file/ký hiệu/bề mặt mà mục nêu có thật không · phép đo mục tự nêu có còn đúng không · nguồn đã đổi SAU khi dòng sổ được viết chưa) rồi in bảng LỆCH; exit khác 0 khi có lệch nên nối được vào cổng kiểm. Luật không có máy canh thì chỉ là lời hứa.
-- **Phép kiểm mới phải chứng minh mình ĐỎ ĐƯỢC.** Viết xong một phép kiểm (script, công thức đối chiếu, bảng so số) → **phá đúng thứ nó canh** rồi chạy lại: không đỏ ⇒ nó chưa soi gì, phải sửa phép kiểm chứ không phải mừng vì xanh. Hai lỗ điển hình: phép kiểm chưa bao giờ chạy tới nhánh nguy hiểm, và **bản sao logic ở nơi khác gánh thay**. Xanh KHÔNG phải bằng chứng.
-- **Nêu phản biện thiết kế trước khi thực thi** nếu thấy điểm bất hợp lý; quyết định cuối thuộc về user.
-- **Đổi HÌNH HÀI / BỐ CỤC sản phẩm giao đi** (layout báo cáo, chọn biểu đồ, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi**. Điền số theo mẫu có sẵn thì cứ làm.
-- **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
-
-
-<!-- zemory-standard: 2026-10-07 -->
-
 ## Cổng cho hiến pháp (BẮT BUỘC — luật cứng)
 
 > User chốt 2026-10-07: *"tụi agent quên luật quá nhiều rồi, phải có hook chặn hết hạn chế quên"*. Mỗi điều trong `01_CONSTITUTION`
@@ -176,7 +173,15 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 > cho điều nào kiểm được bằng máy (guard nhánh mới · test gate · `doctor` · `validate`), rồi ghi tên vào đây. `zemory validate`
 > báo điều nào chưa có dòng. Bảng nằm Ở ĐÂY chứ không trong hiến pháp vì chỉ user sửa hiến pháp.
 > Loại: **CHẶN** = máy chặn/đỏ gate · **NHẮC** = hook chỉ nhắc đúng lúc (luật cần phán đoán) · **CHỮ** = không có vai máy (nói vì sao).
+> **Luật KHÔNG viết hook được ⇒ ĐƯA LÊN ĐẦU, kể cả hiến pháp** (user chốt 2026-10-07: *"các luật nào mà ko viết hook dc thì đưa lên
+> đầu để nó ko đọc lướt… kể cả hiến pháp luôn"*). Luật có chốt máy thì có lưới đỡ; luật chỉ có chữ thì chỉ người đọc giữ được, nên nó
+> là thứ KHÔNG được đọc lướt. `zemory gates --write-top` sinh khối **ĐỌC KỸ** ở đầu `01_CONSTITUTION` và đầu `02_RULES`, liệt kê
+> điều loại CHỮ · điều ghi "CHƯA có" · điều chưa có hàng trong bảng; **số điều KHÔNG đổi** (chỗ khác đang gọi "điều N"). Mục
+> `## Hành xử` (luật phán đoán — không hook nào đỡ) đứng ĐẦU `02_RULES`. Sửa bảng xong ⇒ chạy lại lệnh; `zemory validate` và
+> `zemory gates` báo khi khối thiếu, cũ, hoặc không nằm ở đầu.
 
 | # | Điều (tóm) | Loại | Cổng / lý do |
 |---|---|---|---|
 | _ | _(mỗi điều của `01_CONSTITUTION` một dòng — agent repo tự điền và dựng hook)_ | _ | _ |
+
+<!-- zemory-standard: 2026-10-07 -->
