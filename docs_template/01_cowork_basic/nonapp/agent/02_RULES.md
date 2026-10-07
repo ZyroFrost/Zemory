@@ -168,3 +168,15 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 
 
 <!-- zemory-standard: 2026-10-07 -->
+
+## Cổng cho hiến pháp (BẮT BUỘC — luật cứng)
+
+> User chốt 2026-10-07: *"tụi agent quên luật quá nhiều rồi, phải có hook chặn hết hạn chế quên"*. Mỗi điều trong `01_CONSTITUTION`
+> phải có MỘT dòng ở bảng dưới: hook/test nào CHẶN nó, hoặc vì sao nó chỉ là chữ. Repo có HP riêng ⇒ agent của repo TỰ dựng hook
+> cho điều nào kiểm được bằng máy (guard nhánh mới · test gate · `doctor` · `validate`), rồi ghi tên vào đây. `zemory validate`
+> báo điều nào chưa có dòng. Bảng nằm Ở ĐÂY chứ không trong hiến pháp vì chỉ user sửa hiến pháp.
+> Loại: **CHẶN** = máy chặn/đỏ gate · **NHẮC** = hook chỉ nhắc đúng lúc (luật cần phán đoán) · **CHỮ** = không có vai máy (nói vì sao).
+
+| # | Điều (tóm) | Loại | Cổng / lý do |
+|---|---|---|---|
+| _ | _(mỗi điều của `01_CONSTITUTION` một dòng — agent repo tự điền và dựng hook)_ | _ | _ |

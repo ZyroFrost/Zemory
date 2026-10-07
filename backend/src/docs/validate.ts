@@ -49,6 +49,13 @@ export function validate(ctx: Context): ValidateReport {
     });
   }
 
+  // 1c. Every constitution article must name its machine gate (user 2026-10-07: "mỗi repo nếu có HP riêng phải tự tạo
+  // hook cho chính mình… tụi agent quên luật quá nhiều"). The mapping lives in 02_RULES `## Cổng cho hiến pháp` — NOT in
+  // the constitution, which only the user edits. A missing row is a warn; a repo agent closes it by building the gate
+  // or writing why the article is words-only.
+  const hpGap = hpGateGaps(agentDir);
+  if (hpGap) issues.push({ level: "warn", msg: hpGap });
+
   // 2. Changelog length (suggest archive).
   const chFile = join(agentDir, "06_CHANGES.md");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
@@ -351,6 +358,28 @@ export function duplicateKeys(texts: string[]): Array<{ key: string; count: numb
     }
   }
   return [...seen].filter(([, n]) => n > 1).map(([key, count]) => ({ key, count }));
+}
+
+/**
+ * Constitution articles (`N. **…**` lines of 01_CONSTITUTION) with no row in 02_RULES `## Cổng cho hiến pháp`
+ * (`| N | … |`). null = nothing to say (no constitution, or every article covered).
+ */
+export function hpGateGaps(agentDir: string): string | null {
+  const con = join(agentDir, "01_CONSTITUTION.md");
+  const rules = join(agentDir, "02_RULES.md");
+  if (!existsSync(con)) return null;
+  const articles = new Set<number>();
+  for (const m of readFileSync(con, "utf8").matchAll(/^(\d+)\.\s+\*\*/gm)) articles.add(Number(m[1]));
+  if (!articles.size) return null;
+  const text = existsSync(rules) ? readFileSync(rules, "utf8") : "";
+  const at = text.search(/^##\s+Cổng cho hiến pháp/m);
+  if (at < 0) return `constitution: ${articles.size} article(s) but 02_RULES has no "## Cổng cho hiến pháp" table — map each article to its hook/test, or say why it is words-only`;
+  const rest = text.slice(at);
+  const end = rest.slice(3).search(/^##\s/m);
+  const section = end < 0 ? rest : rest.slice(0, end + 3);
+  const covered = new Set([...section.matchAll(/^\|\s*(\d+)\s*\|/gm)].map((m) => Number(m[1])));
+  const missing = [...articles].filter((n) => !covered.has(n)).sort((a, b) => a - b);
+  return missing.length ? `constitution: article(s) ${missing.join(", ")} have no row in "## Cổng cho hiến pháp" — build the gate or say why it is words-only` : null;
 }
 
 /** `file:line` of every open checkbox (`- [ ]` / `- [~]`) in the plan folder's *.md, code fences skipped. */
