@@ -30,7 +30,7 @@ export interface AppProcess {
 export const APP_PROCESSES: AppProcess[] = [
   {
     shownAs: "zemory.exe",
-    spawnedBy: "platform/autostart.ts · launch.vbs",
+    spawnedBy: "platform/autostart.ts · launch.vbs · cli.ts `ui` (relaunchBranded: node.exe ⇒ zemory.exe)",
     lifetime: "daemon",
     hidden: true,
     note: "Chính daemon. Là `node.exe` đã đổi tên lúc build (`scripts/make-exe.mjs`) để Task Manager không gộp vào 'Node.js'.",
@@ -89,4 +89,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 14;
+export const spawnSites = 15;

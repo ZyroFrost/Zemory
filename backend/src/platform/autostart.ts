@@ -6,8 +6,8 @@
 // Everything is best-effort and reversible; failures fail-open with a reason so
 // the UI can show "not supported here" instead of crashing.
 
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,110 @@ function cliEntry(): string {
  */
 export function launcherExe(opts: { platform: string; brandedExe: string; exists: (p: string) => boolean; fallback: string }): string {
   return opts.platform === "win32" && opts.exists(opts.brandedExe) ? opts.brandedExe : opts.fallback;
+}
+
+/**
+ * Should THIS `zemory ui` process hand over to `dist/zemory.exe`? Measured 2026-10-07: a daemon restarted by typing
+ * `zemory ui` went through the npm shim ⇒ `node.exe` ⇒ Task Manager showed "Node.js JavaScript Runtime (4)" with the Node
+ * logo and its WebView2 children, instead of Zemory. Autostart and selfupdate already used `launcherExe`; the hand-typed
+ * path did not. Now there is ONE way: whoever starts `ui` under a non-branded runtime is relaunched under the branded
+ * one. `ZEMORY_BRANDED=1` marks the relaunched child so it can never loop. Pure — the gate feeds it every input.
+ */
+export function needsBrandedRelaunch(o: {
+  platform: string;
+  execPath: string;
+  brandedExe: string;
+  exists: (p: string) => boolean;
+  env: Record<string, string | undefined>;
+}): boolean {
+  if (o.platform !== "win32" || o.env.ZEMORY_BRANDED === "1" || !o.exists(o.brandedExe)) return false;
+  const norm = (p: string): string => resolve(p).toLowerCase();
+  return norm(o.execPath) !== norm(o.brandedExe);
+}
+
+/** `zemory ui` started under node.exe ⇒ start it again under dist/zemory.exe (detached) and report the pid. */
+export function relaunchBranded(args: string[]): { exe: string; pid: number | undefined } | null {
+  const brandedExe = brandedExePath();
+  if (!needsBrandedRelaunch({ platform: process.platform, execPath: process.execPath, brandedExe, exists: existsSync, env: process.env })) {
+    return null;
+  }
+  const argv = [cliEntry(), "ui", ...args];
+  // Test hook: print what WOULD be started, start nothing.
+  if (process.env.ZEMORY_RELAUNCH_DRYRUN === "1") return { exe: `${brandedExe} ${argv.join(" ")}`, pid: undefined };
+  const child = spawn(brandedExe, argv, {
+    cwd: process.cwd(),
+    detached: true,
+    stdio: "ignore",
+    env: { ...process.env, ZEMORY_BRANDED: "1" },
+  });
+  child.unref();
+  return { exe: brandedExe, pid: child.pid };
+}
+
+export interface LaunchFacts {
+  brandedExe: string;
+  /** every running `cli.js ui` process: its executable path */
+  uiProcesses: string[];
+  /** content of the Startup launcher and of the shortcut launcher (null = not installed) */
+  startupVbs: string | null;
+  launcherVbs: string | null;
+  /** a shortcut exists but the Z icon file it points at does not */
+  iconMissing: boolean;
+  /** files in the launcher folder that are not the launcher (old copies, backups) */
+  strays: string[];
+}
+
+/**
+ * The install/launch gate (user 2026-10-07: "mọi chỗ cài đặt đều phải cài cho đúng luật, logo và tên… bỏ bộ cài thừa").
+ * Pure: facts in, one line per breach out. Measured that day: a daemon running as node.exe (shown as "Node.js
+ * JavaScript Runtime") and `%APPDATA%\zemory\launch.vbs.bak-move2` still starting node.exe from a folder that no longer
+ * existed. Only judged when the branded exe exists — a build without it must not read as broken.
+ */
+export function judgeLaunch(f: LaunchFacts): string[] {
+  const out: string[] = [];
+  const same = (a: string, b: string): boolean => resolve(a).toLowerCase() === resolve(b).toLowerCase();
+  for (const p of f.uiProcesses) {
+    if (!same(p, f.brandedExe)) out.push(`daemon runs as ${p} — Task Manager shows the wrong name and logo (restart it: \`zemory ui\` now hands over to zemory.exe)`);
+  }
+  if (f.startupVbs !== null && !f.startupVbs.includes(f.brandedExe)) out.push("the Startup launcher does not start dist/zemory.exe");
+  if (f.launcherVbs !== null && !f.launcherVbs.includes(f.brandedExe)) out.push("the Start Menu/Desktop launcher does not start dist/zemory.exe");
+  if (f.iconMissing) out.push("a Zemory shortcut exists but its icon file (zemory.ico) is missing");
+  for (const s of f.strays) out.push(`leftover launcher file ${s} — not used by Zemory, remove it`);
+  return out;
+}
+
+/** Gather the real facts for `judgeLaunch` (Windows only; elsewhere nothing to judge). */
+export function launchFacts(): LaunchFacts | null {
+  const brandedExe = brandedExePath();
+  if (platform() !== "win32" || !existsSync(brandedExe)) return null;
+  let uiProcesses: string[];
+  try {
+    const ps =
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*cli.js*' -and $_.CommandLine -match '\\sui(\\s|$)' } | " +
+      "ForEach-Object { $_.ExecutablePath }";
+    uiProcesses = String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true }))
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+  } catch {
+    uiProcesses = [];
+  }
+  const startup = autostartStatus().path;
+  const vbs = winLauncherVbs();
+  let strays: string[];
+  try {
+    strays = readdirSync(dirname(vbs)).filter((n) => n.toLowerCase() !== "launch.vbs" && /\.(vbs|cmd|bat|lnk)|bak/i.test(n)).map((n) => join(dirname(vbs), n));
+  } catch {
+    strays = [];
+  }
+  return {
+    brandedExe,
+    uiProcesses,
+    startupVbs: startup ? readIfExists(startup) : null,
+    launcherVbs: readIfExists(vbs),
+    iconMissing: desktopShortcutStatus().exists && winIconPath() === null,
+    strays,
+  };
 }
 
 /** dist/platform/autostart.js → its sibling dist/zemory.exe. */
