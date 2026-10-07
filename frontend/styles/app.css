@@ -133,6 +133,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .dlg-h b{font-size:15px}.dlg-h .x{margin-left:auto;background:none;border:0;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1}
 .dlg-h .x:hover{color:var(--primary)}
 .dlg-b{padding:12px 20px 18px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0}
+.dlg-f{flex:0 0 auto;padding:10px 20px 14px;border-top:1px solid var(--border)}
 .dlg.lg{width:min(90vw,calc(90vh*16/9))}
 .dlg.sm{width:min(440px,92vw);aspect-ratio:auto;max-height:80vh}
 .hit .openfull{float:right;color:var(--text-faint);cursor:pointer;font-size:14px;padding:0 4px}

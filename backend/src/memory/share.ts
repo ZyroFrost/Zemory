@@ -1275,6 +1275,13 @@ export function chunkBlockId(containerPath: string, chunk: { offset: number; len
   }
 }
 
+/** Merged-ledger key of a block: its id (`blk:<kdf.salt>`), or the position label when the id cannot be read. ONE rule
+ *  for every writer of the ledger — merge, our own pushed block, the vector catch-up block. */
+function ledgerKey(containerPath: string, chunk: { offset: number; len: number; index: number }, label?: string): string {
+  const id = chunkBlockId(containerPath, chunk);
+  return id ? `blk:${id}` : (label ?? `${basename(containerPath)}#${chunk.index}`);
+}
+
 /** Khối trong một container — công bố cho lớp kênh (plan/24 §2). */
 export type ContainerChunk = ChunkRef;
 /** Liệt kê khối của một container. Công bố để lớp kênh KHÔNG phải viết lại bộ đọc. */
@@ -1966,10 +1973,24 @@ async function mergeContainer(
   const chunks = listChunks(containerPath);
   for (const chunk of chunks) {
     const label = `${displayName}#${chunk.index}`;
+    // The merged-ledger key is the BLOCK ID (`kdf.salt`), not the position (plan/24 §7c ①). Measured 2026-10-07: once the
+    // p2p channel writes to its ROOT (one container), `global_memory.005.enc#3` names a Drive block AND a different channel
+    // block — the two kept overwriting each other's ledger row, so each sync decrypted again what it already had. A block
+    // id is the same wherever the block sits (Drive · root · legacy pen), so it is merged once. No id ⇒ position label.
+    const id = chunkBlockId(containerPath, chunk);
+    const key = ledgerKey(containerPath, chunk, label);
+    const cheapSig = chunkSignature(containerPath, chunk);
     // CỬA CHẶN RẺ: hỏi "đã merge chưa" bằng chữ ký đọc TẠI CHỖ, trước khi chép byte nào.
     // Trước đây phải giải nén khối rồi mới hỏi ⇒ mỗi lượt sync chép lại cả container (đo
     // 2026-08-25: đọc 2,4 GB / ~1 giờ chỉ để kết luận "không có gì mới").
-    if (isBundleMerged(label, chunkSignature(containerPath, chunk), o.dbPath)) {
+    if (isBundleMerged(key, cheapSig, o.dbPath)) {
+      out.push({ file: label, skipped: true, cheap: true });
+      continue;
+    }
+    // Carry-over from the position-keyed ledger: the same signature under the old label IS this block (signature =
+    // length + createdAt). Record it under the id and skip — upgrading must not decrypt every channel again.
+    if (id && isBundleMerged(label, cheapSig, o.dbPath)) {
+      markBundleMerged(key, cheapSig, o.dbPath);
       out.push({ file: label, skipped: true, cheap: true });
       continue;
     }
@@ -1978,12 +1999,12 @@ async function mergeContainer(
     try {
       await extractChunk(containerPath, chunk, part);
       const sig = bundleSignature(part);
-      if (isBundleMerged(label, sig, o.dbPath)) {
+      if (isBundleMerged(key, sig, o.dbPath)) {
         out.push({ file: label, skipped: true });
         continue;
       }
       const r = await mergeMemoryBundle({ bundlePath: part, dbPath: o.dbPath, keyFile: o.keyFile, excludeLanes: o.excludeLanes });
-      markBundleMerged(label, sig, o.dbPath);
+      markBundleMerged(key, sig, o.dbPath);
       out.push({ file: label, sessionsAdded: r.sessionsAdded, messagesAdded: r.messagesAdded });
       // 🔴 NHƯỜNG event loop sau MỖI gói. `mergeMemoryBundle` ghi SQLite đồng bộ; hợp nhất cả kho là
       // nhiều phút mà không một khung mạng nào được xử lý: nhịp tim không trả lời được, bắt tay TLS
@@ -2251,7 +2272,7 @@ async function pushAppend(o: {
         await extractChunk(target, mine, copy);
         // Khoá theo TÊN KHÚC THẬT — chiều merge dedup bằng `<tên file>#<khối>`; ghi cứng
         // MAIN_BUNDLE thì khối nằm ở khúc .002 trở đi không bao giờ được đánh dấu.
-        markBundleMerged(`${basename(target)}#${mine.index}`, bundleSignature(copy), dbPath);
+        markBundleMerged(ledgerKey(target, mine), bundleSignature(copy), dbPath);
       } catch (e) {
         // Fail-open (điều 9) nhưng KHÔNG im: giá phải trả là lượt sync sau giải mã lại khối này
         // một lần. Nuốt lặng thì lần sau chậm mà không ai biết vì sao.
@@ -2627,7 +2648,7 @@ export async function vectorCatchUp(opts: {
       if (mine) {
         const copy = join(tmp, "mine.enc");
         await extractChunk(container, mine, copy);
-        markBundleMerged(`${basename(container)}#${mine.index}`, bundleSignature(copy), dbPath);
+        markBundleMerged(ledgerKey(container, mine), bundleSignature(copy), dbPath);
       }
     } finally {
       release();

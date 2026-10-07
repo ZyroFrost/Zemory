@@ -651,8 +651,12 @@
     <div class="dlg-h"><span class="ci" id="zDlgIcon" style="color:var(--primary)">?</span><b id="zDlgTitle">—</b><button class="x" id="zDlgX" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
     <div class="dlg-b">
       <div id="zDlgBody"></div>
-      <div id="zDlgMsg" class="muted" style="font-size:11.5px;margin-top:8px;min-height:1em"></div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+    </div>
+    <!-- Status line + actions stay OUTSIDE the scroll area: inside it, a long body pushed them below the fold and a
+         re-check reported its result where nobody could see it (2026-10-07, "Cổng repo"). -->
+    <div class="dlg-f">
+      <div id="zDlgMsg" class="muted" style="font-size:11.5px;min-height:1em"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
         <button class="btn sm" id="zDlgCancel" data-i18n="act.cancel">Huỷ</button>
         <button class="btn primary sm" id="zDlgOk">OK</button>
       </div>

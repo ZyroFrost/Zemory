@@ -23,7 +23,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { currentMemoryDir } from "../memory/db.js";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
@@ -238,6 +238,16 @@ export function isIdentifierNotation(lastSeg: string): boolean {
   return !!m && /[a-z]/.test(m[1]) && /[A-Z]/.test(m[1]);
 }
 
+/**
+ * An arithmetic FORMULA, not a path: `GrossAmount/1.08` · `(GrossAmount+Discount)/1.08` · `=EX/4.42`. The divisor is a bare
+ * number, which `.08` makes look like an extension; an Excel formula starts with `=`. Reported by Dept_FA 2026-10-07: 6 of
+ * its 19 "dead" were these. A trailing `/` (`v/1.08/`) still reads as a folder and is judged.
+ */
+export function isFormula(s: string): boolean {
+  if (/^=/.test(s)) return true;
+  return /[\\/]\d+(\.\d+)?$/.test(s);
+}
+
 export function classify(
   c: Candidate,
   file: string,
@@ -274,6 +284,7 @@ export function classify(
     const explicit = REL.test(s);
     const hasExt = /\.[A-Za-z0-9]{1,8}$/.test(segs[segs.length - 1] ?? "");
     if (!explicit && isIdentifierNotation(segs[segs.length - 1] ?? "")) return { kind: "unresolved", reason: "not-a-path" };
+    if (!explicit && isFormula(s)) return { kind: "unresolved", reason: "not-a-path" };
     const trailing = /[\\/]$/.test(s);
     if (!explicit && !(segs.length >= 2 && (hasExt || trailing))) return { kind: "unresolved", reason: "shape-ambiguous" };
     if (segs.every((g) => g.startsWith("."))) return { kind: "unresolved", reason: "shape-ambiguous" }; // `.go/.java/.sh` = an extension list
@@ -409,6 +420,40 @@ function walk(root: string, exclude: string[], out: string[], depth = 12): void 
 }
 
 /**
+ * For each line of a Markdown file, the SIBLING repo the enclosing heading names — `### Dept_BIZ — 74 file` makes the
+ * paths listed under it relative to `../Dept_BIZ`, not to this repo. Measured 2026-10-07: `_DB_DataWarehouse`
+ * `docs/plan/24_dw_key_migration_changes.md` held 269 "dead" paths, 268 of them real files in the repo its section
+ * heading named. Positive only: the first word of the heading must be a folder next to this repo that is a repo
+ * (`.git` or `docs/`), and not this repo itself. A section ends at the next heading of the same or a higher level.
+ */
+export function markdownSiblingSections(lines: string[], root: string): (string | undefined)[] {
+  const out: (string | undefined)[] = new Array(lines.length);
+  const own = basename(resolve(root)).toLowerCase();
+  const stack: { level: number; base?: string }[] = [];
+  const known = new Map<string, string | undefined>();
+  const siblingOf = (name: string): string | undefined => {
+    const k = name.toLowerCase();
+    if (known.has(k)) return known.get(k);
+    const p = resolve(root, "..", name);
+    const ok = k !== own && (existsSync(join(p, ".git")) || existsSync(join(p, "docs")));
+    known.set(k, ok ? p : undefined);
+    return ok ? p : undefined;
+  };
+  let fence = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) fence = !fence;
+    const h = fence ? null : /^(#{1,6})\s+`?([A-Za-z0-9_.-]+)`?/.exec(lines[i]);
+    if (h) {
+      const level = h[1].length;
+      while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+      stack.push({ level, base: siblingOf(h[2]) });
+    }
+    out[i] = [...stack].reverse().find((s) => s.base)?.base;
+  }
+  return out;
+}
+
+/**
  * For each line of a YAML file, the `cwd:` declared by the LIST ITEM it sits in — wherever in the item that key is
  * (in `jobs.yaml` it comes AFTER `command:`). An item starts at a `- key:` line and ends at the next item of the same
  * indent. Lines outside any item, or in an item without `cwd:`, get undefined.
@@ -508,7 +553,7 @@ export function pathsCheck(ctx: Context): PathsReport {
     // Markdown link targets under docs/ are validate.ts §1's job already — do not report them twice.
     const linkTargets = !(/\.md$/i.test(abs) && /(^|\/)docs\//.test("/" + rel));
     const lines = text.split("\n");
-    const cwdOf = /\.ya?ml$/i.test(abs) ? yamlItemCwds(lines, dirname(abs)) : [];
+    const cwdOf = /\.ya?ml$/i.test(abs) ? yamlItemCwds(lines, dirname(abs)) : /\.md$/i.test(abs) ? markdownSiblingSections(lines, root) : [];
     for (let i = 0; i < lines.length; i++) {
       const jobCwd = cwdOf[i] ?? null;
       const cands = extractCandidates(lines[i], { linkTargets });

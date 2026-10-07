@@ -286,24 +286,47 @@
       var d=chip.querySelector('.dot');if(d)d.className=bad.length?'dot warn':'dot';
       zset('railGatesN',bad.length?t('rail.gatesBad').replace('{n}',bad.length)+' ⚠':t('rail.gatesOk'));
       zset('railGatesSub',bad.length?bad[0].name+(bad.length>1?' +'+(bad.length-1):''):t('rail.gatesOkSub').replace('{n}',rows.length));
-    }).catch(function(){});
+      return r;
+    // Background refresh stays quiet (fail-open); a refresh the USER asked for (`fresh`) must surface the failure —
+    // swallowing it made "Kiểm lại cổng" look finished when the check never ran.
+    }).catch(function(e){if(fresh)throw e;});
+  }
+  // One line per open gap, built from the structured fields through i18n — the backend's `lines` are English CLI text.
+  function gateLines(g){
+    var out=[];
+    if(g.wiring===null)out.push(t('gates.noGuard'));
+    else if(g.wiring&&g.wiring.length)out.push(t('gates.matcher').replace('{t}',g.wiring.join(' · ')));
+    if(g.precommit==='none')out.push(t('gates.noPrecommit'));
+    if(g.precommit==='other')out.push(t('gates.ownPrecommit'));
+    if(g.hp&&!g.hp.table)out.push(t('gates.noTable').replace('{n}',g.hp.articles));
+    else if(g.hp&&g.hp.missing.length)out.push(t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles));
+    if(g.top&&g.top.length)out.push(t('gates.top'));
+    return out;
   }
   function gatesDialog(){
-    function draw(){
+    function draw(note){
       var bad=(GATES||[]).filter(function(g){return g.gaps>0;});
       var body=bad.length?bad.map(function(g,i){
         return '<div style="padding:8px 0;'+(i?'border-top:1px solid var(--border)':'')+'"><b>'+stdEsc(g.name)+'</b>'+
-          g.lines.map(function(l){return '<div class="muted" style="font-size:12px;margin-top:2px;word-break:break-word">· '+stdEsc(l)+'</div>';}).join('')+'</div>';
+          gateLines(g).map(function(l){return '<div class="muted" style="font-size:12px;margin-top:2px;word-break:break-word">· '+stdEsc(l)+'</div>';}).join('')+'</div>';
       }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
       zDialog({iconHtml:ZICON.gates,size:'md',title:t('gates.title'),bodyHtml:'<div style="font-size:13px">'+body+'</div>',
         okLabel:t('gates.recheck'),onOk:function(){
           var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
-          refreshRepoGates(true).then(function(){if(okb)okb.disabled=false;zDlgMsg('');draw();})
+          refreshRepoGates(true).then(function(r){draw(checkedNote(r));})
             .catch(function(){zDlgMsg(t('upd.recheckErr'));if(okb)okb.disabled=false;});
           return true;
         }});
+      if(note)zDlgMsg(note);
     }
-    refreshRepoGates(true).then(draw,draw);
+    // A re-check that changes nothing must still SAY it ran: when, and what it found.
+    function checkedNote(r){
+      var at=r&&r.checkedAt?new Date(r.checkedAt):new Date();
+      var n=(GATES||[]).filter(function(g){return g.gaps>0;}).length;
+      var hh=('0'+at.getHours()).slice(-2)+':'+('0'+at.getMinutes()).slice(-2);
+      return (n?t('gates.checkedBad').replace('{n}',n):t('gates.checkedOk')).replace('{t}',hh);
+    }
+    refreshRepoGates(true).then(function(){draw();},function(){draw(t('upd.recheckErr'));});
   }
   document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#railGates'))gatesDialog();});
   function refreshHarnessUpdates(){
