@@ -121,6 +121,43 @@ test("NEGATIVE: looking is never blocked — Read, git status, memory search, a 
   assert.equal(s.check(s.sh("curl -s http://127.0.0.1:4444/ping")), null, "a plain GET only looks");
 });
 
+test("NEGATIVE: git's GLOBAL options do not turn a look into an act — git -C <dir> status (Dept_FA 2026-10-08)", (t) => {
+  const s = setup(t);
+  for (const c of ['git -C "D:\\w\\Dept_FA" status --short', "git -c core.pager=cat log -3", "git --no-pager diff --stat", "git --git-dir=.git --work-tree=. status",
+    'Test-Path "tasks\\FA_Weekly\\_x.md"; git -C "D:\\w\\Dept_FA" status --short']) {
+    assert.equal(s.check(s.sh(c)), null, c);
+  }
+  assert.match(s.check(s.sh("git -C . commit -m x")), /NOT READ IN FULL/, "a global option in front of commit still acts");
+});
+
+test("a sender script is recognised by its CONTENT, one hop through a launcher; NEGATIVE: a script that sends nothing (Dept_FA 2026-10-08)", (t) => {
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4);
+  const pipe = join(s.root, "tasks", "FA_Weekly", "pipeline");
+  mkdirSync(pipe, { recursive: true });
+  mkdirSync(join(s.root, ".claude", "skills", "write-style"), { recursive: true });
+  writeFileSync(join(s.root, ".claude", "skills", "write-style", "SKILL.md"), "a\nb\n");
+  writeFileSync(join(pipe, "03_send.py"), "import smtplib\nsmtplib.SMTP('h').send_message(m)\n");
+  writeFileSync(join(pipe, "01_pull.py"), "import pandas\n");
+  writeFileSync(join(s.root, "run_weekly.py"), "import subprocess\nsubprocess.run(['python', 'tasks/FA_Weekly/pipeline/03_send.py'])\n");
+  s.read("tasks/FA_Weekly/spec.md", 1, 3, 3);
+  const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], case_root: "tasks", case_files: ["spec.md"],
+    triggers: [{ when: "script_re", re: "smtplib|send-mailmessage|smtpclient", read: ".claude/skills/write-style/SKILL.md" }] } };
+  const RFmod = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const globalCheck = (command) => RFmod.readFirst({ tool_name: "PowerShell", tool_input: { command }, transcript_path: join(s.root, "..", "session.jsonl") }, s.root, policy);
+  s.check(s.sh("echo warm")); // writes the transcript file
+  assert.match(globalCheck("python tasks\\FA_Weekly\\pipeline\\03_send.py"), /write-style\/SKILL\.md/, "the sender itself");
+  assert.match(globalCheck("python run_weekly.py"), /write-style\/SKILL\.md/, "a launcher one hop away");
+  assert.equal(globalCheck("python tasks\\FA_Weekly\\pipeline\\01_pull.py"), null, "a script that sends nothing");
+  // Caught live while fixing this: a TEST whose fixture says "smtplib" is not a sender, and a file only NAMED is not run.
+  mkdirSync(join(s.root, "test"), { recursive: true });
+  writeFileSync(join(s.root, "test", "mail.test.mjs"), "const fx = 'import smtplib';\n");
+  assert.equal(globalCheck("node --test test/mail.test.mjs"), null, "a test file mentioning smtplib");
+  assert.equal(globalCheck("npm run build -- tasks\\FA_Weekly\\pipeline\\03_send.py"), null, "named, not run by an interpreter");
+  assert.equal(globalCheck("$f='tasks\\FA_Weekly\\pipeline\\03_send.py'; Get-Content $f"), null, "a quoted value assigned to a variable is not run");
+});
+
 test("NEGATIVE: writing OUTSIDE the repo (a scratchpad) is not this latch's business", (t) => {
   const s = setup(t);
   assert.equal(s.check({ tool_name: "Write", tool_input: { file_path: join(s.root, "..", "scratch", "x.mjs") } }), null);

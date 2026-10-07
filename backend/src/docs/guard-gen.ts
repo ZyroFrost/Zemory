@@ -95,6 +95,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       { when: "new_dir", read: `${agentRel}/03_STRUCTURE.md` },
       ...(isApp ? [{ when: "path_prefix", prefix: "frontend", read: `${skillsRel}/app-design/SKILL.md` }] : []),
       { when: "cmd_re", re: "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b", read: `${skillsRel}/write-style/SKILL.md` },
+      // A sender named anything ("03_send.py"): read the script — and one hop into what a launcher calls (Dept_FA 2026-10-08).
+      { when: "script_re", re: "smtplib|send-mailmessage|smtpclient|sendmail\\(|send_message\\(|graph_mail|smtp_mail|/sendMail\\b", read: `${skillsRel}/write-style/SKILL.md` },
     ],
   };
   return {

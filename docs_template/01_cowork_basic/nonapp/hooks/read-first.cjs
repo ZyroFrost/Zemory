@@ -50,7 +50,15 @@ function shellActs(cmd) {
     if (!w.length) continue;
     const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.exe$/, "");
     if (LOOK.has(name)) continue;
-    if (name === "git" && GIT_LOOK.test(w[1] || "")) continue;
+    if (name === "git") {
+      // Skip git's GLOBAL options before the subcommand: "git -C <dir> status" is a look (Dept_FA 2026-10-08).
+      let i = 1;
+      while (i < w.length && w[i].startsWith("-")) {
+        if (/^(-C|-c|--git-dir|--work-tree|--namespace|--exec-path)$/.test(w[i])) i += 2;
+        else i += 1;
+      }
+      if (GIT_LOOK.test(w[i] || "")) continue;
+    }
     if (name === "zemory" && ZEMORY_LOOK.some((re) => re.test(w.slice(1).join(" ")))) continue;
     if (name === "node" && w[1] && /dist[\\/]cli\.js$/.test(w[1]) && ZEMORY_LOOK.some((re) => re.test(w.slice(2).join(" ")))) continue;
     return true;
@@ -92,8 +100,59 @@ function extraFor(rf, root, targets, cmd) {
       hit = targets.some((t) => norm(t).startsWith(norm(tr.prefix) + "/"));
     } else if (tr.when === "cmd_re" && cmd) {
       try { hit = new RegExp(tr.re, "i").test(cmd); } catch {}
+    } else if (tr.when === "script_re" && cmd) {
+      // By CONTENT, not by name (Dept_FA 2026-10-08: "03_send.py" sends real mail): every script the command names is read,
+      // plus ONE hop into the scripts it names in turn (a launcher "run_weekly.py" / "bin\x.cmd" calling the sender).
+      try { hit = scriptsOf(root, scriptsRun(cmd).join(" "), 1).some((txt) => new RegExp(tr.re, "i").test(txt)); } catch {}
     }
     if (hit) out.push(tr.read);
+  }
+  return out;
+}
+
+// The scripts a command RUNS — the first script after an interpreter, or a script standing as the command itself. A file the
+// command merely names (a test fed to "node --test", a path handed to grep) is not run: reading its text made a test that
+// mentions "smtplib" in a fixture demand write-style (caught in the zemory session that fixed Dept_FA's report, 2026-10-08).
+const INTERP = /^(python|python3|py|node|deno|bun|pwsh|powershell|bash|sh|cmd|uv|poetry)$/;
+const TESTISH = /(^|[\\\/])(tests?|__tests__)[\\\/]|\.test\.|_test\.|(^|[\\\/])test_[^\\\/]*$/i;
+function scriptsRun(cmd) {
+  const out = [];
+  for (const seg of segments(cmd)) {
+    // A quoted string standing first is a VALUE ("$f = 'x.js'"), not a command — caught live the same day.
+    if (/^["']/.test(seg.replace(/^\$[A-Za-z_][\w:]*\s*=\s*/, "").trim())) continue;
+    const w = words(seg);
+    if (!w.length) continue;
+    const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.exe$/, "");
+    let s = null;
+    if (/\.(py|ps1|js|mjs|cjs|cmd|bat|sh)$/i.test(w[0])) s = w[0];
+    else if (INTERP.test(name)) s = w.slice(1).find((x) => /\.(py|ps1|js|mjs|cjs|cmd|bat|sh)$/i.test(x)) || null;
+    if (s && !TESTISH.test(s)) out.push(s);
+  }
+  return out;
+}
+
+// Contents of the script files a text names (relative to the repo root or to the naming file's folder), following
+// "hops" more levels. Files over 512 KB or unreadable are skipped (fail-open).
+const SCRIPT_RE = /[A-Za-z0-9_.\-\\\/:]+\.(py|ps1|js|mjs|cjs|cmd|bat|sh)\b/gi;
+function scriptsOf(root, text, hops, from, seen) {
+  seen = seen || new Set();
+  const out = [];
+  for (const m of String(text).match(SCRIPT_RE) || []) {
+    const rel = m.replace(/^["']+/, "");
+    for (const base of [from, root]) {
+      if (!base) continue;
+      const abs = path.resolve(base, rel);
+      if (seen.has(norm(abs))) break;
+      let st = null;
+      try { st = fs.statSync(abs); } catch {}
+      if (!st || !st.isFile() || st.size > 512 * 1024) continue;
+      seen.add(norm(abs));
+      let txt = "";
+      try { txt = fs.readFileSync(abs, "utf8"); } catch { break; }
+      out.push(txt);
+      if (hops > 0) out.push(...scriptsOf(root, txt, hops - 1, path.dirname(abs), seen));
+      break;
+    }
   }
   return out;
 }
