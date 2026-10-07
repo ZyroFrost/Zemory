@@ -216,6 +216,11 @@ test("⑬ every constitution article has a row in 02_RULES `## Cổng cho hiến
   writeFileSync(join(d, "01_CONSTITUTION.md"), "1. **A**\n2. **B**\n");
   writeFileSync(join(d, "02_RULES.md"), "## Cổng cho hiến pháp\n| # | x |\n|---|---|\n| 1 | a |\n");
   assert.match(hpGateGaps(d) ?? "", /article\(s\) 2 have no row/);
+  // an emoji marker before the bold is still an article; the template placeholder is not
+  writeFileSync(join(d, "01_CONSTITUTION.md"), "1. **A**\n2. 🔒 **B**\n3. 🔴️ **C**\n4. **(chưa chốt)** — điền sau\n");
+  assert.match(hpGateGaps(d) ?? "", /article\(s\) 2, 3 have no row/);
+  writeFileSync(join(d, "01_CONSTITUTION.md"), "1. **(chưa chốt)** — điền sau\n");
+  assert.equal(hpGateGaps(d), null);
 });
 
 test("⑥ `npm run check` runs validate", () => {

@@ -167,14 +167,18 @@ test("FE: each status chip carries ONE identifying icon, and the icon survives o
   const html = readFileSync(new URL("../../frontend/pages/app.html", import.meta.url), "utf8");
   const css = readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8");
   const slots = [...html.matchAll(/<span class="cic" data-icon="([a-z]+)"><\/span>/g)].map((m) => m[1]);
-  assert.equal(slots.length, 3, "ba chip trạng thái, ba khe icon");
-  assert.deepEqual([...slots].sort(), ["app", "health", "std"], `khe icon sai — thấy ${slots.join(" ")}`);
+  // Bốn chip từ 2026-10-07: thêm `gates` — repo có CHẠY cổng không (guard cắm · pre-commit cắm · đủ hàng cổng HP).
+  assert.equal(slots.length, 4, "bốn chip trạng thái, bốn khe icon");
+  assert.deepEqual([...slots].sort(), ["app", "gates", "health", "std"], `khe icon sai — thấy ${slots.join(" ")}`);
+  const sysJs = readFileSync(new URL("../../frontend/scripts/system.js", import.meta.url), "utf8");
+  assert.match(sysJs, /closest\('#railGates'\)\)gatesDialog\(\)/, "chip cổng mở hộp cổng");
+  assert.match(sysJs, /function refreshHarnessUpdates\(\)\{\s*refreshRepoGates\(\);/, "chip cổng đi theo MỌI đường làm tươi chip chuẩn");
   // ICON PHẢI LÀ SVG, KHÔNG emoji. Bản đầu dùng ⬆ 📘 ✔ và user gọi thẳng là "không chuyên nghiệp":
   // emoji mỗi nền vẽ một kiểu, ở cỡ nhỏ thì nhoè, và 📘 có màu CỐ ĐỊNH nên không tô theo trạng thái
   // được. SVG nét đơn sắc ăn theo `currentColor` ⇒ sắc ở mọi cỡ và tô được.
   const core = readFileSync(new URL("../../frontend/scripts/core.js", import.meta.url), "utf8");
   const zicon = core.slice(core.indexOf("var ZICON="), core.indexOf("function zDialog"));
-  for (const k of ["app", "std", "health"]) assert.ok(new RegExp(`${k}:'<svg`).test(zicon), `ZICON.${k} phải là SVG`);
+  for (const k of ["app", "std", "gates", "health"]) assert.ok(new RegExp(`${k}:'<svg`).test(zicon), `ZICON.${k} phải là SVG`);
   assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(zicon), "bộ icon không được lẫn emoji");
   assert.match(css, /\.status-chip \.cic svg\{/, "icon phải có kích thước xác định");
   assert.match(css, /\.railcoll \.status-chip \.cic svg\{/, "rail thu gọn phải GIỮ icon (chỗ duy nhất phân biệt được)");
