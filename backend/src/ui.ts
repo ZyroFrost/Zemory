@@ -4113,7 +4113,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const now = Date.now();
       // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
       if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
-        const stale: Array<{ root: string; name: string; missing: number; guardStale: number; drift: number; locked: boolean }> = [];
+        const stale: Array<{ root: string; name: string; missing: number; guardStale: number; drift: number; manual: number; locked: boolean }> = [];
         try {
           // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
           for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
@@ -4125,13 +4125,16 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
             const v = isStandardSource(proj.root) ? [] : standardDiff(proj.root).files;
             // Skill CHUNG cũ (thay được / thiếu) cũng là lệch chuẩn; skill đã sửa tay thì không tính — bấm áp không ghi nó.
             const skillDrift = isStandardSource(proj.root) ? 0 : skillDiff(proj.root).filter((s) => s.verdict === "clean" || s.verdict === "absent").length;
-            const drift = v.filter((f) => f.verdict === "clean" || f.verdict === "local").length + skillDrift;
-            const unknown = v.filter((f) => f.verdict === "unknown").length;
-            if (r.missing.length || r.guardStale.length || drift || unknown) {
-              // `locked`: thứ DUY NHẤT còn lệch là phần máy không kết luận được (chưa có dấu) ⇒ bấm áp cũng không
-              // ghi được gì. Ô tick khoá lại — nút bấm được mà không ghi gì là nút nói dối.
-              const locked = !r.missing.length && !r.guardStale.length && !drift && unknown > 0;
-              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length, drift, locked });
+            // Ask the SAME merge the apply button runs (dry-run): a `local` file whose hunks overlap is refused there, so
+            // counting it as "appliable" made the box invite a click that never wrote anything (2026-10-08, 3 repos).
+            const dry = v.some((f) => f.verdict === "clean" || f.verdict === "local") ? applyStandard(proj.root, { apply: false }) : [];
+            const drift = dry.filter((f) => f.action === "would-write").length + skillDrift;
+            const manual = dry.filter((f) => f.action === "skipped").length + v.filter((f) => f.verdict === "unknown").length;
+            if (r.missing.length || r.guardStale.length || drift || manual) {
+              // `locked`: the only thing left is what the tool refuses to write (no stamp · overlapping hunks) ⇒ a click
+              // writes nothing. The tick is locked — a button that writes nothing is a button that lies.
+              const locked = !r.missing.length && !r.guardStale.length && !drift && manual > 0;
+              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length, drift, manual, locked });
             }
           }
         } catch {
