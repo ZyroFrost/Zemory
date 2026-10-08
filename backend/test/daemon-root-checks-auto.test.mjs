@@ -150,7 +150,7 @@ test("FE: 'a new zemory build' and 'an old repo on the standard' are TWO chips -
   // HAI HỘP THOẠI RIÊNG (user 2026-09-09: *"cái thông báo repo đã theo chuẩn là khác mà"*). Gộp
   // chung thì nút "Cập nhật ngay" đứng cạnh danh sách repo, và không ai biết nó cập nhật CÁI GÌ.
   assert.match(sys, /function updDialogApp\(\)/, "hộp riêng cho bản zemory");
-  assert.match(sys, /function updDialogStd\(\)/, "hộp riêng cho chuẩn repo");
+  assert.match(sys, /function updDialogStd\(\w*\)/, "hộp riêng cho chuẩn repo");
   assert.match(sys, /closest\('#railApp'\)\)\{updDialogApp\(\)/, "chip app mở hộp app");
   assert.match(sys, /closest\('#railStd'\)\)\{updDialogStd\(\)/, "chip chuẩn mở hộp chuẩn");
   // Hộp chuẩn repo KHÔNG được nhắc số hiệu bản zemory — đó là nội dung của hộp kia.
