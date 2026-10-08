@@ -3,8 +3,10 @@
 // hook existed — it skimmed (offset/limit · grep · sed -n) and acted. A reminder is not enough; this BLOCKS.
 //
 // The SOURCE of "what was read" is the session TRANSCRIPT the hook already receives (`transcript_path`): every Read result is
-// recorded there with `startLine · numLines · totalLines` (and `truncatedByTokenCap`), so coverage is exact even when the tool
-// cut a long file. No second ledger to keep in sync (HP điều 3 — one source). grep / sed / Get-Content never count as reading.
+// recorded there WITH ITS TEXT, every Edit with its full patched lines, every Write with its content. Coverage is by LINE TEXT:
+// a line of the current file counts once the session has seen that exact line (user 2026-10-08: "có cách nào để biết agent nó
+// đọc rồi, ko bắt nó đọc lại nữa ko, để phí token quá" — one changed line used to void the whole 319-line file). No second
+// ledger to keep in sync (HP điều 3 — one source). grep / sed / Get-Content never count as reading.
 //
 // Generated into `<hooks>/read-first.cjs` by `zemory hook guard`; guard.cjs calls it. Plain stdlib, written with String.raw so
 // backslashes are literal — DO NOT use backticks or dollar-brace inside the source below.
@@ -202,67 +204,65 @@ function sessionFiles(transcript) {
   } catch {}
   return out;
 }
-function ledger(transcript) {
-  const reads = new Map(), own = new Map(), events = new Map();
-  const ev = (k, e) => { if (!events.has(k)) events.set(k, []); events.get(k).push(e); };
+// The lines this session has SEEN, per file: the text of every Read, the full lines of every Edit hunk (context + added),
+// the content of every Write. Only the files in "keys" are kept (the transcript runs to tens of MB).
+const splitLines = (t) => String(t).split("\n").map((l) => l.replace(/\r$/, ""));
+function ledger(transcript, keys) {
+  const known = new Map();
+  const add = (k, lines) => {
+    if (keys && !keys.has(k)) return;
+    if (!known.has(k)) known.set(k, new Set());
+    const set = known.get(k);
+    for (const l of lines) set.add(l);
+  };
   let text = "";
   try { text = fs.readFileSync(transcript, "utf8"); } catch { return null; }
   for (const f of sessionFiles(transcript).slice(1)) { try { text += "\n" + fs.readFileSync(f, "utf8"); } catch {} }
+  // Cheap filter before JSON.parse: a record about a needed file names that file (the path is JSON-escaped, the name is not).
+  const names = keys ? [...keys].map((k) => k.split("/").pop()) : null;
   for (const line of text.split("\n")) {
     if (!line.includes("\"toolUseResult\"")) continue;
+    if (names) { const low = line.toLowerCase(); if (!names.some((n) => low.includes(n))) continue; }
     let j; try { j = JSON.parse(line); } catch { continue; }
-    const r = j.toolUseResult, ts = Date.parse(j.timestamp || "") || 0;
+    const r = j.toolUseResult;
     if (!r || typeof r !== "object") continue;
     if (r.type === "text" && r.file && r.file.filePath) {
-      const k = norm(r.file.filePath);
-      const rd = { kind: "read", s: Number(r.file.startLine) || 1, n: Number(r.file.numLines) || 0, t: Number(r.file.totalLines) || 0, ts };
-      if (!reads.has(k)) reads.set(k, []);
-      reads.get(k).push(rd);
-      ev(k, rd);
-    } else if (r.filePath && (r.type === "update" || r.type === "create" || r.structuredPatch)) {
-      own.set(norm(r.filePath), Math.max(own.get(norm(r.filePath)) || 0, ts));
-      ev(norm(r.filePath), { kind: "own", ts });
+      add(norm(r.file.filePath), typeof r.file.content === "string" ? splitLines(r.file.content) : []);
+    } else if (r.filePath) {
+      const k = norm(r.filePath);
+      if (typeof r.content === "string" && (r.type === "create" || r.type === "update")) add(k, splitLines(r.content));
+      if (Array.isArray(r.structuredPatch) && r.structuredPatch.length) {
+        for (const h of r.structuredPatch) add(k, (h.lines || []).filter((l) => l[0] === " " || l[0] === "+").map((l) => l.slice(1).replace(/\r$/, "")));
+      } else if (typeof r.newString === "string") {
+        add(k, splitLines(r.newString)); // no patch recorded: the replacement text itself
+      }
     }
   }
-  for (const list of events.values()) list.sort((a, b) => a.ts - b.ts); // several files ⇒ restore time order
-  return { reads, own, events };
+  return { known };
 }
 
-// Coverage of ONE file by the reads that are still valid (none older than a change made by someone else).
+// Coverage of ONE file: which of its CURRENT lines the session has seen. A change by anyone (another session, our own script,
+// "zemory archive") leaves only the changed lines unseen — those, and nothing else, must be read. Blank lines carry nothing.
 function coverage(abs, L) {
-  const k = norm(abs);
-  let mtime = 0, lines = 0;
-  try { const st = fs.statSync(abs); mtime = st.mtimeMs; lines = fs.readFileSync(abs, "utf8").split("\n").length; } catch { return null; }
-  // Walk the file's events in order. Two reads with a DIFFERENT line count and no write of ours between them = someone else
-  // changed the file in between (our own later edit would otherwise hide that change behind our mtime) ⇒ earlier reads void.
-  let live = [], lastT = null, ownSince = false, reset = false;
-  for (const e of L.events.get(k) || []) {
-    if (e.kind === "own") { ownSince = true; continue; }
-    if (lastT !== null && e.t !== lastT && !ownSince) { live = []; reset = true; }
-    live.push(e);
-    lastT = e.t;
-    ownSince = false;
+  let lines;
+  try { lines = splitLines(fs.readFileSync(abs, "utf8")); } catch { return null; }
+  if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop(); // the newline that ends the file is not a line
+  const seen = L.known.get(norm(abs)) || new Set();
+  const unseen = [];
+  for (let i = 0; i < lines.length; i++) if (lines[i].trim() !== "" && !seen.has(lines[i])) unseen.push(i + 1);
+  return { full: unseen.length === 0, got: lines.length - unseen.length, total: lines.length, unseen, never: seen.size === 0 };
+}
+
+// "3-5, 9, 12-40 (+N more)" — the line ranges a message asks for.
+function ranges(nums) {
+  const out = [];
+  for (let i = 0; i < nums.length; i++) {
+    let j = i;
+    while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+    out.push(nums[i] === nums[j] ? String(nums[i]) : nums[i] + "-" + nums[j]);
+    i = j;
   }
-  const lastOwn = L.own.get(k) || 0;
-  const changedByOther = !(lastOwn && mtime <= lastOwn + 3000);
-  const valid = live.filter((r) => !changedByOther || r.ts >= mtime - 1000);
-  const stale = (reset || changedByOther) && (L.reads.get(k) || []).length > 0 && valid.length < (L.reads.get(k) || []).length;
-  if (!valid.length) return { full: false, got: 0, total: lines, stale };
-  // One VERSION read end to end is enough: group the reads by the line count they saw (our own edits change the count, and
-  // the lines we wrote ourselves need no reading).
-  let best = { got: 0, total: lines };
-  const byT = new Map();
-  for (const r of valid) { if (!byT.has(r.t)) byT.set(r.t, []); byT.get(r.t).push(r); }
-  for (const [t, rs] of byT) {
-    const total = t || lines;
-    const marks = new Uint8Array(total + 2);
-    for (const r of rs) for (let i = r.s; i < r.s + r.n && i <= total; i++) marks[i] = 1;
-    let got = 0;
-    for (let i = 1; i <= total; i++) got += marks[i];
-    if (got >= total) return { full: true, got, total, stale: false };
-    if (got / total > best.got / (best.total || 1)) best = { got, total };
-  }
-  return { full: false, got: best.got, total: best.total, stale };
+  return out.length > 8 ? out.slice(0, 8).join(", ") + " (+" + (out.length - 8) + " more)" : out.join(", ");
 }
 
 // null = let through · string = the blocking message.
@@ -287,19 +287,20 @@ function readFirst(payload, root, policy) {
     return null; // Read · Glob · Grep · everything that only looks
   }
   const need = expand(root, rf.required.concat(extraFor(rf, root, targets, cmd)));
-  const L = ledger(transcript);
+  const L = ledger(transcript, new Set(need.map((rel) => norm(path.join(root, rel)))));
   if (!L) return null;
   const missing = [];
   for (const rel of need) {
     const c = coverage(path.join(root, rel), L);
     if (!c || c.full) continue;
-    missing.push("  - " + rel + (c.stale ? "  (read BEFORE someone else changed it - read it again)" : "  (read " + c.got + "/" + c.total + " lines)"));
+    missing.push("  - " + rel + "  (read " + c.got + "/" + c.total + " lines" + (c.never ? ")" : " - still to read: lines " + ranges(c.unseen) + ")"));
   }
   if (!missing.length) return null;
   return "BLOCKED (guard layer 1): NOT READ IN FULL - this repo requires reading these files completely in this session before acting:\n" +
     missing.join("\n") +
-    "\nRead each with the Read tool to the last line (a long file: keep reading with offset until the end). grep / sed / head / Get-Content do not count." +
-    " There is no flag for this.";
+    "\nRead with the Read tool: a file never read - to the last line (a long file: keep reading with offset until the end);" +
+    " a file with lines listed - only those lines (offset = first line of a range, limit = its length). Lines already seen" +
+    " in this session need no reading again. grep / sed / head / Get-Content do not count. There is no flag for this.";
 }
 
 module.exports = { readFirst, shellActs, coverage, ledger };

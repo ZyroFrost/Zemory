@@ -5,7 +5,7 @@
 // reading that file in full let the same edit through.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdirSync, writeFileSync, utimesSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { READ_FIRST_SOURCE } from "../../dist/docs/read-first-src.js";
@@ -29,11 +29,21 @@ function setup(t) {
   const now = Date.now();
   const api = {
     root,
+    // A Read record carries the TEXT the tool returned (as in a real transcript) — taken from the file as it is NOW.
     read(rel, start, num, total, at = now + 60_000) {
-      entries.push({ type: "user", timestamp: new Date(at).toISOString(), toolUseResult: { type: "text", file: { filePath: join(root, rel), startLine: start, numLines: num, totalLines: total } } });
+      const content = readFileSync(join(root, rel), "utf8").split("\n").slice(start - 1, start - 1 + num).join("\n");
+      entries.push({ type: "user", timestamp: new Date(at).toISOString(), toolUseResult: { type: "text", file: { filePath: join(root, rel), content, startLine: start, numLines: num, totalLines: total } } });
     },
-    own(rel, at = now + 60_000) {
-      entries.push({ type: "user", timestamp: new Date(at).toISOString(), toolUseResult: { type: "update", filePath: join(root, rel) } });
+    // Our own Write: the file gets "text" and the record carries it.
+    own(rel, text, at = now + 60_000) {
+      writeFileSync(join(root, rel), text);
+      entries.push({ type: "user", timestamp: new Date(at).toISOString(), toolUseResult: { type: "update", filePath: join(root, rel), content: text, structuredPatch: [] } });
+    },
+    // Our own Edit: the record carries the patched hunk (context " " + added "+" lines), as Claude Code writes it.
+    patch(rel, from, to) {
+      const f = join(root, rel);
+      writeFileSync(f, readFileSync(f, "utf8").replace(from, to));
+      entries.push({ type: "user", timestamp: new Date().toISOString(), toolUseResult: { filePath: f, oldString: from, newString: to, structuredPatch: [{ lines: ["-" + from, ...to.split("\n").map((l) => "+" + l)] }] } });
     },
     compact() { entries.push({ type: "system", subtype: "compact_boundary", timestamp: new Date().toISOString() }); },
     check(payload) {
@@ -67,27 +77,43 @@ test("a long file read in PIECES (the tool cut it) counts once the pieces cover 
   const s = setup(t);
   s.read("docs/plan/01_x.md", 1, 4, 4);
   s.read("docs/agent/02_RULES.md", 1, 6, 10);
-  assert.match(s.check(s.edit("x.md")), /02_RULES\.md {2}\(read 6\/10 lines\)/);
+  assert.match(s.check(s.edit("x.md")), /02_RULES\.md {2}\(read 6\/10 lines - still to read: lines 7-10\)/);
   s.read("docs/agent/02_RULES.md", 6, 5, 10);
   assert.equal(s.check(s.edit("x.md")), null);
 });
 
-test("a file changed by SOMEONE ELSE after it was read must be read again", (t) => {
-  const s = setup(t);
-  s.read("docs/agent/02_RULES.md", 1, 10, 10, Date.now() - 120_000);
-  s.read("docs/plan/01_x.md", 1, 4, 4);
-  utimesSync(join(s.root, "docs/agent/02_RULES.md"), new Date(), new Date()); // another session wrote it after our read
-  assert.match(s.check(s.edit("x.md")), /02_RULES\.md {2}\(read BEFORE someone else changed it/);
-});
-
-test("NEGATIVE: our OWN edit after reading does not void the read, even though the line count changed", (t) => {
+test("a file changed by SOMEONE ELSE after it was read: ONLY the changed lines must be read again (user 2026-10-08)", (t) => {
+  // "có cách nào để biết agent nó đọc rồi, ko bắt nó đọc lại nữa ko, để phí token quá" — one changed line used to void the
+  // whole file (measured that day: 1 line edited by a script ⇒ all 319 lines of 02_RULES re-read).
   const s = setup(t);
   s.read("docs/agent/02_RULES.md", 1, 10, 10);
   s.read("docs/plan/01_x.md", 1, 4, 4);
-  s.own("docs/agent/02_RULES.md", Date.now() + 120_000);
-  utimesSync(join(s.root, "docs/agent/02_RULES.md"), new Date(Date.now() + 120_000), new Date(Date.now() + 120_000));
-  s.read("docs/agent/02_RULES.md", 1, 3, 14, Date.now() + 180_000); // a glance after our own edit (now 14 lines)
+  const f = join(s.root, "docs/agent/02_RULES.md");
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 3", "line 3 changed by a script")); // not through Edit/Write
+  const msg = s.check(s.edit("x.md"));
+  assert.match(msg, /02_RULES\.md {2}\(read 9\/10 lines - still to read: lines 3\)/);
+  assert.doesNotMatch(msg, /01_x\.md/, "an unchanged file is not asked again");
+  s.read("docs/agent/02_RULES.md", 3, 1, 10); // just that line
   assert.equal(s.check(s.edit("x.md")), null);
+});
+
+test("lines INSERTED by someone else shift the rest: only the inserted ones are asked for", (t) => {
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4);
+  const f = join(s.root, "docs/agent/02_RULES.md");
+  writeFileSync(f, "new top A\nnew top B\n" + readFileSync(f, "utf8")); // "zemory archive" / another session
+  assert.match(s.check(s.edit("x.md")), /02_RULES\.md {2}\(read 10\/12 lines - still to read: lines 1-2\)/);
+});
+
+test("NEGATIVE: our OWN Edit / Write after reading needs no re-read — the session wrote those lines", (t) => {
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4);
+  s.patch("docs/agent/02_RULES.md", "line 5", "line 5 edited\nand a new line");
+  assert.equal(s.check(s.edit("x.md")), null, "an Edit");
+  s.own("docs/plan/01_x.md", "a whole\nnew file\nwritten by us\n");
+  assert.equal(s.check(s.edit("x.md")), null, "a Write");
 });
 
 test("NEGATIVE: a context compaction does NOT void earlier reads (user 2026-10-08: the session already knows them)", (t) => {
@@ -181,12 +207,17 @@ test("a SUBAGENT's reads and edits count for the session — its hook gets the p
   const tx = join(s.root, "..", "session.jsonl");
   const sub = join(s.root, "..", "session", "subagents");
   mkdirSync(sub, { recursive: true });
-  // the subagent edits plan/01_x.md (now 6 lines) and re-reads it — both only in ITS transcript
+  // the subagent rewrites plan/01_x.md (now 6 lines) and re-reads it — both only in ITS transcript
   const at = new Date(Date.now() + 120_000);
-  utimesSync(join(s.root, "docs/plan/01_x.md"), at, at);
+  const next = "s1\ns2\ns3\ns4\ns5\ns6";
+  writeFileSync(join(s.root, "docs/plan/01_x.md"), next);
+  const RF0 = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const p0 = { read_first: { required: ["docs/plan/*.md"], triggers: [] } };
+  const editPlan = { tool_name: "Edit", tool_input: { file_path: join(s.root, "docs/plan/01_x.md") }, transcript_path: tx };
+  assert.match(RF0.readFirst(editPlan, s.root, p0), /01_x\.md {2}\(read 0\/6 lines - still to read: lines 1-6\)/, "the parent alone never saw the new text");
   writeFileSync(join(sub, "agent-a1.jsonl"), [
-    { type: "user", timestamp: at.toISOString(), toolUseResult: { type: "update", filePath: join(s.root, "docs/plan/01_x.md") } },
-    { type: "user", timestamp: new Date(at.getTime() + 1000).toISOString(), toolUseResult: { type: "text", file: { filePath: join(s.root, "docs/plan/01_x.md"), startLine: 1, numLines: 6, totalLines: 6 } } },
+    { type: "user", timestamp: at.toISOString(), toolUseResult: { type: "update", filePath: join(s.root, "docs/plan/01_x.md"), content: next, structuredPatch: [] } },
+    { type: "user", timestamp: new Date(at.getTime() + 1000).toISOString(), toolUseResult: { type: "text", file: { filePath: join(s.root, "docs/plan/01_x.md"), content: next, startLine: 1, numLines: 6, totalLines: 6 } } },
   ].map((e) => JSON.stringify(e)).join("\n") + "\n");
   const RF = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
   const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], triggers: [] } };

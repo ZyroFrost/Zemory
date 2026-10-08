@@ -137,7 +137,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 26 | `.claude/skills/sync-path/SKILL.md` | `<RAW>/.claude/skills/sync-path/SKILL.md` | 89 |
 | 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 885 |
 | 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 82 |
-| 29 | `docs/hooks/read-first.cjs` | `<RAW>/hooks/read-first.cjs` | 295 |
+| 29 | `docs/hooks/read-first.cjs` | `<RAW>/hooks/read-first.cjs` | 294 |
 | 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |
 
 **Ba file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
