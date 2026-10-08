@@ -78,8 +78,9 @@ export function validate(ctx: Context): ValidateReport {
     });
   }
   // Spec cap 1000 (user 2026-10-08, "vậy chắc trần cho 1k"): trimmed with no idea lost, plan/24 still holds ~64k characters
-  // = ~700 lines at the normal wrap; 300 then 500 were experiments. Total cap unchanged until the user sets it.
-  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 1000, ctx.config.thresholds?.plan_total_lines ?? 4000)) {
+  // = ~700 lines at the normal wrap; 300 then 500 were experiments. Total cap 5000 (user 2026-10-08, "ok 5k"): zemory's
+  // 23 specs hold 4,425 lines after the same trim.
+  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 1000, ctx.config.thresholds?.plan_total_lines ?? 5000)) {
     issues.push({ level: "warn", msg });
   }
 
