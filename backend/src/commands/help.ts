@@ -23,6 +23,7 @@ export function cmdHelp(): void {
       "  memory     scan/search the global memory (memory scan | search | show)",
       "  mcp       run the local MCP stdio server (memory_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
+      "  project   project move <from> <to> [--apply]: move a repo folder with its memory, Claude Code sessions and settings (dry run by default)",
       "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate)",
       "  gates     does each repo RUN its gates: guard wired · pre-commit wired · a row per constitution article · ungated rules on top (--all · --json · --write-top = write the top block here)",
       "  grill     interrogate the plan before building (workflow)",
