@@ -261,6 +261,25 @@ export function forgetProject(root: string): boolean {
 }
 
 /**
+ * A project folder MOVED (`zemory project move`): its entry follows, keeping pin and recency. `apply=false` only
+ * answers whether the entry exists. An entry already present for the target is kept and the old one dropped.
+ */
+export function renameProject(from: string, to: string, apply = true): boolean {
+  const list = read();
+  const hit = list.find((e) => key(e.root) === key(from));
+  if (!hit || !apply) return !!hit;
+  const target = list.find((e) => key(e.root) === key(to));
+  if (target) {
+    target.pinned = target.pinned || hit.pinned;
+    write(list.filter((e) => e !== hit));
+  } else {
+    hit.root = to;
+    write(list);
+  }
+  return true;
+}
+
+/**
  * Drop entries whose folder is gone, is no longer set up, or is a scratch dir.
  * Returns how many were removed. Advisory cleanup — never touches the folders.
  */

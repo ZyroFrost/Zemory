@@ -28,6 +28,8 @@ try {
     (await import("./commands/peers.js")).cmdPeers(args);
   } else if (cmd === "gates") {
     (await import("./commands/gates.js")).cmdGates(args);
+  } else if (cmd === "project") {
+    await (await import("./commands/project.js")).cmdProject(args);
   } else {
     await runRest();
   }
