@@ -1,6 +1,18 @@
-// `zemory` / `zemory help` — top-level usage.
-export function cmdHelp(): void {
-  console.log(
+// `zemory` / `zemory help` — top-level usage. `zemory <command> --help` — that command's line only.
+export function cmdHelp(only?: string): void {
+  const lines = usageLines();
+  if (only) {
+    const at = lines.findIndex((l) => l.startsWith(`  ${only} `));
+    if (at >= 0) {
+      console.log(`zemory ${only} — nothing was run (--help only prints):\n${lines[at]}`);
+      return;
+    }
+  }
+  console.log(lines.join("\n"));
+}
+
+function usageLines(): string[] {
+  return (
     [
       "zemory <command>",
       "",
@@ -31,7 +43,7 @@ export function cmdHelp(): void {
       "  structure print the standard harness structure (target to conform to)",
       "  setup     print the full setup & completion runbook",
       "  --version print version",
-    ].join("\n"),
+    ]
   );
 }
 
