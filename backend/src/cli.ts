@@ -21,7 +21,12 @@ const [cmd, ...args] = process.argv.slice(2);
 // Các lệnh khác giữ nguyên đường cũ bên dưới (đổi hết sang động là refactor rộng hơn việc
 // đang làm, và không lệnh nào khác chạy mỗi tin).
 try {
-  if (cmd === "hook") {
+  // `<command> --help` PRINTS help and runs nothing — for every command, decided here once. No command read the flag, and
+  // unknown flags are ignored, so `zemory init --help` ran a real init (reported from Dept_IC 2026-10-09); the same held
+  // for sync · archive · reindex · hook guard.
+  if (cmd && (args.includes("--help") || args.includes("-h"))) {
+    (await import("./commands/help.js")).cmdHelp(cmd);
+  } else if (cmd === "hook") {
     const { cmdHook } = await import("./commands/hook.js");
     await cmdHook(args);
   } else if (cmd === "peers") {
