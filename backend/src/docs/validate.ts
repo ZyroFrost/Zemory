@@ -421,12 +421,19 @@ export function hpGateCoverage(agentDir: string): { articles: number; missing: n
   return { articles: all.length, missing: all.filter((n) => !covered.has(n)), table: true };
 }
 
-/** Articles of a constitution text: `N. **title…**` (an emoji marker allowed before the bold), numbers unique, ascending. */
+/**
+ * Articles of a constitution text: `N. **title…**` (an emoji marker allowed before the bold), numbers unique, ascending.
+ * The ONE parser of articles — validate, the no-gate block and the standard graph all call it.
+ */
 export function constitutionArticles(text: string): { n: number; title: string }[] {
   // 8 Dept repos mark articles 4+ with 🔒/🔴 before the bold; the old `N. **` shape saw 3 of their 16-19 (07/10).
-  const ARTICLE = /^(\d+)\.\s+(?:[\p{Extended_Pictographic}️‍]+\s*)*\*\*(?!\(chưa chốt)(.*?)\*\*/gmu;
+  // The bold may WRAP onto the next line (reported from _DB_AppCore 10/10: articles 1 and 6 bold across two lines were
+  // invisible — `.` stops at a newline — so `zemory gates` read 0 gaps with two words-only articles missing from the
+  // block). It may wrap, but never past a blank line or the next `N. ` item: an unclosed `**` must not swallow the next
+  // article.
+  const ARTICLE = /^(\d+)\.\s+(?:[\p{Extended_Pictographic}️‍]+\s*)*\*\*(?!\(chưa chốt)((?:(?!\*\*|\n[ \t]*\n|\n\d+\.\s)[\s\S])*?)\*\*/gmu;
   const seen = new Map<number, string>();
-  for (const m of text.matchAll(ARTICLE)) if (!seen.has(Number(m[1]))) seen.set(Number(m[1]), m[2].trim());
+  for (const m of text.matchAll(ARTICLE)) if (!seen.has(Number(m[1]))) seen.set(Number(m[1]), m[2].replace(/\s+/g, " ").trim());
   return [...seen].map(([n, title]) => ({ n, title })).sort((a, b) => a.n - b.n);
 }
 
