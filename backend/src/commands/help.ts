@@ -1,12 +1,11 @@
-// `zemory` / `zemory help` — top-level usage. `zemory <command> --help` — that command's line only.
+// `zemory` / `zemory help` — top-level usage. `zemory <command> --help` — refused with that command's usage line.
 export function cmdHelp(only?: string): void {
   const lines = usageLines();
   if (only) {
     const at = lines.findIndex((l) => l.startsWith(`  ${only} `));
-    if (at >= 0) {
-      console.log(`zemory ${only} — nothing was run (--help only prints):\n${lines[at]}`);
-      return;
-    }
+    console.log(`zemory ${only}: unknown flag --help — nothing was run. Full list: \`zemory help\`.`);
+    console.log(`  usage: ${at >= 0 ? lines[at].trim() : "zemory help"}`);
+    return;
   }
   console.log(lines.join("\n"));
 }
