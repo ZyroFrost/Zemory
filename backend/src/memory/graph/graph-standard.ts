@@ -19,6 +19,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { harnessPathsAt } from "../../core/config.js";
+import { constitutionArticles } from "../../docs/validate.js";
 import { slotDictFor } from "./graph.js";
 
 /** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG.
@@ -154,9 +155,10 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   if (consti) {
     const body = sectionBody(consti, /^##\s*Điều khoản/m);
     if (body) {
-      for (const m of body.matchAll(/^(\d+)\.\s+\*\*(.+?)\*\*/gm)) {
-        const id = `hp:${m[1]}`;
-        add({ id, label: `Điều ${m[1]} — ${short(m[2], 44)}`, type: "hp_dieu", dir: AGENT, src: `${AGENT}/01_CONSTITUTION.md` });
+      // Same parser as validate / the no-gate block (its own `N. **…**` regex missed emoji-marked and wrapped articles).
+      for (const a of constitutionArticles(body)) {
+        const id = `hp:${a.n}`;
+        add({ id, label: `Điều ${a.n} — ${short(a.title, 44)}`, type: "hp_dieu", dir: AGENT, src: `${AGENT}/01_CONSTITUTION.md` });
         edges.push({ from: "doc:agent/01_CONSTITUTION.md", to: id, kind: "contains" });
       }
     }

@@ -34,6 +34,8 @@ export const LIGHT_DESPITE_MATCH = {
   "graph-path.test.mjs": 129,
   "graph-seam.test.mjs": 58,
   "graph-standard.test.mjs": 80,
+  // Đo bằng gate-cage 2026-10-10: gọi `buildStandardGraph` (đồ thị phân loại từ docs) — không nạp grammar tree-sitter.
+  "hp-articles.test.mjs": 47,
   "graph-touches.test.mjs": 77,
   "mcp.test.mjs": 141,
   "nav-cost.test.mjs": 129,
