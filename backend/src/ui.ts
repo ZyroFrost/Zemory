@@ -168,7 +168,8 @@ import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
-import { startSyncJob, stopSyncJob, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
+import { startSyncJob, stopSyncJob, syncJobRunning, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
+import { FastLane } from "./jobs/fastlane.js";
 import type { DriveProbe } from "./jobs/driveprobe.js";
 import type { DiskInfo } from "./jobs/diskprobe.js";
 import { cliHoldsWrite, daemonJobBusy } from "./jobs/writegate.js";
@@ -220,6 +221,7 @@ import {
   getP2pPeers,
   setP2pPeers,
   setP2pPeerAddrs,
+  getP2pEnabled as getP2pEnabledSync,
 } from "./config/settings.js";
 import { slotOfIdentity } from "./memory/webslots.js";
 import { getPathsWatch, setPathsWatch } from "./config/settings.js";
@@ -1844,6 +1846,20 @@ interface LinkEntry {
 /** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
 const links = new Map<string, LinkEntry>();
 
+/** p2p fast lane (plan/24 §12): seal new messages and land received blocks in seconds. Created when the daemon starts. */
+let fastLane: FastLane | null = null;
+
+/** A block arrived from another machine (any link, any direction) ⇒ land it in the store as soon as the job slot is free. */
+function onBlocksReceived(blocks: number, via: string): void {
+  if (fastLane) {
+    daemonLog(`[channel] ${via}: received ${blocks} block(s) — merging now`);
+    fastLane.requestMerge();
+    return;
+  }
+  const st = startSyncJob(() => invalidateDashboard(), { lowPriority: true });
+  if (!st.running) daemonLog(`[channel] ${via}: received ${blocks} block(s), not merged yet: ${st.error ?? "store busy"}`);
+}
+
 /**
  * Máy kia vừa hoàn tất một lượt trên liên kết ĐẾN ⇒ liên kết với nó đang SỐNG.
  *
@@ -2021,6 +2037,9 @@ function keepLink(peerId: string, projectRoot: string): void {
             onSyncRound: (r): void => {
               const cur = links.get(peerId);
               if (!cur || cur.ctrl !== ctrl) return;
+              // An OUTBOUND link used to only COUNT what it received; the blocks waited in the channel folder for the 30′
+              // round (plan/24 §12.1). Now they land at once.
+              if (r.receivedBlocks > 0) onBlocksReceived(r.receivedBlocks, "outbound link");
               cur.lastRound = {
                 at: Date.now(),
                 receivedBlocks: r.receivedBlocks,
@@ -2248,7 +2267,7 @@ async function channelSyncOnce(
         : "chưa biết máy nào — dán mã máy kia",
     });
   }
-  const { resolveShareKey, mergeChannelDir } = await import("./memory/share.js");
+  const { resolveShareKey } = await import("./memory/share.js");
   const keyFile = resolveShareKey(o.projectRoot);
   if (!keyFile || !existsSync(keyFile)) return ({ ok: false, error: "chưa có chìa share" });
   const st = ch.channelStatus();
@@ -2393,10 +2412,9 @@ async function channelSyncOnce(
         setP2pPeers([...getP2pPeers(), peerId]);
         setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
       },
-      onReceived: (blocks: number): void => {
-        daemonLog(`[channel] phiên chờ đã nhận ${blocks} khối — đang hợp nhất vào kho`);
-        void mergeChannelDir(ch.channelStatus().dir).catch((e: unknown) => daemonLog(`[channel] lỗi khi hợp nhất: ${String(e).slice(0, 120)}`));
-      },
+      // Was an in-process `mergeChannelDir` on the daemon's event loop — the very thing the listening side stopped doing
+      // 24/09 (TLS + heartbeats frozen for minutes). Same child path as every other received block now.
+      onReceived: (blocks: number): void => onBlocksReceived(blocks, "waiting session"),
       log: (m: string) => daemonLog(m),
     });
     // `waiting` là thứ bề mặt PHẢI đọc: trả `ok:true` với 0 khối mà không có cờ này thì nó in
@@ -2441,9 +2459,9 @@ async function refreshChannelServer(): Promise<void> {
         // HP điều 11). Không có `preempt`: người dùng không ngồi chờ lượt này; nếu một job khác
         // đang giữ kho thì lượt sync theo nhịp sẽ tự hợp nhất sau — khối đã nằm an toàn trong
         // thư mục kênh, không mất đi đâu.
-        daemonLog(`[channel] đã nhận ${blocks} khối — giao hợp nhất cho tiến trình con`);
-        const st = startSyncJob(() => invalidateDashboard(), { lowPriority: true });
-        if (!st.running) daemonLog(`[channel] chưa hợp nhất ngay: ${st.error ?? "kho đang bận"} — lượt sync theo nhịp sẽ làm`);
+        // plan/24 §12: a merge-only child through the job slot, queued when busy — no longer a whole sync round that gives
+        // up on a busy store and leaves the blocks for the 30′ round.
+        onBlocksReceived(blocks, "inbound link");
       },
     });
     if (!r.listening && r.reason) daemonLog(`[channel] không lắng nghe được: ${r.reason}`);
@@ -4312,6 +4330,25 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   setInterval(() => void linkTick(root()), 30_000).unref();
   reconcileAutostart(getAutostart());
   startScheduler();
+  // GỬI LIỀN (plan/24 §12): a cheap poll every 2 s — seal this machine's new messages into the p2p channel and land
+  // received blocks, each in a child process through the job slot. Off unless p2p is on and a machine is paired.
+  fastLane = new FastLane({
+    dbPath: () => currentMemoryDb(),
+    host: () => hostname(),
+    enabled: () => getP2pEnabledSync() && getP2pPeers().length > 0,
+    syncRunning: () => syncJobRunning(),
+    kickLinks: () => {
+      let n = 0;
+      for (const l of links.values()) if (l.kick?.()) n++;
+      void import("./memory/channel/index.js").then((ch) => {
+        n += ch.kickInboundLinks();
+        if (n === 0) daemonLog("[fastlane] no live link right now — the block waits in the channel and goes on the next connect");
+      });
+    },
+    log: (m: string) => daemonLog(m),
+    onMerged: () => invalidateDashboard(),
+  });
+  setInterval(() => fastLane?.tick(), 2_000).unref();
   // KÊNH MÁY-TỚI-MÁY: bắt đầu NGHE nếu người dùng đã bật (plan/24 §7 bước ④).
   // Mặc định TẮT ⇒ máy chưa bật thì dòng này không làm gì và không mở cổng nào.
   void refreshChannelServer();
@@ -4337,6 +4374,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     daemonLog(`shutting down (${reason})`);
     stopScheduler();
     stopSyncJob();
+    fastLane?.stop();
     closePrevWindow();
     // The tray helper needs a moment to tell Windows to REMOVE its icon; exiting
     // synchronously here is what left the ghost icon behind (user 2026-07-21).

@@ -361,6 +361,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let mGotDone = false;
     /** Hẹn giờ mở lượt kế trên liên kết thường trực — xem `tryFinish`. */
     let roundTimer: ReturnType<typeof setTimeout> | null = null;
+    /** A kick landed mid-round ⇒ the next round opens the moment this one closes (see `onKick`). */
+    let kickPending = false;
     /** Đã nói "lượt chưa đóng sổ" cho lượt này chưa — một dòng mỗi lượt, không kêu mỗi khung. */
     let stuckSaid = false;
     /** Số phiên trong tiến trình — hai phiên song song với CÙNG một máy chỉ phân biệt được bằng số này. */
@@ -582,8 +584,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         if (paired && persistent) {
           o.onKick?.((): boolean => {
             if (settled) return false;
-            // Đang giữa một lượt ⇒ lượt đó chính là thứ người bấm muốn; đá thêm là chồng hai lượt.
-            if (!roundTimer) return true;
+            // Đang giữa một lượt ⇒ không chồng hai lượt. Nhưng `have` của lượt này đã khai TRƯỚC khối vừa đóng (đường gửi
+            // liền, plan/24 §12) ⇒ nhớ cú đá, lượt đóng sổ xong mở lượt kế NGAY thay vì ngủ `roundGapMs` (tới 30 s).
+            if (!roundTimer) {
+              kickPending = true;
+              return true;
+            }
             clearTimeout(roundTimer);
             roundTimer = null;
             try {
@@ -800,6 +806,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       stuckSaid = false;
       roundNo++;
       if (roundTimer) clearTimeout(roundTimer);
+      const gap = kickPending ? 0 : (o.roundGapMs ?? ROUND_GAP_MS);
+      kickPending = false;
       roundTimer = setTimeout(() => {
         roundTimer = null; // hết chờ ⇒ đang chạy lượt; tay đá đọc biến này để biết
         if (settled) return;
@@ -810,7 +818,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         } catch {
           /* hỏng ở đây thì đồng hồ chết sẽ lo; đừng ném trong một cái hẹn giờ */
         }
-      }, o.roundGapMs ?? ROUND_GAP_MS);
+      }, gap);
       roundTimer.unref?.();
     };
 

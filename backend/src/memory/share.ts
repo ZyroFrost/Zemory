@@ -1904,6 +1904,50 @@ export async function syncDrive(opts: {
 }
 
 /**
+ * FAST LANE, sending side (plan/24 §12.2 ①): seal THIS machine's new messages into the p2p channel right away.
+ *
+ * `syncDrive` is a whole round (scan · merge every channel · embed a 500-message batch · export to every target); run on
+ * every new chat message it would be minutes of work for a few lines. This does only the part that makes a block: embed
+ * what is pending (capped — a message and its vector travel together, HP art. 16, and the export stops at the first
+ * recent message without one) → take the channel write queue → `pushAppend` on the p2p watermark. No scan (the hook has
+ * already written the messages), no Drive, no merge (the delta carries only this machine's own rows, so other machines'
+ * blocks do not change it), and `compact` is never set (auto-compaction is abolished; a compaction without a merge first
+ * would lose blocks). Nothing new ⇒ `kind: "none"`, no block.
+ */
+export async function pushChannelFast(o: {
+  dir: string;
+  keyFile?: string;
+  dbPath?: string;
+  /** This machine's identity for the delta series (a seam for tests). Omitted → os.hostname(). */
+  host?: string;
+  /** Cap on the embed batch of one fast round (default 64). Measured 12/10: model load 4–6 s + ~0.25 s per message. */
+  embedLimit?: number;
+  /** Tests that exercise the channel, not the embedder. */
+  embed?: boolean;
+  onProgress?: (phase: string) => void;
+}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number }> {
+  const dir = o.dir.trim();
+  if (!dir) throw new Error("No channel folder.");
+  mkdirSync(dir, { recursive: true });
+  const host = o.host ? o.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
+  const onProgress = o.onProgress ?? (() => {});
+  onProgress("embed");
+  // Embed FROM THE FRONTIER in id order — the message that actually blocks the export — not the shortest pending ones
+  // anywhere in the store (see `embedPending.fromId`). No frontier ⇒ nothing blocks ⇒ no embed pass at all.
+  const t0 = Date.now();
+  const frontier = o.embed === false ? null : embedFrontierId(o.dbPath ?? currentMemoryDb());
+  const embedded = frontier ? (await embedPending({ dbPath: o.dbPath, limit: o.embedLimit ?? 64, fromId: frontier })).embedded : 0;
+  const embedMs = Date.now() - t0;
+  const release = await acquireChannelWriteLock(dir, { host });
+  try {
+    const push = await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress, channel: "p2p" });
+    return { push, embedded, embedMs, pushMs: Date.now() - t0 - embedMs };
+  } finally {
+    release();
+  }
+}
+
+/**
  * MERGE-ONLY một thư mục khúc vào kho local — không `scan`, không xuất, không ghi ra kênh.
  *
  * Sinh ra cho kênh máy-tới-máy (`plan/24`): lớp kênh **nhận khối rồi nối vào khúc đang mở của

@@ -230,11 +230,17 @@ test("🔴 nhận khối xong KHÔNG hợp nhất trên event loop của daemon 
   const recv = UI.slice(UI.indexOf("onReceived: (blocks: number) => {"), UI.indexOf("if (!r.listening && r.reason)"));
   assert.ok(recv.length > 0 && recv.length < 3000, "không thấy khối onReceived — neo đã chết");
   assert.doesNotMatch(recv, /mergeChannelDir\(/, "hợp nhất tại chỗ trong daemon = event loop chết đứng nhiều phút");
-  assert.match(recv, /startSyncJob\(\(\) => invalidateDashboard\(\), \{ lowPriority: true \}\)/, "phải giao cho tiến trình con qua cổng ghi, không preempt (không ai ngồi chờ)");
-  assert.match(recv, /chưa hợp nhất ngay/, "kho bận thì phải NÓI RA, không im — lượt sync theo nhịp sẽ làm");
-  // Tiến trình con thật sự hợp nhất trước khi đẩy — nếu dòng này biến mất thì "giao" là giao vào hư không.
-  const RUN = readFileSync(new URL("../src/jobs/syncrun.ts", import.meta.url), "utf8");
-  assert.match(RUN, /await mergeChannelDir\(channelDir\(\)/, "syncrun phải hợp nhất thư mục kênh");
+  // 2026-10-12 (plan/24 §12): giao cho đường nhanh — tiến trình con CHỈ merge, qua ô job của daemon, kho bận thì XẾP HÀNG
+  // (không còn "lượt sync theo nhịp sẽ làm" — đó là chỗ trễ tới 30′).
+  assert.match(recv, /onBlocksReceived\(blocks, "inbound link"\);/, "phải giao cho đường nhanh, không hợp nhất tại chỗ");
+  const helper = UI.slice(UI.indexOf("function onBlocksReceived("), UI.indexOf("function onBlocksReceived(") + 800);
+  assert.match(helper, /fastLane\.requestMerge\(\);/, "khối nhận về vào hàng đợi merge của đường nhanh");
+  assert.match(helper, /not merged yet:/, "chưa có đường nhanh mà kho bận thì phải NÓI RA, không im");
+  // Tiến trình con thật sự hợp nhất — nếu dòng này biến mất thì "giao" là giao vào hư không.
+  const RUN = readFileSync(new URL("../src/jobs/fastrun.ts", import.meta.url), "utf8");
+  assert.match(RUN, /await mergeChannelDir\(channelDir\(\)/, "fastrun merge phải hợp nhất thư mục kênh");
+  const LANE = readFileSync(new URL("../src/jobs/fastlane.ts", import.meta.url), "utf8");
+  assert.match(LANE, /if \(!claimDaemonJob\(`fastlane-\$\{mode\}`\)\)/, "đi qua ô job của daemon — một kẻ ghi");
 });
 
 test("🔴 'Đồng bộ ngay'/'Thử lại' với máy ĐÃ GHÉP dùng liên kết đang có — không dựng phiên thứ hai", () => {
@@ -252,7 +258,9 @@ test("🔴 'Đồng bộ ngay'/'Thử lại' với máy ĐÃ GHÉP dùng liên k
   assert.match(UI, /entry\.wake = done;/, "giấc thụt lùi phải đánh thức được");
   const PEER = readFileSync(new URL("../src/memory/channel/peer.ts", import.meta.url), "utf8");
   assert.match(PEER, /o\.onKick\?\.\(\(\): boolean => \{/, "phiên thường trực phải trao tay đá");
-  assert.match(PEER, /if \(!roundTimer\) return true;/, "đang giữa lượt thì không chồng lượt thứ hai");
+  // Đang giữa lượt thì không chồng lượt thứ hai — nhưng cú đá được NHỚ để lượt kế mở ngay khi lượt này đóng sổ (plan/24 §12).
+  assert.match(PEER, /if \(!roundTimer\) \{\s*kickPending = true;\s*return true;\s*\}/, "đang giữa lượt thì không chồng lượt thứ hai, nhưng nhớ cú đá");
+  assert.match(PEER, /const gap = kickPending \? 0 : \(o\.roundGapMs \?\? ROUND_GAP_MS\);/, "cú đá đã nhớ ⇒ lượt kế mở ngay, không ngủ roundGapMs");
 });
 
 test("🔴 vân tay của máy ĐÃ QUEN không phải lời xin ghép (wantPair)", () => {
