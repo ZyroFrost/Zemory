@@ -8,7 +8,8 @@
 import { join } from "node:path";
 import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import { currentMemoryDir, currentStoreRoot } from "../db.js";
+import Database from "better-sqlite3";
+import { currentMemoryDb, currentMemoryDir, currentStoreRoot } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
@@ -162,6 +163,11 @@ export interface ChannelStatus {
   /** Sync direction of each pair (plan/24 §9.2) — the peer card shows and changes it. */
   peerDirection: Record<string, { direction: "two-way" | "one-way"; source?: string }>;
   peerState: Record<string, { kind: "lan" | "synced" | "failed" | "never"; at?: string; via?: string }>;
+  /**
+   * Newest message of each paired machine that is IN THIS STORE (plan/24 §12.2 ④): the card says "latest from it: N ago",
+   * so the user sees whether the other side's chat has arrived without asking over Zalo. Absent = nothing of it here yet.
+   */
+  peerLatest: Record<string, string>;
   dir: string;
   /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
   hostName: string;
@@ -185,9 +191,35 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
     peerState: Object.fromEntries(
       getP2pPeers().map((id) => [id, peerCardState(seenPeers().some((s) => sameDeviceId(s.deviceId, id)), getPeerLastSync()[id])]),
     ),
+    peerLatest: peerLatestAt(getPeerNames()),
     dir: channelDir(storeRoot),
     hostName: hostname(),
   };
+}
+
+/**
+ * device id → newest `sessions.ended_at` of the machine with that name, read-only. The sessions table is small and indexed
+ * on `host` — no scan of `messages` on the 15 s status poll. Any trouble ⇒ `{}` (fail-open, art. 9).
+ */
+export function peerLatestAt(names: Record<string, string>, dbPath = currentMemoryDb()): Record<string, string> {
+  const out: Record<string, string> = {};
+  const ids = Object.keys(names).filter((id) => names[id]);
+  if (!ids.length || !existsSync(dbPath)) return out;
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db.pragma("busy_timeout = 1000");
+    const q = db.prepare("SELECT MAX(ended_at) AS at FROM sessions WHERE host = ?");
+    for (const id of ids) {
+      const at = (q.get(names[id]) as { at: string | null } | undefined)?.at;
+      if (at) out[id] = at;
+    }
+  } catch {
+    /* status must never fail over this line */
+  } finally {
+    db?.close();
+  }
+  return out;
 }
 
 /**
@@ -228,6 +260,25 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
   if (drive) out.push({ channel: "drive", dir: drive });
   if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelDir(storeRoot, true) });
   return out;
+}
+
+/** Kicks of the live INBOUND persistent links (`serveChannel` sessions). A kick that answers `false` is a dead pipe. */
+const inboundKicks = new Set<() => boolean>();
+
+/** Offer our inventory NOW on every live inbound link (plan/24 §12 fast lane). Returns how many pipes took it. */
+export function kickInboundLinks(): number {
+  let n = 0;
+  for (const k of [...inboundKicks]) {
+    let ok: boolean;
+    try {
+      ok = k();
+    } catch {
+      ok = false;
+    }
+    if (ok) n++;
+    else inboundKicks.delete(k);
+  }
+  return n;
 }
 
 /** Bản ghi một máy chủ kênh đang chạy trong tiến trình này. */
@@ -821,6 +872,11 @@ export async function startChannelServer(o: {
         // THỬ mà quên vá ở đây. Bài học: phép thử bắt được một lỗ thì phải hỏi *"chỗ THẬT đã vá
         // chưa"*, không chỉ *"phép thử xanh chưa"*.
         persistent: true,
+        // An INBOUND link needs a kick too: when the other machine is the one that dialled, this is the only live pipe,
+        // and the fast lane (plan/24 §12) must offer a freshly sealed block on it now, not at the next 30 s round.
+        onKick: (k: () => boolean) => {
+          inboundKicks.add(k);
+        },
         onOpen: (id: string) => {
           openedIn.set(id, (openedIn.get(id) ?? 0) + 1);
           o.onLinkOpen?.(id, "direct");

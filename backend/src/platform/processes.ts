@@ -37,10 +37,10 @@ export const APP_PROCESSES: AppProcess[] = [
   },
   {
     shownAs: "zemory.exe (con)",
-    spawnedBy: "jobs/scheduler.ts · jobs/searchjob.ts · jobs/statsjob.ts · jobs/syncjob.ts · tools/index.ts",
+    spawnedBy: "jobs/scheduler.ts · jobs/searchjob.ts · jobs/statsjob.ts · jobs/syncjob.ts · jobs/fastlane.ts · tools/index.ts",
     lifetime: "job",
     hidden: true,
-    note: "Việc nặng (scan · embed · digest · sync · stats) chạy ở tiến trình con ưu tiên thấp — không bao giờ trên vòng lặp sự kiện của daemon.",
+    note: "Việc nặng (scan · embed · digest · sync · stats) chạy ở tiến trình con ưu tiên thấp — không bao giờ trên vòng lặp sự kiện của daemon. Con của đường nhanh p2p (đóng/gộp khối) chạy ưu tiên thường: có người đang chờ tin sang máy kia.",
   },
   {
     shownAs: "msedgewebview2.exe / <trình duyệt>",
@@ -89,4 +89,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 15;
+export const spawnSites = 16;

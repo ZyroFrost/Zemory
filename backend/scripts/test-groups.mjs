@@ -29,6 +29,8 @@ export const LIGHT_DESPITE_MATCH = {
   // Đo bằng gate-cage 2026-09-02: chỉ import API `graphFitness`/`isEntryClassFile` rồi chấm trên
   // graph GIẢ dựng bằng tay — không gọi `buildCodeGraph` nên không nạp grammar tree-sitter.
   "fitness-entry-class.test.mjs": 47,
+  // Đo bằng gate-cage 2026-10-12: đẩy/gộp khối kênh với `embed: false` + con chạy giả — không nạp model.
+  "fastlane.test.mjs": 130,
   "graph-docs.test.mjs": 129,
   "graph-edge-id.test.mjs": 129,
   "graph-path.test.mjs": 129,

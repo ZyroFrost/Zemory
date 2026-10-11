@@ -797,6 +797,38 @@ test("link: TAY ĐÁ mở lượt kế NGAY trên liên kết đang có — khô
   assert.equal(kick(), false, "ống đã chết ⇒ tay đá phải nói không, không giả vờ");
 });
 
+test("link: a kick that lands MID-ROUND is remembered — the next round opens the moment this one closes (plan/24 §12)", async (t) => {
+  // The fast lane seals a block while a round may be running; that round's `have` was sent BEFORE the block existed. A kick
+  // then used to answer `true` and do nothing, so the block waited a whole `roundGapMs` (30 s live, 1 h here).
+  const a = makeMachine(t, "kma", "chia-chung-midkick");
+  const b = makeMachine(t, "kmb", "chia-chung-midkick");
+  const cut = new AbortController();
+  t.after(() => cut.abort());
+  const slow = { persistent: true, roundGapMs: 3_600_000, pingIdleMs: 200, linkDeadMs: 8_000 };
+  const server = await serveChannel({ ...sideOpts(b, [a.identity.deviceId], undefined, slow), port: 0, host: "127.0.0.1" }, () => {});
+  t.after(() => server.close());
+  const rounds = [];
+  let kick = null;
+  let midKick = null;
+  void connectToPeer(
+    { host: "127.0.0.1", port: server.port },
+    sideOpts(a, [b.identity.deviceId], undefined, {
+      ...slow,
+      stop: cut.signal,
+      onKick: (k) => (kick = k),
+      // `onSyncRound` runs while the round is CLOSING (no round timer yet) ⇒ exactly the mid-round case.
+      onSyncRound: (r) => {
+        rounds.push(r);
+        if (rounds.length === 1 && kick) midKick = kick();
+      },
+    }),
+  );
+  const until = (ok, ms) => new Promise((res) => { const t0 = Date.now(); (function s() { if (ok() || Date.now() - t0 > ms) return res(); setTimeout(s, 30); })(); });
+  await until(() => rounds.length >= 2, 8_000);
+  assert.equal(midKick, true, "the pipe is alive ⇒ the mid-round kick is accepted");
+  assert.ok(rounds.length >= 2, "a mid-round kick must open the next round at once, not after roundGapMs (1 h here)");
+});
+
 test("🔴 gọi một máy ĐÃ QUEN với wantPair bật vẫn phải KHAI KHO — lượt phải đóng sổ", async (t) => {
   // Đo 2026-09-25 bằng số phiên: bên gọi không bao giờ gửi `have` ⇒ bên nghe không bao giờ gửi
   // `done` ⇒ lượt không bao giờ đóng sổ (liên kết thường trực) / "hết giờ phiên" ở giây 120 (phiên

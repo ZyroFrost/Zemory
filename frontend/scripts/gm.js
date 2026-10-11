@@ -428,7 +428,7 @@
         // Dò LAN trả lời *"có thấy trên mạng nội bộ không"*; lượt nối gần nhất trả lời *"có nối
         // được không"*. Hai câu khác nhau, và câu thứ hai mới là thứ người dùng đang hỏi.
         // Tên: LAN nếu đang thấy, không thì sổ tên của backend (dò LAN cũ + `hello`) — một nguồn, không nhớ phía trình duyệt.
-        cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null,dir:(c.peerDirection||{})[id]||null,self:c.deviceId||''});
+        cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null,dir:(c.peerDirection||{})[id]||null,self:c.deviceId||'',lat:(c.peerLatest||{})[id]||''});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
       cl.innerHTML='';
@@ -460,6 +460,8 @@
         else if(ps.kind==='synced'){state=t('p2p.syncedAgo').replace('{t}',zAgo(ps.at))+(ps.via?' · '+ps.via:'');dot='var(--success)';}
         else if(ps.kind==='failed'){state=t('p2p.lastFail').replace('{t}',zAgo(ps.at));dot='var(--warn)';}
         else {state=t('p2p.never');dot='var(--text-faint)';}
+        // Newest message of that machine already in THIS store (plan/24 §12.2 ④) — on the status line, not a new row (§F0).
+        if(!m.me&&m.lat)state+=' · '+t('p2p.latestFrom').replace('{t}',zAgo(m.lat));
         // Hàng trên: CHỈ chấm + tên, tên được trọn chiều ngang. Trạng thái xuống hàng riêng ngay dưới.
         d.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;min-width:0">'
           +'<span style="width:7px;height:7px;border-radius:50%;background:'+dot+';flex:0 0 auto"></span>'

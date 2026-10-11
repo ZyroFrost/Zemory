@@ -309,13 +309,31 @@ export interface EmbedProgress {
   currentId: number;
 }
 
+/** Which pending messages `embedPending` takes first: shortest-first for the backfill, id order from `fromId` on. */
+export function pendingOrderSql(fromId?: number): { where: string; orderBy: string } {
+  const from = fromId !== undefined && Number.isFinite(fromId) ? Math.trunc(fromId) : null;
+  return from !== null ? { where: ` AND id >= ${from}`, orderBy: "id ASC" } : { where: "", orderBy: "length(content) ASC, id ASC" };
+}
+
 /**
  * Embed messages that have no vector yet (incremental backfill). Run repeatedly
  * to catch up the whole corpus; cheap once caught up (only new messages).
  * Fail-open: a message whose embedding fails is skipped, not fatal.
  */
 export async function embedPending(
-  opts: { dbPath?: string; limit?: number; batchSize?: number; onProgress?: (progress: EmbedProgress) => void } = {},
+  opts: {
+    dbPath?: string;
+    limit?: number;
+    batchSize?: number;
+    onProgress?: (progress: EmbedProgress) => void;
+    /**
+     * Embed in ID order starting at this id, not shortest-first. The p2p fast lane (plan/24 §12) passes the export
+     * frontier: the export stops at the first recent message without a vector, and shortest-first never reached a long
+     * one there — measured 12/10: a 2,130-char tool result blocked 199 waiting messages while each round embedded 64
+     * shorter ones elsewhere and sealed blocks with 0 messages.
+     */
+    fromId?: number;
+  } = {},
 ): Promise<EmbedPendingResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const limit = opts.limit ?? 500;
@@ -326,12 +344,13 @@ export async function embedPending(
     // "Pending" is keyed on the chunk-0 row (rowid = message id) — the invariant
     // every count/query in this file shares.
     const ex = SCOPE_EXCLUDE_SQL();
+    const order = pendingOrderSql(opts.fromId);
     const rows = db
       .prepare(
         `SELECT id, content FROM messages
          WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}${ex.sql}
-           ${has ? noVectorYetSql(db) : ""}
-         ORDER BY length(content) ASC, id ASC LIMIT ?`,
+           ${has ? noVectorYetSql(db) : ""}${order.where}
+         ORDER BY ${order.orderBy} LIMIT ?`,
       )
       .all(...ex.params, limit) as { id: number; content: string }[];
 
@@ -702,16 +721,21 @@ export function embedFrontierId(
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) return null; // kho chưa từng nhúng — không có gì để chờ
-    if ((db.prepare("SELECT count(*) c FROM vec_chunks").get() as { c: number }).c === 0) return null;
+    // Hỏi BẢNG BÓNG, không hỏi vec0 (xem `hasVectorSql`): `count(*)` và `NOT IN (SELECT rowid FROM vec_chunks …)` trên
+    // bảng ảo quét cả kho vector — đo 12/10: 1,1–2,2 s MỖI lần gọi, mà đường nhanh p2p gọi nó hai lần mỗi khối.
+    const any = tableExists(db, "vec_chunks_rowids") ? "SELECT 1 FROM vec_chunks_rowids LIMIT 1" : "SELECT 1 FROM vec_chunks LIMIT 1";
+    if (!db.prepare(any).get()) return null;
     const cutoff = new Date(Date.now() - recentWindowMs).toISOString();
+    // Cận dưới của id = tin ĐẦU TIÊN trong cửa sổ, lấy qua index phủ `(session_id, timestamp)` (`ORDER BY session_id`
+    // là để bộ lập kế hoạch đi index đó thay vì đọc từng dòng theo rowid). Không đổi kết quả — mọi tin trong cửa sổ có
+    // id ≥ cận đó — mà phép quét chính khỏi đọc nội dung cả kho: đo 12/10 cửa sổ 24 h 505 ms → 52 ms.
     const row = db
       .prepare(
         `SELECT MIN(id) m FROM messages
-          WHERE content IS NOT NULL AND content != ''${EMBEDDABLE()}
-            AND timestamp >= ?
-            AND id NOT IN (SELECT rowid FROM vec_chunks WHERE rowid < ${SYNTH_BASE})`,
+          WHERE id >= coalesce((SELECT MIN(id) FROM (SELECT id FROM messages WHERE timestamp >= ? ORDER BY session_id)), 9e18)
+            AND timestamp >= ? AND content IS NOT NULL AND content != ''${EMBEDDABLE()}${noVectorYetSql(db)}`,
       )
-      .get(cutoff) as { m: number | null };
+      .get(cutoff, cutoff) as { m: number | null };
     return row?.m ?? null;
   } catch {
     return null; // mọi trục trặc ⇒ KHÔNG chặn đường sync
