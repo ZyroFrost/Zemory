@@ -262,7 +262,8 @@ export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
   return out;
 }
 
-/** Kicks of the live INBOUND persistent links (`serveChannel` sessions). A kick that answers `false` is a dead pipe. */
+/** Kicks of the live INBOUND persistent links (direct `serveChannel` and relay `acceptRelayInvite` sessions). A kick that
+ *  answers `false` is a dead pipe. */
 const inboundKicks = new Set<() => boolean>();
 
 /** Offer our inventory NOW on every live inbound link (plan/24 §12 fast lane). Returns how many pipes took it. */
@@ -1167,6 +1168,12 @@ async function acceptRelayInvite(
       // nhưng sót cửa này. Ba cửa nghe, một luật; sót một là máy kia rụng theo kiểu tung đồng xu
       // (relay hay thẳng là do cú bắt tay nào ăn trước).
       persistent: true,
+      // The fast lane's kick must reach this pipe too (plan/24 §12). Measured 12/10: the home machine dialled in over the
+      // relay, this was the ONLY live link, and every sealed block logged "no live link" and waited for the 30 s round —
+      // only the direct listening door handed its kick over.
+      onKick: (k: () => boolean) => {
+        inboundKicks.add(k);
+      },
       onOpen: (id: string) => {
         openedId = id;
         o.onLinkOpen?.(id, "relay");

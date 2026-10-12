@@ -9,7 +9,10 @@
 //      link so the other machine is offered it in the same second.
 //   ② RECEIVE — a block came in ⇒ `requestMerge()`; the next tick runs `fastrun.js merge` (merge only — no scan, embed or
 //      export). Store busy ⇒ the request stays queued and runs as soon as the slot frees, never "the 30′ round will do it".
-// Both go through the daemon's ONE job slot (HP art. 11 — one writer). A sync round already running is never pre-empted
+//   ③ VECTORS — the push in ① does not wait for the embedder (user 2026-10-12: "Tin trước, vector sau"; embedding first
+//      made every block 17–75 s). A push that moved messages queues `fastrun.js vectors`, which runs only when no merge is
+//      queued and none of our messages waits — so neither direction ever queues behind the embedder.
+// All go through the daemon's ONE job slot (HP art. 11 — one writer). A sync round already running is never pre-empted
 // (it exports this delta itself); the maintenance chain is asked to yield, as the "Sync now" button does — its work is
 // restartable, a person is waiting on this.
 
@@ -101,10 +104,14 @@ export interface FastLaneDeps {
   onMerged?: () => void;
 }
 
+type FastMode = "push" | "vectors" | "merge";
+
 export interface FastLaneStatus {
-  running: "push" | "merge" | null;
+  running: FastMode | null;
   mergeQueued: boolean;
+  vectorsQueued: boolean;
   lastPush?: { at: number; ms: number; ok: boolean; kind?: string; messages?: number; error?: string };
+  lastVectors?: { at: number; ms: number; ok: boolean; kind?: string; embedded?: number; error?: string };
   lastMerge?: { at: number; ms: number; ok: boolean; messagesAdded?: number; error?: string };
 }
 
@@ -112,7 +119,9 @@ export class FastLane {
   private send = freshSendState();
   private child: ChildProcess | null = null;
   private mergeQueued = false;
-  private st: FastLaneStatus = { running: null, mergeQueued: false };
+  /** A push moved messages without their vectors — ③ owes the block that carries them. */
+  private vectorsQueued = false;
+  private st: FastLaneStatus = { running: null, mergeQueued: false, vectorsQueued: false };
   private yieldAsked = 0;
   /** A push that carried NO message while some wait (the frontier still blocks them) ⇒ rest instead of firing every few
    *  seconds (measured 12/10: 19.8 s rounds sealing 0 messages back to back). */
@@ -120,7 +129,7 @@ export class FastLane {
   constructor(private d: FastLaneDeps) {}
 
   status(): FastLaneStatus {
-    return { ...this.st, running: this.st.running, mergeQueued: this.mergeQueued };
+    return { ...this.st, running: this.st.running, mergeQueued: this.mergeQueued, vectorsQueued: this.vectorsQueued };
   }
 
   /** A block arrived from another machine — merge it as soon as the slot is free. */
@@ -129,28 +138,32 @@ export class FastLane {
   }
 
   /** One timer tick. Returns what it started, for the gate. */
-  tick(now = Date.now()): "push" | "merge" | null {
+  tick(now = Date.now()): FastMode | null {
     if (this.child || !this.d.enabled()) return null;
     // Receiving first: a block already here is cheaper to land than a new one to seal, and it is what the user is waiting on.
     if (this.mergeQueued) return this.start("merge", now) ? "merge" : null;
     if (now < this.restUntil) return null;
-    const r = fastSendDecide(this.send, ownPendingMax(this.d.dbPath(), this.d.host()), now);
+    const pendingMax = ownPendingMax(this.d.dbPath(), this.d.host());
+    const r = fastSendDecide(this.send, pendingMax, now);
     this.send = r.state;
-    if (!r.fire) return null;
-    return this.start("push", now) ? "push" : null;
+    if (r.fire) return this.start("push", now) ? "push" : null;
+    // The vectors last, and only while none of our messages waits: the embedder holds the slot for tens of seconds.
+    if (this.vectorsQueued && pendingMax === 0) return this.start("vectors", now) ? "vectors" : null;
+    return null;
   }
 
-  private start(mode: "push" | "merge", now: number): boolean {
+  private start(mode: FastMode, now: number): boolean {
     if (this.d.syncRunning()) return false; // the round exports / merges this itself; stay queued
     if (!claimDaemonJob(`fastlane-${mode}`)) {
       // The maintenance chain holds the slot ⇒ ask it to yield once per few seconds (a sync job is never asked: see above).
       if (daemonJobBusy() !== "sync" && now - this.yieldAsked > 5_000) {
         this.yieldAsked = now;
-        yieldDaemonJob(mode === "push" ? "gửi liền" : "nhận liền");
+        yieldDaemonJob(mode === "merge" ? "nhận liền" : "gửi liền");
       }
       return false;
     }
     if (mode === "merge") this.mergeQueued = false;
+    if (mode === "vectors") this.vectorsQueued = false;
     let c: ChildProcess;
     try {
       c = spawn(process.execPath, [runnerEntry(), mode], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, false) });
@@ -176,7 +189,7 @@ export class FastLane {
       this.child = null;
       this.st.running = null;
       releaseDaemonJob();
-      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedMs?: number; pushMs?: number } = {};
+      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number } = {};
       for (const line of out.trim().split("\n").reverse()) {
         try {
           res = JSON.parse(line);
@@ -193,10 +206,19 @@ export class FastLane {
         this.send = freshSendState();
         // Nothing of ours travelled (or it failed) ⇒ rest before the next attempt; a block with messages ⇒ ready at once.
         if (!ok || !(res.messages && res.messages > 0)) this.restUntil = Date.now() + FAST_REST_MS;
+        else this.vectorsQueued = true; // the messages went without their vectors — ③ owes the next block
         if (ok && res.kind && res.kind !== "none") {
-          this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s${res.embedMs !== undefined ? ` (embed ${(res.embedMs / 1000).toFixed(1)}s · seal ${((res.pushMs ?? 0) / 1000).toFixed(1)}s)` : ""} — offering it now`);
+          this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s — offering it now`);
           this.d.kickLinks();
         } else if (!ok) this.d.log(`[fastlane] push failed after ${(ms / 1000).toFixed(1)}s: ${error}`);
+      } else if (mode === "vectors") {
+        this.st.lastVectors = { at: Date.now(), ms, ok, kind: res.kind, embedded: res.embedded, ...(error ? { error } : {}) };
+        // Not retried here: a failed or cut-short round leaves the vectors to the 30′ round (`vec_shipped` ledger), and a
+        // retry loop on a broken embedder would hold the slot every few seconds.
+        if (ok && res.kind && res.kind !== "none") {
+          this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now`);
+          this.d.kickLinks();
+        } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
       } else {
         this.st.lastMerge = { at: Date.now(), ms, ok, messagesAdded: res.messagesAdded, ...(error ? { error } : {}) };
         if (ok) {

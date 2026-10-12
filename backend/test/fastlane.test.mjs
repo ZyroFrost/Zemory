@@ -85,19 +85,19 @@ test("push: new messages of this machine ⇒ exactly ONE block; nothing new or o
   const chan = join(root, "channel");
   mkdirSync(chan, { recursive: true });
   seed(db, ME, "s1", ["a1", "a2"]);
-  const first = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db, embed: false });
+  const first = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
   assert.notEqual(first.push.kind, "none", "an empty channel gets its first block");
   assert.equal(inventoryIds(chan).length, 1);
-  const again = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db, embed: false });
+  const again = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
   assert.equal(again.push.kind, "none", "nothing new ⇒ no block");
   assert.equal(inventoryIds(chan).length, 1);
   seed(db, ME, "s1", ["a3"]);
-  const delta = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db, embed: false });
+  const delta = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
   assert.equal(delta.push.kind, "delta");
   assert.equal(delta.push.messages, 1, "only the one new message travels");
   assert.equal(inventoryIds(chan).length, 2, "one new block");
   seed(db, "OTHER-PC", "so", ["o1"]);
-  const other = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db, embed: false });
+  const other = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
   assert.equal(other.push.kind, "none", "a message merged from the other machine is never re-shipped");
   assert.equal(inventoryIds(chan).length, 2);
   // The fast lane moves the P2P watermark ONLY. Moving `drive:<host>` would make the Drive channel skip these messages
@@ -112,6 +112,36 @@ test("push: new messages of this machine ⇒ exactly ONE block; nothing new or o
   }
 });
 
+test("push: messages go NOW even while the embed frontier blocks them; the vector job keeps the old rule (user 12/10)", async (t) => {
+  const root = tempDir(t, "zemory-fl-later-");
+  const db = join(root, "m.db");
+  const key = join(root, "share.key");
+  writeMemoryShareKey(key);
+  const chan = join(root, "channel");
+  mkdirSync(chan, { recursive: true });
+  seed(db, ME, "s1", ["old"]);
+  const first = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
+  assert.notEqual(first.push.kind, "none", "baseline block");
+  // A vector index with one vector ⇒ the embed frontier is live; the next message has NO vector.
+  const sqliteVec = await import("sqlite-vec");
+  const conn = openMemory(db);
+  try {
+    sqliteVec.load(conn);
+    conn.exec("CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[4])");
+    const oldId = conn.prepare("SELECT id FROM messages WHERE uuid = 'old'").get().id;
+    conn.prepare("INSERT INTO vec_chunks(rowid, embedding) VALUES (?, ?)").run(BigInt(oldId), Buffer.from(new Float32Array([1, 0, 0, 0]).buffer));
+  } finally {
+    conn.close();
+  }
+  seed(db, ME, "s1", ["fresh"]);
+  const { pushChannelVectors } = await import("../../dist/memory/share.js");
+  const held = await pushChannelVectors({ dir: chan, keyFile: key, dbPath: db, embed: false });
+  assert.equal(held.push.messages ?? 0, 0, "the vector job keeps the frontier rule: a message without its vector waits");
+  const now = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
+  assert.equal(now.push.kind, "delta");
+  assert.equal(now.push.messages, 1, "the fast push ships it at once — its vector follows in a later block");
+});
+
 // A fake child: prints the result line the real `fastrun.js` would, per mode (env FAKE_PUSH_KIND chooses the push result).
 function fakeRunner(root) {
   const f = join(root, "fake-fastrun.mjs");
@@ -119,9 +149,19 @@ function fakeRunner(root) {
     f,
     `const mode = process.argv[2];
      if (mode === "push") console.log(JSON.stringify({ ok: true, mode, kind: process.env.FAKE_PUSH_KIND || "delta", messages: 2 }));
+     else if (mode === "vectors") console.log(JSON.stringify({ ok: true, mode, kind: "delta", messages: 0, embedded: 2, embedMs: 5 }));
      else console.log(JSON.stringify({ ok: true, mode, blocks: 1, messagesAdded: 3 }));`,
   );
   return f;
+}
+
+function setP2pWatermark(db, id) {
+  const conn = openMemory(db);
+  try {
+    conn.prepare("INSERT OR REPLACE INTO sync_state (bundle, last_message_id, updated_at) VALUES (?, ?, ?)").run(`p2p:${ME.replace(/[^A-Za-z0-9._-]/g, "_")}`, id, new Date().toISOString());
+  } finally {
+    conn.close();
+  }
 }
 
 const waitFor = (ok, ms) =>
@@ -157,6 +197,37 @@ test("lane: a received block is merged at once; a busy sync round keeps it QUEUE
   assert.equal(merged, 1);
   assert.equal(lane.status().lastMerge?.messagesAdded, 3);
   assert.equal(lane.status().mergeQueued, false);
+});
+
+test("lane: a push that moved messages queues the VECTOR block — after any merge, never while our messages wait", async (t) => {
+  const root = tempDir(t, "zemory-fl-vec-");
+  process.env.ZEMORY_FASTLANE_RUNNER = fakeRunner(root);
+  t.after(() => delete process.env.ZEMORY_FASTLANE_RUNNER);
+  const db = join(root, "m.db");
+  seed(db, ME, "s1", ["v1"]);
+  let kicks = 0;
+  const lines = [];
+  const lane = new FastLane({ dbPath: () => db, host: () => ME, enabled: () => true, syncRunning: () => false, kickLinks: () => kicks++, log: (m) => lines.push(m) });
+  const t0 = Date.now();
+  lane.tick(t0);
+  assert.equal(lane.tick(t0 + FAST_QUIET_MS), "push");
+  await waitFor(() => lane.status().lastPush, 10_000);
+  assert.equal(lane.status().vectorsQueued, true, "messages went without vectors ⇒ the vector block is owed");
+  // The fake child does not move the watermark: our message still waits ⇒ the embedder must NOT take the slot.
+  assert.equal(lane.tick(Date.now()), null, "a message of ours waits ⇒ no vector job yet");
+  const conn = openMemory(db);
+  const max = conn.prepare("SELECT MAX(id) m FROM messages").get().m;
+  conn.close();
+  setP2pWatermark(db, max);
+  lane.requestMerge();
+  assert.equal(lane.tick(Date.now()), "merge", "a block from the other machine lands BEFORE our vectors");
+  await waitFor(() => lane.status().lastMerge, 10_000);
+  assert.equal(lane.tick(Date.now()), "vectors", "nothing else waits ⇒ the vector block now");
+  await waitFor(() => lane.status().lastVectors, 10_000);
+  assert.equal(lane.status().vectorsQueued, false);
+  assert.equal(kicks, 2, "the message block and the vector block are both offered at once");
+  assert.ok(lines.some((l) => l.includes("vectors followed")), lines.join("\n"));
+  assert.equal(lane.tick(Date.now()), null, "owed once, run once");
 });
 
 test("lane: a sealed block kicks the live links; a push that sealed nothing does not", async (t) => {
@@ -223,7 +294,7 @@ test("embed: from the frontier the LONG message that blocks the export goes firs
   assert.deepEqual(pick(undefined), [1, 2], "backfill: shortest first, as before");
   const { readFileSync } = await import("node:fs");
   const SH = readFileSync(new URL("../src/memory/share.ts", import.meta.url), "utf8");
-  assert.match(SH, /embedPending\(\{ dbPath: o\.dbPath, limit: o\.embedLimit \?\? 64, fromId: frontier \}\)/, "the fast push embeds FROM the frontier");
+  assert.match(SH, /embedPending\(\{ dbPath: o\.dbPath, limit: o\.embedLimit \?\? 256, fromId: frontier \}\)/, "the vector job embeds FROM the frontier");
 });
 
 test("wiring: EVERY receiving path queues a merge through the lane; none merges on the daemon's event loop", async () => {
@@ -239,6 +310,12 @@ test("wiring: EVERY receiving path queues a merge through the lane; none merges 
   assert.match(UI, /n \+= ch\.kickInboundLinks\(\);/, "a sealed block is offered on inbound links too");
   const IDX = readFileSync(new URL("../src/memory/channel/index.ts", import.meta.url), "utf8");
   assert.match(IDX, /onKick: \(k: \(\) => boolean\) => \{\s*inboundKicks\.add\(k\);/, "the listening side hands its kicks to the lane");
+  // EVERY persistent listening door — direct AND relay. Measured 12/10: the relay door did not, the home machine dialled in
+  // over the relay, and every sealed block waited for the 30 s round ("no live link right now").
+  const persistent = (IDX.match(/persistent: true,/g) || []).length;
+  const handed = (IDX.match(/inboundKicks\.add\(k\);/g) || []).length;
+  assert.ok(persistent >= 2, "the direct and the relay listening doors are both persistent");
+  assert.equal(handed, persistent, "every persistent listening door hands its kick to the lane");
 });
 
 test("card: 'latest message N ago' is the newest session end of the paired machine IN THIS STORE", async (t) => {
