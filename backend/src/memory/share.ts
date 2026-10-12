@@ -1933,6 +1933,8 @@ export async function pushChannelFast(o: {
   /** This machine's identity for the delta series (a seam for tests). Omitted → os.hostname(). */
   host?: string;
   onProgress?: (phase: string) => void;
+  /** The store's write queue (plan/24 §12.7) — the embed lane may be writing vectors at the same time. */
+  writeTurn?: () => Promise<() => void>;
 }): Promise<{ push: DriveSyncResult["push"]; pushMs: number }> {
   const t0 = Date.now();
   const push = await pushChannelLocked(o, { vectorsLater: true });
@@ -1959,7 +1961,12 @@ export async function pushChannelVectors(o: {
   /** Tests that exercise the channel, not the embedder. */
   embed?: boolean;
   onProgress?: (phase: string) => void;
-}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number; more: boolean }> {
+  /**
+   * The store's write queue (plan/24 §12.7). Given ⇒ this round runs as the EMBED LANE, in parallel with the fast lane's
+   * other jobs: the model runs outside any turn, each batch write and the closing block take one.
+   */
+  writeTurn?: () => Promise<() => void>;
+}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number; more: boolean; stuckAt: number | null }> {
   (o.onProgress ?? (() => {}))("embed");
   // Embed FROM THE FRONTIER in id order — the messages just shipped, not the shortest pending ones anywhere in the store
   // (see `embedPending.fromId`). No frontier ⇒ every recent message already has its vector.
@@ -1973,27 +1980,36 @@ export async function pushChannelVectors(o: {
         countRemaining: false, // the round only needs `stoppedEarly`; the store-wide count cost ~13 s per round
         ...(o.embedBatch ? { batchSize: o.embedBatch } : {}),
         ...(o.embedBudgetMs ? { deadline: t0 + o.embedBudgetMs } : {}),
+        ...(o.writeTurn ? { writeTurn: o.writeTurn } : {}),
       })
     : null;
   const embedMs = Date.now() - t0;
   const push = await pushChannelLocked(o, {});
-  return { push, embedded: r?.embedded ?? 0, embedMs, pushMs: Date.now() - t0 - embedMs, more: r?.stoppedEarly === true };
+  // A frontier the pass could not move (0 embedded: the message cannot be embedded here) — the lane must not respawn on it.
+  const stuckAt = frontier !== null && (r?.embedded ?? 0) === 0 ? frontier : null;
+  return { push, embedded: r?.embedded ?? 0, embedMs, pushMs: Date.now() - t0 - embedMs, more: r?.stoppedEarly === true, stuckAt };
 }
 
 /** One p2p `pushAppend` under the channel write queue — the shared tail of both fast-lane jobs. */
 async function pushChannelLocked(
-  o: { dir: string; keyFile?: string; dbPath?: string; host?: string; onProgress?: (phase: string) => void },
+  o: { dir: string; keyFile?: string; dbPath?: string; host?: string; onProgress?: (phase: string) => void; writeTurn?: () => Promise<() => void> },
   extra: { vectorsLater?: boolean },
 ): Promise<DriveSyncResult["push"]> {
   const dir = o.dir.trim();
   if (!dir) throw new Error("No channel folder.");
   mkdirSync(dir, { recursive: true });
   const host = o.host ? o.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
-  const release = await acquireChannelWriteLock(dir, { host });
+  // Order is fixed — store turn OUTSIDE, channel lock INSIDE — so two holders can never wait on each other crosswise.
+  const releaseTurn = o.writeTurn ? await o.writeTurn() : null;
   try {
-    return await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress: o.onProgress, channel: "p2p", ...extra });
+    const release = await acquireChannelWriteLock(dir, { host });
+    try {
+      return await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress: o.onProgress, channel: "p2p", ...extra });
+    } finally {
+      release();
+    }
   } finally {
-    release();
+    releaseTurn?.();
   }
 }
 

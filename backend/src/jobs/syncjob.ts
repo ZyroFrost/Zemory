@@ -131,6 +131,12 @@ export function syncJobRunning(): boolean {
   return status.running;
 }
 
+/** Is the fast lane's embed lane on (plan/24 §12.7)? The daemon tells; nobody told ⇒ off, the round embeds as before. */
+let embedLaneOn: () => boolean = () => false;
+export function setEmbedLaneProbe(fn: () => boolean): void {
+  embedLaneOn = fn;
+}
+
 export function syncJobStatus(): SyncJobStatus {
   return { ...status, ...(status.running && phase ? { phase } : {}) };
 }
@@ -221,7 +227,11 @@ export function startSyncJob(
   try {
     // stderr là "pipe", KHÔNG "ignore" — xem chú thích ở `SyncJobStatus.stderr`.
     // Thread cap ONLY for the machine-started round (same boundary as the priority drop below).
-    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, !!opts.lowPriority) });
+    const env = backgroundChildEnv(process.env, !!opts.lowPriority);
+    // The fast lane's EMBED LANE owns embedding while it is on (plan/24 §12.7) ⇒ the round skips its embed step — measured
+    // 12/10: that step alone was 606 s of a 12′17″ round, and the slot it held kept every merge and send waiting.
+    if (embedLaneOn()) env.ZEMORY_EMBED_LANE = "1";
+    c = spawn(process.execPath, [runnerEntry()], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env });
   } catch (e) {
     releaseDaemonJob();
     status = { running: false, startedAt: status.startedAt, ok: false, error: e instanceof Error ? e.message : String(e) };

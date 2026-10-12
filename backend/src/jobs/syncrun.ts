@@ -51,8 +51,11 @@ import { absorbLegacyPens, channelDir, syncTargets } from "../memory/channel/ind
     // và cùng khoá ghi của kho — đúng thứ điều 11 cấm.
     let r = null;
     const channels = [];
+    // The fast lane's embed lane owns embedding (plan/24 §12.7) ⇒ skip this round's embed step; the Drive export still
+    // stops at the embed frontier, which the lane keeps moving.
+    const embed = process.env.ZEMORY_EMBED_LANE === "1" ? false : undefined;
     for (const tgt of targets) {
-      const one = await syncDrive({ driveDir: tgt.dir, channel: tgt.channel, keyFile: resolveShareKey(process.cwd()), onProgress });
+      const one = await syncDrive({ driveDir: tgt.dir, channel: tgt.channel, keyFile: resolveShareKey(process.cwd()), onProgress, ...(embed === false ? { embed } : {}) });
       channels.push({ channel: tgt.channel, dir: tgt.dir, push: one.push, exportedBytes: one.exportedBytes });
       // Kết quả CHÍNH giữ nguyên hình dạng cũ cho `/sync-status` (kênh đầu tiên = Drive khi có).
       if (!r) r = one;

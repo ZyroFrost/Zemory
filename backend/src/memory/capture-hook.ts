@@ -22,6 +22,10 @@ import { lastCompactAt, readContextUsage, scanCompactions } from "./context-guar
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
 import { deferIngest } from "../jobs/ingestqueue.js";
+import { tryWriteTurnSync } from "../jobs/writeturn.js";
+
+/** Longest the Stop hook waits for the store's write turn before it defers the ingest instead. */
+const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
@@ -53,7 +57,19 @@ function ingestCurrent(payload: any): { newMessages: number; ms: number } | null
     deferIngest(path);
     return null;
   }
-  const r = scanOneFile(path);
+  // The embed lane may be writing vectors beside the slot (plan/24 §12.7) ⇒ take the store's write turn. Its turns last
+  // ms, so this almost never waits; a turn that does not come within a few seconds ⇒ defer, never hang the answer.
+  const release = tryWriteTurnSync(HOOK_TURN_WAIT_MS);
+  if (!release) {
+    deferIngest(path);
+    return null;
+  }
+  let r: ReturnType<typeof scanOneFile>;
+  try {
+    r = scanOneFile(path);
+  } finally {
+    release();
+  }
   return r.ingested ? { newMessages: r.newMessages, ms: r.ms } : null;
 }
 
@@ -341,7 +357,16 @@ export function handleHook(event: HookEventName, payload: any): string {
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
       const ingested = ingestCurrent(payload);
-      if (!ingested && !path && !daemonJobBusyExternal()) scan();
+      if (!ingested && !path && !daemonJobBusyExternal()) {
+        const release = tryWriteTurnSync(HOOK_TURN_WAIT_MS); // same queue as every other writer (plan/24 §12.7)
+        if (release) {
+          try {
+            scan();
+          } finally {
+            release();
+          }
+        }
+      }
       // ĐO context ở ĐÂY — chỗ duy nhất bắn sau MỖI lượt assistant, tức chỗ duy nhất bắt được
       // lúc vượt ngưỡng (context phình trong lượt trả lời, không phải lúc user gõ). Chỉ GHI SỔ,
       // KHÔNG trả chữ: `Stop` là hook write-only, 0 token (xem `writeContextState`).

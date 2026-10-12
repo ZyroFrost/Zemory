@@ -348,12 +348,26 @@ export async function embedPending(
      * (~13 s on a large store, plan/14 §8) and the p2p vector round never reads it — it only needs `stoppedEarly`.
      */
     countRemaining?: boolean;
+    /**
+     * The store's write queue (plan/24 §12.7, `jobs/writeturn.ts`). Given ⇒ every WRITE of this pass happens inside a
+     * turn, and the model runs OUTSIDE any turn — so an embedder that runs in parallel never holds up a merge or a send
+     * for longer than one batch write (ms). Omitted ⇒ the caller already owns the store (the daemon's job slot).
+     */
+    writeTurn?: () => Promise<() => void>;
   } = {},
 ): Promise<EmbedPendingResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const limit = opts.limit ?? 500;
   const batchSize = Math.max(1, opts.batchSize ?? 16);
   const db = vecConnect(dbPath);
+  let releaseTurn: (() => void) | null = null;
+  const takeTurn = async (): Promise<void> => {
+    if (opts.writeTurn && !releaseTurn) releaseTurn = await opts.writeTurn();
+  };
+  const giveTurn = (): void => {
+    releaseTurn?.();
+    releaseTurn = null;
+  };
   try {
     const has = tableExists(db);
     // "Pending" is keyed on the chunk-0 row (rowid = message id) — the invariant
@@ -387,6 +401,8 @@ export async function embedPending(
     let embedded = 0;
     let deduped = 0;
 
+    // Turn ①: the table setup + the copy pass (dedup writes, no model call — fast).
+    await takeTurn();
     ensureHashTable(db);
     ensureMapTable(db);
     const hashGet = db.prepare("SELECT rowid FROM vec_hash WHERE hash = ?");
@@ -480,6 +496,7 @@ export async function embedPending(
         }
       }
     }
+    giveTurn();
     let stoppedEarly = false;
     for (let i = 0; i < pending.length; i += batchSize) {
       if (opts.deadline !== undefined && i > 0 && Date.now() >= opts.deadline) {
@@ -487,10 +504,12 @@ export async function embedPending(
         break;
       }
       const batch = pending.slice(i, i + batchSize);
+      // The model runs OUTSIDE the turn — this is the slow part, and it touches nothing shared.
       const vectors = await embedDocBatch(
         batch.map((r) => r.text),
         profile,
       );
+      await takeTurn(); // …then one short turn for the batch's writes
       for (let j = 0; j < batch.length; j++) {
         const r = batch[j];
         const v = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
@@ -501,8 +520,10 @@ export async function embedPending(
         }
         if (r.seq === 0) tick(r.messageId);
       }
+      giveTurn();
     }
     // In-run twins of the rows above: copy now that their canonical is embedded.
+    if (dupsOfQueued.length) await takeTurn();
     for (const d of dupsOfQueued) {
       const cid = seenThisRun.get(d.key);
       const blob = cid != null ? vectorOf(db, cid) : null;
@@ -513,6 +534,7 @@ export async function embedPending(
       } // else: canonical failed (fail-open) — the twin stays pending for the next pass
       if (d.seq === 0) tick(d.messageId);
     }
+    giveTurn();
 
     // SAME filter as the SELECT above (incl. the scope exclude): this count and `vectorRemaining()`
     // both answer "how many are still waiting", and until 2026-09-07 this one alone ignored
@@ -534,6 +556,7 @@ export async function embedPending(
     }
     return { embedded, deduped, remaining, dims, ...(stoppedEarly ? { stoppedEarly } : {}) };
   } finally {
+    giveTurn();
     db.close();
   }
 }
