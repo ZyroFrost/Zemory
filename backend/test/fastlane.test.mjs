@@ -143,6 +143,17 @@ test("push: messages go NOW even while the embed frontier blocks them; the vecto
   const now = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
   assert.equal(now.push.kind, "delta");
   assert.equal(now.push.messages, 1, "the fast push ships it at once — its vector follows in a later block");
+  // The frontier (the fresh message, still without a vector) now sits BELOW the watermark. A delta cut at it must never
+  // report a high-water mark under `since` — measured 12/10: that wrote the p2p watermark BACK and the next push re-shipped
+  // the same 129 messages.
+  const { exportMemoryBundle } = await import("../../dist/memory/share.js");
+  const c2 = openMemory(db);
+  const freshId = c2.prepare("SELECT id FROM messages WHERE uuid = 'fresh'").get().id;
+  c2.close();
+  const r = await exportMemoryBundle({ outPath: join(root, "probe.enc"), dbPath: db, keyFile: key, force: true, sinceMessageId: freshId });
+  assert.ok(r.rows.maxMessageId >= freshId, `high-water mark ${r.rows.maxMessageId} fell below since ${freshId}`);
+  const again = await pushChannelFast({ dir: chan, keyFile: key, dbPath: db });
+  assert.equal(again.push.kind, "none", "nothing is shipped twice");
 });
 
 // A fake child: prints the result line the real `fastrun.js` would, per mode (env FAKE_PUSH_KIND chooses the push result).
