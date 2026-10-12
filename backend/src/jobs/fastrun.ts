@@ -8,6 +8,7 @@
 import { channelDir } from "../memory/channel/index.js";
 import { mergeChannelDir, pushChannelFast, pushChannelVectors, resolveShareKey } from "../memory/share.js";
 import { drainIngestQueue } from "./ingestqueue.js";
+import { FAST_VECTOR_BATCH, FAST_VECTOR_BUDGET_MS } from "./fastlane.js";
 
 (async () => {
   const mode = process.argv[2];
@@ -24,8 +25,8 @@ import { drainIngestQueue } from "./ingestqueue.js";
       const r = await pushChannelFast({ dir: channelDir(undefined, true), keyFile, onProgress });
       console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, pushMs: r.pushMs }));
     } else if (mode === "vectors") {
-      const r = await pushChannelVectors({ dir: channelDir(undefined, true), keyFile, onProgress });
-      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, embedded: r.embedded, embedMs: r.embedMs, pushMs: r.pushMs }));
+      const r = await pushChannelVectors({ dir: channelDir(undefined, true), keyFile, onProgress, embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH });
+      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, embedded: r.embedded, embedMs: r.embedMs, pushMs: r.pushMs, more: r.more }));
     } else if (mode === "merge") {
       const r = await mergeChannelDir(channelDir(), { keyFile });
       const added = r.reduce((n, e) => n + (e.messagesAdded ?? 0), 0);
