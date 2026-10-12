@@ -297,7 +297,7 @@ test("embed: from the frontier the LONG message that blocks the export goes firs
   assert.deepEqual(pick(undefined), [1, 2], "backfill: shortest first, as before");
   const { readFileSync } = await import("node:fs");
   const SH = readFileSync(new URL("../src/memory/share.ts", import.meta.url), "utf8");
-  assert.match(SH, /embedPending\(\{\s*dbPath: o\.dbPath,\s*limit: o\.embedLimit \?\? 256,\s*fromId: frontier,/, "the vector job embeds FROM the frontier");
+  assert.match(SH, /embedPending\(\{\s*dbPath: o\.dbPath,\s*limit: o\.embedLimit \?\? 256,\s*fromId: frontier,\s*countRemaining: false,/, "the vector job embeds FROM the frontier and skips the store-wide count");
 });
 
 test("wiring: EVERY receiving path queues a merge through the lane; none merges on the daemon's event loop", async () => {
