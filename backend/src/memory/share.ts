@@ -84,6 +84,12 @@ export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
    * KHÔNG ghi đè kho chung (HP điều 16). Gói khi đó có thể 0 tin mà vẫn có ích.
    */
   vectorCatchUpIds?: number[];
+  /**
+   * Do NOT stop the delta at the embed frontier: messages go now, their vectors follow in a later block through the
+   * `vec_shipped` ledger. Only the p2p fast lane sets it (user 2026-10-12: *"Tin trước, vector sau"* — embedding first
+   * made every block 17–75 s). Every other export keeps the frontier rule.
+   */
+  vectorsLater?: boolean;
 }
 
 export interface ExportMemoryBundleResult {
@@ -358,7 +364,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
   // có. Tin không mất khỏi máy (còn cả trong `.bak`) nhưng kênh hụt cho tới lượt sync sau, và
   // máy nào merge trúng cửa sổ đó thì nhận thiếu. Giữa "kênh thiếu VECTOR" và "kênh thiếu TIN",
   // thiếu tin nặng hơn — vector còn bù được bằng `vectors-catchup`, tin thì không.
-  const frontier = payload === "rows" && opts.sinceMessageId ? embedFrontierId(sourcePath) : null;
+  const frontier = payload === "rows" && opts.sinceMessageId && !opts.vectorsLater ? embedFrontierId(sourcePath) : null;
   const until = frontier && frontier > 0 ? frontier - 1 : undefined;
   const snapshot =
     payload === "rows"
@@ -1907,12 +1913,15 @@ export async function syncDrive(opts: {
  * FAST LANE, sending side (plan/24 §12.2 ①): seal THIS machine's new messages into the p2p channel right away.
  *
  * `syncDrive` is a whole round (scan · merge every channel · embed a 500-message batch · export to every target); run on
- * every new chat message it would be minutes of work for a few lines. This does only the part that makes a block: embed
- * what is pending (capped — a message and its vector travel together, HP art. 16, and the export stops at the first
- * recent message without one) → take the channel write queue → `pushAppend` on the p2p watermark. No scan (the hook has
- * already written the messages), no Drive, no merge (the delta carries only this machine's own rows, so other machines'
- * blocks do not change it), and `compact` is never set (auto-compaction is abolished; a compaction without a merge first
- * would lose blocks). Nothing new ⇒ `kind: "none"`, no block.
+ * every new chat message it would be minutes of work for a few lines. This does only the part that makes a block, as TWO
+ * separate jobs of the fast lane (user 2026-10-12: *"Tin trước, vector sau"*):
+ *   ① `pushChannelFast` — MESSAGES NOW: `pushAppend` on the p2p watermark with `vectorsLater` (no wait at the embed
+ *      frontier). Measured 12/10 with embed-first: 17–75 s per block, nearly all of it the embedder (~2 s per text window).
+ *   ② `pushChannelVectors` — VECTORS NEXT, queued by the lane AFTER any merge and any new push, so a block from the other
+ *      machine is never held behind our embedder.
+ * No scan (the hook has already written the messages), no Drive, no merge (the delta carries only this machine's own rows),
+ * and `compact` is never set (auto-compaction is abolished; a compaction without a merge first would lose blocks).
+ * Nothing new ⇒ `kind: "none"`, no block.
  */
 export async function pushChannelFast(o: {
   dir: string;
@@ -1920,28 +1929,53 @@ export async function pushChannelFast(o: {
   dbPath?: string;
   /** This machine's identity for the delta series (a seam for tests). Omitted → os.hostname(). */
   host?: string;
-  /** Cap on the embed batch of one fast round (default 64). Measured 12/10: model load 4–6 s + ~0.25 s per message. */
+  onProgress?: (phase: string) => void;
+}): Promise<{ push: DriveSyncResult["push"]; pushMs: number }> {
+  const t0 = Date.now();
+  const push = await pushChannelLocked(o, { vectorsLater: true });
+  return { push, pushMs: Date.now() - t0 };
+}
+
+/**
+ * FAST LANE ② (see `pushChannelFast`): embed from the frontier, then one `pushAppend` WITH the frontier rule. The messages
+ * are already below the p2p watermark, so the block carries their vectors through the `vec_shipped` ledger
+ * (`unshippedVectorIds`). Not reached (crash, daemon stop) ⇒ the 30′ round ships them; the receiver can also embed the
+ * message itself — a vector arrives late, never lost (HP art. 16).
+ */
+export async function pushChannelVectors(o: {
+  dir: string;
+  keyFile?: string;
+  dbPath?: string;
+  host?: string;
+  /** Cap on one embed batch (default 256). */
   embedLimit?: number;
   /** Tests that exercise the channel, not the embedder. */
   embed?: boolean;
   onProgress?: (phase: string) => void;
 }): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number }> {
+  (o.onProgress ?? (() => {}))("embed");
+  // Embed FROM THE FRONTIER in id order — the messages just shipped, not the shortest pending ones anywhere in the store
+  // (see `embedPending.fromId`). No frontier ⇒ every recent message already has its vector.
+  const t0 = Date.now();
+  const frontier = o.embed === false ? null : embedFrontierId(o.dbPath ?? currentMemoryDb());
+  const embedded = frontier ? (await embedPending({ dbPath: o.dbPath, limit: o.embedLimit ?? 256, fromId: frontier })).embedded : 0;
+  const embedMs = Date.now() - t0;
+  const push = await pushChannelLocked(o, {});
+  return { push, embedded, embedMs, pushMs: Date.now() - t0 - embedMs };
+}
+
+/** One p2p `pushAppend` under the channel write queue — the shared tail of both fast-lane jobs. */
+async function pushChannelLocked(
+  o: { dir: string; keyFile?: string; dbPath?: string; host?: string; onProgress?: (phase: string) => void },
+  extra: { vectorsLater?: boolean },
+): Promise<DriveSyncResult["push"]> {
   const dir = o.dir.trim();
   if (!dir) throw new Error("No channel folder.");
   mkdirSync(dir, { recursive: true });
   const host = o.host ? o.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
-  const onProgress = o.onProgress ?? (() => {});
-  onProgress("embed");
-  // Embed FROM THE FRONTIER in id order — the message that actually blocks the export — not the shortest pending ones
-  // anywhere in the store (see `embedPending.fromId`). No frontier ⇒ nothing blocks ⇒ no embed pass at all.
-  const t0 = Date.now();
-  const frontier = o.embed === false ? null : embedFrontierId(o.dbPath ?? currentMemoryDb());
-  const embedded = frontier ? (await embedPending({ dbPath: o.dbPath, limit: o.embedLimit ?? 64, fromId: frontier })).embedded : 0;
-  const embedMs = Date.now() - t0;
   const release = await acquireChannelWriteLock(dir, { host });
   try {
-    const push = await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress, channel: "p2p" });
-    return { push, embedded, embedMs, pushMs: Date.now() - t0 - embedMs };
+    return await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress: o.onProgress, channel: "p2p", ...extra });
   } finally {
     release();
   }
@@ -2150,6 +2184,8 @@ async function pushAppend(o: {
   onProgress?: (phase: string) => void;
   /** Kênh đang ghi — mỗi kênh MỘT mốc delta riêng (`wmKeyFor`). */
   channel?: SyncChannel;
+  /** See `ExportMemoryBundleOptions.vectorsLater` — the p2p fast lane only. */
+  vectorsLater?: boolean;
 }): Promise<DriveSyncResult["push"]> {
   const { dir, host, excludeLanes, keyFile, dbPath } = o;
   const onProgress = o.onProgress ?? (() => {});
@@ -2194,6 +2230,7 @@ async function pushAppend(o: {
       excludeLanes,
       ...(since ? { sinceMessageId: since } : {}),
       ...(lateIds.length ? { vectorCatchUpIds: lateIds } : {}),
+      ...(o.vectorsLater ? { vectorsLater: true } : {}),
     });
     // Lượt KHÔNG có tin mới nhưng CÓ vector nhúng-sau vẫn phải đi — đó chính là ca đang vá.
     if (!r.rows || (r.rows.messages === 0 && !(r.vectorsShipped ?? 0))) {
