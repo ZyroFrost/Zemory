@@ -293,7 +293,10 @@ function buildRowsSnapshot(
         const maxInStore = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM src.messages").get() as { m: number }).m;
         // Watermark = id CAO NHẤT ĐÃ GỬI, không phải id cao nhất trong kho. Lấy nhầm cái sau
         // thì phần bị chặn lại (tin chưa có vector) bị đánh dấu "đã gửi" và mất vĩnh viễn.
-        stats.maxMessageId = opts.until !== undefined ? Math.min(maxInStore, opts.until) : maxInStore;
+        // …and NEVER BELOW `since`: everything ≤ since has already gone. Measured 12/10 (p2p "messages first, vectors
+        // next"): the fast push ships messages before their vectors, so the frontier sits BELOW the watermark; the vector
+        // round's `until = frontier − 1` then wrote the watermark BACK and the next push re-shipped the same 129 messages.
+        stats.maxMessageId = Math.max(since, opts.until !== undefined ? Math.min(maxInStore, opts.until) : maxInStore);
         db.exec("INSERT INTO main.schema_version SELECT * FROM src.schema_version");
         db.prepare(
           `INSERT INTO main.sessions SELECT * FROM src.sessions WHERE 1=1${deltaSessions}${notExcluded("id")}`,
