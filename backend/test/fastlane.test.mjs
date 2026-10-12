@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 // The job slot writes `daemon-job.lock` next to the store: point the store at a temp dir BEFORE any module loads.
 const STORE = mkdtempSync(join(tmpdir(), "zemory-fastlane-store-"));
@@ -16,6 +16,9 @@ const { pushChannelFast, writeMemoryShareKey } = await import("../../dist/memory
 const { inventoryIds } = await import("../../dist/memory/channel/blocks.js");
 const { FastLane, fastSendDecide, freshSendState, ownPendingMax, FAST_QUIET_MS, FAST_MAX_WAIT_MS } = await import("../../dist/jobs/fastlane.js");
 const { tempDir } = await import("./helpers.mjs");
+const { deferIngest, drainIngestQueue, hasQueuedIngest, queuedIngests, ingestQueueDir } = await import("../../dist/jobs/ingestqueue.js");
+const { claimDaemonJob, releaseDaemonJob } = await import("../../dist/jobs/writegate.js");
+const { handleHook } = await import("../../dist/memory/capture-hook.js");
 
 const ME = hostname();
 
@@ -340,7 +343,136 @@ test("card: 'latest message N ago' is the newest session end of the paired machi
   assert.equal((CH.match(/'p2p\.latestFrom':/g) || []).length, 2, "both dictionaries carry the key");
 });
 
+// ── DEFERRED CAPTURE (plan/24 §12.6) ─────────────────────────────────────────
+// Measured 12/10: the Stop hook skipped every answer while the fast lane held the job slot (a 213 s vector round, a
+// 67 s merge) and the scheduler was off ⇒ an hour of this machine's chat never reached the store, so nothing was sent.
+
+/** A minimal Claude Code transcript where the adapter looks (`.claude/projects/...`). */
+function transcript(t, sid, uuids) {
+  const dir = join(tempDir(t, "zemory-fl-tr-"), ".claude", "projects", "d--proj");
+  mkdirSync(dir, { recursive: true });
+  const file = join(dir, `${sid}.jsonl`);
+  const lines = uuids.map((u, i) => ({
+    type: i % 2 ? "assistant" : "user",
+    uuid: u,
+    timestamp: "2026-10-12T08:00:00.000Z",
+    cwd: "D:\\proj",
+    message: i % 2 ? { role: "assistant", content: [{ type: "text", text: `answer ${u}` }] } : { role: "user", content: `question ${u}` },
+  }));
+  writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  return file;
+}
+
+function storeCount(uuids) {
+  const db = openMemory(process.env.GLOBAL_MEMORY_DB);
+  try {
+    return db.prepare(`SELECT COUNT(*) c FROM messages WHERE uuid IN (${uuids.map(() => "?").join(",")})`).get(...uuids).c;
+  } finally {
+    db.close();
+  }
+}
+
+test("hook: a busy job slot DEFERS the transcript — never drops it, never writes the store meanwhile", (t) => {
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  const file = transcript(t, "sess-defer", ["d-u1", "d-a1"]);
+  assert.ok(claimDaemonJob("test-busy"), "the slot is ours for this case");
+  try {
+    handleHook("stop", { transcript_path: file, session_id: "sess-defer" });
+  } finally {
+    releaseDaemonJob();
+  }
+  const q = queuedIngests();
+  assert.equal(q.length, 1, "the skipped answer left exactly one note");
+  assert.equal(q[0].path, file);
+  assert.equal(storeCount(["d-u1", "d-a1"]), 0, "one writer: nothing written while the slot was held");
+  const r = drainIngestQueue();
+  assert.equal(r.newMessages, 2, "the drain lands the deferred chat");
+  assert.equal(storeCount(["d-u1", "d-a1"]), 2);
+  assert.equal(hasQueuedIngest(), false, "and drops the note");
+  // slot free ⇒ the hook ingests directly, no note
+  writeFileSync(file, readFileSync(file, "utf8") + JSON.stringify({ type: "user", uuid: "d-u2", timestamp: "2026-10-12T08:00:02.000Z", cwd: "D:\\proj", message: { role: "user", content: "again" } }) + "\n");
+  handleHook("stop", { transcript_path: file, session_id: "sess-defer" });
+  assert.equal(hasQueuedIngest(), false, "a free slot needs no note");
+  assert.equal(storeCount(["d-u2"]), 1);
+});
+
+test("drain: a note re-written DURING the scan survives (the hook fired again); a vanished transcript's note is dropped", (t) => {
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  const file = transcript(t, "sess-race", ["r-u1"]);
+  deferIngest(file);
+  deferIngest(file);
+  assert.equal(queuedIngests().length, 1, "one note per transcript, never stacked");
+  const r = drainIngestQueue((p) => {
+    deferIngest(p); // the hook fires mid-drain: that answer is not in this scan
+    return { newMessages: 0 };
+  });
+  assert.equal(r.files, 1);
+  assert.equal(queuedIngests().length, 1, "re-queued mid-drain ⇒ the note stays for the next round");
+  drainIngestQueue(() => ({ newMessages: 0 }));
+  assert.equal(hasQueuedIngest(), false);
+  deferIngest(join(tempDir(t, "zemory-fl-gone-"), "gone.jsonl"));
+  const m = drainIngestQueue();
+  assert.equal(m.missing, 1);
+  assert.equal(hasQueuedIngest(), false, "a transcript that no longer exists leaves no note behind");
+});
+
+function ingestRunner(root, ok) {
+  const f = join(root, `fake-ingest-${ok ? "ok" : "fail"}.mjs`);
+  writeFileSync(
+    f,
+    `import { rmSync } from "node:fs"; import { dirname, join } from "node:path";
+     const mode = process.argv[2];
+     if (mode === "ingest") {
+       ${ok ? `rmSync(join(dirname(process.env.GLOBAL_MEMORY_DB), "ingest-queue"), { recursive: true, force: true });` : ""}
+       console.log(JSON.stringify(${ok ? `{ ok: true, mode, files: 1, newMessages: 2 }` : `{ ok: false, mode, error: "boom" }`}));
+     } else console.log(JSON.stringify({ ok: true, mode, blocks: 1, messagesAdded: 3 }));`,
+  );
+  return f;
+}
+
+test("lane: a deferred ingest runs FIRST — before a queued merge, and with p2p OFF too", async (t) => {
+  const root = tempDir(t, "zemory-fl-ingest-");
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  process.env.ZEMORY_FASTLANE_RUNNER = ingestRunner(root, true);
+  t.after(() => delete process.env.ZEMORY_FASTLANE_RUNNER);
+  let enabled = false;
+  const lines = [];
+  const lane = new FastLane({ dbPath: () => join(root, "none.db"), host: () => ME, enabled: () => enabled, syncRunning: () => false, kickLinks: () => {}, log: (m) => lines.push(m) });
+  deferIngest(join(root, "a.jsonl"));
+  lane.requestMerge();
+  assert.equal(lane.tick(), "ingest", "p2p off: capture is this machine's own business, it still runs");
+  await waitFor(() => lane.status().lastIngest, 10_000);
+  assert.equal(lane.tick(), null, "p2p off ⇒ no merge");
+  enabled = true;
+  deferIngest(join(root, "b.jsonl"));
+  assert.equal(lane.tick(), "ingest", "a deferred ingest goes before the queued merge");
+  await waitFor(() => !lane.status().running, 10_000);
+  assert.equal(lane.tick(), "merge", "then the merge");
+  await waitFor(() => lane.status().lastMerge, 10_000);
+  assert.ok(lines.some((l) => l.includes("capture hook deferred")), lines.join("\n"));
+});
+
+test("lane: a FAILED ingest rests FAST_REST_MS — never a failing child every 2 s tick", async (t) => {
+  const root = tempDir(t, "zemory-fl-ingest-fail-");
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  t.after(() => rmSync(ingestQueueDir(), { recursive: true, force: true }));
+  process.env.ZEMORY_FASTLANE_RUNNER = ingestRunner(root, false);
+  t.after(() => delete process.env.ZEMORY_FASTLANE_RUNNER);
+  const { FAST_REST_MS } = await import("../../dist/jobs/fastlane.js");
+  const lane = new FastLane({ dbPath: () => join(root, "none.db"), host: () => ME, enabled: () => false, syncRunning: () => false, kickLinks: () => {}, log: () => {} });
+  deferIngest(join(root, "a.jsonl"));
+  assert.equal(lane.tick(), "ingest");
+  await waitFor(() => lane.status().lastIngest, 10_000);
+  assert.equal(lane.status().lastIngest.ok, false);
+  const t1 = Date.now();
+  assert.equal(lane.tick(t1), null, "failed ⇒ rest; the note is still queued");
+  assert.equal(hasQueuedIngest(), true, "nothing lost while resting");
+  assert.equal(lane.tick(t1 + FAST_REST_MS + 1), "ingest", "after the rest it tries again");
+  await waitFor(() => !lane.status().running, 10_000);
+});
+
 test("NEGATIVE: the lane is OFF without p2p / a paired machine — no poll, no child", (t) => {
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
   const root = tempDir(t, "zemory-fl-off-");
   const db = join(root, "m.db");
   seed(db, ME, "s1", ["x1"]);
