@@ -21,6 +21,7 @@ import { recallCard } from "./recall.js";
 import { lastCompactAt, readContextUsage, scanCompactions } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
 import { daemonJobBusyExternal } from "../jobs/writegate.js";
+import { deferIngest } from "../jobs/ingestqueue.js";
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
@@ -45,9 +46,13 @@ const warnAtPercent = (): number => getContextWarnPercent();
 function ingestCurrent(payload: any): { newMessages: number; ms: number } | null {
   const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
   if (!path) return null;
-  // Write-gate bận (embed nền giữ token chuỗi dài) ⇒ BỎ QUA NGAY, không xếp hàng: chờ là
-  // ~125s mỗi lượt trả lời (đo 2026-08-02). Tin không mất — nó nằm trên transcript, lưới bù nạp.
-  if (daemonJobBusyExternal()) return null;
+  // Daemon holds the job slot ⇒ never wait here (waiting cost ~125 s per answer, measured 2026-08-02). But never skip
+  // silently either: leave a note the daemon ingests the moment the slot frees (plan/24 §12.6). The bare skip kept an
+  // hour of chat out of the store while the fast lane held the slot almost continuously and the scheduler was off (12/10).
+  if (daemonJobBusyExternal()) {
+    deferIngest(path);
+    return null;
+  }
   const r = scanOneFile(path);
   return r.ingested ? { newMessages: r.newMessages, ms: r.ms } : null;
 }

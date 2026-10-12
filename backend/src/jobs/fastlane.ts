@@ -12,6 +12,9 @@
 //   ③ VECTORS — the push in ① does not wait for the embedder (user 2026-10-12: "Tin trước, vector sau"; embedding first
 //      made every block 17–75 s). A push that moved messages queues `fastrun.js vectors`, which runs only when no merge is
 //      queued and none of our messages waits — so neither direction ever queues behind the embedder.
+//   ⓪ INGEST — the Stop hook found the slot busy and left a note (`ingestqueue.ts`, §12.6) ⇒ `fastrun.js ingest` lands
+//      that chat FIRST: nothing else here has anything to send until it is in the store. Runs with p2p off too — capture
+//      is this machine's own business, not the channel's.
 // All go through the daemon's ONE job slot (HP art. 11 — one writer). A sync round already running is never pre-empted
 // (it exports this delta itself); the maintenance chain is asked to yield, as the "Sync now" button does — its work is
 // restartable, a person is waiting on this.
@@ -22,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { claimDaemonJob, daemonJobBusy, releaseDaemonJob, yieldDaemonJob } from "./writegate.js";
 import { backgroundChildEnv } from "./childenv.js";
+import { hasQueuedIngest } from "./ingestqueue.js";
 
 /** Quiet spell after the last new message before a block is sealed. */
 export const FAST_QUIET_MS = 3_000;
@@ -104,12 +108,13 @@ export interface FastLaneDeps {
   onMerged?: () => void;
 }
 
-type FastMode = "push" | "vectors" | "merge";
+type FastMode = "ingest" | "push" | "vectors" | "merge";
 
 export interface FastLaneStatus {
   running: FastMode | null;
   mergeQueued: boolean;
   vectorsQueued: boolean;
+  lastIngest?: { at: number; ms: number; ok: boolean; files?: number; newMessages?: number; error?: string };
   lastPush?: { at: number; ms: number; ok: boolean; kind?: string; messages?: number; error?: string };
   lastVectors?: { at: number; ms: number; ok: boolean; kind?: string; embedded?: number; error?: string };
   lastMerge?: { at: number; ms: number; ok: boolean; messagesAdded?: number; error?: string };
@@ -126,6 +131,8 @@ export class FastLane {
   /** A push that carried NO message while some wait (the frontier still blocks them) ⇒ rest instead of firing every few
    *  seconds (measured 12/10: 19.8 s rounds sealing 0 messages back to back). */
   private restUntil = 0;
+  /** A failed ingest leaves its notes queued ⇒ rest, or the lane would spawn a failing child every tick. */
+  private ingestRestUntil = 0;
   constructor(private d: FastLaneDeps) {}
 
   status(): FastLaneStatus {
@@ -139,7 +146,10 @@ export class FastLane {
 
   /** One timer tick. Returns what it started, for the gate. */
   tick(now = Date.now()): FastMode | null {
-    if (this.child || !this.d.enabled()) return null;
+    if (this.child) return null;
+    // ⓪ before the p2p switch on purpose: deferred chat must reach the store whether or not a machine is paired.
+    if (now >= this.ingestRestUntil && hasQueuedIngest()) return this.start("ingest", now) ? "ingest" : null;
+    if (!this.d.enabled()) return null;
     // Receiving first: a block already here is cheaper to land than a new one to seal, and it is what the user is waiting on.
     if (this.mergeQueued) return this.start("merge", now) ? "merge" : null;
     if (now < this.restUntil) return null;
@@ -158,7 +168,7 @@ export class FastLane {
       // The maintenance chain holds the slot ⇒ ask it to yield once per few seconds (a sync job is never asked: see above).
       if (daemonJobBusy() !== "sync" && now - this.yieldAsked > 5_000) {
         this.yieldAsked = now;
-        yieldDaemonJob(mode === "merge" ? "nhận liền" : "gửi liền");
+        yieldDaemonJob(mode === "merge" ? "nhận liền" : mode === "ingest" ? "nạp liền" : "gửi liền");
       }
       return false;
     }
@@ -189,7 +199,7 @@ export class FastLane {
       this.child = null;
       this.st.running = null;
       releaseDaemonJob();
-      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number } = {};
+      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number; files?: number; newMessages?: number } = {};
       for (const line of out.trim().split("\n").reverse()) {
         try {
           res = JSON.parse(line);
@@ -201,7 +211,16 @@ export class FastLane {
       const ok = code === 0 && res.ok !== false;
       const ms = Date.now() - t0;
       const error = ok ? undefined : res.error ?? (err.trim().split("\n").pop() || `exit ${code}`);
-      if (mode === "push") {
+      if (mode === "ingest") {
+        this.st.lastIngest = { at: Date.now(), ms, ok, files: res.files, newMessages: res.newMessages, ...(error ? { error } : {}) };
+        if (!ok) {
+          this.ingestRestUntil = Date.now() + FAST_REST_MS;
+          this.d.log(`[fastlane] ingest failed after ${(ms / 1000).toFixed(1)}s: ${error} — the notes stay queued, retrying after a rest`);
+        } else if ((res.newMessages ?? 0) > 0) {
+          this.d.log(`[fastlane] ingested ${res.newMessages} message(s) the capture hook deferred (store was busy) in ${(ms / 1000).toFixed(1)}s`);
+          this.d.onMerged?.();
+        }
+      } else if (mode === "push") {
         this.st.lastPush = { at: Date.now(), ms, ok, kind: res.kind, messages: res.messages, ...(error ? { error } : {}) };
         this.send = freshSendState();
         // Nothing of ours travelled (or it failed) ⇒ rest before the next attempt; a block with messages ⇒ ready at once.
