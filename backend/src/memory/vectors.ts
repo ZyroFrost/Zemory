@@ -300,6 +300,8 @@ export interface EmbedPendingResult {
   deduped: number;
   remaining: number; // messages still without a vector
   dims: number | null;
+  /** `deadline` passed before every selected message was embedded — the caller should come back for the rest. */
+  stoppedEarly?: boolean;
 }
 
 export interface EmbedProgress {
@@ -333,6 +335,14 @@ export async function embedPending(
      * shorter ones elsewhere and sealed blocks with 0 messages.
      */
     fromId?: number;
+    /**
+     * Epoch ms. Checked before every model batch except the first (each pass still makes progress): past it ⇒ stop and
+     * report `stoppedEarly`. The p2p fast lane holds the daemon's one job slot while it embeds, and on a slow machine
+     * (measured 12/10 on DESKTOP-PFB157K: 50 vectors in 411 s, ~8 s each) a whole pass kept received messages, deferred
+     * capture and new blocks waiting for minutes. Stopping between batches is safe: chunk 0 is written last, so a
+     * message cut mid-way stays pending and is redone whole next pass.
+     */
+    deadline?: number;
   } = {},
 ): Promise<EmbedPendingResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
@@ -465,7 +475,12 @@ export async function embedPending(
         }
       }
     }
+    let stoppedEarly = false;
     for (let i = 0; i < pending.length; i += batchSize) {
+      if (opts.deadline !== undefined && i > 0 && Date.now() >= opts.deadline) {
+        stoppedEarly = true;
+        break;
+      }
       const batch = pending.slice(i, i + batchSize);
       const vectors = await embedDocBatch(
         batch.map((r) => r.text),
@@ -510,7 +525,7 @@ export async function embedPending(
     } else {
       remaining = (db.prepare(`SELECT count(*) c FROM messages WHERE content IS NOT NULL AND content!=''${EMBEDDABLE()}${ex.sql}`).get(...ex.params) as { c: number }).c;
     }
-    return { embedded, deduped, remaining, dims };
+    return { embedded, deduped, remaining, dims, ...(stoppedEarly ? { stoppedEarly } : {}) };
   } finally {
     db.close();
   }

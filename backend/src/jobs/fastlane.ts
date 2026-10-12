@@ -33,6 +33,15 @@ export const FAST_QUIET_MS = 3_000;
 export const FAST_MAX_WAIT_MS = 12_000;
 /** Rest after a push that moved no message of ours (frontier blocked / failure) — no back-to-back empty rounds. */
 export const FAST_REST_MS = 30_000;
+/**
+ * Embed budget of one vector round (§12.7). The round holds the ONE job slot; measured 12/10 on DESKTOP-PFB157K (~8 s per
+ * vector) a full round took 299–411 s and a block received from the laptop waited ~5.5 min behind it. Past the budget the
+ * round seals what it has and the lane queues another — ingest, merge and push are always picked before vectors, so they
+ * get the slot between rounds.
+ */
+export const FAST_VECTOR_BUDGET_MS = 30_000;
+/** Messages per model batch in a vector round: the budget is checked between batches (16 × ~8 s would be ~2 min). */
+export const FAST_VECTOR_BATCH = 4;
 
 export interface FastSendState {
   /** highest own message id seen on the last poll (0 = nothing pending) */
@@ -199,7 +208,7 @@ export class FastLane {
       this.child = null;
       this.st.running = null;
       releaseDaemonJob();
-      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number; files?: number; newMessages?: number } = {};
+      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number; files?: number; newMessages?: number; more?: boolean } = {};
       for (const line of out.trim().split("\n").reverse()) {
         try {
           res = JSON.parse(line);
@@ -234,8 +243,10 @@ export class FastLane {
         this.st.lastVectors = { at: Date.now(), ms, ok, kind: res.kind, embedded: res.embedded, ...(error ? { error } : {}) };
         // Not retried here: a failed or cut-short round leaves the vectors to the 30′ round (`vec_shipped` ledger), and a
         // retry loop on a broken embedder would hold the slot every few seconds.
+        // Budget spent with vectors still owed ⇒ owe another round; the next ticks give ingest / merge / push the slot first.
+        if (ok && res.more) this.vectorsQueued = true;
         if (ok && res.kind && res.kind !== "none") {
-          this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now`);
+          this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
           this.d.kickLinks();
         } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
       } else {

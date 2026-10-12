@@ -297,7 +297,7 @@ test("embed: from the frontier the LONG message that blocks the export goes firs
   assert.deepEqual(pick(undefined), [1, 2], "backfill: shortest first, as before");
   const { readFileSync } = await import("node:fs");
   const SH = readFileSync(new URL("../src/memory/share.ts", import.meta.url), "utf8");
-  assert.match(SH, /embedPending\(\{ dbPath: o\.dbPath, limit: o\.embedLimit \?\? 256, fromId: frontier \}\)/, "the vector job embeds FROM the frontier");
+  assert.match(SH, /embedPending\(\{\s*dbPath: o\.dbPath,\s*limit: o\.embedLimit \?\? 256,\s*fromId: frontier,/, "the vector job embeds FROM the frontier");
 });
 
 test("wiring: EVERY receiving path queues a merge through the lane; none merges on the daemon's event loop", async () => {
@@ -469,6 +469,36 @@ test("lane: a FAILED ingest rests FAST_REST_MS — never a failing child every 2
   assert.equal(hasQueuedIngest(), true, "nothing lost while resting");
   assert.equal(lane.tick(t1 + FAST_REST_MS + 1), "ingest", "after the rest it tries again");
   await waitFor(() => !lane.status().running, 10_000);
+});
+
+// ── VECTOR ROUND BUDGET (plan/24 §12.7) ─────────────────────────────────────
+// Measured 12/10 on DESKTOP-PFB157K: 50 vectors in 411 s; a block from the laptop waited ~5.5 min behind the round.
+
+test("lane: a vector round that spent its budget is OWED again; one that finished is not; the child passes the budget", async (t) => {
+  const root = tempDir(t, "zemory-fl-vecmore-");
+  const f = join(root, "fake-vec.mjs");
+  writeFileSync(f, `console.log(JSON.stringify({ ok: true, mode: process.argv[2], kind: "delta", messages: 0, embedded: 4, embedMs: 30000, more: process.env.FAKE_VEC_MORE === "1" }));`);
+  process.env.ZEMORY_FASTLANE_RUNNER = f;
+  t.after(() => {
+    delete process.env.ZEMORY_FASTLANE_RUNNER;
+    delete process.env.FAKE_VEC_MORE;
+  });
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  const lane = new FastLane({ dbPath: () => join(root, "none.db"), host: () => ME, enabled: () => true, syncRunning: () => false, kickLinks: () => {}, log: () => {} });
+  lane.vectorsQueued = true; // a push just moved messages
+  process.env.FAKE_VEC_MORE = "1";
+  assert.equal(lane.tick(), "vectors");
+  await waitFor(() => lane.status().lastVectors, 10_000);
+  assert.equal(lane.status().vectorsQueued, true, "budget spent with vectors left ⇒ another round is owed");
+  lane.requestMerge();
+  assert.equal(lane.tick(), "merge", "between rounds a received block takes the slot first");
+  await waitFor(() => lane.status().lastMerge, 10_000);
+  process.env.FAKE_VEC_MORE = "0";
+  assert.equal(lane.tick(), "vectors", "then the owed round");
+  await waitFor(() => !lane.status().running, 10_000);
+  assert.equal(lane.status().vectorsQueued, false, "a round that finished owes nothing");
+  const FR = readFileSync(new URL("../src/jobs/fastrun.ts", import.meta.url), "utf8");
+  assert.match(FR, /embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH/, "the vector child runs under the budget");
 });
 
 test("NEGATIVE: the lane is OFF without p2p / a paired machine — no poll, no child", (t) => {

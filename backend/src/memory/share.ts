@@ -1949,19 +1949,31 @@ export async function pushChannelVectors(o: {
   host?: string;
   /** Cap on one embed batch (default 256). */
   embedLimit?: number;
+  /** Time budget for the embed step (ms). Past it the round seals what it has and reports `more` (plan/24 §12.7). */
+  embedBudgetMs?: number;
+  /** Messages per model batch — the budget is checked between batches, so a slow machine needs small ones. */
+  embedBatch?: number;
   /** Tests that exercise the channel, not the embedder. */
   embed?: boolean;
   onProgress?: (phase: string) => void;
-}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number }> {
+}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number; more: boolean }> {
   (o.onProgress ?? (() => {}))("embed");
   // Embed FROM THE FRONTIER in id order — the messages just shipped, not the shortest pending ones anywhere in the store
   // (see `embedPending.fromId`). No frontier ⇒ every recent message already has its vector.
   const t0 = Date.now();
   const frontier = o.embed === false ? null : embedFrontierId(o.dbPath ?? currentMemoryDb());
-  const embedded = frontier ? (await embedPending({ dbPath: o.dbPath, limit: o.embedLimit ?? 256, fromId: frontier })).embedded : 0;
+  const r = frontier
+    ? await embedPending({
+        dbPath: o.dbPath,
+        limit: o.embedLimit ?? 256,
+        fromId: frontier,
+        ...(o.embedBatch ? { batchSize: o.embedBatch } : {}),
+        ...(o.embedBudgetMs ? { deadline: t0 + o.embedBudgetMs } : {}),
+      })
+    : null;
   const embedMs = Date.now() - t0;
   const push = await pushChannelLocked(o, {});
-  return { push, embedded, embedMs, pushMs: Date.now() - t0 - embedMs };
+  return { push, embedded: r?.embedded ?? 0, embedMs, pushMs: Date.now() - t0 - embedMs, more: r?.stoppedEarly === true };
 }
 
 /** One p2p `pushAppend` under the channel write queue — the shared tail of both fast-lane jobs. */

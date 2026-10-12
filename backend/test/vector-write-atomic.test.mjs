@@ -93,3 +93,17 @@ test("a dedup round (copy back, no model call) leaves no orphan row either", asy
   assert.ok(r2.deduped > 0, `phải có bản sao dedup để thử đúng đường đó, thấy ${r2.deduped}`);
   assert.equal(orphans(p).map, 0, "còn dòng vec_map mồ côi sau lượt dedup");
 });
+
+// plan/24 §12.7 — the p2p vector round runs under a time budget (12/10, DESKTOP-PFB157K: 50 vectors in 411 s held the
+// one job slot while received blocks waited ~5.5 min).
+test("deadline: past it the pass stops BETWEEN batches — one batch still runs, the rest stays pending", async (t) => {
+  const p = seed(tempDir(t, "zemory-vecdeadline-"), 0, 3);
+  const first = await embedPending({ dbPath: p, limit: 10, batchSize: 1, deadline: Date.now() - 1 });
+  assert.equal(first.embedded, 1, "every pass makes progress: the first batch runs even past the deadline");
+  assert.equal(first.stoppedEarly, true, "and the caller is told to come back");
+  assert.equal(first.remaining, 2);
+  const rest = await embedPending({ dbPath: p, limit: 10, batchSize: 1 });
+  assert.equal(rest.embedded, 2, "no deadline ⇒ the rest lands");
+  assert.equal(rest.stoppedEarly, undefined, "finished ⇒ nothing owed");
+  assert.equal(orphans(p).map, 0);
+});
