@@ -238,7 +238,8 @@ test("🔴 nhận khối xong KHÔNG hợp nhất trên event loop của daemon 
   assert.match(helper, /not merged yet:/, "chưa có đường nhanh mà kho bận thì phải NÓI RA, không im");
   // Tiến trình con thật sự hợp nhất — nếu dòng này biến mất thì "giao" là giao vào hư không.
   const RUN = readFileSync(new URL("../src/jobs/fastrun.ts", import.meta.url), "utf8");
-  assert.match(RUN, /await mergeChannelDir\(channelDir\(\)/, "fastrun merge phải hợp nhất thư mục kênh");
+  // 2026-10-12 (plan/24 §12.7): merge nằm TRONG lượt ghi của kho — làn nhúng có thể đang ghi vector song song.
+  assert.match(RUN, /await withWriteTurn\(\(\) => mergeChannelDir\(channelDir\(\)/, "fastrun merge phải hợp nhất thư mục kênh, trong lượt ghi");
   const LANE = readFileSync(new URL("../src/jobs/fastlane.ts", import.meta.url), "utf8");
   assert.match(LANE, /if \(!claimDaemonJob\(`fastlane-\$\{mode\}`\)\)/, "đi qua ô job của daemon — một kẻ ghi");
 });

@@ -192,9 +192,45 @@ function jobMarkerPath(): string {
   return join(currentMemoryDir(), "daemon-job.lock");
 }
 
+// ── The EMBED LANE (plan/24 §12.7) ───────────────────────────────────────────
+// The fast lane's embedder runs BESIDE the slot, not in it: it computes vectors freely and takes the store's write turn
+// (`writeturn.ts`) for every write. The fast lane's own jobs take the turn too, so they may run alongside. Every OTHER
+// job (the 30′ round, the maintenance chain) writes without a turn — so it must never overlap the lane, either way round:
+//   · the lane starts only while the slot is free or held by the fast lane;
+//   · a non-fast-lane claim is refused while the lane runs — and REMEMBERED, so the lane yields its next start to it
+//     (otherwise a long backlog of vectors would starve the 30′ round forever).
+const FAST_LANE_PREFIX = "fastlane-";
+let embedLane: string | null = null;
+let deniedForLane: { label: string; at: number } | null = null;
+/** A refused claim keeps its priority this long — the scheduler retries every 3′, a job that gave up must not jam the lane. */
+const DENIED_PRIORITY_MS = 5 * 60_000;
+
+/** Start the embed lane. False when a non-fast-lane job holds the slot, or one is waiting for its turn. */
+export function startEmbedLane(label: string): boolean {
+  if (embedLane) return false;
+  if (daemonJob && !daemonJob.startsWith(FAST_LANE_PREFIX)) return false;
+  if (deniedForLane && Date.now() - deniedForLane.at < DENIED_PRIORITY_MS) return false;
+  embedLane = label;
+  return true;
+}
+
+export function endEmbedLane(): void {
+  embedLane = null;
+}
+
+/** What the embed lane runs right now, or null. */
+export function embedLaneBusy(): string | null {
+  return embedLane;
+}
+
 /** Claim the single daemon-job slot. Returns false when something already runs. */
 export function claimDaemonJob(label: string): boolean {
   if (daemonJob) return false;
+  if (embedLane && !label.startsWith(FAST_LANE_PREFIX)) {
+    deniedForLane = { label, at: Date.now() }; // the lane gives this job the next turn
+    return false;
+  }
+  if (!label.startsWith(FAST_LANE_PREFIX)) deniedForLane = null;
   daemonJob = label;
   try {
     const p = jobMarkerPath();

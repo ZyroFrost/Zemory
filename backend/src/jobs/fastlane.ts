@@ -10,20 +10,21 @@
 //   ② RECEIVE — a block came in ⇒ `requestMerge()`; the next tick runs `fastrun.js merge` (merge only — no scan, embed or
 //      export). Store busy ⇒ the request stays queued and runs as soon as the slot frees, never "the 30′ round will do it".
 //   ③ VECTORS — the push in ① does not wait for the embedder (user 2026-10-12: "Tin trước, vector sau"; embedding first
-//      made every block 17–75 s). A push that moved messages queues `fastrun.js vectors`, which runs only when no merge is
-//      queued and none of our messages waits — so neither direction ever queues behind the embedder.
+//      made every block 17–75 s). `fastrun.js vectors` is the EMBED LANE (§12.7, user: "1 hàng đưa vào và 1 hàng nhúng"):
+//      it runs IN PARALLEL with ⓪①②, outside the job slot — the model computes freely, every write takes the store's
+//      write turn (`writeturn.ts`). Started after a push that moved messages, and whenever the embed frontier is behind.
 //   ⓪ INGEST — the Stop hook found the slot busy and left a note (`ingestqueue.ts`, §12.6) ⇒ `fastrun.js ingest` lands
 //      that chat FIRST: nothing else here has anything to send until it is in the store. Runs with p2p off too — capture
 //      is this machine's own business, not the channel's.
-// All go through the daemon's ONE job slot (HP art. 11 — one writer). A sync round already running is never pre-empted
-// (it exports this delta itself); the maintenance chain is asked to yield, as the "Sync now" button does — its work is
-// restartable, a person is waiting on this.
+// ⓪①② go through the daemon's ONE job slot AND take the write turn (the embed lane may be writing beside them). A sync
+// round already running is never pre-empted (it exports this delta itself); the maintenance chain is asked to yield, as
+// the "Sync now" button does — its work is restartable, a person is waiting on this.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { claimDaemonJob, daemonJobBusy, releaseDaemonJob, yieldDaemonJob } from "./writegate.js";
+import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmbedLane, yieldDaemonJob } from "./writegate.js";
 import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
 
@@ -42,6 +43,8 @@ export const FAST_REST_MS = 30_000;
 export const FAST_VECTOR_BUDGET_MS = 30_000;
 /** Messages per model batch in a vector round: the budget is checked between batches (16 × ~8 s would be ~2 min). */
 export const FAST_VECTOR_BATCH = 4;
+/** How often the embed lane looks at the embed frontier when nothing queued it (one indexed query, ~90 ms). */
+export const FAST_FRONTIER_PROBE_MS = 10_000;
 
 export interface FastSendState {
   /** highest own message id seen on the last poll (0 = nothing pending) */
@@ -115,12 +118,18 @@ export interface FastLaneDeps {
   log: (m: string) => void;
   /** the store changed (merge added rows) */
   onMerged?: () => void;
+  /** The embed frontier (`embedFrontierId`): a recent message still without its vector, or null. Omitted ⇒ never probed. */
+  frontier?: () => number | null;
 }
 
 type FastMode = "ingest" | "push" | "vectors" | "merge";
+type WriteMode = Exclude<FastMode, "vectors">;
 
 export interface FastLaneStatus {
-  running: FastMode | null;
+  /** the WRITE lane (job slot): ingest · push · merge */
+  running: WriteMode | null;
+  /** the EMBED lane runs beside it */
+  embedding: boolean;
   mergeQueued: boolean;
   vectorsQueued: boolean;
   lastIngest?: { at: number; ms: number; ok: boolean; files?: number; newMessages?: number; error?: string };
@@ -131,11 +140,18 @@ export interface FastLaneStatus {
 
 export class FastLane {
   private send = freshSendState();
+  /** the WRITE lane's child (holds the job slot) */
   private child: ChildProcess | null = null;
+  /** the EMBED lane's child (beside the slot, §12.7) */
+  private embedChild: ChildProcess | null = null;
   private mergeQueued = false;
   /** A push moved messages without their vectors — ③ owes the block that carries them. */
   private vectorsQueued = false;
-  private st: FastLaneStatus = { running: null, mergeQueued: false, vectorsQueued: false };
+  /** Last time the embed lane looked at the frontier on its own. */
+  private frontierProbedAt = 0;
+  /** A frontier the embedder could not move (that message cannot be embedded) — never respawn on it. */
+  private stuckAt: number | null = null;
+  private st: FastLaneStatus = { running: null, embedding: false, mergeQueued: false, vectorsQueued: false };
   private yieldAsked = 0;
   /** A push that carried NO message while some wait (the frontier still blocks them) ⇒ rest instead of firing every few
    *  seconds (measured 12/10: 19.8 s rounds sealing 0 messages back to back). */
@@ -145,7 +161,7 @@ export class FastLane {
   constructor(private d: FastLaneDeps) {}
 
   status(): FastLaneStatus {
-    return { ...this.st, running: this.st.running, mergeQueued: this.mergeQueued, vectorsQueued: this.vectorsQueued };
+    return { ...this.st, running: this.st.running, embedding: this.embedChild !== null, mergeQueued: this.mergeQueued, vectorsQueued: this.vectorsQueued };
   }
 
   /** A block arrived from another machine — merge it as soon as the slot is free. */
@@ -153,25 +169,64 @@ export class FastLane {
     this.mergeQueued = true;
   }
 
-  /** One timer tick. Returns what it started, for the gate. */
+  /** One timer tick. Returns what it started, for the gate (the write lane's job if both lanes started one). */
   tick(now = Date.now()): FastMode | null {
+    const w = this.tickWrite(now);
+    const e = this.tickEmbed(now);
+    return w ?? e;
+  }
+
+  /** The WRITE lane: ⓪ ingest → ② merge → ① push, one at a time, in the job slot. */
+  private tickWrite(now: number): WriteMode | null {
     if (this.child) return null;
     // ⓪ before the p2p switch on purpose: deferred chat must reach the store whether or not a machine is paired.
-    if (now >= this.ingestRestUntil && hasQueuedIngest()) return this.start("ingest", now) ? "ingest" : null;
+    if (now >= this.ingestRestUntil && hasQueuedIngest()) return this.startWrite("ingest", now) ? "ingest" : null;
     if (!this.d.enabled()) return null;
     // Receiving first: a block already here is cheaper to land than a new one to seal, and it is what the user is waiting on.
-    if (this.mergeQueued) return this.start("merge", now) ? "merge" : null;
+    if (this.mergeQueued) return this.startWrite("merge", now) ? "merge" : null;
     if (now < this.restUntil) return null;
-    const pendingMax = ownPendingMax(this.d.dbPath(), this.d.host());
-    const r = fastSendDecide(this.send, pendingMax, now);
+    const r = fastSendDecide(this.send, ownPendingMax(this.d.dbPath(), this.d.host()), now);
     this.send = r.state;
-    if (r.fire) return this.start("push", now) ? "push" : null;
-    // The vectors last, and only while none of our messages waits: the embedder holds the slot for tens of seconds.
-    if (this.vectorsQueued && pendingMax === 0) return this.start("vectors", now) ? "vectors" : null;
+    if (r.fire) return this.startWrite("push", now) ? "push" : null;
     return null;
   }
 
-  private start(mode: FastMode, now: number): boolean {
+  /** The EMBED lane (§12.7): beside the write lane, never in the job slot. */
+  private tickEmbed(now: number): "vectors" | null {
+    if (this.embedChild || !this.d.enabled() || this.d.syncRunning()) return null;
+    let owed = this.vectorsQueued;
+    if (!owed && this.d.frontier && now - this.frontierProbedAt >= FAST_FRONTIER_PROBE_MS) {
+      this.frontierProbedAt = now;
+      const f = this.d.frontier();
+      owed = f !== null && f !== this.stuckAt;
+    }
+    if (!owed) return null;
+    // Refused while a job that writes WITHOUT the turn holds the slot, or one waits for its turn (writegate).
+    if (!startEmbedLane("fastlane-vectors")) return null;
+    this.vectorsQueued = false;
+    const c = this.spawnJob("vectors", (code, res, ms, error) => {
+      this.embedChild = null;
+      endEmbedLane();
+      const ok = code === 0 && res.ok !== false;
+      this.st.lastVectors = { at: Date.now(), ms, ok, kind: res.kind, embedded: res.embedded, ...(error ? { error } : {}) };
+      // Budget spent with vectors still owed ⇒ another round. A FAILED round is not retried: the 30′ round / the next
+      // probe pick the vectors up (`vec_shipped`), and a retry loop on a broken embedder would spawn a child every tick.
+      if (ok && res.more) this.vectorsQueued = true;
+      this.stuckAt = ok && typeof res.stuckAt === "number" ? res.stuckAt : null;
+      if (ok && res.kind && res.kind !== "none") {
+        this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
+        this.d.kickLinks();
+      } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
+    });
+    if (!c) {
+      endEmbedLane();
+      return null;
+    }
+    this.embedChild = c;
+    return "vectors";
+  }
+
+  private startWrite(mode: WriteMode, now: number): boolean {
     if (this.d.syncRunning()) return false; // the round exports / merges this itself; stay queued
     if (!claimDaemonJob(`fastlane-${mode}`)) {
       // The maintenance chain holds the slot ⇒ ask it to yield once per few seconds (a sync job is never asked: see above).
@@ -182,21 +237,35 @@ export class FastLane {
       return false;
     }
     if (mode === "merge") this.mergeQueued = false;
-    if (mode === "vectors") this.vectorsQueued = false;
-    let c: ChildProcess;
-    try {
-      c = spawn(process.execPath, [runnerEntry(), mode], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, false) });
-    } catch (e) {
+    const c = this.spawnJob(mode, (code, res, ms, error) => {
+      this.child = null;
+      this.st.running = null;
+      releaseDaemonJob();
+      this.onWriteDone(mode, code === 0 && res.ok !== false, res, ms, error);
+    });
+    if (!c) {
       releaseDaemonJob();
       if (mode === "merge") this.mergeQueued = true;
-      this.d.log(`[fastlane] ${mode}: could not start (${String(e).slice(0, 120)})`);
       return false;
     }
     this.child = c;
     this.st.running = mode;
+    return true;
+  }
+
+  /** Spawn one `fastrun.js <mode>` child; `onDone` gets its result line. Null when it could not start. */
+  private spawnJob(mode: FastMode, onDone: (code: number | null, res: JobResult, ms: number, error: string | undefined) => void): ChildProcess | null {
+    let c: ChildProcess;
+    try {
+      c = spawn(process.execPath, [runnerEntry(), mode], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, false) });
+    } catch (e) {
+      this.d.log(`[fastlane] ${mode}: could not start (${String(e).slice(0, 120)})`);
+      return null;
+    }
     const t0 = Date.now();
     let out = "";
     let err = "";
+    let settled = false;
     c.stdout?.on("data", (b: Buffer) => {
       out = (out + String(b)).slice(-65536);
     });
@@ -204,11 +273,9 @@ export class FastLane {
       err = (err + String(b)).slice(-8192); // drained so a full pipe never hangs the child
     });
     const done = (code: number | null): void => {
-      if (this.child !== c) return;
-      this.child = null;
-      this.st.running = null;
-      releaseDaemonJob();
-      let res: { ok?: boolean; kind?: string; messages?: number; messagesAdded?: number; error?: string; embedded?: number; embedMs?: number; files?: number; newMessages?: number; more?: boolean } = {};
+      if (settled) return;
+      settled = true;
+      let res: JobResult = {};
       for (const line of out.trim().split("\n").reverse()) {
         try {
           res = JSON.parse(line);
@@ -218,9 +285,16 @@ export class FastLane {
         }
       }
       const ok = code === 0 && res.ok !== false;
-      const ms = Date.now() - t0;
       const error = ok ? undefined : res.error ?? (err.trim().split("\n").pop() || `exit ${code}`);
-      if (mode === "ingest") {
+      onDone(code, res, Date.now() - t0, error);
+    };
+    c.on("exit", (code) => done(code));
+    c.on("error", () => done(null));
+    return c;
+  }
+
+  private onWriteDone(mode: WriteMode, ok: boolean, res: JobResult, ms: number, error: string | undefined): void {
+    if (mode === "ingest") {
         this.st.lastIngest = { at: Date.now(), ms, ok, files: res.files, newMessages: res.newMessages, ...(error ? { error } : {}) };
         if (!ok) {
           this.ingestRestUntil = Date.now() + FAST_REST_MS;
@@ -239,16 +313,6 @@ export class FastLane {
           this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s — offering it now`);
           this.d.kickLinks();
         } else if (!ok) this.d.log(`[fastlane] push failed after ${(ms / 1000).toFixed(1)}s: ${error}`);
-      } else if (mode === "vectors") {
-        this.st.lastVectors = { at: Date.now(), ms, ok, kind: res.kind, embedded: res.embedded, ...(error ? { error } : {}) };
-        // Not retried here: a failed or cut-short round leaves the vectors to the 30′ round (`vec_shipped` ledger), and a
-        // retry loop on a broken embedder would hold the slot every few seconds.
-        // Budget spent with vectors still owed ⇒ owe another round; the next ticks give ingest / merge / push the slot first.
-        if (ok && res.more) this.vectorsQueued = true;
-        if (ok && res.kind && res.kind !== "none") {
-          this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
-          this.d.kickLinks();
-        } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
       } else {
         this.st.lastMerge = { at: Date.now(), ms, ok, messagesAdded: res.messagesAdded, ...(error ? { error } : {}) };
         if (ok) {
@@ -259,18 +323,30 @@ export class FastLane {
           this.d.log(`[fastlane] merge failed after ${(ms / 1000).toFixed(1)}s: ${error} — retrying`);
         }
       }
-    };
-    c.on("exit", (code) => done(code));
-    c.on("error", () => done(null));
-    return true;
   }
 
   /** Daemon shutdown. */
   stop(): void {
-    try {
-      this.child?.kill();
-    } catch {
-      /* gone */
+    for (const c of [this.child, this.embedChild]) {
+      try {
+        c?.kill();
+      } catch {
+        /* gone */
+      }
     }
   }
+}
+
+interface JobResult {
+  ok?: boolean;
+  kind?: string;
+  messages?: number;
+  messagesAdded?: number;
+  error?: string;
+  embedded?: number;
+  embedMs?: number;
+  files?: number;
+  newMessages?: number;
+  more?: boolean;
+  stuckAt?: number | null;
 }

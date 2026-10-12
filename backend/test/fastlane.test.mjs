@@ -163,7 +163,11 @@ function fakeRunner(root) {
     f,
     `const mode = process.argv[2];
      if (mode === "push") console.log(JSON.stringify({ ok: true, mode, kind: process.env.FAKE_PUSH_KIND || "delta", messages: 2 }));
-     else if (mode === "vectors") console.log(JSON.stringify({ ok: true, mode, kind: "delta", messages: 0, embedded: 2, embedMs: 5 }));
+     else if (mode === "vectors") {
+       const out = () => console.log(JSON.stringify({ ok: true, mode, kind: process.env.FAKE_VEC_KIND || "delta", messages: 0, embedded: 2, embedMs: 5 }));
+       const ms = Number(process.env.FAKE_VEC_MS || 0);
+       if (ms) setTimeout(out, ms); else out();
+     }
      else console.log(JSON.stringify({ ok: true, mode, blocks: 1, messagesAdded: 3 }));`,
   );
   return f;
@@ -213,10 +217,15 @@ test("lane: a received block is merged at once; a busy sync round keeps it QUEUE
   assert.equal(lane.status().mergeQueued, false);
 });
 
-test("lane: a push that moved messages queues the VECTOR block — after any merge, never while our messages wait", async (t) => {
+test("lanes: the EMBED lane runs BESIDE the write lane — a merge lands while vectors are still being computed (§12.7)", async (t) => {
   const root = tempDir(t, "zemory-fl-vec-");
   process.env.ZEMORY_FASTLANE_RUNNER = fakeRunner(root);
-  t.after(() => delete process.env.ZEMORY_FASTLANE_RUNNER);
+  process.env.FAKE_VEC_MS = "1500"; // a vector round that takes a while
+  t.after(() => {
+    delete process.env.ZEMORY_FASTLANE_RUNNER;
+    delete process.env.FAKE_VEC_MS;
+  });
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
   const db = join(root, "m.db");
   seed(db, ME, "s1", ["v1"]);
   let kicks = 0;
@@ -227,29 +236,127 @@ test("lane: a push that moved messages queues the VECTOR block — after any mer
   assert.equal(lane.tick(t0 + FAST_QUIET_MS), "push");
   await waitFor(() => lane.status().lastPush, 10_000);
   assert.equal(lane.status().vectorsQueued, true, "messages went without vectors ⇒ the vector block is owed");
-  // The fake child does not move the watermark: our message still waits ⇒ the embedder must NOT take the slot.
-  assert.equal(lane.tick(Date.now()), null, "a message of ours waits ⇒ no vector job yet");
   const conn = openMemory(db);
   const max = conn.prepare("SELECT MAX(id) m FROM messages").get().m;
   conn.close();
   setP2pWatermark(db, max);
+  assert.equal(lane.tick(Date.now()), "vectors", "the embed lane starts");
+  assert.equal(lane.status().embedding, true);
   lane.requestMerge();
-  assert.equal(lane.tick(Date.now()), "merge", "a block from the other machine lands BEFORE our vectors");
+  assert.equal(lane.tick(Date.now()), "merge", "a received block does NOT wait for the embedder — it merges in parallel");
   await waitFor(() => lane.status().lastMerge, 10_000);
-  assert.equal(lane.tick(Date.now()), "vectors", "nothing else waits ⇒ the vector block now");
-  await waitFor(() => lane.status().lastVectors, 10_000);
-  assert.equal(lane.status().vectorsQueued, false);
+  assert.ok(lane.status().lastMerge, "merged");
+  assert.equal(lane.status().embedding, true, "…while the vector round is still running");
+  await waitFor(() => !lane.status().embedding, 10_000);
   assert.equal(kicks, 2, "the message block and the vector block are both offered at once");
   assert.ok(lines.some((l) => l.includes("vectors followed")), lines.join("\n"));
   assert.equal(lane.tick(Date.now()), null, "owed once, run once");
 });
 
-test("lane: a sealed block kicks the live links; a push that sealed nothing does not", async (t) => {
-  const root = tempDir(t, "zemory-fl-kick-");
+test("lanes: the embed lane never overlaps a job that writes WITHOUT the turn — and never starves it", async (t) => {
+  const { claimDaemonJob, releaseDaemonJob, startEmbedLane, endEmbedLane } = await import("../../dist/jobs/writegate.js");
+  const root = tempDir(t, "zemory-fl-gate-");
   process.env.ZEMORY_FASTLANE_RUNNER = fakeRunner(root);
   t.after(() => {
     delete process.env.ZEMORY_FASTLANE_RUNNER;
+    releaseDaemonJob();
+    endEmbedLane();
+  });
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  const lane = new FastLane({ dbPath: () => join(root, "none.db"), host: () => ME, enabled: () => true, syncRunning: () => false, kickLinks: () => {}, log: () => {} });
+  // ① the maintenance chain holds the slot ⇒ the embed lane stays off
+  assert.equal(claimDaemonJob("maintain"), true);
+  lane.vectorsQueued = true;
+  assert.equal(lane.tick(), null, "a job writing without the turn holds the slot ⇒ no embed lane");
+  assert.equal(lane.status().embedding, false);
+  releaseDaemonJob();
+  // ② the lane runs ⇒ a non-fast-lane claim is refused…
+  assert.equal(startEmbedLane("probe"), true);
+  assert.equal(claimDaemonJob("sync"), false, "the 30′ round cannot start under a running embed lane");
+  assert.equal(claimDaemonJob("fastlane-merge"), true, "…the fast lane's own writers can (they take the turn)");
+  releaseDaemonJob();
+  endEmbedLane();
+  // ③ …and the refused job gets the next turn: the lane yields its next start to it
+  assert.equal(startEmbedLane("probe"), false, "a refused job waits ⇒ the lane does not start again first");
+  assert.equal(claimDaemonJob("sync"), true, "the refused job claims");
+  releaseDaemonJob();
+  assert.equal(startEmbedLane("probe"), true, "once it ran, the lane may start again");
+  endEmbedLane();
+});
+
+test("lanes: the embed lane probes the frontier on its own — and never respawns on a message it cannot embed", async (t) => {
+  const root = tempDir(t, "zemory-fl-probe-");
+  const f = join(root, "fake-stuck.mjs");
+  writeFileSync(f, `console.log(JSON.stringify({ ok: true, mode: process.argv[2], kind: "none", messages: 0, embedded: 0, embedMs: 1, more: false, stuckAt: 4242 }));`);
+  process.env.ZEMORY_FASTLANE_RUNNER = f;
+  t.after(() => delete process.env.ZEMORY_FASTLANE_RUNNER);
+  rmSync(ingestQueueDir(), { recursive: true, force: true });
+  const { FAST_FRONTIER_PROBE_MS } = await import("../../dist/jobs/fastlane.js");
+  let frontier = 4242;
+  const lane = new FastLane({ dbPath: () => join(root, "none.db"), host: () => ME, enabled: () => true, syncRunning: () => false, kickLinks: () => {}, log: () => {}, frontier: () => frontier });
+  const t0 = Date.now();
+  assert.equal(lane.tick(t0), "vectors", "nothing queued it, but the frontier is behind ⇒ embed");
+  await waitFor(() => !lane.status().embedding, 10_000);
+  assert.equal(lane.tick(t0 + FAST_FRONTIER_PROBE_MS), null, "the same frontier could not be moved ⇒ no respawn on it");
+  frontier = 4300;
+  assert.equal(lane.tick(t0 + 2 * FAST_FRONTIER_PROBE_MS), "vectors", "a NEW frontier ⇒ embed again");
+  await waitFor(() => !lane.status().embedding, 10_000);
+});
+
+test("write turn: FIFO across writers; a dead writer's ticket never jams; the hook's wait gives up, never hangs", async (t) => {
+  const { acquireWriteTurn, tryWriteTurnSync } = await import("../../dist/jobs/writeturn.js");
+  const dir = tempDir(t, "zemory-turn-");
+  const order = [];
+  const first = await acquireWriteTurn({ dir });
+  const second = acquireWriteTurn({ dir }).then((rel) => {
+    order.push("second");
+    return rel;
+  });
+  const third = acquireWriteTurn({ dir }).then((rel) => {
+    order.push("third");
+    return rel;
+  });
+  await new Promise((r) => setTimeout(r, 120));
+  assert.deepEqual(order, [], "nobody writes while the first holds the turn");
+  assert.equal(tryWriteTurnSync(80, { dir }), null, "the hook gives up after its wait — it defers, never hangs the answer");
+  first();
+  (await second)();
+  (await third)();
+  assert.deepEqual(order, ["second", "third"], "first come, first served");
+  // a ticket of a process that no longer exists is skipped and removed
+  writeFileSync(join(dir, `${String(Date.now() - 1000).padStart(15, "0")}-999999999-000000.t`), "");
+  const rel = tryWriteTurnSync(500, { dir });
+  assert.ok(rel, "a dead writer's ticket does not block the queue");
+  rel();
+});
+
+test("wiring: every fast-lane writer takes the turn; the hook takes it; the 30′ round skips its embed under the lane", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");
+  const FR = src("jobs/fastrun.ts");
+  assert.match(FR, /withWriteTurn\(\(\) => drainIngestQueue\(\)\)/, "ingest in a turn");
+  assert.match(FR, /withWriteTurn\(\(\) => mergeChannelDir\(/, "merge in a turn");
+  assert.match(FR, /pushChannelFast\(\{[^}]*writeTurn \}\)/, "push in a turn");
+  assert.match(FR, /pushChannelVectors\(\{[^}]*writeTurn \}\)/, "the embed lane writes in turns");
+  const VEC = src("memory/vectors.ts");
+  assert.match(VEC, /const vectors = await embedDocBatch\([\s\S]{0,80}\);\s*await takeTurn\(\);/, "the model runs OUTSIDE the turn, the batch write inside");
+  const SH = src("memory/share.ts");
+  assert.match(SH, /const releaseTurn = o\.writeTurn \? await o\.writeTurn\(\) : null;\s*try \{\s*const release = await acquireChannelWriteLock/, "turn outside, channel lock inside — one fixed order");
+  const HOOK = src("memory/capture-hook.ts");
+  assert.match(HOOK, /const release = tryWriteTurnSync\(HOOK_TURN_WAIT_MS\);\s*if \(!release\) \{\s*deferIngest\(path\);/, "the hook takes the turn, or defers");
+  assert.match(src("jobs/syncjob.ts"), /if \(embedLaneOn\(\)\) env\.ZEMORY_EMBED_LANE = "1";/, "the daemon tells the round the lane is on");
+  assert.match(src("jobs/syncrun.ts"), /process\.env\.ZEMORY_EMBED_LANE === "1" \? false : undefined/, "…and the round then skips its embed step");
+  assert.match(src("ui.ts"), /setEmbedLaneProbe\(laneOn\);/, "wired in the daemon");
+});
+
+test("lane: a sealed block kicks the live links; a push that sealed nothing does not", async (t) => {
+  const root = tempDir(t, "zemory-fl-kick-");
+  process.env.ZEMORY_FASTLANE_RUNNER = fakeRunner(root);
+  process.env.FAKE_VEC_KIND = "none"; // count the message blocks only — the embed lane runs beside them
+  t.after(() => {
+    delete process.env.ZEMORY_FASTLANE_RUNNER;
     delete process.env.FAKE_PUSH_KIND;
+    delete process.env.FAKE_VEC_KIND;
   });
   const db = join(root, "m.db");
   seed(db, ME, "s1", ["x1"]);
@@ -502,11 +609,12 @@ test("lane: a vector round that spent its budget is OWED again; one that finishe
   await waitFor(() => lane.status().lastVectors, 10_000);
   assert.equal(lane.status().vectorsQueued, true, "budget spent with vectors left ⇒ another round is owed");
   lane.requestMerge();
-  assert.equal(lane.tick(), "merge", "between rounds a received block takes the slot first");
-  await waitFor(() => lane.status().lastMerge, 10_000);
+  assert.equal(lane.tick(), "merge", "a received block takes the write lane (the embed lane may run beside it)");
+  await waitFor(() => lane.status().lastMerge && !lane.status().embedding, 10_000);
   process.env.FAKE_VEC_MORE = "0";
+  assert.equal(lane.status().vectorsQueued, true, "the round beside the merge spent its budget too ⇒ still owed");
   assert.equal(lane.tick(), "vectors", "then the owed round");
-  await waitFor(() => !lane.status().running, 10_000);
+  await waitFor(() => !lane.status().embedding, 10_000);
   assert.equal(lane.status().vectorsQueued, false, "a round that finished owes nothing");
   const FR = readFileSync(new URL("../src/jobs/fastrun.ts", import.meta.url), "utf8");
   assert.match(FR, /embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH/, "the vector child runs under the budget");

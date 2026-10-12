@@ -41,7 +41,7 @@ import { digestBackfill } from "./memory/digest.js";
 import { relocateMemory, storageInfo } from "./memory/relocate.js";
 import { setContextWarnPercent } from "./config/settings.js";
 import { isWithinBase } from "./util/safe-path.js";
-import { memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
+import { embedFrontierId, memoryStats, vectorCount, vectorIndexInfo } from "./memory/vectors.js";
 import { runCheck } from "./checks.js";
 import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isConnected, loadContext, uiPort } from "./core/config.js";
 import { deadProjectEntries, forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
@@ -168,7 +168,7 @@ import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
-import { startSyncJob, stopSyncJob, syncJobRunning, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
+import { setEmbedLaneProbe, startSyncJob, stopSyncJob, syncJobRunning, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
 import { FastLane } from "./jobs/fastlane.js";
 import type { DriveProbe } from "./jobs/driveprobe.js";
 import type { DiskInfo } from "./jobs/diskprobe.js";
@@ -4332,10 +4332,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   startScheduler();
   // GỬI LIỀN (plan/24 §12): a cheap poll every 2 s — seal this machine's new messages into the p2p channel and land
   // received blocks, each in a child process through the job slot. Off unless p2p is on and a machine is paired.
+  const laneOn = (): boolean => getP2pEnabledSync() && getP2pPeers().length > 0;
+  // While the lane is on, ITS embed lane does the embedding — the 30′ round skips its embed step (plan/24 §12.7).
+  setEmbedLaneProbe(laneOn);
   fastLane = new FastLane({
     dbPath: () => currentMemoryDb(),
     host: () => hostname(),
-    enabled: () => getP2pEnabledSync() && getP2pPeers().length > 0,
+    enabled: laneOn,
+    // One indexed query (~90 ms) every FAST_FRONTIER_PROBE_MS: is a recent message still waiting for its vector?
+    frontier: () => embedFrontierId(currentMemoryDb()),
     syncRunning: () => syncJobRunning(),
     kickLinks: () => {
       let n = 0;
