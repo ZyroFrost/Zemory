@@ -106,4 +106,6 @@ test("deadline: past it the pass stops BETWEEN batches — one batch still runs,
   assert.equal(rest.embedded, 2, "no deadline ⇒ the rest lands");
   assert.equal(rest.stoppedEarly, undefined, "finished ⇒ nothing owed");
   assert.equal(orphans(p).map, 0);
+  const skip = await embedPending({ dbPath: p, limit: 10, countRemaining: false });
+  assert.equal(skip.remaining, -1, "countRemaining:false ⇒ the store-wide count is skipped, not a fake 0");
 });

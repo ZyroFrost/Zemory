@@ -1967,6 +1967,7 @@ export async function pushChannelVectors(o: {
         dbPath: o.dbPath,
         limit: o.embedLimit ?? 256,
         fromId: frontier,
+        countRemaining: false, // the round only needs `stoppedEarly`; the store-wide count cost ~13 s per round
         ...(o.embedBatch ? { batchSize: o.embedBatch } : {}),
         ...(o.embedBudgetMs ? { deadline: t0 + o.embedBudgetMs } : {}),
       })

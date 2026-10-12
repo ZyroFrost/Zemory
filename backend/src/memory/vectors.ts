@@ -298,7 +298,7 @@ export interface EmbedPendingResult {
   embedded: number; // vectors written this pass (a long message counts once per chunk)
   /** Of `embedded`, how many were COPIED from identical earlier content (no model call). */
   deduped: number;
-  remaining: number; // messages still without a vector
+  remaining: number; // messages still without a vector; -1 = not counted (`countRemaining: false`)
   dims: number | null;
   /** `deadline` passed before every selected message was embedded — the caller should come back for the rest. */
   stoppedEarly?: boolean;
@@ -343,6 +343,11 @@ export async function embedPending(
      * message cut mid-way stays pending and is redone whole next pass.
      */
     deadline?: number;
+    /**
+     * `false` ⇒ skip the store-wide "still waiting" count and report `remaining: -1`. That count scans every message
+     * (~13 s on a large store, plan/14 §8) and the p2p vector round never reads it — it only needs `stoppedEarly`.
+     */
+    countRemaining?: boolean;
   } = {},
 ): Promise<EmbedPendingResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
@@ -514,7 +519,9 @@ export async function embedPending(
     // `ex.sql` — so with an excluded lane the CLI would print a remaining that the selection can
     // never drain (one truth, two numbers; caught by the audit's duplicate-source pass).
     let remaining = 0;
-    if (tableExists(db)) {
+    if (opts.countRemaining === false) {
+      remaining = -1;
+    } else if (tableExists(db)) {
       remaining = (
         db
           .prepare(
