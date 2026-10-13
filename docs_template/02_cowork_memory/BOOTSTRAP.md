@@ -90,7 +90,15 @@ winget install -e --id Microsoft.VCRedist.2015+.x64 --silent --accept-package-ag
 Gói thứ ba (thư viện chạy Visual C++) **không có lệnh nào báo thiếu**: máy không có nó thì model nhúng không nạp được
 và `zemory memory embed` lặng lẽ nhúng **0 tin** — tìm theo nghĩa chết mà không ai thấy. Cài luôn, kể cả khi `node`/`git` đã có.
 
-Cài xong **mở một shell mới** rồi đo lại `node -v` — tiến trình đang chạy không thấy `PATH` vừa đổi.
+Cài xong **nạp lại `PATH` ngay trong shell đang dùng** rồi đo lại — tiến trình đang chạy (cả shell của chính bạn, nó kế thừa
+`PATH` cũ) không thấy đường dẫn vừa thêm, nên `node`/`git` vẫn báo *"not recognized"* dù đã cài xong:
+
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+git --version; node --version; npm --version   # cả ba phải trả lời; node phải v20 trở lên
+```
+
+Đây đúng là bước 2 của khối cài trong `README.md` (§Quickstart) — hai nơi một thứ tự, sửa một nơi thì sửa cả hai.
 
 Không có `winget` (Windows quá cũ · macOS · Linux) thì theo bảng này, vẫn là việc của bạn:
 
@@ -143,10 +151,10 @@ Chưa có thì cài **từ mã nguồn**. **`npm i -g zemory` KHÔNG chạy** �
 cd "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — clone ra chỗ đang đứng; terminal mới thường đứng ở C:\Users\<tên>
 git clone https://github.com/ZyroFrost/Zemory
 cd Zemory
-node backend/scripts/fetch-prebuilds.mjs   # TRƯỚC npm install — mạng chặn github.com thì thiếu bước này là clone sạch không dựng được
-npm install          # kéo cả devDependencies → có tsc
+node backend/scripts/fetch-prebuilds.mjs   # TRƯỚC npm ci — mạng chặn github.com thì thiếu bước này là clone sạch không dựng được
+npm ci               # đúng phiên bản trong package-lock, kéo cả devDependencies → có tsc
 npm run build        # dựng dist/
-npm link             # hoặc: npm i -g .
+npm install -g .     # lệnh `zemory` toàn máy (hoặc: npm link)
 zemory --version     # phải in ra số hiệu
 ```
 

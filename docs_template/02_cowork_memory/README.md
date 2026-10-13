@@ -24,9 +24,12 @@ có bản sao hoặc đã commit git.
 **Bước 3.** Dán **một** trong hai câu dưới đây — chọn theo việc máy đã cài `zemory` hay chưa.
 Không biết đã cài chưa thì cứ dùng câu ①: nó tự kiểm, có sẵn thì không cài lại.
 
-> ⚠ **Cài bằng cách nào:** phải cài **từ mã nguồn** — (thiếu `git` / `node` / thư viện Visual C++ thì cài trước bằng
-> `winget`, rồi mở terminal mới) → `cd` vào thư mục bạn muốn đặt bộ cài → `git clone` → `fetch-prebuilds` → `npm install` →
-> `npm run build` → `npm link`. **`npm i -g zemory` chưa chạy được**: gói chưa publish lên npm.
+> ⚠ **Cài bằng cách nào:** phải cài **từ mã nguồn**, đúng khối một-lần-dán ở `README.md` §Quickstart của Zemory —
+> ① thiếu `git` / `node` / thư viện Visual C++ thì cài bằng `winget` → ② nạp lại PATH trong cửa sổ đang mở → ③ `cd` vào
+> thư mục bạn muốn đặt bộ cài → `git clone` → `fetch-prebuilds` → `npm ci` → `npm run build` → `npm install -g .` →
+> ④ `zemory setup --shortcut` · `memory scan` · `hook install` · `memory embed --all` · `memory stats` (rồi `doctor` chạy
+> TRONG thư mục dự án).
+> **`npm i -g zemory` chưa chạy được**: gói chưa publish lên npm.
 > Câu ① đã dặn sẵn trợ lý làm đúng như vậy, bạn không phải gõ tay.
 
 ## ① Máy CHƯA cài zemory (hoặc không chắc) — dùng câu này
