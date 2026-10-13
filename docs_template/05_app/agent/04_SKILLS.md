@@ -55,5 +55,4 @@
 3. Đăng ký ở **HAI chỗ**, thiếu một là skill mồ côi: một dòng vào §2 của file này, và một dòng vào
    bảng trigger trong `AGENTS.md`.
 
-
-<!-- zemory-standard: 2026-10-05 -->
+<!-- zemory-standard: 2026-10-08 -->

@@ -30,5 +30,4 @@
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).
 - **Mục đích còn "(chưa chốt)" = harness chưa xong** — hỏi user chốt sớm; mọi điều khoản chỉ có nghĩa khi biết project phục vụ cái gì.
 
-
-<!-- zemory-standard: 2026-08-31 -->
+<!-- zemory-standard: 2026-09-18 -->
