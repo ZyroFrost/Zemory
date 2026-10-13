@@ -3,7 +3,8 @@
 #   irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex
 #
 # Options (set before the line above, in the same window):
-#   $env:ZEMORY_DIR = "E:\Tools\Zemory"   # install folder (default: %LOCALAPPDATA%\Zemory, or the existing install)
+#   $env:ZEMORY_DIR = "E:\Tools\Zemory"   # install folder without asking (otherwise the installer ASKS, default
+#                                         # %LOCALAPPDATA%\Programs\Zemory; an existing install is updated in place)
 #   $env:ZEMORY_NO_SHORTCUT = "1"         # do not create Start Menu / Desktop shortcuts
 #   $env:ZEMORY_NO_EMBED = "1"            # skip building the vector index now (run `zemory memory embed --all` later)
 #
@@ -55,24 +56,46 @@ function Install-Zemory {
   }
 
   # ── 2. Get, build and link zemory ────────────────────────────────────────────────────────────────────────────────
-  $dir = $env:ZEMORY_DIR
-  if (-not $dir) {
-    # Already installed? Update THAT install (the global command is a link to its clone) instead of making a second one.
-    $linked = $null
-    try { $linked = (Get-Item (Join-Path (npm root -g) "zemory") -ErrorAction Stop).Target } catch { }
-    $dir = if ($linked) { @($linked)[0] } else { Join-Path $env:LOCALAPPDATA "Zemory" }
+  # Why a folder cannot be used, or $null when it can. The memory store lives INSIDE the install folder, so a
+  # cloud-synced one would corrupt the live database; a folder holding something else must never be written into.
+  function Unusable($d) {
+    $root = [IO.Path]::GetPathRoot($d)
+    if (-not $root -or -not [IO.Directory]::Exists($root)) { return "drive $root does not exist on this machine" }
+    $cloud = @($env:OneDrive, $env:OneDriveCommercial, $env:OneDriveConsumer) | Where-Object { $_ -and $d.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
+    if ($cloud -or $d -match "OneDrive|Google Drive|Dropbox|iCloud") { return "it is in a cloud-synced folder (the memory store lives inside it) - pick a plain local folder" }
+    if (-not [IO.Directory]::Exists([IO.Path]::Combine($d, ".git")) -and [IO.Directory]::Exists($d) -and [IO.Directory]::EnumerateFileSystemEntries($d).GetEnumerator().MoveNext()) { return "it is not empty and is not a zemory install - pick a new or empty folder" }
+    return $null
   }
-  $dir = [IO.Path]::GetFullPath($dir)
-  # The memory store lives inside the install folder: a live database in a synced folder gets corrupted.
-  $cloud = @($env:OneDrive, $env:OneDriveCommercial, $env:OneDriveConsumer) | Where-Object { $_ -and $dir.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
-  if ($cloud -or $dir -match "OneDrive|Google Drive|Dropbox|iCloud") { throw "$dir is in a cloud-synced folder - set `$env:ZEMORY_DIR to a plain local folder" }
+  # Already installed? The global command is a link to its clone - that install is UPDATED, never a second one made.
+  $linked = $null
+  try { $linked = @((Get-Item (Join-Path (npm root -g) "zemory") -ErrorAction Stop).Target)[0] } catch { }
+  # Test seams (the installer's own checks): ZEMORY_INSTALL_FRESH ignores an existing install, ZEMORY_INSTALL_TTY forces the prompt.
+  if ($env:ZEMORY_INSTALL_FRESH -eq "1") { $linked = $null }
+  $interactive = ($env:ZEMORY_INSTALL_TTY -eq "1") -or ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected)
+  if ($env:ZEMORY_DIR) {
+    $dir = [IO.Path]::GetFullPath($env:ZEMORY_DIR)
+    $why = Unusable $dir; if ($why) { throw "$dir cannot be used: $why" }
+  } elseif ($linked) {
+    $dir = [IO.Path]::GetFullPath($linked)
+    Say "zemory is already installed in $dir - updating it (set `$env:ZEMORY_DIR to install somewhere else)"
+  } else {
+    # %LOCALAPPDATA%\Programs is Windows' place for per-user apps. NOT %LOCALAPPDATA%\Zemory: the cockpit window keeps
+    # its WebView2 profile there, so on any machine that ever opened zemory that folder is already in use.
+    $default = [IO.Path]::Combine($env:LOCALAPPDATA, "Programs", "Zemory")
+    for (;;) {
+      $answer = if ($interactive) { Read-Host "zemory install: install folder [$default] (Enter = default)" } else { "" }
+      $dir = [IO.Path]::GetFullPath($(if ($answer.Trim()) { $answer.Trim().Trim('"') } else { $default }))
+      $why = Unusable $dir
+      if (-not $why) { break }
+      if (-not $interactive) { throw "$dir cannot be used: $why" }
+      Say "$dir cannot be used: $why"
+    }
+  }
   # ZEMORY_INSTALL_STOP = plan | build: stop points for testing the installer without touching this machine's install.
   if ($env:ZEMORY_INSTALL_STOP -eq "plan") { Say "plan: install folder = $dir (exists: $(Test-Path $dir), clone: $(Test-Path (Join-Path $dir '.git')))"; return }
 
   if (Test-Path (Join-Path $dir ".git")) {
     Say "updating $dir"; Set-Location $dir; git pull --ff-only; Native "git pull"
-  } elseif ((Test-Path $dir) -and (Get-ChildItem -Force $dir | Select-Object -First 1)) {
-    throw "$dir is not empty and is not a zemory clone - set `$env:ZEMORY_DIR to a new or empty folder"
   } else {
     Say "cloning into $dir"; git clone https://github.com/ZyroFrost/Zemory.git $dir; Native "git clone"; Set-Location $dir
   }
