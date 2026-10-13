@@ -145,7 +145,17 @@ zemory --version && echo "đã có, bỏ qua bước cài"
 ```
 
 Chưa có thì cài **từ mã nguồn**. **`npm i -g zemory` KHÔNG chạy** — gói *chưa publish lên npm*
-(404, đo 2026-08-03). Đường chạy được (nặng: kéo ~500 MB phụ thuộc để có `tsc`):
+(404, đo 2026-08-03).
+
+**Windows — MỘT lệnh** (PowerShell). Bộ cài tự làm hết §0 (Git / Node / VC++ nếu thiếu — có `winget` thì dùng, không thì bộ cài
+chính hãng) rồi clone · `fetch-prebuilds` · build · liên kết lệnh `zemory` · scan · hook · embed; chạy lại là cập nhật:
+
+```powershell
+$env:ZEMORY_DIR = "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — KHÔNG trong OneDrive/Drive/Dropbox (kho nhớ nằm trong nó)
+irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex
+```
+
+**macOS / Linux — đường tay** (nặng: kéo ~500 MB phụ thuộc để có `tsc`):
 
 ```bash
 cd "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — clone ra chỗ đang đứng; terminal mới thường đứng ở C:\Users\<tên>
