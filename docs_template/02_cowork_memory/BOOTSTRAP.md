@@ -151,7 +151,7 @@ Chưa có thì cài **từ mã nguồn**. **`npm i -g zemory` KHÔNG chạy** �
 chính hãng) rồi clone · `fetch-prebuilds` · build · liên kết lệnh `zemory` · scan · hook · embed; chạy lại là cập nhật:
 
 ```powershell
-$env:ZEMORY_DIR = "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — KHÔNG trong OneDrive/Drive/Dropbox (kho nhớ nằm trong nó)
+$env:ZEMORY_DIR = "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — thư mục nào cũng được (kho nhớ KHÔNG nằm trong nó; chỗ kho nhớ là §1)
 irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex
 ```
 
