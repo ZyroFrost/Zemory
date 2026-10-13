@@ -109,5 +109,4 @@ Repo là của người khác (hoặc của nhóm) nên nó **sẽ** đổi. Lú
 tốt** — nó báo đúng lúc. Xử lý: đọc lại cây → cập nhật §3 + `.harness.json` → ghi một dòng vào
 `06_CHANGES` nói cấu trúc gốc đã đổi ra sao. **Đừng** tắt cổng, **đừng** nới bảng cho khỏi đỏ.
 
-
-<!-- zemory-standard: 2026-08-31 -->
+<!-- zemory-standard: 2026-09-18 -->
