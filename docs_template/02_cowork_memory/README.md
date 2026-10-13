@@ -24,11 +24,9 @@ có bản sao hoặc đã commit git.
 **Bước 3.** Dán **một** trong hai câu dưới đây — chọn theo việc máy đã cài `zemory` hay chưa.
 Không biết đã cài chưa thì cứ dùng câu ①: nó tự kiểm, có sẵn thì không cài lại.
 
-> ⚠ **Cài bằng cách nào:** phải cài **từ mã nguồn**, đúng khối một-lần-dán ở `README.md` §Quickstart của Zemory —
-> ① thiếu `git` / `node` / thư viện Visual C++ thì cài bằng `winget` → ② nạp lại PATH trong cửa sổ đang mở → ③ `cd` vào
-> thư mục bạn muốn đặt bộ cài → `git clone` → `fetch-prebuilds` → `npm ci` → `npm run build` → `npm install -g .` →
-> ④ `zemory setup --shortcut` · `memory scan` · `hook install` · `memory embed --all` · `memory stats` (rồi `doctor` chạy
-> TRONG thư mục dự án).
+> ⚠ **Cài bằng cách nào:** trên Windows là **một lệnh** PowerShell —
+> `irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR`
+> trước để chọn thư mục cài). Nó tự cài phần còn thiếu, clone, build, quét và dựng kho nhớ; `doctor` thì chạy TRONG thư mục dự án.
 > **`npm i -g zemory` chưa chạy được**: gói chưa publish lên npm.
 > Câu ① đã dặn sẵn trợ lý làm đúng như vậy, bạn không phải gõ tay.
 
@@ -40,8 +38,8 @@ Dựng bộ khung làm việc và kho nhớ cho dự án trong thư mục tôi �
 https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/02_cowork_memory/BOOTSTRAP.md
 Nhớ: hỏi tôi kho nhớ đặt ở thư mục nào TRƯỚC khi cài gì, và hỏi tôi dự án
 này thuộc loại nào trước khi dựng bộ chuẩn.
-Chưa cài thì cài TỪ MÃ NGUỒN đúng như BOOTSTRAP §0 + §2 (thiếu git/node/
-VC++ thì cài trước; hỏi tôi đặt bộ cài ở thư mục nào rồi mới git clone).
+Chưa cài thì cài đúng như BOOTSTRAP §2 (Windows: một lệnh install.ps1;
+hỏi tôi đặt bộ cài ở thư mục nào trước khi chạy).
 Đừng dùng `npm i -g zemory`, gói chưa có trên npm.
 ```
 
