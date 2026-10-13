@@ -24,8 +24,9 @@ có bản sao hoặc đã commit git.
 **Bước 3.** Dán **một** trong hai câu dưới đây — chọn theo việc máy đã cài `zemory` hay chưa.
 Không biết đã cài chưa thì cứ dùng câu ①: nó tự kiểm, có sẵn thì không cài lại.
 
-> ⚠ **Cài bằng cách nào:** phải cài **từ mã nguồn** — `git clone` → `npm install` → `npm run
-> build` → `npm link`. **`npm i -g zemory` chưa chạy được**: gói chưa publish lên npm.
+> ⚠ **Cài bằng cách nào:** phải cài **từ mã nguồn** — (thiếu `git` / `node` / thư viện Visual C++ thì cài trước bằng
+> `winget`, rồi mở terminal mới) → `cd` vào thư mục bạn muốn đặt bộ cài → `git clone` → `fetch-prebuilds` → `npm install` →
+> `npm run build` → `npm link`. **`npm i -g zemory` chưa chạy được**: gói chưa publish lên npm.
 > Câu ① đã dặn sẵn trợ lý làm đúng như vậy, bạn không phải gõ tay.
 
 ## ① Máy CHƯA cài zemory (hoặc không chắc) — dùng câu này
@@ -36,8 +37,9 @@ Dựng bộ khung làm việc và kho nhớ cho dự án trong thư mục tôi �
 https://raw.githubusercontent.com/ZyroFrost/Zemory/main/docs_template/02_cowork_memory/BOOTSTRAP.md
 Nhớ: hỏi tôi kho nhớ đặt ở thư mục nào TRƯỚC khi cài gì, và hỏi tôi dự án
 này thuộc loại nào trước khi dựng bộ chuẩn.
-Chưa cài thì cài TỪ MÃ NGUỒN (git clone → npm install → npm run build →
-npm link). Đừng dùng `npm i -g zemory`, gói chưa có trên npm.
+Chưa cài thì cài TỪ MÃ NGUỒN đúng như BOOTSTRAP §0 + §2 (thiếu git/node/
+VC++ thì cài trước; hỏi tôi đặt bộ cài ở thư mục nào rồi mới git clone).
+Đừng dùng `npm i -g zemory`, gói chưa có trên npm.
 ```
 
 Trợ lý sẽ: dò xem máy chạy được không → **hỏi bạn kho nhớ đặt ở đâu** → cài công cụ → dựng bộ

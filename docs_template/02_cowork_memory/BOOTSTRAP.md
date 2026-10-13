@@ -84,7 +84,11 @@ npm ping                              # ② ra được registry không
 winget --version                                   # có winget không
 winget install -e --id OpenJS.NodeJS  --silent --accept-package-agreements --accept-source-agreements
 winget install -e --id Git.Git        --silent --accept-package-agreements --accept-source-agreements
+winget install -e --id Microsoft.VCRedist.2015+.x64 --silent --accept-package-agreements --accept-source-agreements
 ```
+
+Gói thứ ba (thư viện chạy Visual C++) **không có lệnh nào báo thiếu**: máy không có nó thì model nhúng không nạp được
+và `zemory memory embed` lặng lẽ nhúng **0 tin** — tìm theo nghĩa chết mà không ai thấy. Cài luôn, kể cả khi `node`/`git` đã có.
 
 Cài xong **mở một shell mới** rồi đo lại `node -v` — tiến trình đang chạy không thấy `PATH` vừa đổi.
 
@@ -136,8 +140,10 @@ Chưa có thì cài **từ mã nguồn**. **`npm i -g zemory` KHÔNG chạy** �
 (404, đo 2026-08-03). Đường chạy được (nặng: kéo ~500 MB phụ thuộc để có `tsc`):
 
 ```bash
+cd "<thư-mục-người-dùng-muốn-đặt-bộ-cài>"   # HỎI nếu chưa rõ — clone ra chỗ đang đứng; terminal mới thường đứng ở C:\Users\<tên>
 git clone https://github.com/ZyroFrost/Zemory
 cd Zemory
+node backend/scripts/fetch-prebuilds.mjs   # TRƯỚC npm install — mạng chặn github.com thì thiếu bước này là clone sạch không dựng được
 npm install          # kéo cả devDependencies → có tsc
 npm run build        # dựng dist/
 npm link             # hoặc: npm i -g .

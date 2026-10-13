@@ -115,9 +115,11 @@ standard workspace.
 
 ## Quickstart
 
-**Requirements:** Node **≥ 20** and a C/C++ toolchain for the native `better-sqlite3`
-build (Xcode CLT on macOS · `build-essential` on Linux · MSVC Build Tools on
-Windows). The embedding and rerank models download on first `memory embed`
+**Requirements:** **Git**, Node **≥ 20**, and on Windows the **Visual C++ 2015–2022 x64
+runtime** — without it the ONNX model cannot load and `memory embed` quietly embeds
+0 messages. A C/C++ toolchain (Xcode CLT on macOS · `build-essential` on Linux · MSVC
+Build Tools on Windows) is needed **only** if `fetch-prebuilds` below cannot fetch the
+prebuilt `better-sqlite3` binary. The embedding and rerank models download on first `memory embed`
 (cached under `<repo>/data/models`, never committed — about 4.4 GB once both are
 fetched). On Windows the cockpit uses the system **WebView2** runtime for its native
 window and falls back to an Edge app window if it is absent. No GPU, no Python, and no
@@ -126,7 +128,18 @@ network at runtime beyond that one-time model fetch.
 Zemory is installed **once per machine** and shared by every project. It is not on
 a public npm registry yet — install from this repo:
 
+On a fresh Windows machine, install the prerequisites first:
+
+```powershell
+winget install Git.Git OpenJS.NodeJS.LTS Microsoft.VCRedist.2015+.x64
+# Then CLOSE this terminal and open a NEW one — the old one does not see git/node on PATH yet.
+git --version; node --version   # both must answer; node must be >= 20
+```
+
+Then, in a new terminal:
+
 ```bash
+cd D:\path\of\your\choice   # the folder where YOU want zemory to live (cmd: cd /d D:\...)
 git clone https://github.com/ZyroFrost/Zemory.git
 cd Zemory
 node backend/scripts/fetch-prebuilds.mjs   # see note below — run BEFORE npm ci
