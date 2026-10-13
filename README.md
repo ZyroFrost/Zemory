@@ -134,9 +134,8 @@ a public npm registry yet — install from this repo.
 irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex
 ```
 
-It **asks where to install** (Enter keeps the default `%LOCALAPPDATA%\Programs\Zemory`; a cloud-synced
-or non-empty folder is refused and asked again — the memory store lives inside the install folder),
-installs whatever is missing (Git, Node.js LTS, the Visual C++ runtime — via `winget`, or each vendor's
+It **asks where to install** (Enter keeps the default `%LOCALAPPDATA%\Programs\Zemory`; a missing drive
+or a non-empty folder that is not a zemory install is refused and asked again), installs whatever is missing (Git, Node.js LTS, the Visual C++ runtime — via `winget`, or each vendor's
 official installer when the machine has no `winget`), clones and builds zemory, links the global
 `zemory` command, then builds this machine's memory (shortcuts, scan, capture hooks, vector index).
 Run it again any time to update: an existing install is found and updated in place, without asking.
@@ -144,7 +143,7 @@ Run it again any time to update: an existing install is found and updated in pla
 Options — set them first, in the same window:
 
 ```powershell
-$env:ZEMORY_DIR = "E:\Tools\Zemory"   # install folder, without being asked — never a OneDrive / Google Drive / Dropbox folder
+$env:ZEMORY_DIR = "E:\Tools\Zemory"   # install folder, without being asked
 $env:ZEMORY_NO_SHORTCUT = "1"         # no Start Menu / Desktop shortcuts
 $env:ZEMORY_NO_EMBED = "1"            # build the vector index later with `zemory memory embed --all`
 ```
@@ -152,8 +151,8 @@ $env:ZEMORY_NO_EMBED = "1"            # build the vector index later with `zemor
 Then, in each project folder: `zemory init` (an app) or `zemory init --non-app`, and `zemory doctor`
 there — `doctor` checks a project's harness, so it reports *not connected* when run anywhere else.
 
-**macOS / Linux:** install `git` and Node ≥ 20 (`brew install node git` · `apt` · `dnf`), then in a
-plain local folder (not a cloud-synced one):
+**macOS / Linux:** install `git` and Node ≥ 20 (`brew install node git` · `apt` · `dnf`), then in the
+folder of your choice:
 
 ```bash
 git clone https://github.com/ZyroFrost/Zemory.git && cd Zemory

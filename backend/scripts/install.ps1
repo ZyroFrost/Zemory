@@ -56,15 +56,20 @@ function Install-Zemory {
   }
 
   # ── 2. Get, build and link zemory ────────────────────────────────────────────────────────────────────────────────
-  # Why a folder cannot be used, or $null when it can. The memory store lives INSIDE the install folder, so a
-  # cloud-synced one would corrupt the live database; a folder holding something else must never be written into.
-  function Unusable($d) {
-    $root = [IO.Path]::GetPathRoot($d)
-    if (-not $root -or -not [IO.Directory]::Exists($root)) { return "drive $root does not exist on this machine" }
-    $cloud = @($env:OneDrive, $env:OneDriveCommercial, $env:OneDriveConsumer) | Where-Object { $_ -and $d.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
-    if ($cloud -or $d -match "OneDrive|Google Drive|Dropbox|iCloud") { return "it is in a cloud-synced folder (the memory store lives inside it) - pick a plain local folder" }
-    if (-not [IO.Directory]::Exists([IO.Path]::Combine($d, ".git")) -and [IO.Directory]::Exists($d) -and [IO.Directory]::EnumerateFileSystemEntries($d).GetEnumerator().MoveNext()) { return "it is not empty and is not a zemory install - pick a new or empty folder" }
-    return $null
+  # The folder the user picks is used - any folder (the memory store does NOT live in the install folder: a fresh machine
+  # keeps it in %USERPROFILE%\.zemory, memory/db.ts). Two cases only need a step, never a refusal:
+  #   · a folder that already holds other files (git cannot clone into it, and nothing there may be overwritten) ⇒ zemory
+  #     goes into a `Zemory` subfolder of it — said out loud;
+  #   · a drive that is not on this machine ⇒ nothing can be written there, so the user is asked again.
+  function NoDrive($d) { $root = [IO.Path]::GetPathRoot($d); if (-not $root -or -not [IO.Directory]::Exists($root)) { "drive $root is not on this machine" } }
+  function Target($d) {
+    $isClone = { param($p) [IO.Directory]::Exists([IO.Path]::Combine($p, ".git")) }
+    $hasFiles = { param($p) [IO.Directory]::Exists($p) -and [IO.Directory]::EnumerateFileSystemEntries($p).GetEnumerator().MoveNext() }
+    if ((& $isClone $d) -or -not (& $hasFiles $d)) { return $d }
+    $sub = [IO.Path]::Combine($d, "Zemory"); $n = 2
+    while (-not (& $isClone $sub) -and (& $hasFiles $sub)) { $sub = [IO.Path]::Combine($d, "Zemory-$n"); $n++ }
+    Say "$d already holds other files - installing into $sub (nothing of yours is touched)"
+    return $sub
   }
   # Already installed? The global command is a link to its clone - that install is UPDATED, never a second one made.
   $linked = $null
@@ -74,7 +79,8 @@ function Install-Zemory {
   $interactive = ($env:ZEMORY_INSTALL_TTY -eq "1") -or ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected)
   if ($env:ZEMORY_DIR) {
     $dir = [IO.Path]::GetFullPath($env:ZEMORY_DIR)
-    $why = Unusable $dir; if ($why) { throw "$dir cannot be used: $why" }
+    $why = NoDrive $dir; if ($why) { throw "$dir : $why" }
+    $dir = Target $dir
   } elseif ($linked) {
     $dir = [IO.Path]::GetFullPath($linked)
     Say "zemory is already installed in $dir - updating it (set `$env:ZEMORY_DIR to install somewhere else)"
@@ -85,11 +91,12 @@ function Install-Zemory {
     for (;;) {
       $answer = if ($interactive) { Read-Host "zemory install: install folder [$default] (Enter = default)" } else { "" }
       $dir = [IO.Path]::GetFullPath($(if ($answer.Trim()) { $answer.Trim().Trim('"') } else { $default }))
-      $why = Unusable $dir
+      $why = NoDrive $dir
       if (-not $why) { break }
-      if (-not $interactive) { throw "$dir cannot be used: $why" }
-      Say "$dir cannot be used: $why"
+      if (-not $interactive) { throw "$dir : $why" }
+      Say "$dir : $why - type another folder"
     }
+    $dir = Target $dir
   }
   # ZEMORY_INSTALL_STOP = plan | build: stop points for testing the installer without touching this machine's install.
   if ($env:ZEMORY_INSTALL_STOP -eq "plan") { Say "plan: install folder = $dir (exists: $(Test-Path $dir), clone: $(Test-Path (Join-Path $dir '.git')))"; return }
@@ -113,7 +120,7 @@ function Install-Zemory {
   zemory hook install; Native "hook install"
   if ($env:ZEMORY_NO_EMBED -ne "1") { zemory memory embed --all; Native "memory embed" }
   zemory memory stats
-  Say "done - zemory is installed in $dir. In each project folder run: zemory init (or zemory init --non-app), then zemory doctor."
+  Say "done - zemory is installed in $dir (memory store: see 'zemory memory info'). In each project folder run: zemory init (or zemory init --non-app), then zemory doctor."
 }
 
 Install-Zemory
