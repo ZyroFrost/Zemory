@@ -558,7 +558,7 @@ export function setP2pPeers(peers: string[]): void {
     if (seen.has(key)) continue;
     seen.add(key);
     const prev = known.get(key);
-    out.push(prev && prev.direction === "one-way" ? { ...prev, id } : id);
+    out.push(prev && (prev.direction === "one-way" || prev.origin) ? { ...prev, id } : id);
   }
   c.p2pPeers = out;
   write(c);
@@ -577,6 +577,11 @@ export interface PeerRecord {
   direction?: PeerDirection;
   /** Device ID của máy NGUỒN. Chỉ có nghĩa khi `direction === "one-way"`. */
   source?: string;
+  /**
+   * Device ID của máy GỐC khi `two-way`: hai bên vẫn đẩy và vẫn duyệt, nhưng tệp bị chặn được GỢI Ý giữ bản
+   * của máy này, và hàng đợi có nút giữ bản gốc cho mọi tệp (user 13/10: *"bên nào là gốc thì bên đó giữ"*).
+   */
+  origin?: string;
 }
 
 /** So device ID bỏ gạch nối + không phân biệt hoa thường — cùng phép `sameDeviceId` của lớp kênh. */
@@ -590,7 +595,7 @@ function readPeerRecords(): PeerRecord[] {
     if (typeof x === "string") {
       if (x.trim()) out.push({ id: x.trim() });
     } else if (x && typeof x === "object" && typeof x.id === "string" && x.id.trim()) {
-      out.push({ id: x.id.trim(), direction: x.direction, source: x.source });
+      out.push({ id: x.id.trim(), direction: x.direction, source: x.source, ...(typeof x.origin === "string" && x.origin ? { origin: x.origin } : {}) });
     }
   }
   return out;
@@ -641,10 +646,11 @@ export function setPeerLastSync(peerId: string, info: { at: string; via: string;
 }
 
 /** Cấu hình chiều của một máy. Máy lạ hoặc cặp đời cũ ⇒ `two-way` — mặc định của `§9.2`. */
-export function getPeerSync(peerId: string): { direction: PeerDirection; source?: string } {
+export function getPeerSync(peerId: string): { direction: PeerDirection; source?: string; origin?: string } {
   const key = normPeerId(peerId);
   const rec = readPeerRecords().find((r) => normPeerId(r.id) === key);
-  return rec?.direction === "one-way" ? { direction: "one-way", source: rec.source } : { direction: "two-way" };
+  if (rec?.direction === "one-way") return { direction: "one-way", source: rec.source };
+  return rec?.origin ? { direction: "two-way", origin: rec.origin } : { direction: "two-way" };
 }
 
 /**
@@ -654,21 +660,28 @@ export function getPeerSync(peerId: string): { direction: PeerDirection; source?
  * người dùng bấm (nơi đọc được số file còn lệch để nêu lý do từ chối), không thuộc về bộ ghi
  * cấu hình. Đặt phép kiểm ở đây thì mọi đường ghi cấu hình khác lại phải nhớ nó lần nữa.
  */
-export function setPeerSync(peerId: string, cfg: { direction: PeerDirection; source?: string }): void {
+export function setPeerSync(peerId: string, cfg: { direction: PeerDirection; source?: string; origin?: string }): void {
   const c = read();
   const key = normPeerId(peerId);
   const recs = readPeerRecords();
   const next: Array<string | PeerRecord> = [];
+  // two-way + máy gốc ⇒ bản ghi; two-way trơn ⇒ ID trần như đời cũ.
+  const rec = (id: string): string | PeerRecord =>
+    cfg.direction === "one-way"
+      ? { id, direction: "one-way", source: cfg.source }
+      : cfg.origin
+        ? { id, direction: "two-way", origin: cfg.origin }
+        : id;
   let found = false;
   for (const r of recs) {
     if (normPeerId(r.id) !== key) {
-      next.push(r.direction === "one-way" ? r : r.id);
+      next.push(r.direction === "one-way" || r.origin ? r : r.id);
       continue;
     }
     found = true;
-    next.push(cfg.direction === "one-way" ? { id: r.id, direction: "one-way", source: cfg.source } : r.id);
+    next.push(rec(r.id));
   }
-  if (!found) next.push(cfg.direction === "one-way" ? { id: peerId, direction: "one-way", source: cfg.source } : peerId);
+  if (!found) next.push(rec(peerId));
   c.p2pPeers = next;
   write(c);
 }

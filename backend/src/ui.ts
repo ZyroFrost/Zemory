@@ -3790,8 +3790,19 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // `freshen`: verdict tính LẠI theo tệp đang có trên đĩa — verdict lúc nhận là ảnh chụp, và
         // nút *Nhận* trên một ảnh chụp cũ đã xoá mất việc vừa sửa một lần (xem `freshenRow`).
         const rows = ch.listQueue(ch.mirrorDb(), undefined, { freshen: true });
+        // Mỗi dòng mang TÊN máy gửi + máy GỐC của cặp đó (`origin`: "peer" | "me" | null) — thẻ nói tệp từ máy nào và
+        // gợi ý giữ bản gốc (user 13/10). Mọi dòng đều là bản của MÁY KIA gửi tới, nên "gốc = máy kia" ⇒ gợi ý `theirs`.
+        const { getPeerNames, getPeerSync } = await import("./config/settings.js");
+        const names = getPeerNames();
+        const self = ch.channelIdentity().deviceId;
+        const norm = (s: string): string => s.replace(/-/g, "").toUpperCase();
+        const out = rows.map((r) => {
+          const o = getPeerSync(r.peerId).origin;
+          const name = Object.entries(names).find(([k]) => norm(k) === norm(r.peerId))?.[1] ?? null;
+          return { ...r, peerName: name, origin: !o ? null : norm(o) === norm(self) ? "me" : "peer" };
+        });
         // `count` = thứ đang CHỜ NGƯỜI; mục "để sau" vẫn trong hàng (máy kia thôi gửi) nhưng không đếm.
-        return json(res, { ok: true, count: rows.filter((r) => !r.dismissedAt).length, rows });
+        return json(res, { ok: true, count: out.filter((r) => !r.dismissedAt).length, rows: out });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e), count: 0, rows: [] });
       }
@@ -3933,7 +3944,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const ms = await import("./memory/channel/mirrorstate.js");
       const ch = await import("./memory/channel/index.js");
       const source = direction === "one-way" ? (u.searchParams.get("source") === "peer" ? id : ch.channelIdentity().deviceId) : undefined;
-      const r = ms.setPeerDirection(id, { direction, source });
+      // Máy GỐC của cặp two-way: `origin=peer` | `origin=me`; vắng ⇒ không có gốc.
+      const og = u.searchParams.get("origin");
+      const origin = direction === "two-way" && (og === "peer" || og === "me") ? (og === "peer" ? id : ch.channelIdentity().deviceId) : undefined;
+      const r = ms.setPeerDirection(id, { direction, source, origin });
       if (!r.ok) {
         // `zSave` shows `error` to the user verbatim ⇒ it must already be in the UI language.
         const { tr } = await import("./i18n/index.js");
@@ -3947,7 +3961,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         daemonLog(`[channel] không đổi chiều với ${id.slice(0, 11)}…: ${r.reason}${r.count !== undefined ? ` (${r.count})` : ""}`);
         return json(res, { ...r, error });
       }
-      daemonLog(`[channel] chiều với ${id.slice(0, 11)}…: ${r.direction}${r.source ? ` · nguồn ${r.source.slice(0, 11)}…` : ""}`);
+      daemonLog(`[channel] chiều với ${id.slice(0, 11)}…: ${r.direction}${r.source ? ` · nguồn ${r.source.slice(0, 11)}…` : ""}${r.origin ? ` · gốc ${r.origin.slice(0, 11)}…` : ""}`);
       return json(res, r);
     }
     if (p === "/channel-pair") {

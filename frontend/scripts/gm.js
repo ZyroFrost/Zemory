@@ -479,11 +479,12 @@
           // CHIỀU ĐỒNG BỘ của cặp này (plan/24 §9.6). Nguồn so theo vân tay đã chuẩn hoá: máy này
           // hay máy kia. Đổi đi qua `/set-peer-direction` — nơi giữ chốt ① (hội tụ trước khi lật).
           var nid=function(s){return String(s||'').replace(/-/g,'').toUpperCase();};
-          var dv=(m.dir&&m.dir.direction==='one-way')?(nid(m.dir.source)===nid(m.self)?'me':'peer'):'two';
+          var dv=(m.dir&&m.dir.direction==='one-way')?(nid(m.dir.source)===nid(m.self)?'me':'peer')
+            :(m.dir&&m.dir.origin?(nid(m.dir.origin)===nid(m.self)?'two-me':'two-peer'):'two');
           var ds=document.createElement('select');ds.className='rsel xs';
           ds.setAttribute('data-act','p2p-dir');ds.setAttribute('data-id',m.id);ds.setAttribute('data-prev',dv);
           ds.title=t('p2p.dirTitle');ds.setAttribute('aria-label',t('p2p.dirTitle'));
-          [['two','p2p.dirTwo'],['me','p2p.dirOneMe'],['peer','p2p.dirOnePeer']].forEach(function(o){
+          [['two','p2p.dirTwo'],['two-me','p2p.dirTwoMe'],['two-peer','p2p.dirTwoPeer'],['me','p2p.dirOneMe'],['peer','p2p.dirOnePeer']].forEach(function(o){
             var op=document.createElement('option');op.value=o[0];op.textContent=t(o[1]);if(o[0]===dv)op.selected=true;ds.appendChild(op);
           });
           bar.appendChild(ds);
@@ -532,15 +533,20 @@
       var d=document.createElement('div');
       d.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--surface-2)';
       var why=blocked?t('mir.block'):(q.verdict==='merge'?t('mir.merge'):t('mir.take'));
+      // Nói tệp tới TỪ MÁY NÀO — có từ hai máy trở lên thì "bản máy kia" không đủ để biết là máy nào.
+      if(q.peerName)why=t('mir.from').replace('{m}',q.peerName)+' · '+why;
       d.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">'
         +'<span style="font-size:11.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
         +stdEsc(q.area+'/'+q.rel)+'</span>'
         +'<span class="muted" style="font-size:10.5px;margin-left:auto;flex:0 0 auto">'+stdEsc(why)+'</span></div>';
       var bar=document.createElement('div');
       bar.style.cssText='display:flex;gap:6px;margin-top:7px;flex-wrap:wrap';
+      // Bản của máy GỐC (cặp two-way có đặt gốc) là nút được GỢI Ý — sáng màu, không thêm nhãn (§F0).
+      var rec=q.origin==='peer'?(q.verdict==='merge'?'merged':'theirs'):(q.origin==='me'?'mine':'');
       function mk(label,choice){
         var b=document.createElement('button');
-        b.className='btn xs';b.textContent=label;
+        b.className='btn xs'+(choice===rec?' primary':'');b.textContent=label;
+        if(choice===rec)b.title=t('mir.originTip');
         b.setAttribute('data-act','mir-apply');b.setAttribute('data-id',String(q.id));b.setAttribute('data-choice',choice);
         // Verdict ĐANG VẼ đi kèm cú bấm: đĩa đổi sau khi màn hình vẽ thì kho từ chối, không đè.
         b.setAttribute('data-seen',q.verdict);
@@ -587,16 +593,28 @@
       // HAI NÚT CẢ HÀNG ĐỢI, hai chiều ngược nhau, áp cho MỌI dòng đang chờ kể cả dòng trùng đoạn —
       // người bấm đã chọn phía cho tất cả (user 25/09: *"giữ toàn bộ theo máy này hoặc là bỏ toàn bộ"*).
       // "Giữ bản máy này" không ghi byte nào ⇒ một cú. "Dùng bản máy kia" ĐÈ tệp ⇒ bấm lần hai.
-      if(active.length>1){
+      // GIỮ BẢN GỐC HẾT — đứng ĐẦU hàng nút (user 13/10). Chỉ có khi mọi dòng đang chờ cùng một máy gốc;
+      // gốc là máy kia thì nó ĐÈ tệp ⇒ cùng luật bấm-hai-lần của "Dùng hết bản máy kia".
+      var og=active.length&&active.every(function(x){return x.origin&&x.origin===active[0].origin;})?active[0].origin:'';
+      if(active.length>1||og){
         var bulk=document.createElement('div');
         bulk.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px';
+        if(og){
+          var ob=document.createElement('button');ob.className='btn sm primary';
+          var on=og==='me'?t('p2p.thisMachine'):(active[0].peerName||'?');
+          ob.textContent=t('mir.allOrigin').replace('{m}',on).replace('{n}',String(active.length));
+          ob.setAttribute('data-act',og==='me'?'mir-all-mine':'mir-all-theirs');ob.setAttribute('data-n',String(active.length));
+          bulk.appendChild(ob);
+        }
+      }
+      if(active.length>1){
         var km=document.createElement('button');km.className='btn sm';
         km.textContent=t('mir.allMine').replace('{n}',String(active.length));km.setAttribute('data-act','mir-all-mine');
         var ut=document.createElement('button');ut.className='btn sm';
         ut.textContent=t('mir.allTheirs').replace('{n}',String(active.length));ut.setAttribute('data-act','mir-all-theirs');
         bulk.appendChild(km);bulk.appendChild(ut);
-        box.appendChild(bulk);
       }
+      if(bulk)box.appendChild(bulk);
       active.forEach(function(q){box.appendChild(card(q));});
     }
     if(later.length){
@@ -621,7 +639,9 @@
     var act=el.getAttribute('data-act');
     if(!(act==='p2p-dir'))return;
     var id=el.getAttribute('data-id')||'',v=el.value,prev=el.getAttribute('data-prev')||'two';
-    var q='/set-peer-direction?id='+encodeURIComponent(id)+'&direction='+(v==='two'?'two-way':'one-way')+(v==='peer'?'&source=peer':'');
+    var two=v.indexOf('two')===0;
+    var q='/set-peer-direction?id='+encodeURIComponent(id)+'&direction='+(two?'two-way':'one-way')+(v==='peer'?'&source=peer':'')
+      +(v==='two-me'?'&origin=me':v==='two-peer'?'&origin=peer':'');
     el.disabled=true;
     zSave(q,function(){el.value=prev;}).then(function(j){
       el.disabled=false;
@@ -677,7 +697,7 @@
       // Đè tệp bằng bản máy kia là không lùi được ⇒ lần bấm đầu chỉ NÓI cái giá.
       if(!mine&&el.getAttribute('data-armed')!=='1'){
         el.setAttribute('data-armed','1');
-        el.textContent=t('mir.allTheirsConfirm').replace('{n}',el.textContent.replace(/\D+/g,''));
+        el.textContent=t('mir.allTheirsConfirm').replace('{n}',el.getAttribute('data-n')||el.textContent.replace(/\D+/g,''));
         return;
       }
       btnBusy(el,true);
