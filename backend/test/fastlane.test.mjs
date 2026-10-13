@@ -330,6 +330,23 @@ test("write turn: FIFO across writers; a dead writer's ticket never jams; the ho
   rel();
 });
 
+test("write turn: the time spent QUEUED is counted, and every fast-lane result line reports it", async (t) => {
+  const { acquireWriteTurn, turnWaitTotalMs } = await import("../../dist/jobs/writeturn.js");
+  const dir = tempDir(t, "zemory-turnwait-");
+  const before = turnWaitTotalMs();
+  const holder = await acquireWriteTurn({ dir });
+  const waiter = acquireWriteTurn({ dir });
+  await new Promise((r) => setTimeout(r, 300));
+  holder();
+  (await waiter)();
+  assert.ok(turnWaitTotalMs() - before >= 250, "the second writer's wait behind the first is counted");
+  const { readFileSync } = await import("node:fs");
+  const FR = readFileSync(new URL("../src/jobs/fastrun.ts", import.meta.url), "utf8");
+  assert.equal((FR.match(/turnWaitMs: turnWaitTotalMs\(\)/g) ?? []).length, 4, "ingest · push · vectors · merge all report it");
+  const FL = readFileSync(new URL("../src/jobs/fastlane.ts", import.meta.url), "utf8");
+  assert.equal((FL.match(/\$\{this\.waited\(res\)\}/g) ?? []).length, 4, "…and the lane names it on every slow line (13/10: the log could not tell why)");
+});
+
 test("wiring: every fast-lane writer takes the turn; the hook takes it; the 30′ round skips its embed under the lane", async () => {
   const { readFileSync } = await import("node:fs");
   const src = (p) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8");

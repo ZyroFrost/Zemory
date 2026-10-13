@@ -422,57 +422,37 @@ export function syncHealthOf(s: {
   return { level: "ok", code: "ok" };
 }
 
-function driveSyncProgress(): {
+type DriveProgress = {
   syncPercent: number;
   syncedMessages: number;
   totalMessages: number;
   pendingMessages: number;
   lastPushAt: string | null;
   newestAt: string | null;
-} {
-  const db = openMemory();
-  try {
-    const bundle = `drive:${hostname()}`;
-    const row = db.prepare("SELECT last_message_id AS id, updated_at AS at FROM sync_state WHERE bundle = ?").get(bundle) as
-      | { id: number; at: string | null }
-      | undefined;
-    const wm = row?.id ?? 0;
-    const total = (db.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
-    const synced = (db.prepare("SELECT COUNT(*) c FROM messages WHERE id <= ?").get(wm) as { c: number }).c;
-    const pending = Math.max(0, total - synced);
-    const percent = syncPercentOf(synced, total);
-    const newest = db.prepare("SELECT MAX(timestamp) t FROM messages").get() as { t: string | null };
-    return {
-      syncPercent: percent,
-      syncedMessages: synced,
-      totalMessages: total,
-      pendingMessages: pending,
-      lastPushAt: row?.at ?? null,
-      newestAt: newest?.t ?? null,
-    };
-  } finally {
-    db.close();
-  }
-}
+  /** Worker hỏng ⇒ số của lượt đếm được gần nhất (hoặc 0 khi chưa đếm được lần nào), không phải số tươi. */
+  stale?: true;
+};
 
 /**
  * Tiến độ đẩy Drive, KHÔNG khoá event loop — đường chính của bảng số và /sync-pulse.
  *
  * Đếm ở worker (`jobs/driveprogress.ts`); TTL ngắn (5 s) + một lượt tại một thời điểm, để một loạt
- * request dồn không đẻ một loạt lượt quét toàn bảng. Worker hỏng ⇒ rơi về bản đồng bộ (vẫn đúng số,
- * chỉ chậm) — thà chậm một lần còn hơn một card Drive trống.
+ * request dồn không đẻ một loạt lượt quét toàn bảng. Worker hỏng ⇒ trả SỐ CŨ gắn `stale`, KHÔNG đếm
+ * lại trên event loop. Đo 13/10 (máy nhà, kho 4,6 GB trên HDD): worker quá 60 s, đường lùi đồng bộ
+ * đứng daemon 400 s (12/10: 889 s) — không nạp, không gửi, không merge. Số cũ vài phút rẻ hơn thế.
  */
 const DRIVE_PROG_TTL_MS = 5_000;
-let driveProgCache: { at: number; v: ReturnType<typeof driveSyncProgress> } | null = null;
-let driveProgInFlight: Promise<ReturnType<typeof driveSyncProgress>> | null = null;
-async function driveSyncProgressAsync(): Promise<ReturnType<typeof driveSyncProgress>> {
+let driveProgCache: { at: number; v: DriveProgress } | null = null;
+let driveProgInFlight: Promise<DriveProgress> | null = null;
+const DRIVE_PROG_NONE: DriveProgress = { syncPercent: 0, syncedMessages: 0, totalMessages: 0, pendingMessages: 0, lastPushAt: null, newestAt: null };
+async function driveSyncProgressAsync(): Promise<DriveProgress> {
   if (driveProgCache && Date.now() - driveProgCache.at < DRIVE_PROG_TTL_MS) return driveProgCache.v;
   if (!driveProgInFlight) {
     driveProgInFlight = (async () => {
       const c = await driveCountsInWorker(currentMemoryDb(), `drive:${hostname()}`, (why) =>
-        daemonLog(`[dashboard] đếm tiến độ Drive ở worker hỏng — lùi về đường đồng bộ: ${why}`),
+        daemonLog(`[dashboard] đếm tiến độ Drive ở worker hỏng — giữ số cũ, không đếm trên event loop: ${why}`),
       );
-      const v = c
+      const v: DriveProgress = c
         ? {
             syncPercent: syncPercentOf(c.synced, c.total),
             syncedMessages: c.synced,
@@ -481,7 +461,7 @@ async function driveSyncProgressAsync(): Promise<ReturnType<typeof driveSyncProg
             lastPushAt: c.lastPushAt,
             newestAt: c.newestAt,
           }
-        : driveSyncProgress();
+        : { ...(driveProgCache?.v ?? DRIVE_PROG_NONE), stale: true };
       driveProgCache = { at: Date.now(), v };
       return v;
     })().finally(() => {
@@ -558,7 +538,7 @@ function probeDriveFresh(dir: string): DriveProbe {
 }
 
 /** Đèn sức khoẻ sync tại thời điểm gọi — gom số kho + sổ kết cục + job đang chạy vào `syncHealthOf`. */
-function driveHealthNow(prog: ReturnType<typeof driveSyncProgress>): ReturnType<typeof syncHealthOf> {
+function driveHealthNow(prog: DriveProgress): ReturnType<typeof syncHealthOf> {
   const st = syncJobStatus();
   return syncHealthOf({
     pending: prog.pendingMessages,
@@ -740,7 +720,7 @@ export function parseSyncTimestamp(raw: string | number | null | undefined): str
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-// "Last Sync" đọc đúng MỘT nguồn: hàng `drive:<host>` mà `driveSyncProgress()` vốn đã dùng —
+// "Last Sync" đọc đúng MỘT nguồn: hàng `drive:<host>` mà worker đếm tiến độ Drive (`jobs/driveprogress.ts`) vốn đã dùng —
 // tức lượt đồng bộ THẬT của máy này. Xem chỗ gọi trong `dashboardMemory()`.
 //
 // Bản cũ tự đẻ một truy vấn riêng `SELECT MAX(updated_at) FROM sync_state` — MAX trên TOÀN bảng,

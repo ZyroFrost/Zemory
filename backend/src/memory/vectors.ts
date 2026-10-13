@@ -498,12 +498,16 @@ export async function embedPending(
     }
     giveTurn();
     let stoppedEarly = false;
-    for (let i = 0; i < pending.length; i += batchSize) {
+    // With a deadline the FIRST batch is one window: the deadline is only checked between batches (a model call cannot be
+    // cut), so a whole first batch was the overshoot — measured 13/10 on the home machine: 4 windows in 383 s against a
+    // 30 s budget. One window still guarantees progress; a message cut mid-way is not lost — its finished windows are in
+    // `vec_hash`, so the next pass copies them instead of embedding them again.
+    for (let i = 0, step = opts.deadline !== undefined ? 1 : batchSize; i < pending.length; i += step, step = batchSize) {
       if (opts.deadline !== undefined && i > 0 && Date.now() >= opts.deadline) {
         stoppedEarly = true;
         break;
       }
-      const batch = pending.slice(i, i + batchSize);
+      const batch = pending.slice(i, i + step);
       // The model runs OUTSIDE the turn — this is the slow part, and it touches nothing shared.
       const vectors = await embedDocBatch(
         batch.map((r) => r.text),

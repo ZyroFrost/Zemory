@@ -98,8 +98,10 @@ test("a dedup round (copy back, no model call) leaves no orphan row either", asy
 // one job slot while received blocks waited ~5.5 min).
 test("deadline: past it the pass stops BETWEEN batches — one batch still runs, the rest stays pending", async (t) => {
   const p = seed(tempDir(t, "zemory-vecdeadline-"), 0, 3);
-  const first = await embedPending({ dbPath: p, limit: 10, batchSize: 1, deadline: Date.now() - 1 });
-  assert.equal(first.embedded, 1, "every pass makes progress: the first batch runs even past the deadline");
+  // batchSize 4, not 1: with a deadline the FIRST batch is one window whatever the batch size (13/10: a first batch of 4
+  // took 383 s against a 30 s budget).
+  const first = await embedPending({ dbPath: p, limit: 10, batchSize: 4, deadline: Date.now() - 1 });
+  assert.equal(first.embedded, 1, "every pass makes progress: ONE window runs even past the deadline, not a whole batch");
   assert.equal(first.stoppedEarly, true, "and the caller is told to come back");
   assert.equal(first.remaining, 2);
   const rest = await embedPending({ dbPath: p, limit: 10, batchSize: 1 });

@@ -38,8 +38,9 @@ test("🔴 bảng số và /sync-pulse đếm Drive qua WORKER; cây nguồn đ�
   const UI = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   assert.match(UI, /async function driveSummary\(\): Promise<DriveSummary> \{\n\s*const prog = await driveSyncProgressAsync\(\);/, "driveSummary phải đi đường worker");
   assert.match(UI, /const prog = await driveSyncProgressAsync\(\);\n\s*\/\/ Kèm cờ BẬT\/TẮT kênh/, "/sync-pulse phải đi đường worker");
-  assert.doesNotMatch(UI, /= driveSyncProgress\(\);/, "ca ÂM: không đường nào còn gán thẳng từ bản đồng bộ");
-  assert.equal((UI.match(/: driveSyncProgress\(\);/g) ?? []).length, 1, "bản đồng bộ chỉ còn là đường LÙI khi worker hỏng");
+  // Đo 13/10: đường lùi đồng bộ (worker quá 60 s ⇒ đếm lại trên event loop) đứng daemon 400 s. Không còn bản đồng bộ nào.
+  assert.doesNotMatch(UI, /\bdriveSyncProgress\(\)/, "ca ÂM: không còn bản đếm Drive đồng bộ trên event loop, kể cả làm đường lùi");
+  assert.match(UI, /: \{ \.\.\.\(driveProgCache\?\.v \?\? DRIVE_PROG_NONE\), stale: true \};/, "worker hỏng ⇒ số cũ gắn `stale`");
   const SC = readFileSync(new URL("../src/memory/scope.ts", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   const safe = SC.slice(SC.indexOf("function safeConnections("), SC.indexOf("function localHealth("));
   assert.match(safe, /if \(Date\.now\(\) - connCache\.at > CONN_TTL_MS\) refreshConnections\(dbPath\);\n\s*return connCache\.rows;/, "hết hạn ⇒ trả bản cũ NGAY, làm tươi phía sau");
