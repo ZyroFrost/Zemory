@@ -35,4 +35,4 @@ Ba vai trò **BẮT BUỘC** của một dự án non-app: `docs/` · `AGENTS.md
 **Quy ước:** một dòng một khái niệm · tên viết đúng như trên sản phẩm giao đi · đổi định nghĩa là **đổi
 số liệu** ⇒ ghi `06_CHANGES` và nói rõ ảnh hưởng tới bản đã phát hành.
 
-<!-- zemory-standard: 2026-09-18 -->
+<!-- zemory-standard: 2026-10-14 -->
