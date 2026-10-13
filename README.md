@@ -126,33 +126,45 @@ window and falls back to an Edge app window if it is absent. No GPU, no Python, 
 network at runtime beyond that one-time model fetch.
 
 Zemory is installed **once per machine** and shared by every project. It is not on
-a public npm registry yet — install from this repo:
+a public npm registry yet — install from this repo.
 
-On a fresh Windows machine, install the prerequisites first:
+**Windows, fresh machine — one paste.** Open **PowerShell**, edit the first line to the
+folder where you want zemory to live, then paste the whole block:
 
 ```powershell
-winget install Git.Git OpenJS.NodeJS.LTS Microsoft.VCRedist.2015+.x64
-# Then CLOSE this terminal and open a NEW one — the old one does not see git/node on PATH yet.
-git --version; node --version   # both must answer; node must be >= 20
-```
+$InstallDir = "D:\path\of\your\choice"   # <-- EDIT: the folder where YOU want zemory to live
 
-Then, in a new terminal:
+# 1. Prerequisites: Git, Node.js LTS (>= 20), Visual C++ 2015-2022 x64 runtime (without it embedding silently does nothing)
+winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
+winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+winget install -e --id Microsoft.VCRedist.2015+.x64 --accept-package-agreements --accept-source-agreements
 
-```bash
-cd D:\path\of\your\choice   # the folder where YOU want zemory to live (cmd: cd /d D:\...)
+# 2. Reload PATH in THIS window (a terminal opened before the install cannot see git / node), then check
+$env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+git --version; node --version; npm --version   # all three must answer; node must be v20 or newer
+
+# 3. Get and build zemory in the folder you chose
+New-Item -ItemType Directory -Force $InstallDir | Out-Null
+Set-Location $InstallDir
 git clone https://github.com/ZyroFrost/Zemory.git
-cd Zemory
-node backend/scripts/fetch-prebuilds.mjs   # see note below — run BEFORE npm ci
+Set-Location Zemory
+node backend/scripts/fetch-prebuilds.mjs   # BEFORE npm ci - see "Why fetch-prebuilds comes first" below
 npm ci
 npm run build
-npm install -g .           # exposes the global `zemory` command (or: npm link)
+npm install -g .                           # exposes the global `zemory` command (or: npm link)
 
-zemory setup               # describes what gets installed, and OFFERS the shortcuts
-zemory memory scan         # ingest existing agent transcripts on this machine
-zemory hook install        # auto-capture new Claude/Codex sessions (0 tokens)
-zemory memory embed --all  # build the semantic vector index (enables hybrid recall)
-zemory doctor              # verify everything is green
+# 4. Build this machine's memory
+zemory setup                # describes what gets installed, and OFFERS the shortcuts
+zemory memory scan          # ingest existing agent transcripts on this machine
+zemory hook install         # auto-capture new Claude/Codex sessions (0 tokens)
+zemory memory embed --all   # build the semantic vector index (enables hybrid recall)
+zemory doctor               # verify everything is green
 ```
+
+If `winget` itself is not found (older Windows), install Node.js LTS from nodejs.org and Git from
+git-scm.com by hand, then paste the block from step 2. **macOS / Linux:** install `git` and Node ≥ 20
+with your package manager (`brew install node git` · `apt` · `dnf`), then run steps 3–4 with
+`cd <your folder>` in place of the two PowerShell lines.
 
 Because `npm install -g .` links the repo, a later `npm run build` updates the
 global `zemory` command in place — no reinstall needed. From **3.3.2** the cockpit's
