@@ -93,16 +93,31 @@ const releaser = (dir: string, name: string, beat: boolean) => {
   };
 };
 
+let waitedMs = 0;
+/**
+ * Time this process has spent WAITING for the turn so far (not holding it). A fast-lane child reports it, so a slow
+ * round says whether it queued behind another writer or was slow itself — measured 13/10: sealing 2 messages took
+ * 89–364 s while the embed lane ran, and the log could not tell which.
+ */
+export function turnWaitTotalMs(): number {
+  return waitedMs;
+}
+
 /** Wait for the write turn. Returns the release function — call it in `finally`. */
 export async function acquireWriteTurn(o: { dir?: string; signal?: { aborted: boolean } } = {}): Promise<() => void> {
   const dir = turnDir(o.dir);
   const name = takeTicket(dir);
+  const t0 = Date.now();
   for (;;) {
     if (o.signal?.aborted) {
       rmSync(join(dir, name), { force: true });
+      waitedMs += Date.now() - t0;
       throw new Error("cancelled while waiting for the store write turn");
     }
-    if (head(dir) === name) return releaser(dir, name, true);
+    if (head(dir) === name) {
+      waitedMs += Date.now() - t0;
+      return releaser(dir, name, true);
+    }
     await new Promise((r) => setTimeout(r, TURN_POLL_MS));
   }
 }

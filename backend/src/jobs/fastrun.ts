@@ -9,7 +9,7 @@ import { channelDir } from "../memory/channel/index.js";
 import { mergeChannelDir, pushChannelFast, pushChannelVectors, resolveShareKey } from "../memory/share.js";
 import { drainIngestQueue } from "./ingestqueue.js";
 import { FAST_VECTOR_BATCH, FAST_VECTOR_BUDGET_MS } from "./fastlane.js";
-import { acquireWriteTurn, withWriteTurn } from "./writeturn.js";
+import { acquireWriteTurn, turnWaitTotalMs, withWriteTurn } from "./writeturn.js";
 
 // Every job here writes the store while the EMBED LANE (`vectors`) may be running in parallel (plan/24 §12.7): each takes
 // the store's write turn — ingest / push / merge for the whole job (seconds), vectors per batch write (ms).
@@ -19,7 +19,7 @@ import { acquireWriteTurn, withWriteTurn } from "./writeturn.js";
     if (mode === "ingest") {
       // No share key needed: this only reads transcripts into the local store.
       const r = await withWriteTurn(() => drainIngestQueue());
-      console.log(JSON.stringify({ ok: true, mode, files: r.files, newMessages: r.newMessages, missing: r.missing }));
+      console.log(JSON.stringify({ ok: true, mode, files: r.files, newMessages: r.newMessages, missing: r.missing, turnWaitMs: turnWaitTotalMs() }));
       return;
     }
     const keyFile = resolveShareKey(process.cwd()) ?? undefined;
@@ -27,15 +27,15 @@ import { acquireWriteTurn, withWriteTurn } from "./writeturn.js";
     const writeTurn = (): Promise<() => void> => acquireWriteTurn();
     if (mode === "push") {
       const r = await pushChannelFast({ dir: channelDir(undefined, true), keyFile, onProgress, writeTurn });
-      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, pushMs: r.pushMs }));
+      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, pushMs: r.pushMs, turnWaitMs: turnWaitTotalMs() }));
     } else if (mode === "vectors") {
       const r = await pushChannelVectors({ dir: channelDir(undefined, true), keyFile, onProgress, embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn });
-      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, embedded: r.embedded, embedMs: r.embedMs, pushMs: r.pushMs, more: r.more, stuckAt: r.stuckAt }));
+      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, embedded: r.embedded, embedMs: r.embedMs, pushMs: r.pushMs, more: r.more, stuckAt: r.stuckAt, turnWaitMs: turnWaitTotalMs() }));
     } else if (mode === "merge") {
       const r = await withWriteTurn(() => mergeChannelDir(channelDir(), { keyFile }));
       const added = r.reduce((n, e) => n + (e.messagesAdded ?? 0), 0);
       const errors = r.filter((e) => e.error).map((e) => `${e.file}: ${e.error}`);
-      console.log(JSON.stringify({ ok: errors.length === 0, mode, blocks: r.filter((e) => !e.skipped).length, messagesAdded: added, ...(errors.length ? { error: errors.slice(0, 3).join(" · ") } : {}) }));
+      console.log(JSON.stringify({ ok: errors.length === 0, mode, blocks: r.filter((e) => !e.skipped).length, messagesAdded: added, turnWaitMs: turnWaitTotalMs(), ...(errors.length ? { error: errors.slice(0, 3).join(" · ") } : {}) }));
     } else {
       console.log(JSON.stringify({ ok: false, error: `unknown mode "${mode ?? ""}" (ingest | push | vectors | merge)` }));
       process.exitCode = 1;

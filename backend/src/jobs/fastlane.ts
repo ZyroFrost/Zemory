@@ -214,7 +214,7 @@ export class FastLane {
       if (ok && res.more) this.vectorsQueued = true;
       this.stuckAt = ok && typeof res.stuckAt === "number" ? res.stuckAt : null;
       if (ok && res.kind && res.kind !== "none") {
-        this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
+        this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s${this.waited(res)} — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
         this.d.kickLinks();
       } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
     });
@@ -293,6 +293,12 @@ export class FastLane {
     return c;
   }
 
+  /** " (Xs of it waiting for the write turn)" when the wait is worth naming — a slow round then says WHY it was slow. */
+  private waited(res: JobResult): string {
+    const w = res.turnWaitMs ?? 0;
+    return w >= 1000 ? ` (${(w / 1000).toFixed(1)}s of it waiting for the write turn)` : "";
+  }
+
   private onWriteDone(mode: WriteMode, ok: boolean, res: JobResult, ms: number, error: string | undefined): void {
     if (mode === "ingest") {
         this.st.lastIngest = { at: Date.now(), ms, ok, files: res.files, newMessages: res.newMessages, ...(error ? { error } : {}) };
@@ -300,7 +306,7 @@ export class FastLane {
           this.ingestRestUntil = Date.now() + FAST_REST_MS;
           this.d.log(`[fastlane] ingest failed after ${(ms / 1000).toFixed(1)}s: ${error} — the notes stay queued, retrying after a rest`);
         } else if ((res.newMessages ?? 0) > 0) {
-          this.d.log(`[fastlane] ingested ${res.newMessages} message(s) the capture hook deferred (store was busy) in ${(ms / 1000).toFixed(1)}s`);
+          this.d.log(`[fastlane] ingested ${res.newMessages} message(s) the capture hook deferred (store was busy) in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
           this.d.onMerged?.();
         }
       } else if (mode === "push") {
@@ -310,13 +316,13 @@ export class FastLane {
         if (!ok || !(res.messages && res.messages > 0)) this.restUntil = Date.now() + FAST_REST_MS;
         else this.vectorsQueued = true; // the messages went without their vectors — ③ owes the next block
         if (ok && res.kind && res.kind !== "none") {
-          this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s — offering it now`);
+          this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s${this.waited(res)} — offering it now`);
           this.d.kickLinks();
         } else if (!ok) this.d.log(`[fastlane] push failed after ${(ms / 1000).toFixed(1)}s: ${error}`);
       } else {
         this.st.lastMerge = { at: Date.now(), ms, ok, messagesAdded: res.messagesAdded, ...(error ? { error } : {}) };
         if (ok) {
-          if ((res.messagesAdded ?? 0) > 0) this.d.log(`[fastlane] merged ${res.messagesAdded} message(s) from the other machine in ${(ms / 1000).toFixed(1)}s`);
+          if ((res.messagesAdded ?? 0) > 0) this.d.log(`[fastlane] merged ${res.messagesAdded} message(s) from the other machine in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
           this.d.onMerged?.();
         } else {
           this.mergeQueued = true; // try again next tick — the block is safe in the channel folder
@@ -339,6 +345,8 @@ export class FastLane {
 
 interface JobResult {
   ok?: boolean;
+  /** Time the child spent queued for the store's write turn (`turnWaitTotalMs`). */
+  turnWaitMs?: number;
   kind?: string;
   messages?: number;
   messagesAdded?: number;
