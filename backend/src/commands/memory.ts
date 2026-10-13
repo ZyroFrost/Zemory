@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { rebuildFts, reconcileCounts, reopenIngest, salvageMemory, salvageVectors, vectorDimsOf, verifyMemory } from "../memory/salvage.js";
-import { currentMemoryDb } from "../memory/db.js";
+import { currentMemoryDb, openMemory } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { appVersion, currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
@@ -1357,6 +1357,23 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const limit = li >= 0 ? Number(args[li + 1]) : undefined;
     const rebuild = args.includes("--rebuild");
     const all = args.includes("--all") || rebuild;
+    // A store that was never scanned has no `messages` table yet. Measured 2026-10-13 on a fresh install: the README's
+    // one-paste block let `zemory setup`'s [Y/n] prompt swallow the `memory scan` line, and this command then died with a
+    // raw "no such table: messages". Say what is missing instead (opening the store creates the schema).
+    {
+      const conn = openMemory(currentMemoryDb());
+      let n: number;
+      try {
+        n = (conn.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
+      } finally {
+        conn.close();
+      }
+      if (n === 0) {
+        // Nothing to embed is not a failure (exit 0) — but say what fills the store.
+        console.log("zemory memory embed: the memory store has no messages yet — run `zemory memory scan` first, then embed.");
+        return;
+      }
+    }
     if (rebuild) {
       dropVectorIndex();
       console.log("zemory memory embed --rebuild — vector index dropped; re-embedding the whole corpus…");

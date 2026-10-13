@@ -865,11 +865,14 @@ export function cmdSetup(args: string[] = []): void {
     cmdSetupMcp(args.slice(1));
     return;
   }
+  // `npm i -g zemory` was printed here as step 1 until 2026-10-13 — that package is not on npm (404), so the very
+  // first line of the help was a command that cannot run (measured on a fresh install).
   console.log("zemory setup — install & use:");
-  console.log("  1. npm i -g zemory                 — global install (the `zemory` command)");
-  console.log("  2. cd <project> && zemory init     — scaffold the harness (or `zemory ui` → Setup)");
-  console.log("  3. zemory doctor");
-  console.log("  4. zemory setup mcp                 — wire zemory into MCP-speaking agents (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
+  console.log("  1. install from source            — README §Quickstart (`npm i -g zemory` does not work: not published to npm)");
+  console.log("  2. zemory memory scan · zemory hook install · zemory memory embed --all — this machine's memory");
+  console.log("  3. cd <project> && zemory init     — scaffold the harness (or `zemory ui` → Setup)");
+  console.log("  4. zemory doctor                   — run INSIDE a project (it checks that project's harness)");
+  console.log("  5. zemory setup mcp                — wire zemory into MCP-speaking agents (Claude Code/Desktop · Cursor · Windsurf · Gemini)");
   console.log("");
   printShortcutPlan();
 

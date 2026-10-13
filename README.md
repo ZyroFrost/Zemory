@@ -154,12 +154,16 @@ npm run build
 npm install -g .                           # exposes the global `zemory` command (or: npm link)
 
 # 4. Build this machine's memory
-zemory setup                # describes what gets installed, and OFFERS the shortcuts
+zemory setup --shortcut     # Start Menu + Desktop shortcuts (--no-shortcut to skip; a bare `setup` asks [Y/n] and would eat the next pasted line)
 zemory memory scan          # ingest existing agent transcripts on this machine
 zemory hook install         # auto-capture new Claude/Codex sessions (0 tokens)
 zemory memory embed --all   # build the semantic vector index (enables hybrid recall)
-zemory doctor               # verify everything is green
+zemory memory stats         # sessions / messages / vectors now in this machine's memory
 ```
+
+Then, in each project folder: `zemory init` (an app) or `zemory init --non-app`, and `zemory doctor`
+there — `doctor` checks a project's harness, so it reports *not connected* when run anywhere else.
+If the install folder already holds an older clone, update it with `git pull` instead of cloning again.
 
 If `winget` itself is not found (older Windows), install Node.js LTS from nodejs.org and Git from
 git-scm.com by hand, then paste the block from step 2. **macOS / Linux:** install `git` and Node ≥ 20
