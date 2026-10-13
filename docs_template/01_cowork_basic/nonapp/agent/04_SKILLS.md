@@ -42,4 +42,4 @@
 2. Thêm **một dòng** vào §2 và **một dòng** vào bảng trigger của `AGENTS.md`.
 3. Có tài nguyên đi kèm → `reference/` · `scripts/` trong chính thư mục skill đó.
 
-<!-- zemory-standard: 2026-10-08 -->
+<!-- zemory-standard: 2026-10-14 -->
