@@ -128,47 +128,58 @@ network at runtime beyond that one-time model fetch.
 Zemory is installed **once per machine** and shared by every project. It is not on
 a public npm registry yet — install from this repo.
 
-**Windows, fresh machine — one paste.** Open **PowerShell**, edit the first line to the
-folder where you want zemory to live, then paste the whole block:
+**Windows — one paste.** Open **PowerShell** (not cmd), edit the first line inside the block,
+then paste the whole block. Safe to run again: whatever is already installed is skipped, an
+existing clone is updated, and it stops at the first step that fails.
 
 ```powershell
-$InstallDir = "D:\path\of\your\choice"   # <-- EDIT: the folder where YOU want zemory to live
+& {
+$InstallDir = "D:\Zemory"   # <-- EDIT: zemory is cloned INTO this folder (new or empty, or an existing zemory clone)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force   # THIS window only: lets npm.ps1 / zemory.ps1 run
 
-# 1. Prerequisites: Git, Node.js LTS (>= 20), Visual C++ 2015-2022 x64 runtime (without it embedding silently does nothing)
-winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
-winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-winget install -e --id Microsoft.VCRedist.2015+.x64 --accept-package-agreements --accept-source-agreements
+# 1. Prerequisites - each one installed only if missing
+function Need($ok, $id) {
+  if ($ok) { Write-Host "  ok  $id already installed" }
+  else { winget install -e --id $id --accept-package-agreements --accept-source-agreements; if ($LASTEXITCODE) { throw "winget could not install $id" } }
+}
+Need ([bool](Get-Command git -ErrorAction SilentlyContinue)) "Git.Git"
+$nodeMajor = 0; if (Get-Command node -ErrorAction SilentlyContinue) { $nodeMajor = [int]((node --version) -replace '^v(\d+).*', '$1') }
+Need ($nodeMajor -ge 20) "OpenJS.NodeJS.LTS"            # Node.js 20 or newer
+$vc = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" -ErrorAction SilentlyContinue
+Need ($vc -and $vc.Installed -eq 1) "Microsoft.VCRedist.2015+.x64"   # without it embedding silently does nothing
 
-# 2. Reload PATH in THIS window (a terminal opened before the install cannot see git / node), then check
+# 2. Reload PATH in THIS window (it cannot see what was just installed), then check
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-git --version; node --version; npm --version   # all three must answer; node must be v20 or newer
+foreach ($c in "git", "node", "npm") { if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { throw "$c still not found - close PowerShell, open a new one, paste again" } }
+git --version; node --version; npm --version
 
-# 3. Get and build zemory in the folder you chose
-New-Item -ItemType Directory -Force $InstallDir | Out-Null
-Set-Location $InstallDir
-git clone https://github.com/ZyroFrost/Zemory.git
-Set-Location Zemory
+# 3. Get zemory INTO $InstallDir (clone, or update an existing clone), then build
+if (Test-Path (Join-Path $InstallDir ".git")) { Set-Location $InstallDir; git pull --ff-only }
+elseif ((Test-Path $InstallDir) -and (Get-ChildItem -Force $InstallDir | Select-Object -First 1)) { throw "$InstallDir is not empty and is not a zemory clone - pick a new or empty folder" }
+else { git clone https://github.com/ZyroFrost/Zemory.git $InstallDir; Set-Location $InstallDir }
+if ($LASTEXITCODE) { throw "git clone / pull failed" }
 node backend/scripts/fetch-prebuilds.mjs   # BEFORE npm ci - see "Why fetch-prebuilds comes first" below
-npm ci
-npm run build
-npm install -g .                           # exposes the global `zemory` command (or: npm link)
+npm ci;           if ($LASTEXITCODE) { throw "npm ci failed" }
+npm run build;    if ($LASTEXITCODE) { throw "build failed" }
+npm install -g .; if ($LASTEXITCODE) { throw "global link failed" }   # the global `zemory` command
 
 # 4. Build this machine's memory
-zemory setup --shortcut     # Start Menu + Desktop shortcuts (--no-shortcut to skip; a bare `setup` asks [Y/n] and would eat the next pasted line)
+zemory setup --shortcut     # Start Menu + Desktop shortcuts (--no-shortcut to skip)
 zemory memory scan          # ingest existing agent transcripts on this machine
 zemory hook install         # auto-capture new Claude/Codex sessions (0 tokens)
 zemory memory embed --all   # build the semantic vector index (enables hybrid recall)
 zemory memory stats         # sessions / messages / vectors now in this machine's memory
+}
 ```
 
 Then, in each project folder: `zemory init` (an app) or `zemory init --non-app`, and `zemory doctor`
 there — `doctor` checks a project's harness, so it reports *not connected* when run anywhere else.
-If the install folder already holds an older clone, update it with `git pull` instead of cloning again.
 
 If `winget` itself is not found (older Windows), install Node.js LTS from nodejs.org and Git from
-git-scm.com by hand, then paste the block from step 2. **macOS / Linux:** install `git` and Node ≥ 20
-with your package manager (`brew install node git` · `apt` · `dnf`), then run steps 3–4 with
-`cd <your folder>` in place of the two PowerShell lines.
+git-scm.com by hand, then paste the block again — step 1 then skips both. **macOS / Linux:** install
+`git` and Node ≥ 20 with your package manager (`brew install node git` · `apt` · `dnf`), then
+`git clone https://github.com/ZyroFrost/Zemory.git <your folder> && cd <your folder>` and run the
+commands of steps 3–4 from `node backend/scripts/fetch-prebuilds.mjs` on.
 
 Because `npm install -g .` links the repo, a later `npm run build` updates the
 global `zemory` command in place — no reinstall needed. From **3.3.2** the cockpit's
