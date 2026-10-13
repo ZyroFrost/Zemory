@@ -86,6 +86,34 @@ test("back to TWO-WAY is always allowed (nothing gets overwritten) — even with
   assert.equal(cfg.direction, "two-way");
 });
 
+test("two-way ORIGIN: set even with items waiting (it overwrites nothing), survives a peer-list rewrite, cleared by plain two-way", (t) => {
+  // User 13/10: *"bên nào là gốc thì bên đó giữ"* — the origin only drives the recommendation + the keep-origin button.
+  const [set, kept, cleared] = run(
+    t,
+    'const db = M.mirrorDb();\n' +
+      'M.enqueue(db, { peerId: PEER, area: "docs", rel: "q.md", verdict: "block", theirBody: Buffer.from("x"), theirHash: "h", mineHash: "m", mergedBody: null });\n' +
+      'out.push(M.setPeerDirection(PEER, { direction: "two-way", origin: PEER }, { db, mine: [], inventoryFile: inv }));\n' +
+      "S.setP2pPeers([PEER]);\n" +
+      "out.push(S.getPeerSync(PEER));\n" +
+      'M.setPeerDirection(PEER, { direction: "two-way" }, { db, mine: [], inventoryFile: inv });\n' +
+      "out.push(S.getPeerSync(PEER));",
+  );
+  assert.deepEqual(set, { ok: true, direction: "two-way", origin: PEER }, "no convergence check for an origin: a queued item does not refuse it");
+  assert.deepEqual(kept, { direction: "two-way", origin: PEER }, "rewriting the peer list keeps the origin");
+  assert.deepEqual(cleared, { direction: "two-way" }, "plain two-way = no origin");
+});
+
+test("surface: the queue names the sender, recommends the origin copy, and leads with keep-all-origin", async () => {
+  const { readFileSync } = await import("node:fs");
+  const gm = readFileSync(new URL("../../frontend/scripts/gm.js", import.meta.url), "utf8");
+  const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /return \{ \.\.\.r, peerName: name, origin: !o \? null : norm\(o\) === norm\(self\) \? "me" : "peer" \};/, "/mirror-queue carries sender + origin");
+  assert.match(gm, /var rec=q\.origin==='peer'\?\(q\.verdict==='merge'\?'merged':'theirs'\):\(q\.origin==='me'\?'mine':''\);/, "origin copy = the recommended button");
+  assert.match(gm, /if\(q\.peerName\)why=t\('mir\.from'\)/, "each card says which machine it came from");
+  assert.match(gm, /ob\.setAttribute\('data-act',og==='me'\?'mir-all-mine':'mir-all-theirs'\);/, "keep-all-origin reuses the bulk doors (theirs keeps its arm-twice)");
+  assert.match(gm, /\['two-me','p2p\.dirTwoMe'\],\['two-peer','p2p\.dirTwoPeer'\]/, "origin is chosen in the existing direction select");
+});
+
 test("one surface, one implementation: CLI and HTTP both call setPeerDirection (HP điều 17)", async () => {
   const { readFileSync } = await import("node:fs");
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");

@@ -779,7 +779,7 @@ export function peerInventory(peerId: string, file = inventoryPath()): PeerInven
 }
 
 export type DirectionResult =
-  | { ok: true; direction: "two-way" | "one-way"; source?: string }
+  | { ok: true; direction: "two-way" | "one-way"; source?: string; origin?: string }
   | { ok: false; reason: "pending" | "no-inventory" | "diverged"; count?: number; at?: string };
 
 /**
@@ -793,7 +793,7 @@ export type DirectionResult =
  */
 export function setPeerDirection(
   peerId: string,
-  want: { direction: "two-way" | "one-way"; source?: string },
+  want: { direction: "two-way" | "one-way"; source?: string; origin?: string },
   opts: { db?: MemoryDB; mine?: MirrorEntry[]; inventoryFile?: string; repoRoot?: string; storeRoot?: string } = {},
 ): DirectionResult {
   if (want.direction === "one-way") {
@@ -810,7 +810,8 @@ export function setPeerDirection(
       if (diff > 0) return { ok: false, reason: "diverged", count: diff, at: inv.at };
     }
   }
-  setPeerSync(peerId, want.direction === "one-way" ? { direction: "one-way", source: want.source } : { direction: "two-way" });
+  // Đổi máy gốc của cặp two-way không ghi đè byte nào (nó chỉ đổi gợi ý + nút giữ-gốc) ⇒ không cần chốt hội tụ.
+  setPeerSync(peerId, want.direction === "one-way" ? { direction: "one-way", source: want.source } : { direction: "two-way", origin: want.origin });
   const c = getPeerSync(peerId);
-  return { ok: true, direction: c.direction, ...(c.source ? { source: c.source } : {}) };
+  return { ok: true, direction: c.direction, ...(c.source ? { source: c.source } : {}), ...(c.origin ? { origin: c.origin } : {}) };
 }
