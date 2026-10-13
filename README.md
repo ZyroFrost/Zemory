@@ -128,33 +128,76 @@ network at runtime beyond that one-time model fetch.
 Zemory is installed **once per machine** and shared by every project. It is not on
 a public npm registry yet — install from this repo.
 
-**Windows, fresh machine — one paste.** Open **PowerShell**, edit the first line to the
-folder where you want zemory to live, then paste the whole block:
+**Windows.** Open **PowerShell** (not cmd) and paste the four blocks below **one at a time, in the
+same window** — PATH and the execution policy set in step 2 only live in that window. Each block
+is safe to run again: what is already installed is skipped, an existing clone is updated, and a
+block stops at its first failure.
+
+**Step 1 — prerequisites.** Each one is installed only if missing — with `winget` when the machine
+has it, otherwise from the vendor's official installer (Git for Windows release, nodejs.org LTS,
+Microsoft's VC++ redistributable). Windows asks for admin rights once per installer:
 
 ```powershell
-$InstallDir = "D:\path\of\your\choice"   # <-- EDIT: the folder where YOU want zemory to live
+& {
+$ProgressPreference = "SilentlyContinue"; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$winget = (Get-Command winget -ErrorAction SilentlyContinue).Source
+if (-not $winget -and (Test-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe")) { $winget = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" }
+function Fetch($url, $name) { $f = Join-Path $env:TEMP $name; Invoke-WebRequest $url -OutFile $f -UseBasicParsing; $f }
+function Need([scriptblock]$has, $id, [scriptblock]$direct) {
+  if (& $has) { Write-Host "  ok  $id already installed"; return }
+  if ($winget) { & $winget install -e --id $id --accept-package-agreements --accept-source-agreements }
+  else { Write-Host "  ..  $id - no winget here, using the official installer"; & $direct }
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+  if (-not (& $has)) { throw "$id did not install - install it by hand, then run this block again" }
+  Write-Host "  ok  $id installed"
+}
+Need { [bool](Get-Command git -ErrorAction SilentlyContinue) } "Git.Git" {
+  $a = (Invoke-RestMethod "https://api.github.com/repos/git-for-windows/git/releases/latest").assets | Where-Object name -match '^Git-[\d.]+-64-bit\.exe$' | Select-Object -First 1
+  Start-Process (Fetch $a.browser_download_url $a.name) -ArgumentList "/VERYSILENT", "/NORESTART" -Verb RunAs -Wait
+}
+Need { (Get-Command node -ErrorAction SilentlyContinue) -and [int]((node --version) -replace '^v(\d+).*', '$1') -ge 20 } "OpenJS.NodeJS.LTS" {
+  $idx = Invoke-RestMethod "https://nodejs.org/dist/index.json"; $v = ($idx | Where-Object { $_.lts } | Select-Object -First 1).version
+  $msi = Fetch "https://nodejs.org/dist/$v/node-$v-x64.msi" "node-$v-x64.msi"
+  Start-Process msiexec -ArgumentList "/i `"$msi`" /qn /norestart" -Verb RunAs -Wait
+}
+Need { $vc = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" -ErrorAction SilentlyContinue; [bool]($vc -and $vc.Installed -eq 1) } "Microsoft.VCRedist.2015+.x64" {
+  Start-Process (Fetch "https://aka.ms/vs/17/release/vc_redist.x64.exe" "vc_redist.x64.exe") -ArgumentList "/install", "/quiet", "/norestart" -Verb RunAs -Wait
+}
+}
+```
 
-# 1. Prerequisites: Git, Node.js LTS (>= 20), Visual C++ 2015-2022 x64 runtime (without it embedding silently does nothing)
-winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
-winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-winget install -e --id Microsoft.VCRedist.2015+.x64 --accept-package-agreements --accept-source-agreements
+**Step 2 — make this window see them** (a window opened before the install cannot), then check:
 
-# 2. Reload PATH in THIS window (a terminal opened before the install cannot see git / node), then check
+```powershell
 $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-git --version; node --version; npm --version   # all three must answer; node must be v20 or newer
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force   # THIS window only: lets npm.ps1 / zemory.ps1 run
+git --version; node --version; npm --version                       # all three must answer; node v20 or newer
+```
 
-# 3. Get and build zemory in the folder you chose
-New-Item -ItemType Directory -Force $InstallDir | Out-Null
-Set-Location $InstallDir
-git clone https://github.com/ZyroFrost/Zemory.git
-Set-Location Zemory
+**Step 3 — get and build zemory.** Edit the first line: zemory is cloned **into** that folder (new, empty,
+or an existing zemory clone, which is updated). The memory store lives inside it, so it must be a plain
+local folder — **never inside OneDrive, Google Drive or Dropbox** (a live database there gets corrupted):
+
+```powershell
+& {
+$InstallDir = "D:\Zemory"   # <-- EDIT: the folder zemory is installed into
+$cloud = @($env:OneDrive, $env:OneDriveCommercial, $env:OneDriveConsumer) | Where-Object { $_ -and $InstallDir.StartsWith($_, "OrdinalIgnoreCase") }
+if ($cloud -or $InstallDir -match "OneDrive|Google Drive|Dropbox|iCloud") { throw "$InstallDir is in a cloud-synced folder - pick a plain local folder" }
+if (Test-Path (Join-Path $InstallDir ".git")) { Set-Location $InstallDir; git pull --ff-only }
+elseif ((Test-Path $InstallDir) -and (Get-ChildItem -Force $InstallDir | Select-Object -First 1)) { throw "$InstallDir is not empty and is not a zemory clone - pick a new or empty folder" }
+else { git clone https://github.com/ZyroFrost/Zemory.git $InstallDir; Set-Location $InstallDir }
+if ($LASTEXITCODE) { throw "git clone / pull failed" }
 node backend/scripts/fetch-prebuilds.mjs   # BEFORE npm ci - see "Why fetch-prebuilds comes first" below
-npm ci
-npm run build
-npm install -g .                           # exposes the global `zemory` command (or: npm link)
+npm ci;           if ($LASTEXITCODE) { throw "npm ci failed" }
+npm run build;    if ($LASTEXITCODE) { throw "build failed" }
+npm install -g .; if ($LASTEXITCODE) { throw "global link failed" }   # the global `zemory` command
+}
+```
 
-# 4. Build this machine's memory
-zemory setup --shortcut     # Start Menu + Desktop shortcuts (--no-shortcut to skip; a bare `setup` asks [Y/n] and would eat the next pasted line)
+**Step 4 — build this machine's memory:**
+
+```powershell
+zemory setup --shortcut     # Start Menu + Desktop shortcuts (--no-shortcut to skip)
 zemory memory scan          # ingest existing agent transcripts on this machine
 zemory hook install         # auto-capture new Claude/Codex sessions (0 tokens)
 zemory memory embed --all   # build the semantic vector index (enables hybrid recall)
@@ -163,12 +206,13 @@ zemory memory stats         # sessions / messages / vectors now in this machine'
 
 Then, in each project folder: `zemory init` (an app) or `zemory init --non-app`, and `zemory doctor`
 there — `doctor` checks a project's harness, so it reports *not connected* when run anywhere else.
-If the install folder already holds an older clone, update it with `git pull` instead of cloning again.
 
 If `winget` itself is not found (older Windows), install Node.js LTS from nodejs.org and Git from
-git-scm.com by hand, then paste the block from step 2. **macOS / Linux:** install `git` and Node ≥ 20
-with your package manager (`brew install node git` · `apt` · `dnf`), then run steps 3–4 with
-`cd <your folder>` in place of the two PowerShell lines.
+git-scm.com by hand, then go on from step 2 — step 1 would skip both anyway. **macOS / Linux:**
+install `git` and Node ≥ 20 with your package manager (`brew install node git` · `apt` · `dnf`), then
+`git clone https://github.com/ZyroFrost/Zemory.git <your folder> && cd <your folder>` (a plain local
+folder, not a cloud-synced one) and run the commands of steps 3–4 from
+`node backend/scripts/fetch-prebuilds.mjs` on.
 
 Because `npm install -g .` links the repo, a later `npm run build` updates the
 global `zemory` command in place — no reinstall needed. From **3.3.2** the cockpit's
