@@ -142,7 +142,8 @@ test("all three sets carry the skills architecture (Phase 3 — no profile left 
   assert.match(coworkAgents, /Hợp đồng nạp/u, "cowork AGENTS.md must carry the trigger-based load contract");
   for (const [label, root] of [["master nonapp", MASTER], ["master app", MASTER_APP]]) {
     const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
-    const readAll = agents.split(/\r?\n/).find((l) => /ĐỌC HẾT/u.test(l)) ?? "";
+    // The step was renamed 2026-10-14 ("ĐỌC HẾT docs/" → "ĐỌC LÕI docs/agent/", plan/27 §5) — the anchor follows the rewrite.
+    const readAll = agents.split(/\r?\n/).find((l) => /ĐỌC LÕI/u.test(l)) ?? "";
     // Only the ENUMERATION counts. The same line also declares the exclusion
     // ("03_STRUCTURE và 04_SKILLS KHÔNG nằm trong bộ này"), so a bare /04_SKILLS/ match
     // would flag that declaration as the very thing it forbids. Cut at the exclusion

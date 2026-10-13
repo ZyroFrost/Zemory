@@ -77,6 +77,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   }
   // READ BEFORE WRITE (user 2026-10-08) — the set every session must have read in full before it acts, plus the files the
   // action itself needs (a case's spec · the AGENTS.md triggers a machine can recognise). Paths are repo-relative, posix.
+  // docs/plan/* is NOT in the set any more (user 2026-10-14, plan/27 §5): plan invariants get gates, the rest is looked up
+  // with `zemory plan search`. A repo that still wants its plan forced lists it under the marker key `readFirst`.
   const hp = harnessPathsAt(root);
   const relp = (p: string): string => relative(root, p).replace(/\\/g, "/");
   const agentRel = relp(hp.agent);
@@ -86,7 +88,6 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   const readFirst = {
     required: [
       ...["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"].map((f) => `${agentRel}/${f}`),
-      `${relp(hp.plan)}/*.md`,
       ...readFirstExtra,
     ],
     case_root: "tasks",

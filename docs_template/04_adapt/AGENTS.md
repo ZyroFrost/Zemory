@@ -25,9 +25,9 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
    **chờ người duyệt** → khoá. **Tuyệt đối không tự khoá bảng khi chưa ai duyệt** — chuẩn tự uốn
    theo cái nó nhìn thấy thì `conform` luôn xanh và không gác gì cả.
    Đã khoá rồi → bỏ qua bước này.
-2. **ĐỌC HẾT `docs/`** — KHÔNG bỏ sót: `docs/agent/01_CONSTITUTION` · `02_RULES` · `05_TODO` ·
-   `06_CHANGES` **và** toàn bộ `docs/plan/*`. **`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ
-   này** — xem §Mở khi trúng trigger.
+2. **ĐỌC LÕI `docs/agent/`** — KHÔNG bỏ sót: `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES`.
+   **`docs/plan/*` KHÔNG bắt đọc mỗi phiên** — trước khi đề xuất/đổi thiết kế một vùng, tra `zemory plan search "<vùng>"`.
+   **`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ này** — xem §Mở khi trúng trigger.
 3. **`03_STRUCTURE` ở hệ này là BẢNG ÁNH XẠ ĐÃ KHOÁ, dùng để TRA — không đọc hết mỗi phiên.**
    Mở nó khi: **cần biết một concern nằm ở folder nào của repo** · **thêm folder mới** ·
    **cấu trúc gốc của repo đã đổi** · `conform` báo lệch.
