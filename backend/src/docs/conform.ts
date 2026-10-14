@@ -21,6 +21,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
+import { isFolderHarness, listParts, slotGateFailures } from "./store.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -148,9 +149,14 @@ export function conform(root: string): ConformReport {
   const markerIgnore = (Array.isArray(md.ignore) ? md.ignore : [])
     .filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
     .map((x) => normDir(x.trim()));
+  // Folder harness (plan/28 §0c): a rule carries its hook.cjs in its own folder by design — code under the harness folder
+  // is a gate, not off-standard source.
+  const harnessAgent = harnessPathsAt(root).agent;
+  const harnessRel = isFolderHarness(harnessAgent) ? normDir(relative(root, harnessAgent).replace(/\\/g, "/")) : null;
   const exempt = (dir: string): boolean => {
     if (!dir) return true;
     if (dir === "docs_template" || dir.startsWith("docs_template/")) return true;
+    if (harnessRel && (normDir(dir) === harnessRel || normDir(dir).startsWith(harnessRel + "/"))) return true;
     const seg = dir.split("/");
     const last = seg[seg.length - 1];
     if (seg.length === 1 && ["backend", "frontend", "docs"].includes(last)) return true;
@@ -252,11 +258,13 @@ export function conform(root: string): ConformReport {
   // (có ĐỦ cả 6 file) vẫn bị báo THIẾU cả 7 — cổng đi tìm ở chỗ không ai bảo nó tìm.
   // Đo trên repo thật trước khi vá: đúng 7 mục báo oan, trong khi file nằm đủ bên `harness/`.
   const hp = harnessPathsAt(root);
+  // Folder harness (plan/28 §0c): 01/02/03 are assembled folders; the files a repo owns are PURPOSE · INDEX · 04 · 05 · 06.
+  const folder = isFolderHarness(hp.agent);
   const need = [
     ...hp.entries,
-    ...["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"].map((f) =>
-      join(hp.agent, `${f}.md`),
-    ),
+    ...(folder
+      ? ["01_CONSTITUTION/PURPOSE.md", "03_STRUCTURE/INDEX.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"].map((f) => join(hp.agent, f))
+      : ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"].map((f) => join(hp.agent, `${f}.md`))),
     join(hp.plan, "00_overview.md"),
   ];
   // Hai cửa vào ở gốc: chỉ cần MỘT là harness nạp được (AGENTS.md là chuẩn liên-hãng,
@@ -272,6 +280,17 @@ export function conform(root: string): ConformReport {
       .map((f) => relative(root, f).replace(/\\/g, "/")),
     "chạy `zemory sync` để gap-fill từ template (không ghi đè file đã có)",
   );
+
+  // ②bis — Folder harness: every slot carries its own check in gate.json › conform (files that must exist, text a file
+  // must contain). One finding per broken requirement, named after the slot.
+  if (folder) {
+    const broken: string[] = [];
+    for (const p of listParts(hp.agent, "03_STRUCTURE")) {
+      const r = slotGateFailures(root, p.dir);
+      for (const why of r) broken.push(`${p.id} ${p.name}: ${why}`);
+    }
+    push("slot-gate", "blocking", "Slot không đạt phép kiểm khai trong gate.json", broken, "sửa repo cho đúng slot (xem SLOT.md của slot đó)");
+  }
 
   // ③ Điều hiến pháp KHÔNG được doc nào trích dẫn ⇒ luật có nguy cơ chết/bị quên.
   //    Advisory: có điều đúng là nền tảng, không cần ai nhắc.

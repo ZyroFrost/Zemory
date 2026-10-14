@@ -264,7 +264,7 @@ export function entryStates(
   }));
 }
 
-const DEFAULT_CONFIG: HarnessConfig = {
+export const DEFAULT_CONFIG: HarnessConfig = {
   docs: "docs/agent",
   adapters: { memory: "global", search: "keyword" },
   thresholds: { changes_lines: 300, changes_keep: 180 },

@@ -58,6 +58,9 @@ export interface HarnessConfig {
   thresholds: Record<string, number>;
   /** Structure standard to validate against (default "app"). */
   profile?: StructureProfile;
+  /** plan/28 §0h — the kit this repo was assembled from (`06_IDE_App_Memory`); present ⇒ folder harness, sync assembles
+   *  from the parts store. */
+  kit?: string;
   /** Brownfield role mapping: role -> existing file (optional). */
   roles?: Record<string, string>;
   /** plan/21 — dead-path check. `roots` = the only places a path is JUDGED under (positive filter;

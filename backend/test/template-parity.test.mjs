@@ -9,6 +9,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { guardDrift } from "../../dist/docs/guard-gen.js";
 
 const PROFILES = ["05_app", "03_nonapp"];
 const STANDARD = [
@@ -54,6 +55,10 @@ test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, an
     gen.replace(/\r\n/g, "\n"),
     "docs_template/01_cowork_basic/nonapp/hooks/guard.cjs has drifted from the generated build — run `zemory hook guard` and copy it again",
   );
+  // The comparison above is only as good as the repo's own copy: a stale docs/hooks/guard.cjs (generator changed, nobody
+  // ran `zemory hook guard`) made both sides old and this test green (2026-10-14). The repo copy must equal the generator.
+  const stale = guardDrift(new URL("../..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
+  assert.ok(!stale.includes("guard.cjs"), "docs/hooks/guard.cjs is older than the generator — run `zemory hook guard`, then copy it to the cowork set");
 });
 
 test("the cowork set carries EXACTLY the generated 02-59_read-first.cjs, and its policy declares read_first", () => {
