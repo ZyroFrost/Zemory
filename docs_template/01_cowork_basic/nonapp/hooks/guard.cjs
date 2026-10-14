@@ -520,6 +520,43 @@ function checkBash(cmd) {
       deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and 02_RULES requires asking the user first." +
         flagTip("delete"));
     }
+    // 02-10 (plan/27 §2h, 2026-10-14): EVERY delete of a file in the repo needs the user's word first. This withdraws the
+    // 2026-08-11 exception ("one ordinary file is let through to keep the gate quiet"). Exempt: the OS temp folder, where
+    // the session scratchpad lives. A target the guard cannot resolve (a variable) counts as IN the repo - closed, not
+    // open, because a delete cannot be undone.
+    if (!recursive) {
+      const tempRoots = [os.tmpdir(), process.env.TEMP, process.env.TMP].filter(Boolean).map(canonPath);
+      const expand = (t) => t.replace(/^\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
+      const targets = [];
+      for (const seg of bare.split(/[\n;|&]+/)) {
+        if (!ANY_DEL.test(seg)) continue;
+        const toks = seg.split(/[\s'"]+/).filter(Boolean);
+        const at = toks.findIndex((t) => DEL_CMDS.test(t.toLowerCase()));
+        if (at < 0) continue;
+        for (const t of toks.slice(at + 1)) {
+          if (t.startsWith("-") || /^\/[A-Za-z]$/.test(t)) continue;
+          targets.push(expand(t));
+        }
+      }
+      const inRepo = targets.filter((t) => {
+        if (/^\/tmp\//i.test(t)) return false;
+        if (!isAbsTok(t, false)) return true;
+        const c = canonPath(t);
+        return !tempRoots.some((r) => c === r || c.startsWith(r + "/"));
+      });
+      if (inRepo.length && !delFlagOk()) {
+        deny("BLOCKED (guard layer 1): rule 02-10 - deleting `" + inRepo[0] + "` - a delete cannot be undone, ask the user first." +
+          flagTip("delete"));
+      }
+    }
+  }
+  // 02-10 by other doors: `git rm` (except `--cached`, which only untracks) and a single-file delete inside an interpreter.
+  if (hitsIn(bare, /^git$/, /\bgit\s+rm\b/) && !/\bgit\s+rm\b[^\n;|&]*--cached\b/.test(bare) && !consumeFlag("delete", bare)) {
+    deny("BLOCKED (guard layer 1): rule 02-10 - `git rm` deletes the file, ask the user first." + flagTip("delete"));
+  }
+  if (SEG_INTERP.test(cmdWordOf(bare)) && /\b(unlinkSync|rmSync|unlink)\s*\(|\bos\.(remove|unlink)\s*\(|\.unlink\s*\(\s*\)/.test(bare) &&
+      !consumeFlag("delete", bare)) {
+    deny("BLOCKED (guard layer 1): rule 02-10 - a script deleting a file, ask the user first." + flagTip("delete"));
   }
 
   // ── WRITING / MOVING through a COMMAND (not only through the Write/Edit tools) ─────────
@@ -844,6 +881,33 @@ function main() {
   if (isWriteTool) {
     const p = ti.file_path || ti.notebook_path || "";
     if (p) checkWrite(relToRoot(p));
+    // 02-10 (b) (plan/27 §2h, 2026-10-14): a rule never disappears from a rule set without the user's word. An edit of
+    // 01_CONSTITUTION / 02_RULES (templates included) that drops a rule number is blocked; retiring a rule keeps its
+    // number and marks it abolished, so it is not a loss.
+    if (p && /(^|\/)(01_CONSTITUTION|02_RULES)\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
+      const isHp = /01_CONSTITUTION\.md$/i.test(p);
+      const ids = (s) => {
+        const out = new Set();
+        const re = isHp ? /^(\d{1,2})\.\s/gm : /(?:^|\s)`?(0[12]-\d{1,3})`?(?=\s)/gm;
+        for (const m of String(s || "").matchAll(re)) out.add(m[1]);
+        return out;
+      };
+      let before = "", after = "";
+      if (tool === "Write") {
+        try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
+        after = ti.content || "";
+      } else if (tool === "Edit") {
+        before = ti.old_string || ""; after = ti.new_string || "";
+      } else if (tool === "MultiEdit") {
+        for (const e of ti.edits || []) { before += "\n" + (e.old_string || ""); after += "\n" + (e.new_string || ""); }
+      }
+      const kept = ids(after);
+      const lost = [...ids(before)].filter((x) => !kept.has(x));
+      if (lost.length && !consumeFlag("delete", relToRoot(p))) {
+        deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+          " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
+      }
+    }
     // OUTSIDE THE PROJECT 1 through the file tools - fingerprint = the path.
     if (p && isOutside(p, false)) denyOutside("writing `" + p + "` - that is OUTSIDE the project", p);
     // OVERWRITING = losing the old content, as good as a delete. `Write` replaces the WHOLE file; `Edit`
