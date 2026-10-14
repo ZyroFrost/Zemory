@@ -1018,6 +1018,18 @@ function main() {
     try { sqlMsg = require(path.join(HERE, "02-25_sql-one-way.cjs")).check(payload, ROOT, POLICY); } catch { sqlMsg = null; }
     if (sqlMsg) deny(sqlMsg);
   }
+  // RULE HOOKS (policy.rule_hooks, plan/27 §3): each returns null, a block message, or { msg, flag, subject } = blocked
+  // unless the one-use flag is granted. A failing hook lets the action through (HP article 9).
+  for (const h of POLICY.rule_hooks || []) {
+    let r = null;
+    try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
+    if (!r) continue;
+    if (typeof r === "object") {
+      if (r.flag && consumeFlag(r.flag, r.subject || h.file)) continue;
+      deny(r.msg + (r.flag ? flagTip(r.flag) : ""));
+    }
+    deny(String(r));
+  }
   // READ BEFORE WRITE (02-59_read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.
   let rfMsg = null;

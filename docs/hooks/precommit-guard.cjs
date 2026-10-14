@@ -34,6 +34,13 @@ if (dataBad.length) {
     dataBad.join("\n  ") + "\n");
   process.exit(1);
 }
+// 02-5 (plan/27 §3): a scratch file the agent had to put in the repo dies in the same turn - it never reaches a commit.
+const scratchBad = addedOrChanged.filter((f) => /(^|\/)(_scratch_[^\/]*|\.tmp_[^\/]*)$/.test(f.replace(/\\/g, "/")));
+if (scratchBad.length) {
+  process.stderr.write("BLOCKED (pre-commit): rule 02-5 - scratch file(s) in staging; a scratch file in the repo is deleted in the same turn:\n  " +
+    scratchBad.join("\n  ") + "\n");
+  process.exit(1);
+}
 // The repo's OWN gates (marker key `repoGates`), run from the repo root after the secret check - the standard hook
 // point for a repo that builds gates for its own constitution. Any non-zero exit blocks the commit.
 const top = cp.execSync("git rev-parse --show-toplevel", { encoding: "utf8", windowsHide: true }).trim();

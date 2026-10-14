@@ -178,9 +178,9 @@ test("the hard rules under Writing-time rules: app and adapt carry them ALL, non
   // 6 → 3 (2026-10-14, plan/27 §3): `02-23` separator and `02-24` EOL have no machine gate, so they left the fenced block
   // for §Lõi — still in the forced part of 02_RULES. Their new home is pinned right below, so no rule loses its watch.
   assert.ok(z.length >= 3, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
+  // (02-24 later got its own hook and left §Lõi for §Luật khi VIẾT — wherever it sits, it must still be a rule bullet.)
   for (const f of ["docs/agent/02_RULES.md", "docs_template/05_app/agent/02_RULES.md", "docs_template/04_adapt/agent/02_RULES.md"]) {
-    const core = read(f).split("<!-- zemory:core:start")[1]?.split("<!-- zemory:core:end -->")[0] ?? "";
-    for (const id of ["02-23", "02-24"]) assert.ok(core.includes("- `" + id + "` **"), `${f}: ${id} is neither in the fenced block nor in §Lõi`);
+    for (const id of ["02-23", "02-24"]) assert.ok(read(f).includes("- `" + id + "` **"), `${f}: ${id} is no longer a rule bullet anywhere`);
   }
   for (const s of SETS) {
     const t = ruleLabels(`docs_template/${s}/agent/02_RULES.md`);

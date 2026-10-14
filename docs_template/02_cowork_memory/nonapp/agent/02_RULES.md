@@ -22,9 +22,6 @@
 - `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm (script dò · dữ liệu đo ·
   model tải về · ảnh chụp · bản sao thử) nằm trong thư mục nháp của phiên, không nằm trong repo. Đo xong và chắc
   không dùng lại ⇒ dọn trong phiên; thứ giữ lại phải nhỏ và nói rõ giữ vì gì.
-- `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
-  trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
-  chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên.
 - `02-6` **Văn bản chuyển đi một lần thì in trong câu trả lời, không tạo file.** Bản bàn giao · memo · báo cáo ·
   prompt hoặc ghi chú gửi sang repo/phòng khác: in nguyên khối trong câu trả lời, không ghi vào `tasks/`, không đính
   kèm file. Dài tới mức khó đọc trong chat ⇒ hỏi có lưu thành file không. Phép thử: repo chỉ giữ thứ nó chạy hoặc
@@ -75,14 +72,6 @@
 - `02-23` **Separator của chỉ mục docs giữ theo OS** (`docs\agent\05_TODO.md`); mọi chỗ tra ghép bằng `join`.
   Không chuẩn hoá sang `/` cho đẹp — hậu quả đã đo: `plan ls` báo chỉ mục rỗng, `reindex` đẻ bản ghi trùng. Muốn đổi
   ⇒ một migration riêng đổi chỉ mục cũ và mọi chỗ tra trong cùng bước.
-- `02-24` **EOL: khoá bằng máy trước.** Repo phải có `.gitattributes` với `* text=auto eol=lf`, đặt TRƯỚC các dòng
-  LFS (dòng sau đè dòng trước). Chưa khoá ⇒ sửa file có sẵn giữ nguyên kiểu xuống dòng của nó (đọc dạng byte, CRLF
-  ghi lại CRLF) và sửa theo từng đoạn, không đọc-cả-file-rồi-ghi-lại (đổi cả file sang LF, làm rơi phần phiên khác
-  vừa chèn). File máy ghép từ file khác (archive ← `05_TODO`/`06_CHANGES`) lấy EOL của file nguồn; khi đang lệch,
-  lượt ghi đầu tiên đảo cả file một lần — đó là giá trả một lần, không phải lỗi tool: chuyển dứt điểm trong một
-  commit riêng có nhãn, chứng minh bằng `git diff --ignore-cr-at-eol` rỗng. Không nắn ngược, không dựng cổng "EOL
-  không được đổi" — mặt này đã có máy canh (test của `archive`).
-- `02-26` **Docs (`docs/agent` · `docs/plan`) viết tiếng Việt có dấu.**
 - `02-27` **Văn phong harness là đặc tả kỹ thuật.** Hiến pháp · luật · cấu trúc · plan · skill viết câu mệnh lệnh
   ngắn, thuật ngữ chính xác, theo khuôn điều kiện → hành vi → phép kiểm. Không khẩu ngữ · cảm thán · hội thoại · kể
   chuyện. Không trích lời người giao việc, không ghi ngày chốt — lời gốc, bối cảnh, sự cố nằm ở `06_CHANGES` và
@@ -94,10 +83,6 @@
   render cho người đọc (desc·note của bảng/cột sinh vào `docs/`, nhãn report) · ② tên do bên khác đặt (cột Excel ·
   trường API · tên file nguồn — giữ từng ký tự, dù trông như Việt mất dấu) · ③ thuật ngữ chuyên ngành. Comment cũ:
   sửa khi đang đụng file đó, không mở đợt dịch hàng loạt.
-- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
-  hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
-  dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
-  `node .claude/skills/audit/scripts/lang-scan.mjs .`
 - `02-31` **Chữ trong sản phẩm giao đi phải đủ và đúng.** ① Có dấu, đúng chính tả; không có tiếng Việt mất dấu ở
   bất cứ file nào (plan · docs · chú thích script · tên test · chuỗi sinh máy): chỉ tiếng Anh hoặc tiếng Việt có dấu
   — ngại encoding thì viết tiếng Anh; không mojibake (`Ã¡` · `â€` · `ï»¿`). ② Chú thích đủ: bảng có tiêu đề cột ·
@@ -114,30 +99,12 @@
 - `02-35` **Mỗi file harness một việc, không lặp nội dung file khác:** `01` hiến pháp · `02` luật làm việc · `03`
   chuẩn cấu trúc · `04` sổ đăng ký skill (playbook ở `.claude/skills/`) · `05` backlog · `06` changelog. Một nội
   dung sống ở một nhà; nơi khác dẫn chiếu (link + số hiệu). `03 §7` là nhà duy nhất của từ điển dữ liệu.
-- `02-36` **Plan chỉ chứa spec:** không todo (→ `05_TODO`, qua cửa vào `02-38`), không luật (bất biến hay luật
-  riêng ⇒ hỏi; được chấp thuận thì ghi vào đúng file theo `02-38`, plan chỉ dẫn chiếu). Đặt tên `NN_tên.md`, `00` =
-  tổng quan (`03_STRUCTURE`).
-- `02-38` **Sổ việc `05_TODO` — luật duy nhất cho cửa vào và cửa ra;** file khác dẫn chiếu mục này, không đặt luật
-  sổ riêng. ① **Cửa vào:** không tự thêm mục `05_TODO` · luật · cổng · bộ đếm · bộ đo · lớp cảnh báo · mục advisory.
-  Thấy cần ⇒ hỏi một câu kèm đề xuất trong phiên; được chấp thuận mới ghi, vào đúng file (`01` · `02` · `05`). Đề
-  xuất không "đậu" vào sổ chờ duyệt. Ngưỡng: thực sự quan trọng — trước khi thêm trả lời đủ: gỡ bớt được gì · gộp
-  vào cái có sẵn được không · không có nó thì hỏng gì, đo được không; không trả lời được câu cuối ⇒ không làm. Không
-  áp cho việc được giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có bắt buộc. ② **Cửa ra:** một mục xong ⇒ trong
-  cùng lượt: đo lại theo `02-12` · ghi `06_CHANGES` · xoá khỏi `05_TODO` (hoặc `zemory archive`). Dấu máy dời:
-  `- [x]` · `- ✅` · `N. [x]` · tiêu đề `## [x]` (cả khối khi không còn `[ ]`/`[~]`); `✅` trên mục đánh số/tiêu đề,
-  hoặc khối còn việc mở, thì `archive` chỉ báo — agent tự xử lý; viết "xong" kiểu khác (gạch ngang · chữ XONG) thì
-  máy không thấy. `archive` lúc chốt phiên là lưới vét cuối, không phải chỗ để dồn.
 - `02-39` **Việc · lỗi · quyết định ở phiên khác ⇒ `zemory memory search "<q>" [--all]`;** tra đúng câu hỏi, không
   tra bừa.
 - `02-40` **Global Memory là nguồn của phiên.** Khi đổi phiên · ghi docs · audit · báo cáo ⇒ dò Global Memory
   (`zemory memory search` · `digest <session>`) và đối chiếu thứ thật để xác minh từng mục trước khi ghi hay khẳng
   định; không ghi theo bản tóm tắt hay kết quả subagent chưa kiểm. Chi tiết: `.claude/skills/session-close/SKILL.md`
   Bước 0.
-- `02-41` **Changelog: entry mới nhất ở trên cùng,** chèn ngay sau header.
-- `02-42` **Entry đảo/thay quyết định cũ mở đầu bằng**
-  `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`, nêu đúng khoá ngày của entry bị thay (máy nối bằng
-  khoá đó để gắn nhãn "ĐÃ BỊ THAY" cho entry cũ). Ngày có nhiều entry mà không rõ khoá ⇒ bỏ qua, không đoán. Không
-  sửa/xoá entry cũ; tuỳ chọn thêm `> ⤴ Đã bị thay bởi [ngày].` ở entry cũ.
 - `02-47` **Đứng trong repo tham khảo thì chỉ đọc.** Lệnh `zemory` ghi theo cwd (`init` · `sync` · `reindex` ·
   `archive` · `memory scan`): chạy ở repo khác là ghi vào repo đó và DB của nó. Lấy chuẩn ⇒ đọc `docs_template/`
   (không phải `docs/` riêng của repo nguồn) rồi chạy lệnh ở repo của mình.
@@ -146,6 +113,9 @@
 
 ## Hành xử
 - `02-10` **Thao tác xóa phải được user xác nhận trước.** Xóa file, deliverable, measure, script, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; thư mục tạm được miễn; bãi bỏ một luật thì giữ số. <!-- gate: guard -->
+- `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
+  trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
+  chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
 
 ## Cấu trúc repo — xem [`03_STRUCTURE.md`](03_STRUCTURE.md)
 **Định nghĩa metric/cột → `03_STRUCTURE` §7 (từ điển dữ liệu, NGUỒN SỰ THẬT).** KHÔNG tạo `docs/dictionary.md` — một dự án MỘT từ điển; tách ra hai file là chắc chắn lệch, mà lệch định nghĩa metric thì **số liệu sai**, không phải tài liệu sai. Công thức thực tế khác mô tả ⇒ BÁO, không tự sửa bên nào.
@@ -165,6 +135,20 @@
 02-21 Secret/connection    config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret <!-- gate: guard -->
 02-25 SQL/DAX/M            gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline (đối xứng store/queries của app) <!-- gate: guard -->
 ```
+- `02-24` **EOL: khoá bằng máy trước.** Repo phải có `.gitattributes` với `* text=auto eol=lf`, đặt TRƯỚC các dòng
+  LFS (dòng sau đè dòng trước). Chưa khoá ⇒ sửa file có sẵn giữ nguyên kiểu xuống dòng của nó (đọc dạng byte, CRLF
+  ghi lại CRLF) và sửa theo từng đoạn, không đọc-cả-file-rồi-ghi-lại (đổi cả file sang LF, làm rơi phần phiên khác
+  vừa chèn). File máy ghép từ file khác (archive ← `05_TODO`/`06_CHANGES`) lấy EOL của file nguồn; khi đang lệch,
+  lượt ghi đầu tiên đảo cả file một lần — đó là giá trả một lần, không phải lỗi tool: chuyển dứt điểm trong một
+  commit riêng có nhãn, chứng minh bằng `git diff --ignore-cr-at-eol` rỗng. Không nắn ngược, không dựng cổng "EOL
+  không được đổi" — mặt này đã có máy canh (test của `archive`). <!-- gate: guard -->
+## Ngôn ngữ (có chốt máy)
+- `02-26` **Docs (`docs/agent` · `docs/plan`) viết tiếng Việt có dấu.** <!-- gate: guard -->
+- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
+  hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
+  dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
+  `node .claude/skills/audit/scripts/lang-scan.mjs .` <!-- gate: guard -->
+
 ## Tài liệu — quy ước cập nhật
 | File | Vai trò | Khi nào cập nhật |
 |---|---|---|
@@ -175,6 +159,19 @@
 | `docs/plan/*` | thiết kế dài hạn (specs thuần, KHÔNG todo) | khi chốt/đổi thiết kế. **Định nghĩa metric/cột KHÔNG ở đây** → `03_STRUCTURE` §7 (một dự án một từ điển; KHÔNG tạo `docs/dictionary.md`) |
 
 - `02-37` **PLAN PHẢI GỌN — spec được tra theo vùng và đọc trọn mỗi lần sửa.** Plan chỉ giữ **hướng ĐÃ CHỐT hiện tại + điểm còn mở**; lịch sử ("làm ngày nào", "trước đây là X") là việc của `06_CHANGES`. Đổi hướng ⇒ sửa TẠI CHỖ thành hướng mới, lý do ghi ở CHANGES. **Plan là văn bản NGƯỜI viết để bàn và chốt thiết kế — không máy sinh nào ghi vào `docs/plan`, kể cả MỘT KHỐI trong file**: mục lục · catalog · bảng tra do build sinh ⇒ ghi ra file cạnh nguồn sinh ra nó, plan chỉ trỏ link. **Sơ đồ cây thư mục · bảng cấu trúc · khối mũi tên kiến trúc · `mermaid` do agent hoặc người viết thẳng khi bàn thiết kế là PHẦN CHÍNH của plan — giữ, cứ vẽ tay, KHÔNG cần script**; luật chỉ cấm ĐẦU RA của script build nằm trong plan, không bao giờ là lý do xoá sơ đồ hay né không vẽ. `zemory validate` báo LỖI khi gặp dấu khối máy sinh (`<!-- AUTOGEN` · `AUTOGEN:` · tiêu đề "SINH TỰ ĐỘNG" · "MÁY SINH … ĐỪNG SỬA TAY"). Mỗi mục `05_TODO` gắn `→ plan/NN §mục` để dẫn đường. Trần: một spec ~1.000 dòng · cả `docs/plan` ~5.000 dòng — `zemory validate` cảnh báo khi vượt. <!-- gate: validate -->
+- `02-36` **Plan chỉ chứa spec:** không todo (→ `05_TODO`, qua cửa vào `02-38`), không luật (bất biến hay luật
+  riêng ⇒ hỏi; được chấp thuận thì ghi vào đúng file theo `02-38`, plan chỉ dẫn chiếu). Đặt tên `NN_tên.md`, `00` =
+  tổng quan (`03_STRUCTURE`). <!-- gate: validate -->
+- `02-38` **Sổ việc `05_TODO` — luật duy nhất cho cửa vào và cửa ra;** file khác dẫn chiếu mục này, không đặt luật
+  sổ riêng. ① **Cửa vào:** không tự thêm mục `05_TODO` · luật · cổng · bộ đếm · bộ đo · lớp cảnh báo · mục advisory.
+  Thấy cần ⇒ hỏi một câu kèm đề xuất trong phiên; được chấp thuận mới ghi, vào đúng file (`01` · `02` · `05`). Đề
+  xuất không "đậu" vào sổ chờ duyệt. Ngưỡng: thực sự quan trọng — trước khi thêm trả lời đủ: gỡ bớt được gì · gộp
+  vào cái có sẵn được không · không có nó thì hỏng gì, đo được không; không trả lời được câu cuối ⇒ không làm. Không
+  áp cho việc được giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có bắt buộc. ② **Cửa ra:** một mục xong ⇒ trong
+  cùng lượt: đo lại theo `02-12` · ghi `06_CHANGES` · xoá khỏi `05_TODO` (hoặc `zemory archive`). Dấu máy dời:
+  `- [x]` · `- ✅` · `N. [x]` · tiêu đề `## [x]` (cả khối khi không còn `[ ]`/`[~]`); `✅` trên mục đánh số/tiêu đề,
+  hoặc khối còn việc mở, thì `archive` chỉ báo — agent tự xử lý; viết "xong" kiểu khác (gạch ngang · chữ XONG) thì
+  máy không thấy. `archive` lúc chốt phiên là lưới vét cuối, không phải chỗ để dồn. <!-- gate: guard -->
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
 **Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
@@ -182,6 +179,11 @@
 **TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt** — quy trình đầy đủ (đọc lại 3 nguồn: FULL phiên hiện tại + FULL `docs/plan/*` + FULL `docs/agent/*` → định tuyến từng thứ về đúng file → chuẩn "không bỏ sót" → bước cuối `zemory validate`) ở skill **`.claude/skills/session-close/`**. Bất biến: mọi việc đã làm phải tìm được ở `06_CHANGES` **hoặc** `05_TODO` (kể cả chẩn đoán sai / đường cụt); đổi thiết kế → `docs/plan/*`; luật riêng → HỎI trong phiên, không đậu vào `05_TODO` (`02-38`). Không tự `git push` (§Git). **Tự dọn cuối phiên (bắt buộc):** ghi sổ xong thì chạy `zemory archive` — mục `[x]` đã xong rời `05_TODO` **ngay, không chờ ngưỡng** (một mục đã đóng là đặt sai chỗ kể từ giây nó xong), còn `06_CHANGES` cắt theo trần khai trong `docs/.harness.json`. Chép NGUYÊN VĂN sang `docs/agent/archive/`, KHÔNG tóm tắt — archive là để TRA LẠI. Bỏ bước này thì `05_TODO` (file LUÔN được nạp) phình dần cho tới khi mỗi phiên phải trả tiền cho toàn bộ lịch sử.
 
 ## Changelog — supersede
+- `02-41` **Changelog: entry mới nhất ở trên cùng,** chèn ngay sau header. <!-- gate: validate -->
+- `02-42` **Entry đảo/thay quyết định cũ mở đầu bằng**
+  `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`, nêu đúng khoá ngày của entry bị thay (máy nối bằng
+  khoá đó để gắn nhãn "ĐÃ BỊ THAY" cho entry cũ). Ngày có nhiều entry mà không rõ khoá ⇒ bỏ qua, không đoán. Không
+  sửa/xoá entry cũ; tuỳ chọn thêm `> ⤴ Đã bị thay bởi [ngày].` ở entry cũ. <!-- gate: validate -->
 - `02-43` **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì sao · số đo**. Chi tiết thiết kế → `docs/plan/NN_*`; tường thuật quá trình → bỏ. Lý do là số học: ở `changes_keep` ~180 dòng thì **bốn** entry 50 dòng chiếm trọn vùng active, tức viết dài làm chính cơ chế archive thành vô nghĩa. `zemory validate` báo entry vượt trần (advisory) — đo trên 76 entry thật: p50 19 dòng, nên 30 là rộng rãi với một entry bình thường. <!-- gate: validate -->
 
 ## Phạm vi project (BẮT BUỘC — luật cứng)
@@ -214,6 +216,21 @@
   phiên (`zemory memory …` · `peers` · `graph`) không bị chặn. Không có cờ vượt. Khai thêm file bắt đọc: khoá marker
   `readFirst`. Giới hạn: host không ghi transcript ⇒ cho qua (fail-open); phần "đòi theo việc" chỉ phủ chỗ máy đoán
   tất định được — luật chữ vẫn là tầng quyết định. <!-- gate: read-first -->
+
+## Dựng chốt máy cho luật
+- `02-73` **Viết hoặc nhận một luật ⇒ phân loại rồi dựng chốt máy; chữ chỉ là tầng cuối.** Hỏi: lúc vi phạm, máy nhìn thấy gì?
+  · **① Hành động trên tool** — xoá · push · ghi ngoài repo · SQL vào máy chủ · sửa đường cấm · lệnh git huỷ việc ⇒ nhánh guard
+    PreToolUse soi `tool_name` + lệnh/đường dẫn; việc được phép một lần ⇒ cờ `.allow-*` (`02-56`).
+  · **② Nội dung đang ghi** — EOL · tên file/định danh · chính tả/ngôn ngữ · câu trích lời · mục mới trong sổ · SQL viết tại chỗ ⇒
+    hook PreToolUse trên Write/Edit, chỉ soi phần THÊM (dòng đã có không tính) · file vào git ⇒ pre-commit · khuôn của file
+    docs ⇒ `zemory validate` · cây thư mục ⇒ `zemory conform` · bất biến của mã ⇒ test trong cổng `npm run check`.
+  · **③ Phán đoán · lời nói** — hỏi khi chưa rõ · chưa xác minh · trình thiết kế trước · hiện từng bước ⇒ không có lời gọi tool
+    để móc: vào `## Lõi`. Có cửa nhận ra được (lời nhắn khớp từ khoá · ghi vào `frontend/` · chạy script gửi mail) ⇒ thêm câu
+    nhắc (UserPromptSubmit) hoặc đòi đọc skill (trigger của `read-first`).
+  Mỗi chốt: một file `<số luật>_<tên>.cjs` trong `<nhà harness>/hooks/` · câu chặn nêu số luật và nguyên văn luật · có ca DƯƠNG,
+  ca ÂM (thứ trông giống mà phải cho qua) và phá mã cho test đỏ (`02-13`) · chính hook lỗi thì cho qua (fail-open). Luật
+  riêng của repo ⇒ cổng của repo: lệnh khai ở khoá marker `repoGates` (pre-commit chạy) hoặc test trong cổng. Có chốt rồi ⇒
+  dời luật ra khỏi `## Lõi`, gắn `<!-- gate: … -->`. Kiểm: `zemory gates` (luật thiếu dấu · luật lõi mang dấu · lõi vượt trần). <!-- gate: gates -->
 
 ## Cổng cho hiến pháp (BẮT BUỘC — luật cứng)
 

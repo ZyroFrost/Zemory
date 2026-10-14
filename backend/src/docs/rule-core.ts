@@ -12,7 +12,7 @@ import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 export const CORE_START = "<!-- zemory:core:start";
 export const CORE_END = "<!-- zemory:core:end -->";
 /** The core section may not grow past this (characters of the block, markers included). Ratchet: only ever lowered. */
-export const CORE_MAX_CHARS = 14000;
+export const CORE_MAX_CHARS = 11000;
 /** Gate kinds a mark may name. `test:<name>` must resolve to backend/test/<name>.test.mjs where that folder exists. */
 export const GATE_KINDS = ["guard", "hook", "test", "validate", "conform", "doctor", "gates", "peers", "read-first"] as const;
 
@@ -38,7 +38,9 @@ export function ruleBlocks(text: string): RuleBlock[] {
   const close = (): void => {
     if (!cur) return;
     const body = cur.body.join("\n");
-    const g = /<!-- gate: ([^>]*?) -->/.exec(body);
+    // The LAST mark of the block is the rule's own: a rule may quote the mark syntax as an example in its text (02-73).
+    const marks = [...body.matchAll(/<!-- gate: ([^>]*?) -->/g)];
+    const g = marks.length ? marks[marks.length - 1] : null;
     out.push({ id: cur.id, line: cur.line, text: body, inCore: cur.inCore, gate: g ? g[1].trim() : null });
     cur = null;
   };
@@ -138,7 +140,7 @@ export function coreIssues(text: string, root: string | null): CoreIssues {
 export function coreIssueLines(i: CoreIssues): string[] {
   const out: string[] = [];
   if (i.noCore) out.push("02_RULES has no core section (zemory:core markers) — take the current standard (`zemory sync --standard`)");
-  if (i.unmarked.length) out.push(`rule(s) ${i.unmarked.join(", ")} outside the core carry no gate mark — add <!-- gate: … --> or move them into the core`);
+  if (i.unmarked.length) out.push(`rule(s) ${i.unmarked.join(", ")} outside the core carry no gate mark — build the gate and mark it (how: rule 02-73), or move them into the core`);
   if (i.gatedInCore.length) out.push(`rule(s) ${i.gatedInCore.join(", ")} in the core carry a gate mark — a gated rule leaves the core`);
   if (i.badGate.length) out.push(`gate mark(s) that do not resolve: ${i.badGate.join(" · ")}`);
   if (i.overCap) out.push(`the core section is ${i.overCap} characters, over the ${CORE_MAX_CHARS} cap — tighten it or gate a rule`);
