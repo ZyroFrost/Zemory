@@ -190,4 +190,4 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 |---|---|---|---|
 | _ | _(mỗi điều của `01_CONSTITUTION` một dòng — agent repo tự điền và dựng hook)_ | _ | _ |
 
-<!-- zemory-standard: 2026-10-08 -->
+<!-- zemory-standard: 2026-10-14 -->
