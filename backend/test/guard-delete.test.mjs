@@ -9,8 +9,9 @@
 // The test calls the REAL guard through stdin (the hook protocol: exit 2 = block) rather than reading regexes —
 // what is under inspection is BEHAVIOUR, not how the code is written.
 //
-// The SECOND invariant, just as important: the gate must NOT be noisy. Deleting an ordinary file must
-// PASS; blocking everything means every command needs a flag, and "a noisy gate is an ignored gate".
+// The SECOND invariant: the gate must block for the RIGHT reason and let through what is not a delete in the repo.
+// Since 2026-10-14 (rule 02-10, plan/27 §2h) every in-repo file delete asks first — the 2026-08-11 "an ordinary file
+// passes" exception is withdrawn; temp/scratch folders, mere mentions and `git rm --cached` still pass.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -108,18 +109,45 @@ test("NEGATIVE CASE (segment): a secret name in a segment OTHER than the delete 
     "rm out.txt; cat ." + "env.example",
   ]) {
     const r = ask(bash(cmd));
-    assert.equal(r.blocked, false, cmd + " — a secret in another segment must be LET THROUGH (blocking wrongly makes people stop writing self-checking commands): " + r.say);
+    // Since 2026-10-14 every in-repo delete asks first (02-10), so the command IS blocked — but for the delete itself,
+    // never for a secret named in ANOTHER segment (that wrong reason teaches people to stop writing self-checks).
+    assert.doesNotMatch(r.say, /secret/i, cmd + " — a secret in another segment must not be the reason: " + r.say);
+    assert.match(r.say, /02-10/, cmd + " — the in-repo delete is what asks: " + r.say);
   }
   // and the positive case right beside it so a mutation cannot slip through: a secret in the ACTUAL delete segment is still BLOCKED
   const bad = ask(bash("echo ok && rm ." + "env"));
   assert.equal(bad.blocked, true, "deleting a secret in the delete segment must still be BLOCKED");
 });
 
-test("NOT NOISY: deleting an ordinary file still passes", () => {
-  for (const cmd of ["rm backend/src/ui.ts", "Remove-Item backend/src/ui.ts", "rm /tmp/x.txt"]) {
+// 02-10 (plan/27 §2h, 2026-10-14) withdraws the 2026-08-11 "an ordinary file passes" exception: every delete of a file in
+// the repo asks first. What still passes: temp/scratch folders, commands that only MENTION a delete, `git rm --cached`.
+test("02-10: every in-repo file delete asks first; temp folders, mentions and git rm --cached pass", () => {
+  const tmp = join(tmpdir(), "zm-scratch-x.txt");
+  for (const cmd of ["rm backend/src/ui.ts", "Remove-Item backend/src/ui.ts", "del notes.txt", "git rm backend/src/ui.ts",
+    `node -e "require('fs').unlinkSync('backend/src/ui.ts')"`, `python -c "import os; os.remove('a.txt')"`]) {
     const r = ask(bash(cmd));
-    assert.equal(r.blocked, false, `blocked wrongly (the gate will be ignored): ${cmd}\n${r.say}`);
+    assert.equal(r.blocked, true, `an in-repo delete must ask first: ${cmd}\n${r.say}`);
+    assert.match(r.say, /02-10/, `the block must cite rule 02-10: ${cmd}`);
   }
+  for (const cmd of ["rm /tmp/x.txt", `Remove-Item "${tmp}"`, "echo 'run rm build.log later'", "git rm --cached secret-free.txt"]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `must pass: ${cmd}\n${r.say}`);
+  }
+});
+
+// 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
+test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
+  const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  const edit = (rel, o, n) => ({ tool_name: "Edit", tool_input: { file_path: join(ROOT, rel), old_string: o, new_string: n } });
+  const rules = "docs_template/05_app/agent/02_RULES.md";
+  const hp = "docs_template/05_app/agent/01_CONSTITUTION.md";
+  const drop = ask(edit(rules, "- `02-41` Mới nhất ở trên cùng.\n- `02-42` Entry đảo", "- `02-42` Entry đảo"));
+  assert.equal(drop.blocked, true, `dropping 02-41 must be blocked\n${drop.say}`);
+  assert.match(drop.say, /removes rule 02-41/);
+  assert.equal(ask(edit(rules, "- `02-41` Mới nhất ở trên cùng.", "- `02-41` Mới nhất luôn ở trên cùng.")).blocked, false, "rewording keeps the number");
+  const hpDrop = ask(edit(hp, "3. **Mỗi lớp**\n4. **1 capability**", "4. **1 capability**"));
+  assert.equal(hpDrop.blocked, true, `dropping article 3 must be blocked\n${hpDrop.say}`);
+  assert.equal(ask(edit(hp, "3. **Mỗi lớp** …", "3. *(BÃI BỎ — giữ số)*")).blocked, false, "abolishing keeps the number");
 });
 
 test("an OLD policy with a NEW guard: it still blocks and must NOT throw", () => {
@@ -191,10 +219,10 @@ ${r.say}`);
     assert.equal(w.blocked, true, `the glob must block WRITE:
 ${w.say}`);
 
-    // NEGATIVE: the glob path's neighbours must NOT be blocked - that is where the agent writes and deletes daily
+    // NEGATIVE: the glob path's neighbours are not PROTECTED — they still ask under 02-10 (any delete), never as protected
     for (const cmd of ["rm data/case_x/02_processing/tmp.csv", "rm build.log", "rm docs/note.md"]) {
       const r = ask(bash(cmd), g.guard);
-      assert.equal(r.blocked, false, `must NOT be blocked wrongly: ${cmd}
+      assert.doesNotMatch(r.say, /protected path/i, `must NOT be blocked as protected: ${cmd}
 ${r.say}`);
     }
   } finally {
@@ -206,7 +234,7 @@ test("a plain prefix still works exactly as before after the two matchers were m
   const g = guardWithPolicy(["data"]);
   try {
     assert.equal(ask(bash("rm data/x/y.csv"), g.guard).blocked, true, "a prefix must block its child paths");
-    assert.equal(ask(bash("rm database.md"), g.guard).blocked, false, "it must not block `database.md` merely for starting with `data`");
+    assert.doesNotMatch(ask(bash("rm database.md"), g.guard).say, /protected path/i, "`database.md` must not count as protected merely for starting with `data`");
   } finally {
     g.cleanup();
   }
