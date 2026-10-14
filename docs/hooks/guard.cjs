@@ -875,6 +875,13 @@ function main() {
   } else if (isCommandTool) {
     checkBash(String(ti.command));
   }
+  // 02-25 SQL ONE WAY (02-25_sql-one-way.cjs, policy.sql) - new inline SQL in code is blocked; the message carries the rule.
+  // Present only when the repo has a named-SQL store file. A failure of the hook itself lets the action through.
+  if (isWriteTool && POLICY.sql) {
+    let sqlMsg = null;
+    try { sqlMsg = require(path.join(HERE, "02-25_sql-one-way.cjs")).check(payload, ROOT, POLICY); } catch { sqlMsg = null; }
+    if (sqlMsg) deny(sqlMsg);
+  }
   // READ BEFORE WRITE (read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.
   let rfMsg = null;
