@@ -225,4 +225,4 @@ EOL của file MÁY SINH ⛔ File do máy ghép TỪ file khác (archive ← `05
 |---|---|---|---|
 | _ | _(mỗi điều của `01_CONSTITUTION` một dòng — agent repo tự điền và dựng hook)_ | _ | _ |
 
-<!-- zemory-standard: 2026-10-08 -->
+<!-- zemory-standard: 2026-10-14 -->
