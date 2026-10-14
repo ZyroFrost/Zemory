@@ -3964,6 +3964,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       daemonLog(`[channel] chiều với ${id.slice(0, 11)}…: ${r.direction}${r.source ? ` · nguồn ${r.source.slice(0, 11)}…` : ""}${r.origin ? ` · gốc ${r.origin.slice(0, 11)}…` : ""}`);
       return json(res, r);
     }
+    // Auto-settle of the two-way review queue (plan/24 §9.6b) — the cluster's gear. Saving a policy settles what is
+    // already waiting, so the queue left on screen is exactly what still needs a hand. `set-` ⇒ POST only (MUTATING).
+    if (p === "/mirror-auto") {
+      const { getMirrorAuto } = await import("./config/settings.js");
+      const ms = await import("./memory/channel/mirrorstate.js");
+      return json(res, { ok: true, policy: getMirrorAuto(), log: ms.autoLog().slice(0, 5) });
+    }
+    if (p === "/set-mirror-auto") {
+      const { setMirrorAuto, getMirrorAuto } = await import("./config/settings.js");
+      const mode = u.searchParams.get("mode");
+      const machine = (u.searchParams.get("machine") ?? "").trim();
+      if (mode !== "ask" && mode !== "author" && mode !== "fixed") return json(res, { ok: false, error: "bad-args" });
+      if (mode === "fixed" && !machine) return json(res, { ok: false, error: "bad-args" });
+      setMirrorAuto(mode === "fixed" ? { mode, machine } : { mode });
+      const ms = await import("./memory/channel/mirrorstate.js");
+      const ch = await import("./memory/channel/index.js");
+      const r = ms.autoResolve(ms.mirrorDb(), getMirrorAuto(), ch.channelIdentity().deviceId);
+      daemonLog(`[mirror] tự duyệt: ${mode}${machine ? ` · ${machine.slice(0, 11)}…` : ""} — áp ${r.applied.length}, còn chờ ${r.left}${r.errors ? `, lỗi ${r.errors}` : ""}`);
+      return json(res, { ok: true, policy: getMirrorAuto(), applied: r.applied.length, left: r.left, errors: r.errors });
+    }
     if (p === "/channel-pair") {
       const { getP2pPeers, setP2pPeers, getP2pPeerAddrs, setP2pPeerAddrs } = await import("./config/settings.js");
       const id = (u.searchParams.get("id") ?? "").trim();

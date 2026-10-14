@@ -431,6 +431,7 @@
         cards.push({me:false,name:sp&&sp.name?sp.name:((c.peerNames||{})[id]||''),code:id,id:id,addr:sp?sp.host:'',port:sp?sp.port:'',at:sp?sp.seenAt:'',st:pstate[id]||null,lk:plinks[id]||null,dir:(c.peerDirection||{})[id]||null,self:c.deviceId||'',lat:(c.peerLatest||{})[id]||''});
       });
       zset('p2pClusterN', t('p2p.clusterN').replace('{n}', String(cards.length)));
+      CLUSTER=cards.map(function(m){return {id:m.id,name:m.name||m.id,me:!!m.me};});
       cl.innerHTML='';
       cards.forEach(function(m){
         var d=document.createElement('div');
@@ -629,6 +630,34 @@
     }
   }
   function loadQueue(){return zGet('/mirror-queue').then(renderQueue).catch(function(){});}
+  // ── ⚙ TỰ NHẬN THAY ĐỔI (plan/24 §9.6b): the machine settles the review queue by a policy instead of asking per item.
+  //    The queue stays the only door; saving settles what is already waiting, and what is left is what needs a hand.
+  var CLUSTER=[];
+  function mirrorAutoDialog(){
+    zGet('/mirror-auto').then(function(r){
+      var pol=(r&&r.policy)||{mode:'ask'};
+      var opt=function(v,label,sub){return '<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;cursor:pointer"><input type="radio" name="mirAuto" value="'+v+'"'+(pol.mode===v?' checked':'')+'>'
+        +'<span><span style="font-size:12.5px">'+stdEsc(label)+'</span>'+(sub?'<div class="muted" style="font-size:11px;margin-top:2px">'+stdEsc(sub)+'</div>':'')+'</span></label>';};
+      var sel='<select class="rsel xs" id="mirAutoMachine" style="margin-left:26px">'+CLUSTER.map(function(m){
+        return '<option value="'+stdEsc(m.id)+'"'+(pol.machine&&pol.machine.replace(/-/g,'').toUpperCase()===m.id.replace(/-/g,'').toUpperCase()?' selected':'')+'>'+stdEsc(m.name+(m.me?' · '+t('p2p.thisMachine'):''))+'</option>';}).join('')+'</select>';
+      var log=(r&&r.log)||[];
+      var logHtml=log.length?'<div class="section-t" style="margin-top:12px">'+stdEsc(t('mir.autoLogH'))+'</div>'+log.map(function(a){
+        return '<div class="muted" style="font-size:11px;padding:2px 0">'+stdEsc(a.area+'/'+a.rel)+' · '+stdEsc(t(a.choice==='mine'?'mir.autoKeptMine':a.choice==='merged'?'mir.autoMerged':'mir.autoTookTheirs'))+(a.stash?' · '+stdEsc(t('mir.autoStashed')):'')+' · '+stdEsc(zAgo(a.at))+'</div>';}).join(''):'';
+      var body=opt('ask',t('mir.autoAsk'),'')+opt('author',t('mir.autoAuthor'),t('mir.autoAuthorSub'))+opt('fixed',t('mir.autoFixed'),'')+sel+logHtml;
+      zDialog({size:'sm',title:t('mir.autoTitle'),bodyHtml:body,okLabel:t('mir.autoSave'),onOk:function(){
+        var ch=document.querySelector('input[name="mirAuto"]:checked');var mode=ch?ch.value:'ask';
+        var mid=(zid('mirAutoMachine')||{}).value||'';
+        var okb=zid('zDlgOk');if(okb)okb.disabled=true;
+        zSave('/set-mirror-auto?mode='+mode+(mode==='fixed'?'&machine='+encodeURIComponent(mid):''),function(){if(okb)okb.disabled=false;}).then(function(j){
+          if(okb)okb.disabled=false;
+          if(j)zDlgMsg(t('mir.autoDone').replace('{n}',String(j.applied||0)).replace('{m}',String(j.left||0)));
+          loadQueue();
+        });
+        return true;
+      }});
+    }).catch(function(){});
+  }
+  document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#mirAutoBtn'))mirrorAutoDialog();});
   window.zLoadMirrorQueue=loadQueue;
 
   // Sync direction of one pair. Saved through zSave: a refused flip (pending items · files still

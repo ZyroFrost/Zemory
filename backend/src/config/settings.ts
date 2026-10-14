@@ -94,6 +94,8 @@ interface ZConfig {
   p2pPeerNames?: Record<string, string>;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
+  /** plan/24 §9.6b — tự duyệt hàng chờ hai chiều — xem getMirrorAuto. */
+  mirrorAuto?: { mode?: string; machine?: string };
   /** Lịch tự sync — xem getAutosyncSchedule. */
   autosyncSchedule?: { mode?: string; everyMin?: number; times?: string[] };
   /** Tự kiểm lại màn Tính năng theo chu kỳ — xem getChecksAuto. */
@@ -642,6 +644,31 @@ export function setPeerLastSync(peerId: string, info: { at: string; via: string;
   if (!id) return; // không có danh tính thì không ghi sổ — đừng đẻ một hàng "(không rõ)"
   const c = read();
   c.p2pPeerLastSync = { ...(c.p2pPeerLastSync ?? {}), [id]: info };
+  write(c);
+}
+
+/**
+ * plan/24 §9.6b — how THIS machine settles the two-way review queue without asking:
+ *   · `ask`    every item waits for a click (the default — the old behaviour);
+ *   · `author` the machine that made the change wins; both changed the same lines ⇒ the EARLIER edit wins and the later
+ *              one is stashed on the machine that wrote it; no way to tell which was earlier ⇒ ask;
+ *   · `fixed`  one chosen machine of the cluster (`machine` = its device ID, this machine included) always wins.
+ * One-way pairs are untouched (their source already wins). Per machine: each machine decides what it takes.
+ */
+export type MirrorAutoMode = "ask" | "author" | "fixed";
+export interface MirrorAuto {
+  mode: MirrorAutoMode;
+  machine?: string;
+}
+export function getMirrorAuto(): MirrorAuto {
+  const v = read().mirrorAuto;
+  if (v && (v.mode === "author" || v.mode === "ask")) return { mode: v.mode };
+  if (v && v.mode === "fixed" && typeof v.machine === "string" && v.machine.trim()) return { mode: "fixed", machine: v.machine.trim() };
+  return { mode: "ask" };
+}
+export function setMirrorAuto(v: MirrorAuto): void {
+  const c = read();
+  c.mirrorAuto = v.mode === "fixed" ? { mode: "fixed", machine: v.machine } : { mode: v.mode };
   write(c);
 }
 
