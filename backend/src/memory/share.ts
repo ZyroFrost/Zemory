@@ -37,6 +37,7 @@ import { messageKey, receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
 import { markVectorsShipped, unshippedVectorIds } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
+import { Q } from "./store/queries.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
 const TAG_BYTES = 16;
@@ -248,7 +249,7 @@ function buildRowsSnapshot(
   const db = new Database(out);
   try {
     db.pragma("journal_mode = OFF"); // throwaway: no WAL sidecar to ship
-    db.prepare("ATTACH DATABASE ? AS src").run(sourcePath);
+    db.prepare(Q.attachSrc).run(sourcePath);
     try {
       for (const t of db
         .prepare(
@@ -333,7 +334,7 @@ function buildRowsSnapshot(
       })();
       return { path: out, cleanup, stats };
     } finally {
-      db.prepare("DETACH DATABASE src").run();
+      db.prepare(Q.detachSrc).run();
     }
   } catch (error) {
     db.close();
@@ -715,7 +716,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
       const count = (sql: string): number => (db.prepare(sql).get() as { c: number }).c;
       const sessionsBefore = count("SELECT COUNT(*) c FROM sessions");
       const messagesBefore = count("SELECT COUNT(*) c FROM messages");
-      db.prepare("ATTACH DATABASE ? AS src").run(srcPath);
+      db.prepare(Q.attachSrc).run(srcPath);
       try {
         // Scoped sync: don't pull "shared" lanes the user excluded. Skip the
         // incoming sessions that match, and any messages under them.
@@ -800,7 +801,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
           db.exec("DELETE FROM sessions WHERE message_count = 0");
         })();
       } finally {
-        db.prepare("DETACH DATABASE src").run();
+        db.prepare(Q.detachSrc).run();
       }
       const sessionsAfter = count("SELECT COUNT(*) c FROM sessions");
       const messagesAfter = count("SELECT COUNT(*) c FROM messages");
@@ -1659,7 +1660,7 @@ export function pruneDriveHost(o: {
     const db = openMemory(o.dbPath ?? currentMemoryDb());
     let maxLocal: number;
     try {
-      maxLocal = (db.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+      maxLocal = (db.prepare(Q.maxMessageId).get() as { m: number }).m;
     } finally {
       db.close();
     }
@@ -2457,7 +2458,7 @@ async function pushToDrive(o: {
     // reads (drive:<host> in sync_state), and every message is in this snapshot.
     const wdb = openMemory(dbPath);
     try {
-      const maxId = (wdb.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+      const maxId = (wdb.prepare(Q.maxMessageId).get() as { m: number }).m;
       writeExportWatermark(wmKeyFor(o.channel ?? "drive", host), maxId, dbPath);
     } finally {
       wdb.close();
@@ -2654,7 +2655,7 @@ export async function vectorCatchUp(opts: {
     // ra cũng không có bảng — đúng ca đang phải chữa. Hỏi trước, đừng để SQLITE_ERROR (bản đầu
     // của tôi quên, và test bắt được ngay).
     const hasVecTable = (d: Database.Database): boolean =>
-      !!d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'").get();
+      !!d.prepare(Q.hasVecRowidsTable).get();
 
     const missingKeys = new Set<string>();
     // 🔴 ĐẾM TIN/PHIÊN CỦA KÊNH — vế "CÓ HỤT KHÔNG", khác hẳn vế "thiếu vector" ở dưới.
@@ -2669,8 +2670,8 @@ export async function vectorCatchUp(opts: {
     let probeMessages = 0;
     const p = new Database(probe, { readonly: true });
     try {
-      probeSessions = (p.prepare("SELECT count(*) c FROM sessions").get() as { c: number }).c;
-      probeMessages = (p.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
+      probeSessions = (p.prepare(Q.countSessions).get() as { c: number }).c;
+      probeMessages = (p.prepare(Q.countMessages).get() as { c: number }).c;
       const none = !hasVecTable(p);
       // Khoá BỀN = `messageKey` (uuid, hoặc timestamp+content khi uuid NULL) — CÙNG khoá mà
       // `vector_ship` dùng. Bản đầu lọc `uuid IS NOT NULL` ở đây ⇒ 10.271 vector của tin
@@ -2694,8 +2695,8 @@ export async function vectorCatchUp(opts: {
     const src = new Database(dbPath, { readonly: true });
     try {
       // Mốc so cho vế "có hụt không" — đọc ở đây vì `src` đã mở sẵn, không tốn lượt mở kho nào.
-      localSessions = (src.prepare("SELECT count(*) c FROM sessions").get() as { c: number }).c;
-      localMessages = (src.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
+      localSessions = (src.prepare(Q.countSessions).get() as { c: number }).c;
+      localMessages = (src.prepare(Q.countMessages).get() as { c: number }).c;
       // Máy này chưa nhúng gì ⇒ không có gì để bù (fail-open, điều 9).
       if (hasVecTable(src)) {
         for (const r of src
@@ -2720,7 +2721,7 @@ export async function vectorCatchUp(opts: {
     const top = (() => {
       const d = openMemory(dbPath);
       try {
-        return (d.prepare("SELECT COALESCE(MAX(id),0) m FROM messages").get() as { m: number }).m;
+        return (d.prepare(Q.maxMessageId).get() as { m: number }).m;
       } finally {
         d.close();
       }

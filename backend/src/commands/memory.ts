@@ -44,6 +44,7 @@ import { getDriveDir, getScopeExclude, setScopeExclude, setWebAuth, setWebPull, 
 import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
+import { Q } from "../memory/store/queries.js";
 
 function fmtDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
@@ -1364,7 +1365,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const conn = openMemory(currentMemoryDb());
       let n: number;
       try {
-        n = (conn.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c;
+        n = (conn.prepare(Q.countMessages).get() as { c: number }).c;
       } finally {
         conn.close();
       }

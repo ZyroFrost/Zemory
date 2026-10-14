@@ -11,6 +11,7 @@
 
 import { Worker } from "node:worker_threads";
 import { createRequire } from "node:module";
+import { Q } from "../memory/store/queries.js";
 
 export interface DriveProgress {
   syncPercent: number;
@@ -30,7 +31,7 @@ try {
   db.pragma("busy_timeout = 5000");
   const row = db.prepare("SELECT last_message_id AS id, updated_at AS at FROM sync_state WHERE bundle = ?").get(workerData.bundle);
   const wm = (row && row.id) || 0;
-  const total = db.prepare("SELECT COUNT(*) c FROM messages").get().c;
+  const total = db.prepare(workerData.countSql).get().c;
   const synced = db.prepare("SELECT COUNT(*) c FROM messages WHERE id <= ?").get(wm).c;
   const newest = db.prepare("SELECT MAX(timestamp) t FROM messages").get();
   parentPort.postMessage({ ok: true, total, synced, lastPushAt: (row && row.at) || null, newestAt: (newest && newest.t) || null });
@@ -60,7 +61,9 @@ export function driveCountsInWorker(
   return new Promise((resolve) => {
     let w: Worker;
     try {
-      w = new Worker(WORKER_SRC, { eval: true, workerData: { dbPath, bundle, sqlite: sqlitePath() } });
+      // The worker source is TEXT (eval) — it cannot import the store, so the named query travels in workerData.
+      // A `Q.x` written INSIDE WORKER_SRC is an unbound name at run time (2026-10-14: "Q is not defined" broke the Drive card).
+      w = new Worker(WORKER_SRC, { eval: true, workerData: { dbPath, bundle, sqlite: sqlitePath(), countSql: Q.countMessages } });
     } catch (e) {
       onFail?.(`không dựng được worker: ${e instanceof Error ? e.message : String(e)}`);
       return resolve(null);

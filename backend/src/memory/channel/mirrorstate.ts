@@ -45,6 +45,7 @@ import {
   type MirrorArea,
   type MirrorEntry,
 } from "./mirror.js";
+import { Q } from "../store/queries.js";
 
 /**
  * Kết luận cho MỘT đường dẫn, nhìn từ máy NHẬN.
@@ -234,12 +235,12 @@ export function freshenRow(db: MemoryDB, row: QueueRow, opts: { repoRoot?: strin
   if (v === "same") {
     // Người dùng tự tay chép cho khớp ⇒ hai bên gặp nhau ⇒ đóng mốc, dòng hết lý do.
     writeBase(db, row.peerId, row.area, row.rel, row.theirHash, theirs && isMergeableText(theirs) ? theirs : null);
-    db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(row.id);
+    db.prepare(Q.deletePeerFileQueued).run(row.id);
     return null;
   }
   if (v === "push" || v === "none") {
     // Bản máy này mới hơn (họ chưa đổi kể từ mốc) ⇒ lượt sau ta ĐẨY, không có gì để nhận.
-    db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(row.id);
+    db.prepare(Q.deletePeerFileQueued).run(row.id);
     return null;
   }
   let final: QueueRow["verdict"] = v === "take" ? "take" : "block";
@@ -370,7 +371,7 @@ export function applyQueued(
     // Mốc mới = nội dung HAI MÁY vừa thống nhất.
     writeBase(db, row.peerId, row.area, row.rel, hashBytes(body), isMergeableText(body) ? body : null);
   }
-  db.prepare("DELETE FROM peer_file_queue WHERE id=?").run(id);
+  db.prepare(Q.deletePeerFileQueued).run(id);
   return { ok: true, wrote: Boolean(body), path: abs };
 }
 

@@ -31,6 +31,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, s
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { currentMemoryDir } from "./db.js";
+import { Q } from "./store/queries.js";
 
 export interface CookieSource {
   key: string;
@@ -532,9 +533,9 @@ export function borrowCookies(opts: BorrowOptions): BorrowResult {
       const keepHosts = [...hosts, ...AUTH_HOSTS];
       const like = keepHosts.map(() => "host_key LIKE ?").join(" OR ");
       const args = keepHosts.map((h) => `%${h}`);
-      const before = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;
+      const before = (db.prepare(Q.countCookies).get() as { n: number }).n;
       db.prepare(`DELETE FROM cookies WHERE NOT (${like})`).run(...args);
-      kept = (db.prepare("SELECT COUNT(1) n FROM cookies").get() as { n: number }).n;
+      kept = (db.prepare(Q.countCookies).get() as { n: number }).n;
       dropped = before - kept;
       db.exec("VACUUM");
     } finally {

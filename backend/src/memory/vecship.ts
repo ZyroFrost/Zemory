@@ -19,6 +19,7 @@
 import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
+import { Q } from "./store/queries.js";
 
 export interface ShipResult {
   /** Số vector đã nhét vào gói. */
@@ -286,7 +287,7 @@ export function receiveVectorsFrom(
     }
 
     dst.defaultSafeIntegers(true);
-    const find = dst.prepare("SELECT id FROM messages WHERE session_id = ? AND uuid = ?");
+    const find = dst.prepare(Q.messageIdByUuid);
     // Tra theo KHOÁ BỀN: uuid nếu có, còn tin uuid=NULL thì băm (mốc thời gian + nội dung).
     // Bảng tra chỉ dựng cho nhóm NULL (đo: 11.233/239.423 = 4,7%) nên rẻ — không băm cả kho.
     const byHash = new Map<string, bigint>();
@@ -295,7 +296,7 @@ export function receiveVectorsFrom(
       .iterate() as Iterable<{ id: bigint; session_id: string; timestamp: string | null; content: string | null }>) {
       byHash.set(`${m.session_id}\u0000${messageKey(null, m.timestamp, m.content)}`, m.id);
     }
-    const ins = dst.prepare("INSERT OR REPLACE INTO vec_chunks(rowid, embedding) VALUES (?, ?)");
+    const ins = dst.prepare(Q.putVecChunk);
     const rows = inc.prepare("SELECT session_id, mkey, embedding FROM vector_ship").all() as {
       session_id: string;
       mkey: string;
@@ -332,7 +333,7 @@ export function receiveVectorsFrom(
           ((dst.prepare("SELECT COALESCE(MAX(rowid), 0) m FROM vec_map").get() as { m: bigint }).m || SYNTH_BASE - 1n) + 1n;
         if (next < SYNTH_BASE) next = SYNTH_BASE;
         const seen = dst.prepare("SELECT rowid FROM vec_map WHERE message_id = ? AND seq = ?");
-        const mapPut = dst.prepare("INSERT OR REPLACE INTO vec_map(rowid, message_id, seq) VALUES (?, ?, ?)");
+        const mapPut = dst.prepare(Q.putVecMap);
         const chunkRows = inc.prepare("SELECT session_id, mkey, seq, embedding FROM vector_ship_chunk").all() as {
           session_id: string;
           mkey: string;

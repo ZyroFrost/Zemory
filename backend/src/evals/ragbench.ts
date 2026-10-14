@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { openMemory } from "../memory/db.js";
 import { search, searchHybrid } from "../memory/search.js";
 import { embedPending } from "../memory/vectors.js";
+import { Q } from "../memory/store/queries.js";
 
 // doc id = insertion order (1-based)
 const DOCS: string[] = [
@@ -81,7 +82,7 @@ export async function runRagBench(opts: { dbPath?: string; rerank?: boolean } = 
   db.prepare("INSERT OR IGNORE INTO sessions(id, source, project_root, message_count) VALUES (?,?,?,?)").run(
     "bench", "bench", "C:\\bench", DOCS.length,
   );
-  if ((db.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c === 0) {
+  if ((db.prepare(Q.countMessages).get() as { c: number }).c === 0) {
     const ins = db.prepare("INSERT INTO messages(session_id, uuid, role, content, timestamp) VALUES (?,?,?,?,?)");
     DOCS.forEach((t, i) => ins.run("bench", `d${i + 1}`, "user", t, `2026-06-26T00:0${i}:00Z`));
   }

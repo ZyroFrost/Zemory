@@ -18,6 +18,7 @@ import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { type SearchHit, search, searchHybrid } from "../memory/search.js";
 import { corpusByKind, type LabeledQuery, NEGATIVE_CORPUS, NEGATIVE_HOLDOUT, RECALL_CORPUS } from "./recall-corpus.js";
 import { vectorsByRowid } from "../memory/vectors.js";
+import { Q } from "../memory/store/queries.js";
 
 export type { LabeledQuery };
 
@@ -117,7 +118,7 @@ function loadCorpus(): LabeledQuery[] {
 
 /** Nhãn (session,uuid) → id hiện hành trong DB này. Không thấy ⇒ null (đếm vào `missing`). */
 function resolveGold(db: MemoryDB, q: LabeledQuery): number | null {
-  const row = db.prepare("SELECT id FROM messages WHERE session_id = ? AND uuid = ?").get(q.session, q.uuid) as
+  const row = db.prepare(Q.messageIdByUuid).get(q.session, q.uuid) as
     | { id: number }
     | undefined;
   return row?.id ?? null;

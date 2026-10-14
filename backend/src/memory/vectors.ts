@@ -57,6 +57,7 @@ import {
   useEmbedDtype,
   type EmbedProfile,
 } from "./embed.js";
+import { Q } from "./store/queries.js";
 
 type Conn = Database.Database;
 
@@ -76,7 +77,7 @@ export function vecConnect(dbPath: string): Conn {
 }
 
 function tableExists(db: Conn, name = "vec_chunks"): boolean {
-  return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+  return !!db.prepare(Q.tableExists).get(name);
 }
 
 /**
@@ -182,7 +183,7 @@ function chunksOf(content: string): string[] {
 /** The stored vector at a rowid, or null (e.g. canonical row was forgotten). */
 function vectorOf(db: Conn, id: number): Buffer | null {
   try {
-    const row = db.prepare("SELECT embedding FROM vec_chunks WHERE rowid = ?").get(BigInt(id)) as
+    const row = db.prepare(Q.vecEmbedding).get(BigInt(id)) as
       | { embedding: Buffer }
       | undefined;
     return row?.embedding ?? null;
@@ -199,7 +200,7 @@ const KNOWN_PROFILES: readonly EmbedProfile[] = ["gemma-prompt-v1", "bge-m3-v1"]
 /** Profile the existing index was built with; pre-profile indexes are "raw". */
 function storedProfile(db: Conn): EmbedProfile {
   try {
-    const row = db.prepare("SELECT * FROM vec_config LIMIT 1").get() as { profile?: unknown } | undefined;
+    const row = db.prepare(Q.vecConfig).get() as { profile?: unknown } | undefined;
     if (!row) return currentEmbedProfile();
     const found = KNOWN_PROFILES.find((p) => p === row.profile);
     return found ?? "raw";
@@ -216,7 +217,7 @@ const LEGACY_DTYPE = "q8";
 /** Dtype the existing index was built with; null when there is no index yet. */
 function storedDtype(db: Conn): string | null {
   try {
-    const row = db.prepare("SELECT * FROM vec_config LIMIT 1").get() as { dtype?: unknown } | undefined;
+    const row = db.prepare(Q.vecConfig).get() as { dtype?: unknown } | undefined;
     if (!row) return null;
     return typeof row.dtype === "string" && row.dtype ? row.dtype : LEGACY_DTYPE;
   } catch {
@@ -227,7 +228,7 @@ function storedDtype(db: Conn): string | null {
 /** Dims the existing index was built with (Matryoshka-sliced); else the target for ITS profile. */
 function storedDims(db: Conn): number {
   try {
-    const row = db.prepare("SELECT dims FROM vec_config LIMIT 1").get() as { dims: number } | undefined;
+    const row = db.prepare(Q.vecDims).get() as { dims: number } | undefined;
     // A brand-new index must be sized for the profile it is about to be built under (BGE 1024,
     // Gemma 768) — passing no profile here would size every new index the Gemma way.
     return row?.dims ?? targetEmbedDims(storedProfile(db));
@@ -267,7 +268,7 @@ function ensureVecTable(db: Conn, dims: number, profile: EmbedProfile): void {
       /* column already there */
     }
   }
-  if (!db.prepare("SELECT dims FROM vec_config LIMIT 1").get()) {
+  if (!db.prepare(Q.vecDims).get()) {
     db.prepare("INSERT INTO vec_config(dims, profile, dtype) VALUES (?, ?, ?)").run(dims, profile, embedConfig().dtype);
   }
 }
@@ -407,7 +408,7 @@ export async function embedPending(
     ensureMapTable(db);
     const hashGet = db.prepare("SELECT rowid FROM vec_hash WHERE hash = ?");
     const hashPut = db.prepare("INSERT OR REPLACE INTO vec_hash(hash, rowid) VALUES (?, ?)");
-    const mapPut = db.prepare("INSERT OR REPLACE INTO vec_map(rowid, message_id, seq) VALUES (?, ?, ?)");
+    const mapPut = db.prepare(Q.putVecMap);
     let nextSynth = Math.max(
       SYNTH_BASE,
       (((db.prepare("SELECT max(rowid) m FROM vec_map").get() as { m: number | null }).m ?? 0) as number) + 1,
@@ -675,7 +676,7 @@ export function vectorsByRowid(ids: number[], dbPath: string = currentMemoryDb()
     try {
       if (!tableExists(db)) return out;
       const dims = storedDims(db);
-      const get = db.prepare("SELECT embedding FROM vec_chunks WHERE rowid = ?");
+      const get = db.prepare(Q.vecEmbedding);
       for (const id of ids) {
         const row = get.get(id) as { embedding: Buffer } | undefined;
         if (row?.embedding && row.embedding.byteLength >= dims * 4) {

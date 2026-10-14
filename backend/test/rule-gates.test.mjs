@@ -46,8 +46,31 @@ const SOURCE_WRITES = {
   "memory/share.ts": 3,
   "memory/privacy.ts": 3,
 };
+const SOURCE_WRITE_RE = /\b(DELETE\s+FROM\s+(main\.)?(messages|sessions)|UPDATE\s+(main\.)?messages)\b/gi;
+// Since 2026-10-14 the SQL may live in a `<domain>/store/queries.ts` (plan/27 §2g). A definition there is not a site; a
+// CALL `Q.<name>` of a destructive entry is. Without this the gate goes blind the moment the string moves into the file.
+function sourceWriteSites() {
+  const found = {};
+  const destructive = [];
+  for (const f of tsFiles(SRC)) {
+    if (!/[\\/]store[\\/]queries\.ts$/.test(f)) continue;
+    for (const m of readFileSync(f, "utf8").matchAll(/^\s*(\w+):\s*(["'`])([\s\S]*?)\2,\s*$/gm)) {
+      if (new RegExp(SOURCE_WRITE_RE.source, "i").test(m[3])) destructive.push(m[1]);
+    }
+  }
+  const callRe = destructive.length ? new RegExp(`\\bQ\\.(${destructive.join("|")})\\b`, "g") : null;
+  for (const f of tsFiles(SRC)) {
+    if (/[\\/]store[\\/]queries\.ts$/.test(f)) continue;
+    const txt = readFileSync(f, "utf8");
+    const n = (txt.match(SOURCE_WRITE_RE) ?? []).length + (callRe ? (txt.match(callRe) ?? []).length : 0);
+    if (n) found[rel(f)] = n;
+  }
+  return { found, destructive };
+}
 test("① HP 3: code that deletes/rewrites original messages or sessions stays at the approved sites", () => {
-  ratchet(countBy(/\b(DELETE\s+FROM\s+(main\.)?(messages|sessions)|UPDATE\s+(main\.)?messages)\b/gi), SOURCE_WRITES, "deletes/rewrites of original rows");
+  const { found, destructive } = sourceWriteSites();
+  assert.ok(destructive.length >= 2, `the named destructive queries must be recognised (got ${destructive.join(", ") || "none"}) — else calls via Q.* are invisible`);
+  ratchet(found, SOURCE_WRITES, "deletes/rewrites of original rows");
 });
 
 // ② Lines measured 2026-10-07 (the 259-line sweep finished 2026-10-05); a new Vietnamese output line is a regression.

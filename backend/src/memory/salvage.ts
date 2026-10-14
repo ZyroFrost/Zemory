@@ -20,6 +20,7 @@ import { existsSync } from "node:fs";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { openMemory } from "./db.js";
+import { Q } from "./store/queries.js";
 
 export interface SalvageTable {
   table: string;
@@ -149,7 +150,7 @@ export function vectorDimsOf(dbPath: string): number {
   try {
     const db = new Database(dbPath, { readonly: true, fileMustExist: true });
     try {
-      const row = db.prepare("SELECT dims FROM vec_config LIMIT 1").get() as { dims?: number } | undefined;
+      const row = db.prepare(Q.vecDims).get() as { dims?: number } | undefined;
       return Number(row?.dims ?? 0) || 0;
     } finally {
       db.close();
@@ -173,7 +174,7 @@ export function salvageVectors(
     src.defaultSafeIntegers(true);
     dst.defaultSafeIntegers(true);
     dst.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${dims}])`);
-    const ins = dst.prepare("INSERT OR REPLACE INTO vec_chunks(rowid, embedding) VALUES (?, ?)");
+    const ins = dst.prepare(Q.putVecChunk);
     const put = dst.transaction((rows: { rowid: bigint; embedding: unknown }[]) => {
       for (const r of rows) ins.run(r.rowid, r.embedding);
     });

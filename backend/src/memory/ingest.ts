@@ -17,6 +17,7 @@ import { pruneOrphanVectors } from "./vectors.js";
 import { pruneOrphanAttachments } from "./attachments.js";
 import { isExcluded } from "./scope.js";
 import { getScopeExclude, type ScopeLane } from "../config/settings.js";
+import { Q } from "./store/queries.js";
 
 // v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
 // `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
@@ -124,7 +125,7 @@ export function scan(opts: ScanOptions = {}): ScanReport {
     // Re-use store locations a previous deep scan discovered, so a normal scan
     // never has to walk the disk again.
     const knownStores = db
-      .prepare("SELECT store_root AS root, source FROM known_stores")
+      .prepare(Q.knownStores)
       .all() as { root: string; source: string }[];
 
     // Kho import suy TỪ CHÍNH dbPath đang quét (không phải biến toàn cục) — nếu không,
@@ -578,7 +579,7 @@ function writeAttachments(
     "INSERT OR IGNORE INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, content, blob, src_path, created_at)" +
       " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
   );
-  const findAtt = db.prepare("SELECT id FROM attachment WHERE sha256 = ?");
+  const findAtt = db.prepare(Q.attachmentIdBySha);
   const linkAtt = db.prepare("INSERT OR IGNORE INTO attachment_link (message_id, attachment_id, name) VALUES (?,?,?)");
   const findMsg = db.prepare("SELECT id FROM messages WHERE session_id = ? AND uuid IS ? ORDER BY id DESC LIMIT 1");
   const now = new Date().toISOString();
@@ -642,27 +643,18 @@ function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
   ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: canonProjectRoot(a.project ?? a.cwd ?? null), cwd: canonProjectRoot(a.cwd ?? null), title: a.title ?? null, host: HOST, account: a.account ?? null });
 
   const before = a.wholeReplace
-    ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(a.sessionId) as { c: number }).c
+    ? (db.prepare(Q.countSessionMessages).get(a.sessionId) as { c: number }).c
     : 0;
-  if (a.wholeReplace) db.prepare("DELETE FROM messages WHERE session_id = ?").run(a.sessionId);
+  if (a.wholeReplace) db.prepare(Q.deleteSessionMessages).run(a.sessionId);
 
-  const ins = db.prepare(
-    `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  );
+  const ins = db.prepare(Q.insertMessage);
   let inserted = 0;
   for (const m of a.msgs) inserted += ins.run(a.sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
   writeAttachments(db, a.sessionId, a.msgs);
 
-  db.prepare(
-    `UPDATE sessions SET
-       message_count = (SELECT COUNT(*) FROM messages WHERE session_id = @id),
-       started_at    = (SELECT MIN(timestamp) FROM messages WHERE session_id = @id),
-       ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = @id)
-     WHERE id = @id`,
-  ).run({ id: a.sessionId });
+  db.prepare(Q.refreshSessionStats).run({ id: a.sessionId });
 
-  db.prepare("DELETE FROM sessions WHERE id = @id AND message_count = 0").run({ id: a.sessionId });
+  db.prepare(Q.deleteEmptySession).run({ id: a.sessionId });
   return a.wholeReplace ? Math.max(0, inserted - before) : inserted;
 }
 
@@ -794,28 +786,19 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: HOST });
 
     const before = wholeReplace
-      ? (db.prepare("SELECT COUNT(*) c FROM messages WHERE session_id = ?").get(sessionId) as { c: number }).c
+      ? (db.prepare(Q.countSessionMessages).get(sessionId) as { c: number }).c
       : 0;
-    if (wholeReplace) db.prepare("DELETE FROM messages WHERE session_id = ?").run(sessionId);
+    if (wholeReplace) db.prepare(Q.deleteSessionMessages).run(sessionId);
 
-    const ins = db.prepare(
-      `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    );
+    const ins = db.prepare(Q.insertMessage);
     let inserted = 0;
     for (const m of msgs) inserted += ins.run(sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
     writeAttachments(db, sessionId, msgs);
 
-    db.prepare(
-      `UPDATE sessions SET
-         message_count = (SELECT COUNT(*) FROM messages WHERE session_id = @id),
-         started_at    = (SELECT MIN(timestamp) FROM messages WHERE session_id = @id),
-         ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = @id)
-       WHERE id = @id`,
-    ).run({ id: sessionId });
+    db.prepare(Q.refreshSessionStats).run({ id: sessionId });
 
     // Zero chat lines = junk (failed/empty session) → don't keep the row.
-    db.prepare("DELETE FROM sessions WHERE id = @id AND message_count = 0").run({ id: sessionId });
+    db.prepare(Q.deleteEmptySession).run({ id: sessionId });
 
     db.prepare(
       `INSERT INTO ingest_state (file_path, source, session_id, size, mtime_ms, last_line, updated_at, parser_version)

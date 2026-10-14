@@ -10,6 +10,7 @@ import Database from "better-sqlite3";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { Q } from "./store/queries.js";
 
 // Memory DB location — resolved in priority order so the DB can live OFF C:\
 // (it grows without bound) while a tiny FIXED pointer stays in the home dir:
@@ -807,7 +808,7 @@ function migrate(db: MemoryDB, fromVersion: number): void {
     // nghiệm thu bắt buộc (nó dò thiếu bằng cách dựng lại kênh, không tin sổ). Không gieo thì lượt
     // sync đầu chở lại TOÀN BỘ ~290k vector (~900 MB) — một khối rác đúng nghĩa.
     db.exec("CREATE TABLE IF NOT EXISTS vec_shipped (message_id INTEGER PRIMARY KEY)");
-    const hasVec = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'").get();
+    const hasVec = db.prepare(Q.hasVecRowidsTable).get();
     if (hasVec) {
       db.exec("INSERT OR IGNORE INTO vec_shipped (message_id) SELECT rowid FROM vec_chunks_rowids WHERE rowid < 1099511627776");
     }
