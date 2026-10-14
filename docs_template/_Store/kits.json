@@ -1,14 +1,157 @@
 {
-  "comment": "Kit register (plan/28 §0h–0n). Number = <Host>_<Structure>_<Tier>, never renumbered. status: built = in use (a Basic kit also gets a generated folder) · reserved = number only · retired = kept, not offered.",
-  "01": { "name": "01_GUI_App_Basic", "status": "reserved", "host": "GUI", "structure": "App", "tier": "Basic" },
-  "02": { "name": "02_GUI_App_Memory", "status": "reserved", "host": "GUI", "structure": "App", "tier": "Memory" },
-  "03": { "name": "03_GUI_NonApp_Basic", "status": "reserved", "host": "GUI", "structure": "NonApp", "tier": "Basic" },
-  "04": { "name": "04_GUI_NonApp_Memory", "status": "reserved", "host": "GUI", "structure": "NonApp", "tier": "Memory" },
-  "05": { "name": "05_IDE_App_Basic", "status": "reserved", "host": "IDE", "structure": "App", "tier": "Basic" },
-  "06": {
-    "name": "06_IDE_App_Memory", "status": "built", "host": "IDE", "structure": "App", "tier": "Memory",
-    "rules": ["02-8", "02-25", "02-55"], "slots": ["03-1"], "skills": ["grill"], "own": "App"
+  "comment": "Kit register (plan/28 §0h–0n). Name = NN_<Host>_<Structure>_<Tier>; numbers are never reused. status: built = in use · reserved = number only · retired = kept, not offered. Parts are filtered by their `applies` against the kit's structure.",
+  "01": {
+    "name": "01_GUI_App_Basic",
+    "status": "reserved",
+    "host": "GUI",
+    "structure": "App",
+    "tier": "Basic"
   },
-  "07": { "name": "07_IDE_NonApp_Basic", "status": "reserved", "host": "IDE", "structure": "NonApp", "tier": "Basic" },
-  "08": { "name": "08_IDE_NonApp_Memory", "status": "reserved", "host": "IDE", "structure": "NonApp", "tier": "Memory" }
+  "02": {
+    "name": "02_GUI_App_Memory",
+    "status": "built",
+    "host": "GUI",
+    "structure": "App",
+    "tier": "Memory",
+    "constitution": [
+      "01-*"
+    ],
+    "rules": [
+      "02-*"
+    ],
+    "slots": [
+      "03-*"
+    ],
+    "skills": [
+      "app-design",
+      "audit",
+      "conform",
+      "grill",
+      "plan-trim",
+      "read-office",
+      "reconcile",
+      "session-close",
+      "sync-path",
+      "write-docx",
+      "write-style"
+    ],
+    "own": "App"
+  },
+  "03": {
+    "name": "03_GUI_NonApp_Basic",
+    "status": "reserved",
+    "host": "GUI",
+    "structure": "NonApp",
+    "tier": "Basic"
+  },
+  "04": {
+    "name": "04_GUI_NonApp_Memory",
+    "status": "built",
+    "host": "GUI",
+    "structure": "NonApp",
+    "tier": "Memory",
+    "constitution": [
+      "01-*"
+    ],
+    "rules": [
+      "02-*"
+    ],
+    "slots": [
+      "03-*"
+    ],
+    "skills": [
+      "audit",
+      "case",
+      "conform",
+      "fill",
+      "grill",
+      "plan-trim",
+      "pull",
+      "read-office",
+      "reconcile",
+      "session-close",
+      "sync-path",
+      "upload",
+      "write-docx",
+      "write-style"
+    ],
+    "own": "NonApp"
+  },
+  "05": {
+    "name": "05_IDE_App_Basic",
+    "status": "reserved",
+    "host": "IDE",
+    "structure": "App",
+    "tier": "Basic"
+  },
+  "06": {
+    "name": "06_IDE_App_Memory",
+    "status": "built",
+    "host": "IDE",
+    "structure": "App",
+    "tier": "Memory",
+    "constitution": [
+      "01-*"
+    ],
+    "rules": [
+      "02-*"
+    ],
+    "slots": [
+      "03-*"
+    ],
+    "skills": [
+      "app-design",
+      "audit",
+      "conform",
+      "grill",
+      "plan-trim",
+      "read-office",
+      "reconcile",
+      "session-close",
+      "sync-path",
+      "write-docx",
+      "write-style"
+    ],
+    "own": "App"
+  },
+  "07": {
+    "name": "07_IDE_NonApp_Basic",
+    "status": "reserved",
+    "host": "IDE",
+    "structure": "NonApp",
+    "tier": "Basic"
+  },
+  "08": {
+    "name": "08_IDE_NonApp_Memory",
+    "status": "built",
+    "host": "IDE",
+    "structure": "NonApp",
+    "tier": "Memory",
+    "constitution": [
+      "01-*"
+    ],
+    "rules": [
+      "02-*"
+    ],
+    "slots": [
+      "03-*"
+    ],
+    "skills": [
+      "audit",
+      "case",
+      "conform",
+      "fill",
+      "grill",
+      "plan-trim",
+      "pull",
+      "read-office",
+      "reconcile",
+      "session-close",
+      "sync-path",
+      "upload",
+      "write-docx",
+      "write-style"
+    ],
+    "own": "NonApp"
+  }
 }

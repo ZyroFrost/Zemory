@@ -1,7 +1,7 @@
 ---
 id: 02-27
 name: spec-voice
-version: 1
+version: 2
 kind: judgment
 ---
 # 02-27 Văn phong harness là đặc tả kỹ thuật

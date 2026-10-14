@@ -9,7 +9,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
-import { bodyOf, isFolderHarness, listParts, type Part } from "./store.js";
+import { bodyOf, isFolderHarness, isRetired, listParts, type Part } from "./store.js";
+import { selfRepoRoot } from "../projects.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
@@ -19,6 +20,9 @@ export const CORE_START = "<!-- zemory:core:start";
 export const CORE_END = "<!-- zemory:core:end -->";
 /** The core section may not grow past this (characters of the block, markers included). Ratchet: only ever lowered. */
 export const CORE_MAX_CHARS = 9000;
+/** The injected core of a folder harness (PURPOSE + judgment rules + suggested articles), measured 2026-10-14 on fresh
+ *  kits 06/08 at 15.0k/15.9k. Ratchet: only ever lowered — every new hook takes a rule out of the core. */
+export const FOLDER_CORE_MAX_CHARS = 16000;
 /** Gate kinds a mark may name. `test:<name>` must resolve to backend/test/<name>.test.mjs where that folder exists. */
 export const GATE_KINDS = ["guard", "hook", "test", "validate", "conform", "doctor", "gates", "peers", "read-first"] as const;
 
@@ -214,7 +218,13 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
     if (ref === "send-guard") return /zemory(\.cmd)? hook send-guard/.test(f.userHooks) ? "ok" : "send-guard hook not installed";
     return `unknown hook ${ref}`;
   }
-  if (kind === "test") return existsSync(join(f.root, "backend", "test", `${ref}.test.mjs`)) ? "ok" : `test ${ref} missing`;
+  // A test gate lives in the repo, or — for a rule about the tool's own behaviour — in the zemory install every repo runs.
+  if (kind === "test") {
+    const self = selfRepoRoot();
+    const here = existsSync(join(f.root, "backend", "test", `${ref}.test.mjs`));
+    const tool = Boolean(self && existsSync(join(self, "backend", "test", `${ref}.test.mjs`)));
+    return here || tool ? "ok" : `test ${ref} missing`;
+  }
   if (["validate", "conform", "doctor", "gates", "peers"].includes(kind)) return "ok"; // the CLI itself — present wherever this runs
   return `unknown gate ${mark}`;
 }
@@ -226,14 +236,16 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
 
 interface FolderRule {
   part: Part;
-  gate: { hook?: string; gate?: string; conform?: unknown } | null;
+  /** `partial: true` = the gate holds only part of the rule (02-27: quotes and dates are caught, voice is judgment), so
+   *  the rule stays in the core AND carries its gate. */
+  gate: { hook?: string; gate?: string; conform?: unknown; partial?: boolean } | null;
   /** gate.json present but unreadable. */
   badJson: boolean;
 }
 
 function folderRules(agentDir: string): FolderRule[] {
   return (["01_CONSTITUTION", "02_RULES"] as const).flatMap((shelf) =>
-    listParts(agentDir, shelf).map((part) => {
+    listParts(agentDir, shelf).filter((part) => !isRetired(part)).map((part) => {
       const p = join(part.dir, "gate.json");
       if (!existsSync(p)) return { part, gate: null, badJson: false };
       try {
@@ -265,7 +277,7 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
     const id = r.part.id;
     if (r.badJson) { badGate.push(`${id} (gate.json unreadable)`); continue; }
     if (!r.part.kind) { badGate.push(`${id} (no kind: in RULE.md)`); continue; }
-    if (r.part.kind === "judgment") { if (r.gate) gatedInCore.push(id); continue; }
+    if (r.part.kind === "judgment") { if (r.gate && !r.gate.partial) gatedInCore.push(id); continue; }
     if (!r.gate) { unmarked.push(id); continue; }
     if (r.gate.hook && !existsSync(join(r.part.dir, r.gate.hook))) badGate.push(`${id} (${r.gate.hook} missing)`);
     if (r.gate.gate) {
@@ -275,7 +287,7 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
     }
   }
   const core = folderCoreText(agentDir);
-  return { noCore: false, unmarked, gatedInCore, badGate, overCap: core.length > CORE_MAX_CHARS ? core.length : 0 };
+  return { noCore: false, unmarked, gatedInCore, badGate, overCap: core.length > FOLDER_CORE_MAX_CHARS ? core.length : 0 };
 }
 
 function folderCoverage(root: string, agentDir: string): RuleCoverage {

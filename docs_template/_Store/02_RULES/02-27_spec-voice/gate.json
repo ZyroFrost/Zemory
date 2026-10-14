@@ -1,4 +1,5 @@
 {
+  "partial": true,
   "hook": "hook.cjs",
   "match": {
     "tool": [
