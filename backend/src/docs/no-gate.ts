@@ -9,6 +9,8 @@ import { constitutionArticles, hpGateRows } from "./validate.js";
 
 const START = "<!-- zemory:no-gate:start";
 const END = "<!-- zemory:no-gate:end -->";
+export const NO_GATE_START = START;
+export const NO_GATE_END = END;
 const BLOCK = /<!-- zemory:no-gate:start[\s\S]*?<!-- zemory:no-gate:end -->\r?\n?(?:\r?\n)?/;
 
 export interface NoGateArticle {
@@ -76,7 +78,8 @@ export function noGateIssues(agentDir: string): string[] {
   const rules = join(agentDir, "02_RULES.md");
   if (existsSync(rules)) {
     const heads = [...readFileSync(rules, "utf8").matchAll(/^## (.+)$/gm)].map((m) => m[1]);
-    if (heads.some((h) => /^Hành xử/.test(h)) && !/^Hành xử/.test(heads[0] ?? "")) out.push('02_RULES.md: "## Hành xử" (judgement rules, no gate) must be the first section');
+    const first = heads.some((h) => /^Lõi/.test(h)) ? "Lõi" : "Hành xử";
+    if (heads.some((h) => h.startsWith(first)) && !(heads[0] ?? "").startsWith(first)) out.push(`02_RULES.md: "## ${first}" (rules with no machine gate) must be the first section`);
     const t = readFileSync(rules, "utf8");
     if (stampLast(t) !== t) out.push("02_RULES.md: the zemory-standard stamp is not the last line — the standard can no longer read this file's version");
   }
@@ -133,7 +136,9 @@ export function behaviourFirst(text: string): string {
 
 function moveBehaviour(text: string): string {
   const heads = [...text.matchAll(/^## .+$/gm)];
-  const i = heads.findIndex((m) => /^## Hành xử/.test(m[0]));
+  // The rule core (plan/27 §3) is THE ungated section once a file has one; before that, `## Hành xử` stood first.
+  const lead = heads.some((m) => /^## Lõi/.test(m[0])) ? /^## Lõi/ : /^## Hành xử/;
+  const i = heads.findIndex((m) => lead.test(m[0]));
   if (i <= 0) return text;
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const from = heads[i].index;

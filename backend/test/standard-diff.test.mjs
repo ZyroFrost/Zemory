@@ -319,7 +319,10 @@ test("ÁP THẬT: repo ở bản cũ + dòng tự viết ⇒ chuẩn mới TỚI
     mkdirSync(join(root, "docs", "agent"), { recursive: true });
     writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", profile: "app" }));
     const lines = contentLines(old.replace(/<PROJECT>/g, basename(root)));
-    const at = Math.floor(lines.length / 2);
+    // The own line goes where the old and the current template still agree (right under the title): the case pins the
+    // merge machinery, not a spot the standard rewrote. A line written INSIDE a rewritten region is refused with a diff
+    // by design (overlap ⇒ ask) — since the 2026-10-14 core restructure the middle of 02_RULES is exactly such a region.
+    const at = lines.findIndex((l) => l.startsWith("# ")) + 1;
     const fp = join(root, "docs", "agent", "02_RULES.md");
     writeFileSync(fp, [...lines.slice(0, at), OWN, ...lines.slice(at)].join("\n") + "\n");
     stampRepo(root, { apply: true });

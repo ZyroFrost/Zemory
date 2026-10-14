@@ -117,10 +117,14 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   const skillsRel = relp(hp.skills);
   const readFirstExtra = marker ? (Array.isArray((marker.data as { readFirst?: unknown }).readFirst) ? ((marker.data as { readFirst: unknown[] }).readFirst.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim().replace(/\\/g, "/"))) : []) : [];
   const isApp = ((marker?.data as { profile?: unknown } | undefined)?.profile ?? "app") === "app";
+  // Only the sections that hold rules with no machine gate are forced (plan/27 §3): the 02 core, and in 01 the
+  // read-carefully block, the articles it lists and "## Mục đích". A file without those markers is due in full.
+  // 06_CHANGES left the set the same day — looked up with `zemory changelog search`.
   const readFirst = {
-    required: [
-      ...["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"].map((f) => `${agentRel}/${f}`),
-      ...readFirstExtra,
+    required: [`${agentRel}/05_TODO.md`, ...readFirstExtra],
+    sections: [
+      { file: `${agentRel}/02_RULES.md`, parts: ["core"] },
+      { file: `${agentRel}/01_CONSTITUTION.md`, parts: ["no-gate", "no-gate-articles", "heading:Mục đích"] },
     ],
     case_root: "tasks",
     case_files: ["spec.md", "mail_form.md"],

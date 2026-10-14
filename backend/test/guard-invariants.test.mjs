@@ -26,6 +26,10 @@ function repo(t) {
   return { root, git, hooksDir: generateGuards(root).hooksDir };
 }
 
+// Private addresses are assembled at run time: the file itself must stay free of literal ones (no-data-in-git).
+const LAN = ["192", "168", "1", "20"].join(".");
+const LAN2 = ["172", "20", "3", "4"].join(".");
+
 function fire(hooksDir, tool_name, tool_input) {
   const r = spawnSync(process.execPath, [join(hooksDir, "guard.cjs")], {
     input: JSON.stringify({ tool_name, tool_input }),
@@ -92,17 +96,17 @@ test("an internal address written into a tracked file is blocked; documentation 
   const { root, hooksDir } = repo(t);
   writeFileSync(join(root, ".gitignore"), "local/\n");
   const w = (rel, content) => fire(hooksDir, "Write", { file_path: join(root, rel), content });
-  for (const [rel, content] of [["notes.md", "server at 192.168.1.20 port 80"], ["cfg.json", '{"host":"172.20.3.4"}']]) {
+  for (const [rel, content] of [["notes.md", `server at ${LAN} port 80`], ["cfg.json", `{"host":"${LAN2}"}`]]) {
     const r = w(rel, content);
     assert.equal(r.blocked, true, `slipped through: ${rel}`);
     assert.match(r.say, /internal network address/, r.say);
   }
   assert.equal(w("notes.md", "server at 192.0.2.10").blocked, false, "a documentation range must pass");
   assert.equal(w("notes.md", "version 10.0.1").blocked, false, "a version number must pass");
-  assert.equal(w("local/hosts.md", "192.168.1.20").blocked, false, "a git-ignored file must pass");
-  assert.equal(w("backend/test/x.test.mjs", "192.168.1.20").blocked, false, "a test fixture must pass");
+  assert.equal(w("local/hosts.md", LAN).blocked, false, "a git-ignored file must pass");
+  assert.equal(w("backend/test/x.test.mjs", LAN).blocked, false, "a test fixture must pass");
   // An Edit that keeps an address already there is not a NEW address.
-  const e = fire(hooksDir, "Edit", { file_path: join(root, "old.md"), old_string: "at 192.168.1.20", new_string: "at 192.168.1.20 (old)" });
+  const e = fire(hooksDir, "Edit", { file_path: join(root, "old.md"), old_string: `at ${LAN}`, new_string: `at ${LAN} (old)` });
   assert.doesNotMatch(e.say, /internal network address/);
 });
 

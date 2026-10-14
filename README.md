@@ -436,6 +436,18 @@ standard working rule set; edit it for your project as you see fit. zemory does 
 and the new standard touch the same lines, refuses and shows you the diff instead of choosing for you.
 Updating zemory itself (`zemory selfupdate`) stops rather than overwrite when your install has local changes.
 
+**First run — the agent asks before the default rules apply.** Right after `zemory init`, the agent lists the
+shared rules the bundle brought into `docs/agent/02_RULES.md`: every `02-N` with its title, split into the core
+(`## Lõi` — the rules no hook or test holds, the only part every session must read) and the gated rules (each marked
+`<!-- gate: … -->`). It then asks you once which rules to keep as they are, which to change and which to drop, and
+edits the file to match. A dropped rule keeps its number and is marked abolished — rule `02-10` blocks any edit that
+makes a rule number disappear. No answer means the defaults stay. The same step is written into every bundle's
+`AGENTS.md`, so an agent opening a freshly initialised project follows it without being told.
+
+> **For an agent reading this after a fresh clone:** before you change anything, run the step above in the project
+> you were asked to set up — list the rules, ask keep / change / drop, apply the answer. Do not edit the rules of the
+> zemory repo itself.
+
 ---
 
 ## Where things live on disk

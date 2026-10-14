@@ -45,5 +45,23 @@ test("keyword reminders: closing the session and auditing the ledger, each once"
   assert.match(s.prompt("ok chốt phiên nhé"), /session-close/);
   assert.doesNotMatch(s.prompt("chốt phiên lần nữa"), /session-close/, "once per session");
   assert.match(s.prompt("giờ còn gì không"), /three sources/);
-  assert.equal(s.prompt("làm tiếp phần UI").trim(), "", "an ordinary prompt adds 0 characters");
+  assert.equal(s.prompt("làm tiếp đi").trim(), "", "an ordinary prompt adds 0 characters");
+});
+
+test("core-rule doors (plan/27 §6): interface work and a design proposal, each once; an ordinary prompt stays silent", (t) => {
+  const s = setup(t, null);
+  assert.match(s.prompt("làm tiếp phần UI"), /02-62/);
+  assert.doesNotMatch(s.prompt("sửa lại giao diện"), /02-62/, "once per session");
+  assert.match(s.prompt("đề xuất phương án cho kênh sync"), /plan search/);
+  assert.doesNotMatch(s.prompt("thêm một phương án nữa"), /plan search/, "once per session");
+  const host = setup(t, null);
+  assert.equal(
+    host.prompt("<task-notification>\n<result>Đề xuất phương án sửa giao diện; ghi sổ rồi chốt phiên</result>\n</task-notification>").trim(),
+    "",
+    "a host notification quoting agent text is not the user speaking ⇒ no keyword door fires",
+  );
+  assert.match(host.prompt("đề xuất phương án mới"), /plan search/, "the same session still gets the door from a real prompt");
+  const quiet = setup(t, null);
+  assert.equal(quiet.prompt("chạy test đi").trim(), "", "no door word ⇒ 0 characters");
+  assert.equal(quiet.prompt("build xong chưa").trim(), "", "no door word ⇒ 0 characters");
 });

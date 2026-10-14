@@ -83,7 +83,8 @@ function ruleLabels(path) {
   assert.ok(s > 0 && e > s, `${path}: khối luật không đóng đúng`);
   return L.slice(s + 1, e)
     .filter((l) => l.trim() && !/^\s/.test(l))
-    .map((l) => l.slice(0, 21).trim());
+    // the rule number (`02-25 `, since the numbering) is not part of the label the exempt lists are keyed on
+    .map((l) => l.replace(/^0[12]-\d{1,3} /, "").slice(0, 21).trim());
 }
 
 const faceCount = (txt) => (txt.match(/^\d+\. \*\*/gm) ?? []).length;
@@ -174,7 +175,13 @@ test("the hard rules under Writing-time rules: app and adapt carry them ALL, non
   // (panel resize · dialog · version-up · deploy) rời sang skill `app-design`. Đây vẫn là phép
   // TỰ KIỂM chống đo mù — nó bắt ca parser trả 0/1 — chỉ hạ về số thật, không bỏ.
   // Nhà mới của bốn luật đó do `read-set-contract` canh (MOVED_TO_SKILL), nên không ai mất chỗ canh.
-  assert.ok(z.length >= 6, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
+  // 6 → 3 (2026-10-14, plan/27 §3): `02-23` separator and `02-24` EOL have no machine gate, so they left the fenced block
+  // for §Lõi — still in the forced part of 02_RULES. Their new home is pinned right below, so no rule loses its watch.
+  assert.ok(z.length >= 3, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
+  for (const f of ["docs/agent/02_RULES.md", "docs_template/05_app/agent/02_RULES.md", "docs_template/04_adapt/agent/02_RULES.md"]) {
+    const core = read(f).split("<!-- zemory:core:start")[1]?.split("<!-- zemory:core:end -->")[0] ?? "";
+    for (const id of ["02-23", "02-24"]) assert.ok(core.includes("- `" + id + "` **"), `${f}: ${id} is neither in the fenced block nor in §Lõi`);
+  }
   for (const s of SETS) {
     const t = ruleLabels(`docs_template/${s}/agent/02_RULES.md`);
     const has = (r) => t.includes(r) || (s === "03_nonapp" && NONAPP_ALIAS[r] && t.includes(NONAPP_ALIAS[r]));

@@ -31,7 +31,9 @@ const AGENTS = ["AGENTS.md", "docs_template/05_app/AGENTS.md", "docs_template/03
 // canh**: `02_RULES` phải còn dòng TRỎ sang skill (`MOVED_POINTER`), và skill phải thật sự CHỨA
 // các luật đó (`MOVED_TO_SKILL`). Bỏ hẳn phép kiểm là để chúng rơi vào khoảng không.
 const WRITE_TIME = {
-  "05_app": ["SQL — 1 CÁCH", "Secret", "Sync bundle qua git", "Thiết kế UI (LUẬT)", "Separator của INDEX", "EOL của file"],
+  // "Sync bundle qua git" left the app/adapt bundles in b038725 (the rule was removed); 02-23/02-24 moved into §Lõi
+  // (no machine gate) under their new titles — still in the always-forced part of 02_RULES.
+  "05_app": ["SQL — 1 CÁCH", "Secret", "Thiết kế UI (LUẬT)", "`02-23` **Separator của chỉ mục docs", "`02-24` **EOL"],
   "03_nonapp": ["Secret/connection", "SQL/DAX/M", "Nhị phân nặng", "Data thật vs mẫu"],
 };
 /** Dòng trong `02_RULES` phải chỉ đúng nhà mới của các luật thiết kế. */
@@ -43,8 +45,8 @@ test("AGENTS.md does not list 03_STRUCTURE in the READ-EVERYTHING set", () => {
   for (const f of AGENTS) {
     const line = read(f)
       .split(/\r?\n/)
-      .find((l) => l.includes("ĐỌC HẾT"));
-    assert.ok(line, `${f}: không tìm thấy dòng "ĐỌC HẾT"`);
+      .find((l) => l.includes("ĐỌC LÕI"));
+    assert.ok(line, `${f}: không tìm thấy dòng "ĐỌC LÕI"`);
     // Chỉ soi phần LIỆT KÊ. Từ Phase 3 (2026-07-31) chính dòng này cũng là chỗ khai
     // loại trừ ("`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ này"), nên khớp thô
     // `/03_STRUCTURE/` là bắt đúng câu tuyên bố loại trừ — báo oan.
@@ -95,7 +97,7 @@ test("the do-not-invent rule exists in every 02_RULES, and exactly ONE copy of i
   ];
   for (const f of FILES) {
     const t = read(f);
-    const n = (t.match(/CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT/gu) ?? []).length;
+    const n = (t.match(/Chưa xác minh thì chưa phải sự thật/giu) ?? []).length;
     assert.equal(n, 1, `${f}: phải có ĐÚNG 1 bản luật (đang có ${n})`);
     assert.equal(
       (t.match(/MỘT PHÉP ĐO CHƯA/gu) ?? []).length,
@@ -103,7 +105,7 @@ test("the do-not-invent rule exists in every 02_RULES, and exactly ONE copy of i
       `${f}: bản CŨ hẹp hơn còn sót — hai bản cùng nghĩa là luật trùng`,
     );
     // Ba vế bắt buộc: phủ mọi khẳng định · đòi nguồn kiểm được · cho phép nói KHÔNG BIẾT.
-    assert.match(t, /mọi khẳng định/u, `${f}: luật phải nói rõ phủ MỌI khẳng định, không riêng con số`);
+    assert.match(t, /mọi khẳng định/iu, `${f}: luật phải nói rõ phủ MỌI khẳng định, không riêng con số`);
     assert.match(t, /nguồn kiểm được/u, `${f}: luật phải đòi nguồn kiểm được`);
     assert.match(t, /không biết \/ chưa xác minh được/u, `${f}: thiếu vế "tra không ra thì nói KHÔNG BIẾT"`);
   }
