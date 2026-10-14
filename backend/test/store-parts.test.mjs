@@ -73,6 +73,10 @@ test("negative: a wrong example, a gate with no examples and a private line are 
   assert.ok(f.some((x) => /02-9 x: block example 1 went through/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /02-9 x: pass example 1 was blocked/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /03-9 y: needs at least one block and one pass example/.test(x)), f.join("\n"));
+  put(s, "02_RULES/02-8_z/notes.md", "role `user` in a transcript\nmail ops@company.vn\nsample a@b.example\n");
   const priv = storePrivacyFindings(s);
   assert.ok(priv.some((x) => /02-8_z\/RULE\.md:7 — names the person/.test(x)), priv.join("\n"));
+  assert.ok(!priv.some((x) => /notes\.md:1 /.test(x)), "a backticked `user` is data, not a person");
+  assert.ok(priv.some((x) => /notes\.md:2 — an e-mail address/.test(x)), "a real address is caught");
+  assert.ok(!priv.some((x) => /notes\.md:3 /.test(x)), "an RFC 2606 example address is not a contact");
 });
