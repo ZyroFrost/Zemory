@@ -429,6 +429,13 @@ service or an LLM-centric app. Installing the harness into a project is not a bl
 scaffolds the **structure**, and the working agent reads the standard and **adapts it to the
 project**. Project-specific content (TODO, changelog) is never copied from another project.
 
+**The shared rules are a standard you can customise, not a lock-in.** `02_RULES` in every bundle is the
+standard working rule set; edit it for your project as you see fit. zemory does not overwrite your edits:
+`zemory sync` only fills in files that are missing, and carrying a newer standard into an existing repo
+(`zemory sync --standard`) is a dry run by default — it merges section by section and, wherever your text
+and the new standard touch the same lines, refuses and shows you the diff instead of choosing for you.
+Updating zemory itself (`zemory selfupdate`) stops rather than overwrite when your install has local changes.
+
 ---
 
 ## Where things live on disk
