@@ -280,6 +280,11 @@ test("CLI: `zemory hook send-guard` exits 2 with the address to use; 0 for a rep
   const bad = run("dept-biz-d1");
   assert.equal(bad.status, 2, "Untitled ⇒ exit 2 (PreToolUse chặn)");
   assert.match(bad.stderr, /Send to `dept-biz-b2`/, "lý do + địa chỉ đúng phải ra stderr");
+  assert.equal(
+    JSON.parse(bad.stdout).hookSpecificOutput.permissionDecision,
+    "deny",
+    "a block also carries the JSON deny decision (exit code is dropped on a machine without Git)",
+  );
   assert.equal(run("dept-biz-b2").status, 0, "đúng session ⇒ qua");
   assert.equal(run("uds:\\\\.\\pipe\\LOCAL\\cc-msg-x").status, 0, "trả lời qua from ⇒ qua");
   const list = spawnSync(process.execPath, [cli, "peers"], { encoding: "utf8", env, timeout: 60_000 });
