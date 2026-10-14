@@ -35,12 +35,12 @@ test("a repo that carries nothing wired has three gaps, each named with its fix"
   assert.match(lines, /read-before-write latch not in place/);
 });
 
-test("an OLD guard.cjs that never calls read-first.cjs is a gap even when the file sits next to it", (t) => {
+test("an OLD guard.cjs that never calls 02-59_read-first.cjs is a gap even when the file sits next to it", (t) => {
   const root = repo(t, { git: false });
   generateGuards(root);
   assert.equal(repoGates(root, "R").readFirst, true, "premise: hook guard puts the latch in place");
   const guard = join(root, "docs", "hooks", "guard.cjs");
-  writeFileSync(guard, readFileSync(guard, "utf8").replaceAll("read-first.cjs", "x.cjs"));
+  writeFileSync(guard, readFileSync(guard, "utf8").replaceAll("02-59_read-first.cjs", "x.cjs"));
   assert.equal(repoGates(root, "R").readFirst, false);
 });
 

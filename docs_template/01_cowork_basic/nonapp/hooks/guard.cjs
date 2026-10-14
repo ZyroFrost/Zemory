@@ -882,10 +882,10 @@ function main() {
     try { sqlMsg = require(path.join(HERE, "02-25_sql-one-way.cjs")).check(payload, ROOT, POLICY); } catch { sqlMsg = null; }
     if (sqlMsg) deny(sqlMsg);
   }
-  // READ BEFORE WRITE (read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
+  // READ BEFORE WRITE (02-59_read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.
   let rfMsg = null;
-  try { rfMsg = require(path.join(HERE, "read-first.cjs")).readFirst(payload, ROOT, POLICY); } catch { rfMsg = null; }
+  try { rfMsg = require(path.join(HERE, "02-59_read-first.cjs")).readFirst(payload, ROOT, POLICY); } catch { rfMsg = null; }
   if (rfMsg) deny(rfMsg);
   process.exit(0);
 }
