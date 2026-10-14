@@ -9,6 +9,7 @@ import { join, normalize, resolve } from "node:path";
 import { normalizeRoot } from "../core/config.js";
 import { type MemoryDB, currentMemoryDb, openMemory } from "../memory/db.js";
 import { parseMarkdown, roundTripOk } from "./markdown.js";
+import { Q } from "./store/queries.js";
 
 export interface ImportResult {
   path: string;
@@ -25,7 +26,7 @@ function upsertDoc(db: MemoryDB, projectRoot: string, relPath: string, kind: str
      ON CONFLICT(project_root, path) DO UPDATE SET kind = excluded.kind`,
   ).run(projectRoot, canonicalPath, kind);
   return (
-    db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, canonicalPath) as {
+    db.prepare(Q.docIdByPath).get(projectRoot, canonicalPath) as {
       id: number;
     }
   ).id;
@@ -33,7 +34,7 @@ function upsertDoc(db: MemoryDB, projectRoot: string, relPath: string, kind: str
 
 function replaceSections(db: MemoryDB, docId: number, text: string): number {
   const sections = parseMarkdown(text);
-  db.prepare("DELETE FROM section WHERE doc_id=?").run(docId);
+  db.prepare(Q.deleteDocSections).run(docId);
   const ins = db.prepare(
     "INSERT INTO section (doc_id, ordinal, level, parent_id, heading, anchor, body) VALUES (?,?,?,?,?,?,?)",
   );
@@ -122,7 +123,7 @@ export interface TocRow {
 export function listToc(docPath: string, projectRoot: string, dbPath = currentMemoryDb()): TocRow[] {
   const db = openMemory(dbPath);
   try {
-    const doc = db.prepare("SELECT id FROM doc WHERE project_root=? AND path=?").get(projectRoot, docPath) as { id: number } | undefined;
+    const doc = db.prepare(Q.docIdByPath).get(projectRoot, docPath) as { id: number } | undefined;
     if (!doc) return [];
     return db
       .prepare("SELECT id, level, heading, anchor FROM section WHERE doc_id=? AND level>0 ORDER BY ordinal")
@@ -201,7 +202,7 @@ export function pruneMissingDocs(projectRoot: string, dbPath = currentMemoryDb()
     const rows = db.prepare("SELECT id, path FROM doc WHERE project_root=?").all(root) as Array<{ id: number; path: string }>;
     const dead = rows.filter((r) => !existsSync(join(root, r.path)));
     if (!dead.length) return 0;
-    const delSec = db.prepare("DELETE FROM section WHERE doc_id=?");
+    const delSec = db.prepare(Q.deleteDocSections);
     const delDoc = db.prepare("DELETE FROM doc WHERE id=?");
     db.transaction(() => {
       for (const r of dead) {

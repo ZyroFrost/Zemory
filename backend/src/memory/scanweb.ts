@@ -21,6 +21,7 @@ import { WEB_PLATFORMS, accountKey, accountsOf, isEmail, platformsInUse, pullabl
 import { findBorrowSource, jarHasSession } from "./borrowcookies.js";
 import { getScopeExclude, getWebAuth, setWebAuth, setWebPull } from "../config/settings.js";
 import { daemonLog } from "../logging/daemon-log.js";
+import { Q } from "./store/queries.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
 
@@ -1909,7 +1910,7 @@ async function scanWebInner(
     if (!opts.refresh) {
       const db = openMemory(dbPath);
       try {
-        for (const r of db.prepare("SELECT id, ended_at FROM sessions WHERE source = ?").all(p.source) as { id: string; ended_at: string | null }[]) {
+        for (const r of db.prepare(Q.sessionsBySource).all(p.source) as { id: string; ended_at: string | null }[]) {
           have.set(r.id, r.ended_at ? Date.parse(r.ended_at) : 0);
         }
       } finally {
@@ -2181,7 +2182,7 @@ async function scanWebInner(
         if (!opts.refresh) {
           const db = openMemory(dbPath);
           try {
-            for (const r of db.prepare("SELECT id, ended_at FROM sessions WHERE source = ?").all(sub.source) as { id: string; ended_at: string | null }[]) {
+            for (const r of db.prepare(Q.sessionsBySource).all(sub.source) as { id: string; ended_at: string | null }[]) {
               subHave.set(r.id, r.ended_at ? Date.parse(r.ended_at) : 0);
             }
           } finally {

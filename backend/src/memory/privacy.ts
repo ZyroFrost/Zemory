@@ -8,6 +8,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
 import { redact } from "./redact.js";
 import { forgetVectors, vecConnect } from "./vectors.js";
+import { Q } from "./store/queries.js";
 
 function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
@@ -151,7 +152,7 @@ export interface ForgetMemoryResult {
 }
 
 function hasTable(db: MemoryDB, table: string): boolean {
-  return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+  return !!db.prepare(Q.tableExists).get(table);
 }
 
 function normalizeBefore(before?: string): string | undefined {

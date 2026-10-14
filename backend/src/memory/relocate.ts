@@ -29,6 +29,7 @@ import {
   currentStoreRoot,
   pathsOverlap,
 } from "./db.js";
+import { Q } from "./store/queries.js";
 
 const DB_NAME = "global_memory.db";
 const CONFIG_NAME = "config.json";
@@ -320,7 +321,7 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
     }
     if (!locked) throw new Error("Memory DB is being written to right now — close other zemory processes and retry.");
     try {
-      beforeCount = (chk.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+      beforeCount = (chk.prepare(Q.countMessages).get() as { c: number }).c;
       movedBytes = statSync(oldDb).size;
       copyFileSync(oldDb, newDb);
     } finally {
@@ -340,7 +341,7 @@ export function relocateMemory(targetDir: string, opts: { force?: boolean; paths
     let afterCount: number;
     try {
       ok = (check.prepare("PRAGMA integrity_check").get() as { integrity_check: string }).integrity_check;
-      afterCount = (check.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+      afterCount = (check.prepare(Q.countMessages).get() as { c: number }).c;
     } finally {
       check.close();
     }
@@ -521,7 +522,7 @@ export function relocateStore(
       chk.exec("ROLLBACK");
     }
     if (!locked) throw new Error("Memory DB is being written to right now — close other zemory processes and retry.");
-    beforeCount = (chk.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+    beforeCount = (chk.prepare(Q.countMessages).get() as { c: number }).c;
     copyFileSync(oldDb, newDb);
     chk.exec("ROLLBACK");
   } finally {
@@ -532,7 +533,7 @@ export function relocateStore(
   const check = new Database(newDb, { readonly: true });
   try {
     const integrity = (check.pragma("integrity_check") as Array<{ integrity_check: string }>)[0]?.integrity_check;
-    const after = (check.prepare("SELECT COUNT(*) c FROM messages").get() as { c: number }).c;
+    const after = (check.prepare(Q.countMessages).get() as { c: number }).c;
     if (integrity !== "ok" || after !== beforeCount) {
       check.close();
       rmSync(newDb, { force: true });

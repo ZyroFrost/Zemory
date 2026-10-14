@@ -19,6 +19,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { currentStoreRoot, openMemory, type MemoryDB } from "./db.js";
+import { Q } from "./store/queries.js";
 
 /** Nhà của kho tệp — trong GỐC KHO, nên nó đi sang máy khác cùng bộ nhớ (plan/25 §3). */
 /** Một đính kèm như lớp recall nhìn thấy: đủ để MỞ, không kèm byte. */
@@ -596,7 +597,7 @@ export function collectCreated(
   }
   out.paths = latest.size;
 
-  const findSha = db.prepare("SELECT id FROM attachment WHERE sha256 = ?");
+  const findSha = db.prepare(Q.attachmentIdBySha);
   const insAtt = db.prepare(
     `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, src_path, created_at)
      VALUES (?, (SELECT session_id FROM messages WHERE id = ?), ?, ?, ?, ?, 'blob', ?, ?)`,
@@ -712,7 +713,7 @@ export function addPickedFiles(
   const db = opts.db ?? openMemory(opts.dbPath);
   const root = opts.root ?? filesRoot();
   const out: PickedResult = { added: 0, already: 0, bytes: 0, failed: [], rels: [] };
-  const findSha = db.prepare("SELECT id FROM attachment WHERE sha256 = ?");
+  const findSha = db.prepare(Q.attachmentIdBySha);
   const insAtt = db.prepare(
     `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, src_path, created_at)
      VALUES (0, '${PICKED_SESSION}', ?, ?, ?, ?, 'blob', ?, ?)`,

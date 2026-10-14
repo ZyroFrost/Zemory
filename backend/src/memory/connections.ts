@@ -20,6 +20,7 @@ import { allAdapters } from "./adapters/index.js";
 import { borrowBlockedBy, findBorrowSource } from "./borrowcookies.js";
 import { accountsOf, webLaneLinked } from "./webslots.js";
 import { getWebAuth, getWebPull } from "../config/settings.js";
+import { Q } from "./store/queries.js";
 
 export interface ConnectionRow {
   /** `source` như trong Sources/scope tree: `codex` · `claude-code` · `chatgpt-web`… */
@@ -121,7 +122,7 @@ export function listConnections(dbPath?: string): ConnectionRow[] {
           GROUP BY s.source, s.origin`,
       )
       .all() as { source: string; origin: string; n: number }[];
-    stores = db.prepare("SELECT store_root AS root, source FROM known_stores").all() as { root: string; source: string }[];
+    stores = db.prepare(Q.knownStores).all() as { root: string; source: string }[];
   } finally {
     db.close();
   }

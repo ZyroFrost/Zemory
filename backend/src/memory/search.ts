@@ -12,6 +12,7 @@ import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
 import { projectKey } from "../core/config.js";
 import { isExcluded } from "./scope.js";
+import { Q } from "./store/queries.js";
 
 export interface SearchHit {
   id: number;
@@ -370,7 +371,7 @@ function rm3Expand(db: MemoryDB, terms: string[], scopedProject?: string): strin
     const tf = new Map([...docCount].filter(([, n]) => n >= RM3_MIN_DOCS));
     if (!tf.size) return [];
 
-    const total = (db.prepare("SELECT count(*) c FROM messages").get() as { c: number }).c || 1;
+    const total = (db.prepare(Q.countMessages).get() as { c: number }).c || 1;
     const maxDf = total * RM3_MAX_DF;
     // Cắt theo tf TRƯỚC rồi mới tra df — df là phần tốn tiền, đừng tra cho cả nghìn token.
     const cand = [...tf.entries()].sort((a, b) => b[1] - a[1]).slice(0, RM3_CAND);
