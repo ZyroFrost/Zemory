@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { RULE_HOOKS } from "../../dist/docs/rule-hooks-src.js";
 import { SQL_GATE_SOURCE } from "../../dist/docs/sql-gate-src.js";
+import { SLOT_ROLES } from "../../dist/docs/structure-tree.js";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
@@ -57,6 +58,13 @@ test("every store hook.cjs is a byte copy of the generator source (one source wh
     assert.ok(existsSync(p), `${folder}: no hook.cjs in the store`);
     assert.equal(readFileSync(p, "utf8").replace(/\r\n/g, "\n"), source.replace(/\r\n/g, "\n"), `${folder}: store copy drifted from the generator`);
   }
+});
+
+test("every slot name of the machine dictionary has a slot part in the store (HP 13: the two cannot drift)", () => {
+  const ZEMORY_ONLY = new Set(["memory", "adapters", "channel"]); // zemory's own domain slots, not part of the shared standard
+  const inStore = new Set(listParts(STORE_DIR, "03_STRUCTURE").filter((p) => p.meta.kind !== "guide").map((p) => p.name));
+  const missing = Object.keys(SLOT_ROLES).filter((n) => !ZEMORY_ONLY.has(n) && !inStore.has(n));
+  assert.deepEqual(missing, [], "add a slot part for these, or drop them from SLOT_ROLES");
 });
 
 test("negative: a wrong example, a gate with no examples and a private line are all reported", (t) => {

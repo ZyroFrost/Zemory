@@ -1,0 +1,13 @@
+---
+id: 03-17
+name: queries
+version: 1
+path: backend/src/store/queries.*
+applies: [App]
+---
+# 03-17 queries — kho SQL đặt tên
+
+- Vai trò:
+  - GOM mọi câu SQL đặt TÊN, gọi theo tên — không rải f-string/inline.
+  - Đối xứng với `queries/` của hệ NON-APP.
+- Được chứa / không chứa: Không chứa: SQL one-off của dev/ops (→ `backend/scripts/sql/`).

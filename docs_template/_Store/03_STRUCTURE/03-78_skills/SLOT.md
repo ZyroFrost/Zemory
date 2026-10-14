@@ -1,0 +1,15 @@
+---
+id: 03-78
+name: skills
+version: 1
+path: external/skills/
+applies: [App]
+---
+# 03-78 skills — kho skill vendored
+
+- Vai trò:
+  - KHO SKILL vendored của người khác, giữ nguyên gốc.
+  - Index ở `04_SKILLS`; nơi adapt hiện ra thật là từ điển slot thiết kế UI của `03_STRUCTURE`: agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ rồi khớp về các slot thiết kế.
+  - Đọc on-demand; không copy sang từng project.
+- Được chứa / không chứa: Clone nguyên bản: bỏ `.git`, GIỮ `LICENSE`, không sửa nội dung.
+- Khuôn tên: Mỗi skill = một folder ĐÚNG TÊN REPO GỐC: `external/skills/<tên-repo>/`.
