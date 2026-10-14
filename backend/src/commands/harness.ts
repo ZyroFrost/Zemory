@@ -20,7 +20,7 @@ import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
-import { GUARD_MATCHER, guardDrift, guardMatcherGaps } from "../docs/guard-gen.js";
+import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps } from "../docs/guard-gen.js";
 import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } from "../platform/autostart.js";
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { backupStale } from "../memory/backup-rotate.js";
@@ -57,6 +57,15 @@ export function cmdInit(args: string[]): void {
   console.log(`zemory init — ${parts.join(", ")}.`);
   if (r.added.length) console.log(`  + ${r.added.join(", ")}`);
   printAdoptNotices(r);
+  // The guard is the standard, not an option (02-55): a fresh init used to stop here, leaving a project with the rule core
+  // in words only — no read-first latch, no delete/push/secret latch — until someone ran `zemory hook guard` (found in the
+  // fresh-clone trial 2026-10-14). Same generator, same merge-never-overwrite wiring as `zemory hook guard`.
+  try {
+    const g = generateGuards(process.cwd());
+    console.log(`  guard: ${g.added.length ? g.added.join(" · ") : "already in place"}${g.kept.length ? ` (kept the repo's own: ${g.kept.join(" · ")})` : ""}`);
+  } catch (e) {
+    console.log(`  ⚠ guard not generated (${(e as Error).message}) — run \`zemory hook guard\``);
+  }
 }
 
 /** ADAPT v2 — hai thông báo mà im lặng chính là lỗi (N1 + 4.2), in chung cho init/sync.
@@ -391,10 +400,12 @@ export async function cmdDoctor(): Promise<void> {
       const mj = readMarker(s.project.root)?.data as { protected?: unknown } | undefined;
       const declared = Array.isArray(mj?.protected) && mj.protected.length > 0;
       const guardPath = join(hp.agent, "..", "hooks", "guard.cjs");
-      if (declared && !existsSync(guardPath)) {
-        console.log("  guard: ⚠ the marker declares `protected` but there is NO machine guard yet — layer ① rules are guarded by words only");
-        console.log("      → run `zemory hook guard` to generate policy + guard from the marker (02_RULES §Guardrail layer ①)");
-      } else if (existsSync(guardPath)) {
+      // Every repo, not only one that declares `protected`: the guard also carries the read-first latch and the delete,
+      // push and secret latches (02-55 — the guard is the standard). A fresh init without it went unreported (2026-10-14).
+      if (!existsSync(guardPath)) {
+        console.log(`  guard: ⚠ NO machine guard yet${declared ? " although the marker declares `protected`" : ""} — layer ① rules and the read-first latch are words only`);
+        console.log("      → run `zemory hook guard` to generate policy + guard (02_RULES §Guardrail layer ①)");
+      } else {
         // Guard KHÔNG tự làm mới — mỗi lần zemory vá guard, repo đã cắm giữ bản HỞ cho tới
         // khi ai đó NHỚ chạy lại `hook guard`. Đề xuất 05_TODO, thành máy sau ngày có HAI
         // vòng vá guard (2026-08-20). Chỉ báo file mang dấu zemory mà lệch bản sinh hôm nay.
