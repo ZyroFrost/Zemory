@@ -1,0 +1,43 @@
+{
+  "hook": "hook.cjs",
+  "match": { "tool": ["Write", "Edit", "MultiEdit"] },
+  "block": [
+    {
+      "note": "new inline SQL that already has a name in the store",
+      "files": { "src/store/queries.ts": "export const Q = {\n  countMessages: \"SELECT count(*) FROM messages\",\n};\n" },
+      "policy": { "sql": { "stores": ["src/store/queries.ts"], "code_ext": [".ts"], "exclude": [] } },
+      "tool_name": "Edit",
+      "tool_input": { "file_path": "src/report.ts", "old_string": "", "new_string": "db.prepare(\"SELECT COUNT(*) FROM messages\")" }
+    },
+    {
+      "note": "new inline SQL with no name yet",
+      "files": { "src/store/queries.ts": "export const Q = {\n};\n" },
+      "policy": { "sql": { "stores": ["src/store/queries.ts"], "code_ext": [".ts"], "exclude": [] } },
+      "tool_name": "Write",
+      "tool_input": { "file_path": "src/new.ts", "content": "db.prepare(\"DELETE FROM sessions\")" }
+    }
+  ],
+  "pass": [
+    {
+      "note": "an edit inside the store file itself",
+      "files": { "src/store/queries.ts": "export const Q = {\n};\n" },
+      "policy": { "sql": { "stores": ["src/store/queries.ts"], "code_ext": [".ts"], "exclude": [] } },
+      "tool_name": "Edit",
+      "tool_input": { "file_path": "src/store/queries.ts", "old_string": "};", "new_string": "  one: \"SELECT 1\",\n};" }
+    },
+    {
+      "note": "moving an existing call is not a new query",
+      "files": { "src/store/queries.ts": "export const Q = {\n};\n" },
+      "policy": { "sql": { "stores": ["src/store/queries.ts"], "code_ext": [".ts"], "exclude": [] } },
+      "tool_name": "Edit",
+      "tool_input": { "file_path": "src/a.ts", "old_string": "  db.prepare(\"SELECT 1\")", "new_string": "db.prepare(\"SELECT 1\")" }
+    },
+    {
+      "note": "a repo with no store file is never blocked",
+      "files": {},
+      "policy": {},
+      "tool_name": "Write",
+      "tool_input": { "file_path": "src/new.ts", "content": "db.prepare(\"DELETE FROM sessions\")" }
+    }
+  ]
+}
