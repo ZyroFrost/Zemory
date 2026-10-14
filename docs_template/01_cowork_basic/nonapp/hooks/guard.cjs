@@ -559,6 +559,44 @@ function checkBash(cmd) {
     deny("BLOCKED (guard layer 1): rule 02-10 - a script deleting a file, ask the user first." + flagTip("delete"));
   }
 
+  // ── PLAN INVARIANTS (plan/27 §0b, 2026-10-14) ─────────
+  // HP 3: the source rows of the memory store (`sessions` / `messages`) are never removed or rewritten by a hand-typed
+  // statement; optimising touches only the derived layers. Caught: sqlite3 or an interpreter, a `global_memory*.db` on the
+  // line, and DELETE / UPDATE / DROP aimed at one of those two tables.
+  const SRC_ROWS = /\b(delete\s+from|update|drop\s+table(\s+if\s+exists)?)\s+["`\[]?(sessions|messages)\b/i;
+  if (/global_memory[\w.-]*\.db/i.test(bare) && SRC_ROWS.test(bare) &&
+      (anyCmdIs(bare, /^sqlite3(\.exe)?$/) || SEG_INTERP.test(cmdWordOf(bare))) && !consumeFlag("delete", bare)) {
+    deny("BLOCKED (guard layer 1): HP 3 - a hand-typed DELETE / UPDATE / DROP on the source rows (sessions / messages) of the " +
+      "memory store; source rows are never removed or rewritten, optimising touches only derived layers." + flagTip("delete"));
+  }
+  // HP 2 / 7: the memory store, the share key and runtime data never land in a cloud-synced folder - the DB travels only
+  // through the app's own channel, never as a file.
+  const CLOUD_DIR = /(onedrive|google\s*drive|my\s*drive|dropbox|icloud\s*drive|iclouddrive)/i;
+  const CLOUD_SRC = /(\.db(-wal|-shm)?|\.sqlite3?|share\.key)$|(^|[\\/])(data|global-memory)([\\/]|$)/i;
+  for (const seg of splitSegments(bare)) {
+    const word = cmdWordOf(seg);
+    if (!/^(mv|move|move-item|mi|cp|copy|copy-item|robocopy|rsync|xcopy)$/.test(word)) continue;
+    // Quote-aware: a cloud folder name usually holds spaces (`OneDrive - Company`).
+    const args = (seg.trim().match(/"[^"]*"|'[^']*'|\S+/g) || []).slice(1).map((t) => t.replace(/^["']|["']$/g, ""))
+      .filter((t) => t && !t.startsWith("-") && !/^\/[A-Za-z]+$/.test(t));
+    if (args.length < 2) continue;
+    // robocopy puts the source first and the destination second; every other mover puts the destination last.
+    const dest = word === "robocopy" ? args[1] : args[args.length - 1];
+    const srcs = word === "robocopy" ? [args[0], ...args.slice(2)] : args.slice(0, -1);
+    if (CLOUD_DIR.test(dest) && srcs.some((a) => CLOUD_SRC.test(a.replace(/[\\/]+$/, ""))) &&
+        !consumeFlag("outside", bare)) {
+      deny("BLOCKED (guard layer 1): HP 2, 7 - copying the memory store / the share key / runtime data into a cloud folder (`" +
+        dest + "`); it travels only through the app's own channel, never as a file." + flagTip("outside"));
+    }
+  }
+  // The machine's REAL Syncthing (REST on 8384) belongs to the user; tests use their own instance. Reads (GET) pass.
+  if (/(127\.0\.0\.1|localhost|\[::1\]):8384\b/i.test(bare) &&
+      /(-X\s*|--request\s+|-Method\s+)["']?(POST|PUT|PATCH|DELETE)\b|\s(-d|--data[\w-]*|-Body)\s/i.test(bare) &&
+      !consumeFlag("outside", bare)) {
+    deny("BLOCKED (guard layer 1): a write to this machine's real Syncthing (REST on 8384) - it is the user's own " +
+      "instance; tests start their own on another port." + flagTip("outside"));
+  }
+
   // ── WRITING / MOVING through a COMMAND (not only through the Write/Edit tools) ─────────
   //
   // Hole measured 2026-08-26: `checkWrite` only runs for the Write/Edit/MultiEdit tools, so writing to a
@@ -906,6 +944,40 @@ function main() {
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
         deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
+      }
+    }
+    // An internal network address never enters a tracked file (plan/27 §0b) - the write-time twin of the
+    // no-data-in-git ratchet: the same full-4-octet private ranges (10.x left out, it collides with version numbers)
+    // plus every address bound to THIS machine's cards. Only NEW addresses count; git-ignored files and tests pass.
+    if (p) {
+      const relP = relToRoot(p).replace(/\\/g, "/");
+      const inside = !relP.startsWith("..") && !path.isAbsolute(relP);
+      const text = (s) => String(s || "");
+      let before = "", after = "";
+      if (tool === "Write") { try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; } after = text(ti.content); }
+      else if (tool === "Edit") { before = text(ti.old_string); after = text(ti.new_string); }
+      else if (tool === "MultiEdit") { for (const e of ti.edits || []) { before += "\n" + text(e.old_string); after += "\n" + text(e.new_string); } }
+      else after = text(ti.new_source);
+      if (inside && !/^backend\/test\//.test(relP) && after) {
+        const own = [];
+        try {
+          for (const list of Object.values(os.networkInterfaces())) for (const a of list || []) {
+            if (a.family === "IPv4" && !a.internal) own.push(a.address);
+          }
+        } catch { /* no interfaces readable - the range check still runs */ }
+        const found = new Set();
+        for (const m of after.matchAll(/\b(?:192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/g)) found.add(m[0]);
+        for (const ip of own) if (new RegExp("\\b" + ip.replace(/\./g, "\\.") + "\\b").test(after)) found.add(ip);
+        const fresh = [...found].filter((ip) => !before.includes(ip));
+        let ignored = false;
+        if (fresh.length) {
+          try { require("node:child_process").execFileSync("git", ["-C", ROOT, "check-ignore", "-q", "--", relP], { stdio: "ignore", windowsHide: true, timeout: 5000 }); ignored = true; }
+          catch { ignored = false; }
+        }
+        if (fresh.length && !ignored && !consumeFlag("docs_write", relP)) {
+          deny("BLOCKED (guard layer 1): an internal network address (" + fresh[0] + ") in the tracked file " + relP +
+            " - it maps the private network; use a documentation range (192.0.2.x · 198.51.100.x) instead." + flagTip("docs_write"));
+        }
       }
     }
     // OUTSIDE THE PROJECT 1 through the file tools - fingerprint = the path.
