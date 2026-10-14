@@ -56,7 +56,10 @@ export function applyKit(
 
   const hp = harnessPathsAt(root);
   const target = { agentDir: hp.agent, skillsDir: hp.skills };
-  const parts = kitParts(kit, storeDir);
+  // A constitution belongs to its repo: the suggested articles are offered ONCE, when the repo is assembled the first
+  // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
+  // the repo's own session changes its constitution).
+  const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== "01_CONSTITUTION" || !marked);
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, parts.filter((p) => p.shelf === "04_SKILLS"), target.skillsDir) : "current";
