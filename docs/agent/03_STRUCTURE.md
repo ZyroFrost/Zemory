@@ -1,0 +1,332 @@
+<!-- GENERATED · NGUỒN = file .md này (hand-edit tự do, file wins); DB = index dẫn xuất cho search. -->
+# Cấu trúc repo chuẩn — hệ APP
+
+> Chuẩn folder zemory cho **hệ APP** (có code CHẠY do mình phát triển: UI / server / CLI). Mô tả theo **VAI TRÒ**, không khóa framework.
+> **HAI CHUẨN, chọn theo LOẠI dự án (chốt TRƯỚC khi nắn folder — `AGENTS.md` §Vào việc bắt agent HỎI user):**
+> - **APP** (file này) — có code chạy → §1–6 (backend/ · frontend/ · docs/ · AGENTS.md).
+> - **NON-APP** (sản phẩm/tài sản: BI/report · data · docs-only · design — vd `<repo báo cáo>`; agent chỉ đọc/dò/kéo/điền/xuất FILE) → **chuẩn RIÊNG**, KHÔNG ở file này. Project non-app nhận bản `03_STRUCTURE` của hệ non-app (`zemory init --non-app`; nguồn = template `nonapp/`).
+> Cả hai dùng CHUNG harness `docs/` + `AGENTS.md` (cùng engine zemory, agent điều hướng như nhau).
+> Đọc TRƯỚC khi sửa: cần gì → §4 trỏ thẳng slot. Nắn project về chuẩn: xem **§8** (Reconcile) bên dưới.
+
+## 1. Nguyên tắc
+- Mô tả theo **VAI TRÒ (role)**, KHÔNG khóa framework → áp Web / Desktop / CLI / AI / Data / Monorepo mà gần như không đổi cấu trúc.
+- **Chuẩn RIÊNG của mình:** mỗi concern **1 TÊN duy nhất**; chỉ khi framework ÉP CỨNG (Next `pages/`, Django `models/`,`migrations/`, Rails `app/models`) mới theo tên nó — như Docker ép `Dockerfile` ở root.
+- **Mục đích KÉP:** cấu trúc gọn + **INDEX điều hướng** — agent đọc rule là trỏ THẲNG folder cần sửa, KHỎI grep cả repo (nhanh + tiết kiệm token, đúng bất biến #1).
+- **INDEX = TỪ ĐIỂN TÊN, KHÔNG phải danh sách folder phải tạo.** ~40 slot dưới đây là *tên có sẵn để tra cứu*; **CHỈ tạo folder khi CÓ concern THẬT** — **TUYỆT ĐỐI KHÔNG tạo hàng loạt folder rỗng** cho "đủ bộ". Thiếu concern nào → bỏ folder đó. Một app điển hình chỉ hiện diện 4–10 slot.
+- **Nguồn = ĐẦU VÀO (git tracked); output/runtime/secret = ĐẦU RA (GITIGNORE).**
+- **BẮT BUỘC = 4 VAI TRÒ:** `backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`. TẤT CẢ còn lại `[opt]` — tạo KHI CÓ concern.
+
+## 2. Hai cách sắp xếp code — layer-first / domain-first
+Cùng MỘT từ điển tên slot (§3), chỉ khác **cấp lồng**. Chọn 1 kiểu cho mỗi app, **KHÔNG trộn tùy tiện**.
+
+- **LAYER-FIRST** (mặc định — app nhỏ / CRUD / ít domain): slot nằm PHẲNG ngay dưới `src/`.
+  → `src/{api, services, store, ai, validators, …}`
+- **DOMAIN-FIRST** (app nhiều domain rạch ròi — vd zemory): mỗi domain là `src/<domain>/`, bên trong LỒNG LẠI đúng slot nó cần (cùng từ điển).
+  → `src/<domain>/{store, services, ai, io, validators, …}`
+
+```
+Ví dụ DOMAIN-FIRST — chính zemory:
+  src/memory/    store=db · services=ingest/search/digest · ai=embed/rerank/vectors · io=scanweb/share
+  src/docs/     services=plan/changelog/markdown              (domain "harness")
+  src/core/     composition root: registry/router/runtime      (wiring, KHÔNG business-logic)
+  src/modules/  provider theo capability (memory/search/harness/health)
+  surface:      commands (cli) · ui (server) · mcp              (entry MỎNG, chỉ wire vào domain)
+```
+
+**Luật bất diệt cho CẢ HAI kiểu:**
+- **Cross-cutting** (`core, auth, vault, config, logging, audit, errors, i18n, update, migrations, shared, util`) → **LUÔN ở cấp `src/` gốc**, KHÔNG lồng/nhân bản trong từng domain.
+- Bên trong một domain **chỉ dùng slot từ CÙNG từ điển** (store/services/ai/io/validators…), KHÔNG tạo tên mới. **Ba** slot **CHỈ dùng ở cấp domain** (không đặt ở `src/` gốc): `graph/` (engine graph dẫn xuất) · `adapters/` (parser theo từng host/nguồn) · `channel/` (ĐƯỜNG TRUYỀN ngang hàng: danh tính · bắt tay · dò · chở khối — TÁCH khỏi module sở hữu ĐỊNH DẠNG gói). *(Khai chính thức 2026-07-26: `zemory conform` bắt được cùng tên `graph/` tự phát ở 2 repo độc lập ⇒ concern thật; trước đó §4 nói "lồng trong domain" mà không đặt TÊN, thành ra mâu thuẫn với chính luật "chỉ dùng slot từ cùng từ điển" này.)*
+- **Surface/entry MỎNG:** CLI → `commands/`, HTTP → `api/`, WS → `realtime/`, UI → `frontend/`; entry chỉ wire vào domain, không chứa nghiệp vụ.
+
+## 3. Cây thư mục — ghi chú TỪNG DÒNG
+Chuẩn RIÊNG, mô tả theo **vai trò**, gom theo 6 dải (band). Marker: `★` = BẮT BUỘC · `[opt]` = tạo KHI CÓ concern · `(manifest)` = file tool chuẩn.
+```
+App/                                # 1 APP = cây này  (Monorepo → apps/<app>/ + packages/<lib>/)
+│
+│ ═════════ ① TRACKED — NGUỒN + MANIFEST (commit lên git) ═════════
+│
+├── backend/                     ★ server-side: code mình + entry (100% của mình, một giọng)
+│   ├── src/                     ★ nơi CHỨA code (Node: src/ · Python: backend/<pkg>/).
+│   │                              Sắp theo LAYER-FIRST (phẳng) hoặc DOMAIN-FIRST (src/<domain>/ lồng slot) — §2.
+│   │                              ▼ TẤT CẢ [opt] — tạo KHI CÓ concern (KHÔNG tạo folder rỗng):
+│   │  │┄┄ BIÊN VÀO (thế giới → mình) ┄┄
+│   │  ├── api/            [opt]  endpoint app MÌNH mở — REST/route phục vụ FE/client (+ health-check)
+│   │  ├── graphql/        [opt]  schema + resolver (nếu dùng GraphQL)
+│   │  ├── realtime/       [opt]  WebSocket / SSE (realtime push)
+│   │  ├── events/         [opt]  NHẬN & xử lý event/webhook INBOUND · consumer · listener
+│   │  ├── functions/      [opt]  serverless handler (Lambda / Cloud Function)
+│   │  ├── commands/       [opt]  lệnh CLI (app là CLI, vd zemory) — mỗi verb 1 file
+│   │  ├── middleware/     [opt]  pipeline request: guard / cors / log / rate-limit
+│   │  │┄┄ BIÊN RA (mình → thế giới) ┄┄
+│   │  ├── integrations/   [opt]  client gọi SERVICE NGOÀI (Stripe/Slack/SendGrid/FCM/S3-client…)
+│   │  ├── store/          [opt]  DATA-ACCESS: driver + schema (DB remote/nội-bộ/cloud). at-rest (SQLCipher) ở đây
+│   │  │   └── queries.*   [opt]    GOM mọi SQL đặt TÊN, gọi theo tên — KHÔNG rải f-string
+│   │  ├── cache/          [opt]  lớp CACHE ứng dụng (Redis/memcached client + TTL/invalidate) — KHÁC store/ (primary) & data/cache/ (file)
+│   │  ├── storage/        [opt]  OBJECT/BLOB & file-upload: validate/transform/ký-URL. client SaaS→integrations/ · bytes→data/uploads/ · metadata→store/
+│   │  ├── notifications/  [opt]  điều phối EMAIL/SMS/PUSH (gửi gì/khi nào); kênh gửi→integrations/ · template→resources/locales
+│   │  │┄┄ XỬ LÝ (nghiệp vụ) ┄┄
+│   │  ├── services/       [opt]  business logic (nghiệp vụ cốt lõi)
+│   │  ├── ai/             [opt]  lớp AI: provider interface + adapter (local model/OpenAI/Anthropic)
+│   │  ├── agents/         [opt]  VÒNG LẶP AGENT: planning/reasoning/state-machine điều phối LLM (guardrail · grade→rewrite · cap vòng).
+│   │  │                          Model-driven — KHÁC pipelines/ (tất định). LLM client→ai/ · prompt→resources/prompts/
+│   │  ├── tools/          [opt]  ĐỊNH NGHĨA tool cho LLM/agent GỌI (schema + binding + shape kết quả). CHỈ khai báo + nối —
+│   │  │                          THỰC THI delegate slot sẵn có (search/·integrations/·store/). KHÁC scripts/(dev)·util/·plugins/(bên-thứ-3)
+│   │  ├── evals/          [opt]  ĐO CHẤT LƯỢNG model/agent/RAG trên corpus CÓ NHÃN (recall@k · LLM-judge · golden set) + gate.
+│   │  │                          KHÁC test/ (pass/fail tất định)
+│   │  ├── search/         [opt]  INDEX & retrieval (FTS/vector/Elastic): build index + query/rank/rerank
+│   │  ├── pipelines/      [opt]  ETL / ingest / batch NHIỀU-BƯỚC (đường ống dữ liệu) — KHÁC jobs (lịch) & events (phản ứng)
+│   │  ├── jobs/           [opt]  job nền / cron / queue / scheduled task
+│   │  ├── validators/     [opt]  validate/parse input (zod/pydantic/schema)
+│   │  │┄┄ NỀN TẢNG / cross-cutting (LUÔN cấp src/ gốc, dùng chung mọi domain) ┄┄
+│   │  ├── core/           [opt]  COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối các module. KHÔNG business-logic
+│   │  ├── auth/           [opt]  authentication (LÀ AI: login/jwt/oauth/session) + authorization (ĐƯỢC GÌ: role/permission/policy). Enforce→middleware/
+│   │  ├── vault/          [opt]  MÃ HÓA + KEY: derive/encrypt/decrypt, credential vault — CODE ở đây; FILE key/bundle→data/secrets/
+│   │  ├── config/         [opt]  config CODE (đọc .env→settings/hằng/enum) + feature-flag. Secret KHÔNG ở đây
+│   │  ├── logging/        [opt]  LOGGER (level/format/sink) + observability (metrics/trace). Log file→data/logs/ · Sentry→integrations/
+│   │  ├── audit/          [opt]  AUDIT TRAIL bảo mật (ai làm gì/khi nào); bảng→store/. KHÁC log debug
+│   │  ├── errors/         [opt]  error types + 1 central handler/boundary (KHÔNG rải try/catch bừa)
+│   │  ├── i18n/           [opt]  ĐA NGÔN NGỮ: load locale + lookup + AUTO-DỊCH. File dịch: server→resources/locales · UI→frontend/locales
+│   │  ├── update/         [opt]  VERSION-UP tự động: check Releases/registry + tải + apply. Phối attic/(backup)+dist/(bản mới)+migrations/
+│   │  ├── migrations/     [opt]  DB migration — mỗi file = 1 bước version schema
+│   │  ├── platform/       [opt]  TÍCH HỢP OS (app chạy nền/desktop): system-tray · start-with-OS (autostart) · native shell. Đây là CODE tray/autostart; FILE icon → resources/packaging/
+│   │  │┄┄ CHIA SẺ / HỢP ĐỒNG ┄┄
+│   │  ├── shared/         [opt]  DÙNG CHUNG BE↔FE: type + RUNTIME (zod schema, hằng số, pure logic). Type-thuần = shared/types. FE import
+│   │  ├── contracts/      [opt]  FILE spec hợp đồng API: OpenAPI/proto/GraphQL-SDL/AsyncAPI (contract-first). Sinh code→generated/
+│   │  ├── plugins/        [opt]  điểm mở rộng cho BÊN THỨ 3 (host nạp thêm). KHÁC modules/ (feature CỦA MÌNH)
+│   │  ├── modules/        [opt]  gói theo DOMAIN/feature (đơn vị domain-first §2); bên trong LỒNG lại slot
+│   │  └── util/           [opt]  CHỈ helper thuần (format/date/string) — KHÔNG logic/repo/framework-adapter
+│   ├── test/              [opt]  test tự động — CHỈ khi có lõi logic dễ sai ngầm. Test thường = CHẠY app
+│   ├── scripts/           [opt]  script dev/build/ops/DEPLOY (+ sql/ one-off)
+│   ├── infra/             [opt]  IaC: k8s/helm/terraform/ansible + config app tự quản (prometheus)
+│   ├── resources/         [opt]  RESOURCE ĐÓNG GÓI tracked (KHÔNG code/media/runtime): prompts/ sql/ seed/ packaging/ locales/
+│   ├── run.*              ★ entry chạy app — HOẶC manifest khai bin/main (Node-CLI: bin ở root là ĐỦ, khỏi run.*)
+│   └── package.json | pyproject.toml   ★ manifest (Node-CLI có thể đặt ở ROOT — xem ghi chú ★)
+│
+├── frontend/               ★ UI (mọi app đều có UI, kể cả tool ít UI). ▼ TẤT CẢ [opt]:
+│   ├── assets/       [opt]  MEDIA UI: logo · icon · background · banner · ảnh · font — con theo LOẠI khi có (logo/ icons/ backgrounds/ banners/ images/ fonts/)
+│   ├── components/   [opt]  component dùng lại — Dialog + resize handle/seam. Đặc tả: skill `app-design` §F1/§F2 (đừng chép lại ở đây)
+│   ├── styles/       [opt]  TOKENS: size dialog, màu, spacing + CSS/theme chung + biến layout resize (--rail-w…)
+│   ├── pages/        [opt]  trang / màn hình / route
+│   ├── layouts/      [opt]  layout khung trang
+│   ├── state/        [opt]  state client (Redux/Zustand)
+│   ├── hooks/        [opt]  hook (React)
+│   ├── client/       [opt]  client gọi BACKEND của mình (FE → BE) — KHÔNG đặt tên `api/`: `api/` là biên VÀO (mình MỞ), đây là biên RA
+│   ├── locales/      [opt]  ngôn ngữ / bản dịch UI (i18n)
+│   ├── config/       [opt]  setting MẶC ĐỊNH ship (default layout/theme) — KHÔNG API-URL/secret
+│   ├── util/         [opt]  helper thuần client (+ lib/) — đối xứng backend/util
+│   ├── types/        [opt]  type CHỈ dùng client (dùng chung BE↔FE → backend/src/shared)
+│   └── public/       [opt]  file tĩnh serve thẳng (favicon, robots.txt, manifest PWA, service-worker)
+│                        ⤷ test/e2e/story: co-locate hoặc frontend/test — KHÔNG ép (chạy app = phép kiểm thử)
+│
+├── docs/                   ★ harness zemory (FILE .md là NGUỒN; DB chỉ INDEX dẫn xuất — file wins):
+│   ├── agent/          ★    01_CONSTITUTION · 02_RULES · 03_STRUCTURE · 04_SKILLS · 05_TODO · 06_CHANGES
+│   ├── plan/           ★    spec/plan theo section — PHẲNG · NN_tên.md (00=overview) · MỌI .md đều được index
+│   └── .harness.json   ★    marker: project đã wire harness
+├── docs_visual/      [opt]  bản XEM TRỰC QUAN cho NGƯỜI (agent KHÔNG đọc) — .html tự chứa CÓ TƯƠNG TÁC ·
+│                            .drawio/.svg vẽ tay: sơ đồ flow/kiến trúc/lineage/lưới trạng thái/timeline của
+│                            hệ hoặc plan. NGOÀI cây docs/ → luật "đọc mọi file docs/" KHÔNG chạm (0 token).
+│                            Mỗi file PHẢI có .md chủ trỏ tới + tóm tắt 1–3 dòng. Vẽ bằng chữ được → mermaid TRONG .md.
+│
+├── config/           [opt]  file config OPERATOR tự sửa (YAML/TOML): profile kết nối, server list
+│   ├── *.example.*   [opt]    template TRACKED — trỏ secret bằng TÊN env
+│   ├── *.yaml (real) [opt]    bản THẬT → GITIGNORE (password_env → .env)
+│   └── *.local.*     [opt]    override theo máy → GITIGNORE
+│
+├── contracts/        [opt]  (escape-hatch) spec API ở ROOT khi ĐA CLIENT/SDK dùng chung (thay backend/src/contracts)
+├── external/         [opt]  repo NGOÀI clone THAM CHIẾU — code HỌ, chỉ gọi/extend, KHÔNG dán vào backend
+│   └── skills/       [opt]    KHO SKILL vendored: mỗi skill = 1 folder ĐÚNG TÊN REPO GỐC, clone nguyên
+│                              bản (bỏ .git, GIỮ LICENSE), KHÔNG sửa nội dung. Index ở 04_SKILLS;
+│                              nơi adapt hiện ra thật = §9. Đọc on-demand, KHÔNG copy sang từng project.
+├── attic/            [opt]  backup: nguồn cũ / code đã gỡ + SNAPSHOT bản tốt TRƯỚC deploy/self-update (rollback). Tracked
+├── docs_template/    [opt]  bộ docs MẪU TRẮNG phát cho project khác (chỉ tool kiểu zemory; có <PROJECT>)
+├── docs_public/      [opt]  ảnh/media ĐI KÈM README hoặc trang công khai — TRACKED (ngược hẳn docs_visual/).
+│                            CHỈ nhận thứ CỐ Ý công khai. Ảnh chụp giao diện phải TẨY trước khi bỏ vào: tên dự
+│                            án · tên phiên · tên máy · email · IP nội bộ · đường dẫn mang tên người dùng.
+│                            Con theo LOẠI khi có (ui/ · diagrams/). Không có gì công khai → KHÔNG tạo folder.
+├── share/            [opt]  bundle SYNC MÃ HÓA xuyên máy (git-lfs *.enc + key + README) — TRACKED (đã mã hóa). Chỉ app CÓ sync-qua-git
+│
+│ ═════════ ② ROOT — do TOOL ÉP vị trí (tôn trọng, KHÔNG dời) ═════════
+│
+├── AGENTS.md         ★         cửa vào harness (mô tả app + trỏ vào docs/) — chuẩn liên-công-cụ agents.md
+├── CLAUDE.md         ★         cửa vào thứ 2: CHỈ `@AGENTS.md`. Claude Code đọc CLAUDE.md, KHÔNG đọc AGENTS.md ⇒ thiếu file này là cửa vào không tự nạp
+├── README.md · LICENSE · .gitignore · .gitattributes   (manifest) giới thiệu/giấy phép/ignore/eol-lfs
+├── package.json | pyproject.toml   ★ manifest (root — vd Node-CLI bin ở đây)
+├── bin/              [opt]  entry CLI (npm convention: bin/<name> → dist/cli.js)
+├── tsconfig · eslint · requirements.txt · vite/next/tailwind/jest/playwright.config.*   [opt] config build/test — tool ép root
+├── .github/ · .gitlab-ci.yml         [opt]  CI/CD — tool ép root
+├── .claude/ · .vscode/ · .idea/ · .serena/   [opt] config editor/agent — ĐỂ YÊN ở root (*.local.json→gitignore)
+├── Dockerfile · docker-compose.yml · *.spec · Makefile|justfile · .husky/   [opt] tool ép root
+├── .editorconfig · .prettierrc · .npmrc · .nvmrc · .env.example   [opt] config/format/pin/env-template — tool ép root
+│                        ⤷ MỌI file config tool đọc từ root = ĐỂ YÊN, KHÔNG dời/dọn (danh sách MỞ)
+│
+│ ═════════ ③ GITIGNORE — KHÔNG commit (sinh ra / bí mật / theo máy) ═════════
+│
+├── .env              [opt]  secret runtime THẬT (pass/token/DATABASE_URL)
+├── data/             [opt]  RUNTIME sống theo máy/user — Ở LẠI MÁY, không đi đâu. ▼ [opt], tạo khi phình:
+│   ├── state/ cache/ settings/ logs/ tmp/ snapshots/ models/ secrets/   [opt]  trạng thái/cache/setting-user/log/tạm/snapshot-data/model-weight/key
+│   └── uploads/      [opt]    bytes file người dùng upload (blob runtime) — metadata thì ở store/
+├── global-memory/    [opt]  GỐC KHO đi xuyên máy (app có bộ nhớ dùng chung): kho + kênh + files/
+│                        ⤷ KHÁC data/ ở ĐÚNG MỘT điểm: nó ĐƯỢC PHÉP sang máy khác. Bí mật
+│                          (key · secrets/ · profile đăng nhập) TUYỆT ĐỐI không nằm đây
+├── generated/        [opt]  CODE SINH tự động (từ contracts/proto/graphql) — build lại được. Commit chỉ khi cần reproducibility → ghi rõ
+├── dist/ · build/ · coverage/ · .venv/ · node_modules/ · __pycache__/   [opt] output/deps sinh ra
+```
+**Ghi chú ★ — cây tối thiểu chạy được (khắc phục case Node-CLI):**
+- **4 VAI TRÒ bắt buộc:** `backend/(code)` · `frontend/` (nếu có UI) · `docs/` · `AGENTS.md`.
+- **(1) code của mình** dưới `backend/` (Node: `backend/src/` · Python: `backend/<pkg>/`).
+- **(2) 1 ENTRY:** file `run.*` **HOẶC** manifest khai `bin`/`main` — Node-CLI (zemory) dùng `bin` ở root `package.json` là **HỢP LỆ**, KHÔNG bắt buộc `backend/run.*`.
+- **(3) 1 MANIFEST:** ở root **HOẶC** `backend/` (không cần cả hai).
+- Mọi slot con khác `[opt]` — **tạo KHI CÓ concern, không tạo folder rỗng**.
+
+## 4. Routing — sửa gì / có gì → vào đâu
+Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chuẩn duy nhất):
+
+| Có gì / cần làm | → Slot |
+|---|---|
+| endpoint app MÌNH mở ra | `backend/src/api/` |
+| gọi SERVICE API ngoài (SaaS: Stripe/Slack) | `backend/src/integrations/` |
+| nối **DATABASE** (remote / nội-bộ / cloud) | `backend/src/store/` + profile `config/` + secret `.env`/`vault/` |
+| **cache** (Redis/memcached client + TTL/invalidate) | `backend/src/cache/` · file cache runtime → `data/cache/` |
+| **object/blob & file-upload** (S3…) | code → `backend/src/storage/` · client SaaS → `integrations/` · bytes → `data/uploads/` · metadata → `store/` |
+| **notifications** (email/SMS/push) | orchestration → `backend/src/notifications/` · kênh gửi → `integrations/` · template → `backend/resources/locales/` |
+| model AI | `backend/src/ai/` + weights `data/models/` + prompt `backend/resources/prompts/` |
+| **vòng lặp agent / planning / reasoning / state-machine** | `backend/src/agents/` (LLM client → `ai/` · prompt → `backend/resources/prompts/`) |
+| **định nghĩa tool cho LLM gọi** (tool-calling / MCP) | khai báo+binding → `backend/src/tools/` · **thực thi → `search/` · `integrations/` · `store/`** |
+| **bộ nhớ agent** (hội thoại / scratchpad / checkpoint) | chính sách nhớ-quên-tóm-tắt → `agents/` · lưu bền → `store/` · blob runtime → `data/state/` |
+| **đo chất lượng RAG/agent** (recall@k · LLM-judge) | `backend/src/evals/` (KHÁC `backend/test/`) |
+| **search / index** (FTS/vector/Elastic) | `backend/src/search/` |
+| **ETL / ingest / pipeline nhiều bước** | `backend/src/pipelines/` (KHÁC `jobs/`=lịch, `events/`=phản ứng) |
+| business logic | `backend/src/services/` |
+| câu SQL | `backend/src/store/queries.*` (gom, đặt tên, gọi theo tên) |
+| job nền / cron / queue | `backend/src/jobs/` |
+| event / webhook / listener (inbound) | `backend/src/events/` |
+| websocket / SSE / realtime | `backend/src/realtime/` |
+| lệnh CLI (mỗi verb) | `backend/src/commands/` |
+| **wiring / DI / registry / lifecycle** | `backend/src/core/` (composition root, KHÔNG business-logic) |
+| **daemon nền / server tiến-trình-dài** phục vụ UI cục bộ (single-instance, cổng cố định) | surface mỏng ở `backend/src/` (vd `ui.ts`) mở endpoint `api/` + serve `frontend/` tĩnh; nghiệp vụ vẫn ở domain |
+| **engine graph** (import-graph · symbol · docs-graph · touches) | `backend/src/<domain>/graph/` — slot LỒNG trong domain, KHÔNG phải capability thứ 5 (HP điều 13); consumer ngoài đọc `graph export` versioned |
+| **adapter theo host/nguồn** (mỗi host một parser: Claude/Codex/…) | `backend/src/<domain>/adapters/` — slot LỒNG trong domain, cùng khuôn với `graph/` |
+| **đường truyền ngang hàng** (danh tính máy · bắt tay · dò LAN · mở cổng · chở khối) | `backend/src/<domain>/channel/` — slot LỒNG trong domain, cùng khuôn `graph/`. **TÁCH bạch:** module định dạng gói (vd `share.ts`) sở hữu ĐỊNH DẠNG + mã hoá; `channel/` chỉ sở hữu ĐƯỜNG ĐI. Trộn hai thứ là cách module định dạng phình thành nơi chứa mọi thứ dính tới sync |
+| **tích hợp OS** (system-tray · autostart/mở-cùng-PC · native desktop) | code → `backend/src/platform/` · FILE icon tray/exe → `backend/resources/packaging/` (§5 "Icon 3 vai trò") |
+| **write-gate / advisory lock** (chống ghi DB đồng thời daemon↔CLI) | `backend/src/jobs/` (cơ chế điều phối ghi, đi cùng scheduler) |
+| **DB migration / đổi schema** (mỗi bước 1 file version) | `backend/src/migrations/` |
+| authentication / login | `backend/src/auth/` (login/jwt/oauth/session) |
+| **phân quyền / authorization** (role · permission · policy) | định nghĩa role/permission → `backend/src/auth/` · **enforce (guard) → `backend/src/middleware/`** · role-data → `store/` · policy file operator → `config/` |
+| middleware / guard | `backend/src/middleware/` |
+| credential / secret (code) | `backend/src/vault/` (file → `data/secrets/`) |
+| **mã hóa / encryption** (at-rest DB · key · bundle) | key+encrypt/decrypt → `backend/src/vault/` · **at-rest DB (SQLCipher) → `backend/src/store/`** · key/salt/bundle → `data/secrets/` |
+| validate input | `backend/src/validators/` |
+| **lỗi / exception tùy biến + handler** | `backend/src/errors/` (KHÔNG rải try/catch bừa) |
+| **logging / observability** (logger · metrics · trace) | code → `backend/src/logging/` · log file → `data/logs/` · service ngoài (Sentry/Datadog) → `integrations/` |
+| **audit trail** (ai làm gì — bảo mật) | ghi ở `backend/src/audit/` · bảng audit → `store/` · KHÁC log debug (`data/logs/`) |
+| config (code, đọc env) + feature-flag | `backend/src/config/` |
+| health-check endpoint | `backend/src/api/` |
+| **code + type DÙNG CHUNG BE↔FE** | `backend/src/shared/` (type-thuần → `shared/types`); đa client/SDK → root `contracts/` + `packages/` |
+| **spec API** (OpenAPI/proto/GraphQL-SDL) | `backend/src/contracts/` → sinh code `generated/` (gitignore) |
+| **điểm mở rộng cho bên thứ 3** | `backend/src/plugins/` (feature của mình → `modules/`) |
+| helper thuần | `backend/src/util/` · client → `frontend/util/` |
+| UI component (Dialog…) | `frontend/components/` |
+| **panel resize / seam kéo** (≥2 panel ⇒ BẮT BUỘC) | engine → `frontend/components/` (1 engine data-driven dùng chung) · biến layout → `frontend/styles/` — luật §5 "Panel resize", slot §9.C `resizable` |
+| token / CSS / định nghĩa 3-size | `frontend/styles/` |
+| trang / route UI | `frontend/pages/` |
+| media UI (logo·icon·background·banner·ảnh·font) | `frontend/assets/` — con theo loại khi có |
+| gọi backend từ FE | `frontend/client/` |
+| type chỉ dùng client | `frontend/types/` |
+| setting UI mặc định | `frontend/config/` · user chỉnh → `data/settings/` |
+| **đa ngôn ngữ / i18n** (gồm auto-dịch) | chức năng → `backend/src/i18n/` · file dịch: UI → `frontend/locales/`, server → `backend/resources/locales/` |
+| **version-up TỰ ĐỘNG** (check bản mới / tự cập nhật) | `backend/src/update/` (check Releases/registry + tải + apply). Package-manager (npm/pip) → có thể KHÔNG cần, ghi rõ lý do |
+| **chốt version + deploy máy đích/VM (THỦ CÔNG)** | git tag (vX.Y.Z) → `dist/`(build) → `backend/scripts/deploy.*` → backup bản cũ TRÊN máy đích về `attic/` TRƯỚC KHI ghi đè |
+| file config operator (server/node) | `config/` (`.example` tracked · real gitignore) |
+| profile kết nối remote server | `config/servers.yaml` + `.env` (`password_env`) |
+| code ngoài clone tham chiếu | `external/` |
+| skill của người khác (vendored, giữ nguyên gốc) | `external/skills/<tên-repo>/` — index ở `04_SKILLS`, adapt ở §9 |
+| backup nguồn cũ / trước deploy | `attic/` |
+| runtime db/log/cache/snapshot/model/upload | `data/` (gitignore) |
+| **nơi lưu DB local + dời off ổ hệ thống** | DB ở `data/*.db` (hoặc `~/.zemory`); con trỏ CỐ ĐỊNH `~/.zemory/location.json` quyết định vị trí → dời bằng `memory relocate <dir>` / UI "Nơi lưu (máy)". **KHÔNG** để DB sống trong folder Drive-sync (WAL corrupt) |
+| code sinh tự động (codegen) | `generated/` (gitignore; commit chỉ khi cần reproducibility) |
+| đóng gói exe/installer | `.spec`(root) + `backend/resources/packaging/`(icon) + `dist/`(output) + Releases |
+| test tự động | `backend/test/` (chỉ khi có lõi logic) |
+| tài liệu / rule / plan | `docs/` — sửa FILE `.md` trực tiếp (file là nguồn, file wins) |
+| **skill / playbook thao tác** (grill · chốt phiên · reconcile) | `docs/agent/04_SKILLS.md` (KHO SKILL — chỉ chứa skill; RULES/STRUCTURE nêu NORM+trigger → dẫn chiếu tới đây) |
+| **sơ đồ / flow / kiến trúc** (mô tả bằng chữ) | khối `mermaid` **TRONG `docs/plan/NN_*.md`** — đi cùng spec, `plan search` index được |
+| **sơ đồ XEM TRỰC QUAN** (tương tác / vẽ tay) | `docs_visual/` (NGOÀI `docs/`) — 1 file self-contained + có `.md` chủ trỏ tới; sinh từ data → `scripts/` + render `exports/` |
+| **ảnh/media đăng kèm README** (công khai) | `docs_public/` — TRACKED; TẨY dữ liệu thật trước khi bỏ vào (tên dự án · phiên · máy · email · IP · đường dẫn người dùng) |
+
+## 5. Quyết định & Convention
+```
+BẮT BUỘC = 4         backend/(code) · frontend/ · docs/ · AGENTS.md. TẤT CẢ còn lại [opt] — tạo KHI CÓ concern
+KHÔNG folder rỗng    INDEX = TỪ ĐIỂN TÊN để tra, KHÔNG phải checklist tạo. Tạo folder CHỈ khi có file/concern thật; thiếu → bỏ. App điển hình chỉ 4–10 slot hiện diện
+2 trục sắp xếp       LAYER-FIRST (slot phẳng dưới src/, mặc định) HOẶC DOMAIN-FIRST (src/<domain>/ lồng slot). Chọn 1, không trộn. Cross-cutting LUÔN ở src/ gốc. (§2)
+1 TÊN / concern      store/ (KHÔNG db|models) · pages/ (KHÔNG views|screens). Framework ép mới đổi
+Tên nhiều-từ = _     file + folder slot nhiều từ → gạch DƯỚI (docs_visual · docs_template · NN_tên.md), KHÔNG hyphen/camelCase. Tên do tool/npm ép (package-lock.json · .github/ · docker-compose.yml) = ĐỂ YÊN
+Tên file = TIẾNG ANH MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần — KHÔNG tiếng Việt (cả có dấu lẫn mất dấu: `van_hanh`·`cai_dat`), KHÔNG ký tự ngoài ASCII. NỘI DUNG bên trong vẫn theo `02_RULES §Ngôn ngữ` (docs=tiếng Việt, code/UI=tiếng Anh) — luật này chỉ nói về TÊN. Lý do: tên là thứ bị gõ lại trong lệnh·import·link·URL, dấu tiếng Việt vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. ĐỂ YÊN 2 vùng KHÔNG phải của mình: `external/` (code vendor) + dữ liệu runtime bên thứ ba (`data/browser/**` — profile trình duyệt)
+Plan 00 = overview   docs/plan/00_overview.md = OVERVIEW mặc định mọi app (mục đích · tính năng · ý tưởng · phi-mục-tiêu). Spec chi tiết từ 01_* trở đi; đánh số NN_ tăng dần, PHẲNG. Bất biến kiến trúc riêng → 01_CONSTITUTION, KHÔNG nằm trong plan
+Framework ép         framework hardcode quét tên folder (Next pages/, Django models/migrations/, Rails app/models) → theo nó (như Docker ép root)
+Tool ép root         MỌI config tool đọc từ root — folder .<tool>/ (.github/.vscode/.claude/.serena) + file *.config.* / .<tool>rc / .editorconfig / .npmrc / .dockerignore / .nvmrc + Docker/.spec/Makefile — ĐỂ YÊN, refactor KHÔNG dời/dọn/liệt-kê-cứng (là danh sách MỞ)
+Entry ★ (Node-CLI)   entry = run.* HOẶC manifest.bin/main; manifest = root HOẶC backend/. Node-CLI (bin ở root package.json) KHÔNG cần backend/run.* — vẫn đạt ★
+6 LOẠI non-code      assets=media · resources=đóng-gói-tracked · config=file-operator · data=runtime-gitignore · external=code-ngoài · attic=backup
+3 loại "kết nối"     api/=mình MỞ (biên VÀO) · integrations/=SERVICE ngoài (SaaS) · store/=DATABASE (remote/cloud/nội-bộ). external/=code-họ-clone
+                     Chiều GỌI ĐI: integrations/=ra ngoài · frontend/client/=về BE của mình. MỘT tên KHÔNG gánh hai chiều
+Cache — 3 chỗ RÕ     lớp cache app (Redis client + policy) → cache/ · file cache runtime → data/cache/ · KHÔNG lẫn vào store/ (primary DB)
+Storage/blob         quản lý upload/transform/ký-URL → storage/ · client S3 (SaaS) → integrations/ · bytes runtime → data/uploads/ · metadata → store/
+Notifications        điều phối gửi (gì/khi nào) → notifications/ · kênh (SendGrid/Twilio/FCM) → integrations/ · template → resources/locales
+Search/index         build-index + query/rank → search/ (FTS/vector/Elastic). App có domain search riêng (vd zemory) → gói trong domain đó (domain-first)
+Pipelines            ETL/ingest/batch nhiều-bước → pipelines/. KHÁC jobs/ (theo lịch) & events/ (phản ứng sự kiện)
+Agent (LLM) — 4 chỗ  loop/planning → agents/ · provider LLM → ai/ · tool cho LLM gọi → tools/ · prompt → resources/prompts/. KHÔNG gộp 1 folder "agent" lộn xộn (lỗi phổ biến: reasoning+state+memory+tool+LLM-client nhét chung)
+tools/ ≠ scripts/    tools/ = tool cho LLM gọi (schema+binding; thực thi delegate slot sẵn có) · scripts/ = dev/build/ops · util/ = helper thuần · plugins/ = bên thứ 3
+Agent memory         KHÔNG slot riêng: chính sách (nhớ gì/tóm tắt/trim) → agents/ · persistence → store/ · runtime → data/state/ — cùng pattern notifications//storage//authz
+agents/ ≠ docs/agent agents/ = code agent CỦA APP · docs/agent/ = harness docs cho coding-agent đọc — 2 thứ khác hẳn nhau
+Evals vs test        evals/ = đo chất lượng XÁC SUẤT trên corpus có nhãn + gate (vd zemory `memory bench`: hybrid recall@3 ≥ FTS) · test/ = pass/fail tất định
+core/ (kernel)       COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối module. KHÔNG chứa business-logic (chống "core = nơi dồn tạp nham")
+Luật khi VIẾT        đã dời sang `02_RULES §Luật khi VIẾT` (SQL · secret · share/ · setting UI · panel resize · dialog · test · version · deploy).
+Mã hóa / Encryption  concern RIÊNG: key+encrypt/decrypt → vault/ · at-rest DB (SQLCipher) apply ở store/ · key/salt/bundle → data/secrets/ · in-transit bundle → vault/. App có DATA NHẠY CẢM (chat/PII/log) → NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ "chấp nhận plaintext" (để audit thấy, không bỏ sót)
+Nơi lưu DB (di dời)  DB sống lớn dần → cho dời KHỎI ổ hệ thống. Vị trí = con trỏ CỐ ĐỊNH ~/.zemory/location.json (env override > pointer > ~/.zemory default); mọi phụ trợ (config/browser/imports/backups) bám theo. Dời an toàn = checkpoint WAL → copy → verify (integrity + đếm) → đổi pointer → GIỮ bản cũ .bak. Con trỏ PHẢI ở chỗ cố định, KHÔNG cạnh DB (phụ thuộc vòng). KHÔNG dời vào folder Drive-sync (WAL corrupt) — Drive chỉ nhận bundle .enc
+Phân quyền / Authz   concern RIÊNG: authentication (LÀ AI) = auth/ · authorization/PHÂN QUYỀN (ĐƯỢC GÌ) = định nghĩa role/permission ở auth/ + ENFORCE (guard) ở middleware/ + role-data (user→role) ở store/ + policy file operator-sửa ở config/. App ĐA-USER / ĐA-ROLE → PHẢI có; single-user/local → ghi rõ "không phân quyền" (không bỏ sót)
+Logging / Observab.  code logger (level/format/sink) + metrics/trace → logging/ · log FILE → data/logs/ · APM/Sentry/Datadog → integrations/. Là DEBUG/vận hành — KHÁC audit-trail
+Audit trail          nhật ký BẢO MẬT "ai làm gì / lúc nào" (đổi quyền, xoá, đăng nhập) → ghi ở audit/ + bảng ở store/. KHÁC log debug (data/logs). App đa-user / có hành động nhạy cảm → NÊN có; không thì ghi rõ
+Error handling       error types + 1 central handler/boundary → errors/. KHÔNG rải try/catch bỏ qua lỗi khắp nơi
+Shared BE↔FE         shared/ = type + RUNTIME dùng chung (zod schema, hằng số, pure logic); type-thuần → shared/types. FE import. Escape-hatch: FE publish độc lập / đa client / SDK → nâng root contracts/ + packages/contracts (cắt coupling)
+Contracts (spec)     FILE hợp đồng API (OpenAPI/proto/GraphQL-SDL/AsyncAPI) → contracts/ (contract-first) → sinh code generated/. KHÁC shared/ (code TS chạy được)
+Generated code       output codegen → generated/, mặc định GITIGNORE (build lại được). Commit CHỈ khi cần reproducibility/offline-build → ghi rõ lý do
+Plugins vs modules   modules/ = feature CỦA MÌNH (domain-first §2) · plugins/ = điểm mở rộng cho BÊN THỨ 3 (host nạp thêm)
+Cross-cutting = RÕ   MỌI concern xuyên suốt (mã hóa/authz/logging/audit/error/cache/i18n…) phải có place+type trong chuẩn này → audit/refactor thấy được, KHÔNG lọt. Thiếu concern → BÁO thêm vào chuẩn
+docs_visual (xem)    bản trực quan (sơ đồ/flow/lineage/lưới/timeline) cho NGƯỜI mở NHÌN → docs_visual/ NGOÀI docs/ (agent KHÔNG auto-đọc → 0 token). .md THẮNG về sự kiện (visual chỉ trình bày; fact chỉ nằm trong visual = vô hình với plan search ⇒ mục). Mỗi file: self-contained (CSS/JS/SVG inline · KHÔNG CDN/build) + có .md chủ trỏ tới bằng LINK markdown + tóm tắt 1–3 dòng. Mặc định vẽ mermaid TRONG .md; docs_visual/ CHỈ khi không-text-được. Sinh từ data → scripts/ + exports/, KHÔNG commit render
+UI embed (single-bin) app CLI/1-binary có thể EMBED trang UI như resource (vd HTML/CSS/JS trong 1 file TS) để ship gọn — GIỮ ở backend nhưng GHI RÕ; server phục vụ nó vẫn là backend, nội dung UI vẫn "thuộc" frontend về vai trò. KHÔNG ép tách nếu tách làm vỡ build 1-file
+UI 1-ngôn-ngữ        app UI render SERVER-SIDE bằng chính ngôn ngữ backend (Streamlit/Gradio/Dash/Django+template) → KHÔNG có frontend/ tách; vai trò "frontend" = pages/views NẰM TRONG backend (Python: backend/<pkg>/pages, hoặc views/ nếu framework ép tên). Bắt buộc còn 3: backend(code)+docs+AGENTS. Asset UI: backend/<pkg>/assets hoặc frontend/assets tuỳ framework
+UI no-build (static) app phục vụ UI bằng STATIC FILES (FastAPI StaticFiles · express.static · nginx), KHÔNG bundler (webpack/vite): 1 file HTML bự PHẢI tách được thành nhiều file theo concern (styles/*.css · logic thành nhiều `<script src>` · state · api-client) — modular hoá KHÔNG cần build. An toàn: `<script src>` GIỮ global scope trước → gỡ inline onclick= → nâng ES module SAU (module scope mất global function → handler vỡ). KHÁC "UI embed (single-bin)": chỗ đó CẤM tách (vỡ build 1-binary); chỗ này KHÔNG ràng buộc → tách là ĐÚNG
+Icon — 3 vai trò     media UI (logo/icon nút/background) → frontend/assets/ · icon file .exe/binary → backend/resources/packaging/ (trình đóng gói .spec đọc) · icon tray/cửa sổ desktop → backend/resources/packaging/ (backend native đọc). ĐỪNG nhét icon-exe/tray vào frontend/assets (nó KHÔNG render trong trang)
+Packaging            .spec(root) + backend/scripts + backend/resources/packaging + dist(output) + OS app-data(cài) — DÙNG SLOT CŨ, KHÔNG nhóm mới
+util/                CHỈ helper thuần — KHÔNG business-logic / repository / framework-adapter (chống "nơi dồn tạp nham"). BE: backend/src/util · FE: frontend/util
+auth/                authentication · authorization · jwt · oauth · permission — phân biệt rõ với middleware (enforce)
+events/              event bus · consumer · listener · webhook INBOUND — webhook chỉ là 1 loại nguồn event
+data/ chia con       phình → state/ cache/ settings/ models/ snapshots/ secrets/ logs/ tmp/ uploads/ (tránh trăm file JSON 1 chỗ)
+frontend/config      CHỈ default layout/theme/profile — KHÔNG API-URL/endpoint/secret (mấy cái đó đi qua env)
+Tên co theo stack    Python backend/<pkg>/ vs Node backend/src/ — chỉ TẦNG co theo ngôn ngữ, KHÔNG tự đổi tên concern
+Monorepo             nhiều app → apps/<app>/ + packages/<lib>/ (+ packages/contracts nếu đa client), mỗi cái theo cây chuẩn
+Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/notebook · game engine · browser-extension → convention riêng, KHÔNG ép
+```
+
+## 6. Phạm vi áp dụng
+- **ÁP file này (chuẩn APP §1–5):** hầu hết app estate (UI + server-side) — desktop WebView2, web app, tool có cockpit (zemory), AI project, monorepo. Áp gần như không đổi cấu trúc; chọn layer-first hay domain-first theo số domain (§2).
+- **NON-APP → chuẩn RIÊNG (không ở file này):** project là SẢN PHẨM/TÀI SẢN, không phải code chạy — BI/report (Power BI/Tableau, vd `<repo báo cáo>`), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc. Dùng `03_STRUCTURE` của hệ non-app (`zemory init --non-app`). Ranh giới: "có UI/dashboard trong deliverable" KHÔNG biến nó thành app — chừng nào agent chỉ **đọc/dò/kéo/điền/xuất file** (kể cả mở `.pbix`), nó vẫn là non-app; chỉ khi mình **phát triển & bảo trì** một app (code chạy) mới là app.
+- **KHÔNG ép** (convention riêng): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · game engine (Unity/Unreal). Chuẩn note "ngoài phạm vi", không nhồi.
+
+## 7. Chuẩn NON-APP — đã TÁCH sang hệ riêng
+> Non-app (BI/report · data · docs-only · design — vd `<repo báo cáo>`) dùng **`03_STRUCTURE` của hệ non-app** — cấu trúc + routing riêng (deliverable · `tasks/` · `templates/` · `data/` phân tầng · automation pull/fill/upload · **0 luật UI**). Scaffold bằng `zemory init --non-app`; nguồn = template `nonapp/`. File này (app) KHÔNG lặp lại chuẩn đó.
+
+## 8. Reconcile — nắn repo về chuẩn (khi repo lệch)
+> Flow HIẾM (chỉ khi dọn repo chưa theo chuẩn). Quy trình đầy đủ (A. docs lệch · B. cấu trúc folder lệch · recipe end-to-end) → skill **[`04_SKILLS §reconcile`](04_SKILLS.md)**. Bất biến: `zemory validate`/`structure` chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự nắn (`git mv` giữ history), zemory KHÔNG auto-move**; **đập cấu trúc lớn / khó đảo → HỎI user TRƯỚC** (`02_RULES §Hành xử`, §Git).
+
+## 9. UI/UX — TỪ ĐIỂN SLOT thiết kế
+> **Đây là nơi skill thiết kế ADAPT HIỆN RA THẬT.** Skill gốc (đầy đủ) nằm ở `external/skills/` — agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ, rồi **khớp về các slot dưới đây** để ra đúng cấu trúc/ràng buộc của project. Index skill: [`04_SKILLS`](04_SKILLS.md).
+> Tra như §3 (từ điển folder): slot là để TRA — **chỉ dùng slot có concern thật, KHÔNG ép đủ bộ**. `★` = nên có ở mọi UI · `[opt]` = khi có concern.
+> **Ranh giới:** *STACK* (Tailwind / no-build CSS-var / framework) là **CẤU TRÚC — cố định theo project**, không bàn lại mỗi lần. *LAYOUT & GU* là thứ **agent bàn với user rồi chốt** (`02_RULES §Hành xử` — thiết kế UI phải trình duyệt trước).
+> **Giá trị THẬT** (token/palette của repo) sống ở `frontend/styles`, KHÔNG ở đây.
+
+**A. NỀN TOKEN** — `tokens`★ (mọi màu/size = CSS-var 1 chỗ, 0 literal) · `theme`★ (mỗi theme 1 bộ token đầy đủ, toggle lưu config) · `color`[opt] (palette primary/secondary/CTA/bg/text + mood) · `typography`[opt] (cặp font heading/body + thang cỡ) · `spacing`[opt] (thang spacing + radius + mật độ).
+
+**B. GU / AESTHETIC** — `ui-style`[opt] (**chốt 1 hướng TRƯỚC khi code**: Minimal/Glass/Brutal/Bento/Dark-native/AI-native… — chống rơi về "generic default") · `motion`[opt] (transition · micro-interaction · hover; tôn trọng `prefers-reduced-motion`) · `depth`[opt] (elevation/shadow/glow, token hoá, tắt được ở light) · `iconography`[opt] (phong cách icon nhất quán; **icon 3 vai trò** §5).
+
+**C. COMPONENT / PATTERN** — `dialog`★ (**3-size 16:9**, S 40% · M 60% · L 90% khung app, `min(Pvw, Pvh*16/9)` · **ESC + backdrop đóng**, trừ tác vụ bất-khả-huỷ · khung KHÔNG nhảy theo nội dung — §5) · `layout`[opt] (grid/responsive, **lấp đủ khung app**, không vh-cap để lại gap) · `resizable`★ (**≥2 panel kề nhau ⇒ BẮT BUỘC seam kéo được**: tự do thật · 2D kéo cả 2 chiều · MỘT engine data-driven dùng chung · lưu+khôi phục · double-click reset — §5 "Panel resize") · `navigation`[opt] (tab/menu/breadcrumb; nhớ tab qua phiên) · `forms`[opt] (input · validate · lỗi hiện **inline**) · `feedback`[opt] (toast · loading · **skeleton** thay vì nhảy layout) · `states`[opt] (**empty · loading · error · zero-data** — mọi list/panel đủ 4 trạng thái) · `data-viz`[opt] (chart/dashboard → dùng skill `dataviz`, chỉ TRỎ, không lặp).
+
+**D. CỔNG CHẤT LƯỢNG** (luôn áp, như pre-delivery check) — `accessibility`★ (WCAG **AA**: contrast · focus visible · keyboard · ARIA/label · target size) · `i18n`★ (UI = English hoặc i18n **đủ 2 dict**, 0 chuỗi hardcode) · `no-build`★ (app embed/tĩnh: tách file theo concern, **0 bundler**; framework có build chỉ dùng khi STACK của project vốn có bundler) · `anti-patterns`★ (checklist "đừng": literal màu · dialog nhảy · layout dịch khi load · low-contrast · icon-only không label · generic default).

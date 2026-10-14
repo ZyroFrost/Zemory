@@ -55,27 +55,28 @@ attic/zemory-lab/
 # diff TRƯỚC khi push; dump nay để ở ~/.zemory/rescue/ (ngoài mọi cây git).
 attic/index-rescue-*/
 
-# ── HỒ SƠ RIÊNG CỦA MÁY: docs/ và docs_visual/ (user chốt 2026-09-15) ──────────
-# Repo này PUBLIC và cố ý vậy — nó là công cụ cho nhiều người. Nhưng `docs/` KHÔNG
-# phải tài liệu của công cụ, nó là hồ sơ riêng của MỘT bản cài: hiến pháp, mọi plan,
-# sổ việc, changelog. Đo 2026-09-15 trên bản đã push: email cá nhân + email ĐỒNG
-# NGHIỆP, hostname hai máy, tên dự án nội bộ công ty (DuAnA · Dept_* ·
-# KhoDuLieuTrungTam), cùng danh sách lỗi đã biết mà chưa vá — tức bản đồ chỉ
-# chỗ mềm của hệ. Không thứ nào trong đó giúp người lạ dùng zemory.
+# ── HỒ SƠ RIÊNG trong docs/ và docs_visual/ — GIẤU TỪNG FILE, KHÔNG GIẤU CẢ CÂY ──
+# Repo này PUBLIC và cố ý vậy — nó là công cụ cho nhiều người. BỘ CHUẨN của docs
+# (marker · hooks · luật chung · cấu trúc · skill · hiến pháp · sơ đồ/mockup chuẩn) ĐI
+# theo git; chỉ FILE CÁ NHÂN ở lại (user chốt 2026-10-14: *"docs đưa qua phải có bộ
+# chuẩn… ko đc đưa file cá nhân qua mới đúng"* · *"docs visual cũng là bộ chuẩn"*).
+# 🔄 Thay bản 2026-09-15 (`/docs/` + `/docs_visual/` cả cây): nó giấu luôn bộ chuẩn ⇒
+# máy cài mới bằng git clone không có `.harness.json` · `hooks/` (guard) · 02/03/04.
 #
-# `docs_visual/` cùng hạng: nó là PLAN Ở DẠNG ẢNH (user 16/07: *"vẫn là docs nhưng
-# nhánh khác"*), và `ui/` còn là ảnh chụp KHO THẬT — tên phiên, tên tệp, nội dung
-# hiển thị. Thứ không grep ra được, nên càng dễ lọt.
-#
-# Thứ NGƯỜI KHÁC cần thì vẫn công khai và không đụng tới: `docs_template/` (bản mẫu
-# TRẮNG) + `AGENTS.md`. Ai clone về chạy `zemory init` là có docs CỦA HỌ.
-# Hai folder này đi sang máy khác qua KÊNH ĐÃ XÁC THỰC (chìa share + ghép đôi máy),
-# không qua git — "được phép rời máy" và "được phép công khai" là hai chuyện khác nhau.
+# Thứ CÁ NHÂN (đo 2026-09-15 trên bản đã push: email cá nhân + email đồng nghiệp,
+# hostname hai máy, tên dự án nội bộ, danh sách lỗi chưa vá) nằm ở: sổ việc · changelog
+# · archive · plan · ảnh chụp KHO THẬT (`docs_visual/ui/*.png` — tên phiên, tên tệp).
+# Chúng đi sang máy khác qua KÊNH ĐÃ XÁC THỰC (chìa share + ghép đôi máy), không qua git —
+# "được phép rời máy" và "được phép công khai" là hai chuyện khác nhau.
+# File chuẩn đưa lại vào git phải TẨY tên riêng trước (làm 2026-10-14: 01/02/03 + sơ đồ).
 #
 # ⚠ Lịch sử đã push thì KHÔNG gỡ được bằng dòng này (`.gitignore` là GIẤU, không phải
 # DỌN). Nó chặn từ nay; phần đã công khai coi như đã lộ — cùng bài học `share.key` 04/08.
-/docs/
-/docs_visual/
+/docs/agent/05_TODO.md
+/docs/agent/06_CHANGES.md
+/docs/agent/archive/
+/docs/plan/
+/docs_visual/ui/*.png
 
 # `attic/` — KHO LEGACY, cùng nhóm với docs/ (user chốt 2026-09-15).
 # Nó giữ thứ đã nghỉ hưu NHƯNG vẫn là hồ sơ thật của bản cài này: bàn giao dự án cũ, cấu
