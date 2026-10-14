@@ -7,8 +7,9 @@
 // both sides key on the SAME markers (CORE_START / CORE_END / the no-gate block), and rule-core.test pins them together.
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { guardMatcherGaps, precommitState } from "./guard-gen.js";
+import { join, relative } from "node:path";
+import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
+import { bodyOf, isFolderHarness, listParts, type Part } from "./store.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
@@ -173,7 +174,7 @@ export interface RuleCoverage {
 interface GateFacts {
   root: string;
   hooksDir: string;
-  policy: { rule_hooks?: Array<{ file: string }>; sql?: unknown; read_first?: unknown } | null;
+  policy: { rule_hooks?: Array<{ file: string }>; rule_dirs?: string[]; sql?: unknown; read_first?: unknown } | null;
   guardWired: boolean;
   precommit: ReturnType<typeof precommitState>;
   userHooks: string;
@@ -183,7 +184,7 @@ function readOr<T>(read: () => T, fallback: T): T {
   try { return read(); } catch { return fallback; }
 }
 function gateFacts(root: string, agentDir: string): GateFacts {
-  const hooksDir = join(agentDir, "..", "hooks");
+  const hooksDir = isFolderHarness(agentDir) ? hooksDirOf(root) : join(agentDir, "..", "hooks");
   const policy = readOr<GateFacts["policy"]>(() => JSON.parse(readFileSync(join(hooksDir, "policy.json"), "utf8")), null);
   const settings = join(root, ".claude", "settings.json");
   const gaps = guardMatcherGaps(existsSync(settings) ? readFileSync(settings, "utf8") : null);
@@ -218,8 +219,93 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
   return `unknown gate ${mark}`;
 }
 
+// ── folder harness (plan/28 §0e) ─────────────────────────────────────────────────────────────────────────────────────
+// A rule is a folder. Its header says what it is (`kind: action | content | judgment`), and its gate sits beside it in
+// gate.json (`hook` = a hook.cjs the guard calls · `gate` = a mark of GATE_KINDS · `conform` = a structure check). The core
+// is the judgment rules — derived from the tree, no markers.
+
+interface FolderRule {
+  part: Part;
+  gate: { hook?: string; gate?: string; conform?: unknown } | null;
+  /** gate.json present but unreadable. */
+  badJson: boolean;
+}
+
+function folderRules(agentDir: string): FolderRule[] {
+  return (["01_CONSTITUTION", "02_RULES"] as const).flatMap((shelf) =>
+    listParts(agentDir, shelf).map((part) => {
+      const p = join(part.dir, "gate.json");
+      if (!existsSync(p)) return { part, gate: null, badJson: false };
+      try {
+        return { part, gate: JSON.parse(readFileSync(p, "utf8")) as FolderRule["gate"], badJson: false };
+      } catch {
+        return { part, gate: null, badJson: true };
+      }
+    }),
+  );
+}
+
+/** The judgment rules of a folder harness as text: the forced part a session starts with. */
+function folderCoreText(agentDir: string): string {
+  const purpose = readOr(() => readFileSync(join(agentDir, "01_CONSTITUTION", "PURPOSE.md"), "utf8").trim(), "");
+  const rules = folderRules(agentDir)
+    .filter((r) => r.part.kind === "judgment")
+    .map((r) => bodyOf(readFileSync(join(r.part.dir, r.part.shelf === "03_STRUCTURE" ? "SLOT.md" : "RULE.md"), "utf8")).trim());
+  return [purpose, ...rules].filter(Boolean).join("\n\n");
+}
+
+/** Holes in a folder harness, in the same shape as the file harness check. */
+export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
+  const testDir = join(root, "backend", "test");
+  const checkTests = existsSync(testDir);
+  const unmarked: string[] = [];
+  const gatedInCore: string[] = [];
+  const badGate: string[] = [];
+  for (const r of folderRules(agentDir)) {
+    const id = r.part.id;
+    if (r.badJson) { badGate.push(`${id} (gate.json unreadable)`); continue; }
+    if (!r.part.kind) { badGate.push(`${id} (no kind: in RULE.md)`); continue; }
+    if (r.part.kind === "judgment") { if (r.gate) gatedInCore.push(id); continue; }
+    if (!r.gate) { unmarked.push(id); continue; }
+    if (r.gate.hook && !existsSync(join(r.part.dir, r.gate.hook))) badGate.push(`${id} (${r.gate.hook} missing)`);
+    if (r.gate.gate) {
+      const [kind, ref] = r.gate.gate.split(":");
+      if (!(GATE_KINDS as readonly string[]).includes(kind)) badGate.push(`${id} (${r.gate.gate})`);
+      else if (kind === "test" && checkTests && (!ref || !existsSync(join(testDir, `${ref}.test.mjs`)))) badGate.push(`${id} (${r.gate.gate})`);
+    }
+  }
+  const core = folderCoreText(agentDir);
+  return { noCore: false, unmarked, gatedInCore, badGate, overCap: core.length > CORE_MAX_CHARS ? core.length : 0 };
+}
+
+function folderCoverage(root: string, agentDir: string): RuleCoverage {
+  const out: RuleCoverage = { noCore: false, gateable: 0, hooked: 0, judgement: 0, missing: [] };
+  const facts = gateFacts(root, agentDir);
+  for (const r of folderRules(agentDir)) {
+    const id = r.part.id;
+    if (r.part.kind === "judgment") { out.judgement++; continue; }
+    if (!r.gate) { out.gateable++; out.missing.push({ id, why: "no gate.json" }); continue; }
+    let why: "ok" | "na" | string = "ok";
+    if (r.gate.hook) {
+      const rel = relative(root, r.part.dir).replace(/\\/g, "/");
+      if (!facts.guardWired) why = "guard not wired";
+      else if (!existsSync(join(r.part.dir, r.gate.hook))) why = `${r.gate.hook} missing`;
+      else if (!(facts.policy?.rule_dirs ?? []).includes(rel)) why = `${rel} not in policy.rule_dirs`;
+      else if (id === "02-25" && !facts.policy?.sql) why = "na";
+    } else if (r.gate.gate) {
+      why = resolveGate(id, r.gate.gate, facts);
+    }
+    if (why === "na") continue;
+    out.gateable++;
+    if (why === "ok") out.hooked++;
+    else out.missing.push({ id, why });
+  }
+  return out;
+}
+
 /** For every rule registered as gateable, is its gate really in place in this repo? Judgement rules are not counted. */
 export function ruleCoverage(root: string, agentDir: string): RuleCoverage {
+  if (isFolderHarness(agentDir)) return folderCoverage(root, agentDir);
   const text = readOr(() => readFileSync(join(agentDir, "02_RULES.md"), "utf8"), "");
   const out: RuleCoverage = { noCore: coreSection(text) === null, gateable: 0, hooked: 0, judgement: 0, missing: [] };
   if (!text) return out;
@@ -252,6 +338,10 @@ export function ruleCoverageLines(c: RuleCoverage): string[] {
 
 /** Characters a session must read before acting: 02 core + 01 forced part + 05_TODO (whole files where markers lack). */
 export function forcedChars(agentDir: string): number {
+  if (isFolderHarness(agentDir)) {
+    // Injected at session start (the core) + read before acting (05_TODO).
+    return folderCoreText(agentDir).length + readOr(() => readFileSync(join(agentDir, "05_TODO.md"), "utf8"), "").length;
+  }
   const read = (f: string): string => {
     try { return readFileSync(join(agentDir, f), "utf8"); } catch { return ""; }
   };
@@ -263,6 +353,10 @@ export function forcedChars(agentDir: string): number {
 
 /** The rule core as text for re-injection after a context compaction; "" when the repo has no core. Capped. */
 export function coreForCompaction(agentDir: string, cap = 22000): string {
+  if (isFolderHarness(agentDir)) {
+    const all = folderCoreText(agentDir);
+    return all.length > cap ? `${all.slice(0, cap)}\n… (cut at ${cap} characters — read the rest in 02_RULES/)` : all;
+  }
   let rules = "";
   let hp = "";
   try { rules = readFileSync(join(agentDir, "02_RULES.md"), "utf8"); } catch { /* fail-open */ }

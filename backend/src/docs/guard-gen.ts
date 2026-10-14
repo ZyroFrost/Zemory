@@ -23,6 +23,36 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
+import { isFolderHarness, listParts } from "./store.js";
+
+/** Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d): the folder of rule 02-55. */
+export function hooksDirOf(root: string): string {
+  const agent = harnessPathsAt(root).agent;
+  if (!isFolderHarness(agent)) return join(agent, "..", "hooks");
+  const p = listParts(agent, "02_RULES").find((x) => x.id === "02-55");
+  return p ? p.dir : join(agent, "02_RULES", "02-55_hook-guard");
+}
+
+/** Where one-use flags and the once-per-session memory live. File harness: the hooks folder. Folder harness: a git-ignored
+ *  `.harness-state/` beside the agent folder — runtime state is not part of any rule. */
+export function stateDirOf(root: string): string {
+  const agent = harnessPathsAt(root).agent;
+  return isFolderHarness(agent) ? join(agent, "..", ".harness-state") : hooksDirOf(root);
+}
+
+/** Rule folders (01 · 02) of a folder harness that carry a hook.cjs, repo-relative — guard.cjs calls each. */
+function ruleHookDirs(root: string): string[] {
+  const agent = harnessPathsAt(root).agent;
+  if (!isFolderHarness(agent)) return [];
+  const out: string[] = [];
+  for (const shelf of ["01_CONSTITUTION", "02_RULES"] as const) {
+    for (const p of listParts(agent, shelf)) {
+      if (p.id === "02-55") continue; // the dispatcher itself
+      if (existsSync(join(p.dir, "hook.cjs"))) out.push(relative(root, p.dir).replace(/\\/g, "/"));
+    }
+  }
+  return out;
+}
 
 export interface GuardGenResult {
   /** Thư mục hooks (nhà của policy + guard + flags). */
@@ -121,16 +151,21 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   // Only the sections that hold rules with no machine gate are forced (plan/27 §3): the 02 core, and in 01 the
   // read-carefully block, the articles it lists and "## Mục đích". A file without those markers is due in full.
   // 06_CHANGES left the set the same day — looked up with `zemory changelog search`.
+  // Folder harness (plan/28 §0e): the core is not read by the agent — it is injected at session start — so only 05_TODO is
+  // forced; the structure trigger points at the repo's INDEX.md.
+  const folder = isFolderHarness(hp.agent);
   const readFirst = {
     required: [`${agentRel}/05_TODO.md`, ...readFirstExtra],
-    sections: [
-      { file: `${agentRel}/02_RULES.md`, parts: ["core"] },
-      { file: `${agentRel}/01_CONSTITUTION.md`, parts: ["no-gate", "no-gate-articles", "heading:Mục đích"] },
-    ],
+    sections: folder
+      ? []
+      : [
+          { file: `${agentRel}/02_RULES.md`, parts: ["core"] },
+          { file: `${agentRel}/01_CONSTITUTION.md`, parts: ["no-gate", "no-gate-articles", "heading:Mục đích"] },
+        ],
     case_root: "tasks",
     case_files: ["spec.md", "mail_form.md"],
     triggers: [
-      { when: "new_dir", read: `${agentRel}/03_STRUCTURE.md` },
+      { when: "new_dir", read: folder ? `${agentRel}/03_STRUCTURE/INDEX.md` : `${agentRel}/03_STRUCTURE.md` },
       ...(isApp ? [{ when: "path_prefix", prefix: "frontend", read: `${skillsRel}/app-design/SKILL.md` }] : []),
       { when: "cmd_re", re: "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b", read: `${skillsRel}/write-style/SKILL.md` },
       // A sender named anything ("03_send.py"): read the script — and one hop into what a launcher calls (Dept_FA 2026-10-08).
@@ -163,9 +198,12 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     read_first: readFirst,
     // plan/27 §3: hooks for common rules a machine can see at the tool call (rule-hooks-src.ts) — each file named after its
     // rule, called by guard.cjs in this order. The block message quotes the rule from rules_file.
-    rules_file: `${agentRel}/02_RULES.md`,
+    rules_file: folder ? `${agentRel}/02_RULES` : `${agentRel}/02_RULES.md`,
     todo_file: `${agentRel}/05_TODO.md`,
-    rule_hooks: RULE_HOOKS.map((h) => ({ file: h.file, rule: h.file.slice(0, h.file.indexOf("_")) })),
+    // File harness: the embedded rule hooks, written next to guard.cjs. Folder harness: none here — each rule folder carries
+    // its own hook.cjs, listed in rule_dirs (plan/28 §0d).
+    rule_hooks: folder ? [] : RULE_HOOKS.map((h) => ({ file: h.file, rule: h.file.slice(0, h.file.indexOf("_")) })),
+    rule_dirs: ruleHookDirs(root),
     // 02-25 (plan/27 §2g): the hook that blocks NEW inline SQL. Written only when the repo has a named-SQL store file —
     // a repo that has not adopted the rule is never blocked by surprise. No flag: the way through is adding the named query.
     ...(() => {
@@ -177,7 +215,10 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     })(),
     outside_reason:
       "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
-    flags_dir: hooksRel,
+    // hooks_dir = where guard.cjs sits (it walks back from there to the repo root); flags_dir = where .allow-* and .seen.json
+    // live — the same folder in a file harness, `.harness-state/` in a folder harness.
+    hooks_dir: hooksRel,
+    flags_dir: folder ? relp(stateDirOf(root)) : hooksRel,
     flags: {
       push: ".allow-push",
       docs_write: ".allow-docs-write",
@@ -220,8 +261,9 @@ const os = require("node:os");
 
 const HERE = __dirname;
 const POLICY = JSON.parse(fs.readFileSync(path.join(HERE, "policy.json"), "utf8"));
-// the hooks dir sits at <root>/<flags_dir> => root = walk back from HERE by the depth of flags_dir.
-const ROOT = path.resolve(HERE, ...POLICY.flags_dir.split("/").map(() => ".."));
+// guard.cjs sits at <root>/<hooks_dir> => root = walk back from HERE by its depth (an older policy has only flags_dir,
+// which was the same folder).
+const ROOT = path.resolve(HERE, ...(POLICY.hooks_dir || POLICY.flags_dir).split("/").map(() => ".."));
 
 // Block on BOTH channels. Measured 2026-10-14 (plan/28 §0m): on a machine without Git the host drops the exit
 // code, so exit 2 alone lets the call through; the JSON decision on stdout blocks with or without Git.
@@ -1235,15 +1277,24 @@ function main() {
   }
   // RULE HOOKS (policy.rule_hooks, plan/27 §3): each returns null, a block message, or { msg, flag, subject } = blocked
   // unless the one-use flag is granted. A failing hook lets the action through (HP article 9).
-  for (const h of POLICY.rule_hooks || []) {
-    let r = null;
-    try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
-    if (!r) continue;
+  const verdict = (r, label) => {
+    if (!r) return;
     if (typeof r === "object") {
-      if (r.flag && consumeFlag(r.flag, r.subject || h.file)) continue;
+      if (r.flag && consumeFlag(r.flag, r.subject || label)) return;
       deny(r.msg + (r.flag ? flagTip(r.flag) : ""));
     }
     deny(String(r));
+  };
+  for (const h of POLICY.rule_hooks || []) {
+    let r = null;
+    try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
+    verdict(r, h.file);
+  }
+  // FOLDER HARNESS (plan/28 §0d): every rule folder that carries a hook.cjs, same contract as above.
+  for (const d of POLICY.rule_dirs || []) {
+    let r = null;
+    try { r = require(path.join(ROOT, d, "hook.cjs")).check(payload, ROOT, POLICY); } catch { r = null; }
+    verdict(r, d);
   }
   // READ BEFORE WRITE (02-59_read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.
@@ -1363,8 +1414,8 @@ export function guardMatcherGaps(settingsText: string | null): string[] | null {
  *  guardrail nói không đáng tin. CHỈ soi file mang dấu của zemory (bản user tự sửa: để yên,
  *  nhắc là nhiễu); thiếu hẳn file thì nhánh doctor sẵn có lo. Fail-open: đọc lỗi ⇒ bỏ qua. */
 export function guardDrift(projectRoot: string): string[] {
-  const hp = harnessPathsAt(projectRoot);
-  const hooksDir = join(hp.agent, "..", "hooks");
+  const folder = isFolderHarness(harnessPathsAt(projectRoot).agent);
+  const hooksDir = hooksDirOf(projectRoot);
   const hooksRel = relative(projectRoot, hooksDir).replace(/\\/g, "/");
   const stale: string[] = [];
   const check = (name: string, expected: string, isOurs: (cur: string) => boolean): void => {
@@ -1387,12 +1438,14 @@ export function guardDrift(projectRoot: string): string[] {
   });
   check("guard.cjs", GUARD_SOURCE, oursJs);
   check(READ_FIRST_FILE, READ_FIRST_SOURCE, oursJs);
-  check(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
-  for (const h of RULE_HOOKS) {
-    check(h.file, h.source, oursJs);
-    if (existsSync(join(hooksDir, "guard.cjs")) && !existsSync(join(hooksDir, h.file))) stale.push(`${h.file} (missing)`);
+  if (!folder) {
+    check(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
+    for (const h of RULE_HOOKS) {
+      check(h.file, h.source, oursJs);
+      if (existsSync(join(hooksDir, "guard.cjs")) && !existsSync(join(hooksDir, h.file))) stale.push(`${h.file} (missing)`);
+    }
+    if (findSqlStores(projectRoot).length && !existsSync(join(hooksDir, SQL_GATE_FILE))) stale.push(`${SQL_GATE_FILE} (missing)`);
   }
-  if (findSqlStores(projectRoot).length && !existsSync(join(hooksDir, SQL_GATE_FILE))) stale.push(`${SQL_GATE_FILE} (missing)`);
   // Generated by an OLD build: the latch file is missing altogether, so read-before-write never runs there.
   if (existsSync(join(hooksDir, "guard.cjs")) && !existsSync(join(hooksDir, READ_FIRST_FILE))) stale.push(`${READ_FIRST_FILE} (missing)`);
   // Renamed 2026-10-14 (a rule hook is named after its rule, plan/27 §2d): an old-name copy left behind is stale too.
@@ -1402,10 +1455,10 @@ export function guardDrift(projectRoot: string): string[] {
 }
 
 export function generateGuards(projectRoot: string): GuardGenResult {
-  const hp = harnessPathsAt(projectRoot);
-  // hooks/ đặt cạnh agent-dir: `docs/agent` → `docs/hooks` · `harness/agent` → `harness/hooks`
-  // (đúng chỗ bản mẫu chọn). relative() để policy tự biết đường về gốc repo.
-  const hooksDir = join(hp.agent, "..", "hooks");
+  // File harness: hooks/ beside the agent folder (`docs/agent` → `docs/hooks`). Folder harness: the folder of rule 02-55
+  // (plan/28 §0d). relative() lets the policy find its way back to the repo root.
+  const folder = isFolderHarness(harnessPathsAt(projectRoot).agent);
+  const hooksDir = hooksDirOf(projectRoot);
   const hooksRel = relative(projectRoot, hooksDir).replace(/\\/g, "/");
   mkdirSync(hooksDir, { recursive: true });
 
@@ -1453,12 +1506,25 @@ export function generateGuards(projectRoot: string): GuardGenResult {
     }
   }
   // 02-25 hook only where the repo has a named-SQL store (policy.sql) — no dead file in a repo that has not adopted the rule.
-  if (policy.sql) put(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
-  for (const h of RULE_HOOKS) put(h.file, h.source, oursJs);
+  // A folder harness carries rule hooks in their own folders (assembled from the store), never next to the guard.
+  if (!folder) {
+    if (policy.sql) put(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
+    for (const h of RULE_HOOKS) put(h.file, h.source, oursJs);
+  }
   put("precommit-guard.cjs", PRECOMMIT_SOURCE, oursJs);
   // Flag không bao giờ được theo commit — .gitignore cục bộ trong chính thư mục hooks.
   // + the once-per-session reminder memory of the door hooks (rule-hooks-src.ts `remindOnce`) — runtime state, never committed.
-  put(".gitignore", ".allow-*\n.seen.json\n", () => true);
+  if (folder) {
+    const state = stateDirOf(projectRoot);
+    mkdirSync(state, { recursive: true });
+    const gi = join(state, ".gitignore");
+    if (!existsSync(gi)) {
+      writeFileSync(gi, "*\n");
+      added.push(`${relative(projectRoot, gi).replace(/\\/g, "/")}`);
+    }
+  } else {
+    put(".gitignore", ".allow-*\n.seen.json\n", () => true);
+  }
 
   const wired = wireGuard(projectRoot, `${hooksRel}/guard.cjs`);
   if (wired) added.push(wired);

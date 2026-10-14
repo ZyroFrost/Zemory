@@ -30,8 +30,67 @@ import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
+import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
+
+/** One line per assembled part: what was (or would be) done. */
+function printKitSteps(r: KitApplyResult, apply: boolean): number {
+  const mark: Record<string, string> = { absent: apply ? "+" : "→", clean: apply ? "✔" : "→", merged: apply ? "✔" : "→", current: "·", conflict: "✗", own: "·" };
+  const say: Record<string, string> = {
+    absent: apply ? "added" : "would add",
+    clean: apply ? "updated (untouched copy)" : "would update (untouched copy)",
+    merged: apply ? "merged with the local edit" : "would merge with the local edit",
+    current: "current",
+    conflict: "NOT written — edited here and does not merge",
+    own: "the repo's own folder — left alone",
+  };
+  for (const s of r.steps) {
+    if (s.verdict === "current") continue;
+    console.log(`  ${mark[s.verdict]} ${s.part.shelf}/${s.part.folder} @v${s.part.version} — ${say[s.verdict]}${s.reason ? ` (${s.reason})` : ""}`);
+  }
+  const n = (v: string): number => r.steps.filter((s) => s.verdict === v).length;
+  console.log(`  parts: ${n("current")} current · ${n("absent")} ${apply ? "added" : "to add"} · ${n("clean") + n("merged")} ${apply ? "updated" : "to update"} · ${n("conflict")} conflict${apply ? "" : "  — add `--apply` to write"}`);
+  return n("conflict");
+}
+
+/** `init --kit` and `sync --standard` on a kit repo: assemble, then (when writing) regenerate the guard. */
+function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: string }): void {
+  const r = applyKit(root, { kitRef: opts.kitRef, apply: opts.apply });
+  if ("error" in r) {
+    console.log(`${opts.label} — ✗ ${r.error}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`${opts.label}${opts.apply ? "" : " (DRY-RUN)"} — ${root} · kit ${r.kit.name}`);
+  if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
+  if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
+  const conflicts = printKitSteps(r, opts.apply);
+  if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 04_SKILLS.md skills block refreshed");
+  if (opts.apply) {
+    try {
+      const g = generateGuards(root);
+      console.log(`  guard: ${g.added.length ? g.added.join(" · ") : "already in place"}`);
+    } catch (e) {
+      console.log(`  ⚠ guard not generated (${(e as Error).message}) — run \`zemory hook guard\``);
+    }
+  }
+  if (conflicts) {
+    console.log("  ✗ conflicting parts must be merged BY HAND in that repo — the tool does not guess.");
+    process.exitCode = 1;
+  }
+}
 
 export function cmdInit(args: string[]): void {
+  // plan/28 §0 — a kit from the parts store: folder harness, every part stamped with the `from:` it came from.
+  const ki = args.indexOf("--kit");
+  if (ki >= 0) {
+    if (!args[ki + 1]) {
+      console.log("usage: zemory init --kit <no | name>   (kits: docs_template/_Store/kits.json)");
+      process.exitCode = 1;
+      return;
+    }
+    runKit(process.cwd(), { kitRef: args[ki + 1], apply: true, label: "zemory init --kit" });
+    return;
+  }
   if (args.includes("--fresh")) {
     const r = freshHarness(process.cwd());
     if (r.renamedTo) console.log(`zemory init --fresh — kept old docs → ${r.renamedTo}`);
@@ -158,6 +217,27 @@ export function cmdSync(args: string[] = process.argv): void {
     for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${stampLabel[r.action] ?? r.action}${r.date ? ` ${r.date}` : ""}${r.own !== undefined ? `  (own ${r.own} · missing vs base ${r.miss})` : ""}`);
     const n = rep.filter((r) => r.action.startsWith("sẽ") || r.action === "đã đóng dấu").length;
     console.log(`  ${apply ? `stamped ${n}` : `would stamp ${n}`}` + (apply ? "" : " — add `--apply` to write"));
+    return;
+  }
+  if (args.includes("--standard") && repoKit(root)) {
+    runKit(root, { apply: args.includes("--apply"), label: "zemory sync --standard" });
+    return;
+  }
+  if (args.includes("--check") && repoKit(root)) {
+    // A kit repo: "behind the standard" = a part whose copy is not current; plus a stale guard.
+    const r = applyKit(root, { apply: false });
+    console.log(`zemory sync --check — ${root}`);
+    if ("error" in r) {
+      console.log(`  ✗ ${r.error}`);
+      process.exitCode = 1;
+      return;
+    }
+    const behind = r.steps.filter((s) => s.verdict !== "current" && s.verdict !== "own");
+    for (const s of behind) console.log(`  ⚠ ${s.part.shelf}/${s.part.folder} @v${s.part.version} — ${s.verdict}${s.reason ? ` (${s.reason})` : ""}`);
+    const stale = guardDrift(root);
+    if (stale.length) console.log(`  ⚠ guard OUT OF DATE: ${stale.join(" · ")} — run \`zemory hook guard\` again`);
+    if (!behind.length && !stale.length) console.log(`  ✓ kit ${r.kit.name}: every part is current.`);
+    else process.exitCode = 1;
     return;
   }
   if (args.includes("--standard")) {

@@ -9,10 +9,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
-import { guardMatcherGaps, precommitState } from "./guard-gen.js";
+import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
-import { coreIssueLines, coreIssues, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
+import { coreIssueLines, coreIssues, folderCoreIssues, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
+import { isFolderHarness } from "./store.js";
 import { hpGateCoverage } from "./validate.js";
 
 export interface RepoGates {
@@ -43,11 +44,16 @@ export function repoGates(root: string, name: string): RepoGates | null {
   const wiring = guardMatcherGaps(existsSync(settings) ? readFileSync(settings, "utf8") : null);
   const precommit = precommitState(root);
   const agentDir = harnessPathsAt(root).agent;
-  const hp = hpGateCoverage(agentDir);
-  const top = noGateIssues(agentDir);
-  const readFirst = readFirstInPlace(join(agentDir, "..", "hooks"));
+  // Folder harness (plan/28 §0e): a constitution article is a folder with its own gate.json — counted by ruleCoverage —
+  // so there is no gate table and no "ungated first" block to check.
+  const folder = isFolderHarness(agentDir);
+  const hp = folder ? null : hpGateCoverage(agentDir);
+  const top = folder ? [] : noGateIssues(agentDir);
+  const readFirst = readFirstInPlace(hooksDirOf(root));
   const rulesPath = join(agentDir, "02_RULES.md");
-  const core = existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
+  const core = folder
+    ? coreIssueLines(folderCoreIssues(root, agentDir))
+    : existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
   const forced = forcedChars(agentDir);
   const rules = ruleCoverage(root, agentDir);
   const gaps =

@@ -12,8 +12,9 @@ const os = require("node:os");
 
 const HERE = __dirname;
 const POLICY = JSON.parse(fs.readFileSync(path.join(HERE, "policy.json"), "utf8"));
-// the hooks dir sits at <root>/<flags_dir> => root = walk back from HERE by the depth of flags_dir.
-const ROOT = path.resolve(HERE, ...POLICY.flags_dir.split("/").map(() => ".."));
+// guard.cjs sits at <root>/<hooks_dir> => root = walk back from HERE by its depth (an older policy has only flags_dir,
+// which was the same folder).
+const ROOT = path.resolve(HERE, ...(POLICY.hooks_dir || POLICY.flags_dir).split("/").map(() => ".."));
 
 // Block on BOTH channels. Measured 2026-10-14 (plan/28 §0m): on a machine without Git the host drops the exit
 // code, so exit 2 alone lets the call through; the JSON decision on stdout blocks with or without Git.
@@ -1027,15 +1028,24 @@ function main() {
   }
   // RULE HOOKS (policy.rule_hooks, plan/27 §3): each returns null, a block message, or { msg, flag, subject } = blocked
   // unless the one-use flag is granted. A failing hook lets the action through (HP article 9).
-  for (const h of POLICY.rule_hooks || []) {
-    let r = null;
-    try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
-    if (!r) continue;
+  const verdict = (r, label) => {
+    if (!r) return;
     if (typeof r === "object") {
-      if (r.flag && consumeFlag(r.flag, r.subject || h.file)) continue;
+      if (r.flag && consumeFlag(r.flag, r.subject || label)) return;
       deny(r.msg + (r.flag ? flagTip(r.flag) : ""));
     }
     deny(String(r));
+  };
+  for (const h of POLICY.rule_hooks || []) {
+    let r = null;
+    try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
+    verdict(r, h.file);
+  }
+  // FOLDER HARNESS (plan/28 §0d): every rule folder that carries a hook.cjs, same contract as above.
+  for (const d of POLICY.rule_dirs || []) {
+    let r = null;
+    try { r = require(path.join(ROOT, d, "hook.cjs")).check(payload, ROOT, POLICY); } catch { r = null; }
+    verdict(r, d);
   }
   // READ BEFORE WRITE (02-59_read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.

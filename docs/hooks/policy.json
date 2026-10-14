@@ -126,6 +126,7 @@
       "rule": "02-38"
     }
   ],
+  "rule_dirs": [],
   "sql": {
     "rule": "02-25",
     "rules_file": "docs/agent/02_RULES.md",
@@ -152,6 +153,7 @@
     ]
   },
   "outside_reason": "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
+  "hooks_dir": "docs/hooks",
   "flags_dir": "docs/hooks",
   "flags": {
     "push": ".allow-push",

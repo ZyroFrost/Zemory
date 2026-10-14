@@ -15,7 +15,7 @@ function usageLines(): string[] {
     [
       "zemory <command>",
       "",
-      "  init      set up the harness here (non-destructive; --fresh keeps old docs aside)",
+      "  init      set up the harness here (non-destructive; --fresh keeps old docs aside; --kit <no> assembles a kit from the parts store)",
       "  sync      gap-fill missing template docs vs the standard",
       "  migrate   analyze existing docs for brownfield adopt (no changes)",
       "  doctor    quick check (text): wired? docs? features?",
