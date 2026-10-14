@@ -104,7 +104,7 @@ test("a secret in git add is blocked with NO way around; .env.example is spared;
   assert.equal(fire(r.hooksDir, "Bash", { command: "git add .env.example" }).status, 0, "allowlist phải được tha");
   // Báo oan giết lòng tin vào cổng: commit NHẮC TÊN file secret trong message thì không sao.
   assert.equal(
-    fire(r.hooksDir, "Bash", { command: 'git commit -m "docs: giai thich vi sao .env khong duoc commit"' }).status,
+    fire(r.hooksDir, "Bash", { command: 'git commit -m "docs: giải thích vì sao .env không được commit"' }).status,
     0,
     "tên secret nằm trong message -m không phải là secret trong staging",
   );
@@ -147,9 +147,13 @@ test("regeneration: our own files are refreshed when they drift, files without o
   const r1 = generateGuards(root);
   // 3.7.5: + the runtime wiring (`.claude/settings.json`) — the guard is the standard, generated AND wired.
   // 3.8.0: + 02-59_read-first.cjs (read-before-write latch, called by guard.cjs).
-  assert.equal(r1.added.length, 6, r1.added.join(", "));
+  // 2026-10-14: + the five rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38), each named after its rule.
+  assert.equal(r1.added.length, 11, r1.added.join(", "));
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   assert.ok(r1.added.includes("02-59_read-first.cjs"));
+  for (const f of ["02-24_eol-keep.cjs", "02-26_vi-diacritics.cjs", "02-27_spec-voice.cjs", "02-30_ascii-names.cjs", "02-38_todo-door.cjs"]) {
+    assert.ok(r1.added.includes(f), `the rule hook ${f} is generated`);
+  }
   // Chạy lại y nguyên ⇒ không có gì mới.
   const r2 = generateGuards(root);
   assert.equal(r2.added.length, 0, `chạy lại phải im: ${r2.added.join(", ")}`);

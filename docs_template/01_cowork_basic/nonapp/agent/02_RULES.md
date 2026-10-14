@@ -6,6 +6,12 @@
 
 > Đọc SAU `01_CONSTITUTION.md` (bất biến riêng của dự án, tối cao). Tuân thủ tuyệt đối.
 > Điều hướng nạp (đọc gì, lúc nào) → `AGENTS.md` ở root. Quy trình thao tác → `.claude/skills/`.
+- `02-38` **Sổ việc `05_TODO`.** ① **Cửa vào:** không tự thêm mục `05_TODO` · luật · cổng kiểm · bộ đếm · bộ đo ·
+  advisory. Thấy cần ⇒ hỏi một câu kèm đề xuất trong phiên; được chấp thuận mới ghi, vào đúng file. Đề xuất không
+  "đậu" vào sổ chờ duyệt. Ngưỡng: thực sự quan trọng — trước khi thêm trả lời đủ: gỡ bớt được gì · gộp vào cái có
+  sẵn được không · không có nó thì hỏng gì, đo được không; không trả lời được câu cuối ⇒ không làm. Không áp cho việc
+  được giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có bắt buộc. ② **Cửa ra:** một mục xong ⇒ đóng ngay: đo lại ·
+  ghi `06_CHANGES` · xoá khỏi `05_TODO`; không đợi chốt phiên. <!-- gate: guard -->
 
 ## Lõi — luật không có chốt máy (bắt đọc)
 <!-- zemory:core:start · luật KHÔNG có hook/test nào chặn — phần DUY NHẤT của file bị bắt đọc (read-first) và được chèn lại sau khi nén context; luật có chốt máy rồi thì dời ra khỏi đây -->
@@ -67,11 +73,6 @@
 - `02-20` **Dữ liệu thật vs mẫu:** nguồn/extract thật ở `data/` (gitignore, theo máy); mẫu nhỏ đủ mở sản phẩm ở
   `fixtures/` (tracked).
 - `02-25` **SQL · DAX · M gom vào `queries/` hoặc `measures/`, đặt tên** — không viết rải tại chỗ.
-- `02-26` **Docs (`docs/agent` · `docs/plan`) và thân `SKILL.md` viết tiếng Việt có dấu.** Nhóm ngôn ngữ (`02-26` ·
-  `02-66` · `02-27` · `02-29` · `02-30` · `02-31`) là mặc định của bộ này: người giao việc chốt bỏ hay nới vế nào thì
-  ghi quyết định vào `01_CONSTITUTION` (giữ vế nào, bỏ vế nào, vì sao); agent không tự nới, không tự siết; chưa ai
-  chốt ⇒ theo mặc định. Vế nên giữ kể cả khi nới hết: không viết tiếng Việt mất dấu — không muốn bỏ dấu thì viết
-  tiếng Anh.
 - `02-66` **Tên thư mục · tên skill · `name:` trong frontmatter: tiếng Anh, chữ thường, nối bằng `-`.**
 - `02-27` **Văn phong harness là đặc tả kỹ thuật.** Hiến pháp · luật · cấu trúc · plan · skill viết câu mệnh lệnh
   ngắn, thuật ngữ chính xác, theo khuôn điều kiện → hành vi → phép kiểm. Không khẩu ngữ · cảm thán · hội thoại · kể
@@ -81,10 +82,6 @@
   một ngôn ngữ. Không dịch ba thứ: ① chuỗi render ra tài liệu (desc·note sinh vào `docs/`) · ② tên do bên khác đặt
   (cột Excel · trường API · tên file nguồn — giữ từng ký tự, dù trông như Việt mất dấu) · ③ thuật ngữ chuyên ngành.
   Comment cũ: sửa khi đang đụng file đó, không dịch hàng loạt.
-- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
-  hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
-  dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
-  `node .claude/skills/audit/scripts/lang-scan.mjs .`
 - `02-31` **Chữ trong sản phẩm giao đi phải đủ và đúng.** ① Có dấu, đúng chính tả; không có tiếng Việt mất dấu ở
   bất cứ file nào (plan · docs · chú thích script · tên test · chuỗi sinh máy): chỉ tiếng Anh hoặc tiếng Việt có dấu
   — ngại encoding thì viết tiếng Anh; không mojibake (`Ã¡` · `â€` · `ï»¿`). ② Chú thích đủ: bảng có tiêu đề cột ·
@@ -103,12 +100,6 @@
   `docs/plan` (mục lục · catalog · bảng tra do build sinh ⇒ file cạnh nguồn, plan trỏ link); sơ đồ và bảng cấu trúc
   vẽ tay khi bàn thiết kế là phần chính của plan — luật này không bao giờ là lý do xoá sơ đồ hay né không vẽ. Mỗi
   mục `05_TODO` gắn `→ plan/NN §mục`. Trần: một spec ~1.000 dòng · cả `docs/plan` ~5.000 dòng.
-- `02-38` **Sổ việc `05_TODO`.** ① **Cửa vào:** không tự thêm mục `05_TODO` · luật · cổng kiểm · bộ đếm · bộ đo ·
-  advisory. Thấy cần ⇒ hỏi một câu kèm đề xuất trong phiên; được chấp thuận mới ghi, vào đúng file. Đề xuất không
-  "đậu" vào sổ chờ duyệt. Ngưỡng: thực sự quan trọng — trước khi thêm trả lời đủ: gỡ bớt được gì · gộp vào cái có
-  sẵn được không · không có nó thì hỏng gì, đo được không; không trả lời được câu cuối ⇒ không làm. Không áp cho việc
-  được giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có bắt buộc. ② **Cửa ra:** một mục xong ⇒ đóng ngay: đo lại ·
-  ghi `06_CHANGES` · xoá khỏi `05_TODO`; không đợi chốt phiên.
 - `02-48` **Tiêu đề phiên** theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Model>` = model đang chạy; chủ đề chèn trước
   ngày; phiên thứ 2, 3 trong ngày thêm `_<số>` sau ngày; ngày không đệm số 0). Tiêu đề do người giao việc đặt, agent
   không tự đổi; phiên chưa có tiêu đề = chưa dùng. Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc một lần.
@@ -173,7 +164,16 @@ Vai của bộ chặn: `02-61` (§Lõi).
 
 ## Ngôn ngữ
 
-> Các luật ngôn ngữ (`02-26` · `02-66` · `02-27` · `02-29` · `02-30` · `02-31`) nằm ở §Lõi.
+> Có chốt máy: `02-26` · `02-30` (dưới đây). Còn lại (`02-66` · `02-27` · `02-29` · `02-31`) nằm ở §Lõi.
+- `02-26` **Docs (`docs/agent` · `docs/plan`) và thân `SKILL.md` viết tiếng Việt có dấu.** Nhóm ngôn ngữ (`02-26` ·
+  `02-66` · `02-27` · `02-29` · `02-30` · `02-31`) là mặc định của bộ này: người giao việc chốt bỏ hay nới vế nào thì
+  ghi quyết định vào `01_CONSTITUTION` (giữ vế nào, bỏ vế nào, vì sao); agent không tự nới, không tự siết; chưa ai
+  chốt ⇒ theo mặc định. Vế nên giữ kể cả khi nới hết: không viết tiếng Việt mất dấu — không muốn bỏ dấu thì viết
+  tiếng Anh. <!-- gate: guard -->
+- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
+  hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
+  dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
+  `node .claude/skills/audit/scripts/lang-scan.mjs .` <!-- gate: guard -->
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
 **Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.

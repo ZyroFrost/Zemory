@@ -135,6 +135,12 @@ export function validate(ctx: Context): ValidateReport {
         msg: `changelog: ${dangling.length} supersede clause(s) name no existing entry key: ${dangling.slice(0, 4).join(" · ")} — write the exact key, e.g. \`2026-07-29l\``,
       });
     }
+    // 02-41 (plan/27 §3): newest entry on top. Keys compare as date + suffix (`2026-10-14b` above `2026-10-14`); an entry
+    // older than the one below it means a new entry was appended at the bottom or pasted mid-file.
+    const order = changelogOrderBreaks(tiers[0]);
+    if (order.length) {
+      issues.push({ level: "error", msg: `changelog: ${order.length} entr(ies) out of order (newest goes on top, rule 02-41): ${order.slice(0, 3).join(" · ")}` });
+    }
     const oldDangling = tiers[1] ? danglingSupersedes([tiers[1]], tiers).length : 0;
     if (oldDangling) issues.push({ level: "info", msg: `changelog archive: ${oldDangling} older supersede clause(s) without an entry key (written before the rule)` });
 
@@ -451,6 +457,18 @@ export function hpGateRows(agentDir: string): { n: number; title: string; kind: 
     const cells = m[2].replace(/\|\s*$/, "").split("|").map((c) => c.trim());
     return { n: Number(m[1]), title: cells[0] ?? "", kind: cells[1] ?? "", gate: cells.slice(2).join(" | ") };
   });
+}
+
+/** Entry keys `## [YYYY-MM-DD<suffix>]` that sit ABOVE a newer one (newest must be on top). No suffix sorts before `a`. */
+export function changelogOrderBreaks(text: string): string[] {
+  const keys = [...text.matchAll(/^## \[(\d{4}-\d{2}-\d{2})([a-z]*)\]/gm)].map((m) => ({ key: m[1] + m[2], date: m[1], suf: m[2] }));
+  const out: string[] = [];
+  for (let i = 1; i < keys.length; i++) {
+    const a = keys[i - 1], b = keys[i];
+    const newerBelow = b.date > a.date || (b.date === a.date && b.suf.length === a.suf.length ? b.suf > a.suf : b.date === a.date && b.suf.length > a.suf.length);
+    if (newerBelow) out.push(`[${a.key}] above [${b.key}]`);
+  }
+  return out;
 }
 
 /** `file:line` of every open checkbox (`- [ ]` / `- [~]`) in the plan folder's *.md, code fences skipped. */
