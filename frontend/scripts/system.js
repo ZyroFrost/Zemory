@@ -294,25 +294,30 @@
   // One checklist row per repo, four checks (user 2026-10-07: "kiểm dạng check list từng repo"). A ✗ cell says in a
   // word what is missing; the full sentence (gateLines) is its tooltip. Repos with gaps first.
   function gateCells(g){
-    var ok=function(txt){return {ok:true,txt:txt||'✓'};},no=function(txt,tip){return {ok:false,txt:'✗ '+txt,tip:tip};},na={na:true,txt:'—'};
+    var ok=function(txt,tip){return {ok:true,txt:txt||'✓',tip:tip};},no=function(txt,tip){return {ok:false,txt:'✗ '+txt,tip:tip};},na={na:true,txt:'—'};
     var guard=g.wiring===null?no(t('gates.cellNo'),t('gates.noGuard')):(g.wiring&&g.wiring.length?no(t('gates.cellTools').replace('{n}',g.wiring.length),t('gates.matcher').replace('{t}',g.wiring.join(' · '))):ok());
     var pre=g.precommit==='guard'?ok():g.precommit==='no-git'?na:g.precommit==='none'?no(t('gates.cellNo'),t('gates.noPrecommit')):no(t('gates.cellOwn'),t('gates.ownPrecommit'));
     var hp=!g.hp?na:!g.hp.table?no(t('gates.cellNoTable'),t('gates.noTable').replace('{n}',g.hp.articles)):
       g.hp.missing.length?no((g.hp.articles-g.hp.missing.length)+'/'+g.hp.articles,t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles)):ok('✓ '+g.hp.articles+'/'+g.hp.articles);
+    // Rule gates (plan/27 §3): rules REGISTERED as gateable vs those whose gate really runs here; judgement rules are not counted.
+    var rr=g.rules;
+    var rules=!rr?na:rr.noCore?no(t('gates.cellNoCore'),t('gates.noCore')):(g.core&&g.core.length)?no(t('gates.cellMarks'),g.core.join(' · ')):
+      rr.missing.length?no(rr.hooked+'/'+rr.gateable,t('gates.ruleMissing').replace('{l}',rr.missing.map(function(m){return m.id+' — '+m.why;}).join(' · '))):
+      ok('✓ '+rr.hooked+'/'+rr.gateable,t('gates.ruleOk').replace('{h}',rr.hooked).replace('{j}',rr.judgement));
     var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
     var rf=g.readFirst===false?no(t('gates.cellNo'),t('gates.noReadFirst')):ok();
-    return [guard,pre,hp,top,rf];
+    return [guard,pre,rules,hp,top,rf];
   }
   function gatesDialog(){
     function draw(note){
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
-        '</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span></div>';
+        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
-      zDialog({iconHtml:ZICON.gates,size:'md',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
+      zDialog({iconHtml:ZICON.gates,size:'lg',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
         okLabel:t('gates.recheck'),onOk:function(){
           var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
           refreshRepoGates(true).then(function(r){draw(checkedNote(r));})

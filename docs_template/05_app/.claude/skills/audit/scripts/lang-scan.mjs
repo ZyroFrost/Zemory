@@ -155,8 +155,11 @@ for (const f of files) {
     if (CODE_EXT.has(ext)) {
       // `#` starts a comment in Python only. In JS/CSS it is a selector or a colour, so treating it
       // as a comment marker read `$$('#sc-tree .sc-i')` as prose.
-      const re = ext === '.py' ? /(?:#|^\s*"""|^\s*''')\s*(.*)$/ : /(?:\/\/|\/\*|^\s*\*)\s*(.*)$/
-      const c = raw.match(re)
+      const re = ext === '.py' ? /(?:#|^\s*"""|^\s*''')\s*(.*)$/ : /(?:(?:^|[^:])\/\/|\/\*|^\s*\*)\s*(.*)$/
+      // Single-line string literals go before the comment is looked for: a `//` inside a string (a URL, a test
+      // fixture) is data. Same step as the 02-26 write-time hook, which caught this on its own test file (2026-10-14).
+      const code = ext === '.py' ? raw : raw.replace(/`(?:\\.|[^`\\])*`/g, "''").replace(/'(?:\\.|[^'\\])*'/g, "''").replace(/"(?:\\.|[^"\\])*"/g, "''")
+      const c = code.match(re)
       // Matching only the line that OPENS a block read the first line of a docstring and dropped
       // the rest of it: `build_access_xlsx.py:7` sat four lines inside a module docstring and was
       // invisible. `inBlock` carries the state down, so the body of a docstring or a /* */ comment
