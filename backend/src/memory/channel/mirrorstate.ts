@@ -550,7 +550,28 @@ const declined = new Map<string, Map<string, string>>();
  */
 const knownBase = new Map<string, string>();
 const sentHashes = new Map<string, string[]>();
-const SENT_KEEP = 8;
+const SENT_KEEP = 32;
+// `sentHashes` is PERSISTED (2026-10-14): in memory only, a daemon restart forgot what this machine had sent, and an old
+// copy of its own file coming back from the peer read as "both edited" — twice in one day the auto-settle then took it
+// over the newer local version (stashed, restored). Loaded once per file, rewritten on every send. Fail-open both ways.
+const sentLoaded = new Set<string>();
+function loadSent(file: string): void {
+  if (sentLoaded.has(file)) return;
+  sentLoaded.add(file);
+  try {
+    const j = JSON.parse(readFileSync(file, "utf8")) as Record<string, string[]>;
+    for (const [k, v] of Object.entries(j ?? {})) if (Array.isArray(v)) sentHashes.set(k, [...new Set([...(sentHashes.get(k) ?? []), ...v])].slice(-SENT_KEEP));
+  } catch {
+    /* no file yet / unreadable: start empty */
+  }
+}
+function saveSent(file: string): void {
+  try {
+    writeFileAtomic(file, JSON.stringify(Object.fromEntries(sentHashes)));
+  } catch {
+    /* derived memory: the next send writes it again */
+  }
+}
 const memKey = (peerId: string, area: string, rel: string): string => `${peerId}\u0000${area}/${rel}`;
 function noteDeclined(peerId: string, area: string, rel: string, theirHash: string | null): void {
   const k = `${area}/${rel}`;
@@ -584,6 +605,8 @@ export function mirrorHooks(opts: {
   // Injected roots (gates build two fake machines) ⇒ keep the inventory file inside them, so a test
   // can never write into the real machine dir. Production (no roots) ⇒ the machine dir.
   const invFile = opts.storeRoot ?? opts.repoRoot ? join((opts.storeRoot ?? opts.repoRoot) as string, "peer-inventory.json") : inventoryPath();
+  const sentFile = opts.storeRoot ?? opts.repoRoot ? join((opts.storeRoot ?? opts.repoRoot) as string, "mirror-sent.json") : join(currentMemoryDir(), "mirror-sent.json");
+  loadSent(sentFile);
   return {
     inventory: () => {
       try {
@@ -687,6 +710,7 @@ export function mirrorHooks(opts: {
       const list = (sentHashes.get(k) ?? []).filter((h) => h !== hash);
       list.push(hash);
       sentHashes.set(k, list.slice(-SENT_KEEP));
+      saveSent(sentFile);
     },
     mayPush: (peerId) => {
       try {
@@ -906,16 +930,13 @@ export function autoChoice(
   if (policy.mode === "author") {
     if (row.verdict === "take") return { choice: "theirs", why: "author: only the other machine changed it" };
     if (row.verdict === "merge") return { choice: "merged", why: "author: different lines, merged both" };
-    // One side only ADDS to the other ⇒ it carried on from it: the longer one wins, whatever the clocks say. Checked
-    // before the edit times because a machine that RECEIVED a file stamps it with the time of receipt, not of an edit —
-    // an old copy of this machine's own file once came back looking "earlier" and won (2026-10-14, stashed, restored).
+    // One side only ADDS to the other ⇒ it carried on from it: the longer one wins. (An old copy of this machine's own file
+    // coming back is caught earlier still, at the receive door, by the persisted sent memory.)
     if (when.grown === "mine") return { choice: "mine", why: "author: this machine's version only adds to the other's" };
     if (when.grown === "theirs") return { choice: "theirs", why: "author: the other version only adds to this machine's" };
-    const { mine, theirs } = when;
-    if (mine === null || theirs === null || mine === theirs) return null;
-    return theirs < mine
-      ? { choice: "theirs", why: "author: the other machine edited first", stashMine: true }
-      : { choice: "mine", why: "author: this machine edited first" };
+    // Both machines really edited the same lines ⇒ ASK. File times cannot say who edited first: a machine that RECEIVED a
+    // copy stamps it with the time of receipt (2026-10-14: an old copy read as "earlier" and won, twice).
+    return null;
   }
   return null;
 }
