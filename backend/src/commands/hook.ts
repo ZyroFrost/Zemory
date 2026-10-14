@@ -96,6 +96,10 @@ export async function cmdHook(args: string[]): Promise<void> {
     }
     const why = judgeSendTarget(payload.tool_input?.to);
     if (why) {
+      // Both channels: without Git the host drops the exit code, the JSON decision still blocks (plan/28 §0m).
+      process.stdout.write(
+        JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: why } }),
+      );
       process.stderr.write(why + "\n");
       process.exitCode = 2;
     }

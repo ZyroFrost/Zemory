@@ -55,6 +55,10 @@ test("a Write into a protected path exits 2; the one-shot flag: create, pass, SE
   let out = fire(r.hooksDir, "Write", { file_path: target });
   assert.equal(out.status, 2, "ghi vào docs/ (protected) phải bị chặn");
   assert.match(out.stderr, /\.allow-docs-write/, "câu chặn phải nói cách vượt hợp lệ");
+  // Without Git the host drops the exit code; the JSON decision on stdout is what still blocks (plan/28 §0m).
+  const decision = JSON.parse(out.stdout).hookSpecificOutput;
+  assert.equal(decision.permissionDecision, "deny", "a block must also carry the JSON deny decision on stdout");
+  assert.match(decision.permissionDecisionReason, /\.allow-docs-write/, "the JSON reason carries the same message");
 
   // ② user duyệt → tạo flag → qua cho ĐÚNG VIỆC ĐÓ.
   //
