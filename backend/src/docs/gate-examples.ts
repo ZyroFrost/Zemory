@@ -124,6 +124,7 @@ export function storePrivacyFindings(storeDir = STORE_DIR): string[] {
         walk(p, r);
         continue;
       }
+      if (r === "source.json") continue; // the ONE place the tool's own address lives (plan/28 §0f)
       if (!/\.(md|json|cjs|mjs|js|ps1|py|txt)$/i.test(name)) continue;
       readFileSync(p, "utf8").split(/\r?\n/).forEach((line, i) => {
         const md = /\.md$/i.test(name);

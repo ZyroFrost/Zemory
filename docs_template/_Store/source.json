@@ -1,0 +1,5 @@
+{
+  "comment": "The ONE place the tool's own source address lives (plan/28 §0f). Kit files write <ZEMORY_RAW> / <ZEMORY_REPO>; assembly fills them from here. The store privacy scan skips exactly this file.",
+  "repo": "https://github.com/ZyroFrost/Zemory",
+  "raw": "https://raw.githubusercontent.com/ZyroFrost/Zemory/main"
+}

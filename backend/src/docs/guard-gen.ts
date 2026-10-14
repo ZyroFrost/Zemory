@@ -23,7 +23,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
-import { isFolderHarness, listParts } from "./store.js";
+import { isFolderHarness, isRetired, listParts } from "./store.js";
 
 /** Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d): the folder of rule 02-55. */
 export function hooksDirOf(root: string): string {
@@ -47,7 +47,7 @@ function ruleHookDirs(root: string): string[] {
   const out: string[] = [];
   for (const shelf of ["01_CONSTITUTION", "02_RULES"] as const) {
     for (const p of listParts(agent, shelf)) {
-      if (p.id === "02-55") continue; // the dispatcher itself
+      if (p.id === "02-55" || isRetired(p)) continue; // the dispatcher itself · a rule the repo declined
       if (existsSync(join(p.dir, "hook.cjs"))) out.push(relative(root, p.dir).replace(/\\/g, "/"));
     }
   }

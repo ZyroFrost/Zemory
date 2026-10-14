@@ -259,15 +259,36 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
 export function copyOwnFiles(kit: Kit, repoRoot: string, projectName: string, storeDir = STORE_DIR): string[] {
   if (!kit.own) return [];
   const src = join(storeDir, "Own", kit.own);
+  const source = readSource(storeDir);
   const added: string[] = [];
   for (const rel of partFiles(src)) {
     const dst = join(repoRoot, rel);
     if (existsSync(dst)) continue;
     mkdirSync(dirname(dst), { recursive: true });
-    writeFileSync(dst, readFileSync(join(src, rel), "utf8").replace(/<PROJECT>/g, projectName));
+    const text = readFileSync(join(src, rel), "utf8")
+      .replace(/<PROJECT>/g, projectName)
+      .replace(/<ZEMORY_RAW>/g, source.raw)
+      .replace(/<ZEMORY_REPO>/g, source.repo);
+    writeFileSync(dst, text);
     added.push(rel);
   }
   return added;
+}
+
+/** The tool's own source address — the ONE place it lives (plan/28 §0f); kit files carry placeholders. */
+export function readSource(storeDir = STORE_DIR): { repo: string; raw: string } {
+  try {
+    const j = JSON.parse(readFileSync(join(storeDir, "source.json"), "utf8")) as { repo?: string; raw?: string };
+    return { repo: j.repo ?? "<ZEMORY_REPO>", raw: j.raw ?? "<ZEMORY_RAW>" };
+  } catch {
+    return { repo: "<ZEMORY_REPO>", raw: "<ZEMORY_RAW>" };
+  }
+}
+
+/** A rule a repo declined: `retired: true` in its header. It keeps its folder and number (02-10) but no gate or core
+ *  counts it any more. */
+export function isRetired(p: Part): boolean {
+  return p.meta.retired === "true";
 }
 
 /** A kit by number (`06`) or full name (`06_IDE_App_Memory`). */
