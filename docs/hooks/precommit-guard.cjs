@@ -24,6 +24,16 @@ if (bad.length) {
   for (const f of bad) process.stderr.write("  - " + f + "\n");
   process.exit(1);
 }
+// HP 2 / 7 (plan/27 §0b, 2026-10-14): runtime data, the memory store and model weights never enter git, even under a
+// name that is not a secret. Only files ADDED or CHANGED count - removing such a file from git must stay possible.
+const DATA_RE = /^(data\/|global-memory\/)|\.(db|db-wal|db-shm|sqlite|sqlite3|onnx|safetensors|gguf|ckpt)$/i;
+const addedOrChanged = cp.execSync("git diff --cached --name-only --diff-filter=ACMR", { encoding: "utf8", windowsHide: true }).split(/\r?\n/).filter(Boolean);
+const dataBad = addedOrChanged.filter((f) => DATA_RE.test(f.replace(/\\/g, "/")));
+if (dataBad.length) {
+  process.stderr.write("BLOCKED (pre-commit): runtime data / the memory store / model weights in staging - they never enter git (HP 2, 7):\n  " +
+    dataBad.join("\n  ") + "\n");
+  process.exit(1);
+}
 // The repo's OWN gates (marker key `repoGates`), run from the repo root after the secret check - the standard hook
 // point for a repo that builds gates for its own constitution. Any non-zero exit blocks the commit.
 const top = cp.execSync("git rev-parse --show-toplevel", { encoding: "utf8", windowsHide: true }).trim();
