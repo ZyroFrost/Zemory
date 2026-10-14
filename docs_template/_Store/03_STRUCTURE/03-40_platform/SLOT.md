@@ -1,0 +1,13 @@
+---
+id: 03-40
+name: platform
+version: 1
+path: backend/src/platform/
+applies: [App]
+---
+# 03-40 platform — tích hợp OS
+
+- Vai trò:
+  - TÍCH HỢP OS cho app chạy nền/desktop: system-tray · start-with-OS (autostart) · native shell/window. Đây là CODE tray/autostart.
+  - Icon có 3 vai trò; FILE icon tray/exe → `backend/resources/packaging/`.
+- Được chứa / không chứa: Không chứa: file icon (→ `backend/resources/packaging/`).
