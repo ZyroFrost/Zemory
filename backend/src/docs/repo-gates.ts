@@ -12,7 +12,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { guardMatcherGaps, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
-import { coreIssueLines, coreIssues, forcedChars } from "./rule-core.js";
+import { coreIssueLines, coreIssues, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
 import { hpGateCoverage } from "./validate.js";
 
 export interface RepoGates {
@@ -31,6 +31,8 @@ export interface RepoGates {
   core: string[];
   /** Characters a session must read before acting (02 core + 01 forced part + 05_TODO). */
   forced: number;
+  /** Per-rule gate coverage: rules registered as gateable vs those whose gate really runs here (judgement rules not counted). */
+  rules: RuleCoverage;
   /** Count of open gaps (0 = the repo runs every gate it should). */
   gaps: number;
 }
@@ -47,14 +49,15 @@ export function repoGates(root: string, name: string): RepoGates | null {
   const rulesPath = join(agentDir, "02_RULES.md");
   const core = existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
   const forced = forcedChars(agentDir);
+  const rules = ruleCoverage(root, agentDir);
   const gaps =
     (wiring === null ? 1 : wiring.length ? 1 : 0) +
     (precommit === "none" || precommit === "other" ? 1 : 0) +
     (hp && hp.missing.length ? 1 : 0) +
     (top.length ? 1 : 0) +
     (readFirst ? 0 : 1) +
-    (core.length ? 1 : 0);
-  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, gaps };
+    (core.length || rules.missing.length ? 1 : 0);
+  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, rules, gaps };
 }
 
 /** All three pieces must be there — a latch file an OLD guard never calls is a rule in words only. */
@@ -82,5 +85,6 @@ export function repoGateLines(g: RepoGates): string[] {
   for (const t of g.top) out.push(`${t} (\`zemory gates --write-top\`)`);
   if (!g.readFirst) out.push(`read-before-write latch not in place — ${READ_FIRST_FILE} missing or not called by guard.cjs (\`zemory hook guard\`)`);
   out.push(...g.core);
+  if (!g.rules.noCore) out.push(...ruleCoverageLines(g.rules));
   return out;
 }

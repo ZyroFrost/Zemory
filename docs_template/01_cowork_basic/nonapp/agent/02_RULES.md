@@ -20,10 +20,10 @@
 
 - `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
   đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
-  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`.
+  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`. <!-- gate-todo: nhắc mở sync-path khi thêm lớp lưu hoặc chỉ mục -->
 - `02-2` **Văn bản đưa người đọc theo bộ luật văn phong.** Báo cáo · email · tài liệu giao đi viết cho người
   nhận, không mang giọng harness (mệnh lệnh · viết hoa nhấn giọng · thuật ngữ nội bộ). Luật:
-  `.claude/skills/write-style/SKILL.md`.
+  `.claude/skills/write-style/SKILL.md`. <!-- gate-todo: nhắc mở write-style khi soạn file giao đi -->
 - `02-3` **Hiện từng bước, không chạy im lặng.** ① Trước mỗi cụm hành động nói một dòng: đang làm gì, vì sao
   · ② mỗi khẳng định kèm nguồn đo · ③ số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết · ④ việc chạy nền lâu
   ⇒ báo đang chờ gì.
@@ -58,7 +58,7 @@
   khi lệch).
 - `02-13` **Phép kiểm mới phải đỏ được.** Viết xong một phép kiểm (script · công thức đối chiếu · bảng so số) ⇒
   phá đúng thứ nó canh rồi chạy lại; không đỏ ⇒ sửa phép kiểm. Hai lỗ hay gặp: phép kiểm không chạy tới nhánh
-  nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng chứng.
+  nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng chứng. <!-- gate-todo: nhắc phá mã cho đỏ khi thêm file test -->
 - `02-14` **Thấy điểm bất hợp lý trong thiết kế ⇒ nêu phản biện trước khi làm;** quyết định cuối thuộc người giao
   việc.
 - `02-15` **Đổi hình hài · bố cục sản phẩm giao đi** (layout báo cáo · chọn biểu đồ · theme trình bày) ⇒ trình

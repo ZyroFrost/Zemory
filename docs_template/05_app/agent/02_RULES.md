@@ -11,10 +11,10 @@
 
 - `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
   đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
-  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`.
+  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`. <!-- gate-todo: nhắc mở sync-path khi thêm lớp lưu hoặc chỉ mục -->
 - `02-2` **Văn bản đưa người đọc theo bộ luật văn phong.** Báo cáo · email · tài liệu giao đi viết cho người
   nhận, không mang giọng harness (mệnh lệnh · viết hoa nhấn giọng · thuật ngữ nội bộ). Luật:
-  `.claude/skills/write-style/SKILL.md`.
+  `.claude/skills/write-style/SKILL.md`. <!-- gate-todo: nhắc mở write-style khi soạn file giao đi -->
 - `02-3` **Hiện từng bước, không chạy im lặng.** ① Trước mỗi cụm hành động nói một dòng: đang làm gì, vì sao
   · ② mỗi khẳng định kèm nguồn đo · ③ số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết · ④ việc chạy nền lâu
   ⇒ báo đang chờ gì.
@@ -50,7 +50,7 @@
   nêu còn đúng không · nguồn đổi sau khi dòng sổ được viết chưa; exit ≠ 0 khi lệch, nối được vào cổng).
 - `02-13` **Test mới phải đỏ được.** Viết xong một test ⇒ phá đoạn mã nó canh rồi chạy lại; không đỏ ⇒ sửa test.
   Hai lỗ hay gặp: test không chạy tới nhánh nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng
-  chứng (skill `audit` luật 1).
+  chứng (skill `audit` luật 1). <!-- gate-todo: nhắc phá mã cho đỏ khi thêm file test -->
 - `02-14` **Thấy điểm bất hợp lý trong thiết kế ⇒ nêu phản biện trước khi làm;** quyết định cuối thuộc người giao
   việc.
 - `02-62` **Mọi quyết định thiết kế giao diện phải trình duyệt trước.** Layout · kích thước · khung · màu ·
@@ -104,7 +104,7 @@
   Bước 0.
 - `02-47` **Đứng trong repo tham khảo thì chỉ đọc.** Lệnh `zemory` ghi theo cwd (`init` · `sync` · `reindex` ·
   `archive` · `memory scan`): chạy ở repo khác là ghi vào repo đó và DB của nó. Lấy chuẩn ⇒ đọc `docs_template/`
-  (không phải `docs/` riêng của repo nguồn) rồi chạy lệnh ở repo của mình.
+  (không phải `docs/` riêng của repo nguồn) rồi chạy lệnh ở repo của mình. <!-- gate-todo: chặn lệnh zemory ghi chạy ở repo khác -->
 - `02-52` **Commit cục bộ (đảo được) theo phong cách repo, không cần xin;** push mới là cửa cần phép (`02-50`).
 - `02-64` **Sửa mã chạy trên máy này không cần push** — build là bản mới chạy ngay.
 <!-- zemory:core:end -->

@@ -44,7 +44,9 @@ test("⑤ a CHECKLIST: every repo is a row with its four checks, not only the re
   const body = fn("gatesDialog");
   assert.match(body, /var rows=\(GATES\|\|\[\]\)\.slice\(\)\.sort\(/, "all repos, gaps first");
   assert.doesNotMatch(body, /filter\(function\(g\)\{return g\.gaps>0;\}\);\s*var body/, "listing only the bad repos = the old list");
-  assert.match(fn("gateCells"), /return \[guard,pre,hp,top,rf\];/, "five checks per repo (read-before-write added 2026-10-08)");
+  // six checks: rule gates got their own column beside the constitution gates (2026-10-14, plan/27 §3)
+  assert.match(fn("gateCells"), /return \[guard,pre,rules,hp,top,rf\];/, "six checks per repo (rule gates added 2026-10-14)");
+  assert.match(fn("gatesDialog"), /t\('gates\.colRules'\)[\s\S]*t\('gates\.colHp'\)/, "the rule-gates column stands before, and apart from, the constitution column");
 });
 
 test("⑥ the repo-update button counts a repo as done only when NOTHING was left for a hand fix (user 2026-10-08)", () => {
