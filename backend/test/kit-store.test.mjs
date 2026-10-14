@@ -4,7 +4,7 @@
 // and the JSON decision), the way the host calls it.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { applyKit } from "../../dist/docs/kit-apply.js";
@@ -51,12 +51,13 @@ function store(t) {
   put(s, "03_STRUCTURE/03-1_entry/SLOT.md", "---\nid: 03-1\nname: entry\nversion: 1\npath: AGENTS.md\n---\n# entry\n");
   put(s, "03_STRUCTURE/03-1_entry/gate.json", JSON.stringify({ conform: { require: ["AGENTS.md", "CLAUDE.md"], contains: { "CLAUDE.md": "@AGENTS.md" } } }));
   put(s, "04_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\ndescription: x\n---\n# sk\n");
+  put(s, "01_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
   put(s, "Own/X/AGENTS.md", "# <PROJECT>\n");
   put(s, "Own/X/CLAUDE.md", "@AGENTS.md\n");
   put(s, "Own/X/docs/agent/04_SKILLS.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
   put(s, "Own/X/docs/agent/05_TODO.md", "# todo\n");
   put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "App", tier: "Memory",
-    rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
+    constitution: ["01-*"], rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "v1");
   return { root, s, commit: (m) => { git(root, "add", "-A"); git(root, "commit", "-q", "-m", m); } };
@@ -89,6 +90,25 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
   assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS.md"), "utf8"), /\| `sk\/` \| _Store\/04_SKILLS\/sk @v1 #[0-9a-f]{12} \|/);
   const again = applyKit(root, { apply: false, storeDir: st.s });
   assert.deepEqual(new Set(Object.values(verdicts(again))), new Set(["current"]), "a second pass finds nothing to do");
+});
+
+test("suggested constitution articles are offered once: a declined one never comes back, a kept one is never edited", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const art = join(root, "docs", "agent", "01_CONSTITUTION", "01-1_secrets", "RULE.md");
+  assert.ok(existsSync(art), "init offers the article");
+  // The store revises the article; the repo's kept copy stays as it is.
+  const p = join(st.s, "01_CONSTITUTION", "01-1_secrets", "RULE.md");
+  writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("# secrets", "# secrets, revised"));
+  const kept = readFileSync(art, "utf8");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!r.steps.some((s) => s.part.shelf === "01_CONSTITUTION"), "sync does not touch the constitution");
+  assert.equal(readFileSync(art, "utf8"), kept);
+  // The repo declines it: sync never adds it back.
+  rmSync(join(root, "docs", "agent", "01_CONSTITUTION", "01-1_secrets"), { recursive: true });
+  applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!existsSync(art), "a declined article stays declined");
 });
 
 test("a reserved kit and an unknown kit are refused", (t) => {
@@ -204,7 +224,7 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   assert.match(core, /line one/, "the judgment rule is in the core");
   assert.doesNotMatch(core, /never write FORBIDDEN/, "a gated rule is not");
   const cov = ruleCoverage(root, agent);
-  assert.equal(cov.judgement, 1);
+  assert.equal(cov.judgement, 2, "02-1 alpha and the suggested article 01-1 are judgment");
   assert.deepEqual(cov.missing, [], JSON.stringify(cov.missing));
   assert.ok(cov.hooked >= 1, "02-2's hook counts as a working gate");
   assert.deepEqual(folderCoreIssues(root, agent), { noCore: false, unmarked: [], gatedInCore: [], badGate: [], overCap: 0 });
