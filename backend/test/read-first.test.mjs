@@ -21,8 +21,8 @@ function setup(t) {
   writeFileSync(join(root, "docs", "agent", "02_RULES.md"), lines(10));
   writeFileSync(join(root, "docs", "plan", "01_x.md"), lines(4));
   writeFileSync(join(root, "tasks", "FA_Weekly", "spec.md"), lines(3));
-  writeFileSync(join(base, "read-first.cjs"), READ_FIRST_SOURCE);
-  const RF = createRequire(import.meta.url)(join(base, "read-first.cjs"));
+  writeFileSync(join(base, "02-59_read-first.cjs"), READ_FIRST_SOURCE);
+  const RF = createRequire(import.meta.url)(join(base, "02-59_read-first.cjs"));
   const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], case_root: "tasks", case_files: ["spec.md"], triggers: [] } };
   const tx = join(base, "session.jsonl");
   const entries = [];
@@ -183,7 +183,7 @@ test("a sender script is recognised by its CONTENT, one hop through a launcher; 
   s.read("tasks/FA_Weekly/spec.md", 1, 3, 3);
   const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], case_root: "tasks", case_files: ["spec.md"],
     triggers: [{ when: "script_re", re: "smtplib|send-mailmessage|smtpclient", read: ".claude/skills/write-style/SKILL.md" }] } };
-  const RFmod = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const RFmod = createRequire(import.meta.url)(join(s.root, "..", "02-59_read-first.cjs"));
   const globalCheck = (command) => RFmod.readFirst({ tool_name: "PowerShell", tool_input: { command }, transcript_path: join(s.root, "..", "session.jsonl") }, s.root, policy);
   s.check(s.sh("echo warm")); // writes the transcript file
   assert.match(globalCheck("python tasks\\FA_Weekly\\pipeline\\03_send.py"), /write-style\/SKILL\.md/, "the sender itself");
@@ -211,7 +211,7 @@ test("a SUBAGENT's reads and edits count for the session — its hook gets the p
   const at = new Date(Date.now() + 120_000);
   const next = "s1\ns2\ns3\ns4\ns5\ns6";
   writeFileSync(join(s.root, "docs/plan/01_x.md"), next);
-  const RF0 = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const RF0 = createRequire(import.meta.url)(join(s.root, "..", "02-59_read-first.cjs"));
   const p0 = { read_first: { required: ["docs/plan/*.md"], triggers: [] } };
   const editPlan = { tool_name: "Edit", tool_input: { file_path: join(s.root, "docs/plan/01_x.md") }, transcript_path: tx };
   assert.match(RF0.readFirst(editPlan, s.root, p0), /01_x\.md {2}\(read 0\/6 lines - still to read: lines 1-6\)/, "the parent alone never saw the new text");
@@ -219,7 +219,7 @@ test("a SUBAGENT's reads and edits count for the session — its hook gets the p
     { type: "user", timestamp: at.toISOString(), toolUseResult: { type: "update", filePath: join(s.root, "docs/plan/01_x.md"), content: next, structuredPatch: [] } },
     { type: "user", timestamp: new Date(at.getTime() + 1000).toISOString(), toolUseResult: { type: "text", file: { filePath: join(s.root, "docs/plan/01_x.md"), content: next, startLine: 1, numLines: 6, totalLines: 6 } } },
   ].map((e) => JSON.stringify(e)).join("\n") + "\n");
-  const RF = createRequire(import.meta.url)(join(s.root, "..", "read-first.cjs"));
+  const RF = createRequire(import.meta.url)(join(s.root, "..", "02-59_read-first.cjs"));
   const policy = { read_first: { required: ["docs/agent/02_RULES.md", "docs/plan/*.md"], triggers: [] } };
   assert.equal(RF.readFirst({ tool_name: "Edit", tool_input: { file_path: join(s.root, "docs/plan/01_x.md") }, transcript_path: tx }, s.root, policy), null);
 });

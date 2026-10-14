@@ -137,13 +137,13 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 26 | `.claude/skills/sync-path/SKILL.md` | `<RAW>/.claude/skills/sync-path/SKILL.md` | 89 |
 | 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 892 |
 | 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 81 |
-| 29 | `docs/hooks/read-first.cjs` | `<RAW>/hooks/read-first.cjs` | 294 |
+| 29 | `docs/hooks/02-59_read-first.cjs` | `<RAW>/hooks/02-59_read-first.cjs` | 294 |
 | 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |
 
 **Ba file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
 lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào
 bản lưu. Luật bằng chữ ngăn được phần lớn, nhưng chữ thì người đọc có thể quên — ba file này
-để máy chặn ngay lúc xảy ra, thay vì phát hiện sau. `read-first.cjs` chặn mọi thao tác ghi khi
+để máy chặn ngay lúc xảy ra, thay vì phát hiện sau. `02-59_read-first.cjs` chặn mọi thao tác ghi khi
 agent chưa đọc hết bộ luật trong phiên.
 
 Cứ ghi chúng ra như mọi file khác. **Không tự nối vào máy** — muốn bật thì người dùng tự khai

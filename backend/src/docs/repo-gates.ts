@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { guardMatcherGaps, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
+import { READ_FIRST_FILE } from "./read-first-src.js";
 import { hpGateCoverage } from "./validate.js";
 
 export interface RepoGates {
@@ -23,7 +24,7 @@ export interface RepoGates {
   hp: { articles: number; missing: number[]; table: boolean } | null;
   /** Problems with the "ungated rules first" layout (docs/no-gate.ts). Empty = in place and fresh. */
   top: string[];
-  /** Read-before-write latch in place: read-first.cjs present, policy.json declares read_first, and guard.cjs calls it. */
+  /** Read-before-write latch in place: 02-59_read-first.cjs present, policy.json declares read_first, and guard.cjs calls it. */
   readFirst: boolean;
   /** Count of open gaps (0 = the repo runs every gate it should). */
   gaps: number;
@@ -50,8 +51,8 @@ export function repoGates(root: string, name: string): RepoGates | null {
 /** All three pieces must be there — a latch file an OLD guard never calls is a rule in words only. */
 function readFirstInPlace(hooksDir: string): boolean {
   try {
-    if (!existsSync(join(hooksDir, "read-first.cjs"))) return false;
-    if (!readFileSync(join(hooksDir, "guard.cjs"), "utf8").includes("read-first.cjs")) return false;
+    if (!existsSync(join(hooksDir, READ_FIRST_FILE))) return false;
+    if (!readFileSync(join(hooksDir, "guard.cjs"), "utf8").includes(READ_FIRST_FILE)) return false;
     const pol = JSON.parse(readFileSync(join(hooksDir, "policy.json"), "utf8")) as { read_first?: { required?: unknown } };
     return Array.isArray(pol.read_first?.required) && pol.read_first.required.length > 0;
   } catch {
@@ -69,6 +70,6 @@ export function repoGateLines(g: RepoGates): string[] {
   if (g.hp && !g.hp.table) out.push(`02_RULES has no "## Cổng cho hiến pháp" table (${g.hp.articles} article(s) to map)`);
   else if (g.hp && g.hp.missing.length) out.push(`constitution article(s) ${g.hp.missing.join(", ")} have no gate row (of ${g.hp.articles})`);
   for (const t of g.top) out.push(`${t} (\`zemory gates --write-top\`)`);
-  if (!g.readFirst) out.push("read-before-write latch not in place — read-first.cjs missing or not called by guard.cjs (`zemory hook guard`)");
+  if (!g.readFirst) out.push(`read-before-write latch not in place — ${READ_FIRST_FILE} missing or not called by guard.cjs (\`zemory hook guard\`)`);
   return out;
 }
