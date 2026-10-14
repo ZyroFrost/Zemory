@@ -73,6 +73,31 @@
       }
     ]
   },
+  "sql": {
+    "rule": "02-25",
+    "rules_file": "docs/agent/02_RULES.md",
+    "stores": [
+      "backend/src/docs/store/queries.ts",
+      "backend/src/memory/store/queries.ts"
+    ],
+    "code_ext": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".mjs",
+      ".cjs"
+    ],
+    "exclude": [
+      "backend/test/",
+      "backend/scripts/",
+      "test/",
+      "tests/",
+      "scripts/",
+      "attic/",
+      "external/",
+      "docs_template/"
+    ]
+  },
   "outside_reason": "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
   "flags_dir": "docs/hooks",
   "flags": {
