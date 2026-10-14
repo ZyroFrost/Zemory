@@ -9,12 +9,6 @@
 > Luật ở các mục sau mang dấu `<!-- gate: … -->`: hook chặn hoặc cổng đỏ khi vi phạm. Luật trong mục này không có lưới đỡ
 > nào — chỉ người đọc giữ được. Mỗi luật: điều kiện → hành vi; số `02-N` không bao giờ đánh lại.
 
-- `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
-  đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
-  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`. <!-- gate-todo: nhắc mở sync-path khi thêm lớp lưu hoặc chỉ mục -->
-- `02-2` **Văn bản đưa người đọc theo bộ luật văn phong.** Báo cáo · email · tài liệu giao đi viết cho người
-  nhận, không mang giọng harness (mệnh lệnh · viết hoa nhấn giọng · thuật ngữ nội bộ). Luật:
-  `.claude/skills/write-style/SKILL.md`. <!-- gate-todo: nhắc mở write-style khi soạn file giao đi -->
 - `02-3` **Hiện từng bước, không chạy im lặng.** ① Trước mỗi cụm hành động nói một dòng: đang làm gì, vì sao
   · ② mỗi khẳng định kèm nguồn đo · ③ số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết · ④ việc chạy nền lâu
   ⇒ báo đang chờ gì.
@@ -48,9 +42,6 @@
   nguồn đã thử — không mặc định "chưa làm", không lấy hai nguồn còn lại làm đủ. Mục quá 7 ngày không ai đụng = nghi
   ngờ. Hỏi lại một việc đã chốt là lỗi. Máy đo: `zemory todo verify` (ký hiệu mục nêu có thật không · phép đo mục tự
   nêu còn đúng không · nguồn đổi sau khi dòng sổ được viết chưa; exit ≠ 0 khi lệch, nối được vào cổng).
-- `02-13` **Test mới phải đỏ được.** Viết xong một test ⇒ phá đoạn mã nó canh rồi chạy lại; không đỏ ⇒ sửa test.
-  Hai lỗ hay gặp: test không chạy tới nhánh nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng
-  chứng (skill `audit` luật 1). <!-- gate-todo: nhắc phá mã cho đỏ khi thêm file test -->
 - `02-14` **Thấy điểm bất hợp lý trong thiết kế ⇒ nêu phản biện trước khi làm;** quyết định cuối thuộc người giao
   việc.
 - `02-62` **Mọi quyết định thiết kế giao diện phải trình duyệt trước.** Layout · kích thước · khung · màu ·
@@ -102,9 +93,6 @@
   (`zemory memory search` · `digest <session>`) và đối chiếu thứ thật để xác minh từng mục trước khi ghi hay khẳng
   định; không ghi theo bản tóm tắt hay kết quả subagent chưa kiểm. Chi tiết: `.claude/skills/session-close/SKILL.md`
   Bước 0.
-- `02-47` **Đứng trong repo tham khảo thì chỉ đọc.** Lệnh `zemory` ghi theo cwd (`init` · `sync` · `reindex` ·
-  `archive` · `memory scan`): chạy ở repo khác là ghi vào repo đó và DB của nó. Lấy chuẩn ⇒ đọc `docs_template/`
-  (không phải `docs/` riêng của repo nguồn) rồi chạy lệnh ở repo của mình. <!-- gate-todo: chặn lệnh zemory ghi chạy ở repo khác -->
 - `02-52` **Commit cục bộ (đảo được) theo phong cách repo, không cần xin;** push mới là cửa cần phép (`02-50`).
 - `02-64` **Sửa mã chạy trên máy này không cần push** — build là bản mới chạy ngay.
 <!-- zemory:core:end -->
@@ -114,6 +102,15 @@
 - `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
   trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
   chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
+- `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
+  đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
+  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`. <!-- gate: guard -->
+- `02-2` **Văn bản đưa người đọc theo bộ luật văn phong.** Báo cáo · email · tài liệu giao đi viết cho người
+  nhận, không mang giọng harness (mệnh lệnh · viết hoa nhấn giọng · thuật ngữ nội bộ). Luật:
+  `.claude/skills/write-style/SKILL.md`. <!-- gate: guard -->
+- `02-13` **Test mới phải đỏ được.** Viết xong một test ⇒ phá đoạn mã nó canh rồi chạy lại; không đỏ ⇒ sửa test.
+  Hai lỗ hay gặp: test không chạy tới nhánh nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng
+  chứng (skill `audit` luật 1). <!-- gate: guard -->
 
 > *(Luật THIẾT KẾ/UI cụ thể — Dialog 3-size, ESC mọi dialog, token-first… — KHÔNG ở đây: RULES là luật LÀM VIỆC chung. Convention thiết kế ở `03_STRUCTURE §5`. Luật "phải hỏi trước" khi đổi thiết kế: `02-62` (§Lõi).)*
 
@@ -188,6 +185,9 @@
 - `02-44` **CHỈ làm việc trong project folder đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng vào project khác (kể cả lệnh `zemory` trỏ root khác, `cd` sang repo khác, sửa file bên đó) khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp"/"cứu dữ liệu"/"tiện tay sửa luôn"**. <!-- gate: guard -->
 - `02-45` Thấy cần đụng project khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao; user gật mới làm. Project khác có thể đang có agent/phiên khác làm việc — đụng chéo gây xung đột dữ liệu. <!-- gate: guard -->
 - `02-46` Đọc-tham-khảo (read-only) project khác để trả lời câu hỏi thì được; **mọi thao tác GHI là cấm mặc định**. <!-- gate: guard -->
+- `02-47` **Đứng trong repo tham khảo thì chỉ đọc.** Lệnh `zemory` ghi theo cwd (`init` · `sync` · `reindex` ·
+  `archive` · `memory scan`): chạy ở repo khác là ghi vào repo đó và DB của nó. Lấy chuẩn ⇒ đọc `docs_template/`
+  (không phải `docs/` riêng của repo nguồn) rồi chạy lệnh ở repo của mình. <!-- gate: guard -->
 - `02-48` **Tiêu đề phiên (user chốt 2026-10-07):** khuôn `<Repo>_<Model>_<d-m-yyyy>` — `<Repo>` = tên thư mục repo HIỆN TẠI đúng hoa thường; `<Model>` = model đang chạy phiên (`Claude`, `Codex`, …); ngày = ngày mở phiên, không đệm số 0 (`Zemory_Claude_7-10-2026`); chủ đề chèn TRƯỚC ngày (`<Repo>_<Model>_<ChuDe>_<d-m-yyyy>`); phiên thứ 2, 3 trong ngày thêm đuôi `_<số>` SAU ngày (`…_7-10-2026_2`). **User** đặt tiêu đề (đổi tên phiên bình thường là đủ; `/rename` đổi thêm tên nhắn tin). Phiên chưa có tiêu đề = **chưa dùng**. Bộ kiểm: `zemory peers --all --check` chấm MỌI phiên trên máy, kể cả phiên đã đóng (khuôn lệch · ngày lệch quá 1 ngày so với ngày mở phiên); `zemory peers --fix` in kế hoạch đặt lại, `--apply` mới ghi — **chỉ chạy khi user bảo**: phiên user đặt tên riêng chưa theo khuôn là quyết định của user. Agent thấy tiêu đề phiên của CHÍNH mình lệch khuôn thì nhắc user MỘT lần. <!-- gate: hook:rule-reminders -->
 - `02-49` **Nhắn agent ở repo khác (user chốt 2026-10-07):** chỉ nhắn phiên đang chạy có **tiêu đề chuẩn** `<Repo>_<Model>_<d-m-yyyy>` (tiêu đề user đặt cho phiên). Repo có nhiều phiên ⇒ chọn phiên có **ngày trong tiêu đề mới nhất**; bằng ngày ⇒ phiên hoạt động gần nhất. Phiên **chưa có tiêu đề** (`Untitled` — Claude Code tự mở khi bật lại máy, chưa dùng) ⇒ **CẤM** nhắn. ⚠ Tiêu đề KHÔNG phải địa chỉ gửi: `ListAgents` chỉ in tên nhắn tin tự sinh (`dept-biz-b2`), nên trước MỖI lần gửi chạy **`zemory peers`** (bảng repo → địa chỉ → tiêu đề, ★ = phiên được nhắn) rồi gửi tới địa chỉ có ★; repo không có ★ ⇒ KHÔNG gửi, báo user đặt tiêu đề. Trả lời tin đến ⇒ dùng đúng địa chỉ `from` (`uds:…`). Chốt máy: hook cấp user `zemory hook send-guard` chặn gửi tới phiên không có ★ và chỉ ra địa chỉ đúng. *(Đo 07/10: 10 phiên sống, 9 mang tên nhắn tin tự sinh dù user đã đặt tiêu đề; 3 phiên chưa từng dùng.)* <!-- gate: hook:send-guard -->
 

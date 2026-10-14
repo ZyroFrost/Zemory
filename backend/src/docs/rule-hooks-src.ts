@@ -74,6 +74,25 @@ function blocked(root, policy, id, what) {
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }
 
+// A DOOR reminder for a rule that cannot be forbidden, only recalled at the right moment: the FIRST matching call of a
+// session is blocked with the rule; the same call retried passes. Remembered per session in <hooks>/.seen.json (git-ignored,
+// last 50 sessions). No session id to remember by => never block (fail-open).
+function remindOnce(payload, root, policy, key) {
+  const sid = String(payload.session_id || payload.transcript_path || "");
+  if (!sid) return false;
+  const file = path.join(root, policy.flags_dir || "docs/hooks", ".seen.json");
+  let all = {};
+  try { all = JSON.parse(fs.readFileSync(file, "utf8")) || {}; } catch { all = {}; }
+  const list = Array.isArray(all[sid]) ? all[sid] : [];
+  if (list.includes(key)) return false;
+  all[sid] = list.concat(key);
+  const keys = Object.keys(all);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 50))) delete all[k];
+  try { fs.writeFileSync(file, JSON.stringify(all)); } catch { return false; }
+  return true;
+}
+const ONCE = "\nThis is a reminder, shown once per session: retry the same call to continue.";
+
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
 const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /\/skills\/write-docx\/reference\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
@@ -254,6 +273,73 @@ function check(payload, root, policy) {
     return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote the user or date a decision:\n" +
       bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nState the rule as condition -> behaviour; the original words, date and incident go to 06_CHANGES.");
+  } catch { return null; }
+}`),
+
+  // 02-1 — a new storage or index layer must be declared and measured on a second machine: the door is the call that adds
+  // a table or opens a database.
+  hook("02-1_second-machine.cjs", String.raw`
+const LAYER = /\bCREATE\s+(?:VIRTUAL\s+)?TABLE\b|\bnew\s+Database\s*\(|\bsqlite3\.connect\s*\(|\bopenMemory\s*\(/i;
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || !/\.(ts|tsx|js|mjs|cjs|py|sql)$/i.test(e.rel) || /(^|\/)(test|tests|__tests__)\//.test(e.rel) || /\.test\./.test(e.rel)) return null;
+    if (!e.newLines.some((l) => LAYER.test(l))) return null;
+    if (!remindOnce(payload, root, policy, "02-1")) return null;
+    return blocked(root, policy, "02-1", "this adds a storage or index layer in " + e.rel +
+      " - declare how it reaches a second machine and measure that path before calling it done (.claude/skills/sync-path/SKILL.md)." + ONCE);
+  } catch { return null; }
+}`),
+
+  // 02-2 — a text written for readers follows the style rules: the door is creating a file meant to be handed over.
+  hook("02-2_reader-text.cjs", String.raw`
+const OUT_DIR = /(^|\/)(reports?|deliverables?|outbox|handover|exports?|03_output)\//i;
+const OUT_NAME = /(report|bao-?cao|email|mail|memo|handover|ban-?giao|announcement|thong-?bao)[^/]*\.(md|txt|html|docx)$/i;
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || e.exists || /^(docs\/(agent|plan)|\.claude)\//.test(e.rel)) return null;
+    if (!OUT_DIR.test(e.rel) && !OUT_NAME.test(e.rel)) return null;
+    if (!remindOnce(payload, root, policy, "02-2")) return null;
+    return blocked(root, policy, "02-2", e.rel + " reads as a text handed to people - write it for the reader, by the style rules in .claude/skills/write-style/SKILL.md." + ONCE);
+  } catch { return null; }
+}`),
+
+  // 02-13 — a new test must be shown able to go red: the door is creating a test file.
+  hook("02-13_test-red.cjs", String.raw`
+const TEST = /(^|\/)(test|tests|__tests__)\/|\.test\.[cm]?[jt]sx?$|_test\.(py|go)$|(^|\/)test_[^/]+\.py$/i;
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || e.exists || !TEST.test(e.rel)) return null;
+    if (!remindOnce(payload, root, policy, "02-13")) return null;
+    return blocked(root, policy, "02-13", "a new test file " + e.rel + " - once it passes, break the code it guards and confirm it goes red; green alone proves nothing." + ONCE);
+  } catch { return null; }
+}`),
+
+  // 02-47 — standing in a reference repo is read-only: a zemory command that WRITES, aimed at another folder (cd · Set-Location ·
+  // pushd · --root), writes into that repo and its store. Flag: .allow-outside.
+  hook("02-47_other-repo.cjs", String.raw`
+const WRITES = /\bzemory(?:\.cmd)?\s+(init|sync(?!\s+--check)|reindex|archive|migrate|adopt|setup|hook|memory\s+(?:scan|sync|embed|forget|redact)|gates\s+--write-top|project\s+move)\b/i;
+function outsideOf(root, dir) {
+  const d = String(dir || "").replace(/^["']|["']$/g, "");
+  if (!d || d === "-" || /^[~$%]/.test(d)) return false;
+  const rel = relOf(root, d);
+  return !inside(rel) && rel !== "";
+}
+function check(payload, root, policy) {
+  try {
+    const cmd = (payload.tool_input || {}).command;
+    if (typeof cmd !== "string" || !WRITES.test(cmd)) return null;
+    let target = null;
+    if (payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
+    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    if (!target && cd && outsideOf(root, cd[1])) target = cd[1];
+    const r = /--root[= ]("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    if (!target && r && outsideOf(root, r[1])) target = r[1];
+    if (!target) return null;
+    return { flag: "outside", subject: cmd, msg: blocked(root, policy, "02-47", "a zemory command that writes, aimed at " + target +
+      " - it writes into that repo and its store. Run it from the repo you work in; take the standard by reading docs_template/.") };
   } catch { return null; }
 }`),
 

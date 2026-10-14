@@ -96,6 +96,18 @@
   "todo_file": "docs/agent/05_TODO.md",
   "rule_hooks": [
     {
+      "file": "02-1_second-machine.cjs",
+      "rule": "02-1"
+    },
+    {
+      "file": "02-2_reader-text.cjs",
+      "rule": "02-2"
+    },
+    {
+      "file": "02-13_test-red.cjs",
+      "rule": "02-13"
+    },
+    {
       "file": "02-26_vi-diacritics.cjs",
       "rule": "02-26"
     },

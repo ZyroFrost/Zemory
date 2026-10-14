@@ -136,13 +136,16 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 25 | `.claude/skills/write-style/SKILL.md` | `<RAW>/.claude/skills/write-style/SKILL.md` | 91 |
 | 26 | `.claude/skills/sync-path/SKILL.md` | `<RAW>/.claude/skills/sync-path/SKILL.md` | 89 |
 | 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 1040 |
-| 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 115 |
+| 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 127 |
 | 29 | `docs/hooks/02-59_read-first.cjs` | `<RAW>/hooks/02-59_read-first.cjs` | 348 |
 | 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |
-| 31 | `docs/hooks/02-26_vi-diacritics.cjs` | `<RAW>/hooks/02-26_vi-diacritics.cjs` | 139 |
-| 32 | `docs/hooks/02-27_spec-voice.cjs` | `<RAW>/hooks/02-27_spec-voice.cjs` | 86 |
-| 33 | `docs/hooks/02-30_ascii-names.cjs` | `<RAW>/hooks/02-30_ascii-names.cjs` | 115 |
-| 34 | `docs/hooks/02-38_todo-door.cjs` | `<RAW>/hooks/02-38_todo-door.cjs` | 80 |
+| 31 | `docs/hooks/02-26_vi-diacritics.cjs` | `<RAW>/hooks/02-26_vi-diacritics.cjs` | 158 |
+| 32 | `docs/hooks/02-27_spec-voice.cjs` | `<RAW>/hooks/02-27_spec-voice.cjs` | 105 |
+| 33 | `docs/hooks/02-30_ascii-names.cjs` | `<RAW>/hooks/02-30_ascii-names.cjs` | 134 |
+| 34 | `docs/hooks/02-38_todo-door.cjs` | `<RAW>/hooks/02-38_todo-door.cjs` | 99 |
+| 35 | `docs/hooks/02-1_second-machine.cjs` | `<RAW>/hooks/02-1_second-machine.cjs` | 98 |
+| 36 | `docs/hooks/02-2_reader-text.cjs` | `<RAW>/hooks/02-2_reader-text.cjs` | 98 |
+| 37 | `docs/hooks/02-13_test-red.cjs` | `<RAW>/hooks/02-13_test-red.cjs` | 96 |
 
 **Ba file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
 lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào

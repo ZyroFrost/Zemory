@@ -96,6 +96,42 @@ test("02-38: a new open item in 05_TODO is blocked until the one-use flag; rewor
   assert.equal(s.fire(...E(s.root, todo, "- [ ] two", "- [ ] two\n- [ ] three")).blocked, false, "the user said yes ⇒ the flag lets it in");
 });
 
+// Door reminders (02-1 · 02-2 · 02-13): the FIRST matching call of a session is blocked with the rule, the retry passes,
+// another session is reminded again, and a call without a session id is never blocked.
+function fireIn(s, session_id, tool_name, tool_input) {
+  const r = spawnSync(process.execPath, [join(s.hooksDir, "guard.cjs")], { input: JSON.stringify({ session_id, tool_name, tool_input }), encoding: "utf8" });
+  return { blocked: r.status === 2, say: `${r.stdout}${r.stderr}` };
+}
+for (const [rule, call, quiet] of [
+  ["02-13", (root) => W(root, "tests/new.test.mjs", "x\n"), (root) => W(root, "src/new.mjs", "x\n")],
+  ["02-1", (root) => W(root, "src/store.ts", "db.exec('CREATE TABLE t (a)');\n"), (root) => W(root, "src/plain.ts", "export const a = 1;\n")],
+  ["02-2", (root) => W(root, "reports/weekly.md", "# Week\n"), (root) => W(root, "notes/todo.md", "# x\n")],
+]) {
+  test(`${rule}: a door reminder — first call of the session blocked with the rule, the retry passes, other sessions reminded again`, (t) => {
+    const s = repo(t);
+    const first = fireIn(s, "S1", ...call(s.root));
+    assert.equal(first.blocked, true); assert.match(first.say, new RegExp(`rule ${rule}[\\s\\S]*once per session`));
+    assert.equal(fireIn(s, "S1", ...call(s.root)).blocked, false, "the retry in the same session passes");
+    assert.equal(fireIn(s, "S2", ...call(s.root)).blocked, true, "a new session is reminded again");
+    assert.equal(fireIn(s, "S3", ...quiet(s.root)).blocked, false, "a call outside the door is never blocked");
+    assert.equal(s.fire(...call(s.root)).blocked, false, "no session id to remember by ⇒ never blocked");
+  });
+}
+
+test("02-47: a writing zemory command aimed at another repo is blocked (cd · --root · session cwd); reading, or this repo, passes", (t) => {
+  const s = repo(t);
+  const other = join(s.root, "..", "other-repo");
+  for (const command of [`cd "${other}" && zemory sync`, `zemory reindex --root "${other}"`, `Set-Location "${other}"; zemory memory scan`]) {
+    const r = s.fire("Bash", { command });
+    assert.equal(r.blocked, true, `slipped through: ${command}`); assert.match(r.say, /rule 02-47[\s\S]*\.allow-outside/);
+  }
+  const fromOutside = spawnSync(process.execPath, [join(s.hooksDir, "guard.cjs")], { input: JSON.stringify({ tool_name: "Bash", cwd: other, tool_input: { command: "zemory init" } }), encoding: "utf8" });
+  assert.equal(fromOutside.status, 2, "the session cwd outside the repo counts too");
+  for (const command of [`cd "${other}" && zemory gates`, `cd "${other}" && zemory sync --check`, "zemory reindex", `zemory memory search x`]) {
+    assert.doesNotMatch(s.fire("Bash", { command }).say, /02-47/, `blocked wrongly: ${command}`);
+  }
+});
+
 test("02-5: a scratch file in staging stops the commit; a normal file passes", (t) => {
   const s = repo(t);
   const run = () => spawnSync(process.execPath, [join(s.hooksDir, "precommit-guard.cjs")], { cwd: s.root, encoding: "utf8" });
